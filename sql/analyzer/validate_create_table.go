@@ -883,6 +883,10 @@ func validateIndexes(ctx *sql.Context, sch sql.Schema, idxDefs sql.IndexDefs, st
 func validateIndex(ctx *sql.Context, colMap map[string]*sql.Column, idxDef *sql.IndexDef, strictMySQLCompat bool) error {
 	seenCols := make(map[string]struct{})
 	for _, idxCol := range idxDef.Columns {
+		if idxCol.Expression != nil {
+			continue
+		}
+
 		schCol, exists := colMap[strings.ToLower(idxCol.Name)]
 		if !exists {
 			return sql.ErrKeyColumnDoesNotExist.New(idxCol.Name)

@@ -397,7 +397,8 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo, cat sql.Catalog) error {
 // key into the given index. The key fields will either be equality filters
 // (from ON conditions) or constants.
 func keyExprsForIndex(
-	ctx *sql.Context, tableId sql.TableId,
+	ctx *sql.Context,
+	tableId sql.TableId,
 	idxExprs []sql.ColumnId,
 	filters []sql.Expression,
 	columnIdToIndexedExprMap map[sql.ColumnId]indexedExprEntry) (keyExprs, matchedFilters []sql.Expression, nullmask []bool) {
@@ -419,7 +420,8 @@ func keyExprsForIndex(
 // keyForExpr returns an equivalence or constant value to satisfy the
 // lookup index expression.
 func keyForExpr(
-	ctx *sql.Context, targetCol sql.ColumnId,
+	ctx *sql.Context,
+	targetCol sql.ColumnId,
 	tableId sql.TableId,
 	filters []sql.Expression,
 	columnIdToIndexedExprMap map[sql.ColumnId]indexedExprEntry) (key sql.Expression, filter sql.Expression, nullable bool) {

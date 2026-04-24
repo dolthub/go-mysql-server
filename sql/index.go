@@ -67,6 +67,9 @@ type IndexColumn struct {
 	Name string
 	// Length represents the index prefix length. If zero, then no length was specified.
 	Length int64
+	// Expression is an indexed functional expression. When this field is set, the Name
+	// field is empty.
+	Expression Expression
 }
 
 // IndexConstraint represents any constraints that should be applied to the index.

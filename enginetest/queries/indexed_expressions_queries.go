@@ -747,7 +747,9 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "system hidden columns: omitted from SHOW CREATE TABLE",
+		// Doltgres and Dolt output for SHOW CREATE TABLE is different
+		Dialect: "mysql",
+		Name:    "system hidden columns: omitted from SHOW CREATE TABLE",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT, c2 VARCHAR(100));",
 			"CREATE UNIQUE INDEX idx1 ON test ((c1*10));",
@@ -781,7 +783,9 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "system hidden columns: omitted from SHOW CREATE TABLE after ALTER TABLE ADD COLUMN",
+		// Doltgres and Dolt output for SHOW CREATE TABLE is different
+		Dialect: "mysql",
+		Name:    "system hidden columns: omitted from SHOW CREATE TABLE after ALTER TABLE ADD COLUMN",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT);",
 			"CREATE UNIQUE INDEX idx1 ON test ((c1*10));",

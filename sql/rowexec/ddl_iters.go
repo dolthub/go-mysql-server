@@ -2135,27 +2135,28 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 
 	switch n.Action {
 	case plan.IndexAction_Create:
-		if n.Expression != nil {
-			// NOTE: For now, if n.Expression is set, then we know the index has a single functional expression,
-			//       and does not contain any columns as other index fields. This logic will need to change when
-			//       we start allowing multiple functional expressions and allow mixing functional expressions with
-			//       column names as multiple fields in the index.
-			newColumn, err := b.createHiddenSystemColumn(ctx, n)
-			if err != nil {
-				return err
-			}
+		if err = validateSingleFunctionalExpression(n.Columns); err != nil {
+			return err
+		}
 
-			// After creating the system hidden, generated column, update the plan node so we can create the index next
-			n.Expression = nil
-			n.Columns = []sql.IndexColumn{{
-				Name: newColumn.Name,
-			}}
-			newSchema := append(n.Table.Schema(ctx).Copy(), newColumn)
-			newNode, err := n.WithTargetSchema(newSchema)
-			if err != nil {
-				return err
+		for i, idxCol := range n.Columns {
+			if idxCol.Expression != nil {
+				newColumn, err := b.createHiddenSystemColumn(ctx, n, idxCol.Expression)
+				if err != nil {
+					return err
+				}
+
+				// After creating the system hidden, generated column,
+				// update the plan node so we can create the index next
+				n.Columns[i].Expression = nil
+				n.Columns[i].Name = newColumn.Name
+				newSchema := append(n.Table.Schema(ctx).Copy(), newColumn)
+				newNode, err := n.WithTargetSchema(newSchema)
+				if err != nil {
+					return err
+				}
+				n = newNode.(*plan.AlterIndex)
 			}
-			n = newNode.(*plan.AlterIndex)
 		}
 
 		if len(n.Columns) == 0 {
@@ -2405,15 +2406,16 @@ func (b *BaseBuilder) dropHiddenSystemColumnsForIndex(ctx *sql.Context, table *p
 	return nil
 }
 
-// createHiddenSystemColumn created a virtual, hidden system column, used to generate an expression that
-// is used in a secondary index. The new column is returned, along with any encountered error.
-func (b *BaseBuilder) createHiddenSystemColumn(ctx *sql.Context, n *plan.AlterIndex) (*sql.Column, error) {
+// createHiddenSystemColumn created a virtual, hidden system column for the specifeid |expr|, used
+// to generate an expression that is used in a secondary index. The new column is returned, along
+// with any encountered error.
+func (b *BaseBuilder) createHiddenSystemColumn(ctx *sql.Context, n *plan.AlterIndex, expr sql.Expression) (*sql.Column, error) {
 	resolvedTable, ok := n.Table.(*plan.ResolvedTable)
 	if !ok {
 		return nil, fmt.Errorf("alter index: table is not a resolved table: %T", n.Table)
 	}
 
-	columnDefaultValue, err := sql.NewColumnDefaultValue(n.Expression, n.Expression.Type(ctx), false, true, true)
+	columnDefaultValue, err := sql.NewColumnDefaultValue(expr, expr.Type(ctx), false, true, true)
 	if err != nil {
 		return nil, err
 	}
@@ -2425,7 +2427,7 @@ func (b *BaseBuilder) createHiddenSystemColumn(ctx *sql.Context, n *plan.AlterIn
 	hiddenColumnName := sql.HiddenSystemColumnPrefix + strings.ToLower(n.IndexName) + "!0!0"
 
 	newColumn := sql.Column{
-		Type:           n.Expression.Type(ctx),
+		Type:           expr.Type(ctx),
 		Generated:      columnDefaultValue,
 		Name:           hiddenColumnName,
 		Source:         n.Table.Name(),
@@ -2457,6 +2459,24 @@ func (b *BaseBuilder) createHiddenSystemColumn(ctx *sql.Context, n *plan.AlterIn
 	}
 
 	return &newColumn, nil
+}
+
+// validateSingleFunctionalExpression validates that the specified |idxCols| contain at
+// most one functional expression, and that no other indexed columns are included if a
+// functional expression is included.
+//
+// TODO: This is a temporary limitation that will be removed in a follow up PR.
+func validateSingleFunctionalExpression(idxCols []sql.IndexColumn) error {
+	functionalExpressionCount := 0
+	for _, idxCol := range idxCols {
+		if idxCol.Expression != nil {
+			functionalExpressionCount += 1
+		}
+	}
+	if functionalExpressionCount > 1 || functionalExpressionCount == 1 && len(idxCols) > 1 {
+		return fmt.Errorf("functional indexes with multiple expressions are not supported")
+	}
+	return nil
 }
 
 // warnOnDuplicateSecondaryIndex emits a session warning if the newly created index |newIndexName| duplicates
