@@ -151,13 +151,13 @@ func (c *Call) WithParamReference(pRef *expression.ProcedureReference) *Call {
 }
 
 // String implements the sql.Node interface.
-func (c *Call) String() string {
+func (c *Call) String(ctx *sql.Context) string {
 	paramStr := ""
 	for i, param := range c.Params {
 		if i > 0 {
 			paramStr += ", "
 		}
-		paramStr += param.String()
+		paramStr += param.String(ctx)
 	}
 	if c.db == nil {
 		return fmt.Sprintf("CALL %s(%s)", c.Name, paramStr)

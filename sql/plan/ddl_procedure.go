@@ -90,7 +90,7 @@ func (*CreateProcedure) CollationCoercibility(ctx *sql.Context) (collation sql.C
 }
 
 // String implements the sql.Node interface.
-func (c *CreateProcedure) String() string {
+func (c *CreateProcedure) String(ctx *sql.Context) string {
 	return c.StoredProcDetails.CreateStatement
 }
 

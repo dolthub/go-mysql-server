@@ -43,8 +43,8 @@ func newIndexedExprEntry(expr sql.Expression, colName string) indexedExprEntry {
 // matches reports whether the given filter expression refers to the same functional expression
 // as this entry. Comparison is structural via expressionsEquivalent, which ignores table qualifiers
 // and quoteName flags on GetField nodes.
-func (e indexedExprEntry) matches(filter sql.Expression) bool {
-	return expressionsEquivalent(e.expr, filter)
+func (e indexedExprEntry) matches(ctx *sql.Context, filter sql.Expression) bool {
+	return expressionsEquivalent(ctx, e.expr, filter)
 }
 
 // buildIndexedExprToColumnNameMap builds a slice of indexed functional expressions available
@@ -67,7 +67,7 @@ func buildIndexedExprToColumnNameMap(ctx *sql.Context, cat sql.Catalog, indexes 
 	sch := resolveTableSchema(ctx, cat, rt)
 
 	for _, idx := range indexes {
-		for _, qualifiedColName := range idx.Expressions() {
+		for _, qualifiedColName := range idx.Expressions(ctx) {
 			unqualifiedColName := strings.TrimPrefix(qualifiedColName, tableName+".")
 			columnIdx := sch.IndexOfColName(unqualifiedColName)
 			if columnIdx < 0 {
@@ -103,10 +103,10 @@ func buildColumnIdToIndexedExprMap(ctx *sql.Context, cat sql.Catalog, tableNode 
 
 	for _, idx := range indexes {
 		cols := idx.Cols()
-		if len(idx.SqlIdx().Expressions()) != len(cols) {
+		if len(idx.SqlIdx().Expressions(ctx)) != len(cols) {
 			continue
 		}
-		for i, qualifiedColName := range idx.SqlIdx().Expressions() {
+		for i, qualifiedColName := range idx.SqlIdx().Expressions(ctx) {
 			unqualifiedColName := strings.TrimPrefix(qualifiedColName, idx.SqlIdx().Table()+".")
 			schIdx := sch.IndexOfColName(unqualifiedColName)
 			if schIdx < 0 {
@@ -136,7 +136,7 @@ func buildColumnIdToIndexedExprMap(ctx *sql.Context, cat sql.Catalog, tableNode 
 // Any interface-level Equals would have to pick one semantic and be wrong for other
 // callers. If more call sites emerge, a standalone function or an optional
 // ExpressionComparer interface is likely a better path.
-func expressionsEquivalent(a, b sql.Expression) bool {
+func expressionsEquivalent(ctx *sql.Context, a, b sql.Expression) bool {
 	if a == nil && b == nil {
 		return true
 	}
@@ -156,7 +156,7 @@ func expressionsEquivalent(a, b sql.Expression) bool {
 	case *expression.Literal:
 		// String() comparison is robust to numeric type coercion differences between
 		// stored and filter expressions (e.g. int32(10) vs int64(10) both produce "10").
-		return av.String() == b.String()
+		return av.String(ctx) == b.String(ctx)
 	}
 
 	// For arithmetic-like nodes where a single Go type encodes multiple operators:
@@ -179,7 +179,7 @@ func expressionsEquivalent(a, b sql.Expression) bool {
 		return false
 	}
 	for i := range aChildren {
-		if !expressionsEquivalent(aChildren[i], bChildren[i]) {
+		if !expressionsEquivalent(ctx, aChildren[i], bChildren[i]) {
 			return false
 		}
 	}

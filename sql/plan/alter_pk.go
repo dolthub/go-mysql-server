@@ -73,13 +73,13 @@ func (a *AlterPK) IsReadOnly() bool {
 	return false
 }
 
-func (a *AlterPK) String() string {
+func (a *AlterPK) String(ctx *sql.Context) string {
 	action := "add"
 	if a.Action == PrimaryKeyAction_Drop {
 		action = "drop"
 	}
 
-	return fmt.Sprintf("alter table %s %s primary key", a.Table.String(), action)
+	return fmt.Sprintf("alter table %s %s primary key", a.Table.String(ctx), action)
 }
 
 func (a *AlterPK) Schema(ctx *sql.Context) sql.Schema {

@@ -65,10 +65,10 @@ func (d *DropIndex) Schema(ctx *sql.Context) sql.Schema {
 // Children implements the Node interface.
 func (d *DropIndex) Children() []sql.Node { return []sql.Node{d.Table} }
 
-func (d *DropIndex) String() string {
+func (d *DropIndex) String(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("DropIndex(%s)", d.Name)
-	_ = pr.WriteChildren(d.Table.String())
+	_ = pr.WriteChildren(d.Table.String(ctx))
 	return pr.String()
 }
 

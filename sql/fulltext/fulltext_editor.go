@@ -87,7 +87,7 @@ func CreateEditor(ctx *sql.Context, parent sql.Table, config EditableTable, inde
 	editorIndexes := make([]IndexEditors, len(indexes))
 	for i, index := range indexes {
 		if !index.Index.IsFullText() {
-			return TableEditor{}, fmt.Errorf("index `%s` is not a FULLTEXT index", index.Index.ID())
+			return TableEditor{}, fmt.Errorf("index `%s` is not a FULLTEXT index", index.Index.ID(ctx))
 		}
 		keyCols, err := index.Index.FullTextKeyColumns(ctx)
 		if err != nil {
@@ -107,14 +107,14 @@ func CreateEditor(ctx *sql.Context, parent sql.Table, config EditableTable, inde
 			return TableEditor{}, err
 		}
 		// Map each indexes' columns to their respective table columns
-		exprs := index.Index.Expressions()
+		exprs := index.Index.Expressions(ctx)
 		sourceCols := make([]int, len(exprs))
 		for i, expr := range exprs {
 			var ok bool
 			sourceCols[i], ok = parentColMap[strings.ToLower(expr)]
 			if !ok {
 				return TableEditor{}, fmt.Errorf("table `%s` FULLTEXT index `%s` references the column `%s` but it could not be found",
-					parent.Name(), index.Index.ID(), expr)
+					parent.Name(), index.Index.ID(ctx), expr)
 			}
 		}
 		// Create the index editors
@@ -151,7 +151,7 @@ func CreateEditor(ctx *sql.Context, parent sql.Table, config EditableTable, inde
 		_, ok4 := editorIndexes[i].RowCount.Editor.(sql.ForeignKeyEditor)
 		if !ok1 || !ok2 || !ok3 || !ok4 {
 			return TableEditor{}, fmt.Errorf("table `%s` FULLTEXT index `%s` references tables which do not implement the ForeignKeyEditor interface",
-				parent.Name(), index.Index.ID())
+				parent.Name(), index.Index.ID(ctx))
 		}
 
 		// We make the assumption that all tables will have a single index which represents the primary key.
@@ -159,36 +159,36 @@ func CreateEditor(ctx *sql.Context, parent sql.Table, config EditableTable, inde
 		if err != nil {
 			return TableEditor{}, err
 		}
-		if len(indexes) != 1 || indexes[0].ID() != "PRIMARY" {
+		if len(indexes) != 1 || indexes[0].ID(ctx) != "PRIMARY" {
 			return TableEditor{}, fmt.Errorf("table `%s` FULLTEXT index `%s` references the table `%s` which does not have a single index represented by the PRIMARY KEY",
-				parent.Name(), index.Index.ID(), index.Position.Name())
+				parent.Name(), index.Index.ID(ctx), index.Position.Name())
 		}
 		editorIndexes[i].Position.Index = indexes[0]
 		indexes, err = index.DocCount.GetIndexes(ctx)
 		if err != nil {
 			return TableEditor{}, err
 		}
-		if len(indexes) != 1 || indexes[0].ID() != "PRIMARY" {
+		if len(indexes) != 1 || indexes[0].ID(ctx) != "PRIMARY" {
 			return TableEditor{}, fmt.Errorf("table `%s` FULLTEXT index `%s` references the table `%s` which does not have a single index represented by the PRIMARY KEY",
-				parent.Name(), index.Index.ID(), index.DocCount.Name())
+				parent.Name(), index.Index.ID(ctx), index.DocCount.Name())
 		}
 		editorIndexes[i].DocCount.Index = indexes[0]
 		indexes, err = index.GlobalCount.GetIndexes(ctx)
 		if err != nil {
 			return TableEditor{}, err
 		}
-		if len(indexes) != 1 || indexes[0].ID() != "PRIMARY" {
+		if len(indexes) != 1 || indexes[0].ID(ctx) != "PRIMARY" {
 			return TableEditor{}, fmt.Errorf("table `%s` FULLTEXT index `%s` references the table `%s` which does not have a single index represented by the PRIMARY KEY",
-				parent.Name(), index.Index.ID(), index.GlobalCount.Name())
+				parent.Name(), index.Index.ID(ctx), index.GlobalCount.Name())
 		}
 		editorIndexes[i].GlobalCount.Index = indexes[0]
 		indexes, err = index.RowCount.GetIndexes(ctx)
 		if err != nil {
 			return TableEditor{}, err
 		}
-		if len(indexes) != 1 || indexes[0].ID() != "PRIMARY" {
+		if len(indexes) != 1 || indexes[0].ID(ctx) != "PRIMARY" {
 			return TableEditor{}, fmt.Errorf("table `%s` FULLTEXT index `%s` references the table `%s` which does not have a single index represented by the PRIMARY KEY",
-				parent.Name(), index.Index.ID(), index.RowCount.Name())
+				parent.Name(), index.Index.ID(ctx), index.RowCount.Name())
 		}
 		editorIndexes[i].RowCount.Index = indexes[0]
 	}

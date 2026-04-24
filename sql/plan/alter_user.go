@@ -38,7 +38,7 @@ func (a *AlterUser) Schema(ctx *sql.Context) sql.Schema {
 }
 
 // String implements the interface sql.Node.
-func (a *AlterUser) String() string {
+func (a *AlterUser) String(ctx *sql.Context) string {
 	ifExists := ""
 	if a.IfExists {
 		ifExists = "IfExists: "

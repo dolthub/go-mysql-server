@@ -67,7 +67,7 @@ func (s ExponentialDistTable) IsReadOnly() bool {
 	return true
 }
 
-func (s ExponentialDistTable) String() string {
+func (s ExponentialDistTable) String(ctx *sql.Context) string {
 	return "normal_dist"
 }
 

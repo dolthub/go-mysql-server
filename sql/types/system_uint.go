@@ -15,7 +15,6 @@
 package types
 
 import (
-	"context"
 	"reflect"
 	"strconv"
 
@@ -45,7 +44,7 @@ func NewSystemUintType(varName string, lowerbound, upperbound uint64) sql.System
 }
 
 // Compare implements Type interface.
-func (t systemUintType) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
+func (t systemUintType) Compare(ctx *sql.Context, a interface{}, b interface{}) (int, error) {
 	as, _, err := t.Convert(ctx, a)
 	if err != nil {
 		return 0, err
@@ -67,7 +66,7 @@ func (t systemUintType) Compare(ctx context.Context, a interface{}, b interface{
 }
 
 // Convert implements Type interface.
-func (t systemUintType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
+func (t systemUintType) Convert(ctx *sql.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	// Float, string, nor nil values are accepted
 	switch value := v.(type) {
 	case int:
@@ -150,7 +149,7 @@ func (t systemUintType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqlty
 }
 
 // String implements Type interface.
-func (t systemUintType) String() string {
+func (t systemUintType) String(ctx *sql.Context) string {
 	return "system_uint"
 }
 
@@ -190,16 +189,16 @@ func (systemUintType) CollationCoercibility(ctx *sql.Context) (collation sql.Col
 }
 
 // EncodeValue implements SystemVariableType interface.
-func (t systemUintType) EncodeValue(val interface{}) (string, error) {
+func (t systemUintType) EncodeValue(ctx *sql.Context, val interface{}) (string, error) {
 	expectedVal, ok := val.(uint64)
 	if !ok {
-		return "", sql.ErrSystemVariableCodeFail.New(val, t.String())
+		return "", sql.ErrSystemVariableCodeFail.New(val, t.String(ctx))
 	}
 	return strconv.FormatUint(expectedVal, 10), nil
 }
 
 // DecodeValue implements SystemVariableType interface.
-func (t systemUintType) DecodeValue(val string) (interface{}, error) {
+func (t systemUintType) DecodeValue(ctx *sql.Context, val string) (interface{}, error) {
 	parsedVal, err := strconv.ParseUint(val, 10, 64)
 	if err != nil {
 		return nil, err
@@ -207,7 +206,7 @@ func (t systemUintType) DecodeValue(val string) (interface{}, error) {
 	if parsedVal >= t.lowerbound && parsedVal <= t.upperbound {
 		return parsedVal, nil
 	}
-	return nil, sql.ErrSystemVariableCodeFail.New(val, t.String())
+	return nil, sql.ErrSystemVariableCodeFail.New(val, t.String(ctx))
 }
 
 func (t systemUintType) UnderlyingType() sql.Type {

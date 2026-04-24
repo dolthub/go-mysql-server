@@ -96,6 +96,6 @@ func (*Use) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, 
 }
 
 // String implements the sql.Node interface.
-func (u *Use) String() string {
+func (u *Use) String(ctx *sql.Context) string {
 	return fmt.Sprintf("USE(%s)", u.db.Name())
 }

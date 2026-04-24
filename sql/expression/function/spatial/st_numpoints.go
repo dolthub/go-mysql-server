@@ -60,8 +60,8 @@ func (*NumPoints) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 	return sql.Collation_binary, 5
 }
 
-func (n *NumPoints) String() string {
-	return fmt.Sprintf("%s(%s)", n.FunctionName(), n.Child.String())
+func (n *NumPoints) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", n.FunctionName(), n.Child.String(ctx))
 }
 
 // WithChildren implements the Expression interface.

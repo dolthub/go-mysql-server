@@ -64,8 +64,8 @@ func (*Extract) CollationCoercibility(ctx *sql.Context) (collation sql.Collation
 	return sql.Collation_binary, 5
 }
 
-func (td *Extract) String() string {
-	return fmt.Sprintf("%s(%s from %s)", td.FunctionName(), td.LeftChild, td.RightChild)
+func (td *Extract) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s from %s)", td.FunctionName(), td.LeftChild.String(ctx), td.RightChild.String(ctx))
 }
 
 // WithChildren implements the Expression interface.

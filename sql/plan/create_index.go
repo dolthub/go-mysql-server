@@ -95,10 +95,10 @@ func (c *CreateIndex) IsReadOnly() bool {
 // Schema implements the Node interface.
 func (c *CreateIndex) Schema(ctx *sql.Context) sql.Schema { return nil }
 
-func (c *CreateIndex) String() string {
+func (c *CreateIndex) String(ctx *sql.Context) string {
 	var exprs = make([]string, len(c.Exprs))
 	for i, e := range c.Exprs {
-		exprs[i] = e.String()
+		exprs[i] = e.String(ctx)
 	}
 
 	pr := sql.NewTreePrinter()
@@ -106,7 +106,7 @@ func (c *CreateIndex) String() string {
 	_ = pr.WriteChildren(
 		fmt.Sprintf("USING %s", c.Driver),
 		fmt.Sprintf("Expressions (%s)", strings.Join(exprs, ", ")),
-		c.Table.String(),
+		c.Table.String(ctx),
 	)
 	return pr.String()
 }

@@ -2954,7 +2954,7 @@ func TestParseColumnTypeString(t *testing.T) {
 			require.Equal(t, test.expectedSqlType, res)
 		})
 		t.Run("round trip "+test.columnType, func(t *testing.T) {
-			str := test.expectedSqlType.String()
+			str := test.expectedSqlType.String(ctx)
 			typ, err := ParseColumnTypeString(str)
 			require.NoError(t, err)
 			if collatedType, ok := typ.(sql.TypeWithCollation); ok {
@@ -2964,7 +2964,7 @@ func TestParseColumnTypeString(t *testing.T) {
 				}
 			}
 			require.Equal(t, test.expectedSqlType, typ)
-			require.Equal(t, typ.String(), str)
+			require.Equal(t, typ.String(ctx), str)
 		})
 	}
 }

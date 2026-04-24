@@ -129,7 +129,7 @@ func (*ResolvedTable) IsReadOnly() bool {
 	return true
 }
 
-func (t *ResolvedTable) String() string {
+func (t *ResolvedTable) String(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	pr.WriteNode("Table")
 	table := t.UnderlyingTable()
@@ -149,7 +149,7 @@ func (t *ResolvedTable) String() string {
 	if ft, ok := table.(sql.FilteredTable); ok {
 		var filters []string
 		for _, f := range ft.Filters() {
-			filters = append(filters, f.String())
+			filters = append(filters, f.String(ctx))
 		}
 		if len(filters) > 0 {
 			children = append(children, fmt.Sprintf("filters: %v", filters))
@@ -202,7 +202,7 @@ func TableDebugString(ctx *sql.Context, table sql.Table, additionalChildren ...s
 	if ft, ok := table.(sql.FilteredTable); ok {
 		var filters []string
 		for _, f := range ft.Filters() {
-			filters = append(filters, f.String())
+			filters = append(filters, f.String(ctx))
 		}
 		if len(filters) > 0 {
 			children = append(children, fmt.Sprintf("filters: %v", filters))

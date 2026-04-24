@@ -162,13 +162,13 @@ func (p *GetField) WithChildren(ctx *sql.Context, children ...sql.Expression) (s
 	return p, nil
 }
 
-func (p *GetField) String() string {
+func (p *GetField) String(ctx *sql.Context) string {
 	// We never quote anything if the table identifier is present. Quoting the field name is a very narrow use case
 	// used only for serializing column default values and related fields, in which case the table name will always be
 	// stripped away. The output of this method is load-bearing in many places of analysis and execution.
 	if p.table == "" {
 		if p.quoteName {
-			return p.schemaFormatter.QuoteIdentifier(p.name)
+			return p.schemaFormatter.QuoteIdentifier(ctx, p.name)
 		}
 		return p.name
 	}

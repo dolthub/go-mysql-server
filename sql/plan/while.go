@@ -42,16 +42,16 @@ func NewWhile(label string, condition sql.Expression, block *Block) *While {
 }
 
 // String implements the interface sql.Node.
-func (w *While) String() string {
+func (w *While) String(ctx *sql.Context) string {
 	label := ""
 	if len(w.Label) > 0 {
 		label = w.Label + ": "
 	}
 	p := sql.NewTreePrinter()
-	_ = p.WriteNode("%s: WHILE(%s)", label, w.Condition.String())
+	_ = p.WriteNode("%s: WHILE(%s)", label, w.Condition.String(ctx))
 	var children []string
 	for _, s := range w.statements {
-		children = append(children, s.String())
+		children = append(children, s.String(ctx))
 	}
 	_ = p.WriteChildren(children...)
 	return p.String()

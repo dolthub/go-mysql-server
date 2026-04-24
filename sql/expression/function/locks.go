@@ -75,19 +75,19 @@ func (nl *NamedLockFunction) GetLockName(ctx *sql.Context, row sql.Row) (*string
 
 	s, ok := nl.Child.Type(ctx).(sql.StringType)
 	if !ok {
-		return nil, ErrIllegalLockNameArgType.New(nl.Child.Type(ctx).String(), nl.funcName)
+		return nil, ErrIllegalLockNameArgType.New(nl.Child.Type(ctx).String(ctx), nl.funcName)
 	}
 	lockName, err := types.ConvertToString(ctx, val, s, nil)
 	if err != nil {
-		return nil, fmt.Errorf("%w; %s", ErrIllegalLockNameArgType.New(nl.Child.Type(ctx).String(), nl.funcName), err)
+		return nil, fmt.Errorf("%w; %s", ErrIllegalLockNameArgType.New(nl.Child.Type(ctx).String(ctx), nl.funcName), err)
 	}
 
 	return &lockName, nil
 }
 
-// String implements the fmt.Stringer interface.
-func (nl *NamedLockFunction) String() string {
-	return fmt.Sprintf("%s(%s)", strings.ToLower(nl.funcName), nl.Child.String())
+// String implements the sql.Stringer interface.
+func (nl *NamedLockFunction) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", strings.ToLower(nl.funcName), nl.Child.String(ctx))
 }
 
 // IsNullable implements the Expression interface.
@@ -325,12 +325,12 @@ func (gl *GetLock) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	s, ok := gl.LeftChild.Type(ctx).(sql.StringType)
 	if !ok {
-		return nil, ErrIllegalLockNameArgType.New(gl.LeftChild.Type(ctx).String(), gl.FunctionName())
+		return nil, ErrIllegalLockNameArgType.New(gl.LeftChild.Type(ctx).String(ctx), gl.FunctionName())
 	}
 
 	lockName, err := types.ConvertToString(ctx, leftVal, s, nil)
 	if err != nil {
-		return nil, fmt.Errorf("%w; %s", ErrIllegalLockNameArgType.New(gl.LeftChild.Type(ctx).String(), gl.FunctionName()), err)
+		return nil, fmt.Errorf("%w; %s", ErrIllegalLockNameArgType.New(gl.LeftChild.Type(ctx).String(ctx), gl.FunctionName()), err)
 	}
 
 	timeout, _, err := types.Int64.Convert(ctx, rightVal)
@@ -352,9 +352,9 @@ func (gl *GetLock) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return int8(1), nil
 }
 
-// String implements the fmt.Stringer interface.
-func (gl *GetLock) String() string {
-	return fmt.Sprintf("get_lock(%s, %s)", gl.LeftChild.String(), gl.RightChild.String())
+// String implements the sql.Stringer interface.
+func (gl *GetLock) String(ctx *sql.Context) string {
+	return fmt.Sprintf("get_lock(%s, %s)", gl.LeftChild.String(ctx), gl.RightChild.String(ctx))
 }
 
 // IsNullable implements the Expression interface.

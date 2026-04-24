@@ -55,7 +55,7 @@ func (n *ShowGrants) IsReadOnly() bool {
 }
 
 // String implements the interface sql.Node.
-func (n *ShowGrants) String() string {
+func (n *ShowGrants) String(ctx *sql.Context) string {
 	user := n.For
 	if user == nil {
 		user = &UserName{

@@ -81,13 +81,13 @@ func (n *HashLookup) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) 
 	return &ret, nil
 }
 
-func (n *HashLookup) String() string {
+func (n *HashLookup) String(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("HashLookup")
 	children := make([]string, 3)
-	children[0] = fmt.Sprintf("left-key: %s", n.LeftProbeKey)
-	children[1] = fmt.Sprintf("right-key: %s", n.RightEntryKey)
-	children[2] = n.Child.String()
+	children[0] = fmt.Sprintf("left-key: %s", n.LeftProbeKey.String(ctx))
+	children[1] = fmt.Sprintf("right-key: %s", n.RightEntryKey.String(ctx))
+	children[2] = n.Child.String(ctx)
 	_ = pr.WriteChildren(children...)
 	return pr.String()
 }

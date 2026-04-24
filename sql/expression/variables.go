@@ -76,7 +76,7 @@ func (v *SystemVar) IsNullable(ctx *sql.Context) bool {
 func (v *SystemVar) Resolved() bool { return true }
 
 // String implements the sql.Expression interface.
-func (v *SystemVar) String() string {
+func (v *SystemVar) String(ctx *sql.Context) string {
 	if sysVar, _, ok := sql.SystemVariables.GetGlobal(v.Name); ok {
 		return sysVar.DisplayString(v.SpecifiedScope)
 	}
@@ -145,7 +145,7 @@ func (v *UserVar) IsNullable(ctx *sql.Context) bool { return true }
 func (v *UserVar) Resolved() bool { return true }
 
 // String implements the sql.Expression interface.
-func (v *UserVar) String() string { return "@" + v.Name }
+func (v *UserVar) String(ctx *sql.Context) string { return "@" + v.Name }
 
 // WithChildren implements the Expression interface.
 func (v *UserVar) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {

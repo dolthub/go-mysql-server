@@ -1225,7 +1225,7 @@ func AssertWarningAndTestPreparedQuery(
 	validateEngine(t, ctx, harness, e)
 }
 
-func assertSchemasEqualWithDefaults(t *testing.T, expected, actual sql.Schema) bool {
+func assertSchemasEqualWithDefaults(t *testing.T, ctx *sql.Context, expected, actual sql.Schema) bool {
 	if len(expected) != len(actual) {
 		return assert.Equal(t, expected, actual)
 	}
@@ -1246,10 +1246,10 @@ func assertSchemasEqualWithDefaults(t *testing.T, expected, actual sql.Schema) b
 		// for the same reason.
 		eds, ads := "NULL", "NULL"
 		if expected[i].Default != nil {
-			eds = strings.Trim(expected[i].Default.String(), "()")
+			eds = strings.Trim(expected[i].Default.String(ctx), "()")
 		}
 		if actual[i].Default != nil {
-			ads = strings.Trim(actual[i].Default.String(), "()")
+			ads = strings.Trim(actual[i].Default.String(ctx), "()")
 		}
 
 		assert.Equal(t, eds, ads, "column default values differ")

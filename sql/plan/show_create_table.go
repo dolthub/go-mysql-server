@@ -167,8 +167,8 @@ func (sc *ShowCreateTable) AsOf() sql.Expression {
 	return sc.asOf
 }
 
-// String implements the fmt.Stringer interface.
-func (sc *ShowCreateTable) String() string {
+// String implements the sql.Stringer interface.
+func (sc *ShowCreateTable) String(ctx *sql.Context) string {
 	t := "TABLE"
 	if sc.IsView {
 		t = "VIEW"
@@ -181,7 +181,7 @@ func (sc *ShowCreateTable) String() string {
 
 	asOfClause := ""
 	if sc.asOf != nil {
-		asOfClause = fmt.Sprintf("as of %v", sc.asOf)
+		asOfClause = fmt.Sprintf("as of %v", sc.asOf.String(ctx))
 	}
 
 	return fmt.Sprintf("SHOW CREATE %s %s %s", t, name, asOfClause)

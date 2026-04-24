@@ -67,8 +67,8 @@ func NewShiftRight(left, right sql.Expression) *BitOp {
 	return NewBitOp(left, right, sqlparser.ShiftRightStr)
 }
 
-func (b *BitOp) String() string {
-	return fmt.Sprintf("(%s %s %s)", b.LeftChild, b.Op, b.RightChild)
+func (b *BitOp) String(ctx *sql.Context) string {
+	return fmt.Sprintf("(%s %s %s)", b.LeftChild.String(ctx), b.Op, b.RightChild.String(ctx))
 }
 
 func (b *BitOp) DebugString(ctx *sql.Context) string {

@@ -147,7 +147,7 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 			return (lBest*rBest-1)*seqIOCostFactor + (lBest*rBest)*cpuCostFactor, nil
 		default:
 		}
-		return 0, fmt.Errorf("unhandled join type: %T (%s)", n, jp.Op)
+		return 0, fmt.Errorf("unhandled join type: %T (%s)", n, jp.Op.String(ctx))
 	default:
 		panic(fmt.Sprintf("coster does not support type: %T", n))
 	}

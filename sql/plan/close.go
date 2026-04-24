@@ -45,7 +45,7 @@ func (c *Close) Resolved() bool {
 }
 
 // String implements the interface sql.Node.
-func (c *Close) String() string {
+func (c *Close) String(ctx *sql.Context) string {
 	return fmt.Sprintf("CLOSE %s", c.Name)
 }
 

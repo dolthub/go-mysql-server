@@ -203,7 +203,7 @@ func TestGroupByCollations(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		t.Run(tc.Type.String(), func(t *testing.T) {
+		t.Run(tc.Type.String(sql.NewEmptyContext()), func(t *testing.T) {
 			require := require.New(t)
 
 			childSchema := sql.Schema{

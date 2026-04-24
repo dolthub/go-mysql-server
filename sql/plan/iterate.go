@@ -46,7 +46,7 @@ func (i *Iterate) IsReadOnly() bool {
 }
 
 // String implements the interface sql.Node.
-func (i *Iterate) String() string {
+func (i *Iterate) String(ctx *sql.Context) string {
 	return fmt.Sprintf("ITERATE %s", i.Label)
 }
 

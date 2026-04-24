@@ -33,7 +33,7 @@ func TestRand(t *testing.T) {
 	r, _ := NewRand(ctx)
 
 	assert.Equal(t, types.Float64, r.Type(ctx))
-	assert.Equal(t, "rand()", r.String())
+	assert.Equal(t, "rand()", r.String(ctx))
 
 	f, err := r.Eval(nil, nil)
 	require.NoError(t, err)
@@ -56,7 +56,7 @@ func TestRandWithSeed(t *testing.T) {
 	r, _ := NewRand(ctx, expression.NewLiteral(10, types.Int8))
 
 	assert.Equal(t, types.Float64, r.Type(ctx))
-	assert.Equal(t, "rand(10)", r.String())
+	assert.Equal(t, "rand(10)", r.String(ctx))
 
 	f, err := r.Eval(nil, nil)
 	require.NoError(t, err)
@@ -72,7 +72,7 @@ func TestRandWithSeed(t *testing.T) {
 	assert.Equal(t, f64, f642)
 
 	r, _ = NewRand(ctx, expression.NewLiteral("not a number", types.LongText))
-	assert.Equal(t, `rand('not a number')`, r.String())
+	assert.Equal(t, `rand('not a number')`, r.String(ctx))
 
 	f, err = r.Eval(nil, nil)
 	require.NoError(t, err)
@@ -88,7 +88,7 @@ func TestRandWithSeed(t *testing.T) {
 	assert.Equal(t, f64, f642)
 
 	r, _ = NewRand(ctx, expression.NewLiteral("10 not a number", types.LongText))
-	assert.Equal(t, `rand('10 not a number')`, r.String())
+	assert.Equal(t, `rand('10 not a number')`, r.String(ctx))
 
 	f, err = r.Eval(nil, nil)
 	require.NoError(t, err)

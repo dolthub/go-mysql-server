@@ -78,7 +78,7 @@ type Transaction struct {
 
 var _ sql.Transaction = (*Transaction)(nil)
 
-func (s *Transaction) String() string {
+func (s *Transaction) String(ctx *sql.Context) string {
 	return "in-memory transaction"
 }
 

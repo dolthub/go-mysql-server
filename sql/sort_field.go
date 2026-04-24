@@ -61,8 +61,8 @@ func (sf SortFields) FromExpressions(ctx *Context, exprs ...Expression) SortFiel
 	return fields
 }
 
-func (s SortField) String() string {
-	return fmt.Sprintf("%s %s", s.Column, s.Order)
+func (s SortField) String(ctx *Context) string {
+	return fmt.Sprintf("%s %s", s.Column.String(ctx), s.Order.String(ctx))
 }
 
 func (s SortField) DebugString(ctx *Context) string {
@@ -86,7 +86,7 @@ const (
 	Descending SortOrder = 2
 )
 
-func (s SortOrder) String() string {
+func (s SortOrder) String(ctx *Context) string {
 	switch s {
 	case Ascending:
 		return "ASC"

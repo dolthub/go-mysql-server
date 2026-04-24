@@ -50,7 +50,7 @@ func (s *ShowStatus) IsReadOnly() bool {
 }
 
 // String implements sql.Node interface.
-func (s *ShowStatus) String() string {
+func (s *ShowStatus) String(ctx *sql.Context) string {
 	return "SHOW STATUS"
 }
 

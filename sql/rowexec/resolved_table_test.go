@@ -112,7 +112,7 @@ var _ sql.Table = (*dummyTable)(nil)
 
 func (t *dummyTable) Name() string { return "dummy" }
 
-func (t *dummyTable) String() string {
+func (t *dummyTable) String(ctx *sql.Context) string {
 	panic("not implemented")
 }
 

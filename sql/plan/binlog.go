@@ -55,7 +55,7 @@ func (b *Binlog) WithBinlogConsumer(consumer binlogreplication.BinlogConsumer) s
 	return &nc
 }
 
-func (b *Binlog) String() string {
+func (b *Binlog) String(ctx *sql.Context) string {
 	return "BINLOG"
 }
 

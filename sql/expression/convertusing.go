@@ -38,8 +38,8 @@ func NewConvertUsing(expr sql.Expression, targetCharSet sql.CharacterSetID) *Con
 }
 
 // String implements the interface sql.Expression.
-func (c *ConvertUsing) String() string {
-	return fmt.Sprintf("CONVERT(%s USING %s)", c.Child.String(), c.TargetCharSet.Name())
+func (c *ConvertUsing) String(ctx *sql.Context) string {
+	return fmt.Sprintf("CONVERT(%s USING %s)", c.Child.String(ctx), c.TargetCharSet.Name())
 }
 
 // Type implements the interface sql.Expression.

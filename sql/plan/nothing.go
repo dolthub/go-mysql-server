@@ -24,7 +24,7 @@ type Nothing struct{}
 var _ sql.Node = Nothing{}
 var _ sql.CollationCoercible = Nothing{}
 
-func (Nothing) String() string                 { return "NOTHING" }
+func (Nothing) String(ctx *sql.Context) string { return "NOTHING" }
 func (Nothing) Resolved() bool                 { return true }
 func (Nothing) IsReadOnly() bool               { return true }
 func (Nothing) Schema(*sql.Context) sql.Schema { return nil }

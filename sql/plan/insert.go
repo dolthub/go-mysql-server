@@ -232,15 +232,15 @@ func (ii *InsertInto) WithDeferredDefaults(deferredDefaults sql.FastIntSet) *Ins
 	return &np
 }
 
-// String implements the fmt.Stringer interface.
-func (ii *InsertInto) String() string {
+// String implements the sql.Stringer interface.
+func (ii *InsertInto) String(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	if ii.IsReplace {
 		_ = pr.WriteNode("Replace(%s)", strings.Join(ii.ColumnNames, ", "))
 	} else {
 		_ = pr.WriteNode("Insert(%s)", strings.Join(ii.ColumnNames, ", "))
 	}
-	_ = pr.WriteChildren(ii.Destination.String(), ii.Source.String())
+	_ = pr.WriteChildren(ii.Destination.String(ctx), ii.Source.String(ctx))
 	return pr.String()
 }
 
@@ -345,8 +345,8 @@ func (id *InsertDestination) IsReadOnly() bool {
 	return true
 }
 
-func (id *InsertDestination) String() string {
-	return id.UnaryNode.Child.String()
+func (id *InsertDestination) String(ctx *sql.Context) string {
+	return id.UnaryNode.Child.String(ctx)
 }
 
 func (id *InsertDestination) DebugString(ctx *sql.Context) string {

@@ -109,7 +109,7 @@ func TestYearConvert(t *testing.T) {
 }
 
 func TestYearString(t *testing.T) {
-	require.Equal(t, "year", Year.String())
+	require.Equal(t, "year", Year.String(sql.NewEmptyContext()))
 }
 
 func TestYearZero(t *testing.T) {

@@ -60,8 +60,8 @@ func (*IsEmpty) CollationCoercibility(ctx *sql.Context) (collation sql.Collation
 	return sql.Collation_binary, 5
 }
 
-func (i *IsEmpty) String() string {
-	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String())
+func (i *IsEmpty) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String(ctx))
 }
 
 // WithChildren implements the Expression interface.

@@ -33,7 +33,7 @@ type enabledEvent struct {
 	event           sql.EventDefinition
 }
 
-var _ fmt.Stringer = (*enabledEvent)(nil)
+var _ sql.Stringer = (*enabledEvent)(nil)
 
 // newEnabledEvent returns new enabledEvent object and whether it is created successfully. An event
 // with ENABLE status might NOT be created if the event SCHEDULE is ended/expired. If the event is expired,
@@ -90,8 +90,8 @@ func getUsernameAndAddressFromDefiner(definer string) (string, string, error) {
 	return username, address, nil
 }
 
-// String implements the fmt.Stringer interface
-func (e *enabledEvent) String() string {
+// String implements the sql.Stringer interface
+func (e *enabledEvent) String(ctx *sql.Context) string {
 	return fmt.Sprintf("next execution at: %v, event database: %s, event definition: %v", e.nextExecutionAt, e.edb.Name(), e.event)
 }
 
@@ -236,8 +236,8 @@ func (l *enabledEventsList) remove(key string) {
 	}
 }
 
-// String implements the fmt.Stringer interface
-func (l *enabledEventsList) String() string {
+// String implements the sql.Stringer interface
+func (l *enabledEventsList) String(ctx *sql.Context) string {
 	return fmt.Sprintf("event list: %v", l.eventsList)
 }
 

@@ -62,13 +62,13 @@ func (s *StatsProv) AnalyzeTable(ctx *sql.Context, table sql.Table, db string) e
 	newStats := make(map[statsKey][]int)
 	tablePrefix := fmt.Sprintf("%s.", strings.ToLower(table.Name()))
 	for _, idx := range indexes {
-		cols := make([]string, len(idx.Expressions()))
-		for i, c := range idx.Expressions() {
+		cols := make([]string, len(idx.Expressions(ctx)))
+		for i, c := range idx.Expressions(ctx) {
 			cols[i] = strings.TrimPrefix(strings.ToLower(c), tablePrefix)
 		}
 		for i := 1; i < len(cols)+1; i++ {
 			pref := cols[:i]
-			key := statsKey(fmt.Sprintf("%s.%s.%s.(%s)", strings.ToLower(db), strings.ToLower(idx.Table()), strings.ToLower(idx.ID()), strings.Join(pref, ",")))
+			key := statsKey(fmt.Sprintf("%s.%s.%s.(%s)", strings.ToLower(db), strings.ToLower(idx.Table()), strings.ToLower(idx.ID(ctx)), strings.Join(pref, ",")))
 			if _, ok := newStats[key]; !ok {
 				ords := make([]int, len(pref))
 				for i, c := range pref {
@@ -107,7 +107,7 @@ func (s *StatsProv) estimateStats(ctx *sql.Context, table sql.Table, keys map[st
 			return err
 		}
 		for _, idx := range idxs {
-			indexes[strings.ToLower(idx.ID())] = idx
+			indexes[strings.ToLower(idx.ID(ctx))] = idx
 		}
 	}
 

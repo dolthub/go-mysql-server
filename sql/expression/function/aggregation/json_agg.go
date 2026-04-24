@@ -74,8 +74,8 @@ func (j *JSONObjectAgg) Resolved() bool {
 	return j.key.Resolved() && j.value.Resolved()
 }
 
-func (j *JSONObjectAgg) String() string {
-	return fmt.Sprintf("JSON_OBJECTAGG(%s, %s)", j.key, j.value)
+func (j *JSONObjectAgg) String(ctx *sql.Context) string {
+	return fmt.Sprintf("JSON_OBJECTAGG(%s, %s)", j.key.String(ctx), j.value.String(ctx))
 }
 
 // Type implements the Expression interface.

@@ -788,7 +788,7 @@ func TestQueryPlanWithEngine(t *testing.T, harness Harness, e QueryEngine, tt qu
 		if verbose {
 			cmp = sql.DebugString(ctx, ExtractQueryNode(node))
 		} else {
-			cmp = ExtractQueryNode(node).String()
+			cmp = ExtractQueryNode(node).String(ctx)
 		}
 		assert.Equal(t, tt.ExpectedPlan, cmp, "Unexpected result for query: "+tt.Query)
 	})
@@ -1550,7 +1550,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		})
 		if !truncateFound {
 			require.FailNow(t, "DELETE did not convert to TRUNCATE",
-				"Expected Truncate Node, got:\n%s", analyzed.String())
+				"Expected Truncate Node, got:\n%s", analyzed.String(ctx))
 		}
 
 		TestQueryWithContext(t, ctx, e, harness, deleteStr, []sql.Row{{types.NewOkResult(2)}}, nil, nil, nil)
@@ -2835,7 +2835,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 
 		// Validate No Unique Index has an empty Name
 		for _, index := range t9Indexes {
-			require.True(t, index.ID() != "")
+			require.True(t, index.ID(ctx) != "")
 		}
 	})
 
@@ -5357,7 +5357,7 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		sch := t28.Schema(ctx)
 		require.Len(t, sch, 2)
 		require.Equal(t, "v1", sch[1].Name)
-		require.NotContains(t, sch[1].Default.String(), "t28")
+		require.NotContains(t, sch[1].Default.String(ctx), "t28")
 	})
 }
 

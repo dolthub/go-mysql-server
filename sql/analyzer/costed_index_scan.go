@@ -155,7 +155,7 @@ func costedIndexLookup(
 	}
 
 	if a.Debug {
-		a.Log("new indexed table: %s/%s/%s", ita.Index().Database(), ita.Index().Table(), ita.Index().ID())
+		a.Log("new indexed table: %s/%s/%s", ita.Index().Database(), ita.Index().Table(), ita.Index().ID(ctx))
 		a.Log("index stats cnt: %d", stats.RowCount())
 		a.Log("index stats histogram: %s", stats.Histogram().DebugString(ctx))
 	}
@@ -231,7 +231,7 @@ func getCostedIndexScan(
 	if len(qualToStat) > 0 {
 		// don't mix and match real and default stats
 		for _, idx := range indexes {
-			qual := sql.NewStatQualifier(dbName, schemaName, tableName, strings.ToLower(idx.ID()))
+			qual := sql.NewStatQualifier(dbName, schemaName, tableName, strings.ToLower(idx.ID(ctx)))
 			_, ok := qualToStat[qual]
 			if !ok {
 				qualToStat = nil
@@ -241,7 +241,7 @@ func getCostedIndexScan(
 	}
 
 	for _, idx := range indexes {
-		qual := sql.NewStatQualifier(dbName, schemaName, tableName, strings.ToLower(idx.ID()))
+		qual := sql.NewStatQualifier(dbName, schemaName, tableName, strings.ToLower(idx.ID(ctx)))
 		stat, ok := qualToStat[qual]
 		if !ok {
 			stat, err = uniformDistStatisticsForIndex(ctx, statsProvider, iat, idx)
@@ -262,7 +262,7 @@ func getCostedIndexScan(
 	targetId := c.bestStat.Qualifier().Index()
 	var idx sql.Index
 	for _, i := range indexes {
-		if strings.EqualFold(i.ID(), targetId) {
+		if strings.EqualFold(i.ID(ctx), targetId) {
 			idx = i
 			break
 		}
@@ -288,7 +288,7 @@ func getCostedIndexScan(
 	if len(ranges) == 0 {
 		emptyLookup = true
 	} else if len(ranges) == 1 {
-		emptyLookup, err = ranges[0].IsEmpty()
+		emptyLookup, err = ranges[0].IsEmpty(ctx)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -428,7 +428,7 @@ func addIndexScans(ctx *sql.Context, m *memo.Memo, catalog *Catalog) error {
 
 				var idx *memo.Index
 				for _, i := range indexes {
-					if i.SqlIdx().ID() == lookup.Index.ID() {
+					if i.SqlIdx().ID(ctx) == lookup.Index.ID(ctx) {
 						idx = i
 						break
 					}
@@ -452,7 +452,7 @@ func addIndexScans(ctx *sql.Context, m *memo.Memo, catalog *Catalog) error {
 		if ita != nil {
 			var idx *memo.Index
 			for _, i := range indexes {
-				if ita.Index().ID() == i.SqlIdx().ID() {
+				if ita.Index().ID(ctx) == i.SqlIdx().ID(ctx) {
 					idx = i
 					break
 				}
@@ -988,11 +988,11 @@ func (b *indexScanRangeBuilder) buildRangeCollection(f indexFilter) (sql.MySQLRa
 	if err != nil {
 		return nil, err
 	}
-	return sql.RemoveOverlappingRanges(ranges...)
+	return sql.RemoveOverlappingRanges(b.ctx, ranges...)
 }
 
 func (b *indexScanRangeBuilder) Ranges() (sql.MySQLRangeCollection, error) {
-	return sql.RemoveOverlappingRanges(b.allRanges...)
+	return sql.RemoveOverlappingRanges(b.ctx, b.allRanges...)
 }
 
 func (b *indexScanRangeBuilder) rangeBuildAnd(f *iScanAnd, inScan bool) (sql.MySQLRangeCollection, error) {
@@ -1013,7 +1013,7 @@ func (b *indexScanRangeBuilder) rangeBuildAnd(f *iScanAnd, inScan bool) (sql.MyS
 			ret = ranges
 			continue
 		}
-		ret, err = ret.Intersect(ranges)
+		ret, err = ret.Intersect(b.ctx, ranges)
 		if err != nil {
 			return nil, err
 		}
@@ -1028,7 +1028,7 @@ func (b *indexScanRangeBuilder) rangeBuildAnd(f *iScanAnd, inScan bool) (sql.MyS
 				return nil, err
 			}
 			if ranges != nil {
-				ret, err = ret.Intersect(partBuilder.Ranges(b.ctx))
+				ret, err = ret.Intersect(b.ctx, partBuilder.Ranges(b.ctx))
 				if err != nil {
 					return nil, err
 				}
@@ -1039,7 +1039,7 @@ func (b *indexScanRangeBuilder) rangeBuildAnd(f *iScanAnd, inScan bool) (sql.MyS
 				return nil, err
 			}
 			if ranges != nil {
-				ret, err = ret.Intersect(partBuilder.Ranges(b.ctx))
+				ret, err = ret.Intersect(b.ctx, partBuilder.Ranges(b.ctx))
 				if err != nil {
 					return nil, err
 				}
@@ -1057,7 +1057,7 @@ func (b *indexScanRangeBuilder) rangeBuildAnd(f *iScanAnd, inScan bool) (sql.MyS
 		return partBuilder.Ranges(b.ctx), nil
 	}
 
-	ret, err := ret.Intersect(partBuilder.Ranges(b.ctx))
+	ret, err := ret.Intersect(b.ctx, partBuilder.Ranges(b.ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -1562,7 +1562,7 @@ func (c *indexCoster) normalizeLeafSides(ctx *sql.Context, op sql.IndexScanOp, l
 	// If the index target is on the left, op is already in "indexTarget op litExpr" orientation.
 	if left != nil {
 		for _, entry := range c.indexedExprs {
-			if entry.matches(left) {
+			if entry.matches(ctx, left) {
 				return entry.colName, left.Type(ctx), op, right, true
 			}
 		}
@@ -1574,7 +1574,7 @@ func (c *indexCoster) normalizeLeafSides(ctx *sql.Context, op sql.IndexScanOp, l
 	// If the index target is on the right, swap op to normalize to "indexTarget op litExpr".
 	if right != nil {
 		for _, entry := range c.indexedExprs {
-			if entry.matches(right) {
+			if entry.matches(ctx, right) {
 				return entry.colName, right.Type(ctx), op.Swap(), left, true
 			}
 		}
@@ -1649,7 +1649,7 @@ func (c *indexCoster) buildLeaf(ctx *sql.Context, id indexScanId, e sql.Expressi
 	if op == sql.IndexScanOpFulltextEq {
 		e := e.(*expression.MatchAgainst)
 		gf := e.Columns[0].(*expression.GetField)
-		return &iScanLeaf{id: id, op: op, name: gf.Name(), typ: gf.Type(ctx), underlying: c.underlyingName, fulltextIndex: e.GetIndex().ID()}, true
+		return &iScanLeaf{id: id, op: op, name: gf.Name(), typ: gf.Type(ctx), underlying: c.underlyingName, fulltextIndex: e.GetIndex().ID(ctx)}, true
 	}
 	name, typ, normalizedOp, litExpr, ok := c.normalizeLeafSides(ctx, op, left, right)
 	if !ok {
@@ -1873,7 +1873,7 @@ func newUniformDistStatistic(ctx *sql.Context, dbName, schemaName, tableName str
 		class = sql.IndexClassDefault
 	}
 
-	qual := sql.NewStatQualifier(dbName, schemaName, tableName, strings.ToLower(idx.ID()))
+	qual := sql.NewStatQualifier(dbName, schemaName, tableName, strings.ToLower(idx.ID(ctx)))
 	stat := stats.NewStatistic(rowCount, distinctCount, nullCount, avgSize, time.Now(), qual, cols, types, nil, class, nil)
 
 	fds, idxCols, err := indexFds(ctx, tableName, sch, idx)

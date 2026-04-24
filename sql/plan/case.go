@@ -62,10 +62,10 @@ func (c *CaseStatement) IsReadOnly() bool {
 }
 
 // String implements the interface sql.Node.
-func (c *CaseStatement) String() string {
+func (c *CaseStatement) String(ctx *sql.Context) string {
 	p := sql.NewTreePrinter()
-	_ = p.WriteNode("CASE %s", c.Expr.String())
-	_ = p.WriteChildren(c.IfElse.String())
+	_ = p.WriteNode("CASE %s", c.Expr.String(ctx))
+	_ = p.WriteChildren(c.IfElse.String(ctx))
 	return p.String()
 }
 
@@ -140,7 +140,7 @@ func (e ElseCaseError) IsReadOnly() bool {
 }
 
 // String implements the interface sql.Node.
-func (e ElseCaseError) String() string {
+func (e ElseCaseError) String(ctx *sql.Context) string {
 	return "ELSE CASE ERROR"
 }
 

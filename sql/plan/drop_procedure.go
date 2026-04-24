@@ -53,7 +53,7 @@ func (d *DropProcedure) IsReadOnly() bool {
 }
 
 // String implements the sql.Node interface.
-func (d *DropProcedure) String() string {
+func (d *DropProcedure) String(ctx *sql.Context) string {
 	ifExists := ""
 	if d.IfExists {
 		ifExists = "IF EXISTS "

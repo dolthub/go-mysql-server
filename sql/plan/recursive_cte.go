@@ -191,10 +191,10 @@ func (r *RecursiveCte) WithExpressions(ctx *sql.Context, exprs ...sql.Expression
 }
 
 // String implements sql.Node
-func (r *RecursiveCte) String() string {
+func (r *RecursiveCte) String(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("RecursiveCTE")
-	pr.WriteChildren(r.union.String())
+	pr.WriteChildren(r.union.String(ctx))
 	return pr.String()
 }
 
@@ -289,7 +289,7 @@ func (r *RecursiveTable) IsReadOnly() bool {
 	return true
 }
 
-func (r *RecursiveTable) String() string {
+func (r *RecursiveTable) String(ctx *sql.Context) string {
 	return fmt.Sprintf("RecursiveTable(%s)", r.name)
 }
 

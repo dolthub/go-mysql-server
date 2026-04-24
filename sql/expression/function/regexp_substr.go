@@ -145,10 +145,10 @@ func (r *RegexpSubstr) WithChildren(ctx *sql.Context, children ...sql.Expression
 }
 
 // String implements the sql.Expression interface.
-func (r *RegexpSubstr) String() string {
+func (r *RegexpSubstr) String(ctx *sql.Context) string {
 	var args []string
 	for _, e := range r.Children() {
-		args = append(args, e.String())
+		args = append(args, e.String(ctx))
 	}
 	return fmt.Sprintf("%s(%s)", r.FunctionName(), strings.Join(args, ","))
 }

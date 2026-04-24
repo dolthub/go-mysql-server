@@ -95,7 +95,7 @@ func RunJsonTests(t *testing.T, testCases []testCase) {
 			}
 		}
 
-		t.Run(tstC.name+"."+tstC.f.String()+"."+strings.Join(paths, ","), func(t *testing.T) {
+		t.Run(tstC.name+"."+tstC.f.String(sql.NewEmptyContext())+"."+strings.Join(paths, ","), func(t *testing.T) {
 			req := require.New(t)
 			result, err := tstC.f.Eval(sqlCtx, tstC.row)
 			if tstC.err == nil {

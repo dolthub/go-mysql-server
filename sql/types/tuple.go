@@ -15,7 +15,6 @@
 package types
 
 import (
-	"context"
 	"fmt"
 	"reflect"
 	"strings"
@@ -38,7 +37,7 @@ func CreateTuple(types ...sql.Type) sql.Type {
 	return TupleType(types)
 }
 
-func (t TupleType) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
+func (t TupleType) Compare(ctx *sql.Context, a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
@@ -69,7 +68,7 @@ func (t TupleType) Compare(ctx context.Context, a interface{}, b interface{}) (i
 	return 0, nil
 }
 
-func (t TupleType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
+func (t TupleType) Convert(ctx *sql.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {
 		return nil, sql.InRange, nil
 	}
@@ -119,10 +118,10 @@ func (t TupleType) SQL(*sql.Context, []byte, interface{}) (sqltypes.Value, error
 	return sqltypes.Value{}, fmt.Errorf("unable to convert tuple type to SQL")
 }
 
-func (t TupleType) String() string {
+func (t TupleType) String(ctx *sql.Context) string {
 	var elems = make([]string, len(t))
 	for i, el := range t {
-		elems[i] = el.String()
+		elems[i] = el.String(ctx)
 	}
 	return fmt.Sprintf("tuple(%s)", strings.Join(elems, ", "))
 }

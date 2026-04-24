@@ -180,8 +180,8 @@ type UpdateInfo struct {
 	Matched, Updated, Warnings int
 }
 
-// String implements fmt.Stringer
-func (ui UpdateInfo) String() string {
+// String implements sql.Stringer
+func (ui UpdateInfo) String(ctx *sql.Context) string {
 	return fmt.Sprintf("Rows matched: %d  Changed: %d  Warnings: %d", ui.Matched, ui.Updated, ui.Warnings)
 }
 
@@ -200,10 +200,10 @@ func (*Update) CollationCoercibility(ctx *sql.Context) (collation sql.CollationI
 	return sql.Collation_binary, 7
 }
 
-func (u *Update) String() string {
+func (u *Update) String(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Update")
-	_ = pr.WriteChildren(u.Child.String())
+	_ = pr.WriteChildren(u.Child.String(ctx))
 	return pr.String()
 }
 

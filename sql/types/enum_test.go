@@ -182,7 +182,7 @@ func TestEnumString(t *testing.T) {
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v %v", test.vals, test.collation), func(t *testing.T) {
 			typ := MustCreateEnumType(test.vals, test.collation)
-			assert.Equal(t, test.expectedStr, typ.String())
+			assert.Equal(t, test.expectedStr, typ.String(sql.NewEmptyContext()))
 		})
 	}
 }

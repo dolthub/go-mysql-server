@@ -27,15 +27,15 @@ func TestMemoGen(t *testing.T) {
         
         var _ RelExpr = (*hashJoin)(nil)
         var _ fmt.Formatter = (*hashJoin)(nil)
-        var _ fmt.Stringer = (*hashJoin)(nil)
+        var _ sql.Stringer = (*hashJoin)(nil)
         var _ JoinRel = (*hashJoin)(nil)
         
-        func (r *hashJoin) String() string {
+        func (r *hashJoin) String(ctx *sql.Context) string {
           return fmt.Sprintf("%s", r)
         }
         
         func (r *hashJoin) Format(s fmt.State, verb rune) {
-          FormatExpr(r, s, verb)
+          FormatExpr(r.ctx, r, s, verb)
         }
         
         func (r *hashJoin) JoinPrivate() *JoinBase {
@@ -49,15 +49,15 @@ func TestMemoGen(t *testing.T) {
         
         var _ RelExpr = (*tableScan)(nil)
         var _ fmt.Formatter = (*tableScan)(nil)
-        var _ fmt.Stringer = (*tableScan)(nil)
+        var _ sql.Stringer = (*tableScan)(nil)
         var _ SourceRel = (*tableScan)(nil)
         
-        func (r *tableScan) String() string {
+        func (r *tableScan) String(ctx *sql.Context) string {
           return fmt.Sprintf("%s", r)
         }
         
         func (r *tableScan) Format(s fmt.State, verb rune) {
-          FormatExpr(r, s, verb)
+          FormatExpr(r.ctx, r, s, verb)
         }
         
         func (r *tableScan) Name() string {

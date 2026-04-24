@@ -57,8 +57,8 @@ func (n *TransformedNamedNode) CollationCoercibility(ctx *sql.Context) (collatio
 	return sql.GetCoercibility(ctx, n.Child)
 }
 
-func (n *TransformedNamedNode) String() string {
-	return n.Child.String()
+func (n *TransformedNamedNode) String(ctx *sql.Context) string {
+	return n.Child.String(ctx)
 }
 
 func (n *TransformedNamedNode) DebugString(ctx *sql.Context) string {

@@ -23,6 +23,7 @@ import (
 
 func TestIndexesByTable(t *testing.T) {
 	var require = require.New(t)
+	ctx := NewEmptyContext()
 
 	var r = NewIndexRegistry()
 	r.indexOrder = []indexKey{
@@ -72,13 +73,13 @@ func TestIndexesByTable(t *testing.T) {
 	r.statuses[indexKey{"foo", "baz_idx_1"}] = IndexReady
 	r.statuses[indexKey{"oof", "rab_idx_1"}] = IndexReady
 
-	indexes := r.IndexesByTable("foo", "bar")
+	indexes := r.IndexesByTable(ctx, "foo", "bar")
 	require.Len(indexes, 3)
 
 	for i, idx := range indexes {
 		expected := r.indexes[r.indexOrder[i]]
 		require.Equal(expected, idx)
-		r.ReleaseIndex(idx)
+		r.ReleaseIndex(ctx, idx)
 	}
 }
 
@@ -127,6 +128,7 @@ func TestIndexByExpression(t *testing.T) {
 
 func TestAddIndex(t *testing.T) {
 	require := require.New(t)
+	ctx := NewEmptyContext()
 	r := NewIndexRegistry()
 	idx := &dummyIdx{
 		id:       "foo",
@@ -135,23 +137,23 @@ func TestAddIndex(t *testing.T) {
 		table:    "foo",
 	}
 
-	done, ready, err := r.AddIndex(idx)
+	done, ready, err := r.AddIndex(ctx, idx)
 	require.NoError(err)
 
 	i := r.Index("foo", "foo")
-	require.False(r.CanUseIndex(i))
+	require.False(r.CanUseIndex(ctx, i))
 
 	done <- struct{}{}
 
 	<-ready
 	i = r.Index("foo", "foo")
-	require.True(r.CanUseIndex(i))
+	require.True(r.CanUseIndex(ctx, i))
 
-	_, _, err = r.AddIndex(idx)
+	_, _, err = r.AddIndex(ctx, idx)
 	require.Error(err)
 	require.True(ErrIndexIDAlreadyRegistered.Is(err))
 
-	_, _, err = r.AddIndex(&dummyIdx{
+	_, _, err = r.AddIndex(ctx, &dummyIdx{
 		id:       "another",
 		expr:     []Expression{new(dummyExpr)},
 		database: "foo",
@@ -164,22 +166,23 @@ func TestAddIndex(t *testing.T) {
 func TestDeleteIndex(t *testing.T) {
 	require := require.New(t)
 	r := NewIndexRegistry()
+	ctx := NewEmptyContext()
 
 	idx := &dummyIdx{"foo", nil, "foo", "foo"}
 	idx2 := &dummyIdx{"foo", nil, "foo", "bar"}
 	r.indexes[indexKey{"foo", "foo"}] = idx
 	r.indexes[indexKey{"foo", "bar"}] = idx2
 
-	_, err := r.DeleteIndex("foo", "foo", false)
+	_, err := r.DeleteIndex(ctx, "foo", "foo", false)
 	require.Error(err)
 	require.True(ErrIndexDeleteInvalidStatus.Is(err))
 
-	_, err = r.DeleteIndex("foo", "foo", true)
+	_, err = r.DeleteIndex(ctx, "foo", "foo", true)
 	require.NoError(err)
 
-	r.setStatus(idx2, IndexReady)
+	r.setStatus(ctx, idx2, IndexReady)
 
-	_, err = r.DeleteIndex("foo", "foo", false)
+	_, err = r.DeleteIndex(ctx, "foo", "foo", false)
 	require.NoError(err)
 
 	require.Len(r.indexes, 0)
@@ -188,21 +191,22 @@ func TestDeleteIndex(t *testing.T) {
 func TestDeleteIndex_InUse(t *testing.T) {
 	require := require.New(t)
 	r := NewIndexRegistry()
+	ctx := NewEmptyContext()
 	idx := &dummyIdx{
 		"foo", nil, "foo", "foo",
 	}
 	r.indexes[indexKey{"foo", "foo"}] = idx
-	r.setStatus(idx, IndexReady)
+	r.setStatus(ctx, idx, IndexReady)
 	r.retainIndex("foo", "foo")
 
-	done, err := r.DeleteIndex("foo", "foo", false)
+	done, err := r.DeleteIndex(ctx, "foo", "foo", false)
 	require.NoError(err)
 
 	require.Len(r.indexes, 1)
-	require.False(r.CanUseIndex(idx))
+	require.False(r.CanUseIndex(ctx, idx))
 
 	go func() {
-		r.ReleaseIndex(idx)
+		r.ReleaseIndex(ctx, idx)
 	}()
 
 	<-done
@@ -245,13 +249,14 @@ func TestExpressionsWithIndexes(t *testing.T) {
 	}
 
 	for _, idx := range indexes {
-		done, ready, err := r.AddIndex(idx)
+		done, ready, err := r.AddIndex(NewEmptyContext(), idx)
 		require.NoError(err)
 		close(done)
 		<-ready
 	}
 
 	exprs := r.ExpressionsWithIndexes(
+		NewEmptyContext(),
 		"foo",
 		&dummyExpr{0, "foo"},
 		&dummyExpr{1, "bar"},
@@ -326,7 +331,7 @@ func TestLoadIndexes(t *testing.T) {
 	require.ElementsMatch(expected, result)
 
 	for _, idx := range expected {
-		require.Equal(registry.statuses[indexKey{idx.Database(), idx.ID()}], IndexReady)
+		require.Equal(registry.statuses[indexKey{idx.Database(), idx.ID(ctx)}], IndexReady)
 	}
 }
 
@@ -436,15 +441,15 @@ func (i dummyIdx) CanSupport(context *Context, r ...Range) bool {
 	return false
 }
 
-func (i dummyIdx) Expressions() []string {
+func (i dummyIdx) Expressions(ctx *Context) []string {
 	var exprs []string
 	for _, e := range i.expr {
-		exprs = append(exprs, e.String())
+		exprs = append(exprs, e.String(ctx))
 	}
 	return exprs
 }
 
-func (i dummyIdx) ID() string              { return i.id }
+func (i dummyIdx) ID(*Context) string      { return i.id }
 func (i dummyIdx) Database() string        { return i.database }
 func (i dummyIdx) Table() string           { return i.table }
 func (i dummyIdx) Driver() string          { return "dummy" }
@@ -477,7 +482,9 @@ func (dummyExpr) Eval(*Context, Row) (interface{}, error) { panic("not implement
 func (e dummyExpr) WithChildren(ctx *Context, children ...Expression) (Expression, error) {
 	return e, nil
 }
-func (e dummyExpr) String() string             { return fmt.Sprintf("dummyExpr{%d, %s}", e.index, e.colName) }
+func (e dummyExpr) String(*Context) string {
+	return fmt.Sprintf("dummyExpr{%d, %s}", e.index, e.colName)
+}
 func (dummyExpr) IsNullable(ctx *Context) bool { return false }
 func (dummyExpr) Resolved() bool               { return false }
 func (dummyExpr) Type(*Context) Type           { panic("not implemented") }

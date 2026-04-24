@@ -131,7 +131,7 @@ func (r *IndexRegistry) LoadIndexes(ctx *Context, dbs []Database) error {
 					}
 
 					for _, idx := range indexes {
-						k := indexKey{db.Name(), idx.ID()}
+						k := indexKey{db.Name(), idx.ID(ctx)}
 						r.indexes[k] = idx
 						r.indexOrder = append(r.indexOrder, k)
 
@@ -148,11 +148,11 @@ func (r *IndexRegistry) LoadIndexes(ctx *Context, dbs []Database) error {
 						} else {
 							logrus.Warnf(
 								"index %q is outdated and will not be used, you can remove it using `DROP INDEX %s ON %s`",
-								idx.ID(),
-								idx.ID(),
+								idx.ID(ctx),
+								idx.ID(ctx),
 								idx.Table(),
 							)
-							r.MarkOutdated(idx)
+							r.MarkOutdated(ctx, idx)
 						}
 					}
 
@@ -191,8 +191,8 @@ func (r *IndexRegistry) registerIndexesForTable(ctx *Context, dbName, tName stri
 
 // MarkOutdated sets the index status as outdated. This method is not thread
 // safe and should not be used directly except for testing.
-func (r *IndexRegistry) MarkOutdated(idx Index) {
-	r.statuses[indexKey{idx.Database(), idx.ID()}] = IndexOutdated
+func (r *IndexRegistry) MarkOutdated(ctx *Context, idx Index) {
+	r.statuses[indexKey{idx.Database(), idx.ID(ctx)}] = IndexOutdated
 }
 
 func (r *IndexRegistry) retainIndex(db, id string) {
@@ -203,41 +203,41 @@ func (r *IndexRegistry) retainIndex(db, id string) {
 }
 
 // CanUseIndex returns whether the given index is ready to use or not.
-func (r *IndexRegistry) CanUseIndex(idx Index) bool {
+func (r *IndexRegistry) CanUseIndex(ctx *Context, idx Index) bool {
 	r.mut.RLock()
 	defer r.mut.RUnlock()
-	return r.canUseIndex(idx)
+	return r.canUseIndex(ctx, idx)
 }
 
 // CanRemoveIndex returns whether the given index is ready to be removed.
-func (r *IndexRegistry) CanRemoveIndex(idx Index) bool {
+func (r *IndexRegistry) CanRemoveIndex(ctx *Context, idx Index) bool {
 	if idx == nil {
 		return false
 	}
 
 	r.mut.RLock()
 	defer r.mut.RUnlock()
-	status := r.statuses[indexKey{idx.Database(), idx.ID()}]
+	status := r.statuses[indexKey{idx.Database(), idx.ID(ctx)}]
 	return status == IndexReady || status == IndexOutdated
 }
 
-func (r *IndexRegistry) canUseIndex(idx Index) bool {
+func (r *IndexRegistry) canUseIndex(ctx *Context, idx Index) bool {
 	if idx == nil {
 		return false
 	}
-	return r.statuses[indexKey{idx.Database(), idx.ID()}].IsUsable()
+	return r.statuses[indexKey{idx.Database(), idx.ID(ctx)}].IsUsable()
 }
 
 // setStatus is not thread-safe, it should be guarded using mut.
-func (r *IndexRegistry) setStatus(idx Index, status IndexStatus) {
-	r.statuses[indexKey{idx.Database(), idx.ID()}] = status
+func (r *IndexRegistry) setStatus(ctx *Context, idx Index, status IndexStatus) {
+	r.statuses[indexKey{idx.Database(), idx.ID(ctx)}] = status
 }
 
 // ReleaseIndex releases an index after it's been used.
-func (r *IndexRegistry) ReleaseIndex(idx Index) {
+func (r *IndexRegistry) ReleaseIndex(ctx *Context, idx Index) {
 	r.rcmut.Lock()
 	defer r.rcmut.Unlock()
-	key := indexKey{idx.Database(), idx.ID()}
+	key := indexKey{idx.Database(), idx.ID(ctx)}
 	r.refCounts[key]--
 	if r.refCounts[key] > 0 {
 		return
@@ -260,7 +260,7 @@ func (r *IndexRegistry) Index(db, id string) DriverIndex {
 }
 
 // IndexesByTable returns a slice of all the indexes existing on the given table.
-func (r *IndexRegistry) IndexesByTable(db, table string) []DriverIndex {
+func (r *IndexRegistry) IndexesByTable(ctx *Context, db, table string) []DriverIndex {
 	r.mut.RLock()
 	defer r.mut.RUnlock()
 
@@ -269,7 +269,7 @@ func (r *IndexRegistry) IndexesByTable(db, table string) []DriverIndex {
 		idx := r.indexes[key]
 		if idx.Database() == db && idx.Table() == table {
 			indexes = append(indexes, idx)
-			r.retainIndex(db, idx.ID())
+			r.retainIndex(db, idx.ID(ctx))
 		}
 	}
 
@@ -288,7 +288,7 @@ func (r *IndexRegistry) MatchingIndex(ctx *Context, db string, expr ...Expressio
 
 	expressions := make([]string, len(expr))
 	for i, e := range expr {
-		expressions[i] = e.String()
+		expressions[i] = e.String(ctx)
 		var err error
 		Inspect(ctx, e, func(ctx *Context, e Expression) bool {
 			if e == nil {
@@ -316,12 +316,12 @@ func (r *IndexRegistry) MatchingIndex(ctx *Context, db string, expr ...Expressio
 	var indexes []idxWithLen
 	for _, k := range r.indexOrder {
 		idx := r.indexes[k]
-		if !r.canUseIndex(idx) {
+		if !r.canUseIndex(ctx, idx) {
 			continue
 		}
 
 		if idx.Database() == db {
-			indexExprs := idx.Expressions()
+			indexExprs := idx.Expressions(ctx)
 			if ok, pc := exprsAreIndexSubset(expressions, indexExprs); ok && pc >= 1 {
 				indexes = append(indexes, idxWithLen{idx, len(indexExprs), pc})
 			}
@@ -344,16 +344,17 @@ func (r *IndexRegistry) MatchingIndex(ctx *Context, db string, expr ...Expressio
 		} else if idxI.exprLen != idxJ.exprLen {
 			return idxI.exprLen > idxJ.exprLen
 		} else {
-			return idxI.Index.ID() < idxJ.Index.ID()
+			return idxI.Index.ID(ctx) < idxJ.Index.ID(ctx)
 		}
 	})
-	r.retainIndex(db, indexes[0].Index.ID())
+	r.retainIndex(db, indexes[0].Index.ID(ctx))
 	return indexes[0].Index, indexes[0].prefixCount, nil
 }
 
 // ExpressionsWithIndexes finds all the combinations of expressions with
 // matching indexes. This only matches multi-column indexes.
 func (r *IndexRegistry) ExpressionsWithIndexes(
+	ctx *Context,
 	db string,
 	exprs ...Expression,
 ) [][]Expression {
@@ -363,20 +364,20 @@ func (r *IndexRegistry) ExpressionsWithIndexes(
 	var results [][]Expression
 Indexes:
 	for _, idx := range r.indexes {
-		if !r.canUseIndex(idx) {
+		if !r.canUseIndex(ctx, idx) {
 			continue
 		}
 
 		var used = make(map[int]struct{})
 		var matched []Expression
-		for _, ie := range idx.Expressions() {
+		for _, ie := range idx.Expressions(ctx) {
 			var found bool
 			for i, e := range exprs {
 				if _, ok := used[i]; ok {
 					continue
 				}
 
-				if ie == e.String() {
+				if ie == e.String(ctx) {
 					used[i] = struct{}{}
 					found = true
 					matched = append(matched, e)
@@ -401,7 +402,7 @@ Indexes:
 	return results
 }
 
-func (r *IndexRegistry) validateIndexToAdd(idx Index) error {
+func (r *IndexRegistry) validateIndexToAdd(ctx *Context, idx Index) error {
 	r.mut.RLock()
 	defer r.mut.RUnlock()
 
@@ -410,13 +411,13 @@ func (r *IndexRegistry) validateIndexToAdd(idx Index) error {
 			continue
 		}
 
-		if i.ID() == idx.ID() {
-			return ErrIndexIDAlreadyRegistered.New(idx.ID())
+		if i.ID(ctx) == idx.ID(ctx) {
+			return ErrIndexIDAlreadyRegistered.New(idx.ID(ctx))
 		}
 
-		if exprListsEqual(i.Expressions(), idx.Expressions()) {
+		if exprListsEqual(i.Expressions(ctx), idx.Expressions(ctx)) {
 			return ErrIndexExpressionAlreadyRegistered.New(
-				strings.Join(idx.Expressions(), ", "),
+				strings.Join(idx.Expressions(ctx), ", "),
 			)
 		}
 	}
@@ -510,15 +511,16 @@ func exprsAreIndexSubset(exprs, indexExprs []string) (ok bool, prefixCount int) 
 // finished its creation and will be marked as ready.
 // Another channel is returned to notify the user when the index is ready.
 func (r *IndexRegistry) AddIndex(
+	ctx *Context,
 	idx DriverIndex,
 ) (created chan<- struct{}, ready <-chan struct{}, err error) {
-	if err := r.validateIndexToAdd(idx); err != nil {
+	if err := r.validateIndexToAdd(ctx, idx); err != nil {
 		return nil, nil, err
 	}
 
 	r.mut.Lock()
-	r.setStatus(idx, IndexNotReady)
-	key := indexKey{idx.Database(), idx.ID()}
+	r.setStatus(ctx, idx, IndexNotReady)
+	key := indexKey{idx.Database(), idx.ID(ctx)}
 	r.indexes[key] = idx
 	r.indexOrder = append(r.indexOrder, key)
 	r.mut.Unlock()
@@ -529,7 +531,7 @@ func (r *IndexRegistry) AddIndex(
 		<-_created
 		r.mut.Lock()
 		defer r.mut.Unlock()
-		r.setStatus(idx, IndexReady)
+		r.setStatus(ctx, idx, IndexReady)
 		close(_ready)
 	}()
 
@@ -542,7 +544,7 @@ func (r *IndexRegistry) AddIndex(
 // be deleted from disk.
 // If force is true, it will delete the index even if it's not ready for usage.
 // Only use that parameter if you know what you're doing.
-func (r *IndexRegistry) DeleteIndex(db, id string, force bool) (<-chan struct{}, error) {
+func (r *IndexRegistry) DeleteIndex(ctx *Context, db, id string, force bool) (<-chan struct{}, error) {
 	r.mut.RLock()
 	var key indexKey
 
@@ -553,16 +555,16 @@ func (r *IndexRegistry) DeleteIndex(db, id string, force bool) (<-chan struct{},
 	var indexNames []string
 
 	for k, idx := range r.indexes {
-		if strings.ToLower(id) == idx.ID() {
-			if !force && !r.CanRemoveIndex(idx) {
+		if strings.ToLower(id) == idx.ID(ctx) {
+			if !force && !r.CanRemoveIndex(ctx, idx) {
 				r.mut.RUnlock()
 				return nil, ErrIndexDeleteInvalidStatus.New(id)
 			}
-			r.setStatus(idx, IndexNotReady)
+			r.setStatus(ctx, idx, IndexNotReady)
 			key = k
 			break
 		}
-		indexNames = append(indexNames, idx.ID())
+		indexNames = append(indexNames, idx.ID(ctx))
 	}
 	r.mut.RUnlock()
 

@@ -110,7 +110,7 @@ func (*ShowTables) CollationCoercibility(ctx *sql.Context) (collation sql.Collat
 	return sql.Collation_binary, 7
 }
 
-func (p ShowTables) String() string {
+func (p ShowTables) String(ctx *sql.Context) string {
 	return "ShowTables"
 }
 

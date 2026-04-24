@@ -40,7 +40,7 @@ func (n *ShowPrivileges) Schema(ctx *sql.Context) sql.Schema {
 }
 
 // String implements the interface sql.Node.
-func (n *ShowPrivileges) String() string {
+func (n *ShowPrivileges) String(ctx *sql.Context) string {
 	return "SHOW PRIVILEGES"
 }
 

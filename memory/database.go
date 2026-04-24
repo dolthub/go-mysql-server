@@ -87,8 +87,8 @@ func NewViewlessDatabase(name string) *BaseDatabase {
 }
 
 // ValidateSchema implements sql.SchemaValidator
-func (d *BaseDatabase) ValidateSchema(schema sql.Schema) error {
-	return validateMaxRowLength(schema)
+func (d *BaseDatabase) ValidateSchema(ctx *sql.Context, schema sql.Schema) error {
+	return validateMaxRowLength(ctx, schema)
 }
 
 func (d *BaseDatabase) Database() *BaseDatabase {

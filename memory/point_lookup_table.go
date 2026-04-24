@@ -30,7 +30,7 @@ func (s PointLookupTable) NewInstance(ctx *sql.Context, db sql.Database, args []
 	return PointLookupTable{node.(LookupSequenceTable)}, err
 }
 
-func (s PointLookupTable) String() string {
+func (s PointLookupTable) String(ctx *sql.Context) string {
 	return fmt.Sprintf("pointLookup")
 }
 

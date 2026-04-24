@@ -51,12 +51,12 @@ func (n *Grant) IsReadOnly() bool {
 }
 
 // String implements the interface sql.Node.
-func (n *Grant) String() string {
+func (n *Grant) String(ctx *sql.Context) string {
 	users := make([]string, len(n.Users))
 	for i, user := range n.Users {
 		users[i] = user.String("")
 	}
-	return fmt.Sprintf("Grant(On: %s, To: %s)", n.PrivilegeLevel.String(), strings.Join(users, ", "))
+	return fmt.Sprintf("Grant(On: %s, To: %s)", n.PrivilegeLevel.String(ctx), strings.Join(users, ", "))
 }
 
 // Database implements the interface sql.Databaser.
@@ -567,7 +567,7 @@ func (n *GrantRole) Schema(ctx *sql.Context) sql.Schema {
 }
 
 // String implements the interface sql.Node.
-func (n *GrantRole) String() string {
+func (n *GrantRole) String(ctx *sql.Context) string {
 	roles := make([]string, len(n.Roles))
 	for i, role := range n.Roles {
 		roles[i] = role.String("")
@@ -681,7 +681,7 @@ func (n *GrantProxy) Schema(ctx *sql.Context) sql.Schema {
 }
 
 // String implements the interface sql.Node.
-func (n *GrantProxy) String() string {
+func (n *GrantProxy) String(ctx *sql.Context) string {
 	users := make([]string, len(n.To))
 	for i, user := range n.To {
 		users[i] = user.String("")

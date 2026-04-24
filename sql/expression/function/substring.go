@@ -166,11 +166,11 @@ func (s *Substring) IsNullable(ctx *sql.Context) bool {
 	return s.Str.IsNullable(ctx) || s.Start.IsNullable(ctx) || (s.Len != nil && s.Len.IsNullable(ctx))
 }
 
-func (s *Substring) String() string {
+func (s *Substring) String(ctx *sql.Context) string {
 	if s.Len == nil {
-		return fmt.Sprintf("SUBSTRING(%s, %s)", s.Str, s.Start)
+		return fmt.Sprintf("SUBSTRING(%s, %s)", s.Str.String(ctx), s.Start.String(ctx))
 	}
-	return fmt.Sprintf("SUBSTRING(%s, %s, %s)", s.Str, s.Start, s.Len)
+	return fmt.Sprintf("SUBSTRING(%s, %s, %s)", s.Str.String(ctx), s.Start.String(ctx), s.Len.String(ctx))
 }
 
 // Resolved implements the Expression interface.
@@ -309,8 +309,8 @@ func (s *SubstringIndex) IsNullable(ctx *sql.Context) bool {
 	return s.str.IsNullable(ctx) || s.delim.IsNullable(ctx) || s.count.IsNullable(ctx)
 }
 
-func (s *SubstringIndex) String() string {
-	return fmt.Sprintf("SUBSTRING_INDEX(%s, %s, %s)", s.str, s.delim, s.count)
+func (s *SubstringIndex) String(ctx *sql.Context) string {
+	return fmt.Sprintf("SUBSTRING_INDEX(%s, %s, %s)", s.str.String(ctx), s.delim.String(ctx), s.count.String(ctx))
 }
 
 // Resolved implements the Expression interface.
@@ -427,8 +427,8 @@ func (l Left) IsNullable(ctx *sql.Context) bool {
 	return l.str.IsNullable(ctx) || l.len.IsNullable(ctx)
 }
 
-func (l Left) String() string {
-	return fmt.Sprintf("LEFT(%s, %s)", l.str, l.len)
+func (l Left) String(ctx *sql.Context) string {
+	return fmt.Sprintf("LEFT(%s, %s)", l.str.String(ctx), l.len.String(ctx))
 }
 
 // Resolved implements the Expression interface.
@@ -545,8 +545,8 @@ func (r Right) IsNullable(ctx *sql.Context) bool {
 	return r.str.IsNullable(ctx) || r.len.IsNullable(ctx)
 }
 
-func (r Right) String() string {
-	return fmt.Sprintf("RIGHT(%s, %s)", r.str, r.len)
+func (r Right) String(ctx *sql.Context) string {
+	return fmt.Sprintf("RIGHT(%s, %s)", r.str.String(ctx), r.len.String(ctx))
 }
 
 func (r Right) DebugString(ctx *sql.Context) string {
@@ -692,8 +692,8 @@ func (i Instr) IsNullable(ctx *sql.Context) bool {
 	return i.str.IsNullable(ctx) || i.substr.IsNullable(ctx)
 }
 
-func (i Instr) String() string {
-	return fmt.Sprintf("INSTR(%s, %s)", i.str, i.substr)
+func (i Instr) String(ctx *sql.Context) string {
+	return fmt.Sprintf("INSTR(%s, %s)", i.str.String(ctx), i.substr.String(ctx))
 }
 
 // Resolved implements the Expression interface.

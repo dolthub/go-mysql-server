@@ -65,7 +65,7 @@ func TestTableString(t *testing.T) {
 		{Name: "col1", Type: types.Text, Nullable: true},
 		{Name: "col2", Type: types.Int64, Nullable: false},
 	}), nil)
-	require.Equal("foo", table.String())
+	require.Equal("foo", table.String(ctx))
 }
 
 func TestTableInsert(t *testing.T) {

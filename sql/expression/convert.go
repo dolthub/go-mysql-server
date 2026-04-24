@@ -220,7 +220,7 @@ func (c *Convert) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 }
 
 // String implements the Stringer interface.
-func (c *Convert) String() string {
+func (c *Convert) String(ctx *sql.Context) string {
 	extraTypeInfo := ""
 	if c.typeLength > 0 {
 		if c.typeScale > 0 {
@@ -229,7 +229,7 @@ func (c *Convert) String() string {
 			extraTypeInfo = fmt.Sprintf("(%d)", c.typeLength)
 		}
 	}
-	return fmt.Sprintf("convert(%v, %v%s)", c.Child, c.castToType, extraTypeInfo)
+	return fmt.Sprintf("convert(%v, %v%s)", c.Child.String(ctx), c.castToType, extraTypeInfo)
 }
 
 // DebugString implements the Expression interface.
@@ -277,7 +277,7 @@ func (c *Convert) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	casted, err := convertValue(ctx, val, c.castToType, c.Child.Type(ctx), c.typeLength, c.typeScale)
 	if err != nil {
 		if c.castToType == ConvertToJSON {
-			return nil, ErrConvertExpression.Wrap(err, c.String(), c.castToType)
+			return nil, ErrConvertExpression.Wrap(err, c.String(ctx), c.castToType)
 		}
 		ctx.Warn(1292, "Incorrect %s value: %v", c.castToType, val)
 		return nil, nil

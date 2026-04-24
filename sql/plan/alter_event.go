@@ -107,7 +107,7 @@ func NewAlterEvent(
 }
 
 // String implements the sql.Node interface.
-func (a *AlterEvent) String() string {
+func (a *AlterEvent) String(ctx *sql.Context) string {
 	stmt := "ALTER"
 
 	if a.Definer != "" {
@@ -118,9 +118,9 @@ func (a *AlterEvent) String() string {
 
 	if a.AlterOnSchedule {
 		if a.At != nil {
-			stmt = fmt.Sprintf("%s ON SCHEDULE AT %s", stmt, a.At.String())
+			stmt = fmt.Sprintf("%s ON SCHEDULE AT %s", stmt, a.At.String(ctx))
 		} else {
-			stmt = fmt.Sprintf("%s %s", stmt, onScheduleEveryString(a.Every, a.Starts, a.Ends))
+			stmt = fmt.Sprintf("%s %s", stmt, onScheduleEveryString(ctx, a.Every, a.Starts, a.Ends))
 		}
 	}
 
@@ -148,9 +148,6 @@ func (a *AlterEvent) String() string {
 	}
 
 	if a.AlterDefinition {
-		// To maintain compatibility with fmt.Stringer we have to use an empty context, but this will fail in any case that
-		// requires a context to determine a string (such as an integrator using the context to contain type information).
-		ctx := sql.NewEmptyContext()
 		stmt = fmt.Sprintf("%s DO %s", stmt, sql.DebugString(ctx, a.DefinitionNode))
 	}
 

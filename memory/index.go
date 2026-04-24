@@ -67,10 +67,10 @@ func (idx *Index) MemTable() *Table                                { return idx.
 func (idx *Index) ColumnExpressions(*sql.Context) []sql.Expression { return idx.Exprs }
 func (idx *Index) IsGenerated() bool                               { return false }
 
-func (idx *Index) Expressions() []string {
+func (idx *Index) Expressions(ctx *sql.Context) []string {
 	var exprs []string
 	for _, e := range idx.Exprs {
-		exprs = append(exprs, e.String())
+		exprs = append(exprs, e.String(ctx))
 	}
 	return exprs
 }
@@ -80,7 +80,7 @@ func (idx *Index) ExtendedExpressions(ctx *sql.Context) []string {
 	foundCols := make(map[string]struct{})
 	for _, e := range idx.Exprs {
 		foundCols[strings.ToLower(e.(*expression.GetField).Name())] = struct{}{}
-		exprs = append(exprs, e.String())
+		exprs = append(exprs, e.String(ctx))
 	}
 	for _, ord := range idx.Tbl.data.schema.PkOrdinals {
 		col := idx.Tbl.data.schema.Schema[ord]
@@ -187,7 +187,7 @@ func (idx *Index) ColumnExpressionTypes(ctx *sql.Context) []sql.ColumnExpression
 	cets := make([]sql.ColumnExpressionType, len(idx.Exprs))
 	for i, expr := range idx.Exprs {
 		cets[i] = sql.ColumnExpressionType{
-			Expression: expr.String(),
+			Expression: expr.String(ctx),
 			Type:       expr.Type(ctx),
 		}
 	}
@@ -200,7 +200,7 @@ func (idx *Index) ExtendedColumnExpressionTypes(ctx *sql.Context) []sql.ColumnEx
 	for _, expr := range idx.Exprs {
 		cetsInExprs[strings.ToLower(expr.(*expression.GetField).Name())] = struct{}{}
 		cets = append(cets, sql.ColumnExpressionType{
-			Expression: expr.String(),
+			Expression: expr.String(ctx),
 			Type:       expr.Type(ctx),
 		})
 	}
@@ -230,17 +230,17 @@ func (idx *Index) FullTextKeyColumns(ctx *sql.Context) (fulltext.KeyColumns, err
 	return idx.fulltextInfo.KeyColumns, nil
 }
 
-func (idx *Index) ID() string {
+func (idx *Index) ID(ctx *sql.Context) string {
 	if len(idx.Name) > 0 {
 		return idx.Name
 	}
 
 	if len(idx.Exprs) == 1 {
-		return idx.Exprs[0].String()
+		return idx.Exprs[0].String(ctx)
 	}
 	var parts = make([]string, len(idx.Exprs))
 	for i, e := range idx.Exprs {
-		parts[i] = e.String()
+		parts[i] = e.String(ctx)
 	}
 
 	return "(" + strings.Join(parts, ", ") + ")"

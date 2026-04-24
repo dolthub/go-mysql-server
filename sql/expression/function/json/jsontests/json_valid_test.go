@@ -55,7 +55,7 @@ func TestValid(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
-		t.Run(tt.f.String(), func(t *testing.T) {
+		t.Run(tt.f.String(sql.NewEmptyContext()), func(t *testing.T) {
 			require := require.New(t)
 			// any error case will result in output of 'false' value
 			result, _ := tt.f.Eval(sql.NewEmptyContext(), tt.row)

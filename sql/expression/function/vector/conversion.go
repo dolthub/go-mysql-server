@@ -51,8 +51,8 @@ func (s *StringToVector) CollationCoercibility(_ *sql.Context) (collation sql.Co
 	return sql.Collation_binary, 5
 }
 
-func (s *StringToVector) String() string {
-	return fmt.Sprintf("STRING_TO_VECTOR(%s)", s.Child)
+func (s *StringToVector) String(ctx *sql.Context) string {
+	return fmt.Sprintf("STRING_TO_VECTOR(%s)", s.Child.String(ctx))
 }
 
 func (s *StringToVector) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
@@ -109,8 +109,8 @@ func (v *VectorToString) CollationCoercibility(_ *sql.Context) (collation sql.Co
 	return sql.Collation_binary, 5
 }
 
-func (v *VectorToString) String() string {
-	return fmt.Sprintf("VECTOR_TO_STRING(%s)", v.Child)
+func (v *VectorToString) String(ctx *sql.Context) string {
+	return fmt.Sprintf("VECTOR_TO_STRING(%s)", v.Child.String(ctx))
 }
 
 func (v *VectorToString) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {

@@ -338,7 +338,7 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 	}
 
 	if validator != nil {
-		if err := validator.ValidateSchema(sch); err != nil {
+		if err := validator.ValidateSchema(ctx, sch); err != nil {
 			return nil, transform.SameTree, err
 		}
 	}
@@ -510,7 +510,7 @@ func ValidateModifyColumn(ctx *sql.Context, initialSch sql.Schema, schema sql.Sc
 			continue
 		}
 		prefixLengths := index.PrefixLengths()
-		for i, expr := range index.Expressions() {
+		for i, expr := range index.Expressions(ctx) {
 			col := plan.GetColumnFromIndexExpr(ctx, expr, tbl)
 			if !strings.EqualFold(col.Name, oldColName) {
 				continue
@@ -945,7 +945,7 @@ func GetTableIndexColumns(ctx *sql.Context, table sql.Node) (map[string]bool, er
 	keyedColumns := make(map[string]bool)
 	indexes := ia.IndexesByTable(ctx, ctx.GetCurrentDatabase(), getTableName(ctx, table))
 	for _, index := range indexes {
-		for _, expr := range index.Expressions() {
+		for _, expr := range index.Expressions(ctx) {
 			if col := plan.GetColumnFromIndexExpr(ctx, expr, getTable(ctx, table)); col != nil {
 				keyedColumns[col.Name] = true
 			}
@@ -966,7 +966,7 @@ func GetTableIndexNames(ctx *sql.Context, _ *Analyzer, table sql.Node) ([]string
 	names := make([]string, len(indexes))
 
 	for i, index := range indexes {
-		names[i] = index.ID()
+		names[i] = index.ID(ctx)
 	}
 
 	if HasPrimaryKeys(table.Schema(ctx)) {

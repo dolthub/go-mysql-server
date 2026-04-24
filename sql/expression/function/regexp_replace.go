@@ -166,10 +166,10 @@ func (r *RegexpReplace) WithChildren(ctx *sql.Context, children ...sql.Expressio
 	return replace, nil
 }
 
-func (r *RegexpReplace) String() string {
+func (r *RegexpReplace) String(ctx *sql.Context) string {
 	var args []string
 	for _, e := range r.Children() {
-		args = append(args, e.String())
+		args = append(args, e.String(ctx))
 	}
 	return fmt.Sprintf("%s(%s)", r.FunctionName(), strings.Join(args, ","))
 }

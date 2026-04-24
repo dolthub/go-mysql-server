@@ -173,7 +173,7 @@ func TestTimeConvert(t *testing.T) {
 				if test.val == nil {
 					assert.Equal(t, test.expectedVal, val)
 				} else {
-					assert.Equal(t, test.expectedVal, val.(Timespan).String())
+					assert.Equal(t, test.expectedVal, val.(Timespan).String(ctx))
 					timespan, err := Time.ConvertToTimespan(test.val)
 					require.NoError(t, err)
 					require.True(t, timespan.Equals(val.(Timespan)))
@@ -219,7 +219,7 @@ func TestTimeConvertToTimeDuration(t *testing.T) {
 }
 
 func TestTimeString(t *testing.T) {
-	require.Equal(t, "time(6)", Time.String())
+	require.Equal(t, "time(6)", Time.String(sql.NewEmptyContext()))
 }
 
 func TestTimeZero(t *testing.T) {

@@ -99,8 +99,8 @@ func (f *IfNull) IsNullable(ctx *sql.Context) bool {
 	return f.RightChild.IsNullable(ctx)
 }
 
-func (f *IfNull) String() string {
-	return fmt.Sprintf("ifnull(%s, %s)", f.LeftChild, f.RightChild)
+func (f *IfNull) String(ctx *sql.Context) string {
+	return fmt.Sprintf("ifnull(%s, %s)", f.LeftChild.String(ctx), f.RightChild.String(ctx))
 }
 
 // WithChildren implements the Expression interface.

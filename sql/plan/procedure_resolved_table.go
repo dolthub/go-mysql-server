@@ -48,8 +48,8 @@ func (t *ProcedureResolvedTable) IsReadOnly() bool {
 }
 
 // String implements the sql.Node interface.
-func (t *ProcedureResolvedTable) String() string {
-	return t.ResolvedTable.String()
+func (t *ProcedureResolvedTable) String(ctx *sql.Context) string {
+	return t.ResolvedTable.String(ctx)
 }
 
 // Schema implements the sql.Node interface.

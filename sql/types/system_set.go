@@ -15,7 +15,6 @@
 package types
 
 import (
-	"context"
 	"reflect"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -40,7 +39,7 @@ func NewSystemSetType(varName string, collation sql.CollationID, values ...strin
 }
 
 // Compare implements Type interface.
-func (t systemSetType) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
+func (t systemSetType) Compare(ctx *sql.Context, a interface{}, b interface{}) (int, error) {
 	if a == nil || b == nil {
 		return 0, sql.ErrInvalidSystemVariableValue.New(t.varName, nil)
 	}
@@ -65,7 +64,7 @@ func (t systemSetType) Compare(ctx context.Context, a interface{}, b interface{}
 }
 
 // Convert implements Type interface.
-func (t systemSetType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
+func (t systemSetType) Convert(ctx *sql.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	// Nil values are not accepted
 	switch value := v.(type) {
 	case int:
@@ -149,7 +148,7 @@ func (t systemSetType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltyp
 }
 
 // String implements Type interface.
-func (t systemSetType) String() string {
+func (t systemSetType) String(ctx *sql.Context) string {
 	return "system_set"
 }
 
@@ -174,19 +173,19 @@ func (systemSetType) CollationCoercibility(ctx *sql.Context) (collation sql.Coll
 }
 
 // EncodeValue implements SystemVariableType interface.
-func (t systemSetType) EncodeValue(val interface{}) (string, error) {
+func (t systemSetType) EncodeValue(ctx *sql.Context, val interface{}) (string, error) {
 	expectedVal, ok := val.(uint64)
 	if !ok {
-		return "", sql.ErrSystemVariableCodeFail.New(val, t.String())
+		return "", sql.ErrSystemVariableCodeFail.New(val, t.String(ctx))
 	}
 	return t.BitsToString(expectedVal)
 }
 
 // DecodeValue implements SystemVariableType interface.
-func (t systemSetType) DecodeValue(val string) (interface{}, error) {
-	outVal, _, err := t.Convert(context.Background(), val)
+func (t systemSetType) DecodeValue(ctx *sql.Context, val string) (interface{}, error) {
+	outVal, _, err := t.Convert(ctx, val)
 	if err != nil {
-		return nil, sql.ErrSystemVariableCodeFail.New(val, t.String())
+		return nil, sql.ErrSystemVariableCodeFail.New(val, t.String(ctx))
 	}
 	return outVal, nil
 }

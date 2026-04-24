@@ -41,7 +41,7 @@ func (l *Leave) Resolved() bool {
 }
 
 // String implements the interface sql.Node.
-func (l *Leave) String() string {
+func (l *Leave) String(ctx *sql.Context) string {
 	return fmt.Sprintf("LEAVE %s", l.Label)
 }
 

@@ -94,11 +94,11 @@ func (*Length) CollationCoercibility(ctx *sql.Context) (collation sql.CollationI
 	return sql.Collation_binary, 5
 }
 
-func (l *Length) String() string {
+func (l *Length) String(ctx *sql.Context) string {
 	if l.CountType == NumBytes {
-		return fmt.Sprintf("length(%s)", l.Child)
+		return fmt.Sprintf("length(%s)", l.Child.String(ctx))
 	}
-	return fmt.Sprintf("char_length(%s)", l.Child)
+	return fmt.Sprintf("char_length(%s)", l.Child.String(ctx))
 }
 
 func (l *Length) DebugString(ctx *sql.Context) string {

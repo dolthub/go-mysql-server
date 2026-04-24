@@ -68,12 +68,12 @@ func (n *NTile) Resolved() bool {
 	return windowResolved(n.window)
 }
 
-func (n *NTile) String() string {
+func (n *NTile) String(ctx *sql.Context) string {
 	sb := strings.Builder{}
 	sb.WriteString("ntile()")
 	if n.window != nil {
 		sb.WriteString(" ")
-		sb.WriteString(n.window.String())
+		sb.WriteString(n.window.String(ctx))
 	}
 	return sb.String()
 }

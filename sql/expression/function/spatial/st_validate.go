@@ -61,8 +61,8 @@ func (*Validate) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 	return sql.Collation_binary, 4
 }
 
-func (v *Validate) String() string {
-	return fmt.Sprintf("%s(%s)", v.FunctionName(), v.Child.String())
+func (v *Validate) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", v.FunctionName(), v.Child.String(ctx))
 }
 
 // WithChildren implements the Expression interface.

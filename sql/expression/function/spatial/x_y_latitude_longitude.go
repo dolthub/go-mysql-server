@@ -67,10 +67,10 @@ func (*STX) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, 
 	return sql.Collation_binary, 5
 }
 
-func (s *STX) String() string {
+func (s *STX) String(ctx *sql.Context) string {
 	var args = make([]string, len(s.ChildExpressions))
 	for i, arg := range s.ChildExpressions {
-		args[i] = arg.String()
+		args[i] = arg.String(ctx)
 	}
 	return fmt.Sprintf("ST_X(%s)", strings.Join(args, ","))
 }
@@ -169,10 +169,10 @@ func (*STY) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, 
 	return sql.Collation_binary, 5
 }
 
-func (s *STY) String() string {
+func (s *STY) String(ctx *sql.Context) string {
 	var args = make([]string, len(s.ChildExpressions))
 	for i, arg := range s.ChildExpressions {
-		args[i] = arg.String()
+		args[i] = arg.String(ctx)
 	}
 	return fmt.Sprintf("ST_Y(%s)", strings.Join(args, ","))
 }
@@ -275,10 +275,10 @@ func (*Longitude) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 	return sql.Collation_binary, 5
 }
 
-func (l *Longitude) String() string {
+func (l *Longitude) String(ctx *sql.Context) string {
 	var args = make([]string, len(l.ChildExpressions))
 	for i, arg := range l.ChildExpressions {
-		args[i] = arg.String()
+		args[i] = arg.String(ctx)
 	}
 	return fmt.Sprintf("ST_LONGITUDE(%s)", strings.Join(args, ","))
 }
@@ -388,10 +388,10 @@ func (*Latitude) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 	return sql.Collation_binary, 5
 }
 
-func (l *Latitude) String() string {
+func (l *Latitude) String(ctx *sql.Context) string {
 	var args = make([]string, len(l.ChildExpressions))
 	for i, arg := range l.ChildExpressions {
-		args[i] = arg.String()
+		args[i] = arg.String(ctx)
 	}
 	return fmt.Sprintf("ST_LATITUDE(%s)", strings.Join(args, ","))
 }

@@ -103,8 +103,8 @@ func (ce *CollatedExpression) Eval(ctx *sql.Context, row sql.Row) (interface{}, 
 	return ce.expr.Eval(ctx, row)
 }
 
-func (ce *CollatedExpression) String() string {
-	return fmt.Sprintf("%s COLLATE %s", ce.expr.String(), ce.collation.String())
+func (ce *CollatedExpression) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s COLLATE %s", ce.expr.String(ctx), ce.collation.String())
 }
 
 // DebugString implements the sql.DebugStringer interface.
@@ -113,7 +113,7 @@ func (ce *CollatedExpression) DebugString(ctx *sql.Context) string {
 	if debugExpr, ok := ce.expr.(sql.DebugStringer); ok {
 		innerDebugStr = debugExpr.DebugString(ctx)
 	} else {
-		innerDebugStr = ce.expr.String()
+		innerDebugStr = ce.expr.String(ctx)
 	}
 	return fmt.Sprintf("%s COLLATE %s", innerDebugStr, ce.collation.String())
 }

@@ -63,10 +63,10 @@ func (*SRID) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID,
 	return sql.Collation_binary, 5
 }
 
-func (s *SRID) String() string {
+func (s *SRID) String(ctx *sql.Context) string {
 	var args = make([]string, len(s.ChildExpressions))
 	for i, arg := range s.ChildExpressions {
-		args[i] = arg.String()
+		args[i] = arg.String(ctx)
 	}
 	return fmt.Sprintf("ST_SRID(%s)", strings.Join(args, ","))
 }

@@ -59,8 +59,8 @@ func (j JSONValid) Resolved() bool {
 	return j.JSON.Resolved()
 }
 
-func (j JSONValid) String() string {
-	return fmt.Sprintf("%s(%s)", j.FunctionName(), j.JSON.String())
+func (j JSONValid) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", j.FunctionName(), j.JSON.String(ctx))
 }
 
 func (j JSONValid) Type(ctx *sql.Context) sql.Type {

@@ -83,14 +83,14 @@ func (i *Into) IsReadOnly() bool {
 	return i.Child.IsReadOnly()
 }
 
-func (i *Into) String() string {
+func (i *Into) String(ctx *sql.Context) string {
 	p := sql.NewTreePrinter()
 	var vars = make([]string, len(i.IntoVars))
 	for j, v := range i.IntoVars {
-		vars[j] = v.String()
+		vars[j] = v.String(ctx)
 	}
 	_ = p.WriteNode("Into(%s, Outfile %s, Dumpfile %s)", strings.Join(vars, ", "), i.Outfile, i.Dumpfile)
-	_ = p.WriteChildren(i.Child.String())
+	_ = p.WriteChildren(i.Child.String(ctx))
 	return p.String()
 }
 

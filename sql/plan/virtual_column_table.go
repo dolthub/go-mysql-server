@@ -55,14 +55,14 @@ func (v *VirtualColumnTable) LookupPartitions(context *sql.Context, lookup sql.I
 	return v.Table.(sql.IndexedTable).LookupPartitions(context, lookup)
 }
 
-func (v *VirtualColumnTable) String() string {
+func (v *VirtualColumnTable) String(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("VirtualColumnTable")
 	children := make([]string, 2)
 	children[0] = fmt.Sprintf("name: %s", v.Name())
 	exprs := make([]string, len(v.Projections))
 	for i, expr := range v.Projections {
-		exprs[i] = expr.String()
+		exprs[i] = expr.String(ctx)
 	}
 	children[1] = fmt.Sprintf("columns: [%s]", strings.Join(exprs, ", "))
 	_ = pr.WriteChildren(children...)

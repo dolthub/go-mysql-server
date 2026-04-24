@@ -62,8 +62,8 @@ func (*AsWKT) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID
 	return ctx.GetCollation(), 4
 }
 
-func (p *AsWKT) String() string {
-	return fmt.Sprintf("%s(%s)", p.FunctionName(), p.Child.String())
+func (p *AsWKT) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", p.FunctionName(), p.Child.String(ctx))
 }
 
 // WithChildren implements the Expression interface.
@@ -247,10 +247,10 @@ func (*GeomFromText) CollationCoercibility(ctx *sql.Context) (collation sql.Coll
 	return sql.Collation_binary, 4
 }
 
-func (g *GeomFromText) String() string {
+func (g *GeomFromText) String(ctx *sql.Context) string {
 	var args = make([]string, len(g.ChildExpressions))
 	for i, arg := range g.ChildExpressions {
-		args[i] = arg.String()
+		args[i] = arg.String(ctx)
 	}
 	return fmt.Sprintf("%s(%s)", g.FunctionName(), strings.Join(args, ","))
 }
@@ -725,10 +725,10 @@ func (*PointFromText) CollationCoercibility(ctx *sql.Context) (collation sql.Col
 	return sql.Collation_binary, 4
 }
 
-func (p *PointFromText) String() string {
+func (p *PointFromText) String(ctx *sql.Context) string {
 	var args = make([]string, len(p.ChildExpressions))
 	for i, arg := range p.ChildExpressions {
-		args[i] = arg.String()
+		args[i] = arg.String(ctx)
 	}
 	return fmt.Sprintf("%s(%s)", p.FunctionName(), strings.Join(args, ","))
 }
@@ -783,10 +783,10 @@ func (*LineFromText) CollationCoercibility(ctx *sql.Context) (collation sql.Coll
 	return sql.Collation_binary, 4
 }
 
-func (l *LineFromText) String() string {
+func (l *LineFromText) String(ctx *sql.Context) string {
 	var args = make([]string, len(l.ChildExpressions))
 	for i, arg := range l.ChildExpressions {
-		args[i] = arg.String()
+		args[i] = arg.String(ctx)
 	}
 	return fmt.Sprintf("%s(%s)", l.FunctionName(), strings.Join(args, ","))
 }
@@ -841,10 +841,10 @@ func (*PolyFromText) CollationCoercibility(ctx *sql.Context) (collation sql.Coll
 	return sql.Collation_binary, 4
 }
 
-func (p *PolyFromText) String() string {
+func (p *PolyFromText) String(ctx *sql.Context) string {
 	var args = make([]string, len(p.ChildExpressions))
 	for i, arg := range p.ChildExpressions {
-		args[i] = arg.String()
+		args[i] = arg.String(ctx)
 	}
 	return fmt.Sprintf("%s(%s)", p.FunctionName(), strings.Join(args, ","))
 }
@@ -899,10 +899,10 @@ func (*MPointFromText) CollationCoercibility(ctx *sql.Context) (collation sql.Co
 	return sql.Collation_binary, 4
 }
 
-func (p *MPointFromText) String() string {
+func (p *MPointFromText) String(ctx *sql.Context) string {
 	var args = make([]string, len(p.ChildExpressions))
 	for i, arg := range p.ChildExpressions {
-		args[i] = arg.String()
+		args[i] = arg.String(ctx)
 	}
 	return fmt.Sprintf("%s(%s)", p.FunctionName(), strings.Join(args, ","))
 }
@@ -957,10 +957,10 @@ func (*MLineFromText) CollationCoercibility(ctx *sql.Context) (collation sql.Col
 	return sql.Collation_binary, 4
 }
 
-func (l *MLineFromText) String() string {
+func (l *MLineFromText) String(ctx *sql.Context) string {
 	var args = make([]string, len(l.ChildExpressions))
 	for i, arg := range l.ChildExpressions {
-		args[i] = arg.String()
+		args[i] = arg.String(ctx)
 	}
 	return fmt.Sprintf("%s(%s)", l.FunctionName(), strings.Join(args, ","))
 }
@@ -1015,10 +1015,10 @@ func (*MPolyFromText) CollationCoercibility(ctx *sql.Context) (collation sql.Col
 	return sql.Collation_binary, 4
 }
 
-func (p *MPolyFromText) String() string {
+func (p *MPolyFromText) String(ctx *sql.Context) string {
 	var args = make([]string, len(p.ChildExpressions))
 	for i, arg := range p.ChildExpressions {
-		args[i] = arg.String()
+		args[i] = arg.String(ctx)
 	}
 	return fmt.Sprintf("%s(%s)", p.FunctionName(), strings.Join(args, ","))
 }
@@ -1073,10 +1073,10 @@ func (*GeomCollFromText) CollationCoercibility(ctx *sql.Context) (collation sql.
 	return sql.Collation_binary, 4
 }
 
-func (p *GeomCollFromText) String() string {
+func (p *GeomCollFromText) String(ctx *sql.Context) string {
 	var args = make([]string, len(p.ChildExpressions))
 	for i, arg := range p.ChildExpressions {
-		args[i] = arg.String()
+		args[i] = arg.String(ctx)
 	}
 	return fmt.Sprintf("%s(%s)", p.FunctionName(), strings.Join(args, ","))
 }

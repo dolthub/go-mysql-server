@@ -78,10 +78,10 @@ func (n *CachedResults) Dispose(ctx *sql.Context) {
 	n.Manager.DisposeCachedResultsById(n.Id)
 }
 
-func (n *CachedResults) String() string {
+func (n *CachedResults) String(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("CachedResults")
-	_ = pr.WriteChildren(n.UnaryNode.Child.String())
+	_ = pr.WriteChildren(n.UnaryNode.Child.String(ctx))
 	return pr.String()
 }
 

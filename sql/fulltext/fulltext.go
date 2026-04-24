@@ -234,11 +234,11 @@ func GetKeyColumns(ctx *sql.Context, parent sql.Table) (KeyColumns, []*sql.Colum
 
 			// Map from expression to position
 			hasNullableCol := false
-			for i, expr := range index.Expressions() {
+			for i, expr := range index.Expressions(ctx) {
 				parentColPosition, ok := parentColMap[strings.ToLower(expr)]
 				if !ok {
 					return KeyColumns{}, nil, fmt.Errorf("table `%s` UNIQUE index `%s` references the column `%s` but it could not be found",
-						parent.Name(), index.ID(), expr)
+						parent.Name(), index.ID(ctx), expr)
 				}
 				newCol := parentSch[parentColPosition].Copy()
 				newCol.Name = fmt.Sprintf("C%d", i)
@@ -254,7 +254,7 @@ func GetKeyColumns(ctx *sql.Context, parent sql.Table) (KeyColumns, []*sql.Colum
 
 			return KeyColumns{
 				Type:      KeyType_Unique,
-				Name:      index.ID(),
+				Name:      index.ID(ctx),
 				Positions: positions,
 			}, columns, nil
 		}
@@ -358,7 +358,7 @@ func DropAllIndexes(ctx *sql.Context, tbl sql.IndexAddressableTable, db Database
 			return err
 		}
 		// Finally we'll drop the index
-		if err = idxAlterable.DropIndex(ctx, ftIndex.ID()); err != nil {
+		if err = idxAlterable.DropIndex(ctx, ftIndex.ID(ctx)); err != nil {
 			return err
 		}
 	}
@@ -392,7 +392,7 @@ func RebuildTables(ctx *sql.Context, tbl sql.IndexAddressableTable, db Database)
 		}
 		// Store the index definition so that we may recreate it below
 		ftIndex := index.(Index)
-		exprs := ftIndex.Expressions()
+		exprs := ftIndex.Expressions(ctx)
 		indexCols := make([]sql.IndexColumn, len(exprs))
 		for i, expr := range exprs {
 			indexCols[i] = sql.IndexColumn{
@@ -400,7 +400,7 @@ func RebuildTables(ctx *sql.Context, tbl sql.IndexAddressableTable, db Database)
 			}
 		}
 		fulltextIndexes = append(fulltextIndexes, &sql.IndexDef{
-			Name:       ftIndex.ID(),
+			Name:       ftIndex.ID(ctx),
 			Columns:    indexCols,
 			Constraint: sql.IndexConstraint_Fulltext,
 			Storage:    sql.IndexUsing_Default,
@@ -410,7 +410,7 @@ func RebuildTables(ctx *sql.Context, tbl sql.IndexAddressableTable, db Database)
 		if err != nil {
 			return err
 		}
-		predeterminedNames[ftIndex.ID()] = tableNames
+		predeterminedNames[ftIndex.ID(ctx)] = tableNames
 		// We delete all tables besides the config table
 		if err = dropper.DropTable(ctx, tableNames.Position); err != nil {
 			return err
@@ -425,7 +425,7 @@ func RebuildTables(ctx *sql.Context, tbl sql.IndexAddressableTable, db Database)
 			return err
 		}
 		// Finally we'll drop the index
-		if err = idxAlterable.DropIndex(ctx, ftIndex.ID()); err != nil {
+		if err = idxAlterable.DropIndex(ctx, ftIndex.ID(ctx)); err != nil {
 			return err
 		}
 	}
@@ -468,9 +468,9 @@ func DropColumnFromTables(ctx *sql.Context, tbl sql.IndexAddressableTable, db Da
 		if err != nil {
 			return err
 		}
-		predeterminedNames[ftIndex.ID()] = tableNames
+		predeterminedNames[ftIndex.ID(ctx)] = tableNames
 		// Iterate over the columns to search for the given column
-		exprs := ftIndex.Expressions()
+		exprs := ftIndex.Expressions(ctx)
 		var indexCols []sql.IndexColumn
 		for _, expr := range exprs {
 			exprColName := strings.TrimPrefix(expr, ftIndex.Table()+".")
@@ -486,7 +486,7 @@ func DropColumnFromTables(ctx *sql.Context, tbl sql.IndexAddressableTable, db Da
 		if len(indexCols) > 0 {
 			// This index will continue to exist, so we want to preserve the config table
 			fulltextIndexes = append(fulltextIndexes, &sql.IndexDef{
-				Name:       ftIndex.ID(),
+				Name:       ftIndex.ID(ctx),
 				Columns:    indexCols,
 				Constraint: sql.IndexConstraint_Fulltext,
 				Storage:    sql.IndexUsing_Default,
@@ -513,7 +513,7 @@ func DropColumnFromTables(ctx *sql.Context, tbl sql.IndexAddressableTable, db Da
 			return err
 		}
 		// Finally we'll drop the index
-		if err = idxAlterable.DropIndex(ctx, ftIndex.ID()); err != nil {
+		if err = idxAlterable.DropIndex(ctx, ftIndex.ID(ctx)); err != nil {
 			return err
 		}
 	}
@@ -689,12 +689,12 @@ func CreateFulltextIndexes(ctx *sql.Context, database Database, parent sql.Table
 				panic(err)
 			}
 			if !ok {
-				return fmt.Errorf("index `%s` declares the table `%s` as a FULLTEXT config table, but it could not be found", idx.ID(), ftTableNames.Config)
+				return fmt.Errorf("index `%s` declares the table `%s` as a FULLTEXT config table, but it could not be found", idx.ID(ctx), ftTableNames.Config)
 			}
 			// We'll only do the check once, since we can fairly safely assume that the other tables will also implement the interface
 			configTbl, ok = tbl.(EditableTable)
 			if !ok {
-				return fmt.Errorf("index `%s` declares the table `%s` as a FULLTEXT config table, however it does not implement EditableTable", idx.ID(), ftTableNames.Config)
+				return fmt.Errorf("index `%s` declares the table `%s` as a FULLTEXT config table, however it does not implement EditableTable", idx.ID(ctx), ftTableNames.Config)
 			}
 		}
 		positionTbl, ok, err := database.GetTableInsensitive(ctx, ftTableNames.Position)
@@ -702,28 +702,28 @@ func CreateFulltextIndexes(ctx *sql.Context, database Database, parent sql.Table
 			panic(err)
 		}
 		if !ok {
-			return fmt.Errorf("index `%s` declares the table `%s` as a FULLTEXT position table, but it could not be found", idx.ID(), ftTableNames.Position)
+			return fmt.Errorf("index `%s` declares the table `%s` as a FULLTEXT position table, but it could not be found", idx.ID(ctx), ftTableNames.Position)
 		}
 		docCountTbl, ok, err := database.GetTableInsensitive(ctx, ftTableNames.DocCount)
 		if err != nil {
 			panic(err)
 		}
 		if !ok {
-			return fmt.Errorf("index `%s` declares the table `%s` as a FULLTEXT doc count table, but it could not be found", idx.ID(), ftTableNames.DocCount)
+			return fmt.Errorf("index `%s` declares the table `%s` as a FULLTEXT doc count table, but it could not be found", idx.ID(ctx), ftTableNames.DocCount)
 		}
 		globalCountTbl, ok, err := database.GetTableInsensitive(ctx, ftTableNames.GlobalCount)
 		if err != nil {
 			panic(err)
 		}
 		if !ok {
-			return fmt.Errorf("index `%s` declares the table `%s` as a FULLTEXT global count table, but it could not be found", idx.ID(), ftTableNames.GlobalCount)
+			return fmt.Errorf("index `%s` declares the table `%s` as a FULLTEXT global count table, but it could not be found", idx.ID(ctx), ftTableNames.GlobalCount)
 		}
 		rowCountTbl, ok, err := database.GetTableInsensitive(ctx, ftTableNames.RowCount)
 		if err != nil {
 			panic(err)
 		}
 		if !ok {
-			return fmt.Errorf("index `%s` declares the table `%s` as a FULLTEXT row count table, but it could not be found", idx.ID(), ftTableNames.RowCount)
+			return fmt.Errorf("index `%s` declares the table `%s` as a FULLTEXT row count table, but it could not be found", idx.ID(ctx), ftTableNames.RowCount)
 		}
 
 		tableSets = append(tableSets, TableSet{

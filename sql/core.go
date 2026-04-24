@@ -35,7 +35,7 @@ import (
 // Expression is a combination of one or more SQL expressions.
 type Expression interface {
 	Resolvable
-	fmt.Stringer
+	Stringer
 	// Type returns the expression type.
 	Type(ctx *Context) Type
 	// IsNullable returns whether the expression can be null.
@@ -97,7 +97,7 @@ type IsNotNullExpression interface {
 // Node is a node in the execution plan tree.
 type Node interface {
 	Resolvable
-	fmt.Stringer
+	Stringer
 	// Schema of the node.
 	Schema(ctx *Context) Schema
 	// Children nodes.
@@ -267,7 +267,7 @@ const (
 // Transaction is an opaque type implemented by an integrator to record necessary information at the start of a
 // transaction. Active transactions will be recorded in the session.
 type Transaction interface {
-	fmt.Stringer
+	Stringer
 	IsReadOnly() bool
 }
 
@@ -448,6 +448,12 @@ func IsTrue(val interface{}) bool {
 	return ok && res
 }
 
+// Stringer is shared by implementors of Node and Expression, and is used for general string usage the analyzer.
+type Stringer interface {
+	// String prints a string of the node in question.
+	String(ctx *Context) string
+}
+
 // DebugStringer is shared by implementors of Node and Expression, and is used for debugging the analyzer. It allows
 // a node or expression to be printed in greater detail than its default String() representation.
 type DebugStringer interface {
@@ -460,13 +466,13 @@ func DebugString(ctx *Context, nodeOrExpression interface{}) string {
 	if ds, ok := nodeOrExpression.(DebugStringer); ok {
 		return ds.DebugString(ctx)
 	}
-	if s, ok := nodeOrExpression.(fmt.Stringer); ok {
-		return s.String()
+	if s, ok := nodeOrExpression.(Stringer); ok {
+		return s.String(ctx)
 	}
 	if nodeOrExpression == nil {
 		return ""
 	}
-	panic(fmt.Sprintf("Expected sql.DebugString or fmt.Stringer for %T", nodeOrExpression))
+	panic(fmt.Sprintf("Expected sql.DebugString or sql.Stringer for %T", nodeOrExpression))
 }
 
 // ValueExpression is an experimental future interface alternative to Expression to provide faster access.
@@ -992,9 +998,9 @@ func (v OrderAndLimit) DebugString(ctx *Context) string {
 	return DebugString(ctx, v.OrderBy)
 }
 
-func (v OrderAndLimit) String() string {
+func (v OrderAndLimit) String(ctx *Context) string {
 	if v.Limit != nil {
-		return fmt.Sprintf("%v LIMIT %v", v.OrderBy, v.Limit)
+		return fmt.Sprintf("%v LIMIT %v", v.OrderBy.String(ctx), v.Limit.String(ctx))
 	}
-	return v.OrderBy.String()
+	return v.OrderBy.String(ctx)
 }

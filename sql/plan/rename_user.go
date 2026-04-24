@@ -49,7 +49,7 @@ func (n *RenameUser) IsReadOnly() bool {
 }
 
 // String implements the interface sql.Node.
-func (n *RenameUser) String() string {
+func (n *RenameUser) String(ctx *sql.Context) string {
 	strs := make([]string, len(n.OldName))
 	for i := range n.OldName {
 		strs[i] = fmt.Sprintf("%s->%s",

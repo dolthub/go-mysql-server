@@ -139,6 +139,6 @@ func (j *JsonLength) WithChildren(ctx *sql.Context, children ...sql.Expression) 
 	return NewJsonLength(ctx, children...)
 }
 
-func (j *JsonLength) String() string {
-	return fmt.Sprintf("json_length(%s)", j.JSON.String())
+func (j *JsonLength) String(ctx *sql.Context) string {
+	return fmt.Sprintf("json_length(%s)", j.JSON.String(ctx))
 }

@@ -229,8 +229,8 @@ func (f *SHA2) FunctionName() string {
 }
 
 // String implements sql.Expression
-func (f *SHA2) String() string {
-	return fmt.Sprintf("%s(%s,%s)", f.FunctionName(), f.LeftChild, f.RightChild)
+func (f *SHA2) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s,%s)", f.FunctionName(), f.LeftChild.String(ctx), f.RightChild.String(ctx))
 }
 
 // Type implements sql.Expression

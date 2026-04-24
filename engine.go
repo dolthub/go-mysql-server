@@ -606,8 +606,8 @@ func (e *Engine) bindExecuteQueryNode(ctx *sql.Context, query string, eq *plan.E
 	// TODO: overwrite the current binding if bindings are not empty???
 	tempBindings := make(map[string]sql.Expression)
 	for i, name := range eq.BindVars {
-		if strings.HasPrefix(name.String(), "@") {
-			t, val, err := ctx.GetUserVariable(ctx, strings.TrimPrefix(name.String(), "@"))
+		if strings.HasPrefix(name.String(ctx), "@") {
+			t, val, err := ctx.GetUserVariable(ctx, strings.TrimPrefix(name.String(ctx), "@"))
 			if err != nil {
 				return nil, nil
 			}

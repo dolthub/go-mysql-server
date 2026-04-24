@@ -79,11 +79,11 @@ func (w *Wrapper) Resolved() bool {
 }
 
 // String implements sql.Expression
-func (w *Wrapper) String() string {
+func (w *Wrapper) String(ctx *sql.Context) string {
 	if w.inner == nil {
 		return ""
 	}
-	return fmt.Sprintf("(%s)", w.inner.String())
+	return fmt.Sprintf("(%s)", w.inner.String(ctx))
 }
 
 // DebugString implements sql.DebugStringer

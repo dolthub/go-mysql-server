@@ -60,10 +60,10 @@ func (*Perimeter) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 	return sql.Collation_binary, 5
 }
 
-func (p *Perimeter) String() string {
+func (p *Perimeter) String(ctx *sql.Context) string {
 	var args = make([]string, len(p.ChildExpressions))
 	for i, arg := range p.ChildExpressions {
-		args[i] = arg.String()
+		args[i] = arg.String(ctx)
 	}
 	return fmt.Sprintf("%s(%s)", p.FunctionName(), strings.Join(args, ","))
 }

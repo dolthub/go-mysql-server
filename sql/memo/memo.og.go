@@ -11,20 +11,21 @@ import (
 )
 
 type CrossJoin struct {
+	ctx *sql.Context
 	*JoinBase
 }
 
 var _ RelExpr = (*CrossJoin)(nil)
 var _ fmt.Formatter = (*CrossJoin)(nil)
-var _ fmt.Stringer = (*CrossJoin)(nil)
+var _ sql.Stringer = (*CrossJoin)(nil)
 var _ JoinRel = (*CrossJoin)(nil)
 
-func (r *CrossJoin) String() string {
+func (r *CrossJoin) String(ctx *sql.Context) string {
 	return fmt.Sprintf("%s", r)
 }
 
 func (r *CrossJoin) Format(s fmt.State, verb rune) {
-	FormatExpr(r, s, verb)
+	FormatExpr(r.ctx, r, s, verb)
 }
 
 func (r *CrossJoin) JoinPrivate() *JoinBase {
@@ -32,20 +33,21 @@ func (r *CrossJoin) JoinPrivate() *JoinBase {
 }
 
 type InnerJoin struct {
+	ctx *sql.Context
 	*JoinBase
 }
 
 var _ RelExpr = (*InnerJoin)(nil)
 var _ fmt.Formatter = (*InnerJoin)(nil)
-var _ fmt.Stringer = (*InnerJoin)(nil)
+var _ sql.Stringer = (*InnerJoin)(nil)
 var _ JoinRel = (*InnerJoin)(nil)
 
-func (r *InnerJoin) String() string {
+func (r *InnerJoin) String(ctx *sql.Context) string {
 	return fmt.Sprintf("%s", r)
 }
 
 func (r *InnerJoin) Format(s fmt.State, verb rune) {
-	FormatExpr(r, s, verb)
+	FormatExpr(r.ctx, r, s, verb)
 }
 
 func (r *InnerJoin) JoinPrivate() *JoinBase {
@@ -53,20 +55,21 @@ func (r *InnerJoin) JoinPrivate() *JoinBase {
 }
 
 type LeftJoin struct {
+	ctx *sql.Context
 	*JoinBase
 }
 
 var _ RelExpr = (*LeftJoin)(nil)
 var _ fmt.Formatter = (*LeftJoin)(nil)
-var _ fmt.Stringer = (*LeftJoin)(nil)
+var _ sql.Stringer = (*LeftJoin)(nil)
 var _ JoinRel = (*LeftJoin)(nil)
 
-func (r *LeftJoin) String() string {
+func (r *LeftJoin) String(ctx *sql.Context) string {
 	return fmt.Sprintf("%s", r)
 }
 
 func (r *LeftJoin) Format(s fmt.State, verb rune) {
-	FormatExpr(r, s, verb)
+	FormatExpr(r.ctx, r, s, verb)
 }
 
 func (r *LeftJoin) JoinPrivate() *JoinBase {
@@ -74,20 +77,21 @@ func (r *LeftJoin) JoinPrivate() *JoinBase {
 }
 
 type SemiJoin struct {
+	ctx *sql.Context
 	*JoinBase
 }
 
 var _ RelExpr = (*SemiJoin)(nil)
 var _ fmt.Formatter = (*SemiJoin)(nil)
-var _ fmt.Stringer = (*SemiJoin)(nil)
+var _ sql.Stringer = (*SemiJoin)(nil)
 var _ JoinRel = (*SemiJoin)(nil)
 
-func (r *SemiJoin) String() string {
+func (r *SemiJoin) String(ctx *sql.Context) string {
 	return fmt.Sprintf("%s", r)
 }
 
 func (r *SemiJoin) Format(s fmt.State, verb rune) {
-	FormatExpr(r, s, verb)
+	FormatExpr(r.ctx, r, s, verb)
 }
 
 func (r *SemiJoin) JoinPrivate() *JoinBase {
@@ -95,20 +99,21 @@ func (r *SemiJoin) JoinPrivate() *JoinBase {
 }
 
 type AntiJoin struct {
+	ctx *sql.Context
 	*JoinBase
 }
 
 var _ RelExpr = (*AntiJoin)(nil)
 var _ fmt.Formatter = (*AntiJoin)(nil)
-var _ fmt.Stringer = (*AntiJoin)(nil)
+var _ sql.Stringer = (*AntiJoin)(nil)
 var _ JoinRel = (*AntiJoin)(nil)
 
-func (r *AntiJoin) String() string {
+func (r *AntiJoin) String(ctx *sql.Context) string {
 	return fmt.Sprintf("%s", r)
 }
 
 func (r *AntiJoin) Format(s fmt.State, verb rune) {
-	FormatExpr(r, s, verb)
+	FormatExpr(r.ctx, r, s, verb)
 }
 
 func (r *AntiJoin) JoinPrivate() *JoinBase {
@@ -117,21 +122,22 @@ func (r *AntiJoin) JoinPrivate() *JoinBase {
 
 type LookupJoin struct {
 	*JoinBase
+	ctx       *sql.Context
 	Lookup    *IndexScan
 	Injective bool
 }
 
 var _ RelExpr = (*LookupJoin)(nil)
 var _ fmt.Formatter = (*LookupJoin)(nil)
-var _ fmt.Stringer = (*LookupJoin)(nil)
+var _ sql.Stringer = (*LookupJoin)(nil)
 var _ JoinRel = (*LookupJoin)(nil)
 
-func (r *LookupJoin) String() string {
+func (r *LookupJoin) String(ctx *sql.Context) string {
 	return fmt.Sprintf("%s", r)
 }
 
 func (r *LookupJoin) Format(s fmt.State, verb rune) {
-	FormatExpr(r, s, verb)
+	FormatExpr(r.ctx, r, s, verb)
 }
 
 func (r *LookupJoin) JoinPrivate() *JoinBase {
@@ -140,20 +146,21 @@ func (r *LookupJoin) JoinPrivate() *JoinBase {
 
 type RangeHeapJoin struct {
 	*JoinBase
+	Ctx       *sql.Context
 	RangeHeap *RangeHeap
 }
 
 var _ RelExpr = (*RangeHeapJoin)(nil)
 var _ fmt.Formatter = (*RangeHeapJoin)(nil)
-var _ fmt.Stringer = (*RangeHeapJoin)(nil)
+var _ sql.Stringer = (*RangeHeapJoin)(nil)
 var _ JoinRel = (*RangeHeapJoin)(nil)
 
-func (r *RangeHeapJoin) String() string {
+func (r *RangeHeapJoin) String(ctx *sql.Context) string {
 	return fmt.Sprintf("%s", r)
 }
 
 func (r *RangeHeapJoin) Format(s fmt.State, verb rune) {
-	FormatExpr(r, s, verb)
+	FormatExpr(r.Ctx, r, s, verb)
 }
 
 func (r *RangeHeapJoin) JoinPrivate() *JoinBase {
@@ -162,20 +169,21 @@ func (r *RangeHeapJoin) JoinPrivate() *JoinBase {
 
 type ConcatJoin struct {
 	*JoinBase
+	ctx    *sql.Context
 	Concat []*IndexScan
 }
 
 var _ RelExpr = (*ConcatJoin)(nil)
 var _ fmt.Formatter = (*ConcatJoin)(nil)
-var _ fmt.Stringer = (*ConcatJoin)(nil)
+var _ sql.Stringer = (*ConcatJoin)(nil)
 var _ JoinRel = (*ConcatJoin)(nil)
 
-func (r *ConcatJoin) String() string {
+func (r *ConcatJoin) String(ctx *sql.Context) string {
 	return fmt.Sprintf("%s", r)
 }
 
 func (r *ConcatJoin) Format(s fmt.State, verb rune) {
-	FormatExpr(r, s, verb)
+	FormatExpr(r.ctx, r, s, verb)
 }
 
 func (r *ConcatJoin) JoinPrivate() *JoinBase {
@@ -184,21 +192,22 @@ func (r *ConcatJoin) JoinPrivate() *JoinBase {
 
 type HashJoin struct {
 	*JoinBase
+	Ctx        *sql.Context
 	RightAttrs []sql.Expression
 	LeftAttrs  []sql.Expression
 }
 
 var _ RelExpr = (*HashJoin)(nil)
 var _ fmt.Formatter = (*HashJoin)(nil)
-var _ fmt.Stringer = (*HashJoin)(nil)
+var _ sql.Stringer = (*HashJoin)(nil)
 var _ JoinRel = (*HashJoin)(nil)
 
-func (r *HashJoin) String() string {
+func (r *HashJoin) String(ctx *sql.Context) string {
 	return fmt.Sprintf("%s", r)
 }
 
 func (r *HashJoin) Format(s fmt.State, verb rune) {
-	FormatExpr(r, s, verb)
+	FormatExpr(r.Ctx, r, s, verb)
 }
 
 func (r *HashJoin) JoinPrivate() *JoinBase {
@@ -207,6 +216,7 @@ func (r *HashJoin) JoinPrivate() *JoinBase {
 
 type MergeJoin struct {
 	*JoinBase
+	ctx       *sql.Context
 	InnerScan *IndexScan
 	OuterScan *IndexScan
 	SwapCmp   bool
@@ -216,15 +226,15 @@ type MergeJoin struct {
 
 var _ RelExpr = (*MergeJoin)(nil)
 var _ fmt.Formatter = (*MergeJoin)(nil)
-var _ fmt.Stringer = (*MergeJoin)(nil)
+var _ sql.Stringer = (*MergeJoin)(nil)
 var _ JoinRel = (*MergeJoin)(nil)
 
-func (r *MergeJoin) String() string {
+func (r *MergeJoin) String(ctx *sql.Context) string {
 	return fmt.Sprintf("%s", r)
 }
 
 func (r *MergeJoin) Format(s fmt.State, verb rune) {
-	FormatExpr(r, s, verb)
+	FormatExpr(r.ctx, r, s, verb)
 }
 
 func (r *MergeJoin) JoinPrivate() *JoinBase {
@@ -232,20 +242,21 @@ func (r *MergeJoin) JoinPrivate() *JoinBase {
 }
 
 type FullOuterJoin struct {
+	ctx *sql.Context
 	*JoinBase
 }
 
 var _ RelExpr = (*FullOuterJoin)(nil)
 var _ fmt.Formatter = (*FullOuterJoin)(nil)
-var _ fmt.Stringer = (*FullOuterJoin)(nil)
+var _ sql.Stringer = (*FullOuterJoin)(nil)
 var _ JoinRel = (*FullOuterJoin)(nil)
 
-func (r *FullOuterJoin) String() string {
+func (r *FullOuterJoin) String(ctx *sql.Context) string {
 	return fmt.Sprintf("%s", r)
 }
 
 func (r *FullOuterJoin) Format(s fmt.State, verb rune) {
-	FormatExpr(r, s, verb)
+	FormatExpr(r.ctx, r, s, verb)
 }
 
 func (r *FullOuterJoin) JoinPrivate() *JoinBase {
@@ -253,20 +264,21 @@ func (r *FullOuterJoin) JoinPrivate() *JoinBase {
 }
 
 type LateralJoin struct {
+	ctx *sql.Context
 	*JoinBase
 }
 
 var _ RelExpr = (*LateralJoin)(nil)
 var _ fmt.Formatter = (*LateralJoin)(nil)
-var _ fmt.Stringer = (*LateralJoin)(nil)
+var _ sql.Stringer = (*LateralJoin)(nil)
 var _ JoinRel = (*LateralJoin)(nil)
 
-func (r *LateralJoin) String() string {
+func (r *LateralJoin) String(ctx *sql.Context) string {
 	return fmt.Sprintf("%s", r)
 }
 
 func (r *LateralJoin) Format(s fmt.State, verb rune) {
-	FormatExpr(r, s, verb)
+	FormatExpr(r.ctx, r, s, verb)
 }
 
 func (r *LateralJoin) JoinPrivate() *JoinBase {
@@ -275,20 +287,21 @@ func (r *LateralJoin) JoinPrivate() *JoinBase {
 
 type TableScan struct {
 	*sourceBase
+	ctx   *sql.Context
 	Table plan.TableIdNode
 }
 
 var _ RelExpr = (*TableScan)(nil)
 var _ fmt.Formatter = (*TableScan)(nil)
-var _ fmt.Stringer = (*TableScan)(nil)
+var _ sql.Stringer = (*TableScan)(nil)
 var _ SourceRel = (*TableScan)(nil)
 
-func (r *TableScan) String() string {
+func (r *TableScan) String(ctx *sql.Context) string {
 	return fmt.Sprintf("%s", r)
 }
 
 func (r *TableScan) Format(s fmt.State, verb rune) {
-	FormatExpr(r, s, verb)
+	FormatExpr(r.ctx, r, s, verb)
 }
 
 func (r *TableScan) Name() string {
@@ -313,6 +326,7 @@ func (r *TableScan) Children() []*ExprGroup {
 
 type IndexScan struct {
 	*sourceBase
+	Ctx   *sql.Context
 	Table *plan.IndexedTableAccess
 	Index *Index
 	Alias string
@@ -321,15 +335,15 @@ type IndexScan struct {
 
 var _ RelExpr = (*IndexScan)(nil)
 var _ fmt.Formatter = (*IndexScan)(nil)
-var _ fmt.Stringer = (*IndexScan)(nil)
+var _ sql.Stringer = (*IndexScan)(nil)
 var _ SourceRel = (*IndexScan)(nil)
 
-func (r *IndexScan) String() string {
+func (r *IndexScan) String(ctx *sql.Context) string {
 	return fmt.Sprintf("%s", r)
 }
 
 func (r *IndexScan) Format(s fmt.State, verb rune) {
-	FormatExpr(r, s, verb)
+	FormatExpr(r.Ctx, r, s, verb)
 }
 
 func (r *IndexScan) Name() string {
@@ -354,20 +368,21 @@ func (r *IndexScan) Children() []*ExprGroup {
 
 type Values struct {
 	*sourceBase
+	ctx   *sql.Context
 	Table *plan.ValueDerivedTable
 }
 
 var _ RelExpr = (*Values)(nil)
 var _ fmt.Formatter = (*Values)(nil)
-var _ fmt.Stringer = (*Values)(nil)
+var _ sql.Stringer = (*Values)(nil)
 var _ SourceRel = (*Values)(nil)
 
-func (r *Values) String() string {
+func (r *Values) String(ctx *sql.Context) string {
 	return fmt.Sprintf("%s", r)
 }
 
 func (r *Values) Format(s fmt.State, verb rune) {
-	FormatExpr(r, s, verb)
+	FormatExpr(r.ctx, r, s, verb)
 }
 
 func (r *Values) Name() string {
@@ -392,20 +407,21 @@ func (r *Values) Children() []*ExprGroup {
 
 type TableAlias struct {
 	*sourceBase
+	ctx   *sql.Context
 	Table *plan.TableAlias
 }
 
 var _ RelExpr = (*TableAlias)(nil)
 var _ fmt.Formatter = (*TableAlias)(nil)
-var _ fmt.Stringer = (*TableAlias)(nil)
+var _ sql.Stringer = (*TableAlias)(nil)
 var _ SourceRel = (*TableAlias)(nil)
 
-func (r *TableAlias) String() string {
+func (r *TableAlias) String(ctx *sql.Context) string {
 	return fmt.Sprintf("%s", r)
 }
 
 func (r *TableAlias) Format(s fmt.State, verb rune) {
-	FormatExpr(r, s, verb)
+	FormatExpr(r.ctx, r, s, verb)
 }
 
 func (r *TableAlias) Name() string {
@@ -430,20 +446,21 @@ func (r *TableAlias) Children() []*ExprGroup {
 
 type RecursiveTable struct {
 	*sourceBase
+	ctx   *sql.Context
 	Table *plan.RecursiveTable
 }
 
 var _ RelExpr = (*RecursiveTable)(nil)
 var _ fmt.Formatter = (*RecursiveTable)(nil)
-var _ fmt.Stringer = (*RecursiveTable)(nil)
+var _ sql.Stringer = (*RecursiveTable)(nil)
 var _ SourceRel = (*RecursiveTable)(nil)
 
-func (r *RecursiveTable) String() string {
+func (r *RecursiveTable) String(ctx *sql.Context) string {
 	return fmt.Sprintf("%s", r)
 }
 
 func (r *RecursiveTable) Format(s fmt.State, verb rune) {
-	FormatExpr(r, s, verb)
+	FormatExpr(r.ctx, r, s, verb)
 }
 
 func (r *RecursiveTable) Name() string {
@@ -468,20 +485,21 @@ func (r *RecursiveTable) Children() []*ExprGroup {
 
 type RecursiveCte struct {
 	*sourceBase
+	ctx   *sql.Context
 	Table *plan.RecursiveCte
 }
 
 var _ RelExpr = (*RecursiveCte)(nil)
 var _ fmt.Formatter = (*RecursiveCte)(nil)
-var _ fmt.Stringer = (*RecursiveCte)(nil)
+var _ sql.Stringer = (*RecursiveCte)(nil)
 var _ SourceRel = (*RecursiveCte)(nil)
 
-func (r *RecursiveCte) String() string {
+func (r *RecursiveCte) String(ctx *sql.Context) string {
 	return fmt.Sprintf("%s", r)
 }
 
 func (r *RecursiveCte) Format(s fmt.State, verb rune) {
-	FormatExpr(r, s, verb)
+	FormatExpr(r.ctx, r, s, verb)
 }
 
 func (r *RecursiveCte) Name() string {
@@ -506,20 +524,21 @@ func (r *RecursiveCte) Children() []*ExprGroup {
 
 type SubqueryAlias struct {
 	*sourceBase
+	ctx   *sql.Context
 	Table *plan.SubqueryAlias
 }
 
 var _ RelExpr = (*SubqueryAlias)(nil)
 var _ fmt.Formatter = (*SubqueryAlias)(nil)
-var _ fmt.Stringer = (*SubqueryAlias)(nil)
+var _ sql.Stringer = (*SubqueryAlias)(nil)
 var _ SourceRel = (*SubqueryAlias)(nil)
 
-func (r *SubqueryAlias) String() string {
+func (r *SubqueryAlias) String(ctx *sql.Context) string {
 	return fmt.Sprintf("%s", r)
 }
 
 func (r *SubqueryAlias) Format(s fmt.State, verb rune) {
-	FormatExpr(r, s, verb)
+	FormatExpr(r.ctx, r, s, verb)
 }
 
 func (r *SubqueryAlias) Name() string {
@@ -544,20 +563,21 @@ func (r *SubqueryAlias) Children() []*ExprGroup {
 
 type TableFunc struct {
 	*sourceBase
+	ctx   *sql.Context
 	Table sql.TableFunction
 }
 
 var _ RelExpr = (*TableFunc)(nil)
 var _ fmt.Formatter = (*TableFunc)(nil)
-var _ fmt.Stringer = (*TableFunc)(nil)
+var _ sql.Stringer = (*TableFunc)(nil)
 var _ SourceRel = (*TableFunc)(nil)
 
-func (r *TableFunc) String() string {
+func (r *TableFunc) String(ctx *sql.Context) string {
 	return fmt.Sprintf("%s", r)
 }
 
 func (r *TableFunc) Format(s fmt.State, verb rune) {
-	FormatExpr(r, s, verb)
+	FormatExpr(r.ctx, r, s, verb)
 }
 
 func (r *TableFunc) Name() string {
@@ -582,20 +602,21 @@ func (r *TableFunc) Children() []*ExprGroup {
 
 type JSONTable struct {
 	*sourceBase
+	ctx   *sql.Context
 	Table *plan.JSONTable
 }
 
 var _ RelExpr = (*JSONTable)(nil)
 var _ fmt.Formatter = (*JSONTable)(nil)
-var _ fmt.Stringer = (*JSONTable)(nil)
+var _ sql.Stringer = (*JSONTable)(nil)
 var _ SourceRel = (*JSONTable)(nil)
 
-func (r *JSONTable) String() string {
+func (r *JSONTable) String(ctx *sql.Context) string {
 	return fmt.Sprintf("%s", r)
 }
 
 func (r *JSONTable) Format(s fmt.State, verb rune) {
-	FormatExpr(r, s, verb)
+	FormatExpr(r.ctx, r, s, verb)
 }
 
 func (r *JSONTable) Name() string {
@@ -620,20 +641,21 @@ func (r *JSONTable) Children() []*ExprGroup {
 
 type EmptyTable struct {
 	*sourceBase
+	ctx   *sql.Context
 	Table *plan.EmptyTable
 }
 
 var _ RelExpr = (*EmptyTable)(nil)
 var _ fmt.Formatter = (*EmptyTable)(nil)
-var _ fmt.Stringer = (*EmptyTable)(nil)
+var _ sql.Stringer = (*EmptyTable)(nil)
 var _ SourceRel = (*EmptyTable)(nil)
 
-func (r *EmptyTable) String() string {
+func (r *EmptyTable) String(ctx *sql.Context) string {
 	return fmt.Sprintf("%s", r)
 }
 
 func (r *EmptyTable) Format(s fmt.State, verb rune) {
-	FormatExpr(r, s, verb)
+	FormatExpr(r.ctx, r, s, verb)
 }
 
 func (r *EmptyTable) Name() string {
@@ -658,20 +680,21 @@ func (r *EmptyTable) Children() []*ExprGroup {
 
 type SetOp struct {
 	*sourceBase
+	ctx   *sql.Context
 	Table *plan.SetOp
 }
 
 var _ RelExpr = (*SetOp)(nil)
 var _ fmt.Formatter = (*SetOp)(nil)
-var _ fmt.Stringer = (*SetOp)(nil)
+var _ sql.Stringer = (*SetOp)(nil)
 var _ SourceRel = (*SetOp)(nil)
 
-func (r *SetOp) String() string {
+func (r *SetOp) String(ctx *sql.Context) string {
 	return fmt.Sprintf("%s", r)
 }
 
 func (r *SetOp) Format(s fmt.State, verb rune) {
-	FormatExpr(r, s, verb)
+	FormatExpr(r.ctx, r, s, verb)
 }
 
 func (r *SetOp) Name() string {
@@ -696,20 +719,21 @@ func (r *SetOp) Children() []*ExprGroup {
 
 type Project struct {
 	*relBase
+	ctx         *sql.Context
 	Child       *ExprGroup
 	Projections []sql.Expression
 }
 
 var _ RelExpr = (*Project)(nil)
 var _ fmt.Formatter = (*Project)(nil)
-var _ fmt.Stringer = (*Project)(nil)
+var _ sql.Stringer = (*Project)(nil)
 
-func (r *Project) String() string {
+func (r *Project) String(ctx *sql.Context) string {
 	return fmt.Sprintf("%s", r)
 }
 
 func (r *Project) Format(s fmt.State, verb rune) {
-	FormatExpr(r, s, verb)
+	FormatExpr(r.ctx, r, s, verb)
 }
 
 func (r *Project) Children() []*ExprGroup {
@@ -722,19 +746,20 @@ func (r *Project) outputCols(ctx *sql.Context) sql.ColSet {
 
 type Distinct struct {
 	*relBase
+	ctx   *sql.Context
 	Child *ExprGroup
 }
 
 var _ RelExpr = (*Distinct)(nil)
 var _ fmt.Formatter = (*Distinct)(nil)
-var _ fmt.Stringer = (*Distinct)(nil)
+var _ sql.Stringer = (*Distinct)(nil)
 
-func (r *Distinct) String() string {
+func (r *Distinct) String(ctx *sql.Context) string {
 	return fmt.Sprintf("%s", r)
 }
 
 func (r *Distinct) Format(s fmt.State, verb rune) {
-	FormatExpr(r, s, verb)
+	FormatExpr(r.ctx, r, s, verb)
 }
 
 func (r *Distinct) Children() []*ExprGroup {
@@ -747,19 +772,20 @@ func (r *Distinct) outputCols(ctx *sql.Context) sql.ColSet {
 
 type Max1Row struct {
 	*relBase
+	ctx   *sql.Context
 	Child *ExprGroup
 }
 
 var _ RelExpr = (*Max1Row)(nil)
 var _ fmt.Formatter = (*Max1Row)(nil)
-var _ fmt.Stringer = (*Max1Row)(nil)
+var _ sql.Stringer = (*Max1Row)(nil)
 
-func (r *Max1Row) String() string {
+func (r *Max1Row) String(ctx *sql.Context) string {
 	return fmt.Sprintf("%s", r)
 }
 
 func (r *Max1Row) Format(s fmt.State, verb rune) {
-	FormatExpr(r, s, verb)
+	FormatExpr(r.ctx, r, s, verb)
 }
 
 func (r *Max1Row) Children() []*ExprGroup {
@@ -772,20 +798,21 @@ func (r *Max1Row) outputCols(ctx *sql.Context) sql.ColSet {
 
 type Filter struct {
 	*relBase
+	ctx     *sql.Context
 	Child   *ExprGroup
 	Filters []sql.Expression
 }
 
 var _ RelExpr = (*Filter)(nil)
 var _ fmt.Formatter = (*Filter)(nil)
-var _ fmt.Stringer = (*Filter)(nil)
+var _ sql.Stringer = (*Filter)(nil)
 
-func (r *Filter) String() string {
+func (r *Filter) String(ctx *sql.Context) string {
 	return fmt.Sprintf("%s", r)
 }
 
 func (r *Filter) Format(s fmt.State, verb rune) {
-	FormatExpr(r, s, verb)
+	FormatExpr(r.ctx, r, s, verb)
 }
 
 func (r *Filter) Children() []*ExprGroup {

@@ -15,7 +15,6 @@
 package types
 
 import (
-	"context"
 	"reflect"
 	"strconv"
 	"strings"
@@ -44,7 +43,7 @@ func NewSystemBoolType(varName string) sql.SystemVariableType {
 }
 
 // Compare implements Type interface.
-func (t SystemBoolType) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
+func (t SystemBoolType) Compare(ctx *sql.Context, a interface{}, b interface{}) (int, error) {
 	as, _, err := t.Convert(ctx, a)
 	if err != nil {
 		return 0, err
@@ -66,7 +65,7 @@ func (t SystemBoolType) Compare(ctx context.Context, a interface{}, b interface{
 }
 
 // Convert implements Type interface.
-func (t SystemBoolType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
+func (t SystemBoolType) Convert(ctx *sql.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	// Nil values are not accepted
 	switch value := v.(type) {
 	case bool:
@@ -161,7 +160,7 @@ func (t SystemBoolType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqlty
 }
 
 // String implements Type interface.
-func (t SystemBoolType) String() string {
+func (t SystemBoolType) String(ctx *sql.Context) string {
 	return "system_bool"
 }
 
@@ -201,10 +200,10 @@ func (t SystemBoolType) DisplayWidth() int {
 }
 
 // EncodeValue implements SystemVariableType interface.
-func (t SystemBoolType) EncodeValue(val interface{}) (string, error) {
+func (t SystemBoolType) EncodeValue(ctx *sql.Context, val interface{}) (string, error) {
 	expectedVal, ok := val.(int8)
 	if !ok {
-		return "", sql.ErrSystemVariableCodeFail.New(val, t.String())
+		return "", sql.ErrSystemVariableCodeFail.New(val, t.String(ctx))
 	}
 	if expectedVal == 0 {
 		return "0", nil
@@ -213,13 +212,13 @@ func (t SystemBoolType) EncodeValue(val interface{}) (string, error) {
 }
 
 // DecodeValue implements SystemVariableType interface.
-func (t SystemBoolType) DecodeValue(val string) (interface{}, error) {
+func (t SystemBoolType) DecodeValue(ctx *sql.Context, val string) (interface{}, error) {
 	if val == "0" {
 		return int8(0), nil
 	} else if val == "1" {
 		return int8(1), nil
 	}
-	return nil, sql.ErrSystemVariableCodeFail.New(val, t.String())
+	return nil, sql.ErrSystemVariableCodeFail.New(val, t.String(ctx))
 }
 
 func (t SystemBoolType) UnderlyingType() sql.Type {

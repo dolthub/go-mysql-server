@@ -208,7 +208,7 @@ func TestTruncateString(t *testing.T) {
 		expression.NewLiteral(1, types.Int32),
 	)
 
-	req.Equal("truncate(1.223,1)", f.String())
+	req.Equal("truncate(1.223,1)", f.String(sql.NewEmptyContext()))
 }
 
 func TestTruncateType(t *testing.T) {

@@ -15,7 +15,6 @@
 package types
 
 import (
-	"context"
 	"fmt"
 	"math"
 	"math/bits"
@@ -114,7 +113,7 @@ func MustCreateSetType(values []string, collation sql.CollationID) sql.SetType {
 }
 
 // Compare implements Type interface.
-func (t SetType) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
+func (t SetType) Compare(ctx *sql.Context, a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
@@ -163,7 +162,7 @@ func (t SetType) CompareValue(ctx *sql.Context, a, b sql.Value) (int, error) {
 
 // Convert implements Type interface.
 // Returns the string representing the given value if applicable.
-func (t SetType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
+func (t SetType) Convert(ctx *sql.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {
 		return nil, sql.InRange, nil
 	}
@@ -297,7 +296,7 @@ func (t SetType) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltypes.
 }
 
 // String implements Type interface.
-func (t SetType) String() string {
+func (t SetType) String(ctx *sql.Context) string {
 	return t.StringWithTableCollation(sql.Collation_Default)
 }
 

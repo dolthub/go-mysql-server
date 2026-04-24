@@ -56,8 +56,8 @@ func (d *DateDiff) Description() string {
 }
 
 // String implements Stringer
-func (d *DateDiff) String() string {
-	return fmt.Sprintf("DATEDIFF(%s, %s)", d.LeftChild, d.RightChild)
+func (d *DateDiff) String(ctx *sql.Context) string {
+	return fmt.Sprintf("DATEDIFF(%s, %s)", d.LeftChild.String(ctx), d.RightChild.String(ctx))
 }
 
 // Type implements the sql.Expression interface.
@@ -191,8 +191,8 @@ func (d *DateAdd) Description() string {
 }
 
 // String implements Stringer
-func (d *DateAdd) String() string {
-	return fmt.Sprintf("%s(%s,%s)", d.FunctionName(), d.Date, d.Interval)
+func (d *DateAdd) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s,%s)", d.FunctionName(), d.Date.String(ctx), d.Interval.String(ctx))
 }
 
 // Children implements the sql.Expression interface.
@@ -344,8 +344,8 @@ func (d *DateSub) Description() string {
 }
 
 // String implements Stringer
-func (d *DateSub) String() string {
-	return fmt.Sprintf("%s(%s,%s)", d.FunctionName(), d.Date, d.Interval)
+func (d *DateSub) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s,%s)", d.FunctionName(), d.Date.String(ctx), d.Interval.String(ctx))
 }
 
 // Children implements the sql.Expression interface.
@@ -479,8 +479,8 @@ func (*TimeDiff) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 	return sql.Collation_binary, 5
 }
 
-func (td *TimeDiff) String() string {
-	return fmt.Sprintf("%s(%s,%s)", td.FunctionName(), td.LeftChild, td.RightChild)
+func (td *TimeDiff) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s,%s)", td.FunctionName(), td.LeftChild.String(ctx), td.RightChild.String(ctx))
 }
 
 // WithChildren implements the Expression interface.
@@ -589,8 +589,8 @@ func (t *TimestampDiff) Description() string {
 }
 
 // String implements Stringer
-func (t *TimestampDiff) String() string {
-	return fmt.Sprintf("TIMESTAMPDIFF(%s, %s, %s)", t.unit, t.expr1, t.expr2)
+func (t *TimestampDiff) String(ctx *sql.Context) string {
+	return fmt.Sprintf("TIMESTAMPDIFF(%s, %s, %s)", t.unit.String(ctx), t.expr1.String(ctx), t.expr2.String(ctx))
 }
 
 // Children implements the sql.Expression interface.

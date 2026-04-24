@@ -66,4 +66,4 @@ func (*ShowProcessList) CollationCoercibility(ctx *sql.Context) (collation sql.C
 // Schema implements the Node interface.
 func (p *ShowProcessList) Schema(ctx *sql.Context) sql.Schema { return processListSchema }
 
-func (p *ShowProcessList) String() string { return "ProcessList" }
+func (p *ShowProcessList) String(ctx *sql.Context) string { return "ProcessList" }

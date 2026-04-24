@@ -60,8 +60,8 @@ func (*GeometryType) CollationCoercibility(ctx *sql.Context) (collation sql.Coll
 	return sql.Collation_binary, 4
 }
 
-func (g *GeometryType) String() string {
-	return fmt.Sprintf("%s(%s)", g.FunctionName(), g.Child.String())
+func (g *GeometryType) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", g.FunctionName(), g.Child.String(ctx))
 }
 
 // WithChildren implements the Expression interface.

@@ -52,8 +52,8 @@ func (t *tableEditor) Name() string {
 	return t.editedTable.name
 }
 
-func (t *tableEditor) String() string {
-	return t.editedTable.String()
+func (t *tableEditor) String(ctx *sql.Context) string {
+	return t.editedTable.String(ctx)
 }
 
 func (t *tableEditor) Schema(ctx *sql.Context) sql.Schema {
@@ -627,16 +627,16 @@ func (pke *pkTableEditAccumulator) deleteHelper(ctx *sql.Context, table *TableDa
 		}
 	}
 
-	deleteRowFromIndexes(table, partKey, rowIdx)
+	deleteRowFromIndexes(ctx, table, partKey, rowIdx)
 
 	return nil
 }
 
 // deleteRowFromIndexes removes the row at the given partition and index from all indexes
-func deleteRowFromIndexes(table *TableData, partKey string, rowIdx int) {
+func deleteRowFromIndexes(ctx *sql.Context, table *TableData, partKey string, rowIdx int) {
 	for _, idx := range table.indexes {
 		memIdx := idx.(*Index)
-		idxStorage := table.secondaryIndexStorage[indexName(memIdx.ID())]
+		idxStorage := table.secondaryIndexStorage[indexName(memIdx.ID(ctx))]
 		// Iterate backwards so we can remove the trailing N elements without triggering range errors on multiple passes
 		// through the loop
 		for i := len(idxStorage) - 1; i >= 0; i-- {
@@ -649,7 +649,7 @@ func deleteRowFromIndexes(table *TableData, partKey string, rowIdx int) {
 				idxRow[len(idxRow)-1] = primaryRowLocation{rowLoc.partition, rowLoc.idx - 1}
 			}
 		}
-		table.secondaryIndexStorage[indexName(memIdx.ID())] = idxStorage
+		table.secondaryIndexStorage[indexName(memIdx.ID(ctx))] = idxStorage
 	}
 }
 
@@ -692,7 +692,7 @@ func (pke *pkTableEditAccumulator) insertHelper(ctx *sql.Context, table *TableDa
 		rowIdx = len(table.partitions[key]) - 1
 	}
 
-	err = addRowToIndexes(table, row, partKey, rowIdx)
+	err = addRowToIndexes(ctx, table, row, partKey, rowIdx)
 	if err != nil {
 		return err
 	}
@@ -701,14 +701,14 @@ func (pke *pkTableEditAccumulator) insertHelper(ctx *sql.Context, table *TableDa
 }
 
 // addRowToIndexes adds the given row to all indexes
-func addRowToIndexes(table *TableData, row sql.Row, partKey string, rowIdx int) error {
+func addRowToIndexes(ctx *sql.Context, table *TableData, row sql.Row, partKey string, rowIdx int) error {
 	for _, idx := range table.indexes {
 		memIdx := idx.(*Index)
 		idxRow, err := memIdx.rowToIndexStorage(row, partKey, rowIdx)
 		if err != nil {
 			return err
 		}
-		table.secondaryIndexStorage[indexName(memIdx.ID())] = append(table.secondaryIndexStorage[indexName(memIdx.ID())], idxRow)
+		table.secondaryIndexStorage[indexName(memIdx.ID(ctx))] = append(table.secondaryIndexStorage[indexName(memIdx.ID(ctx))], idxRow)
 	}
 	return nil
 }
@@ -862,7 +862,7 @@ func (k *keylessTableEditAccumulator) deleteHelper(ctx *sql.Context, table *Tabl
 		}
 	}
 
-	deleteRowFromIndexes(table, partKey, rowIdx)
+	deleteRowFromIndexes(ctx, table, partKey, rowIdx)
 
 	return nil
 }
@@ -878,7 +878,7 @@ func (k *keylessTableEditAccumulator) insertHelper(ctx *sql.Context, table *Tabl
 	storageRow := k.tableData.toStorageRow(row)
 	table.partitions[key] = append(table.partitions[key], storageRow)
 
-	err = addRowToIndexes(table, row, key, len(table.partitions[key])-1)
+	err = addRowToIndexes(ctx, table, row, key, len(table.partitions[key])-1)
 	if err != nil {
 		return err
 	}

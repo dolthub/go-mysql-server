@@ -96,7 +96,7 @@ func TestEuclideanDistance(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("%v x %v = %.2f", tt.x, tt.y, tt.dist), func(t *testing.T) {
-			cmp, err := euclideanDistance(tt.x, tt.y, len(tt.x))
+			cmp, err := euclideanDistance(sql.NewEmptyContext(), tt.x, tt.y, len(tt.x))
 			require.NoError(t, err)
 			require.Equal(t, tt.dist, cmp)
 		})
@@ -295,7 +295,7 @@ func TestBinAlignment(t *testing.T) {
 
 	for i, tt := range tests {
 		t.Run(fmt.Sprintf("alignment test %d", i), func(t *testing.T) {
-			lCmp, rCmp, err := AlignBuckets(tt.left, tt.right, nil, nil, []sql.Type{types.Int64}, []sql.Type{types.Int64}, cmp)
+			lCmp, rCmp, err := AlignBuckets(sql.NewEmptyContext(), tt.left, tt.right, nil, nil, []sql.Type{types.Int64}, []sql.Type{types.Int64}, cmp)
 			require.NoError(t, err)
 			compareHist(t, tt.expLeft, lCmp)
 			compareHist(t, tt.expRight, rCmp)

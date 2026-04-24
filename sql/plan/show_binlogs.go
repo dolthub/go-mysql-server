@@ -47,7 +47,7 @@ func (s *ShowBinlogs) Resolved() bool {
 	return true
 }
 
-func (s *ShowBinlogs) String() string {
+func (s *ShowBinlogs) String(ctx *sql.Context) string {
 	return "SHOW BINARY LOGS"
 }
 

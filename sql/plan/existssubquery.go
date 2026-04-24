@@ -77,8 +77,8 @@ func (e *ExistsSubquery) Children() []sql.Expression {
 }
 
 // String implements the Expression interface.
-func (e *ExistsSubquery) String() string {
-	return fmt.Sprintf("EXISTS %s", e.Query)
+func (e *ExistsSubquery) String(ctx *sql.Context) string {
+	return fmt.Sprintf("EXISTS %s", e.Query.String(ctx))
 }
 
 // DebugString implements the Expression interface.

@@ -15,7 +15,6 @@
 package types
 
 import (
-	"context"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -123,7 +122,7 @@ func (t EnumType) MaxTextResponseByteLength(*sql.Context) uint32 {
 }
 
 // Compare implements Type interface.
-func (t EnumType) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
+func (t EnumType) Compare(ctx *sql.Context, a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
@@ -164,7 +163,7 @@ func (t EnumType) CompareValue(ctx *sql.Context, a, b sql.Value) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t EnumType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
+func (t EnumType) Convert(ctx *sql.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {
 		return nil, sql.InRange, nil
 	}
@@ -173,7 +172,7 @@ func (t EnumType) Convert(ctx context.Context, v interface{}) (interface{}, sql.
 	case int:
 		// MySQL rejects 0 values in strict mode regardless of enum definition
 		if value == 0 {
-			if sqlCtx, ok := ctx.(*sql.Context); ok && sql.LoadSqlMode(sqlCtx).Strict() {
+			if sql.LoadSqlMode(ctx).Strict() {
 				return nil, sql.InRange, ErrConvertingToEnum.New(value)
 			}
 		}
@@ -302,7 +301,7 @@ func (t EnumType) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltypes
 }
 
 // String implements Type interface.
-func (t EnumType) String() string {
+func (t EnumType) String(ctx *sql.Context) string {
 	return t.StringWithTableCollation(sql.Collation_Default)
 }
 

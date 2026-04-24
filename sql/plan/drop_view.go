@@ -59,9 +59,9 @@ func (dv *SingleDropView) IsReadOnly() bool {
 // Schema implements the Node interface. It always returns Query OK result.
 func (dv *SingleDropView) Schema(ctx *sql.Context) sql.Schema { return types.OkResultSchema }
 
-// String implements the fmt.Stringer interface, using sql.TreePrinter to
+// String implements the sql.Stringer interface, using sql.TreePrinter to
 // generate the string.
-func (dv *SingleDropView) String() string {
+func (dv *SingleDropView) String(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("SingleDropView(%s.%s)", dv.database.Name(), dv.ViewName)
 
@@ -136,12 +136,12 @@ func (dvs *DropView) Resolved() bool {
 // Schema implements the Node interface. It always returns Query OK result.
 func (dvs *DropView) Schema(ctx *sql.Context) sql.Schema { return types.OkResultSchema }
 
-// String implements the fmt.Stringer interface, using sql.TreePrinter to
+// String implements the sql.Stringer interface, using sql.TreePrinter to
 // generate the string.
-func (dvs *DropView) String() string {
+func (dvs *DropView) String(ctx *sql.Context) string {
 	childrenStrings := make([]string, len(dvs.children))
 	for i, child := range dvs.children {
-		childrenStrings[i] = child.String()
+		childrenStrings[i] = child.String(ctx)
 	}
 
 	pr := sql.NewTreePrinter()

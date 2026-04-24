@@ -150,9 +150,9 @@ func (p *Procedure) IsReadOnly() bool {
 }
 
 // String implements the sql.Node interface.
-func (p *Procedure) String() string {
+func (p *Procedure) String(ctx *sql.Context) string {
 	if p.ExternalProc != nil {
-		return p.ExternalProc.String()
+		return p.ExternalProc.String(ctx)
 	}
 	return ""
 }
@@ -257,7 +257,7 @@ func (p *Procedure) IsExternal() bool {
 }
 
 // String returns the original SQL representation.
-func (pst ProcedureSecurityContext) String() string {
+func (pst ProcedureSecurityContext) String(ctx *sql.Context) string {
 	switch pst {
 	case ProcedureSecurityContext_Definer:
 		return "SQL SECURITY DEFINER"
@@ -269,7 +269,7 @@ func (pst ProcedureSecurityContext) String() string {
 }
 
 // String returns the original SQL representation.
-func (pp ProcedureParam) String() string {
+func (pp ProcedureParam) String(ctx *sql.Context) string {
 	direction := ""
 	switch pp.Direction {
 	case ProcedureParamDirection_In:
@@ -279,11 +279,11 @@ func (pp ProcedureParam) String() string {
 	case ProcedureParamDirection_Out:
 		direction = "OUT"
 	}
-	return fmt.Sprintf("%s %s %s", direction, pp.Name, pp.Type.String())
+	return fmt.Sprintf("%s %s %s", direction, pp.Name, pp.Type.String(ctx))
 }
 
 // String returns the original SQL representation.
-func (c Characteristic) String() string {
+func (c Characteristic) String(ctx *sql.Context) string {
 	switch c {
 	case Characteristic_LanguageSql:
 		return "LANGUAGE SQL"

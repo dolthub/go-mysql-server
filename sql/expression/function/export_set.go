@@ -117,11 +117,11 @@ func (e *ExportSet) CollationCoercibility(ctx *sql.Context) (collation sql.Colla
 }
 
 // String implements the Expression interface
-func (e *ExportSet) String() string {
+func (e *ExportSet) String(ctx *sql.Context) string {
 	children := e.Children()
 	childStrs := make([]string, len(children))
 	for i, child := range children {
-		childStrs[i] = child.String()
+		childStrs[i] = child.String(ctx)
 	}
 	return fmt.Sprintf("export_set(%s)", strings.Join(childStrs, ", "))
 }

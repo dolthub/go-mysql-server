@@ -120,6 +120,7 @@ func (m *Memo) getTableId(table string) (GroupId, bool) {
 
 func (m *Memo) MemoizeLeftJoin(ctx *sql.Context, grp, left, right *ExprGroup, op plan.JoinType, filter []sql.Expression) *ExprGroup {
 	newJoin := &LeftJoin{
+		ctx: ctx,
 		JoinBase: &JoinBase{
 			relBase: &relBase{},
 			Left:    left,
@@ -139,6 +140,7 @@ func (m *Memo) MemoizeLeftJoin(ctx *sql.Context, grp, left, right *ExprGroup, op
 
 func (m *Memo) MemoizeInnerJoin(ctx *sql.Context, grp, left, right *ExprGroup, op plan.JoinType, filter []sql.Expression) *ExprGroup {
 	newJoin := &InnerJoin{
+		ctx: ctx,
 		JoinBase: &JoinBase{
 			relBase: &relBase{},
 			Left:    left,
@@ -170,6 +172,7 @@ func (m *Memo) MemoizeLookupJoin(ctx *sql.Context, grp, left, right *ExprGroup, 
 			Op:      op.AsLookup(),
 			Filter:  filter,
 		},
+		ctx:    ctx,
 		Lookup: lookup,
 	}
 
@@ -193,6 +196,7 @@ func (m *Memo) MemoizeHashJoin(ctx *sql.Context, grp *ExprGroup, join *JoinBase,
 		return grp
 	}
 	newJoin := &HashJoin{
+		Ctx:        ctx,
 		JoinBase:   join.Copy(),
 		LeftAttrs:  toExpr,
 		RightAttrs: fromExpr,
@@ -219,6 +223,7 @@ func (m *Memo) MemoizeConcatLookupJoin(ctx *sql.Context, grp, left, right *ExprG
 			Op:      op.AsLookup(),
 			Filter:  filter,
 		},
+		ctx:    ctx,
 		Concat: lookups,
 	}
 
@@ -239,6 +244,7 @@ func (m *Memo) MemoizeRangeHeapJoin(ctx *sql.Context, grp, left, right *ExprGrou
 			Op:      op,
 			Filter:  filter,
 		},
+		Ctx:       ctx,
 		RangeHeap: rangeHeap,
 	}
 	newJoin.RangeHeap.Parent = newJoin.JoinBase
@@ -260,6 +266,7 @@ func (m *Memo) MemoizeMergeJoin(ctx *sql.Context, grp, left, right *ExprGroup, l
 			Left:    left,
 			Right:   right,
 		},
+		ctx:       ctx,
 		InnerScan: lIdx,
 		OuterScan: rIdx,
 		SwapCmp:   swapCmp,
@@ -299,6 +306,7 @@ func (m *Memo) MemoizeMergeJoin(ctx *sql.Context, grp, left, right *ExprGroup, l
 func (m *Memo) MemoizeProject(ctx *sql.Context, grp, child *ExprGroup, projections []sql.Expression) *ExprGroup {
 	rel := &Project{
 		relBase:     &relBase{},
+		ctx:         ctx,
 		Child:       child,
 		Projections: projections,
 	}
@@ -313,11 +321,13 @@ func (m *Memo) MemoizeProject(ctx *sql.Context, grp, child *ExprGroup, projectio
 func (m *Memo) MemoizeDistinctProject(ctx *sql.Context, grp, child *ExprGroup, projections []sql.Expression) *ExprGroup {
 	proj := &Project{
 		relBase:     &relBase{},
+		ctx:         ctx,
 		Child:       child,
 		Projections: projections,
 	}
 	projGrp := m.NewExprGroup(ctx, proj)
 	distinct := &Distinct{
+		ctx:     ctx,
 		relBase: &relBase{},
 		Child:   projGrp,
 	}
@@ -334,6 +344,7 @@ func (m *Memo) MemoizeDistinctProject(ctx *sql.Context, grp, child *ExprGroup, p
 func (m *Memo) memoizeIndexScan(ctx *sql.Context, grp *ExprGroup, ita *plan.IndexedTableAccess, alias string, index *Index, stat sql.Statistic) *ExprGroup {
 	rel := &IndexScan{
 		sourceBase: &sourceBase{relBase: &relBase{}},
+		Ctx:        ctx,
 		Table:      ita,
 		Alias:      alias,
 		Index:      index,
@@ -352,7 +363,7 @@ func (m *Memo) memoizeIndexScan(ctx *sql.Context, grp *ExprGroup, ita *plan.Inde
 // as done early.
 func (m *Memo) MemoizeStaticIndexAccess(ctx *sql.Context, grp *ExprGroup, aliasName string, idx *Index, ita *plan.IndexedTableAccess, filters []sql.Expression, stat sql.Statistic) {
 	if m.Debug {
-		ctx.GetLogger().Debugf("new indexed table: %s/%s/%s", ita.Index().Database(), ita.Index().Table(), ita.Index().ID())
+		ctx.GetLogger().Debugf("new indexed table: %s/%s/%s", ita.Index().Database(), ita.Index().Table(), ita.Index().ID(ctx))
 		ctx.GetLogger().Debugf("index stats cnt: %d: ", stat.RowCount())
 		ctx.GetLogger().Debugf("index stats histogram: %s", stat.Histogram().DebugString(ctx))
 	}
@@ -376,6 +387,7 @@ func (m *Memo) MemoizeStaticIndexAccess(ctx *sql.Context, grp *ExprGroup, aliasN
 
 func (m *Memo) MemoizeFilter(ctx *sql.Context, grp, child *ExprGroup, filters []sql.Expression) *ExprGroup {
 	rel := &Filter{
+		ctx:     ctx,
 		relBase: &relBase{},
 		Child:   child,
 		Filters: filters,
@@ -391,6 +403,7 @@ func (m *Memo) MemoizeFilter(ctx *sql.Context, grp, child *ExprGroup, filters []
 func (m *Memo) MemoizeMax1Row(ctx *sql.Context, grp, child *ExprGroup) *ExprGroup {
 	rel := &Max1Row{
 		relBase: &relBase{},
+		ctx:     ctx,
 		Child:   child,
 	}
 	if grp == nil {
@@ -470,7 +483,7 @@ func (m *Memo) optimizeMemoGroup(ctx *sql.Context, grp *ExprGroup) error {
 				m.Tracer.Log("Plan %s: using sorted distinct", n)
 			} else {
 				n.SetDistinct(HashDistinctOp, grp.RelProps.DistinctOn...)
-				d := &Distinct{Child: grp}
+				d := &Distinct{ctx: ctx, Child: grp}
 				relCost += float64(m.statsForRel(ctx, d).RowCount())
 				m.Tracer.Log("Plan %s: using hash distinct", n)
 			}
@@ -608,9 +621,9 @@ func (m *Memo) SetJoinOp(op HintType, left, right string) {
 	m.hints.ops = append(m.hints.ops, hint)
 }
 
-var _ fmt.Stringer = (*Memo)(nil)
+var _ sql.Stringer = (*Memo)(nil)
 
-func (m *Memo) String() string {
+func (m *Memo) String(ctx *sql.Context) string {
 	exprs := make([]string, m.cnt)
 	groups := make([]*ExprGroup, 0)
 	if m.root != nil {
@@ -741,7 +754,7 @@ type Coster interface {
 // RelExpr wraps a sql.Node for use as a ExprGroup linked list node.
 // TODO: we need relExprs for every sql.Node and sql.Expression
 type RelExpr interface {
-	fmt.Stringer
+	sql.Stringer
 	exprType
 	Next() RelExpr
 	SetNext(RelExpr)
@@ -984,7 +997,7 @@ type RangeHeap struct {
 }
 
 // FormatExpr formats an exprType for debugging purposes, compatible with fmt.Formatter
-func FormatExpr(r exprType, s fmt.State, verb rune) {
+func FormatExpr(ctx *sql.Context, r exprType, s fmt.State, verb rune) {
 	verbString := fmt.Sprintf("%%%c", verb)
 	if verb == 'v' && s.Flag('+') {
 		verbString = "%+v"
@@ -1002,7 +1015,7 @@ func FormatExpr(r exprType, s fmt.State, verb rune) {
 		io.WriteString(s, fmt.Sprintf("antijoin "+verbString+" "+verbString, r.Left, r.Right))
 	case *LookupJoin:
 		io.WriteString(s, fmt.Sprintf("lookupjoin "+verbString+" "+verbString+" on %s",
-			r.Left, r.Right, r.Lookup.Index.idx.ID()))
+			r.Left, r.Right, r.Lookup.Index.idx.ID(ctx)))
 	case *RangeHeapJoin:
 		io.WriteString(s, fmt.Sprintf("rangeheapjoin "+verbString+" "+verbString, r.Left, r.Right))
 	case *ConcatJoin:
@@ -1019,9 +1032,9 @@ func FormatExpr(r exprType, s fmt.State, verb rune) {
 		io.WriteString(s, fmt.Sprintf("tablescan: %s", r.Name()))
 	case *IndexScan:
 		if r.Alias != "" {
-			io.WriteString(s, fmt.Sprintf("indexscan on %s: %s", r.Index.SqlIdx().ID(), r.Alias))
+			io.WriteString(s, fmt.Sprintf("indexscan on %s: %s", r.Index.SqlIdx().ID(ctx), r.Alias))
 		}
-		io.WriteString(s, fmt.Sprintf("indexscan on %s: %s", r.Index.SqlIdx().ID(), r.Name()))
+		io.WriteString(s, fmt.Sprintf("indexscan on %s: %s", r.Index.SqlIdx().ID(ctx), r.Name()))
 	case *Values:
 		io.WriteString(s, fmt.Sprintf("values: %s", r.Name()))
 	case *TableAlias:

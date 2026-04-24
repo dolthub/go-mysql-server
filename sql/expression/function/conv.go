@@ -62,8 +62,8 @@ func (c *Conv) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
-func (c *Conv) String() string {
-	return fmt.Sprintf("%s(%s,%s,%s)", c.FunctionName(), c.n, c.fromBase, c.toBase)
+func (c *Conv) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s,%s,%s)", c.FunctionName(), c.n.String(ctx), c.fromBase.String(ctx), c.toBase.String(ctx))
 }
 
 // Eval implements the Expression interface.

@@ -185,7 +185,7 @@ type GrantUserAssumption struct {
 }
 
 // String returns the Privilege as a formatted string.
-func (p *Privilege) String() string {
+func (p *Privilege) String(ctx *sql.Context) string {
 	sb := strings.Builder{}
 	switch p.Type {
 	case PrivilegeType_All:
@@ -225,7 +225,7 @@ func (p *Privilege) IsValidDynamic() bool {
 }
 
 // String returns the PrivilegeLevel as a formatted string.
-func (p *PrivilegeLevel) String() string {
+func (p *PrivilegeLevel) String(ctx *sql.Context) string {
 	if p.Database == "" {
 		if p.TableRoutine == "*" {
 			return "*"

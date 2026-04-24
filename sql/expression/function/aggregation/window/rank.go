@@ -63,12 +63,12 @@ func (p *Rank) Resolved() bool {
 	return windowResolved(p.window)
 }
 
-func (p *Rank) String() string {
+func (p *Rank) String(ctx *sql.Context) string {
 	sb := strings.Builder{}
 	sb.WriteString("rank()")
 	if p.window != nil {
 		sb.WriteString(" ")
-		sb.WriteString(p.window.String())
+		sb.WriteString(p.window.String(ctx))
 	}
 	return sb.String()
 }

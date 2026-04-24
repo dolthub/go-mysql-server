@@ -14,14 +14,10 @@
 
 package sql
 
-import (
-	"fmt"
-)
-
 // Table is a SQL table.
 type Table interface {
 	Nameable
-	fmt.Stringer
+	Stringer
 	// Schema returns the table's schema.
 	Schema(*Context) Schema
 	// Collation returns the table's collation.
@@ -453,7 +449,7 @@ type SchemaValidator interface {
 	Database
 	// ValidateSchema lets storage integrators validate whether they can
 	// serialize a given schema.
-	ValidateSchema(Schema) error
+	ValidateSchema(*Context, Schema) error
 }
 
 // UnresolvedTable is a Table that is either unresolved or deferred for until an asOf resolution.

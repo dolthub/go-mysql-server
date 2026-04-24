@@ -65,8 +65,8 @@ func (j *JSONOverlaps) Resolved() bool {
 }
 
 // String implements sql.Expression
-func (j *JSONOverlaps) String() string {
-	return fmt.Sprintf("%s(%s, %s)", j.FunctionName(), j.Left.String(), j.Right.String())
+func (j *JSONOverlaps) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s, %s)", j.FunctionName(), j.Left.String(ctx), j.Right.String(ctx))
 }
 
 // Type implements sql.Expression

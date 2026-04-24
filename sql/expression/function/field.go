@@ -73,10 +73,10 @@ func (f *Field) IsNullable(ctx *sql.Context) bool {
 }
 
 // String implements the Stringer interface.
-func (f *Field) String() string {
+func (f *Field) String(ctx *sql.Context) string {
 	var args = make([]string, len(f.args))
 	for i, arg := range f.args {
-		args[i] = arg.String()
+		args[i] = arg.String(ctx)
 	}
 	return fmt.Sprintf("%s(%s)", f.FunctionName(), strings.Join(args, ","))
 }

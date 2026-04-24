@@ -893,7 +893,7 @@ func (s SimpleTableFunction) Resolved() bool {
 	return true
 }
 
-func (s SimpleTableFunction) String() string {
+func (s SimpleTableFunction) String(ctx *sql.Context) string {
 	return "SimpleTableFunction"
 }
 

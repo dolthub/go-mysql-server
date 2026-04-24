@@ -334,13 +334,13 @@ func (b *Builder) buildCreateTable(inScope *scope, c *ast.DDL) (outScope *scope)
 
 	if privDb, ok := database.(mysql_db.PrivilegedDatabase); ok {
 		if sv, ok := privDb.Unwrap().(sql.SchemaValidator); ok {
-			if err := sv.ValidateSchema(schema.PhysicalSchema()); err != nil {
+			if err := sv.ValidateSchema(b.ctx, schema.PhysicalSchema()); err != nil {
 				b.handleErr(err)
 			}
 		}
 	} else {
 		if sv, ok := database.(sql.SchemaValidator); ok {
-			if err := sv.ValidateSchema(schema.PhysicalSchema()); err != nil {
+			if err := sv.ValidateSchema(b.ctx, schema.PhysicalSchema()); err != nil {
 				b.handleErr(err)
 			}
 		}
@@ -406,20 +406,20 @@ func (b *Builder) getIndexDefs(table sql.Table) sql.IndexDefs {
 		}
 		constraint := sql.IndexConstraint_None
 		if idx.IsUnique() {
-			if idx.ID() == "PRIMARY" {
+			if idx.ID(b.ctx) == "PRIMARY" {
 				constraint = sql.IndexConstraint_Primary
 			} else {
 				constraint = sql.IndexConstraint_Unique
 			}
 		}
-		exprs := idx.Expressions()
+		exprs := idx.Expressions(b.ctx)
 		columns := make([]sql.IndexColumn, len(exprs))
 		for i, col := range exprs {
 			col = col[strings.IndexByte(col, '.')+1:]
 			columns[i] = sql.IndexColumn{Name: col}
 		}
 		idxDefs = append(idxDefs, &sql.IndexDef{
-			Name:       idx.ID(),
+			Name:       idx.ID(b.ctx),
 			Storage:    sql.IndexUsing_Default,
 			Constraint: constraint,
 			Columns:    columns,
@@ -1740,27 +1740,27 @@ func (b *Builder) resolveColumnDefaultExpression(inScope *scope, columnDef *sql.
 
 	// Empty string is a special case, it means the default value is the empty string
 	// TODO: why isn't this serialized as ''
-	defStr := def.String()
+	defStr := def.String(b.ctx)
 	if defStr == "" {
 		return b.convertDefaultExpression(inScope, &ast.SQLVal{Val: []byte{}, Type: ast.StrVal}, columnDef.Type, columnDef.Nullable)
 	}
 
 	parsed, err := b.parser.ParseSimple("SELECT " + defStr)
 	if err != nil {
-		err := sql.ErrInvalidColumnDefaultValue.Wrap(err, def)
+		err := sql.ErrInvalidColumnDefaultValue.Wrap(err, def.String(b.ctx))
 		b.handleErr(err)
 	}
 
 	selectStmt, ok := parsed.(*ast.Select)
 	if !ok || len(selectStmt.SelectExprs) != 1 {
-		err := sql.ErrInvalidColumnDefaultValue.New(def)
+		err := sql.ErrInvalidColumnDefaultValue.New(def.String(b.ctx))
 		b.handleErr(err)
 	}
 
 	expr := selectStmt.SelectExprs[0]
 	ae, ok := expr.(*ast.AliasedExpr)
 	if !ok {
-		err := sql.ErrInvalidColumnDefaultValue.New(def)
+		err := sql.ErrInvalidColumnDefaultValue.New(def.String(b.ctx))
 		b.handleErr(err)
 	}
 

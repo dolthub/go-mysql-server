@@ -83,11 +83,11 @@ func (d Distinct) Describe(ctx *sql.Context, options sql.DescribeOptions) string
 	return p.String()
 }
 
-// String implements fmt.Stringer
-func (d Distinct) String() string {
+// String implements sql.Stringer
+func (d Distinct) String(ctx *sql.Context) string {
 	p := sql.NewTreePrinter()
 	_ = p.WriteNode("Distinct")
-	_ = p.WriteChildren(d.Child.String())
+	_ = p.WriteChildren(d.Child.String(ctx))
 	return p.String()
 }
 
@@ -174,10 +174,10 @@ func (d *OrderedDistinct) CollationCoercibility(ctx *sql.Context) (collation sql
 	return sql.GetCoercibility(ctx, d.Child)
 }
 
-func (d OrderedDistinct) String() string {
+func (d OrderedDistinct) String(ctx *sql.Context) string {
 	p := sql.NewTreePrinter()
 	_ = p.WriteNode("OrderedDistinct")
-	_ = p.WriteChildren(d.Child.String())
+	_ = p.WriteChildren(d.Child.String(ctx))
 	return p.String()
 }
 

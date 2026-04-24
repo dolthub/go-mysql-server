@@ -70,9 +70,9 @@ func (o *Offset) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 	return sql.GetCoercibility(ctx, o.Child)
 }
 
-func (o Offset) String() string {
+func (o Offset) String(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("Offset(%s)", o.Offset)
-	_ = pr.WriteChildren(o.Child.String())
+	_ = pr.WriteNode("Offset(%s)", o.Offset.String(ctx))
+	_ = pr.WriteChildren(o.Child.String(ctx))
 	return pr.String()
 }

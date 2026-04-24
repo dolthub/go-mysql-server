@@ -264,7 +264,7 @@ func (t StringType) Length() int64 {
 }
 
 // Compare implements Type interface.
-func (t StringType) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
+func (t StringType) Compare(ctx *sql.Context, a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
@@ -340,7 +340,7 @@ func (t StringType) CompareValue(ctx *sql.Context, a, b sql.Value) (int, error) 
 }
 
 // Convert implements Type interface.
-func (t StringType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
+func (t StringType) Convert(ctx *sql.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {
 		return nil, sql.InRange, nil
 	}
@@ -371,12 +371,12 @@ func (t StringType) Convert(ctx context.Context, v interface{}) (interface{}, sq
 
 }
 
-func ConvertToString(ctx context.Context, v interface{}, t sql.StringType, dest []byte) (string, error) {
+func ConvertToString(ctx *sql.Context, v interface{}, t sql.StringType, dest []byte) (string, error) {
 	ret, err := ConvertToBytes(ctx, v, t, dest)
 	return string(ret), err
 }
 
-func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest []byte) ([]byte, error) {
+func ConvertToBytes(ctx *sql.Context, v interface{}, t sql.StringType, dest []byte) ([]byte, error) {
 	var val []byte
 	start := len(dest)
 	// Based on the type of the input, convert it into a byte array, writing it into |dest| to avoid an allocation.
@@ -458,7 +458,7 @@ func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest [
 	case GeometryValue:
 		return s.Serialize(), nil
 	default:
-		return nil, sql.ErrConvertToSQL.New(s, t)
+		return nil, sql.ErrConvertToSQL.New(s, t.String(ctx))
 	}
 
 	// TODO: add this checking to the interface, rather than relying on the StringType implementation
@@ -467,20 +467,20 @@ func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest [
 		if st.baseType == sqltypes.Text {
 			// for TEXT types, we use the byte length instead of the character length
 			if int64(len(val)) > st.maxByteLength {
-				return nil, ErrLengthBeyondLimit.New(val, t.String())
+				return nil, ErrLengthBeyondLimit.New(val, t.String(ctx))
 			}
 		} else {
 			if t.CharacterSet().MaxLength() == 1 {
 				// if the character set only has a max size of 1, we can just count the bytes
 				if int64(len(val)) > st.maxCharLength {
-					return nil, ErrLengthBeyondLimit.New(val, t.String())
+					return nil, ErrLengthBeyondLimit.New(val, t.String(ctx))
 				}
 			} else {
 				// TODO: this should count the string's length properly according to the character set
 				// convert 'val' string to rune to count the character length, not byte length
 				if int64(len(val)) > st.maxCharLength {
 					if int64(len([]rune(string(val)))) > st.maxCharLength {
-						return nil, ErrLengthBeyondLimit.New(val, t.String())
+						return nil, ErrLengthBeyondLimit.New(val, t.String(ctx))
 					}
 				}
 			}
@@ -510,7 +510,7 @@ func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest [
 	if !IsBinaryType(t) && !utf8.Valid(bytesVal) {
 		charset := t.CharacterSet()
 		if charset == sql.CharacterSet_utf8mb4 {
-			if sqlCtx, ok := ctx.(*sql.Context); ok && sql.LoadSqlMode(sqlCtx).Strict() {
+			if sql.LoadSqlMode(ctx).Strict() {
 				// Strict mode: reject invalid UTF8
 				invalidByte := formatInvalidByteForError(bytesVal)
 				colName, rowNum := getColumnContext(ctx)
@@ -610,7 +610,7 @@ func formatInvalidByteForError(bytesVal []byte) string {
 }
 
 // convertToLongTextString safely converts a value to string using LongText.Convert with nil checking
-func convertToLongTextString(ctx context.Context, val interface{}) (string, error) {
+func convertToLongTextString(ctx *sql.Context, val interface{}) (string, error) {
 	converted, _, err := LongText.Convert(ctx, val)
 	if err != nil {
 		return "", err
@@ -622,7 +622,7 @@ func convertToLongTextString(ctx context.Context, val interface{}) (string, erro
 }
 
 // convertEnumToString converts an enum value to its string representation
-func convertEnumToString(ctx context.Context, val interface{}, enumType EnumType) (string, error) {
+func convertEnumToString(ctx *sql.Context, val interface{}, enumType EnumType) (string, error) {
 	if enumVal, ok := val.(uint16); ok {
 		if enumStr, exists := enumType.At(int(enumVal)); exists {
 			return enumStr, nil
@@ -633,7 +633,7 @@ func convertEnumToString(ctx context.Context, val interface{}, enumType EnumType
 }
 
 // convertSetToString converts a set value to its string representation
-func convertSetToString(ctx context.Context, val interface{}, setType SetType) (string, error) {
+func convertSetToString(ctx *sql.Context, val interface{}, setType SetType) (string, error) {
 	if setVal, ok := val.(uint64); ok {
 		return setType.BitsToString(setVal)
 	}
@@ -646,7 +646,7 @@ func convertSetToString(ctx context.Context, val interface{}, setType SetType) (
 // conversions are made. If the value is a byte slice then a non-copying conversion is made, which means that the
 // original byte slice MUST NOT be modified after being passed to this function. If modifications need to be made, then
 // you must allocate a new byte slice and pass that new one in.
-func ConvertToCollatedString(ctx context.Context, val interface{}, typ sql.Type) (string, sql.CollationID, error) {
+func ConvertToCollatedString(ctx *sql.Context, val interface{}, typ sql.Type) (string, sql.CollationID, error) {
 	var content string
 	var collation sql.CollationID
 	var err error
@@ -737,13 +737,13 @@ func (t StringType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.
 			dest = append(dest, v...)
 			valueBytes = dest[start:]
 		case int, int8, int16, int32, int64:
-			num, _, err := convertToInt64(Int64.(NumberTypeImpl_), v, false)
+			num, _, err := convertToInt64(ctx, Int64.(NumberTypeImpl_), v, false)
 			if err != nil {
 				return sqltypes.Value{}, err
 			}
 			valueBytes = strconv.AppendInt(dest, num, 10)
 		case uint, uint8, uint16, uint32, uint64:
-			num, _, err := convertToUint64(Int64.(NumberTypeImpl_), v, false)
+			num, _, err := convertToUint64(ctx, Int64.(NumberTypeImpl_), v, false)
 			if err != nil {
 				return sqltypes.Value{}, err
 			}
@@ -827,7 +827,7 @@ func (t StringType) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltyp
 }
 
 // String implements Type interface.
-func (t StringType) String() string {
+func (t StringType) String(ctx *sql.Context) string {
 	return t.StringWithTableCollation(sql.Collation_Default)
 }
 

@@ -15,7 +15,6 @@
 package types
 
 import (
-	"context"
 	"encoding/binary"
 	"math"
 	"reflect"
@@ -51,12 +50,12 @@ var (
 )
 
 // Compare implements Type interface.
-func (t PointType) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
+func (t PointType) Compare(ctx *sql.Context, a interface{}, b interface{}) (int, error) {
 	return GeometryType{}.Compare(ctx, a, b)
 }
 
 // Convert implements Type interface.
-func (t PointType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
+func (t PointType) Convert(ctx *sql.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	// Allow null
 	if v == nil {
 		return nil, sql.InRange, nil
@@ -130,7 +129,7 @@ func (t PointType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.V
 }
 
 // String implements Type interface.
-func (t PointType) String() string {
+func (t PointType) String(ctx *sql.Context) string {
 	return "point"
 }
 

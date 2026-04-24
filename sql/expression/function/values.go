@@ -59,8 +59,8 @@ func (v *Values) Description() string {
 }
 
 // String implements sql.FunctionExpression.
-func (v *Values) String() string {
-	return fmt.Sprintf("%s(%s)", v.FunctionName(), v.Child.String())
+func (v *Values) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", v.FunctionName(), v.Child.String(ctx))
 }
 
 // Type implements sql.FunctionExpression.

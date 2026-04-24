@@ -63,11 +63,11 @@ func (*ShowVariables) CollationCoercibility(ctx *sql.Context) (collation sql.Col
 	return sql.Collation_binary, 7
 }
 
-// String implements the fmt.Stringer interface.
-func (sv *ShowVariables) String() string {
+// String implements the sql.Stringer interface.
+func (sv *ShowVariables) String(ctx *sql.Context) string {
 	var f string
 	if sv.Filter != nil {
-		f = fmt.Sprintf(" WHERE %s", sv.Filter.String())
+		f = fmt.Sprintf(" WHERE %s", sv.Filter.String(ctx))
 	}
 
 	if sv.Global {

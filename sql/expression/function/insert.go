@@ -75,8 +75,8 @@ func (i *Insert) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 }
 
 // String implements the Expression interface
-func (i *Insert) String() string {
-	return fmt.Sprintf("insert(%s, %s, %s, %s)", i.str, i.pos, i.length, i.newStr)
+func (i *Insert) String(ctx *sql.Context) string {
+	return fmt.Sprintf("insert(%s, %s, %s, %s)", i.str.String(ctx), i.pos.String(ctx), i.length.String(ctx), i.newStr.String(ctx))
 }
 
 // WithChildren implements the Expression interface

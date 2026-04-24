@@ -142,7 +142,7 @@ func TestIndexBuilderRanges(t *testing.T) {
 			all = append(all, clauses[perm[0]]...)
 			all = append(all, clauses[perm[1]]...)
 			all = append(all, clauses[perm[2]]...)
-			combined, err := sql.RemoveOverlappingRanges(all...)
+			combined, err := sql.RemoveOverlappingRanges(ctx, all...)
 			assert.NoError(t, err)
 			assert.NotNil(t, combined)
 			assert.Equal(t, sql.MySQLRangeCollection{
@@ -167,7 +167,7 @@ func (testIndex) CanSupportOrderBy(_ sql.Expression) bool {
 	return false
 }
 
-func (testIndex) ID() string {
+func (testIndex) ID(*sql.Context) string {
 	return "test_index"
 }
 
@@ -179,7 +179,7 @@ func (testIndex) Table() string {
 	return "table"
 }
 
-func (i testIndex) Expressions() []string {
+func (i testIndex) Expressions(ctx *sql.Context) []string {
 	res := make([]string, i.numcols)
 	for i := range res {
 		res[i] = fmt.Sprintf("column_%d", i)
@@ -216,7 +216,7 @@ func (testIndex) IsGenerated() bool {
 }
 
 func (i testIndex) ColumnExpressionTypes(ctx *sql.Context) []sql.ColumnExpressionType {
-	es := i.Expressions()
+	es := i.Expressions(ctx)
 	res := make([]sql.ColumnExpressionType, len(es))
 	for i := range es {
 		res[i] = sql.ColumnExpressionType{Expression: es[i], Type: types.Int8}

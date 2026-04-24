@@ -15,7 +15,6 @@
 package binlogreplication
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -202,7 +201,7 @@ type ReplicationOption struct {
 // values of options for configuring the replication source (i.e. "CHANGE REPLICATION SOURCE TO" options) and for
 // replication filtering (i.g. "SET REPLICATION FILTER" options).
 type ReplicationOptionValue interface {
-	fmt.Stringer
+	sql.Stringer
 
 	// GetValue returns the raw, untyped option value. This method should generally not be used; callers should instead
 	// find the specific type implementing the ReplicationOptionValue interface and use its functions in order to get
@@ -226,7 +225,7 @@ func (ov StringReplicationOptionValue) GetValueAsString() string {
 }
 
 // String implements the Stringer interface and returns a string representation of this option value.
-func (ov StringReplicationOptionValue) String() string {
+func (ov StringReplicationOptionValue) String(ctx *sql.Context) string {
 	return ov.Value
 }
 
@@ -247,7 +246,7 @@ func (ov TableNamesReplicationOptionValue) GetValueAsTableList() []sql.Unresolve
 }
 
 // String implements the Stringer interface and returns a string representation of this option value.
-func (ov TableNamesReplicationOptionValue) String() string {
+func (ov TableNamesReplicationOptionValue) String(ctx *sql.Context) string {
 	sb := strings.Builder{}
 	for i, urt := range ov.Value {
 		if i > 0 {
@@ -278,7 +277,7 @@ func (ov IntegerReplicationOptionValue) GetValueAsInt() int {
 }
 
 // String implements the Stringer interface and returns a string representation of this option value.
-func (ov IntegerReplicationOptionValue) String() string {
+func (ov IntegerReplicationOptionValue) String(ctx *sql.Context) string {
 	return strconv.Itoa(ov.Value)
 }
 

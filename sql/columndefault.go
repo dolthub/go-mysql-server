@@ -91,7 +91,7 @@ func (e *ColumnDefaultValue) Eval(ctx *Context, r Row) (interface{}, error) {
 			return nil, ErrIncompatibleDefaultType.New()
 		}
 		if inRange != InRange {
-			return nil, ErrValueOutOfRange.New(val, e.OutType)
+			return nil, ErrValueOutOfRange.New(val, e.OutType.String(ctx))
 		}
 	}
 
@@ -141,13 +141,13 @@ func (e *ColumnDefaultValue) Resolved() bool {
 }
 
 // String implements sql.Expression
-func (e *ColumnDefaultValue) String() string {
+func (e *ColumnDefaultValue) String(ctx *Context) string {
 	//TODO: currently (2+2)/2 will, when output as a string, give (2 + 2 / 2), which is clearly wrong
 	if e == nil {
 		return ""
 	}
 
-	str := e.Expr.String()
+	str := e.Expr.String(ctx)
 	if e.Literal {
 		return str
 	}
@@ -260,7 +260,7 @@ func (u UnresolvedColumnDefault) Resolved() bool {
 	return false
 }
 
-func (u UnresolvedColumnDefault) String() string {
+func (u UnresolvedColumnDefault) String(ctx *Context) string {
 	return u.ExprString
 }
 

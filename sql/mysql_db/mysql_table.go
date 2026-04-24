@@ -47,7 +47,7 @@ func (t *mysqlTable) Name() string {
 }
 
 // String implements the interface sql.Table.
-func (t *mysqlTable) String() string {
+func (t *mysqlTable) String(ctx *sql.Context) string {
 	return t.name
 }
 

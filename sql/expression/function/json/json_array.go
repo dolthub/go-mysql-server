@@ -66,12 +66,12 @@ func (j *JSONArray) Resolved() bool {
 }
 
 // String implements the Expression interface.
-func (j *JSONArray) String() string {
+func (j *JSONArray) String(ctx *sql.Context) string {
 	children := j.Children()
 	var parts = make([]string, len(children))
 
 	for i, c := range children {
-		parts[i] = c.String()
+		parts[i] = c.String(ctx)
 	}
 
 	return fmt.Sprintf("%s(%s)", j.FunctionName(), strings.Join(parts, ","))

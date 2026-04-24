@@ -15,7 +15,6 @@
 package types
 
 import (
-	"context"
 	"math"
 	"reflect"
 
@@ -52,12 +51,12 @@ var (
 )
 
 // Compare implements Type interface.
-func (t MultiPointType) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
+func (t MultiPointType) Compare(ctx *sql.Context, a interface{}, b interface{}) (int, error) {
 	return GeometryType{}.Compare(ctx, a, b)
 }
 
 // Convert implements Type interface.
-func (t MultiPointType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
+func (t MultiPointType) Convert(ctx *sql.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	switch buf := v.(type) {
 	case nil:
 		return nil, sql.InRange, nil
@@ -122,7 +121,7 @@ func (t MultiPointType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqlty
 }
 
 // String implements Type interface.
-func (t MultiPointType) String() string {
+func (t MultiPointType) String(ctx *sql.Context) string {
 	return "multipoint"
 }
 

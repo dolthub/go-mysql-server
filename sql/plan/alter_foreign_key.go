@@ -92,7 +92,7 @@ func (p *CreateForeignKey) WithDatabaseProvider(provider sql.DatabaseProvider) (
 }
 
 // String implements the interface sql.Node.
-func (p *CreateForeignKey) String() string {
+func (p *CreateForeignKey) String(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("AddForeignKey(%s)", p.FkDef.Name)
 	_ = pr.WriteChildren(
@@ -287,7 +287,7 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 			return err
 		}
 		for _, index := range indexes {
-			indexMap[strings.ToLower(index.ID())] = struct{}{}
+			indexMap[strings.ToLower(index.ID(ctx))] = struct{}{}
 		}
 
 		var indexName string
@@ -417,7 +417,7 @@ func (p *DropForeignKey) Children() []sql.Node {
 }
 
 // String implements the interface sql.Node.
-func (p *DropForeignKey) String() string {
+func (p *DropForeignKey) String(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("DropForeignKey(%s)", p.Name)
 	_ = pr.WriteChildren(fmt.Sprintf("Table(%s.%s)", p.Database(), p.Table))
@@ -489,7 +489,7 @@ func (p *RenameForeignKey) Children() []sql.Node {
 }
 
 // String implements the interface sql.Node.
-func (p *RenameForeignKey) String() string {
+func (p *RenameForeignKey) String(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("RenameForeignKey(%s, %s)", p.OldName, p.NewName)
 	_ = pr.WriteChildren(fmt.Sprintf("Table(%s.%s)", p.Database(), p.Table))
@@ -595,7 +595,7 @@ func FindFKIndexWithPrefix(ctx *sql.Context, tbl sql.IndexAddressableTable, pref
 	// Ignore spatial indexes; MySQL will not pick them as the underlying secondary index for foreign keys
 	for _, idx := range indexes {
 		if len(idx.PrefixLengths()) > 0 || idx.IsSpatial() || idx.IsFullText() {
-			ignoredIndexesMap[strings.ToLower(idx.ID())] = struct{}{}
+			ignoredIndexesMap[strings.ToLower(idx.ID(ctx))] = struct{}{}
 		}
 	}
 	tblName := strings.ToLower(tbl.Name())
@@ -606,14 +606,14 @@ func FindFKIndexWithPrefix(ctx *sql.Context, tbl sql.IndexAddressableTable, pref
 	colLen := len(exprCols)
 	var indexesWithLen []idxWithLen
 	for _, idx := range indexes {
-		if _, ok := ignoredIndexesMap[strings.ToLower(idx.ID())]; ok {
+		if _, ok := ignoredIndexesMap[strings.ToLower(idx.ID(ctx))]; ok {
 			continue
 		}
 		var indexExprs []string
 		if extendedIdx, ok := idx.(sql.ExtendedIndex); ok && useExtendedIndexes {
 			indexExprs = lowercaseSlice(extendedIdx.ExtendedExpressions(ctx))
 		} else {
-			indexExprs = lowercaseSlice(idx.Expressions())
+			indexExprs = lowercaseSlice(idx.Expressions(ctx))
 		}
 		if ok := exprsAreIndexPrefix(exprCols, indexExprs); ok {
 			indexesWithLen = append(indexesWithLen, idxWithLen{idx, len(indexExprs)})
@@ -635,7 +635,7 @@ func FindFKIndexWithPrefix(ctx *sql.Context, tbl sql.IndexAddressableTable, pref
 		} else if idxI.colLen != idxJ.colLen {
 			return idxI.colLen > idxJ.colLen
 		} else {
-			return idxI.Index.ID() < idxJ.Index.ID()
+			return idxI.Index.ID(ctx) < idxJ.Index.ID(ctx)
 		}
 	})
 	sortedIndexes := make([]sql.Index, len(indexesWithLen))

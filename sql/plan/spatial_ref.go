@@ -54,7 +54,7 @@ func (n *CreateSpatialRefSys) Resolved() bool {
 }
 
 // String implements the interface sql.Node
-func (n *CreateSpatialRefSys) String() string {
+func (n *CreateSpatialRefSys) String(ctx *sql.Context) string {
 	str := "CREATE "
 	if n.OrReplace {
 		str += "OR REPLACE "

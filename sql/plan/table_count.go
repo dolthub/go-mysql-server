@@ -57,7 +57,7 @@ func (t *TableCountLookup) Db() sql.Database {
 	return t.db
 }
 
-func (t *TableCountLookup) String() string {
+func (t *TableCountLookup) String(ctx *sql.Context) string {
 	return fmt.Sprintf("table_count(%s) as %s", t.table.Name(), t.aliasName)
 }
 

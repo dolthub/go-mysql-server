@@ -15,7 +15,6 @@
 package types
 
 import (
-	"context"
 	"reflect"
 	"strconv"
 
@@ -45,7 +44,7 @@ func NewSystemDoubleType(varName string, lowerbound, upperbound float64) sql.Sys
 }
 
 // Compare implements Type interface.
-func (t systemDoubleType) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
+func (t systemDoubleType) Compare(ctx *sql.Context, a interface{}, b interface{}) (int, error) {
 	as, _, err := t.Convert(ctx, a)
 	if err != nil {
 		return 0, err
@@ -67,7 +66,7 @@ func (t systemDoubleType) Compare(ctx context.Context, a interface{}, b interfac
 }
 
 // Convert implements Type interface.
-func (t systemDoubleType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
+func (t systemDoubleType) Convert(ctx *sql.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	// String nor nil values are accepted
 	switch value := v.(type) {
 	case int:
@@ -151,7 +150,7 @@ func (t systemDoubleType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sql
 }
 
 // String implements Type interface.
-func (t systemDoubleType) String() string {
+func (t systemDoubleType) String(ctx *sql.Context) string {
 	return "system_double"
 }
 
@@ -191,16 +190,16 @@ func (systemDoubleType) CollationCoercibility(ctx *sql.Context) (collation sql.C
 }
 
 // EncodeValue implements SystemVariableType interface.
-func (t systemDoubleType) EncodeValue(val interface{}) (string, error) {
+func (t systemDoubleType) EncodeValue(ctx *sql.Context, val interface{}) (string, error) {
 	expectedVal, ok := val.(float64)
 	if !ok {
-		return "", sql.ErrSystemVariableCodeFail.New(val, t.String())
+		return "", sql.ErrSystemVariableCodeFail.New(val, t.String(ctx))
 	}
 	return strconv.FormatFloat(expectedVal, 'f', -1, 64), nil
 }
 
 // DecodeValue implements SystemVariableType interface.
-func (t systemDoubleType) DecodeValue(val string) (interface{}, error) {
+func (t systemDoubleType) DecodeValue(ctx *sql.Context, val string) (interface{}, error) {
 	parsedVal, err := strconv.ParseFloat(val, 64)
 	if err != nil {
 		return nil, err
@@ -208,7 +207,7 @@ func (t systemDoubleType) DecodeValue(val string) (interface{}, error) {
 	if parsedVal >= t.lowerbound && parsedVal <= t.upperbound {
 		return parsedVal, nil
 	}
-	return nil, sql.ErrSystemVariableCodeFail.New(val, t.String())
+	return nil, sql.ErrSystemVariableCodeFail.New(val, t.String(ctx))
 }
 
 func (t systemDoubleType) UnderlyingType() sql.Type {

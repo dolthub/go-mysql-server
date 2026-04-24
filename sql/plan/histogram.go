@@ -59,7 +59,7 @@ func (u *UpdateHistogram) Resolved() bool {
 	return true
 }
 
-func (u *UpdateHistogram) String() string {
+func (u *UpdateHistogram) String(ctx *sql.Context) string {
 	statBytes, _ := types.MarshallJson(context.TODO(), u.stats)
 	return fmt.Sprintf("update histogram  %s.(%s) using %s", u.table, strings.Join(u.cols, ","), statBytes)
 }
@@ -124,7 +124,7 @@ func (d *DropHistogram) Resolved() bool {
 	return true
 }
 
-func (d *DropHistogram) String() string {
+func (d *DropHistogram) String(ctx *sql.Context) string {
 	return fmt.Sprintf("drop histogram %s.(%s)", d.table, strings.Join(d.cols, ","))
 }
 

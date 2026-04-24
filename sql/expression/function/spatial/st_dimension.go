@@ -60,8 +60,8 @@ func (*Dimension) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 	return sql.Collation_binary, 5
 }
 
-func (p *Dimension) String() string {
-	return fmt.Sprintf("%s(%s)", p.FunctionName(), p.Child.String())
+func (p *Dimension) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", p.FunctionName(), p.Child.String(ctx))
 }
 
 // WithChildren implements the Expression interface.

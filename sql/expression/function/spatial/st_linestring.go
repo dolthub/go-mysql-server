@@ -55,8 +55,8 @@ func (*StartPoint) CollationCoercibility(ctx *sql.Context) (collation sql.Collat
 	return sql.Collation_binary, 4
 }
 
-func (s *StartPoint) String() string {
-	return fmt.Sprintf("%s(%s)", s.FunctionName(), s.Child.String())
+func (s *StartPoint) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", s.FunctionName(), s.Child.String(ctx))
 }
 
 // WithChildren implements the Expression interface.
@@ -128,8 +128,8 @@ func (*EndPoint) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 	return sql.Collation_binary, 4
 }
 
-func (e *EndPoint) String() string {
-	return fmt.Sprintf("%s(%s)", e.FunctionName(), e.Child.String())
+func (e *EndPoint) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", e.FunctionName(), e.Child.String(ctx))
 }
 
 // WithChildren implements the Expression interface.
@@ -201,8 +201,8 @@ func (*IsClosed) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 	return sql.Collation_binary, 5
 }
 
-func (i *IsClosed) String() string {
-	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String())
+func (i *IsClosed) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String(ctx))
 }
 
 // WithChildren implements the Expression interface.

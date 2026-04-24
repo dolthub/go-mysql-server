@@ -15,7 +15,6 @@
 package types
 
 import (
-	"context"
 	"math"
 	"reflect"
 
@@ -52,12 +51,12 @@ var _ sql.CollationCoercible = MultiLineStringType{}
 var _ GeometryValue = MultiLineString{}
 
 // Compare implements Type interface.
-func (t MultiLineStringType) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
+func (t MultiLineStringType) Compare(ctx *sql.Context, a interface{}, b interface{}) (int, error) {
 	return GeometryType{}.Compare(ctx, a, b)
 }
 
 // Convert implements Type interface.
-func (t MultiLineStringType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
+func (t MultiLineStringType) Convert(ctx *sql.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	switch buf := v.(type) {
 	case nil:
 		return nil, sql.InRange, nil
@@ -118,7 +117,7 @@ func (t MultiLineStringType) SQL(ctx *sql.Context, dest []byte, v interface{}) (
 }
 
 // String implements Type interface.
-func (t MultiLineStringType) String() string {
+func (t MultiLineStringType) String(ctx *sql.Context) string {
 	return "multilinestring"
 }
 

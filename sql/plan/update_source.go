@@ -68,17 +68,14 @@ func (u *UpdateSource) Resolved() bool {
 	return u.Child.Resolved() && u.UpdateExprs.Resolved()
 }
 
-func (u *UpdateSource) String() string {
-	// To maintain compatibility with fmt.Stringer we have to use an empty context, but this will fail in any case that
-	// requires a context to determine a string (such as an integrator using the context to contain type information).
-	ctx := sql.NewEmptyContext()
+func (u *UpdateSource) String(ctx *sql.Context) string {
 	tp := sql.NewTreePrinter()
 	updateExprs := make([]string, u.UpdateExprs.Length())
 	for i, e := range u.UpdateExprs.AllExpressions() {
 		updateExprs[i] = sql.DebugString(ctx, e)
 	}
 	_ = tp.WriteNode("UpdateSource(%s)", strings.Join(updateExprs, ","))
-	_ = tp.WriteChildren(u.Child.String())
+	_ = tp.WriteChildren(u.Child.String(ctx))
 	return tp.String()
 }
 

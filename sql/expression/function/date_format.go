@@ -339,8 +339,8 @@ func (f *DateFormat) IsNullable(ctx *sql.Context) bool {
 	return f.LeftChild.IsNullable(ctx)
 }
 
-func (f *DateFormat) String() string {
-	return fmt.Sprintf("date_format(%s, %s)", f.LeftChild, f.RightChild)
+func (f *DateFormat) String(ctx *sql.Context) string {
+	return fmt.Sprintf("date_format(%s, %s)", f.LeftChild.String(ctx), f.RightChild.String(ctx))
 }
 
 // WithChildren implements the Expression interface.

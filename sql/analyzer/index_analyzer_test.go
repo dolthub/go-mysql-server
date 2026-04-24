@@ -110,7 +110,7 @@ func TestExpressionsWithIndexesPartialMatching(t *testing.T) {
 		indexRegistry:  nil,
 		registryIdxes:  nil,
 	}
-	exprList := ia.ExpressionsWithIndexes(testDb, gf1, gf2)
+	exprList := ia.ExpressionsWithIndexes(sql.NewEmptyContext(), testDb, gf1, gf2)
 	require.Equal(t, [][]sql.Expression{{gf1, gf2}}, exprList)
 
 	ia = &indexAnalyzer{
@@ -118,7 +118,7 @@ func TestExpressionsWithIndexesPartialMatching(t *testing.T) {
 		indexRegistry:  nil,
 		registryIdxes:  nil,
 	}
-	exprList = ia.ExpressionsWithIndexes(testDb, gf2, gf4, gf1)
+	exprList = ia.ExpressionsWithIndexes(sql.NewEmptyContext(), testDb, gf2, gf4, gf1)
 	require.Equal(t, [][]sql.Expression{{gf2, gf4, gf1}, {gf1, gf2}}, exprList)
 }
 
@@ -135,15 +135,15 @@ func (i *dummyIdx) CanSupport(context *sql.Context, r ...sql.Range) bool {
 	return true
 }
 
-func (i *dummyIdx) Expressions() []string {
+func (i *dummyIdx) Expressions(ctx *sql.Context) []string {
 	var exprs []string
 	for _, e := range i.expr {
-		exprs = append(exprs, e.String())
+		exprs = append(exprs, e.String(ctx))
 	}
 	return exprs
 }
 
-func (i *dummyIdx) ID() string                            { return i.id }
+func (i *dummyIdx) ID(*sql.Context) string                { return i.id }
 func (i *dummyIdx) Database() string                      { return i.database }
 func (i *dummyIdx) Table() string                         { return i.table }
 func (i *dummyIdx) IsUnique() bool                        { return false }

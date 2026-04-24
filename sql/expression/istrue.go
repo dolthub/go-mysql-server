@@ -80,12 +80,12 @@ func (e *IsTrue) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return boolVal, nil
 }
 
-func (e *IsTrue) String() string {
+func (e *IsTrue) String(ctx *sql.Context) string {
 	isStr := IsTrueStr
 	if e.invert {
 		isStr = IsFalseStr
 	}
-	return e.Child.String() + " " + isStr
+	return e.Child.String(ctx) + " " + isStr
 }
 
 // WithChildren implements the Expression interface.

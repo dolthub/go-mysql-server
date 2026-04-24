@@ -50,10 +50,10 @@ func (ic *IfConditional) Resolved() bool {
 }
 
 // String implements the sql.Node interface.
-func (ic *IfConditional) String() string {
+func (ic *IfConditional) String(ctx *sql.Context) string {
 	p := sql.NewTreePrinter()
-	_ = p.WriteNode("IF(%s)", ic.Condition.String())
-	_ = p.WriteChildren(ic.Body.String())
+	_ = p.WriteNode("IF(%s)", ic.Condition.String(ctx))
+	_ = p.WriteChildren(ic.Body.String(ctx))
 	return p.String()
 }
 
@@ -148,18 +148,18 @@ func (ieb *IfElseBlock) IsReadOnly() bool {
 }
 
 // String implements the sql.Node interface.
-func (ieb *IfElseBlock) String() string {
+func (ieb *IfElseBlock) String(ctx *sql.Context) string {
 	p := sql.NewTreePrinter()
 	_ = p.WriteNode("IF BLOCK")
 	var children []string
 	for _, s := range ieb.IfConditionals {
-		children = append(children, s.String())
+		children = append(children, s.String(ctx))
 	}
 	_ = p.WriteChildren(children...)
 
 	ep := sql.NewTreePrinter()
 	_ = ep.WriteNode("ELSE")
-	_ = ep.WriteChildren(ieb.Else.String())
+	_ = ep.WriteChildren(ieb.Else.String(ctx))
 	_ = p.WriteChildren(ep.String())
 
 	return p.String()

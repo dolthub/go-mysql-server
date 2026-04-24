@@ -85,8 +85,8 @@ func (*Ceil) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID,
 	return sql.Collation_binary, 5
 }
 
-func (c *Ceil) String() string {
-	return fmt.Sprintf("%s(%s)", c.FunctionName(), c.Child)
+func (c *Ceil) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", c.FunctionName(), c.Child.String(ctx))
 }
 
 // WithChildren implements the Expression interface.
@@ -168,8 +168,8 @@ func (*Floor) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID
 	return sql.Collation_binary, 5
 }
 
-func (f *Floor) String() string {
-	return fmt.Sprintf("%s(%s)", f.FunctionName(), f.Child)
+func (f *Floor) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", f.FunctionName(), f.Child.String(ctx))
 }
 
 // WithChildren implements the Expression interface.
@@ -328,11 +328,11 @@ func (r *Round) IsNullable(ctx *sql.Context) bool {
 	return r.Num.IsNullable(ctx) || (r.Dec != nil && r.Dec.IsNullable(ctx))
 }
 
-func (r *Round) String() string {
+func (r *Round) String(ctx *sql.Context) string {
 	if r.Dec == nil {
-		return fmt.Sprintf("%s(%s,0)", r.FunctionName(), r.Num.String())
+		return fmt.Sprintf("%s(%s,0)", r.FunctionName(), r.Num.String(ctx))
 	}
-	return fmt.Sprintf("%s(%s,%s)", r.FunctionName(), r.Num.String(), r.Dec.String())
+	return fmt.Sprintf("%s(%s,%s)", r.FunctionName(), r.Num.String(ctx), r.Dec.String(ctx))
 }
 
 // Resolved implements the Expression interface.

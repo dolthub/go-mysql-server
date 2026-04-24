@@ -15,7 +15,6 @@
 package types
 
 import (
-	"context"
 	"reflect"
 	"strconv"
 	"time"
@@ -40,7 +39,7 @@ var (
 type YearType_ struct{}
 
 // Compare implements Type interface.
-func (t YearType_) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
+func (t YearType_) Compare(ctx *sql.Context, a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
@@ -89,7 +88,7 @@ func (t YearType_) CompareValue(ctx *sql.Context, a, b sql.Value) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t YearType_) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
+func (t YearType_) Convert(ctx *sql.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {
 		return nil, sql.InRange, nil
 	}
@@ -206,7 +205,7 @@ func (t YearType_) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltype
 }
 
 // String implements Type interface.
-func (t YearType_) String() string {
+func (t YearType_) String(ctx *sql.Context) string {
 	return "year"
 }
 

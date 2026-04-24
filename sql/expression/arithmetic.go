@@ -111,8 +111,8 @@ func (a *Arithmetic) SetOpCount(i int32) {
 	a.ops = i
 }
 
-func (a *Arithmetic) String() string {
-	return fmt.Sprintf("(%s %s %s)", a.LeftChild.String(), a.Op, a.RightChild.String())
+func (a *Arithmetic) String(ctx *sql.Context) string {
+	return fmt.Sprintf("(%s %s %s)", a.LeftChild.String(ctx), a.Op, a.RightChild.String(ctx))
 }
 
 func (a *Arithmetic) DebugString(ctx *sql.Context) string {
@@ -454,7 +454,7 @@ func convertValueToType(ctx *sql.Context, typ sql.Type, val interface{}, isTimeT
 
 	cval, _, err := typ.Convert(ctx, val)
 	if err != nil {
-		arithmeticWarning(ctx, mysql.ERTruncatedWrongValue, fmt.Sprintf("Truncated incorrect %s value: '%v'", typ.String(), val))
+		arithmeticWarning(ctx, mysql.ERTruncatedWrongValue, fmt.Sprintf("Truncated incorrect %s value: '%v'", typ.String(ctx), val))
 		// the value is interpreted as 0, but we need to match the type of the other valid value
 		// to avoid additional conversion, the nil value is handled in each operation
 	}
@@ -815,8 +815,8 @@ func (*UnaryMinus) CollationCoercibility(ctx *sql.Context) (collation sql.Collat
 	return sql.Collation_binary, 5
 }
 
-func (e *UnaryMinus) String() string {
-	return fmt.Sprintf("-%s", e.Child)
+func (e *UnaryMinus) String(ctx *sql.Context) string {
+	return fmt.Sprintf("-%s", e.Child.String(ctx))
 }
 
 // WithChildren implements the Expression interface.

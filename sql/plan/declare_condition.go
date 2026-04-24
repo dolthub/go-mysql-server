@@ -49,7 +49,7 @@ func (d *DeclareCondition) IsReadOnly() bool {
 }
 
 // String implements the sql.Node interface.
-func (d *DeclareCondition) String() string {
+func (d *DeclareCondition) String(ctx *sql.Context) string {
 	val := ""
 	if d.SqlStateValue != "" {
 		val = fmt.Sprintf("SQLSTATE '%s'", d.SqlStateValue)

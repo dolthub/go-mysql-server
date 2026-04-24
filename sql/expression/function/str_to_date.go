@@ -42,8 +42,8 @@ func (s *StrToDate) Resolved() bool {
 	return dateResolved && formatResolved
 }
 
-func (s *StrToDate) String() string {
-	return fmt.Sprintf("%s(%s,%s)", s.FunctionName(), s.Date, s.Format)
+func (s *StrToDate) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s,%s)", s.FunctionName(), s.Date.String(ctx), s.Format.String(ctx))
 }
 
 // Type returns the expression type.

@@ -130,8 +130,8 @@ func newRelProps(ctx *sql.Context, rel RelExpr) *relProps {
 
 // idxExprsColumns returns the column names used in an index's expressions.
 // Identifiers are ambiguous.
-func idxExprsColumns(idx sql.Index) []string {
-	exprs := idx.Expressions()
+func idxExprsColumns(ctx *sql.Context, idx sql.Index) []string {
+	exprs := idx.Expressions(ctx)
 	columns := make([]string, len(exprs))
 	// prefix includes table name and '.' character
 	prefixLen := len(idx.Table()) + 1
@@ -224,7 +224,7 @@ func (p *relProps) populateFds(ctx *sql.Context) {
 		var indexesNorm []*Index
 		for _, idx := range indexes {
 			// strict if primary key or all nonNull and unique
-			columns := idxExprsColumns(idx)
+			columns := idxExprsColumns(ctx, idx)
 			strict := true
 			normIdx := &Index{idx: idx, cols: make([]sql.ColumnId, len(columns)), order: sql.IndexOrderNone}
 			if oidx, ok := idx.(sql.OrderedIndex); ok {
@@ -806,7 +806,7 @@ func sortedInputs(ctx *sql.Context, rel RelExpr) bool {
 		i := 0
 		j := 0
 		for i < len(r.Projections) && j < len(inputs) {
-			out := transform.ExpressionToColumn(ctx, outputs[i], plan.AliasSubqueryString(outputs[i]))
+			out := transform.ExpressionToColumn(ctx, outputs[i], plan.AliasSubqueryString(ctx, outputs[i]))
 			in := inputs[j]
 			// i -> output idx (distinct)
 			// j -> input idx
@@ -839,7 +839,7 @@ func sortedColsForRel(ctx *sql.Context, rel RelExpr) sql.Schema {
 		}
 	case *MergeJoin:
 		var ret sql.Schema
-		for _, e := range r.InnerScan.Table.Index().Expressions() {
+		for _, e := range r.InnerScan.Table.Index().Expressions(ctx) {
 			// TODO columns can have "." characters, this will miss cases
 			idx := strings.IndexRune(e, '.')
 			if idx == -1 {

@@ -2,7 +2,11 @@
 
 package plan
 
-import "strconv"
+import (
+	"strconv"
+
+	"github.com/dolthub/go-mysql-server/sql"
+)
 
 func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
@@ -51,7 +55,7 @@ const _JoinType_name = "UnknownJoinCrossJoinCrossHashJoinInnerJoinSemiJoinAntiJo
 
 var _JoinType_index = [...]uint16{0, 11, 20, 33, 42, 50, 58, 80, 93, 120, 133, 144, 153, 163, 182, 190, 207, 238, 247, 265, 278, 300, 312, 324, 350, 364, 378, 402, 415, 428, 451, 462, 477, 493, 509, 525, 540, 555}
 
-func (i JoinType) String() string {
+func (i JoinType) String(ctx *sql.Context) string {
 	if i >= JoinType(len(_JoinType_index)-1) {
 		return "JoinType(" + strconv.FormatInt(int64(i), 10) + ")"
 	}

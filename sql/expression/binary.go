@@ -38,8 +38,8 @@ func NewBinary(e sql.Expression) sql.Expression {
 	return &Binary{UnaryExpressionStub{Child: e}}
 }
 
-func (b *Binary) String() string {
-	return fmt.Sprintf("BINARY(%s)", b.Child.String())
+func (b *Binary) String(ctx *sql.Context) string {
+	return fmt.Sprintf("BINARY(%s)", b.Child.String(ctx))
 }
 
 func (b *Binary) Type(ctx *sql.Context) sql.Type {

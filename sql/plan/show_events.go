@@ -54,7 +54,7 @@ func NewShowEvents(db sql.Database) *ShowEvents {
 }
 
 // String implements the sql.Node interface.
-func (s *ShowEvents) String() string {
+func (s *ShowEvents) String(ctx *sql.Context) string {
 	return "SHOW EVENTS"
 }
 

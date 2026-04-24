@@ -63,7 +63,7 @@ func NewStartTransaction(transactionChar sql.TransactionCharacteristic) *StartTr
 	}
 }
 
-func (s *StartTransaction) String() string {
+func (s *StartTransaction) String(ctx *sql.Context) string {
 	return "Start Transaction"
 }
 
@@ -90,7 +90,7 @@ func NewCommit() *Commit {
 	return &Commit{}
 }
 
-func (*Commit) String() string { return "COMMIT" }
+func (*Commit) String(ctx *sql.Context) string { return "COMMIT" }
 
 // WithChildren implements the Node interface.
 func (c *Commit) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
@@ -115,7 +115,7 @@ func NewRollback() *Rollback {
 	return &Rollback{}
 }
 
-func (*Rollback) String() string { return "ROLLBACK" }
+func (*Rollback) String(ctx *sql.Context) string { return "ROLLBACK" }
 
 // WithChildren implements the Node interface.
 func (r *Rollback) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
@@ -141,7 +141,7 @@ func NewCreateSavepoint(name string) *CreateSavepoint {
 	return &CreateSavepoint{Name: name}
 }
 
-func (c *CreateSavepoint) String() string { return fmt.Sprintf("SAVEPOINT %s", c.Name) }
+func (c *CreateSavepoint) String(ctx *sql.Context) string { return fmt.Sprintf("SAVEPOINT %s", c.Name) }
 
 // WithChildren implements the Node interface.
 func (c *CreateSavepoint) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
@@ -169,7 +169,9 @@ func NewRollbackSavepoint(name string) *RollbackSavepoint {
 	}
 }
 
-func (r *RollbackSavepoint) String() string { return fmt.Sprintf("ROLLBACK TO SAVEPOINT %s", r.Name) }
+func (r *RollbackSavepoint) String(ctx *sql.Context) string {
+	return fmt.Sprintf("ROLLBACK TO SAVEPOINT %s", r.Name)
+}
 
 // WithChildren implements the Node interface.
 func (r *RollbackSavepoint) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
@@ -197,7 +199,9 @@ func NewReleaseSavepoint(name string) *ReleaseSavepoint {
 	}
 }
 
-func (r *ReleaseSavepoint) String() string { return fmt.Sprintf("RELEASE SAVEPOINT %s", r.Name) }
+func (r *ReleaseSavepoint) String(ctx *sql.Context) string {
+	return fmt.Sprintf("RELEASE SAVEPOINT %s", r.Name)
+}
 
 // WithChildren implements the Node interface.
 func (r *ReleaseSavepoint) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {

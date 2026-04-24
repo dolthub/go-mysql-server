@@ -67,7 +67,7 @@ func (w *WindowDefinition) FromExpressions(ctx *Context, children []Expression) 
 	return &nw, nil
 }
 
-func (w *WindowDefinition) String() string {
+func (w *WindowDefinition) String(ctx *Context) string {
 	if w == nil {
 		return ""
 	}
@@ -79,7 +79,7 @@ func (w *WindowDefinition) String() string {
 			if i > 0 {
 				sb.WriteString(", ")
 			}
-			sb.WriteString(expression.String())
+			sb.WriteString(expression.String(ctx))
 		}
 	}
 	if len(w.OrderBy) > 0 {
@@ -88,17 +88,17 @@ func (w *WindowDefinition) String() string {
 			if i > 0 {
 				sb.WriteString(", ")
 			}
-			sb.WriteString(ob.String())
+			sb.WriteString(ob.String(ctx))
 		}
 	}
 	if w.Frame != nil {
-		sb.WriteString(fmt.Sprintf(" %s", w.Frame.String()))
+		sb.WriteString(fmt.Sprintf(" %s", w.Frame.String(ctx)))
 	}
 	sb.WriteString(")")
 	return sb.String()
 }
 
-func (w *WindowDefinition) PartitionId() (uint64, error) {
+func (w *WindowDefinition) PartitionId(ctx *Context) (uint64, error) {
 	if w == nil {
 		return 0, nil
 	}
@@ -108,12 +108,12 @@ func (w *WindowDefinition) PartitionId() (uint64, error) {
 	sb := strings.Builder{}
 	if len(w.PartitionBy) > 0 {
 		for _, expression := range w.PartitionBy {
-			sb.WriteString(expression.String())
+			sb.WriteString(expression.String(ctx))
 		}
 	}
 	if len(w.OrderBy) > 0 {
 		for _, ob := range w.OrderBy {
-			sb.WriteString(ob.String())
+			sb.WriteString(ob.String(ctx))
 		}
 	}
 	hash := xxhash.New()
@@ -129,5 +129,5 @@ func (w *WindowDefinition) DebugString(ctx *Context) string {
 	if w == nil {
 		return ""
 	}
-	return w.String()
+	return w.String(ctx)
 }

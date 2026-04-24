@@ -60,9 +60,9 @@ func (j JSONType) Resolved() bool {
 	return j.JSON.Resolved()
 }
 
-// String implements fmt.Stringer
-func (j JSONType) String() string {
-	return fmt.Sprintf("%s(%s)", j.FunctionName(), j.JSON.String())
+// String implements sql.Stringer
+func (j JSONType) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", j.FunctionName(), j.JSON.String(ctx))
 }
 
 // Type implements sql.Expression

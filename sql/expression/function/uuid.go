@@ -74,7 +74,7 @@ func (u UUIDFunc) Description() string {
 	return "returns a Universal Unique Identifier (UUID)."
 }
 
-func (u UUIDFunc) String() string {
+func (u UUIDFunc) String(ctx *sql.Context) string {
 	return fmt.Sprintf("%s()", u.FunctionName())
 }
 
@@ -150,8 +150,8 @@ func (u IsUUID) Description() string {
 	return "returns whether argument is a valid UUID."
 }
 
-func (u IsUUID) String() string {
-	return fmt.Sprintf("%s(%s)", u.FunctionName(), u.child)
+func (u IsUUID) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", u.FunctionName(), u.child.String(ctx))
 }
 
 func (u IsUUID) Type(ctx *sql.Context) sql.Type {
@@ -262,11 +262,11 @@ func (ub UUIDToBin) Description() string {
 	return "converts string UUID to binary."
 }
 
-func (ub UUIDToBin) String() string {
+func (ub UUIDToBin) String(ctx *sql.Context) string {
 	if ub.swapFlag != nil {
-		return fmt.Sprintf("UUID_TO_BIN(%s, %s)", ub.inputUUID, ub.swapFlag)
+		return fmt.Sprintf("UUID_TO_BIN(%s, %s)", ub.inputUUID.String(ctx), ub.swapFlag.String(ctx))
 	} else {
-		return fmt.Sprintf("UUID_TO_BIN(%s)", ub.inputUUID)
+		return fmt.Sprintf("UUID_TO_BIN(%s)", ub.inputUUID.String(ctx))
 	}
 }
 
@@ -428,11 +428,11 @@ func (bu BinToUUID) Description() string {
 	return "converts a binary UUID to a string UUID and returns the result."
 }
 
-func (bu BinToUUID) String() string {
+func (bu BinToUUID) String(ctx *sql.Context) string {
 	if bu.swapFlag != nil {
-		return fmt.Sprintf("BIN_TO_UUID(%s, %s)", bu.inputBinary, bu.swapFlag)
+		return fmt.Sprintf("BIN_TO_UUID(%s, %s)", bu.inputBinary.String(ctx), bu.swapFlag.String(ctx))
 	} else {
-		return fmt.Sprintf("BIN_TO_UUID(%s)", bu.inputBinary)
+		return fmt.Sprintf("BIN_TO_UUID(%s)", bu.inputBinary.String(ctx))
 	}
 }
 
@@ -568,7 +568,7 @@ func (u *UUIDShortFunc) Description() string {
 }
 
 // String returns a string representation of the UUID_SHORT function call.
-func (u *UUIDShortFunc) String() string {
+func (u *UUIDShortFunc) String(ctx *sql.Context) string {
 	return "UUID_SHORT()"
 }
 

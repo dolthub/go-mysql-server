@@ -470,19 +470,16 @@ func (j *JoinNode) Describe(ctx *sql.Context, options sql.DescribeOptions) strin
 	comment := j.Comment()
 
 	if options.Estimates {
-		pr.WriteNode("%s %s%s", j.Op, j.GetDescribeStatsString(options), comment)
+		pr.WriteNode("%s %s%s", j.Op.String(ctx), j.GetDescribeStatsString(options), comment)
 	} else {
-		pr.WriteNode("%s%s", j.Op, comment)
+		pr.WriteNode("%s%s", j.Op.String(ctx), comment)
 	}
 	pr.WriteChildren(children...)
 	return pr.String()
 }
 
-// String implements fmt.Stringer
-func (j *JoinNode) String() string {
-	// To maintain compatibility with fmt.Stringer we have to use an empty context, but this will fail in any case that
-	// requires a context to determine a string (such as an integrator using the context to contain type information).
-	ctx := sql.NewEmptyContext()
+// String implements sql.Stringer
+func (j *JoinNode) String(ctx *sql.Context) string {
 	return j.Describe(ctx, sql.DescribeOptions{
 		Analyze:   false,
 		Estimates: false,

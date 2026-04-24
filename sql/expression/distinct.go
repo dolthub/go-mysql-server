@@ -83,8 +83,8 @@ func (de *DistinctExpression) Resolved() bool {
 	return de.Child.Resolved()
 }
 
-func (de *DistinctExpression) String() string {
-	return fmt.Sprintf("DISTINCT %s", de.Child.String())
+func (de *DistinctExpression) String(ctx *sql.Context) string {
+	return fmt.Sprintf("DISTINCT %s", de.Child.String(ctx))
 }
 
 func (de *DistinctExpression) Type(ctx *sql.Context) sql.Type {

@@ -60,14 +60,14 @@ func (s *Sort) IsReadOnly() bool {
 	return s.Child.IsReadOnly()
 }
 
-func (s *Sort) String() string {
+func (s *Sort) String(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	var fields = make([]string, len(s.SortFields))
 	for i, f := range s.SortFields {
-		fields[i] = fmt.Sprintf("%s %s", f.Column, f.Order)
+		fields[i] = fmt.Sprintf("%s %s", f.Column.String(ctx), f.Order.String(ctx))
 	}
 	_ = pr.WriteNode("Sort(%s)", strings.Join(fields, ", "))
-	_ = pr.WriteChildren(s.Child.String())
+	_ = pr.WriteChildren(s.Child.String(ctx))
 	return pr.String()
 }
 
@@ -173,14 +173,14 @@ func (n *TopN) IsReadOnly() bool {
 	return n.Child.IsReadOnly()
 }
 
-func (n *TopN) String() string {
+func (n *TopN) String(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	var fields = make([]string, len(n.Fields))
 	for i, f := range n.Fields {
-		fields[i] = fmt.Sprintf("%s %s", f.Column, f.Order)
+		fields[i] = fmt.Sprintf("%s %s", f.Column.String(ctx), f.Order.String(ctx))
 	}
-	_ = pr.WriteNode("TopN(Limit: [%s]; %s)", n.Limit.String(), strings.Join(fields, ", "))
-	_ = pr.WriteChildren(n.Child.String())
+	_ = pr.WriteNode("TopN(Limit: [%s]; %s)", n.Limit.String(ctx), strings.Join(fields, ", "))
+	_ = pr.WriteChildren(n.Child.String(ctx))
 	return pr.String()
 }
 

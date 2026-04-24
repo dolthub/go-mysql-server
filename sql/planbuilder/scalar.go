@@ -231,7 +231,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 			}
 		}
 
-		rf, err := f.NewInstance(nil, args)
+		rf, err := f.NewInstance(b.ctx, args)
 		if err != nil {
 			b.handleErr(err)
 		}
@@ -410,7 +410,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 				err := sql.ErrFunctionNotFound.New("values")
 				b.handleErr(err)
 			}
-			values, err := fn.NewInstance(nil, []sql.Expression{col})
+			values, err := fn.NewInstance(b.ctx, []sql.Expression{col})
 			if err != nil {
 				b.handleErr(err)
 			}
@@ -625,7 +625,7 @@ func (b *Builder) buildUnaryScalar(inScope *scope, e *ast.UnaryExpr) sql.Express
 			} else {
 				// Should not be possible
 				err := fmt.Errorf("expression literal returned type `%s` but literal value had type `%T`",
-					expr.Type(b.ctx).String(), literal)
+					expr.Type(b.ctx).String(b.ctx), literal)
 				b.handleErr(err)
 			}
 		}
@@ -1148,7 +1148,7 @@ func (b *Builder) buildMatchAgainst(inScope *scope, v *ast.MatchExpr) *expressio
 	if err != nil {
 		b.handleErr(err)
 	}
-	ftIndex := findMatchAgainstIndex(cols, indexes, indexedTbl.Name())
+	ftIndex := findMatchAgainstIndex(b.ctx, cols, indexes, indexedTbl.Name())
 	if ftIndex == nil {
 		err := sql.ErrNoFullTextIndexFound.New(indexedTbl.Name())
 		b.handleErr(err)
@@ -1180,13 +1180,13 @@ func (b *Builder) buildMatchAgainst(inScope *scope, v *ast.MatchExpr) *expressio
 		}
 		if !ok {
 			err := fmt.Errorf("Full-Text index `%s` on table `%s` is linked to table `%s` which could not be found",
-				ftIndex.ID(), indexedTbl.Name(), tableNames.Config)
+				ftIndex.ID(b.ctx), indexedTbl.Name(), tableNames.Config)
 			b.handleErr(err)
 		}
 		idxTables[i], ok = configTbl.(sql.IndexAddressableTable)
 		if !ok {
 			err := fmt.Errorf("Full-Text index `%s` on table `%s` requires table `%s` to implement sql.IndexAddressableTable",
-				ftIndex.ID(), indexedTbl.Name(), tableNames.Config)
+				ftIndex.ID(b.ctx), indexedTbl.Name(), tableNames.Config)
 			b.handleErr(err)
 		}
 	}
@@ -1201,16 +1201,16 @@ func (b *Builder) buildMatchAgainst(inScope *scope, v *ast.MatchExpr) *expressio
 // |tableName| is the unaliased table name the index was built on. It is substituted for any JOIN
 // alias that may be present in the [expression.GetField] values of |cols| before the comparison is made,
 // because index expressions are always stored using the unaliased table name.
-func findMatchAgainstIndex(cols []*expression.GetField, indexes []sql.Index, tableName string) fulltext.Index {
+func findMatchAgainstIndex(ctx *sql.Context, cols []*expression.GetField, indexes []sql.Index, tableName string) fulltext.Index {
 	var found fulltext.Index
 	for _, idx := range indexes {
-		idxExprs := idx.Expressions()
+		idxExprs := idx.Expressions(ctx)
 		if !idx.IsFullText() || len(cols) != len(idxExprs) {
 			continue
 		}
 		allMatch := true
 		for _, gf := range cols {
-			colKey := gf.WithTable(tableName).String()
+			colKey := gf.WithTable(tableName).String(ctx)
 			var match bool
 			for _, idxExpr := range idxExprs {
 				if strings.EqualFold(colKey, idxExpr) {

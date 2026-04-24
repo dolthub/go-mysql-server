@@ -15,7 +15,6 @@
 package types
 
 import (
-	"context"
 	"math"
 	"reflect"
 
@@ -52,12 +51,12 @@ var _ sql.CollationCoercible = MultiPolygonType{}
 var _ GeometryValue = MultiPolygon{}
 
 // Compare implements Type interface.
-func (t MultiPolygonType) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
+func (t MultiPolygonType) Compare(ctx *sql.Context, a interface{}, b interface{}) (int, error) {
 	return GeometryType{}.Compare(ctx, a, b)
 }
 
 // Convert implements Type interface.
-func (t MultiPolygonType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
+func (t MultiPolygonType) Convert(ctx *sql.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	switch buf := v.(type) {
 	case nil:
 		return nil, sql.InRange, nil
@@ -118,7 +117,7 @@ func (t MultiPolygonType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sql
 }
 
 // String implements Type interface.
-func (t MultiPolygonType) String() string {
+func (t MultiPolygonType) String(ctx *sql.Context) string {
 	return "multipolygon"
 }
 

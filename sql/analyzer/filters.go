@@ -163,9 +163,9 @@ func (fs *filterSet) markFiltersHandled(exprs ...sql.Expression) {
 // markIndexesHandled marks the indexes given as handled, so expressions on them will no longer be returned by
 // availableFiltersForTable
 // TODO: this is currently unused because we can't safely remove indexed predicates from the filter in all cases
-func (fs *filterSet) markIndexesHandled(indexes []sql.Index) {
+func (fs *filterSet) markIndexesHandled(ctx *sql.Context, indexes []sql.Index) {
 	for _, index := range indexes {
-		fs.handledIndexFilters = append(fs.handledIndexFilters, index.Expressions()...)
+		fs.handledIndexFilters = append(fs.handledIndexFilters, index.Expressions(ctx)...)
 	}
 }
 
@@ -202,14 +202,14 @@ func (fs *filterSet) subtractUsedIndexes(ctx *sql.Context, all []sql.Expression)
 	for i, e := range normalized {
 		var found bool
 
-		cmpStr := e.String()
+		cmpStr := e.String(ctx)
 		comparable, ok := e.(expression.Comparer)
 		if ok {
 			left, right := comparable.Left(), comparable.Right()
 			if _, ok := left.(*expression.GetField); ok {
-				cmpStr = left.String()
+				cmpStr = left.String(ctx)
 			} else {
-				cmpStr = right.String()
+				cmpStr = right.String(ctx)
 			}
 		}
 

@@ -73,8 +73,8 @@ func (ib *IsBinary) IsNullable(ctx *sql.Context) bool {
 	return false
 }
 
-func (ib *IsBinary) String() string {
-	return fmt.Sprintf("%s(%s)", ib.FunctionName(), ib.Child)
+func (ib *IsBinary) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", ib.FunctionName(), ib.Child.String(ctx))
 }
 
 // WithChildren implements the Expression interface.

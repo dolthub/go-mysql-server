@@ -84,7 +84,7 @@ func TestConvertCrossJoin(t *testing.T) {
 	tests := make([]analyzerFnTestCase, 0, len(matching)+len(nonMatching))
 	for _, t := range matching {
 		new := analyzerFnTestCase{
-			name: t.String(),
+			name: t.String(ctx),
 			node: plan.NewFilter(
 				t,
 				plan.NewCrossJoin(
@@ -102,7 +102,7 @@ func TestConvertCrossJoin(t *testing.T) {
 	}
 	for _, t := range nonMatching {
 		new := analyzerFnTestCase{
-			name: t.String(),
+			name: t.String(ctx),
 			node: plan.NewFilter(
 				t,
 				plan.NewCrossJoin(

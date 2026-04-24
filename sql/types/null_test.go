@@ -84,5 +84,5 @@ func TestNullConvert(t *testing.T) {
 }
 
 func TestNullString(t *testing.T) {
-	require.Equal(t, "null", Null.String())
+	require.Equal(t, "null", Null.String(sql.NewEmptyContext()))
 }

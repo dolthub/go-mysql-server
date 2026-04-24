@@ -62,7 +62,7 @@ func TestHashJoins(t *testing.T) {
 			j := memo.NewJoinOrderBuilder(m)
 			j.ReorderJoin(ctx, tt.plan)
 			addHashJoins(ctx, m)
-			require.Equal(t, tt.memo, m.String())
+			require.Equal(t, tt.memo, m.String(sql.NewEmptyContext()))
 		})
 	}
 }

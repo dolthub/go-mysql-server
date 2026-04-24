@@ -768,7 +768,7 @@ func TestTime(t *testing.T) {
 			} else {
 				require.NoError(err)
 				if v, ok := val.(types.Timespan); ok {
-					require.Equal(tt.expected, v.String())
+					require.Equal(tt.expected, v.String(sql.NewEmptyContext()))
 				} else {
 					require.Equal(tt.expected, val)
 				}
@@ -801,7 +801,7 @@ func TestTime_DayName(t *testing.T) {
 			} else {
 				require.NoError(err)
 				if v, ok := val.(types.Timespan); ok {
-					require.Equal(tt.expected, v.String())
+					require.Equal(tt.expected, v.String(sql.NewEmptyContext()))
 				} else {
 					require.Equal(tt.expected, val)
 				}
@@ -834,7 +834,7 @@ func TestTime_MonthName(t *testing.T) {
 			} else {
 				require.NoError(err)
 				if v, ok := val.(types.Timespan); ok {
-					require.Equal(tt.expected, v.String())
+					require.Equal(tt.expected, v.String(sql.NewEmptyContext()))
 				} else {
 					require.Equal(tt.expected, val)
 				}

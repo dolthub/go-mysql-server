@@ -117,8 +117,8 @@ func (s *Soundex) code(c rune) rune {
 	return '0'
 }
 
-func (s *Soundex) String() string {
-	return fmt.Sprintf("%s(%s)", s.FunctionName(), s.Child)
+func (s *Soundex) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", s.FunctionName(), s.Child.String(ctx))
 }
 
 // WithChildren implements the Expression interface.

@@ -194,11 +194,11 @@ func (f *factory) buildDistinct(ctx *sql.Context, child sql.Node, refsSubquery b
 			if sort, isSort := proj.Child.(*plan.Sort); isSort {
 				dMap := make(map[string]struct{})
 				for _, expr := range distinctOn {
-					dMap[strings.ToLower(expr.String())] = struct{}{}
+					dMap[strings.ToLower(expr.String(ctx))] = struct{}{}
 				}
 				minMatching := min(len(distinctOn), len(sort.SortFields))
 				for i := 0; i < minMatching; i++ {
-					if _, ok := dMap[strings.ToLower(sort.SortFields[i].Column.String())]; !ok {
+					if _, ok := dMap[strings.ToLower(sort.SortFields[i].Column.String(ctx))]; !ok {
 						return nil, sql.ErrDistinctOnMatchOrderBy.New()
 					}
 				}
@@ -214,16 +214,16 @@ func (f *factory) buildDistinct(ctx *sql.Context, child sql.Node, refsSubquery b
 			if len(distinctOn) > 0 {
 				sortMap := make(map[string]struct{})
 				for _, p := range proj.Projections {
-					sortMap[strings.ToLower(p.String())] = struct{}{}
+					sortMap[strings.ToLower(p.String(ctx))] = struct{}{}
 				}
 			}
 			projMap := make(map[string]struct{})
 			for _, p := range proj.Projections {
-				projMap[strings.ToLower(p.String())] = struct{}{}
+				projMap[strings.ToLower(p.String(ctx))] = struct{}{}
 			}
 			hasDiff := false
 			for _, s := range sort.SortFields {
-				if _, ok := projMap[strings.ToLower(s.Column.String())]; !ok {
+				if _, ok := projMap[strings.ToLower(s.Column.String(ctx))]; !ok {
 					hasDiff = true
 					break
 				}

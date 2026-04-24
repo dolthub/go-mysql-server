@@ -65,7 +65,7 @@ func (*Star) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID,
 	return sql.Collation_binary, 7
 }
 
-func (s *Star) String() string {
+func (s *Star) String(ctx *sql.Context) string {
 	if s.Table != "" {
 		return fmt.Sprintf("%s.*", s.Table)
 	}

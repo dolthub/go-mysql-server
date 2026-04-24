@@ -15,7 +15,6 @@
 package types
 
 import (
-	"context"
 	"testing"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -29,7 +28,7 @@ func TestVectorConversion(t *testing.T) {
 	vecType, err := CreateVectorType(3)
 	require.NoError(t, err)
 
-	ctx := context.Background()
+	ctx := sql.NewEmptyContext()
 
 	// Only binary can be converted to vectors, all other types should fail.
 	tests := []struct {
@@ -95,7 +94,7 @@ func TestVectorCompare(t *testing.T) {
 	vecType, err := CreateVectorType(3)
 	require.NoError(t, err)
 
-	ctx := context.Background()
+	ctx := sql.NewEmptyContext()
 
 	// Vectors can only be compared with other vectors of the same dimension, and compare based on their byte representations
 	tests := []struct {
@@ -176,5 +175,5 @@ func TestVectorParsingFromSQL(t *testing.T) {
 	vectorType, ok := goType.(VectorType)
 	require.True(t, ok)
 	assert.Equal(t, 3, vectorType.Dimensions)
-	assert.Equal(t, "VECTOR(3)", vectorType.String())
+	assert.Equal(t, "VECTOR(3)", vectorType.String(sql.NewEmptyContext()))
 }

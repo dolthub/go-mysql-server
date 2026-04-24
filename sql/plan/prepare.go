@@ -55,8 +55,8 @@ func (p *PrepareQuery) IsReadOnly() bool {
 type PrepareInfo struct {
 }
 
-// String implements fmt.Stringer
-func (pi PrepareInfo) String() string {
+// String implements sql.Stringer
+func (pi PrepareInfo) String(ctx *sql.Context) string {
 	return "Statement prepared"
 }
 
@@ -82,8 +82,8 @@ func (*PrepareQuery) CollationCoercibility(ctx *sql.Context) (collation sql.Coll
 	return sql.Collation_binary, 7
 }
 
-func (p *PrepareQuery) String() string {
-	return fmt.Sprintf("Prepare(%s)", p.Child.String())
+func (p *PrepareQuery) String(ctx *sql.Context) string {
+	return fmt.Sprintf("Prepare(%s)", p.Child.String(ctx))
 }
 
 // ExecuteQuery is a node that prepares the query
@@ -128,7 +128,7 @@ func (*ExecuteQuery) CollationCoercibility(ctx *sql.Context) (collation sql.Coll
 	return sql.Collation_binary, 7
 }
 
-func (p *ExecuteQuery) String() string {
+func (p *ExecuteQuery) String(ctx *sql.Context) string {
 	panic("ExecuteQuery methods shouldn't be used")
 }
 
@@ -176,6 +176,6 @@ func (*DeallocateQuery) CollationCoercibility(ctx *sql.Context) (collation sql.C
 	return sql.Collation_binary, 7
 }
 
-func (p *DeallocateQuery) String() string {
+func (p *DeallocateQuery) String(ctx *sql.Context) string {
 	return fmt.Sprintf("Deallocate(%s)", p.Name)
 }

@@ -79,7 +79,7 @@ func TestSpatialTypeMatchSRID(t *testing.T) {
 	for _, test := range tests {
 		s, d := test.typeVal.GetSpatialTypeSRID()
 		g, _ := test.typeVal.(sql.Type)
-		t.Run(fmt.Sprintf("%s %v %v match %v", g.String(), s, d, test.objVal), func(t *testing.T) {
+		t.Run(fmt.Sprintf("%s %v %v match %v", g.String(sql.NewEmptyContext()), s, d, test.objVal), func(t *testing.T) {
 			err := test.typeVal.MatchSRID(test.objVal)
 			if test.expected == nil {
 				require.NoError(t, err)

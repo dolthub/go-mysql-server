@@ -66,8 +66,8 @@ func (l *Lower) Eval(
 	return collation.CharacterSet().Encoder().Lowercase(vStr), nil
 }
 
-func (l *Lower) String() string {
-	return fmt.Sprintf("%s(%s)", l.FunctionName(), l.Child)
+func (l *Lower) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", l.FunctionName(), l.Child.String(ctx))
 }
 
 // WithChildren implements the Expression interface.
@@ -132,8 +132,8 @@ func (u *Upper) Eval(
 	return collation.CharacterSet().Encoder().Uppercase(vStr), nil
 }
 
-func (u *Upper) String() string {
-	return fmt.Sprintf("%s(%s)", u.FunctionName(), u.Child)
+func (u *Upper) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", u.FunctionName(), u.Child.String(ctx))
 }
 
 // WithChildren implements the Expression interface.

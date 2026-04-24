@@ -96,11 +96,11 @@ func (m *MakeSet) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 }
 
 // String implements the Expression interface
-func (m *MakeSet) String() string {
+func (m *MakeSet) String(ctx *sql.Context) string {
 	children := m.Children()
 	childStrs := make([]string, len(children))
 	for i, child := range children {
-		childStrs[i] = child.String()
+		childStrs[i] = child.String(ctx)
 	}
 	return fmt.Sprintf("make_set(%s)", strings.Join(childStrs, ", "))
 }

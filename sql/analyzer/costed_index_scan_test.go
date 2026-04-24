@@ -554,7 +554,7 @@ func TestRangeBuilder(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(fmt.Sprintf("Expr:  %s\nRange: %s", tt.filter.String(), tt.exp.DebugString(ctx)), func(t *testing.T) {
+		t.Run(fmt.Sprintf("Expr:  %s\nRange: %s", tt.filter.String(ctx), tt.exp.DebugString(ctx)), func(t *testing.T) {
 
 			c := newIndexCoster(testTable)
 			root, _, _ := c.buildRoot(ctx, tt.filter, NewDefaultLogicTreeWalker())
@@ -587,15 +587,15 @@ func TestRangeBuilder(t *testing.T) {
 			if tt.cnt == 1 {
 				require.Equal(t, 0, len(b.leftover))
 			}
-			cmpRanges, err = sql.SortRanges(cmpRanges...)
+			cmpRanges, err = sql.SortRanges(ctx, cmpRanges...)
 			require.NoError(t, err)
 
-			expRanges, err := sql.RemoveOverlappingRanges(tt.exp...)
+			expRanges, err := sql.RemoveOverlappingRanges(ctx, tt.exp...)
 			require.NoError(t, err)
-			expRanges, err = sql.SortRanges(expRanges...)
+			expRanges, err = sql.SortRanges(ctx, expRanges...)
 			require.NoError(t, err)
 
-			ok, err := expRanges.Equals(cmpRanges)
+			ok, err := expRanges.Equals(ctx, cmpRanges)
 			require.NoError(t, err)
 			assert.True(t, ok)
 			if !ok {
@@ -670,16 +670,16 @@ func TestRangeBuilderInclude(t *testing.T) {
 			b := newIndexScanRangeBuilder(ctx, dummy1, tt.include, sql.FastIntSet{}, c.idToExpr)
 			cmpRanges, err := b.buildRangeCollection(root)
 			require.NoError(t, err)
-			cmpRanges, err = sql.SortRanges(cmpRanges...)
+			cmpRanges, err = sql.SortRanges(ctx, cmpRanges...)
 			require.NoError(t, err)
 
-			expRanges, err := sql.RemoveOverlappingRanges(tt.exp...)
+			expRanges, err := sql.RemoveOverlappingRanges(ctx, tt.exp...)
 			require.NoError(t, err)
-			expRanges, err = sql.SortRanges(expRanges...)
+			expRanges, err = sql.SortRanges(ctx, expRanges...)
 			require.NoError(t, err)
 
 			// TODO how to compare ranges, strings?
-			ok, err := expRanges.Equals(cmpRanges)
+			ok, err := expRanges.Equals(ctx, cmpRanges)
 			require.NoError(t, err)
 			assert.True(t, ok)
 			if !ok {
@@ -862,7 +862,8 @@ Filter
 	res, same, err := costedIndexScans(nil, nil, input, nil)
 	require.NoError(t, err)
 	require.False(t, bool(same))
-	require.Equal(t, strings.TrimSpace(exp), strings.TrimSpace(res.String()), "expected:\n%s,\nfound:\n%s\n", exp, res.String())
+	ctx := sql.NewEmptyContext()
+	require.Equal(t, strings.TrimSpace(exp), strings.TrimSpace(res.String(ctx)), "expected:\n%s,\nfound:\n%s\n", exp, res.String(ctx))
 }
 
 var xIdx = &dummyIdx{id: "primary", database: "mydb", table: "xy", expr: []sql.Expression{expression.NewGetFieldWithTable(0, 0, types.Int64, "mydb", "xy", "x", false)}}
@@ -879,8 +880,8 @@ func (i *indexSearchableTable) Name() string {
 	return i.underlying.Name()
 }
 
-func (i *indexSearchableTable) String() string {
-	return i.underlying.String()
+func (i *indexSearchableTable) String(ctx *sql.Context) string {
+	return i.underlying.String(ctx)
 }
 
 func (i *indexSearchableTable) Schema(ctx *sql.Context) sql.Schema {

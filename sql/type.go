@@ -16,7 +16,6 @@ package sql
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 	"strings"
 	"time"
@@ -79,11 +78,11 @@ type Type interface {
 	CollationCoercible
 	// Compare returns an integer comparing two values.
 	// The result will be 0 if a==b, -1 if a < b, and +1 if a > b.
-	Compare(context.Context, any, any) (int, error)
+	Compare(*Context, any, any) (int, error)
 	// Convert a value of a compatible type to a most accurate type, returning
 	// the new value, whether the value in range, or an error. If |inRange| is
 	// false, the value was coerced according to MySQL's rules.
-	Convert(context.Context, any) (any, ConvertInRange, error)
+	Convert(*Context, any) (any, ConvertInRange, error)
 	// Equals returns whether the given type is equivalent to the calling type. All parameters are included in the
 	// comparison, so ENUM("a", "b") is not equivalent to ENUM("a", "b", "c").
 	Equals(otherType Type) bool
@@ -103,7 +102,7 @@ type Type interface {
 	ValueType() reflect.Type
 	// Zero returns the golang zero value for this type
 	Zero() any
-	fmt.Stringer
+	Stringer
 }
 
 // ValueType is an extension of the Type interface, that operates over sql.Values.
@@ -198,7 +197,7 @@ func IsNumberType(t Type) bool {
 // that supports rounding when converting rather than the default truncation.
 type RoundingNumberType interface {
 	NumberType
-	ConvertRound(context.Context, any) (any, ConvertInRange, error)
+	ConvertRound(*Context, any) (any, ConvertInRange, error)
 }
 
 // StringType represents all string types, including VARCHAR and BLOB.
@@ -232,7 +231,7 @@ func IsStringType(t Type) bool {
 // The type of the returned value is time.Time.
 type DatetimeType interface {
 	Type
-	ConvertWithoutRangeCheck(ctx context.Context, v interface{}) (time.Time, error)
+	ConvertWithoutRangeCheck(ctx *Context, v interface{}) (time.Time, error)
 	MaximumTime() time.Time
 	MinimumTime() time.Time
 	Precision() int
@@ -296,9 +295,9 @@ type DecimalType interface {
 	// ConvertToNullDecimal converts the given value to a decimal.NullDecimal if it has a compatible type. It is worth
 	// noting that Convert() returns a nil value for nil inputs, and also returns decimal.Decimal rather than
 	// decimal.NullDecimal.
-	ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, error)
+	ConvertToNullDecimal(ctx *Context, v interface{}) (decimal.NullDecimal, error)
 	// ConvertNoBoundsCheck normalizes an interface{} to a decimal type without performing expensive bound checks
-	ConvertNoBoundsCheck(v interface{}) (decimal.Decimal, error)
+	ConvertNoBoundsCheck(ctx *Context, v interface{}) (decimal.Decimal, error)
 	// BoundsCheck rounds and validates a decimal, returning the decimal,
 	// whether the value was out of range, and an error.
 	BoundsCheck(v decimal.Decimal) (decimal.Decimal, ConvertInRange, error)
@@ -335,10 +334,10 @@ type SpatialColumnType interface {
 type SystemVariableType interface {
 	Type
 	// EncodeValue returns the given value as a string for storage.
-	EncodeValue(interface{}) (string, error)
+	EncodeValue(*Context, interface{}) (string, error)
 	// DecodeValue returns the original value given to EncodeValue from the given string. This is different from `Convert`,
 	// as the encoded value may technically be an "illegal" value according to the type rules.
-	DecodeValue(string) (interface{}, error)
+	DecodeValue(*Context, string) (interface{}, error)
 	// UnderlyingType returns the underlying type that this system variable type is based on.
 	UnderlyingType() Type
 }

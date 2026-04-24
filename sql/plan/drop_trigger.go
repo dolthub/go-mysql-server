@@ -53,7 +53,7 @@ func (d *DropTrigger) IsReadOnly() bool {
 }
 
 // String implements the sql.Node interface.
-func (d *DropTrigger) String() string {
+func (d *DropTrigger) String(ctx *sql.Context) string {
 	ifExists := ""
 	if d.IfExists {
 		ifExists = "IF EXISTS "

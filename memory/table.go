@@ -166,19 +166,19 @@ func NewPartitionedTableWithCollation(ctx *sql.Context, db *BaseDatabase, name s
 		cCopy := c.Copy()
 		if cCopy.Default != nil {
 			newDef, _, _ := transform.Expr(ctx, cCopy.Default, stripTblNames)
-			defStr := newDef.String()
+			defStr := newDef.String(ctx)
 			unrDef := sql.NewUnresolvedColumnDefaultValue(defStr)
 			cCopy.Default = unrDef
 		}
 		if cCopy.Generated != nil {
 			newDef, _, _ := transform.Expr(ctx, cCopy.Generated, stripTblNames)
-			defStr := newDef.String()
+			defStr := newDef.String(ctx)
 			unrDef := sql.NewUnresolvedColumnDefaultValue(defStr)
 			cCopy.Generated = unrDef
 		}
 		if cCopy.OnUpdate != nil {
 			newDef, _, _ := transform.Expr(ctx, cCopy.OnUpdate, stripTblNames)
-			defStr := newDef.String()
+			defStr := newDef.String(ctx)
 			unrDef := sql.NewUnresolvedColumnDefaultValue(defStr)
 			cCopy.OnUpdate = unrDef
 		}
@@ -997,7 +997,7 @@ func (t *Table) newTableEditor(ctx *sql.Context) (sql.TableEditor, error) {
 	tableUnderEdit := t.copy()
 	tableUnderEdit.data = data
 
-	uniqIdxCols, prefixLengths, uniqIdxNames := data.indexColsForTableEditor()
+	uniqIdxCols, prefixLengths, uniqIdxNames := data.indexColsForTableEditor(ctx)
 	var editor sql.TableEditor = &tableEditor{
 		editedTable:    tableUnderEdit,
 		initialTable:   t.copy(),
@@ -1020,7 +1020,7 @@ func (t *Table) tableEditorForRewrite(ctx *sql.Context, oldSchema, newSchema sql
 	tableUnderEdit.data = tableData
 
 	// TODO: |editedTableAnd| and |ea| should have the same tableData reference
-	uniqIdxCols, prefixLengths, uniqIdxNames := tableData.indexColsForTableEditor()
+	uniqIdxCols, prefixLengths, uniqIdxNames := tableData.indexColsForTableEditor(ctx)
 	var editor sql.TableEditor = &tableEditor{
 		editedTable:    tableUnderEdit,
 		initialTable:   t.copy(),
@@ -1081,28 +1081,28 @@ func fulltextTableSets(ctx *sql.Context, data *TableData, db *BaseDatabase) ([]f
 			panic(err)
 		}
 		if !ok { // This should never happen
-			panic(fmt.Sprintf("index `%s` declares the table `%s` as a FULLTEXT position table, but it could not be found", idx.ID(), ftTableNames.Position))
+			panic(fmt.Sprintf("index `%s` declares the table `%s` as a FULLTEXT position table, but it could not be found", idx.ID(ctx), ftTableNames.Position))
 		}
 		docCountTbl, ok, err := db.GetTableInsensitive(ctx, ftTableNames.DocCount)
 		if err != nil {
 			panic(err)
 		}
 		if !ok { // This should never happen
-			panic(fmt.Sprintf("index `%s` declares the table `%s` as a FULLTEXT doc count table, but it could not be found", idx.ID(), ftTableNames.DocCount))
+			panic(fmt.Sprintf("index `%s` declares the table `%s` as a FULLTEXT doc count table, but it could not be found", idx.ID(ctx), ftTableNames.DocCount))
 		}
 		globalCountTbl, ok, err := db.GetTableInsensitive(ctx, ftTableNames.GlobalCount)
 		if err != nil {
 			panic(err)
 		}
 		if !ok { // This should never happen
-			panic(fmt.Sprintf("index `%s` declares the table `%s` as a FULLTEXT global count table, but it could not be found", idx.ID(), ftTableNames.GlobalCount))
+			panic(fmt.Sprintf("index `%s` declares the table `%s` as a FULLTEXT global count table, but it could not be found", idx.ID(ctx), ftTableNames.GlobalCount))
 		}
 		rowCountTbl, ok, err := db.GetTableInsensitive(ctx, ftTableNames.RowCount)
 		if err != nil {
 			panic(err)
 		}
 		if !ok { // This should never happen
-			panic(fmt.Sprintf("index `%s` declares the table `%s` as a FULLTEXT row count table, but it could not be found", idx.ID(), ftTableNames.RowCount))
+			panic(fmt.Sprintf("index `%s` declares the table `%s` as a FULLTEXT row count table, but it could not be found", idx.ID(ctx), ftTableNames.RowCount))
 		}
 
 		tableSets = append(tableSets, fulltext.TableSet{
@@ -1294,8 +1294,8 @@ func addColumnToSchema(ctx *sql.Context, data *TableData, newCol *sql.Column, or
 	return newColIdx, data, nil
 }
 
-func validateMaxRowLength(sch sql.Schema) error {
-	if rowLen := maxRowStorageSize(sch); rowLen > types.MaxRowLength {
+func validateMaxRowLength(ctx *sql.Context, sch sql.Schema) error {
+	if rowLen := maxRowStorageSize(ctx, sch); rowLen > types.MaxRowLength {
 		return analyzererrors.ErrInvalidRowLength.New(types.MaxRowLength, rowLen)
 	}
 	return nil
@@ -1303,7 +1303,7 @@ func validateMaxRowLength(sch sql.Schema) error {
 
 // maxRowStorageSize simulates InnoDB's storage limitations,
 // which are different than Dolt's.
-func maxRowStorageSize(schema sql.Schema) int64 {
+func maxRowStorageSize(ctx *sql.Context, schema sql.Schema) int64 {
 	var numBytesPerRow int64 = 0
 	for _, col := range schema {
 		switch n := col.Type.(type) {
@@ -1332,7 +1332,7 @@ func maxRowStorageSize(schema sql.Schema) int64 {
 		case sql.YearType:
 			numBytesPerRow += 8
 		default:
-			panic(fmt.Sprintf("unknown type in create table: %s", n.String()))
+			panic(fmt.Sprintf("unknown type in create table: %s", n.String(ctx)))
 		}
 	}
 	return numBytesPerRow
@@ -1444,7 +1444,7 @@ func (t *Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Co
 					return err
 				}
 				if inRange != sql.InRange {
-					return sql.ErrValueOutOfRange.New(row[oldIdx], column.Type)
+					return sql.ErrValueOutOfRange.New(row[oldIdx], column.Type.String(ctx))
 				}
 				var newRow sql.Row
 				newRow = append(newRow, oldRowWithoutVal[:newIdx]...)
@@ -1501,7 +1501,7 @@ func (t *Table) PrimaryKeySchema(ctx *sql.Context) sql.PrimaryKeySchema {
 }
 
 // String implements the sql.Table interface.
-func (t *Table) String() string {
+func (t *Table) String(ctx *sql.Context) string {
 	return t.name
 }
 
@@ -1666,7 +1666,7 @@ func (t *IndexedTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup
 		}, nil
 	}
 
-	if lookup.Index.ID() == "PRIMARY" {
+	if lookup.Index.ID(ctx) == "PRIMARY" {
 		child, err := t.Table.Partitions(ctx)
 		if err != nil {
 			return nil, err
@@ -1838,7 +1838,7 @@ func (t *Table) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
 		i++
 	}
 	sort.Slice(nonPrimaryIndexes, func(i, j int) bool {
-		return nonPrimaryIndexes[i].ID() < nonPrimaryIndexes[j].ID()
+		return nonPrimaryIndexes[i].ID(ctx) < nonPrimaryIndexes[j].ID(ctx)
 	})
 
 	return append(indexes, nonPrimaryIndexes...), nil
@@ -2066,7 +2066,7 @@ func (t *Table) CreateIndex(ctx *sql.Context, idx sql.IndexDef) error {
 	}
 
 	// Store the computed index name in the case of an empty index name being passed in
-	data.indexes[strings.ToLower(index.ID())] = index
+	data.indexes[strings.ToLower(index.ID(ctx))] = index
 	sess.putTable(data)
 
 	return nil
@@ -2139,7 +2139,7 @@ func (t *Table) CreateFulltextIndex(ctx *sql.Context, indexDef sql.IndexDef, key
 	}
 
 	// TODO: We should store the computed index name in the case of an empty index name being passed in
-	data.indexes[strings.ToLower(index.ID())] = index
+	data.indexes[strings.ToLower(index.ID(ctx))] = index
 	sess.putTable(data)
 
 	return nil
@@ -2164,7 +2164,7 @@ func (t *Table) CreateVectorIndex(ctx *sql.Context, idx sql.IndexDef, distanceTy
 	index.(*Index).SupportedVectorFunction = distanceType
 
 	// Store the computed index name in the case of an empty index name being passed in
-	data.indexes[strings.ToLower(index.ID())] = index
+	data.indexes[strings.ToLower(index.ID(ctx))] = index
 	sess.putTable(data)
 
 	return nil
@@ -2549,7 +2549,7 @@ var _ MemTable = (*TableRevision)(nil)
 func (t *TableRevision) Inserter(ctx *sql.Context) sql.RowInserter {
 	ea := newTableEditAccumulator(t.Table.data)
 
-	uniqIdxCols, prefixLengths, uniqIdxNames := t.data.indexColsForTableEditor()
+	uniqIdxCols, prefixLengths, uniqIdxNames := t.data.indexColsForTableEditor(ctx)
 	return &tableEditor{
 		editedTable:    t.Table,
 		initialTable:   t.copy(),

@@ -44,18 +44,18 @@ func (n *NamedWindows) IsReadOnly() bool {
 }
 
 // String implements sql.Node
-func (n *NamedWindows) String() string {
+func (n *NamedWindows) String(ctx *sql.Context) string {
 	var sb strings.Builder
 	sb.WriteString("NamedWindows(")
 	var sep string
 	for n, def := range n.WindowDefs {
-		sb.WriteString(strings.ReplaceAll(fmt.Sprintf("%s%s %s", sep, n, def), "over", "as"))
+		sb.WriteString(strings.ReplaceAll(fmt.Sprintf("%s%s %s", sep, n, def.String(ctx)), "over", "as"))
 		sep = ", "
 	}
 	pr := sql.NewTreePrinter()
 	sb.WriteString(")")
 	_ = pr.WriteNode("%s", sb.String())
-	_ = pr.WriteChildren(n.Child.String())
+	_ = pr.WriteChildren(n.Child.String(ctx))
 	return pr.String()
 }
 

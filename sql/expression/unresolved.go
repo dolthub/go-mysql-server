@@ -87,7 +87,7 @@ func (uc *UnresolvedColumn) Name() string { return uc.name }
 // Table returns the table name.
 func (uc *UnresolvedColumn) Table() string { return uc.table }
 
-func (uc *UnresolvedColumn) String() string {
+func (uc *UnresolvedColumn) String(ctx *sql.Context) string {
 	if uc.table == "" {
 		return uc.name
 	}
@@ -216,10 +216,10 @@ func (utf *UnresolvedTableFunction) Resolved() bool {
 }
 
 // String implements the Stringer interface
-func (utf *UnresolvedTableFunction) String() string {
+func (utf *UnresolvedTableFunction) String(ctx *sql.Context) string {
 	var exprs = make([]string, len(utf.Arguments))
 	for i, e := range utf.Arguments {
-		exprs[i] = e.String()
+		exprs[i] = e.String(ctx)
 	}
 
 	return fmt.Sprintf("%s(%s)", utf.name, strings.Join(exprs, ", "))
@@ -288,15 +288,15 @@ func (*UnresolvedFunction) CollationCoercibility(ctx *sql.Context) (collation sq
 // Name implements the Nameable interface.
 func (uf *UnresolvedFunction) Name() string { return uf.name }
 
-func (uf *UnresolvedFunction) String() string {
+func (uf *UnresolvedFunction) String(ctx *sql.Context) string {
 	var exprs = make([]string, len(uf.Arguments))
 	for i, e := range uf.Arguments {
-		exprs[i] = e.String()
+		exprs[i] = e.String(ctx)
 	}
 
 	over := ""
 	if uf.Window != nil {
-		over = fmt.Sprintf(" %s", uf.Window)
+		over = fmt.Sprintf(" %s", uf.Window.String(ctx))
 	}
 
 	return fmt.Sprintf("%s(%s)%s", uf.name, strings.Join(exprs, ", "), over)

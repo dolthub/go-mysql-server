@@ -390,13 +390,13 @@ func (b *BaseBuilder) buildCreateIndex(ctx *sql.Context, n *plan.CreateIndex, ro
 		iter:    iter,
 	}
 
-	created, ready, err := ctx.GetIndexRegistry().AddIndex(index)
+	created, ready, err := ctx.GetIndexRegistry().AddIndex(ctx, index)
 	if err != nil {
 		return nil, err
 	}
 
 	log := logrus.WithFields(logrus.Fields{
-		"id":     index.ID(),
+		"id":     index.ID(ctx),
 		"driver": index.Driver(),
 	})
 

@@ -15,7 +15,6 @@
 package types
 
 import (
-	"context"
 	"math"
 	"reflect"
 
@@ -52,12 +51,12 @@ var (
 )
 
 // Compare implements Type interface.
-func (t GeomCollType) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
+func (t GeomCollType) Compare(ctx *sql.Context, a interface{}, b interface{}) (int, error) {
 	return GeometryType{}.Compare(ctx, a, b)
 }
 
 // Convert implements Type interface.
-func (t GeomCollType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
+func (t GeomCollType) Convert(ctx *sql.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	// Allow null
 	if v == nil {
 		return nil, sql.InRange, nil
@@ -131,7 +130,7 @@ func (t GeomCollType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltype
 }
 
 // String implements Type interface.
-func (t GeomCollType) String() string {
+func (t GeomCollType) String(ctx *sql.Context) string {
 	return "geometrycollection"
 }
 

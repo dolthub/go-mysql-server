@@ -62,8 +62,8 @@ func (j *JSONPretty) Description() string {
 }
 
 // String implements sql.Expression
-func (j *JSONPretty) String() string {
-	return fmt.Sprintf("%s(%s)", j.FunctionName(), j.Child.String())
+func (j *JSONPretty) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", j.FunctionName(), j.Child.String(ctx))
 }
 
 // Type implements sql.Expression

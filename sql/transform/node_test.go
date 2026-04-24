@@ -309,7 +309,7 @@ func (n *testNode) Resolved() bool {
 	return true
 }
 
-func (n *testNode) String() string {
+func (n *testNode) String(ctx *sql.Context) string {
 	return ""
 }
 

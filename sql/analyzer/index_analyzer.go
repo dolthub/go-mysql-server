@@ -117,7 +117,7 @@ func (r *indexAnalyzer) IndexesByTable(ctx *sql.Context, db, table string) []sql
 	indexes := r.indexesByTable[strings.ToLower(table)]
 
 	if r.indexRegistry != nil {
-		idxes := r.indexRegistry.IndexesByTable(db, table)
+		idxes := r.indexRegistry.IndexesByTable(ctx, db, table)
 		for _, idx := range idxes {
 			indexes = append(indexes, idx)
 		}
@@ -155,7 +155,7 @@ func (r *indexAnalyzer) MatchingIndexes(ctx *sql.Context, table, db string, expr
 	distinctExprs := make(map[string]struct{})
 	var exprStrs []string
 	for _, e := range exprs {
-		es := strings.ToLower(e.String())
+		es := strings.ToLower(e.String(ctx))
 		if _, ok := distinctExprs[es]; !ok {
 			distinctExprs[es] = struct{}{}
 			exprStrs = append(exprStrs, es)
@@ -170,7 +170,7 @@ func (r *indexAnalyzer) MatchingIndexes(ctx *sql.Context, table, db string, expr
 
 	var indexes []idxWithLen
 	for _, idx := range r.indexesByTable[strings.ToLower(table)] {
-		indexExprs := idx.Expressions()
+		indexExprs := idx.Expressions(ctx)
 		if ok, prefixCount := exprsAreIndexSubset(exprStrs, indexExprs); ok && prefixCount >= 1 {
 			indexes = append(indexes, idxWithLen{idx, len(indexExprs), prefixCount})
 		}
@@ -184,7 +184,7 @@ func (r *indexAnalyzer) MatchingIndexes(ctx *sql.Context, table, db string, expr
 		}
 		if idx != nil && prefixCount >= 1 {
 			r.registryIdxes = append(r.registryIdxes, idx)
-			indexes = append(indexes, idxWithLen{idx, len(idx.Expressions()), prefixCount})
+			indexes = append(indexes, idxWithLen{idx, len(idx.Expressions(ctx)), prefixCount})
 		}
 	}
 
@@ -199,12 +199,12 @@ func (r *indexAnalyzer) MatchingIndexes(ctx *sql.Context, table, db string, expr
 		} else if idxI.prefixCount != idxJ.prefixCount {
 			return idxI.prefixCount > idxJ.prefixCount
 			// TODO: ID() == "PRIMARY" is purely convention
-		} else if idxI.ID() == "PRIMARY" || idxJ.ID() == "PRIMARY" {
-			return idxI.ID() == "PRIMARY"
+		} else if idxI.ID(ctx) == "PRIMARY" || idxJ.ID(ctx) == "PRIMARY" {
+			return idxI.ID(ctx) == "PRIMARY"
 		} else if idxI.exprLen != idxJ.exprLen {
 			return idxI.exprLen > idxJ.exprLen
 		} else {
-			return idxI.Index.ID() < idxJ.Index.ID()
+			return idxI.Index.ID(ctx) < idxJ.Index.ID(ctx)
 		}
 	})
 	sortedIndexes := make([]sql.Index, len(indexes))
@@ -216,7 +216,7 @@ func (r *indexAnalyzer) MatchingIndexes(ctx *sql.Context, table, db string, expr
 
 // ExpressionsWithIndexes finds all the combinations of expressions with matching indexes. This only matches
 // multi-column indexes. Sorts the list of expressions by their length in descending order.
-func (r *indexAnalyzer) ExpressionsWithIndexes(db string, exprs ...sql.Expression) [][]sql.Expression {
+func (r *indexAnalyzer) ExpressionsWithIndexes(ctx *sql.Context, db string, exprs ...sql.Expression) [][]sql.Expression {
 	var results [][]sql.Expression
 
 	// First find matches in the native indexes
@@ -225,14 +225,14 @@ func (r *indexAnalyzer) ExpressionsWithIndexes(db string, exprs ...sql.Expressio
 		for _, idx := range idxes {
 			var used = make(map[int]struct{})
 			var matched []sql.Expression
-			for _, ie := range idx.Expressions() {
+			for _, ie := range idx.Expressions(ctx) {
 				var found bool
 				for i, e := range exprs {
 					if _, ok := used[i]; ok {
 						continue
 					}
 
-					if strings.EqualFold(ie, e.String()) {
+					if strings.EqualFold(ie, e.String(ctx)) {
 						used[i] = struct{}{}
 						found = true
 						matched = append(matched, e)
@@ -254,7 +254,7 @@ func (r *indexAnalyzer) ExpressionsWithIndexes(db string, exprs ...sql.Expressio
 
 	// Expand the search to the index registry if present
 	if r.indexRegistry != nil {
-		indexes := r.indexRegistry.ExpressionsWithIndexes(db, exprs...)
+		indexes := r.indexRegistry.ExpressionsWithIndexes(ctx, db, exprs...)
 		results = append(results, indexes...)
 	}
 
@@ -265,14 +265,14 @@ func (r *indexAnalyzer) ExpressionsWithIndexes(db string, exprs ...sql.Expressio
 }
 
 // releaseUsedIndexes should be called in the top level function of index analysis to return any held res
-func (r *indexAnalyzer) releaseUsedIndexes() {
+func (r *indexAnalyzer) releaseUsedIndexes(ctx *sql.Context) {
 	if r.indexRegistry == nil {
 		return
 	}
 
 	for _, i := range r.registryIdxes {
 		if i != nil {
-			r.indexRegistry.ReleaseIndex(i)
+			r.indexRegistry.ReleaseIndex(ctx, i)
 		}
 	}
 }

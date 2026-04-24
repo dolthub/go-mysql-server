@@ -197,24 +197,24 @@ func (c *Case) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.E
 	return NewCase(expr, branches, elseExpr), nil
 }
 
-func (c *Case) String() string {
+func (c *Case) String(ctx *sql.Context) string {
 	var buf bytes.Buffer
 
 	buf.WriteString("CASE ")
 	if c.Expr != nil {
-		buf.WriteString(c.Expr.String())
+		buf.WriteString(c.Expr.String(ctx))
 	}
 
 	for _, b := range c.Branches {
 		buf.WriteString(" WHEN ")
-		buf.WriteString(b.Cond.String())
+		buf.WriteString(b.Cond.String(ctx))
 		buf.WriteString(" THEN ")
-		buf.WriteString(b.Value.String())
+		buf.WriteString(b.Value.String(ctx))
 	}
 
 	if c.Else != nil {
 		buf.WriteString(" ELSE ")
-		buf.WriteString(c.Else.String())
+		buf.WriteString(c.Else.String(ctx))
 	}
 
 	buf.WriteString(" END")

@@ -49,12 +49,12 @@ func (n *Revoke) IsReadOnly() bool {
 }
 
 // String implements the interface sql.Node.
-func (n *Revoke) String() string {
+func (n *Revoke) String(ctx *sql.Context) string {
 	users := make([]string, len(n.Users))
 	for i, user := range n.Users {
 		users[i] = user.String("")
 	}
-	return fmt.Sprintf("Revoke(On: %s, From: %s)", n.PrivilegeLevel.String(), strings.Join(users, ", "))
+	return fmt.Sprintf("Revoke(On: %s, From: %s)", n.PrivilegeLevel.String(ctx), strings.Join(users, ", "))
 }
 
 // Database implements the interface sql.Databaser.
@@ -457,7 +457,7 @@ func (n *RevokeRole) Schema(ctx *sql.Context) sql.Schema {
 }
 
 // String implements the interface sql.Node.
-func (n *RevokeRole) String() string {
+func (n *RevokeRole) String(ctx *sql.Context) string {
 	roles := make([]string, len(n.Roles))
 	for i, role := range n.Roles {
 		roles[i] = role.String("")
@@ -574,7 +574,7 @@ func (n *RevokeProxy) Schema(ctx *sql.Context) sql.Schema {
 }
 
 // String implements the interface sql.Node.
-func (n *RevokeProxy) String() string {
+func (n *RevokeProxy) String(ctx *sql.Context) string {
 	users := make([]string, len(n.From))
 	for i, user := range n.From {
 		users[i] = user.String("")

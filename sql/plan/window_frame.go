@@ -28,7 +28,7 @@ type windowFrameBase struct {
 	endCurrentRow      bool
 }
 
-func (f *windowFrameBase) String() string {
+func (f *windowFrameBase) String(ctx *sql.Context) string {
 	if f == nil {
 		return ""
 	}
@@ -47,9 +47,9 @@ func (f *windowFrameBase) String() string {
 	case f.startCurrentRow:
 		startExtent = "CURRENT ROW"
 	case f.startNFollowing != nil:
-		startExtent = fmt.Sprintf("%s FOLLOWING", f.startNFollowing.String())
+		startExtent = fmt.Sprintf("%s FOLLOWING", f.startNFollowing.String(ctx))
 	case f.startNPreceding != nil:
-		startExtent = fmt.Sprintf("%s PRECEDING", f.startNPreceding.String())
+		startExtent = fmt.Sprintf("%s PRECEDING", f.startNPreceding.String(ctx))
 	default:
 	}
 
@@ -60,9 +60,9 @@ func (f *windowFrameBase) String() string {
 	case f.endCurrentRow:
 		endExtent = "CURRENT ROW"
 	case f.endNFollowing != nil:
-		endExtent = fmt.Sprintf("%s FOLLOWING", f.endNFollowing.String())
+		endExtent = fmt.Sprintf("%s FOLLOWING", f.endNFollowing.String(ctx))
 	case f.endNPreceding != nil:
-		endExtent = fmt.Sprintf("%s PRECEDING", f.endNPreceding.String())
+		endExtent = fmt.Sprintf("%s PRECEDING", f.endNPreceding.String(ctx))
 	default:
 	}
 
@@ -77,5 +77,5 @@ func (f *windowFrameBase) DebugString(ctx *sql.Context) string {
 	if f == nil {
 		return ""
 	}
-	return f.String()
+	return f.String(ctx)
 }

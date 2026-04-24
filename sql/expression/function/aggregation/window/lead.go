@@ -95,16 +95,16 @@ func (l *Lead) Resolved() bool {
 	return childrenResolved && windowResolved(l.window)
 }
 
-func (l *Lead) String() string {
+func (l *Lead) String(ctx *sql.Context) string {
 	sb := strings.Builder{}
 	if len(l.ChildExpressions) > 1 {
-		sb.WriteString(fmt.Sprintf("lead(%s, %d, %s)", l.ChildExpressions[0].String(), l.offset, l.ChildExpressions[1]))
+		sb.WriteString(fmt.Sprintf("lead(%s, %d, %s)", l.ChildExpressions[0].String(ctx), l.offset, l.ChildExpressions[1].String(ctx)))
 	} else {
-		sb.WriteString(fmt.Sprintf("lead(%s, %d)", l.ChildExpressions[0].String(), l.offset))
+		sb.WriteString(fmt.Sprintf("lead(%s, %d)", l.ChildExpressions[0].String(ctx), l.offset))
 	}
 	if l.window != nil {
 		sb.WriteString(" ")
-		sb.WriteString(l.window.String())
+		sb.WriteString(l.window.String(ctx))
 	}
 	return sb.String()
 }
@@ -112,9 +112,9 @@ func (l *Lead) String() string {
 func (l *Lead) DebugString(ctx *sql.Context) string {
 	sb := strings.Builder{}
 	if len(l.ChildExpressions) > 1 {
-		sb.WriteString(fmt.Sprintf("lead(%s, %d, %s)", l.ChildExpressions[0].String(), l.offset, l.ChildExpressions[1]))
+		sb.WriteString(fmt.Sprintf("lead(%s, %d, %s)", l.ChildExpressions[0].String(ctx), l.offset, l.ChildExpressions[1]))
 	} else {
-		sb.WriteString(fmt.Sprintf("lead(%s, %d)", l.ChildExpressions[0].String(), l.offset))
+		sb.WriteString(fmt.Sprintf("lead(%s, %d)", l.ChildExpressions[0].String(ctx), l.offset))
 	}
 	if l.window != nil {
 		sb.WriteString(" ")

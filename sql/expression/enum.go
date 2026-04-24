@@ -95,8 +95,8 @@ func (e *EnumToString) WithChildren(ctx *sql.Context, children ...sql.Expression
 }
 
 // String implements the sql.Expression interface.
-func (e *EnumToString) String() string {
-	return e.Enum.String()
+func (e *EnumToString) String(ctx *sql.Context) string {
+	return e.Enum.String(ctx)
 }
 
 // DebugString implements the sql.Expression interface.

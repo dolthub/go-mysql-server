@@ -252,12 +252,12 @@ func normalizeToExpected(actual, expected interface{}) interface{} {
 	if isGeometryType(expected) {
 		switch v := actual.(type) {
 		case []byte:
-			geom, _, err := types.GeometryType{}.Convert(context.Background(), v)
+			geom, _, err := types.GeometryType{}.Convert(sql.NewEmptyContext(), v)
 			if err == nil {
 				return geom
 			}
 		case string:
-			geom, _, err := types.GeometryType{}.Convert(context.Background(), []byte(v))
+			geom, _, err := types.GeometryType{}.Convert(sql.NewEmptyContext(), []byte(v))
 			if err == nil {
 				return geom
 			}
@@ -268,7 +268,7 @@ func normalizeToExpected(actual, expected interface{}) interface{} {
 	// Handle JSONDocument: MySQL returns JSON as a string; parse into JSONDocument
 	if _, ok := expected.(types.JSONDocument); ok {
 		if s, ok := actual.(string); ok {
-			doc, _, err := types.JSON.Convert(context.Background(), s)
+			doc, _, err := types.JSON.Convert(sql.NewEmptyContext(), s)
 			if err == nil {
 				return doc
 			}

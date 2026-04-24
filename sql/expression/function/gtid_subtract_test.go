@@ -122,7 +122,7 @@ func TestGtidSubtract(t *testing.T) {
 
 	for _, test := range tests {
 		f := NewGtidSubtract(sql.NewEmptyContext(), test.left, test.right)
-		t.Run(f.String(), func(t *testing.T) {
+		t.Run(f.String(sql.NewEmptyContext()), func(t *testing.T) {
 			res, err := f.Eval(sql.NewEmptyContext(), nil)
 			if test.error != "" {
 				require.Equal(t, test.error, err.Error())

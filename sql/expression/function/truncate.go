@@ -144,8 +144,8 @@ func (t *Truncate) IsNullable(ctx *sql.Context) bool {
 	return t.LeftChild.IsNullable(ctx) || t.RightChild.IsNullable(ctx)
 }
 
-func (t *Truncate) String() string {
-	return fmt.Sprintf("%s(%s,%s)", t.FunctionName(), t.LeftChild.String(), t.RightChild.String())
+func (t *Truncate) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s,%s)", t.FunctionName(), t.LeftChild.String(ctx), t.RightChild.String(ctx))
 }
 
 // Resolved implements the Expression interface.

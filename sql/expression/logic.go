@@ -123,8 +123,8 @@ func LookupEqualityColumn(db, table string, e sql.Expression) (LookupColumn, boo
 	return LookupColumn{}, false
 }
 
-func (a *And) String() string {
-	return fmt.Sprintf("(%s AND %s)", a.LeftChild, a.RightChild)
+func (a *And) String(ctx *sql.Context) string {
+	return fmt.Sprintf("(%s AND %s)", a.LeftChild.String(ctx), a.RightChild.String(ctx))
 }
 
 func (a *And) DebugString(ctx *sql.Context) string {
@@ -218,8 +218,8 @@ func JoinOr(exprs ...sql.Expression) sql.Expression {
 	}
 }
 
-func (o *Or) String() string {
-	return fmt.Sprintf("(%s OR %s)", o.LeftChild, o.RightChild)
+func (o *Or) String(ctx *sql.Context) string {
+	return fmt.Sprintf("(%s OR %s)", o.LeftChild.String(ctx), o.RightChild.String(ctx))
 }
 
 func (o *Or) DebugString(ctx *sql.Context) string {
@@ -292,8 +292,8 @@ func NewXor(left, right sql.Expression) sql.Expression {
 	return &Xor{BinaryExpressionStub{LeftChild: left, RightChild: right}}
 }
 
-func (x *Xor) String() string {
-	return fmt.Sprintf("(%s XOR %s)", x.LeftChild, x.RightChild)
+func (x *Xor) String(ctx *sql.Context) string {
+	return fmt.Sprintf("(%s XOR %s)", x.LeftChild.String(ctx), x.RightChild.String(ctx))
 }
 
 func (x *Xor) DebugString(ctx *sql.Context) string {

@@ -82,8 +82,8 @@ func (o *Oct) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Ex
 	return NewOct(ctx, children[0]), nil
 }
 
-func (o *Oct) String() string {
-	return fmt.Sprintf("%s(%s)", o.FunctionName(), o.n)
+func (o *Oct) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", o.FunctionName(), o.n.String(ctx))
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

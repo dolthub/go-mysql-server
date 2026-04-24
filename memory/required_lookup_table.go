@@ -35,7 +35,7 @@ func (s RequiredLookupTable) NewInstance(ctx *sql.Context, db sql.Database, args
 	return RequiredLookupTable{LookupSequenceTable: node.(LookupSequenceTable)}, err
 }
 
-func (s RequiredLookupTable) String() string {
+func (s RequiredLookupTable) String(ctx *sql.Context) string {
 	return fmt.Sprintf("requiredLookup")
 }
 

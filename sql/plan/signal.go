@@ -142,7 +142,7 @@ func (s *Signal) Resolved() bool {
 }
 
 // String implements the sql.Node interface.
-func (s *Signal) String() string {
+func (s *Signal) String(ctx *sql.Context) string {
 	infoStr := ""
 	if len(s.Info) > 0 {
 		infoStr = " SET"
@@ -153,7 +153,7 @@ func (s *Signal) String() string {
 				if i > 0 {
 					infoStr += ","
 				}
-				infoStr += " " + info.String()
+				infoStr += " " + info.String(ctx)
 				i++
 			}
 		}
@@ -263,7 +263,7 @@ func (s *SignalName) Resolved() bool {
 }
 
 // String implements the sql.Node interface.
-func (s *SignalName) String() string {
+func (s *SignalName) String(ctx *sql.Context) string {
 	infoStr := ""
 	if len(s.Signal.Info) > 0 {
 		infoStr = " SET"
@@ -272,7 +272,7 @@ func (s *SignalName) String() string {
 			if i > 0 {
 				infoStr += ","
 			}
-			infoStr += " " + info.String()
+			infoStr += " " + info.String(ctx)
 			i++
 		}
 	}
@@ -307,10 +307,10 @@ func (s SignalInfo) IsReadOnly() bool {
 	return true
 }
 
-func (s SignalInfo) String() string {
+func (s SignalInfo) String(ctx *sql.Context) string {
 	itemName := strings.ToUpper(string(s.ConditionItemName))
 	if s.ExprVal != nil {
-		return fmt.Sprintf("%s = %s", itemName, s.ExprVal.String())
+		return fmt.Sprintf("%s = %s", itemName, s.ExprVal.String(ctx))
 	} else if s.ConditionItemName == SignalConditionItemName_MysqlErrno {
 		return fmt.Sprintf("%s = %d", itemName, s.IntValue)
 	}

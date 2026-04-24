@@ -120,7 +120,7 @@ func TestGetRangeFilters(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			res := getRangeFilters(tt.filterExpressions)
+			res := getRangeFilters(sql.NewEmptyContext(), tt.filterExpressions)
 			require.ElementsMatch(t, tt.expectedRanges, res)
 		})
 	}

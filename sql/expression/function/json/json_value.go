@@ -159,11 +159,11 @@ func (j *JsonValue) WithChildren(ctx *sql.Context, children ...sql.Expression) (
 	return &ret, nil
 }
 
-func (j *JsonValue) String() string {
+func (j *JsonValue) String(ctx *sql.Context) string {
 	children := j.Children()
 	var parts = make([]string, len(children))
 	for i, c := range children {
-		parts[i] = c.String()
+		parts[i] = c.String(ctx)
 	}
 	return fmt.Sprintf("json_value(%s)", strings.Join(parts, ", "))
 }

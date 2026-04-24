@@ -82,8 +82,8 @@ func newMySQLColumnsTable() *ColumnsTable {
 var NewColumnsTable = newMySQLColumnsTable
 
 // String implements the sql.Table interface.
-func (c *ColumnsTable) String() string {
-	return printTable(ColumnsTableName, c.TableSchema)
+func (c *ColumnsTable) String(ctx *sql.Context) string {
+	return printTable(ctx, ColumnsTableName, c.TableSchema)
 }
 
 // Schema implements the sql.Table interface.
@@ -256,7 +256,7 @@ func getRowFromColumn(ctx *sql.Context, curOrdPos int, col *sql.Column, catName,
 		srsId             interface{}
 	)
 
-	colType, dataType := getDtdIdAndDataType(col.Type)
+	colType, dataType := getDtdIdAndDataType(ctx, col.Type)
 
 	if col.Nullable {
 		nullable = "YES"
@@ -413,6 +413,8 @@ func getRowsFromDatabase(ctx *sql.Context, db DbWithNames, privSet sql.Privilege
 	}
 
 	err := sql.DBTableIter(ctx, db.Database, func(t sql.Table) (cont bool, err error) {
+		name := t.Name()
+		name = name
 		rs, err := getRowsFromTable(ctx, db, t, privSetDb, curPrivSetMap, allColsWithDefaultValue)
 		if err != nil {
 			return false, err
@@ -460,7 +462,7 @@ func getIndexKeyInfo(ctx *sql.Context, t sql.Table) (map[string]string, bool, er
 
 		for _, index := range indexes {
 			idx := ""
-			if index.ID() == "PRIMARY" {
+			if index.ID(ctx) == "PRIMARY" {
 				idx = "PRI"
 				hasPK = true
 			} else if index.IsUnique() {
@@ -491,7 +493,7 @@ func GetColumnDefault(ctx *sql.Context, cd *sql.ColumnDefaultValue) interface{} 
 		return nil
 	}
 
-	defStr := cd.String()
+	defStr := cd.String(ctx)
 	if defStr == "NULL" {
 		return nil
 	}
@@ -530,6 +532,9 @@ func GetColumnDefault(ctx *sql.Context, cd *sql.ColumnDefaultValue) interface{} 
 			v = fmt.Sprintf("b'%s'", bitStr)
 		}
 	}
+	if stringer, ok := v.(sql.Stringer); ok {
+		return stringer.String(ctx)
+	}
 
 	return fmt.Sprint(v)
 }
@@ -562,8 +567,8 @@ func SchemaForTable(t sql.Table, db sql.Database, allColsWithDefaultValue sql.Sc
 // get DtdIdAndDataType returns data types for given sql.Type but in two different ways.
 // The DTD_IDENTIFIER value contains the type name and possibly other information such as the precision or length.
 // The DATA_TYPE value is the type name only with no other information.
-func getDtdIdAndDataType(colType sql.Type) (string, string) {
-	dtdId := strings.Split(strings.Split(colType.String(), " COLLATE")[0], " CHARACTER SET")[0]
+func getDtdIdAndDataType(ctx *sql.Context, colType sql.Type) (string, string) {
+	dtdId := strings.Split(strings.Split(colType.String(ctx), " COLLATE")[0], " CHARACTER SET")[0]
 
 	// The DATA_TYPE value is the type name only with no other information
 	dataType := strings.Split(dtdId, "(")[0]

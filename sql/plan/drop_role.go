@@ -48,7 +48,7 @@ func (n *DropRole) Schema(ctx *sql.Context) sql.Schema {
 }
 
 // String implements the interface sql.Node.
-func (n *DropRole) String() string {
+func (n *DropRole) String(ctx *sql.Context) string {
 	roles := make([]string, len(n.Roles))
 	for i, role := range n.Roles {
 		roles[i] = role.String("")

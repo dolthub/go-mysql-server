@@ -133,10 +133,10 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 				converted, inRange, cErr = col.Type.Convert(ctxWithColumnInfo, val)
 			}
 			if cErr == nil && inRange != sql.InRange {
-				cErr = sql.ErrValueOutOfRange.New(val, col.Type)
+				cErr = sql.ErrValueOutOfRange.New(val, col.Type.String(ctx))
 			}
 			if sql.ErrTruncatedIncorrect.Is(cErr) {
-				cErr = sql.ErrInvalidValue.New(val, col.Type)
+				cErr = sql.ErrInvalidValue.New(val, col.Type.String(ctx))
 			}
 			if cErr != nil {
 				// Ignore individual column errors when INSERT IGNORE, UPDATE IGNORE, etc. is specified.
@@ -170,7 +170,7 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 					case types.ErrConvertingToEnum.Is(cErr), sql.ErrInvalidSetValue.Is(cErr), sql.ErrConvertingToSet.Is(cErr):
 						cErr = types.ErrDataTruncatedForColumnAtRow.New(col.Name, i.rowNumber)
 					}
-					return nil, sql.NewWrappedInsertError(origRow, cErr)
+					return nil, sql.NewWrappedInsertError(ctx, origRow, cErr)
 				}
 			}
 			row[idx] = converted
@@ -189,7 +189,7 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 				if !sql.ErrPrimaryKeyViolation.Is(err) && !sql.ErrUniqueKeyViolation.Is(err) {
 					i.rowSource.Close(ctx)
 					i.rowSource = nil
-					return nil, sql.NewWrappedInsertError(row, err)
+					return nil, sql.NewWrappedInsertError(ctx, row, err)
 				}
 
 				// TODO: For multitables, UniqueKeyError.Existing might not be the correct row if the error is coming
@@ -198,7 +198,7 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 				if err = i.replacer.Delete(ctx, ue.Existing); err != nil {
 					i.rowSource.Close(ctx)
 					i.rowSource = nil
-					return nil, sql.NewWrappedInsertError(row, err)
+					return nil, sql.NewWrappedInsertError(ctx, row, err)
 				}
 				// the row had to be deleted, write the values into the toReturn row
 				copy(toReturn, ue.Existing)
@@ -368,7 +368,7 @@ func (i *insertIter) getAutoIncVal(row sql.Row) int64 {
 
 func (i *insertIter) ignoreOrClose(ctx *sql.Context, row sql.Row, err error) error {
 	if !i.ignore {
-		return sql.NewWrappedInsertError(row, err)
+		return sql.NewWrappedInsertError(ctx, row, err)
 	}
 
 	return warnOnIgnorableError(ctx, row, err)

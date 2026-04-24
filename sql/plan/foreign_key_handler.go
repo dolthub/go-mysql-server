@@ -53,8 +53,8 @@ func (n *ForeignKeyHandler) Resolved() bool {
 }
 
 // String implements the interface sql.Node.
-func (n *ForeignKeyHandler) String() string {
-	return n.OriginalNode.String()
+func (n *ForeignKeyHandler) String(ctx *sql.Context) string {
+	return n.OriginalNode.String(ctx)
 }
 
 func (n *ForeignKeyHandler) DebugString(ctx *sql.Context) string {

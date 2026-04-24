@@ -87,9 +87,9 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 		switch e := pe.(type) {
 		case *expression.GetField:
 			exprs = append(exprs, e)
-			id, ok := inScope.getExpr(e.String(), true)
+			id, ok := inScope.getExpr(e.String(b.ctx), true)
 			if !ok {
-				err := sql.ErrColumnNotFound.New(e.String())
+				err := sql.ErrColumnNotFound.New(e.String(b.ctx))
 				b.handleErr(err)
 			}
 			e = e.WithIndex(int(id)).(*expression.GetField)
@@ -109,9 +109,9 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 				if strings.EqualFold(c.table, tableName) || tableName == "" {
 					gf := c.scalarGf()
 					exprs = append(exprs, gf)
-					id, ok := inScope.getExpr(gf.String(), true)
+					id, ok := inScope.getExpr(gf.String(b.ctx), true)
 					if !ok {
-						err := sql.ErrColumnNotFound.New(gf.String())
+						err := sql.ErrColumnNotFound.New(gf.String(b.ctx))
 						b.handleErr(err)
 					}
 
@@ -144,9 +144,9 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 					err := sql.ErrMisusedAlias.New(e.Name())
 					b.handleErr(err)
 				}
-				id, ok := inScope.getExpr(gf.String(), true)
+				id, ok := inScope.getExpr(gf.String(b.ctx), true)
 				if !ok {
-					err := sql.ErrColumnNotFound.New(gf.String())
+					err := sql.ErrColumnNotFound.New(gf.String(b.ctx))
 					b.handleErr(err)
 				}
 				col = scopeColumn{id: id, tableId: gf.TableId(), col: e.Name(), db: gf.Database(), table: gf.Table(), scalar: e, typ: gf.Type(b.ctx), nullable: gf.IsNullable(b.ctx)}
@@ -175,7 +175,7 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 			// String literals are quoted by String, but plan.Project.Schema uses the unquoted
 			// value. The scope column name must match the projection schema for column
 			// lookup to succeed during execution.
-			colName := e.String()
+			colName := e.String(b.ctx)
 			if s, ok := e.Value().(string); ok {
 				colName = s
 			}
@@ -183,7 +183,7 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 			outScope.newColumn(col)
 		default:
 			exprs = append(exprs, pe)
-			col := scopeColumn{col: pe.String(), scalar: pe, typ: pe.Type(b.ctx)}
+			col := scopeColumn{col: pe.String(b.ctx), scalar: pe, typ: pe.Type(b.ctx)}
 			outScope.newColumn(col)
 		}
 	}
@@ -211,7 +211,7 @@ func (b *Builder) selectExprToExpression(inScope *scope, se ast.SelectExpr) sql.
 		if selectExprNeedsAlias(b.ctx, e, expr) {
 			// if the input expression is the same as expression string, then it's referencable.
 			// E.g. "SLEEP(1)" is the same as "sleep(1)"
-			if strings.EqualFold(e.InputExpression, expr.String()) {
+			if strings.EqualFold(e.InputExpression, expr.String(b.ctx)) {
 				return expression.NewAlias(e.InputExpression, expr)
 			}
 			return expression.NewAlias(e.InputExpression, expr).AsUnreferencable()
@@ -277,7 +277,7 @@ func selectExprNeedsAlias(ctx *sql.Context, e *ast.AliasedExpr, expr sql.Express
 
 	// If the expression's string representation is quoted, trim the quotes before comparing it to the input expression.
 	// InputExpression is assigned in the Vitess layer, and it always trims quotes at that time, too.
-	exprString := expr.String()
+	exprString := expr.String(ctx)
 	if strings.HasPrefix(exprString, "'") && strings.HasSuffix(exprString, "'") {
 		exprString = exprString[1 : len(exprString)-1]
 	}

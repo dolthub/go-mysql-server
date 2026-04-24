@@ -56,8 +56,8 @@ func (a *unaryAggBase) Window() *sql.WindowDefinition {
 	return a.window
 }
 
-func (a *unaryAggBase) String() string {
-	return a.functionName + "(" + a.Child.String() + ")"
+func (a *unaryAggBase) String(ctx *sql.Context) string {
+	return a.functionName + "(" + a.Child.String(ctx) + ")"
 }
 
 func (a *unaryAggBase) Type(ctx *sql.Context) sql.Type {

@@ -52,7 +52,7 @@ func replaceIdxOrderByDistanceHelper(ctx *sql.Context, scope *plan.Scope, node s
 		sortNode = offsetAssignIndexes(ctx, sortNode).(plan.Sortable)
 
 		sfExprs := normalizeExpressions(ctx, tableAliases, nil, sortNode.GetSortFields().ToExpressions()...)
-		sfAliases := aliasedExpressionsInNode(sortNode)
+		sfAliases := aliasedExpressionsInNode(ctx, sortNode)
 
 		// TODO: Instead of checking both sides of the expression,
 		// use a previous pass to normalize distance functions so
@@ -96,7 +96,7 @@ func replaceIdxOrderByDistanceHelper(ctx *sql.Context, scope *plan.Scope, node s
 			if !idxCandidate.CanSupportOrderBy(distance) {
 				continue
 			}
-			if isSortFieldsValidPrefix([]sql.Expression{column}, sfAliases, idxCandidate.Expressions()) {
+			if isSortFieldsValidPrefix(ctx, []sql.Expression{column}, sfAliases, idxCandidate.Expressions(ctx)) {
 				idx = idxCandidate
 				break
 			}

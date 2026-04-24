@@ -59,8 +59,8 @@ func (j *JSONDepth) Resolved() bool {
 }
 
 // String implements sql.Expression interface.
-func (j *JSONDepth) String() string {
-	return fmt.Sprintf("%s(%s)", j.FunctionName(), j.JSON.String())
+func (j *JSONDepth) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", j.FunctionName(), j.JSON.String(ctx))
 }
 
 // Type implements sql.Expression interface.

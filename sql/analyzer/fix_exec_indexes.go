@@ -125,7 +125,7 @@ func projAssignIndexes(ctx *sql.Context, n sql.Node, cols sql.ColSet) sql.Node {
 				}
 				idx++
 			}
-			return e, transform.SameTree, fmt.Errorf("column not found: %s", e)
+			return e, transform.SameTree, fmt.Errorf("column not found: %s", e.String(ctx))
 		default:
 			return e, transform.SameTree, nil
 		}
@@ -606,7 +606,7 @@ func (s *idxScope) visitSelf(ctx *sql.Context, n sql.Node) error {
 					if idExpr, isIdExpr := e.(sql.IdExpression); isIdExpr {
 						selScope.ids = append(selScope.ids, idExpr.Id())
 					}
-					selScope.columns = append(selScope.columns, e.String())
+					selScope.columns = append(selScope.columns, e.String(ctx))
 					scope = append(scope, selScope)
 				}
 				s.expressions = append(s.expressions, fixExprToScope(ctx, e, scope...))
@@ -775,7 +775,7 @@ func fixExprToScope(ctx *sql.Context, e sql.Expression, scopes ...*idxScope) sql
 			//  don't have the destination schema, and column references in default values are determined in the build phase)
 
 			// TODO: If we don't find a valid index for a field, we should report an error
-			idx, _ := newScope.getIdxId(e.Id(), e.String())
+			idx, _ := newScope.getIdxId(e.Id(), e.String(ctx))
 			if idx >= 0 {
 				return e.WithIndex(idx), transform.NewTree, nil
 			}

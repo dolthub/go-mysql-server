@@ -65,10 +65,10 @@ func (*Distance) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 	return sql.Collation_binary, 5
 }
 
-func (d *Distance) String() string {
+func (d *Distance) String(ctx *sql.Context) string {
 	var args = make([]string, len(d.ChildExpressions))
 	for i, arg := range d.ChildExpressions {
-		args[i] = arg.String()
+		args[i] = arg.String(ctx)
 	}
 	return fmt.Sprintf("%s(%s)", d.FunctionName(), strings.Join(args, ","))
 }

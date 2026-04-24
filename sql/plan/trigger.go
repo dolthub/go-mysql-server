@@ -60,10 +60,10 @@ func NewTriggerExecutor(child, triggerLogic sql.Node, triggerEvent TriggerEvent,
 	}
 }
 
-func (t *TriggerExecutor) String() string {
+func (t *TriggerExecutor) String(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Trigger(%s)", t.TriggerDefinition.CreateStatement)
-	_ = pr.WriteChildren(t.left.String())
+	_ = pr.WriteChildren(t.left.String(ctx))
 	return pr.String()
 }
 
