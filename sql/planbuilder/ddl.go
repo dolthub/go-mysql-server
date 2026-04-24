@@ -845,7 +845,7 @@ func (b *Builder) buildIndexDefs(inScope *scope, spec *ast.TableSpec) (idxDefs s
 			constraint = sql.IndexConstraint_Vector
 		}
 
-		columns := b.gatherIndexColumns(inScope, idxDef.Columns)
+		columns := b.gatherIndexColumns(inScope, idxDef.Fields)
 
 		var comment string
 		for _, option := range idxDef.Options {
@@ -986,7 +986,7 @@ func (b *Builder) buildAlterIndex(inScope *scope, ddl *ast.DDL, table *plan.Reso
 			constraint = sql.IndexConstraint_None
 		}
 
-		columns := b.gatherIndexColumns(inScope, ddl.IndexSpec.Columns)
+		columns := b.gatherIndexColumns(inScope, ddl.IndexSpec.Fields)
 
 		var comment string
 		for _, option := range ddl.IndexSpec.Options {
@@ -1047,9 +1047,9 @@ func (b *Builder) buildAlterIndex(inScope *scope, ddl *ast.DDL, table *plan.Reso
 // scalar expression using inScope for name resolution. Plain column references
 // carry only a name and an optional length; expression columns carry only the
 // built sql.Expression.
-func (b *Builder) gatherIndexColumns(inScope *scope, cols []*ast.IndexColumn) []sql.IndexColumn {
-	out := make([]sql.IndexColumn, len(cols))
-	for i, col := range cols {
+func (b *Builder) gatherIndexColumns(inScope *scope, idxFields []*ast.IndexField) []sql.IndexColumn {
+	out := make([]sql.IndexColumn, len(idxFields))
+	for i, col := range idxFields {
 		var length int64
 		var err error
 		if col.Length != nil && col.Length.Type == ast.IntVal {
@@ -1276,20 +1276,20 @@ func (b *Builder) buildExternalCreateIndex(inScope *scope, ddl *ast.DDL) (outSco
 	}
 
 	tableId := outScope.tables[tblName]
-	cols := make([]sql.Expression, len(ddl.IndexSpec.Columns))
-	for i, col := range ddl.IndexSpec.Columns {
+	idxFields := make([]sql.Expression, len(ddl.IndexSpec.Fields))
+	for i, col := range ddl.IndexSpec.Fields {
 		colName := strings.ToLower(col.Column.String())
 		c, ok := inScope.resolveColumn(dbName, tblName, colName, true, false)
 		if !ok {
 			b.handleErr(sql.ErrColumnNotFound.New(colName))
 		}
-		cols[i] = expression.NewGetFieldWithTable(int(c.id), int(tableId), c.typ, c.db, c.table, c.col, c.nullable)
+		idxFields[i] = expression.NewGetFieldWithTable(int(c.id), int(tableId), c.typ, c.db, c.table, c.col, c.nullable)
 	}
 
 	createIndex := plan.NewCreateIndex(
 		ddl.IndexSpec.ToName.String(),
 		table,
-		cols,
+		idxFields,
 		ddl.IndexSpec.Using.Lowered(),
 		config,
 	)
@@ -1539,7 +1539,7 @@ func getPkOrdinals(ts *ast.TableSpec) []int {
 				colIdx[ts.Columns[i].Name.Lowered()] = i
 			}
 
-			for _, i := range idxDef.Columns {
+			for _, i := range idxDef.Fields {
 				pkOrdinals = append(pkOrdinals, colIdx[i.Column.Lowered()])
 			}
 
@@ -1573,7 +1573,7 @@ func (b *Builder) columnDefinitionToColumn(inScope *scope, cd *ast.ColumnDefinit
 	OuterLoop:
 		for _, index := range indexes {
 			if index.Info.Primary {
-				for _, indexCol := range index.Columns {
+				for _, indexCol := range index.Fields {
 					if indexCol.Column.Equal(cd.Name) {
 						isPkey = true
 						break OuterLoop
