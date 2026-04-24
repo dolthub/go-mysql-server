@@ -383,7 +383,14 @@ func convertDataAndWarn(ctx *sql.Context, tableSchema sql.Schema, row sql.Row, c
 		maxLength := tableSchema[columnIdx].Type.(sql.StringType).MaxCharacterLength()
 		row[columnIdx] = row[columnIdx].(string)[:maxLength]
 	} else if types.ErrBadCharsetString.Is(err) {
-		row[columnIdx] = string(types.TruncateInvalidUTF8([]byte(row[columnIdx].(string))))
+		switch v := row[columnIdx].(type) {
+		case string:
+			row[columnIdx] = string(types.TruncateInvalidUTF8([]byte(v)))
+		case []byte:
+			row[columnIdx] = string(types.TruncateInvalidUTF8(v))
+		default:
+			row[columnIdx] = tableSchema[columnIdx].Type.Zero()
+		}
 		if ctx != nil && ctx.Session != nil {
 			ctx.Session.Warn(&sql.Warning{
 				Level:   "Warning",
