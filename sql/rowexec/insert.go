@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"gopkg.in/src-d/go-errors.v1"
 
@@ -380,14 +381,23 @@ func (i *insertIter) ignoreOrClose(ctx *sql.Context, row sql.Row, err error) err
 func convertDataAndWarn(ctx *sql.Context, tableSchema sql.Schema, row sql.Row, columnIdx int, err error) sql.Row {
 	if types.ErrLengthBeyondLimit.Is(err) {
 		maxLength := tableSchema[columnIdx].Type.(sql.StringType).MaxCharacterLength()
-		row[columnIdx] = row[columnIdx].(string)[:maxLength] // truncate string
+		row[columnIdx] = row[columnIdx].(string)[:maxLength]
+	} else if types.ErrBadCharsetString.Is(err) {
+		row[columnIdx] = string(types.TruncateInvalidUTF8([]byte(row[columnIdx].(string))))
+		if ctx != nil && ctx.Session != nil {
+			ctx.Session.Warn(&sql.Warning{
+				Level:   "Warning",
+				Code:    mysql.ERTruncatedWrongValueForField,
+				Message: err.Error(),
+			})
+		}
+		return row
 	} else {
 		row[columnIdx] = tableSchema[columnIdx].Type.Zero()
 	}
 
 	sqlerr := sql.CastSQLError(err)
 
-	// Add a warning instead
 	if ctx != nil && ctx.Session != nil {
 		ctx.Session.Warn(&sql.Warning{
 			Level:   "Note",
