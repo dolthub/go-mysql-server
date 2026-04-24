@@ -145,23 +145,32 @@ func stripTableNamesFromColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node
 			// it explicitly so the expression is stored without a table name (e.g. "lower(email)"
 			// instead of "lower(users.email)"), matching what stripTableNamesFromDefault does for
 			// regular generated column defaults.
-			if node.Expression == nil {
-				return node, transform.SameTree, nil
-			}
-			newExpr, same, err := transform.Expr(ctx, node.Expression, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-				if gf, ok := e.(*expression.GetField); ok {
-					return gf.WithTable(""), transform.NewTree, nil
-				}
-				return e, transform.SameTree, nil
-			})
-			if err != nil {
-				return node, transform.SameTree, err
-			}
-			if same {
-				return node, transform.SameTree, nil
-			}
 			np := *node
-			np.Expression = newExpr
+			allSame := transform.SameTree
+			for i, idxCol := range node.Columns {
+				if idxCol.Expression == nil {
+					continue
+				}
+
+				newExpr, same, err := transform.Expr(ctx, idxCol.Expression, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+					if gf, ok := e.(*expression.GetField); ok {
+						return gf.WithTable(""), transform.NewTree, nil
+					}
+					return e, transform.SameTree, nil
+				})
+				if err != nil {
+					return node, transform.SameTree, err
+				}
+
+				allSame = allSame && same
+				if !same {
+					np.Columns[i].Expression = newExpr
+				}
+			}
+
+			if allSame {
+				return node, transform.SameTree, nil
+			}
 			return &np, transform.NewTree, nil
 		case sql.SchemaTarget:
 			return transform.NodeExprs(ctx, n, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
