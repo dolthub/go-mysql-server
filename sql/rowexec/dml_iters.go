@@ -692,7 +692,7 @@ type safepointPeriodicallyIter struct {
 	n     int
 }
 
-const safepointEveryNRows = 1024
+const safepointEveryNRows = 2048
 
 func (i *safepointPeriodicallyIter) Next(ctx *sql.Context) (r sql.Row, err error) {
 	i.n++
