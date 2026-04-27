@@ -19,6 +19,7 @@ import (
 	"reflect"
 	"strconv"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/shopspring/decimal"
@@ -97,6 +98,9 @@ func (t systemDoubleType) Convert(ctx context.Context, v interface{}) (interface
 			return value, sql.InRange, nil
 		}
 	case decimal.Decimal:
+		f, _ := value.Float64()
+		return t.Convert(ctx, f)
+	case apd.Decimal:
 		f, _ := value.Float64()
 		return t.Convert(ctx, f)
 	case decimal.NullDecimal:

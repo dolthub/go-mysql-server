@@ -2,6 +2,7 @@ module github.com/dolthub/go-mysql-server
 
 require (
 	github.com/cespare/xxhash/v2 v2.3.0
+	github.com/cockroachdb/apd/v3 v3.2.3
 	github.com/dolthub/flatbuffers/v23 v23.3.3-dh.2
 	github.com/dolthub/go-icu-regex v0.0.0-20260412212219-49724d547866
 	github.com/dolthub/jsonpath v0.0.2-0.20240227200619-19675ab05c71
