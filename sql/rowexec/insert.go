@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"gopkg.in/src-d/go-errors.v1"
 
@@ -381,6 +382,17 @@ func convertDataAndWarn(ctx *sql.Context, tableSchema sql.Schema, row sql.Row, c
 	if types.ErrLengthBeyondLimit.Is(err) {
 		maxLength := tableSchema[columnIdx].Type.(sql.StringType).MaxCharacterLength()
 		row[columnIdx] = row[columnIdx].(string)[:maxLength] // truncate string
+	} else if types.ErrBadCharsetString.Is(err) {
+		switch v := row[columnIdx].(type) {
+		case string:
+			row[columnIdx] = string(types.TruncateInvalidUTF8([]byte(v)))
+		case []byte:
+			row[columnIdx] = string(types.TruncateInvalidUTF8(v))
+		default:
+			row[columnIdx] = tableSchema[columnIdx].Type.Zero()
+		}
+		ctx.Warn(mysql.ERTruncatedWrongValueForField, "%s", err.Error())
+		return row
 	} else {
 		row[columnIdx] = tableSchema[columnIdx].Type.Zero()
 	}

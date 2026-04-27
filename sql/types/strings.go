@@ -517,7 +517,7 @@ func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest [
 				return nil, ErrBadCharsetString.New(invalidByte, colName, rowNum)
 			} else {
 				// Non-strict mode: truncate invalid bytes (MySQL behavior)
-				bytesVal = truncateInvalidUTF8(bytesVal)
+				bytesVal = TruncateInvalidUTF8(bytesVal)
 			}
 		} else {
 			var ok bool
@@ -547,12 +547,11 @@ func getColumnContext(ctx context.Context) (string, int64) {
 	return colName, rowNum
 }
 
-// truncateInvalidUTF8 truncates byte slice at first invalid UTF8 sequence (MySQL non-strict behavior)
-func truncateInvalidUTF8(data []byte) []byte {
+// TruncateInvalidUTF8 truncates data at the first invalid UTF-8 byte sequence.
+func TruncateInvalidUTF8(data []byte) []byte {
 	for i := 0; i < len(data); {
 		r, size := utf8.DecodeRune(data[i:])
 		if r == utf8.RuneError && size == 1 {
-			// Invalid UTF8 sequence found, truncate here
 			return data[:i]
 		}
 		i += size

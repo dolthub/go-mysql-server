@@ -22,6 +22,8 @@ import (
 	"sync"
 	"unicode/utf8"
 
+	"github.com/dolthub/vitess/go/mysql"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -102,6 +104,7 @@ func (l *Like) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if right == nil {
 		return nil, nil
 	}
+	var tpl likeMatcherErrTuple
 	if !l.cached {
 		// for non-cached regex every time create a new matcher
 		collation, _ := l.CollationCoercibility(ctx)
@@ -116,10 +119,18 @@ func (l *Like) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 				},
 			}
 		})
-		tpl := l.pool.Get().(likeMatcherErrTuple)
+		tpl = l.pool.Get().(likeMatcherErrTuple)
 		lm, err = tpl.matcher, tpl.err
 	}
 	if err != nil {
+		if sql.ErrCharSetInvalidString.Is(err) {
+			// MySQL returns no match and issues warning 1300 instead of an error.
+			if l.cached {
+				l.pool.Put(tpl)
+			}
+			ctx.Warn(mysql.ERInvalidCharacterString, "%s", err.Error())
+			return nil, nil
+		}
 		return nil, err
 	}
 
