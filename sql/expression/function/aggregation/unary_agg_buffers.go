@@ -288,6 +288,20 @@ func (a *avgBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 		}
 		scale := (s.Exponent() * -1) + 4
 		return s.DivRound(decimal.NewFromInt(a.rows), scale), nil
+	case apd.Decimal:
+		if s.IsZero() && a.rows == 0 {
+			return nil, nil
+		}
+		if a.rows == 0 {
+			return *apd.New(0, 0), nil
+		}
+		scale := (s.Exponent * -1) + 4
+		_, err = apd.BaseContext.WithPrecision(100).Quo(&s, &s, apd.New(a.rows, 0))
+		if err != nil {
+			return nil, err
+		}
+		_, err = apd.BaseContext.WithPrecision(100).Quantize(&s, &s, -scale)
+		return s, err
 	}
 	return nil, nil
 }

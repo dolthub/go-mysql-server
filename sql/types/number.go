@@ -27,6 +27,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/shopspring/decimal"
@@ -1037,6 +1038,14 @@ func convertToInt64(t NumberTypeImpl_, v any, round Round) (int64, sql.ConvertIn
 			return dec_int64_min.IntPart(), sql.Underflow, nil
 		}
 		return v.Round(0).IntPart(), sql.InRange, nil
+	case apd.Decimal:
+		if v.GreaterThan(dec_int64_max) {
+			return dec_int64_max.IntPart(), sql.Overflow, nil
+		}
+		if v.LessThan(dec_int64_min) {
+			return dec_int64_min.IntPart(), sql.Underflow, nil
+		}
+		return v.Round(0).IntPart(), sql.InRange, nil
 	case []byte:
 		i, err := strconv.ParseInt(hex.EncodeToString(v), 16, 64)
 		if err != nil {
@@ -1242,6 +1251,9 @@ func convertToFloat64(t NumberTypeImpl_, v interface{}) (float64, error) {
 	case float64:
 		return v, nil
 	case decimal.Decimal:
+		f, _ := v.Float64()
+		return f, nil
+	case apd.Decimal:
 		f, _ := v.Float64()
 		return f, nil
 	case []byte:
