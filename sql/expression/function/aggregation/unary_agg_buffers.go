@@ -6,6 +6,7 @@ import (
 	"reflect"
 
 	"github.com/cespare/xxhash/v2"
+	"github.com/cockroachdb/apd/v3"
 	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -52,7 +53,7 @@ func (a *anyValueBuffer) Dispose(ctx *sql.Context) {
 }
 
 type sumBuffer struct {
-	sum   interface{} // sum is either decimal.Decimal or float64
+	sum   interface{} // sum is either decimal or float64
 	expr  sql.Expression
 	isnil bool
 }
@@ -108,6 +109,30 @@ func (m *sumBuffer) PerformSum(ctx *sql.Context, v interface{}) {
 			}
 		}
 		m.sum = m.sum.(float64) + n
+	case apd.Decimal:
+		if m.isnil {
+			m.sum = *apd.New(0, 0)
+			m.isnil = false
+		}
+		switch sum := m.sum.(type) {
+		case apd.Decimal:
+		case float64:
+			var newSum = new(apd.Decimal)
+			_ = newSum.Scan(sum)
+			m.sum = *newSum
+		case decimal.Decimal:
+			m.sum = *apd.New(sum.CoefficientInt64(), sum.Exponent())
+		default:
+			val, _, err := types.InternalDecimalType.Convert(ctx, sum)
+			dec := val.(decimal.Decimal)
+			if err != nil {
+				dec = decimal.NewFromInt(0)
+			}
+			m.sum = *apd.New(dec.CoefficientInt64(), dec.Exponent())
+		}
+		curSum := m.sum.(apd.Decimal)
+		_, _ = apd.BaseContext.Add(&curSum, &curSum, &n)
+		m.sum = curSum
 	case decimal.Decimal:
 		if m.isnil {
 			m.sum = decimal.NewFromInt(0)
@@ -263,6 +288,20 @@ func (a *avgBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 		}
 		scale := (s.Exponent() * -1) + 4
 		return s.DivRound(decimal.NewFromInt(a.rows), scale), nil
+	case apd.Decimal:
+		if s.IsZero() && a.rows == 0 {
+			return nil, nil
+		}
+		if a.rows == 0 {
+			return *apd.New(0, 0), nil
+		}
+		scale := (s.Exponent * -1) + 4
+		_, err = apd.BaseContext.WithPrecision(100).Quo(&s, &s, apd.New(a.rows, 0))
+		if err != nil {
+			return nil, err
+		}
+		_, err = apd.BaseContext.WithPrecision(100).Quantize(&s, &s, -scale)
+		return s, err
 	}
 	return nil, nil
 }

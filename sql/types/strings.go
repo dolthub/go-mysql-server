@@ -23,6 +23,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/shopspring/decimal"
@@ -430,6 +431,8 @@ func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest [
 		val = s.AppendFormat(dest, sql.TimestampDatetimeLayout)
 	case decimal.Decimal:
 		val = append(dest, s.StringFixed(s.Exponent()*-1)...)
+	case apd.Decimal:
+		val = append(dest, s.Text('f')...)
 	case decimal.NullDecimal:
 		if !s.Valid {
 			return nil, nil
