@@ -71,13 +71,86 @@ func (b *Between) Resolved() bool {
 // Eval implements the Expression interface.
 func (b *Between) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// TODO: implement between without reusing LTE/GTE expressions
-	b.Lower.Eval(ctx, row)
-	b.Upper.Eval(ctx, row)
-	b.Val.Eval(ctx, row)
+	lower, err := b.Lower.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	upper, err := b.Upper.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	value, err := b.Val.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
 
-	// TODO: cast left and right? tricky...
+	if lower == nil || upper == nil || value == nil {
+		return nil, nil
+	}
 
-	return NewAnd(NewLessThanOrEqual(b.Lower, b.Val), NewGreaterThanOrEqual(b.Upper, b.Val)).Eval(ctx, row)
+	lower, err = sql.UnwrapAny(ctx, lower)
+	if err != nil {
+		return nil, err
+	}
+	upper, err = sql.UnwrapAny(ctx, upper)
+	if err != nil {
+		return nil, err
+	}
+	value, err = sql.UnwrapAny(ctx, value)
+	if err != nil {
+		return nil, err
+	}
+
+	var cmp int
+	lTyp, uTyp, vTyp := b.Lower.Type(ctx), b.Upper.Type(ctx), b.Val.Type(ctx)
+	if types.TypesEqual(lTyp, vTyp) && types.TypesEqual(uTyp, vTyp) {
+		cmp, err = vTyp.Compare(ctx, value, lower)
+		if err != nil {
+			return nil, err
+		}
+		if cmp < 0 {
+			return false, nil
+		}
+
+		cmp, err = vTyp.Compare(ctx, value, upper)
+		if err != nil {
+			return nil, err
+		}
+		if cmp > 0 {
+			return false, nil
+		}
+
+		return true, nil
+	}
+
+	// TODO: refactor to get rid of repeated work
+	low, lowVal, lowCmpType, err := (&comparison{}).castLeftAndRight(ctx, lower, value)
+	if err != nil {
+		return nil, err
+	}
+	upp, uppVal, uppCmpType, err := (&comparison{}).castLeftAndRight(ctx, upper, value)
+	if err != nil {
+		return nil, err
+	}
+	// TODO: set and string logic
+
+	cmp, err = lowCmpType.Compare(ctx, lowVal, low)
+	if err != nil {
+		return nil, err
+	}
+	if cmp < 0 {
+		return false, nil
+	}
+
+	cmp, err = uppCmpType.Compare(ctx, uppVal, upp)
+	if err != nil {
+		return nil, err
+	}
+	if cmp > 0 {
+		return false, nil
+	}
+
+	return true, nil
 }
 
 // WithChildren implements the Expression interface.
