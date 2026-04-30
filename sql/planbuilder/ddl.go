@@ -1378,6 +1378,13 @@ func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, t
 				b.handleErr(err)
 			}
 			optVal = val
+		case "target_row_size", "toast_tuple_target":
+			optName = "target_row_size"
+			val, err := strconv.ParseUint(tblOpt.Value, 10, 64)
+			if err != nil {
+				b.handleErr(err)
+			}
+			optVal = val
 		default:
 			optVal = tblOpt.Value
 		}
