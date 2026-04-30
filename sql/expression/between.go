@@ -124,16 +124,26 @@ func (b *Between) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// TODO: refactor to get rid of repeated work
-	low, lowVal, lowCmpType, err := (&comparison{}).castLeftAndRight(ctx, lower, value)
+	low, lowVal, lowCmpType, err := (&comparison{
+		BinaryExpressionStub: BinaryExpressionStub{
+			LeftChild:  b.Lower,
+			RightChild: b.Val,
+		},
+	}).castLeftAndRight(ctx, lower, value)
 	if err != nil {
 		return nil, err
 	}
-	upp, uppVal, uppCmpType, err := (&comparison{}).castLeftAndRight(ctx, upper, value)
+	upp, uppVal, uppCmpType, err := (&comparison{
+		BinaryExpressionStub: BinaryExpressionStub{
+			LeftChild:  b.Upper,
+			RightChild: b.Val,
+		},
+	}).castLeftAndRight(ctx, upper, value)
 	if err != nil {
 		return nil, err
 	}
-	// TODO: set and string logic
 
+	// TODO: set and string logic
 	cmp, err = lowCmpType.Compare(ctx, lowVal, low)
 	if err != nil {
 		return nil, err
