@@ -23,9 +23,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
-	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -714,10 +714,10 @@ func TestTruncateStringToDouble(t *testing.T) {
 	}
 }
 
-func serializeDecimal(dec decimal.Decimal) []byte {
+func serializeDecimal(dec apd.Decimal) []byte {
 	var res []byte
-	coef := dec.Coefficient()
-	res = binary.LittleEndian.AppendUint32(res, uint32(dec.Exponent()))
+	coef := dec.Coeff
+	res = binary.LittleEndian.AppendUint32(res, uint32(dec.Exponent))
 	res = append(res, byte(coef.Sign()))
 	res = append(res, coef.Bytes()...)
 	return res
@@ -726,10 +726,10 @@ func serializeDecimal(dec decimal.Decimal) []byte {
 func TestConvertValueToInt64(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
-	zeroDec := serializeDecimal(decimal.Zero)
-	testDec := serializeDecimal(decimal.NewFromFloat(123.456))
-	minInt64Dec := serializeDecimal(decimal.NewFromInt(math.MinInt64))
-	maxInt64Dec := serializeDecimal(decimal.NewFromInt(math.MaxInt64))
+	zeroDec := serializeDecimal(DecimalZero)
+	testDec := serializeDecimal(DecimalFromFloat64(123.456))
+	minInt64Dec := serializeDecimal(DecimalFromInt64(math.MinInt64))
+	maxInt64Dec := serializeDecimal(DecimalFromInt64(math.MaxInt64))
 
 	tests := []struct {
 		val sql.Value
@@ -1237,9 +1237,9 @@ func TestConvertValueToInt64(t *testing.T) {
 func TestConvertValueToUint64(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
-	zeroDec := serializeDecimal(decimal.Zero)
-	testDec := serializeDecimal(decimal.NewFromFloat(123.456))
-	maxInt64Dec := serializeDecimal(decimal.NewFromInt(math.MaxInt64))
+	zeroDec := serializeDecimal(DecimalZero)
+	testDec := serializeDecimal(DecimalFromFloat64(123.456))
+	maxInt64Dec := serializeDecimal(DecimalFromInt64(math.MaxInt64))
 
 	tests := []struct {
 		val sql.Value
@@ -1715,10 +1715,10 @@ func TestConvertValueToUint64(t *testing.T) {
 func TestConvertValueToFloat64(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
-	zeroDec := serializeDecimal(decimal.Zero)
-	testDec := serializeDecimal(decimal.NewFromFloat(123.456))
-	minInt64Dec := serializeDecimal(decimal.NewFromInt(math.MinInt64))
-	maxInt64Dec := serializeDecimal(decimal.NewFromInt(math.MaxInt64))
+	zeroDec := serializeDecimal(DecimalZero)
+	testDec := serializeDecimal(DecimalFromFloat64(123.456))
+	minInt64Dec := serializeDecimal(DecimalFromInt64(math.MinInt64))
+	maxInt64Dec := serializeDecimal(DecimalFromInt64(math.MaxInt64))
 
 	tests := []struct {
 		val sql.Value

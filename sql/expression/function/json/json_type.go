@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/shopspring/decimal"
+	"github.com/cockroachdb/apd/v3"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -141,7 +141,7 @@ func TypeOfJsonValue(val interface{}) string {
 		return "ARRAY"
 	case map[string]interface{}:
 		return "OBJECT"
-	case decimal.Decimal:
+	case apd.Decimal:
 		return "DECIMAL"
 	default:
 		return "OPAQUE"

@@ -22,9 +22,9 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
-	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -209,13 +209,13 @@ func (t EnumType) Convert(ctx context.Context, v interface{}) (interface{}, sql.
 		return t.Convert(ctx, int(value))
 	case float64:
 		return t.Convert(ctx, int(value))
-	case decimal.Decimal:
-		return t.Convert(ctx, value.IntPart())
-	case decimal.NullDecimal:
+	case apd.Decimal:
+		return t.Convert(ctx, DecimalIntPart(value))
+	case apd.NullDecimal:
 		if !value.Valid {
 			return nil, sql.InRange, nil
 		}
-		return t.Convert(ctx, value.Decimal.IntPart())
+		return t.Convert(ctx, value.Decimal)
 	case string:
 		if index := t.IndexOf(value); index != -1 {
 			return uint16(index), sql.InRange, nil

@@ -24,7 +24,7 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/shopspring/decimal"
+	"github.com/cockroachdb/apd/v3"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/encodings"
@@ -227,7 +227,7 @@ func (h *Hex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case float64:
 		return hexForFloat(val)
 
-	case decimal.Decimal:
+	case apd.Decimal:
 		f, _ := val.Float64()
 		return hexForFloat(f)
 
@@ -515,13 +515,13 @@ func (h *Bin) convertToInt64(v interface{}) (int64, error) {
 			return math.MinInt64, nil
 		}
 		return int64(v), nil
-	case decimal.Decimal:
-		if v.GreaterThan(decimal.NewFromInt(math.MaxInt64)) {
+	case apd.Decimal:
+		if v.Cmp(&types.DecimalMaxInt64) > 0 {
 			return math.MaxInt64, nil
-		} else if v.LessThan(decimal.NewFromInt(math.MinInt64)) {
+		} else if v.Cmp(&types.DecimalMinInt64) < 0 {
 			return math.MinInt64, nil
 		}
-		return v.IntPart(), nil
+		return types.DecimalIntPart(v), nil
 	case []byte:
 		i, err := strconv.ParseInt(hex.EncodeToString(v), 16, 64)
 		if err != nil {

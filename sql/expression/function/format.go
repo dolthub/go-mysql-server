@@ -19,7 +19,6 @@ import (
 	"math"
 	"strings"
 
-	"github.com/shopspring/decimal"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 	"golang.org/x/text/number"
@@ -154,9 +153,9 @@ func (f *Format) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	var fractionStr string
 	var negative string
 	if roundedValue != 0 {
-		res := decimal.NewFromFloat(roundedValue)
-		whole = res.IntPart()
-		if whole == 0 && res.IsNegative() {
+		res := types.DecimalFromFloat64(roundedValue)
+		whole = types.DecimalIntPart(res)
+		if whole == 0 && res.Negative {
 			negative = "-"
 		}
 

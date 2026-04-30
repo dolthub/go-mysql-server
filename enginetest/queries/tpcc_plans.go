@@ -501,7 +501,7 @@ UPDATE warehouse2 SET w_ytd = w_ytd + 1767 WHERE w_id = 1`,
 	{
 		Query: `UPDATE customer2 SET c_balance=-1777.000000, c_ytd_payment=1777.000000 WHERE c_w_id = 1 AND c_d_id=5 AND c_id=1838`,
 		ExpectedPlan: "Update\n" +
-			" └─ UpdateSource(SET customer2.c_balance:16 = -1777.000000,SET customer2.c_ytd_payment:17 = 1777 (decimal(10,6)))\n" +
+			" └─ UpdateSource(SET customer2.c_balance:16 = -1777.000000,SET customer2.c_ytd_payment:17 = 1777.000000 (decimal(10,6)))\n" +
 			"     └─ IndexedTableAccess(customer2)\n" +
 			"         ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_id]\n" +
 			"         ├─ static: [{[1, 1], [5, 5], [1838, 1838]}]\n" +

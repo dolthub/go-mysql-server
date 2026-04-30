@@ -25,7 +25,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shopspring/decimal"
+	"github.com/cockroachdb/apd/v3"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -140,19 +140,21 @@ func writeHashedValue(ctx context.Context, h hash.Hash, val interface{}) (valIsN
 		if _, err := h.Write(val); err != nil {
 			return false, err
 		}
-	case decimal.Decimal:
-		bytes, err := val.GobEncode()
+	case apd.Decimal:
+		// TODO: GobEncode is not supported in apd.Decimal
+		bytes, err := val.MarshalText()
 		if err != nil {
 			return false, err
 		}
 		if _, err := h.Write(bytes); err != nil {
 			return false, err
 		}
-	case decimal.NullDecimal:
+	case apd.NullDecimal:
 		if !val.Valid {
 			return true, nil
 		} else {
-			bytes, err := val.Decimal.GobEncode()
+			// TODO: GobEncode is not supported in apd.Decimal
+			bytes, err := val.Decimal.MarshalText()
 			if err != nil {
 				return false, err
 			}

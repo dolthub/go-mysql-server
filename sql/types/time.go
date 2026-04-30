@@ -22,9 +22,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
-	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -200,11 +200,11 @@ func (t TimespanType_) ConvertToTimespan(v interface{}) (Timespan, error) {
 				return t.MicrosecondsToTimespan(totalMicroseconds), nil
 			}
 		}
-	case decimal.Decimal:
-		return t.ConvertToTimespan(value.IntPart())
-	case decimal.NullDecimal:
+	case apd.Decimal:
+		return t.ConvertToTimespan(DecimalIntPart(value))
+	case apd.NullDecimal:
 		if value.Valid {
-			return t.ConvertToTimespan(value.Decimal.IntPart())
+			return t.ConvertToTimespan(value.Decimal)
 		}
 	case string:
 		impl, err := stringToTimespan(value)

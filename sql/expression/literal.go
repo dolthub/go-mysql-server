@@ -19,9 +19,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
-	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -105,8 +105,8 @@ func (lit *Literal) String() string {
 		escaped := strings.ReplaceAll(litVal, "'", "''")
 		escaped = strings.ReplaceAll(escaped, "\\", "\\\\")
 		return fmt.Sprintf("'%s'", escaped)
-	case decimal.Decimal:
-		return litVal.StringFixed(litVal.Exponent() * -1)
+	case apd.Decimal:
+		return litVal.Text('f')
 	case []byte:
 		return fmt.Sprintf("0x%X", litVal)
 	case nil:
@@ -131,6 +131,8 @@ func (lit *Literal) DebugString(ctx *sql.Context) string {
 		return fmt.Sprintf("%f (%s)", v, typeStr)
 	case bool:
 		return fmt.Sprintf("%t (%s)", v, typeStr)
+	case apd.Decimal:
+		return fmt.Sprintf("%s (%s)", v.Text('f'), typeStr)
 	default:
 		return fmt.Sprintf("%s (%s)", v, typeStr)
 	}

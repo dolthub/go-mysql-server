@@ -3962,8 +3962,8 @@ Select * from (
 	{
 		Query: `select i+0.0/(lag(i) over (order by s)) from mytable order by 1;`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [(mytable.i:1!null + (0 (decimal(2,1)) / lag(mytable.i, 1) over ( order by mytable.s asc):0))->i+0.0/(lag(i) over (order by s)):0]\n" +
-			" └─ Sort((mytable.i:1!null + (0 (decimal(2,1)) / lag(mytable.i, 1) over ( order by mytable.s asc):0))->i+0.0/(lag(i) over (order by s)):0 ASC nullsFirst)\n" +
+			" ├─ columns: [(mytable.i:1!null + (0.0 (decimal(2,1)) / lag(mytable.i, 1) over ( order by mytable.s asc):0))->i+0.0/(lag(i) over (order by s)):0]\n" +
+			" └─ Sort((mytable.i:1!null + (0.0 (decimal(2,1)) / lag(mytable.i, 1) over ( order by mytable.s asc):0))->i+0.0/(lag(i) over (order by s)):0 ASC nullsFirst)\n" +
 			"     └─ Window\n" +
 			"         ├─ lag(mytable.i, 1) over ( order by mytable.s ASC)\n" +
 			"         ├─ mytable.i:0!null\n" +

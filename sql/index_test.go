@@ -5,7 +5,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/shopspring/decimal"
+	"github.com/cockroachdb/apd/v3"
 	assert "github.com/stretchr/testify/require"
 )
 
@@ -108,48 +108,48 @@ func TestRoundUpFloat(t *testing.T) {
 
 		// decimal
 		{
-			val: decimal.NewFromFloat(-math.MaxFloat64),
-			exp: decimal.NewFromFloat(-math.MaxFloat64),
+			val: NewDecimalFromFloat64(-math.MaxFloat64),
+			exp: NewDecimalFromFloat64(-math.MaxFloat64),
 		},
 		{
-			val: decimal.NewFromFloat(-1.1),
-			exp: decimal.NewFromFloat(-1.0),
+			val: NewDecimalFromFloat64(-1.1),
+			exp: NewDecimalFromFloat64(-1.0),
 		},
 		{
-			val: decimal.NewFromFloat(-0.9),
-			exp: decimal.NewFromFloat(0.0),
+			val: NewDecimalFromFloat64(-0.9),
+			exp: NewDecimalFromFloat64(0.0),
 		},
 		{
-			val: decimal.NewFromFloat(-0.5),
-			exp: decimal.NewFromFloat(0.0),
+			val: NewDecimalFromFloat64(-0.5),
+			exp: NewDecimalFromFloat64(0.0),
 		},
 		{
-			val: decimal.NewFromFloat(-0.1),
-			exp: decimal.NewFromFloat(0.0),
+			val: NewDecimalFromFloat64(-0.1),
+			exp: NewDecimalFromFloat64(0.0),
 		},
 		{
-			val: decimal.NewFromFloat(0.0),
-			exp: decimal.NewFromFloat(0.0),
+			val: NewDecimalFromFloat64(0.0),
+			exp: NewDecimalFromFloat64(0.0),
 		},
 		{
-			val: decimal.NewFromFloat(0.1),
-			exp: decimal.NewFromFloat(1.0),
+			val: NewDecimalFromFloat64(0.1),
+			exp: NewDecimalFromFloat64(1.0),
 		},
 		{
-			val: decimal.NewFromFloat(0.5),
-			exp: decimal.NewFromFloat(1.0),
+			val: NewDecimalFromFloat64(0.5),
+			exp: NewDecimalFromFloat64(1.0),
 		},
 		{
-			val: decimal.NewFromFloat(0.9),
-			exp: decimal.NewFromFloat(1.0),
+			val: NewDecimalFromFloat64(0.9),
+			exp: NewDecimalFromFloat64(1.0),
 		},
 		{
-			val: decimal.NewFromFloat(1.1),
-			exp: decimal.NewFromFloat(2.0),
+			val: NewDecimalFromFloat64(1.1),
+			exp: NewDecimalFromFloat64(2.0),
 		},
 		{
-			val: decimal.NewFromFloat(math.MaxFloat64),
-			exp: decimal.NewFromFloat(math.MaxFloat64),
+			val: NewDecimalFromFloat64(math.MaxFloat64),
+			exp: NewDecimalFromFloat64(math.MaxFloat64),
 		},
 	}
 
@@ -159,8 +159,10 @@ func TestRoundUpFloat(t *testing.T) {
 			switch test.val.(type) {
 			case float32, float64:
 				assert.Equal(t, test.exp, res)
-			case decimal.Decimal:
-				assert.True(t, test.exp.(decimal.Decimal).Equals(res.(decimal.Decimal)))
+			case apd.Decimal:
+				e := test.exp.(apd.Decimal)
+				r := res.(apd.Decimal)
+				assert.True(t, e.Cmp(&r) == 0)
 			}
 		})
 	}
@@ -265,48 +267,48 @@ func TestRoundDownFloat(t *testing.T) {
 
 		// decimal
 		{
-			val: decimal.NewFromFloat(-math.MaxFloat64),
-			exp: decimal.NewFromFloat(-math.MaxFloat64),
+			val: NewDecimalFromFloat64(-math.MaxFloat64),
+			exp: NewDecimalFromFloat64(-math.MaxFloat64),
 		},
 		{
-			val: decimal.NewFromFloat(-1.1),
-			exp: decimal.NewFromFloat(-2.0),
+			val: NewDecimalFromFloat64(-1.1),
+			exp: NewDecimalFromFloat64(-2.0),
 		},
 		{
-			val: decimal.NewFromFloat(-0.9),
-			exp: decimal.NewFromFloat(-1.0),
+			val: NewDecimalFromFloat64(-0.9),
+			exp: NewDecimalFromFloat64(-1.0),
 		},
 		{
-			val: decimal.NewFromFloat(-0.5),
-			exp: decimal.NewFromFloat(-1.0),
+			val: NewDecimalFromFloat64(-0.5),
+			exp: NewDecimalFromFloat64(-1.0),
 		},
 		{
-			val: decimal.NewFromFloat(-0.1),
-			exp: decimal.NewFromFloat(-1.0),
+			val: NewDecimalFromFloat64(-0.1),
+			exp: NewDecimalFromFloat64(-1.0),
 		},
 		{
-			val: decimal.NewFromFloat(0.0),
-			exp: decimal.NewFromFloat(0.0),
+			val: NewDecimalFromFloat64(0.0),
+			exp: NewDecimalFromFloat64(0.0),
 		},
 		{
-			val: decimal.NewFromFloat(0.1),
-			exp: decimal.NewFromFloat(0.0),
+			val: NewDecimalFromFloat64(0.1),
+			exp: NewDecimalFromFloat64(0.0),
 		},
 		{
-			val: decimal.NewFromFloat(0.5),
-			exp: decimal.NewFromFloat(0.0),
+			val: NewDecimalFromFloat64(0.5),
+			exp: NewDecimalFromFloat64(0.0),
 		},
 		{
-			val: decimal.NewFromFloat(0.9),
-			exp: decimal.NewFromFloat(0.0),
+			val: NewDecimalFromFloat64(0.9),
+			exp: NewDecimalFromFloat64(0.0),
 		},
 		{
-			val: decimal.NewFromFloat(1.1),
-			exp: decimal.NewFromFloat(1.0),
+			val: NewDecimalFromFloat64(1.1),
+			exp: NewDecimalFromFloat64(1.0),
 		},
 		{
-			val: decimal.NewFromFloat(math.MaxFloat64),
-			exp: decimal.NewFromFloat(math.MaxFloat64),
+			val: NewDecimalFromFloat64(math.MaxFloat64),
+			exp: NewDecimalFromFloat64(math.MaxFloat64),
 		},
 	}
 
@@ -316,9 +318,18 @@ func TestRoundDownFloat(t *testing.T) {
 			switch test.val.(type) {
 			case float32, float64:
 				assert.Equal(t, test.exp, res)
-			case decimal.Decimal:
-				assert.True(t, test.exp.(decimal.Decimal).Equals(res.(decimal.Decimal)))
+			case apd.Decimal:
+				e := test.exp.(apd.Decimal)
+				r := res.(apd.Decimal)
+				assert.True(t, e.Cmp(&r) == 0)
 			}
 		})
 	}
+}
+
+// NewDecimalFromFloat64 returns apd.Decimal set from given float64
+func NewDecimalFromFloat64(x float64) apd.Decimal {
+	dec := new(apd.Decimal)
+	dec, _ = dec.SetFloat64(x)
+	return *dec
 }

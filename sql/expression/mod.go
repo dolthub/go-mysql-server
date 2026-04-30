@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
-	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -179,16 +179,20 @@ func mod(ctx *sql.Context, lval, rval interface{}) (interface{}, error) {
 			}
 			return math.Mod(l, r), nil
 		}
-	case decimal.Decimal:
+	case apd.Decimal:
 		switch r := rval.(type) {
-		case decimal.Decimal:
-			if r.Equal(decimal.NewFromInt(0)) {
+		case apd.Decimal:
+			if r.IsZero() {
 				arithmeticWarning(ctx, ERDivisionByZero, "Division by 0")
 				return nil, nil
 			}
 
 			// Mod function from the decimal package takes care of precision and scale for the result value
-			return l.Mod(r), nil
+			_, err := sql.HighPrecisionCtx.Rem(&l, &l, &r)
+			if err != nil {
+				return nil, err
+			}
+			return l, nil
 		}
 	}
 

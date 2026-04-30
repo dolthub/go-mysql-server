@@ -28,8 +28,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/jsonpath"
-	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -549,7 +549,7 @@ func CompareJSON(ctx context.Context, a, b interface{}) (int, error) {
 		return compareJSONNumber(float64(a), b)
 	case float64:
 		return compareJSONNumber(a, b)
-	case decimal.Decimal:
+	case apd.Decimal:
 		af, _ := a.Float64()
 		return compareJSONNumber(af, b)
 	case sql.JSONWrapper:
@@ -714,7 +714,7 @@ func compareJSONNumber(a float64, b interface{}) (int, error) {
 			return -1, nil
 		}
 		return 0, nil
-	case decimal.Decimal:
+	case apd.Decimal:
 		bf, _ := b.Float64()
 		return compareJSONNumber(a, bf)
 	default:

@@ -20,9 +20,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
-	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -104,13 +104,12 @@ func (t SystemBoolType) Convert(ctx context.Context, v interface{}) (interface{}
 		if value == float64(int64(value)) {
 			return t.Convert(ctx, int64(value))
 		}
-	case decimal.Decimal:
+	case apd.Decimal:
 		f, _ := value.Float64()
 		return t.Convert(ctx, f)
-	case decimal.NullDecimal:
+	case apd.NullDecimal:
 		if value.Valid {
-			f, _ := value.Decimal.Float64()
-			return t.Convert(ctx, f)
+			return t.Convert(ctx, value.Decimal)
 		}
 	case string:
 		switch strings.ToLower(value) {
