@@ -58,7 +58,7 @@ type DecimalType_ struct {
 // InternalDecimalType is a special DecimalType that is used internally for Decimal comparisons. Not intended for usage
 // from integrators.
 var InternalDecimalType sql.DecimalType = DecimalType_{
-	exclusiveUpperBound: *apd.New(1, int32(65)),
+	exclusiveUpperBound: DecimalFromInt64WithScale(1, int32(65)),
 	definesColumn:       false,
 	precision:           65,
 	scale:               30,
@@ -92,7 +92,7 @@ func createDecimalType(precision uint8, scale uint8, definesColumn bool) (sql.De
 		precision = 10
 	}
 	return DecimalType_{
-		exclusiveUpperBound: *apd.New(1, int32(precision-scale)),
+		exclusiveUpperBound: DecimalFromInt64WithScale(1, int32(precision-scale)),
 		definesColumn:       definesColumn,
 		precision:           precision,
 		scale:               scale,
@@ -227,9 +227,9 @@ func (t DecimalType_) ConvertToNullDecimal(v interface{}) (apd.NullDecimal, erro
 	switch value := v.(type) {
 	case bool:
 		if value {
-			return t.ConvertToNullDecimal(*apd.New(1, 0))
+			return t.ConvertToNullDecimal(DecimalFromInt64(1))
 		} else {
-			return t.ConvertToNullDecimal(*apd.New(0, 0))
+			return t.ConvertToNullDecimal(DecimalZero)
 		}
 	case int:
 		return t.ConvertToNullDecimal(int64(value))
@@ -244,11 +244,11 @@ func (t DecimalType_) ConvertToNullDecimal(v interface{}) (apd.NullDecimal, erro
 	case uint16:
 		return t.ConvertToNullDecimal(uint64(value))
 	case int32:
-		return t.ConvertToNullDecimal(*apd.New(int64(value), 0))
+		return t.ConvertToNullDecimal(DecimalFromInt64(int64(value)))
 	case uint32:
 		return t.ConvertToNullDecimal(uint64(value))
 	case int64:
-		return t.ConvertToNullDecimal(*apd.New(value, 0))
+		return t.ConvertToNullDecimal(DecimalFromInt64(value))
 	case uint64:
 		return t.ConvertToNullDecimal(DecimalFromUint64(value))
 	case float32:
@@ -271,7 +271,7 @@ func (t DecimalType_) ConvertToNullDecimal(v interface{}) (apd.NullDecimal, erro
 		}
 		truncStr, didTrunc := TruncateStringToDouble(value)
 		if truncStr == "0" {
-			nullDec, cErr := t.ConvertToNullDecimal(*apd.New(0, 0))
+			nullDec, cErr := t.ConvertToNullDecimal(DecimalZero)
 			if cErr != nil {
 				return apd.NullDecimal{}, cErr
 			}
@@ -400,7 +400,7 @@ func (t DecimalType_) ValueType() reflect.Type {
 // Zero implements Type interface.
 func (t DecimalType_) Zero() interface{} {
 	// The zero value should have the same scale as the type
-	return *apd.New(0, -int32(t.scale))
+	return DecimalFromInt64WithScale(0, -int32(t.scale))
 }
 
 // CollationCoercibility implements sql.CollationCoercible interface.
@@ -446,25 +446,25 @@ func convertValueToDecimal(ctx *sql.Context, v sql.Value) (apd.Decimal, error) {
 	switch v.Typ {
 	case sqltypes.Int8:
 		x := values.ReadInt8(v.Val)
-		return *apd.New(int64(x), 0), nil
+		return DecimalFromInt64(int64(x)), nil
 	case sqltypes.Int16:
 		x := values.ReadInt16(v.Val)
-		return *apd.New(int64(x), 0), nil
+		return DecimalFromInt64(int64(x)), nil
 	case sqltypes.Int32:
 		x := values.ReadInt32(v.Val)
-		return *apd.New(int64(x), 0), nil
+		return DecimalFromInt64(int64(x)), nil
 	case sqltypes.Int64:
 		x := values.ReadInt64(v.Val)
-		return *apd.New(x, 0), nil
+		return DecimalFromInt64(x), nil
 	case sqltypes.Uint8:
 		x := values.ReadUint8(v.Val)
-		return *apd.New(int64(x), 0), nil
+		return DecimalFromInt64(int64(x)), nil
 	case sqltypes.Uint16:
 		x := values.ReadUint16(v.Val)
-		return *apd.New(int64(x), 0), nil
+		return DecimalFromInt64(int64(x)), nil
 	case sqltypes.Uint32:
 		x := values.ReadUint32(v.Val)
-		return *apd.New(int64(x), 0), nil
+		return DecimalFromInt64(int64(x)), nil
 	case sqltypes.Uint64:
 		x := values.ReadUint64(v.Val)
 		return DecimalFromUint64(x), nil
@@ -482,17 +482,17 @@ func convertValueToDecimal(ctx *sql.Context, v sql.Value) (apd.Decimal, error) {
 		return DecimalFromUint64(x), nil
 	case sqltypes.Year:
 		x := values.ReadUint16(v.Val)
-		return *apd.New(int64(x), 0), nil
+		return DecimalFromInt64(int64(x)), nil
 	case sqltypes.Date:
 		x := values.ReadDate(v.Val)
 		s := x.UTC().Unix()
-		return *apd.New(s, 0), nil
+		return DecimalFromInt64(s), nil
 	case sqltypes.Time:
 		x := values.ReadInt64(v.Val)
-		return *apd.New(x, 0), nil
+		return DecimalFromInt64(x), nil
 	case sqltypes.Datetime, sqltypes.Timestamp:
 		x := values.ReadDatetime(v.Val)
-		return *apd.New(x.UTC().Unix(), 0), nil
+		return DecimalFromInt64(x.UTC().Unix()), nil
 	case sqltypes.Text, sqltypes.Blob:
 		var err error
 		if v.Val == nil {
