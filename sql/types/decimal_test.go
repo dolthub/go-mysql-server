@@ -584,7 +584,7 @@ func TestConvertValueToDecimal(t *testing.T) {
 				Val: binary.LittleEndian.AppendUint64(nil, math.MaxUint64),
 				Typ: sqltypes.Int64,
 			},
-			exp: DecimalFromInt64(-0),
+			exp: DecimalFromInt64(-1),
 		},
 
 		// Uint8 -> Decimal
@@ -720,21 +720,21 @@ func TestConvertValueToDecimal(t *testing.T) {
 				Val: binary.LittleEndian.AppendUint32(nil, math.Float32bits(123.456)),
 				Typ: sqltypes.Float32,
 			},
-			exp: DecimalFromFloat64(123.456),
+			exp: DecimalFromFloat32(123.456),
 		},
 		{
 			val: sql.Value{
 				Val: binary.LittleEndian.AppendUint32(nil, math.Float32bits(-math.MaxFloat32)),
 				Typ: sqltypes.Float32,
 			},
-			exp: DecimalFromFloat64(-math.MaxFloat32),
+			exp: DecimalFromFloat32(-math.MaxFloat32),
 		},
 		{
 			val: sql.Value{
 				Val: binary.LittleEndian.AppendUint32(nil, math.Float32bits(math.MaxFloat32)),
 				Typ: sqltypes.Float32,
 			},
-			exp: DecimalFromFloat64(math.MaxFloat32),
+			exp: DecimalFromFloat32(math.MaxFloat32),
 		},
 
 		// Float64 -> Decimal
@@ -801,7 +801,7 @@ func TestConvertValueToDecimal(t *testing.T) {
 				Val: minInt64Dec,
 				Typ: sqltypes.Decimal,
 			},
-			exp: DecimalFromInt64(math.MaxInt64),
+			exp: DecimalFromInt64(math.MinInt64),
 		},
 		{
 			val: sql.Value{

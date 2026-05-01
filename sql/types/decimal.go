@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"math/big"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"github.com/cockroachdb/apd/v3"
@@ -470,7 +471,7 @@ func convertValueToDecimal(ctx *sql.Context, v sql.Value) (apd.Decimal, error) {
 		return DecimalFromUint64(x), nil
 	case sqltypes.Float32:
 		x := values.ReadFloat32(v.Val)
-		return DecimalFromFloat64(float64(x)), nil
+		return DecimalFromFloat32(x), nil
 	case sqltypes.Float64:
 		x := values.ReadFloat64(v.Val)
 		return DecimalFromFloat64(x), nil
@@ -517,10 +518,21 @@ func (t DecimalType_) IsDecimalType() bool {
 	return true
 }
 
-// DecimalFromFloat64 returns apd.Decimal set from given float64.
-func DecimalFromFloat64(x float64) apd.Decimal {
+// DecimalFromFloat32 returns apd.Decimal set from given float32.
+func DecimalFromFloat32(f float32) apd.Decimal {
 	dec := new(apd.Decimal)
-	dec, err := dec.SetFloat64(x)
+	s := strconv.FormatFloat(float64(f), 'f', -1, 32)
+	dec, _, err := dec.SetString(s)
+	if err != nil {
+		panic(err)
+	}
+	return *dec
+}
+
+// DecimalFromFloat64 returns apd.Decimal set from given float64.
+func DecimalFromFloat64(f float64) apd.Decimal {
+	dec := new(apd.Decimal)
+	dec, err := dec.SetFloat64(f)
 	if err != nil {
 		panic(err)
 	}
@@ -540,7 +552,7 @@ func DecimalFromInt64WithScale(x int64, e int32) apd.Decimal {
 // DecimalFromUint64 returns apd.Decimal set from given uint64 value.
 func DecimalFromUint64(x uint64) apd.Decimal {
 	dec := new(apd.Decimal)
-	dec.Coeff.SetUint64(x)
+	dec.Coeff.SetMathBigInt(new(big.Int).SetUint64(x))
 	dec.Exponent = 0
 	return *dec
 }

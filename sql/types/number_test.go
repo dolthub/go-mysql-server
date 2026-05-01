@@ -716,10 +716,9 @@ func TestTruncateStringToDouble(t *testing.T) {
 
 func serializeDecimal(dec apd.Decimal) []byte {
 	var res []byte
-	coef := dec.Coeff
 	res = binary.LittleEndian.AppendUint32(res, uint32(dec.Exponent))
-	res = append(res, byte(coef.Sign()))
-	res = append(res, coef.Bytes()...)
+	res = append(res, byte(dec.Sign()))
+	res = append(res, dec.Coeff.Bytes()...)
 	return res
 }
 

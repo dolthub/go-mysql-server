@@ -154,12 +154,12 @@ func (f *Format) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	var negative string
 	if roundedValue != 0 {
 		res := types.DecimalFromFloat64(roundedValue)
-		whole = types.DecimalIntPart(res)
+		whole = types.DecimalIntPart(types.DecimalTruncate(res, 0))
 		if whole == 0 && res.Negative {
 			negative = "-"
 		}
 
-		str := res.String()
+		str := res.Text('f')
 		dotIdx := strings.Index(str, ".")
 		if dotIdx == -1 {
 			fractionStr = ""

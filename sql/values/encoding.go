@@ -186,12 +186,12 @@ func ReadDecimal(val []byte) apd.Decimal {
 	e := ReadInt32(val[:Int32Size])
 	s := ReadInt8(val[Int32Size : Int32Size+Int8Size])
 	b := big.NewInt(0).SetBytes(val[Int32Size+Int8Size:])
-	if s < 0 {
-		b = b.Neg(b)
-	}
 	d := new(apd.Decimal)
 	d.Coeff.SetMathBigInt(b)
 	d.Exponent = e
+	if s < 0 {
+		d = d.Neg(d)
+	}
 	return *d
 }
 
