@@ -1222,6 +1222,17 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 		}
 	}
 
+	if targetRowSize, hasTargetRowSize := n.TableOpts["target_row_size"]; hasTargetRowSize {
+		val := targetRowSize.(uint64)
+		alterable, ok := tableNode.(sql.TargetRowSizeAlterableTable)
+		if ok {
+			err = alterable.ModifyTargetRowSize(ctx, val)
+			if err != nil {
+				return sql.RowsToRowIter(), err
+			}
+		}
+	}
+
 	var nonPrimaryIdxes sql.IndexDefs
 	for _, def := range n.Indexes() {
 		if !def.IsPrimary() {
