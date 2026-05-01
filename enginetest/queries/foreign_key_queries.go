@@ -49,6 +49,36 @@ var ForeignKeyTests = []ScriptTest{
 		},
 	},
 	{
+		// See https://github.com/dolthub/dolt/issues/10970
+		Name: "Inline column REFERENCES creates an enforced foreign key",
+		SetUpScript: []string{
+			"CREATE TABLE parent_pk (id INT PRIMARY KEY);",
+			"CREATE TABLE parent_uq (id INT PRIMARY KEY, u INT UNIQUE);",
+			"CREATE TABLE child_pk (id INT PRIMARY KEY, pid INT REFERENCES parent_pk(id));",
+			"CREATE TABLE child_uq (id INT PRIMARY KEY, u INT REFERENCES parent_uq(u));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SHOW CREATE TABLE child_pk;",
+				// The engine auto-generates a constraint name from the table name when no name is provided.
+				Expected: []sql.Row{{"child_pk", "CREATE TABLE `child_pk` (\n  `id` int NOT NULL,\n  `pid` int,\n  PRIMARY KEY (`id`),\n  KEY `pid` (`pid`),\n  CONSTRAINT `child_pk_ibfk_1` FOREIGN KEY (`pid`) REFERENCES `parent_pk` (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: "SHOW CREATE TABLE child_uq;",
+				// The engine auto-generates a constraint name from the table name when no name is provided.
+				Expected: []sql.Row{{"child_uq", "CREATE TABLE `child_uq` (\n  `id` int NOT NULL,\n  `u` int,\n  PRIMARY KEY (`id`),\n  KEY `u` (`u`),\n  CONSTRAINT `child_uq_ibfk_1` FOREIGN KEY (`u`) REFERENCES `parent_uq` (`u`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:       "INSERT INTO child_pk VALUES (1, 999);",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query:       "INSERT INTO child_uq VALUES (1, 999);",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+		},
+	},
+	{
 		Name: "Parent table index required",
 		Assertions: []ScriptTestAssertion{
 			{
@@ -385,7 +415,7 @@ var ForeignKeyTests = []ScriptTest{
 		Name: "DROP TABLE, with multiple tables, sorts by foreign key dependencies",
 		SetUpScript: []string{
 			"create table grandparent1 (pk int primary key);",
-			"create table parent1 (pk int primary key, c1 int references grandparent(pk));",
+			"create table parent1 (pk int primary key, c1 int references grandparent1(pk));",
 			"create table parent2 (pk int primary key);",
 			"create table child1 (pk int primary key, c1 int, c2 int, foreign key (c1) references parent1(pk), foreign key (c2) references parent2(pk));",
 			"create table selfref (pk int primary key, c1 int, foreign key (c1) references selfref(pk));",
