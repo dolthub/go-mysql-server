@@ -20,8 +20,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/sqltypes"
-	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
@@ -85,23 +85,23 @@ func TestPlus(t *testing.T) {
 			exp:   3.1459,
 		},
 		{
-			left:  NewLiteral(decimal.New(1, 0), types.MustCreateDecimalType(10, 0)),
-			right: NewLiteral(decimal.New(1, 0), types.MustCreateDecimalType(10, 0)),
+			left:  NewLiteral(types.DecimalFromInt64WithScale(1, 0), types.MustCreateDecimalType(10, 0)),
+			right: NewLiteral(types.DecimalFromInt64WithScale(1, 0), types.MustCreateDecimalType(10, 0)),
 			exp:   "2",
 		},
 		{
-			left:  NewLiteral(decimal.New(1000, -3), types.MustCreateDecimalType(10, 3)), // 1.000
-			right: NewLiteral(decimal.New(1, 0), types.MustCreateDecimalType(10, 0)),
+			left:  NewLiteral(types.DecimalFromInt64WithScale(1000, -3), types.MustCreateDecimalType(10, 3)), // 1.000
+			right: NewLiteral(types.DecimalFromInt64WithScale(1, 0), types.MustCreateDecimalType(10, 0)),
 			exp:   "2.000",
 		},
 		{
-			left:  NewLiteral(decimal.New(1000, -3), types.MustCreateDecimalType(10, 3)),   // 1.000
-			right: NewLiteral(decimal.New(100000, -5), types.MustCreateDecimalType(10, 5)), // 1.00000
+			left:  NewLiteral(types.DecimalFromInt64WithScale(1000, -3), types.MustCreateDecimalType(10, 3)),   // 1.000
+			right: NewLiteral(types.DecimalFromInt64WithScale(100000, -5), types.MustCreateDecimalType(10, 5)), // 1.00000
 			exp:   "2.00000",
 		},
 		{
-			left:  NewLiteral(decimal.New(1459, -4), types.MustCreateDecimalType(10, 4)), // 0.1459
-			right: NewLiteral(decimal.New(3, 0), types.MustCreateDecimalType(10, 0)),     // 3
+			left:  NewLiteral(types.DecimalFromInt64WithScale(1459, -4), types.MustCreateDecimalType(10, 4)), // 0.1459
+			right: NewLiteral(types.DecimalFromInt64WithScale(3, 0), types.MustCreateDecimalType(10, 0)),     // 3
 			exp:   "3.1459",
 		},
 		{
@@ -187,8 +187,8 @@ func TestPlus(t *testing.T) {
 			f := NewPlus(tt.left, tt.right)
 			result, err := f.Eval(sql.NewEmptyContext(), nil)
 			require.NoError(err)
-			if dec, ok := result.(decimal.Decimal); ok {
-				result = dec.StringFixed(dec.Exponent() * -1)
+			if dec, ok := result.(apd.Decimal); ok {
+				result = dec.Text('f')
 			}
 			assert.Equal(t, tt.exp, result)
 		})
@@ -249,23 +249,23 @@ func TestMinus(t *testing.T) {
 			exp:   -2.8541,
 		},
 		{
-			left:  NewLiteral(decimal.New(1, 0), types.MustCreateDecimalType(10, 0)),
-			right: NewLiteral(decimal.New(1, 0), types.MustCreateDecimalType(10, 0)),
+			left:  NewLiteral(types.DecimalFromInt64WithScale(1, 0), types.MustCreateDecimalType(10, 0)),
+			right: NewLiteral(types.DecimalFromInt64WithScale(1, 0), types.MustCreateDecimalType(10, 0)),
 			exp:   "0",
 		},
 		{
-			left:  NewLiteral(decimal.New(1000, -3), types.MustCreateDecimalType(10, 3)), // 1.000
-			right: NewLiteral(decimal.New(1, 0), types.MustCreateDecimalType(10, 0)),
+			left:  NewLiteral(types.DecimalFromInt64WithScale(1000, -3), types.MustCreateDecimalType(10, 3)), // 1.000
+			right: NewLiteral(types.DecimalFromInt64WithScale(1, 0), types.MustCreateDecimalType(10, 0)),
 			exp:   "0.000",
 		},
 		{
-			left:  NewLiteral(decimal.New(1000, -3), types.MustCreateDecimalType(10, 3)),   // 1.000
-			right: NewLiteral(decimal.New(100000, -5), types.MustCreateDecimalType(10, 5)), // 1.00000
+			left:  NewLiteral(types.DecimalFromInt64WithScale(1000, -3), types.MustCreateDecimalType(10, 3)),   // 1.000
+			right: NewLiteral(types.DecimalFromInt64WithScale(100000, -5), types.MustCreateDecimalType(10, 5)), // 1.00000
 			exp:   "0.00000",
 		},
 		{
-			left:  NewLiteral(decimal.New(1459, -4), types.MustCreateDecimalType(10, 4)), // 0.1459
-			right: NewLiteral(decimal.New(3, 0), types.MustCreateDecimalType(10, 0)),     // 3
+			left:  NewLiteral(types.DecimalFromInt64WithScale(1459, -4), types.MustCreateDecimalType(10, 4)), // 0.1459
+			right: NewLiteral(types.DecimalFromInt64WithScale(3, 0), types.MustCreateDecimalType(10, 0)),     // 3
 			exp:   "-2.8541",
 		},
 		{
@@ -346,8 +346,8 @@ func TestMinus(t *testing.T) {
 			f := NewMinus(tt.left, tt.right)
 			result, err := f.Eval(sql.NewEmptyContext(), nil)
 			require.NoError(err)
-			if dec, ok := result.(decimal.Decimal); ok {
-				result = dec.StringFixed(dec.Exponent() * -1)
+			if dec, ok := result.(apd.Decimal); ok {
+				result = dec.Text('f')
 			}
 			assert.Equal(t, tt.exp, result)
 		})
@@ -414,28 +414,28 @@ func TestMult(t *testing.T) {
 			exp:   9.4377,
 		},
 		{
-			left:  NewLiteral(decimal.New(1, 0), types.MustCreateDecimalType(10, 0)),
-			right: NewLiteral(decimal.New(1, 0), types.MustCreateDecimalType(10, 0)),
+			left:  NewLiteral(types.DecimalFromInt64WithScale(1, 0), types.MustCreateDecimalType(10, 0)),
+			right: NewLiteral(types.DecimalFromInt64WithScale(1, 0), types.MustCreateDecimalType(10, 0)),
 			exp:   "1",
 		},
 		{
-			left:  NewLiteral(decimal.New(1000, -3), types.MustCreateDecimalType(10, 3)), // 1.000
-			right: NewLiteral(decimal.New(1, 0), types.MustCreateDecimalType(10, 0)),
+			left:  NewLiteral(types.DecimalFromInt64WithScale(1000, -3), types.MustCreateDecimalType(10, 3)), // 1.000
+			right: NewLiteral(types.DecimalFromInt64WithScale(1, 0), types.MustCreateDecimalType(10, 0)),
 			exp:   "1.000",
 		},
 		{
-			left:  NewLiteral(decimal.New(1000, -3), types.MustCreateDecimalType(10, 3)),   // 1.000
-			right: NewLiteral(decimal.New(100000, -5), types.MustCreateDecimalType(10, 5)), // 1.00000
+			left:  NewLiteral(types.DecimalFromInt64WithScale(1000, -3), types.MustCreateDecimalType(10, 3)),   // 1.000
+			right: NewLiteral(types.DecimalFromInt64WithScale(100000, -5), types.MustCreateDecimalType(10, 5)), // 1.00000
 			exp:   "1.00000000",
 		},
 		{
-			left:  NewLiteral(decimal.New(1459, -4), types.MustCreateDecimalType(10, 4)), // 0.1459
-			right: NewLiteral(decimal.New(3, 0), types.MustCreateDecimalType(10, 0)),     // 3
+			left:  NewLiteral(types.DecimalFromInt64WithScale(1459, -4), types.MustCreateDecimalType(10, 4)), // 0.1459
+			right: NewLiteral(types.DecimalFromInt64WithScale(3, 0), types.MustCreateDecimalType(10, 0)),     // 3
 			exp:   "0.4377",
 		},
 		{
-			left:  NewLiteral(decimal.New(31459, -4), types.MustCreateDecimalType(10, 4)), // 3.1459
-			right: NewLiteral(decimal.New(3, 0), types.MustCreateDecimalType(10, 0)),      // 3
+			left:  NewLiteral(types.DecimalFromInt64WithScale(31459, -4), types.MustCreateDecimalType(10, 4)), // 3.1459
+			right: NewLiteral(types.DecimalFromInt64WithScale(3, 0), types.MustCreateDecimalType(10, 0)),      // 3
 			exp:   "9.4377",
 		},
 		{
@@ -518,8 +518,8 @@ func TestMult(t *testing.T) {
 				return
 			}
 			require.NoError(err)
-			if dec, ok := result.(decimal.Decimal); ok {
-				result = dec.StringFixed(dec.Exponent() * -1)
+			if dec, ok := result.(apd.Decimal); ok {
+				result = dec.Text('f')
 			}
 			assert.Equal(t, tt.exp, result)
 		})
@@ -557,9 +557,9 @@ func TestMod(t *testing.T) {
 			if tt.null {
 				require.Nil(result)
 			} else {
-				r, ok := result.(decimal.Decimal)
+				r, ok := result.(apd.Decimal)
 				require.True(ok)
-				require.Equal(tt.expected, r.StringFixed(r.Exponent()*-1))
+				require.Equal(tt.expected, r.Text('f'))
 			}
 		})
 	}
@@ -594,8 +594,8 @@ func TestUnaryMinus(t *testing.T) {
 			f := NewUnaryMinus(NewLiteral(tt.input, tt.typ))
 			result, err := f.Eval(sql.NewEmptyContext(), nil)
 			require.NoError(t, err)
-			if dt, ok := result.(decimal.Decimal); ok {
-				require.Equal(t, tt.expected, dt.StringFixed(dt.Exponent()*-1))
+			if dt, ok := result.(apd.Decimal); ok {
+				require.Equal(t, tt.expected, dt.Text('f'))
 			} else {
 				require.Equal(t, tt.expected, result)
 			}

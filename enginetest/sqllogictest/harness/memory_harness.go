@@ -22,13 +22,14 @@ import (
 	"strings"
 	"sync/atomic"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/vt/proto/query"
-	"github.com/shopspring/decimal"
 
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/enginetest"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type memoryHarness struct {
@@ -147,9 +148,10 @@ func toSqlString(val interface{}) string {
 	case float32, float64:
 		// exactly 3 decimal points for floats
 		return fmt.Sprintf("%.3f", v)
-	case decimal.Decimal:
+	case apd.Decimal:
 		// exactly 3 decimal points for floats
-		return v.StringFixed(3)
+		d, _ := types.DecimalRound(v, 3)
+		return d.Text('f')
 	case int:
 		return strconv.Itoa(v)
 	case uint:

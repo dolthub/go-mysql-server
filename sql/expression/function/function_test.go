@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/shopspring/decimal"
+	"github.com/cockroachdb/apd/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -249,7 +249,7 @@ func (tf *TestFactory) AddUnsignedVariations(expected interface{}, arg uint64) {
 func (tf *TestFactory) AddFloatVariations(expected interface{}, f float64) {
 	tf.AddSucceeding(expected, f)
 	tf.AddSucceeding(expected, float32(f))
-	tf.AddSucceeding(expected, decimal.NewFromFloat(f))
+	tf.AddSucceeding(expected, types.DecimalFromFloat64(f))
 }
 
 func generateNameFromArgs(args ...interface{}) string {
@@ -313,7 +313,7 @@ func toLiteralExpression(input interface{}) *expression.Literal {
 		return expression.NewLiteral(val, types.Float32)
 	case float64:
 		return expression.NewLiteral(val, types.Float64)
-	case decimal.Decimal:
+	case apd.Decimal:
 		return expression.NewLiteral(val, types.Float64)
 	case string:
 		return expression.NewLiteral(val, types.Text)

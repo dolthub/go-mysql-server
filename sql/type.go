@@ -22,11 +22,10 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/mysql"
-
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
-	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
 )
 
@@ -285,9 +284,27 @@ func IsEnumType(t Type) bool {
 	return ok
 }
 
+// These decimal context set-ups are taken from https://github.com/cockroachdb/cockroach/blob/master/pkg/sql/sem/tree/decimal.go
+var (
+	// DecimalCtx is the default context for decimal operations. Any change
+	// in the exponent limits must still guarantee a safe conversion to the
+	// postgres binary decimal format in the wire protocol, which uses an
+	// int16. See pgwire/types.go.
+	DecimalCtx = &apd.Context{
+		Precision:   20,
+		Rounding:    apd.RoundHalfUp,
+		MaxExponent: 2000,
+		MinExponent: -2000,
+		// Don't error on invalid operation, return NaN instead.
+		Traps: apd.DefaultTraps &^ apd.InvalidOperation,
+	}
+	// HighPrecisionCtx is a decimal context with high precision.
+	HighPrecisionCtx = DecimalCtx.WithPrecision(2000)
+)
+
 // DecimalType represents the DECIMAL type.
 // https://dev.mysql.com/doc/refman/8.0/en/fixed-point-types.html
-// The type of the returned value is decimal.Decimal.
+// The type of the returned value is apd.Decimal.
 type DecimalType interface {
 	Type
 	// IsDecimalType returns true if the type is a decimal. Must be checked in addition to a type assertion for
@@ -296,15 +313,15 @@ type DecimalType interface {
 	// ConvertToNullDecimal converts the given value to a decimal.NullDecimal if it has a compatible type. It is worth
 	// noting that Convert() returns a nil value for nil inputs, and also returns decimal.Decimal rather than
 	// decimal.NullDecimal.
-	ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, error)
+	ConvertToNullDecimal(v interface{}) (apd.NullDecimal, error)
 	// ConvertNoBoundsCheck normalizes an interface{} to a decimal type without performing expensive bound checks
-	ConvertNoBoundsCheck(v interface{}) (decimal.Decimal, error)
+	ConvertNoBoundsCheck(v interface{}) (apd.Decimal, error)
 	// BoundsCheck rounds and validates a decimal, returning the decimal,
 	// whether the value was out of range, and an error.
-	BoundsCheck(v decimal.Decimal) (decimal.Decimal, ConvertInRange, error)
+	BoundsCheck(v apd.Decimal) (apd.Decimal, ConvertInRange, error)
 	// ExclusiveUpperBound returns the exclusive upper bound for this Decimal.
 	// For example, DECIMAL(5,2) would return 1000, as 999.99 is the max represented.
-	ExclusiveUpperBound() decimal.Decimal
+	ExclusiveUpperBound() apd.Decimal
 	// MaximumScale returns the maximum scale allowed for the current precision.
 	MaximumScale() uint8
 	// Precision returns the base-10 precision of the type, which is the total number of digits. For example, a

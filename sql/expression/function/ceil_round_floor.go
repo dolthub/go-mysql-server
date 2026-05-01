@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/mysql"
-	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -121,8 +121,12 @@ func (c *Ceil) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		child = math.Ceil(float64(num))
 	case float64:
 		child = math.Ceil(num)
-	case decimal.Decimal:
-		child = num.Ceil()
+	case apd.Decimal:
+		_, err = sql.DecimalCtx.Ceil(&num, &num)
+		if err != nil {
+			return nil, err
+		}
+		child = num
 	}
 	child, _, _ = c.Type(ctx).Convert(ctx, child)
 	return child, nil
@@ -204,8 +208,12 @@ func (f *Floor) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		child = math.Floor(float64(num))
 	case float64:
 		child = math.Floor(num)
-	case decimal.Decimal:
-		child = num.Floor()
+	case apd.Decimal:
+		_, err = sql.DecimalCtx.Floor(&num, &num)
+		if err != nil {
+			return nil, err
+		}
+		child = num
 	}
 	child, _, _ = f.Type(ctx).Convert(ctx, child)
 	return child, nil
@@ -303,7 +311,11 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	var res interface{}
-	tmp := val.(decimal.Decimal).Round(prec)
+	tmp, err := types.DecimalRound(val.(apd.Decimal), prec)
+	if err != nil {
+		return nil, err
+	}
+
 	lType := r.Num.Type(ctx)
 	if types.IsSigned(lType) {
 		res, _, err = types.Int64.Convert(ctx, tmp)

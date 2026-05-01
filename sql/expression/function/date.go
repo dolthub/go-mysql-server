@@ -19,8 +19,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shopspring/decimal"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -335,11 +333,7 @@ func toUnixTimestamp(t time.Time, resType sql.Type) interface{} {
 		for i := 6 - scale; i > 0; i-- {
 			unixMicro /= 10
 		}
-		res := decimal.New(unixMicro, -scale)
-		str := res.String()
-		if str == "" {
-		}
-		return res
+		return types.DecimalFromInt64WithScale(unixMicro, -scale)
 	}
 	return unixMicro / 1e6
 }

@@ -20,9 +20,9 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
-	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -169,20 +169,23 @@ func (t BitType_) Convert(ctx context.Context, v interface{}) (interface{}, sql.
 			return nil, sql.InRange, fmt.Errorf(`negative floats cannot become bit values`)
 		}
 		value = uint64(val)
-	case decimal.NullDecimal:
+	case apd.NullDecimal:
 		if !val.Valid {
 			return nil, sql.InRange, nil
 		}
 		return t.Convert(ctx, val.Decimal)
-	case decimal.Decimal:
-		val = val.Round(0)
-		if val.GreaterThan(dec_uint64_max) {
+	case apd.Decimal:
+		val, err := DecimalRound(val, 0)
+		if err != nil {
+			return nil, sql.InRange, err
+		}
+		if val.Cmp(&DecimalMaxUint64) > 0 {
 			return nil, sql.Overflow, errBeyondMaxBit.New(val.String(), t.numOfBits)
 		}
-		if val.LessThan(dec_int64_min) {
+		if val.Cmp(&DecimalMinInt64) < 0 {
 			return nil, sql.Underflow, errBeyondMaxBit.New(val.String(), t.numOfBits)
 		}
-		value = uint64(val.IntPart())
+		value = val.Coeff.Uint64()
 	case string:
 		return t.Convert(ctx, []byte(val))
 	case []byte:

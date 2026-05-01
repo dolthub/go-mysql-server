@@ -17,8 +17,8 @@ package function
 import (
 	"fmt"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/mysql"
-	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -104,17 +104,8 @@ func (t *Truncate) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	var res interface{}
 
 	// Truncate the decimal value
-	tmp := val.(decimal.Decimal)
-	if precision < 0 {
-		// For negative precision, we need to truncate digits to the left of decimal point
-		// This is different from the decimal library's Truncate method
-		// We need to divide by 10^|precision|, truncate, then multiply back
-		multiplier := decimal.NewFromInt(10).Pow(decimal.NewFromInt(int64(-precision)))
-		tmp = tmp.Div(multiplier).Truncate(0).Mul(multiplier)
-	} else {
-		// For positive precision, use the standard Truncate method
-		tmp = tmp.Truncate(precision)
-	}
+	tmp := val.(apd.Decimal)
+	tmp = types.DecimalTruncate(tmp, precision)
 
 	// Convert truncated value back to the appropriate type
 	lType := t.LeftChild.Type(ctx)

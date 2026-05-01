@@ -17,7 +17,7 @@ package function
 import (
 	"testing"
 
-	"github.com/shopspring/decimal"
+	"github.com/cockroachdb/apd/v3"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
 
@@ -164,8 +164,8 @@ func TestTruncate(t *testing.T) {
 			require.NoError(t, err)
 
 			if tt.name == "decimal input" {
-				if dec, ok := res.(decimal.Decimal); ok {
-					require.Equal(t, tt.exp, dec.String())
+				if dec, ok := res.(apd.Decimal); ok {
+					require.Equal(t, tt.exp, dec.Text('f'))
 				} else {
 					require.Equal(t, tt.exp, res)
 				}

@@ -19,9 +19,9 @@ import (
 	"encoding/json"
 	"reflect"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
-	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/encodings"
@@ -115,7 +115,7 @@ func (t JsonType) Convert(c context.Context, v interface{}) (interface{}, sql.Co
 		return JSONDocument{Val: float64(v)}, sql.InRange, nil
 	case float64:
 		return JSONDocument{Val: v}, sql.InRange, nil
-	case decimal.Decimal:
+	case apd.Decimal:
 		return JSONDocument{Val: v}, sql.InRange, nil
 	default:
 		return convertJSONValue(v)

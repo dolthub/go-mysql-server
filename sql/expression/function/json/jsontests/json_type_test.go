@@ -19,7 +19,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
 
@@ -66,7 +65,7 @@ func TestJSONType(t *testing.T) {
 		},
 		{
 			f:   f1,
-			row: sql.Row{decimal.New(15, -1)},
+			row: sql.Row{types.DecimalFromInt64WithScale(15, -1)},
 			err: sql.ErrInvalidJSONArgument.New(1, "json_type"),
 		},
 
@@ -146,7 +145,7 @@ func TestJSONType(t *testing.T) {
 		},
 		{
 			f:   f1,
-			row: sql.Row{types.JSONDocument{Val: decimal.New(123456, -3)}},
+			row: sql.Row{types.JSONDocument{Val: types.DecimalFromInt64WithScale(123456, -3)}},
 			exp: "DECIMAL",
 		},
 		{

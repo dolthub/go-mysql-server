@@ -22,10 +22,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/sqltypes"
 	querypb "github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
-	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
@@ -939,10 +939,10 @@ func widenValue(t *testing.T, v interface{}) (vw interface{}) {
 	case float32:
 		// casting it to float64 causes approximation, which doesn't work for server engine results.
 		vw, _ = strconv.ParseFloat(fmt.Sprintf("%v", v), 64)
-	case decimal.Decimal:
+	case apd.Decimal:
 		// The exact expected decimal type value cannot be defined in enginetests,
 		// so convert the result to string format, which is the value we get on sql shell.
-		vw = x.StringFixed(x.Exponent() * -1)
+		vw = x.Text('f')
 	default:
 		vw = v
 	}

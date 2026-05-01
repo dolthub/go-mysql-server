@@ -17,14 +17,14 @@ package types
 import (
 	"context"
 	"fmt"
-	"math"
 	"math/big"
 	"reflect"
+	"strconv"
 	"strings"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
-	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -46,11 +46,11 @@ var (
 	ErrConvertToDecimalLimit = errors.NewKind("Out of range value for column of Decimal type ")
 	ErrMarshalNullDecimal    = errors.NewKind("Decimal cannot marshal a null value")
 
-	decimalValueType = reflect.TypeOf(decimal.Decimal{})
+	decimalValueType = reflect.TypeOf(apd.Decimal{})
 )
 
 type DecimalType_ struct {
-	exclusiveUpperBound decimal.Decimal
+	exclusiveUpperBound apd.Decimal
 	definesColumn       bool
 	precision           uint8
 	scale               uint8
@@ -59,7 +59,7 @@ type DecimalType_ struct {
 // InternalDecimalType is a special DecimalType that is used internally for Decimal comparisons. Not intended for usage
 // from integrators.
 var InternalDecimalType sql.DecimalType = DecimalType_{
-	exclusiveUpperBound: decimal.New(1, int32(65)),
+	exclusiveUpperBound: DecimalFromInt64WithScale(1, int32(65)),
 	definesColumn:       false,
 	precision:           65,
 	scale:               30,
@@ -93,7 +93,7 @@ func createDecimalType(precision uint8, scale uint8, definesColumn bool) (sql.De
 		precision = 10
 	}
 	return DecimalType_{
-		exclusiveUpperBound: decimal.New(1, int32(precision-scale)),
+		exclusiveUpperBound: DecimalFromInt64WithScale(1, int32(precision-scale)),
 		definesColumn:       definesColumn,
 		precision:           precision,
 		scale:               scale,
@@ -138,7 +138,30 @@ func (t DecimalType_) Compare(s context.Context, a interface{}, b interface{}) (
 		return 0, err
 	}
 
-	return af.Decimal.Cmp(bf.Decimal), nil
+	aIsNull := !af.Valid
+	bIsNull := !bf.Valid
+	if aIsNull && bIsNull {
+		return 0, nil
+	} else if aIsNull {
+		return 1, nil
+	} else if bIsNull {
+		return -1, nil
+	}
+
+	ad := af.Decimal
+	bd := bf.Decimal
+
+	if (ad.Form == apd.NaN && bd.Form == apd.NaN) ||
+		(ad.Form == apd.Infinite && bd.Form == apd.Infinite && ad.Negative == bd.Negative) {
+		return 0, nil
+	}
+	if ad.Form == apd.NaN {
+		return 1, nil
+	}
+	if bd.Form == apd.NaN {
+		return -1, nil
+	}
+	return ad.Cmp(&bd), nil
 }
 
 // CompareValue implements the ValueType interface
@@ -154,7 +177,19 @@ func (t DecimalType_) CompareValue(ctx *sql.Context, a, b sql.Value) (int, error
 	if err != nil {
 		return 0, err
 	}
-	return aDec.Cmp(bDec), nil
+
+	if (aDec.Form == apd.NaN && bDec.Form == apd.NaN) ||
+		(aDec.Form == apd.Infinite && bDec.Form == apd.Infinite && aDec.Negative == bDec.Negative) {
+		return 0, nil
+	}
+	if aDec.Form == apd.NaN {
+		return 1, nil
+	}
+	if bDec.Form == apd.NaN {
+		return -1, nil
+	}
+
+	return aDec.Cmp(&bDec), nil
 }
 
 // Convert implements Type interface.
@@ -173,29 +208,29 @@ func (t DecimalType_) Convert(c context.Context, v interface{}) (interface{}, sq
 	return res, inRange, err
 }
 
-func (t DecimalType_) ConvertNoBoundsCheck(v interface{}) (decimal.Decimal, error) {
+func (t DecimalType_) ConvertNoBoundsCheck(v interface{}) (apd.Decimal, error) {
 	dec, err := t.ConvertToNullDecimal(v)
 	if err != nil {
-		return decimal.Decimal{}, err
+		return apd.Decimal{}, err
 	}
 	if !dec.Valid {
-		return decimal.Decimal{}, nil
+		return apd.Decimal{}, nil
 	}
 	return dec.Decimal, nil
 }
 
 // ConvertToNullDecimal implements DecimalType interface.
-func (t DecimalType_) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, error) {
+func (t DecimalType_) ConvertToNullDecimal(v interface{}) (apd.NullDecimal, error) {
 	if v == nil {
-		return decimal.NullDecimal{}, nil
+		return apd.NullDecimal{}, nil
 	}
 
 	switch value := v.(type) {
 	case bool:
 		if value {
-			return t.ConvertToNullDecimal(decimal.NewFromInt(1))
+			return t.ConvertToNullDecimal(DecimalFromInt64(1))
 		} else {
-			return t.ConvertToNullDecimal(decimal.NewFromInt(0))
+			return t.ConvertToNullDecimal(DecimalZero)
 		}
 	case int:
 		return t.ConvertToNullDecimal(int64(value))
@@ -210,48 +245,46 @@ func (t DecimalType_) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, 
 	case uint16:
 		return t.ConvertToNullDecimal(uint64(value))
 	case int32:
-		return t.ConvertToNullDecimal(decimal.NewFromInt32(value))
+		return t.ConvertToNullDecimal(DecimalFromInt64(int64(value)))
 	case uint32:
 		return t.ConvertToNullDecimal(uint64(value))
 	case int64:
-		return t.ConvertToNullDecimal(decimal.NewFromInt(value))
+		return t.ConvertToNullDecimal(DecimalFromInt64(value))
 	case uint64:
-		return t.ConvertToNullDecimal(decimal.NewFromUint64(value))
+		return t.ConvertToNullDecimal(DecimalFromUint64(value))
 	case float32:
-		return t.ConvertToNullDecimal(decimal.NewFromFloat32(value))
+		return t.ConvertToNullDecimal(DecimalFromFloat64(float64(value)))
 	case float64:
-		if canConvertFloatToDecimal(value) {
-			return t.ConvertToNullDecimal(decimal.NewFromFloat(value))
-		}
+		return t.ConvertToNullDecimal(DecimalFromFloat64(value))
 	case string:
 		truncStr := strings.Trim(value, sql.NumericCutSet)
-		res, err := decimal.NewFromString(truncStr)
+		res, _, err := apd.NewFromString(truncStr)
 		if err == nil {
-			return t.ConvertToNullDecimal(res)
+			return t.ConvertToNullDecimal(*res)
 		}
 		// The decimal library cannot handle all the different formats
 		bf, _, err := new(big.Float).SetPrec(217).Parse(truncStr, 0)
 		if err == nil {
-			res, err = decimal.NewFromString(bf.Text('f', -1))
+			res, _, err = apd.NewFromString(bf.Text('f', -1))
 			if err == nil {
-				return t.ConvertToNullDecimal(res)
+				return t.ConvertToNullDecimal(*res)
 			}
 		}
 		truncStr, didTrunc := TruncateStringToDouble(value)
 		if truncStr == "0" {
-			nullDec, cErr := t.ConvertToNullDecimal(decimal.NewFromInt(0))
+			nullDec, cErr := t.ConvertToNullDecimal(DecimalZero)
 			if cErr != nil {
-				return decimal.NullDecimal{}, cErr
+				return apd.NullDecimal{}, cErr
 			}
 			if didTrunc {
 				return nullDec, sql.ErrTruncatedIncorrect.New(t, value)
 			}
 			return nullDec, nil
 		}
-		res, _ = decimal.NewFromString(truncStr)
-		nullDec, cErr := t.ConvertToNullDecimal(res)
+		res, _, _ = apd.NewFromString(truncStr)
+		nullDec, cErr := t.ConvertToNullDecimal(*res)
 		if cErr != nil {
-			return decimal.NullDecimal{}, cErr
+			return apd.NullDecimal{}, cErr
 		}
 		if didTrunc {
 			err = sql.ErrTruncatedIncorrect.New(t, value)
@@ -263,39 +296,45 @@ func (t DecimalType_) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, 
 		return t.ConvertToNullDecimal(value.Text(10))
 	case *big.Rat:
 		return t.ConvertToNullDecimal(new(big.Float).SetRat(value))
-	case decimal.Decimal:
-		if t.definesColumn && value.Exponent() != int32(t.scale) {
-			val, err := decimal.NewFromString(value.StringFixed(int32(t.scale)))
+	case apd.Decimal:
+		if t.definesColumn && value.Exponent != int32(t.scale) {
+			val, err := DecimalRound(value, int32(t.scale))
 			if err != nil {
-				return decimal.NullDecimal{}, err
+				return apd.NullDecimal{}, err
 			}
-			return decimal.NullDecimal{Decimal: val, Valid: true}, nil
+			return apd.NullDecimal{Decimal: val, Valid: true}, nil
 		}
-		return decimal.NullDecimal{Decimal: value, Valid: true}, nil
+		return apd.NullDecimal{Decimal: value, Valid: true}, nil
 	case []uint8:
 		return t.ConvertToNullDecimal(string(value))
-	case decimal.NullDecimal:
+	case apd.NullDecimal:
 		// This is the equivalent of passing in a nil
 		if !value.Valid {
-			return decimal.NullDecimal{}, nil
+			return apd.NullDecimal{}, nil
 		}
 		return t.ConvertToNullDecimal(value.Decimal)
 	case JSONDocument:
 		return t.ConvertToNullDecimal(value.Val)
 	}
 
-	return decimal.NullDecimal{}, ErrConvertingToDecimal.New(v)
+	return apd.NullDecimal{}, ErrConvertingToDecimal.New(v)
 }
 
-func (t DecimalType_) BoundsCheck(v decimal.Decimal) (decimal.Decimal, sql.ConvertInRange, error) {
-	if -v.Exponent() > int32(t.scale) {
+func (t DecimalType_) BoundsCheck(v apd.Decimal) (apd.Decimal, sql.ConvertInRange, error) {
+	if -v.Exponent > int32(t.scale) {
 		// TODO : add 'Data truncated' warning
-		v = v.Round(int32(t.scale))
+		var err error
+		v, err = DecimalRound(v, int32(t.scale))
+		if err != nil {
+			return apd.Decimal{}, sql.InRange, err
+		}
+		//v = v.Round(int32(t.scale))
 	}
 	// TODO add shortcut for common case
 	// ex: certain num of bits fast tracks OK
-	if !v.Abs().LessThan(t.exclusiveUpperBound) {
-		return decimal.Decimal{}, sql.InRange, ErrConvertToDecimalLimit.New()
+	tmp := new(apd.Decimal)
+	if tmp.Abs(&v).Cmp(&t.exclusiveUpperBound) >= 0 {
+		return apd.Decimal{}, sql.InRange, ErrConvertToDecimalLimit.New()
 	}
 	return v, sql.InRange, nil
 }
@@ -362,7 +401,7 @@ func (t DecimalType_) ValueType() reflect.Type {
 // Zero implements Type interface.
 func (t DecimalType_) Zero() interface{} {
 	// The zero value should have the same scale as the type
-	return decimal.New(0, -int32(t.scale))
+	return DecimalFromInt64WithScale(0, -int32(t.scale))
 }
 
 // CollationCoercibility implements sql.CollationCoercible interface.
@@ -371,7 +410,7 @@ func (DecimalType_) CollationCoercibility(ctx *sql.Context) (collation sql.Colla
 }
 
 // ExclusiveUpperBound implements DecimalType interface.
-func (t DecimalType_) ExclusiveUpperBound() decimal.Decimal {
+func (t DecimalType_) ExclusiveUpperBound() apd.Decimal {
 	return t.exclusiveUpperBound
 }
 
@@ -395,85 +434,82 @@ func (t DecimalType_) Scale() uint8 {
 
 // DecimalValueStringFixed returns string value for the given decimal value. If decimal type value is for valid table column only,
 // it should use scale defined by the column. Otherwise, the result value should use its own precision and scale.
-func (t DecimalType_) DecimalValueStringFixed(v decimal.Decimal) string {
+func (t DecimalType_) DecimalValueStringFixed(v apd.Decimal) string {
 	if t.definesColumn {
-		if int32(t.scale) != v.Exponent() {
-			return v.StringFixed(int32(t.scale))
+		if int32(t.scale) != v.Exponent {
+			v, _ = DecimalRound(v, int32(t.scale))
 		}
-		return v.String()
-	} else {
-		return v.StringFixed(v.Exponent() * -1)
 	}
+	return v.Text('f')
 }
 
-func convertValueToDecimal(ctx *sql.Context, v sql.Value) (decimal.Decimal, error) {
+func convertValueToDecimal(ctx *sql.Context, v sql.Value) (apd.Decimal, error) {
 	switch v.Typ {
 	case sqltypes.Int8:
 		x := values.ReadInt8(v.Val)
-		return decimal.NewFromInt(int64(x)), nil
+		return DecimalFromInt64(int64(x)), nil
 	case sqltypes.Int16:
 		x := values.ReadInt16(v.Val)
-		return decimal.NewFromInt(int64(x)), nil
+		return DecimalFromInt64(int64(x)), nil
 	case sqltypes.Int32:
 		x := values.ReadInt32(v.Val)
-		return decimal.NewFromInt(int64(x)), nil
+		return DecimalFromInt64(int64(x)), nil
 	case sqltypes.Int64:
 		x := values.ReadInt64(v.Val)
-		return decimal.NewFromInt(x), nil
+		return DecimalFromInt64(x), nil
 	case sqltypes.Uint8:
 		x := values.ReadUint8(v.Val)
-		return decimal.NewFromInt(int64(x)), nil
+		return DecimalFromInt64(int64(x)), nil
 	case sqltypes.Uint16:
 		x := values.ReadUint16(v.Val)
-		return decimal.NewFromInt(int64(x)), nil
+		return DecimalFromInt64(int64(x)), nil
 	case sqltypes.Uint32:
 		x := values.ReadUint32(v.Val)
-		return decimal.NewFromInt(int64(x)), nil
+		return DecimalFromInt64(int64(x)), nil
 	case sqltypes.Uint64:
 		x := values.ReadUint64(v.Val)
-		return decimal.NewFromUint64(x), nil
+		return DecimalFromUint64(x), nil
 	case sqltypes.Float32:
 		x := values.ReadFloat32(v.Val)
-		return decimal.NewFromFloat32(x), nil
+		return DecimalFromFloat32(x), nil
 	case sqltypes.Float64:
 		x := values.ReadFloat64(v.Val)
-		// handle infinity and NaN values
-		return decimal.NewFromFloat(x), nil
+		return DecimalFromFloat64(x), nil
 	case sqltypes.Decimal:
 		x := values.ReadDecimal(v.Val)
 		return x, nil
 	case sqltypes.Bit:
 		x := values.ReadUint64(v.Val)
-		return decimal.NewFromUint64(x), nil
+		return DecimalFromUint64(x), nil
 	case sqltypes.Year:
 		x := values.ReadUint16(v.Val)
-		return decimal.NewFromInt(int64(x)), nil
+		return DecimalFromInt64(int64(x)), nil
 	case sqltypes.Date:
 		x := values.ReadDate(v.Val)
 		s := x.UTC().Unix()
-		return decimal.NewFromInt(s), nil
+		return DecimalFromInt64(s), nil
 	case sqltypes.Time:
 		x := values.ReadInt64(v.Val)
-		return decimal.NewFromInt(x), nil
+		return DecimalFromInt64(x), nil
 	case sqltypes.Datetime, sqltypes.Timestamp:
 		x := values.ReadDatetime(v.Val)
-		return decimal.NewFromInt(x.UTC().Unix()), nil
+		return DecimalFromInt64(x.UTC().Unix()), nil
 	case sqltypes.Text, sqltypes.Blob:
 		var err error
 		if v.Val == nil {
 			v.Val, err = v.WrappedVal.Unwrap(ctx)
 			if err != nil {
-				return decimal.Decimal{}, err
+				return apd.Decimal{}, err
 			}
 		}
 		x := values.ReadString(v.Val)
-		res, err := decimal.NewFromString(x)
+		res, _, err := apd.NewFromString(x)
 		if err != nil {
-			return decimal.Decimal{}, err
+			return apd.Decimal{}, err
 		}
-		return res, nil
+		return *res, nil
 	default:
-		return decimal.Decimal{}, ErrConvertingToDecimal.New(v)
+		return apd.Decimal{}, ErrConvertingToDecimal.New(v)
 	}
 }
 
@@ -482,8 +518,96 @@ func (t DecimalType_) IsDecimalType() bool {
 	return true
 }
 
-// TODO: Postgres possibly allows NaN and Inf values for decimals (documentation unclear) but shopspring/decimal does
-// not allow converting those values into decimal.Decimals
-func canConvertFloatToDecimal(v float64) bool {
-	return !math.IsNaN(v) && !math.IsInf(v, 0)
+// DecimalFromFloat32 returns apd.Decimal set from given float32.
+func DecimalFromFloat32(f float32) apd.Decimal {
+	dec := new(apd.Decimal)
+	s := strconv.FormatFloat(float64(f), 'f', -1, 32)
+	dec, _, err := dec.SetString(s)
+	if err != nil {
+		panic(err)
+	}
+	return *dec
+}
+
+// DecimalFromFloat64 returns apd.Decimal set from given float64.
+func DecimalFromFloat64(f float64) apd.Decimal {
+	dec := new(apd.Decimal)
+	dec, err := dec.SetFloat64(f)
+	if err != nil {
+		panic(err)
+	}
+	return *dec
+}
+
+// DecimalFromInt64 returns apd.Decimal set from given int64 with 0 scale.
+func DecimalFromInt64(x int64) apd.Decimal {
+	return *apd.New(x, 0)
+}
+
+// DecimalFromInt64WithScale returns apd.Decimal set from given int64 with 0 scale.
+func DecimalFromInt64WithScale(x int64, e int32) apd.Decimal {
+	return *apd.New(x, e)
+}
+
+// DecimalFromUint64 returns apd.Decimal set from given uint64 value.
+func DecimalFromUint64(x uint64) apd.Decimal {
+	dec := new(apd.Decimal)
+	dec.Coeff.SetMathBigInt(new(big.Int).SetUint64(x))
+	dec.Exponent = 0
+	return *dec
+}
+
+// DecimalRound rounds the decimal to places decimal places.
+// If places < 0, it will round the integer part to the nearest 10^(-places).
+// 5.45 rounded with scale of 1 = 5.5
+// 545 rounded with scale of -1 = 550
+func DecimalRound(val apd.Decimal, scale int32) (apd.Decimal, error) {
+	_, err := sql.HighPrecisionCtx.Quantize(&val, &val, -scale)
+	return val, err
+}
+
+// DecimalTruncate truncates the decimal to given scale. It rounds down.
+// 5.45 truncated with scale of 1 = 5.40
+// 545 truncated with scale of -1 = 540
+func DecimalTruncate(val apd.Decimal, scale int32) apd.Decimal {
+	if -scale > val.Exponent {
+		ctx := *sql.HighPrecisionCtx
+		ctx.Rounding = apd.RoundDown
+		_, err := ctx.Quantize(&val, &val, -scale)
+		if err != nil {
+			panic(err)
+		}
+		if val.IsZero() {
+			val.Negative = false
+			val.Exponent = 0
+		}
+	}
+	return val
+}
+
+// DecimalIntPart rounds the decimal value to 0 scale and returns the integer part int64.
+func DecimalIntPart(val apd.Decimal) int64 {
+	val, _ = DecimalRound(val, 0)
+	i, _ := val.Int64()
+	return i
+}
+
+// DecimalIntPartUint64 rounds the decimal value to 0 scale and returns the integer part uint64.
+func DecimalIntPartUint64(val apd.Decimal) uint64 {
+	val, _ = DecimalRound(val, 0)
+	return val.Coeff.Uint64()
+}
+
+// DecimalDivRound divides and rounds to a given scale.
+func DecimalDivRound(a, b apd.Decimal, scale int32) apd.Decimal {
+	ctx := sql.HighPrecisionCtx
+	_, err := ctx.Quo(&a, &a, &b)
+	if err != nil {
+		panic(err)
+	}
+	_, err = ctx.Quantize(&a, &a, -scale)
+	if err != nil {
+		panic(err)
+	}
+	return a
 }

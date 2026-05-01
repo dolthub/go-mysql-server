@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/dolthub/vitess/go/sqltypes"
-	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -99,7 +98,7 @@ func BenchmarkDecimalSQL(b *testing.B) {
 	t, _ := CreateColumnDecimalType(2, 2)
 	ctx := sql.NewEmptyContext()
 	for i := 0; i < b.N; i++ {
-		res, _ = t.SQL(ctx, nil, decimal.New(int64(i), 2))
+		res, _ = t.SQL(ctx, nil, DecimalFromInt64WithScale(int64(i), 2))
 	}
 	result_ = res
 }

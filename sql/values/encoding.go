@@ -23,7 +23,7 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/shopspring/decimal"
+	"github.com/cockroachdb/apd/v3"
 )
 
 type Type struct {
@@ -182,14 +182,17 @@ func ReadFloat64(val []byte) float64 {
 	return math.Float64frombits(x)
 }
 
-func ReadDecimal(val []byte) decimal.Decimal {
+func ReadDecimal(val []byte) apd.Decimal {
 	e := ReadInt32(val[:Int32Size])
 	s := ReadInt8(val[Int32Size : Int32Size+Int8Size])
 	b := big.NewInt(0).SetBytes(val[Int32Size+Int8Size:])
+	d := new(apd.Decimal)
+	d.Coeff.SetMathBigInt(b)
+	d.Exponent = e
 	if s < 0 {
-		b = b.Neg(b)
+		d = d.Neg(d)
 	}
-	return decimal.NewFromBigInt(b, e)
+	return *d
 }
 
 func ReadDate(val []byte) time.Time {

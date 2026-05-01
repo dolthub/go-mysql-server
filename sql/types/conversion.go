@@ -20,11 +20,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
-	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -87,8 +87,8 @@ func ApproximateTypeFromValue(val interface{}) sql.Type {
 			}
 		}
 		return typ
-	case decimal.Decimal:
-		str := v.String()
+	case apd.Decimal:
+		str := v.Text('f')
 		dotIdx := strings.Index(str, ".")
 		if len(str) > 66 {
 			return Float64
@@ -107,7 +107,7 @@ func ApproximateTypeFromValue(val interface{}) sql.Type {
 			}
 			return typ
 		}
-	case decimal.NullDecimal:
+	case apd.NullDecimal:
 		if !v.Valid {
 			return Float64
 		}

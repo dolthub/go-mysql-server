@@ -24,9 +24,9 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
-	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/encodings"
@@ -195,13 +195,13 @@ func (t SetType) Convert(ctx context.Context, v interface{}) (interface{}, sql.C
 		return t.Convert(ctx, uint64(value))
 	case float64:
 		return t.Convert(ctx, uint64(value))
-	case decimal.Decimal:
-		return t.Convert(ctx, value.BigInt().Uint64())
-	case decimal.NullDecimal:
+	case apd.Decimal:
+		return t.Convert(ctx, DecimalIntPartUint64(value))
+	case apd.NullDecimal:
 		if !value.Valid {
 			return nil, sql.InRange, nil
 		}
-		return t.Convert(ctx, value.Decimal.BigInt().Uint64())
+		return t.Convert(ctx, value.Decimal)
 	case string:
 		ret, err := t.convertStringToBitField(value)
 		return ret, sql.InRange, err

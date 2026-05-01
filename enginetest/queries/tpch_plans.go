@@ -1755,7 +1755,7 @@ order by
 			"         │       ├─ cacheable: true\n" +
 			"         │       ├─ alias-string: select sum(ps_supplycost * ps_availqty) * 0.0001000000 from partsupp, supplier, nation where ps_suppkey = s_suppkey and s_nationkey = n_nationkey and n_name = 'GERMANY'\n" +
 			"         │       └─ Project\n" +
-			"         │           ├─ columns: [(sum((partsupp.ps_supplycost * partsupp.ps_availqty)):0!null * 0.0001 (decimal(11,10)))->sum(ps_supplycost * ps_availqty) * 0.0001000000:0]\n" +
+			"         │           ├─ columns: [(sum((partsupp.ps_supplycost * partsupp.ps_availqty)):0!null * 0.0001000000 (decimal(11,10)))->sum(ps_supplycost * ps_availqty) * 0.0001000000:0]\n" +
 			"         │           └─ LookupJoin\n" +
 			"         │               ├─ LookupJoin\n" +
 			"         │               │   ├─ Table\n" +
@@ -2130,7 +2130,7 @@ where
 	and l_shipdate >= '1995-09-01'
 	and l_shipdate < '1995-09-01' + interval '1' month;`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [((100 (decimal(5,2)) * sum(case  when part.p_type like 'promo%' then (lineitem.l_extendedprice * (1 - lineitem.l_discount)) else 0 end):1!null) / sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):0!null)->promo_revenue:0]\n" +
+			" ├─ columns: [((100.00 (decimal(5,2)) * sum(case  when part.p_type like 'promo%' then (lineitem.l_extendedprice * (1 - lineitem.l_discount)) else 0 end):1!null) / sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):0!null)->promo_revenue:0]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: SUM((lineitem.l_extendedprice:1!null * (1 (tinyint) - lineitem.l_discount:2!null))), SUM(CASE  WHEN part.p_type LIKE 'PROMO%' THEN (lineitem.l_extendedprice:1!null * (1 (tinyint) - lineitem.l_discount:2!null)) ELSE 0 (tinyint) END)\n" +
 			"     ├─ group: \n" +
@@ -2528,7 +2528,7 @@ where
 			l_partkey = p_partkey
 	);`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [(sum(lineitem.l_extendedprice):0!null / 7 (decimal(2,1)))->avg_yearly:0]\n" +
+			" ├─ columns: [(sum(lineitem.l_extendedprice):0!null / 7.0 (decimal(2,1)))->avg_yearly:0]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: SUM(lineitem.l_extendedprice:5!null)\n" +
 			"     ├─ group: \n" +
@@ -3483,7 +3483,7 @@ order by
 			"                     │                   ├─ AND\n" +
 			"                     │                   │   ├─ GreaterThan\n" +
 			"                     │                   │   │   ├─ customer.c_acctbal:9!null\n" +
-			"                     │                   │   │   └─ 0 (decimal(15,2))\n" +
+			"                     │                   │   │   └─ 0.00 (decimal(15,2))\n" +
 			"                     │                   │   └─ HashIn\n" +
 			"                     │                   │       ├─ SUBSTRING(customer.c_phone, 1, 2)\n" +
 			"                     │                   │       └─ TUPLE(13 (longtext), 31 (longtext), 23 (longtext), 29 (longtext), 30 (longtext), 18 (longtext), 17 (longtext))\n" +
