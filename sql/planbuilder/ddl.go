@@ -723,17 +723,7 @@ func (b *Builder) buildAlterConstraint(inScope *scope, ddl *ast.DDL, table *plan
 	case ast.AddStr:
 		switch c := parsedConstraint.(type) {
 		case *sql.ForeignKeyConstraint:
-			c.Database = table.SqlDatabase.Name()
-			c.Table = table.Name()
-
-			ds, ok := table.SqlDatabase.(sql.DatabaseSchema)
-			if ok {
-				c.SchemaName = ds.SchemaName()
-			}
-
-			if err := b.validateOnUpdateOnDeleteRefActions(c); err != nil {
-				b.handleErr(err)
-			}
+			b.bindForeignKeyFromTable(c, table)
 			alterFk := plan.NewAlterAddForeignKey(c)
 			alterFk.DbProvider = b.cat
 			outScope.node = alterFk
@@ -799,14 +789,7 @@ func (b *Builder) buildConstraintsDefs(inScope *scope, tname ast.TableName, spec
 		parsedConstraint := b.convertConstraintDefinition(inScope, unknownConstraint)
 		switch constraint := parsedConstraint.(type) {
 		case *sql.ForeignKeyConstraint:
-			constraint.Database = tname.DbQualifier.String()
-			constraint.Table = tname.Name.String()
-			if err := b.validateOnUpdateOnDeleteRefActions(constraint); err != nil {
-				b.handleErr(err)
-			}
-			if constraint.Database == "" {
-				constraint.Database = b.ctx.GetCurrentDatabase()
-			}
+			b.bindForeignKey(constraint, tname)
 			fks = append(fks, constraint)
 		case *sql.CheckConstraint:
 			checks = append(checks, constraint)
@@ -815,7 +798,70 @@ func (b *Builder) buildConstraintsDefs(inScope *scope, tname ast.TableName, spec
 			b.handleErr(err)
 		}
 	}
+
+	// The SQL standard requires that a column-level REFERENCES clause creates a real foreign key constraint.
+	// See https://www.contrib.andrew.cmu.edu/~shadow/sql/sql1992.txt
+	// MySQL silently ignores this syntax instead. See https://dev.mysql.com/doc/refman/8.4/en/ansi-diff-foreign-keys.html
+	for _, colDef := range spec.Columns {
+		if colDef.Type.ForeignKeyDef == nil {
+			continue
+		}
+		fk := b.fkConstraintFromDef(colDef.Type.ForeignKeyDef, "", []string{colDef.Name.String()})
+		b.bindForeignKey(fk, tname)
+		fks = append(fks, fk)
+	}
+
 	return
+}
+
+// fkConstraintFromDef builds a [sql.ForeignKeyConstraint] from a parsed ast.ForeignKeyDefinition.
+// |name| is the constraint name. Pass an empty string to let the engine generate one.
+// |columns| are the child table columns that participate in the constraint.
+// Database and Table are not set. Call bindForeignKey to fill them in.
+func (b *Builder) fkConstraintFromDef(fkDef *ast.ForeignKeyDefinition, name string, columns []string) *sql.ForeignKeyConstraint {
+	parentCols := make([]string, len(fkDef.ReferencedColumns))
+	for i, col := range fkDef.ReferencedColumns {
+		parentCols[i] = col.String()
+	}
+	parentDatabase := fkDef.ReferencedTable.DbQualifier.String()
+	if parentDatabase == "" {
+		parentDatabase = b.ctx.GetCurrentDatabase()
+	}
+	return &sql.ForeignKeyConstraint{
+		Name:           name,
+		Columns:        columns,
+		ParentDatabase: parentDatabase,
+		ParentSchema:   fkDef.ReferencedTable.SchemaQualifier.String(),
+		ParentTable:    fkDef.ReferencedTable.Name.String(),
+		ParentColumns:  parentCols,
+		OnUpdate:       b.buildReferentialAction(fkDef.OnUpdate),
+		OnDelete:       b.buildReferentialAction(fkDef.OnDelete),
+		IsResolved:     false,
+	}
+}
+
+// bindForeignKey sets the Database and Table fields on |fk| using |tname| and validates its referential actions.
+func (b *Builder) bindForeignKey(fk *sql.ForeignKeyConstraint, tname ast.TableName) {
+	fk.Database = tname.DbQualifier.String()
+	fk.Table = tname.Name.String()
+	if fk.Database == "" {
+		fk.Database = b.ctx.GetCurrentDatabase()
+	}
+	if err := b.validateOnUpdateOnDeleteRefActions(fk); err != nil {
+		b.handleErr(err)
+	}
+}
+
+// bindForeignKeyFromTable sets the Database, Table, and SchemaName fields on |fk| using |table| and validates its referential actions.
+func (b *Builder) bindForeignKeyFromTable(fk *sql.ForeignKeyConstraint, table *plan.ResolvedTable) {
+	fk.Database = table.SqlDatabase.Name()
+	fk.Table = table.Name()
+	if ds, ok := table.SqlDatabase.(sql.DatabaseSchema); ok {
+		fk.SchemaName = ds.SchemaName()
+	}
+	if err := b.validateOnUpdateOnDeleteRefActions(fk); err != nil {
+		b.handleErr(err)
+	}
 }
 
 func columnOrderToColumnOrder(order *ast.ColumnOrder) *sql.ColumnOrder {
@@ -900,26 +946,7 @@ func (b *Builder) convertConstraintDefinition(inScope *scope, cd *ast.Constraint
 		for i, col := range fkConstraint.Source {
 			columns[i] = col.String()
 		}
-		refColumns := make([]string, len(fkConstraint.ReferencedColumns))
-		for i, col := range fkConstraint.ReferencedColumns {
-			refColumns[i] = col.String()
-		}
-		refDatabase := fkConstraint.ReferencedTable.DbQualifier.String()
-		if refDatabase == "" {
-			refDatabase = b.ctx.GetCurrentDatabase()
-		}
-		// The database and table are set in the calling function
-		return &sql.ForeignKeyConstraint{
-			Name:           cd.Name,
-			Columns:        columns,
-			ParentDatabase: refDatabase,
-			ParentSchema:   fkConstraint.ReferencedTable.SchemaQualifier.String(),
-			ParentTable:    fkConstraint.ReferencedTable.Name.String(),
-			ParentColumns:  refColumns,
-			OnUpdate:       b.buildReferentialAction(fkConstraint.OnUpdate),
-			OnDelete:       b.buildReferentialAction(fkConstraint.OnDelete),
-			IsResolved:     false,
-		}
+		return b.fkConstraintFromDef(fkConstraint, cd.Name, columns)
 	} else if chConstraint, ok := cd.Details.(*ast.CheckConstraintDefinition); ok {
 		var c sql.Expression
 		if chConstraint.Expr != nil {
