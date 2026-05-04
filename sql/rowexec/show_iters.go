@@ -566,7 +566,15 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 		temp = " TEMPORARY"
 	}
 
-	return i.formatter.GenerateCreateTableStatement(table.Name(), colStmts, temp, autoInc, table.Collation().CharacterSet().Name(), table.Collation().Name(), comment), nil
+	createStmt := i.formatter.GenerateCreateTableStatement(table.Name(), colStmts, temp, autoInc, table.Collation().CharacterSet().Name(), table.Collation().Name(), comment)
+
+	if targetRowSizeTable := getTargetRowSizeTable(table); targetRowSizeTable != nil {
+		if targetRowSizeTable.HasTargetRowSize() {
+			createStmt += fmt.Sprintf(" TARGET_ROW_SIZE=%d", targetRowSizeTable.GetTargetRowSize())
+		}
+	}
+
+	return createStmt, nil
 }
 
 func produceCreateViewStatement(view *plan.SubqueryAlias) string {
@@ -602,6 +610,19 @@ func getAutoIncrementTable(t sql.Table) sql.AutoIncrementGetter {
 		return getAutoIncrementTable(t.Underlying())
 	case *plan.ResolvedTable:
 		return getAutoIncrementTable(t.Table)
+	default:
+		return nil
+	}
+}
+
+func getTargetRowSizeTable(t sql.Table) sql.TargetRowSizeTable {
+	switch t := t.(type) {
+	case sql.TargetRowSizeTable:
+		return t
+	case sql.TableWrapper:
+		return getTargetRowSizeTable(t.Underlying())
+	case *plan.ResolvedTable:
+		return getTargetRowSizeTable(t.Table)
 	default:
 		return nil
 	}

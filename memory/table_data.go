@@ -46,6 +46,7 @@ type TableData struct {
 	partitionKeys           [][]byte
 	autoColIdx              int
 	autoIncVal              uint64
+	targetRowSize           uint64
 	collation               sql.CollationID
 }
 

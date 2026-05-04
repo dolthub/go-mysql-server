@@ -331,6 +331,18 @@ var CreateTableQueries = []WriteQueryTest{
 		SelectQuery:         `SHOW CREATE TABLE t1`,
 		ExpectedSelect:      []sql.Row{{"t1", "CREATE TABLE `t1` (\n  `id` bigint unsigned NOT NULL AUTO_INCREMENT,\n  UNIQUE KEY `id` (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 	},
+	{
+		WriteQuery:          `CREATE TABLE t1 (pk int primary key) TARGET_ROW_SIZE=4096`,
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
+		SelectQuery:         "SHOW CREATE TABLE t1",
+		ExpectedSelect:      []sql.Row{{"t1", "CREATE TABLE `t1` (\n  `pk` int NOT NULL,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin TARGET_ROW_SIZE=4096"}},
+	},
+	{
+		WriteQuery:          `CREATE TABLE t1 (pk int primary key) TOAST_TUPLE_TARGET=1024`,
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
+		SelectQuery:         "SHOW CREATE TABLE t1",
+		ExpectedSelect:      []sql.Row{{"t1", "CREATE TABLE `t1` (\n  `pk` int NOT NULL,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin TARGET_ROW_SIZE=1024"}},
+	},
 }
 
 var CreateTableScriptTests = []ScriptTest{
