@@ -65,9 +65,6 @@ var (
 
 	// DecimalMaxUint64 represents the max value an uint64 can hold
 	DecimalMaxUint64 = DecimalFromUint64(math.MaxUint64)
-	DecimalMaxUint32 = DecimalFromUint64(math.MaxUint32)
-	DecimalMaxUint16 = DecimalFromUint64(math.MaxUint16)
-	DecimalMaxUint8  = DecimalFromUint64(math.MaxUint8)
 	// DecimalMaxInt64 represents the max value an int64 can hold
 	DecimalMaxInt64 = DecimalFromInt64(math.MaxInt64)
 	// DecimalMinInt64 represents the min value an int64 can hold

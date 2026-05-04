@@ -295,8 +295,7 @@ var (
 		Rounding:    apd.RoundHalfUp,
 		MaxExponent: 2000,
 		MinExponent: -2000,
-		// Don't error on invalid operation, return NaN instead.
-		Traps: apd.DefaultTraps &^ apd.InvalidOperation,
+		Traps:       apd.DefaultTraps,
 	}
 	// HighPrecisionCtx is a decimal context with high precision.
 	HighPrecisionCtx = DecimalCtx.WithPrecision(2000)
