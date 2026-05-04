@@ -141,8 +141,7 @@ func writeHashedValue(ctx context.Context, h hash.Hash, val interface{}) (valIsN
 			return false, err
 		}
 	case apd.Decimal:
-		// TODO: GobEncode is not supported in apd.Decimal
-		bytes, err := val.MarshalText()
+		bytes, err := types.DecimalGobEncode(val)
 		if err != nil {
 			return false, err
 		}
@@ -153,8 +152,7 @@ func writeHashedValue(ctx context.Context, h hash.Hash, val interface{}) (valIsN
 		if !val.Valid {
 			return true, nil
 		} else {
-			// TODO: GobEncode is not supported in apd.Decimal
-			bytes, err := val.Decimal.MarshalText()
+			bytes, err := types.DecimalGobEncode(val.Decimal)
 			if err != nil {
 				return false, err
 			}

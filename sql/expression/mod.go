@@ -90,7 +90,7 @@ func (m *Mod) Type(ctx *sql.Context) sql.Type {
 		return types.Float64
 	}
 
-	// for division operation, it's either float or decimal.Decimal type
+	// for division operation, it's either float or apd.Decimal type
 	// except invalid value will result it either 0 or nil
 	return getFloatOrMaxDecimalType(ctx, m, false)
 }

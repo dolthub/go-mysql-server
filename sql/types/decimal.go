@@ -16,6 +16,7 @@ package types
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
 	"math/big"
 	"reflect"
@@ -610,4 +611,56 @@ func DecimalDivRound(a, b apd.Decimal, scale int32) apd.Decimal {
 		panic(err)
 	}
 	return a
+}
+
+// DecimalGobDecode unmarshals binery. As a string representation
+// is already used when encoding to text, this method stores that string as []byte.
+func DecimalGobDecode(data []byte) (apd.Decimal, error) {
+	// TODO add encoding for NaN and +/-Inf values
+
+	// Verify we have at least 4 bytes for the exponent. The GOB encoded value
+	// may be empty.
+	if len(data) < 4 {
+		return apd.Decimal{}, fmt.Errorf("error decoding binary %v: expected at least 4 bytes, got %d", data, len(data))
+	}
+
+	// Extract the exponent
+	exp := int32(binary.BigEndian.Uint32(data[:4]))
+
+	// Extract the value
+	value := new(big.Int)
+	if err := value.GobDecode(data[4:]); err != nil {
+		return apd.Decimal{}, fmt.Errorf("error decoding binary %v: %s", data, err)
+	}
+
+	dec := new(apd.Decimal)
+	if value.Sign() < 0 {
+		dec.Negative = true
+		value.Abs(value)
+	}
+	dec.Coeff = *dec.Coeff.SetMathBigInt(value)
+	dec.Exponent = exp
+	return *dec, nil
+}
+
+// DecimalGobEncode marshals binary
+func DecimalGobEncode(val apd.Decimal) (data []byte, err error) {
+	//TODO add encoding for NaN and +/-Inf values
+
+	// exp is written first, but encode value first to know output size
+	bigIntCoeff := val.Coeff.MathBigInt()
+	if val.Negative {
+		bigIntCoeff.Neg(bigIntCoeff)
+	}
+	var valueData []byte
+	if valueData, err = bigIntCoeff.GobEncode(); err != nil {
+		return nil, err
+	}
+
+	// Write the exponent in front, since it's a fixed size
+	expData := make([]byte, 4, len(valueData)+4)
+	binary.BigEndian.PutUint32(expData, uint32(val.Exponent))
+
+	// Return the byte array
+	return append(expData, valueData...), nil
 }
