@@ -587,15 +587,15 @@ func TestRangeBuilder(t *testing.T) {
 			if tt.cnt == 1 {
 				require.Equal(t, 0, len(b.leftover))
 			}
-			cmpRanges, err = sql.SortRanges(cmpRanges...)
+			cmpRanges, err = sql.SortRanges(ctx, cmpRanges...)
 			require.NoError(t, err)
 
-			expRanges, err := sql.RemoveOverlappingRanges(tt.exp...)
+			expRanges, err := sql.RemoveOverlappingRanges(ctx, tt.exp...)
 			require.NoError(t, err)
-			expRanges, err = sql.SortRanges(expRanges...)
+			expRanges, err = sql.SortRanges(ctx, expRanges...)
 			require.NoError(t, err)
 
-			ok, err := expRanges.Equals(cmpRanges)
+			ok, err := expRanges.Equals(ctx, cmpRanges)
 			require.NoError(t, err)
 			assert.True(t, ok)
 			if !ok {
@@ -670,16 +670,16 @@ func TestRangeBuilderInclude(t *testing.T) {
 			b := newIndexScanRangeBuilder(ctx, dummy1, tt.include, sql.FastIntSet{}, c.idToExpr)
 			cmpRanges, err := b.buildRangeCollection(root)
 			require.NoError(t, err)
-			cmpRanges, err = sql.SortRanges(cmpRanges...)
+			cmpRanges, err = sql.SortRanges(ctx, cmpRanges...)
 			require.NoError(t, err)
 
-			expRanges, err := sql.RemoveOverlappingRanges(tt.exp...)
+			expRanges, err := sql.RemoveOverlappingRanges(ctx, tt.exp...)
 			require.NoError(t, err)
-			expRanges, err = sql.SortRanges(expRanges...)
+			expRanges, err = sql.SortRanges(ctx, expRanges...)
 			require.NoError(t, err)
 
 			// TODO how to compare ranges, strings?
-			ok, err := expRanges.Equals(cmpRanges)
+			ok, err := expRanges.Equals(ctx, cmpRanges)
 			require.NoError(t, err)
 			assert.True(t, ok)
 			if !ok {

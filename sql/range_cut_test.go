@@ -15,6 +15,7 @@
 package sql_test
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -52,11 +53,12 @@ func TestRangeCutCompare(t *testing.T) {
 		{sql.BelowNull{}, sql.BelowNull{}, 0},
 	} {
 		t.Run(fmt.Sprintf("%s/%s = %d", testcase.left.String(), testcase.right.String(), testcase.res), func(t *testing.T) {
-			res, err := testcase.left.Compare(testcase.right, types.Int8)
+			ctx := context.Background()
+			res, err := testcase.left.Compare(ctx, testcase.right, types.Int8)
 			assert.NoError(t, err)
 			assert.Equal(t, testcase.res, res, "forward Compare")
 
-			res, err = testcase.right.Compare(testcase.left, types.Int8)
+			res, err = testcase.right.Compare(ctx, testcase.left, types.Int8)
 			assert.NoError(t, err)
 			assert.Equal(t, -testcase.res, res, "reverse Compare")
 		})

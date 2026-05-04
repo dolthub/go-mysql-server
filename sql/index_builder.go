@@ -301,7 +301,7 @@ func (b *MySQLIndexBuilder) NotEquals(ctx *Context, colExpr string, keyType Type
 		b.updateCol(ctx, colExpr, GreaterThanRangeColumnExpr(key, colTyp), LessThanRangeColumnExpr(key, colTyp))
 	}
 	if !b.isInvalid {
-		ranges, err := SimplifyRangeColumn(b.ranges[colExpr]...)
+		ranges, err := SimplifyRangeColumn(ctx, b.ranges[colExpr]...)
 		if err != nil {
 			b.isInvalid = true
 			b.err = err
@@ -594,7 +594,7 @@ func (b *MySQLIndexBuilder) Ranges(ctx *Context) MySQLRangeCollection {
 		for colIdx, exprIdx := range permutation {
 			currentRange[colIdx] = allColumns[colIdx][exprIdx]
 		}
-		isempty, err := currentRange.IsEmpty()
+		isempty, err := currentRange.IsEmpty(ctx)
 		if err != nil {
 			b.err = err
 			return nil
@@ -644,7 +644,7 @@ func (b *MySQLIndexBuilder) updateCol(ctx *Context, colExpr string, potentialRan
 	var newRanges []MySQLRangeColumnExpr
 	for _, currentRange := range currentRanges {
 		for _, potentialRange := range potentialRanges {
-			newRange, ok, err := currentRange.TryIntersect(potentialRange)
+			newRange, ok, err := currentRange.TryIntersect(ctx, potentialRange)
 			if err != nil {
 				b.isInvalid = true
 				if !ErrInvalidValue.Is(err) {
@@ -653,7 +653,7 @@ func (b *MySQLIndexBuilder) updateCol(ctx *Context, colExpr string, potentialRan
 				return
 			}
 			if ok {
-				isempty, err := newRange.IsEmpty()
+				isempty, err := newRange.IsEmpty(ctx)
 				if err != nil {
 					b.isInvalid = true
 					b.err = err

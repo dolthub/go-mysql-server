@@ -288,7 +288,7 @@ func getCostedIndexScan(
 	if len(ranges) == 0 {
 		emptyLookup = true
 	} else if len(ranges) == 1 {
-		emptyLookup, err = ranges[0].IsEmpty()
+		emptyLookup, err = ranges[0].IsEmpty(ctx)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -992,11 +992,11 @@ func (b *indexScanRangeBuilder) buildRangeCollection(f indexFilter) (sql.MySQLRa
 	if err != nil {
 		return nil, err
 	}
-	return sql.RemoveOverlappingRanges(ranges...)
+	return sql.RemoveOverlappingRanges(b.ctx, ranges...)
 }
 
 func (b *indexScanRangeBuilder) Ranges() (sql.MySQLRangeCollection, error) {
-	return sql.RemoveOverlappingRanges(b.allRanges...)
+	return sql.RemoveOverlappingRanges(b.ctx, b.allRanges...)
 }
 
 func (b *indexScanRangeBuilder) rangeBuildAnd(f *iScanAnd, inScan bool) (sql.MySQLRangeCollection, error) {
@@ -1017,7 +1017,7 @@ func (b *indexScanRangeBuilder) rangeBuildAnd(f *iScanAnd, inScan bool) (sql.MyS
 			ret = ranges
 			continue
 		}
-		ret, err = ret.Intersect(ranges)
+		ret, err = ret.Intersect(b.ctx, ranges)
 		if err != nil {
 			return nil, err
 		}
@@ -1032,7 +1032,7 @@ func (b *indexScanRangeBuilder) rangeBuildAnd(f *iScanAnd, inScan bool) (sql.MyS
 				return nil, err
 			}
 			if ranges != nil {
-				ret, err = ret.Intersect(partBuilder.Ranges(b.ctx))
+				ret, err = ret.Intersect(b.ctx, partBuilder.Ranges(b.ctx))
 				if err != nil {
 					return nil, err
 				}
@@ -1043,7 +1043,7 @@ func (b *indexScanRangeBuilder) rangeBuildAnd(f *iScanAnd, inScan bool) (sql.MyS
 				return nil, err
 			}
 			if ranges != nil {
-				ret, err = ret.Intersect(partBuilder.Ranges(b.ctx))
+				ret, err = ret.Intersect(b.ctx, partBuilder.Ranges(b.ctx))
 				if err != nil {
 					return nil, err
 				}
@@ -1061,7 +1061,7 @@ func (b *indexScanRangeBuilder) rangeBuildAnd(f *iScanAnd, inScan bool) (sql.MyS
 		return partBuilder.Ranges(b.ctx), nil
 	}
 
-	ret, err := ret.Intersect(partBuilder.Ranges(b.ctx))
+	ret, err := ret.Intersect(b.ctx, partBuilder.Ranges(b.ctx))
 	if err != nil {
 		return nil, err
 	}
