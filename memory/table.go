@@ -241,8 +241,8 @@ func (t *Table) Comment() string {
 }
 
 // ModifyTargetRowSize implements the sql.TargetRowSizeAlterableTable interface.
-func (t *Table) ModifyTargetRowSize(ctx *sql.Context, value uint64) error {
-	t.data.targetRowSize = value
+func (t *Table) ModifyTargetRowSize(ctx *sql.Context, sizeInBytes uint64) error {
+	t.data.targetRowSize = sizeInBytes
 	return nil
 }
 

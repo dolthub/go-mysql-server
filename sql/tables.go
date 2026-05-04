@@ -260,10 +260,12 @@ type CommentAlterableTable interface {
 // The exact meaning of this value is implementation dependent.
 type TargetRowSizeAlterableTable interface {
 	Table
-	ModifyTargetRowSize(ctx *Context, value uint64) error
+	// ModifyTargetRowSize sets that table's target row size.
+	ModifyTargetRowSize(ctx *Context, sizeInBytes uint64) error
 }
 
 // TargetRowSizeTable represents a table that can report its adaptive encoding max row size.
+// The exact meaning of this value is implementation dependent.
 type TargetRowSizeTable interface {
 	Table
 	// HasTargetRowSize returns whether the table has a target row size that's different from the table's default.
