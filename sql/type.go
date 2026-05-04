@@ -312,7 +312,7 @@ type DecimalType interface {
 	IsDecimalType() bool
 	// ConvertToNullDecimal converts the given value to a decimal.NullDecimal if it has a compatible type. It is worth
 	// noting that Convert() returns a nil value for nil inputs, and also returns apd.Decimal rather than
-	// decimal.NullDecimal.
+	// apd.NullDecimal.
 	ConvertToNullDecimal(v interface{}) (apd.NullDecimal, error)
 	// ConvertNoBoundsCheck normalizes an interface{} to a decimal type without performing expensive bound checks
 	ConvertNoBoundsCheck(v interface{}) (apd.Decimal, error)

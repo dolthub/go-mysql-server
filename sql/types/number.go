@@ -1147,7 +1147,7 @@ func convertToUint64(t NumberTypeImpl_, v any, round Round) (uint64, sql.Convert
 			return math.MaxUint64, sql.Overflow, nil
 		}
 		if v.Cmp(&DecimalZero) < 0 {
-			_, err := apd.BaseContext.Sub(&v, &DecimalMaxUint64, &v)
+			_, err := sql.DecimalCtx.Sub(&v, &DecimalMaxUint64, &v)
 			if err != nil {
 				return math.MaxUint64, sql.Overflow, err
 			}
@@ -1383,7 +1383,7 @@ func convertValueToUint64(ctx *sql.Context, v sql.Value) (uint64, sql.ConvertInR
 			return math.MaxUint64, sql.Overflow, nil
 		}
 		if x.Cmp(&DecimalZero) < 0 {
-			_, err := apd.BaseContext.Sub(&x, &DecimalMaxUint64, &x)
+			_, err := sql.DecimalCtx.Sub(&x, &DecimalMaxUint64, &x)
 			if err != nil {
 				return math.MaxUint64, sql.Overflow, err
 			}

@@ -125,7 +125,7 @@ func (m *sumBuffer) PerformSum(ctx *sql.Context, v interface{}) {
 			}
 		}
 		curSum := m.sum.(apd.Decimal)
-		_, _ = apd.BaseContext.Add(&curSum, &curSum, &n)
+		_, _ = sql.DecimalCtx.Add(&curSum, &curSum, &n)
 		m.sum = curSum
 	default:
 		val, _, err := types.Float64.Convert(ctx, n)

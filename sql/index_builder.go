@@ -70,7 +70,7 @@ func ceil(val interface{}) interface{} {
 	case float64:
 		return math.Ceil(v)
 	case apd.Decimal:
-		_, _ = apd.BaseContext.Ceil(&v, &v)
+		_, _ = DecimalCtx.Ceil(&v, &v)
 		return v
 	case string:
 		dec, _, err := apd.NewFromString(v)
@@ -92,7 +92,7 @@ func floor(val interface{}) interface{} {
 	case float64:
 		return math.Floor(v)
 	case apd.Decimal:
-		_, _ = apd.BaseContext.Floor(&v, &v)
+		_, _ = DecimalCtx.Floor(&v, &v)
 		return v
 	case string:
 		dec, _, err := apd.NewFromString(v)
