@@ -19,7 +19,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math"
-	"math/big"
 	"time"
 	"unsafe"
 
@@ -183,14 +182,23 @@ func ReadFloat64(val []byte) float64 {
 }
 
 func ReadDecimal(val []byte) apd.Decimal {
+	if len(val) == int(Int32Size) {
+		v := ReadInt32(val)
+		if v == int32(0xc000) {
+			return apd.Decimal{Form: apd.NaN}
+		} else if v == int32(0xd000) {
+			return apd.Decimal{Form: apd.Infinite}
+		} else if v == int32(0xf000) {
+			return apd.Decimal{Form: apd.Infinite, Negative: true}
+		}
+	}
 	e := ReadInt32(val[:Int32Size])
 	s := ReadInt8(val[Int32Size : Int32Size+Int8Size])
-	b := big.NewInt(0).SetBytes(val[Int32Size+Int8Size:])
 	d := new(apd.Decimal)
-	d.Coeff.SetMathBigInt(b)
+	d.Coeff.SetBytes(val[Int32Size+Int8Size:])
 	d.Exponent = e
 	if s < 0 {
-		d = d.Neg(d)
+		d.Negative = true
 	}
 	return *d
 }

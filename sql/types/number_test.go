@@ -716,9 +716,19 @@ func TestTruncateStringToDouble(t *testing.T) {
 
 func serializeDecimal(dec apd.Decimal) []byte {
 	var res []byte
-	res = binary.LittleEndian.AppendUint32(res, uint32(dec.Exponent))
-	res = append(res, byte(dec.Sign()))
-	res = append(res, dec.Coeff.Bytes()...)
+	if dec.Form == apd.NaN {
+		res = binary.LittleEndian.AppendUint32(res, DecimalNaN)
+	} else if dec.Form == apd.Infinite {
+		if dec.Negative {
+			res = binary.LittleEndian.AppendUint32(res, DecimalNegInf)
+		} else {
+			res = binary.LittleEndian.AppendUint32(res, DecimalPosInf)
+		}
+	} else {
+		res = binary.LittleEndian.AppendUint32(res, uint32(dec.Exponent))
+		res = append(res, byte(dec.Sign()))
+		res = append(res, dec.Coeff.Bytes()...)
+	}
 	return res
 }
 

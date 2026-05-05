@@ -40,6 +40,13 @@ const (
 	// maximum precision is used. For a maximum scale that is relative to the precision of a given
 	// decimal type, use its MaximumScale function.
 	DecimalTypeMaxScale = 30
+
+	// DecimalNaN is NaN special value represented in bytes.
+	DecimalNaN = 0xc000
+	// DecimalPosInf is positive Infinity special value represented in bytes.
+	DecimalPosInf = 0xd000
+	// DecimalNegInf is negative Infinity special value represented in bytes.
+	DecimalNegInf = 0xf000
 )
 
 var (
