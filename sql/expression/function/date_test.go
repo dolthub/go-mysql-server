@@ -220,18 +220,18 @@ func TestUnixTimestamp(t *testing.T) {
 				t.Skip()
 			}
 
-			f, err := NewUnixTimestamp(test.args...)
+			f, err := NewUnixTimestamp(ctx, test.args...)
 			if test.err {
 				require.Error(err)
 				return
 			}
 			require.NoError(err)
-			require.Equal(test.typ, f.Type())
+			require.Equal(test.typ, f.Type(ctx))
 
 			result, err := f.Eval(ctx, nil)
 			require.NoError(err)
 			require.Equal(test.exp, result)
-			require.Equal(test.typ, f.Type())
+			require.Equal(test.typ, f.Type(ctx))
 
 			if test.warnCode != 0 {
 				require.Equal(uint16(1), ctx.WarningCount())
@@ -244,10 +244,11 @@ func TestUnixTimestamp(t *testing.T) {
 
 func TestFromUnixtime(t *testing.T) {
 	require := require.New(t)
+	ctx := sql.NewEmptyContext()
 
-	_, err := NewUnixTimestamp(expression.NewLiteral(0, types.Int64))
+	_, err := NewUnixTimestamp(ctx, expression.NewLiteral(0, types.Int64))
 	require.NoError(err)
 
-	_, err = NewUnixTimestamp(expression.NewLiteral(1447430881, types.Int64))
+	_, err = NewUnixTimestamp(ctx, expression.NewLiteral(1447430881, types.Int64))
 	require.NoError(err)
 }

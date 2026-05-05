@@ -33,7 +33,7 @@ var _ sql.FunctionExpression = (*MultiPoint)(nil)
 var _ sql.CollationCoercible = (*MultiPoint)(nil)
 
 // NewMultiPoint creates a new MultiPoint.
-func NewMultiPoint(args ...sql.Expression) (sql.Expression, error) {
+func NewMultiPoint(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 1 {
 		return nil, sql.ErrInvalidArgumentNumber.New("MultiPoint", "1 or more", len(args))
 	}
@@ -51,7 +51,7 @@ func (l *MultiPoint) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (l *MultiPoint) Type() sql.Type {
+func (l *MultiPoint) Type(ctx *sql.Context) sql.Type {
 	return types.MultiPointType{}
 }
 
@@ -69,8 +69,8 @@ func (l *MultiPoint) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (l *MultiPoint) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewMultiPoint(children...)
+func (l *MultiPoint) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewMultiPoint(ctx, children...)
 }
 
 // Eval implements the sql.Expression interface.
@@ -81,7 +81,11 @@ func (l *MultiPoint) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		switch v := val.(type) {
+		gv, err := types.UnwrapGeometry(ctx, val)
+		if err != nil {
+			return nil, sql.ErrIllegalGISValue.New(val)
+		}
+		switch v := gv.(type) {
 		case types.Point:
 			points[i] = v
 		case types.GeometryValue:

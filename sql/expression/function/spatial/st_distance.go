@@ -38,7 +38,7 @@ var _ sql.CollationCoercible = (*Distance)(nil)
 var ErrNoUnits = errors.NewKind("the geometry passed to function st_distance is in SRID %v, which doesn't specify a length unit. Can't convert to '%v'.")
 
 // NewDistance creates a new Distance expression.
-func NewDistance(args ...sql.Expression) (sql.Expression, error) {
+func NewDistance(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) != 2 && len(args) != 3 {
 		return nil, sql.ErrInvalidArgumentNumber.New("ST_DISTANCE", "2 or 3", len(args))
 	}
@@ -56,7 +56,7 @@ func (d *Distance) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (d *Distance) Type() sql.Type {
+func (d *Distance) Type(ctx *sql.Context) sql.Type {
 	return types.Float64
 }
 
@@ -74,8 +74,8 @@ func (d *Distance) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (d *Distance) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewDistance(children...)
+func (d *Distance) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewDistance(ctx, children...)
 }
 
 // flattenGeometry recursively "flattens" the geometry value into a map of its points
@@ -154,13 +154,13 @@ func (d *Distance) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	geom1, ok := g1.(types.GeometryValue)
-	if !ok {
+	geom1, err := types.UnwrapGeometry(ctx, g1)
+	if err != nil {
 		return nil, sql.ErrInvalidGISData.New(d.FunctionName())
 	}
 
-	geom2, ok := g2.(types.GeometryValue)
-	if !ok {
+	geom2, err := types.UnwrapGeometry(ctx, g2)
+	if err != nil {
 		return nil, sql.ErrInvalidGISData.New(d.FunctionName())
 	}
 

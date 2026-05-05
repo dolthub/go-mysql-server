@@ -30,7 +30,7 @@ func resolveUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 		return n, transform.SameTree, nil
 	}
 
-	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	return transform.Node(ctx, n, func(ctx *sql.Context, n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		var u *plan.SetOp
 		switch n := n.(type) {
 		case *plan.SetOp:
@@ -51,7 +51,7 @@ func resolveUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 			return nil, transform.SameTree, err
 		}
 
-		ret, err := n.WithChildren(left, right)
+		ret, err := n.WithChildren(ctx, left, right)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
@@ -65,7 +65,7 @@ func finalizeUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope
 		return n, transform.SameTree, nil
 	}
 
-	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	return transform.Node(ctx, n, func(ctx *sql.Context, n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		var u *plan.SetOp
 		switch n := n.(type) {
 		case *plan.SetOp:
@@ -95,7 +95,7 @@ func finalizeUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope
 
 		scope.SetJoin(false)
 
-		newN, err := n.WithChildren(left, right)
+		newN, err := n.WithChildren(ctx, left, right)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}

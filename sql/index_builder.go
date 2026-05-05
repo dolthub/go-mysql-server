@@ -41,8 +41,8 @@ type MySQLIndexBuilder struct {
 
 // NewMySQLIndexBuilder returns a new MySQLIndexBuilder. Used internally to construct a range that will later be passed to
 // integrators through the Index function NewLookup.
-func NewMySQLIndexBuilder(idx Index) *MySQLIndexBuilder {
-	cets := idx.ColumnExpressionTypes()
+func NewMySQLIndexBuilder(ctx *Context, idx Index) *MySQLIndexBuilder {
+	cets := idx.ColumnExpressionTypes(ctx)
 	colExprTypes := make(map[string]Type, len(cets))
 	ranges := make(map[string][]MySQLRangeColumnExpr, len(cets))
 	for _, cet := range cets {
@@ -280,7 +280,7 @@ func (b *MySQLIndexBuilder) NotEquals(ctx *Context, colExpr string, keyType Type
 		b.updateCol(ctx, colExpr, GreaterThanRangeColumnExpr(key, colTyp), LessThanRangeColumnExpr(key, colTyp))
 	}
 	if !b.isInvalid {
-		ranges, err := SimplifyRangeColumn(b.ranges[colExpr]...)
+		ranges, err := SimplifyRangeColumn(ctx, b.ranges[colExpr]...)
 		if err != nil {
 			b.isInvalid = true
 			b.err = err
@@ -525,7 +525,7 @@ func (b *MySQLIndexBuilder) Ranges(ctx *Context) MySQLRangeCollection {
 	}
 	// An invalid builder that did not error got into a state where no columns will ever match, so we return an empty range
 	if b.isInvalid {
-		cets := b.idx.ColumnExpressionTypes()
+		cets := b.idx.ColumnExpressionTypes(ctx)
 		emptyRange := make(MySQLRange, len(cets))
 		for i, cet := range cets {
 			typ := cet.Type
@@ -569,7 +569,7 @@ func (b *MySQLIndexBuilder) Ranges(ctx *Context) MySQLRangeCollection {
 		for colIdx, exprIdx := range permutation {
 			currentRange[colIdx] = allColumns[colIdx][exprIdx]
 		}
-		isempty, err := currentRange.IsEmpty()
+		isempty, err := currentRange.IsEmpty(ctx)
 		if err != nil {
 			b.err = err
 			return nil
@@ -579,7 +579,7 @@ func (b *MySQLIndexBuilder) Ranges(ctx *Context) MySQLRangeCollection {
 		}
 	}
 	if len(ranges) == 0 {
-		cets := b.idx.ColumnExpressionTypes()
+		cets := b.idx.ColumnExpressionTypes(ctx)
 		emptyRange := make(MySQLRange, len(cets))
 		for i, cet := range cets {
 			emptyRange[i] = EmptyRangeColumnExpr(cet.Type.Promote())
@@ -619,7 +619,7 @@ func (b *MySQLIndexBuilder) updateCol(ctx *Context, colExpr string, potentialRan
 	var newRanges []MySQLRangeColumnExpr
 	for _, currentRange := range currentRanges {
 		for _, potentialRange := range potentialRanges {
-			newRange, ok, err := currentRange.TryIntersect(potentialRange)
+			newRange, ok, err := currentRange.TryIntersect(ctx, potentialRange)
 			if err != nil {
 				b.isInvalid = true
 				if !ErrInvalidValue.Is(err) {
@@ -628,7 +628,7 @@ func (b *MySQLIndexBuilder) updateCol(ctx *Context, colExpr string, potentialRan
 				return
 			}
 			if ok {
-				isempty, err := newRange.IsEmpty()
+				isempty, err := newRange.IsEmpty(ctx)
 				if err != nil {
 					b.isInvalid = true
 					b.err = err
@@ -656,8 +656,8 @@ type SpatialIndexBuilder struct {
 	rng MySQLRangeColumnExpr
 }
 
-func NewSpatialIndexBuilder(idx Index) *SpatialIndexBuilder {
-	return &SpatialIndexBuilder{idx: idx, typ: idx.ColumnExpressionTypes()[0].Type}
+func NewSpatialIndexBuilder(ctx *Context, idx Index) *SpatialIndexBuilder {
+	return &SpatialIndexBuilder{idx: idx, typ: idx.ColumnExpressionTypes(ctx)[0].Type}
 }
 
 func (b *SpatialIndexBuilder) AddRange(lower, upper interface{}) *SpatialIndexBuilder {
@@ -708,7 +708,7 @@ func (b *EqualityIndexBuilder) AddEquality(ctx *Context, colIdx int, k interface
 		return fmt.Errorf("redundant restriction on index column")
 	}
 
-	typ := b.idx.ColumnExpressionTypes()[colIdx].Type
+	typ := b.idx.ColumnExpressionTypes(ctx)[colIdx].Type
 	// if converting from float to int results in rounding, then it's empty range
 	if t, ok := typ.(NumberType); ok && t.IsNumericType() && !t.IsFloat() {
 		f, c := floor(k), ceil(k)
@@ -741,9 +741,9 @@ func (b *EqualityIndexBuilder) AddEquality(ctx *Context, colIdx int, k interface
 	return nil
 }
 
-func (b *EqualityIndexBuilder) Build(_ *Context) (IndexLookup, error) {
+func (b *EqualityIndexBuilder) Build(ctx *Context) (IndexLookup, error) {
 	if b.empty {
-		for i, cet := range b.idx.ColumnExpressionTypes() {
+		for i, cet := range b.idx.ColumnExpressionTypes(ctx) {
 			b.rng[i] = EmptyRangeColumnExpr(cet.Type)
 		}
 	}

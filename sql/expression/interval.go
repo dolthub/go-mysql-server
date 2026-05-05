@@ -43,7 +43,7 @@ func NewInterval(child sql.Expression, unit string) *Interval {
 }
 
 // Type implements the sql.Expression interface.
-func (i *Interval) Type() sql.Type { return types.Uint64 }
+func (i *Interval) Type(ctx *sql.Context) sql.Type { return types.Uint64 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*Interval) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
@@ -51,7 +51,7 @@ func (*Interval) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 }
 
 // IsNullable implements the sql.Expression interface.
-func (i *Interval) IsNullable() bool { return i.Child.IsNullable() }
+func (i *Interval) IsNullable(ctx *sql.Context) bool { return i.Child.IsNullable(ctx) }
 
 // Eval implements the sql.Expression interface.
 func (i *Interval) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -177,7 +177,7 @@ func (i *Interval) EvalDelta(ctx *sql.Context, row sql.Row) (*TimeDelta, error) 
 }
 
 // WithChildren implements the Expression interface.
-func (i *Interval) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (i *Interval) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
 	}

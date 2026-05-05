@@ -30,7 +30,6 @@ type QueryEngine interface {
 	EngineAnalyzer() *analyzer.Analyzer
 	EngineEventScheduler() sql.EventScheduler
 	QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]sqlparser.Expr, qFlags *sql.QueryFlags) (sql.Schema, sql.RowIter, *sql.QueryFlags, error)
-	CloseSession(connID uint32)
 	Close() error
 }
 

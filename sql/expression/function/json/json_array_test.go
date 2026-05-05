@@ -25,21 +25,25 @@ import (
 )
 
 func TestJSONArray(t *testing.T) {
-	f0, err := NewJSONArray()
+	ctx := sql.NewEmptyContext()
+	f0, err := NewJSONArray(ctx)
 	require.NoError(t, err)
 
 	f1, err := NewJSONArray(
+		ctx,
 		expression.NewGetField(0, types.LongText, "arg1", false),
 	)
 	require.NoError(t, err)
 
 	f2, err := NewJSONArray(
+		ctx,
 		expression.NewGetField(0, types.LongText, "arg1", false),
 		expression.NewGetField(1, types.LongText, "arg2", false),
 	)
 	require.NoError(t, err)
 
 	f3, err := NewJSONArray(
+		ctx,
 		expression.NewGetField(0, types.LongText, "arg1", false),
 		expression.NewGetField(1, types.LongText, "arg2", false),
 		expression.NewGetField(2, types.LongText, "arg3", false),
@@ -47,6 +51,7 @@ func TestJSONArray(t *testing.T) {
 	require.NoError(t, err)
 
 	f4, err := NewJSONArray(
+		ctx,
 		expression.NewGetField(0, types.LongText, "arg1", false),
 		expression.NewGetField(1, types.LongText, "arg2", false),
 		expression.NewGetField(2, types.LongText, "arg3", false),

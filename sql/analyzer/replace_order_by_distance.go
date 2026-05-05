@@ -36,7 +36,7 @@ func replaceIdxOrderByDistanceHelper(ctx *sql.Context, scope *plan.Scope, node s
 			return n, transform.SameTree, nil
 		}
 
-		tableAliases, err := getTableAliases(sortNode, scope)
+		tableAliases, err := getTableAliases(ctx, sortNode, scope)
 		if err != nil {
 			return n, transform.SameTree, nil
 		}
@@ -49,9 +49,9 @@ func replaceIdxOrderByDistanceHelper(ctx *sql.Context, scope *plan.Scope, node s
 
 		// Column references have not been assigned their final indexes yet, so do that for the ORDER BY expression now.
 		// We can safely do this because an expression that references other tables won't pass `isSortFieldsValidPrefix` below.
-		sortNode = offsetAssignIndexes(sortNode).(plan.Sortable)
+		sortNode = offsetAssignIndexes(ctx, sortNode).(plan.Sortable)
 
-		sfExprs := normalizeExpressions(tableAliases, nil, sortNode.GetSortFields().ToExpressions()...)
+		sfExprs := normalizeExpressions(ctx, tableAliases, nil, sortNode.GetSortFields().ToExpressions()...)
 		sfAliases := aliasedExpressionsInNode(sortNode)
 
 		// TODO: Instead of checking both sides of the expression,
@@ -147,7 +147,7 @@ func replaceIdxOrderByDistanceHelper(ctx *sql.Context, scope *plan.Scope, node s
 		return newChildren[0], transform.NewTree, nil
 	}
 
-	newNode, err := node.WithChildren(newChildren...)
+	newNode, err := node.WithChildren(ctx, newChildren...)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}

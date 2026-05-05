@@ -32,7 +32,7 @@ var _ sql.FunctionExpression = (*Within)(nil)
 var _ sql.CollationCoercible = (*Within)(nil)
 
 // NewWithin creates a new Within expression.
-func NewWithin(g1, g2 sql.Expression) sql.Expression {
+func NewWithin(ctx *sql.Context, g1, g2 sql.Expression) sql.Expression {
 	return &Within{
 		expression.BinaryExpressionStub{
 			LeftChild:  g1,
@@ -52,7 +52,7 @@ func (w *Within) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (w *Within) Type() sql.Type {
+func (w *Within) Type(ctx *sql.Context) sql.Type {
 	return types.Boolean
 }
 
@@ -66,11 +66,11 @@ func (w *Within) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (w *Within) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (w *Within) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(w, len(children), 2)
 	}
-	return NewWithin(children[0], children[1]), nil
+	return NewWithin(ctx, children[0], children[1]), nil
 }
 
 // orientation returns the orientation of points: a, b, c in that order
@@ -234,7 +234,7 @@ func (w *Within) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	g1, g2, err := validateGeomComp(geom1, geom2, w.FunctionName())
+	g1, g2, err := validateGeomComp(ctx, geom1, geom2, w.FunctionName())
 	if err != nil {
 		return nil, err
 	}
@@ -243,7 +243,7 @@ func (w *Within) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// TODO (james): remove this switch block when the other comparisons are implemented
-	switch geom1.(type) {
+	switch g1.(type) {
 	case types.LineString:
 		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("LineString", w.FunctionName())
 	case types.Polygon:

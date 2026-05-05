@@ -21,12 +21,12 @@ import (
 // NodeFunc is a function that given a node will return that node
 // as is or transformed, a TreeIdentity to indicate whether the
 // node was modified, and an error or nil.
-type NodeFunc func(n sql.Node) (sql.Node, TreeIdentity, error)
+type NodeFunc func(ctx *sql.Context, n sql.Node) (sql.Node, TreeIdentity, error)
 
 // ExprFunc is a function that given an expression will return that
 // expression as is or transformed, a TreeIdentity to indicate
 // whether the expression was modified, and an error or nil.
-type ExprFunc func(e sql.Expression) (sql.Expression, TreeIdentity, error)
+type ExprFunc func(ctx *sql.Context, e sql.Expression) (sql.Expression, TreeIdentity, error)
 
 // Context provides additional metadata to a SelectorFunc about the
 // active node in a traversal, including the parent node, and a
@@ -37,7 +37,7 @@ type Context struct {
 	// Parent is the current parent of the transforming node.
 	Parent sql.Node
 	// SchemaPrefix is the concatenation of the Parent's SchemaPrefix with
-	// child.Schema() for all child with an index < ChildNum in
+	// child.Schema(ctx) for all child with an index < ChildNum in
 	// Parent.Children(). For many Node, this represents the schema of the
 	// |row| parameter that is going to be passed to this node by its
 	// parent in a RowIter() call. This field is only non-nil if the entire
@@ -49,18 +49,18 @@ type Context struct {
 
 // CtxFunc is a function which will return new sql.Node values for a given
 // Context.
-type CtxFunc func(Context) (sql.Node, TreeIdentity, error)
+type CtxFunc func(*sql.Context, Context) (sql.Node, TreeIdentity, error)
 
 // SelectorFunc is a function which will allow NodeWithCtx to not
 // traverse past a certain Context. If this function returns |false|
 // for a given Context, the subtree is not transformed and the child
 // is kept in its existing place in the parent as-is.
-type SelectorFunc func(Context) bool
+type SelectorFunc func(*sql.Context, Context) bool
 
 // ExprWithNodeFunc is a function that given an expression and the node
 // that contains it, will return that expression as is or transformed
 // along with an error, if any.
-type ExprWithNodeFunc func(sql.Node, sql.Expression) (sql.Expression, TreeIdentity, error)
+type ExprWithNodeFunc func(*sql.Context, sql.Node, sql.Expression) (sql.Expression, TreeIdentity, error)
 
 // TreeIdentity tracks modifications to node and expression trees.
 // Only return SameTree when it is acceptable to return the original
@@ -74,39 +74,39 @@ const (
 
 // NodeExprsWithNode applies a transformation function to all expressions
 // on the given tree from the bottom up.
-func NodeExprsWithNode(node sql.Node, f ExprWithNodeFunc) (sql.Node, TreeIdentity, error) {
-	return Node(node, func(n sql.Node) (sql.Node, TreeIdentity, error) {
-		return OneNodeExprsWithNode(n, f)
+func NodeExprsWithNode(ctx *sql.Context, node sql.Node, f ExprWithNodeFunc) (sql.Node, TreeIdentity, error) {
+	return Node(ctx, node, func(ctx *sql.Context, n sql.Node) (sql.Node, TreeIdentity, error) {
+		return OneNodeExprsWithNode(ctx, n, f)
 	})
 }
 
 // NodeExprs applies a transformation function to all expressions
 // on the given plan tree from the bottom up.
-func NodeExprs(node sql.Node, f ExprFunc) (sql.Node, TreeIdentity, error) {
-	return NodeExprsWithNode(node, func(n sql.Node, e sql.Expression) (sql.Expression, TreeIdentity, error) {
-		return f(e)
+func NodeExprs(ctx *sql.Context, node sql.Node, f ExprFunc) (sql.Node, TreeIdentity, error) {
+	return NodeExprsWithNode(ctx, node, func(ctx *sql.Context, n sql.Node, e sql.Expression) (sql.Expression, TreeIdentity, error) {
+		return f(ctx, e)
 	})
 }
 
 // NodeExprsWithNodeWithOpaque applies a transformation function to all expressions
 // on the given tree from the bottom up, including through opaque nodes.
-func NodeExprsWithNodeWithOpaque(node sql.Node, f ExprWithNodeFunc) (sql.Node, TreeIdentity, error) {
-	return NodeWithOpaque(node, func(n sql.Node) (sql.Node, TreeIdentity, error) {
-		return OneNodeExprsWithNode(n, f)
+func NodeExprsWithNodeWithOpaque(ctx *sql.Context, node sql.Node, f ExprWithNodeFunc) (sql.Node, TreeIdentity, error) {
+	return NodeWithOpaque(ctx, node, func(ctx *sql.Context, n sql.Node) (sql.Node, TreeIdentity, error) {
+		return OneNodeExprsWithNode(ctx, n, f)
 	})
 }
 
 // NodeExprsWithOpaque applies a transformation function to all expressions
 // on the given plan tree from the bottom up, including through opaque nodes.
-func NodeExprsWithOpaque(node sql.Node, f ExprFunc) (sql.Node, TreeIdentity, error) {
-	return NodeExprsWithNodeWithOpaque(node, func(n sql.Node, e sql.Expression) (sql.Expression, TreeIdentity, error) {
-		return f(e)
+func NodeExprsWithOpaque(ctx *sql.Context, node sql.Node, f ExprFunc) (sql.Node, TreeIdentity, error) {
+	return NodeExprsWithNodeWithOpaque(ctx, node, func(ctx *sql.Context, n sql.Node, e sql.Expression) (sql.Expression, TreeIdentity, error) {
+		return f(ctx, e)
 	})
 }
 
 // OneNodeExprsWithNode applies a transformation function to all expressions
 // on the specified node. It does not traverse the children of the specified node.
-func OneNodeExprsWithNode(n sql.Node, f ExprWithNodeFunc) (sql.Node, TreeIdentity, error) {
+func OneNodeExprsWithNode(ctx *sql.Context, n sql.Node, f ExprWithNodeFunc) (sql.Node, TreeIdentity, error) {
 	ne, ok := n.(sql.Expressioner)
 	if !ok {
 		return n, SameTree, nil
@@ -124,7 +124,7 @@ func OneNodeExprsWithNode(n sql.Node, f ExprWithNodeFunc) (sql.Node, TreeIdentit
 
 	for i := range exprs {
 		e := exprs[i]
-		e, same, err := ExprWithNode(n, e, f)
+		e, same, err := ExprWithNode(ctx, n, e, f)
 		if err != nil {
 			return nil, SameTree, err
 		}
@@ -138,7 +138,7 @@ func OneNodeExprsWithNode(n sql.Node, f ExprWithNodeFunc) (sql.Node, TreeIdentit
 	}
 
 	if len(newExprs) > 0 {
-		n, err = ne.WithExpressions(newExprs...)
+		n, err = ne.WithExpressions(ctx, newExprs...)
 		if err != nil {
 			return nil, SameTree, err
 		}
@@ -149,7 +149,7 @@ func OneNodeExprsWithNode(n sql.Node, f ExprWithNodeFunc) (sql.Node, TreeIdentit
 
 // OneNodeExpressions applies a transformation function to all expressions
 // on the specified node. It does not traverse the children of the specified node.
-func OneNodeExpressions(n sql.Node, f ExprFunc) (sql.Node, TreeIdentity, error) {
+func OneNodeExpressions(ctx *sql.Context, n sql.Node, f ExprFunc) (sql.Node, TreeIdentity, error) {
 	e, ok := n.(sql.Expressioner)
 	if !ok {
 		return n, SameTree, nil
@@ -163,7 +163,7 @@ func OneNodeExpressions(n sql.Node, f ExprFunc) (sql.Node, TreeIdentity, error) 
 	var newExprs []sql.Expression
 	for i := range exprs {
 		expr := exprs[i]
-		expr, same, err := Expr(expr, f)
+		expr, same, err := Expr(ctx, expr, f)
 		if err != nil {
 			return nil, SameTree, err
 		}
@@ -176,7 +176,7 @@ func OneNodeExpressions(n sql.Node, f ExprFunc) (sql.Node, TreeIdentity, error) 
 		}
 	}
 	if len(newExprs) > 0 {
-		n, err := e.WithExpressions(newExprs...)
+		n, err := e.WithExpressions(ctx, newExprs...)
 		if err != nil {
 			return nil, SameTree, err
 		}
@@ -188,20 +188,20 @@ func OneNodeExpressions(n sql.Node, f ExprFunc) (sql.Node, TreeIdentity, error) 
 // NodeWithCtx transforms |n| from the bottom up, left to right, by passing
 // each node to |f|. If |s| is non-nil, does not descend into children where
 // |s| returns false.
-func NodeWithCtx(n sql.Node, s SelectorFunc, f CtxFunc) (sql.Node, TreeIdentity, error) {
-	return nodeWithCtxHelper(Context{Node: n, SchemaPrefix: sql.Schema{}, ChildNum: -1}, s, f)
+func NodeWithCtx(ctx *sql.Context, n sql.Node, s SelectorFunc, f CtxFunc) (sql.Node, TreeIdentity, error) {
+	return nodeWithCtxHelper(ctx, Context{Node: n, SchemaPrefix: sql.Schema{}, ChildNum: -1}, s, f)
 }
 
-func nodeWithCtxHelper(c Context, s SelectorFunc, f CtxFunc) (sql.Node, TreeIdentity, error) {
+func nodeWithCtxHelper(sqlCtx *sql.Context, c Context, s SelectorFunc, f CtxFunc) (sql.Node, TreeIdentity, error) {
 	node := c.Node
 	_, ok := node.(sql.OpaqueNode)
 	if ok {
-		return f(c)
+		return f(sqlCtx, c)
 	}
 
 	children := node.Children()
 	if len(children) == 0 {
-		return f(c)
+		return f(sqlCtx, c)
 	}
 
 	var (
@@ -211,8 +211,8 @@ func nodeWithCtxHelper(c Context, s SelectorFunc, f CtxFunc) (sql.Node, TreeIden
 	for i := range children {
 		child := children[i]
 		cc := Context{Node: child, Parent: node, ChildNum: i}
-		if s == nil || s(cc) {
-			child, same, err := nodeWithCtxHelper(cc, s, f)
+		if s == nil || s(sqlCtx, cc) {
+			child, same, err := nodeWithCtxHelper(sqlCtx, cc, s, f)
 			if err != nil {
 				return nil, SameTree, err
 			}
@@ -229,13 +229,13 @@ func nodeWithCtxHelper(c Context, s SelectorFunc, f CtxFunc) (sql.Node, TreeIden
 	sameC := SameTree
 	if len(newChildren) > 0 {
 		sameC = NewTree
-		node, err = node.WithChildren(newChildren...)
+		node, err = node.WithChildren(sqlCtx, newChildren...)
 		if err != nil {
 			return nil, SameTree, err
 		}
 	}
 
-	node, sameN, err := f(Context{Node: node, Parent: c.Parent, SchemaPrefix: c.SchemaPrefix, ChildNum: c.ChildNum})
+	node, sameN, err := f(sqlCtx, Context{Node: node, Parent: c.Parent, SchemaPrefix: c.SchemaPrefix, ChildNum: c.ChildNum})
 	if err != nil {
 		return nil, SameTree, err
 	}
@@ -245,20 +245,20 @@ func nodeWithCtxHelper(c Context, s SelectorFunc, f CtxFunc) (sql.Node, TreeIden
 // NodeWithPrefixSchema transforms |n| from the bottom up, left to right, by passing
 // each node to |f|. If |s| is non-nil, does not descend into children where
 // |s| returns false.
-func NodeWithPrefixSchema(n sql.Node, s SelectorFunc, f CtxFunc) (sql.Node, TreeIdentity, error) {
-	return transformUpWithPrefixSchemaHelper(Context{Node: n, SchemaPrefix: sql.Schema{}, ChildNum: -1}, s, f)
+func NodeWithPrefixSchema(ctx *sql.Context, n sql.Node, s SelectorFunc, f CtxFunc) (sql.Node, TreeIdentity, error) {
+	return transformUpWithPrefixSchemaHelper(ctx, Context{Node: n, SchemaPrefix: sql.Schema{}, ChildNum: -1}, s, f)
 }
 
-func transformUpWithPrefixSchemaHelper(c Context, s SelectorFunc, f CtxFunc) (sql.Node, TreeIdentity, error) {
+func transformUpWithPrefixSchemaHelper(sqlCtx *sql.Context, c Context, s SelectorFunc, f CtxFunc) (sql.Node, TreeIdentity, error) {
 	node := c.Node
 	_, ok := node.(sql.OpaqueNode)
 	if ok {
-		return f(c)
+		return f(sqlCtx, c)
 	}
 
 	children := node.Children()
 	if len(children) == 0 {
-		return f(c)
+		return f(sqlCtx, c)
 	}
 
 	var (
@@ -270,8 +270,8 @@ func transformUpWithPrefixSchemaHelper(c Context, s SelectorFunc, f CtxFunc) (sq
 	for i := range children {
 		child := children[i]
 		cc := Context{Node: child, Parent: node, SchemaPrefix: childPrefix, ChildNum: i}
-		if s == nil || s(cc) {
-			child, same, err := transformUpWithPrefixSchemaHelper(cc, s, f)
+		if s == nil || s(sqlCtx, cc) {
+			child, same, err := transformUpWithPrefixSchemaHelper(sqlCtx, cc, s, f)
 			if err != nil {
 				return nil, SameTree, err
 			}
@@ -283,7 +283,7 @@ func transformUpWithPrefixSchemaHelper(c Context, s SelectorFunc, f CtxFunc) (sq
 				newChildren[i] = child
 			}
 			if child.Resolved() && childPrefix != nil {
-				cs := child.Schema()
+				cs := child.Schema(sqlCtx)
 				childPrefix = append(childPrefix, cs...)
 			} else {
 				childPrefix = nil
@@ -294,13 +294,13 @@ func transformUpWithPrefixSchemaHelper(c Context, s SelectorFunc, f CtxFunc) (sq
 	sameC := SameTree
 	if len(newChildren) > 0 {
 		sameC = NewTree
-		node, err = node.WithChildren(newChildren...)
+		node, err = node.WithChildren(sqlCtx, newChildren...)
 		if err != nil {
 			return nil, SameTree, err
 		}
 	}
 
-	node, sameN, err := f(Context{Node: node, Parent: c.Parent, SchemaPrefix: c.SchemaPrefix, ChildNum: c.ChildNum})
+	node, sameN, err := f(sqlCtx, Context{Node: node, Parent: c.Parent, SchemaPrefix: c.SchemaPrefix, ChildNum: c.ChildNum})
 	if err != nil {
 		return nil, SameTree, err
 	}
@@ -309,15 +309,15 @@ func transformUpWithPrefixSchemaHelper(c Context, s SelectorFunc, f CtxFunc) (sq
 
 // Node applies a transformation function to the given tree from the
 // bottom up.
-func Node(node sql.Node, f NodeFunc) (sql.Node, TreeIdentity, error) {
+func Node(ctx *sql.Context, node sql.Node, f NodeFunc) (sql.Node, TreeIdentity, error) {
 	_, ok := node.(sql.OpaqueNode)
 	if ok {
-		return f(node)
+		return f(ctx, node)
 	}
 
 	children := node.Children()
 	if len(children) == 0 {
-		return f(node)
+		return f(ctx, node)
 	}
 
 	var (
@@ -327,7 +327,7 @@ func Node(node sql.Node, f NodeFunc) (sql.Node, TreeIdentity, error) {
 
 	for i := range children {
 		child = children[i]
-		child, same, err := Node(child, f)
+		child, same, err := Node(ctx, child, f)
 		if err != nil {
 			return nil, SameTree, err
 		}
@@ -344,13 +344,13 @@ func Node(node sql.Node, f NodeFunc) (sql.Node, TreeIdentity, error) {
 	sameC := SameTree
 	if len(newChildren) > 0 {
 		sameC = NewTree
-		node, err = node.WithChildren(newChildren...)
+		node, err = node.WithChildren(ctx, newChildren...)
 		if err != nil {
 			return nil, SameTree, err
 		}
 	}
 
-	node, sameN, err := f(node)
+	node, sameN, err := f(ctx, node)
 	if err != nil {
 		return nil, SameTree, err
 	}
@@ -360,10 +360,10 @@ func Node(node sql.Node, f NodeFunc) (sql.Node, TreeIdentity, error) {
 // NodeWithOpaque applies a transformation function to the given tree from the bottom up, including through
 // opaque nodes. This method is generally not safe to use for a transformation. Opaque nodes need to be considered in
 // isolation except for very specific exceptions.
-func NodeWithOpaque(node sql.Node, f NodeFunc) (sql.Node, TreeIdentity, error) {
+func NodeWithOpaque(ctx *sql.Context, node sql.Node, f NodeFunc) (sql.Node, TreeIdentity, error) {
 	children := node.Children()
 	if len(children) == 0 {
-		return f(node)
+		return f(ctx, node)
 	}
 
 	var (
@@ -373,7 +373,7 @@ func NodeWithOpaque(node sql.Node, f NodeFunc) (sql.Node, TreeIdentity, error) {
 
 	for i := range children {
 		c := children[i]
-		c, same, err := NodeWithOpaque(c, f)
+		c, same, err := NodeWithOpaque(ctx, c, f)
 		if err != nil {
 			return nil, SameTree, err
 		}
@@ -389,12 +389,12 @@ func NodeWithOpaque(node sql.Node, f NodeFunc) (sql.Node, TreeIdentity, error) {
 	sameC := SameTree
 	if len(newChildren) > 0 {
 		sameC = NewTree
-		node, err = node.WithChildren(newChildren...)
+		node, err = node.WithChildren(ctx, newChildren...)
 		if err != nil {
 			return nil, SameTree, err
 		}
 	}
-	node, sameN, err := f(node)
+	node, sameN, err := f(ctx, node)
 	if err != nil {
 		return nil, SameTree, err
 	}
@@ -402,7 +402,7 @@ func NodeWithOpaque(node sql.Node, f NodeFunc) (sql.Node, TreeIdentity, error) {
 }
 
 // NodeChildren applies a transformation function to the given node's children.
-func NodeChildren(node sql.Node, f NodeFunc) (sql.Node, TreeIdentity, error) {
+func NodeChildren(ctx *sql.Context, node sql.Node, f NodeFunc) (sql.Node, TreeIdentity, error) {
 	children := node.Children()
 	if len(children) == 0 {
 		return node, SameTree, nil
@@ -415,7 +415,7 @@ func NodeChildren(node sql.Node, f NodeFunc) (sql.Node, TreeIdentity, error) {
 
 	for i := range children {
 		child = children[i]
-		child, same, err := f(child)
+		child, same, err := f(ctx, child)
 		if err != nil {
 			return nil, SameTree, err
 		}
@@ -430,7 +430,7 @@ func NodeChildren(node sql.Node, f NodeFunc) (sql.Node, TreeIdentity, error) {
 
 	var err error
 	if len(newChildren) > 0 {
-		node, err = node.WithChildren(newChildren...)
+		node, err = node.WithChildren(ctx, newChildren...)
 		return node, NewTree, err
 	}
 	return node, SameTree, nil

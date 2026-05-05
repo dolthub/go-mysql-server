@@ -149,7 +149,7 @@ func TestWrapperCompare(t *testing.T) {
 		&sql.Column{Name: "pk", Source: "test", Type: types.Int64, Nullable: false, PrimaryKey: true},
 		&sql.Column{Name: "col1", Source: "test", Type: types.Text, Nullable: false, Default: planbuilder.MustStringToColumnDefaultValue(sql.NewEmptyContext(), `""`, types.Text, false), PrimaryKey: false},
 	})
-	table := memory.NewFilteredTable(db.BaseDatabase, "test", schema, nil)
+	table := memory.NewFilteredTable(ctx, db.BaseDatabase, "test", schema, nil)
 
 	upperUnknownLength := NewKnownLengthWrapper("UPPER")
 	lowerUnknownLength := NewKnownLengthWrapper("lower")
@@ -162,7 +162,7 @@ func TestWrapperCompare(t *testing.T) {
 	// Filter for strings in all caps
 	filters := []sql.Expression{
 		expression.NewEquals(
-			function.NewUpper(expression.NewGetFieldWithTable(1, 0, types.Text, "db", "test", "col1", false)),
+			function.NewUpper(ctx, expression.NewGetFieldWithTable(1, 0, types.Text, "db", "test", "col1", false)),
 			expression.NewGetFieldWithTable(1, 0, types.Text, "db", "test", "col1", false),
 		),
 	}
@@ -201,7 +201,7 @@ func TestWrapperSelfCompare(t *testing.T) {
 		&sql.Column{Name: "pk", Source: "test", Type: types.Int64, Nullable: false, PrimaryKey: true},
 		&sql.Column{Name: "col1", Source: "test", Type: types.Text, Nullable: false, Default: planbuilder.MustStringToColumnDefaultValue(sql.NewEmptyContext(), `""`, types.Text, false), PrimaryKey: false},
 	})
-	table := memory.NewFilteredTable(db.BaseDatabase, "test", schema, nil)
+	table := memory.NewFilteredTable(ctx, db.BaseDatabase, "test", schema, nil)
 
 	wrappedValue := NewKnownLengthWrapper("UPPER")
 
@@ -245,7 +245,7 @@ func TestWrapperLength(t *testing.T) {
 		&sql.Column{Name: "pk", Source: "test", Type: types.Int64, Nullable: false, PrimaryKey: true},
 		&sql.Column{Name: "col1", Source: "test", Type: types.Text, Nullable: false, Default: planbuilder.MustStringToColumnDefaultValue(sql.NewEmptyContext(), `""`, types.Text, false), PrimaryKey: false},
 	})
-	table := memory.NewFilteredTable(db.BaseDatabase, "test", schema, nil)
+	table := memory.NewFilteredTable(ctx, db.BaseDatabase, "test", schema, nil)
 
 	shortKnownLength := NewKnownLengthWrapper("tim")
 	longKnownLength := NewKnownLengthWrapper("aaron")
@@ -263,7 +263,7 @@ func TestWrapperLength(t *testing.T) {
 	// Filter for strings of length >= 5, matching exactly one string of each type (known length wrapper, unknown length wrapper, and not wrapped)
 	filters := []sql.Expression{
 		expression.NewGreaterThanOrEqual(
-			function.NewLength(expression.NewGetFieldWithTable(1, 0, types.Text, "db", "test", "col1", false)),
+			function.NewLength(ctx, expression.NewGetFieldWithTable(1, 0, types.Text, "db", "test", "col1", false)),
 			expression.NewLiteral(int32(5), types.Int32),
 		),
 	}
@@ -290,7 +290,7 @@ func TestWrapperInsertingIntoWideColumnDoesntUnwrap(t *testing.T) {
 		&sql.Column{Name: "col1", Source: "test", Type: types.LongText, Nullable: false, Default: planbuilder.MustStringToColumnDefaultValue(sql.NewEmptyContext(), `""`, types.Text, false), PrimaryKey: false},
 	})
 
-	testTable := memory.NewTable(db.BaseDatabase, "test", schema, nil)
+	testTable := memory.NewTable(ctx, db.BaseDatabase, "test", schema, nil)
 	db.AddTable("test", testTable)
 
 	require.NoError(t, testTable.Insert(ctx, sql.Row{int64(2), textErrorWrapper}))
@@ -308,7 +308,7 @@ func TestWrapperInsertingIntoNarrowColumnCausesUnwrap(t *testing.T) {
 		&sql.Column{Name: "col1", Source: "test", Type: types.Text, Nullable: false, Default: planbuilder.MustStringToColumnDefaultValue(sql.NewEmptyContext(), `""`, types.Text, false), PrimaryKey: false},
 	})
 
-	testTable := memory.NewTable(db.BaseDatabase, "test", schema, nil)
+	testTable := memory.NewTable(ctx, db.BaseDatabase, "test", schema, nil)
 	db.AddTable("test", testTable)
 
 	// The custom "unwrap failed" error gets suppressed by the tableEditor, resulting in an "invalid type" error instead.

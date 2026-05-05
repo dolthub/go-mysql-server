@@ -33,7 +33,7 @@ var _ sql.FunctionExpression = (*LineString)(nil)
 var _ sql.CollationCoercible = (*LineString)(nil)
 
 // NewLineString creates a new LineString.
-func NewLineString(args ...sql.Expression) (sql.Expression, error) {
+func NewLineString(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 2 {
 		return nil, sql.ErrInvalidArgumentNumber.New("LineString", "2 or more", len(args))
 	}
@@ -51,7 +51,7 @@ func (l *LineString) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (l *LineString) Type() sql.Type {
+func (l *LineString) Type(ctx *sql.Context) sql.Type {
 	return types.LineStringType{}
 }
 
@@ -69,8 +69,8 @@ func (l *LineString) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (l *LineString) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewLineString(children...)
+func (l *LineString) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewLineString(ctx, children...)
 }
 
 // Eval implements the sql.Expression interface.
@@ -86,7 +86,11 @@ func (l *LineString) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 		// Must be of type point, throw error otherwise
-		switch v := val.(type) {
+		gv, err := types.UnwrapGeometry(ctx, val)
+		if err != nil {
+			return nil, sql.ErrIllegalGISValue.New(val)
+		}
+		switch v := gv.(type) {
 		case types.Point:
 			points[i] = v
 		case types.GeometryValue:

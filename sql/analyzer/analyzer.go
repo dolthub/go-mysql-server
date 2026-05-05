@@ -351,25 +351,25 @@ func (a *Analyzer) LogFn() func(string, ...any) {
 }
 
 // LogNode prints the node given if Verbose logging is enabled.
-func (a *Analyzer) LogNode(n sql.Node) {
+func (a *Analyzer) LogNode(ctx *sql.Context, n sql.Node) {
 	if a != nil && n != nil && a.Verbose {
 		if len(a.contextStack) > 0 {
-			ctx := strings.Join(a.contextStack, "/")
-			log.Infof("%s:\n%s", ctx, sql.DebugString(n))
+			ctxStr := strings.Join(a.contextStack, "/")
+			log.Infof("%s:\n%s", ctxStr, sql.DebugString(ctx, n))
 		} else {
-			log.Infof("%s", sql.DebugString(n))
+			log.Infof("%s", sql.DebugString(ctx, n))
 		}
 	}
 }
 
 // LogDiff logs the diff between the query plans after a transformation rules has been applied.
 // Only can print a diff when the string representations of the nodes differ, which isn't always the case.
-func (a *Analyzer) LogDiff(prev, next sql.Node) {
+func (a *Analyzer) LogDiff(ctx *sql.Context, prev, next sql.Node) {
 	if a.Debug && a.Verbose {
 		if !reflect.DeepEqual(next, prev) {
 			diff, err := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
-				A:        difflib.SplitLines(sql.DebugString(prev)),
-				B:        difflib.SplitLines(sql.DebugString(next)),
+				A:        difflib.SplitLines(sql.DebugString(ctx, prev)),
+				B:        difflib.SplitLines(sql.DebugString(ctx, next)),
 				FromFile: "Prev",
 				FromDate: "",
 				ToFile:   "Next",
@@ -534,10 +534,10 @@ func (a *Analyzer) analyzeWithSelector(ctx *sql.Context, n sql.Node, scope *plan
 		err     error
 	)
 	a.Log("starting analysis of node of type: %T", n)
-	a.LogNode(n)
+	a.LogNode(ctx, n)
 
 	batches := a.Batches
-	if b, ok := getBatchesForNode(n); ok {
+	if b, ok := getBatchesForNode(scope, n, qFlags); ok {
 		batches = b
 	}
 
@@ -578,9 +578,9 @@ func (a *Analyzer) analyzeStartingAtBatch(ctx *sql.Context, n sql.Node, scope *p
 	}, sel, qFlags)
 }
 
-func DeepCopyNode(node sql.Node) (sql.Node, error) {
-	n, _, err := transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-		e, err := transform.Clone(e)
+func DeepCopyNode(ctx *sql.Context, node sql.Node) (sql.Node, error) {
+	n, _, err := transform.NodeExprs(ctx, node, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		e, err := transform.Clone(ctx, e)
 		return e, transform.NewTree, err
 	})
 	return n, err

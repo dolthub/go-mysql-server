@@ -263,8 +263,8 @@ func runStatsSuite(t *testing.T, tests []statsTest, rowCnt, bucketCnt int, debug
 			require.NoError(t, err)
 
 			if debug {
-				log.Printf("xyz:\n%s\n", sql.Histogram(xHist).DebugString())
-				log.Printf("wuv:\n%s\n", sql.Histogram(wHist).DebugString())
+				log.Printf("xyz:\n%s\n", sql.Histogram(xHist).DebugString(ctx))
+				log.Printf("wuv:\n%s\n", sql.Histogram(wHist).DebugString(ctx))
 			}
 
 			lStat := &stats.Statistic{Typs: []sql.Type{types.Int64}}
@@ -279,7 +279,7 @@ func runStatsSuite(t *testing.T, tests []statsTest, rowCnt, bucketCnt int, debug
 			res, err := stats.Join(ctx, stats.UpdateCounts(lStat), stats.UpdateCounts(rStat), 1, debug)
 			require.NoError(t, err)
 			if debug {
-				log.Printf("join %s\n", res.Histogram().DebugString())
+				log.Printf("join %s\n", res.Histogram().DebugString(ctx))
 			}
 
 			denom := float64(exp)
@@ -297,7 +297,7 @@ func runStatsSuite(t *testing.T, tests []statsTest, rowCnt, bucketCnt int, debug
 			// This compares the error percentage for our estimate to an
 			// error threshold specified in the statTest. The error bounds
 			// are loose and mostly useful for debugging at this point.
-			require.Less(t, delta, tt.err, "%d/%d/%.2f\nleft %s\nright %s", res.RowCount(), exp, delta, sql.Histogram(xHist).DebugString(), sql.Histogram(wHist).DebugString())
+			require.Less(t, delta, tt.err, "%d/%d/%.2f\nleft %s\nright %s", res.RowCount(), exp, delta, sql.Histogram(xHist).DebugString(ctx), sql.Histogram(wHist).DebugString(ctx))
 		})
 	}
 }
@@ -321,7 +321,7 @@ func testHistogram(ctx *sql.Context, table *plan.ResolvedTable, fields []int, bu
 		return nil, err
 	}
 
-	sch := table.Schema()
+	sch := table.Schema(ctx)
 
 	keyVals := make([]sql.Row, len(rows))
 	for i, row := range rows {
@@ -401,7 +401,7 @@ func childSchema(source string) sql.PrimaryKeySchema {
 }
 
 func makeTable(db *memory.Database, name string, tabId sql.TableId, colId sql.ColumnId) *plan.ResolvedTable {
-	t := memory.NewTable(db, name, childSchema(name), nil)
+	t := memory.NewTable(sql.NewEmptyContext(), db, name, childSchema(name), nil)
 	colset := sql.NewColSet(sql.ColumnId(colId), sql.ColumnId(colId+1), sql.ColumnId(colId+2))
 	return plan.NewResolvedTable(t, db, nil).WithId(sql.TableId(tabId)).WithColumns(colset).(*plan.ResolvedTable)
 }
@@ -413,7 +413,7 @@ func newContext(provider *memory.DbProvider) *sql.Context {
 func expectedResultSize(ctx *sql.Context, t1, t2 *plan.ResolvedTable, filters []sql.Expression, debug bool) (int, error) {
 	j := plan.NewJoin(t1, t2, plan.JoinTypeInner, expression.JoinAnd(filters...))
 	if debug {
-		fmt.Println(sql.DebugString(j))
+		fmt.Println(sql.DebugString(ctx, j))
 	}
 	i, err := rowexec.NewBuilder(nil, sql.EngineOverrides{}).Build(ctx, j, nil)
 	if err != nil {

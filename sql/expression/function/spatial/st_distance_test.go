@@ -26,10 +26,11 @@ import (
 )
 
 func TestDistance(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	t.Run("point distance from itself", func(t *testing.T) {
 		require := require.New(t)
 		p := types.Point{X: 0, Y: 0}
-		f, err := NewDistance(expression.NewLiteral(p, types.PointType{}), expression.NewLiteral(p, types.PointType{}))
+		f, err := NewDistance(ctx, expression.NewLiteral(p, types.PointType{}), expression.NewLiteral(p, types.PointType{}))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -41,7 +42,7 @@ func TestDistance(t *testing.T) {
 		require := require.New(t)
 		p1 := types.Point{X: 100, Y: 200}
 		p2 := types.Point{X: 101, Y: 201}
-		f, err := NewDistance(expression.NewLiteral(p1, types.PointType{}), expression.NewLiteral(p2, types.PointType{}))
+		f, err := NewDistance(ctx, expression.NewLiteral(p1, types.PointType{}), expression.NewLiteral(p2, types.PointType{}))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -57,7 +58,7 @@ func TestDistance(t *testing.T) {
 		l := types.LineString{Points: []types.Point{p0, p1, p2}}
 		mp := types.MultiPoint{Points: []types.Point{p2, p1, p0}}
 		gc := types.GeomColl{Geoms: []types.GeometryValue{p0, l}}
-		f, err := NewDistance(expression.NewLiteral(gc, types.GeomCollType{}), expression.NewLiteral(mp, types.MultiPointType{}))
+		f, err := NewDistance(ctx, expression.NewLiteral(gc, types.GeomCollType{}), expression.NewLiteral(mp, types.MultiPointType{}))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -69,7 +70,7 @@ func TestDistance(t *testing.T) {
 		require := require.New(t)
 		p1 := types.Point{SRID: types.GeoSpatialSRID, X: 0, Y: 0}
 		p2 := types.Point{SRID: types.GeoSpatialSRID, X: 0, Y: 0}
-		f, err := NewDistance(expression.NewLiteral(p1, types.PointType{}), expression.NewLiteral(p2, types.PointType{}))
+		f, err := NewDistance(ctx, expression.NewLiteral(p1, types.PointType{}), expression.NewLiteral(p2, types.PointType{}))
 		require.NoError(err)
 
 		_, err = f.Eval(sql.NewEmptyContext(), nil)
@@ -80,7 +81,7 @@ func TestDistance(t *testing.T) {
 		require := require.New(t)
 		p1 := types.Point{SRID: types.CartesianSRID, X: 0, Y: 0}
 		p2 := types.Point{SRID: types.GeoSpatialSRID, X: 0, Y: 0}
-		f, err := NewDistance(expression.NewLiteral(p1, types.PointType{}), expression.NewLiteral(p2, types.PointType{}))
+		f, err := NewDistance(ctx, expression.NewLiteral(p1, types.PointType{}), expression.NewLiteral(p2, types.PointType{}))
 		require.NoError(err)
 
 		_, err = f.Eval(sql.NewEmptyContext(), nil)
@@ -91,7 +92,7 @@ func TestDistance(t *testing.T) {
 		require := require.New(t)
 		p1 := types.Point{SRID: types.GeoSpatialSRID, X: 0, Y: 0}
 		p2 := types.Point{SRID: types.GeoSpatialSRID, X: 0, Y: 0}
-		f, err := NewDistance(expression.NewLiteral(p1, types.PointType{}), expression.NewLiteral(p2, types.PointType{}))
+		f, err := NewDistance(ctx, expression.NewLiteral(p1, types.PointType{}), expression.NewLiteral(p2, types.PointType{}))
 		require.NoError(err)
 
 		_, err = f.Eval(sql.NewEmptyContext(), nil)
@@ -102,7 +103,7 @@ func TestDistance(t *testing.T) {
 		require := require.New(t)
 		p1 := types.Point{SRID: types.CartesianSRID, X: 0, Y: 0}
 		p2 := types.Point{SRID: types.CartesianSRID, X: 0, Y: 0}
-		f, err := NewDistance(expression.NewLiteral(p1, types.PointType{}), expression.NewLiteral(p2, types.PointType{}), expression.NewLiteral("meters", types.LongText))
+		f, err := NewDistance(ctx, expression.NewLiteral(p1, types.PointType{}), expression.NewLiteral(p2, types.PointType{}), expression.NewLiteral("meters", types.LongText))
 		require.NoError(err)
 
 		_, err = f.Eval(sql.NewEmptyContext(), nil)

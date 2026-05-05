@@ -202,10 +202,10 @@ func NewPrimaryKeySchema(s Schema, pkOrds ...int) PrimaryKeySchema {
 // SchemaToPrimaryKeySchema adapts the schema given to a PrimaryKey schema using the primary keys of the table given, if
 // present. The resulting PrimaryKeySchema may have an empty key set if the table has no primary keys. Matching for
 // ordinals is performed by column name, with the aid of |renames| when provided.
-func SchemaToPrimaryKeySchema(table Table, sch Schema, renames ...ColumnRename) PrimaryKeySchema {
+func SchemaToPrimaryKeySchema(ctx *Context, table Table, sch Schema, renames ...ColumnRename) PrimaryKeySchema {
 	var pks []*Column
 	if pkt, ok := table.(PrimaryKeyTable); ok {
-		schema := pkt.PrimaryKeySchema()
+		schema := pkt.PrimaryKeySchema(ctx)
 		for _, ordinal := range schema.PkOrdinals {
 			pks = append(pks, schema.Schema[ordinal])
 		}

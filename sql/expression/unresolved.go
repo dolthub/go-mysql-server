@@ -57,12 +57,12 @@ func (*UnresolvedColumn) Resolved() bool {
 }
 
 // IsNullable implements the Expression interface.
-func (*UnresolvedColumn) IsNullable() bool {
+func (*UnresolvedColumn) IsNullable(ctx *sql.Context) bool {
 	panic("unresolved column is a placeholder node, but IsNullable was called")
 }
 
 // Type implements the Expression interface.
-func (*UnresolvedColumn) Type() sql.Type {
+func (*UnresolvedColumn) Type(ctx *sql.Context) sql.Type {
 	panic("unresolved column is a placeholder node, but Type was called")
 }
 
@@ -76,8 +76,8 @@ func (uc *UnresolvedColumn) EvalValue(ctx *sql.Context, row sql.ValueRow) (sql.V
 	panic("unresolved column is a placeholder node, but EvalValue was called")
 }
 
-// IsValueRowIter implements the ValueExpression interface.
-func (uc *UnresolvedColumn) IsValueExpression() bool {
+// IsValueExpression implements the ValueExpression interface.
+func (uc *UnresolvedColumn) IsValueExpression(ctx *sql.Context) bool {
 	panic("unresolved column is a placeholder node, but IsValueExpression was called")
 }
 
@@ -100,7 +100,7 @@ func (*UnresolvedColumn) Eval(ctx *sql.Context, r sql.Row) (interface{}, error) 
 }
 
 // WithChildren implements the Expression interface.
-func (uc *UnresolvedColumn) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (uc *UnresolvedColumn) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(uc, len(children), 0)
 	}
@@ -171,22 +171,22 @@ func (utf *UnresolvedTableFunction) IsReadOnly() bool {
 }
 
 // WithExpressions implements the Expressioner interface
-func (utf *UnresolvedTableFunction) WithExpressions(expression ...sql.Expression) (sql.Node, error) {
-	if len(expression) != len(utf.Expressions()) {
-		return nil, sql.ErrInvalidExpressionNumber.New(utf, len(expression), len(utf.Expressions()))
+func (utf *UnresolvedTableFunction) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
+	if len(exprs) != len(utf.Expressions()) {
+		return nil, sql.ErrInvalidExpressionNumber.New(utf, len(exprs), len(utf.Expressions()))
 	}
 
 	nutf := *utf
-	nutf.Arguments = make([]sql.Expression, len(expression))
-	for i, _ := range expression {
-		nutf.Arguments[i] = expression[i]
+	nutf.Arguments = make([]sql.Expression, len(exprs))
+	for i, _ := range exprs {
+		nutf.Arguments[i] = exprs[i]
 	}
 
 	return &nutf, nil
 }
 
 // Schema implements the Node interface
-func (utf *UnresolvedTableFunction) Schema() sql.Schema {
+func (utf *UnresolvedTableFunction) Schema(ctx *sql.Context) sql.Schema {
 	return nil
 }
 
@@ -201,7 +201,7 @@ func (utf *UnresolvedTableFunction) RowIter(ctx *sql.Context, row sql.Row) (sql.
 }
 
 // WithChildren implements the Node interface
-func (utf *UnresolvedTableFunction) WithChildren(node ...sql.Node) (sql.Node, error) {
+func (utf *UnresolvedTableFunction) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	panic("no expected children for unresolved table function")
 }
 
@@ -271,12 +271,12 @@ func (*UnresolvedFunction) Resolved() bool {
 }
 
 // IsNullable implements the Expression interface.
-func (*UnresolvedFunction) IsNullable() bool {
+func (*UnresolvedFunction) IsNullable(ctx *sql.Context) bool {
 	panic("unresolved function is a placeholder node, but IsNullable was called")
 }
 
 // Type implements the Expression interface.
-func (*UnresolvedFunction) Type() sql.Type {
+func (*UnresolvedFunction) Type(ctx *sql.Context) sql.Type {
 	panic("unresolved function is a placeholder node, but Type was called")
 }
 
@@ -302,15 +302,15 @@ func (uf *UnresolvedFunction) String() string {
 	return fmt.Sprintf("%s(%s)%s", uf.name, strings.Join(exprs, ", "), over)
 }
 
-func (uf *UnresolvedFunction) DebugString() string {
+func (uf *UnresolvedFunction) DebugString(ctx *sql.Context) string {
 	var exprs = make([]string, len(uf.Arguments))
 	for i, e := range uf.Arguments {
-		exprs[i] = sql.DebugString(e)
+		exprs[i] = sql.DebugString(ctx, e)
 	}
 
 	over := ""
 	if uf.Window != nil {
-		over = fmt.Sprintf(" %s", sql.DebugString(uf.Window))
+		over = fmt.Sprintf(" %s", sql.DebugString(ctx, uf.Window))
 	}
 
 	return fmt.Sprintf("(unresolved)%s(%s)%s", uf.name, strings.Join(exprs, ", "), over)
@@ -322,12 +322,12 @@ func (*UnresolvedFunction) Eval(ctx *sql.Context, r sql.Row) (interface{}, error
 }
 
 // WithChildren implements the Expression interface.
-func (uf *UnresolvedFunction) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (uf *UnresolvedFunction) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != len(uf.Arguments)+len(uf.Window.ToExpressions()) {
 		return nil, sql.ErrInvalidChildrenNumber.New(uf, len(children), len(uf.Arguments)+len(uf.Window.ToExpressions()))
 	}
 
-	window, err := uf.Window.FromExpressions(children[len(uf.Arguments):])
+	window, err := uf.Window.FromExpressions(ctx, children[len(uf.Arguments):])
 	if err != nil {
 		return nil, err
 	}

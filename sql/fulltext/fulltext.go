@@ -199,7 +199,7 @@ func GetKeyColumns(ctx *sql.Context, parent sql.Table) (KeyColumns, []*sql.Colum
 	// Check for a primary key. We'll only check on tables that implement sql.PrimaryKeyTable as we need to replicate
 	// the declaration order, and there's no guarantee that the order is sequential with a standard sql.Schema.
 	if pkTable, ok := parent.(sql.PrimaryKeyTable); ok {
-		sch := pkTable.PrimaryKeySchema()
+		sch := pkTable.PrimaryKeySchema(ctx)
 		if len(sch.PkOrdinals) > 0 {
 			positions = make([]int, len(sch.PkOrdinals))
 			copy(positions, sch.PkOrdinals)
@@ -229,7 +229,7 @@ func GetKeyColumns(ctx *sql.Context, parent sql.Table) (KeyColumns, []*sql.Colum
 			}
 
 			// Create a map from schema column expression to position
-			parentSch := parent.Schema()
+			parentSch := parent.Schema(ctx)
 			parentColMap := GetParentColumnMap(parentSch)
 
 			// Map from expression to position
@@ -546,7 +546,7 @@ func CreateFulltextIndexes(ctx *sql.Context, database Database, parent sql.Table
 	if _, ok = fulltextAlterable.(sql.StatisticsTable); !ok {
 		return sql.ErrFullTextNotSupported.New()
 	}
-	tblSch := parent.Schema()
+	tblSch := parent.Schema(ctx)
 
 	// Grab the key columns, which we will share among all indexes
 	keyCols, insertCols, err := GetKeyColumns(ctx, fulltextAlterable)

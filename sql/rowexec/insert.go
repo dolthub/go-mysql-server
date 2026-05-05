@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"gopkg.in/src-d/go-errors.v1"
 
@@ -53,9 +54,9 @@ type insertIter struct {
 	hasAfterTrigger             bool
 }
 
-func getInsertExpressions(values sql.Node) []sql.Expression {
+func getInsertExpressions(ctx *sql.Context, values sql.Node) []sql.Expression {
 	var exprs []sql.Expression
-	transform.InspectWithOpaque(values, func(node sql.Node) bool {
+	transform.InspectWithOpaque(ctx, values, func(ctx *sql.Context, node sql.Node) bool {
 		switch node := node.(type) {
 		case *plan.Project:
 			exprs = node.Projections
@@ -73,6 +74,9 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 	}
 
 	if err != nil {
+		if errors.Is(err, sql.ErrRowEditCanceled) {
+			return i.Next(ctx)
+		}
 		return nil, i.ignoreOrClose(ctx, row, err)
 	}
 
@@ -189,6 +193,8 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 					return nil, sql.NewWrappedInsertError(row, err)
 				}
 
+				// TODO: For multitables, UniqueKeyError.Existing might not be the correct row if the error is coming
+				//  from a secondary table. https://github.com/dolthub/dolt/issues/10882#issuecomment-4255176383
 				ue := err.(*errors.Error).Cause().(sql.UniqueKeyError)
 				if err = i.replacer.Delete(ctx, ue.Existing); err != nil {
 					i.rowSource.Close(ctx)
@@ -206,6 +212,8 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 		if err := i.inserter.Insert(ctx, row); err != nil {
 			if (sql.ErrPrimaryKeyViolation.Is(err) || sql.ErrUniqueKeyViolation.Is(err)) &&
 				i.onDupKeyUpdateExprs.HasUpdates() {
+				// TODO: For multitables, UniqueKeyError.Existing might not be the correct row if the error is coming
+				//  from a secondary table. https://github.com/dolthub/dolt/issues/10882#issuecomment-4255176383
 				if uniqueKeyError, ok := err.(*errors.Error).Cause().(sql.UniqueKeyError); ok {
 					return i.handleOnDuplicateKeyUpdate(ctx, uniqueKeyError.Existing, row)
 				}
@@ -374,6 +382,17 @@ func convertDataAndWarn(ctx *sql.Context, tableSchema sql.Schema, row sql.Row, c
 	if types.ErrLengthBeyondLimit.Is(err) {
 		maxLength := tableSchema[columnIdx].Type.(sql.StringType).MaxCharacterLength()
 		row[columnIdx] = row[columnIdx].(string)[:maxLength] // truncate string
+	} else if types.ErrBadCharsetString.Is(err) {
+		switch v := row[columnIdx].(type) {
+		case string:
+			row[columnIdx] = string(types.TruncateInvalidUTF8([]byte(v)))
+		case []byte:
+			row[columnIdx] = string(types.TruncateInvalidUTF8(v))
+		default:
+			row[columnIdx] = tableSchema[columnIdx].Type.Zero()
+		}
+		ctx.Warn(mysql.ERTruncatedWrongValueForField, "%s", err.Error())
+		return row
 	} else {
 		row[columnIdx] = tableSchema[columnIdx].Type.Zero()
 	}

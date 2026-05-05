@@ -120,10 +120,11 @@ func TestLocks(t *testing.T) {
 	require := require.New(t)
 
 	harness := enginetest.NewDefaultMemoryHarness()
+	ctx := enginetest.NewContext(harness)
 	db := harness.NewDatabases("db")[0].(*memory.HistoryDatabase)
-	t1 := newLockableTable(memory.NewTable(db.BaseDatabase, "t1", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
-	t2 := newLockableTable(memory.NewTable(db.BaseDatabase, "t2", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
-	t3 := memory.NewTable(db.BaseDatabase, "t3", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection())
+	t1 := newLockableTable(memory.NewTable(ctx, db.BaseDatabase, "t1", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
+	t2 := newLockableTable(memory.NewTable(ctx, db.BaseDatabase, "t2", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
+	t3 := memory.NewTable(ctx, db.BaseDatabase, "t3", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection())
 	db.AddTable("t1", t1)
 	db.AddTable("t2", t2)
 	db.AddTable("t3", t3)
@@ -131,7 +132,6 @@ func TestLocks(t *testing.T) {
 	analyzer := analyzer.NewDefault(harness.Provider())
 	engine := sqle.New(analyzer, new(sqle.Config))
 
-	ctx := enginetest.NewContext(harness)
 	ctx.SetCurrentDatabase("db")
 	_, iter, _, err := engine.Query(ctx, "LOCK TABLES t1 READ, t2 WRITE, t3 READ")
 	require.NoError(err)
@@ -320,9 +320,10 @@ func (t *nonIndexableTable) IgnoreSessionData() bool {
 func TestLockTables(t *testing.T) {
 	require := require.New(t)
 	db := memory.NewDatabase("db")
+	ctx := sql.NewEmptyContext()
 
-	t1 := newLockableTable(memory.NewTable(db.BaseDatabase, "foo", sql.PrimaryKeySchema{}, nil))
-	t2 := newLockableTable(memory.NewTable(db.BaseDatabase, "bar", sql.PrimaryKeySchema{}, nil))
+	t1 := newLockableTable(memory.NewTable(ctx, db.BaseDatabase, "foo", sql.PrimaryKeySchema{}, nil))
+	t2 := newLockableTable(memory.NewTable(ctx, db.BaseDatabase, "bar", sql.PrimaryKeySchema{}, nil))
 	node := plan.NewLockTables([]*plan.TableLock{
 		{plan.NewResolvedTable(t1, nil, nil), true},
 		{plan.NewResolvedTable(t2, nil, nil), false},
@@ -342,17 +343,17 @@ func TestLockTables(t *testing.T) {
 func TestUnlockTables(t *testing.T) {
 	require := require.New(t)
 	db := memory.NewDatabase("db")
+	ctx := sql.NewEmptyContext()
 
-	t1 := newLockableTable(memory.NewTable(db.BaseDatabase, "foo", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
-	t2 := newLockableTable(memory.NewTable(db.BaseDatabase, "bar", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
-	t3 := newLockableTable(memory.NewTable(db.BaseDatabase, "baz", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
+	t1 := newLockableTable(memory.NewTable(ctx, db.BaseDatabase, "foo", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
+	t2 := newLockableTable(memory.NewTable(ctx, db.BaseDatabase, "bar", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
+	t3 := newLockableTable(memory.NewTable(ctx, db.BaseDatabase, "baz", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
 	db.AddTable("foo", t1)
 	db.AddTable("bar", t2)
 	db.AddTable("baz", t3)
 
 	catalog := analyzer.NewCatalog(sql.NewDatabaseProvider(db), sql.EngineOverrides{})
 
-	ctx := sql.NewEmptyContext()
 	ctx.SetCurrentDatabase("db")
 	catalog.LockTable(ctx, "foo")
 	catalog.LockTable(ctx, "bar")
@@ -397,6 +398,7 @@ var analyzerTestCases = []analyzerTestCase{
 			db, err := engine.EngineAnalyzer().Catalog.Database(ctx, "foo")
 			require.NoError(t, err)
 			greatest, err := function.NewGreatest(
+				ctx,
 				expression.NewLiteral("abc123", types.LongText),
 				expression.NewLiteral("cde456", types.LongText),
 			)
@@ -411,6 +413,7 @@ var analyzerTestCases = []analyzerTestCase{
 			db, err := engine.EngineAnalyzer().Catalog.Database(ctx, "foo")
 			require.NoError(t, err)
 			datetime, err := function.NewDatetime(
+				ctx,
 				expression.NewLiteral("20200101:120000Z", types.LongText),
 			)
 			require.NoError(t, err)
@@ -455,8 +458,9 @@ func TestAnalyzer_Exp(t *testing.T) {
 
 func assertNodesEqualWithDiff(t *testing.T, expected, actual sql.Node) {
 	if !assert.Equal(t, expected, actual) {
-		expectedStr := sql.DebugString(expected)
-		actualStr := sql.DebugString(actual)
+		ctx := sql.NewEmptyContext()
+		expectedStr := sql.DebugString(ctx, expected)
+		actualStr := sql.DebugString(ctx, actual)
 		diff, err := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
 			A:        difflib.SplitLines(expectedStr),
 			B:        difflib.SplitLines(actualStr),
@@ -893,7 +897,7 @@ func (s SimpleTableFunction) String() string {
 	return "SimpleTableFunction"
 }
 
-func (s SimpleTableFunction) Schema() sql.Schema {
+func (s SimpleTableFunction) Schema(ctx *sql.Context) sql.Schema {
 	schema := []*sql.Column{
 		&sql.Column{
 			Name: "one",
@@ -912,7 +916,7 @@ func (s SimpleTableFunction) Children() []sql.Node {
 	return []sql.Node{}
 }
 
-func (s SimpleTableFunction) WithChildren(_ ...sql.Node) (sql.Node, error) {
+func (s SimpleTableFunction) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	return s, nil
 }
 
@@ -925,7 +929,7 @@ func (s SimpleTableFunction) Expressions() []sql.Expression {
 	return []sql.Expression{}
 }
 
-func (s SimpleTableFunction) WithExpressions(e ...sql.Expression) (sql.Node, error) {
+func (s SimpleTableFunction) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	return s, nil
 }
 

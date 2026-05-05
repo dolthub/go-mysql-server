@@ -33,7 +33,7 @@ var _ sql.FunctionExpression = (*GeomColl)(nil)
 var _ sql.CollationCoercible = (*GeomColl)(nil)
 
 // NewGeomColl creates a new geometrycollection expression.
-func NewGeomColl(args ...sql.Expression) (sql.Expression, error) {
+func NewGeomColl(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	return &GeomColl{expression.NaryExpression{ChildExpressions: args}}, nil
 }
 
@@ -48,7 +48,7 @@ func (g *GeomColl) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (g *GeomColl) Type() sql.Type {
+func (g *GeomColl) Type(ctx *sql.Context) sql.Type {
 	return types.GeomCollType{}
 }
 
@@ -66,8 +66,8 @@ func (g *GeomColl) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (g *GeomColl) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewGeomColl(children...)
+func (g *GeomColl) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewGeomColl(ctx, children...)
 }
 
 // Eval implements the sql.Expression interface.
@@ -78,12 +78,11 @@ func (g *GeomColl) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		switch v := val.(type) {
-		case types.GeometryValue:
-			geoms[i] = v
-		default:
-			return nil, sql.ErrIllegalGISValue.New(v)
+		gv, err := types.UnwrapGeometry(ctx, val)
+		if err != nil {
+			return nil, sql.ErrIllegalGISValue.New(val)
 		}
+		geoms[i] = gv
 	}
 
 	return types.GeomColl{Geoms: geoms}, nil

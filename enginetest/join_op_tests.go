@@ -1977,6 +1977,10 @@ SELECT SUM(x) FROM xy WHERE x IN (
 		name: "where x not in (...)",
 		setup: [][]string{
 			setup.XyData[0],
+			{
+				"CREATE TABLE hasnullid (id INT, c1 INT);",
+				"INSERT INTO hasnullid VALUES (1, 100), (2, 200), (3, 300), (null, null);",
+			},
 		},
 		tests: []JoinOpTests{
 			{
@@ -1994,6 +1998,16 @@ SELECT SUM(x) FROM xy WHERE x IN (
 			{
 				Query:    `SELECT * from xy where null not in (SELECT b from ab)`,
 				Expected: []sql.Row{},
+			},
+			{
+				// https://github.com/dolthub/dolt/issues/10699
+				Query:    "SELECT id FROM hasnullid where id NOT IN (SELECT NULL);",
+				Expected: []sql.Row{},
+			},
+			{
+				// https://github.com/dolthub/dolt/issues/10699
+				Query:    "select id from hasnullid where id not in (select 1) order by id;",
+				Expected: []sql.Row{{2}, {3}},
 			},
 		},
 	},

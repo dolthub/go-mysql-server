@@ -27,9 +27,10 @@ import (
 )
 
 func JsonContainsPathTestCases(t *testing.T, prepare prepareJsonValue) []testCase {
-
+	ctx := sql.NewEmptyContext()
 	// setup call expressions for calling with 1, 2, and 3 paths.
 	onePath, err := json.NewJSONContainsPath(
+		ctx,
 		expression.NewGetField(0, types.JSON, "arg1", false),
 		expression.NewGetField(1, types.LongText, "arg2", false),
 		expression.NewGetField(2, types.LongText, "arg3", false),
@@ -37,6 +38,7 @@ func JsonContainsPathTestCases(t *testing.T, prepare prepareJsonValue) []testCas
 	require.NoError(t, err)
 
 	twoPath, err := json.NewJSONContainsPath(
+		ctx,
 		expression.NewGetField(0, types.JSON, "arg1", false),
 		expression.NewGetField(1, types.LongText, "arg2", false),
 		expression.NewGetField(2, types.LongText, "arg3", false),
@@ -45,6 +47,7 @@ func JsonContainsPathTestCases(t *testing.T, prepare prepareJsonValue) []testCas
 	require.NoError(t, err)
 
 	threePath, err := json.NewJSONContainsPath(
+		ctx,
 		expression.NewGetField(0, types.JSON, "arg1", false),
 		expression.NewGetField(1, types.LongText, "arg2", false),
 		expression.NewGetField(2, types.LongText, "arg3", false),

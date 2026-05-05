@@ -31,7 +31,7 @@ func jsonExpression(t *testing.T, val interface{}) sql.Expression {
 
 func TestDistance(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	distance := NewDistance(DistanceL2Squared{}, jsonExpression(t, "[0.0, 0.0]"), jsonExpression(t, "[3.0, 4.0]"))
+	distance := NewDistance(ctx, DistanceL2Squared{}, jsonExpression(t, "[0.0, 0.0]"), jsonExpression(t, "[3.0, 4.0]"))
 	result, err := distance.Eval(ctx, nil)
 	assert.NoError(t, err)
 	assert.InEpsilon(t, 25.0, result, 0.1)

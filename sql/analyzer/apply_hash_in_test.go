@@ -19,7 +19,7 @@ func TestApplyHashIn(t *testing.T) {
 	db := memory.NewDatabase("mydb")
 	pro := memory.NewDBProvider(db)
 
-	table := memory.NewTable(db, "foo", sql.NewPrimaryKeySchema(sql.Schema{
+	table := memory.NewTable(ctx, db, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: types.Int64, Source: "foo"},
 		{Name: "b", Type: types.Int64, Source: "foo"},
 		{Name: "c", Type: types.Int64, Source: "foo"},
@@ -325,6 +325,7 @@ func TestApplyHashIn(t *testing.T) {
 			node: plan.NewFilter(
 				expression.NewInTuple(
 					function.NewLower(
+						ctx,
 						expression.NewLiteral("hi", types.TinyText),
 					),
 					expression.NewTuple(
@@ -337,6 +338,7 @@ func TestApplyHashIn(t *testing.T) {
 				mustNewHashInTuple(
 					ctx,
 					function.NewLower(
+						ctx,
 						expression.NewLiteral("hi", types.TinyText),
 					),
 					expression.NewTuple(
@@ -353,6 +355,7 @@ func TestApplyHashIn(t *testing.T) {
 					expression.NewLiteral("hi", types.TinyText),
 					expression.NewTuple(
 						function.NewLower(
+							ctx,
 							expression.NewLiteral("hi", types.TinyText),
 						),
 					),
@@ -364,6 +367,7 @@ func TestApplyHashIn(t *testing.T) {
 					expression.NewLiteral("hi", types.TinyText),
 					expression.NewTuple(
 						function.NewLower(
+							ctx,
 							expression.NewLiteral("hi", types.TinyText),
 						),
 					),

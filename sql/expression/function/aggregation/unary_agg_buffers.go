@@ -47,8 +47,8 @@ func (a *anyValueBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 }
 
 // Dispose implements the Disposable interface.
-func (a *anyValueBuffer) Dispose() {
-	expression.Dispose(a.expr)
+func (a *anyValueBuffer) Dispose(ctx *sql.Context) {
+	expression.Dispose(ctx, a.expr)
 }
 
 type sumBuffer struct {
@@ -84,8 +84,8 @@ func (m *sumBuffer) Update(ctx *sql.Context, row sql.Row) error {
 func (m *sumBuffer) PerformSum(ctx *sql.Context, v interface{}) {
 	// decimal.Decimal values are evaluated to string value even though the Literal expr type is Decimal type,
 	// so convert it to appropriate Decimal type
-	if s, isStr := v.(string); isStr && types.IsDecimal(m.expr.Type()) {
-		val, _, err := m.expr.Type().Convert(ctx, s)
+	if s, isStr := v.(string); isStr && types.IsDecimal(m.expr.Type(ctx)) {
+		val, _, err := m.expr.Type(ctx).Convert(ctx, s)
 		if err == nil {
 			v = val
 		}
@@ -157,8 +157,8 @@ func (m *sumBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 }
 
 // Dispose implements the Disposable interface.
-func (m *sumBuffer) Dispose() {
-	expression.Dispose(m.expr)
+func (m *sumBuffer) Dispose(ctx *sql.Context) {
+	expression.Dispose(ctx, m.expr)
 }
 
 type lastBuffer struct {
@@ -197,8 +197,8 @@ func (l *lastBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 }
 
 // Dispose implements the Disposable interface.
-func (l *lastBuffer) Dispose() {
-	expression.Dispose(l.expr)
+func (l *lastBuffer) Dispose(ctx *sql.Context) {
+	expression.Dispose(ctx, l.expr)
 }
 
 type avgBuffer struct {
@@ -268,8 +268,8 @@ func (a *avgBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 }
 
 // Dispose implements the Disposable interface.
-func (a *avgBuffer) Dispose() {
-	expression.Dispose(a.expr)
+func (a *avgBuffer) Dispose(ctx *sql.Context) {
+	expression.Dispose(ctx, a.expr)
 }
 
 type bitAndBuffer struct {
@@ -319,8 +319,8 @@ func (b *bitAndBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 }
 
 // Dispose implements the Disposable interface.
-func (b *bitAndBuffer) Dispose() {
-	expression.Dispose(b.expr)
+func (b *bitAndBuffer) Dispose(ctx *sql.Context) {
+	expression.Dispose(ctx, b.expr)
 }
 
 type bitOrBuffer struct {
@@ -370,8 +370,8 @@ func (b *bitOrBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 }
 
 // Dispose implements the Disposable interface.
-func (b *bitOrBuffer) Dispose() {
-	expression.Dispose(b.expr)
+func (b *bitOrBuffer) Dispose(ctx *sql.Context) {
+	expression.Dispose(ctx, b.expr)
 }
 
 type bitXorBuffer struct {
@@ -430,8 +430,8 @@ func (b *bitXorBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 }
 
 // Dispose implements the Disposable interface.
-func (b *bitXorBuffer) Dispose() {
-	expression.Dispose(b.expr)
+func (b *bitXorBuffer) Dispose(ctx *sql.Context) {
+	expression.Dispose(ctx, b.expr)
 }
 
 type countDistinctBuffer struct {
@@ -500,9 +500,9 @@ func (c *countDistinctBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 	return int64(len(c.seen)), nil
 }
 
-func (c *countDistinctBuffer) Dispose() {
+func (c *countDistinctBuffer) Dispose(ctx *sql.Context) {
 	for _, e := range c.exprs {
-		expression.Dispose(e)
+		expression.Dispose(ctx, e)
 	}
 }
 
@@ -546,8 +546,8 @@ func (c *countBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 }
 
 // Dispose implements the Disposable interface.
-func (c *countBuffer) Dispose() {
-	expression.Dispose(c.expr)
+func (c *countBuffer) Dispose(ctx *sql.Context) {
+	expression.Dispose(ctx, c.expr)
 }
 
 type firstBuffer struct {
@@ -589,8 +589,8 @@ func (f *firstBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 }
 
 // Dispose implements the Disposable interface.
-func (f *firstBuffer) Dispose() {
-	expression.Dispose(f.expr)
+func (f *firstBuffer) Dispose(ctx *sql.Context) {
+	expression.Dispose(ctx, f.expr)
 }
 
 type maxBuffer struct {
@@ -618,7 +618,7 @@ func (m *maxBuffer) Update(ctx *sql.Context, row sql.Row) error {
 		return nil
 	}
 
-	cmp, err := m.expr.Type().Compare(ctx, v, m.val)
+	cmp, err := m.expr.Type(ctx).Compare(ctx, v, m.val)
 	if err != nil {
 		return err
 	}
@@ -635,8 +635,8 @@ func (m *maxBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 }
 
 // Dispose implements the Disposable interface.
-func (m *maxBuffer) Dispose() {
-	expression.Dispose(m.expr)
+func (m *maxBuffer) Dispose(ctx *sql.Context) {
+	expression.Dispose(ctx, m.expr)
 }
 
 type minBuffer struct {
@@ -664,7 +664,7 @@ func (m *minBuffer) Update(ctx *sql.Context, row sql.Row) error {
 		return nil
 	}
 
-	cmp, err := m.expr.Type().Compare(ctx, v, m.val)
+	cmp, err := m.expr.Type(ctx).Compare(ctx, v, m.val)
 	if err != nil {
 		return err
 	}
@@ -681,8 +681,8 @@ func (m *minBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 }
 
 // Dispose implements the Disposable interface.
-func (m *minBuffer) Dispose() {
-	expression.Dispose(m.expr)
+func (m *minBuffer) Dispose(ctx *sql.Context) {
+	expression.Dispose(ctx, m.expr)
 }
 
 type jsonArrayBuffer struct {
@@ -726,7 +726,7 @@ func (j *jsonArrayBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 }
 
 // Dispose implements the Disposable interface.
-func (j *jsonArrayBuffer) Dispose() {
+func (j *jsonArrayBuffer) Dispose(ctx *sql.Context) {
 }
 
 type varBaseBuffer struct {
@@ -767,7 +767,7 @@ func (vb *varBaseBuffer) Update(ctx *sql.Context, row sql.Row) error {
 }
 
 // Dispose implements the Disposable interface.
-func (vb *varBaseBuffer) Dispose() {}
+func (vb *varBaseBuffer) Dispose(ctx *sql.Context) {}
 
 type stdDevPopBuffer struct {
 	varBaseBuffer

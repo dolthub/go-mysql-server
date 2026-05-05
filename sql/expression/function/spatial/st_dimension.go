@@ -31,7 +31,7 @@ var _ sql.FunctionExpression = (*Dimension)(nil)
 var _ sql.CollationCoercible = (*Dimension)(nil)
 
 // NewDimension creates a new point expression.
-func NewDimension(e sql.Expression) sql.Expression {
+func NewDimension(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &Dimension{expression.UnaryExpressionStub{Child: e}}
 }
 
@@ -46,12 +46,12 @@ func (p *Dimension) Description() string {
 }
 
 // IsNullable implements the sql.Expression interface.
-func (p *Dimension) IsNullable() bool {
-	return p.Child.IsNullable()
+func (p *Dimension) IsNullable(ctx *sql.Context) bool {
+	return p.Child.IsNullable(ctx)
 }
 
 // Type implements the sql.Expression interface.
-func (p *Dimension) Type() sql.Type {
+func (p *Dimension) Type(ctx *sql.Context) sql.Type {
 	return types.Int32
 }
 
@@ -65,11 +65,11 @@ func (p *Dimension) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (p *Dimension) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (p *Dimension) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
 	}
-	return NewDimension(children[0]), nil
+	return NewDimension(ctx, children[0]), nil
 }
 
 func FindDimension(g types.GeometryValue) interface{} {
@@ -114,10 +114,9 @@ func (p *Dimension) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Expect one of the geometry types
-	switch v := val.(type) {
-	case types.GeometryValue:
-		return FindDimension(v), nil
-	default:
+	gv, err := types.UnwrapGeometry(ctx, val)
+	if err != nil {
 		return nil, sql.ErrInvalidGISData.New("ST_DIMENSION")
 	}
+	return FindDimension(gv), nil
 }

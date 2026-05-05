@@ -32,7 +32,7 @@ var _ sql.FunctionExpression = (*ToDays)(nil)
 var _ sql.CollationCoercible = (*ToDays)(nil)
 
 // NewToDays creates a new ToDays function.
-func NewToDays(date sql.Expression) sql.Expression {
+func NewToDays(ctx *sql.Context, date sql.Expression) sql.Expression {
 	return &ToDays{expression.UnaryExpressionStub{Child: date}}
 }
 
@@ -57,16 +57,16 @@ func (t *ToDays) Description() string {
 }
 
 // Type implements sql.Expression
-func (t *ToDays) Type() sql.Type {
+func (t *ToDays) Type(ctx *sql.Context) sql.Type {
 	return types.Int64
 }
 
 // WithChildren implements sql.Expression
-func (t *ToDays) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (t *ToDays) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 1)
 	}
-	return NewToDays(children[0]), nil
+	return NewToDays(ctx, children[0]), nil
 }
 
 // countLeapYears returns the number of leap years between year 0 and the given year
@@ -113,7 +113,7 @@ func (t *ToDays) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // IsNullable implements sql.Expression
-func (t *ToDays) IsNullable() bool {
+func (t *ToDays) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
@@ -126,7 +126,7 @@ var _ sql.FunctionExpression = (*FromDays)(nil)
 var _ sql.CollationCoercible = (*FromDays)(nil)
 
 // NewFromDays creates a new FromDays function.
-func NewFromDays(days sql.Expression) sql.Expression {
+func NewFromDays(ctx *sql.Context, days sql.Expression) sql.Expression {
 	return &FromDays{expression.UnaryExpressionStub{Child: days}}
 }
 
@@ -151,16 +151,16 @@ func (f *FromDays) Description() string {
 }
 
 // Type implements sql.Expression
-func (f *FromDays) Type() sql.Type {
+func (f *FromDays) Type(ctx *sql.Context) sql.Type {
 	return types.Date
 }
 
 // WithChildren implements sql.Expression
-func (f *FromDays) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (f *FromDays) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 1)
 	}
-	return NewFromDays(children[0]), nil
+	return NewFromDays(ctx, children[0]), nil
 }
 
 const (
@@ -250,7 +250,7 @@ var _ sql.FunctionExpression = (*LastDay)(nil)
 var _ sql.CollationCoercible = (*LastDay)(nil)
 
 // NewLastDay creates a new LastDay function.
-func NewLastDay(date sql.Expression) sql.Expression {
+func NewLastDay(ctx *sql.Context, date sql.Expression) sql.Expression {
 	return &LastDay{expression.UnaryExpressionStub{Child: date}}
 }
 
@@ -275,16 +275,16 @@ func (f *LastDay) Description() string {
 }
 
 // Type implements sql.Expression
-func (f *LastDay) Type() sql.Type {
+func (f *LastDay) Type(ctx *sql.Context) sql.Type {
 	return types.Date
 }
 
 // WithChildren implements sql.Expression
-func (f *LastDay) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (f *LastDay) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 1)
 	}
-	return NewLastDay(children[0]), nil
+	return NewLastDay(ctx, children[0]), nil
 }
 
 // lastDay returns the last day of the month for the given year and month
@@ -321,6 +321,6 @@ func (f *LastDay) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // IsNullable implements sql.Expression
-func (f *LastDay) IsNullable() bool {
+func (f *LastDay) IsNullable(ctx *sql.Context) bool {
 	return true
 }

@@ -92,14 +92,14 @@ func (p *PrependNode) IsReadOnly() bool {
 	return p.Child.IsReadOnly()
 }
 
-func (p *PrependNode) DebugString() string {
+func (p *PrependNode) DebugString(ctx *sql.Context) string {
 	tp := sql.NewTreePrinter()
 	_ = tp.WriteNode("Prepend(%s)", sql.FormatRow(p.Row))
-	_ = tp.WriteChildren(sql.DebugString(p.Child))
+	_ = tp.WriteChildren(sql.DebugString(ctx, p.Child))
 	return tp.String()
 }
 
-func (p *PrependNode) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (p *PrependNode) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
 	}
@@ -150,18 +150,18 @@ func (s *Subquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 // PrependRowInPlan returns a transformation function that prepends the row given to any row source in a query
 // plan. Any source of rows, as well as any node that alters the schema of its children, will be wrapped so that its
 // result rows are prepended with the row given.
-func PrependRowInPlan(row sql.Row, lateral bool) func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-	return func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+func PrependRowInPlan(row sql.Row, lateral bool) func(ctx *sql.Context, n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	return func(ctx *sql.Context, n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case sql.Table, sql.Projector, *ValueDerivedTable, *TableCountLookup, sql.TableFunction:
 			return NewPrependNode(n, row), transform.NewTree, nil
 		case *SetOp:
 			newSetOp := *n
-			newRight, _, err := transform.Node(n.Right(), PrependRowInPlan(row, lateral))
+			newRight, _, err := transform.Node(ctx, n.Right(), PrependRowInPlan(row, lateral))
 			if err != nil {
 				return n, transform.SameTree, err
 			}
-			newLeft, _, err := transform.Node(n.Left(), PrependRowInPlan(row, lateral))
+			newLeft, _, err := transform.Node(ctx, n.Left(), PrependRowInPlan(row, lateral))
 			if err != nil {
 				return n, transform.SameTree, err
 			}
@@ -170,7 +170,7 @@ func PrependRowInPlan(row sql.Row, lateral bool) func(n sql.Node) (sql.Node, tra
 			return &newSetOp, transform.NewTree, nil
 		case *RecursiveCte:
 			newRecursiveCte := *n
-			newUnion, _, err := transform.Node(n.union, PrependRowInPlan(row, lateral))
+			newUnion, _, err := transform.Node(ctx, n.union, PrependRowInPlan(row, lateral))
 			newRecursiveCte.union = newUnion.(*SetOp)
 			return &newRecursiveCte, transform.NewTree, err
 		case *SubqueryAlias:
@@ -180,7 +180,7 @@ func PrependRowInPlan(row sql.Row, lateral bool) func(n sql.Node) (sql.Node, tra
 			// scope handling to also make the same optimization.
 			if n.OuterScopeVisibility || lateral {
 				newSubqueryAlias := *n
-				newChildNode, _, err := transform.Node(n.Child, PrependRowInPlan(row, lateral))
+				newChildNode, _, err := transform.Node(ctx, n.Child, PrependRowInPlan(row, lateral))
 				newSubqueryAlias.Child = newChildNode
 				return &newSubqueryAlias, transform.NewTree, err
 			} else {
@@ -229,8 +229,8 @@ func (m *Max1Row) Resolved() bool {
 	return m.Child.Resolved()
 }
 
-func (m *Max1Row) Schema() sql.Schema {
-	return m.Child.Schema()
+func (m *Max1Row) Schema(ctx *sql.Context) sql.Schema {
+	return m.Child.Schema(ctx)
 }
 
 func (m *Max1Row) Children() []sql.Node {
@@ -245,10 +245,10 @@ func (m *Max1Row) String() string {
 	return pr.String()
 }
 
-func (m *Max1Row) DebugString() string {
+func (m *Max1Row) DebugString(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Max1Row")
-	children := []string{sql.DebugString(m.Child)}
+	children := []string{sql.DebugString(ctx, m.Child)}
 	_ = pr.WriteChildren(children...)
 	return pr.String()
 }
@@ -258,7 +258,7 @@ func (m *Max1Row) HasResults() bool {
 	return m.Result != nil || m.EmptyResult
 }
 
-func (m *Max1Row) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (m *Max1Row) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(m, len(children), 1)
 	}
@@ -306,7 +306,7 @@ func (s *Subquery) canCacheResults() bool {
 func (s *Subquery) evalMultiple(ctx *sql.Context, row sql.Row) ([]any, error) {
 	// Any source of rows, as well as any node that alters the schema of its children, needs to be wrapped so that its
 	// result rows are prepended with the scope row.
-	q, _, err := transform.Node(s.Query, PrependRowInPlan(row, false))
+	q, _, err := transform.Node(ctx, s.Query, PrependRowInPlan(row, false))
 	if err != nil {
 		return nil, err
 	}
@@ -320,7 +320,7 @@ func (s *Subquery) evalMultiple(ctx *sql.Context, row sql.Row) ([]any, error) {
 		return nil, err
 	}
 
-	returnsTuple := len(s.Query.Schema()) > 1
+	returnsTuple := len(s.Query.Schema(ctx)) > 1
 
 	// Reduce the result row to the size of the expected schema. This means chopping off the first len(row) columns.
 	col := len(row)
@@ -368,8 +368,8 @@ func (s *Subquery) HashMultiple(ctx *sql.Context, row sql.Row) (sql.KeyValueCach
 		s.cacheMu.Lock()
 		defer s.cacheMu.Unlock()
 		if !s.resultsCached || s.hashCache == nil {
-			hashCache, disposeFn := ctx.Memory.NewHistoryCache()
-			err = putAllRows(ctx, hashCache, s.Query.Schema(), result)
+			hashCache, disposeFn := ctx.Memory.NewHistoryCache(ctx)
+			err = putAllRows(ctx, hashCache, s.Query.Schema(ctx), result)
 			if err != nil {
 				return nil, err
 			}
@@ -379,7 +379,7 @@ func (s *Subquery) HashMultiple(ctx *sql.Context, row sql.Row) (sql.KeyValueCach
 	}
 
 	cache := sql.NewMapCache()
-	err = putAllRows(ctx, cache, s.Query.Schema(), result)
+	err = putAllRows(ctx, cache, s.Query.Schema(ctx), result)
 	if err != nil {
 		return nil, err
 	}
@@ -399,7 +399,7 @@ func (s *Subquery) HasResultRow(ctx *sql.Context, row sql.Row) (bool, error) {
 
 	// Any source of rows, as well as any node that alters the schema of its children, needs to be wrapped so that its
 	// result rows are prepended with the scope row.
-	q, _, err := transform.Node(s.Query, PrependRowInPlan(row, false))
+	q, _, err := transform.Node(ctx, s.Query, PrependRowInPlan(row, false))
 	if err != nil {
 		return false, err
 	}
@@ -459,12 +459,12 @@ func putAllRows(ctx *sql.Context, cache sql.KeyValueCache, sch sql.Schema, vals 
 }
 
 // IsNullable implements the Expression interface.
-func (s *Subquery) IsNullable() bool {
+func (s *Subquery) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
 // Describe implements the sql.Describable interface
-func (s *Subquery) Describe(options sql.DescribeOptions) string {
+func (s *Subquery) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Subquery")
 	var children []string
@@ -472,12 +472,12 @@ func (s *Subquery) Describe(options sql.DescribeOptions) string {
 		children = []string{
 			fmt.Sprintf("cacheable: %t", s.canCacheResults()),
 			fmt.Sprintf("alias-string: %s", s.QueryString),
-			sql.Describe(s.Query, options),
+			sql.Describe(ctx, s.Query, options),
 		}
 	} else {
 		children = []string{
 			fmt.Sprintf("cacheable: %t", s.canCacheResults()),
-			sql.Describe(s.Query, options),
+			sql.Describe(ctx, s.Query, options),
 		}
 	}
 	_ = pr.WriteChildren(children...)
@@ -488,8 +488,8 @@ func (s *Subquery) String() string {
 	return fmt.Sprintf("Subquery(%s)", s.QueryString)
 }
 
-func (s *Subquery) DebugString() string {
-	return s.Describe(sql.DescribeOptions{
+func (s *Subquery) DebugString(ctx *sql.Context) string {
+	return s.Describe(ctx, sql.DescribeOptions{
 		Debug: true,
 	})
 }
@@ -500,10 +500,10 @@ func (s *Subquery) Resolved() bool {
 }
 
 // Type implements the Expression interface.
-func (s *Subquery) Type() sql.Type {
-	qs := s.Query.Schema()
+func (s *Subquery) Type(ctx *sql.Context) sql.Type {
+	qs := s.Query.Schema(ctx)
 	if len(qs) == 1 {
-		return s.Query.Schema()[0].Type
+		return s.Query.Schema(ctx)[0].Type
 	}
 	ts := make([]sql.Type, len(qs))
 	for i, c := range qs {
@@ -513,7 +513,7 @@ func (s *Subquery) Type() sql.Type {
 }
 
 // WithChildren implements the Expression interface.
-func (s *Subquery) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (s *Subquery) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 0)
 	}
@@ -531,7 +531,7 @@ func (s *Subquery) NodeChildren() []sql.Node {
 }
 
 // WithNodeChildren implements the sql.ExpressionWithNodes interface.
-func (s *Subquery) WithNodeChildren(children ...sql.Node) (sql.ExpressionWithNodes, error) {
+func (s *Subquery) WithNodeChildren(ctx *sql.Context, children ...sql.Node) (sql.ExpressionWithNodes, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 1)
 	}
@@ -581,12 +581,12 @@ func (s *Subquery) CanCacheResults() bool {
 }
 
 // Dispose implements sql.Disposable
-func (s *Subquery) Dispose() {
+func (s *Subquery) Dispose(ctx *sql.Context) {
 	if s.disposeFunc != nil {
 		s.disposeFunc()
 		s.disposeFunc = nil
 	}
-	disposeNode(s.Query)
+	disposeNode(ctx, s.Query)
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

@@ -34,7 +34,7 @@ func assignRoutines(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope
 	span, ctx := ctx.Span("assign_routines")
 	defer span.End()
 
-	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	return transform.Node(ctx, n, func(ctx *sql.Context, n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if !n.Resolved() {
 			return n, transform.SameTree, nil
 		}

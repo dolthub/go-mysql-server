@@ -58,8 +58,8 @@ func TestCrossJoin(t *testing.T) {
 	pro := memory.NewDBProvider(db)
 	ctx := newContext(pro)
 
-	ltable := memory.NewTable(db.Database(), "left", lSchema, nil)
-	rtable := memory.NewTable(db.Database(), "right", rSchema, nil)
+	ltable := memory.NewTable(ctx, db.Database(), "left", lSchema, nil)
+	rtable := memory.NewTable(ctx, db.Database(), "right", rSchema, nil)
 	insertData(t, newContext(pro), ltable)
 	insertData(t, newContext(pro), rtable)
 
@@ -68,7 +68,7 @@ func TestCrossJoin(t *testing.T) {
 		plan.NewResolvedTable(rtable, nil, nil),
 	)
 
-	require.Equal(resultSchema, j.Schema())
+	require.Equal(resultSchema, j.Schema(ctx))
 
 	iter, err := DefaultBuilder.Build(ctx, j, nil)
 	require.NoError(err)
@@ -122,8 +122,8 @@ func TestCrossJoin_Empty(t *testing.T) {
 	pro := memory.NewDBProvider(db)
 	ctx := newContext(pro)
 
-	ltable := memory.NewTable(db.Database(), "left", lSchema, nil)
-	rtable := memory.NewTable(db.Database(), "right", rSchema, nil)
+	ltable := memory.NewTable(ctx, db.Database(), "left", lSchema, nil)
+	rtable := memory.NewTable(ctx, db.Database(), "right", rSchema, nil)
 	insertData(t, newContext(pro), ltable)
 
 	j := plan.NewCrossJoin(
@@ -139,8 +139,8 @@ func TestCrossJoin_Empty(t *testing.T) {
 	require.Equal(io.EOF, err)
 	require.Nil(row)
 
-	ltable = memory.NewTable(db.Database(), "left", lSchema, nil)
-	rtable = memory.NewTable(db.Database(), "right", rSchema, nil)
+	ltable = memory.NewTable(ctx, db.Database(), "left", lSchema, nil)
+	rtable = memory.NewTable(ctx, db.Database(), "right", rSchema, nil)
 	insertData(t, newContext(pro), rtable)
 
 	j = plan.NewCrossJoin(

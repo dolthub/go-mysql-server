@@ -69,7 +69,7 @@ func (s *ShowReplicaStatus) String() string {
 	}
 }
 
-func (s *ShowReplicaStatus) Schema() sql.Schema {
+func (s *ShowReplicaStatus) Schema(ctx *sql.Context) sql.Schema {
 	sch := sql.Schema{
 		{Name: "Replica_IO_State", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
 		{Name: "Source_Host", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 255), Default: nil, Nullable: false},
@@ -146,7 +146,7 @@ func (s *ShowReplicaStatus) IsReadOnly() bool {
 	return true
 }
 
-func (s *ShowReplicaStatus) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (s *ShowReplicaStatus) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 0)
 	}

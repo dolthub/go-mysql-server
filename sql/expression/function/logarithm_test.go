@@ -53,7 +53,8 @@ func TestLn(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
-		f := NewLogBaseFunc(math.E)(expression.NewGetField(0, tt.rowType, "", true))
+		ctx := sql.NewEmptyContext()
+		f := NewLogBaseFunc(math.E)(ctx, expression.NewGetField(0, tt.rowType, "", true))
 		t.Run(tt.name, func(t *testing.T) {
 			t.Helper()
 			require := require.New(t)
@@ -64,7 +65,7 @@ func TestLn(t *testing.T) {
 			} else if tt.expected == nil {
 				require.NoError(err)
 				require.Nil(result)
-				require.True(f.IsNullable())
+				require.True(f.IsNullable(ctx))
 			} else {
 				require.NoError(err)
 				require.InEpsilonf(tt.expected, result, epsilon, fmt.Sprintf("Actual is: %v", result))
@@ -97,7 +98,8 @@ func TestLog2(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
-		f := NewLogBaseFunc(float64(2))(expression.NewGetField(0, tt.rowType, "", true))
+		ctx := sql.NewEmptyContext()
+		f := NewLogBaseFunc(float64(2))(ctx, expression.NewGetField(0, tt.rowType, "", true))
 		t.Run(tt.name, func(t *testing.T) {
 			t.Helper()
 			require := require.New(t)
@@ -108,7 +110,7 @@ func TestLog2(t *testing.T) {
 			} else if tt.expected == nil {
 				require.NoError(err)
 				require.Nil(result)
-				require.True(f.IsNullable())
+				require.True(f.IsNullable(ctx))
 			} else {
 				require.NoError(err)
 				require.InEpsilonf(tt.expected, result, epsilon, fmt.Sprintf("Actual is: %v", result))
@@ -141,7 +143,8 @@ func TestLog10(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
-		f := NewLogBaseFunc(float64(10))(expression.NewGetField(0, tt.rowType, "", true))
+		ctx := sql.NewEmptyContext()
+		f := NewLogBaseFunc(float64(10))(ctx, expression.NewGetField(0, tt.rowType, "", true))
 		t.Run(tt.name, func(t *testing.T) {
 			t.Helper()
 			require := require.New(t)
@@ -152,7 +155,7 @@ func TestLog10(t *testing.T) {
 			} else if tt.expected == nil {
 				require.NoError(err)
 				require.Nil(result)
-				require.True(f.IsNullable())
+				require.True(f.IsNullable(ctx))
 			} else {
 				require.NoError(err)
 				require.InEpsilonf(tt.expected, result, epsilon, fmt.Sprintf("Actual is: %v", result))
@@ -162,10 +165,12 @@ func TestLog10(t *testing.T) {
 }
 
 func TestLogInvalidArguments(t *testing.T) {
-	_, err := NewLog()
+	ctx := sql.NewEmptyContext()
+	_, err := NewLog(ctx)
 	require.True(t, sql.ErrInvalidArgumentNumber.Is(err))
 
 	_, err = NewLog(
+		ctx,
 		expression.NewLiteral(1, types.Float64),
 		expression.NewLiteral(1, types.Float64),
 		expression.NewLiteral(1, types.Float64),
@@ -211,7 +216,7 @@ func TestLog(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
-		f, _ := NewLog(tt.input...)
+		f, _ := NewLog(sql.NewEmptyContext(), tt.input...)
 		t.Run(tt.name, func(t *testing.T) {
 			t.Helper()
 			require := require.New(t)

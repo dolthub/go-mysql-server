@@ -35,7 +35,7 @@ func (s IntSequenceTable) NewInstance(ctx *sql.Context, db sql.Database, args []
 		return nil, fmt.Errorf("sequence table expects 1st argument to be column name")
 	}
 	lenExp := args[1]
-	if !sql.IsNumberType(lenExp.Type()) {
+	if !sql.IsNumberType(lenExp.Type(ctx)) {
 		return nil, fmt.Errorf("sequence table expects length argument to be a number")
 	}
 	return IntSequenceTable{db: db, name: name, Len: lenExp}, nil
@@ -53,7 +53,7 @@ func (s IntSequenceTable) String() string {
 	return fmt.Sprintf("sequence(%s, %d)", s.name, s.Len)
 }
 
-func (s IntSequenceTable) DebugString() string {
+func (s IntSequenceTable) DebugString(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("sequence")
 	children := []string{
@@ -64,7 +64,7 @@ func (s IntSequenceTable) DebugString() string {
 	return pr.String()
 }
 
-func (s IntSequenceTable) Schema() sql.Schema {
+func (s IntSequenceTable) Schema(ctx *sql.Context) sql.Schema {
 	schema := []*sql.Column{
 		{
 			DatabaseSource: s.db.Name(),
@@ -98,7 +98,7 @@ func (s IntSequenceTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 	return rowIter, nil
 }
 
-func (s IntSequenceTable) WithChildren(_ ...sql.Node) (sql.Node, error) {
+func (s IntSequenceTable) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	return s, nil
 }
 
@@ -116,12 +116,12 @@ func (s IntSequenceTable) Expressions() []sql.Expression {
 	return []sql.Expression{s.Len}
 }
 
-func (s IntSequenceTable) WithExpressions(e ...sql.Expression) (sql.Node, error) {
-	if len(e) != 1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(s, len(e), 1)
+func (s IntSequenceTable) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
+	if len(exprs) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(s, len(exprs), 1)
 	}
 	newSequenceTable := s
-	newSequenceTable.Len = e[0]
+	newSequenceTable.Len = exprs[0]
 	return newSequenceTable, nil
 }
 

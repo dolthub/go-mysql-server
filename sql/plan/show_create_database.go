@@ -58,7 +58,7 @@ func (s *ShowCreateDatabase) WithDatabase(db sql.Database) (sql.Node, error) {
 }
 
 // Schema implements the sql.Node interface.
-func (s *ShowCreateDatabase) Schema() sql.Schema {
+func (s *ShowCreateDatabase) Schema(ctx *sql.Context) sql.Schema {
 	return showCreateDatabaseSchema
 }
 
@@ -76,7 +76,7 @@ func (s *ShowCreateDatabase) Resolved() bool {
 }
 
 // WithChildren implements the Node interface.
-func (s *ShowCreateDatabase) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (s *ShowCreateDatabase) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 0)
 	}

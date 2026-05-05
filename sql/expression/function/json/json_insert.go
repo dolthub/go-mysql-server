@@ -64,17 +64,17 @@ func (j JSONInsert) String() string {
 	return fmt.Sprintf("%s(%s)", j.FunctionName(), strings.Join(parts, ","))
 }
 
-func (j JSONInsert) Type() sql.Type {
+func (j JSONInsert) Type(ctx *sql.Context) sql.Type {
 	return types.JSON
 }
 
-func (j JSONInsert) IsNullable() bool {
+func (j JSONInsert) IsNullable(ctx *sql.Context) bool {
 	for _, arg := range j.pathVals {
-		if arg.IsNullable() {
+		if arg.IsNullable(ctx) {
 			return true
 		}
 	}
-	return j.doc.IsNullable()
+	return j.doc.IsNullable(ctx)
 }
 
 func (j JSONInsert) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -107,15 +107,15 @@ func (j JSONInsert) Children() []sql.Expression {
 	return append([]sql.Expression{j.doc}, j.pathVals...)
 }
 
-func (j JSONInsert) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (j JSONInsert) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(j.Children()) != len(children) {
 		return nil, fmt.Errorf("json_replace did not receive the correct amount of args")
 	}
-	return NewJSONInsert(children...)
+	return NewJSONInsert(ctx, children...)
 }
 
 // NewJSONInsert creates a new JSONInsert function.
-func NewJSONInsert(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONInsert(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) <= 1 {
 		return nil, sql.ErrInvalidArgumentNumber.New("JSON_INSERT", "more than 1", len(args))
 	} else if (len(args)-1)%2 == 1 {

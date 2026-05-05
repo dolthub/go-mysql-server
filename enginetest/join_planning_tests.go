@@ -68,7 +68,7 @@ var JoinPlanningTests = []joinPlanScript{
 			},
 			{
 				q:     "select * from xy where x > 0 and x not in (select 999) and x in (select 888 union select 777)",
-				types: []plan.JoinType{plan.JoinTypeLeftOuter},
+				types: []plan.JoinType{plan.JoinTypeLeftOuterExcludeNulls},
 				exp:   []sql.Row{},
 			},
 		},
@@ -438,18 +438,18 @@ var JoinPlanningTests = []joinPlanScript{
 			},
 			{
 				q:     "select * from xy where x not in (select u from uv where u not in (select a from ab where a not in (select r from rs where r = 1))) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeLeftOuterHashExcludeNulls, plan.JoinTypeLeftOuterHashExcludeNulls, plan.JoinTypeLeftOuter},
+				types: []plan.JoinType{plan.JoinTypeLeftOuterHashExcludeNulls, plan.JoinTypeLeftOuterHashExcludeNulls, plan.JoinTypeLeftOuterExcludeNulls},
 				exp:   []sql.Row{{0, 2}, {2, 1}, {3, 3}},
 			},
 			{
 				q:     "select * from xy where x != (select r from rs where r = 1) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeLeftOuter},
+				types: []plan.JoinType{plan.JoinTypeLeftOuterExcludeNulls},
 				exp:   []sql.Row{{0, 2}, {2, 1}, {3, 3}},
 			},
 			{
 				// anti join will be cross-join-right, then converted to inner join when filters are pushed down, be passed non-nil parent row
 				q:     "select x,a from ab, (select * from xy where x != (select r from rs where r = 1) order by 1) sq where x = 2 and b = 2 order by 1,2;",
-				types: []plan.JoinType{plan.JoinTypeInner, plan.JoinTypeLeftOuter},
+				types: []plan.JoinType{plan.JoinTypeInner, plan.JoinTypeLeftOuterExcludeNulls},
 				exp:   []sql.Row{{2, 0}, {2, 1}, {2, 2}},
 			},
 			{
@@ -464,7 +464,7 @@ select * from uv where u > (
   order by 1 limit 1
 )
 order by 1;`,
-				types: []plan.JoinType{plan.JoinTypeSemi, plan.JoinTypeCrossHash, plan.JoinTypeLeftOuter},
+				types: []plan.JoinType{plan.JoinTypeSemi, plan.JoinTypeCrossHash, plan.JoinTypeLeftOuterExcludeNulls},
 				exp:   []sql.Row{{1, 1}, {2, 2}, {3, 2}},
 			},
 			{
@@ -476,13 +476,13 @@ order by 1;`,
 			{
 				// order by will be discarded
 				q:     "select * from xy where x != (select r from rs where r = 1 order by 1) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeLeftOuter},
+				types: []plan.JoinType{plan.JoinTypeLeftOuterExcludeNulls},
 				exp:   []sql.Row{{0, 2}, {2, 1}, {3, 3}},
 			},
 			{
 				// limit prevents scope merging
 				q:     "select * from xy where x != (select r from rs where r = 1 limit 1) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeLeftOuter},
+				types: []plan.JoinType{plan.JoinTypeLeftOuterExcludeNulls},
 				exp:   []sql.Row{{0, 2}, {2, 1}, {3, 3}},
 			},
 			{
@@ -562,12 +562,12 @@ order by 1;`,
 			},
 			{
 				q:     "select * from xy where x = 1 and x != (select u from uv where u = 4);",
-				types: []plan.JoinType{plan.JoinTypeLeftOuter},
+				types: []plan.JoinType{plan.JoinTypeLeftOuterExcludeNulls},
 				exp:   []sql.Row{{1, 0}},
 			},
 			{
 				q:     "select * from xy where x = 1 and x not in (select u from uv where u = 4);",
-				types: []plan.JoinType{plan.JoinTypeLeftOuter},
+				types: []plan.JoinType{plan.JoinTypeLeftOuterExcludeNulls},
 				exp:   []sql.Row{{1, 0}},
 			},
 			{
@@ -1893,7 +1893,7 @@ func evalJoinTypeTest(t *testing.T, harness Harness, e QueryEngine, query string
 		a, err := analyzeQuery(ctx, e, query)
 		require.NoError(t, err)
 
-		jts := collectJoinTypes(a)
+		jts := collectJoinTypes(ctx, a)
 		var exp []string
 		for _, t := range types {
 			exp = append(exp, t.String())
@@ -1902,7 +1902,7 @@ func evalJoinTypeTest(t *testing.T, harness Harness, e QueryEngine, query string
 		for _, t := range jts {
 			cmp = append(cmp, t.String())
 		}
-		require.Equal(t, exp, cmp, fmt.Sprintf("unexpected plan:\n%s", sql.DebugString(a)))
+		require.Equal(t, exp, cmp, fmt.Sprintf("unexpected plan:\n%s", sql.DebugString(ctx, a)))
 	})
 }
 
@@ -1938,12 +1938,12 @@ func evalMergeCmpTest(t *testing.T, harness Harness, e QueryEngine, tt JoinPlanT
 		require.NoError(t, err)
 
 		// consider making this a string too
-		compares := collectMergeCompares(a)
+		compares := collectMergeCompares(ctx, a)
 		var cmp []string
 		for _, i := range compares {
 			cmp = append(cmp, i.String())
 		}
-		require.Equal(t, tt.mergeCompares, cmp, fmt.Sprintf("unexpected plan:\n%s", sql.DebugString(a)))
+		require.Equal(t, tt.mergeCompares, cmp, fmt.Sprintf("unexpected plan:\n%s", sql.DebugString(ctx, a)))
 	})
 }
 
@@ -1959,7 +1959,7 @@ func evalIndexTest(t *testing.T, harness Harness, e QueryEngine, q string, index
 		a, err := analyzeQuery(ctx, e, q)
 		require.NoError(t, err)
 
-		idxs := collectIndexes(a)
+		idxs := collectIndexes(ctx, a)
 		var exp []string
 		for _, i := range indexes {
 			exp = append(exp, i)
@@ -1968,7 +1968,7 @@ func evalIndexTest(t *testing.T, harness Harness, e QueryEngine, q string, index
 		for _, i := range idxs {
 			cmp = append(cmp, strings.ToLower(i.ID()))
 		}
-		require.Equal(t, exp, cmp, fmt.Sprintf("unexpected plan:\n%s", sql.DebugString(a)))
+		require.Equal(t, exp, cmp, fmt.Sprintf("unexpected plan:\n%s", sql.DebugString(ctx, a)))
 	})
 }
 
@@ -1996,9 +1996,9 @@ func evalJoinCorrectness(t *testing.T, harness Harness, e QueryEngine, name, q s
 	}
 }
 
-func collectJoinTypes(n sql.Node) []plan.JoinType {
+func collectJoinTypes(ctx *sql.Context, n sql.Node) []plan.JoinType {
 	var types []plan.JoinType
-	transform.InspectWithOpaque(n, func(n sql.Node) bool {
+	transform.InspectWithOpaque(ctx, n, func(ctx *sql.Context, n sql.Node) bool {
 		if n == nil {
 			return true
 		}
@@ -2009,12 +2009,12 @@ func collectJoinTypes(n sql.Node) []plan.JoinType {
 
 		if ex, ok := n.(sql.Expressioner); ok {
 			for _, e := range ex.Expressions() {
-				transform.InspectExpr(e, func(e sql.Expression) bool {
+				transform.InspectExpr(ctx, e, func(ctx *sql.Context, e sql.Expression) bool {
 					sq, ok := e.(*plan.Subquery)
 					if !ok {
 						return false
 					}
-					types = append(types, collectJoinTypes(sq.Query)...)
+					types = append(types, collectJoinTypes(ctx, sq.Query)...)
 					return false
 				})
 			}
@@ -2024,21 +2024,21 @@ func collectJoinTypes(n sql.Node) []plan.JoinType {
 	return types
 }
 
-func collectMergeCompares(n sql.Node) []sql.Expression {
+func collectMergeCompares(ctx *sql.Context, n sql.Node) []sql.Expression {
 	var compares []sql.Expression
-	transform.InspectWithOpaque(n, func(n sql.Node) bool {
+	transform.InspectWithOpaque(ctx, n, func(ctx *sql.Context, n sql.Node) bool {
 		if n == nil {
 			return true
 		}
 
 		if ex, ok := n.(sql.Expressioner); ok {
 			for _, e := range ex.Expressions() {
-				transform.InspectExpr(e, func(e sql.Expression) bool {
+				transform.InspectExpr(ctx, e, func(ctx *sql.Context, e sql.Expression) bool {
 					sq, ok := e.(*plan.Subquery)
 					if !ok {
 						return false
 					}
-					compares = append(compares, collectMergeCompares(sq.Query)...)
+					compares = append(compares, collectMergeCompares(ctx, sq.Query)...)
 					return false
 				})
 			}
@@ -2052,15 +2052,15 @@ func collectMergeCompares(n sql.Node) []sql.Expression {
 			return true
 		}
 
-		compares = append(compares, expression.SplitConjunction(join.JoinCond())[0])
+		compares = append(compares, expression.SplitConjunction(ctx, join.JoinCond())[0])
 		return true
 	})
 	return compares
 }
 
-func collectIndexes(n sql.Node) []sql.Index {
+func collectIndexes(ctx *sql.Context, n sql.Node) []sql.Index {
 	var indexes []sql.Index
-	transform.InspectWithOpaque(n, func(n sql.Node) bool {
+	transform.InspectWithOpaque(ctx, n, func(ctx *sql.Context, n sql.Node) bool {
 		if n == nil {
 			return true
 		}
@@ -2072,12 +2072,12 @@ func collectIndexes(n sql.Node) []sql.Index {
 
 		if ex, ok := n.(sql.Expressioner); ok {
 			for _, e := range ex.Expressions() {
-				transform.InspectExpr(e, func(e sql.Expression) bool {
+				transform.InspectExpr(ctx, e, func(ctx *sql.Context, e sql.Expression) bool {
 					sq, ok := e.(*plan.Subquery)
 					if !ok {
 						return false
 					}
-					indexes = append(indexes, collectIndexes(sq.Query)...)
+					indexes = append(indexes, collectIndexes(ctx, sq.Query)...)
 					return false
 				})
 			}
@@ -2101,7 +2101,7 @@ func evalJoinOrder(t *testing.T, harness Harness, e QueryEngine, q string, exp [
 				return
 			}
 		}
-		assert.Failf(t, "expected order %s found '%s'\ndetail:\n%s", fmt.Sprintf("%#v", exp), strings.Join(cmp, ","), sql.DebugString(a))
+		assert.Failf(t, "expected order %s found '%s'\ndetail:\n%s", fmt.Sprintf("%#v", exp), strings.Join(cmp, ","), sql.DebugString(ctx, a))
 	})
 }
 

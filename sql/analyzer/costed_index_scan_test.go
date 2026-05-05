@@ -189,12 +189,12 @@ Or
 	ctx := sql.NewEmptyContext()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := newIndexCoster(ctx, "xyz")
-			root, leftover, _ := c.buildRoot(tt.in, NewDefaultLogicTreeWalker())
+			c := newIndexCoster("xy")
+			root, leftover, _ := c.buildRoot(ctx, tt.in, NewDefaultLogicTreeWalker())
 			costTree := formatIndexFilter(root)
 			require.Equal(t, strings.TrimSpace(tt.exp), strings.TrimSpace(costTree), costTree)
 			if leftover != nil {
-				leftoverCmp := sql.DebugString(leftover)
+				leftoverCmp := sql.DebugString(ctx, leftover)
 				require.Equal(t, strings.TrimSpace(tt.leftover), strings.TrimSpace(leftoverCmp), leftoverCmp)
 			} else {
 				require.Equal(t, "", tt.leftover)
@@ -550,14 +550,14 @@ func TestRangeBuilder(t *testing.T) {
 
 	var sch = make(sql.Schema, 3)
 	for i, e := range []*expression.GetField{x, y, z} {
-		sch[i] = transform.ExpressionToColumn(e, testTable)
+		sch[i] = transform.ExpressionToColumn(ctx, e, testTable)
 	}
 
 	for _, tt := range tests {
-		t.Run(fmt.Sprintf("Expr:  %s\nRange: %s", tt.filter.String(), tt.exp.DebugString()), func(t *testing.T) {
+		t.Run(fmt.Sprintf("Expr:  %s\nRange: %s", tt.filter.String(), tt.exp.DebugString(ctx)), func(t *testing.T) {
 
-			c := newIndexCoster(ctx, testTable)
-			root, _, _ := c.buildRoot(tt.filter, NewDefaultLogicTreeWalker())
+			c := newIndexCoster(testTable)
+			root, _, _ := c.buildRoot(ctx, tt.filter, NewDefaultLogicTreeWalker())
 
 			var idx sql.Index
 			switch len(tt.exp[0]) {
@@ -569,10 +569,10 @@ func TestRangeBuilder(t *testing.T) {
 				idx = idx_1
 			}
 
-			stat, err := newUniformDistStatistic("mydb", "", testTable, sch, idx, 10, 10)
+			stat, err := newUniformDistStatistic(ctx, "mydb", "", testTable, sch, idx, 10, 10)
 			require.NoError(t, err)
 
-			err = c.cost(root, stat, idx)
+			err = c.cost(ctx, root, stat, idx)
 			require.NoError(t, err)
 
 			include := c.bestFilters
@@ -587,19 +587,19 @@ func TestRangeBuilder(t *testing.T) {
 			if tt.cnt == 1 {
 				require.Equal(t, 0, len(b.leftover))
 			}
-			cmpRanges, err = sql.SortRanges(cmpRanges...)
+			cmpRanges, err = sql.SortRanges(ctx, cmpRanges...)
 			require.NoError(t, err)
 
-			expRanges, err := sql.RemoveOverlappingRanges(tt.exp...)
+			expRanges, err := sql.RemoveOverlappingRanges(ctx, tt.exp...)
 			require.NoError(t, err)
-			expRanges, err = sql.SortRanges(expRanges...)
+			expRanges, err = sql.SortRanges(ctx, expRanges...)
 			require.NoError(t, err)
 
-			ok, err := expRanges.Equals(cmpRanges)
+			ok, err := expRanges.Equals(ctx, cmpRanges)
 			require.NoError(t, err)
 			assert.True(t, ok)
 			if !ok {
-				log.Printf("expected: %s\nfound: %s\n", expRanges.DebugString(), cmpRanges.DebugString())
+				log.Printf("expected: %s\nfound: %s\n", expRanges.DebugString(ctx), cmpRanges.DebugString(ctx))
 			}
 		})
 	}
@@ -665,25 +665,25 @@ func TestRangeBuilderInclude(t *testing.T) {
 			// t.Skip("todo add tests and implement")
 
 			// TODO make index
-			c := newIndexCoster(ctx, "xyz")
-			root, _, _ := c.buildRoot(tt.in, NewDefaultLogicTreeWalker())
+			c := newIndexCoster("xyz")
+			root, _, _ := c.buildRoot(ctx, tt.in, NewDefaultLogicTreeWalker())
 			b := newIndexScanRangeBuilder(ctx, dummy1, tt.include, sql.FastIntSet{}, c.idToExpr)
 			cmpRanges, err := b.buildRangeCollection(root)
 			require.NoError(t, err)
-			cmpRanges, err = sql.SortRanges(cmpRanges...)
+			cmpRanges, err = sql.SortRanges(ctx, cmpRanges...)
 			require.NoError(t, err)
 
-			expRanges, err := sql.RemoveOverlappingRanges(tt.exp...)
+			expRanges, err := sql.RemoveOverlappingRanges(ctx, tt.exp...)
 			require.NoError(t, err)
-			expRanges, err = sql.SortRanges(expRanges...)
+			expRanges, err = sql.SortRanges(ctx, expRanges...)
 			require.NoError(t, err)
 
 			// TODO how to compare ranges, strings?
-			ok, err := expRanges.Equals(cmpRanges)
+			ok, err := expRanges.Equals(ctx, cmpRanges)
 			require.NoError(t, err)
 			assert.True(t, ok)
 			if !ok {
-				log.Printf("expected: %s\nfound: %s\n", expRanges.DebugString(), cmpRanges.DebugString())
+				log.Printf("expected: %s\nfound: %s\n", expRanges.DebugString(ctx), cmpRanges.DebugString(ctx))
 			}
 		})
 	}
@@ -883,8 +883,8 @@ func (i *indexSearchableTable) String() string {
 	return i.underlying.String()
 }
 
-func (i *indexSearchableTable) Schema() sql.Schema {
-	return i.underlying.Schema()
+func (i *indexSearchableTable) Schema(ctx *sql.Context) sql.Schema {
+	return i.underlying.Schema(ctx)
 }
 
 func (i *indexSearchableTable) Collation() sql.CollationID {
@@ -921,7 +921,7 @@ func (i *indexSearchableTable) LookupForExpressions(ctx *sql.Context, exprs ...s
 	if eq, ok := exprs[0].(*expression.Equals); ok {
 		if gf, ok := eq.Left().(*expression.GetField); ok && strings.EqualFold(gf.Name(), "x") {
 			if lit, ok := eq.Right().(*expression.Literal); ok {
-				ranges := sql.MySQLRangeCollection{{sql.ClosedRangeColumnExpr(lit.Value(), lit.Value(), lit.Type())}}
+				ranges := sql.MySQLRangeCollection{{sql.ClosedRangeColumnExpr(lit.Value(), lit.Value(), lit.Type(ctx))}}
 				return sql.IndexLookup{Index: xIdx, Ranges: ranges}, nil, nil, true, nil
 			}
 		}

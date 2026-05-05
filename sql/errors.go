@@ -119,6 +119,10 @@ var (
 	// ErrDeleteRowNotFound is returned when row being deleted was not found
 	ErrDeleteRowNotFound = errors.NewKind("row was not found when attempting to delete")
 
+	// ErrRowEditCanceled is returned when an INSERT, UPDATE, or DELETE operation is canceled due to a trigger
+	// or other circumstances. It is only used as a signal error.
+	ErrRowEditCanceled = errors.NewKind("row edit was canceled")
+
 	// ErrDuplicateAliasOrTable should be returned when a query contains a duplicate alias / table name.
 	ErrDuplicateAliasOrTable = errors.NewKind("Not unique table/alias: %s")
 
@@ -799,6 +803,10 @@ var (
 
 	// ErrUnsupportedIndexPrefix is returned for an index on a string column with a prefix
 	ErrUnsupportedIndexPrefix = errors.NewKind("prefix index on string column '%s' unsupported")
+
+	// ErrColumnFunctionalIndexDependency is returned when a column referenced in a functional index is dropped or renamed.
+	// This matches MySQL ERROR 3837 (HY000).
+	ErrColumnFunctionalIndexDependency = newMySQLKind("Column '%s' has a functional index dependency and cannot be dropped or renamed.", 3837, "HY000")
 
 	// ErrInvalidIndexPrefix is returned when a prefix index is not valid for the column type,
 	// or the prefix length exceeds the column's character length.

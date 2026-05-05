@@ -48,6 +48,23 @@ type GeometryValue interface {
 	BBox() (float64, float64, float64, float64)
 }
 
+// UnwrapGeometry unwraps a value that may be a sql.AnyWrapper (e.g. adaptive/out-of-band storage)
+// and returns the underlying GeometryValue. If the value is already a GeometryValue, it is returned
+// directly. Returns ErrNotGeometry if the value cannot be converted.
+func UnwrapGeometry(ctx context.Context, v interface{}) (GeometryValue, error) {
+	if gv, ok := v.(GeometryValue); ok {
+		return gv, nil
+	}
+	unwrapped, err := sql.UnwrapAny(ctx, v)
+	if err != nil {
+		return nil, err
+	}
+	if gv, ok := unwrapped.(GeometryValue); ok {
+		return gv, nil
+	}
+	return nil, ErrNotGeometry.New(v)
+}
+
 var _ sql.Type = GeometryType{}
 var _ sql.SpatialColumnType = GeometryType{}
 var _ sql.CollationCoercible = GeometryType{}
@@ -393,14 +410,14 @@ func (t GeometryType) Compare(s context.Context, a interface{}, b interface{}) (
 		return res, nil
 	}
 
-	aa, ok := a.(GeometryValue)
-	if !ok {
-		return 0, ErrNotGeometry.New(a)
+	aa, err := UnwrapGeometry(s, a)
+	if err != nil {
+		return 0, err
 	}
 
-	bb, ok := b.(GeometryValue)
-	if !ok {
-		return 0, ErrNotGeometry.New(b)
+	bb, err := UnwrapGeometry(s, b)
+	if err != nil {
+		return 0, err
 	}
 
 	return bytes.Compare(aa.Serialize(), bb.Serialize()), nil
@@ -449,6 +466,12 @@ func (t GeometryType) Convert(ctx context.Context, v interface{}) (interface{}, 
 			return nil, sql.InRange, err
 		}
 		return val, sql.InRange, nil
+	case sql.AnyWrapper:
+		unwrapped, err := val.UnwrapAny(ctx)
+		if err != nil {
+			return nil, sql.InRange, err
+		}
+		return t.Convert(ctx, unwrapped)
 	default:
 		return nil, sql.InRange, sql.ErrSpatialTypeConversion.New()
 	}

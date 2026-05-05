@@ -50,7 +50,7 @@ func (c *CreateDB) String() string {
 	return fmt.Sprintf("%s database%s %v", sqlparser.CreateStr, ifNotExists, c.DbName)
 }
 
-func (c *CreateDB) Schema() sql.Schema {
+func (c *CreateDB) Schema(ctx *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -58,7 +58,7 @@ func (c *CreateDB) Children() []sql.Node {
 	return nil
 }
 
-func (c *CreateDB) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (c *CreateDB) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(c, children...)
 }
 
@@ -106,7 +106,7 @@ func (c *CreateSchema) String() string {
 	return fmt.Sprintf("%s schema%s %v", sqlparser.CreateStr, ifNotExists, c.DbName)
 }
 
-func (c *CreateSchema) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (c *CreateSchema) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(c, children...)
 }
 
@@ -139,7 +139,7 @@ func (d *DropDB) String() string {
 	return fmt.Sprintf("%s database%s %v", sqlparser.DropStr, ifExists, d.DbName)
 }
 
-func (d *DropDB) Schema() sql.Schema {
+func (d *DropDB) Schema(ctx *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -147,7 +147,7 @@ func (d *DropDB) Children() []sql.Node {
 	return nil
 }
 
-func (d *DropDB) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (d *DropDB) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(d, children...)
 }
 
@@ -209,7 +209,7 @@ func (c *AlterDB) String() string {
 }
 
 // Schema implements the interface sql.Node.
-func (c *AlterDB) Schema() sql.Schema {
+func (c *AlterDB) Schema(ctx *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -219,7 +219,7 @@ func (c *AlterDB) Children() []sql.Node {
 }
 
 // WithChildren implements the interface sql.Node.
-func (c *AlterDB) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (c *AlterDB) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(c, children...)
 }
 

@@ -166,7 +166,7 @@ func (s *Signal) IsReadOnly() bool {
 }
 
 // DebugString implements the sql.DebugStringer interface.
-func (s *Signal) DebugString() string {
+func (s *Signal) DebugString(ctx *sql.Context) string {
 	infoStr := ""
 	if len(s.Info) > 0 {
 		infoStr = " SET"
@@ -177,7 +177,7 @@ func (s *Signal) DebugString() string {
 				if i > 0 {
 					infoStr += ","
 				}
-				infoStr += " " + info.DebugString()
+				infoStr += " " + info.DebugString(ctx)
 				i++
 			}
 		}
@@ -186,7 +186,7 @@ func (s *Signal) DebugString() string {
 }
 
 // Schema implements the sql.Node interface.
-func (s *Signal) Schema() sql.Schema {
+func (s *Signal) Schema(ctx *sql.Context) sql.Schema {
 	return nil
 }
 
@@ -196,7 +196,7 @@ func (s *Signal) Children() []sql.Node {
 }
 
 // WithChildren implements the sql.Node interface.
-func (s *Signal) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (s *Signal) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(s, children...)
 }
 
@@ -230,7 +230,7 @@ func (s *Signal) signalItemsWithExpressions() []SignalInfo {
 	return items
 }
 
-func (s Signal) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+func (s Signal) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	itemsWithExprs := s.signalItemsWithExpressions()
 	if len(itemsWithExprs) != len(exprs) {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(exprs), len(itemsWithExprs))
@@ -280,7 +280,7 @@ func (s *SignalName) String() string {
 }
 
 // Schema implements the sql.Node interface.
-func (s *SignalName) Schema() sql.Schema {
+func (s *SignalName) Schema(ctx *sql.Context) sql.Schema {
 	return nil
 }
 
@@ -294,7 +294,7 @@ func (s *SignalName) Children() []sql.Node {
 }
 
 // WithChildren implements the sql.Node interface.
-func (s *SignalName) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (s *SignalName) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(s, children...)
 }
 
@@ -317,10 +317,10 @@ func (s SignalInfo) String() string {
 	return fmt.Sprintf("%s = %s", itemName, s.StrValue)
 }
 
-func (s SignalInfo) DebugString() string {
+func (s SignalInfo) DebugString(ctx *sql.Context) string {
 	itemName := strings.ToUpper(string(s.ConditionItemName))
 	if s.ExprVal != nil {
-		return fmt.Sprintf("%s = %s", itemName, sql.DebugString(s.ExprVal))
+		return fmt.Sprintf("%s = %s", itemName, sql.DebugString(ctx, s.ExprVal))
 	} else if s.ConditionItemName == SignalConditionItemName_MysqlErrno {
 		return fmt.Sprintf("%s = %d", itemName, s.IntValue)
 	}

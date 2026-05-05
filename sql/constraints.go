@@ -79,7 +79,7 @@ func (f *ForeignKeyConstraint) IsSelfReferential() bool {
 }
 
 // DebugString implements the DebugStringer interface.
-func (f *ForeignKeyConstraint) DebugString() string {
+func (f *ForeignKeyConstraint) DebugString(ctx *Context) string {
 	return fmt.Sprintf(
 		"FOREIGN KEY %s (%s) REFERENCES %s (%s)",
 		f.Name,
@@ -107,7 +107,7 @@ type CheckConstraint struct {
 }
 
 // DebugString implements the DebugStringer interface.
-func (c CheckConstraint) DebugString() string {
+func (c CheckConstraint) DebugString(ctx *Context) string {
 	name := c.Name
 	if len(name) > 0 {
 		name += " "
@@ -116,7 +116,7 @@ func (c CheckConstraint) DebugString() string {
 	if !c.Enforced {
 		not = "not "
 	}
-	return fmt.Sprintf("%sCHECK %s %sENFORCED", name, DebugString(c.Expr), not)
+	return fmt.Sprintf("%sCHECK %s %sENFORCED", name, DebugString(ctx, c.Expr), not)
 }
 
 type CheckConstraints []*CheckConstraint

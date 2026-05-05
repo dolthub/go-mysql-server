@@ -91,7 +91,7 @@ func (expr *MatchAgainst) Children() []sql.Expression {
 // reflect positions in that full row, while [fulltext.KeyColumns] positions are offsets within the
 // parent table's schema. This offset bridges those two coordinate systems so that [MatchAgainst.Eval]
 // can slice the row to the parent table's columns before the search mode functions apply key column positions.
-func (expr *MatchAgainst) colOffset() int {
+func (expr *MatchAgainst) colOffset(ctx *sql.Context) int {
 	expr.tableColOffsetOnce.Do(func() {
 		if expr.ParentTable == nil {
 			return
@@ -102,7 +102,7 @@ func (expr *MatchAgainst) colOffset() int {
 		}
 		// Subtracting the column's position in the parent schema from its position in the joined row
 		// gives the number of columns from other tables that precede the parent table in the joined row.
-		j := expr.ParentTable.Schema().IndexOfColName(fields[0].Name())
+		j := expr.ParentTable.Schema(ctx).IndexOfColName(fields[0].Name())
 		if j >= 0 {
 			offset := fields[0].Index() - j
 			if offset > 0 {
@@ -117,7 +117,7 @@ func (expr *MatchAgainst) colOffset() int {
 func (expr *MatchAgainst) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// KeyCols.Positions are offsets into the parent table's schema, so the row must be
 	// sliced to the parent table's columns before the search mode functions use those positions.
-	offset := expr.colOffset()
+	offset := expr.colOffset(ctx)
 	end := offset + expr.expectedRowLen
 	if end <= len(row) {
 		row = row[offset:end]
@@ -139,7 +139,7 @@ func (expr *MatchAgainst) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 }
 
 // IsNullable implements sql.Expression
-func (expr *MatchAgainst) IsNullable() bool {
+func (expr *MatchAgainst) IsNullable(ctx *sql.Context) bool {
 	return false
 }
 
@@ -176,12 +176,12 @@ func (expr *MatchAgainst) String() string {
 }
 
 // Type implements sql.Expression
-func (expr *MatchAgainst) Type() sql.Type {
+func (expr *MatchAgainst) Type(ctx *sql.Context) sql.Type {
 	return types.Float32
 }
 
 // WithChildren implements sql.Expression
-func (expr *MatchAgainst) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (expr *MatchAgainst) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != len(expr.Columns)+1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(expr, len(children), len(expr.Columns)+1)
 	}
@@ -204,7 +204,7 @@ func (expr *MatchAgainst) WithChildren(children ...sql.Expression) (sql.Expressi
 }
 
 // WithInfo returns a new *MatchAgainst with the given tables and other needed information to perform matching.
-func (expr *MatchAgainst) WithInfo(parent, config, position, docCount, globalCount, rowCount sql.IndexAddressableTable, keyCols fulltext.KeyColumns) *MatchAgainst {
+func (expr *MatchAgainst) WithInfo(ctx *sql.Context, parent, config, position, docCount, globalCount, rowCount sql.IndexAddressableTable, keyCols fulltext.KeyColumns) *MatchAgainst {
 	return &MatchAgainst{
 		Columns:          expr.Columns,
 		Expr:             expr.Expr,
@@ -217,7 +217,7 @@ func (expr *MatchAgainst) WithInfo(parent, config, position, docCount, globalCou
 		DocCountTable:    docCount,
 		GlobalCountTable: globalCount,
 		RowCountTable:    rowCount,
-		expectedRowLen:   len(parent.Schema()),
+		expectedRowLen:   len(parent.Schema(ctx)),
 	}
 }
 
@@ -310,7 +310,7 @@ func (expr *MatchAgainst) inNaturalLanguageMode(ctx *sql.Context, row sql.Row) (
 		}
 		expr.rowCountIndex = rowCountIndexes[0]
 		// Create the parser now since it does a lot of preprocessing. We'll reset the iterators every call.
-		expr.parser, nErr = fulltext.NewDefaultParser(ctx, fulltext.GetCollationFromSchema(ctx, expr.DocCountTable.Schema()), wordsStr)
+		expr.parser, nErr = fulltext.NewDefaultParser(ctx, fulltext.GetCollationFromSchema(ctx, expr.DocCountTable.Schema(ctx)), wordsStr)
 		if nErr != nil {
 			err = nErr
 			return
@@ -341,15 +341,15 @@ func (expr *MatchAgainst) inNaturalLanguageMode(ctx *sql.Context, row sql.Row) (
 		var lookup sql.IndexLookup
 		if expr.KeyCols.Type != fulltext.KeyType_None {
 			ranges := make(sql.MySQLRange, 1+len(expr.KeyCols.Positions))
-			ranges[0] = sql.ClosedRangeColumnExpr(wordStr, wordStr, expr.DocCountTable.Schema()[0].Type)
+			ranges[0] = sql.ClosedRangeColumnExpr(wordStr, wordStr, expr.DocCountTable.Schema(ctx)[0].Type)
 			for i, keyColPos := range expr.KeyCols.Positions {
-				ranges[i+1] = sql.ClosedRangeColumnExpr(row[keyColPos], row[keyColPos], expr.DocCountTable.Schema()[i+1].Type)
+				ranges[i+1] = sql.ClosedRangeColumnExpr(row[keyColPos], row[keyColPos], expr.DocCountTable.Schema(ctx)[i+1].Type)
 			}
 			lookup = sql.IndexLookup{Ranges: sql.MySQLRangeCollection{ranges}, Index: expr.docCountIndex}
 		} else {
 			lookup = sql.IndexLookup{Ranges: sql.MySQLRangeCollection{
 				{
-					sql.ClosedRangeColumnExpr(wordStr, wordStr, expr.DocCountTable.Schema()[0].Type),
+					sql.ClosedRangeColumnExpr(wordStr, wordStr, expr.DocCountTable.Schema(ctx)[0].Type),
 					sql.ClosedRangeColumnExpr(hash, hash, fulltext.SchemaRowCount[0].Type),
 				},
 			}, Index: expr.docCountIndex}
@@ -384,7 +384,7 @@ func (expr *MatchAgainst) inNaturalLanguageMode(ctx *sql.Context, row sql.Row) (
 		// Otherwise, we've found a match, so we'll grab the global count as well
 		lookup = sql.IndexLookup{Ranges: sql.MySQLRangeCollection{
 			{
-				sql.ClosedRangeColumnExpr(wordStr, wordStr, expr.GlobalCountTable.Schema()[0].Type),
+				sql.ClosedRangeColumnExpr(wordStr, wordStr, expr.GlobalCountTable.Schema(ctx)[0].Type),
 			},
 		}, Index: expr.globalCountIndex}
 		editorData = expr.GlobalCountTable.IndexedAccess(ctx, lookup)
@@ -410,7 +410,7 @@ func (expr *MatchAgainst) inNaturalLanguageMode(ctx *sql.Context, row sql.Row) (
 		// Lastly, grab the number of unique words within this row from the row count
 		lookup = sql.IndexLookup{Ranges: sql.MySQLRangeCollection{
 			{
-				sql.ClosedRangeColumnExpr(hash, hash, expr.RowCountTable.Schema()[0].Type),
+				sql.ClosedRangeColumnExpr(hash, hash, expr.RowCountTable.Schema(ctx)[0].Type),
 			},
 		}, Index: expr.rowCountIndex}
 		editorData = expr.RowCountTable.IndexedAccess(ctx, lookup)

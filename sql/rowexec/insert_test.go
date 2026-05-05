@@ -164,7 +164,7 @@ func TestInsert(t *testing.T) {
 			pro := memory.NewDBProvider(db)
 			ctx := newContext(pro)
 
-			table := memory.NewTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
+			table := memory.NewTable(ctx, db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 				{Name: "c1", Source: "foo", Type: tc.colType},
 			}), nil)
 

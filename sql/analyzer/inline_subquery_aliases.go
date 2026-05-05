@@ -69,17 +69,17 @@ func inlineSubqueryAliasRefs(ctx *sql.Context, a *Analyzer, n sql.Node, scope *p
 	if !qFlags.SubqueryIsSet() {
 		return n, transform.SameTree, nil
 	}
-	ret, err := inlineSubqueryAliasRefsHelper(&aliasScope{}, n)
+	ret, err := inlineSubqueryAliasRefsHelper(ctx, &aliasScope{}, n)
 	return ret, transform.NewTree, err
 }
 
-func inlineSubqueryAliasRefsHelper(scope *aliasScope, n sql.Node) (sql.Node, error) {
+func inlineSubqueryAliasRefsHelper(ctx *sql.Context, scope *aliasScope, n sql.Node) (sql.Node, error) {
 	ret := n
 	switch n := n.(type) {
 	case *plan.Project:
 		var newProj []sql.Expression
 		for i, e := range n.Projections {
-			e, same, err := transform.Expr(e, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+			e, same, err := transform.Expr(ctx, e, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				switch e := e.(type) {
 				case *expression.AliasReference:
 				case *expression.Alias:
@@ -95,7 +95,7 @@ func inlineSubqueryAliasRefsHelper(scope *aliasScope, n sql.Node) (sql.Node, err
 					}
 				case *plan.Subquery:
 					subqScope := scope.push()
-					newQ, err := inlineSubqueryAliasRefsHelper(subqScope, e.Query)
+					newQ, err := inlineSubqueryAliasRefsHelper(ctx, subqScope, e.Query)
 					if err != nil {
 						return e, transform.SameTree, err
 					}
@@ -126,12 +126,12 @@ func inlineSubqueryAliasRefsHelper(scope *aliasScope, n sql.Node) (sql.Node, err
 	newChildren := make([]sql.Node, len(n.Children()))
 	var err error
 	for i, c := range ret.Children() {
-		newChildren[i], err = inlineSubqueryAliasRefsHelper(scope, c)
+		newChildren[i], err = inlineSubqueryAliasRefsHelper(ctx, scope, c)
 		if err != nil {
 			return nil, err
 		}
 	}
-	ret, err = ret.WithChildren(newChildren...)
+	ret, err = ret.WithChildren(ctx, newChildren...)
 	if err != nil {
 		return nil, err
 	}

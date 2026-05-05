@@ -222,7 +222,6 @@ func LookupJSONValue(ctx context.Context, j sql.JSONWrapper, path string) (sql.J
 	}
 
 	if searchableJson, ok := j.(SearchableJSON); ok {
-		ctx := context.Background()
 		return searchableJson.Lookup(ctx, path)
 	}
 

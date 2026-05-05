@@ -67,6 +67,9 @@ type IndexColumn struct {
 	Name string
 	// Length represents the index prefix length. If zero, then no length was specified.
 	Length int64
+	// Expression is an indexed functional expression. When this field is set, the Name
+	// field is empty.
+	Expression Expression
 }
 
 // IndexConstraint represents any constraints that should be applied to the index.
@@ -120,7 +123,7 @@ type Index interface {
 	// ColumnExpressionTypes returns each expression and its associated Type.
 	// Each expression string should exactly match the string returned from
 	// Index.Expressions().
-	ColumnExpressionTypes() []ColumnExpressionType
+	ColumnExpressionTypes(*Context) []ColumnExpressionType
 	// CanSupport returns whether this index supports lookups on the given
 	// range filters.
 	CanSupport(*Context, ...Range) bool
@@ -141,10 +144,10 @@ type ExtendedIndex interface {
 	Index
 	// ExtendedExpressions returns the same result as Expressions, but appends any primary keys that are implicitly in
 	// the index. The appended primary keys are in declaration order.
-	ExtendedExpressions() []string
+	ExtendedExpressions(ctx *Context) []string
 	// ExtendedColumnExpressionTypes returns the same result as ColumnExpressionTypes, but appends the type of any
 	// primary keys that are implicitly in the index. The appended primary keys are in declaration order.
-	ExtendedColumnExpressionTypes() []ColumnExpressionType
+	ExtendedColumnExpressionTypes(ctx *Context) []ColumnExpressionType
 }
 
 // IndexLookup is the implementation-specific definition of an index lookup. The IndexLookup must contain all necessary
@@ -236,10 +239,10 @@ func (il IndexLookup) String() string {
 	return pr.String()
 }
 
-func (il IndexLookup) DebugString() string {
+func (il IndexLookup) DebugString(ctx *Context) string {
 	pr := NewTreePrinter()
 	_ = pr.WriteNode("IndexLookup")
-	pr.WriteChildren(fmt.Sprintf("index: %s", il.Index), fmt.Sprintf("ranges: %s", il.Ranges.DebugString()))
+	pr.WriteChildren(fmt.Sprintf("index: %s", il.Index), fmt.Sprintf("ranges: %s", il.Ranges.DebugString(ctx)))
 	return pr.String()
 }
 
@@ -249,7 +252,7 @@ type FilteredIndex interface {
 	Index
 	// HandledFilters returns a subset of |filters| that are satisfied
 	// by index lookups to this index.
-	HandledFilters(filters []Expression) (handled []Expression)
+	HandledFilters(ctx *Context, filters []Expression) (handled []Expression)
 }
 
 type IndexOrder byte
@@ -265,9 +268,9 @@ const (
 type OrderedIndex interface {
 	Index
 	// Order returns the order of results for reads from this index
-	Order() IndexOrder
+	Order(ctx *Context) IndexOrder
 	// Reversible returns whether or not this index can be iterated on backwards
-	Reversible() bool
+	Reversible(ctx *Context) bool
 }
 
 // ColumnExpressionType returns a column expression along with its Type.

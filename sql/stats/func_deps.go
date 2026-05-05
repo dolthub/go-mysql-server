@@ -21,10 +21,10 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-func IndexFds(tableName string, sch sql.Schema, idx sql.Index) (*sql.FuncDepSet, sql.ColSet, error) {
+func IndexFds(ctx *sql.Context, tableName string, sch sql.Schema, idx sql.Index) (*sql.FuncDepSet, sql.ColSet, error) {
 	var idxCols sql.ColSet
 	pref := fmt.Sprintf("%s.", tableName)
-	for _, col := range idx.ColumnExpressionTypes() {
+	for _, col := range idx.ColumnExpressionTypes(ctx) {
 		colName := strings.TrimPrefix(strings.ToLower(col.Expression), pref)
 		i := sch.IndexOfColName(colName)
 		if i < 0 {

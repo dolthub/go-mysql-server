@@ -73,7 +73,7 @@ func (f *windowFrameBase) String() string {
 	}
 }
 
-func (f *windowFrameBase) DebugString() string {
+func (f *windowFrameBase) DebugString(ctx *sql.Context) string {
 	if f == nil {
 		return ""
 	}

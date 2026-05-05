@@ -37,7 +37,7 @@ func (b *BaseBuilder) buildCaseStatement(ctx *sql.Context, n *plan.CaseStatement
 		if err != nil {
 			return nil, err
 		}
-		comparison, err := n.Expr.Type().Compare(ctx, caseValue, whenValue)
+		comparison, err := n.Expr.Type(ctx).Compare(ctx, caseValue, whenValue)
 		if err != nil {
 			return nil, err
 		}
@@ -65,7 +65,7 @@ func (b *BaseBuilder) buildCaseIter(ctx *sql.Context, row sql.Row, iterNode sql.
 	}
 	return &ifElseIter{
 		branchIter: branchIter,
-		sch:        bodyNode.Schema(),
+		sch:        bodyNode.Schema(ctx),
 		branchNode: bodyNode,
 	}, nil
 }
@@ -107,7 +107,7 @@ func (b *BaseBuilder) buildIfElseBlock(ctx *sql.Context, n *plan.IfElseBlock, ro
 		}
 		return &ifElseIter{
 			branchIter: branchIter,
-			sch:        ifConditional.Body.Schema(),
+			sch:        ifConditional.Body.Schema(ctx),
 			branchNode: ifConditional.Body,
 		}, nil
 	}
@@ -130,7 +130,7 @@ func (b *BaseBuilder) buildIfElseBlock(ctx *sql.Context, n *plan.IfElseBlock, ro
 	}
 	return &ifElseIter{
 		branchIter: branchIter,
-		sch:        n.Else.Schema(),
+		sch:        n.Else.Schema(ctx),
 		branchNode: n.Else,
 	}, nil
 }
@@ -345,12 +345,12 @@ func (b *BaseBuilder) buildLoop(ctx *sql.Context, n *plan.Loop, row sql.Row) (sq
 		includeResultSet := false
 
 		var subIterNode sql.Node = n.Block
-		subIterSch := n.Block.Schema()
+		subIterSch := n.Block.Schema(ctx)
 		if blockRowIter, ok := loopBodyIter.(plan.BlockRowIter); ok {
 			subIterNode = blockRowIter.RepresentingNode()
-			subIterSch = blockRowIter.Schema()
+			subIterSch = blockRowIter.Schema(ctx)
 
-			if plan.NodeRepresentsSelect(subIterNode) {
+			if plan.NodeRepresentsSelect(ctx, subIterNode) {
 				selectSeen = true
 				includeResultSet = true
 				returnNode = subIterNode
@@ -366,7 +366,7 @@ func (b *BaseBuilder) buildLoop(ctx *sql.Context, n *plan.Loop, row sql.Row) (sq
 
 		// Wrap the caching code in an inline function so that we can use defer to safely dispose of the cache
 		err = func() error {
-			rowCache, disposeFunc := ctx.Memory.NewRowsCache()
+			rowCache, disposeFunc := ctx.Memory.NewRowsCache(ctx)
 			defer disposeFunc()
 
 			nextRow, err := loopBodyIter.Next(ctx)

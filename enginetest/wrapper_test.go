@@ -99,7 +99,7 @@ func TestWrapperCopyInKey(t *testing.T) {
 	schema := sql.NewPrimaryKeySchema(sql.Schema{
 		&sql.Column{Name: "col1", Source: "test", Type: types.LongText, Nullable: false, Default: planbuilder.MustStringToColumnDefaultValue(sql.NewEmptyContext(), `""`, types.Text, false)},
 	})
-	table := memory.NewTable(db.BaseDatabase, "test", schema, nil)
+	table := memory.NewTable(ctx, db.BaseDatabase, "test", schema, nil)
 
 	require.NoError(t, table.Insert(ctx, sql.Row{"brave"}))
 	require.NoError(t, table.Insert(ctx, sql.Row{longTextErrorWrapper}))
@@ -118,7 +118,7 @@ func TestWrapperCopyNotInKey(t *testing.T) {
 		&sql.Column{Name: "col1", Source: "test", Type: types.LongText, Nullable: false, Default: planbuilder.MustStringToColumnDefaultValue(sql.NewEmptyContext(), `""`, types.Text, false), PrimaryKey: false},
 	})
 
-	testTable := memory.NewTable(db.BaseDatabase, "test", schema, nil)
+	testTable := memory.NewTable(ctx, db.BaseDatabase, "test", schema, nil)
 	db.AddTable("test", testTable)
 
 	require.NoError(t, testTable.Insert(ctx, sql.Row{int64(1), "brave"}))
@@ -132,7 +132,7 @@ func TestWrapperCopyNotInKey(t *testing.T) {
 		&sql.Column{Name: "two", Source: "t2", Type: types.Int64, Nullable: false, Default: planbuilder.MustStringToColumnDefaultValue(sql.NewEmptyContext(), `1`, types.Int64, false), PrimaryKey: false},
 	})
 
-	testTable2 := memory.NewTable(db.BaseDatabase, "t2", copySchema, nil)
+	testTable2 := memory.NewTable(ctx, db.BaseDatabase, "t2", copySchema, nil)
 	db.AddTable("t2", testTable2)
 
 	TestQueryWithContext(t, ctx, e, harness, "INSERT INTO t2 SELECT 1, pk, col1, 2 FROM test;", nil, nil, nil, nil)
@@ -148,7 +148,7 @@ func TestWrapperCopyWhenWideningColumn(t *testing.T) {
 		&sql.Column{Name: "col1", Source: "test", Type: types.Text, Nullable: false, Default: planbuilder.MustStringToColumnDefaultValue(sql.NewEmptyContext(), `""`, types.Text, false), PrimaryKey: false},
 	})
 
-	testTable := memory.NewTable(db.BaseDatabase, "test", schema, nil)
+	testTable := memory.NewTable(ctx, db.BaseDatabase, "test", schema, nil)
 	db.AddTable("test", testTable)
 
 	require.NoError(t, testTable.Insert(ctx, sql.Row{int64(1), "brave"}))
@@ -168,7 +168,7 @@ func TestWrapperCopyWhenNarrowingColumn(t *testing.T) {
 		&sql.Column{Name: "col1", Source: "test", Type: types.LongText, Nullable: false, Default: planbuilder.MustStringToColumnDefaultValue(sql.NewEmptyContext(), `""`, types.Text, false), PrimaryKey: false},
 	})
 
-	testTable := memory.NewTable(db.BaseDatabase, "test", schema, nil)
+	testTable := memory.NewTable(ctx, db.BaseDatabase, "test", schema, nil)
 	db.AddTable("test", testTable)
 
 	require.NoError(t, testTable.Insert(ctx, sql.Row{int64(1), "brave"}))
@@ -186,7 +186,7 @@ func TestWrapperCopyWithExactLengthWhenNarrowingColumn(t *testing.T) {
 		&sql.Column{Name: "col1", Source: "test", Type: types.LongText, Nullable: false, Default: planbuilder.MustStringToColumnDefaultValue(sql.NewEmptyContext(), `""`, types.Text, false), PrimaryKey: false},
 	})
 
-	testTable := memory.NewTable(db.BaseDatabase, "test", schema, nil)
+	testTable := memory.NewTable(ctx, db.BaseDatabase, "test", schema, nil)
 	db.AddTable("test", testTable)
 
 	wrapper := exactLengthErrorWrapper(64)

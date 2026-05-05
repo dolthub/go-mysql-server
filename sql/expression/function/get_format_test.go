@@ -161,7 +161,7 @@ func TestGetFormat(t *testing.T) {
 		t.Run(fmt.Sprintf("%s %s", tt.left.String(), tt.right.String()), func(t *testing.T) {
 			require := require.New(t)
 			ctx := sql.NewEmptyContext()
-			f := NewGetFormat(tt.left, tt.right)
+			f := NewGetFormat(ctx, tt.left, tt.right)
 			out, err := f.Eval(ctx, nil)
 			require.NoError(err)
 			require.Equal(tt.exp, out)

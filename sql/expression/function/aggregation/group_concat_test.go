@@ -61,7 +61,7 @@ func TestGroupConcat_PastMaxLen(t *testing.T) {
 
 	gc := NewGroupConcat("", nil, ",", []sql.Expression{expression.NewGetField(0, types.Int64, "int", true)}, int(maxLen))
 
-	buf, _ := gc.NewBuffer()
+	buf, _ := gc.NewBuffer(ctx)
 	for _, row := range rows {
 		require.NoError(t, buf.Update(ctx, row))
 	}
@@ -92,7 +92,7 @@ func TestGroupConcat_ReturnType(t *testing.T) {
 	for _, tt := range testCases {
 		gc := NewGroupConcat("", nil, ",", tt.expression, tt.maxLen)
 
-		buf, _ := gc.NewBuffer()
+		buf, _ := gc.NewBuffer(ctx)
 
 		err := buf.Update(ctx, tt.row)
 		require.NoError(t, err)
@@ -100,6 +100,6 @@ func TestGroupConcat_ReturnType(t *testing.T) {
 		_, err = buf.Eval(ctx)
 		require.NoError(t, err)
 
-		require.Equal(t, tt.returnType, gc.Type())
+		require.Equal(t, tt.returnType, gc.Type(ctx))
 	}
 }

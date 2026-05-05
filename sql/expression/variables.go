@@ -50,7 +50,7 @@ func (v *SystemVar) Eval(ctx *sql.Context, _ sql.Row) (interface{}, error) {
 }
 
 // Type implements the sql.Expression interface.
-func (v *SystemVar) Type() sql.Type {
+func (v *SystemVar) Type(ctx *sql.Context) sql.Type {
 	if sysVar, _, ok := sql.SystemVariables.GetGlobal(v.Name); ok {
 		return sysVar.GetType()
 	}
@@ -59,7 +59,7 @@ func (v *SystemVar) Type() sql.Type {
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (v *SystemVar) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
-	typ := v.Type()
+	typ := v.Type(ctx)
 	if types.IsText(typ) {
 		collation, _ = typ.CollationCoercibility(ctx)
 		return collation, 3
@@ -68,7 +68,7 @@ func (v *SystemVar) CollationCoercibility(ctx *sql.Context) (collation sql.Colla
 }
 
 // IsNullable implements the sql.Expression interface.
-func (v *SystemVar) IsNullable() bool {
+func (v *SystemVar) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
@@ -84,7 +84,7 @@ func (v *SystemVar) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (v *SystemVar) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (v *SystemVar) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(v, len(children), 0)
 	}
@@ -128,7 +128,7 @@ func (v *UserVar) Eval(ctx *sql.Context, _ sql.Row) (interface{}, error) {
 }
 
 // Type implements the sql.Expression interface.
-func (v *UserVar) Type() sql.Type {
+func (v *UserVar) Type(ctx *sql.Context) sql.Type {
 	return v.exprType
 }
 
@@ -139,7 +139,7 @@ func (v *UserVar) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 }
 
 // IsNullable implements the sql.Expression interface.
-func (v *UserVar) IsNullable() bool { return true }
+func (v *UserVar) IsNullable(ctx *sql.Context) bool { return true }
 
 // Resolved implements the sql.Expression interface.
 func (v *UserVar) Resolved() bool { return true }
@@ -148,7 +148,7 @@ func (v *UserVar) Resolved() bool { return true }
 func (v *UserVar) String() string { return "@" + v.Name }
 
 // WithChildren implements the Expression interface.
-func (v *UserVar) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (v *UserVar) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(v, len(children), 0)
 	}

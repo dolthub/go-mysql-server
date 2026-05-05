@@ -15,8 +15,10 @@
 package eventscheduler
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
@@ -53,6 +55,8 @@ type EventScheduler struct {
 	executor      *eventExecutor
 	ctxGetterFunc func() (*sql.Context, error)
 	status        SchedulerStatus
+	cancel        context.CancelFunc
+	wg            sync.WaitGroup
 }
 
 // InitEventScheduler is called at the start of the server. This function returns EventScheduler object
@@ -163,7 +167,7 @@ func (es *EventScheduler) Close() {
 		return
 	}
 	es.status = SchedulerOff
-	es.executor.shutdown()
+	es.shutdownExecutor()
 }
 
 // TurnOnEventScheduler is called when user sets --event-scheduler system variable to ON or 1.
@@ -212,9 +216,18 @@ func (es *EventScheduler) TurnOffEventScheduler() error {
 	}
 
 	es.status = SchedulerOff
-	es.executor.shutdown()
+	es.shutdownExecutor()
 
 	return nil
+}
+
+// shutdownExecutor cancels the executor's background goroutine, waits
+// for it to finish, and clears the executor's state.
+func (es *EventScheduler) shutdownExecutor() {
+	if es.cancel != nil {
+		es.cancel()
+	}
+	es.wg.Wait()
 }
 
 // loadEventsAndStartEventExecutor evaluates all events in all databases and evaluates the enabled events
@@ -225,7 +238,9 @@ func (es *EventScheduler) loadEventsAndStartEventExecutor(ctx *sql.Context, a *a
 	}
 	es.executor.catalog = a.Catalog
 	es.executor.loadAllEvents(ctx)
-	go es.executor.start()
+	bgCtx, cancel := context.WithCancel(context.Background())
+	es.cancel = cancel
+	es.wg.Go(func() { es.executor.start(bgCtx) })
 	return nil
 }
 
@@ -239,6 +254,7 @@ func (es *EventScheduler) AddEvent(ctx *sql.Context, edb sql.EventDatabase, deta
 		return
 	}
 	es.executor.addEvent(ctx, edb, details)
+	es.executor.notify()
 }
 
 // UpdateEvent implements sql.EventScheduler interface.
@@ -251,6 +267,7 @@ func (es *EventScheduler) UpdateEvent(ctx *sql.Context, edb sql.EventDatabase, o
 		return
 	}
 	es.executor.updateEvent(ctx, edb, orgEventName, details)
+	es.executor.notify()
 }
 
 // RemoveEvent implements sql.EventScheduler interface.
@@ -264,6 +281,7 @@ func (es *EventScheduler) RemoveEvent(dbName, eventName string) {
 		return
 	}
 	es.executor.removeEvent(fmt.Sprintf("%s.%s", dbName, eventName))
+	es.executor.notify()
 }
 
 // RemoveSchemaEvents implements sql.EventScheduler interface.
@@ -277,4 +295,19 @@ func (es *EventScheduler) RemoveSchemaEvents(dbName string) {
 		return
 	}
 	es.executor.removeSchemaEvents(dbName)
+	es.executor.notify()
+}
+
+// NotifyDatabaseAdded wakes the event executor so that it can discover any events in a newly
+// added database. Integrators should call this when a new database that may contain events is
+// registered (e.g. via clone, restore, or undrop) to ensure the event executor picks up those
+// events, especially when the executor is quiesced.
+func (es *EventScheduler) NotifyDatabaseAdded() {
+	if es == nil {
+		return
+	}
+	if es.status == SchedulerDisabled || es.status == SchedulerOff {
+		return
+	}
+	es.executor.notify()
 }

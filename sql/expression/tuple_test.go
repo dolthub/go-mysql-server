@@ -34,9 +34,9 @@ func TestTuple(t *testing.T) {
 
 	ctx := sql.NewEmptyContext()
 
-	require.False(tup.IsNullable())
+	require.False(tup.IsNullable(ctx))
 	require.True(tup.Resolved())
-	require.Equal(types.CreateTuple(types.Int64, types.Float64, types.LongText), tup.Type())
+	require.Equal(types.CreateTuple(types.Int64, types.Float64, types.LongText), tup.Type(ctx))
 
 	result, err := tup.Eval(ctx, nil)
 	require.NoError(err)
@@ -46,9 +46,9 @@ func TestTuple(t *testing.T) {
 		NewGetField(0, types.LongText, "text", true),
 	)
 
-	require.True(tup.IsNullable())
+	require.True(tup.IsNullable(ctx))
 	require.True(tup.Resolved())
-	require.Equal(types.LongText, tup.Type())
+	require.Equal(types.LongText, tup.Type(ctx))
 
 	result, err = tup.Eval(ctx, sql.NewRow("foo"))
 	require.NoError(err)
@@ -59,9 +59,9 @@ func TestTuple(t *testing.T) {
 		NewLiteral("bar", types.LongText),
 	)
 
-	require.False(tup.IsNullable())
+	require.False(tup.IsNullable(ctx))
 	require.True(tup.Resolved())
-	require.Equal(types.CreateTuple(types.LongText, types.LongText), tup.Type())
+	require.Equal(types.CreateTuple(types.LongText, types.LongText), tup.Type(ctx))
 
 	result, err = tup.Eval(ctx, sql.NewRow("foo"))
 	require.NoError(err)
@@ -73,5 +73,5 @@ func TestTuple(t *testing.T) {
 	)
 
 	require.False(tup.Resolved())
-	require.False(tup.IsNullable())
+	require.False(tup.IsNullable(ctx))
 }

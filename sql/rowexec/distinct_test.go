@@ -38,7 +38,7 @@ func TestDistinct(t *testing.T) {
 		{Name: "name", Type: types.Text, Nullable: true},
 		{Name: "email", Type: types.Text, Nullable: true},
 	})
-	child := memory.NewTable(db.BaseDatabase, "test", childSchema, nil)
+	child := memory.NewTable(ctx, db.BaseDatabase, "test", childSchema, nil)
 
 	rows := []sql.Row{
 		sql.NewRow("john", "john@doe.com"),
@@ -88,7 +88,7 @@ func TestOrderedDistinct(t *testing.T) {
 		{Name: "name", Type: types.Text, Nullable: true},
 		{Name: "email", Type: types.Text, Nullable: true},
 	})
-	child := memory.NewTable(db.BaseDatabase, "test", childSchema, nil)
+	child := memory.NewTable(ctx, db.BaseDatabase, "test", childSchema, nil)
 
 	rows := []sql.Row{
 		sql.NewRow("jane", "jane@doe.com"),

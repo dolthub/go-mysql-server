@@ -31,7 +31,7 @@ var _ sql.Expression = (*StringToVector)(nil)
 var _ sql.FunctionExpression = (*StringToVector)(nil)
 var _ sql.CollationCoercible = (*StringToVector)(nil)
 
-func NewStringToVector(e sql.Expression) sql.Expression {
+func NewStringToVector(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &StringToVector{UnaryExpressionStub: expression.UnaryExpressionStub{Child: e}}
 }
 
@@ -43,7 +43,7 @@ func (s *StringToVector) Description() string {
 	return "converts a JSON array string to a vector"
 }
 
-func (s *StringToVector) Type() sql.Type {
+func (s *StringToVector) Type(ctx *sql.Context) sql.Type {
 	return types.VectorType{}
 }
 
@@ -55,11 +55,11 @@ func (s *StringToVector) String() string {
 	return fmt.Sprintf("STRING_TO_VECTOR(%s)", s.Child)
 }
 
-func (s *StringToVector) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (s *StringToVector) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 1)
 	}
-	return NewStringToVector(children[0]), nil
+	return NewStringToVector(ctx, children[0]), nil
 }
 
 func (s *StringToVector) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -89,7 +89,7 @@ var _ sql.Expression = (*VectorToString)(nil)
 var _ sql.FunctionExpression = (*VectorToString)(nil)
 var _ sql.CollationCoercible = (*VectorToString)(nil)
 
-func NewVectorToString(e sql.Expression) sql.Expression {
+func NewVectorToString(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &VectorToString{UnaryExpressionStub: expression.UnaryExpressionStub{Child: e}}
 }
 
@@ -101,7 +101,7 @@ func (v *VectorToString) Description() string {
 	return "converts a vector to a JSON array string"
 }
 
-func (v *VectorToString) Type() sql.Type {
+func (v *VectorToString) Type(ctx *sql.Context) sql.Type {
 	return types.LongText
 }
 
@@ -113,11 +113,11 @@ func (v *VectorToString) String() string {
 	return fmt.Sprintf("VECTOR_TO_STRING(%s)", v.Child)
 }
 
-func (v *VectorToString) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (v *VectorToString) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(v, len(children), 1)
 	}
-	return NewVectorToString(children[0]), nil
+	return NewVectorToString(ctx, children[0]), nil
 }
 
 func (v *VectorToString) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {

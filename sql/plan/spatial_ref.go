@@ -71,7 +71,7 @@ func (n *CreateSpatialRefSys) String() string {
 }
 
 // Schema implements the interface sql.Node
-func (n *CreateSpatialRefSys) Schema() sql.Schema {
+func (n *CreateSpatialRefSys) Schema(ctx *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -85,7 +85,7 @@ func (n *CreateSpatialRefSys) Children() []sql.Node {
 }
 
 // WithChildren implements the interface sql.Node
-func (n *CreateSpatialRefSys) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (n *CreateSpatialRefSys) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 0)
 	}

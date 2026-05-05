@@ -74,7 +74,7 @@ func TestUpdateIgnoreConversions(t *testing.T) {
 			sch := sql.NewPrimaryKeySchema(sql.Schema{
 				{Name: "c1", Source: "foo", Type: tc.colType, Nullable: true},
 			})
-			table := memory.NewTable(db, "foo", sch, nil)
+			table := memory.NewTable(ctx, db, "foo", sch, nil)
 
 			err := table.Insert(ctx, sql.Row{nil})
 			require.NoError(t, err)

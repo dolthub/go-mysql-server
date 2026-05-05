@@ -50,7 +50,7 @@ type JSONTable struct {
 var _ sql.FunctionExpression = JSONTable{}
 
 // NewJSONTable creates a new JSONTable function.
-func NewJSONTable(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONTable(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	return nil, ErrUnsupportedJSONFunction.New(JSONTable{}.FunctionName())
 }
 
@@ -86,7 +86,7 @@ type JSONSchemaValid struct {
 var _ sql.FunctionExpression = JSONSchemaValid{}
 
 // NewJSONSchemaValid creates a new JSONSchemaValid function.
-func NewJSONSchemaValid(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONSchemaValid(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	return nil, ErrUnsupportedJSONFunction.New(JSONSchemaValid{}.FunctionName())
 }
 
@@ -130,7 +130,7 @@ type JSONSchemaValidationReport struct {
 var _ sql.FunctionExpression = JSONSchemaValidationReport{}
 
 // NewJSONSchemaValidationReport creates a new JSONSchemaValidationReport function.
-func NewJSONSchemaValidationReport(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONSchemaValidationReport(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	return nil, ErrUnsupportedJSONFunction.New(JSONSchemaValidationReport{}.FunctionName())
 }
 
@@ -173,7 +173,7 @@ type JSONStorageFree struct {
 var _ sql.FunctionExpression = JSONStorageFree{}
 
 // NewJSONStorageFree creates a new JSONStorageFree function.
-func NewJSONStorageFree(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONStorageFree(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	return nil, ErrUnsupportedJSONFunction.New(JSONStorageFree{}.FunctionName())
 }
 
@@ -210,7 +210,7 @@ type JSONStorageSize struct {
 var _ sql.FunctionExpression = JSONStorageSize{}
 
 // NewJSONStorageSize creates a new JSONStorageSize function.
-func NewJSONStorageSize(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONStorageSize(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	return nil, ErrUnsupportedJSONFunction.New(JSONStorageSize{}.FunctionName())
 }
 

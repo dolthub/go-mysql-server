@@ -64,7 +64,7 @@ func (g *GroupBy) IsReadOnly() bool {
 }
 
 // Schema implements the Node interface.
-func (g *GroupBy) Schema() sql.Schema {
+func (g *GroupBy) Schema(ctx *sql.Context) sql.Schema {
 	var s = make(sql.Schema, len(g.SelectDeps))
 	for i, e := range g.SelectDeps {
 		var name string
@@ -86,8 +86,8 @@ func (g *GroupBy) Schema() sql.Schema {
 
 		s[i] = &sql.Column{
 			Name:           name,
-			Type:           e.Type(),
-			Nullable:       e.IsNullable(),
+			Type:           e.Type(ctx),
+			Nullable:       e.IsNullable(ctx),
 			Source:         table,
 			DatabaseSource: db,
 		}
@@ -97,7 +97,7 @@ func (g *GroupBy) Schema() sql.Schema {
 }
 
 // WithChildren implements the Node interface.
-func (g *GroupBy) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (g *GroupBy) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(g, len(children), 1)
 	}
@@ -111,7 +111,7 @@ func (g *GroupBy) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 }
 
 // WithExpressions implements the Node interface.
-func (g *GroupBy) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+func (g *GroupBy) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	expected := len(g.SelectDeps) + len(g.GroupByExprs)
 	if len(exprs) != expected {
 		return nil, sql.ErrInvalidChildrenNumber.New(g, len(exprs), expected)
@@ -148,46 +148,46 @@ func (g *GroupBy) String() string {
 	return pr.String()
 }
 
-func (g *GroupBy) DebugString() string {
+func (g *GroupBy) DebugString(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("GroupBy")
 
 	var selectDeps = make([]string, len(g.SelectDeps))
 	for i, e := range g.SelectDeps {
-		selectDeps[i] = sql.DebugString(e)
+		selectDeps[i] = sql.DebugString(ctx, e)
 	}
 
 	var grouping = make([]string, len(g.GroupByExprs))
 	for i, g := range g.GroupByExprs {
-		grouping[i] = sql.DebugString(g)
+		grouping[i] = sql.DebugString(ctx, g)
 	}
 
 	_ = pr.WriteChildren(
 		fmt.Sprintf("select: %s", strings.Join(selectDeps, ", ")),
 		fmt.Sprintf("group: %s", strings.Join(grouping, ", ")),
-		sql.DebugString(g.Child),
+		sql.DebugString(ctx, g.Child),
 	)
 	return pr.String()
 }
 
-func (g *GroupBy) Describe(options sql.DescribeOptions) string {
+func (g *GroupBy) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("GroupBy")
 
 	var selectDeps = make([]string, len(g.SelectDeps))
 	for i, e := range g.SelectDeps {
-		selectDeps[i] = sql.Describe(e, options)
+		selectDeps[i] = sql.Describe(ctx, e, options)
 	}
 
 	var grouping = make([]string, len(g.GroupByExprs))
 	for i, g := range g.GroupByExprs {
-		grouping[i] = sql.Describe(g, options)
+		grouping[i] = sql.Describe(ctx, g, options)
 	}
 
 	_ = pr.WriteChildren(
 		fmt.Sprintf("select: %s", strings.Join(selectDeps, ", ")),
 		fmt.Sprintf("group: %s", strings.Join(grouping, ", ")),
-		sql.Describe(g.Child, options),
+		sql.Describe(ctx, g.Child, options),
 	)
 	return pr.String()
 }

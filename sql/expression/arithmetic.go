@@ -71,11 +71,18 @@ type Arithmetic struct {
 	BinaryExpressionStub
 	Op  string
 	ops int32
+	typ sql.Type
 }
 
 // NewArithmetic creates a new Arithmetic sql.Expression.
 func NewArithmetic(left, right sql.Expression, op string) *Arithmetic {
-	a := &Arithmetic{BinaryExpressionStub{LeftChild: left, RightChild: right}, op, 0}
+	a := &Arithmetic{
+		BinaryExpressionStub: BinaryExpressionStub{
+			LeftChild:  left,
+			RightChild: right,
+		},
+		Op: op,
+	}
 	ops := countArithmeticOps(a)
 	setArithmeticOps(a, ops)
 	return a
@@ -108,28 +115,28 @@ func (a *Arithmetic) String() string {
 	return fmt.Sprintf("(%s %s %s)", a.LeftChild.String(), a.Op, a.RightChild.String())
 }
 
-func (a *Arithmetic) DebugString() string {
-	return fmt.Sprintf("(%s %s %s)", sql.DebugString(a.LeftChild), a.Op, sql.DebugString(a.RightChild))
+func (a *Arithmetic) DebugString(ctx *sql.Context) string {
+	return fmt.Sprintf("(%s %s %s)", sql.DebugString(ctx, a.LeftChild), a.Op, sql.DebugString(ctx, a.RightChild))
 }
 
 // IsNullable implements the sql.Expression interface.
-func (a *Arithmetic) IsNullable() bool {
-	typ := a.Type()
+func (a *Arithmetic) IsNullable(ctx *sql.Context) bool {
+	typ := a.Type(ctx)
 	if types.IsDatetimeType(typ) || types.IsTimestampType(typ) {
 		return true
 	}
 
-	return a.BinaryExpressionStub.IsNullable()
+	return a.BinaryExpressionStub.IsNullable(ctx)
 }
 
-// Type returns the greatest type for given operation.
-func (a *Arithmetic) Type() sql.Type {
-	//TODO: what if both BindVars? should be constant folded
-	rTyp := a.RightChild.Type()
+// getReturnType returns the greatest type for given operation.
+func (a *Arithmetic) getReturnType(ctx *sql.Context) sql.Type {
+	// TODO: what if both BindVars? should be constant folded
+	rTyp := a.RightChild.Type(ctx)
 	if types.IsDeferredType(rTyp) {
 		return rTyp
 	}
-	lTyp := a.LeftChild.Type()
+	lTyp := a.LeftChild.Type(ctx)
 	if types.IsDeferredType(lTyp) {
 		return lTyp
 	}
@@ -252,13 +259,23 @@ func (a *Arithmetic) Type() sql.Type {
 	return types.Float64
 }
 
+// Type implements the Expression interface
+func (a *Arithmetic) Type(ctx *sql.Context) sql.Type {
+	// Cache the return type for Arithmetic functions for performance.
+	// We this here instead of NewArithmeticExpression because of placeholder expressions.
+	if a.typ == nil {
+		a.typ = a.getReturnType(ctx)
+	}
+	return a.typ
+}
+
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*Arithmetic) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 5
 }
 
 // WithChildren implements the Expression interface.
-func (a *Arithmetic) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (a *Arithmetic) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(a, len(children), 2)
 	}
@@ -348,10 +365,10 @@ func (a *Arithmetic) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, 
 }
 
 func (a *Arithmetic) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}, error) {
-	typ := a.Type()
+	typ := a.Type(ctx)
 
-	lIsTimeType := types.IsTime(a.LeftChild.Type())
-	rIsTimeType := types.IsTime(a.RightChild.Type())
+	lIsTimeType := types.IsTime(a.LeftChild.Type(ctx))
+	rIsTimeType := types.IsTime(a.RightChild.Type(ctx))
 
 	if i, ok := left.(*TimeDelta); ok {
 		left = i
@@ -704,7 +721,7 @@ func (e *UnaryMinus) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	if !types.IsNumber(e.Child.Type()) {
+	if !types.IsNumber(e.Child.Type(ctx)) {
 		child, _, err = types.InternalDecimalType.Convert(ctx, child)
 		if err != nil {
 			if !sql.ErrTruncatedIncorrect.Is(err) {
@@ -764,8 +781,8 @@ func (e *UnaryMinus) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // Type implements the sql.Expression interface.
-func (e *UnaryMinus) Type() sql.Type {
-	typ := e.Child.Type()
+func (e *UnaryMinus) Type(ctx *sql.Context) sql.Type {
+	typ := e.Child.Type(ctx)
 	switch typ {
 	case types.Int8, types.Int16, types.Int32:
 		typ = types.Int64
@@ -803,7 +820,7 @@ func (e *UnaryMinus) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (e *UnaryMinus) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (e *UnaryMinus) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(e, len(children), 1)
 	}

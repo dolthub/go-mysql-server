@@ -48,11 +48,11 @@ func TestAggGen(t *testing.T) {
             }
         }
 
-        func (a *Test) Type() sql.Type {
+        func (a *Test) Type(ctx *sql.Context) sql.Type {
             return sql.Float64
         }
 
-        func (a *Test) IsNullable() bool {
+        func (a *Test) IsNullable(ctx *sql.Context) bool {
             return false
         }
 
@@ -67,15 +67,15 @@ func TestAggGen(t *testing.T) {
           return "TEST(" + a.Child.String() + ")"
         }
 
-        func (a *Test) DebugString() string {
+        func (a *Test) DebugString(ctx *sql.Context) string {
           if a.window != nil {
             pr := sql.NewTreePrinter()
             _ = pr.WriteNode("TEST")
-        	    children := []string{sql.DebugString(a.window), sql.DebugString(a.Child)}
+        	    children := []string{sql.DebugString(ctx, a.window), sql.DebugString(ctx, a.Child)}
             pr.WriteChildren(children...)
             return pr.String()
           }
-          return fmt.Sprintf("TEST(%s)", sql.DebugString(a.Child))
+          return fmt.Sprintf("TEST(%s)", sql.DebugString(ctx, a.Child))
         }
 
         func (a *Test) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
@@ -93,16 +93,16 @@ func TestAggGen(t *testing.T) {
             return &Test{unaryAggBase: *res.(*unaryAggBase)}
         }
 
-        func (a *Test) NewBuffer() (sql.AggregationBuffer, error) {
-            child, err := transform.Clone(a.Child)
+        func (a *Test) NewBuffer(ctx *sql.Context) (sql.AggregationBuffer, error) {
+            child, err := transform.Clone(ctx, a.Child)
             if err != nil {
                 return nil, err
             }
             return NewTestBuffer(child), nil
         }
 
-        func (a *Test) NewWindowFunction() (sql.WindowFunction, error) {
-            child, err := transform.Clone(a.Child)
+        func (a *Test) NewWindowFunction(ctx *sql.Context) (sql.WindowFunction, error) {
+            child, err := transform.Clone(ctx, a.Child)
             if err != nil {
                 return nil, err
             }

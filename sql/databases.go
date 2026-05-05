@@ -297,6 +297,18 @@ type EventDatabase interface {
 	NeedsToReloadEvents(ctx *Context, token interface{}) (bool, error)
 }
 
+// QuiescableEventDatabase is an optional extension of EventDatabase that indicates events in this database
+// will only be modified through the EventDatabase interface methods (SaveEvent, UpdateEvent, DropEvent),
+// and that the event executor does not need to periodically poll NeedsToReloadEvents when there are no
+// events to execute. When all EventDatabases in the catalog implement this interface and return `true`,
+// the event executor can fully quiesce when no events exist, sleeping indefinitely until an event is
+// created.
+type QuiescableEventDatabase interface {
+	EventDatabase
+	// QuiescableEvents returns true if this database supports event executor quiescing.
+	QuiescableEvents() bool
+}
+
 // ViewDatabase is implemented by databases that persist view definitions
 type ViewDatabase interface {
 	// CreateView persists the definition a view with the name and select statement given. If a view with that name

@@ -33,7 +33,7 @@ var _ sql.FunctionExpression = (*AsWKT)(nil)
 var _ sql.CollationCoercible = (*AsWKT)(nil)
 
 // NewAsWKT creates a new point expression.
-func NewAsWKT(e sql.Expression) sql.Expression {
+func NewAsWKT(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &AsWKT{expression.UnaryExpressionStub{Child: e}}
 }
 
@@ -48,12 +48,12 @@ func (p *AsWKT) Description() string {
 }
 
 // IsNullable implements the sql.Expression interface.
-func (p *AsWKT) IsNullable() bool {
-	return p.Child.IsNullable()
+func (p *AsWKT) IsNullable(ctx *sql.Context) bool {
+	return p.Child.IsNullable(ctx)
 }
 
 // Type implements the sql.Expression interface.
-func (p *AsWKT) Type() sql.Type {
+func (p *AsWKT) Type(ctx *sql.Context) sql.Type {
 	return types.LongText
 }
 
@@ -67,11 +67,11 @@ func (p *AsWKT) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (p *AsWKT) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (p *AsWKT) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
 	}
-	return NewAsWKT(children[0]), nil
+	return NewAsWKT(ctx, children[0]), nil
 }
 
 // TODO: these functions could be refactored to be inside the sql.GeometryValue interface
@@ -108,7 +108,7 @@ func PolygonToWKT(p types.Polygon, order bool) string {
 func MultiPointToWKT(p types.MultiPoint, order bool) string {
 	points := make([]string, len(p.Points))
 	for i, p := range p.Points {
-		points[i] = PointToWKT(p, order)
+		points[i] = "(" + PointToWKT(p, order) + ")"
 	}
 	return strings.Join(points, ",")
 }
@@ -149,7 +149,11 @@ func GeomCollToWKT(g types.GeomColl, order bool) string {
 		case types.MultiPolygon:
 			geoms[i] = "MULTIPOLYGON(" + MultiPolygonToWKT(g, order) + ")"
 		case types.GeomColl:
-			geoms[i] = "GEOMETRYCOLLECTION(" + GeomCollToWKT(g, order) + ")"
+			if len(g.Geoms) == 0 {
+				geoms[i] = "GEOMETRYCOLLECTION EMPTY"
+			} else {
+				geoms[i] = "GEOMETRYCOLLECTION(" + GeomCollToWKT(g, order) + ")"
+			}
 		}
 	}
 	return strings.Join(geoms, ",")
@@ -165,6 +169,11 @@ func (p *AsWKT) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	if val == nil {
 		return nil, nil
+	}
+
+	val, err = types.UnwrapGeometry(ctx, val)
+	if err != nil {
+		return nil, sql.ErrInvalidGISData.New(p.FunctionName())
 	}
 
 	var geomType string
@@ -189,6 +198,9 @@ func (p *AsWKT) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		geomType = "MULTIPOLYGON"
 		data = MultiPolygonToWKT(v, v.SRID == types.GeoSpatialSRID)
 	case types.GeomColl:
+		if len(v.Geoms) == 0 {
+			return "GEOMETRYCOLLECTION EMPTY", nil
+		}
 		geomType = "GEOMETRYCOLLECTION"
 		data = GeomCollToWKT(v, v.SRID == types.GeoSpatialSRID)
 	default:
@@ -207,7 +219,7 @@ var _ sql.FunctionExpression = (*GeomFromText)(nil)
 var _ sql.CollationCoercible = (*GeomFromText)(nil)
 
 // NewGeomFromText creates a new point expression.
-func NewGeomFromText(args ...sql.Expression) (sql.Expression, error) {
+func NewGeomFromText(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 1 || len(args) > 3 {
 		return nil, sql.ErrInvalidArgumentNumber.New("ST_GEOMFROMTEXT", "1, 2, or 3", len(args))
 	}
@@ -225,7 +237,7 @@ func (g *GeomFromText) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (g *GeomFromText) Type() sql.Type {
+func (g *GeomFromText) Type(ctx *sql.Context) sql.Type {
 	// TODO: return type is determined after Eval, use Geometry for now?
 	return types.GeometryType{}
 }
@@ -244,8 +256,8 @@ func (g *GeomFromText) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (g *GeomFromText) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewGeomFromText(children...)
+func (g *GeomFromText) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewGeomFromText(ctx, children...)
 }
 
 func TrimWKTData(s string) (string, int, error) {
@@ -278,6 +290,20 @@ func TrimWKTData(s string) (string, int, error) {
 // ParseWKTHeader should extract the type and data from the geometry string
 // `end` is used to detect extra characters after a valid geometry
 func ParseWKTHeader(s string) (string, string, int, error) {
+	// Handle "GEOMETRYCOLLECTION EMPTY" (and similar EMPTY forms)
+	trimmed := strings.TrimSpace(s)
+	lower := strings.ToLower(trimmed)
+	if strings.HasSuffix(lower, " empty") {
+		// Check if there's no parenthesis (pure EMPTY form)
+		parenIdx := strings.Index(trimmed, "(")
+		spaceIdx := strings.LastIndex(trimmed, " ")
+		if parenIdx == -1 || (spaceIdx > 0 && spaceIdx < len(trimmed) && parenIdx > spaceIdx) {
+			geomType := strings.TrimSpace(lower[:spaceIdx])
+			endIdx := spaceIdx + len(" empty")
+			return geomType, "", endIdx, nil
+		}
+	}
+
 	// Read until first open parenthesis
 	start := strings.Index(s, "(")
 
@@ -390,12 +416,42 @@ func WKTToPoly(s string, srid uint32, order bool) (types.Polygon, error) {
 	return types.Polygon{SRID: srid, Lines: lines}, nil
 }
 
-// WKTToMPoint expects a string like "1.2 3.4, 5.6 7.8, ..."
+// WKTToMPoint expects a string like "(1.2 3.4), (5.6 7.8), ..." or "1.2 3.4, 5.6 7.8, ..."
 func WKTToMPoint(s string, srid uint32, order bool) (types.MultiPoint, error) {
 	if len(s) == 0 {
 		return types.MultiPoint{}, sql.ErrInvalidGISData.New()
 	}
 
+	s = strings.TrimSpace(s)
+
+	// Check if points are wrapped in parentheses: "(x y), (x y), ..."
+	if s[0] == '(' {
+		var points []types.Point
+		for {
+			pointStr, end, err := TrimWKTData(s)
+			if err != nil {
+				return types.MultiPoint{}, err
+			}
+			point, err := WKTToPoint(pointStr, srid, order)
+			if err != nil {
+				return types.MultiPoint{}, sql.ErrInvalidGISData.New()
+			}
+			points = append(points, point)
+
+			s = s[end:]
+			s = strings.TrimSpace(s)
+			if len(s) == 0 {
+				break
+			}
+			if s[0] != ',' {
+				return types.MultiPoint{}, sql.ErrInvalidGISData.New()
+			}
+			s = strings.TrimSpace(s[1:])
+		}
+		return types.MultiPoint{SRID: srid, Points: points}, nil
+	}
+
+	// Legacy format without parentheses: "x y, x y, ..."
 	pointStrs := strings.Split(s, ",")
 	var points = make([]types.Point, len(pointStrs))
 	var err error
@@ -642,7 +698,7 @@ var _ sql.FunctionExpression = (*PointFromText)(nil)
 var _ sql.CollationCoercible = (*PointFromText)(nil)
 
 // NewPointFromText creates a new point expression.
-func NewPointFromText(args ...sql.Expression) (sql.Expression, error) {
+func NewPointFromText(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 1 || len(args) > 3 {
 		return nil, sql.ErrInvalidArgumentNumber.New("ST_POINTFROMTEXT", "1, 2, or 3", len(args))
 	}
@@ -660,7 +716,7 @@ func (p *PointFromText) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (p *PointFromText) Type() sql.Type {
+func (p *PointFromText) Type(ctx *sql.Context) sql.Type {
 	return types.PointType{}
 }
 
@@ -678,8 +734,8 @@ func (p *PointFromText) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (p *PointFromText) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewPointFromText(children...)
+func (p *PointFromText) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewPointFromText(ctx, children...)
 }
 
 // Eval implements the sql.Expression interface.
@@ -700,7 +756,7 @@ var _ sql.FunctionExpression = (*LineFromText)(nil)
 var _ sql.CollationCoercible = (*LineFromText)(nil)
 
 // NewLineFromText creates a new point expression.
-func NewLineFromText(args ...sql.Expression) (sql.Expression, error) {
+func NewLineFromText(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 1 || len(args) > 3 {
 		return nil, sql.ErrInvalidArgumentNumber.New("ST_LINEFROMTEXT", "1 or 2", len(args))
 	}
@@ -718,7 +774,7 @@ func (l *LineFromText) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (l *LineFromText) Type() sql.Type {
+func (l *LineFromText) Type(ctx *sql.Context) sql.Type {
 	return types.LineStringType{}
 }
 
@@ -736,8 +792,8 @@ func (l *LineFromText) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (l *LineFromText) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewLineFromText(children...)
+func (l *LineFromText) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewLineFromText(ctx, children...)
 }
 
 // Eval implements the sql.Expression interface.
@@ -758,7 +814,7 @@ var _ sql.FunctionExpression = (*PolyFromText)(nil)
 var _ sql.CollationCoercible = (*PolyFromText)(nil)
 
 // NewPolyFromText creates a new polygon expression.
-func NewPolyFromText(args ...sql.Expression) (sql.Expression, error) {
+func NewPolyFromText(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 1 || len(args) > 3 {
 		return nil, sql.ErrInvalidArgumentNumber.New("ST_POLYFROMTEXT", "1, 2, or 3", len(args))
 	}
@@ -776,7 +832,7 @@ func (p *PolyFromText) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (p *PolyFromText) Type() sql.Type {
+func (p *PolyFromText) Type(ctx *sql.Context) sql.Type {
 	return types.PolygonType{}
 }
 
@@ -794,8 +850,8 @@ func (p *PolyFromText) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (p *PolyFromText) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewPolyFromText(children...)
+func (p *PolyFromText) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewPolyFromText(ctx, children...)
 }
 
 // Eval implements the sql.Expression interface.
@@ -816,7 +872,7 @@ var _ sql.FunctionExpression = (*MPointFromText)(nil)
 var _ sql.CollationCoercible = (*MPointFromText)(nil)
 
 // NewMPointFromText creates a new MultiPoint expression.
-func NewMPointFromText(args ...sql.Expression) (sql.Expression, error) {
+func NewMPointFromText(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 1 || len(args) > 3 {
 		return nil, sql.ErrInvalidArgumentNumber.New("ST_MULTIPOINTFROMTEXT", "1 or 2", len(args))
 	}
@@ -834,7 +890,7 @@ func (p *MPointFromText) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (p *MPointFromText) Type() sql.Type {
+func (p *MPointFromText) Type(ctx *sql.Context) sql.Type {
 	return types.MultiPointType{}
 }
 
@@ -852,8 +908,8 @@ func (p *MPointFromText) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (p *MPointFromText) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewMPointFromText(children...)
+func (p *MPointFromText) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewMPointFromText(ctx, children...)
 }
 
 // Eval implements the sql.Expression interface.
@@ -874,7 +930,7 @@ var _ sql.FunctionExpression = (*MLineFromText)(nil)
 var _ sql.CollationCoercible = (*MLineFromText)(nil)
 
 // NewMLineFromText creates a new multilinestring expression.
-func NewMLineFromText(args ...sql.Expression) (sql.Expression, error) {
+func NewMLineFromText(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 1 || len(args) > 3 {
 		return nil, sql.ErrInvalidArgumentNumber.New("ST_MLINEFROMTEXT", "1 or 2", len(args))
 	}
@@ -892,7 +948,7 @@ func (l *MLineFromText) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (l *MLineFromText) Type() sql.Type {
+func (l *MLineFromText) Type(ctx *sql.Context) sql.Type {
 	return types.MultiLineStringType{}
 }
 
@@ -910,8 +966,8 @@ func (l *MLineFromText) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (l *MLineFromText) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewMLineFromText(children...)
+func (l *MLineFromText) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewMLineFromText(ctx, children...)
 }
 
 // Eval implements the sql.Expression interface.
@@ -932,7 +988,7 @@ var _ sql.FunctionExpression = (*MPolyFromText)(nil)
 var _ sql.CollationCoercible = (*MPolyFromText)(nil)
 
 // NewMPolyFromText creates a new multilinestring expression.
-func NewMPolyFromText(args ...sql.Expression) (sql.Expression, error) {
+func NewMPolyFromText(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 1 || len(args) > 3 {
 		return nil, sql.ErrInvalidArgumentNumber.New("ST_MPOLYFROMTEXT", "1 or 2", len(args))
 	}
@@ -950,7 +1006,7 @@ func (p *MPolyFromText) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (p *MPolyFromText) Type() sql.Type {
+func (p *MPolyFromText) Type(ctx *sql.Context) sql.Type {
 	return types.MultiPolygonType{}
 }
 
@@ -968,8 +1024,8 @@ func (p *MPolyFromText) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (p *MPolyFromText) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewMPolyFromText(children...)
+func (p *MPolyFromText) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewMPolyFromText(ctx, children...)
 }
 
 // Eval implements the sql.Expression interface.
@@ -990,7 +1046,7 @@ var _ sql.FunctionExpression = (*GeomCollFromText)(nil)
 var _ sql.CollationCoercible = (*GeomCollFromText)(nil)
 
 // NewGeomCollFromText creates a new multilinestring expression.
-func NewGeomCollFromText(args ...sql.Expression) (sql.Expression, error) {
+func NewGeomCollFromText(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 1 || len(args) > 3 {
 		return nil, sql.ErrInvalidArgumentNumber.New("ST_GeomCollFromText", "1 or 2", len(args))
 	}
@@ -1008,7 +1064,7 @@ func (p *GeomCollFromText) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (p *GeomCollFromText) Type() sql.Type {
+func (p *GeomCollFromText) Type(ctx *sql.Context) sql.Type {
 	return types.GeomCollType{}
 }
 
@@ -1026,8 +1082,8 @@ func (p *GeomCollFromText) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (p *GeomCollFromText) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewGeomFromText(children...)
+func (p *GeomCollFromText) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewGeomFromText(ctx, children...)
 }
 
 // Eval implements the sql.Expression interface.

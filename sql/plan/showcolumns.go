@@ -28,6 +28,7 @@ type ShowColumns struct {
 	Indexes      []sql.Index
 	targetSchema sql.Schema
 	Full         bool
+	Extended     bool
 }
 
 var VarChar25000 = types.MustCreateStringWithDefaults(sqltypes.VarChar, 25_000)
@@ -65,7 +66,7 @@ var _ sql.SchemaTarget = (*ShowColumns)(nil)
 var _ sql.CollationCoercible = (*ShowColumns)(nil)
 
 // Schema implements the sql.Node interface.
-func (s *ShowColumns) Schema() sql.Schema {
+func (s *ShowColumns) Schema(ctx *sql.Context) sql.Schema {
 	if s.Full {
 		return showColumnsFullSchema
 	}
@@ -89,7 +90,7 @@ func (s *ShowColumns) Expressions() []sql.Expression {
 	return transform.WrappedColumnDefaults(s.targetSchema)
 }
 
-func (s ShowColumns) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+func (s ShowColumns) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != len(s.targetSchema) {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(exprs), len(s.targetSchema))
 	}
@@ -114,7 +115,7 @@ func (s *ShowColumns) TargetSchema() sql.Schema {
 }
 
 // WithChildren implements the Node interface.
-func (s *ShowColumns) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (s *ShowColumns) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 1)
 	}
@@ -140,7 +141,7 @@ func (s *ShowColumns) String() string {
 	return tp.String()
 }
 
-func (s *ShowColumns) DebugString() string {
+func (s *ShowColumns) DebugString(ctx *sql.Context) string {
 	tp := sql.NewTreePrinter()
 	if s.Full {
 		_ = tp.WriteNode("ShowColumns(full)")
@@ -150,10 +151,10 @@ func (s *ShowColumns) DebugString() string {
 
 	var children []string
 	for _, col := range s.targetSchema {
-		children = append(children, sql.DebugString(col))
+		children = append(children, sql.DebugString(ctx, col))
 	}
 
-	children = append(children, sql.DebugString(s.Child))
+	children = append(children, sql.DebugString(ctx, s.Child))
 
 	_ = tp.WriteChildren(children...)
 	return tp.String()
@@ -161,8 +162,8 @@ func (s *ShowColumns) DebugString() string {
 
 // GetColumnFromIndexExpr returns column from the table given using the expression string given, in the form
 // "table.column". Returns nil if the expression doesn't represent a column.
-func GetColumnFromIndexExpr(expr string, table sql.Table) *sql.Column {
-	for _, col := range table.Schema() {
+func GetColumnFromIndexExpr(ctx *sql.Context, expr string, table sql.Table) *sql.Column {
+	for _, col := range table.Schema(ctx) {
 		if col.Source+"."+col.Name == expr {
 			return col
 		}

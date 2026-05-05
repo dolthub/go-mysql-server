@@ -579,6 +579,61 @@ CREATE TABLE tab1 (
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/10902
+		Name: "SHOW CREATE VIEW returns stored definition regardless of underlying object state",
+		SetUpScript: []string{
+			"CREATE TABLE t (pk int PRIMARY KEY, c1 varchar(20));",
+			"CREATE VIEW v AS SELECT * FROM t;",
+			"DROP TABLE t;",
+			"CREATE TABLE t_chain (pk int PRIMARY KEY, c1 int);",
+			"CREATE VIEW v1 AS SELECT * FROM t_chain;",
+			"CREATE VIEW v2 AS SELECT pk FROM v1;",
+			"DROP VIEW v1;",
+			"CREATE TABLE t1 (pk int PRIMARY KEY, c1 int);",
+			"CREATE TABLE t2 (pk int PRIMARY KEY, c1 int);",
+			"CREATE VIEW v_union AS SELECT pk, c1 FROM t1 UNION SELECT pk, c1 FROM t2;",
+			"DROP TABLE t1;",
+			"DROP TABLE t2;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SHOW CREATE VIEW v;",
+				Expected: []sql.Row{{
+					"v",
+					"CREATE VIEW `v` AS SELECT * FROM t",
+					"utf8mb4",
+					"utf8mb4_0900_bin",
+				}},
+			},
+			{
+				Query: "SHOW CREATE VIEW v2;",
+				Expected: []sql.Row{{
+					"v2",
+					"CREATE VIEW `v2` AS SELECT pk FROM v1",
+					"utf8mb4",
+					"utf8mb4_0900_bin",
+				}},
+			},
+			{
+				Query: "SHOW CREATE VIEW v_union;",
+				Expected: []sql.Row{{
+					"v_union",
+					"CREATE VIEW `v_union` AS SELECT pk, c1 FROM t1 UNION SELECT pk, c1 FROM t2",
+					"utf8mb4",
+					"utf8mb4_0900_bin",
+				}},
+			},
+			{
+				Query:       "SHOW CREATE VIEW v1;",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+			{
+				Query:       "SHOW CREATE VIEW no_such_view;",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+		},
+	},
 }
 
 var ViewCreateInSubroutineTests = []ScriptTest{

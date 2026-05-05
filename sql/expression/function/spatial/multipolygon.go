@@ -33,7 +33,7 @@ var _ sql.FunctionExpression = (*MultiPolygon)(nil)
 var _ sql.CollationCoercible = (*MultiPolygon)(nil)
 
 // NewMultiPolygon creates a new multipolygon expression.
-func NewMultiPolygon(args ...sql.Expression) (sql.Expression, error) {
+func NewMultiPolygon(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 1 {
 		return nil, sql.ErrInvalidArgumentNumber.New("MultiPolygon", "1 or more", len(args))
 	}
@@ -51,7 +51,7 @@ func (p *MultiPolygon) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (p *MultiPolygon) Type() sql.Type {
+func (p *MultiPolygon) Type(ctx *sql.Context) sql.Type {
 	return types.MultiPolygonType{}
 }
 
@@ -69,8 +69,8 @@ func (p *MultiPolygon) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (p *MultiPolygon) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewMultiPolygon(children...)
+func (p *MultiPolygon) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewMultiPolygon(ctx, children...)
 }
 
 // Eval implements the sql.Expression interface.
@@ -81,7 +81,11 @@ func (p *MultiPolygon) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 		if err != nil {
 			return nil, err
 		}
-		switch v := val.(type) {
+		gv, err := types.UnwrapGeometry(ctx, val)
+		if err != nil {
+			return nil, sql.ErrIllegalGISValue.New(val)
+		}
+		switch v := gv.(type) {
 		case types.Polygon:
 			polys[i] = v
 		case types.GeometryValue:
