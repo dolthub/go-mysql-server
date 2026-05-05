@@ -256,6 +256,25 @@ type CommentAlterableTable interface {
 	ModifyComment(ctx *Context, comment string) error
 }
 
+// TargetRowSizeAlterableTable represents a table that supports altering its target row size.
+// The exact meaning of this value is implementation dependent.
+type TargetRowSizeAlterableTable interface {
+	Table
+	// ModifyTargetRowSize sets that table's target row size.
+	ModifyTargetRowSize(ctx *Context, sizeInBytes uint64) error
+}
+
+// TargetRowSizeTable represents a table that can report its adaptive encoding max row size.
+// The exact meaning of this value is implementation dependent.
+type TargetRowSizeTable interface {
+	Table
+	// HasTargetRowSize returns whether the table has a target row size that's different from the table's default.
+	// This is useful when determining whether to display the target row size in SHOW CREATE TABLE statements.
+	HasTargetRowSize() bool
+	// GetTargetRowSize returns the table's target row size.
+	GetTargetRowSize() uint64
+}
+
 // PrimaryKeyTable is a table with a primary key.
 type PrimaryKeyTable interface {
 	// PrimaryKeySchema returns this table's PrimaryKeySchema

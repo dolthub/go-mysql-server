@@ -80,6 +80,8 @@ var _ sql.PrimaryKeyTable = (*Table)(nil)
 var _ fulltext.IndexAlterableTable = (*Table)(nil)
 var _ sql.IndexBuildingTable = (*Table)(nil)
 var _ sql.Databaseable = (*Table)(nil)
+var _ sql.TargetRowSizeAlterableTable = (*Table)(nil)
+var _ sql.TargetRowSizeTable = (*Table)(nil)
 
 // NewTable creates a new Table with the given name and schema. Assigns the default collation, therefore if a different
 // collation is desired, please use NewTableWithCollation.
@@ -236,6 +238,22 @@ func (t *Table) Collation() sql.CollationID {
 // Comment implements the sql.CommentedTable interface.
 func (t *Table) Comment() string {
 	return t.data.comment
+}
+
+// ModifyTargetRowSize implements the sql.TargetRowSizeAlterableTable interface.
+func (t *Table) ModifyTargetRowSize(ctx *sql.Context, sizeInBytes uint64) error {
+	t.data.targetRowSize = sizeInBytes
+	return nil
+}
+
+// HasTargetRowSize implements the sql.TargetRowSizeTable interface.
+func (t *Table) HasTargetRowSize() bool {
+	return t.data.targetRowSize != 0
+}
+
+// GetTargetRowSize implements the sql.TargetRowSizeTable interface.
+func (t *Table) GetTargetRowSize() uint64 {
+	return t.data.targetRowSize
 }
 
 func (t *Table) IgnoreSessionData() bool {
