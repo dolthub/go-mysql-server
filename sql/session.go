@@ -25,12 +25,11 @@ import (
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 
+	"github.com/dolthub/go-mysql-server/sql/sqlredact"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
-
-	"github.com/dolthub/go-mysql-server/sql/sqlredact"
 )
 
 type key uint
