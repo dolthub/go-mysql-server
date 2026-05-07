@@ -84,6 +84,11 @@ func (a *AsWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
+	val, err = sql.UnwrapAny(ctx, val)
+	if err != nil {
+		return nil, err
+	}
+
 	switch v := val.(type) {
 	case types.GeometryValue:
 		if v.GetSRID() == types.GeoSpatialSRID {
