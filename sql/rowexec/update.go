@@ -161,9 +161,9 @@ func (u *updateIter) validateNullability(ctx *sql.Context, row sql.Row, schema s
 func (u *updateIter) Close(ctx *sql.Context) error {
 	if !u.closed {
 		u.closed = true
-		//if err := u.updater.Close(ctx); err != nil {
-		//	return err
-		//}
+		if err := u.updater.Close(ctx); err != nil {
+			return err
+		}
 		return u.childIter.Close(ctx)
 	}
 	return nil
