@@ -4354,8 +4354,12 @@ CREATE TABLE tab3 (
 				ExpectedErr: sql.ErrExpectedSingleRow,
 			},
 			{
-				Query:    "SELECT group_concat(`attribute`) FROM t where o_id=2 order by attribute",
+				Query:    "SELECT group_concat(`attribute` order by attribute) FROM t where o_id=2 order by attribute",
 				Expected: []sql.Row{{"color,fabric"}},
+			},
+			{
+				Query:    "SELECT group_concat(`attribute` order by attribute desc) FROM t where o_id=2 order by attribute",
+				Expected: []sql.Row{{"fabric,color"}},
 			},
 			{
 				Query:    "SELECT group_concat(DISTINCT `attribute` ORDER BY value DESC SEPARATOR ';') FROM t group by o_id order by o_id asc",
@@ -4366,7 +4370,7 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{"2,3"}},
 			},
 			{
-				Query:    "SELECT group_concat(attribute separator '') FROM t WHERE o_id=2 ORDER BY attribute",
+				Query:    "SELECT group_concat(attribute order by attribute separator '') FROM t WHERE o_id=2 ORDER BY attribute",
 				Expected: []sql.Row{{"colorfabric"}},
 			},
 		},
