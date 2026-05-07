@@ -65,12 +65,16 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 
 		isReverse := sortNode.SortFields[0].Order == sql.Descending
 
-		// if the lookup does not need any reversing, use it and drop the sort node
+		// If the lookup does not need any reversing, use it and drop the sort node.
+		// Note that |NewTree| triggers replacement of the sort node captured above by the IndexedTableAccess in the
+		// block below, when |replaceIdxSortHelper| is called on the children of the sort node. This is a rare case when
+		// returning the input node with |NewTree| is valid, but it's confusing and could be rewritten to not require this.
 		if (isReverse && lookup.IsReverse) || (!isReverse && !lookup.IsReverse) {
 			return n, transform.NewTree, nil
 		}
 
-		// if the index is not reversible, do nothing
+		// At this point we know we require a reverse range scan. If the index is not reversible, we can't use it for
+		// sorting, so don't drop the Sort node.
 		if ordIdx, isOrdIdx := lookup.Index.(sql.OrderedIndex); !isOrdIdx || !ordIdx.Reversible(ctx) || ordIdx.Order(ctx) == sql.IndexOrderNone {
 			return n, transform.SameTree, nil
 		}
