@@ -720,8 +720,13 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 		}
 	}
 
-	// TODO: move this into iter.close, probably
-	err = inserter.Close(ctx)
+	// TODO: come up with a more elegant solution
+	if forcedInserter, ok := inserter.(sql.ForceCloser); ok {
+		err = forcedInserter.ForceClose(ctx)
+	} else {
+		// TODO: move this into iter.close, probably
+		err = inserter.Close(ctx)
+	}
 	if err != nil {
 		return false, err
 	}
@@ -1247,8 +1252,13 @@ func (c *createPkIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) e
 		}
 	}
 
-	// TODO: move this into iter.close, probably
-	err = inserter.Close(ctx)
+	// TODO: come up with a more elegant solution
+	if forcedInserter, ok := inserter.(sql.ForceCloser); ok {
+		err = forcedInserter.ForceClose(ctx)
+	} else {
+		// TODO: move this into iter.close, probably
+		err = inserter.Close(ctx)
+	}
 	if err != nil {
 		return err
 	}
@@ -1345,8 +1355,13 @@ func (d *dropPkIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) err
 		}
 	}
 
-	// TODO: move this into iter.close, probably
-	err = inserter.Close(ctx)
+	// TODO: come up with a more elegant solution
+	if forcedInserter, ok := inserter.(sql.ForceCloser); ok {
+		err = forcedInserter.ForceClose(ctx)
+	} else {
+		// TODO: move this into iter.close, probably
+		err = inserter.Close(ctx)
+	}
 	if err != nil {
 		return err
 	}
@@ -1615,8 +1630,13 @@ func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) 
 		}
 	}
 
-	// TODO: move this into iter.close, probably
-	err = inserter.Close(ctx)
+	// TODO: come up with a more elegant solution
+	if forcedInserter, ok := inserter.(sql.ForceCloser); ok {
+		err = forcedInserter.ForceClose(ctx)
+	} else {
+		// TODO: move this into iter.close, probably
+		err = inserter.Close(ctx)
+	}
 	if err != nil {
 		return false, err
 	}
@@ -1912,8 +1932,13 @@ func (i *dropColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable)
 		}
 	}
 
-	// TODO: move this into iter.close, probably
-	err = inserter.Close(ctx)
+	// TODO: come up with a more elegant solution
+	if forcedInserter, ok := inserter.(sql.ForceCloser); ok {
+		err = forcedInserter.ForceClose(ctx)
+	} else {
+		// TODO: move this into iter.close, probably
+		err = inserter.Close(ctx)
+	}
 	if err != nil {
 		return false, err
 	}

@@ -242,6 +242,11 @@ type Closer interface {
 	Close(*Context) error
 }
 
+// ForceCloser is a node that must flush results before closing.
+type ForceCloser interface {
+	ForceClose(*Context) error
+}
+
 // ExternalStoredProcedureProvider provides access to built-in stored procedures. These procedures are implemented
 // as functions, instead of as SQL statements. The returned stored procedures cannot be modified or deleted.
 type ExternalStoredProcedureProvider interface {

@@ -319,7 +319,7 @@ type RowInserter interface {
 	// for the insert operation, which may involve many rows. After all rows in an operation have been processed, Close
 	// is called.
 	Insert(*Context, Row) error
-	// Close finalizes the insert operation, persisting its result.
+	// Closer finalizes the insert operation, persisting its result.
 	Closer
 }
 
