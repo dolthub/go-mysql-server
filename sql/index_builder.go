@@ -138,7 +138,7 @@ func (b *MySQLIndexBuilder) Equals(ctx *Context, colExpr string, keyType Type, k
 				}
 			case apd.Decimal:
 				kInt := new(apd.Decimal)
-				_, err := HighPrecisionCtx.Quantize(kInt, &k, 0)
+				_, err := DecimalHighPrecisionCtx.Quantize(kInt, &k, 0)
 				if err != nil {
 					b.err = err
 					return b
@@ -223,7 +223,7 @@ func (b *MySQLIndexBuilder) In(ctx *Context, colExpr string, keyTypes []Type, ke
 				}
 			case apd.Decimal:
 				kInt := new(apd.Decimal)
-				_, err := HighPrecisionCtx.Quantize(kInt, &k, 0)
+				_, err := DecimalHighPrecisionCtx.Quantize(kInt, &k, 0)
 				if err != nil {
 					b.err = err
 					return b
@@ -278,7 +278,7 @@ func (b *MySQLIndexBuilder) NotEquals(ctx *Context, colExpr string, keyType Type
 		}
 	case apd.Decimal:
 		kInt := new(apd.Decimal)
-		_, err := HighPrecisionCtx.Quantize(kInt, &k, 0)
+		_, err := DecimalHighPrecisionCtx.Quantize(kInt, &k, 0)
 		if err != nil {
 			b.err = err
 			return b

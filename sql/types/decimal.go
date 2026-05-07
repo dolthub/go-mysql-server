@@ -570,7 +570,7 @@ func DecimalFromUint64(x uint64) apd.Decimal {
 // 5.45 rounded with scale of 1 = 5.5
 // 545 rounded with scale of -1 = 550
 func DecimalRound(val apd.Decimal, scale int32) (apd.Decimal, error) {
-	_, err := sql.HighPrecisionCtx.Quantize(&val, &val, -scale)
+	_, err := sql.DecimalHighPrecisionCtx.Quantize(&val, &val, -scale)
 	return val, err
 }
 
@@ -579,7 +579,7 @@ func DecimalRound(val apd.Decimal, scale int32) (apd.Decimal, error) {
 // 545 truncated with scale of -1 = 540
 func DecimalTruncate(val apd.Decimal, scale int32) apd.Decimal {
 	if -scale > val.Exponent {
-		ctx := *sql.HighPrecisionCtx
+		ctx := *sql.DecimalHighPrecisionCtx
 		ctx.Rounding = apd.RoundDown
 		_, err := ctx.Quantize(&val, &val, -scale)
 		if err != nil {
@@ -608,12 +608,11 @@ func DecimalIntPartUint64(val apd.Decimal) uint64 {
 
 // DecimalDivRound divides and rounds to a given scale.
 func DecimalDivRound(a, b apd.Decimal, scale int32) apd.Decimal {
-	ctx := sql.HighPrecisionCtx
-	_, err := ctx.Quo(&a, &a, &b)
+	_, err := sql.DecimalHighPrecisionCtx.Quo(&a, &a, &b)
 	if err != nil {
 		panic(err)
 	}
-	_, err = ctx.Quantize(&a, &a, -scale)
+	_, err = sql.DecimalHighPrecisionCtx.Quantize(&a, &a, -scale)
 	if err != nil {
 		panic(err)
 	}

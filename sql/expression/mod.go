@@ -188,7 +188,7 @@ func mod(ctx *sql.Context, lval, rval interface{}) (interface{}, error) {
 			}
 
 			// Mod function from the decimal package takes care of precision and scale for the result value
-			_, err := sql.HighPrecisionCtx.Rem(&l, &l, &r)
+			_, err := sql.DecimalHighPrecisionCtx.Rem(&l, &l, &r)
 			if err != nil {
 				return nil, err
 			}

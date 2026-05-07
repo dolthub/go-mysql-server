@@ -284,21 +284,11 @@ func IsEnumType(t Type) bool {
 	return ok
 }
 
-// These decimal context set-ups are taken from https://github.com/cockroachdb/cockroach/blob/master/pkg/sql/sem/tree/decimal.go
 var (
-	// DecimalCtx is the default context for decimal operations. Any change
-	// in the exponent limits must still guarantee a safe conversion to the
-	// postgres binary decimal format in the wire protocol, which uses an
-	// int16. See pgwire/types.go.
-	DecimalCtx = &apd.Context{
-		Precision:   20,
-		Rounding:    apd.RoundHalfUp,
-		MaxExponent: 2000,
-		MinExponent: -2000,
-		Traps:       apd.DefaultTraps,
-	}
-	// HighPrecisionCtx is a decimal context with high precision.
-	HighPrecisionCtx = DecimalCtx.WithPrecision(2000)
+	// DecimalCtx is the default context for decimal operations.
+	DecimalCtx = apd.BaseContext.WithPrecision(20)
+	// DecimalHighPrecisionCtx is a decimal context with high precision.
+	DecimalHighPrecisionCtx = apd.BaseContext.WithPrecision(apd.MaxExponent)
 )
 
 // DecimalType represents the DECIMAL type.
