@@ -58,8 +58,14 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 			return n, transform.SameTree, nil
 		}
 
+		// if the index is unordered, we can't use it for sorting
+		if ordIdx, isOrdIdx := lookup.Index.(sql.OrderedIndex); !isOrdIdx || ordIdx.Order(ctx) == sql.IndexOrderNone {
+			return n, transform.SameTree, nil
+		}
+
 		isReverse := sortNode.SortFields[0].Order == sql.Descending
-		// if the lookup does not need any reversing, do nothing
+
+		// if the lookup does not need any reversing, use it and drop the sort node
 		if (isReverse && lookup.IsReverse) || (!isReverse && !lookup.IsReverse) {
 			return n, transform.NewTree, nil
 		}

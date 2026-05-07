@@ -2266,22 +2266,22 @@ SET entity_test.value = joined.value;`,
 		Name: "update join with update trigger if condition",
 		SetUpScript: []string{
 			"CREATE TABLE test_users (\n" +
-				"    `id` int NOT NULL AUTO_INCREMENT,\n" +
-				"    `username` varchar(255) NOT NULL,\n" +
-				"    `password` varchar(60) NOT NULL,\n" +
-				"    `deleted` tinyint(1) DEFAULT '0',\n" +
-				"    `favorite_number` INT,\n" +
-				"    PRIMARY KEY (`id`)\n" +
-				");",
+					"    `id` int NOT NULL AUTO_INCREMENT,\n" +
+					"    `username` varchar(255) NOT NULL,\n" +
+					"    `password` varchar(60) NOT NULL,\n" +
+					"    `deleted` tinyint(1) DEFAULT '0',\n" +
+					"    `favorite_number` INT,\n" +
+					"    PRIMARY KEY (`id`)\n" +
+					");",
 
 			"CREATE TRIGGER test_on_delete_users\n" +
-				"    BEFORE UPDATE ON test_users\n" +
-				"    FOR EACH ROW\n" +
-				"BEGIN\n" +
-				"    IF NEW.`deleted` THEN\n" +
-				"        SET NEW.`password` = '';\n" +
-				"    END IF;\n" +
-				"END ",
+					"    BEFORE UPDATE ON test_users\n" +
+					"    FOR EACH ROW\n" +
+					"BEGIN\n" +
+					"    IF NEW.`deleted` THEN\n" +
+					"        SET NEW.`password` = '';\n" +
+					"    END IF;\n" +
+					"END ",
 
 			"INSERT INTO test_users (username, password, deleted, favorite_number) VALUES ('john', 'doe', 0, 0);",
 		},
@@ -2772,18 +2772,18 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: "WITH RECURSIVE\n" +
-					"    rt (foo) AS (\n" +
-					"        SELECT 1 as foo\n" +
-					"        UNION ALL\n" +
-					"        SELECT foo + 1 as foo FROM rt WHERE foo < 5\n" +
-					"    ),\n" +
-					"        ladder (depth, foo) AS (\n" +
-					"        SELECT 1 as depth, NULL as foo from rt\n" +
-					"        UNION ALL\n" +
-					"        SELECT ladder.depth + 1 as depth, rt.foo\n" +
-					"        FROM ladder JOIN rt WHERE ladder.foo = rt.foo\n" +
-					"    )\n" +
-					"SELECT * FROM ladder;",
+						"    rt (foo) AS (\n" +
+						"        SELECT 1 as foo\n" +
+						"        UNION ALL\n" +
+						"        SELECT foo + 1 as foo FROM rt WHERE foo < 5\n" +
+						"    ),\n" +
+						"        ladder (depth, foo) AS (\n" +
+						"        SELECT 1 as depth, NULL as foo from rt\n" +
+						"        UNION ALL\n" +
+						"        SELECT ladder.depth + 1 as depth, rt.foo\n" +
+						"        FROM ladder JOIN rt WHERE ladder.foo = rt.foo\n" +
+						"    )\n" +
+						"SELECT * FROM ladder;",
 				Expected: []sql.Row{
 					{1, nil},
 					{1, nil},
@@ -4354,7 +4354,7 @@ CREATE TABLE tab3 (
 				ExpectedErr: sql.ErrExpectedSingleRow,
 			},
 			{
-				Query:    "SELECT group_concat(`attribute`) FROM t where o_id=2 order by attribute",
+				Query:    "SELECT group_concat(`attribute` order by attribute) FROM t where o_id=2 order by attribute",
 				Expected: []sql.Row{{"color,fabric"}},
 			},
 			{
@@ -4366,7 +4366,7 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{"2,3"}},
 			},
 			{
-				Query:    "SELECT group_concat(attribute separator '') FROM t WHERE o_id=2 ORDER BY attribute",
+				Query:    "SELECT group_concat(attribute order by attribute separator '') FROM t WHERE o_id=2 ORDER BY attribute",
 				Expected: []sql.Row{{"colorfabric"}},
 			},
 		},
@@ -5176,44 +5176,44 @@ CREATE TABLE tab3 (
 				Query: "show create table t1",
 				Expected: []sql.Row{
 					{"t1", "CREATE TABLE `t1` (\n" +
-						"  `a` int NOT NULL,\n" +
-						"  `b` varchar(10) NOT NULL DEFAULT 'abc',\n" +
-						"  PRIMARY KEY (`a`),\n" +
-						"  KEY `t1b` (`b`),\n" +
-						"  CONSTRAINT `ck1` CHECK (`b` LIKE '%abc%')\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+							"  `a` int NOT NULL,\n" +
+							"  `b` varchar(10) NOT NULL DEFAULT 'abc',\n" +
+							"  PRIMARY KEY (`a`),\n" +
+							"  KEY `t1b` (`b`),\n" +
+							"  CONSTRAINT `ck1` CHECK (`b` LIKE '%abc%')\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 			{
 				Query: "show create table t2",
 				Expected: []sql.Row{
 					{"t2", "CREATE TABLE `t2` (\n" +
-						"  `c` int NOT NULL,\n" +
-						"  `d` varchar(10),\n" +
-						"  PRIMARY KEY (`c`),\n" +
-						"  UNIQUE KEY `t2du` (`d`),\n" +
-						"  CONSTRAINT `fk1` FOREIGN KEY (`d`) REFERENCES `t1` (`b`)\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+							"  `c` int NOT NULL,\n" +
+							"  `d` varchar(10),\n" +
+							"  PRIMARY KEY (`c`),\n" +
+							"  UNIQUE KEY `t2du` (`d`),\n" +
+							"  CONSTRAINT `fk1` FOREIGN KEY (`d`) REFERENCES `t1` (`b`)\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 			{
 				Query: "show create table t3",
 				Expected: []sql.Row{
 					{"t3", "CREATE TABLE `t3` (\n" +
-						"  `a` int NOT NULL,\n" +
-						"  `b` varchar(100) NOT NULL,\n" +
-						"  `c` datetime(6),\n" +
-						"  PRIMARY KEY (`b`,`a`)\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+							"  `a` int NOT NULL,\n" +
+							"  `b` varchar(100) NOT NULL,\n" +
+							"  `c` datetime(6),\n" +
+							"  PRIMARY KEY (`b`,`a`)\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 			{
 				Query: "show create table t4",
 				Expected: []sql.Row{
 					{"t4", "CREATE TABLE `t4` (\n" +
-						"  `a` int DEFAULT (floor(1)),\n" +
-						"  `b` int DEFAULT (coalesce(`a`,10))\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+							"  `a` int DEFAULT (floor(1)),\n" +
+							"  `b` int DEFAULT (coalesce(`a`,10))\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 		},
@@ -5229,10 +5229,10 @@ CREATE TABLE tab3 (
 				Query: "show create table t",
 				Expected: []sql.Row{
 					{"t", "CREATE TABLE `t` (\n" +
-						"  `i` int NOT NULL,\n" +
-						"  PRIMARY KEY (`i`),\n" +
-						"  KEY `notpk` (`i`)\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+							"  `i` int NOT NULL,\n" +
+							"  PRIMARY KEY (`i`),\n" +
+							"  KEY `notpk` (`i`)\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 			{
@@ -5593,9 +5593,9 @@ CREATE TABLE tab3 (
 				Query: "show create table t1;",
 				Expected: []sql.Row{
 					{"t1", "CREATE TABLE `t1` (\n" +
-						"  `i` int NOT NULL,\n" +
-						"  UNIQUE KEY `i` (`i`)\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+							"  `i` int NOT NULL,\n" +
+							"  UNIQUE KEY `i` (`i`)\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 			{
@@ -6643,11 +6643,11 @@ CREATE TABLE tab3 (
 				Query: "show create table TABLE_one;",
 				Expected: []sql.Row{{"table_One",
 					"CREATE TABLE `table_One` (\n" +
-						"  `Id` int NOT NULL,\n" +
-						"  `Val1` int,\n" +
-						"  PRIMARY KEY (`Id`),\n" +
-						"  KEY `idx_one` (`Val1`)\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+							"  `Id` int NOT NULL,\n" +
+							"  `Val1` int,\n" +
+							"  PRIMARY KEY (`Id`),\n" +
+							"  KEY `idx_one` (`Val1`)\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query: "show index from TABLE_one;",
@@ -6663,12 +6663,12 @@ CREATE TABLE tab3 (
 			{
 				Query: "show create table TABLETWO;",
 				Expected: []sql.Row{{"TableTwo", "CREATE TABLE `TableTwo` (\n" +
-					"  `iD` int NOT NULL,\n" +
-					"  `VAL2` int,\n" +
-					"  `vAL3` int,\n" +
-					"  PRIMARY KEY (`iD`),\n" +
-					"  KEY `idx_one` (`VAL2`,`vAL3`)\n" +
-					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+						"  `iD` int NOT NULL,\n" +
+						"  `VAL2` int,\n" +
+						"  `vAL3` int,\n" +
+						"  PRIMARY KEY (`iD`),\n" +
+						"  KEY `idx_one` (`VAL2`,`vAL3`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query: "show index from tABLEtwo;",
@@ -6690,19 +6690,19 @@ CREATE TABLE tab3 (
 				Query: "show create table TABLE_one;",
 				Expected: []sql.Row{{"table_One",
 					"CREATE TABLE `table_One` (\n" +
-						"  `Id` int NOT NULL,\n" +
-						"  `Val1` int,\n" +
-						"  PRIMARY KEY (`Id`)\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+							"  `Id` int NOT NULL,\n" +
+							"  `Val1` int,\n" +
+							"  PRIMARY KEY (`Id`)\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query: "show create table TABLETWO;",
 				Expected: []sql.Row{{"TableTwo", "CREATE TABLE `TableTwo` (\n" +
-					"  `iD` int NOT NULL,\n" +
-					"  `VAL2` int,\n" +
-					"  `vAL3` int,\n" +
-					"  PRIMARY KEY (`iD`)\n" +
-					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+						"  `iD` int NOT NULL,\n" +
+						"  `VAL2` int,\n" +
+						"  `vAL3` int,\n" +
+						"  PRIMARY KEY (`iD`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 		},
 	},
@@ -8372,16 +8372,16 @@ where
 				Query: "show create table t1",
 				Expected: []sql.Row{
 					{"t1", "CREATE TABLE `t1` (\n" +
-						"  `i` int DEFAULT (convert(NOW(), signed))\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+							"  `i` int DEFAULT (convert(NOW(), signed))\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 			{
 				Query: "show create table t2",
 				Expected: []sql.Row{
 					{"t2", "CREATE TABLE `t2` (\n" +
-						"  `i` int DEFAULT (convert(NOW(6), signed))\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+							"  `i` int DEFAULT (convert(NOW(6), signed))\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 		},
@@ -8853,11 +8853,11 @@ where
 				Query: "show create table t",
 				Expected: []sql.Row{
 					{"t", "CREATE TABLE `t` (\n" +
-						"  `i` int,\n" +
-						"  KEY `i` (`i`),\n" +
-						"  KEY `i_2` (`i`),\n" +
-						"  KEY `i_3` (`i`)\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+							"  `i` int,\n" +
+							"  KEY `i` (`i`),\n" +
+							"  KEY `i_2` (`i`),\n" +
+							"  KEY `i_3` (`i`)\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 			{
@@ -8866,12 +8866,12 @@ where
 				Query: "show create table tt",
 				Expected: []sql.Row{
 					{"tt", "CREATE TABLE `tt` (\n" +
-						"  `i` int,\n" +
-						"  KEY `i` (`i`),\n" +
-						"  KEY `i_2` (`i`),\n" +
-						"  KEY `i_3` (`i`),\n" +
-						"  KEY `i_4` (`i`)\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+							"  `i` int,\n" +
+							"  KEY `i` (`i`),\n" +
+							"  KEY `i_2` (`i`),\n" +
+							"  KEY `i_3` (`i`),\n" +
+							"  KEY `i_4` (`i`)\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 		},
@@ -10564,10 +10564,10 @@ where
 				Query: "show create table t;",
 				Expected: []sql.Row{
 					{"t", "CREATE TABLE `t` (\n" +
-						"  `i` int NOT NULL,\n" +
-						"  `e` enum('abc','def','ghi') NOT NULL,\n" +
-						"  PRIMARY KEY (`i`)\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+							"  `i` int NOT NULL,\n" +
+							"  `e` enum('abc','def','ghi') NOT NULL,\n" +
+							"  PRIMARY KEY (`i`)\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 			{
@@ -10654,8 +10654,8 @@ where
 				Query: "show create table t1;",
 				Expected: []sql.Row{
 					{"t1", "CREATE TABLE `t1` (\n" +
-						"  `e` enum('a') DEFAULT 'a'\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+							"  `e` enum('a') DEFAULT 'a'\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 			{
@@ -10710,8 +10710,8 @@ where
 				Query: "show create table t2;",
 				Expected: []sql.Row{
 					{"t2", "CREATE TABLE `t2` (\n" +
-						"  `e` enum('a') DEFAULT (1)\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+							"  `e` enum('a') DEFAULT (1)\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 			{
@@ -10768,8 +10768,8 @@ where
 				Query: "show create table t3;",
 				Expected: []sql.Row{
 					{"t3", "CREATE TABLE `t3` (\n" +
-						"  `e` enum('a') DEFAULT (_utf8mb4'1')\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+							"  `e` enum('a') DEFAULT (_utf8mb4'1')\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 			{
@@ -12110,8 +12110,8 @@ where
 				Query: "show create table t1;",
 				Expected: []sql.Row{
 					{"t1", "CREATE TABLE `t1` (\n" +
-						"  `s` set('a','b','c') COLLATE utf8mb4_0900_ai_ci\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+							"  `s` set('a','b','c') COLLATE utf8mb4_0900_ai_ci\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 			{
@@ -12130,8 +12130,8 @@ where
 				Query: "show create table t2;",
 				Expected: []sql.Row{
 					{"t2", "CREATE TABLE `t2` (\n" +
-						"  `s` set('a','b','c')\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+							"  `s` set('a','b','c')\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 			{
@@ -12394,9 +12394,9 @@ where
 				Query: "show create table bool_tbl;",
 				Expected: []sql.Row{
 					{"bool_tbl", "CREATE TABLE `bool_tbl` (\n" +
-						"  `b` tinyint(1) NOT NULL AUTO_INCREMENT,\n" +
-						"  PRIMARY KEY (`b`)\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+							"  `b` tinyint(1) NOT NULL AUTO_INCREMENT,\n" +
+							"  PRIMARY KEY (`b`)\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 		},
@@ -12432,9 +12432,9 @@ where
 				Query: "show create table tinyint_tbl;",
 				Expected: []sql.Row{
 					{"tinyint_tbl", "CREATE TABLE `tinyint_tbl` (\n" +
-						"  `i` tinyint NOT NULL AUTO_INCREMENT,\n" +
-						"  PRIMARY KEY (`i`)\n" +
-						") ENGINE=InnoDB AUTO_INCREMENT=127 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+							"  `i` tinyint NOT NULL AUTO_INCREMENT,\n" +
+							"  PRIMARY KEY (`i`)\n" +
+							") ENGINE=InnoDB AUTO_INCREMENT=127 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 
@@ -12455,9 +12455,9 @@ where
 				Query: "show create table smallint_tbl;",
 				Expected: []sql.Row{
 					{"smallint_tbl", "CREATE TABLE `smallint_tbl` (\n" +
-						"  `i` smallint NOT NULL AUTO_INCREMENT,\n" +
-						"  PRIMARY KEY (`i`)\n" +
-						") ENGINE=InnoDB AUTO_INCREMENT=32767 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+							"  `i` smallint NOT NULL AUTO_INCREMENT,\n" +
+							"  PRIMARY KEY (`i`)\n" +
+							") ENGINE=InnoDB AUTO_INCREMENT=32767 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 
@@ -12478,9 +12478,9 @@ where
 				Query: "show create table mediumint_tbl;",
 				Expected: []sql.Row{
 					{"mediumint_tbl", "CREATE TABLE `mediumint_tbl` (\n" +
-						"  `i` mediumint NOT NULL AUTO_INCREMENT,\n" +
-						"  PRIMARY KEY (`i`)\n" +
-						") ENGINE=InnoDB AUTO_INCREMENT=8388607 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+							"  `i` mediumint NOT NULL AUTO_INCREMENT,\n" +
+							"  PRIMARY KEY (`i`)\n" +
+							") ENGINE=InnoDB AUTO_INCREMENT=8388607 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 
@@ -12501,9 +12501,9 @@ where
 				Query: "show create table int_tbl;",
 				Expected: []sql.Row{
 					{"int_tbl", "CREATE TABLE `int_tbl` (\n" +
-						"  `i` int NOT NULL AUTO_INCREMENT,\n" +
-						"  PRIMARY KEY (`i`)\n" +
-						") ENGINE=InnoDB AUTO_INCREMENT=2147483647 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+							"  `i` int NOT NULL AUTO_INCREMENT,\n" +
+							"  PRIMARY KEY (`i`)\n" +
+							") ENGINE=InnoDB AUTO_INCREMENT=2147483647 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 
@@ -12524,9 +12524,9 @@ where
 				Query: "show create table bigint_tbl;",
 				Expected: []sql.Row{
 					{"bigint_tbl", "CREATE TABLE `bigint_tbl` (\n" +
-						"  `i` bigint NOT NULL AUTO_INCREMENT,\n" +
-						"  PRIMARY KEY (`i`)\n" +
-						") ENGINE=InnoDB AUTO_INCREMENT=9223372036854775807 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+							"  `i` bigint NOT NULL AUTO_INCREMENT,\n" +
+							"  PRIMARY KEY (`i`)\n" +
+							") ENGINE=InnoDB AUTO_INCREMENT=9223372036854775807 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 		},
@@ -12560,9 +12560,9 @@ where
 				Query: "show create table tinyint_tbl;",
 				Expected: []sql.Row{
 					{"tinyint_tbl", "CREATE TABLE `tinyint_tbl` (\n" +
-						"  `i` tinyint unsigned NOT NULL AUTO_INCREMENT,\n" +
-						"  PRIMARY KEY (`i`)\n" +
-						") ENGINE=InnoDB AUTO_INCREMENT=255 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+							"  `i` tinyint unsigned NOT NULL AUTO_INCREMENT,\n" +
+							"  PRIMARY KEY (`i`)\n" +
+							") ENGINE=InnoDB AUTO_INCREMENT=255 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 
@@ -12583,9 +12583,9 @@ where
 				Query: "show create table smallint_tbl;",
 				Expected: []sql.Row{
 					{"smallint_tbl", "CREATE TABLE `smallint_tbl` (\n" +
-						"  `i` smallint unsigned NOT NULL AUTO_INCREMENT,\n" +
-						"  PRIMARY KEY (`i`)\n" +
-						") ENGINE=InnoDB AUTO_INCREMENT=65535 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+							"  `i` smallint unsigned NOT NULL AUTO_INCREMENT,\n" +
+							"  PRIMARY KEY (`i`)\n" +
+							") ENGINE=InnoDB AUTO_INCREMENT=65535 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 
@@ -12606,9 +12606,9 @@ where
 				Query: "show create table mediumint_tbl;",
 				Expected: []sql.Row{
 					{"mediumint_tbl", "CREATE TABLE `mediumint_tbl` (\n" +
-						"  `i` mediumint unsigned NOT NULL AUTO_INCREMENT,\n" +
-						"  PRIMARY KEY (`i`)\n" +
-						") ENGINE=InnoDB AUTO_INCREMENT=16777215 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+							"  `i` mediumint unsigned NOT NULL AUTO_INCREMENT,\n" +
+							"  PRIMARY KEY (`i`)\n" +
+							") ENGINE=InnoDB AUTO_INCREMENT=16777215 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 
@@ -12629,9 +12629,9 @@ where
 				Query: "show create table int_tbl;",
 				Expected: []sql.Row{
 					{"int_tbl", "CREATE TABLE `int_tbl` (\n" +
-						"  `i` int unsigned NOT NULL AUTO_INCREMENT,\n" +
-						"  PRIMARY KEY (`i`)\n" +
-						") ENGINE=InnoDB AUTO_INCREMENT=4294967295 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+							"  `i` int unsigned NOT NULL AUTO_INCREMENT,\n" +
+							"  PRIMARY KEY (`i`)\n" +
+							") ENGINE=InnoDB AUTO_INCREMENT=4294967295 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 
@@ -12652,9 +12652,9 @@ where
 				Query: "show create table bigint_tbl;",
 				Expected: []sql.Row{
 					{"bigint_tbl", "CREATE TABLE `bigint_tbl` (\n" +
-						"  `i` bigint unsigned NOT NULL AUTO_INCREMENT,\n" +
-						"  PRIMARY KEY (`i`)\n" +
-						") ENGINE=InnoDB AUTO_INCREMENT=18446744073709551615 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+							"  `i` bigint unsigned NOT NULL AUTO_INCREMENT,\n" +
+							"  PRIMARY KEY (`i`)\n" +
+							") ENGINE=InnoDB AUTO_INCREMENT=18446744073709551615 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 		},
@@ -15933,14 +15933,14 @@ var SpatialIndexScriptTests = []ScriptTest{
 		Name: "show table with spatial indexes",
 		SetUpScript: []string{
 			"create table geom(" +
-				"p point not null srid 0," +
-				"l linestring not null srid 0," +
-				"py polygon not null srid 0," +
-				"mp multipoint not null srid 0," +
-				"ml multilinestring not null srid 0," +
-				"mpy multipolygon not null srid 0," +
-				"gc geometrycollection not null srid 0," +
-				"g geometry not null srid 0)",
+					"p point not null srid 0," +
+					"l linestring not null srid 0," +
+					"py polygon not null srid 0," +
+					"mp multipoint not null srid 0," +
+					"ml multilinestring not null srid 0," +
+					"mpy multipolygon not null srid 0," +
+					"gc geometrycollection not null srid 0," +
+					"g geometry not null srid 0)",
 			"alter table geom add spatial index (p)",
 			"alter table geom add spatial index (l)",
 			"alter table geom add spatial index (py)",
@@ -15957,23 +15957,23 @@ var SpatialIndexScriptTests = []ScriptTest{
 					{
 						"geom",
 						"CREATE TABLE `geom` (\n" +
-							"  `p` point NOT NULL /*!80003 SRID 0 */,\n" +
-							"  `l` linestring NOT NULL /*!80003 SRID 0 */,\n" +
-							"  `py` polygon NOT NULL /*!80003 SRID 0 */,\n" +
-							"  `mp` multipoint NOT NULL /*!80003 SRID 0 */,\n" +
-							"  `ml` multilinestring NOT NULL /*!80003 SRID 0 */,\n" +
-							"  `mpy` multipolygon NOT NULL /*!80003 SRID 0 */,\n" +
-							"  `gc` geometrycollection NOT NULL /*!80003 SRID 0 */,\n" +
-							"  `g` geometry NOT NULL /*!80003 SRID 0 */,\n" +
-							"  SPATIAL KEY `g` (`g`),\n" +
-							"  SPATIAL KEY `gc` (`gc`),\n" +
-							"  SPATIAL KEY `l` (`l`),\n" +
-							"  SPATIAL KEY `ml` (`ml`),\n" +
-							"  SPATIAL KEY `mp` (`mp`),\n" +
-							"  SPATIAL KEY `mpy` (`mpy`),\n" +
-							"  SPATIAL KEY `p` (`p`),\n" +
-							"  SPATIAL KEY `py` (`py`)\n" +
-							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+								"  `p` point NOT NULL /*!80003 SRID 0 */,\n" +
+								"  `l` linestring NOT NULL /*!80003 SRID 0 */,\n" +
+								"  `py` polygon NOT NULL /*!80003 SRID 0 */,\n" +
+								"  `mp` multipoint NOT NULL /*!80003 SRID 0 */,\n" +
+								"  `ml` multilinestring NOT NULL /*!80003 SRID 0 */,\n" +
+								"  `mpy` multipolygon NOT NULL /*!80003 SRID 0 */,\n" +
+								"  `gc` geometrycollection NOT NULL /*!80003 SRID 0 */,\n" +
+								"  `g` geometry NOT NULL /*!80003 SRID 0 */,\n" +
+								"  SPATIAL KEY `g` (`g`),\n" +
+								"  SPATIAL KEY `gc` (`gc`),\n" +
+								"  SPATIAL KEY `l` (`l`),\n" +
+								"  SPATIAL KEY `ml` (`ml`),\n" +
+								"  SPATIAL KEY `mp` (`mp`),\n" +
+								"  SPATIAL KEY `mpy` (`mpy`),\n" +
+								"  SPATIAL KEY `p` (`p`),\n" +
+								"  SPATIAL KEY `py` (`py`)\n" +
+								") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
 					},
 				},
 			},
@@ -16522,19 +16522,19 @@ var PreparedScriptTests = []ScriptTest{
 					// If we change how Vitess interprets client bindvar types, we should update this test
 					// Or better yet: have a test harness that uses the server directly
 					"v1": sqlparser.NewStrVal([]byte(
-						"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
 							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
-							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
-							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
-							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
-							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
-							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
-							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
-							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
-							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
-							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
-							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
-							"")),
+									"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+									"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+									"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+									"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+									"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+									"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+									"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+									"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+									"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+									"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+									"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+									"")),
 				},
 				Expected: []sql.Row{{types.OkResult{
 					RowsAffected: 1,
