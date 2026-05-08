@@ -66,6 +66,7 @@ const (
 	resolveInsertRowsId          // resolveInsertRows
 	applyTriggersId              // applyTriggers
 	applyProceduresId            // applyProcedures
+	applyLazyWritesId            // applyLazyWrites
 	assignRoutinesId             // assignRoutines
 	modifyUpdateExprsForJoinId   // modifyUpdateExprsForJoin
 	applyForeignKeysId           // applyForeignKeys

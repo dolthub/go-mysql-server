@@ -428,6 +428,11 @@ type TableEditor interface {
 	RowUpdater
 }
 
+// LazyTableEditor is a table editor that
+type LazyTableEditor interface {
+	SetLazy(bool)
+}
+
 // RewritableTable is an extension to Table that makes it simpler for integrators to adapt to schema changes that must
 // rewrite every row of the table. In this case, rows are streamed from the existing table in the old schema,
 // transformed / updated appropriately, and written with the new format.
