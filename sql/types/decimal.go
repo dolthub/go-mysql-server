@@ -306,7 +306,7 @@ func (t DecimalType_) BoundsCheck(v *apd.Decimal) (*apd.Decimal, sql.ConvertInRa
 	if -v.Exponent > int32(t.scale) {
 		// TODO : add 'Data truncated' warning
 		var err error
-		v, err = sql.DecimalRound(v, int32(t.scale))
+		newVal, err = sql.DecimalRound(v, int32(t.scale))
 		if err != nil {
 			return nil, sql.InRange, err
 		}
