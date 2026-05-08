@@ -114,8 +114,7 @@ func (b *MySQLIndexBuilder) Equals(ctx *Context, colExpr string, keyType Type, k
 	}
 	colTyp, ok := b.colExprTypes[colExpr]
 	if !ok {
-		b.isInvalid = true
-		b.err = ErrInvalidColExpr.New(colExpr, b.idx.ID())
+		// A different column was included in a tuple. This is allowed.
 		return b
 	}
 	potentialRanges := make([]MySQLRangeColumnExpr, len(keys))

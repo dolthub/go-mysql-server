@@ -1147,19 +1147,23 @@ func (b *indexScanRangeBuilder) rangeBuildFulltextLeaf(f *iScanLeaf, inScan bool
 }
 
 func (b *indexScanRangeBuilder) rangeBuildLeaf(f *iScanLeaf, inScan bool) (sql.MySQLRangeCollection, error) {
+
+	// I'm not sure when this is required.
+	b.markImprecise(f.id)
+
 	switch f.Op() {
 	case sql.IndexScanOpSpatialEq:
 		return b.rangeBuildSpatialLeaf(f, inScan)
 	case sql.IndexScanOpFulltextEq:
 		return b.rangeBuildFulltextLeaf(f, inScan)
 	case sql.IndexScanOpEq:
-		return b.rangeBuildEquals(f, false), nil
+		return b.rangeBuildEquals(f, false)
 	case sql.IndexScanOpNullSafeEq:
-		return b.rangeBuildEquals(f, true), nil
+		return b.rangeBuildEquals(f, true)
 	case sql.IndexScanOpNotEq:
-		return b.rangeBuildNotEquals(f), nil
+		return b.rangeBuildNotEquals(f)
 	case sql.IndexScanOpInSet:
-		return b.rangeBuildInSet(f), nil
+		return b.rangeBuildInSet(f)
 	default:
 		if len(f.columns) > 1 {
 			return nil, fmt.Errorf("unhandled op with multiple columns %v, this shouldn't happen", f)
@@ -1216,38 +1220,48 @@ func (b *indexScanRangeBuilder) rangeBuildDefaultLeaf(bb *sql.MySQLIndexBuilder,
 	}
 }
 
-func (b *indexScanRangeBuilder) rangeBuildEquals(f *iScanLeaf, nullSafe bool) sql.MySQLRangeCollection {
+func (b *indexScanRangeBuilder) rangeBuildEquals(f *iScanLeaf, nullSafe bool) (sql.MySQLRangeCollection, error) {
 	partBuilder := sql.NewMySQLIndexBuilder(b.ctx, b.idx)
 	for i, column := range f.columns {
 		litType := column.litType
 		litValue := column.litValue
-		if f.litValue == nil {
+		if nullSafe && f.litValue == nil {
 			partBuilder.IsNull(b.ctx, f.normString(i))
+		} else {
+			partBuilder.Equals(b.ctx, f.normString(i), litType, litValue)
 		}
-		partBuilder.Equals(b.ctx, f.normString(i), litType, litValue)
 	}
-	return partBuilder.Ranges(b.ctx)
+	if _, err := partBuilder.Build(b.ctx); err != nil {
+		return nil, err
+	}
+	return partBuilder.Ranges(b.ctx), nil
 }
 
-func (b *indexScanRangeBuilder) rangeBuildNotEquals(f *iScanLeaf) sql.MySQLRangeCollection {
+func (b *indexScanRangeBuilder) rangeBuildNotEquals(f *iScanLeaf) (sql.MySQLRangeCollection, error) {
 	var ret sql.MySQLRangeCollection
 	for i, column := range f.columns {
 		litType := column.litType
 		litValue := column.litValue
 		partBuilder := sql.NewMySQLIndexBuilder(b.ctx, b.idx)
 		partBuilder.NotEquals(b.ctx, f.normString(i), litType, litValue)
+		if _, err := partBuilder.Build(b.ctx); err != nil {
+			return nil, err
+		}
 		ret = append(ret, partBuilder.Ranges(b.ctx)...)
 	}
-	return ret
+	return ret, nil
 }
 
-func (b *indexScanRangeBuilder) rangeBuildInSet(f *iScanLeaf) sql.MySQLRangeCollection {
+func (b *indexScanRangeBuilder) rangeBuildInSet(f *iScanLeaf) (sql.MySQLRangeCollection, error) {
 	var ret sql.MySQLRangeCollection
 	_, isTuple := f.litType.(types.TupleType)
 	if !isTuple {
 		bb := sql.NewMySQLIndexBuilder(b.ctx, b.idx)
-		bb.In(b.ctx, f.columns[0].name, f.setTypes, f.setValues)
-		return bb.Ranges(b.ctx)
+		bb.In(b.ctx, f.normString(0), f.setTypes, f.setValues)
+		if _, err := bb.Build(b.ctx); err != nil {
+			return nil, err
+		}
+		return bb.Ranges(b.ctx), nil
 	}
 
 	for i := range f.setValues {
@@ -1257,9 +1271,12 @@ func (b *indexScanRangeBuilder) rangeBuildInSet(f *iScanLeaf) sql.MySQLRangeColl
 		for j, setValue := range setValueTuple {
 			partBuilder.Equals(b.ctx, f.normString(j), setType[j], setValue)
 		}
+		if _, err := partBuilder.Build(b.ctx); err != nil {
+			return nil, err
+		}
 		ret = append(ret, partBuilder.Ranges(b.ctx)...)
 	}
-	return ret
+	return ret, nil
 }
 
 // markLeftover is used to check if leaf nodes and OR filters are left out
@@ -1714,6 +1731,17 @@ func indexHasContentHashedFieldForFilter(ctx *sql.Context, filter *iScanLeaf, id
 // by a statistic, returning the updated statistic, whether the filter was
 // applicable, and the maximum prefix key (0 or 1 for a leaf).
 func (c *indexCoster) costIndexScanLeaf(ctx *sql.Context, filter *iScanLeaf, s sql.Statistic, buckets []sql.HistogramBucket, ordinals map[string]int, idx sql.Index) ([]sql.HistogramBucket, *sql.FuncDepSet, bool, int, error) {
+	filterMatchesIndex := false
+	for _, column := range filter.columns {
+		if _, ok := ordinals[strings.ToLower(column.name)]; ok {
+			filterMatchesIndex = true
+			break
+		}
+	}
+	if !filterMatchesIndex {
+		return nil, nil, false, 0, nil
+	}
+
 	// indexes with content-hashed fields can be used to test equality or compare with NULL,
 	// but can't be used for other comparisons, such as less than or greater than.
 	if indexHasContentHashedFieldForFilter(ctx, filter, idx, ordinals) {
@@ -1742,6 +1770,7 @@ func (c *indexCoster) costIndexScanLeaf(ctx *sql.Context, filter *iScanLeaf, s s
 		stat, ok, err := c.costFulltext(filter, s, ord)
 		return buckets, stat.FuncDeps(), ok, 0, err
 	default:
+		// If none of the keys are in the index, then we won't
 		conj := newConjCollector(s, buckets, ordinals)
 		err := conj.add(ctx, filter)
 		if err != nil {
@@ -2185,7 +2214,7 @@ func (c *conjCollector) addEq(ctx *sql.Context, col string, val interface{}, nul
 	col = strings.ToLower(col)
 	ord, ok := c.ordinals[col]
 	if !ok {
-		return fmt.Errorf("unknown column '%s'", col)
+		return nil
 	}
 	if c.constant.Contains(ord + 1) {
 		if c.eqVals[ord] != val {
@@ -2223,7 +2252,7 @@ func (c *conjCollector) addIneq(ctx *sql.Context, op sql.IndexScanOp, col string
 	col = strings.ToLower(col)
 	ord, ok := c.ordinals[col]
 	if !ok {
-		return fmt.Errorf("unknown column '%s'", col)
+		return nil
 	}
 	c.ineqCols.Add(ord)
 	if ord > 0 {

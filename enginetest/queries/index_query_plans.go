@@ -2990,6 +2990,324 @@ var IndexPlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: `SELECT * FROM comp_index_t0 WHERE (v1, v2) = (100, 200);`,
+		ExpectedPlan: "Filter\n" +
+			" ├─ Eq\n" +
+			" │   ├─ TUPLE(comp_index_t0.v1:1, comp_index_t0.v2:2)\n" +
+			" │   └─ TUPLE(100 (tinyint), 200 (tinyint unsigned))\n" +
+			" └─ IndexedTableAccess(comp_index_t0)\n" +
+			"     ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			"     ├─ static: [{[100, 100], [200, 200]}]\n" +
+			"     ├─ colSet: (1-3)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: comp_index_t0\n" +
+			"         └─ columns: [pk v1 v2]\n" +
+			"",
+		ExpectedEstimates: "Filter\n" +
+			" ├─ ((comp_index_t0.v1, comp_index_t0.v2) = (100, 200))\n" +
+			" └─ IndexedTableAccess(comp_index_t0)\n" +
+			"     ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			"     ├─ filters: [{[100, 100], [200, 200]}]\n" +
+			"     └─ columns: [pk v1 v2]\n" +
+			"",
+		ExpectedAnalysis: "Filter\n" +
+			" ├─ ((comp_index_t0.v1, comp_index_t0.v2) = (100, 200))\n" +
+			" └─ IndexedTableAccess(comp_index_t0)\n" +
+			"     ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			"     ├─ filters: [{[100, 100], [200, 200]}]\n" +
+			"     └─ columns: [pk v1 v2]\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM comp_index_t0 WHERE (v1, v2) != (100, 200);`,
+		ExpectedPlan: "Filter\n" +
+			" ├─ NOT\n" +
+			" │   └─ Eq\n" +
+			" │       ├─ TUPLE(comp_index_t0.v1:1, comp_index_t0.v2:2)\n" +
+			" │       └─ TUPLE(100 (tinyint), 200 (tinyint unsigned))\n" +
+			" └─ IndexedTableAccess(comp_index_t0)\n" +
+			"     ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			"     ├─ static: [{[NULL, NULL], (NULL, 200)}, {[NULL, NULL], (200, ∞)}, {(NULL, 100), [NULL, ∞)}, {[100, 100], (NULL, 200)}, {[100, 100], (200, ∞)}, {(100, ∞), [NULL, ∞)}]\n" +
+			"     ├─ colSet: (1-3)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: comp_index_t0\n" +
+			"         └─ columns: [pk v1 v2]\n" +
+			"",
+		ExpectedEstimates: "Filter\n" +
+			" ├─ (NOT(((comp_index_t0.v1, comp_index_t0.v2) = (100, 200))))\n" +
+			" └─ IndexedTableAccess(comp_index_t0)\n" +
+			"     ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			"     ├─ filters: [{[NULL, NULL], (NULL, 200)}, {[NULL, NULL], (200, ∞)}, {(NULL, 100), [NULL, ∞)}, {[100, 100], (NULL, 200)}, {[100, 100], (200, ∞)}, {(100, ∞), [NULL, ∞)}]\n" +
+			"     └─ columns: [pk v1 v2]\n" +
+			"",
+		ExpectedAnalysis: "Filter\n" +
+			" ├─ (NOT(((comp_index_t0.v1, comp_index_t0.v2) = (100, 200))))\n" +
+			" └─ IndexedTableAccess(comp_index_t0)\n" +
+			"     ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			"     ├─ filters: [{[NULL, NULL], (NULL, 200)}, {[NULL, NULL], (200, ∞)}, {(NULL, 100), [NULL, ∞)}, {[100, 100], (NULL, 200)}, {[100, 100], (200, ∞)}, {(100, ∞), [NULL, ∞)}]\n" +
+			"     └─ columns: [pk v1 v2]\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM comp_index_t0 WHERE (v2, v1) = (200, 100);`,
+		ExpectedPlan: "Filter\n" +
+			" ├─ Eq\n" +
+			" │   ├─ TUPLE(comp_index_t0.v2:2, comp_index_t0.v1:1)\n" +
+			" │   └─ TUPLE(200 (tinyint unsigned), 100 (tinyint))\n" +
+			" └─ IndexedTableAccess(comp_index_t0)\n" +
+			"     ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			"     ├─ static: [{[100, 100], [200, 200]}]\n" +
+			"     ├─ colSet: (1-3)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: comp_index_t0\n" +
+			"         └─ columns: [pk v1 v2]\n" +
+			"",
+		ExpectedEstimates: "Filter\n" +
+			" ├─ ((comp_index_t0.v2, comp_index_t0.v1) = (200, 100))\n" +
+			" └─ IndexedTableAccess(comp_index_t0)\n" +
+			"     ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			"     ├─ filters: [{[100, 100], [200, 200]}]\n" +
+			"     └─ columns: [pk v1 v2]\n" +
+			"",
+		ExpectedAnalysis: "Filter\n" +
+			" ├─ ((comp_index_t0.v2, comp_index_t0.v1) = (200, 100))\n" +
+			" └─ IndexedTableAccess(comp_index_t0)\n" +
+			"     ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			"     ├─ filters: [{[100, 100], [200, 200]}]\n" +
+			"     └─ columns: [pk v1 v2]\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM comp_index_t0 WHERE (v1, v2) IN ((100, 200), (300, 400));`,
+		ExpectedPlan: "Filter\n" +
+			" ├─ HashIn\n" +
+			" │   ├─ TUPLE(comp_index_t0.v1:1, comp_index_t0.v2:2)\n" +
+			" │   └─ TUPLE(TUPLE(100 (tinyint), 200 (tinyint unsigned)), TUPLE(300 (smallint), 400 (smallint)))\n" +
+			" └─ IndexedTableAccess(comp_index_t0)\n" +
+			"     ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			"     ├─ static: [{[100, 100], [200, 200]}, {[300, 300], [400, 400]}]\n" +
+			"     ├─ colSet: (1-3)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: comp_index_t0\n" +
+			"         └─ columns: [pk v1 v2]\n" +
+			"",
+		ExpectedEstimates: "Filter\n" +
+			" ├─ ((comp_index_t0.v1, comp_index_t0.v2) HASH IN ((100, 200), (300, 400)))\n" +
+			" └─ IndexedTableAccess(comp_index_t0)\n" +
+			"     ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			"     ├─ filters: [{[100, 100], [200, 200]}, {[300, 300], [400, 400]}]\n" +
+			"     └─ columns: [pk v1 v2]\n" +
+			"",
+		ExpectedAnalysis: "Filter\n" +
+			" ├─ ((comp_index_t0.v1, comp_index_t0.v2) HASH IN ((100, 200), (300, 400)))\n" +
+			" └─ IndexedTableAccess(comp_index_t0)\n" +
+			"     ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			"     ├─ filters: [{[100, 100], [200, 200]}, {[300, 300], [400, 400]}]\n" +
+			"     └─ columns: [pk v1 v2]\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM comp_index_t0 WHERE (v1, v2, 300) = (100, 200, 300);`,
+		ExpectedPlan: "Filter\n" +
+			" ├─ Eq\n" +
+			" │   ├─ TUPLE(comp_index_t0.v1:1, comp_index_t0.v2:2, 300 (tinyint unsigned))\n" +
+			" │   └─ TUPLE(100 (tinyint), 200 (tinyint unsigned), 300 (tinyint unsigned))\n" +
+			" └─ IndexedTableAccess(comp_index_t0)\n" +
+			"     ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			"     ├─ static: [{[100, 100], [200, 200]}]\n" +
+			"     ├─ colSet: (1-3)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: comp_index_t0\n" +
+			"         └─ columns: [pk v1 v2]\n" +
+			"",
+		ExpectedEstimates: "Filter\n" +
+			" ├─ ((comp_index_t0.v1, comp_index_t0.v2) = (100, 200))\n" +
+			" └─ IndexedTableAccess(comp_index_t0)\n" +
+			"     ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			"     ├─ filters: [{[100, 100], [200, 200]}]\n" +
+			"     └─ columns: [pk v1 v2]\n" +
+			"",
+		ExpectedAnalysis: "Filter\n" +
+			" ├─ ((comp_index_t0.v1, comp_index_t0.v2) = (100, 200))\n" +
+			" └─ IndexedTableAccess(comp_index_t0)\n" +
+			"     ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			"     ├─ filters: [{[100, 100], [200, 200]}]\n" +
+			"     └─ columns: [pk v1 v2]\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM comp_index_t0 WHERE (v1, v2) <=> (100, 200);`,
+		ExpectedPlan: "Filter\n" +
+			" ├─ (TUPLE(comp_index_t0.v1:1, comp_index_t0.v2:2) <=> TUPLE(100 (tinyint), 200 (tinyint unsigned)))\n" +
+			" └─ IndexedTableAccess(comp_index_t0)\n" +
+			"     ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			"     ├─ static: [{[100, 100], [200, 200]}]\n" +
+			"     ├─ colSet: (1-3)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: comp_index_t0\n" +
+			"         └─ columns: [pk v1 v2]\n" +
+			"",
+		ExpectedEstimates: "Filter\n" +
+			" ├─ ((comp_index_t0.v1, comp_index_t0.v2) <=> (100, 200))\n" +
+			" └─ IndexedTableAccess(comp_index_t0)\n" +
+			"     ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			"     ├─ filters: [{[100, 100], [200, 200]}]\n" +
+			"     └─ columns: [pk v1 v2]\n" +
+			"",
+		ExpectedAnalysis: "Filter\n" +
+			" ├─ ((comp_index_t0.v1, comp_index_t0.v2) <=> (100, 200))\n" +
+			" └─ IndexedTableAccess(comp_index_t0)\n" +
+			"     ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			"     ├─ filters: [{[100, 100], [200, 200]}]\n" +
+			"     └─ columns: [pk v1 v2]\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM comp_index_t0 WHERE (v1, v2) <=> (100, NULL);`,
+		ExpectedPlan: "Filter\n" +
+			" ├─ (TUPLE(comp_index_t0.v1:1, comp_index_t0.v2:2) <=> TUPLE(100 (tinyint), NULL (null)))\n" +
+			" └─ IndexedTableAccess(comp_index_t0)\n" +
+			"     ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			"     ├─ static: [{[100, 100], [NULL, NULL]}]\n" +
+			"     ├─ colSet: (1-3)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: comp_index_t0\n" +
+			"         └─ columns: [pk v1 v2]\n" +
+			"",
+		ExpectedEstimates: "Filter\n" +
+			" ├─ ((comp_index_t0.v1, comp_index_t0.v2) <=> (100, NULL))\n" +
+			" └─ IndexedTableAccess(comp_index_t0)\n" +
+			"     ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			"     ├─ filters: [{[100, 100], [NULL, NULL]}]\n" +
+			"     └─ columns: [pk v1 v2]\n" +
+			"",
+		ExpectedAnalysis: "Filter\n" +
+			" ├─ ((comp_index_t0.v1, comp_index_t0.v2) <=> (100, NULL))\n" +
+			" └─ IndexedTableAccess(comp_index_t0)\n" +
+			"     ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			"     ├─ filters: [{[100, 100], [NULL, NULL]}]\n" +
+			"     └─ columns: [pk v1 v2]\n" +
+			"",
+	},
+	{
+		Query: `SELECT /*+ LOOKUP_JOIN(one,two) */ * FROM comp_index_t0 one JOIN comp_index_t0 two ON (one.v1, one.v2) = (two.v1, two.v2);`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [one.pk:3!null, one.v1:4, one.v2:5, two.pk:0!null, two.v1:1, two.v2:2]\n" +
+			" └─ LookupJoin\n" +
+			"     ├─ TableAlias(two)\n" +
+			"     │   └─ ProcessTable\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: comp_index_t0\n" +
+			"     │           └─ columns: [pk v1 v2]\n" +
+			"     └─ TableAlias(one)\n" +
+			"         └─ IndexedTableAccess(comp_index_t0)\n" +
+			"             ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			"             ├─ keys: [two.v1:1 two.v2:2]\n" +
+			"             ├─ colSet: (1-3)\n" +
+			"             ├─ tableId: 1\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: comp_index_t0\n" +
+			"                 └─ columns: [pk v1 v2]\n" +
+			"",
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [one.pk, one.v1, one.v2, two.pk, two.v1, two.v2]\n" +
+			" └─ LookupJoin (estimated cost=404.600 rows=126)\n" +
+			"     ├─ TableAlias(two)\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: comp_index_t0\n" +
+			"     │       └─ columns: [pk v1 v2]\n" +
+			"     └─ TableAlias(one)\n" +
+			"         └─ IndexedTableAccess(comp_index_t0)\n" +
+			"             ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			"             ├─ columns: [pk v1 v2]\n" +
+			"             └─ keys: two.v1, two.v2\n" +
+			"",
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [one.pk, one.v1, one.v2, two.pk, two.v1, two.v2]\n" +
+			" └─ LookupJoin (estimated cost=404.600 rows=126) (actual rows=1 loops=1)\n" +
+			"     ├─ TableAlias(two)\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: comp_index_t0\n" +
+			"     │       └─ columns: [pk v1 v2]\n" +
+			"     └─ TableAlias(one)\n" +
+			"         └─ IndexedTableAccess(comp_index_t0)\n" +
+			"             ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			"             ├─ columns: [pk v1 v2]\n" +
+			"             └─ keys: two.v1, two.v2\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM comp_index_t0 WHERE (v1, v2) IN (SELECT MAX(v1), MAX(v2) FROM comp_index_t1); `,
+		ExpectedPlan: "Filter\n" +
+			" ├─ InSubquery\n" +
+			" │   ├─ left: TUPLE(comp_index_t0.v1:1, comp_index_t0.v2:2)\n" +
+			" │   └─ right: Subquery\n" +
+			" │       ├─ cacheable: true\n" +
+			" │       ├─ alias-string: select MAX(v1), MAX(v2) from comp_index_t1\n" +
+			" │       └─ Project\n" +
+			" │           ├─ columns: [max(comp_index_t1.v1):3!null->MAX(v1):0, max(comp_index_t1.v2):4!null->MAX(v2):0]\n" +
+			" │           └─ GroupBy\n" +
+			" │               ├─ select: MAX(comp_index_t1.v1:3), MAX(comp_index_t1.v2:4)\n" +
+			" │               ├─ group: \n" +
+			" │               └─ Table\n" +
+			" │                   ├─ name: comp_index_t1\n" +
+			" │                   ├─ columns: [v1 v2]\n" +
+			" │                   ├─ colSet: (4-7)\n" +
+			" │                   └─ tableId: 2\n" +
+			" └─ IndexedTableAccess(comp_index_t0)\n" +
+			"     ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			"     ├─ keys: [max(comp_index_t1.v1):3 max(comp_index_t1.v2):4]\n" +
+			"     ├─ colSet: (1-3)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: comp_index_t0\n" +
+			"         └─ columns: [pk v1 v2]\n" +
+			"",
+		ExpectedEstimates: "Filter\n" +
+			" ├─ InSubquery\n" +
+			" │   ├─ left: (comp_index_t0.v1, comp_index_t0.v2)\n" +
+			" │   └─ right: Subquery\n" +
+			" │       ├─ cacheable: true\n" +
+			" │       └─ Project\n" +
+			" │           ├─ columns: [max(comp_index_t1.v1) as MAX(v1), max(comp_index_t1.v2) as MAX(v2)]\n" +
+			" │           └─ GroupBy\n" +
+			" │               ├─ select: MAX(comp_index_t1.v1), MAX(comp_index_t1.v2)\n" +
+			" │               ├─ group: \n" +
+			" │               └─ Table\n" +
+			" │                   ├─ name: comp_index_t1\n" +
+			" │                   └─ columns: [v1 v2]\n" +
+			" └─ IndexedTableAccess(comp_index_t0)\n" +
+			"    ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			"    ├─ columns: [pk v1 v2]\n" +
+			"    └─ keys: max(comp_index_t1.v1), max(comp_index_t1.v2)\n" +
+			"",
+		ExpectedAnalysis: "Filter\n" +
+			" ├─ InSubquery\n" +
+			" │   ├─ left: (comp_index_t0.v1, comp_index_t0.v2)\n" +
+			" │   └─ right: Subquery\n" +
+			" │       ├─ cacheable: true\n" +
+			" │       └─ Project\n" +
+			" │           ├─ columns: [max(comp_index_t1.v1) as MAX(v1), max(comp_index_t1.v2) as MAX(v2)]\n" +
+			" │           └─ GroupBy\n" +
+			" │               ├─ select: MAX(comp_index_t1.v1), MAX(comp_index_t1.v2)\n" +
+			" │               ├─ group: \n" +
+			" │               └─ Table\n" +
+			" │                   ├─ name: comp_index_t1\n" +
+			" │                   └─ columns: [v1 v2]\n" +
+			" └─ IndexedTableAccess(comp_index_t0)\n" +
+			"    ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			"    ├─ columns: [pk v1 v2]\n" +
+			"    └─ keys: max(comp_index_t1.v1), max(comp_index_t1.v2)\n" +
+			"",
+	},
+	{
 		Query: `SELECT * FROM comp_index_t1 WHERE ((v1<>87 AND v2 BETWEEN 8 AND 33) OR (v1 BETWEEN 39 AND 69 AND v3<4));`,
 		ExpectedPlan: "IndexedTableAccess(comp_index_t1)\n" +
 			" ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
