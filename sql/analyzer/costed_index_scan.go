@@ -895,12 +895,12 @@ func inValsToMySQLRangeCollHelper[N cmp.Ordered](ctx *sql.Context, vals []any, t
 			if precise && float64(int(v)) != v {
 				continue
 			}
-		case apd.Decimal:
-			k, err := types.DecimalRound(v, 0)
+		case *apd.Decimal:
+			vIntPart, err := sql.DecimalRound(v, 0)
 			if err != nil {
 				return nil, false
 			}
-			if precise && v.Cmp(&k) != 0 {
+			if precise && v.Cmp(vIntPart) != 0 {
 				continue
 			}
 		default:

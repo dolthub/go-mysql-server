@@ -141,7 +141,7 @@ func TypeOfJsonValue(val interface{}) string {
 		return "ARRAY"
 	case map[string]interface{}:
 		return "OBJECT"
-	case apd.Decimal:
+	case *apd.Decimal:
 		return "DECIMAL"
 	default:
 		return "OPAQUE"

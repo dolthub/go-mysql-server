@@ -320,12 +320,12 @@ func (a *Arithmetic) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Decimals must be rounded
-	if res, ok := result.(apd.Decimal); ok {
+	if res, ok := result.(*apd.Decimal); ok {
 		if isOutermostArithmeticOp(a, a.ops) {
 			finalScale, hasDiv := getFinalScale(ctx, row, a, 0)
 			if hasDiv {
 				// TODO: should always round regardless; we have bad Decimal defaults
-				return types.DecimalRound(res, finalScale)
+				return sql.DecimalRound(res, finalScale)
 			}
 		}
 	}
@@ -541,11 +541,12 @@ func plus(lval, rval interface{}) (interface{}, error) {
 		case float64:
 			return l + r, nil
 		}
-	case apd.Decimal:
+	case *apd.Decimal:
 		switch r := rval.(type) {
-		case apd.Decimal:
-			_, err := sql.DecimalCtx.Add(&l, &l, &r)
-			return l, err
+		case *apd.Decimal:
+			res := new(apd.Decimal)
+			_, err := sql.DecimalCtx.Add(res, l, r)
+			return res, err
 		}
 	case time.Time:
 		switch r := rval.(type) {
@@ -619,11 +620,12 @@ func minus(lval, rval interface{}) (interface{}, error) {
 		case float64:
 			return l - r, nil
 		}
-	case apd.Decimal:
+	case *apd.Decimal:
 		switch r := rval.(type) {
-		case apd.Decimal:
-			_, err := sql.DecimalCtx.Sub(&l, &l, &r)
-			return l, err
+		case *apd.Decimal:
+			res := new(apd.Decimal)
+			_, err := sql.DecimalCtx.Sub(res, l, r)
+			return res, err
 		}
 	case time.Time:
 		switch r := rval.(type) {
@@ -689,11 +691,12 @@ func mult(lval, rval interface{}) (interface{}, error) {
 		case float64:
 			return l * r, nil
 		}
-	case apd.Decimal:
+	case *apd.Decimal:
 		switch r := rval.(type) {
-		case apd.Decimal:
-			_, err := sql.DecimalCtx.Mul(&l, &l, &r)
-			return l, err
+		case *apd.Decimal:
+			res := new(apd.Decimal)
+			_, err := sql.DecimalCtx.Mul(res, l, r)
+			return res, err
 		}
 	}
 
@@ -749,7 +752,7 @@ func (e *UnaryMinus) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		if n == math.MinInt64 {
 			if _, ok := e.Child.(*Literal); ok {
 				dec := types.DecimalFromInt64(n)
-				return *dec.Neg(&dec), nil
+				return dec.Neg(dec), nil
 			}
 			return nil, sql.ErrValueOutOfRange.New("BIGINT", fmt.Sprintf("%d", n))
 		}
@@ -764,8 +767,9 @@ func (e *UnaryMinus) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return -int32(n), nil
 	case uint64:
 		return -int64(n), nil
-	case apd.Decimal:
-		return *n.Neg(&n), nil
+	case *apd.Decimal:
+		res := new(apd.Decimal)
+		return res.Neg(n), nil
 	case string:
 		// try getting int out of string value
 		i, iErr := strconv.ParseInt(n, 10, 64)

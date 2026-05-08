@@ -104,13 +104,9 @@ func (t SystemBoolType) Convert(ctx context.Context, v interface{}) (interface{}
 		if value == float64(int64(value)) {
 			return t.Convert(ctx, int64(value))
 		}
-	case apd.Decimal:
+	case *apd.Decimal:
 		f, _ := value.Float64()
 		return t.Convert(ctx, f)
-	case apd.NullDecimal:
-		if value.Valid {
-			return t.Convert(ctx, value.Decimal)
-		}
 	case string:
 		switch strings.ToLower(value) {
 		case "on", "true":

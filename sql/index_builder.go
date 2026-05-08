@@ -69,15 +69,16 @@ func ceil(val interface{}) interface{} {
 		return float32(math.Ceil(float64(v)))
 	case float64:
 		return math.Ceil(v)
-	case apd.Decimal:
-		_, _ = DecimalCtx.Ceil(&v, &v)
-		return v
+	case *apd.Decimal:
+		newVal := new(apd.Decimal)
+		_, _ = DecimalCtx.Ceil(newVal, v)
+		return newVal
 	case string:
 		dec, _, err := apd.NewFromString(v)
 		if err != nil {
 			return v
 		}
-		return ceil(*dec)
+		return ceil(dec)
 	case []byte:
 		return ceil(string(v))
 	default:
@@ -91,17 +92,18 @@ func floor(val interface{}) interface{} {
 		return float32(math.Floor(float64(v)))
 	case float64:
 		return math.Floor(v)
-	case apd.Decimal:
-		_, _ = DecimalCtx.Floor(&v, &v)
-		return v
+	case *apd.Decimal:
+		newVal := new(apd.Decimal)
+		_, _ = DecimalCtx.Floor(newVal, v)
+		return newVal
 	case string:
 		dec, _, err := apd.NewFromString(v)
 		if err != nil {
 			return v
 		}
-		f := floor(*dec)
+		f := floor(dec)
 		// maintain the input type, rather than converting to decimal
-		d := f.(apd.Decimal)
+		d := f.(*apd.Decimal)
 		return d.Text('f')
 	case []byte:
 		return floor(string(v))
@@ -136,9 +138,8 @@ func (b *MySQLIndexBuilder) Equals(ctx *Context, colExpr string, keyType Type, k
 					potentialRanges[i] = EmptyRangeColumnExpr(colTyp)
 					continue
 				}
-			case apd.Decimal:
-				kInt := new(apd.Decimal)
-				_, err := DecimalHighPrecisionCtx.Quantize(kInt, &k, 0)
+			case *apd.Decimal:
+				kInt, err := DecimalRound(k, 0)
 				if err != nil {
 					b.err = err
 					return b
@@ -221,9 +222,8 @@ func (b *MySQLIndexBuilder) In(ctx *Context, colExpr string, keyTypes []Type, ke
 					potentialRanges[i] = EmptyRangeColumnExpr(colTyp)
 					continue
 				}
-			case apd.Decimal:
-				kInt := new(apd.Decimal)
-				_, err := DecimalHighPrecisionCtx.Quantize(kInt, &k, 0)
+			case *apd.Decimal:
+				kInt, err := DecimalRound(k, 0)
 				if err != nil {
 					b.err = err
 					return b
@@ -276,9 +276,8 @@ func (b *MySQLIndexBuilder) NotEquals(ctx *Context, colExpr string, keyType Type
 			b.updateCol(ctx, colExpr, NotNullRangeColumnExpr(colTyp))
 			return b
 		}
-	case apd.Decimal:
-		kInt := new(apd.Decimal)
-		_, err := DecimalHighPrecisionCtx.Quantize(kInt, &k, 0)
+	case *apd.Decimal:
+		kInt, err := DecimalRound(k, 0)
 		if err != nil {
 			b.err = err
 			return b
@@ -399,10 +398,8 @@ func (b *MySQLIndexBuilder) GreaterOrEqual(ctx *Context, colExpr string, keyType
 		switch key.(type) {
 		case float32, float64:
 			exclude = key != newKey
-		case apd.Decimal:
-			k := key.(apd.Decimal)
-			nk := newKey.(apd.Decimal)
-			exclude = k.Cmp(&nk) != 0
+		case *apd.Decimal:
+			exclude = key.(*apd.Decimal).Cmp(newKey.(*apd.Decimal)) != 0
 		}
 		key = newKey
 	}
@@ -481,10 +478,8 @@ func (b *MySQLIndexBuilder) LessOrEqual(ctx *Context, colExpr string, keyType Ty
 		switch key.(type) {
 		case float32, float64:
 			exclude = key != newKey
-		case apd.Decimal:
-			k := key.(apd.Decimal)
-			nk := newKey.(apd.Decimal)
-			exclude = k.Cmp(&nk) != 0
+		case *apd.Decimal:
+			exclude = key.(*apd.Decimal).Cmp(newKey.(*apd.Decimal)) != 0
 		}
 		key = newKey
 	}
@@ -743,10 +738,8 @@ func (b *EqualityIndexBuilder) AddEquality(ctx *Context, colIdx int, k interface
 				b.empty = true
 				return nil
 			}
-		case apd.Decimal:
-			kf := f.(apd.Decimal)
-			kc := c.(apd.Decimal)
-			if kf.Cmp(&kc) != 0 {
+		case *apd.Decimal:
+			if f.(*apd.Decimal).Cmp(c.(*apd.Decimal)) != 0 {
 				b.empty = true
 				return nil
 			}

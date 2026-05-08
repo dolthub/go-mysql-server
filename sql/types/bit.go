@@ -169,20 +169,15 @@ func (t BitType_) Convert(ctx context.Context, v interface{}) (interface{}, sql.
 			return nil, sql.InRange, fmt.Errorf(`negative floats cannot become bit values`)
 		}
 		value = uint64(val)
-	case apd.NullDecimal:
-		if !val.Valid {
-			return nil, sql.InRange, nil
-		}
-		return t.Convert(ctx, val.Decimal)
-	case apd.Decimal:
-		val, err := DecimalRound(val, 0)
+	case *apd.Decimal:
+		val, err := sql.DecimalRound(val, 0)
 		if err != nil {
 			return nil, sql.InRange, err
 		}
-		if val.Cmp(&DecimalMaxUint64) > 0 {
+		if val.Cmp(DecimalMaxUint64) > 0 {
 			return nil, sql.Overflow, errBeyondMaxBit.New(val.String(), t.numOfBits)
 		}
-		if val.Cmp(&DecimalMinInt64) < 0 {
+		if val.Cmp(DecimalMinInt64) < 0 {
 			return nil, sql.Underflow, errBeyondMaxBit.New(val.String(), t.numOfBits)
 		}
 		value = val.Coeff.Uint64()

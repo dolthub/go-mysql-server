@@ -523,7 +523,7 @@ func GetColumnDefault(ctx *sql.Context, cd *sql.ColumnDefaultValue) interface{} 
 	case []uint8:
 		hexStr := hex.EncodeToString(l)
 		v = fmt.Sprintf("0x%s", hexStr)
-	case apd.Decimal:
+	case *apd.Decimal:
 		v = l.Text('f')
 	}
 

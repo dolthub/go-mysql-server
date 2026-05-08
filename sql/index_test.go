@@ -159,10 +159,8 @@ func TestRoundUpFloat(t *testing.T) {
 			switch test.val.(type) {
 			case float32, float64:
 				assert.Equal(t, test.exp, res)
-			case apd.Decimal:
-				e := test.exp.(apd.Decimal)
-				r := res.(apd.Decimal)
-				assert.True(t, e.Cmp(&r) == 0)
+			case *apd.Decimal:
+				assert.True(t, test.exp.(*apd.Decimal).Cmp(res.(*apd.Decimal)) == 0)
 			}
 		})
 	}
@@ -318,18 +316,16 @@ func TestRoundDownFloat(t *testing.T) {
 			switch test.val.(type) {
 			case float32, float64:
 				assert.Equal(t, test.exp, res)
-			case apd.Decimal:
-				e := test.exp.(apd.Decimal)
-				r := res.(apd.Decimal)
-				assert.True(t, e.Cmp(&r) == 0)
+			case *apd.Decimal:
+				assert.True(t, test.exp.(*apd.Decimal).Cmp(res.(*apd.Decimal)) == 0)
 			}
 		})
 	}
 }
 
-// NewDecimalFromFloat64 returns apd.Decimal set from given float64
-func NewDecimalFromFloat64(x float64) apd.Decimal {
+// NewDecimalFromFloat64 returns *apd.Decimal set from given float64
+func NewDecimalFromFloat64(x float64) *apd.Decimal {
 	dec := new(apd.Decimal)
 	dec, _ = dec.SetFloat64(x)
-	return *dec
+	return dec
 }

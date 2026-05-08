@@ -52,7 +52,7 @@ func (a *anyValueBuffer) Dispose(ctx *sql.Context) {
 }
 
 type sumBuffer struct {
-	sum   interface{} // sum is either apd.Decimal or float64
+	sum   interface{} // sum is either *apd.Decimal or float64
 	expr  sql.Expression
 	isnil bool
 }
@@ -82,7 +82,7 @@ func (m *sumBuffer) Update(ctx *sql.Context, row sql.Row) error {
 }
 
 func (m *sumBuffer) PerformSum(ctx *sql.Context, v interface{}) {
-	// apd.Decimal values are evaluated to string value even though the Literal expr type is Decimal type,
+	// *apd.Decimal values are evaluated to string value even though the Literal expr type is Decimal type,
 	// so convert it to appropriate Decimal type
 	if s, isStr := v.(string); isStr && types.IsDecimal(m.expr.Type(ctx)) {
 		val, _, err := m.expr.Type(ctx).Convert(ctx, s)
@@ -98,7 +98,7 @@ func (m *sumBuffer) PerformSum(ctx *sql.Context, v interface{}) {
 		}
 		switch sum := m.sum.(type) {
 		case float64:
-		case apd.Decimal:
+		case *apd.Decimal:
 			m.sum, _ = sum.Float64()
 		default:
 			var err error
@@ -108,24 +108,24 @@ func (m *sumBuffer) PerformSum(ctx *sql.Context, v interface{}) {
 			}
 		}
 		m.sum = m.sum.(float64) + n
-	case apd.Decimal:
+	case *apd.Decimal:
 		if m.isnil {
-			m.sum = types.DecimalZero
+			m.sum = apd.New(0, 0)
 			m.isnil = false
 		}
 		switch sum := m.sum.(type) {
-		case apd.Decimal:
+		case *apd.Decimal:
 		case float64:
 			m.sum = types.DecimalFromFloat64(sum)
 		default:
 			var err error
 			m.sum, _, err = types.InternalDecimalType.Convert(ctx, sum)
 			if err != nil {
-				m.sum = types.DecimalZero
+				m.sum = apd.New(0, 0)
 			}
 		}
-		curSum := m.sum.(apd.Decimal)
-		_, _ = sql.DecimalCtx.Add(&curSum, &curSum, &n)
+		curSum := m.sum.(*apd.Decimal)
+		_, _ = sql.DecimalCtx.Add(curSum, curSum, n)
 		m.sum = curSum
 	default:
 		val, _, err := types.Float64.Convert(ctx, n)
@@ -138,7 +138,7 @@ func (m *sumBuffer) PerformSum(ctx *sql.Context, v interface{}) {
 		}
 		switch sum := m.sum.(type) {
 		case float64:
-		case apd.Decimal:
+		case *apd.Decimal:
 			m.sum, _ = sum.Float64()
 		default:
 			sum, _, err = types.Float64.Convert(ctx, sum)
@@ -256,12 +256,12 @@ func (a *avgBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 		}
 
 		return s / float64(a.rows), nil
-	case apd.Decimal:
+	case *apd.Decimal:
 		if s.IsZero() && a.rows == 0 {
 			return nil, nil
 		}
 		if a.rows == 0 {
-			return types.DecimalZero, nil
+			return apd.New(0, 0), nil
 		}
 		scale := (s.Exponent * -1) + 4
 		return types.DecimalDivRound(s, types.DecimalFromInt64(a.rows), scale), nil

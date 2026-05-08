@@ -87,7 +87,7 @@ func ApproximateTypeFromValue(val interface{}) sql.Type {
 			}
 		}
 		return typ
-	case apd.Decimal:
+	case *apd.Decimal:
 		str := v.Text('f')
 		dotIdx := strings.Index(str, ".")
 		if len(str) > 66 {
@@ -107,11 +107,6 @@ func ApproximateTypeFromValue(val interface{}) sql.Type {
 			}
 			return typ
 		}
-	case apd.NullDecimal:
-		if !v.Valid {
-			return Float64
-		}
-		return ApproximateTypeFromValue(v.Decimal)
 	case nil:
 		return Null
 	default:

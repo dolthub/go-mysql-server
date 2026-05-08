@@ -70,7 +70,7 @@ var (
 	// DecimalMinInt64 represents the min value an int64 can hold
 	DecimalMinInt64 = DecimalFromInt64(math.MinInt64)
 	// DecimalZero represents the zero value
-	DecimalZero = DecimalFromInt64(0)
+	DecimaZero = DecimalFromInt64(0)
 
 	numberInt8ValueType    = reflect.TypeOf(int8(0))
 	numberInt16ValueType   = reflect.TypeOf(int16(0))
@@ -1026,11 +1026,11 @@ func convertToInt64(t NumberTypeImpl_, v any, round Round) (int64, sql.ConvertIn
 			return math.MinInt64, sql.Underflow, nil
 		}
 		return int64(math.Round(v)), sql.InRange, nil
-	case apd.Decimal:
-		if v.Cmp(&DecimalMaxInt64) > 0 {
+	case *apd.Decimal:
+		if v.Cmp(DecimalMaxInt64) > 0 {
 			return math.MaxInt64, sql.Overflow, nil
 		}
-		if v.Cmp(&DecimalMinInt64) < 0 {
+		if v.Cmp(DecimalMinInt64) < 0 {
 			return math.MinInt64, sql.Underflow, nil
 		}
 		return DecimalIntPart(v), sql.InRange, nil
@@ -1139,16 +1139,17 @@ func convertToUint64(t NumberTypeImpl_, v any, round Round) (uint64, sql.Convert
 			return uint64(math.MaxUint64 - uint(-v-1)), sql.Underflow, nil
 		}
 		return uint64(math.Round(v)), sql.InRange, nil
-	case apd.Decimal:
-		if v.Cmp(&DecimalMaxUint64) > 0 {
+	case *apd.Decimal:
+		if v.Cmp(DecimalMaxUint64) > 0 {
 			return math.MaxUint64, sql.Overflow, nil
 		}
-		if v.Cmp(&DecimalZero) < 0 {
-			_, err := sql.DecimalCtx.Sub(&v, &DecimalMaxUint64, &v)
+		if v.Cmp(apd.New(0, 0)) < 0 {
+			newVal := new(apd.Decimal)
+			_, err := sql.DecimalCtx.Sub(newVal, DecimalMaxUint64, v)
 			if err != nil {
 				return math.MaxUint64, sql.Overflow, err
 			}
-			return DecimalIntPartUint64(v), sql.Underflow, nil
+			return DecimalIntPartUint64(newVal), sql.Underflow, nil
 		}
 		return DecimalIntPartUint64(v), sql.InRange, nil
 	case []byte:
@@ -1239,7 +1240,7 @@ func convertToFloat64(t NumberTypeImpl_, v interface{}) (float64, error) {
 		return float64(v), nil
 	case float64:
 		return v, nil
-	case apd.Decimal:
+	case *apd.Decimal:
 		f, _ := v.Float64()
 		return f, nil
 	case []byte:
@@ -1314,10 +1315,10 @@ func convertValueToInt64(ctx *sql.Context, v sql.Value) (int64, sql.ConvertInRan
 		return int64(math.Round(x)), sql.InRange, nil
 	case sqltypes.Decimal:
 		x := values.ReadDecimal(v.Val)
-		if x.Cmp(&DecimalMaxInt64) > 0 {
+		if x.Cmp(DecimalMaxInt64) > 0 {
 			return math.MaxInt64, sql.Overflow, nil
 		}
-		if x.Cmp(&DecimalMinInt64) < 0 {
+		if x.Cmp(DecimalMinInt64) < 0 {
 			return math.MinInt64, sql.Underflow, nil
 		}
 		return DecimalIntPart(x), sql.InRange, nil
@@ -1376,15 +1377,16 @@ func convertValueToUint64(ctx *sql.Context, v sql.Value) (uint64, sql.ConvertInR
 		return uint64(math.Round(x)), sql.InRange, nil
 	case sqltypes.Decimal:
 		x := values.ReadDecimal(v.Val)
-		if x.Cmp(&DecimalMaxUint64) > 0 {
+		if x.Cmp(DecimalMaxUint64) > 0 {
 			return math.MaxUint64, sql.Overflow, nil
 		}
-		if x.Cmp(&DecimalZero) < 0 {
-			_, err := sql.DecimalCtx.Sub(&x, &DecimalMaxUint64, &x)
+		if x.Cmp(apd.New(0, 0)) < 0 {
+			newVal := new(apd.Decimal)
+			_, err := sql.DecimalCtx.Sub(newVal, DecimalMaxUint64, x)
 			if err != nil {
 				return math.MaxUint64, sql.Overflow, err
 			}
-			return DecimalIntPartUint64(x), sql.Underflow, nil
+			return DecimalIntPartUint64(newVal), sql.Underflow, nil
 		}
 		return DecimalIntPartUint64(x), sql.InRange, nil
 	case sqltypes.Bit:

@@ -97,7 +97,7 @@ func TestDecimalAccuracy(t *testing.T) {
 			t.Run(fmt.Sprintf("Scale:%v DecVal:%v", test.scale, fullDecimalStr), func(t *testing.T) {
 				res, _, err := decimalType.Convert(ctx, fullStr)
 				require.NoError(t, err)
-				r, err := DecimalRound(res.(apd.Decimal), int32(decimalType.Scale()))
+				r, err := sql.DecimalRound(res.(*apd.Decimal), int32(decimalType.Scale()))
 				require.NoError(t, err)
 				require.Equal(t, fullStr, r.Text('f'))
 			})
@@ -150,46 +150,46 @@ func TestCreateNonColumnDecimal(t *testing.T) {
 		expectedType DecimalType_
 		expectedErr  bool
 	}{
-		{0, 0, DecimalType_{DecimalFromInt64WithScale(1, 10), false, 10, 0}, false},
+		{0, 0, DecimalType_{apd.New(1, 10), false, 10, 0}, false},
 		{0, 1, DecimalType_{}, true},
 		{0, 5, DecimalType_{}, true},
 		{0, 10, DecimalType_{}, true},
 		{0, 30, DecimalType_{}, true},
 		{0, 65, DecimalType_{}, true},
 		{0, 66, DecimalType_{}, true},
-		{1, 0, DecimalType_{DecimalFromInt64WithScale(1, 1), false, 1, 0}, false},
-		{1, 1, DecimalType_{DecimalFromInt64WithScale(1, 0), false, 1, 1}, false},
+		{1, 0, DecimalType_{apd.New(1, 1), false, 1, 0}, false},
+		{1, 1, DecimalType_{apd.New(1, 0), false, 1, 1}, false},
 		{1, 5, DecimalType_{}, true},
 		{1, 10, DecimalType_{}, true},
 		{1, 30, DecimalType_{}, true},
 		{1, 65, DecimalType_{}, true},
 		{1, 66, DecimalType_{}, true},
-		{5, 0, DecimalType_{DecimalFromInt64WithScale(1, 5), false, 5, 0}, false},
-		{5, 1, DecimalType_{DecimalFromInt64WithScale(1, 4), false, 5, 1}, false},
-		{5, 5, DecimalType_{DecimalFromInt64WithScale(1, 0), false, 5, 5}, false},
+		{5, 0, DecimalType_{apd.New(1, 5), false, 5, 0}, false},
+		{5, 1, DecimalType_{apd.New(1, 4), false, 5, 1}, false},
+		{5, 5, DecimalType_{apd.New(1, 0), false, 5, 5}, false},
 		{5, 10, DecimalType_{}, true},
 		{5, 30, DecimalType_{}, true},
 		{5, 65, DecimalType_{}, true},
 		{5, 66, DecimalType_{}, true},
-		{10, 0, DecimalType_{DecimalFromInt64WithScale(1, 10), false, 10, 0}, false},
-		{10, 1, DecimalType_{DecimalFromInt64WithScale(1, 9), false, 10, 1}, false},
-		{10, 5, DecimalType_{DecimalFromInt64WithScale(1, 5), false, 10, 5}, false},
-		{10, 10, DecimalType_{DecimalFromInt64WithScale(1, 0), false, 10, 10}, false},
+		{10, 0, DecimalType_{apd.New(1, 10), false, 10, 0}, false},
+		{10, 1, DecimalType_{apd.New(1, 9), false, 10, 1}, false},
+		{10, 5, DecimalType_{apd.New(1, 5), false, 10, 5}, false},
+		{10, 10, DecimalType_{apd.New(1, 0), false, 10, 10}, false},
 		{10, 30, DecimalType_{}, true},
 		{10, 65, DecimalType_{}, true},
 		{10, 66, DecimalType_{}, true},
-		{30, 0, DecimalType_{DecimalFromInt64WithScale(1, 30), false, 30, 0}, false},
-		{30, 1, DecimalType_{DecimalFromInt64WithScale(1, 29), false, 30, 1}, false},
-		{30, 5, DecimalType_{DecimalFromInt64WithScale(1, 25), false, 30, 5}, false},
-		{30, 10, DecimalType_{DecimalFromInt64WithScale(1, 20), false, 30, 10}, false},
-		{30, 30, DecimalType_{DecimalFromInt64WithScale(1, 0), false, 30, 30}, false},
+		{30, 0, DecimalType_{apd.New(1, 30), false, 30, 0}, false},
+		{30, 1, DecimalType_{apd.New(1, 29), false, 30, 1}, false},
+		{30, 5, DecimalType_{apd.New(1, 25), false, 30, 5}, false},
+		{30, 10, DecimalType_{apd.New(1, 20), false, 30, 10}, false},
+		{30, 30, DecimalType_{apd.New(1, 0), false, 30, 30}, false},
 		{30, 65, DecimalType_{}, true},
 		{30, 66, DecimalType_{}, true},
-		{65, 0, DecimalType_{DecimalFromInt64WithScale(1, 65), false, 65, 0}, false},
-		{65, 1, DecimalType_{DecimalFromInt64WithScale(1, 64), false, 65, 1}, false},
-		{65, 5, DecimalType_{DecimalFromInt64WithScale(1, 60), false, 65, 5}, false},
-		{65, 10, DecimalType_{DecimalFromInt64WithScale(1, 55), false, 65, 10}, false},
-		{65, 30, DecimalType_{DecimalFromInt64WithScale(1, 35), false, 65, 30}, false},
+		{65, 0, DecimalType_{apd.New(1, 65), false, 65, 0}, false},
+		{65, 1, DecimalType_{apd.New(1, 64), false, 65, 1}, false},
+		{65, 5, DecimalType_{apd.New(1, 60), false, 65, 5}, false},
+		{65, 10, DecimalType_{apd.New(1, 55), false, 65, 10}, false},
+		{65, 30, DecimalType_{apd.New(1, 35), false, 65, 30}, false},
 		{65, 65, DecimalType_{}, true},
 		{65, 66, DecimalType_{}, true},
 		{66, 00, DecimalType_{}, true},
@@ -221,46 +221,46 @@ func TestCreateColumnDecimal(t *testing.T) {
 		expectedType DecimalType_
 		expectedErr  bool
 	}{
-		{0, 0, DecimalType_{DecimalFromInt64WithScale(1, 10), true, 10, 0}, false},
+		{0, 0, DecimalType_{apd.New(1, 10), true, 10, 0}, false},
 		{0, 1, DecimalType_{}, true},
 		{0, 5, DecimalType_{}, true},
 		{0, 10, DecimalType_{}, true},
 		{0, 30, DecimalType_{}, true},
 		{0, 65, DecimalType_{}, true},
 		{0, 66, DecimalType_{}, true},
-		{1, 0, DecimalType_{DecimalFromInt64WithScale(1, 1), true, 1, 0}, false},
-		{1, 1, DecimalType_{DecimalFromInt64WithScale(1, 0), true, 1, 1}, false},
+		{1, 0, DecimalType_{apd.New(1, 1), true, 1, 0}, false},
+		{1, 1, DecimalType_{apd.New(1, 0), true, 1, 1}, false},
 		{1, 5, DecimalType_{}, true},
 		{1, 10, DecimalType_{}, true},
 		{1, 30, DecimalType_{}, true},
 		{1, 65, DecimalType_{}, true},
 		{1, 66, DecimalType_{}, true},
-		{5, 0, DecimalType_{DecimalFromInt64WithScale(1, 5), true, 5, 0}, false},
-		{5, 1, DecimalType_{DecimalFromInt64WithScale(1, 4), true, 5, 1}, false},
-		{5, 5, DecimalType_{DecimalFromInt64WithScale(1, 0), true, 5, 5}, false},
+		{5, 0, DecimalType_{apd.New(1, 5), true, 5, 0}, false},
+		{5, 1, DecimalType_{apd.New(1, 4), true, 5, 1}, false},
+		{5, 5, DecimalType_{apd.New(1, 0), true, 5, 5}, false},
 		{5, 10, DecimalType_{}, true},
 		{5, 30, DecimalType_{}, true},
 		{5, 65, DecimalType_{}, true},
 		{5, 66, DecimalType_{}, true},
-		{10, 0, DecimalType_{DecimalFromInt64WithScale(1, 10), true, 10, 0}, false},
-		{10, 1, DecimalType_{DecimalFromInt64WithScale(1, 9), true, 10, 1}, false},
-		{10, 5, DecimalType_{DecimalFromInt64WithScale(1, 5), true, 10, 5}, false},
-		{10, 10, DecimalType_{DecimalFromInt64WithScale(1, 0), true, 10, 10}, false},
+		{10, 0, DecimalType_{apd.New(1, 10), true, 10, 0}, false},
+		{10, 1, DecimalType_{apd.New(1, 9), true, 10, 1}, false},
+		{10, 5, DecimalType_{apd.New(1, 5), true, 10, 5}, false},
+		{10, 10, DecimalType_{apd.New(1, 0), true, 10, 10}, false},
 		{10, 30, DecimalType_{}, true},
 		{10, 65, DecimalType_{}, true},
 		{10, 66, DecimalType_{}, true},
-		{30, 0, DecimalType_{DecimalFromInt64WithScale(1, 30), true, 30, 0}, false},
-		{30, 1, DecimalType_{DecimalFromInt64WithScale(1, 29), true, 30, 1}, false},
-		{30, 5, DecimalType_{DecimalFromInt64WithScale(1, 25), true, 30, 5}, false},
-		{30, 10, DecimalType_{DecimalFromInt64WithScale(1, 20), true, 30, 10}, false},
-		{30, 30, DecimalType_{DecimalFromInt64WithScale(1, 0), true, 30, 30}, false},
+		{30, 0, DecimalType_{apd.New(1, 30), true, 30, 0}, false},
+		{30, 1, DecimalType_{apd.New(1, 29), true, 30, 1}, false},
+		{30, 5, DecimalType_{apd.New(1, 25), true, 30, 5}, false},
+		{30, 10, DecimalType_{apd.New(1, 20), true, 30, 10}, false},
+		{30, 30, DecimalType_{apd.New(1, 0), true, 30, 30}, false},
 		{30, 65, DecimalType_{}, true},
 		{30, 66, DecimalType_{}, true},
-		{65, 0, DecimalType_{DecimalFromInt64WithScale(1, 65), true, 65, 0}, false},
-		{65, 1, DecimalType_{DecimalFromInt64WithScale(1, 64), true, 65, 1}, false},
-		{65, 5, DecimalType_{DecimalFromInt64WithScale(1, 60), true, 65, 5}, false},
-		{65, 10, DecimalType_{DecimalFromInt64WithScale(1, 55), true, 65, 10}, false},
-		{65, 30, DecimalType_{DecimalFromInt64WithScale(1, 35), true, 65, 30}, false},
+		{65, 0, DecimalType_{apd.New(1, 65), true, 65, 0}, false},
+		{65, 1, DecimalType_{apd.New(1, 64), true, 65, 1}, false},
+		{65, 5, DecimalType_{apd.New(1, 60), true, 65, 5}, false},
+		{65, 10, DecimalType_{apd.New(1, 55), true, 65, 10}, false},
+		{65, 30, DecimalType_{apd.New(1, 35), true, 65, 30}, false},
 		{65, 65, DecimalType_{}, true},
 		{65, 66, DecimalType_{}, true},
 		{66, 00, DecimalType_{}, true},
@@ -362,8 +362,7 @@ func TestDecimalConvert(t *testing.T) {
 				} else {
 					expectedVal, _, err := apd.NewFromString(test.expectedVal.(string))
 					require.NoError(t, err)
-					r := val.(apd.Decimal)
-					assert.True(t, expectedVal.Cmp(&r) == 0)
+					assert.True(t, expectedVal.Cmp(val.(*apd.Decimal)) == 0)
 					assert.Equal(t, typ.ValueType(), reflect.TypeOf(val))
 				}
 			}
@@ -427,7 +426,7 @@ func TestDecimalZero(t *testing.T) {
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v %v zero", test.precision, test.scale), func(t *testing.T) {
 			dt := MustCreateDecimalType(test.precision, test.scale)
-			_, ok := dt.Zero().(apd.Decimal)
+			_, ok := dt.Zero().(*apd.Decimal)
 			assert.True(t, ok)
 		})
 	}
@@ -436,14 +435,14 @@ func TestDecimalZero(t *testing.T) {
 func TestConvertValueToDecimal(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
-	zeroDec := serializeDecimal(DecimalZero)
+	zeroDec := serializeDecimal(apd.New(0, 0))
 	testDec := serializeDecimal(DecimalFromFloat64(123.456))
 	minInt64Dec := serializeDecimal(DecimalFromInt64(math.MinInt64))
 	maxInt64Dec := serializeDecimal(DecimalFromInt64(math.MaxInt64))
 
 	tests := []struct {
 		val sql.Value
-		exp apd.Decimal
+		exp *apd.Decimal
 		err bool
 	}{
 		// Int8 -> Decimal
@@ -452,7 +451,7 @@ func TestConvertValueToDecimal(t *testing.T) {
 				Val: []byte{0},
 				Typ: sqltypes.Int8,
 			},
-			exp: DecimalZero,
+			exp: apd.New(0, 0),
 		},
 		{
 			val: sql.Value{
@@ -482,7 +481,7 @@ func TestConvertValueToDecimal(t *testing.T) {
 				Val: binary.LittleEndian.AppendUint16(nil, uint16(0)),
 				Typ: sqltypes.Int16,
 			},
-			exp: DecimalZero,
+			exp: apd.New(0, 0),
 		},
 		{
 			val: sql.Value{
@@ -519,7 +518,7 @@ func TestConvertValueToDecimal(t *testing.T) {
 				Val: binary.LittleEndian.AppendUint32(nil, uint32(0)),
 				Typ: sqltypes.Int32,
 			},
-			exp: DecimalZero,
+			exp: apd.New(0, 0),
 		},
 		{
 			val: sql.Value{
@@ -556,7 +555,7 @@ func TestConvertValueToDecimal(t *testing.T) {
 				Val: binary.LittleEndian.AppendUint64(nil, uint64(0)),
 				Typ: sqltypes.Int64,
 			},
-			exp: DecimalZero,
+			exp: apd.New(0, 0),
 		},
 		{
 			val: sql.Value{
@@ -593,7 +592,7 @@ func TestConvertValueToDecimal(t *testing.T) {
 				Val: []byte{0},
 				Typ: sqltypes.Uint8,
 			},
-			exp: DecimalZero,
+			exp: apd.New(0, 0),
 		},
 		{
 			val: sql.Value{
@@ -623,7 +622,7 @@ func TestConvertValueToDecimal(t *testing.T) {
 				Val: binary.LittleEndian.AppendUint16(nil, uint16(0)),
 				Typ: sqltypes.Uint16,
 			},
-			exp: DecimalZero,
+			exp: apd.New(0, 0),
 		},
 		{
 			val: sql.Value{
@@ -653,7 +652,7 @@ func TestConvertValueToDecimal(t *testing.T) {
 				Val: binary.LittleEndian.AppendUint32(nil, uint32(0)),
 				Typ: sqltypes.Uint32,
 			},
-			exp: DecimalZero,
+			exp: apd.New(0, 0),
 		},
 		{
 			val: sql.Value{
@@ -683,7 +682,7 @@ func TestConvertValueToDecimal(t *testing.T) {
 				Val: binary.LittleEndian.AppendUint64(nil, uint64(0)),
 				Typ: sqltypes.Uint64,
 			},
-			exp: DecimalZero,
+			exp: apd.New(0, 0),
 		},
 		{
 			val: sql.Value{
@@ -713,7 +712,7 @@ func TestConvertValueToDecimal(t *testing.T) {
 				Val: binary.LittleEndian.AppendUint32(nil, math.Float32bits(0)),
 				Typ: sqltypes.Float32,
 			},
-			exp: DecimalZero,
+			exp: apd.New(0, 0),
 		},
 		{
 			val: sql.Value{
@@ -743,7 +742,7 @@ func TestConvertValueToDecimal(t *testing.T) {
 				Val: binary.LittleEndian.AppendUint64(nil, math.Float64bits(0)),
 				Typ: sqltypes.Float64,
 			},
-			exp: DecimalZero,
+			exp: apd.New(0, 0),
 		},
 		{
 			val: sql.Value{
@@ -787,7 +786,7 @@ func TestConvertValueToDecimal(t *testing.T) {
 				Val: zeroDec,
 				Typ: sqltypes.Decimal,
 			},
-			exp: DecimalZero,
+			exp: apd.New(0, 0),
 		},
 		{
 			val: sql.Value{
@@ -817,7 +816,7 @@ func TestConvertValueToDecimal(t *testing.T) {
 				Val: binary.LittleEndian.AppendUint64(nil, uint64(0)),
 				Typ: sqltypes.Bit,
 			},
-			exp: DecimalZero,
+			exp: apd.New(0, 0),
 		},
 		{
 			val: sql.Value{
@@ -847,7 +846,7 @@ func TestConvertValueToDecimal(t *testing.T) {
 				Val: binary.LittleEndian.AppendUint16(nil, uint16(0)),
 				Typ: sqltypes.Year,
 			},
-			exp: DecimalZero,
+			exp: apd.New(0, 0),
 		},
 		{
 			val: sql.Value{
@@ -880,7 +879,7 @@ func TestConvertValueToDecimal(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
-			require.True(t, test.exp.Cmp(&res) == 0, fmt.Sprintf("%v != %v", test.exp, res))
+			require.True(t, test.exp.Cmp(res) == 0, fmt.Sprintf("%v != %v", test.exp, res))
 		})
 	}
 }

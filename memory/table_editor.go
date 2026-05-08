@@ -353,9 +353,9 @@ func columnsMatch(colIndexes []int, prefixLengths []uint16, row sql.Row, row2 sq
 			}
 		}
 
-		if v1Decimal, ok := v1.(apd.Decimal); ok {
-			if v2Decimal, ok := v2.(apd.Decimal); ok {
-				if v1Decimal.Cmp(&v2Decimal) != 0 {
+		if v1Decimal, ok := v1.(*apd.Decimal); ok {
+			if v2Decimal, ok := v2.(*apd.Decimal); ok {
+				if v1Decimal.Cmp(v2Decimal) != 0 {
 					return false
 				}
 			} else {

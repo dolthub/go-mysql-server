@@ -140,25 +140,13 @@ func writeHashedValue(ctx context.Context, h hash.Hash, val interface{}) (valIsN
 		if _, err := h.Write(val); err != nil {
 			return false, err
 		}
-	case apd.Decimal:
+	case *apd.Decimal:
 		bytes, err := types.DecimalGobEncode(val)
 		if err != nil {
 			return false, err
 		}
 		if _, err := h.Write(bytes); err != nil {
 			return false, err
-		}
-	case apd.NullDecimal:
-		if !val.Valid {
-			return true, nil
-		} else {
-			bytes, err := types.DecimalGobEncode(val.Decimal)
-			if err != nil {
-				return false, err
-			}
-			if _, err := h.Write(bytes); err != nil {
-				return false, err
-			}
 		}
 	case time.Time:
 		bytes, err := val.MarshalBinary()

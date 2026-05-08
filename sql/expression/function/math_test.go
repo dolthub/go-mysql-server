@@ -305,7 +305,7 @@ func TestMod(t *testing.T) {
 			mod, err := f.Fn(sql.NewEmptyContext(), expression.NewLiteral(test.left, types.Int32), expression.NewLiteral(test.right, types.Int32))
 			res, err := mod.Eval(nil, nil)
 			assert.NoError(t, err)
-			if r, ok := res.(apd.Decimal); ok {
+			if r, ok := res.(*apd.Decimal); ok {
 				assert.Equal(t, test.expected, r.Text('f'))
 			} else {
 				assert.Equal(t, test.expected, res)

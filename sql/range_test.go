@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -426,12 +427,12 @@ func TestComplexRange(t *testing.T) {
 				r(
 					sql.MySQLRangeColumnExpr{LowerBound: sql.AboveNull{}, UpperBound: sql.Above{Key: 953}, Typ: types.Int16},
 					sql.MySQLRangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Int16},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: types.DecimalFromInt64WithScale(53978, -2)}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: apd.New(53978, -2)}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
 				),
 				r(
 					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: int16(234)}, UpperBound: sql.Above{Key: int16(234)}, Typ: types.Int16},
 					sql.MySQLRangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Int16},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: types.DecimalFromInt64WithScale(48843, -2)}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: apd.New(48843, -2)}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
 				),
 				r(
 					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: int16(258)}, UpperBound: sql.Above{Key: int16(258)}, Typ: types.Int16},
@@ -441,12 +442,12 @@ func TestComplexRange(t *testing.T) {
 				r(
 					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: int16(372)}, UpperBound: sql.Above{Key: int16(372)}, Typ: types.Int16},
 					sql.MySQLRangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Int16},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: types.DecimalFromInt64WithScale(48843, -2)}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: apd.New(48843, -2)}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
 				),
 				r(
 					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: int16(583)}, UpperBound: sql.Above{Key: int16(583)}, Typ: types.Int16},
 					sql.MySQLRangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Int16},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: types.DecimalFromInt64WithScale(48843, -2)}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: apd.New(48843, -2)}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
 				),
 				r(
 					sql.MySQLRangeColumnExpr{LowerBound: sql.Above{Key: int16(883)}, UpperBound: sql.AboveAll{}, Typ: types.Int16},

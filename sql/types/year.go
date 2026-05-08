@@ -130,13 +130,8 @@ func (t YearType_) Convert(ctx context.Context, v interface{}) (interface{}, sql
 		return t.Convert(ctx, int64(value))
 	case float64:
 		return t.Convert(ctx, int64(value))
-	case apd.Decimal:
+	case *apd.Decimal:
 		return t.Convert(ctx, DecimalIntPart(value))
-	case apd.NullDecimal:
-		if !value.Valid {
-			return nil, sql.InRange, nil
-		}
-		return t.Convert(ctx, value.Decimal)
 	case string:
 		valueLength := len(value)
 		if valueLength == 1 || valueLength == 2 || valueLength == 4 {

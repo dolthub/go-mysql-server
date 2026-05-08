@@ -195,13 +195,8 @@ func (t SetType) Convert(ctx context.Context, v interface{}) (interface{}, sql.C
 		return t.Convert(ctx, uint64(value))
 	case float64:
 		return t.Convert(ctx, uint64(value))
-	case apd.Decimal:
+	case *apd.Decimal:
 		return t.Convert(ctx, DecimalIntPartUint64(value))
-	case apd.NullDecimal:
-		if !value.Valid {
-			return nil, sql.InRange, nil
-		}
-		return t.Convert(ctx, value.Decimal)
 	case string:
 		ret, err := t.convertStringToBitField(value)
 		return ret, sql.InRange, err

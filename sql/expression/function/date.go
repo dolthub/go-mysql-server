@@ -19,6 +19,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cockroachdb/apd/v3"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -333,7 +335,7 @@ func toUnixTimestamp(t time.Time, resType sql.Type) interface{} {
 		for i := 6 - scale; i > 0; i-- {
 			unixMicro /= 10
 		}
-		return types.DecimalFromInt64WithScale(unixMicro, -scale)
+		return apd.New(unixMicro, -scale)
 	}
 	return unixMicro / 1e6
 }

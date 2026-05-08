@@ -115,7 +115,7 @@ func (t JsonType) Convert(c context.Context, v interface{}) (interface{}, sql.Co
 		return JSONDocument{Val: float64(v)}, sql.InRange, nil
 	case float64:
 		return JSONDocument{Val: v}, sql.InRange, nil
-	case apd.Decimal:
+	case *apd.Decimal:
 		return JSONDocument{Val: v}, sql.InRange, nil
 	default:
 		return convertJSONValue(v)

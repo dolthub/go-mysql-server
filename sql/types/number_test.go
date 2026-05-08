@@ -714,7 +714,7 @@ func TestTruncateStringToDouble(t *testing.T) {
 	}
 }
 
-func serializeDecimal(dec apd.Decimal) []byte {
+func serializeDecimal(dec *apd.Decimal) []byte {
 	var res []byte
 	if dec.Form == apd.NaN {
 		res = binary.LittleEndian.AppendUint32(res, DecimalNaN)
@@ -735,7 +735,7 @@ func serializeDecimal(dec apd.Decimal) []byte {
 func TestConvertValueToInt64(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
-	zeroDec := serializeDecimal(DecimalZero)
+	zeroDec := serializeDecimal(apd.New(0, 0))
 	testDec := serializeDecimal(DecimalFromFloat64(123.456))
 	minInt64Dec := serializeDecimal(DecimalFromInt64(math.MinInt64))
 	maxInt64Dec := serializeDecimal(DecimalFromInt64(math.MaxInt64))
@@ -1246,7 +1246,7 @@ func TestConvertValueToInt64(t *testing.T) {
 func TestConvertValueToUint64(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
-	zeroDec := serializeDecimal(DecimalZero)
+	zeroDec := serializeDecimal(apd.New(0, 0))
 	testDec := serializeDecimal(DecimalFromFloat64(123.456))
 	maxInt64Dec := serializeDecimal(DecimalFromInt64(math.MaxInt64))
 
@@ -1724,7 +1724,7 @@ func TestConvertValueToUint64(t *testing.T) {
 func TestConvertValueToFloat64(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
-	zeroDec := serializeDecimal(DecimalZero)
+	zeroDec := serializeDecimal(apd.New(0, 0))
 	testDec := serializeDecimal(DecimalFromFloat64(123.456))
 	minInt64Dec := serializeDecimal(DecimalFromInt64(math.MinInt64))
 	maxInt64Dec := serializeDecimal(DecimalFromInt64(math.MaxInt64))

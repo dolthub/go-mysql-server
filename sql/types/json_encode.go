@@ -331,7 +331,7 @@ func writeMarshalledValue(writer io.Writer, val interface{}) error {
 		writer.Write([]byte(val.Format(sql.DatetimeLayoutNoTrim)))
 		writer.Write([]byte{'"'})
 		return nil
-	case apd.Decimal:
+	case *apd.Decimal:
 		writer.Write([]byte(val.Text('f')))
 		return nil
 	case json.Marshaler:

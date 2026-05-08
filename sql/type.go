@@ -286,31 +286,30 @@ func IsEnumType(t Type) bool {
 
 var (
 	// DecimalCtx is the default context for decimal operations.
-	DecimalCtx = apd.BaseContext.WithPrecision(20)
+	// It has default precision set to 0, which cannot be used
+	// for division operations (.Quo() or .Rem()) and rounding (.Quantize()).
+	// You can either set it to precision using WithPrecision method or use DecimalHighPrecisionCtx.
+	DecimalCtx = apd.BaseContext
 	// DecimalHighPrecisionCtx is a decimal context with high precision.
 	DecimalHighPrecisionCtx = apd.BaseContext.WithPrecision(apd.MaxExponent)
 )
 
 // DecimalType represents the DECIMAL type.
 // https://dev.mysql.com/doc/refman/8.0/en/fixed-point-types.html
-// The type of the returned value is apd.Decimal.
+// The type of the returned value is *apd.Decimal.
 type DecimalType interface {
 	Type
 	// IsDecimalType returns true if the type is a decimal. Must be checked in addition to a type assertion for
 	// DecimalType, because some implementors of this interface may not be decimal types in all instantiations.
 	IsDecimalType() bool
-	// ConvertToNullDecimal converts the given value to a decimal.NullDecimal if it has a compatible type. It is worth
-	// noting that Convert() returns a nil value for nil inputs, and also returns apd.Decimal rather than
-	// apd.NullDecimal.
-	ConvertToNullDecimal(v interface{}) (apd.NullDecimal, error)
-	// ConvertNoBoundsCheck normalizes an interface{} to a decimal type without performing expensive bound checks
-	ConvertNoBoundsCheck(v interface{}) (apd.Decimal, error)
+	// ConvertToDecimal converts the given value to an *apd.Decimal if it has a compatible type.
+	ConvertToDecimal(v interface{}) (*apd.Decimal, error)
 	// BoundsCheck rounds and validates a decimal, returning the decimal,
 	// whether the value was out of range, and an error.
-	BoundsCheck(v apd.Decimal) (apd.Decimal, ConvertInRange, error)
+	BoundsCheck(v *apd.Decimal) (*apd.Decimal, ConvertInRange, error)
 	// ExclusiveUpperBound returns the exclusive upper bound for this Decimal.
 	// For example, DECIMAL(5,2) would return 1000, as 999.99 is the max represented.
-	ExclusiveUpperBound() apd.Decimal
+	ExclusiveUpperBound() *apd.Decimal
 	// MaximumScale returns the maximum scale allowed for the current precision.
 	MaximumScale() uint8
 	// Precision returns the base-10 precision of the type, which is the total number of digits. For example, a
@@ -319,6 +318,26 @@ type DecimalType interface {
 	// Scale returns the scale, or number of digits after the decimal, that may be held.
 	// This will always be less than or equal to the precision.
 	Scale() uint8
+}
+
+// DecimalRound rounds the decimal to places decimal places.
+// If places < 0, it will round the integer part to the nearest 10^(-places).
+// 5.45 rounded with scale of 1 = 5.5
+// 545 rounded with scale of -1 = 550
+func DecimalRound(val *apd.Decimal, scale int32) (*apd.Decimal, error) {
+	newVal := new(apd.Decimal)
+	// Must use DecimalHighPrecisionCtx to use .Quantize method.
+	p := val.NumDigits()
+	if val.Exponent > 0 {
+		p += int64(val.Exponent)
+	}
+	if scale > 0 {
+		p += int64(scale)
+	}
+	c := DecimalCtx.WithPrecision(uint32(p))
+	c = DecimalHighPrecisionCtx
+	_, err := c.Quantize(newVal, val, -scale)
+	return newVal, err
 }
 
 func IsDecimalType(t Type) bool {

@@ -127,7 +127,7 @@ func HashOf(ctx *sql.Context, sch sql.Schema, row sql.Row) (uint64, error) {
 				str = "0"
 			}
 			_, err = hash.WriteString(str)
-		case apd.Decimal:
+		case *apd.Decimal:
 			_, err = hash.WriteString(v.Text('f'))
 		case string:
 			_, err = hash.WriteString(v)
@@ -199,7 +199,7 @@ func HashOfSimple(ctx *sql.Context, i any, t sql.Type) (uint64, sql.ConvertInRan
 			if str == "-0" {
 				str = "0"
 			}
-		case apd.Decimal:
+		case *apd.Decimal:
 			str = v.Text('f')
 			if strings.IndexByte(str, '.') != -1 {
 				// remove trailing 0s after '.'

@@ -125,10 +125,10 @@ func (d *Div) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Decimals must be rounded
-	if res, ok := result.(apd.Decimal); ok {
+	if res, ok := result.(*apd.Decimal); ok {
 		if isOutermostArithmeticOp(d, d.ops) {
 			finalScale, _ := getFinalScale(ctx, row, d, 0)
-			return types.DecimalRound(res, finalScale)
+			return sql.DecimalRound(res, finalScale)
 		}
 	}
 
@@ -149,10 +149,10 @@ func (d *Div) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, interfa
 	// is used to calculate the scale of the final result. If the value is GetField of decimal type column
 	// the decimal value evaluated does not always match the scale of column type definition
 	if dt, ok := d.LeftChild.Type(ctx).(sql.DecimalType); ok {
-		if dVal, ok := lval.(apd.Decimal); ok {
+		if dVal, ok := lval.(*apd.Decimal); ok {
 			ts := int32(dt.Scale())
 			if ts > dVal.Exponent*-1 {
-				lval, err = types.DecimalRound(dVal, ts)
+				lval, err = sql.DecimalRound(dVal, ts)
 				if err != nil {
 					return nil, nil, err
 				}
@@ -215,9 +215,9 @@ func (d *Div) div(ctx *sql.Context, lval, rval interface{}) (interface{}, error)
 			}
 			return l / r, nil
 		}
-	case apd.Decimal:
+	case *apd.Decimal:
 		switch r := rval.(type) {
-		case apd.Decimal:
+		case *apd.Decimal:
 			if r.IsZero() {
 				arithmeticWarning(ctx, ERDivisionByZero, "Division by 0")
 				return nil, nil
@@ -239,9 +239,7 @@ func (d *Div) div(ctx *sql.Context, lval, rval interface{}) (interface{}, error)
 
 			// give it buffer of 2 additional scale to avoid the result to be rounded
 			res := types.DecimalDivRound(l, r, scale+2)
-			//res := l.DivRound(r, scale+2)
 			res = types.DecimalTruncate(res, scale)
-			//res = res.Truncate(scale)
 			return res, nil
 		}
 	}
@@ -406,7 +404,7 @@ func convertToDecimalValue(ctx *sql.Context, val interface{}, isTimeType bool) i
 	default:
 	}
 
-	if _, ok := val.(apd.Decimal); !ok {
+	if _, ok := val.(*apd.Decimal); !ok {
 		p, s := GetPrecisionAndScale(val)
 		if p > types.DecimalTypeMaxPrecision {
 			p = types.DecimalTypeMaxPrecision
@@ -416,11 +414,11 @@ func convertToDecimalValue(ctx *sql.Context, val interface{}, isTimeType bool) i
 		}
 		dtyp, err := types.CreateDecimalType(p, s)
 		if err != nil {
-			val = types.DecimalZero
+			val = apd.New(0, 0)
 		}
 		val, _, err = dtyp.Convert(ctx, val)
 		if err != nil {
-			val = types.DecimalZero
+			val = apd.New(0, 0)
 		}
 	}
 
@@ -608,7 +606,7 @@ func GetPrecisionAndScale(val interface{}) (uint8, uint8) {
 	switch v := val.(type) {
 	case time.Time:
 		str = fmt.Sprintf("%v", v.In(time.UTC).Format("2006-01-02 15:04:05"))
-	case apd.Decimal:
+	case *apd.Decimal:
 		str = v.Text('f')
 	case float32:
 		d := types.DecimalFromFloat64(float64(v))
@@ -782,9 +780,9 @@ func intDiv(ctx *sql.Context, lval, rval interface{}) (interface{}, error) {
 			res := l / r
 			return int64(math.Floor(res)), nil
 		}
-	case apd.Decimal:
+	case *apd.Decimal:
 		switch r := rval.(type) {
-		case apd.Decimal:
+		case *apd.Decimal:
 			if r.IsZero() {
 				arithmeticWarning(ctx, ERDivisionByZero, "Division by 0")
 				return nil, nil

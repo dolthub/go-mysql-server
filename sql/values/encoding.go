@@ -181,15 +181,15 @@ func ReadFloat64(val []byte) float64 {
 	return math.Float64frombits(x)
 }
 
-func ReadDecimal(val []byte) apd.Decimal {
+func ReadDecimal(val []byte) *apd.Decimal {
 	if len(val) == int(Int32Size) {
 		v := ReadInt32(val)
 		if v == int32(0xc000) {
-			return apd.Decimal{Form: apd.NaN}
+			return &apd.Decimal{Form: apd.NaN}
 		} else if v == int32(0xd000) {
-			return apd.Decimal{Form: apd.Infinite}
+			return &apd.Decimal{Form: apd.Infinite}
 		} else if v == int32(0xf000) {
-			return apd.Decimal{Form: apd.Infinite, Negative: true}
+			return &apd.Decimal{Form: apd.Infinite, Negative: true}
 		}
 	}
 	e := ReadInt32(val[:Int32Size])
@@ -200,7 +200,7 @@ func ReadDecimal(val []byte) apd.Decimal {
 	if s < 0 {
 		d.Negative = true
 	}
-	return *d
+	return d
 }
 
 func ReadDate(val []byte) time.Time {

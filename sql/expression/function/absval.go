@@ -103,8 +103,9 @@ func (t *AbsVal) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		} else {
 			return x, nil
 		}
-	case apd.Decimal:
-		return *x.Abs(&x), nil
+	case *apd.Decimal:
+		res := new(apd.Decimal)
+		return res.Abs(x), nil
 	case bool:
 		if x {
 			return 1, nil

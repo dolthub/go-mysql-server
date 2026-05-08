@@ -96,14 +96,9 @@ func (t systemDoubleType) Convert(ctx context.Context, v interface{}) (interface
 		if value >= t.lowerbound && value <= t.upperbound {
 			return value, sql.InRange, nil
 		}
-	case apd.Decimal:
+	case *apd.Decimal:
 		f, _ := value.Float64()
 		return t.Convert(ctx, f)
-	case apd.NullDecimal:
-		if value.Valid {
-			f, _ := value.Decimal.Float64()
-			return t.Convert(ctx, f)
-		}
 	case string:
 		f, err := strconv.ParseFloat(value, 64)
 		if err == nil {

@@ -120,7 +120,7 @@ func compEval(
 			if i == 0 || cmp(t, selectedTime) {
 				selectedTime = t
 			}
-		case apd.Decimal:
+		case *apd.Decimal:
 			fval, _ := t.Float64()
 			if i == 0 || cmp(fval, selectedNum) {
 				selectedNum = fval

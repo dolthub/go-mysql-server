@@ -166,8 +166,8 @@ func overloaded_type_test1(
 }
 func overloaded_type_test2(
 	_ *sql.Context,
-	aa bool, ab string, ac []byte, ad time.Time, ae apd.Decimal,
-	ba *bool, bb *string, bc *[]byte, bd *time.Time, be *apd.Decimal,
+	aa bool, ab string, ac []byte, ad time.Time, ae *apd.Decimal,
+	ba *bool, bb *string, bc *[]byte, bd *time.Time, be **apd.Decimal,
 ) (sql.RowIter, error) {
 	return sql.RowsToRowIter(sql.Row{
 		fmt.Sprintf(`aa:%v,ba:%v,ab:"%s",bb:"%s",ac:%v,bc:%v,ad:%s,bd:%s,ae:%s,be:%s`,

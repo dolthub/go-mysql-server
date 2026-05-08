@@ -313,7 +313,7 @@ func toLiteralExpression(input interface{}) *expression.Literal {
 		return expression.NewLiteral(val, types.Float32)
 	case float64:
 		return expression.NewLiteral(val, types.Float64)
-	case apd.Decimal:
+	case *apd.Decimal:
 		return expression.NewLiteral(val, types.Float64)
 	case string:
 		return expression.NewLiteral(val, types.Text)

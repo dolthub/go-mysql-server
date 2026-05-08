@@ -3658,6 +3658,10 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{uint64(0)}},
 	},
 	{
+		Query:    "select 122.2230000000000000000000000000056874561;",
+		Expected: []sql.Row{{"122.2230000000000000000000000000056874561"}},
+	},
+	{
 		Query:    "select -1.00 div 2;",
 		Expected: []sql.Row{{0}},
 	},

@@ -177,23 +177,23 @@ func TestDiv(t *testing.T) {
 
 		// Decimals
 		{
-			left:  NewLiteral(types.DecimalFromInt64WithScale(1, 0), types.MustCreateDecimalType(10, 0)),
-			right: NewLiteral(types.DecimalFromInt64WithScale(3, 0), types.MustCreateDecimalType(10, 0)),
+			left:  NewLiteral(apd.New(1, 0), types.MustCreateDecimalType(10, 0)),
+			right: NewLiteral(apd.New(3, 0), types.MustCreateDecimalType(10, 0)),
 			exp:   "0.3333",
 		},
 		{
-			left:  NewLiteral(types.DecimalFromInt64WithScale(1000, -3), types.MustCreateDecimalType(10, 3)),
-			right: NewLiteral(types.DecimalFromInt64WithScale(3, 0), types.MustCreateDecimalType(10, 0)),
+			left:  NewLiteral(apd.New(1000, -3), types.MustCreateDecimalType(10, 3)),
+			right: NewLiteral(apd.New(3, 0), types.MustCreateDecimalType(10, 0)),
 			exp:   "0.3333333",
 		},
 		{
-			left:  NewLiteral(types.DecimalFromInt64WithScale(1, 0), types.MustCreateDecimalType(10, 0)),
-			right: NewLiteral(types.DecimalFromInt64WithScale(3000, -3), types.MustCreateDecimalType(10, 3)),
+			left:  NewLiteral(apd.New(1, 0), types.MustCreateDecimalType(10, 0)),
+			right: NewLiteral(apd.New(3000, -3), types.MustCreateDecimalType(10, 3)),
 			exp:   "0.3333",
 		},
 		{
-			left:  NewLiteral(types.DecimalFromInt64WithScale(314159, -5), types.MustCreateDecimalType(10, 5)),
-			right: NewLiteral(types.DecimalFromInt64WithScale(3, 0), types.MustCreateDecimalType(10, 0)),
+			left:  NewLiteral(apd.New(314159, -5), types.MustCreateDecimalType(10, 5)),
+			right: NewLiteral(apd.New(3, 0), types.MustCreateDecimalType(10, 0)),
 			exp:   "1.047196666",
 		},
 		{
@@ -284,11 +284,11 @@ func TestDiv(t *testing.T) {
 		},
 		{
 			left:  NewLiteral("1", types.Text),
-			right: NewLiteral(types.DecimalFromInt64WithScale(3, 0), types.MustCreateDecimalType(10, 0)),
+			right: NewLiteral(apd.New(3, 0), types.MustCreateDecimalType(10, 0)),
 			exp:   0.3333333333333333,
 		},
 		{
-			left:  NewLiteral(types.DecimalFromInt64WithScale(1, 0), types.MustCreateDecimalType(10, 0)),
+			left:  NewLiteral(apd.New(1, 0), types.MustCreateDecimalType(10, 0)),
 			right: NewLiteral("3", types.Text),
 			exp:   0.3333333333333333,
 		},
@@ -310,7 +310,7 @@ func TestDiv(t *testing.T) {
 				return
 			}
 			require.NoError(err)
-			if dec, ok := result.(apd.Decimal); ok {
+			if dec, ok := result.(*apd.Decimal); ok {
 				result = dec.Text('f')
 			}
 			assert.Equal(t, tt.exp, result)
@@ -328,7 +328,7 @@ func TestDivUsesFloatsInternally(t *testing.T) {
 
 	result, err := topDiv.Eval(sql.NewEmptyContext(), sql.NewRow(250, 2, 5, 2))
 	require.NoError(t, err)
-	dec, isDecimal := result.(apd.Decimal)
+	dec, isDecimal := result.(*apd.Decimal)
 	require.True(t, isDecimal)
 	require.Equal(t, "12.5", dec.String())
 
@@ -391,7 +391,7 @@ func BenchmarkDivInt(b *testing.B) {
 		res, err = div.Eval(ctx, nil)
 		require.NoError(err)
 	}
-	if dec, ok := res.(apd.Decimal); ok {
+	if dec, ok := res.(*apd.Decimal); ok {
 		res = dec.Text('f')
 	}
 	exp := "0.3333"
@@ -436,7 +436,7 @@ func BenchmarkDivHighScaleDecimals(b *testing.B) {
 		res, err = div.Eval(ctx, nil)
 		require.NoError(err)
 	}
-	if dec, ok := res.(apd.Decimal); ok {
+	if dec, ok := res.(*apd.Decimal); ok {
 		res = dec.Text('f')
 	}
 	exp := "0.124999998860937500014238281250"
@@ -460,7 +460,7 @@ func BenchmarkDivManyInts(b *testing.B) {
 		res, err = div.Eval(ctx, nil)
 		require.NoError(err)
 	}
-	if dec, ok := res.(apd.Decimal); ok {
+	if dec, ok := res.(*apd.Decimal); ok {
 		res = dec.Text('f')
 	}
 	exp := "0.000002755731922398589054232804"
@@ -505,7 +505,7 @@ func BenchmarkDivManyDecimals(b *testing.B) {
 		res, err = div.Eval(ctx, nil)
 		require.NoError(err)
 	}
-	if dec, ok := res.(apd.Decimal); ok {
+	if dec, ok := res.(*apd.Decimal); ok {
 		res = dec.Text('f')
 	}
 	exp := "0.000002755731922398589054232804"

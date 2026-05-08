@@ -386,13 +386,8 @@ func (t datetimeType) ConvertWithoutRangeCheck(ctx context.Context, v interface{
 			return ZeroTime, nil
 		}
 		return ZeroTime, ErrConvertingToTime.New(v)
-	case apd.Decimal:
+	case *apd.Decimal:
 		if value.IsZero() {
-			return ZeroTime, nil
-		}
-		return ZeroTime, ErrConvertingToTime.New(v)
-	case apd.NullDecimal:
-		if value.Valid && value.Decimal.IsZero() {
 			return ZeroTime, nil
 		}
 		return ZeroTime, ErrConvertingToTime.New(v)

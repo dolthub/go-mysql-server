@@ -274,7 +274,7 @@ func TestConvert(t *testing.T) {
 			}
 
 			// Convert any Decimal values to strings for easier comparison (same as we do for engine tests)
-			if d, ok := val.(apd.Decimal); ok {
+			if d, ok := val.(*apd.Decimal); ok {
 				val = d.Text('f')
 			}
 

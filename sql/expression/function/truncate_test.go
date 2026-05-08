@@ -164,7 +164,7 @@ func TestTruncate(t *testing.T) {
 			require.NoError(t, err)
 
 			if tt.name == "decimal input" {
-				if dec, ok := res.(apd.Decimal); ok {
+				if dec, ok := res.(*apd.Decimal); ok {
 					require.Equal(t, tt.exp, dec.Text('f'))
 				} else {
 					require.Equal(t, tt.exp, res)

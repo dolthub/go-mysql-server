@@ -428,13 +428,8 @@ func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest [
 		start = 0
 	case time.Time:
 		val = s.AppendFormat(dest, sql.TimestampDatetimeLayout)
-	case apd.Decimal:
+	case *apd.Decimal:
 		val = append(dest, s.Text('f')...)
-	case apd.NullDecimal:
-		if !s.Valid {
-			return nil, nil
-		}
-		val = append(dest, s.Decimal.Text('f')...)
 	case sql.JSONWrapper:
 		var err error
 		val, err = JsonToMySqlBytes(ctx, s)

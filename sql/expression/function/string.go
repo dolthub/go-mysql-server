@@ -227,7 +227,7 @@ func (h *Hex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case float64:
 		return hexForFloat(val)
 
-	case apd.Decimal:
+	case *apd.Decimal:
 		f, _ := val.Float64()
 		return hexForFloat(f)
 
@@ -515,10 +515,10 @@ func (h *Bin) convertToInt64(v interface{}) (int64, error) {
 			return math.MinInt64, nil
 		}
 		return int64(v), nil
-	case apd.Decimal:
-		if v.Cmp(&types.DecimalMaxInt64) > 0 {
+	case *apd.Decimal:
+		if v.Cmp(types.DecimalMaxInt64) > 0 {
 			return math.MaxInt64, nil
-		} else if v.Cmp(&types.DecimalMinInt64) < 0 {
+		} else if v.Cmp(types.DecimalMinInt64) < 0 {
 			return math.MinInt64, nil
 		}
 		return types.DecimalIntPart(types.DecimalTruncate(v, 0)), nil

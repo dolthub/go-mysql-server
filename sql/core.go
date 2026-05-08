@@ -329,7 +329,7 @@ func ConvertToBool(ctx *Context, v interface{}) (bool, error) {
 			return false, nil
 		}
 		return bFloat != 0, nil
-	case apd.Decimal:
+	case *apd.Decimal:
 		return !b.IsZero(), nil
 	case nil:
 		return false, fmt.Errorf("unable to cast nil to bool")

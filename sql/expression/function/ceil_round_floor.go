@@ -121,8 +121,8 @@ func (c *Ceil) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		child = math.Ceil(float64(num))
 	case float64:
 		child = math.Ceil(num)
-	case apd.Decimal:
-		_, err = sql.DecimalCtx.Ceil(&num, &num)
+	case *apd.Decimal:
+		_, err = sql.DecimalCtx.Ceil(num, num)
 		if err != nil {
 			return nil, err
 		}
@@ -208,8 +208,8 @@ func (f *Floor) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		child = math.Floor(float64(num))
 	case float64:
 		child = math.Floor(num)
-	case apd.Decimal:
-		_, err = sql.DecimalCtx.Floor(&num, &num)
+	case *apd.Decimal:
+		_, err = sql.DecimalCtx.Floor(num, num)
 		if err != nil {
 			return nil, err
 		}
@@ -311,7 +311,7 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	var res interface{}
-	tmp, err := types.DecimalRound(val.(apd.Decimal), prec)
+	tmp, err := sql.DecimalRound(val.(*apd.Decimal), prec)
 	if err != nil {
 		return nil, err
 	}

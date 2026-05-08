@@ -100,12 +100,8 @@ func (t systemUintType) Convert(ctx context.Context, v interface{}) (interface{}
 		if value == float64(uint64(value)) {
 			return t.Convert(ctx, uint64(value))
 		}
-	case apd.Decimal:
+	case *apd.Decimal:
 		return t.Convert(ctx, DecimalIntPartUint64(value))
-	case apd.NullDecimal:
-		if value.Valid {
-			return t.Convert(ctx, value.Decimal)
-		}
 	}
 
 	return nil, sql.InRange, sql.ErrInvalidSystemVariableValue.New(t.varName, v)

@@ -90,7 +90,7 @@ func (m *Mod) Type(ctx *sql.Context) sql.Type {
 		return types.Float64
 	}
 
-	// for division operation, it's either float or apd.Decimal type
+	// for division operation, it's either float or *apd.Decimal type
 	// except invalid value will result it either 0 or nil
 	return getFloatOrMaxDecimalType(ctx, m, false)
 }
@@ -179,20 +179,16 @@ func mod(ctx *sql.Context, lval, rval interface{}) (interface{}, error) {
 			}
 			return math.Mod(l, r), nil
 		}
-	case apd.Decimal:
+	case *apd.Decimal:
 		switch r := rval.(type) {
-		case apd.Decimal:
+		case *apd.Decimal:
 			if r.IsZero() {
 				arithmeticWarning(ctx, ERDivisionByZero, "Division by 0")
 				return nil, nil
 			}
 
 			// Mod function from the decimal package takes care of precision and scale for the result value
-			_, err := sql.DecimalHighPrecisionCtx.Rem(&l, &l, &r)
-			if err != nil {
-				return nil, err
-			}
-			return l, nil
+			return types.DecimalMod(l, r)
 		}
 	}
 

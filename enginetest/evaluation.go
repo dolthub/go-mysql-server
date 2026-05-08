@@ -939,7 +939,7 @@ func widenValue(t *testing.T, v interface{}) (vw interface{}) {
 	case float32:
 		// casting it to float64 causes approximation, which doesn't work for server engine results.
 		vw, _ = strconv.ParseFloat(fmt.Sprintf("%v", v), 64)
-	case apd.Decimal:
+	case *apd.Decimal:
 		// The exact expected decimal type value cannot be defined in enginetests,
 		// so convert the result to string format, which is the value we get on sql shell.
 		vw = x.Text('f')

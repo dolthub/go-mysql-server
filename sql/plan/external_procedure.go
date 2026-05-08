@@ -185,11 +185,17 @@ func (n *ExternalProcedure) ProcessParam(ctx *sql.Context, funcParamType reflect
 	}
 
 	if funcParamType.Kind() == reflect.Ptr { // Coincides with INOUT
-		funcParamVal := reflect.New(funcParamType.Elem())
 		if exprParamVal != nil {
-			funcParamVal.Elem().Set(reflect.ValueOf(exprParamVal))
+			valReflect := reflect.ValueOf(exprParamVal)
+			if valReflect.Type() == funcParamType {
+				// exprParamVal is already the right pointer type (e.g., *apd.Decimal for IN params)
+				return valReflect, nil
+			}
+			funcParamVal := reflect.New(funcParamType.Elem())
+			funcParamVal.Elem().Set(valReflect)
+			return funcParamVal, nil
 		}
-		return funcParamVal, nil
+		return reflect.New(funcParamType.Elem()), nil
 	} else { // Coincides with IN
 		funcParamVal := reflect.New(funcParamType)
 		if exprParamVal != nil {

@@ -96,14 +96,9 @@ func (t systemSetType) Convert(ctx context.Context, v interface{}) (interface{},
 		if value == float64(int64(value)) {
 			return t.SetType.Convert(ctx, int64(value))
 		}
-	case apd.Decimal:
+	case *apd.Decimal:
 		f, _ := value.Float64()
 		return t.Convert(ctx, f)
-	case apd.NullDecimal:
-		if value.Valid {
-			f, _ := value.Decimal.Float64()
-			return t.Convert(ctx, f)
-		}
 	case string:
 		return t.SetType.Convert(ctx, value)
 	}
