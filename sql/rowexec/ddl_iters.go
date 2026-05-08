@@ -2692,8 +2692,14 @@ func rewriteTableForIndexCreate(ctx *sql.Context, n *plan.AlterIndex, table sql.
 		}
 	}
 
-	// TODO: move this into iter.close, probably
-	err = inserter.Close(ctx)
+	// TODO: find a more elegant solution
+	if forcedCloser, ok := inserter.(sql.ForceCloser); ok {
+		err = forcedCloser.ForceClose(ctx)
+	} else {
+		// TODO: move this into iter.close, probably
+		err = inserter.Close(ctx)
+	}
+
 	if err != nil {
 		return err
 	}
