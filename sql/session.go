@@ -451,7 +451,7 @@ const redactedFragmentMarker = "<redacted>"
 //
 // Returns the original .String() output when redaction is disabled
 // (the default).
-func (c *Context) RedactStringerForTrace(v interface{ String() string }) string {
+func (c *Context) RedactStringerForTrace(v fmt.Stringer) string {
 	if c == nil || !c.traceRedactionEnabled {
 		return v.String()
 	}
