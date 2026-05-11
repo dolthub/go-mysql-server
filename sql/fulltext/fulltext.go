@@ -141,7 +141,7 @@ func writeHashedValue(ctx context.Context, h hash.Hash, val interface{}) (valIsN
 			return false, err
 		}
 	case *apd.Decimal:
-		bytes, err := types.DecimalGobEncode(val)
+		bytes, err := val.MarshalText()
 		if err != nil {
 			return false, err
 		}
