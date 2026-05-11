@@ -645,10 +645,7 @@ func convertGoSqlType(columnType *gosql.ColumnType) (sql.Type, error) {
 		if !ok {
 			return nil, fmt.Errorf("could not get decimal size for column %s", columnType.Name())
 		}
-		decimalType, err := types.CreateDecimalType(uint8(precision), uint8(scale))
-		if err != nil {
-			return nil, err
-		}
+		decimalType := types.CreateLiteralDecimalType(uint8(precision), uint8(scale))
 		return decimalType, nil
 	case "date":
 		return types.Date, nil

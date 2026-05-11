@@ -326,7 +326,8 @@ type DecimalType interface {
 // 545 rounded with scale of -1 = 550
 func DecimalRound(val *apd.Decimal, scale int32) (*apd.Decimal, error) {
 	newVal := new(apd.Decimal)
-	// Must use DecimalHighPrecisionCtx to use .Quantize method.
+	// Must use decimal context with precision set to non-zero to use .Quantize() method.
+	// Instead of using MaxExponent as precision, find the big enough.
 	p := val.NumDigits()
 	if val.Exponent > 0 {
 		p += int64(val.Exponent)
@@ -335,7 +336,6 @@ func DecimalRound(val *apd.Decimal, scale int32) (*apd.Decimal, error) {
 		p += int64(scale)
 	}
 	c := DecimalCtx.WithPrecision(uint32(p))
-	c = DecimalHighPrecisionCtx
 	_, err := c.Quantize(newVal, val, -scale)
 	return newVal, err
 }
