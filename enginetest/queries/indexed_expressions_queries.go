@@ -709,6 +709,8 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 				},
 			},
 			{
+				// TODO: We skip this one on Doltgres, because the syntax error messages are slightly different and (this version of) ScriptTest doesn't let us specify just a substring of the error message.
+				Dialect:        "mysql",
 				Query:          "SELECT !hidden!idx1!0!0 FROM test;",
 				ExpectedErrStr: "syntax error at position 16 near 'hidden'",
 			},
