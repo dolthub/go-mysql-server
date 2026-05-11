@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"math"
 	"math/big"
 	"reflect"
 	"strconv"
@@ -87,14 +88,12 @@ func CreateColumnDecimalType(precision uint8, scale uint8) (sql.DecimalType, err
 // createDecimalType creates a DecimalType using given precision, scale
 // and whether this type defines a valid table column.
 func createDecimalType(precision uint8, scale uint8, definesColumn bool) (sql.DecimalType, error) {
-	if definesColumn {
-		// check for limits for column defined types only
-		if scale > DecimalTypeMaxScale {
-			return nil, fmt.Errorf("Too big scale %v specified. Maximum is %v.", scale, DecimalTypeMaxScale)
-		}
-		if precision > DecimalTypeMaxPrecision {
-			return nil, fmt.Errorf("Too big precision %v specified. Maximum is %v.", precision, DecimalTypeMaxPrecision)
-		}
+	// check for limits for column defined types only
+	if scale > DecimalTypeMaxScale {
+		return nil, fmt.Errorf("Too big scale %v specified. Maximum is %v.", scale, DecimalTypeMaxScale)
+	}
+	if precision > DecimalTypeMaxPrecision {
+		return nil, fmt.Errorf("Too big precision %v specified. Maximum is %v.", precision, DecimalTypeMaxPrecision)
 	}
 	if scale > precision {
 		return nil, fmt.Errorf("Scale %v cannot be larger than the precision %v", scale, precision)
@@ -109,6 +108,17 @@ func createDecimalType(precision uint8, scale uint8, definesColumn bool) (sql.De
 		precision:           precision,
 		scale:               scale,
 	}, nil
+}
+
+// CreateLiteralDecimalType is only used for literal decimal values that does not have
+// the precision and scale limit. The limit only applies to column or cast types.
+func CreateLiteralDecimalType(precision, scale uint8) sql.DecimalType {
+	return DecimalType_{
+		exclusiveUpperBound: apd.New(1, int32(precision-scale)),
+		definesColumn:       false,
+		precision:           precision,
+		scale:               scale,
+	}
 }
 
 // MustCreateDecimalType is the same as CreateDecimalType except it panics on errors and for NON-TABLE-COLUMN.
@@ -565,8 +575,9 @@ func DecimalDivRound(a, b *apd.Decimal, scale int32) *apd.Decimal {
 // DecimalMod mods the given values.
 func DecimalMod(a, b *apd.Decimal) (*apd.Decimal, error) {
 	res := new(apd.Decimal)
+	m := math.Max(float64(a.NumDigits()), float64(b.NumDigits()))
 	// need to set precision for decimal context because it does division operation.
-	_, err := sql.DecimalCtx.WithPrecision(uint32(a.NumDigits())).Rem(res, a, b)
+	_, err := sql.DecimalCtx.WithPrecision(uint32(m)).Rem(res, a, b)
 	return res, err
 }
 
@@ -589,26 +600,4 @@ func DecimalTruncate(val *apd.Decimal, scale int32) *apd.Decimal {
 		return newVal
 	}
 	return val
-}
-
-// DecimalGobEncode marshals binary
-func DecimalGobEncode(val *apd.Decimal) (data []byte, err error) {
-	//TODO add encoding for NaN and +/-Inf values
-
-	// exp is written first, but encode value first to know output size
-	bigIntCoeff := val.Coeff.MathBigInt()
-	if val.Negative {
-		bigIntCoeff.Neg(bigIntCoeff)
-	}
-	var valueData []byte
-	if valueData, err = bigIntCoeff.GobEncode(); err != nil {
-		return nil, err
-	}
-
-	// Write the exponent in front, since it's a fixed size
-	expData := make([]byte, 4, len(valueData)+4)
-	binary.BigEndian.PutUint32(expData, uint32(val.Exponent))
-
-	// Return the byte array
-	return append(expData, valueData...), nil
 }
