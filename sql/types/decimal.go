@@ -16,7 +16,6 @@ package types
 
 import (
 	"context"
-	"encoding/binary"
 	"fmt"
 	"math"
 	"math/big"
