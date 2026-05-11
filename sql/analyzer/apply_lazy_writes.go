@@ -20,14 +20,34 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-// applyLazyWrites makes sql.LazyTableEditors defer flushing writes to disk until necessary.
-func applyLazyWrites(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
-	// Find sql.LazyTableEditors in DDL nodes and apply when possible...
-	return transform.NodeWithOpaque(ctx, n, func(ctx *sql.Context, node sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		switch nn := node.(type) {
-		case sql.LazyTableEditor:
-			nn.SetLazy(true)
+func canApplyLazyWrites(ctx *sql.Context, node sql.Node) bool {
+	canApply := true
+	transform.InspectWithOpaque(ctx, node, func(ctx *sql.Context, n sql.Node) bool {
+		switch nn := n.(type) {
+		case *plan.InsertInto:
+			if !canApplyLazyWrites(ctx, nn.Source) {
+				canApply = false
+			}
+			return false
+		case *plan.TriggerBeginEndBlock, *plan.BeginEndBlock, *plan.Block:
+			canApply = false
+			return false
+		default:
+			return true
 		}
-		return node, transform.SameTree, nil
 	})
+	return canApply
+}
+
+// applyLazyWrites makes sql.LazyTableEditors defer flushing writes to disk until necessary.
+func applyLazyWrites(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
+	switch {
+	case qFlags.IsSet(sql.QFlagDDL):
+		a.ExecBuilder.UseLazyWrites = false
+	case qFlags.IsSet(sql.QFlagTrigger):
+		a.ExecBuilder.UseLazyWrites = false
+	default:
+		a.ExecBuilder.UseLazyWrites = true
+	}
+	return node, transform.SameTree, nil
 }
