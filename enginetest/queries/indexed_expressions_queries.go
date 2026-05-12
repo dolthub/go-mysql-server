@@ -1081,6 +1081,37 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "filtering: tuple IN with composite primary key",
+		SetUpScript: []string{
+			"CREATE TABLE t (pk1 INT, pk2 INT, pk3 INT, PRIMARY KEY (pk1, pk2, pk3))",
+			"INSERT INTO t VALUES (0, 0, 10), (0, 1, 20), (1, 0, 30), (1, 1, 40), (2, 3, 50)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:           "SELECT * FROM t WHERE (pk1, pk2) IN ((0, 1), (2, 3)) ORDER BY pk1, pk2",
+				Expected:        []sql.Row{{0, 1, 20}, {2, 3, 50}},
+				ExpectedIndexes: []string{"primary"},
+			},
+			{
+				Query:           "SELECT * FROM t WHERE pk1 = 0 and (pk3, pk2) IN ((10, 0), (20, 1)) ORDER BY pk1, pk2",
+				Expected:        []sql.Row{{0, 0, 10}, {0, 1, 20}},
+				ExpectedIndexes: []string{"primary"},
+			},
+			{
+				// Single tuple element
+				Query:           "SELECT * FROM t WHERE (pk1, pk2) IN ((1, 0)) ORDER BY pk1",
+				Expected:        []sql.Row{{1, 0, 30}},
+				ExpectedIndexes: []string{"primary"},
+			},
+			{
+				// No match
+				Query:           "SELECT * FROM t WHERE (pk1, pk2) IN ((9, 9))",
+				Expected:        []sql.Row{},
+				ExpectedIndexes: []string{"primary"},
+			},
+		},
+	},
+	{
 		Name: "!hidden! column name prefix is reserved",
 		SetUpScript: []string{
 			"create table t2 (pk int primary key, c1 int);",
