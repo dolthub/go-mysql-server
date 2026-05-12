@@ -521,7 +521,7 @@ func (h *Bin) convertToInt64(v interface{}) (int64, error) {
 		} else if v.Cmp(types.DecimalMinInt64) < 0 {
 			return math.MinInt64, nil
 		}
-		return types.DecimalIntPart(types.DecimalTruncate(v, 0)), nil
+		return types.DecimalTruncatedIntPart(v), nil
 	case []byte:
 		i, err := strconv.ParseInt(hex.EncodeToString(v), 16, 64)
 		if err != nil {

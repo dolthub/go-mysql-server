@@ -69,8 +69,6 @@ var (
 	DecimalMaxInt64 = DecimalFromInt64(math.MaxInt64)
 	// DecimalMinInt64 represents the min value an int64 can hold
 	DecimalMinInt64 = DecimalFromInt64(math.MinInt64)
-	// DecimalZero represents the zero value
-	DecimaZero = DecimalFromInt64(0)
 
 	numberInt8ValueType    = reflect.TypeOf(int8(0))
 	numberInt16ValueType   = reflect.TypeOf(int16(0))
@@ -1033,7 +1031,7 @@ func convertToInt64(t NumberTypeImpl_, v any, round Round) (int64, sql.ConvertIn
 		if v.Cmp(DecimalMinInt64) < 0 {
 			return math.MinInt64, sql.Underflow, nil
 		}
-		return DecimalIntPart(v), sql.InRange, nil
+		return DecimalRoundedIntPart(v), sql.InRange, nil
 	case []byte:
 		i, err := strconv.ParseInt(hex.EncodeToString(v), 16, 64)
 		if err != nil {
@@ -1321,7 +1319,7 @@ func convertValueToInt64(ctx *sql.Context, v sql.Value) (int64, sql.ConvertInRan
 		if x.Cmp(DecimalMinInt64) < 0 {
 			return math.MinInt64, sql.Underflow, nil
 		}
-		return DecimalIntPart(x), sql.InRange, nil
+		return DecimalRoundedIntPart(x), sql.InRange, nil
 	case sqltypes.Bit:
 		x := values.ReadUint64(v.Val)
 		if x > math.MaxInt64 {

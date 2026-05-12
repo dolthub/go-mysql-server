@@ -148,7 +148,6 @@ func (t DecimalType_) Compare(s context.Context, a interface{}, b interface{}) (
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
-
 	ad, err := t.ConvertToDecimal(a)
 	if err != nil {
 		return 0, err
@@ -158,17 +157,7 @@ func (t DecimalType_) Compare(s context.Context, a interface{}, b interface{}) (
 		return 0, err
 	}
 
-	if (ad.Form == apd.NaN && bd.Form == apd.NaN) ||
-		(ad.Form == apd.Infinite && bd.Form == apd.Infinite && ad.Negative == bd.Negative) {
-		return 0, nil
-	}
-	if ad.Form == apd.NaN {
-		return 1, nil
-	}
-	if bd.Form == apd.NaN {
-		return -1, nil
-	}
-	return ad.Cmp(bd), nil
+	return CompareDecimals(ad, bd), nil
 }
 
 // CompareValue implements the ValueType interface
@@ -185,18 +174,7 @@ func (t DecimalType_) CompareValue(ctx *sql.Context, a, b sql.Value) (int, error
 		return 0, err
 	}
 
-	if (aDec.Form == apd.NaN && bDec.Form == apd.NaN) ||
-		(aDec.Form == apd.Infinite && bDec.Form == apd.Infinite && aDec.Negative == bDec.Negative) {
-		return 0, nil
-	}
-	if aDec.Form == apd.NaN {
-		return 1, nil
-	}
-	if bDec.Form == apd.NaN {
-		return -1, nil
-	}
-
-	return aDec.Cmp(bDec), nil
+	return CompareDecimals(aDec, bDec), nil
 }
 
 // Convert implements Type interface.
@@ -508,6 +486,22 @@ func (t DecimalType_) IsDecimalType() bool {
 	return true
 }
 
+// CompareDecimals compares *apd.Decimal values.
+// It handles special values, NaN and +/-Infinity.
+func CompareDecimals(a, b *apd.Decimal) int {
+	if (a.Form == apd.NaN && b.Form == apd.NaN) ||
+		(a.Form == apd.Infinite && b.Form == apd.Infinite && a.Negative == b.Negative) {
+		return 0
+	}
+	if a.Form == apd.NaN {
+		return 1
+	}
+	if b.Form == apd.NaN {
+		return -1
+	}
+	return a.Cmp(b)
+}
+
 // DecimalFromFloat32 returns *apd.Decimal set from given float32.
 func DecimalFromFloat32(f float32) *apd.Decimal {
 	dec := new(apd.Decimal)
@@ -542,9 +536,16 @@ func DecimalFromUint64(x uint64) *apd.Decimal {
 	return dec
 }
 
-// DecimalIntPart rounds the decimal value to 0 scale and returns the integer part int64.
-func DecimalIntPart(val *apd.Decimal) int64 {
+// DecimalRoundedIntPart rounds the decimal value to 0 scale and returns the integer part int64.
+func DecimalRoundedIntPart(val *apd.Decimal) int64 {
 	v, _ := sql.DecimalRound(val, 0)
+	i, _ := v.Int64()
+	return i
+}
+
+// DecimalTruncatedIntPart truncates the decimal value to 0 scale and returns the integer part int64.
+func DecimalTruncatedIntPart(val *apd.Decimal) int64 {
+	v := DecimalTruncate(val, 0)
 	i, _ := v.Int64()
 	return i
 }

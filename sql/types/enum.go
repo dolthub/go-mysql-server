@@ -210,7 +210,7 @@ func (t EnumType) Convert(ctx context.Context, v interface{}) (interface{}, sql.
 	case float64:
 		return t.Convert(ctx, int(value))
 	case *apd.Decimal:
-		return t.Convert(ctx, DecimalIntPart(value))
+		return t.Convert(ctx, DecimalRoundedIntPart(value))
 	case string:
 		if index := t.IndexOf(value); index != -1 {
 			return uint16(index), sql.InRange, nil

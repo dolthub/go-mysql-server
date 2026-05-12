@@ -201,7 +201,7 @@ func (t TimespanType_) ConvertToTimespan(v interface{}) (Timespan, error) {
 			}
 		}
 	case *apd.Decimal:
-		return t.ConvertToTimespan(DecimalIntPart(value))
+		return t.ConvertToTimespan(DecimalRoundedIntPart(value))
 	case string:
 		impl, err := stringToTimespan(value)
 		if err == nil {

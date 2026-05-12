@@ -108,48 +108,48 @@ func TestRoundUpFloat(t *testing.T) {
 
 		// decimal
 		{
-			val: NewDecimalFromFloat64(-math.MaxFloat64),
-			exp: NewDecimalFromFloat64(-math.MaxFloat64),
+			val: requireDecimalFromFloat64(-math.MaxFloat64),
+			exp: requireDecimalFromFloat64(-math.MaxFloat64),
 		},
 		{
-			val: NewDecimalFromFloat64(-1.1),
-			exp: NewDecimalFromFloat64(-1.0),
+			val: requireDecimalFromFloat64(-1.1),
+			exp: requireDecimalFromFloat64(-1.0),
 		},
 		{
-			val: NewDecimalFromFloat64(-0.9),
-			exp: NewDecimalFromFloat64(0.0),
+			val: requireDecimalFromFloat64(-0.9),
+			exp: requireDecimalFromFloat64(0.0),
 		},
 		{
-			val: NewDecimalFromFloat64(-0.5),
-			exp: NewDecimalFromFloat64(0.0),
+			val: requireDecimalFromFloat64(-0.5),
+			exp: requireDecimalFromFloat64(0.0),
 		},
 		{
-			val: NewDecimalFromFloat64(-0.1),
-			exp: NewDecimalFromFloat64(0.0),
+			val: requireDecimalFromFloat64(-0.1),
+			exp: requireDecimalFromFloat64(0.0),
 		},
 		{
-			val: NewDecimalFromFloat64(0.0),
-			exp: NewDecimalFromFloat64(0.0),
+			val: requireDecimalFromFloat64(0.0),
+			exp: requireDecimalFromFloat64(0.0),
 		},
 		{
-			val: NewDecimalFromFloat64(0.1),
-			exp: NewDecimalFromFloat64(1.0),
+			val: requireDecimalFromFloat64(0.1),
+			exp: requireDecimalFromFloat64(1.0),
 		},
 		{
-			val: NewDecimalFromFloat64(0.5),
-			exp: NewDecimalFromFloat64(1.0),
+			val: requireDecimalFromFloat64(0.5),
+			exp: requireDecimalFromFloat64(1.0),
 		},
 		{
-			val: NewDecimalFromFloat64(0.9),
-			exp: NewDecimalFromFloat64(1.0),
+			val: requireDecimalFromFloat64(0.9),
+			exp: requireDecimalFromFloat64(1.0),
 		},
 		{
-			val: NewDecimalFromFloat64(1.1),
-			exp: NewDecimalFromFloat64(2.0),
+			val: requireDecimalFromFloat64(1.1),
+			exp: requireDecimalFromFloat64(2.0),
 		},
 		{
-			val: NewDecimalFromFloat64(math.MaxFloat64),
-			exp: NewDecimalFromFloat64(math.MaxFloat64),
+			val: requireDecimalFromFloat64(math.MaxFloat64),
+			exp: requireDecimalFromFloat64(math.MaxFloat64),
 		},
 	}
 
@@ -265,48 +265,48 @@ func TestRoundDownFloat(t *testing.T) {
 
 		// decimal
 		{
-			val: NewDecimalFromFloat64(-math.MaxFloat64),
-			exp: NewDecimalFromFloat64(-math.MaxFloat64),
+			val: requireDecimalFromFloat64(-math.MaxFloat64),
+			exp: requireDecimalFromFloat64(-math.MaxFloat64),
 		},
 		{
-			val: NewDecimalFromFloat64(-1.1),
-			exp: NewDecimalFromFloat64(-2.0),
+			val: requireDecimalFromFloat64(-1.1),
+			exp: requireDecimalFromFloat64(-2.0),
 		},
 		{
-			val: NewDecimalFromFloat64(-0.9),
-			exp: NewDecimalFromFloat64(-1.0),
+			val: requireDecimalFromFloat64(-0.9),
+			exp: requireDecimalFromFloat64(-1.0),
 		},
 		{
-			val: NewDecimalFromFloat64(-0.5),
-			exp: NewDecimalFromFloat64(-1.0),
+			val: requireDecimalFromFloat64(-0.5),
+			exp: requireDecimalFromFloat64(-1.0),
 		},
 		{
-			val: NewDecimalFromFloat64(-0.1),
-			exp: NewDecimalFromFloat64(-1.0),
+			val: requireDecimalFromFloat64(-0.1),
+			exp: requireDecimalFromFloat64(-1.0),
 		},
 		{
-			val: NewDecimalFromFloat64(0.0),
-			exp: NewDecimalFromFloat64(0.0),
+			val: requireDecimalFromFloat64(0.0),
+			exp: requireDecimalFromFloat64(0.0),
 		},
 		{
-			val: NewDecimalFromFloat64(0.1),
-			exp: NewDecimalFromFloat64(0.0),
+			val: requireDecimalFromFloat64(0.1),
+			exp: requireDecimalFromFloat64(0.0),
 		},
 		{
-			val: NewDecimalFromFloat64(0.5),
-			exp: NewDecimalFromFloat64(0.0),
+			val: requireDecimalFromFloat64(0.5),
+			exp: requireDecimalFromFloat64(0.0),
 		},
 		{
-			val: NewDecimalFromFloat64(0.9),
-			exp: NewDecimalFromFloat64(0.0),
+			val: requireDecimalFromFloat64(0.9),
+			exp: requireDecimalFromFloat64(0.0),
 		},
 		{
-			val: NewDecimalFromFloat64(1.1),
-			exp: NewDecimalFromFloat64(1.0),
+			val: requireDecimalFromFloat64(1.1),
+			exp: requireDecimalFromFloat64(1.0),
 		},
 		{
-			val: NewDecimalFromFloat64(math.MaxFloat64),
-			exp: NewDecimalFromFloat64(math.MaxFloat64),
+			val: requireDecimalFromFloat64(math.MaxFloat64),
+			exp: requireDecimalFromFloat64(math.MaxFloat64),
 		},
 	}
 
@@ -323,9 +323,12 @@ func TestRoundDownFloat(t *testing.T) {
 	}
 }
 
-// NewDecimalFromFloat64 returns *apd.Decimal set from given float64
-func NewDecimalFromFloat64(x float64) *apd.Decimal {
+// requireDecimalFromFloat64 returns *apd.Decimal set from given float64
+func requireDecimalFromFloat64(x float64) *apd.Decimal {
 	dec := new(apd.Decimal)
-	dec, _ = dec.SetFloat64(x)
+	dec, err := dec.SetFloat64(x)
+	if err != nil {
+		panic(err)
+	}
 	return dec
 }

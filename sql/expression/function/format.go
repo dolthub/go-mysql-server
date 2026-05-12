@@ -154,7 +154,7 @@ func (f *Format) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	var negative string
 	if roundedValue != 0 {
 		res := types.DecimalFromFloat64(roundedValue)
-		whole = types.DecimalIntPart(types.DecimalTruncate(res, 0))
+		whole = types.DecimalTruncatedIntPart(res)
 		if whole == 0 && res.Negative {
 			negative = "-"
 		}

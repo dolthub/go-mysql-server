@@ -25,6 +25,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -713,7 +714,15 @@ func prepareBindingArgs(ctx *sql.Context, bindings map[string]sqlparser.Expr) ([
 		if !ok {
 			return nil, fmt.Errorf("cannot get binding value")
 		}
-		args[i] = lit.Value()
+		val := lit.Value()
+		// TODO: `go-sql-driver` cannot handle `*apd.Decimal` value
+		//  but `database/sql` allows decimalDecompose interface which `*apd.Decimal` implements
+		//  This need fix on one of these libraries.
+		if dec, ok := val.(*apd.Decimal); ok {
+			args[i] = dec.Text('f')
+		} else {
+			args[i] = lit.Value()
+		}
 	}
 	return args, nil
 }
