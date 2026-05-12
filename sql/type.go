@@ -17,6 +17,7 @@ package sql
 import (
 	"context"
 	"fmt"
+	"math"
 	"reflect"
 	"strings"
 	"time"
@@ -327,14 +328,13 @@ type DecimalType interface {
 func DecimalRound(val *apd.Decimal, scale int32) (*apd.Decimal, error) {
 	newVal := new(apd.Decimal)
 	// Must use decimal context with precision set to non-zero to use .Quantize() method.
-	// Instead of using MaxExponent as precision, find the big enough.
+	// Instead of using MaxExponent, find the big enough precision
 	p := val.NumDigits()
-	if val.Exponent > 0 {
-		p += int64(val.Exponent)
+	if val.Exponent < 0 {
+		p += int64(-val.Exponent)
 	}
-	if scale > 0 {
-		p += int64(scale)
-	}
+	p += int64(math.Abs(float64(scale)))
+
 	c := DecimalCtx.WithPrecision(uint32(p))
 	_, err := c.Quantize(newVal, val, -scale)
 	return newVal, err
