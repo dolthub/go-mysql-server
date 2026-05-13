@@ -23,9 +23,9 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
-	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -428,13 +428,8 @@ func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest [
 		start = 0
 	case time.Time:
 		val = s.AppendFormat(dest, sql.TimestampDatetimeLayout)
-	case decimal.Decimal:
-		val = append(dest, s.StringFixed(s.Exponent()*-1)...)
-	case decimal.NullDecimal:
-		if !s.Valid {
-			return nil, nil
-		}
-		val = append(dest, s.Decimal.String()...)
+	case *apd.Decimal:
+		val = append(dest, s.Text('f')...)
 	case sql.JSONWrapper:
 		var err error
 		val, err = JsonToMySqlBytes(ctx, s)

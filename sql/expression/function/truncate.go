@@ -17,8 +17,8 @@ package function
 import (
 	"fmt"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/mysql"
-	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -66,55 +66,50 @@ func (t *Truncate) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil || val == nil {
 		return nil, err
 	}
+	warned := false
 	// Convert to DOUBLE first to match MySQL warning behavior
-	val, _, err = types.Float64.Convert(ctx, val)
+	_, _, err = types.Float64.Convert(ctx, val)
 	if err != nil && sql.ErrTruncatedIncorrect.Is(err) {
+		warned = true
 		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 
 	// Then convert to decimal for truncation logic
 	val, _, err = types.InternalDecimalType.Convert(ctx, val)
-	if err != nil && sql.ErrTruncatedIncorrect.Is(err) {
+	if err != nil && sql.ErrTruncatedIncorrect.Is(err) && !warned {
 		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 
 	// Evaluate the precision
-	prec, err := t.RightChild.Eval(ctx, row)
-	if err != nil || prec == nil {
+	scale, err := t.RightChild.Eval(ctx, row)
+	if err != nil || scale == nil {
 		return nil, err
 	}
-	prec, _, err = types.Int32.Convert(ctx, prec)
+	scale, _, err = types.Int32.Convert(ctx, scale)
 	if err != nil {
 		if !sql.ErrTruncatedIncorrect.Is(err) {
 			return nil, err
 		}
 		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
-	precision := prec.(int32)
-
-	// MySQL cuts off at 30 for larger values
-	// TODO: these limits are fine only because we can't handle decimals larger than this
-	if precision > types.DecimalTypeMaxPrecision {
-		precision = types.DecimalTypeMaxPrecision
-	}
-	if precision < -types.DecimalTypeMaxScale {
-		precision = -types.DecimalTypeMaxScale
+	s := scale.(int32)
+	if s > 0 {
+		// if it's positive, it's to the right
+		if s > types.DecimalTypeMaxScale {
+			s = types.DecimalTypeMaxScale
+		}
+	} else {
+		// if it's negative, it's to the left
+		if s < -types.DecimalTypeMaxPrecision {
+			s = -types.DecimalTypeMaxPrecision
+		}
 	}
 
 	var res interface{}
 
 	// Truncate the decimal value
-	tmp := val.(decimal.Decimal)
-	if precision < 0 {
-		// For negative precision, we need to truncate digits to the left of decimal point
-		// This is different from the decimal library's Truncate method
-		// We need to divide by 10^|precision|, truncate, then multiply back
-		multiplier := decimal.NewFromInt(10).Pow(decimal.NewFromInt(int64(-precision)))
-		tmp = tmp.Div(multiplier).Truncate(0).Mul(multiplier)
-	} else {
-		// For positive precision, use the standard Truncate method
-		tmp = tmp.Truncate(precision)
-	}
+	tmp := val.(*apd.Decimal)
+	tmp = types.DecimalTruncate(tmp, s)
 
 	// Convert truncated value back to the appropriate type
 	lType := t.LeftChild.Type(ctx)

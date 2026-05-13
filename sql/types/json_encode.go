@@ -9,9 +9,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/cockroachdb/apd/v3"
 
-	"github.com/shopspring/decimal"
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 var isEscaped = [256]bool{}
@@ -331,8 +331,8 @@ func writeMarshalledValue(writer io.Writer, val interface{}) error {
 		writer.Write([]byte(val.Format(sql.DatetimeLayoutNoTrim)))
 		writer.Write([]byte{'"'})
 		return nil
-	case decimal.Decimal:
-		writer.Write([]byte(val.String()))
+	case *apd.Decimal:
+		writer.Write([]byte(val.Text('f')))
 		return nil
 	case json.Marshaler:
 		bytes, err := val.MarshalJSON()

@@ -20,7 +20,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shopspring/decimal"
+	"github.com/cockroachdb/apd/v3"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -120,7 +120,7 @@ func compEval(
 			if i == 0 || cmp(t, selectedTime) {
 				selectedTime = t
 			}
-		case decimal.Decimal:
+		case *apd.Decimal:
 			fval, _ := t.Float64()
 			if i == 0 || cmp(fval, selectedNum) {
 				selectedNum = fval

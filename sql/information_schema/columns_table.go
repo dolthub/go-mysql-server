@@ -23,6 +23,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 
@@ -522,6 +523,8 @@ func GetColumnDefault(ctx *sql.Context, cd *sql.ColumnDefaultValue) interface{} 
 	case []uint8:
 		hexStr := hex.EncodeToString(l)
 		v = fmt.Sprintf("0x%s", hexStr)
+	case *apd.Decimal:
+		v = l.Text('f')
 	}
 
 	if types.IsBit(cd.Type(ctx)) {

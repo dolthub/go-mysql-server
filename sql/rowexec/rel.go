@@ -23,8 +23,8 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/jsonpath"
-	"github.com/shopspring/decimal"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
@@ -75,7 +75,10 @@ func (b *BaseBuilder) buildValueDerivedTable(ctx *sql.Context, n *plan.ValueDeri
 			}
 			// decimalType.Convert() does not use the given type precision and scale information
 			if t, ok := n.Schema(ctx)[j].Type.(sql.DecimalType); ok {
-				vals[j] = vals[j].(decimal.Decimal).Round(int32(t.Scale()))
+				vals[j], err = sql.DecimalRound(vals[j].(*apd.Decimal), int32(t.Scale()))
+				if err != nil {
+					return nil, err
+				}
 			}
 		}
 		rows[i] = vals

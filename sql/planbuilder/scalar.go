@@ -1013,10 +1013,7 @@ func (b *Builder) ConvertVal(v *ast.SQLVal) sql.Expression {
 		// using DECIMAL data type avoids precision error of rounded up float64 value
 		if ps := strings.Split(string(v.Val), "."); len(ps) == 2 {
 			p, s := expression.GetDecimalPrecisionAndScale(ogVal)
-			dt, err := types.CreateDecimalType(p, s)
-			if err != nil {
-				return expression.NewLiteral(string(v.Val), types.CreateLongText(b.ctx.GetCollation()))
-			}
+			dt := types.CreateLiteralDecimalType(p, s)
 			dVal, _, err := dt.Convert(b.ctx, ogVal)
 			if err != nil {
 				return expression.NewLiteral(string(v.Val), types.CreateLongText(b.ctx.GetCollation()))

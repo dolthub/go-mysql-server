@@ -26,7 +26,7 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/shopspring/decimal"
+	"github.com/cockroachdb/apd/v3"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql/values"
@@ -329,7 +329,7 @@ func ConvertToBool(ctx *Context, v interface{}) (bool, error) {
 			return false, nil
 		}
 		return bFloat != 0, nil
-	case decimal.Decimal:
+	case *apd.Decimal:
 		return !b.IsZero(), nil
 	case nil:
 		return false, fmt.Errorf("unable to cast nil to bool")

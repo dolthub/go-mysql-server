@@ -22,8 +22,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/sqltypes"
-	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -895,8 +895,12 @@ func inValsToMySQLRangeCollHelper[N cmp.Ordered](ctx *sql.Context, vals []any, t
 			if precise && float64(int(v)) != v {
 				continue
 			}
-		case decimal.Decimal:
-			if precise && !v.Equal(decimal.NewFromInt(v.IntPart())) {
+		case *apd.Decimal:
+			vInt, err := sql.DecimalRound(v, 0)
+			if err != nil {
+				return nil, false
+			}
+			if precise && v.Cmp(vInt) != 0 {
 				continue
 			}
 		default:

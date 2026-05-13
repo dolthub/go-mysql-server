@@ -19,7 +19,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shopspring/decimal"
+	"github.com/cockroachdb/apd/v3"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -166,12 +166,12 @@ func overloaded_type_test1(
 }
 func overloaded_type_test2(
 	_ *sql.Context,
-	aa bool, ab string, ac []byte, ad time.Time, ae decimal.Decimal,
-	ba *bool, bb *string, bc *[]byte, bd *time.Time, be *decimal.Decimal,
+	aa bool, ab string, ac []byte, ad time.Time, ae *apd.Decimal,
+	ba *bool, bb *string, bc *[]byte, bd *time.Time, be **apd.Decimal,
 ) (sql.RowIter, error) {
 	return sql.RowsToRowIter(sql.Row{
 		fmt.Sprintf(`aa:%v,ba:%v,ab:"%s",bb:"%s",ac:%v,bc:%v,ad:%s,bd:%s,ae:%s,be:%s`,
-			aa, *ba, ab, *bb, ac, *bc, ad.Format("2006-01-02"), (*bd).Format("2006-01-02"), ae.String(), (*be).String()),
+			aa, *ba, ab, *bb, ac, *bc, ad.Format("2006-01-02"), (*bd).Format("2006-01-02"), ae.Text('f'), (*be).Text('f')),
 	}), nil
 }
 

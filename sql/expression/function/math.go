@@ -24,8 +24,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/mysql"
-	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -856,7 +856,7 @@ func (s *Sign) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	switch typedVal := arg.(type) {
-	case int8, int16, int32, int64, float64, float32, int, decimal.Decimal:
+	case int8, int16, int32, int64, float64, float32, int, *apd.Decimal:
 		val, _, err := types.Int64.Convert(ctx, arg)
 
 		if err != nil {
