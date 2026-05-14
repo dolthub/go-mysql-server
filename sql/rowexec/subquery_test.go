@@ -36,6 +36,7 @@ func TestSubquery(t *testing.T) {
 	require.NoError(table.Insert(ctx, nil))
 
 	subquery := plan.NewSubquery(plan.NewProject(
+		ctx,
 		[]sql.Expression{
 			expression.NewLiteral("one", types.LongText),
 		},
@@ -58,6 +59,7 @@ func TestSubqueryTooManyRows(t *testing.T) {
 	require.NoError(table.Insert(ctx, nil))
 
 	subquery := plan.NewSubquery(plan.NewProject(
+		ctx,
 		[]sql.Expression{
 			expression.NewLiteral("one", types.LongText),
 		},
@@ -84,6 +86,7 @@ func TestSubqueryMultipleRows(t *testing.T) {
 	require.NoError(table.Insert(ctx, sql.Row{"three"}))
 
 	subquery := plan.NewSubquery(plan.NewProject(
+		ctx,
 		[]sql.Expression{
 			expression.NewGetField(0, types.Text, "t", false),
 		},

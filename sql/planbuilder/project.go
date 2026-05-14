@@ -206,15 +206,15 @@ func (b *Builder) selectExprToExpression(inScope *scope, se ast.SelectExpr) sql.
 	case *ast.AliasedExpr:
 		expr := b.buildScalar(inScope, e.Expr)
 		if !e.As.IsEmpty() {
-			return expression.NewAlias(e.As.String(), expr)
+			return expression.NewAlias(b.ctx, e.As.String(), expr)
 		}
 		if selectExprNeedsAlias(b.ctx, e, expr) {
 			// if the input expression is the same as expression string, then it's referencable.
 			// E.g. "SLEEP(1)" is the same as "sleep(1)"
 			if strings.EqualFold(e.InputExpression, expr.String()) {
-				return expression.NewAlias(e.InputExpression, expr)
+				return expression.NewAlias(b.ctx, e.InputExpression, expr)
 			}
-			return expression.NewAlias(e.InputExpression, expr).AsUnreferencable()
+			return expression.NewAlias(b.ctx, e.InputExpression, expr).AsUnreferencable()
 		}
 		return expr
 	default:
@@ -241,7 +241,7 @@ func (b *Builder) buildProjection(inScope, outScope *scope) {
 	for i, sc := range outScope.cols {
 		projections[i] = sc.scalar
 	}
-	proj, err := b.f.buildProject(b.ctx, plan.NewProject(projections, inScope.node), outScope.refsSubquery)
+	proj, err := b.f.buildProject(b.ctx, plan.NewProject(b.ctx, projections, inScope.node), outScope.refsSubquery)
 	if err != nil {
 		b.handleErr(err)
 	}

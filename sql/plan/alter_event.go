@@ -36,6 +36,7 @@ type AlterEvent struct {
 	scheduler      sql.EventScheduler
 
 	ddlNode
+	ctx *sql.Context
 
 	Starts *OnScheduleTimestamp
 	Ends   *OnScheduleTimestamp
@@ -63,6 +64,7 @@ type AlterEvent struct {
 
 // NewAlterEvent returns a *AlterEvent node.
 func NewAlterEvent(
+	ctx *sql.Context,
 	db sql.Database,
 	es sql.EventScheduler,
 	name, definer string,
@@ -83,6 +85,7 @@ func NewAlterEvent(
 ) *AlterEvent {
 	return &AlterEvent{
 		ddlNode:          ddlNode{db},
+		ctx:              ctx,
 		scheduler:        es,
 		EventName:        name,
 		Definer:          definer,
@@ -148,10 +151,7 @@ func (a *AlterEvent) String() string {
 	}
 
 	if a.AlterDefinition {
-		// To maintain compatibility with fmt.Stringer we have to use an empty context, but this will fail in any case that
-		// requires a context to determine a string (such as an integrator using the context to contain type information).
-		ctx := sql.NewEmptyContext()
-		stmt = fmt.Sprintf("%s DO %s", stmt, sql.DebugString(ctx, a.DefinitionNode))
+		stmt = fmt.Sprintf("%s DO %s", stmt, sql.DebugString(a.ctx, a.DefinitionNode))
 	}
 
 	return stmt

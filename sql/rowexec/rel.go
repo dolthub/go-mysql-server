@@ -308,10 +308,6 @@ func (b *BaseBuilder) buildOrderedDistinct(ctx *sql.Context, n *plan.OrderedDist
 	return sql.NewSpanIter(span, iters.NewOrderedDistinctIter(it, n.Child.Schema(ctx))), nil
 }
 
-func (b *BaseBuilder) buildWith(ctx *sql.Context, n *plan.With, row sql.Row) (sql.RowIter, error) {
-	return nil, fmt.Errorf("*plan.With has no execution iterator")
-}
-
 func (b *BaseBuilder) buildProject(ctx *sql.Context, n *plan.Project, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.Project", trace.WithAttributes(
 		attribute.Int("projections", len(n.Projections)),

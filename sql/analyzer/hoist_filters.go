@@ -154,13 +154,13 @@ func recurseSubqueryForOuterFilters(ctx *sql.Context, n sql.Node, a *Analyzer, c
 			// we should materialize filters
 			newFilters := append(keepFilters, hoistFilters...)
 			hoistFilters = hoistFilters[:0]
-			return plan.NewFilter(expression.JoinAnd(newFilters...), f.Child), transform.NewTree, nil
+			return plan.NewFilter(ctx, expression.JoinAnd(newFilters...), f.Child), transform.NewTree, nil
 		}
 
 		if len(keepFilters) == 0 {
 			return f.Child, transform.NewTree, nil
 		}
-		ret := plan.NewFilter(expression.JoinAnd(keepFilters...), f.Child)
+		ret := plan.NewFilter(ctx, expression.JoinAnd(keepFilters...), f.Child)
 		return ret, transform.NewTree, nil
 	})
 	return ret, same, hoistFilters, newCorr, err

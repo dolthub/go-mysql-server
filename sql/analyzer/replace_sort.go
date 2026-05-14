@@ -422,7 +422,7 @@ func replaceAgg(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope,
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
-		newProj := plan.NewProject(newProjs, plan.NewSort(sql.SortFields{sf}, gb.Child))
+		newProj := plan.NewProject(ctx, newProjs, plan.NewSort(sql.SortFields{sf}, gb.Child))
 		limit := plan.NewLimit(expression.NewLiteral(1, types.Int64), newProj)
 		return limit, transform.NewTree, nil
 	})

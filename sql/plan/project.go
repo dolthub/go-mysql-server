@@ -31,6 +31,7 @@ type Project struct {
 	AliasDeps map[string]bool
 	deps      sql.ColSet
 	sch       sql.Schema
+	ctx       *sql.Context
 	// Projections are the expressions to be projected on the row returned by the child node
 	Projections []sql.Expression
 	// CanDefer is true when the projection evaluation can be deferred to row spooling, which allows us to avoid a
@@ -47,9 +48,10 @@ var _ sql.Projector = (*Project)(nil)
 var _ sql.CollationCoercible = (*Project)(nil)
 
 // NewProject creates a new projection.
-func NewProject(expressions []sql.Expression, child sql.Node) *Project {
+func NewProject(ctx *sql.Context, expressions []sql.Expression, child sql.Node) *Project {
 	return &Project{
 		UnaryNode:   UnaryNode{child},
+		ctx:         ctx,
 		Projections: expressions,
 	}
 }
@@ -163,10 +165,7 @@ func (p *Project) Describe(ctx *sql.Context, options sql.DescribeOptions) string
 
 // String implements the fmt.Stringer interface.
 func (p *Project) String() string {
-	// To maintain compatibility with fmt.Stringer we have to use an empty context, but this will fail in any case that
-	// requires a context to determine a string (such as an integrator using the context to contain type information).
-	ctx := sql.NewEmptyContext()
-	return p.Describe(ctx, sql.DescribeOptions{
+	return p.Describe(p.ctx, sql.DescribeOptions{
 		Analyze:   false,
 		Estimates: false,
 		Debug:     false,

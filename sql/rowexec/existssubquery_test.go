@@ -44,7 +44,7 @@ func TestExistsSubquery(t *testing.T) {
 	}), nil)
 
 	project := func(expr sql.Expression, tbl *memory.Table) sql.Node {
-		return plan.NewProject([]sql.Expression{
+		return plan.NewProject(ctx, []sql.Expression{
 			expr,
 		}, plan.NewResolvedTable(tbl, nil, nil))
 	}

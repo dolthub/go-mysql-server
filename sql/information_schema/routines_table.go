@@ -72,6 +72,8 @@ func (r *routineTable) Name() string {
 
 // Schema implements the sql.Table interface.
 func (r *routineTable) Schema(ctx *Context) Schema {
+	// If we ever update this function to use the context, then we must update the String() function as well as it
+	// passes a nil context intentionally
 	return r.schema
 }
 
@@ -81,13 +83,15 @@ func (r *routineTable) Collation() CollationID {
 }
 
 func (r *routineTable) String() string {
-	// To maintain compatibility with fmt.Stringer we have to use an empty context, but this will fail in any case that
-	// requires a context to determine a string (such as an integrator using the context to contain type information).
-	ctx := NewEmptyContext()
+	// To maintain compatibility with fmt.Stringer we use a nil context. As of the writing of this comment, the Schema
+	// method simply returns a precomputed schema and does not make use of the context at all. If that ever changes and
+	// we start to panic, then we're explicitly creating a nil context here so that it's very easy to find during
+	// debugging.
+	ctx := (*Context)(nil)
 	return printTable(r.Name(), r.Schema(ctx))
 }
 
-func (r *routineTable) Partitions(context *Context) (PartitionIter, error) {
+func (r *routineTable) Partitions(ctx *Context) (PartitionIter, error) {
 	return &informationSchemaPartitionIter{informationSchemaPartition: informationSchemaPartition{partitionKey(r.Name())}}, nil
 }
 

@@ -132,12 +132,12 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 
 		newLeft := join.Left()
 		if len(leftOnlyFilters) > 0 {
-			newLeft = plan.NewFilter(expression.JoinAnd(leftOnlyFilters...), newLeft)
+			newLeft = plan.NewFilter(ctx, expression.JoinAnd(leftOnlyFilters...), newLeft)
 		}
 
 		newRight := join.Right()
 		if len(rightOnlyFilters) > 0 {
-			newRight = plan.NewFilter(expression.JoinAnd(rightOnlyFilters...), newRight)
+			newRight = plan.NewFilter(ctx, expression.JoinAnd(rightOnlyFilters...), newRight)
 		}
 
 		// TODO: This might not be necessary. JoinAnd returns nil for arrays of length 0 and nil join conditions are
@@ -146,7 +146,7 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 			condFilters = append(condFilters, expression.NewTrue())
 		}
 
-		return plan.NewJoin(newLeft, newRight, join.Op, expression.JoinAnd(condFilters...)).WithComment(join.CommentStr), transform.NewTree, nil
+		return plan.NewJoin(ctx, newLeft, newRight, join.Op, expression.JoinAnd(condFilters...)).WithComment(join.CommentStr), transform.NewTree, nil
 	})
 }
 
@@ -233,9 +233,9 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 					// If the filter always evaluates to true, convert to cross join if possible
 					switch joinType {
 					case plan.JoinTypeInner:
-						return plan.NewCrossJoin(n.Left(), n.Right()), transform.NewTree, nil
+						return plan.NewCrossJoin(ctx, n.Left(), n.Right()), transform.NewTree, nil
 					case plan.JoinTypeLateralInner:
-						return plan.NewLateralCrossJoin(n.Left(), n.Right()), transform.NewTree, nil
+						return plan.NewLateralCrossJoin(ctx, n.Left(), n.Right()), transform.NewTree, nil
 					default:
 						// Remove filter. Filter does not need to be evaluated if always true
 						return n.WithFilter(nil), transform.NewTree, nil
@@ -247,7 +247,7 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 					case plan.JoinTypeLeftOuter, plan.JoinTypeLateralLeft:
 						// In a left join, we still want all rows on the left side. But because the filter is always
 						// false, it will never match rows on the right side so we can treat it like it's empty
-						return plan.NewJoin(n.Left(), plan.NewEmptyTableWithSchema(n.Right().Schema(ctx)), joinType, nil), transform.NewTree, nil
+						return plan.NewJoin(ctx, n.Left(), plan.NewEmptyTableWithSchema(n.Right().Schema(ctx)), joinType, nil), transform.NewTree, nil
 					default:
 						// For non-outer joins, a join condition that always evaluates to false would return an empty set
 						return plan.NewEmptyTableWithSchema(n.Schema(ctx)), transform.NewTree, nil
@@ -276,7 +276,7 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 			}
 
 			if !same {
-				return plan.NewFilter(e, n.Child), transform.NewTree, nil
+				return plan.NewFilter(ctx, e, n.Child), transform.NewTree, nil
 			}
 		}
 		return node, transform.SameTree, nil

@@ -95,7 +95,7 @@ func applyBindingsHelper(ctx *sql.Context, n sql.Node, bindings map[string]sql.E
 				if err != nil {
 					return nil, transform.SameTree, err
 				}
-				return NewJoin(n.left, n.right, n.Op, cond).WithScopeLen(n.ScopeLen), same, nil
+				return NewJoin(ctx, n.left, n.right, n.Op, cond).WithScopeLen(n.ScopeLen), same, nil
 			}
 		case *InsertInto:
 			// Manually apply bindings to [Source] because only [Destination]

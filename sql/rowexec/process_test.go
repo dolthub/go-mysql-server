@@ -47,6 +47,7 @@ func TestProcessTable(t *testing.T) {
 	var rowNextNotifications int
 
 	node := plan.NewProject(
+		ctx,
 		[]sql.Expression{
 			expression.NewGetField(0, types.Int64, "a", false),
 		},

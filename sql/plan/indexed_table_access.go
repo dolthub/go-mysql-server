@@ -42,6 +42,7 @@ type IndexedTableAccess struct {
 	lookup    sql.IndexLookup
 	id        sql.TableId
 	Typ       itaType
+	ctx       *sql.Context
 }
 
 var _ sql.Table = (*IndexedTableAccess)(nil)
@@ -104,6 +105,7 @@ func NewIndexedAccessForTableNode(ctx *sql.Context, node sql.TableNode, lb *Look
 		Typ:       ItaTypeLookup,
 		id:        id,
 		cols:      cols,
+		ctx:       ctx,
 	}, nil
 }
 
@@ -151,6 +153,7 @@ func NewStaticIndexedAccessForTableNode(ctx *sql.Context, node sql.TableNode, lo
 		Typ:       ItaTypeStatic,
 		id:        id,
 		cols:      cols,
+		ctx:       ctx,
 	}, nil
 }
 
@@ -158,7 +161,7 @@ func NewStaticIndexedAccessForTableNode(ctx *sql.Context, node sql.TableNode, lo
 // |ftTable| is accepted directly as the [sql.IndexedTable] implementation because it is pre-built
 // by the caller and cannot be derived from |node| and |lookup| alone. |node| provides the table
 // identity so that column positions in joined row schemas resolve correctly during query execution.
-func NewStaticIndexedAccessForFullTextTable(node sql.TableNode, lookup sql.IndexLookup, ftTable sql.IndexedTable) *IndexedTableAccess {
+func NewStaticIndexedAccessForFullTextTable(ctx *sql.Context, node sql.TableNode, lookup sql.IndexLookup, ftTable sql.IndexedTable) *IndexedTableAccess {
 	var id sql.TableId
 	var cols sql.ColSet
 	if tin, ok := node.(TableIdNode); ok {
@@ -172,6 +175,7 @@ func NewStaticIndexedAccessForFullTextTable(node sql.TableNode, lookup sql.Index
 		Typ:       ItaTypeStatic,
 		id:        id,
 		cols:      cols,
+		ctx:       ctx,
 	}
 }
 
@@ -338,18 +342,15 @@ func (i *IndexedTableAccess) getValueLookup(ctx *sql.Context, row sql.ValueRow) 
 }
 
 func (i *IndexedTableAccess) String() string {
-	// To maintain compatibility with fmt.Stringer we have to use an empty context, but this will fail in any case that
-	// requires a context to determine a string (such as an integrator using the context to contain type information).
-	ctx := sql.NewEmptyContext()
 	pr := sql.NewTreePrinter()
 	pr.WriteNode("IndexedTableAccess(%s)", i.TableNode.Name())
 	var children []string
 	children = append(children, fmt.Sprintf("index: %s", formatIndexDecoratorString(i.Index())))
 	if !i.lookup.IsEmpty() && i.lookup.Ranges.Len() > 0 {
-		children = append(children, fmt.Sprintf("filters: %s", i.lookup.Ranges.DebugString(ctx)))
+		children = append(children, fmt.Sprintf("filters: %s", i.lookup.Ranges.DebugString(i.ctx)))
 	}
 	if !i.lookup.IsEmpty() && i.lookup.VectorOrderAndLimit.OrderBy != nil {
-		children = append(children, fmt.Sprintf("order: %s", i.lookup.VectorOrderAndLimit.DebugString(ctx)))
+		children = append(children, fmt.Sprintf("order: %s", i.lookup.VectorOrderAndLimit.DebugString(i.ctx)))
 	}
 
 	if pt, ok := i.Table.(sql.ProjectedTable); ok {

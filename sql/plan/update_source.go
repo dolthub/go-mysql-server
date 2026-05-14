@@ -27,17 +27,19 @@ type UpdateSource struct {
 	UnaryNode
 	UpdateExprs *UpdateExprs
 	Ignore      bool
+	ctx         *sql.Context
 }
 
 var _ sql.Node = (*UpdateSource)(nil)
 var _ sql.CollationCoercible = (*UpdateSource)(nil)
 
 // NewUpdateSource returns a new UpdateSource from the node and expressions given.
-func NewUpdateSource(node sql.Node, ignore bool, updateExprs *UpdateExprs) *UpdateSource {
+func NewUpdateSource(ctx *sql.Context, node sql.Node, ignore bool, updateExprs *UpdateExprs) *UpdateSource {
 	return &UpdateSource{
 		UnaryNode:   UnaryNode{node},
 		UpdateExprs: updateExprs,
 		Ignore:      ignore,
+		ctx:         ctx,
 	}
 }
 
@@ -69,13 +71,10 @@ func (u *UpdateSource) Resolved() bool {
 }
 
 func (u *UpdateSource) String() string {
-	// To maintain compatibility with fmt.Stringer we have to use an empty context, but this will fail in any case that
-	// requires a context to determine a string (such as an integrator using the context to contain type information).
-	ctx := sql.NewEmptyContext()
 	tp := sql.NewTreePrinter()
 	updateExprs := make([]string, u.UpdateExprs.Length())
 	for i, e := range u.UpdateExprs.AllExpressions() {
-		updateExprs[i] = sql.DebugString(ctx, e)
+		updateExprs[i] = sql.DebugString(u.ctx, e)
 	}
 	_ = tp.WriteNode("UpdateSource(%s)", strings.Join(updateExprs, ","))
 	_ = tp.WriteChildren(u.Child.String())

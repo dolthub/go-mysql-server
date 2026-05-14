@@ -310,7 +310,7 @@ func (b *Builder) buildShowAllTriggers(inScope *scope, s *ast.Show) (outScope *s
 	}
 
 	if filter != nil {
-		node = plan.NewFilter(filter, node)
+		node = plan.NewFilter(b.ctx, filter, node)
 	}
 
 	outScope.node = node
@@ -380,7 +380,7 @@ func (b *Builder) buildShowAllEvents(inScope *scope, s *ast.Show) (outScope *sco
 		}
 	}
 	if filter != nil {
-		node = plan.NewFilter(filter, node)
+		node = plan.NewFilter(b.ctx, filter, node)
 	}
 
 	outScope.node = node
@@ -525,7 +525,7 @@ func (b *Builder) buildShowTableStatus(inScope *scope, s *ast.Show) (outScope *s
 	}
 
 	if filter != nil {
-		node = plan.NewFilter(filter, node)
+		node = plan.NewFilter(b.ctx, filter, node)
 	}
 
 	outScope.node = node
@@ -755,7 +755,7 @@ func (b *Builder) buildShowAllTables(inScope *scope, s *ast.Show) (outScope *sco
 	outScope.node = showTabs
 
 	if filter != nil {
-		outScope.node = plan.NewFilter(filter, outScope.node)
+		outScope.node = plan.NewFilter(b.ctx, filter, outScope.node)
 	}
 
 	return
@@ -785,7 +785,7 @@ func (b *Builder) buildShowAllDatabases(inScope *scope, s *ast.Show) (outScope *
 	}
 	outScope.node = showDbs
 	if filter != nil {
-		outScope.node = plan.NewFilter(filter, outScope.node)
+		outScope.node = plan.NewFilter(b.ctx, filter, outScope.node)
 	}
 	return
 }
@@ -849,6 +849,7 @@ func (b *Builder) buildShowAllColumns(inScope *scope, s *ast.Show) (outScope *sc
 			pattern := expression.NewLiteral(s.ShowTablesOpt.Filter.Like, types.LongText)
 
 			node = plan.NewFilter(
+				b.ctx,
 				expression.NewLike(
 					expression.NewGetField(0, plan.VarChar25000, "Field", false),
 					pattern,
@@ -860,7 +861,7 @@ func (b *Builder) buildShowAllColumns(inScope *scope, s *ast.Show) (outScope *sc
 
 		if s.ShowTablesOpt.Filter.Filter != nil {
 			filter := b.buildScalar(outScope, s.ShowTablesOpt.Filter.Filter)
-			node = plan.NewFilter(filter, node)
+			node = plan.NewFilter(b.ctx, filter, node)
 		}
 	}
 
@@ -988,7 +989,7 @@ func (b *Builder) buildShowStatus(inScope *scope, s *ast.Show) (outScope *scope)
 	}
 
 	if filter != nil {
-		node = plan.NewFilter(filter, node)
+		node = plan.NewFilter(b.ctx, filter, node)
 	}
 
 	outScope.node = node
@@ -1024,7 +1025,7 @@ func (b *Builder) buildShowCharset(inScope *scope, s *ast.Show) (outScope *scope
 	}
 
 	if filter != nil {
-		node = plan.NewFilter(filter, node)
+		node = plan.NewFilter(b.ctx, filter, node)
 	}
 	outScope.node = node
 	return
