@@ -55,8 +55,8 @@ func newRangeHeapJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinN
 	}
 
 	span, ctx := ctx.Span("plan.rangeHeapJoinIter", trace.WithAttributes(
-		attribute.String("left", leftName),
-		attribute.String("right", rightName),
+		attribute.String("left", ctx.RedactNameForTrace(leftName)),
+		attribute.String("right", ctx.RedactNameForTrace(rightName)),
 	))
 
 	l, err := b.Build(ctx, j.Left(), row)

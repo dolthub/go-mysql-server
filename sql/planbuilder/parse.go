@@ -49,7 +49,8 @@ func (b *Builder) Parse(query string, qFlags *sql.QueryFlags, multi bool) (ret s
 			}
 		}
 	}()
-	span, ctx := b.ctx.Span("parse", otel.WithAttributes(attribute.String("query", query)))
+	span, ctx := b.ctx.Span("parse",
+		otel.WithAttributes(attribute.String("query", b.ctx.RedactQueryForTrace(query))))
 	defer span.End()
 
 	if b.authQueryState != nil {

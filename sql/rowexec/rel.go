@@ -131,7 +131,8 @@ func (b *BaseBuilder) buildWindow(ctx *sql.Context, n *plan.Window, row sql.Row)
 }
 
 func (b *BaseBuilder) buildOffset(ctx *sql.Context, n *plan.Offset, row sql.Row) (sql.RowIter, error) {
-	span, ctx := ctx.Span("plan.Offset", trace.WithAttributes(attribute.Stringer("offset", n.Offset)))
+	span, ctx := ctx.Span("plan.Offset",
+		trace.WithAttributes(attribute.String("offset", ctx.RedactStringerForTrace(n.Offset))))
 
 	offset, err := iters.GetInt64Value(ctx, n.Offset)
 	if err != nil {
@@ -264,7 +265,8 @@ func (b *BaseBuilder) buildTableAlias(ctx *sql.Context, n *plan.TableAlias, row 
 		table = reflect.TypeOf(n.Child).String()
 	}
 
-	span, ctx := ctx.Span("sql.TableAlias", trace.WithAttributes(attribute.String("table", table)))
+	span, ctx := ctx.Span("sql.TableAlias",
+		trace.WithAttributes(attribute.String("table", ctx.RedactNameForTrace(table))))
 
 	iter, err := b.Build(ctx, n.Child, row)
 	if err != nil {
@@ -477,7 +479,8 @@ func (b *BaseBuilder) buildRecursiveCte(ctx *sql.Context, n *plan.RecursiveCte, 
 }
 
 func (b *BaseBuilder) buildLimit(ctx *sql.Context, n *plan.Limit, row sql.Row) (sql.RowIter, error) {
-	span, ctx := ctx.Span("plan.Limit", trace.WithAttributes(attribute.Stringer("limit", n.Limit)))
+	span, ctx := ctx.Span("plan.Limit",
+		trace.WithAttributes(attribute.String("limit", ctx.RedactStringerForTrace(n.Limit))))
 
 	limit, err := iters.GetInt64Value(ctx, n.Limit)
 	if err != nil {
