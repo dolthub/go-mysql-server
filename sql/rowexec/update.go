@@ -38,7 +38,7 @@ type updateIter struct {
 }
 
 func (u *updateIter) Next(ctx *sql.Context) (sql.Row, error) {
-	oldAndNewRow, err := u.childIter.Next(ctx)
+	oldAndNewRow, err := u.childIter.Next(ctx) // TODO: get this to read from MutableMap
 	if err != nil {
 		if go_errors.Is(err, sql.ErrRowEditCanceled) {
 			return u.Next(ctx)

@@ -29,6 +29,10 @@ type BaseBuilder struct {
 	EngineOverrides sql.EngineOverrides
 	Runner          sql.StatementRunner
 	schemaFormatter sql.SchemaFormatter
+
+	// TODO: use struct
+	// TODO: make private?
+	UseLazyWrites bool
 }
 
 var _ sql.NodeExecBuilder = (*BaseBuilder)(nil)
