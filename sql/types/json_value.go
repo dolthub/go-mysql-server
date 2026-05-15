@@ -627,8 +627,8 @@ func compareJSONArray(ctx context.Context, a JsonArray, b interface{}) (int, err
 func compareJSONObject(ctx context.Context, a JsonObject, b interface{}) (int, error) {
 	switch b := b.(type) {
 	case
-			bool,
-			JsonArray:
+		bool,
+		JsonArray:
 		// a is lower precedence
 		return -1, nil
 
@@ -674,9 +674,9 @@ func compareJSONObject(ctx context.Context, a JsonObject, b interface{}) (int, e
 func compareJSONString(a string, b interface{}) (int, error) {
 	switch b := b.(type) {
 	case
-			bool,
-			JsonArray,
-			JsonObject:
+		bool,
+		JsonArray,
+		JsonObject:
 		// a is lower precedence
 		return -1, nil
 
@@ -692,10 +692,10 @@ func compareJSONString(a string, b interface{}) (int, error) {
 func compareJSONNumber(a float64, b interface{}) (int, error) {
 	switch b := b.(type) {
 	case
-			bool,
-			JsonArray,
-			JsonObject,
-			string:
+		bool,
+		JsonArray,
+		JsonObject,
+		string:
 		// a is lower precedence
 		return -1, nil
 	case int:
@@ -926,8 +926,8 @@ func updateObject(path string, doc JsonObject, val interface{}, mode int, cursor
 		updated := false
 		_, destructive := doc[name]
 		if mode == SET ||
-				(!destructive && mode == INSERT) ||
-				(destructive && mode == REPLACE) {
+			(!destructive && mode == INSERT) ||
+			(destructive && mode == REPLACE) {
 			doc[name] = val
 			updated = true
 		} else if destructive && mode == REMOVE {
