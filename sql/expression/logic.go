@@ -74,17 +74,19 @@ func SplitConjunction(ctx *sql.Context, expr sql.Expression) []sql.Expression {
 
 // SplitDisjunction breaks OR expressions into their left and right parts, recursively
 func SplitDisjunction(expr sql.Expression) []sql.Expression {
+	// TODO: This is function is nearly identical to SplitConjunction and clearly copy-pasted from it. Consider
+	//  refactoring out repeated code into another function.
 	if expr == nil {
 		return nil
 	}
-	and, ok := expr.(*Or)
+	or, ok := expr.(*Or)
 	if !ok {
 		return []sql.Expression{expr}
 	}
 
 	return append(
-		SplitDisjunction(and.LeftChild),
-		SplitDisjunction(and.RightChild)...,
+		SplitDisjunction(or.LeftChild),
+		SplitDisjunction(or.RightChild)...,
 	)
 }
 

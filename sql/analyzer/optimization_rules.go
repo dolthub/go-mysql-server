@@ -82,6 +82,7 @@ func flattenDistinct(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 // moveJoinConditionsToFilter looks for expressions in a join condition that reference only tables in the left or right
 // side of the join, and move those conditions to a new Filter node instead. If the join condition is empty after these
 // moves, the join is converted to a CrossJoin.
+// TODO: this should be combined with pushFilters
 func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	if !n.Resolved() {
 		return n, transform.SameTree, nil
@@ -97,11 +98,8 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 			return n, transform.SameTree, nil
 		}
 
-		// no filter or left join: nothing to do to the tree
-		if join.JoinType().IsDegenerate() {
-			return n, transform.SameTree, nil
-		}
-		if !(join.JoinType().IsInner() || join.JoinType().IsSemi()) {
+		// no filter, outer or anti join: nothing to do to the tree
+		if join.JoinCond() == nil || join.JoinType().IsCross() || join.JoinType().IsOuter() || join.JoinType().IsAnti() {
 			return n, transform.SameTree, nil
 		}
 		leftSources := nodeSources(ctx, join.Left())
@@ -140,12 +138,11 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 			newRight = plan.NewFilter(ctx, expression.JoinAnd(rightOnlyFilters...), newRight)
 		}
 
-		// TODO: This might not be necessary. JoinAnd returns nil for arrays of length 0 and nil join conditions are
-		//  evaluated as true anyways
+		// TODO: This may not actually be necessary since nil join conditions are evaluated as true. But removing this
+		//  prevents some cross joins (with filtered table) from being turned into lookup joins when there's a join hint
 		if len(condFilters) == 0 {
 			condFilters = append(condFilters, expression.NewTrue())
 		}
-
 		return plan.NewJoin(ctx, newLeft, newRight, join.Op, expression.JoinAnd(condFilters...)).WithComment(join.CommentStr), transform.NewTree, nil
 	})
 }
@@ -186,6 +183,7 @@ func expressionSources(ctx *sql.Context, expr sql.Expression) (sql.FastIntSet, b
 				nullRejecting = false
 			}
 		case *plan.Subquery:
+			// TODO: this is just the above code copied and pasted...refactor to avoid repeating code
 			transform.InspectExpressions(ctx, e.Query, func(ctx *sql.Context, innerExpr sql.Expression) bool {
 				switch e := innerExpr.(type) {
 				case *expression.GetField:

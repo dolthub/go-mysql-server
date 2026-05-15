@@ -162,14 +162,14 @@ func (ta TableAliases) findConflicts(other TableAliases) (conflicts []string, no
 // Unaliased tables are returned keyed by their original lower-cased name.
 func getTableAliases(ctx *sql.Context, n sql.Node, scope *plan.Scope) (TableAliases, error) {
 	var passAliases TableAliases
-	var aliasFn func(ctx *sql.Context, node sql.Node) bool
+	var aliasFn func(node sql.Node) bool
 	var analysisErr error
 	var recScope *plan.Scope
 	if !scope.IsEmpty() {
 		recScope = recScope.WithMemos(scope.Memos)
 	}
 
-	aliasFn = func(ctx *sql.Context, node sql.Node) bool {
+	aliasFn = func(node sql.Node) bool {
 		if node == nil {
 			return false
 		}
@@ -242,22 +242,18 @@ func getTableAliases(ctx *sql.Context, n sql.Node, scope *plan.Scope) (TableAlia
 		default:
 		}
 
-		if opaque, ok := node.(sql.OpaqueNode); ok && opaque.Opaque() {
-			return false
-		}
-
 		return true
 	}
 	if analysisErr != nil {
 		return TableAliases{}, analysisErr
 	}
 
-	// InspectWithOpaque all of the scopes, outer to inner. Within a single scope, a name conflict is an error. But an inner scope
+	// Inspect all the scopes, outer to inner. Within a single scope, a name conflict is an error. But an inner scope
 	// can overwrite a name in an outer scope, and it's not an error.
 	aliases := TableAliases{}
 	for _, scopeNode := range scope.OuterToInner() {
 		passAliases = TableAliases{}
-		transform.InspectWithOpaque(ctx, scopeNode, aliasFn)
+		transform.Inspect(scopeNode, aliasFn)
 		if analysisErr != nil {
 			return TableAliases{}, analysisErr
 		}
@@ -266,7 +262,7 @@ func getTableAliases(ctx *sql.Context, n sql.Node, scope *plan.Scope) (TableAlia
 	}
 
 	passAliases = TableAliases{}
-	transform.InspectWithOpaque(ctx, n, aliasFn)
+	transform.Inspect(n, aliasFn)
 	if analysisErr != nil {
 		return TableAliases{}, analysisErr
 	}
