@@ -499,8 +499,6 @@ func containsJSONNumber(a float64, b interface{}) (bool, error) {
 //   - NULL
 //     For comparison of any JSON value to SQL NULL, the result is UNKNOWN.
 //
-//     TODO(andy): BLOB, BIT, OPAQUE, DATETIME, TIME, DATE, INTEGER
-//
 // https://dev.mysql.com/doc/refman/8.0/en/json.html#json-comparison
 func CompareJSON(ctx context.Context, a, b interface{}) (int, error) {
 	var err error
@@ -629,8 +627,8 @@ func compareJSONArray(ctx context.Context, a JsonArray, b interface{}) (int, err
 func compareJSONObject(ctx context.Context, a JsonObject, b interface{}) (int, error) {
 	switch b := b.(type) {
 	case
-		bool,
-		JsonArray:
+			bool,
+			JsonArray:
 		// a is lower precedence
 		return -1, nil
 
@@ -641,11 +639,8 @@ func compareJSONObject(ctx context.Context, a JsonObject, b interface{}) (int, e
 		//   - At each position, if the keys differ, the smaller key's object is the smaller object.
 		//   - If the keys match, compare the values; the first non-zero comparison wins.
 		//   - If one object is a strict prefix of the other in this walk, the shorter one is the smaller object.
-		//
-		// This algorithm is consistent with the rule used by IndexedJsonDocument.Compare, which stores keys in
-		// lex order and walks both documents simultaneously.
-		aKeys := sortedJsonObjectKeys(a)
-		bKeys := sortedJsonObjectKeys(b)
+		aKeys := slices.Sorted(maps.Keys(a))
+		bKeys := slices.Sorted(maps.Keys(b))
 		minLen := len(aKeys)
 		if len(bKeys) < minLen {
 			minLen = len(bKeys)
@@ -676,23 +671,12 @@ func compareJSONObject(ctx context.Context, a JsonObject, b interface{}) (int, e
 	}
 }
 
-// sortedJsonObjectKeys returns the keys of |o| sorted in lex (byte) order.
-// This matches the order used by IndexedJsonDocument's chunked representation.
-func sortedJsonObjectKeys(o JsonObject) []string {
-	keys := make([]string, 0, len(o))
-	for k := range o {
-		keys = append(keys, k)
-	}
-	slices.Sort(keys)
-	return keys
-}
-
 func compareJSONString(a string, b interface{}) (int, error) {
 	switch b := b.(type) {
 	case
-		bool,
-		JsonArray,
-		JsonObject:
+			bool,
+			JsonArray,
+			JsonObject:
 		// a is lower precedence
 		return -1, nil
 
@@ -708,10 +692,10 @@ func compareJSONString(a string, b interface{}) (int, error) {
 func compareJSONNumber(a float64, b interface{}) (int, error) {
 	switch b := b.(type) {
 	case
-		bool,
-		JsonArray,
-		JsonObject,
-		string:
+			bool,
+			JsonArray,
+			JsonObject,
+			string:
 		// a is lower precedence
 		return -1, nil
 	case int:
@@ -942,8 +926,8 @@ func updateObject(path string, doc JsonObject, val interface{}, mode int, cursor
 		updated := false
 		_, destructive := doc[name]
 		if mode == SET ||
-			(!destructive && mode == INSERT) ||
-			(destructive && mode == REPLACE) {
+				(!destructive && mode == INSERT) ||
+				(destructive && mode == REPLACE) {
 			doc[name] = val
 			updated = true
 		} else if destructive && mode == REMOVE {
