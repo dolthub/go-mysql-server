@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/mysql"
-	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -54,7 +54,7 @@ var _ sql.FunctionExpression = (*Ceil)(nil)
 var _ sql.CollationCoercible = (*Ceil)(nil)
 
 // NewCeil creates a new Ceil expression.
-func NewCeil(num sql.Expression) sql.Expression {
+func NewCeil(ctx *sql.Context, num sql.Expression) sql.Expression {
 	return &Ceil{expression.UnaryExpressionStub{Child: num}}
 }
 
@@ -69,8 +69,8 @@ func (c *Ceil) Description() string {
 }
 
 // Type implements the Expression interface.
-func (c *Ceil) Type() sql.Type {
-	childType := c.Child.Type()
+func (c *Ceil) Type(ctx *sql.Context) sql.Type {
+	childType := c.Child.Type(ctx)
 	if types.IsUnsigned(childType) {
 		return types.Uint64
 	}
@@ -90,11 +90,11 @@ func (c *Ceil) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (c *Ceil) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (c *Ceil) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
 	}
-	return NewCeil(children[0]), nil
+	return NewCeil(ctx, children[0]), nil
 }
 
 // Eval implements the Expression interface.
@@ -106,7 +106,7 @@ func (c *Ceil) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if child == nil {
 		return nil, nil
 	}
-	if !types.IsNumber(c.Child.Type()) {
+	if !types.IsNumber(c.Child.Type(ctx)) {
 		child, _, err = types.Float64.Convert(ctx, child)
 		if err != nil {
 			if !sql.ErrTruncatedIncorrect.Is(err) {
@@ -121,10 +121,14 @@ func (c *Ceil) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		child = math.Ceil(float64(num))
 	case float64:
 		child = math.Ceil(num)
-	case decimal.Decimal:
-		child = num.Ceil()
+	case *apd.Decimal:
+		_, err = sql.DecimalCtx.Ceil(num, num)
+		if err != nil {
+			return nil, err
+		}
+		child = num
 	}
-	child, _, _ = c.Type().Convert(ctx, child)
+	child, _, _ = c.Type(ctx).Convert(ctx, child)
 	return child, nil
 }
 
@@ -137,7 +141,7 @@ var _ sql.FunctionExpression = (*Floor)(nil)
 var _ sql.CollationCoercible = (*Floor)(nil)
 
 // NewFloor returns a new Floor expression.
-func NewFloor(num sql.Expression) sql.Expression {
+func NewFloor(ctx *sql.Context, num sql.Expression) sql.Expression {
 	return &Floor{expression.UnaryExpressionStub{Child: num}}
 }
 
@@ -152,8 +156,8 @@ func (f *Floor) Description() string {
 }
 
 // Type implements the Expression interface.
-func (f *Floor) Type() sql.Type {
-	childType := f.Child.Type()
+func (f *Floor) Type(ctx *sql.Context) sql.Type {
+	childType := f.Child.Type(ctx)
 	if types.IsUnsigned(childType) {
 		return types.Uint64
 	}
@@ -173,11 +177,11 @@ func (f *Floor) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (f *Floor) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (f *Floor) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 1)
 	}
-	return NewFloor(children[0]), nil
+	return NewFloor(ctx, children[0]), nil
 }
 
 // Eval implements the Expression interface.
@@ -189,7 +193,7 @@ func (f *Floor) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if child == nil {
 		return nil, nil
 	}
-	if !types.IsNumber(f.Child.Type()) {
+	if !types.IsNumber(f.Child.Type(ctx)) {
 		child, _, err = types.Float64.Convert(ctx, child)
 		if err != nil {
 			if !sql.ErrTruncatedIncorrect.Is(err) {
@@ -204,10 +208,14 @@ func (f *Floor) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		child = math.Floor(float64(num))
 	case float64:
 		child = math.Floor(num)
-	case decimal.Decimal:
-		child = num.Floor()
+	case *apd.Decimal:
+		_, err = sql.DecimalCtx.Floor(num, num)
+		if err != nil {
+			return nil, err
+		}
+		child = num
 	}
-	child, _, _ = f.Type().Convert(ctx, child)
+	child, _, _ = f.Type(ctx).Convert(ctx, child)
 	return child, nil
 }
 
@@ -224,7 +232,7 @@ var _ sql.FunctionExpression = (*Round)(nil)
 var _ sql.CollationCoercible = (*Round)(nil)
 
 // NewRound returns a new Round expression.
-func NewRound(args ...sql.Expression) (sql.Expression, error) {
+func NewRound(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	argLen := len(args)
 	switch argLen {
 	case 1:
@@ -303,8 +311,12 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	var res interface{}
-	tmp := val.(decimal.Decimal).Round(prec)
-	lType := r.Num.Type()
+	tmp, err := sql.DecimalRound(val.(*apd.Decimal), prec)
+	if err != nil {
+		return nil, err
+	}
+
+	lType := r.Num.Type(ctx)
 	if types.IsSigned(lType) {
 		res, _, err = types.Int64.Convert(ctx, tmp)
 	} else if types.IsUnsigned(lType) {
@@ -324,8 +336,8 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // IsNullable implements the Expression interface.
-func (r *Round) IsNullable() bool {
-	return r.Num.IsNullable() || (r.Dec != nil && r.Dec.IsNullable())
+func (r *Round) IsNullable(ctx *sql.Context) bool {
+	return r.Num.IsNullable(ctx) || (r.Dec != nil && r.Dec.IsNullable(ctx))
 }
 
 func (r *Round) String() string {
@@ -341,8 +353,8 @@ func (r *Round) Resolved() bool {
 }
 
 // Type implements the Expression interface.
-func (r *Round) Type() sql.Type {
-	return numericRetType(r.Num.Type())
+func (r *Round) Type(ctx *sql.Context) sql.Type {
+	return numericRetType(r.Num.Type(ctx))
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -351,6 +363,6 @@ func (*Round) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID
 }
 
 // WithChildren implements the Expression interface.
-func (r *Round) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewRound(children...)
+func (r *Round) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewRound(ctx, children...)
 }

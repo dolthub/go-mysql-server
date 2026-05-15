@@ -133,7 +133,7 @@ func (b *Builder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy)
 			}
 			// aggregate ref -> expr.String() in
 			// or compound expression
-			expr, _, _ = transform.Expr(expr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+			expr, _, _ = transform.Expr(b.ctx, expr, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				//  get fields outside of aggs need to be in extra cols
 				switch e := e.(type) {
 				case *expression.GetField:
@@ -150,7 +150,7 @@ func (b *Builder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy)
 						err := fmt.Errorf("failed to ref aggregate expression: %s", e.String())
 						b.handleErr(err)
 					}
-					return expression.NewGetField(int(id), e.Type(), e.String(), e.IsNullable()), transform.NewTree, nil
+					return expression.NewGetField(int(id), e.Type(ctx), e.String(), e.IsNullable(ctx)), transform.NewTree, nil
 				default:
 				}
 				return e, transform.SameTree, nil
@@ -158,8 +158,8 @@ func (b *Builder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy)
 			col := scopeColumn{
 				col:        expr.String(),
 				scalar:     expr,
-				typ:        expr.Type(),
-				nullable:   expr.IsNullable(),
+				typ:        expr.Type(b.ctx),
+				nullable:   expr.IsNullable(b.ctx),
 				descending: descending,
 			}
 			outScope.newColumn(col)
@@ -190,7 +190,7 @@ func (b *Builder) normalizeIntVal(e *ast.SQLVal) (any, bool) {
 		lit := b.convertInt(e.Val, 10)
 		return lit.Value(), true
 	} else if replace, ok := b.normalizeValArg(e); ok {
-		if lit, ok := replace.(*expression.Literal); ok && types.IsNumber(lit.Type()) {
+		if lit, ok := replace.(*expression.Literal); ok && types.IsNumber(lit.Type(b.ctx)) {
 			return lit.Value(), true
 		}
 	}
@@ -219,7 +219,7 @@ func (b *Builder) buildOrderBy(inScope, orderByScope *scope) {
 		sortFields = append(sortFields, sf)
 		deps.Add(sql.ColumnId(c.id))
 	}
-	sort, err := b.f.buildSort(inScope.node, sortFields, deps, inScope.refsSubquery)
+	sort, err := b.f.buildSort(b.ctx, inScope.node, sortFields, deps, inScope.refsSubquery)
 	if err != nil {
 		b.handleErr(err)
 	}

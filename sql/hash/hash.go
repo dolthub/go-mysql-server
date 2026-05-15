@@ -17,9 +17,11 @@ package hash
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/cespare/xxhash/v2"
+	"github.com/cockroachdb/apd/v3"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -34,10 +36,10 @@ var digestPool = sync.Pool{
 // ExprsToSchema converts a list of sql.Expression to a sql.Schema.
 // This is used for functions that use HashOf, but don't already have a schema.
 // The generated schema ONLY contains the types of the expressions without any column names or any other info.
-func ExprsToSchema(exprs ...sql.Expression) sql.Schema {
+func ExprsToSchema(ctx *sql.Context, exprs ...sql.Expression) sql.Schema {
 	var sch sql.Schema
 	for _, expr := range exprs {
-		sch = append(sch, &sql.Column{Type: expr.Type()})
+		sch = append(sch, &sql.Column{Type: expr.Type(ctx)})
 	}
 	return sch
 }
@@ -125,6 +127,8 @@ func HashOf(ctx *sql.Context, sch sql.Schema, row sql.Row) (uint64, error) {
 				str = "0"
 			}
 			_, err = hash.WriteString(str)
+		case *apd.Decimal:
+			_, err = hash.WriteString(v.Text('f'))
 		case string:
 			_, err = hash.WriteString(v)
 		case []byte:
@@ -194,6 +198,15 @@ func HashOfSimple(ctx *sql.Context, i any, t sql.Type) (uint64, sql.ConvertInRan
 			str = strconv.FormatFloat(v, 'f', -1, 64)
 			if str == "-0" {
 				str = "0"
+			}
+		case *apd.Decimal:
+			str = v.Text('f')
+			if strings.IndexByte(str, '.') != -1 {
+				// remove trailing 0s after '.'
+				str = strings.TrimRightFunc(str, func(r rune) bool {
+					return r == '0'
+				})
+				str = strings.TrimRight(str, ".")
 			}
 		default:
 			str = fmt.Sprintf("%v", v)

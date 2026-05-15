@@ -32,7 +32,7 @@ var _ sql.FunctionExpression = (*IsSimple)(nil)
 var _ sql.CollationCoercible = (*IsSimple)(nil)
 
 // NewIsSimple creates a new IsSimple expression.
-func NewIsSimple(e sql.Expression) sql.Expression {
+func NewIsSimple(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &IsSimple{expression.UnaryExpressionStub{Child: e}}
 }
 
@@ -47,12 +47,12 @@ func (s *IsSimple) Description() string {
 }
 
 // IsNullable implements the sql.Expression interface.
-func (s *IsSimple) IsNullable() bool {
-	return s.Child.IsNullable()
+func (s *IsSimple) IsNullable(ctx *sql.Context) bool {
+	return s.Child.IsNullable(ctx)
 }
 
 // Type implements the sql.Expression interface.
-func (s *IsSimple) Type() sql.Type {
+func (s *IsSimple) Type(ctx *sql.Context) sql.Type {
 	return types.Boolean
 }
 
@@ -66,11 +66,11 @@ func (s *IsSimple) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (s *IsSimple) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (s *IsSimple) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 1)
 	}
-	return NewIsSimple(children[0]), nil
+	return NewIsSimple(ctx, children[0]), nil
 }
 
 // segmentsProperlyIntersect checks whether two line segments (p1-p2) and (p3-p4)
@@ -193,7 +193,7 @@ func (s *IsSimple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case types.GeomColl:
 		// A geometry collection is simple if all its elements are simple
 		for _, geom := range v.Geoms {
-			childResult, err := NewIsSimple(nil).(*IsSimple).evalRaw(ctx, geom)
+			childResult, err := NewIsSimple(ctx, nil).(*IsSimple).evalRaw(ctx, geom)
 			if err != nil {
 				return nil, err
 			}

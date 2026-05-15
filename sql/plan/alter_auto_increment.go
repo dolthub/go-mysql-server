@@ -38,7 +38,7 @@ func NewAlterAutoIncrement(database sql.Database, table sql.Node, autoVal uint64
 }
 
 // WithChildren implements the Node interface.
-func (p *AlterAutoIncrement) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (p *AlterAutoIncrement) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
 	}
@@ -64,7 +64,7 @@ func (p *AlterAutoIncrement) CollationCoercibility(ctx *sql.Context) (collation 
 	return sql.Collation_binary, 7
 }
 
-func (p *AlterAutoIncrement) Schema() sql.Schema { return nil }
+func (p *AlterAutoIncrement) Schema(ctx *sql.Context) sql.Schema { return nil }
 
 func (p AlterAutoIncrement) String() string {
 	pr := sql.NewTreePrinter()

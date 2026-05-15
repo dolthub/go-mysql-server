@@ -15,6 +15,7 @@
 package sql_test
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -28,14 +29,14 @@ func TestIndexBuilderRanges(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	t.Run("None=[NULL,Inf)", func(t *testing.T) {
-		builder := sql.NewMySQLIndexBuilder(testIndex{1})
+		builder := sql.NewMySQLIndexBuilder(ctx, testIndex{1})
 		ranges := builder.Ranges(ctx)
 		assert.NotNil(t, ranges)
 		assert.Equal(t, sql.MySQLRangeCollection{sql.MySQLRange{sql.AllRangeColumnExpr(types.Int8)}}, ranges)
 	})
 
 	t.Run("IsNull=[NULL,NULL]", func(t *testing.T) {
-		builder := sql.NewMySQLIndexBuilder(testIndex{1})
+		builder := sql.NewMySQLIndexBuilder(ctx, testIndex{1})
 		builder = builder.IsNull(ctx, "column_0")
 		ranges := builder.Ranges(ctx)
 		assert.NotNil(t, ranges)
@@ -43,7 +44,7 @@ func TestIndexBuilderRanges(t *testing.T) {
 	})
 
 	t.Run("IsNull,Equals2=EmptyRange", func(t *testing.T) {
-		builder := sql.NewMySQLIndexBuilder(testIndex{1})
+		builder := sql.NewMySQLIndexBuilder(ctx, testIndex{1})
 		builder = builder.IsNull(ctx, "column_0")
 		builder = builder.Equals(ctx, "column_0", nil, 2)
 		ranges := builder.Ranges(ctx)
@@ -52,7 +53,7 @@ func TestIndexBuilderRanges(t *testing.T) {
 	})
 
 	t.Run("NotEquals2=(NULL,2),(2,Inf)", func(t *testing.T) {
-		builder := sql.NewMySQLIndexBuilder(testIndex{1})
+		builder := sql.NewMySQLIndexBuilder(ctx, testIndex{1})
 		builder = builder.NotEquals(ctx, "column_0", nil, 2)
 		ranges := builder.Ranges(ctx)
 		assert.NotNil(t, ranges)
@@ -60,7 +61,7 @@ func TestIndexBuilderRanges(t *testing.T) {
 	})
 
 	t.Run("NotEquals2,Equals2=(Inf,Inf)", func(t *testing.T) {
-		builder := sql.NewMySQLIndexBuilder(testIndex{1})
+		builder := sql.NewMySQLIndexBuilder(ctx, testIndex{1})
 		builder = builder.NotEquals(ctx, "column_0", nil, 2)
 		builder = builder.Equals(ctx, "column_0", nil, 2)
 		ranges := builder.Ranges(ctx)
@@ -69,7 +70,7 @@ func TestIndexBuilderRanges(t *testing.T) {
 	})
 
 	t.Run("Equals2,NotEquals2=(Inf,Inf)", func(t *testing.T) {
-		builder := sql.NewMySQLIndexBuilder(testIndex{1})
+		builder := sql.NewMySQLIndexBuilder(ctx, testIndex{1})
 		builder = builder.Equals(ctx, "column_0", nil, 2)
 		builder = builder.NotEquals(ctx, "column_0", nil, 2)
 		ranges := builder.Ranges(ctx)
@@ -78,7 +79,7 @@ func TestIndexBuilderRanges(t *testing.T) {
 	})
 
 	t.Run("LT4=(NULL,4)", func(t *testing.T) {
-		builder := sql.NewMySQLIndexBuilder(testIndex{1})
+		builder := sql.NewMySQLIndexBuilder(ctx, testIndex{1})
 		builder = builder.LessThan(ctx, "column_0", nil, 4)
 		ranges := builder.Ranges(ctx)
 		assert.NotNil(t, ranges)
@@ -86,7 +87,7 @@ func TestIndexBuilderRanges(t *testing.T) {
 	})
 
 	t.Run("GT2,LT4=(2,4)", func(t *testing.T) {
-		builder := sql.NewMySQLIndexBuilder(testIndex{1})
+		builder := sql.NewMySQLIndexBuilder(ctx, testIndex{1})
 		builder = builder.GreaterThan(ctx, "column_0", nil, 2)
 		builder = builder.LessThan(ctx, "column_0", nil, 4)
 		ranges := builder.Ranges(ctx)
@@ -95,7 +96,7 @@ func TestIndexBuilderRanges(t *testing.T) {
 	})
 
 	t.Run("GT2,GT6=(4,Inf)", func(t *testing.T) {
-		builder := sql.NewMySQLIndexBuilder(testIndex{1})
+		builder := sql.NewMySQLIndexBuilder(ctx, testIndex{1})
 		builder = builder.GreaterThan(ctx, "column_0", nil, 2)
 		builder = builder.GreaterThan(ctx, "column_0", nil, 6)
 		ranges := builder.Ranges(ctx)
@@ -104,7 +105,7 @@ func TestIndexBuilderRanges(t *testing.T) {
 	})
 
 	t.Run("GT2,LT4,GT6=(Inf,Inf)", func(t *testing.T) {
-		builder := sql.NewMySQLIndexBuilder(testIndex{1})
+		builder := sql.NewMySQLIndexBuilder(ctx, testIndex{1})
 		builder = builder.GreaterThan(ctx, "column_0", nil, 2)
 		builder = builder.LessThan(ctx, "column_0", nil, 4)
 		builder = builder.GreaterThan(ctx, "column_0", nil, 6)
@@ -114,7 +115,7 @@ func TestIndexBuilderRanges(t *testing.T) {
 	})
 
 	t.Run("NotEqual2,NotEquals4=(2,4),(4,Inf),(NULL,2)", func(t *testing.T) {
-		builder := sql.NewMySQLIndexBuilder(testIndex{1})
+		builder := sql.NewMySQLIndexBuilder(ctx, testIndex{1})
 		builder = builder.NotEquals(ctx, "column_0", nil, 2)
 		builder = builder.NotEquals(ctx, "column_0", nil, 4)
 		ranges := builder.Ranges(ctx)
@@ -124,9 +125,9 @@ func TestIndexBuilderRanges(t *testing.T) {
 
 	t.Run("ThreeColumnCombine", func(t *testing.T) {
 		clauses := make([]sql.MySQLRangeCollection, 3)
-		clauses[0] = sql.NewMySQLIndexBuilder(testIndex{3}).GreaterOrEqual(ctx, "column_0", nil, 99).LessThan(ctx, "column_1", nil, 66).Ranges(ctx)
-		clauses[1] = sql.NewMySQLIndexBuilder(testIndex{3}).GreaterOrEqual(ctx, "column_0", nil, 1).LessOrEqual(ctx, "column_0", nil, 47).Ranges(ctx)
-		clauses[2] = sql.NewMySQLIndexBuilder(testIndex{3}).NotEquals(ctx, "column_0", nil, 2).LessThan(ctx, "column_1", nil, 30).Ranges(ctx)
+		clauses[0] = sql.NewMySQLIndexBuilder(ctx, testIndex{3}).GreaterOrEqual(ctx, "column_0", nil, 99).LessThan(ctx, "column_1", nil, 66).Ranges(ctx)
+		clauses[1] = sql.NewMySQLIndexBuilder(ctx, testIndex{3}).GreaterOrEqual(ctx, "column_0", nil, 1).LessOrEqual(ctx, "column_0", nil, 47).Ranges(ctx)
+		clauses[2] = sql.NewMySQLIndexBuilder(ctx, testIndex{3}).NotEquals(ctx, "column_0", nil, 2).LessThan(ctx, "column_1", nil, 30).Ranges(ctx)
 		assert.Len(t, clauses[0], 1)
 		assert.Len(t, clauses[1], 1)
 		assert.Len(t, clauses[2], 2)
@@ -142,7 +143,7 @@ func TestIndexBuilderRanges(t *testing.T) {
 			all = append(all, clauses[perm[0]]...)
 			all = append(all, clauses[perm[1]]...)
 			all = append(all, clauses[perm[2]]...)
-			combined, err := sql.RemoveOverlappingRanges(all...)
+			combined, err := sql.RemoveOverlappingRanges(context.Background(), all...)
 			assert.NoError(t, err)
 			assert.NotNil(t, combined)
 			assert.Equal(t, sql.MySQLRangeCollection{
@@ -215,7 +216,7 @@ func (testIndex) IsGenerated() bool {
 	return false
 }
 
-func (i testIndex) ColumnExpressionTypes() []sql.ColumnExpressionType {
+func (i testIndex) ColumnExpressionTypes(ctx *sql.Context) []sql.ColumnExpressionType {
 	es := i.Expressions()
 	res := make([]sql.ColumnExpressionType, len(es))
 	for i := range es {

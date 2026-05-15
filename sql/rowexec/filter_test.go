@@ -39,7 +39,7 @@ func TestFilter(t *testing.T) {
 		{Name: "col3", Type: types.Int32, Nullable: true},
 		{Name: "col4", Type: types.Int64, Nullable: true},
 	})
-	child := memory.NewTable(db.BaseDatabase, "test", childSchema, nil)
+	child := memory.NewTable(ctx, db.BaseDatabase, "test", childSchema, nil)
 
 	rows := []sql.Row{
 		sql.NewRow("col1_1", "col2_1", int32(1111), int64(2222)),
@@ -52,6 +52,7 @@ func TestFilter(t *testing.T) {
 	}
 
 	f := plan.NewFilter(
+		ctx,
 		expression.NewEquals(
 			expression.NewGetField(0, types.Text, "col1", true),
 			expression.NewLiteral("col1_1", types.LongText)),
@@ -74,7 +75,7 @@ func TestFilter(t *testing.T) {
 	require.NotNil(err)
 	require.Nil(row)
 
-	f = plan.NewFilter(expression.NewEquals(
+	f = plan.NewFilter(ctx, expression.NewEquals(
 		expression.NewGetField(2, types.Int32, "col3", true),
 		expression.NewLiteral(int32(1111),
 			types.Int32)), plan.NewResolvedTable(child, nil, nil))
@@ -90,7 +91,7 @@ func TestFilter(t *testing.T) {
 	require.Equal(int32(1111), row[2])
 	require.Equal(int64(2222), row[3])
 
-	f = plan.NewFilter(expression.NewEquals(
+	f = plan.NewFilter(ctx, expression.NewEquals(
 		expression.NewGetField(3, types.Int64, "col4", true),
 		expression.NewLiteral(int64(4444), types.Int64)),
 		plan.NewResolvedTable(child, nil, nil))

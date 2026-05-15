@@ -59,23 +59,23 @@ func (r *Repeat) String() string {
 }
 
 // DebugString implements the interface sql.DebugStringer.
-func (r *Repeat) DebugString() string {
+func (r *Repeat) DebugString(ctx *sql.Context) string {
 	label := ""
 	if len(r.Label) > 0 {
 		label = r.Label + ": "
 	}
 	p := sql.NewTreePrinter()
-	_ = p.WriteNode("%s: REPEAT(%s)", label, sql.DebugString(r.Condition))
+	_ = p.WriteNode("%s: REPEAT(%s)", label, sql.DebugString(ctx, r.Condition))
 	var children []string
 	for _, s := range r.statements {
-		children = append(children, sql.DebugString(s))
+		children = append(children, sql.DebugString(ctx, s))
 	}
 	_ = p.WriteChildren(children...)
 	return p.String()
 }
 
 // WithChildren implements the interface sql.Node.
-func (r *Repeat) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (r *Repeat) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	return &Repeat{
 		&Loop{
 			Label:          r.Loop.Label,
@@ -87,7 +87,7 @@ func (r *Repeat) WithChildren(children ...sql.Node) (sql.Node, error) {
 }
 
 // WithExpressions implements the interface sql.Node.
-func (r *Repeat) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+func (r *Repeat) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(r, len(exprs), 1)
 	}

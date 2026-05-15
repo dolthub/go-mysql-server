@@ -119,7 +119,7 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 		})
 	}
 
-	a.Catalog.RegisterFunction(emptyCtx, function.GetLockingFuncs(ls)...)
+	a.Catalog.RegisterFunction(emptyCtx, function.GetLockingFuncs(emptyCtx, ls)...)
 
 	ret := &Engine{
 		Analyzer:          a,
@@ -367,7 +367,7 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 		return nil, nil, nil, err
 	}
 
-	if plan.NodeRepresentsSelect(analyzed) {
+	if plan.NodeRepresentsSelect(ctx, analyzed) {
 		sql.IncrementStatusVariable(ctx, "Com_select", 1)
 	}
 
@@ -402,7 +402,7 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 	}
 
 	if schema == nil {
-		schema = analyzed.Schema()
+		schema = analyzed.Schema(ctx)
 	}
 
 	return schema, iter, qFlags, nil
@@ -448,7 +448,7 @@ func (e *Engine) PrepQueryPlanForExecution(ctx *sql.Context, _ string, plan sql.
 	}
 
 	if schema == nil {
-		schema = plan.Schema()
+		schema = plan.Schema(ctx)
 	}
 
 	return schema, iter, qFlags, nil
@@ -766,7 +766,7 @@ func (e *Engine) executeEvent(ctx *sql.Context, dbName, createEventStatement, us
 	}
 
 	// and pull out the event body/definition
-	createEventNode, err := findCreateEventNode(planTree)
+	createEventNode, err := findCreateEventNode(ctx, planTree)
 	if err != nil {
 		return err
 	}
@@ -800,10 +800,10 @@ func (e *Engine) executeEvent(ctx *sql.Context, dbName, createEventStatement, us
 // findCreateEventNode searches |planTree| for the first plan.CreateEvent node and
 // returns it. If no matching node was found, the returned CreateEvent node will be
 // nil and an error will be populated.
-func findCreateEventNode(planTree sql.Node) (*plan.CreateEvent, error) {
+func findCreateEventNode(ctx *sql.Context, planTree sql.Node) (*plan.CreateEvent, error) {
 	// Search through the node to find the first CREATE EVENT node, and then grab its body
 	var targetNode sql.Node
-	transform.InspectWithOpaque(planTree, func(node sql.Node) bool {
+	transform.InspectWithOpaque(ctx, planTree, func(ctx *sql.Context, node sql.Node) bool {
 		if cen, ok := node.(*plan.CreateEvent); ok {
 			targetNode = cen
 			return false

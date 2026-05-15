@@ -31,7 +31,8 @@ import (
 // the view that is also returned. The context returned is the one used to
 // create the view.
 func setupView(t *testing.T, db memory.MemoryDatabase) (*sql.Context, *sql.View) {
-	table := memory.NewTable(db.Database(), "mytable", sql.NewPrimaryKeySchema(sql.Schema{
+	ctx := sql.NewEmptyContext()
+	table := memory.NewTable(ctx, db.Database(), "mytable", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "i", Source: "mytable", Type: types.Int32},
 		{Name: "s", Source: "mytable", Type: types.Text},
 	}), nil)
@@ -40,6 +41,7 @@ func setupView(t *testing.T, db memory.MemoryDatabase) (*sql.Context, *sql.View)
 
 	subqueryAlias := plan.NewSubqueryAlias("myview", "select i from mytable",
 		plan.NewProject(
+			ctx,
 			[]sql.Expression{
 				expression.NewGetFieldWithTable(0, 1, types.Int32, "", table.Name(), "i", true),
 			},
@@ -48,8 +50,6 @@ func setupView(t *testing.T, db memory.MemoryDatabase) (*sql.Context, *sql.View)
 	)
 
 	createView := plan.NewCreateView(db, subqueryAlias.Name(), subqueryAlias, false, false, "CREATE VIEW myview AS SELECT i FROM mytable", "", "", "")
-
-	ctx := sql.NewEmptyContext()
 
 	_, err := DefaultBuilder.Build(ctx, createView, nil)
 	require.NoError(t, err)

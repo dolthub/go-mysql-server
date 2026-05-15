@@ -33,7 +33,7 @@ var _ sql.WindowAggregation = (*DenseRank)(nil)
 var _ sql.WindowAdaptableExpression = (*DenseRank)(nil)
 var _ sql.CollationCoercible = (*DenseRank)(nil)
 
-func NewDenseRank() sql.Expression {
+func NewDenseRank(ctx *sql.Context) sql.Expression {
 	return &DenseRank{}
 }
 
@@ -73,12 +73,12 @@ func (p *DenseRank) String() string {
 	return sb.String()
 }
 
-func (p *DenseRank) DebugString() string {
+func (p *DenseRank) DebugString(ctx *sql.Context) string {
 	sb := strings.Builder{}
 	sb.WriteString("dense_rank()")
 	if p.window != nil {
 		sb.WriteString(" ")
-		sb.WriteString(sql.DebugString(p.window))
+		sb.WriteString(sql.DebugString(ctx, p.window))
 	}
 	return sb.String()
 }
@@ -89,7 +89,7 @@ func (p *DenseRank) FunctionName() string {
 }
 
 // Type implements sql.Expression
-func (p *DenseRank) Type() sql.Type {
+func (p *DenseRank) Type(ctx *sql.Context) sql.Type {
 	return types.Uint64
 }
 
@@ -99,7 +99,7 @@ func (*DenseRank) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 }
 
 // IsNullable implements sql.Expression
-func (p *DenseRank) IsNullable() bool {
+func (p *DenseRank) IsNullable(ctx *sql.Context) bool {
 	return false
 }
 
@@ -114,22 +114,22 @@ func (p *DenseRank) Children() []sql.Expression {
 }
 
 // WithChildren implements sql.Expression
-func (p *DenseRank) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	window, err := p.window.FromExpressions(children)
+func (p *DenseRank) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	window, err := p.window.FromExpressions(ctx, children)
 	if err != nil {
 		return nil, err
 	}
 
-	return p.WithWindow(window), nil
+	return p.WithWindow(ctx, window), nil
 }
 
 // WithWindow implements sql.WindowAggregation
-func (p *DenseRank) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
+func (p *DenseRank) WithWindow(ctx *sql.Context, window *sql.WindowDefinition) sql.WindowAdaptableExpression {
 	nr := *p
 	nr.window = window
 	return &nr
 }
 
-func (p *DenseRank) NewWindowFunction() (sql.WindowFunction, error) {
+func (p *DenseRank) NewWindowFunction(ctx *sql.Context) (sql.WindowFunction, error) {
 	return aggregation.NewDenseRank(p.window.OrderBy.ToExpressions()), nil
 }

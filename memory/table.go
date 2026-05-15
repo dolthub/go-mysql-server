@@ -80,54 +80,56 @@ var _ sql.PrimaryKeyTable = (*Table)(nil)
 var _ fulltext.IndexAlterableTable = (*Table)(nil)
 var _ sql.IndexBuildingTable = (*Table)(nil)
 var _ sql.Databaseable = (*Table)(nil)
+var _ sql.TargetRowSizeAlterableTable = (*Table)(nil)
+var _ sql.TargetRowSizeTable = (*Table)(nil)
 
 // NewTable creates a new Table with the given name and schema. Assigns the default collation, therefore if a different
 // collation is desired, please use NewTableWithCollation.
-func NewTable(db MemoryDatabase, name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection) *Table {
+func NewTable(ctx *sql.Context, db MemoryDatabase, name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection) *Table {
 	var baseDatabase *BaseDatabase
 	// the dual table has no database
 	if db != nil {
 		baseDatabase = db.Database()
 	}
-	return NewPartitionedTableWithCollation(baseDatabase, name, schema, fkColl, 0, sql.Collation_Default, "")
+	return NewPartitionedTableWithCollation(ctx, baseDatabase, name, schema, fkColl, 0, sql.Collation_Default, "")
 }
 
 // NewLocalTable returns a table suitable to use for transient non-memory applications
-func NewLocalTable(db MemoryDatabase, name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection) *Table {
+func NewLocalTable(ctx *sql.Context, db MemoryDatabase, name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection) *Table {
 	var baseDatabase *BaseDatabase
 	// the dual table has no database
 	if db != nil {
 		baseDatabase = db.Database()
 	}
-	tbl := NewPartitionedTableWithCollation(baseDatabase, name, schema, fkColl, 0, sql.Collation_Default, "")
+	tbl := NewPartitionedTableWithCollation(ctx, baseDatabase, name, schema, fkColl, 0, sql.Collation_Default, "")
 	tbl.ignoreSessionData = true
 	return tbl
 }
 
 // NewTableWithCollation creates a new Table with the given name, schema, and collation.
-func NewTableWithCollation(db *BaseDatabase, name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection, collation sql.CollationID) *Table {
-	return NewPartitionedTableWithCollation(db, name, schema, fkColl, 0, collation, "")
+func NewTableWithCollation(ctx *sql.Context, db *BaseDatabase, name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection, collation sql.CollationID) *Table {
+	return NewPartitionedTableWithCollation(ctx, db, name, schema, fkColl, 0, collation, "")
 }
 
 // NewPartitionedTable creates a new Table with the given name, schema and number of partitions. Assigns the default
 // collation, therefore if a different collation is desired, please use NewPartitionedTableWithCollation.
-func NewPartitionedTable(db *BaseDatabase, name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection, numPartitions int) *Table {
-	return NewPartitionedTableWithCollation(db, name, schema, fkColl, numPartitions, sql.Collation_Default, "")
+func NewPartitionedTable(ctx *sql.Context, db *BaseDatabase, name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection, numPartitions int) *Table {
+	return NewPartitionedTableWithCollation(ctx, db, name, schema, fkColl, numPartitions, sql.Collation_Default, "")
 }
 
-// NewPartitionedTable creates a new Table with the given name, schema and number of partitions. Assigns the default
+// NewPartitionedTableRevision creates a new Table with the given name, schema and number of partitions. Assigns the default
 // collation, therefore if a different collation is desired, please use NewPartitionedTableWithCollation.
-func NewPartitionedTableRevision(db *BaseDatabase, name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection, numPartitions int) *TableRevision {
-	tbl := NewPartitionedTableWithCollation(db, name, schema, fkColl, numPartitions, sql.Collation_Default, "")
+func NewPartitionedTableRevision(ctx *sql.Context, db *BaseDatabase, name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection, numPartitions int) *TableRevision {
+	tbl := NewPartitionedTableWithCollation(ctx, db, name, schema, fkColl, numPartitions, sql.Collation_Default, "")
 	tbl.ignoreSessionData = true
 	return &TableRevision{tbl}
 }
 
-func stripTblNames(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+func stripTblNames(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 	switch e := e.(type) {
 	case *expression.GetField:
 		// strip table names
-		ne := expression.NewGetField(e.Index(), e.Type(), e.Name(), e.IsNullable())
+		ne := expression.NewGetField(e.Index(), e.Type(ctx), e.Name(), e.IsNullable(ctx))
 		ne = ne.WithQuotedNames(sql.DefaultMySQLSchemaFormatter, e.IsQuotedIdentifier())
 		return ne, transform.NewTree, nil
 	default:
@@ -137,7 +139,7 @@ func stripTblNames(e sql.Expression) (sql.Expression, transform.TreeIdentity, er
 
 // NewPartitionedTableWithCollation creates a new Table with the given name, schema, number of partitions, collation,
 // and comment.
-func NewPartitionedTableWithCollation(db *BaseDatabase, name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection, numPartitions int, collation sql.CollationID, comment string) *Table {
+func NewPartitionedTableWithCollation(ctx *sql.Context, db *BaseDatabase, name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection, numPartitions int, collation sql.CollationID, comment string) *Table {
 	var keys [][]byte
 	var partitions = map[string][]sql.Row{}
 
@@ -165,19 +167,19 @@ func NewPartitionedTableWithCollation(db *BaseDatabase, name string, schema sql.
 	for i, c := range schema.Schema {
 		cCopy := c.Copy()
 		if cCopy.Default != nil {
-			newDef, _, _ := transform.Expr(cCopy.Default, stripTblNames)
+			newDef, _, _ := transform.Expr(ctx, cCopy.Default, stripTblNames)
 			defStr := newDef.String()
 			unrDef := sql.NewUnresolvedColumnDefaultValue(defStr)
 			cCopy.Default = unrDef
 		}
 		if cCopy.Generated != nil {
-			newDef, _, _ := transform.Expr(cCopy.Generated, stripTblNames)
+			newDef, _, _ := transform.Expr(ctx, cCopy.Generated, stripTblNames)
 			defStr := newDef.String()
 			unrDef := sql.NewUnresolvedColumnDefaultValue(defStr)
 			cCopy.Generated = unrDef
 		}
 		if cCopy.OnUpdate != nil {
-			newDef, _, _ := transform.Expr(cCopy.OnUpdate, stripTblNames)
+			newDef, _, _ := transform.Expr(ctx, cCopy.OnUpdate, stripTblNames)
 			defStr := newDef.String()
 			unrDef := sql.NewUnresolvedColumnDefaultValue(defStr)
 			cCopy.OnUpdate = unrDef
@@ -221,7 +223,7 @@ func (t *Table) Database() string {
 }
 
 // Schema implements the sql.Table interface.
-func (t *Table) Schema() sql.Schema {
+func (t *Table) Schema(ctx *sql.Context) sql.Schema {
 	if t.projectedSchema != nil {
 		return t.projectedSchema
 	}
@@ -236,6 +238,22 @@ func (t *Table) Collation() sql.CollationID {
 // Comment implements the sql.CommentedTable interface.
 func (t *Table) Comment() string {
 	return t.data.comment
+}
+
+// ModifyTargetRowSize implements the sql.TargetRowSizeAlterableTable interface.
+func (t *Table) ModifyTargetRowSize(ctx *sql.Context, sizeInBytes uint64) error {
+	t.data.targetRowSize = sizeInBytes
+	return nil
+}
+
+// HasTargetRowSize implements the sql.TargetRowSizeTable interface.
+func (t *Table) HasTargetRowSize() bool {
+	return t.data.targetRowSize != 0
+}
+
+// GetTargetRowSize implements the sql.TargetRowSizeTable interface.
+func (t *Table) GetTargetRowSize() uint64 {
+	return t.data.targetRowSize
 }
 
 func (t *Table) IgnoreSessionData() bool {
@@ -961,10 +979,10 @@ func (t *Table) getRewriteTableEditor(ctx *sql.Context, oldSchema, newSchema sql
 				panic(err)
 			}
 
-			ts.RowCount.(*Table).data = ts.RowCount.(*Table).data.copy().truncate(sql.NewPrimaryKeySchema(rowCountSch))
-			ts.DocCount.(*Table).data = ts.DocCount.(*Table).data.copy().truncate(sql.NewPrimaryKeySchema(docCountSch))
-			ts.GlobalCount.(*Table).data = ts.GlobalCount.(*Table).data.copy().truncate(sql.NewPrimaryKeySchema(globalCountSch))
-			ts.Position.(*Table).data = ts.Position.(*Table).data.copy().truncate(sql.NewPrimaryKeySchema(positionSch))
+			ts.RowCount.(*Table).data = ts.RowCount.(*Table).data.copy().truncate(ctx, sql.NewPrimaryKeySchema(rowCountSch))
+			ts.DocCount.(*Table).data = ts.DocCount.(*Table).data.copy().truncate(ctx, sql.NewPrimaryKeySchema(docCountSch))
+			ts.GlobalCount.(*Table).data = ts.GlobalCount.(*Table).data.copy().truncate(ctx, sql.NewPrimaryKeySchema(globalCountSch))
+			ts.Position.(*Table).data = ts.Position.(*Table).data.copy().truncate(ctx, sql.NewPrimaryKeySchema(positionSch))
 			newTableSets[i] = ts
 
 			// When we get a rowcount editor below, we are going to use the session data for each of these tables. Since we
@@ -997,33 +1015,37 @@ func (t *Table) newTableEditor(ctx *sql.Context) (sql.TableEditor, error) {
 	tableUnderEdit := t.copy()
 	tableUnderEdit.data = data
 
-	uniqIdxCols, prefixLengths := t.data.indexColsForTableEditor()
+	uniqIdxCols, prefixLengths, uniqIdxNames := data.indexColsForTableEditor()
 	var editor sql.TableEditor = &tableEditor{
-		editedTable:   tableUnderEdit,
-		initialTable:  t.copy(),
-		ea:            ea,
-		uniqueIdxCols: uniqIdxCols,
-		prefixLengths: prefixLengths,
+		editedTable:    tableUnderEdit,
+		initialTable:   t.copy(),
+		ea:             ea,
+		uniqueIdxCols:  uniqIdxCols,
+		prefixLengths:  prefixLengths,
+		uniqueIdxNames: uniqIdxNames,
 	}
 	return editor, nil
 }
 
 func (t *Table) tableEditorForRewrite(ctx *sql.Context, oldSchema, newSchema sql.PrimaryKeySchema) (sql.TableEditor, error) {
 	// Make a copy of the table under edit with the new schema and no data
-	// sess := SessionFromContext(ctx)
 	tableUnderEdit := t.copy()
-	// tableUnderEdit.data = sess.tableData(t).copy()
-	tableData := tableUnderEdit.data.truncate(normalizeSchemaForRewrite(newSchema))
+	// Use session indexes so that indexes created in this session are preserved during rewrite
+	if !t.ignoreSessionData {
+		tableUnderEdit.data.indexes = t.sessionTableData(ctx).indexes
+	}
+	tableData := tableUnderEdit.data.truncate(ctx, normalizeSchemaForRewrite(newSchema))
 	tableUnderEdit.data = tableData
 
 	// TODO: |editedTableAnd| and |ea| should have the same tableData reference
-	uniqIdxCols, prefixLengths := tableData.indexColsForTableEditor()
+	uniqIdxCols, prefixLengths, uniqIdxNames := tableData.indexColsForTableEditor()
 	var editor sql.TableEditor = &tableEditor{
-		editedTable:   tableUnderEdit,
-		initialTable:  t.copy(),
-		ea:            newTableEditAccumulator(tableData),
-		uniqueIdxCols: uniqIdxCols,
-		prefixLengths: prefixLengths,
+		editedTable:    tableUnderEdit,
+		initialTable:   t.copy(),
+		ea:             newTableEditAccumulator(tableData),
+		uniqueIdxCols:  uniqIdxCols,
+		prefixLengths:  prefixLengths,
+		uniqueIdxNames: uniqIdxNames,
 	}
 	return editor, nil
 }
@@ -1121,7 +1143,7 @@ func (t *Table) Truncate(ctx *sql.Context) (int, error) {
 		count += len(data.partitions[key])
 	}
 
-	data.truncate(data.schema)
+	data.truncate(ctx, data.schema)
 	return count, nil
 }
 
@@ -1139,7 +1161,7 @@ func (t *Table) PeekNextAutoIncrementValue(ctx *sql.Context) (uint64, error) {
 	data := t.sessionTableData(ctx)
 
 	// Find the auto increment column to validate the current value
-	autoCol := t.getAutoIncrementColumn()
+	autoCol := t.getAutoIncrementColumn(ctx)
 	if autoCol == nil {
 		return data.autoIncVal, nil
 	}
@@ -1155,8 +1177,8 @@ func (t *Table) PeekNextAutoIncrementValue(ctx *sql.Context) (uint64, error) {
 
 // getAutoIncrementColumn returns the auto increment column for this table, or nil if none exists.
 // Only one auto increment column is allowed per table.
-func (t *Table) getAutoIncrementColumn() *sql.Column {
-	for _, col := range t.Schema() {
+func (t *Table) getAutoIncrementColumn(ctx *sql.Context) *sql.Column {
+	for _, col := range t.Schema(ctx) {
 		if col.AutoIncrement {
 			return col
 		}
@@ -1234,7 +1256,7 @@ func addColumnToSchema(ctx *sql.Context, data *TableData, newCol *sql.Column, or
 	}
 
 	for _, newSchCol := range newSch {
-		newDefault, _, _ := transform.Expr(newSchCol.Default, func(expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		newDefault, _, _ := transform.Expr(ctx, newSchCol.Default, func(ctx *sql.Context, expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			if expr, ok := expr.(*expression.GetField); ok {
 				return expr.WithIndex(newSch.IndexOf(expr.Name(), data.tableName)), transform.NewTree, nil
 			}
@@ -1423,30 +1445,33 @@ func (t *Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Co
 		}
 	}
 
-	for k, p := range data.partitions {
-		newP := make([]sql.Row, len(p))
-		for i, row := range p {
-			var oldRowWithoutVal sql.Row
-			oldRowWithoutVal = append(oldRowWithoutVal, row[:oldIdx]...)
-			oldRowWithoutVal = append(oldRowWithoutVal, row[oldIdx+1:]...)
-			oldType := data.schema.Schema[oldIdx].Type
-			newVal, inRange, err := types.TypeAwareConversion(ctx, row[oldIdx], oldType, column.Type)
-			if err != nil {
-				if sql.ErrNotMatchingSRID.Is(err) {
-					err = sql.ErrNotMatchingSRIDWithColName.New(columnName, err)
+	// Virtual columns are not stored in partition rows, so skip the row rewrite for them
+	if !data.schema.Schema[oldIdx].Virtual {
+		for k, p := range data.partitions {
+			newP := make([]sql.Row, len(p))
+			for i, row := range p {
+				var oldRowWithoutVal sql.Row
+				oldRowWithoutVal = append(oldRowWithoutVal, row[:oldIdx]...)
+				oldRowWithoutVal = append(oldRowWithoutVal, row[oldIdx+1:]...)
+				oldType := data.schema.Schema[oldIdx].Type
+				newVal, inRange, err := types.TypeAwareConversion(ctx, row[oldIdx], oldType, column.Type)
+				if err != nil {
+					if sql.ErrNotMatchingSRID.Is(err) {
+						err = sql.ErrNotMatchingSRIDWithColName.New(columnName, err)
+					}
+					return err
 				}
-				return err
+				if inRange != sql.InRange {
+					return sql.ErrValueOutOfRange.New(row[oldIdx], column.Type)
+				}
+				var newRow sql.Row
+				newRow = append(newRow, oldRowWithoutVal[:newIdx]...)
+				newRow = append(newRow, newVal)
+				newRow = append(newRow, oldRowWithoutVal[newIdx:]...)
+				newP[i] = newRow
 			}
-			if inRange != sql.InRange {
-				return sql.ErrValueOutOfRange.New(row[oldIdx], column.Type)
-			}
-			var newRow sql.Row
-			newRow = append(newRow, oldRowWithoutVal[:newIdx]...)
-			newRow = append(newRow, newVal)
-			newRow = append(newRow, oldRowWithoutVal[newIdx:]...)
-			newP[i] = newRow
+			data.partitions[k] = newP
 		}
-		data.partitions[k] = newP
 	}
 
 	pkNameToOrdIdx := make(map[string]int)
@@ -1489,7 +1514,7 @@ func (t *Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Co
 }
 
 // PrimaryKeySchema implements sql.PrimaryKeyAlterableTable
-func (t *Table) PrimaryKeySchema() sql.PrimaryKeySchema {
+func (t *Table) PrimaryKeySchema(ctx *sql.Context) sql.PrimaryKeySchema {
 	return t.data.schema
 }
 
@@ -1500,7 +1525,7 @@ func (t *Table) String() string {
 
 var debugDataPrint = false
 
-func (t *Table) DebugString() string {
+func (t *Table) DebugString(ctx *sql.Context) string {
 	if debugDataPrint {
 		p := t.data.partitions["0"]
 		s := ""
@@ -1529,7 +1554,7 @@ func (t *Table) DebugString() string {
 	if len(t.filters) > 0 {
 		var filters []string
 		for _, filter := range t.filters {
-			filters = append(filters, fmt.Sprintf("%s", sql.DebugString(filter)))
+			filters = append(filters, fmt.Sprintf("%s", sql.DebugString(ctx, filter)))
 		}
 		children = append(children, fmt.Sprintf("filters: %s", filters))
 	}
@@ -1539,11 +1564,11 @@ func (t *Table) DebugString() string {
 }
 
 // HandledFilters implements the sql.FilteredTable interface.
-func (t *Table) HandledFilters(filters []sql.Expression) []sql.Expression {
+func (t *Table) HandledFilters(ctx *sql.Context, filters []sql.Expression) []sql.Expression {
 	var handled []sql.Expression
 	for _, f := range filters {
 		var hasOtherFields bool
-		sql.Inspect(f, func(e sql.Expression) bool {
+		sql.Inspect(ctx, f, func(ctx *sql.Context, e sql.Expression) bool {
 			if e, ok := e.(*expression.GetField); ok {
 				if e.Table() != t.name || !t.data.schema.Contains(e.Name(), t.name) {
 					hasOtherFields = true
@@ -1570,9 +1595,9 @@ type FilteredTable struct {
 
 var _ sql.FilteredTable = (*FilteredTable)(nil)
 
-func NewFilteredTable(db MemoryDatabase, name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection) *FilteredTable {
+func NewFilteredTable(ctx *sql.Context, db MemoryDatabase, name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection) *FilteredTable {
 	return &FilteredTable{
-		Table: NewTable(db, name, schema, fkColl),
+		Table: NewTable(ctx, db, name, schema, fkColl),
 	}
 }
 
@@ -1588,12 +1613,15 @@ func (t *FilteredTable) WithFilters(ctx *sql.Context, filters []sql.Expression) 
 }
 
 // WithProjections implements sql.ProjectedTable
-func (t *FilteredTable) WithProjections(schema []string) sql.Table {
-	table := t.Table.WithProjections(schema)
+func (t *FilteredTable) WithProjections(ctx *sql.Context, schema []string) (sql.Table, error) {
+	table, err := t.Table.WithProjections(ctx, schema)
+	if err != nil {
+		return nil, err
+	}
 
 	nt := *t
 	nt.Table = table.(*Table)
-	return &nt
+	return &nt, nil
 }
 
 // Projections implements sql.ProjectedTable
@@ -1668,7 +1696,7 @@ func (t *IndexedTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup
 		}, nil
 	}
 
-	indexFilter := adjustRangeScanFilterForIndexLookup(filter, memIdx)
+	indexFilter := adjustRangeScanFilterForIndexLookup(ctx, filter, memIdx)
 
 	return &indexScanPartitionIter{
 		index:  memIdx,
@@ -1677,7 +1705,7 @@ func (t *IndexedTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup
 	}, nil
 }
 
-func adjustRangeScanFilterForIndexLookup(filter sql.Expression, index *Index) sql.Expression {
+func adjustRangeScanFilterForIndexLookup(ctx *sql.Context, filter sql.Expression, index *Index) sql.Expression {
 	exprs := index.ExtendedExprs()
 
 	indexStorageSchema := make(sql.Schema, len(exprs))
@@ -1687,7 +1715,7 @@ func adjustRangeScanFilterForIndexLookup(filter sql.Expression, index *Index) sq
 		}
 	}
 
-	filter, _, err := transform.Expr(filter, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+	filter, _, err := transform.Expr(ctx, filter, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		if gf, ok := e.(*expression.GetField); ok {
 			idxIdx := indexStorageSchema.IndexOfColName(gf.Name())
 			return gf.WithIndex(idxIdx), transform.NewTree, nil
@@ -1760,17 +1788,17 @@ func (t *Table) PreciseMatch() bool {
 }
 
 // WithProjections implements sql.ProjectedTable
-func (t *Table) WithProjections(cols []string) sql.Table {
+func (t *Table) WithProjections(ctx *sql.Context, cols []string) (sql.Table, error) {
 	nt := *t
 	if cols == nil {
 		nt.projectedSchema = nil
 		nt.projection = nil
 		nt.columns = nil
-		return &nt
+		return &nt, nil
 	}
 	columns, err := nt.data.columnIndexes(cols)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	nt.columns = columns
@@ -1782,7 +1810,7 @@ func (t *Table) WithProjections(cols []string) sql.Table {
 	nt.projectedSchema = projectedSchema
 	nt.projection = cols
 
-	return &nt
+	return &nt, nil
 }
 
 // Projections implements sql.ProjectedTable
@@ -1884,7 +1912,7 @@ func (t *Table) AddForeignKey(ctx *sql.Context, fk sql.ForeignKeyConstraint) err
 }
 
 // DropForeignKey implements sql.ForeignKeyTable.
-func (t *Table) DropForeignKey(ctx *sql.Context, fkName string) error {
+func (t *Table) DropForeignKey(ctx *sql.Context, fkName string, tableName string, schemaName string) error {
 	sess := SessionFromContext(ctx)
 	data := sess.tableData(t)
 
@@ -2334,7 +2362,7 @@ func normalizeSchemaForRewrite(newSch sql.PrimaryKeySchema) sql.PrimaryKeySchema
 func (t *Table) DropPrimaryKey(ctx *sql.Context) error {
 	data := t.sessionTableData(ctx)
 
-	err := sql.ValidatePrimaryKeyDrop(ctx, t, t.PrimaryKeySchema())
+	err := sql.ValidatePrimaryKeyDrop(ctx, t, t.PrimaryKeySchema(ctx))
 	if err != nil {
 		return err
 	}
@@ -2539,13 +2567,14 @@ var _ MemTable = (*TableRevision)(nil)
 func (t *TableRevision) Inserter(ctx *sql.Context) sql.RowInserter {
 	ea := newTableEditAccumulator(t.Table.data)
 
-	uniqIdxCols, prefixLengths := t.data.indexColsForTableEditor()
+	uniqIdxCols, prefixLengths, uniqIdxNames := t.data.indexColsForTableEditor()
 	return &tableEditor{
-		editedTable:   t.Table,
-		initialTable:  t.copy(),
-		ea:            ea,
-		uniqueIdxCols: uniqIdxCols,
-		prefixLengths: prefixLengths,
+		editedTable:    t.Table,
+		initialTable:   t.copy(),
+		ea:             ea,
+		uniqueIdxCols:  uniqIdxCols,
+		prefixLengths:  prefixLengths,
+		uniqueIdxNames: uniqIdxNames,
 	}
 }
 

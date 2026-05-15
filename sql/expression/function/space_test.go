@@ -17,7 +17,6 @@ package function
 import (
 	"testing"
 
-	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -77,7 +76,7 @@ func TestSpace(t *testing.T) {
 		},
 		{
 			name: "decimal rounds down",
-			arg:  expression.NewLiteral(decimal.NewFromFloat(1.1), types.DecimalType_{}),
+			arg:  expression.NewLiteral(types.DecimalFromFloat64(1.1), types.DecimalType_{}),
 			exp:  " ",
 			err:  false,
 		},
@@ -95,7 +94,7 @@ func TestSpace(t *testing.T) {
 		},
 		{
 			name: "decimal rounds up",
-			arg:  expression.NewLiteral(decimal.NewFromFloat(1.99), types.DecimalType_{}),
+			arg:  expression.NewLiteral(types.DecimalFromFloat64(1.99), types.DecimalType_{}),
 			exp:  "  ",
 			err:  false,
 		},
@@ -113,7 +112,7 @@ func TestSpace(t *testing.T) {
 		},
 		{
 			name: "negative decimal is 0",
-			arg:  expression.NewLiteral(decimal.NewFromFloat(-12.34), types.DecimalType_{}),
+			arg:  expression.NewLiteral(types.DecimalFromFloat64(-12.34), types.DecimalType_{}),
 			exp:  "",
 			err:  false,
 		},
@@ -147,7 +146,7 @@ func TestSpace(t *testing.T) {
 			}
 
 			ctx := sql.NewEmptyContext()
-			f := NewSpace(tt.arg)
+			f := NewSpace(sql.NewEmptyContext(), tt.arg)
 
 			res, err := f.Eval(ctx, nil)
 			if tt.err {

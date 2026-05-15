@@ -23,9 +23,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
-	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -115,28 +115,28 @@ func (a *Arithmetic) String() string {
 	return fmt.Sprintf("(%s %s %s)", a.LeftChild.String(), a.Op, a.RightChild.String())
 }
 
-func (a *Arithmetic) DebugString() string {
-	return fmt.Sprintf("(%s %s %s)", sql.DebugString(a.LeftChild), a.Op, sql.DebugString(a.RightChild))
+func (a *Arithmetic) DebugString(ctx *sql.Context) string {
+	return fmt.Sprintf("(%s %s %s)", sql.DebugString(ctx, a.LeftChild), a.Op, sql.DebugString(ctx, a.RightChild))
 }
 
 // IsNullable implements the sql.Expression interface.
-func (a *Arithmetic) IsNullable() bool {
-	typ := a.Type()
+func (a *Arithmetic) IsNullable(ctx *sql.Context) bool {
+	typ := a.Type(ctx)
 	if types.IsDatetimeType(typ) || types.IsTimestampType(typ) {
 		return true
 	}
 
-	return a.BinaryExpressionStub.IsNullable()
+	return a.BinaryExpressionStub.IsNullable(ctx)
 }
 
 // getReturnType returns the greatest type for given operation.
-func (a *Arithmetic) getReturnType() sql.Type {
+func (a *Arithmetic) getReturnType(ctx *sql.Context) sql.Type {
 	// TODO: what if both BindVars? should be constant folded
-	rTyp := a.RightChild.Type()
+	rTyp := a.RightChild.Type(ctx)
 	if types.IsDeferredType(rTyp) {
 		return rTyp
 	}
-	lTyp := a.LeftChild.Type()
+	lTyp := a.LeftChild.Type(ctx)
 	if types.IsDeferredType(lTyp) {
 		return lTyp
 	}
@@ -260,11 +260,11 @@ func (a *Arithmetic) getReturnType() sql.Type {
 }
 
 // Type implements the Expression interface
-func (a *Arithmetic) Type() sql.Type {
+func (a *Arithmetic) Type(ctx *sql.Context) sql.Type {
 	// Cache the return type for Arithmetic functions for performance.
 	// We this here instead of NewArithmeticExpression because of placeholder expressions.
 	if a.typ == nil {
-		a.typ = a.getReturnType()
+		a.typ = a.getReturnType(ctx)
 	}
 	return a.typ
 }
@@ -275,7 +275,7 @@ func (*Arithmetic) CollationCoercibility(ctx *sql.Context) (collation sql.Collat
 }
 
 // WithChildren implements the Expression interface.
-func (a *Arithmetic) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (a *Arithmetic) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(a, len(children), 2)
 	}
@@ -320,12 +320,12 @@ func (a *Arithmetic) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Decimals must be rounded
-	if res, ok := result.(decimal.Decimal); ok {
+	if res, ok := result.(*apd.Decimal); ok {
 		if isOutermostArithmeticOp(a, a.ops) {
 			finalScale, hasDiv := getFinalScale(ctx, row, a, 0)
 			if hasDiv {
 				// TODO: should always round regardless; we have bad Decimal defaults
-				return res.Round(finalScale), nil
+				return sql.DecimalRound(res, finalScale)
 			}
 		}
 	}
@@ -365,10 +365,10 @@ func (a *Arithmetic) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, 
 }
 
 func (a *Arithmetic) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}, error) {
-	typ := a.Type()
+	typ := a.Type(ctx)
 
-	lIsTimeType := types.IsTime(a.LeftChild.Type())
-	rIsTimeType := types.IsTime(a.RightChild.Type())
+	lIsTimeType := types.IsTime(a.LeftChild.Type(ctx))
+	rIsTimeType := types.IsTime(a.RightChild.Type(ctx))
 
 	if i, ok := left.(*TimeDelta); ok {
 		left = i
@@ -541,10 +541,12 @@ func plus(lval, rval interface{}) (interface{}, error) {
 		case float64:
 			return l + r, nil
 		}
-	case decimal.Decimal:
+	case *apd.Decimal:
 		switch r := rval.(type) {
-		case decimal.Decimal:
-			return l.Add(r), nil
+		case *apd.Decimal:
+			res := new(apd.Decimal)
+			_, err := sql.DecimalCtx.Add(res, l, r)
+			return res, err
 		}
 	case time.Time:
 		switch r := rval.(type) {
@@ -618,10 +620,12 @@ func minus(lval, rval interface{}) (interface{}, error) {
 		case float64:
 			return l - r, nil
 		}
-	case decimal.Decimal:
+	case *apd.Decimal:
 		switch r := rval.(type) {
-		case decimal.Decimal:
-			return l.Sub(r), nil
+		case *apd.Decimal:
+			res := new(apd.Decimal)
+			_, err := sql.DecimalCtx.Sub(res, l, r)
+			return res, err
 		}
 	case time.Time:
 		switch r := rval.(type) {
@@ -687,10 +691,12 @@ func mult(lval, rval interface{}) (interface{}, error) {
 		case float64:
 			return l * r, nil
 		}
-	case decimal.Decimal:
+	case *apd.Decimal:
 		switch r := rval.(type) {
-		case decimal.Decimal:
-			return l.Mul(r), nil
+		case *apd.Decimal:
+			res := new(apd.Decimal)
+			_, err := sql.DecimalCtx.Mul(res, l, r)
+			return res, err
 		}
 	}
 
@@ -721,7 +727,7 @@ func (e *UnaryMinus) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	if !types.IsNumber(e.Child.Type()) {
+	if !types.IsNumber(e.Child.Type(ctx)) {
 		child, _, err = types.InternalDecimalType.Convert(ctx, child)
 		if err != nil {
 			if !sql.ErrTruncatedIncorrect.Is(err) {
@@ -745,7 +751,8 @@ func (e *UnaryMinus) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case int64:
 		if n == math.MinInt64 {
 			if _, ok := e.Child.(*Literal); ok {
-				return decimal.NewFromInt(n).Neg(), nil
+				dec := types.DecimalFromInt64(n)
+				return dec.Neg(dec), nil
 			}
 			return nil, sql.ErrValueOutOfRange.New("BIGINT", fmt.Sprintf("%d", n))
 		}
@@ -760,8 +767,9 @@ func (e *UnaryMinus) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return -int32(n), nil
 	case uint64:
 		return -int64(n), nil
-	case decimal.Decimal:
-		return n.Neg(), nil
+	case *apd.Decimal:
+		res := new(apd.Decimal)
+		return res.Neg(n), nil
 	case string:
 		// try getting int out of string value
 		i, iErr := strconv.ParseInt(n, 10, 64)
@@ -781,8 +789,8 @@ func (e *UnaryMinus) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // Type implements the sql.Expression interface.
-func (e *UnaryMinus) Type() sql.Type {
-	typ := e.Child.Type()
+func (e *UnaryMinus) Type(ctx *sql.Context) sql.Type {
+	typ := e.Child.Type(ctx)
 	switch typ {
 	case types.Int8, types.Int16, types.Int32:
 		typ = types.Int64
@@ -820,7 +828,7 @@ func (e *UnaryMinus) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (e *UnaryMinus) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (e *UnaryMinus) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(e, len(children), 1)
 	}

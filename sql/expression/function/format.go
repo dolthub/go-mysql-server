@@ -19,7 +19,6 @@ import (
 	"math"
 	"strings"
 
-	"github.com/shopspring/decimal"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 	"golang.org/x/text/number"
@@ -39,7 +38,7 @@ var _ sql.FunctionExpression = (*Format)(nil)
 var _ sql.CollationCoercible = (*Format)(nil)
 
 // NewFormat returns a new Format expression.
-func NewFormat(args ...sql.Expression) (sql.Expression, error) {
+func NewFormat(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	var numValue, numDecimalPlaces, locale sql.Expression
 	switch len(args) {
 	case 2:
@@ -67,7 +66,7 @@ func (f *Format) Description() string {
 }
 
 // Type implements the Expression interface.
-func (f *Format) Type() sql.Type { return types.LongText }
+func (f *Format) Type(ctx *sql.Context) sql.Type { return types.LongText }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*Format) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
@@ -75,8 +74,8 @@ func (*Format) CollationCoercibility(ctx *sql.Context) (collation sql.CollationI
 }
 
 // IsNullable implements the Expression interface.
-func (f *Format) IsNullable() bool {
-	return f.NumValue.IsNullable() || f.NumDecimalPlaces.IsNullable() || (f.Locale != nil && f.Locale.IsNullable())
+func (f *Format) IsNullable(ctx *sql.Context) bool {
+	return f.NumValue.IsNullable(ctx) || f.NumDecimalPlaces.IsNullable(ctx) || (f.Locale != nil && f.Locale.IsNullable(ctx))
 }
 
 func (f *Format) String() string {
@@ -154,13 +153,13 @@ func (f *Format) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	var fractionStr string
 	var negative string
 	if roundedValue != 0 {
-		res := decimal.NewFromFloat(roundedValue)
-		whole = res.IntPart()
-		if whole == 0 && res.IsNegative() {
+		res := types.DecimalFromFloat64(roundedValue)
+		whole = types.DecimalTruncatedIntPart(res)
+		if whole == 0 && res.Negative {
 			negative = "-"
 		}
 
-		str := res.String()
+		str := res.Text('f')
 		dotIdx := strings.Index(str, ".")
 		if dotIdx == -1 {
 			fractionStr = ""
@@ -202,9 +201,9 @@ func (f *Format) Children() []sql.Expression {
 }
 
 // WithChildren implements the Expression interface.
-func (f *Format) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (f *Format) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if (len(children) == 2 && f.Locale == nil) || (len(children) == 3 && f.Locale != nil) {
-		return NewFormat(children...)
+		return NewFormat(ctx, children...)
 	}
 	return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 2)
 }

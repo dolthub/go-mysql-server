@@ -70,12 +70,12 @@ func (s *ShowTriggers) Children() []sql.Node {
 }
 
 // Schema implements the sql.Node interface.
-func (s *ShowTriggers) Schema() sql.Schema {
+func (s *ShowTriggers) Schema(ctx *sql.Context) sql.Schema {
 	return showTriggersSchema
 }
 
 // WithChildren implements the sql.Node interface.
-func (s *ShowTriggers) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (s *ShowTriggers) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(s, children...)
 }
 

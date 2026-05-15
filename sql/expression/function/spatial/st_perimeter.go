@@ -32,8 +32,8 @@ type Perimeter struct {
 var _ sql.FunctionExpression = (*Perimeter)(nil)
 var _ sql.CollationCoercible = (*Perimeter)(nil)
 
-// NewSTLength creates a new STX expression.
-func NewPerimeter(args ...sql.Expression) (sql.Expression, error) {
+// NewPerimeter creates a new Perimeter expression.
+func NewPerimeter(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) != 1 && len(args) != 2 {
 		return nil, sql.ErrInvalidArgumentNumber.New("ST_PERIMETER", "1 or 2", len(args))
 	}
@@ -51,7 +51,7 @@ func (p *Perimeter) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (p *Perimeter) Type() sql.Type {
+func (p *Perimeter) Type(ctx *sql.Context) sql.Type {
 	return types.Float64
 }
 
@@ -69,8 +69,8 @@ func (p *Perimeter) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (p *Perimeter) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewPerimeter(children...)
+func (p *Perimeter) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewPerimeter(ctx, children...)
 }
 
 // Eval implements the sql.Expression interface.

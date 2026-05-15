@@ -17,7 +17,6 @@ package expression
 import (
 	"testing"
 
-	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -229,7 +228,7 @@ func TestCaseType(t *testing.T) {
 		},
 		{
 			"int and decimal to decimal",
-			caseExpr(NewLiteral(int32(10), types.Int32), NewLiteral(decimal.NewFromInt(1), decimalType)),
+			caseExpr(NewLiteral(int32(10), types.Int32), NewLiteral(types.DecimalFromInt64(1), decimalType)),
 			decimalType,
 		},
 		{
@@ -246,7 +245,7 @@ func TestCaseType(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.t, tt.c.Type())
+			require.Equal(t, tt.t, tt.c.Type(sql.NewEmptyContext()))
 		})
 	}
 }

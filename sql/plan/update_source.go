@@ -27,17 +27,19 @@ type UpdateSource struct {
 	UnaryNode
 	UpdateExprs *UpdateExprs
 	Ignore      bool
+	ctx         *sql.Context
 }
 
 var _ sql.Node = (*UpdateSource)(nil)
 var _ sql.CollationCoercible = (*UpdateSource)(nil)
 
 // NewUpdateSource returns a new UpdateSource from the node and expressions given.
-func NewUpdateSource(node sql.Node, ignore bool, updateExprs *UpdateExprs) *UpdateSource {
+func NewUpdateSource(ctx *sql.Context, node sql.Node, ignore bool, updateExprs *UpdateExprs) *UpdateSource {
 	return &UpdateSource{
 		UnaryNode:   UnaryNode{node},
 		UpdateExprs: updateExprs,
 		Ignore:      ignore,
+		ctx:         ctx,
 	}
 }
 
@@ -51,16 +53,16 @@ func (u *UpdateSource) IsReadOnly() bool {
 }
 
 // WithExpressions implements the sql.Expressioner interface.
-func (u *UpdateSource) WithExpressions(newExprs ...sql.Expression) (sql.Node, error) {
+func (u *UpdateSource) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	var err error
 	ret := *u
-	ret.UpdateExprs, err = u.UpdateExprs.WithExpressions(newExprs)
+	ret.UpdateExprs, err = u.UpdateExprs.WithExpressions(exprs)
 	return &ret, err
 }
 
 // Schema implements sql.Node. The schema of an update is a concatenation of the old and new rows.
-func (u *UpdateSource) Schema() sql.Schema {
-	return append(u.Child.Schema(), u.Child.Schema()...)
+func (u *UpdateSource) Schema(ctx *sql.Context) sql.Schema {
+	return append(u.Child.Schema(ctx), u.Child.Schema(ctx)...)
 }
 
 // Resolved implements the Resolvable interface.
@@ -72,27 +74,27 @@ func (u *UpdateSource) String() string {
 	tp := sql.NewTreePrinter()
 	updateExprs := make([]string, u.UpdateExprs.Length())
 	for i, e := range u.UpdateExprs.AllExpressions() {
-		updateExprs[i] = sql.DebugString(e)
+		updateExprs[i] = sql.DebugString(u.ctx, e)
 	}
 	_ = tp.WriteNode("UpdateSource(%s)", strings.Join(updateExprs, ","))
 	_ = tp.WriteChildren(u.Child.String())
 	return tp.String()
 }
 
-func (u *UpdateSource) DebugString() string {
+func (u *UpdateSource) DebugString(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	updateExprs := make([]string, u.UpdateExprs.Length())
 	for i, e := range u.UpdateExprs.AllExpressions() {
-		updateExprs[i] = sql.DebugString(e)
+		updateExprs[i] = sql.DebugString(ctx, e)
 	}
 	_ = pr.WriteNode("UpdateSource(%s)", strings.Join(updateExprs, ","))
-	_ = pr.WriteChildren(sql.DebugString(u.Child))
+	_ = pr.WriteChildren(sql.DebugString(ctx, u.Child))
 	return pr.String()
 }
 
-func (u *UpdateSource) GetChildSchema() (sql.Schema, error) {
-	if nodeHasJoin(u.Child) {
-		return u.Child.Schema(), nil
+func (u *UpdateSource) GetChildSchema(ctx *sql.Context) (sql.Schema, error) {
+	if nodeHasJoin(ctx, u.Child) {
+		return u.Child.Schema(ctx), nil
 	}
 
 	table, err := GetUpdatable(u.Child)
@@ -100,12 +102,12 @@ func (u *UpdateSource) GetChildSchema() (sql.Schema, error) {
 		return nil, err
 	}
 
-	return table.Schema(), nil
+	return table.Schema(ctx), nil
 }
 
-func nodeHasJoin(node sql.Node) bool {
+func nodeHasJoin(ctx *sql.Context, node sql.Node) bool {
 	hasJoinNode := false
-	transform.InspectWithOpaque(node, func(node sql.Node) bool {
+	transform.InspectWithOpaque(ctx, node, func(ctx *sql.Context, node sql.Node) bool {
 		switch node.(type) {
 		case *JoinNode:
 			hasJoinNode = true
@@ -118,7 +120,7 @@ func nodeHasJoin(node sql.Node) bool {
 	return hasJoinNode
 }
 
-func (u *UpdateSource) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (u *UpdateSource) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(u, len(children), 1)
 	}

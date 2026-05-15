@@ -23,7 +23,7 @@ type Table interface {
 	Nameable
 	fmt.Stringer
 	// Schema returns the table's schema.
-	Schema() Schema
+	Schema(*Context) Schema
 	// Collation returns the table's collation.
 	Collation() CollationID
 	// Partitions returns the table's partitions in an iterator.
@@ -95,7 +95,7 @@ type FilteredTable interface {
 	// Filters returns the filter expressions that have been applied to this table.
 	Filters() []Expression
 	// HandledFilters returns the subset of the filter expressions given that this table can apply.
-	HandledFilters(filters []Expression) []Expression
+	HandledFilters(ctx *Context, filters []Expression) []Expression
 	// WithFilters returns a table with the given filter expressions applied.
 	WithFilters(ctx *Context, filters []Expression) Table
 }
@@ -115,7 +115,7 @@ type ProjectedTable interface {
 	// WithProjections returns a version of this table with only the subset of columns named. Calls to Schema must
 	// only include these columns. A zero-length slice of column names is valid and indicates that rows from this table
 	// should be spooled, but no columns should be returned. A nil slice will never be provided.
-	WithProjections(colNames []string) Table
+	WithProjections(ctx *Context, colNames []string) (Table, error)
 	// Projections returns the names of the column projections applied to this table, or nil if no projection is applied
 	// and all columns of the schema will be returned.
 	Projections() []string
@@ -198,9 +198,9 @@ type ForeignKeyTable interface {
 	// already exists on any other table within the database.
 	AddForeignKey(ctx *Context, fk ForeignKeyConstraint) error
 	// DropForeignKey removes a foreign key from the table.
-	DropForeignKey(ctx *Context, fkName string) error
+	DropForeignKey(ctx *Context, fkName string, tableName string, schemaName string) error
 	// UpdateForeignKey updates the given foreign key constraint. May range from updated table names to setting the
-	// IsResolved boolean.
+	// IsResolved boolean. The new foreign key's table name and schema name are used to search the foreign key.
 	UpdateForeignKey(ctx *Context, fkName string, fk ForeignKeyConstraint) error
 	// GetForeignKeyEditor returns a ForeignKeyEditor for this table.
 	GetForeignKeyEditor(ctx *Context) ForeignKeyEditor
@@ -256,10 +256,29 @@ type CommentAlterableTable interface {
 	ModifyComment(ctx *Context, comment string) error
 }
 
+// TargetRowSizeAlterableTable represents a table that supports altering its target row size.
+// The exact meaning of this value is implementation dependent.
+type TargetRowSizeAlterableTable interface {
+	Table
+	// ModifyTargetRowSize sets that table's target row size.
+	ModifyTargetRowSize(ctx *Context, sizeInBytes uint64) error
+}
+
+// TargetRowSizeTable represents a table that can report its adaptive encoding max row size.
+// The exact meaning of this value is implementation dependent.
+type TargetRowSizeTable interface {
+	Table
+	// HasTargetRowSize returns whether the table has a target row size that's different from the table's default.
+	// This is useful when determining whether to display the target row size in SHOW CREATE TABLE statements.
+	HasTargetRowSize() bool
+	// GetTargetRowSize returns the table's target row size.
+	GetTargetRowSize() uint64
+}
+
 // PrimaryKeyTable is a table with a primary key.
 type PrimaryKeyTable interface {
 	// PrimaryKeySchema returns this table's PrimaryKeySchema
-	PrimaryKeySchema() PrimaryKeySchema
+	PrimaryKeySchema(ctx *Context) PrimaryKeySchema
 }
 
 // PrimaryKeyAlterableTable represents a table that supports primary key changes.
@@ -464,7 +483,7 @@ type UnresolvedTable interface {
 	Database() Database
 	// WithAsOf returns a copy of this versioned table with its AsOf
 	// field set to the given value. Analogous to WithChildren.
-	WithAsOf(asOf Expression) (Node, error)
+	WithAsOf(ctx *Context, asOf Expression) (Node, error)
 	// AsOf returns this table's asof expression.
 	AsOf() Expression
 }
@@ -492,9 +511,9 @@ type MutableTableNode interface {
 	TableNode
 	// WithTable returns a new TableNode with the table given. If the MutableTableNode has a MutableTableWrapper, it must
 	// re-wrap the table given with this wrapper.
-	WithTable(Table) (MutableTableNode, error)
+	WithTable(*Context, Table) (MutableTableNode, error)
 	// ReplaceTable replaces the table with the table given, with no re-wrapping semantics.
-	ReplaceTable(table Table) (MutableTableNode, error)
+	ReplaceTable(ctx *Context, table Table) (MutableTableNode, error)
 	// WrappedTable returns the Table this node wraps, without unwinding any additional layers of wrapped tables.
 	WrappedTable() Table
 }

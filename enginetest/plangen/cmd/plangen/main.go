@@ -202,7 +202,7 @@ func generatePlansForSuite(spec PlanSpec, w *bytes.Buffer) error {
 			ctx := enginetest.NewContext(harness)
 			node := analyzeQuery(ctx, engine, tt.Query)
 			_, _ = w.WriteString(`ExpectedPlan: `)
-			planString := sql.Describe(enginetest.ExtractQueryNode(node), sql.DescribeOptions{
+			planString := sql.Describe(ctx, enginetest.ExtractQueryNode(node), sql.DescribeOptions{
 				Debug: true,
 			})
 			writePlanString(w, planString)
@@ -211,7 +211,7 @@ func generatePlansForSuite(spec PlanSpec, w *bytes.Buffer) error {
 				var planString string
 				if tt.ExpectedEstimates != "skip" {
 					_, _ = w.WriteString(`ExpectedEstimates: `)
-					planString = sql.Describe(enginetest.ExtractQueryNode(node), sql.DescribeOptions{
+					planString = sql.Describe(ctx, enginetest.ExtractQueryNode(node), sql.DescribeOptions{
 						Estimates: true,
 					})
 					writePlanString(w, planString)
@@ -225,7 +225,7 @@ func generatePlansForSuite(spec PlanSpec, w *bytes.Buffer) error {
 					if err != nil {
 						exit(fmt.Errorf("%w\nfailed to execute query: %s", err, tt.Query))
 					}
-					planString = sql.Describe(enginetest.ExtractQueryNode(node), sql.DescribeOptions{
+					planString = sql.Describe(ctx, enginetest.ExtractQueryNode(node), sql.DescribeOptions{
 						Analyze:   true,
 						Estimates: true,
 					})
@@ -296,7 +296,7 @@ func generatePlansForScriptSuite(spec PlanSpec, w *bytes.Buffer) error {
 
 			node := analyzeQuery(ctx, engine, assertion.Query)
 			w.WriteString("\t\t\t\tExpectedPlan: ")
-			planString := sql.Describe(enginetest.ExtractQueryNode(node), sql.DescribeOptions{
+			planString := sql.Describe(ctx, enginetest.ExtractQueryNode(node), sql.DescribeOptions{
 				Debug: true,
 			})
 			writePlanString(w, planString)

@@ -15,10 +15,11 @@
 package sql_test
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
-	"github.com/shopspring/decimal"
+	"github.com/cockroachdb/apd/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -179,22 +180,22 @@ func TestRangeOverlapTwoColumns(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		t.Run(fmt.Sprintf("Expr:  %s\nRange: %s", test.reference.String(), test.ranges.DebugString()), func(t *testing.T) {
-			discreteRanges, err := sql.RemoveOverlappingRanges(test.ranges...)
+		t.Run(fmt.Sprintf("Expr:  %s\nRange: %s", test.reference.String(), test.ranges.DebugString(ctx)), func(t *testing.T) {
+			discreteRanges, err := sql.RemoveOverlappingRanges(ctx, test.ranges...)
 			require.NoError(t, err)
-			verificationRanges, err := removeOverlappingRangesVerification(test.ranges...)
+			verificationRanges, err := removeOverlappingRangesVerification(ctx, test.ranges...)
 			require.NoError(t, err)
 			for _, row := range values2 {
 				referenceBool, err := test.reference.Eval(ctx, row)
 				require.NoError(t, err)
-				rangeBool := evalRanges(t, discreteRanges, row)
-				assert.Equal(t, referenceBool, rangeBool, fmt.Sprintf("%v: DiscreteRanges: %s", row, discreteRanges.DebugString()))
+				rangeBool := evalRanges(t, ctx, discreteRanges, row)
+				assert.Equal(t, referenceBool, rangeBool, fmt.Sprintf("%v: DiscreteRanges: %s", row, discreteRanges.DebugString(ctx)))
 			}
-			discreteRanges, err = sql.SortRanges(discreteRanges...)
+			discreteRanges, err = sql.SortRanges(ctx, discreteRanges...)
 			require.NoError(t, err)
-			verificationRanges, err = sql.SortRanges(verificationRanges...)
+			verificationRanges, err = sql.SortRanges(ctx, verificationRanges...)
 			require.NoError(t, err)
-			ok, err := discreteRanges.Equals(verificationRanges)
+			ok, err := discreteRanges.Equals(ctx, verificationRanges)
 			require.NoError(t, err)
 			assert.True(t, ok)
 		})
@@ -294,22 +295,22 @@ func TestRangeOverlapThreeColumns(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		t.Run(fmt.Sprintf("Expr:  %s\nRange: %s", test.reference.String(), test.ranges.DebugString()), func(t *testing.T) {
-			discreteRanges, err := sql.RemoveOverlappingRanges(test.ranges...)
+		t.Run(fmt.Sprintf("Expr:  %s\nRange: %s", test.reference.String(), test.ranges.DebugString(ctx)), func(t *testing.T) {
+			discreteRanges, err := sql.RemoveOverlappingRanges(ctx, test.ranges...)
 			require.NoError(t, err)
-			verificationRanges, err := removeOverlappingRangesVerification(test.ranges...)
+			verificationRanges, err := removeOverlappingRangesVerification(ctx, test.ranges...)
 			require.NoError(t, err)
 			for _, row := range values3 {
 				referenceBool, err := test.reference.Eval(ctx, row)
 				require.NoError(t, err)
-				rangeBool := evalRanges(t, discreteRanges, row)
-				assert.Equal(t, referenceBool, rangeBool, fmt.Sprintf("%v: DiscreteRanges: %s", row, discreteRanges.DebugString()))
+				rangeBool := evalRanges(t, ctx, discreteRanges, row)
+				assert.Equal(t, referenceBool, rangeBool, fmt.Sprintf("%v: DiscreteRanges: %s", row, discreteRanges.DebugString(ctx)))
 			}
-			discreteRanges, err = sql.SortRanges(discreteRanges...)
+			discreteRanges, err = sql.SortRanges(ctx, discreteRanges...)
 			require.NoError(t, err)
-			verificationRanges, err = sql.SortRanges(verificationRanges...)
+			verificationRanges, err = sql.SortRanges(ctx, verificationRanges...)
 			require.NoError(t, err)
-			ok, err := discreteRanges.Equals(verificationRanges)
+			ok, err := discreteRanges.Equals(ctx, verificationRanges)
 			require.NoError(t, err)
 			assert.True(t, ok)
 		})
@@ -383,22 +384,22 @@ func TestRangeOverlapNulls(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		t.Run(fmt.Sprintf("Expr:  %s\nRange: %s", test.reference.String(), test.ranges.DebugString()), func(t *testing.T) {
-			discreteRanges, err := sql.RemoveOverlappingRanges(test.ranges...)
+		t.Run(fmt.Sprintf("Expr:  %s\nRange: %s", test.reference.String(), test.ranges.DebugString(ctx)), func(t *testing.T) {
+			discreteRanges, err := sql.RemoveOverlappingRanges(ctx, test.ranges...)
 			require.NoError(t, err)
-			verificationRanges, err := removeOverlappingRangesVerification(test.ranges...)
+			verificationRanges, err := removeOverlappingRangesVerification(ctx, test.ranges...)
 			require.NoError(t, err)
 			for _, row := range valuesNull {
 				referenceBool, err := test.reference.Eval(ctx, row)
 				require.NoError(t, err)
-				rangeBool := evalRanges(t, discreteRanges, row)
-				assert.Equal(t, referenceBool, rangeBool, fmt.Sprintf("%v: DiscreteRanges: %s", row, discreteRanges.DebugString()))
+				rangeBool := evalRanges(t, ctx, discreteRanges, row)
+				assert.Equal(t, referenceBool, rangeBool, fmt.Sprintf("%v: DiscreteRanges: %s", row, discreteRanges.DebugString(ctx)))
 			}
-			discreteRanges, err = sql.SortRanges(discreteRanges...)
+			discreteRanges, err = sql.SortRanges(ctx, discreteRanges...)
 			require.NoError(t, err)
-			verificationRanges, err = sql.SortRanges(verificationRanges...)
+			verificationRanges, err = sql.SortRanges(ctx, verificationRanges...)
 			require.NoError(t, err)
-			ok, err := discreteRanges.Equals(verificationRanges)
+			ok, err := discreteRanges.Equals(ctx, verificationRanges)
 			require.NoError(t, err)
 			assert.True(t, ok)
 		})
@@ -426,12 +427,12 @@ func TestComplexRange(t *testing.T) {
 				r(
 					sql.MySQLRangeColumnExpr{LowerBound: sql.AboveNull{}, UpperBound: sql.Above{Key: 953}, Typ: types.Int16},
 					sql.MySQLRangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Int16},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: decimal.New(53978, -2)}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: apd.New(53978, -2)}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
 				),
 				r(
 					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: int16(234)}, UpperBound: sql.Above{Key: int16(234)}, Typ: types.Int16},
 					sql.MySQLRangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Int16},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: decimal.New(48843, -2)}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: apd.New(48843, -2)}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
 				),
 				r(
 					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: int16(258)}, UpperBound: sql.Above{Key: int16(258)}, Typ: types.Int16},
@@ -441,12 +442,12 @@ func TestComplexRange(t *testing.T) {
 				r(
 					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: int16(372)}, UpperBound: sql.Above{Key: int16(372)}, Typ: types.Int16},
 					sql.MySQLRangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Int16},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: decimal.New(48843, -2)}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: apd.New(48843, -2)}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
 				),
 				r(
 					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: int16(583)}, UpperBound: sql.Above{Key: int16(583)}, Typ: types.Int16},
 					sql.MySQLRangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Int16},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: decimal.New(48843, -2)}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: apd.New(48843, -2)}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
 				),
 				r(
 					sql.MySQLRangeColumnExpr{LowerBound: sql.Above{Key: int16(883)}, UpperBound: sql.AboveAll{}, Typ: types.Int16},
@@ -567,24 +568,25 @@ func TestComplexRange(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		t.Run(fmt.Sprintf("Range: %s", test.ranges.DebugString()), func(t *testing.T) {
+		ctx := sql.NewEmptyContext()
+		t.Run(fmt.Sprintf("Range: %s", test.ranges.DebugString(ctx)), func(t *testing.T) {
 			if test.skip {
 				t.Skip()
 			}
-			discreteRanges, err := sql.RemoveOverlappingRanges(test.ranges...)
+			discreteRanges, err := sql.RemoveOverlappingRanges(ctx, test.ranges...)
 			require.NoError(t, err)
-			verificationRanges, err := removeOverlappingRangesVerification(test.ranges...)
+			verificationRanges, err := removeOverlappingRangesVerification(ctx, test.ranges...)
 			require.NoError(t, err)
-			discreteRanges, err = sql.SortRanges(discreteRanges...)
+			discreteRanges, err = sql.SortRanges(ctx, discreteRanges...)
 			require.NoError(t, err)
-			verificationRanges, err = sql.SortRanges(verificationRanges...)
+			verificationRanges, err = sql.SortRanges(ctx, verificationRanges...)
 			require.NoError(t, err)
-			ok, err := discreteRanges.Equals(verificationRanges)
+			ok, err := discreteRanges.Equals(ctx, verificationRanges)
 			require.NoError(t, err)
 			assert.True(t, ok)
 			if !ok {
-				t.Logf("DiscreteRanges: %s", discreteRanges.DebugString())
-				t.Logf("VerificationRanges: %s", verificationRanges.DebugString())
+				t.Logf("DiscreteRanges: %s", discreteRanges.DebugString(ctx))
+				t.Logf("VerificationRanges: %s", verificationRanges.DebugString(ctx))
 			}
 
 			// TODO: need a way to either verify that the ranges cover the area, or that they're the same
@@ -592,7 +594,7 @@ func TestComplexRange(t *testing.T) {
 				for j := i + 1; j < len(discreteRanges); j++ {
 					r1 := discreteRanges[i]
 					r2 := discreteRanges[j]
-					hasOverlap, err := r1.Overlaps(r2)
+					hasOverlap, err := r1.Overlaps(ctx, r2)
 					if hasOverlap {
 						t.Logf("Overlap: %s\n%s", r1.String(), r2.String())
 					}
@@ -626,10 +628,10 @@ func setup() (x, y, z sql.Expression, values2, values3, valuesNull [][]interface
 	return
 }
 
-func evalRanges(t *testing.T, ranges []sql.MySQLRange, row []interface{}) bool {
+func evalRanges(t *testing.T, ctx context.Context, ranges []sql.MySQLRange, row []interface{}) bool {
 	found := false
 	for _, rang := range ranges {
-		if evalRange(t, rang, row) {
+		if evalRange(t, ctx, rang, row) {
 			if !found {
 				found = true
 			} else {
@@ -640,7 +642,7 @@ func evalRanges(t *testing.T, ranges []sql.MySQLRange, row []interface{}) bool {
 	return found
 }
 
-func evalRange(t *testing.T, rang sql.MySQLRange, row []interface{}) bool {
+func evalRange(t *testing.T, ctx context.Context, rang sql.MySQLRange, row []interface{}) bool {
 	rowRange := make(sql.MySQLRange, len(rang))
 	for i, val := range row {
 		if val == nil {
@@ -649,12 +651,12 @@ func evalRange(t *testing.T, rang sql.MySQLRange, row []interface{}) bool {
 			rowRange[i] = sql.ClosedRangeColumnExpr(val, val, rangeType)
 		}
 	}
-	ok, err := rang.IsSupersetOf(rowRange)
+	ok, err := rang.IsSupersetOf(ctx, rowRange)
 	require.NoError(t, err)
 	return ok
 }
 
-func removeOverlappingRangesVerification(ranges ...sql.MySQLRange) (sql.MySQLRangeCollection, error) {
+func removeOverlappingRangesVerification(ctx context.Context, ranges ...sql.MySQLRange) (sql.MySQLRangeCollection, error) {
 	if len(ranges) == 0 {
 		return nil, nil
 	}
@@ -663,7 +665,7 @@ func removeOverlappingRangesVerification(ranges ...sql.MySQLRange) (sql.MySQLRan
 	for i := 0; i < len(ranges); i++ {
 		hadOverlap := false
 		for nri := 0; nri < len(newRanges); nri++ {
-			if resultingRanges, ok, err := ranges[i].RemoveOverlap(newRanges[nri]); err != nil {
+			if resultingRanges, ok, err := ranges[i].RemoveOverlap(ctx, newRanges[nri]); err != nil {
 				return nil, err
 			} else if ok {
 				hadOverlap = true
@@ -837,12 +839,13 @@ func and(expressions ...sql.Expression) sql.Expression {
 }
 
 func buildTestRangeTree(ranges []sql.MySQLRange) (*sql.MySQLRangeColumnExprTree, error) {
+	ctx := context.Background()
 	tree, err := sql.NewMySQLRangeColumnExprTree(ranges[0], []sql.Type{rangeType})
 	if err != nil {
 		return nil, err
 	}
 	for _, rng := range ranges[1:] {
-		err = tree.Insert(rng)
+		err = tree.Insert(ctx, rng)
 		if err != nil {
 			return nil, err
 		}
@@ -1012,7 +1015,7 @@ func TestRangeTreeInsert(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, test.setupExp, tree.String())
 
-			err = tree.Insert(test.rng)
+			err = tree.Insert(context.Background(), test.rng)
 			require.NoError(t, err)
 			assert.Equal(t, test.exp, tree.String())
 		})
@@ -1229,7 +1232,7 @@ func TestRangeTreeRemove(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, test.setupExp, tree.String())
 
-			err = tree.Remove(test.rng)
+			err = tree.Remove(context.Background(), test.rng)
 			require.NoError(t, err)
 			assert.Equal(t, test.exp, tree.String())
 		})

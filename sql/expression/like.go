@@ -22,6 +22,8 @@ import (
 	"sync"
 	"unicode/utf8"
 
+	"github.com/dolthub/vitess/go/mysql"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -46,7 +48,7 @@ type likeMatcherErrTuple struct {
 // NewLike creates a new LIKE expression.
 func NewLike(left, right, escape sql.Expression) sql.Expression {
 	var cached = true
-	sql.Inspect(right, func(e sql.Expression) bool {
+	sql.Inspect(nil /*ctx isn't used here*/, right, func(_ *sql.Context, e sql.Expression) bool {
 		if _, ok := e.(*GetField); ok {
 			cached = false
 		}
@@ -63,7 +65,7 @@ func NewLike(left, right, escape sql.Expression) sql.Expression {
 }
 
 // Type implements the sql.Expression interface.
-func (l *Like) Type() sql.Type { return types.Boolean }
+func (l *Like) Type(ctx *sql.Context) sql.Type { return types.Boolean }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (l *Like) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
@@ -87,7 +89,7 @@ func (l *Like) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 	if _, ok := left.(string); !ok {
 		// Use type-aware conversion for enum types
-		leftStr, _, err := types.ConvertToCollatedString(ctx, left, l.Left().Type())
+		leftStr, _, err := types.ConvertToCollatedString(ctx, left, l.Left().Type(ctx))
 		if err != nil {
 			return nil, err
 		}
@@ -102,6 +104,7 @@ func (l *Like) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if right == nil {
 		return nil, nil
 	}
+	var tpl likeMatcherErrTuple
 	if !l.cached {
 		// for non-cached regex every time create a new matcher
 		collation, _ := l.CollationCoercibility(ctx)
@@ -116,10 +119,18 @@ func (l *Like) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 				},
 			}
 		})
-		tpl := l.pool.Get().(likeMatcherErrTuple)
+		tpl = l.pool.Get().(likeMatcherErrTuple)
 		lm, err = tpl.matcher, tpl.err
 	}
 	if err != nil {
+		if sql.ErrCharSetInvalidString.Is(err) {
+			// MySQL returns no match and issues warning 1300 instead of an error.
+			if l.cached {
+				l.pool.Put(tpl)
+			}
+			ctx.Warn(mysql.ERInvalidCharacterString, "%s", err.Error())
+			return nil, nil
+		}
 		return nil, err
 	}
 
@@ -141,7 +152,7 @@ func (l *Like) evalRight(ctx *sql.Context, row sql.Row) (right *string, escape r
 	}
 	if _, ok := rightVal.(string); !ok {
 		// Use type-aware conversion for enum types
-		rightStr, _, err := types.ConvertToCollatedString(ctx, rightVal, l.Right().Type())
+		rightStr, _, err := types.ConvertToCollatedString(ctx, rightVal, l.Right().Type(ctx))
 		if err != nil {
 			return nil, 0, err
 		}
@@ -179,7 +190,7 @@ func (l *Like) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (l *Like) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (l *Like) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(l, len(children), 2)
 	}

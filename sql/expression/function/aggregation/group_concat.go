@@ -42,7 +42,7 @@ var _ sql.Aggregation = &GroupConcat{}
 var _ sql.WindowAdaptableExpression = (*GroupConcat)(nil)
 var _ sql.OrderedAggregation = (*GroupConcat)(nil)
 
-func NewEmptyGroupConcat() sql.Expression {
+func NewEmptyGroupConcat(ctx *sql.Context) sql.Expression {
 	return &GroupConcat{}
 }
 
@@ -73,7 +73,7 @@ func (a *GroupConcat) WithId(id sql.ColumnId) sql.IdExpression {
 }
 
 // WithWindow implements sql.Aggregation
-func (g *GroupConcat) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
+func (g *GroupConcat) WithWindow(ctx *sql.Context, window *sql.WindowDefinition) sql.WindowAdaptableExpression {
 	ng := *g
 	ng.window = window
 	return &ng
@@ -85,7 +85,7 @@ func (g *GroupConcat) Window() *sql.WindowDefinition {
 }
 
 // NewBuffer creates a new buffer for the aggregation.
-func (g *GroupConcat) NewBuffer() (sql.AggregationBuffer, error) {
+func (g *GroupConcat) NewBuffer(ctx *sql.Context) (sql.AggregationBuffer, error) {
 	var rows []sql.Row
 	distinctSet := make(map[string]bool)
 	return &groupConcatBuffer{
@@ -95,8 +95,8 @@ func (g *GroupConcat) NewBuffer() (sql.AggregationBuffer, error) {
 	}, nil
 }
 
-// NewWindowFunctionAggregation implements sql.WindowAdaptableExpression
-func (g *GroupConcat) NewWindowFunction() (sql.WindowFunction, error) {
+// NewWindowFunction implements sql.WindowAdaptableExpression
+func (g *GroupConcat) NewWindowFunction(ctx *sql.Context) (sql.WindowFunction, error) {
 	return NewGroupConcatAgg(g), nil
 }
 
@@ -158,7 +158,7 @@ func (g *GroupConcat) String() string {
 	return sb.String()
 }
 
-func (g *GroupConcat) DebugString() string {
+func (g *GroupConcat) DebugString(ctx *sql.Context) string {
 	sb := strings.Builder{}
 	sb.WriteString("group_concat(")
 	if g.distinct != "" {
@@ -168,7 +168,7 @@ func (g *GroupConcat) DebugString() string {
 	if g.selectExprs != nil {
 		var exprs = make([]string, len(g.selectExprs))
 		for i, expr := range g.selectExprs {
-			exprs[i] = sql.DebugString(expr)
+			exprs[i] = sql.DebugString(ctx, expr)
 		}
 
 		sb.WriteString(strings.Join(exprs, ", "))
@@ -180,7 +180,7 @@ func (g *GroupConcat) DebugString() string {
 			if i > 0 {
 				sb.WriteString(", ")
 			}
-			sb.WriteString(sql.DebugString(ob))
+			sb.WriteString(sql.DebugString(ctx, ob))
 		}
 	}
 
@@ -195,7 +195,7 @@ func (g *GroupConcat) DebugString() string {
 // Type implements the Expression interface.
 // cc: https://dev.mysql.com/doc/refman/8.0/en/aggregate-functions.html#function_group-concat for explanations
 // on return type.
-func (g *GroupConcat) Type() sql.Type {
+func (g *GroupConcat) Type(ctx *sql.Context) sql.Type {
 	if g.returnType == types.Blob {
 		if g.maxLen <= 512 {
 			return types.MustCreateString(query.Type_VARBINARY, 512, sql.Collation_binary)
@@ -212,9 +212,9 @@ func (g *GroupConcat) Type() sql.Type {
 }
 
 // IsNullable implements the Expression interface.
-func (g *GroupConcat) IsNullable() bool {
+func (g *GroupConcat) IsNullable(ctx *sql.Context) bool {
 	for _, se := range g.selectExprs {
-		if !se.IsNullable() {
+		if !se.IsNullable(ctx) {
 			return false
 		}
 	}
@@ -227,7 +227,7 @@ func (g *GroupConcat) Children() []sql.Expression {
 }
 
 // WithChildren implements the Expression interface.
-func (g *GroupConcat) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (g *GroupConcat) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) == 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(GroupConcat{}, len(children), 2)
 	}
@@ -236,7 +236,7 @@ func (g *GroupConcat) WithChildren(children ...sql.Expression) (sql.Expression, 
 	sortFieldMarker := len(g.sf)
 	orderByExpr := children[:len(g.sf)]
 
-	return NewGroupConcat(g.distinct, g.sf.FromExpressions(orderByExpr...), g.separator, children[sortFieldMarker:], g.maxLen), nil
+	return NewGroupConcat(g.distinct, g.sf.FromExpressions(ctx, orderByExpr...), g.separator, children[sortFieldMarker:], g.maxLen), nil
 }
 
 // OutputExpressions implements the OrderedAggregation interface.
@@ -282,7 +282,7 @@ func (g *groupConcatBuffer) Update(ctx *sql.Context, originalRow sql.Row) error 
 	} else {
 		// Use type-aware conversion for enum types
 		if len(g.gc.selectExprs) > 0 {
-			vs, _, err = types.ConvertToCollatedString(ctx, evalRow[0], g.gc.selectExprs[0].Type())
+			vs, _, err = types.ConvertToCollatedString(ctx, evalRow[0], g.gc.selectExprs[0].Type(ctx))
 			if err != nil {
 				return err
 			}
@@ -373,7 +373,7 @@ func (g *groupConcatBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 }
 
 // Dispose implements the Disposable interface.
-func (g *groupConcatBuffer) Dispose() {
+func (g *groupConcatBuffer) Dispose(ctx *sql.Context) {
 }
 
 func evalExprs(ctx *sql.Context, exprs []sql.Expression, row sql.Row) (sql.Row, sql.Type, error) {
@@ -387,7 +387,7 @@ func evalExprs(ctx *sql.Context, exprs []sql.Expression, row sql.Row) (sql.Row, 
 		}
 
 		// If every expression returns Blob type return Blob otherwise return Text.
-		if expr.Type() != types.Blob {
+		if expr.Type(ctx) != types.Blob {
 			retType = types.Text
 		}
 	}

@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/sqltypes"
-	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
@@ -177,27 +177,27 @@ func TestDiv(t *testing.T) {
 
 		// Decimals
 		{
-			left:  NewLiteral(decimal.New(1, 0), types.MustCreateDecimalType(10, 0)),
-			right: NewLiteral(decimal.New(3, 0), types.MustCreateDecimalType(10, 0)),
+			left:  NewLiteral(apd.New(1, 0), types.MustCreateDecimalType(10, 0)),
+			right: NewLiteral(apd.New(3, 0), types.MustCreateDecimalType(10, 0)),
 			exp:   "0.3333",
 		},
 		{
-			left:  NewLiteral(decimal.New(1000, -3), types.MustCreateDecimalType(10, 3)),
-			right: NewLiteral(decimal.New(3, 0), types.MustCreateDecimalType(10, 0)),
+			left:  NewLiteral(apd.New(1000, -3), types.MustCreateDecimalType(10, 3)),
+			right: NewLiteral(apd.New(3, 0), types.MustCreateDecimalType(10, 0)),
 			exp:   "0.3333333",
 		},
 		{
-			left:  NewLiteral(decimal.New(1, 0), types.MustCreateDecimalType(10, 0)),
-			right: NewLiteral(decimal.New(3000, -3), types.MustCreateDecimalType(10, 3)),
+			left:  NewLiteral(apd.New(1, 0), types.MustCreateDecimalType(10, 0)),
+			right: NewLiteral(apd.New(3000, -3), types.MustCreateDecimalType(10, 3)),
 			exp:   "0.3333",
 		},
 		{
-			left:  NewLiteral(decimal.New(314159, -5), types.MustCreateDecimalType(10, 5)),
-			right: NewLiteral(decimal.New(3, 0), types.MustCreateDecimalType(10, 0)),
+			left:  NewLiteral(apd.New(314159, -5), types.MustCreateDecimalType(10, 5)),
+			right: NewLiteral(apd.New(3, 0), types.MustCreateDecimalType(10, 0)),
 			exp:   "1.047196666",
 		},
 		{
-			left:  NewLiteral(decimal.NewFromFloat(3.14159), types.MustCreateDecimalType(10, 5)),
+			left:  NewLiteral(types.DecimalFromFloat64(3.14159), types.MustCreateDecimalType(10, 5)),
 			right: NewLiteral(3, types.Int64),
 			exp:   "1.047196666",
 		},
@@ -284,18 +284,19 @@ func TestDiv(t *testing.T) {
 		},
 		{
 			left:  NewLiteral("1", types.Text),
-			right: NewLiteral(decimal.New(3, 0), types.MustCreateDecimalType(10, 0)),
+			right: NewLiteral(apd.New(3, 0), types.MustCreateDecimalType(10, 0)),
 			exp:   0.3333333333333333,
 		},
 		{
-			left:  NewLiteral(decimal.New(1, 0), types.MustCreateDecimalType(10, 0)),
+			left:  NewLiteral(apd.New(1, 0), types.MustCreateDecimalType(10, 0)),
 			right: NewLiteral("3", types.Text),
 			exp:   0.3333333333333333,
 		},
 	}
 
 	for _, tt := range testCases {
-		name := fmt.Sprintf("%s(%v)/%s(%v)", tt.left.Type(), tt.left, tt.right.Type(), tt.right)
+		ctx := sql.NewEmptyContext()
+		name := fmt.Sprintf("%s(%v)/%s(%v)", tt.left.Type(ctx), tt.left, tt.right.Type(ctx), tt.right)
 		t.Run(name, func(t *testing.T) {
 			require := require.New(t)
 			if tt.skip {
@@ -309,8 +310,8 @@ func TestDiv(t *testing.T) {
 				return
 			}
 			require.NoError(err)
-			if dec, ok := result.(decimal.Decimal); ok {
-				result = dec.StringFixed(dec.Exponent() * -1)
+			if dec, ok := result.(*apd.Decimal); ok {
+				result = dec.Text('f')
 			}
 			assert.Equal(t, tt.exp, result)
 		})
@@ -327,15 +328,16 @@ func TestDivUsesFloatsInternally(t *testing.T) {
 
 	result, err := topDiv.Eval(sql.NewEmptyContext(), sql.NewRow(250, 2, 5, 2))
 	require.NoError(t, err)
-	dec, isDecimal := result.(decimal.Decimal)
+	dec, isDecimal := result.(*apd.Decimal)
 	require.True(t, isDecimal)
 	require.Equal(t, "12.5", dec.String())
 
 	// Internal nodes should use floats for division with integers (for performance reasons), but the top node
 	// should return a Decimal (to match MySQL's behavior).
-	require.Equal(t, types.Float64, bottomDiv.Type())
-	require.Equal(t, types.Float64, middleDiv.Type())
-	require.True(t, types.IsDecimal(topDiv.Type()))
+	ctx := sql.NewEmptyContext()
+	require.Equal(t, types.Float64, bottomDiv.Type(ctx))
+	require.Equal(t, types.Float64, middleDiv.Type(ctx))
+	require.True(t, types.IsDecimal(topDiv.Type(ctx)))
 }
 
 func TestIntDiv(t *testing.T) {
@@ -389,8 +391,8 @@ func BenchmarkDivInt(b *testing.B) {
 		res, err = div.Eval(ctx, nil)
 		require.NoError(err)
 	}
-	if dec, ok := res.(decimal.Decimal); ok {
-		res = dec.StringFixed(dec.Exponent() * -1)
+	if dec, ok := res.(*apd.Decimal); ok {
+		res = dec.Text('f')
 	}
 	exp := "0.3333"
 	if res != exp {
@@ -425,8 +427,8 @@ func BenchmarkDivHighScaleDecimals(b *testing.B) {
 	require := require.New(b)
 	ctx := sql.NewEmptyContext()
 	div := NewDiv(
-		NewLiteral(decimal.NewFromFloat(0.123456789), types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, types.DecimalTypeMaxScale)),
-		NewLiteral(decimal.NewFromFloat(0.987654321), types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, types.DecimalTypeMaxScale)),
+		NewLiteral(types.DecimalFromFloat64(0.123456789), types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, types.DecimalTypeMaxScale)),
+		NewLiteral(types.DecimalFromFloat64(0.987654321), types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, types.DecimalTypeMaxScale)),
 	)
 	var res interface{}
 	var err error
@@ -434,8 +436,8 @@ func BenchmarkDivHighScaleDecimals(b *testing.B) {
 		res, err = div.Eval(ctx, nil)
 		require.NoError(err)
 	}
-	if dec, ok := res.(decimal.Decimal); ok {
-		res = dec.StringFixed(dec.Exponent() * -1)
+	if dec, ok := res.(*apd.Decimal); ok {
+		res = dec.Text('f')
 	}
 	exp := "0.124999998860937500014238281250"
 	if res != exp {
@@ -458,8 +460,8 @@ func BenchmarkDivManyInts(b *testing.B) {
 		res, err = div.Eval(ctx, nil)
 		require.NoError(err)
 	}
-	if dec, ok := res.(decimal.Decimal); ok {
-		res = dec.StringFixed(dec.Exponent() * -1)
+	if dec, ok := res.(*apd.Decimal); ok {
+		res = dec.Text('f')
 	}
 	exp := "0.000002755731922398589054232804"
 	if res != exp {
@@ -492,9 +494,9 @@ func BenchmarkManyFloats(b *testing.B) {
 // BenchmarkDivManyDecimals-16        52053             23134 ns/op
 func BenchmarkDivManyDecimals(b *testing.B) {
 	require := require.New(b)
-	var div sql.Expression = NewLiteral(decimal.NewFromInt(int64(1)), types.DecimalType_{})
+	var div sql.Expression = NewLiteral(types.DecimalFromInt64(int64(1)), types.DecimalType_{})
 	for i := 2; i < 10; i++ {
-		div = NewDiv(div, NewLiteral(decimal.NewFromInt(int64(i)), types.DecimalType_{}))
+		div = NewDiv(div, NewLiteral(types.DecimalFromInt64(int64(i)), types.DecimalType_{}))
 	}
 	ctx := sql.NewEmptyContext()
 	var res interface{}
@@ -503,8 +505,8 @@ func BenchmarkDivManyDecimals(b *testing.B) {
 		res, err = div.Eval(ctx, nil)
 		require.NoError(err)
 	}
-	if dec, ok := res.(decimal.Decimal); ok {
-		res = dec.StringFixed(dec.Exponent() * -1)
+	if dec, ok := res.(*apd.Decimal); ok {
+		res = dec.Text('f')
 	}
 	exp := "0.000002755731922398589054232804"
 	if res != exp {

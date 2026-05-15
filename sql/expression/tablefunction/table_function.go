@@ -45,7 +45,7 @@ func (t *TableFunctionWrapper) NewInstance(ctx *sql.Context, db sql.Database, ar
 	nt := *t
 	nt.database = db
 	nt.args = args
-	f, err := nt.underlyingFunc.NewInstance(args)
+	f, err := nt.underlyingFunc.NewInstance(ctx, args)
 	if err != nil {
 		return nil, err
 	}
@@ -99,8 +99,8 @@ func (t *TableFunctionWrapper) Resolved() bool {
 	return true
 }
 
-func (t *TableFunctionWrapper) Schema() sql.Schema {
-	return sql.Schema{&sql.Column{Name: t.underlyingFunc.FunctionName(), Type: t.funcExpr.Type()}}
+func (t *TableFunctionWrapper) Schema(ctx *sql.Context) sql.Schema {
+	return sql.Schema{&sql.Column{Name: t.underlyingFunc.FunctionName(), Type: t.funcExpr.Type(ctx)}}
 }
 
 func (t *TableFunctionWrapper) String() string {
@@ -111,7 +111,7 @@ func (t *TableFunctionWrapper) String() string {
 	return fmt.Sprintf("%s(%s)", t.underlyingFunc.FunctionName(), strings.Join(args, ", "))
 }
 
-func (t *TableFunctionWrapper) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (t *TableFunctionWrapper) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 0)
 	}
@@ -124,7 +124,7 @@ func (t *TableFunctionWrapper) WithDatabase(database sql.Database) (sql.Node, er
 	return &nt, nil
 }
 
-func (t *TableFunctionWrapper) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+func (t *TableFunctionWrapper) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	if t.funcExpr == nil {
 		if len(exprs) != 0 {
 			return nil, sql.ErrInvalidChildrenNumber.New(t, len(exprs), 0)

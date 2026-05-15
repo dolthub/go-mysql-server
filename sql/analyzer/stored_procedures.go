@@ -30,7 +30,7 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan
 	if scope.ProceduresPopulating() {
 		return scope, nil
 	}
-	referencesProcedures := hasProcedureCall(n)
+	referencesProcedures := hasProcedureCall(ctx, n)
 	if !referencesProcedures {
 		return scope, nil
 	}
@@ -73,9 +73,9 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan
 	return scope, nil
 }
 
-func hasProcedureCall(n sql.Node) bool {
+func hasProcedureCall(ctx *sql.Context, n sql.Node) bool {
 	referencesProcedures := false
-	transform.InspectWithOpaque(n, func(n sql.Node) bool {
+	transform.InspectWithOpaque(ctx, n, func(ctx *sql.Context, n sql.Node) bool {
 		if _, ok := n.(*plan.Call); ok {
 			referencesProcedures = true
 			return false
@@ -142,7 +142,7 @@ func analyzeProcedureBodies(ctx *sql.Context, a *Analyzer, node sql.Node, skipCa
 		}
 		newChildren[i] = newChild
 	}
-	node, err = node.WithChildren(newChildren...)
+	node, err = node.WithChildren(ctx, newChildren...)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
@@ -155,11 +155,11 @@ func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 		return n, transform.SameTree, nil
 	}
 
-	if _, isShowCreateProcedure := n.(*plan.ShowCreateProcedure); !hasProcedureCall(n) && !isShowCreateProcedure {
+	if _, isShowCreateProcedure := n.(*plan.ShowCreateProcedure); !hasProcedureCall(ctx, n) && !isShowCreateProcedure {
 		return n, transform.SameTree, nil
 	}
 
-	call, newIdentity, err := transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	call, newIdentity, err := transform.Node(ctx, n, func(ctx *sql.Context, n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		call, ok := n.(*plan.Call)
 		if !ok {
 			return n, transform.SameTree, nil
@@ -209,7 +209,7 @@ func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 	}
 	n = call
 
-	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	return transform.Node(ctx, n, func(ctx *sql.Context, n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.Call:
 			return applyProceduresCall(ctx, a, n, scope, sel, qFlags)
@@ -240,7 +240,7 @@ func applyProceduresCall(ctx *sql.Context, a *Analyzer, call *plan.Call, scope *
 	call = call.WithParamReference(pRef)
 
 	var procParamTransformFunc transform.ExprFunc
-	procParamTransformFunc = func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+	procParamTransformFunc = func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		switch expr := e.(type) {
 		case *expression.ProcedureParam:
 			return expr.WithParamReference(pRef), transform.NewTree, nil
@@ -248,7 +248,7 @@ func applyProceduresCall(ctx *sql.Context, a *Analyzer, call *plan.Call, scope *
 			children := expr.NodeChildren()
 			var newChildren []sql.Node
 			for i, child := range children {
-				newChild, same, err := transform.NodeExprsWithOpaque(child, procParamTransformFunc)
+				newChild, same, err := transform.NodeExprsWithOpaque(ctx, child, procParamTransformFunc)
 				if err != nil {
 					return nil, transform.SameTree, err
 				}
@@ -261,7 +261,7 @@ func applyProceduresCall(ctx *sql.Context, a *Analyzer, call *plan.Call, scope *
 				}
 			}
 			if len(newChildren) > 0 {
-				newExpr, err := expr.WithNodeChildren(newChildren...)
+				newExpr, err := expr.WithNodeChildren(ctx, newChildren...)
 				if err != nil {
 					return nil, transform.SameTree, err
 				}
@@ -272,12 +272,12 @@ func applyProceduresCall(ctx *sql.Context, a *Analyzer, call *plan.Call, scope *
 			return e, transform.SameTree, nil
 		}
 	}
-	transformedProcedure, _, err := transform.NodeExprsWithOpaque(procedure, procParamTransformFunc)
+	transformedProcedure, _, err := transform.NodeExprsWithOpaque(ctx, procedure, procParamTransformFunc)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
 	// Some nodes do not expose all of their children, so we need to handle them here.
-	transformedProcedure, _, err = transform.NodeWithOpaque(transformedProcedure, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	transformedProcedure, _, err = transform.NodeWithOpaque(ctx, transformedProcedure, func(ctx *sql.Context, node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := node.(type) {
 		case plan.DisjointedChildrenNode:
 			same := transform.SameTree
@@ -287,7 +287,7 @@ func applyProceduresCall(ctx *sql.Context, a *Analyzer, call *plan.Call, scope *
 				newDisjointedChildGroups[groupIdx] = make([]sql.Node, len(disjointedChildGroup))
 				for childIdx, disjointedChild := range disjointedChildGroup {
 					var childIdentity transform.TreeIdentity
-					if newDisjointedChildGroups[groupIdx][childIdx], childIdentity, err = transform.NodeExprsWithOpaque(disjointedChild, procParamTransformFunc); err != nil {
+					if newDisjointedChildGroups[groupIdx][childIdx], childIdentity, err = transform.NodeExprsWithOpaque(ctx, disjointedChild, procParamTransformFunc); err != nil {
 						return nil, transform.SameTree, err
 					} else if childIdentity == transform.NewTree {
 						same = childIdentity
@@ -306,14 +306,14 @@ func applyProceduresCall(ctx *sql.Context, a *Analyzer, call *plan.Call, scope *
 			// BeginEndBlocks need to reference the same ParameterReference as the Call
 			return n.WithParamReference(pRef), transform.NewTree, nil
 		default:
-			return transform.NodeExprsWithOpaque(n, procParamTransformFunc)
+			return transform.NodeExprsWithOpaque(ctx, n, procParamTransformFunc)
 		}
 	})
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
 
-	transformedProcedure, _, err = transform.Node(transformedProcedure, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	transformedProcedure, _, err = transform.Node(ctx, transformedProcedure, func(ctx *sql.Context, node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		rt, ok := node.(*plan.ResolvedTable)
 		if !ok {
 			return node, transform.SameTree, nil

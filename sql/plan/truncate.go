@@ -79,12 +79,12 @@ func (p *Truncate) DatabaseName() string {
 }
 
 // Schema implements the Node interface.
-func (p *Truncate) Schema() sql.Schema {
+func (p *Truncate) Schema(ctx *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
 // WithChildren implements the Node interface.
-func (p *Truncate) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (p *Truncate) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
 	}
@@ -111,9 +111,9 @@ func (p Truncate) String() string {
 }
 
 // DebugString implements the DebugStringer interface.
-func (p Truncate) DebugString() string {
+func (p Truncate) DebugString(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Truncate")
-	_ = pr.WriteChildren(sql.DebugString(p.Child))
+	_ = pr.WriteChildren(sql.DebugString(ctx, p.Child))
 	return pr.String()
 }

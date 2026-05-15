@@ -31,7 +31,7 @@ var _ sql.FunctionExpression = (*IfNull)(nil)
 var _ sql.CollationCoercible = (*IfNull)(nil)
 
 // NewIfNull returns a new IFNULL UDF
-func NewIfNull(ex, value sql.Expression) sql.Expression {
+func NewIfNull(ctx *sql.Context, ex, value sql.Expression) sql.Expression {
 	return &IfNull{
 		expression.BinaryExpressionStub{
 			LeftChild:  ex,
@@ -52,7 +52,7 @@ func (f *IfNull) Description() string {
 
 // Eval implements the Expression interface.
 func (f *IfNull) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	t := f.Type()
+	t := f.Type(ctx)
 
 	left, err := f.LeftChild.Eval(ctx, row)
 	if err != nil {
@@ -76,14 +76,14 @@ func (f *IfNull) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // Type implements the Expression interface.
-func (f *IfNull) Type() sql.Type {
-	return types.GeneralizeTypes(f.LeftChild.Type(), f.RightChild.Type())
+func (f *IfNull) Type(ctx *sql.Context) sql.Type {
+	return types.GeneralizeTypes(f.LeftChild.Type(ctx), f.RightChild.Type(ctx))
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (f *IfNull) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
-	if types.IsNull(f.LeftChild) {
-		if types.IsNull(f.RightChild) {
+	if types.IsNull(ctx, f.LeftChild) {
+		if types.IsNull(ctx, f.RightChild) {
 			return sql.Collation_binary, 6
 		}
 		return sql.GetCoercibility(ctx, f.RightChild)
@@ -92,11 +92,11 @@ func (f *IfNull) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 }
 
 // IsNullable implements the Expression interface.
-func (f *IfNull) IsNullable() bool {
-	if !f.LeftChild.IsNullable() {
+func (f *IfNull) IsNullable(ctx *sql.Context) bool {
+	if !f.LeftChild.IsNullable(ctx) {
 		return false
 	}
-	return f.RightChild.IsNullable()
+	return f.RightChild.IsNullable(ctx)
 }
 
 func (f *IfNull) String() string {
@@ -104,9 +104,9 @@ func (f *IfNull) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (f *IfNull) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (f *IfNull) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 2)
 	}
-	return NewIfNull(children[0], children[1]), nil
+	return NewIfNull(ctx, children[0], children[1]), nil
 }

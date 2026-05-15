@@ -117,17 +117,21 @@ func countRules(batches []*Batch) int {
 }
 
 func TestDeepCopyNode(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	tests := []struct {
 		node sql.Node
 		exp  sql.Node
 	}{
 		{
 			node: plan.NewProject(
+				ctx,
 				[]sql.Expression{
 					expression.NewLiteral(1, types.Int64),
 				},
 				plan.NewNaturalJoin(
+					ctx,
 					plan.NewInnerJoin(
+						ctx,
 						plan.NewUnresolvedTable("mytable", ""),
 						plan.NewUnresolvedTable("mytable2", ""),
 						expression.NewEquals(
@@ -136,6 +140,7 @@ func TestDeepCopyNode(t *testing.T) {
 						),
 					),
 					plan.NewFilter(
+						sql.NewEmptyContext(),
 						expression.NewEquals(
 							expression.NewBindVar("v1"),
 							expression.NewBindVar("v2"),
@@ -147,18 +152,21 @@ func TestDeepCopyNode(t *testing.T) {
 		},
 		{
 			node: plan.NewProject(
+				ctx,
 				[]sql.Expression{
 					expression.NewLiteral(1, types.Int64),
 				},
 				plan.NewSetOp(
 					plan.UnionType,
 					plan.NewProject(
+						ctx,
 						[]sql.Expression{
 							expression.NewLiteral(1, types.Int64),
 						},
 						plan.NewUnresolvedTable("mytable", ""),
 					),
 					plan.NewProject(
+						ctx,
 						[]sql.Expression{
 							expression.NewBindVar("v1"),
 							expression.NewBindVar("v2"),
@@ -170,6 +178,7 @@ func TestDeepCopyNode(t *testing.T) {
 		},
 		{
 			node: plan.NewFilter(
+				sql.NewEmptyContext(),
 				expression.NewEquals(
 					expression.NewLiteral(1, types.Int64),
 					expression.NewLiteral(1, types.Int64),
@@ -183,6 +192,7 @@ func TestDeepCopyNode(t *testing.T) {
 						expression.NewBindVar("v1"),
 					},
 					plan.NewProject(
+						ctx,
 						[]sql.Expression{
 							expression.NewBindVar("v2"),
 						},
@@ -193,12 +203,14 @@ func TestDeepCopyNode(t *testing.T) {
 		},
 		{
 			node: plan.NewFilter(
+				sql.NewEmptyContext(),
 				expression.NewEquals(
 					expression.NewLiteral(1, types.Int64),
 					expression.NewLiteral(1, types.Int64),
 				),
 				plan.NewSubqueryAlias("cte1", "select x from a",
 					plan.NewProject(
+						ctx,
 						[]sql.Expression{
 							expression.NewBindVar("v1"),
 							expression.NewUnresolvedColumn("v2"),
@@ -212,9 +224,10 @@ func TestDeepCopyNode(t *testing.T) {
 
 	for i, tt := range tests {
 		t.Run(fmt.Sprintf("DeepCopyTest_%d", i), func(t *testing.T) {
-			cop, err := DeepCopyNode(tt.node)
+			ctx := sql.NewEmptyContext()
+			cop, err := DeepCopyNode(ctx, tt.node)
 			require.NoError(t, err)
-			cop, _, err = plan.ApplyBindings(cop, map[string]sql.Expression{
+			cop, _, err = plan.ApplyBindings(ctx, cop, map[string]sql.Expression{
 				"v1": expression.NewLiteral(1, types.Int64),
 				"v2": expression.NewLiteral("x", types.Text),
 			})

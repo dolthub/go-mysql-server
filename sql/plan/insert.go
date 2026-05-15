@@ -118,16 +118,16 @@ func (ii *InsertInto) WithChecks(checks sql.CheckConstraints) sql.Node {
 }
 
 // Dispose implements the sql.Disposable interface.
-func (ii *InsertInto) Dispose() {
-	disposeNode(ii.Source)
+func (ii *InsertInto) Dispose(ctx *sql.Context) {
+	disposeNode(ctx, ii.Source)
 }
 
 // Schema implements the sql.Node interface.
 // Insert nodes return rows that are inserted. Replaces return a concatenation of the deleted row and the inserted row.
 // If no row was deleted, the value of those columns is nil.
-func (ii *InsertInto) Schema() sql.Schema {
+func (ii *InsertInto) Schema(ctx *sql.Context) sql.Schema {
 	if ii.IsReplace {
-		return append(ii.Destination.Schema(), ii.Destination.Schema()...)
+		return append(ii.Destination.Schema(ctx), ii.Destination.Schema(ctx)...)
 	}
 
 	// Postgres allows the returned values of the insert statement to be controlled, so if returning expressions
@@ -136,13 +136,13 @@ func (ii *InsertInto) Schema() sql.Schema {
 		// We know that returning exprs are resolved here, because you can't call Schema() safely until Resolved() is true.
 		returningSchema := sql.Schema{}
 		for _, expr := range ii.Returning {
-			returningSchema = append(returningSchema, transform.ExpressionToColumn(expr, ""))
+			returningSchema = append(returningSchema, transform.ExpressionToColumn(ctx, expr, ""))
 		}
 
 		return returningSchema
 	}
 
-	return ii.Destination.Schema()
+	return ii.Destination.Schema(ctx)
 }
 
 // Children implements the sql.Node interface.
@@ -175,7 +175,7 @@ func (ii *InsertInto) WithColumnNames(cols []string) *InsertInto {
 }
 
 // WithChildren implements the Node interface.
-func (ii *InsertInto) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (ii *InsertInto) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(ii, len(children), 1)
 	}
@@ -245,14 +245,14 @@ func (ii *InsertInto) String() string {
 }
 
 // DebugString implements the sql.Node interface.
-func (ii *InsertInto) DebugString() string {
+func (ii *InsertInto) DebugString(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	if ii.IsReplace {
 		_ = pr.WriteNode("Replace(%s)", strings.Join(ii.ColumnNames, ", "))
 	} else {
 		_ = pr.WriteNode("Insert(%s)", strings.Join(ii.ColumnNames, ", "))
 	}
-	_ = pr.WriteChildren(sql.DebugString(ii.Destination), sql.DebugString(ii.Source))
+	_ = pr.WriteChildren(sql.DebugString(ctx, ii.Destination), sql.DebugString(ctx, ii.Source))
 	return pr.String()
 }
 
@@ -263,28 +263,28 @@ func (ii *InsertInto) Expressions() []sql.Expression {
 }
 
 // WithExpressions implements the sql.Expressioner interface.
-func (ii *InsertInto) WithExpressions(newExprs ...sql.Expression) (sql.Node, error) {
+func (ii *InsertInto) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	numOnDupExprs := len(ii.OnDupExprs.AllExpressions())
 	expectedLen := numOnDupExprs + len(ii.checks) + len(ii.Returning)
-	if len(newExprs) != expectedLen {
-		return nil, sql.ErrInvalidExpressionNumber.New(ii, len(newExprs), expectedLen)
+	if len(exprs) != expectedLen {
+		return nil, sql.ErrInvalidExpressionNumber.New(ii, len(exprs), expectedLen)
 	}
 
 	nii := *ii
 	var err error
-	nii.OnDupExprs, err = ii.OnDupExprs.WithExpressions(newExprs[:numOnDupExprs])
+	nii.OnDupExprs, err = ii.OnDupExprs.WithExpressions(exprs[:numOnDupExprs])
 	if err != nil {
 		return nil, err
 	}
-	newExprs = newExprs[numOnDupExprs:]
+	exprs = exprs[numOnDupExprs:]
 
-	nii.checks, err = nii.checks.FromExpressions(newExprs[:len(nii.checks)])
+	nii.checks, err = nii.checks.FromExpressions(exprs[:len(nii.checks)])
 	if err != nil {
 		return nil, err
 	}
 
-	newExprs = newExprs[len(nii.checks):]
-	nii.Returning = newExprs
+	exprs = exprs[len(nii.checks):]
+	nii.Returning = exprs
 
 	return &nii, nil
 }
@@ -323,7 +323,7 @@ func (id *InsertDestination) Expressions() []sql.Expression {
 	return transform.WrappedColumnDefaults(id.Sch)
 }
 
-func (id InsertDestination) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+func (id InsertDestination) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != len(id.Sch) {
 		return nil, sql.ErrInvalidChildrenNumber.New(id, len(exprs), len(id.Sch))
 	}
@@ -349,21 +349,21 @@ func (id *InsertDestination) String() string {
 	return id.UnaryNode.Child.String()
 }
 
-func (id *InsertDestination) DebugString() string {
+func (id *InsertDestination) DebugString(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	pr.WriteNode("InsertDestination")
 	var children []string
 	for _, col := range id.Sch {
-		children = append(children, sql.DebugString(col.Default))
+		children = append(children, sql.DebugString(ctx, col.Default))
 	}
-	children = append(children, sql.DebugString(id.Child))
+	children = append(children, sql.DebugString(ctx, id.Child))
 
 	pr.WriteChildren(children...)
 
 	return pr.String()
 }
 
-func (id *InsertDestination) Schema() sql.Schema {
+func (id *InsertDestination) Schema(ctx *sql.Context) sql.Schema {
 	return id.Sch
 }
 
@@ -381,7 +381,7 @@ func (id *InsertDestination) Resolved() bool {
 	return true
 }
 
-func (id InsertDestination) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (id InsertDestination) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(id, len(children), 1)
 	}

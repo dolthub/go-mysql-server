@@ -33,7 +33,7 @@ var _ sql.FunctionExpression = (*GeometryN)(nil)
 var _ sql.CollationCoercible = (*GeometryN)(nil)
 
 // NewGeometryN creates a new GeometryN expression.
-func NewGeometryN(g, n sql.Expression) sql.Expression {
+func NewGeometryN(ctx *sql.Context, g, n sql.Expression) sql.Expression {
 	return &GeometryN{
 		expression.BinaryExpressionStub{
 			LeftChild:  g,
@@ -53,12 +53,12 @@ func (g *GeometryN) Description() string {
 }
 
 // IsNullable implements the sql.Expression interface.
-func (g *GeometryN) IsNullable() bool {
+func (g *GeometryN) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
 // Type implements the sql.Expression interface.
-func (g *GeometryN) Type() sql.Type {
+func (g *GeometryN) Type(ctx *sql.Context) sql.Type {
 	return types.GeometryType{}
 }
 
@@ -72,11 +72,11 @@ func (g *GeometryN) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (g *GeometryN) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (g *GeometryN) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(g, len(children), 2)
 	}
-	return NewGeometryN(children[0], children[1]), nil
+	return NewGeometryN(ctx, children[0], children[1]), nil
 }
 
 // Eval implements the sql.Expression interface.

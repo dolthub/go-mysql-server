@@ -96,7 +96,7 @@ func (b *BaseBuilder) buildLoadData(ctx *sql.Context, n *plan.LoadData, row sql.
 	scanner.Buffer(nil, int(types.LongTextBlobMax))
 	scanner.Split(n.SplitLines)
 
-	sch := n.Schema()
+	sch := n.Schema(ctx)
 	source := sch[0].Source // Schema will always have at least one column
 	colNames := n.ColNames
 	if len(colNames) == 0 {
@@ -216,7 +216,7 @@ func (b *BaseBuilder) buildAlterDefaultSet(ctx *sql.Context, n *plan.AlterDefaul
 	}
 	loweredColName := strings.ToLower(n.ColumnName)
 	var col *sql.Column
-	for _, schCol := range alterable.Schema() {
+	for _, schCol := range alterable.Schema(ctx) {
 		if strings.ToLower(schCol.Name) == loweredColName {
 			col = schCol
 			break
@@ -294,7 +294,7 @@ func (b *BaseBuilder) buildModifyColumn(ctx *sql.Context, n *plan.ModifyColumn, 
 		return nil, sql.ErrAlterTableNotSupported.New(tbl.Name())
 	}
 
-	if err := n.ValidateDefaultPosition(n.TargetSchema()); err != nil {
+	if err := n.ValidateDefaultPosition(ctx, n.TargetSchema()); err != nil {
 		return nil, err
 	}
 	// MySQL assigns the column's type (which contains the collation) at column creation/modification. If a column has
@@ -350,14 +350,14 @@ func (b *BaseBuilder) buildCreateIndex(ctx *sql.Context, n *plan.CreateIndex, ro
 		return nil, plan.ErrInvalidIndexDriver.New(n.Driver)
 	}
 
-	columns, exprs, err := GetColumnsAndPrepareExpressions(n.Exprs)
+	columns, exprs, err := GetColumnsAndPrepareExpressions(ctx, n.Exprs)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, e := range exprs {
-		if types.IsBlobType(e.Type()) || types.IsJSON(e.Type()) {
-			return nil, plan.ErrExprTypeNotIndexable.New(e, e.Type())
+		if types.IsBlobType(e.Type(ctx)) || types.IsJSON(e.Type(ctx)) {
+			return nil, plan.ErrExprTypeNotIndexable.New(e, e.Type(ctx))
 		}
 	}
 
@@ -535,7 +535,7 @@ func (b *BaseBuilder) buildAlterDefaultDrop(ctx *sql.Context, n *plan.AlterDefau
 	alterable, ok := table.(sql.AlterableTable)
 	loweredColName := strings.ToLower(n.ColumnName)
 	var col *sql.Column
-	for _, schCol := range alterable.Schema() {
+	for _, schCol := range alterable.Schema(ctx) {
 		if strings.ToLower(schCol.Name) == loweredColName {
 			col = schCol
 			break
@@ -753,12 +753,12 @@ func (b *BaseBuilder) buildAlterPK(ctx *sql.Context, n *plan.AlterPK, row sql.Ro
 
 	switch n.Action {
 	case plan.PrimaryKeyAction_Create:
-		if plan.HasPrimaryKeys(pkAlterable) {
+		if plan.HasPrimaryKeys(ctx, pkAlterable) {
 			return sql.RowsToRowIter(), sql.ErrMultiplePrimaryKeysDefined.New()
 		}
 
 		for _, c := range n.Columns {
-			if !pkAlterable.Schema().Contains(c.Name, pkAlterable.Name()) {
+			if !pkAlterable.Schema(ctx).Contains(c.Name, pkAlterable.Name()) {
 				return sql.RowsToRowIter(), sql.ErrKeyColumnDoesNotExist.New(c.Name)
 			}
 		}
@@ -954,6 +954,14 @@ func (b *BaseBuilder) buildRenameColumn(ctx *sql.Context, n *plan.RenameColumn, 
 		return nil, sql.ErrTableColumnNotFound.New(tbl.Name(), n.ColumnName)
 	}
 
+	// Check for functional index dependencies (matches MySQL ERROR 3837)
+	colLower := strings.ToLower(n.ColumnName)
+	for _, col := range n.TargetSchema() {
+		if col.HiddenSystem && col.Generated != nil && plan.ColumnReferencedInDefaultValueExpression(ctx, col.Generated, colLower) {
+			return nil, sql.ErrColumnFunctionalIndexDependency.New(n.ColumnName)
+		}
+	}
+
 	nc := *n.TargetSchema()[idx]
 	nc.Name = n.NewColumnName
 	col := &nc
@@ -1011,14 +1019,14 @@ func (b *BaseBuilder) buildAddColumn(ctx *sql.Context, n *plan.AddColumn, row sq
 
 	tbl := alterable.(sql.Table)
 	tblSch := n.TargetSchema()
-	if n.Order() != nil && !n.Order().First {
-		idx := tblSch.IndexOf(n.Order().AfterColumn, tbl.Name())
+	if n.Order(ctx) != nil && !n.Order(ctx).First {
+		idx := tblSch.IndexOf(n.Order(ctx).AfterColumn, tbl.Name())
 		if idx < 0 {
-			return nil, sql.ErrTableColumnNotFound.New(tbl.Name(), n.Order().AfterColumn)
+			return nil, sql.ErrTableColumnNotFound.New(tbl.Name(), n.Order(ctx).AfterColumn)
 		}
 	}
 
-	if err := n.ValidateDefaultPosition(tblSch); err != nil {
+	if err := n.ValidateDefaultPosition(ctx, tblSch); err != nil {
 		return nil, err
 	}
 	// MySQL assigns the column's type (which contains the collation) at column creation/modification. If a column has
@@ -1098,7 +1106,7 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 		}
 	}
 
-	err = n.ValidateDefaultPosition()
+	err = n.ValidateDefaultPosition(ctx)
 	if err != nil {
 		return sql.RowsToRowIter(), err
 	}
@@ -1200,7 +1208,7 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 			}
 
 			// No-op if the table doesn't already have an auto increment column.
-			if autoTbl.Schema().HasAutoIncrement() {
+			if autoTbl.Schema(ctx).HasAutoIncrement() {
 				setter := autoTbl.AutoIncrementSetter(ctx)
 				err = setter.SetAutoIncrementValue(ctx, aiVal)
 				if err != nil {
@@ -1210,6 +1218,17 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 				if err != nil {
 					return sql.RowsToRowIter(), err
 				}
+			}
+		}
+	}
+
+	if targetRowSize, hasTargetRowSize := n.TableOpts["target_row_size"]; hasTargetRowSize {
+		val := targetRowSize.(uint64)
+		alterable, ok := tableNode.(sql.TargetRowSizeAlterableTable)
+		if ok {
+			err = alterable.ModifyTargetRowSize(ctx, val)
+			if err != nil {
+				return sql.RowsToRowIter(), err
 			}
 		}
 	}

@@ -18,7 +18,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/shopspring/decimal"
+	"github.com/cockroachdb/apd/v3"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -85,44 +85,44 @@ func TestUnixTimestamp(t *testing.T) {
 			name: "2018-05-02 12:34:56.1",
 			args: []sql.Expression{expression.NewLiteral("2018-05-02 12:34:56.1", types.LongText)},
 			typ:  types.MustCreateDecimalType(19, 1),
-			exp:  decimal.New(15252644961, -1),
+			exp:  apd.New(15252644961, -1),
 		},
 		{
 			name: "2018-05-02 12:34:56.12",
 			args: []sql.Expression{expression.NewLiteral("2018-05-02 12:34:56.12", types.LongText)},
 			typ:  types.MustCreateDecimalType(19, 2),
-			exp:  decimal.New(152526449612, -2),
+			exp:  apd.New(152526449612, -2),
 		},
 		{
 			name: "2018-05-02 12:34:56.123",
 			args: []sql.Expression{expression.NewLiteral("2018-05-02 12:34:56.123", types.LongText)},
 			typ:  types.MustCreateDecimalType(19, 3),
-			exp:  decimal.New(1525264496123, -3),
+			exp:  apd.New(1525264496123, -3),
 		},
 		{
 			name: "2018-05-02 12:34:56.1234",
 			args: []sql.Expression{expression.NewLiteral("2018-05-02 12:34:56.1234", types.LongText)},
 			typ:  types.MustCreateDecimalType(19, 4),
-			exp:  decimal.New(15252644961234, -4),
+			exp:  apd.New(15252644961234, -4),
 		},
 		{
 			name: "2018-05-02 12:34:56.12345",
 			args: []sql.Expression{expression.NewLiteral("2018-05-02 12:34:56.12345", types.LongText)},
 			typ:  types.MustCreateDecimalType(19, 5),
-			exp:  decimal.New(152526449612345, -5),
+			exp:  apd.New(152526449612345, -5),
 		},
 		{
 			name: "2018-05-02 12:34:56.123456",
 			args: []sql.Expression{expression.NewLiteral("2018-05-02 12:34:56.123456", types.LongText)},
 			typ:  types.MustCreateDecimalType(19, 6),
-			exp:  decimal.New(1525264496123456, -6),
+			exp:  apd.New(1525264496123456, -6),
 		},
 		{
 			skip: true, // we can't tell if trailing zeros are from string or rounding
 			name: "2018-05-02 12:34:56.123456",
 			args: []sql.Expression{expression.NewLiteral("2018-05-02 12:34:56.123000", types.LongText)},
 			typ:  types.MustCreateDecimalType(19, 6),
-			exp:  decimal.New(1525264496123000, -6),
+			exp:  apd.New(1525264496123000, -6),
 		},
 
 		{
@@ -135,38 +135,38 @@ func TestUnixTimestamp(t *testing.T) {
 			name: "1970-01-01 00:00:01.123",
 			args: []sql.Expression{expression.NewLiteral("1970-01-01 00:00:01.123", types.LongText)},
 			typ:  types.MustCreateDecimalType(19, 3),
-			exp:  decimal.New(1123, -3),
+			exp:  apd.New(1123, -3),
 		},
 		{
 			name: "1970-01-01 00:00:01.123456",
 			args: []sql.Expression{expression.NewLiteral("1970-01-01 00:00:01.123456", types.LongText)},
 			typ:  types.MustCreateDecimalType(19, 6),
-			exp:  decimal.New(1123456, -6),
+			exp:  apd.New(1123456, -6),
 		},
 		{
 			name: "3001-01-18 23:59:59.123",
 			args: []sql.Expression{expression.NewLiteral("3001-01-18 23:59:59.123", types.LongText)},
 			typ:  types.MustCreateDecimalType(19, 3),
-			exp:  decimal.New(32536771199123, -3),
+			exp:  apd.New(32536771199123, -3),
 		},
 		{
 			name: "3001-01-18 23:59:59.999999",
 			args: []sql.Expression{expression.NewLiteral("3001-01-18 23:59:59.999999", types.LongText)},
 			typ:  types.MustCreateDecimalType(19, 6),
-			exp:  decimal.New(32536771199999999, -6),
+			exp:  apd.New(32536771199999999, -6),
 		},
 
 		{
 			name: "microseconds after epoch are still 0, but contribute to precision result",
 			args: []sql.Expression{expression.NewLiteral("1970-01-01 00:00:00.123", types.LongText)},
 			typ:  types.MustCreateDecimalType(19, 3),
-			exp:  decimal.New(0, -3),
+			exp:  apd.New(0, -3),
 		},
 		{
 			name: "microseconds after epoch are still 0, but contribute to precision result",
 			args: []sql.Expression{expression.NewLiteral("1970-01-01 00:00:00.123456", types.LongText)},
 			typ:  types.MustCreateDecimalType(19, 6),
-			exp:  decimal.New(0, -6),
+			exp:  apd.New(0, -6),
 		},
 		{
 			name: "unix time after valid time range is 0",
@@ -199,14 +199,14 @@ func TestUnixTimestamp(t *testing.T) {
 			name: "now(3)",
 			args: []sql.Expression{&Now{prec: expression.NewLiteral(int64(3), types.Int64)}},
 			typ:  types.MustCreateDecimalType(19, 3),
-			exp:  decimal.New(941805296123, -3),
+			exp:  apd.New(941805296123, -3),
 		},
 		{
 			skip: true, // there are timezone conversion issues
 			name: "now(6)",
 			args: []sql.Expression{&Now{prec: expression.NewLiteral(int64(6), types.Int64)}},
 			typ:  types.MustCreateDecimalType(19, 6),
-			exp:  decimal.New(941805296123456, -6),
+			exp:  apd.New(941805296123456, -6),
 		},
 	}
 
@@ -220,18 +220,18 @@ func TestUnixTimestamp(t *testing.T) {
 				t.Skip()
 			}
 
-			f, err := NewUnixTimestamp(test.args...)
+			f, err := NewUnixTimestamp(ctx, test.args...)
 			if test.err {
 				require.Error(err)
 				return
 			}
 			require.NoError(err)
-			require.Equal(test.typ, f.Type())
+			require.Equal(test.typ, f.Type(ctx))
 
 			result, err := f.Eval(ctx, nil)
 			require.NoError(err)
 			require.Equal(test.exp, result)
-			require.Equal(test.typ, f.Type())
+			require.Equal(test.typ, f.Type(ctx))
 
 			if test.warnCode != 0 {
 				require.Equal(uint16(1), ctx.WarningCount())
@@ -244,10 +244,11 @@ func TestUnixTimestamp(t *testing.T) {
 
 func TestFromUnixtime(t *testing.T) {
 	require := require.New(t)
+	ctx := sql.NewEmptyContext()
 
-	_, err := NewUnixTimestamp(expression.NewLiteral(0, types.Int64))
+	_, err := NewUnixTimestamp(ctx, expression.NewLiteral(0, types.Int64))
 	require.NoError(err)
 
-	_, err = NewUnixTimestamp(expression.NewLiteral(1447430881, types.Int64))
+	_, err = NewUnixTimestamp(ctx, expression.NewLiteral(1447430881, types.Int64))
 	require.NoError(err)
 }

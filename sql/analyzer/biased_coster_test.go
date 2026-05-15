@@ -34,12 +34,12 @@ func TestBiasedCoster(t *testing.T) {
 	pro := memory.NewDBProvider(db)
 	ctx := newContext(pro)
 
-	xy := memory.NewFilteredTable(db, "xy", sql.NewPrimaryKeySchema(sql.Schema{
+	xy := memory.NewFilteredTable(ctx, db, "xy", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "x", Type: types.Int64, Source: "xy"},
 		{Name: "y", Type: types.Int64, Source: "xy"},
 	}, 0), nil)
 
-	ab := memory.NewFilteredTable(db, "ab", sql.NewPrimaryKeySchema(sql.Schema{
+	ab := memory.NewFilteredTable(ctx, db, "ab", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: types.Int64, Source: "ab"},
 		{Name: "b", Type: types.Int64, Source: "ab"},
 	}, 0), nil)
@@ -56,6 +56,7 @@ func TestBiasedCoster(t *testing.T) {
 	a := NewDefault(sql.NewDatabaseProvider(db))
 
 	n := plan.NewInnerJoin(
+		ctx,
 		plan.NewResolvedTable(xy, db, nil).WithId(1).WithColumns(sql.NewColSet(1, 2)),
 		plan.NewResolvedTable(ab, db, nil).WithId(2).WithColumns(sql.NewColSet(3, 4)),
 		expression.NewEquals(
@@ -96,15 +97,15 @@ func TestBiasedCoster(t *testing.T) {
 			a.Coster = tt.c()
 			cmp, err := replanJoin(ctx, n, a, nil, nil)
 			require.NoError(t, err)
-			types := collectJoinTypes(cmp)[0]
+			types := collectJoinTypes(ctx, cmp)[0]
 			require.Equal(t, tt.exp, types)
 		})
 	}
 }
 
-func collectJoinTypes(n sql.Node) []plan.JoinType {
+func collectJoinTypes(ctx *sql.Context, n sql.Node) []plan.JoinType {
 	var types []plan.JoinType
-	transform.InspectWithOpaque(n, func(n sql.Node) bool {
+	transform.InspectWithOpaque(ctx, n, func(ctx *sql.Context, n sql.Node) bool {
 		if n == nil {
 			return true
 		}
@@ -115,12 +116,12 @@ func collectJoinTypes(n sql.Node) []plan.JoinType {
 
 		if ex, ok := n.(sql.Expressioner); ok {
 			for _, e := range ex.Expressions() {
-				transform.InspectExpr(e, func(e sql.Expression) bool {
+				transform.InspectExpr(ctx, e, func(ctx *sql.Context, e sql.Expression) bool {
 					sq, ok := e.(*plan.Subquery)
 					if !ok {
 						return false
 					}
-					types = append(types, collectJoinTypes(sq.Query)...)
+					types = append(types, collectJoinTypes(ctx, sq.Query)...)
 					return false
 				})
 			}

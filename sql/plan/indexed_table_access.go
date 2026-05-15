@@ -42,6 +42,7 @@ type IndexedTableAccess struct {
 	lookup    sql.IndexLookup
 	id        sql.TableId
 	Typ       itaType
+	ctx       *sql.Context
 }
 
 var _ sql.Table = (*IndexedTableAccess)(nil)
@@ -60,24 +61,24 @@ func NewIndexedAccessForTableNode(ctx *sql.Context, node sql.TableNode, lb *Look
 		return nil, fmt.Errorf("table is not index addressable: %s", table.Name())
 	}
 
-	lookup, inRange, err := lb.GetLookup(ctx, lb.GetZeroKey())
+	lookup, inRange, err := lb.GetLookup(ctx, lb.GetZeroKey(ctx))
 	if err != nil {
 		return nil, err
 	}
 
 	if !inRange {
 		// TODO: this should be an empty result, not an error
-		return nil, ErrInvalidLookupForIndexedTable.New(lookup.Ranges.DebugString())
+		return nil, ErrInvalidLookupForIndexedTable.New(lookup.Ranges.DebugString(ctx))
 	}
 
 	if !lookup.Index.CanSupport(ctx, lookup.Ranges.ToRanges()...) {
-		return nil, ErrInvalidLookupForIndexedTable.New(lookup.Ranges.DebugString())
+		return nil, ErrInvalidLookupForIndexedTable.New(lookup.Ranges.DebugString(ctx))
 	}
 	var indexedTable sql.IndexedTable
 	indexedTable = iaTable.IndexedAccess(ctx, lookup)
 
 	if mtn, ok := node.(sql.MutableTableNode); ok {
-		mtn, err = mtn.WithTable(indexedTable)
+		mtn, err = mtn.WithTable(ctx, indexedTable)
 		if err != nil {
 			return nil, err
 		}
@@ -104,6 +105,7 @@ func NewIndexedAccessForTableNode(ctx *sql.Context, node sql.TableNode, lb *Look
 		Typ:       ItaTypeLookup,
 		id:        id,
 		cols:      cols,
+		ctx:       ctx,
 	}, nil
 }
 
@@ -118,13 +120,13 @@ func NewStaticIndexedAccessForTableNode(ctx *sql.Context, node sql.TableNode, lo
 	}
 
 	if !lookup.Index.CanSupport(ctx, lookup.Ranges.ToRanges()...) {
-		return nil, ErrInvalidLookupForIndexedTable.New(lookup.Ranges.DebugString())
+		return nil, ErrInvalidLookupForIndexedTable.New(lookup.Ranges.DebugString(ctx))
 	}
 	indexedTable := iaTable.IndexedAccess(ctx, lookup)
 
 	if mtn, ok := node.(sql.MutableTableNode); ok {
 		var err error
-		mtn, err = mtn.WithTable(indexedTable)
+		mtn, err = mtn.WithTable(ctx, indexedTable)
 		if err != nil {
 			return nil, err
 		}
@@ -151,6 +153,7 @@ func NewStaticIndexedAccessForTableNode(ctx *sql.Context, node sql.TableNode, lo
 		Typ:       ItaTypeStatic,
 		id:        id,
 		cols:      cols,
+		ctx:       ctx,
 	}, nil
 }
 
@@ -158,7 +161,7 @@ func NewStaticIndexedAccessForTableNode(ctx *sql.Context, node sql.TableNode, lo
 // |ftTable| is accepted directly as the [sql.IndexedTable] implementation because it is pre-built
 // by the caller and cannot be derived from |node| and |lookup| alone. |node| provides the table
 // identity so that column positions in joined row schemas resolve correctly during query execution.
-func NewStaticIndexedAccessForFullTextTable(node sql.TableNode, lookup sql.IndexLookup, ftTable sql.IndexedTable) *IndexedTableAccess {
+func NewStaticIndexedAccessForFullTextTable(ctx *sql.Context, node sql.TableNode, lookup sql.IndexLookup, ftTable sql.IndexedTable) *IndexedTableAccess {
 	var id sql.TableId
 	var cols sql.ColSet
 	if tin, ok := node.(TableIdNode); ok {
@@ -172,6 +175,7 @@ func NewStaticIndexedAccessForFullTextTable(node sql.TableNode, lookup sql.Index
 		Typ:       ItaTypeStatic,
 		id:        id,
 		cols:      cols,
+		ctx:       ctx,
 	}
 }
 
@@ -219,8 +223,8 @@ func (i *IndexedTableAccess) IsReadOnly() bool {
 	return true
 }
 
-func (i *IndexedTableAccess) Schema() sql.Schema {
-	return i.TableNode.Schema()
+func (i *IndexedTableAccess) Schema(ctx *sql.Context) sql.Schema {
+	return i.TableNode.Schema(ctx)
 }
 
 func (i *IndexedTableAccess) Collation() sql.CollationID {
@@ -238,7 +242,7 @@ func (i *IndexedTableAccess) Children() []sql.Node {
 	return nil
 }
 
-func (i *IndexedTableAccess) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (i *IndexedTableAccess) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 0)
 	}
@@ -280,12 +284,12 @@ func (i *IndexedTableAccess) CanBuildIndex(ctx *sql.Context) (bool, error) {
 		return true, nil
 	}
 
-	key := i.lb.GetZeroKey()
+	key := i.lb.GetZeroKey(ctx)
 	lookup, _, err := i.lb.GetLookup(ctx, key)
 	return err == nil && !lookup.IsEmpty(), nil
 }
 
-func (i *IndexedTableAccess) IsStrictLookup() bool {
+func (i *IndexedTableAccess) IsStrictLookup(ctx *sql.Context) bool {
 	if !i.lb.index.IsUnique() {
 		return false
 	}
@@ -302,7 +306,7 @@ func (i *IndexedTableAccess) IsStrictLookup() bool {
 		return true
 	}
 	for _, e := range i.lb.keyExprs {
-		if e.IsNullable() {
+		if e.IsNullable(ctx) {
 			// nullable key may not be
 			return false
 		}
@@ -343,10 +347,10 @@ func (i *IndexedTableAccess) String() string {
 	var children []string
 	children = append(children, fmt.Sprintf("index: %s", formatIndexDecoratorString(i.Index())))
 	if !i.lookup.IsEmpty() && i.lookup.Ranges.Len() > 0 {
-		children = append(children, fmt.Sprintf("filters: %s", i.lookup.Ranges.DebugString()))
+		children = append(children, fmt.Sprintf("filters: %s", i.lookup.Ranges.DebugString(i.ctx)))
 	}
 	if !i.lookup.IsEmpty() && i.lookup.VectorOrderAndLimit.OrderBy != nil {
-		children = append(children, fmt.Sprintf("order: %s", i.lookup.VectorOrderAndLimit.DebugString()))
+		children = append(children, fmt.Sprintf("order: %s", i.lookup.VectorOrderAndLimit.DebugString(i.ctx)))
 	}
 
 	if pt, ok := i.Table.(sql.ProjectedTable); ok {
@@ -392,17 +396,17 @@ func formatIndexDecoratorString(idx sql.Index) string {
 	return fmt.Sprintf("[%s]", strings.Join(expStrs, ","))
 }
 
-func (i *IndexedTableAccess) DebugString() string {
+func (i *IndexedTableAccess) DebugString(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	pr.WriteNode("IndexedTableAccess(%s)", i.TableNode.Name())
 	var children []string
 	children = append(children, fmt.Sprintf("index: %s", formatIndexDecoratorString(i.Index())))
 	if !i.lookup.IsEmpty() {
 		if i.lookup.Ranges.Len() > 0 {
-			children = append(children, fmt.Sprintf("static: %s", i.lookup.Ranges.DebugString()))
+			children = append(children, fmt.Sprintf("static: %s", i.lookup.Ranges.DebugString(ctx)))
 		}
 		if !i.lookup.IsEmpty() && i.lookup.VectorOrderAndLimit.OrderBy != nil {
-			children = append(children, fmt.Sprintf("order: %s", i.lookup.VectorOrderAndLimit.DebugString()))
+			children = append(children, fmt.Sprintf("order: %s", i.lookup.VectorOrderAndLimit.DebugString(ctx)))
 		}
 		if i.lookup.IsReverse {
 			children = append(children, fmt.Sprintf("reverse: %v", i.lookup.IsReverse))
@@ -410,7 +414,7 @@ func (i *IndexedTableAccess) DebugString() string {
 	} else {
 		var filters []string
 		for _, e := range i.lb.keyExprs {
-			filters = append(filters, sql.DebugString(e))
+			filters = append(filters, sql.DebugString(ctx, e))
 		}
 		if len(filters) > 0 {
 			children = append(children, fmt.Sprintf("keys: %v", filters))
@@ -422,10 +426,10 @@ func (i *IndexedTableAccess) DebugString() string {
 	// TableWrappers may want to print their own debug info
 	if wrapper, ok := i.Table.(sql.TableWrapper); ok {
 		if ds, ok := wrapper.(sql.DebugStringer); ok {
-			children = append(children, sql.DebugString(ds))
+			children = append(children, sql.DebugString(ctx, ds))
 		}
 	} else {
-		children = append(children, TableDebugString(i.Table))
+		children = append(children, TableDebugString(ctx, i.Table))
 	}
 
 	pr.WriteChildren(children...)
@@ -448,7 +452,7 @@ func (i *IndexedTableAccess) NullMask() []bool {
 }
 
 // WithExpressions implements sql.Expressioner
-func (i *IndexedTableAccess) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+func (i *IndexedTableAccess) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	if !i.lookup.IsEmpty() {
 		if len(exprs) != 0 {
 			return nil, sql.ErrInvalidChildrenNumber.New(i, len(exprs), 0)
@@ -543,8 +547,8 @@ type LookupBuilder struct {
 	emptyRange    bool
 }
 
-func NewLookupBuilder(index sql.Index, keyExprs []sql.Expression, matchesNullMask []bool) *LookupBuilder {
-	cets := index.ColumnExpressionTypes()
+func NewLookupBuilder(ctx *sql.Context, index sql.Index, keyExprs []sql.Expression, matchesNullMask []bool) *LookupBuilder {
+	cets := index.ColumnExpressionTypes(ctx)
 	var nullSafe = true
 	for i := range matchesNullMask {
 		if matchesNullMask[i] {
@@ -698,7 +702,7 @@ func (lb *LookupBuilder) GetKey(ctx *sql.Context, row sql.Row) (lookupBuilderKey
 		}
 		lb.key[i] = lookupBuilderKeyElement{
 			val: val,
-			typ: lb.keyExprs[i].Type(),
+			typ: lb.keyExprs[i].Type(ctx),
 		}
 	}
 	return lb.key, nil
@@ -716,16 +720,16 @@ func (lb *LookupBuilder) GetValueRowKey(ctx *sql.Context, row sql.ValueRow) (loo
 
 		lb.key[i] = lookupBuilderKeyElement{
 			val: val,
-			typ: lb.keyValExprs[i].Type(),
+			typ: lb.keyValExprs[i].Type(ctx),
 		}
 	}
 	return lb.key, nil
 }
 
-func (lb *LookupBuilder) GetZeroKey() lookupBuilderKey {
+func (lb *LookupBuilder) GetZeroKey(ctx *sql.Context) lookupBuilderKey {
 	key := make(lookupBuilderKey, len(lb.keyExprs))
 	for i, keyExpr := range lb.keyExprs {
-		typ := keyExpr.Type()
+		typ := keyExpr.Type(ctx)
 		key[i] = lookupBuilderKeyElement{
 			val: typ.Zero(),
 			typ: typ,
@@ -742,10 +746,10 @@ func (lb *LookupBuilder) Expressions() []sql.Expression {
 	return lb.keyExprs
 }
 
-func (lb *LookupBuilder) DebugString() string {
+func (lb *LookupBuilder) DebugString(ctx *sql.Context) string {
 	keyExprs := make([]string, len(lb.keyExprs))
 	for i := range lb.keyExprs {
-		keyExprs[i] = sql.DebugString(lb.keyExprs[i])
+		keyExprs[i] = sql.DebugString(ctx, lb.keyExprs[i])
 	}
 	return fmt.Sprintf("on %s, using fields %s", formatIndexDecoratorString(lb.Index()), strings.Join(keyExprs, ", "))
 }

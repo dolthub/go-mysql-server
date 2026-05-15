@@ -115,15 +115,15 @@ func (b *Builder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *sc
 	if b.canConvertToCrossJoin(te) {
 		if rast, ok := te.RightExpr.(*ast.AliasedTableExpr); ok && rast.Lateral {
 			var err error
-			outScope.node, err = b.f.buildJoin(leftScope.node, rightScope.node, plan.JoinTypeLateralCross, nil)
+			outScope.node, err = b.f.buildJoin(b.ctx, leftScope.node, rightScope.node, plan.JoinTypeLateralCross, nil)
 			if err != nil {
 				b.handleErr(err)
 			}
 		} else if b.isLateral(te.RightExpr) {
-			outScope.node = plan.NewJoin(leftScope.node, rightScope.node, plan.JoinTypeLateralCross, nil)
+			outScope.node = plan.NewJoin(b.ctx, leftScope.node, rightScope.node, plan.JoinTypeLateralCross, nil)
 		} else {
 			b.qFlags.Set(sql.QFlagCrossJoin)
-			outScope.node = plan.NewCrossJoin(leftScope.node, rightScope.node)
+			outScope.node = plan.NewCrossJoin(b.ctx, leftScope.node, rightScope.node)
 		}
 		return
 	}
@@ -162,7 +162,7 @@ func (b *Builder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *sc
 		b.handleErr(fmt.Errorf("unknown join type: %s", te.Join))
 	}
 	var err error
-	outScope.node, err = b.f.buildJoin(leftScope.node, rightScope.node, op, filter)
+	outScope.node, err = b.f.buildJoin(b.ctx, leftScope.node, rightScope.node, op, filter)
 	if err != nil {
 		b.handleErr(err)
 	}
@@ -257,9 +257,9 @@ func (b *Builder) buildUsingJoin(inScope, leftScope, rightScope *scope, te *ast.
 	// joining two tables with no common columns is just cross join
 	if len(te.Condition.Using) == 0 {
 		if b.isLateral(te.RightExpr) {
-			outScope.node = plan.NewJoin(leftScope.node, rightScope.node, plan.JoinTypeLateralCross, nil)
+			outScope.node = plan.NewJoin(b.ctx, leftScope.node, rightScope.node, plan.JoinTypeLateralCross, nil)
 		} else {
-			outScope.node = plan.NewCrossJoin(leftScope.node, rightScope.node)
+			outScope.node = plan.NewCrossJoin(b.ctx, leftScope.node, rightScope.node)
 		}
 		return outScope
 	}
@@ -267,11 +267,11 @@ func (b *Builder) buildUsingJoin(inScope, leftScope, rightScope *scope, te *ast.
 	switch strings.ToLower(te.Join) {
 	// TODO handle ast.FullOuterJoinStr, ast.NaturalFullJoinStr case https://github.com/dolthub/dolt/issues/10295
 	case ast.JoinStr, ast.NaturalJoinStr:
-		outScope.node = plan.NewInnerJoin(leftScope.node, rightScope.node, filter)
+		outScope.node = plan.NewInnerJoin(b.ctx, leftScope.node, rightScope.node, filter)
 	case ast.LeftJoinStr, ast.NaturalLeftJoinStr:
-		outScope.node = plan.NewLeftOuterJoin(leftScope.node, rightScope.node, filter)
+		outScope.node = plan.NewLeftOuterJoin(b.ctx, leftScope.node, rightScope.node, filter)
 	case ast.RightJoinStr, ast.NaturalRightJoinStr:
-		outScope.node = plan.NewLeftOuterJoin(rightScope.node, leftScope.node, filter)
+		outScope.node = plan.NewLeftOuterJoin(b.ctx, rightScope.node, leftScope.node, filter)
 	default:
 		b.handleErr(fmt.Errorf("unknown using join type: %s", te.Join))
 	}
@@ -293,7 +293,7 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 			tableName := strings.ToLower(e.Name.String())
 			tAlias := strings.ToLower(t.As.String())
 			if cteScope := inScope.getCte(tableName); cteScope != nil {
-				outScope = cteScope.aliasCte(tAlias)
+				outScope = cteScope.aliasCte(b.ctx, tAlias)
 				outScope.parent = inScope
 			} else {
 				var ok bool
@@ -380,11 +380,11 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 			}
 
 			outScope = inScope.push()
-			vdt := plan.NewValueDerivedTable(plan.NewValues(exprTuples), t.As.String())
+			vdt := plan.NewValueDerivedTable(b.ctx, plan.NewValues(exprTuples), t.As.String())
 			tableName := strings.ToLower(t.As.String())
 			tabId := outScope.addTable(tableName)
 			var cols sql.ColSet
-			for _, c := range vdt.Schema() {
+			for _, c := range vdt.Schema(b.ctx) {
 				id := outScope.newColumn(scopeColumn{col: c.Name, db: c.DatabaseSource, table: tableName, typ: c.Type, nullable: c.Nullable})
 				cols.Add(sql.ColumnId(id))
 			}
@@ -531,7 +531,7 @@ func (b *Builder) buildTableFunc(inScope *scope, t *ast.TableFuncExpr) (outScope
 
 	tabId := outScope.addTable(name)
 	var colset sql.ColSet
-	for _, c := range newAlias.Schema() {
+	for _, c := range newAlias.Schema(b.ctx) {
 		id := outScope.newColumn(scopeColumn{
 			db:    database.Name(),
 			table: name,
@@ -693,7 +693,7 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 
 	if view := b.resolveView(name, database, asOfLit, outScope); view != nil {
 		// TODO: Schema name
-		return resolvedViewScope(outScope, view, db, name)
+		return resolvedViewScope(b.ctx, outScope, view, db, name)
 	}
 
 	var tab sql.Table
@@ -729,7 +729,7 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 	}
 
 	// TODO: this is maybe too broad for this method, we don't need this for some statements
-	if tab.Schema().HasVirtualColumns() {
+	if tab.Schema(b.ctx).HasVirtualColumns() {
 		tab = b.buildVirtualTableScan(db, tab)
 	}
 
@@ -742,7 +742,7 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 	tabId := outScope.addTable(strings.ToLower(tab.Name()))
 	var cols sql.ColSet
 
-	for _, c := range tab.Schema() {
+	for _, c := range tab.Schema(b.ctx) {
 		id := outScope.newColumn(scopeColumn{
 			db:          db,
 			table:       strings.ToLower(tab.Name()),
@@ -798,9 +798,9 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 	return outScope, true
 }
 
-func resolvedViewScope(outScope *scope, view sql.Node, db string, name string) (*scope, bool) {
+func resolvedViewScope(ctx *sql.Context, outScope *scope, view sql.Node, db string, name string) (*scope, bool) {
 	outScope.node = view
-	tabId := outScope.addTable(strings.ToLower(view.Schema()[0].Name))
+	tabId := outScope.addTable(strings.ToLower(view.Schema(ctx)[0].Name))
 	if tin, ok := view.(plan.TableIdNode); ok {
 		// TODO should *sql.View implement TableIdNode?
 		outScope.node = tin.WithId(tabId)
@@ -866,7 +866,7 @@ func (b *Builder) resolveView(name string, database sql.Database, asOf interface
 	if view == nil {
 		view, _ = b.ctx.GetViewRegistry().View(database.Name(), name)
 		if view != nil {
-			def, _, _ := transform.NodeWithOpaque(view.Definition(), func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+			def, _, _ := transform.NodeWithOpaque(b.ctx, view.Definition(), func(ctx *sql.Context, n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 				// TODO this is a hack because the test registry setup is busted, these should always be resolved
 				if urt, ok := n.(*plan.UnresolvedTable); ok {
 					return b.resolveTable(urt.Name(), urt.Database().Name(), urt.AsOf()), transform.NewTree, nil
@@ -882,7 +882,7 @@ func (b *Builder) resolveView(name string, database sql.Database, asOf interface
 	}
 
 	query := view.Definition().Children()[0]
-	n, err := view.Definition().WithChildren(query)
+	n, err := view.Definition().WithChildren(b.ctx, query)
 	if err != nil {
 		b.handleErr(err)
 	}

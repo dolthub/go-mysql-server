@@ -29,18 +29,19 @@ import (
 )
 
 func TestJoinSchema(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	db := memory.NewDatabase("test")
-	t1 := plan.NewResolvedTable(memory.NewTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
+	t1 := plan.NewResolvedTable(memory.NewTable(ctx, db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "foo", Type: types.Int64},
 	}), nil), nil, nil)
 
-	t2 := plan.NewResolvedTable(memory.NewTable(db.BaseDatabase, "bar", sql.NewPrimaryKeySchema(sql.Schema{
+	t2 := plan.NewResolvedTable(memory.NewTable(ctx, db.BaseDatabase, "bar", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "b", Source: "bar", Type: types.Int64},
 	}), nil), nil, nil)
 
 	t.Run("inner", func(t *testing.T) {
-		j := plan.NewInnerJoin(t1, t2, nil)
-		result := j.Schema()
+		j := plan.NewInnerJoin(ctx, t1, t2, nil)
+		result := j.Schema(ctx)
 
 		require.Equal(t, sql.Schema{
 			{Name: "a", Source: "foo", Type: types.Int64},
@@ -49,8 +50,8 @@ func TestJoinSchema(t *testing.T) {
 	})
 
 	t.Run("left", func(t *testing.T) {
-		j := plan.NewLeftOuterJoin(t1, t2, nil)
-		result := j.Schema()
+		j := plan.NewLeftOuterJoin(ctx, t1, t2, nil)
+		result := j.Schema(ctx)
 
 		require.Equal(t, sql.Schema{
 			{Name: "a", Source: "foo", Type: types.Int64},
@@ -59,8 +60,8 @@ func TestJoinSchema(t *testing.T) {
 	})
 
 	t.Run("right", func(t *testing.T) {
-		j := plan.NewRightOuterJoin(t1, t2, nil)
-		result := j.Schema()
+		j := plan.NewRightOuterJoin(ctx, t1, t2, nil)
+		result := j.Schema(ctx)
 
 		require.Equal(t, sql.Schema{
 			{Name: "a", Source: "foo", Type: types.Int64, Nullable: true},
@@ -90,12 +91,13 @@ func testInnerJoin(t *testing.T, db *memory.Database, ctx *sql.Context) {
 
 	require := require.New(t)
 
-	ltable := memory.NewTable(db.BaseDatabase, "left", lSchema, nil)
-	rtable := memory.NewTable(db.BaseDatabase, "right", rSchema, nil)
+	ltable := memory.NewTable(ctx, db.BaseDatabase, "left", lSchema, nil)
+	rtable := memory.NewTable(ctx, db.BaseDatabase, "right", rSchema, nil)
 	insertData(t, ctx, ltable)
 	insertData(t, ctx, rtable)
 
 	j := plan.NewInnerJoin(
+		ctx,
 		plan.NewResolvedTable(ltable, nil, nil),
 		plan.NewResolvedTable(rtable, nil, nil),
 		expression.NewEquals(
@@ -119,10 +121,11 @@ func TestInnerJoinEmpty(t *testing.T) {
 	pro := memory.NewDBProvider(db)
 	ctx := newContext(pro)
 
-	ltable := memory.NewTable(db.BaseDatabase, "left", lSchema, nil)
-	rtable := memory.NewTable(db.BaseDatabase, "right", rSchema, nil)
+	ltable := memory.NewTable(ctx, db.BaseDatabase, "left", lSchema, nil)
+	rtable := memory.NewTable(ctx, db.BaseDatabase, "right", rSchema, nil)
 
 	j := plan.NewInnerJoin(
+		ctx,
 		plan.NewResolvedTable(ltable, nil, nil),
 		plan.NewResolvedTable(rtable, nil, nil),
 		expression.NewEquals(
@@ -139,13 +142,14 @@ func TestInnerJoinEmpty(t *testing.T) {
 func BenchmarkInnerJoin(b *testing.B) {
 	db := memory.NewDatabase("test")
 	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
 
-	t1 := memory.NewTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
+	t1 := memory.NewTable(sql.NewEmptyContext(), db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "foo", Type: types.Int64},
 		{Name: "b", Source: "foo", Type: types.Text},
 	}), nil)
 
-	t2 := memory.NewTable(db.BaseDatabase, "bar", sql.NewPrimaryKeySchema(sql.Schema{
+	t2 := memory.NewTable(sql.NewEmptyContext(), db.BaseDatabase, "bar", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "bar", Type: types.Int64},
 		{Name: "b", Source: "bar", Type: types.Text},
 	}), nil)
@@ -156,6 +160,7 @@ func BenchmarkInnerJoin(b *testing.B) {
 	}
 
 	n1 := plan.NewInnerJoin(
+		ctx,
 		plan.NewResolvedTable(t1, nil, nil),
 		plan.NewResolvedTable(t2, nil, nil),
 		expression.NewEquals(
@@ -165,11 +170,13 @@ func BenchmarkInnerJoin(b *testing.B) {
 	)
 
 	n2 := plan.NewFilter(
+		ctx,
 		expression.NewEquals(
 			expression.NewGetField(0, types.Int64, "a", false),
 			expression.NewGetField(2, types.Int64, "a", false),
 		),
 		plan.NewCrossJoin(
+			ctx,
 			plan.NewResolvedTable(t1, nil, nil),
 			plan.NewResolvedTable(t2, nil, nil),
 		),
@@ -183,7 +190,7 @@ func BenchmarkInnerJoin(b *testing.B) {
 		{int64(4), "t1_4", int64(4), "t2_4"},
 	}
 
-	ctx := sql.NewContext(context.Background(), sql.WithMemoryManager(
+	ctx = sql.NewContext(context.Background(), sql.WithMemoryManager(
 		sql.NewMemoryManager(mockReporter{1, 5}),
 	), sql.WithSession(memory.NewSession(sql.NewBaseSession(), pro)))
 
@@ -237,13 +244,14 @@ func TestLeftJoin(t *testing.T) {
 	pro := memory.NewDBProvider(db)
 	ctx := newContext(pro)
 
-	ltable := memory.NewTable(db.BaseDatabase, "left", lSchema, nil)
-	rtable := memory.NewTable(db.BaseDatabase, "right", rSchema, nil)
+	ltable := memory.NewTable(ctx, db.BaseDatabase, "left", lSchema, nil)
+	rtable := memory.NewTable(ctx, db.BaseDatabase, "right", rSchema, nil)
 
 	insertData(t, newContext(pro), ltable)
 	insertData(t, newContext(pro), rtable)
 
 	j := plan.NewLeftOuterJoin(
+		ctx,
 		plan.NewResolvedTable(ltable, nil, nil),
 		plan.NewResolvedTable(rtable, nil, nil),
 		expression.NewEquals(

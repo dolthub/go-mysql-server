@@ -23,9 +23,9 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
-	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -428,13 +428,8 @@ func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest [
 		start = 0
 	case time.Time:
 		val = s.AppendFormat(dest, sql.TimestampDatetimeLayout)
-	case decimal.Decimal:
-		val = append(dest, s.StringFixed(s.Exponent()*-1)...)
-	case decimal.NullDecimal:
-		if !s.Valid {
-			return nil, nil
-		}
-		val = append(dest, s.Decimal.String()...)
+	case *apd.Decimal:
+		val = append(dest, s.Text('f')...)
 	case sql.JSONWrapper:
 		var err error
 		val, err = JsonToMySqlBytes(ctx, s)
@@ -517,7 +512,7 @@ func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest [
 				return nil, ErrBadCharsetString.New(invalidByte, colName, rowNum)
 			} else {
 				// Non-strict mode: truncate invalid bytes (MySQL behavior)
-				bytesVal = truncateInvalidUTF8(bytesVal)
+				bytesVal = TruncateInvalidUTF8(bytesVal)
 			}
 		} else {
 			var ok bool
@@ -547,12 +542,11 @@ func getColumnContext(ctx context.Context) (string, int64) {
 	return colName, rowNum
 }
 
-// truncateInvalidUTF8 truncates byte slice at first invalid UTF8 sequence (MySQL non-strict behavior)
-func truncateInvalidUTF8(data []byte) []byte {
+// TruncateInvalidUTF8 truncates data at the first invalid UTF-8 byte sequence.
+func TruncateInvalidUTF8(data []byte) []byte {
 	for i := 0; i < len(data); {
 		r, size := utf8.DecodeRune(data[i:])
 		if r == utf8.RuneError && size == 1 {
-			// Invalid UTF8 sequence found, truncate here
 			return data[:i]
 		}
 		i += size

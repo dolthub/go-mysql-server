@@ -17,7 +17,6 @@ package function
 import (
 	"testing"
 
-	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -43,7 +42,7 @@ func TestAbsValue(t *testing.T) {
 	toUint8 := func(x float64) interface{} { return uint8(x) }
 	toFloat64 := func(x float64) interface{} { return x }
 	toFloat32 := func(x float64) interface{} { return float32(x) }
-	toDecimal1616 := func(x float64) interface{} { return decimal.NewFromFloat(x) }
+	toDecimal1616 := func(x float64) interface{} { return types.DecimalFromFloat64(x) }
 
 	signedTypes := map[sql.Type]toTypeFunc{
 		types.Int64: toInt64,
@@ -108,7 +107,7 @@ func TestAbsValue(t *testing.T) {
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
 			for sqlType, conv := range test.typeToConv {
-				f := NewAbsVal(expression.NewGetField(0, sqlType, "blob", true))
+				f := NewAbsVal(sql.NewEmptyContext(), expression.NewGetField(0, sqlType, "blob", true))
 
 				row := sql.NewRow(conv(test.val))
 				res, err := f.Eval(sql.NewEmptyContext(), row)

@@ -902,7 +902,7 @@ func columnsExtensionsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 	for _, db := range databases {
 		err := DBTableIter(ctx, db.Database, func(t Table) (cont bool, err error) {
 			tblName := t.Name()
-			for _, col := range t.Schema() {
+			for _, col := range t.Schema(ctx) {
 				rows = append(rows, Row{
 					db.CatalogName, // table_catalog
 					db.SchemaName,  // table_schema
@@ -1077,7 +1077,7 @@ func keyColumnUsageRowIter(ctx *Context, c Catalog) (RowIter, error) {
 						continue
 					}
 
-					colNames := getColumnNamesFromIndex(index, tbl)
+					colNames := getColumnNamesFromIndex(ctx, index, tbl)
 
 					// Create a Row for each column this index refers too.
 					for i, colName := range colNames {
@@ -1248,7 +1248,7 @@ func referentialConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 								if index.ID() != "PRIMARY" && !index.IsUnique() {
 									continue
 								}
-								colNames := getColumnNamesFromIndex(index, refTbl)
+								colNames := getColumnNamesFromIndex(ctx, index, refTbl)
 								if len(colNames) == len(referencedCols) {
 									var hasAll = true
 									for _, colName := range colNames {
@@ -1393,7 +1393,7 @@ func stGeometryColumnsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 		err := DBTableIter(ctx, db.Database, func(t Table) (cont bool, err error) {
 			tblName := t.Name()
 
-			for _, col := range t.Schema() {
+			for _, col := range t.Schema(ctx) {
 				s, ok := col.Type.(SpatialColumnType)
 				if !ok {
 					continue
@@ -1512,7 +1512,7 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 					// Create a Row for each column this index refers too.
 					i := 0
 					for j, expr := range index.Expressions() {
-						col := plan.GetColumnFromIndexExpr(expr, tbl)
+						col := plan.GetColumnFromIndexExpr(ctx, expr, tbl)
 						if col != nil {
 							i += 1
 							var (
@@ -2574,12 +2574,14 @@ func (c *InformationSchemaTable) Database() string {
 }
 
 // Schema implements the sql.Table interface.
-func (t *InformationSchemaTable) Schema() Schema {
+func (t *InformationSchemaTable) Schema(ctx *Context) Schema {
+	// If we ever update this function to use the context, then we must update the String() function as well as it
+	// passes a nil context intentionally
 	return t.TableSchema
 }
 
-func (t *InformationSchemaTable) DataLength(_ *Context) (uint64, error) {
-	return uint64(len(t.Schema()) * int(types.Text.MaxByteLength()) * defaultInfoSchemaRowCount), nil
+func (t *InformationSchemaTable) DataLength(ctx *Context) (uint64, error) {
+	return uint64(len(t.Schema(ctx)) * int(types.Text.MaxByteLength()) * defaultInfoSchemaRowCount), nil
 }
 
 func (t *InformationSchemaTable) RowCount(ctx *Context) (uint64, bool, error) {
@@ -2617,7 +2619,12 @@ func (t *InformationSchemaTable) PartitionRows(ctx *Context, partition Partition
 
 // PartitionCount implements the sql.PartitionCounter interface.
 func (t *InformationSchemaTable) String() string {
-	return printTable(t.Name(), t.Schema())
+	// To maintain compatibility with fmt.Stringer we use a nil context. As of the writing of this comment, the Schema
+	// method simply returns a precomputed schema and does not make use of the context at all. If that ever changes and
+	// we start to panic, then we're explicitly creating a nil context here so that it's very easy to find during
+	// debugging.
+	ctx := (*Context)(nil)
+	return printTable(t.Name(), t.Schema(ctx))
 }
 
 // Key implements Partition  interface
@@ -2680,10 +2687,10 @@ func partitionKey(tableName string) []byte {
 	return []byte(InformationSchemaDatabaseName + "." + tableName)
 }
 
-func getColumnNamesFromIndex(idx Index, table Table) []string {
+func getColumnNamesFromIndex(ctx *Context, idx Index, table Table) []string {
 	var indexCols []string
 	for _, expr := range idx.Expressions() {
-		col := plan.GetColumnFromIndexExpr(expr, table)
+		col := plan.GetColumnFromIndexExpr(ctx, expr, table)
 		if col != nil {
 			indexCols = append(indexCols, col.Name)
 		}

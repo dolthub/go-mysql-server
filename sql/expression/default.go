@@ -45,13 +45,13 @@ func (*DefaultColumn) Resolved() bool {
 
 // IsNullable implements the sql.Expression interface.
 // The function always panics!
-func (*DefaultColumn) IsNullable() bool {
+func (*DefaultColumn) IsNullable(ctx *sql.Context) bool {
 	panic("default column is a placeholder node, but IsNullable was called")
 }
 
 // Type implements the sql.Expression interface.
 // The function always panics!
-func (*DefaultColumn) Type() sql.Type {
+func (*DefaultColumn) Type(ctx *sql.Context) sql.Type {
 	panic("default column is a placeholder node, but Type was called")
 }
 
@@ -76,7 +76,7 @@ func (*DefaultColumn) Eval(ctx *sql.Context, r sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements the Expression interface.
-func (c *DefaultColumn) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (c *DefaultColumn) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 0)
 	}

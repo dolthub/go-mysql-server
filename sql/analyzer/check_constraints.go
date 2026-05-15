@@ -30,7 +30,7 @@ import (
 func validateCheckConstraints(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	switch n := n.(type) {
 	case *plan.CreateCheck:
-		return validateCreateCheckNode(n)
+		return validateCreateCheckNode(ctx, n)
 	case *plan.CreateTable:
 		return validateCreateTableChecks(ctx, a, n, scope)
 	}
@@ -44,7 +44,7 @@ func validateCreateTableChecks(ctx *sql.Context, a *Analyzer, n *plan.CreateTabl
 		return nil, transform.SameTree, err
 	}
 
-	transform.InspectExpressions(n, func(e sql.Expression) bool {
+	transform.InspectExpressions(ctx, n, func(ctx *sql.Context, e sql.Expression) bool {
 		if err != nil {
 			return false
 		}
@@ -56,7 +56,7 @@ func validateCreateTableChecks(ctx *sql.Context, a *Analyzer, n *plan.CreateTabl
 		default:
 			// check expressions, must be validated
 			// TODO: would be better to wrap these in something else to be able to identify them better
-			err = checkExpressionValid(e)
+			err = checkExpressionValid(ctx, e)
 			if err != nil {
 				return false
 			}
@@ -83,8 +83,8 @@ func validateCreateTableChecks(ctx *sql.Context, a *Analyzer, n *plan.CreateTabl
 	return n, transform.SameTree, nil
 }
 
-func validateCreateCheckNode(ct *plan.CreateCheck) (sql.Node, transform.TreeIdentity, error) {
-	err := checkExpressionValid(ct.Check.Expr)
+func validateCreateCheckNode(ctx *sql.Context, ct *plan.CreateCheck) (sql.Node, transform.TreeIdentity, error) {
+	err := checkExpressionValid(ctx, ct.Check.Expr)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
@@ -92,9 +92,9 @@ func validateCreateCheckNode(ct *plan.CreateCheck) (sql.Node, transform.TreeIden
 	return ct, transform.SameTree, nil
 }
 
-func checkExpressionValid(e sql.Expression) error {
+func checkExpressionValid(ctx *sql.Context, e sql.Expression) error {
 	var err error
-	sql.Inspect(e, func(e sql.Expression) bool {
+	sql.Inspect(ctx, e, func(ctx *sql.Context, e sql.Expression) bool {
 		switch e := e.(type) {
 		case *function.GetLock, *function.IsUsedLock, *function.IsFreeLock, function.ReleaseAllLocks, *function.ReleaseLock:
 			err = sql.ErrInvalidConstraintFunctionNotSupported.New(e.String())

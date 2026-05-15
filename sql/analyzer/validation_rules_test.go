@@ -79,7 +79,7 @@ func TestValidateGroupBy(t *testing.T) {
 	pro := memory.NewDBProvider(db)
 	ctx := newContext(pro)
 
-	child := memory.NewTable(db, "test", childSchema, nil)
+	child := memory.NewTable(ctx, db, "test", childSchema, nil)
 
 	rows := []sql.Row{
 		sql.NewRow("col1_1", int64(1111)),
@@ -95,7 +95,7 @@ func TestValidateGroupBy(t *testing.T) {
 
 	p := plan.NewGroupBy(
 		[]sql.Expression{
-			expression.NewAlias("alias", expression.NewGetField(0, types.Text, "col1", true)),
+			expression.NewAlias(ctx, "alias", expression.NewGetField(0, types.Text, "col1", true)),
 			expression.NewGetField(0, types.Text, "col1", true),
 			aggregation.NewCount(expression.NewGetField(1, types.Int64, "col2", true)),
 		},
@@ -127,7 +127,7 @@ func TestValidateGroupByErr(t *testing.T) {
 	pro := memory.NewDBProvider(db)
 	ctx := newContext(pro)
 
-	child := memory.NewTable(db, "test", childSchema, nil)
+	child := memory.NewTable(ctx, db, "test", childSchema, nil)
 
 	rows := []sql.Row{
 		sql.NewRow("col1_1", int64(1111)),
@@ -170,12 +170,12 @@ func TestValidateSchemaSource(t *testing.T) {
 	}{
 		{
 			"some random node",
-			plan.NewProject(nil, nil),
+			plan.NewProject(ctx, nil, nil),
 			true,
 		},
 		{
 			"table with valid schema",
-			plan.NewResolvedTable(memory.NewTable(db, "mytable", sql.NewPrimaryKeySchema(sql.Schema{
+			plan.NewResolvedTable(memory.NewTable(ctx, db, "mytable", sql.NewPrimaryKeySchema(sql.Schema{
 				{Name: "foo", Source: "mytable"},
 				{Name: "bar", Source: "mytable"},
 			}), nil), nil, nil),
@@ -183,7 +183,7 @@ func TestValidateSchemaSource(t *testing.T) {
 		},
 		{
 			"table with invalid schema",
-			plan.NewResolvedTable(memory.NewTable(db, "mytable", sql.NewPrimaryKeySchema(sql.Schema{
+			plan.NewResolvedTable(memory.NewTable(ctx, db, "mytable", sql.NewPrimaryKeySchema(sql.Schema{
 				{Name: "foo", Source: ""},
 				{Name: "bar", Source: "something"},
 			}), nil), nil, nil),
@@ -191,7 +191,7 @@ func TestValidateSchemaSource(t *testing.T) {
 		},
 		{
 			"table alias with table",
-			plan.NewTableAlias("foo", plan.NewResolvedTable(memory.NewTable(db, "mytable", sql.NewPrimaryKeySchema(sql.Schema{
+			plan.NewTableAlias("foo", plan.NewResolvedTable(memory.NewTable(ctx, db, "mytable", sql.NewPrimaryKeySchema(sql.Schema{
 				{Name: "foo", Source: "mytable"},
 			}), nil), nil, nil)),
 			true,
@@ -201,6 +201,7 @@ func TestValidateSchemaSource(t *testing.T) {
 			plan.NewTableAlias(
 				"foo",
 				plan.NewProject(
+					ctx,
 					[]sql.Expression{
 						expression.NewGetField(0, types.Text, "bar", false),
 						expression.NewGetField(1, types.Int64, "baz", false),
@@ -232,7 +233,7 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 	pro := memory.NewDBProvider(db)
 	ctx := newContext(pro)
 
-	table := plan.NewResolvedTable(memory.NewTable(db, "mytable", sql.NewPrimaryKeySchema(sql.Schema{
+	table := plan.NewResolvedTable(memory.NewTable(ctx, db, "mytable", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "foo", Source: "mytable", Type: types.Text},
 		{Name: "bar", Source: "mytable", Type: types.Int64},
 		{Name: "rab", Source: "mytable", Type: types.Text},
@@ -247,6 +248,7 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 		{
 			"some random node",
 			plan.NewProject(
+				ctx,
 				[]sql.Expression{
 					expression.NewGetField(0, types.Text, "bar", false),
 					expression.NewGetField(1, types.Int64, "baz", false),
@@ -260,6 +262,7 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 			plan.NewSetOp(
 				plan.UnionType,
 				plan.NewProject(
+					ctx,
 					[]sql.Expression{
 						expression.NewGetField(0, types.Text, "bar", false),
 						expression.NewGetField(1, types.Int64, "baz", false),
@@ -267,6 +270,7 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 					table,
 				),
 				plan.NewProject(
+					ctx,
 					[]sql.Expression{
 						expression.NewGetField(2, types.Text, "rab", false),
 						expression.NewGetField(3, types.Int64, "zab", false),
@@ -282,6 +286,7 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 			plan.NewSetOp(
 				plan.UnionType,
 				plan.NewProject(
+					ctx,
 					[]sql.Expression{
 						expression.NewGetField(0, types.Text, "bar", false),
 						expression.NewGetField(1, types.Int64, "baz", false),
@@ -290,6 +295,7 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 					table,
 				),
 				plan.NewProject(
+					ctx,
 					[]sql.Expression{
 						expression.NewGetField(2, types.Text, "rab", false),
 						expression.NewGetField(3, types.Int64, "zab", false),
@@ -305,6 +311,7 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 			plan.NewSetOp(
 				plan.UnionType,
 				plan.NewProject(
+					ctx,
 					[]sql.Expression{
 						expression.NewGetField(0, types.Text, "bar", false),
 						expression.NewGetField(1, types.Int64, "baz", false),
@@ -312,6 +319,7 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 					table,
 				),
 				plan.NewProject(
+					ctx,
 					[]sql.Expression{
 						expression.NewGetField(2, types.Text, "rab", false),
 						expression.NewGetField(3, types.Int64, "zab", false),
@@ -328,6 +336,7 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 			plan.NewSetOp(
 				plan.UnionType,
 				plan.NewProject(
+					ctx,
 					[]sql.Expression{
 						expression.NewGetField(0, types.Text, "bar", false),
 						expression.NewGetField(1, types.Int64, "baz", false),
@@ -335,6 +344,7 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 					table,
 				),
 				plan.NewProject(
+					ctx,
 					[]sql.Expression{
 						expression.NewGetField(2, types.Text, "rab", false),
 						expression.NewGetField(3, types.Boolean, "zab", false),
@@ -352,6 +362,7 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 				plan.NewSetOp(
 					plan.UnionType,
 					plan.NewProject(
+						ctx,
 						[]sql.Expression{
 							expression.NewGetField(0, types.Text, "bar", false),
 							expression.NewGetField(1, types.Int64, "baz", false),
@@ -359,6 +370,7 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 						table,
 					),
 					plan.NewProject(
+						ctx,
 						[]sql.Expression{
 							expression.NewGetField(2, types.Text, "rab", false),
 							expression.NewGetField(3, types.Boolean, "zab", false),
@@ -387,6 +399,7 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 }
 
 func TestValidateOperands(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	testCases := []struct {
 		name string
 		node sql.Node
@@ -394,14 +407,14 @@ func TestValidateOperands(t *testing.T) {
 	}{
 		{
 			"project with no tuple",
-			plan.NewProject([]sql.Expression{
+			plan.NewProject(ctx, []sql.Expression{
 				expression.NewLiteral(1, types.Int64),
 			}, nil),
 			true,
 		},
 		{
 			"project with a 1 elem tuple",
-			plan.NewProject([]sql.Expression{
+			plan.NewProject(ctx, []sql.Expression{
 				expression.NewTuple(
 					expression.NewLiteral(1, types.Int64),
 				),
@@ -410,7 +423,7 @@ func TestValidateOperands(t *testing.T) {
 		},
 		{
 			"project with a 2 elem tuple",
-			plan.NewProject([]sql.Expression{
+			plan.NewProject(ctx, []sql.Expression{
 				expression.NewTuple(
 					expression.NewLiteral(1, types.Int64),
 					expression.NewLiteral(2, types.Int64),
@@ -421,7 +434,7 @@ func TestValidateOperands(t *testing.T) {
 		{
 			"distinct with a 2 elem tuple inside the project",
 			plan.NewDistinct(
-				plan.NewProject([]sql.Expression{
+				plan.NewProject(ctx, []sql.Expression{
 					expression.NewTuple(
 						expression.NewLiteral(1, types.Int64),
 						expression.NewLiteral(2, types.Int64),
@@ -432,8 +445,9 @@ func TestValidateOperands(t *testing.T) {
 		{
 			"alias with a tuple",
 			plan.NewProject(
+				ctx,
 				[]sql.Expression{
-					expression.NewAlias("foo", expression.NewTuple(
+					expression.NewAlias(sql.NewEmptyContext(), "foo", expression.NewTuple(
 						expression.NewLiteral(1, types.Int64),
 						expression.NewLiteral(2, types.Int64),
 					)),
@@ -470,8 +484,9 @@ func TestValidateOperands(t *testing.T) {
 		},
 		{
 			"validate subquery columns",
-			plan.NewProject([]sql.Expression{
+			plan.NewProject(ctx, []sql.Expression{
 				plan.NewSubquery(plan.NewProject(
+					ctx,
 					[]sql.Expression{
 						lit(1),
 						lit(2),
@@ -503,7 +518,7 @@ func TestValidateIndexCreation(t *testing.T) {
 	pro := memory.NewDBProvider(db)
 	ctx := newContext(pro)
 
-	table := memory.NewTable(db, "foo", sql.NewPrimaryKeySchema(sql.Schema{
+	table := memory.NewTable(ctx, db, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "foo"},
 		{Name: "b", Source: "foo"},
 	}), nil)
@@ -577,6 +592,7 @@ func mustFunc(e sql.Expression, err error) sql.Expression {
 }
 
 func TestValidateIntervalUsage(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	testCases := []struct {
 		name string
 		node sql.Node
@@ -585,8 +601,10 @@ func TestValidateIntervalUsage(t *testing.T) {
 		{
 			"date add",
 			plan.NewProject(
+				ctx,
 				[]sql.Expression{
 					mustFunc(function.NewDateAdd(
+						sql.NewEmptyContext(),
 						expression.NewLiteral("2018-05-01", types.LongText),
 						expression.NewInterval(
 							expression.NewLiteral(int64(1), types.Int64),
@@ -601,8 +619,10 @@ func TestValidateIntervalUsage(t *testing.T) {
 		{
 			"date sub",
 			plan.NewProject(
+				ctx,
 				[]sql.Expression{
 					mustFunc(function.NewDateSub(
+						sql.NewEmptyContext(),
 						expression.NewLiteral("2018-05-01", types.LongText),
 						expression.NewInterval(
 							expression.NewLiteral(int64(1), types.Int64),
@@ -617,6 +637,7 @@ func TestValidateIntervalUsage(t *testing.T) {
 		{
 			"+ op",
 			plan.NewProject(
+				ctx,
 				[]sql.Expression{
 					expression.NewPlus(
 						expression.NewLiteral("2018-05-01", types.LongText),
@@ -633,6 +654,7 @@ func TestValidateIntervalUsage(t *testing.T) {
 		{
 			"- op",
 			plan.NewProject(
+				ctx,
 				[]sql.Expression{
 					expression.NewMinus(
 						expression.NewLiteral("2018-05-01", types.LongText),
@@ -649,6 +671,7 @@ func TestValidateIntervalUsage(t *testing.T) {
 		{
 			"invalid",
 			plan.NewProject(
+				ctx,
 				[]sql.Expression{
 					expression.NewInterval(
 						expression.NewLiteral(int64(1), types.Int64),
@@ -662,8 +685,9 @@ func TestValidateIntervalUsage(t *testing.T) {
 		{
 			"alias",
 			plan.NewProject(
+				ctx,
 				[]sql.Expression{
-					expression.NewAlias("foo", expression.NewInterval(
+					expression.NewAlias(sql.NewEmptyContext(), "foo", expression.NewInterval(
 						expression.NewLiteral(int64(1), types.Int64),
 						"DAY",
 					)),
@@ -699,19 +723,20 @@ func TestValidateSubqueryColumns(t *testing.T) {
 	pro := memory.NewDBProvider(db)
 	ctx := newContext(pro)
 
-	table := memory.NewTable(db, "test", sql.NewPrimaryKeySchema(sql.Schema{
+	table := memory.NewTable(ctx, db, "test", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "foo", Type: types.Text},
 	}), nil)
-	subTable := memory.NewTable(db, "subtest", sql.NewPrimaryKeySchema(sql.Schema{
+	subTable := memory.NewTable(ctx, db, "subtest", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "bar", Type: types.Text},
 	}), nil)
 
 	var node sql.Node
-	node = plan.NewProject([]sql.Expression{
-		plan.NewSubquery(plan.NewFilter(expression.NewGreaterThan(
+	node = plan.NewProject(ctx, []sql.Expression{
+		plan.NewSubquery(plan.NewFilter(ctx, expression.NewGreaterThan(
 			expression.NewGetField(0, types.Boolean, "foo", false),
 			lit(1),
 		), plan.NewProject(
+			ctx,
 			[]sql.Expression{
 				expression.NewGetField(1, types.Boolean, "bar", false),
 			},
@@ -722,11 +747,12 @@ func TestValidateSubqueryColumns(t *testing.T) {
 	_, _, err := validateSubqueryColumns(ctx, nil, node, nil, DefaultRuleSelector, nil)
 	require.NoError(err)
 
-	node = plan.NewProject([]sql.Expression{
-		plan.NewSubquery(plan.NewFilter(expression.NewGreaterThan(
+	node = plan.NewProject(ctx, []sql.Expression{
+		plan.NewSubquery(plan.NewFilter(ctx, expression.NewGreaterThan(
 			expression.NewGetField(1, types.Boolean, "foo", false),
 			lit(1),
 		), plan.NewProject(
+			ctx,
 			[]sql.Expression{
 				expression.NewGetField(2, types.Boolean, "bar", false),
 			},
@@ -738,8 +764,9 @@ func TestValidateSubqueryColumns(t *testing.T) {
 	require.Error(err)
 	require.True(analyzererrors.ErrSubqueryFieldIndex.Is(err))
 
-	node = plan.NewProject([]sql.Expression{
+	node = plan.NewProject(ctx, []sql.Expression{
 		plan.NewSubquery(plan.NewProject(
+			ctx,
 			[]sql.Expression{
 				lit(1),
 			},
@@ -757,13 +784,13 @@ type dummyNode struct{ resolved bool }
 var _ sql.Node = dummyNode{}
 var _ sql.CollationCoercible = dummyNode{}
 
-func (n dummyNode) String() string                                   { return "dummynode" }
-func (n dummyNode) Resolved() bool                                   { return n.resolved }
-func (dummyNode) IsReadOnly() bool                                   { return true }
-func (dummyNode) Schema() sql.Schema                                 { return nil }
-func (dummyNode) Children() []sql.Node                               { return nil }
-func (dummyNode) RowIter(*sql.Context, sql.Row) (sql.RowIter, error) { return nil, nil }
-func (dummyNode) WithChildren(...sql.Node) (sql.Node, error)         { return nil, nil }
+func (n dummyNode) String() string                                         { return "dummynode" }
+func (n dummyNode) Resolved() bool                                         { return n.resolved }
+func (dummyNode) IsReadOnly() bool                                         { return true }
+func (dummyNode) Schema(ctx *sql.Context) sql.Schema                       { return nil }
+func (dummyNode) Children() []sql.Node                                     { return nil }
+func (dummyNode) RowIter(*sql.Context, sql.Row) (sql.RowIter, error)       { return nil, nil }
+func (dummyNode) WithChildren(*sql.Context, ...sql.Node) (sql.Node, error) { return nil, nil }
 func (dummyNode) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7
 }

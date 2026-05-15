@@ -242,7 +242,7 @@ func (i *showIndexesIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 
 	nullable := ""
-	if col := plan.GetColumnFromIndexExpr(show.expression, tbl); col != nil {
+	if col := plan.GetColumnFromIndexExpr(ctx, show.expression, tbl); col != nil {
 		columnName, expression = col.Name, nil
 		if col.Nullable {
 			nullable = "YES"
@@ -281,7 +281,7 @@ func (i *showIndexesIter) Next(ctx *sql.Context) (sql.Row, error) {
 }
 
 // isPriCol checks if this column is the first column in a unique index
-func isPriCol(s *plan.ShowColumns, col *sql.Column, table sql.Table) bool {
+func isPriCol(ctx *sql.Context, s *plan.ShowColumns, col *sql.Column, table sql.Table) bool {
 	for _, idx := range s.Indexes {
 		if !idx.IsUnique() {
 			continue
@@ -290,12 +290,12 @@ func isPriCol(s *plan.ShowColumns, col *sql.Column, table sql.Table) bool {
 		//   this currently works because the primary key shows up as unique, so the condition below satisfies it
 		//   but I am not confident that this is always true
 		idxExprs := idx.Expressions()
-		firstIndexCol := plan.GetColumnFromIndexExpr(idxExprs[0], table)
+		firstIndexCol := plan.GetColumnFromIndexExpr(ctx, idxExprs[0], table)
 		if firstIndexCol == nil || firstIndexCol.Name != col.Name {
 			return false
 		}
 		for _, expr := range idxExprs {
-			idxCol := plan.GetColumnFromIndexExpr(expr, table)
+			idxCol := plan.GetColumnFromIndexExpr(ctx, expr, table)
 			if idxCol == nil || idxCol.Nullable {
 				return false
 			}
@@ -306,14 +306,14 @@ func isPriCol(s *plan.ShowColumns, col *sql.Column, table sql.Table) bool {
 }
 
 // isUnqCol checks if this the values in this column must be unique
-func isUnqCol(s *plan.ShowColumns, col *sql.Column, table sql.Table) bool {
+func isUnqCol(ctx *sql.Context, s *plan.ShowColumns, col *sql.Column, table sql.Table) bool {
 	for _, idx := range s.Indexes {
 		// Column is in a unique index by itself
 		idxExprs := idx.Expressions()
 		if !idx.IsUnique() || len(idxExprs) > 1 {
 			continue
 		}
-		firstIndexCol := plan.GetColumnFromIndexExpr(idxExprs[0], table)
+		firstIndexCol := plan.GetColumnFromIndexExpr(ctx, idxExprs[0], table)
 		if firstIndexCol != nil && firstIndexCol.Name == col.Name {
 			return true
 		}
@@ -322,10 +322,10 @@ func isUnqCol(s *plan.ShowColumns, col *sql.Column, table sql.Table) bool {
 }
 
 // isMulCol checks if values in this column can be non-unique and that it's the first column in an index
-func isMulCol(s *plan.ShowColumns, col *sql.Column, table sql.Table) bool {
+func isMulCol(ctx *sql.Context, s *plan.ShowColumns, col *sql.Column, table sql.Table) bool {
 	for _, idx := range s.Indexes {
 		idxExprs := idx.Expressions()
-		firstIdxCol := plan.GetColumnFromIndexExpr(idxExprs[0], table)
+		firstIdxCol := plan.GetColumnFromIndexExpr(ctx, idxExprs[0], table)
 		// Not first column in index, ignore
 		if firstIdxCol == nil || firstIdxCol.Name != col.Name {
 			continue
@@ -406,7 +406,7 @@ type NameAndSchema interface {
 func convertColumnDefaultToString(ctx *sql.Context, def *sql.ColumnDefaultValue) (string, error) {
 	// TODO : string literals should have character set introducer
 	colDefaultStr := def.String()
-	defType := def.Type()
+	defType := def.Type(ctx)
 
 	// These types do not need to be quoted
 	if !def.IsLiteral() || colDefaultStr == "NULL" || types.IsTime(defType) || types.IsText(defType) {
@@ -423,7 +423,7 @@ func convertColumnDefaultToString(ctx *sql.Context, def *sql.ColumnDefaultValue)
 }
 
 func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, table sql.Table, schema sql.Schema, pkSchema sql.PrimaryKeySchema) (string, error) {
-	colStmts := make([]string, len(schema))
+	colStmts := make([]string, 0, len(schema))
 	var primaryKeyCols []string
 
 	var pkOrdinals []int
@@ -434,6 +434,10 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 	// Statement creation parts for each column
 	tableCollation := table.Collation()
 	for idx, col := range schema {
+		if col.HiddenSystem {
+			continue
+		}
+
 		var colDefaultStr string
 		var err error
 		if col.Default != nil && col.Generated == nil {
@@ -456,7 +460,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 			pkOrdinals = append(pkOrdinals, idx)
 		}
 
-		colStmts[idx] = i.formatter.GenerateCreateTableColumnDefinition(col, colDefaultStr, onUpdateStr, tableCollation)
+		colStmts = append(colStmts, i.formatter.GenerateCreateTableColumnDefinition(col, colDefaultStr, onUpdateStr, tableCollation))
 	}
 
 	for _, idx := range pkOrdinals {
@@ -476,8 +480,30 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 		prefixLengths := index.PrefixLengths()
 		var indexCols []string
 		for idx, expr := range index.Expressions() {
-			col := plan.GetColumnFromIndexExpr(expr, table)
-			if col != nil {
+			col := plan.GetColumnFromIndexExpr(ctx, expr, table)
+			if col == nil {
+				continue
+			}
+			if col.HiddenSystem && col.Generated != nil {
+				// TODO: This type-check is a workaround for an inconsistency in how Dolt stores
+				// generated expressions. Dolt's ToDoltCol() serializes via col.Generated.String()
+				// (i.e. ColumnDefaultValue.String()), which wraps the inner expression in parens:
+				// e.g. Arithmetic.String()="(c1*10)" → stored as "((c1*10))". On read, that string
+				// becomes UnresolvedColumnDefault.ExprString, so calling ColumnDefaultValue.String()
+				// again would triple-wrap it. Two cleaner fixes exist:
+				//   A) Change ColumnDefaultValue.String() to return Expr.String() directly when Expr
+				//      is *UnresolvedColumnDefault (making it idempotent for the stored form). No
+				//      migration needed, but affects every call site that mixes resolved/unresolved.
+				//   B) Change Dolt's ToDoltCol() to store col.Generated.Expr.String() instead of
+				//      col.Generated.String(), removing the extra paren at the source. Requires
+				//      migration for any existing databases with functional indexes.
+				// Either fix would let this site use col.Generated.String() unconditionally.
+				if _, ok := col.Generated.Expr.(*sql.UnresolvedColumnDefault); ok {
+					indexCols = append(indexCols, col.Generated.Expr.String())
+				} else {
+					indexCols = append(indexCols, col.Generated.String())
+				}
+			} else {
 				indexDef := i.formatter.QuoteIdentifier(col.Name)
 				if len(prefixLengths) > idx && prefixLengths[idx] != 0 {
 					indexDef += fmt.Sprintf("(%v)", prefixLengths[idx])
@@ -540,7 +566,15 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 		temp = " TEMPORARY"
 	}
 
-	return i.formatter.GenerateCreateTableStatement(table.Name(), colStmts, temp, autoInc, table.Collation().CharacterSet().Name(), table.Collation().Name(), comment), nil
+	createStmt := i.formatter.GenerateCreateTableStatement(table.Name(), colStmts, temp, autoInc, table.Collation().CharacterSet().Name(), table.Collation().Name(), comment)
+
+	if targetRowSizeTable := getTargetRowSizeTable(table); targetRowSizeTable != nil {
+		if targetRowSizeTable.HasTargetRowSize() {
+			createStmt += fmt.Sprintf(" TARGET_ROW_SIZE=%d", targetRowSizeTable.GetTargetRowSize())
+		}
+	}
+
+	return createStmt, nil
 }
 
 func produceCreateViewStatement(view *plan.SubqueryAlias) string {
@@ -576,6 +610,19 @@ func getAutoIncrementTable(t sql.Table) sql.AutoIncrementGetter {
 		return getAutoIncrementTable(t.Underlying())
 	case *plan.ResolvedTable:
 		return getAutoIncrementTable(t.Table)
+	default:
+		return nil
+	}
+}
+
+func getTargetRowSizeTable(t sql.Table) sql.TargetRowSizeTable {
+	switch t := t.(type) {
+	case sql.TargetRowSizeTable:
+		return t
+	case sql.TableWrapper:
+		return getTargetRowSizeTable(t.Underlying())
+	case *plan.ResolvedTable:
+		return getTargetRowSizeTable(t.Table)
 	default:
 		return nil
 	}

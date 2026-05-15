@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/shopspring/decimal"
+	"github.com/cockroachdb/apd/v3"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -38,7 +38,7 @@ type JSONType struct {
 var _ sql.FunctionExpression = &JSONType{}
 
 // NewJSONType creates a new JSONType function.
-func NewJSONType(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONType(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) != 1 {
 		return nil, sql.ErrInvalidArgumentNumber.New("JSON_TYPE", "1", len(args))
 	}
@@ -66,13 +66,13 @@ func (j JSONType) String() string {
 }
 
 // Type implements sql.Expression
-func (j JSONType) Type() sql.Type {
+func (j JSONType) Type(ctx *sql.Context) sql.Type {
 	return types.Text
 }
 
 // IsNullable implements sql.Expression
-func (j JSONType) IsNullable() bool {
-	return j.JSON.IsNullable()
+func (j JSONType) IsNullable(ctx *sql.Context) bool {
+	return j.JSON.IsNullable(ctx)
 }
 
 // Eval implements sql.Expression
@@ -89,7 +89,7 @@ func (j JSONType) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	if conv, ok := j.JSON.(*expression.Convert); ok {
-		typ := conv.Child.Type()
+		typ := conv.Child.Type(ctx)
 		if types.IsDatetimeType(typ) {
 			return "DATETIME", nil
 		}
@@ -141,7 +141,7 @@ func TypeOfJsonValue(val interface{}) string {
 		return "ARRAY"
 	case map[string]interface{}:
 		return "OBJECT"
-	case decimal.Decimal:
+	case *apd.Decimal:
 		return "DECIMAL"
 	default:
 		return "OPAQUE"
@@ -154,6 +154,6 @@ func (j JSONType) Children() []sql.Expression {
 }
 
 // WithChildren implements sql.Expression
-func (j JSONType) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewJSONType(children...)
+func (j JSONType) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewJSONType(ctx, children...)
 }

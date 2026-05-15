@@ -72,25 +72,25 @@ func (s *Sort) String() string {
 }
 
 // Describe implements the sql.Describable interface
-func (s *Sort) Describe(options sql.DescribeOptions) string {
+func (s *Sort) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
 	pr := sql.NewTreePrinter()
 	var fields = make([]string, len(s.SortFields))
 	for i, f := range s.SortFields {
-		fields[i] = sql.Describe(f, options)
+		fields[i] = sql.Describe(ctx, f, options)
 	}
 	_ = pr.WriteNode("Sort(%s)", strings.Join(fields, ", "))
-	_ = pr.WriteChildren(sql.Describe(s.Child, options))
+	_ = pr.WriteChildren(sql.Describe(ctx, s.Child, options))
 	return pr.String()
 }
 
-func (s *Sort) DebugString() string {
+func (s *Sort) DebugString(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	var fields = make([]string, len(s.SortFields))
 	for i, f := range s.SortFields {
-		fields[i] = sql.DebugString(f)
+		fields[i] = sql.DebugString(ctx, f)
 	}
 	_ = pr.WriteNode("Sort(%s)", strings.Join(fields, ", "))
-	_ = pr.WriteChildren(sql.DebugString(s.Child))
+	_ = pr.WriteChildren(sql.DebugString(ctx, s.Child))
 	return pr.String()
 }
 
@@ -105,7 +105,7 @@ func (s *Sort) Expressions() []sql.Expression {
 }
 
 // WithChildren implements the Node interface.
-func (s *Sort) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (s *Sort) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 1)
 	}
@@ -119,12 +119,12 @@ func (s *Sort) CollationCoercibility(ctx *sql.Context) (collation sql.CollationI
 }
 
 // WithExpressions implements the Expressioner interface.
-func (s *Sort) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+func (s *Sort) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != len(s.SortFields) {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(exprs), len(s.SortFields))
 	}
 
-	fields := s.SortFields.FromExpressions(exprs...)
+	fields := s.SortFields.FromExpressions(ctx, exprs...)
 	return NewSort(fields, s.Child), nil
 }
 
@@ -184,14 +184,14 @@ func (n *TopN) String() string {
 	return pr.String()
 }
 
-func (n *TopN) DebugString() string {
+func (n *TopN) DebugString(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	var fields = make([]string, len(n.Fields))
 	for i, f := range n.Fields {
-		fields[i] = sql.DebugString(f)
+		fields[i] = sql.DebugString(ctx, f)
 	}
-	_ = pr.WriteNode("TopN(Limit: [%s]; %s)", sql.DebugString(n.Limit), strings.Join(fields, ", "))
-	_ = pr.WriteChildren(sql.DebugString(n.Child))
+	_ = pr.WriteNode("TopN(Limit: [%s]; %s)", sql.DebugString(ctx, n.Limit), strings.Join(fields, ", "))
+	_ = pr.WriteChildren(sql.DebugString(ctx, n.Child))
 	return pr.String()
 }
 
@@ -203,7 +203,7 @@ func (n *TopN) Expressions() []sql.Expression {
 }
 
 // WithChildren implements the Node interface.
-func (n *TopN) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (n *TopN) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 1)
 	}
@@ -219,13 +219,13 @@ func (n *TopN) CollationCoercibility(ctx *sql.Context) (collation sql.CollationI
 }
 
 // WithExpressions implements the Expressioner interface.
-func (n *TopN) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+func (n *TopN) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != len(n.Fields)+1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(n, len(exprs), len(n.Fields)+1)
 	}
 
 	var limit = exprs[0]
-	var fields = n.Fields.FromExpressions(exprs[1:]...)
+	var fields = n.Fields.FromExpressions(ctx, exprs[1:]...)
 
 	topn := NewTopN(fields, limit, n.Child)
 	topn.CalcFoundRows = n.CalcFoundRows

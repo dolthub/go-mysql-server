@@ -32,14 +32,17 @@ func TestApplyBindings(t *testing.T) {
 		Bindings map[string]sql.Expression
 		Expected sql.Node
 	}
+	ctx := sql.NewEmptyContext()
 	cases := []tc{
 		tc{
 			"SingleV1",
 			plan.NewProject(
+				ctx,
 				[]sql.Expression{
 					expression.NewStar(),
 				},
 				plan.NewFilter(
+					ctx,
 					expression.NewEquals(
 						expression.NewUnresolvedColumn("foo"),
 						expression.NewBindVar("v1"),
@@ -51,10 +54,12 @@ func TestApplyBindings(t *testing.T) {
 				"v1": expression.NewLiteral("Four score and seven years ago...", types.LongText),
 			},
 			plan.NewProject(
+				ctx,
 				[]sql.Expression{
 					expression.NewStar(),
 				},
 				plan.NewFilter(
+					ctx,
 					expression.NewEquals(
 						expression.NewUnresolvedColumn("foo"),
 						expression.NewLiteral("Four score and seven years ago...", types.LongText),
@@ -66,10 +71,12 @@ func TestApplyBindings(t *testing.T) {
 		tc{
 			"VarNotBound",
 			plan.NewProject(
+				ctx,
 				[]sql.Expression{
 					expression.NewStar(),
 				},
 				plan.NewFilter(
+					ctx,
 					expression.NewEquals(
 						expression.NewUnresolvedColumn("foo"),
 						expression.NewBindVar("v1"),
@@ -79,10 +86,12 @@ func TestApplyBindings(t *testing.T) {
 			),
 			map[string]sql.Expression{},
 			plan.NewProject(
+				ctx,
 				[]sql.Expression{
 					expression.NewStar(),
 				},
 				plan.NewFilter(
+					ctx,
 					expression.NewEquals(
 						expression.NewUnresolvedColumn("foo"),
 						expression.NewBindVar("v1"),
@@ -94,10 +103,12 @@ func TestApplyBindings(t *testing.T) {
 		tc{
 			"SameVarMultipleTimes",
 			plan.NewProject(
+				ctx,
 				[]sql.Expression{
 					expression.NewStar(),
 				},
 				plan.NewFilter(
+					ctx,
 					expression.NewOr(
 						expression.NewAnd(
 							expression.NewEquals(
@@ -122,10 +133,12 @@ func TestApplyBindings(t *testing.T) {
 				"intvar": expression.NewLiteral(int8(10), types.Int8),
 			},
 			plan.NewProject(
+				ctx,
 				[]sql.Expression{
 					expression.NewStar(),
 				},
 				plan.NewFilter(
+					ctx,
 					expression.NewOr(
 						expression.NewAnd(
 							expression.NewEquals(
@@ -149,6 +162,7 @@ func TestApplyBindings(t *testing.T) {
 		tc{
 			"Subquery",
 			plan.NewProject(
+				ctx,
 				[]sql.Expression{
 					expression.NewStar(),
 				},
@@ -156,10 +170,12 @@ func TestApplyBindings(t *testing.T) {
 					"a",
 					"select * from foo where bar = :v1",
 					plan.NewProject(
+						ctx,
 						[]sql.Expression{
 							expression.NewStar(),
 						},
 						plan.NewFilter(
+							ctx,
 							expression.NewEquals(
 								expression.NewUnresolvedColumn("bar"),
 								expression.NewBindVar("v1"),
@@ -173,6 +189,7 @@ func TestApplyBindings(t *testing.T) {
 				"v1": expression.NewLiteral("Four score and seven years ago...", types.LongText),
 			},
 			plan.NewProject(
+				ctx,
 				[]sql.Expression{
 					expression.NewStar(),
 				},
@@ -180,10 +197,12 @@ func TestApplyBindings(t *testing.T) {
 					"a",
 					"select * from foo where bar = :v1",
 					plan.NewProject(
+						ctx,
 						[]sql.Expression{
 							expression.NewStar(),
 						},
 						plan.NewFilter(
+							ctx,
 							expression.NewEquals(
 								expression.NewUnresolvedColumn("bar"),
 								expression.NewLiteral("Four score and seven years ago...", types.LongText),
@@ -198,7 +217,7 @@ func TestApplyBindings(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.Name, func(t *testing.T) {
-			res, _, err := plan.ApplyBindings(c.Node, c.Bindings)
+			res, _, err := plan.ApplyBindings(ctx, c.Node, c.Bindings)
 			if assert.NoError(t, err) {
 				assert.Equal(t, res, c.Expected)
 			}

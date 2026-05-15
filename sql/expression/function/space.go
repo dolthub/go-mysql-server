@@ -29,7 +29,7 @@ type Space struct {
 var _ sql.FunctionExpression = (*Space)(nil)
 var _ sql.CollationCoercible = (*Space)(nil)
 
-func NewSpace(arg sql.Expression) sql.Expression {
+func NewSpace(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &Space{NewUnaryFunc(arg, "SPACE", types.LongText)}
 }
 
@@ -76,9 +76,9 @@ func (s *Space) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements the sql.Expression interface
-func (s *Space) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (s *Space) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 1)
 	}
-	return NewSpace(children[0]), nil
+	return NewSpace(ctx, children[0]), nil
 }

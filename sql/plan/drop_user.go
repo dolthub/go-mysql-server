@@ -44,7 +44,7 @@ func NewDropUser(ifExists bool, users []UserName) *DropUser {
 }
 
 // Schema implements the interface sql.Node.
-func (n *DropUser) Schema() sql.Schema {
+func (n *DropUser) Schema(ctx *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -89,7 +89,7 @@ func (n *DropUser) Children() []sql.Node {
 }
 
 // WithChildren implements the interface sql.Node.
-func (n *DropUser) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (n *DropUser) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 0)
 	}

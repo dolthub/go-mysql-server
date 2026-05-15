@@ -61,7 +61,7 @@ func (l *Loop) String() string {
 }
 
 // DebugString implements the interface sql.DebugStringer.
-func (l *Loop) DebugString() string {
+func (l *Loop) DebugString(ctx *sql.Context) string {
 	label := ""
 	if len(l.Label) > 0 {
 		label = l.Label + ": "
@@ -70,7 +70,7 @@ func (l *Loop) DebugString() string {
 	_ = p.WriteNode("%s", label+": LOOP")
 	var children []string
 	for _, s := range l.statements {
-		children = append(children, sql.DebugString(s))
+		children = append(children, sql.DebugString(ctx, s))
 	}
 	_ = p.WriteChildren(children...)
 	return p.String()
@@ -82,8 +82,8 @@ func (l *Loop) Resolved() bool {
 }
 
 // WithChildren implements the interface sql.Node.
-func (l *Loop) WithChildren(children ...sql.Node) (sql.Node, error) {
-	newBlock, err := l.Block.WithChildren(children...)
+func (l *Loop) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
+	newBlock, err := l.Block.WithChildren(ctx, children...)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +101,7 @@ func (l *Loop) Expressions() []sql.Expression {
 }
 
 // WithExpressions implements the interface sql.Node.
-func (l *Loop) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+func (l *Loop) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(l, len(exprs), 1)
 	}

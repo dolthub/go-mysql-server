@@ -33,7 +33,7 @@ var _ sql.WindowAggregation = (*PercentRank)(nil)
 var _ sql.WindowAdaptableExpression = (*PercentRank)(nil)
 var _ sql.CollationCoercible = (*PercentRank)(nil)
 
-func NewPercentRank() sql.Expression {
+func NewPercentRank(ctx *sql.Context) sql.Expression {
 	return &PercentRank{}
 }
 
@@ -73,12 +73,12 @@ func (p *PercentRank) String() string {
 	return sb.String()
 }
 
-func (p *PercentRank) DebugString() string {
+func (p *PercentRank) DebugString(ctx *sql.Context) string {
 	sb := strings.Builder{}
 	sb.WriteString("percent_rank()")
 	if p.window != nil {
 		sb.WriteString(" ")
-		sb.WriteString(sql.DebugString(p.window))
+		sb.WriteString(sql.DebugString(ctx, p.window))
 	}
 	return sb.String()
 }
@@ -89,7 +89,7 @@ func (p *PercentRank) FunctionName() string {
 }
 
 // Type implements sql.Expression
-func (p *PercentRank) Type() sql.Type {
+func (p *PercentRank) Type(ctx *sql.Context) sql.Type {
 	return types.Float64
 }
 
@@ -99,7 +99,7 @@ func (*PercentRank) CollationCoercibility(ctx *sql.Context) (collation sql.Colla
 }
 
 // IsNullable implements sql.Expression
-func (p *PercentRank) IsNullable() bool {
+func (p *PercentRank) IsNullable(ctx *sql.Context) bool {
 	return false
 }
 
@@ -114,22 +114,22 @@ func (p *PercentRank) Children() []sql.Expression {
 }
 
 // WithChildren implements sql.Expression
-func (p *PercentRank) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	window, err := p.window.FromExpressions(children)
+func (p *PercentRank) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	window, err := p.window.FromExpressions(ctx, children)
 	if err != nil {
 		return nil, err
 	}
 
-	return p.WithWindow(window), nil
+	return p.WithWindow(ctx, window), nil
 }
 
 // WithWindow implements sql.WindowAggregation
-func (p *PercentRank) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
+func (p *PercentRank) WithWindow(ctx *sql.Context, window *sql.WindowDefinition) sql.WindowAdaptableExpression {
 	nr := *p
 	nr.window = window
 	return &nr
 }
 
-func (p *PercentRank) NewWindowFunction() (sql.WindowFunction, error) {
+func (p *PercentRank) NewWindowFunction(ctx *sql.Context) (sql.WindowFunction, error) {
 	return aggregation.NewPercentRank(p.window.OrderBy.ToExpressions()), nil
 }

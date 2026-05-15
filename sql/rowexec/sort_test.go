@@ -203,7 +203,7 @@ func TestSort(t *testing.T) {
 			require := require.New(t)
 
 			db := memory.NewDatabase("test")
-			tbl := memory.NewTable(db, "test", schema, nil)
+			tbl := memory.NewTable(sql.NewEmptyContext(), db, "test", schema, nil)
 			pro := memory.NewDBProvider(db)
 			ctx := newContext(pro)
 
@@ -239,7 +239,7 @@ func TestSortAscending(t *testing.T) {
 	pro := memory.NewDBProvider(db)
 	ctx := newContext(pro)
 
-	child := memory.NewTable(db, "test", schema, nil)
+	child := memory.NewTable(ctx, db, "test", schema, nil)
 	for _, row := range data {
 		require.NoError(child.Insert(ctx, row))
 	}
@@ -248,7 +248,7 @@ func TestSortAscending(t *testing.T) {
 		{Column: expression.NewGetField(0, types.Text, "col1", true), Order: sql.Ascending, NullOrdering: sql.NullsFirst},
 	}
 	s := plan.NewSort(sf, plan.NewResolvedTable(child, nil, nil))
-	require.Equal(schema.Schema, s.Schema())
+	require.Equal(schema.Schema, s.Schema(ctx))
 
 	expected := []sql.Row{
 		sql.NewRow(nil),
@@ -282,7 +282,7 @@ func TestSortDescending(t *testing.T) {
 	pro := memory.NewDBProvider(db)
 	ctx := newContext(pro)
 
-	child := memory.NewTable(db, "test", schema, nil)
+	child := memory.NewTable(ctx, db, "test", schema, nil)
 	for _, row := range data {
 		require.NoError(child.Insert(ctx, row))
 	}
@@ -291,7 +291,7 @@ func TestSortDescending(t *testing.T) {
 		{Column: expression.NewGetField(0, types.Text, "col1", true), Order: sql.Descending, NullOrdering: sql.NullsFirst},
 	}
 	s := plan.NewSort(sf, plan.NewResolvedTable(child, nil, nil))
-	require.Equal(schema.Schema, s.Schema())
+	require.Equal(schema.Schema, s.Schema(ctx))
 
 	expected := []sql.Row{
 		sql.NewRow("d"),

@@ -387,7 +387,7 @@ func evalSpatialIndexPlanTest(t *testing.T, harness Harness, e QueryEngine, quer
 		require.NoError(t, err)
 
 		hasFilter, hasIndex, hasRightOrder := false, false, false
-		transform.InspectWithOpaque(a, func(n sql.Node) bool {
+		transform.InspectWithOpaque(ctx, a, func(ctx *sql.Context, n sql.Node) bool {
 			if n == nil {
 				return false
 			}
@@ -409,7 +409,7 @@ func evalSpatialIndexPlanTest(t *testing.T, harness Harness, e QueryEngine, quer
 		if noIdx {
 			require.False(t, hasIndex, "indextableaccess should not be in plan")
 		} else {
-			require.True(t, hasIndex, "indextableaccess node was missing from plan:\n %s", sql.DebugString(a))
+			require.True(t, hasIndex, "indextableaccess node was missing from plan:\n %s", sql.DebugString(ctx, a))
 			require.True(t, hasRightOrder, "filter node was not above indextableaccess")
 		}
 	})

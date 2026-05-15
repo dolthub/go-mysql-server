@@ -73,7 +73,7 @@ type CachedResults struct {
 var _ sql.Node = (*CachedResults)(nil)
 var _ sql.CollationCoercible = (*CachedResults)(nil)
 
-func (n *CachedResults) Dispose() {
+func (n *CachedResults) Dispose(ctx *sql.Context) {
 	n.Disposed = true
 	n.Manager.DisposeCachedResultsById(n.Id)
 }
@@ -85,14 +85,14 @@ func (n *CachedResults) String() string {
 	return pr.String()
 }
 
-func (n *CachedResults) DebugString() string {
+func (n *CachedResults) DebugString(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("CachedResults")
-	_ = pr.WriteChildren(sql.DebugString(n.UnaryNode.Child))
+	_ = pr.WriteChildren(sql.DebugString(ctx, n.UnaryNode.Child))
 	return pr.String()
 }
 
-func (n *CachedResults) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (n *CachedResults) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 1)
 	}

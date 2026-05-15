@@ -43,7 +43,7 @@ var _ sql.Databaser = (*DropRole)(nil)
 var _ sql.CollationCoercible = (*DropRole)(nil)
 
 // Schema implements the interface sql.Node.
-func (n *DropRole) Schema() sql.Schema {
+func (n *DropRole) Schema(ctx *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -88,7 +88,7 @@ func (n *DropRole) Children() []sql.Node {
 }
 
 // WithChildren implements the interface sql.Node.
-func (n *DropRole) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (n *DropRole) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 0)
 	}

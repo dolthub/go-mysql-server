@@ -76,14 +76,14 @@ func (p *procCtx) NewState(state declareState) {
 	p.lastState = state
 }
 
-func (p *procCtx) AddVar(param *expression.ProcedureParam) {
+func (p *procCtx) AddVar(ctx *sql.Context, param *expression.ProcedureParam) {
 	p.NewState(dsVariable)
 	lowerName := strings.ToLower(param.Name())
 	if _, ok := p.vars[lowerName]; ok {
 		err := sql.ErrDeclareVariableDuplicate.New(lowerName)
 		p.s.b.handleErr(err)
 	}
-	col := scopeColumn{col: lowerName, typ: param.Type(), scalar: param}
+	col := scopeColumn{col: lowerName, typ: param.Type(ctx), scalar: param}
 	p.vars[lowerName] = col
 }
 
@@ -433,7 +433,7 @@ func (b *Builder) buildDeclareVariables(inScope *scope, d *ast.Declare) (outScop
 		varName := strings.ToLower(variable.String())
 		names[i] = varName
 		param := expression.NewProcedureParam(varName, typ)
-		inScope.proc.AddVar(param)
+		inScope.proc.AddVar(b.ctx, param)
 		inScope.newColumn(scopeColumn{col: varName, typ: typ, scalar: param})
 	}
 	defaultVal := b.buildDefaultExpression(inScope, dVars.VarType.Default)

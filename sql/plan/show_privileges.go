@@ -31,7 +31,7 @@ func NewShowPrivileges() *ShowPrivileges {
 }
 
 // Schema implements the interface sql.Node.
-func (n *ShowPrivileges) Schema() sql.Schema {
+func (n *ShowPrivileges) Schema(ctx *sql.Context) sql.Schema {
 	return sql.Schema{
 		&sql.Column{Name: "Privilege", Type: types.LongText},
 		&sql.Column{Name: "Context", Type: types.LongText},
@@ -59,7 +59,7 @@ func (n *ShowPrivileges) Children() []sql.Node {
 }
 
 // WithChildren implements the interface sql.Node.
-func (n *ShowPrivileges) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (n *ShowPrivileges) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 0)
 	}

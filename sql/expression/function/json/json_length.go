@@ -35,7 +35,7 @@ var _ sql.FunctionExpression = (*JsonLength)(nil)
 var _ sql.CollationCoercible = (*JsonLength)(nil)
 
 // NewJsonLength creates a new JsonLength UDF.
-func NewJsonLength(args ...sql.Expression) (sql.Expression, error) {
+func NewJsonLength(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) == 0 || len(args) > 2 {
 		return nil, sql.ErrInvalidArgumentNumber.New("JSON_LENGTH", 2, len(args))
 	} else if len(args) == 1 {
@@ -61,7 +61,7 @@ func (j *JsonLength) Resolved() bool {
 }
 
 // Type implements the sql.Expression interface.
-func (j *JsonLength) Type() sql.Type { return types.Int64 }
+func (j *JsonLength) Type(ctx *sql.Context) sql.Type { return types.Int64 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*JsonLength) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
@@ -125,8 +125,8 @@ func (j *JsonLength) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // IsNullable implements the sql.Expression interface.
-func (j *JsonLength) IsNullable() bool {
-	return j.JSON.IsNullable()
+func (j *JsonLength) IsNullable(ctx *sql.Context) bool {
+	return j.JSON.IsNullable(ctx)
 }
 
 // Children implements the sql.Expression interface.
@@ -135,8 +135,8 @@ func (j *JsonLength) Children() []sql.Expression {
 }
 
 // WithChildren implements the Expression interface.
-func (j *JsonLength) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewJsonLength(children...)
+func (j *JsonLength) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewJsonLength(ctx, children...)
 }
 
 func (j *JsonLength) String() string {

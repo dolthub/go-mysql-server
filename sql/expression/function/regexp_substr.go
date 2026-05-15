@@ -46,7 +46,7 @@ var _ sql.CollationCoercible = (*RegexpSubstr)(nil)
 var _ sql.Disposable = (*RegexpSubstr)(nil)
 
 // NewRegexpSubstr creates a new RegexpSubstr expression.
-func NewRegexpSubstr(args ...sql.Expression) (sql.Expression, error) {
+func NewRegexpSubstr(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	var r *RegexpSubstr
 	switch len(args) {
 	case 5:
@@ -95,7 +95,7 @@ func (r *RegexpSubstr) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (r *RegexpSubstr) Type() sql.Type { return types.LongText }
+func (r *RegexpSubstr) Type(ctx *sql.Context) sql.Type { return types.LongText }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (r *RegexpSubstr) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
@@ -105,7 +105,7 @@ func (r *RegexpSubstr) CollationCoercibility(ctx *sql.Context) (collation sql.Co
 }
 
 // IsNullable implements the sql.Expression interface.
-func (r *RegexpSubstr) IsNullable() bool {
+func (r *RegexpSubstr) IsNullable(ctx *sql.Context) bool {
 	// TODO: this might be too general. We might want to evaluate IsNullable based on if Text and Pattern are nullable
 	// https://dev.mysql.com/doc/refman/8.4/en/regexp.html#function_regexp-substr
 	return true
@@ -127,7 +127,7 @@ func (r *RegexpSubstr) Resolved() bool {
 }
 
 // WithChildren implements the sql.Expression interface.
-func (r *RegexpSubstr) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (r *RegexpSubstr) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	required := 4
 	if r.Flags != nil {
 		required = 5
@@ -137,7 +137,7 @@ func (r *RegexpSubstr) WithChildren(children ...sql.Expression) (sql.Expression,
 	}
 
 	// Copy over the regex instance, in case it has already been set to avoid leaking it.
-	substr, err := NewRegexpSubstr(children...)
+	substr, err := NewRegexpSubstr(ctx, children...)
 	if r.re != nil && substr != nil {
 		substr.(*RegexpSubstr).re = r.re
 	}
@@ -156,8 +156,8 @@ func (r *RegexpSubstr) String() string {
 // compile handles compilation of the regex.
 func (r *RegexpSubstr) compile(ctx *sql.Context, row sql.Row) {
 	r.compileOnce.Do(func() {
-		r.cacheRegex = canBeCached(r.Pattern, r.Flags)
-		r.cacheVal = r.cacheRegex && canBeCached(r.Text, r.Position, r.Occurrence)
+		r.cacheRegex = canBeCached(ctx, r.Pattern, r.Flags)
+		r.cacheVal = r.cacheRegex && canBeCached(ctx, r.Text, r.Position, r.Occurrence)
 		if r.cacheRegex {
 			r.re, r.compileErr = compileRegex(ctx, r.Pattern, r.Text, r.Flags, r.FunctionName(), row)
 		}
@@ -244,7 +244,7 @@ func (r *RegexpSubstr) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 }
 
 // Dispose implements the sql.Disposable interface.
-func (r *RegexpSubstr) Dispose() {
+func (r *RegexpSubstr) Dispose(ctx *sql.Context) {
 	if r.re != nil {
 		_ = r.re.Close()
 	}

@@ -26,7 +26,7 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/shopspring/decimal"
+	"github.com/cockroachdb/apd/v3"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql/values"
@@ -37,9 +37,9 @@ type Expression interface {
 	Resolvable
 	fmt.Stringer
 	// Type returns the expression type.
-	Type() Type
+	Type(ctx *Context) Type
 	// IsNullable returns whether the expression can be null.
-	IsNullable() bool
+	IsNullable(ctx *Context) bool
 	// Eval evaluates the given row and returns a result.
 	Eval(ctx *Context, row Row) (interface{}, error)
 	// Children returns the children expressions of this expression.
@@ -48,7 +48,7 @@ type Expression interface {
 	// It will return an error if the number of children is different than
 	// the current number of children. They must be given in the same order
 	// as they are returned by Children.
-	WithChildren(children ...Expression) (Expression, error)
+	WithChildren(ctx *Context, children ...Expression) (Expression, error)
 }
 
 // RowIterExpression is an Expression that returns a RowIter rather than a scalar, used to implement functions that
@@ -69,7 +69,7 @@ type ExpressionWithNodes interface {
 	// WithNodeChildren returns a copy of the expression with its node children replaced. It will return an error if the
 	// number of children is different than the current number of children. They must be given in the same order as they
 	// are returned by NodeChildren.
-	WithNodeChildren(children ...Node) (ExpressionWithNodes, error)
+	WithNodeChildren(ctx *Context, children ...Node) (ExpressionWithNodes, error)
 }
 
 // NonDeterministicExpression allows a way for expressions to declare that they are non-deterministic, which will
@@ -99,14 +99,14 @@ type Node interface {
 	Resolvable
 	fmt.Stringer
 	// Schema of the node.
-	Schema() Schema
+	Schema(ctx *Context) Schema
 	// Children nodes.
 	Children() []Node
 	// WithChildren returns a copy of the node with children replaced.
 	// It will return an error if the number of children is different than
 	// the current number of children. They must be given in the same order
 	// as they are returned by Children.
-	WithChildren(children ...Node) (Node, error)
+	WithChildren(ctx *Context, children ...Node) (Node, error)
 	// IsReadOnly returns whether the node is read-only.
 	IsReadOnly() bool
 }
@@ -198,7 +198,7 @@ type Expressioner interface {
 	// It will return an error if the number of expressions is different than
 	// the current number of expressions. They must be given in the same order
 	// as they are returned by Expressions.
-	WithExpressions(...Expression) (Node, error)
+	WithExpressions(ctx *Context, exprs ...Expression) (Node, error)
 }
 
 // SchemaTarget is a node that has a target schema that can be set during analysis. This is necessary because some
@@ -214,7 +214,7 @@ type SchemaTarget interface {
 // PrimaryKeySchemaTarget is a node that has a primary key target schema that can be set
 type PrimaryKeySchemaTarget interface {
 	SchemaTarget
-	WithPrimaryKeySchema(schema PrimaryKeySchema) (Node, error)
+	WithPrimaryKeySchema(ctx *Context, schema PrimaryKeySchema) (Node, error)
 }
 
 // DynamicColumnsTable is a table with a schema that is variable depending
@@ -329,7 +329,7 @@ func ConvertToBool(ctx *Context, v interface{}) (bool, error) {
 			return false, nil
 		}
 		return bFloat != 0, nil
-	case decimal.Decimal:
+	case *apd.Decimal:
 		return !b.IsZero(), nil
 	case nil:
 		return false, fmt.Errorf("unable to cast nil to bool")
@@ -452,13 +452,13 @@ func IsTrue(val interface{}) bool {
 // a node or expression to be printed in greater detail than its default String() representation.
 type DebugStringer interface {
 	// DebugString prints a debug string of the node in question.
-	DebugString() string
+	DebugString(ctx *Context) string
 }
 
 // DebugString returns a debug string for the Node or Expression given.
-func DebugString(nodeOrExpression interface{}) string {
+func DebugString(ctx *Context, nodeOrExpression interface{}) string {
 	if ds, ok := nodeOrExpression.(DebugStringer); ok {
-		return ds.DebugString()
+		return ds.DebugString(ctx)
 	}
 	if s, ok := nodeOrExpression.(fmt.Stringer); ok {
 		return s.String()
@@ -475,7 +475,7 @@ type ValueExpression interface {
 	// EvalValue evaluates the given row frame and returns a result.
 	EvalValue(ctx *Context, row ValueRow) (Value, error)
 	// IsValueExpression indicates whether this expression and all its children support ValueExpression.
-	IsValueExpression() bool
+	IsValueExpression(ctx *Context) bool
 }
 
 var SystemVariables SystemVariableRegistry
@@ -985,11 +985,11 @@ type OrderAndLimit struct {
 	CalcFoundRows bool
 }
 
-func (v OrderAndLimit) DebugString() string {
+func (v OrderAndLimit) DebugString(ctx *Context) string {
 	if v.Limit != nil {
-		return fmt.Sprintf("%v LIMIT %v", DebugString(v.OrderBy), DebugString(v.Limit))
+		return fmt.Sprintf("%v LIMIT %v", DebugString(ctx, v.OrderBy), DebugString(ctx, v.Limit))
 	}
-	return DebugString(v.OrderBy)
+	return DebugString(ctx, v.OrderBy)
 }
 
 func (v OrderAndLimit) String() string {

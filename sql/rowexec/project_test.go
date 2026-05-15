@@ -39,10 +39,11 @@ func TestProject(t *testing.T) {
 	pro := memory.NewDBProvider(db)
 	ctx := newContext(pro)
 
-	child := memory.NewTable(db.BaseDatabase, "test", childSchema, nil)
+	child := memory.NewTable(ctx, db.BaseDatabase, "test", childSchema, nil)
 	child.Insert(ctx, sql.NewRow("col1_1", "col2_1"))
 	child.Insert(ctx, sql.NewRow("col1_2", "col2_2"))
 	p := plan.NewProject(
+		ctx,
 		[]sql.Expression{expression.NewGetField(1, types.Text, "col2", true)},
 		plan.NewResolvedTable(child, nil, nil),
 	)
@@ -50,7 +51,7 @@ func TestProject(t *testing.T) {
 	schema := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "col2", Type: types.Text, Nullable: true},
 	})
-	require.Equal(schema.Schema, p.Schema())
+	require.Equal(schema.Schema, p.Schema(ctx))
 	iter, err := DefaultBuilder.Build(ctx, p, nil)
 	require.NoError(err)
 	require.NotNil(iter)
@@ -68,16 +69,16 @@ func TestProject(t *testing.T) {
 	require.Equal(io.EOF, err)
 	require.Nil(row)
 
-	p = plan.NewProject(nil, plan.NewResolvedTable(child, nil, nil))
-	require.Equal(0, len(p.Schema()))
+	p = plan.NewProject(ctx, nil, plan.NewResolvedTable(child, nil, nil))
+	require.Equal(0, len(p.Schema(ctx)))
 
-	p = plan.NewProject([]sql.Expression{
-		expression.NewAlias("foo", expression.NewGetField(1, types.Text, "col2", true)),
+	p = plan.NewProject(ctx, []sql.Expression{
+		expression.NewAlias(ctx, "foo", expression.NewGetField(1, types.Text, "col2", true)),
 	}, plan.NewResolvedTable(child, nil, nil))
 	schema = sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "foo", Type: types.Text, Nullable: true},
 	})
-	require.Equal(schema.Schema, p.Schema())
+	require.Equal(schema.Schema, p.Schema(ctx))
 }
 
 func BenchmarkProject(b *testing.B) {
@@ -85,7 +86,7 @@ func BenchmarkProject(b *testing.B) {
 	ctx := sql.NewEmptyContext()
 
 	for i := 0; i < b.N; i++ {
-		d := plan.NewProject([]sql.Expression{
+		d := plan.NewProject(ctx, []sql.Expression{
 			expression.NewGetField(0, types.Text, "strfield", true),
 			expression.NewGetField(1, types.Float64, "floatfield", true),
 			expression.NewGetField(2, types.Boolean, "boolfield", false),

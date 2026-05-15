@@ -100,7 +100,7 @@ func TestExportSet(t *testing.T) {
 				}
 			}
 
-			f, err := NewExportSet(args...)
+			f, err := NewExportSet(ctx, args...)
 			require.NoError(err)
 
 			v, err := f.Eval(ctx, nil)
@@ -116,15 +116,16 @@ func TestExportSet(t *testing.T) {
 
 func TestExportSetArguments(t *testing.T) {
 	require := require.New(t)
+	ctx := sql.NewEmptyContext()
 
 	// Test invalid number of arguments
-	_, err := NewExportSet()
+	_, err := NewExportSet(ctx)
 	require.Error(err)
 
-	_, err = NewExportSet(expression.NewLiteral(1, types.Int64))
+	_, err = NewExportSet(ctx, expression.NewLiteral(1, types.Int64))
 	require.Error(err)
 
-	_, err = NewExportSet(expression.NewLiteral(1, types.Int64), expression.NewLiteral("1", types.Text))
+	_, err = NewExportSet(ctx, expression.NewLiteral(1, types.Int64), expression.NewLiteral("1", types.Text))
 	require.Error(err)
 
 	// Test too many arguments
@@ -132,7 +133,7 @@ func TestExportSetArguments(t *testing.T) {
 	for i := range args {
 		args[i] = expression.NewLiteral(1, types.Int64)
 	}
-	_, err = NewExportSet(args...)
+	_, err = NewExportSet(ctx, args...)
 	require.Error(err)
 
 	// Test valid argument counts
@@ -143,7 +144,7 @@ func TestExportSetArguments(t *testing.T) {
 	}
 
 	for _, args := range validArgs {
-		_, err := NewExportSet(args...)
+		_, err := NewExportSet(ctx, args...)
 		require.NoError(err)
 	}
 }

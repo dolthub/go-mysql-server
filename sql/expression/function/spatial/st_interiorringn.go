@@ -32,7 +32,7 @@ var _ sql.FunctionExpression = (*InteriorRingN)(nil)
 var _ sql.CollationCoercible = (*InteriorRingN)(nil)
 
 // NewInteriorRingN creates a new InteriorRingN expression.
-func NewInteriorRingN(g, n sql.Expression) sql.Expression {
+func NewInteriorRingN(ctx *sql.Context, g, n sql.Expression) sql.Expression {
 	return &InteriorRingN{
 		expression.BinaryExpressionStub{
 			LeftChild:  g,
@@ -52,12 +52,12 @@ func (i *InteriorRingN) Description() string {
 }
 
 // IsNullable implements the sql.Expression interface.
-func (i *InteriorRingN) IsNullable() bool {
+func (i *InteriorRingN) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
 // Type implements the sql.Expression interface.
-func (i *InteriorRingN) Type() sql.Type {
+func (i *InteriorRingN) Type(ctx *sql.Context) sql.Type {
 	return types.LineStringType{}
 }
 
@@ -71,11 +71,11 @@ func (i *InteriorRingN) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (i *InteriorRingN) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (i *InteriorRingN) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 2)
 	}
-	return NewInteriorRingN(children[0], children[1]), nil
+	return NewInteriorRingN(ctx, children[0], children[1]), nil
 }
 
 // Eval implements the sql.Expression interface.

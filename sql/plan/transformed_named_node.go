@@ -37,15 +37,15 @@ func (n *TransformedNamedNode) Name() string {
 	return n.name
 }
 
-func (n *TransformedNamedNode) Schema() sql.Schema {
-	return n.Child.Schema()
+func (n *TransformedNamedNode) Schema(ctx *sql.Context) sql.Schema {
+	return n.Child.Schema(ctx)
 }
 
 func (n *TransformedNamedNode) IsReadOnly() bool {
 	return n.Child.IsReadOnly()
 }
 
-func (n *TransformedNamedNode) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (n *TransformedNamedNode) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 1)
 	}
@@ -61,6 +61,6 @@ func (n *TransformedNamedNode) String() string {
 	return n.Child.String()
 }
 
-func (n *TransformedNamedNode) DebugString() string {
-	return sql.DebugString(n.Child)
+func (n *TransformedNamedNode) DebugString(ctx *sql.Context) string {
+	return sql.DebugString(ctx, n.Child)
 }

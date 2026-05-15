@@ -60,8 +60,8 @@ func (s *Scope) EnforcesReadOnly() bool {
 // outer scope are not qualified and resolved.
 // note: a subquery in the outer scope is itself a scope,
 // and by definition not an outer relation
-func (s *Scope) OuterRelUnresolved() bool {
-	return !s.IsEmpty() && s.Schema() == nil && len(s.nodes[0].Children()) > 0
+func (s *Scope) OuterRelUnresolved(ctx *sql.Context) bool {
+	return !s.IsEmpty() && s.Schema(ctx) == nil && len(s.nodes[0].Children()) > 0
 }
 
 // NewScope creates a new Scope object with the additional innermost Node context. When constructing with a subquery,
@@ -256,12 +256,12 @@ func (s *Scope) OuterToInner() []sql.Node {
 // Schema returns the equivalent schema of this scope, which consists of the schemas of all constituent scope nodes
 // concatenated from outer to inner. Because we can only calculate the Schema() of nodes that are Resolved(), this
 // method fills in place holder columns as necessary.
-func (s *Scope) Schema() sql.Schema {
+func (s *Scope) Schema(ctx *sql.Context) sql.Schema {
 	var schema sql.Schema
 	for _, n := range s.OuterToInner() {
 		for _, n := range n.Children() {
 			if n.Resolved() {
-				schema = append(schema, n.Schema()...)
+				schema = append(schema, n.Schema(ctx)...)
 				continue
 			}
 
@@ -272,7 +272,7 @@ func (s *Scope) Schema() sql.Schema {
 				for _, expr := range n.Projections {
 					var col *sql.Column
 					if expr.Resolved() {
-						col = transform.ExpressionToColumn(expr, AliasSubqueryString(expr))
+						col = transform.ExpressionToColumn(ctx, expr, AliasSubqueryString(ctx, expr))
 					} else {
 						// TODO: a new type here?
 						col = &sql.Column{
@@ -290,7 +290,7 @@ func (s *Scope) Schema() sql.Schema {
 	}
 	if s != nil && s.inJoin {
 		for _, n := range s.joinSiblings {
-			schema = append(schema, n.Schema()...)
+			schema = append(schema, n.Schema(ctx)...)
 		}
 	}
 	return schema

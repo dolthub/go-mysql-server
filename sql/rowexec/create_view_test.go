@@ -27,8 +27,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func newCreateView(db memory.MemoryDatabase, ifNotExists, isReplace bool) *plan.CreateView {
-	table := memory.NewTable(db.Database(), "mytable", sql.NewPrimaryKeySchema(sql.Schema{
+func newCreateView(ctx *sql.Context, db memory.MemoryDatabase, ifNotExists, isReplace bool) *plan.CreateView {
+	table := memory.NewTable(sql.NewEmptyContext(), db.Database(), "mytable", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "i", Source: "mytable", Type: types.Int32},
 		{Name: "s", Source: "mytable", Type: types.Text},
 	}), nil)
@@ -37,6 +37,7 @@ func newCreateView(db memory.MemoryDatabase, ifNotExists, isReplace bool) *plan.
 
 	subqueryAlias := plan.NewSubqueryAlias("myview", "select i from mytable",
 		plan.NewProject(
+			ctx,
 			[]sql.Expression{
 				expression.NewGetFieldWithTable(1, 1, types.Int32, table.Name(), "", "i", true),
 			},
@@ -53,10 +54,10 @@ func newCreateView(db memory.MemoryDatabase, ifNotExists, isReplace bool) *plan.
 // the catalog when RowIter is called
 func TestCreateViewWithRegistry(t *testing.T) {
 	require := require.New(t)
-
-	createView := newCreateView(memory.NewViewlessDatabase("mydb"), false, false)
-
 	ctx := sql.NewEmptyContext()
+
+	createView := newCreateView(ctx, memory.NewViewlessDatabase("mydb"), false, false)
+
 	_, err := DefaultBuilder.buildNodeExec(ctx, createView, nil)
 	require.NoError(err)
 
@@ -68,10 +69,10 @@ func TestCreateViewWithRegistry(t *testing.T) {
 
 // Tests that CreateView RowIter returns an error when the view exists
 func TestCreateExistingViewNative(t *testing.T) {
-	createView := newCreateView(memory.NewDatabase("mydb"), false, false)
-	createExistingView := newCreateView(memory.NewDatabase("mydb"), true, false)
-
 	ctx := sql.NewEmptyContext()
+	createView := newCreateView(ctx, memory.NewDatabase("mydb"), false, false)
+	createExistingView := newCreateView(ctx, memory.NewDatabase("mydb"), true, false)
+
 	_, err := DefaultBuilder.buildNodeExec(ctx, createView, nil)
 	require.NoError(t, err)
 
@@ -88,10 +89,10 @@ func TestCreateExistingViewNative(t *testing.T) {
 // Tests that CreateView RowIter succeeds when the view exists and the
 // IsReplace flag is set to true
 func TestReplaceExistingViewNative(t *testing.T) {
-	db := memory.NewDatabase("mydb")
-	createView := newCreateView(db, false, false)
-
 	ctx := sql.NewEmptyContext()
+	db := memory.NewDatabase("mydb")
+	createView := newCreateView(ctx, db, false, false)
+
 	_, err := DefaultBuilder.buildNodeExec(ctx, createView, nil)
 	require.NoError(t, err)
 
@@ -104,6 +105,7 @@ func TestReplaceExistingViewNative(t *testing.T) {
 	// This is kind of nonsensical, but we just want to see if it gets stored correctly
 	subqueryAlias := plan.NewSubqueryAlias("myview", "select i + 1 from mytable",
 		plan.NewProject(
+			ctx,
 			[]sql.Expression{
 				expression.NewArithmetic(
 					expression.NewGetFieldWithTable(1, 1, types.Int32, "", "mytable", "i", true),
@@ -128,10 +130,10 @@ func TestReplaceExistingViewNative(t *testing.T) {
 // Tests that CreateView works as expected and that the view is registered in
 // the catalog when RowIter is called
 func TestCreateViewNative(t *testing.T) {
-	db := memory.NewDatabase("mydb")
-	createView := newCreateView(db, false, false)
-
 	ctx := sql.NewEmptyContext()
+	db := memory.NewDatabase("mydb")
+	createView := newCreateView(ctx, db, false, false)
+
 	_, err := DefaultBuilder.buildNodeExec(ctx, createView, nil)
 	require.NoError(t, err)
 
@@ -146,7 +148,7 @@ func TestCreateViewNative(t *testing.T) {
 func TestCreateExistingViewWithRegistry(t *testing.T) {
 	require := require.New(t)
 
-	createView := newCreateView(memory.NewViewlessDatabase("mydb"), false, false)
+	createView := newCreateView(sql.NewEmptyContext(), memory.NewViewlessDatabase("mydb"), false, false)
 
 	view := createView.View()
 	viewReg := sql.NewViewRegistry()
@@ -166,7 +168,7 @@ func TestCreateExistingViewWithRegistry(t *testing.T) {
 func TestReplaceExistingViewWithRegistry(t *testing.T) {
 	require := require.New(t)
 
-	createView := newCreateView(memory.NewViewlessDatabase("mydb"), false, false)
+	createView := newCreateView(sql.NewEmptyContext(), memory.NewViewlessDatabase("mydb"), false, false)
 
 	view := sql.NewView(createView.Name, nil, "", "")
 	viewReg := sql.NewViewRegistry()
@@ -195,16 +197,18 @@ func TestCreateViewWithConflictingTableName(t *testing.T) {
 	db := memory.NewDatabase("mydb")
 
 	// Create a table named "v"
-	table := memory.NewTable(db.Database(), "v", sql.NewPrimaryKeySchema(sql.Schema{
+	table := memory.NewTable(sql.NewEmptyContext(), db.Database(), "v", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "id", Source: "v", Type: types.Int32},
 	}), nil)
 	db.AddTable("v", table)
+	ctx := sql.NewContext(context.Background())
 
 	// Try to create a view with the same name "v"
 	subqueryAlias := plan.NewSubqueryAlias("v", "select 1 as id",
 		plan.NewProject(
+			ctx,
 			[]sql.Expression{
-				expression.NewAlias("id", expression.NewLiteral(1, types.Int8)),
+				expression.NewAlias(ctx, "id", expression.NewLiteral(1, types.Int8)),
 			},
 			plan.NewUnresolvedTable("dual", ""),
 		),
@@ -212,7 +216,6 @@ func TestCreateViewWithConflictingTableName(t *testing.T) {
 
 	createView := plan.NewCreateView(db, "v", subqueryAlias, false, false, "CREATE VIEW v AS SELECT 1 as id", "", "", "")
 
-	ctx := sql.NewContext(context.Background())
 	_, err := DefaultBuilder.buildNodeExec(ctx, createView, nil)
 
 	// Verify we get an error

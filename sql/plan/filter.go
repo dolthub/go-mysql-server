@@ -22,16 +22,18 @@ import (
 type Filter struct {
 	UnaryNode
 	Expression sql.Expression
+	ctx        *sql.Context
 }
 
 var _ sql.Node = (*Filter)(nil)
 var _ sql.CollationCoercible = (*Filter)(nil)
 
 // NewFilter creates a new filter node.
-func NewFilter(expression sql.Expression, child sql.Node) *Filter {
+func NewFilter(ctx *sql.Context, expression sql.Expression, child sql.Node) *Filter {
 	return &Filter{
 		UnaryNode:  UnaryNode{Child: child},
 		Expression: expression,
+		ctx:        ctx,
 	}
 }
 
@@ -45,12 +47,12 @@ func (f *Filter) IsReadOnly() bool {
 }
 
 // WithChildren implements the Node interface.
-func (f *Filter) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (f *Filter) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 1)
 	}
 
-	return NewFilter(f.Expression, children[0]), nil
+	return NewFilter(ctx, f.Expression, children[0]), nil
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -59,26 +61,26 @@ func (f *Filter) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 }
 
 // WithExpressions implements the Expressioner interface.
-func (f *Filter) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+func (f *Filter) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(f, len(exprs), 1)
 	}
 
-	return NewFilter(exprs[0], f.Child), nil
+	return NewFilter(ctx, exprs[0], f.Child), nil
 }
 
 // Describe implements the sql.Describable interface
-func (f *Filter) Describe(options sql.DescribeOptions) string {
+func (f *Filter) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Filter")
-	children := []string{sql.Describe(f.Expression, options), sql.Describe(f.Child, options)}
+	children := []string{sql.Describe(ctx, f.Expression, options), sql.Describe(ctx, f.Child, options)}
 	_ = pr.WriteChildren(children...)
 	return pr.String()
 }
 
 // String implements the fmt.Stringer interface
 func (f *Filter) String() string {
-	return f.Describe(sql.DescribeOptions{
+	return f.Describe(f.ctx, sql.DescribeOptions{
 		Analyze:   false,
 		Estimates: false,
 		Debug:     false,
@@ -86,8 +88,8 @@ func (f *Filter) String() string {
 }
 
 // DebugString implements the sql.DebugStringer interface
-func (f *Filter) DebugString() string {
-	return f.Describe(sql.DescribeOptions{
+func (f *Filter) DebugString(ctx *sql.Context) string {
+	return f.Describe(ctx, sql.DescribeOptions{
 		Analyze:   false,
 		Estimates: false,
 		Debug:     true,
@@ -156,7 +158,7 @@ func (i *FilterIter) NextValueRow(ctx *sql.Context) (sql.ValueRow, error) {
 // IsValueRowIter implements the sql.ValueRowIter interface.
 func (i *FilterIter) IsValueRowIter(ctx *sql.Context) bool {
 	cond, ok := i.cond.(sql.ValueExpression)
-	if !ok || !cond.IsValueExpression() {
+	if !ok || !cond.IsValueExpression(ctx) {
 		return false
 	}
 	childIter, ok := i.childIter.(sql.ValueRowIter)

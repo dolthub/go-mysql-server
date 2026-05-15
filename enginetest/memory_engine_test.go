@@ -873,6 +873,10 @@ func TestIndexes(t *testing.T) {
 	enginetest.TestIndexes(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestIndexedExpressions(t *testing.T) {
+	enginetest.TestIndexedExpressions(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestVectorIndexes(t *testing.T) {
 	enginetest.TestVectorIndexes(t, enginetest.NewDefaultMemoryHarness())
 }

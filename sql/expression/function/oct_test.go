@@ -67,7 +67,7 @@ func TestOct(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			f := NewOct(expression.NewGetField(0, tt.nType, "n", true))
+			f := NewOct(sql.NewEmptyContext(), expression.NewGetField(0, tt.nType, "n", true))
 			result, err := f.Eval(sql.NewEmptyContext(), tt.row)
 			if err != nil {
 				t.Fatal(err)

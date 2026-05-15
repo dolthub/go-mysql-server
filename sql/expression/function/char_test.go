@@ -17,7 +17,6 @@ package function
 import (
 	"testing"
 
-	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -122,7 +121,7 @@ func TestChar(t *testing.T) {
 		{
 			name: "decimal 1.99",
 			args: []sql.Expression{
-				expression.NewLiteral(decimal.NewFromFloat(1.99), types.DecimalType_{}),
+				expression.NewLiteral(types.DecimalFromFloat64(1.99), types.DecimalType_{}),
 			},
 			exp: []byte{0x2},
 		},
@@ -160,7 +159,7 @@ func TestChar(t *testing.T) {
 			}
 
 			ctx := sql.NewEmptyContext()
-			f, err := NewChar(tt.args...)
+			f, err := NewChar(sql.NewEmptyContext(), tt.args...)
 			require.NoError(t, err)
 
 			res, err := f.Eval(ctx, nil)

@@ -90,7 +90,7 @@ func TestRandomBytes(t *testing.T) {
 				t.Skip()
 			}
 			ctx := sql.NewEmptyContext()
-			f := NewRandomBytes(test.expr)
+			f := NewRandomBytes(ctx, test.expr)
 			res, err := f.Eval(ctx, nil)
 			if test.err != nil {
 				require.True(t, test.err.Is(err))

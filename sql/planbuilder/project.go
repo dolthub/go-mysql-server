@@ -56,7 +56,7 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 		// TODO two passes for symbol res and semantic validation
 		var aRef string
 		var subqueryFound bool
-		inScopeAliasRef := transform.InspectExpr(pe, func(e sql.Expression) bool {
+		inScopeAliasRef := transform.InspectExpr(b.ctx, pe, func(ctx *sql.Context, e sql.Expression) bool {
 			var id columnId
 			switch e := e.(type) {
 			case *expression.GetField:
@@ -93,7 +93,7 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 				b.handleErr(err)
 			}
 			e = e.WithIndex(int(id)).(*expression.GetField)
-			outScope.addColumn(scopeColumn{tableId: inScope.tables[e.Table()], table: e.Table(), db: e.Database(), col: e.Name(), scalar: e, typ: e.Type(), nullable: e.IsNullable(), id: id})
+			outScope.addColumn(scopeColumn{tableId: inScope.tables[e.Table()], table: e.Table(), db: e.Database(), col: e.Name(), scalar: e, typ: e.Type(b.ctx), nullable: e.IsNullable(b.ctx), id: id})
 		case *expression.Star:
 			tableName := strings.ToLower(e.Table)
 			if tableName == "" && len(inScope.cols) == 1 && inScope.cols[0].col == "" && inScope.cols[0].table == "dual" {
@@ -114,6 +114,11 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 						err := sql.ErrColumnNotFound.New(gf.String())
 						b.handleErr(err)
 					}
+
+					// Don't include system hidden columns when expanding '*'
+					if strings.Contains(c.col, sql.HiddenSystemColumnPrefix) {
+						continue
+					}
 					c.id = id
 					c.scalar = gf
 					outScope.addColumn(c)
@@ -131,7 +136,7 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 					err := sql.ErrMisusedAlias.New(e.Name())
 					b.handleErr(err)
 				}
-				col = scopeColumn{col: e.Name(), scalar: e, typ: e.Type(), nullable: e.IsNullable()}
+				col = scopeColumn{col: e.Name(), scalar: e, typ: e.Type(b.ctx), nullable: e.IsNullable(b.ctx)}
 			} else if gf, ok := e.Child.(*expression.GetField); ok && gf.Table() == "" {
 				// potential alias only if table is empty
 				if _, ok := tempScope.exprs[gf.Name()]; ok {
@@ -144,11 +149,11 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 					err := sql.ErrColumnNotFound.New(gf.String())
 					b.handleErr(err)
 				}
-				col = scopeColumn{id: id, tableId: gf.TableId(), col: e.Name(), db: gf.Database(), table: gf.Table(), scalar: e, typ: gf.Type(), nullable: gf.IsNullable()}
+				col = scopeColumn{id: id, tableId: gf.TableId(), col: e.Name(), db: gf.Database(), table: gf.Table(), scalar: e, typ: gf.Type(b.ctx), nullable: gf.IsNullable(b.ctx)}
 			} else if sq, ok := e.Child.(*plan.Subquery); ok {
-				col = scopeColumn{col: e.Name(), scalar: e, typ: sq.Type(), nullable: sq.IsNullable()}
+				col = scopeColumn{col: e.Name(), scalar: e, typ: sq.Type(b.ctx), nullable: sq.IsNullable(b.ctx)}
 			} else {
-				col = scopeColumn{col: e.Name(), scalar: e, typ: e.Type(), nullable: e.IsNullable()}
+				col = scopeColumn{col: e.Name(), scalar: e, typ: e.Type(b.ctx), nullable: e.IsNullable(b.ctx)}
 			}
 			if e.Unreferencable() {
 				outScope.addColumn(col)
@@ -174,11 +179,11 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 			if s, ok := e.Value().(string); ok {
 				colName = s
 			}
-			col := scopeColumn{col: colName, scalar: e, typ: e.Type()}
+			col := scopeColumn{col: colName, scalar: e, typ: e.Type(b.ctx)}
 			outScope.newColumn(col)
 		default:
 			exprs = append(exprs, pe)
-			col := scopeColumn{col: pe.String(), scalar: pe, typ: pe.Type()}
+			col := scopeColumn{col: pe.String(), scalar: pe, typ: pe.Type(b.ctx)}
 			outScope.newColumn(col)
 		}
 	}
@@ -201,15 +206,15 @@ func (b *Builder) selectExprToExpression(inScope *scope, se ast.SelectExpr) sql.
 	case *ast.AliasedExpr:
 		expr := b.buildScalar(inScope, e.Expr)
 		if !e.As.IsEmpty() {
-			return expression.NewAlias(e.As.String(), expr)
+			return expression.NewAlias(b.ctx, e.As.String(), expr)
 		}
-		if selectExprNeedsAlias(e, expr) {
+		if selectExprNeedsAlias(b.ctx, e, expr) {
 			// if the input expression is the same as expression string, then it's referencable.
 			// E.g. "SLEEP(1)" is the same as "sleep(1)"
 			if strings.EqualFold(e.InputExpression, expr.String()) {
-				return expression.NewAlias(e.InputExpression, expr)
+				return expression.NewAlias(b.ctx, e.InputExpression, expr)
 			}
-			return expression.NewAlias(e.InputExpression, expr).AsUnreferencable()
+			return expression.NewAlias(b.ctx, e.InputExpression, expr).AsUnreferencable()
 		}
 		return expr
 	default:
@@ -236,7 +241,7 @@ func (b *Builder) buildProjection(inScope, outScope *scope) {
 	for i, sc := range outScope.cols {
 		projections[i] = sc.scalar
 	}
-	proj, err := b.f.buildProject(plan.NewProject(projections, inScope.node), outScope.refsSubquery)
+	proj, err := b.f.buildProject(b.ctx, plan.NewProject(b.ctx, projections, inScope.node), outScope.refsSubquery)
 	if err != nil {
 		b.handleErr(err)
 	}
@@ -244,7 +249,7 @@ func (b *Builder) buildProjection(inScope, outScope *scope) {
 	outScope.node = proj
 }
 
-func selectExprNeedsAlias(e *ast.AliasedExpr, expr sql.Expression) bool {
+func selectExprNeedsAlias(ctx *sql.Context, e *ast.AliasedExpr, expr sql.Expression) bool {
 	if len(e.InputExpression) == 0 {
 		return false
 	}
@@ -257,7 +262,7 @@ func selectExprNeedsAlias(e *ast.AliasedExpr, expr sql.Expression) bool {
 	// the expression tree to see if is likely to need an alias without first serializing the expression being
 	// examined, which can be very expensive in memory.
 	complex := false
-	sql.Inspect(expr, func(expr sql.Expression) bool {
+	sql.Inspect(ctx, expr, func(ctx *sql.Context, expr sql.Expression) bool {
 		switch expr.(type) {
 		case *plan.Subquery, *expression.UnresolvedFunction, *expression.Case, *expression.InTuple, *plan.InSubquery, *expression.HashInTuple:
 			complex = true

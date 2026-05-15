@@ -33,7 +33,7 @@ var _ sql.FunctionExpression = (*STLength)(nil)
 var _ sql.CollationCoercible = (*STLength)(nil)
 
 // NewSTLength creates a new STLength expression.
-func NewSTLength(args ...sql.Expression) (sql.Expression, error) {
+func NewSTLength(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) != 1 && len(args) != 2 {
 		return nil, sql.ErrInvalidArgumentNumber.New("ST_LENGTH", "1 or 2", len(args))
 	}
@@ -51,7 +51,7 @@ func (s *STLength) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (s *STLength) Type() sql.Type {
+func (s *STLength) Type(ctx *sql.Context) sql.Type {
 	return types.Float64
 }
 
@@ -69,8 +69,8 @@ func (s *STLength) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (s *STLength) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewSTLength(children...)
+func (s *STLength) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewSTLength(ctx, children...)
 }
 
 // calculateLength sums up the line segments formed from a LineString

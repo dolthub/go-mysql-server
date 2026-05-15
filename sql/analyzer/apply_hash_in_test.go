@@ -15,11 +15,11 @@ import (
 )
 
 func TestApplyHashIn(t *testing.T) {
-	ctx := &sql.Context{}
 	db := memory.NewDatabase("mydb")
 	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
 
-	table := memory.NewTable(db, "foo", sql.NewPrimaryKeySchema(sql.Schema{
+	table := memory.NewTable(ctx, db, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: types.Int64, Source: "foo"},
 		{Name: "b", Type: types.Int64, Source: "foo"},
 		{Name: "c", Type: types.Int64, Source: "foo"},
@@ -72,6 +72,7 @@ func TestApplyHashIn(t *testing.T) {
 	)
 
 	child := plan.NewProject(
+		ctx,
 		[]sql.Expression{
 			expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "foo", "a", false),
 			expression.NewGetFieldWithTable(0, 1, types.Int64, "db", "foo", "b", false),
@@ -84,6 +85,7 @@ func TestApplyHashIn(t *testing.T) {
 		{
 			name: "filter with literals converted to hash in",
 			node: plan.NewFilter(
+				ctx,
 				expression.NewInTuple(
 					expression.NewGetField(0, types.Int64, "foo", false),
 					expression.NewTuple(
@@ -95,6 +97,7 @@ func TestApplyHashIn(t *testing.T) {
 				child,
 			),
 			expected: plan.NewFilter(
+				ctx,
 				hitLiteral,
 				child,
 			),
@@ -102,6 +105,7 @@ func TestApplyHashIn(t *testing.T) {
 		{
 			name: "hash in preserves sibling expressions",
 			node: plan.NewFilter(
+				ctx,
 				expression.NewAnd(
 					expression.NewInTuple(
 						expression.NewGetField(0, types.Int64, "foo", false),
@@ -119,6 +123,7 @@ func TestApplyHashIn(t *testing.T) {
 				child,
 			),
 			expected: plan.NewFilter(
+				ctx,
 				expression.NewAnd(
 					hitLiteral,
 					expression.NewEquals(
@@ -132,6 +137,7 @@ func TestApplyHashIn(t *testing.T) {
 		{
 			name: "filter with tuple expression converted to hash in",
 			node: plan.NewFilter(
+				ctx,
 				expression.NewInTuple(
 					expression.NewTuple(
 						expression.NewGetField(0, types.Int64, "a", false),
@@ -146,6 +152,7 @@ func TestApplyHashIn(t *testing.T) {
 				child,
 			),
 			expected: plan.NewFilter(
+				ctx,
 				hitTuple,
 				child,
 			),
@@ -153,6 +160,7 @@ func TestApplyHashIn(t *testing.T) {
 		{
 			name: "filter with hetero tuple converted to hash in",
 			node: plan.NewFilter(
+				ctx,
 				expression.NewInTuple(
 					expression.NewTuple(
 						expression.NewGetField(0, types.Int64, "a", false),
@@ -176,6 +184,7 @@ func TestApplyHashIn(t *testing.T) {
 				child,
 			),
 			expected: plan.NewFilter(
+				ctx,
 				hitHeteroTuple,
 				child,
 			),
@@ -183,6 +192,7 @@ func TestApplyHashIn(t *testing.T) {
 		{
 			name: "filter with nested tuple expression not selected",
 			node: plan.NewFilter(
+				ctx,
 				expression.NewInTuple(
 					expression.NewTuple(
 						expression.NewTuple(
@@ -211,6 +221,7 @@ func TestApplyHashIn(t *testing.T) {
 				child,
 			),
 			expected: plan.NewFilter(
+				ctx,
 				mustNewHashInTuple(
 					ctx,
 					expression.NewTuple(
@@ -243,6 +254,7 @@ func TestApplyHashIn(t *testing.T) {
 		{
 			name: "skip filter with binding",
 			node: plan.NewFilter(
+				ctx,
 				expression.NewInTuple(
 					expression.NewGetField(0, types.Int64, "foo", false),
 					expression.NewTuple(
@@ -254,6 +266,7 @@ func TestApplyHashIn(t *testing.T) {
 				child,
 			),
 			expected: plan.NewFilter(
+				ctx,
 				expression.NewInTuple(
 					expression.NewGetField(0, types.Int64, "foo", false),
 					expression.NewTuple(
@@ -268,6 +281,7 @@ func TestApplyHashIn(t *testing.T) {
 		{
 			name: "filter with arithmetic on left",
 			node: plan.NewFilter(
+				ctx,
 				expression.NewInTuple(
 					expression.NewPlus(
 						expression.NewLiteral(4, types.Int64),
@@ -280,6 +294,7 @@ func TestApplyHashIn(t *testing.T) {
 				child,
 			),
 			expected: plan.NewFilter(
+				ctx,
 				mustNewHashInTuple(
 					ctx,
 					expression.NewPlus(
@@ -296,6 +311,7 @@ func TestApplyHashIn(t *testing.T) {
 		{
 			name: "skip filter with arithmetic on right",
 			node: plan.NewFilter(
+				ctx,
 				expression.NewInTuple(
 					expression.NewLiteral(6, types.Int64),
 					expression.NewTuple(
@@ -308,6 +324,7 @@ func TestApplyHashIn(t *testing.T) {
 				child,
 			),
 			expected: plan.NewFilter(
+				ctx,
 				expression.NewInTuple(
 					expression.NewLiteral(6, types.Int64),
 					expression.NewTuple(
@@ -323,8 +340,10 @@ func TestApplyHashIn(t *testing.T) {
 		{
 			name: "function on left",
 			node: plan.NewFilter(
+				ctx,
 				expression.NewInTuple(
 					function.NewLower(
+						ctx,
 						expression.NewLiteral("hi", types.TinyText),
 					),
 					expression.NewTuple(
@@ -334,9 +353,11 @@ func TestApplyHashIn(t *testing.T) {
 				child,
 			),
 			expected: plan.NewFilter(
+				ctx,
 				mustNewHashInTuple(
 					ctx,
 					function.NewLower(
+						ctx,
 						expression.NewLiteral("hi", types.TinyText),
 					),
 					expression.NewTuple(
@@ -349,10 +370,12 @@ func TestApplyHashIn(t *testing.T) {
 		{
 			name: "skip filter with function on right",
 			node: plan.NewFilter(
+				ctx,
 				expression.NewInTuple(
 					expression.NewLiteral("hi", types.TinyText),
 					expression.NewTuple(
 						function.NewLower(
+							ctx,
 							expression.NewLiteral("hi", types.TinyText),
 						),
 					),
@@ -360,10 +383,12 @@ func TestApplyHashIn(t *testing.T) {
 				child,
 			),
 			expected: plan.NewFilter(
+				ctx,
 				expression.NewInTuple(
 					expression.NewLiteral("hi", types.TinyText),
 					expression.NewTuple(
 						function.NewLower(
+							ctx,
 							expression.NewLiteral("hi", types.TinyText),
 						),
 					),
@@ -374,6 +399,7 @@ func TestApplyHashIn(t *testing.T) {
 		{
 			name: "is null on left",
 			node: plan.NewFilter(
+				ctx,
 				expression.NewInTuple(
 					expression.NewIsNull(
 						expression.NewLiteral(int64(0), types.Null),
@@ -385,6 +411,7 @@ func TestApplyHashIn(t *testing.T) {
 				child,
 			),
 			expected: plan.NewFilter(
+				ctx,
 				mustNewHashInTuple(
 					ctx,
 					expression.NewIsNull(
@@ -400,6 +427,7 @@ func TestApplyHashIn(t *testing.T) {
 		{
 			name: "skip filter with is null on right",
 			node: plan.NewFilter(
+				ctx,
 				expression.NewInTuple(
 					expression.NewLiteral(int64(0), types.Int64),
 					expression.NewTuple(
@@ -411,6 +439,7 @@ func TestApplyHashIn(t *testing.T) {
 				child,
 			),
 			expected: plan.NewFilter(
+				ctx,
 				expression.NewInTuple(
 					expression.NewLiteral(int64(0), types.Int64),
 					expression.NewTuple(
@@ -425,6 +454,7 @@ func TestApplyHashIn(t *testing.T) {
 		{
 			name: "is true on left",
 			node: plan.NewFilter(
+				ctx,
 				expression.NewInTuple(
 					expression.NewIsTrue(
 						expression.NewLiteral(int64(0), types.Null),
@@ -436,6 +466,7 @@ func TestApplyHashIn(t *testing.T) {
 				child,
 			),
 			expected: plan.NewFilter(
+				ctx,
 				mustNewHashInTuple(
 					ctx,
 					expression.NewIsTrue(
@@ -451,6 +482,7 @@ func TestApplyHashIn(t *testing.T) {
 		{
 			name: "skip filter with is true on right",
 			node: plan.NewFilter(
+				ctx,
 				expression.NewInTuple(
 					expression.NewLiteral(int64(0), types.Int64),
 					expression.NewTuple(
@@ -462,6 +494,7 @@ func TestApplyHashIn(t *testing.T) {
 				child,
 			),
 			expected: plan.NewFilter(
+				ctx,
 				expression.NewInTuple(
 					expression.NewLiteral(int64(0), types.Int64),
 					expression.NewTuple(
@@ -476,6 +509,7 @@ func TestApplyHashIn(t *testing.T) {
 		{
 			name: "cast on left",
 			node: plan.NewFilter(
+				ctx,
 				expression.NewInTuple(
 					expression.NewConvert(
 						expression.NewGetField(0, types.Int64, "foo", false),
@@ -488,6 +522,7 @@ func TestApplyHashIn(t *testing.T) {
 				child,
 			),
 			expected: plan.NewFilter(
+				ctx,
 				mustNewHashInTuple(
 					ctx,
 					expression.NewConvert(
@@ -504,6 +539,7 @@ func TestApplyHashIn(t *testing.T) {
 		{
 			name: "skip filter with cast on right",
 			node: plan.NewFilter(
+				ctx,
 				expression.NewInTuple(
 					expression.NewLiteral(int64(0), types.Int64),
 					expression.NewTuple(
@@ -516,6 +552,7 @@ func TestApplyHashIn(t *testing.T) {
 				child,
 			),
 			expected: plan.NewFilter(
+				ctx,
 				expression.NewInTuple(
 					expression.NewLiteral(int64(0), types.Int64),
 					expression.NewTuple(
@@ -531,6 +568,7 @@ func TestApplyHashIn(t *testing.T) {
 		{
 			name: "skip filter with get field on right",
 			node: plan.NewFilter(
+				ctx,
 				expression.NewInTuple(
 					expression.NewLiteral(int64(0), types.Int64),
 					expression.NewTuple(
@@ -540,6 +578,7 @@ func TestApplyHashIn(t *testing.T) {
 				child,
 			),
 			expected: plan.NewFilter(
+				ctx,
 				expression.NewInTuple(
 					expression.NewLiteral(int64(0), types.Int64),
 					expression.NewTuple(
@@ -551,7 +590,7 @@ func TestApplyHashIn(t *testing.T) {
 		},
 	}
 
-	runTestCases(t, newContext(pro), tests, NewDefault(sql.NewDatabaseProvider()), getRule(applyHashInId))
+	runTestCases(t, ctx, tests, NewDefault(sql.NewDatabaseProvider()), getRule(applyHashInId))
 }
 
 func mustNewHashInTuple(ctx *sql.Context, left, right sql.Expression) *expression.HashInTuple {

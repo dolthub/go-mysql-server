@@ -290,7 +290,7 @@ func (r *IndexRegistry) MatchingIndex(ctx *Context, db string, expr ...Expressio
 	for i, e := range expr {
 		expressions[i] = e.String()
 		var err error
-		Inspect(e, func(e Expression) bool {
+		Inspect(ctx, e, func(ctx *Context, e Expression) bool {
 			if e == nil {
 				return true
 			}

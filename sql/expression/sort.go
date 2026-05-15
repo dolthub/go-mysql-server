@@ -41,7 +41,7 @@ func (s *Sorter) Swap(i, j int) {
 // IsLesserRow determines if sql.Row `a` is less than sql.Row `b` based off s.SortFields.
 func (s *Sorter) IsLesserRow(a, b sql.Row) bool {
 	for _, sf := range s.SortFields {
-		typ := sf.Column.Type()
+		typ := sf.Column.Type(s.Ctx)
 		av, err := sf.Column.Eval(s.Ctx, a)
 		if err != nil {
 			s.LastError = sql.ErrUnableSort.Wrap(err)

@@ -17,7 +17,6 @@ package function
 import (
 	"testing"
 
-	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -26,7 +25,7 @@ import (
 )
 
 func TestEmptyCoalesce(t *testing.T) {
-	_, err := NewCoalesce()
+	_, err := NewCoalesce(sql.NewEmptyContext())
 	require.True(t, sql.ErrInvalidArgumentNumber.Is(err))
 }
 
@@ -97,7 +96,7 @@ func TestCoalesce(t *testing.T) {
 			name: "coalesce(int(1), decimal(2.0), string('3'))",
 			input: []sql.Expression{
 				expression.NewLiteral(1, types.Int32),
-				expression.NewLiteral(decimal.NewFromFloat(2.0), types.MustCreateDecimalType(10, 0)),
+				expression.NewLiteral(types.DecimalFromFloat64(2.0), types.MustCreateDecimalType(10, 0)),
 				expression.NewLiteral("3", types.LongText),
 			},
 			expected: "1",
@@ -110,7 +109,7 @@ func TestCoalesce(t *testing.T) {
 				expression.NewLiteral(1, types.Int32),
 				expression.NewLiteral(2, types.Uint32),
 			},
-			expected: decimal.New(1, 0),
+			expected: types.DecimalFromInt64(1),
 			typ:      types.MustCreateDecimalType(20, 0),
 			nullable: false,
 		},
@@ -120,7 +119,7 @@ func TestCoalesce(t *testing.T) {
 				expression.NewLiteral(1, types.Int32),
 				expression.NewLiteral(2, types.Uint32),
 			},
-			expected: decimal.New(1, 0),
+			expected: types.DecimalFromInt64(1),
 			typ:      types.MustCreateDecimalType(20, 0),
 			nullable: false,
 		},
@@ -178,7 +177,7 @@ func TestCoalesce(t *testing.T) {
 				expression.NewLiteral(1, types.NewSystemIntType("int1", 0, 10, false)),
 				expression.NewLiteral(2, types.NewSystemUintType("int2", 0, 10)),
 			},
-			expected: decimal.New(1, 0),
+			expected: types.DecimalFromInt64(1),
 			typ:      types.MustCreateDecimalType(20, 0),
 			nullable: false,
 		},
@@ -233,11 +232,12 @@ func TestCoalesce(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			c, err := NewCoalesce(tt.input...)
+			ctx := sql.NewEmptyContext()
+			c, err := NewCoalesce(ctx, tt.input...)
 			require.NoError(t, err)
 
-			require.Equal(t, tt.typ, c.Type())
-			require.Equal(t, tt.nullable, c.IsNullable())
+			require.Equal(t, tt.typ, c.Type(ctx))
+			require.Equal(t, tt.nullable, c.IsNullable(ctx))
 			v, err := c.Eval(sql.NewEmptyContext(), nil)
 			require.NoError(t, err)
 			require.Equal(t, tt.expected, v)
@@ -247,30 +247,30 @@ func TestCoalesce(t *testing.T) {
 
 func TestComposeCoalasce(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	c1, err := NewCoalesce(nil)
+	c1, err := NewCoalesce(ctx, nil)
 	require.NoError(t, err)
-	require.Equal(t, types.Null, c1.Type())
+	require.Equal(t, types.Null, c1.Type(ctx))
 	v, err := c1.Eval(ctx, nil)
 	require.NoError(t, err)
 	require.Equal(t, nil, v)
 
-	c2, err := NewCoalesce(nil, expression.NewLiteral(1, types.Int32))
+	c2, err := NewCoalesce(ctx, nil, expression.NewLiteral(1, types.Int32))
 	require.NoError(t, err)
-	require.Equal(t, types.Int32, c2.Type())
+	require.Equal(t, types.Int32, c2.Type(ctx))
 	v, err = c2.Eval(ctx, nil)
 	require.NoError(t, err)
 	require.Equal(t, int32(1), v)
 
-	c3, err := NewCoalesce(nil, c1, c2)
+	c3, err := NewCoalesce(ctx, nil, c1, c2)
 	require.NoError(t, err)
-	require.Equal(t, types.Int32, c3.Type())
+	require.Equal(t, types.Int32, c3.Type(ctx))
 	v, err = c3.Eval(ctx, nil)
 	require.NoError(t, err)
 	require.Equal(t, int32(1), v)
 
-	c4, err := NewCoalesce(expression.NewLiteral(nil, types.Null), c1, c2)
+	c4, err := NewCoalesce(ctx, expression.NewLiteral(nil, types.Null), c1, c2)
 	require.NoError(t, err)
-	require.Equal(t, types.Int32, c4.Type())
+	require.Equal(t, types.Int32, c4.Type(ctx))
 	v, err = c4.Eval(ctx, nil)
 	require.NoError(t, err)
 	require.Equal(t, int32(1), v)

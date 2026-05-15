@@ -38,8 +38,8 @@ func TestUnion(t *testing.T) {
 		{Name: "name", Type: types.Text, Nullable: true},
 		{Name: "email", Type: types.Text, Nullable: true},
 	})
-	child := memory.NewTable(db, "test", childSchema, nil)
-	empty := memory.NewTable(db, "empty", childSchema, nil)
+	child := memory.NewTable(ctx, db, "test", childSchema, nil)
+	empty := memory.NewTable(ctx, db, "empty", childSchema, nil)
 
 	rows := []sql.Row{
 		sql.NewRow("john", "john@doe.com"),
@@ -62,20 +62,20 @@ func TestUnion(t *testing.T) {
 		expected []string
 	}{
 		{
-			plan.NewSetOp(plan.UnionType, plan.NewProject(name, plan.NewResolvedTable(child, nil, nil)), plan.NewProject(name, plan.NewResolvedTable(child, nil, nil)), false, nil, nil, nil),
+			plan.NewSetOp(plan.UnionType, plan.NewProject(ctx, name, plan.NewResolvedTable(child, nil, nil)), plan.NewProject(ctx, name, plan.NewResolvedTable(child, nil, nil)), false, nil, nil, nil),
 			[]string{
 				"john", "jane", "john", "martha", "martha",
 				"john", "jane", "john", "martha", "martha",
 			},
 		},
 		{
-			plan.NewSetOp(plan.UnionType, plan.NewProject(name, plan.NewResolvedTable(empty, nil, nil)), plan.NewProject(name, plan.NewResolvedTable(child, nil, nil)), false, nil, nil, nil),
+			plan.NewSetOp(plan.UnionType, plan.NewProject(ctx, name, plan.NewResolvedTable(empty, nil, nil)), plan.NewProject(ctx, name, plan.NewResolvedTable(child, nil, nil)), false, nil, nil, nil),
 			[]string{
 				"john", "jane", "john", "martha", "martha",
 			},
 		},
 		{
-			plan.NewSetOp(plan.UnionType, plan.NewProject(name, plan.NewResolvedTable(child, nil, nil)), plan.NewProject(name, plan.NewResolvedTable(empty, nil, nil)), false, nil, nil, nil),
+			plan.NewSetOp(plan.UnionType, plan.NewProject(ctx, name, plan.NewResolvedTable(child, nil, nil)), plan.NewProject(ctx, name, plan.NewResolvedTable(empty, nil, nil)), false, nil, nil, nil),
 			[]string{
 				"john", "jane", "john", "martha", "martha",
 			},

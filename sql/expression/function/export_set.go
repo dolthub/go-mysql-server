@@ -35,7 +35,7 @@ var _ sql.FunctionExpression = (*ExportSet)(nil)
 var _ sql.CollationCoercible = (*ExportSet)(nil)
 
 // NewExportSet creates a new ExportSet expression
-func NewExportSet(args ...sql.Expression) (sql.Expression, error) {
+func NewExportSet(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 3 || len(args) > 5 {
 		return nil, sql.ErrInvalidArgumentNumber.New("EXPORT_SET", "3, 4, or 5", len(args))
 	}
@@ -90,9 +90,9 @@ func (e *ExportSet) Resolved() bool {
 }
 
 // IsNullable implements the Expression interface
-func (e *ExportSet) IsNullable() bool {
+func (e *ExportSet) IsNullable(ctx *sql.Context) bool {
 	for _, child := range e.Children() {
-		if child.IsNullable() {
+		if child.IsNullable(ctx) {
 			return true
 		}
 	}
@@ -100,7 +100,7 @@ func (e *ExportSet) IsNullable() bool {
 }
 
 // Type implements the Expression interface
-func (e *ExportSet) Type() sql.Type {
+func (e *ExportSet) Type(ctx *sql.Context) sql.Type {
 	return types.LongText
 }
 
@@ -127,8 +127,8 @@ func (e *ExportSet) String() string {
 }
 
 // WithChildren implements the Expression interface
-func (e *ExportSet) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewExportSet(children...)
+func (e *ExportSet) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewExportSet(ctx, children...)
 }
 
 // Eval implements the Expression interface

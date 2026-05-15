@@ -32,7 +32,7 @@ var _ sql.FunctionExpression = (*IsBinary)(nil)
 var _ sql.CollationCoercible = (*IsBinary)(nil)
 
 // NewIsBinary creates a new IsBinary expression.
-func NewIsBinary(e sql.Expression) sql.Expression {
+func NewIsBinary(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &IsBinary{expression.UnaryExpressionStub{Child: e}}
 }
 
@@ -69,7 +69,7 @@ func (ib *IsBinary) Eval(
 }
 
 // IsNullable implements sql.Expression
-func (ib *IsBinary) IsNullable() bool {
+func (ib *IsBinary) IsNullable(ctx *sql.Context) bool {
 	return false
 }
 
@@ -78,15 +78,15 @@ func (ib *IsBinary) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (ib *IsBinary) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (ib *IsBinary) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(ib, len(children), 1)
 	}
-	return NewIsBinary(children[0]), nil
+	return NewIsBinary(ctx, children[0]), nil
 }
 
 // Type implements the Expression interface.
-func (ib *IsBinary) Type() sql.Type {
+func (ib *IsBinary) Type(ctx *sql.Context) sql.Type {
 	return types.Boolean
 }
 

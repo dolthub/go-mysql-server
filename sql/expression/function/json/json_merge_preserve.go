@@ -51,7 +51,7 @@ var _ sql.FunctionExpression = (*JSONMergePreserve)(nil)
 var _ sql.CollationCoercible = (*JSONMergePreserve)(nil)
 
 // NewJSONMergePreserve creates a new JSONMergePreserve function.
-func NewJSONMergePreserve(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONMergePreserve(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 2 {
 		return nil, sql.ErrInvalidArgumentNumber.New("JSON_MERGE_PRESERVE", 2, len(args))
 	}
@@ -95,7 +95,7 @@ func (j *JSONMergePreserve) String() string {
 }
 
 // Type implements the Expression interface.
-func (j *JSONMergePreserve) Type() sql.Type {
+func (j *JSONMergePreserve) Type(ctx *sql.Context) sql.Type {
 	return types.JSON
 }
 
@@ -105,9 +105,9 @@ func (*JSONMergePreserve) CollationCoercibility(ctx *sql.Context) (collation sql
 }
 
 // IsNullable implements the Expression interface.
-func (j *JSONMergePreserve) IsNullable() bool {
+func (j *JSONMergePreserve) IsNullable(ctx *sql.Context) bool {
 	for _, d := range j.JSONs {
-		if d.IsNullable() {
+		if d.IsNullable(ctx) {
 			return true
 		}
 	}
@@ -153,12 +153,12 @@ func (j *JSONMergePreserve) Children() []sql.Expression {
 }
 
 // WithChildren implements the Expression interface.
-func (j *JSONMergePreserve) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (j *JSONMergePreserve) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(j.Children()) != len(children) {
 		return nil, fmt.Errorf("json_merge_preserve did not receive the correct amount of args")
 	}
 
-	return NewJSONMergePreserve(children...)
+	return NewJSONMergePreserve(ctx, children...)
 }
 
 // merge returns merged json document as interface{} type

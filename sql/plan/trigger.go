@@ -71,18 +71,18 @@ func (t *TriggerExecutor) IsReadOnly() bool {
 	return t.left.IsReadOnly() && t.right.IsReadOnly()
 }
 
-func (t *TriggerExecutor) DebugString() string {
+func (t *TriggerExecutor) DebugString(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Trigger(%s)", t.TriggerDefinition.CreateStatement)
-	_ = pr.WriteChildren(sql.DebugString(t.left), sql.DebugString(t.right))
+	_ = pr.WriteChildren(sql.DebugString(ctx, t.left), sql.DebugString(ctx, t.right))
 	return pr.String()
 }
 
-func (t *TriggerExecutor) Schema() sql.Schema {
-	return t.left.Schema()
+func (t *TriggerExecutor) Schema(ctx *sql.Context) sql.Schema {
+	return t.left.Schema(ctx)
 }
 
-func (t *TriggerExecutor) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (t *TriggerExecutor) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 2)
 	}

@@ -15,6 +15,7 @@
 package plan
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -110,6 +111,13 @@ func (fkEditor *ForeignKeyEditor) Update(ctx *sql.Context, old sql.Row, new sql.
 		case sql.ForeignKeyReferentialAction_Cascade:
 		case sql.ForeignKeyReferentialAction_SetNull:
 		case sql.ForeignKeyReferentialAction_SetDefault:
+		}
+	}
+	// check for null update on non-nullable column
+	// (Doltgres allows adding the constraint SET NULL on NOT NULL column, so we catch the error when it attempts to set it null)
+	for i, col := range fkEditor.Schema {
+		if !col.Nullable && new[i] == nil {
+			return errors.New(fmt.Sprintf(`null value in column "%s" violates not-null constraint`, col.Name))
 		}
 	}
 	if err := fkEditor.Editor.Update(ctx, old, new); err != nil {
@@ -556,7 +564,7 @@ func (reference *ForeignKeyReferenceHandler) validateColumnTypeConstraints(ctx *
 		return nil
 	}
 
-	for parentIdx, parentCol := range mapper.Index.ColumnExpressionTypes() {
+	for parentIdx, parentCol := range mapper.Index.ColumnExpressionTypes(ctx) {
 		if parentIdx >= len(mapper.IndexPositions) {
 			break
 		}
@@ -672,7 +680,7 @@ func (mapper *ForeignKeyRowMapper) GetIter(ctx *sql.Context, row sql.Row, refChe
 	}
 
 	if !mapper.Index.CanSupport(ctx, rang) {
-		return nil, ErrInvalidLookupForIndexedTable.New(rang.DebugString())
+		return nil, ErrInvalidLookupForIndexedTable.New(rang.DebugString(ctx))
 	}
 	// TODO: profile this, may need to redesign this or add a fast path
 	lookup := sql.IndexLookup{Ranges: sql.MySQLRangeCollection{rang}, Index: mapper.Index}
