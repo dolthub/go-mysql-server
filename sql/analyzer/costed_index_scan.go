@@ -215,6 +215,7 @@ func getCostedIndexScan(
 
 	c := newIndexCoster(rt.Name())
 	c.indexedExprs = indexedExprs
+
 	root, leftover, imprecise := c.buildRoot(ctx, expression.JoinAnd(filters...), expressionWalker)
 	if root == nil {
 		return nil, nil, nil, err
@@ -728,6 +729,7 @@ func NewDefaultLogicTreeWalker() sql.ExpressionTreeFilter {
 // to make costing index scans easier. We return the root of the new tree
 // and a conjunction of filters that cannot be pushed into index scans.
 func (c *indexCoster) buildRoot(ctx *sql.Context, e sql.Expression, walker sql.ExpressionTreeFilter) (indexFilter, sql.Expression, sql.FastIntSet) {
+	e = c.transformForIndexCosting(ctx, e)
 	e = walker.Next(e)
 
 	switch e := e.(type) {
@@ -1639,6 +1641,68 @@ func (c *indexCoster) buildLeafFromParts(ctx *sql.Context, id indexScanId, name 
 		litType:    litExpr.Type(ctx),
 		underlying: c.underlyingName,
 	}, true
+}
+
+// transformForIndexCosting transforms a filter expression into one more amenable to index scan costing.
+//
+// Currently, the only thing it does is decompose expressions of the form:
+//
+// (col1, col2, ...) IN ((v1a, v2a, ...), (v1b, v2b, ...), ...)
+//
+// and rewrites them into the equivalent OR-of-ANDs-of-Equals:
+//
+//	(col1 = v1a AND col2 = v2a) OR (col1 = v1b AND col2 = v2b) OR ...
+//
+// This allows existing index scan logic to handle multi-column IN expressions.
+//
+// We could do this transformation as an analyzer pass prior to index scan costing, but keeping the original
+// expressions outside of costing potentially allows other optimizations to leverage the context of IN or HASH-IN expressions.
+func (c *indexCoster) transformForIndexCosting(ctx *sql.Context, e sql.Expression) sql.Expression {
+	transformedExpr, _, _ := transform.Expr(ctx, e, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		var left, right sql.Expression
+		switch e := e.(type) {
+		case *expression.InTuple:
+			left = e.Left()
+			right = e.Right()
+		case *expression.HashInTuple:
+			left = e.Left()
+			right = e.Right()
+		default:
+			return e, transform.SameTree, nil
+		}
+
+		leftTuple, ok := left.(expression.Tuple)
+		if !ok {
+			return e, transform.SameTree, nil
+		}
+
+		rightTuple, ok := right.(expression.Tuple)
+		if !ok {
+			return e, transform.SameTree, nil
+		}
+
+		var orExprs []sql.Expression
+		for _, elem := range rightTuple {
+			valTuple, ok := elem.(expression.Tuple)
+			if !ok || len(valTuple) != len(leftTuple) {
+				return e, transform.SameTree, nil
+			}
+			// Build AND of equals: col1 = v1 AND col2 = v2 AND ...
+			var andExprs []sql.Expression
+			for i, col := range leftTuple {
+				andExprs = append(andExprs, expression.NewEquals(col, valTuple[i]))
+			}
+			orExprs = append(orExprs, expression.JoinAnd(andExprs...))
+		}
+
+		// TODO: If JoinOr returned a false literal on an empty input, this would
+		// not be necessary. But that seems to break some tests.
+		if len(orExprs) == 0 {
+			return expression.NewLiteral(false, types.Boolean), transform.NewTree, nil
+		}
+		return expression.JoinOr(orExprs...), transform.NewTree, nil
+	})
+	return transformedExpr
 }
 
 // buildLeaf tries to convert an expression into the intermediate
