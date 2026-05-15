@@ -71,7 +71,7 @@ func (g *GroupBy) Schema(ctx *sql.Context) sql.Schema {
 		if n, ok := e.(sql.Nameable); ok {
 			name = n.Name()
 		} else {
-			name = AliasSubqueryString(e)
+			name = AliasSubqueryString(ctx, e)
 		}
 
 		var table string

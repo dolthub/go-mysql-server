@@ -98,11 +98,11 @@ func indexColumns(ctx *sql.Context, _ *Analyzer, n sql.Node, scope *plan.Scope) 
 		case *expression.Alias:
 			// Aliases get indexed twice with the same index number: once with the aliased name and once with the
 			// underlying name
-			indexColumn(transform.ExpressionToColumn(ctx, e, plan.AliasSubqueryString(e)))
+			indexColumn(transform.ExpressionToColumn(ctx, e, plan.AliasSubqueryString(ctx, e)))
 			idx--
 			indexColumnExpr(e.Child)
 		default:
-			indexColumn(transform.ExpressionToColumn(ctx, e, plan.AliasSubqueryString(e)))
+			indexColumn(transform.ExpressionToColumn(ctx, e, plan.AliasSubqueryString(ctx, e)))
 		}
 	}
 

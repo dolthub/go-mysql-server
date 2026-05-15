@@ -79,7 +79,7 @@ func (w *Window) DebugString(ctx *sql.Context) string {
 func (w *Window) Schema(ctx *sql.Context) sql.Schema {
 	var s = make(sql.Schema, len(w.SelectExprs))
 	for i, e := range w.SelectExprs {
-		s[i] = transform.ExpressionToColumn(ctx, e, AliasSubqueryString(e))
+		s[i] = transform.ExpressionToColumn(ctx, e, AliasSubqueryString(ctx, e))
 	}
 	return s
 }

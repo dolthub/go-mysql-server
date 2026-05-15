@@ -272,7 +272,7 @@ func (s *Scope) Schema(ctx *sql.Context) sql.Schema {
 				for _, expr := range n.Projections {
 					var col *sql.Column
 					if expr.Resolved() {
-						col = transform.ExpressionToColumn(ctx, expr, AliasSubqueryString(expr))
+						col = transform.ExpressionToColumn(ctx, expr, AliasSubqueryString(ctx, expr))
 					} else {
 						// TODO: a new type here?
 						col = &sql.Column{
