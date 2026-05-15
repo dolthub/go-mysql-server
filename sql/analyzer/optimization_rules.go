@@ -140,6 +140,7 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 
 		// TODO: turn inner join into crossjoin when no condFilters
 		return plan.NewJoin(ctx, newLeft, newRight, join.Op, expression.JoinAnd(condFilters...)).WithComment(join.CommentStr), transform.NewTree, nil
+	})
 }
 
 // nodeSources returns the set of column sources from the schema of the node given.
