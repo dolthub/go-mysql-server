@@ -499,8 +499,6 @@ func containsJSONNumber(a float64, b interface{}) (bool, error) {
 //   - NULL
 //     For comparison of any JSON value to SQL NULL, the result is UNKNOWN.
 //
-//     TODO(andy): BLOB, BIT, OPAQUE, DATETIME, TIME, DATE, INTEGER
-//
 // https://dev.mysql.com/doc/refman/8.0/en/json.html#json-comparison
 func CompareJSON(ctx context.Context, a, b interface{}) (int, error) {
 	var err error
@@ -636,10 +634,22 @@ func compareJSONObject(ctx context.Context, a JsonObject, b interface{}) (int, e
 
 	case JsonObject:
 		// Two JSON objects are equal if they have the same set of keys, and each key has the same value in both
-		// objects. The order of two objects that are not equal is unspecified but deterministic.
-		inter := jsonObjectKeyIntersection(a, b)
-		for _, key := range inter {
-			cmp, err := CompareJSON(ctx, a[key], b[key])
+		// objects. The order of two objects that are not equal is unspecified but deterministic. We define the
+		// order as a lexicographic walk over both objects' keys sorted in lex (byte) order:
+		//   - At each position, if the keys differ, the smaller key's object is the smaller object.
+		//   - If the keys match, compare the values; the first non-zero comparison wins.
+		//   - If one object is a strict prefix of the other in this walk, the shorter one is the smaller object.
+		aKeys := slices.Sorted(maps.Keys(a))
+		bKeys := slices.Sorted(maps.Keys(b))
+		minLen := len(aKeys)
+		if len(bKeys) < minLen {
+			minLen = len(bKeys)
+		}
+		for i := 0; i < minLen; i++ {
+			if c := strings.Compare(aKeys[i], bKeys[i]); c != 0 {
+				return c, nil
+			}
+			cmp, err := CompareJSON(ctx, a[aKeys[i]], b[bKeys[i]])
 			if err != nil {
 				return 0, err
 			}
@@ -647,10 +657,13 @@ func compareJSONObject(ctx context.Context, a JsonObject, b interface{}) (int, e
 				return cmp, nil
 			}
 		}
-		if len(a) == len(b) && len(a) == len(inter) {
-			return 0, nil
+		if len(aKeys) < len(bKeys) {
+			return -1, nil
 		}
-		return jsonObjectDeterministicOrder(a, b, inter)
+		if len(aKeys) > len(bKeys) {
+			return 1, nil
+		}
+		return 0, nil
 
 	default:
 		// a is higher precedence
@@ -720,51 +733,6 @@ func compareJSONNumber(a float64, b interface{}) (int, error) {
 		// a is higher precedence
 		return 1, nil
 	}
-}
-
-func jsonObjectKeyIntersection(a, b JsonObject) (ks []string) {
-	for key := range a {
-		if _, ok := b[key]; ok {
-			ks = append(ks, key)
-		}
-	}
-	slices.Sort(ks)
-	return
-}
-
-func jsonObjectDeterministicOrder(a, b JsonObject, inter []string) (int, error) {
-	if len(a) > len(b) {
-		return 1, nil
-	}
-	if len(a) < len(b) {
-		return -1, nil
-	}
-
-	// if equal length, compare least non-intersection key
-	iset := make(map[string]bool)
-	for _, key := range inter {
-		iset[key] = true
-	}
-
-	var aa string
-	for key := range a {
-		if _, ok := iset[key]; !ok {
-			if key < aa || aa == "" {
-				aa = key
-			}
-		}
-	}
-
-	var bb string
-	for key := range b {
-		if _, ok := iset[key]; !ok {
-			if key < bb || bb == "" {
-				bb = key
-			}
-		}
-	}
-
-	return strings.Compare(aa, bb), nil
 }
 
 func (doc JSONDocument) Insert(ctx context.Context, path string, val sql.JSONWrapper) (MutableJSON, bool, error) {
