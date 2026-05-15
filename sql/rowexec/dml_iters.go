@@ -126,7 +126,7 @@ func (i *triggerBlockIter) Next(ctx *sql.Context) (sql.Row, error) {
 		for {
 			newRow, err := subIter.Next(ctx)
 			if err == io.EOF {
-				err := subIter.Close(ctx)
+				err := subIter.Close(ctx) // TODO: triggers must force flushes
 				if err != nil {
 					return nil, err
 				}

@@ -21,6 +21,7 @@ func init() {
 		{Id: resolveInsertRowsId, Apply: resolveInsertRows},
 		{Id: applyTriggersId, Apply: applyTriggers},
 		{Id: applyProceduresId, Apply: applyProcedures},
+		{Id: applyLazyWritesId, Apply: applyLazyWrites},
 		{Id: inlineSubqueryAliasRefsId, Apply: inlineSubqueryAliasRefs},
 		{Id: cacheSubqueryAliasesInJoinsId, Apply: cacheSubqueryAliasesInJoins},
 		{Id: QuoteDefaultColumnValueNamesId, Apply: quoteDefaultColumnValueNames},

@@ -36,7 +36,6 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 	}
 
 	var inserter sql.RowInserter
-
 	var replacer sql.RowReplacer
 	var updater sql.RowUpdater
 	// These type casts have already been asserted in the analyzer
@@ -100,6 +99,24 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 		ed = replacer
 	} else {
 		ed = inserter
+	}
+
+	if b.UseLazyWrites {
+		if inserter != nil {
+			if lazyEd, ok := inserter.(sql.LazyTableEditor); ok {
+				lazyEd.SetLazy(true)
+			}
+		}
+		if replacer != nil {
+			if lazyEd, ok := replacer.(sql.LazyTableEditor); ok {
+				lazyEd.SetLazy(true)
+			}
+		}
+		if updater != nil {
+			if lazyEd, ok := updater.(sql.LazyTableEditor); ok {
+				lazyEd.SetLazy(true)
+			}
+		}
 	}
 
 	if ii.Ignore {
