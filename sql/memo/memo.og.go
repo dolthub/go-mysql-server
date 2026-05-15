@@ -802,59 +802,59 @@ func buildRelExpr(ctx *sql.Context, b *ExecBuilder, r RelExpr, children ...sql.N
 
 	switch r := r.(type) {
 	case *CrossJoin:
-		result, err = b.buildCrossJoin(r, children...)
+		result, err = b.buildCrossJoin(ctx, r, children...)
 	case *InnerJoin:
-		result, err = b.buildInnerJoin(r, children...)
+		result, err = b.buildInnerJoin(ctx, r, children...)
 	case *LeftJoin:
-		result, err = b.buildLeftJoin(r, children...)
+		result, err = b.buildLeftJoin(ctx, r, children...)
 	case *SemiJoin:
-		result, err = b.buildSemiJoin(r, children...)
+		result, err = b.buildSemiJoin(ctx, r, children...)
 	case *AntiJoin:
-		result, err = b.buildAntiJoin(r, children...)
+		result, err = b.buildAntiJoin(ctx, r, children...)
 	case *LookupJoin:
-		result, err = b.buildLookupJoin(r, children...)
+		result, err = b.buildLookupJoin(ctx, r, children...)
 	case *RangeHeapJoin:
-		result, err = b.buildRangeHeapJoin(r, children...)
+		result, err = b.buildRangeHeapJoin(ctx, r, children...)
 	case *ConcatJoin:
-		result, err = b.buildConcatJoin(r, children...)
+		result, err = b.buildConcatJoin(ctx, r, children...)
 	case *HashJoin:
 		result, err = b.buildHashJoin(ctx, r, children...)
 	case *MergeJoin:
-		result, err = b.buildMergeJoin(r, children...)
+		result, err = b.buildMergeJoin(ctx, r, children...)
 	case *FullOuterJoin:
-		result, err = b.buildFullOuterJoin(r, children...)
+		result, err = b.buildFullOuterJoin(ctx, r, children...)
 	case *LateralJoin:
-		result, err = b.buildLateralJoin(r, children...)
+		result, err = b.buildLateralJoin(ctx, r, children...)
 	case *TableScan:
-		result, err = b.buildTableScan(r, children...)
+		result, err = b.buildTableScan(ctx, r, children...)
 	case *IndexScan:
-		result, err = b.buildIndexScan(r, children...)
+		result, err = b.buildIndexScan(ctx, r, children...)
 	case *Values:
-		result, err = b.buildValues(r, children...)
+		result, err = b.buildValues(ctx, r, children...)
 	case *TableAlias:
-		result, err = b.buildTableAlias(r, children...)
+		result, err = b.buildTableAlias(ctx, r, children...)
 	case *RecursiveTable:
-		result, err = b.buildRecursiveTable(r, children...)
+		result, err = b.buildRecursiveTable(ctx, r, children...)
 	case *RecursiveCte:
-		result, err = b.buildRecursiveCte(r, children...)
+		result, err = b.buildRecursiveCte(ctx, r, children...)
 	case *SubqueryAlias:
-		result, err = b.buildSubqueryAlias(r, children...)
+		result, err = b.buildSubqueryAlias(ctx, r, children...)
 	case *TableFunc:
-		result, err = b.buildTableFunc(r, children...)
+		result, err = b.buildTableFunc(ctx, r, children...)
 	case *JSONTable:
-		result, err = b.buildJSONTable(r, children...)
+		result, err = b.buildJSONTable(ctx, r, children...)
 	case *EmptyTable:
-		result, err = b.buildEmptyTable(r, children...)
+		result, err = b.buildEmptyTable(ctx, r, children...)
 	case *SetOp:
-		result, err = b.buildSetOp(r, children...)
+		result, err = b.buildSetOp(ctx, r, children...)
 	case *Project:
-		result, err = b.buildProject(r, children...)
+		result, err = b.buildProject(ctx, r, children...)
 	case *Distinct:
-		result, err = b.buildDistinct(r, children...)
+		result, err = b.buildDistinct(ctx, r, children...)
 	case *Max1Row:
-		result, err = b.buildMax1Row(r, children...)
+		result, err = b.buildMax1Row(ctx, r, children...)
 	case *Filter:
-		result, err = b.buildFilter(r, children...)
+		result, err = b.buildFilter(ctx, r, children...)
 	default:
 		panic(fmt.Sprintf("unknown RelExpr type: %T", r))
 	}

@@ -120,7 +120,7 @@ func replaceCrossJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 				newExprs[i] = predicates[v]
 			}
 			// retain comment
-			nij := plan.NewInnerJoin(cj.Left(), cj.Right(), expression.JoinAnd(newExprs...))
+			nij := plan.NewInnerJoin(ctx, cj.Left(), cj.Right(), expression.JoinAnd(newExprs...))
 			return nij.WithComment(cj.Comment()), transform.NewTree, nil
 		})
 		if err != nil {

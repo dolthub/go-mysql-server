@@ -97,7 +97,7 @@ func inOrderReplanJoin(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sch sql
 	if isUpdate {
 		// we pass schema separately because individual nodes do not capture
 		// left join nullability
-		ret = plan.NewProject(recSchemaToGetFields(ctx, n, n.Schema(ctx)), ret)
+		ret = plan.NewProject(ctx, recSchemaToGetFields(ctx, n, n.Schema(ctx)), ret)
 	}
 	return ret, transform.NewTree, nil
 

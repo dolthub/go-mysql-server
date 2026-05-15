@@ -55,6 +55,7 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 			// Analyze the source of the insert independently
 			if _, ok := insert.Source.(*plan.Values); ok {
 				scope = scope.NewScope(plan.NewProject(
+					ctx,
 					expression.SchemaToGetFields(insert.Source.Schema(ctx)[:len(insert.ColumnNames)], sql.ColSet{}),
 					plan.NewSubqueryAlias("dummy", "", insert.Source),
 				))
@@ -236,7 +237,7 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 		}
 	}
 
-	return plan.NewProject(projExprs, insertSource), firstGeneratedAutoIncRowIdx, deferredDefaults, nil
+	return plan.NewProject(ctx, projExprs, insertSource), firstGeneratedAutoIncRowIdx, deferredDefaults, nil
 }
 
 // isZero returns true if the specified literal value |lit| has a value equal to 0.

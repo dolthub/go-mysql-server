@@ -34,6 +34,7 @@ var _ sql.Databaser = (*CreateEvent)(nil)
 
 type CreateEvent struct {
 	ddlNode
+	ctx              *sql.Context
 	scheduler        sql.EventScheduler
 	DefinitionNode   sql.Node
 	Ends             *OnScheduleTimestamp
@@ -65,6 +66,7 @@ func NewCreateEvent(
 ) *CreateEvent {
 	return &CreateEvent{
 		ddlNode:          ddlNode{db},
+		ctx:              ctx,
 		scheduler:        es,
 		EventName:        name,
 		Definer:          definer,
@@ -160,11 +162,8 @@ func (c *CreateEvent) String() string {
 		comment = fmt.Sprintf(" COMMENT '%s'", c.Comment)
 	}
 
-	// To maintain compatibility with fmt.Stringer we have to use an empty context, but this will fail in any case that
-	// requires a context to determine a string (such as an integrator using the context to contain type information).
-	ctx := sql.NewEmptyContext()
 	return fmt.Sprintf("CREATE%s EVENT %s %s%s%s%s DO %s",
-		definer, c.EventName, onSchedule, onCompletion, c.Status.String(), comment, sql.DebugString(ctx, c.DefinitionNode))
+		definer, c.EventName, onSchedule, onCompletion, c.Status.String(), comment, sql.DebugString(c.ctx, c.DefinitionNode))
 }
 
 // Expressions implements the sql.Expressioner interface.

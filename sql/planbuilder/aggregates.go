@@ -182,7 +182,7 @@ func (b *Builder) buildNameConst(fromScope *scope, f *ast.FuncExpr) sql.Expressi
 	} else {
 		aliasStr = aLit.String()
 	}
-	return expression.NewAlias(aliasStr, vLit)
+	return expression.NewAlias(b.ctx, aliasStr, vLit)
 }
 
 func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []sql.Expression) *scope {
@@ -265,7 +265,7 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 	outScope.node = gb
 
 	if len(aliases) > 0 {
-		outScope.node = plan.NewProject(append(selectGfs, aliases...), outScope.node).WithAliasDeps(aliasDeps)
+		outScope.node = plan.NewProject(b.ctx, append(selectGfs, aliases...), outScope.node).WithAliasDeps(aliasDeps)
 	}
 	return outScope
 }
@@ -719,7 +719,7 @@ func (b *Builder) buildWindow(fromScope, projScope *scope) *scope {
 	fromScope.node = window
 
 	if len(aliases) > 0 {
-		outScope.node = plan.NewProject(append(selectGfs, aliases...), outScope.node)
+		outScope.node = plan.NewProject(b.ctx, append(selectGfs, aliases...), outScope.node)
 	}
 
 	return outScope
@@ -940,7 +940,7 @@ func (b *Builder) buildInnerProj(fromScope, projScope *scope) *scope {
 	proj = append(proj[aliasCnt:], proj[:aliasCnt]...)
 
 	if len(proj) > 0 {
-		outScope.node = plan.NewProject(proj, outScope.node)
+		outScope.node = plan.NewProject(b.ctx, proj, outScope.node)
 	}
 
 	return outScope

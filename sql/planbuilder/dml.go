@@ -565,7 +565,7 @@ func (b *Builder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
 	//}
 
 	ignore := u.Ignore != ""
-	update := plan.NewUpdate(outScope.node, ignore, updateExprs)
+	update := plan.NewUpdate(b.ctx, outScope.node, ignore, updateExprs)
 
 	update.IsJoin = foundJoin
 	update.HasSingleRel = !outScope.refsSubquery

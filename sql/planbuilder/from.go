@@ -120,10 +120,10 @@ func (b *Builder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *sc
 				b.handleErr(err)
 			}
 		} else if b.isLateral(te.RightExpr) {
-			outScope.node = plan.NewJoin(leftScope.node, rightScope.node, plan.JoinTypeLateralCross, nil)
+			outScope.node = plan.NewJoin(b.ctx, leftScope.node, rightScope.node, plan.JoinTypeLateralCross, nil)
 		} else {
 			b.qFlags.Set(sql.QFlagCrossJoin)
-			outScope.node = plan.NewCrossJoin(leftScope.node, rightScope.node)
+			outScope.node = plan.NewCrossJoin(b.ctx, leftScope.node, rightScope.node)
 		}
 		return
 	}
@@ -257,9 +257,9 @@ func (b *Builder) buildUsingJoin(inScope, leftScope, rightScope *scope, te *ast.
 	// joining two tables with no common columns is just cross join
 	if len(te.Condition.Using) == 0 {
 		if b.isLateral(te.RightExpr) {
-			outScope.node = plan.NewJoin(leftScope.node, rightScope.node, plan.JoinTypeLateralCross, nil)
+			outScope.node = plan.NewJoin(b.ctx, leftScope.node, rightScope.node, plan.JoinTypeLateralCross, nil)
 		} else {
-			outScope.node = plan.NewCrossJoin(leftScope.node, rightScope.node)
+			outScope.node = plan.NewCrossJoin(b.ctx, leftScope.node, rightScope.node)
 		}
 		return outScope
 	}
@@ -267,11 +267,11 @@ func (b *Builder) buildUsingJoin(inScope, leftScope, rightScope *scope, te *ast.
 	switch strings.ToLower(te.Join) {
 	// TODO handle ast.FullOuterJoinStr, ast.NaturalFullJoinStr case https://github.com/dolthub/dolt/issues/10295
 	case ast.JoinStr, ast.NaturalJoinStr:
-		outScope.node = plan.NewInnerJoin(leftScope.node, rightScope.node, filter)
+		outScope.node = plan.NewInnerJoin(b.ctx, leftScope.node, rightScope.node, filter)
 	case ast.LeftJoinStr, ast.NaturalLeftJoinStr:
-		outScope.node = plan.NewLeftOuterJoin(leftScope.node, rightScope.node, filter)
+		outScope.node = plan.NewLeftOuterJoin(b.ctx, leftScope.node, rightScope.node, filter)
 	case ast.RightJoinStr, ast.NaturalRightJoinStr:
-		outScope.node = plan.NewLeftOuterJoin(rightScope.node, leftScope.node, filter)
+		outScope.node = plan.NewLeftOuterJoin(b.ctx, rightScope.node, leftScope.node, filter)
 	default:
 		b.handleErr(fmt.Errorf("unknown using join type: %s", te.Join))
 	}

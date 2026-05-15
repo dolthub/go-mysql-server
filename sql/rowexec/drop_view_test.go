@@ -41,6 +41,7 @@ func setupView(t *testing.T, db memory.MemoryDatabase) (*sql.Context, *sql.View)
 
 	subqueryAlias := plan.NewSubqueryAlias("myview", "select i from mytable",
 		plan.NewProject(
+			ctx,
 			[]sql.Expression{
 				expression.NewGetFieldWithTable(0, 1, types.Int32, "", table.Name(), "i", true),
 			},

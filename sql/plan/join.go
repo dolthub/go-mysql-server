@@ -314,16 +314,18 @@ type JoinNode struct {
 	ScopeLen   int
 	Op         JoinType
 	IsReversed bool
+	ctx        *sql.Context
 }
 
 var _ sql.Node = (*JoinNode)(nil)
 var _ sql.CollationCoercible = (*JoinNode)(nil)
 
-func NewJoin(left, right sql.Node, op JoinType, cond sql.Expression) *JoinNode {
+func NewJoin(ctx *sql.Context, left, right sql.Node, op JoinType, cond sql.Expression) *JoinNode {
 	return &JoinNode{
 		Op:         op,
 		BinaryNode: BinaryNode{left: left, right: right},
 		Filter:     cond,
+		ctx:        ctx,
 	}
 }
 
@@ -480,10 +482,7 @@ func (j *JoinNode) Describe(ctx *sql.Context, options sql.DescribeOptions) strin
 
 // String implements fmt.Stringer
 func (j *JoinNode) String() string {
-	// To maintain compatibility with fmt.Stringer we have to use an empty context, but this will fail in any case that
-	// requires a context to determine a string (such as an integrator using the context to contain type information).
-	ctx := sql.NewEmptyContext()
-	return j.Describe(ctx, sql.DescribeOptions{
+	return j.Describe(j.ctx, sql.DescribeOptions{
 		Analyze:   false,
 		Estimates: false,
 		Debug:     false,
@@ -499,46 +498,46 @@ func (j *JoinNode) DebugString(ctx *sql.Context) string {
 	})
 }
 
-func NewInnerJoin(left, right sql.Node, cond sql.Expression) *JoinNode {
-	return NewJoin(left, right, JoinTypeInner, cond)
+func NewInnerJoin(ctx *sql.Context, left, right sql.Node, cond sql.Expression) *JoinNode {
+	return NewJoin(ctx, left, right, JoinTypeInner, cond)
 }
 
-func NewLeftOuterJoin(left, right sql.Node, cond sql.Expression) *JoinNode {
-	return NewJoin(left, right, JoinTypeLeftOuter, cond)
+func NewLeftOuterJoin(ctx *sql.Context, left, right sql.Node, cond sql.Expression) *JoinNode {
+	return NewJoin(ctx, left, right, JoinTypeLeftOuter, cond)
 }
 
-func NewRightOuterJoin(left, right sql.Node, cond sql.Expression) *JoinNode {
-	return NewJoin(left, right, JoinTypeRightOuter, cond)
+func NewRightOuterJoin(ctx *sql.Context, left, right sql.Node, cond sql.Expression) *JoinNode {
+	return NewJoin(ctx, left, right, JoinTypeRightOuter, cond)
 }
 
-func NewFullOuterJoin(left, right sql.Node, cond sql.Expression) *JoinNode {
-	return NewJoin(left, right, JoinTypeFullOuter, cond)
+func NewFullOuterJoin(ctx *sql.Context, left, right sql.Node, cond sql.Expression) *JoinNode {
+	return NewJoin(ctx, left, right, JoinTypeFullOuter, cond)
 }
 
-func NewCrossJoin(left, right sql.Node) *JoinNode {
-	return NewJoin(left, right, JoinTypeCross, nil)
+func NewCrossJoin(ctx *sql.Context, left, right sql.Node) *JoinNode {
+	return NewJoin(ctx, left, right, JoinTypeCross, nil)
 }
 
-func NewLateralCrossJoin(left, right sql.Node) *JoinNode {
-	return NewJoin(left, right, JoinTypeLateralCross, nil)
+func NewLateralCrossJoin(ctx *sql.Context, left, right sql.Node) *JoinNode {
+	return NewJoin(ctx, left, right, JoinTypeLateralCross, nil)
 }
 
-// NaturalJoin is a join that automatically joins by all the columns with the
+// NewNaturalJoin is a join that automatically joins by all the columns with the
 // same name.
 // NaturalJoin is a placeholder node, it should be transformed into an INNER
 // JOIN during analysis.
-func NewNaturalJoin(left, right sql.Node) *JoinNode {
-	return NewJoin(left, right, JoinTypeUsing, nil)
+func NewNaturalJoin(ctx *sql.Context, left, right sql.Node) *JoinNode {
+	return NewJoin(ctx, left, right, JoinTypeUsing, nil)
 }
 
 // NewAntiJoinIncludingNulls creates a new antijoin that includes nulls, which is created from a NOT EXISTS query. This
 // is different from an antijoin excluding nulls (default antijoin) created from a NOT IN query.
-func NewAntiJoinIncludingNulls(left, right sql.Node, cond sql.Expression) *JoinNode {
-	return NewJoin(left, right, JoinTypeAntiIncludeNulls, cond)
+func NewAntiJoinIncludingNulls(ctx *sql.Context, left, right sql.Node, cond sql.Expression) *JoinNode {
+	return NewJoin(ctx, left, right, JoinTypeAntiIncludeNulls, cond)
 }
 
-func NewSemiJoin(left, right sql.Node, cond sql.Expression) *JoinNode {
-	return NewJoin(left, right, JoinTypeSemi, cond)
+func NewSemiJoin(ctx *sql.Context, left, right sql.Node, cond sql.Expression) *JoinNode {
+	return NewJoin(ctx, left, right, JoinTypeSemi, cond)
 }
 
 // IsNullRejecting returns whether the expression always returns false for

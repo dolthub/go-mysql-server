@@ -74,6 +74,7 @@ func (d Describe) String() string {
 type DescribeQuery struct {
 	UnaryNode
 	Format sql.DescribeOptions
+	ctx    *sql.Context
 }
 
 var _ sql.Node = (*DescribeQuery)(nil)
@@ -125,8 +126,8 @@ var DescribePlanSchema = sql.Schema{
 }
 
 // NewDescribeQuery creates a new DescribeQuery node.
-func NewDescribeQuery(format sql.DescribeOptions, child sql.Node) *DescribeQuery {
-	return &DescribeQuery{UnaryNode{Child: child}, format}
+func NewDescribeQuery(ctx *sql.Context, format sql.DescribeOptions, child sql.Node) *DescribeQuery {
+	return &DescribeQuery{UnaryNode{Child: child}, format, ctx}
 }
 
 // Schema implements the Node interface.
@@ -150,10 +151,7 @@ func (d *DescribeQuery) Describe(ctx *sql.Context, options sql.DescribeOptions) 
 }
 
 func (d *DescribeQuery) String() string {
-	// To maintain compatibility with fmt.Stringer we have to use an empty context, but this will fail in any case that
-	// requires a context to determine a string (such as an integrator using the context to contain type information).
-	ctx := sql.NewEmptyContext()
-	return d.Describe(ctx, sql.DescribeOptions{
+	return d.Describe(d.ctx, sql.DescribeOptions{
 		Analyze:   false,
 		Estimates: false,
 		Debug:     false,

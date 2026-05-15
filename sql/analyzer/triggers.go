@@ -480,6 +480,7 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 	switch trigger.TriggerEvent {
 	case sqlparser.InsertStr:
 		scopeNode := plan.NewProject(
+			ctx,
 			[]sql.Expression{expression.NewStar()},
 			plan.NewTableAlias("new", trigger.Table),
 		)
@@ -489,8 +490,10 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 		var scopeNode *plan.Project
 		if updateSrc, tableAliases := getUpdateJoinSource(ctx, n); updateSrc == nil {
 			scopeNode = plan.NewProject(
+				ctx,
 				[]sql.Expression{expression.NewStar()},
 				plan.NewCrossJoin(
+					ctx,
 					plan.NewTableAlias("old", trigger.Table),
 					plan.NewTableAlias("new", trigger.Table),
 				),
@@ -510,8 +513,10 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 			}
 			// The scopeNode for an UpdateJoin should contain every column in the updateSource as new and old.
 			scopeNode = plan.NewProject(
+				ctx,
 				[]sql.Expression{expression.NewStar()},
 				plan.NewCrossJoin(
+					ctx,
 					plan.NewSubqueryAlias("old", "", updateSrc.Child).WithColumnNames(maskedColNames),
 					plan.NewSubqueryAlias("new", "", updateSrc.Child).WithColumnNames(maskedColNames),
 				),
@@ -522,6 +527,7 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 		triggerLogic, _, err = a.analyzeWithSelector(ctx, trigger.Body, s, SelectAllBatches, DefaultRuleSelector, qFlags)
 	case sqlparser.DeleteStr:
 		scopeNode := plan.NewProject(
+			ctx,
 			[]sql.Expression{expression.NewStar()},
 			plan.NewTableAlias("old", trigger.Table),
 		)

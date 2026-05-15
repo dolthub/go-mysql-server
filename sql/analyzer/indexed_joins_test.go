@@ -27,8 +27,11 @@ func TestHashJoins(t *testing.T) {
 		{
 			name: "hash join 1",
 			plan: plan.NewInnerJoin(
+				ctx,
 				plan.NewInnerJoin(
+					ctx,
 					plan.NewInnerJoin(
+						ctx,
 						ab(ctx, db),
 						xy(ctx, db),
 						newEq("ab.a=xy.x"),

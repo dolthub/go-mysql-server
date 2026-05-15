@@ -411,7 +411,7 @@ func newContext(provider *memory.DbProvider) *sql.Context {
 }
 
 func expectedResultSize(ctx *sql.Context, t1, t2 *plan.ResolvedTable, filters []sql.Expression, debug bool) (int, error) {
-	j := plan.NewJoin(t1, t2, plan.JoinTypeInner, expression.JoinAnd(filters...))
+	j := plan.NewJoin(ctx, t1, t2, plan.JoinTypeInner, expression.JoinAnd(filters...))
 	if debug {
 		fmt.Println(sql.DebugString(ctx, j))
 	}

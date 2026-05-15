@@ -117,17 +117,21 @@ func countRules(batches []*Batch) int {
 }
 
 func TestDeepCopyNode(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	tests := []struct {
 		node sql.Node
 		exp  sql.Node
 	}{
 		{
 			node: plan.NewProject(
+				ctx,
 				[]sql.Expression{
 					expression.NewLiteral(1, types.Int64),
 				},
 				plan.NewNaturalJoin(
+					ctx,
 					plan.NewInnerJoin(
+						ctx,
 						plan.NewUnresolvedTable("mytable", ""),
 						plan.NewUnresolvedTable("mytable2", ""),
 						expression.NewEquals(
@@ -136,6 +140,7 @@ func TestDeepCopyNode(t *testing.T) {
 						),
 					),
 					plan.NewFilter(
+						sql.NewEmptyContext(),
 						expression.NewEquals(
 							expression.NewBindVar("v1"),
 							expression.NewBindVar("v2"),
@@ -147,18 +152,21 @@ func TestDeepCopyNode(t *testing.T) {
 		},
 		{
 			node: plan.NewProject(
+				ctx,
 				[]sql.Expression{
 					expression.NewLiteral(1, types.Int64),
 				},
 				plan.NewSetOp(
 					plan.UnionType,
 					plan.NewProject(
+						ctx,
 						[]sql.Expression{
 							expression.NewLiteral(1, types.Int64),
 						},
 						plan.NewUnresolvedTable("mytable", ""),
 					),
 					plan.NewProject(
+						ctx,
 						[]sql.Expression{
 							expression.NewBindVar("v1"),
 							expression.NewBindVar("v2"),
@@ -170,6 +178,7 @@ func TestDeepCopyNode(t *testing.T) {
 		},
 		{
 			node: plan.NewFilter(
+				sql.NewEmptyContext(),
 				expression.NewEquals(
 					expression.NewLiteral(1, types.Int64),
 					expression.NewLiteral(1, types.Int64),
@@ -183,6 +192,7 @@ func TestDeepCopyNode(t *testing.T) {
 						expression.NewBindVar("v1"),
 					},
 					plan.NewProject(
+						ctx,
 						[]sql.Expression{
 							expression.NewBindVar("v2"),
 						},
@@ -193,12 +203,14 @@ func TestDeepCopyNode(t *testing.T) {
 		},
 		{
 			node: plan.NewFilter(
+				sql.NewEmptyContext(),
 				expression.NewEquals(
 					expression.NewLiteral(1, types.Int64),
 					expression.NewLiteral(1, types.Int64),
 				),
 				plan.NewSubqueryAlias("cte1", "select x from a",
 					plan.NewProject(
+						ctx,
 						[]sql.Expression{
 							expression.NewBindVar("v1"),
 							expression.NewUnresolvedColumn("v2"),

@@ -47,7 +47,7 @@ func pushFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, s
 					if node.Expression == f.Expression {
 						return f, transform.NewTree, nil
 					}
-					return plan.NewFilter(expression.JoinAnd(node.Expression, f.Expression), f.Child), transform.NewTree, nil
+					return plan.NewFilter(ctx, expression.JoinAnd(node.Expression, f.Expression), f.Child), transform.NewTree, nil
 				}
 				return node, transform.SameTree, nil
 			case *plan.TableAlias, *plan.ResolvedTable, *plan.ValueDerivedTable, sql.TableFunction:
@@ -268,7 +268,7 @@ func pushdownFiltersToAboveTable(
 	switch tableNode.(type) {
 	case *plan.ResolvedTable, *plan.TableAlias, *plan.ValueDerivedTable:
 		if pushedDownFilterExpression != nil {
-			return plan.NewFilter(pushedDownFilterExpression, tableNode), transform.NewTree, nil
+			return plan.NewFilter(ctx, pushedDownFilterExpression, tableNode), transform.NewTree, nil
 		}
 
 		return tableNode, transform.SameTree, nil
@@ -325,7 +325,7 @@ func pushdownFiltersUnderSubqueryAlias(ctx *sql.Context, a *Analyzer, sa *plan.S
 		}
 	}
 
-	n, err := sa.WithChildren(ctx, plan.NewFilter(expression.JoinAnd(expressionsForChild...), sa.Child))
+	n, err := sa.WithChildren(ctx, plan.NewFilter(ctx, expression.JoinAnd(expressionsForChild...), sa.Child))
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
@@ -350,7 +350,7 @@ func updateFilterNode(ctx *sql.Context, a *Analyzer, node *plan.Filter, filters 
 	if joinChild, ok := node.Child.(*plan.JoinNode); ok && !joinChild.Op.IsOuter() && !joinChild.Op.IsAnti() {
 		a.Log("pushing filters into join node")
 		if joinChild.Op.IsCross() {
-			return plan.NewInnerJoin(joinChild.Left(), joinChild.Right(), expression.JoinAnd(unhandled...))
+			return plan.NewInnerJoin(ctx, joinChild.Left(), joinChild.Right(), expression.JoinAnd(unhandled...))
 		}
 		if joinChild.Filter != nil {
 			unhandled = append(unhandled, joinChild.Filter)
@@ -376,5 +376,5 @@ func updateFilterNode(ctx *sql.Context, a *Analyzer, node *plan.Filter, filters 
 		unhandled,
 	)
 
-	return plan.NewFilter(expression.JoinAnd(unhandled...), node.Child)
+	return plan.NewFilter(ctx, expression.JoinAnd(unhandled...), node.Child)
 }

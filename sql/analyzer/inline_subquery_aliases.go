@@ -118,7 +118,7 @@ func inlineSubqueryAliasRefsHelper(ctx *sql.Context, scope *aliasScope, n sql.No
 			}
 		}
 		if newProj != nil {
-			ret = plan.NewProject(newProj, n.Child)
+			ret = plan.NewProject(ctx, newProj, n.Child)
 		}
 	default:
 	}
