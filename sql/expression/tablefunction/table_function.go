@@ -45,7 +45,7 @@ func (t *TableFunctionWrapper) NewInstance(ctx *sql.Context, db sql.Database, ar
 	nt := *t
 	nt.database = db
 	nt.args = args
-	f, err := nt.underlyingFunc.NewInstance(nil, args)
+	f, err := nt.underlyingFunc.NewInstance(ctx, args)
 	if err != nil {
 		return nil, err
 	}

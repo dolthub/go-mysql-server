@@ -9,8 +9,8 @@ import (
 // AliasSubqueryString returns a string with subquery expressions simplified into
 // static query strings, rather than the plan string (which is mutable through
 // analysis).
-func AliasSubqueryString(e sql.Expression) string {
-	e, _, err := transform.Expr(nil /*ctx isn't used here*/, e, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+func AliasSubqueryString(ctx *sql.Context, e sql.Expression) string {
+	e, _, err := transform.Expr(ctx, e, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		switch e := e.(type) {
 		case *Subquery:
 			return NewSubquery(NewStrExpr(e.QueryString, e), e.QueryString), transform.NewTree, nil

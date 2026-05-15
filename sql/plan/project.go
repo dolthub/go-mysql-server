@@ -131,7 +131,7 @@ func (p *Project) Schema(ctx *sql.Context) sql.Schema {
 	if p.sch == nil {
 		p.sch = make(sql.Schema, len(p.Projections))
 		for i, expr := range p.Projections {
-			p.sch[i] = transform.ExpressionToColumn(ctx, expr, AliasSubqueryString(expr))
+			p.sch[i] = transform.ExpressionToColumn(ctx, expr, AliasSubqueryString(ctx, expr))
 			if gf := unwrapGetField(expr); gf != nil {
 				p.sch[i].Default = findDefault(ctx, p.Child, gf)
 			}

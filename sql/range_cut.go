@@ -240,15 +240,16 @@ func compareRangeCuts(ctx context.Context, rangeType Type, a typedValue, b typed
 		aet, aok := a.typ.(ExtendedType)
 		bet, bok := b.typ.(ExtendedType)
 		if aok && bok {
-			// TODO: context
-			ac, inRange, err := et.ConvertToType(nil, aet, a.value)
+			// Changing the interface for this to use a *sql.Context is a larger lift, so we'll just cast for now
+			sqlCtx, _ := ctx.(*Context)
+			ac, inRange, err := et.ConvertToType(sqlCtx, aet, a.value)
 			if err != nil {
 				return 0, err
 			} else if inRange != InRange {
 				return 0, ErrValueOutOfRange.New(a.value, aet)
 			}
 
-			bc, inRange, err := et.ConvertToType(nil, bet, b.value)
+			bc, inRange, err := et.ConvertToType(sqlCtx, bet, b.value)
 			if err != nil {
 				return 0, err
 			} else if inRange != InRange {

@@ -231,7 +231,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 			}
 		}
 
-		rf, err := f.NewInstance(nil, args)
+		rf, err := f.NewInstance(b.ctx, args)
 		if err != nil {
 			b.handleErr(err)
 		}
@@ -410,7 +410,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 				err := sql.ErrFunctionNotFound.New("values")
 				b.handleErr(err)
 			}
-			values, err := fn.NewInstance(nil, []sql.Expression{col})
+			values, err := fn.NewInstance(b.ctx, []sql.Expression{col})
 			if err != nil {
 				b.handleErr(err)
 			}
