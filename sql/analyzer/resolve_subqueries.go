@@ -103,16 +103,14 @@ func finalizeSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 
 // transformTrackingJoinParents walks a node tree, keeping a list of every join node parent.
 func transformTrackingJoinParents(ctx *sql.Context, node sql.Node, joinParents *[]*plan.JoinNode, transformFunc func(n sql.Node) (sql.Node, transform.TreeIdentity, error)) (sql.Node, transform.TreeIdentity, error) {
-	joinParent, ok := node.(*plan.JoinNode)
-	if ok {
+	if joinParent, ok := node.(*plan.JoinNode); ok {
 		*joinParents = append(*joinParents, joinParent)
 		defer func() {
 			*joinParents = (*joinParents)[:len(*joinParents)-1]
 		}()
 	}
 
-	_, ok = node.(sql.OpaqueNode)
-	if ok {
+	if sql.IsOpaque(node) {
 		return transformFunc(node)
 	}
 
@@ -335,7 +333,6 @@ func analyzeSubqueryAlias(ctx *sql.Context, a *Analyzer, sqa *plan.SubqueryAlias
 func cacheSubqueryAliasesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	var recurse func(n sql.Node, parentCached, inJoin, leftChild bool) (sql.Node, transform.TreeIdentity, error)
 	recurse = func(n sql.Node, parentCached, inJoin, leftChild bool) (sql.Node, transform.TreeIdentity, error) {
-		_, isOp := n.(sql.OpaqueNode)
 		var isCacheableSq bool
 		var isCachedRs bool
 		var isMax1Row bool
@@ -356,7 +353,7 @@ func cacheSubqueryAliasesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 		}
 
 		doCache := isCacheableSq && inJoin && !parentCached
-		childInJoin := inJoin && !isOp
+		childInJoin := inJoin && !sql.IsOpaque(n)
 
 		children := n.Children()
 		var newChildren []sql.Node
