@@ -87,16 +87,16 @@ var JsonCompareTests = []JsonCompareTest{
 	// At each position: first compare keys; if equal, compare values; first nonzero result wins.
 	// If one object is a strict prefix of the other in this walk, the shorter object is smaller.
 	{Left: `{"a": 0}`, Right: `{"a": 0}`, Cmp: 0},
-	{Left: `{"a": 1}`, Right: `{"a": 0}`, Cmp: 1},                   // same key, value 1 > 0
-	{Left: `{"a": 0}`, Right: `{"a": 0, "b": 1}`, Cmp: -1},          // shorter object is smaller
-	{Left: `{"a": 0, "b": 1}`, Right: `{"a": 0}`, Cmp: 1},           // longer object is greater
-	{Left: `{"a": 0, "c": 2}`, Right: `{"a": 0, "b": 1}`, Cmp: 1},   // "c" > "b" at position 1
-	{Left: `{"a": 1}`, Right: `{"b": 1}`, Cmp: -1},                  // "a" < "b" at position 0
-	{Left: `{"b": 1}`, Right: `{"a": 1}`, Cmp: 1},                   // "b" > "a" at position 0
-	{Left: `{"x": 1, "c": 2}`, Right: `{"x": 2, "b": 1}`, Cmp: 1},   // sorted: ["c","x"] vs ["b","x"] -> "c" > "b"
-	{Left: `{"x": 1, "b": 2}`, Right: `{"x": 2, "c": 1}`, Cmp: -1},  // sorted: ["b","x"] vs ["c","x"] -> "b" < "c"
-	{Left: `{}`, Right: `{}`, Cmp: 0},                               // both empty
-	{Left: `{}`, Right: `{"a": 1}`, Cmp: -1},                        // empty is smallest
+	{Left: `{"a": 1}`, Right: `{"a": 0}`, Cmp: 1},                  // same key, value 1 > 0
+	{Left: `{"a": 0}`, Right: `{"a": 0, "b": 1}`, Cmp: -1},         // shorter object is smaller
+	{Left: `{"a": 0, "b": 1}`, Right: `{"a": 0}`, Cmp: 1},          // longer object is greater
+	{Left: `{"a": 0, "c": 2}`, Right: `{"a": 0, "b": 1}`, Cmp: 1},  // "c" > "b" at position 1
+	{Left: `{"a": 1}`, Right: `{"b": 1}`, Cmp: -1},                 // "a" < "b" at position 0
+	{Left: `{"b": 1}`, Right: `{"a": 1}`, Cmp: 1},                  // "b" > "a" at position 0
+	{Left: `{"x": 1, "c": 2}`, Right: `{"x": 2, "b": 1}`, Cmp: 1},  // sorted: ["c","x"] vs ["b","x"] -> "c" > "b"
+	{Left: `{"x": 1, "b": 2}`, Right: `{"x": 2, "c": 1}`, Cmp: -1}, // sorted: ["b","x"] vs ["c","x"] -> "b" < "c"
+	{Left: `{}`, Right: `{}`, Cmp: 0},                              // both empty
+	{Left: `{}`, Right: `{"a": 1}`, Cmp: -1},                       // empty is smallest
 	{Left: `{"a": 1}`, Right: `{}`, Cmp: 1},
 	// nested object comparison
 	{Left: `{"a": {"b": 1}}`, Right: `{"a": {"b": 2}}`, Cmp: -1},
