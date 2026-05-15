@@ -108,7 +108,6 @@ type filterSet struct {
 	tableAliases          TableAliases
 	projectionExpressions map[sql.ColumnId]sql.Expression
 	handledFilters        []sql.Expression
-	handledIndexFilters   []string
 }
 
 // newFilterSet returns a new filter set that will track available filters with the filters and aliases given. Aliases
@@ -135,26 +134,17 @@ func (fs *filterSet) availableFiltersForTable(ctx *sql.Context, table string) []
 	if !ok {
 		return nil
 	}
-	return fs.subtractUsedIndexes(ctx, subtractExprSet(filters, fs.handledFilters))
+	return subtractExprSet(filters, fs.handledFilters)
 }
 
 // handledCount returns the number of filter expressions that have been marked as handled
 func (fs *filterSet) handledCount() int {
-	return len(fs.handledIndexFilters) + len(fs.handledFilters)
+	return len(fs.handledFilters)
 }
 
-// markFilterUsed marks the filter given as handled, so it will no longer be returned by availableFiltersForTable
+// markFiltersHandled marks the filter given as handled, so it will no longer be returned by availableFiltersForTable
 func (fs *filterSet) markFiltersHandled(exprs ...sql.Expression) {
 	fs.handledFilters = append(fs.handledFilters, exprs...)
-}
-
-// markIndexesHandled marks the indexes given as handled, so expressions on them will no longer be returned by
-// availableFiltersForTable
-// TODO: this is currently unused because we can't safely remove indexed predicates from the filter in all cases
-func (fs *filterSet) markIndexesHandled(indexes []sql.Index) {
-	for _, index := range indexes {
-		fs.handledIndexFilters = append(fs.handledIndexFilters, index.Expressions()...)
-	}
 }
 
 // subtractExprSet returns all expressions in the first parameter that aren't present in the second.
@@ -172,46 +162,6 @@ func subtractExprSet(all, toSubtract []sql.Expression) []sql.Expression {
 
 		if !found {
 			remainder = append(remainder, e)
-		}
-	}
-
-	return remainder
-}
-
-// subtractUsedIndexes returns the filter expressions given with used indexes subtracted off.
-// TODO: there's no point calling this because fs.handledIndexFilters is never actually updated (markIndexesHandled is
-// never actually called)
-func (fs *filterSet) subtractUsedIndexes(ctx *sql.Context, all []sql.Expression) []sql.Expression {
-	var remainder []sql.Expression
-
-	// Careful: index expressions are always normalized (contain actual table names), whereas filter expressions can
-	// contain aliases for both expressions and table names. We want to normalize all expressions for comparison, but
-	// return the original expressions.
-	normalized := normalizeExpressions(ctx, fs.tableAliases, fs.projectionExpressions, all...)
-
-	for i, e := range normalized {
-		var found bool
-
-		cmpStr := e.String()
-		comparable, ok := e.(expression.Comparer)
-		if ok {
-			left, right := comparable.Left(), comparable.Right()
-			if _, ok := left.(*expression.GetField); ok {
-				cmpStr = left.String()
-			} else {
-				cmpStr = right.String()
-			}
-		}
-
-		for _, s := range fs.handledIndexFilters {
-			if cmpStr == s {
-				found = true
-				break
-			}
-		}
-
-		if !found {
-			remainder = append(remainder, all[i])
 		}
 	}
 
