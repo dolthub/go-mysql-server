@@ -167,7 +167,7 @@ func (p *relProps) populateFds(ctx *sql.Context) {
 	case JoinRel:
 		jp := rel.JoinPrivate()
 		switch {
-		case jp.Op.IsDegenerate():
+		case jp.Op.IsCross():
 			fds = sql.NewCrossJoinFDs(jp.Left.RelProps.FuncDeps(ctx), jp.Right.RelProps.FuncDeps(ctx))
 		case jp.Op.IsLeftOuter():
 			fds = sql.NewLeftJoinFDs(jp.Left.RelProps.FuncDeps(ctx), jp.Right.RelProps.FuncDeps(ctx), getEquivs(jp.Filter))

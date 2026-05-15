@@ -134,12 +134,6 @@ func (i JoinType) IsUsing() bool {
 	}
 }
 
-// TODO: rename this. It's not immediately obvious that degenerate refers to a cross join and it's not a commonly used
-// term either
-func (i JoinType) IsDegenerate() bool {
-	return i == JoinTypeCross
-}
-
 func (i JoinType) IsMerge() bool {
 	switch i {
 	case JoinTypeMerge, JoinTypeSemiMerge, JoinTypeAntiMerge, JoinTypeAntiMergeIncludeNulls, JoinTypeLeftOuterMerge:
@@ -333,7 +327,7 @@ func NewJoin(ctx *sql.Context, left, right sql.Node, op JoinType, cond sql.Expre
 
 // Expressions implements sql.Expression
 func (j *JoinNode) Expressions() []sql.Expression {
-	if j.Op.IsDegenerate() || j.Filter == nil {
+	if j.Op.IsCross() || j.Filter == nil {
 		return nil
 	}
 	return []sql.Expression{j.Filter}
@@ -357,7 +351,7 @@ func (j *JoinNode) Resolved() bool {
 	switch {
 	case j.Op.IsUsing():
 		return false
-	case j.Op.IsDegenerate() || j.Filter == nil:
+	case j.Op.IsCross() || j.Filter == nil:
 		return j.left.Resolved() && j.right.Resolved()
 	default:
 		return j.left.Resolved() && j.right.Resolved() && j.Filter.Resolved()
@@ -367,7 +361,7 @@ func (j *JoinNode) Resolved() bool {
 func (j *JoinNode) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	ret := *j
 	switch {
-	case j.Op.IsDegenerate() || j.Filter == nil:
+	case j.Op.IsCross() || j.Filter == nil:
 		if len(exprs) != 0 {
 			return nil, sql.ErrInvalidChildrenNumber.New(j, len(exprs), 0)
 		}

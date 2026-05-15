@@ -99,7 +99,7 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		}
 
 		// no filter, outer or anti join: nothing to do to the tree
-		if join.JoinCond() == nil || join.JoinType().IsDegenerate() || join.JoinType().IsOuter() || join.JoinType().IsAnti() {
+		if join.JoinCond() == nil || join.JoinType().IsCross() || join.JoinType().IsOuter() || join.JoinType().IsAnti() {
 			return n, transform.SameTree, nil
 		}
 		leftSources := nodeSources(ctx, join.Left())
