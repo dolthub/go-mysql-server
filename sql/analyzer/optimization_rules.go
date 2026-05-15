@@ -138,7 +138,11 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 			newRight = plan.NewFilter(ctx, expression.JoinAnd(rightOnlyFilters...), newRight)
 		}
 
-		// TODO: turn inner join into crossjoin when no condFilters
+		// TODO: This may not actually be necessary since nil join conditions are evaluated as true. But removing this
+		//  prevents some cross joins (with filtered table) from being turned into lookup joins when there's a join hint
+		if len(condFilters) == 0 {
+			condFilters = append(condFilters, expression.NewTrue())
+		}
 		return plan.NewJoin(ctx, newLeft, newRight, join.Op, expression.JoinAnd(condFilters...)).WithComment(join.CommentStr), transform.NewTree, nil
 	})
 }
