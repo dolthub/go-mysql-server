@@ -40,14 +40,12 @@ func pushFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, s
 		return transform.NodeWithCtx(ctx, n, filterPushdownSelector, func(ctx *sql.Context, c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 			switch node := c.Node.(type) {
 			case *plan.Filter:
-				// Notably, filters are allowed to be pushed through other filters.
-				// This prevents filters hoisted from join conditions from being
-				// orphaned in the middle of join trees.
-				// TODO: ^^ how??? we're still dropping filters bc they get orphaned in the middle of join trees
 				if f, ok := node.Child.(*plan.Filter); ok {
 					if node.Expression == f.Expression {
 						return f, transform.NewTree, nil
 					}
+					// TODO: We should not be simply AND'ing the two filter expressions since they may have overlapping
+					//  subexpressions.
 					return plan.NewFilter(ctx, expression.JoinAnd(node.Expression, f.Expression), f.Child), transform.NewTree, nil
 				}
 				return node, transform.SameTree, nil
@@ -347,7 +345,12 @@ func updateFilterNode(ctx *sql.Context, a *Analyzer, node *plan.Filter, filters 
 		return node.Child
 	}
 
-	//// push filters into joinChild
+	// TODO: Pushing filters into joinChild is causing some filters to be dropped later on (dolt#10899). Removing this
+	//  step fixes the issue but then causes us to regress on dolt#9868, where we were dropping filters orphaned in the
+	//  middle of the join tree
+	//  https://github.com/dolthub/dolt/issues/10899
+	//  https://github.com/dolthub/dolt/issues/9868
+	// push filters into joinChild
 	if joinChild, ok := node.Child.(*plan.JoinNode); ok && !joinChild.Op.IsOuter() && !joinChild.Op.IsAnti() {
 		a.Log("pushing filters into join node")
 		if joinChild.Op.IsCross() {
