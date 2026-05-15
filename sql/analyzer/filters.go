@@ -44,14 +44,11 @@ func (f filtersByTable) size() int {
 // predicates that contain no table or more than one table are not included in the result.
 func getFiltersByTable(n sql.Node, scope *plan.Scope, projectedExpressions map[sql.ColumnId]sql.Expression) filtersByTable {
 	filters := newFiltersByTable()
-	transform.InspectWithOpaque(n, func(node sql.Node) bool {
+	transform.Inspect(n, func(node sql.Node) bool {
 		switch node := node.(type) {
 		case *plan.Filter:
 			fs := exprToTableFilters(node.Expression, scope, projectedExpressions)
 			filters.merge(fs)
-		}
-		if o, ok := node.(sql.OpaqueNode); ok {
-			return !o.Opaque()
 		}
 		return true
 	})
@@ -76,6 +73,8 @@ func exprToTableFilters(expr sql.Expression, scope *plan.Scope, projectionExpres
 				// A GetField that resolves to an outer scope or lateral scope
 				// is effectively constant and can be skipped.
 				if scope.Correlated().Contains(id) {
+					// TODO: it might be a tiny bit more optimal to return false here. GetField expressions have no
+					//  children anyways
 					return true
 				}
 				if projectionExpression, ok := projectionExpressions[id]; ok {
@@ -108,7 +107,6 @@ type filterSet struct {
 	filtersByTable        filtersByTable
 	tableAliases          TableAliases
 	projectionExpressions map[sql.ColumnId]sql.Expression
-	filterPredicates      []sql.Expression
 	handledFilters        []sql.Expression
 	handledIndexFilters   []string
 }
@@ -123,7 +121,6 @@ func newFilterSet(
 	projectionExpressions := getProjectionExpressions(filter)
 	filtersByTable := getFiltersByTable(filter, scope, projectionExpressions)
 	return &filterSet{
-		filterPredicates:      expression.SplitConjunction(filter.Expression),
 		filtersByTable:        filtersByTable,
 		tableAliases:          tableAliases,
 		projectionExpressions: projectionExpressions,
@@ -138,15 +135,6 @@ func (fs *filterSet) availableFiltersForTable(ctx *sql.Context, table string) []
 		return nil
 	}
 	return fs.subtractUsedIndexes(ctx, subtractExprSet(filters, fs.handledFilters))
-}
-
-// unhandledPredicates returns the filters that are still available (not previously marked handled)
-func (fs *filterSet) unhandledPredicates(ctx *sql.Context) []sql.Expression {
-	var available []sql.Expression
-	for _, e := range fs.filterPredicates {
-		available = append(available, fs.subtractUsedIndexes(ctx, subtractExprSet([]sql.Expression{e}, fs.handledFilters))...)
-	}
-	return available
 }
 
 // handledCount returns the number of filter expressions that have been marked as handled
@@ -190,6 +178,8 @@ func subtractExprSet(all, toSubtract []sql.Expression) []sql.Expression {
 }
 
 // subtractUsedIndexes returns the filter expressions given with used indexes subtracted off.
+// TODO: there's no point calling this because fs.handledIndexFilters is never actually updated (markIndexesHandled is
+// never actually called)
 func (fs *filterSet) subtractUsedIndexes(ctx *sql.Context, all []sql.Expression) []sql.Expression {
 	var remainder []sql.Expression
 

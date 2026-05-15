@@ -98,11 +98,8 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 			return n, transform.SameTree, nil
 		}
 
-		// no filter or left join: nothing to do to the tree
-		if join.JoinType().IsDegenerate() {
-			return n, transform.SameTree, nil
-		}
-		if !(join.JoinType().IsInner() || join.JoinType().IsSemi()) {
+		// no filter, outer or anti join: nothing to do to the tree
+		if join.JoinCond() == nil || join.JoinType().IsDegenerate() || join.JoinType().IsOuter() || join.JoinType().IsAnti() {
 			return n, transform.SameTree, nil
 		}
 		leftSources := nodeSources(join.Left())
@@ -141,12 +138,7 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 			newRight = plan.NewFilter(expression.JoinAnd(rightOnlyFilters...), newRight)
 		}
 
-		// TODO: This might not be necessary. JoinAnd returns nil for arrays of length 0 and nil join conditions are
-		//  evaluated as true anyways
-		if len(condFilters) == 0 {
-			condFilters = append(condFilters, expression.NewTrue())
-		}
-
+		// TODO: turn inner join into crossjoin when no condFilters
 		return plan.NewJoin(newLeft, newRight, join.Op, expression.JoinAnd(condFilters...)).WithComment(join.CommentStr), transform.NewTree, nil
 	})
 }
@@ -187,6 +179,7 @@ func expressionSources(expr sql.Expression) (sql.FastIntSet, bool) {
 				nullRejecting = false
 			}
 		case *plan.Subquery:
+			// TODO: this is just the above code copied and pasted...refactor to avoid repeating code
 			transform.InspectExpressions(e.Query, func(innerExpr sql.Expression) bool {
 				switch e := innerExpr.(type) {
 				case *expression.GetField:

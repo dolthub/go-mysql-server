@@ -43,6 +43,7 @@ func pushFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, s
 				// Notably, filters are allowed to be pushed through other filters.
 				// This prevents filters hoisted from join conditions from being
 				// orphaned in the middle of join trees.
+				// TODO: ^^ how??? we're still dropping filters bc they get orphaned in the middle of join trees
 				if f, ok := node.Child.(*plan.Filter); ok {
 					if node.Expression == f.Expression {
 						return f, transform.NewTree, nil
@@ -347,17 +348,17 @@ func updateFilterNode(ctx *sql.Context, a *Analyzer, node *plan.Filter, filters 
 	}
 
 	//// push filters into joinChild
-	//if joinChild, ok := node.Child.(*plan.JoinNode); ok && !joinChild.Op.IsOuter() && !joinChild.Op.IsAnti() {
-	//	a.Log("pushing filters into join node")
-	//	if joinChild.Op.IsCross() {
-	//		return plan.NewInnerJoin(joinChild.Left(), joinChild.Right(), expression.JoinAnd(unhandled...))
-	//	}
-	//	if joinChild.Filter != nil {
-	//		unhandled = append(unhandled, joinChild.Filter)
-	//	}
-	//	joinChild.Filter = expression.JoinAnd(unhandled...)
-	//	return joinChild
-	//}
+	if joinChild, ok := node.Child.(*plan.JoinNode); ok && !joinChild.Op.IsOuter() && !joinChild.Op.IsAnti() {
+		a.Log("pushing filters into join node")
+		if joinChild.Op.IsCross() {
+			return plan.NewInnerJoin(joinChild.Left(), joinChild.Right(), expression.JoinAnd(unhandled...))
+		}
+		if joinChild.Filter != nil {
+			unhandled = append(unhandled, joinChild.Filter)
+		}
+		joinChild.Filter = expression.JoinAnd(unhandled...)
+		return joinChild
+	}
 
 	if filters.handledCount() == 0 {
 		a.Log("no handled filters, leaving filter untouched")

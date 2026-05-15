@@ -77,14 +77,14 @@ func SplitDisjunction(expr sql.Expression) []sql.Expression {
 	if expr == nil {
 		return nil
 	}
-	and, ok := expr.(*Or)
+	or, ok := expr.(*Or)
 	if !ok {
 		return []sql.Expression{expr}
 	}
 
 	return append(
-		SplitDisjunction(and.LeftChild),
-		SplitDisjunction(and.RightChild)...,
+		SplitDisjunction(or.LeftChild),
+		SplitDisjunction(or.RightChild)...,
 	)
 }
 

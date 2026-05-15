@@ -134,6 +134,8 @@ func (i JoinType) IsUsing() bool {
 	}
 }
 
+// TODO: rename this. It's not immediately obvious that degenerate refers to a cross join and it's not a commonly used
+// term either
 func (i JoinType) IsDegenerate() bool {
 	return i == JoinTypeCross
 }

@@ -58,7 +58,7 @@ func Inspect(node sql.Node, f func(sql.Node) bool) (cont bool) {
 		return false
 	}
 
-	if _, ok := node.(sql.OpaqueNode); ok {
+	if o, ok := node.(sql.OpaqueNode); ok && o.Opaque() {
 		return false
 	}
 
