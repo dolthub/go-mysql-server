@@ -769,7 +769,7 @@ func (c *indexCoster) buildRoot(ctx *sql.Context, e sql.Expression, walker sql.E
 		}
 		var imprecise sql.FastIntSet
 		if !expression.PreciseComparison(ctx, e) {
-			imprecise.Add(int(leaf.id))
+			imprecise.Add(int(leaf.Id()))
 		}
 		return leaf, nil, imprecise
 	}
@@ -810,7 +810,7 @@ func (c *indexCoster) buildAnd(ctx *sql.Context, e *expression.And, and *iScanAn
 			} else {
 				and.newLeaf(leaf)
 				if !expression.PreciseComparison(ctx, e) {
-					imprecise.Add(int(leaf.id))
+					imprecise.Add(int(leaf.Id()))
 				}
 			}
 			// keep a ref to the invalid |e|
@@ -1049,7 +1049,15 @@ func (b *indexScanRangeBuilder) rangeBuildAnd(f *iScanAnd, inScan bool) (sql.MyS
 				}
 			}
 		default:
-			b.rangeBuildDefaultLeaf(partBuilder, leaf, inScan)
+			if len(leaf.columns) == 1 {
+				b.rangeBuildDefaultLeaf(partBuilder, leaf, inScan)
+			} else {
+				ranges, err := b.rangeBuildLeaf(leaf, inScan)
+				if err != nil {
+					return nil, err
+				}
+				ret, err = ret.Intersect(b.ctx, ranges)
+			}
 		}
 	}
 
@@ -1070,13 +1078,13 @@ func (b *indexScanRangeBuilder) rangeBuildAnd(f *iScanAnd, inScan bool) (sql.MyS
 }
 
 func (b *indexScanRangeBuilder) rangeBuildOr(f *iScanOr, inScan bool) (sql.MySQLRangeCollection, error) {
-	inScan = !b.markLeftover(f, inScan)
+	inScan = !b.markLeftover(f.id, inScan)
 	if !inScan {
 		return nil, nil
 	}
 
 	// imprecise filters cannot be removed
-	b.markImprecise(f)
+	b.markImprecise(f.id)
 
 	// todo union the or ranges
 	var ret sql.MySQLRangeCollection
@@ -1100,7 +1108,7 @@ func (b *indexScanRangeBuilder) rangeBuildOr(f *iScanOr, inScan bool) (sql.MySQL
 }
 
 func (b *indexScanRangeBuilder) rangeBuildSpatialLeaf(f *iScanLeaf, inScan bool) (sql.MySQLRangeCollection, error) {
-	inScan = !b.markLeftover(f, inScan)
+	inScan = !b.markLeftover(f.id, inScan)
 	if inScan {
 		// always mark leftover
 		b.leftover = append(b.leftover, b.idToExpr[f.Id()])
@@ -1108,7 +1116,7 @@ func (b *indexScanRangeBuilder) rangeBuildSpatialLeaf(f *iScanLeaf, inScan bool)
 		return nil, nil
 	}
 
-	g, ok := f.litValue.(types.GeometryValue)
+	g, ok := f.columns[0].litValue.(types.GeometryValue)
 	if !ok {
 		return nil, sql.ErrInvalidGISData.New()
 	}
@@ -1116,7 +1124,7 @@ func (b *indexScanRangeBuilder) rangeBuildSpatialLeaf(f *iScanLeaf, inScan bool)
 	lower := types.Point{X: minX, Y: minY}
 	upper := types.Point{X: maxX, Y: maxY}
 
-	typ := f.typ
+	typ := f.columns[0].typ
 	return sql.MySQLRangeCollection{{{
 		LowerBound: sql.Below{
 			Key: lower,
@@ -1132,23 +1140,38 @@ func (b *indexScanRangeBuilder) rangeBuildSpatialLeaf(f *iScanLeaf, inScan bool)
 
 func (b *indexScanRangeBuilder) rangeBuildFulltextLeaf(f *iScanLeaf, inScan bool) (sql.MySQLRangeCollection, error) {
 	// fulltext leaf doesn't use ranges
-	inScan = !b.markLeftover(f, inScan)
+	inScan = !b.markLeftover(f.id, inScan)
 	if inScan {
 		// always mark leftover
 		b.leftover = append(b.leftover, b.idToExpr[f.Id()])
 	} else {
 		return nil, nil
 	}
-	return sql.MySQLRangeCollection{{sql.EmptyRangeColumnExpr(f.typ)}}, nil
+	return sql.MySQLRangeCollection{{sql.EmptyRangeColumnExpr(f.columns[0].typ)}}, nil
 }
 
 func (b *indexScanRangeBuilder) rangeBuildLeaf(f *iScanLeaf, inScan bool) (sql.MySQLRangeCollection, error) {
+
+	// I'm not sure when this is required.
+	b.markImprecise(f.id)
+
 	switch f.Op() {
 	case sql.IndexScanOpSpatialEq:
 		return b.rangeBuildSpatialLeaf(f, inScan)
 	case sql.IndexScanOpFulltextEq:
 		return b.rangeBuildFulltextLeaf(f, inScan)
+	case sql.IndexScanOpEq:
+		return b.rangeBuildEquals(f, false)
+	case sql.IndexScanOpNullSafeEq:
+		return b.rangeBuildEquals(f, true)
+	case sql.IndexScanOpNotEq:
+		return b.rangeBuildNotEquals(f)
+	case sql.IndexScanOpInSet:
+		return b.rangeBuildInSet(f)
 	default:
+		if len(f.columns) > 1 {
+			return nil, fmt.Errorf("unhandled op with multiple columns %v, this shouldn't happen", f)
+		}
 		bb := sql.NewMySQLIndexBuilder(b.ctx, b.idx)
 		b.rangeBuildDefaultLeaf(bb, f, inScan)
 		if _, err := bb.Build(b.ctx); err != nil {
@@ -1158,15 +1181,17 @@ func (b *indexScanRangeBuilder) rangeBuildLeaf(f *iScanLeaf, inScan bool) (sql.M
 	}
 }
 
+// rangeBuildDefaultLeaf populates a sql.MySQLIndexBuilder with information from a iScanLeaf.
+// It requires that the iScanLeaf only has a single column.
 func (b *indexScanRangeBuilder) rangeBuildDefaultLeaf(bb *sql.MySQLIndexBuilder, f *iScanLeaf, inScan bool) {
-	inScan = !b.markLeftover(f, inScan)
+	inScan = !b.markLeftover(f.id, inScan)
 	if !inScan {
 		return
 	}
 
-	b.markImprecise(f)
+	b.markImprecise(f.id)
 
-	name := f.normString()
+	name := f.normString(0)
 	switch f.Op() {
 	case sql.IndexScanOpEq:
 		bb.Equals(b.ctx, name, f.litType, f.litValue)
@@ -1199,20 +1224,79 @@ func (b *indexScanRangeBuilder) rangeBuildDefaultLeaf(bb *sql.MySQLIndexBuilder,
 	}
 }
 
+func (b *indexScanRangeBuilder) rangeBuildEquals(f *iScanLeaf, nullSafe bool) (sql.MySQLRangeCollection, error) {
+	partBuilder := sql.NewMySQLIndexBuilder(b.ctx, b.idx)
+	for i, column := range f.columns {
+		litType := column.litType
+		litValue := column.litValue
+		if nullSafe && f.litValue == nil {
+			partBuilder.IsNull(b.ctx, f.normString(i))
+		} else {
+			partBuilder.Equals(b.ctx, f.normString(i), litType, litValue)
+		}
+	}
+	if _, err := partBuilder.Build(b.ctx); err != nil {
+		return nil, err
+	}
+	return partBuilder.Ranges(b.ctx), nil
+}
+
+func (b *indexScanRangeBuilder) rangeBuildNotEquals(f *iScanLeaf) (sql.MySQLRangeCollection, error) {
+	var ret sql.MySQLRangeCollection
+	for i, column := range f.columns {
+		litType := column.litType
+		litValue := column.litValue
+		partBuilder := sql.NewMySQLIndexBuilder(b.ctx, b.idx)
+		partBuilder.NotEquals(b.ctx, f.normString(i), litType, litValue)
+		if _, err := partBuilder.Build(b.ctx); err != nil {
+			return nil, err
+		}
+		ret = append(ret, partBuilder.Ranges(b.ctx)...)
+	}
+	return ret, nil
+}
+
+func (b *indexScanRangeBuilder) rangeBuildInSet(f *iScanLeaf) (sql.MySQLRangeCollection, error) {
+	var ret sql.MySQLRangeCollection
+	_, isTuple := f.litType.(types.TupleType)
+	if !isTuple {
+		bb := sql.NewMySQLIndexBuilder(b.ctx, b.idx)
+		bb.In(b.ctx, f.normString(0), f.setTypes, f.setValues)
+		if _, err := bb.Build(b.ctx); err != nil {
+			return nil, err
+		}
+		return bb.Ranges(b.ctx), nil
+	}
+
+	for i := range f.setValues {
+		setType := f.setTypes[i].(types.TupleType)
+		setValueTuple := f.setValues[i].([]interface{})
+		partBuilder := sql.NewMySQLIndexBuilder(b.ctx, b.idx)
+		for j, setValue := range setValueTuple {
+			partBuilder.Equals(b.ctx, f.normString(j), setType[j], setValue)
+		}
+		if _, err := partBuilder.Build(b.ctx); err != nil {
+			return nil, err
+		}
+		ret = append(ret, partBuilder.Ranges(b.ctx)...)
+	}
+	return ret, nil
+}
+
 // markLeftover is used to check if leaf nodes and OR filters are left out
 // of the index lookup. We omit this check for AND filters because a portion
 // of their children can contribute to the scan.
-func (b *indexScanRangeBuilder) markLeftover(f indexFilter, inScan bool) bool {
-	if !inScan && !b.include.Contains(int(f.Id())) {
-		b.leftover = append(b.leftover, b.idToExpr[f.Id()])
+func (b *indexScanRangeBuilder) markLeftover(id indexScanId, inScan bool) bool {
+	if !inScan && !b.include.Contains(int(id)) {
+		b.leftover = append(b.leftover, b.idToExpr[id])
 		return true
 	}
 	return false
 }
 
-func (b *indexScanRangeBuilder) markImprecise(f indexFilter) {
-	if b.imprecise.Contains(int(f.Id())) {
-		b.leftover = append(b.leftover, b.idToExpr[f.Id()])
+func (b *indexScanRangeBuilder) markImprecise(id indexScanId) {
+	if b.imprecise.Contains(int(id)) {
+		b.leftover = append(b.leftover, b.idToExpr[id])
 	}
 }
 
@@ -1223,24 +1307,53 @@ type indexFilter interface {
 	Id() indexScanId
 }
 
-type iScanLeaf struct {
-	litValue      interface{}
-	litType       sql.Type
-	typ           sql.Type
-	name          string
-	underlying    string
-	fulltextIndex string
-	setValues     []interface{}
-	setTypes      []sql.Type
-	id            indexScanId
-	op            sql.IndexScanOp
+type iScanLeafColumn struct {
+	litValue interface{}
+	litType  sql.Type
+	typ      sql.Type
+	name     string
 }
 
-func (l *iScanLeaf) normString() string {
+type iScanLeaf struct {
+	columns       []iScanLeafColumn
+	setTypes      []sql.Type
+	setValues     []interface{}
+	underlying    string
+	fulltextIndex string
+	id            indexScanId
+	op            sql.IndexScanOp
+	typ           sql.Type
+	litValue      interface{}
+	litType       sql.Type
+}
+
+func (l *iScanLeaf) normString(index int) string {
 	if l.underlying != "" {
-		return strings.ToLower(l.underlying) + "." + strings.ToLower(l.name)
+		return strings.ToLower(l.underlying) + "." + strings.ToLower(l.columns[index].name)
 	}
-	return strings.ToLower(l.name)
+	return strings.ToLower(l.columns[index].name)
+}
+
+func (l *iScanLeaf) qualifiedNames() []string {
+	names := make([]string, len(l.columns))
+	for i := range l.columns {
+		names[i] = l.normString(i)
+	}
+	return names
+}
+
+func (l *iScanLeaf) formattedQualifiedNames() string {
+	result := ""
+	first := true
+	for i := range l.columns {
+		if first {
+			first = false
+		} else {
+			result += ", "
+		}
+		result += l.normString(i)
+	}
+	return result
 }
 
 func (l *iScanLeaf) Id() indexScanId {
@@ -1249,6 +1362,108 @@ func (l *iScanLeaf) Id() indexScanId {
 
 func (l *iScanLeaf) Op() sql.IndexScanOp {
 	return l.op
+}
+
+func supportedOpForTuples(op sql.IndexScanOp) bool {
+	switch op {
+	case sql.IndexScanOpEq, sql.IndexScanOpNullSafeEq, sql.IndexScanOpNotEq, sql.IndexScanOpInSet:
+		return true
+	default:
+		return false
+	}
+}
+
+func newLeafIndexFilter(id indexScanId, names []string, typ sql.Type, op sql.IndexScanOp, underlying string) (*iScanLeaf, bool) {
+	tupleType, isTuple := typ.(types.TupleType)
+	if !isTuple {
+		return &iScanLeaf{
+			columns: []iScanLeafColumn{{
+				name: names[0],
+				typ:  typ,
+			}},
+			underlying: underlying,
+			id:         id,
+			op:         op,
+			typ:        typ,
+		}, true
+	}
+	if len(tupleType) != len(names) {
+		return nil, false
+	}
+	columns := make([]iScanLeafColumn, len(names))
+	for i, columnType := range tupleType {
+		columns[i] = iScanLeafColumn{
+			name: names[i],
+			typ:  columnType,
+		}
+	}
+	return &iScanLeaf{
+		columns:    columns,
+		underlying: underlying,
+		id:         id,
+		op:         op,
+		typ:        typ,
+	}, true
+}
+
+func newLeafIndexFilterWithLiteral(id indexScanId, names []string, typ sql.Type, op sql.IndexScanOp, underlying string, literalValue interface{}, literalType sql.Type) (*iScanLeaf, bool) {
+	scanLeaf, ok := newLeafIndexFilter(id, names, typ, op, underlying)
+	if !ok {
+		return nil, false
+	}
+	scanLeaf.litValue = literalValue
+	scanLeaf.litType = literalType
+	tupleType, isTuple := typ.(types.TupleType)
+	if !isTuple {
+		scanLeaf.columns[0].litValue = literalValue
+		scanLeaf.columns[0].litType = literalType
+		return scanLeaf, true
+	}
+
+	literalTupleValue, ok := literalValue.([]interface{})
+	if !ok || len(literalTupleValue) != len(tupleType) {
+		return nil, false
+	}
+	literalTupleType, ok := literalType.(types.TupleType)
+	if !ok || len(literalTupleType) != len(tupleType) {
+		return nil, false
+	}
+
+	for i := range tupleType {
+		scanLeaf.columns[i].litValue = literalTupleValue[i]
+		scanLeaf.columns[i].litType = literalTupleType[i]
+	}
+
+	return scanLeaf, true
+}
+
+func newLeafIndexFilterWithSet(id indexScanId, names []string, typ sql.Type, op sql.IndexScanOp, underlying string, setValues []interface{}, setTypes []sql.Type, literalType sql.Type) (*iScanLeaf, bool) {
+	scanLeaf, ok := newLeafIndexFilter(id, names, typ, op, underlying)
+	if !ok {
+		return nil, false
+	}
+	scanLeaf.setValues = setValues
+	scanLeaf.setTypes = setTypes
+	scanLeaf.litType = literalType
+	tupleType, isTuple := typ.(types.TupleType)
+	if !isTuple {
+		scanLeaf.columns[0].litType = literalType
+		return scanLeaf, true
+	}
+
+	for i, setValue := range setValues {
+		var ok bool
+		setTupleValues, ok := setValue.([]interface{})
+		if !ok || len(setTupleValues) != len(tupleType) {
+			return nil, false
+		}
+		setTupleTypes, ok := setTypes[i].(types.TupleType)
+		if !ok || len(setTupleTypes) != len(tupleType) {
+			return nil, false
+		}
+	}
+
+	return scanLeaf, true
 }
 
 type iScanOr struct {
@@ -1289,13 +1504,28 @@ func (a *iScanAnd) newLeaf(l *iScanLeaf) {
 	if a.leafChildren == nil {
 		a.leafChildren = make(map[string][]*iScanLeaf)
 	}
-	key := strings.ToLower(l.name)
+	// Should we insert multiple times?
+	key := strings.ToLower(l.columns[0].name)
 	a.leafChildren[key] = append(a.leafChildren[key], l)
 	a.cnt++
 }
 
 // leaves returns a list of this nodes leaf filters, sorted by id
 func (a *iScanAnd) leaves() []*iScanLeaf {
+	var ret []*iScanLeaf
+	for _, colLeaves := range a.leafChildren {
+		for _, leaf := range colLeaves {
+			ret = append(ret, leaf)
+		}
+	}
+	sort.SliceStable(ret, func(i, j int) bool {
+		return ret[i].id < ret[j].id
+	})
+	return ret
+}
+
+// leaves returns a list of this nodes leaf filters, sorted by id
+func (a *iScanAnd) tupleLeaves() []*iScanLeaf {
 	var ret []*iScanLeaf
 	for _, colLeaves := range a.leafChildren {
 		for _, leaf := range colLeaves {
@@ -1357,15 +1587,15 @@ func formatIndexFilterRec(b *strings.Builder, nesting int, f indexFilter) {
 		}
 		switch f.Op() {
 		case sql.IndexScanOpIsNull, sql.IndexScanOpIsNotNull:
-			fmt.Fprintf(b, "(%d: %s %s)", f.Id(), f.normString(), f.Op())
+			fmt.Fprintf(b, "(%d: %s %s)", f.Id(), f.formattedQualifiedNames(), f.Op())
 		case sql.IndexScanOpInSet, sql.IndexScanOpNotInSet:
 			var valStrs []string
 			for _, v := range f.setValues {
 				valStrs = append(valStrs, fmt.Sprintf("%v", v))
 			}
-			fmt.Fprintf(b, "(%d: %s %s (%s))", f.Id(), f.normString(), f.Op(), strings.Join(valStrs, ", "))
+			fmt.Fprintf(b, "(%d: %s %s (%s))", f.Id(), f.formattedQualifiedNames(), f.Op(), strings.Join(valStrs, ", "))
 		default:
-			fmt.Fprintf(b, "(%d: %s %s %v)", f.Id(), f.normString(), f.Op(), f.litValue)
+			fmt.Fprintf(b, "(%d: %s %s %v)", f.Id(), f.formattedQualifiedNames(), f.Op(), f.litValue)
 		}
 
 	default:
@@ -1481,28 +1711,38 @@ func indexHasContentHashedFieldForFilter(ctx *sql.Context, filter *iScanLeaf, id
 		return false
 	}
 
-	i := ordinals[filter.name]
-	columnExpressionType := idx.ColumnExpressionTypes(ctx)[i]
+	for _, column := range filter.columns {
+		i := ordinals[column.name]
+		columnExpressionType := idx.ColumnExpressionTypes(ctx)[i]
 
-	// Only TEXT/BLOB types can currently use content-hashes in indexes
-	if !types.IsTextBlob(columnExpressionType.Type) {
-		return false
-	}
+		// Only TEXT/BLOB types can currently use content-hashes in indexes
+		if !types.IsTextBlob(columnExpressionType.Type) {
+			continue
+		}
 
-	prefixLength := uint16(0)
-	if len(idx.PrefixLengths()) > i {
-		prefixLength = idx.PrefixLengths()[i]
+		prefixLength := uint16(0)
+		if len(idx.PrefixLengths()) > i {
+			prefixLength = idx.PrefixLengths()[i]
+		}
+		if prefixLength == 0 {
+			return true
+		}
 	}
-	return prefixLength == 0
+	return false
 }
 
 // costIndexScanLeaf tries to apply a leaf filter to an index represented
 // by a statistic, returning the updated statistic, whether the filter was
 // applicable, and the maximum prefix key (0 or 1 for a leaf).
 func (c *indexCoster) costIndexScanLeaf(ctx *sql.Context, filter *iScanLeaf, s sql.Statistic, buckets []sql.HistogramBucket, ordinals map[string]int, idx sql.Index) ([]sql.HistogramBucket, *sql.FuncDepSet, bool, int, error) {
-	key := strings.ToLower(filter.name)
-	ord, ok := ordinals[key]
-	if !ok {
+	filterMatchesIndex := false
+	for _, column := range filter.columns {
+		if _, ok := ordinals[strings.ToLower(column.name)]; ok {
+			filterMatchesIndex = true
+			break
+		}
+	}
+	if !filterMatchesIndex {
 		return nil, nil, false, 0, nil
 	}
 
@@ -1518,14 +1758,28 @@ func (c *indexCoster) costIndexScanLeaf(ctx *sql.Context, filter *iScanLeaf, s s
 
 	switch filter.op {
 	case sql.IndexScanOpSpatialEq:
+		key := strings.ToLower(filter.columns[0].name)
+		ord, ok := ordinals[key]
+		if !ok {
+			return nil, nil, false, 0, nil
+		}
 		stat, ok, err := c.costSpatial(filter, s, ord)
 		return buckets, stat.FuncDeps(), ok, 0, err
 	case sql.IndexScanOpFulltextEq:
+		key := strings.ToLower(filter.columns[0].name)
+		ord, ok := ordinals[key]
+		if !ok {
+			return nil, nil, false, 0, nil
+		}
 		stat, ok, err := c.costFulltext(filter, s, ord)
 		return buckets, stat.FuncDeps(), ok, 0, err
 	default:
+		// If none of the keys are in the index, then we won't
 		conj := newConjCollector(s, buckets, ordinals)
-		conj.add(ctx, filter)
+		err := conj.add(ctx, filter)
+		if err != nil {
+			return nil, nil, false, 0, err
+		}
 		var conjFDs *sql.FuncDepSet
 		if idx.IsUnique() {
 			conjFDs = conj.getFds()
@@ -1561,40 +1815,54 @@ func (c *indexCoster) costFulltext(filter *iScanLeaf, s sql.Statistic, ordinal i
 //
 // ok is false when neither side of the comparison matches any indexed expression or GetField,
 // meaning this comparison cannot be served by an index scan.
-func (c *indexCoster) normalizeLeafSides(ctx *sql.Context, op sql.IndexScanOp, left, right sql.Expression) (name string, typ sql.Type, normalizedOp sql.IndexScanOp, litExpr sql.Expression, ok bool) {
+func (c *indexCoster) normalizeLeafSides(ctx *sql.Context, op sql.IndexScanOp, left, right sql.Expression) (names []string, typ sql.Type, normalizedOp sql.IndexScanOp, litExpr sql.Expression, ok bool) {
 	// Check the left side first: functional expression match, then plain GetField.
 	// If the index target is on the left, op is already in "indexTarget op litExpr" orientation.
 	if left != nil {
-		for _, entry := range c.indexedExprs {
-			if entry.matches(left) {
-				return entry.colName, left.Type(ctx), op, right, true
-			}
-		}
-		if gf, hit := left.(*expression.GetField); hit {
-			return gf.Name(), gf.Type(ctx), op, right, true
+		names, typ, normalizedOp, litExpr, ok = c.parseLeafExpression(ctx, op, left, right)
+		if ok {
+			return names, typ, normalizedOp, litExpr, ok
 		}
 	}
-	// Check the right side: functional expression match, then plain GetField.
-	// If the index target is on the right, swap op to normalize to "indexTarget op litExpr".
 	if right != nil {
-		for _, entry := range c.indexedExprs {
-			if entry.matches(right) {
-				return entry.colName, right.Type(ctx), op.Swap(), left, true
-			}
-		}
-		if gf, hit := right.(*expression.GetField); hit {
-			return gf.Name(), gf.Type(ctx), op.Swap(), left, true
+		// If the index target is on the right, swap op to normalize to "indexTarget op litExpr".
+		return c.parseLeafExpression(ctx, op.Swap(), right, left)
+	}
+	return nil, nil, 0, nil, false
+}
+
+func (c *indexCoster) parseLeafExpression(ctx *sql.Context, op sql.IndexScanOp, left sql.Expression, right sql.Expression) (names []string, typ sql.Type, normalizedOp sql.IndexScanOp, litExpr sql.Expression, ok bool) {
+	for _, entry := range c.indexedExprs {
+		if entry.matches(left) {
+			return []string{entry.colName}, left.Type(ctx), op, right, true
 		}
 	}
-	return "", nil, 0, nil, false
+	if gf, hit := left.(*expression.GetField); hit {
+		return []string{gf.Name()}, gf.Type(ctx), op, right, true
+	}
+	if tuple, hit := left.(expression.Tuple); hit && supportedOpForTuples(op) {
+		isTupleOfGetFields := true
+		for _, tupleExpr := range tuple.Children() {
+			if gf, hit := tupleExpr.(*expression.GetField); !hit {
+				isTupleOfGetFields = false
+				break
+			} else {
+				names = append(names, gf.Name())
+			}
+		}
+		if isTupleOfGetFields {
+			return names, left.Type(ctx), op, right, true
+		}
+	}
+	return nil, nil, 0, nil, false
 }
 
 // buildLeafFromParts constructs an iScanLeaf from a resolved index column name, its type,
 // the scan operation, and the literal expression on the other side of the comparison.
 // litExpr must be nil for unary operations (IsNull, IsNotNull) and non-nil otherwise.
-func (c *indexCoster) buildLeafFromParts(ctx *sql.Context, id indexScanId, name string, typ sql.Type, op sql.IndexScanOp, litExpr sql.Expression) (*iScanLeaf, bool) {
+func (c *indexCoster) buildLeafFromParts(ctx *sql.Context, id indexScanId, name []string, typ sql.Type, op sql.IndexScanOp, litExpr sql.Expression) (*iScanLeaf, bool) {
 	if op == sql.IndexScanOpIsNull || op == sql.IndexScanOpIsNotNull {
-		return &iScanLeaf{id: id, name: name, typ: typ, op: op, underlying: c.underlyingName}, true
+		return newLeafIndexFilter(id, name, typ, op, c.underlyingName)
 	}
 	if op == sql.IndexScanOpInSet || op == sql.IndexScanOpNotInSet {
 		tup := litExpr.(expression.Tuple)
@@ -1612,16 +1880,7 @@ func (c *indexCoster) buildLeafFromParts(ctx *sql.Context, id indexScanId, name 
 				litType = lit.Type(ctx)
 			}
 		}
-		return &iScanLeaf{
-			id:         id,
-			name:       name,
-			typ:        typ,
-			op:         op,
-			setValues:  litSet,
-			setTypes:   setTypes,
-			litType:    litType,
-			underlying: c.underlyingName,
-		}, true
+		return newLeafIndexFilterWithSet(id, name, typ, op, c.underlyingName, litSet, setTypes, litType)
 	}
 	if !isEvaluable(ctx, litExpr) {
 		return nil, false
@@ -1630,15 +1889,7 @@ func (c *indexCoster) buildLeafFromParts(ctx *sql.Context, id indexScanId, name 
 	if err != nil {
 		return nil, false
 	}
-	return &iScanLeaf{
-		id:         id,
-		name:       name,
-		typ:        typ,
-		op:         op,
-		litValue:   value,
-		litType:    litExpr.Type(ctx),
-		underlying: c.underlyingName,
-	}, true
+	return newLeafIndexFilterWithLiteral(id, name, typ, op, c.underlyingName, value, litExpr.Type(ctx))
 }
 
 // buildLeaf tries to convert an expression into the intermediate
@@ -1653,13 +1904,18 @@ func (c *indexCoster) buildLeaf(ctx *sql.Context, id indexScanId, e sql.Expressi
 	if op == sql.IndexScanOpFulltextEq {
 		e := e.(*expression.MatchAgainst)
 		gf := e.Columns[0].(*expression.GetField)
-		return &iScanLeaf{id: id, op: op, name: gf.Name(), typ: gf.Type(ctx), underlying: c.underlyingName, fulltextIndex: e.GetIndex().ID()}, true
+		scanLeaf, ok := newLeafIndexFilter(id, []string{gf.Name()}, gf.Type(ctx), op, c.underlyingName)
+		if !ok {
+			return nil, false
+		}
+		scanLeaf.fulltextIndex = e.GetIndex().ID()
+		return scanLeaf, true
 	}
-	name, typ, normalizedOp, litExpr, ok := c.normalizeLeafSides(ctx, op, left, right)
+	names, typ, normalizedOp, litExpr, ok := c.normalizeLeafSides(ctx, op, left, right)
 	if !ok {
 		return nil, false
 	}
-	return c.buildLeafFromParts(ctx, id, name, typ, normalizedOp, litExpr)
+	return c.buildLeafFromParts(ctx, id, names, typ, normalizedOp, litExpr)
 }
 
 // IndexLeafChildren handles the struct types that may be found on a leaf node while creating indexes.
@@ -1915,19 +2171,36 @@ type conjCollector struct {
 }
 
 func (c *conjCollector) add(ctx *sql.Context, f *iScanLeaf) error {
-	col := strings.ToLower(f.name)
 	c.applied.Add(int(f.Id()))
 	var err error
 	switch f.Op() {
 	case sql.IndexScanOpNullSafeEq:
-		err = c.addEq(ctx, col, f.litValue, true)
+		for _, column := range f.columns {
+			err = c.addEq(ctx, strings.ToLower(column.name), column.litValue, true)
+			if err != nil {
+				return err
+			}
+		}
 	case sql.IndexScanOpEq:
-		err = c.addEq(ctx, col, f.litValue, false)
+		for _, column := range f.columns {
+			err = c.addEq(ctx, strings.ToLower(column.name), column.litValue, false)
+			if err != nil {
+				return err
+			}
+		}
 	case sql.IndexScanOpInSet:
 		// TODO cost UNION of equals
-		err = c.addEq(ctx, col, f.setValues[0], false)
+		if len(f.columns) == 1 {
+			// TODO: This seems incorrect.
+			err = c.addEq(ctx, strings.ToLower(f.columns[0].name), f.setValues[0], false)
+		}
 	default:
-		err = c.addIneq(ctx, f.Op(), col, f.litValue)
+		// We can't currently express the implications of an inequality between tuples, so
+		// those don't inform the FDS. In the future, we can infer some information.
+		// For example, (x, y) > (A, B) implies that x >= A.
+		if len(f.columns) == 1 {
+			err = c.addIneq(ctx, f.Op(), strings.ToLower(f.columns[0].name), f.columns[0].litValue)
+		}
 	}
 	return err
 }
@@ -1945,7 +2218,7 @@ func (c *conjCollector) addEq(ctx *sql.Context, col string, val interface{}, nul
 	col = strings.ToLower(col)
 	ord, ok := c.ordinals[col]
 	if !ok {
-		return fmt.Errorf("unknown column '%s'", col)
+		return nil
 	}
 	if c.constant.Contains(ord + 1) {
 		if c.eqVals[ord] != val {
@@ -1983,7 +2256,7 @@ func (c *conjCollector) addIneq(ctx *sql.Context, op sql.IndexScanOp, col string
 	col = strings.ToLower(col)
 	ord, ok := c.ordinals[col]
 	if !ok {
-		return fmt.Errorf("unknown column '%s'", col)
+		return nil
 	}
 	c.ineqCols.Add(ord)
 	if ord > 0 {
