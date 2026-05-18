@@ -256,7 +256,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 					}
 					args[i] = tableExpr
 				} else {
-					err := sql.ErrAmbiguousColumnOrAliasName.New(v)
+					err := sql.ErrStarUnsupported.New(v)
 					b.handleErr(err)
 				}
 			} else {
