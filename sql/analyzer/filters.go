@@ -117,8 +117,8 @@ func newFilterSet(
 	filter *plan.Filter,
 	scope *plan.Scope,
 	tableAliases TableAliases,
+	projectionExpressions map[sql.ColumnId]sql.Expression,
 ) *filterSet {
-	projectionExpressions := getProjectionExpressions(filter)
 	filtersByTable := getFiltersByTable(ctx, filter, scope, projectionExpressions)
 	return &filterSet{
 		filtersByTable:        filtersByTable,

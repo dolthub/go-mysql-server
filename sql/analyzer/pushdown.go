@@ -64,7 +64,9 @@ func pushFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, s
 		})
 	}
 
+	// TODO: get tableAliases and projectionExpressions (rename to projectionAliases?) in single pass
 	tableAliases, err := getTableAliases(ctx, n, scope)
+	projectionExpressions := getProjectionExpressions(n)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
@@ -81,7 +83,7 @@ func pushFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, s
 			}
 			// Find all col exprs and group them by the table they mention so that we can keep track of which ones
 			// have been pushed down and need to be removed from the parent filter
-			filters := newFilterSet(ctx, n, scope, tableAliases)
+			filters := newFilterSet(ctx, n, scope, tableAliases, projectionExpressions)
 
 			// move filter predicates directly above their respective tables in joins
 			ret, _, err := pushdownAboveTables(n, filters)
@@ -112,16 +114,12 @@ func pushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.Node, sco
 		return n, transform.SameTree, nil
 	}
 
+	// TODO: this involves calling InspectUp on entire node tree. Better to use a query flag here instead.
 	if !hasSubqueryAlias(ctx, n) {
 		return n, transform.SameTree, nil
 	}
 
-	tableAliases, err := getTableAliases(ctx, n, scope)
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-
-	return transformPushdownSubqueryAliasFilters(ctx, a, n, scope, tableAliases)
+	return transformPushdownSubqueryAliasFilters(ctx, a, n, scope)
 }
 
 func hasSubqueryAlias(ctx *sql.Context, n sql.Node) bool {
@@ -133,10 +131,6 @@ func hasSubqueryAlias(ctx *sql.Context, n sql.Node) bool {
 
 // canDoPushdown returns whether the node given can safely be analyzed for pushdown
 func canDoPushdown(n sql.Node) bool {
-	if !n.Resolved() {
-		return false
-	}
-
 	if plan.IsNoRowNode(n) {
 		return false
 	}
@@ -179,7 +173,14 @@ func filterPushdownSelector(ctx *sql.Context, c transform.Context) bool {
 	return true
 }
 
-func transformPushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, tableAliases TableAliases) (sql.Node, transform.TreeIdentity, error) {
+func transformPushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope) (sql.Node, transform.TreeIdentity, error) {
+	// TODO: get tableAliases and projectionExpressions in single pass
+	tableAliases, err := getTableAliases(ctx, n, scope)
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
+	projectionExpressions := getProjectionExpressions(n)
+
 	var filters *filterSet
 
 	transformFilterNode := func(n *plan.Filter) (sql.Node, transform.TreeIdentity, error) {
@@ -208,7 +209,7 @@ func transformPushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.
 		case *plan.Filter:
 			// First step is to find all col exprs and group them by the table they mention.
 
-			filters = newFilterSet(ctx, n, scope, tableAliases)
+			filters = newFilterSet(ctx, n, scope, tableAliases, projectionExpressions)
 			return transformFilterNode(n)
 		default:
 			return n, transform.SameTree, nil
