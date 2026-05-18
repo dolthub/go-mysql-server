@@ -41,7 +41,7 @@ func (b *Builder) buildWhere(inScope *scope, where *ast.Where) {
 		return
 	}
 	filter := b.buildScalar(inScope, where.Expr)
-	filterNode := plan.NewFilter(filter, inScope.node)
+	filterNode := plan.NewFilter(b.ctx, filter, inScope.node)
 	inScope.node = filterNode
 }
 
@@ -231,7 +231,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 			}
 		}
 
-		rf, err := f.NewInstance(nil, args)
+		rf, err := f.NewInstance(b.ctx, args)
 		if err != nil {
 			b.handleErr(err)
 		}
@@ -410,7 +410,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 				err := sql.ErrFunctionNotFound.New("values")
 				b.handleErr(err)
 			}
-			values, err := fn.NewInstance(nil, []sql.Expression{col})
+			values, err := fn.NewInstance(b.ctx, []sql.Expression{col})
 			if err != nil {
 				b.handleErr(err)
 			}
@@ -743,7 +743,7 @@ func (b *Builder) buildComparison(inScope *scope, c *ast.ComparisonExpr) sql.Exp
 			return expression.NewInTuple(left, right)
 		case *plan.Subquery:
 			b.qFlags.Set(sql.QFlagScalarSubquery)
-			return plan.NewInSubquery(left, right)
+			return plan.NewInSubquery(b.ctx, left, right)
 		default:
 			err := sql.ErrUnsupportedFeature.New(fmt.Sprintf("IN %T", right))
 			b.handleErr(err)
@@ -756,7 +756,7 @@ func (b *Builder) buildComparison(inScope *scope, c *ast.ComparisonExpr) sql.Exp
 			return expression.NewNotInTuple(left, right)
 		case *plan.Subquery:
 			b.qFlags.Set(sql.QFlagScalarSubquery)
-			return plan.NewNotInSubquery(left, right)
+			return plan.NewNotInSubquery(b.ctx, left, right)
 		default:
 			err := sql.ErrUnsupportedFeature.New(fmt.Sprintf("NOT IN %T", right))
 			b.handleErr(err)

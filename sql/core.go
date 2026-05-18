@@ -184,6 +184,13 @@ type OpaqueNode interface {
 	Opaque() bool
 }
 
+func IsOpaque(n Node) bool {
+	if o, ok := n.(OpaqueNode); ok {
+		return o.Opaque()
+	}
+	return false
+}
+
 // Projector is a node that projects expressions for parent nodes to consume (i.e. GroupBy, Window, Project).
 type Projector interface {
 	// ProjectedExprs returns the list of expressions projected by this node.

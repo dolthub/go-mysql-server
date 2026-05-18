@@ -56,7 +56,7 @@ func optimizeJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 
 // inOrderReplanJoin replans the first join node found
 func inOrderReplanJoin(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sch sql.Schema, n sql.Node, isUpdate bool, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
-	if _, ok := n.(sql.OpaqueNode); ok {
+	if sql.IsOpaque(n) {
 		return n, transform.SameTree, nil
 	}
 	children := n.Children()
@@ -97,7 +97,7 @@ func inOrderReplanJoin(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sch sql
 	if isUpdate {
 		// we pass schema separately because individual nodes do not capture
 		// left join nullability
-		ret = plan.NewProject(recSchemaToGetFields(ctx, n, n.Schema(ctx)), ret)
+		ret = plan.NewProject(ctx, recSchemaToGetFields(ctx, n, n.Schema(ctx)), ret)
 	}
 	return ret, transform.NewTree, nil
 

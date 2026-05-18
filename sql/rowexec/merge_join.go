@@ -28,12 +28,12 @@ import (
 // two relations. We require 1) the join filter is an equality with disjoint
 // join attributes, 2) the free attributes for a relation are a prefix for
 // an index that will be used to return sorted rows.
-func NewMergeJoin(left, right sql.Node, cond sql.Expression) *plan.JoinNode {
-	return plan.NewJoin(left, right, plan.JoinTypeMerge, cond)
+func NewMergeJoin(ctx *sql.Context, left, right sql.Node, cond sql.Expression) *plan.JoinNode {
+	return plan.NewJoin(ctx, left, right, plan.JoinTypeMerge, cond)
 }
 
-func NewLeftMergeJoin(left, right sql.Node, cond sql.Expression) *plan.JoinNode {
-	return plan.NewJoin(left, right, plan.JoinTypeLeftOuterMerge, cond)
+func NewLeftMergeJoin(ctx *sql.Context, left, right sql.Node, cond sql.Expression) *plan.JoinNode {
+	return plan.NewJoin(ctx, left, right, plan.JoinTypeLeftOuterMerge, cond)
 }
 
 func newMergeJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode, row sql.Row) (sql.RowIter, error) {

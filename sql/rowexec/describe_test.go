@@ -86,12 +86,14 @@ func TestDescribeQuery(t *testing.T) {
 		Debug:     false,
 		Plan:      true,
 	}
-	node := plan.NewDescribeQuery(format, plan.NewProject(
+	node := plan.NewDescribeQuery(ctx, format, plan.NewProject(
+		ctx,
 		[]sql.Expression{
 			expression.NewGetFieldWithTable(1, 0, types.Text, "", "foo", "a", false),
 			expression.NewGetFieldWithTable(1, 1, types.Text, "", "foo", "b", false),
 		},
 		plan.NewFilter(
+			ctx,
 			expression.NewEquals(
 				expression.NewGetFieldWithTable(1, 0, types.Text, "", "foo", "a", false),
 				expression.NewLiteral("foo", types.LongText),

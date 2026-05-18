@@ -77,7 +77,7 @@ func (f *factory) buildProject(ctx *sql.Context, p *plan.Project, subquery bool)
 					}
 					newP = append(newP, newE)
 				}
-				return plan.NewProject(newP, p2.Child), nil
+				return plan.NewProject(ctx, newP, p2.Child), nil
 			}
 		}
 	}
@@ -158,7 +158,7 @@ func (f *factory) buildJoin(ctx *sql.Context, l, r sql.Node, op plan.JoinType, c
 			return f.buildJoin(ctx, r, l, plan.JoinTypeLateralLeft, cond)
 		}
 	}
-	return plan.NewJoin(l, r, op, cond), nil
+	return plan.NewJoin(ctx, l, r, op, cond), nil
 }
 
 func (f *factory) buildTableAlias(name string, child sql.Node) (plan.TableIdNode, error) {
@@ -265,7 +265,7 @@ func (f *factory) buildSort(ctx *sql.Context, child sql.Node, exprs []sql.SortFi
 				}
 			}
 			if !aliasCols.Intersects(deps) {
-				newP := plan.NewProject(p.Projections, plan.NewSort(exprs, p.Child))
+				newP := plan.NewProject(ctx, p.Projections, plan.NewSort(exprs, p.Child))
 				return f.buildProject(ctx, newP, subquery)
 			}
 		}

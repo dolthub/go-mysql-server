@@ -187,6 +187,7 @@ func TestTrackProcess(t *testing.T) {
 	ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithProcessList(pl), sql.WithSession(sess))
 
 	node := plan.NewInnerJoin(
+		ctx,
 		plan.NewResolvedTable(&nonIndexableTable{memory.NewPartitionedTable(ctx, db.BaseDatabase, "foo", sql.PrimaryKeySchema{}, nil, 2)}, nil, nil),
 		plan.NewResolvedTable(memory.NewPartitionedTable(ctx, db.BaseDatabase, "bar", sql.PrimaryKeySchema{}, nil, 4), nil, nil),
 		expression.NewLiteral(int64(1), types.Int64),

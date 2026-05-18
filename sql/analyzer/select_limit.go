@@ -58,8 +58,6 @@ func applyLimit(ctx *sql.Context, n sql.Node, limit sql.Expression) (sql.Node, t
 			return n, transform.SameTree
 		}
 		return n.WithLimit(limit), transform.NewTree
-	case *plan.With:
-		child = n.Child
 	case *plan.Describe:
 		child = n.Child
 	case *plan.Sort, *plan.GroupBy, *plan.Project, *plan.SubqueryAlias,

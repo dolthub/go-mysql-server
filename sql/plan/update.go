@@ -49,9 +49,10 @@ var _ sql.CollationCoercible = (*Update)(nil)
 var _ sql.CheckConstraintNode = (*Update)(nil)
 
 // NewUpdate creates an Update node.
-func NewUpdate(n sql.Node, ignore bool, updateExprs *UpdateExprs) *Update {
+func NewUpdate(ctx *sql.Context, n sql.Node, ignore bool, updateExprs *UpdateExprs) *Update {
 	return &Update{
 		UnaryNode: UnaryNode{NewUpdateSource(
+			ctx,
 			n,
 			ignore,
 			updateExprs,

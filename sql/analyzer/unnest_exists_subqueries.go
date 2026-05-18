@@ -202,15 +202,15 @@ func unnestExistSubqueries(ctx *sql.Context, scope *plan.Scope, a *Analyzer, fil
 			limited := plan.NewLimit(expression.NewLiteral(1, types.Int64), s.inner)
 			switch joinType {
 			case plan.JoinTypeAntiIncludeNulls:
-				ret = plan.NewAntiJoinIncludingNulls(ret, limited, nil).WithComment(comment)
+				ret = plan.NewAntiJoinIncludingNulls(ctx, ret, limited, nil).WithComment(comment)
 				qFlags.Set(sql.QFlagInnerJoin)
 			case plan.JoinTypeSemi:
 				if sq.Correlated().Empty() {
-					ret = plan.NewCrossJoin(ret, limited).WithComment(comment)
+					ret = plan.NewCrossJoin(ctx, ret, limited).WithComment(comment)
 				} else {
 					// TODO: when does this actually happen? Should we account for this in an AntiJoin? What about when
 					//  there are join filters?
-					ret = plan.NewLateralCrossJoin(ret, limited).WithComment(comment)
+					ret = plan.NewLateralCrossJoin(ctx, ret, limited).WithComment(comment)
 				}
 				qFlags.Set(sql.QFlagCrossJoin)
 			default:
@@ -227,7 +227,7 @@ func unnestExistSubqueries(ctx *sql.Context, scope *plan.Scope, a *Analyzer, fil
 
 		switch joinType {
 		case plan.JoinTypeAntiIncludeNulls, plan.JoinTypeSemi:
-			ret = plan.NewJoin(ret, s.inner, joinType, expression.JoinAnd(outerFilters...)).WithComment(comment)
+			ret = plan.NewJoin(ctx, ret, s.inner, joinType, expression.JoinAnd(outerFilters...)).WithComment(comment)
 			qFlags.Set(sql.QFlagInnerJoin)
 		default:
 			return filter, transform.SameTree, fmt.Errorf("hoistSelectExists failed on unexpected join type")
@@ -238,7 +238,7 @@ func unnestExistSubqueries(ctx *sql.Context, scope *plan.Scope, a *Analyzer, fil
 		return filter, transform.SameTree, nil
 	}
 	if len(retFilters) > 0 {
-		ret = plan.NewFilter(expression.JoinAnd(retFilters...), ret)
+		ret = plan.NewFilter(ctx, expression.JoinAnd(retFilters...), ret)
 	}
 	return ret, transform.NewTree, nil
 }
@@ -410,7 +410,7 @@ func decorrelateOuterCols(ctx *sql.Context, sqChild sql.Node, aliasDisambig *ali
 		return nil, nil
 	}
 	if len(filtersToKeep) > 0 {
-		n = plan.NewFilter(expression.JoinAnd(filtersToKeep...), n)
+		n = plan.NewFilter(ctx, expression.JoinAnd(filtersToKeep...), n)
 	}
 
 	return &hoistSubquery{

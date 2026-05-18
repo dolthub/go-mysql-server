@@ -84,6 +84,7 @@ type Alias struct {
 	name           string
 	unreferencable bool
 	id             sql.ColumnId
+	ctx            *sql.Context
 }
 
 var _ sql.Expression = (*Alias)(nil)
@@ -91,8 +92,8 @@ var _ sql.IdExpression = (*Alias)(nil)
 var _ sql.CollationCoercible = (*Alias)(nil)
 
 // NewAlias returns a new Alias node.
-func NewAlias(name string, expr sql.Expression) *Alias {
-	return &Alias{UnaryExpressionStub{expr}, name, false, 0}
+func NewAlias(ctx *sql.Context, name string, expr sql.Expression) *Alias {
+	return &Alias{UnaryExpressionStub{expr}, name, false, 0, ctx}
 }
 
 // AsUnreferencable marks the alias outside of scope referencing
@@ -144,11 +145,7 @@ func (e *Alias) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
 }
 
 func (e *Alias) String() string {
-	// To maintain compatibility with fmt.Stringer we have to use an empty context, but this will fail in any case that
-	// requires a context to determine a string (such as an integrator using the context to contain type information).
-	// TODO: Pass nil here for now to address performance issue, as this is unused.
-	//   Fix when we decide what to do with context threading.
-	return e.Describe(nil, sql.DescribeOptions{
+	return e.Describe(e.ctx, sql.DescribeOptions{
 		Debug: false,
 	})
 }
@@ -164,7 +161,7 @@ func (e *Alias) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(e, len(children), 1)
 	}
-	return NewAlias(e.name, children[0]), nil
+	return NewAlias(ctx, e.name, children[0]), nil
 }
 
 // Name implements the Nameable interface.

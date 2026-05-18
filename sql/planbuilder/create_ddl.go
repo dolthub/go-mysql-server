@@ -616,6 +616,7 @@ func (b *Builder) buildAlterEvent(inScope *scope, subQuery string, fullQuery str
 
 	outScope = inScope.push()
 	alterEvent := plan.NewAlterEvent(
+		b.ctx,
 		database,
 		b.scheduler,
 		eventName, definer,

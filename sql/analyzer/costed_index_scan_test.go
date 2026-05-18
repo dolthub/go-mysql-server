@@ -845,6 +845,7 @@ func and2(expressions ...sql.Expression) sql.Expression {
 func TestIndexSearchable(t *testing.T) {
 	// we want to run costed index scan rule with the indexSearchableTable as input
 	input := plan.NewFilter(
+		sql.NewEmptyContext(),
 		expression.NewEquals(
 			expression.NewGetFieldWithTable(0, 0, types.Int64, "mydb", "xy", "x", false),
 			expression.NewLiteral(1, types.Int64),
