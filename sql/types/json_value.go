@@ -634,11 +634,8 @@ func compareJSONObject(ctx context.Context, a JsonObject, b interface{}) (int, e
 
 	case JsonObject:
 		// Two JSON objects are equal if they have the same set of keys, and each key has the same value in both
-		// objects. The order of two objects that are not equal is unspecified but deterministic. We define the
-		// order as a lexicographic walk over both objects' keys sorted in lex (byte) order:
-		//   - At each position, if the keys differ, the smaller key's object is the smaller object.
-		//   - If the keys match, compare the values; the first non-zero comparison wins.
-		//   - If one object is a strict prefix of the other in this walk, the shorter one is the smaller object.
+		// objects. The order of two objects that are not equal is unspecified but deterministic. We define an
+		// order by comparing keys in sorted order, comparing values for matching any matching keys.
 		aKeys := slices.Sorted(maps.Keys(a))
 		bKeys := slices.Sorted(maps.Keys(b))
 		minLen := len(aKeys)
