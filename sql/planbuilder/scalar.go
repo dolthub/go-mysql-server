@@ -222,7 +222,46 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 
 		args := make([]sql.Expression, len(v.Exprs))
 		for i, e := range v.Exprs {
-			args[i] = b.selectExprToExpression(inScope, e)
+			expr := b.selectExprToExpression(inScope, e)
+			if star, ok := expr.(*expression.Star); ok {
+				// replace star with table column
+				if b.overrides.ParseTableAsColumn != nil && inScope.hasTable(star.Table) {
+					dbName := strings.ToLower(v.Qualifier.String())
+					colName := strings.ToLower(star.Table)
+					scopeTableCols := inScope.resolveColumnAsTable(dbName, colName)
+					if len(scopeTableCols) == 0 {
+						err := sql.ErrColumnNotFound.New(v)
+						b.handleErr(err)
+					}
+					astQualifier := ast.TableName{
+						Name:        ast.NewTableIdent(colName), // This must be `colName` due to table aliases
+						DbQualifier: ast.NewTableIdent(scopeTableCols[0].db),
+					}
+					fieldArgs := make([]sql.Expression, len(scopeTableCols))
+					for i := range scopeTableCols {
+						astArg := ast.ColName{
+							StoredProcVal: nil,
+							Qualifier:     astQualifier,
+							Name:          ast.NewColIdent(scopeTableCols[i].col),
+						}
+						fieldArgs[i] = b.buildScalar(inScope, &astArg)
+					}
+					actualTableName := colName
+					if tn, ok := inScope.oldTables[scopeTableCols[0].tableId]; ok {
+						actualTableName = tn
+					}
+					tableExpr, err := b.overrides.ParseTableAsColumn(b.ctx, actualTableName, fieldArgs)
+					if err != nil {
+						b.handleErr(err)
+					}
+					args[i] = tableExpr
+				} else {
+					err := sql.ErrAmbiguousColumnOrAliasName.New(v)
+					b.handleErr(err)
+				}
+			} else {
+				args[i] = expr
+			}
 		}
 
 		if name == "json_value" {
