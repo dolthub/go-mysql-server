@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/shopspring/decimal"
+	"github.com/cockroachdb/apd/v3"
 )
 
 func TestMarshalToMySqlString(t *testing.T) {
@@ -103,7 +103,7 @@ newlines
 		},
 		{
 			name:     "decimal",
-			val:      decimal.New(123, -2),
+			val:      apd.New(123, -2),
 			expected: "1.23",
 		},
 		{

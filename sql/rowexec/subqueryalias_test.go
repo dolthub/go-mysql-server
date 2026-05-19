@@ -30,6 +30,8 @@ func TestSubqueryAliasSchema(t *testing.T) {
 	require := require.New(t)
 
 	db := memory.NewDatabase("test")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
 
 	tableSchema := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "foo", Type: types.Text, Nullable: false, Source: "bar"},
@@ -41,9 +43,10 @@ func TestSubqueryAliasSchema(t *testing.T) {
 		{Name: "baz", Type: types.Text, Nullable: false, Source: "alias"},
 	})
 
-	table := memory.NewTable(sql.NewEmptyContext(), db, "bar", tableSchema, nil)
+	table := memory.NewTable(ctx, db, "bar", tableSchema, nil)
 
 	subquery := plan.NewProject(
+		ctx,
 		[]sql.Expression{
 			expression.NewGetField(0, types.Text, "foo", false),
 			expression.NewGetField(1, types.Text, "baz", false),
@@ -53,6 +56,6 @@ func TestSubqueryAliasSchema(t *testing.T) {
 
 	require.Equal(
 		subquerySchema.Schema,
-		plan.NewSubqueryAlias("alias", "", subquery).Schema(sql.NewEmptyContext()),
+		plan.NewSubqueryAlias("alias", "", subquery).Schema(ctx),
 	)
 }

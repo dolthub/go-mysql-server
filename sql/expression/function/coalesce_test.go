@@ -17,7 +17,6 @@ package function
 import (
 	"testing"
 
-	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -97,7 +96,7 @@ func TestCoalesce(t *testing.T) {
 			name: "coalesce(int(1), decimal(2.0), string('3'))",
 			input: []sql.Expression{
 				expression.NewLiteral(1, types.Int32),
-				expression.NewLiteral(decimal.NewFromFloat(2.0), types.MustCreateDecimalType(10, 0)),
+				expression.NewLiteral(types.DecimalFromFloat64(2.0), types.MustCreateDecimalType(10, 0)),
 				expression.NewLiteral("3", types.LongText),
 			},
 			expected: "1",
@@ -110,7 +109,7 @@ func TestCoalesce(t *testing.T) {
 				expression.NewLiteral(1, types.Int32),
 				expression.NewLiteral(2, types.Uint32),
 			},
-			expected: decimal.New(1, 0),
+			expected: types.DecimalFromInt64(1),
 			typ:      types.MustCreateDecimalType(20, 0),
 			nullable: false,
 		},
@@ -120,7 +119,7 @@ func TestCoalesce(t *testing.T) {
 				expression.NewLiteral(1, types.Int32),
 				expression.NewLiteral(2, types.Uint32),
 			},
-			expected: decimal.New(1, 0),
+			expected: types.DecimalFromInt64(1),
 			typ:      types.MustCreateDecimalType(20, 0),
 			nullable: false,
 		},
@@ -178,7 +177,7 @@ func TestCoalesce(t *testing.T) {
 				expression.NewLiteral(1, types.NewSystemIntType("int1", 0, 10, false)),
 				expression.NewLiteral(2, types.NewSystemUintType("int2", 0, 10)),
 			},
-			expected: decimal.New(1, 0),
+			expected: types.DecimalFromInt64(1),
 			typ:      types.MustCreateDecimalType(20, 0),
 			nullable: false,
 		},

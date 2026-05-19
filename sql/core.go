@@ -26,7 +26,7 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/shopspring/decimal"
+	"github.com/cockroachdb/apd/v3"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql/values"
@@ -184,6 +184,13 @@ type OpaqueNode interface {
 	Opaque() bool
 }
 
+func IsOpaque(n Node) bool {
+	if o, ok := n.(OpaqueNode); ok {
+		return o.Opaque()
+	}
+	return false
+}
+
 // Projector is a node that projects expressions for parent nodes to consume (i.e. GroupBy, Window, Project).
 type Projector interface {
 	// ProjectedExprs returns the list of expressions projected by this node.
@@ -329,7 +336,7 @@ func ConvertToBool(ctx *Context, v interface{}) (bool, error) {
 			return false, nil
 		}
 		return bFloat != 0, nil
-	case decimal.Decimal:
+	case *apd.Decimal:
 		return !b.IsZero(), nil
 	case nil:
 		return false, fmt.Errorf("unable to cast nil to bool")

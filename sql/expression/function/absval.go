@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/mysql"
-	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -103,8 +103,9 @@ func (t *AbsVal) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		} else {
 			return x, nil
 		}
-	case decimal.Decimal:
-		return x.Abs(), nil
+	case *apd.Decimal:
+		res := new(apd.Decimal)
+		return res.Abs(x), nil
 	case bool:
 		if x {
 			return 1, nil

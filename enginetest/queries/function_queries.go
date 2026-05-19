@@ -59,6 +59,18 @@ var FunctionQueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "SELECT TRUNCATE(122.00,3)",
+		Expected: []sql.Row{
+			{"122.00"},
+		},
+	},
+	{
+		Query: "SELECT TRUNCATE(122.2230000000000000000000000000054871,45)",
+		Expected: []sql.Row{
+			{"122.223000000000000000000000000005"},
+		},
+	},
+	{
 		Query: "SELECT TRUNCATE(10.28*100,0)",
 		Expected: []sql.Row{
 			{"1028"},

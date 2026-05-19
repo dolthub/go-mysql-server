@@ -91,15 +91,14 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 		case jp.Op.IsInner():
 			// arbitrary +1 penalty, prefer lookup
 			return (lBest*rBest+1)*seqIOCostFactor + (lBest*rBest)*cpuCostFactor, nil
-		case jp.Op.IsDegenerate():
-			return ((lBest*rBest)*seqIOCostFactor + (lBest*rBest)*cpuCostFactor) * degeneratePenalty, nil
 		case jp.Op.IsHash():
 			if jp.Op.IsPartial() {
 				cost := lBest * (rBest / 2.0) * (seqIOCostFactor + cpuCostFactor)
 				return cost * .5, nil
 			}
 			return lBest*(seqIOCostFactor+cpuCostFactor) + float64(rBest)*(seqIOCostFactor+memCostFactor) + selfJoinCard*cpuCostFactor, nil
-
+		case jp.Op.IsCross():
+			return ((lBest*rBest)*seqIOCostFactor + (lBest*rBest)*cpuCostFactor) * degeneratePenalty, nil
 		case jp.Op.IsLateral():
 			return (lBest*rBest-1)*seqIOCostFactor + (lBest*rBest)*cpuCostFactor, nil
 

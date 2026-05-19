@@ -19,7 +19,7 @@ import (
 	"math"
 	"strings"
 
-	"github.com/shopspring/decimal"
+	"github.com/cockroachdb/apd/v3"
 	"gopkg.in/src-d/go-errors.v1"
 )
 
@@ -69,10 +69,12 @@ func ceil(val interface{}) interface{} {
 		return float32(math.Ceil(float64(v)))
 	case float64:
 		return math.Ceil(v)
-	case decimal.Decimal:
-		return v.Ceil()
+	case *apd.Decimal:
+		newVal := new(apd.Decimal)
+		_, _ = DecimalCtx.Ceil(newVal, v)
+		return newVal
 	case string:
-		dec, err := decimal.NewFromString(v)
+		dec, _, err := apd.NewFromString(v)
 		if err != nil {
 			return v
 		}
@@ -90,16 +92,19 @@ func floor(val interface{}) interface{} {
 		return float32(math.Floor(float64(v)))
 	case float64:
 		return math.Floor(v)
-	case decimal.Decimal:
-		return v.Floor()
+	case *apd.Decimal:
+		newVal := new(apd.Decimal)
+		_, _ = DecimalCtx.Floor(newVal, v)
+		return newVal
 	case string:
-		dec, err := decimal.NewFromString(v)
+		dec, _, err := apd.NewFromString(v)
 		if err != nil {
 			return v
 		}
 		f := floor(dec)
 		// maintain the input type, rather than converting to decimal
-		return f.(decimal.Decimal).String()
+		d := f.(*apd.Decimal)
+		return d.Text('f')
 	case []byte:
 		return floor(string(v))
 	default:
@@ -133,8 +138,13 @@ func (b *MySQLIndexBuilder) Equals(ctx *Context, colExpr string, keyType Type, k
 					potentialRanges[i] = EmptyRangeColumnExpr(colTyp)
 					continue
 				}
-			case decimal.Decimal:
-				if !k.Equal(decimal.NewFromInt(k.IntPart())) {
+			case *apd.Decimal:
+				kInt, err := DecimalRound(k, 0)
+				if err != nil {
+					b.err = err
+					return b
+				}
+				if k.Cmp(kInt) != 0 {
 					potentialRanges[i] = EmptyRangeColumnExpr(colTyp)
 					continue
 				}
@@ -212,8 +222,13 @@ func (b *MySQLIndexBuilder) In(ctx *Context, colExpr string, keyTypes []Type, ke
 					potentialRanges[i] = EmptyRangeColumnExpr(colTyp)
 					continue
 				}
-			case decimal.Decimal:
-				if !k.Equal(decimal.NewFromInt(k.IntPart())) {
+			case *apd.Decimal:
+				kInt, err := DecimalRound(k, 0)
+				if err != nil {
+					b.err = err
+					return b
+				}
+				if k.Cmp(kInt) != 0 {
 					potentialRanges[i] = EmptyRangeColumnExpr(colTyp)
 					continue
 				}
@@ -261,8 +276,13 @@ func (b *MySQLIndexBuilder) NotEquals(ctx *Context, colExpr string, keyType Type
 			b.updateCol(ctx, colExpr, NotNullRangeColumnExpr(colTyp))
 			return b
 		}
-	case decimal.Decimal:
-		if !k.Equal(decimal.NewFromInt(k.IntPart())) {
+	case *apd.Decimal:
+		kInt, err := DecimalRound(k, 0)
+		if err != nil {
+			b.err = err
+			return b
+		}
+		if k.Cmp(kInt) != 0 {
 			b.updateCol(ctx, colExpr, NotNullRangeColumnExpr(colTyp))
 			return b
 		}
@@ -378,8 +398,8 @@ func (b *MySQLIndexBuilder) GreaterOrEqual(ctx *Context, colExpr string, keyType
 		switch key.(type) {
 		case float32, float64:
 			exclude = key != newKey
-		case decimal.Decimal:
-			exclude = !key.(decimal.Decimal).Equals(newKey.(decimal.Decimal))
+		case *apd.Decimal:
+			exclude = key.(*apd.Decimal).Cmp(newKey.(*apd.Decimal)) != 0
 		}
 		key = newKey
 	}
@@ -458,8 +478,8 @@ func (b *MySQLIndexBuilder) LessOrEqual(ctx *Context, colExpr string, keyType Ty
 		switch key.(type) {
 		case float32, float64:
 			exclude = key != newKey
-		case decimal.Decimal:
-			exclude = !key.(decimal.Decimal).Equals(newKey.(decimal.Decimal))
+		case *apd.Decimal:
+			exclude = key.(*apd.Decimal).Cmp(newKey.(*apd.Decimal)) != 0
 		}
 		key = newKey
 	}
@@ -718,8 +738,8 @@ func (b *EqualityIndexBuilder) AddEquality(ctx *Context, colIdx int, k interface
 				b.empty = true
 				return nil
 			}
-		case decimal.Decimal:
-			if !f.(decimal.Decimal).Equals(c.(decimal.Decimal)) {
+		case *apd.Decimal:
+			if f.(*apd.Decimal).Cmp(c.(*apd.Decimal)) != 0 {
 				b.empty = true
 				return nil
 			}

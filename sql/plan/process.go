@@ -489,8 +489,7 @@ func IsShowNode(node sql.Node) bool {
 	}
 }
 
-// IsNoRowNode returns whether this are node interacts only with schema and the catalog, not with any table
-// rows.
+// IsNoRowNode returns whether this node interacts only with schema and the catalog, not with any table rows.
 func IsNoRowNode(node sql.Node) bool {
 	return IsDDLNode(node) || IsShowNode(node)
 }

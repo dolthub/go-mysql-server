@@ -148,10 +148,13 @@ func collectRows(t *testing.T, ctx *sql.Context, node sql.Node) []sql.Row {
 func TestIsUnary(t *testing.T) {
 	require := require.New(t)
 	db := memory.NewDatabase("test")
-	table := memory.NewTable(sql.NewEmptyContext(), db.BaseDatabase, "foo", sql.PrimaryKeySchema{}, nil)
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+	table := memory.NewTable(ctx, db.BaseDatabase, "foo", sql.PrimaryKeySchema{}, nil)
 
-	require.True(plan.IsUnary(plan.NewFilter(nil, plan.NewResolvedTable(table, nil, nil))))
+	require.True(plan.IsUnary(plan.NewFilter(ctx, nil, plan.NewResolvedTable(table, nil, nil))))
 	require.False(plan.IsUnary(plan.NewCrossJoin(
+		ctx,
 		plan.NewResolvedTable(table, nil, nil),
 		plan.NewResolvedTable(table, nil, nil),
 	)))
@@ -160,10 +163,13 @@ func TestIsUnary(t *testing.T) {
 func TestIsBinary(t *testing.T) {
 	require := require.New(t)
 	db := memory.NewDatabase("test")
-	table := memory.NewTable(sql.NewEmptyContext(), db.BaseDatabase, "foo", sql.PrimaryKeySchema{}, nil)
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+	table := memory.NewTable(ctx, db.BaseDatabase, "foo", sql.PrimaryKeySchema{}, nil)
 
-	require.False(plan.IsBinary(plan.NewFilter(nil, plan.NewResolvedTable(table, nil, nil))))
+	require.False(plan.IsBinary(plan.NewFilter(ctx, nil, plan.NewResolvedTable(table, nil, nil))))
 	require.True(plan.IsBinary(plan.NewCrossJoin(
+		ctx,
 		plan.NewResolvedTable(table, nil, nil),
 		plan.NewResolvedTable(table, nil, nil),
 	)))

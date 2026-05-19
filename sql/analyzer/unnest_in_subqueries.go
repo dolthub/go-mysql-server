@@ -166,7 +166,7 @@ func unnestInSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 					comment = c.Comment()
 				}
 				unnested = true
-				newJoin := plan.NewJoin(ret, newSubq, m.op, filter)
+				newJoin := plan.NewJoin(ctx, ret, newSubq, m.op, filter)
 				ret = newJoin.WithComment(comment)
 			}
 
@@ -176,7 +176,7 @@ func unnestInSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 			if len(newFilters) == len(filters) {
 				return n, transform.SameTree, nil
 			}
-			return plan.NewFilter(expression.JoinAnd(newFilters...), ret), transform.NewTree, nil
+			return plan.NewFilter(ctx, expression.JoinAnd(newFilters...), ret), transform.NewTree, nil
 		})
 		if err != nil {
 			return n, transform.SameTree, err

@@ -32,6 +32,7 @@ import (
 func TestJoinOrderBuilder(t *testing.T) {
 	db := memory.NewDatabase("test")
 	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
 
 	tests := []struct {
 		in               sql.Node
@@ -42,8 +43,11 @@ func TestJoinOrderBuilder(t *testing.T) {
 		{
 			name: "inner joins",
 			in: plan.NewInnerJoin(
+				ctx,
 				plan.NewInnerJoin(
+					ctx,
 					plan.NewInnerJoin(
+						ctx,
 						tableNode(db, "a"),
 						tableNode(db, "b"),
 						newEq("a.x = b.x"),
@@ -75,14 +79,19 @@ func TestJoinOrderBuilder(t *testing.T) {
 		{
 			name: "non-inner joins",
 			in: plan.NewInnerJoin(
+				ctx,
 				plan.NewInnerJoin(
+					ctx,
 					plan.NewLeftOuterJoin(
+						ctx,
 						tableNode(db, "a"),
 						tableNode(db, "b"),
 						newEq("a.x = b.x"),
 					),
 					plan.NewLeftOuterJoin(
+						ctx,
 						plan.NewFullOuterJoin(
+							ctx,
 							tableNode(db, "c"),
 							tableNode(db, "d"),
 							newEq("c.x = d.x"),
@@ -93,6 +102,7 @@ func TestJoinOrderBuilder(t *testing.T) {
 					newEq("a.x = e.x"),
 				),
 				plan.NewInnerJoin(
+					ctx,
 					tableNode(db, "f"),
 					tableNode(db, "g"),
 					newEq("f.x = g.x"),
@@ -134,7 +144,9 @@ func TestJoinOrderBuilder(t *testing.T) {
 			name: "test fast reordering algorithm",
 			// Optimized plan appears as G11 - (innerjoin 1 12)
 			in: plan.NewInnerJoin(
+				ctx,
 				plan.NewCrossJoin(
+					ctx,
 					tableNode(db, "a"),
 					tableNode(db, "c"),
 				),
@@ -156,12 +168,15 @@ func TestJoinOrderBuilder(t *testing.T) {
 			name: "test fast reordering algorithm on bushy join",
 			// Optimized plan appears as G16: (innerjoin 7 17)
 			in: plan.NewInnerJoin(
+				ctx,
 				plan.NewInnerJoin(
+					ctx,
 					tableNode(db, "c"),
 					tableNode(db, "d"),
 					newEq("c.x = d.z"),
 				),
 				plan.NewInnerJoin(
+					ctx,
 					tableNode(db, "a"),
 					tableNode(db, "b"),
 					newEq("a.x = b.z"),
@@ -201,6 +216,7 @@ func newContext(provider *memory.DbProvider) *sql.Context {
 func TestJoinOrderBuilder_populateSubgraph(t *testing.T) {
 	db := memory.NewDatabase("test")
 	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
 
 	tests := []struct {
 		name     string
@@ -210,10 +226,13 @@ func TestJoinOrderBuilder_populateSubgraph(t *testing.T) {
 		{
 			name: "cross join",
 			join: plan.NewCrossJoin(
+				ctx,
 				tableNode(db, "a"),
 				plan.NewInnerJoin(
+					ctx,
 					tableNode(db, "b"),
 					plan.NewLeftOuterJoin(
+						ctx,
 						tableNode(db, "c"),
 						tableNode(db, "d"),
 						newEq("c.x=d.x"),
@@ -234,10 +253,13 @@ func TestJoinOrderBuilder_populateSubgraph(t *testing.T) {
 		{
 			name: "right deep left join",
 			join: plan.NewInnerJoin(
+				ctx,
 				tableNode(db, "a"),
 				plan.NewInnerJoin(
+					ctx,
 					tableNode(db, "b"),
 					plan.NewLeftOuterJoin(
+						ctx,
 						tableNode(db, "c"),
 						tableNode(db, "d"),
 						newEq("c.x=d.x"),
@@ -263,12 +285,15 @@ func TestJoinOrderBuilder_populateSubgraph(t *testing.T) {
 		{
 			name: "bushy left joins",
 			join: plan.NewLeftOuterJoin(
+				ctx,
 				plan.NewLeftOuterJoin(
+					ctx,
 					tableNode(db, "a"),
 					tableNode(db, "b"),
 					newEq("a.x=b.x"),
 				),
 				plan.NewLeftOuterJoin(
+					ctx,
 					tableNode(db, "c"),
 					tableNode(db, "d"),
 					newEq("c.x=d.x"),
@@ -294,7 +319,9 @@ func TestJoinOrderBuilder_populateSubgraph(t *testing.T) {
 			// ON B.x = C.x
 			name: "degenerate inner join",
 			join: plan.NewLeftOuterJoin(
+				ctx,
 				plan.NewCrossJoin(
+					ctx,
 					tableNode(db, "a"),
 					tableNode(db, "b"),
 				),
@@ -316,12 +343,15 @@ func TestJoinOrderBuilder_populateSubgraph(t *testing.T) {
 			// ON A.x = C.x
 			name: "degenerate inner join",
 			join: plan.NewFullOuterJoin(
+				ctx,
 				plan.NewInnerJoin(
+					ctx,
 					tableNode(db, "a"),
 					tableNode(db, "b"),
 					expression.NewLiteral(true, types.Boolean),
 				),
 				plan.NewInnerJoin(
+					ctx,
 					tableNode(db, "c"),
 					tableNode(db, "d"),
 					expression.NewLiteral(true, types.Boolean),
@@ -347,7 +377,9 @@ func TestJoinOrderBuilder_populateSubgraph(t *testing.T) {
 			// note: left join is the right child
 			name: "semi join",
 			join: plan.NewSemiJoin(
+				ctx,
 				plan.NewLeftOuterJoin(
+					ctx,
 					tableNode(db, "b"),
 					tableNode(db, "c"),
 					newEq("b.x=c.x"),
@@ -591,6 +623,7 @@ func TestAssociativeTransforms(t *testing.T) {
 func TestEnsureClosure(t *testing.T) {
 	db := memory.NewDatabase("test")
 	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
 
 	tests := []struct {
 		in       sql.Node
@@ -600,8 +633,11 @@ func TestEnsureClosure(t *testing.T) {
 		{
 			name: "inner joins",
 			in: plan.NewInnerJoin(
+				ctx,
 				plan.NewInnerJoin(
+					ctx,
 					plan.NewInnerJoin(
+						ctx,
 						tableNode(db, "a"),
 						tableNode(db, "b"),
 						newEq("a.x = b.x"),
@@ -630,8 +666,11 @@ func TestEnsureClosure(t *testing.T) {
 		{
 			name: "left joins",
 			in: plan.NewLeftOuterJoin(
+				ctx,
 				plan.NewInnerJoin(
+					ctx,
 					plan.NewInnerJoin(
+						ctx,
 						tableNode(db, "a"),
 						tableNode(db, "b"),
 						newEq("a.x = b.x"),
@@ -651,8 +690,11 @@ func TestEnsureClosure(t *testing.T) {
 		{
 			name: "left join equivalence doesn't hold",
 			in: plan.NewLeftOuterJoin(
+				ctx,
 				plan.NewInnerJoin(
+					ctx,
 					plan.NewInnerJoin(
+						ctx,
 						tableNode(db, "a"),
 						tableNode(db, "b"),
 						newEq("a.x = b.x"),

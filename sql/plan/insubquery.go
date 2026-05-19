@@ -28,6 +28,7 @@ import (
 // plan node than an expression in its evaluation).
 type InSubquery struct {
 	expression.BinaryExpressionStub
+	ctx *sql.Context
 }
 
 var _ sql.Expression = (*InSubquery)(nil)
@@ -44,8 +45,8 @@ func (*InSubquery) CollationCoercibility(ctx *sql.Context) (collation sql.Collat
 }
 
 // NewInSubquery creates an InSubquery expression.
-func NewInSubquery(left sql.Expression, right sql.Expression) *InSubquery {
-	return &InSubquery{expression.BinaryExpressionStub{LeftChild: left, RightChild: right}}
+func NewInSubquery(ctx *sql.Context, left sql.Expression, right sql.Expression) *InSubquery {
+	return &InSubquery{expression.BinaryExpressionStub{LeftChild: left, RightChild: right}, ctx}
 }
 
 var nilKey, _ = hash.HashOf(nil, nil, sql.NewRow(nil))
@@ -132,7 +133,7 @@ func (in *InSubquery) WithChildren(ctx *sql.Context, children ...sql.Expression)
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(in, len(children), 2)
 	}
-	return NewInSubquery(children[0], children[1]), nil
+	return NewInSubquery(ctx, children[0], children[1]), nil
 }
 
 // Describe implements the sql.Describable interface
@@ -147,10 +148,7 @@ func (in *InSubquery) Describe(ctx *sql.Context, options sql.DescribeOptions) st
 
 // String implements the fmt.Stringer interface
 func (in *InSubquery) String() string {
-	// To maintain compatibility with fmt.Stringer we have to use an empty context, but this will fail in any case that
-	// requires a context to determine a string (such as an integrator using the context to contain type information).
-	ctx := sql.NewEmptyContext()
-	return in.Describe(ctx, sql.DescribeOptions{
+	return in.Describe(in.ctx, sql.DescribeOptions{
 		Analyze:   false,
 		Estimates: false,
 		Debug:     false,
@@ -179,6 +177,6 @@ func (in *InSubquery) Dispose(ctx *sql.Context) {
 }
 
 // NewNotInSubquery creates a new NotInSubquery expression.
-func NewNotInSubquery(left sql.Expression, right sql.Expression) sql.Expression {
-	return expression.NewNot(NewInSubquery(left, right))
+func NewNotInSubquery(ctx *sql.Context, left sql.Expression, right sql.Expression) sql.Expression {
+	return expression.NewNot(NewInSubquery(ctx, left, right))
 }

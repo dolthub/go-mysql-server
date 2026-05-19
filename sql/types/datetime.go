@@ -25,9 +25,9 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
-	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -386,13 +386,8 @@ func (t datetimeType) ConvertWithoutRangeCheck(ctx context.Context, v interface{
 			return ZeroTime, nil
 		}
 		return ZeroTime, ErrConvertingToTime.New(v)
-	case decimal.Decimal:
+	case *apd.Decimal:
 		if value.IsZero() {
-			return ZeroTime, nil
-		}
-		return ZeroTime, ErrConvertingToTime.New(v)
-	case decimal.NullDecimal:
-		if value.Valid && value.Decimal.IsZero() {
 			return ZeroTime, nil
 		}
 		return ZeroTime, ErrConvertingToTime.New(v)

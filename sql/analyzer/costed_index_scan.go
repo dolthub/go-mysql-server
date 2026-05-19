@@ -22,8 +22,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/sqltypes"
-	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -115,7 +115,7 @@ func indexSearchableLookup(ctx *sql.Context, n sql.Node, rt sql.TableNode, looku
 	}
 
 	if newFilter != nil {
-		ret = plan.NewFilter(newFilter, ret)
+		ret = plan.NewFilter(ctx, newFilter, ret)
 	}
 
 	if fds != nil && fds.HasMax1Row() && !qFlags.JoinIsSet() && !qFlags.SubqueryIsSet() && lookup.Ranges.Len() == 1 {
@@ -162,7 +162,7 @@ func costedIndexLookup(
 
 	// excluded from tree + not included in index scan => filter above scan
 	if len(filters) > 0 {
-		ret = plan.NewFilter(expression.JoinAnd(filters...), ret)
+		ret = plan.NewFilter(ctx, expression.JoinAnd(filters...), ret)
 	}
 	return ret, transform.NewTree, nil
 }
@@ -332,7 +332,7 @@ func getCostedIndexScan(
 		if matchAgainst.KeyCols.Type == fulltext.KeyType_None {
 			return nil, nil, nil, err
 		}
-		ret = plan.NewStaticIndexedAccessForFullTextTable(rt, lookup, &rowexec.FulltextFilterTable{
+		ret = plan.NewStaticIndexedAccessForFullTextTable(ctx, rt, lookup, &rowexec.FulltextFilterTable{
 			MatchAgainst: matchAgainst,
 			Table:        rt,
 		})
@@ -897,8 +897,12 @@ func inValsToMySQLRangeCollHelper[N cmp.Ordered](ctx *sql.Context, vals []any, t
 			if precise && float64(int(v)) != v {
 				continue
 			}
-		case decimal.Decimal:
-			if precise && !v.Equal(decimal.NewFromInt(v.IntPart())) {
+		case *apd.Decimal:
+			vInt, err := sql.DecimalRound(v, 0)
+			if err != nil {
+				return nil, false
+			}
+			if precise && v.Cmp(vInt) != 0 {
 				continue
 			}
 		default:

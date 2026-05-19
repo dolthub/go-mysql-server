@@ -19,7 +19,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/shopspring/decimal"
+	"github.com/cockroachdb/apd/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -123,7 +123,7 @@ func TestDegrees(t *testing.T) {
 		expected float64
 	}{
 		{"string pi", "3.1415926536", 180.0},
-		{"decimal 2pi", decimal.NewFromFloat(2 * math.Pi), 360.0},
+		{"decimal 2pi", types.DecimalFromFloat64(2 * math.Pi), 360.0},
 		{"float64 pi/2", math.Pi / 2.0, 90.0},
 		{"float32 3*pi/2", float32(3.0 * math.Pi / 2.0), 270.0},
 		{"string truncates", "3.1415926536ABC", 180.0},
@@ -305,8 +305,8 @@ func TestMod(t *testing.T) {
 			mod, err := f.Fn(sql.NewEmptyContext(), expression.NewLiteral(test.left, types.Int32), expression.NewLiteral(test.right, types.Int32))
 			res, err := mod.Eval(nil, nil)
 			assert.NoError(t, err)
-			if r, ok := res.(decimal.Decimal); ok {
-				assert.Equal(t, test.expected, r.StringFixed(r.Exponent()*-1))
+			if r, ok := res.(*apd.Decimal); ok {
+				assert.Equal(t, test.expected, r.Text('f'))
 			} else {
 				assert.Equal(t, test.expected, res)
 			}
@@ -389,7 +389,7 @@ func TestExp(t *testing.T) {
 		},
 		{
 			name: "decimal 1.1",
-			arg:  expression.NewLiteral(decimal.NewFromFloat(1.1), types.DecimalType_{}),
+			arg:  expression.NewLiteral(types.DecimalFromFloat64(1.1), types.DecimalType_{}),
 			exp:  math.Exp(1.1),
 		},
 		{
@@ -399,7 +399,7 @@ func TestExp(t *testing.T) {
 		},
 		{
 			name: "decimal is -12.34",
-			arg:  expression.NewLiteral(decimal.NewFromFloat(-12.34), types.DecimalType_{}),
+			arg:  expression.NewLiteral(types.DecimalFromFloat64(-12.34), types.DecimalType_{}),
 			exp:  math.Exp(-12.34),
 		},
 		{

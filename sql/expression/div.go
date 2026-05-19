@@ -17,12 +17,11 @@ package expression
 import (
 	"fmt"
 	"math"
-	"strconv"
 	"strings"
 	"time"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
-	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -126,10 +125,10 @@ func (d *Div) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Decimals must be rounded
-	if res, ok := result.(decimal.Decimal); ok {
+	if res, ok := result.(*apd.Decimal); ok {
 		if isOutermostArithmeticOp(d, d.ops) {
 			finalScale, _ := getFinalScale(ctx, row, d, 0)
-			return res.Round(finalScale), nil
+			return sql.DecimalRound(res, finalScale)
 		}
 	}
 
@@ -150,10 +149,10 @@ func (d *Div) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, interfa
 	// is used to calculate the scale of the final result. If the value is GetField of decimal type column
 	// the decimal value evaluated does not always match the scale of column type definition
 	if dt, ok := d.LeftChild.Type(ctx).(sql.DecimalType); ok {
-		if dVal, ok := lval.(decimal.Decimal); ok {
+		if dVal, ok := lval.(*apd.Decimal); ok {
 			ts := int32(dt.Scale())
-			if ts > dVal.Exponent()*-1 {
-				lval, err = decimal.NewFromString(dVal.StringFixed(ts))
+			if ts > dVal.Exponent*-1 {
+				lval, err = sql.DecimalRound(dVal, ts)
 				if err != nil {
 					return nil, nil, err
 				}
@@ -216,15 +215,15 @@ func (d *Div) div(ctx *sql.Context, lval, rval interface{}) (interface{}, error)
 			}
 			return l / r, nil
 		}
-	case decimal.Decimal:
+	case *apd.Decimal:
 		switch r := rval.(type) {
-		case decimal.Decimal:
-			if r.Equal(decimal.NewFromInt(0)) {
+		case *apd.Decimal:
+			if r.IsZero() {
 				arithmeticWarning(ctx, ERDivisionByZero, "Division by 0")
 				return nil, nil
 			}
 
-			lScale, rScale := -1*l.Exponent(), -1*r.Exponent()
+			lScale, rScale := -1*l.Exponent, -1*r.Exponent
 			inc := int32(math.Ceil(float64(lScale+rScale+divPrecInc) / divIntPrecInc))
 			if lScale != 0 && rScale != 0 {
 				lInc := int32(math.Ceil(float64(lScale) / divIntPrecInc))
@@ -235,12 +234,12 @@ func (d *Div) div(ctx *sql.Context, lval, rval interface{}) (interface{}, error)
 				}
 			}
 			scale := inc * divIntPrecInc
-			l = l.Truncate(scale)
-			r = r.Truncate(scale)
+			l = types.DecimalTruncate(l, scale)
+			r = types.DecimalTruncate(r, scale)
 
 			// give it buffer of 2 additional scale to avoid the result to be rounded
-			res := l.DivRound(r, scale+2)
-			res = res.Truncate(scale)
+			res := types.DecimalDivRound(l, r, scale+2)
+			res = types.DecimalTruncate(res, scale)
 			return res, nil
 		}
 	}
@@ -405,7 +404,7 @@ func convertToDecimalValue(ctx *sql.Context, val interface{}, isTimeType bool) i
 	default:
 	}
 
-	if _, ok := val.(decimal.Decimal); !ok {
+	if _, ok := val.(*apd.Decimal); !ok {
 		p, s := GetPrecisionAndScale(val)
 		if p > types.DecimalTypeMaxPrecision {
 			p = types.DecimalTypeMaxPrecision
@@ -415,11 +414,11 @@ func convertToDecimalValue(ctx *sql.Context, val interface{}, isTimeType bool) i
 		}
 		dtyp, err := types.CreateDecimalType(p, s)
 		if err != nil {
-			val = decimal.Zero
+			val = apd.New(0, 0)
 		}
 		val, _, err = dtyp.Convert(ctx, val)
 		if err != nil {
-			val = decimal.Zero
+			val = apd.New(0, 0)
 		}
 	}
 
@@ -607,14 +606,14 @@ func GetPrecisionAndScale(val interface{}) (uint8, uint8) {
 	switch v := val.(type) {
 	case time.Time:
 		str = fmt.Sprintf("%v", v.In(time.UTC).Format("2006-01-02 15:04:05"))
-	case decimal.Decimal:
-		str = v.StringFixed(v.Exponent() * -1)
+	case *apd.Decimal:
+		str = v.Text('f')
 	case float32:
-		d := decimal.NewFromFloat32(v)
-		str = d.StringFixed(d.Exponent() * -1)
+		d := types.DecimalFromFloat64(float64(v))
+		str = d.Text('f')
 	case float64:
-		d := decimal.NewFromFloat(v)
-		str = d.StringFixed(d.Exponent() * -1)
+		d := types.DecimalFromFloat64(v)
+		str = d.Text('f')
 	default:
 		str = fmt.Sprintf("%v", v)
 	}
@@ -781,27 +780,24 @@ func intDiv(ctx *sql.Context, lval, rval interface{}) (interface{}, error) {
 			res := l / r
 			return int64(math.Floor(res)), nil
 		}
-	case decimal.Decimal:
+	case *apd.Decimal:
 		switch r := rval.(type) {
-		case decimal.Decimal:
-			if r.Equal(decimal.NewFromInt(0)) {
+		case *apd.Decimal:
+			if r.IsZero() {
 				arithmeticWarning(ctx, ERDivisionByZero, "Division by 0")
 				return nil, nil
 			}
 
 			// intDiv operation gets the integer part of the divided value without rounding the result with 0 precision
 			// We get division result with non-zero precision and then truncate it to get integer part without it being rounded
-			divRes := l.DivRound(r, 2).Truncate(0)
-
-			// cannot use IntPart() function of decimal.Decimal package as it returns 0 as undefined value for out of range value
-			// it causes valid result value of 0 to be the same as invalid out of range value of 0. The fraction part
-			// should not be rounded, so truncate the result wih 0 precision.
-			intPart, err := strconv.ParseInt(divRes.String(), 10, 64)
+			divRes := types.DecimalDivRound(l, r, 2)
+			divRes = types.DecimalTruncate(divRes, 0)
+			// The fraction part should not be rounded, so truncate the result wih 0 precision.
+			i, err := divRes.Int64()
 			if err != nil {
-				return nil, ErrIntDivDataOutOfRange.New(l.StringFixed(l.Exponent()), r.StringFixed(r.Exponent()))
+				return nil, ErrIntDivDataOutOfRange.New(l.Text('f'), r.Text('f'))
 			}
-
-			return intPart, nil
+			return i, nil
 		}
 	}
 

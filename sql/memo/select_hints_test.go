@@ -141,10 +141,14 @@ func TestHintParsing(t *testing.T) {
 func TestOrderHintBuilding(t *testing.T) {
 	db := memory.NewDatabase("test")
 	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
 
 	p := plan.NewInnerJoin(
+		ctx,
 		plan.NewInnerJoin(
+			ctx,
 			plan.NewInnerJoin(
+				ctx,
 				tableNode(db, "ab"),
 				tableNode(db, "xy"),
 				newEq("ab.x=xy.x"),

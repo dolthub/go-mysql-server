@@ -196,15 +196,15 @@ func (b *Builder) mergeSetOpSchemas(u *plan.SetOp) sql.Node {
 		res[i], err = b.f.buildConvert(b.ctx, res[i], convertTo, 0, 0)
 
 		// Preserve schema names across the conversion.
-		les[i] = expression.NewAlias(ls[i].Name, les[i])
-		res[i] = expression.NewAlias(rs[i].Name, res[i])
+		les[i] = expression.NewAlias(b.ctx, ls[i].Name, les[i])
+		res[i] = expression.NewAlias(b.ctx, rs[i].Name, res[i])
 	}
 	var ret sql.Node = u
 	if hasdiff {
 		ret, err = u.WithChildren(
 			b.ctx,
-			plan.NewProject(les, u.Left()),
-			plan.NewProject(res, u.Right()),
+			plan.NewProject(b.ctx, les, u.Left()),
+			plan.NewProject(b.ctx, res, u.Right()),
 		)
 		if err != nil {
 			b.handleErr(err)

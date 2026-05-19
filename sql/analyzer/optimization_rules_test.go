@@ -50,6 +50,7 @@ func TestEvalFilter(t *testing.T) {
 					lit(5)),
 			),
 			plan.NewFilter(
+				ctx,
 				eq(
 					expression.NewGetFieldWithTable(0, 0, types.Int64, "", "foo", "bar", false),
 					lit(5)),
@@ -64,6 +65,7 @@ func TestEvalFilter(t *testing.T) {
 				eq(lit(5), lit(5)),
 			),
 			plan.NewFilter(
+				ctx,
 				eq(
 					expression.NewGetFieldWithTable(0, 0, types.Int64, "", "foo", "bar", false),
 					lit(5)),
@@ -103,6 +105,7 @@ func TestEvalFilter(t *testing.T) {
 					lit(5)),
 			),
 			plan.NewFilter(
+				ctx,
 				eq(
 					expression.NewGetFieldWithTable(0, 0, types.Int64, "", "foo", "bar", false),
 					lit(5)),
@@ -117,6 +120,7 @@ func TestEvalFilter(t *testing.T) {
 				eq(lit(5), lit(4)),
 			),
 			plan.NewFilter(
+				ctx,
 				eq(
 					expression.NewGetFieldWithTable(0, 0, types.Int64, "", "foo", "bar", false),
 					lit(5)),
@@ -153,7 +157,7 @@ func TestEvalFilter(t *testing.T) {
 	for _, tt := range testCases {
 		t.Run(tt.filter.String(), func(t *testing.T) {
 			require := require.New(t)
-			node := plan.NewFilter(tt.filter, plan.NewResolvedTable(inner, nil, nil))
+			node := plan.NewFilter(ctx, tt.filter, plan.NewResolvedTable(inner, nil, nil))
 			result, _, err := rule.Apply(ctx, NewDefault(nil), node, nil, DefaultRuleSelector, nil)
 			require.NoError(err)
 			require.Equal(tt.expected, result)

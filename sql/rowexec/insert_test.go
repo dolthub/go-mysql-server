@@ -95,12 +95,10 @@ func TestInsert(t *testing.T) {
 			err:     true,
 		},
 		{
-			// TODO: Postgres possibly allows NaN values for decimals (documentation unclear) but shopspring/decimal
-			//  does not
-			name:    "inserting NaN into Decimal results in error",
-			colType: types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, types.DecimalTypeMaxScale),
-			value:   math.NaN(),
-			err:     true,
+			name:     "inserting NaN into Decimal is okay",
+			colType:  types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, types.DecimalTypeMaxScale),
+			value:    math.NaN(),
+			expected: types.DecimalFromFloat64(math.NaN()),
 		},
 		{
 			// This diverges from MySQL because Infinity values are okay in Postgres

@@ -19,7 +19,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shopspring/decimal"
+	"github.com/cockroachdb/apd/v3"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -335,11 +335,7 @@ func toUnixTimestamp(t time.Time, resType sql.Type) interface{} {
 		for i := 6 - scale; i > 0; i-- {
 			unixMicro /= 10
 		}
-		res := decimal.New(unixMicro, -scale)
-		str := res.String()
-		if str == "" {
-		}
-		return res
+		return apd.New(unixMicro, -scale)
 	}
 	return unixMicro / 1e6
 }

@@ -194,8 +194,7 @@ func NodeWithCtx(ctx *sql.Context, n sql.Node, s SelectorFunc, f CtxFunc) (sql.N
 
 func nodeWithCtxHelper(sqlCtx *sql.Context, c Context, s SelectorFunc, f CtxFunc) (sql.Node, TreeIdentity, error) {
 	node := c.Node
-	_, ok := node.(sql.OpaqueNode)
-	if ok {
+	if sql.IsOpaque(node) {
 		return f(sqlCtx, c)
 	}
 
@@ -251,8 +250,7 @@ func NodeWithPrefixSchema(ctx *sql.Context, n sql.Node, s SelectorFunc, f CtxFun
 
 func transformUpWithPrefixSchemaHelper(sqlCtx *sql.Context, c Context, s SelectorFunc, f CtxFunc) (sql.Node, TreeIdentity, error) {
 	node := c.Node
-	_, ok := node.(sql.OpaqueNode)
-	if ok {
+	if sql.IsOpaque(node) {
 		return f(sqlCtx, c)
 	}
 
@@ -310,8 +308,7 @@ func transformUpWithPrefixSchemaHelper(sqlCtx *sql.Context, c Context, s Selecto
 // Node applies a transformation function to the given tree from the
 // bottom up.
 func Node(ctx *sql.Context, node sql.Node, f NodeFunc) (sql.Node, TreeIdentity, error) {
-	_, ok := node.(sql.OpaqueNode)
-	if ok {
+	if sql.IsOpaque(node) {
 		return f(ctx, node)
 	}
 

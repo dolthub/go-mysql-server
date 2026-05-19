@@ -182,7 +182,7 @@ func (b *Builder) buildNameConst(fromScope *scope, f *ast.FuncExpr) sql.Expressi
 	} else {
 		aliasStr = aLit.String()
 	}
-	return expression.NewAlias(aliasStr, vLit)
+	return expression.NewAlias(b.ctx, aliasStr, vLit)
 }
 
 func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []sql.Expression) *scope {
@@ -265,7 +265,7 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 	outScope.node = gb
 
 	if len(aliases) > 0 {
-		outScope.node = plan.NewProject(append(selectGfs, aliases...), outScope.node).WithAliasDeps(aliasDeps)
+		outScope.node = plan.NewProject(b.ctx, append(selectGfs, aliases...), outScope.node).WithAliasDeps(aliasDeps)
 	}
 	return outScope
 }
@@ -326,7 +326,7 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 		aggType = types.Float64
 	}
 
-	aggName := strings.ToLower(plan.AliasSubqueryString(agg))
+	aggName := strings.ToLower(plan.AliasSubqueryString(b.ctx, agg))
 	if id, ok := gb.outScope.getExpr(aggName, true); ok {
 		// if we've already computed use reference here
 		gf := expression.NewGetFieldWithTable(int(id), 0, aggType, "", "", aggName, agg.IsNullable(b.ctx))
@@ -369,7 +369,7 @@ func (b *Builder) newAggregation(e *ast.FuncExpr, name string, args []sql.Expres
 			b.handleErr(err)
 		}
 
-		newInst, err := f.NewInstance(nil, args)
+		newInst, err := f.NewInstance(b.ctx, args)
 		if err != nil {
 			b.handleErr(err)
 		}
@@ -514,7 +514,7 @@ func (b *Builder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.E
 
 	// todo store ref to aggregate
 	agg := aggregation.NewGroupConcat(e.Distinct, sortFields, separatorS, args, int(groupConcatMaxLen))
-	aggName := strings.ToLower(plan.AliasSubqueryString(agg))
+	aggName := strings.ToLower(plan.AliasSubqueryString(b.ctx, agg))
 	col := scopeColumn{col: aggName, scalar: agg, typ: agg.Type(b.ctx), nullable: agg.IsNullable(b.ctx)}
 
 	id := gb.outScope.newColumn(col)
@@ -572,7 +572,7 @@ func (b *Builder) buildOrderedInjectedExpr(inScope *scope, e *ast.OrderedInjecte
 		b.handleErr(fmt.Errorf("expected sql.Aggregation, got %T", expr))
 	}
 
-	aggName := strings.ToLower(plan.AliasSubqueryString(agg))
+	aggName := strings.ToLower(plan.AliasSubqueryString(b.ctx, agg))
 	col := scopeColumn{col: aggName, scalar: agg, typ: agg.Type(b.ctx), nullable: agg.IsNullable(b.ctx)}
 	id := gb.outScope.newColumn(col)
 
@@ -629,7 +629,7 @@ func (b *Builder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, 
 			b.handleErr(err)
 		}
 
-		newInst, err := f.NewInstance(nil, args)
+		newInst, err := f.NewInstance(b.ctx, args)
 
 		win, ok = newInst.(sql.WindowAdaptableExpression)
 		if !ok {
@@ -719,7 +719,7 @@ func (b *Builder) buildWindow(fromScope, projScope *scope) *scope {
 	fromScope.node = window
 
 	if len(aliases) > 0 {
-		outScope.node = plan.NewProject(append(selectGfs, aliases...), outScope.node)
+		outScope.node = plan.NewProject(b.ctx, append(selectGfs, aliases...), outScope.node)
 	}
 
 	return outScope
@@ -940,7 +940,7 @@ func (b *Builder) buildInnerProj(fromScope, projScope *scope) *scope {
 	proj = append(proj[aliasCnt:], proj[:aliasCnt]...)
 
 	if len(proj) > 0 {
-		outScope.node = plan.NewProject(proj, outScope.node)
+		outScope.node = plan.NewProject(b.ctx, proj, outScope.node)
 	}
 
 	return outScope

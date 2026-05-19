@@ -2546,7 +2546,7 @@ WHERE
 	       rn.WNUNU IS NULL AND rn.HHVLX IS NULL
 	`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [sn.id:5!null->DRIWM:0, concat(oe56m.TW55N:10!null,FDNCN (longtext),cgfrz.TW55N:12!null)->GRVSE:0, skpm6.id:0!null->JIEVY:0, concat(v5say.TW55N:14!null,FDNCN (longtext),fqthf.TW55N:4!null)->ENCM3:0, 1 (decimal(2,1))->OHD3R:99]\n" +
+			" ├─ columns: [sn.id:5!null->DRIWM:0, concat(oe56m.TW55N:10!null,FDNCN (longtext),cgfrz.TW55N:12!null)->GRVSE:0, skpm6.id:0!null->JIEVY:0, concat(v5say.TW55N:14!null,FDNCN (longtext),fqthf.TW55N:4!null)->ENCM3:0, 1.0 (decimal(2,1))->OHD3R:99]\n" +
 			" └─ LeftOuterLookupJoin\n" +
 			"     ├─ Eq\n" +
 			"     │   ├─ rn.HHVLX:16!null\n" +
@@ -18473,7 +18473,7 @@ FROM
 			"     ├─ Project\n" +
 			"     │   ├─ columns: [id:0!null, WNUNU:1!null, HHVLX:2!null, HVHRZ:3!null, YKSSU:4, FHCYT:5]\n" +
 			"     │   └─ Project\n" +
-			"     │       ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0')->id:39, itwml.DRIWM:0!null->WNUNU:0, itwml.JIEVY:1!null->HHVLX:0, 1 (decimal(2,1))->HVHRZ:42, NULL (null)->YKSSU:43, NULL (null)->FHCYT:44]\n" +
+			"     │       ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0')->id:39, itwml.DRIWM:0!null->WNUNU:0, itwml.JIEVY:1!null->HHVLX:0, 1.0 (decimal(2,1))->HVHRZ:42, NULL (null)->YKSSU:43, NULL (null)->FHCYT:44]\n" +
 			"     │       └─ SubqueryAlias\n" +
 			"     │           ├─ name: itwml\n" +
 			"     │           ├─ outerVisibility: false\n" +
@@ -18741,22 +18741,22 @@ WHERE
 			"     │       │                   └─ Table\n" +
 			"     │       │                       ├─ name: THNTS\n" +
 			"     │       │                       └─ columns: [id ixuxu]\n" +
-			"     │       │  ->GXLUB:0, nd.id:11!null->LUEVY:0, nd.XQDYT:20!null->XQDYT:0, (ufc.AMYXQ:3 + 0 (decimal(2,1)))->AMYXQ:0, CASE  WHEN Eq\n" +
+			"     │       │  ->GXLUB:0, nd.id:11!null->LUEVY:0, nd.XQDYT:20!null->XQDYT:0, (ufc.AMYXQ:3 + 0.0 (decimal(2,1)))->AMYXQ:0, CASE  WHEN Eq\n" +
 			"     │       │   ├─ ybbg5.DZLIM:29!null\n" +
 			"     │       │   └─ KTNZ2 (longtext)\n" +
-			"     │       │   THEN (ufc.KTNZ2:4 + 0 (decimal(2,1))) WHEN Eq\n" +
+			"     │       │   THEN (ufc.KTNZ2:4 + 0.0 (decimal(2,1))) WHEN Eq\n" +
 			"     │       │   ├─ ybbg5.DZLIM:29!null\n" +
 			"     │       │   └─ HIID2 (longtext)\n" +
-			"     │       │   THEN (ufc.HIID2:5 + 0 (decimal(2,1))) WHEN Eq\n" +
+			"     │       │   THEN (ufc.HIID2:5 + 0.0 (decimal(2,1))) WHEN Eq\n" +
 			"     │       │   ├─ ybbg5.DZLIM:29!null\n" +
 			"     │       │   └─ SH7TP (longtext)\n" +
-			"     │       │   THEN (ufc.SH7TP:8 + 0 (decimal(2,1))) WHEN Eq\n" +
+			"     │       │   THEN (ufc.SH7TP:8 + 0.0 (decimal(2,1))) WHEN Eq\n" +
 			"     │       │   ├─ ybbg5.DZLIM:29!null\n" +
 			"     │       │   └─ VVKNB (longtext)\n" +
-			"     │       │   THEN (ufc.VVKNB:7 + 0 (decimal(2,1))) WHEN Eq\n" +
+			"     │       │   THEN (ufc.VVKNB:7 + 0.0 (decimal(2,1))) WHEN Eq\n" +
 			"     │       │   ├─ ybbg5.DZLIM:29!null\n" +
 			"     │       │   └─ DN3OQ (longtext)\n" +
-			"     │       │   THEN (ufc.DN3OQ:6 + 0 (decimal(2,1))) ELSE NULL (null) END->OZTQF:0, (ufc.SRZZO:9 + 0 (decimal(2,1)))->Z35GY:0, ufc.id:0!null->KKGN5:0]\n" +
+			"     │       │   THEN (ufc.DN3OQ:6 + 0.0 (decimal(2,1))) ELSE NULL (null) END->OZTQF:0, (ufc.SRZZO:9 + 0.0 (decimal(2,1)))->Z35GY:0, ufc.id:0!null->KKGN5:0]\n" +
 			"     │       └─ Project\n" +
 			"     │           ├─ columns: [ufc.id:0!null, ufc.T4IBQ:1, ufc.ZH72S:2, ufc.AMYXQ:3, ufc.KTNZ2:4, ufc.HIID2:5, ufc.DN3OQ:6, ufc.VVKNB:7, ufc.SH7TP:8, ufc.SRZZO:9, ufc.QZ6VT:10, nd.id:11!null, nd.DKCAJ:12!null, nd.KNG7T:13, nd.TW55N:14!null, nd.QRQXW:15!null, nd.ECXAJ:16!null, nd.FGG57:17, nd.ZH72S:18, nd.FSK67:19!null, nd.XQDYT:20!null, nd.TCE7A:21, nd.IWV2H:22, nd.HPCMS:23!null, nd.N5CC2:24, nd.FHCYT:25, nd.ETAQ7:26, nd.A75X7:27, ybbg5.id:28!null, ybbg5.DZLIM:29!null, ybbg5.F3YUE:30, lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0')->id:40, Subquery\n" +
 			"     │           │   ├─ cacheable: false\n" +
@@ -18789,22 +18789,22 @@ WHERE
 			"     │           │                   └─ Table\n" +
 			"     │           │                       ├─ name: THNTS\n" +
 			"     │           │                       └─ columns: [id ixuxu]\n" +
-			"     │           │  ->GXLUB:0, nd.id:11!null->LUEVY:0, nd.XQDYT:20!null->XQDYT:0, (ufc.AMYXQ:3 + 0 (decimal(2,1)))->AMYXQ:0, CASE  WHEN Eq\n" +
+			"     │           │  ->GXLUB:0, nd.id:11!null->LUEVY:0, nd.XQDYT:20!null->XQDYT:0, (ufc.AMYXQ:3 + 0.0 (decimal(2,1)))->AMYXQ:0, CASE  WHEN Eq\n" +
 			"     │           │   ├─ ybbg5.DZLIM:29!null\n" +
 			"     │           │   └─ KTNZ2 (longtext)\n" +
-			"     │           │   THEN (ufc.KTNZ2:4 + 0 (decimal(2,1))) WHEN Eq\n" +
+			"     │           │   THEN (ufc.KTNZ2:4 + 0.0 (decimal(2,1))) WHEN Eq\n" +
 			"     │           │   ├─ ybbg5.DZLIM:29!null\n" +
 			"     │           │   └─ HIID2 (longtext)\n" +
-			"     │           │   THEN (ufc.HIID2:5 + 0 (decimal(2,1))) WHEN Eq\n" +
+			"     │           │   THEN (ufc.HIID2:5 + 0.0 (decimal(2,1))) WHEN Eq\n" +
 			"     │           │   ├─ ybbg5.DZLIM:29!null\n" +
 			"     │           │   └─ SH7TP (longtext)\n" +
-			"     │           │   THEN (ufc.SH7TP:8 + 0 (decimal(2,1))) WHEN Eq\n" +
+			"     │           │   THEN (ufc.SH7TP:8 + 0.0 (decimal(2,1))) WHEN Eq\n" +
 			"     │           │   ├─ ybbg5.DZLIM:29!null\n" +
 			"     │           │   └─ VVKNB (longtext)\n" +
-			"     │           │   THEN (ufc.VVKNB:7 + 0 (decimal(2,1))) WHEN Eq\n" +
+			"     │           │   THEN (ufc.VVKNB:7 + 0.0 (decimal(2,1))) WHEN Eq\n" +
 			"     │           │   ├─ ybbg5.DZLIM:29!null\n" +
 			"     │           │   └─ DN3OQ (longtext)\n" +
-			"     │           │   THEN (ufc.DN3OQ:6 + 0 (decimal(2,1))) ELSE NULL (null) END->OZTQF:0, (ufc.SRZZO:9 + 0 (decimal(2,1)))->Z35GY:0, ufc.id:0!null->KKGN5:0]\n" +
+			"     │           │   THEN (ufc.DN3OQ:6 + 0.0 (decimal(2,1))) ELSE NULL (null) END->OZTQF:0, (ufc.SRZZO:9 + 0.0 (decimal(2,1)))->Z35GY:0, ufc.id:0!null->KKGN5:0]\n" +
 			"     │           └─ InnerJoin\n" +
 			"     │               ├─ Eq\n" +
 			"     │               │   ├─ nd.ZH72S:18\n" +
@@ -19954,15 +19954,15 @@ INNER JOIN THNTS bs ON cla.id = bs.IXUXU`,
 			"     │       │   └─ Eq\n" +
 			"     │       │       ├─ umf.vaf:16\n" +
 			"     │       │       └─  (longtext)\n" +
-			"     │       │   THEN (umf.vaf:16 + 0 (decimal(2,1))) ELSE NULL (null) END->LT7K6:0, CASE  WHEN NOT\n" +
+			"     │       │   THEN (umf.vaf:16 + 0.0 (decimal(2,1))) ELSE NULL (null) END->LT7K6:0, CASE  WHEN NOT\n" +
 			"     │       │   └─ Eq\n" +
 			"     │       │       ├─ umf.ZROH6:17\n" +
 			"     │       │       └─  (longtext)\n" +
-			"     │       │   THEN (umf.ZROH6:17 + 0 (decimal(2,1))) ELSE NULL (null) END->SPPYD:0, CASE  WHEN NOT\n" +
+			"     │       │   THEN (umf.ZROH6:17 + 0.0 (decimal(2,1))) ELSE NULL (null) END->SPPYD:0, CASE  WHEN NOT\n" +
 			"     │       │   └─ Eq\n" +
 			"     │       │       ├─ umf.QCGTS:18\n" +
 			"     │       │       └─  (longtext)\n" +
-			"     │       │   THEN (umf.QCGTS:18 + 0 (decimal(2,1))) ELSE NULL (null) END->QCGTS:0, umf.id:0!null->TEUJA:0, tj5d2.id:25!null->QQV4M:0, umf.FHCYT:23->FHCYT:0]\n" +
+			"     │       │   THEN (umf.QCGTS:18 + 0.0 (decimal(2,1))) ELSE NULL (null) END->QCGTS:0, umf.id:0!null->TEUJA:0, tj5d2.id:25!null->QQV4M:0, umf.FHCYT:23->FHCYT:0]\n" +
 			"     │       └─ Project\n" +
 			"     │           ├─ columns: [umf.id:0!null, umf.T4IBQ:1, umf.FGG57:2, umf.SSHPJ:3, umf.NLA6O:4, umf.SFJ6L:5, umf.TJPT7:6, umf.ARN5P:7, umf.SYPKF:8, umf.IVFMK:9, umf.IDE43:10, umf.AZ6SP:11, umf.FSDY2:12, umf.XOSD4:13, umf.HMW4H:14, umf.S76OM:15, umf.vaf:16, umf.ZROH6:17, umf.QCGTS:18, umf.LNFM6:19, umf.TVAWL:20, umf.HDLCL:21, umf.BHHW6:22, umf.FHCYT:23, umf.QZ6VT:24, tj5d2.id:25!null, tj5d2.T4IBQ:26!null, tj5d2.V7UFH:27!null, tj5d2.SYPKF:28!null, tj5d2.H4DMT:29!null, tj5d2.SWCQV:30!null, tj5d2.YKSSU:31, tj5d2.FHCYT:32, cla.id:33!null, cla.FTQLQ:34!null, cla.TUXML:35, cla.PAEF5:36, cla.RUCY4:37, cla.TPNJ6:38!null, cla.LBL53:39, cla.NB3QS:40, cla.EO7IV:41, cla.MUHJF:42, cla.FM34L:43, cla.TY5RF:44, cla.ZHTLH:45, cla.NPB7W:46, cla.SX3HH:47, cla.ISBNF:48, cla.YA7YB:49, cla.C5YKB:50, cla.QK7KT:51, cla.FFGE6:52, cla.FIIGJ:53, cla.SH3NC:54, cla.NTENA:55, cla.M4AUB:56, cla.X5AIR:57, cla.SAB6M:58, cla.G5QI5:59, cla.ZVQVD:60, cla.YKSSU:61, cla.FHCYT:62, bs.id:63!null, bs.NFRYN:64!null, bs.IXUXU:65, bs.FHCYT:66, umf.id:0!null->id:0, bs.id:63!null->GXLUB:0, CASE  WHEN NOT\n" +
 			"     │           │   └─ tj5d2.id:25!null IS NULL\n" +
@@ -20052,15 +20052,15 @@ INNER JOIN THNTS bs ON cla.id = bs.IXUXU`,
 			"     │           │   └─ Eq\n" +
 			"     │           │       ├─ umf.vaf:16\n" +
 			"     │           │       └─  (longtext)\n" +
-			"     │           │   THEN (umf.vaf:16 + 0 (decimal(2,1))) ELSE NULL (null) END->LT7K6:0, CASE  WHEN NOT\n" +
+			"     │           │   THEN (umf.vaf:16 + 0.0 (decimal(2,1))) ELSE NULL (null) END->LT7K6:0, CASE  WHEN NOT\n" +
 			"     │           │   └─ Eq\n" +
 			"     │           │       ├─ umf.ZROH6:17\n" +
 			"     │           │       └─  (longtext)\n" +
-			"     │           │   THEN (umf.ZROH6:17 + 0 (decimal(2,1))) ELSE NULL (null) END->SPPYD:0, CASE  WHEN NOT\n" +
+			"     │           │   THEN (umf.ZROH6:17 + 0.0 (decimal(2,1))) ELSE NULL (null) END->SPPYD:0, CASE  WHEN NOT\n" +
 			"     │           │   └─ Eq\n" +
 			"     │           │       ├─ umf.QCGTS:18\n" +
 			"     │           │       └─  (longtext)\n" +
-			"     │           │   THEN (umf.QCGTS:18 + 0 (decimal(2,1))) ELSE NULL (null) END->QCGTS:0, umf.id:0!null->TEUJA:0, tj5d2.id:25!null->QQV4M:0, umf.FHCYT:23->FHCYT:0]\n" +
+			"     │           │   THEN (umf.QCGTS:18 + 0.0 (decimal(2,1))) ELSE NULL (null) END->QCGTS:0, umf.id:0!null->TEUJA:0, tj5d2.id:25!null->QQV4M:0, umf.FHCYT:23->FHCYT:0]\n" +
 			"     │           └─ LookupJoin\n" +
 			"     │               ├─ LookupJoin\n" +
 			"     │               │   ├─ LeftOuterJoin\n" +
@@ -21386,7 +21386,7 @@ WHERE
 			"     │                           │               └─ Table\n" +
 			"     │                           │                   ├─ name: SFEGG\n" +
 			"     │                           │                   └─ columns: [id no52d vyo5e dkcaj adurz fhcyt]\n" +
-			"     │                           │  ->OVE3E:0, uct.id:0!null->NRURT:0, i7hcr.id:13!null->OCA7E:0, NULL (null)->XMM6Q:83, uct.V5DPX:4->V5DPX:0, (uct.IDPK7:6 + 0 (decimal(2,1)))->S3Q3Y:0, uct.ZRV3B:8->ZRV3B:0, CASE  WHEN NOT\n" +
+			"     │                           │  ->OVE3E:0, uct.id:0!null->NRURT:0, i7hcr.id:13!null->OCA7E:0, NULL (null)->XMM6Q:83, uct.V5DPX:4->V5DPX:0, (uct.IDPK7:6 + 0.0 (decimal(2,1)))->S3Q3Y:0, uct.ZRV3B:8->ZRV3B:0, CASE  WHEN NOT\n" +
 			"     │                           │   └─ Eq\n" +
 			"     │                           │       ├─ uct.FHCYT:11\n" +
 			"     │                           │       └─ N/A (longtext)\n" +
@@ -21499,7 +21499,7 @@ WHERE
 			"     │                               │               └─ Table\n" +
 			"     │                               │                   ├─ name: SFEGG\n" +
 			"     │                               │                   └─ columns: [id no52d vyo5e dkcaj adurz fhcyt]\n" +
-			"     │                               │  ->OVE3E:0, uct.id:0!null->NRURT:0, i7hcr.id:13!null->OCA7E:0, NULL (null)->XMM6Q:83, uct.V5DPX:4->V5DPX:0, (uct.IDPK7:6 + 0 (decimal(2,1)))->S3Q3Y:0, uct.ZRV3B:8->ZRV3B:0, CASE  WHEN NOT\n" +
+			"     │                               │  ->OVE3E:0, uct.id:0!null->NRURT:0, i7hcr.id:13!null->OCA7E:0, NULL (null)->XMM6Q:83, uct.V5DPX:4->V5DPX:0, (uct.IDPK7:6 + 0.0 (decimal(2,1)))->S3Q3Y:0, uct.ZRV3B:8->ZRV3B:0, CASE  WHEN NOT\n" +
 			"     │                               │   └─ Eq\n" +
 			"     │                               │       ├─ uct.FHCYT:11\n" +
 			"     │                               │       └─ N/A (longtext)\n" +
@@ -21953,7 +21953,7 @@ WHERE
 			"     │       │               └─ Table\n" +
 			"     │       │                   ├─ name: SFEGG\n" +
 			"     │       │                   └─ columns: [id no52d vyo5e dkcaj adurz fhcyt]\n" +
-			"     │       │  ->OVE3E:0, NULL (null)->NRURT:79, NULL (null)->OCA7E:80, tvtjs.id:0!null->XMM6Q:0, tvtjs.V5DPX:4!null->V5DPX:0, (tvtjs.IDPK7:6!null + 0 (decimal(2,1)))->S3Q3Y:0, tvtjs.ZRV3B:8!null->ZRV3B:0, tvtjs.FHCYT:12->FHCYT:0]\n" +
+			"     │       │  ->OVE3E:0, NULL (null)->NRURT:79, NULL (null)->OCA7E:80, tvtjs.id:0!null->XMM6Q:0, tvtjs.V5DPX:4!null->V5DPX:0, (tvtjs.IDPK7:6!null + 0.0 (decimal(2,1)))->S3Q3Y:0, tvtjs.ZRV3B:8!null->ZRV3B:0, tvtjs.FHCYT:12->FHCYT:0]\n" +
 			"     │       └─ Project\n" +
 			"     │           ├─ columns: [tvtjs.id:0!null, tvtjs.TOFPN:1!null, tvtjs.I3VTA:2!null, tvtjs.SFJ6L:3, tvtjs.V5DPX:4!null, tvtjs.LJLUM:5!null, tvtjs.IDPK7:6!null, tvtjs.NO52D:7!null, tvtjs.ZRV3B:8!null, tvtjs.VYO5E:9, tvtjs.SWCQV:10!null, tvtjs.YKSSU:11, tvtjs.FHCYT:12, lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0')->id:26, Subquery\n" +
 			"     │           │   ├─ cacheable: false\n" +
@@ -22060,7 +22060,7 @@ WHERE
 			"     │           │               └─ Table\n" +
 			"     │           │                   ├─ name: SFEGG\n" +
 			"     │           │                   └─ columns: [id no52d vyo5e dkcaj adurz fhcyt]\n" +
-			"     │           │  ->OVE3E:0, NULL (null)->NRURT:79, NULL (null)->OCA7E:80, tvtjs.id:0!null->XMM6Q:0, tvtjs.V5DPX:4!null->V5DPX:0, (tvtjs.IDPK7:6!null + 0 (decimal(2,1)))->S3Q3Y:0, tvtjs.ZRV3B:8!null->ZRV3B:0, tvtjs.FHCYT:12->FHCYT:0]\n" +
+			"     │           │  ->OVE3E:0, NULL (null)->NRURT:79, NULL (null)->OCA7E:80, tvtjs.id:0!null->XMM6Q:0, tvtjs.V5DPX:4!null->V5DPX:0, (tvtjs.IDPK7:6!null + 0.0 (decimal(2,1)))->S3Q3Y:0, tvtjs.ZRV3B:8!null->ZRV3B:0, tvtjs.FHCYT:12->FHCYT:0]\n" +
 			"     │           └─ TableAlias(tvtjs)\n" +
 			"     │               └─ IndexedTableAccess(HU5A5)\n" +
 			"     │                   ├─ index: [HU5A5.id]\n" +

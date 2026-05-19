@@ -167,7 +167,7 @@ func (p *relProps) populateFds(ctx *sql.Context) {
 	case JoinRel:
 		jp := rel.JoinPrivate()
 		switch {
-		case jp.Op.IsDegenerate():
+		case jp.Op.IsCross():
 			fds = sql.NewCrossJoinFDs(jp.Left.RelProps.FuncDeps(ctx), jp.Right.RelProps.FuncDeps(ctx))
 		case jp.Op.IsLeftOuter():
 			fds = sql.NewLeftJoinFDs(jp.Left.RelProps.FuncDeps(ctx), jp.Right.RelProps.FuncDeps(ctx), getEquivs(jp.Filter))
@@ -806,7 +806,7 @@ func sortedInputs(ctx *sql.Context, rel RelExpr) bool {
 		i := 0
 		j := 0
 		for i < len(r.Projections) && j < len(inputs) {
-			out := transform.ExpressionToColumn(ctx, outputs[i], plan.AliasSubqueryString(outputs[i]))
+			out := transform.ExpressionToColumn(ctx, outputs[i], plan.AliasSubqueryString(ctx, outputs[i]))
 			in := inputs[j]
 			// i -> output idx (distinct)
 			// j -> input idx

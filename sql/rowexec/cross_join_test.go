@@ -64,6 +64,7 @@ func TestCrossJoin(t *testing.T) {
 	insertData(t, newContext(pro), rtable)
 
 	j := plan.NewCrossJoin(
+		ctx,
 		plan.NewResolvedTable(ltable, nil, nil),
 		plan.NewResolvedTable(rtable, nil, nil),
 	)
@@ -127,6 +128,7 @@ func TestCrossJoin_Empty(t *testing.T) {
 	insertData(t, newContext(pro), ltable)
 
 	j := plan.NewCrossJoin(
+		ctx,
 		plan.NewResolvedTable(ltable, nil, nil),
 		plan.NewResolvedTable(rtable, nil, nil),
 	)
@@ -144,6 +146,7 @@ func TestCrossJoin_Empty(t *testing.T) {
 	insertData(t, newContext(pro), rtable)
 
 	j = plan.NewCrossJoin(
+		ctx,
 		plan.NewResolvedTable(ltable, nil, nil),
 		plan.NewResolvedTable(rtable, nil, nil),
 	)

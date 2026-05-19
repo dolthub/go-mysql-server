@@ -25,6 +25,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -645,10 +646,7 @@ func convertGoSqlType(columnType *gosql.ColumnType) (sql.Type, error) {
 		if !ok {
 			return nil, fmt.Errorf("could not get decimal size for column %s", columnType.Name())
 		}
-		decimalType, err := types.CreateDecimalType(uint8(precision), uint8(scale))
-		if err != nil {
-			return nil, err
-		}
+		decimalType := types.CreateLiteralDecimalType(uint8(precision), uint8(scale))
 		return decimalType, nil
 	case "date":
 		return types.Date, nil
@@ -716,7 +714,15 @@ func prepareBindingArgs(ctx *sql.Context, bindings map[string]sqlparser.Expr) ([
 		if !ok {
 			return nil, fmt.Errorf("cannot get binding value")
 		}
-		args[i] = lit.Value()
+		val := lit.Value()
+		// TODO: `go-sql-driver` cannot handle `*apd.Decimal` value
+		//  but `database/sql` allows decimalDecompose interface which `*apd.Decimal` implements
+		//  This need fix on one of these libraries.
+		if dec, ok := val.(*apd.Decimal); ok {
+			args[i] = dec.Text('f')
+		} else {
+			args[i] = lit.Value()
+		}
 	}
 	return args, nil
 }
