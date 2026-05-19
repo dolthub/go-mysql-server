@@ -33,7 +33,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/fulltext"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -1524,16 +1523,7 @@ func (i addColumnIter) Close(context *sql.Context) error {
 
 // rewriteTable rewrites the table given if required or requested, and returns whether it was rewritten
 func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) (bool, error) {
-	targetSch := i.a.TargetSchema()
-	for _, col := range targetSch {
-		// To correctly update secondary indexes that store values from virtual
-		// generated columns, the generated expression must be resolved.
-		if col.Virtual && col.Generated != nil && !col.Generated.Resolved() {
-			b := planbuilder.NewBuilderForColumnDefaultResolution(ctx, i.b.EngineOverrides)
-			targetSch = b.ResolveSchemaDefaults(i.a.Db.Name(), rwt.Name(), targetSch)
-			break
-		}
-	}
+	targetSch, _ := i.b.resolveGeneratedColumns(ctx, i.a.Db.Name(), rwt.Name(), i.a.TargetSchema())
 	newSch, projections, err := addColumnToSchema(ctx, targetSch, i.a.Column(), i.a.Order(ctx))
 	if err != nil {
 		return false, err

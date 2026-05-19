@@ -20,7 +20,8 @@ import (
 )
 
 // ForeignKeyReferentialAction is the behavior for this foreign key with the relevant action is performed on the foreign
-// table.
+// table. It is equivalent to the reference_option in MySQL.
+// https://dev.mysql.com/doc/refman/8.4/en/create-table-foreign-keys.html#foreign-key-referential-actions
 type ForeignKeyReferentialAction string
 
 const (
@@ -37,6 +38,15 @@ const (
 func (f ForeignKeyReferentialAction) IsEquivalentToRestrict() bool {
 	switch f {
 	case ForeignKeyReferentialAction_Cascade, ForeignKeyReferentialAction_SetNull, ForeignKeyReferentialAction_SetDefault:
+		return false
+	default:
+		return true
+	}
+}
+
+func (f ForeignKeyReferentialAction) AllowGeneratedColumnReference() bool {
+	switch f {
+	case ForeignKeyReferentialAction_Cascade, ForeignKeyReferentialAction_SetNull:
 		return false
 	default:
 		return true

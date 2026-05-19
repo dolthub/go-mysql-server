@@ -986,6 +986,9 @@ var (
 
 	// ErrWrongDBName is returned for illegal database names with the [mysql.ERWrongDbName] error code and [mysql.SSClientError] SQLSTATE.
 	ErrWrongDBName = newMySQLKind("Incorrect database name '%s'", mysql.ERWrongDbName, mysql.SSClientError)
+
+	// ErrInvalidForeignKeyConstraint is returned when a foreign key constraint cannot be added
+	ErrInvalidForeignKeyConstraint = errors.NewKind("Cannot add foreign key constraint")
 )
 
 // CastSQLError returns a *mysql.SQLError with the error code and in some cases, also a SQL state, populated for the
