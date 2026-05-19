@@ -644,12 +644,8 @@ func compareJSONObject(ctx context.Context, a JsonObject, b interface{}) (int, e
 		}
 		for i := 0; i < minLen; i++ {
 			if c := strings.Compare(aKeys[i], bKeys[i]); c != 0 {
-				if b[aKeys[i]] == nil {
-					return c, nil
-				}
-				// This inversion is a bit counterintuitive, but we do this to match Dolt's chunked JSON diffing.
-				// This means that {"b": 0} sorts before {"a": 0} -- the document with an extra key, regardless of the key's
-				// sorted order, is the greater document.
+				// The object with the lexically first key not present in the other object is the greater object, which means
+				// we inverse the call to compare above
 				return -c, nil
 			}
 			cmp, err := CompareJSON(ctx, a[aKeys[i]], b[bKeys[i]])
