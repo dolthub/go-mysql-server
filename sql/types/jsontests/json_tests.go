@@ -83,9 +83,6 @@ var JsonCompareTests = []JsonCompareTest{
 	{Left: `[1,9]`, Right: `[1,2]`, Cmp: 1},
 	{Left: `[1,2]`, Right: `[1,2,3]`, Cmp: -1},
 
-	// objects: ordered by a lexicographic walk over keys sorted in byte order.
-	// At each position: first compare keys; if equal, compare values; first nonzero result wins.
-	// If one object is a strict prefix of the other in this walk, the shorter object is smaller.
 	{Left: `{"a": 0}`, Right: `{"a": 0}`, Cmp: 0},
 	{Left: `{"a": 1}`, Right: `{"a": 0}`, Cmp: 1},                  // same key, value 1 > 0
 	{Left: `{"a": 0}`, Right: `{"a": 0, "b": 1}`, Cmp: -1},         // shorter object is smaller
