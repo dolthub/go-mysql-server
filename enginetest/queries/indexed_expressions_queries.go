@@ -1081,6 +1081,55 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "filtering: tuple IN with composite key",
+		SetUpScript: []string{
+			"CREATE TABLE t (pk1 INT, pk2 INT, pk3 INT, PRIMARY KEY (pk1, pk2, pk3), col1 INT, col2 INT, UNIQUE key secondary (col1, col2))",
+			"INSERT INTO t VALUES (0, 0, 10, 100, 1000), (0, 1, 20, 200, 2000), (1, 0, 30, 300, 3000), (1, 1, 40, 400, 4000), (2, 3, 50, NULL, 5000)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:           "SELECT pk1, pk2, pk3 FROM t WHERE (pk1, pk2) IN ((0, 1), (2, 3)) ORDER BY pk1, pk2",
+				Expected:        []sql.Row{{0, 1, 20}, {2, 3, 50}},
+				ExpectedIndexes: []string{"primary"},
+			},
+			{
+				Query:           "SELECT pk1, pk2, pk3 FROM t WHERE pk1 = 0 and (pk3, pk2) IN ((10, 0), (20, 1)) ORDER BY pk1, pk2",
+				Expected:        []sql.Row{{0, 0, 10}, {0, 1, 20}},
+				ExpectedIndexes: []string{"primary"},
+			},
+			{
+				// Single tuple element
+				Query:           "SELECT pk1, pk2, pk3 FROM t WHERE (pk1, pk2) IN ((1, 0)) ORDER BY pk1",
+				Expected:        []sql.Row{{1, 0, 30}},
+				ExpectedIndexes: []string{"primary"},
+			},
+			{
+				// No match
+				Query:           "SELECT pk1, pk2, pk3 FROM t WHERE (pk1, pk2) IN ((9, 9))",
+				Expected:        []sql.Row{},
+				ExpectedIndexes: []string{"primary"},
+			},
+			{
+				// Secondary index
+				Query:           "SELECT * FROM t WHERE (col1, col2) IN ((200, 2000), (400, 4000))",
+				Expected:        []sql.Row{{0, 1, 20, 200, 2000}, {1, 1, 40, 400, 4000}},
+				ExpectedIndexes: []string{"secondary"},
+			},
+			{
+				// No index
+				Query:           "SELECT pk1, pk2, pk3 FROM t WHERE (pk2, pk3) IN ((1, 20))",
+				Expected:        []sql.Row{{0, 1, 20}},
+				ExpectedIndexes: []string{},
+			},
+			{
+				// Correct behavior around nulls
+				Query:           "SELECT * FROM t WHERE (col1, col2) IN ((200, 2000), (NULL, 5000))",
+				Expected:        []sql.Row{{0, 1, 20, 200, 2000}},
+				ExpectedIndexes: []string{"secondary"},
+			},
+		},
+	},
+	{
 		Name: "!hidden! column name prefix is reserved",
 		SetUpScript: []string{
 			"create table t2 (pk int primary key, c1 int);",
