@@ -44,8 +44,12 @@ func (f ForeignKeyReferentialAction) IsEquivalentToRestrict() bool {
 	}
 }
 
+// allowStoredGeneratedColumnReference returns whether the referential action is allowed when the foreign key is on a
+// column that is referenced by a stored generated column.
 func (f ForeignKeyReferentialAction) allowStoredGeneratedColumnReference() bool {
 	switch f {
+	// MySQL documentation includes SET DEFAULT, but actual MySQL behavior doesn't seem to follow the documentation.
+	// https://dev.mysql.com/doc/refman/8.4/en/create-table-foreign-keys.html#foreign-key-referential-actions
 	case ForeignKeyReferentialAction_Cascade, ForeignKeyReferentialAction_SetNull:
 		return false
 	default:

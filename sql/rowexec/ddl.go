@@ -1186,8 +1186,9 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 		}
 	}
 
-	// TODO: in the event that foreign keys or indexes aren't supported, you'll be left with a created table and no foreign keys/indexes
-	// this also means that if a foreign key or index fails, you'll only have what was declared up to the failure
+	// TODO: in the event that foreign keys or indexes aren't supported, you'll be left with a created table and no
+	//  foreign keys/indexes This also means that if a foreign key or index fails, the table will still have been
+	//  created anyways, just without the foreign key or index https://github.com/dolthub/dolt/issues/11082
 	tableNode, ok, err := n.Db.GetTableInsensitive(ctx, n.Name())
 	if err != nil {
 		return sql.RowsToRowIter(), err
@@ -1314,6 +1315,8 @@ func (b *BaseBuilder) buildCreateTableForeignKeys(ctx *sql.Context, n *plan.Crea
 	return nil
 }
 
+// validateForeignKeyStoredGeneratedColumnRefs checks if there are any conflicts between foreign key referential actions
+// and stored generated columns
 func validateForeignKeyStoredGeneratedColumnRefs(fkDef *sql.ForeignKeyConstraint, storedGeneratedColumnRefs map[string]bool) error {
 	if storedGeneratedColumnRefs == nil || fkDef.AllowStoredGeneratedColumnReference() {
 		return nil
