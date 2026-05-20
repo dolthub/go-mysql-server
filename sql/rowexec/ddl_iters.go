@@ -17,6 +17,7 @@ package rowexec
 import (
 	"bufio"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"io"
 	"strings"
 	"sync"
@@ -1523,7 +1524,16 @@ func (i addColumnIter) Close(context *sql.Context) error {
 
 // rewriteTable rewrites the table given if required or requested, and returns whether it was rewritten
 func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) (bool, error) {
-	targetSch, _ := i.b.resolveGeneratedColumns(ctx, i.a.Db.Name(), rwt.Name(), i.a.TargetSchema())
+	targetSch := i.a.TargetSchema()
+	for _, col := range targetSch {
+		// To correctly update secondary indexes that store values from virtual
+		// generated columns, the generated expression must be resolved.
+		if col.Virtual && col.Generated != nil && !col.Generated.Resolved() {
+			b := planbuilder.NewBuilderForColumnDefaultResolution(ctx, i.b.EngineOverrides)
+			targetSch = b.ResolveSchemaDefaults(i.a.Db.Name(), rwt.Name(), targetSch)
+			break
+		}
+	}
 	newSch, projections, err := addColumnToSchema(ctx, targetSch, i.a.Column(), i.a.Order(ctx))
 	if err != nil {
 		return false, err

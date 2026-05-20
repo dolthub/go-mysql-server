@@ -17,6 +17,8 @@ package rowexec
 import (
 	"bufio"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"io"
 	"os"
 	"strings"
@@ -26,11 +28,9 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/fulltext"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -1284,13 +1284,10 @@ func (b *BaseBuilder) buildCreateTableForeignKeys(ctx *sql.Context, n *plan.Crea
 		return err
 	}
 
-	// check fkTbl for generated columns
-	// if need to resolve generated column, resolve and flag base columns
-	// when iterating over foreign key definitions, check if fk column is ever used as base column (when appropriate)
-	generatedColumnRefs := b.generatedColumnReferences(ctx, fkTbl.Name(), fkTbl.Schema(ctx))
+	storedGeneratedColumnRefs := b.storedGeneratedColumnReferences(ctx, fkTbl.Name(), fkTbl.Schema(ctx))
 	parentForeignKeyTables := n.ParentForeignKeyTables()
 	for i, fkDef := range n.ForeignKeys() {
-		err = validateForeignKeyGeneratedColumnRefs(fkDef, generatedColumnRefs)
+		err = validateForeignKeyStoredGeneratedColumnRefs(fkDef, storedGeneratedColumnRefs)
 		if err != nil {
 			return err
 		}
@@ -1317,58 +1314,54 @@ func (b *BaseBuilder) buildCreateTableForeignKeys(ctx *sql.Context, n *plan.Crea
 	return nil
 }
 
-func validateForeignKeyGeneratedColumnRefs(fkDef *sql.ForeignKeyConstraint, generatedColumnRefs map[string]bool) error {
-	if generatedColumnRefs == nil ||
+func validateForeignKeyStoredGeneratedColumnRefs(fkDef *sql.ForeignKeyConstraint, storedGeneratedColumnRefs map[string]bool) error {
+	if storedGeneratedColumnRefs == nil ||
 		(fkDef.OnDelete.AllowGeneratedColumnReference() && fkDef.OnUpdate.AllowGeneratedColumnReference()) {
 		return nil
 	}
 	for _, col := range fkDef.Columns {
-		if contains, ok := generatedColumnRefs[col]; contains && ok {
+		if contains, ok := storedGeneratedColumnRefs[col]; contains && ok {
 			return sql.ErrInvalidForeignKeyConstraint.New()
 		}
 	}
 	return nil
 }
 
-// generatedColumnReferences resolves any generated columns, inspects them for references to other columns, and returns
-// whether a base column is referenced by a generated column
-func (b *BaseBuilder) generatedColumnReferences(ctx *sql.Context, tableName string, schema sql.Schema) map[string]bool {
-	resolvedSchema, hasGeneratedColumn := b.resolveGeneratedColumns(ctx, ctx.GetCurrentDatabase(), tableName, schema)
-	if hasGeneratedColumn {
+// storedGeneratedColumnReferences resolves any stored generated columns, inspects them for references to other columns,
+// and returns a set of base columns referenced by any stored generated columns
+func (b *BaseBuilder) storedGeneratedColumnReferences(ctx *sql.Context, tableName string, schema sql.Schema) map[string]bool {
+	hasStoredGeneratedColumn := false
+	for _, col := range schema {
+		if !col.Virtual && col.Generated != nil {
+			hasStoredGeneratedColumn = true
+			if !col.Generated.Resolved() {
+				// TODO: calling ResolveSchemaDefaults here is doing too much since we only need the stored generated
+				//  columns to be resolved. We are currently not able to do so because planbuilder.scope and
+				//  planbuilder.resolveColumnDefaultExpression are both unexported.
+				schema = planbuilder.NewBuilderForColumnDefaultResolution(ctx, b.EngineOverrides).
+					ResolveSchemaDefaults(ctx.GetCurrentDatabase(), tableName, schema)
+				break
+			}
+		}
+	}
+	if hasStoredGeneratedColumn {
 		refs := make(map[string]bool)
-		for _, col := range resolvedSchema {
-			if col.Generated != nil {
-				if !col.Generated.IsLiteral() {
-					sql.Inspect(ctx, col.Generated.Expr, func(ctx *sql.Context, e sql.Expression) bool {
-						if colRef, ok := e.(*expression.GetField); ok {
-							refs[colRef.Name()] = true
-							return false
-						}
-						return true
-					})
-				}
+		// TODO: second pass through the schema would not be necessary if we're able to resolve individual column
+		//  expressions.
+		for _, col := range schema {
+			if !col.Virtual && col.Generated != nil {
+				sql.Inspect(ctx, col.Generated.Expr, func(ctx *sql.Context, e sql.Expression) bool {
+					if colRef, ok := e.(*expression.GetField); ok {
+						refs[colRef.Name()] = true
+						return false
+					}
+					return true
+				})
 			}
 		}
 		return refs
 	}
 	return nil
-}
-
-// resolveGeneratedColumns checks for any unresolved virtual/generated column expressions and resolves them if needed,
-// also returning a flag indicating if a generated column is present
-func (b *BaseBuilder) resolveGeneratedColumns(ctx *sql.Context, dbName, tableName string, schema sql.Schema) (sql.Schema, bool) {
-	hasGeneratedColumns := false
-	for _, col := range schema {
-		if col.Generated != nil {
-			hasGeneratedColumns = true
-			if !col.Generated.Resolved() {
-				// TODO: calling ResolveSchemaDefaults here might be doing too much since we likely only need the generated
-				//  columns to be resolved
-				return planbuilder.NewBuilderForColumnDefaultResolution(ctx, b.EngineOverrides).ResolveSchemaDefaults(dbName, tableName, schema), true
-			}
-		}
-	}
-	return schema, hasGeneratedColumns
 }
 
 func createIndexesForCreateTable(ctx *sql.Context, db sql.Database, tableNode sql.Table, idxes sql.IndexDefs) (err error) {
