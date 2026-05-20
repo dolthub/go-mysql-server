@@ -625,6 +625,7 @@ func (b *Builder) buildAlterTableClause(inScope *scope, ddl *ast.DDL) []*scope {
 						sql.IndexConstraint_Unique,
 						[]sql.IndexColumn{{Name: column.Name.String()}},
 						"",
+						nil,
 					)
 
 					createIndexScope := inScope.push()
@@ -1022,6 +1023,11 @@ func (b *Builder) buildAlterIndex(inScope *scope, ddl *ast.DDL, table *plan.Reso
 			}
 		}
 
+		var predicate sql.Expression
+		if ddl.IndexSpec.Predicate != nil {
+			predicate = b.buildScalar(inScope, ddl.IndexSpec.Predicate)
+		}
+
 		if constraint == sql.IndexConstraint_Primary {
 			outScope.node = plan.NewAlterCreatePk(table.SqlDatabase, table, columns)
 			return
@@ -1042,6 +1048,7 @@ func (b *Builder) buildAlterIndex(inScope *scope, ddl *ast.DDL, table *plan.Reso
 			constraint,
 			columns,
 			comment,
+			predicate,
 		)
 		outScope.node = b.modifySchemaTarget(inScope, createIndex, table.Schema(b.ctx))
 		return

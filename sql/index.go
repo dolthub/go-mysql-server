@@ -25,6 +25,8 @@ type IndexDef struct {
 	Columns    []IndexColumn
 	Constraint IndexConstraint
 	Storage    IndexUsing
+	// Predicate is the WHERE clause expression for partial indexes. May be nil.
+	Predicate Expression
 }
 
 func (i *IndexDef) String() string {
@@ -244,6 +246,13 @@ func (il IndexLookup) DebugString(ctx *Context) string {
 	_ = pr.WriteNode("IndexLookup")
 	pr.WriteChildren(fmt.Sprintf("index: %s", il.Index), fmt.Sprintf("ranges: %s", il.Ranges.DebugString(ctx)))
 	return pr.String()
+}
+
+// PartialIndex is an extension of |Index| for partial indexes, which only cover rows matching a WHERE predicate.
+type PartialIndex interface {
+	Index
+	// Predicate returns the WHERE clause expression string for this partial index.
+	Predicate() string
 }
 
 // FilteredIndex is an extension of |Index| that allows an index to declare certain filter predicates handled,
