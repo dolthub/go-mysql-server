@@ -1284,7 +1284,7 @@ func (b *BaseBuilder) buildCreateTableForeignKeys(ctx *sql.Context, n *plan.Crea
 		return err
 	}
 
-	storedGeneratedColumnRefs := b.storedGeneratedColumnReferences(ctx, fkTbl.Name(), fkTbl.Schema(ctx))
+	storedGeneratedColumnRefs := b.storedGeneratedColumnReferences(ctx, fkTbl)
 	parentForeignKeyTables := n.ParentForeignKeyTables()
 	for i, fkDef := range n.ForeignKeys() {
 		err = validateForeignKeyStoredGeneratedColumnRefs(fkDef, storedGeneratedColumnRefs)
@@ -1320,7 +1320,7 @@ func validateForeignKeyStoredGeneratedColumnRefs(fkDef *sql.ForeignKeyConstraint
 	}
 	for _, col := range fkDef.Columns {
 		if contains, ok := storedGeneratedColumnRefs[col]; contains && ok {
-			return sql.ErrInvalidForeignKeyConstraint.New()
+			return sql.ErrStoredGeneratedColumnForeignKeyConflict.New()
 		}
 	}
 	return nil
@@ -1328,8 +1328,9 @@ func validateForeignKeyStoredGeneratedColumnRefs(fkDef *sql.ForeignKeyConstraint
 
 // storedGeneratedColumnReferences resolves any stored generated columns, inspects them for references to other columns,
 // and returns a set of base columns referenced by any stored generated columns
-func (b *BaseBuilder) storedGeneratedColumnReferences(ctx *sql.Context, tableName string, schema sql.Schema) map[string]bool {
+func (b *BaseBuilder) storedGeneratedColumnReferences(ctx *sql.Context, table sql.ForeignKeyTable) map[string]bool {
 	hasStoredGeneratedColumn := false
+	schema := table.Schema(ctx)
 	for _, col := range schema {
 		if !col.Virtual && col.Generated != nil {
 			hasStoredGeneratedColumn = true
@@ -1338,7 +1339,7 @@ func (b *BaseBuilder) storedGeneratedColumnReferences(ctx *sql.Context, tableNam
 				//  columns to be resolved. We are currently not able to do so because planbuilder.scope and
 				//  planbuilder.resolveColumnDefaultExpression are both unexported.
 				schema = planbuilder.NewBuilderForColumnDefaultResolution(ctx, b.EngineOverrides).
-					ResolveSchemaDefaults(ctx.GetCurrentDatabase(), tableName, schema)
+					ResolveSchemaDefaults(ctx.GetCurrentDatabase(), table.Name(), schema)
 				break
 			}
 		}
@@ -1567,11 +1568,14 @@ func (b *BaseBuilder) buildCreateForeignKey(ctx *sql.Context, n *plan.CreateFore
 		return nil, sql.ErrNoForeignKeySupport.New(n.FkDef.ParentTable)
 	}
 
+	err = validateForeignKeyStoredGeneratedColumnRefs(n.FkDef, b.storedGeneratedColumnReferences(ctx, fkTbl))
+	if err != nil {
+		return nil, err
+	}
 	fkChecks, err := ctx.GetSessionVariable(ctx, "foreign_key_checks")
 	if err != nil {
 		return nil, err
 	}
-
 	err = plan.ResolveForeignKey(ctx, fkTbl, refFkTbl, *n.FkDef, true, fkChecks.(int8) == 1, true)
 	if err != nil {
 		return nil, err
