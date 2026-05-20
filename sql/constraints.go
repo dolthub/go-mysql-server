@@ -44,7 +44,7 @@ func (f ForeignKeyReferentialAction) IsEquivalentToRestrict() bool {
 	}
 }
 
-func (f ForeignKeyReferentialAction) AllowGeneratedColumnReference() bool {
+func (f ForeignKeyReferentialAction) allowStoredGeneratedColumnReference() bool {
 	switch f {
 	case ForeignKeyReferentialAction_Cascade, ForeignKeyReferentialAction_SetNull:
 		return false
@@ -97,6 +97,10 @@ func (f *ForeignKeyConstraint) DebugString(ctx *Context) string {
 		f.ParentTable,
 		strings.Join(f.ParentColumns, ","),
 	)
+}
+
+func (f *ForeignKeyConstraint) AllowStoredGeneratedColumnReference() bool {
+	return f.OnDelete.allowStoredGeneratedColumnReference() && f.OnUpdate.allowStoredGeneratedColumnReference()
 }
 
 type ForeignKeyConstraints []*ForeignKeyConstraint

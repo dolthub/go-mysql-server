@@ -1315,8 +1315,7 @@ func (b *BaseBuilder) buildCreateTableForeignKeys(ctx *sql.Context, n *plan.Crea
 }
 
 func validateForeignKeyStoredGeneratedColumnRefs(fkDef *sql.ForeignKeyConstraint, storedGeneratedColumnRefs map[string]bool) error {
-	if storedGeneratedColumnRefs == nil ||
-		(fkDef.OnDelete.AllowGeneratedColumnReference() && fkDef.OnUpdate.AllowGeneratedColumnReference()) {
+	if storedGeneratedColumnRefs == nil || fkDef.AllowStoredGeneratedColumnReference() {
 		return nil
 	}
 	for _, col := range fkDef.Columns {
