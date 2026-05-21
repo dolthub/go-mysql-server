@@ -885,19 +885,34 @@ type indexScanRangeBuilder struct {
 
 func inValsToMySQLRangeCollHelper[N cmp.Ordered](ctx *sql.Context, vals []any, typ sql.Type, precise bool) (sql.MySQLRangeCollection, bool) {
 	keys := make([]N, 0, len(vals))
+	// Due to MySQL's conversion rules, this optimization doesn't apply when comparing numeric expressions to string columns
+	// https://github.com/dolthub/dolt/issues/10316
+	_, isStrType := typ.(types.StringType)
 	for _, val := range vals {
 		switch v := val.(type) {
 		case int, int8, int16, int32, int64,
 			uint, uint8, uint16, uint32, uint64:
+			if isStrType {
+				return nil, false
+			}
 		case float32:
+			if isStrType {
+				return nil, false
+			}
 			if precise && float32(int(v)) != v {
 				continue
 			}
 		case float64:
+			if isStrType {
+				return nil, false
+			}
 			if precise && float64(int(v)) != v {
 				continue
 			}
 		case *apd.Decimal:
+			if isStrType {
+				return nil, false
+			}
 			vInt, err := sql.DecimalRound(v, 0)
 			if err != nil {
 				return nil, false
@@ -905,6 +920,7 @@ func inValsToMySQLRangeCollHelper[N cmp.Ordered](ctx *sql.Context, vals []any, t
 			if precise && v.Cmp(vInt) != 0 {
 				continue
 			}
+		case string:
 		default:
 			return nil, false
 		}
@@ -935,7 +951,7 @@ func inValsToMySQLRangeCollHelper[N cmp.Ordered](ctx *sql.Context, vals []any, t
 	return res, true
 }
 
-// inValsToMySQLRangeColl is a fast path for in filters over numeric columns.
+// inValsToMySQLRangeColl is a fast path for in filters over columns of cmp.Ordered type.
 func inValsToMySQLRangeColl(ctx *sql.Context, vals []any, typ sql.Type) (sql.MySQLRangeCollection, bool) {
 	switch typ.Type() {
 	case sqltypes.Int8:
@@ -958,6 +974,8 @@ func inValsToMySQLRangeColl(ctx *sql.Context, vals []any, typ sql.Type) (sql.MyS
 		return inValsToMySQLRangeCollHelper[float32](ctx, vals, typ, false)
 	case sqltypes.Float64:
 		return inValsToMySQLRangeCollHelper[float64](ctx, vals, typ, false)
+	case sqltypes.Char, sqltypes.VarChar:
+		return inValsToMySQLRangeCollHelper[string](ctx, vals, typ, false)
 	default:
 		return nil, false
 	}
