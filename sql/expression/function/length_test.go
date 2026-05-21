@@ -16,6 +16,7 @@ package function
 
 import (
 	"testing"
+	"unicode/utf8"
 
 	"github.com/stretchr/testify/require"
 
@@ -101,6 +102,14 @@ func TestLength(t *testing.T) {
 			types.Blob,
 			NewCharLength,
 			nil,
+		},
+		{
+			// See https://github.com/dolthub/dolt/issues/11088
+			"char_length replacement character",
+			string(utf8.RuneError), // U+FFFD, 0xEFBFBD
+			types.LongText,
+			NewCharLength,
+			int32(1),
 		},
 	}
 

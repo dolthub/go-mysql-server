@@ -880,6 +880,13 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 					{int32(6)},
 				},
 			},
+			{
+				// See https://github.com/dolthub/dolt/issues/11088
+				Query: "SELECT CHAR_LENGTH(_utf8mb4'\xef\xbf\xbd' COLLATE utf8mb4_0900_bin);",
+				Expected: []sql.Row{
+					{int32(1)},
+				},
+			},
 		},
 	},
 	{

@@ -303,7 +303,10 @@ func ConstructLikeMatcher(collation sql.CollationID, pattern string, escape rune
 	matcher := LikeMatcher{nil, collation, escape}
 	for i := 0; i < len(pattern); {
 		nextRune, advance := charsetEncoder.NextRune(pattern[i:])
-		if nextRune == utf8.RuneError {
+		// NextRune only pairs utf8.RuneError with an advance of one byte or fewer for a
+		// genuinely malformed sequence. The replacement character U+FFFD is valid and
+		// decodes to three bytes, so it must not be rejected here.
+		if nextRune == utf8.RuneError && advance <= 1 {
 			return LikeMatcher{}, sql.ErrCharSetInvalidString.New(collation.CharacterSet().Name(), pattern)
 		}
 		i += advance
@@ -315,7 +318,7 @@ func ConstructLikeMatcher(collation sql.CollationID, pattern string, escape rune
 			matcher.nodes = append(matcher.nodes, likeMatcherAny{})
 		case escape: // States that the next character should be taken literally
 			nextRune, advance = charsetEncoder.NextRune(pattern[i:])
-			if nextRune == utf8.RuneError {
+			if nextRune == utf8.RuneError && advance <= 1 {
 				return LikeMatcher{}, sql.ErrCharSetInvalidString.New(collation.CharacterSet().Name(), pattern)
 			}
 			i += advance
@@ -369,7 +372,7 @@ func (l LikeMatcher) Match(s string) bool {
 		}
 
 		nextRune, advance := charsetEncoder.NextRune(s[stringIndex:])
-		if nextRune == utf8.RuneError {
+		if nextRune == utf8.RuneError && advance <= 1 {
 			return false
 		}
 		matched, consumed := l.nodes[nodeIndex].Match(l.collation, nextRune)
@@ -429,7 +432,7 @@ func (l LikeMatcher) backtrack(s string, nodeIndex int, nodeNextIndex []int) (ma
 	for ; nodeIndex >= 0; nodeIndex-- {
 		stringIndex := nodeNextIndex[nodeIndex]
 		nextRune, advance := charsetEncoder.NextRune(s[stringIndex:])
-		if nextRune == utf8.RuneError {
+		if nextRune == utf8.RuneError && advance <= 1 {
 			return false, 0
 		}
 		if l.nodes[nodeIndex].MatchNext(l.collation, nextRune) {
