@@ -936,7 +936,7 @@ func inValsToMySQLRangeCollHelper[N cmp.Ordered](ctx *sql.Context, vals []any, t
 	return res, true
 }
 
-// inValsToMySQLRangeColl is a fast path for in filters over numeric columns.
+// inValsToMySQLRangeColl is a fast path for in filters over columns of cmp.Ordered type.
 func inValsToMySQLRangeColl(ctx *sql.Context, vals []any, typ sql.Type) (sql.MySQLRangeCollection, bool) {
 	switch typ.Type() {
 	case sqltypes.Int8:
@@ -959,7 +959,7 @@ func inValsToMySQLRangeColl(ctx *sql.Context, vals []any, typ sql.Type) (sql.MyS
 		return inValsToMySQLRangeCollHelper[float32](ctx, vals, typ, false)
 	case sqltypes.Float64:
 		return inValsToMySQLRangeCollHelper[float64](ctx, vals, typ, false)
-	case sqltypes.VarChar:
+	case sqltypes.Char, sqltypes.VarChar:
 		return inValsToMySQLRangeCollHelper[string](ctx, vals, typ, false)
 	default:
 		return nil, false
