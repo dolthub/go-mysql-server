@@ -2924,6 +2924,54 @@ var CreateForeignKeyTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "stored generated column foreign keys",
+		SetUpScript: []string{
+			"create table parent(id int primary key)",
+			"create table child(a int, b int as (a) stored)",
+			"create table child2(a int, b int as (a) virtual)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "alter table child add constraint fk_child foreign key (a) references parent(id) on delete set null;",
+				ExpectedErr: sql.ErrStoredGeneratedColumnForeignKeyConflict,
+			},
+			{
+				// https://github.com/dolthub/dolt/issues/11083
+				Skip:        true,
+				Query:       "alter table child add constraint fk_child foreign key (b) references parent(id) on delete set null;",
+				ExpectedErr: sql.ErrStoredGeneratedColumnForeignKeyConflict,
+			},
+			{
+				Query: "alter table child2 add constraint fk_child foreign key (a) references parent(id) on delete set null;",
+				// This is allowed because the generated column is virtual.
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:       "create table child3(a int, b int as (a) stored, foreign key (a) references parent(id) on update cascade);",
+				ExpectedErr: sql.ErrStoredGeneratedColumnForeignKeyConflict,
+			},
+			{
+				// https://github.com/dolthub/dolt/issues/11083
+				Skip:        true,
+				Query:       "create table child3(a int, b int as (a) stored, foreign key (b) references parent(id) on update cascade);",
+				ExpectedErr: sql.ErrStoredGeneratedColumnForeignKeyConflict,
+			},
+			{
+				// https://github.com/dolthub/dolt/issues/11082
+				Skip:        true,
+				Query:       "select * from child3",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+			{
+				// This should be child3, but we have to use child4 here due to tables still being created despite
+				// erroring out https://github.com/dolthub/dolt/issues/11082
+				Query: "create table child4(a int, b int as (a) virtual, foreign key (a) references parent(id) on update cascade);",
+				// This is allowed because the generated column is virtual.
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+		},
+	},
 }
 
 var DropForeignKeyTests = []ScriptTest{

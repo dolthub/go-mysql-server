@@ -112,6 +112,10 @@ var ValidateForeignKeyDefinition = validateForeignKeyDefinition
 // data as necessary.
 // fkChecks - whether to check the foreign key against the data in the table
 // checkRows - whether to check the existing rows in the table against the foreign key
+// TODO: This function is called in too many different places for different purposes, with varying flags such as
+// shouldAdd, fkChecks, and checkRows to indicate what parts of the function should and shouldn't be called. It would be
+// better to break this function up into parts and just call the parts that are necessary. Note that fkChecks is always
+// true when shouldAdd is false.
 func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.ForeignKeyTable, fkDef sql.ForeignKeyConstraint, shouldAdd, fkChecks, checkRows bool) error {
 	if t, ok := tbl.(sql.TemporaryTable); ok && t.IsTemporary() {
 		return sql.ErrTemporaryTablesForeignKeySupport.New()
