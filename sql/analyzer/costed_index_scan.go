@@ -905,6 +905,7 @@ func inValsToMySQLRangeCollHelper[N cmp.Ordered](ctx *sql.Context, vals []any, t
 			if precise && v.Cmp(vInt) != 0 {
 				continue
 			}
+		case string:
 		default:
 			return nil, false
 		}
@@ -958,6 +959,8 @@ func inValsToMySQLRangeColl(ctx *sql.Context, vals []any, typ sql.Type) (sql.MyS
 		return inValsToMySQLRangeCollHelper[float32](ctx, vals, typ, false)
 	case sqltypes.Float64:
 		return inValsToMySQLRangeCollHelper[float64](ctx, vals, typ, false)
+	case sqltypes.VarChar:
+		return inValsToMySQLRangeCollHelper[string](ctx, vals, typ, false)
 	default:
 		return nil, false
 	}
