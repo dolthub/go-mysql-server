@@ -352,48 +352,12 @@ func (*CreateTable) CollationCoercibility(_ *sql.Context) (collation sql.Collati
 	return sql.Collation_binary, 7
 }
 
-// CreateForeignKeys creates the foreign keys on the table.
-func (c *CreateTable) CreateForeignKeys(ctx *sql.Context, tableNode sql.Table) error {
-	fkTbl, ok := tableNode.(sql.ForeignKeyTable)
-	if !ok {
-		return sql.ErrNoForeignKeySupport.New(c.name)
-	}
-
-	fkChecks, err := ctx.GetSessionVariable(ctx, "foreign_key_checks")
-	if err != nil {
-		return err
-	}
-
-	for i, fkDef := range c.fkDefs {
-		if fkChecks.(int8) == 1 {
-			fkParentTbl := c.fkParentTbls[i]
-			// If a foreign key is self-referential then the analyzer uses a nil since the table does not yet exist
-			if fkParentTbl == nil {
-				fkParentTbl = fkTbl
-			}
-			// If foreign_key_checks are true, then the referenced tables will be populated
-			err = ResolveForeignKey(ctx, fkTbl, fkParentTbl, *fkDef, true, true, true)
-			if err != nil {
-				return err
-			}
-		} else {
-			// If foreign_key_checks are true, then the referenced tables will be populated
-			err = ResolveForeignKey(ctx, fkTbl, nil, *fkDef, true, false, false)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
 // ForeignKeys returns any foreign keys that will be declared on this table.
 func (c *CreateTable) ForeignKeys() []*sql.ForeignKeyConstraint {
 	return c.fkDefs
 }
 
-// WithParentForeignKeyTables adds the tables that are referenced in each foreign key. The table indices is assumed
+// WithParentForeignKeyTables adds the tables that are referenced in each foreign key. The table indices are assumed
 // to match the foreign key indices in their respective slices.
 func (c *CreateTable) WithParentForeignKeyTables(refTbls []sql.ForeignKeyTable) (*CreateTable, error) {
 	if len(c.fkDefs) != len(refTbls) {
@@ -403,6 +367,12 @@ func (c *CreateTable) WithParentForeignKeyTables(refTbls []sql.ForeignKeyTable) 
 	nc := *c
 	nc.fkParentTbls = refTbls
 	return &nc, nil
+}
+
+// ParentForeignKeyTables returns tables that are referenced in each foreign key. The table indices are assumed to match
+// the foreign key indices in their respective slices.
+func (c *CreateTable) ParentForeignKeyTables() sql.ForeignKeyTables {
+	return c.fkParentTbls
 }
 
 // CreateChecks creates the check constraints on the table.

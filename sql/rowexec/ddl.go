@@ -26,9 +26,11 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/fulltext"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -1184,8 +1186,9 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 		}
 	}
 
-	// TODO: in the event that foreign keys or indexes aren't supported, you'll be left with a created table and no foreign keys/indexes
-	// this also means that if a foreign key or index fails, you'll only have what was declared up to the failure
+	// TODO: in the event that foreign keys or indexes aren't supported, you'll be left with a created table and no
+	//  foreign keys/indexes This also means that if a foreign key or index fails, the table will still have been
+	//  created anyways, just without the foreign key or index https://github.com/dolthub/dolt/issues/11082
 	tableNode, ok, err := n.Db.GetTableInsensitive(ctx, n.Name())
 	if err != nil {
 		return sql.RowsToRowIter(), err
@@ -1248,7 +1251,7 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 	}
 
 	if len(n.ForeignKeys()) > 0 {
-		err = n.CreateForeignKeys(ctx, tableNode)
+		err = b.buildCreateTableForeignKeys(ctx, n, tableNode)
 		if err != nil {
 			return sql.RowsToRowIter(), err
 		}
@@ -1268,6 +1271,100 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 	}
 
 	return rowIterWithOkResultWithZeroRowsAffected(), nil
+}
+
+// buildCreateTableForeignKeys creates, validates, and resolves the foreign keys that are part of a CreateTable
+func (b *BaseBuilder) buildCreateTableForeignKeys(ctx *sql.Context, n *plan.CreateTable, tableNode sql.Table) error {
+	fkTbl, ok := tableNode.(sql.ForeignKeyTable)
+	if !ok {
+		return sql.ErrNoForeignKeySupport.New(n.Name())
+	}
+
+	fkChecks, err := ctx.GetSessionVariable(ctx, "foreign_key_checks")
+	if err != nil {
+		return err
+	}
+
+	storedGeneratedColumnRefs := b.storedGeneratedColumnReferences(ctx, fkTbl)
+	parentForeignKeyTables := n.ParentForeignKeyTables()
+	for i, fkDef := range n.ForeignKeys() {
+		err = validateForeignKeyStoredGeneratedColumnRefs(fkDef, storedGeneratedColumnRefs)
+		if err != nil {
+			return err
+		}
+		if fkChecks.(int8) == 1 {
+			fkParentTbl := parentForeignKeyTables[i]
+			// If a foreign key is self-referential then the analyzer uses a nil since the table does not yet exist
+			if fkParentTbl == nil {
+				fkParentTbl = fkTbl
+			}
+			// If foreign_key_checks are true, then the referenced tables will be populated
+			err = plan.ResolveForeignKey(ctx, fkTbl, fkParentTbl, *fkDef, true, true, true)
+			if err != nil {
+				return err
+			}
+		} else {
+			// If foreign_key_checks are true, then the referenced tables will be populated
+			err = plan.ResolveForeignKey(ctx, fkTbl, nil, *fkDef, true, false, false)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+// validateForeignKeyStoredGeneratedColumnRefs checks if there are any conflicts between foreign key referential actions
+// and stored generated columns
+func validateForeignKeyStoredGeneratedColumnRefs(fkDef *sql.ForeignKeyConstraint, storedGeneratedColumnRefs map[string]bool) error {
+	if storedGeneratedColumnRefs == nil || fkDef.AllowStoredGeneratedColumnReference() {
+		return nil
+	}
+	for _, col := range fkDef.Columns {
+		if contains, ok := storedGeneratedColumnRefs[col]; contains && ok {
+			return sql.ErrStoredGeneratedColumnForeignKeyConflict.New()
+		}
+	}
+	return nil
+}
+
+// storedGeneratedColumnReferences resolves any stored generated columns, inspects them for references to other columns,
+// and returns a set of base columns referenced by any stored generated columns
+func (b *BaseBuilder) storedGeneratedColumnReferences(ctx *sql.Context, table sql.ForeignKeyTable) map[string]bool {
+	hasStoredGeneratedColumn := false
+	schema := table.Schema(ctx)
+	for _, col := range schema {
+		if !col.Virtual && col.Generated != nil {
+			hasStoredGeneratedColumn = true
+			if !col.Generated.Resolved() {
+				// TODO: calling ResolveSchemaDefaults here is doing too much since we only need the stored generated
+				//  columns to be resolved. We are currently not able to do so because planbuilder.scope and
+				//  planbuilder.resolveColumnDefaultExpression are both unexported.
+				schema = planbuilder.NewBuilderForColumnDefaultResolution(ctx, b.EngineOverrides).
+					ResolveSchemaDefaults(ctx.GetCurrentDatabase(), table.Name(), schema)
+				break
+			}
+		}
+	}
+	if hasStoredGeneratedColumn {
+		refs := make(map[string]bool)
+		// TODO: second pass through the schema would not be necessary if we're able to resolve individual column
+		//  expressions.
+		for _, col := range schema {
+			if !col.Virtual && col.Generated != nil {
+				sql.Inspect(ctx, col.Generated.Expr, func(ctx *sql.Context, e sql.Expression) bool {
+					if colRef, ok := e.(*expression.GetField); ok {
+						refs[colRef.Name()] = true
+						return false
+					}
+					return true
+				})
+			}
+		}
+		return refs
+	}
+	return nil
 }
 
 func createIndexesForCreateTable(ctx *sql.Context, db sql.Database, tableNode sql.Table, idxes sql.IndexDefs) (err error) {
@@ -1474,11 +1571,14 @@ func (b *BaseBuilder) buildCreateForeignKey(ctx *sql.Context, n *plan.CreateFore
 		return nil, sql.ErrNoForeignKeySupport.New(n.FkDef.ParentTable)
 	}
 
+	err = validateForeignKeyStoredGeneratedColumnRefs(n.FkDef, b.storedGeneratedColumnReferences(ctx, fkTbl))
+	if err != nil {
+		return nil, err
+	}
 	fkChecks, err := ctx.GetSessionVariable(ctx, "foreign_key_checks")
 	if err != nil {
 		return nil, err
 	}
-
 	err = plan.ResolveForeignKey(ctx, fkTbl, refFkTbl, *n.FkDef, true, fkChecks.(int8) == 1, true)
 	if err != nil {
 		return nil, err

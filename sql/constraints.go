@@ -20,7 +20,8 @@ import (
 )
 
 // ForeignKeyReferentialAction is the behavior for this foreign key with the relevant action is performed on the foreign
-// table.
+// table. It is equivalent to the reference_option in MySQL.
+// https://dev.mysql.com/doc/refman/8.4/en/create-table-foreign-keys.html#foreign-key-referential-actions
 type ForeignKeyReferentialAction string
 
 const (
@@ -37,6 +38,19 @@ const (
 func (f ForeignKeyReferentialAction) IsEquivalentToRestrict() bool {
 	switch f {
 	case ForeignKeyReferentialAction_Cascade, ForeignKeyReferentialAction_SetNull, ForeignKeyReferentialAction_SetDefault:
+		return false
+	default:
+		return true
+	}
+}
+
+// allowStoredGeneratedColumnReference returns whether the referential action is allowed when the foreign key is on a
+// column that is referenced by a stored generated column.
+func (f ForeignKeyReferentialAction) allowStoredGeneratedColumnReference() bool {
+	switch f {
+	// MySQL documentation includes SET DEFAULT, but actual MySQL behavior doesn't seem to follow the documentation.
+	// https://dev.mysql.com/doc/refman/8.4/en/create-table-foreign-keys.html#foreign-key-referential-actions
+	case ForeignKeyReferentialAction_Cascade, ForeignKeyReferentialAction_SetNull:
 		return false
 	default:
 		return true
@@ -87,6 +101,10 @@ func (f *ForeignKeyConstraint) DebugString(ctx *Context) string {
 		f.ParentTable,
 		strings.Join(f.ParentColumns, ","),
 	)
+}
+
+func (f *ForeignKeyConstraint) AllowStoredGeneratedColumnReference() bool {
+	return f.OnDelete.allowStoredGeneratedColumnReference() && f.OnUpdate.allowStoredGeneratedColumnReference()
 }
 
 type ForeignKeyConstraints []*ForeignKeyConstraint
