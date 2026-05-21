@@ -885,19 +885,34 @@ type indexScanRangeBuilder struct {
 
 func inValsToMySQLRangeCollHelper[N cmp.Ordered](ctx *sql.Context, vals []any, typ sql.Type, precise bool) (sql.MySQLRangeCollection, bool) {
 	keys := make([]N, 0, len(vals))
+	// Due to MySQL's conversion rules, this optimization doesn't apply when comparing numeric expressions to string columns
+	// https://github.com/dolthub/dolt/issues/10316
+	_, isStrType := typ.(types.StringType)
 	for _, val := range vals {
 		switch v := val.(type) {
 		case int, int8, int16, int32, int64,
 			uint, uint8, uint16, uint32, uint64:
+			if isStrType {
+				return nil, false
+			}
 		case float32:
+			if isStrType {
+				return nil, false
+			}
 			if precise && float32(int(v)) != v {
 				continue
 			}
 		case float64:
+			if isStrType {
+				return nil, false
+			}
 			if precise && float64(int(v)) != v {
 				continue
 			}
 		case *apd.Decimal:
+			if isStrType {
+				return nil, false
+			}
 			vInt, err := sql.DecimalRound(v, 0)
 			if err != nil {
 				return nil, false
