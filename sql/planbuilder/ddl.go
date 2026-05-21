@@ -585,14 +585,30 @@ func (b *Builder) buildAlterTableClause(inScope *scope, ddl *ast.DDL) []*scope {
 	if ddl.Action == ast.RenameStr {
 		outScopes = append(outScopes, b.buildRenameTable(inScope, ddl))
 	} else {
-		var ok bool
-		tableScope, ok := b.buildResolvedTableForTablename(inScope, ddl.Table, nil)
+		// PostgreSQL-style DROP INDEX idx_name omits the table name. Search all tables in the current
+		// database to find which one owns the index, then use that name when resolving below.
+		tableName := ddl.Table
+		if tableName.Name.IsEmpty() && ddl.IndexSpec != nil && strings.ToLower(ddl.IndexSpec.Action) == ast.DropStr {
+			found, err := b.findTableForIndex(ddl.IndexSpec.ToName.String())
+			if err != nil {
+				b.handleErr(err)
+			}
+			if found == "" {
+				if ddl.IfExists {
+					return nil
+				}
+				b.handleErr(plan.ErrIndexNotFound.New(ddl.IndexSpec.ToName.String(), "", b.currentDb().Name()))
+			}
+			tableName = ast.TableName{Name: ast.NewTableIdent(found)}
+		}
+
+		tableScope, ok := b.buildResolvedTableForTablename(inScope, tableName, nil)
 		if !ok {
 			if ddl.IfExists {
 				return nil
 			}
-			tblName := ddl.Table.Name.String()
-			if sch := ddl.Table.SchemaQualifier.String(); sch != "" {
+			tblName := tableName.String()
+			if sch := tableName.SchemaQualifier.String(); sch != "" {
 				tblName = fmt.Sprintf("%s.%s", sch, tblName)
 			}
 			b.handleErr(sql.ErrTableNotFound.New(tblName))
@@ -964,6 +980,31 @@ func (b *Builder) convertConstraintDefinition(inScope *scope, cd *ast.Constraint
 	err := sql.ErrUnknownConstraintDefinition.New(cd.Name, cd)
 	b.handleErr(err)
 	return nil
+}
+
+// findTableForIndex searches all tables in the current database for one that owns an index with the
+// given name (case-insensitive). Returns the table name, or an empty string if not found.
+func (b *Builder) findTableForIndex(indexName string) (string, error) {
+	indexName = strings.ToLower(indexName)
+	var found string
+	err := sql.DBTableIter(b.ctx, b.currentDb(), func(tbl sql.Table) (bool, error) {
+		idxTbl, isIdxTbl := tbl.(sql.IndexAddressable)
+		if !isIdxTbl {
+			return true, nil
+		}
+		idxs, err := idxTbl.GetIndexes(b.ctx)
+		if err != nil {
+			return false, err
+		}
+		for _, idx := range idxs {
+			if strings.ToLower(idx.ID()) == indexName {
+				found = tbl.Name()
+				return false, nil
+			}
+		}
+		return true, nil
+	})
+	return found, err
 }
 
 func (b *Builder) buildReferentialAction(action ast.ReferenceAction) sql.ForeignKeyReferentialAction {
