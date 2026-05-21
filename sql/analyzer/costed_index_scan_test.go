@@ -184,6 +184,102 @@ Or
      ├─ xy.x:0!null
      └─ 2 (bigint)`,
 		},
+		{
+			name: "tuple IN decomposed to OR-of-ANDs",
+			in: expression.NewInTuple(
+				expression.Tuple{gf(0, "xy", "x"), gf(1, "xy", "y")},
+				expression.Tuple{
+					expression.Tuple{lit(1), lit(2)},
+					expression.Tuple{lit(3), lit(4)},
+				},
+			),
+			exp: `
+(1: or
+  (2: and
+    (3: xy.x = 1)
+    (4: xy.y = 2))
+  (5: and
+    (6: xy.x = 3)
+    (7: xy.y = 4)))`,
+		},
+		{
+			name: "tuple IN inside an AND decomposed to OR-of-ANDs",
+			in: and(
+				expression.NewInTuple(
+					expression.Tuple{gf(0, "xy", "x"), gf(1, "xy", "y")},
+					expression.Tuple{
+						expression.Tuple{lit(1), lit(2)},
+						expression.Tuple{lit(3), lit(4)},
+					},
+				),
+				eq(gf(0, "xy", "z"), lit(5)),
+			),
+			exp: `
+(1: and
+  (9: xy.z = 5)
+  (2: or
+    (3: and
+      (4: xy.x = 1)
+      (5: xy.y = 2))
+    (6: and
+      (7: xy.x = 3)
+      (8: xy.y = 4))))`,
+		},
+		{
+			name: "tuple IN inside an OR decomposed to OR-of-ANDs",
+			in: or(
+				expression.NewInTuple(
+					expression.Tuple{gf(0, "xy", "x"), gf(1, "xy", "y")},
+					expression.Tuple{
+						expression.Tuple{lit(1), lit(2)},
+						expression.Tuple{lit(3), lit(4)},
+					},
+				),
+				eq(gf(0, "xy", "z"), lit(5)),
+			),
+			exp: `
+(1: or
+  (3: and
+    (4: xy.x = 1)
+    (5: xy.y = 2))
+  (6: and
+    (7: xy.x = 3)
+    (8: xy.y = 4))
+  (9: xy.z = 5))`,
+		},
+		{
+			name: "single-element tuple IN decomposed to AND",
+			in: expression.NewInTuple(
+				expression.Tuple{gf(0, "xy", "x"), gf(1, "xy", "y")},
+				expression.Tuple{
+					expression.Tuple{lit(5), lit(6)},
+				},
+			),
+			exp: `
+(1: and
+  (2: xy.x = 5)
+  (3: xy.y = 6))`,
+		},
+		{
+			name: "tuple of single column IN decomposed to AND",
+			in: expression.NewInTuple(
+				expression.Tuple{gf(0, "xy", "x")},
+				expression.Tuple{
+					expression.Tuple{lit(5)},
+				},
+			),
+			exp: `
+(1: xy.x = 5)`,
+		},
+		{
+			name: "IN empty tuple decomposed to false",
+			in: expression.NewInTuple(
+				expression.Tuple{gf(0, "xy", "x"), gf(1, "xy", "y")},
+				expression.Tuple{},
+			),
+			exp:      "",
+			leftover: "false (tinyint(1))",
+		},
 	}
 
 	ctx := sql.NewEmptyContext()
