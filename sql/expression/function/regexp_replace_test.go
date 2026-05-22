@@ -23,6 +23,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/test"
 )
 
 func TestRegexpReplaceInvalidArgNumber(t *testing.T) {
@@ -111,6 +112,15 @@ func TestRegexpReplace(t *testing.T) {
 		{
 			"valid case",
 			sql.NewRow("abc def ghi", `[a-z]`, "X"),
+			"XXX XXX XXX",
+			false,
+		},
+		{
+			"string wrapper input",
+			sql.NewRow(
+				test.NewMockStringWrapper("abc def ghi"),
+				test.NewMockStringWrapper(`[a-z]`),
+				test.NewMockStringWrapper("X")),
 			"XXX XXX XXX",
 			false,
 		},
