@@ -138,7 +138,10 @@ func (l *Length) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		contentLen := int32(0)
 		for len(content) > 0 {
 			cr, cRead := charSetEncoder.NextRune(content)
-			if cRead == 0 || cr == utf8.RuneError {
+			// NextRune only pairs utf8.RuneError with an advance of one byte or fewer for a
+			// genuinely malformed sequence. The replacement character U+FFFD is valid and
+			// decodes to three bytes, so it must not be rejected here.
+			if cr == utf8.RuneError && cRead <= 1 {
 				return 0, sql.ErrCollationMalformedString.New("checking length")
 			}
 			content = content[cRead:]

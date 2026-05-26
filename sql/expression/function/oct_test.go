@@ -23,7 +23,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-type test struct {
+type testCase struct {
 	name     string
 	nType    sql.Type
 	row      sql.Row
@@ -31,7 +31,7 @@ type test struct {
 }
 
 func TestOct(t *testing.T) {
-	tests := []test{
+	testCases := []testCase{
 		// NULL input
 		{"n is nil", types.Int32, sql.NewRow(nil), nil},
 
@@ -65,7 +65,7 @@ func TestOct(t *testing.T) {
 		{"negative decimal", types.Float64, sql.NewRow(-15.5), "1777777777777777777761"},
 	}
 
-	for _, tt := range tests {
+	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			f := NewOct(sql.NewEmptyContext(), expression.NewGetField(0, tt.nType, "n", true))
 			result, err := f.Eval(sql.NewEmptyContext(), tt.row)

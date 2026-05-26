@@ -220,6 +220,10 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (val interface{}, er
 	if err != nil {
 		return nil, err
 	}
+	text, err = sql.UnwrapAny(ctx, text)
+	if err != nil {
+		return nil, err
+	}
 
 	rText, err := r.RText.Eval(ctx, row)
 	if err != nil {
@@ -229,6 +233,10 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (val interface{}, er
 		return nil, nil
 	}
 	rText, _, err = types.LongText.Convert(ctx, rText)
+	if err != nil {
+		return nil, err
+	}
+	rText, err = sql.UnwrapAny(ctx, rText)
 	if err != nil {
 		return nil, err
 	}
