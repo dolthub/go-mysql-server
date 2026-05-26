@@ -248,10 +248,6 @@ func (h *hashLookupGeneratingIter) Next(ctx *sql.Context) (sql.Row, error) {
 }
 
 func (h *hashLookupGeneratingIter) Close(c *sql.Context) error {
-	// Propagate Close down the child iter chain, and dispose the CachedResults
-	// child if present so its global Manager entry is released. Without the
-	// dispose, every executed hash join over a CachedResults subtree can leak
-	// an entry into plan.CachedResultsManager.cachedResultsCaches (issue #3560).
 	if cr, ok := h.n.Child.(*plan.CachedResults); ok {
 		cr.Dispose(c)
 	}
