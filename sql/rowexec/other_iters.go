@@ -248,7 +248,10 @@ func (h *hashLookupGeneratingIter) Next(ctx *sql.Context) (sql.Row, error) {
 }
 
 func (h *hashLookupGeneratingIter) Close(c *sql.Context) error {
-	return nil
+	if cr, ok := h.n.Child.(*plan.CachedResults); ok {
+		cr.Dispose(c)
+	}
+	return h.childIter.Close(c)
 }
 
 var _ sql.RowIter = (*hashLookupGeneratingIter)(nil)
