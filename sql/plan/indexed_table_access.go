@@ -393,7 +393,7 @@ func (i *IndexedTableAccess) String() string {
 func formatIndexDecoratorString(idx sql.Index) string {
 	var expStrs []string
 	expStrs = append(expStrs, idx.Expressions()...)
-	if p, ok := idx.(sql.PartialIndex); ok {
+	if p, ok := idx.(sql.PartialIndex); ok && p.Predicate() != "" {
 		expStrs = append(expStrs, p.Predicate())
 	}
 	return fmt.Sprintf("[%s]", strings.Join(expStrs, ","))
