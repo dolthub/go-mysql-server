@@ -2213,6 +2213,26 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 			}
 		}
 
+		if v, ok := n.Db.(sql.RelationNameValidator); ok {
+			exists, relationType, err := v.DoesRelationExist(ctx, indexDef.Name)
+			if err != nil {
+				return err
+			}
+
+			if n.IfNotExists {
+				// If the index already exists, this is a no-op
+				if exists && relationType == "index" {
+					return nil
+				} else if exists {
+					return fmt.Errorf(`relation "%s" already exists and is not an index`, indexDef.Name)
+				}
+			} else {
+				if exists {
+					return fmt.Errorf(`relation "%s" already exists`, indexDef.Name)
+				}
+			}
+		}
+
 		err = idxAltTbl.CreateIndex(ctx, indexDef)
 		if err != nil {
 			if sql.ErrDuplicateKey.Is(err) && n.IfNotExists {

@@ -145,6 +145,18 @@ type TableCreator interface {
 	CreateTable(ctx *Context, name string, schema PrimaryKeySchema, collation CollationID, comment string) error
 }
 
+// RelationNameValidator is an optional interface a database can implement to enforce additional
+// validation or constraints on relation names beyond what GMS implements for MySQL compatibility.
+// This allows integrators to support relations that share a namespace.
+type RelationNameValidator interface {
+	Database
+
+	// DoesRelationExist returns true if a relation of name |name| exists, along with the type
+	// of relation it is. This is used when handling "IF EXIST" and "IF NOT EXISTS" clauses for
+	// integrators where relation types share a namespace.
+	DoesRelationExist(ctx *Context, name string) (exists bool, relationType string, err error)
+}
+
 // IndexedTableCreator is a Database that can create new tables which have a Primary Key with columns that have
 // prefix lengths.
 type IndexedTableCreator interface {

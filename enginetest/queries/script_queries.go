@@ -1919,7 +1919,8 @@ CREATE TABLE teams (
 	{
 		Name: "keyless reverse index",
 		SetUpScript: []string{
-			"create table x (x int, key(x));",
+			"create table x (x int);",
+			"CREATE INDEX idx_x_x ON x(x)",
 			"insert into x values (0),(1)",
 		},
 		Query: "select * from x order by x desc limit 1",
@@ -2078,11 +2079,13 @@ CREATE TABLE table2 (
 		SetUpScript: []string{
 			"CREATE TABLE pk (x varchar(10) primary key)",
 			"INSERT INTO pk values ('3'), ('30'), ('3#')",
-			"CREATE TABLE uniq (y int primary key, x varchar(10), unique key (x))",
+			"CREATE TABLE uniq (y int primary key, x varchar(10), constraint idx_uniq_x unique key (x))",
 			"INSERT INTO uniq values (1,'3'), (2,'30'), (3,'3#')",
-			"CREATE TABLE noncov (y int primary key, x varchar(10), z int, key (x))",
+			"CREATE TABLE noncov (y int primary key, x varchar(10), z int)",
+			"CREATE INDEX idx_noncov_x ON noncov(x);",
 			"INSERT INTO noncov values (1,'3',1), (2,'30',2), (3,'3#',3)",
-			"CREATE TABLE keyless (y int, x varchar(10),key (x))",
+			"CREATE TABLE keyless (y int, x varchar(10))",
+			"CREATE INDEX idx_keyless_x ON keyless(x);",
 			"INSERT INTO keyless values (1,'3'), (2,'30'), (3,'3#')",
 		},
 		Assertions: []ScriptTestAssertion{

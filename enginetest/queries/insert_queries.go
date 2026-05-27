@@ -1885,7 +1885,7 @@ var InsertScripts = []ScriptTest{
 		Name: "Insert throws unique key violations",
 		SetUpScript: []string{
 			"CREATE TABLE t (pk int PRIMARY key, col1 int UNIQUE);",
-			"CREATE TABLE t2 (pk int PRIMARY key, col1 int, col2 int, UNIQUE KEY (col1, col2));",
+			"CREATE TABLE t2 (pk int PRIMARY key, col1 int, col2 int, CONSTRAINT col1_col2 UNIQUE KEY (col1, col2));",
 			"INSERT into t VALUES (1, 1);",
 			"INSERT into t2 VALUES (1, 1, 1);",
 		},
@@ -1936,7 +1936,7 @@ var InsertScripts = []ScriptTest{
 		Name: "Insert throws unique key violations for keyless tables",
 		SetUpScript: []string{
 			"CREATE TABLE t (not_pk int NOT NULL, col1 int UNIQUE);",
-			"CREATE TABLE t2 (not_pk int NOT NULL, col1 int, col2 int, UNIQUE KEY (col1, col2));",
+			"CREATE TABLE t2 (not_pk int NOT NULL, col1 int, col2 int, CONSTRAINT col1_col2 UNIQUE KEY (col1, col2));",
 			"INSERT into t VALUES (1, 1);",
 			"INSERT into t2 VALUES (1, 1, 1);",
 		},

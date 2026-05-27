@@ -145,7 +145,7 @@ func (b *BaseBuilder) buildDropConstraint(ctx *sql.Context, n *plan.DropConstrai
 	return nil, fmt.Errorf("%T does not have an execution iterator, this is a bug", n)
 }
 
-func (b *BaseBuilder) buildCreateView(ctx *sql.Context, n *plan.CreateView, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildCreateView(ctx *sql.Context, n *plan.CreateView, _ sql.Row) (sql.RowIter, error) {
 	registry := ctx.GetViewRegistry()
 	if n.IsReplace {
 		if dropper, ok := n.Database().(sql.ViewDatabase); ok {
@@ -160,6 +160,23 @@ func (b *BaseBuilder) buildCreateView(ctx *sql.Context, n *plan.CreateView, row 
 			}
 		}
 	}
+
+	if v, ok := n.Database().(sql.RelationNameValidator); ok {
+		exists, relationType, err := v.DoesRelationExist(ctx, n.Name)
+		if err != nil {
+			return nil, err
+		}
+		if n.IsReplace {
+			if exists && relationType != "view" {
+				return nil, fmt.Errorf("relation '%s' already exists and is not a view", n.Name)
+			}
+		} else {
+			if exists {
+				return nil, fmt.Errorf(`relation "%s" already exists`, n.Name)
+			}
+		}
+	}
+
 	names, err := n.Database().GetTableNames(ctx)
 	if err != nil {
 		return nil, err
