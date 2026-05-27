@@ -2178,6 +2178,7 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 			Constraint: n.Constraint,
 			Storage:    n.Using,
 			Comment:    n.Comment,
+			Predicate:  n.Predicate,
 		}
 
 		if indexDef.IsFullText() {

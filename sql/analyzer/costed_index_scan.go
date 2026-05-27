@@ -242,6 +242,22 @@ func getCostedIndexScan(
 	}
 
 	for _, idx := range indexes {
+		// only use the index if the query filters include the index predicate
+		if pi, ok := idx.(sql.PartialIndex); ok && pi.Predicate() != "" {
+			predStr := strings.ToLower(pi.Predicate())
+			implied := false
+			for _, f := range filters {
+				fstr := strings.ToLower(f.String())
+				if fstr == predStr {
+					implied = true
+					break
+				}
+			}
+			if !implied {
+				continue
+			}
+		}
+
 		qual := sql.NewStatQualifier(dbName, schemaName, tableName, strings.ToLower(idx.ID()))
 		stat, ok := qualToStat[qual]
 		if !ok {
