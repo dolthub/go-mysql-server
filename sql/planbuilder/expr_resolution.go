@@ -40,8 +40,8 @@ type exprResolutionCatalog struct {
 
 var _ sql.Catalog = (*exprResolutionCatalog)(nil)
 
-func (c *exprResolutionCatalog) Function(ctx *sql.Context, name string) (sql.Function, bool) {
-	return c.functions.Function(ctx, name)
+func (c *exprResolutionCatalog) Function(ctx *sql.Context, schema, name string) (sql.Function, bool) {
+	return c.functions.Function(ctx, schema, name)
 }
 
 func (c *exprResolutionCatalog) TableFunction(_ *sql.Context, _ string) (sql.TableFunction, bool) {

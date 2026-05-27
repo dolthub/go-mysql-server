@@ -362,7 +362,7 @@ func (b *Builder) newAggregation(e *ast.FuncExpr, name string, args []sql.Expres
 			args[0] = expression.NewDistinctExpression(args[0])
 		}
 
-		f, ok := b.cat.Function(b.ctx, name)
+		f, ok := b.cat.Function(b.ctx, e.Qualifier.String(), name)
 		if !ok {
 			// todo(max): similar names in registry?
 			err := sql.ErrFunctionNotFound.New(name)
@@ -622,7 +622,7 @@ func (b *Builder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, 
 		}
 	}
 	if win == nil {
-		f, ok := b.cat.Function(b.ctx, name)
+		f, ok := b.cat.Function(b.ctx, e.Qualifier.String(), name)
 		if !ok {
 			// todo(max): similar names in registry?
 			err := sql.ErrFunctionNotFound.New(name)

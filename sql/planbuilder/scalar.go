@@ -206,7 +206,12 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 			return b.buildWindowFunc(inScope, name, v, (*ast.WindowDef)(v.Over))
 		}
 
-		f, ok := b.cat.Function(b.ctx, name)
+		schemaName := v.Qualifier.String()
+		if schemaName == "" {
+			schemaName = inScope.schemaName
+		}
+
+		f, ok := b.cat.Function(b.ctx, schemaName, name)
 		if !ok {
 			// check if this a table function accidentally used in a scalar context
 			_, ok := b.cat.TableFunction(b.ctx, name)
@@ -444,7 +449,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 			return col.scalarGf()
 		} else {
 			col := b.buildScalar(inScope, v.Name)
-			fn, ok := b.cat.Function(b.ctx, "values")
+			fn, ok := b.cat.Function(b.ctx, "", "values")
 			if !ok {
 				err := sql.ErrFunctionNotFound.New("values")
 				b.handleErr(err)

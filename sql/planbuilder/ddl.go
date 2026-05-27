@@ -101,6 +101,7 @@ func (b *Builder) buildAlterTable(inScope *scope, query string, c *ast.AlterTabl
 	}
 	statements := make([]sql.Node, 0, len(c.Statements))
 	for i := 0; i < len(c.Statements); i++ {
+		inScope.schemaName = c.Table.SchemaQualifier.String()
 		scopes := b.buildAlterTableClause(inScope, c.Statements[i])
 		for _, scope := range scopes {
 			statements = append(statements, scope.node)

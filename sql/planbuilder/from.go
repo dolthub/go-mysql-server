@@ -475,7 +475,7 @@ func (b *Builder) buildTableFunc(inScope *scope, t *ast.TableFuncExpr) (outScope
 	tableFunction, found := b.cat.TableFunction(b.ctx, utf.Name())
 	if !found {
 		// try getting regular function
-		f, funcFound := b.cat.Function(b.ctx, utf.Name())
+		f, funcFound := b.cat.Function(b.ctx, "", utf.Name())
 		if !funcFound {
 			b.handleErr(sql.ErrTableFunctionNotFound.New(utf.Name()))
 		}
