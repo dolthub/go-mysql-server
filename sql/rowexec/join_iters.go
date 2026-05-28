@@ -189,8 +189,8 @@ func newJoinState(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode, par
 	}
 
 	span, ctx := ctx.Span(opName, trace.WithAttributes(
-		attribute.String("left", left),
-		attribute.String("right", right),
+		attribute.String("left", ctx.RedactNameForTrace(left)),
+		attribute.String("right", ctx.RedactNameForTrace(right)),
 	))
 
 	parentLen := len(parentRow)
