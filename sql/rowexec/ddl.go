@@ -161,18 +161,15 @@ func (b *BaseBuilder) buildCreateView(ctx *sql.Context, n *plan.CreateView, _ sq
 		}
 	}
 
-	if v, ok := n.Database().(sql.RelationNameValidator); ok {
-		exists, relationType, err := v.DoesRelationExist(ctx, n.Name)
+	if v, ok := n.Database().(sql.SchemaObjectNameValidator); ok {
+		alreadyExists, err := v.ValidateNewViewName(ctx, n.Name)
 		if err != nil {
-			return nil, err
-		}
-		if n.IsReplace {
-			if exists && relationType != "view" {
-				return nil, fmt.Errorf("relation '%s' already exists and is not a view", n.Name)
-			}
-		} else {
-			if exists {
-				return nil, fmt.Errorf(`relation "%s" already exists`, n.Name)
+			if alreadyExists && n.IfNotExists {
+				return sql.RowsToRowIter(), nil
+			} else if alreadyExists && n.IsReplace {
+				// no-op, ignore the validation error and replace the view
+			} else {
+				return nil, err
 			}
 		}
 	}

@@ -145,16 +145,43 @@ type TableCreator interface {
 	CreateTable(ctx *Context, name string, schema PrimaryKeySchema, collation CollationID, comment string) error
 }
 
-// RelationNameValidator is an optional interface a database can implement to enforce additional
-// validation or constraints on relation names beyond what GMS implements for MySQL compatibility.
-// This allows integrators to support relations that share a namespace.
-type RelationNameValidator interface {
+// SchemaObjectNameValidator is an optional interface a database can implement to enforce additional
+// validation or constraints on schema object names beyond what GMS implements for MySQL compatibility.
+// This allows integrators to support schema objects that share a namespace.
+type SchemaObjectNameValidator interface {
 	Database
 
-	// DoesRelationExist returns true if a relation of name |name| exists, along with the type
-	// of relation it is. This is used when handling "IF EXIST" and "IF NOT EXISTS" clauses for
-	// integrators where relation types share a namespace.
-	DoesRelationExist(ctx *Context, name string) (exists bool, relationType string, err error)
+	// ValidateNewIndexName checks if |newIndexName| is available to use as a new index name. If the name is available,
+	// then this method returns false for |alreadyExists| and nil for |err|. If an index with this name already exists,
+	// this method returns true for |alreadyExists| and an error message for the user in |err|. If an index with this
+	// name does NOT exist, but the name is not available, then this method returns false for |alreadyExists| and an
+	// error message for the user in |err|. If any other errors are encountered, then this method returns false for
+	// |alreadyExists| and an error message in |err|.
+	ValidateNewIndexName(ctx *Context, newIndexName string) (alreadyExists bool, err error)
+
+	// ValidateNewSequenceName checks if |newSequenceName| is available to use as a new index name. If the name is available,
+	// then this method returns false for |alreadyExists| and nil for |err|. If an index with this name already exists,
+	// this method returns true for |alreadyExists| and an error message for the user in |err|. If an index with this
+	// name does NOT exist, but the name is not available, then this method returns false for |alreadyExists| and an
+	// error message for the user in |err|. If any other errors are encountered, then this method returns false for
+	// |alreadyExists| and an error message in |err|.
+	ValidateNewSequenceName(ctx *Context, newSequenceName string) (alreadyExists bool, err error)
+
+	// ValidateNewViewName checks if |newViewName| is available to use as a new index name. If the name is available,
+	// then this method returns false for |alreadyExists| and nil for |err|. If an index with this name already exists,
+	// this method returns true for |alreadyExists| and an error message for the user in |err|. If an index with this
+	// name does NOT exist, but the name is not available, then this method returns false for |alreadyExists| and an
+	// error message for the user in |err|. If any other errors are encountered, then this method returns false for
+	// |alreadyExists| and an error message in |err|.
+	ValidateNewViewName(ctx *Context, newViewName string) (alreadyExists bool, err error)
+
+	// ValidateNewTableName checks if |newTableName| is available to use as a new index name. If the name is available,
+	// then this method returns false for |alreadyExists| and nil for |err|. If an index with this name already exists,
+	// this method returns true for |alreadyExists| and an error message for the user in |err|. If an index with this
+	// name does NOT exist, but the name is not available, then this method returns false for |alreadyExists| and an
+	// error message for the user in |err|. If any other errors are encountered, then this method returns false for
+	// |alreadyExists| and an error message in |err|.
+	ValidateNewTableName(ctx *Context, newTableName string) (alreadyExists bool, err error)
 }
 
 // IndexedTableCreator is a Database that can create new tables which have a Primary Key with columns that have
