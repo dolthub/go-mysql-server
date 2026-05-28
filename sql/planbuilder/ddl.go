@@ -1887,15 +1887,16 @@ func (b *Builder) convertDefaultExpression(inScope *scope, defaultExpr ast.Expr,
 		}
 	} else if !isParenthesized {
 		if _, ok := resExpr.(sql.FunctionExpression); ok {
+			isLiteral = false
 			switch resExpr.(type) {
 			case *function.Now:
 				// Datetime and Timestamp columns allow now and current_timestamp to not be enclosed in parens,
 				// but they still need to be treated as function expressions
-				isLiteral = false
 			default:
-				// All other functions must *always* be enclosed in parens
-				err := sql.ErrSyntaxError.New("column default function expressions must be enclosed in parentheses")
-				b.handleErr(err)
+				// Other unparenthesized function expressions are allowed by MariaDB but rejected by MySQL.
+				// We accept them in order to match MariaDB, but we wrap the expression in parentheses
+				// so that dumps can be imported to MySQL.
+				isParenthesized = true
 			}
 		}
 	}
