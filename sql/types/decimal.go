@@ -560,6 +560,9 @@ func DecimalDiv(a, b *apd.Decimal, scale int32, truncate bool) *apd.Decimal {
 	res := new(apd.Decimal)
 	// need to set precision for decimal context because it does division operation.
 	p := a.NumDigits()
+	if a.Exponent > 0 {
+		p += int64(a.Exponent)
+	}
 	if b.Exponent < 0 {
 		p += int64(-b.Exponent)
 	}
