@@ -17,7 +17,6 @@ package types
 import (
 	"context"
 	"fmt"
-	"math"
 	"math/big"
 	"reflect"
 	"strconv"
@@ -556,18 +555,41 @@ func DecimalIntPartUint64(val *apd.Decimal) uint64 {
 	return v.Coeff.Uint64()
 }
 
-// DecimalDivRound divides and rounds to a given scale.
-func DecimalDivRound(a, b *apd.Decimal, scale int32) *apd.Decimal {
+// DecimalDiv divides and rounds to a given scale. If 'truncate' is false, it rounds.
+func DecimalDiv(a, b *apd.Decimal, scale int32, truncate bool) *apd.Decimal {
 	res := new(apd.Decimal)
 	// need to set precision for decimal context because it does division operation.
-	// TODO: can find precision for context based on the given values instead of using MaxExponent
-	_, err := sql.DecimalHighPrecisionCtx.Quo(res, a, b)
+	p := a.NumDigits()
+	if a.Exponent > 0 {
+		p += int64(a.Exponent)
+	}
+	if b.Exponent < 0 {
+		p += int64(-b.Exponent)
+	}
+	if scale > 0 {
+		p += int64(scale)
+	}
+	if truncate {
+		// give it buffer of 2 additional scale to avoid the result to be rounded
+		p += 2
+	}
+	c := sql.DecimalCtx.WithPrecision(uint32(p))
+	_, err := c.Quo(res, a, b)
 	if err != nil {
 		panic(err)
 	}
-	_, err = sql.DecimalHighPrecisionCtx.Quantize(res, res, -scale)
+
+	if truncate {
+		c.Rounding = apd.RoundDown
+	}
+	_, err = c.Quantize(res, res, -scale)
 	if err != nil {
 		panic(err)
+	}
+
+	if res.IsZero() {
+		res.Negative = false
+		res.Exponent = 0
 	}
 	return res
 }
@@ -575,9 +597,12 @@ func DecimalDivRound(a, b *apd.Decimal, scale int32) *apd.Decimal {
 // DecimalMod mods the given values.
 func DecimalMod(a, b *apd.Decimal) (*apd.Decimal, error) {
 	res := new(apd.Decimal)
-	m := math.Max(float64(a.NumDigits()), float64(b.NumDigits()))
+	p := a.NumDigits()
+	if bnd := b.NumDigits(); p < bnd {
+		p = bnd
+	}
 	// need to set precision for decimal context because it does division operation.
-	_, err := sql.DecimalCtx.WithPrecision(uint32(m)).Rem(res, a, b)
+	_, err := sql.DecimalCtx.WithPrecision(uint32(p)).Rem(res, a, b)
 	return res, err
 }
 
@@ -586,7 +611,11 @@ func DecimalMod(a, b *apd.Decimal) (*apd.Decimal, error) {
 // 545 truncated with scale of -1 = 540
 func DecimalTruncate(val *apd.Decimal, scale int32) *apd.Decimal {
 	if -scale > val.Exponent {
-		ctx := *sql.DecimalHighPrecisionCtx
+		p := val.NumDigits()
+		if scale > 0 {
+			p += int64(scale)
+		}
+		ctx := sql.DecimalCtx.WithPrecision(uint32(p))
 		ctx.Rounding = apd.RoundDown
 		newVal := new(*val)
 		_, err := ctx.Quantize(newVal, val, -scale)
