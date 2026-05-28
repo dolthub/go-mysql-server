@@ -610,3 +610,75 @@ func TestUnaryMinus(t *testing.T) {
 		})
 	}
 }
+
+// Results:
+// BenchmarkPlusHighScaleDecimals-16          3770235	       308.2 ns/op
+func BenchmarkPlusHighScaleDecimals(b *testing.B) {
+	require := require.New(b)
+	ctx := sql.NewEmptyContext()
+	p := NewPlus(
+		NewLiteral(types.DecimalFromFloat64(0.123456789), types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, types.DecimalTypeMaxScale)),
+		NewLiteral(types.DecimalFromFloat64(0.987654321), types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, types.DecimalTypeMaxScale)),
+	)
+	var res interface{}
+	var err error
+	for i := 0; i < b.N; i++ {
+		res, err = p.Eval(ctx, nil)
+		require.NoError(err)
+	}
+	if dec, ok := res.(*apd.Decimal); ok {
+		res = dec.Text('f')
+	}
+	exp := "1.111111110"
+	if res != exp {
+		b.Logf("Expected %v, got %v", exp, res)
+	}
+}
+
+// Results:
+// BenchmarkMinusHighScaleDecimals-16          3570638	       318.9 ns/op
+func BenchmarkMinusHighScaleDecimals(b *testing.B) {
+	require := require.New(b)
+	ctx := sql.NewEmptyContext()
+	m := NewMinus(
+		NewLiteral(types.DecimalFromFloat64(0.123456789), types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, types.DecimalTypeMaxScale)),
+		NewLiteral(types.DecimalFromFloat64(0.987654321), types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, types.DecimalTypeMaxScale)),
+	)
+	var res interface{}
+	var err error
+	for i := 0; i < b.N; i++ {
+		res, err = m.Eval(ctx, nil)
+		require.NoError(err)
+	}
+	if dec, ok := res.(*apd.Decimal); ok {
+		res = dec.Text('f')
+	}
+	exp := "-0.864197532"
+	if res != exp {
+		b.Logf("Expected %v, got %v", exp, res)
+	}
+}
+
+// Results:
+// BenchmarkMultHighScaleDecimals-16          3579982	       330.5 ns/op
+func BenchmarkMultHighScaleDecimals(b *testing.B) {
+	require := require.New(b)
+	ctx := sql.NewEmptyContext()
+	m := NewMult(
+		NewLiteral(types.DecimalFromFloat64(0.123456789), types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, types.DecimalTypeMaxScale)),
+		NewLiteral(types.DecimalFromFloat64(0.987654321), types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, types.DecimalTypeMaxScale)),
+	)
+	var res interface{}
+	var err error
+	for i := 0; i < b.N; i++ {
+		res, err = m.Eval(ctx, nil)
+		require.NoError(err)
+	}
+	if dec, ok := res.(*apd.Decimal); ok {
+		res = dec.Text('f')
+	}
+	exp := "0.121932631112635269"
+	if res != exp {
+		b.Logf("Expected %v, got %v", exp, res)
+	}
+}
