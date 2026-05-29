@@ -162,15 +162,8 @@ func (b *BaseBuilder) buildCreateView(ctx *sql.Context, n *plan.CreateView, _ sq
 	}
 
 	if v, ok := n.Database().(sql.SchemaObjectNameValidator); ok {
-		alreadyExists, err := v.ValidateNewViewName(ctx, n.Name)
-		if err != nil {
-			if alreadyExists && n.IfNotExists {
-				return sql.RowsToRowIter(), nil
-			} else if alreadyExists && n.IsReplace {
-				// no-op, ignore the validation error and replace the view
-			} else {
-				return nil, err
-			}
+		if err := v.ValidateNewViewName(ctx, n.Name, n.IsReplace); err != nil {
+			return nil, err
 		}
 	}
 
@@ -1130,6 +1123,15 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 	maybePrivDb := n.Db
 	if privDb, ok := maybePrivDb.(mysql_db.PrivilegedDatabase); ok {
 		maybePrivDb = privDb.Unwrap()
+	}
+
+	if v, ok := maybePrivDb.(sql.SchemaObjectNameValidator); ok {
+		nameAlreadyUsed, err := v.ValidateNewTableName(ctx, n.Name(), n.IfNotExists())
+		if err != nil {
+			return nil, err
+		} else if nameAlreadyUsed && n.IfNotExists() {
+			return rowIterWithOkResultWithZeroRowsAffected(), nil
+		}
 	}
 
 	if n.Temporary() {
