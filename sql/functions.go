@@ -27,8 +27,8 @@ type Function interface {
 // FunctionProvider is an interface that allows custom functions to be provided. It's usually (but not always)
 // implemented by a DatabaseProvider.
 type FunctionProvider interface {
-	// Function returns the function with the name provided, case-insensitive
-	Function(ctx *Context, name string) (Function, bool)
+	// Function returns the schema and function with the name provided, case-insensitive
+	Function(ctx *Context, schema, name string) (Function, bool)
 }
 
 type CreateFunc0Args func(ctx *Context) Expression

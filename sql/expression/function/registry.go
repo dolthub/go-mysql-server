@@ -399,7 +399,7 @@ func (r Registry) Register(fn ...sql.Function) error {
 }
 
 // Function implements sql.FunctionProvider
-func (r Registry) Function(ctx *sql.Context, name string) (sql.Function, bool) {
+func (r Registry) Function(ctx *sql.Context, schema, name string) (sql.Function, bool) {
 	if fn, ok := r[name]; ok {
 		return fn, true
 	}

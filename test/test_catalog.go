@@ -149,7 +149,7 @@ func (c *Catalog) DatabaseTableAsOf(ctx *sql.Context, db sql.Database, tableName
 
 func (c *Catalog) RegisterFunction(ctx *sql.Context, fns ...sql.Function) {}
 
-func (c *Catalog) Function(ctx *sql.Context, name string) (sql.Function, bool) {
+func (c *Catalog) Function(ctx *sql.Context, schema, name string) (sql.Function, bool) {
 	return nil, false
 }
 

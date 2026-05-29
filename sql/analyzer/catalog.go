@@ -361,21 +361,21 @@ func (c *Catalog) RegisterFunction(ctx *sql.Context, fns ...sql.Function) {
 var ExternalFunctionProvider sql.FunctionProvider
 
 // Function returns the function with the name given, or false if it doesn't exist.
-func (c *Catalog) Function(ctx *sql.Context, name string) (sql.Function, bool) {
+func (c *Catalog) Function(ctx *sql.Context, schema, name string) (sql.Function, bool) {
 	if ExternalFunctionProvider != nil {
-		f, ok := ExternalFunctionProvider.Function(ctx, name)
+		f, ok := ExternalFunctionProvider.Function(ctx, schema, name)
 		if ok {
 			return f, true
 		}
 	}
 	if fp, ok := c.DbProvider.(sql.FunctionProvider); ok {
-		f, ok := fp.Function(ctx, name)
+		f, ok := fp.Function(ctx, schema, name)
 		if ok {
 			return f, true
 		}
 	}
 
-	return c.builtInFunctions.Function(ctx, name)
+	return c.builtInFunctions.Function(ctx, schema, name)
 }
 
 // ExternalStoredProcedure implements sql.ExternalStoredProcedureProvider

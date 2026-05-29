@@ -36,7 +36,7 @@ func TestFunctionRegistry(t *testing.T) {
 		Fn:   func(ctx *sql.Context, arg sql.Expression) sql.Expression { return expected },
 	})
 
-	f, ok := reg.Function(sql.NewEmptyContext(), name)
+	f, ok := reg.Function(sql.NewEmptyContext(), "", name)
 	require.True(ok)
 
 	e, err := f.NewInstance(ctx, nil)
@@ -56,7 +56,7 @@ func TestFunctionRegistryMissingFunction(t *testing.T) {
 	require := require.New(t)
 
 	reg := function.NewRegistry()
-	f, ok := reg.Function(sql.NewEmptyContext(), "func")
+	f, ok := reg.Function(sql.NewEmptyContext(), "", "func")
 	require.False(ok)
 	require.Nil(f)
 }
