@@ -517,9 +517,9 @@ func (t Timespan) AppendBytes(dest []byte) []byte {
 
 func appendTimeFormat(dest []byte, h, m, s, ms int64, msPrecision int) []byte {
 	dest = append(dest,
-		48+byte(h/10), 48+byte(h%10), ':',
-		48+byte(m/10), 48+byte(m%10), ':',
-		48+byte(s/10), 48+byte(s%10))
+		'0'+byte(h/10), '0'+byte(h%10), ':',
+		'0'+byte(m/10), '0'+byte(m%10), ':',
+		'0'+byte(s/10), '0'+byte(s%10))
 
 	if msPrecision > 0 {
 		dest = appendMicroseconds(dest, ms, msPrecision)
