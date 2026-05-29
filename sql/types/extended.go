@@ -22,18 +22,18 @@ import (
 )
 
 // ExtendedTypeSerializer is the function signature for the extended type serializer.
-type ExtendedTypeSerializer func(extendedType sql.ExtendedType) ([]byte, error)
+type ExtendedTypeSerializer func(ctx *sql.Context, extendedType sql.ExtendedType) ([]byte, error)
 
 // ExtendedTypeDeserializer is the function signature for the extended type deserializer.
-type ExtendedTypeDeserializer func(serializedType []byte) (sql.ExtendedType, error)
+type ExtendedTypeDeserializer func(ctx *sql.Context, serializedType []byte) (sql.ExtendedType, error)
 
 // extendedTypeDeserializer refers to the function that will handle deserialization of extended types.
-var extendedTypeDeserializer ExtendedTypeDeserializer = func(serializedType []byte) (sql.ExtendedType, error) {
+var extendedTypeDeserializer ExtendedTypeDeserializer = func(ctx *sql.Context, serializedType []byte) (sql.ExtendedType, error) {
 	return nil, errors.New("placeholder extended type deserializer")
 }
 
 // extendedTypeSerializer refers to the function that will handle serialization of extended types.
-var extendedTypeSerializer ExtendedTypeSerializer = func(extendedType sql.ExtendedType) ([]byte, error) {
+var extendedTypeSerializer ExtendedTypeSerializer = func(ctx *sql.Context, extendedType sql.ExtendedType) ([]byte, error) {
 	return nil, errors.New("placeholder extended type serializer")
 }
 
@@ -45,13 +45,13 @@ func SetExtendedTypeSerializers(serializer ExtendedTypeSerializer, deserializer 
 }
 
 // SerializeType serializes the given extended type into a byte slice.
-func SerializeType(typ sql.ExtendedType) ([]byte, error) {
-	return extendedTypeSerializer(typ)
+func SerializeType(ctx *sql.Context, typ sql.ExtendedType) ([]byte, error) {
+	return extendedTypeSerializer(ctx, typ)
 }
 
 // SerializeTypeToString serializes the given extended type into a hex-encoded string.
-func SerializeTypeToString(typ sql.ExtendedType) (string, error) {
-	serializedType, err := extendedTypeSerializer(typ)
+func SerializeTypeToString(ctx *sql.Context, typ sql.ExtendedType) (string, error) {
+	serializedType, err := extendedTypeSerializer(ctx, typ)
 	if err != nil {
 		return "", err
 	}
@@ -59,17 +59,17 @@ func SerializeTypeToString(typ sql.ExtendedType) (string, error) {
 }
 
 // DeserializeType deserializes a byte slice representing a serialized extended type.
-func DeserializeType(typ []byte) (sql.ExtendedType, error) {
-	return extendedTypeDeserializer(typ)
+func DeserializeType(ctx *sql.Context, typ []byte) (sql.ExtendedType, error) {
+	return extendedTypeDeserializer(ctx, typ)
 }
 
 // DeserializeTypeFromString deserializes a hex-encoded string representing a serialized extended type.
-func DeserializeTypeFromString(typ string) (sql.ExtendedType, error) {
+func DeserializeTypeFromString(ctx *sql.Context, typ string) (sql.ExtendedType, error) {
 	serializedType, err := hex.DecodeString(typ)
 	if err != nil {
 		return nil, err
 	}
-	return extendedTypeDeserializer(serializedType)
+	return extendedTypeDeserializer(ctx, serializedType)
 }
 
 // IsExtendedType returns whether the given sql.Type is an ExtendedType.

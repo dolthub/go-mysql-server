@@ -2943,7 +2943,7 @@ func TestParseColumnTypeString(t *testing.T) {
 		ctx := sql.NewEmptyContext()
 		ctx.SetCurrentDatabase("mydb")
 		t.Run("parse "+test.columnType, func(t *testing.T) {
-			res, err := ParseColumnTypeString(test.columnType)
+			res, err := ParseColumnTypeString(ctx, test.columnType)
 			require.NoError(t, err)
 			if collatedType, ok := res.(sql.TypeWithCollation); ok {
 				if collatedType.Collation() == sql.Collation_Unspecified {
@@ -2955,7 +2955,7 @@ func TestParseColumnTypeString(t *testing.T) {
 		})
 		t.Run("round trip "+test.columnType, func(t *testing.T) {
 			str := test.expectedSqlType.String()
-			typ, err := ParseColumnTypeString(str)
+			typ, err := ParseColumnTypeString(ctx, str)
 			require.NoError(t, err)
 			if collatedType, ok := typ.(sql.TypeWithCollation); ok {
 				if collatedType.Collation() == sql.Collation_Unspecified {

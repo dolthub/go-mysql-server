@@ -15,6 +15,7 @@
 package planbuilder
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -2020,7 +2021,7 @@ func (b *Builder) buildDBDDL(inScope *scope, c *ast.DBDDL) (outScope *scope) {
 // ExtendedTypeTag is primarily used by ParseColumnTypeString when parsing strings representing extended types
 const ExtendedTypeTag = "extended_"
 
-func ParseColumnTypeString(columnType string) (sql.Type, error) {
+func ParseColumnTypeString(ctx context.Context, columnType string) (sql.Type, error) {
 	if strings.HasPrefix(columnType, ExtendedTypeTag) {
 		columnType = columnType[len(ExtendedTypeTag):]
 		// If the pipe character "|" is present, then we ignore all information after it (including the pipe), as it
@@ -2028,7 +2029,8 @@ func ParseColumnTypeString(columnType string) (sql.Type, error) {
 		if pipeIdx := strings.Index(columnType, "|"); pipeIdx != -1 {
 			columnType = columnType[:pipeIdx]
 		}
-		c, err := types.DeserializeTypeFromString(columnType)
+		sqlCtx, _ := ctx.(*sql.Context)
+		c, err := types.DeserializeTypeFromString(sqlCtx, columnType)
 		if err != nil {
 			return nil, err
 		}
