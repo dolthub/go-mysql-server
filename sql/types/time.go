@@ -516,8 +516,12 @@ func (t Timespan) AppendBytes(dest []byte) []byte {
 }
 
 func appendTimeFormat(dest []byte, h, m, s, ms int64, msPrecision int) []byte {
+	if h < 10 {
+		dest = append(dest, '0')
+	}
+	dest = strconv.AppendInt(dest, h, 10)
 	dest = append(dest,
-		'0'+byte(h/10), '0'+byte(h%10), ':',
+		':',
 		'0'+byte(m/10), '0'+byte(m%10), ':',
 		'0'+byte(s/10), '0'+byte(s%10))
 
