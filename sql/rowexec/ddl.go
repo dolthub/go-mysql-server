@@ -145,7 +145,7 @@ func (b *BaseBuilder) buildDropConstraint(ctx *sql.Context, n *plan.DropConstrai
 	return nil, fmt.Errorf("%T does not have an execution iterator, this is a bug", n)
 }
 
-func (b *BaseBuilder) buildCreateView(ctx *sql.Context, n *plan.CreateView, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildCreateView(ctx *sql.Context, n *plan.CreateView, _ sql.Row) (sql.RowIter, error) {
 	registry := ctx.GetViewRegistry()
 	if n.IsReplace {
 		if dropper, ok := n.Database().(sql.ViewDatabase); ok {
@@ -160,6 +160,13 @@ func (b *BaseBuilder) buildCreateView(ctx *sql.Context, n *plan.CreateView, row 
 			}
 		}
 	}
+
+	if v, ok := n.Database().(sql.SchemaObjectNameValidator); ok {
+		if err := v.ValidateNewViewName(ctx, n.Name, n.IsReplace); err != nil {
+			return nil, err
+		}
+	}
+
 	names, err := n.Database().GetTableNames(ctx)
 	if err != nil {
 		return nil, err
@@ -1116,6 +1123,15 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 	maybePrivDb := n.Db
 	if privDb, ok := maybePrivDb.(mysql_db.PrivilegedDatabase); ok {
 		maybePrivDb = privDb.Unwrap()
+	}
+
+	if v, ok := maybePrivDb.(sql.SchemaObjectNameValidator); ok {
+		nameAlreadyUsed, err := v.ValidateNewTableName(ctx, n.Name(), n.IfNotExists())
+		if err != nil {
+			return nil, err
+		} else if nameAlreadyUsed && n.IfNotExists() {
+			return rowIterWithOkResultWithZeroRowsAffected(), nil
+		}
 	}
 
 	if n.Temporary() {

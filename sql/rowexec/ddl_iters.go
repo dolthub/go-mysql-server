@@ -2213,6 +2213,15 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 			}
 		}
 
+		if v, ok := n.Db.(sql.SchemaObjectNameValidator); ok {
+			nameAlreadyUsed, err := v.ValidateNewIndexName(ctx, indexDef.Name, n.IfNotExists)
+			if err != nil {
+				return err
+			} else if nameAlreadyUsed && n.IfNotExists {
+				return nil
+			}
+		}
+
 		err = idxAltTbl.CreateIndex(ctx, indexDef)
 		if err != nil {
 			if sql.ErrDuplicateKey.Is(err) && n.IfNotExists {

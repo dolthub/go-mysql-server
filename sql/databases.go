@@ -145,6 +145,33 @@ type TableCreator interface {
 	CreateTable(ctx *Context, name string, schema PrimaryKeySchema, collation CollationID, comment string) error
 }
 
+// SchemaObjectNameValidator is an optional interface a database can implement to enforce additional
+// validation or constraints on schema object names beyond what GMS implements for MySQL compatibility.
+// This allows integrators to support constraints such as schema objects that share a namespace.
+type SchemaObjectNameValidator interface {
+	Database
+
+	// ValidateNewIndexName checks if |newIndexName| is available to use as a new index name. If the name is available,
+	// then this method returns false for |nameAlreadyUsed| and nil for |err|. If |skipIfExists| is true, then this
+	// method will NOT return an error but will still return |nameAlreadyUsed| as true.
+	ValidateNewIndexName(ctx *Context, newIndexName string, skipIfExists bool) (nameAlreadyUsed bool, err error)
+
+	// ValidateNewSequenceName checks if |newSequenceName| is available to use as a new sequence name. If the name is
+	// available, then this method returns false for |nameAlreadyUsed| and nil for |err|. If |skipIfExists| is true,
+	// then this method will NOT return an error but will still return |nameAlreadyUsed| as true.
+	ValidateNewSequenceName(ctx *Context, newSequenceName string, skipIfExists bool) (nameAlreadyUsed bool, err error)
+
+	// ValidateNewViewName checks if |newViewName| is available to use as a new view name. If the name is available,
+	// then this method returns nil for |err|. If |replaceAllowed| is true, then this method will not return an
+	// error if a view already exists named |newViewName|.
+	ValidateNewViewName(ctx *Context, newViewName string, replaceAllowed bool) error
+
+	// ValidateNewTableName checks if |newTableName| is available to use as a new table name. If the name is available,
+	// then this method returns false for |nameAlreadyUsed| and nil for |err|. If |skipIfExists| is true, then this
+	// method will NOT return an error but will still return |nameAlreadyUsed| as true.
+	ValidateNewTableName(ctx *Context, newTableName string, skipIfExists bool) (nameAlreadyUsed bool, err error)
+}
+
 // IndexedTableCreator is a Database that can create new tables which have a Primary Key with columns that have
 // prefix lengths.
 type IndexedTableCreator interface {
