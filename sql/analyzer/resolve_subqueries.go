@@ -369,7 +369,7 @@ func cacheSubqueryAliasesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 			leftChild = false
 		}
 
-		if len(newChildren) == 0 {
+		if len(newChildren) == 0 && !doCache {
 			return n, transform.SameTree, nil
 		}
 
@@ -377,9 +377,9 @@ func cacheSubqueryAliasesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 		if len(newChildren) > 0 {
 			ret, _ = ret.WithChildren(ctx, newChildren...)
 		}
-		//if doCache {
-		//	ret = plan.NewCachedResults(n, a.CachedResultsManager)
-		//}
+		if doCache {
+			ret = plan.NewCachedResults(n, a.CachedResultsManager)
+		}
 		return ret, transform.NewTree, nil
 	}
 	return recurse(n, false, false, false)
