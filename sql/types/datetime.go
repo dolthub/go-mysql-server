@@ -532,20 +532,16 @@ func appendDateFormat(dest []byte, t time.Time) []byte {
 	} else {
 		dest = strconv.AppendInt(dest, int64(year), 10)
 	}
-	dest = append(dest, '-')
-
 	month := int64(m)
-	if month < 10 {
-		dest = append(dest, '0')
-	}
-	dest = strconv.AppendInt(dest, month, 10)
-	dest = append(dest, '-')
-
 	day := int64(d)
-	if day < 10 {
-		dest = append(dest, '0')
-	}
-	dest = strconv.AppendInt(dest, day, 10)
+	dest = append(dest,
+		'-',
+		'0'+byte(month/10),
+		'0'+byte(month%10),
+		'-',
+		'0'+byte(day/10),
+		'0'+byte(day%10),
+	)
 	return dest
 }
 

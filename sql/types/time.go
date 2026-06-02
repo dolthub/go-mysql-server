@@ -520,18 +520,10 @@ func appendTimeFormat(dest []byte, h, m, s, ms int64, msPrecision int) []byte {
 		dest = append(dest, '0')
 	}
 	dest = strconv.AppendInt(dest, h, 10)
-	dest = append(dest, ':')
-
-	if m < 10 {
-		dest = append(dest, '0')
-	}
-	dest = strconv.AppendInt(dest, m, 10)
-	dest = append(dest, ':')
-
-	if s < 10 {
-		dest = append(dest, '0')
-	}
-	dest = strconv.AppendInt(dest, s, 10)
+	dest = append(dest,
+		':',
+		'0'+byte(m/10), '0'+byte(m%10), ':',
+		'0'+byte(s/10), '0'+byte(s%10))
 
 	if msPrecision > 0 {
 		dest = appendMicroseconds(dest, ms, msPrecision)

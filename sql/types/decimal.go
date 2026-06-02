@@ -28,7 +28,6 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/encodings"
 	"github.com/dolthub/go-mysql-server/sql/values"
 )
 
@@ -343,8 +342,9 @@ func (t DecimalType_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltype
 	if err != nil {
 		return sqltypes.Value{}, err
 	}
-	val := encodings.StringToBytes(t.DecimalValueStringFixed(value))
-	return sqltypes.MakeTrusted(sqltypes.Decimal, val), nil
+	// TODO: reslice?
+	dest = t.AppendStringFixedDecimal(dest, value)
+	return sqltypes.MakeTrusted(sqltypes.Decimal, dest), nil
 }
 
 func (t DecimalType_) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltypes.Value, error) {
@@ -352,7 +352,9 @@ func (t DecimalType_) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqlt
 		return sqltypes.NULL, nil
 	}
 	d := values.ReadDecimal(v.Val)
-	return sqltypes.MakeTrusted(sqltypes.Decimal, encodings.StringToBytes(t.DecimalValueStringFixed(d))), nil
+	// TODO: reslice?
+	dest = t.AppendStringFixedDecimal(dest, d)
+	return sqltypes.MakeTrusted(sqltypes.Decimal, dest), nil
 }
 
 // String implements Type interface.
@@ -399,8 +401,9 @@ func (t DecimalType_) Scale() uint8 {
 	return t.scale
 }
 
-// DecimalValueStringFixed returns string value for the given decimal value. If decimal type value is for valid table column only,
-// it should use scale defined by the column. Otherwise, the result value should use its own precision and scale.
+// DecimalValueStringFixed returns the string for the given decimal value.
+// If the decimal type value is for the valid table column only, it should use scale defined by the column.
+// Otherwise, the result value should use its own precision and scale.
 func (t DecimalType_) DecimalValueStringFixed(v *apd.Decimal) string {
 	if t.definesColumn {
 		if int32(t.scale) != v.Exponent {
@@ -408,6 +411,18 @@ func (t DecimalType_) DecimalValueStringFixed(v *apd.Decimal) string {
 		}
 	}
 	return v.Text('f')
+}
+
+// AppendStringFixedDecimal appends the decimal value to the given []byte dest.
+// If the decimal type value is for the valid table column only, it should use scale defined by the column.
+// Otherwise, the result value should use its own precision and scale.
+func (t DecimalType_) AppendStringFixedDecimal(dest []byte, v *apd.Decimal) []byte {
+	if t.definesColumn {
+		if int32(t.scale) != v.Exponent {
+			v, _ = sql.DecimalRound(v, int32(t.scale))
+		}
+	}
+	return v.Append(dest, 'f')
 }
 
 func convertValueToDecimal(ctx *sql.Context, v sql.Value) (*apd.Decimal, error) {
