@@ -502,9 +502,33 @@ func (reference *ForeignKeyReferenceHandler) IsInitialized() bool {
 
 // CheckReference checks that the given row has an index entry in the referenced table.
 func (reference *ForeignKeyReferenceHandler) CheckReference(ctx *sql.Context, row sql.Row) error {
-	// If even one of the values are NULL then we don't check the parent
+	matchFull := reference.ForeignKey.MatchType == sql.ForeignKeyMatchType_Full
+
+	nullCount := 0
 	for _, pos := range reference.RowMapper.IndexPositions {
 		if row[pos] == nil {
+			if matchFull {
+				nullCount++
+			} else {
+				return nil
+			}
+
+		}
+	}
+
+	if matchFull {
+		// all columns NULL is fine
+		if nullCount == len(reference.RowMapper.IndexPositions) {
+			return nil
+		}
+		// partial NULL is a violation
+		if nullCount != 0 {
+			return sql.ErrForeignKeyChildViolation.New(reference.ForeignKey.Name, reference.ForeignKey.Table,
+				reference.ForeignKey.ParentTable, reference.RowMapper.GetKeyString(row))
+		}
+	} else {
+		// any NULL exempts the row
+		if nullCount > 0 {
 			return nil
 		}
 	}

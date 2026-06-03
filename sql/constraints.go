@@ -57,6 +57,18 @@ func (f ForeignKeyReferentialAction) allowStoredGeneratedColumnReference() bool 
 	}
 }
 
+// ForeignKeyMatchType controls NULL handling semantics for composite FK columns.
+type ForeignKeyMatchType uint8
+
+const (
+	// ForeignKeyMatchType_Simple is default, any NULL in the FK columns exempts the row from the constraint check.
+	ForeignKeyMatchType_Simple ForeignKeyMatchType = iota
+	// ForeignKeyMatchType_Full enforced no NULLs.
+	ForeignKeyMatchType_Full
+	// ForeignKeyMatchType_Partial is not supported.
+	ForeignKeyMatchType_Partial
+)
+
 // ForeignKeyConstraint declares a constraint between the columns of two tables.
 type ForeignKeyConstraint struct {
 	// Name is the name of the foreign key constraint
@@ -85,6 +97,8 @@ type ForeignKeyConstraint struct {
 	IsResolved bool
 	// IsNotValid is true when the constraint was created with NOT VALID, meaning existing rows were not checked
 	IsNotValid bool
+	// MatchType controls NULL handling semantics for composite FK columns
+	MatchType ForeignKeyMatchType
 }
 
 // IsSelfReferential returns whether this foreign key represents a self-referential foreign key.

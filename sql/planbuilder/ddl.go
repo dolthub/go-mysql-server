@@ -858,6 +858,7 @@ func (b *Builder) fkConstraintFromDef(fkDef *ast.ForeignKeyDefinition, name stri
 		OnDelete:       b.buildReferentialAction(fkDef.OnDelete),
 		IsResolved:     false,
 		IsNotValid:     fkDef.NotValid,
+		MatchType:      sql.ForeignKeyMatchType(fkDef.MatchType),
 	}
 }
 
