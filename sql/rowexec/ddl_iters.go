@@ -1988,30 +1988,32 @@ func (b *BaseBuilder) executeCreateCheck(ctx *sql.Context, c *plan.CreateCheck) 
 		return err
 	}
 
-	// check existing rows in table
-	var res interface{}
-	rowIter, err := b.buildNodeExec(ctx, c.Table, nil)
-	if err != nil {
-		return err
-	}
-
-	for {
-		row, err := rowIter.Next(ctx)
-		if err == io.EOF {
-			break
-		}
-
+	// check existing rows in table, unless the constraint was created with NOT VALID
+	if !c.Check.IsNotValid {
+		var res interface{}
+		rowIter, err := b.buildNodeExec(ctx, c.Table, nil)
 		if err != nil {
 			return err
 		}
 
-		res, err = sql.EvaluateCondition(ctx, c.Check.Expr, row)
-		if err != nil {
-			return err
-		}
+		for {
+			row, err := rowIter.Next(ctx)
+			if err == io.EOF {
+				break
+			}
 
-		if sql.IsFalse(res) {
-			return sql.ErrCheckConstraintViolated.New(c.Check.Name)
+			if err != nil {
+				return err
+			}
+
+			res, err = sql.EvaluateCondition(ctx, c.Check.Expr, row)
+			if err != nil {
+				return err
+			}
+
+			if sql.IsFalse(res) {
+				return sql.ErrCheckConstraintViolated.New(c.Check.Name)
+			}
 		}
 	}
 

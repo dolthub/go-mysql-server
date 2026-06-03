@@ -798,8 +798,9 @@ func (b *Builder) buildCheckConstraint(inScope *scope, check *sql.CheckDefinitio
 	c := b.buildScalar(inScope, ae.Expr)
 
 	return &sql.CheckConstraint{
-		Name:     check.Name,
-		Expr:     c,
-		Enforced: check.Enforced,
+		Name:       check.Name,
+		Expr:       c,
+		Enforced:   check.Enforced,
+		IsNotValid: check.IsNotValid,
 	}
 }
