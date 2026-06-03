@@ -1393,7 +1393,7 @@ func createIndexesForCreateTable(ctx *sql.Context, db sql.Database, tableNode sq
 	fulltextIndexes := make(sql.IndexDefs, 0)
 	for _, idxDef := range idxes {
 		if len(idxDef.Name) == 0 {
-			idxDef.Name, err = generateIndexName(ctx, idxAltTbl, idxDef.ColumnNames())
+			idxDef.Name, err = getIndexNameGenerator(db).GenerateIndexName(ctx, tableNode.Name(), *idxDef, idxAltTbl)
 			if err != nil {
 				return err
 			}
