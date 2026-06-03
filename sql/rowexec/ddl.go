@@ -260,6 +260,19 @@ func (b *BaseBuilder) buildRenameTable(ctx *sql.Context, n *plan.RenameTable, ro
 	viewDb, _ := n.Db.(sql.ViewDatabase)
 	viewRegistry := ctx.GetViewRegistry()
 
+	db := n.Db
+	if pdb, ok := db.(mysql_db.PrivilegedDatabase); ok {
+		db = pdb.Unwrap()
+	}
+	if v, ok := db.(sql.SchemaObjectNameValidator); ok {
+		for _, newName := range n.NewNames {
+			_, err := v.ValidateNewTableName(ctx, newName, false)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	for i, oldName := range n.OldNames {
 		if tbl, exists := n.TableExists(ctx, oldName); exists {
 			err := n.RenameTable(ctx, renamer, tbl, oldName, n.NewNames[i])
