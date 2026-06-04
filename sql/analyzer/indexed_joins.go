@@ -893,24 +893,23 @@ func addHashJoins(ctx *sql.Context, m *memo.Memo) error {
 
 		var fromExpr, toExpr []sql.Expression
 		for _, f := range join.Filter {
-			switch f := f.(type) {
-			case expression.Equality:
-				if satisfiesScalarRefs(ctx, f.Left(), join.Left.RelProps.OutputTables()) &&
-					satisfiesScalarRefs(ctx, f.Right(), join.Right.RelProps.OutputTables()) {
-					fromExpr = append(fromExpr, f.Right())
-					toExpr = append(toExpr, f.Left())
-					m.Tracer.Log("Filter %s: found a left->right hash key mapping", f)
-				} else if satisfiesScalarRefs(ctx, f.Right(), join.Left.RelProps.OutputTables()) &&
-					satisfiesScalarRefs(ctx, f.Left(), join.Right.RelProps.OutputTables()) {
-					fromExpr = append(fromExpr, f.Left())
-					toExpr = append(toExpr, f.Right())
-					m.Tracer.Log("Filter %s: found a right->left hash key mapping", f)
-				} else {
-					m.Tracer.Log("Filter %s: does not satisfy scalar refs for hash join", f)
-					return nil
-				}
-			default:
+			eq, isEq := f.(expression.Equality)
+			if !isEq || !eq.RepresentsEquality() {
 				m.Tracer.Log("Filter %s: not an equality expression, skipping hash join", f)
+				return nil
+			}
+			if satisfiesScalarRefs(ctx, eq.Left(), join.Left.RelProps.OutputTables()) &&
+				satisfiesScalarRefs(ctx, eq.Right(), join.Right.RelProps.OutputTables()) {
+				fromExpr = append(fromExpr, eq.Right())
+				toExpr = append(toExpr, eq.Left())
+				m.Tracer.Log("Filter %s: found a left->right hash key mapping", f)
+			} else if satisfiesScalarRefs(ctx, eq.Right(), join.Left.RelProps.OutputTables()) &&
+				satisfiesScalarRefs(ctx, eq.Left(), join.Right.RelProps.OutputTables()) {
+				fromExpr = append(fromExpr, eq.Left())
+				toExpr = append(toExpr, eq.Right())
+				m.Tracer.Log("Filter %s: found a right->left hash key mapping", f)
+			} else {
+				m.Tracer.Log("Filter %s: does not satisfy scalar refs for hash join", f)
 				return nil
 			}
 		}
