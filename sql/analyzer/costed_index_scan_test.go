@@ -298,6 +298,23 @@ Or
 			leftover: "",
 		},
 		{
+			name: "tuple null safe equals decomposes to ANDs",
+			in: expression.NewNullSafeEquals(
+				expression.Tuple{
+					gf(0, "xy", "x"),
+					gf(1, "xy", "y")},
+				expression.Tuple{
+					lit(5),
+					lit(6),
+				},
+			),
+			exp: `
+(1: and
+  (2: xy.x <=> 5)
+  (3: xy.y <=> 6))`,
+			leftover: "",
+		},
+		{
 			name: "tuple less than decomposes to ORs of ANDs",
 			in: expression.NewLessThan(
 				expression.Tuple{

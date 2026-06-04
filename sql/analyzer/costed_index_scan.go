@@ -1712,9 +1712,11 @@ func (c *indexCoster) transformForIndexCosting(ctx *sql.Context, expr sql.Expres
 		var ok bool
 		switch e := e.(type) {
 		case *expression.InTuple, *expression.HashInTuple:
-			newExpr, ok = c.transformInTupleForIndexCosting(leftTuple, rightTuple)
+			newExpr, ok = c.transformInTupleForIndexCosting(leftTuple, rightTuple, false)
 		case *expression.Equals:
-			newExpr, ok = c.transformInTupleForIndexCosting(leftTuple, expression.NewTuple(rightTuple))
+			newExpr, ok = c.transformInTupleForIndexCosting(leftTuple, expression.NewTuple(rightTuple), false)
+		case *expression.NullSafeEquals:
+			newExpr, ok = c.transformInTupleForIndexCosting(leftTuple, expression.NewTuple(rightTuple), true)
 		case *expression.LessThan:
 			newExpr, ok = c.transformLessThanTupleForIndexCosting(leftTuple, rightTuple)
 		case *expression.LessThanOrEqual:
@@ -1734,7 +1736,7 @@ func (c *indexCoster) transformForIndexCosting(ctx *sql.Context, expr sql.Expres
 	return transformedExpr
 }
 
-func (c *indexCoster) transformInTupleForIndexCosting(leftTuple, rightTuples expression.Tuple) (sql.Expression, bool) {
+func (c *indexCoster) transformInTupleForIndexCosting(leftTuple, rightTuples expression.Tuple, nullSafe bool) (sql.Expression, bool) {
 	n := len(leftTuple)
 	if len(rightTuples) == 0 && n > 0 {
 		return expression.NewLiteral(false, types.Boolean), true
@@ -1748,7 +1750,11 @@ func (c *indexCoster) transformInTupleForIndexCosting(leftTuple, rightTuples exp
 		// Build AND of equals: col1 = v1 AND col2 = v2 AND ...
 		andExprs := make([]sql.Expression, n)
 		for j := 0; j < n; j++ {
-			andExprs[j] = expression.NewEquals(leftTuple[j], rightTuple[j])
+			if nullSafe {
+				andExprs[j] = expression.NewNullSafeEquals(leftTuple[j], rightTuple[j])
+			} else {
+				andExprs[j] = expression.NewEquals(leftTuple[j], rightTuple[j])
+			}
 		}
 		orExprs[i] = expression.JoinAnd(andExprs...)
 	}
