@@ -894,7 +894,7 @@ func addHashJoins(ctx *sql.Context, m *memo.Memo) error {
 		var fromExpr, toExpr []sql.Expression
 		for _, f := range join.Filter {
 			switch f := f.(type) {
-			case *expression.Equals:
+			case expression.Equality:
 				if satisfiesScalarRefs(ctx, f.Left(), join.Left.RelProps.OutputTables()) &&
 					satisfiesScalarRefs(ctx, f.Right(), join.Right.RelProps.OutputTables()) {
 					fromExpr = append(fromExpr, f.Right())
