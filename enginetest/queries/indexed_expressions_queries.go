@@ -1150,7 +1150,8 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "composite indexes are used during tuple expression filters",
+		Name:    "composite indexes are used during tuple expression filters",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t (i int, j int, k int, primary key(i, j, k));",
 			"insert into t values (1, 1, 1), (2, 2, 2), (3, 3, 3), (4, 4, 4), (5, 5, 5), (6, 6, 6), (7, 7, 7), (8, 8, 8), (9, 9, 9), (10, 10, 10);",
