@@ -1019,7 +1019,7 @@ func (atc *AlterTableComment) Resolved() bool {
 
 // Schema implements the interface sql.Node
 func (atc *AlterTableComment) Schema(ctx *sql.Context) sql.Schema {
-	return atc.Table.Schema(ctx)
+	return types.OkResultSchema
 }
 
 // Children implements the interface sql.Node
