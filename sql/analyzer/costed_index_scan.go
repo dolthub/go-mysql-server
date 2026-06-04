@@ -1707,7 +1707,6 @@ func (c *indexCoster) transformForIndexCosting(ctx *sql.Context, expr sql.Expres
 		default:
 			return e, transform.SameTree, nil
 		}
-		// TODO: if len(leftTuple) == 0 or len(rightTuple) == 0, just return false?
 		var newExpr sql.Expression
 		var ok bool
 		switch e := e.(type) {
