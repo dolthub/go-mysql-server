@@ -1713,7 +1713,7 @@ func (c *indexCoster) transformForIndexCosting(ctx *sql.Context, expr sql.Expres
 		switch e := e.(type) {
 		case *expression.InTuple, *expression.HashInTuple:
 			newExpr, ok = c.transformInTupleForIndexCosting(leftTuple, rightTuple)
-		case *expression.Equals: // TODO: *expression.NullSafeEquals?
+		case *expression.Equals:
 			newExpr, ok = c.transformInTupleForIndexCosting(leftTuple, expression.NewTuple(rightTuple))
 		case *expression.LessThan:
 			newExpr, ok = c.transformLessThanTupleForIndexCosting(leftTuple, rightTuple)
@@ -1735,8 +1735,11 @@ func (c *indexCoster) transformForIndexCosting(ctx *sql.Context, expr sql.Expres
 }
 
 func (c *indexCoster) transformInTupleForIndexCosting(leftTuple, rightTuples expression.Tuple) (sql.Expression, bool) {
-	orExprs := make([]sql.Expression, len(rightTuples))
 	n := len(leftTuple)
+	if len(rightTuples) == 0 && n > 0 {
+		return expression.NewLiteral(false, types.Boolean), true
+	}
+	orExprs := make([]sql.Expression, len(rightTuples))
 	for i, elem := range rightTuples {
 		rightTuple, isTup := elem.(expression.Tuple)
 		if !isTup || n != len(rightTuple) {
@@ -1750,11 +1753,6 @@ func (c *indexCoster) transformInTupleForIndexCosting(leftTuple, rightTuples exp
 		orExprs[i] = expression.JoinAnd(andExprs...)
 	}
 
-	// TODO: If JoinOr returned a false literal on an empty input, this would not be necessary, but that seems to
-	//  break some tests.
-	if len(orExprs) == 0 {
-		return expression.NewLiteral(false, types.Boolean), true
-	}
 	return expression.JoinOr(orExprs...), true
 }
 
@@ -1827,12 +1825,12 @@ func (c *indexCoster) transformGreaterThanEqualTupleForIndexCosting(leftTuple, r
 	}
 	andExprs[n-1] = expression.NewGreaterThanOrEqual(leftTuple[n-1], rightTuple[n-1])
 	orExprs[0] = expression.JoinAnd(andExprs...)
-	for i := 0; i < n; i++ {
+	for i := 1; i < n; i++ {
 		andExprs = make([]sql.Expression, n-i)
 		for j := 0; j < n-i-1; j++ {
 			andExprs[j] = expression.NewEquals(leftTuple[j], rightTuple[j])
 		}
-		andExprs[n-i-1] = expression.NewLessThan(leftTuple[n-i-1], rightTuple[n-i-1])
+		andExprs[n-i-1] = expression.NewGreaterThan(leftTuple[n-i-1], rightTuple[n-i-1])
 		orExprs[i] = expression.JoinAnd(andExprs...)
 	}
 	return expression.JoinOr(orExprs...), true

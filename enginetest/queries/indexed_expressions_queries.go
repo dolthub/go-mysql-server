@@ -1149,4 +1149,180 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "composite indexes are used during tuple expression filters",
+		SetUpScript: []string{
+			"create table t (i int, j int, k int, primary key(i, j, k));",
+			"insert into t values (1, 1, 1), (2, 2, 2), (3, 3, 3), (4, 4, 4), (5, 5, 5), (6, 6, 6), (7, 7, 7), (8, 8, 8), (9, 9, 9), (10, 10, 10);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from t where (i, j, k) = (3, 3, 3);",
+				Expected: []sql.Row{
+					{3, 3, 3},
+				},
+				ExpectedIndexes: []string{"primary"},
+			},
+			{
+				Query: "select * from t where (i, j, k) = (3, 3, 3) or (i, j, k) = (10, 10, 10);",
+				Expected: []sql.Row{
+					{3, 3, 3},
+					{10, 10, 10},
+				},
+				ExpectedIndexes: []string{"primary"},
+			},
+			{
+				Query: "select * from t where (k, j, i) = (3, 3, 3);",
+				Expected: []sql.Row{
+					{3, 3, 3},
+				},
+				ExpectedIndexes: []string{"primary"},
+			},
+			{
+				Query: "select * from t where (i, j, k) > (2, 3, 4);",
+				Expected: []sql.Row{
+					{3, 3, 3},
+					{4, 4, 4},
+					{5, 5, 5},
+					{6, 6, 6},
+					{7, 7, 7},
+					{8, 8, 8},
+					{9, 9, 9},
+					{10, 10, 10},
+				},
+				ExpectedIndexes: []string{"primary"},
+			},
+			{
+				Query: "select * from t where (i, j, k) >= (2, 3, 4);",
+				Expected: []sql.Row{
+					{3, 3, 3},
+					{4, 4, 4},
+					{5, 5, 5},
+					{6, 6, 6},
+					{7, 7, 7},
+					{8, 8, 8},
+					{9, 9, 9},
+					{10, 10, 10},
+				},
+				ExpectedIndexes: []string{"primary"},
+			},
+			{
+				Query: "select * from t where (i, j, k) < (2, 3, 4);",
+				Expected: []sql.Row{
+					{1, 1, 1},
+					{2, 2, 2},
+				},
+				ExpectedIndexes: []string{"primary"},
+			},
+			{
+				Query: "select * from t where (i, j, k) <= (2, 3, 4);",
+				Expected: []sql.Row{
+					{1, 1, 1},
+					{2, 2, 2},
+				},
+				ExpectedIndexes: []string{"primary"},
+			},
+			{
+				Query: "select * from t where (i, j, k) > (5, 5, 5);",
+				Expected: []sql.Row{
+					{6, 6, 6},
+					{7, 7, 7},
+					{8, 8, 8},
+					{9, 9, 9},
+					{10, 10, 10},
+				},
+				ExpectedIndexes: []string{"primary"},
+			},
+			{
+				Query: "select * from t where (i, j, k) >= (5, 5, 5);",
+				Expected: []sql.Row{
+					{5, 5, 5},
+					{6, 6, 6},
+					{7, 7, 7},
+					{8, 8, 8},
+					{9, 9, 9},
+					{10, 10, 10},
+				},
+				ExpectedIndexes: []string{"primary"},
+			},
+			{
+				Query: "select * from t where (i, j, k) < (5, 5, 5);",
+				Expected: []sql.Row{
+					{1, 1, 1},
+					{2, 2, 2},
+					{3, 3, 3},
+					{4, 4, 4},
+				},
+				ExpectedIndexes: []string{"primary"},
+			},
+			{
+				Query: "select * from t where (i, j, k) <= (5, 5, 5);",
+				Expected: []sql.Row{
+					{1, 1, 1},
+					{2, 2, 2},
+					{3, 3, 3},
+					{4, 4, 4},
+					{5, 5, 5},
+				},
+				ExpectedIndexes: []string{"primary"},
+			},
+			{
+				Query: "select * from t where (k, j, i) > (2, 3, 4);",
+				Expected: []sql.Row{
+					{3, 3, 3},
+					{4, 4, 4},
+					{5, 5, 5},
+					{6, 6, 6},
+					{7, 7, 7},
+					{8, 8, 8},
+					{9, 9, 9},
+					{10, 10, 10},
+				},
+				ExpectedIndexes: []string{"primary"},
+			},
+			{
+				Query: "select * from t where (i, j, k) > (3, 3, 3) and (i, j, k) < (7, 7, 7);",
+				Expected: []sql.Row{
+					{4, 4, 4},
+					{5, 5, 5},
+					{6, 6, 6},
+				},
+				ExpectedIndexes: []string{"primary"},
+			},
+			{
+				Query: "select * from t where (i, j, k) >= (3, 3, 3) and (i, j, k) < (7, 7, 7);",
+				Expected: []sql.Row{
+					{3, 3, 3},
+					{4, 4, 4},
+					{5, 5, 5},
+					{6, 6, 6},
+				},
+				ExpectedIndexes: []string{"primary"},
+			},
+			{
+				Query: "select * from t where (i, j, k) < (3, 3, 3) or (i, j, k) > (7, 7, 7);",
+				Expected: []sql.Row{
+					{1, 1, 1},
+					{2, 2, 2},
+					{8, 8, 8},
+					{9, 9, 9},
+					{10, 10, 10},
+				},
+				ExpectedIndexes: []string{"primary"},
+			},
+			{
+				Query: "select * from t where (i, j, k) <= (3, 3, 3) or (i, j, k) >= (7, 7, 7);",
+				Expected: []sql.Row{
+					{1, 1, 1},
+					{2, 2, 2},
+					{3, 3, 3},
+					{7, 7, 7},
+					{8, 8, 8},
+					{9, 9, 9},
+					{10, 10, 10},
+				},
+				ExpectedIndexes: []string{"primary"},
+			},
+		},
+	},
 }

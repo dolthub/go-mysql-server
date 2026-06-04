@@ -347,7 +347,7 @@ Or
 		},
 		{
 			name: "tuple greater than decomposes to ORs of ANDs",
-			in: expression.NewLessThan(
+			in: expression.NewGreaterThan(
 				expression.Tuple{
 					gf(0, "xyz", "x"),
 					gf(1, "xyz", "y"),
@@ -363,15 +363,15 @@ Or
   (3: and
     (5: xy.x = 5)
     (6: xy.y = 6)
-    (7: xy.z < 7))
+    (7: xy.z > 7))
   (8: and
     (9: xy.x = 5)
-    (10: xy.y < 6))
-  (11: xy.x < 5))`,
+    (10: xy.y > 6))
+  (11: xy.x > 5))`,
 		},
 		{
 			name: "tuple greater than equals decomposes to ORs of ANDs",
-			in: expression.NewLessThanOrEqual(
+			in: expression.NewGreaterThanOrEqual(
 				expression.Tuple{
 					gf(0, "xyz", "x"),
 					gf(1, "xyz", "y"),
@@ -387,11 +387,11 @@ Or
   (3: and
     (5: xy.x = 5)
     (6: xy.y = 6)
-    (7: xy.z <= 7))
+    (7: xy.z >= 7))
   (8: and
     (9: xy.x = 5)
-    (10: xy.y < 6))
-  (11: xy.x < 5))`,
+    (10: xy.y > 6))
+  (11: xy.x > 5))`,
 		},
 	}
 
