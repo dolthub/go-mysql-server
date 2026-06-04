@@ -1147,6 +1147,7 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 		}
 	}
 
+	comment, _ := n.TableOpts["comment"].(string)
 	if n.Temporary() {
 		creatable, ok := maybePrivDb.(sql.TemporaryTableCreator)
 		if !ok {
@@ -1170,7 +1171,7 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 				}
 			}
 			if pkIdxDef != nil {
-				err = creatable.CreateIndexedTable(ctx, n.Name(), n.PkSchema(), *pkIdxDef, n.Collation)
+				err = creatable.CreateIndexedTable(ctx, n.Name(), n.PkSchema(), *pkIdxDef, n.Collation, comment)
 				if sql.ErrUnsupportedIndexPrefix.Is(err) {
 					return sql.RowsToRowIter(), err
 				}
@@ -1179,17 +1180,9 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 				if !ok {
 					return sql.RowsToRowIter(), sql.ErrCreateTableNotSupported.New(n.Db.Name())
 				}
-				comment := ""
-				if n.TableOpts != nil && n.TableOpts["comment"] != nil {
-					comment = n.TableOpts["comment"].(string)
-				}
 				err = creatable.CreateTable(ctx, n.Name(), n.PkSchema(), n.Collation, comment)
 			}
 		case sql.TableCreator:
-			comment := ""
-			if n.TableOpts != nil && n.TableOpts["comment"] != nil {
-				comment = n.TableOpts["comment"].(string)
-			}
 			err = creatable.CreateTable(ctx, n.Name(), n.PkSchema(), n.Collation, comment)
 		default:
 			return sql.RowsToRowIter(), sql.ErrCreateTableNotSupported.New(n.Db.Name())
