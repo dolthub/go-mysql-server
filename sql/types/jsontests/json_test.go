@@ -343,6 +343,48 @@ func TestJsonPathErrors(t *testing.T) {
 	}
 }
 
+// TestJsonLookupTypeMismatch verifies that looking up a path that descends into
+// a value of the wrong type (an object key against a non-object, or an array
+// index against a non-array) resolves to SQL NULL rather than surfacing an error
+// from the underlying jsonpath library. This matches the behavior already used
+// for missing keys and out-of-range indices.
+func TestJsonLookupTypeMismatch(t *testing.T) {
+	ctx := context.Background()
+
+	tests := []struct {
+		desc string
+		doc  string
+		path string
+	}{
+		{
+			// Object key against a scalar (e.g. '{"a":1}' #> '{a,b}').
+			desc: "object key on scalar",
+			doc:  `{"a": 1}`,
+			path: `$."a"."b"`,
+		},
+		{
+			// Array index against a scalar (e.g. '{"a":1}' #> '{a,0}').
+			desc: "array index on scalar",
+			doc:  `{"a": 1}`,
+			path: `$."a"[0]`,
+		},
+		{
+			// Array index against an object.
+			desc: "array index on object",
+			doc:  `{"a": {"b": 2}}`,
+			path: `$."a"[0]`,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			result, err := types.MustJSON(test.doc).Lookup(ctx, test.path)
+			require.NoError(t, err)
+			require.Nil(t, result)
+		})
+	}
+}
+
 var JsonArrayInsertErrors = []parseErrTest{
 	{
 		desc:         "empty path",
