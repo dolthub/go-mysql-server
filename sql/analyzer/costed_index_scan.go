@@ -1691,52 +1691,151 @@ func (c *indexCoster) buildLeafFromParts(ctx *sql.Context, id indexScanId, name 
 //
 // We could do this transformation as an analyzer pass prior to index scan costing, but keeping the original
 // expressions outside of costing potentially allows other optimizations to leverage the context of IN or HASH-IN expressions.
-func (c *indexCoster) transformForIndexCosting(ctx *sql.Context, e sql.Expression) sql.Expression {
-	transformedExpr, _, _ := transform.Expr(ctx, e, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-		var left, right sql.Expression
+func (c *indexCoster) transformForIndexCosting(ctx *sql.Context, expr sql.Expression) sql.Expression {
+	transformedExpr, _, _ := transform.Expr(ctx, expr, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		var leftTuple, rightTuple expression.Tuple
 		switch e := e.(type) {
-		case *expression.InTuple:
-			left = e.Left()
-			right = e.Right()
-		case *expression.HashInTuple:
-			left = e.Left()
-			right = e.Right()
+		case expression.Comparer:
+			var ok bool
+			left, right := e.Left(), e.Right()
+			if leftTuple, ok = left.(expression.Tuple); !ok {
+				return e, transform.SameTree, nil
+			}
+			if rightTuple, ok = right.(expression.Tuple); !ok {
+				return e, transform.SameTree, nil
+			}
 		default:
 			return e, transform.SameTree, nil
 		}
-
-		leftTuple, ok := left.(expression.Tuple)
+		// TODO: if len(leftTuple) == 0 or len(rightTuple) == 0, just return false?
+		var newExpr sql.Expression
+		var ok bool
+		switch e := e.(type) {
+		case *expression.InTuple, *expression.HashInTuple:
+			newExpr, ok = c.transformInTupleForIndexCosting(leftTuple, rightTuple)
+		case *expression.Equals: // TODO: *expression.NullSafeEquals?
+			newExpr, ok = c.transformInTupleForIndexCosting(leftTuple, expression.NewTuple(rightTuple))
+		case *expression.LessThan:
+			newExpr, ok = c.transformLessThanTupleForIndexCosting(leftTuple, rightTuple)
+		case *expression.LessThanOrEqual:
+			newExpr, ok = c.transformLessThanEqualTupleForIndexCosting(leftTuple, rightTuple)
+		case *expression.GreaterThan:
+			newExpr, ok = c.transformGreaterThanTupleForIndexCosting(leftTuple, rightTuple)
+		case *expression.GreaterThanOrEqual:
+			newExpr, ok = c.transformGreaterThanEqualTupleForIndexCosting(leftTuple, rightTuple)
+		default:
+			return e, transform.SameTree, nil
+		}
 		if !ok {
 			return e, transform.SameTree, nil
 		}
-
-		rightTuple, ok := right.(expression.Tuple)
-		if !ok {
-			return e, transform.SameTree, nil
-		}
-
-		var orExprs []sql.Expression
-		for _, elem := range rightTuple {
-			valTuple, ok := elem.(expression.Tuple)
-			if !ok || len(valTuple) != len(leftTuple) {
-				return e, transform.SameTree, nil
-			}
-			// Build AND of equals: col1 = v1 AND col2 = v2 AND ...
-			var andExprs []sql.Expression
-			for i, col := range leftTuple {
-				andExprs = append(andExprs, expression.NewEquals(col, valTuple[i]))
-			}
-			orExprs = append(orExprs, expression.JoinAnd(andExprs...))
-		}
-
-		// TODO: If JoinOr returned a false literal on an empty input, this would
-		// not be necessary. But that seems to break some tests.
-		if len(orExprs) == 0 {
-			return expression.NewLiteral(false, types.Boolean), transform.NewTree, nil
-		}
-		return expression.JoinOr(orExprs...), transform.NewTree, nil
+		return newExpr, transform.NewTree, nil
 	})
 	return transformedExpr
+}
+
+func (c *indexCoster) transformInTupleForIndexCosting(leftTuple, rightTuples expression.Tuple) (sql.Expression, bool) {
+	orExprs := make([]sql.Expression, len(rightTuples))
+	n := len(leftTuple)
+	for i, elem := range rightTuples {
+		rightTuple, isTup := elem.(expression.Tuple)
+		if !isTup || n != len(rightTuple) {
+			return nil, false
+		}
+		// Build AND of equals: col1 = v1 AND col2 = v2 AND ...
+		andExprs := make([]sql.Expression, n)
+		for j := 0; j < n; j++ {
+			andExprs[j] = expression.NewEquals(leftTuple[j], rightTuple[j])
+		}
+		orExprs[i] = expression.JoinAnd(andExprs...)
+	}
+
+	// TODO: If JoinOr returned a false literal on an empty input, this would not be necessary, but that seems to
+	//  break some tests.
+	if len(orExprs) == 0 {
+		return expression.NewLiteral(false, types.Boolean), true
+	}
+	return expression.JoinOr(orExprs...), true
+}
+
+func (c *indexCoster) transformLessThanTupleForIndexCosting(leftTuple, rightTuple expression.Tuple) (sql.Expression, bool) {
+	if len(leftTuple) != len(rightTuple) {
+		return nil, false
+	}
+	n := len(leftTuple)
+	orExprs := make([]sql.Expression, n)
+	for i := 0; i < n; i++ {
+		andExprs := make([]sql.Expression, n-i)
+		for j := 0; j < n-i-1; j++ {
+			andExprs[j] = expression.NewEquals(leftTuple[j], rightTuple[j])
+		}
+		andExprs[n-i-1] = expression.NewLessThan(leftTuple[n-i-1], rightTuple[n-i-1])
+		orExprs[i] = expression.JoinAnd(andExprs...)
+	}
+	return expression.JoinOr(orExprs...), true
+}
+
+func (c *indexCoster) transformGreaterThanTupleForIndexCosting(leftTuple, rightTuple expression.Tuple) (sql.Expression, bool) {
+	if len(leftTuple) != len(rightTuple) {
+		return nil, false
+	}
+	n := len(leftTuple)
+	orExprs := make([]sql.Expression, n)
+	for i := 0; i < n; i++ {
+		andExprs := make([]sql.Expression, n-i)
+		for j := 0; j < n-i-1; j++ {
+			andExprs[j] = expression.NewEquals(leftTuple[j], rightTuple[j])
+		}
+		andExprs[n-i-1] = expression.NewGreaterThan(leftTuple[n-i-1], rightTuple[n-i-1])
+		orExprs[i] = expression.JoinAnd(andExprs...)
+	}
+	return expression.JoinOr(orExprs...), true
+}
+
+func (c *indexCoster) transformLessThanEqualTupleForIndexCosting(leftTuple, rightTuple expression.Tuple) (sql.Expression, bool) {
+	if len(leftTuple) != len(rightTuple) {
+		return nil, false
+	}
+	n := len(leftTuple)
+	orExprs := make([]sql.Expression, n)
+	andExprs := make([]sql.Expression, n)
+	for i := 0; i < n-1; i++ {
+		andExprs[i] = expression.NewEquals(leftTuple[i], rightTuple[i])
+	}
+	andExprs[n-1] = expression.NewLessThanOrEqual(leftTuple[n-1], rightTuple[n-1])
+	orExprs[0] = expression.JoinAnd(andExprs...)
+	for i := 1; i < n; i++ {
+		andExprs = make([]sql.Expression, n-i)
+		for j := 0; j < n-i-1; j++ {
+			andExprs[j] = expression.NewEquals(leftTuple[j], rightTuple[j])
+		}
+		andExprs[n-i-1] = expression.NewLessThan(leftTuple[n-i-1], rightTuple[n-i-1])
+		orExprs[i] = expression.JoinAnd(andExprs...)
+	}
+	return expression.JoinOr(orExprs...), true
+}
+
+func (c *indexCoster) transformGreaterThanEqualTupleForIndexCosting(leftTuple, rightTuple expression.Tuple) (sql.Expression, bool) {
+	if len(leftTuple) != len(rightTuple) {
+		return nil, false
+	}
+	n := len(leftTuple)
+	orExprs := make([]sql.Expression, n)
+	andExprs := make([]sql.Expression, n)
+	for i := 0; i < n-1; i++ {
+		andExprs[i] = expression.NewEquals(leftTuple[i], rightTuple[i])
+	}
+	andExprs[n-1] = expression.NewGreaterThanOrEqual(leftTuple[n-1], rightTuple[n-1])
+	orExprs[0] = expression.JoinAnd(andExprs...)
+	for i := 0; i < n; i++ {
+		andExprs = make([]sql.Expression, n-i)
+		for j := 0; j < n-i-1; j++ {
+			andExprs[j] = expression.NewEquals(leftTuple[j], rightTuple[j])
+		}
+		andExprs[n-i-1] = expression.NewLessThan(leftTuple[n-i-1], rightTuple[n-i-1])
+		orExprs[i] = expression.JoinAnd(andExprs...)
+	}
+	return expression.JoinOr(orExprs...), true
 }
 
 // buildLeaf tries to convert an expression into the intermediate

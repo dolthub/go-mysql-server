@@ -280,6 +280,119 @@ Or
 			exp:      "",
 			leftover: "false (tinyint(1))",
 		},
+		{
+			name: "tuple equals decomposes to ANDs",
+			in: expression.NewEquals(
+				expression.Tuple{
+					gf(0, "xy", "x"),
+					gf(1, "xy", "y")},
+				expression.Tuple{
+					lit(5),
+					lit(6),
+				},
+			),
+			exp: `
+(1: and
+  (2: xy.x = 5)
+  (3: xy.y = 6))`,
+			leftover: "",
+		},
+		{
+			name: "tuple less than decomposes to ORs of ANDs",
+			in: expression.NewLessThan(
+				expression.Tuple{
+					gf(0, "xyz", "x"),
+					gf(1, "xyz", "y"),
+					gf(2, "xyz", "z")},
+				expression.Tuple{
+					lit(5),
+					lit(6),
+					lit(7),
+				},
+			),
+			exp: `
+(1: or
+  (3: and
+    (5: xy.x = 5)
+    (6: xy.y = 6)
+    (7: xy.z < 7))
+  (8: and
+    (9: xy.x = 5)
+    (10: xy.y < 6))
+  (11: xy.x < 5))`,
+		},
+		{
+			name: "tuple less than equals decomposes to ORs of ANDs",
+			in: expression.NewLessThanOrEqual(
+				expression.Tuple{
+					gf(0, "xyz", "x"),
+					gf(1, "xyz", "y"),
+					gf(2, "xyz", "z")},
+				expression.Tuple{
+					lit(5),
+					lit(6),
+					lit(7),
+				},
+			),
+			exp: `
+(1: or
+  (3: and
+    (5: xy.x = 5)
+    (6: xy.y = 6)
+    (7: xy.z <= 7))
+  (8: and
+    (9: xy.x = 5)
+    (10: xy.y < 6))
+  (11: xy.x < 5))`,
+		},
+		{
+			name: "tuple greater than decomposes to ORs of ANDs",
+			in: expression.NewLessThan(
+				expression.Tuple{
+					gf(0, "xyz", "x"),
+					gf(1, "xyz", "y"),
+					gf(2, "xyz", "z")},
+				expression.Tuple{
+					lit(5),
+					lit(6),
+					lit(7),
+				},
+			),
+			exp: `
+(1: or
+  (3: and
+    (5: xy.x = 5)
+    (6: xy.y = 6)
+    (7: xy.z < 7))
+  (8: and
+    (9: xy.x = 5)
+    (10: xy.y < 6))
+  (11: xy.x < 5))`,
+		},
+		{
+			name: "tuple greater than equals decomposes to ORs of ANDs",
+			in: expression.NewLessThanOrEqual(
+				expression.Tuple{
+					gf(0, "xyz", "x"),
+					gf(1, "xyz", "y"),
+					gf(2, "xyz", "z")},
+				expression.Tuple{
+					lit(5),
+					lit(6),
+					lit(7),
+				},
+			),
+			exp: `
+(1: or
+  (3: and
+    (5: xy.x = 5)
+    (6: xy.y = 6)
+    (7: xy.z <= 7))
+  (8: and
+    (9: xy.x = 5)
+    (10: xy.y < 6))
+  (11: xy.x < 5))`,
+		},
 	}
 
 	ctx := sql.NewEmptyContext()
@@ -288,7 +401,7 @@ Or
 			c := newIndexCoster("xy")
 			root, leftover, _ := c.buildRoot(ctx, tt.in, NewDefaultLogicTreeWalker())
 			costTree := formatIndexFilter(root)
-			require.Equal(t, strings.TrimSpace(tt.exp), strings.TrimSpace(costTree), costTree)
+			require.Equal(t, strings.TrimSpace(tt.exp), strings.TrimSpace(costTree))
 			if leftover != nil {
 				leftoverCmp := sql.DebugString(ctx, leftover)
 				require.Equal(t, strings.TrimSpace(tt.leftover), strings.TrimSpace(leftoverCmp), leftoverCmp)
