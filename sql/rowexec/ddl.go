@@ -1608,7 +1608,7 @@ func (b *BaseBuilder) buildCreateForeignKey(ctx *sql.Context, n *plan.CreateFore
 	if err != nil {
 		return nil, err
 	}
-	err = plan.ResolveForeignKey(ctx, fkTbl, refFkTbl, *n.FkDef, true, fkChecks.(int8) == 1, true)
+	err = plan.ResolveForeignKey(ctx, fkTbl, refFkTbl, *n.FkDef, true, fkChecks.(int8) == 1, !n.FkDef.IsNotValid)
 	if err != nil {
 		return nil, err
 	}

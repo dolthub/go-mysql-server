@@ -839,6 +839,7 @@ func (b *Builder) buildConstraintsDefs(inScope *scope, tname ast.TableName, spec
 // Database and Table are not set. Call bindForeignKey to fill them in.
 func (b *Builder) fkConstraintFromDef(fkDef *ast.ForeignKeyDefinition, name string, columns []string) *sql.ForeignKeyConstraint {
 	parentCols := make([]string, len(fkDef.ReferencedColumns))
+	// TODO: if ReferencedColumns is empty, load all columns from parent table
 	for i, col := range fkDef.ReferencedColumns {
 		parentCols[i] = col.String()
 	}
@@ -856,6 +857,8 @@ func (b *Builder) fkConstraintFromDef(fkDef *ast.ForeignKeyDefinition, name stri
 		OnUpdate:       b.buildReferentialAction(fkDef.OnUpdate),
 		OnDelete:       b.buildReferentialAction(fkDef.OnDelete),
 		IsResolved:     false,
+		IsNotValid:     fkDef.NotValid,
+		MatchType:      sql.ForeignKeyMatchType(fkDef.MatchType),
 	}
 }
 
@@ -973,9 +976,10 @@ func (b *Builder) convertConstraintDefinition(inScope *scope, cd *ast.Constraint
 		}
 
 		return &sql.CheckConstraint{
-			Name:     cd.Name,
-			Expr:     c,
-			Enforced: chConstraint.Enforced,
+			Name:       cd.Name,
+			Expr:       c,
+			Enforced:   chConstraint.Enforced,
+			IsNotValid: chConstraint.NotValid,
 		}
 	} else if len(cd.Name) > 0 && cd.Details == nil {
 		return namedConstraint{cd.Name}

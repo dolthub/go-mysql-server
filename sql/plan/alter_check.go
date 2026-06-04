@@ -171,6 +171,7 @@ func NewCheckDefinition(ctx *sql.Context, check *sql.CheckConstraint, schemaForm
 		Name:            check.Name,
 		CheckExpression: unqualifiedCols.String(),
 		Enforced:        check.Enforced,
+		IsNotValid:      check.IsNotValid,
 	}, nil
 }
 
