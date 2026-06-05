@@ -35,6 +35,27 @@ var CreateTableQueries = []WriteQueryTest{
 		ExpectedSelect:      []sql.Row{{"tableWithComment", "CREATE TABLE `tableWithComment` (\n  `pk` int\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin COMMENT='Table Comments=Still Work'"}},
 	},
 	{
+		// See https://github.com/dolthub/dolt/issues/11163
+		WriteQuery:          `create table tableWithComment (id int not null, r varchar(8) not null, primary key (r, id)) COMMENT='c'`,
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
+		SelectQuery:         "SHOW CREATE TABLE tableWithComment",
+		ExpectedSelect:      []sql.Row{{"tableWithComment", "CREATE TABLE `tableWithComment` (\n  `id` int NOT NULL,\n  `r` varchar(8) NOT NULL,\n  PRIMARY KEY (`r`,`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin COMMENT='c'"}},
+	},
+	{
+		// See https://github.com/dolthub/dolt/issues/11163
+		WriteQuery:          `create table tableWithComment (id int not null, v int, primary key (id), key k (v)) COMMENT='c'`,
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
+		SelectQuery:         "SHOW CREATE TABLE tableWithComment",
+		ExpectedSelect:      []sql.Row{{"tableWithComment", "CREATE TABLE `tableWithComment` (\n  `id` int NOT NULL,\n  `v` int,\n  PRIMARY KEY (`id`),\n  KEY `k` (`v`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin COMMENT='c'"}},
+	},
+	{
+		// See https://github.com/dolthub/dolt/issues/11163
+		WriteQuery:          `create table tableWithComment (id int not null, primary key (id)) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin COMMENT='c'`,
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
+		SelectQuery:         "SHOW CREATE TABLE tableWithComment",
+		ExpectedSelect:      []sql.Row{{"tableWithComment", "CREATE TABLE `tableWithComment` (\n  `id` int NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin COMMENT='c'"}},
+	},
+	{
 		WriteQuery:          `create table tableWithComment (pk int) COMMENT "~!@ #$ %^ &* ()"`,
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
 		SelectQuery:         "SHOW CREATE TABLE tableWithComment",

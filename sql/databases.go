@@ -177,8 +177,10 @@ type SchemaObjectNameValidator interface {
 type IndexedTableCreator interface {
 	Database
 	// CreateIndexedTable creates the table with the given name and schema using the index definition provided for its
-	// primary key index.
-	CreateIndexedTable(ctx *Context, name string, schema PrimaryKeySchema, idxDef IndexDef, collation CollationID) error
+	// primary key index. Integrators are responsible for persisting all provided table metadata. Comment may be
+	// optionally persisted, and if so, sql.Table implementations should also implement sql.CommentedTable so that the
+	// comment may be retrieved.
+	CreateIndexedTable(ctx *Context, name string, schema PrimaryKeySchema, idxDef IndexDef, collation CollationID, comment string) error
 }
 
 // TemporaryTableCreator is a database that can create temporary tables that persist only as long as the session.

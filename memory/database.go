@@ -279,7 +279,7 @@ func (d *BaseDatabase) CreateTable(ctx *sql.Context, name string, schema sql.Pri
 }
 
 // CreateIndexedTable creates a table with the given name and schema
-func (d *BaseDatabase) CreateIndexedTable(ctx *sql.Context, name string, sch sql.PrimaryKeySchema, idxDef sql.IndexDef, collation sql.CollationID) error {
+func (d *BaseDatabase) CreateIndexedTable(ctx *sql.Context, name string, sch sql.PrimaryKeySchema, idxDef sql.IndexDef, collation sql.CollationID, comment string) error {
 	d.tablesMu.RLock()
 	_, ok := d.tables[name]
 	d.tablesMu.RUnlock()
@@ -289,6 +289,7 @@ func (d *BaseDatabase) CreateIndexedTable(ctx *sql.Context, name string, sch sql
 
 	table := NewTableWithCollation(ctx, d, name, sch, d.fkColl, collation)
 	table.db = d
+	table.data.comment = comment
 
 	for _, idxCol := range idxDef.Columns {
 		idx := sch.Schema.IndexOfColName(idxCol.Name)
