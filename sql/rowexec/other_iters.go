@@ -207,7 +207,6 @@ func (i *cachedResultsIter) cleanUp() {
 
 func (i *cachedResultsIter) Close(ctx *sql.Context) error {
 	i.cleanUp()
-	i.parent.Dispose(ctx)
 	return i.iter.Close(ctx)
 }
 
@@ -248,8 +247,8 @@ func (h *hashLookupGeneratingIter) Next(ctx *sql.Context) (sql.Row, error) {
 	return childRow, nil
 }
 
-func (h *hashLookupGeneratingIter) Close(c *sql.Context) error {
-	return h.childIter.Close(c)
+func (h *hashLookupGeneratingIter) Close(ctx *sql.Context) error {
+	return h.childIter.Close(ctx)
 }
 
 var _ sql.RowIter = (*hashLookupGeneratingIter)(nil)
