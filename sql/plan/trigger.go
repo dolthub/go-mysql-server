@@ -172,9 +172,15 @@ func (t *triggerIter) Next(ctx *sql.Context) (row sql.Row, returnErr error) {
 	// For some logic statements, we want to return the result of the logic operation as our row, e.g. a Set that alters
 	// the fields of the new row
 	if ok, returnRow := shouldUseLogicResult(logic, logicRow); ok {
+		if t.TriggerDefinition.Callback != nil {
+			t.TriggerDefinition.Callback()
+		}
 		return returnRow, nil
 	}
 
+	if t.TriggerDefinition.Callback != nil {
+		t.TriggerDefinition.Callback()
+	}
 	return childRow, nil
 }
 
