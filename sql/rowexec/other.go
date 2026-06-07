@@ -24,6 +24,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
+// TODO: organize all these build functions into their own appropriately named files (see TODO in other_iters.go)
+
 func (b *BaseBuilder) buildConcat(ctx *sql.Context, n *plan.Concat, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.Concat")
 	li, err := b.buildNodeExec(ctx, n.Left(), row)
@@ -129,8 +131,7 @@ func (b *BaseBuilder) buildCachedResults(ctx *sql.Context, n *plan.CachedResults
 	if err != nil {
 		return nil, err
 	}
-	cache, dispose := ctx.Memory.NewRowsCache(ctx)
-	return &cachedResultsIter{n, ci, cache, dispose}, nil
+	return newCachedResultsIter(n, ci), nil
 }
 
 func (b *BaseBuilder) buildBlock(ctx *sql.Context, n *plan.Block, row sql.Row) (sql.RowIter, error) {

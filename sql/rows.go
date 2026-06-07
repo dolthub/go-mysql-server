@@ -120,6 +120,7 @@ func RowIterToRows(ctx *Context, i RowIter) ([]Row, error) {
 
 // RowsToRowIter creates a RowIter that iterates over the given rows.
 func RowsToRowIter(rows ...Row) RowIter {
+	// TODO: if 0 rows, return empty row iter
 	return &sliceRowIter{rows: rows}
 }
 

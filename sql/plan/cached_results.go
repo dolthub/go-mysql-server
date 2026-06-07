@@ -57,9 +57,10 @@ func NewCachedResults(n sql.Node, mgr *CachedResultsManager) *CachedResults {
 // fall back to a passthrough iterator.
 type CachedResults struct {
 	UnaryNode
-	Id      uint64
-	Manager *CachedResultsManager
-	Mutex   sync.Mutex
+	Id            uint64
+	Manager       *CachedResultsManager
+	Mutex         sync.Mutex
+	cachedResults []sql.Row
 	//NoCache is set when the memory manager is unable to build
 	// a cache, so we fallback to a passthrough RowIter
 	NoCache bool
@@ -106,8 +107,13 @@ func (n *CachedResults) CollationCoercibility(ctx *sql.Context) (collation sql.C
 	return sql.GetCoercibility(ctx, n.Child)
 }
 
+func (n *CachedResults) SetCachedResults(rows []sql.Row) {
+	n.cachedResults = rows
+	n.Finalized = true
+}
+
 func (n *CachedResults) GetCachedResults() []sql.Row {
-	return n.Manager.GetCachedResultsById(n.Id)
+	return n.cachedResults
 }
 
 func (n *CachedResults) IsReadOnly() bool {

@@ -24,6 +24,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
+// TODO: organize all these iterators in their own appropriately named file (see TODO in other.go)
+
 type analyzeTableIter struct {
 	stats  sql.StatsProvider
 	db     string
@@ -162,52 +164,36 @@ func (p *prependRowIter) Close(ctx *sql.Context) error {
 }
 
 type cachedResultsIter struct {
-	parent  *plan.CachedResults
-	iter    sql.RowIter
-	cache   sql.RowsCache
-	dispose sql.DisposeFunc
+	node      *plan.CachedResults
+	childIter sql.RowIter
+	results   []sql.Row
+}
+
+func newCachedResultsIter(node *plan.CachedResults, childIter sql.RowIter) *cachedResultsIter {
+	return &cachedResultsIter{
+		node:      node,
+		childIter: childIter,
+	}
 }
 
 func (i *cachedResultsIter) Next(ctx *sql.Context) (sql.Row, error) {
-	r, err := i.iter.Next(ctx)
-	if i.cache != nil {
-		if err != nil {
-			if err == io.EOF {
-				i.saveResultsInGlobalCache()
-				i.parent.Finalized = true
-			}
-			i.cleanUp()
-		} else {
-			aerr := i.cache.Add(r)
-			if aerr != nil {
-				i.cleanUp()
-				i.parent.Mutex.Lock()
-				defer i.parent.Mutex.Unlock()
-				i.parent.NoCache = true
-			}
+	r, err := i.childIter.Next(ctx)
+	if err != nil {
+		if err == io.EOF {
+			i.saveResultsInNode()
 		}
+	} else {
+		i.results = append(i.results, r)
 	}
 	return r, err
 }
 
-func (i *cachedResultsIter) saveResultsInGlobalCache() {
-	if i.parent.Manager.AddNewCache(i.parent.Id, i.cache, i.dispose) {
-		i.cache = nil
-		i.dispose = nil
-	}
-}
-
-func (i *cachedResultsIter) cleanUp() {
-	if i.dispose != nil {
-		i.dispose()
-		i.cache = nil
-		i.dispose = nil
-	}
+func (i *cachedResultsIter) saveResultsInNode() {
+	i.node.SetCachedResults(i.results)
 }
 
 func (i *cachedResultsIter) Close(ctx *sql.Context) error {
-	i.cleanUp()
-	return i.iter.Close(ctx)
+	return i.childIter.Close(ctx)
 }
 
 type hashLookupGeneratingIter struct {
