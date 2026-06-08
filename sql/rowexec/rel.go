@@ -509,7 +509,7 @@ func (b *BaseBuilder) buildMax1Row(ctx *sql.Context, n *plan.Max1Row, row sql.Ro
 
 	switch {
 	case n.EmptyResult:
-		return plan.EmptyIter, nil
+		return sql.EmptyIter, nil
 	case n.Result != nil:
 		return sql.RowsToRowIter(n.Result), nil
 	default:

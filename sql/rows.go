@@ -120,9 +120,25 @@ func RowIterToRows(ctx *Context, i RowIter) ([]Row, error) {
 
 // RowsToRowIter creates a RowIter that iterates over the given rows.
 func RowsToRowIter(rows ...Row) RowIter {
-	// TODO: if 0 rows, return empty row iter
+	if len(rows) == 0 {
+		return EmptyIter
+	}
 	return &sliceRowIter{rows: rows}
 }
+
+var EmptyIter = &emptyIter{}
+
+func IsEmptyIter(i RowIter) bool {
+	return i == EmptyIter
+}
+
+type emptyIter struct{}
+
+var _ RowIter = (*emptyIter)(nil)
+
+func (i *emptyIter) Next(ctx *Context) (Row, error) { return nil, io.EOF }
+
+func (i *emptyIter) Close(ctx *Context) error { return nil }
 
 type sliceRowIter struct {
 	rows []Row

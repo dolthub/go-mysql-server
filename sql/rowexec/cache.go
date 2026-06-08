@@ -29,7 +29,7 @@ func (b *BaseBuilder) buildCachedResults(ctx *sql.Context, n *plan.CachedResults
 	} else if n.NoCache {
 		return b.buildNodeExec(ctx, n.Child, row)
 	} else if n.Finalized {
-		return plan.EmptyIter, nil
+		return sql.EmptyIter, nil
 	}
 
 	ci, err := b.buildNodeExec(ctx, n.Child, row)
