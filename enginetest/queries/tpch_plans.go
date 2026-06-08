@@ -2417,9 +2417,9 @@ order by
 			"                         │       │   │       ├─ LessThan\n" +
 			"                         │       │   │       │   ├─ part.p_type:4!null\n" +
 			"                         │       │   │       │   └─ MEDIUM POLISHED (longtext)\n" +
-			"                         │       │   │       └─ GreaterThan\n" +
+			"                         │       │   │       └─ GreaterThanOrEqual\n" +
 			"                         │       │   │           ├─ part.p_type:4!null\n" +
-			"                         │       │   │           └─ MEDIUM POLISHEDÿ (longtext)\n" +
+			"                         │       │   │           └─ MEDIUM POLISHEE (longtext)\n" +
 			"                         │       │   └─ HashIn\n" +
 			"                         │       │       ├─ part.p_size:5!null\n" +
 			"                         │       │       └─ TUPLE(49 (tinyint), 14 (tinyint), 23 (tinyint), 45 (tinyint), 19 (tinyint), 3 (tinyint), 36 (tinyint), 9 (tinyint))\n" +
@@ -2463,7 +2463,7 @@ order by
 			"                         │   │   ├─ index: [partsupp.PS_PARTKEY,partsupp.PS_SUPPKEY]\n" +
 			"                         │   │   └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			"                         │   └─ Filter\n" +
-			"                         │       ├─ (((NOT((part.p_brand = 'Brand#45'))) AND ((part.p_type < 'MEDIUM POLISHED') OR (part.p_type > 'MEDIUM POLISHEDÿ'))) AND (part.p_size HASH IN (49, 14, 23, 45, 19, 3, 36, 9)))\n" +
+			"                         │       ├─ (((NOT((part.p_brand = 'Brand#45'))) AND ((part.p_type < 'MEDIUM POLISHED') OR (part.p_type >= 'MEDIUM POLISHEE'))) AND (part.p_size HASH IN (49, 14, 23, 45, 19, 3, 36, 9)))\n" +
 			"                         │       └─ IndexedTableAccess(part)\n" +
 			"                         │           ├─ index: [part.P_PARTKEY]\n" +
 			"                         │           └─ filters: [{[NULL, ∞)}]\n" +
@@ -2494,7 +2494,7 @@ order by
 			"                         │   │   ├─ index: [partsupp.PS_PARTKEY,partsupp.PS_SUPPKEY]\n" +
 			"                         │   │   └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			"                         │   └─ Filter\n" +
-			"                         │       ├─ (((NOT((part.p_brand = 'Brand#45'))) AND ((part.p_type < 'MEDIUM POLISHED') OR (part.p_type > 'MEDIUM POLISHEDÿ'))) AND (part.p_size HASH IN (49, 14, 23, 45, 19, 3, 36, 9)))\n" +
+			"                         │       ├─ (((NOT((part.p_brand = 'Brand#45'))) AND ((part.p_type < 'MEDIUM POLISHED') OR (part.p_type >= 'MEDIUM POLISHEE'))) AND (part.p_size HASH IN (49, 14, 23, 45, 19, 3, 36, 9)))\n" +
 			"                         │       └─ IndexedTableAccess(part)\n" +
 			"                         │           ├─ index: [part.P_PARTKEY]\n" +
 			"                         │           └─ filters: [{[NULL, ∞)}]\n" +
@@ -3075,27 +3075,27 @@ order by
 			"         │   │                   │   │   │   │   │   │   │   ├─ GreaterThanOrEqual\n" +
 			"         │   │                   │   │   │   │   │   │   │   │   ├─ part.p_name:1!null\n" +
 			"         │   │                   │   │   │   │   │   │   │   │   └─ forest (longtext)\n" +
-			"         │   │                   │   │   │   │   │   │   │   └─ LessThanOrEqual\n" +
+			"         │   │                   │   │   │   │   │   │   │   └─ LessThan\n" +
 			"         │   │                   │   │   │   │   │   │   │       ├─ part.p_name:1!null\n" +
-			"         │   │                   │   │   │   │   │   │   │       └─ forestÿ (longtext)\n" +
+			"         │   │                   │   │   │   │   │   │   │       └─ foresu (longtext)\n" +
 			"         │   │                   │   │   │   │   │   │   └─ GreaterThanOrEqual\n" +
 			"         │   │                   │   │   │   │   │   │       ├─ part.p_name:1!null\n" +
 			"         │   │                   │   │   │   │   │   │       └─ forest (longtext)\n" +
-			"         │   │                   │   │   │   │   │   └─ LessThanOrEqual\n" +
+			"         │   │                   │   │   │   │   │   └─ LessThan\n" +
 			"         │   │                   │   │   │   │   │       ├─ part.p_name:1!null\n" +
-			"         │   │                   │   │   │   │   │       └─ forestÿ (longtext)\n" +
+			"         │   │                   │   │   │   │   │       └─ foresu (longtext)\n" +
 			"         │   │                   │   │   │   │   └─ GreaterThanOrEqual\n" +
 			"         │   │                   │   │   │   │       ├─ part.p_name:1!null\n" +
 			"         │   │                   │   │   │   │       └─ forest (longtext)\n" +
-			"         │   │                   │   │   │   └─ LessThanOrEqual\n" +
+			"         │   │                   │   │   │   └─ LessThan\n" +
 			"         │   │                   │   │   │       ├─ part.p_name:1!null\n" +
-			"         │   │                   │   │   │       └─ forestÿ (longtext)\n" +
+			"         │   │                   │   │   │       └─ foresu (longtext)\n" +
 			"         │   │                   │   │   └─ GreaterThanOrEqual\n" +
 			"         │   │                   │   │       ├─ part.p_name:1!null\n" +
 			"         │   │                   │   │       └─ forest (longtext)\n" +
-			"         │   │                   │   └─ LessThanOrEqual\n" +
+			"         │   │                   │   └─ LessThan\n" +
 			"         │   │                   │       ├─ part.p_name:1!null\n" +
-			"         │   │                   │       └─ forestÿ (longtext)\n" +
+			"         │   │                   │       └─ foresu (longtext)\n" +
 			"         │   │                   └─ IndexedTableAccess(part)\n" +
 			"         │   │                       ├─ index: [part.P_PARTKEY]\n" +
 			"         │   │                       ├─ keys: [partsupp.ps_partkey:0!null]\n" +
@@ -3141,7 +3141,7 @@ order by
 			"         │   │           └─ Project\n" +
 			"         │   │               ├─ columns: [part.p_partkey]\n" +
 			"         │   │               └─ Filter\n" +
-			"         │   │                   ├─ ((((((((part.p_name >= 'forest') AND (part.p_name <= 'forestÿ')) AND (part.p_name >= 'forest')) AND (part.p_name <= 'forestÿ')) AND (part.p_name >= 'forest')) AND (part.p_name <= 'forestÿ')) AND (part.p_name >= 'forest')) AND (part.p_name <= 'forestÿ'))\n" +
+			"         │   │                   ├─ ((((((((part.p_name >= 'forest') AND (part.p_name < 'foresu')) AND (part.p_name >= 'forest')) AND (part.p_name < 'foresu')) AND (part.p_name >= 'forest')) AND (part.p_name < 'foresu')) AND (part.p_name >= 'forest')) AND (part.p_name < 'foresu'))\n" +
 			"         │   │                   └─ IndexedTableAccess(part)\n" +
 			"         │   │                       ├─ index: [part.P_PARTKEY]\n" +
 			"         │   │                       └─ keys: partsupp.ps_partkey\n" +
@@ -3170,7 +3170,7 @@ order by
 			"         │   │           └─ Project\n" +
 			"         │   │               ├─ columns: [part.p_partkey]\n" +
 			"         │   │               └─ Filter\n" +
-			"         │   │                   ├─ ((((((((part.p_name >= 'forest') AND (part.p_name <= 'forestÿ')) AND (part.p_name >= 'forest')) AND (part.p_name <= 'forestÿ')) AND (part.p_name >= 'forest')) AND (part.p_name <= 'forestÿ')) AND (part.p_name >= 'forest')) AND (part.p_name <= 'forestÿ'))\n" +
+			"         │   │                   ├─ ((((((((part.p_name >= 'forest') AND (part.p_name < 'foresu')) AND (part.p_name >= 'forest')) AND (part.p_name < 'foresu')) AND (part.p_name >= 'forest')) AND (part.p_name < 'foresu')) AND (part.p_name >= 'forest')) AND (part.p_name < 'foresu'))\n" +
 			"         │   │                   └─ IndexedTableAccess(part)\n" +
 			"         │   │                       ├─ index: [part.P_PARTKEY]\n" +
 			"         │   │                       └─ keys: partsupp.ps_partkey\n" +

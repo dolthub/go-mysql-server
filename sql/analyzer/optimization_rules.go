@@ -16,6 +16,7 @@ package analyzer
 
 import (
 	"strings"
+	"unicode/utf8"
 
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
@@ -447,12 +448,22 @@ func simplifyExpression(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sel Ru
 			if len(valStr) == 1 {
 				return e, transform.SameTree, nil
 			}
-			valStr = valStr[:len(valStr)-1]
-			newRightLower := expression.NewLiteral(valStr, e.RightChild.Type(ctx))
-			valStr += string(byte(255)) // append largest possible character as upper bound
-			newRightUpper := expression.NewLiteral(valStr, e.RightChild.Type(ctx))
-			newExpr := expression.NewAnd(expression.NewGreaterThanOrEqual(e.LeftChild, newRightLower), expression.NewLessThanOrEqual(e.LeftChild, newRightUpper))
-			return newExpr, transform.NewTree, nil
+			prefix := valStr[:len(valStr)-1]
+			rightType := e.RightChild.Type(ctx)
+			lowerBound := expression.NewGreaterThanOrEqual(e.LeftChild, expression.NewLiteral(prefix, rightType))
+			// For a code-point ordered collation every match lies between |prefix| and the next
+			// string above it, so the LIKE becomes a range with an upper bound. When |prefix| has
+			// no such bound, fall through to the residual form below.
+			if isExactPrefixRangeCollation(coll) {
+				if upperPrefix, hasUpper := incrementLastRune(prefix); hasUpper {
+					upper := expression.NewLiteral(upperPrefix, rightType)
+					return expression.NewAnd(lowerBound, expression.NewLessThan(e.LeftChild, upper)), transform.NewTree, nil
+				}
+			}
+			// Keep the lower bound as an index hint and keep the LIKE as a residual filter that
+			// rechecks each row. This stays correct for collations whose matches are not one
+			// simple range and for the case above where |prefix| has no upper bound.
+			return expression.NewAnd(lowerBound, e), transform.NewTree, nil
 		case *expression.Not:
 			if lit, ok := e.Child.(*expression.Literal); ok {
 				val, err := sql.ConvertToBool(ctx, lit.Value())
@@ -483,6 +494,33 @@ func simplifyExpression(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sel Ru
 			return expression.NewLiteral(val, e.Type(ctx)), transform.NewTree, nil
 		}
 	})
+}
+
+// isExactPrefixRangeCollation reports whether the values matching a LIKE 'prefix%' pattern under
+// |collation| form one exact range, which lets the caller replace the LIKE with a range
+// comparison. This holds only for utf8mb4_0900_bin, which orders by code point and does not pad
+// trailing spaces. Other collations order or pad text in ways a plain range cannot reproduce, so
+// the caller must keep the LIKE.
+func isExactPrefixRangeCollation(collation sql.CollationID) bool {
+	return collation == sql.Collation_utf8mb4_0900_bin
+}
+
+// incrementLastRune returns |prefix| with its last rune replaced by the next higher rune. The
+// result is the smallest string that sorts after every string starting with |prefix|, so the
+// caller can use it as an exclusive upper bound. It returns false when the last rune is already
+// the highest one, in which case no such bound exists and the caller omits the upper comparison.
+func incrementLastRune(prefix string) (string, bool) {
+	last, size := utf8.DecodeLastRuneInString(prefix)
+	if last == utf8.MaxRune {
+		return "", false
+	}
+	next := last + 1
+	// Skip the surrogate range U+D800 through U+DFFF, which is not valid UTF-8. Otherwise
+	// string(next) would yield the replacement character and push the upper bound too high.
+	if next == 0xD800 {
+		next = 0xE000
+	}
+	return prefix[:len(prefix)-size] + string(next), true
 }
 
 // getDefiniteBoolValues gets the definite boolean values of an expression. isTrue will only be true if the expression
