@@ -323,12 +323,6 @@ func (i *joinIter) Next(ctx *sql.Context) (sql.Row, error) {
 			if err != nil {
 				return nil, err
 			}
-			if sql.IsEmptyIter(rowIter) {
-				if !i.foundMatch && i.joinType.IsLeftOuter() {
-					return i.makeLeftOuterNonMatchingResult(), nil
-				}
-				return nil, io.EOF
-			}
 			i.secondaryRowIter = rowIter
 		}
 
