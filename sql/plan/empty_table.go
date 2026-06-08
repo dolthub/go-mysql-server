@@ -127,7 +127,7 @@ func (e *EmptyTable) Partitions(_ *sql.Context) (sql.PartitionIter, error) {
 
 // PartitionRows implements the sql.UpdatableTable interface.
 func (e *EmptyTable) PartitionRows(_ *sql.Context, _ sql.Partition) (sql.RowIter, error) {
-	return &emptyTableIter{}, nil
+	return sql.EmptyIter, nil
 }
 
 // Deleter implements the sql.DeletableTable interface.
@@ -162,22 +162,6 @@ func (e *emptyTableUpdater) Close(_ *sql.Context) error {
 	return nil
 }
 
-// TODO: this seems to be identical to emptyCacheIter
-type emptyTableIter struct{}
-
-var _ sql.RowIter = (*emptyTableIter)(nil)
-
-// Next implements the sql.RowIter interface.
-func (e *emptyTableIter) Next(_ *sql.Context) (sql.Row, error) {
-	return nil, io.EOF
-}
-
-// Close implements the sql.RowIter interface.
-func (e *emptyTableIter) Close(_ *sql.Context) error {
-	return nil
-}
-
-// TODO: this seems to be identical to emptyCacheIter
 type emptyTablePartitionIter struct{}
 
 var _ sql.PartitionIter = (*emptyTablePartitionIter)(nil)
