@@ -323,12 +323,6 @@ func (i *joinIter) Next(ctx *sql.Context) (sql.Row, error) {
 			if err != nil {
 				return nil, err
 			}
-			if plan.IsEmptyIter(rowIter) {
-				if !i.foundMatch && i.joinType.IsLeftOuter() {
-					return i.makeLeftOuterNonMatchingResult(), nil
-				}
-				return nil, io.EOF
-			}
 			i.secondaryRowIter = rowIter
 		}
 
@@ -412,7 +406,7 @@ func (i *existsIter) Next(ctx *sql.Context) (sql.Row, error) {
 			if err != nil {
 				return nil, err
 			}
-			if plan.IsEmptyIter(i.secondaryRowIter) {
+			if sql.IsEmptyIter(i.secondaryRowIter) {
 				nextState = esRightIterEOF
 			} else {
 				nextState = esIncRight

@@ -272,18 +272,17 @@ func (ab *Builder) Build() *Analyzer {
 		},
 	}
 	return &Analyzer{
-		Debug:                debug || ab.debug,
-		Verbose:              verbose,
-		Trace:                trace,
-		contextStack:         make([]string, 0),
-		Batches:              batches,
-		Catalog:              NewCatalog(ab.provider, ab.overrides),
-		Overrides:            ab.overrides,
-		Coster:               memo.NewDefaultCoster(),
-		ExecBuilder:          rowexec.NewBuilder(nil, ab.overrides),
-		Parser:               sql.GetParser(ab.overrides),
-		SchemaFormatter:      sql.GetSchemaFormatter(ab.overrides),
-		CachedResultsManager: plan.NewCachedResultsManager(),
+		Debug:           debug || ab.debug,
+		Verbose:         verbose,
+		Trace:           trace,
+		contextStack:    make([]string, 0),
+		Batches:         batches,
+		Catalog:         NewCatalog(ab.provider, ab.overrides),
+		Overrides:       ab.overrides,
+		Coster:          memo.NewDefaultCoster(),
+		ExecBuilder:     rowexec.NewBuilder(nil, ab.overrides),
+		Parser:          sql.GetParser(ab.overrides),
+		SchemaFormatter: sql.GetSchemaFormatter(ab.overrides),
 	}
 }
 
@@ -304,8 +303,6 @@ type Analyzer struct {
 	Catalog *Catalog
 	// Overrides contains the overrides for the engine.
 	Overrides sql.EngineOverrides
-	// CachedResultsManager manages the caches created by CachedResults nodes.
-	CachedResultsManager *plan.CachedResultsManager
 	// A stack of debugger context. See PushDebugContext, PopDebugContext
 	contextStack []string
 	// Batches of Rules to apply.

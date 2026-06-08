@@ -119,9 +119,6 @@ func (iter *rangeHeapJoinIter) loadSecondary(ctx *sql.Context) (sql.Row, error) 
 		if err != nil {
 			return nil, err
 		}
-		if plan.IsEmptyIter(rowIter) {
-			return nil, plan.ErrEmptyCachedResult
-		}
 		iter.secondary = rowIter
 	}
 
@@ -158,14 +155,6 @@ func (iter *rangeHeapJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 					return iter.removeParentRow(row), nil
 				}
 				continue
-			} else if errors.Is(err, plan.ErrEmptyCachedResult) {
-				if !iter.foundMatch && iter.joinType.IsLeftOuter() {
-					iter.loadPrimaryRow = true
-					row := iter.buildRow(primary, nil)
-					return iter.removeParentRow(row), nil
-				}
-
-				return nil, io.EOF
 			}
 			return nil, err
 		}
