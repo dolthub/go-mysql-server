@@ -1809,6 +1809,13 @@ func TestScripts(t *testing.T, harness Harness) {
 	}
 }
 
+// TestLikeScripts runs the script tests for LIKE pattern matching in queries.LikeScriptTests.
+func TestLikeScripts(t *testing.T, harness Harness) {
+	for _, script := range queries.LikeScriptTests {
+		TestScript(t, harness, script)
+	}
+}
+
 func TestNumericErrorScripts(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
 	for _, script := range queries.NumericErrorQueries {
