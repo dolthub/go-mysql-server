@@ -22,7 +22,7 @@ import (
 )
 
 func (b *BaseBuilder) buildCachedResults(ctx *sql.Context, n *plan.CachedResults, row sql.Row) (sql.RowIter, error) {
-	if n.Finalized {
+	if n.IsFinalized() {
 		return sql.RowsToRowIter(n.GetCachedResults()...), nil
 	}
 
