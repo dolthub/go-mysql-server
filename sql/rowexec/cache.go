@@ -22,15 +22,8 @@ import (
 )
 
 func (b *BaseBuilder) buildCachedResults(ctx *sql.Context, n *plan.CachedResults, row sql.Row) (sql.RowIter, error) {
-	n.Mutex.Lock()
-	defer n.Mutex.Unlock()
-
-	if rows := n.GetCachedResults(); rows != nil {
-		return sql.RowsToRowIter(rows...), nil
-	} else if n.NoCache {
-		return b.buildNodeExec(ctx, n.Child, row)
-	} else if n.Finalized {
-		return sql.EmptyIter, nil
+	if n.Finalized {
+		return sql.RowsToRowIter(n.GetCachedResults()...), nil
 	}
 
 	ci, err := b.buildNodeExec(ctx, n.Child, row)

@@ -15,8 +15,6 @@
 package plan
 
 import (
-	"sync"
-
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -50,12 +48,7 @@ func NewCachedResults(n sql.Node) *CachedResults {
 // fall back to a passthrough iterator.
 type CachedResults struct {
 	UnaryNode
-	Mutex         sync.Mutex
 	cachedResults []sql.Row
-	// TODO: rewrite or remove
-	//NoCache is set when the memory manager is unable to build
-	// a cache, so we fall back to a passthrough RowIter
-	NoCache bool
 	// Finalized is set when the child iter has been exhauster so subsequent RowIters will be read from the cached
 	// result rather than the child iter
 	Finalized bool
