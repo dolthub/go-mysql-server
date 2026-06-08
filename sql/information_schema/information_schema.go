@@ -2135,6 +2135,7 @@ func userPrivilegesRowIter(ctx *Context, catalog Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
+// TODO: move to rowexec package
 // emptyRowIter implements the sql.RowIter for empty table.
 func emptyRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	return RowsToRowIter(), nil

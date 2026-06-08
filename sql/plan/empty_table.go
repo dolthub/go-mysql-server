@@ -162,6 +162,7 @@ func (e *emptyTableUpdater) Close(_ *sql.Context) error {
 	return nil
 }
 
+// TODO: this seems to be identical to emptyCacheIter
 type emptyTableIter struct{}
 
 var _ sql.RowIter = (*emptyTableIter)(nil)
@@ -176,6 +177,7 @@ func (e *emptyTableIter) Close(_ *sql.Context) error {
 	return nil
 }
 
+// TODO: this seems to be identical to emptyCacheIter
 type emptyTablePartitionIter struct{}
 
 var _ sql.PartitionIter = (*emptyTablePartitionIter)(nil)

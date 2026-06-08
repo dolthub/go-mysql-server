@@ -111,29 +111,6 @@ func (b *BaseBuilder) buildTransformedNamedNode(ctx *sql.Context, n *plan.Transf
 	return b.buildNodeExec(ctx, n.Child, row)
 }
 
-func (b *BaseBuilder) buildCachedResults(ctx *sql.Context, n *plan.CachedResults, row sql.Row) (sql.RowIter, error) {
-	n.Mutex.Lock()
-	defer n.Mutex.Unlock()
-
-	if n.Disposed {
-		return nil, fmt.Errorf("%w: %T", plan.ErrRowIterDisposed, n)
-	}
-
-	if rows := n.GetCachedResults(); rows != nil {
-		return sql.RowsToRowIter(rows...), nil
-	} else if n.NoCache {
-		return b.buildNodeExec(ctx, n.Child, row)
-	} else if n.Finalized {
-		return plan.EmptyIter, nil
-	}
-
-	ci, err := b.buildNodeExec(ctx, n.Child, row)
-	if err != nil {
-		return nil, err
-	}
-	return newCachedResultsIter(n, ci), nil
-}
-
 func (b *BaseBuilder) buildBlock(ctx *sql.Context, n *plan.Block, row sql.Row) (sql.RowIter, error) {
 	var returnRows []sql.Row
 	var returnNode sql.Node

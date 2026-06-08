@@ -163,39 +163,6 @@ func (p *prependRowIter) Close(ctx *sql.Context) error {
 	return p.childIter.Close(ctx)
 }
 
-type cachedResultsIter struct {
-	node      *plan.CachedResults
-	childIter sql.RowIter
-	results   []sql.Row
-}
-
-func newCachedResultsIter(node *plan.CachedResults, childIter sql.RowIter) *cachedResultsIter {
-	return &cachedResultsIter{
-		node:      node,
-		childIter: childIter,
-	}
-}
-
-func (i *cachedResultsIter) Next(ctx *sql.Context) (sql.Row, error) {
-	r, err := i.childIter.Next(ctx)
-	if err != nil {
-		if err == io.EOF {
-			i.saveResultsInNode()
-		}
-	} else {
-		i.results = append(i.results, r)
-	}
-	return r, err
-}
-
-func (i *cachedResultsIter) saveResultsInNode() {
-	i.node.SetCachedResults(i.results)
-}
-
-func (i *cachedResultsIter) Close(ctx *sql.Context) error {
-	return i.childIter.Close(ctx)
-}
-
 type hashLookupGeneratingIter struct {
 	n         *plan.HashLookup
 	childIter sql.RowIter

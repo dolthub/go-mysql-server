@@ -36,7 +36,7 @@ func TestUnclosedCachedResultIterDoesNotLeakMemory(t *testing.T) {
 
 	table := memory.NewTable(ctx, db.BaseDatabase, "left", lSchema, nil)
 	insertData(t, ctx, table)
-	node := plan.NewCachedResults(plan.NewResolvedTable(table, db, nil), plan.NewCachedResultsManager())
+	node := plan.NewCachedResults(plan.NewResolvedTable(table, db, nil))
 
 	iter, err := NewBuilder(nil, sql.EngineOverrides{}).Build(ctx, node, nil)
 	require.NoError(err)
