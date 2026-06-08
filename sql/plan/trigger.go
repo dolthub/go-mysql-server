@@ -93,11 +93,12 @@ func (t *TriggerExecutor) CheckPrivileges(ctx *sql.Context, opChecker sql.Privil
 }
 
 type triggerIter struct {
-	child          sql.RowIter
-	executionLogic sql.Node
-	triggerTime    TriggerTime
-	triggerEvent   TriggerEvent
-	ctx            *sql.Context
+	child             sql.RowIter
+	executionLogic    sql.Node
+	triggerTime       TriggerTime
+	triggerEvent      TriggerEvent
+	triggerDefinition sql.TriggerDefinition
+	ctx               *sql.Context
 }
 
 // prependRowInPlanForTriggerExecution returns a transformation function that prepends the row given to any row source in a query
@@ -172,9 +173,15 @@ func (t *triggerIter) Next(ctx *sql.Context) (row sql.Row, returnErr error) {
 	// For some logic statements, we want to return the result of the logic operation as our row, e.g. a Set that alters
 	// the fields of the new row
 	if ok, returnRow := shouldUseLogicResult(logic, logicRow); ok {
+		if t.triggerDefinition.Callback != nil {
+			t.triggerDefinition.Callback()
+		}
 		return returnRow, nil
 	}
 
+	if t.triggerDefinition.Callback != nil {
+		t.triggerDefinition.Callback()
+	}
 	return childRow, nil
 }
 
@@ -228,11 +235,12 @@ func (t *TriggerExecutor) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 	}
 
 	return &triggerIter{
-		child:          childIter,
-		triggerTime:    t.TriggerTime,
-		triggerEvent:   t.TriggerEvent,
-		executionLogic: t.right,
-		ctx:            ctx,
+		child:             childIter,
+		triggerTime:       t.TriggerTime,
+		triggerEvent:      t.TriggerEvent,
+		triggerDefinition: t.TriggerDefinition, // add this
+		executionLogic:    t.right,
+		ctx:               ctx,
 	}, nil
 }
 

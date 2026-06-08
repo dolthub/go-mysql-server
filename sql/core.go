@@ -820,6 +820,7 @@ type TriggerDefinition struct {
 	Name            string    // The name of this trigger. Trigger names in a database are unique.
 	CreateStatement string    // The text of the statement to create this trigger.
 	CreatedAt       time.Time // The time that the trigger was created.
+	Callback        func()    // Optional Go callback invoked after each row the trigger fires on. Not persisted.
 }
 
 // TriggerDatabase is a Database that supports the creation and execution of triggers. The engine handles all parsing
