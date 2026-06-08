@@ -13,8 +13,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-var errEmptyCachedResult = errors.New("CachedResult contains no rows")
-
 // joinIter is an iterator that iterates over every row in the primary table and performs an index lookup in
 // the secondary table for each value
 type rangeHeapJoinIter struct {
@@ -121,9 +119,6 @@ func (iter *rangeHeapJoinIter) loadSecondary(ctx *sql.Context) (sql.Row, error) 
 		if err != nil {
 			return nil, err
 		}
-		if sql.IsEmptyIter(rowIter) {
-			return nil, errEmptyCachedResult
-		}
 		iter.secondary = rowIter
 	}
 
@@ -160,14 +155,6 @@ func (iter *rangeHeapJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 					return iter.removeParentRow(row), nil
 				}
 				continue
-			} else if errors.Is(err, errEmptyCachedResult) {
-				if !iter.foundMatch && iter.joinType.IsLeftOuter() {
-					iter.loadPrimaryRow = true
-					row := iter.buildRow(primary, nil)
-					return iter.removeParentRow(row), nil
-				}
-
-				return nil, io.EOF
 			}
 			return nil, err
 		}
