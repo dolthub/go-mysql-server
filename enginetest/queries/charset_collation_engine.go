@@ -15,37 +15,17 @@
 package queries
 
 import (
-	"gopkg.in/src-d/go-errors.v1"
-
 	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// CharsetCollationEngineTest is used to test character sets.
-type CharsetCollationEngineTest struct {
-	Name        string
-	SetUpScript []string
-	Queries     []CharsetCollationEngineTestQuery
-}
-
-// CharsetCollationEngineTestQuery is a query within a CharsetCollationEngineTest. If `Error` is true but `ErrKind` is
-// nil, then just tests that an error has occurred. If `ErrKind` is not nil, then tests that an error is returned and
-// matches the stated kind (has higher precedence than the `Error` field). Only checks the `Expected` rows when both
-// `Error` and `ErrKind` are nil.
-type CharsetCollationEngineTestQuery struct {
-	Query    string
-	Expected []sql.Row
-	Error    bool
-	ErrKind  *errors.Kind
-}
-
 // CharsetCollationEngineTests are used to ensure that character sets and collations have the correct behavior over the
 // engine. Return values should all have the `utf8mb4` encoding, as it's returning the internal encoding type.
-var CharsetCollationEngineTests = []CharsetCollationEngineTest{
+var CharsetCollationEngineTests = []ScriptTest{
 	{
 		Name: "Uppercase and lowercase collations",
-		Queries: []CharsetCollationEngineTestQuery{
+		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "CREATE TABLE test1 (v1 VARCHAR(255) COLLATE utf16_unicode_ci, v2 VARCHAR(255) COLLATE UTF16_UNICODE_CI);",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
@@ -61,7 +41,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 		SetUpScript: []string{
 			"CREATE TABLE test (v1 VARCHAR(255) COLLATE utf16_unicode_ci);",
 		},
-		Queries: []CharsetCollationEngineTestQuery{
+		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "INSERT INTO test VALUES ('hey');",
 				Expected: []sql.Row{{types.NewOkResult(1)}},
@@ -86,7 +66,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			"CREATE TABLE test1 (v1 VARCHAR(255) COLLATE utf8mb4_0900_bin);",
 			"CREATE TABLE test2 (v1 VARCHAR(255) COLLATE utf16_unicode_ci);",
 		},
-		Queries: []CharsetCollationEngineTestQuery{
+		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "INSERT INTO test1 VALUES ('HEY2'), ('hey1');",
 				Expected: []sql.Row{{types.NewOkResult(2)}},
@@ -107,35 +87,35 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 	},
 	{
 		Name: "Character set introducer with invalid collate",
-		Queries: []CharsetCollationEngineTestQuery{
+		Assertions: []ScriptTestAssertion{
 			{
-				Query: "SELECT _utf16'\x00a' COLLATE utf8mb4_0900_bin;",
-				Error: true,
+				Query:       "SELECT _utf16'\x00a' COLLATE utf8mb4_0900_bin;",
+				ExpectedErr: sql.ErrCollationInvalidForCharSet,
 			},
 			{
-				Query: "SELECT _utf16'\x00a' COLLATE binary;",
-				Error: true,
+				Query:       "SELECT _utf16'\x00a' COLLATE binary;",
+				ExpectedErr: sql.ErrCollationInvalidForCharSet,
 			},
 		},
 	},
 	{
 		Name: "Properly block using not-yet-implemented character sets/collations",
-		Queries: []CharsetCollationEngineTestQuery{
+		Assertions: []ScriptTestAssertion{
 			{
-				Query:   "CREATE TABLE test1 (pk BIGINT PRIMARY KEY, v1 VARCHAR(255) CHARACTER SET utf16le);",
-				ErrKind: sql.ErrCharSetNotYetImplementedTemp,
+				Query:       "CREATE TABLE test1 (pk BIGINT PRIMARY KEY, v1 VARCHAR(255) CHARACTER SET utf16le);",
+				ExpectedErr: sql.ErrCharSetNotYetImplementedTemp,
 			},
 			{
-				Query:   "CREATE TABLE test2 (pk BIGINT PRIMARY KEY, v1 VARCHAR(255) COLLATE utf16le_general_ci);",
-				ErrKind: sql.ErrCharSetNotYetImplementedTemp,
+				Query:       "CREATE TABLE test2 (pk BIGINT PRIMARY KEY, v1 VARCHAR(255) COLLATE utf16le_general_ci);",
+				ExpectedErr: sql.ErrCharSetNotYetImplementedTemp,
 			},
 			{
 				Query:    "CREATE TABLE test3 (pk BIGINT PRIMARY KEY, v1 VARCHAR(255) CHARACTER SET utf8mb4);",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query:   "ALTER TABLE test3 MODIFY COLUMN v1 VARCHAR(255) COLLATE utf8mb4_sr_latn_0900_as_cs;",
-				ErrKind: sql.ErrCollationNotYetImplementedTemp,
+				Query:       "ALTER TABLE test3 MODIFY COLUMN v1 VARCHAR(255) COLLATE utf8mb4_sr_latn_0900_as_cs;",
+				ExpectedErr: sql.ErrCollationNotYetImplementedTemp,
 			},
 		},
 	},
@@ -147,7 +127,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			"INSERT INTO test1 VALUES (1, 'abc'), (2, 'ABC'), (3, 'aBc'), (4, 'AbC');",
 			"INSERT INTO test2 VALUES (1, 'abc'), (2, 'ABC'), (3, 'aBc'), (4, 'AbC');",
 		},
-		Queries: []CharsetCollationEngineTestQuery{
+		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT v1, pk FROM test1 ORDER BY pk;",
 				Expected: []sql.Row{
@@ -182,7 +162,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			"INSERT INTO test1 VALUES (1, 'abc'), (2, 'ABC'), (3, 'aBc'), (4, 'AbC');",
 			"INSERT INTO test2 VALUES (1, 'abc'), (2, 'ABC'), (3, 'aBc'), (4, 'AbC');",
 		},
-		Queries: []CharsetCollationEngineTestQuery{
+		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT v1, pk FROM test1 WHERE v1 > 'AbC' ORDER BY v1, pk;",
 				Expected: []sql.Row(nil),
@@ -266,7 +246,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			"INSERT INTO test3 VALUES (1, 'abc'), (2, 'ABC'), (3, 'aBc'), (4, 'AbC');",
 			"CREATE TABLE test4 AS SELECT * FROM test2;",
 		},
-		Queries: []CharsetCollationEngineTestQuery{
+		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT v1, pk FROM test1 WHERE v1 <= 'aBc' ORDER BY v1, pk;",
 				Expected: []sql.Row{
@@ -352,8 +332,8 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 				},
 			},
 			{
-				Query: "ALTER TABLE test2 CHARACTER SET latin1 COLLATE utf8mb4_bin;",
-				Error: true,
+				Query:          "ALTER TABLE test2 CHARACTER SET latin1 COLLATE utf8mb4_bin;",
+				ExpectedErrStr: "latin1 is not a valid character set for utf8mb4_bin",
 			},
 			{
 				Query: "ALTER TABLE test2 COLLATE utf8mb4_bin;",
@@ -400,61 +380,61 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			"CREATE TABLE test(pk BIGINT PRIMARY KEY, v1 VARCHAR(100) COLLATE utf8mb4_0900_bin);",
 			"INSERT INTO test VALUES (1, 'a'), (2, 'b');",
 		},
-		Queries: []CharsetCollationEngineTestQuery{
+		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT * FROM test ORDER BY v1 COLLATE utf8mb4_bin ASC;",
 				Expected: []sql.Row{{int64(1), "a"}, {int64(2), "b"}},
 			},
 			{
-				Query:   "SELECT * FROM test ORDER BY v1 COLLATE utf8mb3_bin ASC;",
-				ErrKind: sql.ErrCollationInvalidForCharSet,
+				Query:       "SELECT * FROM test ORDER BY v1 COLLATE utf8mb3_bin ASC;",
+				ExpectedErr: sql.ErrCollationInvalidForCharSet,
 			},
 			{
 				Query:    "SELECT 'a' COLLATE utf8mb3_bin;",
 				Expected: []sql.Row{{"a"}},
 			},
 			{
-				Query:   "SELECT 'a' COLLATE utf8mb4_bin;",
-				ErrKind: sql.ErrCollationInvalidForCharSet,
+				Query:       "SELECT 'a' COLLATE utf8mb4_bin;",
+				ExpectedErr: sql.ErrCollationInvalidForCharSet,
 			},
 		},
 	},
 	{
 		Name: "SET validates character set and collation variables",
-		Queries: []CharsetCollationEngineTestQuery{
+		Assertions: []ScriptTestAssertion{
 			{
-				Query:   "SET character_set_client = 'am_i_wrong';",
-				ErrKind: sql.ErrCharSetUnknown,
+				Query:       "SET character_set_client = 'am_i_wrong';",
+				ExpectedErr: sql.ErrCharSetUnknown,
 			},
 			{
-				Query:   "SET character_set_connection = 'to_believe';",
-				ErrKind: sql.ErrCharSetUnknown,
+				Query:       "SET character_set_connection = 'to_believe';",
+				ExpectedErr: sql.ErrCharSetUnknown,
 			},
 			{
-				Query:   "SET character_set_results = 'in_crusty_cheese';",
-				ErrKind: sql.ErrCharSetUnknown,
+				Query:       "SET character_set_results = 'in_crusty_cheese';",
+				ExpectedErr: sql.ErrCharSetUnknown,
 			},
 			{
-				Query:   "SET collation_connection = 'is_it_wrong';",
-				ErrKind: sql.ErrCollationUnknown,
+				Query:       "SET collation_connection = 'is_it_wrong';",
+				ExpectedErr: sql.ErrCollationUnknown,
 			},
 			{
-				Query:   "SET collation_database = 'to_believe';",
-				ErrKind: sql.ErrCollationUnknown,
+				Query:       "SET collation_database = 'to_believe';",
+				ExpectedErr: sql.ErrCollationUnknown,
 			},
 			{
-				Query:   "SET collation_server = 'in_deez';",
-				ErrKind: sql.ErrCollationUnknown,
+				Query:       "SET collation_server = 'in_deez';",
+				ExpectedErr: sql.ErrCollationUnknown,
 			},
 			{
-				Query:   "SET NAMES things;",
-				ErrKind: sql.ErrCharSetUnknown,
+				Query:       "SET NAMES things;",
+				ExpectedErr: sql.ErrCharSetUnknown,
 			},
 		},
 	},
 	{
 		Name: "setting charset/collation sets the other",
-		Queries: []CharsetCollationEngineTestQuery{
+		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select @@session.character_set_connection, @@session.collation_connection;",
 				Expected: []sql.Row{
@@ -570,7 +550,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			"CREATE TABLE test1 (pk BIGINT PRIMARY KEY, v1 ENUM('abc','def','ghi') COLLATE utf16_unicode_ci);",
 			"CREATE TABLE test2 (pk BIGINT PRIMARY KEY, v1 ENUM('abc','def','ghi') COLLATE utf8mb4_0900_bin);",
 		},
-		Queries: []CharsetCollationEngineTestQuery{
+		Assertions: []ScriptTestAssertion{
 			{
 				Query: "INSERT INTO test1 VALUES (1, 'ABC');",
 				Expected: []sql.Row{
@@ -578,8 +558,8 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 				},
 			},
 			{
-				Query: "INSERT INTO test2 VALUES (1, 'ABC');",
-				Error: true,
+				Query:       "INSERT INTO test2 VALUES (1, 'ABC');",
+				ExpectedErr: types.ErrDataTruncatedForColumnAtRow,
 			},
 			{
 				Query: "INSERT INTO test1 VALUES (2, _utf16'\x00d\x00e\x00f' COLLATE utf16_unicode_ci);",
@@ -596,18 +576,18 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			{
 				Query: "SELECT * FROM test1 ORDER BY pk;",
 				Expected: []sql.Row{
-					{int64(1), uint16(1)}, {int64(2), uint16(2)},
+					{int64(1), "abc"}, {int64(2), "def"},
 				},
 			},
 			{
 				Query: "SELECT * FROM test2 ORDER BY pk;",
 				Expected: []sql.Row{
-					{int64(2), uint16(2)},
+					{int64(2), "def"},
 				},
 			},
 			{
-				Query: "create table t (e enum('abc', 'ABC') collate utf8mb4_0900_ai_ci))",
-				Error: true,
+				Query:       "create table t (e enum('abc', 'ABC') collate utf8mb4_0900_ai_ci))",
+				ExpectedErr: sql.ErrSyntaxError,
 			},
 		},
 	},
@@ -617,7 +597,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			"CREATE TABLE test1 (pk BIGINT PRIMARY KEY, v1 SET('a','b','c') COLLATE utf16_unicode_ci);",
 			"CREATE TABLE test2 (pk BIGINT PRIMARY KEY, v1 SET('a','b','c') COLLATE utf8mb4_0900_bin);",
 		},
-		Queries: []CharsetCollationEngineTestQuery{
+		Assertions: []ScriptTestAssertion{
 			{
 				Query: "INSERT INTO test1 VALUES (1, 'A');",
 				Expected: []sql.Row{
@@ -625,8 +605,8 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 				},
 			},
 			{
-				Query: "INSERT INTO test2 VALUES (1, 'A');",
-				Error: true,
+				Query:       "INSERT INTO test2 VALUES (1, 'A');",
+				ExpectedErr: types.ErrDataTruncatedForColumnAtRow,
 			},
 			{
 				Query: "INSERT INTO test1 VALUES (2, _utf16'\x00b\x00,\x00c' COLLATE utf16_unicode_ci);",
@@ -643,13 +623,13 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			{
 				Query: "SELECT * FROM test1 ORDER BY pk;",
 				Expected: []sql.Row{
-					{int64(1), uint64(1)}, {int64(2), uint64(6)},
+					{int64(1), "a"}, {int64(2), "b,c"},
 				},
 			},
 			{
 				Query: "SELECT * FROM test2 ORDER BY pk;",
 				Expected: []sql.Row{
-					{int64(2), uint64(6)},
+					{int64(2), "b,c"},
 				},
 			},
 		},
@@ -661,7 +641,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			"CREATE TABLE test(v1 VARCHAR(100) COLLATE utf8mb4_0900_bin, v2 VARCHAR(100) COLLATE utf8mb4_0900_ai_ci);",
 			"INSERT INTO test VALUES ('abc', 'abc'), ('ABC', 'ABC');",
 		},
-		Queries: []CharsetCollationEngineTestQuery{
+		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT COUNT(*) FROM test WHERE v1 LIKE 'ABC';",
 				Expected: []sql.Row{
@@ -727,7 +707,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 		SetUpScript: []string{
 			"SET NAMES utf8mb4;",
 		},
-		Queries: []CharsetCollationEngineTestQuery{
+		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT 'abc' LIKE 'ABC';",
 				Expected: []sql.Row{
@@ -808,7 +788,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 	},
 	{
 		Name: "STRCMP() function",
-		Queries: []CharsetCollationEngineTestQuery{
+		Assertions: []ScriptTestAssertion{
 			// TODO: returning different results from MySQL
 			/*{
 				// collation with the lowest coercibility is used
@@ -820,12 +800,12 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			{
 				// same coercibility, both unicode
 				Query:   "SELECT STRCMP(_utf8mb4'A' COLLATE utf8mb4_0900_ai_ci, _utf8mb4'a' COLLATE utf8mb4_0900_as_cs)",
-				ErrKind: sql.ErrCollationIllegalMix,
+				ExpectedErr: sql.ErrCollationIllegalMix,
 			},
 			{
 				// same coercibility, both not unicode
 				Query:   "SELECT STRCMP(_latin1'A' COLLATE latin1_general_ci, _latin1'a' COLLATE latin1_german1_ci)",
-				ErrKind: sql.ErrCollationIllegalMix,
+				ExpectedErr: sql.ErrCollationIllegalMix,
 			},*/
 			{
 				// same coercibility, one unicode and one not unicode
@@ -838,7 +818,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 	},
 	{
 		Name: "LENGTH() function",
-		Queries: []CharsetCollationEngineTestQuery{
+		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT LENGTH(_utf16'\x00a\x00b\x00c' COLLATE utf16_unicode_ci);",
 				Expected: []sql.Row{
@@ -861,7 +841,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 	},
 	{
 		Name: "CHAR_LENGTH() function",
-		Queries: []CharsetCollationEngineTestQuery{
+		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT CHAR_LENGTH(_utf16'\x00a\x00b\x00c' COLLATE utf16_unicode_ci);",
 				Expected: []sql.Row{
@@ -891,7 +871,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 	},
 	{
 		Name: "UPPER() function",
-		Queries: []CharsetCollationEngineTestQuery{
+		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT UPPER(_utf16'\x00a\x00B\x00c' COLLATE utf16_unicode_ci);",
 				Expected: []sql.Row{
@@ -914,7 +894,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 	},
 	{
 		Name: "LOWER() function",
-		Queries: []CharsetCollationEngineTestQuery{
+		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT LOWER(_utf16'\x00A\x00b\x00C' COLLATE utf16_unicode_ci);",
 				Expected: []sql.Row{
@@ -937,7 +917,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 	},
 	{
 		Name: "RPAD() function",
-		Queries: []CharsetCollationEngineTestQuery{
+		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT RPAD(_utf16'\x00a\x00b\x00c' COLLATE utf16_unicode_ci, 6, 'z');",
 				Expected: []sql.Row{
@@ -984,7 +964,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 	},
 	{
 		Name: "LPAD() function",
-		Queries: []CharsetCollationEngineTestQuery{
+		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT LPAD(_utf16'\x00a\x00b\x00c' COLLATE utf16_unicode_ci, 6, 'z');",
 				Expected: []sql.Row{
@@ -1031,7 +1011,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 	},
 	{
 		Name: "HEX() function",
-		Queries: []CharsetCollationEngineTestQuery{
+		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT HEX(_utf16'\x00a\x00b\x00c' COLLATE utf16_unicode_ci);",
 				Expected: []sql.Row{
@@ -1054,7 +1034,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 	},
 	{
 		Name: "UNHEX() function",
-		Queries: []CharsetCollationEngineTestQuery{
+		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT UNHEX(_utf16'\x006\x001\x006\x002\x006\x003' COLLATE utf16_unicode_ci);",
 				Expected: []sql.Row{
@@ -1071,7 +1051,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 	},
 	{
 		Name: "SUBSTRING() function",
-		Queries: []CharsetCollationEngineTestQuery{
+		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT SUBSTRING(_utf16'\x00a\x00b\x00c\x00d' COLLATE utf16_unicode_ci, 2, 2);",
 				Expected: []sql.Row{
@@ -1094,7 +1074,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 	},
 	{
 		Name: "TO_BASE64() function",
-		Queries: []CharsetCollationEngineTestQuery{
+		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT TO_BASE64(_utf16'\x00a\x00b\x00c' COLLATE utf16_unicode_ci);",
 				Expected: []sql.Row{
@@ -1117,7 +1097,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 	},
 	{
 		Name: "FROM_BASE64() function",
-		Queries: []CharsetCollationEngineTestQuery{
+		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT FROM_BASE64(_utf16'\x00Y\x00W\x00J\x00j' COLLATE utf16_unicode_ci);",
 				Expected: []sql.Row{
@@ -1134,7 +1114,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 	},
 	{
 		Name: "TRIM() function",
-		Queries: []CharsetCollationEngineTestQuery{
+		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT TRIM(_utf16'\x00 \x00a\x00b\x00c\x00 ' COLLATE utf16_unicode_ci);",
 				Expected: []sql.Row{
@@ -1157,7 +1137,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 	},
 	{
 		Name: "RTRIM() function",
-		Queries: []CharsetCollationEngineTestQuery{
+		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT RTRIM(_utf16'\x00 \x00a\x00b\x00c\x00 ' COLLATE utf16_unicode_ci);",
 				Expected: []sql.Row{
@@ -1180,7 +1160,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 	},
 	{
 		Name: "LTRIM() function",
-		Queries: []CharsetCollationEngineTestQuery{
+		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT LTRIM(_utf16'\x00 \x00a\x00b\x00c\x00 ' COLLATE utf16_unicode_ci);",
 				Expected: []sql.Row{
@@ -1203,7 +1183,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 	},
 	{
 		Name: "BINARY() function",
-		Queries: []CharsetCollationEngineTestQuery{
+		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT BINARY(_utf16'\x00a\x00b\x00c' COLLATE utf16_unicode_ci);",
 				Expected: []sql.Row{
@@ -1226,7 +1206,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 	},
 	{
 		Name: "CAST(... AS BINARY) function",
-		Queries: []CharsetCollationEngineTestQuery{
+		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT CAST(_utf16'\x00a\x00b\x00c' COLLATE utf16_unicode_ci AS BINARY);",
 				Expected: []sql.Row{
@@ -1249,13 +1229,172 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 	},
 	{
 		Name: "Issue #5482",
-		Queries: []CharsetCollationEngineTestQuery{
+		Assertions: []ScriptTestAssertion{
 			{
 				Query: `SELECT T.TABLE_NAME AS label, 'connection.table' as type, T.TABLE_SCHEMA AS 'schema',
 T.TABLE_SCHEMA AS 'database', T.TABLE_CATALOG AS 'catalog',
 0 AS isView FROM INFORMATION_SCHEMA.TABLES AS T WHERE T.TABLE_CATALOG = 'def' AND
                                                       UPPER(T.TABLE_TYPE) = 'BASE TABLE' ORDER BY T.TABLE_NAME;`,
 				Expected: []sql.Row(nil),
+			},
+		},
+	},
+	{
+		// See https://github.com/dolthub/dolt/issues/11182
+		Name: "LIKE with a space terminated prefix matches rows with a multibyte character after the prefix",
+		SetUpScript: []string{
+			"CREATE TABLE m (id INT PRIMARY KEY, txt LONGTEXT);",
+			"INSERT INTO m VALUES (1, '## 中 body'), (2, 'plain'), (3, '## ascii body'), (4, '##nospaces'), (5, '## 中');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT id FROM m WHERE txt LIKE '## %' ORDER BY id;",
+				Expected: []sql.Row{{1}, {3}, {5}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM m WHERE txt LIKE '## %';",
+				Expected: []sql.Row{{3}},
+			},
+			{
+				Query:    "SELECT SUM(txt LIKE '## %') FROM m;",
+				Expected: []sql.Row{{float64(3)}},
+			},
+			{
+				Query:    "SELECT id FROM m WHERE txt LIKE '##%' ORDER BY id;",
+				Expected: []sql.Row{{1}, {3}, {4}, {5}},
+			},
+		},
+	},
+	{
+		// See https://github.com/dolthub/dolt/issues/11182
+		Name: "LIKE with a constant prefix keeps rows that sort after the prefix across collations, NOT LIKE, and joins",
+		SetUpScript: []string{
+			"CREATE TABLE z (id INT PRIMARY KEY, txt VARCHAR(100) COLLATE utf8mb4_0900_ai_ci);",
+			"INSERT INTO z VALUES (1, '## z'), (2, '## y'), (3, '## za'), (4, '## x');",
+			"CREATE TABLE n (id INT PRIMARY KEY, txt VARCHAR(100));",
+			"INSERT INTO n VALUES (1, '## 中'), (2, 'plain'), (3, '## a');",
+			"CREATE TABLE e (id INT PRIMARY KEY, txt LONGTEXT);",
+			"INSERT INTO e VALUES (1, '## 😀 x'), (2, '## ascii');",
+			"CREATE TABLE a (id INT PRIMARY KEY, txt VARCHAR(50));",
+			"CREATE TABLE b (id INT PRIMARY KEY);",
+			"INSERT INTO a VALUES (1, '## 中 x'), (2, '## y');",
+			"INSERT INTO b VALUES (1), (2);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT id FROM z WHERE txt LIKE '## %' ORDER BY id;",
+				// Under an accent insensitive collation, plain ASCII letters that sort
+				// after the optimization upper bound must still match the prefix.
+				Expected: []sql.Row{{1}, {2}, {3}, {4}},
+			},
+			{
+				Query:    "SELECT SUM(txt LIKE '## %') FROM z;",
+				Expected: []sql.Row{{float64(4)}},
+			},
+			{
+				Query: "SELECT id FROM n WHERE txt NOT LIKE '## %' ORDER BY id;",
+				// NOT LIKE must exclude every row that LIKE matches, so only 'plain' remains.
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "SELECT id FROM e WHERE txt LIKE '## %' ORDER BY id;",
+				Expected: []sql.Row{{1}, {2}},
+			},
+			{
+				Query:    "SELECT a.id FROM a JOIN b ON a.id = b.id AND a.txt LIKE '## %' ORDER BY a.id;",
+				Expected: []sql.Row{{1}, {2}},
+			},
+		},
+	},
+	{
+		// See https://github.com/dolthub/dolt/issues/11182
+		Name: "LIKE with a binary-collation prefix ending at a code-point boundary excludes non-matching rows",
+		SetUpScript: []string{
+			"CREATE TABLE bnd (id INT PRIMARY KEY, txt VARCHAR(50) COLLATE utf8mb4_0900_bin);",
+			"INSERT INTO bnd VALUES (1, 'a\U0010FFFF'), (2, 'a\U0010FFFFx'), (3, 'b'), (4, 'a\uD7FF'), (5, 'a\uD7FFx'), (6, 'a\uE000'), (7, 'a\u07FF'), (8, 'a\u07FFx'), (9, 'a\u0800');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT id FROM bnd WHERE txt LIKE 'a\U0010FFFF%' ORDER BY id;",
+				// The prefix ends at the maximum code point, so the range has no upper bound and
+				// 'b' sorts after it and must be excluded by the retained LIKE.
+				Expected: []sql.Row{{1}, {2}},
+			},
+			{
+				Query: "SELECT id FROM bnd WHERE txt LIKE 'a\uD7FF%' ORDER BY id;",
+				// The successor of U+D7FF skips the UTF-16 surrogate block to U+E000, so the
+				// U+E000 row is just outside the range and must be excluded.
+				Expected: []sql.Row{{4}, {5}},
+			},
+			{
+				Query: "SELECT id FROM bnd WHERE txt LIKE 'a\u07FF%' ORDER BY id;",
+				// The successor of U+07FF is U+0800, a longer UTF-8 sequence, so the U+0800 row is
+				// just outside the range and must be excluded.
+				Expected: []sql.Row{{7}, {8}},
+			},
+		},
+	},
+	{
+		// See https://github.com/dolthub/dolt/issues/11182
+		Name: "LIKE with a constant prefix on an indexed column uses an index range scan",
+		SetUpScript: []string{
+			"CREATE TABLE idx (id INT PRIMARY KEY, txt VARCHAR(50) COLLATE utf8mb4_0900_bin, KEY(txt));",
+			"INSERT INTO idx VALUES (1, 'apple'), (2, 'apricot'), (3, 'banana'), (4, 'ap\u4E2D');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:           "SELECT id FROM idx WHERE txt LIKE 'ap%' ORDER BY id;",
+				Expected:        []sql.Row{{1}, {2}, {4}},
+				ExpectedIndexes: []string{"txt"},
+			},
+			{
+				Query:           "SELECT id FROM idx WHERE txt LIKE 'apple';",
+				Expected:        []sql.Row{{1}},
+				ExpectedIndexes: []string{"txt"},
+			},
+		},
+	},
+	{
+		// See https://github.com/dolthub/dolt/issues/11182
+		Name: "LIKE with a constant prefix drops the LIKE only for a binary collation",
+		SetUpScript: []string{
+			"CREATE TABLE cp (id INT PRIMARY KEY, txt VARCHAR(50) COLLATE utf8mb4_0900_bin, KEY(txt));",
+			"CREATE TABLE pad (id INT PRIMARY KEY, txt VARCHAR(50) COLLATE utf8mb4_bin, KEY(txt));",
+			"INSERT INTO cp VALUES (1, 'apple'), (2, 'banana');",
+			"INSERT INTO pad VALUES (1, 'apple'), (2, 'banana');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT id FROM cp WHERE txt LIKE 'ap%';",
+				// utf8mb4_0900_bin orders by code point, so the prefix becomes an exact range and
+				// the LIKE is dropped, leaving no residual filter above the index access.
+				ExpectedPlan: "Project\n" +
+					" ├─ columns: [cp.id:0!null]\n" +
+					" └─ IndexedTableAccess(cp)\n" +
+					"     ├─ index: [cp.txt]\n" +
+					"     ├─ static: [{[ap, aq)}]\n" +
+					"     ├─ colSet: (1,2)\n" +
+					"     ├─ tableId: 1\n" +
+					"     └─ Table\n" +
+					"         ├─ name: cp\n" +
+					"         └─ columns: [id txt]\n",
+			},
+			{
+				Query: "SELECT id FROM pad WHERE txt LIKE 'ap%';",
+				// utf8mb4_bin is PAD SPACE, so the LIKE is kept as a residual filter above the
+				// lower-bound index range.
+				ExpectedPlan: "Project\n" +
+					" ├─ columns: [pad.id:0!null]\n" +
+					" └─ Filter\n" +
+					"     ├─ pad.txt LIKE 'ap%'\n" +
+					"     └─ IndexedTableAccess(pad)\n" +
+					"         ├─ index: [pad.txt]\n" +
+					"         ├─ static: [{[ap, ∞)}]\n" +
+					"         ├─ colSet: (1,2)\n" +
+					"         ├─ tableId: 1\n" +
+					"         └─ Table\n" +
+					"             ├─ name: pad\n" +
+					"             └─ columns: [id txt]\n",
 			},
 		},
 	},
