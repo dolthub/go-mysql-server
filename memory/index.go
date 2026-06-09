@@ -189,6 +189,7 @@ func (idx *Index) ColumnExpressionTypes(ctx *sql.Context) []sql.ColumnExpression
 		cets[i] = sql.ColumnExpressionType{
 			Expression: expr.String(),
 			Type:       expr.Type(ctx),
+			Nullable:   expr.IsNullable(ctx),
 		}
 	}
 	return cets

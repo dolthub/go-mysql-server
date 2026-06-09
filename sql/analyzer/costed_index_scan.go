@@ -314,6 +314,7 @@ func getCostedIndexScan(
 			_, uok := r.UpperBound.(sql.AboveAll)
 			_, lok := r.LowerBound.(sql.BelowNull)
 			allRange = allRange && uok && lok
+			// TODO: why? what if we just want sorted results?
 			if i == 0 && allRange {
 				// no prefix restriction
 				return nil, nil, nil, err
@@ -889,6 +890,7 @@ func newIndexScanRangeBuilder(ctx *sql.Context, idx sql.Index, include, imprecis
 
 type indexScanRangeBuilder struct {
 	idx       sql.Index
+	sch       sql.Schema
 	ctx       *sql.Context
 	idToExpr  map[indexScanId]sql.Expression
 	conjIb    *sql.MySQLIndexBuilder

@@ -52,7 +52,11 @@ func NewMySQLIndexBuilder(ctx *Context, idx Index) *MySQLIndexBuilder {
 		}
 		expr := strings.ToLower(cet.Expression)
 		colExprTypes[expr] = typ
-		ranges[expr] = []MySQLRangeColumnExpr{AllRangeColumnExpr(typ)}
+		if cet.Nullable {
+			ranges[expr] = []MySQLRangeColumnExpr{AllRangeColumnExpr(typ)}
+		} else {
+			ranges[expr] = []MySQLRangeColumnExpr{NotNullRangeColumnExpr(typ)}
+		}
 	}
 	return &MySQLIndexBuilder{
 		idx:          idx,
