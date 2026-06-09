@@ -454,7 +454,7 @@ func simplifyExpression(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sel Ru
 			// For a code-point ordered collation every match lies between |prefix| and the next
 			// string above it, so the LIKE becomes a range with an upper bound. When |prefix| has
 			// no such bound, fall through to the residual form below.
-			if isExactPrefixRangeCollation(coll) {
+			if coll == sql.Collation_utf8mb4_0900_bin {
 				if upperPrefix, hasUpper := incrementLastRune(prefix); hasUpper {
 					upper := expression.NewLiteral(upperPrefix, rightType)
 					return expression.NewAnd(lowerBound, expression.NewLessThan(e.LeftChild, upper)), transform.NewTree, nil
@@ -494,15 +494,6 @@ func simplifyExpression(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sel Ru
 			return expression.NewLiteral(val, e.Type(ctx)), transform.NewTree, nil
 		}
 	})
-}
-
-// isExactPrefixRangeCollation reports whether the values matching a LIKE 'prefix%' pattern under
-// |collation| form one exact range, which lets the caller replace the LIKE with a range
-// comparison. This holds only for utf8mb4_0900_bin, which orders by code point and does not pad
-// trailing spaces. Other collations order or pad text in ways a plain range cannot reproduce, so
-// the caller must keep the LIKE.
-func isExactPrefixRangeCollation(collation sql.CollationID) bool {
-	return collation == sql.Collation_utf8mb4_0900_bin
 }
 
 // incrementLastRune returns |prefix| with its last rune replaced by the next higher rune. The
