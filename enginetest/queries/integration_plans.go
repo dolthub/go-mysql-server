@@ -4266,7 +4266,7 @@ WHERE
 			" ├─ columns: [qywqd.HVHRZ:1!null]\n" +
 			" └─ IndexedTableAccess(QYWQD)\n" +
 			"     ├─ index: [QYWQD.id]\n" +
-			"     ├─ static: [{[NULL, ∞)}]\n" +
+			"     ├─ static: [{(NULL, ∞)}]\n" +
 			"     ├─ colSet: (1-6)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
@@ -4277,14 +4277,14 @@ WHERE
 			" ├─ columns: [qywqd.HVHRZ]\n" +
 			" └─ IndexedTableAccess(QYWQD)\n" +
 			"     ├─ index: [QYWQD.id]\n" +
-			"     ├─ filters: [{[NULL, ∞)}]\n" +
+			"     ├─ filters: [{(NULL, ∞)}]\n" +
 			"     └─ columns: [id hvhrz]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [qywqd.HVHRZ]\n" +
 			" └─ IndexedTableAccess(QYWQD)\n" +
 			"     ├─ index: [QYWQD.id]\n" +
-			"     ├─ filters: [{[NULL, ∞)}]\n" +
+			"     ├─ filters: [{(NULL, ∞)}]\n" +
 			"     └─ columns: [id hvhrz]\n" +
 			"",
 	},
@@ -8886,7 +8886,7 @@ WHERE
 			" ├─ columns: [e2i7u.ECXAJ:1!null]\n" +
 			" └─ IndexedTableAccess(E2I7U)\n" +
 			"     ├─ index: [E2I7U.id]\n" +
-			"     ├─ static: [{[NULL, ∞)}]\n" +
+			"     ├─ static: [{(NULL, ∞)}]\n" +
 			"     ├─ colSet: (1-17)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
@@ -8897,14 +8897,14 @@ WHERE
 			" ├─ columns: [e2i7u.ECXAJ]\n" +
 			" └─ IndexedTableAccess(E2I7U)\n" +
 			"     ├─ index: [E2I7U.id]\n" +
-			"     ├─ filters: [{[NULL, ∞)}]\n" +
+			"     ├─ filters: [{(NULL, ∞)}]\n" +
 			"     └─ columns: [id ecxaj]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [e2i7u.ECXAJ]\n" +
 			" └─ IndexedTableAccess(E2I7U)\n" +
 			"     ├─ index: [E2I7U.id]\n" +
-			"     ├─ filters: [{[NULL, ∞)}]\n" +
+			"     ├─ filters: [{(NULL, ∞)}]\n" +
 			"     └─ columns: [id ecxaj]\n" +
 			"",
 	},
@@ -9163,7 +9163,7 @@ WHERE
 			"     │   THEN 0 (tinyint) ELSE 3 (tinyint) END->SZ6KK:0]\n" +
 			"     └─ IndexedTableAccess(E2I7U)\n" +
 			"         ├─ index: [E2I7U.id]\n" +
-			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ static: [{(NULL, ∞)}]\n" +
 			"         ├─ colSet: (1-17)\n" +
 			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
@@ -9210,7 +9210,7 @@ WHERE
 			"     │   THEN 1 WHEN (e2i7u.FSK67 = 'z') THEN 2 WHEN (e2i7u.FSK67 = 'CRZ2X') THEN 0 ELSE 3 END as SZ6KK]\n" +
 			"     └─ IndexedTableAccess(E2I7U)\n" +
 			"         ├─ index: [E2I7U.id]\n" +
-			"         └─ filters: [{[NULL, ∞)}]\n" +
+			"         └─ filters: [{(NULL, ∞)}]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [CASE  WHEN e2i7u.FGG57 IS NULL THEN 0 WHEN InSubquery\n" +
@@ -9252,7 +9252,7 @@ WHERE
 			"     │   THEN 1 WHEN (e2i7u.FSK67 = 'z') THEN 2 WHEN (e2i7u.FSK67 = 'CRZ2X') THEN 0 ELSE 3 END as SZ6KK]\n" +
 			"     └─ IndexedTableAccess(E2I7U)\n" +
 			"         ├─ index: [E2I7U.id]\n" +
-			"         └─ filters: [{[NULL, ∞)}]\n" +
+			"         └─ filters: [{(NULL, ∞)}]\n" +
 			"",
 	},
 	{
@@ -15967,7 +15967,7 @@ ORDER BY id ASC`,
 			" ├─ columns: [e2i7u.TW55N:1!null]\n" +
 			" └─ IndexedTableAccess(E2I7U)\n" +
 			"     ├─ index: [E2I7U.id]\n" +
-			"     ├─ static: [{[NULL, ∞)}]\n" +
+			"     ├─ static: [{(NULL, ∞)}]\n" +
 			"     ├─ colSet: (1-17)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
@@ -15978,14 +15978,14 @@ ORDER BY id ASC`,
 			" ├─ columns: [e2i7u.TW55N]\n" +
 			" └─ IndexedTableAccess(E2I7U)\n" +
 			"     ├─ index: [E2I7U.id]\n" +
-			"     ├─ filters: [{[NULL, ∞)}]\n" +
+			"     ├─ filters: [{(NULL, ∞)}]\n" +
 			"     └─ columns: [id tw55n]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [e2i7u.TW55N]\n" +
 			" └─ IndexedTableAccess(E2I7U)\n" +
 			"     ├─ index: [E2I7U.id]\n" +
-			"     ├─ filters: [{[NULL, ∞)}]\n" +
+			"     ├─ filters: [{(NULL, ∞)}]\n" +
 			"     └─ columns: [id tw55n]\n" +
 			"",
 	},
@@ -16000,7 +16000,7 @@ ORDER BY id ASC`,
 			" ├─ columns: [e2i7u.TW55N:1!null, e2i7u.FGG57:2]\n" +
 			" └─ IndexedTableAccess(E2I7U)\n" +
 			"     ├─ index: [E2I7U.id]\n" +
-			"     ├─ static: [{[NULL, ∞)}]\n" +
+			"     ├─ static: [{(NULL, ∞)}]\n" +
 			"     ├─ colSet: (1-17)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
@@ -16011,14 +16011,14 @@ ORDER BY id ASC`,
 			" ├─ columns: [e2i7u.TW55N, e2i7u.FGG57]\n" +
 			" └─ IndexedTableAccess(E2I7U)\n" +
 			"     ├─ index: [E2I7U.id]\n" +
-			"     ├─ filters: [{[NULL, ∞)}]\n" +
+			"     ├─ filters: [{(NULL, ∞)}]\n" +
 			"     └─ columns: [id tw55n fgg57]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [e2i7u.TW55N, e2i7u.FGG57]\n" +
 			" └─ IndexedTableAccess(E2I7U)\n" +
 			"     ├─ index: [E2I7U.id]\n" +
-			"     ├─ filters: [{[NULL, ∞)}]\n" +
+			"     ├─ filters: [{(NULL, ∞)}]\n" +
 			"     └─ columns: [id tw55n fgg57]\n" +
 			"",
 	},
@@ -16257,7 +16257,7 @@ ORDER BY sn.XLFIA ASC`,
 			"         │       ├─ columns: [noxn3.id:0!null->XLFIA:0, noxn3.BRQP2:1!null]\n" +
 			"         │       └─ IndexedTableAccess(NOXN3)\n" +
 			"         │           ├─ index: [NOXN3.id]\n" +
-			"         │           ├─ static: [{[NULL, ∞)}]\n" +
+			"         │           ├─ static: [{(NULL, ∞)}]\n" +
 			"         │           ├─ colSet: (1-10)\n" +
 			"         │           ├─ tableId: 1\n" +
 			"         │           └─ Table\n" +
@@ -16332,7 +16332,7 @@ ORDER BY sn.XLFIA ASC`,
 			"         │       ├─ columns: [noxn3.id as XLFIA, noxn3.BRQP2]\n" +
 			"         │       └─ IndexedTableAccess(NOXN3)\n" +
 			"         │           ├─ index: [NOXN3.id]\n" +
-			"         │           ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │           ├─ filters: [{(NULL, ∞)}]\n" +
 			"         │           └─ columns: [id brqp2]\n" +
 			"         └─ HashLookup\n" +
 			"             ├─ left-key: (sn.BRQP2)\n" +
@@ -16390,7 +16390,7 @@ ORDER BY sn.XLFIA ASC`,
 			"         │       ├─ columns: [noxn3.id as XLFIA, noxn3.BRQP2]\n" +
 			"         │       └─ IndexedTableAccess(NOXN3)\n" +
 			"         │           ├─ index: [NOXN3.id]\n" +
-			"         │           ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │           ├─ filters: [{(NULL, ∞)}]\n" +
 			"         │           └─ columns: [id brqp2]\n" +
 			"         └─ HashLookup\n" +
 			"             ├─ left-key: (sn.BRQP2)\n" +
@@ -17459,7 +17459,7 @@ ORDER BY id ASC`,
 			" ├─ columns: [noxn3.KBO7R:1!null]\n" +
 			" └─ IndexedTableAccess(NOXN3)\n" +
 			"     ├─ index: [NOXN3.id]\n" +
-			"     ├─ static: [{[NULL, ∞)}]\n" +
+			"     ├─ static: [{(NULL, ∞)}]\n" +
 			"     ├─ colSet: (1-10)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
@@ -17470,14 +17470,14 @@ ORDER BY id ASC`,
 			" ├─ columns: [noxn3.KBO7R]\n" +
 			" └─ IndexedTableAccess(NOXN3)\n" +
 			"     ├─ index: [NOXN3.id]\n" +
-			"     ├─ filters: [{[NULL, ∞)}]\n" +
+			"     ├─ filters: [{(NULL, ∞)}]\n" +
 			"     └─ columns: [id kbo7r]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [noxn3.KBO7R]\n" +
 			" └─ IndexedTableAccess(NOXN3)\n" +
 			"     ├─ index: [NOXN3.id]\n" +
-			"     ├─ filters: [{[NULL, ∞)}]\n" +
+			"     ├─ filters: [{(NULL, ∞)}]\n" +
 			"     └─ columns: [id kbo7r]\n" +
 			"",
 	},
@@ -17720,7 +17720,7 @@ ORDER BY id ASC`,
 			" ├─ columns: [e2i7u.QRQXW:1!null]\n" +
 			" └─ IndexedTableAccess(E2I7U)\n" +
 			"     ├─ index: [E2I7U.id]\n" +
-			"     ├─ static: [{[NULL, ∞)}]\n" +
+			"     ├─ static: [{(NULL, ∞)}]\n" +
 			"     ├─ colSet: (1-17)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
@@ -17731,14 +17731,14 @@ ORDER BY id ASC`,
 			" ├─ columns: [e2i7u.QRQXW]\n" +
 			" └─ IndexedTableAccess(E2I7U)\n" +
 			"     ├─ index: [E2I7U.id]\n" +
-			"     ├─ filters: [{[NULL, ∞)}]\n" +
+			"     ├─ filters: [{(NULL, ∞)}]\n" +
 			"     └─ columns: [id qrqxw]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [e2i7u.QRQXW]\n" +
 			" └─ IndexedTableAccess(E2I7U)\n" +
 			"     ├─ index: [E2I7U.id]\n" +
-			"     ├─ filters: [{[NULL, ∞)}]\n" +
+			"     ├─ filters: [{(NULL, ∞)}]\n" +
 			"     └─ columns: [id qrqxw]\n" +
 			"",
 	},
@@ -17832,7 +17832,7 @@ ORDER BY id ASC`,
 			" ├─ columns: [noxn3.id:0!null, noxn3.NUMK2:2!null, noxn3.ECDKM:1]\n" +
 			" └─ IndexedTableAccess(NOXN3)\n" +
 			"     ├─ index: [NOXN3.id]\n" +
-			"     ├─ static: [{[NULL, ∞)}]\n" +
+			"     ├─ static: [{(NULL, ∞)}]\n" +
 			"     ├─ colSet: (1-10)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
@@ -17843,14 +17843,14 @@ ORDER BY id ASC`,
 			" ├─ columns: [noxn3.id, noxn3.NUMK2, noxn3.ECDKM]\n" +
 			" └─ IndexedTableAccess(NOXN3)\n" +
 			"     ├─ index: [NOXN3.id]\n" +
-			"     ├─ filters: [{[NULL, ∞)}]\n" +
+			"     ├─ filters: [{(NULL, ∞)}]\n" +
 			"     └─ columns: [id ecdkm numk2]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [noxn3.id, noxn3.NUMK2, noxn3.ECDKM]\n" +
 			" └─ IndexedTableAccess(NOXN3)\n" +
 			"     ├─ index: [NOXN3.id]\n" +
-			"     ├─ filters: [{[NULL, ∞)}]\n" +
+			"     ├─ filters: [{(NULL, ∞)}]\n" +
 			"     └─ columns: [id ecdkm numk2]\n" +
 			"",
 	},
@@ -17870,7 +17870,7 @@ SELECT
 			" │   THEN noxn3.ECDKM:1 ELSE 0 (tinyint) END->RGXLL:0]\n" +
 			" └─ IndexedTableAccess(NOXN3)\n" +
 			"     ├─ index: [NOXN3.id]\n" +
-			"     ├─ static: [{[NULL, ∞)}]\n" +
+			"     ├─ static: [{(NULL, ∞)}]\n" +
 			"     ├─ colSet: (1-10)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
@@ -17881,14 +17881,14 @@ SELECT
 			" ├─ columns: [CASE  WHEN (noxn3.NUMK2 = 2) THEN noxn3.ECDKM ELSE 0 END as RGXLL]\n" +
 			" └─ IndexedTableAccess(NOXN3)\n" +
 			"     ├─ index: [NOXN3.id]\n" +
-			"     ├─ filters: [{[NULL, ∞)}]\n" +
+			"     ├─ filters: [{(NULL, ∞)}]\n" +
 			"     └─ columns: [id ecdkm numk2]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [CASE  WHEN (noxn3.NUMK2 = 2) THEN noxn3.ECDKM ELSE 0 END as RGXLL]\n" +
 			" └─ IndexedTableAccess(NOXN3)\n" +
 			"     ├─ index: [NOXN3.id]\n" +
-			"     ├─ filters: [{[NULL, ∞)}]\n" +
+			"     ├─ filters: [{(NULL, ∞)}]\n" +
 			"     └─ columns: [id ecdkm numk2]\n" +
 			"",
 	},
@@ -20938,14 +20938,14 @@ WHERE
 			"     │           │   │               ├─ cacheable: true\n" +
 			"     │           │   │               ├─ alias-string: select distinct NO52D, VYO5E, DKCAJ from SFEGG where VYO5E is not null\n" +
 			"     │           │   │               └─ Distinct\n" +
-			"     │           │   │                   └─ Filter\n" +
-			"     │           │   │                       ├─ NOT\n" +
-			"     │           │   │                       │   └─ sfegg.VYO5E:5 IS NULL\n" +
+			"     │           │   │                   └─ IndexedTableAccess(SFEGG)\n" +
+			"     │           │   │                       ├─ index: [SFEGG.NO52D,SFEGG.VYO5E,SFEGG.DKCAJ]\n" +
+			"     │           │   │                       ├─ static: [{(NULL, ∞), (NULL, ∞), (NULL, ∞)}]\n" +
+			"     │           │   │                       ├─ colSet: (60-65)\n" +
+			"     │           │   │                       ├─ tableId: 8\n" +
 			"     │           │   │                       └─ Table\n" +
 			"     │           │   │                           ├─ name: SFEGG\n" +
-			"     │           │   │                           ├─ columns: [no52d vyo5e dkcaj]\n" +
-			"     │           │   │                           ├─ colSet: (60-65)\n" +
-			"     │           │   │                           └─ tableId: 8\n" +
+			"     │           │   │                           └─ columns: [no52d vyo5e dkcaj]\n" +
 			"     │           │   └─ AND\n" +
 			"     │           │       ├─ rs.VYO5E:1 IS NULL\n" +
 			"     │           │       └─ NOT\n" +
@@ -20957,13 +20957,14 @@ WHERE
 			"     │           │                   └─ Distinct\n" +
 			"     │           │                       └─ Project\n" +
 			"     │           │                           ├─ columns: [sfegg.NO52D:4!null, sfegg.DKCAJ:6!null]\n" +
-			"     │           │                           └─ Filter\n" +
-			"     │           │                               ├─ sfegg.VYO5E:5 IS NULL\n" +
+			"     │           │                           └─ IndexedTableAccess(SFEGG)\n" +
+			"     │           │                               ├─ index: [SFEGG.NO52D,SFEGG.VYO5E,SFEGG.DKCAJ]\n" +
+			"     │           │                               ├─ static: [{(NULL, ∞), [NULL, NULL], (NULL, ∞)}]\n" +
+			"     │           │                               ├─ colSet: (66-71)\n" +
+			"     │           │                               ├─ tableId: 9\n" +
 			"     │           │                               └─ Table\n" +
 			"     │           │                                   ├─ name: SFEGG\n" +
-			"     │           │                                   ├─ columns: [no52d vyo5e dkcaj]\n" +
-			"     │           │                                   ├─ colSet: (66-71)\n" +
-			"     │           │                                   └─ tableId: 9\n" +
+			"     │           │                                   └─ columns: [no52d vyo5e dkcaj]\n" +
 			"     │           └─ SubqueryAlias\n" +
 			"     │               ├─ name: rs\n" +
 			"     │               ├─ outerVisibility: false\n" +
@@ -21691,14 +21692,14 @@ WHERE
 			"     │           │   │               ├─ cacheable: true\n" +
 			"     │           │   │               ├─ alias-string: select distinct NO52D, VYO5E, DKCAJ from SFEGG where VYO5E is not null\n" +
 			"     │           │   │               └─ Distinct\n" +
-			"     │           │   │                   └─ Filter\n" +
-			"     │           │   │                       ├─ NOT\n" +
-			"     │           │   │                       │   └─ sfegg.VYO5E:5 IS NULL\n" +
+			"     │           │   │                   └─ IndexedTableAccess(SFEGG)\n" +
+			"     │           │   │                       ├─ index: [SFEGG.NO52D,SFEGG.VYO5E,SFEGG.DKCAJ]\n" +
+			"     │           │   │                       ├─ static: [{(NULL, ∞), (NULL, ∞), (NULL, ∞)}]\n" +
+			"     │           │   │                       ├─ colSet: (48-53)\n" +
+			"     │           │   │                       ├─ tableId: 6\n" +
 			"     │           │   │                       └─ Table\n" +
 			"     │           │   │                           ├─ name: SFEGG\n" +
-			"     │           │   │                           ├─ columns: [no52d vyo5e dkcaj]\n" +
-			"     │           │   │                           ├─ colSet: (48-53)\n" +
-			"     │           │   │                           └─ tableId: 6\n" +
+			"     │           │   │                           └─ columns: [no52d vyo5e dkcaj]\n" +
 			"     │           │   └─ AND\n" +
 			"     │           │       ├─ rs.VYO5E:1 IS NULL\n" +
 			"     │           │       └─ NOT\n" +
@@ -21710,13 +21711,14 @@ WHERE
 			"     │           │                   └─ Distinct\n" +
 			"     │           │                       └─ Project\n" +
 			"     │           │                           ├─ columns: [sfegg.NO52D:4!null, sfegg.DKCAJ:6!null]\n" +
-			"     │           │                           └─ Filter\n" +
-			"     │           │                               ├─ sfegg.VYO5E:5 IS NULL\n" +
+			"     │           │                           └─ IndexedTableAccess(SFEGG)\n" +
+			"     │           │                               ├─ index: [SFEGG.NO52D,SFEGG.VYO5E,SFEGG.DKCAJ]\n" +
+			"     │           │                               ├─ static: [{(NULL, ∞), [NULL, NULL], (NULL, ∞)}]\n" +
+			"     │           │                               ├─ colSet: (54-59)\n" +
+			"     │           │                               ├─ tableId: 7\n" +
 			"     │           │                               └─ Table\n" +
 			"     │           │                                   ├─ name: SFEGG\n" +
-			"     │           │                                   ├─ columns: [no52d vyo5e dkcaj]\n" +
-			"     │           │                                   ├─ colSet: (54-59)\n" +
-			"     │           │                                   └─ tableId: 7\n" +
+			"     │           │                                   └─ columns: [no52d vyo5e dkcaj]\n" +
 			"     │           └─ SubqueryAlias\n" +
 			"     │               ├─ name: rs\n" +
 			"     │               ├─ outerVisibility: false\n" +
