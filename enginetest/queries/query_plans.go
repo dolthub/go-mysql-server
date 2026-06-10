@@ -8838,28 +8838,27 @@ inner join pq on true
 	},
 	{
 		Query: `SELECT a.* FROM mytable a WHERE a.s is not null`,
-		ExpectedPlan: "Filter\n" +
-			" ├─ NOT\n" +
-			" │   └─ a.s:1!null IS NULL\n" +
-			" └─ TableAlias(a)\n" +
-			"     └─ ProcessTable\n" +
-			"         └─ Table\n" +
-			"             ├─ name: mytable\n" +
-			"             └─ columns: [i s]\n" +
-			"",
-		ExpectedEstimates: "Filter\n" +
-			" ├─ (NOT(a.s IS NULL))\n" +
-			" └─ TableAlias(a)\n" +
+		ExpectedPlan: "TableAlias(a)\n" +
+			" └─ IndexedTableAccess(mytable)\n" +
+			"     ├─ index: [mytable.s,mytable.i]\n" +
+			"     ├─ static: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			"     ├─ colSet: (1,2)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: mytable\n" +
 			"         └─ columns: [i s]\n" +
 			"",
-		ExpectedAnalysis: "Filter\n" +
-			" ├─ (NOT(a.s IS NULL))\n" +
-			" └─ TableAlias(a)\n" +
-			"     └─ Table\n" +
-			"         ├─ name: mytable\n" +
-			"         └─ columns: [i s]\n" +
+		ExpectedEstimates: "TableAlias(a)\n" +
+			" └─ IndexedTableAccess(mytable)\n" +
+			"     ├─ index: [mytable.s,mytable.i]\n" +
+			"     ├─ filters: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			"     └─ columns: [i s]\n" +
+			"",
+		ExpectedAnalysis: "TableAlias(a)\n" +
+			" └─ IndexedTableAccess(mytable)\n" +
+			"     ├─ index: [mytable.s,mytable.i]\n" +
+			"     ├─ filters: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			"     └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -8875,45 +8874,43 @@ inner join pq on true
 			"     │       └─ Table\n" +
 			"     │           ├─ name: mytable\n" +
 			"     │           └─ columns: [s]\n" +
-			"     └─ Filter\n" +
-			"         ├─ NOT\n" +
-			"         │   └─ a.s:1!null IS NULL\n" +
-			"         └─ TableAlias(a)\n" +
+			"     └─ TableAlias(a)\n" +
+			"         └─ IndexedTableAccess(mytable)\n" +
+			"             ├─ index: [mytable.s,mytable.i]\n" +
+			"             ├─ static: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			"             ├─ colSet: (1,2)\n" +
+			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
-			"                 ├─ columns: [i s]\n" +
-			"                 ├─ colSet: (1,2)\n" +
-			"                 └─ tableId: 1\n" +
+			"                 └─ columns: [i s]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
-			" └─ InnerJoin (estimated cost=7.060 rows=3)\n" +
+			" └─ InnerJoin (estimated cost=4.030 rows=3)\n" +
 			"     ├─ (a.i = b.s)\n" +
 			"     ├─ TableAlias(b)\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: mytable\n" +
 			"     │       └─ columns: [s]\n" +
-			"     └─ Filter\n" +
-			"         ├─ (NOT(a.s IS NULL))\n" +
-			"         └─ TableAlias(a)\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: mytable\n" +
-			"                 └─ columns: [i s]\n" +
+			"     └─ TableAlias(a)\n" +
+			"         └─ IndexedTableAccess(mytable)\n" +
+			"             ├─ index: [mytable.s,mytable.i]\n" +
+			"             ├─ filters: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			"             └─ columns: [i s]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
-			" └─ InnerJoin (estimated cost=7.060 rows=3) (actual rows=0 loops=1)\n" +
+			" └─ InnerJoin (estimated cost=4.030 rows=3) (actual rows=0 loops=1)\n" +
 			"     ├─ (a.i = b.s)\n" +
 			"     ├─ TableAlias(b)\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: mytable\n" +
 			"     │       └─ columns: [s]\n" +
-			"     └─ Filter\n" +
-			"         ├─ (NOT(a.s IS NULL))\n" +
-			"         └─ TableAlias(a)\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: mytable\n" +
-			"                 └─ columns: [i s]\n" +
+			"     └─ TableAlias(a)\n" +
+			"         └─ IndexedTableAccess(mytable)\n" +
+			"             ├─ index: [mytable.s,mytable.i]\n" +
+			"             ├─ filters: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			"             └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -8929,45 +8926,43 @@ inner join pq on true
 			"     │       └─ Table\n" +
 			"     │           ├─ name: mytable\n" +
 			"     │           └─ columns: [s]\n" +
-			"     └─ Filter\n" +
-			"         ├─ NOT\n" +
-			"         │   └─ a.s:1!null IS NULL\n" +
-			"         └─ TableAlias(a)\n" +
+			"     └─ TableAlias(a)\n" +
+			"         └─ IndexedTableAccess(mytable)\n" +
+			"             ├─ index: [mytable.s,mytable.i]\n" +
+			"             ├─ static: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			"             ├─ colSet: (1,2)\n" +
+			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
-			"                 ├─ columns: [i s]\n" +
-			"                 ├─ colSet: (1,2)\n" +
-			"                 └─ tableId: 1\n" +
+			"                 └─ columns: [i s]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
-			" └─ InnerJoin (estimated cost=7.060 rows=3)\n" +
+			" └─ InnerJoin (estimated cost=4.030 rows=3)\n" +
 			"     ├─ (a.i = b.s)\n" +
 			"     ├─ TableAlias(b)\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: mytable\n" +
 			"     │       └─ columns: [s]\n" +
-			"     └─ Filter\n" +
-			"         ├─ (NOT(a.s IS NULL))\n" +
-			"         └─ TableAlias(a)\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: mytable\n" +
-			"                 └─ columns: [i s]\n" +
+			"     └─ TableAlias(a)\n" +
+			"         └─ IndexedTableAccess(mytable)\n" +
+			"             ├─ index: [mytable.s,mytable.i]\n" +
+			"             ├─ filters: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			"             └─ columns: [i s]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
-			" └─ InnerJoin (estimated cost=7.060 rows=3) (actual rows=0 loops=1)\n" +
+			" └─ InnerJoin (estimated cost=4.030 rows=3) (actual rows=0 loops=1)\n" +
 			"     ├─ (a.i = b.s)\n" +
 			"     ├─ TableAlias(b)\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: mytable\n" +
 			"     │       └─ columns: [s]\n" +
-			"     └─ Filter\n" +
-			"         ├─ (NOT(a.s IS NULL))\n" +
-			"         └─ TableAlias(a)\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: mytable\n" +
-			"                 └─ columns: [i s]\n" +
+			"     └─ TableAlias(a)\n" +
+			"         └─ IndexedTableAccess(mytable)\n" +
+			"             ├─ index: [mytable.s,mytable.i]\n" +
+			"             ├─ filters: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			"             └─ columns: [i s]\n" +
 			"",
 	},
 	{

@@ -791,30 +791,24 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM comp_index_t0 WHERE ((v1<25) OR (v1>24));`,
-		ExpectedPlan: "Filter\n" +
-			" ├─ Or\n" +
-			" │   ├─ LessThan\n" +
-			" │   │   ├─ comp_index_t0.v1:1\n" +
-			" │   │   └─ 25 (bigint)\n" +
-			" │   └─ GreaterThan\n" +
-			" │       ├─ comp_index_t0.v1:1\n" +
-			" │       └─ 24 (bigint)\n" +
-			" └─ ProcessTable\n" +
-			"     └─ Table\n" +
-			"         ├─ name: comp_index_t0\n" +
-			"         └─ columns: [pk v1 v2]\n" +
-			"",
-		ExpectedEstimates: "Filter\n" +
-			" ├─ ((comp_index_t0.v1 < 25) OR (comp_index_t0.v1 > 24))\n" +
+		ExpectedPlan: "IndexedTableAccess(comp_index_t0)\n" +
+			" ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			" ├─ static: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ colSet: (1-3)\n" +
+			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
 			"     ├─ name: comp_index_t0\n" +
 			"     └─ columns: [pk v1 v2]\n" +
 			"",
-		ExpectedAnalysis: "Filter\n" +
-			" ├─ ((comp_index_t0.v1 < 25) OR (comp_index_t0.v1 > 24))\n" +
-			" └─ Table\n" +
-			"     ├─ name: comp_index_t0\n" +
-			"     └─ columns: [pk v1 v2]\n" +
+		ExpectedEstimates: "IndexedTableAccess(comp_index_t0)\n" +
+			" ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			" ├─ filters: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ columns: [pk v1 v2]\n" +
+			"",
+		ExpectedAnalysis: "IndexedTableAccess(comp_index_t0)\n" +
+			" ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			" ├─ filters: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ columns: [pk v1 v2]\n" +
 			"",
 	},
 	{
@@ -1017,40 +1011,24 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM comp_index_t0 WHERE (((v1<>22 AND v2>18) OR (v1<>12)) OR (v1<=34));`,
-		ExpectedPlan: "Filter\n" +
-			" ├─ Or\n" +
-			" │   ├─ Or\n" +
-			" │   │   ├─ AND\n" +
-			" │   │   │   ├─ NOT\n" +
-			" │   │   │   │   └─ Eq\n" +
-			" │   │   │   │       ├─ comp_index_t0.v1:1\n" +
-			" │   │   │   │       └─ 22 (bigint)\n" +
-			" │   │   │   └─ GreaterThan\n" +
-			" │   │   │       ├─ comp_index_t0.v2:2\n" +
-			" │   │   │       └─ 18 (bigint)\n" +
-			" │   │   └─ NOT\n" +
-			" │   │       └─ Eq\n" +
-			" │   │           ├─ comp_index_t0.v1:1\n" +
-			" │   │           └─ 12 (bigint)\n" +
-			" │   └─ LessThanOrEqual\n" +
-			" │       ├─ comp_index_t0.v1:1\n" +
-			" │       └─ 34 (bigint)\n" +
-			" └─ ProcessTable\n" +
-			"     └─ Table\n" +
-			"         ├─ name: comp_index_t0\n" +
-			"         └─ columns: [pk v1 v2]\n" +
-			"",
-		ExpectedEstimates: "Filter\n" +
-			" ├─ ((((NOT((comp_index_t0.v1 = 22))) AND (comp_index_t0.v2 > 18)) OR (NOT((comp_index_t0.v1 = 12)))) OR (comp_index_t0.v1 <= 34))\n" +
+		ExpectedPlan: "IndexedTableAccess(comp_index_t0)\n" +
+			" ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			" ├─ static: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ colSet: (1-3)\n" +
+			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
 			"     ├─ name: comp_index_t0\n" +
 			"     └─ columns: [pk v1 v2]\n" +
 			"",
-		ExpectedAnalysis: "Filter\n" +
-			" ├─ ((((NOT((comp_index_t0.v1 = 22))) AND (comp_index_t0.v2 > 18)) OR (NOT((comp_index_t0.v1 = 12)))) OR (comp_index_t0.v1 <= 34))\n" +
-			" └─ Table\n" +
-			"     ├─ name: comp_index_t0\n" +
-			"     └─ columns: [pk v1 v2]\n" +
+		ExpectedEstimates: "IndexedTableAccess(comp_index_t0)\n" +
+			" ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			" ├─ filters: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ columns: [pk v1 v2]\n" +
+			"",
+		ExpectedAnalysis: "IndexedTableAccess(comp_index_t0)\n" +
+			" ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			" ├─ filters: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ columns: [pk v1 v2]\n" +
 			"",
 	},
 	{
@@ -1517,39 +1495,24 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM comp_index_t0 WHERE (((v1>35) OR (v1 BETWEEN 11 AND 21)) OR (v1<>98));`,
-		ExpectedPlan: "Filter\n" +
-			" ├─ Or\n" +
-			" │   ├─ Or\n" +
-			" │   │   ├─ GreaterThan\n" +
-			" │   │   │   ├─ comp_index_t0.v1:1\n" +
-			" │   │   │   └─ 35 (bigint)\n" +
-			" │   │   └─ AND\n" +
-			" │   │       ├─ GreaterThanOrEqual\n" +
-			" │   │       │   ├─ comp_index_t0.v1:1\n" +
-			" │   │       │   └─ 11 (tinyint)\n" +
-			" │   │       └─ LessThanOrEqual\n" +
-			" │   │           ├─ comp_index_t0.v1:1\n" +
-			" │   │           └─ 21 (tinyint)\n" +
-			" │   └─ NOT\n" +
-			" │       └─ Eq\n" +
-			" │           ├─ comp_index_t0.v1:1\n" +
-			" │           └─ 98 (bigint)\n" +
-			" └─ ProcessTable\n" +
-			"     └─ Table\n" +
-			"         ├─ name: comp_index_t0\n" +
-			"         └─ columns: [pk v1 v2]\n" +
-			"",
-		ExpectedEstimates: "Filter\n" +
-			" ├─ (((comp_index_t0.v1 > 35) OR ((comp_index_t0.v1 >= 11) AND (comp_index_t0.v1 <= 21))) OR (NOT((comp_index_t0.v1 = 98))))\n" +
+		ExpectedPlan: "IndexedTableAccess(comp_index_t0)\n" +
+			" ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			" ├─ static: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ colSet: (1-3)\n" +
+			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
 			"     ├─ name: comp_index_t0\n" +
 			"     └─ columns: [pk v1 v2]\n" +
 			"",
-		ExpectedAnalysis: "Filter\n" +
-			" ├─ (((comp_index_t0.v1 > 35) OR ((comp_index_t0.v1 >= 11) AND (comp_index_t0.v1 <= 21))) OR (NOT((comp_index_t0.v1 = 98))))\n" +
-			" └─ Table\n" +
-			"     ├─ name: comp_index_t0\n" +
-			"     └─ columns: [pk v1 v2]\n" +
+		ExpectedEstimates: "IndexedTableAccess(comp_index_t0)\n" +
+			" ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			" ├─ filters: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ columns: [pk v1 v2]\n" +
+			"",
+		ExpectedAnalysis: "IndexedTableAccess(comp_index_t0)\n" +
+			" ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			" ├─ filters: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ columns: [pk v1 v2]\n" +
 			"",
 	},
 	{
@@ -1598,56 +1561,24 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM comp_index_t0 WHERE (((((v1<>30) OR (v1>=6 AND v2 BETWEEN 62 AND 65)) OR (v1<>89)) OR (v1<=40 AND v2>=73)) OR (v1<99));`,
-		ExpectedPlan: "Filter\n" +
-			" ├─ Or\n" +
-			" │   ├─ Or\n" +
-			" │   │   ├─ Or\n" +
-			" │   │   │   ├─ Or\n" +
-			" │   │   │   │   ├─ NOT\n" +
-			" │   │   │   │   │   └─ Eq\n" +
-			" │   │   │   │   │       ├─ comp_index_t0.v1:1\n" +
-			" │   │   │   │   │       └─ 30 (bigint)\n" +
-			" │   │   │   │   └─ AND\n" +
-			" │   │   │   │       ├─ GreaterThanOrEqual\n" +
-			" │   │   │   │       │   ├─ comp_index_t0.v1:1\n" +
-			" │   │   │   │       │   └─ 6 (bigint)\n" +
-			" │   │   │   │       └─ AND\n" +
-			" │   │   │   │           ├─ GreaterThanOrEqual\n" +
-			" │   │   │   │           │   ├─ comp_index_t0.v2:2\n" +
-			" │   │   │   │           │   └─ 62 (tinyint)\n" +
-			" │   │   │   │           └─ LessThanOrEqual\n" +
-			" │   │   │   │               ├─ comp_index_t0.v2:2\n" +
-			" │   │   │   │               └─ 65 (tinyint)\n" +
-			" │   │   │   └─ NOT\n" +
-			" │   │   │       └─ Eq\n" +
-			" │   │   │           ├─ comp_index_t0.v1:1\n" +
-			" │   │   │           └─ 89 (bigint)\n" +
-			" │   │   └─ AND\n" +
-			" │   │       ├─ LessThanOrEqual\n" +
-			" │   │       │   ├─ comp_index_t0.v1:1\n" +
-			" │   │       │   └─ 40 (bigint)\n" +
-			" │   │       └─ GreaterThanOrEqual\n" +
-			" │   │           ├─ comp_index_t0.v2:2\n" +
-			" │   │           └─ 73 (bigint)\n" +
-			" │   └─ LessThan\n" +
-			" │       ├─ comp_index_t0.v1:1\n" +
-			" │       └─ 99 (bigint)\n" +
-			" └─ ProcessTable\n" +
-			"     └─ Table\n" +
-			"         ├─ name: comp_index_t0\n" +
-			"         └─ columns: [pk v1 v2]\n" +
-			"",
-		ExpectedEstimates: "Filter\n" +
-			" ├─ (((((NOT((comp_index_t0.v1 = 30))) OR ((comp_index_t0.v1 >= 6) AND ((comp_index_t0.v2 >= 62) AND (comp_index_t0.v2 <= 65)))) OR (NOT((comp_index_t0.v1 = 89)))) OR ((comp_index_t0.v1 <= 40) AND (comp_index_t0.v2 >= 73))) OR (comp_index_t0.v1 < 99))\n" +
+		ExpectedPlan: "IndexedTableAccess(comp_index_t0)\n" +
+			" ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			" ├─ static: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ colSet: (1-3)\n" +
+			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
 			"     ├─ name: comp_index_t0\n" +
 			"     └─ columns: [pk v1 v2]\n" +
 			"",
-		ExpectedAnalysis: "Filter\n" +
-			" ├─ (((((NOT((comp_index_t0.v1 = 30))) OR ((comp_index_t0.v1 >= 6) AND ((comp_index_t0.v2 >= 62) AND (comp_index_t0.v2 <= 65)))) OR (NOT((comp_index_t0.v1 = 89)))) OR ((comp_index_t0.v1 <= 40) AND (comp_index_t0.v2 >= 73))) OR (comp_index_t0.v1 < 99))\n" +
-			" └─ Table\n" +
-			"     ├─ name: comp_index_t0\n" +
-			"     └─ columns: [pk v1 v2]\n" +
+		ExpectedEstimates: "IndexedTableAccess(comp_index_t0)\n" +
+			" ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			" ├─ filters: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ columns: [pk v1 v2]\n" +
+			"",
+		ExpectedAnalysis: "IndexedTableAccess(comp_index_t0)\n" +
+			" ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			" ├─ filters: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ columns: [pk v1 v2]\n" +
 			"",
 	},
 	{
@@ -1960,46 +1891,24 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM comp_index_t0 WHERE ((((v1>28) OR (v1<=30 AND v2=30)) OR (v1<29)) OR (v1 BETWEEN 54 AND 74));`,
-		ExpectedPlan: "Filter\n" +
-			" ├─ Or\n" +
-			" │   ├─ Or\n" +
-			" │   │   ├─ Or\n" +
-			" │   │   │   ├─ GreaterThan\n" +
-			" │   │   │   │   ├─ comp_index_t0.v1:1\n" +
-			" │   │   │   │   └─ 28 (bigint)\n" +
-			" │   │   │   └─ AND\n" +
-			" │   │   │       ├─ LessThanOrEqual\n" +
-			" │   │   │       │   ├─ comp_index_t0.v1:1\n" +
-			" │   │   │       │   └─ 30 (bigint)\n" +
-			" │   │   │       └─ Eq\n" +
-			" │   │   │           ├─ comp_index_t0.v2:2\n" +
-			" │   │   │           └─ 30 (bigint)\n" +
-			" │   │   └─ LessThan\n" +
-			" │   │       ├─ comp_index_t0.v1:1\n" +
-			" │   │       └─ 29 (bigint)\n" +
-			" │   └─ AND\n" +
-			" │       ├─ GreaterThanOrEqual\n" +
-			" │       │   ├─ comp_index_t0.v1:1\n" +
-			" │       │   └─ 54 (tinyint)\n" +
-			" │       └─ LessThanOrEqual\n" +
-			" │           ├─ comp_index_t0.v1:1\n" +
-			" │           └─ 74 (tinyint)\n" +
-			" └─ ProcessTable\n" +
-			"     └─ Table\n" +
-			"         ├─ name: comp_index_t0\n" +
-			"         └─ columns: [pk v1 v2]\n" +
-			"",
-		ExpectedEstimates: "Filter\n" +
-			" ├─ ((((comp_index_t0.v1 > 28) OR ((comp_index_t0.v1 <= 30) AND (comp_index_t0.v2 = 30))) OR (comp_index_t0.v1 < 29)) OR ((comp_index_t0.v1 >= 54) AND (comp_index_t0.v1 <= 74)))\n" +
+		ExpectedPlan: "IndexedTableAccess(comp_index_t0)\n" +
+			" ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			" ├─ static: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ colSet: (1-3)\n" +
+			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
 			"     ├─ name: comp_index_t0\n" +
 			"     └─ columns: [pk v1 v2]\n" +
 			"",
-		ExpectedAnalysis: "Filter\n" +
-			" ├─ ((((comp_index_t0.v1 > 28) OR ((comp_index_t0.v1 <= 30) AND (comp_index_t0.v2 = 30))) OR (comp_index_t0.v1 < 29)) OR ((comp_index_t0.v1 >= 54) AND (comp_index_t0.v1 <= 74)))\n" +
-			" └─ Table\n" +
-			"     ├─ name: comp_index_t0\n" +
-			"     └─ columns: [pk v1 v2]\n" +
+		ExpectedEstimates: "IndexedTableAccess(comp_index_t0)\n" +
+			" ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			" ├─ filters: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ columns: [pk v1 v2]\n" +
+			"",
+		ExpectedAnalysis: "IndexedTableAccess(comp_index_t0)\n" +
+			" ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			" ├─ filters: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ columns: [pk v1 v2]\n" +
 			"",
 	},
 	{
@@ -2136,102 +2045,68 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM comp_index_t0 WHERE (((v1<>31) OR (v1<>43)) OR (v1>37 AND v2>5));`,
-		ExpectedPlan: "Filter\n" +
-			" ├─ Or\n" +
-			" │   ├─ Or\n" +
-			" │   │   ├─ NOT\n" +
-			" │   │   │   └─ Eq\n" +
-			" │   │   │       ├─ comp_index_t0.v1:1\n" +
-			" │   │   │       └─ 31 (bigint)\n" +
-			" │   │   └─ NOT\n" +
-			" │   │       └─ Eq\n" +
-			" │   │           ├─ comp_index_t0.v1:1\n" +
-			" │   │           └─ 43 (bigint)\n" +
-			" │   └─ AND\n" +
-			" │       ├─ GreaterThan\n" +
-			" │       │   ├─ comp_index_t0.v1:1\n" +
-			" │       │   └─ 37 (bigint)\n" +
-			" │       └─ GreaterThan\n" +
-			" │           ├─ comp_index_t0.v2:2\n" +
-			" │           └─ 5 (bigint)\n" +
-			" └─ ProcessTable\n" +
-			"     └─ Table\n" +
-			"         ├─ name: comp_index_t0\n" +
-			"         └─ columns: [pk v1 v2]\n" +
-			"",
-		ExpectedEstimates: "Filter\n" +
-			" ├─ (((NOT((comp_index_t0.v1 = 31))) OR (NOT((comp_index_t0.v1 = 43)))) OR ((comp_index_t0.v1 > 37) AND (comp_index_t0.v2 > 5)))\n" +
+		ExpectedPlan: "IndexedTableAccess(comp_index_t0)\n" +
+			" ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			" ├─ static: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ colSet: (1-3)\n" +
+			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
 			"     ├─ name: comp_index_t0\n" +
 			"     └─ columns: [pk v1 v2]\n" +
 			"",
-		ExpectedAnalysis: "Filter\n" +
-			" ├─ (((NOT((comp_index_t0.v1 = 31))) OR (NOT((comp_index_t0.v1 = 43)))) OR ((comp_index_t0.v1 > 37) AND (comp_index_t0.v2 > 5)))\n" +
-			" └─ Table\n" +
-			"     ├─ name: comp_index_t0\n" +
-			"     └─ columns: [pk v1 v2]\n" +
+		ExpectedEstimates: "IndexedTableAccess(comp_index_t0)\n" +
+			" ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			" ├─ filters: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ columns: [pk v1 v2]\n" +
+			"",
+		ExpectedAnalysis: "IndexedTableAccess(comp_index_t0)\n" +
+			" ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			" ├─ filters: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ columns: [pk v1 v2]\n" +
 			"",
 	},
 	{
 		Query: `SELECT * FROM comp_index_t0 WHERE (((v1<=91) OR (v1<>79)) OR (v1<64));`,
-		ExpectedPlan: "Filter\n" +
-			" ├─ Or\n" +
-			" │   ├─ Or\n" +
-			" │   │   ├─ LessThanOrEqual\n" +
-			" │   │   │   ├─ comp_index_t0.v1:1\n" +
-			" │   │   │   └─ 91 (bigint)\n" +
-			" │   │   └─ NOT\n" +
-			" │   │       └─ Eq\n" +
-			" │   │           ├─ comp_index_t0.v1:1\n" +
-			" │   │           └─ 79 (bigint)\n" +
-			" │   └─ LessThan\n" +
-			" │       ├─ comp_index_t0.v1:1\n" +
-			" │       └─ 64 (bigint)\n" +
-			" └─ ProcessTable\n" +
-			"     └─ Table\n" +
-			"         ├─ name: comp_index_t0\n" +
-			"         └─ columns: [pk v1 v2]\n" +
-			"",
-		ExpectedEstimates: "Filter\n" +
-			" ├─ (((comp_index_t0.v1 <= 91) OR (NOT((comp_index_t0.v1 = 79)))) OR (comp_index_t0.v1 < 64))\n" +
+		ExpectedPlan: "IndexedTableAccess(comp_index_t0)\n" +
+			" ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			" ├─ static: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ colSet: (1-3)\n" +
+			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
 			"     ├─ name: comp_index_t0\n" +
 			"     └─ columns: [pk v1 v2]\n" +
 			"",
-		ExpectedAnalysis: "Filter\n" +
-			" ├─ (((comp_index_t0.v1 <= 91) OR (NOT((comp_index_t0.v1 = 79)))) OR (comp_index_t0.v1 < 64))\n" +
-			" └─ Table\n" +
-			"     ├─ name: comp_index_t0\n" +
-			"     └─ columns: [pk v1 v2]\n" +
+		ExpectedEstimates: "IndexedTableAccess(comp_index_t0)\n" +
+			" ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			" ├─ filters: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ columns: [pk v1 v2]\n" +
+			"",
+		ExpectedAnalysis: "IndexedTableAccess(comp_index_t0)\n" +
+			" ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			" ├─ filters: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ columns: [pk v1 v2]\n" +
 			"",
 	},
 	{
 		Query: `SELECT * FROM comp_index_t0 WHERE ((v1<>48) OR (v1>11));`,
-		ExpectedPlan: "Filter\n" +
-			" ├─ Or\n" +
-			" │   ├─ NOT\n" +
-			" │   │   └─ Eq\n" +
-			" │   │       ├─ comp_index_t0.v1:1\n" +
-			" │   │       └─ 48 (bigint)\n" +
-			" │   └─ GreaterThan\n" +
-			" │       ├─ comp_index_t0.v1:1\n" +
-			" │       └─ 11 (bigint)\n" +
-			" └─ ProcessTable\n" +
-			"     └─ Table\n" +
-			"         ├─ name: comp_index_t0\n" +
-			"         └─ columns: [pk v1 v2]\n" +
-			"",
-		ExpectedEstimates: "Filter\n" +
-			" ├─ ((NOT((comp_index_t0.v1 = 48))) OR (comp_index_t0.v1 > 11))\n" +
+		ExpectedPlan: "IndexedTableAccess(comp_index_t0)\n" +
+			" ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			" ├─ static: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ colSet: (1-3)\n" +
+			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
 			"     ├─ name: comp_index_t0\n" +
 			"     └─ columns: [pk v1 v2]\n" +
 			"",
-		ExpectedAnalysis: "Filter\n" +
-			" ├─ ((NOT((comp_index_t0.v1 = 48))) OR (comp_index_t0.v1 > 11))\n" +
-			" └─ Table\n" +
-			"     ├─ name: comp_index_t0\n" +
-			"     └─ columns: [pk v1 v2]\n" +
+		ExpectedEstimates: "IndexedTableAccess(comp_index_t0)\n" +
+			" ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			" ├─ filters: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ columns: [pk v1 v2]\n" +
+			"",
+		ExpectedAnalysis: "IndexedTableAccess(comp_index_t0)\n" +
+			" ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			" ├─ filters: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ columns: [pk v1 v2]\n" +
 			"",
 	},
 	{
@@ -2302,43 +2177,24 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM comp_index_t0 WHERE (((v1 BETWEEN 27 AND 84) OR (v1<98 AND v2>38)) OR (v1<>30));`,
-		ExpectedPlan: "Filter\n" +
-			" ├─ Or\n" +
-			" │   ├─ Or\n" +
-			" │   │   ├─ AND\n" +
-			" │   │   │   ├─ GreaterThanOrEqual\n" +
-			" │   │   │   │   ├─ comp_index_t0.v1:1\n" +
-			" │   │   │   │   └─ 27 (tinyint)\n" +
-			" │   │   │   └─ LessThanOrEqual\n" +
-			" │   │   │       ├─ comp_index_t0.v1:1\n" +
-			" │   │   │       └─ 84 (tinyint)\n" +
-			" │   │   └─ AND\n" +
-			" │   │       ├─ LessThan\n" +
-			" │   │       │   ├─ comp_index_t0.v1:1\n" +
-			" │   │       │   └─ 98 (bigint)\n" +
-			" │   │       └─ GreaterThan\n" +
-			" │   │           ├─ comp_index_t0.v2:2\n" +
-			" │   │           └─ 38 (bigint)\n" +
-			" │   └─ NOT\n" +
-			" │       └─ Eq\n" +
-			" │           ├─ comp_index_t0.v1:1\n" +
-			" │           └─ 30 (bigint)\n" +
-			" └─ ProcessTable\n" +
-			"     └─ Table\n" +
-			"         ├─ name: comp_index_t0\n" +
-			"         └─ columns: [pk v1 v2]\n" +
-			"",
-		ExpectedEstimates: "Filter\n" +
-			" ├─ ((((comp_index_t0.v1 >= 27) AND (comp_index_t0.v1 <= 84)) OR ((comp_index_t0.v1 < 98) AND (comp_index_t0.v2 > 38))) OR (NOT((comp_index_t0.v1 = 30))))\n" +
+		ExpectedPlan: "IndexedTableAccess(comp_index_t0)\n" +
+			" ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			" ├─ static: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ colSet: (1-3)\n" +
+			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
 			"     ├─ name: comp_index_t0\n" +
 			"     └─ columns: [pk v1 v2]\n" +
 			"",
-		ExpectedAnalysis: "Filter\n" +
-			" ├─ ((((comp_index_t0.v1 >= 27) AND (comp_index_t0.v1 <= 84)) OR ((comp_index_t0.v1 < 98) AND (comp_index_t0.v2 > 38))) OR (NOT((comp_index_t0.v1 = 30))))\n" +
-			" └─ Table\n" +
-			"     ├─ name: comp_index_t0\n" +
-			"     └─ columns: [pk v1 v2]\n" +
+		ExpectedEstimates: "IndexedTableAccess(comp_index_t0)\n" +
+			" ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			" ├─ filters: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ columns: [pk v1 v2]\n" +
+			"",
+		ExpectedAnalysis: "IndexedTableAccess(comp_index_t0)\n" +
+			" ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			" ├─ filters: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ columns: [pk v1 v2]\n" +
 			"",
 	},
 	{
@@ -2717,43 +2573,24 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM comp_index_t0 WHERE (((v1<>50) OR (v1<=88)) OR (v1>=28 AND v2 BETWEEN 30 AND 85));`,
-		ExpectedPlan: "Filter\n" +
-			" ├─ Or\n" +
-			" │   ├─ Or\n" +
-			" │   │   ├─ NOT\n" +
-			" │   │   │   └─ Eq\n" +
-			" │   │   │       ├─ comp_index_t0.v1:1\n" +
-			" │   │   │       └─ 50 (bigint)\n" +
-			" │   │   └─ LessThanOrEqual\n" +
-			" │   │       ├─ comp_index_t0.v1:1\n" +
-			" │   │       └─ 88 (bigint)\n" +
-			" │   └─ AND\n" +
-			" │       ├─ GreaterThanOrEqual\n" +
-			" │       │   ├─ comp_index_t0.v1:1\n" +
-			" │       │   └─ 28 (bigint)\n" +
-			" │       └─ AND\n" +
-			" │           ├─ GreaterThanOrEqual\n" +
-			" │           │   ├─ comp_index_t0.v2:2\n" +
-			" │           │   └─ 30 (tinyint)\n" +
-			" │           └─ LessThanOrEqual\n" +
-			" │               ├─ comp_index_t0.v2:2\n" +
-			" │               └─ 85 (tinyint)\n" +
-			" └─ ProcessTable\n" +
-			"     └─ Table\n" +
-			"         ├─ name: comp_index_t0\n" +
-			"         └─ columns: [pk v1 v2]\n" +
-			"",
-		ExpectedEstimates: "Filter\n" +
-			" ├─ (((NOT((comp_index_t0.v1 = 50))) OR (comp_index_t0.v1 <= 88)) OR ((comp_index_t0.v1 >= 28) AND ((comp_index_t0.v2 >= 30) AND (comp_index_t0.v2 <= 85))))\n" +
+		ExpectedPlan: "IndexedTableAccess(comp_index_t0)\n" +
+			" ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			" ├─ static: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ colSet: (1-3)\n" +
+			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
 			"     ├─ name: comp_index_t0\n" +
 			"     └─ columns: [pk v1 v2]\n" +
 			"",
-		ExpectedAnalysis: "Filter\n" +
-			" ├─ (((NOT((comp_index_t0.v1 = 50))) OR (comp_index_t0.v1 <= 88)) OR ((comp_index_t0.v1 >= 28) AND ((comp_index_t0.v2 >= 30) AND (comp_index_t0.v2 <= 85))))\n" +
-			" └─ Table\n" +
-			"     ├─ name: comp_index_t0\n" +
-			"     └─ columns: [pk v1 v2]\n" +
+		ExpectedEstimates: "IndexedTableAccess(comp_index_t0)\n" +
+			" ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			" ├─ filters: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ columns: [pk v1 v2]\n" +
+			"",
+		ExpectedAnalysis: "IndexedTableAccess(comp_index_t0)\n" +
+			" ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			" ├─ filters: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ columns: [pk v1 v2]\n" +
 			"",
 	},
 	{
@@ -3022,46 +2859,24 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM comp_index_t0 WHERE ((((v1<32 AND v2>=79) OR (v1<=28)) OR (v1 BETWEEN 46 AND 72)) OR (v1>16));`,
-		ExpectedPlan: "Filter\n" +
-			" ├─ Or\n" +
-			" │   ├─ Or\n" +
-			" │   │   ├─ Or\n" +
-			" │   │   │   ├─ AND\n" +
-			" │   │   │   │   ├─ LessThan\n" +
-			" │   │   │   │   │   ├─ comp_index_t0.v1:1\n" +
-			" │   │   │   │   │   └─ 32 (bigint)\n" +
-			" │   │   │   │   └─ GreaterThanOrEqual\n" +
-			" │   │   │   │       ├─ comp_index_t0.v2:2\n" +
-			" │   │   │   │       └─ 79 (bigint)\n" +
-			" │   │   │   └─ LessThanOrEqual\n" +
-			" │   │   │       ├─ comp_index_t0.v1:1\n" +
-			" │   │   │       └─ 28 (bigint)\n" +
-			" │   │   └─ AND\n" +
-			" │   │       ├─ GreaterThanOrEqual\n" +
-			" │   │       │   ├─ comp_index_t0.v1:1\n" +
-			" │   │       │   └─ 46 (tinyint)\n" +
-			" │   │       └─ LessThanOrEqual\n" +
-			" │   │           ├─ comp_index_t0.v1:1\n" +
-			" │   │           └─ 72 (tinyint)\n" +
-			" │   └─ GreaterThan\n" +
-			" │       ├─ comp_index_t0.v1:1\n" +
-			" │       └─ 16 (bigint)\n" +
-			" └─ ProcessTable\n" +
-			"     └─ Table\n" +
-			"         ├─ name: comp_index_t0\n" +
-			"         └─ columns: [pk v1 v2]\n" +
-			"",
-		ExpectedEstimates: "Filter\n" +
-			" ├─ (((((comp_index_t0.v1 < 32) AND (comp_index_t0.v2 >= 79)) OR (comp_index_t0.v1 <= 28)) OR ((comp_index_t0.v1 >= 46) AND (comp_index_t0.v1 <= 72))) OR (comp_index_t0.v1 > 16))\n" +
+		ExpectedPlan: "IndexedTableAccess(comp_index_t0)\n" +
+			" ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			" ├─ static: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ colSet: (1-3)\n" +
+			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
 			"     ├─ name: comp_index_t0\n" +
 			"     └─ columns: [pk v1 v2]\n" +
 			"",
-		ExpectedAnalysis: "Filter\n" +
-			" ├─ (((((comp_index_t0.v1 < 32) AND (comp_index_t0.v2 >= 79)) OR (comp_index_t0.v1 <= 28)) OR ((comp_index_t0.v1 >= 46) AND (comp_index_t0.v1 <= 72))) OR (comp_index_t0.v1 > 16))\n" +
-			" └─ Table\n" +
-			"     ├─ name: comp_index_t0\n" +
-			"     └─ columns: [pk v1 v2]\n" +
+		ExpectedEstimates: "IndexedTableAccess(comp_index_t0)\n" +
+			" ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			" ├─ filters: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ columns: [pk v1 v2]\n" +
+			"",
+		ExpectedAnalysis: "IndexedTableAccess(comp_index_t0)\n" +
+			" ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			" ├─ filters: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ columns: [pk v1 v2]\n" +
 			"",
 	},
 	{
@@ -3220,46 +3035,24 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM comp_index_t1 WHERE (((v1<93 AND v2<39 AND v3 BETWEEN 30 AND 97) OR (v1>54)) OR (v1<66));`,
-		ExpectedPlan: "Filter\n" +
-			" ├─ Or\n" +
-			" │   ├─ Or\n" +
-			" │   │   ├─ AND\n" +
-			" │   │   │   ├─ AND\n" +
-			" │   │   │   │   ├─ LessThan\n" +
-			" │   │   │   │   │   ├─ comp_index_t1.v1:1\n" +
-			" │   │   │   │   │   └─ 93 (bigint)\n" +
-			" │   │   │   │   └─ LessThan\n" +
-			" │   │   │   │       ├─ comp_index_t1.v2:2\n" +
-			" │   │   │   │       └─ 39 (bigint)\n" +
-			" │   │   │   └─ AND\n" +
-			" │   │   │       ├─ GreaterThanOrEqual\n" +
-			" │   │   │       │   ├─ comp_index_t1.v3:3\n" +
-			" │   │   │       │   └─ 30 (tinyint)\n" +
-			" │   │   │       └─ LessThanOrEqual\n" +
-			" │   │   │           ├─ comp_index_t1.v3:3\n" +
-			" │   │   │           └─ 97 (tinyint)\n" +
-			" │   │   └─ GreaterThan\n" +
-			" │   │       ├─ comp_index_t1.v1:1\n" +
-			" │   │       └─ 54 (bigint)\n" +
-			" │   └─ LessThan\n" +
-			" │       ├─ comp_index_t1.v1:1\n" +
-			" │       └─ 66 (bigint)\n" +
-			" └─ ProcessTable\n" +
-			"     └─ Table\n" +
-			"         ├─ name: comp_index_t1\n" +
-			"         └─ columns: [pk v1 v2 v3]\n" +
-			"",
-		ExpectedEstimates: "Filter\n" +
-			" ├─ (((((comp_index_t1.v1 < 93) AND (comp_index_t1.v2 < 39)) AND ((comp_index_t1.v3 >= 30) AND (comp_index_t1.v3 <= 97))) OR (comp_index_t1.v1 > 54)) OR (comp_index_t1.v1 < 66))\n" +
+		ExpectedPlan: "IndexedTableAccess(comp_index_t1)\n" +
+			" ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
+			" ├─ static: [{(NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ colSet: (1-4)\n" +
+			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
 			"     ├─ name: comp_index_t1\n" +
 			"     └─ columns: [pk v1 v2 v3]\n" +
 			"",
-		ExpectedAnalysis: "Filter\n" +
-			" ├─ (((((comp_index_t1.v1 < 93) AND (comp_index_t1.v2 < 39)) AND ((comp_index_t1.v3 >= 30) AND (comp_index_t1.v3 <= 97))) OR (comp_index_t1.v1 > 54)) OR (comp_index_t1.v1 < 66))\n" +
-			" └─ Table\n" +
-			"     ├─ name: comp_index_t1\n" +
-			"     └─ columns: [pk v1 v2 v3]\n" +
+		ExpectedEstimates: "IndexedTableAccess(comp_index_t1)\n" +
+			" ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
+			" ├─ filters: [{(NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ columns: [pk v1 v2 v3]\n" +
+			"",
+		ExpectedAnalysis: "IndexedTableAccess(comp_index_t1)\n" +
+			" ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
+			" ├─ filters: [{(NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ columns: [pk v1 v2 v3]\n" +
 			"",
 	},
 	{
@@ -5068,77 +4861,46 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM comp_index_t1 WHERE (((v1>2) OR (v1<=30)) OR (v1<>35 AND v2 BETWEEN 6 AND 61 AND v3>=16));`,
-		ExpectedPlan: "Filter\n" +
-			" ├─ Or\n" +
-			" │   ├─ Or\n" +
-			" │   │   ├─ GreaterThan\n" +
-			" │   │   │   ├─ comp_index_t1.v1:1\n" +
-			" │   │   │   └─ 2 (bigint)\n" +
-			" │   │   └─ LessThanOrEqual\n" +
-			" │   │       ├─ comp_index_t1.v1:1\n" +
-			" │   │       └─ 30 (bigint)\n" +
-			" │   └─ AND\n" +
-			" │       ├─ AND\n" +
-			" │       │   ├─ NOT\n" +
-			" │       │   │   └─ Eq\n" +
-			" │       │   │       ├─ comp_index_t1.v1:1\n" +
-			" │       │   │       └─ 35 (bigint)\n" +
-			" │       │   └─ AND\n" +
-			" │       │       ├─ GreaterThanOrEqual\n" +
-			" │       │       │   ├─ comp_index_t1.v2:2\n" +
-			" │       │       │   └─ 6 (tinyint)\n" +
-			" │       │       └─ LessThanOrEqual\n" +
-			" │       │           ├─ comp_index_t1.v2:2\n" +
-			" │       │           └─ 61 (tinyint)\n" +
-			" │       └─ GreaterThanOrEqual\n" +
-			" │           ├─ comp_index_t1.v3:3\n" +
-			" │           └─ 16 (bigint)\n" +
-			" └─ ProcessTable\n" +
-			"     └─ Table\n" +
-			"         ├─ name: comp_index_t1\n" +
-			"         └─ columns: [pk v1 v2 v3]\n" +
-			"",
-		ExpectedEstimates: "Filter\n" +
-			" ├─ (((comp_index_t1.v1 > 2) OR (comp_index_t1.v1 <= 30)) OR (((NOT((comp_index_t1.v1 = 35))) AND ((comp_index_t1.v2 >= 6) AND (comp_index_t1.v2 <= 61))) AND (comp_index_t1.v3 >= 16)))\n" +
+		ExpectedPlan: "IndexedTableAccess(comp_index_t1)\n" +
+			" ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
+			" ├─ static: [{(NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ colSet: (1-4)\n" +
+			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
 			"     ├─ name: comp_index_t1\n" +
 			"     └─ columns: [pk v1 v2 v3]\n" +
 			"",
-		ExpectedAnalysis: "Filter\n" +
-			" ├─ (((comp_index_t1.v1 > 2) OR (comp_index_t1.v1 <= 30)) OR (((NOT((comp_index_t1.v1 = 35))) AND ((comp_index_t1.v2 >= 6) AND (comp_index_t1.v2 <= 61))) AND (comp_index_t1.v3 >= 16)))\n" +
-			" └─ Table\n" +
-			"     ├─ name: comp_index_t1\n" +
-			"     └─ columns: [pk v1 v2 v3]\n" +
+		ExpectedEstimates: "IndexedTableAccess(comp_index_t1)\n" +
+			" ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
+			" ├─ filters: [{(NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ columns: [pk v1 v2 v3]\n" +
+			"",
+		ExpectedAnalysis: "IndexedTableAccess(comp_index_t1)\n" +
+			" ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
+			" ├─ filters: [{(NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ columns: [pk v1 v2 v3]\n" +
 			"",
 	},
 	{
 		Query: `SELECT * FROM comp_index_t1 WHERE ((v1<>19) OR (v1<>48));`,
-		ExpectedPlan: "Filter\n" +
-			" ├─ Or\n" +
-			" │   ├─ NOT\n" +
-			" │   │   └─ Eq\n" +
-			" │   │       ├─ comp_index_t1.v1:1\n" +
-			" │   │       └─ 19 (bigint)\n" +
-			" │   └─ NOT\n" +
-			" │       └─ Eq\n" +
-			" │           ├─ comp_index_t1.v1:1\n" +
-			" │           └─ 48 (bigint)\n" +
-			" └─ ProcessTable\n" +
-			"     └─ Table\n" +
-			"         ├─ name: comp_index_t1\n" +
-			"         └─ columns: [pk v1 v2 v3]\n" +
-			"",
-		ExpectedEstimates: "Filter\n" +
-			" ├─ ((NOT((comp_index_t1.v1 = 19))) OR (NOT((comp_index_t1.v1 = 48))))\n" +
+		ExpectedPlan: "IndexedTableAccess(comp_index_t1)\n" +
+			" ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
+			" ├─ static: [{(NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ colSet: (1-4)\n" +
+			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
 			"     ├─ name: comp_index_t1\n" +
 			"     └─ columns: [pk v1 v2 v3]\n" +
 			"",
-		ExpectedAnalysis: "Filter\n" +
-			" ├─ ((NOT((comp_index_t1.v1 = 19))) OR (NOT((comp_index_t1.v1 = 48))))\n" +
-			" └─ Table\n" +
-			"     ├─ name: comp_index_t1\n" +
-			"     └─ columns: [pk v1 v2 v3]\n" +
+		ExpectedEstimates: "IndexedTableAccess(comp_index_t1)\n" +
+			" ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
+			" ├─ filters: [{(NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ columns: [pk v1 v2 v3]\n" +
+			"",
+		ExpectedAnalysis: "IndexedTableAccess(comp_index_t1)\n" +
+			" ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
+			" ├─ filters: [{(NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ columns: [pk v1 v2 v3]\n" +
 			"",
 	},
 	{
@@ -5737,31 +5499,24 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM comp_index_t1 WHERE ((v1<>50) OR (v1<=71));`,
-		ExpectedPlan: "Filter\n" +
-			" ├─ Or\n" +
-			" │   ├─ NOT\n" +
-			" │   │   └─ Eq\n" +
-			" │   │       ├─ comp_index_t1.v1:1\n" +
-			" │   │       └─ 50 (bigint)\n" +
-			" │   └─ LessThanOrEqual\n" +
-			" │       ├─ comp_index_t1.v1:1\n" +
-			" │       └─ 71 (bigint)\n" +
-			" └─ ProcessTable\n" +
-			"     └─ Table\n" +
-			"         ├─ name: comp_index_t1\n" +
-			"         └─ columns: [pk v1 v2 v3]\n" +
-			"",
-		ExpectedEstimates: "Filter\n" +
-			" ├─ ((NOT((comp_index_t1.v1 = 50))) OR (comp_index_t1.v1 <= 71))\n" +
+		ExpectedPlan: "IndexedTableAccess(comp_index_t1)\n" +
+			" ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
+			" ├─ static: [{(NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ colSet: (1-4)\n" +
+			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
 			"     ├─ name: comp_index_t1\n" +
 			"     └─ columns: [pk v1 v2 v3]\n" +
 			"",
-		ExpectedAnalysis: "Filter\n" +
-			" ├─ ((NOT((comp_index_t1.v1 = 50))) OR (comp_index_t1.v1 <= 71))\n" +
-			" └─ Table\n" +
-			"     ├─ name: comp_index_t1\n" +
-			"     └─ columns: [pk v1 v2 v3]\n" +
+		ExpectedEstimates: "IndexedTableAccess(comp_index_t1)\n" +
+			" ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
+			" ├─ filters: [{(NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ columns: [pk v1 v2 v3]\n" +
+			"",
+		ExpectedAnalysis: "IndexedTableAccess(comp_index_t1)\n" +
+			" ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
+			" ├─ filters: [{(NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ columns: [pk v1 v2 v3]\n" +
 			"",
 	},
 	{
@@ -6074,30 +5829,24 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM comp_index_t1 WHERE ((v1>25) OR (v1<53));`,
-		ExpectedPlan: "Filter\n" +
-			" ├─ Or\n" +
-			" │   ├─ GreaterThan\n" +
-			" │   │   ├─ comp_index_t1.v1:1\n" +
-			" │   │   └─ 25 (bigint)\n" +
-			" │   └─ LessThan\n" +
-			" │       ├─ comp_index_t1.v1:1\n" +
-			" │       └─ 53 (bigint)\n" +
-			" └─ ProcessTable\n" +
-			"     └─ Table\n" +
-			"         ├─ name: comp_index_t1\n" +
-			"         └─ columns: [pk v1 v2 v3]\n" +
-			"",
-		ExpectedEstimates: "Filter\n" +
-			" ├─ ((comp_index_t1.v1 > 25) OR (comp_index_t1.v1 < 53))\n" +
+		ExpectedPlan: "IndexedTableAccess(comp_index_t1)\n" +
+			" ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
+			" ├─ static: [{(NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ colSet: (1-4)\n" +
+			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
 			"     ├─ name: comp_index_t1\n" +
 			"     └─ columns: [pk v1 v2 v3]\n" +
 			"",
-		ExpectedAnalysis: "Filter\n" +
-			" ├─ ((comp_index_t1.v1 > 25) OR (comp_index_t1.v1 < 53))\n" +
-			" └─ Table\n" +
-			"     ├─ name: comp_index_t1\n" +
-			"     └─ columns: [pk v1 v2 v3]\n" +
+		ExpectedEstimates: "IndexedTableAccess(comp_index_t1)\n" +
+			" ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
+			" ├─ filters: [{(NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ columns: [pk v1 v2 v3]\n" +
+			"",
+		ExpectedAnalysis: "IndexedTableAccess(comp_index_t1)\n" +
+			" ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
+			" ├─ filters: [{(NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ columns: [pk v1 v2 v3]\n" +
 			"",
 	},
 	{
@@ -6278,46 +6027,24 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM comp_index_t1 WHERE (((v1>12) OR (v1>=26 AND v2 BETWEEN 77 AND 87 AND v3<19)) OR (v1<=89));`,
-		ExpectedPlan: "Filter\n" +
-			" ├─ Or\n" +
-			" │   ├─ Or\n" +
-			" │   │   ├─ GreaterThan\n" +
-			" │   │   │   ├─ comp_index_t1.v1:1\n" +
-			" │   │   │   └─ 12 (bigint)\n" +
-			" │   │   └─ AND\n" +
-			" │   │       ├─ AND\n" +
-			" │   │       │   ├─ GreaterThanOrEqual\n" +
-			" │   │       │   │   ├─ comp_index_t1.v1:1\n" +
-			" │   │       │   │   └─ 26 (bigint)\n" +
-			" │   │       │   └─ AND\n" +
-			" │   │       │       ├─ GreaterThanOrEqual\n" +
-			" │   │       │       │   ├─ comp_index_t1.v2:2\n" +
-			" │   │       │       │   └─ 77 (tinyint)\n" +
-			" │   │       │       └─ LessThanOrEqual\n" +
-			" │   │       │           ├─ comp_index_t1.v2:2\n" +
-			" │   │       │           └─ 87 (tinyint)\n" +
-			" │   │       └─ LessThan\n" +
-			" │   │           ├─ comp_index_t1.v3:3\n" +
-			" │   │           └─ 19 (bigint)\n" +
-			" │   └─ LessThanOrEqual\n" +
-			" │       ├─ comp_index_t1.v1:1\n" +
-			" │       └─ 89 (bigint)\n" +
-			" └─ ProcessTable\n" +
-			"     └─ Table\n" +
-			"         ├─ name: comp_index_t1\n" +
-			"         └─ columns: [pk v1 v2 v3]\n" +
-			"",
-		ExpectedEstimates: "Filter\n" +
-			" ├─ (((comp_index_t1.v1 > 12) OR (((comp_index_t1.v1 >= 26) AND ((comp_index_t1.v2 >= 77) AND (comp_index_t1.v2 <= 87))) AND (comp_index_t1.v3 < 19))) OR (comp_index_t1.v1 <= 89))\n" +
+		ExpectedPlan: "IndexedTableAccess(comp_index_t1)\n" +
+			" ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
+			" ├─ static: [{(NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ colSet: (1-4)\n" +
+			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
 			"     ├─ name: comp_index_t1\n" +
 			"     └─ columns: [pk v1 v2 v3]\n" +
 			"",
-		ExpectedAnalysis: "Filter\n" +
-			" ├─ (((comp_index_t1.v1 > 12) OR (((comp_index_t1.v1 >= 26) AND ((comp_index_t1.v2 >= 77) AND (comp_index_t1.v2 <= 87))) AND (comp_index_t1.v3 < 19))) OR (comp_index_t1.v1 <= 89))\n" +
-			" └─ Table\n" +
-			"     ├─ name: comp_index_t1\n" +
-			"     └─ columns: [pk v1 v2 v3]\n" +
+		ExpectedEstimates: "IndexedTableAccess(comp_index_t1)\n" +
+			" ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
+			" ├─ filters: [{(NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ columns: [pk v1 v2 v3]\n" +
+			"",
+		ExpectedAnalysis: "IndexedTableAccess(comp_index_t1)\n" +
+			" ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
+			" ├─ filters: [{(NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ columns: [pk v1 v2 v3]\n" +
 			"",
 	},
 	{
@@ -6894,77 +6621,46 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM comp_index_t1 WHERE (((v1>=8 AND v2<=97 AND v3>=77) OR (v1<>4)) OR (v1<=41));`,
-		ExpectedPlan: "Filter\n" +
-			" ├─ Or\n" +
-			" │   ├─ Or\n" +
-			" │   │   ├─ AND\n" +
-			" │   │   │   ├─ AND\n" +
-			" │   │   │   │   ├─ GreaterThanOrEqual\n" +
-			" │   │   │   │   │   ├─ comp_index_t1.v1:1\n" +
-			" │   │   │   │   │   └─ 8 (bigint)\n" +
-			" │   │   │   │   └─ LessThanOrEqual\n" +
-			" │   │   │   │       ├─ comp_index_t1.v2:2\n" +
-			" │   │   │   │       └─ 97 (bigint)\n" +
-			" │   │   │   └─ GreaterThanOrEqual\n" +
-			" │   │   │       ├─ comp_index_t1.v3:3\n" +
-			" │   │   │       └─ 77 (bigint)\n" +
-			" │   │   └─ NOT\n" +
-			" │   │       └─ Eq\n" +
-			" │   │           ├─ comp_index_t1.v1:1\n" +
-			" │   │           └─ 4 (bigint)\n" +
-			" │   └─ LessThanOrEqual\n" +
-			" │       ├─ comp_index_t1.v1:1\n" +
-			" │       └─ 41 (bigint)\n" +
-			" └─ ProcessTable\n" +
-			"     └─ Table\n" +
-			"         ├─ name: comp_index_t1\n" +
-			"         └─ columns: [pk v1 v2 v3]\n" +
-			"",
-		ExpectedEstimates: "Filter\n" +
-			" ├─ (((((comp_index_t1.v1 >= 8) AND (comp_index_t1.v2 <= 97)) AND (comp_index_t1.v3 >= 77)) OR (NOT((comp_index_t1.v1 = 4)))) OR (comp_index_t1.v1 <= 41))\n" +
+		ExpectedPlan: "IndexedTableAccess(comp_index_t1)\n" +
+			" ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
+			" ├─ static: [{(NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ colSet: (1-4)\n" +
+			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
 			"     ├─ name: comp_index_t1\n" +
 			"     └─ columns: [pk v1 v2 v3]\n" +
 			"",
-		ExpectedAnalysis: "Filter\n" +
-			" ├─ (((((comp_index_t1.v1 >= 8) AND (comp_index_t1.v2 <= 97)) AND (comp_index_t1.v3 >= 77)) OR (NOT((comp_index_t1.v1 = 4)))) OR (comp_index_t1.v1 <= 41))\n" +
-			" └─ Table\n" +
-			"     ├─ name: comp_index_t1\n" +
-			"     └─ columns: [pk v1 v2 v3]\n" +
+		ExpectedEstimates: "IndexedTableAccess(comp_index_t1)\n" +
+			" ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
+			" ├─ filters: [{(NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ columns: [pk v1 v2 v3]\n" +
+			"",
+		ExpectedAnalysis: "IndexedTableAccess(comp_index_t1)\n" +
+			" ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
+			" ├─ filters: [{(NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ columns: [pk v1 v2 v3]\n" +
 			"",
 	},
 	{
 		Query: `SELECT * FROM comp_index_t1 WHERE (((v1<>33) OR (v1<=28)) OR (v1<>68));`,
-		ExpectedPlan: "Filter\n" +
-			" ├─ Or\n" +
-			" │   ├─ Or\n" +
-			" │   │   ├─ NOT\n" +
-			" │   │   │   └─ Eq\n" +
-			" │   │   │       ├─ comp_index_t1.v1:1\n" +
-			" │   │   │       └─ 33 (bigint)\n" +
-			" │   │   └─ LessThanOrEqual\n" +
-			" │   │       ├─ comp_index_t1.v1:1\n" +
-			" │   │       └─ 28 (bigint)\n" +
-			" │   └─ NOT\n" +
-			" │       └─ Eq\n" +
-			" │           ├─ comp_index_t1.v1:1\n" +
-			" │           └─ 68 (bigint)\n" +
-			" └─ ProcessTable\n" +
-			"     └─ Table\n" +
-			"         ├─ name: comp_index_t1\n" +
-			"         └─ columns: [pk v1 v2 v3]\n" +
-			"",
-		ExpectedEstimates: "Filter\n" +
-			" ├─ (((NOT((comp_index_t1.v1 = 33))) OR (comp_index_t1.v1 <= 28)) OR (NOT((comp_index_t1.v1 = 68))))\n" +
+		ExpectedPlan: "IndexedTableAccess(comp_index_t1)\n" +
+			" ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
+			" ├─ static: [{(NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ colSet: (1-4)\n" +
+			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
 			"     ├─ name: comp_index_t1\n" +
 			"     └─ columns: [pk v1 v2 v3]\n" +
 			"",
-		ExpectedAnalysis: "Filter\n" +
-			" ├─ (((NOT((comp_index_t1.v1 = 33))) OR (comp_index_t1.v1 <= 28)) OR (NOT((comp_index_t1.v1 = 68))))\n" +
-			" └─ Table\n" +
-			"     ├─ name: comp_index_t1\n" +
-			"     └─ columns: [pk v1 v2 v3]\n" +
+		ExpectedEstimates: "IndexedTableAccess(comp_index_t1)\n" +
+			" ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
+			" ├─ filters: [{(NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ columns: [pk v1 v2 v3]\n" +
+			"",
+		ExpectedAnalysis: "IndexedTableAccess(comp_index_t1)\n" +
+			" ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
+			" ├─ filters: [{(NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ columns: [pk v1 v2 v3]\n" +
 			"",
 	},
 	{
@@ -8861,53 +8557,24 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM comp_index_t2 WHERE (((v1<31 AND v2<>14 AND v3 BETWEEN 0 AND 10 AND v4>=95) OR (v1<>91)) OR (v1<>35));`,
-		ExpectedPlan: "Filter\n" +
-			" ├─ Or\n" +
-			" │   ├─ Or\n" +
-			" │   │   ├─ AND\n" +
-			" │   │   │   ├─ AND\n" +
-			" │   │   │   │   ├─ AND\n" +
-			" │   │   │   │   │   ├─ LessThan\n" +
-			" │   │   │   │   │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │   │   │   │   │   └─ 31 (bigint)\n" +
-			" │   │   │   │   │   └─ NOT\n" +
-			" │   │   │   │   │       └─ Eq\n" +
-			" │   │   │   │   │           ├─ comp_index_t2.v2:2\n" +
-			" │   │   │   │   │           └─ 14 (bigint)\n" +
-			" │   │   │   │   └─ AND\n" +
-			" │   │   │   │       ├─ GreaterThanOrEqual\n" +
-			" │   │   │   │       │   ├─ comp_index_t2.v3:3\n" +
-			" │   │   │   │       │   └─ 0 (tinyint)\n" +
-			" │   │   │   │       └─ LessThanOrEqual\n" +
-			" │   │   │   │           ├─ comp_index_t2.v3:3\n" +
-			" │   │   │   │           └─ 10 (tinyint)\n" +
-			" │   │   │   └─ GreaterThanOrEqual\n" +
-			" │   │   │       ├─ comp_index_t2.v4:4\n" +
-			" │   │   │       └─ 95 (bigint)\n" +
-			" │   │   └─ NOT\n" +
-			" │   │       └─ Eq\n" +
-			" │   │           ├─ comp_index_t2.v1:1\n" +
-			" │   │           └─ 91 (bigint)\n" +
-			" │   └─ NOT\n" +
-			" │       └─ Eq\n" +
-			" │           ├─ comp_index_t2.v1:1\n" +
-			" │           └─ 35 (bigint)\n" +
-			" └─ ProcessTable\n" +
-			"     └─ Table\n" +
-			"         ├─ name: comp_index_t2\n" +
-			"         └─ columns: [pk v1 v2 v3 v4]\n" +
-			"",
-		ExpectedEstimates: "Filter\n" +
-			" ├─ ((((((comp_index_t2.v1 < 31) AND (NOT((comp_index_t2.v2 = 14)))) AND ((comp_index_t2.v3 >= 0) AND (comp_index_t2.v3 <= 10))) AND (comp_index_t2.v4 >= 95)) OR (NOT((comp_index_t2.v1 = 91)))) OR (NOT((comp_index_t2.v1 = 35))))\n" +
+		ExpectedPlan: "IndexedTableAccess(comp_index_t2)\n" +
+			" ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
+			" ├─ static: [{(NULL, ∞), [NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ colSet: (1-5)\n" +
+			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
 			"     ├─ name: comp_index_t2\n" +
 			"     └─ columns: [pk v1 v2 v3 v4]\n" +
 			"",
-		ExpectedAnalysis: "Filter\n" +
-			" ├─ ((((((comp_index_t2.v1 < 31) AND (NOT((comp_index_t2.v2 = 14)))) AND ((comp_index_t2.v3 >= 0) AND (comp_index_t2.v3 <= 10))) AND (comp_index_t2.v4 >= 95)) OR (NOT((comp_index_t2.v1 = 91)))) OR (NOT((comp_index_t2.v1 = 35))))\n" +
-			" └─ Table\n" +
-			"     ├─ name: comp_index_t2\n" +
-			"     └─ columns: [pk v1 v2 v3 v4]\n" +
+		ExpectedEstimates: "IndexedTableAccess(comp_index_t2)\n" +
+			" ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
+			" ├─ filters: [{(NULL, ∞), [NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ columns: [pk v1 v2 v3 v4]\n" +
+			"",
+		ExpectedAnalysis: "IndexedTableAccess(comp_index_t2)\n" +
+			" ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
+			" ├─ filters: [{(NULL, ∞), [NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ columns: [pk v1 v2 v3 v4]\n" +
 			"",
 	},
 	{
@@ -10166,31 +9833,24 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM comp_index_t2 WHERE ((v1<>69) OR (v1>=43));`,
-		ExpectedPlan: "Filter\n" +
-			" ├─ Or\n" +
-			" │   ├─ NOT\n" +
-			" │   │   └─ Eq\n" +
-			" │   │       ├─ comp_index_t2.v1:1\n" +
-			" │   │       └─ 69 (bigint)\n" +
-			" │   └─ GreaterThanOrEqual\n" +
-			" │       ├─ comp_index_t2.v1:1\n" +
-			" │       └─ 43 (bigint)\n" +
-			" └─ ProcessTable\n" +
-			"     └─ Table\n" +
-			"         ├─ name: comp_index_t2\n" +
-			"         └─ columns: [pk v1 v2 v3 v4]\n" +
-			"",
-		ExpectedEstimates: "Filter\n" +
-			" ├─ ((NOT((comp_index_t2.v1 = 69))) OR (comp_index_t2.v1 >= 43))\n" +
+		ExpectedPlan: "IndexedTableAccess(comp_index_t2)\n" +
+			" ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
+			" ├─ static: [{(NULL, ∞), [NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ colSet: (1-5)\n" +
+			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
 			"     ├─ name: comp_index_t2\n" +
 			"     └─ columns: [pk v1 v2 v3 v4]\n" +
 			"",
-		ExpectedAnalysis: "Filter\n" +
-			" ├─ ((NOT((comp_index_t2.v1 = 69))) OR (comp_index_t2.v1 >= 43))\n" +
-			" └─ Table\n" +
-			"     ├─ name: comp_index_t2\n" +
-			"     └─ columns: [pk v1 v2 v3 v4]\n" +
+		ExpectedEstimates: "IndexedTableAccess(comp_index_t2)\n" +
+			" ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
+			" ├─ filters: [{(NULL, ∞), [NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ columns: [pk v1 v2 v3 v4]\n" +
+			"",
+		ExpectedAnalysis: "IndexedTableAccess(comp_index_t2)\n" +
+			" ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
+			" ├─ filters: [{(NULL, ∞), [NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ columns: [pk v1 v2 v3 v4]\n" +
 			"",
 	},
 	{
@@ -11735,44 +11395,24 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM comp_index_t2 WHERE (((v1<>79 AND v2<=85) OR (v1<>13)) OR (v1 BETWEEN 4 AND 67));`,
-		ExpectedPlan: "Filter\n" +
-			" ├─ Or\n" +
-			" │   ├─ Or\n" +
-			" │   │   ├─ AND\n" +
-			" │   │   │   ├─ NOT\n" +
-			" │   │   │   │   └─ Eq\n" +
-			" │   │   │   │       ├─ comp_index_t2.v1:1\n" +
-			" │   │   │   │       └─ 79 (bigint)\n" +
-			" │   │   │   └─ LessThanOrEqual\n" +
-			" │   │   │       ├─ comp_index_t2.v2:2\n" +
-			" │   │   │       └─ 85 (bigint)\n" +
-			" │   │   └─ NOT\n" +
-			" │   │       └─ Eq\n" +
-			" │   │           ├─ comp_index_t2.v1:1\n" +
-			" │   │           └─ 13 (bigint)\n" +
-			" │   └─ AND\n" +
-			" │       ├─ GreaterThanOrEqual\n" +
-			" │       │   ├─ comp_index_t2.v1:1\n" +
-			" │       │   └─ 4 (tinyint)\n" +
-			" │       └─ LessThanOrEqual\n" +
-			" │           ├─ comp_index_t2.v1:1\n" +
-			" │           └─ 67 (tinyint)\n" +
-			" └─ ProcessTable\n" +
-			"     └─ Table\n" +
-			"         ├─ name: comp_index_t2\n" +
-			"         └─ columns: [pk v1 v2 v3 v4]\n" +
-			"",
-		ExpectedEstimates: "Filter\n" +
-			" ├─ ((((NOT((comp_index_t2.v1 = 79))) AND (comp_index_t2.v2 <= 85)) OR (NOT((comp_index_t2.v1 = 13)))) OR ((comp_index_t2.v1 >= 4) AND (comp_index_t2.v1 <= 67)))\n" +
+		ExpectedPlan: "IndexedTableAccess(comp_index_t2)\n" +
+			" ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
+			" ├─ static: [{(NULL, ∞), [NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ colSet: (1-5)\n" +
+			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
 			"     ├─ name: comp_index_t2\n" +
 			"     └─ columns: [pk v1 v2 v3 v4]\n" +
 			"",
-		ExpectedAnalysis: "Filter\n" +
-			" ├─ ((((NOT((comp_index_t2.v1 = 79))) AND (comp_index_t2.v2 <= 85)) OR (NOT((comp_index_t2.v1 = 13)))) OR ((comp_index_t2.v1 >= 4) AND (comp_index_t2.v1 <= 67)))\n" +
-			" └─ Table\n" +
-			"     ├─ name: comp_index_t2\n" +
-			"     └─ columns: [pk v1 v2 v3 v4]\n" +
+		ExpectedEstimates: "IndexedTableAccess(comp_index_t2)\n" +
+			" ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
+			" ├─ filters: [{(NULL, ∞), [NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ columns: [pk v1 v2 v3 v4]\n" +
+			"",
+		ExpectedAnalysis: "IndexedTableAccess(comp_index_t2)\n" +
+			" ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
+			" ├─ filters: [{(NULL, ∞), [NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ columns: [pk v1 v2 v3 v4]\n" +
 			"",
 	},
 	{
@@ -11799,60 +11439,24 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM comp_index_t2 WHERE (((((v1<65) OR (v1<>44)) OR (v1<=39 AND v3>=14)) OR (v1<=33 AND v2<>11)) OR (v1=75 AND v2=0 AND v3<28));`,
-		ExpectedPlan: "Filter\n" +
-			" ├─ Or\n" +
-			" │   ├─ Or\n" +
-			" │   │   ├─ Or\n" +
-			" │   │   │   ├─ Or\n" +
-			" │   │   │   │   ├─ LessThan\n" +
-			" │   │   │   │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │   │   │   │   └─ 65 (bigint)\n" +
-			" │   │   │   │   └─ NOT\n" +
-			" │   │   │   │       └─ Eq\n" +
-			" │   │   │   │           ├─ comp_index_t2.v1:1\n" +
-			" │   │   │   │           └─ 44 (bigint)\n" +
-			" │   │   │   └─ AND\n" +
-			" │   │   │       ├─ LessThanOrEqual\n" +
-			" │   │   │       │   ├─ comp_index_t2.v1:1\n" +
-			" │   │   │       │   └─ 39 (bigint)\n" +
-			" │   │   │       └─ GreaterThanOrEqual\n" +
-			" │   │   │           ├─ comp_index_t2.v3:3\n" +
-			" │   │   │           └─ 14 (bigint)\n" +
-			" │   │   └─ AND\n" +
-			" │   │       ├─ LessThanOrEqual\n" +
-			" │   │       │   ├─ comp_index_t2.v1:1\n" +
-			" │   │       │   └─ 33 (bigint)\n" +
-			" │   │       └─ NOT\n" +
-			" │   │           └─ Eq\n" +
-			" │   │               ├─ comp_index_t2.v2:2\n" +
-			" │   │               └─ 11 (bigint)\n" +
-			" │   └─ AND\n" +
-			" │       ├─ AND\n" +
-			" │       │   ├─ Eq\n" +
-			" │       │   │   ├─ comp_index_t2.v1:1\n" +
-			" │       │   │   └─ 75 (bigint)\n" +
-			" │       │   └─ Eq\n" +
-			" │       │       ├─ comp_index_t2.v2:2\n" +
-			" │       │       └─ 0 (bigint)\n" +
-			" │       └─ LessThan\n" +
-			" │           ├─ comp_index_t2.v3:3\n" +
-			" │           └─ 28 (bigint)\n" +
-			" └─ ProcessTable\n" +
-			"     └─ Table\n" +
-			"         ├─ name: comp_index_t2\n" +
-			"         └─ columns: [pk v1 v2 v3 v4]\n" +
-			"",
-		ExpectedEstimates: "Filter\n" +
-			" ├─ (((((comp_index_t2.v1 < 65) OR (NOT((comp_index_t2.v1 = 44)))) OR ((comp_index_t2.v1 <= 39) AND (comp_index_t2.v3 >= 14))) OR ((comp_index_t2.v1 <= 33) AND (NOT((comp_index_t2.v2 = 11))))) OR (((comp_index_t2.v1 = 75) AND (comp_index_t2.v2 = 0)) AND (comp_index_t2.v3 < 28)))\n" +
+		ExpectedPlan: "IndexedTableAccess(comp_index_t2)\n" +
+			" ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
+			" ├─ static: [{(NULL, ∞), [NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ colSet: (1-5)\n" +
+			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
 			"     ├─ name: comp_index_t2\n" +
 			"     └─ columns: [pk v1 v2 v3 v4]\n" +
 			"",
-		ExpectedAnalysis: "Filter\n" +
-			" ├─ (((((comp_index_t2.v1 < 65) OR (NOT((comp_index_t2.v1 = 44)))) OR ((comp_index_t2.v1 <= 39) AND (comp_index_t2.v3 >= 14))) OR ((comp_index_t2.v1 <= 33) AND (NOT((comp_index_t2.v2 = 11))))) OR (((comp_index_t2.v1 = 75) AND (comp_index_t2.v2 = 0)) AND (comp_index_t2.v3 < 28)))\n" +
-			" └─ Table\n" +
-			"     ├─ name: comp_index_t2\n" +
-			"     └─ columns: [pk v1 v2 v3 v4]\n" +
+		ExpectedEstimates: "IndexedTableAccess(comp_index_t2)\n" +
+			" ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
+			" ├─ filters: [{(NULL, ∞), [NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ columns: [pk v1 v2 v3 v4]\n" +
+			"",
+		ExpectedAnalysis: "IndexedTableAccess(comp_index_t2)\n" +
+			" ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
+			" ├─ filters: [{(NULL, ∞), [NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ columns: [pk v1 v2 v3 v4]\n" +
 			"",
 	},
 	{
