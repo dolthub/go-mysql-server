@@ -305,19 +305,19 @@ func getCostedIndexScan(
 	if len(ranges) == 0 {
 		emptyLookup = true
 	} else if len(ranges) == 1 {
+		// if every range is empty or everything don't use index
 		emptyLookup, err = ranges[0].IsEmpty(ctx)
 		if err != nil {
 			return nil, nil, nil, err
 		}
 		allRange := true
-		for i, r := range ranges[0] {
+		for _, r := range ranges[0] {
 			_, uok := r.UpperBound.(sql.AboveAll)
-			_, lok := r.LowerBound.(sql.BelowNull)
-			allRange = allRange && uok && lok
-			// TODO: why? what if we just want sorted results?
-			if i == 0 && allRange {
-				// no prefix restriction
-				return nil, nil, nil, err
+			_, lok1 := r.LowerBound.(sql.BelowNull)
+			_, lok2 := r.LowerBound.(sql.AboveNull)
+			if !uok || (!lok1 && !lok2) {
+				allRange = false
+				break
 			}
 		}
 		if allRange {
