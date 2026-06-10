@@ -637,7 +637,7 @@ var QueryPlanScriptTests = []ScriptTest{
 				ExpectedPlan: "CrossJoin\n" +
 					" ├─ IndexedTableAccess(t1)\n" +
 					" │   ├─ index: [t1.i]\n" +
-					" │   ├─ static: [{(NULL, ∞)}]\n" +
+					" │   ├─ static: [{[NULL, ∞)}]\n" +
 					" │   ├─ colSet: (1)\n" +
 					" │   ├─ tableId: 1\n" +
 					" │   └─ Table\n" +
@@ -667,7 +667,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					" └─ CrossJoin\n" +
 					"     ├─ IndexedTableAccess(t2)\n" +
 					"     │   ├─ index: [t2.j]\n" +
-					"     │   ├─ static: [{(NULL, ∞)}]\n" +
+					"     │   ├─ static: [{[NULL, ∞)}]\n" +
 					"     │   ├─ colSet: (2)\n" +
 					"     │   ├─ tableId: 2\n" +
 					"     │   └─ Table\n" +
@@ -695,7 +695,7 @@ var QueryPlanScriptTests = []ScriptTest{
 				ExpectedPlan: "CrossJoin\n" +
 					" ├─ IndexedTableAccess(t1)\n" +
 					" │   ├─ index: [t1.i]\n" +
-					" │   ├─ static: [{(NULL, ∞)}]\n" +
+					" │   ├─ static: [{[NULL, ∞)}]\n" +
 					" │   ├─ reverse: true\n" +
 					" │   ├─ colSet: (1)\n" +
 					" │   ├─ tableId: 1\n" +
@@ -741,7 +741,7 @@ var QueryPlanScriptTests = []ScriptTest{
 				ExpectedPlan: "CrossJoin\n" +
 					" ├─ IndexedTableAccess(t3)\n" +
 					" │   ├─ index: [t3.i,t3.j]\n" +
-					" │   ├─ static: [{[1, 1], (NULL, ∞)}]\n" +
+					" │   ├─ static: [{[1, 1], [NULL, ∞)}]\n" +
 					" │   ├─ colSet: (1,2)\n" +
 					" │   ├─ tableId: 1\n" +
 					" │   └─ Table\n" +
@@ -749,7 +749,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					" │       └─ columns: [i j]\n" +
 					" └─ IndexedTableAccess(t4)\n" +
 					"     ├─ index: [t4.x,t4.y]\n" +
-					"     ├─ static: [{[3, 3], (NULL, ∞)}]\n" +
+					"     ├─ static: [{[3, 3], [NULL, ∞)}]\n" +
 					"     ├─ colSet: (3,4)\n" +
 					"     ├─ tableId: 2\n" +
 					"     └─ Table\n" +
@@ -766,7 +766,7 @@ var QueryPlanScriptTests = []ScriptTest{
 				ExpectedPlan: "CrossJoin\n" +
 					" ├─ IndexedTableAccess(t3)\n" +
 					" │   ├─ index: [t3.i,t3.j]\n" +
-					" │   ├─ static: [{(NULL, ∞), [2, 2]}]\n" +
+					" │   ├─ static: [{[NULL, ∞), [2, 2]}]\n" +
 					" │   ├─ reverse: true\n" +
 					" │   ├─ colSet: (1,2)\n" +
 					" │   ├─ tableId: 1\n" +
@@ -775,7 +775,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					" │       └─ columns: [i j]\n" +
 					" └─ IndexedTableAccess(t4)\n" +
 					"     ├─ index: [t4.x,t4.y]\n" +
-					"     ├─ static: [{[3, 3], (NULL, ∞)}]\n" +
+					"     ├─ static: [{[3, 3], [NULL, ∞)}]\n" +
 					"     ├─ colSet: (3,4)\n" +
 					"     ├─ tableId: 2\n" +
 					"     └─ Table\n" +
@@ -799,7 +799,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					" │   └─ t2.j:1!null\n" +
 					" ├─ IndexedTableAccess(t1)\n" +
 					" │   ├─ index: [t1.i]\n" +
-					" │   ├─ static: [{(NULL, ∞)}]\n" +
+					" │   ├─ static: [{[NULL, ∞)}]\n" +
 					" │   ├─ colSet: (1)\n" +
 					" │   ├─ tableId: 1\n" +
 					" │   └─ Table\n" +
@@ -829,7 +829,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					"     │   └─ t2.j:0!null\n" +
 					"     ├─ IndexedTableAccess(t2)\n" +
 					"     │   ├─ index: [t2.j]\n" +
-					"     │   ├─ static: [{(NULL, ∞)}]\n" +
+					"     │   ├─ static: [{[NULL, ∞)}]\n" +
 					"     │   ├─ reverse: true\n" +
 					"     │   ├─ colSet: (2)\n" +
 					"     │   ├─ tableId: 2\n" +
@@ -863,7 +863,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					" │       └─ t4.x:2!null\n" +
 					" ├─ IndexedTableAccess(t3)\n" +
 					" │   ├─ index: [t3.i,t3.j]\n" +
-					" │   ├─ static: [{(NULL, ∞), (NULL, ∞)}]\n" +
+					" │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
 					" │   ├─ colSet: (1,2)\n" +
 					" │   ├─ tableId: 1\n" +
 					" │   └─ Table\n" +

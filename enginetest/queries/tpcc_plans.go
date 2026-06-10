@@ -602,7 +602,7 @@ SELECT count(c_id) namecnt FROM customer2 WHERE c_w_id = 1 AND c_d_id= 1 AND c_l
 			" └─ Sort(orders2.o_id:0!null DESC nullsFirst)\n" +
 			"     └─ IndexedTableAccess(orders2)\n" +
 			"         ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_c_id,orders2.o_id]\n" +
-			"         ├─ static: [{[1, 1], [1, 1], [355, 355], (NULL, ∞)}]\n" +
+			"         ├─ static: [{[1, 1], [1, 1], [355, 355], [NULL, ∞)}]\n" +
 			"         ├─ colSet: (1-8)\n" +
 			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
@@ -614,7 +614,7 @@ SELECT count(c_id) namecnt FROM customer2 WHERE c_w_id = 1 AND c_d_id= 1 AND c_l
 			" └─ Sort(orders2.o_id DESC)\n" +
 			"     └─ IndexedTableAccess(orders2)\n" +
 			"         ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_c_id,orders2.o_id]\n" +
-			"         ├─ filters: [{[1, 1], [1, 1], [355, 355], (NULL, ∞)}]\n" +
+			"         ├─ filters: [{[1, 1], [1, 1], [355, 355], [NULL, ∞)}]\n" +
 			"         └─ columns: [o_id o_d_id o_w_id o_c_id o_entry_d o_carrier_id]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
@@ -622,7 +622,7 @@ SELECT count(c_id) namecnt FROM customer2 WHERE c_w_id = 1 AND c_d_id= 1 AND c_l
 			" └─ Sort(orders2.o_id DESC)\n" +
 			"     └─ IndexedTableAccess(orders2)\n" +
 			"         ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_c_id,orders2.o_id]\n" +
-			"         ├─ filters: [{[1, 1], [1, 1], [355, 355], (NULL, ∞)}]\n" +
+			"         ├─ filters: [{[1, 1], [1, 1], [355, 355], [NULL, ∞)}]\n" +
 			"         └─ columns: [o_id o_d_id o_w_id o_c_id o_entry_d o_carrier_id]\n" +
 			"",
 	},
@@ -632,7 +632,7 @@ SELECT count(c_id) namecnt FROM customer2 WHERE c_w_id = 1 AND c_d_id= 1 AND c_l
 			" ├─ columns: [order_line2.ol_i_id:3, order_line2.ol_supply_w_id:4, order_line2.ol_quantity:6, order_line2.ol_amount:7, order_line2.ol_delivery_d:5]\n" +
 			" └─ IndexedTableAccess(order_line2)\n" +
 			"     ├─ index: [order_line2.ol_w_id,order_line2.ol_d_id,order_line2.ol_o_id,order_line2.ol_number]\n" +
-			"     ├─ static: [{[1, 1], [1, 1], [1, 1], (NULL, ∞)}]\n" +
+			"     ├─ static: [{[1, 1], [1, 1], [1, 1], [NULL, ∞)}]\n" +
 			"     ├─ colSet: (1-10)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
@@ -643,14 +643,14 @@ SELECT count(c_id) namecnt FROM customer2 WHERE c_w_id = 1 AND c_d_id= 1 AND c_l
 			" ├─ columns: [order_line2.ol_i_id, order_line2.ol_supply_w_id, order_line2.ol_quantity, order_line2.ol_amount, order_line2.ol_delivery_d]\n" +
 			" └─ IndexedTableAccess(order_line2)\n" +
 			"     ├─ index: [order_line2.ol_w_id,order_line2.ol_d_id,order_line2.ol_o_id,order_line2.ol_number]\n" +
-			"     ├─ filters: [{[1, 1], [1, 1], [1, 1], (NULL, ∞)}]\n" +
+			"     ├─ filters: [{[1, 1], [1, 1], [1, 1], [NULL, ∞)}]\n" +
 			"     └─ columns: [ol_o_id ol_d_id ol_w_id ol_i_id ol_supply_w_id ol_delivery_d ol_quantity ol_amount]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [order_line2.ol_i_id, order_line2.ol_supply_w_id, order_line2.ol_quantity, order_line2.ol_amount, order_line2.ol_delivery_d]\n" +
 			" └─ IndexedTableAccess(order_line2)\n" +
 			"     ├─ index: [order_line2.ol_w_id,order_line2.ol_d_id,order_line2.ol_o_id,order_line2.ol_number]\n" +
-			"     ├─ filters: [{[1, 1], [1, 1], [1, 1], (NULL, ∞)}]\n" +
+			"     ├─ filters: [{[1, 1], [1, 1], [1, 1], [NULL, ∞)}]\n" +
 			"     └─ columns: [ol_o_id ol_d_id ol_w_id ol_i_id ol_supply_w_id ol_delivery_d ol_quantity ol_amount]\n" +
 			"",
 	},
@@ -694,7 +694,7 @@ SELECT d_next_o_id FROM district2 WHERE d_id = 5 AND d_w_id= 1`,
 			"     └─ LookupJoin\n" +
 			"         ├─ IndexedTableAccess(order_line2)\n" +
 			"         │   ├─ index: [order_line2.ol_w_id,order_line2.ol_d_id,order_line2.ol_o_id,order_line2.ol_number]\n" +
-			"         │   ├─ static: [{[1, 1], [5, 5], [2983, 3003), (NULL, ∞)}]\n" +
+			"         │   ├─ static: [{[1, 1], [5, 5], [2983, 3003), [NULL, ∞)}]\n" +
 			"         │   ├─ colSet: (1-10)\n" +
 			"         │   ├─ tableId: 1\n" +
 			"         │   └─ Table\n" +
@@ -725,7 +725,7 @@ SELECT d_next_o_id FROM district2 WHERE d_id = 5 AND d_w_id= 1`,
 			"     └─ LookupJoin (estimated cost=130201.500 rows=39455)\n" +
 			"         ├─ IndexedTableAccess(order_line2)\n" +
 			"         │   ├─ index: [order_line2.ol_w_id,order_line2.ol_d_id,order_line2.ol_o_id,order_line2.ol_number]\n" +
-			"         │   ├─ filters: [{[1, 1], [5, 5], [2983, 3003), (NULL, ∞)}]\n" +
+			"         │   ├─ filters: [{[1, 1], [5, 5], [2983, 3003), [NULL, ∞)}]\n" +
 			"         │   └─ columns: [ol_o_id ol_d_id ol_w_id ol_i_id]\n" +
 			"         └─ Filter\n" +
 			"             ├─ ((stock2.s_w_id = 1) AND (stock2.s_quantity < 18))\n" +
@@ -742,7 +742,7 @@ SELECT d_next_o_id FROM district2 WHERE d_id = 5 AND d_w_id= 1`,
 			"     └─ LookupJoin (estimated cost=130201.500 rows=39455) (actual rows=0 loops=1)\n" +
 			"         ├─ IndexedTableAccess(order_line2)\n" +
 			"         │   ├─ index: [order_line2.ol_w_id,order_line2.ol_d_id,order_line2.ol_o_id,order_line2.ol_number]\n" +
-			"         │   ├─ filters: [{[1, 1], [5, 5], [2983, 3003), (NULL, ∞)}]\n" +
+			"         │   ├─ filters: [{[1, 1], [5, 5], [2983, 3003), [NULL, ∞)}]\n" +
 			"         │   └─ columns: [ol_o_id ol_d_id ol_w_id ol_i_id]\n" +
 			"         └─ Filter\n" +
 			"             ├─ ((stock2.s_w_id = 1) AND (stock2.s_quantity < 18))\n" +
@@ -777,7 +777,7 @@ WHERE
 			"     │               ├─ group: \n" +
 			"     │               └─ IndexedTableAccess(orders2)\n" +
 			"     │                   ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_c_id,orders2.o_id]\n" +
-			"     │                   ├─ static: [{[1, 1], [3, 3], [20001, 20001], (NULL, ∞)}]\n" +
+			"     │                   ├─ static: [{[1, 1], [3, 3], [20001, 20001], [NULL, ∞)}]\n" +
 			"     │                   ├─ colSet: (9-16)\n" +
 			"     │                   ├─ tableId: 2\n" +
 			"     │                   └─ Table\n" +
@@ -785,7 +785,7 @@ WHERE
 			"     │                       └─ columns: [o_id o_d_id o_w_id o_c_id]\n" +
 			"     └─ IndexedTableAccess(orders2)\n" +
 			"         ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_c_id,orders2.o_id]\n" +
-			"         ├─ static: [{[1, 1], [3, 3], [20001, 20001], (NULL, ∞)}]\n" +
+			"         ├─ static: [{[1, 1], [3, 3], [20001, 20001], [NULL, ∞)}]\n" +
 			"         ├─ colSet: (1-8)\n" +
 			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
@@ -798,7 +798,7 @@ WHERE
 			"     ├─ (orders2.o_id = Subquery(select MAX(o_id) from orders2 where o_w_id = 1 and o_d_id = 3 and o_c_id = 20001))\n" +
 			"     └─ IndexedTableAccess(orders2)\n" +
 			"         ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_c_id,orders2.o_id]\n" +
-			"         └─ filters: [{[1, 1], [3, 3], [20001, 20001], (NULL, ∞)}]\n" +
+			"         └─ filters: [{[1, 1], [3, 3], [20001, 20001], [NULL, ∞)}]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [orders2.o_id, orders2.o_entry_d, coalesce(orders2.o_carrier_id,0) as COALESCE(o_carrier_id,0)]\n" +
@@ -806,7 +806,7 @@ WHERE
 			"     ├─ (orders2.o_id = Subquery(select MAX(o_id) from orders2 where o_w_id = 1 and o_d_id = 3 and o_c_id = 20001))\n" +
 			"     └─ IndexedTableAccess(orders2)\n" +
 			"         ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_c_id,orders2.o_id]\n" +
-			"         └─ filters: [{[1, 1], [3, 3], [20001, 20001], (NULL, ∞)}]\n" +
+			"         └─ filters: [{[1, 1], [3, 3], [20001, 20001], [NULL, ∞)}]\n" +
 			"",
 	},
 	{
@@ -850,7 +850,7 @@ from
 			"         │                   ├─ group: orders2.o_c_id:3, orders2.o_d_id:1!null, orders2.o_w_id:2!null\n" +
 			"         │                   └─ IndexedTableAccess(orders2)\n" +
 			"         │                       ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_id]\n" +
-			"         │                       ├─ static: [{[1, 1], (NULL, ∞), (2100, 11153)}]\n" +
+			"         │                       ├─ static: [{[1, 1], [NULL, ∞), (2100, 11153)}]\n" +
 			"         │                       ├─ colSet: (9-16)\n" +
 			"         │                       ├─ tableId: 2\n" +
 			"         │                       └─ Table\n" +
@@ -886,7 +886,7 @@ from
 			"         │                   ├─ group: orders2.o_c_id, orders2.o_d_id, orders2.o_w_id\n" +
 			"         │                   └─ IndexedTableAccess(orders2)\n" +
 			"         │                       ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_id]\n" +
-			"         │                       └─ filters: [{[1, 1], (NULL, ∞), (2100, 11153)}]\n" +
+			"         │                       └─ filters: [{[1, 1], [NULL, ∞), (2100, 11153)}]\n" +
 			"         └─ TableAlias(o)\n" +
 			"             └─ IndexedTableAccess(orders2)\n" +
 			"                 ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_c_id,orders2.o_id]\n" +
@@ -913,7 +913,7 @@ from
 			"         │                   ├─ group: orders2.o_c_id, orders2.o_d_id, orders2.o_w_id\n" +
 			"         │                   └─ IndexedTableAccess(orders2)\n" +
 			"         │                       ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_id]\n" +
-			"         │                       └─ filters: [{[1, 1], (NULL, ∞), (2100, 11153)}]\n" +
+			"         │                       └─ filters: [{[1, 1], [NULL, ∞), (2100, 11153)}]\n" +
 			"         └─ TableAlias(o)\n" +
 			"             └─ IndexedTableAccess(orders2)\n" +
 			"                 ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_c_id,orders2.o_id]\n" +
