@@ -900,7 +900,6 @@ func newIndexScanRangeBuilder(ctx *sql.Context, idx sql.Index, include, imprecis
 
 type indexScanRangeBuilder struct {
 	idx       sql.Index
-	sch       sql.Schema
 	ctx       *sql.Context
 	idToExpr  map[indexScanId]sql.Expression
 	conjIb    *sql.MySQLIndexBuilder
