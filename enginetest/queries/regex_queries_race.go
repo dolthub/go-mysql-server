@@ -33,3 +33,5 @@ type RegexTest struct {
 }
 
 var RegexTests []RegexTest
+
+var RegexScriptTests []ScriptTest
