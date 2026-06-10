@@ -313,9 +313,8 @@ func getCostedIndexScan(
 		allRange := true
 		for _, r := range ranges[0] {
 			_, uok := r.UpperBound.(sql.AboveAll)
-			_, lok1 := r.LowerBound.(sql.BelowNull)
-			_, lok2 := r.LowerBound.(sql.AboveNull)
-			if !uok || (!lok1 && !lok2) {
+			_, lok := r.LowerBound.(sql.BelowNull)
+			if !uok || !lok {
 				allRange = false
 				break
 			}
@@ -325,12 +324,23 @@ func getCostedIndexScan(
 		}
 	}
 
-	if !idx.CanSupport(ctx, ranges.ToRanges()...) {
-		return nil, nil, nil, err
+	if idx.IsSpatial() {
+		// spatial indexes don't support disjunct ranges
+		if len(ranges) > 1 {
+			return nil, nil, nil, err
+		}
+		// spatial indexes require the ranges to have specified values
+		for _, r := range ranges[0] {
+			_, uok := r.UpperBound.(sql.AboveAll)
+			_, lok1 := r.LowerBound.(sql.BelowNull)
+			_, lok2 := r.LowerBound.(sql.AboveNull)
+			if uok || lok1 || lok2 {
+				return nil, nil, nil, err
+			}
+		}
 	}
 
-	if idx.IsSpatial() && len(ranges) > 1 {
-		// spatials don't support disjunct ranges
+	if !idx.CanSupport(ctx, ranges.ToRanges()...) {
 		return nil, nil, nil, err
 	}
 

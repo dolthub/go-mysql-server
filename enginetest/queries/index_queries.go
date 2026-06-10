@@ -3952,9 +3952,10 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 			{
 				// Indexes with content-hashed fields are not eligible for use with range scans
-				Query:           "select * from t where col2 >= 'one';",
-				ExpectedIndexes: []string{},
-				Expected:        []sql.Row{{1, "one", "one___"}, {2, "two", "two___"}},
+				Query:              "select * from t where col2 >= 'one';",
+				CheckIndexedAccess: true,
+				ExpectedIndexes:    []string{"uk1"},
+				Expected:           []sql.Row{{1, "one", "one___"}, {2, "two", "two___"}},
 			},
 			{
 				// Indexes with a content-hashed BLOB/TEXT field cannot be used in range scans
@@ -3964,9 +3965,10 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 			{
 				// Indexes with a content-hashed BLOB/TEXT field cannot be used in range scans
-				Query:           "select count(*) from t where col2 >= ' ';",
-				ExpectedIndexes: []string{},
-				Expected:        []sql.Row{{2}},
+				Query:              "select count(*) from t where col2 >= ' ';",
+				CheckIndexedAccess: true,
+				ExpectedIndexes:    []string{"uk1"},
+				Expected:           []sql.Row{{2}},
 			},
 			{
 				// Indexes with a content-hashed BLOB/TEXT field cannot be used in ordered range scans
@@ -3976,9 +3978,10 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 			{
 				// Indexes with a content-hashed BLOB/TEXT field cannot be used in ordered range scans
-				Query:           "select * from t where col2 >= ' ' order by pk;",
-				ExpectedIndexes: []string{"primary"},
-				Expected:        []sql.Row{{1, "one", "one___"}, {2, "two", "two___"}},
+				Query:              "select * from t where col2 >= ' ' order by pk;",
+				CheckIndexedAccess: true,
+				ExpectedIndexes:    []string{"uk1"},
+				Expected:           []sql.Row{{1, "one", "one___"}, {2, "two", "two___"}},
 			},
 		},
 	},
