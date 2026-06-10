@@ -352,7 +352,7 @@ type TestProvider struct {
 	tableFunctions map[string]sql.TableFunction
 }
 
-func (t TestProvider) Function(ctx *sql.Context, name string) (sql.Function, bool) {
+func (t TestProvider) Function(ctx *sql.Context, schema, name string) (sql.Function, bool) {
 	return nil, false
 }
 

@@ -189,8 +189,8 @@ func newJoinState(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode, par
 	}
 
 	span, ctx := ctx.Span(opName, trace.WithAttributes(
-		attribute.String("left", left),
-		attribute.String("right", right),
+		attribute.String("left", ctx.RedactNameForTrace(left)),
+		attribute.String("right", ctx.RedactNameForTrace(right)),
 	))
 
 	parentLen := len(parentRow)
@@ -323,12 +323,6 @@ func (i *joinIter) Next(ctx *sql.Context) (sql.Row, error) {
 			if err != nil {
 				return nil, err
 			}
-			if plan.IsEmptyIter(rowIter) {
-				if !i.foundMatch && i.joinType.IsLeftOuter() {
-					return i.makeLeftOuterNonMatchingResult(), nil
-				}
-				return nil, io.EOF
-			}
 			i.secondaryRowIter = rowIter
 		}
 
@@ -412,7 +406,7 @@ func (i *existsIter) Next(ctx *sql.Context) (sql.Row, error) {
 			if err != nil {
 				return nil, err
 			}
-			if plan.IsEmptyIter(i.secondaryRowIter) {
+			if sql.IsEmptyIter(i.secondaryRowIter) {
 				nextState = esRightIterEOF
 			} else {
 				nextState = esIncRight

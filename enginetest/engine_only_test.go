@@ -837,6 +837,9 @@ func TestRegex(t *testing.T) {
 	} {
 		enginetest.TestScript(t, harness, test)
 	}
+	for _, test := range queries.RegexScriptTests {
+		enginetest.TestScript(t, harness, test)
+	}
 	// We force garbage collection twice as we have two levels of finalizers on our regex objects, and we want to make
 	// sure that neither of them panic.
 	runtime.GC()

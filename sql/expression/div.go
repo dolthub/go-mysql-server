@@ -237,9 +237,7 @@ func (d *Div) div(ctx *sql.Context, lval, rval interface{}) (interface{}, error)
 			l = types.DecimalTruncate(l, scale)
 			r = types.DecimalTruncate(r, scale)
 
-			// give it buffer of 2 additional scale to avoid the result to be rounded
-			res := types.DecimalDivRound(l, r, scale+2)
-			res = types.DecimalTruncate(res, scale)
+			res := types.DecimalDiv(l, r, scale, true)
 			return res, nil
 		}
 	}
@@ -790,8 +788,7 @@ func intDiv(ctx *sql.Context, lval, rval interface{}) (interface{}, error) {
 
 			// intDiv operation gets the integer part of the divided value without rounding the result with 0 precision
 			// We get division result with non-zero precision and then truncate it to get integer part without it being rounded
-			divRes := types.DecimalDivRound(l, r, 2)
-			divRes = types.DecimalTruncate(divRes, 0)
+			divRes := types.DecimalDiv(l, r, 0, true)
 			// The fraction part should not be rounded, so truncate the result wih 0 precision.
 			i, err := divRes.Int64()
 			if err != nil {

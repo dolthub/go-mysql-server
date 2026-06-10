@@ -274,6 +274,16 @@ func lookupJson(j interface{}, path string) (SearchableJSON, error) {
 			// A array index out of bounds results in a SQL null
 			return nil, nil
 		}
+		if strings.Contains(err.Error(), "object is not map") {
+			// A key lookup against a non-object (e.g. descending into a
+			// scalar or array with an object key) results in a SQL null
+			return nil, nil
+		}
+		if strings.Contains(err.Error(), "object is not Slice") {
+			// An index lookup against a non-array (e.g. descending into a
+			// scalar or object with an array index) results in a SQL null
+			return nil, nil
+		}
 		return nil, err
 	}
 

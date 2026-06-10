@@ -852,8 +852,8 @@ func createIndex(
 ) {
 	span, ctx := ctx.Span("plan.createIndex",
 		trace.WithAttributes(
-			attribute.String("index", index.ID()),
-			attribute.String("table", index.Table()),
+			attribute.String("index", ctx.RedactNameForTrace(index.ID())),
+			attribute.String("table", ctx.RedactNameForTrace(index.Table())),
 			attribute.String("driver", index.Driver()),
 		),
 	)
@@ -1988,30 +1988,32 @@ func (b *BaseBuilder) executeCreateCheck(ctx *sql.Context, c *plan.CreateCheck) 
 		return err
 	}
 
-	// check existing rows in table
-	var res interface{}
-	rowIter, err := b.buildNodeExec(ctx, c.Table, nil)
-	if err != nil {
-		return err
-	}
-
-	for {
-		row, err := rowIter.Next(ctx)
-		if err == io.EOF {
-			break
-		}
-
+	// check existing rows in table, unless the constraint was created with NOT VALID
+	if !c.Check.IsNotValid {
+		var res interface{}
+		rowIter, err := b.buildNodeExec(ctx, c.Table, nil)
 		if err != nil {
 			return err
 		}
 
-		res, err = sql.EvaluateCondition(ctx, c.Check.Expr, row)
-		if err != nil {
-			return err
-		}
+		for {
+			row, err := rowIter.Next(ctx)
+			if err == io.EOF {
+				break
+			}
 
-		if sql.IsFalse(res) {
-			return sql.ErrCheckConstraintViolated.New(c.Check.Name)
+			if err != nil {
+				return err
+			}
+
+			res, err = sql.EvaluateCondition(ctx, c.Check.Expr, row)
+			if err != nil {
+				return err
+			}
+
+			if sql.IsFalse(res) {
+				return sql.ErrCheckConstraintViolated.New(c.Check.Name)
+			}
 		}
 	}
 
@@ -2075,32 +2077,19 @@ func getCheckAlterableTable(t sql.Table) (sql.CheckAlterableTable, error) {
 	}
 }
 
-// generateIndexName generates a unique index name based on the columns in the index, and any existing indexes on the table.
-func generateIndexName(ctx *sql.Context, idxAltable sql.IndexAlterableTable, idxColNames []string) (string, error) {
-	indexMap := make(map[string]struct{})
-	if indexedTable, ok := idxAltable.(sql.IndexAddressable); ok {
-		indexes, err := indexedTable.GetIndexes(ctx)
-		if err != nil {
-			return "", err
-		}
-		for _, index := range indexes {
-			indexMap[strings.ToLower(index.ID())] = struct{}{}
-		}
+// getIndexNameGenerator returns the IndexNameGenerator for the given database. It checks whether the database
+// (or its inner database when wrapped by a PrivilegedDatabase) implements sql.IndexNameGenerator, and falls
+// back to sql.MySQLIndexNameGenerator if not.
+func getIndexNameGenerator(db sql.Database) sql.IndexNameGenerator {
+	if gen, ok := db.(sql.IndexNameGenerator); ok {
+		return gen
 	}
-	// MySQL names the index by the first column in the definition
-	indexName := idxColNames[0]
-	if _, ok := indexMap[strings.ToLower(indexName)]; !ok {
-		return indexName, nil
-	}
-	// MySQL starts at 2 for generating duplicate indexes
-	for i := 2; true; i++ {
-		newIndexName := fmt.Sprintf("%s_%d", indexName, i)
-		if _, ok := indexMap[strings.ToLower(newIndexName)]; !ok {
-			return newIndexName, nil
+	if pdb, ok := db.(mysql_db.PrivilegedDatabase); ok {
+		if gen, ok := pdb.Unwrap().(sql.IndexNameGenerator); ok {
+			return gen
 		}
 	}
-	// Should never reach here
-	return indexName, nil
+	return sql.MySQLIndexNameGenerator{}
 }
 
 // getFulltextDatabase returns the fulltext.Database from the given sql.Database, or an error if it is not supported.
@@ -2164,13 +2153,6 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 		}
 
 		indexName := n.IndexName
-		if len(indexName) == 0 {
-			indexName, err = generateIndexName(ctx, idxAltTbl, n.ColumnNames())
-			if err != nil {
-				return err
-			}
-		}
-
 		// TODO: this should really be a pointer, but there are too many interfaces that expect a value
 		indexDef := sql.IndexDef{
 			Name:       indexName,
@@ -2178,6 +2160,13 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 			Constraint: n.Constraint,
 			Storage:    n.Using,
 			Comment:    n.Comment,
+			Predicate:  n.Predicate,
+		}
+		if len(indexName) == 0 {
+			indexDef.Name, err = getIndexNameGenerator(n.Db).GenerateIndexName(ctx, n.Table.Name(), indexDef, idxAltTbl)
+			if err != nil {
+				return err
+			}
 		}
 
 		if indexDef.IsFullText() {
@@ -2209,6 +2198,15 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 					}
 					break
 				}
+			}
+		}
+
+		if v, ok := n.Db.(sql.SchemaObjectNameValidator); ok {
+			nameAlreadyUsed, err := v.ValidateNewIndexName(ctx, indexDef.Name, n.IfNotExists)
+			if err != nil {
+				return err
+			} else if nameAlreadyUsed && n.IfNotExists {
+				return nil
 			}
 		}
 

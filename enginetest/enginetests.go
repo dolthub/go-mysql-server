@@ -5725,47 +5725,7 @@ func TestDatabaseCollationWire(t *testing.T, h Harness, sessionBuilder server.Se
 func TestCharsetCollationEngine(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
 	for _, script := range queries.CharsetCollationEngineTests {
-		t.Run(script.Name, func(t *testing.T) {
-			engine := mustNewEngine(t, harness)
-			defer engine.Close()
-
-			ctx := harness.NewContext()
-			ctx.SetCurrentDatabase("mydb")
-
-			for _, statement := range script.SetUpScript {
-				if sh, ok := harness.(SkippingHarness); ok {
-					if sh.SkipQueryTest(statement) {
-						t.Skip()
-					}
-				}
-				RunQueryWithContext(t, engine, harness, ctx, statement)
-			}
-
-			for _, query := range script.Queries {
-				t.Run(query.Query, func(t *testing.T) {
-					_, iter, _, err := engine.Query(ctx, query.Query)
-					if query.Error || query.ErrKind != nil {
-						if err == nil {
-							_, err := sql.RowIterToRows(ctx, iter)
-							require.Error(t, err)
-							if query.ErrKind != nil {
-								require.True(t, query.ErrKind.Is(err))
-							}
-						} else {
-							require.Error(t, err)
-							if query.ErrKind != nil {
-								require.True(t, query.ErrKind.Is(err))
-							}
-						}
-					} else {
-						require.NoError(t, err)
-						rows, err := sql.RowIterToRows(ctx, iter)
-						require.NoError(t, err)
-						require.Equal(t, query.Expected, rows)
-					}
-				})
-			}
-		})
+		TestScript(t, harness, script)
 	}
 }
 

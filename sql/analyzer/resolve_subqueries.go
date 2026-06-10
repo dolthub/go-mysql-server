@@ -378,7 +378,7 @@ func cacheSubqueryAliasesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 			ret, _ = ret.WithChildren(ctx, newChildren...)
 		}
 		if doCache {
-			ret = plan.NewCachedResults(n, a.CachedResultsManager)
+			ret = plan.NewCachedResults(n)
 		}
 		return ret, transform.NewTree, nil
 	}

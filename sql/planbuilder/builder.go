@@ -465,6 +465,12 @@ func (b *Builder) buildInjectedStatement(inScope *scope, n ast.InjectedStatement
 		b.handleErr(err)
 		return nil
 	}
+	if mdb, ok := stmt.(sql.MultiDatabaser); ok {
+		stmt, err = mdb.WithDatabaseProvider(b.cat)
+		if err != nil {
+			b.handleErr(err)
+		}
+	}
 	if sqlNode, ok := stmt.(sql.ExecSourceRel); ok {
 		outScope = inScope.push()
 		outScope.node = sqlNode

@@ -145,7 +145,7 @@ func (b *BaseBuilder) buildDropConstraint(ctx *sql.Context, n *plan.DropConstrai
 	return nil, fmt.Errorf("%T does not have an execution iterator, this is a bug", n)
 }
 
-func (b *BaseBuilder) buildCreateView(ctx *sql.Context, n *plan.CreateView, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildCreateView(ctx *sql.Context, n *plan.CreateView, _ sql.Row) (sql.RowIter, error) {
 	registry := ctx.GetViewRegistry()
 	if n.IsReplace {
 		if dropper, ok := n.Database().(sql.ViewDatabase); ok {
@@ -160,6 +160,13 @@ func (b *BaseBuilder) buildCreateView(ctx *sql.Context, n *plan.CreateView, row 
 			}
 		}
 	}
+
+	if v, ok := n.Database().(sql.SchemaObjectNameValidator); ok {
+		if err := v.ValidateNewViewName(ctx, n.Name, n.IsReplace); err != nil {
+			return nil, err
+		}
+	}
+
 	names, err := n.Database().GetTableNames(ctx)
 	if err != nil {
 		return nil, err
@@ -252,6 +259,19 @@ func (b *BaseBuilder) buildRenameTable(ctx *sql.Context, n *plan.RenameTable, ro
 	renamer, _ := n.Db.(sql.TableRenamer)
 	viewDb, _ := n.Db.(sql.ViewDatabase)
 	viewRegistry := ctx.GetViewRegistry()
+
+	db := n.Db
+	if pdb, ok := db.(mysql_db.PrivilegedDatabase); ok {
+		db = pdb.Unwrap()
+	}
+	if v, ok := db.(sql.SchemaObjectNameValidator); ok {
+		for _, newName := range n.NewNames {
+			_, err := v.ValidateNewTableName(ctx, newName, false)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
 
 	for i, oldName := range n.OldNames {
 		if tbl, exists := n.TableExists(ctx, oldName); exists {
@@ -1118,6 +1138,16 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 		maybePrivDb = privDb.Unwrap()
 	}
 
+	if v, ok := maybePrivDb.(sql.SchemaObjectNameValidator); ok {
+		nameAlreadyUsed, err := v.ValidateNewTableName(ctx, n.Name(), n.IfNotExists())
+		if err != nil {
+			return nil, err
+		} else if nameAlreadyUsed && n.IfNotExists() {
+			return rowIterWithOkResultWithZeroRowsAffected(), nil
+		}
+	}
+
+	comment, _ := n.TableOpts["comment"].(string)
 	if n.Temporary() {
 		creatable, ok := maybePrivDb.(sql.TemporaryTableCreator)
 		if !ok {
@@ -1141,7 +1171,7 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 				}
 			}
 			if pkIdxDef != nil {
-				err = creatable.CreateIndexedTable(ctx, n.Name(), n.PkSchema(), *pkIdxDef, n.Collation)
+				err = creatable.CreateIndexedTable(ctx, n.Name(), n.PkSchema(), *pkIdxDef, n.Collation, comment)
 				if sql.ErrUnsupportedIndexPrefix.Is(err) {
 					return sql.RowsToRowIter(), err
 				}
@@ -1150,17 +1180,9 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 				if !ok {
 					return sql.RowsToRowIter(), sql.ErrCreateTableNotSupported.New(n.Db.Name())
 				}
-				comment := ""
-				if n.TableOpts != nil && n.TableOpts["comment"] != nil {
-					comment = n.TableOpts["comment"].(string)
-				}
 				err = creatable.CreateTable(ctx, n.Name(), n.PkSchema(), n.Collation, comment)
 			}
 		case sql.TableCreator:
-			comment := ""
-			if n.TableOpts != nil && n.TableOpts["comment"] != nil {
-				comment = n.TableOpts["comment"].(string)
-			}
 			err = creatable.CreateTable(ctx, n.Name(), n.PkSchema(), n.Collation, comment)
 		default:
 			return sql.RowsToRowIter(), sql.ErrCreateTableNotSupported.New(n.Db.Name())
@@ -1377,7 +1399,7 @@ func createIndexesForCreateTable(ctx *sql.Context, db sql.Database, tableNode sq
 	fulltextIndexes := make(sql.IndexDefs, 0)
 	for _, idxDef := range idxes {
 		if len(idxDef.Name) == 0 {
-			idxDef.Name, err = generateIndexName(ctx, idxAltTbl, idxDef.ColumnNames())
+			idxDef.Name, err = getIndexNameGenerator(db).GenerateIndexName(ctx, tableNode.Name(), *idxDef, idxAltTbl)
 			if err != nil {
 				return err
 			}
@@ -1579,7 +1601,7 @@ func (b *BaseBuilder) buildCreateForeignKey(ctx *sql.Context, n *plan.CreateFore
 	if err != nil {
 		return nil, err
 	}
-	err = plan.ResolveForeignKey(ctx, fkTbl, refFkTbl, *n.FkDef, true, fkChecks.(int8) == 1, true)
+	err = plan.ResolveForeignKey(ctx, fkTbl, refFkTbl, *n.FkDef, true, fkChecks.(int8) == 1, !n.FkDef.IsNotValid)
 	if err != nil {
 		return nil, err
 	}

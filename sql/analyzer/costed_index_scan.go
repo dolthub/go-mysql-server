@@ -242,6 +242,22 @@ func getCostedIndexScan(
 	}
 
 	for _, idx := range indexes {
+		// only use the index if the query filters include the index predicate
+		if pi, ok := idx.(sql.PartialIndex); ok && pi.Predicate() != "" {
+			predStr := strings.ToLower(pi.Predicate())
+			implied := false
+			for _, f := range filters {
+				fstr := strings.ToLower(f.String())
+				if fstr == predStr {
+					implied = true
+					break
+				}
+			}
+			if !implied {
+				continue
+			}
+		}
+
 		qual := sql.NewStatQualifier(dbName, schemaName, tableName, strings.ToLower(idx.ID()))
 		stat, ok := qualToStat[qual]
 		if !ok {
@@ -885,19 +901,34 @@ type indexScanRangeBuilder struct {
 
 func inValsToMySQLRangeCollHelper[N cmp.Ordered](ctx *sql.Context, vals []any, typ sql.Type, precise bool) (sql.MySQLRangeCollection, bool) {
 	keys := make([]N, 0, len(vals))
+	// Due to MySQL's conversion rules, this optimization doesn't apply when comparing numeric expressions to string columns
+	// https://github.com/dolthub/dolt/issues/10316
+	_, isStrType := typ.(types.StringType)
 	for _, val := range vals {
 		switch v := val.(type) {
 		case int, int8, int16, int32, int64,
 			uint, uint8, uint16, uint32, uint64:
+			if isStrType {
+				return nil, false
+			}
 		case float32:
+			if isStrType {
+				return nil, false
+			}
 			if precise && float32(int(v)) != v {
 				continue
 			}
 		case float64:
+			if isStrType {
+				return nil, false
+			}
 			if precise && float64(int(v)) != v {
 				continue
 			}
 		case *apd.Decimal:
+			if isStrType {
+				return nil, false
+			}
 			vInt, err := sql.DecimalRound(v, 0)
 			if err != nil {
 				return nil, false
@@ -905,6 +936,7 @@ func inValsToMySQLRangeCollHelper[N cmp.Ordered](ctx *sql.Context, vals []any, t
 			if precise && v.Cmp(vInt) != 0 {
 				continue
 			}
+		case string:
 		default:
 			return nil, false
 		}
@@ -935,7 +967,7 @@ func inValsToMySQLRangeCollHelper[N cmp.Ordered](ctx *sql.Context, vals []any, t
 	return res, true
 }
 
-// inValsToMySQLRangeColl is a fast path for in filters over numeric columns.
+// inValsToMySQLRangeColl is a fast path for in filters over columns of cmp.Ordered type.
 func inValsToMySQLRangeColl(ctx *sql.Context, vals []any, typ sql.Type) (sql.MySQLRangeCollection, bool) {
 	switch typ.Type() {
 	case sqltypes.Int8:
@@ -958,6 +990,8 @@ func inValsToMySQLRangeColl(ctx *sql.Context, vals []any, typ sql.Type) (sql.MyS
 		return inValsToMySQLRangeCollHelper[float32](ctx, vals, typ, false)
 	case sqltypes.Float64:
 		return inValsToMySQLRangeCollHelper[float64](ctx, vals, typ, false)
+	case sqltypes.Char, sqltypes.VarChar:
+		return inValsToMySQLRangeCollHelper[string](ctx, vals, typ, false)
 	default:
 		return nil, false
 	}
@@ -1657,52 +1691,154 @@ func (c *indexCoster) buildLeafFromParts(ctx *sql.Context, id indexScanId, name 
 //
 // We could do this transformation as an analyzer pass prior to index scan costing, but keeping the original
 // expressions outside of costing potentially allows other optimizations to leverage the context of IN or HASH-IN expressions.
-func (c *indexCoster) transformForIndexCosting(ctx *sql.Context, e sql.Expression) sql.Expression {
-	transformedExpr, _, _ := transform.Expr(ctx, e, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-		var left, right sql.Expression
+func (c *indexCoster) transformForIndexCosting(ctx *sql.Context, expr sql.Expression) sql.Expression {
+	transformedExpr, _, _ := transform.Expr(ctx, expr, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		var leftTuple, rightTuple expression.Tuple
 		switch e := e.(type) {
-		case *expression.InTuple:
-			left = e.Left()
-			right = e.Right()
-		case *expression.HashInTuple:
-			left = e.Left()
-			right = e.Right()
+		case expression.Comparer:
+			var ok bool
+			left, right := e.Left(), e.Right()
+			if leftTuple, ok = left.(expression.Tuple); !ok {
+				return e, transform.SameTree, nil
+			}
+			if rightTuple, ok = right.(expression.Tuple); !ok {
+				return e, transform.SameTree, nil
+			}
 		default:
 			return e, transform.SameTree, nil
 		}
-
-		leftTuple, ok := left.(expression.Tuple)
+		var newExpr sql.Expression
+		var ok bool
+		switch e := e.(type) {
+		case *expression.InTuple, *expression.HashInTuple:
+			newExpr, ok = c.transformInTupleForIndexCosting(leftTuple, rightTuple, false)
+		case *expression.Equals:
+			newExpr, ok = c.transformInTupleForIndexCosting(leftTuple, expression.NewTuple(rightTuple), false)
+		case *expression.NullSafeEquals:
+			newExpr, ok = c.transformInTupleForIndexCosting(leftTuple, expression.NewTuple(rightTuple), true)
+		case *expression.LessThan:
+			newExpr, ok = c.transformLessThanTupleForIndexCosting(leftTuple, rightTuple)
+		case *expression.LessThanOrEqual:
+			newExpr, ok = c.transformLessThanEqualTupleForIndexCosting(leftTuple, rightTuple)
+		case *expression.GreaterThan:
+			newExpr, ok = c.transformGreaterThanTupleForIndexCosting(leftTuple, rightTuple)
+		case *expression.GreaterThanOrEqual:
+			newExpr, ok = c.transformGreaterThanEqualTupleForIndexCosting(leftTuple, rightTuple)
+		default:
+			return e, transform.SameTree, nil
+		}
 		if !ok {
 			return e, transform.SameTree, nil
 		}
-
-		rightTuple, ok := right.(expression.Tuple)
-		if !ok {
-			return e, transform.SameTree, nil
-		}
-
-		var orExprs []sql.Expression
-		for _, elem := range rightTuple {
-			valTuple, ok := elem.(expression.Tuple)
-			if !ok || len(valTuple) != len(leftTuple) {
-				return e, transform.SameTree, nil
-			}
-			// Build AND of equals: col1 = v1 AND col2 = v2 AND ...
-			var andExprs []sql.Expression
-			for i, col := range leftTuple {
-				andExprs = append(andExprs, expression.NewEquals(col, valTuple[i]))
-			}
-			orExprs = append(orExprs, expression.JoinAnd(andExprs...))
-		}
-
-		// TODO: If JoinOr returned a false literal on an empty input, this would
-		// not be necessary. But that seems to break some tests.
-		if len(orExprs) == 0 {
-			return expression.NewLiteral(false, types.Boolean), transform.NewTree, nil
-		}
-		return expression.JoinOr(orExprs...), transform.NewTree, nil
+		return newExpr, transform.NewTree, nil
 	})
 	return transformedExpr
+}
+
+func (c *indexCoster) transformInTupleForIndexCosting(leftTuple, rightTuples expression.Tuple, nullSafe bool) (sql.Expression, bool) {
+	n := len(leftTuple)
+	if len(rightTuples) == 0 && n > 0 {
+		return expression.NewLiteral(false, types.Boolean), true
+	}
+	orExprs := make([]sql.Expression, len(rightTuples))
+	for i, elem := range rightTuples {
+		rightTuple, isTup := elem.(expression.Tuple)
+		if !isTup || n != len(rightTuple) {
+			return nil, false
+		}
+		// Build AND of equals: col1 = v1 AND col2 = v2 AND ...
+		andExprs := make([]sql.Expression, n)
+		for j := 0; j < n; j++ {
+			if nullSafe {
+				andExprs[j] = expression.NewNullSafeEquals(leftTuple[j], rightTuple[j])
+			} else {
+				andExprs[j] = expression.NewEquals(leftTuple[j], rightTuple[j])
+			}
+		}
+		orExprs[i] = expression.JoinAnd(andExprs...)
+	}
+
+	return expression.JoinOr(orExprs...), true
+}
+
+func (c *indexCoster) transformLessThanTupleForIndexCosting(leftTuple, rightTuple expression.Tuple) (sql.Expression, bool) {
+	if len(leftTuple) != len(rightTuple) {
+		return nil, false
+	}
+	n := len(leftTuple)
+	orExprs := make([]sql.Expression, n)
+	for i := 0; i < n; i++ {
+		andExprs := make([]sql.Expression, n-i)
+		for j := 0; j < n-i-1; j++ {
+			andExprs[j] = expression.NewEquals(leftTuple[j], rightTuple[j])
+		}
+		andExprs[n-i-1] = expression.NewLessThan(leftTuple[n-i-1], rightTuple[n-i-1])
+		orExprs[i] = expression.JoinAnd(andExprs...)
+	}
+	return expression.JoinOr(orExprs...), true
+}
+
+func (c *indexCoster) transformGreaterThanTupleForIndexCosting(leftTuple, rightTuple expression.Tuple) (sql.Expression, bool) {
+	if len(leftTuple) != len(rightTuple) {
+		return nil, false
+	}
+	n := len(leftTuple)
+	orExprs := make([]sql.Expression, n)
+	for i := 0; i < n; i++ {
+		andExprs := make([]sql.Expression, n-i)
+		for j := 0; j < n-i-1; j++ {
+			andExprs[j] = expression.NewEquals(leftTuple[j], rightTuple[j])
+		}
+		andExprs[n-i-1] = expression.NewGreaterThan(leftTuple[n-i-1], rightTuple[n-i-1])
+		orExprs[i] = expression.JoinAnd(andExprs...)
+	}
+	return expression.JoinOr(orExprs...), true
+}
+
+func (c *indexCoster) transformLessThanEqualTupleForIndexCosting(leftTuple, rightTuple expression.Tuple) (sql.Expression, bool) {
+	if len(leftTuple) != len(rightTuple) {
+		return nil, false
+	}
+	n := len(leftTuple)
+	orExprs := make([]sql.Expression, n)
+	andExprs := make([]sql.Expression, n)
+	for i := 0; i < n-1; i++ {
+		andExprs[i] = expression.NewEquals(leftTuple[i], rightTuple[i])
+	}
+	andExprs[n-1] = expression.NewLessThanOrEqual(leftTuple[n-1], rightTuple[n-1])
+	orExprs[0] = expression.JoinAnd(andExprs...)
+	for i := 1; i < n; i++ {
+		andExprs = make([]sql.Expression, n-i)
+		for j := 0; j < n-i-1; j++ {
+			andExprs[j] = expression.NewEquals(leftTuple[j], rightTuple[j])
+		}
+		andExprs[n-i-1] = expression.NewLessThan(leftTuple[n-i-1], rightTuple[n-i-1])
+		orExprs[i] = expression.JoinAnd(andExprs...)
+	}
+	return expression.JoinOr(orExprs...), true
+}
+
+func (c *indexCoster) transformGreaterThanEqualTupleForIndexCosting(leftTuple, rightTuple expression.Tuple) (sql.Expression, bool) {
+	if len(leftTuple) != len(rightTuple) {
+		return nil, false
+	}
+	n := len(leftTuple)
+	orExprs := make([]sql.Expression, n)
+	andExprs := make([]sql.Expression, n)
+	for i := 0; i < n-1; i++ {
+		andExprs[i] = expression.NewEquals(leftTuple[i], rightTuple[i])
+	}
+	andExprs[n-1] = expression.NewGreaterThanOrEqual(leftTuple[n-1], rightTuple[n-1])
+	orExprs[0] = expression.JoinAnd(andExprs...)
+	for i := 1; i < n; i++ {
+		andExprs = make([]sql.Expression, n-i)
+		for j := 0; j < n-i-1; j++ {
+			andExprs[j] = expression.NewEquals(leftTuple[j], rightTuple[j])
+		}
+		andExprs[n-i-1] = expression.NewGreaterThan(leftTuple[n-i-1], rightTuple[n-i-1])
+		orExprs[i] = expression.JoinAnd(andExprs...)
+	}
+	return expression.JoinOr(orExprs...), true
 }
 
 // buildLeaf tries to convert an expression into the intermediate

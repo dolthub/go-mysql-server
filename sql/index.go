@@ -25,6 +25,8 @@ type IndexDef struct {
 	Columns    []IndexColumn
 	Constraint IndexConstraint
 	Storage    IndexUsing
+	// Predicate is the WHERE clause expression for partial indexes. May be nil.
+	Predicate Expression
 }
 
 func (i *IndexDef) String() string {
@@ -61,6 +63,57 @@ func (i *IndexDef) ColumnNames() []string {
 }
 
 type IndexDefs []*IndexDef
+
+// IndexNameGenerator is an optional interface that a Database can implement to customize how unnamed indexes
+// are named. When GMS needs to generate a name for an index that has no explicit name, it checks whether the
+// current database implements this interface and delegates to it. Implementations are responsible for both
+// choosing the base name and ensuring it does not collide with existing names, querying whatever scope is
+// appropriate (e.g. table-level for MySQL, schema-level for PostgreSQL).
+// If the database does not implement this interface, GMS falls back to MySQL-compatible naming.
+type IndexNameGenerator interface {
+	// GenerateIndexName returns a unique name for the given unnamed index. tableName is the target table,
+	// idxDef describes the index being created (columns, constraint type, etc.), and tbl is the table itself
+	// for implementations that need to inspect existing indexes (e.g. via a type assertion to IndexAddressable).
+	// Implementations that perform their own collision detection (e.g. via a schema-level catalog query) may ignore tbl.
+	GenerateIndexName(ctx *Context, tableName string, idxDef IndexDef, tbl Table) (string, error)
+}
+
+// MySQLIndexNameGenerator is the default IndexNameGenerator, implementing MySQL-compatible naming:
+// the first column name is the base, with _2, _3, … appended on collision.
+type MySQLIndexNameGenerator struct{}
+
+var _ IndexNameGenerator = MySQLIndexNameGenerator{}
+
+// GenerateIndexName implements the IndexNameGenerator interface.
+func (MySQLIndexNameGenerator) GenerateIndexName(ctx *Context, _ string, idxDef IndexDef, tbl Table) (string, error) {
+	return GenerateMySqlIndexName(ctx, idxDef, tbl)
+}
+
+// GenerateMySqlIndexName implements MySQL-compatible index auto-naming: the first column name is used as the
+// base, with _2, _3, … appended on collision against existing indexes on the table. Databases that follow
+// MySQL naming conventions can call this from their GenerateIndexName implementation.
+func GenerateMySqlIndexName(ctx *Context, idxDef IndexDef, tbl Table) (string, error) {
+	indexMap := make(map[string]struct{})
+	if indexedTable, ok := tbl.(IndexAddressable); ok {
+		indexes, err := indexedTable.GetIndexes(ctx)
+		if err != nil {
+			return "", err
+		}
+		for _, index := range indexes {
+			indexMap[strings.ToLower(index.ID())] = struct{}{}
+		}
+	}
+	base := idxDef.ColumnNames()[0]
+	if _, ok := indexMap[strings.ToLower(base)]; !ok {
+		return base, nil
+	}
+	for i := 2; ; i++ {
+		candidate := fmt.Sprintf("%s_%d", base, i)
+		if _, ok := indexMap[strings.ToLower(candidate)]; !ok {
+			return candidate, nil
+		}
+	}
+}
 
 // IndexColumn is the column by which to add to an index.
 type IndexColumn struct {
@@ -244,6 +297,13 @@ func (il IndexLookup) DebugString(ctx *Context) string {
 	_ = pr.WriteNode("IndexLookup")
 	pr.WriteChildren(fmt.Sprintf("index: %s", il.Index), fmt.Sprintf("ranges: %s", il.Ranges.DebugString(ctx)))
 	return pr.String()
+}
+
+// PartialIndex is an extension of |Index| for partial indexes, which only cover rows matching a WHERE predicate.
+type PartialIndex interface {
+	Index
+	// Predicate returns the WHERE clause expression string for this partial index.
+	Predicate() string
 }
 
 // FilteredIndex is an extension of |Index| that allows an index to declare certain filter predicates handled,

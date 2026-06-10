@@ -24,6 +24,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
+// TODO: organize all these build functions into their own appropriately named files (see TODO in other_iters.go)
+
 func (b *BaseBuilder) buildConcat(ctx *sql.Context, n *plan.Concat, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.Concat")
 	li, err := b.buildNodeExec(ctx, n.Left(), row)
@@ -107,30 +109,6 @@ func (b *BaseBuilder) buildDeclareCursor(ctx *sql.Context, n *plan.DeclareCursor
 
 func (b *BaseBuilder) buildTransformedNamedNode(ctx *sql.Context, n *plan.TransformedNamedNode, row sql.Row) (sql.RowIter, error) {
 	return b.buildNodeExec(ctx, n.Child, row)
-}
-
-func (b *BaseBuilder) buildCachedResults(ctx *sql.Context, n *plan.CachedResults, row sql.Row) (sql.RowIter, error) {
-	n.Mutex.Lock()
-	defer n.Mutex.Unlock()
-
-	if n.Disposed {
-		return nil, fmt.Errorf("%w: %T", plan.ErrRowIterDisposed, n)
-	}
-
-	if rows := n.GetCachedResults(); rows != nil {
-		return sql.RowsToRowIter(rows...), nil
-	} else if n.NoCache {
-		return b.buildNodeExec(ctx, n.Child, row)
-	} else if n.Finalized {
-		return plan.EmptyIter, nil
-	}
-
-	ci, err := b.buildNodeExec(ctx, n.Child, row)
-	if err != nil {
-		return nil, err
-	}
-	cache, dispose := ctx.Memory.NewRowsCache(ctx)
-	return &cachedResultsIter{n, ci, cache, dispose}, nil
 }
 
 func (b *BaseBuilder) buildBlock(ctx *sql.Context, n *plan.Block, row sql.Row) (sql.RowIter, error) {

@@ -18,7 +18,7 @@ func (t MapCatalog) WithTableFunctions(fns ...TableFunction) (TableFunctionProvi
 	panic("implement me")
 }
 
-func (t MapCatalog) Function(ctx *Context, name string) (Function, bool) {
+func (t MapCatalog) Function(ctx *Context, schema, name string) (Function, bool) {
 	if f, ok := t.Funcs[name]; ok {
 		return f, true
 	}

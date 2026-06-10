@@ -15,6 +15,7 @@
 package planbuilder
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -69,7 +70,7 @@ func (b *Builder) resolveDbForTable(table ast.TableName) (sql.Database, bool) {
 	if schema != "" {
 		scd, ok := database.(sql.SchemaDatabase)
 		if !ok {
-			b.handleErr(fmt.Errorf("database %T does not support schemas", database))
+			b.handleErr(sql.ErrDatabaseSchemasNotSupported.New(database))
 		}
 		database, ok, err = scd.GetSchema(b.ctx, schema)
 		if err != nil {
@@ -101,6 +102,7 @@ func (b *Builder) buildAlterTable(inScope *scope, query string, c *ast.AlterTabl
 	}
 	statements := make([]sql.Node, 0, len(c.Statements))
 	for i := 0; i < len(c.Statements); i++ {
+		inScope.schemaName = c.Table.SchemaQualifier.String()
 		scopes := b.buildAlterTableClause(inScope, c.Statements[i])
 		for _, scope := range scopes {
 			statements = append(statements, scope.node)
@@ -585,14 +587,30 @@ func (b *Builder) buildAlterTableClause(inScope *scope, ddl *ast.DDL) []*scope {
 	if ddl.Action == ast.RenameStr {
 		outScopes = append(outScopes, b.buildRenameTable(inScope, ddl))
 	} else {
-		var ok bool
-		tableScope, ok := b.buildResolvedTableForTablename(inScope, ddl.Table, nil)
+		// PostgreSQL-style DROP INDEX idx_name omits the table name. Search all tables in the current
+		// database to find which one owns the index, then use that name when resolving below.
+		tableName := ddl.Table
+		if tableName.Name.IsEmpty() && ddl.IndexSpec != nil && strings.ToLower(ddl.IndexSpec.Action) == ast.DropStr {
+			found, err := b.findTableForIndex(ddl.IndexSpec.ToName.String())
+			if err != nil {
+				b.handleErr(err)
+			}
+			if found == "" {
+				if ddl.IfExists {
+					return nil
+				}
+				b.handleErr(plan.ErrIndexNotFound.New(ddl.IndexSpec.ToName.String(), "", b.currentDb().Name()))
+			}
+			tableName = ast.TableName{Name: ast.NewTableIdent(found)}
+		}
+
+		tableScope, ok := b.buildResolvedTableForTablename(inScope, tableName, nil)
 		if !ok {
 			if ddl.IfExists {
 				return nil
 			}
-			tblName := ddl.Table.Name.String()
-			if sch := ddl.Table.SchemaQualifier.String(); sch != "" {
+			tblName := tableName.String()
+			if sch := tableName.SchemaQualifier.String(); sch != "" {
 				tblName = fmt.Sprintf("%s.%s", sch, tblName)
 			}
 			b.handleErr(sql.ErrTableNotFound.New(tblName))
@@ -625,6 +643,7 @@ func (b *Builder) buildAlterTableClause(inScope *scope, ddl *ast.DDL) []*scope {
 						sql.IndexConstraint_Unique,
 						[]sql.IndexColumn{{Name: column.Name.String()}},
 						"",
+						nil,
 					)
 
 					createIndexScope := inScope.push()
@@ -820,6 +839,7 @@ func (b *Builder) buildConstraintsDefs(inScope *scope, tname ast.TableName, spec
 // Database and Table are not set. Call bindForeignKey to fill them in.
 func (b *Builder) fkConstraintFromDef(fkDef *ast.ForeignKeyDefinition, name string, columns []string) *sql.ForeignKeyConstraint {
 	parentCols := make([]string, len(fkDef.ReferencedColumns))
+	// TODO: if ReferencedColumns is empty, load all columns from parent table
 	for i, col := range fkDef.ReferencedColumns {
 		parentCols[i] = col.String()
 	}
@@ -837,6 +857,8 @@ func (b *Builder) fkConstraintFromDef(fkDef *ast.ForeignKeyDefinition, name stri
 		OnUpdate:       b.buildReferentialAction(fkDef.OnUpdate),
 		OnDelete:       b.buildReferentialAction(fkDef.OnDelete),
 		IsResolved:     false,
+		IsNotValid:     fkDef.NotValid,
+		MatchType:      sql.ForeignKeyMatchType(fkDef.MatchType),
 	}
 }
 
@@ -954,9 +976,10 @@ func (b *Builder) convertConstraintDefinition(inScope *scope, cd *ast.Constraint
 		}
 
 		return &sql.CheckConstraint{
-			Name:     cd.Name,
-			Expr:     c,
-			Enforced: chConstraint.Enforced,
+			Name:       cd.Name,
+			Expr:       c,
+			Enforced:   chConstraint.Enforced,
+			IsNotValid: chConstraint.NotValid,
 		}
 	} else if len(cd.Name) > 0 && cd.Details == nil {
 		return namedConstraint{cd.Name}
@@ -964,6 +987,31 @@ func (b *Builder) convertConstraintDefinition(inScope *scope, cd *ast.Constraint
 	err := sql.ErrUnknownConstraintDefinition.New(cd.Name, cd)
 	b.handleErr(err)
 	return nil
+}
+
+// findTableForIndex searches all tables in the current database for one that owns an index with the
+// given name (case-insensitive). Returns the table name, or an empty string if not found.
+func (b *Builder) findTableForIndex(indexName string) (string, error) {
+	indexName = strings.ToLower(indexName)
+	var found string
+	err := sql.DBTableIter(b.ctx, b.currentDb(), func(tbl sql.Table) (bool, error) {
+		idxTbl, isIdxTbl := tbl.(sql.IndexAddressable)
+		if !isIdxTbl {
+			return true, nil
+		}
+		idxs, err := idxTbl.GetIndexes(b.ctx)
+		if err != nil {
+			return false, err
+		}
+		for _, idx := range idxs {
+			if strings.ToLower(idx.ID()) == indexName {
+				found = tbl.Name()
+				return false, nil
+			}
+		}
+		return true, nil
+	})
+	return found, err
 }
 
 func (b *Builder) buildReferentialAction(action ast.ReferenceAction) sql.ForeignKeyReferentialAction {
@@ -1022,6 +1070,11 @@ func (b *Builder) buildAlterIndex(inScope *scope, ddl *ast.DDL, table *plan.Reso
 			}
 		}
 
+		var predicate sql.Expression
+		if ddl.IndexSpec.Predicate != nil {
+			predicate = b.buildScalar(inScope, ddl.IndexSpec.Predicate)
+		}
+
 		if constraint == sql.IndexConstraint_Primary {
 			outScope.node = plan.NewAlterCreatePk(table.SqlDatabase, table, columns)
 			return
@@ -1042,6 +1095,7 @@ func (b *Builder) buildAlterIndex(inScope *scope, ddl *ast.DDL, table *plan.Reso
 			constraint,
 			columns,
 			comment,
+			predicate,
 		)
 		outScope.node = b.modifySchemaTarget(inScope, createIndex, table.Schema(b.ctx))
 		return
@@ -1839,15 +1893,16 @@ func (b *Builder) convertDefaultExpression(inScope *scope, defaultExpr ast.Expr,
 		}
 	} else if !isParenthesized {
 		if _, ok := resExpr.(sql.FunctionExpression); ok {
+			isLiteral = false
 			switch resExpr.(type) {
 			case *function.Now:
 				// Datetime and Timestamp columns allow now and current_timestamp to not be enclosed in parens,
 				// but they still need to be treated as function expressions
-				isLiteral = false
 			default:
-				// All other functions must *always* be enclosed in parens
-				err := sql.ErrSyntaxError.New("column default function expressions must be enclosed in parentheses")
-				b.handleErr(err)
+				// Other unparenthesized function expressions are allowed by MariaDB but rejected by MySQL.
+				// We accept them in order to match MariaDB, but we wrap the expression in parentheses
+				// so that dumps can be imported to MySQL.
+				isParenthesized = true
 			}
 		}
 	}
@@ -1970,7 +2025,7 @@ func (b *Builder) buildDBDDL(inScope *scope, c *ast.DBDDL) (outScope *scope) {
 // ExtendedTypeTag is primarily used by ParseColumnTypeString when parsing strings representing extended types
 const ExtendedTypeTag = "extended_"
 
-func ParseColumnTypeString(columnType string) (sql.Type, error) {
+func ParseColumnTypeString(ctx context.Context, columnType string) (sql.Type, error) {
 	if strings.HasPrefix(columnType, ExtendedTypeTag) {
 		columnType = columnType[len(ExtendedTypeTag):]
 		// If the pipe character "|" is present, then we ignore all information after it (including the pipe), as it
@@ -1978,7 +2033,8 @@ func ParseColumnTypeString(columnType string) (sql.Type, error) {
 		if pipeIdx := strings.Index(columnType, "|"); pipeIdx != -1 {
 			columnType = columnType[:pipeIdx]
 		}
-		c, err := types.DeserializeTypeFromString(columnType)
+		sqlCtx, _ := ctx.(*sql.Context)
+		c, err := types.DeserializeTypeFromString(sqlCtx, columnType)
 		if err != nil {
 			return nil, err
 		}

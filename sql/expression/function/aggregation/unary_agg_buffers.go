@@ -264,7 +264,7 @@ func (a *avgBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 			return apd.New(0, 0), nil
 		}
 		scale := (s.Exponent * -1) + 4
-		return types.DecimalDivRound(s, types.DecimalFromInt64(a.rows), scale), nil
+		return types.DecimalDiv(s, types.DecimalFromInt64(a.rows), scale, false), nil
 	}
 	return nil, nil
 }

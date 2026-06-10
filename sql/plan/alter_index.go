@@ -72,6 +72,8 @@ type AlterIndex struct {
 	IfNotExists bool
 	// DisableKeys determines whether to DISABLE KEYS if true or ENABLE KEYS if false
 	DisableKeys bool
+	// Predicate is the WHERE clause expression for partial indexes. May be nil.
+	Predicate sql.Expression
 }
 
 var _ sql.SchemaTarget = (*AlterIndex)(nil)
@@ -80,7 +82,7 @@ var _ sql.Node = (*AlterIndex)(nil)
 var _ sql.CollationCoercible = (*AlterIndex)(nil)
 var _ sql.Databaser = (*AlterIndex)(nil)
 
-func NewAlterCreateIndex(db sql.Database, table sql.TableNode, ifNotExists bool, indexName string, using sql.IndexUsing, constraint sql.IndexConstraint, columns []sql.IndexColumn, comment string) *AlterIndex {
+func NewAlterCreateIndex(db sql.Database, table sql.TableNode, ifNotExists bool, indexName string, using sql.IndexUsing, constraint sql.IndexConstraint, columns []sql.IndexColumn, comment string, predicate sql.Expression) *AlterIndex {
 	return &AlterIndex{
 		Action:      IndexAction_Create,
 		Db:          db,
@@ -91,6 +93,7 @@ func NewAlterCreateIndex(db sql.Database, table sql.TableNode, ifNotExists bool,
 		Constraint:  constraint,
 		Columns:     columns,
 		Comment:     comment,
+		Predicate:   predicate,
 	}
 }
 

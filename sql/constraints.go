@@ -57,6 +57,18 @@ func (f ForeignKeyReferentialAction) allowStoredGeneratedColumnReference() bool 
 	}
 }
 
+// ForeignKeyMatchType controls NULL handling semantics for composite FK columns.
+type ForeignKeyMatchType uint8
+
+const (
+	// ForeignKeyMatchType_Simple is default, any NULL in the FK columns exempts the row from the constraint check.
+	ForeignKeyMatchType_Simple ForeignKeyMatchType = iota
+	// ForeignKeyMatchType_Full enforced no NULLs.
+	ForeignKeyMatchType_Full
+	// ForeignKeyMatchType_Partial is not supported.
+	ForeignKeyMatchType_Partial
+)
+
 // ForeignKeyConstraint declares a constraint between the columns of two tables.
 type ForeignKeyConstraint struct {
 	// Name is the name of the foreign key constraint
@@ -83,6 +95,10 @@ type ForeignKeyConstraint struct {
 	ParentColumns []string
 	// IsResolved is true if the foreign key has been resolved, false otherwise
 	IsResolved bool
+	// IsNotValid is true when the constraint was created with NOT VALID, meaning existing rows were not checked
+	IsNotValid bool
+	// MatchType controls NULL handling semantics for composite FK columns
+	MatchType ForeignKeyMatchType
 }
 
 // IsSelfReferential returns whether this foreign key represents a self-referential foreign key.
@@ -115,13 +131,15 @@ type CheckDefinition struct {
 	Name            string // The name of this check. Check names in a database are unique.
 	CheckExpression string // String serialization of the check expression
 	Enforced        bool   // Whether this constraint is enforced
+	IsNotValid      bool   // Where to check existing rows
 }
 
 // CheckConstraint declares a boolean-eval constraint.
 type CheckConstraint struct {
-	Expr     Expression
-	Name     string
-	Enforced bool
+	Expr       Expression
+	Name       string
+	Enforced   bool
+	IsNotValid bool
 }
 
 // DebugString implements the DebugStringer interface.

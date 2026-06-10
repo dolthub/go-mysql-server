@@ -52,6 +52,7 @@ var _ sql.ViewDatabase = (*Database)(nil)
 var _ sql.CollatedDatabase = (*Database)(nil)
 var _ fulltext.Database = (*Database)(nil)
 var _ sql.SchemaValidator = (*BaseDatabase)(nil)
+var _ sql.IndexNameGenerator = (*BaseDatabase)(nil)
 
 // BaseDatabase is an in-memory database that can't store views, only for testing the engine
 type BaseDatabase struct {
@@ -157,6 +158,11 @@ func (d *BaseDatabase) GetTableNames(ctx *sql.Context) ([]string, error) {
 	}
 
 	return tblNames, nil
+}
+
+// GenerateIndexName implements the sql.IndexNameGenerator interface.
+func (d *BaseDatabase) GenerateIndexName(ctx *sql.Context, _ string, idxDef sql.IndexDef, tbl sql.Table) (string, error) {
+	return sql.GenerateMySqlIndexName(ctx, idxDef, tbl)
 }
 
 func (d *BaseDatabase) CreateFulltextTableNames(ctx *sql.Context, parentTableName string, parentIndexName string) (fulltext.IndexTableNames, error) {
@@ -273,7 +279,7 @@ func (d *BaseDatabase) CreateTable(ctx *sql.Context, name string, schema sql.Pri
 }
 
 // CreateIndexedTable creates a table with the given name and schema
-func (d *BaseDatabase) CreateIndexedTable(ctx *sql.Context, name string, sch sql.PrimaryKeySchema, idxDef sql.IndexDef, collation sql.CollationID) error {
+func (d *BaseDatabase) CreateIndexedTable(ctx *sql.Context, name string, sch sql.PrimaryKeySchema, idxDef sql.IndexDef, collation sql.CollationID, comment string) error {
 	d.tablesMu.RLock()
 	_, ok := d.tables[name]
 	d.tablesMu.RUnlock()
@@ -283,6 +289,7 @@ func (d *BaseDatabase) CreateIndexedTable(ctx *sql.Context, name string, sch sql
 
 	table := NewTableWithCollation(ctx, d, name, sch, d.fkColl, collation)
 	table.db = d
+	table.data.comment = comment
 
 	for _, idxCol := range idxDef.Columns {
 		idx := sch.Schema.IndexOfColName(idxCol.Name)

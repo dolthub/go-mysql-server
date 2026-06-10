@@ -17,6 +17,7 @@ package expression
 import (
 	"fmt"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/stretchr/testify/require"
 
@@ -115,6 +116,10 @@ func TestLike(t *testing.T) {
 		{`a\\\b`, "a", "", false, sql.Collation_utf8mb4_0900_ai_ci},
 		{`A%%%%`, "abc", "", true, sql.Collation_utf8mb4_0900_ai_ci},
 		{`A%%%%bc`, "abc", "", true, sql.Collation_utf8mb4_0900_ai_ci},
+		// See https://github.com/dolthub/dolt/issues/11088
+		{string(utf8.RuneError), string(utf8.RuneError), "", true, sql.Collation_utf8mb4_0900_ai_ci}, // U+FFFD, 0xEFBFBD
+		{"%", string(utf8.RuneError), "", true, sql.Collation_utf8mb4_0900_ai_ci},
+		{"_", string(utf8.RuneError), "", true, sql.Collation_utf8mb4_0900_ai_ci},
 	}
 
 	for _, tt := range testCases {

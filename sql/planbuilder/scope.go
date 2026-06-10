@@ -69,6 +69,8 @@ type scope struct {
 	windowFuncs []scopeColumn
 
 	refsSubquery bool
+
+	schemaName string
 }
 
 // resolveColumn matches a variable use to a column definition with a unique
@@ -389,8 +391,9 @@ func (s *scope) setColAlias(cols []string) {
 // into this scope.
 func (s *scope) push() *scope {
 	new := &scope{
-		b:      s.b,
-		parent: s,
+		b:          s.b,
+		parent:     s,
+		schemaName: s.schemaName,
 	}
 	if s.procActive() {
 		new.initProc()

@@ -294,7 +294,7 @@ CREATE TABLE tab1 (
 	{
 		Name: "view with numeric column name supports dotted and backtick access",
 		SetUpScript: []string{
-			`CREATE VIEW v AS SELECT 'abc', 1, 1.5, 1.5e0, NULL, TRUE, 0x41, b'1010', abs(1), 1 + 1;`,
+			"CREATE VIEW v AS SELECT 'abc', 1, 123, 1 AS `2b`, 1.5, 1.5e0, NULL, TRUE, 0x41, b'1010', abs(1), 1 + 1;",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -306,12 +306,27 @@ CREATE TABLE tab1 (
 				Expected: []sql.Row{{"abc"}},
 			},
 			{
-				Skip:     true, // TODO(elianddb): https://github.com/dolthub/dolt/issues/10757 unquoted dotted access for digit-leading column names is not supported by the Vitess parser.
 				Query:    "SELECT v.1 FROM v;",
 				Expected: []sql.Row{{1}},
 			},
 			{
 				Query:    "SELECT v.`1` FROM v;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT v.123 FROM v;",
+				Expected: []sql.Row{{123}},
+			},
+			{
+				Query:    "SELECT v.`123` FROM v;",
+				Expected: []sql.Row{{123}},
+			},
+			{
+				Query:    "SELECT v.2b FROM v;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT v.`2b` FROM v;",
 				Expected: []sql.Row{{1}},
 			},
 			{
@@ -339,7 +354,6 @@ CREATE TABLE tab1 (
 				Expected: []sql.Row{{true}},
 			},
 			{
-				Skip:     true, // TODO(elianddb): https://github.com/dolthub/dolt/issues/10757 unquoted dotted access for hex-prefixed column names is not supported by the Vitess parser.
 				Query:    "SELECT v.0x41 FROM v;",
 				Expected: []sql.Row{{[]byte{0x41}}},
 			},
@@ -362,6 +376,30 @@ CREATE TABLE tab1 (
 			{
 				Query:    "SELECT v.`1 + 1` FROM v;",
 				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "SELECT mydb.v.1 FROM v;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT mydb.v.`1` FROM v;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT mydb.v.123 FROM v;",
+				Expected: []sql.Row{{123}},
+			},
+			{
+				Query:    "SELECT mydb.v.2b FROM v;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT mydb.v.0x41 FROM v;",
+				Expected: []sql.Row{{[]byte{0x41}}},
+			},
+			{
+				Query:       "SELECT v.-1 FROM v;",
+				ExpectedErr: sql.ErrSyntaxError,
 			},
 		},
 	},
