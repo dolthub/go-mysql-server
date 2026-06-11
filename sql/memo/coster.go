@@ -27,16 +27,16 @@ import (
 const (
 	// reference https://github.com/postgres/postgres/blob/master/src/include/optimizer/cost.h
 	cpuCostFactor             = 0.01
-	seqIOCostFactor           = 1
+	seqIOCostFactor           = 1.0
 	randIOCostFactor          = 1.3
-	memCostFactor             = 2
+	memCostFactor             = 2.0
 	concatCostFactor          = 0.75
 	degeneratePenalty         = 2.0
 	optimisticJoinSel         = .10
 	biasFactor                = 1e5
 	defaultFilterSelectivity  = .85
 	perKeyCostReductionFactor = 0.5
-	defaultTableSize          = 100
+	defaultTableSize          = 100.0
 )
 
 func NewDefaultCoster() Coster {
