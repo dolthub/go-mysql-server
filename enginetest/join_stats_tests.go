@@ -74,12 +74,12 @@ var JoinStatTests = []struct {
 			{
 				// a is smaller
 				q:     "select /*+ LEFT_DEEP */ count(*) from `u-15` a join `u+15` b on a.b = b.b",
-				order: [][]string{{"b", "a"}},
+				order: [][]string{{"a", "b"}},
 			},
 			{
 				// b with filter is smaller
 				q:     "select /*+ LEFT_DEEP */ count(*) from `u-15` a join `u+15` b on a.b = b.b where b.b < 15",
-				order: [][]string{{"b", "a"}},
+				order: [][]string{{"a", "b"}},
 			},
 		},
 	},

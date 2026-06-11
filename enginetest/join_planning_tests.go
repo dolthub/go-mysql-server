@@ -2101,7 +2101,8 @@ func evalJoinOrder(t *testing.T, harness Harness, e QueryEngine, q string, exp [
 				return
 			}
 		}
-		assert.Failf(t, "expected order %s found '%s'\ndetail:\n%s", fmt.Sprintf("%#v", exp), strings.Join(cmp, ","), sql.DebugString(ctx, a))
+		msg := fmt.Sprintf("expected order %#v found '%s'\ndetail:\n%s", exp, strings.Join(cmp, ","), sql.DebugString(ctx, a))
+		assert.Fail(t, msg)
 	})
 }
 
