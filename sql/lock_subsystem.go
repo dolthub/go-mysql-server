@@ -70,17 +70,19 @@ func (ls *LockSubsystem) createLock(name string) **ownedLock {
 	return nl
 }
 
-// Lock attempts to acquire a lock with a given name for the Id associated with the given ctx.Session within the given
-// timeout
-func (ls *LockSubsystem) Lock(ctx *Context, name string, timeout time.Duration) error {
+func (ls *LockSubsystem) getOrCreateLock(name string) **ownedLock {
 	nl := ls.getNamedLock(name)
-
 	if nl == nil {
 		nl = ls.createLock(name)
 	}
+	return nl
+}
 
+// tryLock makes a single non-blocking attempt to acquire the given resolved lock for the ID associated with the given
+// ctx.Session, retrying only on CAS contention. It returns false if the lock is owned by another session.
+func (ls *LockSubsystem) tryLock(ctx *Context, nl **ownedLock, name string) (bool, error) {
 	userId := int64(ctx.Session.ID())
-	for i, start := 0, time.Now(); i == 0 || timeout < 0 || time.Since(start) < timeout; i++ {
+	for {
 		dest := (*unsafe.Pointer)(unsafe.Pointer(nl))
 		curr := atomic.LoadPointer(dest)
 		currLock := *(*ownedLock)(curr)
@@ -88,19 +90,42 @@ func (ls *LockSubsystem) Lock(ctx *Context, name string, timeout time.Duration) 
 		if currLock.Owner == 0 {
 			newVal := &ownedLock{userId, 1}
 			if atomic.CompareAndSwapPointer(dest, curr, unsafe.Pointer(newVal)) {
-				return ctx.Session.AddLock(name)
+				return true, ctx.Session.AddLock(name)
 			}
 		} else if currLock.Owner == userId {
 			newVal := &ownedLock{userId, currLock.Count + 1}
 			if atomic.CompareAndSwapPointer(dest, curr, unsafe.Pointer(newVal)) {
-				return nil
+				return true, nil
 			}
+		} else {
+			return false, nil
+		}
+	}
+}
+
+// Lock attempts to acquire a lock with a given name for the Id associated with the given ctx.Session within the given
+// timeout
+func (ls *LockSubsystem) Lock(ctx *Context, name string, timeout time.Duration) error {
+	nl := ls.getOrCreateLock(name)
+
+	for i, start := 0, time.Now(); i == 0 || timeout < 0 || time.Since(start) < timeout; i++ {
+		acquired, err := ls.tryLock(ctx, nl, name)
+		if acquired || err != nil {
+			return err
 		}
 
 		time.Sleep(100 * time.Microsecond)
 	}
 
 	return ErrLockTimeout.New(name)
+}
+
+// TryLock attempts to acquire a lock with a given name for the Id associated with the given ctx.Session without
+// waiting. It returns true if the lock was acquired, and false if the lock is currently owned by another session.
+// Like Lock, it is reentrant; acquiring a lock that is already owned by the session increments its lock count.
+func (ls *LockSubsystem) TryLock(ctx *Context, name string) (bool, error) {
+	nl := ls.getOrCreateLock(name)
+	return ls.tryLock(ctx, nl, name)
 }
 
 // Unlock releases a lock with a given name for the ID associated with the given ctx.Session
