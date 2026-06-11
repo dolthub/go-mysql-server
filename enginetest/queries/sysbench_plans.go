@@ -81,51 +81,53 @@ var SysbenchPlanTests = []QueryPlanTest{
 	{
 		Query: `select a.id, a.small_int_col, b.id, b.int_col from sbtest1 a, sbtest2 b where a.id = b.int_col limit 500`,
 		ExpectedPlan: "Limit(500)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [a.id:2!null, a.small_int_col:3!null, b.id:0!null, b.int_col:1!null]\n" +
-			"     └─ LookupJoin\n" +
-			"         ├─ TableAlias(b)\n" +
-			"         │   └─ ProcessTable\n" +
-			"         │       └─ Table\n" +
-			"         │           ├─ name: sbtest2\n" +
-			"         │           └─ columns: [id int_col]\n" +
-			"         └─ TableAlias(a)\n" +
-			"             └─ IndexedTableAccess(sbtest1)\n" +
-			"                 ├─ index: [sbtest1.id]\n" +
-			"                 ├─ keys: [b.int_col:1!null]\n" +
-			"                 ├─ colSet: (1-24)\n" +
-			"                 ├─ tableId: 1\n" +
+			" └─ HashJoin\n" +
+			"     ├─ Eq\n" +
+			"     │   ├─ a.id:0!null\n" +
+			"     │   └─ b.int_col:3!null\n" +
+			"     ├─ TableAlias(a)\n" +
+			"     │   └─ ProcessTable\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: sbtest1\n" +
+			"     │           └─ columns: [id small_int_col]\n" +
+			"     └─ HashLookup\n" +
+			"         ├─ left-key: TUPLE(a.id:0!null)\n" +
+			"         ├─ right-key: TUPLE(b.int_col:1!null)\n" +
+			"         └─ TableAlias(b)\n" +
+			"             └─ ProcessTable\n" +
 			"                 └─ Table\n" +
-			"                     ├─ name: sbtest1\n" +
-			"                     └─ columns: [id small_int_col]\n" +
+			"                     ├─ name: sbtest2\n" +
+			"                     └─ columns: [id int_col]\n" +
 			"",
 		ExpectedEstimates: "Limit(500)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [a.id, a.small_int_col, b.id, b.int_col]\n" +
-			"     └─ LookupJoin\n" +
-			"         ├─ TableAlias(b)\n" +
-			"         │   └─ Table\n" +
-			"         │       ├─ name: sbtest2\n" +
-			"         │       └─ columns: [id int_col]\n" +
-			"         └─ TableAlias(a)\n" +
-			"             └─ IndexedTableAccess(sbtest1)\n" +
-			"                 ├─ index: [sbtest1.id]\n" +
-			"                 ├─ columns: [id small_int_col]\n" +
-			"                 └─ keys: b.int_col\n" +
+			" └─ HashJoin\n" +
+			"     ├─ (a.id = b.int_col)\n" +
+			"     ├─ TableAlias(a)\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: sbtest1\n" +
+			"     │       └─ columns: [id small_int_col]\n" +
+			"     └─ HashLookup\n" +
+			"         ├─ left-key: (a.id)\n" +
+			"         ├─ right-key: (b.int_col)\n" +
+			"         └─ TableAlias(b)\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: sbtest2\n" +
+			"                 └─ columns: [id int_col]\n" +
 			"",
 		ExpectedAnalysis: "Limit(500)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [a.id, a.small_int_col, b.id, b.int_col]\n" +
-			"     └─ LookupJoin\n" +
-			"         ├─ TableAlias(b)\n" +
-			"         │   └─ Table\n" +
-			"         │       ├─ name: sbtest2\n" +
-			"         │       └─ columns: [id int_col]\n" +
-			"         └─ TableAlias(a)\n" +
-			"             └─ IndexedTableAccess(sbtest1)\n" +
-			"                 ├─ index: [sbtest1.id]\n" +
-			"                 ├─ columns: [id small_int_col]\n" +
-			"                 └─ keys: b.int_col\n" +
+			" └─ HashJoin\n" +
+			"     ├─ (a.id = b.int_col)\n" +
+			"     ├─ TableAlias(a)\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: sbtest1\n" +
+			"     │       └─ columns: [id small_int_col]\n" +
+			"     └─ HashLookup\n" +
+			"         ├─ left-key: (a.id)\n" +
+			"         ├─ right-key: (b.int_col)\n" +
+			"         └─ TableAlias(b)\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: sbtest2\n" +
+			"                 └─ columns: [id int_col]\n" +
 			"",
 	},
 	{
