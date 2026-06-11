@@ -267,12 +267,12 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:           "SELECT pk FROM test JOIN t2 ON (C1*10) = t2c1;",
+				Query:           "SELECT /*+ LOOKUP_JOIN(test, t2) */ pk FROM test JOIN t2 ON (C1*10) = t2c1;",
 				Expected:        []sql.Row{{1}},
 				ExpectedIndexes: []string{"idx1"},
 			},
 			{
-				Query:           "SELECT pk FROM test JOIN t2 ON t2c1 = (c1*10);",
+				Query:           "SELECT /*+ LOOKUP_JOIN(test, t2) */ pk FROM test JOIN t2 ON t2c1 = (c1*10);",
 				Expected:        []sql.Row{{1}},
 				ExpectedIndexes: []string{"idx1"},
 			},

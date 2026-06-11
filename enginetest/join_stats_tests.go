@@ -74,7 +74,7 @@ var JoinStatTests = []struct {
 			{
 				// a is smaller
 				q:     "select /*+ LEFT_DEEP */ count(*) from `u-15` a join `u+15` b on a.b = b.b",
-				order: [][]string{{"a", "b"}},
+				order: [][]string{{"b", "a"}},
 			},
 			{
 				// b with filter is smaller
