@@ -101,13 +101,12 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 			return ((lBest*rBest)*seqIOCostFactor + (lBest*rBest)*cpuCostFactor) * degeneratePenalty, nil
 		case jp.Op.IsLateral():
 			return (lBest*rBest-1)*seqIOCostFactor + (lBest*rBest)*cpuCostFactor, nil
-
 		case jp.Op.IsMerge():
 			// TODO memory overhead when not injective
 			// TODO lose index scan benefits, need to read whole table
 
 			if !n.(*MergeJoin).Injective {
-				// Injective is guarenteed to never iterate over multiple rows in memory.
+				// Injective is guaranteed to never iterate over multiple rows in memory.
 				// Otherwise O(k) where k is the key with the highest number of matches.
 				// Each comparison reduces the expected number of collisions on the comparator.
 				// TODO: better cost estimate for memory overhead

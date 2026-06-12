@@ -220,7 +220,11 @@ func (i testIndex) ColumnExpressionTypes(ctx *sql.Context) []sql.ColumnExpressio
 	es := i.Expressions()
 	res := make([]sql.ColumnExpressionType, len(es))
 	for i := range es {
-		res[i] = sql.ColumnExpressionType{Expression: es[i], Type: types.Int8}
+		res[i] = sql.ColumnExpressionType{
+			Expression: es[i],
+			Type:       types.Int8,
+			Nullable:   true,
+		}
 	}
 	return res
 }

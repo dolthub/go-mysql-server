@@ -1116,10 +1116,10 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 				ExpectedIndexes: []string{"secondary"},
 			},
 			{
-				// No index
+				// Empty prefix should still use primary key
 				Query:           "SELECT pk1, pk2, pk3 FROM t WHERE (pk2, pk3) IN ((1, 20))",
 				Expected:        []sql.Row{{0, 1, 20}},
-				ExpectedIndexes: []string{},
+				ExpectedIndexes: []string{"primary"},
 			},
 			{
 				// Correct behavior around nulls

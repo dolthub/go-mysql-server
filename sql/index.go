@@ -337,6 +337,7 @@ type OrderedIndex interface {
 type ColumnExpressionType struct {
 	Type       Type
 	Expression string
+	Nullable   bool
 }
 
 // ValidatePrimaryKeyDrop validates that a primary key may be dropped. If any validation error is returned, then it

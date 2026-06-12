@@ -1131,7 +1131,7 @@ WHERE
 			"         │   └─ order_line1.ol_i_id:3\n" +
 			"         ├─ IndexedTableAccess(order_line1)\n" +
 			"         │   ├─ index: [order_line1.ol_w_id,order_line1.ol_d_id,order_line1.ol_o_id,order_line1.ol_number]\n" +
-			"         │   ├─ static: [{[5, 5], [2, 2], [2981, 3001), [NULL, ∞)}]\n" +
+			"         │   ├─ static: [{[5, 5], [2, 2], [2981, 3001), (NULL, ∞)}]\n" +
 			"         │   ├─ colSet: (1-10)\n" +
 			"         │   ├─ tableId: 1\n" +
 			"         │   └─ Table\n" +
@@ -1146,7 +1146,7 @@ WHERE
 			"                 │   └─ 15 (smallint)\n" +
 			"                 └─ IndexedTableAccess(stock1)\n" +
 			"                     ├─ index: [stock1.s_w_id,stock1.s_i_id]\n" +
-			"                     ├─ static: [{[5, 5], [NULL, ∞)}]\n" +
+			"                     ├─ static: [{[5, 5], (NULL, ∞)}]\n" +
 			"                     ├─ colSet: (11-27)\n" +
 			"                     ├─ tableId: 2\n" +
 			"                     └─ Table\n" +
@@ -1162,7 +1162,7 @@ WHERE
 			"         ├─ (stock1.s_i_id = order_line1.ol_i_id)\n" +
 			"         ├─ IndexedTableAccess(order_line1)\n" +
 			"         │   ├─ index: [order_line1.ol_w_id,order_line1.ol_d_id,order_line1.ol_o_id,order_line1.ol_number]\n" +
-			"         │   ├─ filters: [{[5, 5], [2, 2], [2981, 3001), [NULL, ∞)}]\n" +
+			"         │   ├─ filters: [{[5, 5], [2, 2], [2981, 3001), (NULL, ∞)}]\n" +
 			"         │   └─ columns: [ol_o_id ol_d_id ol_w_id ol_i_id]\n" +
 			"         └─ HashLookup\n" +
 			"             ├─ left-key: (order_line1.ol_i_id)\n" +
@@ -1171,7 +1171,7 @@ WHERE
 			"                 ├─ (stock1.s_quantity < 15)\n" +
 			"                 └─ IndexedTableAccess(stock1)\n" +
 			"                     ├─ index: [stock1.s_w_id,stock1.s_i_id]\n" +
-			"                     ├─ filters: [{[5, 5], [NULL, ∞)}]\n" +
+			"                     ├─ filters: [{[5, 5], (NULL, ∞)}]\n" +
 			"                     └─ columns: [s_i_id s_w_id s_quantity]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
@@ -1183,7 +1183,7 @@ WHERE
 			"         ├─ (stock1.s_i_id = order_line1.ol_i_id)\n" +
 			"         ├─ IndexedTableAccess(order_line1)\n" +
 			"         │   ├─ index: [order_line1.ol_w_id,order_line1.ol_d_id,order_line1.ol_o_id,order_line1.ol_number]\n" +
-			"         │   ├─ filters: [{[5, 5], [2, 2], [2981, 3001), [NULL, ∞)}]\n" +
+			"         │   ├─ filters: [{[5, 5], [2, 2], [2981, 3001), (NULL, ∞)}]\n" +
 			"         │   └─ columns: [ol_o_id ol_d_id ol_w_id ol_i_id]\n" +
 			"         └─ HashLookup\n" +
 			"             ├─ left-key: (order_line1.ol_i_id)\n" +
@@ -1192,7 +1192,7 @@ WHERE
 			"                 ├─ (stock1.s_quantity < 15)\n" +
 			"                 └─ IndexedTableAccess(stock1)\n" +
 			"                     ├─ index: [stock1.s_w_id,stock1.s_i_id]\n" +
-			"                     ├─ filters: [{[5, 5], [NULL, ∞)}]\n" +
+			"                     ├─ filters: [{[5, 5], (NULL, ∞)}]\n" +
 			"                     └─ columns: [s_i_id s_w_id s_quantity]\n" +
 			"",
 	},
@@ -3617,7 +3617,7 @@ Select * from (
 			"     ├─ tableId: 2\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i]\n" +
-			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ static: [{(NULL, ∞)}]\n" +
 			"         ├─ colSet: (1,2)\n" +
 			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
@@ -3635,7 +3635,7 @@ Select * from (
 			"     ├─ tableId: 2\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
+			"         ├─ filters: [{(NULL, ∞)}]\n" +
 			"         └─ columns: [i s]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
@@ -3649,7 +3649,7 @@ Select * from (
 			"     ├─ tableId: 2\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
+			"         ├─ filters: [{(NULL, ∞)}]\n" +
 			"         └─ columns: [i s]\n" +
 			"",
 	},
@@ -3665,7 +3665,7 @@ Select * from (
 			" └─ TableAlias(t)\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i]\n" +
-			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ static: [{(NULL, ∞)}]\n" +
 			"         ├─ colSet: (1,2)\n" +
 			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
@@ -3682,7 +3682,7 @@ Select * from (
 			" └─ TableAlias(t)\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
+			"         ├─ filters: [{(NULL, ∞)}]\n" +
 			"         └─ columns: [i s]\n" +
 			"",
 		ExpectedAnalysis: "SubqueryAlias\n" +
@@ -3695,7 +3695,7 @@ Select * from (
 			" └─ TableAlias(t)\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
+			"         ├─ filters: [{(NULL, ∞)}]\n" +
 			"         └─ columns: [i s]\n" +
 			"",
 	},
@@ -3722,7 +3722,7 @@ Select * from (
 			"             │   ├─ columns: [bus_routes.origin:0!null->dst:0]\n" +
 			"             │   └─ IndexedTableAccess(bus_routes)\n" +
 			"             │       ├─ index: [bus_routes.origin,bus_routes.dst]\n" +
-			"             │       ├─ static: [{[New York, New York], [NULL, ∞)}]\n" +
+			"             │       ├─ static: [{[New York, New York], (NULL, ∞)}]\n" +
 			"             │       ├─ colSet: (1,2)\n" +
 			"             │       ├─ tableId: 1\n" +
 			"             │       └─ Table\n" +
@@ -3755,7 +3755,7 @@ Select * from (
 			"             │   ├─ columns: [bus_routes.origin as dst]\n" +
 			"             │   └─ IndexedTableAccess(bus_routes)\n" +
 			"             │       ├─ index: [bus_routes.origin,bus_routes.dst]\n" +
-			"             │       ├─ filters: [{[New York, New York], [NULL, ∞)}]\n" +
+			"             │       ├─ filters: [{[New York, New York], (NULL, ∞)}]\n" +
 			"             │       └─ columns: [origin]\n" +
 			"             └─ Project\n" +
 			"                 ├─ columns: [bus_routes.dst]\n" +
@@ -3780,7 +3780,7 @@ Select * from (
 			"             │   ├─ columns: [bus_routes.origin as dst]\n" +
 			"             │   └─ IndexedTableAccess(bus_routes)\n" +
 			"             │       ├─ index: [bus_routes.origin,bus_routes.dst]\n" +
-			"             │       ├─ filters: [{[New York, New York], [NULL, ∞)}]\n" +
+			"             │       ├─ filters: [{[New York, New York], (NULL, ∞)}]\n" +
 			"             │       └─ columns: [origin]\n" +
 			"             └─ Project\n" +
 			"                 ├─ columns: [bus_routes.dst]\n" +
@@ -6310,7 +6310,7 @@ inner join pq on true
 		Query: `SELECT * FROM one_pk ORDER BY pk`,
 		ExpectedPlan: "IndexedTableAccess(one_pk)\n" +
 			" ├─ index: [one_pk.pk]\n" +
-			" ├─ static: [{[NULL, ∞)}]\n" +
+			" ├─ static: [{(NULL, ∞)}]\n" +
 			" ├─ colSet: (1-6)\n" +
 			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
@@ -6319,12 +6319,12 @@ inner join pq on true
 			"",
 		ExpectedEstimates: "IndexedTableAccess(one_pk)\n" +
 			" ├─ index: [one_pk.pk]\n" +
-			" ├─ filters: [{[NULL, ∞)}]\n" +
+			" ├─ filters: [{(NULL, ∞)}]\n" +
 			" └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedAnalysis: "IndexedTableAccess(one_pk)\n" +
 			" ├─ index: [one_pk.pk]\n" +
-			" ├─ filters: [{[NULL, ∞)}]\n" +
+			" ├─ filters: [{(NULL, ∞)}]\n" +
 			" └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 	},
@@ -6332,7 +6332,7 @@ inner join pq on true
 		Query: `SELECT * FROM two_pk ORDER BY pk1, pk2`,
 		ExpectedPlan: "IndexedTableAccess(two_pk)\n" +
 			" ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			" ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ static: [{(NULL, ∞), (NULL, ∞)}]\n" +
 			" ├─ colSet: (1-7)\n" +
 			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
@@ -6341,12 +6341,12 @@ inner join pq on true
 			"",
 		ExpectedEstimates: "IndexedTableAccess(two_pk)\n" +
 			" ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			" ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ filters: [{(NULL, ∞), (NULL, ∞)}]\n" +
 			" └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedAnalysis: "IndexedTableAccess(two_pk)\n" +
 			" ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			" ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ filters: [{(NULL, ∞), (NULL, ∞)}]\n" +
 			" └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 	},
@@ -6354,7 +6354,7 @@ inner join pq on true
 		Query: `SELECT * FROM two_pk ORDER BY pk1`,
 		ExpectedPlan: "IndexedTableAccess(two_pk)\n" +
 			" ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			" ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ static: [{(NULL, ∞), (NULL, ∞)}]\n" +
 			" ├─ colSet: (1-7)\n" +
 			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
@@ -6363,12 +6363,12 @@ inner join pq on true
 			"",
 		ExpectedEstimates: "IndexedTableAccess(two_pk)\n" +
 			" ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			" ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ filters: [{(NULL, ∞), (NULL, ∞)}]\n" +
 			" └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedAnalysis: "IndexedTableAccess(two_pk)\n" +
 			" ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			" ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ filters: [{(NULL, ∞), (NULL, ∞)}]\n" +
 			" └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 	},
@@ -6378,7 +6378,7 @@ inner join pq on true
 			" ├─ columns: [two_pk.pk1:0!null->one:0, two_pk.pk2:1!null->two:0]\n" +
 			" └─ IndexedTableAccess(two_pk)\n" +
 			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     ├─ static: [{(NULL, ∞), (NULL, ∞)}]\n" +
 			"     ├─ colSet: (1-7)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
@@ -6389,14 +6389,14 @@ inner join pq on true
 			" ├─ columns: [two_pk.pk1 as one, two_pk.pk2 as two]\n" +
 			" └─ IndexedTableAccess(two_pk)\n" +
 			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"     ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     ├─ filters: [{(NULL, ∞), (NULL, ∞)}]\n" +
 			"     └─ columns: [pk1 pk2]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [two_pk.pk1 as one, two_pk.pk2 as two]\n" +
 			" └─ IndexedTableAccess(two_pk)\n" +
 			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"     ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     ├─ filters: [{(NULL, ∞), (NULL, ∞)}]\n" +
 			"     └─ columns: [pk1 pk2]\n" +
 			"",
 	},
@@ -6408,7 +6408,7 @@ inner join pq on true
 			"     ├─ columns: [two_pk.pk1:0!null, two_pk.pk2:1!null, two_pk.c1:2!null, two_pk.c2:3!null, two_pk.c3:4!null, two_pk.c4:5!null, two_pk.c5:6!null, two_pk.pk1:0!null->one:0, two_pk.pk2:1!null->two:0]\n" +
 			"     └─ IndexedTableAccess(two_pk)\n" +
 			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"         ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         ├─ static: [{(NULL, ∞), (NULL, ∞)}]\n" +
 			"         ├─ colSet: (1-7)\n" +
 			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
@@ -6421,7 +6421,7 @@ inner join pq on true
 			"     ├─ columns: [two_pk.pk1, two_pk.pk2, two_pk.c1, two_pk.c2, two_pk.c3, two_pk.c4, two_pk.c5, two_pk.pk1 as one, two_pk.pk2 as two]\n" +
 			"     └─ IndexedTableAccess(two_pk)\n" +
 			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"         ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         ├─ filters: [{(NULL, ∞), (NULL, ∞)}]\n" +
 			"         └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
@@ -6430,7 +6430,7 @@ inner join pq on true
 			"     ├─ columns: [two_pk.pk1, two_pk.pk2, two_pk.c1, two_pk.c2, two_pk.c3, two_pk.c4, two_pk.c5, two_pk.pk1 as one, two_pk.pk2 as two]\n" +
 			"     └─ IndexedTableAccess(two_pk)\n" +
 			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"         ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         ├─ filters: [{(NULL, ∞), (NULL, ∞)}]\n" +
 			"         └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 	},
@@ -8841,7 +8841,7 @@ inner join pq on true
 		ExpectedPlan: "TableAlias(a)\n" +
 			" └─ IndexedTableAccess(mytable)\n" +
 			"     ├─ index: [mytable.s,mytable.i]\n" +
-			"     ├─ static: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			"     ├─ static: [{(NULL, ∞), (NULL, ∞)}]\n" +
 			"     ├─ colSet: (1,2)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
@@ -8851,13 +8851,13 @@ inner join pq on true
 		ExpectedEstimates: "TableAlias(a)\n" +
 			" └─ IndexedTableAccess(mytable)\n" +
 			"     ├─ index: [mytable.s,mytable.i]\n" +
-			"     ├─ filters: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			"     ├─ filters: [{(NULL, ∞), (NULL, ∞)}]\n" +
 			"     └─ columns: [i s]\n" +
 			"",
 		ExpectedAnalysis: "TableAlias(a)\n" +
 			" └─ IndexedTableAccess(mytable)\n" +
 			"     ├─ index: [mytable.s,mytable.i]\n" +
-			"     ├─ filters: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			"     ├─ filters: [{(NULL, ∞), (NULL, ∞)}]\n" +
 			"     └─ columns: [i s]\n" +
 			"",
 	},
@@ -8877,7 +8877,7 @@ inner join pq on true
 			"     └─ TableAlias(a)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.s,mytable.i]\n" +
-			"             ├─ static: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			"             ├─ static: [{(NULL, ∞), (NULL, ∞)}]\n" +
 			"             ├─ colSet: (1,2)\n" +
 			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
@@ -8895,7 +8895,7 @@ inner join pq on true
 			"     └─ TableAlias(a)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.s,mytable.i]\n" +
-			"             ├─ filters: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			"             ├─ filters: [{(NULL, ∞), (NULL, ∞)}]\n" +
 			"             └─ columns: [i s]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
@@ -8909,7 +8909,7 @@ inner join pq on true
 			"     └─ TableAlias(a)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.s,mytable.i]\n" +
-			"             ├─ filters: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			"             ├─ filters: [{(NULL, ∞), (NULL, ∞)}]\n" +
 			"             └─ columns: [i s]\n" +
 			"",
 	},
@@ -8929,7 +8929,7 @@ inner join pq on true
 			"     └─ TableAlias(a)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.s,mytable.i]\n" +
-			"             ├─ static: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			"             ├─ static: [{(NULL, ∞), (NULL, ∞)}]\n" +
 			"             ├─ colSet: (1,2)\n" +
 			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
@@ -8947,7 +8947,7 @@ inner join pq on true
 			"     └─ TableAlias(a)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.s,mytable.i]\n" +
-			"             ├─ filters: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			"             ├─ filters: [{(NULL, ∞), (NULL, ∞)}]\n" +
 			"             └─ columns: [i s]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
@@ -8961,7 +8961,7 @@ inner join pq on true
 			"     └─ TableAlias(a)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.s,mytable.i]\n" +
-			"             ├─ filters: [{(NULL, ∞), [NULL, ∞)}]\n" +
+			"             ├─ filters: [{(NULL, ∞), (NULL, ∞)}]\n" +
 			"             └─ columns: [i s]\n" +
 			"",
 	},
@@ -8981,7 +8981,7 @@ inner join pq on true
 			"     └─ TableAlias(a)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.s,mytable.i]\n" +
-			"             ├─ static: [{(NULL, 1), [NULL, ∞)}, {(1, 2), [NULL, ∞)}, {(2, 3), [NULL, ∞)}, {(3, 4), [NULL, ∞)}, {(4, ∞), [NULL, ∞)}]\n" +
+			"             ├─ static: [{(NULL, 1), (NULL, ∞)}, {(1, 2), (NULL, ∞)}, {(2, 3), (NULL, ∞)}, {(3, 4), (NULL, ∞)}, {(4, ∞), (NULL, ∞)}]\n" +
 			"             ├─ colSet: (1,2)\n" +
 			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
@@ -8999,7 +8999,7 @@ inner join pq on true
 			"     └─ TableAlias(a)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.s,mytable.i]\n" +
-			"             ├─ filters: [{(NULL, 1), [NULL, ∞)}, {(1, 2), [NULL, ∞)}, {(2, 3), [NULL, ∞)}, {(3, 4), [NULL, ∞)}, {(4, ∞), [NULL, ∞)}]\n" +
+			"             ├─ filters: [{(NULL, 1), (NULL, ∞)}, {(1, 2), (NULL, ∞)}, {(2, 3), (NULL, ∞)}, {(3, 4), (NULL, ∞)}, {(4, ∞), (NULL, ∞)}]\n" +
 			"             └─ columns: [i s]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
@@ -9013,7 +9013,7 @@ inner join pq on true
 			"     └─ TableAlias(a)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.s,mytable.i]\n" +
-			"             ├─ filters: [{(NULL, 1), [NULL, ∞)}, {(1, 2), [NULL, ∞)}, {(2, 3), [NULL, ∞)}, {(3, 4), [NULL, ∞)}, {(4, ∞), [NULL, ∞)}]\n" +
+			"             ├─ filters: [{(NULL, 1), (NULL, ∞)}, {(1, 2), (NULL, ∞)}, {(2, 3), (NULL, ∞)}, {(3, 4), (NULL, ∞)}, {(4, ∞), (NULL, ∞)}]\n" +
 			"             └─ columns: [i s]\n" +
 			"",
 	},
@@ -15401,14 +15401,14 @@ inner join pq on true
 			"     ├─ GreaterThan\n" +
 			"     │   ├─ (two_pk.pk1:0!null - one_pk.pk:2!null)\n" +
 			"     │   └─ 0 (tinyint)\n" +
-			"     ├─ Filter\n" +
-			"     │   ├─ LessThan\n" +
-			"     │   │   ├─ two_pk.pk2:1!null\n" +
-			"     │   │   └─ 1 (tinyint)\n" +
-			"     │   └─ ProcessTable\n" +
-			"     │       └─ Table\n" +
-			"     │           ├─ name: two_pk\n" +
-			"     │           └─ columns: [pk1 pk2]\n" +
+			"     ├─ IndexedTableAccess(two_pk)\n" +
+			"     │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     │   ├─ static: [{(NULL, ∞), (NULL, 1)}]\n" +
+			"     │   ├─ colSet: (7-13)\n" +
+			"     │   ├─ tableId: 2\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: two_pk\n" +
+			"     │       └─ columns: [pk1 pk2]\n" +
 			"     └─ ProcessTable\n" +
 			"         └─ Table\n" +
 			"             ├─ name: one_pk\n" +
@@ -15416,26 +15416,24 @@ inner join pq on true
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [one_pk.pk, two_pk.pk1, two_pk.pk2]\n" +
-			" └─ InnerJoin (estimated cost=13.120 rows=3)\n" +
+			" └─ InnerJoin (estimated cost=9.080 rows=4)\n" +
 			"     ├─ ((two_pk.pk1 - one_pk.pk) > 0)\n" +
-			"     ├─ Filter\n" +
-			"     │   ├─ (two_pk.pk2 < 1)\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: two_pk\n" +
-			"     │       └─ columns: [pk1 pk2]\n" +
+			"     ├─ IndexedTableAccess(two_pk)\n" +
+			"     │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     │   ├─ filters: [{(NULL, ∞), (NULL, 1)}]\n" +
+			"     │   └─ columns: [pk1 pk2]\n" +
 			"     └─ Table\n" +
 			"         ├─ name: one_pk\n" +
 			"         └─ columns: [pk]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [one_pk.pk, two_pk.pk1, two_pk.pk2]\n" +
-			" └─ InnerJoin (estimated cost=13.120 rows=3) (actual rows=1 loops=1)\n" +
+			" └─ InnerJoin (estimated cost=9.080 rows=4) (actual rows=1 loops=1)\n" +
 			"     ├─ ((two_pk.pk1 - one_pk.pk) > 0)\n" +
-			"     ├─ Filter\n" +
-			"     │   ├─ (two_pk.pk2 < 1)\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: two_pk\n" +
-			"     │       └─ columns: [pk1 pk2]\n" +
+			"     ├─ IndexedTableAccess(two_pk)\n" +
+			"     │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     │   ├─ filters: [{(NULL, ∞), (NULL, 1)}]\n" +
+			"     │   └─ columns: [pk1 pk2]\n" +
 			"     └─ Table\n" +
 			"         ├─ name: one_pk\n" +
 			"         └─ columns: [pk]\n" +
@@ -15941,15 +15939,15 @@ inner join pq on true
 			" ├─ columns: [t1.pk:1!null, t2.pk2:0!null]\n" +
 			" └─ Sort(t1.pk:1!null ASC nullsFirst, t2.pk2:0!null ASC nullsFirst)\n" +
 			"     └─ CrossJoin\n" +
-			"         ├─ Filter\n" +
-			"         │   ├─ Eq\n" +
-			"         │   │   ├─ t2.pk2:0!null\n" +
-			"         │   │   └─ 1 (tinyint)\n" +
-			"         │   └─ TableAlias(t2)\n" +
-			"         │       └─ ProcessTable\n" +
-			"         │           └─ Table\n" +
-			"         │               ├─ name: two_pk\n" +
-			"         │               └─ columns: [pk2]\n" +
+			"         ├─ TableAlias(t2)\n" +
+			"         │   └─ IndexedTableAccess(two_pk)\n" +
+			"         │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         │       ├─ static: [{(NULL, ∞), [1, 1]}]\n" +
+			"         │       ├─ colSet: (7-13)\n" +
+			"         │       ├─ tableId: 2\n" +
+			"         │       └─ Table\n" +
+			"         │           ├─ name: two_pk\n" +
+			"         │           └─ columns: [pk2]\n" +
 			"         └─ TableAlias(t1)\n" +
 			"             └─ IndexedTableAccess(one_pk)\n" +
 			"                 ├─ index: [one_pk.pk]\n" +
@@ -15963,13 +15961,12 @@ inner join pq on true
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [t1.pk, t2.pk2]\n" +
 			" └─ Sort(t1.pk ASC, t2.pk2 ASC)\n" +
-			"     └─ CrossJoin (estimated cost=4.030 rows=3)\n" +
-			"         ├─ Filter\n" +
-			"         │   ├─ (t2.pk2 = 1)\n" +
-			"         │   └─ TableAlias(t2)\n" +
-			"         │       └─ Table\n" +
-			"         │           ├─ name: two_pk\n" +
-			"         │           └─ columns: [pk2]\n" +
+			"     └─ CrossJoin (estimated cost=3.020 rows=1)\n" +
+			"         ├─ TableAlias(t2)\n" +
+			"         │   └─ IndexedTableAccess(two_pk)\n" +
+			"         │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         │       ├─ filters: [{(NULL, ∞), [1, 1]}]\n" +
+			"         │       └─ columns: [pk2]\n" +
 			"         └─ TableAlias(t1)\n" +
 			"             └─ IndexedTableAccess(one_pk)\n" +
 			"                 ├─ index: [one_pk.pk]\n" +
@@ -15979,13 +15976,12 @@ inner join pq on true
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [t1.pk, t2.pk2]\n" +
 			" └─ Sort(t1.pk ASC, t2.pk2 ASC)\n" +
-			"     └─ CrossJoin (estimated cost=4.030 rows=3) (actual rows=2 loops=1)\n" +
-			"         ├─ Filter\n" +
-			"         │   ├─ (t2.pk2 = 1)\n" +
-			"         │   └─ TableAlias(t2)\n" +
-			"         │       └─ Table\n" +
-			"         │           ├─ name: two_pk\n" +
-			"         │           └─ columns: [pk2]\n" +
+			"     └─ CrossJoin (estimated cost=3.020 rows=1) (actual rows=2 loops=1)\n" +
+			"         ├─ TableAlias(t2)\n" +
+			"         │   └─ IndexedTableAccess(two_pk)\n" +
+			"         │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         │       ├─ filters: [{(NULL, ∞), [1, 1]}]\n" +
+			"         │       └─ columns: [pk2]\n" +
 			"         └─ TableAlias(t1)\n" +
 			"             └─ IndexedTableAccess(one_pk)\n" +
 			"                 ├─ index: [one_pk.pk]\n" +
@@ -16201,15 +16197,15 @@ inner join pq on true
 			" │  ->(SELECT pk from one_pk where pk = 1 limit 1):0]\n" +
 			" └─ Sort(t1.pk:7!null ASC nullsFirst, t2.pk2:1!null ASC nullsFirst)\n" +
 			"     └─ CrossJoin\n" +
-			"         ├─ Filter\n" +
-			"         │   ├─ Eq\n" +
-			"         │   │   ├─ t2.pk2:1!null\n" +
-			"         │   │   └─ 1 (tinyint)\n" +
-			"         │   └─ TableAlias(t2)\n" +
-			"         │       └─ ProcessTable\n" +
-			"         │           └─ Table\n" +
-			"         │               ├─ name: two_pk\n" +
-			"         │               └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"         ├─ TableAlias(t2)\n" +
+			"         │   └─ IndexedTableAccess(two_pk)\n" +
+			"         │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         │       ├─ static: [{(NULL, ∞), [1, 1]}]\n" +
+			"         │       ├─ colSet: (7-13)\n" +
+			"         │       ├─ tableId: 2\n" +
+			"         │       └─ Table\n" +
+			"         │           ├─ name: two_pk\n" +
+			"         │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"         └─ TableAlias(t1)\n" +
 			"             └─ IndexedTableAccess(one_pk)\n" +
 			"                 ├─ index: [one_pk.pk]\n" +
@@ -16230,12 +16226,11 @@ inner join pq on true
 			" │           └─ columns: [pk]\n" +
 			" │   as (SELECT pk from one_pk where pk = 1 limit 1)]\n" +
 			" └─ Sort(t1.pk ASC, t2.pk2 ASC)\n" +
-			"     └─ CrossJoin (estimated cost=4.030 rows=3)\n" +
-			"         ├─ Filter\n" +
-			"         │   ├─ (t2.pk2 = 1)\n" +
-			"         │   └─ TableAlias(t2)\n" +
-			"         │       └─ Table\n" +
-			"         │           └─ name: two_pk\n" +
+			"     └─ CrossJoin (estimated cost=3.020 rows=1)\n" +
+			"         ├─ TableAlias(t2)\n" +
+			"         │   └─ IndexedTableAccess(two_pk)\n" +
+			"         │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         │       └─ filters: [{(NULL, ∞), [1, 1]}]\n" +
 			"         └─ TableAlias(t1)\n" +
 			"             └─ IndexedTableAccess(one_pk)\n" +
 			"                 ├─ index: [one_pk.pk]\n" +
@@ -16251,12 +16246,11 @@ inner join pq on true
 			" │           └─ columns: [pk]\n" +
 			" │   as (SELECT pk from one_pk where pk = 1 limit 1)]\n" +
 			" └─ Sort(t1.pk ASC, t2.pk2 ASC)\n" +
-			"     └─ CrossJoin (estimated cost=4.030 rows=3) (actual rows=2 loops=1)\n" +
-			"         ├─ Filter\n" +
-			"         │   ├─ (t2.pk2 = 1)\n" +
-			"         │   └─ TableAlias(t2)\n" +
-			"         │       └─ Table\n" +
-			"         │           └─ name: two_pk\n" +
+			"     └─ CrossJoin (estimated cost=3.020 rows=1) (actual rows=2 loops=1)\n" +
+			"         ├─ TableAlias(t2)\n" +
+			"         │   └─ IndexedTableAccess(two_pk)\n" +
+			"         │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         │       └─ filters: [{(NULL, ∞), [1, 1]}]\n" +
 			"         └─ TableAlias(t1)\n" +
 			"             └─ IndexedTableAccess(one_pk)\n" +
 			"                 ├─ index: [one_pk.pk]\n" +
@@ -16710,53 +16704,50 @@ inner join pq on true
 			"     │       └─ Table\n" +
 			"     │           ├─ name: invert_pk\n" +
 			"     │           └─ columns: [z]\n" +
-			"     └─ Filter\n" +
-			"         ├─ Eq\n" +
-			"         │   ├─ a.z:2!null\n" +
-			"         │   └─ 2 (bigint)\n" +
-			"         └─ TableAlias(a)\n" +
+			"     └─ TableAlias(a)\n" +
+			"         └─ IndexedTableAccess(invert_pk)\n" +
+			"             ├─ index: [invert_pk.y,invert_pk.z,invert_pk.x]\n" +
+			"             ├─ static: [{(NULL, ∞), [2, 2], (NULL, ∞)}]\n" +
+			"             ├─ colSet: (1-3)\n" +
+			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: invert_pk\n" +
-			"                 ├─ columns: [x y z]\n" +
-			"                 ├─ colSet: (1-3)\n" +
-			"                 └─ tableId: 1\n" +
+			"                 └─ columns: [x y z]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.x, a.y, a.z]\n" +
-			" └─ InnerJoin (estimated cost=7.060 rows=2)\n" +
+			" └─ InnerJoin (estimated cost=4.030 rows=3)\n" +
 			"     ├─ (a.y = b.z)\n" +
 			"     ├─ TableAlias(b)\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: invert_pk\n" +
 			"     │       └─ columns: [z]\n" +
-			"     └─ Filter\n" +
-			"         ├─ (a.z = 2)\n" +
-			"         └─ TableAlias(a)\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: invert_pk\n" +
-			"                 └─ columns: [x y z]\n" +
+			"     └─ TableAlias(a)\n" +
+			"         └─ IndexedTableAccess(invert_pk)\n" +
+			"             ├─ index: [invert_pk.y,invert_pk.z,invert_pk.x]\n" +
+			"             ├─ filters: [{(NULL, ∞), [2, 2], (NULL, ∞)}]\n" +
+			"             └─ columns: [x y z]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.x, a.y, a.z]\n" +
-			" └─ InnerJoin (estimated cost=7.060 rows=2) (actual rows=1 loops=1)\n" +
+			" └─ InnerJoin (estimated cost=4.030 rows=3) (actual rows=1 loops=1)\n" +
 			"     ├─ (a.y = b.z)\n" +
 			"     ├─ TableAlias(b)\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: invert_pk\n" +
 			"     │       └─ columns: [z]\n" +
-			"     └─ Filter\n" +
-			"         ├─ (a.z = 2)\n" +
-			"         └─ TableAlias(a)\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: invert_pk\n" +
-			"                 └─ columns: [x y z]\n" +
+			"     └─ TableAlias(a)\n" +
+			"         └─ IndexedTableAccess(invert_pk)\n" +
+			"             ├─ index: [invert_pk.y,invert_pk.z,invert_pk.x]\n" +
+			"             ├─ filters: [{(NULL, ∞), [2, 2], (NULL, ∞)}]\n" +
+			"             └─ columns: [x y z]\n" +
 			"",
 	},
 	{
 		Query: `SELECT * FROM invert_pk WHERE y = 0`,
 		ExpectedPlan: "IndexedTableAccess(invert_pk)\n" +
 			" ├─ index: [invert_pk.y,invert_pk.z,invert_pk.x]\n" +
-			" ├─ static: [{[0, 0], [NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ static: [{[0, 0], (NULL, ∞), (NULL, ∞)}]\n" +
 			" ├─ colSet: (1-3)\n" +
 			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
@@ -16765,12 +16756,12 @@ inner join pq on true
 			"",
 		ExpectedEstimates: "IndexedTableAccess(invert_pk)\n" +
 			" ├─ index: [invert_pk.y,invert_pk.z,invert_pk.x]\n" +
-			" ├─ filters: [{[0, 0], [NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ filters: [{[0, 0], (NULL, ∞), (NULL, ∞)}]\n" +
 			" └─ columns: [x y z]\n" +
 			"",
 		ExpectedAnalysis: "IndexedTableAccess(invert_pk)\n" +
 			" ├─ index: [invert_pk.y,invert_pk.z,invert_pk.x]\n" +
-			" ├─ filters: [{[0, 0], [NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ filters: [{[0, 0], (NULL, ∞), (NULL, ∞)}]\n" +
 			" └─ columns: [x y z]\n" +
 			"",
 	},
@@ -16778,7 +16769,7 @@ inner join pq on true
 		Query: `SELECT * FROM invert_pk WHERE y >= 0`,
 		ExpectedPlan: "IndexedTableAccess(invert_pk)\n" +
 			" ├─ index: [invert_pk.y,invert_pk.z,invert_pk.x]\n" +
-			" ├─ static: [{[0, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ static: [{[0, ∞), (NULL, ∞), (NULL, ∞)}]\n" +
 			" ├─ colSet: (1-3)\n" +
 			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
@@ -16787,12 +16778,12 @@ inner join pq on true
 			"",
 		ExpectedEstimates: "IndexedTableAccess(invert_pk)\n" +
 			" ├─ index: [invert_pk.y,invert_pk.z,invert_pk.x]\n" +
-			" ├─ filters: [{[0, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ filters: [{[0, ∞), (NULL, ∞), (NULL, ∞)}]\n" +
 			" └─ columns: [x y z]\n" +
 			"",
 		ExpectedAnalysis: "IndexedTableAccess(invert_pk)\n" +
 			" ├─ index: [invert_pk.y,invert_pk.z,invert_pk.x]\n" +
-			" ├─ filters: [{[0, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ filters: [{[0, ∞), (NULL, ∞), (NULL, ∞)}]\n" +
 			" └─ columns: [x y z]\n" +
 			"",
 	},
@@ -16800,7 +16791,7 @@ inner join pq on true
 		Query: `SELECT * FROM invert_pk WHERE y >= 0 AND z < 1`,
 		ExpectedPlan: "IndexedTableAccess(invert_pk)\n" +
 			" ├─ index: [invert_pk.y,invert_pk.z,invert_pk.x]\n" +
-			" ├─ static: [{[0, ∞), (NULL, 1), [NULL, ∞)}]\n" +
+			" ├─ static: [{[0, ∞), (NULL, 1), (NULL, ∞)}]\n" +
 			" ├─ colSet: (1-3)\n" +
 			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
@@ -16809,12 +16800,12 @@ inner join pq on true
 			"",
 		ExpectedEstimates: "IndexedTableAccess(invert_pk)\n" +
 			" ├─ index: [invert_pk.y,invert_pk.z,invert_pk.x]\n" +
-			" ├─ filters: [{[0, ∞), (NULL, 1), [NULL, ∞)}]\n" +
+			" ├─ filters: [{[0, ∞), (NULL, 1), (NULL, ∞)}]\n" +
 			" └─ columns: [x y z]\n" +
 			"",
 		ExpectedAnalysis: "IndexedTableAccess(invert_pk)\n" +
 			" ├─ index: [invert_pk.y,invert_pk.z,invert_pk.x]\n" +
-			" ├─ filters: [{[0, ∞), (NULL, 1), [NULL, ∞)}]\n" +
+			" ├─ filters: [{[0, ∞), (NULL, 1), (NULL, ∞)}]\n" +
 			" └─ columns: [x y z]\n" +
 			"",
 	},
@@ -17306,25 +17297,24 @@ inner join pq on true
 			"         ├─ Eq\n" +
 			"         │   ├─ b.pk:2!null\n" +
 			"         │   └─ c.v1:0\n" +
-			"         ├─ Filter\n" +
-			"         │   ├─ Eq\n" +
-			"         │   │   ├─ c.v2:1\n" +
-			"         │   │   └─ 0 (bigint)\n" +
-			"         │   └─ TableAlias(c)\n" +
-			"         │       └─ ProcessTable\n" +
-			"         │           └─ Table\n" +
-			"         │               ├─ name: one_pk_three_idx\n" +
-			"         │               └─ columns: [v1 v2]\n" +
+			"         ├─ TableAlias(c)\n" +
+			"         │   └─ IndexedTableAccess(one_pk_three_idx)\n" +
+			"         │       ├─ index: [one_pk_three_idx.v1,one_pk_three_idx.v2,one_pk_three_idx.v3]\n" +
+			"         │       ├─ static: [{[NULL, ∞), [0, 0], [NULL, ∞)}]\n" +
+			"         │       ├─ colSet: (9-12)\n" +
+			"         │       ├─ tableId: 3\n" +
+			"         │       └─ Table\n" +
+			"         │           ├─ name: one_pk_three_idx\n" +
+			"         │           └─ columns: [v1 v2]\n" +
 			"         └─ HashLookup\n" +
 			"             ├─ left-key: TUPLE(c.v1:0)\n" +
 			"             ├─ right-key: TUPLE(b.pk:0!null)\n" +
 			"             └─ CrossJoin\n" +
 			"                 ├─ TableAlias(b)\n" +
-			"                 │   └─ Table\n" +
-			"                 │       ├─ name: one_pk_three_idx\n" +
-			"                 │       ├─ columns: [pk]\n" +
-			"                 │       ├─ colSet: (5-8)\n" +
-			"                 │       └─ tableId: 2\n" +
+			"                 │   └─ ProcessTable\n" +
+			"                 │       └─ Table\n" +
+			"                 │           ├─ name: one_pk_three_idx\n" +
+			"                 │           └─ columns: [pk]\n" +
 			"                 └─ TableAlias(a)\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: one_pk_three_idx\n" +
@@ -17336,14 +17326,13 @@ inner join pq on true
 			" ├─ columns: [a.pk, c.v2]\n" +
 			" └─ Filter\n" +
 			"     ├─ (b.pk = 0)\n" +
-			"     └─ LeftOuterHashJoin (estimated cost=36.130 rows=7)\n" +
+			"     └─ LeftOuterHashJoin (estimated cost=34.170 rows=13)\n" +
 			"         ├─ (b.pk = c.v1)\n" +
-			"         ├─ Filter\n" +
-			"         │   ├─ (c.v2 = 0)\n" +
-			"         │   └─ TableAlias(c)\n" +
-			"         │       └─ Table\n" +
-			"         │           ├─ name: one_pk_three_idx\n" +
-			"         │           └─ columns: [v1 v2]\n" +
+			"         ├─ TableAlias(c)\n" +
+			"         │   └─ IndexedTableAccess(one_pk_three_idx)\n" +
+			"         │       ├─ index: [one_pk_three_idx.v1,one_pk_three_idx.v2,one_pk_three_idx.v3]\n" +
+			"         │       ├─ filters: [{[NULL, ∞), [0, 0], [NULL, ∞)}]\n" +
+			"         │       └─ columns: [v1 v2]\n" +
 			"         └─ HashLookup\n" +
 			"             ├─ left-key: (c.v1)\n" +
 			"             ├─ right-key: (b.pk)\n" +
@@ -17361,14 +17350,13 @@ inner join pq on true
 			" ├─ columns: [a.pk, c.v2]\n" +
 			" └─ Filter\n" +
 			"     ├─ (b.pk = 0)\n" +
-			"     └─ LeftOuterHashJoin (estimated cost=36.130 rows=7) (actual rows=32 loops=1)\n" +
+			"     └─ LeftOuterHashJoin (estimated cost=34.170 rows=13) (actual rows=32 loops=1)\n" +
 			"         ├─ (b.pk = c.v1)\n" +
-			"         ├─ Filter\n" +
-			"         │   ├─ (c.v2 = 0)\n" +
-			"         │   └─ TableAlias(c)\n" +
-			"         │       └─ Table\n" +
-			"         │           ├─ name: one_pk_three_idx\n" +
-			"         │           └─ columns: [v1 v2]\n" +
+			"         ├─ TableAlias(c)\n" +
+			"         │   └─ IndexedTableAccess(one_pk_three_idx)\n" +
+			"         │       ├─ index: [one_pk_three_idx.v1,one_pk_three_idx.v2,one_pk_three_idx.v3]\n" +
+			"         │       ├─ filters: [{[NULL, ∞), [0, 0], [NULL, ∞)}]\n" +
+			"         │       └─ columns: [v1 v2]\n" +
 			"         └─ HashLookup\n" +
 			"             ├─ left-key: (c.v1)\n" +
 			"             ├─ right-key: (b.pk)\n" +
@@ -17387,7 +17375,7 @@ inner join pq on true
 		Query: `select a.pk, c.v2 from one_pk_three_idx a cross join one_pk_three_idx b left join one_pk_three_idx c on b.pk = c.v1 where b.pk = 0 and a.v2 = 1;`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [a.pk:1!null, c.v2:4]\n" +
-			" └─ LeftOuterHashJoin\n" +
+			" └─ LeftOuterJoin\n" +
 			"     ├─ Eq\n" +
 			"     │   ├─ b.pk:0!null\n" +
 			"     │   └─ c.v1:3\n" +
@@ -17401,72 +17389,60 @@ inner join pq on true
 			"     │   │       └─ Table\n" +
 			"     │   │           ├─ name: one_pk_three_idx\n" +
 			"     │   │           └─ columns: [pk]\n" +
-			"     │   └─ Filter\n" +
-			"     │       ├─ Eq\n" +
-			"     │       │   ├─ a.v2:1\n" +
-			"     │       │   └─ 1 (bigint)\n" +
-			"     │       └─ TableAlias(a)\n" +
-			"     │           └─ ProcessTable\n" +
-			"     │               └─ Table\n" +
-			"     │                   ├─ name: one_pk_three_idx\n" +
-			"     │                   └─ columns: [pk v2]\n" +
-			"     └─ HashLookup\n" +
-			"         ├─ left-key: TUPLE(b.pk:0!null)\n" +
-			"         ├─ right-key: TUPLE(c.v1:0)\n" +
-			"         └─ TableAlias(c)\n" +
+			"     │   └─ TableAlias(a)\n" +
+			"     │       └─ IndexedTableAccess(one_pk_three_idx)\n" +
+			"     │           ├─ index: [one_pk_three_idx.v1,one_pk_three_idx.v2,one_pk_three_idx.v3]\n" +
+			"     │           ├─ static: [{[NULL, ∞), [1, 1], [NULL, ∞)}]\n" +
+			"     │           ├─ colSet: (1-4)\n" +
+			"     │           ├─ tableId: 1\n" +
+			"     │           └─ Table\n" +
+			"     │               ├─ name: one_pk_three_idx\n" +
+			"     │               └─ columns: [pk v2]\n" +
+			"     └─ TableAlias(c)\n" +
+			"         └─ ProcessTable\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: one_pk_three_idx\n" +
-			"                 ├─ columns: [v1 v2]\n" +
-			"                 ├─ colSet: (9-12)\n" +
-			"                 └─ tableId: 3\n" +
+			"                 └─ columns: [v1 v2]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.pk, c.v2]\n" +
-			" └─ LeftOuterHashJoin (estimated cost=30.130 rows=7)\n" +
+			" └─ LeftOuterJoin (estimated cost=7.080 rows=1)\n" +
 			"     ├─ (b.pk = c.v1)\n" +
-			"     ├─ CrossJoin (estimated cost=7.060 rows=6)\n" +
+			"     ├─ CrossJoin (estimated cost=5.040 rows=1)\n" +
 			"     │   ├─ TableAlias(b)\n" +
 			"     │   │   └─ IndexedTableAccess(one_pk_three_idx)\n" +
 			"     │   │       ├─ index: [one_pk_three_idx.pk]\n" +
 			"     │   │       ├─ filters: [{[0, 0]}]\n" +
 			"     │   │       └─ columns: [pk]\n" +
-			"     │   └─ Filter\n" +
-			"     │       ├─ (a.v2 = 1)\n" +
-			"     │       └─ TableAlias(a)\n" +
-			"     │           └─ Table\n" +
-			"     │               ├─ name: one_pk_three_idx\n" +
-			"     │               └─ columns: [pk v2]\n" +
-			"     └─ HashLookup\n" +
-			"         ├─ left-key: (b.pk)\n" +
-			"         ├─ right-key: (c.v1)\n" +
-			"         └─ TableAlias(c)\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: one_pk_three_idx\n" +
-			"                 └─ columns: [v1 v2]\n" +
+			"     │   └─ TableAlias(a)\n" +
+			"     │       └─ IndexedTableAccess(one_pk_three_idx)\n" +
+			"     │           ├─ index: [one_pk_three_idx.v1,one_pk_three_idx.v2,one_pk_three_idx.v3]\n" +
+			"     │           ├─ filters: [{[NULL, ∞), [1, 1], [NULL, ∞)}]\n" +
+			"     │           └─ columns: [pk v2]\n" +
+			"     └─ TableAlias(c)\n" +
+			"         └─ Table\n" +
+			"             ├─ name: one_pk_three_idx\n" +
+			"             └─ columns: [v1 v2]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.pk, c.v2]\n" +
-			" └─ LeftOuterHashJoin (estimated cost=30.130 rows=7) (actual rows=4 loops=1)\n" +
+			" └─ LeftOuterJoin (estimated cost=7.080 rows=1) (actual rows=4 loops=1)\n" +
 			"     ├─ (b.pk = c.v1)\n" +
-			"     ├─ CrossJoin (estimated cost=7.060 rows=6) (actual rows=1 loops=1)\n" +
+			"     ├─ CrossJoin (estimated cost=5.040 rows=1) (actual rows=1 loops=1)\n" +
 			"     │   ├─ TableAlias(b)\n" +
 			"     │   │   └─ IndexedTableAccess(one_pk_three_idx)\n" +
 			"     │   │       ├─ index: [one_pk_three_idx.pk]\n" +
 			"     │   │       ├─ filters: [{[0, 0]}]\n" +
 			"     │   │       └─ columns: [pk]\n" +
-			"     │   └─ Filter\n" +
-			"     │       ├─ (a.v2 = 1)\n" +
-			"     │       └─ TableAlias(a)\n" +
-			"     │           └─ Table\n" +
-			"     │               ├─ name: one_pk_three_idx\n" +
-			"     │               └─ columns: [pk v2]\n" +
-			"     └─ HashLookup\n" +
-			"         ├─ left-key: (b.pk)\n" +
-			"         ├─ right-key: (c.v1)\n" +
-			"         └─ TableAlias(c)\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: one_pk_three_idx\n" +
-			"                 └─ columns: [v1 v2]\n" +
+			"     │   └─ TableAlias(a)\n" +
+			"     │       └─ IndexedTableAccess(one_pk_three_idx)\n" +
+			"     │           ├─ index: [one_pk_three_idx.v1,one_pk_three_idx.v2,one_pk_three_idx.v3]\n" +
+			"     │           ├─ filters: [{[NULL, ∞), [1, 1], [NULL, ∞)}]\n" +
+			"     │           └─ columns: [pk v2]\n" +
+			"     └─ TableAlias(c)\n" +
+			"         └─ Table\n" +
+			"             ├─ name: one_pk_three_idx\n" +
+			"             └─ columns: [v1 v2]\n" +
 			"",
 	},
 	{
@@ -21683,7 +21659,7 @@ With c as (
 			"     └─ Limit(1)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
-			"             ├─ static: [{[NULL, ∞)}]\n" +
+			"             ├─ static: [{(NULL, ∞)}]\n" +
 			"             ├─ reverse: true\n" +
 			"             ├─ colSet: (1,2)\n" +
 			"             ├─ tableId: 1\n" +
@@ -21703,7 +21679,7 @@ With c as (
 			"     └─ Limit(1)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
-			"             ├─ filters: [{[NULL, ∞)}]\n" +
+			"             ├─ filters: [{(NULL, ∞)}]\n" +
 			"             ├─ columns: [i]\n" +
 			"             └─ reverse: true\n" +
 			"",
@@ -21719,7 +21695,7 @@ With c as (
 			"     └─ Limit(1)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
-			"             ├─ filters: [{[NULL, ∞)}]\n" +
+			"             ├─ filters: [{(NULL, ∞)}]\n" +
 			"             ├─ columns: [i]\n" +
 			"             └─ reverse: true\n" +
 			"",
@@ -21740,7 +21716,7 @@ With c as (
 			"     └─ Limit(1)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
-			"             ├─ static: [{[NULL, ∞)}]\n" +
+			"             ├─ static: [{(NULL, ∞)}]\n" +
 			"             ├─ reverse: true\n" +
 			"             ├─ colSet: (1,2)\n" +
 			"             ├─ tableId: 1\n" +
@@ -21760,7 +21736,7 @@ With c as (
 			"     └─ Limit(1)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
-			"             ├─ filters: [{[NULL, ∞)}]\n" +
+			"             ├─ filters: [{(NULL, ∞)}]\n" +
 			"             ├─ columns: [i]\n" +
 			"             └─ reverse: true\n" +
 			"",
@@ -21776,7 +21752,7 @@ With c as (
 			"     └─ Limit(1)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
-			"             ├─ filters: [{[NULL, ∞)}]\n" +
+			"             ├─ filters: [{(NULL, ∞)}]\n" +
 			"             ├─ columns: [i]\n" +
 			"             └─ reverse: true\n" +
 			"",
@@ -22432,7 +22408,7 @@ WHERE keyless.c0 IN (
 			" └─ TableAlias(a)\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i]\n" +
-			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ static: [{(NULL, ∞)}]\n" +
 			"         ├─ colSet: (1,2)\n" +
 			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
@@ -22444,7 +22420,7 @@ WHERE keyless.c0 IN (
 			" └─ TableAlias(a)\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
+			"         ├─ filters: [{(NULL, ∞)}]\n" +
 			"         └─ columns: [i s]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
@@ -22452,7 +22428,7 @@ WHERE keyless.c0 IN (
 			" └─ TableAlias(a)\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
+			"         ├─ filters: [{(NULL, ∞)}]\n" +
 			"         └─ columns: [i s]\n" +
 			"",
 	},
@@ -22462,7 +22438,7 @@ WHERE keyless.c0 IN (
 			" ├─ columns: [mytable.s:1!null, mytable.i:0!null]\n" +
 			" └─ IndexedTableAccess(mytable)\n" +
 			"     ├─ index: [mytable.i]\n" +
-			"     ├─ static: [{[NULL, ∞)}]\n" +
+			"     ├─ static: [{(NULL, ∞)}]\n" +
 			"     ├─ reverse: true\n" +
 			"     ├─ colSet: (1,2)\n" +
 			"     ├─ tableId: 1\n" +
@@ -22474,7 +22450,7 @@ WHERE keyless.c0 IN (
 			" ├─ columns: [mytable.s, mytable.i]\n" +
 			" └─ IndexedTableAccess(mytable)\n" +
 			"     ├─ index: [mytable.i]\n" +
-			"     ├─ filters: [{[NULL, ∞)}]\n" +
+			"     ├─ filters: [{(NULL, ∞)}]\n" +
 			"     ├─ columns: [i s]\n" +
 			"     └─ reverse: true\n" +
 			"",
@@ -22482,7 +22458,7 @@ WHERE keyless.c0 IN (
 			" ├─ columns: [mytable.s, mytable.i]\n" +
 			" └─ IndexedTableAccess(mytable)\n" +
 			"     ├─ index: [mytable.i]\n" +
-			"     ├─ filters: [{[NULL, ∞)}]\n" +
+			"     ├─ filters: [{(NULL, ∞)}]\n" +
 			"     ├─ columns: [i s]\n" +
 			"     └─ reverse: true\n" +
 			"",
@@ -22491,7 +22467,7 @@ WHERE keyless.c0 IN (
 		Query: `SELECT pk1, pk2 FROM two_pk order by pk1 asc, pk2 asc;`,
 		ExpectedPlan: "IndexedTableAccess(two_pk)\n" +
 			" ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			" ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ static: [{(NULL, ∞), (NULL, ∞)}]\n" +
 			" ├─ colSet: (1-7)\n" +
 			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
@@ -22500,12 +22476,12 @@ WHERE keyless.c0 IN (
 			"",
 		ExpectedEstimates: "IndexedTableAccess(two_pk)\n" +
 			" ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			" ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ filters: [{(NULL, ∞), (NULL, ∞)}]\n" +
 			" └─ columns: [pk1 pk2]\n" +
 			"",
 		ExpectedAnalysis: "IndexedTableAccess(two_pk)\n" +
 			" ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			" ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ filters: [{(NULL, ∞), (NULL, ∞)}]\n" +
 			" └─ columns: [pk1 pk2]\n" +
 			"",
 	},
@@ -22532,7 +22508,7 @@ WHERE keyless.c0 IN (
 		Query: `SELECT pk1, pk2 FROM two_pk order by pk1 desc, pk2 desc;`,
 		ExpectedPlan: "IndexedTableAccess(two_pk)\n" +
 			" ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			" ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ static: [{(NULL, ∞), (NULL, ∞)}]\n" +
 			" ├─ reverse: true\n" +
 			" ├─ colSet: (1-7)\n" +
 			" ├─ tableId: 1\n" +
@@ -22542,13 +22518,13 @@ WHERE keyless.c0 IN (
 			"",
 		ExpectedEstimates: "IndexedTableAccess(two_pk)\n" +
 			" ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			" ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ filters: [{(NULL, ∞), (NULL, ∞)}]\n" +
 			" ├─ columns: [pk1 pk2]\n" +
 			" └─ reverse: true\n" +
 			"",
 		ExpectedAnalysis: "IndexedTableAccess(two_pk)\n" +
 			" ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			" ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ filters: [{(NULL, ∞), (NULL, ∞)}]\n" +
 			" ├─ columns: [pk1 pk2]\n" +
 			" └─ reverse: true\n" +
 			"",
@@ -22645,7 +22621,7 @@ WHERE keyless.c0 IN (
 		ExpectedPlan: "Limit(10)\n" +
 			" └─ IndexedTableAccess(one_pk)\n" +
 			"     ├─ index: [one_pk.pk]\n" +
-			"     ├─ static: [{[NULL, ∞)}]\n" +
+			"     ├─ static: [{(NULL, ∞)}]\n" +
 			"     ├─ colSet: (1-6)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
@@ -22655,13 +22631,13 @@ WHERE keyless.c0 IN (
 		ExpectedEstimates: "Limit(10)\n" +
 			" └─ IndexedTableAccess(one_pk)\n" +
 			"     ├─ index: [one_pk.pk]\n" +
-			"     ├─ filters: [{[NULL, ∞)}]\n" +
+			"     ├─ filters: [{(NULL, ∞)}]\n" +
 			"     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedAnalysis: "Limit(10)\n" +
 			" └─ IndexedTableAccess(one_pk)\n" +
 			"     ├─ index: [one_pk.pk]\n" +
-			"     ├─ filters: [{[NULL, ∞)}]\n" +
+			"     ├─ filters: [{(NULL, ∞)}]\n" +
 			"     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 	},
@@ -22671,21 +22647,21 @@ WHERE keyless.c0 IN (
 			" └─ Offset(5)\n" +
 			"     └─ IndexedTableAccess(one_pk)\n" +
 			"         ├─ index: [one_pk.pk]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
+			"         ├─ filters: [{(NULL, ∞)}]\n" +
 			"         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedEstimates: "Limit(10)\n" +
 			" └─ Offset(5)\n" +
 			"     └─ IndexedTableAccess(one_pk)\n" +
 			"         ├─ index: [one_pk.pk]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
+			"         ├─ filters: [{(NULL, ∞)}]\n" +
 			"         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedAnalysis: "Limit(10)\n" +
 			" └─ Offset(5)\n" +
 			"     └─ IndexedTableAccess(one_pk)\n" +
 			"         ├─ index: [one_pk.pk]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
+			"         ├─ filters: [{(NULL, ∞)}]\n" +
 			"         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 	},
@@ -23216,7 +23192,7 @@ WHERE keyless.c0 IN (
 			"     ├─ columns: [xy.x:0!null->max(x):0]\n" +
 			"     └─ IndexedTableAccess(xy)\n" +
 			"         ├─ index: [xy.x]\n" +
-			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ static: [{(NULL, ∞)}]\n" +
 			"         ├─ reverse: true\n" +
 			"         ├─ colSet: (1,2)\n" +
 			"         ├─ tableId: 1\n" +
@@ -23229,7 +23205,7 @@ WHERE keyless.c0 IN (
 			"     ├─ columns: [xy.x as max(x)]\n" +
 			"     └─ IndexedTableAccess(xy)\n" +
 			"         ├─ index: [xy.x]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
+			"         ├─ filters: [{(NULL, ∞)}]\n" +
 			"         ├─ columns: [x]\n" +
 			"         └─ reverse: true\n" +
 			"",
@@ -23238,7 +23214,7 @@ WHERE keyless.c0 IN (
 			"     ├─ columns: [xy.x as max(x)]\n" +
 			"     └─ IndexedTableAccess(xy)\n" +
 			"         ├─ index: [xy.x]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
+			"         ├─ filters: [{(NULL, ∞)}]\n" +
 			"         ├─ columns: [x]\n" +
 			"         └─ reverse: true\n" +
 			"",
@@ -23250,7 +23226,7 @@ WHERE keyless.c0 IN (
 			"     ├─ columns: [xy.x:0!null->min(x):0]\n" +
 			"     └─ IndexedTableAccess(xy)\n" +
 			"         ├─ index: [xy.x]\n" +
-			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ static: [{(NULL, ∞)}]\n" +
 			"         ├─ colSet: (1,2)\n" +
 			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
@@ -23262,7 +23238,7 @@ WHERE keyless.c0 IN (
 			"     ├─ columns: [xy.x as min(x)]\n" +
 			"     └─ IndexedTableAccess(xy)\n" +
 			"         ├─ index: [xy.x]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
+			"         ├─ filters: [{(NULL, ∞)}]\n" +
 			"         └─ columns: [x]\n" +
 			"",
 		ExpectedAnalysis: "Limit(1)\n" +
@@ -23270,7 +23246,7 @@ WHERE keyless.c0 IN (
 			"     ├─ columns: [xy.x as min(x)]\n" +
 			"     └─ IndexedTableAccess(xy)\n" +
 			"         ├─ index: [xy.x]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
+			"         ├─ filters: [{(NULL, ∞)}]\n" +
 			"         └─ columns: [x]\n" +
 			"",
 	},
@@ -23312,7 +23288,7 @@ WHERE keyless.c0 IN (
 			"     ├─ columns: [(xy.x:0!null + 100 (tinyint))->max(x)+100:0]\n" +
 			"     └─ IndexedTableAccess(xy)\n" +
 			"         ├─ index: [xy.x]\n" +
-			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ static: [{(NULL, ∞)}]\n" +
 			"         ├─ reverse: true\n" +
 			"         ├─ colSet: (1,2)\n" +
 			"         ├─ tableId: 1\n" +
@@ -23325,7 +23301,7 @@ WHERE keyless.c0 IN (
 			"     ├─ columns: [(xy.x + 100) as max(x)+100]\n" +
 			"     └─ IndexedTableAccess(xy)\n" +
 			"         ├─ index: [xy.x]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
+			"         ├─ filters: [{(NULL, ∞)}]\n" +
 			"         ├─ columns: [x]\n" +
 			"         └─ reverse: true\n" +
 			"",
@@ -23334,7 +23310,7 @@ WHERE keyless.c0 IN (
 			"     ├─ columns: [(xy.x + 100) as max(x)+100]\n" +
 			"     └─ IndexedTableAccess(xy)\n" +
 			"         ├─ index: [xy.x]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
+			"         ├─ filters: [{(NULL, ∞)}]\n" +
 			"         ├─ columns: [x]\n" +
 			"         └─ reverse: true\n" +
 			"",
@@ -23346,7 +23322,7 @@ WHERE keyless.c0 IN (
 			"     ├─ columns: [xy.x:0!null->xx:0]\n" +
 			"     └─ IndexedTableAccess(xy)\n" +
 			"         ├─ index: [xy.x]\n" +
-			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ static: [{(NULL, ∞)}]\n" +
 			"         ├─ reverse: true\n" +
 			"         ├─ colSet: (1,2)\n" +
 			"         ├─ tableId: 1\n" +
@@ -23359,7 +23335,7 @@ WHERE keyless.c0 IN (
 			"     ├─ columns: [xy.x as xx]\n" +
 			"     └─ IndexedTableAccess(xy)\n" +
 			"         ├─ index: [xy.x]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
+			"         ├─ filters: [{(NULL, ∞)}]\n" +
 			"         ├─ columns: [x]\n" +
 			"         └─ reverse: true\n" +
 			"",
@@ -23368,7 +23344,7 @@ WHERE keyless.c0 IN (
 			"     ├─ columns: [xy.x as xx]\n" +
 			"     └─ IndexedTableAccess(xy)\n" +
 			"         ├─ index: [xy.x]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
+			"         ├─ filters: [{(NULL, ∞)}]\n" +
 			"         ├─ columns: [x]\n" +
 			"         └─ reverse: true\n" +
 			"",
@@ -23377,10 +23353,10 @@ WHERE keyless.c0 IN (
 		Query: `select 1, 2.0, '3', max(x) from xy`,
 		ExpectedPlan: "Limit(1)\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [1 (tinyint), 2 (decimal(2,1)), 3 (longtext), xy.x:0!null->max(x):0]\n" +
+			"     ├─ columns: [1 (tinyint), 2.0 (decimal(2,1)), 3 (longtext), xy.x:0!null->max(x):0]\n" +
 			"     └─ IndexedTableAccess(xy)\n" +
 			"         ├─ index: [xy.x]\n" +
-			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ static: [{(NULL, ∞)}]\n" +
 			"         ├─ reverse: true\n" +
 			"         ├─ colSet: (1,2)\n" +
 			"         ├─ tableId: 1\n" +
@@ -23393,7 +23369,7 @@ WHERE keyless.c0 IN (
 			"     ├─ columns: [1, 2.0, '3', xy.x as max(x)]\n" +
 			"     └─ IndexedTableAccess(xy)\n" +
 			"         ├─ index: [xy.x]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
+			"         ├─ filters: [{(NULL, ∞)}]\n" +
 			"         ├─ columns: [x]\n" +
 			"         └─ reverse: true\n" +
 			"",
@@ -23402,7 +23378,7 @@ WHERE keyless.c0 IN (
 			"     ├─ columns: [1, 2.0, '3', xy.x as max(x)]\n" +
 			"     └─ IndexedTableAccess(xy)\n" +
 			"         ├─ index: [xy.x]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
+			"         ├─ filters: [{(NULL, ∞)}]\n" +
 			"         ├─ columns: [x]\n" +
 			"         └─ reverse: true\n" +
 			"",
@@ -23560,7 +23536,7 @@ WHERE keyless.c0 IN (
 			"         ├─ columns: [xy.x:0!null->max(x):0]\n" +
 			"         └─ IndexedTableAccess(xy)\n" +
 			"             ├─ index: [xy.x]\n" +
-			"             ├─ static: [{[NULL, ∞)}]\n" +
+			"             ├─ static: [{(NULL, ∞)}]\n" +
 			"             ├─ reverse: true\n" +
 			"             ├─ colSet: (1,2)\n" +
 			"             ├─ tableId: 1\n" +
@@ -23580,7 +23556,7 @@ WHERE keyless.c0 IN (
 			"         ├─ columns: [xy.x as max(x)]\n" +
 			"         └─ IndexedTableAccess(xy)\n" +
 			"             ├─ index: [xy.x]\n" +
-			"             ├─ filters: [{[NULL, ∞)}]\n" +
+			"             ├─ filters: [{(NULL, ∞)}]\n" +
 			"             ├─ columns: [x]\n" +
 			"             └─ reverse: true\n" +
 			"",
@@ -23596,7 +23572,7 @@ WHERE keyless.c0 IN (
 			"         ├─ columns: [xy.x as max(x)]\n" +
 			"         └─ IndexedTableAccess(xy)\n" +
 			"             ├─ index: [xy.x]\n" +
-			"             ├─ filters: [{[NULL, ∞)}]\n" +
+			"             ├─ filters: [{(NULL, ∞)}]\n" +
 			"             ├─ columns: [x]\n" +
 			"             └─ reverse: true\n" +
 			"",
@@ -23617,7 +23593,7 @@ WHERE keyless.c0 IN (
 			"             ├─ columns: [xy.x:0!null->max(x):0]\n" +
 			"             └─ IndexedTableAccess(xy)\n" +
 			"                 ├─ index: [xy.x]\n" +
-			"                 ├─ static: [{[NULL, ∞)}]\n" +
+			"                 ├─ static: [{(NULL, ∞)}]\n" +
 			"                 ├─ reverse: true\n" +
 			"                 ├─ colSet: (1,2)\n" +
 			"                 ├─ tableId: 1\n" +
@@ -23639,7 +23615,7 @@ WHERE keyless.c0 IN (
 			"             ├─ columns: [xy.x as max(x)]\n" +
 			"             └─ IndexedTableAccess(xy)\n" +
 			"                 ├─ index: [xy.x]\n" +
-			"                 ├─ filters: [{[NULL, ∞)}]\n" +
+			"                 ├─ filters: [{(NULL, ∞)}]\n" +
 			"                 ├─ columns: [x]\n" +
 			"                 └─ reverse: true\n" +
 			"",
@@ -23657,7 +23633,7 @@ WHERE keyless.c0 IN (
 			"             ├─ columns: [xy.x as max(x)]\n" +
 			"             └─ IndexedTableAccess(xy)\n" +
 			"                 ├─ index: [xy.x]\n" +
-			"                 ├─ filters: [{[NULL, ∞)}]\n" +
+			"                 ├─ filters: [{(NULL, ∞)}]\n" +
 			"                 ├─ columns: [x]\n" +
 			"                 └─ reverse: true\n" +
 			"",
@@ -24653,7 +24629,7 @@ order by x, y;
 		ExpectedPlan: "Distinct\n" +
 			" └─ IndexedTableAccess(two_pk)\n" +
 			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     ├─ static: [{(NULL, ∞), (NULL, ∞)}]\n" +
 			"     ├─ colSet: (1-7)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
@@ -24663,13 +24639,13 @@ order by x, y;
 		ExpectedEstimates: "Distinct\n" +
 			" └─ IndexedTableAccess(two_pk)\n" +
 			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"     ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     ├─ filters: [{(NULL, ∞), (NULL, ∞)}]\n" +
 			"     └─ columns: [pk1]\n" +
 			"",
 		ExpectedAnalysis: "Distinct\n" +
 			" └─ IndexedTableAccess(two_pk)\n" +
 			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"     ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     ├─ filters: [{(NULL, ∞), (NULL, ∞)}]\n" +
 			"     └─ columns: [pk1]\n" +
 			"",
 	},
@@ -24730,7 +24706,7 @@ order by x, y;
 			"     ├─ columns: [two_pk.pk2:1!null]\n" +
 			"     └─ IndexedTableAccess(two_pk)\n" +
 			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"         ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         ├─ static: [{(NULL, ∞), (NULL, ∞)}]\n" +
 			"         ├─ colSet: (1-7)\n" +
 			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
@@ -24742,7 +24718,7 @@ order by x, y;
 			"     ├─ columns: [two_pk.pk2]\n" +
 			"     └─ IndexedTableAccess(two_pk)\n" +
 			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"         ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         ├─ filters: [{(NULL, ∞), (NULL, ∞)}]\n" +
 			"         └─ columns: [pk1 pk2]\n" +
 			"",
 		ExpectedAnalysis: "Distinct\n" +
@@ -24750,7 +24726,7 @@ order by x, y;
 			"     ├─ columns: [two_pk.pk2]\n" +
 			"     └─ IndexedTableAccess(two_pk)\n" +
 			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"         ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         ├─ filters: [{(NULL, ∞), (NULL, ∞)}]\n" +
 			"         └─ columns: [pk1 pk2]\n" +
 			"",
 	},
@@ -24759,7 +24735,7 @@ order by x, y;
 		ExpectedPlan: "Distinct\n" +
 			" └─ IndexedTableAccess(two_pk)\n" +
 			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     ├─ static: [{(NULL, ∞), (NULL, ∞)}]\n" +
 			"     ├─ colSet: (1-7)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
@@ -24769,13 +24745,13 @@ order by x, y;
 		ExpectedEstimates: "Distinct\n" +
 			" └─ IndexedTableAccess(two_pk)\n" +
 			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"     ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     ├─ filters: [{(NULL, ∞), (NULL, ∞)}]\n" +
 			"     └─ columns: [pk1 pk2]\n" +
 			"",
 		ExpectedAnalysis: "Distinct\n" +
 			" └─ IndexedTableAccess(two_pk)\n" +
 			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"     ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     ├─ filters: [{(NULL, ∞), (NULL, ∞)}]\n" +
 			"     └─ columns: [pk1 pk2]\n" +
 			"",
 	},
@@ -24806,7 +24782,7 @@ order by x, y;
 		ExpectedPlan: "Distinct\n" +
 			" └─ IndexedTableAccess(two_pk)\n" +
 			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     ├─ static: [{(NULL, ∞), (NULL, ∞)}]\n" +
 			"     ├─ colSet: (1-7)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
@@ -24816,13 +24792,13 @@ order by x, y;
 		ExpectedEstimates: "Distinct\n" +
 			" └─ IndexedTableAccess(two_pk)\n" +
 			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"     ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     ├─ filters: [{(NULL, ∞), (NULL, ∞)}]\n" +
 			"     └─ columns: [pk1 pk2]\n" +
 			"",
 		ExpectedAnalysis: "Distinct\n" +
 			" └─ IndexedTableAccess(two_pk)\n" +
 			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"     ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     ├─ filters: [{(NULL, ∞), (NULL, ∞)}]\n" +
 			"     └─ columns: [pk1 pk2]\n" +
 			"",
 	},
@@ -24855,7 +24831,7 @@ order by x, y;
 			"     ├─ columns: [two_pk.pk2:1!null, two_pk.pk1:0!null]\n" +
 			"     └─ IndexedTableAccess(two_pk)\n" +
 			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"         ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         ├─ static: [{(NULL, ∞), (NULL, ∞)}]\n" +
 			"         ├─ colSet: (1-7)\n" +
 			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
@@ -24867,7 +24843,7 @@ order by x, y;
 			"     ├─ columns: [two_pk.pk2, two_pk.pk1]\n" +
 			"     └─ IndexedTableAccess(two_pk)\n" +
 			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"         ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         ├─ filters: [{(NULL, ∞), (NULL, ∞)}]\n" +
 			"         └─ columns: [pk1 pk2]\n" +
 			"",
 		ExpectedAnalysis: "Distinct\n" +
@@ -24875,7 +24851,7 @@ order by x, y;
 			"     ├─ columns: [two_pk.pk2, two_pk.pk1]\n" +
 			"     └─ IndexedTableAccess(two_pk)\n" +
 			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"         ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         ├─ filters: [{(NULL, ∞), (NULL, ∞)}]\n" +
 			"         └─ columns: [pk1 pk2]\n" +
 			"",
 	},
@@ -24967,7 +24943,10 @@ order by x, y;
 		Query: `select * from comp_index_t0 c join comp_index_t0 b join comp_index_t0 a on a.v2 = b.pk and b.v2 = c.pk and c.v2 = 1`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [c.pk:6!null, c.v1:7, c.v2:8, b.pk:3!null, b.v1:4, b.v2:5, a.pk:0!null, a.v1:1, a.v2:2]\n" +
-			" └─ LookupJoin\n" +
+			" └─ HashJoin\n" +
+			"     ├─ Eq\n" +
+			"     │   ├─ b.v2:5\n" +
+			"     │   └─ c.pk:6!null\n" +
 			"     ├─ LookupJoin\n" +
 			"     │   ├─ TableAlias(a)\n" +
 			"     │   │   └─ ProcessTable\n" +
@@ -24983,14 +24962,13 @@ order by x, y;
 			"     │           └─ Table\n" +
 			"     │               ├─ name: comp_index_t0\n" +
 			"     │               └─ columns: [pk v1 v2]\n" +
-			"     └─ Filter\n" +
-			"         ├─ Eq\n" +
-			"         │   ├─ c.v2:2\n" +
-			"         │   └─ 1 (bigint)\n" +
+			"     └─ HashLookup\n" +
+			"         ├─ left-key: TUPLE(b.v2:5)\n" +
+			"         ├─ right-key: TUPLE(c.pk:0!null)\n" +
 			"         └─ TableAlias(c)\n" +
 			"             └─ IndexedTableAccess(comp_index_t0)\n" +
-			"                 ├─ index: [comp_index_t0.pk]\n" +
-			"                 ├─ keys: [b.v2:5]\n" +
+			"                 ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			"                 ├─ static: [{[NULL, ∞), [1, 1]}]\n" +
 			"                 ├─ colSet: (1-3)\n" +
 			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +
@@ -24999,7 +24977,8 @@ order by x, y;
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [c.pk, c.v1, c.v2, b.pk, b.v1, b.v2, a.pk, a.v1, a.v2]\n" +
-			" └─ LookupJoin (estimated cost=333.300 rows=101)\n" +
+			" └─ HashJoin (estimated cost=253.020 rows=101)\n" +
+			"     ├─ (b.v2 = c.pk)\n" +
 			"     ├─ LookupJoin (estimated cost=333.300 rows=101)\n" +
 			"     │   ├─ TableAlias(a)\n" +
 			"     │   │   └─ Table\n" +
@@ -25010,17 +24989,19 @@ order by x, y;
 			"     │           ├─ index: [comp_index_t0.pk]\n" +
 			"     │           ├─ columns: [pk v1 v2]\n" +
 			"     │           └─ keys: a.v2\n" +
-			"     └─ Filter\n" +
-			"         ├─ (c.v2 = 1)\n" +
+			"     └─ HashLookup\n" +
+			"         ├─ left-key: (b.v2)\n" +
+			"         ├─ right-key: (c.pk)\n" +
 			"         └─ TableAlias(c)\n" +
 			"             └─ IndexedTableAccess(comp_index_t0)\n" +
-			"                 ├─ index: [comp_index_t0.pk]\n" +
-			"                 ├─ columns: [pk v1 v2]\n" +
-			"                 └─ keys: b.v2\n" +
+			"                 ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			"                 ├─ filters: [{[NULL, ∞), [1, 1]}]\n" +
+			"                 └─ columns: [pk v1 v2]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [c.pk, c.v1, c.v2, b.pk, b.v1, b.v2, a.pk, a.v1, a.v2]\n" +
-			" └─ LookupJoin (estimated cost=333.300 rows=101) (actual rows=0 loops=1)\n" +
+			" └─ HashJoin (estimated cost=253.020 rows=101) (actual rows=0 loops=1)\n" +
+			"     ├─ (b.v2 = c.pk)\n" +
 			"     ├─ LookupJoin (estimated cost=333.300 rows=101) (actual rows=101 loops=1)\n" +
 			"     │   ├─ TableAlias(a)\n" +
 			"     │   │   └─ Table\n" +
@@ -25031,18 +25012,22 @@ order by x, y;
 			"     │           ├─ index: [comp_index_t0.pk]\n" +
 			"     │           ├─ columns: [pk v1 v2]\n" +
 			"     │           └─ keys: a.v2\n" +
-			"     └─ Filter\n" +
-			"         ├─ (c.v2 = 1)\n" +
+			"     └─ HashLookup\n" +
+			"         ├─ left-key: (b.v2)\n" +
+			"         ├─ right-key: (c.pk)\n" +
 			"         └─ TableAlias(c)\n" +
 			"             └─ IndexedTableAccess(comp_index_t0)\n" +
-			"                 ├─ index: [comp_index_t0.pk]\n" +
-			"                 ├─ columns: [pk v1 v2]\n" +
-			"                 └─ keys: b.v2\n" +
+			"                 ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			"                 ├─ filters: [{[NULL, ∞), [1, 1]}]\n" +
+			"                 └─ columns: [pk v1 v2]\n" +
 			"",
 	},
 	{
 		Query: `select * from comp_index_t0 a join comp_index_t0 b join comp_index_t0 c on a.v2 = b.pk and b.v2 = c.pk and c.v2 = 5`,
-		ExpectedPlan: "LookupJoin\n" +
+		ExpectedPlan: "HashJoin\n" +
+			" ├─ Eq\n" +
+			" │   ├─ b.v2:5\n" +
+			" │   └─ c.pk:6!null\n" +
 			" ├─ LookupJoin\n" +
 			" │   ├─ TableAlias(a)\n" +
 			" │   │   └─ ProcessTable\n" +
@@ -25058,21 +25043,21 @@ order by x, y;
 			" │           └─ Table\n" +
 			" │               ├─ name: comp_index_t0\n" +
 			" │               └─ columns: [pk v1 v2]\n" +
-			" └─ Filter\n" +
-			"     ├─ Eq\n" +
-			"     │   ├─ c.v2:2\n" +
-			"     │   └─ 5 (bigint)\n" +
+			" └─ HashLookup\n" +
+			"     ├─ left-key: TUPLE(b.v2:5)\n" +
+			"     ├─ right-key: TUPLE(c.pk:0!null)\n" +
 			"     └─ TableAlias(c)\n" +
 			"         └─ IndexedTableAccess(comp_index_t0)\n" +
-			"             ├─ index: [comp_index_t0.pk]\n" +
-			"             ├─ keys: [b.v2:5]\n" +
+			"             ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			"             ├─ static: [{[NULL, ∞), [5, 5]}]\n" +
 			"             ├─ colSet: (7-9)\n" +
 			"             ├─ tableId: 3\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: comp_index_t0\n" +
 			"                 └─ columns: [pk v1 v2]\n" +
 			"",
-		ExpectedEstimates: "LookupJoin (estimated cost=333.300 rows=101)\n" +
+		ExpectedEstimates: "HashJoin (estimated cost=253.020 rows=101)\n" +
+			" ├─ (b.v2 = c.pk)\n" +
 			" ├─ LookupJoin (estimated cost=333.300 rows=101)\n" +
 			" │   ├─ TableAlias(a)\n" +
 			" │   │   └─ Table\n" +
@@ -25083,15 +25068,17 @@ order by x, y;
 			" │           ├─ index: [comp_index_t0.pk]\n" +
 			" │           ├─ columns: [pk v1 v2]\n" +
 			" │           └─ keys: a.v2\n" +
-			" └─ Filter\n" +
-			"     ├─ (c.v2 = 5)\n" +
+			" └─ HashLookup\n" +
+			"     ├─ left-key: (b.v2)\n" +
+			"     ├─ right-key: (c.pk)\n" +
 			"     └─ TableAlias(c)\n" +
 			"         └─ IndexedTableAccess(comp_index_t0)\n" +
-			"             ├─ index: [comp_index_t0.pk]\n" +
-			"             ├─ columns: [pk v1 v2]\n" +
-			"             └─ keys: b.v2\n" +
+			"             ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			"             ├─ filters: [{[NULL, ∞), [5, 5]}]\n" +
+			"             └─ columns: [pk v1 v2]\n" +
 			"",
-		ExpectedAnalysis: "LookupJoin (estimated cost=333.300 rows=101) (actual rows=0 loops=1)\n" +
+		ExpectedAnalysis: "HashJoin (estimated cost=253.020 rows=101) (actual rows=0 loops=1)\n" +
+			" ├─ (b.v2 = c.pk)\n" +
 			" ├─ LookupJoin (estimated cost=333.300 rows=101) (actual rows=101 loops=1)\n" +
 			" │   ├─ TableAlias(a)\n" +
 			" │   │   └─ Table\n" +
@@ -25102,13 +25089,14 @@ order by x, y;
 			" │           ├─ index: [comp_index_t0.pk]\n" +
 			" │           ├─ columns: [pk v1 v2]\n" +
 			" │           └─ keys: a.v2\n" +
-			" └─ Filter\n" +
-			"     ├─ (c.v2 = 5)\n" +
+			" └─ HashLookup\n" +
+			"     ├─ left-key: (b.v2)\n" +
+			"     ├─ right-key: (c.pk)\n" +
 			"     └─ TableAlias(c)\n" +
 			"         └─ IndexedTableAccess(comp_index_t0)\n" +
-			"             ├─ index: [comp_index_t0.pk]\n" +
-			"             ├─ columns: [pk v1 v2]\n" +
-			"             └─ keys: b.v2\n" +
+			"             ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
+			"             ├─ filters: [{[NULL, ∞), [5, 5]}]\n" +
+			"             └─ columns: [pk v1 v2]\n" +
 			"",
 	},
 	{

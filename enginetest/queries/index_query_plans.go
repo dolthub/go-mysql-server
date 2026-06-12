@@ -16502,7 +16502,7 @@ var IndexPlanTests = []QueryPlanTest{
 			" ├─ tableId: 3\n" +
 			" └─ IndexedTableAccess(three_pks)\n" +
 			"     ├─ index: [three_pks.pk1,three_pks.pk2,three_pks.pk3]\n" +
-			"     ├─ static: [{[1, 1], [1, 1], [NULL, ∞)}]\n" +
+			"     ├─ static: [{[1, 1], [1, 1], (NULL, ∞)}]\n" +
 			"     ├─ colSet: (1-3)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
@@ -16518,7 +16518,7 @@ var IndexPlanTests = []QueryPlanTest{
 			" ├─ tableId: 3\n" +
 			" └─ IndexedTableAccess(three_pks)\n" +
 			"     ├─ index: [three_pks.pk1,three_pks.pk2,three_pks.pk3]\n" +
-			"     ├─ filters: [{[1, 1], [1, 1], [NULL, ∞)}]\n" +
+			"     ├─ filters: [{[1, 1], [1, 1], (NULL, ∞)}]\n" +
 			"     └─ columns: [pk1 pk2 pk3]\n" +
 			"",
 		ExpectedAnalysis: "SubqueryAlias\n" +
@@ -16530,7 +16530,7 @@ var IndexPlanTests = []QueryPlanTest{
 			" ├─ tableId: 3\n" +
 			" └─ IndexedTableAccess(three_pks)\n" +
 			"     ├─ index: [three_pks.pk1,three_pks.pk2,three_pks.pk3]\n" +
-			"     ├─ filters: [{[1, 1], [1, 1], [NULL, ∞)}]\n" +
+			"     ├─ filters: [{[1, 1], [1, 1], (NULL, ∞)}]\n" +
 			"     └─ columns: [pk1 pk2 pk3]\n" +
 			"",
 	},
@@ -16695,7 +16695,7 @@ var IndexPlanTests = []QueryPlanTest{
 			"         ├─ TableAlias(r)\n" +
 			"         │   └─ IndexedTableAccess(three_pk)\n" +
 			"         │       ├─ index: [three_pk.pk1,three_pk.pk2,three_pk.pk3]\n" +
-			"         │       ├─ static: [{[2, 2], [NULL, ∞), [NULL, ∞)}]\n" +
+			"         │       ├─ static: [{[2, 2], (NULL, ∞), (NULL, ∞)}]\n" +
 			"         │       ├─ colSet: (9-16)\n" +
 			"         │       ├─ tableId: 2\n" +
 			"         │       └─ Table\n" +
@@ -16704,7 +16704,7 @@ var IndexPlanTests = []QueryPlanTest{
 			"         └─ TableAlias(l)\n" +
 			"             └─ IndexedTableAccess(three_pk)\n" +
 			"                 ├─ index: [three_pk.pk1,three_pk.pk2,three_pk.pk3]\n" +
-			"                 ├─ static: [{[1, 1], [NULL, ∞), [NULL, ∞)}]\n" +
+			"                 ├─ static: [{[1, 1], (NULL, ∞), (NULL, ∞)}]\n" +
 			"                 ├─ colSet: (1-8)\n" +
 			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +
@@ -16724,12 +16724,12 @@ var IndexPlanTests = []QueryPlanTest{
 			"         ├─ TableAlias(r)\n" +
 			"         │   └─ IndexedTableAccess(three_pk)\n" +
 			"         │       ├─ index: [three_pk.pk1,three_pk.pk2,three_pk.pk3]\n" +
-			"         │       ├─ filters: [{[2, 2], [NULL, ∞), [NULL, ∞)}]\n" +
+			"         │       ├─ filters: [{[2, 2], (NULL, ∞), (NULL, ∞)}]\n" +
 			"         │       └─ columns: [pk1]\n" +
 			"         └─ TableAlias(l)\n" +
 			"             └─ IndexedTableAccess(three_pk)\n" +
 			"                 ├─ index: [three_pk.pk1,three_pk.pk2,three_pk.pk3]\n" +
-			"                 ├─ filters: [{[1, 1], [NULL, ∞), [NULL, ∞)}]\n" +
+			"                 ├─ filters: [{[1, 1], (NULL, ∞), (NULL, ∞)}]\n" +
 			"                 └─ columns: [pk1]\n" +
 			"",
 		ExpectedAnalysis: "SubqueryAlias\n" +
@@ -16745,12 +16745,12 @@ var IndexPlanTests = []QueryPlanTest{
 			"         ├─ TableAlias(r)\n" +
 			"         │   └─ IndexedTableAccess(three_pk)\n" +
 			"         │       ├─ index: [three_pk.pk1,three_pk.pk2,three_pk.pk3]\n" +
-			"         │       ├─ filters: [{[2, 2], [NULL, ∞), [NULL, ∞)}]\n" +
+			"         │       ├─ filters: [{[2, 2], (NULL, ∞), (NULL, ∞)}]\n" +
 			"         │       └─ columns: [pk1]\n" +
 			"         └─ TableAlias(l)\n" +
 			"             └─ IndexedTableAccess(three_pk)\n" +
 			"                 ├─ index: [three_pk.pk1,three_pk.pk2,three_pk.pk3]\n" +
-			"                 ├─ filters: [{[1, 1], [NULL, ∞), [NULL, ∞)}]\n" +
+			"                 ├─ filters: [{[1, 1], (NULL, ∞), (NULL, ∞)}]\n" +
 			"                 └─ columns: [pk1]\n" +
 			"",
 	},
@@ -16782,7 +16782,7 @@ var IndexPlanTests = []QueryPlanTest{
 			"         │           ├─ TableAlias(r)\n" +
 			"         │           │   └─ IndexedTableAccess(three_pks)\n" +
 			"         │           │       ├─ index: [three_pks.pk1,three_pks.pk2,three_pks.pk3]\n" +
-			"         │           │       ├─ static: [{[2, 2], [NULL, ∞), [NULL, ∞)}]\n" +
+			"         │           │       ├─ static: [{[2, 2], (NULL, ∞), (NULL, ∞)}]\n" +
 			"         │           │       ├─ colSet: (4-6)\n" +
 			"         │           │       ├─ tableId: 2\n" +
 			"         │           │       └─ Table\n" +
@@ -16791,7 +16791,7 @@ var IndexPlanTests = []QueryPlanTest{
 			"         │           └─ TableAlias(l)\n" +
 			"         │               └─ IndexedTableAccess(three_pks)\n" +
 			"         │                   ├─ index: [three_pks.pk1,three_pks.pk2,three_pks.pk3]\n" +
-			"         │                   ├─ static: [{[1, 1], [NULL, ∞), [NULL, ∞)}]\n" +
+			"         │                   ├─ static: [{[1, 1], (NULL, ∞), (NULL, ∞)}]\n" +
 			"         │                   ├─ colSet: (1-3)\n" +
 			"         │                   ├─ tableId: 1\n" +
 			"         │                   └─ Table\n" +
@@ -16817,7 +16817,7 @@ var IndexPlanTests = []QueryPlanTest{
 			"                             ├─ TableAlias(r)\n" +
 			"                             │   └─ IndexedTableAccess(three_pks)\n" +
 			"                             │       ├─ index: [three_pks.pk1,three_pks.pk2,three_pks.pk3]\n" +
-			"                             │       ├─ static: [{[4, 4], [NULL, ∞), [NULL, ∞)}]\n" +
+			"                             │       ├─ static: [{[4, 4], (NULL, ∞), (NULL, ∞)}]\n" +
 			"                             │       ├─ colSet: (14-16)\n" +
 			"                             │       ├─ tableId: 6\n" +
 			"                             │       └─ Table\n" +
@@ -16826,7 +16826,7 @@ var IndexPlanTests = []QueryPlanTest{
 			"                             └─ TableAlias(l)\n" +
 			"                                 └─ IndexedTableAccess(three_pks)\n" +
 			"                                     ├─ index: [three_pks.pk1,three_pks.pk2,three_pks.pk3]\n" +
-			"                                     ├─ static: [{[3, 3], [NULL, ∞), [NULL, ∞)}]\n" +
+			"                                     ├─ static: [{[3, 3], (NULL, ∞), (NULL, ∞)}]\n" +
 			"                                     ├─ colSet: (11-13)\n" +
 			"                                     ├─ tableId: 5\n" +
 			"                                     └─ Table\n" +
@@ -16857,12 +16857,12 @@ var IndexPlanTests = []QueryPlanTest{
 			"         │           ├─ TableAlias(r)\n" +
 			"         │           │   └─ IndexedTableAccess(three_pks)\n" +
 			"         │           │       ├─ index: [three_pks.pk1,three_pks.pk2,three_pks.pk3]\n" +
-			"         │           │       ├─ filters: [{[2, 2], [NULL, ∞), [NULL, ∞)}]\n" +
+			"         │           │       ├─ filters: [{[2, 2], (NULL, ∞), (NULL, ∞)}]\n" +
 			"         │           │       └─ columns: [pk1 pk2]\n" +
 			"         │           └─ TableAlias(l)\n" +
 			"         │               └─ IndexedTableAccess(three_pks)\n" +
 			"         │                   ├─ index: [three_pks.pk1,three_pks.pk2,three_pks.pk3]\n" +
-			"         │                   ├─ filters: [{[1, 1], [NULL, ∞), [NULL, ∞)}]\n" +
+			"         │                   ├─ filters: [{[1, 1], (NULL, ∞), (NULL, ∞)}]\n" +
 			"         │                   └─ columns: [pk1 pk2]\n" +
 			"         └─ HashLookup\n" +
 			"             ├─ left-key: ()\n" +
@@ -16880,12 +16880,12 @@ var IndexPlanTests = []QueryPlanTest{
 			"                             ├─ TableAlias(r)\n" +
 			"                             │   └─ IndexedTableAccess(three_pks)\n" +
 			"                             │       ├─ index: [three_pks.pk1,three_pks.pk2,three_pks.pk3]\n" +
-			"                             │       ├─ filters: [{[4, 4], [NULL, ∞), [NULL, ∞)}]\n" +
+			"                             │       ├─ filters: [{[4, 4], (NULL, ∞), (NULL, ∞)}]\n" +
 			"                             │       └─ columns: [pk1 pk2]\n" +
 			"                             └─ TableAlias(l)\n" +
 			"                                 └─ IndexedTableAccess(three_pks)\n" +
 			"                                     ├─ index: [three_pks.pk1,three_pks.pk2,three_pks.pk3]\n" +
-			"                                     ├─ filters: [{[3, 3], [NULL, ∞), [NULL, ∞)}]\n" +
+			"                                     ├─ filters: [{[3, 3], (NULL, ∞), (NULL, ∞)}]\n" +
 			"                                     └─ columns: [pk1 pk2]\n" +
 			"",
 		ExpectedAnalysis: "SubqueryAlias\n" +
@@ -16912,12 +16912,12 @@ var IndexPlanTests = []QueryPlanTest{
 			"         │           ├─ TableAlias(r)\n" +
 			"         │           │   └─ IndexedTableAccess(three_pks)\n" +
 			"         │           │       ├─ index: [three_pks.pk1,three_pks.pk2,three_pks.pk3]\n" +
-			"         │           │       ├─ filters: [{[2, 2], [NULL, ∞), [NULL, ∞)}]\n" +
+			"         │           │       ├─ filters: [{[2, 2], (NULL, ∞), (NULL, ∞)}]\n" +
 			"         │           │       └─ columns: [pk1 pk2]\n" +
 			"         │           └─ TableAlias(l)\n" +
 			"         │               └─ IndexedTableAccess(three_pks)\n" +
 			"         │                   ├─ index: [three_pks.pk1,three_pks.pk2,three_pks.pk3]\n" +
-			"         │                   ├─ filters: [{[1, 1], [NULL, ∞), [NULL, ∞)}]\n" +
+			"         │                   ├─ filters: [{[1, 1], (NULL, ∞), (NULL, ∞)}]\n" +
 			"         │                   └─ columns: [pk1 pk2]\n" +
 			"         └─ HashLookup\n" +
 			"             ├─ left-key: ()\n" +
@@ -16935,12 +16935,12 @@ var IndexPlanTests = []QueryPlanTest{
 			"                             ├─ TableAlias(r)\n" +
 			"                             │   └─ IndexedTableAccess(three_pks)\n" +
 			"                             │       ├─ index: [three_pks.pk1,three_pks.pk2,three_pks.pk3]\n" +
-			"                             │       ├─ filters: [{[4, 4], [NULL, ∞), [NULL, ∞)}]\n" +
+			"                             │       ├─ filters: [{[4, 4], (NULL, ∞), (NULL, ∞)}]\n" +
 			"                             │       └─ columns: [pk1 pk2]\n" +
 			"                             └─ TableAlias(l)\n" +
 			"                                 └─ IndexedTableAccess(three_pks)\n" +
 			"                                     ├─ index: [three_pks.pk1,three_pks.pk2,three_pks.pk3]\n" +
-			"                                     ├─ filters: [{[3, 3], [NULL, ∞), [NULL, ∞)}]\n" +
+			"                                     ├─ filters: [{[3, 3], (NULL, ∞), (NULL, ∞)}]\n" +
 			"                                     └─ columns: [pk1 pk2]\n" +
 			"",
 	},
