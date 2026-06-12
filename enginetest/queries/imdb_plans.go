@@ -13700,10 +13700,10 @@ WHERE cn.country_code !='[pl]'
 			"         │   │   │   │       └─ mk.movie_id:11!null\n" +
 			"         │   │   │   └─ Eq\n" +
 			"         │   │   │       ├─ ml.movie_id:0!null\n" +
-			"         │   │   │       └─ mc.movie_id:16!null\n" +
+			"         │   │   │       └─ mc.movie_id:18!null\n" +
 			"         │   │   └─ Eq\n" +
 			"         │   │       ├─ ml.movie_id:0!null\n" +
-			"         │   │       └─ mi.movie_id:20!null\n" +
+			"         │   │       └─ mi.movie_id:16!null\n" +
 			"         │   └─ Eq\n" +
 			"         │       ├─ ml.movie_id:0!null\n" +
 			"         │       └─ t.id:13!null\n" +
@@ -13714,23 +13714,24 @@ WHERE cn.country_code !='[pl]'
 			"         │           └─ columns: [movie_id link_type_id]\n" +
 			"         └─ HashLookup\n" +
 			"             ├─ left-key: TUPLE(ml.link_type_id:1!null, ml.movie_id:0!null, ml.movie_id:0!null, ml.movie_id:0!null, ml.movie_id:0!null)\n" +
-			"             ├─ right-key: TUPLE(lt.id:0!null, mk.movie_id:9!null, mc.movie_id:14!null, mi.movie_id:18!null, t.id:11!null)\n" +
+			"             ├─ right-key: TUPLE(lt.id:0!null, mk.movie_id:9!null, mc.movie_id:16!null, mi.movie_id:14!null, t.id:11!null)\n" +
 			"             └─ LookupJoin\n" +
 			"                 ├─ AND\n" +
-			"                 │   ├─ Eq\n" +
-			"                 │   │   ├─ mk.movie_id:11!null\n" +
-			"                 │   │   └─ mi.movie_id:20!null\n" +
-			"                 │   └─ Eq\n" +
-			"                 │       ├─ mi.movie_id:20!null\n" +
-			"                 │       └─ t.id:13!null\n" +
-			"                 ├─ LookupJoin\n" +
 			"                 │   ├─ AND\n" +
-			"                 │   │   ├─ Eq\n" +
-			"                 │   │   │   ├─ mc.company_type_id:18!null\n" +
-			"                 │   │   │   └─ ct.id:6!null\n" +
+			"                 │   │   ├─ AND\n" +
+			"                 │   │   │   ├─ Eq\n" +
+			"                 │   │   │   │   ├─ mc.company_type_id:20!null\n" +
+			"                 │   │   │   │   └─ ct.id:6!null\n" +
+			"                 │   │   │   └─ Eq\n" +
+			"                 │   │   │       ├─ mc.company_id:19!null\n" +
+			"                 │   │   │       └─ cn.id:8!null\n" +
 			"                 │   │   └─ Eq\n" +
-			"                 │   │       ├─ mc.company_id:17!null\n" +
-			"                 │   │       └─ cn.id:8!null\n" +
+			"                 │   │       ├─ mk.movie_id:11!null\n" +
+			"                 │   │       └─ mc.movie_id:18!null\n" +
+			"                 │   └─ Eq\n" +
+			"                 │       ├─ t.id:13!null\n" +
+			"                 │       └─ mc.movie_id:18!null\n" +
+			"                 ├─ LookupJoin\n" +
 			"                 │   ├─ LookupJoin\n" +
 			"                 │   │   ├─ LookupJoin\n" +
 			"                 │   │   │   ├─ CrossJoin\n" +
@@ -13802,29 +13803,29 @@ WHERE cn.country_code !='[pl]'
 			"                 │   │                   ├─ name: title\n" +
 			"                 │   │                   └─ columns: [id title production_year]\n" +
 			"                 │   └─ Filter\n" +
-			"                 │       ├─ mc.note:3 IS NULL\n" +
-			"                 │       └─ TableAlias(mc)\n" +
-			"                 │           └─ IndexedTableAccess(movie_companies)\n" +
-			"                 │               ├─ index: [movie_companies.movie_id]\n" +
+			"                 │       ├─ HashIn\n" +
+			"                 │       │   ├─ mi.info:1!null\n" +
+			"                 │       │   └─ TUPLE(Sweden (longtext), Norway (longtext), Germany (longtext), Denmark (longtext), Swedish (longtext), Denish (longtext), Norwegian (longtext), German (longtext))\n" +
+			"                 │       └─ TableAlias(mi)\n" +
+			"                 │           └─ IndexedTableAccess(movie_info)\n" +
+			"                 │               ├─ index: [movie_info.movie_id]\n" +
 			"                 │               ├─ keys: [mk.movie_id:11!null]\n" +
-			"                 │               ├─ colSet: (15-19)\n" +
-			"                 │               ├─ tableId: 5\n" +
+			"                 │               ├─ colSet: (20-24)\n" +
+			"                 │               ├─ tableId: 6\n" +
 			"                 │               └─ Table\n" +
-			"                 │                   ├─ name: movie_companies\n" +
-			"                 │                   └─ columns: [movie_id company_id company_type_id note]\n" +
+			"                 │                   ├─ name: movie_info\n" +
+			"                 │                   └─ columns: [movie_id info]\n" +
 			"                 └─ Filter\n" +
-			"                     ├─ HashIn\n" +
-			"                     │   ├─ mi.info:1!null\n" +
-			"                     │   └─ TUPLE(Sweden (longtext), Norway (longtext), Germany (longtext), Denmark (longtext), Swedish (longtext), Denish (longtext), Norwegian (longtext), German (longtext))\n" +
-			"                     └─ TableAlias(mi)\n" +
-			"                         └─ IndexedTableAccess(movie_info)\n" +
-			"                             ├─ index: [movie_info.movie_id]\n" +
-			"                             ├─ keys: [mc.movie_id:16!null]\n" +
-			"                             ├─ colSet: (20-24)\n" +
-			"                             ├─ tableId: 6\n" +
+			"                     ├─ mc.note:3 IS NULL\n" +
+			"                     └─ TableAlias(mc)\n" +
+			"                         └─ IndexedTableAccess(movie_companies)\n" +
+			"                             ├─ index: [movie_companies.movie_id]\n" +
+			"                             ├─ keys: [mi.movie_id:16!null]\n" +
+			"                             ├─ colSet: (15-19)\n" +
+			"                             ├─ tableId: 5\n" +
 			"                             └─ Table\n" +
-			"                                 ├─ name: movie_info\n" +
-			"                                 └─ columns: [movie_id info]\n" +
+			"                                 ├─ name: movie_companies\n" +
+			"                                 └─ columns: [movie_id company_id company_type_id note]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(cn.name) as company_name, min(lt.link) as link_type, min(t.title) as western_follow_up]\n" +
@@ -13840,10 +13841,9 @@ WHERE cn.country_code !='[pl]'
 			"         └─ HashLookup\n" +
 			"             ├─ left-key: (ml.link_type_id, ml.movie_id, ml.movie_id, ml.movie_id, ml.movie_id)\n" +
 			"             ├─ right-key: (lt.id, mk.movie_id, mc.movie_id, mi.movie_id, t.id)\n" +
-			"             └─ LookupJoin (estimated cost=366101.100 rows=3)\n" +
-			"                 ├─ ((mk.movie_id = mi.movie_id) AND (mi.movie_id = t.id))\n" +
-			"                 ├─ LookupJoin (estimated cost=66434.280 rows=3)\n" +
-			"                 │   ├─ ((mc.company_type_id = ct.id) AND (mc.company_id = cn.id))\n" +
+			"             └─ LookupJoin (estimated cost=66434.280 rows=3)\n" +
+			"                 ├─ ((((mc.company_type_id = ct.id) AND (mc.company_id = cn.id)) AND (mk.movie_id = mc.movie_id)) AND (t.id = mc.movie_id))\n" +
+			"                 ├─ LookupJoin (estimated cost=366101.100 rows=3)\n" +
 			"                 │   ├─ LookupJoin (estimated cost=64468.770 rows=3)\n" +
 			"                 │   │   ├─ LookupJoin (estimated cost=135748.500 rows=3)\n" +
 			"                 │   │   │   ├─ CrossJoin (estimated cost=46.450 rows=3)\n" +
@@ -13886,19 +13886,19 @@ WHERE cn.country_code !='[pl]'
 			"                 │   │               ├─ columns: [id title production_year]\n" +
 			"                 │   │               └─ keys: mk.movie_id\n" +
 			"                 │   └─ Filter\n" +
-			"                 │       ├─ mc.note IS NULL\n" +
-			"                 │       └─ TableAlias(mc)\n" +
-			"                 │           └─ IndexedTableAccess(movie_companies)\n" +
-			"                 │               ├─ index: [movie_companies.movie_id]\n" +
-			"                 │               ├─ columns: [movie_id company_id company_type_id note]\n" +
+			"                 │       ├─ (mi.info HASH IN ('Sweden', 'Norway', 'Germany', 'Denmark', 'Swedish', 'Denish', 'Norwegian', 'German'))\n" +
+			"                 │       └─ TableAlias(mi)\n" +
+			"                 │           └─ IndexedTableAccess(movie_info)\n" +
+			"                 │               ├─ index: [movie_info.movie_id]\n" +
+			"                 │               ├─ columns: [movie_id info]\n" +
 			"                 │               └─ keys: mk.movie_id\n" +
 			"                 └─ Filter\n" +
-			"                     ├─ (mi.info HASH IN ('Sweden', 'Norway', 'Germany', 'Denmark', 'Swedish', 'Denish', 'Norwegian', 'German'))\n" +
-			"                     └─ TableAlias(mi)\n" +
-			"                         └─ IndexedTableAccess(movie_info)\n" +
-			"                             ├─ index: [movie_info.movie_id]\n" +
-			"                             ├─ columns: [movie_id info]\n" +
-			"                             └─ keys: mc.movie_id\n" +
+			"                     ├─ mc.note IS NULL\n" +
+			"                     └─ TableAlias(mc)\n" +
+			"                         └─ IndexedTableAccess(movie_companies)\n" +
+			"                             ├─ index: [movie_companies.movie_id]\n" +
+			"                             ├─ columns: [movie_id company_id company_type_id note]\n" +
+			"                             └─ keys: mi.movie_id\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(cn.name) as company_name, min(lt.link) as link_type, min(t.title) as western_follow_up]\n" +
@@ -13914,10 +13914,9 @@ WHERE cn.country_code !='[pl]'
 			"         └─ HashLookup\n" +
 			"             ├─ left-key: (ml.link_type_id, ml.movie_id, ml.movie_id, ml.movie_id, ml.movie_id)\n" +
 			"             ├─ right-key: (lt.id, mk.movie_id, mc.movie_id, mi.movie_id, t.id)\n" +
-			"             └─ LookupJoin (estimated cost=366101.100 rows=3)\n" +
-			"                 ├─ ((mk.movie_id = mi.movie_id) AND (mi.movie_id = t.id))\n" +
-			"                 ├─ LookupJoin (estimated cost=66434.280 rows=3)\n" +
-			"                 │   ├─ ((mc.company_type_id = ct.id) AND (mc.company_id = cn.id))\n" +
+			"             └─ LookupJoin (estimated cost=66434.280 rows=3)\n" +
+			"                 ├─ ((((mc.company_type_id = ct.id) AND (mc.company_id = cn.id)) AND (mk.movie_id = mc.movie_id)) AND (t.id = mc.movie_id))\n" +
+			"                 ├─ LookupJoin (estimated cost=366101.100 rows=3)\n" +
 			"                 │   ├─ LookupJoin (estimated cost=64468.770 rows=3)\n" +
 			"                 │   │   ├─ LookupJoin (estimated cost=135748.500 rows=3)\n" +
 			"                 │   │   │   ├─ CrossJoin (estimated cost=46.450 rows=3)\n" +
@@ -13960,19 +13959,19 @@ WHERE cn.country_code !='[pl]'
 			"                 │   │               ├─ columns: [id title production_year]\n" +
 			"                 │   │               └─ keys: mk.movie_id\n" +
 			"                 │   └─ Filter\n" +
-			"                 │       ├─ mc.note IS NULL\n" +
-			"                 │       └─ TableAlias(mc)\n" +
-			"                 │           └─ IndexedTableAccess(movie_companies)\n" +
-			"                 │               ├─ index: [movie_companies.movie_id]\n" +
-			"                 │               ├─ columns: [movie_id company_id company_type_id note]\n" +
+			"                 │       ├─ (mi.info HASH IN ('Sweden', 'Norway', 'Germany', 'Denmark', 'Swedish', 'Denish', 'Norwegian', 'German'))\n" +
+			"                 │       └─ TableAlias(mi)\n" +
+			"                 │           └─ IndexedTableAccess(movie_info)\n" +
+			"                 │               ├─ index: [movie_info.movie_id]\n" +
+			"                 │               ├─ columns: [movie_id info]\n" +
 			"                 │               └─ keys: mk.movie_id\n" +
 			"                 └─ Filter\n" +
-			"                     ├─ (mi.info HASH IN ('Sweden', 'Norway', 'Germany', 'Denmark', 'Swedish', 'Denish', 'Norwegian', 'German'))\n" +
-			"                     └─ TableAlias(mi)\n" +
-			"                         └─ IndexedTableAccess(movie_info)\n" +
-			"                             ├─ index: [movie_info.movie_id]\n" +
-			"                             ├─ columns: [movie_id info]\n" +
-			"                             └─ keys: mc.movie_id\n" +
+			"                     ├─ mc.note IS NULL\n" +
+			"                     └─ TableAlias(mc)\n" +
+			"                         └─ IndexedTableAccess(movie_companies)\n" +
+			"                             ├─ index: [movie_companies.movie_id]\n" +
+			"                             ├─ columns: [movie_id company_id company_type_id note]\n" +
+			"                             └─ keys: mi.movie_id\n" +
 			"",
 	},
 	{
@@ -14033,10 +14032,10 @@ WHERE cn.country_code !='[pl]'
 			"         │   │   │   │       └─ mk.movie_id:11!null\n" +
 			"         │   │   │   └─ Eq\n" +
 			"         │   │   │       ├─ ml.movie_id:0!null\n" +
-			"         │   │   │       └─ mc.movie_id:16!null\n" +
+			"         │   │   │       └─ mc.movie_id:18!null\n" +
 			"         │   │   └─ Eq\n" +
 			"         │   │       ├─ ml.movie_id:0!null\n" +
-			"         │   │       └─ mi.movie_id:20!null\n" +
+			"         │   │       └─ mi.movie_id:16!null\n" +
 			"         │   └─ Eq\n" +
 			"         │       ├─ ml.movie_id:0!null\n" +
 			"         │       └─ t.id:13!null\n" +
@@ -14047,23 +14046,24 @@ WHERE cn.country_code !='[pl]'
 			"         │           └─ columns: [movie_id link_type_id]\n" +
 			"         └─ HashLookup\n" +
 			"             ├─ left-key: TUPLE(ml.link_type_id:1!null, ml.movie_id:0!null, ml.movie_id:0!null, ml.movie_id:0!null, ml.movie_id:0!null)\n" +
-			"             ├─ right-key: TUPLE(lt.id:0!null, mk.movie_id:9!null, mc.movie_id:14!null, mi.movie_id:18!null, t.id:11!null)\n" +
+			"             ├─ right-key: TUPLE(lt.id:0!null, mk.movie_id:9!null, mc.movie_id:16!null, mi.movie_id:14!null, t.id:11!null)\n" +
 			"             └─ LookupJoin\n" +
 			"                 ├─ AND\n" +
-			"                 │   ├─ Eq\n" +
-			"                 │   │   ├─ mk.movie_id:11!null\n" +
-			"                 │   │   └─ mi.movie_id:20!null\n" +
-			"                 │   └─ Eq\n" +
-			"                 │       ├─ mi.movie_id:20!null\n" +
-			"                 │       └─ t.id:13!null\n" +
-			"                 ├─ LookupJoin\n" +
 			"                 │   ├─ AND\n" +
-			"                 │   │   ├─ Eq\n" +
-			"                 │   │   │   ├─ mc.company_type_id:18!null\n" +
-			"                 │   │   │   └─ ct.id:6!null\n" +
+			"                 │   │   ├─ AND\n" +
+			"                 │   │   │   ├─ Eq\n" +
+			"                 │   │   │   │   ├─ mc.company_type_id:20!null\n" +
+			"                 │   │   │   │   └─ ct.id:6!null\n" +
+			"                 │   │   │   └─ Eq\n" +
+			"                 │   │   │       ├─ mc.company_id:19!null\n" +
+			"                 │   │   │       └─ cn.id:8!null\n" +
 			"                 │   │   └─ Eq\n" +
-			"                 │   │       ├─ mc.company_id:17!null\n" +
-			"                 │   │       └─ cn.id:8!null\n" +
+			"                 │   │       ├─ mk.movie_id:11!null\n" +
+			"                 │   │       └─ mc.movie_id:18!null\n" +
+			"                 │   └─ Eq\n" +
+			"                 │       ├─ t.id:13!null\n" +
+			"                 │       └─ mc.movie_id:18!null\n" +
+			"                 ├─ LookupJoin\n" +
 			"                 │   ├─ LookupJoin\n" +
 			"                 │   │   ├─ LookupJoin\n" +
 			"                 │   │   │   ├─ CrossJoin\n" +
@@ -14135,29 +14135,29 @@ WHERE cn.country_code !='[pl]'
 			"                 │   │                   ├─ name: title\n" +
 			"                 │   │                   └─ columns: [id title production_year]\n" +
 			"                 │   └─ Filter\n" +
-			"                 │       ├─ mc.note:3 IS NULL\n" +
-			"                 │       └─ TableAlias(mc)\n" +
-			"                 │           └─ IndexedTableAccess(movie_companies)\n" +
-			"                 │               ├─ index: [movie_companies.movie_id]\n" +
+			"                 │       ├─ HashIn\n" +
+			"                 │       │   ├─ mi.info:1!null\n" +
+			"                 │       │   └─ TUPLE(Germany (longtext), German (longtext))\n" +
+			"                 │       └─ TableAlias(mi)\n" +
+			"                 │           └─ IndexedTableAccess(movie_info)\n" +
+			"                 │               ├─ index: [movie_info.movie_id]\n" +
 			"                 │               ├─ keys: [mk.movie_id:11!null]\n" +
-			"                 │               ├─ colSet: (15-19)\n" +
-			"                 │               ├─ tableId: 5\n" +
+			"                 │               ├─ colSet: (20-24)\n" +
+			"                 │               ├─ tableId: 6\n" +
 			"                 │               └─ Table\n" +
-			"                 │                   ├─ name: movie_companies\n" +
-			"                 │                   └─ columns: [movie_id company_id company_type_id note]\n" +
+			"                 │                   ├─ name: movie_info\n" +
+			"                 │                   └─ columns: [movie_id info]\n" +
 			"                 └─ Filter\n" +
-			"                     ├─ HashIn\n" +
-			"                     │   ├─ mi.info:1!null\n" +
-			"                     │   └─ TUPLE(Germany (longtext), German (longtext))\n" +
-			"                     └─ TableAlias(mi)\n" +
-			"                         └─ IndexedTableAccess(movie_info)\n" +
-			"                             ├─ index: [movie_info.movie_id]\n" +
-			"                             ├─ keys: [mc.movie_id:16!null]\n" +
-			"                             ├─ colSet: (20-24)\n" +
-			"                             ├─ tableId: 6\n" +
+			"                     ├─ mc.note:3 IS NULL\n" +
+			"                     └─ TableAlias(mc)\n" +
+			"                         └─ IndexedTableAccess(movie_companies)\n" +
+			"                             ├─ index: [movie_companies.movie_id]\n" +
+			"                             ├─ keys: [mi.movie_id:16!null]\n" +
+			"                             ├─ colSet: (15-19)\n" +
+			"                             ├─ tableId: 5\n" +
 			"                             └─ Table\n" +
-			"                                 ├─ name: movie_info\n" +
-			"                                 └─ columns: [movie_id info]\n" +
+			"                                 ├─ name: movie_companies\n" +
+			"                                 └─ columns: [movie_id company_id company_type_id note]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(cn.name) as company_name, min(lt.link) as link_type, min(t.title) as german_follow_up]\n" +
@@ -14173,10 +14173,9 @@ WHERE cn.country_code !='[pl]'
 			"         └─ HashLookup\n" +
 			"             ├─ left-key: (ml.link_type_id, ml.movie_id, ml.movie_id, ml.movie_id, ml.movie_id)\n" +
 			"             ├─ right-key: (lt.id, mk.movie_id, mc.movie_id, mi.movie_id, t.id)\n" +
-			"             └─ LookupJoin (estimated cost=366101.100 rows=3)\n" +
-			"                 ├─ ((mk.movie_id = mi.movie_id) AND (mi.movie_id = t.id))\n" +
-			"                 ├─ LookupJoin (estimated cost=66434.280 rows=3)\n" +
-			"                 │   ├─ ((mc.company_type_id = ct.id) AND (mc.company_id = cn.id))\n" +
+			"             └─ LookupJoin (estimated cost=66434.280 rows=3)\n" +
+			"                 ├─ ((((mc.company_type_id = ct.id) AND (mc.company_id = cn.id)) AND (mk.movie_id = mc.movie_id)) AND (t.id = mc.movie_id))\n" +
+			"                 ├─ LookupJoin (estimated cost=366101.100 rows=3)\n" +
 			"                 │   ├─ LookupJoin (estimated cost=64468.770 rows=3)\n" +
 			"                 │   │   ├─ LookupJoin (estimated cost=135748.500 rows=3)\n" +
 			"                 │   │   │   ├─ CrossJoin (estimated cost=46.450 rows=3)\n" +
@@ -14219,19 +14218,19 @@ WHERE cn.country_code !='[pl]'
 			"                 │   │               ├─ columns: [id title production_year]\n" +
 			"                 │   │               └─ keys: mk.movie_id\n" +
 			"                 │   └─ Filter\n" +
-			"                 │       ├─ mc.note IS NULL\n" +
-			"                 │       └─ TableAlias(mc)\n" +
-			"                 │           └─ IndexedTableAccess(movie_companies)\n" +
-			"                 │               ├─ index: [movie_companies.movie_id]\n" +
-			"                 │               ├─ columns: [movie_id company_id company_type_id note]\n" +
+			"                 │       ├─ (mi.info HASH IN ('Germany', 'German'))\n" +
+			"                 │       └─ TableAlias(mi)\n" +
+			"                 │           └─ IndexedTableAccess(movie_info)\n" +
+			"                 │               ├─ index: [movie_info.movie_id]\n" +
+			"                 │               ├─ columns: [movie_id info]\n" +
 			"                 │               └─ keys: mk.movie_id\n" +
 			"                 └─ Filter\n" +
-			"                     ├─ (mi.info HASH IN ('Germany', 'German'))\n" +
-			"                     └─ TableAlias(mi)\n" +
-			"                         └─ IndexedTableAccess(movie_info)\n" +
-			"                             ├─ index: [movie_info.movie_id]\n" +
-			"                             ├─ columns: [movie_id info]\n" +
-			"                             └─ keys: mc.movie_id\n" +
+			"                     ├─ mc.note IS NULL\n" +
+			"                     └─ TableAlias(mc)\n" +
+			"                         └─ IndexedTableAccess(movie_companies)\n" +
+			"                             ├─ index: [movie_companies.movie_id]\n" +
+			"                             ├─ columns: [movie_id company_id company_type_id note]\n" +
+			"                             └─ keys: mi.movie_id\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(cn.name) as company_name, min(lt.link) as link_type, min(t.title) as german_follow_up]\n" +
@@ -14247,10 +14246,9 @@ WHERE cn.country_code !='[pl]'
 			"         └─ HashLookup\n" +
 			"             ├─ left-key: (ml.link_type_id, ml.movie_id, ml.movie_id, ml.movie_id, ml.movie_id)\n" +
 			"             ├─ right-key: (lt.id, mk.movie_id, mc.movie_id, mi.movie_id, t.id)\n" +
-			"             └─ LookupJoin (estimated cost=366101.100 rows=3)\n" +
-			"                 ├─ ((mk.movie_id = mi.movie_id) AND (mi.movie_id = t.id))\n" +
-			"                 ├─ LookupJoin (estimated cost=66434.280 rows=3)\n" +
-			"                 │   ├─ ((mc.company_type_id = ct.id) AND (mc.company_id = cn.id))\n" +
+			"             └─ LookupJoin (estimated cost=66434.280 rows=3)\n" +
+			"                 ├─ ((((mc.company_type_id = ct.id) AND (mc.company_id = cn.id)) AND (mk.movie_id = mc.movie_id)) AND (t.id = mc.movie_id))\n" +
+			"                 ├─ LookupJoin (estimated cost=366101.100 rows=3)\n" +
 			"                 │   ├─ LookupJoin (estimated cost=64468.770 rows=3)\n" +
 			"                 │   │   ├─ LookupJoin (estimated cost=135748.500 rows=3)\n" +
 			"                 │   │   │   ├─ CrossJoin (estimated cost=46.450 rows=3)\n" +
@@ -14293,19 +14291,19 @@ WHERE cn.country_code !='[pl]'
 			"                 │   │               ├─ columns: [id title production_year]\n" +
 			"                 │   │               └─ keys: mk.movie_id\n" +
 			"                 │   └─ Filter\n" +
-			"                 │       ├─ mc.note IS NULL\n" +
-			"                 │       └─ TableAlias(mc)\n" +
-			"                 │           └─ IndexedTableAccess(movie_companies)\n" +
-			"                 │               ├─ index: [movie_companies.movie_id]\n" +
-			"                 │               ├─ columns: [movie_id company_id company_type_id note]\n" +
+			"                 │       ├─ (mi.info HASH IN ('Germany', 'German'))\n" +
+			"                 │       └─ TableAlias(mi)\n" +
+			"                 │           └─ IndexedTableAccess(movie_info)\n" +
+			"                 │               ├─ index: [movie_info.movie_id]\n" +
+			"                 │               ├─ columns: [movie_id info]\n" +
 			"                 │               └─ keys: mk.movie_id\n" +
 			"                 └─ Filter\n" +
-			"                     ├─ (mi.info HASH IN ('Germany', 'German'))\n" +
-			"                     └─ TableAlias(mi)\n" +
-			"                         └─ IndexedTableAccess(movie_info)\n" +
-			"                             ├─ index: [movie_info.movie_id]\n" +
-			"                             ├─ columns: [movie_id info]\n" +
-			"                             └─ keys: mc.movie_id\n" +
+			"                     ├─ mc.note IS NULL\n" +
+			"                     └─ TableAlias(mc)\n" +
+			"                         └─ IndexedTableAccess(movie_companies)\n" +
+			"                             ├─ index: [movie_companies.movie_id]\n" +
+			"                             ├─ columns: [movie_id company_id company_type_id note]\n" +
+			"                             └─ keys: mi.movie_id\n" +
 			"",
 	},
 	{
@@ -14373,10 +14371,10 @@ WHERE cn.country_code !='[pl]'
 			"         │   │   │   │       └─ mk.movie_id:11!null\n" +
 			"         │   │   │   └─ Eq\n" +
 			"         │   │   │       ├─ ml.movie_id:0!null\n" +
-			"         │   │   │       └─ mc.movie_id:16!null\n" +
+			"         │   │   │       └─ mc.movie_id:18!null\n" +
 			"         │   │   └─ Eq\n" +
 			"         │   │       ├─ ml.movie_id:0!null\n" +
-			"         │   │       └─ mi.movie_id:20!null\n" +
+			"         │   │       └─ mi.movie_id:16!null\n" +
 			"         │   └─ Eq\n" +
 			"         │       ├─ ml.movie_id:0!null\n" +
 			"         │       └─ t.id:13!null\n" +
@@ -14387,23 +14385,24 @@ WHERE cn.country_code !='[pl]'
 			"         │           └─ columns: [movie_id link_type_id]\n" +
 			"         └─ HashLookup\n" +
 			"             ├─ left-key: TUPLE(ml.link_type_id:1!null, ml.movie_id:0!null, ml.movie_id:0!null, ml.movie_id:0!null, ml.movie_id:0!null)\n" +
-			"             ├─ right-key: TUPLE(lt.id:0!null, mk.movie_id:9!null, mc.movie_id:14!null, mi.movie_id:18!null, t.id:11!null)\n" +
+			"             ├─ right-key: TUPLE(lt.id:0!null, mk.movie_id:9!null, mc.movie_id:16!null, mi.movie_id:14!null, t.id:11!null)\n" +
 			"             └─ LookupJoin\n" +
 			"                 ├─ AND\n" +
-			"                 │   ├─ Eq\n" +
-			"                 │   │   ├─ mk.movie_id:11!null\n" +
-			"                 │   │   └─ mi.movie_id:20!null\n" +
-			"                 │   └─ Eq\n" +
-			"                 │       ├─ mi.movie_id:20!null\n" +
-			"                 │       └─ t.id:13!null\n" +
-			"                 ├─ LookupJoin\n" +
 			"                 │   ├─ AND\n" +
-			"                 │   │   ├─ Eq\n" +
-			"                 │   │   │   ├─ mc.company_type_id:18!null\n" +
-			"                 │   │   │   └─ ct.id:6!null\n" +
+			"                 │   │   ├─ AND\n" +
+			"                 │   │   │   ├─ Eq\n" +
+			"                 │   │   │   │   ├─ mc.company_type_id:20!null\n" +
+			"                 │   │   │   │   └─ ct.id:6!null\n" +
+			"                 │   │   │   └─ Eq\n" +
+			"                 │   │   │       ├─ mc.company_id:19!null\n" +
+			"                 │   │   │       └─ cn.id:8!null\n" +
 			"                 │   │   └─ Eq\n" +
-			"                 │   │       ├─ mc.company_id:17!null\n" +
-			"                 │   │       └─ cn.id:8!null\n" +
+			"                 │   │       ├─ mk.movie_id:11!null\n" +
+			"                 │   │       └─ mc.movie_id:18!null\n" +
+			"                 │   └─ Eq\n" +
+			"                 │       ├─ t.id:13!null\n" +
+			"                 │       └─ mc.movie_id:18!null\n" +
+			"                 ├─ LookupJoin\n" +
 			"                 │   ├─ LookupJoin\n" +
 			"                 │   │   ├─ LookupJoin\n" +
 			"                 │   │   │   ├─ CrossJoin\n" +
@@ -14475,29 +14474,29 @@ WHERE cn.country_code !='[pl]'
 			"                 │   │                   ├─ name: title\n" +
 			"                 │   │                   └─ columns: [id title production_year]\n" +
 			"                 │   └─ Filter\n" +
-			"                 │       ├─ mc.note:3 IS NULL\n" +
-			"                 │       └─ TableAlias(mc)\n" +
-			"                 │           └─ IndexedTableAccess(movie_companies)\n" +
-			"                 │               ├─ index: [movie_companies.movie_id]\n" +
+			"                 │       ├─ HashIn\n" +
+			"                 │       │   ├─ mi.info:1!null\n" +
+			"                 │       │   └─ TUPLE(Sweden (longtext), Norway (longtext), Germany (longtext), Denmark (longtext), Swedish (longtext), Denish (longtext), Norwegian (longtext), German (longtext), English (longtext))\n" +
+			"                 │       └─ TableAlias(mi)\n" +
+			"                 │           └─ IndexedTableAccess(movie_info)\n" +
+			"                 │               ├─ index: [movie_info.movie_id]\n" +
 			"                 │               ├─ keys: [mk.movie_id:11!null]\n" +
-			"                 │               ├─ colSet: (15-19)\n" +
-			"                 │               ├─ tableId: 5\n" +
+			"                 │               ├─ colSet: (20-24)\n" +
+			"                 │               ├─ tableId: 6\n" +
 			"                 │               └─ Table\n" +
-			"                 │                   ├─ name: movie_companies\n" +
-			"                 │                   └─ columns: [movie_id company_id company_type_id note]\n" +
+			"                 │                   ├─ name: movie_info\n" +
+			"                 │                   └─ columns: [movie_id info]\n" +
 			"                 └─ Filter\n" +
-			"                     ├─ HashIn\n" +
-			"                     │   ├─ mi.info:1!null\n" +
-			"                     │   └─ TUPLE(Sweden (longtext), Norway (longtext), Germany (longtext), Denmark (longtext), Swedish (longtext), Denish (longtext), Norwegian (longtext), German (longtext), English (longtext))\n" +
-			"                     └─ TableAlias(mi)\n" +
-			"                         └─ IndexedTableAccess(movie_info)\n" +
-			"                             ├─ index: [movie_info.movie_id]\n" +
-			"                             ├─ keys: [mc.movie_id:16!null]\n" +
-			"                             ├─ colSet: (20-24)\n" +
-			"                             ├─ tableId: 6\n" +
+			"                     ├─ mc.note:3 IS NULL\n" +
+			"                     └─ TableAlias(mc)\n" +
+			"                         └─ IndexedTableAccess(movie_companies)\n" +
+			"                             ├─ index: [movie_companies.movie_id]\n" +
+			"                             ├─ keys: [mi.movie_id:16!null]\n" +
+			"                             ├─ colSet: (15-19)\n" +
+			"                             ├─ tableId: 5\n" +
 			"                             └─ Table\n" +
-			"                                 ├─ name: movie_info\n" +
-			"                                 └─ columns: [movie_id info]\n" +
+			"                                 ├─ name: movie_companies\n" +
+			"                                 └─ columns: [movie_id company_id company_type_id note]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(cn.name) as company_name, min(lt.link) as link_type, min(t.title) as western_follow_up]\n" +
@@ -14513,10 +14512,9 @@ WHERE cn.country_code !='[pl]'
 			"         └─ HashLookup\n" +
 			"             ├─ left-key: (ml.link_type_id, ml.movie_id, ml.movie_id, ml.movie_id, ml.movie_id)\n" +
 			"             ├─ right-key: (lt.id, mk.movie_id, mc.movie_id, mi.movie_id, t.id)\n" +
-			"             └─ LookupJoin (estimated cost=366101.100 rows=3)\n" +
-			"                 ├─ ((mk.movie_id = mi.movie_id) AND (mi.movie_id = t.id))\n" +
-			"                 ├─ LookupJoin (estimated cost=66434.280 rows=3)\n" +
-			"                 │   ├─ ((mc.company_type_id = ct.id) AND (mc.company_id = cn.id))\n" +
+			"             └─ LookupJoin (estimated cost=66434.280 rows=3)\n" +
+			"                 ├─ ((((mc.company_type_id = ct.id) AND (mc.company_id = cn.id)) AND (mk.movie_id = mc.movie_id)) AND (t.id = mc.movie_id))\n" +
+			"                 ├─ LookupJoin (estimated cost=366101.100 rows=3)\n" +
 			"                 │   ├─ LookupJoin (estimated cost=64468.770 rows=3)\n" +
 			"                 │   │   ├─ LookupJoin (estimated cost=135748.500 rows=3)\n" +
 			"                 │   │   │   ├─ CrossJoin (estimated cost=46.450 rows=3)\n" +
@@ -14559,19 +14557,19 @@ WHERE cn.country_code !='[pl]'
 			"                 │   │               ├─ columns: [id title production_year]\n" +
 			"                 │   │               └─ keys: mk.movie_id\n" +
 			"                 │   └─ Filter\n" +
-			"                 │       ├─ mc.note IS NULL\n" +
-			"                 │       └─ TableAlias(mc)\n" +
-			"                 │           └─ IndexedTableAccess(movie_companies)\n" +
-			"                 │               ├─ index: [movie_companies.movie_id]\n" +
-			"                 │               ├─ columns: [movie_id company_id company_type_id note]\n" +
+			"                 │       ├─ (mi.info HASH IN ('Sweden', 'Norway', 'Germany', 'Denmark', 'Swedish', 'Denish', 'Norwegian', 'German', 'English'))\n" +
+			"                 │       └─ TableAlias(mi)\n" +
+			"                 │           └─ IndexedTableAccess(movie_info)\n" +
+			"                 │               ├─ index: [movie_info.movie_id]\n" +
+			"                 │               ├─ columns: [movie_id info]\n" +
 			"                 │               └─ keys: mk.movie_id\n" +
 			"                 └─ Filter\n" +
-			"                     ├─ (mi.info HASH IN ('Sweden', 'Norway', 'Germany', 'Denmark', 'Swedish', 'Denish', 'Norwegian', 'German', 'English'))\n" +
-			"                     └─ TableAlias(mi)\n" +
-			"                         └─ IndexedTableAccess(movie_info)\n" +
-			"                             ├─ index: [movie_info.movie_id]\n" +
-			"                             ├─ columns: [movie_id info]\n" +
-			"                             └─ keys: mc.movie_id\n" +
+			"                     ├─ mc.note IS NULL\n" +
+			"                     └─ TableAlias(mc)\n" +
+			"                         └─ IndexedTableAccess(movie_companies)\n" +
+			"                             ├─ index: [movie_companies.movie_id]\n" +
+			"                             ├─ columns: [movie_id company_id company_type_id note]\n" +
+			"                             └─ keys: mi.movie_id\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(cn.name) as company_name, min(lt.link) as link_type, min(t.title) as western_follow_up]\n" +
@@ -14587,10 +14585,9 @@ WHERE cn.country_code !='[pl]'
 			"         └─ HashLookup\n" +
 			"             ├─ left-key: (ml.link_type_id, ml.movie_id, ml.movie_id, ml.movie_id, ml.movie_id)\n" +
 			"             ├─ right-key: (lt.id, mk.movie_id, mc.movie_id, mi.movie_id, t.id)\n" +
-			"             └─ LookupJoin (estimated cost=366101.100 rows=3)\n" +
-			"                 ├─ ((mk.movie_id = mi.movie_id) AND (mi.movie_id = t.id))\n" +
-			"                 ├─ LookupJoin (estimated cost=66434.280 rows=3)\n" +
-			"                 │   ├─ ((mc.company_type_id = ct.id) AND (mc.company_id = cn.id))\n" +
+			"             └─ LookupJoin (estimated cost=66434.280 rows=3)\n" +
+			"                 ├─ ((((mc.company_type_id = ct.id) AND (mc.company_id = cn.id)) AND (mk.movie_id = mc.movie_id)) AND (t.id = mc.movie_id))\n" +
+			"                 ├─ LookupJoin (estimated cost=366101.100 rows=3)\n" +
 			"                 │   ├─ LookupJoin (estimated cost=64468.770 rows=3)\n" +
 			"                 │   │   ├─ LookupJoin (estimated cost=135748.500 rows=3)\n" +
 			"                 │   │   │   ├─ CrossJoin (estimated cost=46.450 rows=3)\n" +
@@ -14633,19 +14630,19 @@ WHERE cn.country_code !='[pl]'
 			"                 │   │               ├─ columns: [id title production_year]\n" +
 			"                 │   │               └─ keys: mk.movie_id\n" +
 			"                 │   └─ Filter\n" +
-			"                 │       ├─ mc.note IS NULL\n" +
-			"                 │       └─ TableAlias(mc)\n" +
-			"                 │           └─ IndexedTableAccess(movie_companies)\n" +
-			"                 │               ├─ index: [movie_companies.movie_id]\n" +
-			"                 │               ├─ columns: [movie_id company_id company_type_id note]\n" +
+			"                 │       ├─ (mi.info HASH IN ('Sweden', 'Norway', 'Germany', 'Denmark', 'Swedish', 'Denish', 'Norwegian', 'German', 'English'))\n" +
+			"                 │       └─ TableAlias(mi)\n" +
+			"                 │           └─ IndexedTableAccess(movie_info)\n" +
+			"                 │               ├─ index: [movie_info.movie_id]\n" +
+			"                 │               ├─ columns: [movie_id info]\n" +
 			"                 │               └─ keys: mk.movie_id\n" +
 			"                 └─ Filter\n" +
-			"                     ├─ (mi.info HASH IN ('Sweden', 'Norway', 'Germany', 'Denmark', 'Swedish', 'Denish', 'Norwegian', 'German', 'English'))\n" +
-			"                     └─ TableAlias(mi)\n" +
-			"                         └─ IndexedTableAccess(movie_info)\n" +
-			"                             ├─ index: [movie_info.movie_id]\n" +
-			"                             ├─ columns: [movie_id info]\n" +
-			"                             └─ keys: mc.movie_id\n" +
+			"                     ├─ mc.note IS NULL\n" +
+			"                     └─ TableAlias(mc)\n" +
+			"                         └─ IndexedTableAccess(movie_companies)\n" +
+			"                             ├─ index: [movie_companies.movie_id]\n" +
+			"                             ├─ columns: [movie_id company_id company_type_id note]\n" +
+			"                             └─ keys: mi.movie_id\n" +
 			"",
 	},
 	{
