@@ -130,7 +130,9 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 
 				// read the whole left table and randIO into table equivalent to
 				// this join's output cardinality estimate
-				return float64(lBest*seqIOCostFactor)*float64(1.0+float64(rBest*cpuCostFactor)) + selfJoinCard*float64(randIOCostFactor+seqIOCostFactor), nil
+				lCost := float64(lBest * seqIOCostFactor)
+				rCost := float64(rBest * cpuCostFactor)
+				return lCost*float64(rCost+1) + selfJoinCard*float64(randIOCostFactor+seqIOCostFactor), nil
 			case *ConcatJoin:
 				return c.costConcatJoin(ctx, n, s)
 			}
