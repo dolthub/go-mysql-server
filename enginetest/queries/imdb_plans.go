@@ -9187,12 +9187,12 @@ WHERE ci.note IN ('(producer)',
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [min(mi.info):0!null->movie_budget:0, min(mi_idx.info):1!null->movie_votes:0, min(t.title):2!null->movie_title:0]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ select: MIN(mi.info:5!null), MIN(mi_idx.info:11!null), MIN(t.title:13!null)\n" +
+			"     ├─ select: MIN(mi.info:8!null), MIN(mi_idx.info:11!null), MIN(t.title:13!null)\n" +
 			"     ├─ group: \n" +
 			"     └─ HashJoin\n" +
 			"         ├─ Eq\n" +
 			"         │   ├─ n.id:0!null\n" +
-			"         │   └─ ci.person_id:6!null\n" +
+			"         │   └─ ci.person_id:3!null\n" +
 			"         ├─ Filter\n" +
 			"         │   ├─ AND\n" +
 			"         │   │   ├─ Eq\n" +
@@ -9206,46 +9206,46 @@ WHERE ci.note IN ('(producer)',
 			"         │               └─ columns: [id name gender]\n" +
 			"         └─ HashLookup\n" +
 			"             ├─ left-key: TUPLE(n.id:0!null)\n" +
-			"             ├─ right-key: TUPLE(ci.person_id:3!null)\n" +
+			"             ├─ right-key: TUPLE(ci.person_id:0!null)\n" +
 			"             └─ HashJoin\n" +
 			"                 ├─ Eq\n" +
-			"                 │   ├─ it1.id:16!null\n" +
-			"                 │   └─ mi.info_type_id:4!null\n" +
+			"                 │   ├─ it2.id:16!null\n" +
+			"                 │   └─ mi_idx.info_type_id:10!null\n" +
 			"                 ├─ HashJoin\n" +
 			"                 │   ├─ AND\n" +
 			"                 │   │   ├─ Eq\n" +
-			"                 │   │   │   ├─ mi.movie_id:3!null\n" +
-			"                 │   │   │   └─ mi_idx.movie_id:9!null\n" +
+			"                 │   │   │   ├─ ci.movie_id:4!null\n" +
+			"                 │   │   │   └─ mi.movie_id:6!null\n" +
 			"                 │   │   └─ Eq\n" +
-			"                 │   │       ├─ t.id:12!null\n" +
-			"                 │   │       └─ mi.movie_id:3!null\n" +
-			"                 │   ├─ TableAlias(mi)\n" +
-			"                 │   │   └─ ProcessTable\n" +
-			"                 │   │       └─ Table\n" +
-			"                 │   │           ├─ name: movie_info\n" +
-			"                 │   │           └─ columns: [movie_id info_type_id info]\n" +
+			"                 │   │       ├─ ci.movie_id:4!null\n" +
+			"                 │   │       └─ mi_idx.movie_id:9!null\n" +
+			"                 │   ├─ Filter\n" +
+			"                 │   │   ├─ HashIn\n" +
+			"                 │   │   │   ├─ ci.note:2\n" +
+			"                 │   │   │   └─ TUPLE((producer) (longtext), (executive producer) (longtext))\n" +
+			"                 │   │   └─ TableAlias(ci)\n" +
+			"                 │   │       └─ ProcessTable\n" +
+			"                 │   │           └─ Table\n" +
+			"                 │   │               ├─ name: cast_info\n" +
+			"                 │   │               └─ columns: [person_id movie_id note]\n" +
 			"                 │   └─ HashLookup\n" +
-			"                 │       ├─ left-key: TUPLE(mi.movie_id:3!null, mi.movie_id:3!null)\n" +
-			"                 │       ├─ right-key: TUPLE(mi_idx.movie_id:3!null, t.id:6!null)\n" +
+			"                 │       ├─ left-key: TUPLE(ci.movie_id:4!null, ci.movie_id:4!null)\n" +
+			"                 │       ├─ right-key: TUPLE(mi.movie_id:0!null, mi_idx.movie_id:3!null)\n" +
 			"                 │       └─ HashJoin\n" +
 			"                 │           ├─ Eq\n" +
-			"                 │           │   ├─ it2.id:14!null\n" +
-			"                 │           │   └─ mi_idx.info_type_id:10!null\n" +
+			"                 │           │   ├─ it1.id:14!null\n" +
+			"                 │           │   └─ mi.info_type_id:7!null\n" +
 			"                 │           ├─ HashJoin\n" +
 			"                 │           │   ├─ Eq\n" +
-			"                 │           │   │   ├─ ci.movie_id:7!null\n" +
+			"                 │           │   │   ├─ mi.movie_id:6!null\n" +
 			"                 │           │   │   └─ mi_idx.movie_id:9!null\n" +
-			"                 │           │   ├─ Filter\n" +
-			"                 │           │   │   ├─ HashIn\n" +
-			"                 │           │   │   │   ├─ ci.note:2\n" +
-			"                 │           │   │   │   └─ TUPLE((producer) (longtext), (executive producer) (longtext))\n" +
-			"                 │           │   │   └─ TableAlias(ci)\n" +
-			"                 │           │   │       └─ ProcessTable\n" +
-			"                 │           │   │           └─ Table\n" +
-			"                 │           │   │               ├─ name: cast_info\n" +
-			"                 │           │   │               └─ columns: [person_id movie_id note]\n" +
+			"                 │           │   ├─ TableAlias(mi)\n" +
+			"                 │           │   │   └─ ProcessTable\n" +
+			"                 │           │   │       └─ Table\n" +
+			"                 │           │   │           ├─ name: movie_info\n" +
+			"                 │           │   │           └─ columns: [movie_id info_type_id info]\n" +
 			"                 │           │   └─ HashLookup\n" +
-			"                 │           │       ├─ left-key: TUPLE(ci.movie_id:7!null)\n" +
+			"                 │           │       ├─ left-key: TUPLE(mi.movie_id:6!null)\n" +
 			"                 │           │       ├─ right-key: TUPLE(mi_idx.movie_id:0!null)\n" +
 			"                 │           │       └─ MergeJoin\n" +
 			"                 │           │           ├─ cmp: Eq\n" +
@@ -9270,30 +9270,30 @@ WHERE ci.note IN ('(producer)',
 			"                 │           │                       ├─ name: title\n" +
 			"                 │           │                       └─ columns: [id title]\n" +
 			"                 │           └─ HashLookup\n" +
-			"                 │               ├─ left-key: TUPLE(mi_idx.info_type_id:10!null)\n" +
-			"                 │               ├─ right-key: TUPLE(it2.id:0!null)\n" +
+			"                 │               ├─ left-key: TUPLE(mi.info_type_id:7!null)\n" +
+			"                 │               ├─ right-key: TUPLE(it1.id:0!null)\n" +
 			"                 │               └─ Filter\n" +
 			"                 │                   ├─ Eq\n" +
-			"                 │                   │   ├─ it2.info:1!null\n" +
-			"                 │                   │   └─ votes (longtext)\n" +
-			"                 │                   └─ TableAlias(it2)\n" +
+			"                 │                   │   ├─ it1.info:1!null\n" +
+			"                 │                   │   └─ budget (longtext)\n" +
+			"                 │                   └─ TableAlias(it1)\n" +
 			"                 │                       └─ ProcessTable\n" +
 			"                 │                           └─ Table\n" +
 			"                 │                               ├─ name: info_type\n" +
 			"                 │                               └─ columns: [id info]\n" +
 			"                 └─ HashLookup\n" +
-			"                     ├─ left-key: TUPLE(mi.info_type_id:4!null)\n" +
-			"                     ├─ right-key: TUPLE(it1.id:0!null)\n" +
+			"                     ├─ left-key: TUPLE(mi_idx.info_type_id:10!null)\n" +
+			"                     ├─ right-key: TUPLE(it2.id:0!null)\n" +
 			"                     └─ Filter\n" +
 			"                         ├─ Eq\n" +
-			"                         │   ├─ it1.info:1!null\n" +
-			"                         │   └─ budget (longtext)\n" +
-			"                         └─ TableAlias(it1)\n" +
+			"                         │   ├─ it2.info:1!null\n" +
+			"                         │   └─ votes (longtext)\n" +
+			"                         └─ TableAlias(it2)\n" +
 			"                             └─ Table\n" +
 			"                                 ├─ name: info_type\n" +
 			"                                 ├─ columns: [id info]\n" +
-			"                                 ├─ colSet: (8,9)\n" +
-			"                                 └─ tableId: 2\n" +
+			"                                 ├─ colSet: (10,11)\n" +
+			"                                 └─ tableId: 3\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(mi.info) as movie_budget, min(mi_idx.info) as movie_votes, min(t.title) as movie_title]\n" +
@@ -9312,28 +9312,28 @@ WHERE ci.note IN ('(producer)',
 			"             ├─ left-key: (n.id)\n" +
 			"             ├─ right-key: (ci.person_id)\n" +
 			"             └─ HashJoin (estimated cost=2199717.060 rows=2156303)\n" +
-			"                 ├─ (it1.id = mi.info_type_id)\n" +
-			"                 ├─ HashJoin (estimated cost=19695955.090 rows=2156303)\n" +
-			"                 │   ├─ ((mi.movie_id = mi_idx.movie_id) AND (t.id = mi.movie_id))\n" +
-			"                 │   ├─ TableAlias(mi)\n" +
-			"                 │   │   └─ Table\n" +
-			"                 │   │       ├─ name: movie_info\n" +
-			"                 │   │       └─ columns: [movie_id info_type_id info]\n" +
+			"                 ├─ (it2.id = mi_idx.info_type_id)\n" +
+			"                 ├─ HashJoin (estimated cost=36209600.530 rows=2156303)\n" +
+			"                 │   ├─ ((ci.movie_id = mi.movie_id) AND (ci.movie_id = mi_idx.movie_id))\n" +
+			"                 │   ├─ Filter\n" +
+			"                 │   │   ├─ (ci.note HASH IN ('(producer)', '(executive producer)'))\n" +
+			"                 │   │   └─ TableAlias(ci)\n" +
+			"                 │   │       └─ Table\n" +
+			"                 │   │           ├─ name: cast_info\n" +
+			"                 │   │           └─ columns: [person_id movie_id note]\n" +
 			"                 │   └─ HashLookup\n" +
-			"                 │       ├─ left-key: (mi.movie_id, mi.movie_id)\n" +
-			"                 │       ├─ right-key: (mi_idx.movie_id, t.id)\n" +
+			"                 │       ├─ left-key: (ci.movie_id, ci.movie_id)\n" +
+			"                 │       ├─ right-key: (mi.movie_id, mi_idx.movie_id)\n" +
 			"                 │       └─ HashJoin (estimated cost=1759831.860 rows=1725043)\n" +
-			"                 │           ├─ (it2.id = mi_idx.info_type_id)\n" +
-			"                 │           ├─ HashJoin (estimated cost=35170263.930 rows=1725043)\n" +
-			"                 │           │   ├─ (ci.movie_id = mi_idx.movie_id)\n" +
-			"                 │           │   ├─ Filter\n" +
-			"                 │           │   │   ├─ (ci.note HASH IN ('(producer)', '(executive producer)'))\n" +
-			"                 │           │   │   └─ TableAlias(ci)\n" +
-			"                 │           │   │       └─ Table\n" +
-			"                 │           │   │           ├─ name: cast_info\n" +
-			"                 │           │   │           └─ columns: [person_id movie_id note]\n" +
+			"                 │           ├─ (it1.id = mi.info_type_id)\n" +
+			"                 │           ├─ HashJoin (estimated cost=18656618.490 rows=1725043)\n" +
+			"                 │           │   ├─ (mi.movie_id = mi_idx.movie_id)\n" +
+			"                 │           │   ├─ TableAlias(mi)\n" +
+			"                 │           │   │   └─ Table\n" +
+			"                 │           │   │       ├─ name: movie_info\n" +
+			"                 │           │   │       └─ columns: [movie_id info_type_id info]\n" +
 			"                 │           │   └─ HashLookup\n" +
-			"                 │           │       ├─ left-key: (ci.movie_id)\n" +
+			"                 │           │       ├─ left-key: (mi.movie_id)\n" +
 			"                 │           │       ├─ right-key: (mi_idx.movie_id)\n" +
 			"                 │           │       └─ MergeJoin (estimated cost=3960712.690 rows=1380035)\n" +
 			"                 │           │           ├─ cmp: (mi_idx.movie_id = t.id)\n" +
@@ -9348,20 +9348,20 @@ WHERE ci.note IN ('(producer)',
 			"                 │           │                   ├─ filters: [{[NULL, ∞)}]\n" +
 			"                 │           │                   └─ columns: [id title]\n" +
 			"                 │           └─ HashLookup\n" +
-			"                 │               ├─ left-key: (mi_idx.info_type_id)\n" +
-			"                 │               ├─ right-key: (it2.id)\n" +
+			"                 │               ├─ left-key: (mi.info_type_id)\n" +
+			"                 │               ├─ right-key: (it1.id)\n" +
 			"                 │               └─ Filter\n" +
-			"                 │                   ├─ (it2.info = 'votes')\n" +
-			"                 │                   └─ TableAlias(it2)\n" +
+			"                 │                   ├─ (it1.info = 'budget')\n" +
+			"                 │                   └─ TableAlias(it1)\n" +
 			"                 │                       └─ Table\n" +
 			"                 │                           ├─ name: info_type\n" +
 			"                 │                           └─ columns: [id info]\n" +
 			"                 └─ HashLookup\n" +
-			"                     ├─ left-key: (mi.info_type_id)\n" +
-			"                     ├─ right-key: (it1.id)\n" +
+			"                     ├─ left-key: (mi_idx.info_type_id)\n" +
+			"                     ├─ right-key: (it2.id)\n" +
 			"                     └─ Filter\n" +
-			"                         ├─ (it1.info = 'budget')\n" +
-			"                         └─ TableAlias(it1)\n" +
+			"                         ├─ (it2.info = 'votes')\n" +
+			"                         └─ TableAlias(it2)\n" +
 			"                             └─ Table\n" +
 			"                                 ├─ name: info_type\n" +
 			"                                 └─ columns: [id info]\n" +
@@ -9383,28 +9383,28 @@ WHERE ci.note IN ('(producer)',
 			"             ├─ left-key: (n.id)\n" +
 			"             ├─ right-key: (ci.person_id)\n" +
 			"             └─ HashJoin (estimated cost=2199717.060 rows=2156303)\n" +
-			"                 ├─ (it1.id = mi.info_type_id)\n" +
-			"                 ├─ HashJoin (estimated cost=19695955.090 rows=2156303)\n" +
-			"                 │   ├─ ((mi.movie_id = mi_idx.movie_id) AND (t.id = mi.movie_id))\n" +
-			"                 │   ├─ TableAlias(mi)\n" +
-			"                 │   │   └─ Table\n" +
-			"                 │   │       ├─ name: movie_info\n" +
-			"                 │   │       └─ columns: [movie_id info_type_id info]\n" +
+			"                 ├─ (it2.id = mi_idx.info_type_id)\n" +
+			"                 ├─ HashJoin (estimated cost=36209600.530 rows=2156303)\n" +
+			"                 │   ├─ ((ci.movie_id = mi.movie_id) AND (ci.movie_id = mi_idx.movie_id))\n" +
+			"                 │   ├─ Filter\n" +
+			"                 │   │   ├─ (ci.note HASH IN ('(producer)', '(executive producer)'))\n" +
+			"                 │   │   └─ TableAlias(ci)\n" +
+			"                 │   │       └─ Table\n" +
+			"                 │   │           ├─ name: cast_info\n" +
+			"                 │   │           └─ columns: [person_id movie_id note]\n" +
 			"                 │   └─ HashLookup\n" +
-			"                 │       ├─ left-key: (mi.movie_id, mi.movie_id)\n" +
-			"                 │       ├─ right-key: (mi_idx.movie_id, t.id)\n" +
+			"                 │       ├─ left-key: (ci.movie_id, ci.movie_id)\n" +
+			"                 │       ├─ right-key: (mi.movie_id, mi_idx.movie_id)\n" +
 			"                 │       └─ HashJoin (estimated cost=1759831.860 rows=1725043)\n" +
-			"                 │           ├─ (it2.id = mi_idx.info_type_id)\n" +
-			"                 │           ├─ HashJoin (estimated cost=35170263.930 rows=1725043)\n" +
-			"                 │           │   ├─ (ci.movie_id = mi_idx.movie_id)\n" +
-			"                 │           │   ├─ Filter\n" +
-			"                 │           │   │   ├─ (ci.note HASH IN ('(producer)', '(executive producer)'))\n" +
-			"                 │           │   │   └─ TableAlias(ci)\n" +
-			"                 │           │   │       └─ Table\n" +
-			"                 │           │   │           ├─ name: cast_info\n" +
-			"                 │           │   │           └─ columns: [person_id movie_id note]\n" +
+			"                 │           ├─ (it1.id = mi.info_type_id)\n" +
+			"                 │           ├─ HashJoin (estimated cost=18656618.490 rows=1725043)\n" +
+			"                 │           │   ├─ (mi.movie_id = mi_idx.movie_id)\n" +
+			"                 │           │   ├─ TableAlias(mi)\n" +
+			"                 │           │   │   └─ Table\n" +
+			"                 │           │   │       ├─ name: movie_info\n" +
+			"                 │           │   │       └─ columns: [movie_id info_type_id info]\n" +
 			"                 │           │   └─ HashLookup\n" +
-			"                 │           │       ├─ left-key: (ci.movie_id)\n" +
+			"                 │           │       ├─ left-key: (mi.movie_id)\n" +
 			"                 │           │       ├─ right-key: (mi_idx.movie_id)\n" +
 			"                 │           │       └─ MergeJoin (estimated cost=3960712.690 rows=1380035)\n" +
 			"                 │           │           ├─ cmp: (mi_idx.movie_id = t.id)\n" +
@@ -9419,20 +9419,20 @@ WHERE ci.note IN ('(producer)',
 			"                 │           │                   ├─ filters: [{[NULL, ∞)}]\n" +
 			"                 │           │                   └─ columns: [id title]\n" +
 			"                 │           └─ HashLookup\n" +
-			"                 │               ├─ left-key: (mi_idx.info_type_id)\n" +
-			"                 │               ├─ right-key: (it2.id)\n" +
+			"                 │               ├─ left-key: (mi.info_type_id)\n" +
+			"                 │               ├─ right-key: (it1.id)\n" +
 			"                 │               └─ Filter\n" +
-			"                 │                   ├─ (it2.info = 'votes')\n" +
-			"                 │                   └─ TableAlias(it2)\n" +
+			"                 │                   ├─ (it1.info = 'budget')\n" +
+			"                 │                   └─ TableAlias(it1)\n" +
 			"                 │                       └─ Table\n" +
 			"                 │                           ├─ name: info_type\n" +
 			"                 │                           └─ columns: [id info]\n" +
 			"                 └─ HashLookup\n" +
-			"                     ├─ left-key: (mi.info_type_id)\n" +
-			"                     ├─ right-key: (it1.id)\n" +
+			"                     ├─ left-key: (mi_idx.info_type_id)\n" +
+			"                     ├─ right-key: (it2.id)\n" +
 			"                     └─ Filter\n" +
-			"                         ├─ (it1.info = 'budget')\n" +
-			"                         └─ TableAlias(it1)\n" +
+			"                         ├─ (it2.info = 'votes')\n" +
+			"                         └─ TableAlias(it2)\n" +
 			"                             └─ Table\n" +
 			"                                 ├─ name: info_type\n" +
 			"                                 └─ columns: [id info]\n" +
@@ -11371,360 +11371,360 @@ WHERE ci.note IN ('(voice)',
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [min(n.name):0!null->voicing_actress:0, min(t.title):1!null->jap_engl_voiced_movie:0]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ select: MIN(n.name:17!null), MIN(t.title:6!null)\n" +
+			"     ├─ select: MIN(n.name:15!null), MIN(t.title:6!null)\n" +
 			"     ├─ group: \n" +
-			"     └─ HashJoin\n" +
+			"     └─ InnerJoin\n" +
 			"         ├─ Eq\n" +
-			"         │   ├─ it.id:21!null\n" +
-			"         │   └─ mi.info_type_id:1!null\n" +
+			"         │   ├─ rt.id:21!null\n" +
+			"         │   └─ ci.role_id:12!null\n" +
 			"         ├─ HashJoin\n" +
-			"         │   ├─ AND\n" +
+			"         │   ├─ Eq\n" +
+			"         │   │   ├─ it.id:19!null\n" +
+			"         │   │   └─ mi.info_type_id:1!null\n" +
+			"         │   ├─ HashJoin\n" +
 			"         │   │   ├─ AND\n" +
-			"         │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   ├─ mc.movie_id:3!null\n" +
-			"         │   │   │   │   └─ mi.movie_id:0!null\n" +
+			"         │   │   │   ├─ AND\n" +
+			"         │   │   │   │   ├─ Eq\n" +
+			"         │   │   │   │   │   ├─ mc.movie_id:3!null\n" +
+			"         │   │   │   │   │   └─ mi.movie_id:0!null\n" +
+			"         │   │   │   │   └─ Eq\n" +
+			"         │   │   │   │       ├─ mi.movie_id:0!null\n" +
+			"         │   │   │   │       └─ ci.movie_id:9!null\n" +
 			"         │   │   │   └─ Eq\n" +
-			"         │   │   │       ├─ mi.movie_id:0!null\n" +
-			"         │   │   │       └─ ci.movie_id:11!null\n" +
-			"         │   │   └─ Eq\n" +
-			"         │   │       ├─ t.id:5!null\n" +
-			"         │   │       └─ mi.movie_id:0!null\n" +
-			"         │   ├─ TableAlias(mi)\n" +
-			"         │   │   └─ ProcessTable\n" +
-			"         │   │       └─ Table\n" +
-			"         │   │           ├─ name: movie_info\n" +
-			"         │   │           └─ columns: [movie_id info_type_id]\n" +
+			"         │   │   │       ├─ t.id:5!null\n" +
+			"         │   │   │       └─ mi.movie_id:0!null\n" +
+			"         │   │   ├─ TableAlias(mi)\n" +
+			"         │   │   │   └─ ProcessTable\n" +
+			"         │   │   │       └─ Table\n" +
+			"         │   │   │           ├─ name: movie_info\n" +
+			"         │   │   │           └─ columns: [movie_id info_type_id]\n" +
+			"         │   │   └─ HashLookup\n" +
+			"         │   │       ├─ left-key: TUPLE(mi.movie_id:0!null, mi.movie_id:0!null, mi.movie_id:0!null)\n" +
+			"         │   │       ├─ right-key: TUPLE(mc.movie_id:1!null, ci.movie_id:7!null, t.id:3!null)\n" +
+			"         │   │       └─ HashJoin\n" +
+			"         │   │           ├─ Eq\n" +
+			"         │   │           │   ├─ chn.id:2!null\n" +
+			"         │   │           │   └─ ci.person_role_id:10\n" +
+			"         │   │           ├─ TableAlias(chn)\n" +
+			"         │   │           │   └─ ProcessTable\n" +
+			"         │   │           │       └─ Table\n" +
+			"         │   │           │           ├─ name: char_name\n" +
+			"         │   │           │           └─ columns: [id]\n" +
+			"         │   │           └─ HashLookup\n" +
+			"         │   │               ├─ left-key: TUPLE(chn.id:2!null)\n" +
+			"         │   │               ├─ right-key: TUPLE(ci.person_role_id:7)\n" +
+			"         │   │               └─ HashJoin\n" +
+			"         │   │                   ├─ Eq\n" +
+			"         │   │                   │   ├─ cn.id:17!null\n" +
+			"         │   │                   │   └─ mc.company_id:4!null\n" +
+			"         │   │                   ├─ HashJoin\n" +
+			"         │   │                   │   ├─ Eq\n" +
+			"         │   │                   │   │   ├─ mc.movie_id:3!null\n" +
+			"         │   │                   │   │   └─ ci.movie_id:9!null\n" +
+			"         │   │                   │   ├─ MergeJoin\n" +
+			"         │   │                   │   │   ├─ cmp: Eq\n" +
+			"         │   │                   │   │   │   ├─ mc.movie_id:3!null\n" +
+			"         │   │                   │   │   │   └─ t.id:5!null\n" +
+			"         │   │                   │   │   ├─ TableAlias(mc)\n" +
+			"         │   │                   │   │   │   └─ IndexedTableAccess(movie_companies)\n" +
+			"         │   │                   │   │   │       ├─ index: [movie_companies.movie_id]\n" +
+			"         │   │                   │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
+			"         │   │                   │   │   │       ├─ colSet: (32-36)\n" +
+			"         │   │                   │   │   │       ├─ tableId: 6\n" +
+			"         │   │                   │   │   │       └─ Table\n" +
+			"         │   │                   │   │   │           ├─ name: movie_companies\n" +
+			"         │   │                   │   │   │           └─ columns: [movie_id company_id]\n" +
+			"         │   │                   │   │   └─ Filter\n" +
+			"         │   │                   │   │       ├─ GreaterThan\n" +
+			"         │   │                   │   │       │   ├─ t.production_year:2\n" +
+			"         │   │                   │   │       │   └─ 2000 (int)\n" +
+			"         │   │                   │   │       └─ TableAlias(t)\n" +
+			"         │   │                   │   │           └─ IndexedTableAccess(title)\n" +
+			"         │   │                   │   │               ├─ index: [title.id]\n" +
+			"         │   │                   │   │               ├─ static: [{[NULL, ∞)}]\n" +
+			"         │   │                   │   │               ├─ colSet: (53-64)\n" +
+			"         │   │                   │   │               ├─ tableId: 10\n" +
+			"         │   │                   │   │               └─ Table\n" +
+			"         │   │                   │   │                   ├─ name: title\n" +
+			"         │   │                   │   │                   └─ columns: [id title production_year]\n" +
+			"         │   │                   │   └─ HashLookup\n" +
+			"         │   │                   │       ├─ left-key: TUPLE(mc.movie_id:3!null)\n" +
+			"         │   │                   │       ├─ right-key: TUPLE(ci.movie_id:1!null)\n" +
+			"         │   │                   │       └─ HashJoin\n" +
+			"         │   │                   │           ├─ AND\n" +
+			"         │   │                   │           │   ├─ Eq\n" +
+			"         │   │                   │           │   │   ├─ ci.person_id:8!null\n" +
+			"         │   │                   │           │   │   └─ an.person_id:13!null\n" +
+			"         │   │                   │           │   └─ Eq\n" +
+			"         │   │                   │           │       ├─ n.id:14!null\n" +
+			"         │   │                   │           │       └─ ci.person_id:8!null\n" +
+			"         │   │                   │           ├─ Filter\n" +
+			"         │   │                   │           │   ├─ HashIn\n" +
+			"         │   │                   │           │   │   ├─ ci.note:3\n" +
+			"         │   │                   │           │   │   └─ TUPLE((voice) (longtext), (voice: Japanese version) (longtext), (voice) (uncredited) (longtext), (voice: English version) (longtext))\n" +
+			"         │   │                   │           │   └─ TableAlias(ci)\n" +
+			"         │   │                   │           │       └─ ProcessTable\n" +
+			"         │   │                   │           │           └─ Table\n" +
+			"         │   │                   │           │               ├─ name: cast_info\n" +
+			"         │   │                   │           │               └─ columns: [person_id movie_id person_role_id note role_id]\n" +
+			"         │   │                   │           └─ HashLookup\n" +
+			"         │   │                   │               ├─ left-key: TUPLE(ci.person_id:8!null, ci.person_id:8!null)\n" +
+			"         │   │                   │               ├─ right-key: TUPLE(an.person_id:0!null, n.id:1!null)\n" +
+			"         │   │                   │               └─ MergeJoin\n" +
+			"         │   │                   │                   ├─ cmp: Eq\n" +
+			"         │   │                   │                   │   ├─ an.person_id:13!null\n" +
+			"         │   │                   │                   │   └─ n.id:14!null\n" +
+			"         │   │                   │                   ├─ TableAlias(an)\n" +
+			"         │   │                   │                   │   └─ IndexedTableAccess(aka_name)\n" +
+			"         │   │                   │                   │       ├─ index: [aka_name.person_id]\n" +
+			"         │   │                   │                   │       ├─ static: [{[NULL, ∞)}]\n" +
+			"         │   │                   │                   │       ├─ colSet: (1-8)\n" +
+			"         │   │                   │                   │       ├─ tableId: 1\n" +
+			"         │   │                   │                   │       └─ Table\n" +
+			"         │   │                   │                   │           ├─ name: aka_name\n" +
+			"         │   │                   │                   │           └─ columns: [person_id]\n" +
+			"         │   │                   │                   └─ Filter\n" +
+			"         │   │                   │                       ├─ Eq\n" +
+			"         │   │                   │                       │   ├─ n.gender:2\n" +
+			"         │   │                   │                       │   └─ f (longtext)\n" +
+			"         │   │                   │                       └─ TableAlias(n)\n" +
+			"         │   │                   │                           └─ IndexedTableAccess(name)\n" +
+			"         │   │                   │                               ├─ index: [name.id]\n" +
+			"         │   │                   │                               ├─ static: [{[NULL, ∞)}]\n" +
+			"         │   │                   │                               ├─ colSet: (42-50)\n" +
+			"         │   │                   │                               ├─ tableId: 8\n" +
+			"         │   │                   │                               └─ Table\n" +
+			"         │   │                   │                                   ├─ name: name\n" +
+			"         │   │                   │                                   └─ columns: [id name gender]\n" +
+			"         │   │                   └─ HashLookup\n" +
+			"         │   │                       ├─ left-key: TUPLE(mc.company_id:4!null)\n" +
+			"         │   │                       ├─ right-key: TUPLE(cn.id:0!null)\n" +
+			"         │   │                       └─ Filter\n" +
+			"         │   │                           ├─ Eq\n" +
+			"         │   │                           │   ├─ cn.country_code:1\n" +
+			"         │   │                           │   └─ [us] (longtext)\n" +
+			"         │   │                           └─ TableAlias(cn)\n" +
+			"         │   │                               └─ ProcessTable\n" +
+			"         │   │                                   └─ Table\n" +
+			"         │   │                                       ├─ name: company_name\n" +
+			"         │   │                                       └─ columns: [id country_code]\n" +
 			"         │   └─ HashLookup\n" +
-			"         │       ├─ left-key: TUPLE(mi.movie_id:0!null, mi.movie_id:0!null, mi.movie_id:0!null)\n" +
-			"         │       ├─ right-key: TUPLE(mc.movie_id:1!null, ci.movie_id:9!null, t.id:3!null)\n" +
-			"         │       └─ HashJoin\n" +
+			"         │       ├─ left-key: TUPLE(mi.info_type_id:1!null)\n" +
+			"         │       ├─ right-key: TUPLE(it.id:0!null)\n" +
+			"         │       └─ Filter\n" +
 			"         │           ├─ Eq\n" +
-			"         │           │   ├─ cn.id:19!null\n" +
-			"         │           │   └─ mc.company_id:4!null\n" +
-			"         │           ├─ HashJoin\n" +
-			"         │           │   ├─ Eq\n" +
-			"         │           │   │   ├─ chn.id:2!null\n" +
-			"         │           │   │   └─ ci.person_role_id:12\n" +
-			"         │           │   ├─ TableAlias(chn)\n" +
-			"         │           │   │   └─ ProcessTable\n" +
-			"         │           │   │       └─ Table\n" +
-			"         │           │   │           ├─ name: char_name\n" +
-			"         │           │   │           └─ columns: [id]\n" +
-			"         │           │   └─ HashLookup\n" +
-			"         │           │       ├─ left-key: TUPLE(chn.id:2!null)\n" +
-			"         │           │       ├─ right-key: TUPLE(ci.person_role_id:9)\n" +
-			"         │           │       └─ HashJoin\n" +
-			"         │           │           ├─ Eq\n" +
-			"         │           │           │   ├─ mc.movie_id:3!null\n" +
-			"         │           │           │   └─ ci.movie_id:11!null\n" +
-			"         │           │           ├─ MergeJoin\n" +
-			"         │           │           │   ├─ cmp: Eq\n" +
-			"         │           │           │   │   ├─ mc.movie_id:3!null\n" +
-			"         │           │           │   │   └─ t.id:5!null\n" +
-			"         │           │           │   ├─ TableAlias(mc)\n" +
-			"         │           │           │   │   └─ IndexedTableAccess(movie_companies)\n" +
-			"         │           │           │   │       ├─ index: [movie_companies.movie_id]\n" +
-			"         │           │           │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"         │           │           │   │       ├─ colSet: (32-36)\n" +
-			"         │           │           │   │       ├─ tableId: 6\n" +
-			"         │           │           │   │       └─ Table\n" +
-			"         │           │           │   │           ├─ name: movie_companies\n" +
-			"         │           │           │   │           └─ columns: [movie_id company_id]\n" +
-			"         │           │           │   └─ Filter\n" +
-			"         │           │           │       ├─ GreaterThan\n" +
-			"         │           │           │       │   ├─ t.production_year:2\n" +
-			"         │           │           │       │   └─ 2000 (int)\n" +
-			"         │           │           │       └─ TableAlias(t)\n" +
-			"         │           │           │           └─ IndexedTableAccess(title)\n" +
-			"         │           │           │               ├─ index: [title.id]\n" +
-			"         │           │           │               ├─ static: [{[NULL, ∞)}]\n" +
-			"         │           │           │               ├─ colSet: (53-64)\n" +
-			"         │           │           │               ├─ tableId: 10\n" +
-			"         │           │           │               └─ Table\n" +
-			"         │           │           │                   ├─ name: title\n" +
-			"         │           │           │                   └─ columns: [id title production_year]\n" +
-			"         │           │           └─ HashLookup\n" +
-			"         │           │               ├─ left-key: TUPLE(mc.movie_id:3!null)\n" +
-			"         │           │               ├─ right-key: TUPLE(ci.movie_id:3!null)\n" +
-			"         │           │               └─ InnerJoin\n" +
-			"         │           │                   ├─ Eq\n" +
-			"         │           │                   │   ├─ rt.id:8!null\n" +
-			"         │           │                   │   └─ ci.role_id:14!null\n" +
-			"         │           │                   ├─ Filter\n" +
-			"         │           │                   │   ├─ Eq\n" +
-			"         │           │                   │   │   ├─ rt.role:1!null\n" +
-			"         │           │                   │   │   └─ actress (longtext)\n" +
-			"         │           │                   │   └─ TableAlias(rt)\n" +
-			"         │           │                   │       └─ ProcessTable\n" +
-			"         │           │                   │           └─ Table\n" +
-			"         │           │                   │               ├─ name: role_type\n" +
-			"         │           │                   │               └─ columns: [id role]\n" +
-			"         │           │                   └─ HashJoin\n" +
-			"         │           │                       ├─ AND\n" +
-			"         │           │                       │   ├─ Eq\n" +
-			"         │           │                       │   │   ├─ ci.person_id:10!null\n" +
-			"         │           │                       │   │   └─ an.person_id:15!null\n" +
-			"         │           │                       │   └─ Eq\n" +
-			"         │           │                       │       ├─ n.id:16!null\n" +
-			"         │           │                       │       └─ ci.person_id:10!null\n" +
-			"         │           │                       ├─ Filter\n" +
-			"         │           │                       │   ├─ HashIn\n" +
-			"         │           │                       │   │   ├─ ci.note:3\n" +
-			"         │           │                       │   │   └─ TUPLE((voice) (longtext), (voice: Japanese version) (longtext), (voice) (uncredited) (longtext), (voice: English version) (longtext))\n" +
-			"         │           │                       │   └─ TableAlias(ci)\n" +
-			"         │           │                       │       └─ ProcessTable\n" +
-			"         │           │                       │           └─ Table\n" +
-			"         │           │                       │               ├─ name: cast_info\n" +
-			"         │           │                       │               └─ columns: [person_id movie_id person_role_id note role_id]\n" +
-			"         │           │                       └─ HashLookup\n" +
-			"         │           │                           ├─ left-key: TUPLE(ci.person_id:10!null, ci.person_id:10!null)\n" +
-			"         │           │                           ├─ right-key: TUPLE(an.person_id:0!null, n.id:1!null)\n" +
-			"         │           │                           └─ MergeJoin\n" +
-			"         │           │                               ├─ cmp: Eq\n" +
-			"         │           │                               │   ├─ an.person_id:15!null\n" +
-			"         │           │                               │   └─ n.id:16!null\n" +
-			"         │           │                               ├─ TableAlias(an)\n" +
-			"         │           │                               │   └─ IndexedTableAccess(aka_name)\n" +
-			"         │           │                               │       ├─ index: [aka_name.person_id]\n" +
-			"         │           │                               │       ├─ static: [{[NULL, ∞)}]\n" +
-			"         │           │                               │       ├─ colSet: (1-8)\n" +
-			"         │           │                               │       ├─ tableId: 1\n" +
-			"         │           │                               │       └─ Table\n" +
-			"         │           │                               │           ├─ name: aka_name\n" +
-			"         │           │                               │           └─ columns: [person_id]\n" +
-			"         │           │                               └─ Filter\n" +
-			"         │           │                                   ├─ Eq\n" +
-			"         │           │                                   │   ├─ n.gender:2\n" +
-			"         │           │                                   │   └─ f (longtext)\n" +
-			"         │           │                                   └─ TableAlias(n)\n" +
-			"         │           │                                       └─ IndexedTableAccess(name)\n" +
-			"         │           │                                           ├─ index: [name.id]\n" +
-			"         │           │                                           ├─ static: [{[NULL, ∞)}]\n" +
-			"         │           │                                           ├─ colSet: (42-50)\n" +
-			"         │           │                                           ├─ tableId: 8\n" +
-			"         │           │                                           └─ Table\n" +
-			"         │           │                                               ├─ name: name\n" +
-			"         │           │                                               └─ columns: [id name gender]\n" +
-			"         │           └─ HashLookup\n" +
-			"         │               ├─ left-key: TUPLE(mc.company_id:4!null)\n" +
-			"         │               ├─ right-key: TUPLE(cn.id:0!null)\n" +
-			"         │               └─ Filter\n" +
-			"         │                   ├─ Eq\n" +
-			"         │                   │   ├─ cn.country_code:1\n" +
-			"         │                   │   └─ [us] (longtext)\n" +
-			"         │                   └─ TableAlias(cn)\n" +
-			"         │                       └─ ProcessTable\n" +
-			"         │                           └─ Table\n" +
-			"         │                               ├─ name: company_name\n" +
-			"         │                               └─ columns: [id country_code]\n" +
-			"         └─ HashLookup\n" +
-			"             ├─ left-key: TUPLE(mi.info_type_id:1!null)\n" +
-			"             ├─ right-key: TUPLE(it.id:0!null)\n" +
-			"             └─ Filter\n" +
-			"                 ├─ Eq\n" +
-			"                 │   ├─ it.info:1!null\n" +
-			"                 │   └─ release dates (longtext)\n" +
-			"                 └─ TableAlias(it)\n" +
-			"                     └─ ProcessTable\n" +
-			"                         └─ Table\n" +
-			"                             ├─ name: info_type\n" +
-			"                             └─ columns: [id info]\n" +
+			"         │           │   ├─ it.info:1!null\n" +
+			"         │           │   └─ release dates (longtext)\n" +
+			"         │           └─ TableAlias(it)\n" +
+			"         │               └─ ProcessTable\n" +
+			"         │                   └─ Table\n" +
+			"         │                       ├─ name: info_type\n" +
+			"         │                       └─ columns: [id info]\n" +
+			"         └─ Filter\n" +
+			"             ├─ Eq\n" +
+			"             │   ├─ rt.role:1!null\n" +
+			"             │   └─ actress (longtext)\n" +
+			"             └─ TableAlias(rt)\n" +
+			"                 └─ ProcessTable\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: role_type\n" +
+			"                         └─ columns: [id role]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(n.name) as voicing_actress, min(t.title) as jap_engl_voiced_movie]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(n.name), MIN(t.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ HashJoin (estimated cost=1148631.540 rows=1125827)\n" +
-			"         ├─ (it.id = mi.info_type_id)\n" +
-			"         ├─ HashJoin (estimated cost=17888002.330 rows=1125827)\n" +
-			"         │   ├─ (((mc.movie_id = mi.movie_id) AND (mi.movie_id = ci.movie_id)) AND (t.id = mi.movie_id))\n" +
-			"         │   ├─ TableAlias(mi)\n" +
-			"         │   │   └─ Table\n" +
-			"         │   │       ├─ name: movie_info\n" +
-			"         │   │       └─ columns: [movie_id info_type_id]\n" +
+			"     └─ InnerJoin (estimated cost=1137086.270 rows=1125827)\n" +
+			"         ├─ (rt.id = ci.role_id)\n" +
+			"         ├─ HashJoin (estimated cost=1148631.540 rows=1125827)\n" +
+			"         │   ├─ (it.id = mi.info_type_id)\n" +
+			"         │   ├─ HashJoin (estimated cost=17888002.330 rows=1125827)\n" +
+			"         │   │   ├─ (((mc.movie_id = mi.movie_id) AND (mi.movie_id = ci.movie_id)) AND (t.id = mi.movie_id))\n" +
+			"         │   │   ├─ TableAlias(mi)\n" +
+			"         │   │   │   └─ Table\n" +
+			"         │   │   │       ├─ name: movie_info\n" +
+			"         │   │   │       └─ columns: [movie_id info_type_id]\n" +
+			"         │   │   └─ HashLookup\n" +
+			"         │   │       ├─ left-key: (mi.movie_id, mi.movie_id, mi.movie_id)\n" +
+			"         │   │       ├─ right-key: (mc.movie_id, ci.movie_id, t.id)\n" +
+			"         │   │       └─ HashJoin (estimated cost=6556485.090 rows=1125827)\n" +
+			"         │   │           ├─ (chn.id = ci.person_role_id)\n" +
+			"         │   │           ├─ TableAlias(chn)\n" +
+			"         │   │           │   └─ Table\n" +
+			"         │   │           │       ├─ name: char_name\n" +
+			"         │   │           │       └─ columns: [id]\n" +
+			"         │   │           └─ HashLookup\n" +
+			"         │   │               ├─ left-key: (chn.id)\n" +
+			"         │   │               ├─ right-key: (ci.person_role_id)\n" +
+			"         │   │               └─ HashJoin (estimated cost=1747146.540 rows=1125827)\n" +
+			"         │   │                   ├─ (cn.id = mc.company_id)\n" +
+			"         │   │                   ├─ HashJoin (estimated cost=6018846.940 rows=1125827)\n" +
+			"         │   │                   │   ├─ (mc.movie_id = ci.movie_id)\n" +
+			"         │   │                   │   ├─ MergeJoin (estimated cost=4826263.630 rows=2604067)\n" +
+			"         │   │                   │   │   ├─ cmp: (mc.movie_id = t.id)\n" +
+			"         │   │                   │   │   ├─ TableAlias(mc)\n" +
+			"         │   │                   │   │   │   └─ IndexedTableAccess(movie_companies)\n" +
+			"         │   │                   │   │   │       ├─ index: [movie_companies.movie_id]\n" +
+			"         │   │                   │   │   │       ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   │                   │   │   │       └─ columns: [movie_id company_id]\n" +
+			"         │   │                   │   │   └─ Filter\n" +
+			"         │   │                   │   │       ├─ (t.production_year > 2000)\n" +
+			"         │   │                   │   │       └─ TableAlias(t)\n" +
+			"         │   │                   │   │           └─ IndexedTableAccess(title)\n" +
+			"         │   │                   │   │               ├─ index: [title.id]\n" +
+			"         │   │                   │   │               ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   │                   │   │               └─ columns: [id title production_year]\n" +
+			"         │   │                   │   └─ HashLookup\n" +
+			"         │   │                   │       ├─ left-key: (mc.movie_id)\n" +
+			"         │   │                   │       ├─ right-key: (ci.movie_id)\n" +
+			"         │   │                   │       └─ HashJoin (estimated cost=33726152.770 rows=1125827)\n" +
+			"         │   │                   │           ├─ ((ci.person_id = an.person_id) AND (n.id = ci.person_id))\n" +
+			"         │   │                   │           ├─ Filter\n" +
+			"         │   │                   │           │   ├─ (ci.note HASH IN ('(voice)', '(voice: Japanese version)', '(voice) (uncredited)', '(voice: English version)'))\n" +
+			"         │   │                   │           │   └─ TableAlias(ci)\n" +
+			"         │   │                   │           │       └─ Table\n" +
+			"         │   │                   │           │           ├─ name: cast_info\n" +
+			"         │   │                   │           │           └─ columns: [person_id movie_id person_role_id note role_id]\n" +
+			"         │   │                   │           └─ HashLookup\n" +
+			"         │   │                   │               ├─ left-key: (ci.person_id, ci.person_id)\n" +
+			"         │   │                   │               ├─ right-key: (an.person_id, n.id)\n" +
+			"         │   │                   │               └─ MergeJoin (estimated cost=4496433.590 rows=900662)\n" +
+			"         │   │                   │                   ├─ cmp: (an.person_id = n.id)\n" +
+			"         │   │                   │                   ├─ TableAlias(an)\n" +
+			"         │   │                   │                   │   └─ IndexedTableAccess(aka_name)\n" +
+			"         │   │                   │                   │       ├─ index: [aka_name.person_id]\n" +
+			"         │   │                   │                   │       ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   │                   │                   │       └─ columns: [person_id]\n" +
+			"         │   │                   │                   └─ Filter\n" +
+			"         │   │                   │                       ├─ (n.gender = 'f')\n" +
+			"         │   │                   │                       └─ TableAlias(n)\n" +
+			"         │   │                   │                           └─ IndexedTableAccess(name)\n" +
+			"         │   │                   │                               ├─ index: [name.id]\n" +
+			"         │   │                   │                               ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   │                   │                               └─ columns: [id name gender]\n" +
+			"         │   │                   └─ HashLookup\n" +
+			"         │   │                       ├─ left-key: (mc.company_id)\n" +
+			"         │   │                       ├─ right-key: (cn.id)\n" +
+			"         │   │                       └─ Filter\n" +
+			"         │   │                           ├─ (cn.country_code = '[us]')\n" +
+			"         │   │                           └─ TableAlias(cn)\n" +
+			"         │   │                               └─ Table\n" +
+			"         │   │                                   ├─ name: company_name\n" +
+			"         │   │                                   └─ columns: [id country_code]\n" +
 			"         │   └─ HashLookup\n" +
-			"         │       ├─ left-key: (mi.movie_id, mi.movie_id, mi.movie_id)\n" +
-			"         │       ├─ right-key: (mc.movie_id, ci.movie_id, t.id)\n" +
-			"         │       └─ HashJoin (estimated cost=1747146.540 rows=1125827)\n" +
-			"         │           ├─ (cn.id = mc.company_id)\n" +
-			"         │           ├─ HashJoin (estimated cost=6556485.090 rows=1125827)\n" +
-			"         │           │   ├─ (chn.id = ci.person_role_id)\n" +
-			"         │           │   ├─ TableAlias(chn)\n" +
-			"         │           │   │   └─ Table\n" +
-			"         │           │   │       ├─ name: char_name\n" +
-			"         │           │   │       └─ columns: [id]\n" +
-			"         │           │   └─ HashLookup\n" +
-			"         │           │       ├─ left-key: (chn.id)\n" +
-			"         │           │       ├─ right-key: (ci.person_role_id)\n" +
-			"         │           │       └─ HashJoin (estimated cost=6018846.940 rows=1125827)\n" +
-			"         │           │           ├─ (mc.movie_id = ci.movie_id)\n" +
-			"         │           │           ├─ MergeJoin (estimated cost=4826263.630 rows=2604067)\n" +
-			"         │           │           │   ├─ cmp: (mc.movie_id = t.id)\n" +
-			"         │           │           │   ├─ TableAlias(mc)\n" +
-			"         │           │           │   │   └─ IndexedTableAccess(movie_companies)\n" +
-			"         │           │           │   │       ├─ index: [movie_companies.movie_id]\n" +
-			"         │           │           │   │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"         │           │           │   │       └─ columns: [movie_id company_id]\n" +
-			"         │           │           │   └─ Filter\n" +
-			"         │           │           │       ├─ (t.production_year > 2000)\n" +
-			"         │           │           │       └─ TableAlias(t)\n" +
-			"         │           │           │           └─ IndexedTableAccess(title)\n" +
-			"         │           │           │               ├─ index: [title.id]\n" +
-			"         │           │           │               ├─ filters: [{[NULL, ∞)}]\n" +
-			"         │           │           │               └─ columns: [id title production_year]\n" +
-			"         │           │           └─ HashLookup\n" +
-			"         │           │               ├─ left-key: (mc.movie_id)\n" +
-			"         │           │               ├─ right-key: (ci.movie_id)\n" +
-			"         │           │               └─ InnerJoin (estimated cost=1137086.270 rows=1125827)\n" +
-			"         │           │                   ├─ (rt.id = ci.role_id)\n" +
-			"         │           │                   ├─ Filter\n" +
-			"         │           │                   │   ├─ (rt.role = 'actress')\n" +
-			"         │           │                   │   └─ TableAlias(rt)\n" +
-			"         │           │                   │       └─ Table\n" +
-			"         │           │                   │           ├─ name: role_type\n" +
-			"         │           │                   │           └─ columns: [id role]\n" +
-			"         │           │                   └─ HashJoin (estimated cost=33726152.770 rows=1125827)\n" +
-			"         │           │                       ├─ ((ci.person_id = an.person_id) AND (n.id = ci.person_id))\n" +
-			"         │           │                       ├─ Filter\n" +
-			"         │           │                       │   ├─ (ci.note HASH IN ('(voice)', '(voice: Japanese version)', '(voice) (uncredited)', '(voice: English version)'))\n" +
-			"         │           │                       │   └─ TableAlias(ci)\n" +
-			"         │           │                       │       └─ Table\n" +
-			"         │           │                       │           ├─ name: cast_info\n" +
-			"         │           │                       │           └─ columns: [person_id movie_id person_role_id note role_id]\n" +
-			"         │           │                       └─ HashLookup\n" +
-			"         │           │                           ├─ left-key: (ci.person_id, ci.person_id)\n" +
-			"         │           │                           ├─ right-key: (an.person_id, n.id)\n" +
-			"         │           │                           └─ MergeJoin (estimated cost=4496433.590 rows=900662)\n" +
-			"         │           │                               ├─ cmp: (an.person_id = n.id)\n" +
-			"         │           │                               ├─ TableAlias(an)\n" +
-			"         │           │                               │   └─ IndexedTableAccess(aka_name)\n" +
-			"         │           │                               │       ├─ index: [aka_name.person_id]\n" +
-			"         │           │                               │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"         │           │                               │       └─ columns: [person_id]\n" +
-			"         │           │                               └─ Filter\n" +
-			"         │           │                                   ├─ (n.gender = 'f')\n" +
-			"         │           │                                   └─ TableAlias(n)\n" +
-			"         │           │                                       └─ IndexedTableAccess(name)\n" +
-			"         │           │                                           ├─ index: [name.id]\n" +
-			"         │           │                                           ├─ filters: [{[NULL, ∞)}]\n" +
-			"         │           │                                           └─ columns: [id name gender]\n" +
-			"         │           └─ HashLookup\n" +
-			"         │               ├─ left-key: (mc.company_id)\n" +
-			"         │               ├─ right-key: (cn.id)\n" +
-			"         │               └─ Filter\n" +
-			"         │                   ├─ (cn.country_code = '[us]')\n" +
-			"         │                   └─ TableAlias(cn)\n" +
-			"         │                       └─ Table\n" +
-			"         │                           ├─ name: company_name\n" +
-			"         │                           └─ columns: [id country_code]\n" +
-			"         └─ HashLookup\n" +
-			"             ├─ left-key: (mi.info_type_id)\n" +
-			"             ├─ right-key: (it.id)\n" +
-			"             └─ Filter\n" +
-			"                 ├─ (it.info = 'release dates')\n" +
-			"                 └─ TableAlias(it)\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: info_type\n" +
-			"                         └─ columns: [id info]\n" +
+			"         │       ├─ left-key: (mi.info_type_id)\n" +
+			"         │       ├─ right-key: (it.id)\n" +
+			"         │       └─ Filter\n" +
+			"         │           ├─ (it.info = 'release dates')\n" +
+			"         │           └─ TableAlias(it)\n" +
+			"         │               └─ Table\n" +
+			"         │                   ├─ name: info_type\n" +
+			"         │                   └─ columns: [id info]\n" +
+			"         └─ Filter\n" +
+			"             ├─ (rt.role = 'actress')\n" +
+			"             └─ TableAlias(rt)\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: role_type\n" +
+			"                     └─ columns: [id role]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(n.name) as voicing_actress, min(t.title) as jap_engl_voiced_movie]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(n.name), MIN(t.title)\n" +
 			"     ├─ group: \n" +
-			"     └─ HashJoin (estimated cost=1148631.540 rows=1125827) (actual rows=0 loops=1)\n" +
-			"         ├─ (it.id = mi.info_type_id)\n" +
-			"         ├─ HashJoin (estimated cost=17888002.330 rows=1125827) (actual rows=0 loops=1)\n" +
-			"         │   ├─ (((mc.movie_id = mi.movie_id) AND (mi.movie_id = ci.movie_id)) AND (t.id = mi.movie_id))\n" +
-			"         │   ├─ TableAlias(mi)\n" +
-			"         │   │   └─ Table\n" +
-			"         │   │       ├─ name: movie_info\n" +
-			"         │   │       └─ columns: [movie_id info_type_id]\n" +
+			"     └─ InnerJoin (estimated cost=1137086.270 rows=1125827) (actual rows=0 loops=1)\n" +
+			"         ├─ (rt.id = ci.role_id)\n" +
+			"         ├─ HashJoin (estimated cost=1148631.540 rows=1125827) (actual rows=0 loops=1)\n" +
+			"         │   ├─ (it.id = mi.info_type_id)\n" +
+			"         │   ├─ HashJoin (estimated cost=17888002.330 rows=1125827) (actual rows=0 loops=1)\n" +
+			"         │   │   ├─ (((mc.movie_id = mi.movie_id) AND (mi.movie_id = ci.movie_id)) AND (t.id = mi.movie_id))\n" +
+			"         │   │   ├─ TableAlias(mi)\n" +
+			"         │   │   │   └─ Table\n" +
+			"         │   │   │       ├─ name: movie_info\n" +
+			"         │   │   │       └─ columns: [movie_id info_type_id]\n" +
+			"         │   │   └─ HashLookup\n" +
+			"         │   │       ├─ left-key: (mi.movie_id, mi.movie_id, mi.movie_id)\n" +
+			"         │   │       ├─ right-key: (mc.movie_id, ci.movie_id, t.id)\n" +
+			"         │   │       └─ HashJoin (estimated cost=6556485.090 rows=1125827)\n" +
+			"         │   │           ├─ (chn.id = ci.person_role_id)\n" +
+			"         │   │           ├─ TableAlias(chn)\n" +
+			"         │   │           │   └─ Table\n" +
+			"         │   │           │       ├─ name: char_name\n" +
+			"         │   │           │       └─ columns: [id]\n" +
+			"         │   │           └─ HashLookup\n" +
+			"         │   │               ├─ left-key: (chn.id)\n" +
+			"         │   │               ├─ right-key: (ci.person_role_id)\n" +
+			"         │   │               └─ HashJoin (estimated cost=1747146.540 rows=1125827)\n" +
+			"         │   │                   ├─ (cn.id = mc.company_id)\n" +
+			"         │   │                   ├─ HashJoin (estimated cost=6018846.940 rows=1125827)\n" +
+			"         │   │                   │   ├─ (mc.movie_id = ci.movie_id)\n" +
+			"         │   │                   │   ├─ MergeJoin (estimated cost=4826263.630 rows=2604067)\n" +
+			"         │   │                   │   │   ├─ cmp: (mc.movie_id = t.id)\n" +
+			"         │   │                   │   │   ├─ TableAlias(mc)\n" +
+			"         │   │                   │   │   │   └─ IndexedTableAccess(movie_companies)\n" +
+			"         │   │                   │   │   │       ├─ index: [movie_companies.movie_id]\n" +
+			"         │   │                   │   │   │       ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   │                   │   │   │       └─ columns: [movie_id company_id]\n" +
+			"         │   │                   │   │   └─ Filter\n" +
+			"         │   │                   │   │       ├─ (t.production_year > 2000)\n" +
+			"         │   │                   │   │       └─ TableAlias(t)\n" +
+			"         │   │                   │   │           └─ IndexedTableAccess(title)\n" +
+			"         │   │                   │   │               ├─ index: [title.id]\n" +
+			"         │   │                   │   │               ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   │                   │   │               └─ columns: [id title production_year]\n" +
+			"         │   │                   │   └─ HashLookup\n" +
+			"         │   │                   │       ├─ left-key: (mc.movie_id)\n" +
+			"         │   │                   │       ├─ right-key: (ci.movie_id)\n" +
+			"         │   │                   │       └─ HashJoin (estimated cost=33726152.770 rows=1125827)\n" +
+			"         │   │                   │           ├─ ((ci.person_id = an.person_id) AND (n.id = ci.person_id))\n" +
+			"         │   │                   │           ├─ Filter\n" +
+			"         │   │                   │           │   ├─ (ci.note HASH IN ('(voice)', '(voice: Japanese version)', '(voice) (uncredited)', '(voice: English version)'))\n" +
+			"         │   │                   │           │   └─ TableAlias(ci)\n" +
+			"         │   │                   │           │       └─ Table\n" +
+			"         │   │                   │           │           ├─ name: cast_info\n" +
+			"         │   │                   │           │           └─ columns: [person_id movie_id person_role_id note role_id]\n" +
+			"         │   │                   │           └─ HashLookup\n" +
+			"         │   │                   │               ├─ left-key: (ci.person_id, ci.person_id)\n" +
+			"         │   │                   │               ├─ right-key: (an.person_id, n.id)\n" +
+			"         │   │                   │               └─ MergeJoin (estimated cost=4496433.590 rows=900662)\n" +
+			"         │   │                   │                   ├─ cmp: (an.person_id = n.id)\n" +
+			"         │   │                   │                   ├─ TableAlias(an)\n" +
+			"         │   │                   │                   │   └─ IndexedTableAccess(aka_name)\n" +
+			"         │   │                   │                   │       ├─ index: [aka_name.person_id]\n" +
+			"         │   │                   │                   │       ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   │                   │                   │       └─ columns: [person_id]\n" +
+			"         │   │                   │                   └─ Filter\n" +
+			"         │   │                   │                       ├─ (n.gender = 'f')\n" +
+			"         │   │                   │                       └─ TableAlias(n)\n" +
+			"         │   │                   │                           └─ IndexedTableAccess(name)\n" +
+			"         │   │                   │                               ├─ index: [name.id]\n" +
+			"         │   │                   │                               ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   │                   │                               └─ columns: [id name gender]\n" +
+			"         │   │                   └─ HashLookup\n" +
+			"         │   │                       ├─ left-key: (mc.company_id)\n" +
+			"         │   │                       ├─ right-key: (cn.id)\n" +
+			"         │   │                       └─ Filter\n" +
+			"         │   │                           ├─ (cn.country_code = '[us]')\n" +
+			"         │   │                           └─ TableAlias(cn)\n" +
+			"         │   │                               └─ Table\n" +
+			"         │   │                                   ├─ name: company_name\n" +
+			"         │   │                                   └─ columns: [id country_code]\n" +
 			"         │   └─ HashLookup\n" +
-			"         │       ├─ left-key: (mi.movie_id, mi.movie_id, mi.movie_id)\n" +
-			"         │       ├─ right-key: (mc.movie_id, ci.movie_id, t.id)\n" +
-			"         │       └─ HashJoin (estimated cost=1747146.540 rows=1125827)\n" +
-			"         │           ├─ (cn.id = mc.company_id)\n" +
-			"         │           ├─ HashJoin (estimated cost=6556485.090 rows=1125827)\n" +
-			"         │           │   ├─ (chn.id = ci.person_role_id)\n" +
-			"         │           │   ├─ TableAlias(chn)\n" +
-			"         │           │   │   └─ Table\n" +
-			"         │           │   │       ├─ name: char_name\n" +
-			"         │           │   │       └─ columns: [id]\n" +
-			"         │           │   └─ HashLookup\n" +
-			"         │           │       ├─ left-key: (chn.id)\n" +
-			"         │           │       ├─ right-key: (ci.person_role_id)\n" +
-			"         │           │       └─ HashJoin (estimated cost=6018846.940 rows=1125827)\n" +
-			"         │           │           ├─ (mc.movie_id = ci.movie_id)\n" +
-			"         │           │           ├─ MergeJoin (estimated cost=4826263.630 rows=2604067)\n" +
-			"         │           │           │   ├─ cmp: (mc.movie_id = t.id)\n" +
-			"         │           │           │   ├─ TableAlias(mc)\n" +
-			"         │           │           │   │   └─ IndexedTableAccess(movie_companies)\n" +
-			"         │           │           │   │       ├─ index: [movie_companies.movie_id]\n" +
-			"         │           │           │   │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"         │           │           │   │       └─ columns: [movie_id company_id]\n" +
-			"         │           │           │   └─ Filter\n" +
-			"         │           │           │       ├─ (t.production_year > 2000)\n" +
-			"         │           │           │       └─ TableAlias(t)\n" +
-			"         │           │           │           └─ IndexedTableAccess(title)\n" +
-			"         │           │           │               ├─ index: [title.id]\n" +
-			"         │           │           │               ├─ filters: [{[NULL, ∞)}]\n" +
-			"         │           │           │               └─ columns: [id title production_year]\n" +
-			"         │           │           └─ HashLookup\n" +
-			"         │           │               ├─ left-key: (mc.movie_id)\n" +
-			"         │           │               ├─ right-key: (ci.movie_id)\n" +
-			"         │           │               └─ InnerJoin (estimated cost=1137086.270 rows=1125827)\n" +
-			"         │           │                   ├─ (rt.id = ci.role_id)\n" +
-			"         │           │                   ├─ Filter\n" +
-			"         │           │                   │   ├─ (rt.role = 'actress')\n" +
-			"         │           │                   │   └─ TableAlias(rt)\n" +
-			"         │           │                   │       └─ Table\n" +
-			"         │           │                   │           ├─ name: role_type\n" +
-			"         │           │                   │           └─ columns: [id role]\n" +
-			"         │           │                   └─ HashJoin (estimated cost=33726152.770 rows=1125827)\n" +
-			"         │           │                       ├─ ((ci.person_id = an.person_id) AND (n.id = ci.person_id))\n" +
-			"         │           │                       ├─ Filter\n" +
-			"         │           │                       │   ├─ (ci.note HASH IN ('(voice)', '(voice: Japanese version)', '(voice) (uncredited)', '(voice: English version)'))\n" +
-			"         │           │                       │   └─ TableAlias(ci)\n" +
-			"         │           │                       │       └─ Table\n" +
-			"         │           │                       │           ├─ name: cast_info\n" +
-			"         │           │                       │           └─ columns: [person_id movie_id person_role_id note role_id]\n" +
-			"         │           │                       └─ HashLookup\n" +
-			"         │           │                           ├─ left-key: (ci.person_id, ci.person_id)\n" +
-			"         │           │                           ├─ right-key: (an.person_id, n.id)\n" +
-			"         │           │                           └─ MergeJoin (estimated cost=4496433.590 rows=900662)\n" +
-			"         │           │                               ├─ cmp: (an.person_id = n.id)\n" +
-			"         │           │                               ├─ TableAlias(an)\n" +
-			"         │           │                               │   └─ IndexedTableAccess(aka_name)\n" +
-			"         │           │                               │       ├─ index: [aka_name.person_id]\n" +
-			"         │           │                               │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"         │           │                               │       └─ columns: [person_id]\n" +
-			"         │           │                               └─ Filter\n" +
-			"         │           │                                   ├─ (n.gender = 'f')\n" +
-			"         │           │                                   └─ TableAlias(n)\n" +
-			"         │           │                                       └─ IndexedTableAccess(name)\n" +
-			"         │           │                                           ├─ index: [name.id]\n" +
-			"         │           │                                           ├─ filters: [{[NULL, ∞)}]\n" +
-			"         │           │                                           └─ columns: [id name gender]\n" +
-			"         │           └─ HashLookup\n" +
-			"         │               ├─ left-key: (mc.company_id)\n" +
-			"         │               ├─ right-key: (cn.id)\n" +
-			"         │               └─ Filter\n" +
-			"         │                   ├─ (cn.country_code = '[us]')\n" +
-			"         │                   └─ TableAlias(cn)\n" +
-			"         │                       └─ Table\n" +
-			"         │                           ├─ name: company_name\n" +
-			"         │                           └─ columns: [id country_code]\n" +
-			"         └─ HashLookup\n" +
-			"             ├─ left-key: (mi.info_type_id)\n" +
-			"             ├─ right-key: (it.id)\n" +
-			"             └─ Filter\n" +
-			"                 ├─ (it.info = 'release dates')\n" +
-			"                 └─ TableAlias(it)\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: info_type\n" +
-			"                         └─ columns: [id info]\n" +
+			"         │       ├─ left-key: (mi.info_type_id)\n" +
+			"         │       ├─ right-key: (it.id)\n" +
+			"         │       └─ Filter\n" +
+			"         │           ├─ (it.info = 'release dates')\n" +
+			"         │           └─ TableAlias(it)\n" +
+			"         │               └─ Table\n" +
+			"         │                   ├─ name: info_type\n" +
+			"         │                   └─ columns: [id info]\n" +
+			"         └─ Filter\n" +
+			"             ├─ (rt.role = 'actress')\n" +
+			"             └─ TableAlias(rt)\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: role_type\n" +
+			"                     └─ columns: [id role]\n" +
 			"",
 	},
 	{
