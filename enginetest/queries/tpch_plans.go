@@ -1104,7 +1104,7 @@ order by
 			"             ├─ tableId: 7\n" +
 			"             └─ Project\n" +
 			"                 ├─ columns: [n1.n_name as supp_nation, n2.n_name as cust_nation, extract('YEAR' from lineitem.l_shipdate) as l_year, (lineitem.l_extendedprice * (1 - lineitem.l_discount)) as volume]\n" +
-			"                 └─ LookupJoin (estimated cost=11305.000 rows=850)\n" +
+			"                 └─ LookupJoin (estimated cost=19805.000 rows=850)\n" +
 			"                     ├─ (((n1.n_name = 'FRANCE') AND (n2.n_name = 'GERMANY')) OR ((n1.n_name = 'GERMANY') AND (n2.n_name = 'FRANCE')))\n" +
 			"                     ├─ HashJoin (estimated cost=3568.500 rows=850)\n" +
 			"                     │   ├─ (customer.c_custkey = orders.o_custkey)\n" +
@@ -1164,7 +1164,7 @@ order by
 			"             ├─ tableId: 7\n" +
 			"             └─ Project\n" +
 			"                 ├─ columns: [n1.n_name as supp_nation, n2.n_name as cust_nation, extract('YEAR' from lineitem.l_shipdate) as l_year, (lineitem.l_extendedprice * (1 - lineitem.l_discount)) as volume]\n" +
-			"                 └─ LookupJoin (estimated cost=11305.000 rows=850) (actual rows=0 loops=1)\n" +
+			"                 └─ LookupJoin (estimated cost=19805.000 rows=850) (actual rows=0 loops=1)\n" +
 			"                     ├─ (((n1.n_name = 'FRANCE') AND (n2.n_name = 'GERMANY')) OR ((n1.n_name = 'GERMANY') AND (n2.n_name = 'FRANCE')))\n" +
 			"                     ├─ HashJoin (estimated cost=3568.500 rows=850) (actual rows=0 loops=1)\n" +
 			"                     │   ├─ (customer.c_custkey = orders.o_custkey)\n" +
@@ -2915,7 +2915,7 @@ where
 			" └─ GroupBy\n" +
 			"     ├─ select: SUM(lineitem.l_extendedprice)\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin (estimated cost=11800.000 rows=1000)\n" +
+			"     └─ LookupJoin (estimated cost=20300.000 rows=1000)\n" +
 			"         ├─ (lineitem.l_quantity < Subquery(select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey))\n" +
 			"         ├─ Table\n" +
 			"         │   └─ name: lineitem\n" +
@@ -2930,7 +2930,7 @@ where
 			" └─ GroupBy\n" +
 			"     ├─ select: SUM(lineitem.l_extendedprice)\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin (estimated cost=11800.000 rows=1000) (actual rows=0 loops=1)\n" +
+			"     └─ LookupJoin (estimated cost=20300.000 rows=1000) (actual rows=0 loops=1)\n" +
 			"         ├─ (lineitem.l_quantity < Subquery(select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey))\n" +
 			"         ├─ Table\n" +
 			"         │   └─ name: lineitem\n" +
@@ -3482,7 +3482,7 @@ order by
 			"         │           └─ Distinct\n" +
 			"         │               └─ Project\n" +
 			"         │                   ├─ columns: [partsupp.ps_suppkey]\n" +
-			"         │                   └─ SemiLookupJoin (estimated cost=11800.000 rows=1000)\n" +
+			"         │                   └─ SemiLookupJoin (estimated cost=20300.000 rows=1000)\n" +
 			"         │                       ├─ (partsupp.ps_availqty > Subquery(select 0.5 * sum(l_quantity) from lineitem where l_partkey = ps_partkey and l_suppkey = ps_suppkey and l_shipdate >= '1994-01-01' and l_shipdate < '1994-01-01' + interval '1' year))\n" +
 			"         │                       ├─ Table\n" +
 			"         │                       │   └─ name: partsupp\n" +
@@ -3518,7 +3518,7 @@ order by
 			"         │           └─ Distinct\n" +
 			"         │               └─ Project\n" +
 			"         │                   ├─ columns: [partsupp.ps_suppkey]\n" +
-			"         │                   └─ SemiLookupJoin (estimated cost=11800.000 rows=1000)\n" +
+			"         │                   └─ SemiLookupJoin (estimated cost=20300.000 rows=1000)\n" +
 			"         │                       ├─ (partsupp.ps_availqty > Subquery(select 0.5 * sum(l_quantity) from lineitem where l_partkey = ps_partkey and l_suppkey = ps_suppkey and l_shipdate >= '1994-01-01' and l_shipdate < '1994-01-01' + interval '1' year))\n" +
 			"         │                       ├─ Table\n" +
 			"         │                       │   └─ name: partsupp\n" +
@@ -3684,7 +3684,7 @@ order by
 			"         └─ GroupBy\n" +
 			"             ├─ select: COUNT(1), supplier.s_name\n" +
 			"             ├─ group: supplier.s_name\n" +
-			"             └─ SemiLookupJoin (estimated cost=14580.000 rows=1250)\n" +
+			"             └─ SemiLookupJoin (estimated cost=25200.000 rows=1250)\n" +
 			"                 ├─ (NOT((l2.l_suppkey = l1.l_suppkey)))\n" +
 			"                 ├─ AntiJoinIncludingNulls (estimated cost=365712.500 rows=1062)\n" +
 			"                 │   ├─ ((l3.l_orderkey = l1.l_orderkey) AND (NOT((l3.l_suppkey = l1.l_suppkey))))\n" +
@@ -3737,7 +3737,7 @@ order by
 			"         └─ GroupBy\n" +
 			"             ├─ select: COUNT(1), supplier.s_name\n" +
 			"             ├─ group: supplier.s_name\n" +
-			"             └─ SemiLookupJoin (estimated cost=14580.000 rows=1250) (actual rows=0 loops=1)\n" +
+			"             └─ SemiLookupJoin (estimated cost=25200.000 rows=1250) (actual rows=0 loops=1)\n" +
 			"                 ├─ (NOT((l2.l_suppkey = l1.l_suppkey)))\n" +
 			"                 ├─ AntiJoinIncludingNulls (estimated cost=365712.500 rows=1062) (actual rows=0 loops=1)\n" +
 			"                 │   ├─ ((l3.l_orderkey = l1.l_orderkey) AND (NOT((l3.l_suppkey = l1.l_suppkey))))\n" +

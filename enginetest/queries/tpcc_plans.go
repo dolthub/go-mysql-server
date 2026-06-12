@@ -51,7 +51,7 @@ SELECT c_discount, c_last, c_credit, w_tax FROM customer2, warehouse2 WHERE w_id
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [customer2.c_discount, customer2.c_last, customer2.c_credit, warehouse2.w_tax]\n" +
-			" └─ LookupJoin (estimated cost=258.300 rows=1)\n" +
+			" └─ LookupJoin (estimated cost=513.300 rows=1)\n" +
 			"     ├─ IndexedTableAccess(warehouse2)\n" +
 			"     │   ├─ index: [warehouse2.w_id]\n" +
 			"     │   ├─ filters: [{[1, 1]}]\n" +
@@ -65,7 +65,7 @@ SELECT c_discount, c_last, c_credit, w_tax FROM customer2, warehouse2 WHERE w_id
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [customer2.c_discount, customer2.c_last, customer2.c_credit, warehouse2.w_tax]\n" +
-			" └─ LookupJoin (estimated cost=258.300 rows=1) (actual rows=0 loops=1)\n" +
+			" └─ LookupJoin (estimated cost=513.300 rows=1) (actual rows=0 loops=1)\n" +
 			"     ├─ IndexedTableAccess(warehouse2)\n" +
 			"     │   ├─ index: [warehouse2.w_id]\n" +
 			"     │   ├─ filters: [{[1, 1]}]\n" +
@@ -839,96 +839,111 @@ from
   limit 1;`,
 		ExpectedPlan: "Limit(1)\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [o.o_id:4!null, o.o_d_id:5!null]\n" +
-			"     └─ LookupJoin\n" +
-			"         ├─ SubqueryAlias\n" +
-			"         │   ├─ name: t\n" +
-			"         │   ├─ outerVisibility: false\n" +
-			"         │   ├─ isLateral: false\n" +
-			"         │   ├─ cacheable: true\n" +
-			"         │   ├─ colSet: (18-21)\n" +
-			"         │   ├─ tableId: 3\n" +
-			"         │   └─ Limit(1)\n" +
-			"         │       └─ Project\n" +
-			"         │           ├─ columns: [orders2.o_c_id:1, orders2.o_w_id:2!null, orders2.o_d_id:3!null, countdistinct([orders2.o_id]):0!null->count(distinct o_id):0]\n" +
-			"         │           └─ Having\n" +
-			"         │               ├─ GreaterThan\n" +
-			"         │               │   ├─ countdistinct([orders2.o_id]):0!null\n" +
-			"         │               │   └─ 1 (bigint)\n" +
-			"         │               └─ GroupBy\n" +
-			"         │                   ├─ select: COUNTDISTINCT([orders2.o_id]), orders2.o_c_id:3, orders2.o_w_id:2!null, orders2.o_d_id:1!null, orders2.o_id:0!null\n" +
-			"         │                   ├─ group: orders2.o_c_id:3, orders2.o_d_id:1!null, orders2.o_w_id:2!null\n" +
-			"         │                   └─ IndexedTableAccess(orders2)\n" +
-			"         │                       ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_id]\n" +
-			"         │                       ├─ static: [{[1, 1], [NULL, ∞), (2100, 11153)}]\n" +
-			"         │                       ├─ colSet: (9-16)\n" +
-			"         │                       ├─ tableId: 2\n" +
-			"         │                       └─ Table\n" +
-			"         │                           ├─ name: orders2\n" +
-			"         │                           └─ columns: [o_id o_d_id o_w_id o_c_id o_entry_d o_carrier_id o_ol_cnt o_all_local]\n" +
-			"         └─ TableAlias(o)\n" +
-			"             └─ IndexedTableAccess(orders2)\n" +
-			"                 ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_c_id,orders2.o_id]\n" +
-			"                 ├─ keys: [t.o_w_id:1!null t.o_d_id:2!null t.o_c_id:0]\n" +
-			"                 ├─ colSet: (1-8)\n" +
-			"                 ├─ tableId: 1\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: orders2\n" +
-			"                     └─ columns: [o_id o_d_id o_w_id o_c_id]\n" +
+			"     ├─ columns: [o.o_id:0!null, o.o_d_id:1!null]\n" +
+			"     └─ HashJoin\n" +
+			"         ├─ AND\n" +
+			"         │   ├─ AND\n" +
+			"         │   │   ├─ Eq\n" +
+			"         │   │   │   ├─ t.o_w_id:5!null\n" +
+			"         │   │   │   └─ o.o_w_id:2!null\n" +
+			"         │   │   └─ Eq\n" +
+			"         │   │       ├─ t.o_d_id:6!null\n" +
+			"         │   │       └─ o.o_d_id:1!null\n" +
+			"         │   └─ Eq\n" +
+			"         │       ├─ t.o_c_id:4\n" +
+			"         │       └─ o.o_c_id:3\n" +
+			"         ├─ TableAlias(o)\n" +
+			"         │   └─ ProcessTable\n" +
+			"         │       └─ Table\n" +
+			"         │           ├─ name: orders2\n" +
+			"         │           └─ columns: [o_id o_d_id o_w_id o_c_id]\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: TUPLE(o.o_w_id:2!null, o.o_d_id:1!null, o.o_c_id:3)\n" +
+			"             ├─ right-key: TUPLE(t.o_w_id:1!null, t.o_d_id:2!null, t.o_c_id:0)\n" +
+			"             └─ CachedResults\n" +
+			"                 └─ SubqueryAlias\n" +
+			"                     ├─ name: t\n" +
+			"                     ├─ outerVisibility: false\n" +
+			"                     ├─ isLateral: false\n" +
+			"                     ├─ cacheable: true\n" +
+			"                     ├─ colSet: (18-21)\n" +
+			"                     ├─ tableId: 3\n" +
+			"                     └─ Limit(1)\n" +
+			"                         └─ Project\n" +
+			"                             ├─ columns: [orders2.o_c_id:1, orders2.o_w_id:2!null, orders2.o_d_id:3!null, countdistinct([orders2.o_id]):0!null->count(distinct o_id):0]\n" +
+			"                             └─ Having\n" +
+			"                                 ├─ GreaterThan\n" +
+			"                                 │   ├─ countdistinct([orders2.o_id]):0!null\n" +
+			"                                 │   └─ 1 (bigint)\n" +
+			"                                 └─ GroupBy\n" +
+			"                                     ├─ select: COUNTDISTINCT([orders2.o_id]), orders2.o_c_id:3, orders2.o_w_id:2!null, orders2.o_d_id:1!null, orders2.o_id:0!null\n" +
+			"                                     ├─ group: orders2.o_c_id:3, orders2.o_d_id:1!null, orders2.o_w_id:2!null\n" +
+			"                                     └─ IndexedTableAccess(orders2)\n" +
+			"                                         ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_id]\n" +
+			"                                         ├─ static: [{[1, 1], [NULL, ∞), (2100, 11153)}]\n" +
+			"                                         ├─ colSet: (9-16)\n" +
+			"                                         ├─ tableId: 2\n" +
+			"                                         └─ Table\n" +
+			"                                             ├─ name: orders2\n" +
+			"                                             └─ columns: [o_id o_d_id o_w_id o_c_id o_entry_d o_carrier_id o_ol_cnt o_all_local]\n" +
 			"",
 		ExpectedEstimates: "Limit(1)\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [o.o_id, o.o_d_id]\n" +
-			"     └─ LookupJoin\n" +
-			"         ├─ SubqueryAlias\n" +
-			"         │   ├─ name: t\n" +
-			"         │   ├─ outerVisibility: false\n" +
-			"         │   ├─ isLateral: false\n" +
-			"         │   ├─ cacheable: true\n" +
-			"         │   ├─ colSet: (18-21)\n" +
-			"         │   ├─ tableId: 3\n" +
-			"         │   └─ Limit(1)\n" +
-			"         │       └─ Project\n" +
-			"         │           ├─ columns: [orders2.o_c_id, orders2.o_w_id, orders2.o_d_id, countdistinct([orders2.o_id]) as count(distinct o_id)]\n" +
-			"         │           └─ Having((countdistinct([orders2.o_id]) > 1))\n" +
-			"         │               └─ GroupBy\n" +
-			"         │                   ├─ select: COUNTDISTINCT([orders2.o_id]), orders2.o_c_id, orders2.o_w_id, orders2.o_d_id, orders2.o_id\n" +
-			"         │                   ├─ group: orders2.o_c_id, orders2.o_d_id, orders2.o_w_id\n" +
-			"         │                   └─ IndexedTableAccess(orders2)\n" +
-			"         │                       ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_id]\n" +
-			"         │                       └─ filters: [{[1, 1], [NULL, ∞), (2100, 11153)}]\n" +
-			"         └─ TableAlias(o)\n" +
-			"             └─ IndexedTableAccess(orders2)\n" +
-			"                 ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_c_id,orders2.o_id]\n" +
-			"                 ├─ columns: [o_id o_d_id o_w_id o_c_id]\n" +
-			"                 └─ keys: t.o_w_id, t.o_d_id, t.o_c_id\n" +
+			"     └─ HashJoin\n" +
+			"         ├─ (((t.o_w_id = o.o_w_id) AND (t.o_d_id = o.o_d_id)) AND (t.o_c_id = o.o_c_id))\n" +
+			"         ├─ TableAlias(o)\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: orders2\n" +
+			"         │       └─ columns: [o_id o_d_id o_w_id o_c_id]\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: (o.o_w_id, o.o_d_id, o.o_c_id)\n" +
+			"             ├─ right-key: (t.o_w_id, t.o_d_id, t.o_c_id)\n" +
+			"             └─ CachedResults\n" +
+			"                 └─ SubqueryAlias\n" +
+			"                     ├─ name: t\n" +
+			"                     ├─ outerVisibility: false\n" +
+			"                     ├─ isLateral: false\n" +
+			"                     ├─ cacheable: true\n" +
+			"                     └─ Limit(1)\n" +
+			"                         └─ Project\n" +
+			"                             ├─ columns: [orders2.o_c_id, orders2.o_w_id, orders2.o_d_id, countdistinct([orders2.o_id]) as count(distinct o_id)]\n" +
+			"                             └─ Having((countdistinct([orders2.o_id]) > 1))\n" +
+			"                                 └─ GroupBy\n" +
+			"                                     ├─ select: COUNTDISTINCT([orders2.o_id]), orders2.o_c_id, orders2.o_w_id, orders2.o_d_id, orders2.o_id\n" +
+			"                                     ├─ group: orders2.o_c_id, orders2.o_d_id, orders2.o_w_id\n" +
+			"                                     └─ IndexedTableAccess(orders2)\n" +
+			"                                         ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_id]\n" +
+			"                                         └─ filters: [{[1, 1], [NULL, ∞), (2100, 11153)}]\n" +
 			"",
 		ExpectedAnalysis: "Limit(1)\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [o.o_id, o.o_d_id]\n" +
-			"     └─ LookupJoin\n" +
-			"         ├─ SubqueryAlias\n" +
-			"         │   ├─ name: t\n" +
-			"         │   ├─ outerVisibility: false\n" +
-			"         │   ├─ isLateral: false\n" +
-			"         │   ├─ cacheable: true\n" +
-			"         │   ├─ colSet: (18-21)\n" +
-			"         │   ├─ tableId: 3\n" +
-			"         │   └─ Limit(1)\n" +
-			"         │       └─ Project\n" +
-			"         │           ├─ columns: [orders2.o_c_id, orders2.o_w_id, orders2.o_d_id, countdistinct([orders2.o_id]) as count(distinct o_id)]\n" +
-			"         │           └─ Having((countdistinct([orders2.o_id]) > 1))\n" +
-			"         │               └─ GroupBy\n" +
-			"         │                   ├─ select: COUNTDISTINCT([orders2.o_id]), orders2.o_c_id, orders2.o_w_id, orders2.o_d_id, orders2.o_id\n" +
-			"         │                   ├─ group: orders2.o_c_id, orders2.o_d_id, orders2.o_w_id\n" +
-			"         │                   └─ IndexedTableAccess(orders2)\n" +
-			"         │                       ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_id]\n" +
-			"         │                       └─ filters: [{[1, 1], [NULL, ∞), (2100, 11153)}]\n" +
-			"         └─ TableAlias(o)\n" +
-			"             └─ IndexedTableAccess(orders2)\n" +
-			"                 ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_c_id,orders2.o_id]\n" +
-			"                 ├─ columns: [o_id o_d_id o_w_id o_c_id]\n" +
-			"                 └─ keys: t.o_w_id, t.o_d_id, t.o_c_id\n" +
+			"     └─ HashJoin\n" +
+			"         ├─ (((t.o_w_id = o.o_w_id) AND (t.o_d_id = o.o_d_id)) AND (t.o_c_id = o.o_c_id))\n" +
+			"         ├─ TableAlias(o)\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: orders2\n" +
+			"         │       └─ columns: [o_id o_d_id o_w_id o_c_id]\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: (o.o_w_id, o.o_d_id, o.o_c_id)\n" +
+			"             ├─ right-key: (t.o_w_id, t.o_d_id, t.o_c_id)\n" +
+			"             └─ CachedResults\n" +
+			"                 └─ SubqueryAlias\n" +
+			"                     ├─ name: t\n" +
+			"                     ├─ outerVisibility: false\n" +
+			"                     ├─ isLateral: false\n" +
+			"                     ├─ cacheable: true\n" +
+			"                     └─ Limit(1)\n" +
+			"                         └─ Project\n" +
+			"                             ├─ columns: [orders2.o_c_id, orders2.o_w_id, orders2.o_d_id, countdistinct([orders2.o_id]) as count(distinct o_id)]\n" +
+			"                             └─ Having((countdistinct([orders2.o_id]) > 1))\n" +
+			"                                 └─ GroupBy\n" +
+			"                                     ├─ select: COUNTDISTINCT([orders2.o_id]), orders2.o_c_id, orders2.o_w_id, orders2.o_d_id, orders2.o_id\n" +
+			"                                     ├─ group: orders2.o_c_id, orders2.o_d_id, orders2.o_w_id\n" +
+			"                                     └─ IndexedTableAccess(orders2)\n" +
+			"                                         ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_id]\n" +
+			"                                         └─ filters: [{[1, 1], [NULL, ∞), (2100, 11153)}]\n" +
 			"",
 	},
 }
