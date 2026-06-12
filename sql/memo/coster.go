@@ -27,16 +27,16 @@ import (
 const (
 	// reference https://github.com/postgres/postgres/blob/master/src/include/optimizer/cost.h
 	cpuCostFactor             = 0.01
-	seqIOCostFactor           = 1
+	seqIOCostFactor           = 1.0
 	randIOCostFactor          = 1.3
-	memCostFactor             = 2
+	memCostFactor             = 2.0
 	concatCostFactor          = 0.75
 	degeneratePenalty         = 2.0
 	optimisticJoinSel         = .10
 	biasFactor                = 1e5
 	defaultFilterSelectivity  = .85
 	perKeyCostReductionFactor = 0.5
-	defaultTableSize          = 100
+	defaultTableSize          = 100.0
 )
 
 func NewDefaultCoster() Coster {
@@ -87,6 +87,8 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 
 		selfJoinCard := math.Max(1, float64(n.Group().RelProps.GetStats().RowCount()))
 
+		// DO NOT REMOVE THE REDUNDANT FLOAT64 CASTS
+		// THEY ARE NECESSARY TO ENSURE THE SAME COSTER BEHAVIOR OVER DIFFERENT OS AND HARDWARE
 		switch {
 		case jp.Op.IsInner():
 			// arbitrary +1 penalty, prefer lookup
@@ -96,7 +98,7 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 				cost := lBest * (rBest / 2.0) * (seqIOCostFactor + cpuCostFactor)
 				return cost * .5, nil
 			}
-			return lBest*(seqIOCostFactor+cpuCostFactor) + float64(rBest)*(seqIOCostFactor+memCostFactor) + selfJoinCard*cpuCostFactor, nil
+			return float64(lBest*(seqIOCostFactor+cpuCostFactor)) + float64(rBest)*(seqIOCostFactor+memCostFactor) + selfJoinCard*cpuCostFactor, nil
 		case jp.Op.IsCross():
 			return ((lBest*rBest)*seqIOCostFactor + (lBest*rBest)*cpuCostFactor) * degeneratePenalty, nil
 		case jp.Op.IsLateral():
@@ -118,9 +120,8 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 			// cost is full left scan + full rightScan plus compute/memory overhead
 			// for this merge filter's cardinality
 			// TODO: estimate memory overhead
-			return float64(lTableScan+rTableScan)*(seqIOCostFactor+cpuCostFactor) + cpuCostFactor*selfJoinCard, nil
+			return float64(float64(lTableScan+rTableScan)*float64(seqIOCostFactor+cpuCostFactor)) + cpuCostFactor*selfJoinCard, nil
 		case jp.Op.IsLookup():
-			// TODO added overhead for right lookups
 			switch n := n.(type) {
 			case *LookupJoin:
 				if !n.Injective {
@@ -131,7 +132,9 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 
 				// read the whole left table and randIO into table equivalent to
 				// this join's output cardinality estimate
-				return lBest*seqIOCostFactor + selfJoinCard*(randIOCostFactor+seqIOCostFactor), nil
+				lCost := float64(lBest * seqIOCostFactor)
+				rCost := float64(1 + float64(math.Log(rBest)/20.0))
+				return float64(lCost*rCost) + float64(selfJoinCard*float64(randIOCostFactor+seqIOCostFactor)), nil
 			case *ConcatJoin:
 				return c.costConcatJoin(ctx, n, s)
 			}
