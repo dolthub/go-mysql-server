@@ -16,6 +16,7 @@ package function
 
 import (
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -190,4 +191,43 @@ func TestDateFormatEval(t *testing.T) {
 	res, err = dateFormat.Eval(nil, nil)
 	assert.NoError(t, err)
 	assert.Nil(t, res)
+}
+
+// TestDateFormatCachesCompiledFormatter fails if formatDate recompiles a format
+// instead of reusing the cached formatter.
+func TestDateFormatCachesCompiledFormatter(t *testing.T) {
+	const format = "%Y-%m-%d %H:%i:%s"
+	formatterCache.Delete(format)
+	tm := time.Date(2020, 2, 3, 4, 5, 6, 0, time.UTC)
+
+	out, err := formatDate(format, tm)
+	require.NoError(t, err)
+	require.Equal(t, "2020-02-03 04:05:06", out)
+
+	first, ok := formatterCache.Load(format)
+	require.True(t, ok, "first formatDate call must populate the formatter cache")
+
+	out, err = formatDate(format, tm)
+	require.NoError(t, err)
+	require.Equal(t, "2020-02-03 04:05:06", out)
+
+	second, ok := formatterCache.Load(format)
+	require.True(t, ok)
+	require.Same(t, first, second, "the compiled formatter must be reused, not recompiled per call")
+}
+
+func TestDateFormatConcurrent(t *testing.T) {
+	const format = "%Y-%m-%d"
+	tm := time.Date(2026, 6, 12, 0, 0, 0, 0, time.UTC)
+	var wg sync.WaitGroup
+	for i := 0; i < 64; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			out, err := formatDate(format, tm)
+			require.NoError(t, err)
+			require.Equal(t, "2026-06-12", out)
+		}()
+	}
+	wg.Wait()
 }

@@ -17,6 +17,7 @@ package function
 import (
 	"fmt"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/lestrrat-go/strftime"
@@ -239,14 +240,22 @@ func init() {
 	}
 }
 
-func formatDate(format string, t time.Time) (string, error) {
-	formatter, err := strftime.New(format, strftime.WithSpecificationSet(mysqlDateFormatSpec))
+// formatterCache memoizes compiled formatters by format string; recompiling per
+// call also leaks a read-lock in strftime's Lookup on the shared spec set.
+var formatterCache sync.Map // map[string]*strftime.Strftime
 
+func formatDate(format string, t time.Time) (string, error) {
+	if cached, ok := formatterCache.Load(format); ok {
+		return cached.(*strftime.Strftime).FormatString(t), nil
+	}
+
+	formatter, err := strftime.New(format, strftime.WithSpecificationSet(mysqlDateFormatSpec))
 	if err != nil {
 		return "", err
 	}
 
-	return formatter.FormatString(t), nil
+	cached, _ := formatterCache.LoadOrStore(format, formatter)
+	return cached.(*strftime.Strftime).FormatString(t), nil
 }
 
 // DateFormat function returns a string representation of the date specified in the format specified

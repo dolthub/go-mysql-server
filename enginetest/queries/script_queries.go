@@ -123,6 +123,29 @@ type ScriptTestAssertion struct {
 // the tests.
 var ScriptTests = []ScriptTest{
 	{
+		Name: "DATE_FORMAT over multiple rows and formats",
+		SetUpScript: []string{
+			"create table dfcache (id int primary key, ts datetime)",
+			"insert into dfcache values (1, '2020-02-03 04:05:06'), (2, '2021-12-25 13:14:15')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select date_format(ts, '%Y-%m-%d %H:%i:%s') from dfcache order by id",
+				Expected: []sql.Row{
+					{"2020-02-03 04:05:06"},
+					{"2021-12-25 13:14:15"},
+				},
+			},
+			{
+				Query: "select date_format(ts, '%W %M %Y') from dfcache order by id",
+				Expected: []sql.Row{
+					{"Monday February 2020"},
+					{"Saturday December 2021"},
+				},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/10113
 		Name: "DELETE with NOT EXISTS subquery",
 		SetUpScript: []string{
