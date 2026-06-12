@@ -120,7 +120,7 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 			// cost is full left scan + full rightScan plus compute/memory overhead
 			// for this merge filter's cardinality
 			// TODO: estimate memory overhead
-			return float64(lTableScan+rTableScan)*(seqIOCostFactor+cpuCostFactor) + cpuCostFactor*selfJoinCard, nil
+			return float64(float64(lTableScan+rTableScan)*float64(seqIOCostFactor+cpuCostFactor)) + cpuCostFactor*selfJoinCard, nil
 		case jp.Op.IsLookup():
 			switch n := n.(type) {
 			case *LookupJoin:
