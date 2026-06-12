@@ -51,7 +51,7 @@ SELECT c_discount, c_last, c_credit, w_tax FROM customer2, warehouse2 WHERE w_id
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [customer2.c_discount, customer2.c_last, customer2.c_credit, warehouse2.w_tax]\n" +
-			" └─ LookupJoin (estimated cost=258.300 rows=1)\n" +
+			" └─ LookupJoin (estimated cost=3.807 rows=1)\n" +
 			"     ├─ IndexedTableAccess(warehouse2)\n" +
 			"     │   ├─ index: [warehouse2.w_id]\n" +
 			"     │   ├─ filters: [{[1, 1]}]\n" +
@@ -65,7 +65,7 @@ SELECT c_discount, c_last, c_credit, w_tax FROM customer2, warehouse2 WHERE w_id
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [customer2.c_discount, customer2.c_last, customer2.c_credit, warehouse2.w_tax]\n" +
-			" └─ LookupJoin (estimated cost=258.300 rows=1) (actual rows=0 loops=1)\n" +
+			" └─ LookupJoin (estimated cost=3.807 rows=1) (actual rows=0 loops=1)\n" +
 			"     ├─ IndexedTableAccess(warehouse2)\n" +
 			"     │   ├─ index: [warehouse2.w_id]\n" +
 			"     │   ├─ filters: [{[1, 1]}]\n" +
@@ -691,75 +691,65 @@ SELECT d_next_o_id FROM district2 WHERE d_id = 5 AND d_w_id= 1`,
 			" └─ GroupBy\n" +
 			"     ├─ select: COUNTDISTINCT([stock2.s_i_id])\n" +
 			"     ├─ group: \n" +
-			"     └─ HashJoin\n" +
-			"         ├─ Eq\n" +
-			"         │   ├─ stock2.s_i_id:0!null\n" +
-			"         │   └─ order_line2.ol_i_id:6\n" +
-			"         ├─ Filter\n" +
-			"         │   ├─ LessThan\n" +
-			"         │   │   ├─ stock2.s_quantity:2\n" +
-			"         │   │   └─ 18 (smallint)\n" +
-			"         │   └─ IndexedTableAccess(stock2)\n" +
-			"         │       ├─ index: [stock2.s_w_id,stock2.s_i_id]\n" +
-			"         │       ├─ static: [{[1, 1], [NULL, ∞)}]\n" +
-			"         │       ├─ colSet: (11-27)\n" +
-			"         │       ├─ tableId: 2\n" +
-			"         │       └─ Table\n" +
-			"         │           ├─ name: stock2\n" +
-			"         │           └─ columns: [s_i_id s_w_id s_quantity]\n" +
-			"         └─ HashLookup\n" +
-			"             ├─ left-key: TUPLE(stock2.s_i_id:0!null)\n" +
-			"             ├─ right-key: TUPLE(order_line2.ol_i_id:3)\n" +
-			"             └─ IndexedTableAccess(order_line2)\n" +
-			"                 ├─ index: [order_line2.ol_w_id,order_line2.ol_d_id,order_line2.ol_o_id,order_line2.ol_number]\n" +
-			"                 ├─ static: [{[1, 1], [5, 5], [2983, 3003), [NULL, ∞)}]\n" +
-			"                 ├─ colSet: (1-10)\n" +
-			"                 ├─ tableId: 1\n" +
+			"     └─ LookupJoin\n" +
+			"         ├─ IndexedTableAccess(order_line2)\n" +
+			"         │   ├─ index: [order_line2.ol_w_id,order_line2.ol_d_id,order_line2.ol_o_id,order_line2.ol_number]\n" +
+			"         │   ├─ static: [{[1, 1], [5, 5], [2983, 3003), [NULL, ∞)}]\n" +
+			"         │   ├─ colSet: (1-10)\n" +
+			"         │   ├─ tableId: 1\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: order_line2\n" +
+			"         │       └─ columns: [ol_o_id ol_d_id ol_w_id ol_i_id]\n" +
+			"         └─ Filter\n" +
+			"             ├─ AND\n" +
+			"             │   ├─ Eq\n" +
+			"             │   │   ├─ stock2.s_w_id:1!null\n" +
+			"             │   │   └─ 1 (smallint)\n" +
+			"             │   └─ LessThan\n" +
+			"             │       ├─ stock2.s_quantity:2\n" +
+			"             │       └─ 18 (smallint)\n" +
+			"             └─ IndexedTableAccess(stock2)\n" +
+			"                 ├─ index: [stock2.s_w_id,stock2.s_i_id]\n" +
+			"                 ├─ keys: [1 (smallint) order_line2.ol_i_id:3]\n" +
+			"                 ├─ colSet: (11-27)\n" +
+			"                 ├─ tableId: 2\n" +
 			"                 └─ Table\n" +
-			"                     ├─ name: order_line2\n" +
-			"                     └─ columns: [ol_o_id ol_d_id ol_w_id ol_i_id]\n" +
+			"                     ├─ name: stock2\n" +
+			"                     └─ columns: [s_i_id s_w_id s_quantity]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [countdistinct([stock2.s_i_id]) as COUNT(DISTINCT (s_i_id))]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: COUNTDISTINCT([stock2.s_i_id])\n" +
 			"     ├─ group: \n" +
-			"     └─ HashJoin (estimated cost=204609.550 rows=39455)\n" +
-			"         ├─ (stock2.s_i_id = order_line2.ol_i_id)\n" +
-			"         ├─ Filter\n" +
-			"         │   ├─ (stock2.s_quantity < 18)\n" +
-			"         │   └─ IndexedTableAccess(stock2)\n" +
-			"         │       ├─ index: [stock2.s_w_id,stock2.s_i_id]\n" +
-			"         │       ├─ filters: [{[1, 1], [NULL, ∞)}]\n" +
-			"         │       └─ columns: [s_i_id s_w_id s_quantity]\n" +
-			"         └─ HashLookup\n" +
-			"             ├─ left-key: (stock2.s_i_id)\n" +
-			"             ├─ right-key: (order_line2.ol_i_id)\n" +
-			"             └─ IndexedTableAccess(order_line2)\n" +
-			"                 ├─ index: [order_line2.ol_w_id,order_line2.ol_d_id,order_line2.ol_o_id,order_line2.ol_number]\n" +
-			"                 ├─ filters: [{[1, 1], [5, 5], [2983, 3003), [NULL, ∞)}]\n" +
-			"                 └─ columns: [ol_o_id ol_d_id ol_w_id ol_i_id]\n" +
+			"     └─ LookupJoin (estimated cost=152593.014 rows=39455)\n" +
+			"         ├─ IndexedTableAccess(order_line2)\n" +
+			"         │   ├─ index: [order_line2.ol_w_id,order_line2.ol_d_id,order_line2.ol_o_id,order_line2.ol_number]\n" +
+			"         │   ├─ filters: [{[1, 1], [5, 5], [2983, 3003), [NULL, ∞)}]\n" +
+			"         │   └─ columns: [ol_o_id ol_d_id ol_w_id ol_i_id]\n" +
+			"         └─ Filter\n" +
+			"             ├─ ((stock2.s_w_id = 1) AND (stock2.s_quantity < 18))\n" +
+			"             └─ IndexedTableAccess(stock2)\n" +
+			"                 ├─ index: [stock2.s_w_id,stock2.s_i_id]\n" +
+			"                 ├─ columns: [s_i_id s_w_id s_quantity]\n" +
+			"                 └─ keys: 1, order_line2.ol_i_id\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [countdistinct([stock2.s_i_id]) as COUNT(DISTINCT (s_i_id))]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: COUNTDISTINCT([stock2.s_i_id])\n" +
 			"     ├─ group: \n" +
-			"     └─ HashJoin (estimated cost=204609.550 rows=39455) (actual rows=0 loops=1)\n" +
-			"         ├─ (stock2.s_i_id = order_line2.ol_i_id)\n" +
-			"         ├─ Filter\n" +
-			"         │   ├─ (stock2.s_quantity < 18)\n" +
-			"         │   └─ IndexedTableAccess(stock2)\n" +
-			"         │       ├─ index: [stock2.s_w_id,stock2.s_i_id]\n" +
-			"         │       ├─ filters: [{[1, 1], [NULL, ∞)}]\n" +
-			"         │       └─ columns: [s_i_id s_w_id s_quantity]\n" +
-			"         └─ HashLookup\n" +
-			"             ├─ left-key: (stock2.s_i_id)\n" +
-			"             ├─ right-key: (order_line2.ol_i_id)\n" +
-			"             └─ IndexedTableAccess(order_line2)\n" +
-			"                 ├─ index: [order_line2.ol_w_id,order_line2.ol_d_id,order_line2.ol_o_id,order_line2.ol_number]\n" +
-			"                 ├─ filters: [{[1, 1], [5, 5], [2983, 3003), [NULL, ∞)}]\n" +
-			"                 └─ columns: [ol_o_id ol_d_id ol_w_id ol_i_id]\n" +
+			"     └─ LookupJoin (estimated cost=152593.014 rows=39455) (actual rows=0 loops=1)\n" +
+			"         ├─ IndexedTableAccess(order_line2)\n" +
+			"         │   ├─ index: [order_line2.ol_w_id,order_line2.ol_d_id,order_line2.ol_o_id,order_line2.ol_number]\n" +
+			"         │   ├─ filters: [{[1, 1], [5, 5], [2983, 3003), [NULL, ∞)}]\n" +
+			"         │   └─ columns: [ol_o_id ol_d_id ol_w_id ol_i_id]\n" +
+			"         └─ Filter\n" +
+			"             ├─ ((stock2.s_w_id = 1) AND (stock2.s_quantity < 18))\n" +
+			"             └─ IndexedTableAccess(stock2)\n" +
+			"                 ├─ index: [stock2.s_w_id,stock2.s_i_id]\n" +
+			"                 ├─ columns: [s_i_id s_w_id s_quantity]\n" +
+			"                 └─ keys: 1, order_line2.ol_i_id\n" +
 			"",
 	},
 	{

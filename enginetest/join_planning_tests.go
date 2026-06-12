@@ -116,7 +116,7 @@ var JoinPlanningTests = []joinPlanScript{
 		tests: []JoinPlanTest{
 			{
 				q:     "select /*+ JOIN_ORDER(ab, xy) MERGE_JOIN(ab, xy)*/ * from ab join xy on y = a order by 1, 3",
-				types: []plan.JoinType{plan.JoinTypeMerge},
+				types: []plan.JoinType{plan.JoinTypeLookup},
 				exp:   []sql.Row{{0, 2, 1, 0}, {1, 2, 2, 1}, {2, 2, 0, 2}, {3, 1, 3, 3}},
 			},
 			{
@@ -135,7 +135,7 @@ var JoinPlanningTests = []joinPlanScript{
 			},
 			{
 				q:     "select * from ab join xy on x = a and y = a order by 1, 3",
-				types: []plan.JoinType{plan.JoinTypeHash},
+				types: []plan.JoinType{plan.JoinTypeLookup},
 				exp:   []sql.Row{{3, 1, 3, 3}},
 			},
 		},
@@ -159,7 +159,7 @@ var JoinPlanningTests = []joinPlanScript{
 		tests: []JoinPlanTest{
 			{
 				q:     "select u,a,y from uv join (select /*+ JOIN_ORDER(ab, xy) MERGE_JOIN(ab, xy) */ * from ab join xy on y = a) r on u = r.a order by 1",
-				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeMerge},
+				types: []plan.JoinType{plan.JoinTypeLookup, plan.JoinTypeMerge},
 				exp:   []sql.Row{{0, 0, 0}, {1, 1, 1}, {2, 2, 2}, {3, 3, 3}},
 			},
 			{
