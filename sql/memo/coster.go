@@ -87,6 +87,8 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 
 		selfJoinCard := math.Max(1, float64(n.Group().RelProps.GetStats().RowCount()))
 
+		// DO NOT REMOVE THE REDUNDANT FLOAT64 CASTS
+		// THEY ARE NECESSARY TO ENSURE THE SAME COSTER BEHAVIOR OVER DIFFERENT OS AND HARDWARE
 		switch {
 		case jp.Op.IsInner():
 			// arbitrary +1 penalty, prefer lookup
@@ -96,7 +98,7 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 				cost := lBest * (rBest / 2.0) * (seqIOCostFactor + cpuCostFactor)
 				return cost * .5, nil
 			}
-			return lBest*(seqIOCostFactor+cpuCostFactor) + float64(rBest)*(seqIOCostFactor+memCostFactor) + selfJoinCard*cpuCostFactor, nil
+			return float64(lBest*(seqIOCostFactor+cpuCostFactor)) + float64(rBest)*(seqIOCostFactor+memCostFactor) + selfJoinCard*cpuCostFactor, nil
 		case jp.Op.IsCross():
 			return ((lBest*rBest)*seqIOCostFactor + (lBest*rBest)*cpuCostFactor) * degeneratePenalty, nil
 		case jp.Op.IsLateral():
