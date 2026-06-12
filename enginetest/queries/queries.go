@@ -9634,6 +9634,38 @@ FROM mytable;`,
 			{"DECIMAL"},
 		},
 	},
+	{
+		Query:    "SELECT CAST('  12:23 a' AS TIME);",
+		Expected: []sql.Row{{"12:23:00"}},
+	},
+	{
+		Query:    "SELECT CAST('12:23:18 abc' AS TIME);",
+		Expected: []sql.Row{{"12:23:18"}},
+	},
+	{
+		Query:    "SELECT CAST('12:34:56.123.456' AS TIME);",
+		Expected: []sql.Row{{"12:34:56.123"}},
+	},
+	{
+		Query:    "SELECT CAST(' -12:00:00 abc' AS TIME);",
+		Expected: []sql.Row{{"-12:00:00"}},
+	},
+	{
+		Query:    "SELECT CAST('00:00:00 garbage' AS TIME);",
+		Expected: []sql.Row{{"00:00:00"}},
+	},
+	{
+		Query:    "SELECT CAST('12:23:' AS TIME);",
+		Expected: []sql.Row{{"12:23:00"}},
+	},
+	{
+		Query:    "SELECT CAST('hello' AS TIME);",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT CAST('   ' AS TIME);",
+		Expected: []sql.Row{{nil}},
+	},
 }
 
 var VersionedQueries = []QueryTest{
