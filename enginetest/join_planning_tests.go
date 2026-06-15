@@ -282,7 +282,7 @@ var JoinPlanningTests = []joinPlanScript{
 			{
 				// When primary table is much larger, doing many lookups is expensive: prefer merge
 				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on x = r order by 1,3",
-				types: []plan.JoinType{plan.JoinTypeLookup},
+				types: []plan.JoinType{plan.JoinTypeMerge},
 				exp:   []sql.Row{{0, 0, 0, 8}, {2, 3, 2, 1}, {3, 0, 3, 7}, {4, 8, 4, 0}, {5, 4, 5, 4}},
 			},
 			{
@@ -1115,7 +1115,7 @@ from xy a
 join uv b on a.x = b.u
 join xy c on a.x = c.x
 join uv d on d.u = c.x`,
-				types: []plan.JoinType{plan.JoinTypeLookup, plan.JoinTypeHash, plan.JoinTypeMerge},
+				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeMerge, plan.JoinTypeLookup},
 				order: [][]string{{"a", "b", "c", "d"}},
 			},
 			{
@@ -2101,7 +2101,8 @@ func evalJoinOrder(t *testing.T, harness Harness, e QueryEngine, q string, exp [
 				return
 			}
 		}
-		assert.Failf(t, "expected order %s found '%s'\ndetail:\n%s", fmt.Sprintf("%#v", exp), strings.Join(cmp, ","), sql.DebugString(ctx, a))
+		msg := fmt.Sprintf("expected order %#v found '%s'\ndetail:\n%s", exp, strings.Join(cmp, ","), sql.DebugString(ctx, a))
+		assert.Fail(t, msg)
 	})
 }
 

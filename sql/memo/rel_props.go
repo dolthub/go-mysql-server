@@ -496,6 +496,7 @@ func (m *Memo) statsForRel(ctx *sql.Context, rel RelExpr) sql.Statistic {
 		return &stats.Statistic{RowCnt: defaultTableSize}
 
 	case *Filter:
+		// TODO: should determine actual filter selectivity based on histograms...
 		card := float64(rel.Child.RelProps.GetStats().RowCount()) * defaultFilterSelectivity
 		stat = &stats.Statistic{RowCnt: uint64(card)}
 

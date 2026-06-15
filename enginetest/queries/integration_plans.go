@@ -236,7 +236,7 @@ WHERE
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [pbmrx.id as id, pbmrx.TW55N as TEYBZ, pbmrx.ZH72S as FB6N7]\n" +
-			" └─ LookupJoin (estimated cost=405.900 rows=124)\n" +
+			" └─ LookupJoin (estimated cost=410.027 rows=124)\n" +
 			"     ├─ (NOT(pbmrx.ZH72S IS NULL))\n" +
 			"     ├─ SubqueryAlias\n" +
 			"     │   ├─ name: cl3dt\n" +
@@ -304,7 +304,7 @@ WHERE
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [pbmrx.id as id, pbmrx.TW55N as TEYBZ, pbmrx.ZH72S as FB6N7]\n" +
-			" └─ LookupJoin (estimated cost=405.900 rows=124) (actual rows=0 loops=1)\n" +
+			" └─ LookupJoin (estimated cost=410.027 rows=124) (actual rows=0 loops=1)\n" +
 			"     ├─ (NOT(pbmrx.ZH72S IS NULL))\n" +
 			"     ├─ SubqueryAlias\n" +
 			"     │   ├─ name: cl3dt\n" +
@@ -804,16 +804,16 @@ WHERE
 			"         ├─ 1 IS NULL\n" +
 			"         └─ LeftOuterHashJoinExcludingNulls (estimated cost=8234.040 rows=4802)\n" +
 			"             ├─ (tizhk.id = hddvb.ETPQV)\n" +
-			"             ├─ LookupJoin (estimated cost=15846.600 rows=4802)\n" +
+			"             ├─ LookupJoin (estimated cost=16100.473 rows=4802)\n" +
 			"             │   ├─ (tizhk.id = tizhk_1.id)\n" +
 			"             │   ├─ Distinct\n" +
 			"             │   │   └─ Project\n" +
 			"             │   │       ├─ columns: [tizhk_1.id]\n" +
-			"             │   │       └─ LookupJoin (estimated cost=15846.600 rows=4802)\n" +
+			"             │   │       └─ LookupJoin (estimated cost=16044.772 rows=4802)\n" +
 			"             │   │           ├─ (j4jyp.ZH72S = tizhk_1.TVNW2)\n" +
-			"             │   │           ├─ LookupJoin (estimated cost=15867.300 rows=4802)\n" +
-			"             │   │           │   ├─ LookupJoin (estimated cost=15846.600 rows=4802)\n" +
-			"             │   │           │   │   ├─ LookupJoin (estimated cost=14907.300 rows=4802)\n" +
+			"             │   │           ├─ LookupJoin (estimated cost=16182.936 rows=4802)\n" +
+			"             │   │           │   ├─ LookupJoin (estimated cost=16128.164 rows=4802)\n" +
+			"             │   │           │   │   ├─ LookupJoin (estimated cost=15110.420 rows=4802)\n" +
 			"             │   │           │   │   │   ├─ TableAlias(rhuzn)\n" +
 			"             │   │           │   │   │   │   └─ Table\n" +
 			"             │   │           │   │   │   │       └─ name: E2I7U\n" +
@@ -855,16 +855,16 @@ WHERE
 			"         ├─ 1 IS NULL\n" +
 			"         └─ LeftOuterHashJoinExcludingNulls (estimated cost=8234.040 rows=4802) (actual rows=0 loops=1)\n" +
 			"             ├─ (tizhk.id = hddvb.ETPQV)\n" +
-			"             ├─ LookupJoin (estimated cost=15846.600 rows=4802) (actual rows=0 loops=1)\n" +
+			"             ├─ LookupJoin (estimated cost=16100.473 rows=4802) (actual rows=0 loops=1)\n" +
 			"             │   ├─ (tizhk.id = tizhk_1.id)\n" +
 			"             │   ├─ Distinct\n" +
 			"             │   │   └─ Project\n" +
 			"             │   │       ├─ columns: [tizhk_1.id]\n" +
-			"             │   │       └─ LookupJoin (estimated cost=15846.600 rows=4802) (actual rows=0 loops=1)\n" +
+			"             │   │       └─ LookupJoin (estimated cost=16044.772 rows=4802) (actual rows=0 loops=1)\n" +
 			"             │   │           ├─ (j4jyp.ZH72S = tizhk_1.TVNW2)\n" +
-			"             │   │           ├─ LookupJoin (estimated cost=15867.300 rows=4802) (actual rows=0 loops=1)\n" +
-			"             │   │           │   ├─ LookupJoin (estimated cost=15846.600 rows=4802) (actual rows=0 loops=1)\n" +
-			"             │   │           │   │   ├─ LookupJoin (estimated cost=14907.300 rows=4802) (actual rows=0 loops=1)\n" +
+			"             │   │           ├─ LookupJoin (estimated cost=16182.936 rows=4802) (actual rows=0 loops=1)\n" +
+			"             │   │           │   ├─ LookupJoin (estimated cost=16128.164 rows=4802) (actual rows=0 loops=1)\n" +
+			"             │   │           │   │   ├─ LookupJoin (estimated cost=15110.420 rows=4802) (actual rows=0 loops=1)\n" +
 			"             │   │           │   │   │   ├─ TableAlias(rhuzn)\n" +
 			"             │   │           │   │   │   │   └─ Table\n" +
 			"             │   │           │   │   │   │       └─ name: E2I7U\n" +
@@ -1023,16 +1023,16 @@ WHERE
 			"         ├─ 1 IS NULL\n" +
 			"         └─ LeftOuterHashJoinExcludingNulls (estimated cost=8234.040 rows=4802)\n" +
 			"             ├─ (tizhk.id = hddvb.ETPQV)\n" +
-			"             ├─ LookupJoin (estimated cost=15846.600 rows=4802)\n" +
+			"             ├─ LookupJoin (estimated cost=16100.473 rows=4802)\n" +
 			"             │   ├─ (tizhk.id = tizhk_1.id)\n" +
 			"             │   ├─ Distinct\n" +
 			"             │   │   └─ Project\n" +
 			"             │   │       ├─ columns: [tizhk_1.id]\n" +
-			"             │   │       └─ LookupJoin (estimated cost=15846.600 rows=4802)\n" +
+			"             │   │       └─ LookupJoin (estimated cost=16044.772 rows=4802)\n" +
 			"             │   │           ├─ (j4jyp.ZH72S = tizhk_1.TVNW2)\n" +
-			"             │   │           ├─ LookupJoin (estimated cost=15867.300 rows=4802)\n" +
-			"             │   │           │   ├─ LookupJoin (estimated cost=15846.600 rows=4802)\n" +
-			"             │   │           │   │   ├─ LookupJoin (estimated cost=14907.300 rows=4802)\n" +
+			"             │   │           ├─ LookupJoin (estimated cost=16182.936 rows=4802)\n" +
+			"             │   │           │   ├─ LookupJoin (estimated cost=16128.164 rows=4802)\n" +
+			"             │   │           │   │   ├─ LookupJoin (estimated cost=15110.420 rows=4802)\n" +
 			"             │   │           │   │   │   ├─ TableAlias(rhuzn)\n" +
 			"             │   │           │   │   │   │   └─ Table\n" +
 			"             │   │           │   │   │   │       └─ name: E2I7U\n" +
@@ -1074,16 +1074,16 @@ WHERE
 			"         ├─ 1 IS NULL\n" +
 			"         └─ LeftOuterHashJoinExcludingNulls (estimated cost=8234.040 rows=4802) (actual rows=0 loops=1)\n" +
 			"             ├─ (tizhk.id = hddvb.ETPQV)\n" +
-			"             ├─ LookupJoin (estimated cost=15846.600 rows=4802) (actual rows=0 loops=1)\n" +
+			"             ├─ LookupJoin (estimated cost=16100.473 rows=4802) (actual rows=0 loops=1)\n" +
 			"             │   ├─ (tizhk.id = tizhk_1.id)\n" +
 			"             │   ├─ Distinct\n" +
 			"             │   │   └─ Project\n" +
 			"             │   │       ├─ columns: [tizhk_1.id]\n" +
-			"             │   │       └─ LookupJoin (estimated cost=15846.600 rows=4802) (actual rows=0 loops=1)\n" +
+			"             │   │       └─ LookupJoin (estimated cost=16044.772 rows=4802) (actual rows=0 loops=1)\n" +
 			"             │   │           ├─ (j4jyp.ZH72S = tizhk_1.TVNW2)\n" +
-			"             │   │           ├─ LookupJoin (estimated cost=15867.300 rows=4802) (actual rows=0 loops=1)\n" +
-			"             │   │           │   ├─ LookupJoin (estimated cost=15846.600 rows=4802) (actual rows=0 loops=1)\n" +
-			"             │   │           │   │   ├─ LookupJoin (estimated cost=14907.300 rows=4802) (actual rows=0 loops=1)\n" +
+			"             │   │           ├─ LookupJoin (estimated cost=16182.936 rows=4802) (actual rows=0 loops=1)\n" +
+			"             │   │           │   ├─ LookupJoin (estimated cost=16128.164 rows=4802) (actual rows=0 loops=1)\n" +
+			"             │   │           │   │   ├─ LookupJoin (estimated cost=15110.420 rows=4802) (actual rows=0 loops=1)\n" +
 			"             │   │           │   │   │   ├─ TableAlias(rhuzn)\n" +
 			"             │   │           │   │   │   │   └─ Table\n" +
 			"             │   │           │   │   │   │       └─ name: E2I7U\n" +
@@ -1258,7 +1258,7 @@ WHERE
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [pbmrx.id as id, pbmrx.TW55N as TEYBZ, pbmrx.ZH72S as FB6N7]\n" +
-			" └─ LookupJoin (estimated cost=405.900 rows=124)\n" +
+			" └─ LookupJoin (estimated cost=410.027 rows=124)\n" +
 			"     ├─ (NOT(pbmrx.ZH72S IS NULL))\n" +
 			"     ├─ SubqueryAlias\n" +
 			"     │   ├─ name: cl3dt\n" +
@@ -1326,7 +1326,7 @@ WHERE
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [pbmrx.id as id, pbmrx.TW55N as TEYBZ, pbmrx.ZH72S as FB6N7]\n" +
-			" └─ LookupJoin (estimated cost=405.900 rows=124) (actual rows=0 loops=1)\n" +
+			" └─ LookupJoin (estimated cost=410.027 rows=124) (actual rows=0 loops=1)\n" +
 			"     ├─ (NOT(pbmrx.ZH72S IS NULL))\n" +
 			"     ├─ SubqueryAlias\n" +
 			"     │   ├─ name: cl3dt\n" +
@@ -1624,7 +1624,7 @@ WHERE
 			" ├─ columns: [ct.id as id, ci.FTQLQ as VCGT3, nd.TW55N as UWBAI, aac.BTXC5 as TPXBU, ct.V5DPX as V5DPX, ct.S3Q3Y as S3Q3Y, ct.ZRV3B as ZRV3B]\n" +
 			" └─ HashJoin (estimated cost=16273.620 rows=14781)\n" +
 			"     ├─ (ci.id = ct.FZ2R5)\n" +
-			"     ├─ LookupJoin (estimated cost=48777.300 rows=14781)\n" +
+			"     ├─ LookupJoin (estimated cost=49643.981 rows=14781)\n" +
 			"     │   ├─ (((NOT(ct.OCA7E IS NULL)) AND ((Subquery(select I7HCR.SWCQV from EPZU6 as I7HCR where I7HCR.id = ct.OCA7E) = 1) OR (NOT((Subquery(select nd.id from E2I7U as nd where nd.TW55N = (select I7HCR.FVUCX from EPZU6 as I7HCR where I7HCR.id = ct.OCA7E)) = ct.LUEVY))))) OR ((NOT(ct.NRURT IS NULL)) AND InSubquery\n" +
 			"     │   │   ├─ left: ct.NRURT\n" +
 			"     │   │   └─ right: Subquery\n" +
@@ -1683,7 +1683,7 @@ WHERE
 			" ├─ columns: [ct.id as id, ci.FTQLQ as VCGT3, nd.TW55N as UWBAI, aac.BTXC5 as TPXBU, ct.V5DPX as V5DPX, ct.S3Q3Y as S3Q3Y, ct.ZRV3B as ZRV3B]\n" +
 			" └─ HashJoin (estimated cost=16273.620 rows=14781) (actual rows=0 loops=1)\n" +
 			"     ├─ (ci.id = ct.FZ2R5)\n" +
-			"     ├─ LookupJoin (estimated cost=48777.300 rows=14781) (actual rows=0 loops=1)\n" +
+			"     ├─ LookupJoin (estimated cost=49643.981 rows=14781) (actual rows=0 loops=1)\n" +
 			"     │   ├─ (((NOT(ct.OCA7E IS NULL)) AND ((Subquery(select I7HCR.SWCQV from EPZU6 as I7HCR where I7HCR.id = ct.OCA7E) = 1) OR (NOT((Subquery(select nd.id from E2I7U as nd where nd.TW55N = (select I7HCR.FVUCX from EPZU6 as I7HCR where I7HCR.id = ct.OCA7E)) = ct.LUEVY))))) OR ((NOT(ct.NRURT IS NULL)) AND InSubquery\n" +
 			"     │   │   ├─ left: ct.NRURT\n" +
 			"     │   │   └─ right: Subquery\n" +
@@ -1859,7 +1859,7 @@ WHERE
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [uct.id, uct.FTQLQ, uct.ZH72S, uct.SFJ6L, uct.V5DPX, uct.LJLUM, uct.IDPK7, uct.NO52D, uct.ZRV3B, uct.VYO5E, uct.YKSSU, uct.FHCYT, uct.QZ6VT]\n" +
-			" └─ LookupJoin (estimated cost=330.000 rows=100)\n" +
+			" └─ LookupJoin (estimated cost=334.910 rows=100)\n" +
 			"     ├─ SubqueryAlias\n" +
 			"     │   ├─ name: fzwbd\n" +
 			"     │   ├─ outerVisibility: false\n" +
@@ -1872,14 +1872,14 @@ WHERE
 			"     │           ├─ columns: [ylksy.id as FDL23]\n" +
 			"     │           └─ HashJoin (estimated cost=6095.040 rows=4802)\n" +
 			"     │               ├─ (ci.FTQLQ = ylksy.FTQLQ)\n" +
-			"     │               ├─ LookupJoin (estimated cost=15846.600 rows=4802)\n" +
+			"     │               ├─ LookupJoin (estimated cost=16128.164 rows=4802)\n" +
 			"     │               │   ├─ Project\n" +
 			"     │               │   │   ├─ columns: [OUBDL.id, OUBDL.FTQLQ, OUBDL.ZH72S, OUBDL.LJLUM, E2I7U.ZH72S]\n" +
 			"     │               │   │   └─ Filter\n" +
 			"     │               │   │       ├─ 1 IS NULL\n" +
 			"     │               │   │       └─ LeftOuterHashJoinExcludingNulls (estimated cost=381887.820 rows=35486780)\n" +
 			"     │               │   │           ├─ (ylksy.id = flqlp.NRURT)\n" +
-			"     │               │   │           ├─ LookupJoin (estimated cost=14907.300 rows=4802)\n" +
+			"     │               │   │           ├─ LookupJoin (estimated cost=15092.816 rows=4802)\n" +
 			"     │               │   │           │   ├─ TableAlias(nd)\n" +
 			"     │               │   │           │   │   └─ Table\n" +
 			"     │               │   │           │   │       ├─ name: E2I7U\n" +
@@ -1920,7 +1920,7 @@ WHERE
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [uct.id, uct.FTQLQ, uct.ZH72S, uct.SFJ6L, uct.V5DPX, uct.LJLUM, uct.IDPK7, uct.NO52D, uct.ZRV3B, uct.VYO5E, uct.YKSSU, uct.FHCYT, uct.QZ6VT]\n" +
-			" └─ LookupJoin (estimated cost=330.000 rows=100) (actual rows=0 loops=1)\n" +
+			" └─ LookupJoin (estimated cost=334.910 rows=100) (actual rows=0 loops=1)\n" +
 			"     ├─ SubqueryAlias\n" +
 			"     │   ├─ name: fzwbd\n" +
 			"     │   ├─ outerVisibility: false\n" +
@@ -1933,14 +1933,14 @@ WHERE
 			"     │           ├─ columns: [ylksy.id as FDL23]\n" +
 			"     │           └─ HashJoin (estimated cost=6095.040 rows=4802) (actual rows=0 loops=1)\n" +
 			"     │               ├─ (ci.FTQLQ = ylksy.FTQLQ)\n" +
-			"     │               ├─ LookupJoin (estimated cost=15846.600 rows=4802) (actual rows=0 loops=1)\n" +
+			"     │               ├─ LookupJoin (estimated cost=16128.164 rows=4802) (actual rows=0 loops=1)\n" +
 			"     │               │   ├─ Project\n" +
 			"     │               │   │   ├─ columns: [OUBDL.id, OUBDL.FTQLQ, OUBDL.ZH72S, OUBDL.LJLUM, E2I7U.ZH72S]\n" +
 			"     │               │   │   └─ Filter\n" +
 			"     │               │   │       ├─ 1 IS NULL\n" +
 			"     │               │   │       └─ LeftOuterHashJoinExcludingNulls (estimated cost=381887.820 rows=35486780) (actual rows=0 loops=1)\n" +
 			"     │               │   │           ├─ (ylksy.id = flqlp.NRURT)\n" +
-			"     │               │   │           ├─ LookupJoin (estimated cost=14907.300 rows=4802) (actual rows=0 loops=1)\n" +
+			"     │               │   │           ├─ LookupJoin (estimated cost=15092.816 rows=4802) (actual rows=0 loops=1)\n" +
 			"     │               │   │           │   ├─ TableAlias(nd)\n" +
 			"     │               │   │           │   │   └─ Table\n" +
 			"     │               │   │           │   │       ├─ name: E2I7U\n" +
@@ -2080,7 +2080,7 @@ WHERE
 			"     ├─ (tvtjs.id = ct.XMM6Q)\n" +
 			"     ├─ HashJoin (estimated cost=16273.620 rows=14781)\n" +
 			"     │   ├─ (ci.id = ct.FZ2R5)\n" +
-			"     │   ├─ LookupJoin (estimated cost=48777.300 rows=14781)\n" +
+			"     │   ├─ LookupJoin (estimated cost=49643.981 rows=14781)\n" +
 			"     │   │   ├─ MergeJoin (estimated cost=18957.040 rows=14781)\n" +
 			"     │   │   │   ├─ cmp: (ct.LUEVY = nd.id)\n" +
 			"     │   │   │   ├─ TableAlias(ct)\n" +
@@ -2121,7 +2121,7 @@ WHERE
 			"     ├─ (tvtjs.id = ct.XMM6Q)\n" +
 			"     ├─ HashJoin (estimated cost=16273.620 rows=14781) (actual rows=0 loops=1)\n" +
 			"     │   ├─ (ci.id = ct.FZ2R5)\n" +
-			"     │   ├─ LookupJoin (estimated cost=48777.300 rows=14781) (actual rows=0 loops=1)\n" +
+			"     │   ├─ LookupJoin (estimated cost=49643.981 rows=14781) (actual rows=0 loops=1)\n" +
 			"     │   │   ├─ MergeJoin (estimated cost=18957.040 rows=14781) (actual rows=0 loops=1)\n" +
 			"     │   │   │   ├─ cmp: (ct.LUEVY = nd.id)\n" +
 			"     │   │   │   ├─ TableAlias(ct)\n" +
@@ -2391,7 +2391,7 @@ WHERE
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [rn.id as id, concat(nsplt.TW55N,'FDNCN',lqncx.TW55N) as X37NA, concat(xlza5.TW55N,'FDNCN',afjmd.TW55N) as THWCS, rn.HVHRZ as HVHRZ]\n" +
-			" └─ LookupJoin (estimated cost=233283.600 rows=70692)\n" +
+			" └─ LookupJoin (estimated cost=236200.970 rows=70692)\n" +
 			"     ├─ ((NOT((pv6r5.FFTBJ = zyutc.BRQP2))) OR (NOT((pv6r5.NUMK2 = 1))))\n" +
 			"     ├─ HashJoin (estimated cost=107544.840 rows=70692)\n" +
 			"     │   ├─ (rn.WNUNU = pv6r5.id)\n" +
@@ -2448,7 +2448,7 @@ WHERE
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [rn.id as id, concat(nsplt.TW55N,'FDNCN',lqncx.TW55N) as X37NA, concat(xlza5.TW55N,'FDNCN',afjmd.TW55N) as THWCS, rn.HVHRZ as HVHRZ]\n" +
-			" └─ LookupJoin (estimated cost=233283.600 rows=70692) (actual rows=0 loops=1)\n" +
+			" └─ LookupJoin (estimated cost=236200.970 rows=70692) (actual rows=0 loops=1)\n" +
 			"     ├─ ((NOT((pv6r5.FFTBJ = zyutc.BRQP2))) OR (NOT((pv6r5.NUMK2 = 1))))\n" +
 			"     ├─ HashJoin (estimated cost=107544.840 rows=70692) (actual rows=0 loops=1)\n" +
 			"     │   ├─ (rn.WNUNU = pv6r5.id)\n" +
@@ -2659,7 +2659,7 @@ WHERE
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [sn.id as DRIWM, concat(oe56m.TW55N,'FDNCN',cgfrz.TW55N) as GRVSE, skpm6.id as JIEVY, concat(v5say.TW55N,'FDNCN',fqthf.TW55N) as ENCM3, 1.0 as OHD3R]\n" +
-			" └─ LeftOuterLookupJoin (estimated cost=48654.100 rows=15688)\n" +
+			" └─ LeftOuterLookupJoin (estimated cost=49354.828 rows=15688)\n" +
 			"     ├─ (rn.HHVLX = skpm6.id)\n" +
 			"     ├─ HashJoin (estimated cost=42179.640 rows=12551)\n" +
 			"     │   ├─ (((skpm6.BRQP2 = sn.FFTBJ) AND (v5say.id = skpm6.BRQP2)) AND (skpm6.BRQP2 = cgfrz.id))\n" +
@@ -2717,7 +2717,7 @@ WHERE
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [sn.id as DRIWM, concat(oe56m.TW55N,'FDNCN',cgfrz.TW55N) as GRVSE, skpm6.id as JIEVY, concat(v5say.TW55N,'FDNCN',fqthf.TW55N) as ENCM3, 1.0 as OHD3R]\n" +
-			" └─ LeftOuterLookupJoin (estimated cost=48654.100 rows=15688) (actual rows=0 loops=1)\n" +
+			" └─ LeftOuterLookupJoin (estimated cost=49354.828 rows=15688) (actual rows=0 loops=1)\n" +
 			"     ├─ (rn.HHVLX = skpm6.id)\n" +
 			"     ├─ HashJoin (estimated cost=42179.640 rows=12551) (actual rows=0 loops=1)\n" +
 			"     │   ├─ (((skpm6.BRQP2 = sn.FFTBJ) AND (v5say.id = skpm6.BRQP2)) AND (skpm6.BRQP2 = cgfrz.id))\n" +
@@ -2931,7 +2931,7 @@ WHERE
 			"     │                   ├─ columns: [s7byt.SSHPJ, s7byt.SFJ6L]\n" +
 			"     │                   └─ Filter\n" +
 			"     │                       ├─ we72e.SSHPJ IS NULL\n" +
-			"     │                       └─ LeftOuterLookupJoin (estimated cost=330.000 rows=100)\n" +
+			"     │                       └─ LeftOuterLookupJoin (estimated cost=334.032 rows=100)\n" +
 			"     │                           ├─ SubqueryAlias\n" +
 			"     │                           │   ├─ name: s7byt\n" +
 			"     │                           │   ├─ outerVisibility: true\n" +
@@ -2942,7 +2942,7 @@ WHERE
 			"     │                           │   └─ Distinct\n" +
 			"     │                           │       └─ Project\n" +
 			"     │                           │           ├─ columns: [s5kbm.SSHPJ as SSHPJ, s5kbm.SFJ6L as SFJ6L]\n" +
-			"     │                           │           └─ LookupJoin (estimated cost=12678.600 rows=3842)\n" +
+			"     │                           │           └─ LookupJoin (estimated cost=12885.375 rows=3842)\n" +
 			"     │                           │               ├─ TableAlias(nd)\n" +
 			"     │                           │               │   └─ Table\n" +
 			"     │                           │               │       ├─ name: E2I7U\n" +
@@ -2998,7 +2998,7 @@ WHERE
 			"     │                   ├─ columns: [s7byt.SSHPJ, s7byt.SFJ6L]\n" +
 			"     │                   └─ Filter\n" +
 			"     │                       ├─ we72e.SSHPJ IS NULL\n" +
-			"     │                       └─ LeftOuterLookupJoin (estimated cost=330.000 rows=100)\n" +
+			"     │                       └─ LeftOuterLookupJoin (estimated cost=334.032 rows=100)\n" +
 			"     │                           ├─ SubqueryAlias\n" +
 			"     │                           │   ├─ name: s7byt\n" +
 			"     │                           │   ├─ outerVisibility: true\n" +
@@ -3009,7 +3009,7 @@ WHERE
 			"     │                           │   └─ Distinct\n" +
 			"     │                           │       └─ Project\n" +
 			"     │                           │           ├─ columns: [s5kbm.SSHPJ as SSHPJ, s5kbm.SFJ6L as SFJ6L]\n" +
-			"     │                           │           └─ LookupJoin (estimated cost=12678.600 rows=3842)\n" +
+			"     │                           │           └─ LookupJoin (estimated cost=12885.375 rows=3842)\n" +
 			"     │                           │               ├─ TableAlias(nd)\n" +
 			"     │                           │               │   └─ Table\n" +
 			"     │                           │               │       ├─ name: E2I7U\n" +
@@ -3167,7 +3167,7 @@ WHERE
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [pbmrx.id as id, pbmrx.TW55N as UYOGN, pbmrx.ZH72S as H4JEA]\n" +
-			" └─ LookupJoin (estimated cost=405.900 rows=124)\n" +
+			" └─ LookupJoin (estimated cost=410.027 rows=124)\n" +
 			"     ├─ (NOT(pbmrx.ZH72S IS NULL))\n" +
 			"     ├─ SubqueryAlias\n" +
 			"     │   ├─ name: cl3dt\n" +
@@ -3235,7 +3235,7 @@ WHERE
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [pbmrx.id as id, pbmrx.TW55N as UYOGN, pbmrx.ZH72S as H4JEA]\n" +
-			" └─ LookupJoin (estimated cost=405.900 rows=124) (actual rows=0 loops=1)\n" +
+			" └─ LookupJoin (estimated cost=410.027 rows=124) (actual rows=0 loops=1)\n" +
 			"     ├─ (NOT(pbmrx.ZH72S IS NULL))\n" +
 			"     ├─ SubqueryAlias\n" +
 			"     │   ├─ name: cl3dt\n" +
@@ -3670,8 +3670,8 @@ WHERE
 			"     ├─ columns: [FG26Y.id, FG26Y.T4IBQ, FG26Y.ner, FG26Y.ber, FG26Y.hr, FG26Y.mmr, FG26Y.QZ6VT, YK2GW.id, YK2GW.FTQLQ, YK2GW.TUXML, YK2GW.PAEF5, YK2GW.RUCY4, YK2GW.TPNJ6, YK2GW.LBL53, YK2GW.NB3QS, YK2GW.EO7IV, YK2GW.MUHJF, YK2GW.FM34L, YK2GW.TY5RF, YK2GW.ZHTLH, YK2GW.NPB7W, YK2GW.SX3HH, YK2GW.ISBNF, YK2GW.YA7YB, YK2GW.C5YKB, YK2GW.QK7KT, YK2GW.FFGE6, YK2GW.FIIGJ, YK2GW.SH3NC, YK2GW.NTENA, YK2GW.M4AUB, YK2GW.X5AIR, YK2GW.SAB6M, YK2GW.G5QI5, YK2GW.ZVQVD, YK2GW.YKSSU, YK2GW.FHCYT]\n" +
 			"     └─ Filter\n" +
 			"         ├─ 1 IS NULL\n" +
-			"         └─ LeftOuterLookupJoin (estimated cost=3899.000 rows=1251)\n" +
-			"             ├─ LookupJoin (estimated cost=3303.300 rows=1001)\n" +
+			"         └─ LeftOuterLookupJoin (estimated cost=3940.431 rows=1251)\n" +
+			"             ├─ LookupJoin (estimated cost=3342.455 rows=1001)\n" +
 			"             │   ├─ TableAlias(ums)\n" +
 			"             │   │   └─ Table\n" +
 			"             │   │       └─ name: FG26Y\n" +
@@ -3693,8 +3693,8 @@ WHERE
 			"     ├─ columns: [FG26Y.id, FG26Y.T4IBQ, FG26Y.ner, FG26Y.ber, FG26Y.hr, FG26Y.mmr, FG26Y.QZ6VT, YK2GW.id, YK2GW.FTQLQ, YK2GW.TUXML, YK2GW.PAEF5, YK2GW.RUCY4, YK2GW.TPNJ6, YK2GW.LBL53, YK2GW.NB3QS, YK2GW.EO7IV, YK2GW.MUHJF, YK2GW.FM34L, YK2GW.TY5RF, YK2GW.ZHTLH, YK2GW.NPB7W, YK2GW.SX3HH, YK2GW.ISBNF, YK2GW.YA7YB, YK2GW.C5YKB, YK2GW.QK7KT, YK2GW.FFGE6, YK2GW.FIIGJ, YK2GW.SH3NC, YK2GW.NTENA, YK2GW.M4AUB, YK2GW.X5AIR, YK2GW.SAB6M, YK2GW.G5QI5, YK2GW.ZVQVD, YK2GW.YKSSU, YK2GW.FHCYT]\n" +
 			"     └─ Filter\n" +
 			"         ├─ 1 IS NULL\n" +
-			"         └─ LeftOuterLookupJoin (estimated cost=3899.000 rows=1251) (actual rows=0 loops=1)\n" +
-			"             ├─ LookupJoin (estimated cost=3303.300 rows=1001) (actual rows=0 loops=1)\n" +
+			"         └─ LeftOuterLookupJoin (estimated cost=3940.431 rows=1251) (actual rows=0 loops=1)\n" +
+			"             ├─ LookupJoin (estimated cost=3342.455 rows=1001) (actual rows=0 loops=1)\n" +
 			"             │   ├─ TableAlias(ums)\n" +
 			"             │   │   └─ Table\n" +
 			"             │   │       └─ name: FG26Y\n" +
@@ -6132,8 +6132,8 @@ WHERE
 			" └─ Sort(Y3IOU ASC)\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [nb6pj.Y3IOU, nb6pj.id, nb6pj.BRQP2, nb6pj.FFTBJ, nb6pj.NUMK2, nb6pj.LETOE, s7egw.id, s7egw.DKCAJ, s7egw.KNG7T, s7egw.TW55N, s7egw.QRQXW, s7egw.ECXAJ, s7egw.FGG57, s7egw.ZH72S, s7egw.FSK67, s7egw.XQDYT, s7egw.TCE7A, s7egw.IWV2H, s7egw.HPCMS, s7egw.N5CC2, s7egw.FHCYT, s7egw.ETAQ7, s7egw.A75X7, tymvl.id, tymvl.DKCAJ, tymvl.KNG7T, tymvl.TW55N, tymvl.QRQXW, tymvl.ECXAJ, tymvl.FGG57, tymvl.ZH72S, tymvl.FSK67, tymvl.XQDYT, tymvl.TCE7A, tymvl.IWV2H, tymvl.HPCMS, tymvl.N5CC2, tymvl.FHCYT, tymvl.ETAQ7, tymvl.A75X7, nb6pj.Y3IOU as Y3IOU, s7egw.TW55N as FJVD7, tymvl.TW55N as KBXXJ, nb6pj.NUMK2 as NUMK2, nb6pj.LETOE as LETOE]\n" +
-			"         └─ LookupJoin (estimated cost=330.000 rows=100)\n" +
-			"             ├─ LookupJoin (estimated cost=330.000 rows=100)\n" +
+			"         └─ LookupJoin (estimated cost=334.127 rows=100)\n" +
+			"             ├─ LookupJoin (estimated cost=334.127 rows=100)\n" +
 			"             │   ├─ SubqueryAlias\n" +
 			"             │   │   ├─ name: nb6pj\n" +
 			"             │   │   ├─ outerVisibility: false\n" +
@@ -6164,8 +6164,8 @@ WHERE
 			" └─ Sort(Y3IOU ASC)\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [nb6pj.Y3IOU, nb6pj.id, nb6pj.BRQP2, nb6pj.FFTBJ, nb6pj.NUMK2, nb6pj.LETOE, s7egw.id, s7egw.DKCAJ, s7egw.KNG7T, s7egw.TW55N, s7egw.QRQXW, s7egw.ECXAJ, s7egw.FGG57, s7egw.ZH72S, s7egw.FSK67, s7egw.XQDYT, s7egw.TCE7A, s7egw.IWV2H, s7egw.HPCMS, s7egw.N5CC2, s7egw.FHCYT, s7egw.ETAQ7, s7egw.A75X7, tymvl.id, tymvl.DKCAJ, tymvl.KNG7T, tymvl.TW55N, tymvl.QRQXW, tymvl.ECXAJ, tymvl.FGG57, tymvl.ZH72S, tymvl.FSK67, tymvl.XQDYT, tymvl.TCE7A, tymvl.IWV2H, tymvl.HPCMS, tymvl.N5CC2, tymvl.FHCYT, tymvl.ETAQ7, tymvl.A75X7, nb6pj.Y3IOU as Y3IOU, s7egw.TW55N as FJVD7, tymvl.TW55N as KBXXJ, nb6pj.NUMK2 as NUMK2, nb6pj.LETOE as LETOE]\n" +
-			"         └─ LookupJoin (estimated cost=330.000 rows=100) (actual rows=0 loops=1)\n" +
-			"             ├─ LookupJoin (estimated cost=330.000 rows=100) (actual rows=0 loops=1)\n" +
+			"         └─ LookupJoin (estimated cost=334.127 rows=100) (actual rows=0 loops=1)\n" +
+			"             ├─ LookupJoin (estimated cost=334.127 rows=100) (actual rows=0 loops=1)\n" +
 			"             │   ├─ SubqueryAlias\n" +
 			"             │   │   ├─ name: nb6pj\n" +
 			"             │   │   ├─ outerVisibility: false\n" +
@@ -6256,7 +6256,7 @@ WHERE
 			" └─ Sort(TW55N ASC, Y3IOU ASC)\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [nb6pj.Y3IOU, nb6pj.id, nb6pj.BRQP2, nb6pj.FFTBJ, nb6pj.NUMK2, nb6pj.LETOE, nd.id, nd.DKCAJ, nd.KNG7T, nd.TW55N, nd.QRQXW, nd.ECXAJ, nd.FGG57, nd.ZH72S, nd.FSK67, nd.XQDYT, nd.TCE7A, nd.IWV2H, nd.HPCMS, nd.N5CC2, nd.FHCYT, nd.ETAQ7, nd.A75X7, nd.TW55N as TW55N, nb6pj.Y3IOU as Y3IOU]\n" +
-			"         └─ LookupJoin (estimated cost=330.000 rows=100)\n" +
+			"         └─ LookupJoin (estimated cost=334.127 rows=100)\n" +
 			"             ├─ SubqueryAlias\n" +
 			"             │   ├─ name: nb6pj\n" +
 			"             │   ├─ outerVisibility: false\n" +
@@ -6282,7 +6282,7 @@ WHERE
 			" └─ Sort(TW55N ASC, Y3IOU ASC)\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [nb6pj.Y3IOU, nb6pj.id, nb6pj.BRQP2, nb6pj.FFTBJ, nb6pj.NUMK2, nb6pj.LETOE, nd.id, nd.DKCAJ, nd.KNG7T, nd.TW55N, nd.QRQXW, nd.ECXAJ, nd.FGG57, nd.ZH72S, nd.FSK67, nd.XQDYT, nd.TCE7A, nd.IWV2H, nd.HPCMS, nd.N5CC2, nd.FHCYT, nd.ETAQ7, nd.A75X7, nd.TW55N as TW55N, nb6pj.Y3IOU as Y3IOU]\n" +
-			"         └─ LookupJoin (estimated cost=330.000 rows=100) (actual rows=0 loops=1)\n" +
+			"         └─ LookupJoin (estimated cost=334.127 rows=100) (actual rows=0 loops=1)\n" +
 			"             ├─ SubqueryAlias\n" +
 			"             │   ├─ name: nb6pj\n" +
 			"             │   ├─ outerVisibility: false\n" +
@@ -6511,7 +6511,7 @@ WHERE
 			" └─ Sort(nd.TW55N ASC)\n" +
 			"     └─ HashJoin (estimated cost=236.520 rows=226)\n" +
 			"         ├─ (nd.DKCAJ = nt.id)\n" +
-			"         ├─ LookupJoin (estimated cost=745.800 rows=226)\n" +
+			"         ├─ LookupJoin (estimated cost=755.127 rows=226)\n" +
 			"         │   ├─ TableAlias(il)\n" +
 			"         │   │   └─ Table\n" +
 			"         │   │       ├─ name: RLOHD\n" +
@@ -6535,7 +6535,7 @@ WHERE
 			" └─ Sort(nd.TW55N ASC)\n" +
 			"     └─ HashJoin (estimated cost=236.520 rows=226) (actual rows=0 loops=1)\n" +
 			"         ├─ (nd.DKCAJ = nt.id)\n" +
-			"         ├─ LookupJoin (estimated cost=745.800 rows=226) (actual rows=0 loops=1)\n" +
+			"         ├─ LookupJoin (estimated cost=755.127 rows=226) (actual rows=0 loops=1)\n" +
 			"         │   ├─ TableAlias(il)\n" +
 			"         │   │   └─ Table\n" +
 			"         │   │       ├─ name: RLOHD\n" +
@@ -6750,7 +6750,7 @@ WHERE
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [athcu.T4IBQ as T4IBQ, athcu.TW55N as TW55N, CASE  WHEN fc.OZTQF IS NULL THEN 0 WHEN (athcu.SJ5DU IN ('log', 'com', 'ex')) THEN 0 WHEN (athcu.SOWRY = 'CRZ2X') THEN 0 WHEN (athcu.SOWRY = 'z') THEN fc.OZTQF WHEN (athcu.SOWRY = 'o') THEN (fc.OZTQF - 1) END as OZTQF]\n" +
 			" └─ Sort(athcu.YYKXN ASC)\n" +
-			"     └─ LeftOuterLookupJoin (estimated cost=330.000 rows=100)\n" +
+			"     └─ LeftOuterLookupJoin (estimated cost=337.691 rows=100)\n" +
 			"         ├─ SubqueryAlias\n" +
 			"         │   ├─ name: athcu\n" +
 			"         │   ├─ outerVisibility: false\n" +
@@ -6822,7 +6822,7 @@ WHERE
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [athcu.T4IBQ as T4IBQ, athcu.TW55N as TW55N, CASE  WHEN fc.OZTQF IS NULL THEN 0 WHEN (athcu.SJ5DU IN ('log', 'com', 'ex')) THEN 0 WHEN (athcu.SOWRY = 'CRZ2X') THEN 0 WHEN (athcu.SOWRY = 'z') THEN fc.OZTQF WHEN (athcu.SOWRY = 'o') THEN (fc.OZTQF - 1) END as OZTQF]\n" +
 			" └─ Sort(athcu.YYKXN ASC)\n" +
-			"     └─ LeftOuterLookupJoin (estimated cost=330.000 rows=100) (actual rows=0 loops=1)\n" +
+			"     └─ LeftOuterLookupJoin (estimated cost=337.691 rows=100) (actual rows=0 loops=1)\n" +
 			"         ├─ SubqueryAlias\n" +
 			"         │   ├─ name: athcu\n" +
 			"         │   ├─ outerVisibility: false\n" +
@@ -7439,7 +7439,7 @@ WHERE
 			"                                             ├─ (nd.HPCMS = nma.id)\n" +
 			"                                             ├─ LeftOuterHashJoin (estimated cost=427.500 rows=125)\n" +
 			"                                             │   ├─ ((f26zw.T4IBQ = bs.T4IBQ) AND (f26zw.BRQP2 = nd.id))\n" +
-			"                                             │   ├─ LeftOuterLookupJoin (estimated cost=412.500 rows=125)\n" +
+			"                                             │   ├─ LeftOuterLookupJoin (estimated cost=422.113 rows=125)\n" +
 			"                                             │   │   ├─ LeftOuterHashJoin (estimated cost=14862.250 rows=125)\n" +
 			"                                             │   │   │   ├─ (ms.GXLUB = bs.id)\n" +
 			"                                             │   │   │   ├─ SubqueryAlias\n" +
@@ -7649,7 +7649,7 @@ WHERE
 			"                                             ├─ (nd.HPCMS = nma.id)\n" +
 			"                                             ├─ LeftOuterHashJoin (estimated cost=427.500 rows=125) (actual rows=0 loops=1)\n" +
 			"                                             │   ├─ ((f26zw.T4IBQ = bs.T4IBQ) AND (f26zw.BRQP2 = nd.id))\n" +
-			"                                             │   ├─ LeftOuterLookupJoin (estimated cost=412.500 rows=125) (actual rows=0 loops=1)\n" +
+			"                                             │   ├─ LeftOuterLookupJoin (estimated cost=422.113 rows=125) (actual rows=0 loops=1)\n" +
 			"                                             │   │   ├─ LeftOuterHashJoin (estimated cost=14862.250 rows=125) (actual rows=0 loops=1)\n" +
 			"                                             │   │   │   ├─ (ms.GXLUB = bs.id)\n" +
 			"                                             │   │   │   ├─ SubqueryAlias\n" +
@@ -8364,7 +8364,7 @@ WHERE
 			"                                             ├─ (nd.HPCMS = nma.id)\n" +
 			"                                             ├─ LeftOuterHashJoin (estimated cost=427.500 rows=125)\n" +
 			"                                             │   ├─ ((f26zw.T4IBQ = bs.T4IBQ) AND (f26zw.BRQP2 = nd.id))\n" +
-			"                                             │   ├─ LeftOuterLookupJoin (estimated cost=412.500 rows=125)\n" +
+			"                                             │   ├─ LeftOuterLookupJoin (estimated cost=422.113 rows=125)\n" +
 			"                                             │   │   ├─ LeftOuterHashJoin (estimated cost=14862.250 rows=125)\n" +
 			"                                             │   │   │   ├─ (ms.GXLUB = bs.id)\n" +
 			"                                             │   │   │   ├─ SubqueryAlias\n" +
@@ -8575,7 +8575,7 @@ WHERE
 			"                                             ├─ (nd.HPCMS = nma.id)\n" +
 			"                                             ├─ LeftOuterHashJoin (estimated cost=427.500 rows=125) (actual rows=0 loops=1)\n" +
 			"                                             │   ├─ ((f26zw.T4IBQ = bs.T4IBQ) AND (f26zw.BRQP2 = nd.id))\n" +
-			"                                             │   ├─ LeftOuterLookupJoin (estimated cost=412.500 rows=125) (actual rows=0 loops=1)\n" +
+			"                                             │   ├─ LeftOuterLookupJoin (estimated cost=422.113 rows=125) (actual rows=0 loops=1)\n" +
 			"                                             │   │   ├─ LeftOuterHashJoin (estimated cost=14862.250 rows=125) (actual rows=0 loops=1)\n" +
 			"                                             │   │   │   ├─ (ms.GXLUB = bs.id)\n" +
 			"                                             │   │   │   ├─ SubqueryAlias\n" +
@@ -9181,7 +9181,7 @@ WHERE
 			" │               ├─ columns: [E2I7U.id, E2I7U.DKCAJ, E2I7U.KNG7T, E2I7U.TW55N, E2I7U.QRQXW, E2I7U.ECXAJ, E2I7U.FGG57, E2I7U.ZH72S, E2I7U.FSK67, E2I7U.XQDYT, E2I7U.TCE7A, E2I7U.IWV2H, E2I7U.HPCMS, E2I7U.N5CC2, E2I7U.FHCYT, E2I7U.ETAQ7, E2I7U.A75X7]\n" +
 			" │               └─ Filter\n" +
 			" │                   ├─ amyxq.LUEVY IS NULL\n" +
-			" │                   └─ LeftOuterLookupJoin (estimated cost=14907.300 rows=4802)\n" +
+			" │                   └─ LeftOuterLookupJoin (estimated cost=15202.776 rows=4802)\n" +
 			" │                       ├─ Table\n" +
 			" │                       │   └─ name: E2I7U\n" +
 			" │                       └─ IndexedTableAccess(AMYXQ)\n" +
@@ -9200,7 +9200,7 @@ WHERE
 			"     │               ├─ columns: [E2I7U.id, E2I7U.DKCAJ, E2I7U.KNG7T, E2I7U.TW55N, E2I7U.QRQXW, E2I7U.ECXAJ, E2I7U.FGG57, E2I7U.ZH72S, E2I7U.FSK67, E2I7U.XQDYT, E2I7U.TCE7A, E2I7U.IWV2H, E2I7U.HPCMS, E2I7U.N5CC2, E2I7U.FHCYT, E2I7U.ETAQ7, E2I7U.A75X7]\n" +
 			"     │               └─ Filter\n" +
 			"     │                   ├─ amyxq.LUEVY IS NULL\n" +
-			"     │                   └─ LeftOuterLookupJoin (estimated cost=14907.300 rows=4802)\n" +
+			"     │                   └─ LeftOuterLookupJoin (estimated cost=15202.776 rows=4802)\n" +
 			"     │                       ├─ Table\n" +
 			"     │                       │   └─ name: E2I7U\n" +
 			"     │                       └─ IndexedTableAccess(AMYXQ)\n" +
@@ -9223,7 +9223,7 @@ WHERE
 			" │               ├─ columns: [E2I7U.id, E2I7U.DKCAJ, E2I7U.KNG7T, E2I7U.TW55N, E2I7U.QRQXW, E2I7U.ECXAJ, E2I7U.FGG57, E2I7U.ZH72S, E2I7U.FSK67, E2I7U.XQDYT, E2I7U.TCE7A, E2I7U.IWV2H, E2I7U.HPCMS, E2I7U.N5CC2, E2I7U.FHCYT, E2I7U.ETAQ7, E2I7U.A75X7]\n" +
 			" │               └─ Filter\n" +
 			" │                   ├─ amyxq.LUEVY IS NULL\n" +
-			" │                   └─ LeftOuterLookupJoin (estimated cost=14907.300 rows=4802)\n" +
+			" │                   └─ LeftOuterLookupJoin (estimated cost=15202.776 rows=4802)\n" +
 			" │                       ├─ Table\n" +
 			" │                       │   └─ name: E2I7U\n" +
 			" │                       └─ IndexedTableAccess(AMYXQ)\n" +
@@ -9242,7 +9242,7 @@ WHERE
 			"     │               ├─ columns: [E2I7U.id, E2I7U.DKCAJ, E2I7U.KNG7T, E2I7U.TW55N, E2I7U.QRQXW, E2I7U.ECXAJ, E2I7U.FGG57, E2I7U.ZH72S, E2I7U.FSK67, E2I7U.XQDYT, E2I7U.TCE7A, E2I7U.IWV2H, E2I7U.HPCMS, E2I7U.N5CC2, E2I7U.FHCYT, E2I7U.ETAQ7, E2I7U.A75X7]\n" +
 			"     │               └─ Filter\n" +
 			"     │                   ├─ amyxq.LUEVY IS NULL\n" +
-			"     │                   └─ LeftOuterLookupJoin (estimated cost=14907.300 rows=4802)\n" +
+			"     │                   └─ LeftOuterLookupJoin (estimated cost=15202.776 rows=4802)\n" +
 			"     │                       ├─ Table\n" +
 			"     │                       │   └─ name: E2I7U\n" +
 			"     │                       └─ IndexedTableAccess(AMYXQ)\n" +
@@ -9558,8 +9558,8 @@ WHERE
 			"             │   │           │   └─ HashLookup\n" +
 			"             │   │           │       ├─ left-key: (bs.id)\n" +
 			"             │   │           │       ├─ right-key: (mf.GXLUB)\n" +
-			"             │   │           │       └─ LookupJoin (estimated cost=48748.500 rows=14766)\n" +
-			"             │   │           │           ├─ LookupJoin (estimated cost=48727.800 rows=14766)\n" +
+			"             │   │           │       └─ LookupJoin (estimated cost=49722.436 rows=14766)\n" +
+			"             │   │           │           ├─ LookupJoin (estimated cost=49593.602 rows=14766)\n" +
 			"             │   │           │           │   ├─ MergeJoin (estimated cost=451603.550 rows=14766)\n" +
 			"             │   │           │           │   │   ├─ cmp: (mf.LUEVY = sn.BRQP2)\n" +
 			"             │   │           │           │   │   ├─ Filter\n" +
@@ -9680,8 +9680,8 @@ WHERE
 			"             │   │           │   └─ HashLookup\n" +
 			"             │   │           │       ├─ left-key: (bs.id)\n" +
 			"             │   │           │       ├─ right-key: (mf.GXLUB)\n" +
-			"             │   │           │       └─ LookupJoin (estimated cost=48748.500 rows=14766)\n" +
-			"             │   │           │           ├─ LookupJoin (estimated cost=48727.800 rows=14766)\n" +
+			"             │   │           │       └─ LookupJoin (estimated cost=49722.436 rows=14766)\n" +
+			"             │   │           │           ├─ LookupJoin (estimated cost=49593.602 rows=14766)\n" +
 			"             │   │           │           │   ├─ MergeJoin (estimated cost=451603.550 rows=14766)\n" +
 			"             │   │           │           │   │   ├─ cmp: (mf.LUEVY = sn.BRQP2)\n" +
 			"             │   │           │           │   │   ├─ Filter\n" +
@@ -10045,9 +10045,9 @@ WHERE
 			"             │   │           ├─ (vc.id = w2mao.YH4XB)\n" +
 			"             │   │           ├─ HashJoin (estimated cost=22555.320 rows=14766)\n" +
 			"             │   │           │   ├─ (mf.GXLUB = bs.id)\n" +
-			"             │   │           │   ├─ LookupJoin (estimated cost=48727.800 rows=14766)\n" +
-			"             │   │           │   │   ├─ LookupJoin (estimated cost=48748.500 rows=14766)\n" +
-			"             │   │           │   │   │   ├─ LookupJoin (estimated cost=45795.500 rows=14766)\n" +
+			"             │   │           │   ├─ LookupJoin (estimated cost=49593.602 rows=14766)\n" +
+			"             │   │           │   │   ├─ LookupJoin (estimated cost=49722.436 rows=14766)\n" +
+			"             │   │           │   │   │   ├─ LookupJoin (estimated cost=46562.370 rows=14766)\n" +
 			"             │   │           │   │   │   │   ├─ TableAlias(sn)\n" +
 			"             │   │           │   │   │   │   │   └─ Table\n" +
 			"             │   │           │   │   │   │   │       ├─ name: NOXN3\n" +
@@ -10165,9 +10165,9 @@ WHERE
 			"             │   │           ├─ (vc.id = w2mao.YH4XB)\n" +
 			"             │   │           ├─ HashJoin (estimated cost=22555.320 rows=14766) (actual rows=0 loops=1)\n" +
 			"             │   │           │   ├─ (mf.GXLUB = bs.id)\n" +
-			"             │   │           │   ├─ LookupJoin (estimated cost=48727.800 rows=14766) (actual rows=0 loops=1)\n" +
-			"             │   │           │   │   ├─ LookupJoin (estimated cost=48748.500 rows=14766) (actual rows=0 loops=1)\n" +
-			"             │   │           │   │   │   ├─ LookupJoin (estimated cost=45795.500 rows=14766) (actual rows=0 loops=1)\n" +
+			"             │   │           │   ├─ LookupJoin (estimated cost=49593.602 rows=14766) (actual rows=0 loops=1)\n" +
+			"             │   │           │   │   ├─ LookupJoin (estimated cost=49722.436 rows=14766) (actual rows=0 loops=1)\n" +
+			"             │   │           │   │   │   ├─ LookupJoin (estimated cost=46562.370 rows=14766) (actual rows=0 loops=1)\n" +
 			"             │   │           │   │   │   │   ├─ TableAlias(sn)\n" +
 			"             │   │           │   │   │   │   │   └─ Table\n" +
 			"             │   │           │   │   │   │   │       ├─ name: NOXN3\n" +
@@ -12986,7 +12986,7 @@ WHERE
 			"             │           │                           │                       ├─ columns: [id brqp2]\n" +
 			"             │           │                           │                       └─ keys: mjr3d.BJUF2\n" +
 			"             │           │                           │  ) AND (NOT(mjr3d.BJUF2 IS NULL))))\n" +
-			"             │           │                           ├─ LookupJoin (estimated cost=330.000 rows=100)\n" +
+			"             │           │                           ├─ LookupJoin (estimated cost=335.863 rows=100)\n" +
 			"             │           │                           │   ├─ SubqueryAlias\n" +
 			"             │           │                           │   │   ├─ name: mjr3d\n" +
 			"             │           │                           │   │   ├─ outerVisibility: false\n" +
@@ -12999,11 +12999,11 @@ WHERE
 			"             │           │                           │   │           ├─ columns: [ism.FV24E as FJDP5, cpmfe.id as BJUF2, ism.M22QN as M22QN, g3yxs.TUV25 as TUV25, g3yxs.ESFVY as ESFVY, yqif4.id as QNI57, yvhjz.id as TDEIU]\n" +
 			"             │           │                           │   │           └─ Filter\n" +
 			"             │           │                           │   │               ├─ ((NOT(yqif4.id IS NULL)) OR (NOT(yvhjz.id IS NULL)))\n" +
-			"             │           │                           │   │               └─ LeftOuterLookupJoin (estimated cost=6747.700 rows=2170)\n" +
+			"             │           │                           │   │               └─ LeftOuterLookupJoin (estimated cost=6829.092 rows=2170)\n" +
 			"             │           │                           │   │                   ├─ (yvhjz.BRQP2 = ism.UJ6XY)\n" +
-			"             │           │                           │   │                   ├─ LeftOuterLookupJoin (estimated cost=5402.500 rows=1736)\n" +
+			"             │           │                           │   │                   ├─ LeftOuterLookupJoin (estimated cost=5467.623 rows=1736)\n" +
 			"             │           │                           │   │                   │   ├─ (yqif4.BRQP2 = ism.FV24E)\n" +
-			"             │           │                           │   │                   │   ├─ LeftOuterLookupJoin (estimated cost=4327.400 rows=1389)\n" +
+			"             │           │                           │   │                   │   ├─ LeftOuterLookupJoin (estimated cost=4373.291 rows=1389)\n" +
 			"             │           │                           │   │                   │   │   ├─ (NOT((cpmfe.id = ism.FV24E)))\n" +
 			"             │           │                           │   │                   │   │   ├─ LeftOuterHashJoin (estimated cost=1338.240 rows=1112)\n" +
 			"             │           │                           │   │                   │   │   │   ├─ (nhmxw.id = ism.PRUV2)\n" +
@@ -13517,7 +13517,7 @@ WHERE
 			"             │           │                           │                       ├─ columns: [id brqp2]\n" +
 			"             │           │                           │                       └─ keys: mjr3d.BJUF2\n" +
 			"             │           │                           │  ) AND (NOT(mjr3d.BJUF2 IS NULL))))\n" +
-			"             │           │                           ├─ LookupJoin (estimated cost=330.000 rows=100) (actual rows=0 loops=1)\n" +
+			"             │           │                           ├─ LookupJoin (estimated cost=335.863 rows=100) (actual rows=0 loops=1)\n" +
 			"             │           │                           │   ├─ SubqueryAlias\n" +
 			"             │           │                           │   │   ├─ name: mjr3d\n" +
 			"             │           │                           │   │   ├─ outerVisibility: false\n" +
@@ -13530,11 +13530,11 @@ WHERE
 			"             │           │                           │   │           ├─ columns: [ism.FV24E as FJDP5, cpmfe.id as BJUF2, ism.M22QN as M22QN, g3yxs.TUV25 as TUV25, g3yxs.ESFVY as ESFVY, yqif4.id as QNI57, yvhjz.id as TDEIU]\n" +
 			"             │           │                           │   │           └─ Filter\n" +
 			"             │           │                           │   │               ├─ ((NOT(yqif4.id IS NULL)) OR (NOT(yvhjz.id IS NULL)))\n" +
-			"             │           │                           │   │               └─ LeftOuterLookupJoin (estimated cost=6747.700 rows=2170) (actual rows=0 loops=1)\n" +
+			"             │           │                           │   │               └─ LeftOuterLookupJoin (estimated cost=6829.092 rows=2170) (actual rows=0 loops=1)\n" +
 			"             │           │                           │   │                   ├─ (yvhjz.BRQP2 = ism.UJ6XY)\n" +
-			"             │           │                           │   │                   ├─ LeftOuterLookupJoin (estimated cost=5402.500 rows=1736) (actual rows=0 loops=1)\n" +
+			"             │           │                           │   │                   ├─ LeftOuterLookupJoin (estimated cost=5467.623 rows=1736) (actual rows=0 loops=1)\n" +
 			"             │           │                           │   │                   │   ├─ (yqif4.BRQP2 = ism.FV24E)\n" +
-			"             │           │                           │   │                   │   ├─ LeftOuterLookupJoin (estimated cost=4327.400 rows=1389) (actual rows=0 loops=1)\n" +
+			"             │           │                           │   │                   │   ├─ LeftOuterLookupJoin (estimated cost=4373.291 rows=1389) (actual rows=0 loops=1)\n" +
 			"             │           │                           │   │                   │   │   ├─ (NOT((cpmfe.id = ism.FV24E)))\n" +
 			"             │           │                           │   │                   │   │   ├─ LeftOuterHashJoin (estimated cost=1338.240 rows=1112) (actual rows=0 loops=1)\n" +
 			"             │           │                           │   │                   │   │   │   ├─ (nhmxw.id = ism.PRUV2)\n" +
@@ -15061,7 +15061,7 @@ WHERE
 			"             │           │                           │                       ├─ columns: [id brqp2]\n" +
 			"             │           │                           │                       └─ keys: mjr3d.BJUF2\n" +
 			"             │           │                           │  ) AND (NOT(mjr3d.BJUF2 IS NULL))))\n" +
-			"             │           │                           ├─ LookupJoin (estimated cost=330.000 rows=100)\n" +
+			"             │           │                           ├─ LookupJoin (estimated cost=335.863 rows=100)\n" +
 			"             │           │                           │   ├─ SubqueryAlias\n" +
 			"             │           │                           │   │   ├─ name: mjr3d\n" +
 			"             │           │                           │   │   ├─ outerVisibility: false\n" +
@@ -15074,11 +15074,11 @@ WHERE
 			"             │           │                           │   │           ├─ columns: [ism.FV24E as FJDP5, cpmfe.id as BJUF2, ism.M22QN as M22QN, g3yxs.TUV25 as TUV25, g3yxs.ESFVY as ESFVY, yqif4.id as QNI57, yvhjz.id as TDEIU]\n" +
 			"             │           │                           │   │           └─ Filter\n" +
 			"             │           │                           │   │               ├─ ((NOT(yqif4.id IS NULL)) OR (NOT(yvhjz.id IS NULL)))\n" +
-			"             │           │                           │   │               └─ LeftOuterLookupJoin (estimated cost=6747.700 rows=2170)\n" +
+			"             │           │                           │   │               └─ LeftOuterLookupJoin (estimated cost=6829.092 rows=2170)\n" +
 			"             │           │                           │   │                   ├─ (yvhjz.BRQP2 = ism.UJ6XY)\n" +
-			"             │           │                           │   │                   ├─ LeftOuterLookupJoin (estimated cost=5402.500 rows=1736)\n" +
+			"             │           │                           │   │                   ├─ LeftOuterLookupJoin (estimated cost=5467.623 rows=1736)\n" +
 			"             │           │                           │   │                   │   ├─ (yqif4.BRQP2 = ism.FV24E)\n" +
-			"             │           │                           │   │                   │   ├─ LeftOuterLookupJoin (estimated cost=4327.400 rows=1389)\n" +
+			"             │           │                           │   │                   │   ├─ LeftOuterLookupJoin (estimated cost=4373.291 rows=1389)\n" +
 			"             │           │                           │   │                   │   │   ├─ (NOT((cpmfe.id = ism.FV24E)))\n" +
 			"             │           │                           │   │                   │   │   ├─ LeftOuterHashJoin (estimated cost=1338.240 rows=1112)\n" +
 			"             │           │                           │   │                   │   │   │   ├─ (nhmxw.id = ism.PRUV2)\n" +
@@ -15588,7 +15588,7 @@ WHERE
 			"             │           │                           │                       ├─ columns: [id brqp2]\n" +
 			"             │           │                           │                       └─ keys: mjr3d.BJUF2\n" +
 			"             │           │                           │  ) AND (NOT(mjr3d.BJUF2 IS NULL))))\n" +
-			"             │           │                           ├─ LookupJoin (estimated cost=330.000 rows=100) (actual rows=0 loops=1)\n" +
+			"             │           │                           ├─ LookupJoin (estimated cost=335.863 rows=100) (actual rows=0 loops=1)\n" +
 			"             │           │                           │   ├─ SubqueryAlias\n" +
 			"             │           │                           │   │   ├─ name: mjr3d\n" +
 			"             │           │                           │   │   ├─ outerVisibility: false\n" +
@@ -15601,11 +15601,11 @@ WHERE
 			"             │           │                           │   │           ├─ columns: [ism.FV24E as FJDP5, cpmfe.id as BJUF2, ism.M22QN as M22QN, g3yxs.TUV25 as TUV25, g3yxs.ESFVY as ESFVY, yqif4.id as QNI57, yvhjz.id as TDEIU]\n" +
 			"             │           │                           │   │           └─ Filter\n" +
 			"             │           │                           │   │               ├─ ((NOT(yqif4.id IS NULL)) OR (NOT(yvhjz.id IS NULL)))\n" +
-			"             │           │                           │   │               └─ LeftOuterLookupJoin (estimated cost=6747.700 rows=2170) (actual rows=0 loops=1)\n" +
+			"             │           │                           │   │               └─ LeftOuterLookupJoin (estimated cost=6829.092 rows=2170) (actual rows=0 loops=1)\n" +
 			"             │           │                           │   │                   ├─ (yvhjz.BRQP2 = ism.UJ6XY)\n" +
-			"             │           │                           │   │                   ├─ LeftOuterLookupJoin (estimated cost=5402.500 rows=1736) (actual rows=0 loops=1)\n" +
+			"             │           │                           │   │                   ├─ LeftOuterLookupJoin (estimated cost=5467.623 rows=1736) (actual rows=0 loops=1)\n" +
 			"             │           │                           │   │                   │   ├─ (yqif4.BRQP2 = ism.FV24E)\n" +
-			"             │           │                           │   │                   │   ├─ LeftOuterLookupJoin (estimated cost=4327.400 rows=1389) (actual rows=0 loops=1)\n" +
+			"             │           │                           │   │                   │   ├─ LeftOuterLookupJoin (estimated cost=4373.291 rows=1389) (actual rows=0 loops=1)\n" +
 			"             │           │                           │   │                   │   │   ├─ (NOT((cpmfe.id = ism.FV24E)))\n" +
 			"             │           │                           │   │                   │   │   ├─ LeftOuterHashJoin (estimated cost=1338.240 rows=1112) (actual rows=0 loops=1)\n" +
 			"             │           │                           │   │                   │   │   │   ├─ (nhmxw.id = ism.PRUV2)\n" +
@@ -16636,8 +16636,8 @@ ORDER BY cla.FTQLQ ASC`,
 			"                 ├─ Distinct\n" +
 			"                 │   └─ Project\n" +
 			"                 │       ├─ columns: [bs.IXUXU]\n" +
-			"                 │       └─ SemiLookupJoin (estimated cost=1983900.000 rows=639961)\n" +
-			"                 │           ├─ SemiLookupJoin (estimated cost=1180047.400 rows=511969)\n" +
+			"                 │       └─ SemiLookupJoin (estimated cost=2023273.865 rows=639961)\n" +
+			"                 │           ├─ SemiLookupJoin (estimated cost=1180211.594 rows=511969)\n" +
 			"                 │           │   ├─ TableAlias(bs)\n" +
 			"                 │           │   │   └─ Table\n" +
 			"                 │           │   │       └─ name: THNTS\n" +
@@ -16669,8 +16669,8 @@ ORDER BY cla.FTQLQ ASC`,
 			"                 ├─ Distinct\n" +
 			"                 │   └─ Project\n" +
 			"                 │       ├─ columns: [bs.IXUXU]\n" +
-			"                 │       └─ SemiLookupJoin (estimated cost=1983900.000 rows=639961) (actual rows=0 loops=1)\n" +
-			"                 │           ├─ SemiLookupJoin (estimated cost=1180047.400 rows=511969) (actual rows=0 loops=1)\n" +
+			"                 │       └─ SemiLookupJoin (estimated cost=2023273.865 rows=639961) (actual rows=0 loops=1)\n" +
+			"                 │           ├─ SemiLookupJoin (estimated cost=1180211.594 rows=511969) (actual rows=0 loops=1)\n" +
 			"                 │           │   ├─ TableAlias(bs)\n" +
 			"                 │           │   │   └─ Table\n" +
 			"                 │           │   │       └─ name: THNTS\n" +
@@ -16852,7 +16852,7 @@ ORDER BY cla.FTQLQ ASC`,
 			"                 ├─ Distinct\n" +
 			"                 │   └─ Project\n" +
 			"                 │       ├─ columns: [bs.IXUXU]\n" +
-			"                 │       └─ SemiLookupJoin (estimated cost=11011878.100 rows=4786678)\n" +
+			"                 │       └─ SemiLookupJoin (estimated cost=11012070.213 rows=4786678)\n" +
 			"                 │           ├─ TableAlias(bs)\n" +
 			"                 │           │   └─ Table\n" +
 			"                 │           │       └─ name: THNTS\n" +
@@ -16879,7 +16879,7 @@ ORDER BY cla.FTQLQ ASC`,
 			"                 ├─ Distinct\n" +
 			"                 │   └─ Project\n" +
 			"                 │       ├─ columns: [bs.IXUXU]\n" +
-			"                 │       └─ SemiLookupJoin (estimated cost=11011878.100 rows=4786678) (actual rows=0 loops=1)\n" +
+			"                 │       └─ SemiLookupJoin (estimated cost=11012070.213 rows=4786678) (actual rows=0 loops=1)\n" +
 			"                 │           ├─ TableAlias(bs)\n" +
 			"                 │           │   └─ Table\n" +
 			"                 │           │       └─ name: THNTS\n" +
@@ -17932,8 +17932,8 @@ INNER JOIN XOAOP pa
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [pa.DZLIM as ECUWU, nd.TW55N]\n" +
-			" └─ LookupJoin (estimated cost=19.800 rows=6)\n" +
-			"     ├─ LookupJoin (estimated cost=19.800 rows=6)\n" +
+			" └─ LookupJoin (estimated cost=19.929 rows=6)\n" +
+			"     ├─ LookupJoin (estimated cost=20.048 rows=6)\n" +
 			"     │   ├─ TableAlias(qnrbh)\n" +
 			"     │   │   └─ Table\n" +
 			"     │   │       ├─ name: JJGQT\n" +
@@ -17951,8 +17951,8 @@ INNER JOIN XOAOP pa
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [pa.DZLIM as ECUWU, nd.TW55N]\n" +
-			" └─ LookupJoin (estimated cost=19.800 rows=6) (actual rows=0 loops=1)\n" +
-			"     ├─ LookupJoin (estimated cost=19.800 rows=6) (actual rows=0 loops=1)\n" +
+			" └─ LookupJoin (estimated cost=19.929 rows=6) (actual rows=0 loops=1)\n" +
+			"     ├─ LookupJoin (estimated cost=20.048 rows=6) (actual rows=0 loops=1)\n" +
 			"     │   ├─ TableAlias(qnrbh)\n" +
 			"     │   │   └─ Table\n" +
 			"     │   │       ├─ name: JJGQT\n" +

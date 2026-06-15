@@ -241,10 +241,10 @@ order by
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [supplier.s_acctbal, supplier.s_name, nation.n_name, part.p_partkey, part.p_mfgr, supplier.s_address, supplier.s_phone, supplier.s_comment]\n" +
 			" └─ Sort(supplier.s_acctbal DESC, nation.n_name ASC, supplier.s_name ASC, part.p_partkey ASC)\n" +
-			"     └─ LookupJoin (estimated cost=3300.000 rows=1000)\n" +
+			"     └─ LookupJoin (estimated cost=3333.726 rows=1000)\n" +
 			"         ├─ (partsupp.ps_supplycost = Subquery(select min(ps_supplycost) from partsupp, supplier, nation, region where p_partkey = ps_partkey and s_suppkey = ps_suppkey and s_nationkey = n_nationkey and n_regionkey = r_regionkey and r_name = 'EUROPE'))\n" +
-			"         ├─ LookupJoin (estimated cost=3300.000 rows=1000)\n" +
-			"         │   ├─ LookupJoin (estimated cost=3300.000 rows=1000)\n" +
+			"         ├─ LookupJoin (estimated cost=3334.539 rows=1000)\n" +
+			"         │   ├─ LookupJoin (estimated cost=3334.539 rows=1000)\n" +
 			"         │   │   ├─ MergeJoin (estimated cost=1878.500 rows=1000)\n" +
 			"         │   │   │   ├─ cmp: (part.p_partkey = partsupp.ps_partkey)\n" +
 			"         │   │   │   ├─ Filter\n" +
@@ -270,10 +270,10 @@ order by
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [supplier.s_acctbal, supplier.s_name, nation.n_name, part.p_partkey, part.p_mfgr, supplier.s_address, supplier.s_phone, supplier.s_comment]\n" +
 			" └─ Sort(supplier.s_acctbal DESC, nation.n_name ASC, supplier.s_name ASC, part.p_partkey ASC)\n" +
-			"     └─ LookupJoin (estimated cost=3300.000 rows=1000) (actual rows=0 loops=1)\n" +
+			"     └─ LookupJoin (estimated cost=3333.726 rows=1000) (actual rows=0 loops=1)\n" +
 			"         ├─ (partsupp.ps_supplycost = Subquery(select min(ps_supplycost) from partsupp, supplier, nation, region where p_partkey = ps_partkey and s_suppkey = ps_suppkey and s_nationkey = n_nationkey and n_regionkey = r_regionkey and r_name = 'EUROPE'))\n" +
-			"         ├─ LookupJoin (estimated cost=3300.000 rows=1000) (actual rows=0 loops=1)\n" +
-			"         │   ├─ LookupJoin (estimated cost=3300.000 rows=1000) (actual rows=0 loops=1)\n" +
+			"         ├─ LookupJoin (estimated cost=3334.539 rows=1000) (actual rows=0 loops=1)\n" +
+			"         │   ├─ LookupJoin (estimated cost=3334.539 rows=1000) (actual rows=0 loops=1)\n" +
 			"         │   │   ├─ MergeJoin (estimated cost=1878.500 rows=1000) (actual rows=0 loops=1)\n" +
 			"         │   │   │   ├─ cmp: (part.p_partkey = partsupp.ps_partkey)\n" +
 			"         │   │   │   ├─ Filter\n" +
@@ -380,7 +380,7 @@ order by
 			"         └─ GroupBy\n" +
 			"             ├─ select: SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), lineitem.l_orderkey, orders.o_orderdate, orders.o_shippriority\n" +
 			"             ├─ group: lineitem.l_orderkey, orders.o_orderdate, orders.o_shippriority\n" +
-			"             └─ LookupJoin (estimated cost=2805.000 rows=850)\n" +
+			"             └─ LookupJoin (estimated cost=2833.667 rows=850)\n" +
 			"                 ├─ MergeJoin (estimated cost=1725.500 rows=850)\n" +
 			"                 │   ├─ cmp: (orders.o_orderkey = lineitem.l_orderkey)\n" +
 			"                 │   ├─ Filter\n" +
@@ -410,7 +410,7 @@ order by
 			"         └─ GroupBy\n" +
 			"             ├─ select: SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), lineitem.l_orderkey, orders.o_orderdate, orders.o_shippriority\n" +
 			"             ├─ group: lineitem.l_orderkey, orders.o_orderdate, orders.o_shippriority\n" +
-			"             └─ LookupJoin (estimated cost=2805.000 rows=850) (actual rows=0 loops=1)\n" +
+			"             └─ LookupJoin (estimated cost=2833.667 rows=850) (actual rows=0 loops=1)\n" +
 			"                 ├─ MergeJoin (estimated cost=1725.500 rows=850) (actual rows=0 loops=1)\n" +
 			"                 │   ├─ cmp: (orders.o_orderkey = lineitem.l_orderkey)\n" +
 			"                 │   ├─ Filter\n" +
@@ -664,12 +664,12 @@ order by
 			"         └─ GroupBy\n" +
 			"             ├─ select: SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), nation.n_name\n" +
 			"             ├─ group: nation.n_name\n" +
-			"             └─ LookupJoin (estimated cost=3300.000 rows=1000)\n" +
+			"             └─ LookupJoin (estimated cost=3334.539 rows=1000)\n" +
 			"                 ├─ ((customer.c_nationkey = supplier.s_nationkey) AND (supplier.s_nationkey = nation.n_nationkey))\n" +
-			"                 ├─ LookupJoin (estimated cost=3173.000 rows=1000)\n" +
-			"                 │   ├─ LookupJoin (estimated cost=2805.000 rows=850)\n" +
-			"                 │   │   ├─ LookupJoin (estimated cost=2805.000 rows=850)\n" +
-			"                 │   │   │   ├─ LookupJoin (estimated cost=2805.000 rows=850)\n" +
+			"                 ├─ LookupJoin (estimated cost=3202.358 rows=1000)\n" +
+			"                 │   ├─ LookupJoin (estimated cost=2833.667 rows=850)\n" +
+			"                 │   │   ├─ LookupJoin (estimated cost=2834.358 rows=850)\n" +
+			"                 │   │   │   ├─ LookupJoin (estimated cost=2834.358 rows=850)\n" +
 			"                 │   │   │   │   ├─ Filter\n" +
 			"                 │   │   │   │   │   ├─ ((orders.o_orderdate >= '1994-01-01') AND (orders.o_orderdate < 1995-01-01 00:00:00 +0000 UTC))\n" +
 			"                 │   │   │   │   │   └─ Table\n" +
@@ -706,12 +706,12 @@ order by
 			"         └─ GroupBy\n" +
 			"             ├─ select: SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), nation.n_name\n" +
 			"             ├─ group: nation.n_name\n" +
-			"             └─ LookupJoin (estimated cost=3300.000 rows=1000) (actual rows=0 loops=1)\n" +
+			"             └─ LookupJoin (estimated cost=3334.539 rows=1000) (actual rows=0 loops=1)\n" +
 			"                 ├─ ((customer.c_nationkey = supplier.s_nationkey) AND (supplier.s_nationkey = nation.n_nationkey))\n" +
-			"                 ├─ LookupJoin (estimated cost=3173.000 rows=1000) (actual rows=0 loops=1)\n" +
-			"                 │   ├─ LookupJoin (estimated cost=2805.000 rows=850) (actual rows=0 loops=1)\n" +
-			"                 │   │   ├─ LookupJoin (estimated cost=2805.000 rows=850) (actual rows=0 loops=1)\n" +
-			"                 │   │   │   ├─ LookupJoin (estimated cost=2805.000 rows=850) (actual rows=0 loops=1)\n" +
+			"                 ├─ LookupJoin (estimated cost=3202.358 rows=1000) (actual rows=0 loops=1)\n" +
+			"                 │   ├─ LookupJoin (estimated cost=2833.667 rows=850) (actual rows=0 loops=1)\n" +
+			"                 │   │   ├─ LookupJoin (estimated cost=2834.358 rows=850) (actual rows=0 loops=1)\n" +
+			"                 │   │   │   ├─ LookupJoin (estimated cost=2834.358 rows=850) (actual rows=0 loops=1)\n" +
 			"                 │   │   │   │   ├─ Filter\n" +
 			"                 │   │   │   │   │   ├─ ((orders.o_orderdate >= '1994-01-01') AND (orders.o_orderdate < 1995-01-01 00:00:00 +0000 UTC))\n" +
 			"                 │   │   │   │   │   └─ Table\n" +
@@ -960,11 +960,11 @@ order by
 			"             ├─ tableId: 7\n" +
 			"             └─ Project\n" +
 			"                 ├─ columns: [n1.n_name as supp_nation, n2.n_name as cust_nation, extract('YEAR' from lineitem.l_shipdate) as l_year, (lineitem.l_extendedprice * (1 - lineitem.l_discount)) as volume]\n" +
-			"                 └─ LookupJoin (estimated cost=2805.000 rows=850)\n" +
+			"                 └─ LookupJoin (estimated cost=2834.358 rows=850)\n" +
 			"                     ├─ (((n1.n_name = 'FRANCE') AND (n2.n_name = 'GERMANY')) OR ((n1.n_name = 'GERMANY') AND (n2.n_name = 'FRANCE')))\n" +
-			"                     ├─ LookupJoin (estimated cost=2805.000 rows=850)\n" +
-			"                     │   ├─ LookupJoin (estimated cost=2805.000 rows=850)\n" +
-			"                     │   │   ├─ LookupJoin (estimated cost=2805.000 rows=850)\n" +
+			"                     ├─ LookupJoin (estimated cost=2834.358 rows=850)\n" +
+			"                     │   ├─ LookupJoin (estimated cost=2834.358 rows=850)\n" +
+			"                     │   │   ├─ LookupJoin (estimated cost=2834.358 rows=850)\n" +
 			"                     │   │   │   ├─ MergeJoin (estimated cost=1877.000 rows=850)\n" +
 			"                     │   │   │   │   ├─ cmp: (lineitem.l_orderkey = orders.o_orderkey)\n" +
 			"                     │   │   │   │   ├─ Filter\n" +
@@ -1011,11 +1011,11 @@ order by
 			"             ├─ tableId: 7\n" +
 			"             └─ Project\n" +
 			"                 ├─ columns: [n1.n_name as supp_nation, n2.n_name as cust_nation, extract('YEAR' from lineitem.l_shipdate) as l_year, (lineitem.l_extendedprice * (1 - lineitem.l_discount)) as volume]\n" +
-			"                 └─ LookupJoin (estimated cost=2805.000 rows=850) (actual rows=0 loops=1)\n" +
+			"                 └─ LookupJoin (estimated cost=2834.358 rows=850) (actual rows=0 loops=1)\n" +
 			"                     ├─ (((n1.n_name = 'FRANCE') AND (n2.n_name = 'GERMANY')) OR ((n1.n_name = 'GERMANY') AND (n2.n_name = 'FRANCE')))\n" +
-			"                     ├─ LookupJoin (estimated cost=2805.000 rows=850) (actual rows=0 loops=1)\n" +
-			"                     │   ├─ LookupJoin (estimated cost=2805.000 rows=850) (actual rows=0 loops=1)\n" +
-			"                     │   │   ├─ LookupJoin (estimated cost=2805.000 rows=850) (actual rows=0 loops=1)\n" +
+			"                     ├─ LookupJoin (estimated cost=2834.358 rows=850) (actual rows=0 loops=1)\n" +
+			"                     │   ├─ LookupJoin (estimated cost=2834.358 rows=850) (actual rows=0 loops=1)\n" +
+			"                     │   │   ├─ LookupJoin (estimated cost=2834.358 rows=850) (actual rows=0 loops=1)\n" +
 			"                     │   │   │   ├─ MergeJoin (estimated cost=1877.000 rows=850) (actual rows=0 loops=1)\n" +
 			"                     │   │   │   │   ├─ cmp: (lineitem.l_orderkey = orders.o_orderkey)\n" +
 			"                     │   │   │   │   ├─ Filter\n" +
@@ -1208,13 +1208,13 @@ order by
 			"             ├─ tableId: 9\n" +
 			"             └─ Project\n" +
 			"                 ├─ columns: [extract('YEAR' from orders.o_orderdate) as o_year, (lineitem.l_extendedprice * (1 - lineitem.l_discount)) as volume, n2.n_name as nation]\n" +
-			"                 └─ LookupJoin (estimated cost=3300.000 rows=1000)\n" +
-			"                     ├─ LookupJoin (estimated cost=3300.000 rows=1000)\n" +
-			"                     │   ├─ LookupJoin (estimated cost=3300.000 rows=1000)\n" +
-			"                     │   │   ├─ LookupJoin (estimated cost=3173.000 rows=1000)\n" +
-			"                     │   │   │   ├─ LookupJoin (estimated cost=2805.000 rows=850)\n" +
-			"                     │   │   │   │   ├─ LookupJoin (estimated cost=2805.000 rows=850)\n" +
-			"                     │   │   │   │   │   ├─ LookupJoin (estimated cost=2805.000 rows=850)\n" +
+			"                 └─ LookupJoin (estimated cost=3334.539 rows=1000)\n" +
+			"                     ├─ LookupJoin (estimated cost=3333.726 rows=1000)\n" +
+			"                     │   ├─ LookupJoin (estimated cost=3334.539 rows=1000)\n" +
+			"                     │   │   ├─ LookupJoin (estimated cost=3202.358 rows=1000)\n" +
+			"                     │   │   │   ├─ LookupJoin (estimated cost=2833.667 rows=850)\n" +
+			"                     │   │   │   │   ├─ LookupJoin (estimated cost=2834.358 rows=850)\n" +
+			"                     │   │   │   │   │   ├─ LookupJoin (estimated cost=2834.358 rows=850)\n" +
 			"                     │   │   │   │   │   │   ├─ Filter\n" +
 			"                     │   │   │   │   │   │   │   ├─ ((orders.o_orderdate >= '1995-01-01') AND (orders.o_orderdate <= '1996-12-31'))\n" +
 			"                     │   │   │   │   │   │   │   └─ Table\n" +
@@ -1270,13 +1270,13 @@ order by
 			"             ├─ tableId: 9\n" +
 			"             └─ Project\n" +
 			"                 ├─ columns: [extract('YEAR' from orders.o_orderdate) as o_year, (lineitem.l_extendedprice * (1 - lineitem.l_discount)) as volume, n2.n_name as nation]\n" +
-			"                 └─ LookupJoin (estimated cost=3300.000 rows=1000) (actual rows=0 loops=1)\n" +
-			"                     ├─ LookupJoin (estimated cost=3300.000 rows=1000) (actual rows=0 loops=1)\n" +
-			"                     │   ├─ LookupJoin (estimated cost=3300.000 rows=1000) (actual rows=0 loops=1)\n" +
-			"                     │   │   ├─ LookupJoin (estimated cost=3173.000 rows=1000) (actual rows=0 loops=1)\n" +
-			"                     │   │   │   ├─ LookupJoin (estimated cost=2805.000 rows=850) (actual rows=0 loops=1)\n" +
-			"                     │   │   │   │   ├─ LookupJoin (estimated cost=2805.000 rows=850) (actual rows=0 loops=1)\n" +
-			"                     │   │   │   │   │   ├─ LookupJoin (estimated cost=2805.000 rows=850) (actual rows=0 loops=1)\n" +
+			"                 └─ LookupJoin (estimated cost=3334.539 rows=1000) (actual rows=0 loops=1)\n" +
+			"                     ├─ LookupJoin (estimated cost=3333.726 rows=1000) (actual rows=0 loops=1)\n" +
+			"                     │   ├─ LookupJoin (estimated cost=3334.539 rows=1000) (actual rows=0 loops=1)\n" +
+			"                     │   │   ├─ LookupJoin (estimated cost=3202.358 rows=1000) (actual rows=0 loops=1)\n" +
+			"                     │   │   │   ├─ LookupJoin (estimated cost=2833.667 rows=850) (actual rows=0 loops=1)\n" +
+			"                     │   │   │   │   ├─ LookupJoin (estimated cost=2834.358 rows=850) (actual rows=0 loops=1)\n" +
+			"                     │   │   │   │   │   ├─ LookupJoin (estimated cost=2834.358 rows=850) (actual rows=0 loops=1)\n" +
 			"                     │   │   │   │   │   │   ├─ Filter\n" +
 			"                     │   │   │   │   │   │   │   ├─ ((orders.o_orderdate >= '1995-01-01') AND (orders.o_orderdate <= '1996-12-31'))\n" +
 			"                     │   │   │   │   │   │   │   └─ Table\n" +
@@ -1463,7 +1463,7 @@ order by
 			"             ├─ tableId: 7\n" +
 			"             └─ Project\n" +
 			"                 ├─ columns: [nation.n_name as nation, extract('YEAR' from orders.o_orderdate) as o_year, ((lineitem.l_extendedprice * (1 - lineitem.l_discount)) - (partsupp.ps_supplycost * lineitem.l_quantity)) as amount]\n" +
-			"                 └─ LookupJoin (estimated cost=3300.000 rows=1000)\n" +
+			"                 └─ LookupJoin (estimated cost=3334.539 rows=1000)\n" +
 			"                     ├─ HashJoin (estimated cost=4020.000 rows=1000)\n" +
 			"                     │   ├─ ((((part.p_partkey = lineitem.l_partkey) AND (partsupp.ps_suppkey = lineitem.l_suppkey)) AND (partsupp.ps_partkey = lineitem.l_partkey)) AND (supplier.s_suppkey = partsupp.ps_suppkey))\n" +
 			"                     │   ├─ MergeJoin (estimated cost=1878.500 rows=1000)\n" +
@@ -1481,7 +1481,7 @@ order by
 			"                     │   └─ HashLookup\n" +
 			"                     │       ├─ left-key: (part.p_partkey, partsupp.ps_suppkey, partsupp.ps_partkey, partsupp.ps_suppkey)\n" +
 			"                     │       ├─ right-key: (lineitem.l_partkey, lineitem.l_suppkey, lineitem.l_partkey, supplier.s_suppkey)\n" +
-			"                     │       └─ LookupJoin (estimated cost=3300.000 rows=1000)\n" +
+			"                     │       └─ LookupJoin (estimated cost=3334.539 rows=1000)\n" +
 			"                     │           ├─ MergeJoin (estimated cost=2030.000 rows=1000)\n" +
 			"                     │           │   ├─ cmp: (lineitem.l_orderkey = orders.o_orderkey)\n" +
 			"                     │           │   ├─ IndexedTableAccess(lineitem)\n" +
@@ -1516,7 +1516,7 @@ order by
 			"             ├─ tableId: 7\n" +
 			"             └─ Project\n" +
 			"                 ├─ columns: [nation.n_name as nation, extract('YEAR' from orders.o_orderdate) as o_year, ((lineitem.l_extendedprice * (1 - lineitem.l_discount)) - (partsupp.ps_supplycost * lineitem.l_quantity)) as amount]\n" +
-			"                 └─ LookupJoin (estimated cost=3300.000 rows=1000) (actual rows=0 loops=1)\n" +
+			"                 └─ LookupJoin (estimated cost=3334.539 rows=1000) (actual rows=0 loops=1)\n" +
 			"                     ├─ HashJoin (estimated cost=4020.000 rows=1000) (actual rows=0 loops=1)\n" +
 			"                     │   ├─ ((((part.p_partkey = lineitem.l_partkey) AND (partsupp.ps_suppkey = lineitem.l_suppkey)) AND (partsupp.ps_partkey = lineitem.l_partkey)) AND (supplier.s_suppkey = partsupp.ps_suppkey))\n" +
 			"                     │   ├─ MergeJoin (estimated cost=1878.500 rows=1000) (actual rows=0 loops=1)\n" +
@@ -1534,7 +1534,7 @@ order by
 			"                     │   └─ HashLookup\n" +
 			"                     │       ├─ left-key: (part.p_partkey, partsupp.ps_suppkey, partsupp.ps_partkey, partsupp.ps_suppkey)\n" +
 			"                     │       ├─ right-key: (lineitem.l_partkey, lineitem.l_suppkey, lineitem.l_partkey, supplier.s_suppkey)\n" +
-			"                     │       └─ LookupJoin (estimated cost=3300.000 rows=1000)\n" +
+			"                     │       └─ LookupJoin (estimated cost=3334.539 rows=1000)\n" +
 			"                     │           ├─ MergeJoin (estimated cost=2030.000 rows=1000)\n" +
 			"                     │           │   ├─ cmp: (lineitem.l_orderkey = orders.o_orderkey)\n" +
 			"                     │           │   ├─ IndexedTableAccess(lineitem)\n" +
@@ -1656,8 +1656,8 @@ order by
 			"         └─ GroupBy\n" +
 			"             ├─ select: SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), customer.c_custkey, customer.c_name, customer.c_acctbal, nation.n_name, customer.c_address, customer.c_phone, customer.c_comment\n" +
 			"             ├─ group: customer.c_custkey, customer.c_name, customer.c_acctbal, customer.c_phone, nation.n_name, customer.c_address, customer.c_comment\n" +
-			"             └─ LookupJoin (estimated cost=2805.000 rows=850)\n" +
-			"                 ├─ LookupJoin (estimated cost=2805.000 rows=850)\n" +
+			"             └─ LookupJoin (estimated cost=2834.358 rows=850)\n" +
+			"                 ├─ LookupJoin (estimated cost=2834.358 rows=850)\n" +
 			"                 │   ├─ MergeJoin (estimated cost=1725.500 rows=850)\n" +
 			"                 │   │   ├─ cmp: (orders.o_orderkey = lineitem.l_orderkey)\n" +
 			"                 │   │   ├─ Filter\n" +
@@ -1689,8 +1689,8 @@ order by
 			"         └─ GroupBy\n" +
 			"             ├─ select: SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), customer.c_custkey, customer.c_name, customer.c_acctbal, nation.n_name, customer.c_address, customer.c_phone, customer.c_comment\n" +
 			"             ├─ group: customer.c_custkey, customer.c_name, customer.c_acctbal, customer.c_phone, nation.n_name, customer.c_address, customer.c_comment\n" +
-			"             └─ LookupJoin (estimated cost=2805.000 rows=850) (actual rows=0 loops=1)\n" +
-			"                 ├─ LookupJoin (estimated cost=2805.000 rows=850) (actual rows=0 loops=1)\n" +
+			"             └─ LookupJoin (estimated cost=2834.358 rows=850) (actual rows=0 loops=1)\n" +
+			"                 ├─ LookupJoin (estimated cost=2834.358 rows=850) (actual rows=0 loops=1)\n" +
 			"                 │   ├─ MergeJoin (estimated cost=1725.500 rows=850) (actual rows=0 loops=1)\n" +
 			"                 │   │   ├─ cmp: (orders.o_orderkey = lineitem.l_orderkey)\n" +
 			"                 │   │   ├─ Filter\n" +
@@ -2161,7 +2161,7 @@ where
 			" └─ GroupBy\n" +
 			"     ├─ select: SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), SUM(CASE  WHEN part.p_type LIKE 'PROMO%' THEN (lineitem.l_extendedprice * (1 - lineitem.l_discount)) ELSE 0 END)\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin (estimated cost=2805.000 rows=850)\n" +
+			"     └─ LookupJoin (estimated cost=2834.358 rows=850)\n" +
 			"         ├─ Filter\n" +
 			"         │   ├─ ((lineitem.l_shipdate >= '1995-09-01') AND (lineitem.l_shipdate < 1995-10-01 00:00:00 +0000 UTC))\n" +
 			"         │   └─ Table\n" +
@@ -2177,7 +2177,7 @@ where
 			" └─ GroupBy\n" +
 			"     ├─ select: SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), SUM(CASE  WHEN part.p_type LIKE 'PROMO%' THEN (lineitem.l_extendedprice * (1 - lineitem.l_discount)) ELSE 0 END)\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin (estimated cost=2805.000 rows=850) (actual rows=0 loops=1)\n" +
+			"     └─ LookupJoin (estimated cost=2834.358 rows=850) (actual rows=0 loops=1)\n" +
 			"         ├─ Filter\n" +
 			"         │   ├─ ((lineitem.l_shipdate >= '1995-09-01') AND (lineitem.l_shipdate < 1995-10-01 00:00:00 +0000 UTC))\n" +
 			"         │   └─ Table\n" +
@@ -2298,7 +2298,7 @@ order by
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [supplier.s_suppkey, supplier.s_name, supplier.s_address, supplier.s_phone, revenue0.total_revenue]\n" +
 			" └─ Sort(supplier.s_suppkey ASC)\n" +
-			"     └─ LookupJoin (estimated cost=330.000 rows=100)\n" +
+			"     └─ LookupJoin (estimated cost=333.454 rows=100)\n" +
 			"         ├─ (revenue0.total_revenue = Subquery(select max(total_revenue) from revenue0))\n" +
 			"         ├─ SubqueryAlias\n" +
 			"         │   ├─ name: revenue0\n" +
@@ -2324,7 +2324,7 @@ order by
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [supplier.s_suppkey, supplier.s_name, supplier.s_address, supplier.s_phone, revenue0.total_revenue]\n" +
 			" └─ Sort(supplier.s_suppkey ASC)\n" +
-			"     └─ LookupJoin (estimated cost=330.000 rows=100) (actual rows=0 loops=1)\n" +
+			"     └─ LookupJoin (estimated cost=333.454 rows=100) (actual rows=0 loops=1)\n" +
 			"         ├─ (revenue0.total_revenue = Subquery(select max(total_revenue) from revenue0))\n" +
 			"         ├─ SubqueryAlias\n" +
 			"         │   ├─ name: revenue0\n" +
@@ -2456,7 +2456,7 @@ order by
 			"                 ├─ columns: [partsupp.PS_PARTKEY, partsupp.PS_SUPPKEY, partsupp.PS_AVAILQTY, partsupp.PS_SUPPLYCOST, partsupp.PS_COMMENT, part.P_PARTKEY, part.P_NAME, part.P_MFGR, part.P_BRAND, part.P_TYPE, part.P_SIZE, part.P_CONTAINER, part.P_RETAILPRICE, part.P_COMMENT]\n" +
 			"                 └─ Filter\n" +
 			"                     ├─ supplier.s_suppkey IS NULL\n" +
-			"                     └─ LeftOuterLookupJoin (estimated cost=3300.000 rows=1000)\n" +
+			"                     └─ LeftOuterLookupJoin (estimated cost=3333.726 rows=1000)\n" +
 			"                         ├─ MergeJoin (estimated cost=1878.500 rows=1000)\n" +
 			"                         │   ├─ cmp: (partsupp.ps_partkey = part.p_partkey)\n" +
 			"                         │   ├─ IndexedTableAccess(partsupp)\n" +
@@ -2487,7 +2487,7 @@ order by
 			"                 ├─ columns: [partsupp.PS_PARTKEY, partsupp.PS_SUPPKEY, partsupp.PS_AVAILQTY, partsupp.PS_SUPPLYCOST, partsupp.PS_COMMENT, part.P_PARTKEY, part.P_NAME, part.P_MFGR, part.P_BRAND, part.P_TYPE, part.P_SIZE, part.P_CONTAINER, part.P_RETAILPRICE, part.P_COMMENT]\n" +
 			"                 └─ Filter\n" +
 			"                     ├─ supplier.s_suppkey IS NULL\n" +
-			"                     └─ LeftOuterLookupJoin (estimated cost=3300.000 rows=1000) (actual rows=0 loops=1)\n" +
+			"                     └─ LeftOuterLookupJoin (estimated cost=3333.726 rows=1000) (actual rows=0 loops=1)\n" +
 			"                         ├─ MergeJoin (estimated cost=1878.500 rows=1000) (actual rows=0 loops=1)\n" +
 			"                         │   ├─ cmp: (partsupp.ps_partkey = part.p_partkey)\n" +
 			"                         │   ├─ IndexedTableAccess(partsupp)\n" +
@@ -2578,7 +2578,7 @@ where
 			" └─ GroupBy\n" +
 			"     ├─ select: SUM(lineitem.l_extendedprice)\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin (estimated cost=3300.000 rows=1000)\n" +
+			"     └─ LookupJoin (estimated cost=3333.726 rows=1000)\n" +
 			"         ├─ (lineitem.l_quantity < Subquery(select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey))\n" +
 			"         ├─ Table\n" +
 			"         │   └─ name: lineitem\n" +
@@ -2593,7 +2593,7 @@ where
 			" └─ GroupBy\n" +
 			"     ├─ select: SUM(lineitem.l_extendedprice)\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin (estimated cost=3300.000 rows=1000) (actual rows=0 loops=1)\n" +
+			"     └─ LookupJoin (estimated cost=3333.726 rows=1000) (actual rows=0 loops=1)\n" +
 			"         ├─ (lineitem.l_quantity < Subquery(select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey))\n" +
 			"         ├─ Table\n" +
 			"         │   └─ name: lineitem\n" +
@@ -3128,13 +3128,13 @@ order by
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [supplier.s_name, supplier.s_address]\n" +
 			" └─ Sort(supplier.s_name ASC)\n" +
-			"     └─ LookupJoin (estimated cost=3300.000 rows=1000)\n" +
-			"         ├─ LookupJoin (estimated cost=3300.000 rows=1000)\n" +
+			"     └─ LookupJoin (estimated cost=3333.726 rows=1000)\n" +
+			"         ├─ LookupJoin (estimated cost=3334.539 rows=1000)\n" +
 			"         │   ├─ (supplier.s_suppkey = partsupp.ps_suppkey)\n" +
 			"         │   ├─ Distinct\n" +
 			"         │   │   └─ Project\n" +
 			"         │   │       ├─ columns: [partsupp.ps_suppkey]\n" +
-			"         │   │       └─ SemiLookupJoin (estimated cost=3300.000 rows=1000)\n" +
+			"         │   │       └─ SemiLookupJoin (estimated cost=3333.726 rows=1000)\n" +
 			"         │   │           ├─ (partsupp.ps_availqty > Subquery(select 0.5 * sum(l_quantity) from lineitem where l_partkey = ps_partkey and l_suppkey = ps_suppkey and l_shipdate >= '1994-01-01' and l_shipdate < '1994-01-01' + interval '1' year))\n" +
 			"         │   │           ├─ Table\n" +
 			"         │   │           │   └─ name: partsupp\n" +
@@ -3157,13 +3157,13 @@ order by
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [supplier.s_name, supplier.s_address]\n" +
 			" └─ Sort(supplier.s_name ASC)\n" +
-			"     └─ LookupJoin (estimated cost=3300.000 rows=1000) (actual rows=0 loops=1)\n" +
-			"         ├─ LookupJoin (estimated cost=3300.000 rows=1000) (actual rows=0 loops=1)\n" +
+			"     └─ LookupJoin (estimated cost=3333.726 rows=1000) (actual rows=0 loops=1)\n" +
+			"         ├─ LookupJoin (estimated cost=3334.539 rows=1000) (actual rows=0 loops=1)\n" +
 			"         │   ├─ (supplier.s_suppkey = partsupp.ps_suppkey)\n" +
 			"         │   ├─ Distinct\n" +
 			"         │   │   └─ Project\n" +
 			"         │   │       ├─ columns: [partsupp.ps_suppkey]\n" +
-			"         │   │       └─ SemiLookupJoin (estimated cost=3300.000 rows=1000) (actual rows=0 loops=1)\n" +
+			"         │   │       └─ SemiLookupJoin (estimated cost=3333.726 rows=1000) (actual rows=0 loops=1)\n" +
 			"         │   │           ├─ (partsupp.ps_availqty > Subquery(select 0.5 * sum(l_quantity) from lineitem where l_partkey = ps_partkey and l_suppkey = ps_suppkey and l_shipdate >= '1994-01-01' and l_shipdate < '1994-01-01' + interval '1' year))\n" +
 			"         │   │           ├─ Table\n" +
 			"         │   │           │   └─ name: partsupp\n" +
@@ -3326,12 +3326,12 @@ order by
 			"         └─ GroupBy\n" +
 			"             ├─ select: COUNT(1), supplier.s_name\n" +
 			"             ├─ group: supplier.s_name\n" +
-			"             └─ SemiLookupJoin (estimated cost=3960.000 rows=1250)\n" +
+			"             └─ SemiLookupJoin (estimated cost=3996.680 rows=1250)\n" +
 			"                 ├─ (NOT((l2.l_suppkey = l1.l_suppkey)))\n" +
 			"                 ├─ AntiJoinIncludingNulls (estimated cost=365712.500 rows=1062)\n" +
 			"                 │   ├─ ((l3.l_orderkey = l1.l_orderkey) AND (NOT((l3.l_suppkey = l1.l_suppkey))))\n" +
-			"                 │   ├─ LookupJoin (estimated cost=2805.000 rows=850)\n" +
-			"                 │   │   ├─ LookupJoin (estimated cost=2805.000 rows=850)\n" +
+			"                 │   ├─ LookupJoin (estimated cost=2833.667 rows=850)\n" +
+			"                 │   │   ├─ LookupJoin (estimated cost=2834.358 rows=850)\n" +
 			"                 │   │   │   ├─ MergeJoin (estimated cost=1725.500 rows=850)\n" +
 			"                 │   │   │   │   ├─ cmp: (l1.l_orderkey = orders.o_orderkey)\n" +
 			"                 │   │   │   │   ├─ Filter\n" +
@@ -3373,12 +3373,12 @@ order by
 			"         └─ GroupBy\n" +
 			"             ├─ select: COUNT(1), supplier.s_name\n" +
 			"             ├─ group: supplier.s_name\n" +
-			"             └─ SemiLookupJoin (estimated cost=3960.000 rows=1250) (actual rows=0 loops=1)\n" +
+			"             └─ SemiLookupJoin (estimated cost=3996.680 rows=1250) (actual rows=0 loops=1)\n" +
 			"                 ├─ (NOT((l2.l_suppkey = l1.l_suppkey)))\n" +
 			"                 ├─ AntiJoinIncludingNulls (estimated cost=365712.500 rows=1062) (actual rows=0 loops=1)\n" +
 			"                 │   ├─ ((l3.l_orderkey = l1.l_orderkey) AND (NOT((l3.l_suppkey = l1.l_suppkey))))\n" +
-			"                 │   ├─ LookupJoin (estimated cost=2805.000 rows=850) (actual rows=0 loops=1)\n" +
-			"                 │   │   ├─ LookupJoin (estimated cost=2805.000 rows=850) (actual rows=0 loops=1)\n" +
+			"                 │   ├─ LookupJoin (estimated cost=2833.667 rows=850) (actual rows=0 loops=1)\n" +
+			"                 │   │   ├─ LookupJoin (estimated cost=2834.358 rows=850) (actual rows=0 loops=1)\n" +
 			"                 │   │   │   ├─ MergeJoin (estimated cost=1725.500 rows=850) (actual rows=0 loops=1)\n" +
 			"                 │   │   │   │   ├─ cmp: (l1.l_orderkey = orders.o_orderkey)\n" +
 			"                 │   │   │   │   ├─ Filter\n" +
