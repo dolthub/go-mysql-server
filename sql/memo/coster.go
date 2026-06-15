@@ -31,6 +31,7 @@ const (
 	randIOCostFactor          = 1.3
 	memCostFactor             = 2.0
 	concatCostFactor          = 0.75
+	indexLookupScalarFactor   = 200.0
 	degeneratePenalty         = 2.0
 	optimisticJoinSel         = .10
 	biasFactor                = 1e5
@@ -133,7 +134,7 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 				// read the whole left table and randIO into table equivalent to
 				// this join's output cardinality estimate
 				lCost := float64(lBest * seqIOCostFactor)
-				rCost := float64(1 + float64(math.Log(rBest)/200.0))
+				rCost := float64(1 + float64(math.Log(rBest)/indexLookupScalarFactor))
 				return float64(lCost*rCost) + float64(selfJoinCard*float64(randIOCostFactor+seqIOCostFactor)), nil
 			case *ConcatJoin:
 				return c.costConcatJoin(ctx, n, s)
