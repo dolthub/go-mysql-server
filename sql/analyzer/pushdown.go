@@ -24,7 +24,7 @@ import (
 // pushFilters moves filter nodes down to their appropriate relations.
 // Filters that reference a single relation will wrap their target tables.
 // as is appropriate. We never move a filter without deleting from the source.
-// Related rules: hoistOutOfScopeFilters, moveJoinConditionsToFilter.
+// Related rules: hoistOutOfScopeFilters, pushdownSubqueryAliasFilters
 func pushFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("push_filters")
 	defer span.End()

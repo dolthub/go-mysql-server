@@ -376,7 +376,7 @@ func TestTransactionScriptWithEngine(t *testing.T, e QueryEngine, harness Harnes
 }
 
 // TestQuery runs a query on the engine given and asserts that results are as expected.
-// TODO: this should take en engine https://github.com/dolthub/go-mysql-server/issues/3588
+// TODO: this should take an engine https://github.com/dolthub/go-mysql-server/issues/3588
 func TestQuery(t *testing.T, harness Harness, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]sqlparser.Expr) {
 	testQuery(t, harness, q, expected, expectedCols, bindings, queries.WrapBehavior_Unwrap)
 }

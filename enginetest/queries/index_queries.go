@@ -3841,14 +3841,16 @@ var IndexPrefixQueries = []ScriptTest{
 				Query:           "select distinct j2.pk from j2 join t on t.col1 >= 'one';",
 				ExpectedIndexes: []string{},
 				Expected:        []sql.Row{{1}, {2}, {3}},
-				JoinTypes:       []plan.JoinType{plan.JoinTypeInner},
+				// This is a cross join on a filtered table (no index)
+				JoinTypes: []plan.JoinType{plan.JoinTypeCross},
 			},
 			{
 				// Assert that we DO use the index for a join on an exact match condition
 				Query:           "select /*+ LOOKUP_JOIN(t,j2) */ distinct j2.pk from j2 join t on t.col1 = ' ';",
 				ExpectedIndexes: []string{"k1"},
 				Expected:        []sql.Row{{1}, {2}, {3}},
-				JoinTypes:       []plan.JoinType{plan.JoinTypeLookup},
+				// This is a cross join on an IndexedTableAccess
+				JoinTypes: []plan.JoinType{plan.JoinTypeCross},
 			},
 
 			{
