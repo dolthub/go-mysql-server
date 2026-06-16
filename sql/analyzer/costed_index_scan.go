@@ -440,7 +440,7 @@ func addIndexScans(ctx *sql.Context, m *memo.Memo, catalog *Catalog) error {
 					// cannot drop any filters
 					keepFilters = filter.Filters
 				} else {
-					keepFilters = expression.SplitConjunction(ctx, newFilter)
+					keepFilters = SplitConjunction(ctx, newFilter)
 				}
 
 				var idx *memo.Index

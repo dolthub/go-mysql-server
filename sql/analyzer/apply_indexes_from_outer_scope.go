@@ -228,7 +228,7 @@ func getSubqueryIndexes(
 	// build a list of candidate predicate expressions, those that might be used for an index lookup
 	var candidatePredicates []sql.Expression
 
-	for _, e := range expression.SplitConjunction(ctx, e) {
+	for _, e := range SplitConjunction(ctx, e) {
 		// We are only interested in expressions that involve an outer scope variable (those whose index is less than the
 		// scope length)
 		isScopeExpr := false

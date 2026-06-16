@@ -64,7 +64,7 @@ func unnestInSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 			switch n := n.(type) {
 			case *plan.Filter:
 				child = n.Child
-				filters = expression.SplitConjunction(ctx, n.Expression)
+				filters = SplitConjunction(ctx, n.Expression)
 			default:
 			}
 

@@ -329,7 +329,7 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo, cat sql.Catalog) error {
 			conds := expression.SplitDisjunction(or)
 			var concat []*memo.IndexScan
 			for _, on := range conds {
-				filters := expression.SplitConjunction(ctx, on)
+				filters := SplitConjunction(ctx, on)
 				for _, idx := range indexes {
 					keyExprs, _, nullmask := keyExprsForIndex(ctx, tableId, idx.Cols(), append(filters, extraFilters...), columnIdToIndexedExprMap)
 					if keyExprs != nil {
