@@ -45,7 +45,8 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 	for _, se := range selectExprs {
 		// Check for named expressions before unqualified *
 		if star, ok := se.(*ast.StarExpr); ok {
-			if star.TableName.IsEmpty() && hasColumnBeforeStar {
+			// TODO this validation does not apply for Doltgres, need better way check for it.
+			if star.TableName.IsEmpty() && hasColumnBeforeStar && (inScope.schemaName == "" && outScope.schemaName == "") {
 				b.handleErr(sql.ErrInvalidSyntax.New("cannot mix named columns with '*' in SELECT clause"))
 			}
 		} else if _, ok := se.(*ast.AliasedExpr); ok {
