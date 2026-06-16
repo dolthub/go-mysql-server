@@ -61,6 +61,16 @@ func getJSONDocumentFromRow(ctx *sql.Context, row sql.Row, json sql.Expression) 
 		return nil, err
 	}
 
+	// A large text value can arrive as a lazily loaded StringWrapper. Unwrap it
+	// so it follows the string path below.
+	if sw, ok := js.(sql.StringWrapper); ok {
+		s, err := sw.Unwrap(ctx)
+		if err != nil {
+			return nil, err
+		}
+		js = s
+	}
+
 	var jsonData interface{}
 
 	switch jsType := js.(type) {
