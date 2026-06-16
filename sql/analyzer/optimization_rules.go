@@ -83,69 +83,9 @@ func flattenDistinct(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 // moveJoinConditionsToFilter looks for expressions in a join condition that reference only tables in the left or right
 // side of the join, and move those conditions to a new Filter node instead. If the join condition is empty after these
 // moves, the join is converted to a CrossJoin.
-// TODO: this should be combined with pushFilters
+// TODO: remove rule and references to it
 func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
-	if !n.Resolved() {
-		return n, transform.SameTree, nil
-	}
-
-	return transform.Node(ctx, n, func(ctx *sql.Context, n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		var rightOnlyFilters []sql.Expression
-		var leftOnlyFilters []sql.Expression
-
-		join, ok := n.(*plan.JoinNode)
-		if !ok {
-			// no join
-			return n, transform.SameTree, nil
-		}
-
-		// no filter, outer or anti join: nothing to do to the tree
-		if join.JoinCond() == nil || join.JoinType().IsCross() || join.JoinType().IsOuter() || join.JoinType().IsAnti() {
-			return n, transform.SameTree, nil
-		}
-		leftSources := nodeSources(ctx, join.Left())
-		rightSources := nodeSources(ctx, join.Right())
-		filtersMoved := 0
-		var condFilters []sql.Expression
-		for _, e := range expression.SplitConjunction(ctx, join.JoinCond()) {
-			sources, nullRej := expressionSources(ctx, e)
-			if !nullRej {
-				condFilters = append(condFilters, e)
-				continue
-			}
-
-			if sources.SubsetOf(leftSources) {
-				leftOnlyFilters = append(leftOnlyFilters, e)
-				filtersMoved++
-			} else if sources.SubsetOf(rightSources) {
-				rightOnlyFilters = append(rightOnlyFilters, e)
-				filtersMoved++
-			} else {
-				condFilters = append(condFilters, e)
-			}
-		}
-
-		if filtersMoved == 0 {
-			return n, transform.SameTree, nil
-		}
-
-		newLeft := join.Left()
-		if len(leftOnlyFilters) > 0 {
-			newLeft = plan.NewFilter(ctx, expression.JoinAnd(leftOnlyFilters...), newLeft)
-		}
-
-		newRight := join.Right()
-		if len(rightOnlyFilters) > 0 {
-			newRight = plan.NewFilter(ctx, expression.JoinAnd(rightOnlyFilters...), newRight)
-		}
-
-		// TODO: This may not actually be necessary since nil join conditions are evaluated as true. But removing this
-		//  prevents some cross joins (with filtered table) from being turned into lookup joins when there's a join hint
-		if len(condFilters) == 0 {
-			condFilters = append(condFilters, expression.NewTrue())
-		}
-		return plan.NewJoin(ctx, newLeft, newRight, join.Op, expression.JoinAnd(condFilters...)).WithComment(join.CommentStr), transform.NewTree, nil
-	})
+	return n, transform.SameTree, nil
 }
 
 // nodeSources returns the set of column sources from the schema of the node given.

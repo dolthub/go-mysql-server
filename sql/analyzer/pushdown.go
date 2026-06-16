@@ -23,85 +23,8 @@ import (
 
 // pushFilters moves filter nodes down to their appropriate relations.
 // Filters that reference a single relation will wrap their target tables.
-// Filters that reference multiple tables will move as low in the join tree
 // as is appropriate. We never move a filter without deleting from the source.
 // Related rules: hoistOutOfScopeFilters, moveJoinConditionsToFilter.
-//func pushFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
-//	span, ctx := ctx.Span("push_filters")
-//	defer span.End()
-//
-//	if !canDoPushdown(n) {
-//		return n, transform.SameTree, nil
-//	}
-//
-//	pushdownAboveTables := func(n sql.Node, filters *filterSet) (sql.Node, transform.TreeIdentity, error) {
-//		return transform.NodeWithCtx(ctx, n, filterPushdownSelector, func(ctx *sql.Context, c transform.Context) (sql.Node, transform.TreeIdentity, error) {
-//			switch node := c.Node.(type) {
-//			case *plan.Filter:
-//				if f, ok := node.Child.(*plan.Filter); ok {
-//					if node.Expression == f.Expression {
-//						return f, transform.NewTree, nil
-//					}
-//					// TODO: We should not be simply AND'ing the two filter expressions since they may have overlapping
-//					//  subexpressions.
-//					return plan.NewFilter(ctx, expression.JoinAnd(node.Expression, f.Expression), f.Child), transform.NewTree, nil
-//				}
-//				return node, transform.SameTree, nil
-//			case *plan.TableAlias, *plan.ResolvedTable, *plan.ValueDerivedTable, sql.TableFunction:
-//				table, same, err := pushdownFiltersToAboveTable(ctx, a, node.(sql.NameableNode), scope, filters)
-//				if err != nil {
-//					return nil, transform.SameTree, err
-//				}
-//				if same {
-//					return node, transform.SameTree, nil
-//				}
-//				return table, transform.NewTree, nil
-//			default:
-//				return node, transform.SameTree, nil
-//			}
-//		})
-//	}
-//
-//	// TODO: get tableAliases and projectionExpressions (rename to projectionAliases?) in single pass
-//	tableAliases, err := getTableAliases(ctx, n, scope)
-//	if err != nil {
-//		return nil, transform.SameTree, err
-//	}
-//	projectionExpressions := getProjectionExpressions(n)
-//
-//	// For each filter node, we want to push its predicates as low as possible.
-//	return transform.Node(ctx, n, func(ctx *sql.Context, node sql.Node) (sql.Node, transform.TreeIdentity, error) {
-//		switch n := node.(type) {
-//		case *plan.Filter:
-//			switch n.Child.(type) {
-//			case *plan.TableAlias, *plan.ResolvedTable, *plan.IndexedTableAccess, *plan.ValueDerivedTable:
-//				// can't push any lower
-//				return n, transform.SameTree, nil
-//			default:
-//			}
-//			// Find all col exprs and group them by the table they mention so that we can keep track of which ones
-//			// have been pushed down and need to be removed from the parent filter
-//			filters := newFilterSet(ctx, n, scope, tableAliases, projectionExpressions)
-//
-//			// move filter predicates directly above their respective tables in joins
-//			ret, _, err := pushdownAboveTables(n, filters)
-//			if err != nil {
-//				return n, transform.SameTree, err
-//			}
-//
-//			retF, ok := ret.(*plan.Filter)
-//			if !ok {
-//				return n, transform.SameTree, fmt.Errorf("pushdown mistakenly converted filter to non-filter: %T", ret)
-//			}
-//
-//			// remove handled
-//			return updateFilterNode(ctx, a, retF, filters)
-//		default:
-//			return n, transform.SameTree, nil
-//		}
-//	})
-//}
-
 func pushFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("push_filters")
 	defer span.End()
