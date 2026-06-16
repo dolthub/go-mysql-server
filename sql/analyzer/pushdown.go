@@ -34,20 +34,22 @@ func pushFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, s
 	}
 	filters := &filterSet{
 		projectionExpressions: getProjectionExpressions(n),
+		filtersByTable:        newFiltersByTable(),
 	}
 
-	n, same, err := pushdownFiltersAboveTables(ctx, a, n, filters)
+	n, same, err := pushdownFiltersAboveTables(ctx, a, n, scope, filters)
 	// TODO: assert that there are no unhandled filters? this should never happen so error out if it does
 	return n, same, err
 }
 
-func pushdownFiltersAboveTables(ctx *sql.Context, a *Analyzer, n sql.Node, filters *filterSet) (sql.Node, transform.TreeIdentity, error) {
+func pushdownFiltersAboveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, filters *filterSet) (sql.Node, transform.TreeIdentity, error) {
 	switch node := n.(type) {
 	case *plan.Filter:
 		filterExpressions := expression.SplitConjunction(ctx, node.Expression)
 
-		// TODO (MUST DO NOW): add filter expressions to filter set
-		child, same, err := pushdownFiltersAboveTables(ctx, a, node.Child, filters)
+		// TODO: refactor this into its own function that takes an list of expressions (only need to call split conjunction once)
+		filters.filtersByTable.merge(exprToTableFilters(ctx, node.Expression, scope, filters.projectionExpressions))
+		child, same, err := pushdownFiltersAboveTables(ctx, a, node.Child, scope, filters)
 		if err != nil {
 			return node, transform.SameTree, err
 		}
@@ -67,21 +69,22 @@ func pushdownFiltersAboveTables(ctx *sql.Context, a *Analyzer, n sql.Node, filte
 		}
 	case *plan.JoinNode:
 		joinOp := node.JoinType()
-		// TODO: figure out what to do with anti joins
-		if joinOp.IsMerge() || joinOp.IsFullOuter() {
+		if joinOp.IsMerge() || joinOp.IsFullOuter() || joinOp.IsAnti() {
 			return node, transform.SameTree, nil
 		}
 
 		filterExpressions := expression.SplitConjunction(ctx, node.Filter)
-		// TODO (MUST DO NOW): add filter expressions to filter set
-		leftChild, leftSame, err := pushdownFiltersAboveTables(ctx, a, node.Left(), filters)
+		// TODO: replace with refactored new function
+		filters.filtersByTable.merge(exprToTableFilters(ctx, node.Filter, scope, filters.projectionExpressions))
+
+		leftChild, leftSame, err := pushdownFiltersAboveTables(ctx, a, node.Left(), scope, filters)
 		if err != nil {
 			return node, transform.SameTree, err
 		}
 		rightChild := node.Right()
 		rightSame := transform.SameTree
-		if !joinOp.IsFullOuter() {
-			rightChild, rightSame, err = pushdownFiltersAboveTables(ctx, a, rightChild, filters)
+		if !joinOp.IsLeftOuter() {
+			rightChild, rightSame, err = pushdownFiltersAboveTables(ctx, a, rightChild, scope, filters)
 			if err != nil {
 				return node, transform.SameTree, err
 			}
@@ -99,13 +102,13 @@ func pushdownFiltersAboveTables(ctx *sql.Context, a *Analyzer, n sql.Node, filte
 		return plan.NewJoin(ctx, leftChild, rightChild, joinOp, expression.JoinAnd(unhandled...)).WithComment(node.Comment()), transform.NewTree, nil
 	case *plan.TableAlias, *plan.ResolvedTable, *plan.ValueDerivedTable, sql.TableFunction:
 		return getFilteredTableNode(ctx, a, node.(sql.NameableNode), filters)
-	case *plan.Limit, *plan.Offset:
+	case *plan.Limit, *plan.Window:
 		return n, transform.SameTree, nil
 	default:
 		children := node.Children()
 		allSame := true
 		for i, child := range children {
-			newChild, same, err := pushdownFiltersAboveTables(ctx, a, child, filters)
+			newChild, same, err := pushdownFiltersAboveTables(ctx, a, child, scope, filters)
 			if err != nil {
 				return node, transform.SameTree, err
 			}
