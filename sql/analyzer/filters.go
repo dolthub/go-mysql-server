@@ -59,7 +59,7 @@ func getFiltersByTable(ctx *sql.Context, n sql.Node, scope *plan.Scope, projecte
 // given, split at AND. Any expressions that contain subqueries, or refer to more than one table, are not included in
 // the result.
 func exprToTableFilters(ctx *sql.Context, expr sql.Expression, scope *plan.Scope, projectionExpressions map[sql.ColumnId]sql.Expression) filtersByTable {
-	return exprsToTableFilters(ctx, expression.SplitConjunction(ctx, expr), scope, projectionExpressions)
+	return exprsToTableFilters(ctx, SplitConjunction(ctx, expr), scope, projectionExpressions)
 }
 
 func exprsToTableFilters(ctx *sql.Context, exprs []sql.Expression, scope *plan.Scope, projectionExpressions map[sql.ColumnId]sql.Expression) filtersByTable {

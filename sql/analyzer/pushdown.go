@@ -46,7 +46,7 @@ func pushdownFiltersAboveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 
 	switch node := n.(type) {
 	case *plan.Filter:
-		filterExpressions := expression.SplitConjunction(ctx, node.Expression)
+		filterExpressions := SplitConjunction(ctx, node.Expression)
 		filters.addFilterExprs(ctx, filterExpressions, scope)
 
 		child, same, err := pushdownFiltersAboveTables(ctx, a, node.Child, scope, filters)
