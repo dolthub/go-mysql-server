@@ -32,10 +32,7 @@ func pushFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, s
 	if !canDoPushdown(n) {
 		return n, transform.SameTree, nil
 	}
-	filters := &filterSet{
-		projectionExpressions: getProjectionExpressions(n),
-		filtersByTable:        newFiltersByTable(),
-	}
+	filters := newEmptyFilterSet(n)
 
 	n, same, err := pushdownFiltersAboveTables(ctx, a, n, scope, filters)
 	// TODO: assert that there are no unhandled filters? this should never happen so error out if it does
@@ -50,13 +47,13 @@ func pushdownFiltersAboveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 	switch node := n.(type) {
 	case *plan.Filter:
 		filterExpressions := expression.SplitConjunction(ctx, node.Expression)
+		filters.addFilterExprs(ctx, filterExpressions, scope)
 
-		// TODO: refactor this into its own function that takes an list of expressions (only need to call split conjunction once)
-		filters.filtersByTable.merge(exprToTableFilters(ctx, node.Expression, scope, filters.projectionExpressions))
 		child, same, err := pushdownFiltersAboveTables(ctx, a, node.Child, scope, filters)
 		if err != nil {
 			return node, transform.SameTree, err
 		}
+
 		// TODO: this is very similar to updateFilterNode and can be refactored to avoid repeated code
 		unhandled := subtractExprSet(filterExpressions, filters.handledFilters)
 		filters.markFiltersHandled(unhandled...)
@@ -76,11 +73,11 @@ func pushdownFiltersAboveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		if joinOp.IsMerge() || joinOp.IsFullOuter() {
 			return node, transform.SameTree, nil
 		}
+
 		isLeftOuterOrAnti := joinOp.IsLeftOuter() || joinOp.IsAnti()
 		filterExpressions := expression.SplitConjunction(ctx, node.Filter)
 		if !isLeftOuterOrAnti {
-			// TODO: replace with refactored new function
-			filters.filtersByTable.merge(exprToTableFilters(ctx, node.Filter, scope, filters.projectionExpressions))
+			filters.addFilterExprs(ctx, filterExpressions, scope)
 		}
 
 		leftChild, leftSame, err := pushdownFiltersAboveTables(ctx, a, node.Left(), scope, filters)
