@@ -746,6 +746,10 @@ on w = 0;`,
 		Expected: []sql.Row{{"third", 1, "a", 4}, {"third", 1, "b", 2}, {"third", 1, "c", 0}},
 	},
 	{
+		Query:    "select * from othertable join foo.othertable where othertable.s2 = 'third'",
+		Expected: []sql.Row{{"third", 1, "a", 4}, {"third", 1, "b", 2}, {"third", 1, "c", 0}},
+	},
+	{
 		Query:    "select * from othertable join foo.othertable on mydb.othertable.s2 = 'third'",
 		Expected: []sql.Row{{"third", 1, "a", 4}, {"third", 1, "b", 2}, {"third", 1, "c", 0}},
 	},
@@ -1406,6 +1410,24 @@ var JoinScriptTests = []ScriptTest{
 			{
 				Query:    "select * from t1, t0 left join t4 on false;",
 				Expected: []sql.Row{{1, 1, nil}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/10899
+		Name: "IS NULL filter is preserved in multi-table join with left join",
+		SetUpScript: []string{
+			"create table p(id int, v int)",
+			"create table q(v int, qid int)",
+			"create table d(id int)",
+			"insert into p values (1, 10), (2, 20)",
+			"insert into q values (10, 100), (20, 200)",
+			"insert into d values (1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT p.id, d.id FROM p JOIN q ON p.v = q.v LEFT JOIN d ON p.id = d.id JOIN q q2 ON q2.qid = q.qid WHERE d.id IS NULL;",
+				Expected: []sql.Row{{2, nil}},
 			},
 		},
 	},
