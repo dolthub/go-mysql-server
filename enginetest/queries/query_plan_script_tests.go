@@ -991,26 +991,26 @@ var QueryPlanScriptTests = []ScriptTest{
 					"                 │                                   └─ columns: [id status]\n" +
 					"                 └─ Project\n" +
 					"                     ├─ columns: [d.issue_id:0, (bt.depth:4!null + 1 (tinyint))->bt.depth + 1:0]\n" +
-					"                     └─ InnerJoin\n" +
-					"                         ├─ AND\n" +
-					"                         │   ├─ LessThan\n" +
-					"                         │   │   ├─ bt.depth:7!null\n" +
-					"                         │   │   └─ 50 (bigint)\n" +
-					"                         │   └─ Eq\n" +
-					"                         │       ├─ d.depends_on_id:4\n" +
-					"                         │       └─ bt.issue_id:6\n" +
-					"                         ├─ Filter\n" +
-					"                         │   ├─ Eq\n" +
-					"                         │   │   ├─ d.type:2\n" +
-					"                         │   │   └─ parent-child (longtext)\n" +
-					"                         │   └─ TableAlias(d)\n" +
-					"                         │       └─ Table\n" +
-					"                         │           ├─ name: dependencies\n" +
-					"                         │           ├─ columns: [issue_id depends_on_id type]\n" +
-					"                         │           ├─ colSet: (14-16)\n" +
-					"                         │           └─ tableId: 8\n" +
-					"                         └─ TableAlias(bt)\n" +
-					"                             └─ RecursiveTable(blocked_transitively)\n" +
+					"                     └─ Filter\n" +
+					"                         ├─ LessThan\n" +
+					"                         │   ├─ bt.depth:4!null\n" +
+					"                         │   └─ 50 (bigint)\n" +
+					"                         └─ InnerJoin\n" +
+					"                             ├─ Eq\n" +
+					"                             │   ├─ d.depends_on_id:4\n" +
+					"                             │   └─ bt.issue_id:6\n" +
+					"                             ├─ Filter\n" +
+					"                             │   ├─ Eq\n" +
+					"                             │   │   ├─ d.type:2\n" +
+					"                             │   │   └─ parent-child (longtext)\n" +
+					"                             │   └─ TableAlias(d)\n" +
+					"                             │       └─ Table\n" +
+					"                             │           ├─ name: dependencies\n" +
+					"                             │           ├─ columns: [issue_id depends_on_id type]\n" +
+					"                             │           ├─ colSet: (14-16)\n" +
+					"                             │           └─ tableId: 8\n" +
+					"                             └─ TableAlias(bt)\n" +
+					"                                 └─ RecursiveTable(blocked_transitively)\n" +
 					"",
 			},
 		},
