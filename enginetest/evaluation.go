@@ -397,6 +397,7 @@ func testQuery(t *testing.T, harness Harness, q string, expected []sql.Row, expe
 }
 
 // TestQuery runs a query on the engine given and asserts that results are as expected.
+// TODO: combine with TestQuery
 func TestQuery2(t *testing.T, harness Harness, e QueryEngine, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]sqlparser.Expr) {
 	t.Run(q, func(t *testing.T) {
 		if sh, ok := harness.(SkippingHarness); ok {

@@ -31,6 +31,7 @@ type TableAlias struct {
 var _ sql.RenameableNode = (*TableAlias)(nil)
 var _ sql.CommentedNode = (*TableAlias)(nil)
 var _ sql.CollationCoercible = (*TableAlias)(nil)
+var _ TableIdNode = (*TableAlias)(nil)
 
 // NewTableAlias returns a new Table alias node.
 func NewTableAlias(name string, node sql.Node) *TableAlias {

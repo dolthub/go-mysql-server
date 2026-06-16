@@ -43,6 +43,10 @@ func pushFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, s
 }
 
 func pushdownFiltersAboveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, filters *filterSet) (sql.Node, transform.TreeIdentity, error) {
+	if sql.IsOpaque(n) {
+		return n, transform.SameTree, nil
+	}
+
 	switch node := n.(type) {
 	case *plan.Filter:
 		filterExpressions := expression.SplitConjunction(ctx, node.Expression)
@@ -56,8 +60,8 @@ func pushdownFiltersAboveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		// TODO: this is very similar to updateFilterNode and can be refactored to avoid repeated code
 		unhandled := subtractExprSet(filterExpressions, filters.handledFilters)
 		filters.markFiltersHandled(unhandled...)
-		if f, ok := node.Child.(*plan.Filter); ok {
-			return plan.NewFilter(ctx, expression.JoinAnd(node.Expression, expression.JoinAnd(unhandled...)), f.Child), transform.NewTree, nil
+		if f, ok := child.(*plan.Filter); ok {
+			return plan.NewFilter(ctx, expression.JoinAnd(expression.JoinAnd(unhandled...), f.Expression), f.Child), transform.NewTree, nil
 		}
 		if same {
 			return node, transform.SameTree, nil
@@ -69,7 +73,11 @@ func pushdownFiltersAboveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		}
 	case *plan.JoinNode:
 		joinOp := node.JoinType()
-		if joinOp.IsMerge() || joinOp.IsFullOuter() || joinOp.IsAnti() {
+		// TODO: filters and join conditions can be pushed past Left and Anti joins but only under certain conditions.
+		//  It's safe to push filters through the left child but we have to consider join order hints that may change.
+		//  how the join is replanned. It is also safe to push filters through the right child if the condition is null-
+		//  rejecting.
+		if joinOp.IsMerge() || joinOp.IsOuter() || joinOp.IsAnti() {
 			return node, transform.SameTree, nil
 		}
 
@@ -81,27 +89,22 @@ func pushdownFiltersAboveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		if err != nil {
 			return node, transform.SameTree, err
 		}
-		rightChild := node.Right()
-		rightSame := transform.SameTree
-		if !joinOp.IsLeftOuter() {
-			rightChild, rightSame, err = pushdownFiltersAboveTables(ctx, a, rightChild, scope, filters)
-			if err != nil {
-				return node, transform.SameTree, err
-			}
+		rightChild, rightSame, err := pushdownFiltersAboveTables(ctx, a, node.Right(), scope, filters)
+		if err != nil {
+			return node, transform.SameTree, err
 		}
 		if leftSame && rightSame {
 			return node, transform.SameTree, nil
 		}
+
+		// TODO: depending on the join type, filters from parent nodes that only reference the join children can also be
+		//  added to the join condition. To do this, we would need to update filtersByTable to use a FastIntSet key
+		//  instead of a TableId key and we would also need to propagate up a set of the child TableIds.
 		unhandled := subtractExprSet(filterExpressions, filters.handledFilters)
 		filters.markFiltersHandled(unhandled...)
-		// TODO: This may not actually be necessary since nil join conditions are evaluated as true. But removing this
-		//  prevents some cross joins (with filtered table) from being turned into lookup joins when there's a join hint
-		if len(unhandled) == 0 {
-			unhandled = []sql.Expression{expression.NewTrue()}
-		}
 		return plan.NewJoin(ctx, leftChild, rightChild, joinOp, expression.JoinAnd(unhandled...)).WithComment(node.Comment()), transform.NewTree, nil
-	case *plan.TableAlias, *plan.ResolvedTable, *plan.ValueDerivedTable, sql.TableFunction:
-		return getFilteredTableNode(ctx, a, node.(sql.NameableNode), filters)
+	case *plan.TableAlias, *plan.ResolvedTable, *plan.ValueDerivedTable:
+		return filteredTableNode(ctx, a, node.(plan.TableIdNode), filters)
 	case *plan.Limit, *plan.Window:
 		return n, transform.SameTree, nil
 	default:
@@ -238,11 +241,11 @@ func transformPushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.
 	})
 }
 
-// getFilteredTableNode wraps a table node in applicable filters
-func getFilteredTableNode(
+// filteredTableNode wraps a table node in applicable filters
+func filteredTableNode(
 	ctx *sql.Context,
 	a *Analyzer,
-	tableNode sql.NameableNode,
+	tableNode plan.TableIdNode,
 	filters *filterSet,
 ) (sql.Node, transform.TreeIdentity, error) {
 	table := getTable(ctx, tableNode)
@@ -252,7 +255,7 @@ func getFilteredTableNode(
 
 	// Move any remaining filters for the table directly above the table itself
 	var pushedDownFilterExpression sql.Expression
-	if tableFilters := filters.availableFiltersForTable(ctx, tableNode.Name()); len(tableFilters) > 0 {
+	if tableFilters := filters.availableFiltersForTable(ctx, tableNode.Id()); len(tableFilters) > 0 {
 		filters.markFiltersHandled(tableFilters...)
 		for i, filter := range tableFilters {
 			// If a filter contains a reference to a projection alias, pushing the filter will move it below the
@@ -298,7 +301,7 @@ func pushdownFiltersUnderSubqueryAlias(ctx *sql.Context, a *Analyzer, sa *plan.S
 	if sa.ScopeMapping == nil {
 		return sa, transform.SameTree, nil
 	}
-	handled := filters.availableFiltersForTable(ctx, sa.Name())
+	handled := filters.availableFiltersForTable(ctx, sa.Id())
 	if len(handled) == 0 {
 		return sa, transform.SameTree, nil
 	}

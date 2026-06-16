@@ -83,71 +83,9 @@ func flattenDistinct(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 // moveJoinConditionsToFilter looks for expressions in a join condition that reference only tables in the left or right
 // side of the join, and move those conditions to a new Filter node instead. If the join condition is empty after these
 // moves, the join is converted to a CrossJoin.
-// TODO: remove rule and references to it
+// TODO: remove rule and references to it. also remove called functions that are no longer called anywhere else
 func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	return n, transform.SameTree, nil
-}
-
-// nodeSources returns the set of column sources from the schema of the node given.
-func nodeSources(ctx *sql.Context, n sql.Node) sql.FastIntSet {
-	var tables sql.FastIntSet
-	transform.InspectUp(ctx, n, func(ctx *sql.Context, n sql.Node) bool {
-		tin, _ := n.(plan.TableIdNode)
-		if tin != nil {
-			tables.Add(int(tin.Id()))
-		}
-		return false
-	})
-	return tables
-}
-
-// expressionSources returns the set of sources from any GetField expressions
-// in the expression given, and a boolean indicating whether the expression
-// is null rejecting from those sources.
-func expressionSources(ctx *sql.Context, expr sql.Expression) (sql.FastIntSet, bool) {
-	var tables sql.FastIntSet
-	var nullRejecting bool = true
-
-	sql.Inspect(ctx, expr, func(ctx *sql.Context, e sql.Expression) bool {
-		switch e := e.(type) {
-		case *expression.GetField:
-			tables.Add(int(e.TableId()))
-		case sql.IsNullExpression, sql.IsNotNullExpression:
-			nullRejecting = false
-		case *expression.NullSafeEquals:
-			nullRejecting = false
-		case *expression.Equals:
-			if lit, ok := e.Left().(*expression.Literal); ok && lit.Value() == nil {
-				nullRejecting = false
-			}
-			if lit, ok := e.Right().(*expression.Literal); ok && lit.Value() == nil {
-				nullRejecting = false
-			}
-		case *plan.Subquery:
-			// TODO: this is just the above code copied and pasted...refactor to avoid repeating code
-			transform.InspectExpressions(ctx, e.Query, func(ctx *sql.Context, innerExpr sql.Expression) bool {
-				switch e := innerExpr.(type) {
-				case *expression.GetField:
-					tables.Add(int(e.TableId()))
-				case sql.IsNullExpression, sql.IsNotNullExpression:
-					nullRejecting = false
-				case *expression.NullSafeEquals:
-					nullRejecting = false
-				case *expression.Equals:
-					if lit, ok := e.Left().(*expression.Literal); ok && lit.Value() == nil {
-						nullRejecting = false
-					}
-					if lit, ok := e.Right().(*expression.Literal); ok && lit.Value() == nil {
-						nullRejecting = false
-					}
-				}
-				return true
-			})
-		}
-		return true
-	})
-
-	return tables, nullRejecting
 }
 
 // simplifyFilters simplifies filter expressions in nodes where possible. Nodes with filter expressions that can be
