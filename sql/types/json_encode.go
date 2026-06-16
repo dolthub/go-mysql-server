@@ -14,26 +14,25 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-var isEscaped = [256]bool{}
-var escapeSeq = [256][]byte{}
+const hexDigits = "0123456789abcdef"
 
-func init() {
-	isEscaped[uint8('\b')] = true
-	isEscaped[uint8('\f')] = true
-	isEscaped[uint8('\n')] = true
-	isEscaped[uint8('\r')] = true
-	isEscaped[uint8('\t')] = true
-	isEscaped[uint8('"')] = true
-	isEscaped[uint8('\\')] = true
+const firstNonControlByte = 0x20
 
-	escapeSeq[uint8('\b')] = []byte("\\b")
-	escapeSeq[uint8('\f')] = []byte("\\f")
-	escapeSeq[uint8('\n')] = []byte("\\n")
-	escapeSeq[uint8('\r')] = []byte("\\r")
-	escapeSeq[uint8('\t')] = []byte("\\t")
-	escapeSeq[uint8('"')] = []byte("\\\"")
-	escapeSeq[uint8('\\')] = []byte("\\\\")
-}
+// escapeSeq maps a byte to its JSON escape, or nil when the byte is safe to
+// write unchanged.
+var escapeSeq = func() (seq [256][]byte) {
+	for c := 0; c < firstNonControlByte; c++ {
+		seq[c] = []byte{'\\', 'u', '0', '0', hexDigits[c>>4], hexDigits[c&0xf]}
+	}
+	seq['\b'] = []byte(`\b`)
+	seq['\t'] = []byte(`\t`)
+	seq['\n'] = []byte(`\n`)
+	seq['\f'] = []byte(`\f`)
+	seq['\r'] = []byte(`\r`)
+	seq['"'] = []byte(`\"`)
+	seq['\\'] = []byte(`\\`)
+	return seq
+}()
 
 type NoCopyBuilder struct {
 	buffers   [][]byte
@@ -193,11 +192,13 @@ func writeMarshalledValue(writer io.Writer, val interface{}) error {
 
 		writer.Write([]byte{'{'})
 		for i, k := range keys {
-			writer.Write([]byte{'"'})
-			writer.Write([]byte(k))
-			writer.Write([]byte(`": "`))
-			writer.Write([]byte(val[k]))
-			writer.Write([]byte{'"'})
+			if err := writeMarshalledValue(writer, k); err != nil {
+				return err
+			}
+			writer.Write([]byte(`: `))
+			if err := writeMarshalledValue(writer, val[k]); err != nil {
+				return err
+			}
 
 			if i != len(keys)-1 {
 				writer.Write([]byte{',', ' '})
@@ -232,22 +233,19 @@ func writeMarshalledValue(writer io.Writer, val interface{}) error {
 
 	case string:
 		writer.Write([]byte{'"'})
-		// iterate over each rune in the string to escape any special characters
+		// Iterate by byte. Every byte that needs escaping is ASCII, so the bytes
+		// of a multi byte UTF-8 sequence are always copied through unchanged.
 		start := 0
-		for i, r := range val {
-			if r > '\\' {
+		for i := 0; i < len(val); i++ {
+			esc := escapeSeq[val[i]]
+			if esc == nil {
 				continue
 			}
-
-			b := uint8(r)
-			if isEscaped[b] {
-				if start != i {
-					writer.Write([]byte(val[start:i]))
-				}
-
-				writer.Write(escapeSeq[b])
-				start = i + 1
+			if start != i {
+				writer.Write([]byte(val[start:i]))
 			}
+			writer.Write(esc)
+			start = i + 1
 		}
 
 		if start != len(val) {
