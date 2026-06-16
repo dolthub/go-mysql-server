@@ -35,7 +35,6 @@ const (
 	validateCheckConstraintId       // validateCheckConstraints
 	replaceCountStarId              // replaceCountStar
 	replaceCrossJoinsId             // replaceCrossJoins
-	moveJoinCondsToFilterId         // moveJoinConditionsToFilter
 	simplifyFiltersId               // simplifyFilters
 	pushNotFiltersId                // pushNotFilters
 	validateNoHiddenSystemColumnsId // validateNoHiddenSystemColumns

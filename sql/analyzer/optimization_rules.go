@@ -80,14 +80,6 @@ func flattenDistinct(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 	})
 }
 
-// moveJoinConditionsToFilter looks for expressions in a join condition that reference only tables in the left or right
-// side of the join, and move those conditions to a new Filter node instead. If the join condition is empty after these
-// moves, the join is converted to a CrossJoin.
-// TODO: remove rule and references to it. also remove called functions that are no longer called anywhere else
-func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
-	return n, transform.SameTree, nil
-}
-
 // simplifyFilters simplifies filter expressions in nodes where possible. Nodes with filter expressions that can be
 // statically evaluated to true or false are transformed so that the expression no longer needs to be evaluated.
 func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {

@@ -73,25 +73,27 @@ func pushdownFiltersAboveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		}
 	case *plan.JoinNode:
 		joinOp := node.JoinType()
-		// TODO: filters and join conditions can be pushed past Left and Anti joins but only under certain conditions.
-		//  It's safe to push filters through the left child but we have to consider join order hints that may change.
-		//  how the join is replanned. It is also safe to push filters through the right child if the condition is null-
-		//  rejecting.
-		if joinOp.IsMerge() || joinOp.IsOuter() || joinOp.IsAnti() {
+		if joinOp.IsMerge() || joinOp.IsFullOuter() {
 			return node, transform.SameTree, nil
 		}
-
+		isLeftOuterOrAnti := joinOp.IsLeftOuter() || joinOp.IsAnti()
 		filterExpressions := expression.SplitConjunction(ctx, node.Filter)
-		// TODO: replace with refactored new function
-		filters.filtersByTable.merge(exprToTableFilters(ctx, node.Filter, scope, filters.projectionExpressions))
+		if !isLeftOuterOrAnti {
+			// TODO: replace with refactored new function
+			filters.filtersByTable.merge(exprToTableFilters(ctx, node.Filter, scope, filters.projectionExpressions))
+		}
 
 		leftChild, leftSame, err := pushdownFiltersAboveTables(ctx, a, node.Left(), scope, filters)
 		if err != nil {
 			return node, transform.SameTree, err
 		}
-		rightChild, rightSame, err := pushdownFiltersAboveTables(ctx, a, node.Right(), scope, filters)
-		if err != nil {
-			return node, transform.SameTree, err
+		rightChild := node.Right()
+		rightSame := transform.SameTree
+		if !isLeftOuterOrAnti {
+			rightChild, rightSame, err = pushdownFiltersAboveTables(ctx, a, node.Right(), scope, filters)
+			if err != nil {
+				return node, transform.SameTree, err
+			}
 		}
 		if leftSame && rightSame {
 			return node, transform.SameTree, nil
@@ -178,11 +180,7 @@ func filterPushdownSelector(ctx *sql.Context, c transform.Context) bool {
 	case *plan.TableAlias:
 		return false
 	case *plan.JoinNode:
-		// Pushing down a filter is incompatible with the secondary table in a Left or Right join. If we push a
-		// predicate on the secondary table below the join, we end up not evaluating it in all cases (since the
-		// secondary table result is sometimes null in these types of joins). It must be evaluated only after the join
-		// result is computed.
-		if n.Op.IsLeftOuter() && c.ChildNum != 0 {
+		if (n.Op.IsLeftOuter() || n.Op.IsAnti()) && c.ChildNum != 0 {
 			return false
 		}
 	}

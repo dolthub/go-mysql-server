@@ -283,9 +283,7 @@ func (s *Scope) Schema(ctx *sql.Context) sql.Schema {
 					schema = append(schema, col)
 				}
 			default:
-				// what the helly
-				// TODO: log this
-				// panic(fmt.Sprintf("Unsupported scope node %T", n))
+				// TODO: add logging for unsupported scope nodes
 			}
 		}
 	}
