@@ -21,7 +21,6 @@ import (
 	"io"
 	"net"
 	"regexp"
-	"runtime/debug"
 	"runtime/trace"
 	"sync"
 	"time"
@@ -422,14 +421,6 @@ func (h *Handler) doQuery(
 	callback func(*sqltypes.Result, bool) error,
 	qFlags *sql.QueryFlags,
 ) (remainder string, err error) {
-	// Wrap the incoming context so a watcher goroutine can abort the query if
-	// the client connection goes away while we're executing it (see
-	// watchForClosedConnection, started below). cancelQuery cancels everything
-	// derived from this context, including the sqlCtx built next and the
-	// errgroups spun up by the resultFor* helpers.
-	ctx, cancelQuery := context.WithCancelCause(ctx)
-	defer cancelQuery(nil)
-
 	var sqlCtx *sql.Context
 	sqlCtx, err = h.sm.NewContextWithQuery(ctx, c, query)
 	if err != nil {
@@ -508,16 +499,6 @@ func (h *Handler) doQuery(
 		buf.Reset()
 		sql.ByteBufPool.Put(buf)
 	}()
-
-	// Watch the connection for a client disconnect while we produce and spool
-	// results, regardless of which result path below we take. If the client
-	// goes away, the watcher cancels the query context so iteration aborts
-	// promptly instead of running to completion for a client that will never
-	// read the results. stopWatch halts the watch and joins its goroutine; it
-	// must run before doQuery returns (and thus before the command loop issues
-	// its next read on the connection).
-	stopWatch := h.watchForClosedConnection(ctx, sqlCtx.GetLogger(), c, cancelQuery)
-	defer stopWatch()
 
 	// zero/single return schema use spooling shortcut
 	if types.IsOkResultSchema(schema) {
@@ -653,6 +634,13 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 	defer trace.StartRegion(ctx, "Handler.resultForDefaultIter").End()
 
 	eg, ctx := ctx.NewErrgroup()
+	// TODO: poll for closed connections should obviously also run even if
+	// we're doing something with an OK result or a single row result, etc.
+	// This should be in the caller.
+	pollCtx, cancelF := ctx.NewSubContext()
+	errguard.Go(eg, func() error {
+		return h.pollForClosedConnection(pollCtx, c)
+	})
 
 	// Default waitTime is one minute if there is no timeout configured, in which case
 	// it will loop to iterate again unless the socket died by the OS timeout or other problems.
@@ -772,6 +760,7 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 	// Drain sqltypes.Result from resChan and call callback (send to client and potentially reset buffer)
 	var processedAtLeastOneBatch bool
 	errguard.Go(eg, func() (err error) {
+		defer cancelF()
 		defer wg.Done()
 		for {
 			select {
@@ -812,6 +801,13 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema 
 	defer trace.StartRegion(ctx, "Handler.resultForValueRowIter").End()
 
 	eg, ctx := ctx.NewErrgroup()
+	// TODO: poll for closed connections should obviously also run even if
+	// we're doing something with an OK result or a single row result, etc.
+	// This should be in the caller.
+	pollCtx, cancelF := ctx.NewSubContext()
+	errguard.Go(eg, func() error {
+		return h.pollForClosedConnection(pollCtx, c)
+	})
 
 	// Default waitTime is one minute if there is no timeout configured, in which case
 	// it will loop to iterate again unless the socket died by the OS timeout or other problems.
@@ -921,6 +917,7 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema 
 	// Drain sqltypes.Result from resChan and call callback (send to client and reset buffer)
 	var processedAtLeastOneBatch bool
 	errguard.Go(eg, func() (err error) {
+		defer cancelF()
 		defer wg.Done()
 		for {
 			select {
@@ -1042,57 +1039,27 @@ func (h *Handler) errorWrappedComExec(
 	return err
 }
 
-// watchForClosedConnection spawns a goroutine that watches the client connection
-// |c| for a disconnect while a query is executing. If the client goes away, it
-// calls |cancelQuery| with ErrConnectionWasClosed so the in-flight query is
-// aborted rather than run to completion for a client that will never read the
-// results. The returned stop function halts the watch and blocks until the watch
-// goroutine has exited; it must be called before the query handler returns (and
-// thus before the command loop issues its next read on the connection).
-//
-// On platforms where socket-state checks aren't supported, or for non-TCP
-// connections, the watch goroutine exits immediately and stop just joins it.
-func (h *Handler) watchForClosedConnection(ctx context.Context, logger *logrus.Entry, c *mysql.Conn, cancelQuery context.CancelCauseFunc) (stop func()) {
-	watchCtx, stopWatch := context.WithCancel(ctx)
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		defer func() {
-			if r := recover(); r != nil {
-				logger.Errorf("panic recovered in connection watcher: %v\n%s", r, debug.Stack())
-			}
-		}()
-		if err := h.pollForClosedConnection(watchCtx, logger, c); err != nil {
-			cancelQuery(err)
-		}
-	}()
-	return func() {
-		stopWatch()
-		<-done
-	}
-}
-
 // Periodically polls the connection socket to determine if it is has been closed by the client, returning an error
-// if it has been. Meant to be run from watchForClosedConnection. Returns immediately with no error
+// if it has been. Meant to be run in an errgroup from the query handler routine. Returns immediately with no error
 // on platforms that can't support TCP socket checks.
-func (h *Handler) pollForClosedConnection(ctx context.Context, logger *logrus.Entry, c *mysql.Conn) error {
+func (h *Handler) pollForClosedConnection(ctx *sql.Context, c *mysql.Conn) error {
 	tcpConn, ok := maybeGetTCPConn(c.Conn)
 	if !ok {
-		logger.Trace("Connection checker exiting, connection isn't TCP")
+		ctx.GetLogger().Trace("Connection checker exiting, connection isn't TCP")
 		return nil
 	}
 
 	inode, err := sockstate.GetConnInode(tcpConn)
 	if err != nil || inode == 0 {
 		if !sockstate.ErrSocketCheckNotImplemented.Is(err) {
-			logger.Trace("Connection checker exiting, connection isn't TCP")
+			ctx.GetLogger().Trace("Connection checker exiting, connection isn't TCP")
 		}
 		return nil
 	}
 
 	t, ok := tcpConn.LocalAddr().(*net.TCPAddr)
 	if !ok {
-		logger.Trace("Connection checker exiting, could not get local port")
+		ctx.GetLogger().Trace("Connection checker exiting, could not get local port")
 		return nil
 	}
 
@@ -1109,10 +1076,10 @@ func (h *Handler) pollForClosedConnection(ctx context.Context, logger *logrus.En
 		st, err := sockstate.GetInodeSockState(t.Port, inode)
 		switch st {
 		case sockstate.Broken:
-			logger.Warn("socket state is broken, returning error")
+			ctx.GetLogger().Warn("socket state is broken, returning error")
 			return ErrConnectionWasClosed.New()
 		case sockstate.Error:
-			logger.WithError(err).Warn("Connection checker exiting, got err checking sockstate")
+			ctx.GetLogger().WithError(err).Warn("Connection checker exiting, got err checking sockstate")
 			return nil
 		default: // Established
 			// (juanjux) this check is not free, each iteration takes about 9 milliseconds to run on my machine
