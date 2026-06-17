@@ -41,15 +41,16 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 
 	// need to transfer aggregation state from out -> in
 	var exprs []sql.Expression
-	var hasColumnBeforeStar bool
+	var validateColumnBeforeStar bool
 	for _, se := range selectExprs {
 		// Check for named expressions before unqualified *
 		if star, ok := se.(*ast.StarExpr); ok {
-			if star.TableName.IsEmpty() && hasColumnBeforeStar {
+			if !b.isSchemaDb() && star.TableName.IsEmpty() && validateColumnBeforeStar {
+				// this validation does not apply for Doltgres
 				b.handleErr(sql.ErrInvalidSyntax.New("cannot mix named columns with '*' in SELECT clause"))
 			}
 		} else if _, ok := se.(*ast.AliasedExpr); ok {
-			hasColumnBeforeStar = true
+			validateColumnBeforeStar = true
 		}
 		pe := b.selectExprToExpression(inScope, se)
 

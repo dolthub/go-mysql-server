@@ -232,6 +232,28 @@ func (b *Builder) currentDb() sql.Database {
 	return b.currentDatabase
 }
 
+// isSchemaDb return true if the current database is sql.SchemaDatabase,
+// which means it is Doltgres database supports schemas. If there is no
+// database found, it returns false.
+func (b *Builder) isSchemaDb() bool {
+	if b.currentDatabase == nil {
+		currentDbName := b.ctx.GetCurrentDatabase()
+		if currentDbName == "" {
+			return false
+		}
+		database, err := b.cat.Database(b.ctx, b.ctx.GetCurrentDatabase())
+		if err != nil {
+			return false
+		}
+		b.currentDatabase = database
+	}
+	if privilegedDatabase, ok := b.currentDatabase.(mysql_db.PrivilegedDatabase); ok {
+		b.currentDatabase = privilegedDatabase.Unwrap()
+	}
+	_, isSchDb := b.currentDatabase.(sql.SchemaDatabase)
+	return isSchDb
+}
+
 func (b *Builder) renameSource(scope *scope, table string, cols []string) {
 	if table != "" {
 		scope.setTableAlias(table)
