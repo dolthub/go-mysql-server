@@ -1194,7 +1194,10 @@ func TestOkClosedConnection(t *testing.T) {
 	c := newConn(1)
 	h.NewConnection(c)
 
-	q := fmt.Sprintf("SELECT SLEEP(%d)", (tcpCheckerSleepDuration * 4 / time.Second))
+	// The connection has no read buffer, so the connection watcher started by
+	// the query handler can't peek it and is a no-op: a long-running query must
+	// still complete normally rather than being spuriously cancelled.
+	q := "SELECT SLEEP(1)"
 	h.ComInitDB(c, "test")
 	err = h.ComQuery(context.Background(), c, q, func(res *sqltypes.Result, more bool) error {
 		return nil
