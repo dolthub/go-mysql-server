@@ -45,9 +45,11 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 	for _, se := range selectExprs {
 		// Check for named expressions before unqualified *
 		if star, ok := se.(*ast.StarExpr); ok {
-			if _, isSchDb := b.currentDb().(sql.SchemaDatabase); isSchDb {
-				// this validation does not apply for Doltgres
-				validateColumnBeforeStar = false
+			if b.ctx.GetCurrentDatabase() != "" {
+				if _, isSchDb := b.currentDb().(sql.SchemaDatabase); isSchDb {
+					// this validation does not apply for Doltgres
+					validateColumnBeforeStar = false
+				}
 			}
 			if star.TableName.IsEmpty() && validateColumnBeforeStar {
 				b.handleErr(sql.ErrInvalidSyntax.New("cannot mix named columns with '*' in SELECT clause"))
