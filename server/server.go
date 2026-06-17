@@ -92,14 +92,13 @@ func NewServerWithHandler(
 
 	sm := NewSessionManager(ctxFactory, sb, tracer, e.Analyzer.Catalog.Database, e.MemoryManager, e.ProcessList, cfg.Address)
 	h := &Handler{
-		e:                        e,
-		sm:                       sm,
-		readTimeout:              cfg.ConnReadTimeout,
-		disableMultiStmts:        cfg.DisableClientMultiStatements,
-		maxLoggedQueryLen:        cfg.MaxLoggedQueryLen,
-		encodeLoggedQuery:        cfg.EncodeLoggedQuery,
-		disableConnectionWatcher: cfg.DisableConnectionWatcher,
-		sel:                      listener,
+		e:                 e,
+		sm:                sm,
+		readTimeout:       cfg.ConnReadTimeout,
+		disableMultiStmts: cfg.DisableClientMultiStatements,
+		maxLoggedQueryLen: cfg.MaxLoggedQueryLen,
+		encodeLoggedQuery: cfg.EncodeLoggedQuery,
+		sel:               listener,
 
 		queryCounter:      cfg.QueryCounter,
 		queryErrorCounter: cfg.QueryErrorCounter,

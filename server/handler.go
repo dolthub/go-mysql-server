@@ -19,6 +19,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"net"
 	"regexp"
 	"runtime/debug"
 	"runtime/trace"
@@ -26,6 +27,7 @@ import (
 	"time"
 
 	"github.com/dolthub/vitess/go/mysql"
+	"github.com/dolthub/vitess/go/netutil"
 	"github.com/dolthub/vitess/go/sqltypes"
 	querypb "github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -36,6 +38,7 @@ import (
 
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/errguard"
+	"github.com/dolthub/go-mysql-server/internal/sockstate"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/iters"
@@ -54,6 +57,8 @@ var ErrConnectionWasClosed = errors.NewKind("connection was closed")
 var verboseErrorLogging = false
 
 const rowsBatch = 128
+
+var tcpCheckerSleepDuration time.Duration = 5 * time.Second
 
 type MultiStmtMode int
 
@@ -74,10 +79,6 @@ type Handler struct {
 	maxLoggedQueryLen int
 	disableMultiStmts bool
 	encodeLoggedQuery bool
-	// disableConnectionWatcher, when true, disables watching the client
-	// connection for disconnects while a query is executing. See
-	// watchForClosedConnection and Config.DisableConnectionWatcher.
-	disableConnectionWatcher bool
 }
 
 var _ mysql.Handler = (*Handler)(nil)
@@ -1042,23 +1043,16 @@ func (h *Handler) errorWrappedComExec(
 }
 
 // watchForClosedConnection spawns a goroutine that watches the client connection
-// |c| for a disconnect while a query is executing. If the client goes away (or
-// sends data unexpectedly, which in the half-duplex, non-pipelined protocol means
-// it is no longer waiting for the current result), it calls |cancelQuery| with
-// ErrConnectionWasClosed so the in-flight query is aborted rather than run to
-// completion for a client that will never read the results. The returned stop
-// function halts the watch and blocks until the watch goroutine has exited; it
-// must be called before the query handler returns (and thus before the command
-// loop issues its next read on the connection).
+// |c| for a disconnect while a query is executing. If the client goes away, it
+// calls |cancelQuery| with ErrConnectionWasClosed so the in-flight query is
+// aborted rather than run to completion for a client that will never read the
+// results. The returned stop function halts the watch and blocks until the watch
+// goroutine has exited; it must be called before the query handler returns (and
+// thus before the command loop issues its next read on the connection).
 //
-// The watch relies on vitess's Conn.WaitForClientActivity, which is event-driven
-// and platform-independent. It can be disabled via Config.DisableConnectionWatcher,
-// in which case this is a no-op and stop does nothing.
+// On platforms where socket-state checks aren't supported, or for non-TCP
+// connections, the watch goroutine exits immediately and stop just joins it.
 func (h *Handler) watchForClosedConnection(ctx context.Context, logger *logrus.Entry, c *mysql.Conn, cancelQuery context.CancelCauseFunc) (stop func()) {
-	if h.disableConnectionWatcher {
-		return func() {}
-	}
-
 	watchCtx, stopWatch := context.WithCancel(ctx)
 	done := make(chan struct{})
 	go func() {
@@ -1068,20 +1062,78 @@ func (h *Handler) watchForClosedConnection(ctx context.Context, logger *logrus.E
 				logger.Errorf("panic recovered in connection watcher: %v\n%s", r, debug.Stack())
 			}
 		}()
-		// WaitForClientActivity returns nil when watchCtx is cancelled (the
-		// normal "query finished" path) and a non-nil error when the client
-		// disconnected or sent unexpected data. We surface that as
-		// ErrConnectionWasClosed to the query, preserving the previous behavior,
-		// and log the underlying cause.
-		if err := c.WaitForClientActivity(watchCtx); err != nil {
-			logger.WithError(err).Warn("client connection went away while a query was executing")
-			cancelQuery(ErrConnectionWasClosed.New())
+		if err := h.pollForClosedConnection(watchCtx, logger, c); err != nil {
+			cancelQuery(err)
 		}
 	}()
 	return func() {
 		stopWatch()
 		<-done
 	}
+}
+
+// Periodically polls the connection socket to determine if it is has been closed by the client, returning an error
+// if it has been. Meant to be run from watchForClosedConnection. Returns immediately with no error
+// on platforms that can't support TCP socket checks.
+func (h *Handler) pollForClosedConnection(ctx context.Context, logger *logrus.Entry, c *mysql.Conn) error {
+	tcpConn, ok := maybeGetTCPConn(c.Conn)
+	if !ok {
+		logger.Trace("Connection checker exiting, connection isn't TCP")
+		return nil
+	}
+
+	inode, err := sockstate.GetConnInode(tcpConn)
+	if err != nil || inode == 0 {
+		if !sockstate.ErrSocketCheckNotImplemented.Is(err) {
+			logger.Trace("Connection checker exiting, connection isn't TCP")
+		}
+		return nil
+	}
+
+	t, ok := tcpConn.LocalAddr().(*net.TCPAddr)
+	if !ok {
+		logger.Trace("Connection checker exiting, could not get local port")
+		return nil
+	}
+
+	timer := time.NewTimer(tcpCheckerSleepDuration)
+	defer timer.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-timer.C:
+		}
+
+		st, err := sockstate.GetInodeSockState(t.Port, inode)
+		switch st {
+		case sockstate.Broken:
+			logger.Warn("socket state is broken, returning error")
+			return ErrConnectionWasClosed.New()
+		case sockstate.Error:
+			logger.WithError(err).Warn("Connection checker exiting, got err checking sockstate")
+			return nil
+		default: // Established
+			// (juanjux) this check is not free, each iteration takes about 9 milliseconds to run on my machine
+			// thus the small wait between checks
+			timer.Reset(tcpCheckerSleepDuration)
+		}
+	}
+}
+
+func maybeGetTCPConn(conn net.Conn) (*net.TCPConn, bool) {
+	wrap, ok := conn.(netutil.ConnWithTimeouts)
+	if ok {
+		conn = wrap.Conn
+	}
+
+	tcp, ok := conn.(*net.TCPConn)
+	if ok {
+		return tcp, true
+	}
+
+	return nil, false
 }
 
 func resultFromOkResult(result types.OkResult) *sqltypes.Result {
