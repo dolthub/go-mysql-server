@@ -236,6 +236,148 @@ func LookupJSONValue(ctx context.Context, j sql.JSONWrapper, path string) (sql.J
 	return lookupJson(r, path)
 }
 
+// memberAccessYieldsNoMatch reports whether evaluating |path| against |j| would
+// apply a member access, .key or .*, to a value that is not an object. MySQL
+// matches a member access only against objects and returns SQL NULL otherwise,
+// while the jsonpath library would instead search the elements of an array.
+//
+// It reads only the part of |path| whose result is a single value reached by
+// following one branch, namely member accesses, the member wildcard, and
+// non-negative array indices, and reports true only when it is certain a member
+// access lands on a non-object, so it never reports true for a path that does
+// locate a value. Any other leg, such as an array wildcard, a range, [last], or
+// the ** ellipsis, makes it stop and report false so the caller falls back to
+// the jsonpath library.
+//
+// It scans |path| in a single pass and keeps no per-leg state on the heap, which
+// matters because lookups happen once per row. See [Allocating on the Stack] for
+// why the absence of an escaping slice lets the scan stay on the stack.
+//
+// For the path syntax itself see
+// https://dev.mysql.com/doc/refman/8.4/en/json.html#json-path-syntax.
+//
+// [Allocating on the Stack]: https://go.dev/blog/allocation-optimizations
+func memberAccessYieldsNoMatch(j interface{}, path string) bool {
+	if len(path) == 0 || path[0] != '$' {
+		return false
+	}
+	cur := j
+	for i := 1; i < len(path); {
+		switch path[i] {
+		case '.':
+			i++
+			if i >= len(path) {
+				return false
+			}
+			obj, isObject := cur.(JsonObject)
+			if path[i] == '*' {
+				i++
+				return !isObject
+			}
+			name, ok := readJSONMemberName(path, &i)
+			if !ok {
+				return false
+			}
+			if !isObject {
+				return true
+			}
+			child, exists := obj[name]
+			if !exists {
+				return false
+			}
+			cur = child
+		case '[':
+			end := strings.IndexByte(path[i:], ']')
+			if end < 0 {
+				return false
+			}
+			// Parse the index without strconv.Atoi, whose error value would
+			// escape and allocate for every wildcard or range leg this rejects.
+			n, ok := parseNonNegativeInt(strings.TrimSpace(path[i+1 : i+end]))
+			if !ok {
+				return false
+			}
+			i += end + 1
+			arr, isArray := cur.(JsonArray)
+			if !isArray {
+				// MySQL treats a non-array as a single element array, so only
+				// the index 0 selects the value and any other index misses.
+				if n != 0 {
+					return false
+				}
+				continue
+			}
+			if n >= len(arr) {
+				return false
+			}
+			cur = arr[n]
+		default:
+			return false
+		}
+	}
+	return false
+}
+
+// parseNonNegativeInt reports the integer value of |s| when |s| is a non-empty
+// run of ASCII digits, and false otherwise.
+func parseNonNegativeInt(s string) (int, bool) {
+	if len(s) == 0 {
+		return 0, false
+	}
+	n := 0
+	for k := 0; k < len(s); k++ {
+		if s[k] < '0' || s[k] > '9' {
+			return 0, false
+		}
+		n = n*10 + int(s[k]-'0')
+	}
+	return n, true
+}
+
+// readJSONMemberName reads the member name that follows a "." leg in a JSON path,
+// advancing |i| past it. A quoted name without escapes and an unquoted name are
+// returned as substrings of |path| so the common case allocates nothing. It
+// returns false if a quoted name is never closed or an unquoted name is empty.
+func readJSONMemberName(path string, i *int) (string, bool) {
+	if path[*i] != '"' {
+		start := *i
+		for *i < len(path) && path[*i] != '.' && path[*i] != '[' {
+			*i++
+		}
+		if *i == start {
+			return "", false
+		}
+		return path[start:*i], true
+	}
+	*i++
+	start := *i
+	escaped := false
+	for *i < len(path) && path[*i] != '"' {
+		if path[*i] == '\\' {
+			escaped = true
+			*i++
+		}
+		*i++
+	}
+	if *i >= len(path) {
+		return "", false
+	}
+	raw := path[start:*i]
+	*i++
+	if !escaped {
+		return raw, true
+	}
+	var b strings.Builder
+	b.Grow(len(raw))
+	for k := 0; k < len(raw); k++ {
+		if raw[k] == '\\' && k+1 < len(raw) {
+			k++
+		}
+		b.WriteByte(raw[k])
+	}
+	return b.String(), true
+}
+
 func lookupJson(j interface{}, path string) (SearchableJSON, error) {
 	// Lookup(obj) throws an error if obj is nil. We want lookups on a json null
 	// to always result in sql NULL, except in the case of the identity lookup
@@ -261,6 +403,12 @@ func lookupJson(j interface{}, path string) (SearchableJSON, error) {
 	_, isObject := j.(JsonObject)
 	_, isArray := j.(JsonArray)
 	if !isObject && !isArray {
+		return nil, nil
+	}
+
+	// The jsonpath library treats a member access against an array as a search
+	// of its elements, but MySQL treats it as no match and returns SQL NULL.
+	if memberAccessYieldsNoMatch(j, path) {
 		return nil, nil
 	}
 
