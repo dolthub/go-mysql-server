@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"io"
 	"regexp"
-	"runtime/debug"
 	"runtime/trace"
 	"sync"
 	"time"
@@ -74,10 +73,6 @@ type Handler struct {
 	maxLoggedQueryLen int
 	disableMultiStmts bool
 	encodeLoggedQuery bool
-	// disableConnectionWatcher, when true, disables watching the client
-	// connection for disconnects while a query is executing. See
-	// watchForClosedConnection and Config.DisableConnectionWatcher.
-	disableConnectionWatcher bool
 }
 
 var _ mysql.Handler = (*Handler)(nil)
@@ -421,19 +416,29 @@ func (h *Handler) doQuery(
 	callback func(*sqltypes.Result, bool) error,
 	qFlags *sql.QueryFlags,
 ) (remainder string, err error) {
-	// Wrap the incoming context so a watcher goroutine can abort the query if
-	// the client connection goes away while we're executing it (see
-	// watchForClosedConnection, started below). cancelQuery cancels everything
-	// derived from this context, including the sqlCtx built next and the
-	// errgroups spun up by the resultFor* helpers.
+	// Wrap the incoming context so the disconnect watcher can abort the query if
+	// the client connection goes away while we're executing it. cancelQuery
+	// cancels everything derived from this context, including the sqlCtx built
+	// next and the errgroups spun up by the resultFor* helpers.
 	ctx, cancelQuery := context.WithCancelCause(ctx)
 	defer cancelQuery(nil)
 
 	var sqlCtx *sql.Context
-	sqlCtx, err = h.sm.NewContextWithQuery(ctx, c, query)
+	var watch *connState
+	sqlCtx, watch, err = h.sm.newContextAndWatch(ctx, c, query)
 	if err != nil {
 		return "", err
 	}
+
+	// Notify the disconnect watcher that a query is in flight. If it runs long
+	// enough, the background sweeper starts an outstanding-read watch on the
+	// socket and cancels this query (via cancelQuery) if the client goes away.
+	// Fast queries finish before the start delay and never engage the watch at
+	// all. QueryEnded must run before doQuery returns (and thus before the
+	// command loop issues its next read on the connection); pairing it with
+	// QueryStarted here keeps the slot from leaking on any early return below.
+	watch.QueryStarted(cancelQuery)
+	defer watch.QueryEnded()
 	// TODO: it would be nice to put this logic in the engine, not the handler, but we don't want the process to be
 	//  marked done until we're done spooling rows over the wire
 	sqlCtx, err = sqlCtx.ProcessList.BeginQuery(sqlCtx, query)
@@ -507,16 +512,6 @@ func (h *Handler) doQuery(
 		buf.Reset()
 		sql.ByteBufPool.Put(buf)
 	}()
-
-	// Watch the connection for a client disconnect while we produce and spool
-	// results, regardless of which result path below we take. If the client
-	// goes away, the watcher cancels the query context so iteration aborts
-	// promptly instead of running to completion for a client that will never
-	// read the results. stopWatch halts the watch and joins its goroutine; it
-	// must run before doQuery returns (and thus before the command loop issues
-	// its next read on the connection).
-	stopWatch := h.watchForClosedConnection(ctx, sqlCtx.GetLogger(), c, cancelQuery)
-	defer stopWatch()
 
 	// zero/single return schema use spooling shortcut
 	if types.IsOkResultSchema(schema) {
@@ -1039,96 +1034,6 @@ func (h *Handler) errorWrappedComExec(
 	}
 
 	return err
-}
-
-// watchForClosedConnection spawns a goroutine that watches the client connection
-// |c| for a disconnect while a query is executing. If the client goes away (or
-// sends data unexpectedly, which in the half-duplex, non-pipelined protocol means
-// it is no longer waiting for the current result), it calls |cancelQuery| with
-// ErrConnectionWasClosed so the in-flight query is aborted rather than run to
-// completion for a client that will never read the results. The returned stop
-// function halts the watch and blocks until the watch goroutine has exited; it
-// must be called before the query handler returns (and thus before the command
-// loop issues its next read on the connection).
-//
-// The watch relies on vitess's Conn.WaitForClientActivity, which is event-driven
-// and platform-independent. It can be disabled via Config.DisableConnectionWatcher,
-// in which case this is a no-op and stop does nothing.
-// watchConnStartDelay is how long a query must run before the disconnect watcher
-// is actually started. The overwhelming majority of queries (point selects,
-// OkResults, single-row reads) finish in well under this, so they never spawn
-// the watch goroutine, allocate its channels, or touch the connection at all —
-// stop() simply cancels the pending timer. Only queries that outlive the delay
-// pay the watch cost, and those are precisely the ones for which detecting a
-// client disconnect mid-flight actually matters; an extra few milliseconds of
-// detection latency on such a query is immaterial.
-const watchConnStartDelay = 10 * time.Millisecond
-
-func (h *Handler) watchForClosedConnection(ctx context.Context, logger *logrus.Entry, c *mysql.Conn, cancelQuery context.CancelCauseFunc) (stop func()) {
-	if h.disableConnectionWatcher {
-		return func() {}
-	}
-
-	watchCtx, stopWatch := context.WithCancel(ctx)
-
-	// done is created only once the watch goroutine is actually launched (when the
-	// timer fires). mu guards the handoff between the timer goroutine and stop():
-	// stopped prevents a timer that fires concurrently with stop() from launching
-	// the goroutine after we have decided to tear down.
-	var mu sync.Mutex
-	var done chan struct{}
-	stopped := false
-
-	startWatch := func() {
-		mu.Lock()
-		if stopped {
-			mu.Unlock()
-			return
-		}
-		done = make(chan struct{})
-		mu.Unlock()
-		go func() {
-			defer close(done)
-			defer func() {
-				if r := recover(); r != nil {
-					logger.Errorf("panic recovered in connection watcher: %v\n%s", r, debug.Stack())
-				}
-			}()
-			// WaitForClientActivity returns nil when watchCtx is cancelled (the
-			// normal "query finished" path) and a non-nil error when the client
-			// disconnected or sent unexpected data. We surface that as
-			// ErrConnectionWasClosed to the query, preserving the previous behavior,
-			// and log the underlying cause.
-			if err := c.WaitForClientActivity(watchCtx); err != nil {
-				logger.WithError(err).Warn("client connection went away while a query was executing")
-				cancelQuery(ErrConnectionWasClosed.New())
-			}
-		}()
-	}
-
-	timer := time.AfterFunc(watchConnStartDelay, startWatch)
-
-	return func() {
-		if timer.Stop() {
-			// The timer had not fired: the watch goroutine was never started, so
-			// there is nothing to join. This is the common, fast-query path. We
-			// still release the watch context.
-			stopWatch()
-			return
-		}
-		// The timer already fired (or is firing). Make sure startWatch sees that we
-		// are tearing down: if it has not yet launched the goroutine it becomes a
-		// no-op; if it has, we join the goroutine below. Cancelling watchCtx first
-		// unblocks WaitForClientActivity so the join returns promptly.
-		mu.Lock()
-		stopped = true
-		d := done
-		mu.Unlock()
-		stopWatch()
-		if d != nil {
-			<-d
-		}
-	}
 }
 
 func resultFromOkResult(result types.OkResult) *sqltypes.Result {
