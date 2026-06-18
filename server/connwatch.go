@@ -284,8 +284,10 @@ func (w *connWatcher) scanOnce(nowNanos int64) (pending bool) {
 		if cs.maybePromote(nowNanos, delayNanos) {
 			pending = true
 		}
-		w.scanBuf[len(w.scanBuf)-1] = nil // help GC; not strictly required
 	}
+	// Clear the snapshot so it does not pin connStates between scans. The buffer
+	// itself is reused (truncated, not freed) on the next scan.
+	clear(w.scanBuf)
 	w.scanBuf = w.scanBuf[:0]
 	return pending
 }

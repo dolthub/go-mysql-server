@@ -195,6 +195,25 @@ func TestConnWatcherUnregisterTeardown(t *testing.T) {
 	assert.Equal(t, 1, fw.count(), "dead state must not be re-watched")
 }
 
+// A single scan over multiple connections must promote each one independently
+// (regression: the snapshot buffer was being cleared at the wrong index, niling
+// a not-yet-visited entry and panicking on the next deref).
+func TestConnWatcherScanMultiple(t *testing.T) {
+	w, fw, now := manualWatcher(t, 10*time.Millisecond)
+	const n = 5
+	conns := make([]*connState, n)
+	for i := 0; i < n; i++ {
+		conns[i], _, _ = registerQuery(t, w, uint32(i+1))
+	}
+
+	now.Store(int64(20 * time.Millisecond)) // all past the delay
+	assert.False(t, w.scanOnce(w.nowNanos()))
+	assert.Equal(t, n, fw.count(), "every long-running connection should be watched")
+	for i, cs := range conns {
+		assert.Equalf(t, uint64(1<<1|1), cs.slot.Load(), "conn %d should be watching", i+1)
+	}
+}
+
 // End-to-end with the real sweeper goroutine (real time, fake watch): the sweeper
 // parks when idle, wakes on a new query, promotes after the delay, then parks
 // again because the watch is event-driven.
