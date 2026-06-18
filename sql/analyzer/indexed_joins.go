@@ -331,6 +331,8 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo, cat sql.Catalog) error {
 			for _, on := range conds {
 				filters := SplitConjunction(ctx, on)
 				for _, idx := range indexes {
+					// TODO: Investigate why matched filters are not being removed from join conditions and filter nodes
+					//  https://github.com/dolthub/dolt/issues/11231
 					keyExprs, _, nullmask := keyExprsForIndex(ctx, tableId, idx.Cols(), append(filters, extraFilters...), columnIdToIndexedExprMap)
 					if keyExprs != nil {
 						ita, err := plan.NewIndexedAccessForTableNode(ctx, rt, plan.NewLookupBuilder(ctx, idx.SqlIdx(), keyExprs, nullmask))
@@ -373,12 +375,15 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo, cat sql.Catalog) error {
 				Index: idx,
 			}
 
+			// TODO: Also remove matched filters from "extraFilters" (filter expressions found in right-side filter
+			//  nodes) https://github.com/dolthub/dolt/issues/11231
 			var filters []sql.Expression
 			for _, filter := range join.Filter {
 				found := false
 				for _, matchedFilter := range matchedFilters {
 					if filter == matchedFilter {
 						found = true
+						break
 					}
 				}
 				if !found {
@@ -759,6 +764,8 @@ func addRightSemiJoins(ctx *sql.Context, m *memo.Memo, cat sql.Catalog) error {
 				continue
 			}
 
+			// TODO: Investigate why matched filters are not being removed from join conditions and filter nodes
+			//  https://github.com/dolthub/dolt/issues/11231
 			keyExprs, _, nullmask := keyExprsForIndex(ctx, tableId, idx.Cols(), append(semi.Filter, filters...), columnIdToIndexedExprMap)
 			if keyExprs == nil {
 				continue
