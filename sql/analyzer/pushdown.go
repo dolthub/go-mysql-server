@@ -141,13 +141,6 @@ func canDoPushdown(n sql.Node) bool {
 		return false
 	}
 
-	// The values of an insert are analyzed in isolation, so they do get pushdown treatment. But no other DML
-	// statements should get pushdown to their target tables.
-	switch n.(type) {
-	case *plan.InsertInto:
-		return false
-	}
-
 	return true
 }
 
