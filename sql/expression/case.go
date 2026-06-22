@@ -33,6 +33,7 @@ type Case struct {
 	Expr     sql.Expression
 	Else     sql.Expression
 	Branches []CaseBranch
+	typ      sql.Type
 }
 
 var _ sql.Expression = (*Case)(nil)
@@ -45,15 +46,17 @@ func NewCase(expr sql.Expression, branches []CaseBranch, elseExpr sql.Expression
 
 // Type implements the sql.Expression interface.
 func (c *Case) Type(ctx *sql.Context) sql.Type {
-	var curr sql.Type
-	curr = types.Null
+	if c.typ != nil {
+		return c.typ
+	}
+	c.typ = types.Null
 	for _, b := range c.Branches {
-		curr = types.GeneralizeTypes(curr, b.Value.Type(ctx))
+		c.typ = types.GeneralizeTypes(c.typ, b.Value.Type(ctx))
 	}
 	if c.Else != nil {
-		curr = types.GeneralizeTypes(curr, c.Else.Type(ctx))
+		c.typ = types.GeneralizeTypes(c.typ, c.Else.Type(ctx))
 	}
-	return curr
+	return c.typ
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
