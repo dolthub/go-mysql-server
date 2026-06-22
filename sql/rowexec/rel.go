@@ -227,6 +227,7 @@ func (b *BaseBuilder) buildJSONTable(ctx *sql.Context, n *plan.JSONTable, row sq
 }
 
 func (b *BaseBuilder) buildHashLookup(ctx *sql.Context, n *plan.HashLookup, row sql.Row) (sql.RowIter, error) {
+	// TODO: pretty sure this Mutex is useless, but keep it for now
 	n.Mutex.Lock()
 	defer n.Mutex.Unlock()
 	if n.Lookup == nil {
