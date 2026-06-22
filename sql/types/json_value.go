@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"maps"
+	"math"
 	"regexp"
 	"slices"
 	"strconv"
@@ -236,148 +237,6 @@ func LookupJSONValue(ctx context.Context, j sql.JSONWrapper, path string) (sql.J
 	return lookupJson(r, path)
 }
 
-// memberAccessYieldsNoMatch reports whether evaluating |path| against |j| would
-// apply a member access, .key or .*, to a value that is not an object. MySQL
-// matches a member access only against objects and returns SQL NULL otherwise,
-// while the jsonpath library would instead search the elements of an array.
-//
-// It reads only the part of |path| whose result is a single value reached by
-// following one branch, namely member accesses, the member wildcard, and
-// non-negative array indices, and reports true only when it is certain a member
-// access lands on a non-object, so it never reports true for a path that does
-// locate a value. Any other leg, such as an array wildcard, a range, [last], or
-// the ** ellipsis, makes it stop and report false so the caller falls back to
-// the jsonpath library.
-//
-// It scans |path| in a single pass and keeps no per-leg state on the heap, which
-// matters because lookups happen once per row. See [Allocating on the Stack] for
-// why the absence of an escaping slice lets the scan stay on the stack.
-//
-// For the path syntax itself see
-// https://dev.mysql.com/doc/refman/8.4/en/json.html#json-path-syntax.
-//
-// [Allocating on the Stack]: https://go.dev/blog/allocation-optimizations
-func memberAccessYieldsNoMatch(j interface{}, path string) bool {
-	if len(path) == 0 || path[0] != '$' {
-		return false
-	}
-	cur := j
-	for i := 1; i < len(path); {
-		switch path[i] {
-		case '.':
-			i++
-			if i >= len(path) {
-				return false
-			}
-			obj, isObject := cur.(JsonObject)
-			if path[i] == '*' {
-				i++
-				return !isObject
-			}
-			name, ok := readJSONMemberName(path, &i)
-			if !ok {
-				return false
-			}
-			if !isObject {
-				return true
-			}
-			child, exists := obj[name]
-			if !exists {
-				return false
-			}
-			cur = child
-		case '[':
-			end := strings.IndexByte(path[i:], ']')
-			if end < 0 {
-				return false
-			}
-			// Parse the index without strconv.Atoi, whose error value would
-			// escape and allocate for every wildcard or range leg this rejects.
-			n, ok := parseNonNegativeInt(strings.TrimSpace(path[i+1 : i+end]))
-			if !ok {
-				return false
-			}
-			i += end + 1
-			arr, isArray := cur.(JsonArray)
-			if !isArray {
-				// MySQL treats a non-array as a single element array, so only
-				// the index 0 selects the value and any other index misses.
-				if n != 0 {
-					return false
-				}
-				continue
-			}
-			if n >= len(arr) {
-				return false
-			}
-			cur = arr[n]
-		default:
-			return false
-		}
-	}
-	return false
-}
-
-// parseNonNegativeInt reports the integer value of |s| when |s| is a non-empty
-// run of ASCII digits, and false otherwise.
-func parseNonNegativeInt(s string) (int, bool) {
-	if len(s) == 0 {
-		return 0, false
-	}
-	n := 0
-	for k := 0; k < len(s); k++ {
-		if s[k] < '0' || s[k] > '9' {
-			return 0, false
-		}
-		n = n*10 + int(s[k]-'0')
-	}
-	return n, true
-}
-
-// readJSONMemberName reads the member name that follows a "." leg in a JSON path,
-// advancing |i| past it. A quoted name without escapes and an unquoted name are
-// returned as substrings of |path| so the common case allocates nothing. It
-// returns false if a quoted name is never closed or an unquoted name is empty.
-func readJSONMemberName(path string, i *int) (string, bool) {
-	if path[*i] != '"' {
-		start := *i
-		for *i < len(path) && path[*i] != '.' && path[*i] != '[' {
-			*i++
-		}
-		if *i == start {
-			return "", false
-		}
-		return path[start:*i], true
-	}
-	*i++
-	start := *i
-	escaped := false
-	for *i < len(path) && path[*i] != '"' {
-		if path[*i] == '\\' {
-			escaped = true
-			*i++
-		}
-		*i++
-	}
-	if *i >= len(path) {
-		return "", false
-	}
-	raw := path[start:*i]
-	*i++
-	if !escaped {
-		return raw, true
-	}
-	var b strings.Builder
-	b.Grow(len(raw))
-	for k := 0; k < len(raw); k++ {
-		if raw[k] == '\\' && k+1 < len(raw) {
-			k++
-		}
-		b.WriteByte(raw[k])
-	}
-	return b.String(), true
-}
-
 func lookupJson(j interface{}, path string) (SearchableJSON, error) {
 	// Lookup(obj) throws an error if obj is nil. We want lookups on a json null
 	// to always result in sql NULL, except in the case of the identity lookup
@@ -436,6 +295,217 @@ func lookupJson(j interface{}, path string) (SearchableJSON, error) {
 	}
 
 	return JSONDocument{Val: val}, nil
+}
+
+// memberAccessYieldsNoMatch reports whether evaluating |path| against |document|
+// would apply a member access, .key or .*, to a value that is not an object.
+// MySQL matches a member access only against objects and returns SQL NULL
+// otherwise, while the jsonpath library would instead search the elements of an
+// array.
+//
+// It walks only the legs whose result is a single value, namely member accesses,
+// the member wildcard, and non-negative array indices, and reports true only
+// when it is certain a member access lands on a non-object. Any other leg, such
+// as an array-cell wildcard, a range, or the ** ellipsis, stops the walk and
+// reports false so the caller falls back to the jsonpath library.
+//
+// The walk keeps no per-leg state on the heap because lookups happen once per
+// row. See [Allocating on the Stack] and the [MySQL JSON path syntax].
+//
+// [Allocating on the Stack]: https://go.dev/blog/allocation-optimizations
+// [MySQL JSON path syntax]: https://dev.mysql.com/doc/refman/8.4/en/json.html#json-path-syntax
+func memberAccessYieldsNoMatch(document interface{}, path string) bool {
+	if !strings.HasPrefix(path, "$") {
+		return false
+	}
+	scanner := jsonPathScanner{path: path, position: 1}
+	current := document
+	for {
+		switch leg := scanner.next(); leg.kind {
+		case legMember, legMemberWildcard:
+			object, isObject := current.(JsonObject)
+			if !isObject {
+				// A member access matches only objects in MySQL.
+				return true
+			}
+			if leg.kind == legMemberWildcard {
+				// .* selects every member, a multi-valued result we leave to the
+				// jsonpath library.
+				return false
+			}
+			child, exists := object[leg.member]
+			if !exists {
+				return false
+			}
+			current = child
+		case legIndex:
+			array, isArray := current.(JsonArray)
+			if !isArray {
+				// MySQL auto-wraps a non-array as a single-element array, so only
+				// index 0 selects the value and any other index misses.
+				if leg.index != 0 {
+					return false
+				}
+				continue
+			}
+			if leg.index >= len(array) {
+				return false
+			}
+			current = array[leg.index]
+		default:
+			// legEnd or legUnsupported: there is nothing more to follow, so leave
+			// the remaining path to the jsonpath library.
+			return false
+		}
+	}
+}
+
+// jsonPathLegKind classifies one leg of a JSON path. See [jsonPathScanner].
+type jsonPathLegKind int
+
+const (
+	legEnd            jsonPathLegKind = iota // the path has been fully consumed
+	legUnsupported                           // a leg the scanner does not model
+	legMember                                // a named member, such as .key
+	legMemberWildcard                        // the member wildcard, .*
+	legIndex                                 // a non-negative array index, such as [3]
+)
+
+// jsonPathLeg is one leg of a JSON path, produced by [jsonPathScanner.next]. It
+// is returned by value so that walking a path allocates nothing.
+type jsonPathLeg struct {
+	kind   jsonPathLegKind
+	member string // the member name, set when kind is legMember
+	index  int    // the array index, set when kind is legIndex
+}
+
+// jsonPathScanner reads the legs of a MySQL JSON path one at a time.
+type jsonPathScanner struct {
+	path     string
+	position int
+}
+
+// next returns the leg beginning at the current position and advances past it.
+// It returns kind [legEnd] once the path is consumed and [legUnsupported] for
+// any syntax the scanner does not model.
+func (scanner *jsonPathScanner) next() jsonPathLeg {
+	if scanner.position >= len(scanner.path) {
+		return jsonPathLeg{kind: legEnd}
+	}
+	switch scanner.path[scanner.position] {
+	case '.':
+		return scanner.scanMember()
+	case '[':
+		return scanner.scanIndex()
+	default:
+		return jsonPathLeg{kind: legUnsupported}
+	}
+}
+
+// scanMember reads a "." leg, which is either a member name or the member
+// wildcard .*.
+func (scanner *jsonPathScanner) scanMember() jsonPathLeg {
+	scanner.position++ // consume the '.'
+	if scanner.position >= len(scanner.path) {
+		return jsonPathLeg{kind: legUnsupported}
+	}
+	if scanner.path[scanner.position] == '*' {
+		scanner.position++
+		return jsonPathLeg{kind: legMemberWildcard}
+	}
+	member, ok := scanner.scanMemberName()
+	if !ok {
+		return jsonPathLeg{kind: legUnsupported}
+	}
+	return jsonPathLeg{kind: legMember, member: member}
+}
+
+// scanIndex reads a "[...]" leg. Only a non-negative integer index is modelled,
+// so array-cell wildcards and ranges report [legUnsupported].
+func (scanner *jsonPathScanner) scanIndex() jsonPathLeg {
+	closeBracket := strings.IndexByte(scanner.path[scanner.position:], ']')
+	if closeBracket < 0 {
+		return jsonPathLeg{kind: legUnsupported}
+	}
+	contents := scanner.path[scanner.position+1 : scanner.position+closeBracket]
+	index, ok := parseNonNegativeInt(strings.TrimSpace(contents))
+	if !ok {
+		return jsonPathLeg{kind: legUnsupported}
+	}
+	scanner.position += closeBracket + 1
+	return jsonPathLeg{kind: legIndex, index: index}
+}
+
+// scanMemberName reads the member name after a ".". It returns a substring of
+// the path so the common case allocates nothing, unescaping into a new string
+// only when a quoted name actually contains a backslash. It returns false for an
+// empty unquoted name or an unterminated quoted name.
+func (scanner *jsonPathScanner) scanMemberName() (string, bool) {
+	if scanner.path[scanner.position] != '"' {
+		start := scanner.position
+		for scanner.position < len(scanner.path) &&
+			scanner.path[scanner.position] != '.' &&
+			scanner.path[scanner.position] != '[' {
+			scanner.position++
+		}
+		return scanner.path[start:scanner.position], scanner.position > start
+	}
+	scanner.position++ // consume the opening quote
+	start := scanner.position
+	escaped := false
+	for scanner.position < len(scanner.path) && scanner.path[scanner.position] != '"' {
+		if scanner.path[scanner.position] == '\\' {
+			escaped = true
+			scanner.position++ // skip the escaped character
+		}
+		scanner.position++
+	}
+	if scanner.position >= len(scanner.path) {
+		return "", false
+	}
+	member := scanner.path[start:scanner.position]
+	scanner.position++ // consume the closing quote
+	if !escaped {
+		return member, true
+	}
+	return unescapeJSONMemberName(member), true
+}
+
+// unescapeJSONMemberName drops the backslash escapes from a quoted member name.
+func unescapeJSONMemberName(member string) string {
+	var builder strings.Builder
+	builder.Grow(len(member))
+	for position := 0; position < len(member); position++ {
+		if member[position] == '\\' && position+1 < len(member) {
+			position++ // drop the backslash and keep the byte it escaped
+		}
+		builder.WriteByte(member[position])
+	}
+	return builder.String()
+}
+
+// parseNonNegativeInt reports the integer value of |text| when |text| is a
+// non-empty run of ASCII digits no greater than [math.MaxInt32], and false
+// otherwise. It avoids strconv.Atoi, whose error value would escape and allocate
+// for every array-cell wildcard or range leg it rejects. MySQL caps array
+// indices well below MaxInt32, so rejecting larger values also keeps the
+// accumulator from overflowing into a negative index that could panic a caller.
+func parseNonNegativeInt(text string) (int, bool) {
+	if len(text) == 0 {
+		return 0, false
+	}
+	value := 0
+	for position := 0; position < len(text); position++ {
+		digit := text[position]
+		if digit < '0' || digit > '9' {
+			return 0, false
+		}
+		value = value*10 + int(digit-'0')
+		if value > math.MaxInt32 {
+			return 0, false
+		}
+	}
+	return value, true
 }
 
 var _ driver.Valuer = JSONDocument{}
