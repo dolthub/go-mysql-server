@@ -151,22 +151,9 @@ func HashOfSimple(ctx *sql.Context, i any, t sql.Type) (uint64, sql.ConvertInRan
 
 	var str string
 	var inRange sql.ConvertInRange
-	coll := sql.Collation_Default
-	if types.IsTuple(t) {
-		tup := i.([]any)
-		tupType := t.(types.TupleType)
-		hashes := make([]uint64, len(tup))
-		for idx, v := range tup {
-			// TODO: handle out of range conversions here?
-			h, _, err := HashOfSimple(ctx, v, tupType[idx])
-			if err != nil {
-				return 0, sql.InRange, err
-			}
-			hashes[idx] = h
-		}
-		str = fmt.Sprintf("%v", hashes)
-	} else if types.IsTextOnly(t) {
-		coll = t.(sql.StringType).Collation()
+	if types.IsTextOnly(t) {
+		// Collated strings that are equivalent may have different runes, so we must make them hash to the same value
+		coll := t.(sql.StringType).Collation()
 		if s, ok := i.(string); ok {
 			str = s
 		} else {
@@ -179,64 +166,92 @@ func HashOfSimple(ctx *sql.Context, i any, t sql.Type) (uint64, sql.ConvertInRan
 				return 0, sql.InRange, err
 			}
 		}
-	} else {
-		var val any
-		var err error
-		val, inRange, err = types.ConvertOrTruncate(ctx, i, t.Promote())
+		h, err := coll.HashToUint(str)
 		if err != nil {
 			return 0, sql.InRange, err
 		}
-
-		// Remove trailing 0s from floats
-		switch v := val.(type) {
-		case int:
-			str = strconv.FormatInt(int64(v), 10)
-		case int8:
-			str = strconv.FormatInt(int64(v), 10)
-		case int16:
-			str = strconv.FormatInt(int64(v), 10)
-		case int32:
-			str = strconv.FormatInt(int64(v), 10)
-		case int64:
-			str = strconv.FormatInt(v, 10)
-		case uint:
-			str = strconv.FormatUint(uint64(v), 10)
-		case uint8:
-			str = strconv.FormatUint(uint64(v), 10)
-		case uint16:
-			str = strconv.FormatUint(uint64(v), 10)
-		case uint32:
-			str = strconv.FormatUint(uint64(v), 10)
-		case uint64:
-			str = strconv.FormatUint(v, 10)
-		case float32:
-			str = strconv.FormatFloat(float64(v), 'f', -1, 32)
-			if str == "-0" {
-				str = "0"
-			}
-		case float64:
-			str = strconv.FormatFloat(v, 'f', -1, 64)
-			if str == "-0" {
-				str = "0"
-			}
-		case *apd.Decimal:
-			str = v.Text('f')
-			if strings.IndexByte(str, '.') != -1 {
-				// remove trailing 0s after '.'
-				str = strings.TrimRightFunc(str, func(r rune) bool {
-					return r == '0'
-				})
-				str = strings.TrimRight(str, ".")
-			}
-		default:
-			str = fmt.Sprintf("%v", v)
-		}
+		return h, inRange, nil
 	}
 
-	// Collated strings that are equivalent may have different runes, so we must make them hash to the same value
-	h, err := coll.HashToUint(str)
+	hash := digestPool.Get().(*xxhash.Digest)
+	hash.Reset()
+	defer digestPool.Put(hash)
+
+	if types.IsTuple(t) {
+		tup := i.([]any)
+		tupType := t.(types.TupleType)
+		hashes := make([]uint64, len(tup))
+		for idx, v := range tup {
+			// TODO: handle out of range conversions here?
+			h, _, err := HashOfSimple(ctx, v, tupType[idx])
+			if err != nil {
+				return 0, sql.InRange, err
+			}
+			hashes[idx] = h
+		}
+		str = fmt.Sprintf("%v", hashes) // TODO: avoid Sprintf for performance
+		_, err := hash.WriteString(str)
+		if err != nil {
+			return 0, sql.InRange, err
+		}
+		return hash.Sum64(), inRange, nil
+	}
+
+	var val any
+	var err error
+	val, inRange, err = types.ConvertOrTruncate(ctx, i, t.Promote())
 	if err != nil {
 		return 0, sql.InRange, err
 	}
-	return h, inRange, nil
+
+	// TODO: use strconv.Append...() and a byte buffer
+	switch v := val.(type) {
+	case int:
+		str = strconv.FormatInt(int64(v), 10)
+	case int8:
+		str = strconv.FormatInt(int64(v), 10)
+	case int16:
+		str = strconv.FormatInt(int64(v), 10)
+	case int32:
+		str = strconv.FormatInt(int64(v), 10)
+	case int64:
+		str = strconv.FormatInt(v, 10)
+	case uint:
+		str = strconv.FormatUint(uint64(v), 10)
+	case uint8:
+		str = strconv.FormatUint(uint64(v), 10)
+	case uint16:
+		str = strconv.FormatUint(uint64(v), 10)
+	case uint32:
+		str = strconv.FormatUint(uint64(v), 10)
+	case uint64:
+		str = strconv.FormatUint(v, 10)
+	case float32:
+		str = strconv.FormatFloat(float64(v), 'f', -1, 32)
+		if str == "-0" {
+			str = "0"
+		}
+	case float64:
+		str = strconv.FormatFloat(v, 'f', -1, 64)
+		if str == "-0" {
+			str = "0"
+		}
+	case *apd.Decimal:
+		str = v.Text('f')
+		if strings.IndexByte(str, '.') != -1 {
+			// remove trailing 0s after '.'
+			str = strings.TrimRightFunc(str, func(r rune) bool {
+				return r == '0'
+			})
+			str = strings.TrimRight(str, ".")
+		}
+	default:
+		str = fmt.Sprintf("%v", v) // TODO: avoid Sprintf for performance
+	}
+
+	_, err = hash.WriteString(str)
+	if err != nil {
+		return 0, sql.InRange, err
+	}
+	return hash.Sum64(), inRange, nil
 }
