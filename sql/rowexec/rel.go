@@ -227,8 +227,8 @@ func (b *BaseBuilder) buildJSONTable(ctx *sql.Context, n *plan.JSONTable, row sq
 }
 
 func (b *BaseBuilder) buildHashLookup(ctx *sql.Context, n *plan.HashLookup, row sql.Row) (sql.RowIter, error) {
-	n.Mutex.Lock()
-	defer n.Mutex.Unlock()
+	//n.Mutex.Lock()
+	//defer n.Mutex.Unlock()
 	if n.Lookup == nil {
 		childIter, err := b.buildNodeExec(ctx, n.Child, row)
 		if err != nil {
