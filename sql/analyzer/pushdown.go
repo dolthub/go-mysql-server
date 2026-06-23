@@ -33,7 +33,7 @@ func pushFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, s
 		return n, transform.SameTree, nil
 	}
 	filters := newEmptyFilterSet(n)
-	
+
 	n, same, err := pushdownFiltersAboveTables(ctx, a, n, scope, filters)
 	// TODO: assert that there are no unhandled filters? this should never happen so error out if it does
 	return n, same, err
