@@ -36,6 +36,8 @@ func pushFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, s
 		return n, transform.SameTree, nil
 	}
 
+	projectionExpressions := getProjectionExpressions(n)
+
 	pushdownAboveTables := func(n sql.Node, filters *filterSet) (sql.Node, transform.TreeIdentity, error) {
 		return transform.NodeWithCtx(ctx, n, filterPushdownSelector, func(ctx *sql.Context, c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 			switch node := c.Node.(type) {
@@ -64,11 +66,6 @@ func pushFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, s
 		})
 	}
 
-	tableAliases, err := getTableAliases(ctx, n, scope)
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-
 	// For each filter node, we want to push its predicates as low as possible.
 	return transform.Node(ctx, n, func(ctx *sql.Context, node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := node.(type) {
@@ -81,7 +78,7 @@ func pushFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, s
 			}
 			// Find all col exprs and group them by the table they mention so that we can keep track of which ones
 			// have been pushed down and need to be removed from the parent filter
-			filters := newFilterSet(ctx, n, scope, tableAliases)
+			filters := newFilterSet(ctx, n, scope, projectionExpressions)
 
 			// move filter predicates directly above their respective tables in joins
 			ret, _, err := pushdownAboveTables(n, filters)
@@ -116,12 +113,7 @@ func pushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.Node, sco
 		return n, transform.SameTree, nil
 	}
 
-	tableAliases, err := getTableAliases(ctx, n, scope)
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-
-	return transformPushdownSubqueryAliasFilters(ctx, a, n, scope, tableAliases)
+	return transformPushdownSubqueryAliasFilters(ctx, a, n, scope)
 }
 
 func hasSubqueryAlias(ctx *sql.Context, n sql.Node) bool {
@@ -179,8 +171,9 @@ func filterPushdownSelector(ctx *sql.Context, c transform.Context) bool {
 	return true
 }
 
-func transformPushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, tableAliases TableAliases) (sql.Node, transform.TreeIdentity, error) {
+func transformPushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope) (sql.Node, transform.TreeIdentity, error) {
 	var filters *filterSet
+	projectionExpressions := getProjectionExpressions(n)
 
 	transformFilterNode := func(n *plan.Filter) (sql.Node, transform.TreeIdentity, error) {
 		return transform.NodeWithCtx(ctx, n, filterPushdownSelector, func(ctx *sql.Context, c transform.Context) (sql.Node, transform.TreeIdentity, error) {
@@ -207,8 +200,7 @@ func transformPushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.
 		switch n := n.(type) {
 		case *plan.Filter:
 			// First step is to find all col exprs and group them by the table they mention.
-
-			filters = newFilterSet(ctx, n, scope, tableAliases)
+			filters = newFilterSet(ctx, n, scope, projectionExpressions)
 			return transformFilterNode(n)
 		default:
 			return n, transform.SameTree, nil
