@@ -267,7 +267,7 @@ func lookupJson(j interface{}, path string) (SearchableJSON, error) {
 
 	// The jsonpath library treats a member access against an array as a search
 	// of its elements, but MySQL treats it as no match and returns SQL NULL.
-	if memberAccessYieldsNoMatch(j, path) {
+	if memberAccessOnNonObject(j, path) {
 		return nil, nil
 	}
 
@@ -297,7 +297,7 @@ func lookupJson(j interface{}, path string) (SearchableJSON, error) {
 	return JSONDocument{Val: val}, nil
 }
 
-// memberAccessYieldsNoMatch reports whether evaluating |path| against |document|
+// memberAccessOnNonObject reports whether evaluating |path| against |document|
 // would apply a member access, .key or .*, to a value that is not an object.
 // MySQL matches a member access only against objects and returns SQL NULL
 // otherwise, while the jsonpath library would instead search the elements of an
@@ -314,7 +314,7 @@ func lookupJson(j interface{}, path string) (SearchableJSON, error) {
 //
 // [Allocating on the Stack]: https://go.dev/blog/allocation-optimizations
 // [MySQL JSON path syntax]: https://dev.mysql.com/doc/refman/8.4/en/json.html#json-path-syntax
-func memberAccessYieldsNoMatch(document interface{}, path string) bool {
+func memberAccessOnNonObject(document interface{}, path string) bool {
 	if !strings.HasPrefix(path, "$") {
 		return false
 	}

@@ -20,7 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestMemberAccessYieldsNoMatch(t *testing.T) {
+func TestMemberAccessOnNonObject(t *testing.T) {
 	array := JsonArray{1.0, 2.0, 3.0}
 	objectWithArray := JsonObject{"a": JsonArray{1.0, 2.0}}
 	objectWithScalar := JsonObject{"a": 5.0}
@@ -62,7 +62,7 @@ func TestMemberAccessYieldsNoMatch(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			require.Equal(t, test.want, memberAccessYieldsNoMatch(test.document, test.path))
+			require.Equal(t, test.want, memberAccessOnNonObject(test.document, test.path))
 		})
 	}
 }

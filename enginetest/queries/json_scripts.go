@@ -967,8 +967,6 @@ var JsonScripts = []ScriptTest{
 				Expected: []sql.Row{{true}},
 			},
 			{
-				// Assert the value directly: it must be SQL NULL, not the empty
-				// array this returned before the fix.
 				Query:    `select json_extract('{"a":[1,2]}', '$.a.b')`,
 				Expected: []sql.Row{{nil}},
 			},
