@@ -114,6 +114,22 @@ newlines
 			},
 			expected: `{"foo\"": "bar\t", "baz\n\\n": "qux"}`,
 		},
+		{
+			// See https://dev.mysql.com/doc/refman/8.4/en/json.html
+			name:     "control characters",
+			val:      []string{"\x00\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x1f\x7f"},
+			expected: "[\"\\u0000\\u0007\\b\\t\\n\\u000b\\f\\r\\u000e\\u001f\x7f\"]",
+		},
+		{
+			name:     "map of strings with control characters",
+			val:      map[string]string{"a\x0bb": "c\x0bd"},
+			expected: "{\"a\\u000bb\": \"c\\u000bd\"}",
+		},
+		{
+			name:     "multibyte utf8 passes through",
+			val:      []string{"日本語"},
+			expected: `["日本語"]`,
+		},
 	}
 
 	for _, test := range tests {
