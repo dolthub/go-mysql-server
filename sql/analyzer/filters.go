@@ -105,7 +105,6 @@ func exprToTableFilters(ctx *sql.Context, expr sql.Expression, scope *plan.Scope
 
 type filterSet struct {
 	filtersByTable        filtersByTable
-	tableAliases          TableAliases
 	projectionExpressions map[sql.ColumnId]sql.Expression
 	handledFilters        []sql.Expression
 }
@@ -116,13 +115,11 @@ func newFilterSet(
 	ctx *sql.Context,
 	filter *plan.Filter,
 	scope *plan.Scope,
-	tableAliases TableAliases,
+	projectionExpressions map[sql.ColumnId]sql.Expression,
 ) *filterSet {
-	projectionExpressions := getProjectionExpressions(filter)
 	filtersByTable := getFiltersByTable(ctx, filter, scope, projectionExpressions)
 	return &filterSet{
 		filtersByTable:        filtersByTable,
-		tableAliases:          tableAliases,
 		projectionExpressions: projectionExpressions,
 	}
 }
