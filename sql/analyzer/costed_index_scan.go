@@ -76,7 +76,7 @@ func costedIndexScans(ctx *sql.Context, a *Analyzer, n sql.Node, qFlags *sql.Que
 		}
 
 		if is, ok := rt.UnderlyingTable().(sql.IndexSearchableTable); ok {
-			lookup, lookupFds, newFilter, ok, err := is.LookupForExpressions(ctx, SplitConjunction(ctx, filter.Expression)...)
+			lookup, lookupFds, newFilter, ok, err := is.LookupForExpressions(ctx, expression.SplitConjunction(ctx, filter.Expression)...)
 			if err != nil {
 				return n, transform.SameTree, err
 			}
@@ -128,8 +128,6 @@ func indexSearchableLookup(ctx *sql.Context, n sql.Node, rt sql.TableNode, looku
 	return ret, transform.NewTree, nil
 }
 
-var SplitConjunction func(ctx *sql.Context, expr sql.Expression) []sql.Expression = expression.SplitConjunction
-
 func costedIndexLookup(
 	ctx *sql.Context,
 	n sql.Node,
@@ -145,7 +143,7 @@ func costedIndexLookup(
 		return n, transform.SameTree, err
 	}
 
-	ita, stats, filters, err := getCostedIndexScan(ctx, a.Catalog, a.Catalog, rt, indexes, SplitConjunction(ctx, oldFilter), qFlags)
+	ita, stats, filters, err := getCostedIndexScan(ctx, a.Catalog, a.Catalog, rt, indexes, expression.SplitConjunction(ctx, oldFilter), qFlags)
 	if err != nil || ita == nil {
 		return n, transform.SameTree, err
 	}

@@ -56,8 +56,11 @@ func JoinAnd(exprs ...sql.Expression) sql.Expression {
 	}
 }
 
-// SplitConjunction breaks AND expressions into their left and right parts, recursively
-func SplitConjunction(ctx *sql.Context, expr sql.Expression) []sql.Expression {
+// SplitConjunction as an exported variable allows integrators to replace its logic
+var SplitConjunction func(ctx *sql.Context, expr sql.Expression) []sql.Expression = splitConjunction
+
+// splitConjunction breaks AND expressions into their left and right parts, recursively
+func splitConjunction(ctx *sql.Context, expr sql.Expression) []sql.Expression {
 	if expr == nil {
 		return nil
 	}
@@ -67,14 +70,14 @@ func SplitConjunction(ctx *sql.Context, expr sql.Expression) []sql.Expression {
 	}
 
 	return append(
-		SplitConjunction(ctx, and.LeftChild),
-		SplitConjunction(ctx, and.RightChild)...,
+		splitConjunction(ctx, and.LeftChild),
+		splitConjunction(ctx, and.RightChild)...,
 	)
 }
 
 // SplitDisjunction breaks OR expressions into their left and right parts, recursively
 func SplitDisjunction(expr sql.Expression) []sql.Expression {
-	// TODO: This is function is nearly identical to SplitConjunction and clearly copy-pasted from it. Consider
+	// TODO: This is function is nearly identical to splitConjunction and clearly copy-pasted from it. Consider
 	//  refactoring out repeated code into another function.
 	if expr == nil {
 		return nil
