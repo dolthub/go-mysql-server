@@ -358,6 +358,31 @@ var JsonScripts = []ScriptTest{
 					{1},
 				},
 			},
+			// See https://github.com/dolthub/dolt/issues/11224
+			{
+				Query: `select json_length(cast('[]' as json))`,
+				Expected: []sql.Row{
+					{0},
+				},
+			},
+			{
+				Query: `select json_length(cast('{}' as json))`,
+				Expected: []sql.Row{
+					{0},
+				},
+			},
+			{
+				Query: `select json_length(cast('null' as json))`,
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: `select json_length(cast('{"a": []}' as json), "$.a")`,
+				Expected: []sql.Row{
+					{0},
+				},
+			},
 		},
 	},
 	{
@@ -901,7 +926,9 @@ var JsonScripts = []ScriptTest{
 					{1, types.MustJSON("[1, 2]")},
 					{2, nil},
 					{3, nil},
-					{4, types.MustJSON("null")},
+					// The member wildcard matches only objects, so applying it to
+					// the JSON null stored at items returns SQL NULL.
+					{4, nil},
 					{5, nil},
 				},
 			},
@@ -912,6 +939,44 @@ var JsonScripts = []ScriptTest{
 			{
 				Query:    "select pk from t where json_extract(col1, '$.items') <> null;",
 				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		// See https://github.com/dolthub/dolt/issues/11224
+		Name: "json_extract member access on a non-object yields SQL NULL",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    `select json_extract('{"a":[1,2]}', '$.a.b') is null`,
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    `select json_extract('{"a":[1,2]}', '$.a.*') is null`,
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    `select json_extract('{"a":5}', '$.a.b') is null`,
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    `select json_extract('{"a":5}', '$.a.*') is null`,
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    `select json_extract('{"a":null}', '$.a.b') is null`,
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    `select json_extract('{"a":[1,2]}', '$.a.b')`,
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:    `select json_extract('{"a":{"b":[1,2]}}', '$.a.b')`,
+				Expected: []sql.Row{{types.MustJSON("[1, 2]")}},
+			},
+			{
+				Query:    `select json_extract('{"a":[{"b":1}]}', '$.a[0].b')`,
+				Expected: []sql.Row{{types.MustJSON("1")}},
 			},
 		},
 	},
