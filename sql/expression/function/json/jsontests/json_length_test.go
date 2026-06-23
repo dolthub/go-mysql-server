@@ -39,10 +39,12 @@ func TestJsonLength(t *testing.T) {
 		exp interface{}
 		err error
 	}{
+		// See https://github.com/dolthub/dolt/issues/11224
 		{
+			// A JSON null is a scalar, so its length is one.
 			f:   f1,
 			row: sql.Row{`null`},
-			exp: nil,
+			exp: 1,
 		},
 		{
 			f:   f1,
@@ -53,6 +55,16 @@ func TestJsonLength(t *testing.T) {
 			f:   f1,
 			row: sql.Row{`[1]`},
 			exp: 1,
+		},
+		{
+			f:   f1,
+			row: sql.Row{`[]`},
+			exp: 0,
+		},
+		{
+			f:   f1,
+			row: sql.Row{`{}`},
+			exp: 0,
 		},
 		{
 			f:   f1,
@@ -93,6 +105,21 @@ func TestJsonLength(t *testing.T) {
 			f:   f2,
 			row: sql.Row{`{"a": [1, false]}`, "$.a"},
 			exp: 2,
+		},
+		{
+			f:   f2,
+			row: sql.Row{`{"a": []}`, "$.a"},
+			exp: 0,
+		},
+		{
+			f:   f2,
+			row: sql.Row{`[[], []]`, "$[0]"},
+			exp: 0,
+		},
+		{
+			f:   f2,
+			row: sql.Row{`null`, "$"},
+			exp: 1,
 		},
 		{
 			f:   f2,

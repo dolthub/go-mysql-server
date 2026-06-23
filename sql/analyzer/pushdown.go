@@ -33,7 +33,7 @@ func pushFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, s
 		return n, transform.SameTree, nil
 	}
 	filters := newEmptyFilterSet(n)
-
+	
 	n, same, err := pushdownFiltersAboveTables(ctx, a, n, scope, filters)
 	// TODO: assert that there are no unhandled filters? this should never happen so error out if it does
 	return n, same, err
@@ -196,9 +196,8 @@ func filterPushdownSelector(ctx *sql.Context, c transform.Context) bool {
 }
 
 func transformPushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope) (sql.Node, transform.TreeIdentity, error) {
-	projectionExpressions := getProjectionExpressions(n)
-
 	var filters *filterSet
+	projectionExpressions := getProjectionExpressions(n)
 
 	transformFilterNode := func(n *plan.Filter) (sql.Node, transform.TreeIdentity, error) {
 		return transform.NodeWithCtx(ctx, n, filterPushdownSelector, func(ctx *sql.Context, c transform.Context) (sql.Node, transform.TreeIdentity, error) {
@@ -227,7 +226,6 @@ func transformPushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.
 		switch n := n.(type) {
 		case *plan.Filter:
 			// First step is to find all col exprs and group them by the table they mention.
-
 			filters = newFilterSet(ctx, n, scope, projectionExpressions)
 			return transformFilterNode(n)
 		default:

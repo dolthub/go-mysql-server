@@ -111,11 +111,9 @@ func (j *JsonLength) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	switch v := val.(type) {
 	case nil:
-		return nil, nil
+		// A JSON null is a scalar, so its length is one.
+		return 1, nil
 	case []interface{}:
-		if len(v) == 0 {
-			return nil, nil
-		}
 		return len(v), nil
 	case map[string]interface{}:
 		return len(v), nil
