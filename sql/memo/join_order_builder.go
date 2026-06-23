@@ -26,10 +26,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-// SplitConjunction is a pseudo-extension point of expression.SplitConjunction, used to alter the logic
-// for different integrators.
-var SplitConjunction func(ctx *sql.Context, expr sql.Expression) []sql.Expression = expression.SplitConjunction
-
 // joinOrderBuilder enumerates valid plans for a join tree.  We build the join
 // tree bottom up, first joining single nodes with join condition "edges", then
 // single nodes to hypernodes (1+n), and finally hyper nodes to
@@ -508,7 +504,7 @@ func (j *joinOrderBuilder) buildJoinOp(ctx *sql.Context, n *plan.JoinNode) *Expr
 		rightEdges:    rightE,
 	}
 
-	filters := SplitConjunction(ctx, n.JoinCond())
+	filters := expression.SplitConjunction(ctx, n.JoinCond())
 	j.m.Tracer.Log("Join filters: %v", filters)
 	union := leftV.union(rightV)
 	group, ok := j.plans[union]
@@ -536,7 +532,7 @@ func (j *joinOrderBuilder) buildFilter(ctx *sql.Context, child sql.Node, e sql.E
 	// memoize child
 	childV, childE, childGrp := j.populateSubgraph(ctx, child)
 
-	filterGrp := j.m.MemoizeFilter(ctx, nil, childGrp, SplitConjunction(ctx, e))
+	filterGrp := j.m.MemoizeFilter(ctx, nil, childGrp, expression.SplitConjunction(ctx, e))
 
 	// filter will absorb child relation for join reordering
 	j.plans[childV] = filterGrp
