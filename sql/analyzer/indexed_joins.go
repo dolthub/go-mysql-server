@@ -329,7 +329,7 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo, cat sql.Catalog) error {
 			conds := expression.SplitDisjunction(or)
 			var concat []*memo.IndexScan
 			for _, on := range conds {
-				filters := SplitConjunction(ctx, on)
+				filters := expression.SplitConjunction(ctx, on)
 				for _, idx := range indexes {
 					// TODO: Investigate why matched filters are not being removed from join conditions and filter nodes
 					//  https://github.com/dolthub/dolt/issues/11231

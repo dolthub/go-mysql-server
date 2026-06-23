@@ -123,7 +123,7 @@ func unnestExistSubqueries(ctx *sql.Context, scope *plan.Scope, a *Analyzer, fil
 	ret := filter.Child
 	var retFilters []sql.Expression
 	same := transform.SameTree
-	for _, f := range SplitConjunction(ctx, filter.Expression) {
+	for _, f := range expression.SplitConjunction(ctx, filter.Expression) {
 		var s *hoistSubquery
 		var err error
 
@@ -285,7 +285,7 @@ func decorrelateOuterCols(ctx *sql.Context, sqChild sql.Node, aliasDisambig *ali
 			emptyScope = true
 			return n, transform.SameTree, nil
 		case *plan.Filter:
-			filters := SplitConjunction(ctx, f.Expression)
+			filters := expression.SplitConjunction(ctx, f.Expression)
 			for _, f := range filters {
 				outerRef := transform.InspectExpr(ctx, f, func(ctx *sql.Context, e sql.Expression) bool {
 					if gf, ok := e.(*expression.GetField); ok && corr.Contains(gf.Id()) {

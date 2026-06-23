@@ -46,7 +46,7 @@ func pushdownFiltersAboveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 
 	switch node := n.(type) {
 	case *plan.Filter:
-		filterExpressions := SplitConjunction(ctx, node.Expression)
+		filterExpressions := expression.SplitConjunction(ctx, node.Expression)
 		filters.addFilterExprs(ctx, filterExpressions, scope)
 
 		child, same, err := pushdownFiltersAboveTables(ctx, a, node.Child, scope, filters)
@@ -75,7 +75,7 @@ func pushdownFiltersAboveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		}
 
 		isLeftOuterOrAnti := joinOp.IsLeftOuter() || joinOp.IsAnti()
-		filterExpressions := SplitConjunction(ctx, node.Filter)
+		filterExpressions := expression.SplitConjunction(ctx, node.Filter)
 		if !isLeftOuterOrAnti {
 			filters.addFilterExprs(ctx, filterExpressions, scope)
 		}
@@ -346,7 +346,7 @@ func pushdownFiltersUnderSubqueryAlias(ctx *sql.Context, a *Analyzer, sa *plan.S
 // removed from the filter node. If all filter predicates have been handled and there are no unhandled predicates, the
 // filter node is removed.
 func updateFilterNode(ctx *sql.Context, a *Analyzer, node *plan.Filter, filters *filterSet) (sql.Node, transform.TreeIdentity, error) {
-	filterExpressions := SplitConjunction(ctx, node.Expression)
+	filterExpressions := expression.SplitConjunction(ctx, node.Expression)
 	unhandled := subtractExprSet(filterExpressions, filters.handledFilters)
 
 	if len(unhandled) == 0 {

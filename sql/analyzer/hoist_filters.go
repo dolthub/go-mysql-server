@@ -75,7 +75,7 @@ func recurseSubqueryForOuterFilters(ctx *sql.Context, n sql.Node, a *Analyzer, c
 
 		var keepFilters []sql.Expression
 		allSame := transform.SameTree
-		queue := SplitConjunction(ctx, f.Expression)
+		queue := expression.SplitConjunction(ctx, f.Expression)
 		for len(queue) > 0 {
 			e := queue[0]
 			queue = queue[1:]

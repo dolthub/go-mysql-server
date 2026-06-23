@@ -95,7 +95,7 @@ func replaceCrossJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 		if !ok {
 			return n, transform.SameTree, nil
 		}
-		predicates := SplitConjunction(ctx, f.Expression)
+		predicates := expression.SplitConjunction(ctx, f.Expression)
 		movedPredicates := make(map[int]struct{})
 		newF, _, err := transform.Node(ctx, f, func(ctx *sql.Context, n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 			cj, ok := n.(*plan.JoinNode)
