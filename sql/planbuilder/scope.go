@@ -649,10 +649,8 @@ func (s *scope) handleErr(err error) {
 	panic(parseErr{err})
 }
 
-// tableId and columnId are temporary ways to track expression
-// and name uniqueness.
+// columnId is a temporary way to track expression and name uniqueness.
 // todo: the plan format should track these
-type tableId uint16
 type columnId uint16
 
 type scopeColumn struct {

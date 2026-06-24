@@ -39,13 +39,13 @@ func replaceSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 			case *plan.Project:
 				if len(sqa.ColumnNames) == 0 {
 					if table, ok := child.Child.(*plan.ResolvedTable); ok && child.Schema(ctx).Equals(table.Schema(ctx)) {
-						return plan.NewTableAlias(sqa.Name(), table), transform.NewTree, nil
+						return plan.NewTableAlias(sqa.Name(), table).WithId(sqa.Id()), transform.NewTree, nil
 
 					}
 				}
 			case *plan.TableAlias:
 				if len(sqa.ColumnNames) == 0 {
-					return plan.NewTableAlias(sqa.Name(), getResolvedTable(ctx, child)), transform.NewTree, nil
+					return plan.NewTableAlias(sqa.Name(), getResolvedTable(ctx, child)).WithId(sqa.Id()), transform.NewTree, nil
 				}
 			case *plan.SubqueryAlias:
 				if sqa.Columns().Len() == child.Columns().Len() {

@@ -746,6 +746,10 @@ on w = 0;`,
 		Expected: []sql.Row{{"third", 1, "a", 4}, {"third", 1, "b", 2}, {"third", 1, "c", 0}},
 	},
 	{
+		Query:    "select * from othertable join foo.othertable where othertable.s2 = 'third'",
+		Expected: []sql.Row{{"third", 1, "a", 4}, {"third", 1, "b", 2}, {"third", 1, "c", 0}},
+	},
+	{
 		Query:    "select * from othertable join foo.othertable on mydb.othertable.s2 = 'third'",
 		Expected: []sql.Row{{"third", 1, "a", 4}, {"third", 1, "b", 2}, {"third", 1, "c", 0}},
 	},

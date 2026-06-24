@@ -51,8 +51,8 @@ func pushFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, s
 					return plan.NewFilter(ctx, expression.JoinAnd(node.Expression, f.Expression), f.Child), transform.NewTree, nil
 				}
 				return node, transform.SameTree, nil
-			case *plan.TableAlias, *plan.ResolvedTable, *plan.ValueDerivedTable, sql.TableFunction:
-				table, same, err := pushdownFiltersToAboveTable(ctx, a, node.(sql.NameableNode), scope, filters)
+			case *plan.TableAlias, *plan.ResolvedTable, *plan.ValueDerivedTable:
+				table, same, err := pushdownFiltersToAboveTable(ctx, a, node.(plan.TableIdNode), filters)
 				if err != nil {
 					return nil, transform.SameTree, err
 				}
@@ -212,8 +212,7 @@ func transformPushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.
 func pushdownFiltersToAboveTable(
 	ctx *sql.Context,
 	a *Analyzer,
-	tableNode sql.NameableNode,
-	scope *plan.Scope,
+	tableNode plan.TableIdNode,
 	filters *filterSet,
 ) (sql.Node, transform.TreeIdentity, error) {
 	table := getTable(ctx, tableNode)
@@ -223,7 +222,7 @@ func pushdownFiltersToAboveTable(
 
 	// Move any remaining filters for the table directly above the table itself
 	var pushedDownFilterExpression sql.Expression
-	if tableFilters := filters.availableFiltersForTable(ctx, tableNode.Name()); len(tableFilters) > 0 {
+	if tableFilters := filters.availableFiltersForTable(ctx, tableNode.Id()); len(tableFilters) > 0 {
 		filters.markFiltersHandled(tableFilters...)
 		for i, filter := range tableFilters {
 			// If a filter contains a reference to a projection alias, pushing the filter will move it below the
@@ -269,7 +268,7 @@ func pushdownFiltersUnderSubqueryAlias(ctx *sql.Context, a *Analyzer, sa *plan.S
 	if sa.ScopeMapping == nil {
 		return sa, transform.SameTree, nil
 	}
-	handled := filters.availableFiltersForTable(ctx, sa.Name())
+	handled := filters.availableFiltersForTable(ctx, sa.Id())
 	if len(handled) == 0 {
 		return sa, transform.SameTree, nil
 	}

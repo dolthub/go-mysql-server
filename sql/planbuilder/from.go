@@ -802,9 +802,8 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 
 func resolvedViewScope(ctx *sql.Context, outScope *scope, view sql.Node, db string, name string) (*scope, bool) {
 	outScope.node = view
-	tabId := outScope.addTable(strings.ToLower(view.Schema(ctx)[0].Name))
+	tabId := outScope.addTable(name)
 	if tin, ok := view.(plan.TableIdNode); ok {
-		// TODO should *sql.View implement TableIdNode?
 		outScope.node = tin.WithId(tabId)
 	}
 	return outScope, true

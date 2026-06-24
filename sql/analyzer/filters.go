@@ -16,7 +16,6 @@ package analyzer
 
 import (
 	"reflect"
-	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -24,7 +23,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-type filtersByTable map[string][]sql.Expression
+type filtersByTable map[sql.TableId][]sql.Expression
 
 func newFiltersByTable() filtersByTable {
 	return make(filtersByTable)
@@ -62,8 +61,8 @@ func getFiltersByTable(ctx *sql.Context, n sql.Node, scope *plan.Scope, projecte
 func exprToTableFilters(ctx *sql.Context, expr sql.Expression, scope *plan.Scope, projectionExpressions map[sql.ColumnId]sql.Expression) filtersByTable {
 	filters := newFiltersByTable()
 	for _, expr := range expression.SplitConjunction(ctx, expr) {
-		var seenTables = make(map[string]bool)
-		var lastTable string
+		var seenTables = make(map[sql.TableId]bool)
+		var lastTable sql.TableId
 		hasSubquery := false
 		var findGetFields func(*sql.Context, sql.Expression) bool
 		findGetFields = func(ctx *sql.Context, e sql.Expression) bool {
@@ -81,7 +80,7 @@ func exprToTableFilters(ctx *sql.Context, expr sql.Expression, scope *plan.Scope
 					sql.Inspect(ctx, projectionExpression, findGetFields)
 					return true
 				}
-				table := f.Table()
+				table := f.TableId()
 				if !seenTables[table] {
 					seenTables[table] = true
 					lastTable = table
@@ -95,7 +94,9 @@ func exprToTableFilters(ctx *sql.Context, expr sql.Expression, scope *plan.Scope
 		}
 		sql.Inspect(ctx, expr, findGetFields)
 
-		if len(seenTables) == 1 && !hasSubquery {
+		// A TableId equaling 0 means it was never assigned. We don't want to match these filters because there may be
+		// multiple tables with unassigned TableIds.
+		if lastTable != 0 && len(seenTables) == 1 && !hasSubquery {
 			filters[lastTable] = append(filters[lastTable], expr)
 		}
 	}
@@ -126,8 +127,8 @@ func newFilterSet(
 
 // availableFiltersForTable returns the filters that are still available for the table given (not previously marked
 // handled)
-func (fs *filterSet) availableFiltersForTable(ctx *sql.Context, table string) []sql.Expression {
-	filters, ok := fs.filtersByTable[strings.ToLower(table)]
+func (fs *filterSet) availableFiltersForTable(ctx *sql.Context, table sql.TableId) []sql.Expression {
+	filters, ok := fs.filtersByTable[table]
 	if !ok {
 		return nil
 	}
