@@ -94,6 +94,8 @@ func exprToTableFilters(ctx *sql.Context, expr sql.Expression, scope *plan.Scope
 		}
 		sql.Inspect(ctx, expr, findGetFields)
 
+		// A TableId equaling 0 means it was never assigned. We don't want to match these filters because there may be
+		// multiple tables with unassigned TableIds.
 		if lastTable != 0 && len(seenTables) == 1 && !hasSubquery {
 			filters[lastTable] = append(filters[lastTable], expr)
 		}
