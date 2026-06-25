@@ -376,7 +376,7 @@ func TestTransactionScriptWithEngine(t *testing.T, e QueryEngine, harness Harnes
 }
 
 // TestQuery runs a query on the engine given and asserts that results are as expected.
-// TODO: this should take en engine
+// TODO: this should take an engine https://github.com/dolthub/go-mysql-server/issues/3588
 func TestQuery(t *testing.T, harness Harness, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]sqlparser.Expr) {
 	testQuery(t, harness, q, expected, expectedCols, bindings, queries.WrapBehavior_Unwrap)
 }
@@ -397,6 +397,7 @@ func testQuery(t *testing.T, harness Harness, q string, expected []sql.Row, expe
 }
 
 // TestQuery runs a query on the engine given and asserts that results are as expected.
+// TODO: combine with TestQuery https://github.com/dolthub/go-mysql-server/issues/3588
 func TestQuery2(t *testing.T, harness Harness, e QueryEngine, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]sqlparser.Expr) {
 	t.Run(q, func(t *testing.T) {
 		if sh, ok := harness.(SkippingHarness); ok {
@@ -410,7 +411,7 @@ func TestQuery2(t *testing.T, harness Harness, e QueryEngine, q string, expected
 	})
 }
 
-// TODO: collapse into TestQuery
+// TODO: collapse into TestQuery https://github.com/dolthub/go-mysql-server/issues/3588
 func TestQueryWithEngine(t *testing.T, harness Harness, e QueryEngine, tt queries.QueryTest) {
 	t.Run(tt.Query, func(t *testing.T) {
 		if sh, ok := harness.(SkippingHarness); tt.Skip || (IsServerEngine(e) && tt.SkipServerEngine) ||
