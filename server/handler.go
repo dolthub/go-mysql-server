@@ -1090,7 +1090,7 @@ func (h *Handler) pollForClosedConnection(ctx *sql.Context, c *mysql.Conn) error
 }
 
 func maybeGetTCPConn(conn net.Conn) (*net.TCPConn, bool) {
-	wrap, ok := conn.(netutil.ConnWithTimeouts)
+	wrap, ok := conn.(*netutil.ConnWithTimeouts)
 	if ok {
 		conn = wrap.Conn
 	}
