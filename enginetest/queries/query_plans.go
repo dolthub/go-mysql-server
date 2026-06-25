@@ -11110,48 +11110,46 @@ inner join pq on true
 	},
 	{
 		Query: `SELECT othertable.s2, othertable.i2, mytable.i FROM mytable INNER JOIN (SELECT * FROM othertable) othertable ON othertable.i2 = mytable.i WHERE othertable.s2 > 'a'`,
-		ExpectedPlan: "Filter\n" +
-			" ├─ GreaterThan\n" +
-			" │   ├─ othertable.s2:0!null\n" +
-			" │   └─ a (longtext)\n" +
-			" └─ LookupJoin\n" +
-			"     ├─ TableAlias(othertable)\n" +
-			"     │   └─ ProcessTable\n" +
-			"     │       └─ Table\n" +
-			"     │           ├─ name: othertable\n" +
-			"     │           └─ columns: [s2 i2]\n" +
-			"     └─ IndexedTableAccess(mytable)\n" +
-			"         ├─ index: [mytable.i]\n" +
-			"         ├─ keys: [othertable.i2:1!null]\n" +
-			"         ├─ colSet: (1,2)\n" +
-			"         ├─ tableId: 1\n" +
-			"         └─ Table\n" +
-			"             ├─ name: mytable\n" +
-			"             └─ columns: [i]\n" +
+		ExpectedPlan: "LookupJoin\n" +
+			" ├─ TableAlias(othertable)\n" +
+			" │   └─ IndexedTableAccess(othertable)\n" +
+			" │       ├─ index: [othertable.s2]\n" +
+			" │       ├─ static: [{(a, ∞)}]\n" +
+			" │       ├─ colSet: (3,4)\n" +
+			" │       ├─ tableId: 2\n" +
+			" │       └─ Table\n" +
+			" │           ├─ name: othertable\n" +
+			" │           └─ columns: [s2 i2]\n" +
+			" └─ IndexedTableAccess(mytable)\n" +
+			"     ├─ index: [mytable.i]\n" +
+			"     ├─ keys: [othertable.i2:1!null]\n" +
+			"     ├─ colSet: (1,2)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: mytable\n" +
+			"         └─ columns: [i]\n" +
 			"",
-		ExpectedEstimates: "Filter\n" +
-			" ├─ (othertable.s2 > 'a')\n" +
-			" └─ LookupJoin (estimated cost=9.916 rows=3)\n" +
-			"     ├─ TableAlias(othertable)\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: othertable\n" +
-			"     │       └─ columns: [s2 i2]\n" +
-			"     └─ IndexedTableAccess(mytable)\n" +
-			"         ├─ index: [mytable.i]\n" +
-			"         ├─ columns: [i]\n" +
-			"         └─ keys: othertable.i2\n" +
+		ExpectedEstimates: "LookupJoin (estimated cost=3.305 rows=1)\n" +
+			" ├─ TableAlias(othertable)\n" +
+			" │   └─ IndexedTableAccess(othertable)\n" +
+			" │       ├─ index: [othertable.s2]\n" +
+			" │       ├─ filters: [{(a, ∞)}]\n" +
+			" │       └─ columns: [s2 i2]\n" +
+			" └─ IndexedTableAccess(mytable)\n" +
+			"     ├─ index: [mytable.i]\n" +
+			"     ├─ columns: [i]\n" +
+			"     └─ keys: othertable.i2\n" +
 			"",
-		ExpectedAnalysis: "Filter\n" +
-			" ├─ (othertable.s2 > 'a')\n" +
-			" └─ LookupJoin (estimated cost=9.916 rows=3) (actual rows=3 loops=1)\n" +
-			"     ├─ TableAlias(othertable)\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: othertable\n" +
-			"     │       └─ columns: [s2 i2]\n" +
-			"     └─ IndexedTableAccess(mytable)\n" +
-			"         ├─ index: [mytable.i]\n" +
-			"         ├─ columns: [i]\n" +
-			"         └─ keys: othertable.i2\n" +
+		ExpectedAnalysis: "LookupJoin (estimated cost=3.305 rows=1) (actual rows=3 loops=1)\n" +
+			" ├─ TableAlias(othertable)\n" +
+			" │   └─ IndexedTableAccess(othertable)\n" +
+			" │       ├─ index: [othertable.s2]\n" +
+			" │       ├─ filters: [{(a, ∞)}]\n" +
+			" │       └─ columns: [s2 i2]\n" +
+			" └─ IndexedTableAccess(mytable)\n" +
+			"     ├─ index: [mytable.i]\n" +
+			"     ├─ columns: [i]\n" +
+			"     └─ keys: othertable.i2\n" +
 			"",
 	},
 	{
