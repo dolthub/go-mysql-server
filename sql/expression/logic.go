@@ -46,8 +46,8 @@ func JoinAnd(exprs ...sql.Expression) sql.Expression {
 		if exprs[0] == nil {
 			return JoinAnd(exprs[1:]...)
 		}
-		result := NewAnd(exprs[0], exprs[1])
-		for _, e := range exprs[2:] {
+		result := exprs[0]
+		for _, e := range exprs[1:] {
 			if e != nil {
 				result = NewAnd(result, e)
 			}

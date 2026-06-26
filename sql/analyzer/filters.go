@@ -59,8 +59,12 @@ func getFiltersByTable(ctx *sql.Context, n sql.Node, scope *plan.Scope, projecte
 // given, split at AND. Any expressions that contain subqueries, or refer to more than one table, are not included in
 // the result.
 func exprToTableFilters(ctx *sql.Context, expr sql.Expression, scope *plan.Scope, projectionExpressions map[sql.ColumnId]sql.Expression) filtersByTable {
+	return exprsToTableFilters(ctx, expression.SplitConjunction(ctx, expr), scope, projectionExpressions)
+}
+
+func exprsToTableFilters(ctx *sql.Context, exprs []sql.Expression, scope *plan.Scope, projectionExpressions map[sql.ColumnId]sql.Expression) filtersByTable {
 	filters := newFiltersByTable()
-	for _, expr := range expression.SplitConjunction(ctx, expr) {
+	for _, expr := range exprs {
 		var seenTables = make(map[sql.TableId]bool)
 		var lastTable sql.TableId
 		hasSubquery := false
@@ -123,6 +127,17 @@ func newFilterSet(
 		filtersByTable:        filtersByTable,
 		projectionExpressions: projectionExpressions,
 	}
+}
+
+func newEmptyFilterSet(n sql.Node) *filterSet {
+	return &filterSet{
+		projectionExpressions: getProjectionExpressions(n),
+		filtersByTable:        newFiltersByTable(),
+	}
+}
+
+func (fs *filterSet) addFilterExprs(ctx *sql.Context, exprs []sql.Expression, scope *plan.Scope) {
+	fs.filtersByTable.merge(exprsToTableFilters(ctx, exprs, scope, fs.projectionExpressions))
 }
 
 // availableFiltersForTable returns the filters that are still available for the table given (not previously marked
