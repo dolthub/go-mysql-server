@@ -1194,7 +1194,10 @@ func TestOkClosedConnection(t *testing.T) {
 	c := newConn(1)
 	h.NewConnection(c)
 
-	q := fmt.Sprintf("SELECT SLEEP(%d)", (tcpCheckerSleepDuration * 4 / time.Second))
+	// The connection has no read buffer, so the connection watcher started by
+	// the query handler can't peek it and is a no-op: a long-running query must
+	// still complete normally rather than being spuriously cancelled.
+	q := "SELECT SLEEP(1)"
 	h.ComInitDB(c, "test")
 	err = h.ComQuery(context.Background(), c, q, func(res *sqltypes.Result, more bool) error {
 		return nil
@@ -1440,7 +1443,7 @@ func TestStatusVariableQuestions(t *testing.T) {
 	handler.NewConnection(conn1)
 	err := handler.ComInitDB(conn1, "test")
 	require.NoError(t, err)
-	sess1 := handler.sm.sessions[1]
+	sess1 := handler.sm.sessions[1].session
 
 	checkGlobalStatVar(t, "Questions", uint64(0))
 	checkSessionStatVar(t, sess1, "Questions", uint64(0))
@@ -1458,7 +1461,7 @@ func TestStatusVariableQuestions(t *testing.T) {
 	handler.NewConnection(conn2)
 	err = handler.ComInitDB(conn2, "test")
 	require.NoError(t, err)
-	sess2 := handler.sm.sessions[2]
+	sess2 := handler.sm.sessions[2].session
 
 	// Get 5 syntax errors
 	for i := 0; i < 5; i++ {
@@ -1474,7 +1477,7 @@ func TestStatusVariableQuestions(t *testing.T) {
 	handler.NewConnection(conn3)
 	err = handler.ComInitDB(conn3, "test")
 	require.NoError(t, err)
-	sess3 := handler.sm.sessions[3]
+	sess3 := handler.sm.sessions[3].session
 
 	err = handler.ComQuery(context.Background(), conn3, "create procedure p() begin select 1; select 2; select 3; end", dummyCb)
 	require.NoError(t, err)
@@ -1495,7 +1498,7 @@ func TestStatusVariableQuestions(t *testing.T) {
 	handler.NewConnection(conn4)
 	err = handler.ComInitDB(conn4, "test")
 	require.NoError(t, err)
-	sess4 := handler.sm.sessions[4]
+	sess4 := handler.sm.sessions[4].session
 
 	// TODO: implement and test that ComPing does not increment Questions
 	// TODO: implement and test that ComStatistics does not increment Questions
@@ -1748,13 +1751,13 @@ func TestStatusVariableComSelect(t *testing.T) {
 	handler.NewConnection(conn1)
 	err := handler.ComInitDB(conn1, "test")
 	require.NoError(t, err)
-	sess1 := handler.sm.sessions[1]
+	sess1 := handler.sm.sessions[1].session
 
 	conn2 := newConn(2)
 	handler.NewConnection(conn2)
 	err = handler.ComInitDB(conn2, "test")
 	require.NoError(t, err)
-	sess2 := handler.sm.sessions[2]
+	sess2 := handler.sm.sessions[2].session
 
 	checkGlobalStatVar(t, "Com_select", uint64(0))
 	checkSessionStatVar(t, sess1, "Com_select", uint64(0))
@@ -1798,13 +1801,13 @@ func TestStatusVariableComDelete(t *testing.T) {
 	handler.NewConnection(conn1)
 	err := handler.ComInitDB(conn1, "test")
 	require.NoError(t, err)
-	sess1 := handler.sm.sessions[1]
+	sess1 := handler.sm.sessions[1].session
 
 	conn2 := newConn(2)
 	handler.NewConnection(conn2)
 	err = handler.ComInitDB(conn2, "test")
 	require.NoError(t, err)
-	sess2 := handler.sm.sessions[2]
+	sess2 := handler.sm.sessions[2].session
 
 	checkGlobalStatVar(t, "Com_delete", uint64(0))
 	checkSessionStatVar(t, sess1, "Com_delete", uint64(0))
@@ -1848,13 +1851,13 @@ func TestStatusVariableComInsert(t *testing.T) {
 	handler.NewConnection(conn1)
 	err := handler.ComInitDB(conn1, "test")
 	require.NoError(t, err)
-	sess1 := handler.sm.sessions[1]
+	sess1 := handler.sm.sessions[1].session
 
 	conn2 := newConn(2)
 	handler.NewConnection(conn2)
 	err = handler.ComInitDB(conn2, "test")
 	require.NoError(t, err)
-	sess2 := handler.sm.sessions[2]
+	sess2 := handler.sm.sessions[2].session
 
 	checkGlobalStatVar(t, "Com_insert", uint64(0))
 	checkSessionStatVar(t, sess1, "Com_insert", uint64(0))
@@ -1898,13 +1901,13 @@ func TestStatusVariableComUpdate(t *testing.T) {
 	handler.NewConnection(conn1)
 	err := handler.ComInitDB(conn1, "test")
 	require.NoError(t, err)
-	sess1 := handler.sm.sessions[1]
+	sess1 := handler.sm.sessions[1].session
 
 	conn2 := newConn(2)
 	handler.NewConnection(conn2)
 	err = handler.ComInitDB(conn2, "test")
 	require.NoError(t, err)
-	sess2 := handler.sm.sessions[2]
+	sess2 := handler.sm.sessions[2].session
 
 	checkGlobalStatVar(t, "Com_update", uint64(0))
 	checkSessionStatVar(t, sess1, "Com_update", uint64(0))
