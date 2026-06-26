@@ -68,6 +68,7 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 		lBest := math.Max(1, float64(jp.Left.RelProps.GetStats().RowCount()))
 		rBest := math.Max(1, float64(jp.Right.RelProps.GetStats().RowCount()))
 
+		// TODO: this is not necessarily correct, since we push down filters into that index scan
 		// if a child is an index scan, the table scan will be more expensive
 		var err error
 		lTableScan := uint64(lBest)
