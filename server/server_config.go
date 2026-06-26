@@ -106,8 +106,8 @@ type Config struct {
 	// disconnects while a query is executing. When false (the default), a
 	// long-running query is cancelled promptly, on all platforms, if the client
 	// goes away or sends data unexpectedly while waiting for the result. Set to
-	// true to restore the previous behavior of letting such queries run to
-	// completion regardless of the client's state.
+	// true to let such queries run to completion regardless of the client's
+	// state.
 	DisableConnectionWatcher bool
 }
 

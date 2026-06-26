@@ -192,9 +192,9 @@ func TestConnectionWatcherCancelsQueryOnDisconnect(t *testing.T) {
 	}
 }
 
-// TestConnectionWatcherDisabled verifies that DisableConnectionWatcher restores
-// the previous behavior: a client disconnect mid-query is not noticed while the
-// query runs, so it stays on the process list.
+// TestConnectionWatcherDisabled verifies that DisableConnectionWatcher turns the
+// watch off: a client disconnect mid-query is not noticed while the query runs,
+// so it stays on the process list.
 func TestConnectionWatcherDisabled(t *testing.T) {
 	engine, host, port := startWatcherTestServer(t, server.Config{DisableConnectionWatcher: true})
 

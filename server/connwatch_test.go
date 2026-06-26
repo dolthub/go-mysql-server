@@ -195,9 +195,7 @@ func TestConnWatcherUnregisterTeardown(t *testing.T) {
 	assert.Equal(t, 1, fw.count(), "dead state must not be re-watched")
 }
 
-// A single scan over multiple connections must promote each one independently
-// (regression: the snapshot buffer was being cleared at the wrong index, niling
-// a not-yet-visited entry and panicking on the next deref).
+// A single scan over multiple connections must promote each one independently.
 func TestConnWatcherScanMultiple(t *testing.T) {
 	w, fw, now := manualWatcher(t, 10*time.Millisecond)
 	const n = 5
