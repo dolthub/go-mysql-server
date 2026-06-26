@@ -166,7 +166,7 @@ func (e *ExprGroup) fixTableScanPath() bool {
 	for n != nil {
 		src, ok := n.(SourceRel)
 		if !ok {
-			// not a source, try to find path through children
+			// not a source, try to find a path through children
 			for _, c := range n.Children() {
 				if c.fixTableScanPath() {
 					// found path, update best
