@@ -40,8 +40,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					sql.Row{2, 2},
 					sql.Row{3, 3},
 				},
-				ExpectedPlan: "" +
-					"MergeJoin\n" +
+				ExpectedPlan: "MergeJoin\n" +
 					" ├─ cmp: Eq\n" +
 					" │   ├─ t1.i:0!null\n" +
 					" │   └─ t2.j:1!null\n" +
@@ -69,8 +68,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					sql.Row{2, 2},
 					sql.Row{3, 3},
 				},
-				ExpectedPlan: "" +
-					"MergeJoin\n" +
+				ExpectedPlan: "MergeJoin\n" +
 					" ├─ cmp: Eq\n" +
 					" │   ├─ t1.i:0!null\n" +
 					" │   └─ t2.j:1!null\n" +
@@ -98,8 +96,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					sql.Row{3, 3},
 					sql.Row{2, 2},
 				},
-				ExpectedPlan: "" +
-					"MergeJoin\n" +
+				ExpectedPlan: "MergeJoin\n" +
 					" ├─ cmp: Eq\n" +
 					" │   ├─ t1.i:0!null\n" +
 					" │   └─ t2.j:1!null\n" +
@@ -129,8 +126,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					sql.Row{3, 3},
 					sql.Row{2, 2},
 				},
-				ExpectedPlan: "" +
-					"MergeJoin\n" +
+				ExpectedPlan: "MergeJoin\n" +
 					" ├─ cmp: Eq\n" +
 					" │   ├─ t1.i:0!null\n" +
 					" │   └─ t2.j:1!null\n" +
@@ -159,8 +155,7 @@ var QueryPlanScriptTests = []ScriptTest{
 				Expected: []sql.Row{
 					sql.Row{3},
 				},
-				ExpectedPlan: "" +
-					"Project\n" +
+				ExpectedPlan: "Project\n" +
 					" ├─ columns: [t1.i:0!null]\n" +
 					" └─ MergeJoin\n" +
 					"     ├─ cmp: Eq\n" +
@@ -197,8 +192,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					sql.Row{2, 2, 2, 2},
 					sql.Row{3, 3, 3, 3},
 				},
-				ExpectedPlan: "" +
-					"MergeJoin\n" +
+				ExpectedPlan: "MergeJoin\n" +
 					" ├─ cmp: Eq\n" +
 					" │   ├─ t3.i:0!null\n" +
 					" │   └─ t4.x:2!null\n" +
@@ -226,8 +220,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					sql.Row{3, 3, 3, 3},
 					sql.Row{2, 2, 2, 2},
 				},
-				ExpectedPlan: "" +
-					"MergeJoin\n" +
+				ExpectedPlan: "MergeJoin\n" +
 					" ├─ cmp: Eq\n" +
 					" │   ├─ t3.i:0!null\n" +
 					" │   └─ t4.x:2!null\n" +
@@ -257,8 +250,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					sql.Row{2, 2, 2, 2},
 					sql.Row{3, 3, 3, 3},
 				},
-				ExpectedPlan: "" +
-					"MergeJoin\n" +
+				ExpectedPlan: "MergeJoin\n" +
 					" ├─ cmp: Eq\n" +
 					" │   ├─ t3.i:0!null\n" +
 					" │   └─ t4.x:2!null\n" +
@@ -286,8 +278,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					sql.Row{3, 3, 3, 3},
 					sql.Row{2, 2, 2, 2},
 				},
-				ExpectedPlan: "" +
-					"MergeJoin\n" +
+				ExpectedPlan: "MergeJoin\n" +
 					" ├─ cmp: Eq\n" +
 					" │   ├─ t3.i:0!null\n" +
 					" │   └─ t4.x:2!null\n" +
@@ -317,8 +308,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					sql.Row{2, 2, 2, 2},
 					sql.Row{3, 3, 3, 3},
 				},
-				ExpectedPlan: "" +
-					"MergeJoin\n" +
+				ExpectedPlan: "MergeJoin\n" +
 					" ├─ cmp: Eq\n" +
 					" │   ├─ t3.i:0!null\n" +
 					" │   └─ t4.x:2!null\n" +
@@ -346,8 +336,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					sql.Row{3, 3, 3, 3},
 					sql.Row{2, 2, 2, 2},
 				},
-				ExpectedPlan: "" +
-					"MergeJoin\n" +
+				ExpectedPlan: "MergeJoin\n" +
 					" ├─ cmp: Eq\n" +
 					" │   ├─ t3.i:0!null\n" +
 					" │   └─ t4.x:2!null\n" +
@@ -405,8 +394,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					sql.Row{3, 3, 3, 3},
 					sql.Row{2, 2, 2, 2},
 				},
-				ExpectedPlan: "" +
-					"MergeJoin\n" +
+				ExpectedPlan: "MergeJoin\n" +
 					" ├─ cmp: Eq\n" +
 					" │   ├─ t3.i:0!null\n" +
 					" │   └─ t4.x:2!null\n" +
@@ -436,8 +424,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					sql.Row{2, 2, 2, 2},
 					sql.Row{3, 3, 3, 3},
 				},
-				ExpectedPlan: "" +
-					"Sort(t3.i:0!null ASC nullsFirst, t4.x:2!null ASC nullsFirst)\n" +
+				ExpectedPlan: "Sort(t3.i:0!null ASC nullsFirst, t4.x:2!null ASC nullsFirst)\n" +
 					" └─ MergeJoin\n" +
 					"     ├─ cmp: Eq\n" +
 					"     │   ├─ t3.i:0!null\n" +
@@ -466,8 +453,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					sql.Row{2, 2, 2, 2},
 					sql.Row{3, 3, 3, 3},
 				},
-				ExpectedPlan: "" +
-					"Sort(t3.i:0!null ASC nullsFirst, t4.x:2!null DESC nullsFirst)\n" +
+				ExpectedPlan: "Sort(t3.i:0!null ASC nullsFirst, t4.x:2!null DESC nullsFirst)\n" +
 					" └─ MergeJoin\n" +
 					"     ├─ cmp: Eq\n" +
 					"     │   ├─ t3.i:0!null\n" +
@@ -496,8 +482,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					sql.Row{2, 2, 2, 2},
 					sql.Row{3, 3, 3, 3},
 				},
-				ExpectedPlan: "" +
-					"Sort(t3.i:0!null ASC nullsFirst, t3.j:1!null ASC nullsFirst, t4.x:2!null ASC nullsFirst)\n" +
+				ExpectedPlan: "Sort(t3.i:0!null ASC nullsFirst, t3.j:1!null ASC nullsFirst, t4.x:2!null ASC nullsFirst)\n" +
 					" └─ MergeJoin\n" +
 					"     ├─ cmp: Eq\n" +
 					"     │   ├─ t3.i:0!null\n" +
@@ -526,8 +511,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					sql.Row{2, 2, 2, 2},
 					sql.Row{3, 3, 3, 3},
 				},
-				ExpectedPlan: "" +
-					"Sort(t3.i:0!null ASC nullsFirst, t3.j:1!null ASC nullsFirst, t4.x:2!null ASC nullsFirst, t4.y:3!null ASC nullsFirst)\n" +
+				ExpectedPlan: "Sort(t3.i:0!null ASC nullsFirst, t3.j:1!null ASC nullsFirst, t4.x:2!null ASC nullsFirst, t4.y:3!null ASC nullsFirst)\n" +
 					" └─ MergeJoin\n" +
 					"     ├─ cmp: Eq\n" +
 					"     │   ├─ t3.i:0!null\n" +
@@ -556,8 +540,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					sql.Row{2, 2, 2, 2},
 					sql.Row{3, 3, 3, 3},
 				},
-				ExpectedPlan: "" +
-					"Sort(t3.j:1!null ASC nullsFirst)\n" +
+				ExpectedPlan: "Sort(t3.j:1!null ASC nullsFirst)\n" +
 					" └─ MergeJoin\n" +
 					"     ├─ cmp: Eq\n" +
 					"     │   ├─ t3.i:0!null\n" +
@@ -586,8 +569,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					sql.Row{2, 2, 2, 2},
 					sql.Row{3, 3, 3, 3},
 				},
-				ExpectedPlan: "" +
-					"Sort(t4.y:3!null ASC nullsFirst)\n" +
+				ExpectedPlan: "Sort(t4.y:3!null ASC nullsFirst)\n" +
 					" └─ MergeJoin\n" +
 					"     ├─ cmp: Eq\n" +
 					"     │   ├─ t3.i:0!null\n" +
@@ -616,8 +598,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					sql.Row{2, 2, 2, 2},
 					sql.Row{3, 3, 3, 3},
 				},
-				ExpectedPlan: "" +
-					"Sort(t3.i:0!null ASC nullsFirst, t3.j:1!null DESC nullsFirst)\n" +
+				ExpectedPlan: "Sort(t3.i:0!null ASC nullsFirst, t3.j:1!null DESC nullsFirst)\n" +
 					" └─ MergeJoin\n" +
 					"     ├─ cmp: Eq\n" +
 					"     │   ├─ t3.i:0!null\n" +
@@ -653,8 +634,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					sql.Row{3, 3},
 					sql.Row{3, 4},
 				},
-				ExpectedPlan: "" +
-					"CrossJoin\n" +
+				ExpectedPlan: "CrossJoin\n" +
 					" ├─ IndexedTableAccess(t1)\n" +
 					" │   ├─ index: [t1.i]\n" +
 					" │   ├─ static: [{[NULL, ∞)}]\n" +
@@ -682,8 +662,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					sql.Row{2, 4},
 					sql.Row{3, 4},
 				},
-				ExpectedPlan: "" +
-					"Project\n" +
+				ExpectedPlan: "Project\n" +
 					" ├─ columns: [t1.i:1!null, t2.j:0!null]\n" +
 					" └─ CrossJoin\n" +
 					"     ├─ IndexedTableAccess(t2)\n" +
@@ -713,8 +692,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					sql.Row{1, 3},
 					sql.Row{1, 4},
 				},
-				ExpectedPlan: "" +
-					"CrossJoin\n" +
+				ExpectedPlan: "CrossJoin\n" +
 					" ├─ IndexedTableAccess(t1)\n" +
 					" │   ├─ index: [t1.i]\n" +
 					" │   ├─ static: [{[NULL, ∞)}]\n" +
@@ -735,8 +713,7 @@ var QueryPlanScriptTests = []ScriptTest{
 				Expected: []sql.Row{
 					sql.Row{2, 3},
 				},
-				ExpectedPlan: "" +
-					"CrossJoin\n" +
+				ExpectedPlan: "CrossJoin\n" +
 					" ├─ IndexedTableAccess(t1)\n" +
 					" │   ├─ index: [t1.i]\n" +
 					" │   ├─ static: [{(1, 3)}]\n" +
@@ -761,8 +738,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					sql.Row{1, 1, 3, 3},
 					sql.Row{1, 2, 3, 3},
 				},
-				ExpectedPlan: "" +
-					"CrossJoin\n" +
+				ExpectedPlan: "CrossJoin\n" +
 					" ├─ IndexedTableAccess(t3)\n" +
 					" │   ├─ index: [t3.i,t3.j]\n" +
 					" │   ├─ static: [{[1, 1], [NULL, ∞)}]\n" +
@@ -787,8 +763,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					sql.Row{2, 2, 3, 3},
 					sql.Row{1, 2, 3, 3},
 				},
-				ExpectedPlan: "" +
-					"CrossJoin\n" +
+				ExpectedPlan: "CrossJoin\n" +
 					" ├─ Filter\n" +
 					" │   ├─ Eq\n" +
 					" │   │   ├─ t3.j:1!null\n" +
@@ -822,8 +797,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					sql.Row{2, 4},
 					sql.Row{3, 4},
 				},
-				ExpectedPlan: "" +
-					"InnerJoin\n" +
+				ExpectedPlan: "InnerJoin\n" +
 					" ├─ LessThan\n" +
 					" │   ├─ t1.i:0!null\n" +
 					" │   └─ t2.j:1!null\n" +
@@ -851,8 +825,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					sql.Row{2, 3},
 					sql.Row{1, 2},
 				},
-				ExpectedPlan: "" +
-					"Project\n" +
+				ExpectedPlan: "Project\n" +
 					" ├─ columns: [t1.i:1!null, t2.j:0!null]\n" +
 					" └─ InnerJoin\n" +
 					"     ├─ LessThan\n" +
@@ -887,8 +860,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					sql.Row{3, 3, 2, 2},
 					sql.Row{3, 3, 4, 4},
 				},
-				ExpectedPlan: "" +
-					"InnerJoin\n" +
+				ExpectedPlan: "InnerJoin\n" +
 					" ├─ NOT\n" +
 					" │   └─ Eq\n" +
 					" │       ├─ t3.i:0!null\n" +
@@ -910,22 +882,20 @@ var QueryPlanScriptTests = []ScriptTest{
 		},
 	},
 	{
-		// TODO: We should be able to drop the Filter node over IndexedTableAccess for many of these plans
-		Name: "merge join properly pushes down static filters",
+		Name: "merge join properly pushes down static filters (TODO: DROP FILTER NODES ABOVE INDEXEDTABLEACCESS)",
 		SetUpScript: []string{
-			"create table t1 (i int primary key, j int, k int);",
-			"create table t2 (x int primary key, y int, z int);",
-			"insert into t1 values (1, 1, 1), (2, 2, 2), (3, 3, 3);",
-			"insert into t2 values (1, 1, 1), (2, 2, 2), (3, 3, 3);",
+			`create table t1 (i int primary key, j int, k int);`,
+			`create table t2 (x int primary key, y int, z int);`,
+			`insert into t1 values (1, 1, 1), (2, 2, 2), (3, 3, 3);`,
+			`insert into t2 values (1, 1, 1), (2, 2, 2), (3, 3, 3);`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: `select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on i = x where i = 2;`,
 				Expected: []sql.Row{
-					{2, 2, 2, 2, 2, 2},
+					sql.Row{2, 2, 2, 2, 2, 2},
 				},
-				ExpectedPlan: "" +
-					"Project\n" +
+				ExpectedPlan: "Project\n" +
 					" ├─ columns: [t1.i:3!null, t1.j:4, t1.k:5, t2.x:0!null, t2.y:1, t2.z:2]\n" +
 					" └─ MergeJoin\n" +
 					"     ├─ cmp: Eq\n" +
@@ -956,10 +926,9 @@ var QueryPlanScriptTests = []ScriptTest{
 			{
 				Query: `select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on i = x where x = 2;`,
 				Expected: []sql.Row{
-					{2, 2, 2, 2, 2, 2},
+					sql.Row{2, 2, 2, 2, 2, 2},
 				},
-				ExpectedPlan: "" +
-					"MergeJoin\n" +
+				ExpectedPlan: "MergeJoin\n" +
 					" ├─ cmp: Eq\n" +
 					" │   ├─ t1.i:0!null\n" +
 					" │   └─ t2.x:3!null\n" +
@@ -988,11 +957,10 @@ var QueryPlanScriptTests = []ScriptTest{
 			{
 				Query: `select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on i = x where i > 1;`,
 				Expected: []sql.Row{
-					{2, 2, 2, 2, 2, 2},
-					{3, 3, 3, 3, 3, 3},
+					sql.Row{2, 2, 2, 2, 2, 2},
+					sql.Row{3, 3, 3, 3, 3, 3},
 				},
-				ExpectedPlan: "" +
-					"MergeJoin\n" +
+				ExpectedPlan: "MergeJoin\n" +
 					" ├─ cmp: Eq\n" +
 					" │   ├─ t1.i:0!null\n" +
 					" │   └─ t2.x:3!null\n" +
@@ -1021,11 +989,10 @@ var QueryPlanScriptTests = []ScriptTest{
 			{
 				Query: `select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on i = x where x > 1;`,
 				Expected: []sql.Row{
-					{2, 2, 2, 2, 2, 2},
-					{3, 3, 3, 3, 3, 3},
+					sql.Row{2, 2, 2, 2, 2, 2},
+					sql.Row{3, 3, 3, 3, 3, 3},
 				},
-				ExpectedPlan: "" +
-					"MergeJoin\n" +
+				ExpectedPlan: "MergeJoin\n" +
 					" ├─ cmp: Eq\n" +
 					" │   ├─ t1.i:0!null\n" +
 					" │   └─ t2.x:3!null\n" +
@@ -1054,8 +1021,8 @@ var QueryPlanScriptTests = []ScriptTest{
 			{
 				Query: `select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on i = x where i < 3;`,
 				Expected: []sql.Row{
-					{1, 1, 1, 1, 1, 1},
-					{2, 2, 2, 2, 2, 2},
+					sql.Row{1, 1, 1, 1, 1, 1},
+					sql.Row{2, 2, 2, 2, 2, 2},
 				},
 				ExpectedPlan: "MergeJoin\n" +
 					" ├─ cmp: Eq\n" +
@@ -1086,8 +1053,8 @@ var QueryPlanScriptTests = []ScriptTest{
 			{
 				Query: `select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on i = x where x < 3;`,
 				Expected: []sql.Row{
-					{1, 1, 1, 1, 1, 1},
-					{2, 2, 2, 2, 2, 2},
+					sql.Row{1, 1, 1, 1, 1, 1},
+					sql.Row{2, 2, 2, 2, 2, 2},
 				},
 				ExpectedPlan: "MergeJoin\n" +
 					" ├─ cmp: Eq\n" +
@@ -1118,11 +1085,10 @@ var QueryPlanScriptTests = []ScriptTest{
 			{
 				Query: `select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on i = x where i >= 2;`,
 				Expected: []sql.Row{
-					{2, 2, 2, 2, 2, 2},
-					{3, 3, 3, 3, 3, 3},
+					sql.Row{2, 2, 2, 2, 2, 2},
+					sql.Row{3, 3, 3, 3, 3, 3},
 				},
-				ExpectedPlan: "" +
-					"MergeJoin\n" +
+				ExpectedPlan: "MergeJoin\n" +
 					" ├─ cmp: Eq\n" +
 					" │   ├─ t1.i:0!null\n" +
 					" │   └─ t2.x:3!null\n" +
@@ -1151,11 +1117,10 @@ var QueryPlanScriptTests = []ScriptTest{
 			{
 				Query: `select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on i = x where x >= 2;`,
 				Expected: []sql.Row{
-					{2, 2, 2, 2, 2, 2},
-					{3, 3, 3, 3, 3, 3},
+					sql.Row{2, 2, 2, 2, 2, 2},
+					sql.Row{3, 3, 3, 3, 3, 3},
 				},
-				ExpectedPlan: "" +
-					"MergeJoin\n" +
+				ExpectedPlan: "MergeJoin\n" +
 					" ├─ cmp: Eq\n" +
 					" │   ├─ t1.i:0!null\n" +
 					" │   └─ t2.x:3!null\n" +
@@ -1184,11 +1149,10 @@ var QueryPlanScriptTests = []ScriptTest{
 			{
 				Query: `select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on i = x where i <= 2;`,
 				Expected: []sql.Row{
-					{1, 1, 1, 1, 1, 1},
-					{2, 2, 2, 2, 2, 2},
+					sql.Row{1, 1, 1, 1, 1, 1},
+					sql.Row{2, 2, 2, 2, 2, 2},
 				},
-				ExpectedPlan: "" +
-					"MergeJoin\n" +
+				ExpectedPlan: "MergeJoin\n" +
 					" ├─ cmp: Eq\n" +
 					" │   ├─ t1.i:0!null\n" +
 					" │   └─ t2.x:3!null\n" +
@@ -1217,11 +1181,10 @@ var QueryPlanScriptTests = []ScriptTest{
 			{
 				Query: `select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on i = x where x <= 2;`,
 				Expected: []sql.Row{
-					{1, 1, 1, 1, 1, 1},
-					{2, 2, 2, 2, 2, 2},
+					sql.Row{1, 1, 1, 1, 1, 1},
+					sql.Row{2, 2, 2, 2, 2, 2},
 				},
-				ExpectedPlan: "" +
-					"MergeJoin\n" +
+				ExpectedPlan: "MergeJoin\n" +
 					" ├─ cmp: Eq\n" +
 					" │   ├─ t1.i:0!null\n" +
 					" │   └─ t2.x:3!null\n" +
@@ -1250,10 +1213,9 @@ var QueryPlanScriptTests = []ScriptTest{
 			{
 				Query: `select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on i = x where i = 2 or x = 2;`,
 				Expected: []sql.Row{
-					{2, 2, 2, 2, 2, 2},
+					sql.Row{2, 2, 2, 2, 2, 2},
 				},
-				ExpectedPlan: "" +
-					"MergeJoin\n" +
+				ExpectedPlan: "MergeJoin\n" +
 					" ├─ cmp: Eq\n" +
 					" │   ├─ t1.i:0!null\n" +
 					" │   └─ t2.x:3!null\n" +
@@ -1276,7 +1238,8 @@ var QueryPlanScriptTests = []ScriptTest{
 					"     ├─ index: [t2.x]\n" +
 					"     ├─ static: [{[NULL, ∞)}]\n" +
 					"     ├─ colSet: (4-6)\n" +
-					"     ├─ tableId: 2\n     └─ Table\n" +
+					"     ├─ tableId: 2\n" +
+					"     └─ Table\n" +
 					"         ├─ name: t2\n" +
 					"         └─ columns: [x y z]\n" +
 					"",

@@ -1442,7 +1442,7 @@ func sortedIndexScansForTableCol(ctx *sql.Context, statsProv sql.StatsProvider, 
 }
 
 func filterExprToMySQLRangeExpr(filter sql.Expression, colId sql.ColumnId, colTyp sql.Type) (res sql.MySQLRangeColumnExpr, ok bool) {
-	// TODO: this is very similar range builder
+	// TODO: Could use RangeTree from gms/sql/range_tree.go?
 	switch f := filter.(type) {
 	case expression.Equality:
 		if !f.RepresentsEquality() {
