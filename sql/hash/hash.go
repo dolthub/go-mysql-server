@@ -73,18 +73,6 @@ func HashOf(ctx *sql.Context, sch sql.Schema, row sql.Row) (uint64, error) {
 		//  Then, defer to original behavior
 		if i < len(sch) {
 			switch typ := sch[i].Type.(type) {
-			case sql.ExtendedType:
-				// TODO: Doltgres follows Postgres conventions which don't align with the expectations of MySQL,
-				//  so we're using the old (probably incorrect) behavior for now
-				res, err := typ.SerializeValue(ctx, v)
-				if err != nil {
-					return 0, err
-				}
-				_, err = hash.Write(res)
-				if err != nil {
-					return 0, err
-				}
-				continue
 			case types.StringType:
 				var strVal string
 				strVal, err = types.ConvertToString(ctx, v, typ, nil)
