@@ -343,6 +343,7 @@ func updateFilterNode(ctx *sql.Context, a *Analyzer, node *plan.Filter, filterEx
 		a.Log("filter node has no unhandled filters, so it will be removed")
 		return node.Child, transform.NewTree, nil
 	}
+	filters.markFiltersHandled(unhandled...)
 
 	if f, ok := node.Child.(*plan.Filter); ok {
 		unhandled = append(unhandled, f.Expression)
