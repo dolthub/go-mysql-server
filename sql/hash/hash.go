@@ -76,7 +76,11 @@ func HashOf(ctx *sql.Context, sch sql.Schema, row sql.Row) (uint64, error) {
 			case sql.ExtendedType:
 				// TODO: Doltgres follows Postgres conventions which don't align with the expectations of MySQL,
 				//  so we're using the old (probably incorrect) behavior for now
-				_, err := hash.WriteString(fmt.Sprintf("%v", v))
+				res, err := typ.SerializeValue(ctx, v)
+				if err != nil {
+					return 0, err
+				}
+				_, err = hash.Write(res)
 				if err != nil {
 					return 0, err
 				}
