@@ -762,19 +762,19 @@ where
 			"         ├─ AND\n" +
 			"         │   ├─ AND\n" +
 			"         │   │   ├─ AND\n" +
-			"         │   │   │   ├─ GreaterThanOrEqual\n" +
-			"         │   │   │   │   ├─ lineitem.l_shipdate:3!null\n" +
-			"         │   │   │   │   └─ 1994-01-01 (longtext)\n" +
-			"         │   │   │   └─ LessThan\n" +
-			"         │   │   │       ├─ lineitem.l_shipdate:3!null\n" +
-			"         │   │   │       └─ 1995-01-01 00:00:00 +0000 UTC (datetime)\n" +
-			"         │   │   └─ AND\n" +
-			"         │   │       ├─ GreaterThanOrEqual\n" +
-			"         │   │       │   ├─ lineitem.l_discount:2!null\n" +
-			"         │   │       │   └─ 0.05 (decimal(5,2))\n" +
-			"         │   │       └─ LessThanOrEqual\n" +
-			"         │   │           ├─ lineitem.l_discount:2!null\n" +
-			"         │   │           └─ 0.07 (decimal(5,2))\n" +
+			"         │   │   │   ├─ AND\n" +
+			"         │   │   │   │   ├─ GreaterThanOrEqual\n" +
+			"         │   │   │   │   │   ├─ lineitem.l_shipdate:3!null\n" +
+			"         │   │   │   │   │   └─ 1994-01-01 (longtext)\n" +
+			"         │   │   │   │   └─ LessThan\n" +
+			"         │   │   │   │       ├─ lineitem.l_shipdate:3!null\n" +
+			"         │   │   │   │       └─ 1995-01-01 00:00:00 +0000 UTC (datetime)\n" +
+			"         │   │   │   └─ GreaterThanOrEqual\n" +
+			"         │   │   │       ├─ lineitem.l_discount:2!null\n" +
+			"         │   │   │       └─ 0.05 (decimal(5,2))\n" +
+			"         │   │   └─ LessThanOrEqual\n" +
+			"         │   │       ├─ lineitem.l_discount:2!null\n" +
+			"         │   │       └─ 0.07 (decimal(5,2))\n" +
 			"         │   └─ LessThan\n" +
 			"         │       ├─ lineitem.l_quantity:0!null\n" +
 			"         │       └─ 24 (tinyint)\n" +
@@ -789,7 +789,7 @@ where
 			"     ├─ select: SUM((lineitem.l_extendedprice * lineitem.l_discount))\n" +
 			"     ├─ group: \n" +
 			"     └─ Filter\n" +
-			"         ├─ ((((lineitem.l_shipdate >= '1994-01-01') AND (lineitem.l_shipdate < 1995-01-01 00:00:00 +0000 UTC)) AND ((lineitem.l_discount >= 0.05) AND (lineitem.l_discount <= 0.07))) AND (lineitem.l_quantity < 24))\n" +
+			"         ├─ (((((lineitem.l_shipdate >= '1994-01-01') AND (lineitem.l_shipdate < 1995-01-01 00:00:00 +0000 UTC)) AND (lineitem.l_discount >= 0.05)) AND (lineitem.l_discount <= 0.07)) AND (lineitem.l_quantity < 24))\n" +
 			"         └─ Table\n" +
 			"             ├─ name: lineitem\n" +
 			"             └─ columns: [l_quantity l_extendedprice l_discount l_shipdate]\n" +
@@ -800,7 +800,7 @@ where
 			"     ├─ select: SUM((lineitem.l_extendedprice * lineitem.l_discount))\n" +
 			"     ├─ group: \n" +
 			"     └─ Filter\n" +
-			"         ├─ ((((lineitem.l_shipdate >= '1994-01-01') AND (lineitem.l_shipdate < 1995-01-01 00:00:00 +0000 UTC)) AND ((lineitem.l_discount >= 0.05) AND (lineitem.l_discount <= 0.07))) AND (lineitem.l_quantity < 24))\n" +
+			"         ├─ (((((lineitem.l_shipdate >= '1994-01-01') AND (lineitem.l_shipdate < 1995-01-01 00:00:00 +0000 UTC)) AND (lineitem.l_discount >= 0.05)) AND (lineitem.l_discount <= 0.07)) AND (lineitem.l_quantity < 24))\n" +
 			"         └─ Table\n" +
 			"             ├─ name: lineitem\n" +
 			"             └─ columns: [l_quantity l_extendedprice l_discount l_shipdate]\n" +
@@ -3066,33 +3066,9 @@ order by
 			"         │   │               ├─ columns: [part.p_partkey:0!null]\n" +
 			"         │   │               └─ Filter\n" +
 			"         │   │                   ├─ AND\n" +
-			"         │   │                   │   ├─ AND\n" +
-			"         │   │                   │   │   ├─ AND\n" +
-			"         │   │                   │   │   │   ├─ AND\n" +
-			"         │   │                   │   │   │   │   ├─ AND\n" +
-			"         │   │                   │   │   │   │   │   ├─ AND\n" +
-			"         │   │                   │   │   │   │   │   │   ├─ AND\n" +
-			"         │   │                   │   │   │   │   │   │   │   ├─ GreaterThanOrEqual\n" +
-			"         │   │                   │   │   │   │   │   │   │   │   ├─ part.p_name:1!null\n" +
-			"         │   │                   │   │   │   │   │   │   │   │   └─ forest (longtext)\n" +
-			"         │   │                   │   │   │   │   │   │   │   └─ LessThan\n" +
-			"         │   │                   │   │   │   │   │   │   │       ├─ part.p_name:1!null\n" +
-			"         │   │                   │   │   │   │   │   │   │       └─ foresu (longtext)\n" +
-			"         │   │                   │   │   │   │   │   │   └─ GreaterThanOrEqual\n" +
-			"         │   │                   │   │   │   │   │   │       ├─ part.p_name:1!null\n" +
-			"         │   │                   │   │   │   │   │   │       └─ forest (longtext)\n" +
-			"         │   │                   │   │   │   │   │   └─ LessThan\n" +
-			"         │   │                   │   │   │   │   │       ├─ part.p_name:1!null\n" +
-			"         │   │                   │   │   │   │   │       └─ foresu (longtext)\n" +
-			"         │   │                   │   │   │   │   └─ GreaterThanOrEqual\n" +
-			"         │   │                   │   │   │   │       ├─ part.p_name:1!null\n" +
-			"         │   │                   │   │   │   │       └─ forest (longtext)\n" +
-			"         │   │                   │   │   │   └─ LessThan\n" +
-			"         │   │                   │   │   │       ├─ part.p_name:1!null\n" +
-			"         │   │                   │   │   │       └─ foresu (longtext)\n" +
-			"         │   │                   │   │   └─ GreaterThanOrEqual\n" +
-			"         │   │                   │   │       ├─ part.p_name:1!null\n" +
-			"         │   │                   │   │       └─ forest (longtext)\n" +
+			"         │   │                   │   ├─ GreaterThanOrEqual\n" +
+			"         │   │                   │   │   ├─ part.p_name:1!null\n" +
+			"         │   │                   │   │   └─ forest (longtext)\n" +
 			"         │   │                   │   └─ LessThan\n" +
 			"         │   │                   │       ├─ part.p_name:1!null\n" +
 			"         │   │                   │       └─ foresu (longtext)\n" +
@@ -3141,7 +3117,7 @@ order by
 			"         │   │           └─ Project\n" +
 			"         │   │               ├─ columns: [part.p_partkey]\n" +
 			"         │   │               └─ Filter\n" +
-			"         │   │                   ├─ ((((((((part.p_name >= 'forest') AND (part.p_name < 'foresu')) AND (part.p_name >= 'forest')) AND (part.p_name < 'foresu')) AND (part.p_name >= 'forest')) AND (part.p_name < 'foresu')) AND (part.p_name >= 'forest')) AND (part.p_name < 'foresu'))\n" +
+			"         │   │                   ├─ ((part.p_name >= 'forest') AND (part.p_name < 'foresu'))\n" +
 			"         │   │                   └─ IndexedTableAccess(part)\n" +
 			"         │   │                       ├─ index: [part.P_PARTKEY]\n" +
 			"         │   │                       └─ keys: partsupp.ps_partkey\n" +
@@ -3170,7 +3146,7 @@ order by
 			"         │   │           └─ Project\n" +
 			"         │   │               ├─ columns: [part.p_partkey]\n" +
 			"         │   │               └─ Filter\n" +
-			"         │   │                   ├─ ((((((((part.p_name >= 'forest') AND (part.p_name < 'foresu')) AND (part.p_name >= 'forest')) AND (part.p_name < 'foresu')) AND (part.p_name >= 'forest')) AND (part.p_name < 'foresu')) AND (part.p_name >= 'forest')) AND (part.p_name < 'foresu'))\n" +
+			"         │   │                   ├─ ((part.p_name >= 'forest') AND (part.p_name < 'foresu'))\n" +
 			"         │   │                   └─ IndexedTableAccess(part)\n" +
 			"         │   │                       ├─ index: [part.P_PARTKEY]\n" +
 			"         │   │                       └─ keys: partsupp.ps_partkey\n" +

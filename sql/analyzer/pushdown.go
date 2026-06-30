@@ -15,8 +15,6 @@
 package analyzer
 
 import (
-	"fmt"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -25,9 +23,8 @@ import (
 
 // pushFilters moves filter nodes down to their appropriate relations.
 // Filters that reference a single relation will wrap their target tables.
-// Filters that reference multiple tables will move as low in the join tree
 // as is appropriate. We never move a filter without deleting from the source.
-// Related rules: hoistOutOfScopeFilters, moveJoinConditionsToFilter.
+// Related rules: hoistOutOfScopeFilters, pushdownSubqueryAliasFilters
 func pushFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("push_filters")
 	defer span.End()
@@ -35,68 +32,91 @@ func pushFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, s
 	if !canDoPushdown(n) {
 		return n, transform.SameTree, nil
 	}
+	filters := newEmptyFilterSet(n)
 
-	projectionExpressions := getProjectionExpressions(n)
+	n, same, err := pushdownFiltersAboveTables(ctx, a, n, scope, filters)
+	// TODO: assert that there are no unhandled filters? this should never happen so error out if it does
+	return n, same, err
+}
 
-	pushdownAboveTables := func(n sql.Node, filters *filterSet) (sql.Node, transform.TreeIdentity, error) {
-		return transform.NodeWithCtx(ctx, n, filterPushdownSelector, func(ctx *sql.Context, c transform.Context) (sql.Node, transform.TreeIdentity, error) {
-			switch node := c.Node.(type) {
-			case *plan.Filter:
-				if f, ok := node.Child.(*plan.Filter); ok {
-					if node.Expression == f.Expression {
-						return f, transform.NewTree, nil
-					}
-					// TODO: We should not be simply AND'ing the two filter expressions since they may have overlapping
-					//  subexpressions.
-					return plan.NewFilter(ctx, expression.JoinAnd(node.Expression, f.Expression), f.Child), transform.NewTree, nil
-				}
-				return node, transform.SameTree, nil
-			case *plan.TableAlias, *plan.ResolvedTable, *plan.ValueDerivedTable:
-				table, same, err := pushdownFiltersToAboveTable(ctx, a, node.(plan.TableIdNode), filters)
-				if err != nil {
-					return nil, transform.SameTree, err
-				}
-				if same {
-					return node, transform.SameTree, nil
-				}
-				return table, transform.NewTree, nil
-			default:
-				return node, transform.SameTree, nil
-			}
-		})
+func pushdownFiltersAboveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, filters *filterSet) (sql.Node, transform.TreeIdentity, error) {
+	if sql.IsOpaque(n) {
+		return n, transform.SameTree, nil
 	}
 
-	// For each filter node, we want to push its predicates as low as possible.
-	return transform.Node(ctx, n, func(ctx *sql.Context, node sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		switch n := node.(type) {
-		case *plan.Filter:
-			switch n.Child.(type) {
-			case *plan.TableAlias, *plan.ResolvedTable, *plan.IndexedTableAccess, *plan.ValueDerivedTable:
-				// can't push any lower
-				return n, transform.SameTree, nil
-			default:
-			}
-			// Find all col exprs and group them by the table they mention so that we can keep track of which ones
-			// have been pushed down and need to be removed from the parent filter
-			filters := newFilterSet(ctx, n, scope, projectionExpressions)
+	switch node := n.(type) {
+	case *plan.Filter:
+		filterExpressions := expression.SplitConjunction(ctx, node.Expression)
+		filters.addFilterExprs(ctx, filterExpressions, scope)
 
-			// move filter predicates directly above their respective tables in joins
-			ret, _, err := pushdownAboveTables(n, filters)
-			if err != nil {
-				return n, transform.SameTree, err
-			}
-
-			retF, ok := ret.(*plan.Filter)
-			if !ok {
-				return n, transform.SameTree, fmt.Errorf("pushdown mistakenly converted filter to non-filter: %T", ret)
-			}
-
-			// remove handled
-			return updateFilterNode(ctx, a, retF, filters)
-		default:
-			return n, transform.SameTree, nil
+		child, _, err := pushdownFiltersAboveTables(ctx, a, node.Child, scope, filters)
+		if err != nil {
+			return node, transform.SameTree, err
 		}
-	})
+		// TODO: updating the child node like this is kinda hacky, but it's necessary to use the updateFilterNode
+		//  function, which is shared with transformPushdownSubqueryAliasFilters. This can be updated once
+		//  transformPushdownSubqueryAliasFilters has been updated to not use two nested node traversals. We should
+		//  also check for sameness before calling updateFilterNode. We currently don't because we want to push filters
+		//  down into the join child (this step will be removed when the pushFilters rule is combined with
+		//  moveJoinConditionsToFilter
+		node.Child = child
+		return updateFilterNode(ctx, a, node, filterExpressions, filters)
+	case *plan.JoinNode:
+		joinOp := node.JoinType()
+		if joinOp.IsMerge() || joinOp.IsFullOuter() {
+			return node, transform.SameTree, nil
+		}
+
+		isLeftOuterOrAnti := joinOp.IsLeftOuter() || joinOp.IsAnti()
+		// TODO: Add join conditions to filters set and remove moveJoinConditionsToFilter rule
+
+		leftChild, leftSame, err := pushdownFiltersAboveTables(ctx, a, node.Left(), scope, filters)
+		if err != nil {
+			return node, transform.SameTree, err
+		}
+		rightChild := node.Right()
+		rightSame := transform.SameTree
+		if !isLeftOuterOrAnti {
+			rightChild, rightSame, err = pushdownFiltersAboveTables(ctx, a, node.Right(), scope, filters)
+			if err != nil {
+				return node, transform.SameTree, err
+			}
+		}
+		if !leftSame || !rightSame {
+			return plan.NewJoin(ctx, leftChild, rightChild, joinOp, node.JoinCond()).WithComment(node.Comment()), transform.NewTree, nil
+		}
+	case *plan.TableAlias, *plan.ResolvedTable, *plan.ValueDerivedTable:
+		return filteredTableNode(ctx, a, node.(plan.TableIdNode), filters)
+	case *plan.Limit, *plan.Window:
+		// Parent filters shouldn't be pushed through Limit or Window nodes but child filters should still get pushed
+		// down to the table level.
+		newChild, same, err := pushdownFiltersAboveTables(ctx, a, node.Children()[0], scope, filters.newChildFilterSet())
+		if err != nil {
+			return node, transform.SameTree, err
+		}
+		if !same {
+			newNode, err := node.WithChildren(ctx, newChild)
+			return newNode, transform.NewTree, err
+		}
+	default:
+		children := node.Children()
+		allSame := true
+		for i, child := range children {
+			newChild, same, err := pushdownFiltersAboveTables(ctx, a, child, scope, filters)
+			if err != nil {
+				return node, transform.SameTree, err
+			}
+			if !same {
+				children[i] = newChild
+				allSame = false
+			}
+		}
+		if !allSame {
+			newNode, err := node.WithChildren(ctx, children...)
+			return newNode, transform.NewTree, err
+		}
+	}
+	return n, transform.SameTree, nil
 }
 
 // pushdownSubqueryAliasFilters attempts to push conditions in filters down to
@@ -109,6 +129,9 @@ func pushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.Node, sco
 		return n, transform.SameTree, nil
 	}
 
+	// TODO: this involves calling InspectUp on entire node tree. If there is a SQA, it stops traversing and returns
+	//  true, but otherwise, it will inspect the entire node tree just to return false. Only the leaves need to be
+	//  inspected to determine if there's an SQA.
 	if !hasSubqueryAlias(ctx, n) {
 		return n, transform.SameTree, nil
 	}
@@ -125,10 +148,6 @@ func hasSubqueryAlias(ctx *sql.Context, n sql.Node) bool {
 
 // canDoPushdown returns whether the node given can safely be analyzed for pushdown
 func canDoPushdown(n sql.Node) bool {
-	if !n.Resolved() {
-		return false
-	}
-
 	if plan.IsNoRowNode(n) {
 		return false
 	}
@@ -149,11 +168,7 @@ func filterPushdownSelector(ctx *sql.Context, c transform.Context) bool {
 	case *plan.TableAlias:
 		return false
 	case *plan.JoinNode:
-		// Pushing down a filter is incompatible with the secondary table in a Left or Right join. If we push a
-		// predicate on the secondary table below the join, we end up not evaluating it in all cases (since the
-		// secondary table result is sometimes null in these types of joins). It must be evaluated only after the join
-		// result is computed.
-		if n.Op.IsLeftOuter() && c.ChildNum != 0 {
+		if (n.Op.IsLeftOuter() || n.Op.IsAnti()) && c.ChildNum != 0 {
 			return false
 		}
 	}
@@ -179,7 +194,7 @@ func transformPushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.
 		return transform.NodeWithCtx(ctx, n, filterPushdownSelector, func(ctx *sql.Context, c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 			switch node := c.Node.(type) {
 			case *plan.Filter:
-				return updateFilterNode(ctx, a, node, filters)
+				return updateFilterNode(ctx, a, node, expression.SplitConjunction(ctx, node.Expression), filters)
 			case *plan.SubqueryAlias:
 				// TODO: We probably could push filters into a RecursiveCTE to get an IndexedTableAccess where
 				//  applicable. But we currently don't push any filters through at all so pushing filters past the
@@ -196,6 +211,8 @@ func transformPushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.
 	}
 
 	// For each filter node, we want to push its predicates as low as possible.
+	// TODO: Having two nested transform.Node/transform.NodeCtx ends up traversing the node tree multiple times for each
+	//  filter node. Rewrite transformPushdownSubqueryAliasFilters to be a single node traversal, similar to pushFilters
 	return transform.Node(ctx, n, func(ctx *sql.Context, n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.Filter:
@@ -208,8 +225,8 @@ func transformPushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.
 	})
 }
 
-// pushdownFiltersToAboveTable introduces a filter node with the given predicate
-func pushdownFiltersToAboveTable(
+// filteredTableNode wraps a table node in applicable filters
+func filteredTableNode(
 	ctx *sql.Context,
 	a *Analyzer,
 	tableNode plan.TableIdNode,
@@ -319,13 +336,18 @@ func pushdownFiltersUnderSubqueryAlias(ctx *sql.Context, a *Analyzer, sa *plan.S
 // filter node is removed. If there are remaining filter predicates and the immediate child of the filter is a non-outer
 // join, the remaining unhandled filters are pushed into the join node and added to the join filters, and the filter
 // node is removed.
-func updateFilterNode(ctx *sql.Context, a *Analyzer, node *plan.Filter, filters *filterSet) (sql.Node, transform.TreeIdentity, error) {
-	filterExpressions := expression.SplitConjunction(ctx, node.Expression)
+func updateFilterNode(ctx *sql.Context, a *Analyzer, node *plan.Filter, filterExpressions []sql.Expression, filters *filterSet) (sql.Node, transform.TreeIdentity, error) {
 	unhandled := subtractExprSet(filterExpressions, filters.handledFilters)
 
 	if len(unhandled) == 0 {
 		a.Log("filter node has no unhandled filters, so it will be removed")
 		return node.Child, transform.NewTree, nil
+	}
+	filters.markFiltersHandled(unhandled...)
+
+	if f, ok := node.Child.(*plan.Filter); ok {
+		unhandled = append(unhandled, f.Expression)
+		node.Child = f.Child
 	}
 
 	// TODO: Pushing filters into joinChild is causing some filters to be dropped later on during join planning
