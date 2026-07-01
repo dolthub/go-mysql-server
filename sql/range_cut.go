@@ -236,13 +236,10 @@ type typedValue struct {
 }
 
 func compareRangeCuts(ctx context.Context, rangeType Type, a typedValue, b typedValue) (int, error) {
-	if et, ok := rangeType.(ExtendedType); ok {
+	if et, ok := rangeType.(ExtendedType); false && ok {
 		aet, aok := a.typ.(ExtendedType)
 		bet, bok := b.typ.(ExtendedType)
 		if aok && bok {
-			if et.Equals(aet) && et.Equals(bet) {
-				return aet.Compare(ctx, a.value, b.value)
-			}
 			// Changing the interface for this to use a *sql.Context is a larger lift, so we'll just cast for now
 			sqlCtx, _ := ctx.(*Context)
 			ac, inRange, err := et.ConvertToType(sqlCtx, aet, a.value)
