@@ -129,19 +129,9 @@ func newFilterSet(
 	}
 }
 
-func newEmptyFilterSet(n sql.Node) *filterSet {
+func newEmptyFilterSet(projectionExpressions map[sql.ColumnId]sql.Expression) *filterSet {
 	return &filterSet{
-		projectionExpressions: getProjectionExpressions(n),
-		filtersByTable:        newFiltersByTable(),
-	}
-}
-
-// newChildFilterSet creates a new filterSet with the same projectionExpressions and an empty filtersByTable. This is
-// used for nodes where parent filters should not be pushed through the node but child filters should still be pushed
-// down to the table level.
-func (fs *filterSet) newChildFilterSet() *filterSet {
-	return &filterSet{
-		projectionExpressions: fs.projectionExpressions,
+		projectionExpressions: projectionExpressions,
 		filtersByTable:        newFiltersByTable(),
 	}
 }

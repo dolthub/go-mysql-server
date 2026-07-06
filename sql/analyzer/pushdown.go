@@ -32,7 +32,7 @@ func pushFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, s
 	if !canDoPushdown(n) {
 		return n, transform.SameTree, nil
 	}
-	filters := newEmptyFilterSet(n)
+	filters := newEmptyFilterSet(getProjectionExpressions(n))
 
 	n, same, err := pushdownFiltersAboveTables(ctx, a, n, scope, filters)
 	// TODO: assert that there are no unhandled filters? this should never happen so error out if it does
@@ -83,7 +83,7 @@ func pushdownFiltersAboveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 	case *plan.Limit, *plan.Window:
 		// Parent filters shouldn't be pushed through Limit or Window nodes but child filters should still get pushed
 		// down to the table level.
-		newChild, same, err := pushdownFiltersAboveTables(ctx, a, node.Children()[0], scope, filters.newChildFilterSet())
+		newChild, same, err := pushdownFiltersAboveTables(ctx, a, node.Children()[0], scope, newEmptyFilterSet(filters.projectionExpressions))
 		if err != nil {
 			return node, transform.SameTree, err
 		}
@@ -121,7 +121,7 @@ func pushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.Node, sco
 	if !canDoPushdown(n) {
 		return n, transform.SameTree, nil
 	}
-	
+
 	if !hasSubqueryAlias(ctx, n) {
 		return n, transform.SameTree, nil
 	}
