@@ -177,7 +177,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					"             │   └─ 2 (int)\n" +
 					"             └─ IndexedTableAccess(t2)\n" +
 					"                 ├─ index: [t2.j]\n" +
-					"                 ├─ static: [{[NULL, ∞)}]\n" +
+					"                 ├─ static: [{(2, ∞)}]\n" +
 					"                 ├─ reverse: true\n" +
 					"                 ├─ colSet: (2)\n" +
 					"                 ├─ tableId: 2\n" +
@@ -877,6 +877,371 @@ var QueryPlanScriptTests = []ScriptTest{
 					"     └─ Table\n" +
 					"         ├─ name: t4\n" +
 					"         └─ columns: [x y]\n" +
+					"",
+			},
+		},
+	},
+	{
+		Name: "merge join properly pushes down static filters (TODO: DROP FILTER NODES ABOVE INDEXEDTABLEACCESS)",
+		SetUpScript: []string{
+			`create table t1 (i int primary key, j int, k int);`,
+			`create table t2 (x int primary key, y int, z int);`,
+			`insert into t1 values (1, 1, 1), (2, 2, 2), (3, 3, 3);`,
+			`insert into t2 values (1, 1, 1), (2, 2, 2), (3, 3, 3);`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on i = x where i = 2;`,
+				Expected: []sql.Row{
+					sql.Row{2, 2, 2, 2, 2, 2},
+				},
+				ExpectedPlan: "Project\n" +
+					" ├─ columns: [t1.i:3!null, t1.j:4, t1.k:5, t2.x:0!null, t2.y:1, t2.z:2]\n" +
+					" └─ MergeJoin\n" +
+					"     ├─ cmp: Eq\n" +
+					"     │   ├─ t2.x:0!null\n" +
+					"     │   └─ t1.i:3!null\n" +
+					"     ├─ IndexedTableAccess(t2)\n" +
+					"     │   ├─ index: [t2.x]\n" +
+					"     │   ├─ static: [{[NULL, ∞)}]\n" +
+					"     │   ├─ colSet: (4-6)\n" +
+					"     │   ├─ tableId: 2\n" +
+					"     │   └─ Table\n" +
+					"     │       ├─ name: t2\n" +
+					"     │       └─ columns: [x y z]\n" +
+					"     └─ Filter\n" +
+					"         ├─ Eq\n" +
+					"         │   ├─ t1.i:0!null\n" +
+					"         │   └─ 2 (int)\n" +
+					"         └─ IndexedTableAccess(t1)\n" +
+					"             ├─ index: [t1.i]\n" +
+					"             ├─ static: [{[2, 2]}]\n" +
+					"             ├─ colSet: (1-3)\n" +
+					"             ├─ tableId: 1\n" +
+					"             └─ Table\n" +
+					"                 ├─ name: t1\n" +
+					"                 └─ columns: [i j k]\n" +
+					"",
+			},
+			{
+				Query: `select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on i = x where x = 2;`,
+				Expected: []sql.Row{
+					sql.Row{2, 2, 2, 2, 2, 2},
+				},
+				ExpectedPlan: "MergeJoin\n" +
+					" ├─ cmp: Eq\n" +
+					" │   ├─ t1.i:0!null\n" +
+					" │   └─ t2.x:3!null\n" +
+					" ├─ IndexedTableAccess(t1)\n" +
+					" │   ├─ index: [t1.i]\n" +
+					" │   ├─ static: [{[NULL, ∞)}]\n" +
+					" │   ├─ colSet: (1-3)\n" +
+					" │   ├─ tableId: 1\n" +
+					" │   └─ Table\n" +
+					" │       ├─ name: t1\n" +
+					" │       └─ columns: [i j k]\n" +
+					" └─ Filter\n" +
+					"     ├─ Eq\n" +
+					"     │   ├─ t2.x:0!null\n" +
+					"     │   └─ 2 (int)\n" +
+					"     └─ IndexedTableAccess(t2)\n" +
+					"         ├─ index: [t2.x]\n" +
+					"         ├─ static: [{[2, 2]}]\n" +
+					"         ├─ colSet: (4-6)\n" +
+					"         ├─ tableId: 2\n" +
+					"         └─ Table\n" +
+					"             ├─ name: t2\n" +
+					"             └─ columns: [x y z]\n" +
+					"",
+			},
+			{
+				Query: `select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on i = x where i > 1;`,
+				Expected: []sql.Row{
+					sql.Row{2, 2, 2, 2, 2, 2},
+					sql.Row{3, 3, 3, 3, 3, 3},
+				},
+				ExpectedPlan: "MergeJoin\n" +
+					" ├─ cmp: Eq\n" +
+					" │   ├─ t1.i:0!null\n" +
+					" │   └─ t2.x:3!null\n" +
+					" ├─ Filter\n" +
+					" │   ├─ GreaterThan\n" +
+					" │   │   ├─ t1.i:0!null\n" +
+					" │   │   └─ 1 (int)\n" +
+					" │   └─ IndexedTableAccess(t1)\n" +
+					" │       ├─ index: [t1.i]\n" +
+					" │       ├─ static: [{(1, ∞)}]\n" +
+					" │       ├─ colSet: (1-3)\n" +
+					" │       ├─ tableId: 1\n" +
+					" │       └─ Table\n" +
+					" │           ├─ name: t1\n" +
+					" │           └─ columns: [i j k]\n" +
+					" └─ IndexedTableAccess(t2)\n" +
+					"     ├─ index: [t2.x]\n" +
+					"     ├─ static: [{[NULL, ∞)}]\n" +
+					"     ├─ colSet: (4-6)\n" +
+					"     ├─ tableId: 2\n" +
+					"     └─ Table\n" +
+					"         ├─ name: t2\n" +
+					"         └─ columns: [x y z]\n" +
+					"",
+			},
+			{
+				Query: `select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on i = x where x > 1;`,
+				Expected: []sql.Row{
+					sql.Row{2, 2, 2, 2, 2, 2},
+					sql.Row{3, 3, 3, 3, 3, 3},
+				},
+				ExpectedPlan: "MergeJoin\n" +
+					" ├─ cmp: Eq\n" +
+					" │   ├─ t1.i:0!null\n" +
+					" │   └─ t2.x:3!null\n" +
+					" ├─ IndexedTableAccess(t1)\n" +
+					" │   ├─ index: [t1.i]\n" +
+					" │   ├─ static: [{[NULL, ∞)}]\n" +
+					" │   ├─ colSet: (1-3)\n" +
+					" │   ├─ tableId: 1\n" +
+					" │   └─ Table\n" +
+					" │       ├─ name: t1\n" +
+					" │       └─ columns: [i j k]\n" +
+					" └─ Filter\n" +
+					"     ├─ GreaterThan\n" +
+					"     │   ├─ t2.x:0!null\n" +
+					"     │   └─ 1 (int)\n" +
+					"     └─ IndexedTableAccess(t2)\n" +
+					"         ├─ index: [t2.x]\n" +
+					"         ├─ static: [{(1, ∞)}]\n" +
+					"         ├─ colSet: (4-6)\n" +
+					"         ├─ tableId: 2\n" +
+					"         └─ Table\n" +
+					"             ├─ name: t2\n" +
+					"             └─ columns: [x y z]\n" +
+					"",
+			},
+			{
+				Query: `select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on i = x where i < 3;`,
+				Expected: []sql.Row{
+					sql.Row{1, 1, 1, 1, 1, 1},
+					sql.Row{2, 2, 2, 2, 2, 2},
+				},
+				ExpectedPlan: "MergeJoin\n" +
+					" ├─ cmp: Eq\n" +
+					" │   ├─ t1.i:0!null\n" +
+					" │   └─ t2.x:3!null\n" +
+					" ├─ Filter\n" +
+					" │   ├─ LessThan\n" +
+					" │   │   ├─ t1.i:0!null\n" +
+					" │   │   └─ 3 (int)\n" +
+					" │   └─ IndexedTableAccess(t1)\n" +
+					" │       ├─ index: [t1.i]\n" +
+					" │       ├─ static: [{(NULL, 3)}]\n" +
+					" │       ├─ colSet: (1-3)\n" +
+					" │       ├─ tableId: 1\n" +
+					" │       └─ Table\n" +
+					" │           ├─ name: t1\n" +
+					" │           └─ columns: [i j k]\n" +
+					" └─ IndexedTableAccess(t2)\n" +
+					"     ├─ index: [t2.x]\n" +
+					"     ├─ static: [{[NULL, ∞)}]\n" +
+					"     ├─ colSet: (4-6)\n" +
+					"     ├─ tableId: 2\n" +
+					"     └─ Table\n" +
+					"         ├─ name: t2\n" +
+					"         └─ columns: [x y z]\n" +
+					"",
+			},
+			{
+				Query: `select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on i = x where x < 3;`,
+				Expected: []sql.Row{
+					sql.Row{1, 1, 1, 1, 1, 1},
+					sql.Row{2, 2, 2, 2, 2, 2},
+				},
+				ExpectedPlan: "MergeJoin\n" +
+					" ├─ cmp: Eq\n" +
+					" │   ├─ t1.i:0!null\n" +
+					" │   └─ t2.x:3!null\n" +
+					" ├─ IndexedTableAccess(t1)\n" +
+					" │   ├─ index: [t1.i]\n" +
+					" │   ├─ static: [{[NULL, ∞)}]\n" +
+					" │   ├─ colSet: (1-3)\n" +
+					" │   ├─ tableId: 1\n" +
+					" │   └─ Table\n" +
+					" │       ├─ name: t1\n" +
+					" │       └─ columns: [i j k]\n" +
+					" └─ Filter\n" +
+					"     ├─ LessThan\n" +
+					"     │   ├─ t2.x:0!null\n" +
+					"     │   └─ 3 (int)\n" +
+					"     └─ IndexedTableAccess(t2)\n" +
+					"         ├─ index: [t2.x]\n" +
+					"         ├─ static: [{(NULL, 3)}]\n" +
+					"         ├─ colSet: (4-6)\n" +
+					"         ├─ tableId: 2\n" +
+					"         └─ Table\n" +
+					"             ├─ name: t2\n" +
+					"             └─ columns: [x y z]\n" +
+					"",
+			},
+			{
+				Query: `select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on i = x where i >= 2;`,
+				Expected: []sql.Row{
+					sql.Row{2, 2, 2, 2, 2, 2},
+					sql.Row{3, 3, 3, 3, 3, 3},
+				},
+				ExpectedPlan: "MergeJoin\n" +
+					" ├─ cmp: Eq\n" +
+					" │   ├─ t1.i:0!null\n" +
+					" │   └─ t2.x:3!null\n" +
+					" ├─ Filter\n" +
+					" │   ├─ GreaterThanOrEqual\n" +
+					" │   │   ├─ t1.i:0!null\n" +
+					" │   │   └─ 2 (int)\n" +
+					" │   └─ IndexedTableAccess(t1)\n" +
+					" │       ├─ index: [t1.i]\n" +
+					" │       ├─ static: [{[2, ∞)}]\n" +
+					" │       ├─ colSet: (1-3)\n" +
+					" │       ├─ tableId: 1\n" +
+					" │       └─ Table\n" +
+					" │           ├─ name: t1\n" +
+					" │           └─ columns: [i j k]\n" +
+					" └─ IndexedTableAccess(t2)\n" +
+					"     ├─ index: [t2.x]\n" +
+					"     ├─ static: [{[NULL, ∞)}]\n" +
+					"     ├─ colSet: (4-6)\n" +
+					"     ├─ tableId: 2\n" +
+					"     └─ Table\n" +
+					"         ├─ name: t2\n" +
+					"         └─ columns: [x y z]\n" +
+					"",
+			},
+			{
+				Query: `select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on i = x where x >= 2;`,
+				Expected: []sql.Row{
+					sql.Row{2, 2, 2, 2, 2, 2},
+					sql.Row{3, 3, 3, 3, 3, 3},
+				},
+				ExpectedPlan: "MergeJoin\n" +
+					" ├─ cmp: Eq\n" +
+					" │   ├─ t1.i:0!null\n" +
+					" │   └─ t2.x:3!null\n" +
+					" ├─ IndexedTableAccess(t1)\n" +
+					" │   ├─ index: [t1.i]\n" +
+					" │   ├─ static: [{[NULL, ∞)}]\n" +
+					" │   ├─ colSet: (1-3)\n" +
+					" │   ├─ tableId: 1\n" +
+					" │   └─ Table\n" +
+					" │       ├─ name: t1\n" +
+					" │       └─ columns: [i j k]\n" +
+					" └─ Filter\n" +
+					"     ├─ GreaterThanOrEqual\n" +
+					"     │   ├─ t2.x:0!null\n" +
+					"     │   └─ 2 (int)\n" +
+					"     └─ IndexedTableAccess(t2)\n" +
+					"         ├─ index: [t2.x]\n" +
+					"         ├─ static: [{[2, ∞)}]\n" +
+					"         ├─ colSet: (4-6)\n" +
+					"         ├─ tableId: 2\n" +
+					"         └─ Table\n" +
+					"             ├─ name: t2\n" +
+					"             └─ columns: [x y z]\n" +
+					"",
+			},
+			{
+				Query: `select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on i = x where i <= 2;`,
+				Expected: []sql.Row{
+					sql.Row{1, 1, 1, 1, 1, 1},
+					sql.Row{2, 2, 2, 2, 2, 2},
+				},
+				ExpectedPlan: "MergeJoin\n" +
+					" ├─ cmp: Eq\n" +
+					" │   ├─ t1.i:0!null\n" +
+					" │   └─ t2.x:3!null\n" +
+					" ├─ Filter\n" +
+					" │   ├─ LessThanOrEqual\n" +
+					" │   │   ├─ t1.i:0!null\n" +
+					" │   │   └─ 2 (int)\n" +
+					" │   └─ IndexedTableAccess(t1)\n" +
+					" │       ├─ index: [t1.i]\n" +
+					" │       ├─ static: [{(NULL, 2]}]\n" +
+					" │       ├─ colSet: (1-3)\n" +
+					" │       ├─ tableId: 1\n" +
+					" │       └─ Table\n" +
+					" │           ├─ name: t1\n" +
+					" │           └─ columns: [i j k]\n" +
+					" └─ IndexedTableAccess(t2)\n" +
+					"     ├─ index: [t2.x]\n" +
+					"     ├─ static: [{[NULL, ∞)}]\n" +
+					"     ├─ colSet: (4-6)\n" +
+					"     ├─ tableId: 2\n" +
+					"     └─ Table\n" +
+					"         ├─ name: t2\n" +
+					"         └─ columns: [x y z]\n" +
+					"",
+			},
+			{
+				Query: `select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on i = x where x <= 2;`,
+				Expected: []sql.Row{
+					sql.Row{1, 1, 1, 1, 1, 1},
+					sql.Row{2, 2, 2, 2, 2, 2},
+				},
+				ExpectedPlan: "MergeJoin\n" +
+					" ├─ cmp: Eq\n" +
+					" │   ├─ t1.i:0!null\n" +
+					" │   └─ t2.x:3!null\n" +
+					" ├─ IndexedTableAccess(t1)\n" +
+					" │   ├─ index: [t1.i]\n" +
+					" │   ├─ static: [{[NULL, ∞)}]\n" +
+					" │   ├─ colSet: (1-3)\n" +
+					" │   ├─ tableId: 1\n" +
+					" │   └─ Table\n" +
+					" │       ├─ name: t1\n" +
+					" │       └─ columns: [i j k]\n" +
+					" └─ Filter\n" +
+					"     ├─ LessThanOrEqual\n" +
+					"     │   ├─ t2.x:0!null\n" +
+					"     │   └─ 2 (int)\n" +
+					"     └─ IndexedTableAccess(t2)\n" +
+					"         ├─ index: [t2.x]\n" +
+					"         ├─ static: [{(NULL, 2]}]\n" +
+					"         ├─ colSet: (4-6)\n" +
+					"         ├─ tableId: 2\n" +
+					"         └─ Table\n" +
+					"             ├─ name: t2\n" +
+					"             └─ columns: [x y z]\n" +
+					"",
+			},
+			{
+				Query: `select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on i = x where i = 2 or x = 2;`,
+				Expected: []sql.Row{
+					sql.Row{2, 2, 2, 2, 2, 2},
+				},
+				ExpectedPlan: "MergeJoin\n" +
+					" ├─ cmp: Eq\n" +
+					" │   ├─ t1.i:0!null\n" +
+					" │   └─ t2.x:3!null\n" +
+					" ├─ sel: Or\n" +
+					" │   ├─ Eq\n" +
+					" │   │   ├─ t1.i:0!null\n" +
+					" │   │   └─ 2 (int)\n" +
+					" │   └─ Eq\n" +
+					" │       ├─ t2.x:3!null\n" +
+					" │       └─ 2 (int)\n" +
+					" ├─ IndexedTableAccess(t1)\n" +
+					" │   ├─ index: [t1.i]\n" +
+					" │   ├─ static: [{[NULL, ∞)}]\n" +
+					" │   ├─ colSet: (1-3)\n" +
+					" │   ├─ tableId: 1\n" +
+					" │   └─ Table\n" +
+					" │       ├─ name: t1\n" +
+					" │       └─ columns: [i j k]\n" +
+					" └─ IndexedTableAccess(t2)\n" +
+					"     ├─ index: [t2.x]\n" +
+					"     ├─ static: [{[NULL, ∞)}]\n" +
+					"     ├─ colSet: (4-6)\n" +
+					"     ├─ tableId: 2\n" +
+					"     └─ Table\n" +
+					"         ├─ name: t2\n" +
+					"         └─ columns: [x y z]\n" +
 					"",
 			},
 		},

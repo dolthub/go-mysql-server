@@ -91,6 +91,7 @@ func NewServerWithHandler(
 	}
 
 	sm := NewSessionManager(ctxFactory, sb, tracer, e.Analyzer.Catalog.Database, e.MemoryManager, e.ProcessList, cfg.Address)
+	sm.connWatcher = newConnWatcher(connWatchStartDelay, connWatchTick, cfg.DisableConnectionWatcher)
 	h := &Handler{
 		e:                 e,
 		sm:                sm,
@@ -238,6 +239,9 @@ func (s *Server) WarnIfLoadFileInsecure() {
 func (s *Server) Close() error {
 	logrus.Infof("Server closing listener. No longer accepting connections.")
 	s.Listener.Close()
+	if s.sessionMgr != nil {
+		s.sessionMgr.connWatcher.Close()
+	}
 	return nil
 }
 
