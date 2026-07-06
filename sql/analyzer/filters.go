@@ -150,11 +150,6 @@ func (fs *filterSet) availableFiltersForTable(table sql.TableId) []sql.Expressio
 	return subtractExprSet(filters, fs.handledFilters)
 }
 
-// handledCount returns the number of filter expressions that have been marked as handled
-func (fs *filterSet) handledCount() int {
-	return len(fs.handledFilters)
-}
-
 // markFiltersHandled marks the filter given as handled, so it will no longer be returned by availableFiltersForTable
 func (fs *filterSet) markFiltersHandled(exprs ...sql.Expression) {
 	fs.handledFilters = append(fs.handledFilters, exprs...)

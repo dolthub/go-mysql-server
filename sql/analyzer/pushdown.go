@@ -359,7 +359,7 @@ func updateFilterNode(ctx *sql.Context, a *Analyzer, node *plan.Filter, nodeChil
 		return joinChild, transform.NewTree, nil
 	}
 
-	if childSame && (filters.handledCount() == 0 || len(unhandled) == len(filterExpressions)) {
+	if childSame && len(unhandled) == len(filterExpressions) {
 		a.Log("no handled filters, leaving filter untouched")
 		return node, transform.SameTree, nil
 	}
