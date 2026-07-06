@@ -121,10 +121,7 @@ func pushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.Node, sco
 	if !canDoPushdown(n) {
 		return n, transform.SameTree, nil
 	}
-
-	// TODO: this involves calling InspectUp on entire node tree. If there is a SQA, it stops traversing and returns
-	//  true, but otherwise, it will inspect the entire node tree just to return false. Only the leaves need to be
-	//  inspected to determine if there's an SQA.
+	
 	if !hasSubqueryAlias(ctx, n) {
 		return n, transform.SameTree, nil
 	}
