@@ -1451,10 +1451,10 @@ func filterExprToMySQLRangeExpr(filter sql.Expression, colId sql.ColumnId, colTy
 		var lit *expression.Literal
 		lExpr, rExpr := f.Left(), f.Right()
 		if lGf, ok := lExpr.(*expression.GetField); ok && lGf.Id() == colId {
-			lit = rExpr.(*expression.Literal)
+			lit, _ = rExpr.(*expression.Literal)
 		}
 		if rGf, ok := rExpr.(*expression.GetField); ok && rGf.Id() == colId {
-			lit = lExpr.(*expression.Literal)
+			lit, _ = lExpr.(*expression.Literal)
 		}
 		if lit == nil {
 			return

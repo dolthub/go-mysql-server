@@ -152,3 +152,60 @@ func tabId(n string) int {
 		panic("unknown table")
 	}
 }
+
+// TestIndexedJoinBindVarEqualityFilter tests analysis of a join query that contains a
+// bind var on an indexed column.
+//
+// Some engine embedders (i.e. Doltgres, which must answer a Postgres wire-protocol
+// Describe message with accurate result columns before the client has sent bind
+// values) run a full analysis pass on a prepared query's plan while it still holds
+// unbound *expression.BindVar placeholders in place of literals.
+func TestIndexedJoinBindVarEqualityFilter(t *testing.T) {
+	db := memory.NewDatabase("db")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+
+	t1Fk := expression.NewGetFieldWithTable(21, 10, types.Int64, "db", "t1", "fk", true)
+	t2Pk := expression.NewGetFieldWithTable(23, 11, types.Int64, "db", "t2", "pk", false)
+
+	joinFilter := expression.NewEquals(t1Fk, t2Pk)
+	bindVarFilter := expression.NewEquals(t1Fk, expression.NewBindVar("v1"))
+
+	left := plan.NewFilter(ctx, bindVarFilter, mergeJoinT1(ctx, db))
+	joined := plan.NewInnerJoin(ctx, left, mergeJoinT2(ctx, db), joinFilter)
+
+	m := memo.NewMemo(ctx, memory.NewStatsProv(), nil, memo.NewDefaultCoster(), nil)
+	j := memo.NewJoinOrderBuilder(m)
+	j.ReorderJoin(ctx, joined)
+
+	require.NotPanics(t, func() {
+		require.NoError(t, addMergeJoins(ctx, m))
+	})
+}
+
+// mergeJoinT1 returns a table with a primary key on pk and a secondary index on fk.
+func mergeJoinT1(ctx *sql.Context, db *memory.Database) sql.Node {
+	tbl := memory.NewTable(ctx, db, "t1", sql.NewPrimaryKeySchema(sql.Schema{
+		{Name: "pk", Type: types.Int64, Nullable: false, Source: "t1", PrimaryKey: true},
+		{Name: "fk", Type: types.Int64, Nullable: true, Source: "t1"},
+		{Name: "val", Type: types.Int64, Nullable: true, Source: "t1"},
+	}), nil)
+	if err := tbl.CreateIndex(ctx, sql.IndexDef{
+		Name:    "t1_fk_idx",
+		Columns: []sql.IndexColumn{{Name: "fk"}},
+	}); err != nil {
+		panic(err)
+	}
+	db.AddTable("t1", tbl)
+	return plan.NewResolvedTable(tbl, db, nil).WithId(10).WithColumns(sql.NewColSet(20, 21, 22))
+}
+
+// mergeJoinT2 returns a table with a primary key on pk.
+func mergeJoinT2(ctx *sql.Context, db *memory.Database) sql.Node {
+	tbl := memory.NewTable(ctx, db, "t2", sql.NewPrimaryKeySchema(sql.Schema{
+		{Name: "pk", Type: types.Int64, Nullable: false, Source: "t2", PrimaryKey: true},
+		{Name: "val", Type: types.Int64, Nullable: true, Source: "t2"},
+	}), nil)
+	db.AddTable("t2", tbl)
+	return plan.NewResolvedTable(tbl, db, nil).WithId(11).WithColumns(sql.NewColSet(23, 24))
+}
