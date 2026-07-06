@@ -142,7 +142,7 @@ func (fs *filterSet) addFilterExprs(ctx *sql.Context, exprs []sql.Expression, sc
 
 // availableFiltersForTable returns the filters that are still available for the table given (not previously marked
 // handled)
-func (fs *filterSet) availableFiltersForTable(ctx *sql.Context, table sql.TableId) []sql.Expression {
+func (fs *filterSet) availableFiltersForTable(table sql.TableId) []sql.Expression {
 	filters, ok := fs.filtersByTable[table]
 	if !ok {
 		return nil
