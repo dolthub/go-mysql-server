@@ -21230,7 +21230,7 @@ WHERE
 			"     │       │                       └─ columns: [id btxc5]\n" +
 			"     │       │  ->M22QN:0, pqsxb.OVE3E:1->OVE3E:0, pqsxb.NRURT:2!null->NRURT:0, pqsxb.OCA7E:3!null->OCA7E:0, pqsxb.XMM6Q:4->XMM6Q:0, pqsxb.V5DPX:5->V5DPX:0, pqsxb.S3Q3Y:6->S3Q3Y:0, pqsxb.ZRV3B:7->ZRV3B:0, pqsxb.FHCYT:8->FHCYT:0]\n" +
 			"     │       └─ Project\n" +
-			"     │           ├─ columns: [pqsxb.FZ2R5:17, pqsxb.OVE3E:18, pqsxb.NRURT:19!null, pqsxb.OCA7E:20!null, pqsxb.XMM6Q:21, pqsxb.V5DPX:22, pqsxb.S3Q3Y:23, pqsxb.ZRV3B:24, pqsxb.FHCYT:25, pqsxb.K3B6V:26, pqsxb.BTXC5:27, pqsxb.H4DMT:28!null, nd.id:0!null, nd.DKCAJ:1!null, nd.KNG7T:2, nd.TW55N:3!null, nd.QRQXW:4!null, nd.ECXAJ:5!null, nd.FGG57:6, nd.ZH72S:7, nd.FSK67:8!null, nd.XQDYT:9!null, nd.TCE7A:10, nd.IWV2H:11, nd.HPCMS:12!null, nd.N5CC2:13, nd.FHCYT:14, nd.ETAQ7:15, nd.A75X7:16, lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0')->id:120, pqsxb.FZ2R5:17->FZ2R5:0, nd.id:0!null->LUEVY:0, Subquery\n" +
+			"     │           ├─ columns: [pqsxb.FZ2R5:0, pqsxb.OVE3E:1, pqsxb.NRURT:2!null, pqsxb.OCA7E:3!null, pqsxb.XMM6Q:4, pqsxb.V5DPX:5, pqsxb.S3Q3Y:6, pqsxb.ZRV3B:7, pqsxb.FHCYT:8, pqsxb.K3B6V:9, pqsxb.BTXC5:10, pqsxb.H4DMT:11!null, nd.id:12!null, nd.DKCAJ:13!null, nd.KNG7T:14, nd.TW55N:15!null, nd.QRQXW:16!null, nd.ECXAJ:17!null, nd.FGG57:18, nd.ZH72S:19, nd.FSK67:20!null, nd.XQDYT:21!null, nd.TCE7A:22, nd.IWV2H:23, nd.HPCMS:24!null, nd.N5CC2:25, nd.FHCYT:26, nd.ETAQ7:27, nd.A75X7:28, lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0')->id:120, pqsxb.FZ2R5:0->FZ2R5:0, nd.id:12!null->LUEVY:0, Subquery\n" +
 			"     │           │   ├─ cacheable: false\n" +
 			"     │           │   ├─ alias-string: select aac.id from TPXBU as aac where aac.BTXC5 = PQSXB.BTXC5\n" +
 			"     │           │   └─ Project\n" +
@@ -21238,303 +21238,317 @@ WHERE
 			"     │           │       └─ Filter\n" +
 			"     │           │           ├─ Eq\n" +
 			"     │           │           │   ├─ aac.BTXC5:30\n" +
-			"     │           │           │   └─ pqsxb.BTXC5:27\n" +
+			"     │           │           │   └─ pqsxb.BTXC5:10\n" +
 			"     │           │           └─ TableAlias(aac)\n" +
 			"     │           │               └─ IndexedTableAccess(TPXBU)\n" +
 			"     │           │                   ├─ index: [TPXBU.BTXC5]\n" +
-			"     │           │                   ├─ keys: [pqsxb.BTXC5:27]\n" +
+			"     │           │                   ├─ keys: [pqsxb.BTXC5:10]\n" +
 			"     │           │                   ├─ colSet: (123-125)\n" +
 			"     │           │                   ├─ tableId: 10\n" +
 			"     │           │                   └─ Table\n" +
 			"     │           │                       ├─ name: TPXBU\n" +
 			"     │           │                       └─ columns: [id btxc5]\n" +
-			"     │           │  ->M22QN:0, pqsxb.OVE3E:18->OVE3E:0, pqsxb.NRURT:19!null->NRURT:0, pqsxb.OCA7E:20!null->OCA7E:0, pqsxb.XMM6Q:21->XMM6Q:0, pqsxb.V5DPX:22->V5DPX:0, pqsxb.S3Q3Y:23->S3Q3Y:0, pqsxb.ZRV3B:24->ZRV3B:0, pqsxb.FHCYT:25->FHCYT:0]\n" +
-			"     │           └─ InnerJoin\n" +
-			"     │               ├─ AND\n" +
-			"     │               │   ├─ NOT\n" +
-			"     │               │   │   └─ pqsxb.OVE3E:18 IS NULL\n" +
-			"     │               │   └─ Or\n" +
-			"     │               │       ├─ AND\n" +
-			"     │               │       │   ├─ NOT\n" +
-			"     │               │       │   │   └─ pqsxb.H4DMT:28!null IS NULL\n" +
-			"     │               │       │   └─ Eq\n" +
-			"     │               │       │       ├─ nd.TW55N:3!null\n" +
-			"     │               │       │       └─ pqsxb.H4DMT:28!null\n" +
-			"     │               │       └─ AND\n" +
-			"     │               │           ├─ pqsxb.H4DMT:28!null IS NULL\n" +
-			"     │               │           └─ Eq\n" +
-			"     │               │               ├─ nd.ZH72S:7\n" +
-			"     │               │               └─ pqsxb.K3B6V:26\n" +
-			"     │               ├─ TableAlias(nd)\n" +
-			"     │               │   └─ ProcessTable\n" +
-			"     │               │       └─ Table\n" +
-			"     │               │           ├─ name: E2I7U\n" +
-			"     │               │           └─ columns: [id dkcaj kng7t tw55n qrqxw ecxaj fgg57 zh72s fsk67 xqdyt tce7a iwv2h hpcms n5cc2 fhcyt etaq7 a75x7]\n" +
-			"     │               └─ CachedResults\n" +
-			"     │                   └─ SubqueryAlias\n" +
-			"     │                       ├─ name: pqsxb\n" +
-			"     │                       ├─ outerVisibility: false\n" +
-			"     │                       ├─ isLateral: false\n" +
-			"     │                       ├─ cacheable: true\n" +
-			"     │                       ├─ colSet: (91-102)\n" +
-			"     │                       ├─ tableId: 8\n" +
-			"     │                       └─ Project\n" +
-			"     │                           ├─ columns: [Subquery\n" +
-			"     │                           │   ├─ cacheable: false\n" +
-			"     │                           │   ├─ alias-string: select id from JDLNA where JDLNA.FTQLQ = uct.FTQLQ\n" +
-			"     │                           │   └─ Project\n" +
-			"     │                           │       ├─ columns: [jdlna.id:33!null]\n" +
-			"     │                           │       └─ Filter\n" +
-			"     │                           │           ├─ Eq\n" +
-			"     │                           │           │   ├─ jdlna.FTQLQ:34!null\n" +
-			"     │                           │           │   └─ uct.FTQLQ:1\n" +
-			"     │                           │           └─ IndexedTableAccess(JDLNA)\n" +
-			"     │                           │               ├─ index: [JDLNA.FTQLQ]\n" +
-			"     │                           │               ├─ keys: [uct.FTQLQ:1]\n" +
-			"     │                           │               ├─ colSet: (34-38)\n" +
-			"     │                           │               ├─ tableId: 4\n" +
-			"     │                           │               └─ Table\n" +
-			"     │                           │                   ├─ name: JDLNA\n" +
-			"     │                           │                   └─ columns: [id ftqlq]\n" +
-			"     │                           │  ->FZ2R5:0, Subquery\n" +
-			"     │                           │   ├─ cacheable: false\n" +
-			"     │                           │   ├─ alias-string: select id from SFEGG where SFEGG.NO52D = uct.NO52D and (SFEGG.VYO5E = uct.VYO5E or (SFEGG.VYO5E is null and (uct.VYO5E is null or uct.VYO5E = 'N/A' or uct.VYO5E = 'NA'))) and SFEGG.DKCAJ = (select case when I7HCR.FVUCX is null then (select nd.DKCAJ from E2I7U as nd where nd.ZH72S = uct.ZH72S limit 1) else (select nd.DKCAJ from E2I7U as nd where nd.TW55N = I7HCR.FVUCX) end)\n" +
-			"     │                           │   └─ Project\n" +
-			"     │                           │       ├─ columns: [sfegg.id:33!null]\n" +
-			"     │                           │       └─ Filter\n" +
-			"     │                           │           ├─ AND\n" +
-			"     │                           │           │   ├─ AND\n" +
-			"     │                           │           │   │   ├─ Eq\n" +
-			"     │                           │           │   │   │   ├─ sfegg.NO52D:34!null\n" +
-			"     │                           │           │   │   │   └─ uct.NO52D:7\n" +
-			"     │                           │           │   │   └─ Or\n" +
-			"     │                           │           │   │       ├─ Eq\n" +
-			"     │                           │           │   │       │   ├─ sfegg.VYO5E:35\n" +
-			"     │                           │           │   │       │   └─ uct.VYO5E:9\n" +
-			"     │                           │           │   │       └─ AND\n" +
-			"     │                           │           │   │           ├─ sfegg.VYO5E:35 IS NULL\n" +
-			"     │                           │           │   │           └─ Or\n" +
-			"     │                           │           │   │               ├─ Or\n" +
-			"     │                           │           │   │               │   ├─ uct.VYO5E:9 IS NULL\n" +
-			"     │                           │           │   │               │   └─ Eq\n" +
-			"     │                           │           │   │               │       ├─ uct.VYO5E:9\n" +
-			"     │                           │           │   │               │       └─ N/A (longtext)\n" +
-			"     │                           │           │   │               └─ Eq\n" +
-			"     │                           │           │   │                   ├─ uct.VYO5E:9\n" +
-			"     │                           │           │   │                   └─ NA (longtext)\n" +
-			"     │                           │           │   └─ Eq\n" +
-			"     │                           │           │       ├─ sfegg.DKCAJ:36!null\n" +
-			"     │                           │           │       └─ Subquery\n" +
-			"     │                           │           │           ├─ cacheable: false\n" +
-			"     │                           │           │           ├─ alias-string: select case when I7HCR.FVUCX is null then (select nd.DKCAJ from E2I7U as nd where nd.ZH72S = uct.ZH72S limit 1) else (select nd.DKCAJ from E2I7U as nd where nd.TW55N = I7HCR.FVUCX) end\n" +
-			"     │                           │           │           └─ Project\n" +
-			"     │                           │           │               ├─ columns: [CASE  WHEN i7hcr.FVUCX:17!null IS NULL THEN Subquery\n" +
-			"     │                           │           │               │   ├─ cacheable: false\n" +
-			"     │                           │           │               │   ├─ alias-string: select nd.DKCAJ from E2I7U as nd where nd.ZH72S = uct.ZH72S limit 1\n" +
-			"     │                           │           │               │   └─ Limit(1)\n" +
-			"     │                           │           │               │       └─ Project\n" +
-			"     │                           │           │               │           ├─ columns: [nd.DKCAJ:40!null]\n" +
-			"     │                           │           │               │           └─ Filter\n" +
-			"     │                           │           │               │               ├─ Eq\n" +
-			"     │                           │           │               │               │   ├─ nd.ZH72S:41\n" +
-			"     │                           │           │               │               │   └─ uct.ZH72S:2\n" +
-			"     │                           │           │               │               └─ TableAlias(nd)\n" +
-			"     │                           │           │               │                   └─ IndexedTableAccess(E2I7U)\n" +
-			"     │                           │           │               │                       ├─ index: [E2I7U.ZH72S]\n" +
-			"     │                           │           │               │                       ├─ keys: [uct.ZH72S:2]\n" +
-			"     │                           │           │               │                       ├─ colSet: (46-62)\n" +
-			"     │                           │           │               │                       ├─ tableId: 6\n" +
-			"     │                           │           │               │                       └─ Table\n" +
-			"     │                           │           │               │                           ├─ name: E2I7U\n" +
-			"     │                           │           │               │                           └─ columns: [dkcaj zh72s]\n" +
-			"     │                           │           │               │   ELSE Subquery\n" +
-			"     │                           │           │               │   ├─ cacheable: false\n" +
-			"     │                           │           │               │   ├─ alias-string: select nd.DKCAJ from E2I7U as nd where nd.TW55N = I7HCR.FVUCX\n" +
-			"     │                           │           │               │   └─ Project\n" +
-			"     │                           │           │               │       ├─ columns: [nd.DKCAJ:40!null]\n" +
-			"     │                           │           │               │       └─ Filter\n" +
-			"     │                           │           │               │           ├─ Eq\n" +
-			"     │                           │           │               │           │   ├─ nd.TW55N:41!null\n" +
-			"     │                           │           │               │           │   └─ i7hcr.FVUCX:17!null\n" +
-			"     │                           │           │               │           └─ TableAlias(nd)\n" +
-			"     │                           │           │               │               └─ IndexedTableAccess(E2I7U)\n" +
-			"     │                           │           │               │                   ├─ index: [E2I7U.TW55N]\n" +
-			"     │                           │           │               │                   ├─ keys: [i7hcr.FVUCX:17!null]\n" +
-			"     │                           │           │               │                   ├─ colSet: (63-79)\n" +
-			"     │                           │           │               │                   ├─ tableId: 7\n" +
-			"     │                           │           │               │                   └─ Table\n" +
-			"     │                           │           │               │                       ├─ name: E2I7U\n" +
-			"     │                           │           │               │                       └─ columns: [dkcaj tw55n]\n" +
-			"     │                           │           │               │   END->CASE\n" +
-			"     │                           │           │               │                          WHEN I7HCR.FVUCX IS NULL\n" +
-			"     │                           │           │               │                              THEN (SELECT nd.DKCAJ FROM E2I7U nd WHERE nd.ZH72S = uct.ZH72S LIMIT 1)\n" +
-			"     │                           │           │               │                          ELSE\n" +
-			"     │                           │           │               │                              (SELECT nd.DKCAJ FROM E2I7U nd WHERE nd.TW55N = I7HCR.FVUCX)\n" +
-			"     │                           │           │               │                      END:0]\n" +
-			"     │                           │           │               └─ Project\n" +
-			"     │                           │           │                   ├─ columns: [dual.:39!null]\n" +
-			"     │                           │           │                   └─ Table\n" +
-			"     │                           │           │                       ├─ name: \n" +
-			"     │                           │           │                       ├─ columns: []\n" +
-			"     │                           │           │                       ├─ colSet: ()\n" +
-			"     │                           │           │                       └─ tableId: 0\n" +
-			"     │                           │           └─ IndexedTableAccess(SFEGG)\n" +
-			"     │                           │               ├─ index: [SFEGG.NO52D,SFEGG.VYO5E,SFEGG.DKCAJ]\n" +
-			"     │                           │               ├─ keys: [uct.NO52D:7]\n" +
-			"     │                           │               ├─ colSet: (40-45)\n" +
-			"     │                           │               ├─ tableId: 5\n" +
-			"     │                           │               └─ Table\n" +
-			"     │                           │                   ├─ name: SFEGG\n" +
-			"     │                           │                   └─ columns: [id no52d vyo5e dkcaj adurz fhcyt]\n" +
-			"     │                           │  ->OVE3E:0, uct.id:0!null->NRURT:0, i7hcr.id:13!null->OCA7E:0, NULL (null)->XMM6Q:83, uct.V5DPX:4->V5DPX:0, (uct.IDPK7:6 + 0.0 (decimal(2,1)))->S3Q3Y:0, uct.ZRV3B:8->ZRV3B:0, CASE  WHEN NOT\n" +
-			"     │                           │   └─ Eq\n" +
-			"     │                           │       ├─ uct.FHCYT:11\n" +
-			"     │                           │       └─ N/A (longtext)\n" +
-			"     │                           │   THEN uct.FHCYT:11 ELSE NULL (null) END->FHCYT:0, uct.ZH72S:2->K3B6V:0, uct.LJLUM:5->BTXC5:0, i7hcr.FVUCX:17!null->H4DMT:0]\n" +
-			"     │                           └─ Project\n" +
-			"     │                               ├─ columns: [uct.id:0!null, uct.FTQLQ:1, uct.ZH72S:2, uct.SFJ6L:3, uct.V5DPX:4, uct.LJLUM:5, uct.IDPK7:6, uct.NO52D:7, uct.ZRV3B:8, uct.VYO5E:9, uct.YKSSU:10, uct.FHCYT:11, uct.QZ6VT:12, i7hcr.id:13!null, i7hcr.TOFPN:14!null, i7hcr.SJYN2:15!null, i7hcr.BTXC5:16!null, i7hcr.FVUCX:17!null, i7hcr.SWCQV:18!null, i7hcr.YKSSU:19, i7hcr.FHCYT:20, Subquery\n" +
-			"     │                               │   ├─ cacheable: false\n" +
-			"     │                               │   ├─ alias-string: select id from JDLNA where JDLNA.FTQLQ = uct.FTQLQ\n" +
-			"     │                               │   └─ Project\n" +
-			"     │                               │       ├─ columns: [jdlna.id:21!null]\n" +
-			"     │                               │       └─ Filter\n" +
-			"     │                               │           ├─ Eq\n" +
-			"     │                               │           │   ├─ jdlna.FTQLQ:22!null\n" +
-			"     │                               │           │   └─ uct.FTQLQ:1\n" +
-			"     │                               │           └─ IndexedTableAccess(JDLNA)\n" +
-			"     │                               │               ├─ index: [JDLNA.FTQLQ]\n" +
-			"     │                               │               ├─ keys: [uct.FTQLQ:1]\n" +
-			"     │                               │               ├─ colSet: (34-38)\n" +
-			"     │                               │               ├─ tableId: 4\n" +
-			"     │                               │               └─ Table\n" +
-			"     │                               │                   ├─ name: JDLNA\n" +
-			"     │                               │                   └─ columns: [id ftqlq]\n" +
-			"     │                               │  ->FZ2R5:0, Subquery\n" +
-			"     │                               │   ├─ cacheable: false\n" +
-			"     │                               │   ├─ alias-string: select id from SFEGG where SFEGG.NO52D = uct.NO52D and (SFEGG.VYO5E = uct.VYO5E or (SFEGG.VYO5E is null and (uct.VYO5E is null or uct.VYO5E = 'N/A' or uct.VYO5E = 'NA'))) and SFEGG.DKCAJ = (select case when I7HCR.FVUCX is null then (select nd.DKCAJ from E2I7U as nd where nd.ZH72S = uct.ZH72S limit 1) else (select nd.DKCAJ from E2I7U as nd where nd.TW55N = I7HCR.FVUCX) end)\n" +
-			"     │                               │   └─ Project\n" +
-			"     │                               │       ├─ columns: [sfegg.id:21!null]\n" +
-			"     │                               │       └─ Filter\n" +
-			"     │                               │           ├─ AND\n" +
-			"     │                               │           │   ├─ AND\n" +
-			"     │                               │           │   │   ├─ Eq\n" +
-			"     │                               │           │   │   │   ├─ sfegg.NO52D:22!null\n" +
-			"     │                               │           │   │   │   └─ uct.NO52D:7\n" +
-			"     │                               │           │   │   └─ Or\n" +
-			"     │                               │           │   │       ├─ Eq\n" +
-			"     │                               │           │   │       │   ├─ sfegg.VYO5E:23\n" +
-			"     │                               │           │   │       │   └─ uct.VYO5E:9\n" +
-			"     │                               │           │   │       └─ AND\n" +
-			"     │                               │           │   │           ├─ sfegg.VYO5E:23 IS NULL\n" +
-			"     │                               │           │   │           └─ Or\n" +
-			"     │                               │           │   │               ├─ Or\n" +
-			"     │                               │           │   │               │   ├─ uct.VYO5E:9 IS NULL\n" +
-			"     │                               │           │   │               │   └─ Eq\n" +
-			"     │                               │           │   │               │       ├─ uct.VYO5E:9\n" +
-			"     │                               │           │   │               │       └─ N/A (longtext)\n" +
-			"     │                               │           │   │               └─ Eq\n" +
-			"     │                               │           │   │                   ├─ uct.VYO5E:9\n" +
-			"     │                               │           │   │                   └─ NA (longtext)\n" +
-			"     │                               │           │   └─ Eq\n" +
-			"     │                               │           │       ├─ sfegg.DKCAJ:24!null\n" +
-			"     │                               │           │       └─ Subquery\n" +
-			"     │                               │           │           ├─ cacheable: false\n" +
-			"     │                               │           │           ├─ alias-string: select case when I7HCR.FVUCX is null then (select nd.DKCAJ from E2I7U as nd where nd.ZH72S = uct.ZH72S limit 1) else (select nd.DKCAJ from E2I7U as nd where nd.TW55N = I7HCR.FVUCX) end\n" +
-			"     │                               │           │           └─ Project\n" +
-			"     │                               │           │               ├─ columns: [CASE  WHEN i7hcr.FVUCX:17!null IS NULL THEN Subquery\n" +
-			"     │                               │           │               │   ├─ cacheable: false\n" +
-			"     │                               │           │               │   ├─ alias-string: select nd.DKCAJ from E2I7U as nd where nd.ZH72S = uct.ZH72S limit 1\n" +
-			"     │                               │           │               │   └─ Limit(1)\n" +
-			"     │                               │           │               │       └─ Project\n" +
-			"     │                               │           │               │           ├─ columns: [nd.DKCAJ:28!null]\n" +
-			"     │                               │           │               │           └─ Filter\n" +
-			"     │                               │           │               │               ├─ Eq\n" +
-			"     │                               │           │               │               │   ├─ nd.ZH72S:29\n" +
-			"     │                               │           │               │               │   └─ uct.ZH72S:2\n" +
-			"     │                               │           │               │               └─ TableAlias(nd)\n" +
-			"     │                               │           │               │                   └─ IndexedTableAccess(E2I7U)\n" +
-			"     │                               │           │               │                       ├─ index: [E2I7U.ZH72S]\n" +
-			"     │                               │           │               │                       ├─ keys: [uct.ZH72S:2]\n" +
-			"     │                               │           │               │                       ├─ colSet: (46-62)\n" +
-			"     │                               │           │               │                       ├─ tableId: 6\n" +
-			"     │                               │           │               │                       └─ Table\n" +
-			"     │                               │           │               │                           ├─ name: E2I7U\n" +
-			"     │                               │           │               │                           └─ columns: [dkcaj zh72s]\n" +
-			"     │                               │           │               │   ELSE Subquery\n" +
-			"     │                               │           │               │   ├─ cacheable: false\n" +
-			"     │                               │           │               │   ├─ alias-string: select nd.DKCAJ from E2I7U as nd where nd.TW55N = I7HCR.FVUCX\n" +
-			"     │                               │           │               │   └─ Project\n" +
-			"     │                               │           │               │       ├─ columns: [nd.DKCAJ:28!null]\n" +
-			"     │                               │           │               │       └─ Filter\n" +
-			"     │                               │           │               │           ├─ Eq\n" +
-			"     │                               │           │               │           │   ├─ nd.TW55N:29!null\n" +
-			"     │                               │           │               │           │   └─ i7hcr.FVUCX:17!null\n" +
-			"     │                               │           │               │           └─ TableAlias(nd)\n" +
-			"     │                               │           │               │               └─ IndexedTableAccess(E2I7U)\n" +
-			"     │                               │           │               │                   ├─ index: [E2I7U.TW55N]\n" +
-			"     │                               │           │               │                   ├─ keys: [i7hcr.FVUCX:17!null]\n" +
-			"     │                               │           │               │                   ├─ colSet: (63-79)\n" +
-			"     │                               │           │               │                   ├─ tableId: 7\n" +
-			"     │                               │           │               │                   └─ Table\n" +
-			"     │                               │           │               │                       ├─ name: E2I7U\n" +
-			"     │                               │           │               │                       └─ columns: [dkcaj tw55n]\n" +
-			"     │                               │           │               │   END->CASE\n" +
-			"     │                               │           │               │                          WHEN I7HCR.FVUCX IS NULL\n" +
-			"     │                               │           │               │                              THEN (SELECT nd.DKCAJ FROM E2I7U nd WHERE nd.ZH72S = uct.ZH72S LIMIT 1)\n" +
-			"     │                               │           │               │                          ELSE\n" +
-			"     │                               │           │               │                              (SELECT nd.DKCAJ FROM E2I7U nd WHERE nd.TW55N = I7HCR.FVUCX)\n" +
-			"     │                               │           │               │                      END:0]\n" +
-			"     │                               │           │               └─ Project\n" +
-			"     │                               │           │                   ├─ columns: [dual.:27!null]\n" +
-			"     │                               │           │                   └─ Table\n" +
-			"     │                               │           │                       ├─ name: \n" +
-			"     │                               │           │                       ├─ columns: []\n" +
-			"     │                               │           │                       ├─ colSet: ()\n" +
-			"     │                               │           │                       └─ tableId: 0\n" +
-			"     │                               │           └─ IndexedTableAccess(SFEGG)\n" +
-			"     │                               │               ├─ index: [SFEGG.NO52D,SFEGG.VYO5E,SFEGG.DKCAJ]\n" +
-			"     │                               │               ├─ keys: [uct.NO52D:7]\n" +
-			"     │                               │               ├─ colSet: (40-45)\n" +
-			"     │                               │               ├─ tableId: 5\n" +
-			"     │                               │               └─ Table\n" +
-			"     │                               │                   ├─ name: SFEGG\n" +
-			"     │                               │                   └─ columns: [id no52d vyo5e dkcaj adurz fhcyt]\n" +
-			"     │                               │  ->OVE3E:0, uct.id:0!null->NRURT:0, i7hcr.id:13!null->OCA7E:0, NULL (null)->XMM6Q:83, uct.V5DPX:4->V5DPX:0, (uct.IDPK7:6 + 0.0 (decimal(2,1)))->S3Q3Y:0, uct.ZRV3B:8->ZRV3B:0, CASE  WHEN NOT\n" +
-			"     │                               │   └─ Eq\n" +
-			"     │                               │       ├─ uct.FHCYT:11\n" +
-			"     │                               │       └─ N/A (longtext)\n" +
-			"     │                               │   THEN uct.FHCYT:11 ELSE NULL (null) END->FHCYT:0, uct.ZH72S:2->K3B6V:0, uct.LJLUM:5->BTXC5:0, i7hcr.FVUCX:17!null->H4DMT:0]\n" +
-			"     │                               └─ LeftOuterJoin\n" +
-			"     │                                   ├─ AND\n" +
-			"     │                                   │   ├─ AND\n" +
-			"     │                                   │   │   ├─ AND\n" +
-			"     │                                   │   │   │   ├─ Eq\n" +
-			"     │                                   │   │   │   │   ├─ i7hcr.SWCQV:18!null\n" +
-			"     │                                   │   │   │   │   └─ 0 (int)\n" +
-			"     │                                   │   │   │   └─ Eq\n" +
-			"     │                                   │   │   │       ├─ i7hcr.TOFPN:14!null\n" +
-			"     │                                   │   │   │       └─ uct.FTQLQ:1\n" +
-			"     │                                   │   │   └─ Eq\n" +
-			"     │                                   │   │       ├─ i7hcr.SJYN2:15!null\n" +
-			"     │                                   │   │       └─ uct.ZH72S:2\n" +
-			"     │                                   │   └─ Eq\n" +
-			"     │                                   │       ├─ i7hcr.BTXC5:16!null\n" +
-			"     │                                   │       └─ uct.LJLUM:5\n" +
-			"     │                                   ├─ TableAlias(uct)\n" +
-			"     │                                   │   └─ IndexedTableAccess(OUBDL)\n" +
-			"     │                                   │       ├─ index: [OUBDL.id]\n" +
-			"     │                                   │       ├─ static: [{[1, 1]}, {[2, 2]}, {[3, 3]}]\n" +
-			"     │                                   │       ├─ colSet: (13-25)\n" +
-			"     │                                   │       ├─ tableId: 2\n" +
-			"     │                                   │       └─ Table\n" +
-			"     │                                   │           ├─ name: OUBDL\n" +
-			"     │                                   │           └─ columns: [id ftqlq zh72s sfj6l v5dpx ljlum idpk7 no52d zrv3b vyo5e ykssu fhcyt qz6vt]\n" +
-			"     │                                   └─ TableAlias(i7hcr)\n" +
-			"     │                                       └─ Table\n" +
-			"     │                                           ├─ name: EPZU6\n" +
-			"     │                                           ├─ columns: [id tofpn sjyn2 btxc5 fvucx swcqv ykssu fhcyt]\n" +
-			"     │                                           ├─ colSet: (26-33)\n" +
-			"     │                                           └─ tableId: 3\n" +
+			"     │           │  ->M22QN:0, pqsxb.OVE3E:1->OVE3E:0, pqsxb.NRURT:2!null->NRURT:0, pqsxb.OCA7E:3!null->OCA7E:0, pqsxb.XMM6Q:4->XMM6Q:0, pqsxb.V5DPX:5->V5DPX:0, pqsxb.S3Q3Y:6->S3Q3Y:0, pqsxb.ZRV3B:7->ZRV3B:0, pqsxb.FHCYT:8->FHCYT:0]\n" +
+			"     │           └─ LookupJoin\n" +
+			"     │               ├─ Or\n" +
+			"     │               │   ├─ AND\n" +
+			"     │               │   │   ├─ NOT\n" +
+			"     │               │   │   │   └─ pqsxb.H4DMT:11!null IS NULL\n" +
+			"     │               │   │   └─ Eq\n" +
+			"     │               │   │       ├─ nd.TW55N:15!null\n" +
+			"     │               │   │       └─ pqsxb.H4DMT:11!null\n" +
+			"     │               │   └─ AND\n" +
+			"     │               │       ├─ pqsxb.H4DMT:11!null IS NULL\n" +
+			"     │               │       └─ Eq\n" +
+			"     │               │           ├─ nd.ZH72S:19\n" +
+			"     │               │           └─ pqsxb.K3B6V:9\n" +
+			"     │               ├─ SubqueryAlias\n" +
+			"     │               │   ├─ name: pqsxb\n" +
+			"     │               │   ├─ outerVisibility: false\n" +
+			"     │               │   ├─ isLateral: false\n" +
+			"     │               │   ├─ cacheable: true\n" +
+			"     │               │   ├─ colSet: (91-102)\n" +
+			"     │               │   ├─ tableId: 8\n" +
+			"     │               │   └─ Filter\n" +
+			"     │               │       ├─ NOT\n" +
+			"     │               │       │   └─ OVE3E:1 IS NULL\n" +
+			"     │               │       └─ Project\n" +
+			"     │               │           ├─ columns: [Subquery\n" +
+			"     │               │           │   ├─ cacheable: false\n" +
+			"     │               │           │   ├─ alias-string: select id from JDLNA where JDLNA.FTQLQ = uct.FTQLQ\n" +
+			"     │               │           │   └─ Project\n" +
+			"     │               │           │       ├─ columns: [jdlna.id:33!null]\n" +
+			"     │               │           │       └─ Filter\n" +
+			"     │               │           │           ├─ Eq\n" +
+			"     │               │           │           │   ├─ jdlna.FTQLQ:34!null\n" +
+			"     │               │           │           │   └─ uct.FTQLQ:1\n" +
+			"     │               │           │           └─ IndexedTableAccess(JDLNA)\n" +
+			"     │               │           │               ├─ index: [JDLNA.FTQLQ]\n" +
+			"     │               │           │               ├─ keys: [uct.FTQLQ:1]\n" +
+			"     │               │           │               ├─ colSet: (34-38)\n" +
+			"     │               │           │               ├─ tableId: 4\n" +
+			"     │               │           │               └─ Table\n" +
+			"     │               │           │                   ├─ name: JDLNA\n" +
+			"     │               │           │                   └─ columns: [id ftqlq]\n" +
+			"     │               │           │  ->FZ2R5:0, Subquery\n" +
+			"     │               │           │   ├─ cacheable: false\n" +
+			"     │               │           │   ├─ alias-string: select id from SFEGG where SFEGG.NO52D = uct.NO52D and (SFEGG.VYO5E = uct.VYO5E or (SFEGG.VYO5E is null and (uct.VYO5E is null or uct.VYO5E = 'N/A' or uct.VYO5E = 'NA'))) and SFEGG.DKCAJ = (select case when I7HCR.FVUCX is null then (select nd.DKCAJ from E2I7U as nd where nd.ZH72S = uct.ZH72S limit 1) else (select nd.DKCAJ from E2I7U as nd where nd.TW55N = I7HCR.FVUCX) end)\n" +
+			"     │               │           │   └─ Project\n" +
+			"     │               │           │       ├─ columns: [sfegg.id:33!null]\n" +
+			"     │               │           │       └─ Filter\n" +
+			"     │               │           │           ├─ AND\n" +
+			"     │               │           │           │   ├─ AND\n" +
+			"     │               │           │           │   │   ├─ Eq\n" +
+			"     │               │           │           │   │   │   ├─ sfegg.NO52D:34!null\n" +
+			"     │               │           │           │   │   │   └─ uct.NO52D:7\n" +
+			"     │               │           │           │   │   └─ Or\n" +
+			"     │               │           │           │   │       ├─ Eq\n" +
+			"     │               │           │           │   │       │   ├─ sfegg.VYO5E:35\n" +
+			"     │               │           │           │   │       │   └─ uct.VYO5E:9\n" +
+			"     │               │           │           │   │       └─ AND\n" +
+			"     │               │           │           │   │           ├─ sfegg.VYO5E:35 IS NULL\n" +
+			"     │               │           │           │   │           └─ Or\n" +
+			"     │               │           │           │   │               ├─ Or\n" +
+			"     │               │           │           │   │               │   ├─ uct.VYO5E:9 IS NULL\n" +
+			"     │               │           │           │   │               │   └─ Eq\n" +
+			"     │               │           │           │   │               │       ├─ uct.VYO5E:9\n" +
+			"     │               │           │           │   │               │       └─ N/A (longtext)\n" +
+			"     │               │           │           │   │               └─ Eq\n" +
+			"     │               │           │           │   │                   ├─ uct.VYO5E:9\n" +
+			"     │               │           │           │   │                   └─ NA (longtext)\n" +
+			"     │               │           │           │   └─ Eq\n" +
+			"     │               │           │           │       ├─ sfegg.DKCAJ:36!null\n" +
+			"     │               │           │           │       └─ Subquery\n" +
+			"     │               │           │           │           ├─ cacheable: false\n" +
+			"     │               │           │           │           ├─ alias-string: select case when I7HCR.FVUCX is null then (select nd.DKCAJ from E2I7U as nd where nd.ZH72S = uct.ZH72S limit 1) else (select nd.DKCAJ from E2I7U as nd where nd.TW55N = I7HCR.FVUCX) end\n" +
+			"     │               │           │           │           └─ Project\n" +
+			"     │               │           │           │               ├─ columns: [CASE  WHEN i7hcr.FVUCX:17!null IS NULL THEN Subquery\n" +
+			"     │               │           │           │               │   ├─ cacheable: false\n" +
+			"     │               │           │           │               │   ├─ alias-string: select nd.DKCAJ from E2I7U as nd where nd.ZH72S = uct.ZH72S limit 1\n" +
+			"     │               │           │           │               │   └─ Limit(1)\n" +
+			"     │               │           │           │               │       └─ Project\n" +
+			"     │               │           │           │               │           ├─ columns: [nd.DKCAJ:40!null]\n" +
+			"     │               │           │           │               │           └─ Filter\n" +
+			"     │               │           │           │               │               ├─ Eq\n" +
+			"     │               │           │           │               │               │   ├─ nd.ZH72S:41\n" +
+			"     │               │           │           │               │               │   └─ uct.ZH72S:2\n" +
+			"     │               │           │           │               │               └─ TableAlias(nd)\n" +
+			"     │               │           │           │               │                   └─ IndexedTableAccess(E2I7U)\n" +
+			"     │               │           │           │               │                       ├─ index: [E2I7U.ZH72S]\n" +
+			"     │               │           │           │               │                       ├─ keys: [uct.ZH72S:2]\n" +
+			"     │               │           │           │               │                       ├─ colSet: (46-62)\n" +
+			"     │               │           │           │               │                       ├─ tableId: 6\n" +
+			"     │               │           │           │               │                       └─ Table\n" +
+			"     │               │           │           │               │                           ├─ name: E2I7U\n" +
+			"     │               │           │           │               │                           └─ columns: [dkcaj zh72s]\n" +
+			"     │               │           │           │               │   ELSE Subquery\n" +
+			"     │               │           │           │               │   ├─ cacheable: false\n" +
+			"     │               │           │           │               │   ├─ alias-string: select nd.DKCAJ from E2I7U as nd where nd.TW55N = I7HCR.FVUCX\n" +
+			"     │               │           │           │               │   └─ Project\n" +
+			"     │               │           │           │               │       ├─ columns: [nd.DKCAJ:40!null]\n" +
+			"     │               │           │           │               │       └─ Filter\n" +
+			"     │               │           │           │               │           ├─ Eq\n" +
+			"     │               │           │           │               │           │   ├─ nd.TW55N:41!null\n" +
+			"     │               │           │           │               │           │   └─ i7hcr.FVUCX:17!null\n" +
+			"     │               │           │           │               │           └─ TableAlias(nd)\n" +
+			"     │               │           │           │               │               └─ IndexedTableAccess(E2I7U)\n" +
+			"     │               │           │           │               │                   ├─ index: [E2I7U.TW55N]\n" +
+			"     │               │           │           │               │                   ├─ keys: [i7hcr.FVUCX:17!null]\n" +
+			"     │               │           │           │               │                   ├─ colSet: (63-79)\n" +
+			"     │               │           │           │               │                   ├─ tableId: 7\n" +
+			"     │               │           │           │               │                   └─ Table\n" +
+			"     │               │           │           │               │                       ├─ name: E2I7U\n" +
+			"     │               │           │           │               │                       └─ columns: [dkcaj tw55n]\n" +
+			"     │               │           │           │               │   END->CASE\n" +
+			"     │               │           │           │               │                          WHEN I7HCR.FVUCX IS NULL\n" +
+			"     │               │           │           │               │                              THEN (SELECT nd.DKCAJ FROM E2I7U nd WHERE nd.ZH72S = uct.ZH72S LIMIT 1)\n" +
+			"     │               │           │           │               │                          ELSE\n" +
+			"     │               │           │           │               │                              (SELECT nd.DKCAJ FROM E2I7U nd WHERE nd.TW55N = I7HCR.FVUCX)\n" +
+			"     │               │           │           │               │                      END:0]\n" +
+			"     │               │           │           │               └─ Project\n" +
+			"     │               │           │           │                   ├─ columns: [dual.:39!null]\n" +
+			"     │               │           │           │                   └─ Table\n" +
+			"     │               │           │           │                       ├─ name: \n" +
+			"     │               │           │           │                       ├─ columns: []\n" +
+			"     │               │           │           │                       ├─ colSet: ()\n" +
+			"     │               │           │           │                       └─ tableId: 0\n" +
+			"     │               │           │           └─ IndexedTableAccess(SFEGG)\n" +
+			"     │               │           │               ├─ index: [SFEGG.NO52D,SFEGG.VYO5E,SFEGG.DKCAJ]\n" +
+			"     │               │           │               ├─ keys: [uct.NO52D:7]\n" +
+			"     │               │           │               ├─ colSet: (40-45)\n" +
+			"     │               │           │               ├─ tableId: 5\n" +
+			"     │               │           │               └─ Table\n" +
+			"     │               │           │                   ├─ name: SFEGG\n" +
+			"     │               │           │                   └─ columns: [id no52d vyo5e dkcaj adurz fhcyt]\n" +
+			"     │               │           │  ->OVE3E:0, uct.id:0!null->NRURT:0, i7hcr.id:13!null->OCA7E:0, NULL (null)->XMM6Q:83, uct.V5DPX:4->V5DPX:0, (uct.IDPK7:6 + 0.0 (decimal(2,1)))->S3Q3Y:0, uct.ZRV3B:8->ZRV3B:0, CASE  WHEN NOT\n" +
+			"     │               │           │   └─ Eq\n" +
+			"     │               │           │       ├─ uct.FHCYT:11\n" +
+			"     │               │           │       └─ N/A (longtext)\n" +
+			"     │               │           │   THEN uct.FHCYT:11 ELSE NULL (null) END->FHCYT:0, uct.ZH72S:2->K3B6V:0, uct.LJLUM:5->BTXC5:0, i7hcr.FVUCX:17!null->H4DMT:0]\n" +
+			"     │               │           └─ Project\n" +
+			"     │               │               ├─ columns: [uct.id:0!null, uct.FTQLQ:1, uct.ZH72S:2, uct.SFJ6L:3, uct.V5DPX:4, uct.LJLUM:5, uct.IDPK7:6, uct.NO52D:7, uct.ZRV3B:8, uct.VYO5E:9, uct.YKSSU:10, uct.FHCYT:11, uct.QZ6VT:12, i7hcr.id:13!null, i7hcr.TOFPN:14!null, i7hcr.SJYN2:15!null, i7hcr.BTXC5:16!null, i7hcr.FVUCX:17!null, i7hcr.SWCQV:18!null, i7hcr.YKSSU:19, i7hcr.FHCYT:20, Subquery\n" +
+			"     │               │               │   ├─ cacheable: false\n" +
+			"     │               │               │   ├─ alias-string: select id from JDLNA where JDLNA.FTQLQ = uct.FTQLQ\n" +
+			"     │               │               │   └─ Project\n" +
+			"     │               │               │       ├─ columns: [jdlna.id:21!null]\n" +
+			"     │               │               │       └─ Filter\n" +
+			"     │               │               │           ├─ Eq\n" +
+			"     │               │               │           │   ├─ jdlna.FTQLQ:22!null\n" +
+			"     │               │               │           │   └─ uct.FTQLQ:1\n" +
+			"     │               │               │           └─ IndexedTableAccess(JDLNA)\n" +
+			"     │               │               │               ├─ index: [JDLNA.FTQLQ]\n" +
+			"     │               │               │               ├─ keys: [uct.FTQLQ:1]\n" +
+			"     │               │               │               ├─ colSet: (34-38)\n" +
+			"     │               │               │               ├─ tableId: 4\n" +
+			"     │               │               │               └─ Table\n" +
+			"     │               │               │                   ├─ name: JDLNA\n" +
+			"     │               │               │                   └─ columns: [id ftqlq]\n" +
+			"     │               │               │  ->FZ2R5:0, Subquery\n" +
+			"     │               │               │   ├─ cacheable: false\n" +
+			"     │               │               │   ├─ alias-string: select id from SFEGG where SFEGG.NO52D = uct.NO52D and (SFEGG.VYO5E = uct.VYO5E or (SFEGG.VYO5E is null and (uct.VYO5E is null or uct.VYO5E = 'N/A' or uct.VYO5E = 'NA'))) and SFEGG.DKCAJ = (select case when I7HCR.FVUCX is null then (select nd.DKCAJ from E2I7U as nd where nd.ZH72S = uct.ZH72S limit 1) else (select nd.DKCAJ from E2I7U as nd where nd.TW55N = I7HCR.FVUCX) end)\n" +
+			"     │               │               │   └─ Project\n" +
+			"     │               │               │       ├─ columns: [sfegg.id:21!null]\n" +
+			"     │               │               │       └─ Filter\n" +
+			"     │               │               │           ├─ AND\n" +
+			"     │               │               │           │   ├─ AND\n" +
+			"     │               │               │           │   │   ├─ Eq\n" +
+			"     │               │               │           │   │   │   ├─ sfegg.NO52D:22!null\n" +
+			"     │               │               │           │   │   │   └─ uct.NO52D:7\n" +
+			"     │               │               │           │   │   └─ Or\n" +
+			"     │               │               │           │   │       ├─ Eq\n" +
+			"     │               │               │           │   │       │   ├─ sfegg.VYO5E:23\n" +
+			"     │               │               │           │   │       │   └─ uct.VYO5E:9\n" +
+			"     │               │               │           │   │       └─ AND\n" +
+			"     │               │               │           │   │           ├─ sfegg.VYO5E:23 IS NULL\n" +
+			"     │               │               │           │   │           └─ Or\n" +
+			"     │               │               │           │   │               ├─ Or\n" +
+			"     │               │               │           │   │               │   ├─ uct.VYO5E:9 IS NULL\n" +
+			"     │               │               │           │   │               │   └─ Eq\n" +
+			"     │               │               │           │   │               │       ├─ uct.VYO5E:9\n" +
+			"     │               │               │           │   │               │       └─ N/A (longtext)\n" +
+			"     │               │               │           │   │               └─ Eq\n" +
+			"     │               │               │           │   │                   ├─ uct.VYO5E:9\n" +
+			"     │               │               │           │   │                   └─ NA (longtext)\n" +
+			"     │               │               │           │   └─ Eq\n" +
+			"     │               │               │           │       ├─ sfegg.DKCAJ:24!null\n" +
+			"     │               │               │           │       └─ Subquery\n" +
+			"     │               │               │           │           ├─ cacheable: false\n" +
+			"     │               │               │           │           ├─ alias-string: select case when I7HCR.FVUCX is null then (select nd.DKCAJ from E2I7U as nd where nd.ZH72S = uct.ZH72S limit 1) else (select nd.DKCAJ from E2I7U as nd where nd.TW55N = I7HCR.FVUCX) end\n" +
+			"     │               │               │           │           └─ Project\n" +
+			"     │               │               │           │               ├─ columns: [CASE  WHEN i7hcr.FVUCX:17!null IS NULL THEN Subquery\n" +
+			"     │               │               │           │               │   ├─ cacheable: false\n" +
+			"     │               │               │           │               │   ├─ alias-string: select nd.DKCAJ from E2I7U as nd where nd.ZH72S = uct.ZH72S limit 1\n" +
+			"     │               │               │           │               │   └─ Limit(1)\n" +
+			"     │               │               │           │               │       └─ Project\n" +
+			"     │               │               │           │               │           ├─ columns: [nd.DKCAJ:28!null]\n" +
+			"     │               │               │           │               │           └─ Filter\n" +
+			"     │               │               │           │               │               ├─ Eq\n" +
+			"     │               │               │           │               │               │   ├─ nd.ZH72S:29\n" +
+			"     │               │               │           │               │               │   └─ uct.ZH72S:2\n" +
+			"     │               │               │           │               │               └─ TableAlias(nd)\n" +
+			"     │               │               │           │               │                   └─ IndexedTableAccess(E2I7U)\n" +
+			"     │               │               │           │               │                       ├─ index: [E2I7U.ZH72S]\n" +
+			"     │               │               │           │               │                       ├─ keys: [uct.ZH72S:2]\n" +
+			"     │               │               │           │               │                       ├─ colSet: (46-62)\n" +
+			"     │               │               │           │               │                       ├─ tableId: 6\n" +
+			"     │               │               │           │               │                       └─ Table\n" +
+			"     │               │               │           │               │                           ├─ name: E2I7U\n" +
+			"     │               │               │           │               │                           └─ columns: [dkcaj zh72s]\n" +
+			"     │               │               │           │               │   ELSE Subquery\n" +
+			"     │               │               │           │               │   ├─ cacheable: false\n" +
+			"     │               │               │           │               │   ├─ alias-string: select nd.DKCAJ from E2I7U as nd where nd.TW55N = I7HCR.FVUCX\n" +
+			"     │               │               │           │               │   └─ Project\n" +
+			"     │               │               │           │               │       ├─ columns: [nd.DKCAJ:28!null]\n" +
+			"     │               │               │           │               │       └─ Filter\n" +
+			"     │               │               │           │               │           ├─ Eq\n" +
+			"     │               │               │           │               │           │   ├─ nd.TW55N:29!null\n" +
+			"     │               │               │           │               │           │   └─ i7hcr.FVUCX:17!null\n" +
+			"     │               │               │           │               │           └─ TableAlias(nd)\n" +
+			"     │               │               │           │               │               └─ IndexedTableAccess(E2I7U)\n" +
+			"     │               │               │           │               │                   ├─ index: [E2I7U.TW55N]\n" +
+			"     │               │               │           │               │                   ├─ keys: [i7hcr.FVUCX:17!null]\n" +
+			"     │               │               │           │               │                   ├─ colSet: (63-79)\n" +
+			"     │               │               │           │               │                   ├─ tableId: 7\n" +
+			"     │               │               │           │               │                   └─ Table\n" +
+			"     │               │               │           │               │                       ├─ name: E2I7U\n" +
+			"     │               │               │           │               │                       └─ columns: [dkcaj tw55n]\n" +
+			"     │               │               │           │               │   END->CASE\n" +
+			"     │               │               │           │               │                          WHEN I7HCR.FVUCX IS NULL\n" +
+			"     │               │               │           │               │                              THEN (SELECT nd.DKCAJ FROM E2I7U nd WHERE nd.ZH72S = uct.ZH72S LIMIT 1)\n" +
+			"     │               │               │           │               │                          ELSE\n" +
+			"     │               │               │           │               │                              (SELECT nd.DKCAJ FROM E2I7U nd WHERE nd.TW55N = I7HCR.FVUCX)\n" +
+			"     │               │               │           │               │                      END:0]\n" +
+			"     │               │               │           │               └─ Project\n" +
+			"     │               │               │           │                   ├─ columns: [dual.:27!null]\n" +
+			"     │               │               │           │                   └─ Table\n" +
+			"     │               │               │           │                       ├─ name: \n" +
+			"     │               │               │           │                       ├─ columns: []\n" +
+			"     │               │               │           │                       ├─ colSet: ()\n" +
+			"     │               │               │           │                       └─ tableId: 0\n" +
+			"     │               │               │           └─ IndexedTableAccess(SFEGG)\n" +
+			"     │               │               │               ├─ index: [SFEGG.NO52D,SFEGG.VYO5E,SFEGG.DKCAJ]\n" +
+			"     │               │               │               ├─ keys: [uct.NO52D:7]\n" +
+			"     │               │               │               ├─ colSet: (40-45)\n" +
+			"     │               │               │               ├─ tableId: 5\n" +
+			"     │               │               │               └─ Table\n" +
+			"     │               │               │                   ├─ name: SFEGG\n" +
+			"     │               │               │                   └─ columns: [id no52d vyo5e dkcaj adurz fhcyt]\n" +
+			"     │               │               │  ->OVE3E:0, uct.id:0!null->NRURT:0, i7hcr.id:13!null->OCA7E:0, NULL (null)->XMM6Q:83, uct.V5DPX:4->V5DPX:0, (uct.IDPK7:6 + 0.0 (decimal(2,1)))->S3Q3Y:0, uct.ZRV3B:8->ZRV3B:0, CASE  WHEN NOT\n" +
+			"     │               │               │   └─ Eq\n" +
+			"     │               │               │       ├─ uct.FHCYT:11\n" +
+			"     │               │               │       └─ N/A (longtext)\n" +
+			"     │               │               │   THEN uct.FHCYT:11 ELSE NULL (null) END->FHCYT:0, uct.ZH72S:2->K3B6V:0, uct.LJLUM:5->BTXC5:0, i7hcr.FVUCX:17!null->H4DMT:0]\n" +
+			"     │               │               └─ LeftOuterJoin\n" +
+			"     │               │                   ├─ AND\n" +
+			"     │               │                   │   ├─ AND\n" +
+			"     │               │                   │   │   ├─ AND\n" +
+			"     │               │                   │   │   │   ├─ Eq\n" +
+			"     │               │                   │   │   │   │   ├─ i7hcr.SWCQV:18!null\n" +
+			"     │               │                   │   │   │   │   └─ 0 (int)\n" +
+			"     │               │                   │   │   │   └─ Eq\n" +
+			"     │               │                   │   │   │       ├─ i7hcr.TOFPN:14!null\n" +
+			"     │               │                   │   │   │       └─ uct.FTQLQ:1\n" +
+			"     │               │                   │   │   └─ Eq\n" +
+			"     │               │                   │   │       ├─ i7hcr.SJYN2:15!null\n" +
+			"     │               │                   │   │       └─ uct.ZH72S:2\n" +
+			"     │               │                   │   └─ Eq\n" +
+			"     │               │                   │       ├─ i7hcr.BTXC5:16!null\n" +
+			"     │               │                   │       └─ uct.LJLUM:5\n" +
+			"     │               │                   ├─ TableAlias(uct)\n" +
+			"     │               │                   │   └─ IndexedTableAccess(OUBDL)\n" +
+			"     │               │                   │       ├─ index: [OUBDL.id]\n" +
+			"     │               │                   │       ├─ static: [{[1, 1]}, {[2, 2]}, {[3, 3]}]\n" +
+			"     │               │                   │       ├─ colSet: (13-25)\n" +
+			"     │               │                   │       ├─ tableId: 2\n" +
+			"     │               │                   │       └─ Table\n" +
+			"     │               │                   │           ├─ name: OUBDL\n" +
+			"     │               │                   │           └─ columns: [id ftqlq zh72s sfj6l v5dpx ljlum idpk7 no52d zrv3b vyo5e ykssu fhcyt qz6vt]\n" +
+			"     │               │                   └─ TableAlias(i7hcr)\n" +
+			"     │               │                       └─ Table\n" +
+			"     │               │                           ├─ name: EPZU6\n" +
+			"     │               │                           ├─ columns: [id tofpn sjyn2 btxc5 fvucx swcqv ykssu fhcyt]\n" +
+			"     │               │                           ├─ colSet: (26-33)\n" +
+			"     │               │                           └─ tableId: 3\n" +
+			"     │               └─ TableAlias(nd)\n" +
+			"     │                   └─ Concat\n" +
+			"     │                       ├─ TableAlias(nd)\n" +
+			"     │                       │   └─ IndexedTableAccess(E2I7U)\n" +
+			"     │                       │       ├─ index: [E2I7U.ZH72S]\n" +
+			"     │                       │       ├─ keys: [pqsxb.K3B6V:9]\n" +
+			"     │                       │       ├─ colSet: (103-119)\n" +
+			"     │                       │       ├─ tableId: 9\n" +
+			"     │                       │       └─ Table\n" +
+			"     │                       │           ├─ name: E2I7U\n" +
+			"     │                       │           └─ columns: [id dkcaj kng7t tw55n qrqxw ecxaj fgg57 zh72s fsk67 xqdyt tce7a iwv2h hpcms n5cc2 fhcyt etaq7 a75x7]\n" +
+			"     │                       └─ TableAlias(nd)\n" +
+			"     │                           └─ IndexedTableAccess(E2I7U)\n" +
+			"     │                               ├─ index: [E2I7U.TW55N]\n" +
+			"     │                               ├─ keys: [pqsxb.H4DMT:11!null]\n" +
+			"     │                               ├─ colSet: (103-119)\n" +
+			"     │                               ├─ tableId: 9\n" +
+			"     │                               └─ Table\n" +
+			"     │                                   ├─ name: E2I7U\n" +
+			"     │                                   └─ columns: [id dkcaj kng7t tw55n qrqxw ecxaj fgg57 zh72s fsk67 xqdyt tce7a iwv2h hpcms n5cc2 fhcyt etaq7 a75x7]\n" +
 			"     └─ BEGIN .. END\n" +
 			"         ├─ IF BLOCK\n" +
 			"         │   └─ IF(InSubquery\n" +
