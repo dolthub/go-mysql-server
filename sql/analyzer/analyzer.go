@@ -473,8 +473,7 @@ func NewFinalizeUnionSel(sel RuleSelector) RuleSelector {
 func newInsertSourceSelector(sel RuleSelector, inTrigger bool) RuleSelector {
 	return func(id RuleId) bool {
 		switch id {
-		case unnestInSubqueriesId,
-			pushdownSubqueryAliasFiltersId:
+		case unnestInSubqueriesId:
 			return false
 		case eraseProjectionId:
 			if inTrigger {

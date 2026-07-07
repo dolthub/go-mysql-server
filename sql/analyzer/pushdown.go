@@ -137,6 +137,13 @@ func canDoPushdown(n sql.Node) bool {
 		return false
 	}
 
+	// The direct child of an InsertInto is its destination. InsertInto.Source is analyzed separately during
+	// resolveInsertRows
+	switch n.(type) {
+	case *plan.InsertInto:
+		return false
+	}
+
 	if plan.IsNoRowNode(n) {
 		return false
 	}
