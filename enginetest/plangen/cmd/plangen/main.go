@@ -141,7 +141,9 @@ func generatePlans(specPath string, srcRoot string) error {
 
 func writeImportsForScriptTests(buf *bytes.Buffer) {
 	_, _ = fmt.Fprint(buf, `import (
-	"fmt"
+	"fmt"`)
+	_, _ = fmt.Fprint(buf, "\n")
+	_, _ = fmt.Fprint(buf, `
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )`)

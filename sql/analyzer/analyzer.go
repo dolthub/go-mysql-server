@@ -473,7 +473,7 @@ func NewFinalizeUnionSel(sel RuleSelector) RuleSelector {
 func newInsertSourceSelector(sel RuleSelector, inTrigger bool) RuleSelector {
 	return func(id RuleId) bool {
 		switch id {
-		// TODO: Why is unnestInSubqueriesId disabled when analyzing InsertInto.Source?
+		// TODO: Investigate why unnestInSubqueriesId was disabled in PR #2156
 		case unnestInSubqueriesId:
 			return false
 		case eraseProjectionId:
