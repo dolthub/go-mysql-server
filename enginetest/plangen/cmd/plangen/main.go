@@ -122,7 +122,7 @@ func generatePlans(specPath string, srcRoot string) error {
 		var buf bytes.Buffer
 		writeHeader(&buf, *pkg)
 		if spec.Name == "QueryPlanScriptTests" {
-			_, _ = fmt.Fprint(&buf, "import (\n\t\"github.com/dolthub/go-mysql-server/sql\"\n)\n\n")
+			writeImportsForScriptTests(&buf)
 			err = generatePlansForScriptSuite(spec, &buf)
 		} else {
 			err = generatePlansForSuite(spec, &buf)
@@ -137,6 +137,17 @@ func generatePlans(specPath string, srcRoot string) error {
 		}
 	}
 	return nil
+}
+
+func writeImportsForScriptTests(buf *bytes.Buffer) {
+	_, _ = fmt.Fprint(buf, `import (
+	"fmt"`)
+	_, _ = fmt.Fprint(buf, "\n")
+	_, _ = fmt.Fprint(buf, `
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
+)`)
+	_, _ = fmt.Fprint(buf, "\n\n")
 }
 
 func writePlanString(w *bytes.Buffer, planString string) {

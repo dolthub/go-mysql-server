@@ -17,7 +17,10 @@
 package queries
 
 import (
+	"fmt"
+
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var QueryPlanScriptTests = []ScriptTest{
@@ -1376,6 +1379,134 @@ var QueryPlanScriptTests = []ScriptTest{
 					"                         │           └─ tableId: 8\n" +
 					"                         └─ TableAlias(bt)\n" +
 					"                             └─ RecursiveTable(blocked_transitively)\n" +
+					"",
+			},
+		},
+	},
+	{
+		Name: "Filters are pushed into InsertInto.Source subqueries (issue dolthub/dolt#11232)",
+		SetUpScript: []string{
+			`CREATE TABLE orders (
+  id INT PRIMARY KEY,
+  region VARCHAR(20) NOT NULL,
+  product VARCHAR(100) NOT NULL,
+  amount DECIMAL(10,2) NOT NULL,
+  INDEX idx_region (region)
+);`,
+			`INSERT INTO orders VALUES
+  (1, 'East', 'Widget', 100.00),
+  (2, 'West', 'Gadget', 200.00),
+  (3, 'East', 'Gizmo', 150.00),
+  (4, 'North', 'Widget', 80.00),
+  (5, 'South', 'Gadget', 250.00),
+  (6, 'West', 'Widget', 120.00),
+  (7, 'East', 'Gadget', 180.00),
+  (8, 'North', 'Gizmo', 90.00),
+  (9, 'South', 'Widget', 110.00),
+  (10, 'West', 'Gizmo', 220.00),
+  (11, 'East', 'Thing', 75.00),
+  (12, 'West', 'Thing', 95.00),
+  (13, 'North', 'Gadget', 160.00),
+  (14, 'South', 'Gizmo', 130.00),
+  (15, 'East', 'Gadget', 210.00),
+  (16, 'West', 'Gadget', 190.00),
+  (17, 'North', 'Thing', 85.00),
+  (18, 'South', 'Widget', 140.00),
+  (19, 'East', 'Widget', 170.00),
+  (20, 'West', 'Gizmo', 230.00),
+  (21, 'North', 'Widget', 105.00),
+  (22, 'South', 'Gadget', 155.00),
+  (23, 'East', 'Gizmo', 125.00),
+  (24, 'West', 'Thing', 99.00),
+  (25, 'East', 'Widget', 135.00),
+  (26, 'West', 'Gadget', 215.00),
+  (27, 'North', 'Gizmo', 145.00),
+  (28, 'South', 'Widget', 88.00),
+  (29, 'East', 'Gadget', 165.00),
+  (30, 'West', 'Gizmo', 240.00);`,
+			`CREATE TABLE customers (
+  id INT PRIMARY KEY,
+  region VARCHAR(20) NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  INDEX idx_cust_region (region)
+);`,
+			`INSERT INTO customers VALUES
+  (1, 'East', 'Alpha Corp'),
+  (2, 'West', 'Beta Inc'),
+  (3, 'North', 'Gamma LLC'),
+  (4, 'South', 'Delta Co'),
+  (5, 'West', 'Epsilon Ltd'),
+  (6, 'East', 'Zeta Group');`,
+			`CREATE TABLE summary (
+  id INT,
+  region VARCHAR(20),
+  product VARCHAR(100),
+  amount DECIMAL(10,2),
+  customer VARCHAR(100)
+);`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `INSERT INTO summary SELECT * FROM
+(SELECT o.id, o.region, o.product, o.amount, c.name AS customer
+FROM orders o
+JOIN customers c ON o.region = c.region AND o.id = c.id)
+AS sub
+WHERE sub.region = 'West';`,
+				Expected: []sql.Row{
+					sql.Row{types.OkResult{Info: fmt.Stringer(nil), RowsAffected: 0x1, InsertID: 0x0}},
+				},
+				ExpectedPlan: "Insert(id, region, product, amount, customer)\n" +
+					" ├─ InsertDestination\n" +
+					" │   └─ ProcessTable\n" +
+					" │       └─ Table\n" +
+					" │           ├─ name: summary\n" +
+					" │           └─ columns: [id region product amount customer]\n" +
+					" └─ Project\n" +
+					"     ├─ columns: [id:0, region:1, product:2, amount:3, customer:4]\n" +
+					"     └─ SubqueryAlias\n" +
+					"         ├─ name: sub\n" +
+					"         ├─ outerVisibility: false\n" +
+					"         ├─ isLateral: false\n" +
+					"         ├─ cacheable: true\n" +
+					"         ├─ colSet: (14-18)\n" +
+					"         ├─ tableId: 4\n" +
+					"         └─ Project\n" +
+					"             ├─ columns: [o.id:3!null, o.region:4!null, o.product:5!null, o.amount:6!null, c.name:2!null->customer:0]\n" +
+					"             └─ LookupJoin\n" +
+					"                 ├─ Eq\n" +
+					"                 │   ├─ o.region:4!null\n" +
+					"                 │   └─ c.region:1!null\n" +
+					"                 ├─ TableAlias(c)\n" +
+					"                 │   └─ Table\n" +
+					"                 │       ├─ name: customers\n" +
+					"                 │       ├─ columns: [id region name]\n" +
+					"                 │       ├─ colSet: (10-12)\n" +
+					"                 │       └─ tableId: 3\n" +
+					"                 └─ Filter\n" +
+					"                     ├─ Eq\n" +
+					"                     │   ├─ o.region:1!null\n" +
+					"                     │   └─ West (longtext)\n" +
+					"                     └─ TableAlias(o)\n" +
+					"                         └─ IndexedTableAccess(orders)\n" +
+					"                             ├─ index: [orders.id]\n" +
+					"                             ├─ keys: [c.id:0!null]\n" +
+					"                             ├─ colSet: (6-9)\n" +
+					"                             ├─ tableId: 2\n" +
+					"                             └─ Table\n" +
+					"                                 ├─ name: orders\n" +
+					"                                 └─ columns: [id region product amount]\n" +
+					"",
+			},
+			{
+				Query: `select * from summary`,
+				Expected: []sql.Row{
+					sql.Row{2, "West", "Gadget", "200.00", "Beta Inc"},
+				},
+				ExpectedPlan: "ProcessTable\n" +
+					" └─ Table\n" +
+					"     ├─ name: summary\n" +
+					"     └─ columns: [id region product amount customer]\n" +
 					"",
 			},
 		},
