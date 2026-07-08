@@ -59,8 +59,12 @@ func getFiltersByTable(ctx *sql.Context, n sql.Node, scope *plan.Scope, projecte
 // given, split at AND. Any expressions that contain subqueries, or refer to more than one table, are not included in
 // the result.
 func exprToTableFilters(ctx *sql.Context, expr sql.Expression, scope *plan.Scope, projectionExpressions map[sql.ColumnId]sql.Expression) filtersByTable {
+	return exprsToTableFilters(ctx, expression.SplitConjunction(ctx, expr), scope, projectionExpressions)
+}
+
+func exprsToTableFilters(ctx *sql.Context, exprs []sql.Expression, scope *plan.Scope, projectionExpressions map[sql.ColumnId]sql.Expression) filtersByTable {
 	filters := newFiltersByTable()
-	for _, expr := range expression.SplitConjunction(ctx, expr) {
+	for _, expr := range exprs {
 		var seenTables = make(map[sql.TableId]bool)
 		var lastTable sql.TableId
 		hasSubquery := false
@@ -125,19 +129,31 @@ func newFilterSet(
 	}
 }
 
+func newEmptyFilterSet(projectionExpressions map[sql.ColumnId]sql.Expression) *filterSet {
+	return &filterSet{
+		projectionExpressions: projectionExpressions,
+		filtersByTable:        newFiltersByTable(),
+	}
+}
+
+// newChildFilterSet adds filter expressions to filtersByTable and creates a new filterSet. Creating a new filterSet is
+// necessary to avoid adding extra entries to handledFilters from other branches in the node tree.
+func (fs *filterSet) newChildFilterSet(ctx *sql.Context, exprs []sql.Expression, scope *plan.Scope) *filterSet {
+	fs.filtersByTable.merge(exprsToTableFilters(ctx, exprs, scope, fs.projectionExpressions))
+	return &filterSet{
+		filtersByTable:        fs.filtersByTable,
+		projectionExpressions: fs.projectionExpressions,
+	}
+}
+
 // availableFiltersForTable returns the filters that are still available for the table given (not previously marked
 // handled)
-func (fs *filterSet) availableFiltersForTable(ctx *sql.Context, table sql.TableId) []sql.Expression {
+func (fs *filterSet) availableFiltersForTable(table sql.TableId) []sql.Expression {
 	filters, ok := fs.filtersByTable[table]
 	if !ok {
 		return nil
 	}
 	return subtractExprSet(filters, fs.handledFilters)
-}
-
-// handledCount returns the number of filter expressions that have been marked as handled
-func (fs *filterSet) handledCount() int {
-	return len(fs.handledFilters)
 }
 
 // markFiltersHandled marks the filter given as handled, so it will no longer be returned by availableFiltersForTable

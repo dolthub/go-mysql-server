@@ -16145,12 +16145,12 @@ inner join pq on true
 			"     │           ├─ alias-string: select i2 from othertable where i2 = i and i > 2\n" +
 			"     │           └─ Filter\n" +
 			"     │               ├─ AND\n" +
-			"     │               │   ├─ Eq\n" +
-			"     │               │   │   ├─ othertable.i2:2!null\n" +
-			"     │               │   │   └─ mt.i:0!null\n" +
-			"     │               │   └─ GreaterThan\n" +
-			"     │               │       ├─ mt.i:0!null\n" +
-			"     │               │       └─ 2 (bigint)\n" +
+			"     │               │   ├─ GreaterThan\n" +
+			"     │               │   │   ├─ mt.i:0!null\n" +
+			"     │               │   │   └─ 2 (bigint)\n" +
+			"     │               │   └─ Eq\n" +
+			"     │               │       ├─ othertable.i2:2!null\n" +
+			"     │               │       └─ mt.i:0!null\n" +
 			"     │               └─ IndexedTableAccess(othertable)\n" +
 			"     │                   ├─ index: [othertable.i2]\n" +
 			"     │                   ├─ keys: [mt.i:0!null]\n" +
