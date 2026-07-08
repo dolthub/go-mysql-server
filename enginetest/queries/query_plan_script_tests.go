@@ -1019,7 +1019,7 @@ var QueryPlanScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "Filters are pushed into Insert Source subqueries",
+		Name: "Filters are pushed into InsertInto.Source subqueries (issue dolthub/dolt#11232)",
 		SetUpScript: []string{
 			`CREATE TABLE orders (
   id INT PRIMARY KEY,
