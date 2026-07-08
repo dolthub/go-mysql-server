@@ -34,12 +34,10 @@ func pushFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, s
 	}
 	filters := newEmptyFilterSet(getProjectionExpressions(n))
 
-	n, same, err := pushdownFiltersAboveTables(ctx, a, n, scope, filters)
-	// TODO: assert that there are no unhandled filters? this should never happen so error out if it does
-	return n, same, err
+	return pushdownFiltersAboveTables(ctx, a, n, scope, filters)
 }
 
-func pushdownFiltersAboveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, filters *filterSet) (sql.Node, transform.TreeIdentity, error) {
+func pushdownFiltersAboveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, parentFilters *filterSet) (sql.Node, transform.TreeIdentity, error) {
 	if sql.IsOpaque(n) {
 		return n, transform.SameTree, nil
 	}
@@ -47,12 +45,13 @@ func pushdownFiltersAboveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 	switch node := n.(type) {
 	case *plan.Filter:
 		filterExpressions := expression.SplitConjunction(ctx, node.Expression)
-		filters.addFilterExprs(ctx, filterExpressions, scope)
+		filters := parentFilters.newChildFilterSet(ctx, filterExpressions, scope)
 
 		child, childSame, err := pushdownFiltersAboveTables(ctx, a, node.Child, scope, filters)
 		if err != nil {
 			return node, transform.SameTree, err
 		}
+		parentFilters.markFiltersHandled(filters.handledFilters...)
 		return updateFilterNode(ctx, a, node, child, childSame, filterExpressions, filters)
 	case *plan.JoinNode:
 		joinOp := node.JoinType()
@@ -65,14 +64,14 @@ func pushdownFiltersAboveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		//  https://github.com/dolthub/dolt/issues/10899
 		//  https://github.com/dolthub/go-mysql-server/pull/3591
 
-		leftChild, leftSame, err := pushdownFiltersAboveTables(ctx, a, node.Left(), scope, filters)
+		leftChild, leftSame, err := pushdownFiltersAboveTables(ctx, a, node.Left(), scope, parentFilters)
 		if err != nil {
 			return node, transform.SameTree, err
 		}
 		rightChild := node.Right()
 		rightSame := transform.SameTree
 		if !isLeftOuterOrAnti {
-			rightChild, rightSame, err = pushdownFiltersAboveTables(ctx, a, node.Right(), scope, filters)
+			rightChild, rightSame, err = pushdownFiltersAboveTables(ctx, a, node.Right(), scope, parentFilters)
 			if err != nil {
 				return node, transform.SameTree, err
 			}
@@ -81,11 +80,11 @@ func pushdownFiltersAboveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 			return plan.NewJoin(ctx, leftChild, rightChild, joinOp, node.JoinCond()).WithComment(node.Comment()), transform.NewTree, nil
 		}
 	case *plan.TableAlias, *plan.ResolvedTable, *plan.ValueDerivedTable:
-		return filteredTableNode(ctx, a, node.(plan.TableIdNode), filters)
+		return filteredTableNode(ctx, a, node.(plan.TableIdNode), parentFilters)
 	case *plan.Limit, *plan.Window:
 		// Parent filters shouldn't be pushed through Limit or Window nodes but child filters should still get pushed
 		// down to the table level.
-		newChild, same, err := pushdownFiltersAboveTables(ctx, a, node.Children()[0], scope, newEmptyFilterSet(filters.projectionExpressions))
+		newChild, same, err := pushdownFiltersAboveTables(ctx, a, node.Children()[0], scope, newEmptyFilterSet(parentFilters.projectionExpressions))
 		if err != nil {
 			return node, transform.SameTree, err
 		}
@@ -97,7 +96,7 @@ func pushdownFiltersAboveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		children := node.Children()
 		allSame := true
 		for i, child := range children {
-			newChild, same, err := pushdownFiltersAboveTables(ctx, a, child, scope, filters)
+			newChild, same, err := pushdownFiltersAboveTables(ctx, a, child, scope, parentFilters)
 			if err != nil {
 				return node, transform.SameTree, err
 			}
