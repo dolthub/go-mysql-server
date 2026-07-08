@@ -129,14 +129,14 @@ func canDoPushdown(n sql.Node) bool {
 		return false
 	}
 
-	if plan.IsNoRowNode(n) {
+	// The direct child of an InsertInto is its destination. InsertInto.Source is analyzed separately during
+	// resolveInsertRows
+	switch n.(type) {
+	case *plan.InsertInto:
 		return false
 	}
 
-	// The values of an insert are analyzed in isolation, so they do get pushdown treatment. But no other DML
-	// statements should get pushdown to their target tables.
-	switch n.(type) {
-	case *plan.InsertInto:
+	if plan.IsNoRowNode(n) {
 		return false
 	}
 
