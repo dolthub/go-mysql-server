@@ -15,7 +15,6 @@
 package analyzer
 
 import (
-	"maps"
 	"reflect"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -137,14 +136,12 @@ func newEmptyFilterSet(projectionExpressions map[sql.ColumnId]sql.Expression) *f
 	}
 }
 
-// newChildFilterSet returns a new filterSet with filter expressions added to filtersByTable. Creating a new filterSet
-// and filtersByTable is necessary to avoid filter expressions from one branch of a node tree getting into a different
-// branch when pushing down filters.
+// newChildFilterSet adds filter expressions to filtersByTable and creates a new filterSet. Creating a new filterSet is
+// necessary to avoid adding extra entries to handledFilters from other branches in the node tree.
 func (fs *filterSet) newChildFilterSet(ctx *sql.Context, exprs []sql.Expression, scope *plan.Scope) *filterSet {
-	filtersByTableCloned := maps.Clone(fs.filtersByTable)
-	filtersByTableCloned.merge(exprsToTableFilters(ctx, exprs, scope, fs.projectionExpressions))
+	fs.filtersByTable.merge(exprsToTableFilters(ctx, exprs, scope, fs.projectionExpressions))
 	return &filterSet{
-		filtersByTable:        filtersByTableCloned,
+		filtersByTable:        fs.filtersByTable,
 		projectionExpressions: fs.projectionExpressions,
 	}
 }
