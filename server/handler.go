@@ -19,14 +19,12 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"net"
 	"regexp"
 	"runtime/trace"
 	"sync"
 	"time"
 
 	"github.com/dolthub/vitess/go/mysql"
-	"github.com/dolthub/vitess/go/netutil"
 	"github.com/dolthub/vitess/go/sqltypes"
 	querypb "github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -37,7 +35,6 @@ import (
 
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/errguard"
-	"github.com/dolthub/go-mysql-server/internal/sockstate"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/iters"
@@ -56,8 +53,6 @@ var ErrConnectionWasClosed = errors.NewKind("connection was closed")
 var verboseErrorLogging = false
 
 const rowsBatch = 128
-
-var tcpCheckerSleepDuration time.Duration = 5 * time.Second
 
 type MultiStmtMode int
 
@@ -421,11 +416,29 @@ func (h *Handler) doQuery(
 	callback func(*sqltypes.Result, bool) error,
 	qFlags *sql.QueryFlags,
 ) (remainder string, err error) {
+	// Wrap the incoming context so the disconnect watcher can abort the query if
+	// the client connection goes away while we're executing it. cancelQuery
+	// cancels everything derived from this context, including the sqlCtx built
+	// next and the errgroups spun up by the resultFor* helpers.
+	ctx, cancelQuery := context.WithCancelCause(ctx)
+	defer cancelQuery(nil)
+
 	var sqlCtx *sql.Context
-	sqlCtx, err = h.sm.NewContextWithQuery(ctx, c, query)
+	var watch *connState
+	sqlCtx, watch, err = h.sm.newContextAndWatch(ctx, c, query)
 	if err != nil {
 		return "", err
 	}
+
+	// Notify the disconnect watcher that a query is in flight. If it runs long
+	// enough, the background sweeper starts an outstanding-read watch on the
+	// socket and cancels this query (via cancelQuery) if the client goes away.
+	// Fast queries finish before the start delay and never engage the watch at
+	// all. QueryEnded must run before doQuery returns (and thus before the
+	// command loop issues its next read on the connection); pairing it with
+	// QueryStarted here keeps the slot from leaking on any early return below.
+	watch.QueryStarted(cancelQuery)
+	defer watch.QueryEnded()
 	// TODO: it would be nice to put this logic in the engine, not the handler, but we don't want the process to be
 	//  marked done until we're done spooling rows over the wire
 	sqlCtx, err = sqlCtx.ProcessList.BeginQuery(sqlCtx, query)
@@ -634,13 +647,6 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 	defer trace.StartRegion(ctx, "Handler.resultForDefaultIter").End()
 
 	eg, ctx := ctx.NewErrgroup()
-	// TODO: poll for closed connections should obviously also run even if
-	// we're doing something with an OK result or a single row result, etc.
-	// This should be in the caller.
-	pollCtx, cancelF := ctx.NewSubContext()
-	errguard.Go(eg, func() error {
-		return h.pollForClosedConnection(pollCtx, c)
-	})
 
 	// Default waitTime is one minute if there is no timeout configured, in which case
 	// it will loop to iterate again unless the socket died by the OS timeout or other problems.
@@ -760,7 +766,6 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 	// Drain sqltypes.Result from resChan and call callback (send to client and potentially reset buffer)
 	var processedAtLeastOneBatch bool
 	errguard.Go(eg, func() (err error) {
-		defer cancelF()
 		defer wg.Done()
 		for {
 			select {
@@ -801,13 +806,6 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema 
 	defer trace.StartRegion(ctx, "Handler.resultForValueRowIter").End()
 
 	eg, ctx := ctx.NewErrgroup()
-	// TODO: poll for closed connections should obviously also run even if
-	// we're doing something with an OK result or a single row result, etc.
-	// This should be in the caller.
-	pollCtx, cancelF := ctx.NewSubContext()
-	errguard.Go(eg, func() error {
-		return h.pollForClosedConnection(pollCtx, c)
-	})
 
 	// Default waitTime is one minute if there is no timeout configured, in which case
 	// it will loop to iterate again unless the socket died by the OS timeout or other problems.
@@ -917,7 +915,6 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema 
 	// Drain sqltypes.Result from resChan and call callback (send to client and reset buffer)
 	var processedAtLeastOneBatch bool
 	errguard.Go(eg, func() (err error) {
-		defer cancelF()
 		defer wg.Done()
 		for {
 			select {
@@ -1037,70 +1034,6 @@ func (h *Handler) errorWrappedComExec(
 	}
 
 	return err
-}
-
-// Periodically polls the connection socket to determine if it is has been closed by the client, returning an error
-// if it has been. Meant to be run in an errgroup from the query handler routine. Returns immediately with no error
-// on platforms that can't support TCP socket checks.
-func (h *Handler) pollForClosedConnection(ctx *sql.Context, c *mysql.Conn) error {
-	tcpConn, ok := maybeGetTCPConn(c.Conn)
-	if !ok {
-		ctx.GetLogger().Trace("Connection checker exiting, connection isn't TCP")
-		return nil
-	}
-
-	inode, err := sockstate.GetConnInode(tcpConn)
-	if err != nil || inode == 0 {
-		if !sockstate.ErrSocketCheckNotImplemented.Is(err) {
-			ctx.GetLogger().Trace("Connection checker exiting, connection isn't TCP")
-		}
-		return nil
-	}
-
-	t, ok := tcpConn.LocalAddr().(*net.TCPAddr)
-	if !ok {
-		ctx.GetLogger().Trace("Connection checker exiting, could not get local port")
-		return nil
-	}
-
-	timer := time.NewTimer(tcpCheckerSleepDuration)
-	defer timer.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case <-timer.C:
-		}
-
-		st, err := sockstate.GetInodeSockState(t.Port, inode)
-		switch st {
-		case sockstate.Broken:
-			ctx.GetLogger().Warn("socket state is broken, returning error")
-			return ErrConnectionWasClosed.New()
-		case sockstate.Error:
-			ctx.GetLogger().WithError(err).Warn("Connection checker exiting, got err checking sockstate")
-			return nil
-		default: // Established
-			// (juanjux) this check is not free, each iteration takes about 9 milliseconds to run on my machine
-			// thus the small wait between checks
-			timer.Reset(tcpCheckerSleepDuration)
-		}
-	}
-}
-
-func maybeGetTCPConn(conn net.Conn) (*net.TCPConn, bool) {
-	wrap, ok := conn.(*netutil.ConnWithTimeouts)
-	if ok {
-		conn = wrap.Conn
-	}
-
-	tcp, ok := conn.(*net.TCPConn)
-	if ok {
-		return tcp, true
-	}
-
-	return nil, false
 }
 
 func resultFromOkResult(result types.OkResult) *sqltypes.Result {

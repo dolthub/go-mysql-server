@@ -42,7 +42,10 @@ func NillaryWithChildren(node sql.Node, children ...sql.Node) (sql.Node, error) 
 }
 
 // UnaryNode is a node that has only one child.
+// TODO: UnaryNode should implement sql.Node but is missing some functions
 type UnaryNode struct {
+	// TODO: plan.UnaryNode should implement sql.UnaryNode by having a Child() function. This means making the Child
+	//  field private so that there's not a naming conflict.
 	Child sql.Node
 }
 
@@ -62,6 +65,7 @@ func (n UnaryNode) Children() []sql.Node {
 }
 
 // BinaryNode is a node with two children.
+// TODO: BinaryNode should implement sql.Node but is missing some functions
 type BinaryNode struct {
 	left  sql.Node
 	right sql.Node

@@ -129,30 +129,31 @@ func newFilterSet(
 	}
 }
 
-func newEmptyFilterSet(n sql.Node) *filterSet {
+func newEmptyFilterSet(projectionExpressions map[sql.ColumnId]sql.Expression) *filterSet {
 	return &filterSet{
-		projectionExpressions: getProjectionExpressions(n),
+		projectionExpressions: projectionExpressions,
 		filtersByTable:        newFiltersByTable(),
 	}
 }
 
-func (fs *filterSet) addFilterExprs(ctx *sql.Context, exprs []sql.Expression, scope *plan.Scope) {
+// newChildFilterSet adds filter expressions to filtersByTable and creates a new filterSet. Creating a new filterSet is
+// necessary to avoid adding extra entries to handledFilters from other branches in the node tree.
+func (fs *filterSet) newChildFilterSet(ctx *sql.Context, exprs []sql.Expression, scope *plan.Scope) *filterSet {
 	fs.filtersByTable.merge(exprsToTableFilters(ctx, exprs, scope, fs.projectionExpressions))
+	return &filterSet{
+		filtersByTable:        fs.filtersByTable,
+		projectionExpressions: fs.projectionExpressions,
+	}
 }
 
 // availableFiltersForTable returns the filters that are still available for the table given (not previously marked
 // handled)
-func (fs *filterSet) availableFiltersForTable(ctx *sql.Context, table sql.TableId) []sql.Expression {
+func (fs *filterSet) availableFiltersForTable(table sql.TableId) []sql.Expression {
 	filters, ok := fs.filtersByTable[table]
 	if !ok {
 		return nil
 	}
 	return subtractExprSet(filters, fs.handledFilters)
-}
-
-// handledCount returns the number of filter expressions that have been marked as handled
-func (fs *filterSet) handledCount() int {
-	return len(fs.handledFilters)
 }
 
 // markFiltersHandled marks the filter given as handled, so it will no longer be returned by availableFiltersForTable
@@ -162,6 +163,10 @@ func (fs *filterSet) markFiltersHandled(exprs ...sql.Expression) {
 
 // subtractExprSet returns all expressions in the first parameter that aren't present in the second.
 func subtractExprSet(all, toSubtract []sql.Expression) []sql.Expression {
+	if len(toSubtract) == 0 {
+		return all
+	}
+
 	var remainder []sql.Expression
 
 	for _, e := range all {

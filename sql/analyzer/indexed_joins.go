@@ -429,12 +429,15 @@ func keyForExpr(
 	targetCol sql.ColumnId,
 	tableId sql.TableId,
 	filters []sql.Expression,
-	columnIdToIndexedExprMap map[sql.ColumnId]indexedExprEntry) (key sql.Expression, filter sql.Expression, nullable bool) {
+	colIdToIdxExpr map[sql.ColumnId]indexedExprEntry) (key sql.Expression, filter sql.Expression, nullable bool) {
 	for _, f := range filters {
 		var left sql.Expression
 		var right sql.Expression
 		switch e := f.(type) {
-		case *expression.Equals:
+		case expression.Equality:
+			if !e.RepresentsEquality() {
+				continue
+			}
 			left = e.Left()
 			right = e.Right()
 		case *expression.NullSafeEquals:
@@ -442,21 +445,19 @@ func keyForExpr(
 			left = e.Left()
 			right = e.Right()
 		default:
-			if e, ok := e.(expression.Equality); ok && e.RepresentsEquality() {
-				left = e.Left()
-				right = e.Right()
-			}
+			continue
 		}
+
 		if ref, ok := left.(*expression.GetField); ok && ref.Id() == targetCol &&
 			sql.IsConvertibleKeyType(left.Type(ctx), right.Type(ctx)) {
 			key = right
-		} else if ref, ok := right.(*expression.GetField); ok && ref.Id() == targetCol &&
+		} else if ref, ok = right.(*expression.GetField); ok && ref.Id() == targetCol &&
 			sql.IsConvertibleKeyType(right.Type(ctx), left.Type(ctx)) {
 			key = left
 		} else if left != nil && right != nil {
 			// Check if targetCol is an indexed functional expression and if
 			// either side of the filter matches the generated expression.
-			if entry, ok := columnIdToIndexedExprMap[targetCol]; ok {
+			if entry, ok := colIdToIdxExpr[targetCol]; ok {
 				if entry.matches(left) {
 					key = right
 				} else if entry.matches(right) {
@@ -1447,51 +1448,128 @@ func sortedIndexScansForTableCol(ctx *sql.Context, statsProv sql.StatsProvider, 
 	return ret, nil
 }
 
-func makeIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, tab plan.TableIdNode, idx *memo.Index, matchedIdx sql.ColumnId, filters []sql.Expression) (*memo.IndexScan, bool, error) {
-	rang := make(sql.MySQLRange, len(idx.Cols()))
-	var j int
-	for {
-		found := idx.Cols()[j] == matchedIdx
+func filterExprToMySQLRangeExpr(filter sql.Expression, colId sql.ColumnId, colTyp sql.Type) (res sql.MySQLRangeColumnExpr, ok bool) {
+	// TODO: Could use RangeTree from gms/sql/range_tree.go?
+	switch f := filter.(type) {
+	case expression.Equality:
+		if !f.RepresentsEquality() {
+			return
+		}
 		var lit *expression.Literal
-		for _, f := range filters {
-			if eq, ok := f.(expression.Equality); ok && eq.RepresentsEquality() {
-				if l, ok := eq.Left().(*expression.GetField); ok && l.Id() == idx.Cols()[j] {
-					lit, _ = eq.Right().(*expression.Literal)
-				}
-				if r, ok := eq.Right().(*expression.GetField); ok && r.Id() == idx.Cols()[j] {
-					lit, _ = eq.Left().(*expression.Literal)
-				}
-				if lit != nil {
-					break
-				}
+		lExpr, rExpr := f.Left(), f.Right()
+		if lGf, ok := lExpr.(*expression.GetField); ok && lGf.Id() == colId {
+			lit, _ = rExpr.(*expression.Literal)
+		}
+		if rGf, ok := rExpr.(*expression.GetField); ok && rGf.Id() == colId {
+			lit, _ = lExpr.(*expression.Literal)
+		}
+		if lit == nil {
+			return
+		}
+		return sql.ClosedRangeColumnExpr(lit.Val, lit.Val, colTyp), true
+	case *expression.LessThan:
+		lExpr, rExpr := f.Left(), f.Right()
+		if lGf, isGf := lExpr.(*expression.GetField); isGf && lGf.Id() == colId {
+			if rLit, isLit := rExpr.(*expression.Literal); isLit {
+				return sql.LessThanRangeColumnExpr(rLit.Val, colTyp), true
 			}
 		}
-		if found && lit == nil {
-			break
+		if rGf, isGf := rExpr.(*expression.GetField); isGf && rGf.Id() == colId {
+			if lLit, isLit := lExpr.(*expression.Literal); isLit {
+				return sql.GreaterThanRangeColumnExpr(lLit.Val, colTyp), true
+			}
 		}
-		rang[j] = sql.ClosedRangeColumnExpr(lit.Value(), lit.Value(), idx.SqlIdx().ColumnExpressionTypes(ctx)[j].Type)
-		j++
+		return
+	case *expression.LessThanOrEqual:
+		lExpr, rExpr := f.Left(), f.Right()
+		if lGf, isGf := lExpr.(*expression.GetField); isGf && lGf.Id() == colId {
+			if rLit, isLit := rExpr.(*expression.Literal); isLit {
+				return sql.LessOrEqualRangeColumnExpr(rLit.Val, colTyp), true
+			}
+		}
+		if rGf, isGf := rExpr.(*expression.GetField); isGf && rGf.Id() == colId {
+			if lLit, isLit := lExpr.(*expression.Literal); isLit {
+				return sql.GreaterOrEqualRangeColumnExpr(lLit.Val, colTyp), true
+			}
+		}
+		return
+	case *expression.GreaterThan:
+		lExpr, rExpr := f.Left(), f.Right()
+		if lGf, isGf := lExpr.(*expression.GetField); isGf && lGf.Id() == colId {
+			if rLit, isLit := rExpr.(*expression.Literal); isLit {
+				return sql.GreaterThanRangeColumnExpr(rLit.Val, colTyp), true
+			}
+		}
+		if rGf, isGf := rExpr.(*expression.GetField); isGf && rGf.Id() == colId {
+			if lLit, isLit := lExpr.(*expression.Literal); isLit {
+				return sql.LessThanRangeColumnExpr(lLit.Val, colTyp), true
+			}
+		}
+		return
+	case *expression.GreaterThanOrEqual:
+		lExpr, rExpr := f.Left(), f.Right()
+		if lGf, isGf := lExpr.(*expression.GetField); isGf && lGf.Id() == colId {
+			if rLit, isLit := rExpr.(*expression.Literal); isLit {
+				return sql.GreaterOrEqualRangeColumnExpr(rLit.Val, colTyp), true
+			}
+		}
+		if rGf, isGf := rExpr.(*expression.GetField); isGf && rGf.Id() == colId {
+			if lLit, isLit := lExpr.(*expression.Literal); isLit {
+				return sql.LessOrEqualRangeColumnExpr(lLit.Val, colTyp), true
+			}
+		}
+		return
+	default:
+		return
+	}
+}
+
+// makeIndexScan pushes any static filters in |filters| preceeding and possible including |matchedIdx| into an
+// IndexLookup. The result is a series of MySQLRanges that prefixes the index upto |matchedIdx|.
+func makeIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, tab plan.TableIdNode, idx *memo.Index, matchedIdx sql.ColumnId, filters []sql.Expression) (*memo.IndexScan, bool, error) {
+	// TODO: This should build a proper range tree to handle all filters.
+	// TODO: We should be able to push all static expressions, even the ones past |matchedIdx|.
+	var i int
+	idxCols := idx.Cols()
+	rang := make(sql.MySQLRange, len(idxCols))
+	// Create MySQL Range prefix for this index
+	idxColExprTypes := idx.SqlIdx().ColumnExpressionTypes(ctx)
+	for i = 0; i < len(idxCols); {
+		// TODO: It seems like it's possible for no filter to be found for a column before |matchedIdx|, but it is
+		//  ignored. Appears to be impossible to reproduce due to functional dependency logic beforehand.
+		found := matchedIdx == idxCols[i]
+		for _, filter := range filters {
+			if r, ok := filterExprToMySQLRangeExpr(filter, idxCols[i], idxColExprTypes[i].Type); ok {
+				rang[i] = r
+				i++
+				break
+			}
+		}
 		if found {
 			break
 		}
 	}
-	for j < len(idx.Cols()) {
+
+	// Fill remaining ranges with AllRange
+	for ; i < len(idxCols); i++ {
 		// all range bound Compare() is type insensitive
-		rang[j] = sql.AllRangeColumnExpr(types.Null)
-		j++
+		rang[i] = sql.AllRangeColumnExpr(types.Null)
 	}
 
 	if !idx.SqlIdx().CanSupport(ctx, rang) {
 		return nil, false, nil
 	}
 
-	for i, typ := range idx.SqlIdx().ColumnExpressionTypes(ctx) {
+	for i, typ := range idxColExprTypes {
 		if !types.Null.Equals(rang[i].Typ) && !typ.Type.Equals(rang[i].Typ) {
 			return nil, false, nil
 		}
 	}
 
-	l := sql.IndexLookup{Index: idx.SqlIdx(), Ranges: sql.MySQLRangeCollection{rang}}
+	l := sql.IndexLookup{
+		Index:  idx.SqlIdx(),
+		Ranges: sql.MySQLRangeCollection{rang},
+	}
 
 	var tn sql.TableNode
 	var alias string
@@ -1516,7 +1594,7 @@ func makeIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, tab plan.Table
 	}
 
 	var cols []string
-	tablePrefix := fmt.Sprintf("%s.", tn.Name())
+	tablePrefix := tn.Name() + "."
 	for _, e := range idx.SqlIdx().Expressions() {
 		cols = append(cols, strings.TrimPrefix(e, tablePrefix))
 	}

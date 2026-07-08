@@ -6662,64 +6662,51 @@ inner join pq on true
 			"     └─ Window\n" +
 			"         ├─ row_number() over ( order by mytable.i DESC)\n" +
 			"         ├─ mytable.i:0!null\n" +
-			"         └─ Filter\n" +
-			"             ├─ Eq\n" +
-			"             │   ├─ mytable.i:0!null\n" +
-			"             │   └─ 2 (bigint)\n" +
-			"             └─ MergeJoin\n" +
-			"                 ├─ cmp: Eq\n" +
-			"                 │   ├─ mytable.i:0!null\n" +
-			"                 │   └─ othertable.i2:1!null\n" +
-			"                 ├─ IndexedTableAccess(mytable)\n" +
-			"                 │   ├─ index: [mytable.i,mytable.s]\n" +
-			"                 │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                 │   ├─ colSet: (1,2)\n" +
-			"                 │   ├─ tableId: 1\n" +
-			"                 │   └─ Table\n" +
-			"                 │       ├─ name: mytable\n" +
-			"                 │       └─ columns: [i]\n" +
-			"                 └─ IndexedTableAccess(othertable)\n" +
-			"                     ├─ index: [othertable.i2]\n" +
-			"                     ├─ static: [{[NULL, ∞)}]\n" +
-			"                     ├─ colSet: (3,4)\n" +
-			"                     ├─ tableId: 2\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: othertable\n" +
-			"                         └─ columns: [i2]\n" +
+			"         └─ LookupJoin\n" +
+			"             ├─ IndexedTableAccess(mytable)\n" +
+			"             │   ├─ index: [mytable.i]\n" +
+			"             │   ├─ static: [{[2, 2]}]\n" +
+			"             │   ├─ colSet: (1,2)\n" +
+			"             │   ├─ tableId: 1\n" +
+			"             │   └─ Table\n" +
+			"             │       ├─ name: mytable\n" +
+			"             │       └─ columns: [i]\n" +
+			"             └─ IndexedTableAccess(othertable)\n" +
+			"                 ├─ index: [othertable.i2]\n" +
+			"                 ├─ keys: [mytable.i:0!null]\n" +
+			"                 ├─ colSet: (3,4)\n" +
+			"                 ├─ tableId: 2\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: othertable\n" +
+			"                     └─ columns: [i2]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [row_number() over ( order by mytable.i desc) as row_number() over (order by i desc), mytable.i as i2]\n" +
 			" └─ Sort(row_number() over ( order by mytable.i desc) as row_number() over (order by i desc) ASC)\n" +
 			"     └─ Window(row_number() over ( order by mytable.i DESC), mytable.i)\n" +
-			"         └─ Filter\n" +
-			"             ├─ (mytable.i = 2)\n" +
-			"             └─ MergeJoin\n" +
-			"                 ├─ cmp: (mytable.i = othertable.i2)\n" +
-			"                 ├─ IndexedTableAccess(mytable)\n" +
-			"                 │   ├─ index: [mytable.i,mytable.s]\n" +
-			"                 │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                 │   └─ columns: [i]\n" +
-			"                 └─ IndexedTableAccess(othertable)\n" +
-			"                     ├─ index: [othertable.i2]\n" +
-			"                     ├─ filters: [{[NULL, ∞)}]\n" +
-			"                     └─ columns: [i2]\n" +
+			"         └─ LookupJoin\n" +
+			"             ├─ IndexedTableAccess(mytable)\n" +
+			"             │   ├─ index: [mytable.i]\n" +
+			"             │   ├─ filters: [{[2, 2]}]\n" +
+			"             │   └─ columns: [i]\n" +
+			"             └─ IndexedTableAccess(othertable)\n" +
+			"                 ├─ index: [othertable.i2]\n" +
+			"                 ├─ columns: [i2]\n" +
+			"                 └─ keys: mytable.i\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [row_number() over ( order by mytable.i desc) as row_number() over (order by i desc), mytable.i as i2]\n" +
 			" └─ Sort(row_number() over ( order by mytable.i desc) as row_number() over (order by i desc) ASC)\n" +
 			"     └─ Window(row_number() over ( order by mytable.i DESC), mytable.i)\n" +
-			"         └─ Filter\n" +
-			"             ├─ (mytable.i = 2)\n" +
-			"             └─ MergeJoin\n" +
-			"                 ├─ cmp: (mytable.i = othertable.i2)\n" +
-			"                 ├─ IndexedTableAccess(mytable)\n" +
-			"                 │   ├─ index: [mytable.i,mytable.s]\n" +
-			"                 │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                 │   └─ columns: [i]\n" +
-			"                 └─ IndexedTableAccess(othertable)\n" +
-			"                     ├─ index: [othertable.i2]\n" +
-			"                     ├─ filters: [{[NULL, ∞)}]\n" +
-			"                     └─ columns: [i2]\n" +
+			"         └─ LookupJoin\n" +
+			"             ├─ IndexedTableAccess(mytable)\n" +
+			"             │   ├─ index: [mytable.i]\n" +
+			"             │   ├─ filters: [{[2, 2]}]\n" +
+			"             │   └─ columns: [i]\n" +
+			"             └─ IndexedTableAccess(othertable)\n" +
+			"                 ├─ index: [othertable.i2]\n" +
+			"                 ├─ columns: [i2]\n" +
+			"                 └─ keys: mytable.i\n" +
 			"",
 	},
 	{
