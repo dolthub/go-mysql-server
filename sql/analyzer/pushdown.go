@@ -62,6 +62,8 @@ func pushdownFiltersAboveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 
 		isLeftOuterOrAnti := joinOp.IsLeftOuter() || joinOp.IsAnti()
 		// TODO: Add join conditions to filters set and remove moveJoinConditionsToFilter rule
+		//  https://github.com/dolthub/dolt/issues/10899
+		//  https://github.com/dolthub/go-mysql-server/pull/3591
 
 		leftChild, leftSame, err := pushdownFiltersAboveTables(ctx, a, node.Left(), scope, filters)
 		if err != nil {
