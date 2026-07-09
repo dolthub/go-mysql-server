@@ -163,6 +163,10 @@ func (fs *filterSet) markFiltersHandled(exprs ...sql.Expression) {
 
 // subtractExprSet returns all expressions in the first parameter that aren't present in the second.
 func subtractExprSet(all, toSubtract []sql.Expression) []sql.Expression {
+	if len(toSubtract) == 0 {
+		return all
+	}
+
 	var remainder []sql.Expression
 
 	for _, e := range all {

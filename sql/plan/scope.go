@@ -255,7 +255,7 @@ func (s *Scope) OuterToInner() []sql.Node {
 
 // Schema returns the equivalent schema of this scope, which consists of the schemas of all constituent scope nodes
 // concatenated from outer to inner. Because we can only calculate the Schema() of nodes that are Resolved(), this
-// method fills in place holder columns as necessary.
+// method fills in placeholder columns as necessary.
 func (s *Scope) Schema(ctx *sql.Context) sql.Schema {
 	var schema sql.Schema
 	for _, n := range s.OuterToInner() {
@@ -283,8 +283,7 @@ func (s *Scope) Schema(ctx *sql.Context) sql.Schema {
 					schema = append(schema, col)
 				}
 			default:
-				// TODO: log this
-				// panic(fmt.Sprintf("Unsupported scope node %T", n))
+				// TODO: add logging for unsupported scope nodes
 			}
 		}
 	}

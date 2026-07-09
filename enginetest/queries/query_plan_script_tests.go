@@ -1218,33 +1218,34 @@ var QueryPlanScriptTests = []ScriptTest{
 				Expected: []sql.Row{
 					sql.Row{2, 2, 2, 2, 2, 2},
 				},
-				ExpectedPlan: "MergeJoin\n" +
-					" ├─ cmp: Eq\n" +
-					" │   ├─ t1.i:0!null\n" +
-					" │   └─ t2.x:3!null\n" +
-					" ├─ sel: Or\n" +
+				ExpectedPlan: "Filter\n" +
+					" ├─ Or\n" +
 					" │   ├─ Eq\n" +
 					" │   │   ├─ t1.i:0!null\n" +
 					" │   │   └─ 2 (int)\n" +
 					" │   └─ Eq\n" +
 					" │       ├─ t2.x:3!null\n" +
 					" │       └─ 2 (int)\n" +
-					" ├─ IndexedTableAccess(t1)\n" +
-					" │   ├─ index: [t1.i]\n" +
-					" │   ├─ static: [{[NULL, ∞)}]\n" +
-					" │   ├─ colSet: (1-3)\n" +
-					" │   ├─ tableId: 1\n" +
-					" │   └─ Table\n" +
-					" │       ├─ name: t1\n" +
-					" │       └─ columns: [i j k]\n" +
-					" └─ IndexedTableAccess(t2)\n" +
-					"     ├─ index: [t2.x]\n" +
-					"     ├─ static: [{[NULL, ∞)}]\n" +
-					"     ├─ colSet: (4-6)\n" +
-					"     ├─ tableId: 2\n" +
-					"     └─ Table\n" +
-					"         ├─ name: t2\n" +
-					"         └─ columns: [x y z]\n" +
+					" └─ MergeJoin\n" +
+					"     ├─ cmp: Eq\n" +
+					"     │   ├─ t1.i:0!null\n" +
+					"     │   └─ t2.x:3!null\n" +
+					"     ├─ IndexedTableAccess(t1)\n" +
+					"     │   ├─ index: [t1.i]\n" +
+					"     │   ├─ static: [{[NULL, ∞)}]\n" +
+					"     │   ├─ colSet: (1-3)\n" +
+					"     │   ├─ tableId: 1\n" +
+					"     │   └─ Table\n" +
+					"     │       ├─ name: t1\n" +
+					"     │       └─ columns: [i j k]\n" +
+					"     └─ IndexedTableAccess(t2)\n" +
+					"         ├─ index: [t2.x]\n" +
+					"         ├─ static: [{[NULL, ∞)}]\n" +
+					"         ├─ colSet: (4-6)\n" +
+					"         ├─ tableId: 2\n" +
+					"         └─ Table\n" +
+					"             ├─ name: t2\n" +
+					"             └─ columns: [x y z]\n" +
 					"",
 			},
 		},
@@ -1359,26 +1360,26 @@ var QueryPlanScriptTests = []ScriptTest{
 					"                 │                                   └─ columns: [id status]\n" +
 					"                 └─ Project\n" +
 					"                     ├─ columns: [d.issue_id:0, (bt.depth:4!null + 1 (tinyint))->bt.depth + 1:0]\n" +
-					"                     └─ InnerJoin\n" +
-					"                         ├─ AND\n" +
-					"                         │   ├─ LessThan\n" +
-					"                         │   │   ├─ bt.depth:7!null\n" +
-					"                         │   │   └─ 50 (bigint)\n" +
-					"                         │   └─ Eq\n" +
-					"                         │       ├─ d.depends_on_id:4\n" +
-					"                         │       └─ bt.issue_id:6\n" +
-					"                         ├─ Filter\n" +
-					"                         │   ├─ Eq\n" +
-					"                         │   │   ├─ d.type:2\n" +
-					"                         │   │   └─ parent-child (longtext)\n" +
-					"                         │   └─ TableAlias(d)\n" +
-					"                         │       └─ Table\n" +
-					"                         │           ├─ name: dependencies\n" +
-					"                         │           ├─ columns: [issue_id depends_on_id type]\n" +
-					"                         │           ├─ colSet: (14-16)\n" +
-					"                         │           └─ tableId: 8\n" +
-					"                         └─ TableAlias(bt)\n" +
-					"                             └─ RecursiveTable(blocked_transitively)\n" +
+					"                     └─ Filter\n" +
+					"                         ├─ LessThan\n" +
+					"                         │   ├─ bt.depth:4!null\n" +
+					"                         │   └─ 50 (bigint)\n" +
+					"                         └─ InnerJoin\n" +
+					"                             ├─ Eq\n" +
+					"                             │   ├─ d.depends_on_id:4\n" +
+					"                             │   └─ bt.issue_id:6\n" +
+					"                             ├─ Filter\n" +
+					"                             │   ├─ Eq\n" +
+					"                             │   │   ├─ d.type:2\n" +
+					"                             │   │   └─ parent-child (longtext)\n" +
+					"                             │   └─ TableAlias(d)\n" +
+					"                             │       └─ Table\n" +
+					"                             │           ├─ name: dependencies\n" +
+					"                             │           ├─ columns: [issue_id depends_on_id type]\n" +
+					"                             │           ├─ colSet: (14-16)\n" +
+					"                             │           └─ tableId: 8\n" +
+					"                             └─ TableAlias(bt)\n" +
+					"                                 └─ RecursiveTable(blocked_transitively)\n" +
 					"",
 			},
 		},

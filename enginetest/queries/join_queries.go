@@ -1413,6 +1413,24 @@ var JoinScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/10899
+		Name: "IS NULL filter is preserved in multi-table join with left join",
+		SetUpScript: []string{
+			"create table p(id int, v int)",
+			"create table q(v int, qid int)",
+			"create table d(id int)",
+			"insert into p values (1, 10), (2, 20)",
+			"insert into q values (10, 100), (20, 200)",
+			"insert into d values (1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT p.id, d.id FROM p JOIN q ON p.v = q.v LEFT JOIN d ON p.id = d.id JOIN q q2 ON q2.qid = q.qid WHERE d.id IS NULL;",
+				Expected: []sql.Row{{2, nil}},
+			},
+		},
+	},
 }
 
 var LateralJoinScriptTests = []ScriptTest{
