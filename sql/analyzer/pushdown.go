@@ -96,14 +96,14 @@ func pushdownFiltersAboveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 			}
 
 			parentFilters.markFiltersHandled(filters.handledFilters...)
-			// TODO: Parent filters that only reference tables in the join children can also be added to the join
-			//  condition. To do this, we would need to update filtersByTable to use a FastIntSet key instead of a
-			//  TableId key to allow for filters that reference multiple tables and we would also need to propagate up
-			//  a set of the child TableIds.
 			unhandled := subtractExprSet(filterExpressions, filters.handledFilters)
 			joinCondition = expression.JoinAnd(unhandled...)
 		}
 
+		// TODO: Certain parent filters that only reference tables in the join children can also be added to the join
+		//  condition, thus transforming the join node regardless if the children stayed the same. To do this, we would
+		//  need to be able to fetch filters that reference multiple tables and we would also need to what the child
+		//  tables are.
 		if leftSame && rightSame {
 			return node, transform.SameTree, nil
 		}
@@ -153,9 +153,6 @@ func pushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.Node, sco
 		return n, transform.SameTree, nil
 	}
 
-	// TODO: this involves calling InspectUp on entire node tree. If there is a SQA, it stops traversing and returns
-	//  true, but otherwise, it will inspect the entire node tree just to return false. Only the leaves need to be
-	//  inspected to determine if there's an SQA.
 	if !hasSubqueryAlias(ctx, n) {
 		return n, transform.SameTree, nil
 	}
