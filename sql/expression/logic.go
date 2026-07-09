@@ -108,7 +108,7 @@ func LookupEqualityColumn(db, table string, e sql.Expression) (LookupColumn, boo
 	}
 
 	eq, isEq := e.(Equality)
-	if !isEq {
+	if !isEq || !eq.RepresentsEquality() {
 		return LookupColumn{}, false
 	}
 
