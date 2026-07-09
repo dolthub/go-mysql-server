@@ -95,7 +95,7 @@ func SplitDisjunction(expr sql.Expression) []sql.Expression {
 
 type LookupColumn struct {
 	Lit *Literal
-	Eq  *Equals
+	Eq  Equality
 	Col string
 }
 
@@ -106,23 +106,34 @@ func LookupEqualityColumn(db, table string, e sql.Expression) (LookupColumn, boo
 	if e == nil {
 		return LookupColumn{}, false
 	}
-	// TODO: should this work for Equality interface instead?
-	switch e := e.(type) {
-	case *Equals:
-		if gf, ok := e.Left().(*GetField); ok {
-			if strings.EqualFold(gf.Table(), table) && strings.EqualFold(gf.Database(), db) {
-				switch r := e.Right().(type) {
-				case *Literal:
-					return LookupColumn{Eq: e, Lit: r, Col: strings.ToLower(gf.name)}, true
+
+	eq, isEq := e.(Equality)
+	if !isEq {
+		return LookupColumn{}, false
+	}
+
+	left, right := eq.Left(), eq.Right()
+	if gf, isGf := left.(*GetField); isGf {
+		if strings.EqualFold(gf.Table(), table) && strings.EqualFold(gf.Database(), db) {
+			if lit, isLit := right.(*Literal); isLit {
+				lookupCol := LookupColumn{
+					Eq:  eq,
+					Lit: lit,
+					Col: strings.ToLower(gf.name),
 				}
+				return lookupCol, true
 			}
 		}
-		if gf, ok := e.Right().(*GetField); ok {
-			if strings.EqualFold(gf.Table(), table) && strings.EqualFold(gf.Database(), db) {
-				switch l := e.Left().(type) {
-				case *Literal:
-					return LookupColumn{Eq: e, Lit: l, Col: strings.ToLower(gf.name)}, true
+	}
+	if gf, isGf := right.(*GetField); isGf {
+		if strings.EqualFold(gf.Table(), table) && strings.EqualFold(gf.Database(), db) {
+			if lit, isLit := left.(*Literal); isLit {
+				lookupCol := LookupColumn{
+					Eq:  eq,
+					Lit: lit,
+					Col: strings.ToLower(gf.name),
 				}
+				return lookupCol, true
 			}
 		}
 	}
