@@ -117,7 +117,8 @@ func NewStatQualifier(db, schema, table, index string) StatQualifier {
 		Database: strings.ToLower(db),
 		Sch:      strings.ToLower(schema),
 		Tab:      strings.ToLower(table),
-		Idx:      strings.ToLower(index)}
+		Idx:      strings.ToLower(index),
+	}
 }
 
 // StatQualifier is the namespace hierarchy for a given statistic.
