@@ -106,6 +106,7 @@ func LookupEqualityColumn(db, table string, e sql.Expression) (LookupColumn, boo
 	if e == nil {
 		return LookupColumn{}, false
 	}
+	// TODO: should this work for Equality interface instead?
 	switch e := e.(type) {
 	case *Equals:
 		if gf, ok := e.Left().(*GetField); ok {

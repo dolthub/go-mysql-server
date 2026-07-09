@@ -230,7 +230,7 @@ func getCostedIndexScan(
 	if len(qualToStat) > 0 {
 		// don't mix and match real and default stats
 		for _, idx := range indexes {
-			qual := sql.NewStatQualifier(dbName, schemaName, tableName, strings.ToLower(idx.ID()))
+			qual := sql.NewStatQualifier(dbName, schemaName, tableName, idx.ID())
 			_, ok := qualToStat[qual]
 			if !ok {
 				qualToStat = nil
@@ -256,9 +256,10 @@ func getCostedIndexScan(
 			}
 		}
 
-		qual := sql.NewStatQualifier(dbName, schemaName, tableName, strings.ToLower(idx.ID()))
+		qual := sql.NewStatQualifier(dbName, schemaName, tableName, idx.ID())
 		stat, ok := qualToStat[qual]
 		if !ok {
+			// create statistic if table is missing a statsProvider
 			stat, err = uniformDistStatisticsForIndex(ctx, statsProvider, iat, idx)
 		}
 		if err != nil {
@@ -2049,7 +2050,7 @@ func indexFds(ctx *sql.Context, tableName string, sch sql.Schema, idx sql.Index)
 }
 
 func newUniformDistStatistic(ctx *sql.Context, dbName, schemaName, tableName string, sch sql.Schema, idx sql.Index, rowCount, avgSize uint64) (sql.Statistic, error) {
-	tablePrefix := fmt.Sprintf("%s.", tableName)
+	tablePrefix := tableName + "."
 
 	distinctCount := rowCount
 	if !idx.IsUnique() {
@@ -2075,7 +2076,7 @@ func newUniformDistStatistic(ctx *sql.Context, dbName, schemaName, tableName str
 		class = sql.IndexClassDefault
 	}
 
-	qual := sql.NewStatQualifier(dbName, schemaName, tableName, strings.ToLower(idx.ID()))
+	qual := sql.NewStatQualifier(dbName, schemaName, tableName, idx.ID())
 	stat := stats.NewStatistic(rowCount, distinctCount, nullCount, avgSize, time.Now(), qual, cols, types, nil, class, nil)
 
 	fds, idxCols, err := indexFds(ctx, tableName, sch, idx)
