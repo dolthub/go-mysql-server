@@ -34,7 +34,7 @@
 // by the Apache License, Version 2.0, included in the file
 // licenses/APL.txt.
 
-package sql
+package sets
 
 import (
 	"bytes"
@@ -48,7 +48,7 @@ import (
 // allocations when the values are small. It is not thread-safe.
 type FastIntSet struct {
 	large *intsets.Sparse
-	// We use a uint64 as long as all elements are between 0 and 63. If we add an
+	// We use an uint64 as long as all elements are between 0 and 63. If we add an
 	// element outside of this range, we switch to Sparse. We don't just use the
 	// latter directly because it's larger and can't be passed around by value.
 	small uint64

@@ -745,7 +745,7 @@ func newVertexSet(s string) vertexSet {
 	v := vertexSet(0)
 	for i, c := range s {
 		if string(c) == "1" {
-			v = v.add(uint64(i))
+			v = v.Add(uint64(i))
 		}
 	}
 	return v

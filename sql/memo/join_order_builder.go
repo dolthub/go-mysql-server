@@ -17,9 +17,9 @@ package memo
 import (
 	"errors"
 	"fmt"
-	"math"
-	"math/bits"
 	"strings"
+
+	"github.com/dolthub/go-mysql-server/sql/sets"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -240,7 +240,7 @@ func (j *joinOrderBuilder) populateSubgraph(ctx *sql.Context, n sql.Node) (verte
 		err := fmt.Errorf("%w: %T", ErrUnsupportedReorderNode, n)
 		j.m.HandleErr(err)
 	}
-	return j.allVertices().difference(startV), j.allEdges().Difference(startE), group
+	return j.allVertices().Difference(startV), j.allEdges().Difference(startE), group
 }
 
 // buildSingleLookupPlan attempts to build a plan consisting only of lookup joins.
@@ -252,7 +252,7 @@ func (j *joinOrderBuilder) buildSingleLookupPlan(ctx *sql.Context) bool {
 	if !hasKey {
 		return false
 	}
-	// We need to include all of the fdKey columns in the innermost join.
+	// We need to include every fdKey columns in the innermost join.
 	// For now, we just handle the case where the key is exactly one column.
 	if fdKey.Len() != 1 {
 		return false
@@ -264,12 +264,12 @@ func (j *joinOrderBuilder) buildSingleLookupPlan(ctx *sql.Context) bool {
 		}
 	}
 	keyColumn, _ := fdKey.Next(1)
-	var currentlyJoinedTables sql.FastIntSet
+	var currentlyJoinedTables sets.FastIntSet
 	var currentlyJoinedVertexes vertexSet
 	for i, n := range j.m.Root().RelProps.TableIdNodes() {
 		if n.Columns().Contains(keyColumn) {
 			currentlyJoinedTables.Add(int(n.Id()))
-			currentlyJoinedVertexes = currentlyJoinedVertexes.add(uint64(i))
+			currentlyJoinedVertexes = currentlyJoinedVertexes.Add(uint64(i))
 			break
 		}
 	}
@@ -335,7 +335,7 @@ func (j *joinOrderBuilder) buildSingleLookupPlan(ctx *sql.Context) bool {
 		var nextVertex vertexSet
 		for i, id := range j.vertexTableIds {
 			if id == nextTableId {
-				nextVertex = nextVertex.add(uint64(i))
+				nextVertex = nextVertex.Add(uint64(i))
 				break
 			}
 		}
@@ -345,7 +345,7 @@ func (j *joinOrderBuilder) buildSingleLookupPlan(ctx *sql.Context) bool {
 		isRedundant := edge.joinIsRedundant(currentlyJoinedVertexes, nextVertex)
 		j.addJoin(ctx, plan.JoinTypeInner, currentlyJoinedVertexes, nextVertex, j.edges[nextEdgeIdx].filters, nil, isRedundant)
 
-		currentlyJoinedVertexes = currentlyJoinedVertexes.union(nextVertex)
+		currentlyJoinedVertexes = currentlyJoinedVertexes.Union(nextVertex)
 		currentlyJoinedTables.Add(int(nextTableId))
 		removedEdges.Add(nextEdgeIdx)
 		succ = true
@@ -436,14 +436,14 @@ func (j *joinOrderBuilder) makeTransitiveEdge(ctx *sql.Context, col1, col2 sql.C
 	if !v1found || !v2found {
 		return
 	}
-	vert = vert.add(v1).add(v2)
+	vert = vert.Add(v1).Add(v2)
 
 	// find edge where the vertices are provided but partitioned
 	var op *operator
 	for _, e := range j.edges {
-		if vert.isSubsetOf(e.op.leftVertices.union(e.op.rightVertices)) &&
-			!vert.isSubsetOf(e.op.leftVertices) &&
-			!vert.isSubsetOf(e.op.rightVertices) {
+		if vert.IsSubsetOf(e.op.leftVertices.Union(e.op.rightVertices)) &&
+			!vert.IsSubsetOf(e.op.leftVertices) &&
+			!vert.IsSubsetOf(e.op.rightVertices) {
 			op = e.op
 			break
 		}
@@ -506,7 +506,7 @@ func (j *joinOrderBuilder) buildJoinOp(ctx *sql.Context, n *plan.JoinNode) *Expr
 
 	filters := expression.SplitConjunction(ctx, n.JoinCond())
 	j.m.Tracer.Log("Join filters: %v", filters)
-	union := leftV.union(rightV)
+	union := leftV.Union(rightV)
 	group, ok := j.plans[union]
 	if !ok {
 		// TODO: memo and root should be initialized prior to join planning
@@ -598,7 +598,7 @@ func (j *joinOrderBuilder) buildJoinLeaf(ctx *sql.Context, n plan.TableIdNode) *
 
 	// Initialize the plan for this vertex.
 	idx := vertexIndex(len(j.vertices) - 1)
-	relSet := vertexSet(0).add(idx)
+	relSet := vertexSet(0).Add(idx)
 	grp := j.m.memoizeSourceRel(ctx, rel)
 	j.plans[relSet] = grp
 	j.vertexGroups = append(j.vertexGroups, grp.Id)
@@ -657,32 +657,32 @@ func (j *joinOrderBuilder) dpEnumerateSubsets(ctx *sql.Context) {
 
 	all := j.allVertices()
 	for subset := vertexSet(1); subset <= all; subset++ {
-		if subset.isSingleton() {
+		if subset.IsSingleton() {
 			continue
 		}
 		for s1 := vertexSet(1); s1 <= subset/2; s1++ {
-			if !s1.isSubsetOf(subset) {
+			if !s1.IsSubsetOf(subset) {
 				continue
 			}
-			s2 := subset.difference(s1)
+			s2 := subset.Difference(s1)
 			j.addPlans(ctx, s1, s2)
 		}
 	}
 }
 
 func setPrinter(all, s1, s2 vertexSet) {
-	s1Arr := make([]string, all.len())
+	s1Arr := make([]string, all.Size())
 	for i := range s1Arr {
 		s1Arr[i] = "0"
 	}
-	s2Arr := make([]string, all.len())
+	s2Arr := make([]string, all.Size())
 	for i := range s2Arr {
 		s2Arr[i] = "0"
 	}
-	for idx, ok := s1.next(0); ok; idx, ok = s1.next(idx + 1) {
+	for idx, ok := s1.Next(0); ok; idx, ok = s1.Next(idx + 1) {
 		s1Arr[idx] = "1"
 	}
-	for idx, ok := s2.next(0); ok; idx, ok = s2.next(idx + 1) {
+	for idx, ok := s2.Next(0); ok; idx, ok = s2.Next(idx + 1) {
 		s2Arr[idx] = "1"
 	}
 	fmt.Printf("s1: %s, s2: %s\n", strings.Join(s1Arr, ""), strings.Join(s2Arr, ""))
@@ -756,10 +756,10 @@ func (j *joinOrderBuilder) addPlans(ctx *sql.Context, s1, s2 vertexSet) {
 }
 
 func (j *joinOrderBuilder) addJoin(ctx *sql.Context, op plan.JoinType, s1, s2 vertexSet, joinFilter, selFilters []sql.Expression, isRedundant bool) {
-	if s1.intersects(s2) {
+	if s1.Intersects(s2) {
 		panic("sets are not disjoint")
 	}
-	union := s1.union(s2)
+	union := s1.Union(s2)
 	left := j.plans[s1]
 	right := j.plans[s2]
 
@@ -926,7 +926,7 @@ type edge struct {
 }
 
 func (e *edge) populateEdgeProps(ctx *sql.Context, tableIds []sql.TableId, edges []edge) {
-	var tables sql.FastIntSet
+	var tables sets.FastIntSet
 	var cols sql.ColSet
 	if len(e.filters) > 0 {
 		for _, e := range e.filters {
@@ -993,13 +993,13 @@ func (e *edge) nullRejectingTables(nullAccepting []sql.Expression, allNames []st
 
 // calcSES updates the syntactic eligibility set for an edge. An SES
 // represents all tables this edge's filters requires as input.
-func (e *edge) calcSES(tables sql.FastIntSet, tableIds []sql.TableId) {
+func (e *edge) calcSES(tables sets.FastIntSet, tableIds []sql.TableId) {
 	ses := vertexSet(0)
 	for i, ok := tables.Next(0); ok; i, ok = tables.Next(i + 1) {
 		for j, tabId := range tableIds {
 			// table ids, group ids, and vertex ids are all distinct
 			if sql.TableId(i) == tabId {
-				ses = ses.add(vertexIndex(j))
+				ses = ses.Add(vertexIndex(j))
 				break
 			}
 		}
@@ -1028,16 +1028,16 @@ func (e *edge) calcTES(edges []edge) {
 	//   of s1 or the right tree provides a subset of s2. This is logically
 	//   equivalent to expanding the TES here, but front-loads this logic
 	//   because a bigger TES earlier reduces the conflict checking work.
-	if !e.tes.intersects(e.op.leftVertices) {
-		e.tes = e.tes.union(e.op.leftVertices)
+	if !e.tes.Intersects(e.op.leftVertices) {
+		e.tes = e.tes.Union(e.op.leftVertices)
 	}
-	if !e.tes.intersects(e.op.rightVertices) {
-		e.tes = e.tes.union(e.op.rightVertices)
+	if !e.tes.Intersects(e.op.rightVertices) {
+		e.tes = e.tes.Union(e.op.rightVertices)
 	}
 
 	// left join can't be moved such that we transpose left-dependencies
 	if e.op.joinType.IsLeftOuter() {
-		e.tes = e.tes.union(e.op.leftVertices)
+		e.tes = e.tes.Union(e.op.leftVertices)
 	}
 
 	// CD-C algorithm
@@ -1048,7 +1048,7 @@ func (e *edge) calcTES(edges []edge) {
 	// iterate every eA in STO(left(eB))
 	eB := e
 	for idx, ok := eB.op.leftEdges.Next(0); ok; idx, ok = eB.op.leftEdges.Next(idx + 1) {
-		if eB.op.leftVertices.isSubsetOf(eB.tes) {
+		if eB.op.leftVertices.IsSubsetOf(eB.tes) {
 			// Fast path to break out early: the TES includes all relations from the
 			// left input.
 			break
@@ -1058,9 +1058,9 @@ func (e *edge) calcTES(edges []edge) {
 			// The edges are not associative, so add a conflict rule mapping from the
 			// right input relations of the child to its left input relations.
 			rule := conflictRule{from: eA.op.rightVertices}
-			if eA.op.leftVertices.intersects(eA.ses) {
+			if eA.op.leftVertices.Intersects(eA.ses) {
 				// A less restrictive conflict rule can be added in this case.
-				rule.to = eA.op.leftVertices.intersection(eA.ses)
+				rule.to = eA.op.leftVertices.Intersection(eA.ses)
 			} else {
 				rule.to = eA.op.leftVertices
 			}
@@ -1070,9 +1070,9 @@ func (e *edge) calcTES(edges []edge) {
 			// Left-asscom does not hold, so add a conflict rule mapping from the
 			// left input relations of the child to its right input relations.
 			rule := conflictRule{from: eA.op.leftVertices}
-			if eA.op.rightVertices.intersects(eA.ses) {
+			if eA.op.rightVertices.Intersects(eA.ses) {
 				// A less restrictive conflict rule can be added in this case.
-				rule.to = eA.op.rightVertices.intersection(eA.ses)
+				rule.to = eA.op.rightVertices.Intersection(eA.ses)
 			} else {
 				rule.to = eA.op.rightVertices
 			}
@@ -1081,7 +1081,7 @@ func (e *edge) calcTES(edges []edge) {
 	}
 
 	for idx, ok := e.op.rightEdges.Next(0); ok; idx, ok = e.op.rightEdges.Next(idx + 1) {
-		if e.op.rightVertices.isSubsetOf(e.tes) {
+		if e.op.rightVertices.IsSubsetOf(e.tes) {
 			// Fast path to break out early: the TES includes all relations from the
 			// right input.
 			break
@@ -1091,9 +1091,9 @@ func (e *edge) calcTES(edges []edge) {
 			// The edges are not associative, so add a conflict rule mapping from the
 			// left input relations of the child to its right input relations.
 			rule := conflictRule{from: eA.op.leftVertices}
-			if eA.op.rightVertices.intersects(eA.ses) {
+			if eA.op.rightVertices.Intersects(eA.ses) {
 				// A less restrictive conflict rule can be added in this case.
-				rule.to = eA.op.rightVertices.intersection(eA.ses)
+				rule.to = eA.op.rightVertices.Intersection(eA.ses)
 			} else {
 				rule.to = eA.op.rightVertices
 			}
@@ -1103,9 +1103,9 @@ func (e *edge) calcTES(edges []edge) {
 			// Right-asscom does not hold, so add a conflict rule mapping from the
 			// right input relations of the child to its left input relations.
 			rule := conflictRule{from: eA.op.rightVertices}
-			if eA.op.leftVertices.intersects(eA.ses) {
+			if eA.op.leftVertices.Intersects(eA.ses) {
 				// A less restrictive conflict rule can be added in this case.
-				rule.to = eA.op.leftVertices.intersection(eA.ses)
+				rule.to = eA.op.leftVertices.Intersection(eA.ses)
 			} else {
 				rule.to = eA.op.leftVertices
 			}
@@ -1117,13 +1117,13 @@ func (e *edge) calcTES(edges []edge) {
 // addRule adds the given conflict rule to the edge. Before the rule is added to
 // the rules set, an effort is made to eliminate the need for the rule.
 func (e *edge) addRule(rule conflictRule) {
-	if rule.from.intersects(e.tes) {
+	if rule.from.Intersects(e.tes) {
 		// If the 'from' relation set intersects the total eligibility set, simply
 		// add the 'to' set to the TES because the rule will always be triggered.
-		e.tes = e.tes.union(rule.to)
+		e.tes = e.tes.Union(rule.to)
 		return
 	}
-	if rule.to.isSubsetOf(e.tes) {
+	if rule.to.IsSubsetOf(e.tes) {
 		// If the 'to' relation set is a subset of the total eligibility set, the
 		// rule is a do-nothing.
 		return
@@ -1142,14 +1142,14 @@ func (e *edge) applicable(s1, s2 vertexSet) bool {
 		// The TES must be a subset of the relations of the candidate join inputs. In
 		// addition, the TES must intersect both s1 and s2 (the edge must connect the
 		// two vertex sets).
-		return e.tes.isSubsetOf(s1.union(s2)) && e.tes.intersects(s1) && e.tes.intersects(s2)
+		return e.tes.IsSubsetOf(s1.Union(s2)) && e.tes.Intersects(s1) && e.tes.Intersects(s2)
 	default:
 		// The left TES must be a subset of the s1 relations, and the right TES must
 		// be a subset of the s2 relations. In addition, the TES must intersect both
 		// s1 and s2 (the edge must connect the two vertex sets).
-		return e.tes.intersection(e.op.leftVertices).isSubsetOf(s1) &&
-			e.tes.intersection(e.op.rightVertices).isSubsetOf(s2) &&
-			e.tes.intersects(s1) && e.tes.intersects(s2)
+		return e.tes.Intersection(e.op.leftVertices).IsSubsetOf(s1) &&
+			e.tes.Intersection(e.op.rightVertices).IsSubsetOf(s2) &&
+			e.tes.Intersects(s1) && e.tes.Intersects(s2)
 	}
 }
 
@@ -1157,9 +1157,9 @@ func (e *edge) applicable(s1, s2 vertexSet) bool {
 // is detected for the given sets of join input relations. Otherwise, returns
 // true.
 func (e *edge) checkRules(s1, s2 vertexSet) bool {
-	s := s1.union(s2)
+	s := s1.Union(s2)
 	for _, rule := range e.rules {
-		if rule.from.intersects(s) && !rule.to.isSubsetOf(s) {
+		if rule.from.Intersects(s) && !rule.to.IsSubsetOf(s) {
 			// The join is invalid because it does not obey this conflict rule.
 			return false
 		}
@@ -1187,7 +1187,7 @@ type assocTransform func(eA, eB *edge) bool
 //
 // note: important to compare edge ordering for left deep tree.
 func assoc(eA, eB *edge) bool {
-	if eB.ses.intersects(eA.op.leftVertices) || eA.ses.intersects(eB.op.rightVertices) {
+	if eB.ses.Intersects(eA.op.leftVertices) || eA.ses.Intersects(eB.op.rightVertices) {
 		// associating two operators can estrange the distant relation.
 		// for example:
 		//   (e2 op_a_12 e1) op_b_13 e3
@@ -1216,7 +1216,7 @@ func assoc(eA, eB *edge) bool {
 //	=>
 //	(e1 op_b_13 e3) op_a_12 e2
 func leftAsscom(eA, eB *edge) bool {
-	if eB.ses.intersects(eA.op.rightVertices) || eA.ses.intersects(eB.op.rightVertices) {
+	if eB.ses.Intersects(eA.op.rightVertices) || eA.ses.Intersects(eB.op.rightVertices) {
 		// Associating two operators can estrange the distant relation.
 		// For example:
 		//	(e1 op_a_12 e2) op_b_23 e3
@@ -1237,7 +1237,7 @@ func leftAsscom(eA, eB *edge) bool {
 //	=>
 //	e2 op_a_23 (e1 op_b_13 e3)
 func rightAsscom(eA, eB *edge) bool {
-	if eB.ses.intersects(eA.op.leftVertices) || eA.ses.intersects(eB.op.leftVertices) {
+	if eB.ses.Intersects(eA.op.leftVertices) || eA.ses.Intersects(eB.op.leftVertices) {
 		// Associating two operators can estrange the distant relation.
 		// For example:
 		//	e3 op_b_23 (e1 op_a_12 e3)
@@ -1429,14 +1429,14 @@ func checkProperty(table [8][8]lookupTableEntry, edgeA, edgeB *edge) bool {
 	if entry&filterA != 0 {
 		// The filters of edgeA must reject nulls on one or more of the relations in
 		// nullRejectRelations.
-		if !edgeA.nullRejectedRels.intersects(candidateNullRejectRels) {
+		if !edgeA.nullRejectedRels.Intersects(candidateNullRejectRels) {
 			return false
 		}
 	}
 	if entry&filterB != 0 {
 		// The filters of edgeB must reject nulls on one or more of the relations in
 		// nullRejectRelations.
-		if !edgeB.nullRejectedRels.intersects(candidateNullRejectRels) {
+		if !edgeB.nullRejectedRels.Intersects(candidateNullRejectRels) {
 			return false
 		}
 	}
@@ -1470,109 +1470,12 @@ func getOpIdx(e *edge) int {
 	}
 }
 
-type edgeSet = sql.FastIntSet
-
-type bitSet uint64
+type edgeSet = sets.FastIntSet
 
 // vertexSet represents a set of base relations that form the vertexes of the
 // join graph.
-type vertexSet = bitSet
-
-const maxSetSize = 63
+type vertexSet = sets.BitSet
 
 // vertexIndex represents the ordinal position of a base relation in the
 // JoinOrderBuilder vertexes field. vertexIndex must be less than maxSetSize.
 type vertexIndex = uint64
-
-func newBitSet(idxs ...uint64) (res bitSet) {
-	for _, idx := range idxs {
-		res = res.add(idx)
-	}
-	return res
-}
-
-// add returns a copy of the bitSet with the given element added.
-func (s bitSet) add(idx uint64) bitSet {
-	if idx > maxSetSize {
-		panic(fmt.Sprintf("cannot insert %d into bitSet", idx))
-	}
-	return s | (1 << idx)
-}
-
-// remove returns a copy of the bitSet with the given element removed.
-func (s bitSet) remove(idx uint64) bitSet {
-	if idx > maxSetSize {
-		panic(fmt.Sprintf("%d is invalid index for bitSet", idx))
-	}
-	return s & ^(1 << idx)
-}
-
-// contains returns whether a bitset contains a given element.
-func (s bitSet) contains(idx uint64) bool {
-	if idx > maxSetSize {
-		panic(fmt.Sprintf("%d is invalid index for bitSet", idx))
-	}
-	return s&(1<<idx) != 0
-}
-
-// union returns the set union of this set with the given set.
-func (s bitSet) union(o bitSet) bitSet {
-	return s | o
-}
-
-// intersection returns the set intersection of this set with the given set.
-func (s bitSet) intersection(o bitSet) bitSet {
-	return s & o
-}
-
-// difference returns the set difference of this set with the given set.
-func (s bitSet) difference(o bitSet) bitSet {
-	return s & ^o
-}
-
-// intersects returns true if this set and the given set intersect.
-func (s bitSet) intersects(o bitSet) bool {
-	return s.intersection(o) != 0
-}
-
-// isSubsetOf returns true if this set is a subset of the given set.
-func (s bitSet) isSubsetOf(o bitSet) bool {
-	return s.union(o) == o
-}
-
-// isSingleton returns true if the set has exactly one element.
-func (s bitSet) isSingleton() bool {
-	return s > 0 && (s&(s-1)) == 0
-}
-
-// next returns the next element in the set after the given start index, and
-// a bool indicating whether such an element exists.
-func (s bitSet) next(startVal uint64) (elem uint64, ok bool) {
-	if startVal < maxSetSize {
-		if ntz := bits.TrailingZeros64(uint64(s >> startVal)); ntz < 64 {
-			return startVal + uint64(ntz), true
-		}
-	}
-	return uint64(math.MaxInt64), false
-}
-
-// len returns the number of elements in the set.
-func (s bitSet) len() int {
-	return bits.OnesCount64(uint64(s))
-}
-
-func (s bitSet) String() string {
-	var str string
-	var i vertexSet = 1
-	cnt := 0
-	for cnt < s.len() {
-		if (i & s) != 0 {
-			str += "1"
-			cnt++
-		} else {
-			str += "0"
-		}
-		i = i << 1
-	}
-	return str
-}
