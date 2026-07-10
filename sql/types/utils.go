@@ -26,7 +26,7 @@ func GetCompareType(left, right sql.Type) sql.Type {
 		return left
 	}
 	if _, ok := left.(sql.ExtendedType); ok {
-		// TODO: preferably should return Doltgres TEXT type by default
+		// TODO: We must use Postgres functions for the comparison rather than a type!
 		return left
 	}
 	if IsTuple(left) && IsTuple(right) {
