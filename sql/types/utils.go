@@ -25,6 +25,10 @@ func GetCompareType(left, right sql.Type) sql.Type {
 	if left.Equals(right) {
 		return left
 	}
+	if _, ok := left.(sql.ExtendedType); ok {
+		// TODO: preferably should return Doltgres TEXT type by default
+		return left
+	}
 	if IsTuple(left) && IsTuple(right) {
 		return left
 	}
