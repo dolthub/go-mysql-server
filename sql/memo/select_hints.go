@@ -195,7 +195,7 @@ func (o joinOrderHint) build(grp *ExprGroup) {
 		if i, ok := o.order[sql.TableId(idx)]; ok {
 			// If group |idx+1| is a dependency of this table, record the
 			// ordinal position of that group given by the hint order.
-			s = s.add(i)
+			s = s.Add(i)
 		}
 	}
 	o.groups[grp.Id] = s
@@ -266,15 +266,15 @@ func (o joinOrderHint) isCompact(s1, s2 vertexSet) bool {
 	if s1 == 0 || s2 == 0 {
 		panic("unexpected nil vertex set")
 	}
-	union := s1.union(s2)
-	last, _ := union.next(0)
-	next, ok := union.next(last + 1)
+	union := s1.Union(s2)
+	last, _ := union.Next(0)
+	next, ok := union.Next(last + 1)
 	for ok {
 		if last+1 != next {
 			return false
 		}
 		last = next
-		next, ok = union.next(next + 1)
+		next, ok = union.Next(next + 1)
 	}
 
 	// sets are compact, s1 higher than s2

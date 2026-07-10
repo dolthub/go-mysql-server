@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package memo
+package sets
 
 import (
 	"fmt"
@@ -22,70 +22,75 @@ import (
 
 type BitSet uint64
 
-func newBitSet(idxs ...uint64) (res BitSet) {
+const maxSetSize = 63
+
+func NewBitSet(idxs ...uint64) (res BitSet) {
 	for _, idx := range idxs {
-		res = res.add(idx)
+		res = res.Add(idx)
 	}
 	return res
 }
 
-// add returns a copy of the bitSet with the given element added.
-func (s BitSet) add(idx uint64) BitSet {
+// Add returns a copy of the bitSet with the given element added.
+func (s BitSet) Add(idx uint64) BitSet {
+	// TODO: return error instead of panicking
 	if idx > maxSetSize {
 		panic(fmt.Sprintf("cannot insert %d into bitSet", idx))
 	}
 	return s | (1 << idx)
 }
 
-// remove returns a copy of the bitSet with the given element removed.
-func (s BitSet) remove(idx uint64) BitSet {
+// Remove returns a copy of the bitSet with the given element removed.
+func (s BitSet) Remove(idx uint64) BitSet {
+	// TODO: return error instead of panicking
 	if idx > maxSetSize {
 		panic(fmt.Sprintf("%d is invalid index for bitSet", idx))
 	}
 	return s & ^(1 << idx)
 }
 
-// contains returns whether a bitset contains a given element.
-func (s BitSet) contains(idx uint64) bool {
+// Contains returns whether a bitset contains a given element.
+func (s BitSet) Contains(idx uint64) bool {
+	// TODO: return error instead of panicking
 	if idx > maxSetSize {
 		panic(fmt.Sprintf("%d is invalid index for bitSet", idx))
 	}
 	return s&(1<<idx) != 0
 }
 
-// union returns the set union of this set with the given set.
-func (s BitSet) union(o BitSet) BitSet {
+// Union returns the set union of this set with the given set.
+func (s BitSet) Union(o BitSet) BitSet {
 	return s | o
 }
 
-// intersection returns the set intersection of this set with the given set.
-func (s BitSet) intersection(o BitSet) BitSet {
+// Intersection returns the set intersection of this set with the given set.
+func (s BitSet) Intersection(o BitSet) BitSet {
 	return s & o
 }
 
-// difference returns the set difference of this set with the given set.
-func (s BitSet) difference(o BitSet) BitSet {
+// Difference returns the set difference of this set with the given set.
+func (s BitSet) Difference(o BitSet) BitSet {
 	return s & ^o
 }
 
-// intersects returns true if this set and the given set intersect.
-func (s BitSet) intersects(o BitSet) bool {
-	return s.intersection(o) != 0
+// Intersects returns true if this set and the given set intersect.
+func (s BitSet) Intersects(o BitSet) bool {
+	return s.Intersection(o) != 0
 }
 
-// isSubsetOf returns true if this set is a subset of the given set.
-func (s BitSet) isSubsetOf(o BitSet) bool {
-	return s.union(o) == o
+// IsSubsetOf returns true if this set is a subset of the given set.
+func (s BitSet) IsSubsetOf(o BitSet) bool {
+	return s.Union(o) == o
 }
 
-// isSingleton returns true if the set has exactly one element.
-func (s BitSet) isSingleton() bool {
+// IsSingleton returns true if the set has exactly one element.
+func (s BitSet) IsSingleton() bool {
 	return s > 0 && (s&(s-1)) == 0
 }
 
-// next returns the next element in the set after the given start index, and
+// Next returns the next element in the set after the given start index, and
 // a bool indicating whether such an element exists.
-func (s BitSet) next(startVal uint64) (elem uint64, ok bool) {
+func (s BitSet) Next(startVal uint64) (elem uint64, ok bool) {
 	if startVal < maxSetSize {
 		if ntz := bits.TrailingZeros64(uint64(s >> startVal)); ntz < 64 {
 			return startVal + uint64(ntz), true
@@ -94,8 +99,8 @@ func (s BitSet) next(startVal uint64) (elem uint64, ok bool) {
 	return uint64(math.MaxInt64), false
 }
 
-// len returns the number of elements in the set.
-func (s BitSet) len() int {
+// Size returns the number of elements in the set.
+func (s BitSet) Size() int {
 	return bits.OnesCount64(uint64(s))
 }
 
@@ -103,7 +108,7 @@ func (s BitSet) String() string {
 	var str string
 	var i BitSet = 1
 	cnt := 0
-	for cnt < s.len() {
+	for cnt < s.Size() {
 		if (i & s) != 0 {
 			str += "1"
 			cnt++
