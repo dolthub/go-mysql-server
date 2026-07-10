@@ -1473,7 +1473,7 @@ type edgeSet = sets.FastIntSet
 
 // vertexSet represents a set of base relations that form the vertexes of the
 // join graph.
-type vertexSet = bitSet
+type vertexSet = BitSet
 
 const maxSetSize = 63
 
