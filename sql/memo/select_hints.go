@@ -16,6 +16,7 @@ package memo
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/sets"
 	"regexp"
 	"strings"
 
@@ -283,16 +284,16 @@ func (o joinOrderHint) isCompact(s1, s2 vertexSet) bool {
 // joinOpHint encodes a hint for a physical operator between
 // two relations.
 type joinOpHint struct {
-	l  sql.FastIntSet
-	r  sql.FastIntSet
+	l  sets.FastIntSet
+	r  sets.FastIntSet
 	op HintType
 }
 
 func newjoinOpHint(op HintType, left, right sql.TableId) joinOpHint {
 	return joinOpHint{
 		op: op,
-		l:  sql.NewFastIntSet(int(left)),
-		r:  sql.NewFastIntSet(int(right)),
+		l:  sets.NewFastIntSet(int(left)),
+		r:  sets.NewFastIntSet(int(right)),
 	}
 }
 

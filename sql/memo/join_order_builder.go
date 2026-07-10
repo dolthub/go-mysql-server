@@ -17,6 +17,7 @@ package memo
 import (
 	"errors"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/sets"
 	"math"
 	"math/bits"
 	"strings"
@@ -264,7 +265,7 @@ func (j *joinOrderBuilder) buildSingleLookupPlan(ctx *sql.Context) bool {
 		}
 	}
 	keyColumn, _ := fdKey.Next(1)
-	var currentlyJoinedTables sql.FastIntSet
+	var currentlyJoinedTables sets.FastIntSet
 	var currentlyJoinedVertexes vertexSet
 	for i, n := range j.m.Root().RelProps.TableIdNodes() {
 		if n.Columns().Contains(keyColumn) {
@@ -926,7 +927,7 @@ type edge struct {
 }
 
 func (e *edge) populateEdgeProps(ctx *sql.Context, tableIds []sql.TableId, edges []edge) {
-	var tables sql.FastIntSet
+	var tables sets.FastIntSet
 	var cols sql.ColSet
 	if len(e.filters) > 0 {
 		for _, e := range e.filters {
@@ -993,7 +994,7 @@ func (e *edge) nullRejectingTables(nullAccepting []sql.Expression, allNames []st
 
 // calcSES updates the syntactic eligibility set for an edge. An SES
 // represents all tables this edge's filters requires as input.
-func (e *edge) calcSES(tables sql.FastIntSet, tableIds []sql.TableId) {
+func (e *edge) calcSES(tables sets.FastIntSet, tableIds []sql.TableId) {
 	ses := vertexSet(0)
 	for i, ok := tables.Next(0); ok; i, ok = tables.Next(i + 1) {
 		for j, tabId := range tableIds {
@@ -1470,7 +1471,7 @@ func getOpIdx(e *edge) int {
 	}
 }
 
-type edgeSet = sql.FastIntSet
+type edgeSet = sets.FastIntSet
 
 type bitSet uint64
 

@@ -16,6 +16,7 @@ package analyzer
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/sets"
 	"strings"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -84,7 +85,7 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 		}
 
 		// The schema of the destination node and the underlying table differ subtly in terms of defaults
-		var deferredDefaults sql.FastIntSet
+		var deferredDefaults sets.FastIntSet
 		project, firstGeneratedAutoIncRowIdx, deferredDefaults, err := wrapRowSource(
 			ctx,
 			source,
@@ -131,9 +132,9 @@ func findColIdx(colName string, colNames []string) int {
 // wrapRowSource returns a projection that wraps the original row source so that its schema matches the full schema of
 // the underlying table in the same order. Also, returns an integer value that indicates when this row source will
 // result in an automatically generated value for an auto_increment column.
-func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, schema sql.Schema, columnNames []string) (sql.Node, int, sql.FastIntSet, error) {
+func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, schema sql.Schema, columnNames []string) (sql.Node, int, sets.FastIntSet, error) {
 	projExprs := make([]sql.Expression, len(schema))
-	deferredDefaults := sql.NewFastIntSet()
+	deferredDefaults := sets.NewFastIntSet()
 	firstGeneratedAutoIncRowIdx := -1
 
 	for i, col := range schema {
@@ -166,7 +167,7 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 				}
 			})
 			if err != nil {
-				return nil, -1, sql.FastIntSet{}, err
+				return nil, -1, sets.FastIntSet{}, err
 			}
 			projExprs[i] = def
 		} else {
@@ -178,7 +179,7 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 			// wrap it in an AutoIncrement expression.
 			ai, err := expression.NewAutoIncrement(ctx, destTbl, projExprs[i])
 			if err != nil {
-				return nil, -1, sql.FastIntSet{}, err
+				return nil, -1, sets.FastIntSet{}, err
 			}
 			projExprs[i] = ai
 
@@ -221,7 +222,7 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 			// ColumnDefaultValue to create the UUID), then update the project to include the AutoUuid expression.
 			newExpr, identity, err := insertAutoUuidExpression(ctx, columnDefaultValue, autoUuidCol)
 			if err != nil {
-				return nil, -1, sql.FastIntSet{}, err
+				return nil, -1, sets.FastIntSet{}, err
 			}
 			if identity == transform.NewTree {
 				projExprs[autoUuidColIdx] = newExpr
@@ -232,7 +233,7 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 			// the AutoUuid expression to it.
 			err := wrapAutoUuidInValuesTuples(ctx, autoUuidCol, insertSource, columnNames)
 			if err != nil {
-				return nil, -1, sql.FastIntSet{}, err
+				return nil, -1, sets.FastIntSet{}, err
 			}
 		}
 	}

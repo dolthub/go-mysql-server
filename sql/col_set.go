@@ -3,12 +3,13 @@ package sql
 import (
 	"bytes"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/sets"
 )
 
 type ColumnId uint16
 
 type ColSet struct {
-	set FastIntSet
+	set sets.FastIntSet
 }
 
 func NewColSet(vals ...ColumnId) ColSet {
@@ -19,7 +20,7 @@ func NewColSet(vals ...ColumnId) ColSet {
 	return ret
 }
 
-func NewColSetFromIntSet(set FastIntSet) ColSet {
+func NewColSetFromIntSet(set sets.FastIntSet) ColSet {
 	return ColSet{set: set}
 }
 

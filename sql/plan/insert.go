@@ -15,6 +15,7 @@
 package plan
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/sets"
 	"strings"
 
 	"gopkg.in/src-d/go-errors.v1"
@@ -63,7 +64,7 @@ type InsertInto struct {
 	Destination sql.Node
 	Source      sql.Node
 	// DeferredDefaults marks which columns in the destination schema are expected to have default values.
-	DeferredDefaults sql.FastIntSet
+	DeferredDefaults sets.FastIntSet
 
 	ColumnNames []string
 
@@ -226,7 +227,7 @@ func (ii *InsertInto) WithAutoIncrementIdx(firstGeneratedAutoIncRowIdx int) *Ins
 
 // WithDeferredDefaults sets the flags for the insert destination columns, which mark which of the columns are expected
 // to be filled with the DEFAULT or GENERATED value.
-func (ii *InsertInto) WithDeferredDefaults(deferredDefaults sql.FastIntSet) *InsertInto {
+func (ii *InsertInto) WithDeferredDefaults(deferredDefaults sets.FastIntSet) *InsertInto {
 	np := *ii
 	np.DeferredDefaults = deferredDefaults
 	return &np

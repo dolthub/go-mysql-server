@@ -17,6 +17,7 @@ package rowexec
 import (
 	"context"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/sets"
 	"io"
 
 	"github.com/dolthub/vitess/go/mysql"
@@ -40,7 +41,7 @@ type insertIter struct {
 	onDupKeyUpdateExprs *plan.UpdateExprs
 	unlocker            func()
 
-	deferredDefaults sql.FastIntSet
+	deferredDefaults sets.FastIntSet
 	checks           sql.CheckConstraints
 	schema           sql.Schema
 	returnSchema     sql.Schema

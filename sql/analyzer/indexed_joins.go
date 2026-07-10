@@ -17,6 +17,7 @@ package analyzer
 import (
 	"errors"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/sets"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -1119,7 +1120,7 @@ func addRangeHeapJoin(ctx *sql.Context, m *memo.Memo) error {
 
 // satisfiesScalarRefs returns true if all GetFields in the expression
 // are columns provided by |tables|
-func satisfiesScalarRefs(ctx *sql.Context, e sql.Expression, tables sql.FastIntSet) bool {
+func satisfiesScalarRefs(ctx *sql.Context, e sql.Expression, tables sets.FastIntSet) bool {
 	// |grp| provides all tables referenced in |e|
 	return !transform.InspectExpr(ctx, e, func(ctx *sql.Context, e sql.Expression) bool {
 		gf, _ := e.(*expression.GetField)

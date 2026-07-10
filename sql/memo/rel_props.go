@@ -17,6 +17,7 @@ package memo
 import (
 	"errors"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/sets"
 	"math"
 	"strings"
 
@@ -32,8 +33,8 @@ import (
 type relProps struct {
 	outputCols   sql.ColSet
 	reqIdxCols   sql.ColSet
-	inputTables  sql.FastIntSet
-	outputTables sql.FastIntSet
+	inputTables  sets.FastIntSet
+	outputTables sets.FastIntSet
 	stat         sql.Statistic
 	Limit        sql.Expression
 	grp          *ExprGroup
@@ -558,9 +559,9 @@ func getJoinStats(ctx *sql.Context, leftIdx, rightIdx, leftChild, rightChild sql
 
 // getExprScalarProps returns bitsets of the column and table references,
 // and whether the expression is null rejecting.
-func getExprScalarProps(ctx *sql.Context, e sql.Expression) (sql.ColSet, sql.FastIntSet, bool) {
+func getExprScalarProps(ctx *sql.Context, e sql.Expression) (sql.ColSet, sets.FastIntSet, bool) {
 	var cols sql.ColSet
-	var tables sql.FastIntSet
+	var tables sets.FastIntSet
 	nullRej := true
 	transform.InspectExpr(ctx, e, func(ctx *sql.Context, e sql.Expression) bool {
 		switch e := e.(type) {
@@ -666,7 +667,7 @@ func (p *relProps) FuncDeps(ctx *sql.Context) *sql.FuncDepSet {
 func (p *relProps) populateOutputTables() {
 	switch n := p.grp.First.(type) {
 	case SourceRel:
-		p.outputTables = sql.NewFastIntSet(int(n.TableIdNode().Id()))
+		p.outputTables = sets.NewFastIntSet(int(n.TableIdNode().Id()))
 		p.tableNodes = []plan.TableIdNode{n.TableIdNode()}
 	case *AntiJoin:
 		p.outputTables = n.Left.RelProps.OutputTables()
@@ -713,7 +714,7 @@ func (p *relProps) populateOutputTables() {
 func (p *relProps) populateInputTables() {
 	switch n := p.grp.First.(type) {
 	case SourceRel:
-		p.inputTables = sql.NewFastIntSet(int(n.TableIdNode().Id()))
+		p.inputTables = sets.NewFastIntSet(int(n.TableIdNode().Id()))
 	case *Distinct:
 		p.inputTables = n.Child.RelProps.InputTables()
 	case *Project:
@@ -777,7 +778,7 @@ func (p *relProps) OutputCols(ctx *sql.Context) sql.ColSet {
 }
 
 // OutputTables returns a bitmap of tables in the output schema of this node.
-func (p *relProps) OutputTables() sql.FastIntSet {
+func (p *relProps) OutputTables() sets.FastIntSet {
 	return p.outputTables
 }
 
@@ -787,7 +788,7 @@ func (p *relProps) TableIdNodes() []plan.TableIdNode {
 }
 
 // InputTables returns a bitmap of tables input into this node.
-func (p *relProps) InputTables() sql.FastIntSet {
+func (p *relProps) InputTables() sets.FastIntSet {
 	return p.inputTables
 }
 

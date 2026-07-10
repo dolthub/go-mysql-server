@@ -17,6 +17,7 @@ package analyzer
 import (
 	"cmp"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/sets"
 	"slices"
 	"sort"
 	"strings"
@@ -503,9 +504,9 @@ type indexCoster struct {
 	// idToExpr is a record of conj decomposition so we can remove duplicates later
 	idToExpr map[indexScanId]sql.Expression
 	// bestFilters is the set of conjunctions used to create bestStat
-	bestFilters sql.FastIntSet
+	bestFilters sets.FastIntSet
 	// bestConstant are the constant best filters
-	bestConstant sql.FastIntSet
+	bestConstant sets.FastIntSet
 
 	underlyingName string
 	// indexedExprs holds the indexed functional expressions available for this table, paired
@@ -528,7 +529,7 @@ func (c *indexCoster) cost(ctx *sql.Context, f indexFilter, stat sql.Statistic, 
 
 	var newHist []sql.HistogramBucket
 	var newFds *sql.FuncDepSet
-	var filters sql.FastIntSet
+	var filters sets.FastIntSet
 	var prefix int
 	var err error
 	var ok bool
@@ -570,7 +571,7 @@ func (c *indexCoster) cost(ctx *sql.Context, f indexFilter, stat sql.Statistic, 
 	return nil
 }
 
-func (c *indexCoster) updateBest(s sql.Statistic, hist []sql.HistogramBucket, fds *sql.FuncDepSet, filters sql.FastIntSet, prefix int, hasRange bool) {
+func (c *indexCoster) updateBest(s sql.Statistic, hist []sql.HistogramBucket, fds *sql.FuncDepSet, filters sets.FastIntSet, prefix int, hasRange bool) {
 	if s == nil || filters.Len() == 0 {
 		return
 	}
@@ -711,9 +712,9 @@ func (c *indexCoster) updateBest(s sql.Statistic, hist []sql.HistogramBucket, fd
 	}
 }
 
-func (c *indexCoster) getConstAndNullFilters(filters sql.FastIntSet) (sql.FastIntSet, sql.FastIntSet) {
-	var isConst sql.FastIntSet
-	var isNull sql.FastIntSet
+func (c *indexCoster) getConstAndNullFilters(filters sets.FastIntSet) (sets.FastIntSet, sets.FastIntSet) {
+	var isConst sets.FastIntSet
+	var isNull sets.FastIntSet
 	for i, hasNext := filters.Next(0); hasNext; i, hasNext = filters.Next(i + 1) {
 		e := c.idToExpr[indexScanId(i)]
 		switch e.(type) {
@@ -742,7 +743,7 @@ func NewDefaultLogicTreeWalker() sql.ExpressionTreeFilter {
 // buildRoot converts a filter into a tree of indexFilter, a format designed
 // to make costing index scans easier. We return the root of the new tree
 // and a conjunction of filters that cannot be pushed into index scans.
-func (c *indexCoster) buildRoot(ctx *sql.Context, e sql.Expression, walker sql.ExpressionTreeFilter) (indexFilter, sql.Expression, sql.FastIntSet) {
+func (c *indexCoster) buildRoot(ctx *sql.Context, e sql.Expression, walker sql.ExpressionTreeFilter) (indexFilter, sql.Expression, sets.FastIntSet) {
 	e = c.transformForIndexCosting(ctx, e)
 	e = walker.Next(e)
 
@@ -768,9 +769,9 @@ func (c *indexCoster) buildRoot(ctx *sql.Context, e sql.Expression, walker sql.E
 		c.i++
 		valid, imp := c.buildOr(ctx, e, newOr, walker)
 		if !valid {
-			return nil, e, sql.FastIntSet{}
+			return nil, e, sets.FastIntSet{}
 		}
-		var imprecise sql.FastIntSet
+		var imprecise sets.FastIntSet
 		if imp {
 			imprecise.Add(int(newOr.id))
 		}
@@ -781,9 +782,9 @@ func (c *indexCoster) buildRoot(ctx *sql.Context, e sql.Expression, walker sql.E
 		leaf, ok := c.buildLeaf(ctx, c.i, e)
 		c.i++
 		if !ok {
-			return nil, e, sql.FastIntSet{}
+			return nil, e, sets.FastIntSet{}
 		}
-		var imprecise sql.FastIntSet
+		var imprecise sets.FastIntSet
 		if !expression.PreciseComparison(ctx, e) {
 			imprecise.Add(int(leaf.id))
 		}
@@ -792,9 +793,9 @@ func (c *indexCoster) buildRoot(ctx *sql.Context, e sql.Expression, walker sql.E
 }
 
 // buildAnd return two bitsets to indicate invalid index filter ids, and imprecise filter ids
-func (c *indexCoster) buildAnd(ctx *sql.Context, e *expression.And, and *iScanAnd, walker sql.ExpressionTreeFilter) (sql.FastIntSet, sql.FastIntSet) {
-	var invalid sql.FastIntSet
-	var imprecise sql.FastIntSet
+func (c *indexCoster) buildAnd(ctx *sql.Context, e *expression.And, and *iScanAnd, walker sql.ExpressionTreeFilter) (sets.FastIntSet, sets.FastIntSet) {
+	var invalid sets.FastIntSet
+	var imprecise sets.FastIntSet
 	for _, e := range e.Children() {
 		switch e := walker.Next(e).(type) {
 		case *expression.And:
@@ -875,7 +876,7 @@ func (c *indexCoster) buildOr(ctx *sql.Context, e *expression.Or, or *iScanOr, w
 	return true, imprecise
 }
 
-func newIndexScanRangeBuilder(ctx *sql.Context, idx sql.Index, include, imprecise sql.FastIntSet, idToExpr map[indexScanId]sql.Expression) *indexScanRangeBuilder {
+func newIndexScanRangeBuilder(ctx *sql.Context, idx sql.Index, include, imprecise sets.FastIntSet, idToExpr map[indexScanId]sql.Expression) *indexScanRangeBuilder {
 	return &indexScanRangeBuilder{
 		ctx:       ctx,
 		idx:       idx,
@@ -890,8 +891,8 @@ type indexScanRangeBuilder struct {
 	ctx       *sql.Context
 	idToExpr  map[indexScanId]sql.Expression
 	conjIb    *sql.MySQLIndexBuilder
-	include   sql.FastIntSet
-	imprecise sql.FastIntSet
+	include   sets.FastIntSet
+	imprecise sets.FastIntSet
 	tableName string
 	allRanges []sql.MySQLRange
 	leftover  []sql.Expression
@@ -1422,24 +1423,24 @@ func ordinalsForStat(stat sql.Statistic) map[string]int {
 // updated statistic, the subset of applicable filters, the maximum prefix
 // key created by a subset of equality filters (from conjunction only),
 // or an error if applicable.
-func (c *indexCoster) costIndexScanAnd(ctx *sql.Context, filter *iScanAnd, s sql.Statistic, buckets []sql.HistogramBucket, ordinals map[string]int, idx sql.Index) ([]sql.HistogramBucket, *sql.FuncDepSet, sql.FastIntSet, int, bool, error) {
+func (c *indexCoster) costIndexScanAnd(ctx *sql.Context, filter *iScanAnd, s sql.Statistic, buckets []sql.HistogramBucket, ordinals map[string]int, idx sql.Index) ([]sql.HistogramBucket, *sql.FuncDepSet, sets.FastIntSet, int, bool, error) {
 	// first step finds the conjunctions that match index prefix columns.
 	// we divide into eqFilters and rangeFilters
 
 	ret := s.Histogram()
-	var exact sql.FastIntSet
+	var exact sets.FastIntSet
 
 	if len(filter.orChildren) > 0 {
 		for _, or := range filter.orChildren {
 			childStat, _, ok, err := c.costIndexScanOr(ctx, or.(*iScanOr), s, buckets, ordinals, idx)
 			if err != nil {
-				return nil, nil, sql.FastIntSet{}, 0, false, err
+				return nil, nil, sets.FastIntSet{}, 0, false, err
 			}
 			// if valid, INTERSECT
 			if ok {
 				ret, err = stats.Intersect(ctx, ret, childStat, s.Types())
 				if err != nil {
-					return nil, nil, sql.FastIntSet{}, 0, false, err
+					return nil, nil, sets.FastIntSet{}, 0, false, err
 				}
 				exact.Add(int(or.Id()))
 			}
@@ -2102,9 +2103,9 @@ func newConjCollector(s sql.Statistic, hist []sql.HistogramBucket, ordinals map[
 type conjCollector struct {
 	stat          sql.Statistic
 	ordinals      map[string]int
-	constant      sql.FastIntSet
-	ineqCols      sql.FastIntSet
-	applied       sql.FastIntSet
+	constant      sets.FastIntSet
+	ineqCols      sets.FastIntSet
+	applied       sets.FastIntSet
 	hist          []sql.HistogramBucket
 	eqVals        []interface{}
 	nullable      []bool

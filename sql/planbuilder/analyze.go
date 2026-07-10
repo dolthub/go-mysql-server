@@ -17,6 +17,7 @@ package planbuilder
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/sets"
 	"strings"
 
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
@@ -164,7 +165,7 @@ func (b *Builder) buildAnalyzeUpdate(inScope *scope, n *ast.Analyze, dbName, sch
 		i := sch.IndexOfColName(c)
 		statCols.Add(sql.ColumnId(i + 1))
 	}
-	allCols := sql.NewFastIntSet()
+	allCols := sets.NewFastIntSet()
 	allCols.AddRange(0, len(sch))
 	allColset := sql.NewColSetFromIntSet(allCols)
 	// TODO find if underlying index has strict/lax key
