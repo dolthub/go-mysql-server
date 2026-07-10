@@ -1,7 +1,6 @@
 package memo
 
 import (
-	"github.com/dolthub/go-mysql-server/sql/sets"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -9,6 +8,7 @@ import (
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/sets"
 )
 
 func TestHintParsing(t *testing.T) {
