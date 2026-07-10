@@ -15,13 +15,13 @@
 package plan
 
 import (
-	"github.com/dolthub/go-mysql-server/sql/sets"
 	"strings"
 
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/sets"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 

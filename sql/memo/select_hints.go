@@ -16,9 +16,10 @@ package memo
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/sets"
 	"regexp"
 	"strings"
+
+	"github.com/dolthub/go-mysql-server/sql/sets"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"

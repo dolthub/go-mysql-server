@@ -3,6 +3,7 @@ package sql
 import (
 	"bytes"
 	"fmt"
+
 	"github.com/dolthub/go-mysql-server/sql/sets"
 )
 

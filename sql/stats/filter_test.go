@@ -16,12 +16,12 @@ package stats
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/sets"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/sets"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 

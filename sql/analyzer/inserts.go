@@ -16,7 +16,6 @@ package analyzer
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/sets"
 	"strings"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -25,6 +24,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/sets"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )

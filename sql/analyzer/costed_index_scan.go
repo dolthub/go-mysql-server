@@ -17,7 +17,6 @@ package analyzer
 import (
 	"cmp"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/sets"
 	"slices"
 	"sort"
 	"strings"
@@ -33,6 +32,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/memo"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/rowexec"
+	"github.com/dolthub/go-mysql-server/sql/sets"
 	"github.com/dolthub/go-mysql-server/sql/stats"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"

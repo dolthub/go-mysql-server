@@ -17,8 +17,9 @@ package analyzer
 import (
 	"errors"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/sets"
 	"strings"
+
+	"github.com/dolthub/go-mysql-server/sql/sets"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
