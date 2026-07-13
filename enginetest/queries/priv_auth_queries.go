@@ -797,6 +797,26 @@ var UserPrivTests = []UserPrivilegeTest{
 		},
 	},
 	{
+		Name: "ALTER USER can update the identity",
+		SetUpScript: []string{
+			"CREATE USER testuser1@`127.0.0.1` IDENTIFIED WITH mysql_native_password AS 'initial_identity';",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				Query:    "select user, host, plugin, identity from mysql.user where user='testuser1';",
+				Expected: []sql.Row{{"testuser1", "127.0.0.1", "mysql_native_password", "initial_identity"}},
+			},
+			{
+				Query:    "ALTER USER testuser1@`127.0.0.1` IDENTIFIED WITH mysql_native_password AS 'updated_identity';",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "select user, host, plugin, identity from mysql.user where user='testuser1';",
+				Expected: []sql.Row{{"testuser1", "127.0.0.1", "mysql_native_password", "updated_identity"}},
+			},
+		},
+	},
+	{
 		Name: "User creation with SSL/TLS requirements",
 		SetUpScript: []string{
 			"CREATE USER testuser1@`127.0.0.1` REQUIRE NONE;",
