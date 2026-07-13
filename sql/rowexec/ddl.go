@@ -630,6 +630,7 @@ func (b *BaseBuilder) buildAlterUser(ctx *sql.Context, a *plan.AlterUser, _ sql.
 	// have a plaintext password to process into an authorization string for the auth plugin.
 	plugin := previousUserEntry.Plugin
 	authString := previousUserEntry.AuthString
+	identity := previousUserEntry.Identity
 	if user.Auth1 != nil {
 		plugin = user.Auth1.Plugin()
 		var err error
@@ -637,6 +638,7 @@ func (b *BaseBuilder) buildAlterUser(ctx *sql.Context, a *plan.AlterUser, _ sql.
 		if err != nil {
 			return nil, err
 		}
+		identity = user.Identity
 	}
 	if plugin != string(mysql.MysqlNativePassword) && plugin != string(mysql.CachingSha2Password) {
 		if err := mysqlDb.VerifyPlugin(plugin); err != nil {
@@ -646,6 +648,7 @@ func (b *BaseBuilder) buildAlterUser(ctx *sql.Context, a *plan.AlterUser, _ sql.
 
 	previousUserEntry.Plugin = plugin
 	previousUserEntry.AuthString = authString
+	previousUserEntry.Identity = identity
 	previousUserEntry.PasswordLastChanged = time.Now().UTC()
 	editor.PutUser(previousUserEntry)
 
