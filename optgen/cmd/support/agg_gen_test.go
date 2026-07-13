@@ -78,13 +78,13 @@ func TestAggGen(t *testing.T) {
           return fmt.Sprintf("TEST(%s)", sql.DebugString(ctx, a.Child))
         }
 
-        func (a *Test) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
-            res := a.unaryAggBase.WithWindow(window)
+        func (a *Test) WithWindow(ctx *sql.Context, window *sql.WindowDefinition) sql.WindowAdaptableExpression {
+            res := a.unaryAggBase.WithWindow(ctx, window)
             return &Test{unaryAggBase: *res.(*unaryAggBase)}
         }
 
-        func (a *Test) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-            res, err := a.unaryAggBase.WithChildren(children...)
+        func (a *Test) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+            res, err := a.unaryAggBase.WithChildren(ctx, children...)
             return &Test{unaryAggBase: *res.(*unaryAggBase)}, err
         }
 
@@ -106,7 +106,7 @@ func TestAggGen(t *testing.T) {
             if err != nil {
                 return nil, err
             }
-            return NewTestAgg(child).WithWindow(a.Window())
+            return NewTestAgg(child).WithWindow(ctx, a.Window())
         }
 		`,
 	}

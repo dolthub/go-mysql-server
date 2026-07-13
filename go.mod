@@ -20,8 +20,8 @@ require (
 	go.opentelemetry.io/otel v1.41.0
 	go.opentelemetry.io/otel/trace v1.41.0
 	golang.org/x/sync v0.20.0
-	golang.org/x/sys v0.44.0
-	golang.org/x/text v0.32.0
+	golang.org/x/sys v0.45.0
+	golang.org/x/text v0.37.0
 	golang.org/x/tools v0.45.0
 	google.golang.org/grpc v1.79.3
 	gopkg.in/src-d/go-errors.v1 v1.0.0
@@ -33,7 +33,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
-	golang.org/x/crypto v0.46.0 // indirect
+	golang.org/x/crypto v0.52.0 // indirect
 	golang.org/x/mod v0.36.0 // indirect
 	golang.org/x/telemetry v0.0.0-20260508192327-42602be52be6 // indirect
 	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1 // indirect

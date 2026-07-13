@@ -8,6 +8,7 @@ import (
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/sets"
 )
 
 func TestHintParsing(t *testing.T) {
@@ -172,21 +173,21 @@ func TestOrderHintBuilding(t *testing.T) {
 			hint: []string{"ab", "xy", "pq", "uv"},
 			plan: p,
 			exp: map[GroupId]vertexSet{
-				1:  testVertexSet(0),          // ab
-				2:  testVertexSet(1),          // xy
-				3:  testVertexSet(0, 1),       // ab x xy
-				4:  testVertexSet(2),          // pq
-				5:  testVertexSet(0, 1, 2),    // ab x xy x pq
-				6:  testVertexSet(3),          // uv
-				7:  testVertexSet(0, 1, 2, 3), // ab x xy x pq x uv
-				8:  testVertexSet(0, 2),       // ab x pq
-				9:  testVertexSet(1, 2),       // xy x pq
-				10: testVertexSet(0, 3),       // ab x uv
-				11: testVertexSet(1, 3),       // xy x uv
-				12: testVertexSet(0, 1, 3),    //  (ab x xy) x uv
-				13: testVertexSet(2, 3),       // pq x uv
-				14: testVertexSet(0, 2, 3),    // uv x (ab x pq)
-				15: testVertexSet(1, 2, 3),    // xy x pq x uv
+				1:  sets.NewBitSet(0),          // ab
+				2:  sets.NewBitSet(1),          // xy
+				3:  sets.NewBitSet(0, 1),       // ab x xy
+				4:  sets.NewBitSet(2),          // pq
+				5:  sets.NewBitSet(0, 1, 2),    // ab x xy x pq
+				6:  sets.NewBitSet(3),          // uv
+				7:  sets.NewBitSet(0, 1, 2, 3), // ab x xy x pq x uv
+				8:  sets.NewBitSet(0, 2),       // ab x pq
+				9:  sets.NewBitSet(1, 2),       // xy x pq
+				10: sets.NewBitSet(0, 3),       // ab x uv
+				11: sets.NewBitSet(1, 3),       // xy x uv
+				12: sets.NewBitSet(0, 1, 3),    //  (ab x xy) x uv
+				13: sets.NewBitSet(2, 3),       // pq x uv
+				14: sets.NewBitSet(0, 2, 3),    // uv x (ab x pq)
+				15: sets.NewBitSet(1, 2, 3),    // xy x pq x uv
 			},
 		},
 		{
@@ -194,21 +195,21 @@ func TestOrderHintBuilding(t *testing.T) {
 			hint: []string{"pq", "xy", "ab", "uv"},
 			plan: p,
 			exp: map[GroupId]vertexSet{
-				1:  testVertexSet(2),          // ab
-				2:  testVertexSet(1),          // xy
-				3:  testVertexSet(2, 1),       // ab x xy
-				4:  testVertexSet(0),          // pq
-				5:  testVertexSet(2, 1, 0),    // ab x xy x pq
-				6:  testVertexSet(3),          // uv
-				7:  testVertexSet(2, 1, 0, 3), // ab x xy x pq x uv
-				8:  testVertexSet(2, 0),       // ab x pq
-				9:  testVertexSet(1, 0),       // xy x pq
-				10: testVertexSet(2, 3),       // ab x uv
-				11: testVertexSet(1, 3),       // xy x uv
-				12: testVertexSet(2, 1, 3),    // (ab x xy) x uv
-				13: testVertexSet(0, 3),       // pq x uv
-				14: testVertexSet(3, 2, 0),    // uv x (ab x pq)
-				15: testVertexSet(1, 0, 3),    // xy x pq x uv
+				1:  sets.NewBitSet(2),          // ab
+				2:  sets.NewBitSet(1),          // xy
+				3:  sets.NewBitSet(2, 1),       // ab x xy
+				4:  sets.NewBitSet(0),          // pq
+				5:  sets.NewBitSet(2, 1, 0),    // ab x xy x pq
+				6:  sets.NewBitSet(3),          // uv
+				7:  sets.NewBitSet(2, 1, 0, 3), // ab x xy x pq x uv
+				8:  sets.NewBitSet(2, 0),       // ab x pq
+				9:  sets.NewBitSet(1, 0),       // xy x pq
+				10: sets.NewBitSet(2, 3),       // ab x uv
+				11: sets.NewBitSet(1, 3),       // xy x uv
+				12: sets.NewBitSet(2, 1, 3),    // (ab x xy) x uv
+				13: sets.NewBitSet(0, 3),       // pq x uv
+				14: sets.NewBitSet(3, 2, 0),    // uv x (ab x pq)
+				15: sets.NewBitSet(1, 0, 3),    // xy x pq x uv
 
 			},
 		},
@@ -251,12 +252,4 @@ func TestOrderHintBuilding(t *testing.T) {
 			}
 		})
 	}
-}
-
-func testVertexSet(i ...int) vertexSet {
-	s := vertexSet(0)
-	for _, i := range i {
-		s = s.add(uint64(i))
-	}
-	return s
 }

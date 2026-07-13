@@ -322,9 +322,6 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 	}
 
 	aggType := agg.Type(b.ctx)
-	if name == "avg" || name == "sum" {
-		aggType = types.Float64
-	}
 
 	aggName := strings.ToLower(plan.AliasSubqueryString(b.ctx, agg))
 	if id, ok := gb.outScope.getExpr(aggName, true); ok {
@@ -585,7 +582,10 @@ func (b *Builder) buildOrderedInjectedExpr(inScope *scope, e *ast.OrderedInjecte
 	return col.scalarGf()
 }
 
-func isWindowFunc(name string) bool {
+// IsWindowFunc is a hacky "extension point" to allow for other dialects to declare additional window functions
+var IsWindowFunc = IsMySQLWindowFuncName
+
+func IsMySQLWindowFuncName(name string) bool {
 	switch name {
 	case "first", "last", "count", "sum", "any_value",
 		"avg", "max", "min", "count_distinct", "json_arrayagg",
@@ -885,7 +885,7 @@ func (b *Builder) analyzeHaving(fromScope, projScope *scope, having *ast.Where) 
 				// record aggregate
 				// TODO: this should get projScope as well
 				_ = b.buildAggregateFunc(fromScope, name, n)
-			} else if isWindowFunc(name) {
+			} else if IsWindowFunc(name) {
 				_ = b.buildWindowFunc(fromScope, name, n, (*ast.WindowDef)(n.Over))
 			}
 		case *ast.ColName:

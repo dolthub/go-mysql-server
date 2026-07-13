@@ -26,6 +26,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/sets"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -807,7 +808,7 @@ func TestRangeBuilder(t *testing.T) {
 				require.True(t, include.Contains(1))
 			}
 
-			b := newIndexScanRangeBuilder(ctx, idx, include, sql.FastIntSet{}, c.idToExpr)
+			b := newIndexScanRangeBuilder(ctx, idx, include, sets.FastIntSet{}, c.idToExpr)
 			cmpRanges, err := b.buildRangeCollection(root)
 			require.NoError(t, err)
 			if tt.cnt == 1 {
@@ -838,7 +839,7 @@ func TestRangeBuilderInclude(t *testing.T) {
 	tests := []struct {
 		name    string
 		in      sql.Expression
-		include sql.FastIntSet
+		include sets.FastIntSet
 		exp     sql.MySQLRangeCollection
 	}{
 		{
@@ -850,7 +851,7 @@ func TestRangeBuilderInclude(t *testing.T) {
 				),
 				gt2(y, 0),
 			),
-			include: sql.NewFastIntSet(3, 5),
+			include: sets.NewFastIntSet(3, 5),
 			exp: sql.MySQLRangeCollection{
 				r(req(1), rgt(0)),
 			},
@@ -868,7 +869,7 @@ func TestRangeBuilderInclude(t *testing.T) {
 				),
 				gt2(y, 0),
 			),
-			include: sql.NewFastIntSet(2),
+			include: sets.NewFastIntSet(2),
 			exp: sql.MySQLRangeCollection{
 				r(rlt(1), rlt(1)),
 				r(rgt(5), rgt(5)),
@@ -893,7 +894,7 @@ func TestRangeBuilderInclude(t *testing.T) {
 			// TODO make index
 			c := newIndexCoster("xyz")
 			root, _, _ := c.buildRoot(ctx, tt.in, NewDefaultLogicTreeWalker())
-			b := newIndexScanRangeBuilder(ctx, dummy1, tt.include, sql.FastIntSet{}, c.idToExpr)
+			b := newIndexScanRangeBuilder(ctx, dummy1, tt.include, sets.FastIntSet{}, c.idToExpr)
 			cmpRanges, err := b.buildRangeCollection(root)
 			require.NoError(t, err)
 			cmpRanges, err = sql.SortRanges(ctx, cmpRanges...)

@@ -202,7 +202,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 			// TODO this assumes aggregate is in the same scope
 			// also need to avoid nested aggregates
 			return b.buildAggregateFunc(inScope, name, v)
-		} else if isWindowFunc(name) {
+		} else if IsWindowFunc(name) {
 			return b.buildWindowFunc(inScope, name, v, (*ast.WindowDef)(v.Over))
 		}
 

@@ -136,8 +136,8 @@ func (g *AggGen) genAggStringer(define AggDef) {
 }
 
 func (g *AggGen) genAggWithChildren(define AggDef) {
-	fmt.Fprintf(g.w, "func (a *%s) WithChildren(children ...sql.Expression) (sql.Expression, error) {\n", define.Name)
-	fmt.Fprintf(g.w, "    res, err := a.unaryAggBase.WithChildren(children...)\n")
+	fmt.Fprintf(g.w, "func (a *%s) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {\n", define.Name)
+	fmt.Fprintf(g.w, "    res, err := a.unaryAggBase.WithChildren(ctx, children...)\n")
 	fmt.Fprintf(g.w, "    return &%s{unaryAggBase: *res.(*unaryAggBase)}, err\n", define.Name)
 	fmt.Fprintf(g.w, "}\n\n")
 }
@@ -150,8 +150,8 @@ func (g *AggGen) genAggWithId(define AggDef) {
 }
 
 func (g *AggGen) genAggWithWindow(define AggDef) {
-	fmt.Fprintf(g.w, "func (a *%s) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {\n", define.Name)
-	fmt.Fprintf(g.w, "    res := a.unaryAggBase.WithWindow(window)\n")
+	fmt.Fprintf(g.w, "func (a *%s) WithWindow(ctx *sql.Context, window *sql.WindowDefinition) sql.WindowAdaptableExpression {\n", define.Name)
+	fmt.Fprintf(g.w, "    res := a.unaryAggBase.WithWindow(ctx, window)\n")
 	fmt.Fprintf(g.w, "    return &%s{unaryAggBase: *res.(*unaryAggBase)}\n", define.Name)
 	fmt.Fprintf(g.w, "}\n\n")
 }
@@ -162,7 +162,7 @@ func (g *AggGen) genAggWindowConstructor(define AggDef) {
 	fmt.Fprintf(g.w, "    if err != nil {\n")
 	fmt.Fprintf(g.w, "        return nil, err\n")
 	fmt.Fprintf(g.w, "    }\n")
-	fmt.Fprintf(g.w, "    return New%sAgg(child).WithWindow(a.Window())\n", define.Name)
+	fmt.Fprintf(g.w, "    return New%sAgg(child).WithWindow(ctx, a.Window())\n", define.Name)
 	fmt.Fprintf(g.w, "}\n\n")
 }
 
