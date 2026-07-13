@@ -381,9 +381,14 @@ type ExtendedType interface {
 	FormatValue(val any) (string, error)
 	// MaxSerializedWidth returns the maximum size that the serialized value may represent.
 	MaxSerializedWidth() ExtendedTypeSerializedWidth
-	// ConvertToType converts the given value of the given type to this type, or returns an error if
+	// ConvertToType converts the given value of the given type to this type using assigment cast, or returns an error if
 	// no conversion is possible.
 	ConvertToType(ctx *Context, typ ExtendedType, val any) (any, ConvertInRange, error)
+	// CastToType converts the given value of the given type to this type using implicit cast, or returns an error if
+	// no conversion is possible.
+	CastToType(ctx *Context, typ ExtendedType, val any) (any, ConvertInRange, error)
+	// CommonType finds a type that both itself and given type can be implicitly casted to.
+	CommonType(ctx *Context, typ ExtendedType) ExtendedType
 }
 
 type ExtendedTypeSerializedWidth uint8

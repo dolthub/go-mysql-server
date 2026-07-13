@@ -34,7 +34,13 @@ import (
 // simply delegates to the child.
 func NewHashLookup(ctx *sql.Context, n sql.Node, rightEntryKey sql.Expression, leftProbeKey sql.Expression, joinType JoinType) *HashLookup {
 	leftKeySch := hash.ExprsToSchema(ctx, leftProbeKey)
-	compareType := types.GetCompareType(leftProbeKey.Type(ctx), rightEntryKey.Type(ctx))
+	var compareType sql.Type
+	if et, ok := leftProbeKey.Type(ctx).(sql.ExtendedType); ok {
+		// TODO: We must use Postgres functions for the comparison rather than a type!
+		compareType = et.CommonType(ctx, rightEntryKey.Type(ctx).(sql.ExtendedType))
+	} else {
+		compareType = types.GetCompareType(leftProbeKey.Type(ctx), rightEntryKey.Type(ctx))
+	}
 	return &HashLookup{
 		UnaryNode:     UnaryNode{n},
 		RightEntryKey: rightEntryKey,
@@ -137,7 +143,11 @@ func (n *HashLookup) GetHashKey(ctx *sql.Context, e sql.Expression, row sql.Row)
 	if err != nil {
 		return nil, sql.InRange, err
 	}
-	key, _, err = n.CompareType.Convert(ctx, key)
+	if et, ok := e.Type(ctx).(sql.ExtendedType); ok {
+		key, _, err = et.CastToType(ctx, n.CompareType.(sql.ExtendedType), key)
+	} else {
+		key, _, err = n.CompareType.Convert(ctx, key)
+	}
 	if types.ErrValueNotNil.Is(err) {
 		// The LHS expression was NullType. This is allowed.
 		return nil, sql.InRange, nil
