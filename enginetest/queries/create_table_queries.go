@@ -1135,7 +1135,7 @@ var CreateTableScriptTests = []ScriptTest{
 				Query: "show create table t11;",
 				Expected: []sql.Row{
 					{"t11", "CREATE TABLE `t11` (\n" +
-						"  `jj` int NOT NULL\n" +
+						"  `jj` double NOT NULL\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
