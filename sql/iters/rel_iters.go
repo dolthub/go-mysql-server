@@ -25,7 +25,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/hash"
-	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // topRowIter is a special case of topRowsIter when N = 1
@@ -100,7 +99,7 @@ var _ sql.RowIter = (*topRowsIter)(nil)
 
 func NewTopRowsIter(s sql.SortFields, limit int64, calcFoundRows bool, child sql.RowIter, childSchemaLen int) *topRowsIter {
 	return &topRowsIter{
-		sortFields:    append(s, sql.SortField{Column: expression.NewGetField(childSchemaLen, types.Int64, "order", false)}),
+		sortFields:    s,
 		limit:         limit,
 		calcFoundRows: calcFoundRows,
 		childIter:     child,
@@ -122,7 +121,7 @@ func (i *topRowsIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 	row := i.topRows[i.idx]
 	i.idx++
-	return row[:len(row)-1], nil
+	return row, nil
 }
 
 func (i *topRowsIter) Close(ctx *sql.Context) error {
@@ -133,14 +132,80 @@ func (i *topRowsIter) Close(ctx *sql.Context) error {
 	return i.childIter.Close(ctx)
 }
 
+// rowWithOrder pairs a row with the order in which it was seen by the child iterator, so that ties in the sort
+// fields can be broken deterministically (in insertion order) without folding the tie-breaker into the row itself.
+// Rows can contain correlated subquery expressions whose evaluation depends on the exact length of the row given
+// to them (used to strip the prepended outer scope columns back off of the subquery's result rows), so appending
+// an extra column onto the row to use as a tie-breaker corrupts those evaluations.
+type rowWithOrder struct {
+	row   sql.Row
+	order int64
+}
+
+// topRowsHeap implements heap.Interface based on expression.Sorter, inverting Less() so that it can be used to
+// implement TopN: heap.Push() rows into it, and if Len() > MAX, heap.Pop() the current min row. Ties in the sort
+// fields are broken using insertion order so results are deterministic.
+type topRowsHeap struct {
+	expression.Sorter
+	order []int64
+}
+
+// isLess returns whether the row at index i sorts before the row at index j, using insertion order as a tie-breaker.
+func (h *topRowsHeap) isLess(i, j int) bool {
+	if h.Sorter.IsLesserRow(h.Sorter.Rows[i], h.Sorter.Rows[j]) {
+		return true
+	}
+	if h.Sorter.IsLesserRow(h.Sorter.Rows[j], h.Sorter.Rows[i]) {
+		return false
+	}
+	return h.order[i] < h.order[j]
+}
+
+func (h *topRowsHeap) Less(i, j int) bool {
+	return !h.isLess(i, j)
+}
+
+func (h *topRowsHeap) Swap(i, j int) {
+	h.Sorter.Swap(i, j)
+	h.order[i], h.order[j] = h.order[j], h.order[i]
+}
+
+func (h *topRowsHeap) Push(x interface{}) {
+	e := x.(rowWithOrder)
+	h.Sorter.Rows = append(h.Sorter.Rows, e.row)
+	h.order = append(h.order, e.order)
+}
+
+func (h *topRowsHeap) Pop() interface{} {
+	n := len(h.Sorter.Rows)
+	row, order := h.Sorter.Rows[n-1], h.order[n-1]
+	h.Sorter.Rows = h.Sorter.Rows[:n-1]
+	h.order = h.order[:n-1]
+	return rowWithOrder{row, order}
+}
+
+func (h *topRowsHeap) Rows() ([]sql.Row, error) {
+	if h.LastError != nil {
+		return nil, h.LastError
+	}
+
+	l := h.Len()
+	res := make([]sql.Row, l)
+	for i := l - 1; i >= 0; i-- {
+		res[i] = heap.Pop(h).(rowWithOrder).row
+	}
+	return res, nil
+}
+
 func (i *topRowsIter) computeTopRows(ctx *sql.Context) error {
-	topRowsHeap := &expression.TopRowsHeap{
+	rowsHeap := &topRowsHeap{
 		Sorter: expression.Sorter{
 			SortFields: i.sortFields,
 			Rows:       make([]sql.Row, 0, i.limit+1),
 			LastError:  nil,
 			Ctx:        ctx,
 		},
+		order: make([]int64, 0, i.limit+1),
 	}
 	for {
 		row, err := i.childIter.Next(ctx)
@@ -152,19 +217,17 @@ func (i *topRowsIter) computeTopRows(ctx *sql.Context) error {
 		}
 		i.numFoundRows++
 
-		row = append(row, i.numFoundRows) // TODO: this triggers a malloc
-
-		heap.Push(topRowsHeap, row)
-		if int64(topRowsHeap.Len()) > i.limit {
-			heap.Pop(topRowsHeap)
+		heap.Push(rowsHeap, rowWithOrder{row, i.numFoundRows})
+		if int64(rowsHeap.Len()) > i.limit {
+			heap.Pop(rowsHeap)
 		}
-		if topRowsHeap.LastError != nil {
-			return topRowsHeap.LastError
+		if rowsHeap.LastError != nil {
+			return rowsHeap.LastError
 		}
 	}
 
 	var err error
-	i.topRows, err = topRowsHeap.Rows()
+	i.topRows, err = rowsHeap.Rows()
 	return err
 }
 
