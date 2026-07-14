@@ -785,12 +785,6 @@ func (b *Builder) buildWindowDef(fromScope *scope, def *ast.WindowDef) *sql.Wind
 
 	frame := b.NewFrame(fromScope, def.Frame)
 
-	// According to MySQL documentation at https://dev.mysql.com/doc/refman/8.0/en/window-functions-usage.html
-	// "If OVER() is empty, the window consists of all query rows and the window function computes a result using all rows."
-	if def.OrderBy == nil && frame == nil {
-		frame = plan.NewRowsUnboundedPrecedingToUnboundedFollowingFrame()
-	}
-
 	windowDef := sql.NewWindowDefinition(partitions, sortFields, frame, def.NameRef.Lowered(), def.Name.Lowered())
 	if ref, ok := fromScope.windowDefs[def.NameRef.Lowered()]; ok {
 		// this is only safe if windows are built in topo order
@@ -798,6 +792,15 @@ func (b *Builder) buildWindowDef(fromScope *scope, def *ast.WindowDef) *sql.Wind
 		// collapse dependencies if any reference this window
 		fromScope.windowDefs[windowDef.Name] = windowDef
 	}
+
+	// According to MySQL documentation at https://dev.mysql.com/doc/refman/8.0/en/window-functions-usage.html
+	// "If OVER() is empty, the window consists of all query rows and the window function computes a result using all rows."
+	// This must be evaluated after merging with any referenced named window (OVER w), since the
+	// referenced window's ORDER BY determines the correct default frame, not this def's own (possibly empty) ORDER BY.
+	if windowDef.OrderBy == nil && windowDef.Frame == nil {
+		windowDef.Frame = plan.NewRowsUnboundedPrecedingToUnboundedFollowingFrame()
+	}
+
 	return windowDef
 }
 
