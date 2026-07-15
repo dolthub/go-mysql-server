@@ -19,6 +19,7 @@ import (
 )
 
 // Sorter is a sorter implementation for Row slices using SortFields for the comparison
+// TODO: Rename to RowSorter since this is used specifically for sorting Rows and is not a generic sorter.
 type Sorter struct {
 	LastError  error
 	Ctx        *sql.Context
@@ -26,18 +27,18 @@ type Sorter struct {
 	Rows       []sql.Row
 }
 
-// Len implements the sort.Interface interface.
+// Len implements sort.Interface
 func (s *Sorter) Len() int {
 	return len(s.Rows)
 }
 
-// Swap implements the sort.Interface interface.
+// Swap implements sort.Interface
 func (s *Sorter) Swap(i, j int) {
 	s.Rows[i], s.Rows[j] = s.Rows[j], s.Rows[i]
 }
 
-// IsLesserRow determines if sql.Row `a` is less than sql.Row `b` based off s.SortFields.
-func (s *Sorter) IsLesserRow(a, b sql.Row) bool {
+// CompareRows compares rows a and b based on s.SortFields
+func (s *Sorter) CompareRows(a, b sql.Row) int {
 	for _, sf := range s.SortFields {
 		typ := sf.Column.Type(s.Ctx)
 		// TODO: For complex SortFields, like Subqueries, recalculating the value may be costly. We should find some way
@@ -45,13 +46,12 @@ func (s *Sorter) IsLesserRow(a, b sql.Row) bool {
 		av, err := sf.Column.Eval(s.Ctx, a)
 		if err != nil {
 			s.LastError = sql.ErrUnableSort.Wrap(err)
-			return false
+			return 0
 		}
-
 		bv, err := sf.Column.Eval(s.Ctx, b)
 		if err != nil {
 			s.LastError = sql.ErrUnableSort.Wrap(err)
-			return false
+			return 0
 		}
 
 		if sf.Order == sql.Descending {
@@ -60,48 +60,38 @@ func (s *Sorter) IsLesserRow(a, b sql.Row) bool {
 
 		if av == nil && bv == nil {
 			continue
-		} else if av == nil {
-			return sf.NullOrdering == sql.NullsFirst
-		} else if bv == nil {
-			return sf.NullOrdering != sql.NullsFirst
+		}
+		if sf.NullOrdering == sql.NullsFirst {
+			if av == nil {
+				return -1
+			}
+			if bv == nil {
+				return 1
+			}
 		}
 
 		cmp, err := typ.Compare(s.Ctx, av, bv)
 		if err != nil {
 			s.LastError = err
-			return false
+			return 0
 		}
 
-		switch cmp {
-		case -1:
-			return true
-		case 1:
-			return false
+		if cmp != 0 {
+			return cmp
 		}
 	}
-	return false
+	return 0
 }
 
-// Less implements the sort.Interface interface.
+// IsLesserRow determines if sql.Row `a` is less than sql.Row `b` based off s.SortFields
+func (s *Sorter) IsLesserRow(a, b sql.Row) bool {
+	return s.CompareRows(a, b) < 0
+}
+
+// Less implements sort.Interface interface.
 func (s *Sorter) Less(i, j int) bool {
 	if s.LastError != nil {
 		return false
 	}
 	return s.IsLesserRow(s.Rows[i], s.Rows[j])
-}
-
-// ValueRowSorter is a version of Sorter that operates on ValueRow
-type ValueRowSorter struct {
-	LastError  error
-	Ctx        *sql.Context
-	SortFields []sql.SortField
-	Rows       []sql.ValueRow
-}
-
-func (s *ValueRowSorter) Len() int {
-	return len(s.Rows)
-}
-
-func (s *ValueRowSorter) Swap(i, j int) {
-	s.Rows[i], s.Rows[j] = s.Rows[j], s.Rows[i]
 }

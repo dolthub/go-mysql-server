@@ -100,7 +100,7 @@ func (i *topRowsIter) computeTopRows(ctx *sql.Context) error {
 	}
 
 	var err error
-	i.topRows, err = rowsHeap.Rows()
+	i.topRows, err = rowsHeap.rows()
 	return err
 }
 
@@ -112,33 +112,29 @@ type topRowsHeap struct {
 	order []int64
 }
 
-// isLess returns whether the row at index i sorts before the row at index j, using insertion order as a tie-breaker.
-func (h *topRowsHeap) isLess(i, j int) bool {
-	// TODO: redo
-	if h.Sorter.IsLesserRow(h.Sorter.Rows[i], h.Sorter.Rows[j]) {
-		return true
-	}
-	if h.Sorter.IsLesserRow(h.Sorter.Rows[j], h.Sorter.Rows[i]) {
-		return false
-	}
-	return h.order[i] < h.order[j]
-}
-
+// Less implements heap.Interface.
 func (h *topRowsHeap) Less(i, j int) bool {
-	return !h.isLess(i, j)
+	cmp := h.Sorter.CompareRows(h.Sorter.Rows[i], h.Sorter.Rows[j])
+	if cmp == 0 {
+		return h.order[i] > h.order[j]
+	}
+	return cmp > 0
 }
 
+// Swap implements heap.Interface
 func (h *topRowsHeap) Swap(i, j int) {
 	h.Sorter.Swap(i, j)
 	h.order[i], h.order[j] = h.order[j], h.order[i]
 }
 
+// Push implements heap.Interface
 func (h *topRowsHeap) Push(x interface{}) {
 	e := x.(rowWithOrder)
 	h.Sorter.Rows = append(h.Sorter.Rows, e.row)
 	h.order = append(h.order, e.order)
 }
 
+// Pop implements heap.Interface
 func (h *topRowsHeap) Pop() interface{} {
 	n := len(h.Sorter.Rows)
 	row, order := h.Sorter.Rows[n-1], h.order[n-1]
@@ -147,7 +143,7 @@ func (h *topRowsHeap) Pop() interface{} {
 	return rowWithOrder{row, order}
 }
 
-func (h *topRowsHeap) Rows() ([]sql.Row, error) {
+func (h *topRowsHeap) rows() ([]sql.Row, error) {
 	if h.LastError != nil {
 		return nil, h.LastError
 	}
@@ -161,7 +157,7 @@ func (h *topRowsHeap) Rows() ([]sql.Row, error) {
 }
 
 // rowWithOrder pairs the row with its ordering number, which is used as a tie-breaker if two rows have the same sort
-// condition values
+// condition values. It is used to push rows into the topRowsHeap
 type rowWithOrder struct {
 	row   sql.Row
 	order int64
