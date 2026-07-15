@@ -16,13 +16,13 @@ package aggregation
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/sorters"
 	"sort"
 	"strings"
 
 	"github.com/dolthub/vitess/go/vt/proto/query"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/sorters"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 

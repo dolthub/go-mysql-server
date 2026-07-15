@@ -16,9 +16,10 @@ package aggregation
 
 import (
 	"errors"
-	"github.com/dolthub/go-mysql-server/sql/sorters"
 	"io"
 	"sort"
+
+	"github.com/dolthub/go-mysql-server/sql/sorters"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )

@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/sorters"
 	"io"
 	"math"
 	"sort"
@@ -34,6 +33,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression/function/vector"
 	"github.com/dolthub/go-mysql-server/sql/fulltext"
 	"github.com/dolthub/go-mysql-server/sql/iters"
+	"github.com/dolthub/go-mysql-server/sql/sorters"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )

@@ -16,7 +16,6 @@ package iters
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/sorters"
 	"io"
 	"sort"
 
@@ -24,6 +23,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/hash"
+	"github.com/dolthub/go-mysql-server/sql/sorters"
 )
 
 // GetInt64Value returns the int64 literal value in the expression given, or an error with the errStr given if it

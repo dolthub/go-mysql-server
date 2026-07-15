@@ -16,8 +16,9 @@ package iters
 
 import (
 	"container/heap"
-	"github.com/dolthub/go-mysql-server/sql/sorters"
 	"io"
+
+	"github.com/dolthub/go-mysql-server/sql/sorters"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
