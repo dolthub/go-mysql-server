@@ -282,7 +282,7 @@ func (s *StatsProv) DropStats(ctx *sql.Context, qual sql.StatQualifier, cols []s
 	return nil
 }
 
-func (s *StatsProv) DropDbStats(ctx *sql.Context, sch, db string, flush bool) error {
+func (s *StatsProv) DropDbStats(ctx *sql.Context, db string, flush bool) error {
 	for key := range s.colStats {
 		if strings.HasPrefix(string(key), db) {
 			delete(s.colStats, key)

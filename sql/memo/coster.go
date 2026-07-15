@@ -75,13 +75,13 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 		rTableScan := uint64(rBest)
 
 		if iScan, ok := jp.Left.Best.(*IndexScan); ok {
-			lTableScan, err = s.RowCount(ctx, iScan.Table.Database().Name(), iScan.Table)
+			lTableScan, err = s.RowCount(ctx, "", iScan.Table.Database().Name(), iScan.Table)
 			if err != nil {
 				lTableScan = defaultTableSize
 			}
 		}
 		if iScan, ok := jp.Right.Best.(*IndexScan); ok {
-			rTableScan, err = s.RowCount(ctx, iScan.Table.Database().Name(), iScan.Table)
+			rTableScan, err = s.RowCount(ctx, "", iScan.Table.Database().Name(), iScan.Table)
 			if err != nil {
 				rTableScan = defaultTableSize
 			}

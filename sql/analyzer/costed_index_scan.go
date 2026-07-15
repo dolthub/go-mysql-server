@@ -185,7 +185,7 @@ func getCostedIndexScan(
 	}
 	tableName := strings.ToLower(table.Name())
 
-	statistics, err := statsProvider.GetTableStats(ctx, rt.Database().Name(), table)
+	statistics, err := statsProvider.GetTableStats(ctx, schemaName, rt.Database().Name(), table)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -259,9 +259,6 @@ func getCostedIndexScan(
 
 		qual := sql.NewStatQualifier(dbName, schemaName, tableName, idx.ID())
 		stat, ok := qualToStat[qual]
-		if ok {
-			print()
-		}
 		if !ok {
 			// create statistic if table is missing a statsProvider
 			stat, err = uniformDistStatisticsForIndex(ctx, statsProvider, iat, idx)
@@ -1974,7 +1971,17 @@ func uniformDistStatisticsForIndex(ctx *sql.Context, statsProv sql.StatsProvider
 	var rowCount uint64
 	var avgSize uint64
 
-	rowCount, _ = statsProv.RowCount(ctx, idx.Database(), iat)
+	var dbName string
+	if dbTable, ok := iat.(sql.Databaseable); ok {
+		dbName = strings.ToLower(dbTable.Database())
+	}
+	var schemaName string
+	if schTab, ok := iat.(sql.DatabaseSchemaTable); ok {
+		schemaName = strings.ToLower(schTab.DatabaseSchema().SchemaName())
+	}
+	tableName := strings.ToLower(iat.Name())
+
+	rowCount, _ = statsProv.RowCount(ctx, schemaName, idx.Database(), iat)
 
 	if st, ok := iat.(sql.StatisticsTable); ok {
 		rCnt, _, err := st.RowCount(ctx)
@@ -1992,16 +1999,6 @@ func uniformDistStatisticsForIndex(ctx *sql.Context, statsProv sql.StatsProvider
 			avgSize = dataSize / rowCount
 		}
 	}
-
-	var dbName string
-	if dbTable, ok := iat.(sql.Databaseable); ok {
-		dbName = strings.ToLower(dbTable.Database())
-	}
-	var schemaName string
-	if schTab, ok := iat.(sql.DatabaseSchemaTable); ok {
-		schemaName = strings.ToLower(schTab.DatabaseSchema().SchemaName())
-	}
-	tableName := strings.ToLower(iat.Name())
 
 	var sch sql.Schema
 	if pkt, ok := iat.(sql.PrimaryKeyTable); ok {

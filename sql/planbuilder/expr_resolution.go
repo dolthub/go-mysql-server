@@ -128,7 +128,7 @@ func (c *exprResolutionCatalog) DropStats(_ *sql.Context, _ sql.StatQualifier, _
 }
 
 // DropDbStats implements the sql.StatsProvider interface
-func (c *exprResolutionCatalog) DropDbStats(_ *sql.Context, _, _ string, _ bool) error { return nil }
+func (c *exprResolutionCatalog) DropDbStats(_ *sql.Context, _ string, _ bool) error { return nil }
 
 // RowCount implements the sql.StatsProvider interface
 func (c *exprResolutionCatalog) RowCount(_ *sql.Context, _, _ string, _ sql.Table) (uint64, error) {
