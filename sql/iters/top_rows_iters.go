@@ -70,6 +70,7 @@ func (i *topRowsIter) Close(ctx *sql.Context) error {
 	return i.childIter.Close(ctx)
 }
 
+// computeTopRows uses a Top-N Heap Sort to find the top N rows. It relies on topRowsHeap being a max-heap.
 func (i *topRowsIter) computeTopRows(ctx *sql.Context) error {
 	rowsHeap := &topRowsHeap{
 		Sorter: expression.Sorter{
@@ -99,20 +100,28 @@ func (i *topRowsIter) computeTopRows(ctx *sql.Context) error {
 		}
 	}
 
-	var err error
-	i.topRows, err = rowsHeap.rows()
-	return err
+	i.topRows = getTopRows(rowsHeap)
+	return nil
 }
 
-// topRowsHeap implements heap.Interface based on expression.Sorter, inverting Less() so that it can be used to
-// implement TopN: heap.Push() rows into it, and if Len() > MAX, heap.Pop() the current min row. Ties in the sort
-// fields are broken using insertion order so results are deterministic.
+// getTopRows pops the rows of a topRowsHeap and returns them in min-sorted order.
+func getTopRows(h *topRowsHeap) []sql.Row {
+	l := h.Len()
+	res := make([]sql.Row, l)
+	for i := l - 1; i >= 0; i-- {
+		res[i] = heap.Pop(h).(sql.Row) // TODO: this is slow
+	}
+	return res
+}
+
+// topRowsHeap implements heap.Interface. Since heap.Interface assumes a min-heap, topRowsHeap inverts Less to implement
+// a max-heap. This is so that topRowsHeap can be used for a Top-N Heap Sort.
 type topRowsHeap struct {
 	expression.Sorter
 	order []int64
 }
 
-// Less implements heap.Interface.
+// Less implements heap.Interface. It is inverted to implement a max-heap.
 func (h *topRowsHeap) Less(i, j int) bool {
 	cmp := h.Sorter.CompareRows(h.Sorter.Rows[i], h.Sorter.Rows[j])
 	if cmp == 0 {
@@ -127,33 +136,20 @@ func (h *topRowsHeap) Swap(i, j int) {
 	h.order[i], h.order[j] = h.order[j], h.order[i]
 }
 
-// Push implements heap.Interface
+// Push implements heap.Interface. x is expected to be a rowWithOrder.
 func (h *topRowsHeap) Push(x interface{}) {
 	e := x.(rowWithOrder)
 	h.Sorter.Rows = append(h.Sorter.Rows, e.row)
 	h.order = append(h.order, e.order)
 }
 
-// Pop implements heap.Interface
+// Pop implements heap.Interface. The return type is a sql.Row.
 func (h *topRowsHeap) Pop() interface{} {
 	n := len(h.Sorter.Rows)
-	row, order := h.Sorter.Rows[n-1], h.order[n-1]
+	row := h.Sorter.Rows[n-1]
 	h.Sorter.Rows = h.Sorter.Rows[:n-1]
 	h.order = h.order[:n-1]
-	return rowWithOrder{row, order}
-}
-
-func (h *topRowsHeap) rows() ([]sql.Row, error) {
-	if h.LastError != nil {
-		return nil, h.LastError
-	}
-
-	l := h.Len()
-	res := make([]sql.Row, l)
-	for i := l - 1; i >= 0; i-- {
-		res[i] = heap.Pop(h).(rowWithOrder).row // TODO: this is slow
-	}
-	return res, nil
+	return row
 }
 
 // rowWithOrder pairs the row with its ordering number, which is used as a tie-breaker if two rows have the same sort
