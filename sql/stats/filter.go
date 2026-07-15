@@ -149,13 +149,28 @@ func PrefixKey(ctx *sql.Context, buckets []sql.HistogramBucket, types []sql.Type
 func nilSafeCmp(ctx *sql.Context, typ sql.Type, left, right interface{}) (int, error) {
 	if left == nil && right == nil {
 		return 0, nil
-	} else if left == nil && right != nil {
+	}
+	if left == nil {
 		return -1, nil
-	} else if left != nil && right == nil {
+	}
+	if right == nil {
 		return 1, nil
-	} else {
+	}
+
+	// Extended types require that left and right are the same golang type, so convert
+	exTyp, ok := typ.(sql.ExtendedType)
+	if !ok {
 		return typ.Compare(ctx, left, right)
 	}
+	lv, _, err := exTyp.Convert(ctx, left)
+	if err != nil {
+		return 0, err
+	}
+	rv, _, err := exTyp.Convert(ctx, right)
+	if err != nil {
+		return 0, err
+	}
+	return exTyp.Compare(ctx, lv, rv)
 }
 
 func GetNewCounts(buckets []sql.HistogramBucket) (rowCount uint64, distinctCount uint64, nullCount uint64) {
@@ -222,9 +237,6 @@ func PrefixGt(ctx *sql.Context, buckets []sql.HistogramBucket, types []sql.Type,
 	}
 	// inclusive of idx bucket
 	ret := buckets[idx:]
-	if err != nil {
-		return nil, err
-	}
 	return PrefixIsNotNull(ret)
 }
 
