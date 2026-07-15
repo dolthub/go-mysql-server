@@ -1757,16 +1757,16 @@ func (t *IndexedTable) PartitionRows(ctx *sql.Context, partition sql.Partition) 
 				// TODO: null ordering?
 			}
 		}
-		var sorter *sorters.Sorter
+		var sorter *sorters.RowSorter
 		if i, ok := iter.(*tableIter); ok {
-			sorter = &sorters.Sorter{
+			sorter = &sorters.RowSorter{
 				SortConditions: sc,
 				Rows:           i.rows,
 				LastError:      nil,
 				Ctx:            ctx,
 			}
 		} else if i, ok := iter.(*spatialTableIter); ok {
-			sorter = &sorters.Sorter{
+			sorter = &sorters.RowSorter{
 				SortConditions: sc,
 				Rows:           i.rows,
 				LastError:      nil,

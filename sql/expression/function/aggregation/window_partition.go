@@ -169,6 +169,7 @@ func (i *WindowPartitionIter) materializeInput(ctx *sql.Context) (sql.WindowBuff
 			}
 			return nil, nil, err
 		}
+		// TODO: We should not be appending the row number to the end of the row!!! This causes indexing issues!!!
 		input = append(input, append(row, j))
 		j++
 	}
@@ -178,7 +179,7 @@ func (i *WindowPartitionIter) materializeInput(ctx *sql.Context) (sql.WindowBuff
 	}
 
 	// sort all rows by partition
-	sorter := &sorters.Sorter{
+	sorter := &sorters.RowSorter{
 		SortConditions: append(partitionsToSortConditions(i.w.PartitionBy), i.w.SortBy...),
 		Rows:           input,
 		Ctx:            ctx,

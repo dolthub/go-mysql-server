@@ -338,7 +338,7 @@ func (g *groupConcatBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 
 	// Execute the order operation if it exists.
 	if g.gc.sortConditions != nil {
-		sorter := &sorters.Sorter{
+		sorter := &sorters.RowSorter{
 			SortConditions: g.gc.sortConditions,
 			Rows:           rows,
 			Ctx:            ctx,

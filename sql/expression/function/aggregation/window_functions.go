@@ -902,7 +902,7 @@ func (a *GroupConcatAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, 
 
 	// Execute the order operation if it exists.
 	if a.gc.sortConditions != nil {
-		sorter := &sorters.Sorter{
+		sorter := &sorters.RowSorter{
 			SortConditions: a.gc.sortConditions,
 			Rows:           rows,
 			Ctx:            ctx,

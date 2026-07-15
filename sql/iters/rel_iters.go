@@ -448,7 +448,7 @@ func (i *sortIter) computeSortedRows(ctx *sql.Context) error {
 	}
 
 	rows := cache.Get()
-	sorter := &sorters.Sorter{
+	sorter := &sorters.RowSorter{
 		SortConditions: i.sortConditions,
 		Rows:           rows,
 		LastError:      nil,
