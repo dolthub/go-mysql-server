@@ -14979,6 +14979,50 @@ select * from t1 except (
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/11300
+		Name: "TopN rows (Sort with LIMIT) where sort condition is a subquery",
+		SetUpScript: []string{
+			"CREATE TABLE foo (id VARCHAR(36) PRIMARY KEY);",
+			"CREATE TABLE bar (id VARCHAR(36) PRIMARY KEY, foo_id VARCHAR(36) NOT NULL, approved_on DATETIME(3), FOREIGN KEY (foo_id) REFERENCES foo(id) ON DELETE CASCADE ON UPDATE CASCADE);",
+			"INSERT INTO foo VALUES('foo-1'), ('foo-2'), ('foo-3'), ('foo-4'), ('foo-5'), ('foo-6'), ('foo-7'), ('foo-8');",
+			`INSERT INTO bar VALUES
+('bar-1', 'foo-1', '2026-07-14 07:18:04.000'),
+('bar-2', 'foo-2', '2026-07-14 07:18:03.000'),
+('bar-3', 'foo-3', '2026-07-14 07:18:05.000'),
+('bar-4', 'foo-4', '2026-07-14 07:18:01.000'),
+('bar-5', 'foo-5', '2026-07-14 07:18:08.000'),
+('bar-6', 'foo-6', '2026-07-14 07:18:02.000'),
+('bar-7', 'foo-7', '2026-07-14 07:18:07.000'),
+('bar-8', 'foo-8', '2026-07-14 07:18:00.000');`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * FROM foo ORDER BY (SELECT MAX(r.approved_on) FROM bar r WHERE r.foo_id = foo.id) ASC LIMIT 1",
+				Expected: []sql.Row{{"foo-8"}},
+			},
+			{
+				Query:    "SELECT * FROM foo ORDER BY (SELECT MAX(r.approved_on) FROM bar r WHERE r.foo_id = foo.id) DESC LIMIT 1",
+				Expected: []sql.Row{{"foo-5"}},
+			},
+			{
+				Query:    "SELECT * FROM foo ORDER BY (SELECT MAX(r.approved_on) FROM bar r WHERE r.foo_id = foo.id) ASC LIMIT 2",
+				Expected: []sql.Row{{"foo-8"}, {"foo-4"}},
+			},
+			{
+				Query:    "SELECT * FROM foo ORDER BY (SELECT MAX(r.approved_on) FROM bar r WHERE r.foo_id = foo.id) DESC LIMIT 2",
+				Expected: []sql.Row{{"foo-5"}, {"foo-7"}},
+			},
+			{
+				Query:    "SELECT * FROM foo ORDER BY (SELECT MAX(r.approved_on) FROM bar r WHERE r.foo_id = foo.id) ASC LIMIT 4",
+				Expected: []sql.Row{{"foo-8"}, {"foo-4"}, {"foo-6"}, {"foo-2"}},
+			},
+			{
+				Query:    "SELECT * FROM foo ORDER BY (SELECT MAX(r.approved_on) FROM bar r WHERE r.foo_id = foo.id) DESC LIMIT 4",
+				Expected: []sql.Row{{"foo-5"}, {"foo-7"}, {"foo-3"}, {"foo-1"}},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
