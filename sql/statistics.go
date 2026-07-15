@@ -37,7 +37,7 @@ type StatisticsTable interface {
 // build and provide index statistics.
 type StatsProvider interface {
 	// GetTableStats returns all statistics for the table
-	GetTableStats(ctx *Context, db string, table Table) ([]Statistic, error)
+	GetTableStats(ctx *Context, sch, db string, table Table) ([]Statistic, error)
 	// AnalyzeTable updates all statistics associated with a given table
 	AnalyzeTable(ctx *Context, table Table, db string) error
 	// SetStats updates or overwrites a set of table statistics
@@ -46,12 +46,12 @@ type StatsProvider interface {
 	GetStats(ctx *Context, qual StatQualifier, cols []string) (Statistic, bool)
 	// DropStats deletes a set of column statistics
 	DropStats(ctx *Context, qual StatQualifier, cols []string) error
-	// DropAllStats deletes all database statistics
-	DropDbStats(ctx *Context, db string, flush bool) error
+	// DropDbStats deletes all database statistics
+	DropDbStats(ctx *Context, sch, db string, flush bool) error
 	// RowCount returns the number of rows in a table
-	RowCount(ctx *Context, db string, table Table) (uint64, error)
+	RowCount(ctx *Context, sch, db string, table Table) (uint64, error)
 	// DataLength returns the estimated size of each row in the table
-	DataLength(ctx *Context, db string, table Table) (uint64, error)
+	DataLength(ctx *Context, sch, db string, table Table) (uint64, error)
 }
 
 type IndexClass uint8

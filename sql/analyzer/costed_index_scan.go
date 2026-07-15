@@ -177,7 +177,15 @@ func getCostedIndexScan(
 	filters []sql.Expression,
 	qFlags *sql.QueryFlags,
 ) (*plan.IndexedTableAccess, sql.Statistic, []sql.Expression, error) {
-	statistics, err := statsProvider.GetTableStats(ctx, strings.ToLower(rt.Database().Name()), rt.UnderlyingTable())
+	// run each index through coster, save the cheapest
+	table := rt.UnderlyingTable()
+	var schemaName string
+	if schTab, ok := table.(sql.DatabaseSchemaTable); ok {
+		schemaName = strings.ToLower(schTab.DatabaseSchema().SchemaName())
+	}
+	tableName := strings.ToLower(table.Name())
+
+	statistics, err := statsProvider.GetTableStats(ctx, rt.Database().Name(), table)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -220,14 +228,6 @@ func getCostedIndexScan(
 		return nil, nil, nil, err
 	}
 
-	// run each index through coster, save the cheapest
-	table := rt.UnderlyingTable()
-	var schemaName string
-	if schTab, ok := table.(sql.DatabaseSchemaTable); ok {
-		schemaName = strings.ToLower(schTab.DatabaseSchema().SchemaName())
-	}
-	tableName := strings.ToLower(table.Name())
-
 	if len(qualToStat) > 0 {
 		// don't mix and match real and default stats
 		for _, idx := range indexes {
@@ -259,6 +259,9 @@ func getCostedIndexScan(
 
 		qual := sql.NewStatQualifier(dbName, schemaName, tableName, idx.ID())
 		stat, ok := qualToStat[qual]
+		if ok {
+			print()
+		}
 		if !ok {
 			// create statistic if table is missing a statsProvider
 			stat, err = uniformDistStatisticsForIndex(ctx, statsProvider, iat, idx)

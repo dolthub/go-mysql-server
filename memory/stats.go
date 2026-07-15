@@ -243,12 +243,16 @@ func (s *StatsProv) reservoirSample(ctx *sql.Context, table sql.Table) ([]sql.Ro
 	return queue, nil
 }
 
-func (s *StatsProv) GetTableStats(ctx *sql.Context, db string, table sql.Table) ([]sql.Statistic, error) {
-	pref := fmt.Sprintf("%s.%s", strings.ToLower(db), strings.ToLower(table.Name()))
+func (s *StatsProv) GetTableStats(_ *sql.Context, sch, db string, table sql.Table) ([]sql.Statistic, error) {
+	pref := strings.ToLower(db) + "." + strings.ToLower(table.Name())
+	if len(sch) != 0 {
+		pref += "." + strings.ToLower(sch)
+	}
+
 	var ret []sql.Statistic
-	for key, stats := range s.colStats {
-		if strings.HasPrefix(string(key), pref) {
-			ret = append(ret, stats)
+	for statKey, colStat := range s.colStats {
+		if strings.HasPrefix(string(statKey), pref) {
+			ret = append(ret, colStat)
 		}
 	}
 	return ret, nil
@@ -278,7 +282,16 @@ func (s *StatsProv) DropStats(ctx *sql.Context, qual sql.StatQualifier, cols []s
 	return nil
 }
 
-func (s *StatsProv) RowCount(ctx *sql.Context, db string, table sql.Table) (uint64, error) {
+func (s *StatsProv) DropDbStats(ctx *sql.Context, sch, db string, flush bool) error {
+	for key := range s.colStats {
+		if strings.HasPrefix(string(key), db) {
+			delete(s.colStats, key)
+		}
+	}
+	return nil
+}
+
+func (s *StatsProv) RowCount(ctx *sql.Context, sch, db string, table sql.Table) (uint64, error) {
 	pref := fmt.Sprintf("%s.%s", strings.ToLower(db), strings.ToLower(table.Name()))
 	var cnt uint64
 	for key, stats := range s.colStats {
@@ -291,7 +304,7 @@ func (s *StatsProv) RowCount(ctx *sql.Context, db string, table sql.Table) (uint
 	return cnt, nil
 }
 
-func (s *StatsProv) DataLength(ctx *sql.Context, db string, table sql.Table) (uint64, error) {
+func (s *StatsProv) DataLength(ctx *sql.Context, sch, db string, table sql.Table) (uint64, error) {
 	pref := fmt.Sprintf("%s.%s", db, table)
 	var size uint64
 	for key, stats := range s.colStats {
@@ -302,13 +315,4 @@ func (s *StatsProv) DataLength(ctx *sql.Context, db string, table sql.Table) (ui
 		}
 	}
 	return size, nil
-}
-
-func (s *StatsProv) DropDbStats(ctx *sql.Context, db string, flush bool) error {
-	for key := range s.colStats {
-		if strings.HasPrefix(string(key), db) {
-			delete(s.colStats, key)
-		}
-	}
-	return nil
 }
