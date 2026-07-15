@@ -16,11 +16,11 @@ package aggregation
 
 import (
 	"errors"
+	sort2 "github.com/dolthub/go-mysql-server/sql/sort"
 	"io"
 	"sort"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 var ErrNoPartitions = errors.New("no partitions")
@@ -178,7 +178,7 @@ func (i *WindowPartitionIter) materializeInput(ctx *sql.Context) (sql.WindowBuff
 	}
 
 	// sort all rows by partition
-	sorter := &expression.Sorter{
+	sorter := &sort2.Sorter{
 		SortConditions: append(partitionsToSortConditions(i.w.PartitionBy), i.w.SortBy...),
 		Rows:           input,
 		Ctx:            ctx,

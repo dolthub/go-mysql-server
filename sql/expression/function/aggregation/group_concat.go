@@ -16,13 +16,13 @@ package aggregation
 
 import (
 	"fmt"
+	sort2 "github.com/dolthub/go-mysql-server/sql/sort"
 	"sort"
 	"strings"
 
 	"github.com/dolthub/vitess/go/vt/proto/query"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -338,7 +338,7 @@ func (g *groupConcatBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 
 	// Execute the order operation if it exists.
 	if g.gc.sortConditions != nil {
-		sorter := &expression.Sorter{
+		sorter := &sort2.Sorter{
 			SortConditions: g.gc.sortConditions,
 			Rows:           rows,
 			Ctx:            ctx,

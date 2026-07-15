@@ -15,6 +15,7 @@
 package aggregation
 
 import (
+	sort2 "github.com/dolthub/go-mysql-server/sql/sort"
 	"math"
 	"sort"
 	"strings"
@@ -901,7 +902,7 @@ func (a *GroupConcatAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, 
 
 	// Execute the order operation if it exists.
 	if a.gc.sortConditions != nil {
-		sorter := &expression.Sorter{
+		sorter := &sort2.Sorter{
 			SortConditions: a.gc.sortConditions,
 			Rows:           rows,
 			Ctx:            ctx,

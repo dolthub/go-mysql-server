@@ -16,13 +16,13 @@ package iters
 
 import (
 	"fmt"
+	sort2 "github.com/dolthub/go-mysql-server/sql/sort"
 	"io"
 	"sort"
 
 	"github.com/dolthub/jsonpath"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/hash"
 )
 
@@ -448,7 +448,7 @@ func (i *sortIter) computeSortedRows(ctx *sql.Context) error {
 	}
 
 	rows := cache.Get()
-	sorter := &expression.Sorter{
+	sorter := &sort2.Sorter{
 		SortConditions: i.sortConditions,
 		Rows:           rows,
 		LastError:      nil,
