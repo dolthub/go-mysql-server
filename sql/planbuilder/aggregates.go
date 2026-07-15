@@ -838,12 +838,12 @@ func (b *Builder) mergeWindowDefs(def, ref *sql.WindowDefinition) *sql.WindowDef
 		partitionBy = []sql.Expression{}
 	}
 
+	_, isDefDefaultFrame := def.Frame.(*plan.RowsUnboundedPrecedingToUnboundedFollowingFrame)
+	_, isRefDefaultFrame := ref.Frame.(*plan.RowsUnboundedPrecedingToUnboundedFollowingFrame)
+
 	var frame sql.WindowFrame
 	switch {
 	case def.Frame != nil && ref.Frame != nil:
-		_, isDefDefaultFrame := def.Frame.(*plan.RowsUnboundedPrecedingToUnboundedFollowingFrame)
-		_, isRefDefaultFrame := ref.Frame.(*plan.RowsUnboundedPrecedingToUnboundedFollowingFrame)
-
 		// if both frames are set and one is RowsUnboundedPrecedingToUnboundedFollowingFrame (default),
 		// we should use the other frame
 		if isDefDefaultFrame {
@@ -860,6 +860,11 @@ func (b *Builder) mergeWindowDefs(def, ref *sql.WindowDefinition) *sql.WindowDef
 			}
 			frame = def.Frame
 		}
+	case isDefDefaultFrame, isRefDefaultFrame:
+		// The default frame was only correct in the context of the (partial) window definition
+		// that computed it, which may not have known about an ORDER BY contributed by the other
+		// side of this merge. Leave frame unset so the caller re-derives the correct default from
+		// the fully merged ORDER BY, rather than blindly propagating a stale sentinel value.
 	case def.Frame != nil:
 		frame = def.Frame
 	case ref.Frame != nil:
