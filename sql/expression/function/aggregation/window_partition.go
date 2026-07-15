@@ -16,7 +16,7 @@ package aggregation
 
 import (
 	"errors"
-	sort2 "github.com/dolthub/go-mysql-server/sql/sorters"
+	"github.com/dolthub/go-mysql-server/sql/sorters"
 	"io"
 	"sort"
 
@@ -178,7 +178,7 @@ func (i *WindowPartitionIter) materializeInput(ctx *sql.Context) (sql.WindowBuff
 	}
 
 	// sort all rows by partition
-	sorter := &sort2.Sorter{
+	sorter := &sorters.Sorter{
 		SortConditions: append(partitionsToSortConditions(i.w.PartitionBy), i.w.SortBy...),
 		Rows:           input,
 		Ctx:            ctx,

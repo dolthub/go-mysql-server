@@ -16,7 +16,7 @@ package iters
 
 import (
 	"fmt"
-	sort2 "github.com/dolthub/go-mysql-server/sql/sorters"
+	"github.com/dolthub/go-mysql-server/sql/sorters"
 	"io"
 	"sort"
 
@@ -448,7 +448,7 @@ func (i *sortIter) computeSortedRows(ctx *sql.Context) error {
 	}
 
 	rows := cache.Get()
-	sorter := &sort2.Sorter{
+	sorter := &sorters.Sorter{
 		SortConditions: i.sortConditions,
 		Rows:           rows,
 		LastError:      nil,

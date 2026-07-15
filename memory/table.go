@@ -18,7 +18,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
-	sort2 "github.com/dolthub/go-mysql-server/sql/sorters"
+	"github.com/dolthub/go-mysql-server/sql/sorters"
 	"io"
 	"math"
 	"sort"
@@ -1757,16 +1757,16 @@ func (t *IndexedTable) PartitionRows(ctx *sql.Context, partition sql.Partition) 
 				// TODO: null ordering?
 			}
 		}
-		var sorter *sort2.Sorter
+		var sorter *sorters.Sorter
 		if i, ok := iter.(*tableIter); ok {
-			sorter = &sort2.Sorter{
+			sorter = &sorters.Sorter{
 				SortConditions: sc,
 				Rows:           i.rows,
 				LastError:      nil,
 				Ctx:            ctx,
 			}
 		} else if i, ok := iter.(*spatialTableIter); ok {
-			sorter = &sort2.Sorter{
+			sorter = &sorters.Sorter{
 				SortConditions: sc,
 				Rows:           i.rows,
 				LastError:      nil,
