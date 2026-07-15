@@ -16,9 +16,10 @@ package iters
 
 import (
 	"container/heap"
+	"io"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"io"
 )
 
 // topRowsIter is defined by the topN node. It uses a heap to sort the rows of the child iterator and returns the top N
