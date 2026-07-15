@@ -99,12 +99,12 @@ func (b *ExecBuilder) buildRangeHeap(ctx *sql.Context, sr *RangeHeap, children .
 			if err != nil {
 				return nil, err
 			}
-			sf := []sql.SortCondition{{
-				Column:       sortExpr,
+			sc := sql.SortFields{{
+				Expr:         sortExpr,
 				Order:        sql.Ascending,
 				NullOrdering: sql.NullsFirst,
 			}}
-			childNode = plan.NewSort(sf, n)
+			childNode = plan.NewSort(sc, n)
 		}
 
 		if err != nil {
@@ -134,12 +134,12 @@ func (b *ExecBuilder) buildRangeHeapJoin(ctx *sql.Context, j *RangeHeapJoin, chi
 		}
 	} else {
 		sortExpr := j.RangeHeap.ValueExpr
-		sf := []sql.SortCondition{{
-			Column:       sortExpr,
+		sc := sql.SortFields{{
+			Expr:         sortExpr,
 			Order:        sql.Ascending,
 			NullOrdering: sql.NullsFirst,
 		}}
-		left = plan.NewSort(sf, children[0])
+		left = plan.NewSort(sc, children[0])
 	}
 
 	right, err := b.buildRangeHeap(ctx, j.RangeHeap, children[1])

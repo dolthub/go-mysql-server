@@ -40,15 +40,15 @@ func (s *Sorter) Swap(i, j int) {
 // CompareRows compares rows a and b based on s.SortFields
 func (s *Sorter) CompareRows(a, b sql.Row) int {
 	for _, sf := range s.SortFields {
-		typ := sf.Column.Type(s.Ctx)
+		typ := sf.Expr.Type(s.Ctx)
 		// TODO: For complex SortFields, like Subqueries, recalculating the value may be costly. We should find some way
 		//  to cache it.
-		av, err := sf.Column.Eval(s.Ctx, a)
+		av, err := sf.Expr.Eval(s.Ctx, a)
 		if err != nil {
 			s.LastError = sql.ErrUnableSort.Wrap(err)
 			return 0
 		}
-		bv, err := sf.Column.Eval(s.Ctx, b)
+		bv, err := sf.Expr.Eval(s.Ctx, b)
 		if err != nil {
 			s.LastError = sql.ErrUnableSort.Wrap(err)
 			return 0

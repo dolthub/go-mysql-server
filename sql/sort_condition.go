@@ -1,4 +1,4 @@
-// Copyright 2021 Dolthub, Inc.
+// Copyright 2026 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import (
 // SortCondition defines an Expression and ordering by which a query will be sorted.
 type SortCondition struct {
 	// Column to order by.
-	Column Expression
+	Expr Expression
 	// Column ValueExpression to order by. This is always the same value as Column, but avoids a type cast
 	ValueExprColumn ValueExpression
 	// Order type.
@@ -37,7 +37,7 @@ type SortFields []SortCondition
 func (sf SortFields) ToExpressions() []Expression {
 	es := make([]Expression, len(sf))
 	for i, f := range sf {
-		es[i] = f.Column
+		es[i] = f.Expr
 	}
 	return es
 }
@@ -52,7 +52,7 @@ func (sf SortFields) FromExpressions(ctx *Context, exprs ...Expression) SortFiel
 	for i, expr := range exprs {
 		valueExpr, _ := expr.(ValueExpression)
 		fields[i] = SortCondition{
-			Column:          expr,
+			Expr:            expr,
 			ValueExprColumn: valueExpr,
 			NullOrdering:    sf[i].NullOrdering,
 			Order:           sf[i].Order,
@@ -62,7 +62,7 @@ func (sf SortFields) FromExpressions(ctx *Context, exprs ...Expression) SortFiel
 }
 
 func (s SortCondition) String() string {
-	return fmt.Sprintf("%s %s", s.Column, s.Order)
+	return fmt.Sprintf("%s %s", s.Expr, s.Order)
 }
 
 func (s SortCondition) DebugString(ctx *Context) string {
@@ -70,7 +70,7 @@ func (s SortCondition) DebugString(ctx *Context) string {
 	if s.NullOrdering == NullsLast {
 		nullOrdering = "nullsLast"
 	}
-	return fmt.Sprintf("%s %s %s", DebugString(ctx, s.Column), DebugString(ctx, s.Order), nullOrdering)
+	return fmt.Sprintf("%s %s %s", DebugString(ctx, s.Expr), DebugString(ctx, s.Order), nullOrdering)
 }
 
 // ErrUnableSort is thrown when something happens on sorting

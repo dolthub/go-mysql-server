@@ -49,7 +49,7 @@ var _ sql.Describable = (*Sort)(nil)
 // Resolved implements the Resolvable interface.
 func (s *Sort) Resolved() bool {
 	for _, f := range s.SortFields {
-		if !f.Column.Resolved() {
+		if !f.Expr.Resolved() {
 			return false
 		}
 	}
@@ -64,7 +64,7 @@ func (s *Sort) String() string {
 	pr := sql.NewTreePrinter()
 	var fields = make([]string, len(s.SortFields))
 	for i, f := range s.SortFields {
-		fields[i] = fmt.Sprintf("%s %s", f.Column, f.Order)
+		fields[i] = fmt.Sprintf("%s %s", f.Expr, f.Order)
 	}
 	_ = pr.WriteNode("Sort(%s)", strings.Join(fields, ", "))
 	_ = pr.WriteChildren(s.Child.String())
@@ -99,7 +99,7 @@ func (s *Sort) Expressions() []sql.Expression {
 	// TODO: use shared method
 	var exprs = make([]sql.Expression, len(s.SortFields))
 	for i, f := range s.SortFields {
-		exprs[i] = f.Column
+		exprs[i] = f.Expr
 	}
 	return exprs
 }
@@ -157,7 +157,7 @@ var _ sql.CollationCoercible = (*TopN)(nil)
 // Resolved implements the Resolvable interface.
 func (n *TopN) Resolved() bool {
 	for _, f := range n.Fields {
-		if !f.Column.Resolved() {
+		if !f.Expr.Resolved() {
 			return false
 		}
 	}
@@ -177,7 +177,7 @@ func (n *TopN) String() string {
 	pr := sql.NewTreePrinter()
 	var fields = make([]string, len(n.Fields))
 	for i, f := range n.Fields {
-		fields[i] = fmt.Sprintf("%s %s", f.Column, f.Order)
+		fields[i] = fmt.Sprintf("%s %s", f.Expr, f.Order)
 	}
 	_ = pr.WriteNode("TopN(Limit: [%s]; %s)", n.Limit.String(), strings.Join(fields, ", "))
 	_ = pr.WriteChildren(n.Child.String())

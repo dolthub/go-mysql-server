@@ -243,8 +243,8 @@ func (b *Builder) buildSortConditions(orderByScope *scope, replaceAlias replaceA
 			})
 		}
 		sortConditions[i] = sql.SortCondition{
-			Column: scalar,
-			Order:  so,
+			Expr:  scalar,
+			Order: so,
 		}
 	}
 	return sortConditions

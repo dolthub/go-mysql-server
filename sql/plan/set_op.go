@@ -124,7 +124,7 @@ func (s *SetOp) Resolved() bool {
 		res = res && s.Offset.Resolved()
 	}
 	for _, sf := range s.SortFields {
-		res = res && sf.Column.Resolved()
+		res = res && sf.Expr.Resolved()
 	}
 	return res
 }

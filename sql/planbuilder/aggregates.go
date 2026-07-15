@@ -701,8 +701,8 @@ func (b *Builder) buildWindowDef(fromScope *scope, def *ast.WindowDef) *sql.Wind
 			so = sql.Descending
 		}
 		sortConditions[i] = sql.SortCondition{
-			Column: e,
-			Order:  so,
+			Expr:  e,
+			Order: so,
 		}
 	}
 

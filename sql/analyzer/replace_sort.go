@@ -177,8 +177,8 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 			}
 			sortConditions := make(sql.SortFields, len(sortNode.SortFields))
 			sameSortConditions := true
-			for i, sortField := range sortNode.SortFields {
-				col, sameExpr, _ := transform.Expr(ctx, sortField.Column, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+			for i, sortCondition := range sortNode.SortFields {
+				col, sameExpr, _ := transform.Expr(ctx, sortCondition.Expr, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 					if gt, ok := e.(*expression.GetField); ok {
 						if gf, ok := c.ScopeMapping[gt.Id()]; ok {
 							return gf, transform.NewTree, nil
@@ -187,15 +187,15 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 					return e, transform.SameTree, nil
 				})
 				if sameExpr {
-					sortConditions[i] = sortField
+					sortConditions[i] = sortCondition
 				} else {
 					sameSortConditions = false
 					valCol, _ := col.(sql.ValueExpression)
 					sortConditions[i] = sql.SortCondition{
-						Column:          col,
+						Expr:            col,
 						ValueExprColumn: valCol,
-						NullOrdering:    sortField.NullOrdering,
-						Order:           sortField.Order,
+						NullOrdering:    sortCondition.NullOrdering,
+						Order:           sortCondition.Order,
 					}
 				}
 			}
@@ -388,8 +388,8 @@ func replaceAgg(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope,
 				return n, transform.SameTree, nil
 			}
 			sortBy = sql.SortCondition{
-				Column: gf,
-				Order:  sql.Descending,
+				Expr:  gf,
+				Order: sql.Descending,
 			}
 		case *aggregation.Min:
 			gf, ok := agg.Child.(*expression.GetField)
@@ -397,8 +397,8 @@ func replaceAgg(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope,
 				return n, transform.SameTree, nil
 			}
 			sortBy = sql.SortCondition{
-				Column: gf,
-				Order:  sql.Ascending,
+				Expr:  gf,
+				Order: sql.Ascending,
 			}
 		default:
 			return n, transform.SameTree, nil
@@ -407,7 +407,7 @@ func replaceAgg(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope,
 		// since we're only supporting one aggregation, it must be on the first column of the primary key
 		if pkCols := pkIdx.Expressions(); len(pkCols) < 1 {
 			return n, transform.SameTree, nil
-		} else if !strings.EqualFold(pkCols[0], sortBy.Column.String()) {
+		} else if !strings.EqualFold(pkCols[0], sortBy.Expr.String()) {
 			return n, transform.SameTree, nil
 		}
 
@@ -415,7 +415,7 @@ func replaceAgg(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope,
 		name := gb.SelectDeps[0].String()
 		newProjs, _, err := transform.Exprs(ctx, proj.Projections, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			if strings.EqualFold(e.String(), name) {
-				return sortBy.Column, transform.NewTree, nil
+				return sortBy.Expr, transform.NewTree, nil
 			}
 			return e, transform.SameTree, nil
 		})

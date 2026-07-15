@@ -198,7 +198,7 @@ func (f *factory) buildDistinct(ctx *sql.Context, child sql.Node, refsSubquery b
 				}
 				minMatching := min(len(distinctOn), len(sort.SortFields))
 				for i := 0; i < minMatching; i++ {
-					if _, ok := dMap[strings.ToLower(sort.SortFields[i].Column.String())]; !ok {
+					if _, ok := dMap[strings.ToLower(sort.SortFields[i].Expr.String())]; !ok {
 						return nil, sql.ErrDistinctOnMatchOrderBy.New()
 					}
 				}
@@ -223,7 +223,7 @@ func (f *factory) buildDistinct(ctx *sql.Context, child sql.Node, refsSubquery b
 			}
 			hasDiff := false
 			for _, s := range sort.SortFields {
-				if _, ok := projMap[strings.ToLower(s.Column.String())]; !ok {
+				if _, ok := projMap[strings.ToLower(s.Expr.String())]; !ok {
 					hasDiff = true
 					break
 				}

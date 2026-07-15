@@ -343,8 +343,8 @@ func partitionsToSortFields(partitionExprs []sql.Expression) sql.SortFields {
 	sfs := make(sql.SortFields, len(partitionExprs))
 	for i, expr := range partitionExprs {
 		sfs[i] = sql.SortCondition{
-			Column: expr,
-			Order:  sql.Ascending,
+			Expr:  expr,
+			Order: sql.Ascending,
 		}
 	}
 	return sfs
