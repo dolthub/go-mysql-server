@@ -81,7 +81,7 @@ func (b *Builder) buildSetOp(inScope *scope, u *ast.SetOp) (outScope *scope) {
 
 	// mysql errors for order by right projection
 	orderByScope := b.analyzeOrderBy(leftScope, leftScope, u.OrderBy)
-	sortConditions := b.buildSortConditions(orderByScope, replaceAlias)
+	sortConditions := b.buildSortConditions(orderByScope, doReplaceAlias)
 
 	n, ok := leftScope.node.(*plan.SetOp)
 	if ok {

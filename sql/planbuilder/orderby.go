@@ -214,7 +214,7 @@ func (b *Builder) buildOrderBy(inScope, orderByScope *scope) {
 type replaceAliasFlag bool
 
 const (
-	replaceAlias      replaceAliasFlag = true
+	doReplaceAlias    replaceAliasFlag = true
 	doNotReplaceAlias replaceAliasFlag = false
 )
 

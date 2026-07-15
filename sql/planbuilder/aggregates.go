@@ -725,7 +725,7 @@ func (b *Builder) buildWindowDef(fromScope *scope, def *ast.WindowDef) *sql.Wind
 	// "If OVER() is empty, the window consists of all query rows and the window function computes a result using all rows."
 	// This must be evaluated after merging with any referenced named window (OVER w), since the
 	// referenced window's ORDER BY determines the correct default frame, not this def's own (possibly empty) ORDER BY.
-	if windowDef.OrderBy == nil && windowDef.Frame == nil {
+	if len(windowDef.OrderBy) == 0 && windowDef.Frame == nil {
 		windowDef.Frame = plan.NewRowsUnboundedPrecedingToUnboundedFollowingFrame()
 	}
 
