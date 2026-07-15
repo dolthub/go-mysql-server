@@ -23,7 +23,7 @@ import (
 type Sorter struct {
 	LastError  error
 	Ctx        *sql.Context
-	SortFields []sql.SortField
+	SortFields sql.SortFields
 	Rows       []sql.Row
 }
 

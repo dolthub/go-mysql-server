@@ -16,6 +16,7 @@ package planbuilder
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 	"strings"
 
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
@@ -201,9 +202,26 @@ func (b *Builder) buildOrderBy(inScope, orderByScope *scope) {
 	if len(orderByScope.cols) == 0 {
 		return
 	}
-	var sortFields sql.SortFields
-	var deps sql.ColSet
-	for _, c := range orderByScope.cols {
+	sortConditions := b.buildSortConditions(orderByScope, doNotReplaceAlias)
+	sort, err := b.f.buildSort(b.ctx, inScope.node, sortConditions, orderByScope.colset, inScope.refsSubquery)
+	if err != nil {
+		b.handleErr(err)
+	}
+	inScope.node = sort
+	return
+}
+
+type replaceAliasFlag bool
+
+const (
+	replaceAlias      replaceAliasFlag = true
+	doNotReplaceAlias replaceAliasFlag = false
+)
+
+// buildSortConditions builds a sql.SortConditions based on an ORDER BY scope and also returns dependencies
+func (b *Builder) buildSortConditions(orderByScope *scope, replaceAlias replaceAliasFlag) sql.SortFields {
+	sortConditions := make(sql.SortFields, len(orderByScope.cols))
+	for i, c := range orderByScope.cols {
 		so := sql.Ascending
 		if c.descending {
 			so = sql.Descending
@@ -212,19 +230,66 @@ func (b *Builder) buildOrderBy(inScope, orderByScope *scope) {
 		if scalar == nil {
 			scalar = c.scalarGf()
 		}
-		sf := sql.SortField{
+		// Some nodes such as unions pass ORDER BYs to the top scope, where the original ORDER BY may no longer be
+		// accessible. It is safe to assume that the alias has already been computed.
+		if replaceAlias {
+			scalar, _, _ = transform.Expr(b.ctx, scalar, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				switch e := e.(type) {
+				case *expression.Alias:
+					return expression.NewGetField(int(c.id), e.Type(ctx), e.Name(), e.IsNullable(ctx)), transform.NewTree, nil
+				default:
+					return e, transform.SameTree, nil
+				}
+			})
+		}
+		sortConditions[i] = sql.SortCondition{
 			Column: scalar,
 			Order:  so,
 		}
-		sortFields = append(sortFields, sf)
-		deps.Add(sql.ColumnId(c.id))
 	}
-	sort, err := b.f.buildSort(b.ctx, inScope.node, sortFields, deps, inScope.refsSubquery)
-	if err != nil {
-		b.handleErr(err)
+	return sortConditions
+}
+
+// buildOrderedInjectedExpr builds an InjectedExpr with an ORDER BY dependency
+func (b *Builder) buildOrderedInjectedExpr(inScope *scope, e *ast.OrderedInjectedExpr) sql.Expression {
+	inScope.initGroupBy()
+	gb := inScope.groupBy
+
+	var resolvedChildren []any
+	if len(e.Children) > 0 {
+		resolvedChildren = make([]any, len(e.Children))
+		for i, child := range e.Children {
+			resolvedChildren[i] = b.buildScalar(inScope, child)
+		}
+	} else {
+		resolvedChildren = make([]any, len(e.SelectExprChildren))
+		for i, child := range e.SelectExprChildren {
+			resolvedChildren[i] = b.selectExprToExpression(inScope, child)
+		}
 	}
-	inScope.node = sort
-	return
+
+	orderByScope := b.analyzeOrderBy(inScope, inScope, e.OrderBy)
+	sortConditions := b.buildSortConditions(orderByScope, doNotReplaceAlias)
+
+	resolvedChildren = append(resolvedChildren, sortConditions)
+
+	expr := b.buildInjectedExpressionFromResolvedChildren(e.InjectedExpr, resolvedChildren)
+	agg, ok := expr.(sql.Aggregation)
+	if !ok {
+		b.handleErr(fmt.Errorf("expected sql.Aggregation, got %T", expr))
+	}
+
+	aggName := strings.ToLower(plan.AliasSubqueryString(b.ctx, agg))
+	col := scopeColumn{col: aggName, scalar: agg, typ: agg.Type(b.ctx), nullable: agg.IsNullable(b.ctx)}
+	id := gb.outScope.newColumn(col)
+
+	agg = agg.WithId(sql.ColumnId(id)).(sql.Aggregation)
+	gb.outScope.cols[len(gb.outScope.cols)-1].scalar = agg
+	col.scalar = agg
+
+	gb.addAggStr(col)
+	col.id = id
+	return col.scalarGf()
 }
 
 // unwrapExpression unwraps expressions wrapped in ParenExpr (parenthesis)

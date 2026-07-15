@@ -20,10 +20,8 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 )
 
-// SortField defines an Expression and ordering by which a query will be sorted.
-// TODO: SortField is confusingly and inaccurately named. The name SortField and the struct field Column imply that rows
-// are sorted based on a column or table field but that is incorrect since Column actually an Expression.
-type SortField struct {
+// SortCondition defines an Expression and ordering by which a query will be sorted.
+type SortCondition struct {
 	// Column to order by.
 	Column Expression
 	// Column ValueExpression to order by. This is always the same value as Column, but avoids a type cast
@@ -34,7 +32,7 @@ type SortField struct {
 	NullOrdering NullOrdering
 }
 
-type SortFields []SortField
+type SortFields []SortCondition
 
 func (sf SortFields) ToExpressions() []Expression {
 	es := make([]Expression, len(sf))
@@ -53,7 +51,7 @@ func (sf SortFields) FromExpressions(ctx *Context, exprs ...Expression) SortFiel
 
 	for i, expr := range exprs {
 		valueExpr, _ := expr.(ValueExpression)
-		fields[i] = SortField{
+		fields[i] = SortCondition{
 			Column:          expr,
 			ValueExprColumn: valueExpr,
 			NullOrdering:    sf[i].NullOrdering,
@@ -63,11 +61,11 @@ func (sf SortFields) FromExpressions(ctx *Context, exprs ...Expression) SortFiel
 	return fields
 }
 
-func (s SortField) String() string {
+func (s SortCondition) String() string {
 	return fmt.Sprintf("%s %s", s.Column, s.Order)
 }
 
-func (s SortField) DebugString(ctx *Context) string {
+func (s SortCondition) DebugString(ctx *Context) string {
 	nullOrdering := "nullsFirst"
 	if s.NullOrdering == NullsLast {
 		nullOrdering = "nullsLast"

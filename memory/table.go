@@ -1750,7 +1750,7 @@ func (t *IndexedTable) PartitionRows(ctx *sql.Context, partition sql.Partition) 
 		idx := t.Lookup.Index.(*Index)
 		sf := make(sql.SortFields, len(idx.Exprs))
 		for i, e := range idx.Exprs {
-			sf[i] = sql.SortField{Column: e}
+			sf[i] = sql.SortCondition{Column: e}
 			if t.Lookup.IsReverse {
 				sf[i].Order = sql.Descending
 				// TODO: null ordering?

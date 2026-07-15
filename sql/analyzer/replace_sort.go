@@ -175,8 +175,8 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 			if sortNode == nil {
 				continue
 			}
-			sortFields := make([]sql.SortField, len(sortNode.SortFields))
-			sameSortFields := true
+			sortConditions := make(sql.SortFields, len(sortNode.SortFields))
+			sameSortConditions := true
 			for i, sortField := range sortNode.SortFields {
 				col, sameExpr, _ := transform.Expr(ctx, sortField.Column, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 					if gt, ok := e.(*expression.GetField); ok {
@@ -187,11 +187,11 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 					return e, transform.SameTree, nil
 				})
 				if sameExpr {
-					sortFields[i] = sortField
+					sortConditions[i] = sortField
 				} else {
-					sameSortFields = false
+					sameSortConditions = false
 					valCol, _ := col.(sql.ValueExpression)
-					sortFields[i] = sql.SortField{
+					sortConditions[i] = sql.SortCondition{
 						Column:          col,
 						ValueExprColumn: valCol,
 						NullOrdering:    sortField.NullOrdering,
@@ -199,10 +199,10 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 					}
 				}
 			}
-			if !sameSortFields {
+			if !sameSortConditions {
 				// The Sort node is used to find table aliases, but table aliases can't be found inside SubqueryAlias
 				// nodes, so we need to construct a new Sort node with the SubqueryAlias's child
-				newSort := plan.NewSort(sortFields, c.Child)
+				newSort := plan.NewSort(sortConditions, c.Child)
 				newChildren[i], same, err = replaceIdxSortHelper(ctx, scope, child, newSort)
 			}
 		case *plan.JoinNode:
@@ -379,15 +379,15 @@ func replaceAgg(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope,
 			return n, transform.SameTree, nil
 		}
 
-		// generate sort fields from aggregations
-		var sf sql.SortField
+		// generate sort condition from aggregations
+		var sortBy sql.SortCondition
 		switch agg := gb.SelectDeps[0].(type) {
 		case *aggregation.Max:
 			gf, ok := agg.Child.(*expression.GetField)
 			if !ok {
 				return n, transform.SameTree, nil
 			}
-			sf = sql.SortField{
+			sortBy = sql.SortCondition{
 				Column: gf,
 				Order:  sql.Descending,
 			}
@@ -396,7 +396,7 @@ func replaceAgg(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope,
 			if !ok {
 				return n, transform.SameTree, nil
 			}
-			sf = sql.SortField{
+			sortBy = sql.SortCondition{
 				Column: gf,
 				Order:  sql.Ascending,
 			}
@@ -407,7 +407,7 @@ func replaceAgg(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope,
 		// since we're only supporting one aggregation, it must be on the first column of the primary key
 		if pkCols := pkIdx.Expressions(); len(pkCols) < 1 {
 			return n, transform.SameTree, nil
-		} else if !strings.EqualFold(pkCols[0], sf.Column.String()) {
+		} else if !strings.EqualFold(pkCols[0], sortBy.Column.String()) {
 			return n, transform.SameTree, nil
 		}
 
@@ -415,14 +415,17 @@ func replaceAgg(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope,
 		name := gb.SelectDeps[0].String()
 		newProjs, _, err := transform.Exprs(ctx, proj.Projections, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			if strings.EqualFold(e.String(), name) {
-				return sf.Column, transform.NewTree, nil
+				return sortBy.Column, transform.NewTree, nil
 			}
 			return e, transform.SameTree, nil
 		})
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
-		newProj := plan.NewProject(ctx, newProjs, plan.NewSort(sql.SortFields{sf}, gb.Child))
+
+		// TODO: A Limit wrapping a Sort gets transformed into a TopN node. This can likely be refactored into a TopN
+		//  node
+		newProj := plan.NewProject(ctx, newProjs, plan.NewSort(sql.SortFields{sortBy}, gb.Child))
 		limit := plan.NewLimit(expression.NewLiteral(1, types.Int64), newProj)
 		return limit, transform.NewTree, nil
 	})

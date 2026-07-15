@@ -33,7 +33,7 @@ type Sort struct {
 }
 
 // NewSort creates a new Sort node.
-func NewSort(sortFields []sql.SortField, child sql.Node) *Sort {
+func NewSort(sortFields sql.SortFields, child sql.Node) *Sort {
 	return &Sort{
 		UnaryNode:  UnaryNode{child},
 		SortFields: sortFields,

@@ -99,7 +99,7 @@ func (b *ExecBuilder) buildRangeHeap(ctx *sql.Context, sr *RangeHeap, children .
 			if err != nil {
 				return nil, err
 			}
-			sf := []sql.SortField{{
+			sf := []sql.SortCondition{{
 				Column:       sortExpr,
 				Order:        sql.Ascending,
 				NullOrdering: sql.NullsFirst,
@@ -134,7 +134,7 @@ func (b *ExecBuilder) buildRangeHeapJoin(ctx *sql.Context, j *RangeHeapJoin, chi
 		}
 	} else {
 		sortExpr := j.RangeHeap.ValueExpr
-		sf := []sql.SortField{{
+		sf := []sql.SortCondition{{
 			Column:       sortExpr,
 			Order:        sql.Ascending,
 			NullOrdering: sql.NullsFirst,

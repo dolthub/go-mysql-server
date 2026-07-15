@@ -172,29 +172,14 @@ func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.SetOp, name strin
 	limit := b.buildLimit(inScope, union.Limit)
 
 	orderByScope := b.analyzeOrderBy(cteScope, leftScope, union.OrderBy)
-	var sortFields sql.SortFields
-	for _, c := range orderByScope.cols {
-		so := sql.Ascending
-		if c.descending {
-			so = sql.Descending
-		}
-		scalar := c.scalar
-		if scalar == nil {
-			scalar = c.scalarGf()
-		}
-		sf := sql.SortField{
-			Column: scalar,
-			Order:  so,
-		}
-		sortFields = append(sortFields, sf)
-	}
+	sortConditions := b.buildSortConditions(orderByScope, doNotReplaceAlias)
 
 	corr := leftSqScope.correlated().Union(rightInScope.correlated())
 	vol := leftSqScope.activeSubquery.volatile || rightInScope.activeSubquery.volatile
 
 	b.qFlags.Set(sql.QFlagRelSubquery)
 	cteScope.node = plan.NewSubqueryAlias(name, "",
-		plan.NewRecursiveCte(rInit, rightScope.node, name, columns, distinct, limit, sortFields).
+		plan.NewRecursiveCte(rInit, rightScope.node, name, columns, distinct, limit, sortConditions).
 			WithSchema(recSch).WithWorking(rTable).WithId(tableId).WithColumns(cols)).
 		WithColumnNames(columns).WithCorrelated(corr).WithVolatile(vol).WithScopeMapping(scopeMapping).
 		WithId(tableId).WithColumns(cols)

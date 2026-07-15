@@ -243,7 +243,7 @@ func (f *factory) buildDistinct(ctx *sql.Context, child sql.Node, refsSubquery b
 	return plan.NewDistinct(child, distinctOn...), nil
 }
 
-func (f *factory) buildSort(ctx *sql.Context, child sql.Node, exprs []sql.SortField, deps sql.ColSet, subquery bool) (sql.Node, error) {
+func (f *factory) buildSort(ctx *sql.Context, child sql.Node, exprs sql.SortFields, deps sql.ColSet, subquery bool) (sql.Node, error) {
 	{
 		// The default binder behavior adds a projection before and after
 		// sort nodes for alias dependency correctness. In many cases the sort
