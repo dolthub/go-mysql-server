@@ -22,10 +22,8 @@ import (
 
 // SortCondition defines an Expression and ordering by which a query will be sorted.
 type SortCondition struct {
-	// Column to order by.
+	// Expr to order by.
 	Expr Expression
-	// Column ValueExpression to order by. This is always the same value as Column, but avoids a type cast
-	ValueExprColumn ValueExpression
 	// Order type.
 	Order SortOrder
 	// NullOrdering defining how nulls will be ordered.
@@ -50,12 +48,10 @@ func (sf SortFields) FromExpressions(ctx *Context, exprs ...Expression) SortFiel
 	}
 
 	for i, expr := range exprs {
-		valueExpr, _ := expr.(ValueExpression)
 		fields[i] = SortCondition{
-			Expr:            expr,
-			ValueExprColumn: valueExpr,
-			NullOrdering:    sf[i].NullOrdering,
-			Order:           sf[i].Order,
+			Expr:         expr,
+			NullOrdering: sf[i].NullOrdering,
+			Order:        sf[i].Order,
 		}
 	}
 	return fields

@@ -178,7 +178,7 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 			sortConditions := make(sql.SortFields, len(sortNode.SortFields))
 			sameSortConditions := true
 			for i, sortCondition := range sortNode.SortFields {
-				col, sameExpr, _ := transform.Expr(ctx, sortCondition.Expr, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				expr, sameExpr, _ := transform.Expr(ctx, sortCondition.Expr, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 					if gt, ok := e.(*expression.GetField); ok {
 						if gf, ok := c.ScopeMapping[gt.Id()]; ok {
 							return gf, transform.NewTree, nil
@@ -190,12 +190,10 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 					sortConditions[i] = sortCondition
 				} else {
 					sameSortConditions = false
-					valCol, _ := col.(sql.ValueExpression)
 					sortConditions[i] = sql.SortCondition{
-						Expr:            col,
-						ValueExprColumn: valCol,
-						NullOrdering:    sortCondition.NullOrdering,
-						Order:           sortCondition.Order,
+						Expr:         expr,
+						NullOrdering: sortCondition.NullOrdering,
+						Order:        sortCondition.Order,
 					}
 				}
 			}
