@@ -1,0 +1,227 @@
+// Copyright 2026 Dolthub, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//	http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package iters
+
+import (
+	"container/heap"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
+	"io"
+)
+
+// topRowsIter is defined by the topN node. It uses a heap to sort the rows of the child iterator and returns the top N
+// (defined by limit) rows
+type topRowsIter struct {
+	childIter     sql.RowIter
+	sortFields    sql.SortFields
+	topRows       []sql.Row
+	idx           int
+	limit         int64
+	numFoundRows  int64
+	calcFoundRows bool
+}
+
+var _ sql.RowIter = (*topRowsIter)(nil)
+
+func NewTopRowsIter(s sql.SortFields, limit int64, calcFoundRows bool, child sql.RowIter, childSchemaLen int) *topRowsIter {
+	return &topRowsIter{
+		sortFields:    s,
+		limit:         limit,
+		calcFoundRows: calcFoundRows,
+		childIter:     child,
+		idx:           -1,
+	}
+}
+
+func (i *topRowsIter) Next(ctx *sql.Context) (sql.Row, error) {
+	if i.idx == -1 {
+		err := i.computeTopRows(ctx)
+		if err != nil {
+			return nil, err
+		}
+		i.idx = 0
+	}
+
+	if i.idx >= len(i.topRows) {
+		return nil, io.EOF
+	}
+	row := i.topRows[i.idx]
+	i.idx++
+	return row, nil
+}
+
+func (i *topRowsIter) Close(ctx *sql.Context) error {
+	i.topRows = nil
+	if i.calcFoundRows {
+		ctx.GetLastQueryInfo().FoundRows.Store(i.numFoundRows)
+	}
+	return i.childIter.Close(ctx)
+}
+
+func (i *topRowsIter) computeTopRows(ctx *sql.Context) error {
+	rowsHeap := &topRowsHeap{
+		Sorter: expression.Sorter{
+			SortFields: i.sortFields,
+			Rows:       make([]sql.Row, 0, i.limit+1),
+			LastError:  nil,
+			Ctx:        ctx,
+		},
+		order: make([]int64, 0, i.limit+1),
+	}
+	for {
+		row, err := i.childIter.Next(ctx)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		i.numFoundRows++
+
+		heap.Push(rowsHeap, rowWithOrder{row, i.numFoundRows})
+		if int64(rowsHeap.Len()) > i.limit {
+			heap.Pop(rowsHeap)
+		}
+		if rowsHeap.LastError != nil {
+			return rowsHeap.LastError
+		}
+	}
+
+	var err error
+	i.topRows, err = rowsHeap.Rows()
+	return err
+}
+
+// topRowsHeap implements heap.Interface based on expression.Sorter, inverting Less() so that it can be used to
+// implement TopN: heap.Push() rows into it, and if Len() > MAX, heap.Pop() the current min row. Ties in the sort
+// fields are broken using insertion order so results are deterministic.
+type topRowsHeap struct {
+	expression.Sorter
+	order []int64
+}
+
+// isLess returns whether the row at index i sorts before the row at index j, using insertion order as a tie-breaker.
+func (h *topRowsHeap) isLess(i, j int) bool {
+	// TODO: redo
+	if h.Sorter.IsLesserRow(h.Sorter.Rows[i], h.Sorter.Rows[j]) {
+		return true
+	}
+	if h.Sorter.IsLesserRow(h.Sorter.Rows[j], h.Sorter.Rows[i]) {
+		return false
+	}
+	return h.order[i] < h.order[j]
+}
+
+func (h *topRowsHeap) Less(i, j int) bool {
+	return !h.isLess(i, j)
+}
+
+func (h *topRowsHeap) Swap(i, j int) {
+	h.Sorter.Swap(i, j)
+	h.order[i], h.order[j] = h.order[j], h.order[i]
+}
+
+func (h *topRowsHeap) Push(x interface{}) {
+	e := x.(rowWithOrder)
+	h.Sorter.Rows = append(h.Sorter.Rows, e.row)
+	h.order = append(h.order, e.order)
+}
+
+func (h *topRowsHeap) Pop() interface{} {
+	n := len(h.Sorter.Rows)
+	row, order := h.Sorter.Rows[n-1], h.order[n-1]
+	h.Sorter.Rows = h.Sorter.Rows[:n-1]
+	h.order = h.order[:n-1]
+	return rowWithOrder{row, order}
+}
+
+func (h *topRowsHeap) Rows() ([]sql.Row, error) {
+	if h.LastError != nil {
+		return nil, h.LastError
+	}
+
+	l := h.Len()
+	res := make([]sql.Row, l)
+	for i := l - 1; i >= 0; i-- {
+		res[i] = heap.Pop(h).(rowWithOrder).row // TODO: this is slow
+	}
+	return res, nil
+}
+
+// rowWithOrder pairs the row with its ordering number, which is used as a tie-breaker if two rows have the same sort
+// condition values
+type rowWithOrder struct {
+	row   sql.Row
+	order int64
+}
+
+// topRowIter is a special case of topRowsIter for when the limit is 1. Rather than using a heap to sort the rows of the
+// child iterator, it scans the rows for the first row.
+type topRowIter struct {
+	childIter     sql.RowIter
+	sortFields    sql.SortFields
+	topRow        sql.Row
+	numFoundRows  int64
+	calcFoundRows bool
+	once          bool
+}
+
+var _ sql.RowIter = (*topRowIter)(nil)
+
+func NewTopRowIter(s sql.SortFields, calcFoundRows bool, child sql.RowIter) *topRowIter {
+	return &topRowIter{
+		childIter:     child,
+		sortFields:    s,
+		calcFoundRows: calcFoundRows,
+	}
+}
+
+func (i *topRowIter) Next(ctx *sql.Context) (sql.Row, error) {
+	if i.once {
+		return nil, io.EOF
+	}
+	i.once = true
+
+	topRow, err := i.childIter.Next(ctx)
+	if err != nil {
+		return nil, err
+	}
+	sorter := expression.Sorter{
+		Ctx:        ctx,
+		SortFields: i.sortFields,
+	}
+	for {
+		var row sql.Row
+		row, err = i.childIter.Next(ctx)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		i.numFoundRows++
+		if sorter.IsLesserRow(row, topRow) {
+			topRow = row
+		}
+	}
+	return topRow, nil
+}
+
+func (i *topRowIter) Close(ctx *sql.Context) error {
+	if i.calcFoundRows {
+		ctx.GetLastQueryInfo().FoundRows.Store(i.numFoundRows)
+	}
+	return i.childIter.Close(ctx)
+}
