@@ -16525,9 +16525,9 @@ inner join pq on true
 	{
 		Query: `select i, row_number() over (w1 partition by s) from mytable window w1 as (order by i asc)`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [mytable.i:1!null, row_number() over ( partition by mytable.s order by mytable.i asc rows between unbounded preceding and unbounded following):0!null->row_number() over (w1 partition by s):0]\n" +
+			" ├─ columns: [mytable.i:1!null, row_number() over ( partition by mytable.s order by mytable.i asc):0!null->row_number() over (w1 partition by s):0]\n" +
 			" └─ Window\n" +
-			"     ├─ row_number() over ( partition by mytable.s order by mytable.i ASC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)\n" +
+			"     ├─ row_number() over ( partition by mytable.s order by mytable.i ASC)\n" +
 			"     ├─ mytable.i:0!null\n" +
 			"     └─ ProcessTable\n" +
 			"         └─ Table\n" +
@@ -16535,15 +16535,15 @@ inner join pq on true
 			"             └─ columns: [i s]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [mytable.i, row_number() over ( partition by mytable.s order by mytable.i asc rows between unbounded preceding and unbounded following) as row_number() over (w1 partition by s)]\n" +
-			" └─ Window(row_number() over ( partition by mytable.s order by mytable.i ASC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING), mytable.i)\n" +
+			" ├─ columns: [mytable.i, row_number() over ( partition by mytable.s order by mytable.i asc) as row_number() over (w1 partition by s)]\n" +
+			" └─ Window(row_number() over ( partition by mytable.s order by mytable.i ASC), mytable.i)\n" +
 			"     └─ Table\n" +
 			"         ├─ name: mytable\n" +
 			"         └─ columns: [i s]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [mytable.i, row_number() over ( partition by mytable.s order by mytable.i asc rows between unbounded preceding and unbounded following) as row_number() over (w1 partition by s)]\n" +
-			" └─ Window(row_number() over ( partition by mytable.s order by mytable.i ASC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING), mytable.i)\n" +
+			" ├─ columns: [mytable.i, row_number() over ( partition by mytable.s order by mytable.i asc) as row_number() over (w1 partition by s)]\n" +
+			" └─ Window(row_number() over ( partition by mytable.s order by mytable.i ASC), mytable.i)\n" +
 			"     └─ Table\n" +
 			"         ├─ name: mytable\n" +
 			"         └─ columns: [i s]\n" +

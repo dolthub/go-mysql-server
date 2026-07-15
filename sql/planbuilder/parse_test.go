@@ -1435,11 +1435,11 @@ Project
 			WINDOW w AS (PARTITION BY y ORDER BY x);`,
 			ExpectedPlan: `
 Project
- ├─ columns: [xy.x:1!null, row_number() over ( partition by xy.y order by xy.x asc rows between unbounded preceding and unbounded following):4!null->row_number:5, rank() over ( partition by xy.y order by xy.x asc rows between unbounded preceding and unbounded following):6!null->rank:7, dense_rank() over ( partition by xy.y order by xy.x asc rows between unbounded preceding and unbounded following):8!null->dense_rank:9]
+ ├─ columns: [xy.x:1!null, row_number() over ( partition by xy.y order by xy.x asc):4!null->row_number:5, rank() over ( partition by xy.y order by xy.x asc):6!null->rank:7, dense_rank() over ( partition by xy.y order by xy.x asc):8!null->dense_rank:9]
  └─ Window
-     ├─ row_number() over ( partition by xy.y order by xy.x ASC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
-     ├─ rank() over ( partition by xy.y order by xy.x ASC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
-     ├─ dense_rank() over ( partition by xy.y order by xy.x ASC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
+     ├─ row_number() over ( partition by xy.y order by xy.x ASC)
+     ├─ rank() over ( partition by xy.y order by xy.x ASC)
+     ├─ dense_rank() over ( partition by xy.y order by xy.x ASC)
      ├─ xy.x:1!null
      └─ Table
          ├─ name: xy
