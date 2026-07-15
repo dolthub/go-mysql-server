@@ -3992,12 +3992,30 @@ func TestNamedWindows(t *testing.T, harness Harness) {
 	RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE a (x INTEGER PRIMARY KEY, y INTEGER, z INTEGER)")
 	RunQueryWithContext(t, e, harness, ctx, "INSERT INTO a VALUES (0,0,0), (1,1,0), (2,2,0), (3,0,0), (4,1,0), (5,3,0)")
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (w1) FROM a WINDOW w1 as (order by z) order by x`, []sql.Row{{float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}}, nil, nil, nil)
+	// Expected values reflect this engine's DefaultFramer, which is ROWS UNBOUNDED PRECEDING TO
+	// CURRENT ROW (no RANGE peer-group tie handling), consistently applied whenever a window has
+	// an ORDER BY but no explicit frame -- whether inline or via a named window reference.
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (w1) FROM a WINDOW w1 as (order by z) order by x`, []sql.Row{{float64(0)}, {float64(1)}, {float64(3)}, {float64(3)}, {float64(4)}, {float64(7)}}, nil, nil, nil)
 	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (w1) FROM a WINDOW w1 as (partition by z) order by x`, []sql.Row{{float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}}, nil, nil, nil)
+	// A named window with an ORDER BY but no explicit frame must default to a running (cumulative)
+	// frame, same as an equivalent inline OVER (...) clause -- not the full-partition frame. The
+	// default-frame inference has to run against the referenced window's merged ORDER BY, not the
+	// (possibly empty) ORDER BY on the OVER w reference itself.
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over w1 FROM a WINDOW w1 as (partition by z order by x) order by x`, []sql.Row{{float64(0)}, {float64(1)}, {float64(3)}, {float64(3)}, {float64(4)}, {float64(7)}}, nil, nil, nil)
 	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over w FROM a WINDOW w as (partition by z order by x rows unbounded preceding) order by x`, []sql.Row{{float64(0)}, {float64(1)}, {float64(3)}, {float64(3)}, {float64(4)}, {float64(7)}}, nil, nil, nil)
 	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over w FROM a WINDOW w as (partition by z order by x rows current row) order by x`, []sql.Row{{float64(0)}, {float64(1)}, {float64(2)}, {float64(0)}, {float64(1)}, {float64(3)}}, nil, nil, nil)
 	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (w) FROM a WINDOW w as (partition by z order by x rows 2 preceding) order by x`, []sql.Row{{float64(0)}, {float64(1)}, {float64(3)}, {float64(3)}, {float64(3)}, {float64(4)}}, nil, nil, nil)
 	TestQueryWithContext(t, ctx, e, harness, `SELECT row_number() over (w3) FROM a WINDOW w3 as (w2), w2 as (w1), w1 as (partition by z order by x) order by x`, []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}, {int64(4)}, {int64(5)}, {int64(6)}}, nil, nil, nil)
+
+	// A named window with only a PARTITION BY (no ORDER BY) gets a full-partition default frame
+	// baked in when it's built on its own. If a second window inherits from it and adds an ORDER
+	// BY -- either through another named window (w2 AS (w1 ORDER BY id)) or an inline override
+	// (OVER (w1 ORDER BY id)) -- that stale full-partition frame must not survive the merge; the
+	// running sum implied by the newly-added ORDER BY has to win.
+	RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE b (id INTEGER PRIMARY KEY, grp INTEGER, amt INTEGER)")
+	RunQueryWithContext(t, e, harness, ctx, "INSERT INTO b VALUES (1,1,10), (2,1,20), (3,1,30), (4,2,5), (5,2,15)")
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(amt) over w2 FROM b WINDOW w1 as (partition by grp), w2 as (w1 order by id) order by id`, []sql.Row{{float64(10)}, {float64(30)}, {float64(60)}, {float64(5)}, {float64(20)}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(amt) over (w1 order by id) FROM b WINDOW w1 as (partition by grp) order by id`, []sql.Row{{float64(10)}, {float64(30)}, {float64(60)}, {float64(5)}, {float64(20)}}, nil, nil, nil)
 
 	// errors
 	AssertErr(t, e, harness, "SELECT sum(y) over (w1 partition by x) FROM a WINDOW w1 as (partition by z) order by x", nil, sql.ErrInvalidWindowInheritance)
