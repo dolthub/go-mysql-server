@@ -104,6 +104,13 @@ func (i *topRowsIter) computeTopRows(ctx *sql.Context) error {
 	return nil
 }
 
+// rowWithOrder pairs the row with its ordering number, which is used as a tie-breaker if two rows have the same sort
+// condition values. It is used to push rows into the topRowsHeap
+type rowWithOrder struct {
+	row   sql.Row
+	order int64
+}
+
 // getTopRows pops the rows of a topRowsHeap and returns them in min-sorted order.
 func getTopRows(h *topRowsHeap) []sql.Row {
 	l := h.Len()
@@ -150,13 +157,6 @@ func (h *topRowsHeap) Pop() interface{} {
 	h.Sorter.Rows = h.Sorter.Rows[:n-1]
 	h.order = h.order[:n-1]
 	return row
-}
-
-// rowWithOrder pairs the row with its ordering number, which is used as a tie-breaker if two rows have the same sort
-// condition values. It is used to push rows into the topRowsHeap
-type rowWithOrder struct {
-	row   sql.Row
-	order int64
 }
 
 // topRowIter is a special case of topRowsIter for when the limit is 1. Rather than using a heap to sort the rows of the
