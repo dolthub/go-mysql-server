@@ -16,7 +16,7 @@ package aggregation
 
 import (
 	"fmt"
-	sort2 "github.com/dolthub/go-mysql-server/sql/sort"
+	sort2 "github.com/dolthub/go-mysql-server/sql/sorters"
 	"sort"
 	"strings"
 

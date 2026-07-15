@@ -18,7 +18,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
-	sort2 "github.com/dolthub/go-mysql-server/sql/sort"
+	sort2 "github.com/dolthub/go-mysql-server/sql/sorters"
 	"io"
 	"math"
 	"sort"

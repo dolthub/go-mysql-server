@@ -16,7 +16,7 @@ package iters
 
 import (
 	"container/heap"
-	"github.com/dolthub/go-mysql-server/sql/sort"
+	"github.com/dolthub/go-mysql-server/sql/sorters"
 	"io"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -74,7 +74,7 @@ func (i *topRowsIter) Close(ctx *sql.Context) error {
 // computeTopRows uses a Top-N Heap Sort to find the top N rows. It relies on topRowsHeap being a max-heap.
 func (i *topRowsIter) computeTopRows(ctx *sql.Context) error {
 	rowsHeap := &topRowsHeap{
-		Sorter: sort.Sorter{
+		Sorter: sorters.Sorter{
 			SortConditions: i.sortConditions,
 			Rows:           make([]sql.Row, 0, i.limit+1),
 			LastError:      nil,
@@ -125,7 +125,7 @@ func getTopRows(h *topRowsHeap) []sql.Row {
 // topRowsHeap implements heap.Interface. Since heap.Interface assumes a min-heap, topRowsHeap inverts Less to implement
 // a max-heap. This is so that topRowsHeap can be used for a Top-N Heap Sort.
 type topRowsHeap struct {
-	sort.Sorter
+	sorters.Sorter
 	order []int64
 }
 
@@ -191,7 +191,7 @@ func (i *topRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if err != nil {
 		return nil, err
 	}
-	sorter := sort.Sorter{
+	sorter := sorters.Sorter{
 		Ctx:            ctx,
 		SortConditions: i.sortConditions,
 	}
