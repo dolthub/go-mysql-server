@@ -381,9 +381,15 @@ type ExtendedType interface {
 	FormatValue(val any) (string, error)
 	// MaxSerializedWidth returns the maximum size that the serialized value may represent.
 	MaxSerializedWidth() ExtendedTypeSerializedWidth
-	// ConvertToType converts the given value of the given type to this type, or returns an error if
-	// no conversion is possible.
-	ConvertToType(ctx *Context, typ ExtendedType, val any) (any, ConvertInRange, error)
+	// ConvertToType converts the given value of the given type to this type using given cast type ('e', 'a', 'i')
+	// or returns an error if no conversion is possible.
+	ConvertToType(ctx *Context, typ ExtendedType, val any, convTyp byte) (any, ConvertInRange, error)
+}
+
+// GetCommonExtendedType finds a type that both itself and given type can be implicitly casted to.
+// This is a variable as it's changed in Doltgres.
+var GetCommonExtendedType = func(ctx *Context, sourceType, targetType ExtendedType) ExtendedType {
+	return sourceType
 }
 
 type ExtendedTypeSerializedWidth uint8
