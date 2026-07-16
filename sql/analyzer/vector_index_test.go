@@ -50,8 +50,8 @@ func vectorIndexTestCases(t *testing.T, db *memory.Database, table sql.IndexedTa
 		{
 			name: "without limit",
 			inputPlan: plan.NewSort(
-				sql.SortFields{
-					{Column: vector.NewDistance(sql.NewEmptyContext(), vector.DistanceL2Squared{}, jsonExpression(t, "[0.0, 0.0]"), expression.NewGetFieldWithTable(2, 1, types.JSON, "", "test-table", "v", false)), Order: sql.Ascending},
+				sql.SortConditions{
+					{Expr: vector.NewDistance(sql.NewEmptyContext(), vector.DistanceL2Squared{}, jsonExpression(t, "[0.0, 0.0]"), expression.NewGetFieldWithTable(2, 1, types.JSON, "", "test-table", "v", false)), Order: sql.Ascending},
 				}, plan.NewResolvedTable(table, db, nil)),
 			usesVectorIndex: false,
 			expectedRows: []sql.Row{
@@ -63,8 +63,8 @@ func vectorIndexTestCases(t *testing.T, db *memory.Database, table sql.IndexedTa
 		{
 			name: "with limit",
 			inputPlan: plan.NewTopN(
-				sql.SortFields{
-					{Column: vector.NewDistance(sql.NewEmptyContext(), vector.DistanceL2Squared{}, jsonExpression(t, "[0.0, 0.0]"), expression.NewGetFieldWithTable(2, 1, types.JSON, "", "test-table", "v", false)), Order: sql.Ascending},
+				sql.SortConditions{
+					{Expr: vector.NewDistance(sql.NewEmptyContext(), vector.DistanceL2Squared{}, jsonExpression(t, "[0.0, 0.0]"), expression.NewGetFieldWithTable(2, 1, types.JSON, "", "test-table", "v", false)), Order: sql.Ascending},
 				}, expression.NewLiteral(1, types.Int64), plan.NewResolvedTable(table, db, nil)),
 			usesVectorIndex: true,
 			expectedPlan: `
