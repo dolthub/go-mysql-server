@@ -20,7 +20,9 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 )
 
-// SortField is a field by which a query will be sorted.
+// SortField defines an Expression and ordering by which a query will be sorted.
+// TODO: SortField is confusingly and inaccurately named. The name SortField and the struct field Column imply that rows
+// are sorted based on a column or table field but that is incorrect since Column actually an Expression.
 type SortField struct {
 	// Column to order by.
 	Column Expression
