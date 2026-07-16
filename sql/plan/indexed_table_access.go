@@ -681,7 +681,7 @@ func convertLookupKey(ctx *sql.Context, colType sql.Type, keyCol lookupBuilderKe
 	// For extended types, use the rich type conversion methods
 	if srcEt, ok := srcType.(sql.ExtendedType); ok {
 		if destEt, ok := destType.(sql.ExtendedType); ok {
-			return destEt.ConvertToType(ctx, srcEt, keyCol.val)
+			return destEt.ConvertToType(ctx, srcEt, keyCol.val, 'a')
 		}
 	}
 

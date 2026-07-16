@@ -37,7 +37,7 @@ func NewHashLookup(ctx *sql.Context, n sql.Node, rightEntryKey sql.Expression, l
 	var compareType sql.Type
 	if et, ok := leftProbeKey.Type(ctx).(sql.ExtendedType); ok {
 		// TODO: We must use Postgres functions for the comparison rather than a type!
-		compareType = et.CommonType(ctx, rightEntryKey.Type(ctx).(sql.ExtendedType))
+		compareType = sql.GetCommonExtendedType(ctx, et, rightEntryKey.Type(ctx).(sql.ExtendedType))
 	} else {
 		compareType = types.GetCompareType(leftProbeKey.Type(ctx), rightEntryKey.Type(ctx))
 	}
@@ -144,7 +144,7 @@ func (n *HashLookup) GetHashKey(ctx *sql.Context, e sql.Expression, row sql.Row)
 		return nil, sql.InRange, err
 	}
 	if et, ok := e.Type(ctx).(sql.ExtendedType); ok {
-		key, _, err = et.CastToType(ctx, n.CompareType.(sql.ExtendedType), key)
+		key, _, err = et.ConvertToType(ctx, n.CompareType.(sql.ExtendedType), key, 'i')
 	} else {
 		key, _, err = n.CompareType.Convert(ctx, key)
 	}
