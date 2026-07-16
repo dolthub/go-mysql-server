@@ -152,7 +152,6 @@ func nilSafeCmp(ctx *sql.Context, typ sql.Type, left, right interface{}) (int, e
 	if right == nil {
 		return 1, nil
 	}
-
 	// TODO: Extended types have additional type requirements that are difficult to work around,
 	//  so just silently put everything into one giant bucket
 	if _, ok := typ.(sql.ExtendedType); ok {
@@ -190,9 +189,14 @@ func UpdateCounts(statistic sql.Statistic) sql.Statistic {
 }
 
 func keysEqual(ctx *sql.Context, types []sql.Type, left, right []interface{}) (bool, error) {
-	for i, _ := range right {
-		t := types[i]
-		cmp, err := t.Compare(ctx, left[i], right[i])
+	for i := range right {
+		// TODO: Extended types have additional type requirements that are difficult to work around,
+		//  so just silently put everything into one giant bucket
+		typ := types[i]
+		if _, ok := typ.(sql.ExtendedType); ok {
+			continue
+		}
+		cmp, err := typ.Compare(ctx, left[i], right[i])
 		if err != nil {
 			return false, err
 		}
