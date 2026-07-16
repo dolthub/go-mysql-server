@@ -23,20 +23,20 @@ import (
 
 type Sortable interface {
 	sql.Node
-	GetSortFields() sql.SortFields
+	GetSortConditions() sql.SortConditions
 }
 
 // Sort is the sort node.
 type Sort struct {
 	UnaryNode
-	SortFields sql.SortFields
+	SortConditions sql.SortConditions
 }
 
 // NewSort creates a new Sort node.
-func NewSort(sortFields sql.SortFields, child sql.Node) *Sort {
+func NewSort(sortConditions sql.SortConditions, child sql.Node) *Sort {
 	return &Sort{
-		UnaryNode:  UnaryNode{child},
-		SortFields: sortFields,
+		UnaryNode:      UnaryNode{child},
+		SortConditions: sortConditions,
 	}
 }
 
@@ -48,7 +48,7 @@ var _ sql.Describable = (*Sort)(nil)
 
 // Resolved implements the Resolvable interface.
 func (s *Sort) Resolved() bool {
-	for _, f := range s.SortFields {
+	for _, f := range s.SortConditions {
 		if !f.Expr.Resolved() {
 			return false
 		}
@@ -62,11 +62,11 @@ func (s *Sort) IsReadOnly() bool {
 
 func (s *Sort) String() string {
 	pr := sql.NewTreePrinter()
-	var fields = make([]string, len(s.SortFields))
-	for i, f := range s.SortFields {
-		fields[i] = fmt.Sprintf("%s %s", f.Expr, f.Order)
+	var conds = make([]string, len(s.SortConditions))
+	for i, c := range s.SortConditions {
+		conds[i] = fmt.Sprintf("%s %s", c.Expr, c.Order)
 	}
-	_ = pr.WriteNode("Sort(%s)", strings.Join(fields, ", "))
+	_ = pr.WriteNode("Sort(%s)", strings.Join(conds, ", "))
 	_ = pr.WriteChildren(s.Child.String())
 	return pr.String()
 }
@@ -74,22 +74,22 @@ func (s *Sort) String() string {
 // Describe implements the sql.Describable interface
 func (s *Sort) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
 	pr := sql.NewTreePrinter()
-	var fields = make([]string, len(s.SortFields))
-	for i, f := range s.SortFields {
-		fields[i] = sql.Describe(ctx, f, options)
+	var conds = make([]string, len(s.SortConditions))
+	for i, c := range s.SortConditions {
+		conds[i] = sql.Describe(ctx, c, options)
 	}
-	_ = pr.WriteNode("Sort(%s)", strings.Join(fields, ", "))
+	_ = pr.WriteNode("Sort(%s)", strings.Join(conds, ", "))
 	_ = pr.WriteChildren(sql.Describe(ctx, s.Child, options))
 	return pr.String()
 }
 
 func (s *Sort) DebugString(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
-	var fields = make([]string, len(s.SortFields))
-	for i, f := range s.SortFields {
-		fields[i] = sql.DebugString(ctx, f)
+	var conds = make([]string, len(s.SortConditions))
+	for i, f := range s.SortConditions {
+		conds[i] = sql.DebugString(ctx, f)
 	}
-	_ = pr.WriteNode("Sort(%s)", strings.Join(fields, ", "))
+	_ = pr.WriteNode("Sort(%s)", strings.Join(conds, ", "))
 	_ = pr.WriteChildren(sql.DebugString(ctx, s.Child))
 	return pr.String()
 }
@@ -97,11 +97,7 @@ func (s *Sort) DebugString(ctx *sql.Context) string {
 // Expressions implements the Expressioner interface.
 func (s *Sort) Expressions() []sql.Expression {
 	// TODO: use shared method
-	var exprs = make([]sql.Expression, len(s.SortFields))
-	for i, f := range s.SortFields {
-		exprs[i] = f.Expr
-	}
-	return exprs
+	return s.SortConditions.ToExpressions()
 }
 
 // WithChildren implements the Node interface.
@@ -110,7 +106,7 @@ func (s *Sort) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, e
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 1)
 	}
 
-	return NewSort(s.SortFields, children[0]), nil
+	return NewSort(s.SortConditions, children[0]), nil
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -120,43 +116,44 @@ func (s *Sort) CollationCoercibility(ctx *sql.Context) (collation sql.CollationI
 
 // WithExpressions implements the Expressioner interface.
 func (s *Sort) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
-	if len(exprs) != len(s.SortFields) {
-		return nil, sql.ErrInvalidChildrenNumber.New(s, len(exprs), len(s.SortFields))
+	if len(exprs) != len(s.SortConditions) {
+		return nil, sql.ErrInvalidChildrenNumber.New(s, len(exprs), len(s.SortConditions))
 	}
 
-	fields := s.SortFields.FromExpressions(ctx, exprs...)
-	return NewSort(fields, s.Child), nil
+	conds := s.SortConditions.FromExpressions(ctx, exprs...)
+	return NewSort(conds, s.Child), nil
 }
 
-func (s *Sort) GetSortFields() sql.SortFields {
-	return s.SortFields
+func (s *Sort) GetSortConditions() sql.SortConditions {
+	return s.SortConditions
 }
 
 // TopN was a sort node that has a limit. It doesn't need to buffer everything,
 // but can calculate the top n on the fly.
 type TopN struct {
 	UnaryNode
-	Limit         sql.Expression
-	Fields        sql.SortFields
-	CalcFoundRows bool
+	Limit          sql.Expression
+	SortConditions sql.SortConditions
+	CalcFoundRows  bool
 }
 
 // NewTopN creates a new TopN node.
-func NewTopN(fields sql.SortFields, limit sql.Expression, child sql.Node) *TopN {
+func NewTopN(conds sql.SortConditions, limit sql.Expression, child sql.Node) *TopN {
 	return &TopN{
-		UnaryNode: UnaryNode{child},
-		Limit:     limit,
-		Fields:    fields,
+		UnaryNode:      UnaryNode{child},
+		Limit:          limit,
+		SortConditions: conds,
 	}
 }
 
 var _ sql.Node = (*TopN)(nil)
 var _ sql.Expressioner = (*TopN)(nil)
 var _ sql.CollationCoercible = (*TopN)(nil)
+var _ Sortable = (*TopN)(nil)
 
 // Resolved implements the Resolvable interface.
 func (n *TopN) Resolved() bool {
-	for _, f := range n.Fields {
+	for _, f := range n.SortConditions {
 		if !f.Expr.Resolved() {
 			return false
 		}
@@ -164,9 +161,9 @@ func (n *TopN) Resolved() bool {
 	return n.Child.Resolved()
 }
 
-func (n TopN) WithCalcFoundRows(v bool) *TopN {
+func (n *TopN) WithCalcFoundRows(v bool) *TopN {
 	n.CalcFoundRows = v
-	return &n
+	return n
 }
 
 func (n *TopN) IsReadOnly() bool {
@@ -175,22 +172,22 @@ func (n *TopN) IsReadOnly() bool {
 
 func (n *TopN) String() string {
 	pr := sql.NewTreePrinter()
-	var fields = make([]string, len(n.Fields))
-	for i, f := range n.Fields {
-		fields[i] = fmt.Sprintf("%s %s", f.Expr, f.Order)
+	var conds = make([]string, len(n.SortConditions))
+	for i, f := range n.SortConditions {
+		conds[i] = fmt.Sprintf("%s %s", f.Expr, f.Order)
 	}
-	_ = pr.WriteNode("TopN(Limit: [%s]; %s)", n.Limit.String(), strings.Join(fields, ", "))
+	_ = pr.WriteNode("TopN(Limit: [%s]; %s)", n.Limit.String(), strings.Join(conds, ", "))
 	_ = pr.WriteChildren(n.Child.String())
 	return pr.String()
 }
 
 func (n *TopN) DebugString(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
-	var fields = make([]string, len(n.Fields))
-	for i, f := range n.Fields {
-		fields[i] = sql.DebugString(ctx, f)
+	var conds = make([]string, len(n.SortConditions))
+	for i, f := range n.SortConditions {
+		conds[i] = sql.DebugString(ctx, f)
 	}
-	_ = pr.WriteNode("TopN(Limit: [%s]; %s)", sql.DebugString(ctx, n.Limit), strings.Join(fields, ", "))
+	_ = pr.WriteNode("TopN(Limit: [%s]; %s)", sql.DebugString(ctx, n.Limit), strings.Join(conds, ", "))
 	_ = pr.WriteChildren(sql.DebugString(ctx, n.Child))
 	return pr.String()
 }
@@ -198,7 +195,7 @@ func (n *TopN) DebugString(ctx *sql.Context) string {
 // Expressions implements the Expressioner interface.
 func (n *TopN) Expressions() []sql.Expression {
 	exprs := []sql.Expression{n.Limit}
-	exprs = append(exprs, n.Fields.ToExpressions()...)
+	exprs = append(exprs, n.SortConditions.ToExpressions()...)
 	return exprs
 }
 
@@ -208,7 +205,7 @@ func (n *TopN) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, e
 		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 1)
 	}
 
-	topn := NewTopN(n.Fields, n.Limit, children[0])
+	topn := NewTopN(n.SortConditions, n.Limit, children[0])
 	topn.CalcFoundRows = n.CalcFoundRows
 	return topn, nil
 }
@@ -220,18 +217,18 @@ func (n *TopN) CollationCoercibility(ctx *sql.Context) (collation sql.CollationI
 
 // WithExpressions implements the Expressioner interface.
 func (n *TopN) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
-	if len(exprs) != len(n.Fields)+1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(n, len(exprs), len(n.Fields)+1)
+	if len(exprs) != len(n.SortConditions)+1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(n, len(exprs), len(n.SortConditions)+1)
 	}
 
 	var limit = exprs[0]
-	var fields = n.Fields.FromExpressions(ctx, exprs[1:]...)
+	var conds = n.SortConditions.FromExpressions(ctx, exprs[1:]...)
 
-	topn := NewTopN(fields, limit, n.Child)
+	topn := NewTopN(conds, limit, n.Child)
 	topn.CalcFoundRows = n.CalcFoundRows
 	return topn, nil
 }
 
-func (n *TopN) GetSortFields() sql.SortFields {
-	return n.Fields
+func (n *TopN) GetSortConditions() sql.SortConditions {
+	return n.SortConditions
 }

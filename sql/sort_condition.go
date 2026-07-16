@@ -30,31 +30,31 @@ type SortCondition struct {
 	NullOrdering NullOrdering
 }
 
-type SortFields []SortCondition
+type SortConditions []SortCondition
 
-func (sf SortFields) ToExpressions() []Expression {
-	es := make([]Expression, len(sf))
-	for i, f := range sf {
+func (sc SortConditions) ToExpressions() []Expression {
+	es := make([]Expression, len(sc))
+	for i, f := range sc {
 		es[i] = f.Expr
 	}
 	return es
 }
 
-func (sf SortFields) FromExpressions(ctx *Context, exprs ...Expression) SortFields {
-	var fields = make(SortFields, len(sf))
+func (sc SortConditions) FromExpressions(ctx *Context, exprs ...Expression) SortConditions {
+	var conds = make(SortConditions, len(sc))
 
-	if len(exprs) != len(fields) {
-		panic(fmt.Sprintf("Invalid expression slice. Wanted %d elements, got %d", len(fields), len(exprs)))
+	if len(exprs) != len(conds) {
+		panic(fmt.Sprintf("Invalid expression slice. Wanted %d elements, got %d", len(conds), len(exprs)))
 	}
 
 	for i, expr := range exprs {
-		fields[i] = SortCondition{
+		conds[i] = SortCondition{
 			Expr:         expr,
-			NullOrdering: sf[i].NullOrdering,
-			Order:        sf[i].Order,
+			NullOrdering: sc[i].NullOrdering,
+			Order:        sc[i].Order,
 		}
 	}
-	return fields
+	return conds
 }
 
 func (s SortCondition) String() string {

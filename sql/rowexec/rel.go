@@ -51,9 +51,9 @@ func (b *BaseBuilder) buildTopN(ctx *sql.Context, n *plan.TopN, row sql.Row) (sq
 
 	var topIter sql.RowIter
 	if limit == 1 {
-		topIter = iters.NewTopRowIter(n.Fields, n.CalcFoundRows, i)
+		topIter = iters.NewTopRowIter(n.SortConditions, n.CalcFoundRows, i)
 	} else {
-		topIter = iters.NewTopRowsIter(n.Fields, limit, n.CalcFoundRows, i, len(n.Child.Schema(ctx)))
+		topIter = iters.NewTopRowsIter(n.SortConditions, limit, n.CalcFoundRows, i)
 	}
 	return sql.NewSpanIter(span, topIter), nil
 }
@@ -457,20 +457,20 @@ func (b *BaseBuilder) buildRecursiveCte(ctx *sql.Context, n *plan.RecursiveCte, 
 		deduplicate: n.Union().Distinct,
 		b:           b,
 	}
-	if n.Union().Limit != nil && len(n.Union().SortFields) > 0 {
+	if n.Union().Limit != nil && len(n.Union().SortConditions) > 0 {
 		limit, err := iters.GetInt64Value(ctx, n.Union().Limit)
 		if err != nil {
 			return nil, err
 		}
-		iter = iters.NewTopRowsIter(n.Union().SortFields, limit, false, iter, len(n.Union().Schema(ctx)))
+		iter = iters.NewTopRowsIter(n.Union().SortConditions, limit, false, iter)
 	} else if n.Union().Limit != nil {
 		limit, err := iters.GetInt64Value(ctx, n.Union().Limit)
 		if err != nil {
 			return nil, err
 		}
 		iter = &iters.LimitIter{Limit: limit, ChildIter: iter}
-	} else if len(n.Union().SortFields) > 0 {
-		iter = iters.NewSortIter(n.Union().SortFields, iter)
+	} else if len(n.Union().SortConditions) > 0 {
+		iter = iters.NewSortIter(n.Union().SortConditions, iter)
 	}
 	return iter, nil
 }
@@ -878,20 +878,20 @@ func (b *BaseBuilder) buildSetOp(ctx *sql.Context, s *plan.SetOp, row sql.Row) (
 		}
 		iter = &offsetIter{skip: offset, childIter: iter}
 	}
-	if s.Limit != nil && len(s.SortFields) > 0 {
+	if s.Limit != nil && len(s.SortConditions) > 0 {
 		limit, err := iters.GetInt64Value(ctx, s.Limit)
 		if err != nil {
 			return nil, err
 		}
-		iter = iters.NewTopRowsIter(s.SortFields, limit, false, iter, len(s.Schema(ctx)))
+		iter = iters.NewTopRowsIter(s.SortConditions, limit, false, iter)
 	} else if s.Limit != nil {
 		limit, err := iters.GetInt64Value(ctx, s.Limit)
 		if err != nil {
 			return nil, err
 		}
 		iter = &iters.LimitIter{Limit: limit, ChildIter: iter}
-	} else if len(s.SortFields) > 0 {
-		iter = iters.NewSortIter(s.SortFields, iter)
+	} else if len(s.SortConditions) > 0 {
+		iter = iters.NewSortIter(s.SortConditions, iter)
 	}
 	return sql.NewSpanIter(span, iter), nil
 }
@@ -918,7 +918,7 @@ func (b *BaseBuilder) buildSort(ctx *sql.Context, n *plan.Sort, row sql.Row) (sq
 		span.End()
 		return nil, err
 	}
-	return sql.NewSpanIter(span, iters.NewSortIter(n.SortFields, i)), nil
+	return sql.NewSpanIter(span, iters.NewSortIter(n.SortConditions, i)), nil
 }
 
 func (b *BaseBuilder) buildPrepareQuery(ctx *sql.Context, n *plan.PrepareQuery, row sql.Row) (sql.RowIter, error) {

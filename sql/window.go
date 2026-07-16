@@ -21,7 +21,7 @@ import (
 	"github.com/cespare/xxhash/v2"
 )
 
-func NewWindowDefinition(partitionBy []Expression, orderBy SortFields, frame WindowFrame, ref, name string) *WindowDefinition {
+func NewWindowDefinition(partitionBy []Expression, orderBy SortConditions, frame WindowFrame, ref, name string) *WindowDefinition {
 	return &WindowDefinition{
 		PartitionBy: partitionBy,
 		OrderBy:     orderBy,
@@ -37,7 +37,7 @@ type WindowDefinition struct {
 	Ref         string
 	Name        string
 	PartitionBy []Expression
-	OrderBy     SortFields
+	OrderBy     SortConditions
 	id          uint64
 }
 

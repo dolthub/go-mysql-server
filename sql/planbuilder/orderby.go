@@ -202,7 +202,7 @@ func (b *Builder) buildOrderBy(inScope, orderByScope *scope) {
 	if len(orderByScope.cols) == 0 {
 		return
 	}
-	sortConditions := b.buildSortConditions(orderByScope, doNotReplaceAlias)
+	sortConditions := b.buildSortConditions(orderByScope, transform.SameTree)
 	sort, err := b.f.buildSort(b.ctx, inScope.node, sortConditions, orderByScope.colset, inScope.refsSubquery)
 	if err != nil {
 		b.handleErr(err)
@@ -211,16 +211,9 @@ func (b *Builder) buildOrderBy(inScope, orderByScope *scope) {
 	return
 }
 
-type replaceAliasFlag bool
-
-const (
-	doReplaceAlias    replaceAliasFlag = true
-	doNotReplaceAlias replaceAliasFlag = false
-)
-
 // buildSortConditions builds a sql.SortConditions based on an ORDER BY scope and also returns dependencies
-func (b *Builder) buildSortConditions(orderByScope *scope, replaceAlias replaceAliasFlag) sql.SortFields {
-	sortConditions := make(sql.SortFields, len(orderByScope.cols))
+func (b *Builder) buildSortConditions(orderByScope *scope, sameAlias transform.TreeIdentity) sql.SortConditions {
+	sortConditions := make(sql.SortConditions, len(orderByScope.cols))
 	for i, c := range orderByScope.cols {
 		so := sql.Ascending
 		if c.descending {
@@ -232,7 +225,7 @@ func (b *Builder) buildSortConditions(orderByScope *scope, replaceAlias replaceA
 		}
 		// Some nodes such as unions pass ORDER BYs to the top scope, where the original ORDER BY may no longer be
 		// accessible. It is safe to assume that the alias has already been computed.
-		if replaceAlias {
+		if !sameAlias {
 			scalar, _, _ = transform.Expr(b.ctx, scalar, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				switch e := e.(type) {
 				case *expression.Alias:
@@ -269,7 +262,7 @@ func (b *Builder) buildOrderedInjectedExpr(inScope *scope, e *ast.OrderedInjecte
 	}
 
 	orderByScope := b.analyzeOrderBy(inScope, inScope, e.OrderBy)
-	sortConditions := b.buildSortConditions(orderByScope, doNotReplaceAlias)
+	sortConditions := b.buildSortConditions(orderByScope, transform.SameTree)
 
 	resolvedChildren = append(resolvedChildren, sortConditions)
 

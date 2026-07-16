@@ -81,16 +81,16 @@ func (b *Builder) buildSetOp(inScope *scope, u *ast.SetOp) (outScope *scope) {
 
 	// mysql errors for order by right projection
 	orderByScope := b.analyzeOrderBy(leftScope, leftScope, u.OrderBy)
-	sortConditions := b.buildSortConditions(orderByScope, doReplaceAlias)
+	sortConditions := b.buildSortConditions(orderByScope, transform.NewTree)
 
 	n, ok := leftScope.node.(*plan.SetOp)
 	if ok {
-		if len(n.SortFields) > 0 {
+		if len(n.SortConditions) > 0 {
 			if len(sortConditions) > 0 {
 				err := sql.ErrConflictingExternalQuery.New()
 				b.handleErr(err)
 			}
-			sortConditions = n.SortFields
+			sortConditions = n.SortConditions
 		}
 		if n.Limit != nil {
 			if limit != nil {

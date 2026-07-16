@@ -16,6 +16,7 @@ package planbuilder
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 	"strings"
 
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
@@ -172,7 +173,7 @@ func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.SetOp, name strin
 	limit := b.buildLimit(inScope, union.Limit)
 
 	orderByScope := b.analyzeOrderBy(cteScope, leftScope, union.OrderBy)
-	sortConditions := b.buildSortConditions(orderByScope, doNotReplaceAlias)
+	sortConditions := b.buildSortConditions(orderByScope, transform.SameTree)
 
 	corr := leftSqScope.correlated().Union(rightInScope.correlated())
 	vol := leftSqScope.activeSubquery.volatile || rightInScope.activeSubquery.volatile

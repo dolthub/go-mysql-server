@@ -134,8 +134,8 @@ func validateOrderBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 
 	switch n := n.(type) {
 	case *plan.Sort:
-		for _, field := range n.SortFields {
-			switch field.Expr.(type) {
+		for _, cond := range n.SortConditions {
+			switch cond.Expr.(type) {
 			case sql.Aggregation:
 				return nil, transform.SameTree, analyzererrors.ErrValidationOrderBy.New()
 			}

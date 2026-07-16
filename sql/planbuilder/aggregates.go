@@ -485,7 +485,7 @@ func (b *Builder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.E
 	}
 
 	orderByScope := b.analyzeOrderBy(inScope, inScope, e.OrderBy)
-	sortConditions := b.buildSortConditions(orderByScope, doNotReplaceAlias)
+	sortConditions := b.buildSortConditions(orderByScope, transform.SameTree)
 
 	// TODO: this should be acquired at runtime, not at parse time, so fix this
 	gcml, err := b.ctx.GetSessionVariable(b.ctx, "group_concat_max_len")
@@ -692,7 +692,7 @@ func (b *Builder) buildWindowDef(fromScope *scope, def *ast.WindowDef) *sql.Wind
 	}
 
 	// TODO: We might be able to reuse b.buildSortConditions with some refactoring
-	sortConditions := make(sql.SortFields, len(def.OrderBy))
+	sortConditions := make(sql.SortConditions, len(def.OrderBy))
 	for i, c := range def.OrderBy {
 		// resolve col in fromScope
 		e := b.buildScalar(fromScope, c.Expr)
@@ -741,7 +741,7 @@ func (b *Builder) mergeWindowDefs(def, ref *sql.WindowDefinition) *sql.WindowDef
 		panic("unreachable; cannot merge unresolved window definition")
 	}
 
-	var orderBy sql.SortFields
+	var orderBy sql.SortConditions
 	switch {
 	case len(def.OrderBy) > 0 && len(ref.OrderBy) > 0:
 		err := sql.ErrInvalidWindowInheritance.New("", "", "both contain order by clause")

@@ -564,7 +564,7 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 		// Assume only one partition for now
 		rows := data.partitions[string(data.partitionKeys[0])]
 
-		sf := sql.SortFields{
+		sc := sql.SortConditions{
 			{Expr: vectorPartition.OrderBy, Order: sql.Ascending},
 		}
 
@@ -573,10 +573,10 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 			if err != nil {
 				return nil, err
 			}
-			return iters.NewTopRowsIter(sf, limit, vectorPartition.CalcFoundRows, sql.RowsToRowIter(rows...), 0), nil
+			return iters.NewTopRowsIter(sc, limit, vectorPartition.CalcFoundRows, sql.RowsToRowIter(rows...)), nil
 		}
 
-		return iters.NewSortIter(sf, sql.RowsToRowIter(rows...)), nil
+		return iters.NewSortIter(sc, sql.RowsToRowIter(rows...)), nil
 	}
 
 	rows, ok := data.partitions[string(partition.Key())]
@@ -1748,28 +1748,28 @@ func (t *IndexedTable) PartitionRows(ctx *sql.Context, partition sql.Partition) 
 
 	if t.Lookup.Index != nil {
 		idx := t.Lookup.Index.(*Index)
-		sf := make(sql.SortFields, len(idx.Exprs))
+		sc := make(sql.SortConditions, len(idx.Exprs))
 		for i, e := range idx.Exprs {
-			sf[i] = sql.SortCondition{Expr: e}
+			sc[i] = sql.SortCondition{Expr: e}
 			if t.Lookup.IsReverse {
-				sf[i].Order = sql.Descending
+				sc[i].Order = sql.Descending
 				// TODO: null ordering?
 			}
 		}
 		var sorter *expression.Sorter
 		if i, ok := iter.(*tableIter); ok {
 			sorter = &expression.Sorter{
-				SortFields: sf,
-				Rows:       i.rows,
-				LastError:  nil,
-				Ctx:        ctx,
+				SortConditions: sc,
+				Rows:           i.rows,
+				LastError:      nil,
+				Ctx:            ctx,
 			}
 		} else if i, ok := iter.(*spatialTableIter); ok {
 			sorter = &expression.Sorter{
-				SortFields: sf,
-				Rows:       i.rows,
-				LastError:  nil,
-				Ctx:        ctx,
+				SortConditions: sc,
+				Rows:           i.rows,
+				LastError:      nil,
+				Ctx:            ctx,
 			}
 		}
 

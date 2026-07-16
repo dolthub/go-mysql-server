@@ -51,38 +51,38 @@ func replaceIdxOrderByDistanceHelper(ctx *sql.Context, scope *plan.Scope, node s
 		// We can safely do this because an expression that references other tables won't pass `isSortFieldsValidPrefix` below.
 		sortNode = offsetAssignIndexes(ctx, sortNode).(plan.Sortable)
 
-		sfExprs := normalizeExpressions(ctx, tableAliases, nil, sortNode.GetSortFields().ToExpressions()...)
-		sfAliases := aliasedExpressionsInNode(sortNode)
+		sortExprs := normalizeExpressions(ctx, tableAliases, nil, sortNode.GetSortConditions().ToExpressions()...)
+		sortAliases := aliasedExpressionsInNode(sortNode)
 
 		// TODO: Instead of checking both sides of the expression,
 		// use a previous pass to normalize distance functions so
 		// that the literal is always on the same side.
-		if len(sfExprs) != 1 {
+		if len(sortExprs) != 1 {
 			return n, transform.SameTree, nil
 		}
-		distance, isDistance := sfExprs[0].(*vector.Distance)
+		distance, isDistance := sortExprs[0].(*vector.Distance)
 		if !isDistance {
 			return n, transform.SameTree, nil
 		}
 
 		// We currently require that the query vector to the distance function is a constant value that does not
 		// depend on the row. Right now that can be a Literal or a UserVar.
-		isLiteral := func(expr sql.Expression) bool {
-			switch expr.(type) {
+		isLiteral := func(e sql.Expression) bool {
+			switch e.(type) {
 			case *expression.Literal, *expression.UserVar:
 				return true
 			}
 			return false
 		}
 
-		var column sql.Expression
+		var expr sql.Expression
 		var literal sql.Expression
 		if isLiteral(distance.LeftChild) {
-			column = distance.RightChild
+			expr = distance.RightChild
 			literal = distance.LeftChild
 		} else {
 			if isLiteral(distance.RightChild) {
-				column = distance.LeftChild
+				expr = distance.LeftChild
 				literal = distance.RightChild
 			} else {
 				return n, transform.SameTree, nil
@@ -96,7 +96,7 @@ func replaceIdxOrderByDistanceHelper(ctx *sql.Context, scope *plan.Scope, node s
 			if !idxCandidate.CanSupportOrderBy(distance) {
 				continue
 			}
-			if isSortFieldsValidPrefix([]sql.Expression{column}, sfAliases, idxCandidate.Expressions()) {
+			if sortExprsMatchIdxColExprs([]sql.Expression{expr}, sortAliases, idxCandidate.Expressions()) {
 				idx = idxCandidate
 				break
 			}

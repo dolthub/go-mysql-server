@@ -57,11 +57,11 @@ func (a *Aggregation) startPartition(ctx *sql.Context, interval sql.WindowInterv
 // A WindowPartitionIter is used to evaluate a WindowPartition with a specific sql.RowIter.
 type WindowPartition struct {
 	PartitionBy []sql.Expression
-	SortBy      sql.SortFields
+	SortBy      sql.SortConditions
 	Aggs        []*Aggregation
 }
 
-func NewWindowPartition(partitionBy []sql.Expression, sortBy sql.SortFields, aggs []*Aggregation) *WindowPartition {
+func NewWindowPartition(partitionBy []sql.Expression, sortBy sql.SortConditions, aggs []*Aggregation) *WindowPartition {
 	return &WindowPartition{
 		PartitionBy: partitionBy,
 		SortBy:      sortBy,
@@ -179,9 +179,9 @@ func (i *WindowPartitionIter) materializeInput(ctx *sql.Context) (sql.WindowBuff
 
 	// sort all rows by partition
 	sorter := &expression.Sorter{
-		SortFields: append(partitionsToSortFields(i.w.PartitionBy), i.w.SortBy...),
-		Rows:       input,
-		Ctx:        ctx,
+		SortConditions: append(partitionsToSortConditions(i.w.PartitionBy), i.w.SortBy...),
+		Rows:           input,
+		Ctx:            ctx,
 	}
 	sort.Stable(sorter)
 
@@ -339,15 +339,15 @@ func (i *WindowPartitionIter) nextPartition(ctx *sql.Context) error {
 	return nil
 }
 
-func partitionsToSortFields(partitionExprs []sql.Expression) sql.SortFields {
-	sfs := make(sql.SortFields, len(partitionExprs))
+func partitionsToSortConditions(partitionExprs []sql.Expression) sql.SortConditions {
+	scs := make(sql.SortConditions, len(partitionExprs))
 	for i, expr := range partitionExprs {
-		sfs[i] = sql.SortCondition{
+		scs[i] = sql.SortCondition{
 			Expr:  expr,
 			Order: sql.Ascending,
 		}
 	}
-	return sfs
+	return scs
 }
 
 func isNewPartition(ctx *sql.Context, partitionBy []sql.Expression, last sql.Row, row sql.Row) (bool, error) {
