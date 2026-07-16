@@ -139,10 +139,6 @@ func PrefixKey(ctx *sql.Context, buckets []sql.HistogramBucket, types []sql.Type
 	}
 
 	ret := buckets[lowBucket:upperBucket]
-	if err != nil {
-		return nil, err
-	}
-
 	return ret, nil
 }
 
