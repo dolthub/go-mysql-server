@@ -157,20 +157,12 @@ func nilSafeCmp(ctx *sql.Context, typ sql.Type, left, right interface{}) (int, e
 		return 1, nil
 	}
 
-	// Extended types require that left and right are the same golang type, so convert
-	exTyp, ok := typ.(sql.ExtendedType)
-	if !ok {
-		return typ.Compare(ctx, left, right)
+	// TODO: Extended types have additional type requirements that are difficult to work around,
+	//  so just silently put everything into one giant bucket
+	if _, ok := typ.(sql.ExtendedType); ok {
+		return 0, nil
 	}
-	lv, _, err := exTyp.Convert(ctx, left)
-	if err != nil {
-		return 0, err
-	}
-	rv, _, err := exTyp.Convert(ctx, right)
-	if err != nil {
-		return 0, err
-	}
-	return exTyp.Compare(ctx, lv, rv)
+	return typ.Compare(ctx, left, right)
 }
 
 func GetNewCounts(buckets []sql.HistogramBucket) (rowCount uint64, distinctCount uint64, nullCount uint64) {

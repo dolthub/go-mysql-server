@@ -551,6 +551,7 @@ func (c *indexCoster) cost(ctx *sql.Context, f indexFilter, stat sql.Statistic, 
 		if ok {
 			filters.Add(int(f.id))
 		}
+
 	case *iScanLeaf:
 		newHist, newFds, ok, prefix, err = c.costIndexScanLeaf(ctx, f, stat, stat.Histogram(), ordinals, idx)
 		if err != nil {
@@ -559,6 +560,7 @@ func (c *indexCoster) cost(ctx *sql.Context, f indexFilter, stat sql.Statistic, 
 		if ok {
 			filters.Add(int(f.id))
 		}
+
 	default:
 		panic("unreachable")
 	}
