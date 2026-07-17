@@ -444,8 +444,8 @@ func (c *Catalog) DropStats(ctx *sql.Context, qual sql.StatQualifier, cols []str
 }
 
 // DropDbStats implements the sql.StatsProvider interface
-func (c *Catalog) DropDbStats(ctx *sql.Context, db string, flush bool) error {
-	return c.StatsProvider.DropDbStats(ctx, db, flush)
+func (c *Catalog) DropDbStats(ctx *sql.Context, sch, db string, flush bool) error {
+	return c.StatsProvider.DropDbStats(ctx, sch, db, flush)
 }
 
 // RowCount implements the sql.StatsProvider interface

@@ -142,7 +142,7 @@ func (t MapCatalog) DropStats(ctx *Context, qual StatQualifier, cols []string) e
 }
 
 // DropDbStats implements the sql.StatsProvider interface
-func (t MapCatalog) DropDbStats(ctx *Context, db string, flush bool) error {
+func (t MapCatalog) DropDbStats(ctx *Context, sch, db string, flush bool) error {
 	//TODO implement me
 	panic("implement me")
 }
