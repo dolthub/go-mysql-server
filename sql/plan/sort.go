@@ -96,7 +96,6 @@ func (s *Sort) DebugString(ctx *sql.Context) string {
 
 // Expressions implements the Expressioner interface.
 func (s *Sort) Expressions() []sql.Expression {
-	// TODO: use shared method
 	return s.SortConditions.ToExpressions()
 }
 
@@ -162,8 +161,9 @@ func (n *TopN) Resolved() bool {
 }
 
 func (n *TopN) WithCalcFoundRows(v bool) *TopN {
-	n.CalcFoundRows = v
-	return n
+	ret := *n
+	ret.CalcFoundRows = v
+	return &ret
 }
 
 func (n *TopN) IsReadOnly() bool {

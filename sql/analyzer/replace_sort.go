@@ -421,8 +421,9 @@ func replaceAgg(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope,
 			return nil, transform.SameTree, err
 		}
 
-		// TODO: A Limit wrapping a Sort gets transformed into a TopN node. This can likely be refactored into a TopN
-		//  node
+		// TODO: The analyzer rule insertTopNNodes replaces Limit nodes wrapping a Sort into TopN nodes. This rule
+		//  wouldn't be applied here since it's a Limit wrapping a Project wrapping a Sort, but this node could likely
+		//  be rewritten here to instead be a TopN node.
 		newProj := plan.NewProject(ctx, newProjs, plan.NewSort(sql.SortConditions{sortBy}, gb.Child))
 		limit := plan.NewLimit(expression.NewLiteral(1, types.Int64), newProj)
 		return limit, transform.NewTree, nil
