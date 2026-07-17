@@ -390,19 +390,19 @@ func (li *LimitIter) Close(ctx *sql.Context) error {
 }
 
 type sortIter struct {
-	sortFields sql.SortFields
-	childIter  sql.RowIter
-	sortedRows []sql.Row
-	idx        int
+	sortConditions sql.SortConditions
+	childIter      sql.RowIter
+	sortedRows     []sql.Row
+	idx            int
 }
 
 var _ sql.RowIter = (*sortIter)(nil)
 
-func NewSortIter(s sql.SortFields, child sql.RowIter) *sortIter {
+func NewSortIter(s sql.SortConditions, child sql.RowIter) *sortIter {
 	return &sortIter{
-		sortFields: s,
-		childIter:  child,
-		idx:        -1,
+		sortConditions: s,
+		childIter:      child,
+		idx:            -1,
 	}
 }
 
@@ -449,10 +449,10 @@ func (i *sortIter) computeSortedRows(ctx *sql.Context) error {
 
 	rows := cache.Get()
 	sorter := &expression.Sorter{
-		SortFields: i.sortFields,
-		Rows:       rows,
-		LastError:  nil,
-		Ctx:        ctx,
+		SortConditions: i.sortConditions,
+		Rows:           rows,
+		LastError:      nil,
+		Ctx:            ctx,
 	}
 	sort.Stable(sorter)
 	if sorter.LastError != nil {

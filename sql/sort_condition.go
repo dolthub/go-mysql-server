@@ -1,4 +1,4 @@
-// Copyright 2021 Dolthub, Inc.
+// Copyright 2026 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,59 +20,53 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 )
 
-// SortField defines an Expression and ordering by which a query will be sorted.
-// TODO: SortField is confusingly and inaccurately named. The name SortField and the struct field Column imply that rows
-// are sorted based on a column or table field but that is incorrect since Column actually an Expression.
-type SortField struct {
-	// Column to order by.
-	Column Expression
-	// Column ValueExpression to order by. This is always the same value as Column, but avoids a type cast
-	ValueExprColumn ValueExpression
+// SortCondition defines an Expression and ordering by which a query will be sorted.
+type SortCondition struct {
+	// Expr to order by.
+	Expr Expression
 	// Order type.
 	Order SortOrder
 	// NullOrdering defining how nulls will be ordered.
 	NullOrdering NullOrdering
 }
 
-type SortFields []SortField
+type SortConditions []SortCondition
 
-func (sf SortFields) ToExpressions() []Expression {
-	es := make([]Expression, len(sf))
-	for i, f := range sf {
-		es[i] = f.Column
+func (sc SortConditions) ToExpressions() []Expression {
+	es := make([]Expression, len(sc))
+	for i, f := range sc {
+		es[i] = f.Expr
 	}
 	return es
 }
 
-func (sf SortFields) FromExpressions(ctx *Context, exprs ...Expression) SortFields {
-	var fields = make(SortFields, len(sf))
+func (sc SortConditions) FromExpressions(ctx *Context, exprs ...Expression) SortConditions {
+	var conds = make(SortConditions, len(sc))
 
-	if len(exprs) != len(fields) {
-		panic(fmt.Sprintf("Invalid expression slice. Wanted %d elements, got %d", len(fields), len(exprs)))
+	if len(exprs) != len(conds) {
+		panic(fmt.Sprintf("Invalid expression slice. Wanted %d elements, got %d", len(conds), len(exprs)))
 	}
 
 	for i, expr := range exprs {
-		valueExpr, _ := expr.(ValueExpression)
-		fields[i] = SortField{
-			Column:          expr,
-			ValueExprColumn: valueExpr,
-			NullOrdering:    sf[i].NullOrdering,
-			Order:           sf[i].Order,
+		conds[i] = SortCondition{
+			Expr:         expr,
+			NullOrdering: sc[i].NullOrdering,
+			Order:        sc[i].Order,
 		}
 	}
-	return fields
+	return conds
 }
 
-func (s SortField) String() string {
-	return fmt.Sprintf("%s %s", s.Column, s.Order)
+func (s SortCondition) String() string {
+	return fmt.Sprintf("%s %s", s.Expr, s.Order)
 }
 
-func (s SortField) DebugString(ctx *Context) string {
+func (s SortCondition) DebugString(ctx *Context) string {
 	nullOrdering := "nullsFirst"
 	if s.NullOrdering == NullsLast {
 		nullOrdering = "nullsLast"
 	}
-	return fmt.Sprintf("%s %s %s", DebugString(ctx, s.Column), DebugString(ctx, s.Order), nullOrdering)
+	return fmt.Sprintf("%s %s %s", DebugString(ctx, s.Expr), DebugString(ctx, s.Order), nullOrdering)
 }
 
 // ErrUnableSort is thrown when something happens on sorting

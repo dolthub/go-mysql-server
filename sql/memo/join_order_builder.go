@@ -218,7 +218,7 @@ func (j *joinOrderBuilder) populateSubgraph(ctx *sql.Context, n sql.Node) (verte
 		return j.buildProject(ctx, n)
 	case *plan.Sort:
 		_, _, group = j.populateSubgraph(ctx, n.Child)
-		group.RelProps.sort = n.SortFields
+		group.RelProps.sort = n.SortConditions
 	case *plan.Distinct:
 		_, _, group = j.populateSubgraph(ctx, n.Child)
 		group.RelProps.Distinct = HashDistinctOp

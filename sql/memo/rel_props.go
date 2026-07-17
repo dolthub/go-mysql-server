@@ -41,7 +41,7 @@ type relProps struct {
 	grp          *ExprGroup
 	fds          *sql.FuncDepSet
 	tableNodes   []plan.TableIdNode
-	sort         sql.SortFields
+	sort         sql.SortConditions
 	Distinct     distinctOp
 	DistinctOn   []sql.Expression
 }

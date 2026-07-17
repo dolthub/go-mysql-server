@@ -89,7 +89,7 @@ func (b *ExecBuilder) buildRangeHeap(ctx *sql.Context, sr *RangeHeap, children .
 		ret = plan.NewLimit(n.Limit, ret)
 	case *plan.Sort:
 		ret, err = b.buildRangeHeap(ctx, sr, n.Child)
-		ret = plan.NewSort(n.SortFields, ret)
+		ret = plan.NewSort(n.SortConditions, ret)
 	default:
 		var childNode sql.Node
 		if sr.MinIndex != nil {
@@ -99,12 +99,12 @@ func (b *ExecBuilder) buildRangeHeap(ctx *sql.Context, sr *RangeHeap, children .
 			if err != nil {
 				return nil, err
 			}
-			sf := []sql.SortField{{
-				Column:       sortExpr,
+			sc := sql.SortConditions{{
+				Expr:         sortExpr,
 				Order:        sql.Ascending,
 				NullOrdering: sql.NullsFirst,
 			}}
-			childNode = plan.NewSort(sf, n)
+			childNode = plan.NewSort(sc, n)
 		}
 
 		if err != nil {
@@ -134,12 +134,12 @@ func (b *ExecBuilder) buildRangeHeapJoin(ctx *sql.Context, j *RangeHeapJoin, chi
 		}
 	} else {
 		sortExpr := j.RangeHeap.ValueExpr
-		sf := []sql.SortField{{
-			Column:       sortExpr,
+		sc := sql.SortConditions{{
+			Expr:         sortExpr,
 			Order:        sql.Ascending,
 			NullOrdering: sql.NullsFirst,
 		}}
-		left = plan.NewSort(sf, children[0])
+		left = plan.NewSort(sc, children[0])
 	}
 
 	right, err := b.buildRangeHeap(ctx, j.RangeHeap, children[1])
@@ -249,7 +249,7 @@ func (b *ExecBuilder) buildIndexScan(ctx *sql.Context, i *IndexScan, children ..
 		ret = plan.NewLimit(n.Limit, ret)
 	case *plan.Sort:
 		ret, err = b.buildIndexScan(ctx, i, n.Child)
-		ret = plan.NewSort(n.SortFields, ret)
+		ret = plan.NewSort(n.SortConditions, ret)
 	default:
 		return nil, fmt.Errorf("unexpected *indexScan child: %T", n)
 	}

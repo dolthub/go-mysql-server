@@ -27,14 +27,14 @@ import (
 )
 
 type GroupConcat struct {
-	returnType  sql.Type
-	window      *sql.WindowDefinition
-	distinct    string
-	separator   string
-	selectExprs []sql.Expression
-	sf          sql.SortFields
-	maxLen      int
-	id          sql.ColumnId
+	returnType     sql.Type
+	window         *sql.WindowDefinition
+	distinct       string
+	separator      string
+	selectExprs    []sql.Expression
+	sortConditions sql.SortConditions
+	maxLen         int
+	id             sql.ColumnId
 }
 
 var _ sql.FunctionExpression = &GroupConcat{}
@@ -56,8 +56,13 @@ func (g *GroupConcat) Description() string {
 	return "returns a string result with the concatenated non-NULL values from a group."
 }
 
-func NewGroupConcat(distinct string, orderBy sql.SortFields, separator string, selectExprs []sql.Expression, maxLen int) *GroupConcat {
-	return &GroupConcat{distinct: distinct, sf: orderBy, separator: separator, selectExprs: selectExprs, maxLen: maxLen}
+func NewGroupConcat(distinct string, orderBy sql.SortConditions, separator string, selectExprs []sql.Expression, maxLen int) *GroupConcat {
+	return &GroupConcat{
+		distinct:       distinct,
+		sortConditions: orderBy,
+		separator:      separator,
+		selectExprs:    selectExprs,
+		maxLen:         maxLen}
 }
 
 // Id implements the Aggregation interface
@@ -113,10 +118,10 @@ func (g *GroupConcat) Resolved() bool {
 		}
 	}
 
-	sfs := g.sf.ToExpressions()
+	scs := g.sortConditions.ToExpressions()
 
-	for _, sf := range sfs {
-		if !sf.Resolved() {
+	for _, sc := range scs {
+		if !sc.Resolved() {
 			return false
 		}
 	}
@@ -140,9 +145,9 @@ func (g *GroupConcat) String() string {
 		sb.WriteString(strings.Join(exprs, ", "))
 	}
 
-	if len(g.sf) > 0 {
+	if len(g.sortConditions) > 0 {
 		sb.WriteString(" order by ")
-		for i, ob := range g.sf {
+		for i, ob := range g.sortConditions {
 			if i > 0 {
 				sb.WriteString(", ")
 			}
@@ -174,9 +179,9 @@ func (g *GroupConcat) DebugString(ctx *sql.Context) string {
 		sb.WriteString(strings.Join(exprs, ", "))
 	}
 
-	if len(g.sf) > 0 {
+	if len(g.sortConditions) > 0 {
 		sb.WriteString(" order by ")
-		for i, ob := range g.sf {
+		for i, ob := range g.sortConditions {
 			if i > 0 {
 				sb.WriteString(", ")
 			}
@@ -223,7 +228,7 @@ func (g *GroupConcat) IsNullable(ctx *sql.Context) bool {
 
 // Children implements the Expression interface.
 func (g *GroupConcat) Children() []sql.Expression {
-	return append(g.sf.ToExpressions(), g.selectExprs...)
+	return append(g.sortConditions.ToExpressions(), g.selectExprs...)
 }
 
 // WithChildren implements the Expression interface.
@@ -233,10 +238,10 @@ func (g *GroupConcat) WithChildren(ctx *sql.Context, children ...sql.Expression)
 	}
 
 	// Get the order by expression using the length of the sort fields.
-	sortFieldMarker := len(g.sf)
-	orderByExpr := children[:len(g.sf)]
+	sortFieldMarker := len(g.sortConditions)
+	orderByExpr := children[:len(g.sortConditions)]
 
-	return NewGroupConcat(g.distinct, g.sf.FromExpressions(ctx, orderByExpr...), g.separator, children[sortFieldMarker:], g.maxLen), nil
+	return NewGroupConcat(g.distinct, g.sortConditions.FromExpressions(ctx, orderByExpr...), g.separator, children[sortFieldMarker:], g.maxLen), nil
 }
 
 // OutputExpressions implements the OrderedAggregation interface.
@@ -332,11 +337,11 @@ func (g *groupConcatBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 	}
 
 	// Execute the order operation if it exists.
-	if g.gc.sf != nil {
+	if g.gc.sortConditions != nil {
 		sorter := &expression.Sorter{
-			SortFields: g.gc.sf,
-			Rows:       rows,
-			Ctx:        ctx,
+			SortConditions: g.gc.sortConditions,
+			Rows:           rows,
+			Ctx:            ctx,
 		}
 
 		sort.Stable(sorter)

@@ -62,15 +62,15 @@ var _ sql.Expressioner = (*RecursiveCte)(nil)
 var _ sql.CollationCoercible = (*RecursiveCte)(nil)
 var _ TableIdNode = (*RecursiveCte)(nil)
 
-func NewRecursiveCte(initial, recursive sql.Node, name string, outputCols []string, deduplicate bool, l sql.Expression, sf sql.SortFields) *RecursiveCte {
+func NewRecursiveCte(initial, recursive sql.Node, name string, outputCols []string, deduplicate bool, l sql.Expression, sc sql.SortConditions) *RecursiveCte {
 	return &RecursiveCte{
 		ColumnNames: outputCols,
 		union: &SetOp{
-			SetOpType:  UnionType,
-			BinaryNode: BinaryNode{left: initial, right: recursive},
-			Distinct:   deduplicate,
-			Limit:      l,
-			SortFields: sf,
+			SetOpType:      UnionType,
+			BinaryNode:     BinaryNode{left: initial, right: recursive},
+			Distinct:       deduplicate,
+			Limit:          l,
+			SortConditions: sc,
 		},
 		name: name,
 	}

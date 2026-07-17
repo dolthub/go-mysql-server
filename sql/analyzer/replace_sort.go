@@ -20,7 +20,7 @@ func replaceIdxSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope
 func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, sortNode *plan.Sort) (sql.Node, transform.TreeIdentity, error) {
 	switch n := node.(type) {
 	case *plan.Sort:
-		if isValidSortFieldOrder(n.SortFields) {
+		if isValidSortOrder(n.SortConditions) {
 			sortNode = n // lowest parent sort node
 		}
 	case *plan.IndexedTableAccess:
@@ -43,9 +43,9 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 		if err != nil {
 			return n, transform.SameTree, nil
 		}
-		sfExprs := normalizeExpressions(ctx, tableAliases, nil, sortNode.SortFields.ToExpressions()...)
-		sfAliases := aliasedExpressionsInNode(sortNode)
-		if !isSortFieldsValidPrefix(sfExprs, sfAliases, lookup.Index.Expressions()) {
+		sortExprs := normalizeExpressions(ctx, tableAliases, nil, sortNode.SortConditions.ToExpressions()...)
+		sortAliases := aliasedExpressionsInNode(sortNode)
+		if !sortExprsMatchIdxColExprs(sortExprs, sortAliases, lookup.Index.Expressions()) {
 			return n, transform.SameTree, nil
 		}
 		mysqlRanges, ok := lookup.Ranges.(sql.MySQLRangeCollection)
@@ -54,7 +54,7 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 		}
 		// if the resulting ranges are overlapping, we cannot drop the sort node
 		// it is possible we end up with blocks of rows that intersect
-		if hasOverlapping(ctx, sfExprs, mysqlRanges) {
+		if hasOverlapping(ctx, sortExprs, mysqlRanges) {
 			return n, transform.SameTree, nil
 		}
 
@@ -63,7 +63,7 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 			return n, transform.SameTree, nil
 		}
 
-		isReverse := sortNode.SortFields[0].Order == sql.Descending
+		isReverse := sortNode.SortConditions[0].Order == sql.Descending
 
 		// If the lookup does not need any reversing, use it and drop the sort node.
 		// Note that |NewTree| triggers replacement of the sort node captured above by the IndexedTableAccess in the
@@ -113,8 +113,8 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
-		sfExprs := normalizeExpressions(ctx, tableAliases, nil, sortNode.SortFields.ToExpressions()...)
-		sfAliases := aliasedExpressionsInNode(sortNode)
+		sortExprs := normalizeExpressions(ctx, tableAliases, nil, sortNode.SortConditions.ToExpressions()...)
+		sortAliases := aliasedExpressionsInNode(sortNode)
 		for _, idxCandidate := range idxs {
 			if idxCandidate.IsSpatial() {
 				continue
@@ -123,7 +123,7 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 				// TODO: It's possible that we may be able to use vector indexes for point lookups, but not range lookups
 				continue
 			}
-			if isSortFieldsValidPrefix(sfExprs, sfAliases, idxCandidate.Expressions()) {
+			if sortExprsMatchIdxColExprs(sortExprs, sortAliases, idxCandidate.Expressions()) {
 				idx = idxCandidate
 				break
 			}
@@ -137,7 +137,7 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
-		if sortNode.SortFields[0].Order == sql.Descending {
+		if sortNode.SortConditions[0].Order == sql.Descending {
 			lookup = sql.NewIndexLookup(
 				lookup.Index,
 				lookup.Ranges.(sql.MySQLRangeCollection),
@@ -175,10 +175,10 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 			if sortNode == nil {
 				continue
 			}
-			sortFields := make([]sql.SortField, len(sortNode.SortFields))
-			sameSortFields := true
-			for i, sortField := range sortNode.SortFields {
-				col, sameExpr, _ := transform.Expr(ctx, sortField.Column, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+			sortConditions := make(sql.SortConditions, len(sortNode.SortConditions))
+			sameSortConditions := true
+			for i, sortCondition := range sortNode.SortConditions {
+				expr, sameExpr, _ := transform.Expr(ctx, sortCondition.Expr, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 					if gt, ok := e.(*expression.GetField); ok {
 						if gf, ok := c.ScopeMapping[gt.Id()]; ok {
 							return gf, transform.NewTree, nil
@@ -187,22 +187,20 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 					return e, transform.SameTree, nil
 				})
 				if sameExpr {
-					sortFields[i] = sortField
+					sortConditions[i] = sortCondition
 				} else {
-					sameSortFields = false
-					valCol, _ := col.(sql.ValueExpression)
-					sortFields[i] = sql.SortField{
-						Column:          col,
-						ValueExprColumn: valCol,
-						NullOrdering:    sortField.NullOrdering,
-						Order:           sortField.Order,
+					sameSortConditions = false
+					sortConditions[i] = sql.SortCondition{
+						Expr:         expr,
+						NullOrdering: sortCondition.NullOrdering,
+						Order:        sortCondition.Order,
 					}
 				}
 			}
-			if !sameSortFields {
+			if !sameSortConditions {
 				// The Sort node is used to find table aliases, but table aliases can't be found inside SubqueryAlias
 				// nodes, so we need to construct a new Sort node with the SubqueryAlias's child
-				newSort := plan.NewSort(sortFields, c.Child)
+				newSort := plan.NewSort(sortConditions, c.Child)
 				newChildren[i], same, err = replaceIdxSortHelper(ctx, scope, child, newSort)
 			}
 		case *plan.JoinNode:
@@ -229,8 +227,8 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 			if !leftIsSorted && !rightIsSorted {
 				continue
 			}
-			// No need to check all SortField orders because of isValidSortFieldOrder
-			isReversed := sortNode.SortFields[0].Order == sql.Descending
+			// No need to check all SortCondition orders because of isValidSortOrder
+			isReversed := sortNode.SortConditions[0].Order == sql.Descending
 			// If both left and right have been replaced, no need to manually reverse any indexes as they both should be
 			// replaced already
 			if leftIsSorted && rightIsSorted {
@@ -379,26 +377,26 @@ func replaceAgg(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope,
 			return n, transform.SameTree, nil
 		}
 
-		// generate sort fields from aggregations
-		var sf sql.SortField
+		// generate sort condition from aggregations
+		var sortBy sql.SortCondition
 		switch agg := gb.SelectDeps[0].(type) {
 		case *aggregation.Max:
 			gf, ok := agg.Child.(*expression.GetField)
 			if !ok {
 				return n, transform.SameTree, nil
 			}
-			sf = sql.SortField{
-				Column: gf,
-				Order:  sql.Descending,
+			sortBy = sql.SortCondition{
+				Expr:  gf,
+				Order: sql.Descending,
 			}
 		case *aggregation.Min:
 			gf, ok := agg.Child.(*expression.GetField)
 			if !ok {
 				return n, transform.SameTree, nil
 			}
-			sf = sql.SortField{
-				Column: gf,
-				Order:  sql.Ascending,
+			sortBy = sql.SortCondition{
+				Expr:  gf,
+				Order: sql.Ascending,
 			}
 		default:
 			return n, transform.SameTree, nil
@@ -407,7 +405,7 @@ func replaceAgg(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope,
 		// since we're only supporting one aggregation, it must be on the first column of the primary key
 		if pkCols := pkIdx.Expressions(); len(pkCols) < 1 {
 			return n, transform.SameTree, nil
-		} else if !strings.EqualFold(pkCols[0], sf.Column.String()) {
+		} else if !strings.EqualFold(pkCols[0], sortBy.Expr.String()) {
 			return n, transform.SameTree, nil
 		}
 
@@ -415,47 +413,51 @@ func replaceAgg(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope,
 		name := gb.SelectDeps[0].String()
 		newProjs, _, err := transform.Exprs(ctx, proj.Projections, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			if strings.EqualFold(e.String(), name) {
-				return sf.Column, transform.NewTree, nil
+				return sortBy.Expr, transform.NewTree, nil
 			}
 			return e, transform.SameTree, nil
 		})
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
-		newProj := plan.NewProject(ctx, newProjs, plan.NewSort(sql.SortFields{sf}, gb.Child))
+
+		// TODO: The analyzer rule insertTopNNodes replaces Limit nodes wrapping a Sort into TopN nodes. This rule
+		//  wouldn't be applied here since it's a Limit wrapping a Project wrapping a Sort, but this node could likely
+		//  be rewritten here to instead be a TopN node.
+		newProj := plan.NewProject(ctx, newProjs, plan.NewSort(sql.SortConditions{sortBy}, gb.Child))
 		limit := plan.NewLimit(expression.NewLiteral(1, types.Int64), newProj)
 		return limit, transform.NewTree, nil
 	})
 }
 
-// isSortFieldsValidPrefix checks if the SortFields in sortNode are a valid prefix of the index columns
-func isSortFieldsValidPrefix(sfExprs []sql.Expression, sfAliases map[string]string, idxColExprs []string) bool {
-	if len(sfExprs) > len(idxColExprs) {
+// sortExprsMatchIdxColExprs checks if the SortCondition expressions in a Sort node match the index column expressions
+func sortExprsMatchIdxColExprs(sortExprs []sql.Expression, sortAliases map[string]string, idxColExprs []string) bool {
+	if len(sortExprs) > len(idxColExprs) {
 		return false
 	}
-	for i, fieldExpr := range sfExprs {
-		var fieldName string
-		if alias, ok := fieldExpr.(*expression.Alias); ok {
-			fieldName = alias.Child.String()
+	for i, sortExpr := range sortExprs {
+		var exprName string
+		if alias, ok := sortExpr.(*expression.Alias); ok {
+			exprName = alias.Child.String()
 		} else {
-			fieldName = fieldExpr.String()
+			exprName = sortExpr.String()
 		}
-		if alias, ok := sfAliases[strings.ToLower(idxColExprs[i])]; ok && alias == fieldName {
+		if alias, ok := sortAliases[strings.ToLower(idxColExprs[i])]; ok && alias == exprName {
 			continue
 		}
-		if !strings.EqualFold(idxColExprs[i], fieldName) {
+		if !strings.EqualFold(idxColExprs[i], exprName) {
 			return false
 		}
 	}
 	return true
 }
 
-// isValidSortFieldOrder checks if all the sortFields are in the same order
-func isValidSortFieldOrder(sfs sql.SortFields) bool {
-	for _, sf := range sfs {
+// isValidSortOrder checks if all the sortConditions are same order type
+func isValidSortOrder(scs sql.SortConditions) bool {
+	for _, sc := range scs {
 		// TODO: could generalize this to more monotonic expressions.
 		//   For example, order by x+1 is ok, but order by mod(x) is not
-		if sfs[0].Order != sf.Order {
+		if scs[0].Order != sc.Order {
 			return false
 		}
 	}

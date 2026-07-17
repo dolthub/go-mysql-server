@@ -900,11 +900,11 @@ func (a *GroupConcatAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, 
 	}
 
 	// Execute the order operation if it exists.
-	if a.gc.sf != nil {
+	if a.gc.sortConditions != nil {
 		sorter := &expression.Sorter{
-			SortFields: a.gc.sf,
-			Rows:       rows,
-			Ctx:        ctx,
+			SortConditions: a.gc.sortConditions,
+			Rows:           rows,
+			Ctx:            ctx,
 		}
 
 		sort.Stable(sorter)

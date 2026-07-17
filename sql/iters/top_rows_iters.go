@@ -25,24 +25,24 @@ import (
 // topRowsIter is defined by the topN node. It uses a heap to sort the rows of the child iterator and returns the top N
 // (defined by limit) rows
 type topRowsIter struct {
-	childIter     sql.RowIter
-	sortFields    sql.SortFields
-	topRows       []sql.Row
-	idx           int
-	limit         int64
-	numFoundRows  int64
-	calcFoundRows bool
+	childIter      sql.RowIter
+	sortConditions sql.SortConditions
+	topRows        []sql.Row
+	idx            int
+	limit          int64
+	numFoundRows   int64
+	calcFoundRows  bool
 }
 
 var _ sql.RowIter = (*topRowsIter)(nil)
 
-func NewTopRowsIter(s sql.SortFields, limit int64, calcFoundRows bool, child sql.RowIter, childSchemaLen int) *topRowsIter {
+func NewTopRowsIter(s sql.SortConditions, limit int64, calcFoundRows bool, child sql.RowIter) *topRowsIter {
 	return &topRowsIter{
-		sortFields:    s,
-		limit:         limit,
-		calcFoundRows: calcFoundRows,
-		childIter:     child,
-		idx:           -1,
+		sortConditions: s,
+		limit:          limit,
+		calcFoundRows:  calcFoundRows,
+		childIter:      child,
+		idx:            -1,
 	}
 }
 
@@ -75,10 +75,10 @@ func (i *topRowsIter) Close(ctx *sql.Context) error {
 func (i *topRowsIter) computeTopRows(ctx *sql.Context) error {
 	rowsHeap := &topRowsHeap{
 		Sorter: expression.Sorter{
-			SortFields: i.sortFields,
-			Rows:       make([]sql.Row, 0, i.limit+1),
-			LastError:  nil,
-			Ctx:        ctx,
+			SortConditions: i.sortConditions,
+			Rows:           make([]sql.Row, 0, i.limit+1),
+			LastError:      nil,
+			Ctx:            ctx,
 		},
 		order: make([]int64, 0, i.limit+1),
 	}
@@ -163,21 +163,21 @@ func (h *topRowsHeap) Pop() interface{} {
 // topRowIter is a special case of topRowsIter for when the limit is 1. Rather than using a heap to sort the rows of the
 // child iterator, it scans the rows for the first row.
 type topRowIter struct {
-	childIter     sql.RowIter
-	sortFields    sql.SortFields
-	topRow        sql.Row
-	numFoundRows  int64
-	calcFoundRows bool
-	once          bool
+	childIter      sql.RowIter
+	sortConditions sql.SortConditions
+	topRow         sql.Row
+	numFoundRows   int64
+	calcFoundRows  bool
+	once           bool
 }
 
 var _ sql.RowIter = (*topRowIter)(nil)
 
-func NewTopRowIter(s sql.SortFields, calcFoundRows bool, child sql.RowIter) *topRowIter {
+func NewTopRowIter(s sql.SortConditions, calcFoundRows bool, child sql.RowIter) *topRowIter {
 	return &topRowIter{
-		childIter:     child,
-		sortFields:    s,
-		calcFoundRows: calcFoundRows,
+		childIter:      child,
+		sortConditions: s,
+		calcFoundRows:  calcFoundRows,
 	}
 }
 
@@ -192,8 +192,8 @@ func (i *topRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, err
 	}
 	sorter := expression.Sorter{
-		Ctx:        ctx,
-		SortFields: i.sortFields,
+		Ctx:            ctx,
+		SortConditions: i.sortConditions,
 	}
 	for {
 		var row sql.Row

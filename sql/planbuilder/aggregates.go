@@ -485,22 +485,7 @@ func (b *Builder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.E
 	}
 
 	orderByScope := b.analyzeOrderBy(inScope, inScope, e.OrderBy)
-	var sortFields sql.SortFields
-	for _, c := range orderByScope.cols {
-		so := sql.Ascending
-		if c.descending {
-			so = sql.Descending
-		}
-		scalar := c.scalar
-		if scalar == nil {
-			scalar = c.scalarGf()
-		}
-		sf := sql.SortField{
-			Column: scalar,
-			Order:  so,
-		}
-		sortFields = append(sortFields, sf)
-	}
+	sortConditions := b.buildSortConditions(orderByScope, transform.SameTree)
 
 	// TODO: this should be acquired at runtime, not at parse time, so fix this
 	gcml, err := b.ctx.GetSessionVariable(b.ctx, "group_concat_max_len")
@@ -510,70 +495,13 @@ func (b *Builder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.E
 	groupConcatMaxLen := gcml.(uint64)
 
 	// todo store ref to aggregate
-	agg := aggregation.NewGroupConcat(e.Distinct, sortFields, separatorS, args, int(groupConcatMaxLen))
+	agg := aggregation.NewGroupConcat(e.Distinct, sortConditions, separatorS, args, int(groupConcatMaxLen))
 	aggName := strings.ToLower(plan.AliasSubqueryString(b.ctx, agg))
 	col := scopeColumn{col: aggName, scalar: agg, typ: agg.Type(b.ctx), nullable: agg.IsNullable(b.ctx)}
 
 	id := gb.outScope.newColumn(col)
 
 	agg = agg.WithId(sql.ColumnId(id)).(*aggregation.GroupConcat)
-	gb.outScope.cols[len(gb.outScope.cols)-1].scalar = agg
-	col.scalar = agg
-
-	gb.addAggStr(col)
-	col.id = id
-	return col.scalarGf()
-}
-
-// buildOrderedInjectedExpr builds an InjectedExpr with an ORDER BY dependency
-func (b *Builder) buildOrderedInjectedExpr(inScope *scope, e *ast.OrderedInjectedExpr) sql.Expression {
-	inScope.initGroupBy()
-	gb := inScope.groupBy
-
-	var resolvedChildren []any
-	if len(e.Children) > 0 {
-		resolvedChildren = make([]any, len(e.Children))
-		for i, child := range e.Children {
-			resolvedChildren[i] = b.buildScalar(inScope, child)
-		}
-	} else {
-		resolvedChildren = make([]any, len(e.SelectExprChildren))
-		for i, child := range e.SelectExprChildren {
-			resolvedChildren[i] = b.selectExprToExpression(inScope, child)
-		}
-	}
-
-	orderByScope := b.analyzeOrderBy(inScope, inScope, e.OrderBy)
-	var sortFields sql.SortFields
-	for _, c := range orderByScope.cols {
-		so := sql.Ascending
-		if c.descending {
-			so = sql.Descending
-		}
-		scalar := c.scalar
-		if scalar == nil {
-			scalar = c.scalarGf()
-		}
-		sf := sql.SortField{
-			Column: scalar,
-			Order:  so,
-		}
-		sortFields = append(sortFields, sf)
-	}
-
-	resolvedChildren = append(resolvedChildren, sortFields)
-
-	expr := b.buildInjectedExpressionFromResolvedChildren(e.InjectedExpr, resolvedChildren)
-	agg, ok := expr.(sql.Aggregation)
-	if !ok {
-		b.handleErr(fmt.Errorf("expected sql.Aggregation, got %T", expr))
-	}
-
-	aggName := strings.ToLower(plan.AliasSubqueryString(b.ctx, agg))
-	col := scopeColumn{col: aggName, scalar: agg, typ: agg.Type(b.ctx), nullable: agg.IsNullable(b.ctx)}
-	id := gb.outScope.newColumn(col)
-
-	agg = agg.WithId(sql.ColumnId(id)).(sql.Aggregation)
 	gb.outScope.cols[len(gb.outScope.cols)-1].scalar = agg
 	col.scalar = agg
 
@@ -763,19 +691,19 @@ func (b *Builder) buildWindowDef(fromScope *scope, def *ast.WindowDef) *sql.Wind
 		return nil
 	}
 
-	var sortFields sql.SortFields
-	for _, c := range def.OrderBy {
+	// TODO: We might be able to reuse b.buildSortConditions with some refactoring
+	sortConditions := make(sql.SortConditions, len(def.OrderBy))
+	for i, c := range def.OrderBy {
 		// resolve col in fromScope
 		e := b.buildScalar(fromScope, c.Expr)
 		so := sql.Ascending
 		if c.Direction == ast.DescScr {
 			so = sql.Descending
 		}
-		sf := sql.SortField{
-			Column: e,
-			Order:  so,
+		sortConditions[i] = sql.SortCondition{
+			Expr:  e,
+			Order: so,
 		}
-		sortFields = append(sortFields, sf)
 	}
 
 	partitions := make([]sql.Expression, len(def.PartitionBy))
@@ -785,7 +713,7 @@ func (b *Builder) buildWindowDef(fromScope *scope, def *ast.WindowDef) *sql.Wind
 
 	frame := b.NewFrame(fromScope, def.Frame)
 
-	windowDef := sql.NewWindowDefinition(partitions, sortFields, frame, def.NameRef.Lowered(), def.Name.Lowered())
+	windowDef := sql.NewWindowDefinition(partitions, sortConditions, frame, def.NameRef.Lowered(), def.Name.Lowered())
 	if ref, ok := fromScope.windowDefs[def.NameRef.Lowered()]; ok {
 		// this is only safe if windows are built in topo order
 		windowDef = b.mergeWindowDefs(windowDef, ref)
@@ -797,7 +725,7 @@ func (b *Builder) buildWindowDef(fromScope *scope, def *ast.WindowDef) *sql.Wind
 	// "If OVER() is empty, the window consists of all query rows and the window function computes a result using all rows."
 	// This must be evaluated after merging with any referenced named window (OVER w), since the
 	// referenced window's ORDER BY determines the correct default frame, not this def's own (possibly empty) ORDER BY.
-	if windowDef.OrderBy == nil && windowDef.Frame == nil {
+	if len(windowDef.OrderBy) == 0 && windowDef.Frame == nil {
 		windowDef.Frame = plan.NewRowsUnboundedPrecedingToUnboundedFollowingFrame()
 	}
 
@@ -813,7 +741,7 @@ func (b *Builder) mergeWindowDefs(def, ref *sql.WindowDefinition) *sql.WindowDef
 		panic("unreachable; cannot merge unresolved window definition")
 	}
 
-	var orderBy sql.SortFields
+	var orderBy sql.SortConditions
 	switch {
 	case len(def.OrderBy) > 0 && len(ref.OrderBy) > 0:
 		err := sql.ErrInvalidWindowInheritance.New("", "", "both contain order by clause")

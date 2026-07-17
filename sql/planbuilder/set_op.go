@@ -81,43 +81,16 @@ func (b *Builder) buildSetOp(inScope *scope, u *ast.SetOp) (outScope *scope) {
 
 	// mysql errors for order by right projection
 	orderByScope := b.analyzeOrderBy(leftScope, leftScope, u.OrderBy)
-
-	var sortFields sql.SortFields
-	for _, c := range orderByScope.cols {
-		so := sql.Ascending
-		if c.descending {
-			so = sql.Descending
-		}
-		scalar := c.scalar
-		if scalar == nil {
-			scalar = c.scalarGf()
-		}
-		// Unions pass order bys to the top scope, where the original
-		// order by get field may no longer be accessible. Here it is
-		// safe to assume the alias has already been computed.
-		scalar, _, _ = transform.Expr(b.ctx, scalar, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-			switch e := e.(type) {
-			case *expression.Alias:
-				return expression.NewGetField(int(c.id), e.Type(ctx), e.Name(), e.IsNullable(ctx)), transform.NewTree, nil
-			default:
-				return e, transform.SameTree, nil
-			}
-		})
-		sf := sql.SortField{
-			Column: scalar,
-			Order:  so,
-		}
-		sortFields = append(sortFields, sf)
-	}
+	sortConditions := b.buildSortConditions(orderByScope, transform.NewTree)
 
 	n, ok := leftScope.node.(*plan.SetOp)
 	if ok {
-		if len(n.SortFields) > 0 {
-			if len(sortFields) > 0 {
+		if len(n.SortConditions) > 0 {
+			if len(sortConditions) > 0 {
 				err := sql.ErrConflictingExternalQuery.New()
 				b.handleErr(err)
 			}
-			sortFields = n.SortFields
+			sortConditions = n.SortConditions
 		}
 		if n.Limit != nil {
 			if limit != nil {
@@ -142,7 +115,7 @@ func (b *Builder) buildSetOp(inScope *scope, u *ast.SetOp) (outScope *scope) {
 	}
 	b.tabId++
 	tabId := b.tabId
-	ret := plan.NewSetOp(setOpType, leftScope.node, rightScope.node, distinct, limit, offset, sortFields).WithId(tabId).WithColumns(cols)
+	ret := plan.NewSetOp(setOpType, leftScope.node, rightScope.node, distinct, limit, offset, sortConditions).WithId(tabId).WithColumns(cols)
 	outScope = leftScope
 	outScope.cols = b.mergeSetOpScopeColumns(leftScope.cols, rightScope.cols, tabId)
 	outScope.node = b.mergeSetOpSchemas(ret.(*plan.SetOp))

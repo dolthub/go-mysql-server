@@ -127,14 +127,15 @@ func unresolvedError(ctx *sql.Context, n sql.Node) error {
 	return analyzererrors.ErrValidationResolved.New(n)
 }
 
+// TODO: why is this rule necessary? https://github.com/dolthub/dolt/issues/11309
 func validateOrderBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("validate_order_by")
 	defer span.End()
 
 	switch n := n.(type) {
 	case *plan.Sort:
-		for _, field := range n.SortFields {
-			switch field.Column.(type) {
+		for _, cond := range n.SortConditions {
+			switch cond.Expr.(type) {
 			case sql.Aggregation:
 				return nil, transform.SameTree, analyzererrors.ErrValidationOrderBy.New()
 			}

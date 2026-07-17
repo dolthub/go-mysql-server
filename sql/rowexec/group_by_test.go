@@ -90,13 +90,13 @@ func TestGroupByRowIter(t *testing.T) {
 	}
 
 	p := plan.NewSort(
-		[]sql.SortField{
+		sql.SortConditions{
 			{
-				Column: expression.NewGetField(0, types.LongText, "col1", true),
-				Order:  sql.Ascending,
+				Expr:  expression.NewGetField(0, types.LongText, "col1", true),
+				Order: sql.Ascending,
 			}, {
-				Column: expression.NewGetField(1, types.Int64, "col2", true),
-				Order:  sql.Ascending,
+				Expr:  expression.NewGetField(1, types.Int64, "col2", true),
+				Order: sql.Ascending,
 			},
 		},
 		plan.NewGroupBy(

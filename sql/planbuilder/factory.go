@@ -196,9 +196,9 @@ func (f *factory) buildDistinct(ctx *sql.Context, child sql.Node, refsSubquery b
 				for _, expr := range distinctOn {
 					dMap[strings.ToLower(expr.String())] = struct{}{}
 				}
-				minMatching := min(len(distinctOn), len(sort.SortFields))
+				minMatching := min(len(distinctOn), len(sort.SortConditions))
 				for i := 0; i < minMatching; i++ {
-					if _, ok := dMap[strings.ToLower(sort.SortFields[i].Column.String())]; !ok {
+					if _, ok := dMap[strings.ToLower(sort.SortConditions[i].Expr.String())]; !ok {
 						return nil, sql.ErrDistinctOnMatchOrderBy.New()
 					}
 				}
@@ -222,8 +222,8 @@ func (f *factory) buildDistinct(ctx *sql.Context, child sql.Node, refsSubquery b
 				projMap[strings.ToLower(p.String())] = struct{}{}
 			}
 			hasDiff := false
-			for _, s := range sort.SortFields {
-				if _, ok := projMap[strings.ToLower(s.Column.String())]; !ok {
+			for _, s := range sort.SortConditions {
+				if _, ok := projMap[strings.ToLower(s.Expr.String())]; !ok {
 					hasDiff = true
 					break
 				}
@@ -243,7 +243,7 @@ func (f *factory) buildDistinct(ctx *sql.Context, child sql.Node, refsSubquery b
 	return plan.NewDistinct(child, distinctOn...), nil
 }
 
-func (f *factory) buildSort(ctx *sql.Context, child sql.Node, exprs []sql.SortField, deps sql.ColSet, subquery bool) (sql.Node, error) {
+func (f *factory) buildSort(ctx *sql.Context, child sql.Node, exprs sql.SortConditions, deps sql.ColSet, subquery bool) (sql.Node, error) {
 	{
 		// The default binder behavior adds a projection before and after
 		// sort nodes for alias dependency correctness. In many cases the sort
