@@ -51,10 +51,6 @@ type Catalog struct {
 	mu    sync.RWMutex
 }
 
-func (c *Catalog) DropDbStats(ctx *sql.Context, db string, flush bool) error {
-	return c.StatsProvider.DropDbStats(ctx, db, flush)
-}
-
 var _ sql.Catalog = (*Catalog)(nil)
 var _ binlogreplication.BinlogConsumerProvider = (*Catalog)(nil)
 var _ binlogreplication.BinlogReplicaProvider = (*Catalog)(nil)
@@ -422,28 +418,39 @@ func (c *Catalog) Overrides() sql.EngineOverrides {
 	return c.overrides
 }
 
+// GetTableStats implements the sql.StatsProvider interface
+func (c *Catalog) GetTableStats(ctx *sql.Context, sch, db string, table sql.Table) ([]sql.Statistic, error) {
+	return c.StatsProvider.GetTableStats(ctx, sch, db, table)
+}
+
+// AnalyzeTable implements the sql.StatsProvider interface
 func (c *Catalog) AnalyzeTable(ctx *sql.Context, table sql.Table, db string) error {
 	return c.StatsProvider.AnalyzeTable(ctx, table, db)
 }
 
-func (c *Catalog) GetTableStats(ctx *sql.Context, db string, table sql.Table) ([]sql.Statistic, error) {
-	return c.StatsProvider.GetTableStats(ctx, db, table)
-}
-
+// SetStats implements the sql.StatsProvider interface
 func (c *Catalog) SetStats(ctx *sql.Context, stats sql.Statistic) error {
 	return c.StatsProvider.SetStats(ctx, stats)
 }
 
+// GetStats implements the sql.StatsProvider interface
 func (c *Catalog) GetStats(ctx *sql.Context, qual sql.StatQualifier, cols []string) (sql.Statistic, bool) {
 	return c.StatsProvider.GetStats(ctx, qual, cols)
 }
 
+// DropStats implements the sql.StatsProvider interface
 func (c *Catalog) DropStats(ctx *sql.Context, qual sql.StatQualifier, cols []string) error {
 	return c.StatsProvider.DropStats(ctx, qual, cols)
 }
 
-func (c *Catalog) RowCount(ctx *sql.Context, db string, table sql.Table) (uint64, error) {
-	cnt, err := c.StatsProvider.RowCount(ctx, db, table)
+// DropDbStats implements the sql.StatsProvider interface
+func (c *Catalog) DropDbStats(ctx *sql.Context, sch, db string, flush bool) error {
+	return c.StatsProvider.DropDbStats(ctx, sch, db, flush)
+}
+
+// RowCount implements the sql.StatsProvider interface
+func (c *Catalog) RowCount(ctx *sql.Context, sch, db string, table sql.Table) (uint64, error) {
+	cnt, err := c.StatsProvider.RowCount(ctx, sch, db, table)
 	if err == nil && cnt > 0 {
 		return cnt, nil
 	}
@@ -457,8 +464,9 @@ func (c *Catalog) RowCount(ctx *sql.Context, db string, table sql.Table) (uint64
 	return cnt, err
 }
 
-func (c *Catalog) DataLength(ctx *sql.Context, db string, table sql.Table) (uint64, error) {
-	length, err := c.StatsProvider.DataLength(ctx, db, table)
+// DataLength implements the sql.StatsProvider interface
+func (c *Catalog) DataLength(ctx *sql.Context, sch, db string, table sql.Table) (uint64, error) {
+	length, err := c.StatsProvider.DataLength(ctx, sch, db, table)
 	if err == nil && length > 0 {
 		return length, nil
 	}

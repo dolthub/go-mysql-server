@@ -111,42 +111,50 @@ func (t MapCatalog) UnlockTables(ctx *Context, id uint32) error {
 	panic("implement me")
 }
 
-func (t MapCatalog) GetTableStats(ctx *Context, db string, table Table) ([]Statistic, error) {
+// GetTableStats implements the sql.StatsProvider interface
+func (t MapCatalog) GetTableStats(ctx *Context, sch, db string, table Table) ([]Statistic, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
+// AnalyzeTable implements the sql.StatsProvider interface
 func (t MapCatalog) AnalyzeTable(ctx *Context, table Table, db string) error {
 	//TODO implement me
 	panic("implement me")
 }
 
+// SetStats implements the sql.StatsProvider interface
 func (t MapCatalog) SetStats(ctx *Context, stats Statistic) error {
 	//TODO implement me
 	panic("implement me")
 }
 
+// GetStats implements the sql.StatsProvider interface
 func (t MapCatalog) GetStats(ctx *Context, qual StatQualifier, cols []string) (Statistic, bool) {
 	//TODO implement me
 	panic("implement me")
 }
 
+// DropStats implements the sql.StatsProvider interface
 func (t MapCatalog) DropStats(ctx *Context, qual StatQualifier, cols []string) error {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (t MapCatalog) RowCount(ctx *Context, db string, table Table) (uint64, error) {
-	return 1, nil
-}
-
-func (t MapCatalog) DataLength(ctx *Context, db string, table Table) (uint64, error) {
-	return 1, nil
-}
-
-func (t MapCatalog) DropDbStats(ctx *Context, db string, flush bool) error {
+// DropDbStats implements the sql.StatsProvider interface
+func (t MapCatalog) DropDbStats(ctx *Context, sch, db string, flush bool) error {
 	//TODO implement me
 	panic("implement me")
+}
+
+// RowCount implements the sql.StatsProvider interface
+func (t MapCatalog) RowCount(ctx *Context, sch, db string, table Table) (uint64, error) {
+	return 1, nil
+}
+
+// DataLength implements the sql.StatsProvider interface
+func (t MapCatalog) DataLength(ctx *Context, sch, db string, table Table) (uint64, error) {
+	return 1, nil
 }
 
 func (t MapCatalog) AuthorizationHandler() AuthorizationHandler {

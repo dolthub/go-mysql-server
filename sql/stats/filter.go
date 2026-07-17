@@ -139,23 +139,25 @@ func PrefixKey(ctx *sql.Context, buckets []sql.HistogramBucket, types []sql.Type
 	}
 
 	ret := buckets[lowBucket:upperBucket]
-	if err != nil {
-		return nil, err
-	}
-
 	return ret, nil
 }
 
 func nilSafeCmp(ctx *sql.Context, typ sql.Type, left, right interface{}) (int, error) {
 	if left == nil && right == nil {
 		return 0, nil
-	} else if left == nil && right != nil {
-		return -1, nil
-	} else if left != nil && right == nil {
-		return 1, nil
-	} else {
-		return typ.Compare(ctx, left, right)
 	}
+	if left == nil {
+		return -1, nil
+	}
+	if right == nil {
+		return 1, nil
+	}
+	// TODO: Extended types have additional type requirements that are difficult to work around,
+	//  so just silently put everything into one giant bucket
+	if _, ok := typ.(sql.ExtendedType); ok {
+		return 0, nil
+	}
+	return typ.Compare(ctx, left, right)
 }
 
 func GetNewCounts(buckets []sql.HistogramBucket) (rowCount uint64, distinctCount uint64, nullCount uint64) {
@@ -187,9 +189,14 @@ func UpdateCounts(statistic sql.Statistic) sql.Statistic {
 }
 
 func keysEqual(ctx *sql.Context, types []sql.Type, left, right []interface{}) (bool, error) {
-	for i, _ := range right {
-		t := types[i]
-		cmp, err := t.Compare(ctx, left[i], right[i])
+	for i := range right {
+		// TODO: Extended types have additional type requirements that are difficult to work around,
+		//  so just silently put everything into one giant bucket
+		typ := types[i]
+		if _, ok := typ.(sql.ExtendedType); ok {
+			continue
+		}
+		cmp, err := typ.Compare(ctx, left[i], right[i])
 		if err != nil {
 			return false, err
 		}
@@ -222,9 +229,6 @@ func PrefixGt(ctx *sql.Context, buckets []sql.HistogramBucket, types []sql.Type,
 	}
 	// inclusive of idx bucket
 	ret := buckets[idx:]
-	if err != nil {
-		return nil, err
-	}
 	return PrefixIsNotNull(ret)
 }
 

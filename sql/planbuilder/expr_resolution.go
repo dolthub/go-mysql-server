@@ -106,28 +106,36 @@ func (c *exprResolutionCatalog) ExternalStoredProcedures(_ *sql.Context, _ strin
 	return nil, nil
 }
 
-func (c *exprResolutionCatalog) GetTableStats(_ *sql.Context, _ string, _ sql.Table) ([]sql.Statistic, error) {
+// GetTableStats implements the sql.StatsProvider interface
+func (c *exprResolutionCatalog) GetTableStats(_ *sql.Context, _, _ string, _ sql.Table) ([]sql.Statistic, error) {
 	return nil, nil
 }
 
+// AnalyzeTable implements the sql.StatsProvider interface
 func (c *exprResolutionCatalog) AnalyzeTable(_ *sql.Context, _ sql.Table, _ string) error { return nil }
 
+// SetStats implements the sql.StatsProvider interface
 func (c *exprResolutionCatalog) SetStats(_ *sql.Context, _ sql.Statistic) error { return nil }
 
+// GetStats implements the sql.StatsProvider interface
 func (c *exprResolutionCatalog) GetStats(_ *sql.Context, _ sql.StatQualifier, _ []string) (sql.Statistic, bool) {
 	return nil, false
 }
 
+// DropStats implements the sql.StatsProvider interface
 func (c *exprResolutionCatalog) DropStats(_ *sql.Context, _ sql.StatQualifier, _ []string) error {
 	return nil
 }
 
-func (c *exprResolutionCatalog) DropDbStats(_ *sql.Context, _ string, _ bool) error { return nil }
+// DropDbStats implements the sql.StatsProvider interface
+func (c *exprResolutionCatalog) DropDbStats(_ *sql.Context, _, _ string, _ bool) error { return nil }
 
-func (c *exprResolutionCatalog) RowCount(_ *sql.Context, _ string, _ sql.Table) (uint64, error) {
+// RowCount implements the sql.StatsProvider interface
+func (c *exprResolutionCatalog) RowCount(_ *sql.Context, _, _ string, _ sql.Table) (uint64, error) {
 	return 0, nil
 }
 
-func (c *exprResolutionCatalog) DataLength(_ *sql.Context, _ string, _ sql.Table) (uint64, error) {
+// DataLength implements the sql.StatsProvider interface
+func (c *exprResolutionCatalog) DataLength(_ *sql.Context, _, _ string, _ sql.Table) (uint64, error) {
 	return 0, nil
 }

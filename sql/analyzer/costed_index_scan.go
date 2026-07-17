@@ -177,7 +177,15 @@ func getCostedIndexScan(
 	filters []sql.Expression,
 	qFlags *sql.QueryFlags,
 ) (*plan.IndexedTableAccess, sql.Statistic, []sql.Expression, error) {
-	statistics, err := statsProvider.GetTableStats(ctx, strings.ToLower(rt.Database().Name()), rt.UnderlyingTable())
+	// run each index through coster, save the cheapest
+	table := rt.UnderlyingTable()
+	var schemaName string
+	if schTab, ok := table.(sql.DatabaseSchemaTable); ok {
+		schemaName = strings.ToLower(schTab.DatabaseSchema().SchemaName())
+	}
+	tableName := strings.ToLower(table.Name())
+
+	statistics, err := statsProvider.GetTableStats(ctx, schemaName, rt.Database().Name(), table)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -219,14 +227,6 @@ func getCostedIndexScan(
 	if root == nil {
 		return nil, nil, nil, err
 	}
-
-	// run each index through coster, save the cheapest
-	table := rt.UnderlyingTable()
-	var schemaName string
-	if schTab, ok := table.(sql.DatabaseSchemaTable); ok {
-		schemaName = strings.ToLower(schTab.DatabaseSchema().SchemaName())
-	}
-	tableName := strings.ToLower(table.Name())
 
 	if len(qualToStat) > 0 {
 		// don't mix and match real and default stats
@@ -551,6 +551,7 @@ func (c *indexCoster) cost(ctx *sql.Context, f indexFilter, stat sql.Statistic, 
 		if ok {
 			filters.Add(int(f.id))
 		}
+
 	case *iScanLeaf:
 		newHist, newFds, ok, prefix, err = c.costIndexScanLeaf(ctx, f, stat, stat.Histogram(), ordinals, idx)
 		if err != nil {
@@ -559,6 +560,7 @@ func (c *indexCoster) cost(ctx *sql.Context, f indexFilter, stat sql.Statistic, 
 		if ok {
 			filters.Add(int(f.id))
 		}
+
 	default:
 		panic("unreachable")
 	}
@@ -1971,7 +1973,17 @@ func uniformDistStatisticsForIndex(ctx *sql.Context, statsProv sql.StatsProvider
 	var rowCount uint64
 	var avgSize uint64
 
-	rowCount, _ = statsProv.RowCount(ctx, idx.Database(), iat)
+	var dbName string
+	if dbTable, ok := iat.(sql.Databaseable); ok {
+		dbName = strings.ToLower(dbTable.Database())
+	}
+	var schemaName string
+	if schTab, ok := iat.(sql.DatabaseSchemaTable); ok {
+		schemaName = strings.ToLower(schTab.DatabaseSchema().SchemaName())
+	}
+	tableName := strings.ToLower(iat.Name())
+
+	rowCount, _ = statsProv.RowCount(ctx, schemaName, idx.Database(), iat)
 
 	if st, ok := iat.(sql.StatisticsTable); ok {
 		rCnt, _, err := st.RowCount(ctx)
@@ -1989,16 +2001,6 @@ func uniformDistStatisticsForIndex(ctx *sql.Context, statsProv sql.StatsProvider
 			avgSize = dataSize / rowCount
 		}
 	}
-
-	var dbName string
-	if dbTable, ok := iat.(sql.Databaseable); ok {
-		dbName = strings.ToLower(dbTable.Database())
-	}
-	var schemaName string
-	if schTab, ok := iat.(sql.DatabaseSchemaTable); ok {
-		schemaName = strings.ToLower(schTab.DatabaseSchema().SchemaName())
-	}
-	tableName := strings.ToLower(iat.Name())
 
 	var sch sql.Schema
 	if pkt, ok := iat.(sql.PrimaryKeyTable); ok {

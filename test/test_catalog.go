@@ -174,42 +174,50 @@ func (c *Catalog) ExternalStoredProcedures(ctx *sql.Context, name string) ([]sql
 	panic("implement me")
 }
 
-func (c *Catalog) GetTableStats(ctx *sql.Context, db string, table sql.Table) ([]sql.Statistic, error) {
+// GetTableStats implements the sql.StatsProvider interface
+func (c *Catalog) GetTableStats(ctx *sql.Context, sch, db string, table sql.Table) ([]sql.Statistic, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
+// AnalyzeTable implements the sql.StatsProvider interface
 func (c *Catalog) AnalyzeTable(ctx *sql.Context, table sql.Table, db string) error {
 	//TODO implement me
 	panic("implement me")
 }
 
+// SetStats implements the sql.StatsProvider interface
 func (c *Catalog) SetStats(ctx *sql.Context, stats sql.Statistic) error {
 	//TODO implement me
 	panic("implement me")
 }
 
+// GetStats implements the sql.StatsProvider interface
 func (c *Catalog) GetStats(ctx *sql.Context, qual sql.StatQualifier, cols []string) (sql.Statistic, bool) {
 	//TODO implement me
 	panic("implement me")
 }
 
+// DropStats implements the sql.StatsProvider interface
 func (c *Catalog) DropStats(ctx *sql.Context, qual sql.StatQualifier, cols []string) error {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (c *Catalog) RowCount(ctx *sql.Context, db string, table sql.Table) (uint64, error) {
+// DropDbStats implements the sql.StatsProvider interface
+func (c *Catalog) DropDbStats(ctx *sql.Context, sch, db string, flush bool) error {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (c *Catalog) DataLength(ctx *sql.Context, db string, table sql.Table) (uint64, error) {
+// RowCount implements the sql.StatsProvider interface
+func (c *Catalog) RowCount(ctx *sql.Context, sch, db string, table sql.Table) (uint64, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (c *Catalog) DropDbStats(ctx *sql.Context, db string, flush bool) error {
+// DataLength implements the sql.StatsProvider interface
+func (c *Catalog) DataLength(ctx *sql.Context, sch, db string, table sql.Table) (uint64, error) {
 	//TODO implement me
 	panic("implement me")
 }

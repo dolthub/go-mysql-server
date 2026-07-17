@@ -491,7 +491,7 @@ func (m *Memo) statsForRel(ctx *sql.Context, rel RelExpr) sql.Statistic {
 			return &stats.Statistic{RowCnt: defaultTableSize}
 		}
 		if prov := rel.Group().m.StatsProvider(); prov != nil {
-			if card, err := prov.RowCount(ctx, dbName, table); err == nil {
+			if card, err := prov.RowCount(ctx, "", dbName, table); err == nil {
 				return &stats.Statistic{RowCnt: card}
 			}
 		}
