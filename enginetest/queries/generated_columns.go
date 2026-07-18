@@ -1545,4 +1545,52 @@ var BrokenGeneratedColumnTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		// See https://github.com/dolthub/dolt/issues/8881
+		Name: "INSERT ON DUPLICATE KEY UPDATE with an index over a virtual generated column",
+		SetUpScript: []string{
+			"CREATE TABLE odku_v (id int PRIMARY KEY, base int, vcol int AS (base + 100) VIRTUAL, UNIQUE KEY uk_v (vcol));",
+			"INSERT INTO odku_v (id, base) VALUES (1, 10), (2, 20);",
+			"INSERT INTO odku_v (id, base) VALUES (2, 55) ON DUPLICATE KEY UPDATE base = 99;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT id, base, vcol FROM odku_v ORDER BY id;",
+				Expected: []sql.Row{{1, 10, 110}, {2, 99, 199}},
+			},
+			{
+				Query:    "SELECT id FROM odku_v WHERE vcol = 199;",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query: "SELECT id FROM odku_v WHERE vcol = 120;",
+				// The old vcol=120 index entry must be gone.
+				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		// See https://github.com/dolthub/dolt/issues/8881
+		Name: "REPLACE INTO with an index over a virtual generated column",
+		SetUpScript: []string{
+			"CREATE TABLE replace_v (id int PRIMARY KEY, base int, vcol int AS (base + 100) VIRTUAL, UNIQUE KEY uk_v (vcol));",
+			"INSERT INTO replace_v (id, base) VALUES (1, 10), (2, 20);",
+			"REPLACE INTO replace_v (id, base) VALUES (2, 88);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT id, base, vcol FROM replace_v ORDER BY id;",
+				Expected: []sql.Row{{1, 10, 110}, {2, 88, 188}},
+			},
+			{
+				Query:    "SELECT id FROM replace_v WHERE vcol = 188;",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query: "SELECT id FROM replace_v WHERE vcol = 120;",
+				// The old vcol=120 index entry must be gone.
+				Expected: []sql.Row{},
+			},
+		},
+	},
 }
