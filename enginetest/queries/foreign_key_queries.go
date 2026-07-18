@@ -2731,6 +2731,121 @@ var ForeignKeyTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		// See https://github.com/dolthub/dolt/issues/11317
+		Name: "ON UPDATE CASCADE maintains an index over a virtual column",
+		SetUpScript: []string{
+			"CREATE TABLE vc_parent (id int PRIMARY KEY);",
+			"CREATE TABLE vc_child (id int PRIMARY KEY, parentId int, vcol int AS (parentId) VIRTUAL, UNIQUE KEY uk (vcol), FOREIGN KEY (parentId) REFERENCES vc_parent(id) ON UPDATE CASCADE);",
+			"INSERT INTO vc_parent VALUES (2);",
+			"INSERT INTO vc_child (id, parentId) VALUES (20, 2);",
+			"UPDATE vc_parent SET id = 99 WHERE id = 2;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT id, parentId, vcol FROM vc_child ORDER BY id;",
+				Expected: []sql.Row{{20, 99, 99}},
+			},
+			{
+				Query:    "SELECT id FROM vc_child WHERE vcol = 99;",
+				Expected: []sql.Row{{20}},
+			},
+			{
+				Query: "SELECT id FROM vc_child WHERE vcol = 2;",
+				// The old value 2 must no longer be in the index.
+				Expected: []sql.Row{},
+			},
+			{
+				Query:       "INSERT INTO vc_child (id, parentId) VALUES (40, 99);",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+		},
+	},
+	{
+		// See https://github.com/dolthub/dolt/issues/11317
+		Name: "ON UPDATE CASCADE recomputes chained virtual columns",
+		SetUpScript: []string{
+			"CREATE TABLE vc_parent (id int PRIMARY KEY);",
+			"CREATE TABLE vc_child (id int PRIMARY KEY, parentId int, v1 int AS (parentId) VIRTUAL, v2 int AS (v1 + 100) VIRTUAL, UNIQUE KEY uk (v2), FOREIGN KEY (parentId) REFERENCES vc_parent(id) ON UPDATE CASCADE);",
+			"INSERT INTO vc_parent VALUES (2);",
+			"INSERT INTO vc_child (id, parentId) VALUES (20, 2);",
+			"UPDATE vc_parent SET id = 99 WHERE id = 2;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT id, parentId, v1, v2 FROM vc_child ORDER BY id;",
+				Expected: []sql.Row{{20, 99, 99, 199}},
+			},
+			{
+				Query:    "SELECT id FROM vc_child WHERE v2 = 199;",
+				Expected: []sql.Row{{20}},
+			},
+		},
+	},
+	{
+		// See https://github.com/dolthub/dolt/issues/11317
+		Name: "ON DELETE SET NULL maintains an index over a virtual column",
+		SetUpScript: []string{
+			"CREATE TABLE vc_parent (id int PRIMARY KEY);",
+			"CREATE TABLE vc_child (id int PRIMARY KEY, parentId int, vcol int AS (parentId) VIRTUAL, UNIQUE KEY uk (vcol), FOREIGN KEY (parentId) REFERENCES vc_parent(id) ON DELETE SET NULL);",
+			"INSERT INTO vc_parent VALUES (2);",
+			"INSERT INTO vc_child (id, parentId) VALUES (20, 2);",
+			"DELETE FROM vc_parent WHERE id = 2;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT id, parentId, vcol FROM vc_child ORDER BY id;",
+				Expected: []sql.Row{{20, nil, nil}},
+			},
+			{
+				Query: "SELECT id FROM vc_child WHERE vcol = 2;",
+				// The old value 2 must no longer be in the index.
+				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		// See https://github.com/dolthub/dolt/issues/11317
+		Name: "ON UPDATE SET NULL maintains an index over a virtual column",
+		SetUpScript: []string{
+			"CREATE TABLE vc_parent (id int PRIMARY KEY);",
+			"CREATE TABLE vc_child (id int PRIMARY KEY, parentId int, vcol int AS (parentId) VIRTUAL, UNIQUE KEY uk (vcol), FOREIGN KEY (parentId) REFERENCES vc_parent(id) ON UPDATE SET NULL);",
+			"INSERT INTO vc_parent VALUES (2);",
+			"INSERT INTO vc_child (id, parentId) VALUES (20, 2);",
+			"UPDATE vc_parent SET id = 99 WHERE id = 2;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT id, parentId, vcol FROM vc_child ORDER BY id;",
+				Expected: []sql.Row{{20, nil, nil}},
+			},
+			{
+				Query: "SELECT id FROM vc_child WHERE vcol = 2;",
+				// The old value 2 must no longer be in the index.
+				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		// See https://github.com/dolthub/dolt/issues/11317
+		Name: "self-referential ON DELETE SET NULL maintains an index over a virtual column",
+		SetUpScript: []string{
+			"CREATE TABLE vc_t (id int PRIMARY KEY, parentId int, parentKey int AS (parentId) VIRTUAL, UNIQUE KEY uk (parentKey), FOREIGN KEY (parentId) REFERENCES vc_t(id) ON DELETE SET NULL);",
+			"INSERT INTO vc_t (id, parentId) VALUES (1, NULL), (2, 1), (3, 2);",
+			"DELETE FROM vc_t WHERE id = 2;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT id, parentId, parentKey FROM vc_t ORDER BY id;",
+				Expected: []sql.Row{{1, nil, nil}, {3, nil, nil}},
+			},
+			{
+				Query: "SELECT id FROM vc_t WHERE parentKey = 2;",
+				// The old value 2 must no longer be in the index.
+				Expected: []sql.Row{},
+			},
+		},
+	},
 }
 
 var CreateForeignKeyTests = []ScriptTest{

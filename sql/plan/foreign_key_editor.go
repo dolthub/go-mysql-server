@@ -192,6 +192,9 @@ func (fkEditor *ForeignKeyEditor) OnUpdateCascade(ctx *sql.Context, refActionDat
 				updatedRow[i] = new[mappedVal]
 			}
 		}
+		if err = recomputeGeneratedColumns(ctx, refActionData.Editor.Schema, updatedRow); err != nil {
+			return err
+		}
 		err = refActionData.Editor.Update(ctx, rowToUpdate, updatedRow, depth)
 		if err != nil {
 			return err
@@ -244,6 +247,9 @@ func (fkEditor *ForeignKeyEditor) OnUpdateSetDefault(ctx *sql.Context, refAction
 				}
 			}
 		}
+		if err = recomputeGeneratedColumns(ctx, refActionData.Editor.Schema, modifiedRow); err != nil {
+			return err
+		}
 		err = refActionData.Editor.Update(ctx, rowToDefault, modifiedRow, depth)
 		if err != nil {
 			return err
@@ -279,6 +285,9 @@ func (fkEditor *ForeignKeyEditor) OnUpdateSetNull(ctx *sql.Context, refActionDat
 			if refActionData.ChildParentMapping[i] == -1 {
 				updatedRow[i] = rowToUpdate[i]
 			}
+		}
+		if err = recomputeGeneratedColumns(ctx, refActionData.Editor.Schema, updatedRow); err != nil {
+			return err
 		}
 		err = refActionData.Editor.Update(ctx, rowToUpdate, updatedRow, depth)
 		if err != nil {
@@ -323,6 +332,24 @@ func (fkEditor *ForeignKeyEditor) Delete(ctx *sql.Context, row sql.Row, depth in
 				return err
 			}
 		}
+	}
+	return nil
+}
+
+// recomputeGeneratedColumns re-evaluates the generated columns of row in place using the resolved
+// generated expressions in schema. A referential action builds the changed row by copying the non-foreign
+// key columns from the old row, which leaves any generated column that depends on the changed columns
+// holding its old value.
+func recomputeGeneratedColumns(ctx *sql.Context, schema sql.Schema, row sql.Row) error {
+	for i, col := range schema {
+		if col.Generated == nil {
+			continue
+		}
+		value, err := col.Generated.Eval(ctx, row)
+		if err != nil {
+			return err
+		}
+		row[i] = value
 	}
 	return nil
 }
@@ -408,6 +435,9 @@ func (fkEditor *ForeignKeyEditor) OnDeleteSetDefault(ctx *sql.Context, refAction
 				}
 			}
 		}
+		if err = recomputeGeneratedColumns(ctx, refActionData.Editor.Schema, modifiedRow); err != nil {
+			return err
+		}
 		err = refActionData.Editor.Update(ctx, rowToDefault, modifiedRow, depth)
 		if err != nil {
 			return err
@@ -443,6 +473,9 @@ func (fkEditor *ForeignKeyEditor) OnDeleteSetNull(ctx *sql.Context, refActionDat
 			if refActionData.ChildParentMapping[i] == -1 {
 				nulledRow[i] = rowToNull[i]
 			}
+		}
+		if err = recomputeGeneratedColumns(ctx, refActionData.Editor.Schema, nulledRow); err != nil {
+			return err
 		}
 		err = refActionData.Editor.Update(ctx, rowToNull, nulledRow, depth)
 		if err != nil {

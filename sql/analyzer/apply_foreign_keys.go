@@ -254,7 +254,10 @@ func getForeignKeyReferences(ctx *sql.Context, catalog *Catalog, tbl sql.Foreign
 	}
 	fkChain = fkChain.AddTable(fks[0].Database, fks[0].SchemaName, fks[0].Table).AddTableUpdater(fks[0].Database, fks[0].SchemaName, fks[0].Table, updater)
 
-	tblSch := tbl.Schema(ctx)
+	tblSch, err := resolveSchemaDefaults(ctx, catalog, tbl)
+	if err != nil {
+		return nil, err
+	}
 	fkEditor := &plan.ForeignKeyEditor{
 		Schema:     tblSch,
 		Editor:     updater,
@@ -342,7 +345,10 @@ func getForeignKeyRefActions(ctx *sql.Context, catalog *Catalog, tbl sql.Foreign
 		return cachedFkEditor, nil
 	}
 	// No matching editor was cached, so we either create a new one or add to the existing one
-	tblSch := tbl.Schema(ctx)
+	tblSch, err := resolveSchemaDefaults(ctx, catalog, tbl)
+	if err != nil {
+		return nil, err
+	}
 	if fkEditor == nil {
 		fkEditor = &plan.ForeignKeyEditor{
 			Schema:     tblSch,
@@ -502,21 +508,30 @@ func resolveSchemaDefaults(ctx *sql.Context, catalog *Catalog, table sql.Table) 
 	// Field Indexes are off by one initially and don't fixed by assignExecIndexes because it doesn't traverse through
 	// the ForeignKeyEditors and referential actions, so we correct them here. This is safe because we know these fields
 	// will only ever be accessed within the scope of a single table, so all we have to do is decrement the index by 1.
-	for i, col := range childTblSch {
-		if col.Default != nil {
-			expr := col.Default.Expr
-			expr, identity, err := transform.Expr(ctx, expr, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-				if gf, ok := e.(*expression.GetField); ok {
-					return gf.WithIndex(gf.Index() - 1), transform.NewTree, nil
-				}
-				return e, transform.SameTree, nil
-			})
-			if err != nil {
-				return nil, err
+	decrementFieldIndexes := func(cd *sql.ColumnDefaultValue) error {
+		if cd == nil {
+			return nil
+		}
+		expr, identity, err := transform.Expr(ctx, cd.Expr, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+			if gf, ok := e.(*expression.GetField); ok {
+				return gf.WithIndex(gf.Index() - 1), transform.NewTree, nil
 			}
-			if identity == transform.NewTree {
-				childTblSch[i].Default.Expr = expr
-			}
+			return e, transform.SameTree, nil
+		})
+		if err != nil {
+			return err
+		}
+		if identity == transform.NewTree {
+			cd.Expr = expr
+		}
+		return nil
+	}
+	for i := range childTblSch {
+		if err := decrementFieldIndexes(childTblSch[i].Default); err != nil {
+			return nil, err
+		}
+		if err := decrementFieldIndexes(childTblSch[i].Generated); err != nil {
+			return nil, err
 		}
 	}
 
