@@ -50,7 +50,29 @@ func (c *Concat) Description() string {
 }
 
 // Type implements the Expression interface.
-func (c *Concat) Type(ctx *sql.Context) sql.Type { return types.LongText }
+func (c *Concat) Type(ctx *sql.Context) sql.Type {
+	// If any argument is a true CHARACTER SET 'binary' string (e.g. CHAR(N) without a collation, or a
+	// VARBINARY/BLOB column), MySQL evaluates and returns the whole CONCAT result as binary rather than silently
+	// reinterpreting those bytes as text -- see "mixing nonbinary and binary strings evaluates the operands as
+	// binary strings" (https://dev.mysql.com/doc/refman/8.0/en/charset-collation-coercibility.html). Note this
+	// intentionally checks each argument's own string type rather than the resolved CollationCoercibility(),
+	// because this codebase also uses Collation_binary as a "no real collation" placeholder for non-string
+	// arguments (e.g. numeric literals), which must NOT force the result to binary.
+	if c.hasBinaryStringArg(ctx) {
+		return types.LongBlob
+	}
+	return types.LongText
+}
+
+// hasBinaryStringArg returns true if any argument is itself a string type using the binary character set.
+func (c *Concat) hasBinaryStringArg(ctx *sql.Context) bool {
+	for _, arg := range c.args {
+		if st, ok := arg.Type(ctx).(sql.StringType); ok && st.IsStringType() && st.CharacterSet() == sql.CharacterSet_binary {
+			return true
+		}
+	}
+	return false
+}
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (c *Concat) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
@@ -132,5 +154,14 @@ func (c *Concat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		parts = append(parts, content)
 	}
 
-	return strings.Join(parts, ""), nil
+	joined := strings.Join(parts, "")
+
+	// Funnel through Type() so that a binary result (see Type, above) actually becomes a genuine []byte rather
+	// than a Go string that silently discards the charset info a caller (e.g. JSON conversion) needs downstream.
+	result, _, err := c.Type(ctx).Convert(ctx, joined)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
