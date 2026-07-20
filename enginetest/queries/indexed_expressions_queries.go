@@ -380,6 +380,75 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "joins: multiple expressions mixed with a plain column, all three key parts bound by the join condition",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT, c2 INT, c3 INT);",
+			// NOTE: For the indexed access plan to be chosen, we need to populate enough test data
+			"INSERT INTO test VALUES (1, 100, 1, 100), (2, 200, 2, 200), (3, 300, 3, 300), (4, 400, 4, 400), (5, 500, 5, 500), (6, 600, 6, 600), (7, 700, 7, 700), (8, 800, 8, 800), (9, 900, 9, 900), (10, 1000, 10, 1000), (11, 1100, 11, 1100), (12, 1200, 12, 1200), (13, 1300, 13, 1300), (14, 1400, 14, 1400), (15, 1500, 15, 1500), (16, 1600, 16, 1600), (17, 1700, 17, 1700), (18, 1800, 18, 1800), (19, 1900, 19, 1900), (20, 2000, 20, 2000), (21, 2100, 21, 2100), (22, 2200, 22, 2200), (23, 2300, 23, 2300), (24, 2400, 24, 2400), (25, 2500, 25, 2500), (26, 2600, 26, 2600), (27, 2700, 27, 2700), (28, 2800, 28, 2800), (29, 2900, 29, 2900), (30, 3000, 30, 3000);",
+
+			// NOTE: The index must be unique in order for it to be used for strict lookups in a join
+			"CREATE UNIQUE INDEX idx1 ON test ((c1*10), c2, (c3*10));",
+
+			"CREATE TABLE t2 (t2pk INT PRIMARY KEY, a INT, b INT, c INT);",
+			"INSERT INTO t2 VALUES (1, 1000, 1, 1000);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:           "SELECT /*+ LOOKUP_JOIN(test, t2) */ pk FROM test JOIN t2 ON (c1*10) = a AND c2 = b AND (c3*10) = c;",
+				Expected:        []sql.Row{{1}},
+				ExpectedIndexes: []string{"idx1"},
+			},
+			{
+				Query:           "SELECT /*+ LOOKUP_JOIN(test, t2) */ pk FROM test JOIN t2 ON (c3*10) = c AND a = (c1*10) AND c2 = b;",
+				Expected:        []sql.Row{{1}},
+				ExpectedIndexes: []string{"idx1"},
+			},
+		},
+	},
+	{
+		Name: "joins: multiple expressions with no plain column in the composite key, used in join condition",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT, c2 INT);",
+			// NOTE: For the indexed access plan to be chosen, we need to populate enough test data
+			"INSERT INTO test VALUES (1, 1, 51), (2, 2, 52), (3, 3, 53), (4, 4, 54), (5, 5, 55), (6, 6, 56), (7, 7, 57), (8, 8, 58), (9, 9, 59), (10, 10, 60), (11, 11, 61), (12, 12, 62), (13, 13, 63), (14, 14, 64), (15, 15, 65), (16, 16, 66), (17, 17, 67), (18, 18, 68), (19, 19, 69), (20, 20, 70), (21, 21, 71), (22, 22, 72), (23, 23, 73), (24, 24, 74), (25, 25, 75), (26, 26, 76), (27, 27, 77), (28, 28, 78), (29, 29, 79), (30, 30, 80);",
+
+			// NOTE: The index must be unique in order for it to be used for strict lookups in a join
+			"CREATE UNIQUE INDEX idx1 ON test ((c1+c2), (c1*c2));",
+
+			"CREATE TABLE t2 (t2pk INT PRIMARY KEY, a INT, b INT);",
+			"INSERT INTO t2 VALUES (1, 52, 51);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:           "SELECT /*+ LOOKUP_JOIN(test, t2) */ pk FROM test JOIN t2 ON (c1+c2) = a AND (c1*c2) = b;",
+				Expected:        []sql.Row{{1}},
+				ExpectedIndexes: []string{"idx1"},
+			},
+		},
+	},
+	{
+		Name: "joins: multiple expressions, index used regardless of table order",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT, c2 INT);",
+			"INSERT INTO test VALUES (1, 100, 1), (2, 200, 2), (3, 300, 3), (4, 400, 4), (5, 500, 5), (6, 600, 6), (7, 700, 7), (8, 800, 8), (9, 900, 9), (10, 1000, 10), (11, 1100, 11), (12, 1200, 12), (13, 1300, 13), (14, 1400, 14), (15, 1500, 15), (16, 1600, 16), (17, 1700, 17), (18, 1800, 18), (19, 1900, 19), (20, 2000, 20), (21, 2100, 21), (22, 2200, 22), (23, 2300, 23), (24, 2400, 24), (25, 2500, 25), (26, 2600, 26), (27, 2700, 27), (28, 2800, 28), (29, 2900, 29), (30, 3000, 30);",
+			"CREATE UNIQUE INDEX idx1 ON test ((c1*10), c2);",
+			"CREATE TABLE t2 (id INT PRIMARY KEY, a INT, b INT);",
+			"INSERT INTO t2 VALUES (1, 1000, 1), (2, 3000, 3), (3, 9999, 99);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:           "SELECT pk, id FROM test JOIN t2 ON c1*10 = a AND c2 = b ORDER BY pk;",
+				Expected:        []sql.Row{{1, 1}, {3, 2}},
+				ExpectedIndexes: []string{"idx1"},
+			},
+			{
+				Query:           "SELECT pk, id FROM t2 JOIN test ON a = c1*10 AND b = c2 ORDER BY pk;",
+				Expected:        []sql.Row{{1, 1}, {3, 2}},
+				ExpectedIndexes: []string{"idx1"},
+			},
+		},
+	},
+	{
 		Name: "projections: non-covering queries; index remains correct after ALTER TABLE ADD COLUMN",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT);",
@@ -1322,6 +1391,323 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 					{10, 10, 10},
 				},
 				ExpectedIndexes: []string{"primary"},
+			},
+		},
+	},
+	{
+		Name: "multiple expressions: mixed columns and expressions, filtering across all key parts",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk INT PRIMARY KEY, name VARCHAR(100), age INT, c1 INT, c2 INT);",
+			"INSERT INTO test VALUES (1, 'alice', 30, 1, 2), (2, 'bob', 40, 3, 4);",
+			"CREATE INDEX idx1 ON test ((UPPER(name)), age, (c1 + c2));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SHOW EXTENDED COLUMNS FROM test;",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"name", "varchar(100)", "YES", "", nil, ""},
+					{"age", "int", "YES", "", nil, ""},
+					{"c1", "int", "YES", "", nil, ""},
+					{"c2", "int", "YES", "", nil, ""},
+					{"!hidden!idx1!0!0", "varchar(100)", "YES", "MUL", nil, ""},
+					{"!hidden!idx1!2!0", "bigint", "YES", "", nil, ""},
+				},
+			},
+			{
+				Query:           "SELECT pk FROM test WHERE UPPER(name) = 'ALICE' AND age = 30 AND c1 + c2 = 3;",
+				Expected:        []sql.Row{{1}},
+				ExpectedIndexes: []string{"idx1"},
+			},
+			{
+				Query:           "SELECT pk FROM test WHERE UPPER(name) = 'BOB' AND age = 40 AND c1 + c2 = 7;",
+				Expected:        []sql.Row{{2}},
+				ExpectedIndexes: []string{"idx1"},
+			},
+		},
+	},
+	{
+		// ALTER TABLE ... ADD INDEX is MySQL-specific syntax; Postgres (and so Doltgres) has no
+		// equivalent clause and only supports creating indexes via CREATE INDEX.
+		Dialect: "mysql",
+		Name:    "multiple expressions: ALTER TABLE ADD INDEX",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk INT PRIMARY KEY, name VARCHAR(100), age INT, c1 INT, c2 INT);",
+			"INSERT INTO test VALUES (1, 'alice', 30, 1, 2), (2, 'bob', 40, 3, 4);",
+			"ALTER TABLE test ADD INDEX idx1 ((UPPER(name)), age, (c1 + c2));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SHOW EXTENDED COLUMNS FROM test;",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"name", "varchar(100)", "YES", "", nil, ""},
+					{"age", "int", "YES", "", nil, ""},
+					{"c1", "int", "YES", "", nil, ""},
+					{"c2", "int", "YES", "", nil, ""},
+					{"!hidden!idx1!0!0", "varchar(100)", "YES", "MUL", nil, ""},
+					{"!hidden!idx1!2!0", "bigint", "YES", "", nil, ""},
+				},
+			},
+			{
+				Query:           "SELECT pk FROM test WHERE UPPER(name) = 'ALICE' AND age = 30 AND c1 + c2 = 3;",
+				Expected:        []sql.Row{{1}},
+				ExpectedIndexes: []string{"idx1"},
+			},
+			{
+				Query:           "SELECT pk FROM test WHERE UPPER(name) = 'BOB' AND age = 40 AND c1 + c2 = 7;",
+				Expected:        []sql.Row{{2}},
+				ExpectedIndexes: []string{"idx1"},
+			},
+		},
+	},
+	{
+		Name: "multiple expressions: expression-first ordering",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT, c2 INT, c3 INT);",
+			"INSERT INTO test VALUES (1, 1, 2, 3), (2, 4, 5, 6);",
+			"CREATE INDEX idx1 ON test ((c1 + c2), c3, (c1 * c2));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SHOW EXTENDED COLUMNS FROM test;",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"c1", "int", "YES", "", nil, ""},
+					{"c2", "int", "YES", "", nil, ""},
+					{"c3", "int", "YES", "", nil, ""},
+					{"!hidden!idx1!0!0", "bigint", "YES", "MUL", nil, ""},
+					{"!hidden!idx1!2!0", "bigint", "YES", "", nil, ""},
+				},
+			},
+			{
+				Query:           "SELECT pk FROM test WHERE c1 + c2 = 3 AND c3 = 3 AND c1 * c2 = 2;",
+				Expected:        []sql.Row{{1}},
+				ExpectedIndexes: []string{"idx1"},
+			},
+		},
+	},
+	{
+		Name: "multiple expressions: UNIQUE constraint enforced across all expressions",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT, c2 INT, c3 INT);",
+			"CREATE UNIQUE INDEX idx1 ON test ((c1 * 10), c2, (c3 * 10));",
+			"INSERT INTO test VALUES (1, 1, 2, 3);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// Same three expression results as the existing row: violates uniqueness. The
+				// exact formatting of the offending key's values in the error message is
+				// backend-specific (e.g. memory concatenates values, Dolt comma-separates them),
+				// so match on the error kind rather than an exact string.
+				Query:       "INSERT INTO test VALUES (2, 1, 2, 3);",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				// Only one of the three key parts differs: no violation.
+				Query:    "INSERT INTO test VALUES (3, 1, 3, 3);",
+				Expected: []sql.Row{{gmstypes.NewOkResult(1)}},
+			},
+		},
+	},
+	{
+		Name: "multiple expressions: DDL lifecycle drops only the targeted index's hidden columns",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT, c2 INT, c3 INT);",
+			"INSERT INTO test VALUES (1, 10, 20, 30);",
+			"CREATE INDEX idx2 ON test ((c2 * 100));",
+			"CREATE INDEX idx1 ON test ((c1 * 10), c2, (c3 * 10));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SHOW EXTENDED COLUMNS FROM test;",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"c1", "int", "YES", "", nil, ""},
+					{"c2", "int", "YES", "", nil, ""},
+					{"c3", "int", "YES", "", nil, ""},
+					{"!hidden!idx2!0!0", "bigint", "YES", "MUL", nil, ""},
+					{"!hidden!idx1!0!0", "bigint", "YES", "MUL", nil, ""},
+					{"!hidden!idx1!2!0", "bigint", "YES", "", nil, ""},
+				},
+			},
+			{
+				// Dropping idx1 must remove only its own hidden columns, leaving idx2's intact.
+				Query:    "DROP INDEX idx1 ON test;",
+				Expected: []sql.Row{{gmstypes.NewOkResult(0)}},
+			},
+			{
+				Query: "SHOW EXTENDED COLUMNS FROM test;",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"c1", "int", "YES", "", nil, ""},
+					{"c2", "int", "YES", "", nil, ""},
+					{"c3", "int", "YES", "", nil, ""},
+					{"!hidden!idx2!0!0", "bigint", "YES", "MUL", nil, ""},
+				},
+			},
+			{
+				Query:    "SELECT pk, c2*100 FROM test;",
+				Expected: []sql.Row{{1, 2000}},
+			},
+			{
+				Query:    "DROP INDEX idx2 ON test;",
+				Expected: []sql.Row{{gmstypes.NewOkResult(0)}},
+			},
+			{
+				Query: "SHOW EXTENDED COLUMNS FROM test;",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"c1", "int", "YES", "", nil, ""},
+					{"c2", "int", "YES", "", nil, ""},
+					{"c3", "int", "YES", "", nil, ""},
+				},
+			},
+		},
+	},
+	{
+		Name: "multiple expressions: DROP COLUMN blocked by dependency for every column referenced by an expression",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT, c2 INT, c3 INT);",
+			"CREATE INDEX idx1 ON test ((c1 * 10), c2, (c3 * 10));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "ALTER TABLE test DROP COLUMN c1;",
+				ExpectedErrStr: "Column 'c1' has a functional index dependency and cannot be dropped or renamed.",
+			},
+			{
+				Query:          "ALTER TABLE test DROP COLUMN c3;",
+				ExpectedErrStr: "Column 'c3' has a functional index dependency and cannot be dropped or renamed.",
+			},
+		},
+	},
+	{
+		Dialect: "mysql", // Doltgres and Dolt output for SHOW CREATE TABLE is different
+		Name:    "multiple expressions: system hidden columns omitted from SHOW CREATE TABLE",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT, c2 INT, c3 INT);",
+			"CREATE UNIQUE INDEX idx1 ON test ((c1 * 10), c2, (c3 * 10));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SHOW CREATE TABLE test;",
+				Expected: []sql.Row{
+					{
+						"test",
+						"CREATE TABLE `test` (\n" +
+							"  `pk` int NOT NULL,\n" +
+							"  `c1` int,\n" +
+							"  `c2` int,\n" +
+							"  `c3` int,\n" +
+							"  PRIMARY KEY (`pk`),\n" +
+							"  UNIQUE KEY `idx1` (((c1 * 10)),`c2`,((c3 * 10)))\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+		},
+	},
+	{
+		// Doltgres and Dolt output for EXPLAIN and SHOW INDEX can differ from MySQL.
+		Dialect: "mysql",
+		Name:    "multiple expressions: plan proof -- composite range scan uses all key parts, mixing equality and inequality",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT, c2 INT);",
+			"INSERT INTO test VALUES (1, 1, 10), (2, 1, 20), (3, 1, 30), (4, 2, 10);",
+			"CREATE INDEX idx1 ON test ((c1 * 10), c2);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "EXPLAIN FORMAT=TREE SELECT pk FROM test WHERE c1 * 10 = 10 AND c2 > 15;",
+				Expected: []sql.Row{
+					{"Project"},
+					{" ├─ columns: [test.pk]"},
+					{" └─ IndexedTableAccess(test)"},
+					{"     ├─ index: [test.!hidden!idx1!0!0,test.c2]"},
+					{"     └─ filters: [{[10, 10], (15, ∞)}]"},
+				},
+			},
+			{
+				Query:           "SELECT pk FROM test WHERE c1 * 10 = 10 AND c2 > 15;",
+				Expected:        []sql.Row{{2}, {3}},
+				ExpectedIndexes: []string{"idx1"},
+			},
+		},
+	},
+	{
+		Dialect: "mysql",
+		Name:    "multiple expressions: plan proof -- all three key parts appear in the index range for a mixed index",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk INT PRIMARY KEY, name VARCHAR(100), age INT, c1 INT, c2 INT);",
+			"INSERT INTO test VALUES (1, 'alice', 30, 1, 2), (2, 'bob', 40, 3, 4);",
+			"CREATE INDEX idx1 ON test ((UPPER(name)), age, (c1 + c2));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "EXPLAIN FORMAT=TREE SELECT pk FROM test WHERE UPPER(name) = 'ALICE' AND age = 30 AND c1 + c2 = 3;",
+				Expected: []sql.Row{
+					{"Project"},
+					{" ├─ columns: [test.pk]"},
+					{" └─ IndexedTableAccess(test)"},
+					{"     ├─ index: [test.!hidden!idx1!0!0,test.age,test.!hidden!idx1!2!0]"},
+					{"     └─ filters: [{[ALICE, ALICE], [30, 30], [3, 3]}]"},
+				},
+			},
+		},
+	},
+	{
+		Name: "multiple expressions: SHOW INDEX reports all key parts in the correct order",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT, c2 INT, c3 INT);",
+			"CREATE INDEX idx1 ON test ((c1 * 10), c2, (c3 * 10));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT Seq_in_index, Column_name FROM information_schema.statistics WHERE table_name = 'test' AND index_name = 'idx1' ORDER BY Seq_in_index;",
+				Expected: []sql.Row{
+					{1, "!hidden!idx1!0!0"},
+					{2, "c2"},
+					{3, "!hidden!idx1!2!0"},
+				},
+			},
+		},
+	},
+	{
+		Name: "multiple expressions: composite key correctly distinguishes rows sharing a subset of key parts",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT, c2 INT, c3 INT);",
+			"CREATE INDEX idx1 ON test ((c1 * 10), c2, (c3 * 10));",
+			"INSERT INTO test VALUES " +
+				"(1, 1, 5, 1), " + // key (10, 5, 10)
+				"(2, 1, 5, 2), " + // shares (c1*10, c2) with row 1, differs in (c3*10)
+				"(3, 1, 6, 1), " + // shares (c1*10, c3*10) with row 1, differs in c2
+				"(4, 2, 5, 1);", // shares (c2, c3*10) with row 1, differs in (c1*10)
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:           "SELECT pk FROM test WHERE c1 * 10 = 10 AND c2 = 5 AND c3 * 10 = 10;",
+				Expected:        []sql.Row{{1}},
+				ExpectedIndexes: []string{"idx1"},
+			},
+			{
+				Query:           "SELECT pk FROM test WHERE c1 * 10 = 10 AND c2 = 5 AND c3 * 10 = 20;",
+				Expected:        []sql.Row{{2}},
+				ExpectedIndexes: []string{"idx1"},
+			},
+			{
+				Query:           "SELECT pk FROM test WHERE c1 * 10 = 10 AND c2 = 6 AND c3 * 10 = 10;",
+				Expected:        []sql.Row{{3}},
+				ExpectedIndexes: []string{"idx1"},
+			},
+			{
+				Query:           "SELECT pk FROM test WHERE c1 * 10 = 20 AND c2 = 5 AND c3 * 10 = 10;",
+				Expected:        []sql.Row{{4}},
+				ExpectedIndexes: []string{"idx1"},
+			},
+			{
+				Query:           "SELECT pk FROM test WHERE c1 * 10 = 10 AND c2 = 5 ORDER BY pk;",
+				Expected:        []sql.Row{{1}, {2}},
+				ExpectedIndexes: []string{"idx1"},
 			},
 		},
 	},
