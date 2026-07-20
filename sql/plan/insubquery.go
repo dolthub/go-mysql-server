@@ -118,6 +118,15 @@ func (in *InSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 		cmp, err := rTyp.Compare(ctx, left, val)
 		if err != nil {
+			// A hash match doesn't guarantee value equality (e.g. a row-
+			// constructor tuple whose hash matched but which has a NULL
+			// element makes the confirming Compare indeterminate rather than
+			// a real error). Treat that the same way the IN-list path
+			// (InTuple.Eval) and the five comparison operators do: an
+			// indeterminate comparison means the overall result is unknown.
+			if sql.ErrNilOperand.Is(err) {
+				return nil, nil
+			}
 			return nil, err
 		}
 

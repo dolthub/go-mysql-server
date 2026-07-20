@@ -42,6 +42,16 @@ var (
 	// ErrConvertToSQL is returned when Convert failed.
 	// It makes an error less verbose comparing to what spf13/cast returns.
 	ErrConvertToSQL = errors.NewKind("incompatible conversion to SQL type: '%v'->%s")
+
+	// ErrNilOperand is returned by a Type's Compare implementation when the
+	// comparison is indeterminate because one of the operands is NULL (e.g. a
+	// NULL tuple element). It lives in this base package, rather than in
+	// sql/expression where it originated, so that sql/types (which cannot
+	// import sql/expression) can also signal indeterminate comparisons with
+	// it; sql/expression.ErrNilOperand is an alias of this exact Kind so
+	// existing errors.Is-style checks (ErrNilOperand.Is(err)) keep working
+	// unchanged for both packages.
+	ErrNilOperand = errors.NewKind("nil operand found in comparison")
 )
 
 const (
