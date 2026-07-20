@@ -19,7 +19,7 @@ import (
 	"io"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/sorters"
 )
 
 // topRowsIter is defined by the topN node. It uses a heap to sort the rows of the child iterator and returns the top N
@@ -74,7 +74,7 @@ func (i *topRowsIter) Close(ctx *sql.Context) error {
 // computeTopRows uses a Top-N Heap Sort to find the top N rows. It relies on topRowsHeap being a max-heap.
 func (i *topRowsIter) computeTopRows(ctx *sql.Context) error {
 	rowsHeap := &topRowsHeap{
-		Sorter: expression.Sorter{
+		RowSorter: sorters.RowSorter{
 			SortConditions: i.sortConditions,
 			Rows:           make([]sql.Row, 0, i.limit+1),
 			LastError:      nil,
@@ -125,13 +125,13 @@ func getTopRows(h *topRowsHeap) []sql.Row {
 // topRowsHeap implements heap.Interface. Since heap.Interface assumes a min-heap, topRowsHeap inverts Less to implement
 // a max-heap. This is so that topRowsHeap can be used for a Top-N Heap Sort.
 type topRowsHeap struct {
-	expression.Sorter
+	sorters.RowSorter
 	order []int64
 }
 
 // Less implements heap.Interface. It is inverted to implement a max-heap.
 func (h *topRowsHeap) Less(i, j int) bool {
-	cmp := h.Sorter.CompareRows(h.Sorter.Rows[i], h.Sorter.Rows[j])
+	cmp := h.RowSorter.CompareRows(h.RowSorter.Rows[i], h.RowSorter.Rows[j])
 	if cmp == 0 {
 		return h.order[i] > h.order[j]
 	}
@@ -140,22 +140,22 @@ func (h *topRowsHeap) Less(i, j int) bool {
 
 // Swap implements heap.Interface
 func (h *topRowsHeap) Swap(i, j int) {
-	h.Sorter.Swap(i, j)
+	h.RowSorter.Swap(i, j)
 	h.order[i], h.order[j] = h.order[j], h.order[i]
 }
 
 // Push implements heap.Interface. x is expected to be a rowWithOrder.
 func (h *topRowsHeap) Push(x interface{}) {
 	e := x.(rowWithOrder)
-	h.Sorter.Rows = append(h.Sorter.Rows, e.row)
+	h.RowSorter.Rows = append(h.RowSorter.Rows, e.row)
 	h.order = append(h.order, e.order)
 }
 
 // Pop implements heap.Interface. The return type is a sql.Row.
 func (h *topRowsHeap) Pop() interface{} {
-	n := len(h.Sorter.Rows)
-	row := h.Sorter.Rows[n-1]
-	h.Sorter.Rows = h.Sorter.Rows[:n-1]
+	n := len(h.RowSorter.Rows)
+	row := h.RowSorter.Rows[n-1]
+	h.RowSorter.Rows = h.RowSorter.Rows[:n-1]
 	h.order = h.order[:n-1]
 	return row
 }
@@ -191,7 +191,7 @@ func (i *topRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if err != nil {
 		return nil, err
 	}
-	sorter := expression.Sorter{
+	sorter := sorters.RowSorter{
 		Ctx:            ctx,
 		SortConditions: i.sortConditions,
 	}

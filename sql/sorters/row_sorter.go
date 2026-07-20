@@ -1,4 +1,4 @@
-// Copyright 2021 Dolthub, Inc.
+// Copyright 2026 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,15 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package expression
+package sorters
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// Sorter is a sorter implementation for Row slices using SortFields for the comparison
-// TODO: Rename to RowSorter since this is used specifically for sorting Rows and is not a generic sorter.
-type Sorter struct {
+// RowSorter is a sorter implementation for Row slices using SortFields for the comparison
+type RowSorter struct {
 	LastError      error
 	Ctx            *sql.Context
 	SortConditions sql.SortConditions
@@ -28,17 +27,17 @@ type Sorter struct {
 }
 
 // Len implements sort.Interface
-func (s *Sorter) Len() int {
+func (s *RowSorter) Len() int {
 	return len(s.Rows)
 }
 
 // Swap implements sort.Interface
-func (s *Sorter) Swap(i, j int) {
+func (s *RowSorter) Swap(i, j int) {
 	s.Rows[i], s.Rows[j] = s.Rows[j], s.Rows[i]
 }
 
 // CompareRows compares rows a and b based on s.SortFields
-func (s *Sorter) CompareRows(a, b sql.Row) int {
+func (s *RowSorter) CompareRows(a, b sql.Row) int {
 	for _, sc := range s.SortConditions {
 		typ := sc.Expr.Type(s.Ctx)
 		// TODO: For complex SortFields, like Subqueries, recalculating the value may be costly. We should find some way
@@ -84,12 +83,12 @@ func (s *Sorter) CompareRows(a, b sql.Row) int {
 }
 
 // IsLesserRow determines if sql.Row `a` is less than sql.Row `b` based off s.SortFields
-func (s *Sorter) IsLesserRow(a, b sql.Row) bool {
+func (s *RowSorter) IsLesserRow(a, b sql.Row) bool {
 	return s.CompareRows(a, b) < 0
 }
 
 // Less implements sort.Interface interface.
-func (s *Sorter) Less(i, j int) bool {
+func (s *RowSorter) Less(i, j int) bool {
 	if s.LastError != nil {
 		return false
 	}

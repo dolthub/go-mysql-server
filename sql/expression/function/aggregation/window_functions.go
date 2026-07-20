@@ -21,6 +21,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/sorters"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -901,7 +902,7 @@ func (a *GroupConcatAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, 
 
 	// Execute the order operation if it exists.
 	if a.gc.sortConditions != nil {
-		sorter := &expression.Sorter{
+		sorter := &sorters.RowSorter{
 			SortConditions: a.gc.sortConditions,
 			Rows:           rows,
 			Ctx:            ctx,

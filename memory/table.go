@@ -33,6 +33,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression/function/vector"
 	"github.com/dolthub/go-mysql-server/sql/fulltext"
 	"github.com/dolthub/go-mysql-server/sql/iters"
+	"github.com/dolthub/go-mysql-server/sql/sorters"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -1756,16 +1757,16 @@ func (t *IndexedTable) PartitionRows(ctx *sql.Context, partition sql.Partition) 
 				// TODO: null ordering?
 			}
 		}
-		var sorter *expression.Sorter
+		var sorter *sorters.RowSorter
 		if i, ok := iter.(*tableIter); ok {
-			sorter = &expression.Sorter{
+			sorter = &sorters.RowSorter{
 				SortConditions: sc,
 				Rows:           i.rows,
 				LastError:      nil,
 				Ctx:            ctx,
 			}
 		} else if i, ok := iter.(*spatialTableIter); ok {
-			sorter = &expression.Sorter{
+			sorter = &sorters.RowSorter{
 				SortConditions: sc,
 				Rows:           i.rows,
 				LastError:      nil,

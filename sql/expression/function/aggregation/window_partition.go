@@ -20,7 +20,7 @@ import (
 	"sort"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/sorters"
 )
 
 var ErrNoPartitions = errors.New("no partitions")
@@ -169,6 +169,8 @@ func (i *WindowPartitionIter) materializeInput(ctx *sql.Context) (sql.WindowBuff
 			}
 			return nil, nil, err
 		}
+		// TODO: Appending the row number to the end of the row can likely cause indexing issues
+		//  https://github.com/dolthub/dolt/issues/11328
 		input = append(input, append(row, j))
 		j++
 	}
@@ -178,7 +180,7 @@ func (i *WindowPartitionIter) materializeInput(ctx *sql.Context) (sql.WindowBuff
 	}
 
 	// sort all rows by partition
-	sorter := &expression.Sorter{
+	sorter := &sorters.RowSorter{
 		SortConditions: append(partitionsToSortConditions(i.w.PartitionBy), i.w.SortBy...),
 		Rows:           input,
 		Ctx:            ctx,
