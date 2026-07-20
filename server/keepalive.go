@@ -19,19 +19,11 @@ import (
 	"time"
 )
 
-// DefaultTCPKeepAlive is applied to accepted TCP connections so the server
-// detects peers that died without a clean close -- a client host crash, a kill
-// -9 of the client host, or a network partition -- and reaps their in-flight
-// queries and open transactions within a bounded window, instead of leaving them
-// until net_read_timeout (default 8h) fires.
-//
-// It does not affect connections whose peer is alive: an idle-but-live client's
-// kernel answers keepalive probes at the TCP layer regardless of whether the
-// application is reading, so such connections are never closed by this mechanism.
-// That is the property that makes keepalive a false-positive-free liveness
-// signal, unlike an application-level read deadline.
-//
-// Worst-case detection latency is Idle + Interval*Count = 120s.
+// DefaultTCPKeepAlive detects peers that died without a clean close (host crash,
+// partition) so their queries/transactions are reaped in a bounded window rather
+// than lingering until net_read_timeout (8h). Live peers answer probes at the TCP
+// layer, so idle connections are never affected. Detection latency is
+// Idle+Interval*Count = 120s.
 var DefaultTCPKeepAlive = net.KeepAliveConfig{
 	Enable:   true,
 	Idle:     60 * time.Second,
@@ -39,8 +31,8 @@ var DefaultTCPKeepAlive = net.KeepAliveConfig{
 	Count:    4,
 }
 
-// keepAliveListener enables TCP keepalive on every accepted connection. Non-TCP
-// connections (unix socket, in-memory) pass through untouched.
+// keepAliveListener enables TCP keepalive on accepted connections. Non-TCP conns
+// pass through untouched.
 type keepAliveListener struct {
 	net.Listener
 	cfg net.KeepAliveConfig
@@ -52,9 +44,7 @@ func (l keepAliveListener) Accept() (net.Conn, error) {
 		return nil, err
 	}
 	if tc, ok := c.(*net.TCPConn); ok {
-		// Best-effort: SetKeepAliveConfig applies what the platform supports and
-		// returns an error only for unsupported fields, which we tolerate.
-		_ = tc.SetKeepAliveConfig(l.cfg)
+		_ = tc.SetKeepAliveConfig(l.cfg) // best-effort: unsupported fields are ignored
 	}
 	return c, nil
 }
