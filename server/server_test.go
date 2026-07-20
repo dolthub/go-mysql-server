@@ -253,32 +253,25 @@ func seedTable(t *testing.T, host string, port int) {
 	require.NoError(t, err)
 }
 
-// TestConnectionWatcherHalfOpenNotReaped: unlike a clean disconnect, a client
-// that stops reading without sending a FIN leaves the socket silent but open. The
-// watcher's Peek never returns, so a mid-query disconnect is NOT reaped.
-//
-// The client here is alive-but-silent (its kernel still ACKs), which is
-// indistinguishable from a legitimately long query the client is awaiting, so
-// this is correctly NOT reapable by liveness detection -- TCP keepalive leaves it
-// alone by design. The only thing that reaps an alive-but-silent socket is
-// net_read_timeout; see TestConnReadTimeoutReapsHalfOpenQuery. (Keepalive instead
-// targets a truly dead peer -- host crash / partition -- which cannot be
-// simulated on loopback; see TestAcceptedConnHasKeepAlive for that wiring.)
+// TestConnectionWatcherHalfOpenNotReaped: a client that goes silent without
+// closing (alive-but-silent, kernel still ACKs) is not reaped mid-query. This is
+// correct -- it's indistinguishable from a long query being awaited, so keepalive
+// leaves it alone; only net_read_timeout reaps it (see
+// TestConnReadTimeoutReapsHalfOpenQuery). Keepalive targets truly dead peers,
+// which can't be simulated on loopback (see TestAcceptedConnHasKeepAlive).
 func TestConnectionWatcherHalfOpenNotReaped(t *testing.T) {
 	engine, host, port := startWatcherTestServer(t, server.Config{})
 
 	// Long enough to outlast the window, short enough to self-clean after.
 	conn, _ := runSleepQuery(t, host, port, 10)
-	// Keep conn referenced so its fd isn't closed -- a close would make this the
-	// clean-disconnect case the watcher handles.
+	// Keep conn referenced so its fd isn't closed (a close would be Mode A).
 	defer runtime.KeepAlive(conn)
 
 	require.Eventually(t, func() bool {
 		return runningQueries(engine) > 0
 	}, 10*time.Second, 10*time.Millisecond, "query never started running on server")
 
-	// Do NOT close conn: silent but open (half-open). ConnReadTimeout is unset, so
-	// the watcher's Peek blocks forever and the query keeps running.
+	// Silent but open: the watcher's Peek blocks forever, so the query keeps running.
 	require.Never(t, func() bool {
 		return runningQueries(engine) == 0
 	}, 3*time.Second, 50*time.Millisecond,
@@ -308,16 +301,10 @@ func TestConnReadTimeoutReapsHalfOpenQuery(t *testing.T) {
 }
 
 // TestIdleTransactionHalfOpenNotReaped: a client opens a transaction (BEGIN +
-// INSERT) then goes silent while idle. The session sits in Sleep holding the
-// transaction; the watcher only examines running queries, so it is never reaped.
-//
-// As in TestConnectionWatcherHalfOpenNotReaped, the client is alive-but-silent
-// (kernel still ACKs), which is indistinguishable from a healthy idle connection,
-// so it is correctly NOT reapable by liveness detection -- TCP keepalive leaves
-// it alone. The only backstop for an alive-but-silent idle session is
-// net_read_timeout; see TestConnReadTimeoutReapsIdleTransaction. (Keepalive
-// targets a truly dead peer, which reaps the connection and rolls back its
-// transaction via the existing ConnectionClosed teardown.)
+// INSERT) then goes silent while idle (Sleep). The watcher only examines running
+// queries, so it never reaps this. Like the mid-query case, an alive-but-silent
+// idle session is correctly not reaped by keepalive; only net_read_timeout does
+// (see TestConnReadTimeoutReapsIdleTransaction).
 func TestIdleTransactionHalfOpenNotReaped(t *testing.T) {
 	engine, host, port := startWatcherTestServer(t, server.Config{})
 
@@ -335,8 +322,7 @@ func TestIdleTransactionHalfOpenNotReaped(t *testing.T) {
 		return sleepingConns(engine) >= 1
 	}, 10*time.Second, 10*time.Millisecond, "session never reached idle (Sleep) state")
 
-	// Do NOT close conn: silent but open (half-open). No query runs, so the watcher
-	// never examines it and the transaction lingers.
+	// Silent but open: no query runs, so the watcher never examines it.
 	require.Never(t, func() bool {
 		return sleepingConns(engine) == 0
 	}, 3*time.Second, 50*time.Millisecond,
