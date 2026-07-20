@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"net"
+	"runtime"
 	"testing"
 	"time"
 
@@ -216,4 +217,157 @@ func TestConnectionWatcherDisabled(t *testing.T) {
 	require.Never(t, func() bool {
 		return runningQueries(engine) == 0
 	}, 2*time.Second, 50*time.Millisecond, "query was cancelled despite watcher being disabled")
+}
+
+// sleepingConns counts connected sessions with no query running -- the state an
+// idle-in-transaction connection sits in.
+func sleepingConns(engine *sqle.Engine) int {
+	n := 0
+	for _, p := range engine.ProcessList.Processes() {
+		if p.Command == gsql.ProcessCommandSleep {
+			n++
+		}
+	}
+	return n
+}
+
+// connectClient opens a vitess client connection without issuing a query.
+func connectClient(t *testing.T, host string, port int) *vsql.Conn {
+	t.Helper()
+	conn, err := vsql.Connect(context.Background(), &vsql.ConnParams{
+		Host:   host,
+		Port:   port,
+		Uname:  "root",
+		DbName: "mydb",
+	})
+	require.NoError(t, err)
+	return conn
+}
+
+// seedTable creates a table on a short-lived, cleanly-closed connection.
+func seedTable(t *testing.T, host string, port int) {
+	t.Helper()
+	conn := connectClient(t, host, port)
+	defer conn.Close()
+	_, err := conn.ExecuteFetch("CREATE TABLE t (id INT PRIMARY KEY)", 1, false)
+	require.NoError(t, err)
+}
+
+// TestConnectionWatcherHalfOpenNotReaped: unlike a clean disconnect, a client
+// that stops reading without sending a FIN leaves the socket silent but open. The
+// watcher's Peek never returns, so a mid-query disconnect is NOT reaped.
+//
+// The client here is alive-but-silent (its kernel still ACKs), which is
+// indistinguishable from a legitimately long query the client is awaiting, so
+// this is correctly NOT reapable by liveness detection -- TCP keepalive leaves it
+// alone by design. The only thing that reaps an alive-but-silent socket is
+// net_read_timeout; see TestConnReadTimeoutReapsHalfOpenQuery. (Keepalive instead
+// targets a truly dead peer -- host crash / partition -- which cannot be
+// simulated on loopback; see TestAcceptedConnHasKeepAlive for that wiring.)
+func TestConnectionWatcherHalfOpenNotReaped(t *testing.T) {
+	engine, host, port := startWatcherTestServer(t, server.Config{})
+
+	// Long enough to outlast the window, short enough to self-clean after.
+	conn, _ := runSleepQuery(t, host, port, 10)
+	// Keep conn referenced so its fd isn't closed -- a close would make this the
+	// clean-disconnect case the watcher handles.
+	defer runtime.KeepAlive(conn)
+
+	require.Eventually(t, func() bool {
+		return runningQueries(engine) > 0
+	}, 10*time.Second, 10*time.Millisecond, "query never started running on server")
+
+	// Do NOT close conn: silent but open (half-open). ConnReadTimeout is unset, so
+	// the watcher's Peek blocks forever and the query keeps running.
+	require.Never(t, func() bool {
+		return runningQueries(engine) == 0
+	}, 3*time.Second, 50*time.Millisecond,
+		"half-open client's query was reaped, but the watcher cannot see a silent socket")
+}
+
+// TestConnReadTimeoutReapsHalfOpenQuery: net_read_timeout is the only backstop
+// for a half-open mid-query disconnect -- its read deadline wakes the watcher's
+// Peek, cancelling the query. (Default is infinite in GMS, 8h in Dolt.)
+func TestConnReadTimeoutReapsHalfOpenQuery(t *testing.T) {
+	engine, host, port := startWatcherTestServer(t, server.Config{
+		ConnReadTimeout: 2 * time.Second,
+	})
+
+	conn, _ := runSleepQuery(t, host, port, 30)
+	defer runtime.KeepAlive(conn)
+
+	require.Eventually(t, func() bool {
+		return runningQueries(engine) > 0
+	}, 10*time.Second, 10*time.Millisecond, "query never started running on server")
+
+	// Silent (half-open): the read deadline fires ~2s later and cancels the query.
+	require.Eventually(t, func() bool {
+		return runningQueries(engine) == 0
+	}, 10*time.Second, 50*time.Millisecond,
+		"half-open query was not reaped by net_read_timeout backstop")
+}
+
+// TestIdleTransactionHalfOpenNotReaped: a client opens a transaction (BEGIN +
+// INSERT) then goes silent while idle. The session sits in Sleep holding the
+// transaction; the watcher only examines running queries, so it is never reaped.
+//
+// As in TestConnectionWatcherHalfOpenNotReaped, the client is alive-but-silent
+// (kernel still ACKs), which is indistinguishable from a healthy idle connection,
+// so it is correctly NOT reapable by liveness detection -- TCP keepalive leaves
+// it alone. The only backstop for an alive-but-silent idle session is
+// net_read_timeout; see TestConnReadTimeoutReapsIdleTransaction. (Keepalive
+// targets a truly dead peer, which reaps the connection and rolls back its
+// transaction via the existing ConnectionClosed teardown.)
+func TestIdleTransactionHalfOpenNotReaped(t *testing.T) {
+	engine, host, port := startWatcherTestServer(t, server.Config{})
+
+	seedTable(t, host, port)
+
+	conn := connectClient(t, host, port)
+	defer runtime.KeepAlive(conn)
+	_, err := conn.ExecuteFetch("BEGIN", 1, false)
+	require.NoError(t, err)
+	_, err = conn.ExecuteFetch("INSERT INTO t VALUES (1)", 1, false)
+	require.NoError(t, err)
+
+	// Write returned: session is idle (Sleep) but still holds the transaction.
+	require.Eventually(t, func() bool {
+		return sleepingConns(engine) >= 1
+	}, 10*time.Second, 10*time.Millisecond, "session never reached idle (Sleep) state")
+
+	// Do NOT close conn: silent but open (half-open). No query runs, so the watcher
+	// never examines it and the transaction lingers.
+	require.Never(t, func() bool {
+		return sleepingConns(engine) == 0
+	}, 3*time.Second, 50*time.Millisecond,
+		"idle-in-transaction session was reaped, but the watcher never examines Sleep-state conns")
+	require.Zero(t, runningQueries(engine), "no query should be running for an idle session")
+}
+
+// TestConnReadTimeoutReapsIdleTransaction: net_read_timeout is the only backstop
+// for an idle-in-transaction half-open client -- the handler's next-command read
+// deadline fires, closing the connection and reaping the transaction.
+func TestConnReadTimeoutReapsIdleTransaction(t *testing.T) {
+	engine, host, port := startWatcherTestServer(t, server.Config{
+		ConnReadTimeout: 2 * time.Second,
+	})
+
+	seedTable(t, host, port)
+
+	conn := connectClient(t, host, port)
+	defer runtime.KeepAlive(conn)
+	_, err := conn.ExecuteFetch("BEGIN", 1, false)
+	require.NoError(t, err)
+	_, err = conn.ExecuteFetch("INSERT INTO t VALUES (1)", 1, false)
+	require.NoError(t, err)
+
+	require.Eventually(t, func() bool {
+		return sleepingConns(engine) >= 1
+	}, 10*time.Second, 10*time.Millisecond, "session never reached idle (Sleep) state")
+
+	// Silent (half-open): the read deadline fires ~2s later and reaps the conn.
+	require.Eventually(t, func() bool {
+		return sleepingConns(engine) == 0
+	}, 10*time.Second, 50*time.Millisecond,
+		"idle-in-transaction session was not reaped by net_read_timeout backstop")
 }

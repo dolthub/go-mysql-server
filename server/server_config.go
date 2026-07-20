@@ -109,6 +109,10 @@ type Config struct {
 	// true to let such queries run to completion regardless of the client's
 	// state.
 	DisableConnectionWatcher bool
+	// TCPKeepAlive overrides the keepalive settings applied to accepted TCP
+	// connections. Nil uses DefaultTCPKeepAlive; set a config with Enable=false to
+	// disable keepalive entirely.
+	TCPKeepAlive *net.KeepAliveConfig
 }
 
 func (c Config) NewConfig() (Config, error) {
