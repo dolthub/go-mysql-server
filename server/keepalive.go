@@ -21,9 +21,9 @@ import (
 
 // DefaultTCPKeepAlive detects peers that died without a clean close (host crash,
 // partition) so their queries/transactions are reaped in a bounded window rather
-// than lingering until net_read_timeout (8h). Live peers answer probes at the TCP
-// layer, so idle connections are never affected. Detection latency is
-// Idle+Interval*Count = 120s.
+// than lingering until net_read_timeout fires (which embedders may set arbitrarily
+// high). Live peers answer probes at the TCP layer, so idle connections are never
+// affected. Detection latency is Idle+Interval*Count = 120s.
 var DefaultTCPKeepAlive = net.KeepAliveConfig{
 	Enable:   true,
 	Idle:     60 * time.Second,

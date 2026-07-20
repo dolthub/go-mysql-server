@@ -185,7 +185,7 @@ func newServerFromHandler(cfg Config, e *sqle.Engine, sm *SessionManager, handle
 	// Enable TCP keepalive on accepted connections so peers that die without a
 	// clean close (host crash, kill -9 of the client host, network partition) are
 	// detected and their queries/transactions reaped within a bounded window,
-	// rather than lingering until net_read_timeout (default 8h) fires.
+	// rather than lingering until net_read_timeout fires.
 	if l != nil {
 		kaCfg := DefaultTCPKeepAlive
 		if cfg.TCPKeepAlive != nil {

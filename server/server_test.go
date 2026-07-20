@@ -280,7 +280,7 @@ func TestConnectionWatcherHalfOpenNotReaped(t *testing.T) {
 
 // TestConnReadTimeoutReapsHalfOpenQuery: net_read_timeout is the only backstop
 // for a half-open mid-query disconnect -- its read deadline wakes the watcher's
-// Peek, cancelling the query. (Default is infinite in GMS, 8h in Dolt.)
+// Peek, cancelling the query.
 func TestConnReadTimeoutReapsHalfOpenQuery(t *testing.T) {
 	engine, host, port := startWatcherTestServer(t, server.Config{
 		ConnReadTimeout: 2 * time.Second,

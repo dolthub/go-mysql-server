@@ -12,13 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build !windows
+//go:build linux
 
 package server
 
 import (
 	"net"
-	"runtime"
 	"testing"
 	"time"
 
@@ -27,10 +26,9 @@ import (
 )
 
 // TestAcceptedConnHasKeepAlive verifies keepAliveListener arms TCP keepalive on
-// every accepted connection -- the wiring that lets the server detect half-open
-// (dead-peer) clients that never send a FIN. It asserts the socket option
-// directly rather than trying to reap a dead peer, which cannot be simulated on
-// loopback (the client kernel answers keepalive probes).
+// accepted connections. Dead-peer detection itself can't be simulated on loopback
+// (the client kernel answers probes), so this asserts the socket options
+// directly. Linux-only: TCP_KEEPIDLE is Linux-specific.
 func TestAcceptedConnHasKeepAlive(t *testing.T) {
 	base, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
@@ -69,24 +67,16 @@ func TestAcceptedConnHasKeepAlive(t *testing.T) {
 	raw, err := tc.SyscallConn()
 	require.NoError(t, err)
 
-	var (
-		keepAlive int
-		idle      int
-		idleErr   error
-		getErr    error
-	)
+	var keepAlive, idle int
+	var getErr error
 	require.NoError(t, raw.Control(func(fd uintptr) {
 		keepAlive, getErr = unix.GetsockoptInt(int(fd), unix.SOL_SOCKET, unix.SO_KEEPALIVE)
-		if runtime.GOOS == "linux" {
-			// TCP_KEEPIDLE (seconds) is Linux-specific; other unixes map Idle
-			// differently, so only assert the value there.
-			idle, idleErr = unix.GetsockoptInt(int(fd), unix.IPPROTO_TCP, unix.TCP_KEEPIDLE)
+		if getErr != nil {
+			return
 		}
+		idle, getErr = unix.GetsockoptInt(int(fd), unix.IPPROTO_TCP, unix.TCP_KEEPIDLE)
 	}))
 	require.NoError(t, getErr)
 	require.Equal(t, 1, keepAlive, "SO_KEEPALIVE should be enabled on the accepted conn")
-	if runtime.GOOS == "linux" {
-		require.NoError(t, idleErr)
-		require.Equal(t, 37, idle, "TCP_KEEPIDLE should match the configured Idle")
-	}
+	require.Equal(t, 37, idle, "TCP_KEEPIDLE should match the configured Idle")
 }
