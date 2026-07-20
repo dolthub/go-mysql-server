@@ -169,7 +169,8 @@ func (i *WindowPartitionIter) materializeInput(ctx *sql.Context) (sql.WindowBuff
 			}
 			return nil, nil, err
 		}
-		// TODO: We should not be appending the row number to the end of the row!!! This causes indexing issues!!!
+		// TODO: Appending the row number to the end of the row can likely cause indexing issues
+		//  https://github.com/dolthub/dolt/issues/11328
 		input = append(input, append(row, j))
 		j++
 	}
