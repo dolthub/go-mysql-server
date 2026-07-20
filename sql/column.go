@@ -32,6 +32,20 @@ func IsHiddenSystemColumn(name string) bool {
 	return strings.HasPrefix(strings.ToLower(name), HiddenSystemColumnPrefix)
 }
 
+// HiddenSystemColumnName returns the name used for the hidden, system-generated column that backs
+// the functional expression at the 0-based |position| within the index named |indexName|. MySQL
+// uses the pattern !hidden!<index_name>!<position_in_index>!<subcomponent> for these names;
+// subcomponent is intended for the subcomponent in the generated field, but in practice is always 0.
+func HiddenSystemColumnName(indexName string, position int) string {
+	return fmt.Sprintf("%s%s!%d!0", HiddenSystemColumnPrefix, strings.ToLower(indexName), position)
+}
+
+// IsHiddenSystemColumnForIndex returns true if |colName| is a hidden system column created to back
+// a functional expression in the index named |indexName| (see HiddenSystemColumnName).
+func IsHiddenSystemColumnForIndex(colName, indexName string) bool {
+	return strings.HasPrefix(strings.ToLower(colName), HiddenSystemColumnPrefix+strings.ToLower(indexName)+"!")
+}
+
 // Column is the definition of a table column.
 // As SQL:2016 puts it:
 //

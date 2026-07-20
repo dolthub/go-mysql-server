@@ -2124,13 +2124,14 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 
 	switch n.Action {
 	case plan.IndexAction_Create:
-		if err = validateSingleFunctionalExpression(n.Columns); err != nil {
-			return err
-		}
-
+		// currentSchema tracks the table's schema as hidden system columns are added below, since an
+		// index may contain more than one functional expression. n.Table.Schema(ctx) reflects only the
+		// schema as of when the table was resolved and does not observe the AddColumn calls made by
+		// createHiddenSystemColumn on earlier loop iterations.
+		currentSchema := n.Table.Schema(ctx).Copy()
 		for i, idxCol := range n.Columns {
 			if idxCol.Expression != nil {
-				newColumn, err := b.createHiddenSystemColumn(ctx, n, idxCol.Expression)
+				newColumn, err := b.createHiddenSystemColumn(ctx, n, idxCol.Expression, i, currentSchema)
 				if err != nil {
 					return err
 				}
@@ -2139,8 +2140,8 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 				// update the plan node so we can create the index next
 				n.Columns[i].Expression = nil
 				n.Columns[i].Name = newColumn.Name
-				newSchema := append(n.Table.Schema(ctx).Copy(), newColumn)
-				newNode, err := n.WithTargetSchema(newSchema)
+				currentSchema = append(currentSchema, newColumn)
+				newNode, err := n.WithTargetSchema(currentSchema)
 				if err != nil {
 					return err
 				}
@@ -2369,20 +2370,21 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 // dropHiddenSystemColumnsForIndex searches the specified |table| for any hidden system columns that were created
 // for the specified index, |indexName|, and drops them from the table. If any error is encountered, it is returned.
 func (b *BaseBuilder) dropHiddenSystemColumnsForIndex(ctx *sql.Context, table *plan.ResolvedTable, indexName string) error {
-	systemHiddenColumnsToDrop := make([]string, 0, len(table.Schema(ctx)))
-	for _, col := range table.Schema(ctx) {
-		if !col.HiddenSystem {
-			continue
-		}
+	// currentSchema tracks the table's schema as hidden system columns are dropped below, since an
+	// index may have more than one such column. It must be kept up to date and threaded through to
+	// each DropColumn call rather than re-read from table.Schema(ctx).
+	currentSchema := table.Schema(ctx).Copy()
 
-		if sql.IsHiddenSystemColumn(col.Name) {
+	systemHiddenColumnsToDrop := make([]string, 0, len(currentSchema))
+	for _, col := range currentSchema {
+		if col.HiddenSystem && sql.IsHiddenSystemColumnForIndex(col.Name, indexName) {
 			systemHiddenColumnsToDrop = append(systemHiddenColumnsToDrop, col.Name)
 		}
 	}
 
 	for _, systemHiddenColumn := range systemHiddenColumnsToDrop {
 		dropColumn := plan.NewDropColumnResolved(table, systemHiddenColumn)
-		newNode, err := dropColumn.WithTargetSchema(table.Schema(ctx))
+		newNode, err := dropColumn.WithTargetSchema(currentSchema)
 		if err != nil {
 			return err
 		}
@@ -2399,15 +2401,25 @@ func (b *BaseBuilder) dropHiddenSystemColumnsForIndex(ctx *sql.Context, table *p
 				return err
 			}
 		}
+
+		if idx := currentSchema.IndexOfColName(systemHiddenColumn); idx >= 0 {
+			currentSchema = append(currentSchema[:idx], currentSchema[idx+1:]...)
+		}
 	}
 
 	return nil
 }
 
-// createHiddenSystemColumn created a virtual, hidden system column for the specifeid |expr|, used
-// to generate an expression that is used in a secondary index. The new column is returned, along
-// with any encountered error.
-func (b *BaseBuilder) createHiddenSystemColumn(ctx *sql.Context, n *plan.AlterIndex, expr sql.Expression) (*sql.Column, error) {
+// createHiddenSystemColumn created a virtual, hidden system column for |expr|, used
+// to generate an expression that is used in a secondary index. |position| is the 0-based position
+// of this expression among the index's columns, and is used to keep hidden column names unique
+// when an index contains more than one functional expression. |currentSchema| is the table's
+// schema including any hidden system columns already created earlier in the same CREATE INDEX
+// statement; it must be used as the target schema for this AddColumn call rather than re-reading
+// the table's schema, since some integrators fully rewrite the table on every AddColumn call using
+// only the schema they're given, which would otherwise silently drop earlier hidden columns. The
+// new column is returned, along with any encountered error.
+func (b *BaseBuilder) createHiddenSystemColumn(ctx *sql.Context, n *plan.AlterIndex, expr sql.Expression, position int, currentSchema sql.Schema) (*sql.Column, error) {
 	resolvedTable, ok := n.Table.(*plan.ResolvedTable)
 	if !ok {
 		return nil, fmt.Errorf("alter index: table is not a resolved table: %T", n.Table)
@@ -2418,11 +2430,7 @@ func (b *BaseBuilder) createHiddenSystemColumn(ctx *sql.Context, n *plan.AlterIn
 		return nil, err
 	}
 
-	// MySQL uses the following pattern for naming hidden system columns for indexed
-	// functional expressions: !hidden!<index_name>!<position_in_index>!<subcomponent>
-	// subcomponent is intended for the subcomponent in the generated field, but in
-	// practice is always 0.
-	hiddenColumnName := sql.HiddenSystemColumnPrefix + strings.ToLower(n.IndexName) + "!0!0"
+	hiddenColumnName := sql.HiddenSystemColumnName(n.IndexName, position)
 
 	newColumn := sql.Column{
 		Type:           expr.Type(ctx),
@@ -2440,7 +2448,7 @@ func (b *BaseBuilder) createHiddenSystemColumn(ctx *sql.Context, n *plan.AlterIn
 	}
 	addColumnNode := plan.NewAddColumnResolved(resolvedTable, newColumn, nil)
 
-	sqlNode, err := addColumnNode.WithTargetSchema(resolvedTable.Schema(ctx))
+	sqlNode, err := addColumnNode.WithTargetSchema(currentSchema)
 	addColumnIter, err := b.buildAddColumn(ctx, sqlNode.(*plan.AddColumn), nil)
 	if err != nil {
 		return nil, err
@@ -2457,24 +2465,6 @@ func (b *BaseBuilder) createHiddenSystemColumn(ctx *sql.Context, n *plan.AlterIn
 	}
 
 	return &newColumn, nil
-}
-
-// validateSingleFunctionalExpression validates that the specified |idxCols| contain at
-// most one functional expression, and that no other indexed columns are included if a
-// functional expression is included.
-//
-// TODO: This is a temporary limitation that will be removed in a follow up PR.
-func validateSingleFunctionalExpression(idxCols []sql.IndexColumn) error {
-	functionalExpressionCount := 0
-	for _, idxCol := range idxCols {
-		if idxCol.Expression != nil {
-			functionalExpressionCount += 1
-		}
-	}
-	if functionalExpressionCount > 1 || functionalExpressionCount == 1 && len(idxCols) > 1 {
-		return fmt.Errorf("functional indexes with multiple expressions are not supported")
-	}
-	return nil
 }
 
 // warnOnDuplicateSecondaryIndex emits a session warning if the newly created index |newIndexName| duplicates
