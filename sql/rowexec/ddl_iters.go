@@ -609,7 +609,7 @@ func (i *modifyColumnIter) Close(context *sql.Context) error {
 
 // rewriteTable rewrites the table given if required or requested, and returns whether it was rewritten
 func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) (bool, error) {
-	targetSchema := i.m.TargetSchema()
+	targetSchema := resolveGeneratedColumns(ctx, i.overrides, i.m.Db.Name(), rwt.Name(), i.m.TargetSchema())
 	oldColName := i.m.Column()
 	oldColIdx := targetSchema.IndexOfColName(oldColName)
 	if oldColIdx == -1 {
@@ -617,7 +617,7 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 		return false, sql.ErrTableColumnNotFound.New(rwt.Name(), oldColName)
 	}
 
-	oldCol := i.m.TargetSchema()[oldColIdx]
+	oldCol := targetSchema[oldColIdx]
 	newCol := i.m.NewColumn()
 	newSch, projections, err := modifyColumnInSchema(ctx, targetSchema, oldColName, newCol, i.m.Order(ctx))
 	if err != nil {
@@ -788,32 +788,34 @@ func modifyColumnInSchema(ctx *sql.Context, schema sql.Schema, name string, colu
 			c = column
 		}
 		newSch[j] = c
-		projections[j] = expression.NewGetField(i, oldCol.Type, oldCol.Name, oldCol.Nullable)
+		projections[j] = columnRewriteProjection(i, oldCol)
 	}
 
-	// If a column was renamed or moved, we need to update any column defaults that refer to it
+	// If a column was renamed or moved, we need to update any column defaults or generated
+	// expressions that refer to it.
+	remapFieldRef := func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		gf, ok := e.(*expression.GetField)
+		if !ok {
+			return e, transform.SameTree, nil
+		}
+
+		colName := gf.Name()
+		// handle column renames
+		if strings.ToLower(colName) == strings.ToLower(name) {
+			colName = column.Name
+		}
+
+		newSchemaIdx := newSch.IndexOfColName(colName)
+		if newSchemaIdx == -1 {
+			return nil, transform.SameTree, sql.ErrColumnNotFound.New(colName)
+		}
+		return expression.NewGetFieldWithTable(newSchemaIdx, int(gf.TableId()), gf.Type(ctx), gf.Database(), gf.Table(), colName, gf.IsNullable(ctx)), transform.NewTree, nil
+	}
 	for i := range newSch {
 		newCol := newSch[oldToNewIdxMapping[i]]
 
 		if newCol.Default != nil {
-			newDefault, _, err := transform.Expr(ctx, newCol.Default.Expr, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-				gf, ok := e.(*expression.GetField)
-				if !ok {
-					return e, transform.SameTree, nil
-				}
-
-				colName := gf.Name()
-				// handle column renames
-				if strings.ToLower(colName) == strings.ToLower(name) {
-					colName = column.Name
-				}
-
-				newSchemaIdx := newSch.IndexOfColName(colName)
-				if newSchemaIdx == -1 {
-					return nil, transform.SameTree, sql.ErrColumnNotFound.New(colName)
-				}
-				return expression.NewGetFieldWithTable(newSchemaIdx, int(gf.TableId()), gf.Type(ctx), gf.Database(), gf.Table(), colName, gf.IsNullable(ctx)), transform.NewTree, nil
-			})
+			newDefault, _, err := transform.Expr(ctx, newCol.Default.Expr, remapFieldRef)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -824,7 +826,25 @@ func modifyColumnInSchema(ctx *sql.Context, schema sql.Schema, name string, colu
 			}
 
 			newCol.Default = newDefault.(*sql.ColumnDefaultValue)
+		} else if newCol.Generated != nil {
+			newGenerated, _, err := transform.Expr(ctx, newCol.Generated.Expr, remapFieldRef)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			newGenerated, err = newCol.Generated.WithChildren(ctx, newGenerated)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			newCol.Generated = newGenerated.(*sql.ColumnDefaultValue)
 		}
+	}
+
+	// The projections computed above may also reference columns whose position shifted because of
+	// the drop/reorder; point those references at the new schema's layout too.
+	if err := fixupColumnRewriteFieldRefs(ctx, newSch, projections); err != nil {
+		return nil, nil, err
 	}
 
 	// TODO: do we need col defaults here? probably when changing a column to be non-null?
@@ -1167,6 +1187,7 @@ type createPkIter struct {
 	pkAlterable  sql.PrimaryKeyAlterableTable
 	targetSchema sql.Schema
 	columns      []sql.IndexColumn
+	overrides    sql.EngineOverrides
 	runOnce      bool
 }
 
@@ -1205,7 +1226,8 @@ func (c createPkIter) Close(context *sql.Context) error {
 }
 
 func (c *createPkIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) error {
-	newSchema := addKeyToSchema(rwt.Name(), c.targetSchema, c.columns)
+	targetSchema := resolveGeneratedColumns(ctx, c.overrides, c.db.Name(), rwt.Name(), c.targetSchema)
+	newSchema := addKeyToSchema(rwt.Name(), targetSchema, c.columns)
 
 	oldPkSchema, newPkSchema := sql.SchemaToPrimaryKeySchema(ctx, rwt, rwt.Schema(ctx)), newSchema
 
@@ -1222,6 +1244,16 @@ func (c *createPkIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) e
 	var rowIter sql.RowIter = sql.NewTableRowIter(ctx, rwt, partitions)
 	rowIter = withSafepointPeriodicallyIter(rowIter)
 
+	// Adding/dropping a primary key doesn't add, drop, or reorder any columns, so no reindexing of
+	// generated-column expressions is needed.
+	var projections []sql.Expression
+	if newSchema.Schema.HasVirtualColumns() {
+		projections = make([]sql.Expression, len(newSchema.Schema))
+		for idx, col := range newSchema.Schema {
+			projections[idx] = columnRewriteProjection(idx, col)
+		}
+	}
+
 	for {
 		r, err := rowIter.Next(ctx)
 		if err == io.EOF {
@@ -1230,6 +1262,15 @@ func (c *createPkIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) e
 			_ = inserter.DiscardChanges(ctx, err)
 			_ = inserter.Close(ctx)
 			return err
+		}
+
+		if projections != nil {
+			r, err = ProjectRow(ctx, projections, r)
+			if err != nil {
+				_ = inserter.DiscardChanges(ctx, err)
+				_ = inserter.Close(ctx)
+				return err
+			}
 		}
 
 		// check for null values in the primary key insert
@@ -1272,6 +1313,7 @@ type dropPkIter struct {
 	db           sql.Database
 	pkAlterable  sql.PrimaryKeyAlterableTable
 	targetSchema sql.Schema
+	overrides    sql.EngineOverrides
 	runOnce      bool
 }
 
@@ -1310,7 +1352,8 @@ func (d *dropPkIter) Close(context *sql.Context) error {
 }
 
 func (d *dropPkIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) error {
-	newSchema := dropKeyFromSchema(d.targetSchema)
+	targetSchema := resolveGeneratedColumns(ctx, d.overrides, d.db.Name(), rwt.Name(), d.targetSchema)
+	newSchema := dropKeyFromSchema(targetSchema)
 
 	oldPkSchema, newPkSchema := sql.SchemaToPrimaryKeySchema(ctx, rwt, rwt.Schema(ctx)), newSchema
 
@@ -1327,6 +1370,16 @@ func (d *dropPkIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) err
 	var rowIter sql.RowIter = sql.NewTableRowIter(ctx, rwt, partitions)
 	rowIter = withSafepointPeriodicallyIter(rowIter)
 
+	// Adding/dropping a primary key doesn't add, drop, or reorder any columns, so no reindexing of
+	// generated-column expressions is needed.
+	var projections []sql.Expression
+	if newSchema.Schema.HasVirtualColumns() {
+		projections = make([]sql.Expression, len(newSchema.Schema))
+		for idx, col := range newSchema.Schema {
+			projections[idx] = columnRewriteProjection(idx, col)
+		}
+	}
+
 	for {
 		r, err := rowIter.Next(ctx)
 		if err == io.EOF {
@@ -1335,6 +1388,15 @@ func (d *dropPkIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) err
 			_ = inserter.DiscardChanges(ctx, err)
 			_ = inserter.Close(ctx)
 			return err
+		}
+
+		if projections != nil {
+			r, err = ProjectRow(ctx, projections, r)
+			if err != nil {
+				_ = inserter.DiscardChanges(ctx, err)
+				_ = inserter.Close(ctx)
+				return err
+			}
 		}
 
 		err = inserter.Insert(ctx, r)
@@ -1624,6 +1686,84 @@ func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) 
 	return true, nil
 }
 
+// resolveGeneratedColumns resolves any not-yet-resolved generated column expressions for
+// virtual columns in |schema|, so that a table rewrite (see columnRewriteProjection) can evaluate
+// them. A virtual column's expression may still be an *sql.UnresolvedColumnDefault placeholder
+// (parsed from persisted metadata rather than a bound expression tree) at this point. Returns
+// |schema| unmodified if nothing needs resolving.
+func resolveGeneratedColumns(ctx *sql.Context, overrides sql.EngineOverrides, dbName, tableName string, schema sql.Schema) sql.Schema {
+	for _, col := range schema {
+		if col.Virtual && col.Generated != nil && !col.Generated.Resolved() {
+			b := planbuilder.NewBuilderForColumnDefaultResolution(ctx, overrides)
+			return b.ResolveSchemaDefaults(dbName, tableName, schema)
+		}
+	}
+	return schema
+}
+
+// columnRewriteProjection returns the projection to use for |col|, found at position |idx| in the
+// row being scanned, when rewriting a table's existing rows for an ALTER TABLE / CREATE INDEX
+// operation (sql.RewritableTable). Virtual generated columns are never physically
+// persisted, so a raw partition scan (sql.NewTableRowIter) returns a placeholder for them; their
+// value must instead be recomputed from col.Generated, exactly as sql/analyzer/inserts.go's
+// wrapRowSource already does for ordinary INSERT.
+func columnRewriteProjection(idx int, col *sql.Column) sql.Expression {
+	if col.Virtual && col.Generated != nil {
+		return col.Generated
+	}
+	return expression.NewGetField(idx, col.Type, col.Name, col.Nullable)
+}
+
+// fixupColumnRewriteFieldRefs corrects GetField indexes embedded inside any default-value or
+// generated-column projection in |projections| so they refer to the right position in |newSch|.
+// This is necessary because ProjectRow evaluates such projections in a second pass against the new
+// row being built (see defaultValFromProjectExpr), not the original row being scanned, so any
+// column reference inside them must point at the new schema's layout.
+func fixupColumnRewriteFieldRefs(ctx *sql.Context, newSch sql.Schema, projections []sql.Expression) error {
+	if len(newSch) == 0 {
+		return nil
+	}
+
+	updateFieldRefs := func(ctx *sql.Context, s sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		gf, ok := s.(*expression.GetField)
+		if !ok {
+			return s, transform.SameTree, nil
+		}
+		idx := newSch.IndexOf(gf.Name(), newSch[0].Source)
+		if idx < 0 {
+			return nil, transform.SameTree, sql.ErrTableColumnNotFound.New(newSch[0].Source, gf.Name())
+		}
+		return gf.WithIndex(idx), transform.NewTree, nil
+	}
+	for i := range projections {
+		switch p := projections[i].(type) {
+		case *sql.ColumnDefaultValue:
+			newExpr, _, err := transform.Expr(ctx, p, updateFieldRefs)
+			if err != nil {
+				return err
+			}
+			projections[i] = newExpr
+		case plan.ColDefaultExpression:
+			if p.Column.Default != nil {
+				newExpr, _, err := transform.Expr(ctx, p.Column.Default.Expr, updateFieldRefs)
+				if err != nil {
+					return err
+				}
+				p.Column.Default.Expr = newExpr
+				projections[i] = p
+			} else if p.Column.Generated != nil {
+				newExpr, _, err := transform.Expr(ctx, p.Column.Generated.Expr, updateFieldRefs)
+				if err != nil {
+					return err
+				}
+				p.Column.Generated.Expr = newExpr
+				projections[i] = p
+			}
+		}
+	}
+	return nil
+}
+
 // addColumnToSchema returns a new schema and a set of projection expressions that when applied to rows from the old
 // schema will result in rows in the new schema.
 func addColumnToSchema(ctx *sql.Context, schema sql.Schema, column *sql.Column, order *sql.ColumnOrder) (sql.Schema, []sql.Expression, error) {
@@ -1645,33 +1785,23 @@ func addColumnToSchema(ctx *sql.Context, schema sql.Schema, column *sql.Column, 
 	newSch := make(sql.Schema, 0, len(schema)+1)
 	projections := make([]sql.Expression, len(schema)+1)
 
-	newGetField := func(i int) sql.Expression {
-		col := schema[i]
-		if col.Virtual {
-			// Virtual generated columns are not stored in primary row data. The schema passed
-			// here should already have unresolved expressions resolved (see rewriteTable).
-			return col.Generated
-		}
-		return expression.NewGetField(i, col.Type, col.Name, col.Nullable)
-	}
-
 	if idx >= 0 {
 		newSch = append(newSch, schema[:idx]...)
 		newSch = append(newSch, column)
 		newSch = append(newSch, schema[idx:]...)
 
 		for i := 0; i < idx; i++ {
-			projections[i] = newGetField(i)
+			projections[i] = columnRewriteProjection(i, schema[i])
 		}
 		projections[idx] = plan.ColDefaultExpression{column}
 		for i := idx; i < len(schema); i++ {
-			projections[i+1] = newGetField(i)
+			projections[i+1] = columnRewriteProjection(i, schema[i])
 		}
 	} else { // new column at end
 		newSch = append(newSch, schema...)
 		newSch = append(newSch, column)
-		for i, _ := range schema {
-			projections[i] = newGetField(i)
+		for i, col := range schema {
+			projections[i] = columnRewriteProjection(i, col)
 		}
 		projections[len(schema)] = plan.ColDefaultExpression{column}
 	}
@@ -1679,46 +1809,8 @@ func addColumnToSchema(ctx *sql.Context, schema sql.Schema, column *sql.Column, 
 	// Alter old default expressions if they refer to other columns. The column indexes computed during analysis refer to the
 	// column indexes in the old result schema, which is not what we want here: we want the positions in the new
 	// schema, since that is what we'll be evaluating when we rewrite the table.
-	var updateFieldRefs transform.ExprFunc = func(ctx *sql.Context, s sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-		switch s := s.(type) {
-		case *expression.GetField:
-			idx := newSch.IndexOf(s.Name(), newSch[0].Source)
-			if idx < 0 {
-				return nil, transform.SameTree, sql.ErrTableColumnNotFound.New(schema[0].Source, s.Name())
-			}
-			return s.WithIndex(idx), transform.NewTree, nil
-		default:
-			return s, transform.SameTree, nil
-		}
-		return s, transform.SameTree, nil
-	}
-	for i := range projections {
-		switch p := projections[i].(type) {
-		case *sql.ColumnDefaultValue:
-			newExpr, _, err := transform.Expr(ctx, p, updateFieldRefs)
-			if err != nil {
-				return nil, nil, err
-			}
-			projections[i] = newExpr
-			break
-		case plan.ColDefaultExpression:
-			if p.Column.Default != nil {
-				newExpr, _, err := transform.Expr(ctx, p.Column.Default.Expr, updateFieldRefs)
-				if err != nil {
-					return nil, nil, err
-				}
-				p.Column.Default.Expr = newExpr
-				projections[i] = p
-			} else if p.Column.Generated != nil {
-				newExpr, _, err := transform.Expr(ctx, p.Column.Generated.Expr, updateFieldRefs)
-				if err != nil {
-					return nil, nil, err
-				}
-				p.Column.Generated.Expr = newExpr
-				projections[i] = p
-			}
-			break
-		}
+	if err := fixupColumnRewriteFieldRefs(ctx, newSch, projections); err != nil {
+		return nil, nil, err
 	}
 
 	return newSch, projections, nil
@@ -1861,7 +1953,8 @@ func (i *dropColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 // rewriteTable rewrites the table given if required or requested, and returns whether it was rewritten
 func (i *dropColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) (bool, error) {
-	newSch, projections, err := dropColumnFromSchema(i.d.TargetSchema(), i.d.Column, i.alterable.Name())
+	targetSchema := resolveGeneratedColumns(ctx, i.overrides, i.d.Db.Name(), i.alterable.Name(), i.d.TargetSchema())
+	newSch, projections, err := dropColumnFromSchema(ctx, targetSchema, i.d.Column, i.alterable.Name())
 	if err != nil {
 		return false, err
 	}
@@ -1921,7 +2014,7 @@ func (i *dropColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable)
 	return true, nil
 }
 
-func dropColumnFromSchema(schema sql.Schema, column string, tableName string) (sql.Schema, []sql.Expression, error) {
+func dropColumnFromSchema(ctx *sql.Context, schema sql.Schema, column string, tableName string) (sql.Schema, []sql.Expression, error) {
 	idx := schema.IndexOf(column, tableName)
 	if idx < 0 {
 		return nil, nil, sql.ErrTableColumnNotFound.New(tableName, column)
@@ -1933,14 +2026,20 @@ func dropColumnFromSchema(schema sql.Schema, column string, tableName string) (s
 	i := 0
 	for j := range schema[:idx] {
 		newSch[i] = schema[j]
-		projections[i] = expression.NewGetField(j, schema[j].Type, schema[j].Name, schema[j].Nullable)
+		projections[i] = columnRewriteProjection(j, schema[j])
 		i++
 	}
 
 	for j := range schema[idx+1:] {
 		schIdx := j + i + 1
 		newSch[j+i] = schema[schIdx]
-		projections[j+i] = expression.NewGetField(schIdx, schema[schIdx].Type, schema[schIdx].Name, schema[schIdx].Nullable)
+		projections[j+i] = columnRewriteProjection(schIdx, schema[schIdx])
+	}
+
+	// Any surviving virtual/generated column's expression may reference a column whose position
+	// shifted because of the drop; point those references at the new schema's layout.
+	if err := fixupColumnRewriteFieldRefs(ctx, newSch, projections); err != nil {
+		return nil, nil, err
 	}
 
 	return newSch, projections, nil

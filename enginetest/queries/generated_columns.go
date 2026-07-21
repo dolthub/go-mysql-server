@@ -1250,6 +1250,257 @@ var GeneratedColumnTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "virtual column index survives DROP COLUMN on an unrelated column",
+		SetUpScript: []string{
+			"create table t1 (id int primary key, c1 int, c2 int, junk int, sum int generated always as (c1 + c2) virtual, index idx_sum (sum))",
+			"insert into t1 (id, c1, c2, junk) values (1, 2, 3, 999), (2, 1, 4, 999)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:           "select id from t1 where sum = 5 order by id",
+				Expected:        []sql.Row{{1}, {2}},
+				ExpectedIndexes: []string{"idx_sum"},
+			},
+			{
+				Query:    "alter table t1 drop column junk",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:           "select id from t1 where sum = 5 order by id",
+				Expected:        []sql.Row{{1}, {2}},
+				ExpectedIndexes: []string{"idx_sum"},
+			},
+			{
+				Query:    "insert into t1 (id, c1, c2) values (3, 10, -5)",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:           "select id from t1 where sum = 5 order by id",
+				Expected:        []sql.Row{{1}, {2}, {3}},
+				ExpectedIndexes: []string{"idx_sum"},
+			},
+		},
+	},
+	{
+		Name: "virtual column index survives DROP COLUMN of a column between the generated column's dependencies",
+		SetUpScript: []string{
+			"create table t1 (id int primary key, c1 int, junk int, c2 int, sum int generated always as (c1 + c2) virtual, index idx_sum (sum))",
+			"insert into t1 (id, c1, junk, c2) values (1, 2, 999, 3), (2, 1, 999, 4)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:           "select id from t1 where sum = 5 order by id",
+				Expected:        []sql.Row{{1}, {2}},
+				ExpectedIndexes: []string{"idx_sum"},
+			},
+			{
+				Query:    "alter table t1 drop column junk",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:           "select id from t1 where sum = 5 order by id",
+				Expected:        []sql.Row{{1}, {2}},
+				ExpectedIndexes: []string{"idx_sum"},
+			},
+			{
+				Query:    "select id, sum from t1 order by id",
+				Expected: []sql.Row{{1, 5}, {2, 5}},
+			},
+		},
+	},
+	{
+		Name: "virtual column index survives MODIFY COLUMN reordering a base column",
+		SetUpScript: []string{
+			"create table t1 (id int primary key, c1 int, c2 int, sum int generated always as (c1 + c2) virtual, index idx_sum (sum))",
+			"insert into t1 (id, c1, c2) values (1, 2, 3), (2, 1, 4)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:           "select id from t1 where sum = 5 order by id",
+				Expected:        []sql.Row{{1}, {2}},
+				ExpectedIndexes: []string{"idx_sum"},
+			},
+			{
+				Query:    "alter table t1 modify column c1 int after c2",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:           "select id from t1 where sum = 5 order by id",
+				Expected:        []sql.Row{{1}, {2}},
+				ExpectedIndexes: []string{"idx_sum"},
+			},
+		},
+	},
+	{
+		Name: "virtual column index survives ADD PRIMARY KEY on an unrelated column",
+		SetUpScript: []string{
+			"create table t1 (id int, c1 int, c2 int, sum int generated always as (c1 + c2) virtual, index idx_sum (sum))",
+			"insert into t1 (id, c1, c2) values (1, 2, 3), (2, 1, 4)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:           "select id from t1 where sum = 5 order by id",
+				Expected:        []sql.Row{{1}, {2}},
+				ExpectedIndexes: []string{"idx_sum"},
+			},
+			{
+				Query:    "alter table t1 add primary key (id)",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:           "select id from t1 where sum = 5 order by id",
+				Expected:        []sql.Row{{1}, {2}},
+				ExpectedIndexes: []string{"idx_sum"},
+			},
+		},
+	},
+	{
+		Name: "virtual column index survives DROP PRIMARY KEY",
+		SetUpScript: []string{
+			"create table t1 (id int primary key, c1 int, c2 int, sum int generated always as (c1 + c2) virtual, index idx_sum (sum))",
+			"insert into t1 (id, c1, c2) values (1, 2, 3), (2, 1, 4)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:           "select id from t1 where sum = 5 order by id",
+				Expected:        []sql.Row{{1}, {2}},
+				ExpectedIndexes: []string{"idx_sum"},
+			},
+			{
+				Query:    "alter table t1 drop primary key",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:           "select id from t1 where sum = 5 order by id",
+				Expected:        []sql.Row{{1}, {2}},
+				ExpectedIndexes: []string{"idx_sum"},
+			},
+		},
+	},
+	{
+		Name: "virtual column index survives ADD COLUMN on an unrelated column",
+		SetUpScript: []string{
+			"create table t1 (id int primary key, c1 int, c2 int, sum int generated always as (c1 + c2) virtual, index idx_sum (sum))",
+			"insert into t1 (id, c1, c2) values (1, 2, 3), (2, 1, 4)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:           "select id from t1 where sum = 5 order by id",
+				Expected:        []sql.Row{{1}, {2}},
+				ExpectedIndexes: []string{"idx_sum"},
+			},
+			{
+				Query:    "alter table t1 add column junk int",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:           "select id from t1 where sum = 5 order by id",
+				Expected:        []sql.Row{{1}, {2}},
+				ExpectedIndexes: []string{"idx_sum"},
+			},
+		},
+	},
+	{
+		Name: "unique virtual column index survives DROP COLUMN on an unrelated column",
+		SetUpScript: []string{
+			"create table t1 (id int primary key, c1 int, c2 int, junk int, sum int generated always as (c1 + c2) virtual, unique index idx_sum (sum))",
+			"insert into t1 (id, c1, c2, junk) values (1, 2, 3, 999), (2, 10, 20, 999)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:           "select id from t1 where sum = 5 order by id",
+				Expected:        []sql.Row{{1}},
+				ExpectedIndexes: []string{"idx_sum"},
+			},
+			{
+				Query:           "select id from t1 where sum = 30 order by id",
+				Expected:        []sql.Row{{2}},
+				ExpectedIndexes: []string{"idx_sum"},
+			},
+			{
+				Query:    "alter table t1 drop column junk",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:           "select id from t1 where sum = 5 order by id",
+				Expected:        []sql.Row{{1}},
+				ExpectedIndexes: []string{"idx_sum"},
+			},
+			{
+				Query:           "select id from t1 where sum = 30 order by id",
+				Expected:        []sql.Row{{2}},
+				ExpectedIndexes: []string{"idx_sum"},
+			},
+			{
+				Query:       "insert into t1 (id, c1, c2) values (3, 1, 4)",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query:    "insert into t1 (id, c1, c2) values (4, 100, 100)",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "select id from t1 where sum = 200",
+				Expected: []sql.Row{{4}},
+			},
+		},
+	},
+	{
+		Name: "virtual column index survives DROP COLUMN on an unrelated column, keyless table",
+		SetUpScript: []string{
+			"create table t1 (id int, c1 int, c2 int, junk int, sum int generated always as (c1 + c2) virtual, index idx_sum (sum))",
+			"insert into t1 (id, c1, c2, junk) values (1, 2, 3, 999), (2, 1, 4, 999)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:           "select id from t1 where sum = 5 order by id",
+				Expected:        []sql.Row{{1}, {2}},
+				ExpectedIndexes: []string{"idx_sum"},
+			},
+			{
+				Query:    "alter table t1 drop column junk",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:           "select id from t1 where sum = 5 order by id",
+				Expected:        []sql.Row{{1}, {2}},
+				ExpectedIndexes: []string{"idx_sum"},
+			},
+			{
+				Query:    "insert into t1 (id, c1, c2) values (3, 10, -5)",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:           "select id from t1 where sum = 5 order by id",
+				Expected:        []sql.Row{{1}, {2}, {3}},
+				ExpectedIndexes: []string{"idx_sum"},
+			},
+		},
+	},
+	{
+		Name: "virtual column index survives MODIFY COLUMN reordering the generated column itself",
+		SetUpScript: []string{
+			"create table t1 (id int primary key, c1 int, c2 int, sum int generated always as (c1 + c2) virtual, index idx_sum (sum))",
+			"insert into t1 (id, c1, c2) values (1, 2, 3), (2, 1, 4)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:           "select id from t1 where sum = 5 order by id",
+				Expected:        []sql.Row{{1}, {2}},
+				ExpectedIndexes: []string{"idx_sum"},
+			},
+			{
+				Query:    "alter table t1 modify column sum int generated always as (c1 + c2) virtual after c1",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:           "select id from t1 where sum = 5 order by id",
+				Expected:        []sql.Row{{1}, {2}},
+				ExpectedIndexes: []string{"idx_sum"},
+			},
+		},
+	},
+	{
 		Name: "virtual column index on a keyless table",
 		SetUpScript: []string{
 			"create table t1 (j json, v int generated always as (j->>'$.a') virtual, index idx_v (v))",
