@@ -180,12 +180,12 @@ func (i *WindowPartitionIter) materializeInput(ctx *sql.Context) (sql.WindowBuff
 	}
 
 	// sort all rows by partition
-	sorter := &sorters.RowSorter{
-		SortConditions: append(partitionsToSortConditions(i.w.PartitionBy), i.w.SortBy...),
-		Rows:           input,
-		Ctx:            ctx,
-	}
+	sorter := sorters.NewRowSorterWithRows(ctx, append(partitionsToSortConditions(i.w.PartitionBy), i.w.SortBy...), input)
 	sort.Stable(sorter)
+	err := sorter.GetError()
+	if err != nil {
+		return nil, nil, err
+	}
 
 	// maintain output sort ordering
 	// TODO: push sort above aggregation, makes this code unnecessarily complex

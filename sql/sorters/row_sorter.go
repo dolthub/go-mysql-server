@@ -20,36 +20,55 @@ import (
 
 // RowSorter is a sorter implementation for Row slices using SortFields for the comparison
 type RowSorter struct {
-	LastError      error
-	Ctx            *sql.Context
-	SortConditions sql.SortConditions
-	Rows           []sql.Row
+	lastError      error
+	ctx            *sql.Context
+	sortConditions sql.SortConditions
+	rows           []sql.Row
+}
+
+func NewRowSorter(ctx *sql.Context, sortConditions sql.SortConditions) *RowSorter {
+	return &RowSorter{
+		ctx:            ctx,
+		sortConditions: sortConditions,
+	}
+}
+
+func NewRowSorterWithRows(ctx *sql.Context, sortConditions sql.SortConditions, rows []sql.Row) *RowSorter {
+	return &RowSorter{
+		ctx:            ctx,
+		sortConditions: sortConditions,
+		rows:           rows,
+	}
+}
+
+func (s *RowSorter) GetError() error {
+	return s.lastError
 }
 
 // Len implements sort.Interface
 func (s *RowSorter) Len() int {
-	return len(s.Rows)
+	return len(s.rows)
 }
 
 // Swap implements sort.Interface
 func (s *RowSorter) Swap(i, j int) {
-	s.Rows[i], s.Rows[j] = s.Rows[j], s.Rows[i]
+	s.rows[i], s.rows[j] = s.rows[j], s.rows[i]
 }
 
 // CompareRows compares rows a and b based on s.SortFields
 func (s *RowSorter) CompareRows(a, b sql.Row) int {
-	for _, sc := range s.SortConditions {
-		typ := sc.Expr.Type(s.Ctx)
+	for _, sc := range s.sortConditions {
+		typ := sc.Expr.Type(s.ctx)
 		// TODO: For complex SortFields, like Subqueries, recalculating the value may be costly. We should find some way
 		//  to cache it.
-		av, err := sc.Expr.Eval(s.Ctx, a)
+		av, err := sc.Expr.Eval(s.ctx, a)
 		if err != nil {
-			s.LastError = sql.ErrUnableSort.Wrap(err)
+			s.lastError = sql.ErrUnableSort.Wrap(err)
 			return 0
 		}
-		bv, err := sc.Expr.Eval(s.Ctx, b)
+		bv, err := sc.Expr.Eval(s.ctx, b)
 		if err != nil {
-			s.LastError = sql.ErrUnableSort.Wrap(err)
+			s.lastError = sql.ErrUnableSort.Wrap(err)
 			return 0
 		}
 
@@ -69,9 +88,9 @@ func (s *RowSorter) CompareRows(a, b sql.Row) int {
 			}
 		}
 
-		cmp, err := typ.Compare(s.Ctx, av, bv)
+		cmp, err := typ.Compare(s.ctx, av, bv)
 		if err != nil {
-			s.LastError = err
+			s.lastError = err
 			return 0
 		}
 
@@ -89,8 +108,8 @@ func (s *RowSorter) IsLesserRow(a, b sql.Row) bool {
 
 // Less implements sort.Interface interface.
 func (s *RowSorter) Less(i, j int) bool {
-	if s.LastError != nil {
+	if s.lastError != nil {
 		return false
 	}
-	return s.IsLesserRow(s.Rows[i], s.Rows[j])
+	return s.IsLesserRow(s.rows[i], s.rows[j])
 }
