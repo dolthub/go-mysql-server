@@ -1563,8 +1563,7 @@ var BrokenGeneratedColumnTests = []ScriptTest{
 				Expected: []sql.Row{{2}},
 			},
 			{
-				Query: "SELECT id FROM odku_v WHERE vcol = 120;",
-				// The old vcol=120 index entry must be gone.
+				Query:    "SELECT id FROM odku_v WHERE vcol = 120;",
 				Expected: []sql.Row{},
 			},
 		},
@@ -1587,8 +1586,7 @@ var BrokenGeneratedColumnTests = []ScriptTest{
 				Expected: []sql.Row{{2}},
 			},
 			{
-				Query: "SELECT id FROM replace_v WHERE vcol = 120;",
-				// The old vcol=120 index entry must be gone.
+				Query:    "SELECT id FROM replace_v WHERE vcol = 120;",
 				Expected: []sql.Row{},
 			},
 		},

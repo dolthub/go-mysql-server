@@ -2751,8 +2751,7 @@ var ForeignKeyTests = []ScriptTest{
 				Expected: []sql.Row{{20}},
 			},
 			{
-				Query: "SELECT id FROM vc_child WHERE vcol = 2;",
-				// The old value 2 must no longer be in the index.
+				Query:    "SELECT id FROM vc_child WHERE vcol = 2;",
 				Expected: []sql.Row{},
 			},
 			{
@@ -2798,8 +2797,7 @@ var ForeignKeyTests = []ScriptTest{
 				Expected: []sql.Row{{20, nil, nil}},
 			},
 			{
-				Query: "SELECT id FROM vc_child WHERE vcol = 2;",
-				// The old value 2 must no longer be in the index.
+				Query:    "SELECT id FROM vc_child WHERE vcol = 2;",
 				Expected: []sql.Row{},
 			},
 		},
@@ -2820,8 +2818,7 @@ var ForeignKeyTests = []ScriptTest{
 				Expected: []sql.Row{{20, nil, nil}},
 			},
 			{
-				Query: "SELECT id FROM vc_child WHERE vcol = 2;",
-				// The old value 2 must no longer be in the index.
+				Query:    "SELECT id FROM vc_child WHERE vcol = 2;",
 				Expected: []sql.Row{},
 			},
 		},
@@ -2840,8 +2837,7 @@ var ForeignKeyTests = []ScriptTest{
 				Expected: []sql.Row{{1, nil, nil}, {3, nil, nil}},
 			},
 			{
-				Query: "SELECT id FROM vc_t WHERE parentKey = 2;",
-				// The old value 2 must no longer be in the index.
+				Query:    "SELECT id FROM vc_t WHERE parentKey = 2;",
 				Expected: []sql.Row{},
 			},
 		},
