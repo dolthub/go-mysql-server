@@ -1747,7 +1747,6 @@ func (t *IndexedTable) PartitionRows(ctx *sql.Context, partition sql.Partition) 
 		return iter, nil
 	}
 
-	// TODO: check if this actually does anything
 	if t.Lookup.Index != nil {
 		idx := t.Lookup.Index.(*Index)
 		sc := make(sql.SortConditions, len(idx.Exprs))
@@ -1768,7 +1767,10 @@ func (t *IndexedTable) PartitionRows(ctx *sql.Context, partition sql.Partition) 
 		sorter := sorters.NewRowSorterWithRows(ctx, sc, rows)
 
 		sort.Stable(sorter)
-		// TODO: check for error
+		err = sorter.GetError()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return iter, nil
