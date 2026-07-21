@@ -902,15 +902,12 @@ func (a *GroupConcatAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, 
 
 	// Execute the order operation if it exists.
 	if a.gc.sortConditions != nil {
-		sorter := &sorters.RowSorter{
-			SortConditions: a.gc.sortConditions,
-			Rows:           rows,
-			Ctx:            ctx,
-		}
+		sorter := sorters.NewRowSorterWithRows(ctx, a.gc.sortConditions, rows)
 
 		sort.Stable(sorter)
-		if sorter.LastError != nil {
-			return nil, nil
+		err := sorter.GetError()
+		if err != nil {
+			return nil, err
 		}
 	}
 

@@ -338,15 +338,13 @@ func (g *groupConcatBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 
 	// Execute the order operation if it exists.
 	if g.gc.sortConditions != nil {
-		sorter := &sorters.RowSorter{
-			SortConditions: g.gc.sortConditions,
-			Rows:           rows,
-			Ctx:            ctx,
-		}
+		sorter := sorters.NewRowSorterWithRows(ctx, g.gc.sortConditions, rows)
 
 		sort.Stable(sorter)
-		if sorter.LastError != nil {
-			return nil, sorter.LastError
+
+		err := sorter.GetError()
+		if err != nil {
+			return nil, err
 		}
 	}
 

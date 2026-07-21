@@ -1747,6 +1747,7 @@ func (t *IndexedTable) PartitionRows(ctx *sql.Context, partition sql.Partition) 
 		return iter, nil
 	}
 
+	// TODO: check if this actually does anything
 	if t.Lookup.Index != nil {
 		idx := t.Lookup.Index.(*Index)
 		sc := make(sql.SortConditions, len(idx.Exprs))
@@ -1757,24 +1758,17 @@ func (t *IndexedTable) PartitionRows(ctx *sql.Context, partition sql.Partition) 
 				// TODO: null ordering?
 			}
 		}
-		var sorter *sorters.RowSorter
-		if i, ok := iter.(*tableIter); ok {
-			sorter = &sorters.RowSorter{
-				SortConditions: sc,
-				Rows:           i.rows,
-				LastError:      nil,
-				Ctx:            ctx,
-			}
-		} else if i, ok := iter.(*spatialTableIter); ok {
-			sorter = &sorters.RowSorter{
-				SortConditions: sc,
-				Rows:           i.rows,
-				LastError:      nil,
-				Ctx:            ctx,
-			}
+
+		var rows []sql.Row
+		if ti, ok := iter.(*tableIter); ok {
+			rows = ti.rows
+		} else if sti, ok := iter.(*spatialTableIter); ok {
+			rows = sti.rows
 		}
+		sorter := sorters.NewRowSorterWithRows(ctx, sc, rows)
 
 		sort.Stable(sorter)
+		// TODO: check for error
 	}
 
 	return iter, nil
