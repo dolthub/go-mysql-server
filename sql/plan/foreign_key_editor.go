@@ -43,7 +43,9 @@ type ForeignKeyRefActionData struct {
 	RowMapper          *ForeignKeyRowMapper
 	Editor             *ForeignKeyEditor
 	ChildParentMapping ChildParentMapping
-	ForeignKey         sql.ForeignKeyConstraint
+	// GeneratedProjections holds the child schema's generated column expressions to eval FK referential actions.
+	GeneratedProjections []sql.Expression
+	ForeignKey           sql.ForeignKeyConstraint
 }
 
 // ForeignKeyEditor handles update and delete operations, as they may have referential actions on other tables (such as
@@ -192,7 +194,7 @@ func (fkEditor *ForeignKeyEditor) OnUpdateCascade(ctx *sql.Context, refActionDat
 				updatedRow[i] = new[mappedVal]
 			}
 		}
-		if err = recomputeGeneratedColumns(ctx, refActionData.Editor.Schema, updatedRow); err != nil {
+		if err = sql.EvalProjections(ctx, refActionData.GeneratedProjections, updatedRow); err != nil {
 			return err
 		}
 		err = refActionData.Editor.Update(ctx, rowToUpdate, updatedRow, depth)
@@ -247,7 +249,7 @@ func (fkEditor *ForeignKeyEditor) OnUpdateSetDefault(ctx *sql.Context, refAction
 				}
 			}
 		}
-		if err = recomputeGeneratedColumns(ctx, refActionData.Editor.Schema, modifiedRow); err != nil {
+		if err = sql.EvalProjections(ctx, refActionData.GeneratedProjections, modifiedRow); err != nil {
 			return err
 		}
 		err = refActionData.Editor.Update(ctx, rowToDefault, modifiedRow, depth)
@@ -286,7 +288,7 @@ func (fkEditor *ForeignKeyEditor) OnUpdateSetNull(ctx *sql.Context, refActionDat
 				updatedRow[i] = rowToUpdate[i]
 			}
 		}
-		if err = recomputeGeneratedColumns(ctx, refActionData.Editor.Schema, updatedRow); err != nil {
+		if err = sql.EvalProjections(ctx, refActionData.GeneratedProjections, updatedRow); err != nil {
 			return err
 		}
 		err = refActionData.Editor.Update(ctx, rowToUpdate, updatedRow, depth)
@@ -332,24 +334,6 @@ func (fkEditor *ForeignKeyEditor) Delete(ctx *sql.Context, row sql.Row, depth in
 				return err
 			}
 		}
-	}
-	return nil
-}
-
-// recomputeGeneratedColumns re-evaluates the generated columns of row in place using the resolved
-// generated expressions in schema. A referential action builds the changed row by copying the non-foreign
-// key columns from the old row, which leaves any generated column that depends on the changed columns
-// holding its old value.
-func recomputeGeneratedColumns(ctx *sql.Context, schema sql.Schema, row sql.Row) error {
-	for i, col := range schema {
-		if col.Generated == nil {
-			continue
-		}
-		value, err := col.Generated.Eval(ctx, row)
-		if err != nil {
-			return err
-		}
-		row[i] = value
 	}
 	return nil
 }
@@ -435,7 +419,7 @@ func (fkEditor *ForeignKeyEditor) OnDeleteSetDefault(ctx *sql.Context, refAction
 				}
 			}
 		}
-		if err = recomputeGeneratedColumns(ctx, refActionData.Editor.Schema, modifiedRow); err != nil {
+		if err = sql.EvalProjections(ctx, refActionData.GeneratedProjections, modifiedRow); err != nil {
 			return err
 		}
 		err = refActionData.Editor.Update(ctx, rowToDefault, modifiedRow, depth)
@@ -474,7 +458,7 @@ func (fkEditor *ForeignKeyEditor) OnDeleteSetNull(ctx *sql.Context, refActionDat
 				nulledRow[i] = rowToNull[i]
 			}
 		}
-		if err = recomputeGeneratedColumns(ctx, refActionData.Editor.Schema, nulledRow); err != nil {
+		if err = sql.EvalProjections(ctx, refActionData.GeneratedProjections, nulledRow); err != nil {
 			return err
 		}
 		err = refActionData.Editor.Update(ctx, rowToNull, nulledRow, depth)
