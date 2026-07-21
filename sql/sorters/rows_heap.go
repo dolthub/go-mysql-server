@@ -17,13 +17,15 @@ package sorters
 import (
 	"container/heap"
 	"io"
-	
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// GetTopNRows uses a Top-N Heap Sort to find the top N rows in an iterator. It relies on topRowsHeap being a max-heap
+// GetTopNRows uses a Top-N Heap Sort to find the top (min) N rows in a RowIter. It inserts each row of the iter into
+// the max-heap, popping the max row if the size of the heap exceeds N such that the heap only contains the N min rows.
+// At the end, it pops the contents of the heap and returns them in min-first order.
 func GetTopNRows(ctx *sql.Context, iter sql.RowIter, sortConditions sql.SortConditions, n int64) ([]sql.Row, int64, error) {
-	rowsHeap := &topRowsHeap{
+	rowsHeap := &maxRowsHeap{
 		RowSorter: NewRowSorterWithRows(ctx, sortConditions, make([]sql.Row, 0, n+1)),
 		order:     make([]int64, 0, n+1),
 	}
@@ -57,15 +59,15 @@ func GetTopNRows(ctx *sql.Context, iter sql.RowIter, sortConditions sql.SortCond
 	return res, rowCount, nil
 }
 
-// topRowsHeap implements heap.Interface. Since heap.Interface assumes a min-heap, topRowsHeap inverts Less to implement
-// a max-heap. This is so that topRowsHeap can be used for a Top-N Heap Sort.
-type topRowsHeap struct {
+// maxRowsHeap implements heap.Interface. Since heap.Interface assumes a min-heap, maxRowsHeap inverts Less to implement
+// a max-heap. This is so that maxRowsHeap can be used for a Top-N Heap Sort.
+type maxRowsHeap struct {
 	*RowSorter
 	order []int64
 }
 
 // Less implements heap.Interface. It is inverted to implement a max-heap.
-func (h *topRowsHeap) Less(i, j int) bool {
+func (h *maxRowsHeap) Less(i, j int) bool {
 	cmp := h.RowSorter.CompareRows(h.RowSorter.rows[i], h.RowSorter.rows[j])
 	if cmp == 0 {
 		return h.order[i] > h.order[j]
@@ -74,20 +76,20 @@ func (h *topRowsHeap) Less(i, j int) bool {
 }
 
 // Swap implements heap.Interface
-func (h *topRowsHeap) Swap(i, j int) {
+func (h *maxRowsHeap) Swap(i, j int) {
 	h.RowSorter.Swap(i, j)
 	h.order[i], h.order[j] = h.order[j], h.order[i]
 }
 
 // Push implements heap.Interface. x is expected to be a rowWithOrder.
-func (h *topRowsHeap) Push(x interface{}) {
+func (h *maxRowsHeap) Push(x interface{}) {
 	e := x.(rowWithOrder)
 	h.RowSorter.rows = append(h.RowSorter.rows, e.row)
 	h.order = append(h.order, e.order)
 }
 
 // Pop implements heap.Interface. The return type is a sql.Row.
-func (h *topRowsHeap) Pop() interface{} {
+func (h *maxRowsHeap) Pop() interface{} {
 	n := len(h.RowSorter.rows)
 	row := h.RowSorter.rows[n-1]
 	h.RowSorter.rows = h.RowSorter.rows[:n-1]
@@ -96,7 +98,7 @@ func (h *topRowsHeap) Pop() interface{} {
 }
 
 // rowWithOrder pairs the row with its ordering number, which is used as a tie-breaker if two rows have the same sort
-// condition values. It is used to push rows into the topRowsHeap
+// condition values. It is used to push rows into the maxRowsHeap
 type rowWithOrder struct {
 	row   sql.Row
 	order int64
