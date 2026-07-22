@@ -38,23 +38,9 @@ func CreateTuple(types ...sql.Type) sql.Type {
 	return TupleType(types)
 }
 
-// Compare implements the Type interface for equality-style tuple comparison
-// (=, !=, IN). A definite (non-NULL, non-equal) difference at any position is
-// returned immediately, so it dominates NULLs encountered earlier or later —
-// matching MySQL for equality: (1,2)=(NULL,3) is false, not NULL. If no
-// definite difference is found but at least one element pair was
-// indeterminate, Compare returns sql.ErrNilOperand so callers treat the whole
-// comparison as SQL NULL (see comparison.go).
-//
-// Ordering operators (<, >, <=, >=) share this path today. MySQL's
-// left-to-right row-constructor ordering differs when a NULL sits in a more
-// significant position than the first definite difference (e.g. (1,2)>(NULL,1)
-// is NULL in MySQL). That separate ordering semantics is intentionally left
-// as a follow-up; this Compare is correct for = / != / list-IN (IN with a
-// literal tuple list, e.g. `x IN ((1,2),(3,4))`). BETWEEN desugars to a pair
-// of <=/>= comparisons, so it inherits the same ordering gap. Row-constructor
-// IN (SELECT ...) has a separate, narrower residual gap on its hash-miss path
-// — see plan.InSubquery.Eval and https://github.com/dolthub/dolt/issues/11024.
+// Compare compares two tuples element-by-element. A definite non-equal
+// element pair short-circuits. If every non-NULL pair matches but at least
+// one element is NULL, returns sql.ErrNilOperand (SQL NULL for = / != / IN).
 func (t TupleType) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
@@ -78,11 +64,8 @@ func (t TupleType) Compare(ctx context.Context, a interface{}, b interface{}) (i
 	var sawNull bool
 	for i := range left {
 		if left[i] == nil || right[i] == nil {
-			// This element's contribution is indeterminate. Do not attempt to
-			// convert or compare it: the two sides may have come from operand
-			// types that only agree in this position because one of them is a
-			// NULL literal (types.Null), and converting the non-NULL side
-			// against that NULL type would fail with ErrValueNotNil.
+			// Skip convert/compare: a NULL literal's type can make Convert of
+			// the non-NULL side fail with ErrValueNotNil.
 			sawNull = true
 			continue
 		}

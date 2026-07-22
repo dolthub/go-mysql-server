@@ -109,11 +109,7 @@ func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		cmpExpr := newComparison(lLit, NewLiteral(rVal, rType))
 		res, cErr := cmpExpr.Compare(ctx, nil)
 		if cErr != nil {
-			// A nested tuple element containing a NULL (e.g. `(1,1) IN
-			// ((NULL,NULL))`) evaluates to a non-nil slice with nil members, so
-			// the rVal == nil check above doesn't catch it. Compare signals
-			// that indeterminacy via ErrNilOperand; treat it the same as a
-			// directly-NULL right element instead of silently skipping it.
+			// Nested NULL tuple elements surface as ErrNilOperand from Compare.
 			if sql.ErrNilOperand.Is(cErr) {
 				rHasNull = true
 			}

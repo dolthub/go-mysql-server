@@ -33,14 +33,8 @@ type Comparer interface {
 	Right() sql.Expression
 }
 
-// ErrNilOperand ir returned if some or both of the comparison's operands is nil.
-//
-// This is an alias of sql.ErrNilOperand (the same *errors.Kind), not a
-// separately-defined Kind: TupleType.Compare in sql/types signals
-// element-wise NULL-indeterminacy using sql.ErrNilOperand (sql/types cannot
-// import sql/expression), and aliasing here means ErrNilOperand.Is(err)
-// keeps recognizing those errors identically to before, with zero change to
-// this package's exported surface.
+// ErrNilOperand is returned if some or both of the comparison's operands is nil.
+// Alias of sql.ErrNilOperand so sql/types can signal the same condition.
 var ErrNilOperand = sql.ErrNilOperand
 
 // PreciseComparison searches an expression tree for comparison
@@ -523,20 +517,8 @@ func (e *NullSafeEquals) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 		return -1, nil
 	}
 
-	lTyp, rTyp := e.Left().Type(ctx), e.Right().Type(ctx)
-
-	// Tuples get their own null-safe path: a NULL element is comparable to
-	// itself here (unlike regular =, where any NULL element makes the whole
-	// comparison indeterminate), so TupleType.Compare's ordinary NULL
-	// handling doesn't apply.
-	if lTup, ok := lTyp.(types.TupleType); ok {
-		if rTup, ok := rTyp.(types.TupleType); ok {
-			return compareTuplesNullSafe(ctx, lTup, rTup, left, right)
-		}
-	}
-
-	if types.TypesEqual(lTyp, rTyp) {
-		return lTyp.Compare(ctx, left, right)
+	if types.TypesEqual(e.Left().Type(ctx), e.Right().Type(ctx)) {
+		return e.Left().Type(ctx).Compare(ctx, left, right)
 	}
 
 	var compareType sql.Type
@@ -546,58 +528,6 @@ func (e *NullSafeEquals) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 	}
 
 	return compareType.Compare(ctx, left, right)
-}
-
-// compareTuplesNullSafe implements <=> (NULL-safe equals) for tuple
-// operands. Unlike regular tuple comparison, a NULL element is treated as
-// comparable to itself: a (NULL, NULL) element pair counts as equal, and a
-// pair with exactly one NULL element is a definite mismatch, mirroring the
-// scalar <=> operator's element-wise semantics.
-func compareTuplesNullSafe(ctx *sql.Context, lTyp, rTyp types.TupleType, left, right any) (int, error) {
-	l, ok := left.([]interface{})
-	if !ok {
-		return 0, sql.ErrNotTuple.New(left)
-	}
-	r, ok := right.([]interface{})
-	if !ok {
-		return 0, sql.ErrNotTuple.New(right)
-	}
-	if len(l) != len(r) {
-		return 0, sql.ErrInvalidOperandColumns.New(len(l), len(r))
-	}
-
-	for i := range l {
-		if l[i] == nil && r[i] == nil {
-			continue
-		}
-		if l[i] == nil || r[i] == nil {
-			return 1, nil
-		}
-
-		et := lTyp[i]
-		if i < len(rTyp) && !lTyp[i].Equals(rTyp[i]) {
-			et = types.GetCompareType(lTyp[i], rTyp[i])
-		}
-
-		lv, _, err := et.Convert(ctx, l[i])
-		if err != nil {
-			return 0, err
-		}
-		rv, _, err := et.Convert(ctx, r[i])
-		if err != nil {
-			return 0, err
-		}
-
-		cmp, err := et.Compare(ctx, lv, rv)
-		if err != nil {
-			return 0, err
-		}
-		if cmp != 0 {
-			return cmp, nil
-		}
-	}
-
-	return 0, nil
 }
 
 // Eval implements the Expression interface.
