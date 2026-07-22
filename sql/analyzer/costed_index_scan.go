@@ -240,6 +240,13 @@ func getCostedIndexScan(
 		}
 	}
 
+	// include an indexless option for best
+	tblScanStat, err := uniformDistStatsticForTableScan(ctx, statsProvider, iat)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	c.updateBest(tblScanStat, nil, nil, sets.FastIntSet{}, 0, false)
+
 	for _, idx := range indexes {
 		// only use the index if the query filters include the index predicate
 		if pi, ok := idx.(sql.PartialIndex); ok && pi.Predicate() != "" {
@@ -575,7 +582,7 @@ func (c *indexCoster) cost(ctx *sql.Context, f indexFilter, stat sql.Statistic, 
 }
 
 func (c *indexCoster) updateBest(s sql.Statistic, hist []sql.HistogramBucket, fds *sql.FuncDepSet, filters sets.FastIntSet, prefix int, hasRange bool) {
-	if s == nil || filters.Len() == 0 {
+	if s == nil {
 		return
 	}
 	rowCnt, _, _ := stats.GetNewCounts(hist)
@@ -592,10 +599,11 @@ func (c *indexCoster) updateBest(s sql.Statistic, hist []sql.HistogramBucket, fd
 		}
 	}()
 
-	if c.bestStat == nil {
+	if c.bestStat == nil { // TODO: if there is only one available index, we ALWAYS pick it even if it may be worse than no index
 		update = true
 		return
-	} else if c.bestStat.FuncDeps().HasMax1Row() {
+	}
+	if bestFds := c.bestStat.FuncDeps(); bestFds != nil && bestFds.HasMax1Row() {
 		return
 	} else if rowCnt < c.bestCnt {
 		update = true
@@ -1968,6 +1976,46 @@ func IndexLeafChildren(e sql.Expression) (sql.IndexScanOp, sql.Expression, sql.E
 
 const dummyNotUniqueDistinct = .90
 const dummyNotUniqueNull = .03
+
+func uniformDistStatsticForTableScan(ctx *sql.Context, statsProv sql.StatsProvider, iat sql.IndexAddressableTable) (sql.Statistic, error) {
+	var rowCount uint64
+	var avgSize uint64
+
+	var dbName string
+	if dbTable, ok := iat.(sql.Databaseable); ok {
+		dbName = strings.ToLower(dbTable.Database())
+	}
+	var schemaName string
+	if schTab, ok := iat.(sql.DatabaseSchemaTable); ok {
+		schemaName = strings.ToLower(schTab.DatabaseSchema().SchemaName())
+	}
+	tableName := strings.ToLower(iat.Name())
+
+	rowCount, _ = statsProv.RowCount(ctx, schemaName, dbName, iat)
+	if st, ok := iat.(sql.StatisticsTable); ok {
+		rCnt, _, err := st.RowCount(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if rowCount == 0 {
+			rowCount = rCnt
+		}
+		if rowCount > 0 {
+			dataSize, err := st.DataLength(ctx)
+			if err != nil {
+				return nil, err
+			}
+			avgSize = dataSize / rowCount
+		}
+	}
+
+	distinctCount := rowCount
+	nullCount := uint64(float64(distinctCount) * dummyNotUniqueNull)
+	qual := sql.NewStatQualifier(dbName, schemaName, tableName, "")
+	stat := stats.NewStatistic(rowCount, distinctCount, nullCount, avgSize, time.Now(), qual, nil, nil, nil, sql.IndexClassDefault, nil)
+	return stat, nil
+
+}
 
 func uniformDistStatisticsForIndex(ctx *sql.Context, statsProv sql.StatsProvider, iat sql.IndexAddressableTable, idx sql.Index) (sql.Statistic, error) {
 	var rowCount uint64
