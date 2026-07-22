@@ -43,7 +43,9 @@ type ForeignKeyRefActionData struct {
 	RowMapper          *ForeignKeyRowMapper
 	Editor             *ForeignKeyEditor
 	ChildParentMapping ChildParentMapping
-	ForeignKey         sql.ForeignKeyConstraint
+	// GeneratedProjections holds the child schema's generated column expressions to eval FK referential actions.
+	GeneratedProjections []sql.Expression
+	ForeignKey           sql.ForeignKeyConstraint
 }
 
 // ForeignKeyEditor handles update and delete operations, as they may have referential actions on other tables (such as
@@ -192,6 +194,9 @@ func (fkEditor *ForeignKeyEditor) OnUpdateCascade(ctx *sql.Context, refActionDat
 				updatedRow[i] = new[mappedVal]
 			}
 		}
+		if err = sql.EvalProjections(ctx, refActionData.GeneratedProjections, updatedRow); err != nil {
+			return err
+		}
 		err = refActionData.Editor.Update(ctx, rowToUpdate, updatedRow, depth)
 		if err != nil {
 			return err
@@ -244,6 +249,9 @@ func (fkEditor *ForeignKeyEditor) OnUpdateSetDefault(ctx *sql.Context, refAction
 				}
 			}
 		}
+		if err = sql.EvalProjections(ctx, refActionData.GeneratedProjections, modifiedRow); err != nil {
+			return err
+		}
 		err = refActionData.Editor.Update(ctx, rowToDefault, modifiedRow, depth)
 		if err != nil {
 			return err
@@ -279,6 +287,9 @@ func (fkEditor *ForeignKeyEditor) OnUpdateSetNull(ctx *sql.Context, refActionDat
 			if refActionData.ChildParentMapping[i] == -1 {
 				updatedRow[i] = rowToUpdate[i]
 			}
+		}
+		if err = sql.EvalProjections(ctx, refActionData.GeneratedProjections, updatedRow); err != nil {
+			return err
 		}
 		err = refActionData.Editor.Update(ctx, rowToUpdate, updatedRow, depth)
 		if err != nil {
@@ -408,6 +419,9 @@ func (fkEditor *ForeignKeyEditor) OnDeleteSetDefault(ctx *sql.Context, refAction
 				}
 			}
 		}
+		if err = sql.EvalProjections(ctx, refActionData.GeneratedProjections, modifiedRow); err != nil {
+			return err
+		}
 		err = refActionData.Editor.Update(ctx, rowToDefault, modifiedRow, depth)
 		if err != nil {
 			return err
@@ -443,6 +457,9 @@ func (fkEditor *ForeignKeyEditor) OnDeleteSetNull(ctx *sql.Context, refActionDat
 			if refActionData.ChildParentMapping[i] == -1 {
 				nulledRow[i] = rowToNull[i]
 			}
+		}
+		if err = sql.EvalProjections(ctx, refActionData.GeneratedProjections, nulledRow); err != nil {
+			return err
 		}
 		err = refActionData.Editor.Update(ctx, rowToNull, nulledRow, depth)
 		if err != nil {

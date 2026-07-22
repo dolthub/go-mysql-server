@@ -460,7 +460,11 @@ func (pke *pkTableEditAccumulator) Get(value sql.Row) (sql.Row, bool, error) {
 	for _, partition := range pke.tableData.partitions {
 		for _, partitionRow := range partition {
 			if columnsMatch(pkColIdxes, nil, partitionRow, value, pke.tableData.schema.Schema) {
-				return partitionRow, true, nil
+				row := partitionRow
+				if pke.tableData.schema.HasVirtualColumns() {
+					row = normalizeRowForRead(partitionRow, len(pke.tableData.schema.Schema), pke.tableData.virtualColIndexes())
+				}
+				return row, true, nil
 			}
 		}
 	}
