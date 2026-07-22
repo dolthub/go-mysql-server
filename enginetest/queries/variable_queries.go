@@ -383,7 +383,6 @@ var VariableQueries = []ScriptTest{
 				},
 			},
 			{
-				Skip:        true,
 				Query:       `select @@session.innodb_autoinc_lock_mode;`,
 				ExpectedErr: sql.ErrSystemVariableGlobalOnly,
 			},
