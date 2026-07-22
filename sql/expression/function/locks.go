@@ -339,6 +339,19 @@ func (gl *GetLock) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, fmt.Errorf("illegal value for timeout %v", timeout)
 	}
 
+	if timeout.(int64) == 0 {
+		acquired, err := gl.ls.TryLock(ctx, lockName)
+		if err != nil {
+			return nil, err
+		}
+
+		if !acquired {
+			return int8(0), nil
+		}
+
+		return int8(1), nil
+	}
+
 	err = gl.ls.Lock(ctx, lockName, time.Second*time.Duration(timeout.(int64)))
 
 	if err != nil {

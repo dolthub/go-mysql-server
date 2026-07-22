@@ -7285,6 +7285,22 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{0}},
 	},
 	{
+		Query:    "select GET_LOCK('try_lock', 0)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "Select IS_FREE_LOCK('try_lock')",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "Select RELEASE_LOCK('try_lock')",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "Select IS_FREE_LOCK('try_lock')",
+		Expected: []sql.Row{{1}},
+	},
+	{
 		Query:    "SELECT CONV('a',16,2)",
 		Expected: []sql.Row{{"1010"}},
 	},
