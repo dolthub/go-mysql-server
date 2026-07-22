@@ -228,7 +228,7 @@ func (b *Builder) buildSysVar(colName *ast.ColName, scopeHint ast.SetScope) (sql
 			}
 			// specifiedScope is only non-empty when the scope was explicitly given (e.g. @@SESSION.foo,
 			// @@LOCAL.foo), as opposed to being inferred for a bare @@foo reference. MySQL allows the bare
-			// form to fall back to the global value for GLOBAL-only variables, but errors when SESSION scope
+			// form to fall back to the global value for GLOBAL-only variables but errors when SESSION scope
 			// is explicitly requested for one.
 			if specifiedScope != "" && sysVar.IsGlobalOnly() {
 				b.handleErr(sql.ErrSystemVariableGlobalOnly.New(varName))
