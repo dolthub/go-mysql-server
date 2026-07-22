@@ -254,7 +254,10 @@ func getForeignKeyReferences(ctx *sql.Context, catalog *Catalog, tbl sql.Foreign
 	}
 	fkChain = fkChain.AddTable(fks[0].Database, fks[0].SchemaName, fks[0].Table).AddTableUpdater(fks[0].Database, fks[0].SchemaName, fks[0].Table, updater)
 
-	tblSch := tbl.Schema(ctx)
+	tblSch, err := resolveSchemaColumnExpressions(ctx, catalog, tbl)
+	if err != nil {
+		return nil, err
+	}
 	fkEditor := &plan.ForeignKeyEditor{
 		Schema:     tblSch,
 		Editor:     updater,
@@ -342,7 +345,10 @@ func getForeignKeyRefActions(ctx *sql.Context, catalog *Catalog, tbl sql.Foreign
 		return cachedFkEditor, nil
 	}
 	// No matching editor was cached, so we either create a new one or add to the existing one
-	tblSch := tbl.Schema(ctx)
+	tblSch, err := resolveSchemaColumnExpressions(ctx, catalog, tbl)
+	if err != nil {
+		return nil, err
+	}
 	if fkEditor == nil {
 		fkEditor = &plan.ForeignKeyEditor{
 			Schema:     tblSch,
@@ -406,7 +412,7 @@ func getForeignKeyRefActions(ctx *sql.Context, catalog *Catalog, tbl sql.Foreign
 		//       manually do that here. Moving all the FK information into the binding, planbuilder, phase would
 		//       clean this up. We should also fix assignExecIndexes to find all these FK schema references and fix
 		//       their exec indexes.
-		childTblSch, err := resolveSchemaDefaults(ctx, catalog, childTbl)
+		childTblSch, err := resolveSchemaColumnExpressions(ctx, catalog, childTbl)
 		if err != nil {
 			return nil, err
 		}
@@ -451,9 +457,10 @@ func getForeignKeyRefActions(ctx *sql.Context, catalog *Catalog, tbl sql.Foreign
 				IndexPositions:        indexPositions,
 				AppendTypes:           appendTypes,
 			},
-			Editor:             childEditor,
-			ForeignKey:         fk,
-			ChildParentMapping: childParentMapping,
+			Editor:               childEditor,
+			ForeignKey:           fk,
+			ChildParentMapping:   childParentMapping,
+			GeneratedProjections: childEditor.Schema.GeneratedExpressions(),
 		}
 	}
 	return fkEditor, nil
@@ -489,23 +496,25 @@ func getForeignKeyHandlerFromUpdateTarget(ctx *sql.Context, catalog *Catalog, up
 	}, nil
 }
 
-// resolveSchemaDefaults resolves the default values for the schema of |table|. This is primarily needed for column
-// default value expressions, since those don't get resolved during the planbuilder phase and assignExecIndexes
-// doesn't traverse through the ForeignKeyEditors and referential actions to find all of them. In addition to resolving
-// the expressions, this also ensures their GetField indexes are correct, knowing that those expressions will only
-// be evaluated in the context of a single table.
-func resolveSchemaDefaults(ctx *sql.Context, catalog *Catalog, table sql.Table) (sql.Schema, error) {
-	// Resolve any column default expressions in tblSch
+// resolveSchemaColumnExpressions returns the schema of |table| with its default and generated column
+// expressions resolved, because the planbuilder phase does not resolve them for this foreign key
+// path and assignExecIndexes does not traverse foreign key editors to find them. It also decrements their
+// GetField indexes by one, which is safe because they are only evaluated against a single table's row.
+func resolveSchemaColumnExpressions(ctx *sql.Context, catalog *Catalog, table sql.Table) (sql.Schema, error) {
+	// Resolve the default and generated column expressions in tblSch
 	builder := planbuilder.New(ctx, catalog, nil)
 	childTblSch := builder.ResolveSchemaDefaults(ctx.GetCurrentDatabase(), table.Name(), table.Schema(ctx))
 
 	// Field Indexes are off by one initially and don't fixed by assignExecIndexes because it doesn't traverse through
 	// the ForeignKeyEditors and referential actions, so we correct them here. This is safe because we know these fields
 	// will only ever be accessed within the scope of a single table, so all we have to do is decrement the index by 1.
-	for i, col := range childTblSch {
-		if col.Default != nil {
-			expr := col.Default.Expr
-			expr, identity, err := transform.Expr(ctx, expr, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+	// TODO: rm correction once foreign key schemas are resolved during binding, where assignExecIndexes would number these expressions correctly.
+	for i := range childTblSch {
+		for _, cd := range []*sql.ColumnDefaultValue{childTblSch[i].Default, childTblSch[i].Generated} {
+			if cd == nil {
+				continue
+			}
+			expr, identity, err := transform.Expr(ctx, cd.Expr, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				if gf, ok := e.(*expression.GetField); ok {
 					return gf.WithIndex(gf.Index() - 1), transform.NewTree, nil
 				}
@@ -515,7 +524,7 @@ func resolveSchemaDefaults(ctx *sql.Context, catalog *Catalog, table sql.Table) 
 				return nil, err
 			}
 			if identity == transform.NewTree {
-				childTblSch[i].Default.Expr = expr
+				cd.Expr = expr
 			}
 		}
 	}
