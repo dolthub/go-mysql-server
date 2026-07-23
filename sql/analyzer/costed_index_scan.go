@@ -57,57 +57,110 @@ import (
 // remaining in the parent filter. Much of the format conversions focus
 // on maintaining this invariant.
 func costedIndexScans(ctx *sql.Context, a *Analyzer, n sql.Node, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
+	var projs []sql.Expression
+	transform.Inspect(n, func(n sql.Node) (cont bool) {
+		switch n := n.(type) {
+		case *plan.Project:
+			projs = n.Projections
+			return false
+		default:
+			return true
+		}
+	})
+
 	return transform.Node(ctx, n, func(ctx *sql.Context, n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		// TODO: ensure that projections are over filter?
 		filter, ok := n.(*plan.Filter)
 		if !ok {
 			return n, transform.SameTree, nil
 		}
 
-		var rt sql.TableNode
-		var aliasName string
-		switch n := filter.Child.(type) {
+		var tblNode sql.TableNode
+		var alias string
+		switch child := filter.Child.(type) {
 		case *plan.ResolvedTable:
-			rt = n
+			tblNode = child
 		case *plan.TableAlias:
-			rt, _ = n.Child.(sql.TableNode)
-			aliasName = n.Name()
-		}
-		if rt == nil {
+			tblNode, ok = child.Child.(sql.TableNode)
+			if !ok {
+				return n, transform.SameTree, nil
+			}
+			alias = child.Name()
+		default:
 			return n, transform.SameTree, nil
 		}
 
-		if is, ok := rt.UnderlyingTable().(sql.IndexSearchableTable); ok {
-			lookup, lookupFds, newFilter, ok, err := is.LookupForExpressions(ctx, expression.SplitConjunction(ctx, filter.Expression)...)
+		tbl := tblNode.UnderlyingTable()
+		if ist, isIst := tbl.(sql.IndexSearchableTable); isIst {
+			exprs := expression.SplitConjunction(ctx, filter.Expression)
+			lookup, fds, newFilter, ok, err := ist.LookupForExpressions(ctx, exprs)
 			if err != nil {
 				return n, transform.SameTree, err
 			}
 			if ok {
-				return indexSearchableLookup(ctx, n, rt, lookup, filter.Expression, newFilter, lookupFds, qFlags)
-			} else if is.SkipIndexCosting() {
+				return indexSearchableLookup(ctx, n, tblNode, lookup, filter.Expression, newFilter, fds, qFlags)
+			}
+			if ist.SkipIndexCosting() {
 				return n, transform.SameTree, nil
 			}
 		}
-		if iat, ok := rt.UnderlyingTable().(sql.IndexAddressableTable); ok {
-			return costedIndexLookup(ctx, n, a, iat, rt, aliasName, filter.Expression, qFlags)
+
+		if iat, ok := tbl.(sql.IndexAddressableTable); ok {
+			indexes, err := iat.GetIndexes(ctx)
+			if err != nil {
+				return filter, transform.SameTree, err
+			}
+
+			exprs := expression.SplitConjunction(ctx, filter.Expression)
+			ita, stats, filters, err := getCostedIndexScan(ctx, a.Catalog, a.Catalog, tblNode, indexes, projs, exprs, qFlags)
+			if err != nil || ita == nil {
+				return filter, transform.SameTree, err
+			}
+			var ret sql.Node = ita
+			if alias != "" {
+				ret = plan.NewTableAlias(alias, ret)
+			}
+
+			if a.Debug {
+				a.Log("new indexed table: %s/%s/%s", ita.Index().Database(), ita.Index().Table(), ita.Index().ID())
+				a.Log("index stats cnt: %d", stats.RowCount())
+				a.Log("index stats histogram: %s", stats.Histogram().DebugString(ctx))
+			}
+
+			// excluded from tree + not included in index scan => filter above scan
+			if len(filters) > 0 {
+				ret = plan.NewFilter(ctx, expression.JoinAnd(filters...), ret)
+			}
+			return ret, transform.NewTree, nil
 		}
+
 		return n, transform.SameTree, nil
 	})
 }
 
-func indexSearchableLookup(ctx *sql.Context, n sql.Node, rt sql.TableNode, lookup sql.IndexLookup, oldFilter, newFilter sql.Expression, fds *sql.FuncDepSet, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
+func indexSearchableLookup(
+	ctx *sql.Context,
+	n sql.Node,
+	tblNode sql.TableNode,
+	lookup sql.IndexLookup,
+	oldFilter, newFilter sql.Expression,
+	fds *sql.FuncDepSet,
+	qFlags *sql.QueryFlags,
+) (sql.Node, transform.TreeIdentity, error) {
 	if lookup.IsEmpty() {
 		return n, transform.SameTree, nil
 	}
-	var ret sql.Node
-	var err error
-	ret, err = plan.NewStaticIndexedAccessForTableNode(ctx, rt, lookup)
-	if err != nil {
-		return n, transform.SameTree, err
-	}
 
-	iat, ok := rt.UnderlyingTable().(sql.IndexAddressableTable)
+	iat, ok := tblNode.UnderlyingTable().(sql.IndexAddressableTable)
 	if !ok {
 		return n, transform.SameTree, nil
+	}
+
+	var ret sql.Node
+	var err error
+	ret, err = plan.NewStaticIndexedAccessForTableNode(ctx, tblNode, lookup)
+	if err != nil {
+		return n, transform.SameTree, err
 	}
 
 	if !preciseIndexAccess(iat, lookup.Index) {
@@ -129,63 +182,74 @@ func indexSearchableLookup(ctx *sql.Context, n sql.Node, rt sql.TableNode, looku
 	return ret, transform.NewTree, nil
 }
 
-func costedIndexLookup(
-	ctx *sql.Context,
-	n sql.Node,
-	a *Analyzer,
-	iat sql.IndexAddressableTable,
-	rt sql.TableNode,
-	aliasName string,
-	oldFilter sql.Expression,
-	qFlags *sql.QueryFlags,
-) (sql.Node, transform.TreeIdentity, error) {
-	indexes, err := iat.GetIndexes(ctx)
-	if err != nil {
-		return n, transform.SameTree, err
+// canUsePartialIndex returns true only if the query filters include the index predicate
+func canUsePartialIndex(idx sql.Index, filters []sql.Expression) bool {
+	partIdx, isPartIdx := idx.(sql.PartialIndex)
+	if !isPartIdx {
+		return true
 	}
-
-	ita, stats, filters, err := getCostedIndexScan(ctx, a.Catalog, a.Catalog, rt, indexes, expression.SplitConjunction(ctx, oldFilter), qFlags)
-	if err != nil || ita == nil {
-		return n, transform.SameTree, err
+	pred := partIdx.Predicate()
+	if len(pred) == 0 {
+		return true
 	}
-	var ret sql.Node = ita
-	if aliasName != "" {
-		ret = plan.NewTableAlias(aliasName, ret)
+	for _, f := range filters {
+		if strings.EqualFold(pred, f.String()) {
+			return true
+		}
 	}
-
-	if a.Debug {
-		a.Log("new indexed table: %s/%s/%s", ita.Index().Database(), ita.Index().Table(), ita.Index().ID())
-		a.Log("index stats cnt: %d", stats.RowCount())
-		a.Log("index stats histogram: %s", stats.Histogram().DebugString(ctx))
-	}
-
-	// excluded from tree + not included in index scan => filter above scan
-	if len(filters) > 0 {
-		ret = plan.NewFilter(ctx, expression.JoinAnd(filters...), ret)
-	}
-	return ret, transform.NewTree, nil
+	return false
 }
 
 // getCostedIndexScan tries to build the lowest cost index scan for the filter expressions provided. Returns a nil
 // result if an index cannot satisfy the filters.
 func getCostedIndexScan(
 	ctx *sql.Context,
-	statsProvider sql.StatsProvider,
 	cat sql.Catalog,
-	rt sql.TableNode,
+	statsProv sql.StatsProvider,
+	tblNode sql.TableNode,
 	indexes []sql.Index,
 	filters []sql.Expression,
+	projs []sql.Expression,
 	qFlags *sql.QueryFlags,
 ) (*plan.IndexedTableAccess, sql.Statistic, []sql.Expression, error) {
-	// run each index through coster, save the cheapest
-	table := rt.UnderlyingTable()
-	var schemaName string
-	if schTab, ok := table.(sql.DatabaseSchemaTable); ok {
-		schemaName = strings.ToLower(schTab.DatabaseSchema().SchemaName())
+	// run each index through coster and save the cheapest
+	tbl := tblNode.UnderlyingTable()
+	iat, ok := tbl.(sql.IndexAddressableTable)
+	if !ok {
+		return nil, nil, nil, nil
 	}
-	tableName := strings.ToLower(table.Name())
 
-	statistics, err := statsProvider.GetTableStats(ctx, schemaName, rt.Database().Name(), table)
+	var tblName = tbl.Name()
+	var schName string
+	if schTab, ok := tbl.(sql.DatabaseSchemaTable); ok {
+		schName = schTab.DatabaseSchema().SchemaName()
+	}
+	var dbName string
+	switch t := tbl.(type) {
+	case sql.Databaseable:
+		dbName = t.Database()
+	case sql.Databaser:
+		dbName = t.Database().Name()
+	}
+
+	// build the list of available indexed expressions that can be attempted to use in this scan
+	indexedExprs, err := buildIndexedExprToColumnNameMap(ctx, cat, indexes, tblNode)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	c := newIndexCoster(tblName)
+	c.indexedExprs = indexedExprs
+
+	var expressionWalker sql.ExpressionTreeFilter = &defaultLogicTreeWalker{}
+	if cat.Overrides().CostedIndexScanExpressionFilter != nil {
+		expressionWalker = cat.Overrides().CostedIndexScanExpressionFilter
+	}
+	root, leftover, imprecise := c.buildRoot(ctx, expression.JoinAnd(filters...), expressionWalker)
+	if root == nil {
+		return nil, nil, nil, nil
+	}
+
+	statistics, err := statsProv.GetTableStats(ctx, schName, dbName, tbl)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -197,78 +261,37 @@ func getCostedIndexScan(
 		}
 	}
 
-	var expressionWalker sql.ExpressionTreeFilter = &defaultLogicTreeWalker{}
-	if cat.Overrides().CostedIndexScanExpressionFilter != nil {
-		expressionWalker = cat.Overrides().CostedIndexScanExpressionFilter
-	}
-
-	iat, ok := rt.UnderlyingTable().(sql.IndexAddressableTable)
-	if !ok {
-		return nil, nil, nil, err
-	}
-
-	var dbName string
-	if dbTab, ok := rt.UnderlyingTable().(sql.Databaseable); ok {
-		dbName = strings.ToLower(dbTab.Database())
-	} else if dber, ok := rt.UnderlyingTable().(sql.Databaser); ok {
-		dbName = dber.Database().Name()
-	}
-
-	// build the list of available indexed expressions that can be attempted to use in this scan
-	indexedExprs, err := buildIndexedExprToColumnNameMap(ctx, cat, indexes, rt)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
-	c := newIndexCoster(rt.Name())
-	c.indexedExprs = indexedExprs
-
-	root, leftover, imprecise := c.buildRoot(ctx, expression.JoinAnd(filters...), expressionWalker)
-	if root == nil {
-		return nil, nil, nil, err
-	}
-
+	// TODO: not really sure what this means and why we fill with nil
+	// don't mix and match real and default stats
+	statQual := sql.NewStatQualifier(dbName, schName, tblName, "") // reuse statQual
 	if len(qualToStat) > 0 {
-		// don't mix and match real and default stats
 		for _, idx := range indexes {
-			qual := sql.NewStatQualifier(dbName, schemaName, tableName, idx.ID())
-			_, ok := qualToStat[qual]
-			if !ok {
+			statQual.Idx = strings.ToLower(idx.ID())
+			if _, ok = qualToStat[statQual]; !ok {
 				qualToStat = nil
 				break
 			}
 		}
 	}
 
+	// TODO: just directly assign c.Best to indexless
 	// include an indexless option for coster
-	tblScanStat, err := uniformDistStatsticForTableScan(ctx, statsProvider, iat)
+	tblScanStat, err := uniformDistStatsticForTableScan(ctx, statsProv, statQual, iat)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 	c.updateBest(tblScanStat, tblScanStat.Histogram(), nil, sets.FastIntSet{}, 0, false)
 
 	for _, idx := range indexes {
-		// only use the index if the query filters include the index predicate
-		if pi, ok := idx.(sql.PartialIndex); ok && pi.Predicate() != "" {
-			predStr := strings.ToLower(pi.Predicate())
-			implied := false
-			for _, f := range filters {
-				fstr := strings.ToLower(f.String())
-				if fstr == predStr {
-					implied = true
-					break
-				}
-			}
-			if !implied {
-				continue
-			}
+		if !canUsePartialIndex(idx, filters) {
+			continue
 		}
 
-		qual := sql.NewStatQualifier(dbName, schemaName, tableName, idx.ID())
-		stat, ok := qualToStat[qual]
+		statQual.Idx = strings.ToLower(idx.ID())
+		stat, ok := qualToStat[statQual]
 		if !ok {
-			// create statistic if table is missing a statsProvider
-			stat, err = uniformDistStatisticsForIndex(ctx, statsProvider, iat, idx)
+			// create statistic if table is missing a statsProv
+			stat, err = uniformDistStatisticsForIndex(ctx, statsProv, iat, idx)
 		}
 		if err != nil {
 			return nil, nil, nil, err
@@ -283,6 +306,7 @@ func getCostedIndexScan(
 		return nil, nil, nil, err
 	}
 
+	// TODO: this should just have a pointer to the index rather than looking it up again by ID
 	targetId := c.bestStat.Qualifier().Index()
 	var idx sql.Index
 	for _, i := range indexes {
@@ -355,12 +379,12 @@ func getCostedIndexScan(
 		if matchAgainst.KeyCols.Type == fulltext.KeyType_None {
 			return nil, nil, nil, err
 		}
-		ret = plan.NewStaticIndexedAccessForFullTextTable(ctx, rt, lookup, &rowexec.FulltextFilterTable{
+		ret = plan.NewStaticIndexedAccessForFullTextTable(ctx, tblNode, lookup, &rowexec.FulltextFilterTable{
 			MatchAgainst: matchAgainst,
-			Table:        rt,
+			Table:        tblNode,
 		})
 	} else {
-		ret, err = plan.NewStaticIndexedAccessForTableNode(ctx, rt, lookup)
+		ret, err = plan.NewStaticIndexedAccessForTableNode(ctx, tblNode, lookup)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -424,7 +448,7 @@ func addIndexScans(ctx *sql.Context, m *memo.Memo, catalog *Catalog) error {
 		indexes := filter.Child.First.(memo.SourceRel).Indexes()
 
 		if is, ok := rt.UnderlyingTable().(sql.IndexSearchableTable); ok {
-			lookup, fds, newFilter, ok, err := is.LookupForExpressions(ctx, filter.Filters...)
+			lookup, fds, newFilter, ok, err := is.LookupForExpressions(ctx, filter.Filters)
 			if err != nil {
 				m.HandleErr(err)
 			}
@@ -464,12 +488,13 @@ func addIndexScans(ctx *sql.Context, m *memo.Memo, catalog *Catalog) error {
 				return nil
 			}
 		}
+		// TODO: check if underlying table is indexAccessibleTable, and skip if not
 
 		sqlIndexes := make([]sql.Index, len(indexes))
 		for i, idx := range indexes {
 			sqlIndexes[i] = idx.SqlIdx()
 		}
-		ita, stat, filters, err := getCostedIndexScan(ctx, m.StatsProvider(), catalog, rt, sqlIndexes, filter.Filters, m.QFlags)
+		ita, stat, filters, err := getCostedIndexScan(ctx, catalog, m.StatsProvider(), rt, sqlIndexes, filter.Filters, nil, m.QFlags)
 		if err != nil {
 			m.HandleErr(err)
 		}
@@ -533,6 +558,8 @@ type indexCoster struct {
 // cost tries to build the lowest cardinality index scan for an expression
 // tree rooted at |f| on the index |idx| whose statistics are represented by |stat|.
 func (c *indexCoster) cost(ctx *sql.Context, f indexFilter, stat sql.Statistic, idx sql.Index) error {
+	// TODO: The "cost" here is really just cardinality with some heuristic rules.
+	//  We should better account for primary vs secondary, covering, number of filters, prefix, etc.
 	ordinals := ordinalsForStat(stat)
 
 	var newHist []sql.HistogramBucket
@@ -585,12 +612,13 @@ func (c *indexCoster) updateBest(s sql.Statistic, hist []sql.HistogramBucket, fd
 	if s == nil {
 		return
 	}
+	// TODO: should update best directly, so we don't need this special exception
 	// special exception for keyless cost option
-	if filters.Len() == 0 && s.Qualifier().Index() != "" {
+	if filters.Len() == 0 && len(s.Qualifier().Index()) == 0 {
 		return
 	}
 
-	rowCnt, _, _ := stats.GetNewCounts(hist) // TODO: wtf
+	rowCnt, _, _ := stats.GetNewCounts(hist)
 
 	var update bool
 	defer func() {
@@ -604,7 +632,7 @@ func (c *indexCoster) updateBest(s sql.Statistic, hist []sql.HistogramBucket, fd
 		}
 	}()
 
-	// TODO: if there is only one available index, we ALWAYS pick it even if it may be worse than no index
+	// TODO: default to no idx
 	if c.bestStat == nil {
 		update = true
 		return
@@ -615,13 +643,17 @@ func (c *indexCoster) updateBest(s sql.Statistic, hist []sql.HistogramBucket, fd
 	}
 
 	if rowCnt < c.bestCnt {
-		// TODO: secondary indexes incur an additional index lookup cost, so they need to reduce rowCount by a substantial amount
+		// TODO: We should take into account the complexity of the filter as well.
+		//  This assumes that the filter is a simple range comparison, because of our limited functional dependency logic
+		// Secondary indexes incur an additional index lookup cost, so they need to reduce rowCount by a substantial amount
 		if s.Qualifier().Index() != "PRIMARY" && s.Qualifier().Index() != "" {
 			if rowCnt < c.bestCnt/4 {
 				update = true
 			}
 			return
 		}
+		// TODO: Another exception is covering index scans; they are always better than no index.
+		//  Should we move the check here?
 		update = true
 		return
 	}
@@ -1998,21 +2030,10 @@ func IndexLeafChildren(e sql.Expression) (sql.IndexScanOp, sql.Expression, sql.E
 const dummyNotUniqueDistinct = .90
 const dummyNotUniqueNull = .03
 
-func uniformDistStatsticForTableScan(ctx *sql.Context, statsProv sql.StatsProvider, iat sql.IndexAddressableTable) (sql.Statistic, error) {
+func uniformDistStatsticForTableScan(ctx *sql.Context, statsProv sql.StatsProvider, statQual sql.StatQualifier, iat sql.IndexAddressableTable) (sql.Statistic, error) {
 	var rowCount uint64
 	var avgSize uint64
-
-	var dbName string
-	if dbTable, ok := iat.(sql.Databaseable); ok {
-		dbName = strings.ToLower(dbTable.Database())
-	}
-	var schemaName string
-	if schTab, ok := iat.(sql.DatabaseSchemaTable); ok {
-		schemaName = strings.ToLower(schTab.DatabaseSchema().SchemaName())
-	}
-	tableName := strings.ToLower(iat.Name())
-
-	rowCount, _ = statsProv.RowCount(ctx, schemaName, dbName, iat)
+	rowCount, _ = statsProv.RowCount(ctx, statQual.Schema(), statQual.Db(), iat)
 	if st, ok := iat.(sql.StatisticsTable); ok {
 		rCnt, _, err := st.RowCount(ctx)
 		if err != nil {
@@ -2040,14 +2061,14 @@ func uniformDistStatsticForTableScan(ctx *sql.Context, statsProv sql.StatsProvid
 
 	distinctCount := rowCount
 	nullCount := uint64(float64(distinctCount) * dummyNotUniqueNull)
-	qual := sql.NewStatQualifier(dbName, schemaName, tableName, "")
+	statQual.Idx = ""
 	stat := stats.NewStatistic(
 		rowCount,
 		distinctCount,
 		nullCount,
 		avgSize,
-		time.Now(),
-		qual,
+		time.Time{},
+		statQual,
 		nil,
 		nil,
 		hist,

@@ -49,11 +49,12 @@ func optimizeJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 	if err != nil {
 		return n, transform.SameTree, err
 	}
-	if same {
-		// try index plans only
-		return costedIndexScans(ctx, a, n, qFlags)
+	if !same {
+		return ret, transform.NewTree, nil
 	}
-	return ret, transform.NewTree, nil
+
+	// try index plans only
+	return costedIndexScans(ctx, a, n, qFlags)
 }
 
 // inOrderReplanJoin replans the first join node found

@@ -525,7 +525,7 @@ type IndexSearchable interface {
 	// the integrator fails to match an index.
 	SkipIndexCosting() bool
 	// LookupForExpressions returns a sql.IndexLookup for a set of expression.
-	LookupForExpressions(*Context, ...Expression) (IndexLookup, *FuncDepSet, Expression, bool, error)
+	LookupForExpressions(*Context, []Expression) (IndexLookup, *FuncDepSet, Expression, bool, error)
 }
 
 // IndexSearchableTable is a Table supports custom index generation.
