@@ -17,6 +17,7 @@ package function
 import (
 	"fmt"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -51,13 +52,6 @@ func (c *Concat) Description() string {
 
 // Type implements the Expression interface.
 func (c *Concat) Type(ctx *sql.Context) sql.Type {
-	// If any argument is a true CHARACTER SET 'binary' string (e.g. CHAR(N) without a collation, or a
-	// VARBINARY/BLOB column), MySQL evaluates and returns the whole CONCAT result as binary rather than silently
-	// reinterpreting those bytes as text -- see "mixing nonbinary and binary strings evaluates the operands as
-	// binary strings" (https://dev.mysql.com/doc/refman/8.0/en/charset-collation-coercibility.html). Note this
-	// intentionally checks each argument's own string type rather than the resolved CollationCoercibility(),
-	// because this codebase also uses Collation_binary as a "no real collation" placeholder for non-string
-	// arguments (e.g. numeric literals), which must NOT force the result to binary.
 	if c.hasBinaryStringArg(ctx) {
 		return types.LongBlob
 	}
@@ -156,9 +150,12 @@ func (c *Concat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	joined := strings.Join(parts, "")
 
-	// Funnel through Type() so that a binary result (see Type, above) actually becomes a genuine []byte rather
-	// than a Go string that silently discards the charset info a caller (e.g. JSON conversion) needs downstream.
-	result, _, err := c.Type(ctx).Convert(ctx, joined)
+	resultType := c.Type(ctx)
+	// Match MySQL: invalid UTF-8 on the text CONCAT path is an error (1300), not a truncate.
+	if !types.IsBinaryType(resultType) && !utf8.ValidString(joined) {
+		return nil, types.ErrBadCharsetString.New(joined, "<unknown>", int64(0))
+	}
+	result, _, err := resultType.Convert(ctx, joined)
 	if err != nil {
 		return nil, err
 	}
