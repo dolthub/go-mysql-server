@@ -617,7 +617,7 @@ func (c *indexCoster) updateBest(s sql.Statistic, hist []sql.HistogramBucket, fd
 	if rowCnt < c.bestCnt {
 		// TODO: secondary indexes incur an additional index lookup cost, so they need to reduce rowCount by a substantial amount
 		if s.Qualifier().Index() != "PRIMARY" && s.Qualifier().Index() != "" {
-			if rowCnt < 10 || rowCnt < c.bestCnt/4 {
+			if rowCnt < 10 || c.bestStat.Qualifier().Idx != "" || rowCnt < c.bestCnt/4 {
 				update = true
 			}
 			return
