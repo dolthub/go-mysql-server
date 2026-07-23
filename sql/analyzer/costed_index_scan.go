@@ -240,12 +240,12 @@ func getCostedIndexScan(
 		}
 	}
 
-	// include an indexless option for best
+	// include an indexless option for coster
 	tblScanStat, err := uniformDistStatsticForTableScan(ctx, statsProvider, iat)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	c.updateBest(tblScanStat, nil, nil, sets.FastIntSet{}, 0, false)
+	c.updateBest(tblScanStat, tblScanStat.Histogram(), nil, sets.FastIntSet{}, 0, false)
 
 	for _, idx := range indexes {
 		// only use the index if the query filters include the index predicate
@@ -585,7 +585,12 @@ func (c *indexCoster) updateBest(s sql.Statistic, hist []sql.HistogramBucket, fd
 	if s == nil {
 		return
 	}
-	rowCnt, _, _ := stats.GetNewCounts(hist)
+	// special exception for keyless cost option
+	if filters.Len() == 0 && s.Qualifier().Index() != "" {
+		return
+	}
+
+	rowCnt, _, _ := stats.GetNewCounts(hist) // TODO: wtf
 
 	var update bool
 	defer func() {
@@ -599,20 +604,35 @@ func (c *indexCoster) updateBest(s sql.Statistic, hist []sql.HistogramBucket, fd
 		}
 	}()
 
-	if c.bestStat == nil { // TODO: if there is only one available index, we ALWAYS pick it even if it may be worse than no index
+	// TODO: if there is only one available index, we ALWAYS pick it even if it may be worse than no index
+	if c.bestStat == nil {
 		update = true
 		return
 	}
+
 	if bestFds := c.bestStat.FuncDeps(); bestFds != nil && bestFds.HasMax1Row() {
 		return
-	} else if rowCnt < c.bestCnt {
+	}
+
+	if rowCnt < c.bestCnt {
+		// TODO: secondary indexes incur an additional index lookup cost, so they need to reduce rowCount by a substantial amount
+		if s.Qualifier().Index() != "PRIMARY" && s.Qualifier().Index() != "" {
+			if rowCnt/4 < c.bestCnt {
+				update = true
+			}
+			return
+		}
 		update = true
 		return
-	} else if c.bestPrefix == 0 || prefix == 0 && c.bestPrefix != prefix {
+	}
+
+	if c.bestPrefix == 0 || prefix == 0 && c.bestPrefix != prefix {
 		// any prefix is better than no prefix
 		update = prefix > c.bestPrefix
 		return
-	} else if rowCnt == c.bestCnt {
+	}
+
+	if rowCnt == c.bestCnt {
 		// hand rules when stats don't exist or match exactly
 		cmp := fds
 		best := c.bestStat.FuncDeps()
@@ -620,6 +640,7 @@ func (c *indexCoster) updateBest(s sql.Statistic, hist []sql.HistogramBucket, fd
 			update = true
 			return
 		}
+		c.bestStat.Qualifier().Empty()
 
 		// If one index uses a strict superset of the filters of the other, we should always pick the superset.
 		// This is true even if the index with more filters isn't unique.
@@ -2009,10 +2030,30 @@ func uniformDistStatsticForTableScan(ctx *sql.Context, statsProv sql.StatsProvid
 		}
 	}
 
+	// This is needed for cost row count
+	// one giant bucket
+	hist := sql.Histogram{
+		stats.Bucket{
+			RowCnt: rowCount,
+		},
+	}
+
 	distinctCount := rowCount
 	nullCount := uint64(float64(distinctCount) * dummyNotUniqueNull)
 	qual := sql.NewStatQualifier(dbName, schemaName, tableName, "")
-	stat := stats.NewStatistic(rowCount, distinctCount, nullCount, avgSize, time.Now(), qual, nil, nil, nil, sql.IndexClassDefault, nil)
+	stat := stats.NewStatistic(
+		rowCount,
+		distinctCount,
+		nullCount,
+		avgSize,
+		time.Now(),
+		qual,
+		nil,
+		nil,
+		hist,
+		sql.IndexClassDefault,
+		nil,
+	)
 	return stat, nil
 
 }
