@@ -3277,4 +3277,8 @@ var NoDbProcedureTests = []ScriptTestAssertion{
 		Query:       "SHOW CREATE PROCEDURE p5;",
 		ExpectedErr: sql.ErrNoDatabaseSelected,
 	},
+	{
+		Query:       "CALL p5();",
+		ExpectedErr: sql.ErrNoDatabaseSelected,
+	},
 }
