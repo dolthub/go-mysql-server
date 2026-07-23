@@ -314,6 +314,8 @@ func (b *Builder) buildCall(inScope *scope, c *ast.Call) (outScope *scope) {
 	}
 	if esp != nil {
 		proc, err = resolveExternalStoredProcedure(*esp)
+	} else if db == nil {
+		err = sql.ErrNoDatabaseSelected.New()
 	} else if spdb, ok := db.(sql.StoredProcedureDatabase); ok {
 		var procDetails sql.StoredProcedureDetails
 		procDetails, ok, err = spdb.GetStoredProcedure(b.ctx, procName)
