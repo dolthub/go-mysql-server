@@ -151,7 +151,6 @@ func (c *Concat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	joined := strings.Join(parts, "")
 
 	resultType := c.Type(ctx)
-	// Match MySQL: invalid UTF-8 on the text CONCAT path is an error (1300), not a truncate.
 	if !types.IsBinaryType(resultType) && !utf8.ValidString(joined) {
 		return nil, types.ErrBadCharsetString.New(joined, "<unknown>", int64(0))
 	}
