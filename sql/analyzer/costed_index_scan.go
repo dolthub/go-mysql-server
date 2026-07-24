@@ -174,6 +174,24 @@ func indexSearchableLookup(
 	return ret, transform.NewTree, nil
 }
 
+// canUsePartialIndex returns true only if the query filters include the index predicate
+func canUsePartialIndex(idx sql.Index, filters []sql.Expression) bool {
+	partIdx, isPartIdx := idx.(sql.PartialIndex)
+	if !isPartIdx {
+		return true
+	}
+	pred := partIdx.Predicate()
+	if len(pred) == 0 {
+		return true
+	}
+	for _, f := range filters {
+		if strings.EqualFold(pred, f.String()) {
+			return true
+		}
+	}
+	return false
+}
+
 // getCostedIndexScan tries to build the lowest cost index scan for the filter expressions provided. Returns a nil
 // result if an index cannot satisfy the filters.
 func getCostedIndexScan(
@@ -258,19 +276,8 @@ func getCostedIndexScan(
 
 	for _, idx := range indexes {
 		// only use the index if the query filters include the index predicate
-		if pi, ok := idx.(sql.PartialIndex); ok && pi.Predicate() != "" {
-			predStr := pi.Predicate()
-			implied := false
-			for _, f := range filters {
-				fstr := f.String()
-				if strings.EqualFold(predStr, fstr) {
-					implied = true
-					break
-				}
-			}
-			if !implied {
-				continue
-			}
+		if !canUsePartialIndex(idx, filters) {
+			continue
 		}
 
 		qual.Idx = strings.ToLower(idx.ID())
@@ -600,7 +607,7 @@ func (c *indexCoster) updateBest(s sql.Statistic, hist []sql.HistogramBucket, fd
 		return
 	}
 
-	rowCnt, _, _ := stats.GetNewCounts(hist) // TODO: wtf
+	rowCnt, _, _ := stats.GetNewCounts(hist)
 
 	var update bool
 	defer func() {
@@ -614,7 +621,6 @@ func (c *indexCoster) updateBest(s sql.Statistic, hist []sql.HistogramBucket, fd
 		}
 	}()
 
-	// TODO: if there is only one available index, we ALWAYS pick it even if it may be worse than no index
 	if c.bestStat == nil {
 		update = true
 		return
@@ -625,9 +631,9 @@ func (c *indexCoster) updateBest(s sql.Statistic, hist []sql.HistogramBucket, fd
 	}
 
 	if rowCnt < c.bestCnt {
-		// TODO: secondary indexes incur an additional index lookup cost, so they need to reduce rowCount by a substantial amount
+		// Secondary indexes incur an additional index lookup cost, so they need to reduce rowCount by a substantial amount
 		if s.Qualifier().Index() != "PRIMARY" && s.Qualifier().Index() != "" {
-			if rowCnt < 10 || c.bestStat.Qualifier().Idx != "" || rowCnt < c.bestCnt/4 {
+			if rowCnt < 10 || rowCnt < c.bestCnt/4 || c.bestStat.Qualifier().Idx != "" {
 				update = true
 			}
 			return
