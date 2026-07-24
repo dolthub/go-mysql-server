@@ -268,14 +268,14 @@ func getCostedIndexScan(
 	}
 
 	// include an indexless option for coster
-	tblScanStat, err := uniformDistStatsticForTableScan(ctx, statsProvider, idxTbl)
+	tblScanStat, err := uniformDistStatsticForTableScan(ctx, statsProvider, qual, idxTbl)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	c.updateBest(tblScanStat, tblScanStat.Histogram(), nil, sets.FastIntSet{}, 0, false, false)
+	c.bestStat = tblScanStat
+	c.bestCnt = tblScanStat.RowCount()
 
 	covTbl, isCovTbl := tbl.(sql.CoveringProjectedTable)
-
 	for _, idx := range indexes {
 		// only use the index if the query filters include the index predicate
 		if !canUsePartialIndex(idx, filters) {
@@ -606,11 +606,7 @@ func (c *indexCoster) cost(ctx *sql.Context, f indexFilter, stat sql.Statistic, 
 }
 
 func (c *indexCoster) updateBest(s sql.Statistic, hist []sql.HistogramBucket, fds *sql.FuncDepSet, filters sets.FastIntSet, prefix int, hasRange, isCov bool) {
-	if s == nil {
-		return
-	}
-	// special exception for keyless cost option
-	if filters.Len() == 0 && s.Qualifier().Index() != "" {
+	if s == nil || filters.Len() == 0 {
 		return
 	}
 
@@ -628,9 +624,27 @@ func (c *indexCoster) updateBest(s sql.Statistic, hist []sql.HistogramBucket, fd
 		}
 	}()
 
-	if c.bestStat == nil { // TODO: replace this so that it is never true again
-		update = true
-		return
+	// The current best is a full table scan
+	if c.bestStat.Qualifier().Index() == "" {
+		switch {
+		// Primary Keys are always better
+		case s.Qualifier().Index() == "primary":
+			update = true
+			return
+		// Covering index scans are always better
+		case isCov:
+			update = true
+			return
+		// Secondary index reduced rowCount substantially, outweighing secondary lookup costs
+		case rowCnt < c.bestCnt/4:
+			update = true
+			return
+		// Missing stats or good histogram comparison, so default to old behavior which is using the index
+		// TODO: this breaks when the filter over the index is always true
+		case rowCnt == c.bestCnt:
+			update = true
+			return
+		}
 	}
 
 	if bestFds := c.bestStat.FuncDeps(); bestFds != nil && bestFds.HasMax1Row() {
@@ -638,20 +652,6 @@ func (c *indexCoster) updateBest(s sql.Statistic, hist []sql.HistogramBucket, fd
 	}
 
 	if rowCnt < c.bestCnt {
-		// Secondary indexes incur an additional index lookup cost, so they need to reduce rowCount by a substantial amount
-		if s.Qualifier().Index() != "PRIMARY" && s.Qualifier().Index() != "" {
-			if isCov || rowCnt < 10 || rowCnt < c.bestCnt/4 || c.bestStat.Qualifier().Idx != "" {
-				update = true
-			}
-			return
-		}
-		update = true
-		return
-	}
-
-	// Missing stats or good histogram comparison, so just use the index
-	// TODO: this breaks when the filter over the index is always true
-	if rowCnt == c.bestCnt && c.bestStat.Qualifier().Index() == "" {
 		update = true
 		return
 	}
@@ -2028,30 +2028,24 @@ func IndexLeafChildren(e sql.Expression) (sql.IndexScanOp, sql.Expression, sql.E
 const dummyNotUniqueDistinct = .90
 const dummyNotUniqueNull = .03
 
-func uniformDistStatsticForTableScan(ctx *sql.Context, statsProv sql.StatsProvider, iat sql.IndexAddressableTable) (sql.Statistic, error) {
-	var rowCount uint64
+func uniformDistStatsticForTableScan(
+	ctx *sql.Context,
+	statsProv sql.StatsProvider,
+	qual sql.StatQualifier,
+	idxTbl sql.IndexAddressableTable,
+) (sql.Statistic, error) {
+
 	var avgSize uint64
-
-	var dbName string
-	if dbTable, ok := iat.(sql.Databaseable); ok {
-		dbName = strings.ToLower(dbTable.Database())
-	}
-	var schemaName string
-	if schTab, ok := iat.(sql.DatabaseSchemaTable); ok {
-		schemaName = strings.ToLower(schTab.DatabaseSchema().SchemaName())
-	}
-	tableName := strings.ToLower(iat.Name())
-
-	rowCount, _ = statsProv.RowCount(ctx, schemaName, dbName, iat)
-	if st, ok := iat.(sql.StatisticsTable); ok {
+	rowCount, _ := statsProv.RowCount(ctx, qual.Schema(), qual.Db(), idxTbl)
+	if st, ok := idxTbl.(sql.StatisticsTable); ok {
 		rCnt, _, err := st.RowCount(ctx)
 		if err != nil {
 			return nil, err
 		}
-		if rowCount == 0 {
+		switch {
+		case rowCount == 0:
 			rowCount = rCnt
-		}
-		if rowCount > 0 {
+		case rowCount > 0:
 			dataSize, err := st.DataLength(ctx)
 			if err != nil {
 				return nil, err
@@ -2060,32 +2054,26 @@ func uniformDistStatsticForTableScan(ctx *sql.Context, statsProv sql.StatsProvid
 		}
 	}
 
-	// This is needed for cost row count
-	// one giant bucket
-	hist := sql.Histogram{
-		stats.Bucket{
-			RowCnt: rowCount,
-		},
-	}
-
 	distinctCount := rowCount
 	nullCount := uint64(float64(distinctCount) * dummyNotUniqueNull)
-	qual := sql.NewStatQualifier(dbName, schemaName, tableName, "")
+
+	// mark as full table scan
+	qual.Idx = ""
+
 	stat := stats.NewStatistic(
 		rowCount,
 		distinctCount,
 		nullCount,
 		avgSize,
-		time.Now(),
+		time.Time{},
 		qual,
 		nil,
 		nil,
-		hist,
+		nil,
 		sql.IndexClassDefault,
 		nil,
 	)
 	return stat, nil
-
 }
 
 func uniformDistStatisticsForIndex(ctx *sql.Context, statsProv sql.StatsProvider, iat sql.IndexAddressableTable, idx sql.Index) (sql.Statistic, error) {
