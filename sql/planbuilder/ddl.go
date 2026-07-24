@@ -1821,6 +1821,7 @@ func partitionTableColumns(sch sql.Schema) [][2]int {
 	return ret
 }
 
+// TODO: This needs a better name because it's not always the default value. It can also be a generated or ON UPDATE value
 func (b *Builder) resolveColumnDefaultExpression(inScope *scope, columnDef *sql.Column, colDefault *sql.ColumnDefaultValue) *sql.ColumnDefaultValue {
 	if colDefault == nil || colDefault.Expr == nil {
 		return colDefault
