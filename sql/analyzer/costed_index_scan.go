@@ -56,8 +56,13 @@ import (
 // fraction of its conjunctions into an indexScan, with the excluded
 // remaining in the parent filter. Much of the format conversions focus
 // on maintaining this invariant.
-func costedIndexScans(ctx *sql.Context, a *Analyzer, n sql.Node, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
-	return transform.Node(ctx, n, func(ctx *sql.Context, n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+func costedIndexScans(
+	ctx *sql.Context,
+	a *Analyzer,
+	node sql.Node,
+	qFlags *sql.QueryFlags,
+) (sql.Node, transform.TreeIdentity, error) {
+	return transform.Node(ctx, node, func(ctx *sql.Context, n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		filter, ok := n.(*plan.Filter)
 		if !ok {
 			return n, transform.SameTree, nil
@@ -119,27 +124,38 @@ func costedIndexScans(ctx *sql.Context, a *Analyzer, n sql.Node, qFlags *sql.Que
 			}
 			return ret, transform.NewTree, nil
 		}
+
 		return n, transform.SameTree, nil
 	})
 }
 
-func indexSearchableLookup(ctx *sql.Context, n sql.Node, rt sql.TableNode, lookup sql.IndexLookup, oldFilter, newFilter sql.Expression, fds *sql.FuncDepSet, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
+func indexSearchableLookup(
+	ctx *sql.Context,
+	node sql.Node,
+	tblNode sql.TableNode,
+	lookup sql.IndexLookup,
+	oldFilter, newFilter sql.Expression,
+	fds *sql.FuncDepSet,
+	qFlags *sql.QueryFlags,
+) (sql.Node, transform.TreeIdentity, error) {
+
 	if lookup.IsEmpty() {
-		return n, transform.SameTree, nil
+		return node, transform.SameTree, nil
 	}
+
 	var ret sql.Node
 	var err error
-	ret, err = plan.NewStaticIndexedAccessForTableNode(ctx, rt, lookup)
+	ret, err = plan.NewStaticIndexedAccessForTableNode(ctx, tblNode, lookup)
 	if err != nil {
-		return n, transform.SameTree, err
+		return node, transform.SameTree, err
 	}
 
-	iat, ok := rt.UnderlyingTable().(sql.IndexAddressableTable)
+	idxTbl, ok := tblNode.UnderlyingTable().(sql.IndexAddressableTable)
 	if !ok {
-		return n, transform.SameTree, nil
+		return node, transform.SameTree, nil
 	}
 
-	if !preciseIndexAccess(iat, lookup.Index) {
+	if !preciseIndexAccess(idxTbl, lookup.Index) {
 		// cannot drop any filters
 		newFilter = oldFilter
 	}
