@@ -364,11 +364,16 @@ func (b *Builder) addDependentUpdateExprs(inScope *scope, schema sql.Schema, upd
 				colGf := expression.NewGetFieldWithTable(i+1, int(tabId), col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable)
 				generated := b.resolveColumnDefaultExpression(inScope, col, col.Generated)
 				updateExprs = append(updateExprs, expression.NewSetField(colGf, assignColumnIndexes(b.ctx, generated, schema)))
-			}
-			if col.OnUpdate != nil {
+			} else if col.OnUpdate != nil {
 				// don't add if column is already being updated
 				if !isColumnUpdated(col, updateExprs) {
-					colGf := expression.NewGetFieldWithTable(i+1, int(tabId), col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable)
+					colGf := b.buildScalar(inScope, &ast.ColName{
+						Name: ast.NewColIdent(col.Name),
+						Qualifier: ast.TableName{
+							Name:        ast.NewTableIdent(col.Source),
+							DbQualifier: ast.NewTableIdent(col.DatabaseSource),
+						},
+					})
 					onUpdate := b.resolveColumnDefaultExpression(inScope, col, col.OnUpdate)
 					updateExprs = append(updateExprs, expression.NewSetField(colGf, assignColumnIndexes(b.ctx, onUpdate, schema)))
 				}
