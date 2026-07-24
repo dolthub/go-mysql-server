@@ -9399,6 +9399,84 @@ from typestable`,
 		Expected:              []sql.Row{{math.NaN()}},
 		ExpectedWarningsCount: 2,
 	},
+	// NULL-in-tuple comparisons for = / != / IN, https://github.com/dolthub/dolt/issues/11024.
+	// Direct SELECTs (rather than WHERE-wrapped) so the assertions distinguish
+	// a definite `false` from an indeterminate `NULL`, since a WHERE clause
+	// filters out rows for both. Ordering operators (<, >, <=, >=) with NULL
+	// elements are a known separate case left as follow-up.
+	{
+		Query:    "SELECT (1, 2) = (NULL, 2)",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT (1, 2) = (NULL, 3)",
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    "SELECT (1, 2) != (NULL, 2)",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT (1, 2) != (NULL, 3)",
+		Expected: []sql.Row{{true}},
+	},
+	{
+		// Regression test for the ErrValueNotNil crash: converting the right
+		// tuple's values using the left NULL literal's static type.
+		Query:    "SELECT (NULL, 2) = (1, 2)",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT (1, null) in ((1, null))",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11024, jycor's IN-clause comment.
+		Query:    "SELECT (1, 1) in ((null, null))",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		// Mixed IN: indeterminate candidate before a definite match still yields true.
+		Query:    "SELECT (1, 1) IN ((NULL, NULL), (1, 1))",
+		Expected: []sql.Row{{true}},
+	},
+	{
+		// Three-element tuple: middle NULL with no definite difference → NULL.
+		Query:    "SELECT (1, 2, 3) = (1, NULL, 3)",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT (0, null) = (0, null)",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT (null, null) = (select null, null from dual)",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, null) in ((1, null))",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (0, null) = (0, null)",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (null, null) = (select null, null from dual)",
+		Expected: []sql.Row{},
+	},
+	{
+		// Row-constructor IN-subquery: the hash-based lookup in
+		// plan.InSubquery.Eval finds a matching hash for (1, NULL) and then
+		// runs a confirming rTyp.Compare(left, val), which hits the same
+		// NULL-element indeterminacy as regular tuple comparisons.
+		Query:    "SELECT (1, NULL) IN (SELECT 1, NULL FROM dual)",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, NULL) IN (SELECT 1, NULL FROM dual)",
+		Expected: []sql.Row{},
+	},
 }
 
 var KeylessQueries = []QueryTest{
@@ -9512,20 +9590,6 @@ var BrokenQueries = []QueryTest{
 	},
 	{
 		Query: "SELECT json_value() FROM dual;", // syntax error
-	},
-	// Null-safe and type conversion tuple comparison is not correctly
-	// implemented yet.
-	{
-		Query:    "SELECT 1 FROM DUAL WHERE (1, null) in ((1, null))",
-		Expected: []sql.Row{},
-	},
-	{
-		Query:    "SELECT 1 FROM DUAL WHERE (0, null) = (0, null)",
-		Expected: []sql.Row{},
-	},
-	{
-		Query:    "SELECT 1 FROM DUAL WHERE (null, null) = (select null, null from dual)",
-		Expected: []sql.Row{},
 	},
 	// TODO: support nested recursive CTEs
 	{
@@ -9649,6 +9713,23 @@ FROM mytable;`,
 		Expected: []sql.Row{
 			{"DECIMAL"},
 		},
+	},
+	// https://github.com/dolthub/dolt/issues/11024 — row-constructor IN (SELECT ...) on the
+	// HASH-MISS path in plan.InSubquery.Eval still returns a definite `false` instead of NULL
+	// when no candidate row is an exact hash match but a candidate row has a NULL element that
+	// makes the comparison indeterminate rather than definitely unequal. The equivalent list-IN
+	// form (already fixed, see QueryTests above) gets this right: `SELECT (1, 5) IN ((1, NULL))`
+	// correctly returns NULL. This subquery-IN case is a KNOWN, disclosed follow-up — not fixed
+	// in the #11024 PR, which only fixes list-IN, not subquery-IN. Only the hash-HIT path (left
+	// tuple's hash exactly matches a candidate row's hash, e.g. `(1, NULL) IN (SELECT 1, NULL
+	// FROM dual)`) is fixed today, via InSubquery.Eval's confirming rTyp.Compare check.
+	{
+		Query:    "SELECT (1, 5) IN (SELECT 1, NULL FROM dual)",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT (1, 5) IN (SELECT * FROM (SELECT 1, NULL FROM dual UNION ALL SELECT 2, 3 FROM dual) t)",
+		Expected: []sql.Row{{nil}},
 	},
 }
 
