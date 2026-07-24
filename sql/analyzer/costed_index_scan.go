@@ -624,6 +624,11 @@ func (c *indexCoster) updateBest(s sql.Statistic, hist []sql.HistogramBucket, fd
 		}
 	}()
 
+	if c.bestStat == nil {
+		update = true
+		return
+	}
+
 	// The current best is a full table scan
 	if c.bestStat.Qualifier().Index() == "" {
 		switch {
