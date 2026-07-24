@@ -107,6 +107,8 @@ type CommentedTable interface {
 	Comment() string
 }
 
+// CoveringProjectedTable is a table that has projections on it and is capable of verifying if an index covers those
+// projections
 type CoveringProjectedTable interface {
 	ProjectedTable
 	IsCovering(index Index) bool

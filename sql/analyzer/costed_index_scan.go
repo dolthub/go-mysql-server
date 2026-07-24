@@ -628,7 +628,7 @@ func (c *indexCoster) updateBest(s sql.Statistic, hist []sql.HistogramBucket, fd
 		}
 	}()
 
-	if c.bestStat == nil {
+	if c.bestStat == nil { // TODO: replace this so that it is never true again
 		update = true
 		return
 	}
@@ -649,8 +649,9 @@ func (c *indexCoster) updateBest(s sql.Statistic, hist []sql.HistogramBucket, fd
 		return
 	}
 
-	// Missing stats, just use the index
-	if rowCnt == 0 && c.bestCnt == 0 && c.bestStat.Qualifier().Index() == "" {
+	// Missing stats or good histogram comparison, so just use the index
+	// TODO: this breaks when the filter over the index is always true
+	if rowCnt == c.bestCnt && c.bestStat.Qualifier().Index() == "" {
 		update = true
 		return
 	}
