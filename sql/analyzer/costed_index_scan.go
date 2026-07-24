@@ -272,7 +272,9 @@ func getCostedIndexScan(
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	c.updateBest(tblScanStat, tblScanStat.Histogram(), nil, sets.FastIntSet{}, 0, false)
+	c.updateBest(tblScanStat, tblScanStat.Histogram(), nil, sets.FastIntSet{}, 0, false, false)
+
+	covTbl, isCovTbl := tbl.(sql.CoveringProjectedTable)
 
 	for _, idx := range indexes {
 		// only use the index if the query filters include the index predicate
@@ -289,7 +291,12 @@ func getCostedIndexScan(
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		err = c.cost(ctx, root, stat, idx)
+
+		// TODO: have a more elegant way of determining if index is covering table
+		//  pruneTable fills in the projectedSchema for dolt tables, so this solution reuses that effort
+		isCov := isCovTbl && covTbl.IsCovering(idx)
+
+		err = c.cost(ctx, root, stat, idx, isCov)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -549,7 +556,7 @@ type indexCoster struct {
 
 // cost tries to build the lowest cardinality index scan for an expression
 // tree rooted at |f| on the index |idx| whose statistics are represented by |stat|.
-func (c *indexCoster) cost(ctx *sql.Context, f indexFilter, stat sql.Statistic, idx sql.Index) error {
+func (c *indexCoster) cost(ctx *sql.Context, f indexFilter, stat sql.Statistic, idx sql.Index, isCov bool) error {
 	ordinals := ordinalsForStat(stat)
 
 	var newHist []sql.HistogramBucket
@@ -593,12 +600,12 @@ func (c *indexCoster) cost(ctx *sql.Context, f indexFilter, stat sql.Statistic, 
 		newFds = &sql.FuncDepSet{}
 	}
 
-	c.updateBest(stat, newHist, newFds, filters, prefix, hasRange)
+	c.updateBest(stat, newHist, newFds, filters, prefix, hasRange, isCov)
 
 	return nil
 }
 
-func (c *indexCoster) updateBest(s sql.Statistic, hist []sql.HistogramBucket, fds *sql.FuncDepSet, filters sets.FastIntSet, prefix int, hasRange bool) {
+func (c *indexCoster) updateBest(s sql.Statistic, hist []sql.HistogramBucket, fds *sql.FuncDepSet, filters sets.FastIntSet, prefix int, hasRange, isCov bool) {
 	if s == nil {
 		return
 	}
@@ -633,7 +640,7 @@ func (c *indexCoster) updateBest(s sql.Statistic, hist []sql.HistogramBucket, fd
 	if rowCnt < c.bestCnt {
 		// Secondary indexes incur an additional index lookup cost, so they need to reduce rowCount by a substantial amount
 		if s.Qualifier().Index() != "PRIMARY" && s.Qualifier().Index() != "" {
-			if rowCnt < 10 || rowCnt < c.bestCnt/4 || c.bestStat.Qualifier().Idx != "" {
+			if isCov || rowCnt < 10 || rowCnt < c.bestCnt/4 || c.bestStat.Qualifier().Idx != "" {
 				update = true
 			}
 			return

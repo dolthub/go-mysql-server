@@ -107,6 +107,11 @@ type CommentedTable interface {
 	Comment() string
 }
 
+type CoveringProjectedTable interface {
+	ProjectedTable
+	IsCovering(index Index) bool
+}
+
 // ProjectedTable is a table that can return only a subset of its columns from RowIter. This provides a very large
 // efficiency gain during table scans. Tables that implement this interface must return only the projected columns
 // in future calls to Schema.
