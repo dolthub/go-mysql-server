@@ -220,7 +220,6 @@ func getCostedIndexScan(
 	if err != nil {
 		return nil, nil, nil, err
 	}
-
 	c := newIndexCoster(tblNode.Name())
 	c.indexedExprs = indexedExprs
 
@@ -229,12 +228,13 @@ func getCostedIndexScan(
 		return nil, nil, nil, err
 	}
 
+	// reuse stat qualifier to save memory
+	qual := sql.NewStatQualifier(dbName, schName, tblName, "")
 	if len(qualToStat) > 0 {
 		// don't mix and match real and default stats
 		for _, idx := range indexes {
-			qual := sql.NewStatQualifier(dbName, schName, tblName, idx.ID())
-			_, ok := qualToStat[qual]
-			if !ok {
+			qual.Idx = strings.ToLower(idx.ID())
+			if _, ok := qualToStat[qual]; !ok {
 				qualToStat = nil
 				break
 			}
@@ -265,10 +265,10 @@ func getCostedIndexScan(
 			}
 		}
 
-		qual := sql.NewStatQualifier(dbName, schName, tblName, idx.ID())
+		qual.Idx = strings.ToLower(idx.ID())
 		stat, ok := qualToStat[qual]
 		if !ok {
-			// create statistic if table is missing a statsProvider
+			// create statistic if the table is missing a statsProvider
 			stat, err = uniformDistStatisticsForIndex(ctx, statsProvider, idxTbl, idx)
 		}
 		if err != nil {
@@ -284,6 +284,7 @@ func getCostedIndexScan(
 		return nil, nil, nil, err
 	}
 
+	// TODO: coster should just have pointer to best index
 	targetId := c.bestStat.Qualifier().Index()
 	var idx sql.Index
 	for _, i := range indexes {
@@ -324,11 +325,11 @@ func getCostedIndexScan(
 			allRange = allRange && uok && lok
 			if i == 0 && allRange {
 				// no prefix restriction
-				return nil, nil, nil, err
+				return nil, nil, nil, nil
 			}
 		}
 		if allRange {
-			return nil, nil, nil, err
+			return nil, nil, nil, nil
 		}
 	}
 
