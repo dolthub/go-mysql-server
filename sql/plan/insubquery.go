@@ -116,11 +116,23 @@ func (in *InSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return false, nil
 		}
 
+		if tup, ok := rTyp.(types.TupleType); ok {
+			lVals, lok := left.([]interface{})
+			rVals, rok := val.([]interface{})
+			if lok && rok && len(lVals) == len(rVals) && len(lVals) == len(tup) {
+				cmp, hasNil, cErr := types.CompareTupleValues(ctx, lVals, rVals, tup, true)
+				if cErr != nil {
+					return nil, cErr
+				}
+				if hasNil && cmp == 0 {
+					return nil, nil
+				}
+				return cmp == 0, nil
+			}
+		}
+
 		cmp, err := rTyp.Compare(ctx, left, val)
 		if err != nil {
-			if sql.ErrNilOperand.Is(err) {
-				return nil, nil
-			}
 			return nil, err
 		}
 

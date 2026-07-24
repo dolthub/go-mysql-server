@@ -34,8 +34,7 @@ type Comparer interface {
 }
 
 // ErrNilOperand is returned if some or both of the comparison's operands is nil.
-// Alias of sql.ErrNilOperand so sql/types can signal the same condition.
-var ErrNilOperand = sql.ErrNilOperand
+var ErrNilOperand = errors.NewKind("nil operand found in comparison")
 
 // PreciseComparison searches an expression tree for comparison
 // expressions that require a conversion or type promotion.
@@ -141,6 +140,9 @@ func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 	}
 
 	lTyp, rTyp := c.Left().Type(ctx), c.Right().Type(ctx)
+	if types.IsTuple(lTyp) && types.IsTuple(rTyp) {
+		return compareTuples(ctx, left, right, lTyp, rTyp)
+	}
 	if types.TypesEqual(lTyp, rTyp) {
 		return lTyp.Compare(ctx, left, right)
 	}
@@ -159,6 +161,41 @@ func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 		compareType = types.MustCreateString(stringCompareType.Type(), stringCompareType.Length(), collationPreference)
 	}
 	return compareType.Compare(ctx, l, r)
+}
+
+// compareTuples performs non-null-safe tuple comparison for = / != / IN.
+// Nilness is owned here: CompareTupleValues(..., earlyReturnOnNil=true) and
+// ErrNilOperand when the result is indeterminate.
+func compareTuples(ctx *sql.Context, left, right interface{}, lTyp, rTyp sql.Type) (int, error) {
+	l, ok := left.([]interface{})
+	if !ok {
+		return 0, sql.ErrNotTuple.New(left)
+	}
+	r, ok := right.([]interface{})
+	if !ok {
+		return 0, sql.ErrNotTuple.New(right)
+	}
+	if len(l) != len(r) {
+		return 0, sql.ErrInvalidOperandColumns.New(len(l), len(r))
+	}
+
+	elemTypes, ok := lTyp.(types.TupleType)
+	if !ok || len(elemTypes) != len(l) {
+		if rt, ok := rTyp.(types.TupleType); ok && len(rt) == len(l) {
+			elemTypes = rt
+		} else {
+			return 0, sql.ErrNotTuple.New(lTyp)
+		}
+	}
+
+	cmp, hasNil, err := types.CompareTupleValues(ctx, l, r, elemTypes, true)
+	if err != nil {
+		return 0, err
+	}
+	if hasNil && cmp == 0 {
+		return 0, ErrNilOperand.New()
+	}
+	return cmp, nil
 }
 
 // CompareValue the two given values using the types of the expressions in the comparison.

@@ -38,9 +38,54 @@ func CreateTuple(types ...sql.Type) sql.Type {
 	return TupleType(types)
 }
 
-// Compare compares two tuples element-by-element. A definite non-equal
-// element pair short-circuits. If every non-NULL pair matches but at least
-// one element is NULL, returns sql.ErrNilOperand (SQL NULL for = / != / IN).
+// CompareTupleValues compares two same-size tuples element-by-element.
+// Callers must ensure len(left) == len(right) == len(elemTypes).
+//
+// earlyReturnOnNil controls nil-element handling:
+//   - true: a nil on either side is not passed to Type.Compare; hasNil is set
+//     and the walk continues so a later definite mismatch still short-circuits.
+//     Expression comparison maps (cmp==0 && hasNil) to SQL NULL / ErrNilOperand.
+//   - false: nil elements are compared via the element type's Compare
+//     (type-level path; does not own SQL-NULL semantics).
+func CompareTupleValues(ctx context.Context, left, right []interface{}, elemTypes TupleType, earlyReturnOnNil bool) (cmp int, hasNil bool, err error) {
+	for i := range left {
+		if left[i] == nil || right[i] == nil {
+			if earlyReturnOnNil {
+				hasNil = true
+				continue
+			}
+			cmp, err = elemTypes[i].Compare(ctx, left[i], right[i])
+			if err != nil {
+				return 0, hasNil, err
+			}
+			if cmp != 0 {
+				return cmp, hasNil, nil
+			}
+			continue
+		}
+
+		lv, _, err := elemTypes[i].Convert(ctx, left[i])
+		if err != nil {
+			return 0, hasNil, err
+		}
+		rv, _, err := elemTypes[i].Convert(ctx, right[i])
+		if err != nil {
+			return 0, hasNil, err
+		}
+
+		cmp, err = elemTypes[i].Compare(ctx, lv, rv)
+		if err != nil {
+			return 0, hasNil, err
+		}
+		if cmp != 0 {
+			return cmp, hasNil, nil
+		}
+	}
+	return 0, hasNil, nil
+}
+
+// Compare implements sql.Type. Nilness / SQL-NULL semantics for equality-style
+// operators are owned by the expression package via CompareTupleValues(..., true).
 func (t TupleType) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
@@ -54,46 +99,9 @@ func (t TupleType) Compare(ctx context.Context, a interface{}, b interface{}) (i
 	if !ok {
 		return 0, sql.ErrNotTuple.New(b)
 	}
-	if len(left) != len(t) {
-		return 0, sql.ErrInvalidColumnNumber.New(len(t), len(left))
-	}
-	if len(right) != len(t) {
-		return 0, sql.ErrInvalidColumnNumber.New(len(t), len(right))
-	}
 
-	var sawNull bool
-	for i := range left {
-		if left[i] == nil || right[i] == nil {
-			// Skip convert/compare: a NULL literal's type can make Convert of
-			// the non-NULL side fail with ErrValueNotNil.
-			sawNull = true
-			continue
-		}
-
-		lv, _, err := t[i].Convert(ctx, left[i])
-		if err != nil {
-			return 0, err
-		}
-		rv, _, err := t[i].Convert(ctx, right[i])
-		if err != nil {
-			return 0, err
-		}
-
-		cmp, err := t[i].Compare(ctx, lv, rv)
-		if err != nil {
-			return 0, err
-		}
-
-		if cmp != 0 {
-			return cmp, nil
-		}
-	}
-
-	if sawNull {
-		return 0, sql.ErrNilOperand.New()
-	}
-
-	return 0, nil
+	cmp, _, err := CompareTupleValues(ctx, left, right, t, false)
+	return cmp, err
 }
 
 func (t TupleType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
