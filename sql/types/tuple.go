@@ -39,7 +39,8 @@ func CreateTuple(types ...sql.Type) sql.Type {
 }
 
 // CompareTupleValues compares two same-size tuples element-by-element.
-// Callers must ensure len(left) == len(right) == len(elemTypes).
+// Rejects length mismatches (left/right/elemTypes) with ErrInvalidColumnNumber
+// so a shorter left cannot false-equal and a longer left cannot index OOB.
 //
 // earlyReturnOnNil controls nil-element handling:
 //   - true: a nil on either side is not passed to Type.Compare; hasNil is set
@@ -48,6 +49,13 @@ func CreateTuple(types ...sql.Type) sql.Type {
 //   - false: nil elements are compared via the element type's Compare
 //     (type-level path; does not own SQL-NULL semantics).
 func CompareTupleValues(ctx context.Context, left, right []interface{}, elemTypes TupleType, earlyReturnOnNil bool) (cmp int, hasNil bool, err error) {
+	if len(left) != len(elemTypes) {
+		return 0, false, sql.ErrInvalidColumnNumber.New(len(elemTypes), len(left))
+	}
+	if len(right) != len(elemTypes) {
+		return 0, false, sql.ErrInvalidColumnNumber.New(len(elemTypes), len(right))
+	}
+
 	for i := range left {
 		if left[i] == nil || right[i] == nil {
 			if earlyReturnOnNil {

@@ -19,6 +19,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // Exercises the shipped CompareTupleValues helper (nicktobey #3640 design):
@@ -77,4 +79,39 @@ func TestCompareTupleValues_TypePathNoNilOwnership(t *testing.T) {
 	cmp, err = tt.Compare(ctx, []interface{}{int64(1), int64(2)}, []interface{}{int64(1), int64(9)})
 	require.NoError(t, err)
 	require.NotEqual(t, 0, cmp)
+}
+
+// Length mismatches must error — not false-equal (short left) or panic (long left).
+func TestCompareTupleValues_LengthMismatch(t *testing.T) {
+	ctx := context.Background()
+	elem := TupleType{Int64, Int64}
+
+	// Shorter left vs 2-element type: must not return cmp=0,err=nil
+	cmp, hasNil, err := CompareTupleValues(ctx, []interface{}{int64(1)}, []interface{}{int64(1), int64(2)}, elem, true)
+	require.Error(t, err)
+	require.True(t, sql.ErrInvalidColumnNumber.Is(err))
+	require.Equal(t, 0, cmp)
+	require.False(t, hasNil)
+
+	// Longer left: must error, not index OOB panic
+	cmp, hasNil, err = CompareTupleValues(ctx, []interface{}{int64(1), int64(2), int64(3)}, []interface{}{int64(1), int64(2)}, elem, true)
+	require.Error(t, err)
+	require.True(t, sql.ErrInvalidColumnNumber.Is(err))
+	require.Equal(t, 0, cmp)
+	require.False(t, hasNil)
+
+	// Shorter right
+	_, _, err = CompareTupleValues(ctx, []interface{}{int64(1), int64(2)}, []interface{}{int64(1)}, elem, false)
+	require.Error(t, err)
+	require.True(t, sql.ErrInvalidColumnNumber.Is(err))
+
+	// TupleType.Compare path
+	tt := TupleType{Int64, Int64}
+	_, err = tt.Compare(ctx, []interface{}{int64(1)}, []interface{}{int64(1), int64(2)})
+	require.Error(t, err)
+	require.True(t, sql.ErrInvalidColumnNumber.Is(err))
+
+	_, err = tt.Compare(ctx, []interface{}{int64(1), int64(2), int64(3)}, []interface{}{int64(1), int64(2)})
+	require.Error(t, err)
+	require.True(t, sql.ErrInvalidColumnNumber.Is(err))
 }
