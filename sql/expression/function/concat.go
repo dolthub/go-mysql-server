@@ -17,6 +17,7 @@ package function
 import (
 	"fmt"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -50,7 +51,22 @@ func (c *Concat) Description() string {
 }
 
 // Type implements the Expression interface.
-func (c *Concat) Type(ctx *sql.Context) sql.Type { return types.LongText }
+func (c *Concat) Type(ctx *sql.Context) sql.Type {
+	if c.hasBinaryStringArg(ctx) {
+		return types.LongBlob
+	}
+	return types.LongText
+}
+
+// hasBinaryStringArg returns true if any argument is itself a string type using the binary character set.
+func (c *Concat) hasBinaryStringArg(ctx *sql.Context) bool {
+	for _, arg := range c.args {
+		if st, ok := arg.Type(ctx).(sql.StringType); ok && st.IsStringType() && st.CharacterSet() == sql.CharacterSet_binary {
+			return true
+		}
+	}
+	return false
+}
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (c *Concat) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
@@ -132,5 +148,17 @@ func (c *Concat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		parts = append(parts, content)
 	}
 
-	return strings.Join(parts, ""), nil
+	joined := strings.Join(parts, "")
+
+	resultType := c.Type(ctx)
+	// Match MySQL: invalid UTF-8 on the text CONCAT path is an error (1300), not a truncate.
+	if !types.IsBinaryType(resultType) && !utf8.ValidString(joined) {
+		return nil, types.ErrBadCharsetString.New(joined, "<unknown>", int64(0))
+	}
+	result, _, err := resultType.Convert(ctx, joined)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
