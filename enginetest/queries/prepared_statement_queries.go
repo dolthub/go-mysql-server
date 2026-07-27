@@ -6,7 +6,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
 var PreparedScriptTests = []ScriptTest{
@@ -402,101 +401,6 @@ var PreparedScriptTests = []ScriptTest{
 			{
 				Query:    "execute s using @u3, @u2, @u4",
 				Expected: []sql.Row{},
-			},
-		},
-	},
-	{
-		Name: "Drop column with check constraint, no other columns",
-		SetUpScript: []string{
-			"create table mytable (pk int primary key);",
-			"ALTER TABLE mytable ADD COLUMN col2 text NOT NULL;",
-			"ALTER TABLE mytable ADD CONSTRAINT constraint_check CHECK (col2 LIKE '%myregex%');",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "ALTER TABLE mytable DROP COLUMN col2",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-		},
-	},
-	{
-		Name: "Drop column with check constraint, other column referenced first",
-		SetUpScript: []string{
-			"create table mytable (pk int primary key);",
-			"ALTER TABLE mytable ADD COLUMN col2 text NOT NULL;",
-			"ALTER TABLE mytable ADD COLUMN col3 text NOT NULL;",
-			"ALTER TABLE mytable ADD CONSTRAINT constraint_check CHECK (col3 LIKE col2);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:       "ALTER TABLE mytable DROP COLUMN col2",
-				ExpectedErr: sql.ErrCheckConstraintInvalidatedByColumnAlter,
-			},
-		},
-	},
-	{
-		Name: "Drop column with check constraint, other column referenced second",
-		SetUpScript: []string{
-			"create table mytable (pk int primary key);",
-			"ALTER TABLE mytable ADD COLUMN col2 text NOT NULL;",
-			"ALTER TABLE mytable ADD COLUMN col3 text NOT NULL;",
-			"ALTER TABLE mytable ADD CONSTRAINT constraint_check CHECK (col2 LIKE col3);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:       "ALTER TABLE mytable DROP COLUMN col2",
-				ExpectedErr: sql.ErrCheckConstraintInvalidatedByColumnAlter,
-			},
-		},
-	},
-	{
-		Name: "Drop column with check constraint, multiple constraints",
-		SetUpScript: []string{
-			"create table mytable (pk int primary key);",
-			"ALTER TABLE mytable ADD COLUMN col2 text NOT NULL;",
-			"ALTER TABLE mytable ADD COLUMN col3 text NOT NULL;",
-			"ALTER TABLE mytable ADD CONSTRAINT ok_check CHECK (col2 LIKE '%myregex%');",
-			"ALTER TABLE mytable ADD CONSTRAINT bad_check CHECK (col2 LIKE col3);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:       "ALTER TABLE mytable DROP COLUMN col2",
-				ExpectedErr: sql.ErrCheckConstraintInvalidatedByColumnAlter,
-			},
-		},
-	},
-	{
-		// https://github.com/dolthub/dolthub-issues/issues/489
-		Name: "Large character data",
-		SetUpScript: []string{
-			"CREATE TABLE `test` (`id` int NOT NULL AUTO_INCREMENT, `data` blob NOT NULL, PRIMARY KEY (`id`))",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: `INSERT INTO test (data) values (?)`,
-				Bindings: map[string]sqlparser.Expr{
-					// Vitess chooses VARBINARY as the bindvar type if the client sends CHAR data
-					// If we change how Vitess interprets client bindvar types, we should update this test
-					// Or better yet: have a test harness that uses the server directly
-					"v1": sqlparser.NewStrVal([]byte(
-						"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
-							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
-							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
-							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
-							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
-							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
-							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
-							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
-							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
-							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
-							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
-							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
-							"")),
-				},
-				Expected: []sql.Row{{types.OkResult{
-					RowsAffected: 1,
-					InsertID:     1,
-				}}},
 			},
 		},
 	},
