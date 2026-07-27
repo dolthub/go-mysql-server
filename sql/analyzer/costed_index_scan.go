@@ -275,7 +275,10 @@ func getCostedIndexScan(
 	c.bestStat = tblScanStat
 	c.bestCnt = tblScanStat.RowCount()
 
-	covTbl, isCovTbl := tbl.(sql.CoveringProjectedTable)
+	var projs []string
+	if projTbl, isProjTbl := tbl.(sql.ProjectedTable); isProjTbl {
+		projs = projTbl.Projections()
+	}
 	for _, idx := range indexes {
 		// only use the index if the query filters include the index predicate
 		if !canUsePartialIndex(idx, filters) {
@@ -292,9 +295,10 @@ func getCostedIndexScan(
 			return nil, nil, nil, err
 		}
 
-		// TODO: have a more elegant way of determining if index is covering table
-		//  pruneTable fills in the projectedSchema for dolt tables, so this solution reuses that effort
-		isCov := isCovTbl && covTbl.IsCovering(idx)
+		var isCov bool
+		if projs != nil {
+			isCov = idx.CoversColumns(projs)
+		}
 
 		err = c.cost(ctx, root, stat, idx, isCov)
 		if err != nil {
