@@ -219,10 +219,11 @@ type FunctionExpression interface {
 
 // ExtendedTableFunction is an extension for table function wrapper to access schema returned from functions.
 type ExtendedTableFunction interface {
-	// OutParametersSchema returns schema of OUTput parameters including name and types.
-	// It's nil, if there is no OUTput parameter defined in the routine.
+	// OutParametersSchema returns schema of output parameters including name and types.
+	// It's nil, if there is no output parameter defined in the routine.
 	OutParametersSchema() Schema
-	// Unwrap converts record values to sql.Row (unwrapped) for routines with OUTput parameters.
-	// It returns given value in sql.Row without any changes for all other types.
+	// Unwrap converts record values to sql.Row (unwrapped) for routines with output parameters.
+	// When a routine returns more than one output parameter, it becomes RECORD type, which the result
+	// is a record value. It returns the given value in sql.Row without any changes for all other types.
 	Unwrap(any) Row
 }
