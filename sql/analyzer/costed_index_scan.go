@@ -644,6 +644,10 @@ func (c *indexCoster) updateBest(s sql.Statistic, hist []sql.HistogramBucket, fd
 		case isCov:
 			update = true
 			return
+		// Performance impact is negligible for small tables, so use old behavior
+		case rowCnt < 10:
+			update = true
+			return
 		// Secondary index reduced rowCount substantially, outweighing secondary lookup costs
 		case rowCnt < c.bestCnt/4:
 			update = true
