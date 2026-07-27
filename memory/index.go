@@ -158,7 +158,7 @@ func (idx *Index) CoversColumns(cols []string) bool {
 			if !isGf {
 				return false
 			}
-			if gf.Name() != col {
+			if !strings.EqualFold(col, gf.Name()) {
 				return false
 			}
 		}
