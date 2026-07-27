@@ -1945,4 +1945,28 @@ var OnUpdateExprScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/11346
+		Name: "ON UPDATE works with CTE",
+		SetUpScript: []string{
+			"CREATE TABLE t2 (id VARCHAR(64) PRIMARY KEY, val INT, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP);",
+			"INSERT INTO t2 (id,val) VALUES ('a',1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from t2",
+				Expected: []sql.Row{{"a", 1, Jan1Noon}},
+			},
+			{
+				Query: "WITH r(id) AS (SELECT 'a') UPDATE t2 SET val=2 WHERE id IN (SELECT id FROM r);",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
+				},
+			},
+			{
+				Query:    "select * from t2",
+				Expected: []sql.Row{{"a", 2, Dec15_1_30}},
+			},
+		},
+	},
 }

@@ -358,20 +358,19 @@ func (b *Builder) assignmentExprsToUpdateExprs(inScope *scope, e ast.AssignmentE
 // values still need to be updated despite not being part of an explicit update expression
 func (b *Builder) addDependentUpdateExprs(inScope *scope, schema sql.Schema, updateExprs []sql.Expression) []sql.Expression {
 	if len(schema) > 0 {
-		tabId := inScope.tables[strings.ToLower(schema[0].Source)]
-		for i, col := range schema {
+		for _, col := range schema {
+			var generated *sql.ColumnDefaultValue
 			if col.Generated != nil {
-				colGf := expression.NewGetFieldWithTable(i+1, int(tabId), col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable)
-				generated := b.resolveColumnDefaultExpression(inScope, col, col.Generated)
-				updateExprs = append(updateExprs, expression.NewSetField(colGf, assignColumnIndexes(b.ctx, generated, schema)))
-			}
-			if col.OnUpdate != nil {
+				generated = b.resolveColumnDefaultExpression(inScope, col, col.Generated)
+			} else if col.OnUpdate != nil {
 				// don't add if column is already being updated
 				if !isColumnUpdated(col, updateExprs) {
-					colGf := expression.NewGetFieldWithTable(i+1, int(tabId), col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable)
-					onUpdate := b.resolveColumnDefaultExpression(inScope, col, col.OnUpdate)
-					updateExprs = append(updateExprs, expression.NewSetField(colGf, assignColumnIndexes(b.ctx, onUpdate, schema)))
+					generated = b.resolveColumnDefaultExpression(inScope, col, col.OnUpdate)
 				}
+			}
+			if generated != nil {
+				colExpr := b.buildColumnExpr(inScope, col.Name, col.Source, col.DatabaseSource)
+				updateExprs = append(updateExprs, expression.NewSetField(colExpr, assignColumnIndexes(b.ctx, generated, schema)))
 			}
 		}
 	}

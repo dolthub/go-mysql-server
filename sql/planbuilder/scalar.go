@@ -503,6 +503,16 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 	return nil
 }
 
+func (b *Builder) buildColumnExpr(inScope *scope, colName, tableName, dbName string) sql.Expression {
+	return b.buildScalar(inScope, &ast.ColName{
+		Name: ast.NewColIdent(colName),
+		Qualifier: ast.TableName{
+			Name:        ast.NewTableIdent(tableName),
+			DbQualifier: ast.NewTableIdent(dbName),
+		},
+	})
+}
+
 func (b *Builder) buildInjectedExpr(inScope *scope, v ast.InjectedExpr) sql.Expression {
 	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, v.Auth); err != nil && b.authEnabled {
 		b.handleErr(err)
