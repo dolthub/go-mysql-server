@@ -3,8 +3,6 @@ package queries
 import (
 	"time"
 
-	"github.com/dolthub/vitess/go/vt/sqlparser"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
