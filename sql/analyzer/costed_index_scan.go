@@ -653,6 +653,8 @@ func (c *indexCoster) updateBest(s sql.Statistic, hist []sql.HistogramBucket, fd
 		case rowCnt == c.bestCnt:
 			update = true
 			return
+		default:
+			return
 		}
 	}
 
