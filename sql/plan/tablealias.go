@@ -26,6 +26,7 @@ type TableAlias struct {
 	comment string
 	sch     sql.Schema
 	id      sql.TableId
+	columns []string
 }
 
 var _ sql.RenameableNode = (*TableAlias)(nil)
@@ -90,7 +91,7 @@ func (t *TableAlias) Comment() string {
 }
 
 // Schema implements the Node interface. TableAlias alters the schema of its child element to rename the source of
-// columns to the alias.
+// columns to the alias, and to the alias's column names when WithColumnNames has been used.
 func (t *TableAlias) Schema(ctx *sql.Context) sql.Schema {
 	if t.sch == nil {
 		childSchema := t.Child.Schema(ctx)
@@ -98,10 +99,21 @@ func (t *TableAlias) Schema(ctx *sql.Context) sql.Schema {
 		for i, col := range childSchema {
 			newCol := *col
 			newCol.Source = t.name
+			if len(t.columns) > 0 {
+				newCol.Name = t.columns[i]
+			}
 			t.sch[i] = &newCol
 		}
 	}
 	return t.sch
+}
+
+// WithColumnNames returns a copy of this alias that renames its output columns positionally, e.g. AS alias(col1, col2).
+func (t *TableAlias) WithColumnNames(columns []string) *TableAlias {
+	ret := *t
+	ret.columns = columns
+	ret.sch = nil
+	return &ret
 }
 
 // WithChildren implements the Node interface.
@@ -114,6 +126,7 @@ func (t *TableAlias) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.N
 	ret.comment = t.comment
 	ret.cols = t.cols
 	ret.id = t.id
+	ret.columns = t.columns
 	return ret, nil
 }
 
