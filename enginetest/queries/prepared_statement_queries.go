@@ -280,7 +280,8 @@ var PreparedScriptTests = []ScriptTest{
 				ExpectedErrStr: "bind variable not provided: 'v2'",
 			},
 			{
-				SkipResultCheckOnServerEngine: true, // execute depends on prepare stmt for whether to use 'query' or 'exec' from go sql driver.
+				// execute depends on prepare stmt for whether to use 'query' or 'exec' from go sql driver.
+				SkipResultCheckOnServerEngine: true,
 				Query:                         "execute s using @a, @b",
 				Expected: []sql.Row{
 					{types.OkResult{RowsAffected: 1}},
@@ -309,7 +310,9 @@ var PreparedScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query: "execute s;",
+				// execute depends on prepare stmt for whether to use 'query' or 'exec' from go sql driver.
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "execute s;",
 				Expected: []sql.Row{
 					{types.OkResult{RowsAffected: 1}},
 				},
@@ -349,7 +352,7 @@ var PreparedScriptTests = []ScriptTest{
 				ExpectedErrStr: "bind variable not provided: 'v2'",
 			},
 			{
-				SkipResultCheckOnServerEngine: true, // execute depends on prepare stmt for whether to use 'query' or 'exec' from go sql driver.
+				SkipResultCheckOnServerEngine: true,
 				Query:                         "execute s using @b, @a",
 				Expected: []sql.Row{
 					{types.OkResult{
@@ -382,7 +385,9 @@ var PreparedScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query: "execute s;",
+				// execute depends on prepare stmt for whether to use 'query' or 'exec' from go sql driver.
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "execute s;",
 				Expected: []sql.Row{
 					{types.OkResult{
 						RowsAffected: 1,
