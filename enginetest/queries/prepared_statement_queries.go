@@ -302,6 +302,111 @@ var PreparedScriptTests = []ScriptTest{
 				Query:       "execute s using @a",
 				ExpectedErr: sql.ErrUnknownPreparedStatement,
 			},
+			{
+				Query: "prepare s from 'insert into t values (100, \"def\")'",
+				Expected: []sql.Row{
+					{types.OkResult{Info: plan.PrepareInfo{}}},
+				},
+			},
+			{
+				Query: "execute s;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Query: "select * from t order by i",
+				Expected: []sql.Row{
+					{100, "def"},
+					{123, "abc"},
+				},
+			},
+			{
+				Query: "deallocate prepare s",
+				Expected: []sql.Row{
+					{types.OkResult{}},
+				},
+			},
+		},
+	},
+	{
+		Name: "prepare update",
+		SetUpScript: []string{
+			"set @a = 1;",
+			"set @b = 'abc';",
+			"create table t (i int, j varchar(100));",
+			"insert into t values (1, ''), (2, ''), (3, '');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "prepare s from 'update t set j = ? where i = ?'",
+				Expected: []sql.Row{
+					{types.OkResult{Info: plan.PrepareInfo{}}},
+				},
+			},
+			{
+				Query:          "execute s using @a",
+				ExpectedErrStr: "bind variable not provided: 'v2'",
+			},
+			{
+				SkipResultCheckOnServerEngine: true, // execute depends on prepare stmt for whether to use 'query' or 'exec' from go sql driver.
+				Query:                         "execute s using @b, @a",
+				Expected: []sql.Row{
+					{types.OkResult{
+						RowsAffected: 1,
+						Info: plan.UpdateInfo{
+							Matched: 1,
+							Updated: 1,
+						},
+					}},
+				},
+			},
+			{
+				Query: "select * from t order by i",
+				Expected: []sql.Row{
+					{1, "abc"},
+					{2, ""},
+					{3, ""},
+				},
+			},
+			{
+				Query: "deallocate prepare s",
+				Expected: []sql.Row{
+					{types.OkResult{}},
+				},
+			},
+			{
+				Query: "prepare s from 'update t set j = \"def\" where i = 2'",
+				Expected: []sql.Row{
+					{types.OkResult{Info: plan.PrepareInfo{}}},
+				},
+			},
+			{
+				Query: "execute s;",
+				Expected: []sql.Row{
+					{types.OkResult{
+						RowsAffected: 1,
+						Info: plan.UpdateInfo{
+							Matched: 1,
+							Updated: 1,
+						},
+					}},
+				},
+			},
+			{
+				Query: "select * from t order by i",
+				Expected: []sql.Row{
+					{1, "abc"},
+					{2, "def"},
+					{3, ""},
+				},
+			},
+			{
+				Query: "deallocate prepare s",
+				Expected: []sql.Row{
+					{types.OkResult{}},
+				},
+			},
 		},
 	},
 	{
