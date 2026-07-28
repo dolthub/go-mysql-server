@@ -2431,6 +2431,28 @@ WHERE
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/11350
+		name: "left outer join with duplicate join keys and non-merge filter",
+		setup: [][]string{
+			{
+				"create table b2 (cat varchar(50) not null, code varchar(16) not null, lang varchar(20) not null, primary key(cat, code, lang), key(code))",
+				"create table t2 (id varchar(36) primary key, code varchar(16), lang varchar(16), key(code, lang))",
+				"insert into b2 values ('cat0','P1','de:app'),('cat1','P1','fr:app'),('cat2','P1','nl:app')",
+				"insert into t2 values ('t1','P1','de'),('t2','P1','es'),('t3','P1','fr')",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query: "select p.lang, w.lang from b2 p left join t2 w on w.code = p.code and w.lang = substring_index(p.lang, ':', 1) order by 1, 2",
+				Expected: []sql.Row{
+					{"de:app", "de"},
+					{"fr:app", "fr"},
+					{"nl:app", nil},
+				},
+			},
+		},
+	},
 }
 
 var rangeJoinOpTests = []JoinOpTests{
