@@ -893,6 +893,10 @@ func TestIndexPrefix(t *testing.T) {
 	enginetest.TestIndexPrefix(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestTupleQueries(t *testing.T) {
+	enginetest.TestTupleQueries(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestPersist(t *testing.T) {
 	harness := enginetest.NewDefaultMemoryHarness()
 	if harness.IsUsingServer() {

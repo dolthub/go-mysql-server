@@ -9383,6 +9383,46 @@ from typestable`,
 		Expected:              []sql.Row{{math.NaN()}},
 		ExpectedWarningsCount: 2,
 	},
+	{
+		Query:    "SELECT (1, 1) in ((NULL, NULL))",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT (1, 1) IN ((NULL, NULL), (1, 1))",
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    "SELECT (NULL, NULL) IN ((NULL, NULL), (1, 1))",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT (NULL, NULL) IN ((NULL, NULL))",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT (NULL, NULL) IN ((1, 1))",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT (NULL, NULL) in (SELECT NULL, NULL LIMIT 0);",
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    "SELECT (NULL, NULL) = (SELECT NULL, NULL)",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, null) in ((1, null))",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (0, null) = (0, null)",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (null, null) = (select null, null from dual)",
+		Expected: []sql.Row{},
+	},
 }
 
 var KeylessQueries = []QueryTest{
@@ -9496,20 +9536,6 @@ var BrokenQueries = []QueryTest{
 	},
 	{
 		Query: "SELECT json_value() FROM dual;", // syntax error
-	},
-	// Null-safe and type conversion tuple comparison is not correctly
-	// implemented yet.
-	{
-		Query:    "SELECT 1 FROM DUAL WHERE (1, null) in ((1, null))",
-		Expected: []sql.Row{},
-	},
-	{
-		Query:    "SELECT 1 FROM DUAL WHERE (0, null) = (0, null)",
-		Expected: []sql.Row{},
-	},
-	{
-		Query:    "SELECT 1 FROM DUAL WHERE (null, null) = (select null, null from dual)",
-		Expected: []sql.Row{},
 	},
 	// TODO: support nested recursive CTEs
 	{
@@ -9633,6 +9659,14 @@ FROM mytable;`,
 		Expected: []sql.Row{
 			{"DECIMAL"},
 		},
+	},
+	{
+		Query:    "SELECT (1, 5) IN (SELECT 1, NULL FROM dual)",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT (1, 5) IN (SELECT * FROM (SELECT 1, NULL FROM dual UNION ALL SELECT 2, 3 FROM dual) t)",
+		Expected: []sql.Row{{nil}},
 	},
 }
 

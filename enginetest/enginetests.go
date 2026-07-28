@@ -6187,6 +6187,17 @@ func TestIndexPrefix(t *testing.T, h Harness) {
 	}
 }
 
+func TestTupleQueries(t *testing.T, harness Harness) {
+	e := mustNewEngine(t, harness)
+	defer e.Close()
+	queries.MakeTupleQueryTests(func(test queries.QueryTest) {
+		ctx := NewContext(harness)
+		_, err := e.PrepareQuery(ctx, test.Query)
+		require.NoError(t, err)
+		TestPreparedQueryWithEngine(t, harness, e, test)
+	})
+}
+
 func TestSQLLogicTests(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
 	for _, script := range queries.SQLLogicJoinTests {

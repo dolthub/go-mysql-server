@@ -106,9 +106,12 @@ func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			continue
 		}
 
-		cmpExpr := newComparison(lLit, NewLiteral(rVal, rType))
+		cmpExpr := newComparison(lLit, NewLiteral(rVal, rType), true)
 		res, cErr := cmpExpr.Compare(ctx, nil)
 		if cErr != nil {
+			if ErrNilOperand.Is(cErr) {
+				rHasNull = true
+			}
 			continue
 		}
 		if res == 0 {
