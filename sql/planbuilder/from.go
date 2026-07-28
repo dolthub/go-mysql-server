@@ -531,6 +531,18 @@ func (b *Builder) buildTableFunc(inScope *scope, t *ast.TableFuncExpr) (outScope
 		}
 	}
 
+	if len(t.Columns) > 0 {
+		renameCols := columnsToStrings(t.Columns)
+		if len(renameCols) != len(newAlias.Schema(b.ctx)) {
+			b.handleErr(sql.ErrColumnCountMismatch.New())
+		}
+		tableAlias, ok := newAlias.(*plan.TableAlias)
+		if !ok {
+			b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(t)))
+		}
+		newAlias = tableAlias.WithColumnNames(renameCols)
+	}
+
 	tabId := outScope.addTable(name)
 	var colset sql.ColSet
 	for _, c := range newAlias.Schema(b.ctx) {
