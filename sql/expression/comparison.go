@@ -95,7 +95,6 @@ func tupleTypesMatch(left sql.Type, tup types.TupleType, typeCb func(t sql.Type)
 
 type comparison struct {
 	BinaryExpressionStub
-	isEquality bool
 }
 
 // disableRounding disables rounding for the given expression.
@@ -104,10 +103,10 @@ func disableRounding(expr sql.Expression) {
 	setDivOps(expr, -1)
 }
 
-func newComparison(left, right sql.Expression, isEquality bool) comparison {
+func newComparison(left, right sql.Expression) comparison {
 	disableRounding(left)
 	disableRounding(right)
-	return comparison{BinaryExpressionStub{left, right}, isEquality}
+	return comparison{BinaryExpressionStub{left, right}}
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -143,6 +142,8 @@ func NullUnsafeCompareTuples(ctx *sql.Context, left, right []interface{}, elemTy
 // Compare the two given values using the types of the expressions in the comparison.
 // Since both types should be equal, it does not matter which type is used, but for
 // reference, the left type is always used.
+// |err| is ErrNilOperand if either input contains NULL, but |cmp| is still returned
+// because for tuple inputs, Equals expressions can still evaluate to false even if a NULL is encountered.
 func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 	left, right, err := c.evalLeftAndRight(ctx, row)
 	if err != nil {
@@ -179,12 +180,10 @@ func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 		if err != nil {
 			return 0, err
 		}
-		// When checking for equality, a nonzero cmp means that the inputs are never equal, even for null-unsafe checks.
-		if c.isEquality && cmp != 0 {
-			return cmp, nil
-		}
 		if hasNull {
-			return 0, ErrNilOperand.New()
+			// return |cmp| here, not 0. The Equals expression will check the value of cmp to detect the case where
+			// the values can never be equal, even though one of them contained a NULL.
+			return cmp, ErrNilOperand.New()
 		}
 		return cmp, nil
 	}
@@ -462,7 +461,7 @@ var _ Equality = (*Equals)(nil)
 
 // NewEquals returns a new Equals expression.
 func NewEquals(left sql.Expression, right sql.Expression) *Equals {
-	return &Equals{newComparison(left, right, true)}
+	return &Equals{newComparison(left, right)}
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -475,6 +474,10 @@ func (e *Equals) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	result, err := e.Compare(ctx, row)
 	if err != nil {
 		if ErrNilOperand.Is(err) {
+			// If result != 0, then the inputs compare unequal even if one of them is a tuple containing NULL.
+			if result != 0 {
+				return false, nil
+			}
 			return nil, nil
 		}
 
@@ -537,7 +540,7 @@ var _ sql.CollationCoercible = (*NullSafeEquals)(nil)
 
 // NewNullSafeEquals returns a new NullSafeEquals expression.
 func NewNullSafeEquals(left sql.Expression, right sql.Expression) *NullSafeEquals {
-	return &NullSafeEquals{newComparison(left, right, true)}
+	return &NullSafeEquals{newComparison(left, right)}
 }
 
 // Type implements the Expression interface.
@@ -620,7 +623,7 @@ var _ sql.CollationCoercible = (*GreaterThan)(nil)
 
 // NewGreaterThan creates a new GreaterThan expression.
 func NewGreaterThan(left sql.Expression, right sql.Expression) *GreaterThan {
-	return &GreaterThan{newComparison(left, right, false)}
+	return &GreaterThan{newComparison(left, right)}
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -689,7 +692,7 @@ var _ sql.CollationCoercible = (*LessThan)(nil)
 
 // NewLessThan creates a new LessThan expression.
 func NewLessThan(left sql.Expression, right sql.Expression) *LessThan {
-	return &LessThan{newComparison(left, right, false)}
+	return &LessThan{newComparison(left, right)}
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -757,7 +760,7 @@ var _ sql.CollationCoercible = (*GreaterThanOrEqual)(nil)
 
 // NewGreaterThanOrEqual creates a new GreaterThanOrEqual
 func NewGreaterThanOrEqual(left sql.Expression, right sql.Expression) *GreaterThanOrEqual {
-	return &GreaterThanOrEqual{newComparison(left, right, false)}
+	return &GreaterThanOrEqual{newComparison(left, right)}
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -825,7 +828,7 @@ var _ sql.CollationCoercible = (*LessThanOrEqual)(nil)
 
 // NewLessThanOrEqual creates a LessThanOrEqual expression.
 func NewLessThanOrEqual(left sql.Expression, right sql.Expression) *LessThanOrEqual {
-	return &LessThanOrEqual{newComparison(left, right, false)}
+	return &LessThanOrEqual{newComparison(left, right)}
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
