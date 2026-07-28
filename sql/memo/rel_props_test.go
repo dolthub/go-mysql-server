@@ -245,6 +245,10 @@ func (dummyIndex) IndexType() string {
 	return "FAKE"
 }
 
+func (dummyIndex) CoversColumns([]string) bool {
+	return false
+}
+
 func (dummyIndex) IsGenerated() bool {
 	return false
 }

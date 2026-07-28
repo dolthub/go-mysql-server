@@ -23,11 +23,22 @@ import (
 )
 
 func NewNormDistIter(colCnt, rowCnt int, mean, std float64) sql.RowIter {
-	return &normDistIter{cols: colCnt, cnt: rowCnt, std: std, mean: mean}
+	return &normDistIter{
+		cols: colCnt,
+		cnt:  rowCnt,
+		std:  std,
+		mean: mean,
+		rnd:  rand.New(rand.NewSource(0)),
+	}
 }
 
 func NewExpDistIter(colCnt, rowCnt int, lambda float64) sql.RowIter {
-	return &expDistIter{cols: colCnt, cnt: rowCnt, lambda: lambda}
+	return &expDistIter{
+		cols:   colCnt,
+		cnt:    rowCnt,
+		lambda: lambda,
+		rnd:    rand.New(rand.NewSource(0)),
+	}
 }
 
 type normDistIter struct {
@@ -35,6 +46,7 @@ type normDistIter struct {
 	cols      int
 	cnt       int
 	std, mean float64
+	rnd       *rand.Rand
 }
 
 var _ sql.RowIter = (*normDistIter)(nil)
@@ -47,7 +59,7 @@ func (d *normDistIter) Next(*sql.Context) (sql.Row, error) {
 	var ret sql.Row
 	ret = append(ret, d.i)
 	for i := 0; i < d.cols; i++ {
-		val := rand.NormFloat64()*d.std + d.mean
+		val := d.rnd.NormFloat64()*d.std + d.mean
 		if math.IsNaN(val) || math.IsInf(val, 0) {
 			val = math.MaxInt
 		}
@@ -65,6 +77,7 @@ type expDistIter struct {
 	cols   int
 	cnt    int
 	lambda float64
+	rnd    *rand.Rand
 }
 
 var _ sql.RowIter = (*expDistIter)(nil)
@@ -77,7 +90,7 @@ func (d *expDistIter) Next(*sql.Context) (sql.Row, error) {
 	var ret sql.Row
 	ret = append(ret, d.i)
 	for i := 0; i < d.cols; i++ {
-		val := -math.Log2(rand.NormFloat64()) / d.lambda
+		val := -math.Log2(d.rnd.NormFloat64()) / d.lambda
 		if math.IsNaN(val) || math.IsInf(val, 0) {
 			val = math.MaxInt32
 		}

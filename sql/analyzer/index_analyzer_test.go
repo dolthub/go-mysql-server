@@ -153,6 +153,7 @@ func (i *dummyIdx) IsVector() bool                        { return false }
 func (i *dummyIdx) Comment() string                       { return "" }
 func (i *dummyIdx) IsGenerated() bool                     { return false }
 func (i *dummyIdx) CanSupportOrderBy(sql.Expression) bool { return false }
+func (i *dummyIdx) CoversColumns([]string) bool           { return false }
 
 func (i *dummyIdx) IndexType() string       { return "BTREE" }
 func (i *dummyIdx) PrefixLengths() []uint16 { return nil }

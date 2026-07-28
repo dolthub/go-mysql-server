@@ -799,7 +799,7 @@ func TestRangeBuilder(t *testing.T) {
 			stat, err := newUniformDistStatistic(ctx, "mydb", "", testTable, sch, idx, 10, 10)
 			require.NoError(t, err)
 
-			err = c.cost(ctx, root, stat, idx)
+			err = c.cost(ctx, root, stat, idx, false)
 			require.NoError(t, err)
 
 			include := c.bestFilters

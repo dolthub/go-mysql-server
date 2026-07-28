@@ -151,6 +151,21 @@ func (idx *Index) IndexType() string {
 	return "BTREE" // fake but so are you
 }
 
+func (idx *Index) CoversColumns(cols []string) bool {
+	for _, col := range cols {
+		for _, expr := range idx.Exprs {
+			gf, isGf := expr.(*expression.GetField)
+			if !isGf {
+				return false
+			}
+			if !strings.EqualFold(col, gf.Name()) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 func (idx *Index) rowToIndexStorage(row sql.Row, partitionName string, rowIdx int) (sql.Row, error) {
 	if idx.Name == "PRIMARY" {
 		return row, nil
