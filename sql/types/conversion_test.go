@@ -21,6 +21,7 @@ import (
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -219,4 +220,33 @@ func TestGeneralizeTypes(t *testing.T) {
 			assert.Equal(t, test.expected, res)
 		})
 	}
+}
+
+// TestTypeAwareConversionExtendedType is a regression test for
+// https://github.com/dolthub/doltgresql/issues/2980: converting a value between two distinct
+// sql.ExtendedType implementations (e.g. Doltgres's int4 vs. numeric(10,2)) must go through
+// ConvertToType, which knows how to convert between two ExtendedTypes, rather than the plain
+// Convert method, which only accepts a value already shaped like the target's own zero value and
+// would otherwise error (or silently pass the value through unconverted, at the Case.Eval call
+// site) whenever the two ExtendedTypes aren't identical.
+func TestTypeAwareConversionExtendedType(t *testing.T) {
+	intLike := sql.FakeExtendedType{Name: "int_like", ZeroVal: int32(0)}
+	numericLike := sql.FakeExtendedType{Name: "numeric_like", ZeroVal: float64(0)}
+
+	result, inRange, err := TypeAwareConversion(sql.NewEmptyContext(), int32(5), intLike, numericLike)
+	require.NoError(t, err)
+	require.Equal(t, sql.InRange, inRange)
+	require.Equal(t, float64(5), result)
+
+	result, inRange, err = TypeAwareConversion(sql.NewEmptyContext(), float64(5), numericLike, intLike)
+	require.NoError(t, err)
+	require.Equal(t, sql.InRange, inRange)
+	require.Equal(t, int32(5), result)
+
+	// Identical extended types should be returned as-is rather than round-tripped through
+	// ConvertToType.
+	result, inRange, err = TypeAwareConversion(sql.NewEmptyContext(), int32(5), intLike, intLike)
+	require.NoError(t, err)
+	require.Equal(t, sql.InRange, inRange)
+	require.Equal(t, int32(5), result)
 }
