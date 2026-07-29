@@ -868,6 +868,10 @@ func columnStatisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 				return true, nil
 			}
 			for _, stats := range tableStats {
+				// skip no index statistics
+				if stats.Qualifier().Index() == "" {
+					continue
+				}
 				for _, c := range stats.Columns() {
 					if privSetTbl.Count() == 0 && privSetDb.Count() == 0 && privSetTbl.Column(c).Count() == 0 {
 						continue
