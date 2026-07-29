@@ -268,9 +268,14 @@ func getCostedIndexScan(
 	}
 
 	// include an indexless option for coster
-	tblScanStat, err := uniformDistStatsticForTableScan(ctx, statsProvider, qual, idxTbl)
-	if err != nil {
-		return nil, nil, nil, err
+	var tblScanStat sql.Statistic
+	qual.Idx = ""
+	if stat, ok := qualToStat[qual]; !ok {
+		stat, err = uniformDistStatsticForTableScan(ctx, statsProvider, qual, idxTbl)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		tblScanStat = stat
 	}
 	c.bestStat = tblScanStat
 	c.bestCnt = tblScanStat.RowCount()
@@ -2049,45 +2054,35 @@ func uniformDistStatsticForTableScan(
 	qual sql.StatQualifier,
 	idxTbl sql.IndexAddressableTable,
 ) (sql.Statistic, error) {
+	// mark as full table scan
+	qual.Idx = ""
 
 	var avgSize uint64
-	rowCount, _ := statsProv.RowCount(ctx, qual.Schema(), qual.Db(), idxTbl)
+	rowCnt, _ := statsProv.RowCount(ctx, qual.Schema(), qual.Db(), idxTbl)
 	if st, ok := idxTbl.(sql.StatisticsTable); ok {
 		rCnt, _, err := st.RowCount(ctx)
 		if err != nil {
 			return nil, err
 		}
-		switch {
-		case rowCount == 0:
-			rowCount = rCnt
-		case rowCount > 0:
+		if rowCnt == 0 {
+			rowCnt = rCnt
+		}
+		if rowCnt > 0 {
 			dataSize, err := st.DataLength(ctx)
 			if err != nil {
 				return nil, err
 			}
-			avgSize = dataSize / rowCount
+			avgSize = dataSize / rowCnt
 		}
 	}
 
-	distinctCount := rowCount
-	nullCount := uint64(float64(distinctCount) * dummyNotUniqueNull)
+	stat := &stats.Statistic{
+		Qual:        qual,
+		RowCnt:      rowCnt,
+		DistinctCnt: rowCnt,
+		AvgRowSize:  avgSize,
+	}
 
-	// mark as full table scan
-	qual.Idx = ""
-
-	stat := stats.NewStatistic(
-		rowCount,
-		distinctCount,
-		nullCount,
-		avgSize,
-		time.Time{},
-		qual,
-		nil,
-		nil,
-		nil,
-		sql.IndexClassDefault,
-		nil,
-	)
 	return stat, nil
 }
 
