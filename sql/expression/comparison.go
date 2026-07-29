@@ -144,7 +144,7 @@ func NullUnsafeCompareTuples(ctx *sql.Context, left, right []interface{}, elemTy
 // reference, the left type is always used.
 // |err| is ErrNilOperand if either input contains NULL, but |cmp| is still returned
 // because for tuple inputs, Equals expressions can still evaluate to false even if a NULL is encountered.
-func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (int, error) {
+func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (cmp int, err error) {
 	left, right, err := c.evalLeftAndRight(ctx, row)
 	if err != nil {
 		return 0, err
@@ -176,7 +176,17 @@ func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 			return 0, err
 		}
 
-		cmp, hasNull, err := NullUnsafeCompareTuples(ctx, left.([]interface{}), right.([]interface{}), lTyp.(types.TupleType))
+		var compareType sql.Type
+		if types.TypesEqual(lTyp, rTyp) {
+			compareType = lTyp
+		} else {
+			left, right, compareType, err = c.castLeftAndRight(ctx, left, right)
+			if err != nil {
+				return 0, err
+			}
+		}
+
+		cmp, hasNull, err := NullUnsafeCompareTuples(ctx, left.([]interface{}), right.([]interface{}), compareType.(types.TupleType))
 		if err != nil {
 			return 0, err
 		}

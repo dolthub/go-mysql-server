@@ -3165,7 +3165,12 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{false}},
 	},
 	{
+		// values in tuples should be widened, not narrowed. This tests that the ints are converted to decimals, not vice-versa.
 		Query:    "SELECT (1, 1) = (1.1, 1.1);",
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    "SELECT (2, 1) > (2.1, 2);",
 		Expected: []sql.Row{{false}},
 	},
 	{
@@ -9408,28 +9413,56 @@ from typestable`,
 		Expected: []sql.Row{{nil}},
 	},
 	{
+		Query:    "SELECT 1 WHERE (1, 1) in ((NULL, NULL))",
+		Expected: []sql.Row{},
+	},
+	{
 		Query:    "SELECT (1, 1) IN ((NULL, NULL), (1, 1))",
 		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    "SELECT 1 WHERE (1, 1) IN ((NULL, NULL), (1, 1))",
+		Expected: []sql.Row{{1}},
 	},
 	{
 		Query:    "SELECT (NULL, NULL) IN ((NULL, NULL), (1, 1))",
 		Expected: []sql.Row{{nil}},
 	},
 	{
+		Query:    "SELECT 1 WHERE (NULL, NULL) IN ((NULL, NULL), (1, 1))",
+		Expected: []sql.Row{},
+	},
+	{
 		Query:    "SELECT (NULL, NULL) IN ((NULL, NULL))",
 		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT 1 WHERE (NULL, NULL) IN ((NULL, NULL))",
+		Expected: []sql.Row{},
 	},
 	{
 		Query:    "SELECT (NULL, NULL) IN ((1, 1))",
 		Expected: []sql.Row{{nil}},
 	},
 	{
+		Query:    "SELECT 1 WHERE (NULL, NULL) IN ((1, 1))",
+		Expected: []sql.Row{},
+	},
+	{
 		Query:    "SELECT (NULL, NULL) in (SELECT NULL, NULL LIMIT 0);",
 		Expected: []sql.Row{{false}},
 	},
 	{
+		Query:    "SELECT 1 WHERE (NULL, NULL) NOT IN (SELECT NULL, NULL LIMIT 0);",
+		Expected: []sql.Row{{1}},
+	},
+	{
 		Query:    "SELECT (NULL, NULL) = (SELECT NULL, NULL)",
 		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT 1 WHERE (NULL, NULL) = (SELECT NULL, NULL)",
+		Expected: []sql.Row{},
 	},
 	{
 		Query:    "SELECT 1 FROM DUAL WHERE (1, null) in ((1, null))",
@@ -9442,6 +9475,14 @@ from typestable`,
 	{
 		Query:    "SELECT 1 FROM DUAL WHERE (null, null) = (select null, null from dual)",
 		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT (1, NULL) <=> (1, 2);",
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    "SELECT (2, NULL) > (1.5, 2);",
+		Expected: []sql.Row{{true}},
 	},
 }
 
