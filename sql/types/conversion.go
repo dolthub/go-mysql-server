@@ -766,6 +766,18 @@ func TypeAwareConversion(ctx *sql.Context, val interface{}, originalType sql.Typ
 	if val == nil {
 		return nil, sql.InRange, nil
 	}
+	// Extended types encode a value's shape (precision/scale, category, etc.) in the type itself,
+	// so converting between two of them requires the source type's identity.
+	// Type.Convert only checks whether a value already matches the target type's own native Go
+	// representation, so it can't perform this kind of cross-type conversion.
+	if oet, ok := originalType.(sql.ExtendedType); ok {
+		if cet, ok := convertedType.(sql.ExtendedType); ok {
+			if oet.Equals(cet) {
+				return val, sql.InRange, nil
+			}
+			return cet.ConvertToType(ctx, oet, val, 'a')
+		}
+	}
 	var err error
 	if (IsEnum(originalType) || IsSet(originalType)) && IsText(convertedType) {
 		val, _, err = ConvertToCollatedString(ctx, val, originalType)

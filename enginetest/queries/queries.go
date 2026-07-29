@@ -3165,6 +3165,10 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{false}},
 	},
 	{
+		Query:    "SELECT (1, 1) = (1.1, 1.1);",
+		Expected: []sql.Row{{false}},
+	},
+	{
 		Query:    `SELECT 'a' NOT IN ('b','c',null,'d')`,
 		Expected: []sql.Row{{nil}},
 		ExpectedColumns: sql.Schema{

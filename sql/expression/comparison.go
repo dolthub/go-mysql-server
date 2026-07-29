@@ -276,9 +276,10 @@ func (c *comparison) evalLeftAndRight(ctx *sql.Context, row sql.Row) (interface{
 }
 
 func (c *comparison) castLeftAndRight(ctx *sql.Context, left, right any) (any, any, sql.Type, error) {
-	lTyp := c.Left().Type(ctx)
-	rTyp := c.Right().Type(ctx)
+	return castLeftAndRight(ctx, c.Left().Type(ctx), c.Right().Type(ctx), left, right)
+}
 
+func castLeftAndRight(ctx *sql.Context, lTyp, rTyp sql.Type, left, right any) (any, any, sql.Type, error) {
 	leftIsEnumOrSet := types.IsEnum(lTyp) || types.IsSet(lTyp)
 	rightIsEnumOrSet := types.IsEnum(rTyp) || types.IsSet(rTyp)
 
@@ -319,7 +320,20 @@ func (c *comparison) castLeftAndRight(ctx *sql.Context, left, right any) (any, a
 	}
 
 	if types.IsTuple(lTyp) && types.IsTuple(rTyp) {
-		return left, right, lTyp, nil
+		lTupleType, rTupleType := lTyp.(types.TupleType), rTyp.(types.TupleType)
+		l := make([]interface{}, len(lTupleType))
+		r := make([]interface{}, len(rTupleType))
+		leftTuple := left.([]interface{})
+		rightTuple := right.([]interface{})
+		mergedTupleType := make(types.TupleType, len(lTupleType))
+		for i, _ := range leftTuple {
+			var err error
+			l[i], r[i], mergedTupleType[i], err = castLeftAndRight(ctx, lTupleType[i], rTupleType[i], leftTuple[i], rightTuple[i])
+			if err != nil {
+				return nil, nil, nil, err
+			}
+		}
+		return l, r, mergedTupleType, nil
 	}
 
 	if types.IsTime(lTyp) || types.IsTime(rTyp) {

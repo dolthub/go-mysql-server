@@ -51,12 +51,24 @@ func (c *Case) Type(ctx *sql.Context) sql.Type {
 	}
 	c.typ = types.Null
 	for _, b := range c.Branches {
-		c.typ = types.GeneralizeTypes(c.typ, b.Value.Type(ctx))
+		c.typ = generalizeCaseTypes(ctx, c.typ, b.Value.Type(ctx))
 	}
 	if c.Else != nil {
-		c.typ = types.GeneralizeTypes(c.typ, c.Else.Type(ctx))
+		c.typ = generalizeCaseTypes(ctx, c.typ, c.Else.Type(ctx))
 	}
 	return c.typ
+}
+
+// generalizeCaseTypes resolves the common type between two CASE branch types. Extended types
+// carry their own type-unification rules that types.GeneralizeTypes can't apply since it only
+// knows about GMS's built-in types, so those are delegated to sql.GetCommonExtendedType instead.
+func generalizeCaseTypes(ctx *sql.Context, a, b sql.Type) sql.Type {
+	aet, aOk := a.(sql.ExtendedType)
+	bet, bOk := b.(sql.ExtendedType)
+	if aOk && bOk {
+		return sql.GetCommonExtendedType(ctx, aet, bet)
+	}
+	return types.GeneralizeTypes(a, b)
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
