@@ -2209,11 +2209,12 @@ func newUniformDistStatistic(ctx *sql.Context, dbName, schemaName, tableName str
 
 func newConjCollector(s sql.Statistic, hist []sql.HistogramBucket, ordinals map[string]int) *conjCollector {
 	return &conjCollector{
-		stat:     s,
-		hist:     hist,
-		ordinals: ordinals,
-		eqVals:   make([]interface{}, len(ordinals)),
-		nullable: make([]bool, len(ordinals)),
+		stat:      s,
+		hist:      hist,
+		ordinals:  ordinals,
+		eqVals:    make([]any, len(ordinals)),
+		eqValTyps: make([]sql.Type, len(ordinals)),
+		nullable:  make([]bool, len(ordinals)),
 	}
 }
 
@@ -2226,7 +2227,8 @@ type conjCollector struct {
 	ineqCols      sets.FastIntSet
 	applied       sets.FastIntSet
 	hist          []sql.HistogramBucket
-	eqVals        []interface{}
+	eqVals        []any
+	eqValTyps     []sql.Type
 	nullable      []bool
 	missingPrefix int
 	isFalse       bool
@@ -2238,14 +2240,14 @@ func (c *conjCollector) add(ctx *sql.Context, f *iScanLeaf) error {
 	var err error
 	switch f.Op() {
 	case sql.IndexScanOpNullSafeEq:
-		err = c.addEq(ctx, col, f.litValue, true)
+		err = c.addEq(ctx, col, f.litValue, f.litType, true)
 	case sql.IndexScanOpEq:
-		err = c.addEq(ctx, col, f.litValue, false)
+		err = c.addEq(ctx, col, f.litValue, f.litType, false)
 	case sql.IndexScanOpInSet:
 		// TODO cost UNION of equals
-		err = c.addEq(ctx, col, f.setValues[0], false)
+		err = c.addEq(ctx, col, f.setValues[0], f.setTypes[0], false)
 	default:
-		err = c.addIneq(ctx, f.Op(), col, f.litValue)
+		err = c.addIneq(ctx, f.Op(), col, f.litValue, f.litType)
 	}
 	return err
 }
@@ -2258,7 +2260,7 @@ func (c *conjCollector) getFds() *sql.FuncDepSet {
 	return sql.NewLookupFDs(c.stat.FuncDeps(), c.stat.ColSet(), sql.ColSet{}, constCols, nil)
 }
 
-func (c *conjCollector) addEq(ctx *sql.Context, col string, val interface{}, nullSafe bool) error {
+func (c *conjCollector) addEq(ctx *sql.Context, col string, val any, valTyp sql.Type, nullSafe bool) error {
 	// make constant
 	col = strings.ToLower(col)
 	ord, ok := c.ordinals[col]
@@ -2276,6 +2278,7 @@ func (c *conjCollector) addEq(ctx *sql.Context, col string, val interface{}, nul
 
 	c.constant.Add(ord + 1)
 	c.eqVals[ord] = val
+	c.eqValTyps[ord] = valTyp
 	c.nullable[ord] = nullSafe
 
 	if ord == c.missingPrefix {
@@ -2289,7 +2292,7 @@ func (c *conjCollector) addEq(ctx *sql.Context, col string, val interface{}, nul
 
 		// truncate buckets
 		var err error
-		c.hist, err = stats.PrefixKey(ctx, c.stat.Histogram(), c.stat.Types(), c.eqVals[:ord+1])
+		c.hist, err = stats.PrefixKey(ctx, c.stat.Histogram(), c.stat.Types(), c.eqVals[:ord+1], c.eqValTyps[:ord+1])
 		if err != nil {
 			return err
 		}
@@ -2297,7 +2300,7 @@ func (c *conjCollector) addEq(ctx *sql.Context, col string, val interface{}, nul
 	return nil
 }
 
-func (c *conjCollector) addIneq(ctx *sql.Context, op sql.IndexScanOp, col string, val interface{}) error {
+func (c *conjCollector) addIneq(ctx *sql.Context, op sql.IndexScanOp, col string, val any, valTyp sql.Type) error {
 	col = strings.ToLower(col)
 	ord, ok := c.ordinals[col]
 	if !ok {
@@ -2307,7 +2310,7 @@ func (c *conjCollector) addIneq(ctx *sql.Context, op sql.IndexScanOp, col string
 	if ord > 0 {
 		return nil
 	}
-	err := c.cmpFirstCol(ctx, op, val)
+	err := c.cmpFirstCol(ctx, op, val, valTyp)
 	if err != nil {
 		return err
 	}
@@ -2316,7 +2319,7 @@ func (c *conjCollector) addIneq(ctx *sql.Context, op sql.IndexScanOp, col string
 
 // cmpFirstCol checks whether we should try to range truncate the first
 // column in the index
-func (c *conjCollector) cmpFirstCol(ctx *sql.Context, op sql.IndexScanOp, val interface{}) error {
+func (c *conjCollector) cmpFirstCol(ctx *sql.Context, op sql.IndexScanOp, val any, valTyp sql.Type) error {
 	// check if first col already constant
 	// otherwise attempt to truncate histogram
 	var err error
@@ -2326,15 +2329,15 @@ func (c *conjCollector) cmpFirstCol(ctx *sql.Context, op sql.IndexScanOp, val in
 	switch op {
 	case sql.IndexScanOpNotEq:
 		// todo notEq
-		c.hist, err = stats.PrefixGt(ctx, c.hist, c.stat.Types(), val)
+		c.hist, err = stats.PrefixGt(ctx, c.hist, c.stat.Types(), val, valTyp)
 	case sql.IndexScanOpGt:
-		c.hist, err = stats.PrefixGt(ctx, c.hist, c.stat.Types(), val)
+		c.hist, err = stats.PrefixGt(ctx, c.hist, c.stat.Types(), val, valTyp)
 	case sql.IndexScanOpGte:
-		c.hist, err = stats.PrefixGte(ctx, c.hist, c.stat.Types(), val)
+		c.hist, err = stats.PrefixGte(ctx, c.hist, c.stat.Types(), val, valTyp)
 	case sql.IndexScanOpLt:
-		c.hist, err = stats.PrefixLt(ctx, c.hist, c.stat.Types(), val)
+		c.hist, err = stats.PrefixLt(ctx, c.hist, c.stat.Types(), val, valTyp)
 	case sql.IndexScanOpLte:
-		c.hist, err = stats.PrefixLte(ctx, c.hist, c.stat.Types(), val)
+		c.hist, err = stats.PrefixLte(ctx, c.hist, c.stat.Types(), val, valTyp)
 	case sql.IndexScanOpIsNull:
 		c.hist, err = stats.PrefixIsNull(c.hist)
 	case sql.IndexScanOpIsNotNull:
