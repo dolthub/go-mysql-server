@@ -268,14 +268,13 @@ func getCostedIndexScan(
 	}
 
 	// include an indexless option for coster
-	var tblScanStat sql.Statistic
 	qual.Idx = ""
-	if stat, ok := qualToStat[qual]; !ok {
-		stat, err = uniformDistStatsticForTableScan(ctx, statsProvider, qual, idxTbl)
+	tblScanStat, hasStat := qualToStat[qual]
+	if !hasStat {
+		tblScanStat, err = uniformDistStatsticForTableScan(ctx, statsProvider, qual, idxTbl)
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		tblScanStat = stat
 	}
 	c.bestStat = tblScanStat
 	c.bestCnt = tblScanStat.RowCount()
