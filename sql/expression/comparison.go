@@ -117,10 +117,10 @@ func (c *comparison) CollationCoercibility(ctx *sql.Context) (collation sql.Coll
 }
 
 // NullUnsafeCompareTuples compares two Tuples, tracking the existence of NULL elements.
-// If |hasNull| is false, then the comparison is true for both null-safe and non-null-safe comparisons.
-// If |hasNull| is true and |cmp| is nonzero, then the tuples should never return equal,
-// but all other non-null-safe comparisons should return NULL.
-// If |hasNull| is true and |cmp| is zero, then all non-null-safe comparisons should return NULL.
+// If |hasNull| is false, then the comparison is valid for all null-unsafe (and null-safe) comparisons.
+// If |hasNull| is true and |cmp| is nonzero, then the tuples should never compare equal,
+// but all other null-unsafe comparisons should return NULL.
+// If |hasNull| is true and |cmp| is zero, then all null-unsafe comparisons should return NULL.
 func NullUnsafeCompareTuples(ctx *sql.Context, left, right []interface{}, elemTypes types.TupleType) (cmp int, hasNil bool, err error) {
 	for i := range left {
 		if left[i] == nil || right[i] == nil {
