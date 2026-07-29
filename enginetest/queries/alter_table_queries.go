@@ -2521,6 +2521,66 @@ var DropColumnScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "Drop column with check constraint, no other columns",
+		SetUpScript: []string{
+			"create table t5 (pk int primary key);",
+			"ALTER TABLE t5 ADD COLUMN col2 text NOT NULL;",
+			"ALTER TABLE t5 ADD CONSTRAINT constraint_check CHECK (col2 LIKE '%myregex%');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "ALTER TABLE t5 DROP COLUMN col2",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+		},
+	},
+	{
+		Name: "Drop column with check constraint, other column referenced first",
+		SetUpScript: []string{
+			"create table t6 (pk int primary key);",
+			"ALTER TABLE t6 ADD COLUMN col2 text NOT NULL;",
+			"ALTER TABLE t6 ADD COLUMN col3 text NOT NULL;",
+			"ALTER TABLE t6 ADD CONSTRAINT constraint_check CHECK (col3 LIKE col2);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "ALTER TABLE t6 DROP COLUMN col2",
+				ExpectedErr: sql.ErrCheckConstraintInvalidatedByColumnAlter,
+			},
+		},
+	},
+	{
+		Name: "Drop column with check constraint, other column referenced second",
+		SetUpScript: []string{
+			"create table t7 (pk int primary key);",
+			"ALTER TABLE t7 ADD COLUMN col2 text NOT NULL;",
+			"ALTER TABLE t7 ADD COLUMN col3 text NOT NULL;",
+			"ALTER TABLE t7 ADD CONSTRAINT constraint_check CHECK (col2 LIKE col3);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "ALTER TABLE t7 DROP COLUMN col2",
+				ExpectedErr: sql.ErrCheckConstraintInvalidatedByColumnAlter,
+			},
+		},
+	},
+	{
+		Name: "Drop column with check constraint, multiple constraints",
+		SetUpScript: []string{
+			"create table t8 (pk int primary key);",
+			"ALTER TABLE t8 ADD COLUMN col2 text NOT NULL;",
+			"ALTER TABLE t8 ADD COLUMN col3 text NOT NULL;",
+			"ALTER TABLE t8 ADD CONSTRAINT ok_check CHECK (col2 LIKE '%myregex%');",
+			"ALTER TABLE t8 ADD CONSTRAINT bad_check CHECK (col2 LIKE col3);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "ALTER TABLE t8 DROP COLUMN col2",
+				ExpectedErr: sql.ErrCheckConstraintInvalidatedByColumnAlter,
+			},
+		},
+	},
 }
 
 var DropColumnKeylessTablesScripts = []ScriptTest{

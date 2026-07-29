@@ -183,7 +183,8 @@ type Index interface {
 	// CanSupportOrderBy returns whether this index can optimize ORDER BY a given expression type.
 	// Verifying that the expression's children match the index columns are done separately.
 	CanSupportOrderBy(expr Expression) bool
-
+	// CoversColumns returns whether this index covers the given columns
+	CoversColumns(cols []string) bool
 	// PrefixLengths returns the prefix lengths for each column in this index
 	PrefixLengths() []uint16
 }

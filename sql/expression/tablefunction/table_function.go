@@ -87,6 +87,10 @@ func (t *TableFunctionWrapper) RowIter(ctx *sql.Context, r sql.Row) (sql.RowIter
 	if ri, ok := v.(sql.RowIter); ok {
 		return ri, nil
 	}
+	// unwrap record result
+	if ef, ok := t.funcExpr.(sql.ExtendedTableFunction); ok {
+		return sql.RowsToRowIter(ef.Unwrap(v)), nil
+	}
 	return sql.RowsToRowIter(sql.Row{v}), nil
 }
 
@@ -100,6 +104,11 @@ func (t *TableFunctionWrapper) Resolved() bool {
 }
 
 func (t *TableFunctionWrapper) Schema(ctx *sql.Context) sql.Schema {
+	if ef, ok := t.funcExpr.(sql.ExtendedTableFunction); ok {
+		if s := ef.OutParametersSchema(); s != nil {
+			return s
+		}
+	}
 	return sql.Schema{&sql.Column{Name: t.underlyingFunc.FunctionName(), Type: t.funcExpr.Type(ctx)}}
 }
 

@@ -63,6 +63,18 @@ func (s Schema) HasVirtualColumns() bool {
 	return false
 }
 
+// GeneratedExpressions returns the schema's generated column expressions indexed by column position,
+// with nil where a column has no generated expression.
+func (s Schema) GeneratedExpressions() []Expression {
+	projections := make([]Expression, len(s))
+	for i, col := range s {
+		if col.Generated != nil {
+			projections[i] = col.Generated
+		}
+	}
+	return projections
+}
+
 // PhysicalSchema returns a schema with only the physical (non-virtual) columns
 func (s Schema) PhysicalSchema() Schema {
 	var physical Schema

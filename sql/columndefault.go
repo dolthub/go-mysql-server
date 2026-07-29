@@ -21,6 +21,7 @@ import (
 // ColumnDefaultValue is an expression representing the default value of a column. May represent both a default literal
 // and a default expression. A nil pointer of this type represents an implicit default value and is thus valid, so all
 // method calls will return without error.
+// TODO: This needs a better name because it's not always the default value. It can also be a generated or ON UPDATE value
 type ColumnDefaultValue struct {
 	// Expression is the expression representing this default value
 	Expr Expression

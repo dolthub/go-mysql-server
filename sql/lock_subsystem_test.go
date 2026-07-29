@@ -100,6 +100,50 @@ func TestLock(t *testing.T) {
 	assert.Nil(t, getLockDiffs(user2Ctx))
 }
 
+func TestTryLock(t *testing.T) {
+	ls := NewLockSubsystem()
+	user1Ctx := NewEmptyContext()
+	user2Ctx := NewEmptyContext()
+
+	acquired, err := ls.TryLock(user1Ctx, testLockName)
+	assert.NoError(t, err)
+	assert.True(t, acquired)
+	assert.Nil(t, getLockDiffs(user1Ctx, testLockName))
+
+	acquired, err = ls.TryLock(user1Ctx, testLockName)
+	assert.NoError(t, err)
+	assert.True(t, acquired)
+	assert.Nil(t, getLockDiffs(user1Ctx, testLockName))
+
+	acquired, err = ls.TryLock(user2Ctx, testLockName)
+	assert.NoError(t, err)
+	assert.False(t, acquired)
+	assert.Nil(t, getLockDiffs(user2Ctx))
+
+	err = ls.Unlock(user1Ctx, testLockName)
+	assert.NoError(t, err)
+	assert.Nil(t, getLockDiffs(user1Ctx, testLockName))
+
+	acquired, err = ls.TryLock(user2Ctx, testLockName)
+	assert.NoError(t, err)
+	assert.False(t, acquired)
+	assert.Nil(t, getLockDiffs(user2Ctx))
+
+	err = ls.Unlock(user1Ctx, testLockName)
+	assert.NoError(t, err)
+	assert.Nil(t, getLockDiffs(user1Ctx))
+
+	acquired, err = ls.TryLock(user2Ctx, testLockName)
+	assert.NoError(t, err)
+	assert.True(t, acquired)
+	assert.Nil(t, getLockDiffs(user2Ctx, testLockName))
+
+	acquired, err = ls.TryLock(user1Ctx, testLockName)
+	assert.NoError(t, err)
+	assert.False(t, acquired)
+	assert.Nil(t, getLockDiffs(user1Ctx))
+}
+
 func TestRace(t *testing.T) {
 	const numGoRoutines = 8
 

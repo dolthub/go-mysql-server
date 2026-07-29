@@ -414,7 +414,7 @@ func (td *TableData) sortSecondaryIndexes(ctx *sql.Context) {
 		for i, idx := range fieldIndexes {
 			types[i] = td.schema.Schema[idx].Type
 		}
-		sort.Slice(idxStorage, func(i, j int) bool {
+		sort.SliceStable(idxStorage, func(i, j int) bool {
 			for t, typ := range types {
 				left := idxStorage[i][t]
 				right := idxStorage[j][t]
