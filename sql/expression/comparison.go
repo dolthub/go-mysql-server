@@ -33,7 +33,7 @@ type Comparer interface {
 	Right() sql.Expression
 }
 
-// ErrNilOperand ir returned if some or both of the comparison's operands is nil.
+// ErrNilOperand is returned if some or both of the comparison's operands is nil.
 var ErrNilOperand = errors.NewKind("nil operand found in comparison")
 
 // PreciseComparison searches an expression tree for comparison
@@ -116,10 +116,35 @@ func (c *comparison) CollationCoercibility(ctx *sql.Context) (collation sql.Coll
 	return sql.ResolveCoercibility(leftCollation, leftCoercibility, rightCollation, rightCoercibility)
 }
 
+// NullUnsafeCompareTuples compares two Tuples, tracking the existence of NULL elements.
+// If |hasNull| is false, then the comparison is valid for all null-unsafe (and null-safe) comparisons.
+// If |hasNull| is true and |cmp| is nonzero, then the tuples should never compare equal,
+// but all other null-unsafe comparisons should return NULL.
+// If |hasNull| is true and |cmp| is zero, then all null-unsafe comparisons should return NULL.
+func NullUnsafeCompareTuples(ctx *sql.Context, left, right []interface{}, elemTypes types.TupleType) (cmp int, hasNil bool, err error) {
+	for i := range left {
+		if left[i] == nil || right[i] == nil {
+			hasNil = true
+			continue
+		}
+
+		cmp, err = elemTypes[i].Compare(ctx, left[i], right[i])
+		if err != nil {
+			return 0, hasNil, err
+		}
+		if cmp != 0 {
+			return cmp, hasNil, nil
+		}
+	}
+	return 0, hasNil, nil
+}
+
 // Compare the two given values using the types of the expressions in the comparison.
 // Since both types should be equal, it does not matter which type is used, but for
 // reference, the left type is always used.
-func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (int, error) {
+// |err| is ErrNilOperand if either input contains NULL, but |cmp| is still returned
+// because for tuple inputs, Equals expressions can still evaluate to false even if a NULL is encountered.
+func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (cmp int, err error) {
 	left, right, err := c.evalLeftAndRight(ctx, row)
 	if err != nil {
 		return 0, err
@@ -140,6 +165,38 @@ func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 	}
 
 	lTyp, rTyp := c.Left().Type(ctx), c.Right().Type(ctx)
+	if types.IsTuple(lTyp) && types.IsTuple(rTyp) {
+		left, _, err = lTyp.Convert(ctx, left)
+		if err != nil {
+			return 0, err
+		}
+
+		right, _, err = rTyp.Convert(ctx, right)
+		if err != nil {
+			return 0, err
+		}
+
+		var compareType sql.Type
+		if types.TypesEqual(lTyp, rTyp) {
+			compareType = lTyp
+		} else {
+			left, right, compareType, err = c.castLeftAndRight(ctx, left, right)
+			if err != nil {
+				return 0, err
+			}
+		}
+
+		cmp, hasNull, err := NullUnsafeCompareTuples(ctx, left.([]interface{}), right.([]interface{}), compareType.(types.TupleType))
+		if err != nil {
+			return 0, err
+		}
+		if hasNull {
+			// return |cmp| here, not 0. The Equals expression will check the value of cmp to detect the case where
+			// the values can never be equal, even though one of them contained a NULL.
+			return cmp, ErrNilOperand.New()
+		}
+		return cmp, nil
+	}
 	if types.TypesEqual(lTyp, rTyp) {
 		return lTyp.Compare(ctx, left, right)
 	}
@@ -441,6 +498,10 @@ func (e *Equals) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	result, err := e.Compare(ctx, row)
 	if err != nil {
 		if ErrNilOperand.Is(err) {
+			// If result != 0, then the inputs compare unequal even if one of them is a tuple containing NULL.
+			if result != 0 {
+				return false, nil
+			}
 			return nil, nil
 		}
 

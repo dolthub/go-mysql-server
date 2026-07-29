@@ -578,7 +578,7 @@ func TestPreparedQueryWithEngine(t *testing.T, harness Harness, e QueryEngine, t
 			AssertWarningAndTestPreparedQuery(t, e, ctx, harness, tt.Query, tt.Expected, tt.ExpectedColumns,
 				tt.ExpectedWarning, tt.ExpectedWarningsCount, tt.ExpectedWarningMessageSubstring, false)
 		} else {
-			TestPreparedQueryWithContext(t, ctx, e, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil, false)
+			TestPreparedQueryWithContext(t, ctx, e, harness, tt.Query, tt.Expected, tt.ExpectedColumns, tt.Bindings, false)
 		}
 	})
 }
