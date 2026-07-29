@@ -894,7 +894,11 @@ func TestIndexPrefix(t *testing.T) {
 }
 
 func TestTupleQueries(t *testing.T) {
-	enginetest.TestTupleQueries(t, enginetest.NewDefaultMemoryHarness())
+	harness := enginetest.NewDefaultMemoryHarness()
+	if harness.IsUsingServer() {
+		t.Skip("way we prepare the queries with injectBindVarsAndPrepare() method does not work for ServerEngine test")
+	}
+	enginetest.TestTupleQueries(t, harness)
 }
 
 func TestPersist(t *testing.T) {
