@@ -17,7 +17,10 @@ import (
 	"reflect"
 	"sort"
 
+	"github.com/dolthub/vitess/go/vt/proto/query"
+
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func Union(ctx *sql.Context, b1, b2 []sql.HistogramBucket, types []sql.Type) ([]sql.HistogramBucket, error) {
@@ -143,6 +146,18 @@ func PrefixKey(ctx *sql.Context, buckets []sql.HistogramBucket, types []sql.Type
 	return ret, nil
 }
 
+// exTypCmp uses the corresponding GMS type for select sql.ExtendedTypes.
+func exTypCmp(ctx *sql.Context, exTyp sql.ExtendedType, x, y any) (int, error) {
+	switch exTyp.Type() {
+	case query.Type_INT16, query.Type_INT32, query.Type_INT64:
+		return types.Int64.Compare(ctx, x, y)
+	case query.Type_FLOAT32, query.Type_FLOAT64:
+		return types.Float64.Compare(ctx, x, y)
+	default:
+		return 0, nil
+	}
+}
+
 func nilSafeCmp(ctx *sql.Context, typ sql.Type, left, right interface{}) (int, error) {
 	if left == nil && right == nil {
 		return 0, nil
@@ -156,8 +171,8 @@ func nilSafeCmp(ctx *sql.Context, typ sql.Type, left, right interface{}) (int, e
 	// Extended types can only compare values that share the type's Go representation, and may panic on
 	// values that don't (e.g. a histogram bound and a filter literal that came from different types).
 	// When the representations don't match, fall back to treating everything as one giant bucket.
-	if _, ok := typ.(sql.ExtendedType); ok && reflect.TypeOf(left) != reflect.TypeOf(right) {
-		return 0, nil
+	if exTyp, ok := typ.(sql.ExtendedType); ok && reflect.TypeOf(left) != reflect.TypeOf(right) {
+		return exTypCmp(ctx, exTyp, left, right)
 	}
 	return typ.Compare(ctx, left, right)
 }
@@ -192,14 +207,19 @@ func UpdateCounts(statistic sql.Statistic) sql.Statistic {
 
 func keysEqual(ctx *sql.Context, types []sql.Type, left, right []interface{}) (bool, error) {
 	for i := range right {
+		typ := types[i]
+		var cmp int
+		var err error
 		// See the comment in nilSafeCmp: extended types can only compare values that share the type's
 		// Go representation. Treat mismatched values as equal, keeping every bucket.
-		typ := types[i]
-		if _, ok := typ.(sql.ExtendedType); ok && left[i] != nil && right[i] != nil &&
+		if _, ok := typ.(sql.ExtendedType); ok &&
+			left[i] != nil &&
+			right[i] != nil &&
 			reflect.TypeOf(left[i]) != reflect.TypeOf(right[i]) {
-			continue
+			cmp, err = exTypCmp(ctx, typ.(sql.ExtendedType), left[i], right[i])
+		} else {
+			cmp, err = typ.Compare(ctx, left[i], right[i])
 		}
-		cmp, err := typ.Compare(ctx, left[i], right[i])
 		if err != nil {
 			return false, err
 		}
