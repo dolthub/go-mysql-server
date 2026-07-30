@@ -646,8 +646,6 @@ func getEquivs(filters []sql.Expression) [][2]sql.ColumnId {
 			l, _ = f.Left().(*expression.GetField)
 			r, _ = f.Right().(*expression.GetField)
 		case expression.Equality:
-			// This covers *expression.Equals as well as integrator equality expressions (e.g. Doltgres's
-			// binary operators), which implement this interface for exactly this kind of generic handling.
 			if f.RepresentsEquality() {
 				l, _ = f.Left().(*expression.GetField)
 				r, _ = f.Right().(*expression.GetField)
@@ -819,7 +817,7 @@ func sortedInputs(ctx *sql.Context, rel RelExpr) bool {
 			// j -> input idx
 			// want to find matches for all i where j_i <= j_i+1
 			if strings.EqualFold(out.Name, in.Name) &&
-				strings.EqualFold(out.Source, in.Source) {
+					strings.EqualFold(out.Source, in.Source) {
 				i++
 			} else {
 				// identical projections satisfied by same input
