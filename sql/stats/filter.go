@@ -18,6 +18,8 @@ import (
 	"sort"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/vitess/go/vt/proto/query"
 )
 
 func Union(ctx *sql.Context, b1, b2 []sql.HistogramBucket, types []sql.Type) ([]sql.HistogramBucket, error) {
@@ -156,8 +158,16 @@ func nilSafeCmp(ctx *sql.Context, typ sql.Type, left, right interface{}) (int, e
 	// Extended types can only compare values that share the type's Go representation, and may panic on
 	// values that don't (e.g. a histogram bound and a filter literal that came from different types).
 	// When the representations don't match, fall back to treating everything as one giant bucket.
-	if _, ok := typ.(sql.ExtendedType); ok && reflect.TypeOf(left) != reflect.TypeOf(right) {
-		return 0, nil
+	if exTyp, ok := typ.(sql.ExtendedType); ok && reflect.TypeOf(left) != reflect.TypeOf(right) {
+		typ := exTyp.Type()
+		switch typ {
+		case query.Type_INT16, query.Type_INT32, query.Type_INT64:
+			return types.Int64.Compare(ctx, left, right)
+		case query.Type_FLOAT32, query.Type_FLOAT64:
+			return types.Float64.Compare(ctx, left, right)
+		default:
+			return 0, nil
+		}
 	}
 	return typ.Compare(ctx, left, right)
 }
