@@ -491,7 +491,7 @@ func (m *Memo) statsForRel(ctx *sql.Context, rel RelExpr) sql.Statistic {
 			return &stats.Statistic{RowCnt: defaultTableSize}
 		}
 		if prov := rel.Group().m.StatsProvider(); prov != nil {
-			if card, err := prov.RowCount(ctx, "", dbName, table); err == nil {
+			if card, err := prov.RowCount(ctx, sql.TableSchemaName(table), dbName, table); err == nil {
 				return &stats.Statistic{RowCnt: card}
 			}
 		}
@@ -642,12 +642,14 @@ func getEquivs(filters []sql.Expression) [][2]sql.ColumnId {
 	for _, f := range filters {
 		var l, r *expression.GetField
 		switch f := f.(type) {
-		case *expression.Equals:
-			l, _ = f.Left().(*expression.GetField)
-			r, _ = f.Right().(*expression.GetField)
 		case *expression.NullSafeEquals:
 			l, _ = f.Left().(*expression.GetField)
 			r, _ = f.Right().(*expression.GetField)
+		case expression.Equality:
+			if f.RepresentsEquality() {
+				l, _ = f.Left().(*expression.GetField)
+				r, _ = f.Right().(*expression.GetField)
+			}
 		}
 		if l != nil && r != nil {
 			ret = append(ret, [2]sql.ColumnId{l.Id(), r.Id()})

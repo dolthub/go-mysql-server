@@ -14,6 +14,7 @@
 package stats
 
 import (
+	"reflect"
 	"sort"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -152,9 +153,10 @@ func nilSafeCmp(ctx *sql.Context, typ sql.Type, left, right interface{}) (int, e
 	if right == nil {
 		return 1, nil
 	}
-	// TODO: Extended types have additional type requirements that are difficult to work around,
-	//  so just silently put everything into one giant bucket
-	if _, ok := typ.(sql.ExtendedType); ok {
+	// Extended types can only compare values that share the type's Go representation, and may panic on
+	// values that don't (e.g. a histogram bound and a filter literal that came from different types).
+	// When the representations don't match, fall back to treating everything as one giant bucket.
+	if _, ok := typ.(sql.ExtendedType); ok && reflect.TypeOf(left) != reflect.TypeOf(right) {
 		return 0, nil
 	}
 	return typ.Compare(ctx, left, right)
@@ -190,10 +192,11 @@ func UpdateCounts(statistic sql.Statistic) sql.Statistic {
 
 func keysEqual(ctx *sql.Context, types []sql.Type, left, right []interface{}) (bool, error) {
 	for i := range right {
-		// TODO: Extended types have additional type requirements that are difficult to work around,
-		//  so just silently put everything into one giant bucket
+		// See the comment in nilSafeCmp: extended types can only compare values that share the type's
+		// Go representation. Treat mismatched values as equal, keeping every bucket.
 		typ := types[i]
-		if _, ok := typ.(sql.ExtendedType); ok {
+		if _, ok := typ.(sql.ExtendedType); ok && left[i] != nil && right[i] != nil &&
+			reflect.TypeOf(left[i]) != reflect.TypeOf(right[i]) {
 			continue
 		}
 		cmp, err := typ.Compare(ctx, left[i], right[i])
