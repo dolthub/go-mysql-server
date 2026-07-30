@@ -1600,10 +1600,8 @@ func makeIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, tab plan.Table
 	for _, e := range idx.SqlIdx().Expressions() {
 		cols = append(cols, strings.TrimPrefix(e, tablePrefix))
 	}
-	var schemaName string
-	if schTab, ok := tn.(sql.DatabaseSchemaTable); ok {
-		schemaName = strings.ToLower(schTab.DatabaseSchema().SchemaName())
-	}
+	// The underlying table knows its schema, the wrapping TableNode does not
+	schemaName := strings.ToLower(sql.TableSchemaName(tn.UnderlyingTable()))
 
 	stats, _ := statsProv.GetStats(ctx, sql.NewStatQualifier(tn.Database().Name(), schemaName, tn.Name(), idx.SqlIdx().ID()), cols)
 	return &memo.IndexScan{
