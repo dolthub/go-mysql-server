@@ -642,12 +642,16 @@ func getEquivs(filters []sql.Expression) [][2]sql.ColumnId {
 	for _, f := range filters {
 		var l, r *expression.GetField
 		switch f := f.(type) {
-		case *expression.Equals:
-			l, _ = f.Left().(*expression.GetField)
-			r, _ = f.Right().(*expression.GetField)
 		case *expression.NullSafeEquals:
 			l, _ = f.Left().(*expression.GetField)
 			r, _ = f.Right().(*expression.GetField)
+		case expression.Equality:
+			// This covers *expression.Equals as well as integrator equality expressions (e.g. Doltgres's
+			// binary operators), which implement this interface for exactly this kind of generic handling.
+			if f.RepresentsEquality() {
+				l, _ = f.Left().(*expression.GetField)
+				r, _ = f.Right().(*expression.GetField)
+			}
 		}
 		if l != nil && r != nil {
 			ret = append(ret, [2]sql.ColumnId{l.Id(), r.Id()})

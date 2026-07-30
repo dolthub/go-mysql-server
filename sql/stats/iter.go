@@ -112,19 +112,17 @@ func (s *statsIter) bucketToRow(i int, bucket sql.HistogramBucket) (sql.Row, err
 		}
 	}
 
-	// The count columns are int64 to match the Int64 declared types of the schemas that serve these rows
-	// (e.g. Dolt's dolt_statistics table).
 	return sql.Row{
 		s.qual.Db(),
 		s.qual.Table(),
 		s.qual.Index(),
-		int64(bucket.RowCount()),
-		int64(bucket.DistinctCount()),
-		int64(bucket.NullCount()),
+		uint64(bucket.RowCount()),
+		uint64(bucket.DistinctCount()),
+		uint64(bucket.NullCount()),
 		s.colsStr,
 		s.typesStr,
 		StringifyKey(bucket.UpperBound(), s.types),
-		int64(bucket.BoundCount()),
+		uint64(bucket.BoundCount()),
 		s.createdAt,
 		mcvs[0], mcvs[1], mcvs[2], mcvs[3],
 		mcvCntB.String(),
