@@ -817,7 +817,7 @@ func sortedInputs(ctx *sql.Context, rel RelExpr) bool {
 			// j -> input idx
 			// want to find matches for all i where j_i <= j_i+1
 			if strings.EqualFold(out.Name, in.Name) &&
-					strings.EqualFold(out.Source, in.Source) {
+				strings.EqualFold(out.Source, in.Source) {
 				i++
 			} else {
 				// identical projections satisfied by same input
