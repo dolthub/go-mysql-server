@@ -171,7 +171,23 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 				if tn, ok := inScope.oldTables[scopeTableCols[0].tableId]; ok {
 					actualTableName = tn
 				}
-				tableExpr, err := b.overrides.ParseTableAsColumn(b.ctx, actualTableName, fieldArgs)
+
+				// create sql.Schema for given table from inscope columns
+				// because the table might be in subquery alias
+				potentialTblCols := make([]*sql.Column, 0)
+				for _, col := range inScope.cols {
+					if col.table == actualTableName {
+						potentialTblCols = append(potentialTblCols, &sql.Column{
+							Name: col.col,
+							Type: col.typ,
+						})
+					}
+				}
+				if len(potentialTblCols) < 1 {
+					potentialTblCols = nil
+				}
+
+				tableExpr, err := b.overrides.ParseTableAsColumn(b.ctx, actualTableName, fieldArgs, potentialTblCols)
 				if err != nil {
 					b.handleErr(err)
 				}
@@ -255,7 +271,23 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 					if tn, ok := inScope.oldTables[scopeTableCols[0].tableId]; ok {
 						actualTableName = tn
 					}
-					tableExpr, err := b.overrides.ParseTableAsColumn(b.ctx, actualTableName, fieldArgs)
+
+					// create sql.Schema for given table from inscope columns
+					// because the table might be in subquery alias
+					potentialTblCols := make([]*sql.Column, 0)
+					for _, col := range inScope.cols {
+						if col.table == actualTableName {
+							potentialTblCols = append(potentialTblCols, &sql.Column{
+								Name: col.col,
+								Type: col.typ,
+							})
+						}
+					}
+					if len(potentialTblCols) < 1 {
+						potentialTblCols = nil
+					}
+
+					tableExpr, err := b.overrides.ParseTableAsColumn(b.ctx, actualTableName, fieldArgs, potentialTblCols)
 					if err != nil {
 						b.handleErr(err)
 					}
