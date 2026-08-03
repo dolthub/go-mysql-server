@@ -46,6 +46,13 @@ type Scope struct {
 	inJoin         bool
 	inLateralJoin  bool
 	inInsertSource bool
+
+	// insideLateralSubqueryAlias is true when this scope was created for the child of a
+	// SubqueryAlias that is itself IsLateral (i.e. already correlated to some outer
+	// scope). A SubqueryAlias nested inside such a scope executes entirely within the
+	// single outer-row prepend established by that ancestor, so it must not be promoted
+	// to a second, independent lateral/correlated scope for the same outer reference.
+	insideLateralSubqueryAlias bool
 }
 
 func (s *Scope) IsEmpty() bool {
@@ -137,6 +144,7 @@ func (s *Scope) NewScopeNoJoin() *Scope {
 func (s *Scope) NewScopeFromSubqueryAlias(sqa *SubqueryAlias) *Scope {
 	subScope := newScopeWithDepth(s.RecursionDepth() + 1)
 	subScope.corr = sqa.Correlated
+	subScope.insideLateralSubqueryAlias = sqa.IsLateral
 	if s != nil {
 		if len(s.nodes) > 0 {
 			// As of MySQL 8.0.14, MySQL provides OUTER scope visibility to derived tables. Unlike LATERAL scope visibility, which
@@ -155,6 +163,7 @@ func (s *Scope) NewScopeFromSubqueryAlias(sqa *SubqueryAlias) *Scope {
 		subScope.inJoin = s.inJoin
 		subScope.inLateralJoin = s.inLateralJoin
 		subScope.corr = s.corr.Union(sqa.Correlated)
+		subScope.insideLateralSubqueryAlias = subScope.insideLateralSubqueryAlias || s.insideLateralSubqueryAlias
 	}
 
 	return subScope
@@ -326,6 +335,12 @@ func (s *Scope) InLateralJoin() bool {
 
 func (s *Scope) InInsertSource() bool {
 	return s != nil && s.inInsertSource
+}
+
+// InsideLateralSubqueryAlias returns true if this scope was created for the child of a
+// SubqueryAlias that is itself IsLateral. See insideLateralSubqueryAlias for details.
+func (s *Scope) InsideLateralSubqueryAlias() bool {
+	return s != nil && s.insideLateralSubqueryAlias
 }
 
 func (s *Scope) JoinSiblings() []sql.Node {

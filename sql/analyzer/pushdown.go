@@ -224,7 +224,7 @@ func transformPushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.
 				if _, ok := node.Child.(*plan.RecursiveCte); ok {
 					return node, transform.SameTree, nil
 				}
-				return pushdownFiltersUnderSubqueryAlias(ctx, a, node, filters)
+				return pushdownFiltersUnderSubqueryAlias(ctx, a, node, filters, scope)
 			default:
 				return node, transform.SameTree, nil
 			}
@@ -302,7 +302,7 @@ func filteredTableNode(
 // Opaque, it behaves a little bit like a FilteredTable, and pushing the
 // filters down below it can help find index usage opportunities later in the
 // analysis phase.
-func pushdownFiltersUnderSubqueryAlias(ctx *sql.Context, a *Analyzer, sa *plan.SubqueryAlias, filters *filterSet) (sql.Node, transform.TreeIdentity, error) {
+func pushdownFiltersUnderSubqueryAlias(ctx *sql.Context, a *Analyzer, sa *plan.SubqueryAlias, filters *filterSet, scope *plan.Scope) (sql.Node, transform.TreeIdentity, error) {
 	if sa.ScopeMapping == nil {
 		return sa, transform.SameTree, nil
 	}
@@ -310,13 +310,25 @@ func pushdownFiltersUnderSubqueryAlias(ctx *sql.Context, a *Analyzer, sa *plan.S
 	if len(handled) == 0 {
 		return sa, transform.SameTree, nil
 	}
-	filters.markFiltersHandled(handled...)
+
+	// If sa's own scope is already nested inside another SubqueryAlias that is lateral
+	// (i.e. correlated to some outer scope), then sa already executes entirely within
+	// the single outer-row prepend established by that ancestor. We must not promote sa
+	// itself to a second, independent lateral/correlated scope for a reference to that
+	// same outer column: exec-index assignment and the lateral join iterators only
+	// support one level of correlation, and stacking a second one produces a plan that
+	// crashes at execution time (see the analyzer test with a self-referencing view used
+	// inside a correlated EXISTS subquery). Filters we decline to push here are left in
+	// place above sa; they still get pushed above the underlying tables by pushFilters.
+	blockNewCorrelation := scope.InsideLateralSubqueryAlias()
+
 	// |handled| is in terms of the parent schema, and in particular the
 	// |Source| is the alias name. Rewrite it to refer to the |sa.Child|
 	// schema instead.
-	expressionsForChild := make([]sql.Expression, len(handled))
-	var err error
-	for i, h := range handled {
+	var toHandle []sql.Expression
+	var expressionsForChild []sql.Expression
+	for _, h := range handled {
+		blocked := false
 		var tf transform.ExprFunc
 		tf = func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			// If a filter contains a reference to a projection alias, pushing the filter will move it below the
@@ -328,6 +340,10 @@ func pushdownFiltersUnderSubqueryAlias(ctx *sql.Context, a *Analyzer, sa *plan.S
 				gf, ok := sa.ScopeMapping[gt.Id()]
 				if !ok {
 					// The GetField must be referencing an outer or lateral scope.
+					if blockNewCorrelation {
+						blocked = true
+						return e, transform.SameTree, nil
+					}
 					// We need to add this to the subquery alias's list of correlated columns
 					sa.Correlated.Add(gt.Id())
 					// There now may be a reference to a lateral scope, so we mark the alias as lateral just in case.
@@ -339,12 +355,22 @@ func pushdownFiltersUnderSubqueryAlias(ctx *sql.Context, a *Analyzer, sa *plan.S
 			}
 			return e, transform.SameTree, nil
 		}
-		expressionsForChild[i], _, err = transform.Expr(ctx, h, tf)
+		rewritten, _, err := transform.Expr(ctx, h, tf)
 		if err != nil {
 			return sa, transform.SameTree, err
 		}
+		if blocked {
+			continue
+		}
+		toHandle = append(toHandle, h)
+		expressionsForChild = append(expressionsForChild, rewritten)
 	}
 
+	if len(toHandle) == 0 {
+		return sa, transform.SameTree, nil
+	}
+
+	filters.markFiltersHandled(toHandle...)
 	n, err := sa.WithChildren(ctx, plan.NewFilter(ctx, expression.JoinAnd(expressionsForChild...), sa.Child))
 	if err != nil {
 		return nil, transform.SameTree, err
