@@ -634,6 +634,23 @@ CREATE TABLE tab1 (
 			},
 		},
 	},
+	{
+		Name: "nested views in correlated subquery",
+		SetUpScript: []string{
+			"CREATE TABLE base (id BIGINT, name VARCHAR(255), created_at VARCHAR(255));",
+			"INSERT INTO base VALUES (1,'a','x'),(2,'b','y'),(3,'a','z');",
+			"CREATE TABLE k AS SELECT id, name, created_at, ROW_NUMBER() OVER (ORDER BY id) AS sk FROM base;",
+			"CREATE VIEW vl AS SELECT id, sk FROM k;",
+			"CREATE VIEW vr AS SELECT name, created_at, sk FROM k;",
+			"CREATE VIEW t AS SELECT l.id AS id, r.name AS name, r.created_at AS created_at FROM vl l LEFT JOIN vr r ON l.sk = r.sk;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT t1.id FROM t t1 WHERE EXISTS (SELECT 1 FROM t t5 WHERE t5.id = t1.id);",
+				Expected: []sql.Row{{1}, {2}, {3}},
+			},
+		},
+	},
 }
 
 var ViewCreateInSubroutineTests = []ScriptTest{

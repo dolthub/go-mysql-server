@@ -178,7 +178,7 @@ func PrependRowInPlan(row sql.Row, lateral bool) func(ctx *sql.Context, n sql.No
 			// transform their inner nodes to prepend the outer scope row data. Ideally, we would only do this when
 			// the subquery alias references those outer fields. That will also require updating subquery expression
 			// scope handling to also make the same optimization.
-			if n.OuterScopeVisibility || lateral {
+			if n.OuterScopeVisibility || lateral || n.IsLateral {
 				newSubqueryAlias := *n
 				newChildNode, _, err := transform.Node(ctx, n.Child, PrependRowInPlan(row, lateral))
 				newSubqueryAlias.Child = newChildNode
