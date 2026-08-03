@@ -860,15 +860,14 @@ func (b *Builder) buildComparison(inScope *scope, c *ast.ComparisonExpr) sql.Exp
 }
 
 func hasColumnType(ctx *sql.Context, e sql.Expression) (sql.Type, bool) {
-	var typ sql.Type
-	sql.Inspect(ctx, e, func(ctx *sql.Context, e sql.Expression) bool {
-		if col, ok := e.(*expression.GetField); ok {
-			typ = col.Type(ctx)
-			return false
-		}
-		return true
-	})
-	return typ, typ != nil
+	if !e.Resolved() {
+		return nil, false
+	}
+	typ := e.Type(ctx)
+	if typ == nil || typ == types.Null {
+		return nil, false
+	}
+	return typ, true
 }
 
 func (b *Builder) buildCaseExpr(inScope *scope, e *ast.CaseExpr) sql.Expression {
