@@ -178,12 +178,6 @@ func PrependRowInPlan(row sql.Row, lateral bool) func(ctx *sql.Context, n sql.No
 			// transform their inner nodes to prepend the outer scope row data. Ideally, we would only do this when
 			// the subquery alias references those outer fields. That will also require updating subquery expression
 			// scope handling to also make the same optimization.
-			//
-			// IsLateral is included here (in addition to OuterScopeVisibility) so that a SubqueryAlias nested inside
-			// another lateral/correlated SubqueryAlias also gets its own descendants wrapped, rather than being
-			// treated as a single opaque unit prepended once at its own boundary. This composes multi-level
-			// correlation (e.g. a self-referencing view used inside a correlated subquery) to match what
-			// assignExecIndexes already assumes when computing GetField indices for nested lateral scopes.
 			if n.OuterScopeVisibility || lateral || n.IsLateral {
 				newSubqueryAlias := *n
 				newChildNode, _, err := transform.Node(ctx, n.Child, PrependRowInPlan(row, lateral))
