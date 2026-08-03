@@ -249,7 +249,7 @@ func (b *Builder) buildInsertValues(inScope *scope, v *ast.AliasedValues, column
 				} else {
 					exprs[j] = b.buildScalar(inScope, e)
 				}
-			case *ast.InjectedExpr:
+			case ast.InjectedExpr:
 				if _, isLit := e.Expression.(*expression.Literal); !isLit {
 					literalOnly = false
 				}
