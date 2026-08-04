@@ -59,7 +59,7 @@ func (b *baseWindowFunction) DefaultFramer() sql.WindowFramer {
 	if b.framer != nil {
 		return b.framer
 	}
-	
+
 	if len(b.orderBy) == 0 {
 		return NewPartitionFramer()
 	}
