@@ -3992,9 +3992,6 @@ func TestNamedWindows(t *testing.T, harness Harness) {
 	RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE a (x INTEGER PRIMARY KEY, y INTEGER, z INTEGER)")
 	RunQueryWithContext(t, e, harness, ctx, "INSERT INTO a VALUES (0,0,0), (1,1,0), (2,2,0), (3,0,0), (4,1,0), (5,3,0)")
 
-	// Every row in `a` has the same z value, so with the default RANGE BETWEEN UNBOUNDED
-	// PRECEDING AND CURRENT ROW frame, every row is in the same peer group and the frame
-	// spans the whole partition for each of them. Verified against MySQL 8/9.
 	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (w1) FROM a WINDOW w1 as (order by z) order by x`, []sql.Row{{float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}}, nil, nil, nil)
 	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (w1) FROM a WINDOW w1 as (partition by z) order by x`, []sql.Row{{float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}}, nil, nil, nil)
 	// A named window with an ORDER BY but no explicit frame must default to a running (cumulative)
