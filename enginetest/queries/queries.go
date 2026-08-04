@@ -6875,13 +6875,16 @@ SELECT * FROM cte WHERE  d = 2;`,
 		},
 	},
 	{
+		// max(v3) is a running max within each v2 partition, ordered by pk: pk has no ties, so
+		// the default RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW frame is equivalent to a
+		// cumulative ROWS frame here. Verified against MySQL 8/9.
 		Query: "SELECT pk, row_number() over (partition by v2 order by pk ), max(v3) over (partition by v2 order by pk) FROM one_pk_three_idx ORDER BY pk",
 		Expected: []sql.Row{
-			{0, 1, 3},
-			{1, 2, 3},
+			{0, 1, 0},
+			{1, 2, 1},
 			{2, 1, 0},
 			{3, 1, 2},
-			{4, 3, 3},
+			{4, 3, 1},
 			{5, 4, 3},
 			{6, 1, 0},
 			{7, 1, 4},
