@@ -732,6 +732,16 @@ func (b *Builder) buildWindowDef(fromScope *scope, def *ast.WindowDef) *sql.Wind
 	return windowDef
 }
 
+// windowDisplayName returns a human-readable label for a window definition, for use in error
+// messages. Anonymous windows (an inline OVER (w ...) clause rather than a named WINDOW w AS (...))
+// have no name of their own, so they fall back to a generic label.
+func windowDisplayName(def *sql.WindowDefinition) string {
+	if def.Name != "" {
+		return def.Name
+	}
+	return "OVER clause"
+}
+
 // mergeWindowDefs combines the attributes of two window definitions or returns
 // an error if the two are incompatible. [def] should have a reference to
 // [ref] through [def.Ref], and the return value drops the reference to indicate
@@ -744,7 +754,7 @@ func (b *Builder) mergeWindowDefs(def, ref *sql.WindowDefinition) *sql.WindowDef
 	var orderBy sql.SortConditions
 	switch {
 	case len(def.OrderBy) > 0 && len(ref.OrderBy) > 0:
-		err := sql.ErrInvalidWindowInheritance.New("", "", "both contain order by clause")
+		err := sql.ErrInvalidWindowInheritance.New(windowDisplayName(def), def.Ref, "both contain order by clause")
 		b.handleErr(err)
 	case len(def.OrderBy) > 0:
 		orderBy = def.OrderBy
@@ -756,7 +766,7 @@ func (b *Builder) mergeWindowDefs(def, ref *sql.WindowDefinition) *sql.WindowDef
 	var partitionBy []sql.Expression
 	switch {
 	case len(def.PartitionBy) > 0 && len(ref.PartitionBy) > 0:
-		err := sql.ErrInvalidWindowInheritance.New("", "", "both contain partition by clause")
+		err := sql.ErrInvalidWindowInheritance.New(windowDisplayName(def), def.Ref, "both contain partition by clause")
 		b.handleErr(err)
 	case len(def.PartitionBy) > 0:
 		partitionBy = def.PartitionBy
@@ -783,7 +793,7 @@ func (b *Builder) mergeWindowDefs(def, ref *sql.WindowDefinition) *sql.WindowDef
 			df := def.Frame.String()
 			rf := ref.Frame.String()
 			if df != rf {
-				err := sql.ErrInvalidWindowInheritance.New("", "", "both contain different frame clauses")
+				err := sql.ErrInvalidWindowInheritance.New(windowDisplayName(def), def.Ref, "both contain different frame clauses")
 				b.handleErr(err)
 			}
 			frame = def.Frame
