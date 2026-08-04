@@ -49,6 +49,10 @@ func getBatchesForNode(scope *plan.Scope, node sql.Node, qFlags *sql.QueryFlags)
 							Id:    validateReadOnlyTransactionId,
 							Apply: validateReadOnlyTransaction,
 						},
+						{
+							Id:    interpreterId,
+							Apply: interpreter,
+						},
 					},
 				},
 				{
