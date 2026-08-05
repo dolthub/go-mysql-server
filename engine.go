@@ -327,7 +327,9 @@ func bindingsToExprs(ctx *sql.Context, bindings map[string]*querypb.BindVariable
 
 // QueryWithBindings executes the query given with the bindings provided.
 // If parsed is non-nil, it will be used instead of parsing the query from text.
-func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]sqlparser.Expr, qFlags *sql.QueryFlags) (sql.Schema, sql.RowIter, *sql.QueryFlags, error) {
+func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]sqlparser.Expr, qFlags *sql.QueryFlags) (sch sql.Schema, iter sql.RowIter, retFlags *sql.QueryFlags, err error) {
+	defer clearAutocommitOnError(ctx, &err)
+
 	sql.IncrementStatusVariable(ctx, "Questions", 1)
 
 	query = sql.RemoveSpaceAndDelimiter(query, ';')
@@ -382,38 +384,31 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 		return nil, nil, nil, err
 	}
 
-	iter, err := e.Analyzer.ExecBuilder.Build(ctx, analyzed, nil)
+	iter, err = e.Analyzer.ExecBuilder.Build(ctx, analyzed, nil)
 	if err != nil {
-		err2 := clearAutocommitTransaction(ctx)
-		if err2 != nil {
-			return nil, nil, nil, errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
-		}
 		return nil, nil, nil, err
 	}
 
-	var schema sql.Schema
-	iter, schema, err = rowexec.FinalizeIters(ctx, analyzed, qFlags, iter)
+	iter, sch, err = rowexec.FinalizeIters(ctx, analyzed, qFlags, iter)
 	if err != nil {
-		clearAutocommitErr := clearAutocommitTransaction(ctx)
-		if clearAutocommitErr != nil {
-			return nil, nil, nil, errors.Wrap(err, "unable to clear autocommit transaction: "+clearAutocommitErr.Error())
-		}
 		return nil, nil, nil, err
 	}
 
-	if schema == nil {
-		schema = analyzed.Schema(ctx)
+	if sch == nil {
+		sch = analyzed.Schema(ctx)
 	}
 
-	return schema, iter, qFlags, nil
+	return sch, iter, qFlags, nil
 }
 
 // PrepQueryPlanForExecution prepares a query plan for execution and returns the result schema with a row iterator to
 // begin spooling results
-func (e *Engine) PrepQueryPlanForExecution(ctx *sql.Context, _ string, plan sql.Node, qFlags *sql.QueryFlags) (sql.Schema, sql.RowIter, *sql.QueryFlags, error) {
+func (e *Engine) PrepQueryPlanForExecution(ctx *sql.Context, _ string, plan sql.Node, qFlags *sql.QueryFlags) (sch sql.Schema, iter sql.RowIter, retFlags *sql.QueryFlags, err error) {
+	defer clearAutocommitOnError(ctx, &err)
+
 	// Give the integrator a chance to reject the session before proceeding
 	// TODO: this check doesn't belong here
-	err := ctx.Session.ValidateSession(ctx)
+	err = ctx.Session.ValidateSession(ctx)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -428,34 +423,27 @@ func (e *Engine) PrepQueryPlanForExecution(ctx *sql.Context, _ string, plan sql.
 		return nil, nil, nil, err
 	}
 
-	iter, err := e.Analyzer.ExecBuilder.Build(ctx, plan, nil)
+	iter, err = e.Analyzer.ExecBuilder.Build(ctx, plan, nil)
 	if err != nil {
-		err2 := clearAutocommitTransaction(ctx)
-		if err2 != nil {
-			return nil, nil, nil, errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
-		}
 		return nil, nil, nil, err
 	}
 
-	var schema sql.Schema
-	iter, schema, err = rowexec.FinalizeIters(ctx, plan, qFlags, iter)
+	iter, sch, err = rowexec.FinalizeIters(ctx, plan, qFlags, iter)
 	if err != nil {
-		clearAutocommitErr := clearAutocommitTransaction(ctx)
-		if clearAutocommitErr != nil {
-			return nil, nil, nil, errors.Wrap(err, "unable to clear autocommit transaction: "+clearAutocommitErr.Error())
-		}
 		return nil, nil, nil, err
 	}
 
-	if schema == nil {
-		schema = plan.Schema(ctx)
+	if sch == nil {
+		sch = plan.Schema(ctx)
 	}
 
-	return schema, iter, qFlags, nil
+	return sch, iter, qFlags, nil
 }
 
 // BoundQueryPlan returns query plan for the given statement with the given bindings applied
-func (e *Engine) BoundQueryPlan(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]sqlparser.Expr) (sql.Node, error) {
+func (e *Engine) BoundQueryPlan(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]sqlparser.Expr) (node sql.Node, err error) {
+	defer clearAutocommitOnError(ctx, &err)
+
 	if parsed == nil {
 		return nil, errors.New("parsed statement must not be nil")
 	}
@@ -466,28 +454,18 @@ func (e *Engine) BoundQueryPlan(ctx *sql.Context, query string, parsed sqlparser
 	binder.SetBindings(bindings)
 
 	// Begin a transaction if necessary (no-op if one is in flight)
-	err := e.beginTransaction(ctx)
+	err = e.beginTransaction(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO: we need to be more principled about when to clear auto commit transactions here
 	bound, qFlags, err := e.bindQuery(ctx, query, parsed, bindings, binder, nil)
 	if err != nil {
-		err2 := clearAutocommitTransaction(ctx)
-		if err2 != nil {
-			return nil, errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
-		}
-
 		return nil, err
 	}
 
 	analyzed, err := e.analyzeNode(ctx, query, bound, qFlags)
 	if err != nil {
-		err2 := clearAutocommitTransaction(ctx)
-		if err2 != nil {
-			return nil, errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
-		}
 		return nil, err
 	}
 
@@ -569,10 +547,6 @@ func (e *Engine) bindQuery(ctx *sql.Context, query string, parsed sqlparser.Stat
 	if parsed == nil {
 		bound, _, _, qFlags, err = binder.Parse(query, qFlags, false)
 		if err != nil {
-			clearAutocommitErr := clearAutocommitTransaction(ctx)
-			if clearAutocommitErr != nil {
-				return nil, nil, errors.Wrap(err, "unable to clear autocommit transaction: "+clearAutocommitErr.Error())
-			}
 			return nil, nil, err
 		}
 	} else {
@@ -634,15 +608,20 @@ func (e *Engine) bindExecuteQueryNode(ctx *sql.Context, query string, eq *plan.E
 
 	bound, _, err := binder.BindOnly(prep, query, nil)
 	if err != nil {
-		clearAutocommitErr := clearAutocommitTransaction(ctx)
-		if clearAutocommitErr != nil {
-			return nil, errors.Wrap(err, "unable to clear autocommit transaction: "+clearAutocommitErr.Error())
-		}
-
 		return nil, err
 	}
 
 	return bound, nil
+}
+
+// clearAutocommitOnError clears an implicitly created autocommit transaction when `err` holds an error.
+func clearAutocommitOnError(ctx *sql.Context, err *error) {
+	if *err == nil {
+		return
+	}
+	if clearErr := clearAutocommitTransaction(ctx); clearErr != nil {
+		*err = errors.Wrap(*err, "unable to clear autocommit transaction: "+clearErr.Error())
+	}
 }
 
 // clearAutocommitTransaction unsets the transaction from the current session if it is an implicitly
@@ -754,7 +733,9 @@ func (e *Engine) InitializeEventScheduler(ctxGetterFunc func() (*sql.Context, er
 // parameter, but only the body of the event is executed. (The CREATE EVENT statement is passed in to support event
 // bodies that contain multiple statements in a BEGIN/END block.) If any problems are encounterd, the error return
 // value will be populated.
-func (e *Engine) executeEvent(ctx *sql.Context, dbName, createEventStatement, username, address string) error {
+func (e *Engine) executeEvent(ctx *sql.Context, dbName, createEventStatement, username, address string) (err error) {
+	defer clearAutocommitOnError(ctx, &err)
+
 	// the event must be executed against the correct database and with the definer's identity
 	ctx.SetCurrentDatabase(dbName)
 	ctx.Session.SetClient(sql.Client{User: username, Address: address})
@@ -775,19 +756,11 @@ func (e *Engine) executeEvent(ctx *sql.Context, dbName, createEventStatement, us
 	// Build an iterator to execute the event body
 	iter, err := e.Analyzer.ExecBuilder.Build(ctx, definitionNode, nil)
 	if err != nil {
-		clearAutocommitErr := clearAutocommitTransaction(ctx)
-		if clearAutocommitErr != nil {
-			return clearAutocommitErr
-		}
 		return err
 	}
 
 	iter, _, err = rowexec.FinalizeIters(ctx, definitionNode, nil, iter)
 	if err != nil {
-		clearAutocommitErr := clearAutocommitTransaction(ctx)
-		if clearAutocommitErr != nil {
-			return clearAutocommitErr
-		}
 		return err
 	}
 

@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/pmezard/go-difflib/difflib"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1100,4 +1101,48 @@ func newDatabase() (*sql2.DB, func()) {
 		panic(err)
 	}
 	return db, func() { srv.Close() }
+}
+
+func TestClearAutocommitTransactionOnError(t *testing.T) {
+	harness := enginetest.NewDefaultMemoryHarness()
+	harness.NewDatabases("mydb")
+	engine, err := harness.NewEngine(t)
+	require.NoError(t, err)
+
+	// The queries are parsed up front so that QueryWithBindings takes its pre-parsed path, which is what a server
+	// using the prepared statement protocol does.
+	parse := func(t *testing.T, ctx *sql.Context, query string) sqlparser.Statement {
+		stmt, _, err := sql.DefaultMySQLParser.ParseOneWithOptions(ctx, query, sql.LoadSqlMode(ctx).ParserOptions())
+		require.NoError(t, err)
+		return stmt
+	}
+
+	for _, query := range []string{
+		"select * from doesnotexist",
+		"select doesnotexist(1)",
+		"insert into doesnotexist values (1)",
+	} {
+		t.Run(query, func(t *testing.T) {
+			ctx := harness.NewContext()
+			ctx.SetCurrentDatabase("mydb")
+			_, _, _, err := engine.QueryWithBindings(ctx, query, parse(t, ctx, query), nil, nil)
+			require.Error(t, err)
+			require.Nil(t, ctx.GetTransaction())
+		})
+	}
+
+	t.Run("explicit transaction is left in place", func(t *testing.T) {
+		ctx := harness.NewContext()
+		ctx.SetCurrentDatabase("mydb")
+		_, iter, _, err := engine.Query(ctx, "start transaction")
+		require.NoError(t, err)
+		_, err = sql.RowIterToRows(ctx, iter)
+		require.NoError(t, err)
+		require.NotNil(t, ctx.GetTransaction())
+
+		query := "select * from doesnotexist"
+		_, _, _, err = engine.QueryWithBindings(ctx, query, parse(t, ctx, query), nil, nil)
+		require.Error(t, err)
+		require.NotNil(t, ctx.GetTransaction())
+	})
 }
