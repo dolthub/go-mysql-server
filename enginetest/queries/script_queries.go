@@ -15023,6 +15023,78 @@ select * from t1 except (
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/11381
+		Name: "window aggregate functions with order by col",
+		SetUpScript: []string{
+			"CREATE TABLE t (id BIGINT, name VARCHAR(255));",
+			"INSERT INTO t VALUES (1,'a'),(2,'a'),(3,'a');",
+			"CREATE TABLE t2 (id BIGINT PRIMARY KEY, grp VARCHAR(10), val INT);",
+			"INSERT INTO t2 VALUES (1,'a',10), (2,'a',20), (3,'b',30), (4,'b',5), (5,'c',15), (6,'c',25);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT id, SUM(id)  OVER (ORDER BY name) FROM t ORDER BY id;",
+				Expected: []sql.Row{{1, 6.0}, {2, 6.0}, {3, 6.0}},
+			},
+			{
+				Query:    "SELECT id, AVG(id)  OVER (ORDER BY name) FROM t ORDER BY id;",
+				Expected: []sql.Row{{1, 2.0}, {2, 2.0}, {3, 2.0}},
+			},
+			{
+				Query:    "SELECT id, COUNT(id)  OVER (ORDER BY name) FROM t ORDER BY id;",
+				Expected: []sql.Row{{1, 3}, {2, 3}, {3, 3}},
+			},
+			{
+				Query:    "SELECT id, MAX(val) OVER (ORDER BY grp) FROM t2 ORDER BY id;",
+				Expected: []sql.Row{{1, 20}, {2, 20}, {3, 30}, {4, 30}, {5, 30}, {6, 30}},
+			},
+			{
+				Query:    "SELECT id, MIN(val) OVER (ORDER BY grp) FROM t2 ORDER BY id;",
+				Expected: []sql.Row{{1, 10}, {2, 10}, {3, 5}, {4, 5}, {5, 5}, {6, 5}},
+			},
+			{
+				Query: "SELECT id, STDDEV_POP(val) OVER (ORDER BY grp) FROM t2 ORDER BY id;",
+				Expected: []sql.Row{
+					{1, 5.0}, {2, 5.0},
+					{3, 9.60143218483576}, {4, 9.60143218483576},
+					{5, 8.539125638299666}, {6, 8.539125638299666},
+				},
+			},
+			{
+				Query: "SELECT id, STDDEV_SAMP(val) OVER (ORDER BY grp) FROM t2 ORDER BY id;",
+				Expected: []sql.Row{
+					{1, 7.0710678118654755}, {2, 7.0710678118654755},
+					{3, 11.086778913041726}, {4, 11.086778913041726},
+					{5, 9.354143466934854}, {6, 9.354143466934854},
+				},
+			},
+			{
+				Query: "SELECT id, VAR_POP(val) OVER (ORDER BY grp) FROM t2 ORDER BY id;",
+				Expected: []sql.Row{
+					{1, 25.0}, {2, 25.0},
+					{3, 92.1875}, {4, 92.1875},
+					{5, 72.91666666666667}, {6, 72.91666666666667},
+				},
+			},
+			{
+				Query: "SELECT id, VAR_SAMP(val) OVER (ORDER BY grp) FROM t2 ORDER BY id;",
+				Expected: []sql.Row{
+					{1, 50.0}, {2, 50.0},
+					{3, 122.91666666666667}, {4, 122.91666666666667},
+					{5, 87.5}, {6, 87.5},
+				},
+			},
+			{
+				Query: "SELECT id, JSON_ARRAYAGG(val) OVER (ORDER BY grp) FROM t2 ORDER BY id;",
+				Expected: []sql.Row{
+					{1, types.MustJSON(`[10, 20]`)}, {2, types.MustJSON(`[10, 20]`)},
+					{3, types.MustJSON(`[10, 20, 30, 5]`)}, {4, types.MustJSON(`[10, 20, 30, 5]`)},
+					{5, types.MustJSON(`[10, 20, 30, 5, 15, 25]`)}, {6, types.MustJSON(`[10, 20, 30, 5, 15, 25]`)},
+				},
+			},
+		},
+	},
 }
 
 var BrokenScriptTests = []ScriptTest{
