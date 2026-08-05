@@ -136,7 +136,9 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 				combinedScope.newColumn(srcScope.cols[i])
 			}
 		}
-		onDupUpdateExprs = b.buildOnDupUpdateExprs(combinedScope, destScope, sch, ast.AssignmentExprs(i.OnDup))
+		b.insertActive = true
+		onDupUpdateExprs = b.assignmentExprsToUpdateExprs(combinedScope, destScope, sch, ast.AssignmentExprs(i.OnDup))
+		b.insertActive = false
 	}
 
 	ignore := false
@@ -279,8 +281,7 @@ func reorderSchema(names []string, schema sql.Schema) sql.Schema {
 	return newSch
 }
 
-// TODO: Consider combining this function with buildOnDupUpdateExprs since there's a lot of similar and repeated code
-func (b *Builder) assignmentExprsToUpdateExprs(inScope *scope, e ast.AssignmentExprs) *plan.UpdateExprs {
+func (b *Builder) assignmentExprsToUpdateExprs(inScope, destScope *scope, tableSch sql.Schema, e ast.AssignmentExprs) *plan.UpdateExprs {
 	// Make sure the assignment expressions don't reference hidden system columns
 	for _, expr := range e {
 		if sql.IsHiddenSystemColumn(expr.Name.Name.String()) {
@@ -298,10 +299,8 @@ func (b *Builder) assignmentExprsToUpdateExprs(inScope *scope, e ast.AssignmentE
 		startWinCnt = len(inScope.windowFuncs)
 	}
 
-	tableSch := b.resolveSchemaDefaults(inScope, inScope.node.Schema(b.ctx))
-
 	for i, updateExpr := range e {
-		colName := b.buildScalar(inScope, updateExpr.Name)
+		colName := b.buildScalar(destScope, updateExpr.Name)
 
 		innerExpr := b.buildScalar(inScope, updateExpr.Expr)
 		if gf, ok := colName.(*expression.GetField); ok {
@@ -356,7 +355,7 @@ func (b *Builder) assignmentExprsToUpdateExprs(inScope *scope, e ast.AssignmentE
 		}
 	}
 
-	return plan.NewUpdateExprs(b.addDependentUpdateExprs(inScope, tableSch, updateExprs), len(e))
+	return plan.NewUpdateExprs(b.addDependentUpdateExprs(destScope, tableSch, updateExprs), len(e))
 }
 
 // addDependentUpdateExprs adds update expressions for any generated columns and ON UPDATE expressions since their
@@ -545,7 +544,7 @@ func (b *Builder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
 	_, foundJoin := outScope.node.(*plan.JoinNode)
 
 	// default expressions only resolve to target table
-	updateExprs := b.assignmentExprsToUpdateExprs(outScope, u.Exprs)
+	updateExprs := b.assignmentExprsToUpdateExprs(outScope, outScope, b.resolveSchemaDefaults(outScope, outScope.node.Schema(b.ctx)), u.Exprs)
 
 	b.buildWhere(outScope, u.Where)
 
