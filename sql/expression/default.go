@@ -15,6 +15,8 @@
 package expression
 
 import (
+	"errors"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -70,10 +72,8 @@ func (c *DefaultColumn) String() string {
 }
 
 // Eval implements the sql.Expression interface.
-// The function always panics!
 func (*DefaultColumn) Eval(ctx *sql.Context, r sql.Row) (interface{}, error) {
-	// TODO: return an error here instead of panicking
-	panic("default column is a placeholder node, but Eval was called")
+	return nil, errors.New("DEFAULT is a placeholder expression, but Eval was called")
 }
 
 // WithChildren implements the Expression interface.
