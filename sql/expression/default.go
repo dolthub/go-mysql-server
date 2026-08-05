@@ -22,7 +22,8 @@ import (
 
 // DefaultColumn is a default expression of a column that is not yet resolved.
 // TODO: Rename to ColumnDefault. DefaultColumn implies this is a default column when really this is a column's default
-//  value.
+//
+//	value.
 type DefaultColumn struct {
 	name string
 }
