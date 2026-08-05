@@ -16,8 +16,9 @@ package sorters
 
 import (
 	"container/heap"
-	"golang.org/x/sync/errgroup"
 	"io"
+
+	"golang.org/x/sync/errgroup"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )

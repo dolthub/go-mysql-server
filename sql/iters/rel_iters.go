@@ -17,8 +17,9 @@ package iters
 import (
 	"container/heap"
 	"fmt"
-	"github.com/dolthub/jsonpath"
 	"io"
+
+	"github.com/dolthub/jsonpath"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/hash"
