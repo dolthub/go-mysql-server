@@ -15,10 +15,29 @@
 package types
 
 import (
+	"reflect"
+	"slices"
+
 	"github.com/dolthub/vitess/go/sqltypes"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
+
+// extendedTypeKindIn reports whether t is a GMS sql.ExtendedType (an integrator's own type, e.g. a
+// Doltgres type) whose zero Go value's kind is one of kinds. Integrator types aren't comparable to this
+// package's sentinel sql.Type values (Float64, Int32, etc.), so IsFloat/IsSigned/IsUnsigned fall back to
+// this to recognize them by their underlying Go representation instead.
+func extendedTypeKindIn(t sql.Type, kinds ...reflect.Kind) bool {
+	et, ok := t.(sql.ExtendedType)
+	if !ok {
+		return false
+	}
+	zero := et.Zero()
+	if zero == nil {
+		return false
+	}
+	return slices.Contains(kinds, reflect.TypeOf(zero).Kind())
+}
 
 // IsBoolean checks if t is a boolean type.
 func IsBoolean(t sql.Type) bool {
@@ -67,7 +86,7 @@ func IsBit(t sql.Type) bool {
 
 // IsFloat checks if t is float type.
 func IsFloat(t sql.Type) bool {
-	return t == Float32 || t == Float64
+	return t == Float32 || t == Float64 || extendedTypeKindIn(t, reflect.Float32, reflect.Float64)
 }
 
 // IsInteger checks if t is an integer type.
@@ -123,7 +142,8 @@ func IsSigned(t sql.Type) bool {
 	if svt, ok := t.(sql.SystemVariableType); ok {
 		t = svt.UnderlyingType()
 	}
-	return t == Int8 || t == Int16 || t == Int24 || t == Int32 || t == Int64 || t == Boolean
+	return t == Int8 || t == Int16 || t == Int24 || t == Int32 || t == Int64 || t == Boolean ||
+		extendedTypeKindIn(t, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Bool)
 }
 
 // IsText checks if t is a CHAR, VARCHAR, TEXT, BINARY, VARBINARY, or BLOB (including TEXT and BLOB variants).
@@ -238,7 +258,8 @@ func IsUnsigned(t sql.Type) bool {
 	if svt, ok := t.(sql.SystemVariableType); ok {
 		t = svt.UnderlyingType()
 	}
-	return t == Uint8 || t == Uint16 || t == Uint24 || t == Uint32 || t == Uint64
+	return t == Uint8 || t == Uint16 || t == Uint24 || t == Uint32 || t == Uint64 ||
+		extendedTypeKindIn(t, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64)
 }
 
 // IsYear checks if t is a year type.

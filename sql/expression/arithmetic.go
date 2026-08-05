@@ -337,7 +337,7 @@ func (a *Arithmetic) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, 
 	var lval, rval interface{}
 	var err error
 
-	if i, ok := a.LeftChild.(*Interval); ok {
+	if i, ok := a.LeftChild.(TimeDeltaExpression); ok {
 		lval, err = i.EvalDelta(ctx, row)
 		if err != nil {
 			return nil, nil, err
@@ -349,7 +349,7 @@ func (a *Arithmetic) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, 
 		}
 	}
 
-	if i, ok := a.RightChild.(*Interval); ok {
+	if i, ok := a.RightChild.(TimeDeltaExpression); ok {
 		rval, err = i.EvalDelta(ctx, row)
 		if err != nil {
 			return nil, nil, err
@@ -396,7 +396,7 @@ func (a *Arithmetic) convertLeftRight(ctx *sql.Context, left interface{}, right 
 }
 
 func isInterval(expr sql.Expression) bool {
-	_, ok := expr.(*Interval)
+	_, ok := expr.(TimeDeltaExpression)
 	return ok
 }
 

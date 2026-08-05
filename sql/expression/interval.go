@@ -28,6 +28,17 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
+// TimeDeltaExpression is implemented by any expression whose evaluated value represents a time delta that
+// can be added to or subtracted from a date/time value via *TimeDelta. In the GMS package, Interval
+// satisfies this interface; other integrators' interval-like expressions can implement it, too.
+type TimeDeltaExpression interface {
+	sql.Expression
+
+	// EvalDelta evaluates this expression and returns a TimeDelta that can be used to do arithmetic
+	// on interval values.
+	EvalDelta(ctx *sql.Context, row sql.Row) (*TimeDelta, error)
+}
+
 // Interval defines a time duration.
 type Interval struct {
 	UnaryExpressionStub
@@ -35,6 +46,7 @@ type Interval struct {
 }
 
 var _ sql.Expression = (*Interval)(nil)
+var _ TimeDeltaExpression = (*Interval)(nil)
 var _ sql.CollationCoercible = (*Interval)(nil)
 
 // NewInterval creates a new interval expression.
