@@ -16,10 +16,89 @@ package sorters
 
 import (
 	"container/heap"
+	"golang.org/x/sync/errgroup"
 	"io"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
+
+func GetSortedHeap(ctx *sql.Context, iter sql.RowIter, sortConditions sql.SortConditions) (heap.Interface, error) {
+	eg := errgroup.Group{}
+	var rowChan = make(chan sql.Row, 512)
+	eg.Go(func() error {
+		defer close(rowChan)
+		for {
+			row, err := iter.Next(ctx)
+			if err == io.EOF {
+				return nil
+			}
+			if err != nil {
+				return err
+			}
+			rowChan <- row
+		}
+	})
+
+	rowsHeap := &minRowHeap{
+		RowSorter: NewRowSorter(ctx, sortConditions),
+	}
+	eg.Go(func() error {
+		var idx int64
+		for {
+			row, ok := <-rowChan
+			if !ok {
+				return nil
+			}
+			heap.Push(rowsHeap, rowWithOrder{row, idx})
+			idx++
+		}
+	})
+
+	err := eg.Wait()
+	if err != nil {
+		return nil, err
+	}
+
+	return rowsHeap, nil
+}
+
+// maxRowsHeap implements heap.Interface. Since heap.Interface assumes a min-heap, maxRowsHeap inverts Less to implement
+// a max-heap. This is so that maxRowsHeap can be used for a Top-N Heap Sort.
+type minRowHeap struct {
+	*RowSorter
+	order []int64
+}
+
+// Less implements heap.Interface.
+func (h *minRowHeap) Less(i, j int) bool {
+	cmp := h.RowSorter.CompareRows(h.RowSorter.rows[i], h.RowSorter.rows[j])
+	if cmp == 0 {
+		return h.order[i] < h.order[j]
+	}
+	return cmp < 0
+}
+
+// Swap implements heap.Interface
+func (h *minRowHeap) Swap(i, j int) {
+	h.RowSorter.Swap(i, j)
+	h.order[i], h.order[j] = h.order[j], h.order[i]
+}
+
+// Push implements heap.Interface. x is expected to be a rowWithOrder.
+func (h *minRowHeap) Push(x interface{}) {
+	e := x.(rowWithOrder)
+	h.RowSorter.rows = append(h.RowSorter.rows, e.row)
+	h.order = append(h.order, e.order)
+}
+
+// Pop implements heap.Interface. The return type is a sql.Row.
+func (h *minRowHeap) Pop() interface{} {
+	n := len(h.RowSorter.rows)
+	row := h.RowSorter.rows[n-1]
+	h.RowSorter.rows = h.RowSorter.rows[:n-1]
+	h.order = h.order[:n-1]
+	return row
+}
 
 // GetTopNRows uses a Top-N Heap Sort to find the top (min) N rows in a RowIter. It inserts each row of the iter into
 // the max-heap, popping the max row if the size of the heap exceeds N such that the heap only contains the N min rows.
