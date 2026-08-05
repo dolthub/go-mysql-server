@@ -2610,6 +2610,24 @@ var InsertDuplicateKeyKeyless = []ScriptTest{
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/11389
+		Name: "insert on duplicate key update works with DEFAULT update value",
+		SetUpScript: []string{
+			"CREATE TABLE t(id INT PRIMARY KEY, a INT DEFAULT 1);",
+			"INSERT INTO t VALUES (1, 5);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO t(id) VALUES (1) ON DUPLICATE KEY UPDATE a = DEFAULT;",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "SELECT * from t;",
+				Expected: []sql.Row{{1, 1}},
+			},
+		},
+	},
 }
 
 var InsertErrorTests = []GenericErrorQueryTest{
