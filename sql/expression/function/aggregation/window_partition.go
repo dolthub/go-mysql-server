@@ -273,6 +273,8 @@ func (i *WindowPartitionIter) compute(ctx *sql.Context) (sql.Row, error) {
 			if err != nil {
 				return nil, err
 			}
+		} else if err != nil {
+			return nil, err
 		}
 		v, err := agg.fn.Compute(ctx, interval, i.input)
 		if err != nil {
