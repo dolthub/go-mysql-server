@@ -398,68 +398,6 @@ func isColumnUpdated(col *sql.Column, updateExprs []sql.Expression) bool {
 	return false
 }
 
-// TODO: consider combining this function with assignmentExprsToUpdateExprs since there's a lot of similar repeated code
-func (b *Builder) buildOnDupUpdateExprs(combinedScope, destScope *scope, schema sql.Schema, e ast.AssignmentExprs) *plan.UpdateExprs {
-	b.insertActive = true
-	defer func() {
-		b.insertActive = false
-	}()
-	updateExprs := make([]sql.Expression, len(e))
-	// todo(max): prevent aggregations in separate semantic walk step
-	var startAggCnt int
-	if combinedScope.groupBy != nil {
-		startAggCnt = len(combinedScope.groupBy.aggs)
-	}
-	var startWinCnt int
-	if combinedScope.windowFuncs != nil {
-		startWinCnt = len(combinedScope.windowFuncs)
-	}
-	for i, updateExpr := range e {
-		colName := b.buildOnDupLeft(destScope, updateExpr.Name)
-		innerExpr := b.buildScalar(combinedScope, updateExpr.Expr)
-
-		updateExprs[i] = expression.NewSetField(colName, innerExpr)
-		if combinedScope.groupBy != nil {
-			if len(combinedScope.groupBy.aggs) > startAggCnt {
-				err := sql.ErrAggregationUnsupported.New(updateExprs[i])
-				b.handleErr(err)
-			}
-		}
-		if combinedScope.windowFuncs != nil {
-			if len(combinedScope.windowFuncs) > startWinCnt {
-				err := sql.ErrWindowUnsupported.New(updateExprs[i])
-				b.handleErr(err)
-			}
-		}
-	}
-
-	return plan.NewUpdateExprs(b.addDependentUpdateExprs(destScope, schema, updateExprs), len(e))
-}
-
-func (b *Builder) buildOnDupLeft(inScope *scope, e ast.Expr) sql.Expression {
-	// expect col reference only
-	switch e := e.(type) {
-	case *ast.ColName:
-		dbName := strings.ToLower(e.Qualifier.DbQualifier.String())
-		tblName := strings.ToLower(e.Qualifier.Name.String())
-		colName := strings.ToLower(e.Name.String())
-		c, ok := inScope.resolveColumn(dbName, tblName, colName, true, false)
-		if !ok {
-			if tblName != "" && !inScope.hasTable(tblName) {
-				b.handleErr(sql.ErrTableNotFound.New(tblName))
-			} else if tblName != "" {
-				b.handleErr(sql.ErrTableColumnNotFound.New(tblName, colName))
-			}
-			b.handleErr(sql.ErrColumnNotFound.New(e))
-		}
-		return c.scalarGf()
-	default:
-		err := fmt.Errorf("invalid update target; expected column reference, found: %T", e)
-		b.handleErr(err)
-	}
-	return nil
-}
-
 func (b *Builder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scope) {
 	// TODO: this shouldn't be called during ComPrepare or `PREPARE ... FROM ...` statements, but currently it is.
 	//   The end result is that the ComDelete counter is incremented during prepare statements, which is incorrect.
