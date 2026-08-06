@@ -458,19 +458,7 @@ func findInclusionBoundary(ctx *sql.Context, pos, searchStart, partitionEnd int,
 		return 0, err
 	}
 
-	// [expr]'s type is normally sufficient to compare [res] and [cur], since [cur] is
-	// usually just [expr] shifted by a same-typed offset (e.g. int+int, date+interval).
-	// SET and ENUM order-by columns are the exception: their arithmetic offset (e.g.
-	// `set_col + 1`) can legitimately land outside the column's valid domain, and
-	// SetType/EnumType's Compare rejects out-of-domain values since it's also used to
-	// validate storage. Range framing only needs numeric ordering here, so fall back to
-	// comparing using [inclusion]'s (numeric) type instead, mirroring the same Set/Enum
-	// fallback castLeftAndRight uses in expression/comparison.go.
-	compareType := expr.Type(ctx)
-	if types.IsSet(compareType) || types.IsEnum(compareType) {
-		compareType = inclusion.Type(ctx)
-	}
-
+	compareType := types.GetCompareType(expr.Type(ctx), inclusion.Type(ctx))
 	i := searchStart
 	cmp := unknown
 	for ; cmp < int(stopCond); i++ {
