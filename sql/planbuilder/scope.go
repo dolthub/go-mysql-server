@@ -394,6 +394,7 @@ func (s *scope) push() *scope {
 		b:          s.b,
 		parent:     s,
 		schemaName: s.schemaName,
+		groupBy:    s.groupBy,
 	}
 	if s.procActive() {
 		new.initProc()
