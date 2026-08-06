@@ -15,9 +15,9 @@
 package iters
 
 import (
+	"container/heap"
 	"fmt"
 	"io"
-	"sort"
 
 	"github.com/dolthub/jsonpath"
 
@@ -392,8 +392,8 @@ func (li *LimitIter) Close(ctx *sql.Context) error {
 type sortIter struct {
 	sortConditions sql.SortConditions
 	childIter      sql.RowIter
-	sortedRows     []sql.Row
-	idx            int
+	sortedHeap     heap.Interface
+	len            int
 }
 
 var _ sql.RowIter = (*sortIter)(nil)
@@ -402,59 +402,34 @@ func NewSortIter(s sql.SortConditions, child sql.RowIter) *sortIter {
 	return &sortIter{
 		sortConditions: s,
 		childIter:      child,
-		idx:            -1,
 	}
 }
 
 func (i *sortIter) Next(ctx *sql.Context) (sql.Row, error) {
-	if i.idx == -1 {
-		err := i.computeSortedRows(ctx)
-		if err != nil {
+	if i.sortedHeap == nil {
+		if err := i.computeSortedRows(ctx); err != nil {
 			return nil, err
 		}
-		i.idx = 0
+		i.len = i.sortedHeap.Len()
 	}
-
-	if i.idx >= len(i.sortedRows) {
+	if i.len == 0 {
 		return nil, io.EOF
 	}
-	row := i.sortedRows[i.idx]
-	i.idx++
-	return row, nil
+	i.len--
+	return heap.Pop(i.sortedHeap).(sql.Row), nil
 }
 
 func (i *sortIter) Close(ctx *sql.Context) error {
-	i.sortedRows = nil
+	i.sortedHeap = nil
 	return i.childIter.Close(ctx)
 }
 
 func (i *sortIter) computeSortedRows(ctx *sql.Context) error {
-	cache, dispose := ctx.Memory.NewRowsCache(ctx)
-	defer dispose()
-
-	for {
-		row, err := i.childIter.Next(ctx)
-
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return err
-		}
-
-		if err := cache.Add(row); err != nil {
-			return err
-		}
-	}
-
-	rows := cache.Get()
-	sorter := sorters.NewRowSorterWithRows(ctx, i.sortConditions, rows)
-	sort.Stable(sorter)
-	err := sorter.GetError()
+	sortedHeap, err := sorters.GetSortedHeap(ctx, i.childIter, i.sortConditions)
 	if err != nil {
 		return err
 	}
-	i.sortedRows = rows
+	i.sortedHeap = sortedHeap
 	return nil
 }
 
