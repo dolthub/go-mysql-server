@@ -2612,7 +2612,12 @@ var InsertDuplicateKeyKeyless = []ScriptTest{
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/11389
-		Name: "insert on duplicate key update works with DEFAULT update value",
+		Name: "INSERT...ON DUPLICATE KEY UPDATE works with DEFAULT update value",
+		// TODO: This test should work in Doltgres. Even though standard Postgres doesn't support
+		//  ON DUPLICATE KEY UPDATE, it works in Doltgres. The problem is that Doltgres panics when DEFAULT is used
+		//  inside an ON UPDATE KEY UPDATE clause
+		//  https://github.com/dolthub/doltgresql/issues/3045
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE t(id INT PRIMARY KEY, a INT DEFAULT 1);",
 			"INSERT INTO t VALUES (1, 5);",
