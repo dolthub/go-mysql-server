@@ -667,8 +667,11 @@ func (b *Builder) buildNamedWindows(fromScope *scope, window ast.Window) {
 		if ok, _ := seen[name]; ok {
 			b.handleErr(sql.ErrCircularWindowInheritance.New())
 		}
+		cur, ok := adj[name]
+		if !ok {
+			b.handleErr(sql.ErrUnknownWindowName.New(name))
+		}
 		seen[name] = true
-		cur := adj[name]
 		if ref := cur.NameRef.Lowered(); ref != "" {
 			dfs(ref)
 		}
