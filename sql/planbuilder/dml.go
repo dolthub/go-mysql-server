@@ -136,7 +136,9 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 				combinedScope.newColumn(srcScope.cols[i])
 			}
 		}
-		onDupUpdateExprs = b.buildOnDupUpdateExprs(combinedScope, destScope, sch, ast.AssignmentExprs(i.OnDup))
+		b.insertActive = true
+		onDupUpdateExprs = b.assignmentExprsToUpdateExprs(combinedScope, destScope, sch, ast.AssignmentExprs(i.OnDup))
+		b.insertActive = false
 	}
 
 	ignore := false
@@ -279,8 +281,7 @@ func reorderSchema(names []string, schema sql.Schema) sql.Schema {
 	return newSch
 }
 
-// TODO: Consider combining this function with buildOnDupUpdateExprs since there's a lot of similar and repeated code
-func (b *Builder) assignmentExprsToUpdateExprs(inScope *scope, e ast.AssignmentExprs) *plan.UpdateExprs {
+func (b *Builder) assignmentExprsToUpdateExprs(inScope, destScope *scope, tableSch sql.Schema, e ast.AssignmentExprs) *plan.UpdateExprs {
 	// Make sure the assignment expressions don't reference hidden system columns
 	for _, expr := range e {
 		if sql.IsHiddenSystemColumn(expr.Name.Name.String()) {
@@ -298,10 +299,8 @@ func (b *Builder) assignmentExprsToUpdateExprs(inScope *scope, e ast.AssignmentE
 		startWinCnt = len(inScope.windowFuncs)
 	}
 
-	tableSch := b.resolveSchemaDefaults(inScope, inScope.node.Schema(b.ctx))
-
 	for i, updateExpr := range e {
-		colName := b.buildScalar(inScope, updateExpr.Name)
+		colName := b.buildScalar(destScope, updateExpr.Name)
 
 		innerExpr := b.buildScalar(inScope, updateExpr.Expr)
 		if gf, ok := colName.(*expression.GetField); ok {
@@ -356,7 +355,7 @@ func (b *Builder) assignmentExprsToUpdateExprs(inScope *scope, e ast.AssignmentE
 		}
 	}
 
-	return plan.NewUpdateExprs(b.addDependentUpdateExprs(inScope, tableSch, updateExprs), len(e))
+	return plan.NewUpdateExprs(b.addDependentUpdateExprs(destScope, tableSch, updateExprs), len(e))
 }
 
 // addDependentUpdateExprs adds update expressions for any generated columns and ON UPDATE expressions since their
@@ -397,68 +396,6 @@ func isColumnUpdated(col *sql.Column, updateExprs []sql.Expression) bool {
 		}
 	}
 	return false
-}
-
-// TODO: consider combining this function with assignmentExprsToUpdateExprs since there's a lot of similar repeated code
-func (b *Builder) buildOnDupUpdateExprs(combinedScope, destScope *scope, schema sql.Schema, e ast.AssignmentExprs) *plan.UpdateExprs {
-	b.insertActive = true
-	defer func() {
-		b.insertActive = false
-	}()
-	updateExprs := make([]sql.Expression, len(e))
-	// todo(max): prevent aggregations in separate semantic walk step
-	var startAggCnt int
-	if combinedScope.groupBy != nil {
-		startAggCnt = len(combinedScope.groupBy.aggs)
-	}
-	var startWinCnt int
-	if combinedScope.windowFuncs != nil {
-		startWinCnt = len(combinedScope.windowFuncs)
-	}
-	for i, updateExpr := range e {
-		colName := b.buildOnDupLeft(destScope, updateExpr.Name)
-		innerExpr := b.buildScalar(combinedScope, updateExpr.Expr)
-
-		updateExprs[i] = expression.NewSetField(colName, innerExpr)
-		if combinedScope.groupBy != nil {
-			if len(combinedScope.groupBy.aggs) > startAggCnt {
-				err := sql.ErrAggregationUnsupported.New(updateExprs[i])
-				b.handleErr(err)
-			}
-		}
-		if combinedScope.windowFuncs != nil {
-			if len(combinedScope.windowFuncs) > startWinCnt {
-				err := sql.ErrWindowUnsupported.New(updateExprs[i])
-				b.handleErr(err)
-			}
-		}
-	}
-
-	return plan.NewUpdateExprs(b.addDependentUpdateExprs(destScope, schema, updateExprs), len(e))
-}
-
-func (b *Builder) buildOnDupLeft(inScope *scope, e ast.Expr) sql.Expression {
-	// expect col reference only
-	switch e := e.(type) {
-	case *ast.ColName:
-		dbName := strings.ToLower(e.Qualifier.DbQualifier.String())
-		tblName := strings.ToLower(e.Qualifier.Name.String())
-		colName := strings.ToLower(e.Name.String())
-		c, ok := inScope.resolveColumn(dbName, tblName, colName, true, false)
-		if !ok {
-			if tblName != "" && !inScope.hasTable(tblName) {
-				b.handleErr(sql.ErrTableNotFound.New(tblName))
-			} else if tblName != "" {
-				b.handleErr(sql.ErrTableColumnNotFound.New(tblName, colName))
-			}
-			b.handleErr(sql.ErrColumnNotFound.New(e))
-		}
-		return c.scalarGf()
-	default:
-		err := fmt.Errorf("invalid update target; expected column reference, found: %T", e)
-		b.handleErr(err)
-	}
-	return nil
 }
 
 func (b *Builder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scope) {
@@ -545,7 +482,7 @@ func (b *Builder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
 	_, foundJoin := outScope.node.(*plan.JoinNode)
 
 	// default expressions only resolve to target table
-	updateExprs := b.assignmentExprsToUpdateExprs(outScope, u.Exprs)
+	updateExprs := b.assignmentExprsToUpdateExprs(outScope, outScope, b.resolveSchemaDefaults(outScope, outScope.node.Schema(b.ctx)), u.Exprs)
 
 	b.buildWhere(outScope, u.Where)
 

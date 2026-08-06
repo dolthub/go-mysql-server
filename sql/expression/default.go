@@ -15,10 +15,14 @@
 package expression
 
 import (
+	"errors"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // DefaultColumn is a default expression of a column that is not yet resolved.
+// TODO: Rename to ColumnDefault. DefaultColumn implies this is a default column when really this is a column's default
+// value.
 type DefaultColumn struct {
 	name string
 }
@@ -70,9 +74,8 @@ func (c *DefaultColumn) String() string {
 }
 
 // Eval implements the sql.Expression interface.
-// The function always panics!
 func (*DefaultColumn) Eval(ctx *sql.Context, r sql.Row) (interface{}, error) {
-	panic("default column is a placeholder node, but Eval was called")
+	return nil, errors.New("DEFAULT is a placeholder expression, but Eval was called")
 }
 
 // WithChildren implements the Expression interface.
