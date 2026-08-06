@@ -680,8 +680,16 @@ func (b *Builder) buildAsOfExpr(inScope *scope, time ast.Expr) sql.Expression {
 		return expression.NewLiteral(v.String(), types.LongText)
 	case *ast.FuncExpr:
 		// todo(max): more specific validation for nested ASOF functions
-		if IsWindowFunc(v.Name.Lowered()) || IsAggregateFunc(v.Name.Lowered()) {
-			err := sql.ErrInvalidAsOfExpression.New(v)
+		isAggregate, err := IsAggregateFunc(b.ctx, v.Name.Lowered())
+		if err != nil {
+			b.handleErr(err)
+		}
+		isWindow, err := IsWindowFunc(b.ctx, v.Name.Lowered())
+		if err != nil {
+			b.handleErr(err)
+		}
+		if isAggregate || isWindow {
+			err = sql.ErrInvalidAsOfExpression.New(v)
 			b.handleErr(err)
 		}
 	case *ast.ConvertExpr:

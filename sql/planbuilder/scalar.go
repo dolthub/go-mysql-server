@@ -214,11 +214,15 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 			return b.buildNameConst(inScope, v)
 		} else if name == "icu_version" {
 			return expression.NewLiteral(icuVersion, types.MustCreateString(query.Type_VARCHAR, int64(len(icuVersion)), sql.Collation_Default))
-		} else if IsAggregateFunc(name) && v.Over == nil {
+		} else if isAggregate, err := IsAggregateFunc(b.ctx, name); err != nil {
+			b.handleErr(err)
+		} else if v.Over == nil && isAggregate {
 			// TODO this assumes aggregate is in the same scope
 			// also need to avoid nested aggregates
 			return b.buildAggregateFunc(inScope, name, v)
-		} else if IsWindowFunc(name) {
+		} else if isWindow, err := IsWindowFunc(b.ctx, name); err != nil {
+			b.handleErr(err)
+		} else if isWindow {
 			return b.buildWindowFunc(inScope, name, v, (*ast.WindowDef)(v.Over))
 		}
 

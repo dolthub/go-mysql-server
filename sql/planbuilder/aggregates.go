@@ -273,16 +273,16 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 // IsAggregateFunc is a hacky "extension point" to allow for other dialects to declare additional aggregate functions
 var IsAggregateFunc = IsMySQLAggregateFuncName
 
-func IsMySQLAggregateFuncName(name string) bool {
+func IsMySQLAggregateFuncName(ctx *sql.Context, name string) (bool, error) {
 	switch name {
 	case "avg", "bit_and", "bit_or", "bit_xor", "count",
 		"group_concat", "json_arrayagg", "json_objectagg",
 		"max", "min", "std", "stddev_pop", "stddev_samp",
 		"stddev", "sum", "var_pop", "var_samp", "variance",
 		"first", "last", "any_value":
-		return true
+		return true, nil
 	default:
-		return false
+		return false, nil
 	}
 }
 
@@ -513,7 +513,7 @@ func (b *Builder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.E
 // IsWindowFunc is a hacky "extension point" to allow for other dialects to declare additional window functions
 var IsWindowFunc = IsMySQLWindowFuncName
 
-func IsMySQLWindowFuncName(name string) bool {
+func IsMySQLWindowFuncName(ctx *sql.Context, name string) (bool, error) {
 	switch name {
 	case "first", "last", "count", "sum", "any_value",
 		"avg", "max", "min", "count_distinct", "json_arrayagg",
@@ -523,9 +523,9 @@ func IsMySQLWindowFuncName(name string) bool {
 		"ntile",
 		"std", "stddev", "stddev_pop", "stddev_samp",
 		"variance", "var_pop", "var_samp":
-		return true
+		return true, nil
 	default:
-		return false
+		return false, nil
 	}
 }
 
@@ -827,11 +827,15 @@ func (b *Builder) analyzeHaving(fromScope, projScope *scope, having *ast.Where) 
 			return false, nil
 		case *ast.FuncExpr:
 			name := n.Name.Lowered()
-			if IsAggregateFunc(name) {
+			if isAggregate, err := IsAggregateFunc(b.ctx, name); err != nil {
+				b.handleErr(err)
+			} else if isAggregate {
 				// record aggregate
 				// TODO: this should get projScope as well
 				_ = b.buildAggregateFunc(fromScope, name, n)
-			} else if IsWindowFunc(name) {
+			} else if isWindow, err := IsWindowFunc(b.ctx, name); err != nil {
+				b.handleErr(err)
+			} else if isWindow {
 				_ = b.buildWindowFunc(fromScope, name, n, (*ast.WindowDef)(n.Over))
 			}
 		case *ast.ColName:
