@@ -10501,6 +10501,11 @@ var ErrorQueries = []QueryErrorTest{
 		Query:       `select s from mytable group by s order by i`,
 		ExpectedErr: analyzererrors.ErrValidationGroupByOrderBy,
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/11426
+		Query:       `SELECT pk, SUM(c1) OVER w AS s FROM one_pk WINDOW w AS (missing ORDER BY pk) ORDER BY pk;`,
+		ExpectedErr: sql.ErrUnknownWindowName,
+	},
 }
 
 var BrokenErrorQueries = []QueryErrorTest{
