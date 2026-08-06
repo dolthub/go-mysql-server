@@ -1935,6 +1935,15 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{{7}, {8}, {7}},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/11393
+		Query:    "select locate('a', 'abc', -1);",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select locate('a', 'abc', 0);",
+		Expected: []sql.Row{{0}},
+	},
+	{
 		Query: "select find_in_set('second row', s) from mytable;",
 		Expected: []sql.Row{
 			{0},
