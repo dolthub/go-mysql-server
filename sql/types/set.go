@@ -114,21 +114,81 @@ func MustCreateSetType(values []string, collation sql.CollationID) sql.SetType {
 }
 
 // Compare implements Type interface.
+// orderingValue returns the raw bit-field magnitude of v for ordering/comparison purposes.
+// Unlike Convert, it does not require v to be a legal combination of this SET's members —
+// only strings still go through that strict validation, since a bare string has no other
+// meaningful numeric interpretation. Numeric inputs are used as-is.
+//
+// This matters for range-frame window arithmetic (e.g. `ORDER BY set_col RANGE BETWEEN
+// CURRENT ROW AND 1 FOLLOWING`): the "+1" boundary is a synthetic comparison bound, never a
+// value that will be stored, and can legitimately exceed the set's max valid bit-field (e.g.
+// max value 7 for a 3-member set, +1 = 8) without that making the comparison meaningless —
+// 8 still orders correctly above every real member combination.
+func (t SetType) orderingValue(ctx context.Context, v interface{}) (uint64, error) {
+	switch value := v.(type) {
+	case string:
+		ai, _, err := t.Convert(ctx, value)
+		if err != nil {
+			return 0, err
+		}
+		return ai.(uint64), nil
+	case []byte:
+		return t.orderingValue(ctx, string(value))
+	case int:
+		return uint64(value), nil
+	case uint:
+		return uint64(value), nil
+	case int8:
+		return uint64(value), nil
+	case uint8:
+		return uint64(value), nil
+	case int16:
+		return uint64(value), nil
+	case uint16:
+		return uint64(value), nil
+	case int32:
+		return uint64(value), nil
+	case uint32:
+		return uint64(value), nil
+	case int64:
+		return uint64(value), nil
+	case uint64:
+		return value, nil
+	case float32:
+		// Round rather than truncate: the arithmetic that reaches here (e.g. a
+		// window frame's `orderBy + N`) can produce a float type even for an
+		// exact integer input/offset pair, and truncation would silently pull
+		// an exact boundary like 8.0 down to 7 on any tiny float representation
+		// wobble. This does not fix float64's inherent precision ceiling for
+		// SET values near or above 2^53 (SET supports up to 64 members) — that
+		// is a pre-existing limitation of routing SET arithmetic through
+		// Arithmetic's float64 fallback type, out of scope for this fix.
+		return uint64(math.Round(float64(value))), nil
+	case float64:
+		return uint64(math.Round(value)), nil
+	case *apd.Decimal:
+		return DecimalIntPartUint64(value), nil
+	}
+	ai, _, err := t.Convert(ctx, v)
+	if err != nil {
+		return 0, err
+	}
+	return ai.(uint64), nil
+}
+
 func (t SetType) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
 
-	ai, _, err := t.Convert(ctx, a)
+	au, err := t.orderingValue(ctx, a)
 	if err != nil {
 		return 0, err
 	}
-	bi, _, err := t.Convert(ctx, b)
+	bu, err := t.orderingValue(ctx, b)
 	if err != nil {
 		return 0, err
 	}
-	au := ai.(uint64)
-	bu := bi.(uint64)
 
 	// If there's an empty string in the set, empty strings should match both 0 and an empty string bit field
 	if emptyStringBitField, ok := t.emptyStringBitField(); ok {

@@ -64,6 +64,49 @@ func TestSetCompare(t *testing.T) {
 	}
 }
 
+// TestSetCompareOutOfRangeNumeric covers dolthub/dolt#11397: a numeric value
+// used purely for comparison (e.g. window-frame RANGE boundary arithmetic
+// like `order_by_set_col + 1`) can legitimately exceed the SET's maximum
+// valid bit-field (e.g. 7 for a 3-member set, +1 = 8) without that making
+// the comparison an error — 8 is not a real member combination, but it
+// still orders correctly above every value that is.
+func TestSetCompareOutOfRangeNumeric(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	typ := MustCreateSetType([]string{"x", "y", "z"}, sql.Collation_Default)
+
+	tests := []struct {
+		name        string
+		val1        interface{}
+		val2        interface{}
+		expectedCmp int
+	}{
+		{"max valid value vs out-of-range +1", uint64(7), uint64(8), -1},
+		{"out-of-range vs max valid value", uint64(8), uint64(7), 1},
+		{"in-range value vs out-of-range value", uint64(3), uint64(8), -1},
+		{"same out-of-range value", uint64(8), uint64(8), 0},
+		{"int type out-of-range", 8, uint64(7), 1},
+		{"float64 type out-of-range", float64(8), uint64(7), 1},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			cmp, err := typ.Compare(ctx, test.val1, test.val2)
+			require.NoError(t, err)
+			assert.Equal(t, test.expectedCmp, cmp)
+		})
+	}
+}
+
+// TestSetCompareOutOfRangeStringStillErrors confirms the fix for #11397
+// doesn't loosen validation for strings — a string must still name real
+// set members, since a string has no other meaningful interpretation.
+func TestSetCompareOutOfRangeStringStillErrors(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	typ := MustCreateSetType([]string{"x", "y", "z"}, sql.Collation_Default)
+	_, err := typ.Compare(ctx, "not-a-real-member", uint64(1))
+	require.Error(t, err)
+}
+
 func TestSetCompareErrors(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 	tests := []struct {
