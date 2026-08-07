@@ -4008,6 +4008,8 @@ func TestNamedWindows(t *testing.T, harness Harness) {
 	RunQueryWithContext(t, e, harness, ctx, "INSERT INTO a VALUES (0,0,0), (1,1,0), (2,2,0), (3,0,0), (4,1,0), (5,3,0)")
 
 	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (w1) FROM a WINDOW w1 as (order by z) order by x`, []sql.Row{{float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}}, nil, nil, nil)
+	// window names should not be case-sensitive
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (w1) FROM a WINDOW W1 as (order by z) order by x`, []sql.Row{{float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}}, nil, nil, nil)
 	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (w1) FROM a WINDOW w1 as (partition by z) order by x`, []sql.Row{{float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}}, nil, nil, nil)
 	// A named window with an ORDER BY but no explicit frame must default to a running (cumulative)
 	// frame, same as an equivalent inline OVER (...) clause -- not the full-partition frame. The
@@ -4034,6 +4036,9 @@ func TestNamedWindows(t *testing.T, harness Harness) {
 	AssertErr(t, e, harness, "SELECT sum(y) over (w1 order by x) FROM a WINDOW w1 as (order by z) order by x", nil, sql.ErrInvalidWindowInheritance)
 	AssertErr(t, e, harness, "SELECT sum(y) over (w1 rows unbounded preceding) FROM a WINDOW w1 as (range unbounded preceding) order by x", nil, sql.ErrInvalidWindowInheritance)
 	AssertErr(t, e, harness, "SELECT sum(y) over (w3) FROM a WINDOW w1 as (w2), w2 as (w3), w3 as (w1) order by x", nil, sql.ErrCircularWindowInheritance)
+	// https://github.com/dolthub/dolt/issues/11426
+	AssertErr(t, e, harness, "SELECT sum(y) over w AS s FROM a WINDOW w AS (missing ORDER BY x) ORDER BY x", nil, sql.ErrUnknownWindowName)
+	AssertErr(t, e, harness, "SELECT sum(y) over (w1) FROM a WINDOW w2 as (order by z) order by x", nil, sql.ErrUnknownWindowName)
 
 	// TODO parser needs to differentiate between window replacement and copying -- window frames can't be copied
 	// AssertErr(t, e, harness, "SELECT sum(y) over w FROM a WINDOW (w) as (partition by z order by x rows unbounded preceding) order by x", sql.ErrInvalidWindowInheritance)

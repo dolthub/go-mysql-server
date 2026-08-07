@@ -717,7 +717,11 @@ func (b *Builder) buildWindowDef(fromScope *scope, def *ast.WindowDef) *sql.Wind
 	frame := b.NewFrame(fromScope, def.Frame)
 
 	windowDef := sql.NewWindowDefinition(partitions, sortConditions, frame, def.NameRef.Lowered(), def.Name.Lowered())
-	if ref, ok := fromScope.windowDefs[def.NameRef.Lowered()]; ok {
+	if nameRef := def.NameRef.Lowered(); nameRef != "" {
+		ref, ok := fromScope.windowDefs[nameRef]
+		if !ok {
+			b.handleErr(sql.ErrUnknownWindowName.New(nameRef))
+		}
 		// this is only safe if windows are built in topo order
 		windowDef = b.mergeWindowDefs(windowDef, ref)
 		// collapse dependencies if any reference this window
