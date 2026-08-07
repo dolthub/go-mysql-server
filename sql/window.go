@@ -41,6 +41,10 @@ type WindowDefinition struct {
 	id          uint64
 }
 
+func (w *WindowDefinition) ExpressionsLen() int {
+	return len(w.OrderBy) + len(w.PartitionBy)
+}
+
 // ToExpressions converts the PartitionBy and OrderBy expressions to a single slice of expressions suitable for
 // manipulation by analyzer rules.
 func (w *WindowDefinition) ToExpressions() []Expression {
@@ -57,7 +61,7 @@ func (w *WindowDefinition) FromExpressions(ctx *Context, children []Expression) 
 		return nil, nil
 	}
 
-	if len(children) != len(w.OrderBy)+len(w.PartitionBy) {
+	if len(children) != w.ExpressionsLen() {
 		return nil, ErrInvalidChildrenNumber.New(w, len(children), len(w.OrderBy)+len(w.PartitionBy))
 	}
 
