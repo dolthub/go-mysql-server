@@ -73,6 +73,57 @@ func TestGroupConcat_PastMaxLen(t *testing.T) {
 	require.Equal(t, int(maxLen), len(rs))
 }
 
+// Validates multi-expression GROUP_CONCAT concatenates all exprs per row (MySQL parity).
+// See dolthub/dolt#11427.
+func TestGroupConcat_MultipleExpressions(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	// GROUP_CONCAT(a, b ORDER BY id SEPARATOR '|') over rows (x,1), (y,2) => "x1|y2"
+	gc := NewGroupConcat(
+		"",
+		nil,
+		"|",
+		[]sql.Expression{
+			expression.NewGetField(1, types.LongText, "a", true),
+			expression.NewGetField(2, types.LongText, "b", true),
+		},
+		1024,
+	)
+	buf, err := gc.NewBuffer(ctx)
+	require.NoError(t, err)
+
+	require.NoError(t, buf.Update(ctx, sql.Row{int64(1), "x", "1"}))
+	require.NoError(t, buf.Update(ctx, sql.Row{int64(2), "y", "2"}))
+
+	result, err := buf.Eval(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "x1|y2", result)
+}
+
+// Validates a NULL in any expression skips that row (CONCAT / MySQL semantics).
+func TestGroupConcat_MultipleExpressionsNullSkipped(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	gc := NewGroupConcat(
+		"",
+		nil,
+		"|",
+		[]sql.Expression{
+			expression.NewGetField(1, types.LongText, "a", true),
+			expression.NewGetField(2, types.LongText, "b", true),
+		},
+		1024,
+	)
+	buf, err := gc.NewBuffer(ctx)
+	require.NoError(t, err)
+
+	require.NoError(t, buf.Update(ctx, sql.Row{int64(1), "x", "1"}))
+	require.NoError(t, buf.Update(ctx, sql.Row{int64(2), "y", nil}))
+	require.NoError(t, buf.Update(ctx, sql.Row{int64(3), "z", "3"}))
+
+	result, err := buf.Eval(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "x1|z3", result)
+}
+
 // Validate that group_concat returns the correct return type
 func TestGroupConcat_ReturnType(t *testing.T) {
 	ctx := sql.NewEmptyContext()
