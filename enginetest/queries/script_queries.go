@@ -4298,6 +4298,12 @@ CREATE TABLE tab3 (
 
 			"create table nulls(pk int)",
 			"INSERT INTO nulls VALUES (NULL)",
+
+			// multi-expression GROUP_CONCAT (dolthub/dolt#11427)
+			"CREATE TABLE t_multi(id INT PRIMARY KEY, a VARCHAR(10), b VARCHAR(10))",
+			"INSERT INTO t_multi VALUES (1,'x','1'),(2,'y','2')",
+			"CREATE TABLE t_multi_null(id INT PRIMARY KEY, a VARCHAR(10), b VARCHAR(10))",
+			"INSERT INTO t_multi_null VALUES (1,'x','1'),(2,'y',NULL),(3,'z','3')",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -4375,6 +4381,22 @@ CREATE TABLE tab3 (
 			{
 				Query:    "SELECT group_concat(attribute order by attribute separator '') FROM t WHERE o_id=2 ORDER BY attribute",
 				Expected: []sql.Row{{"colorfabric"}},
+			},
+			{
+				Query:    `SELECT GROUP_CONCAT(a,b ORDER BY id SEPARATOR '|') AS gc FROM t_multi;`,
+				Expected: []sql.Row{{"x1|y2"}},
+			},
+			{
+				Query:    `SELECT GROUP_CONCAT(a,b ORDER BY id) AS gc FROM t_multi;`,
+				Expected: []sql.Row{{"x1,y2"}},
+			},
+			{
+				Query:    `SELECT GROUP_CONCAT(a,b,a ORDER BY id SEPARATOR '|') AS gc FROM t_multi;`,
+				Expected: []sql.Row{{"x1x|y2y"}},
+			},
+			{
+				Query:    `SELECT GROUP_CONCAT(a,b ORDER BY id SEPARATOR '|') AS gc FROM t_multi_null;`,
+				Expected: []sql.Row{{"x1|z3"}},
 			},
 		},
 	},
