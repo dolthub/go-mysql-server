@@ -15154,6 +15154,44 @@ select * from t1 except (
 			},
 		},
 	},
+	{
+		Name: "Window aggregations with empty OVER clause",
+		SetUpScript: []string{
+			"CREATE TABLE t(id INT PRIMARY KEY, v INT);",
+			"INSERT INTO t VALUES (1,10),(2,20);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// https://github.com/dolthub/dolt/issues/11428
+				Query: "SELECT id, FIRST_VALUE(v) OVER () AS fv FROM t ORDER BY id;",
+				Expected: []sql.Row{
+					{1, 10},
+					{2, 10},
+				},
+			},
+			{
+				Query: "SELECT id, LAST_VALUE(v) OVER () AS lv FROM t ORDER BY id;",
+				Expected: []sql.Row{
+					{1, 20},
+					{2, 20},
+				},
+			},
+			{
+				Query: "SELECT id, LAG(v) OVER () AS l FROM t ORDER BY id;",
+				Expected: []sql.Row{
+					{1, nil},
+					{2, 10},
+				},
+			},
+			{
+				Query: "SELECT id, LEAD(v) OVER () AS l FROM t ORDER BY id;",
+				Expected: []sql.Row{
+					{1, 20},
+					{2, nil},
+				},
+			},
+		},
+	},
 }
 
 var BrokenScriptTests = []ScriptTest{
