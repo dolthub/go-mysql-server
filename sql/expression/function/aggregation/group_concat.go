@@ -260,6 +260,12 @@ func (g *groupConcatBuffer) Update(ctx *sql.Context, originalRow sql.Row) error 
 	if skip {
 		return nil
 	}
+	// Aggregate path historically skipped empty-string concatenations. Keep that
+	// pre-existing behavior here (not in the shared helper) so the window path
+	// can include empty strings, matching MySQL / the old filterToDistinct path.
+	if len(vs) == 0 {
+		return nil
+	}
 
 	// Get the current array of rows and the map
 	// Check if distinct is active if so look at and update our map
@@ -355,6 +361,11 @@ func evalExprs(ctx *sql.Context, exprs []sql.Expression, row sql.Row) (sql.Row, 
 // evalSelectExprsForGroupConcat evaluates GROUP_CONCAT select expressions for one
 // input row. MySQL concatenates every expression per row (same as CONCAT). If any
 // expression is NULL, the row is skipped (https://dev.mysql.com/doc/refman/8.0/en/aggregate-functions.html#function_group-concat).
+//
+// skip is true only for NULL contributions or when there are no select expressions.
+// Empty-string results are returned with skip=false so callers can decide:
+// the aggregate Update path skips them (pre-existing), while the window path
+// includes them (MySQL / historical window behavior).
 func evalSelectExprsForGroupConcat(ctx *sql.Context, exprs []sql.Expression, row sql.Row) (string, sql.Type, bool, error) {
 	if len(exprs) == 0 {
 		return "", types.Text, true, nil
@@ -396,9 +407,5 @@ func evalSelectExprsForGroupConcat(ctx *sql.Context, exprs []sql.Expression, row
 		}
 	}
 
-	vs := sb.String()
-	if len(vs) == 0 {
-		return "", retType, true, nil
-	}
-	return vs, retType, false, nil
+	return sb.String(), retType, false, nil
 }

@@ -124,6 +124,57 @@ func TestGroupConcat_MultipleExpressionsNullSkipped(t *testing.T) {
 	require.Equal(t, "x1|z3", result)
 }
 
+// Aggregate Update path historically skips empty-string concatenations.
+func TestGroupConcat_AggregateSkipsEmptyString(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	gc := NewGroupConcat(
+		"",
+		nil,
+		"|",
+		[]sql.Expression{
+			expression.NewGetField(1, types.LongText, "a", true),
+		},
+		1024,
+	)
+	buf, err := gc.NewBuffer(ctx)
+	require.NoError(t, err)
+
+	require.NoError(t, buf.Update(ctx, sql.Row{int64(1), "x"}))
+	require.NoError(t, buf.Update(ctx, sql.Row{int64(2), ""}))
+	require.NoError(t, buf.Update(ctx, sql.Row{int64(3), "z"}))
+
+	result, err := buf.Eval(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "x|z", result)
+}
+
+// Window path includes empty-string contributions (MySQL + historical
+// filterToDistinct behavior). Regression guard for the shared-helper refactor.
+func TestGroupConcat_WindowIncludesEmptyString(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	gc := NewGroupConcat(
+		"",
+		nil,
+		"|",
+		[]sql.Expression{
+			expression.NewGetField(1, types.LongText, "a", true),
+		},
+		1024,
+	)
+	agg := NewGroupConcatAgg(gc)
+	rows := sql.WindowBuffer{
+		sql.Row{int64(1), "x"},
+		sql.Row{int64(2), ""},
+		sql.Row{int64(3), "z"},
+	}
+	interval := sql.WindowInterval{Start: 0, End: len(rows)}
+	require.NoError(t, agg.StartPartition(ctx, interval, rows))
+	result, err := agg.Compute(ctx, interval, rows)
+	require.NoError(t, err)
+	// Empty string sits between separators: "x||z"
+	require.Equal(t, "x||z", result)
+}
+
 // Validate that group_concat returns the correct return type
 func TestGroupConcat_ReturnType(t *testing.T) {
 	ctx := sql.NewEmptyContext()
