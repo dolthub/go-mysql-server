@@ -3996,6 +3996,12 @@ func TestWindowRangeFrames(t *testing.T, harness Harness) {
 	testIntervalQuery("SELECT sum(y) over (partition by z order by date range interval 'e' DAY preceding) FROM c order by x", []sql.Row{{float64(0)}, {float64(0)}, {float64(0)}, {float64(1)}, {float64(1)}, {float64(3)}, {float64(1)}, {float64(1)}, {float64(4)}, {float64(4)}})
 
 	AssertErr(t, e, harness, "SELECT sum(y) over (partition by z range between unbounded preceding and interval '1' DAY following) FROM c order by x", nil, aggregation.ErrRangeInvalidOrderBy)
+
+	// RANGE frame arithmetic (offset applied to the order-by expression) on a SET order-by column can
+	// produce a value outside that SET's valid domain. https://github.com/dolthub/dolt/issues/11397
+	RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE d (id INTEGER PRIMARY KEY, g INTEGER, s SET('x','y','z'), v INTEGER NOT NULL)")
+	RunQueryWithContext(t, e, harness, ctx, "INSERT INTO d VALUES (1, 0, 'x,y', 10), (2, 0, 'x,y,z', 20)")
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(v) over (partition by g order by s range between current row and 1 following) FROM d order by id`, []sql.Row{{float64(10)}, {float64(20)}}, nil, nil, nil)
 }
 
 func TestNamedWindows(t *testing.T, harness Harness) {
