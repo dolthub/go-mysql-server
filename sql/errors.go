@@ -769,7 +769,7 @@ var (
 	ErrCannotCopyWindowFrame = errors.NewKind("cannot copy window '%s' because it has a frame clause")
 
 	// ErrUnknownWindowName is returned when an over by clause references an unknown window definition
-	ErrUnknownWindowName = errors.NewKind("named window not found: '%s'")
+	ErrUnknownWindowName = errors.NewKind("Window name '%s' is not defined")
 
 	// ErrUnexpectedNilRow is returned when an invalid operation is applied to an empty row
 	ErrUnexpectedNilRow = errors.NewKind("unexpected nil row")
