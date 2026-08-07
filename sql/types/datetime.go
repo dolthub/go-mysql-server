@@ -313,6 +313,7 @@ func (t datetimeType) ConvertWithoutRangeCheck(ctx context.Context, v interface{
 	}
 	switch value := v.(type) {
 	case string:
+		value = strings.Trim(value, " \t\n\r\v\f")
 		if IsZeroTimestampStr(value) {
 			return ZeroTime, nil
 		}
