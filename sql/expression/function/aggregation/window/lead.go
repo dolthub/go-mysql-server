@@ -162,8 +162,9 @@ func (l *Lead) Children() []sql.Expression {
 
 // WithChildren implements sql.Expression
 func (l *Lead) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
-	if len(children) < len(l.ChildExpressions) {
-		return nil, sql.ErrInvalidChildrenNumber.New(l, len(children), len(l.ChildExpressions))
+	expected := len(l.window.ToExpressions()) + len(l.ChildExpressions)
+	if len(children) != expected {
+		return nil, sql.ErrInvalidChildrenNumber.New(l, len(children), expected)
 	}
 
 	nl := *l

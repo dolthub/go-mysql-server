@@ -122,8 +122,9 @@ func (f *LastValue) Children() []sql.Expression {
 
 // WithChildren implements sql.Expression
 func (f *LastValue) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
-	if len(children) < 1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 1)
+	expected := len(f.window.ToExpressions()) + 1
+	if len(children) != expected {
+		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), expected)
 	}
 
 	nf := *f
