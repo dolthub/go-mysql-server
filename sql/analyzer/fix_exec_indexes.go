@@ -766,6 +766,8 @@ func fixExprToScope(ctx *sql.Context, e sql.Expression, scopes ...*idxScope) sql
 		newScope.triggerScope = newScope.triggerScope || s.triggerScope
 		newScope.addScope(s)
 	}
+	// TODO: This causes errors to be swallowed, resulting in unexpected error or panics later down the line. But it
+	//  in same cases, we do want to swallow the error. Please see later TODOs.
 	ret, _, _ := transform.Expr(ctx, e, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		switch e := e.(type) {
 		case *expression.GetField:

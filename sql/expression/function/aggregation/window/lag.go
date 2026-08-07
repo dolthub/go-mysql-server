@@ -163,8 +163,8 @@ func (l *Lag) Children() []sql.Expression {
 
 // WithChildren implements sql.Expression
 func (l *Lag) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
-	if len(children) < 2 {
-		return nil, sql.ErrInvalidChildrenNumber.New(l, len(children), 2)
+	if len(children) < len(l.ChildExpressions) {
+		return nil, sql.ErrInvalidChildrenNumber.New(l, len(children), len(l.ChildExpressions))
 	}
 
 	nl := *l
