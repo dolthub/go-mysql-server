@@ -23,6 +23,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -285,4 +286,42 @@ func TestWindowPartition_SortAndFilterOutput(t *testing.T) {
 			require.ElementsMatch(t, tt.Expected, i.output)
 		})
 	}
+}
+
+func TestIsNewPartitionEmptyPartitionBy(t *testing.T) {
+	db := memory.NewDatabase("test")
+	pro := memory.NewDBProvider(db)
+	ctx := sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), pro)))
+
+	// First row (last == nil) always starts a partition. Sole caller
+	// initializePartitions ignores this return when j==0.
+	emptyRow := sql.Row{}
+	newPart, err := isNewPartition(ctx, nil, nil, emptyRow)
+	require.NoError(t, err)
+	require.True(t, newPart)
+
+	// Non-nil empty last with empty PARTITION BY: stay in one partition even
+	// when projected rows have zero columns (COUNT(*) OVER () after pushdown).
+	newPart, err = isNewPartition(ctx, nil, emptyRow, emptyRow)
+	require.NoError(t, err)
+	require.False(t, newPart)
+
+	// Non-empty PARTITION BY: first row (last == nil) is a new partition.
+	// Empty non-nil last row is not treated as first — compare partition keys.
+	partitionBy := []sql.Expression{expression.NewGetField(0, types.Int64, "g", true)}
+	row1 := sql.Row{int64(1)}
+	row2 := sql.Row{int64(1)}
+	row3 := sql.Row{int64(2)}
+
+	newPart, err = isNewPartition(ctx, partitionBy, nil, row1)
+	require.NoError(t, err)
+	require.True(t, newPart)
+
+	newPart, err = isNewPartition(ctx, partitionBy, row1, row2)
+	require.NoError(t, err)
+	require.False(t, newPart)
+
+	newPart, err = isNewPartition(ctx, partitionBy, row2, row3)
+	require.NoError(t, err)
+	require.True(t, newPart)
 }

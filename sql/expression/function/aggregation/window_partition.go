@@ -353,10 +353,16 @@ func partitionsToSortConditions(partitionExprs []sql.Expression) sql.SortConditi
 }
 
 func isNewPartition(ctx *sql.Context, partitionBy []sql.Expression, last sql.Row, row sql.Row) (bool, error) {
-	if len(last) == 0 {
+	// First row of the iterator (last not yet set) always starts a partition.
+	// Sole caller initializePartitions ignores this return when j==0.
+	if last == nil {
 		return true, nil
 	}
 
+	// Empty PARTITION BY means a single partition over the whole result set.
+	// Projection pushdown can produce zero-column rows when only literal/star
+	// window args are projected, so len(row)==0 is not a boundary signal
+	// (see dolthub/dolt#11409).
 	if len(partitionBy) == 0 {
 		return false, nil
 	}
