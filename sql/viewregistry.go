@@ -94,7 +94,7 @@ func (r *ViewRegistry) Register(database string, view *View) error {
 	key := NewViewKey(database, view.Name())
 
 	if _, ok := r.views[key]; ok {
-		return ErrExistingView.New(database, view.Name())
+		return ErrExistingView.New(view.Name())
 	}
 
 	r.views[key] = view
