@@ -581,9 +581,14 @@ func nextPeerGroup(ctx *sql.Context, pos, partitionEnd int, orderBy []sql.Expres
 }
 
 // isNewOrderByValue compares the order by columns between two rows, returning true when the last row is null or
-// when the next row's orderBy columns are unique
+// when the next row's orderBy columns are unique.
+// Empty ORDER BY means a single peer group. Zero-width projected rows (len==0) must not be treated as a boundary
+// (see dolthub/dolt#11409): that path used to split RANK()/DENSE_RANK()/PERCENT_RANK() OVER () into 1,2,3 peers.
 func isNewOrderByValue(ctx *sql.Context, orderByExprs []sql.Expression, last sql.Row, row sql.Row) (bool, error) {
-	if len(last) == 0 {
+	if len(orderByExprs) == 0 {
+		return false, nil
+	}
+	if last == nil {
 		return true, nil
 	}
 

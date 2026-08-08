@@ -3906,6 +3906,67 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{1, 0, 1},
 		{1, 1, 1},
 	}, nil, nil, nil)
+
+	// dolthub/dolt#11409: literal/star-only window args can project zero columns;
+	// empty PARTITION BY / ORDER BY must still form a single partition/peer group.
+	RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE litwin (x int, g int)")
+	RunQueryWithContext(t, e, harness, ctx, "INSERT INTO litwin VALUES (1, 1), (2, 1), (3, 2)")
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT COUNT(*) OVER () FROM litwin`, []sql.Row{
+		{int64(3)},
+		{int64(3)},
+		{int64(3)},
+	}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT SUM(1) OVER () FROM litwin`, []sql.Row{
+		{float64(3)},
+		{float64(3)},
+		{float64(3)},
+	}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT COUNT(0) OVER () FROM litwin`, []sql.Row{
+		{int64(3)},
+		{int64(3)},
+		{int64(3)},
+	}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT x, COUNT(*) OVER () FROM litwin ORDER BY x`, []sql.Row{
+		{1, int64(3)},
+		{2, int64(3)},
+		{3, int64(3)},
+	}, nil, nil, nil)
+	// Ranking peers with empty ORDER BY: one peer group for the whole partition.
+	TestQueryWithContext(t, ctx, e, harness, `SELECT RANK() OVER () FROM litwin`, []sql.Row{
+		{uint64(1)},
+		{uint64(1)},
+		{uint64(1)},
+	}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT DENSE_RANK() OVER () FROM litwin`, []sql.Row{
+		{uint64(1)},
+		{uint64(1)},
+		{uint64(1)},
+	}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT PERCENT_RANK() OVER () FROM litwin`, []sql.Row{
+		{float64(0)},
+		{float64(0)},
+		{float64(0)},
+	}, nil, nil, nil)
+	// Literal PARTITION BY is non-empty; zero-width path must still form one partition.
+	// Mutation-sensitive: base returns 1,1,1 without the isNewPartition fix.
+	TestQueryWithContext(t, ctx, e, harness, `SELECT COUNT(*) OVER (PARTITION BY 1) FROM litwin`, []sql.Row{
+		{int64(3)},
+		{int64(3)},
+		{int64(3)},
+	}, nil, nil, nil)
+	// No-regression contrasts: both PASS on base (partition columns / ORDER BY
+	// project real values; not regression coverage for the zero-width bug).
+	TestQueryWithContext(t, ctx, e, harness, `SELECT COUNT(*) OVER (PARTITION BY g) FROM litwin ORDER BY g, x`, []sql.Row{
+		{int64(2)},
+		{int64(2)},
+		{int64(1)},
+	}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT COUNT(*) OVER (ORDER BY x) FROM litwin ORDER BY x`, []sql.Row{
+		{int64(1)},
+		{int64(2)},
+		{int64(3)},
+	}, nil, nil, nil)
 }
 
 func TestWindowRowFrames(t *testing.T, harness Harness) {
