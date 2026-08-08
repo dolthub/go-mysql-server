@@ -15192,6 +15192,172 @@ select * from t1 except (
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/11418
+		Name: "repeated window expression in ORDER BY is not ambiguous",
+		SetUpScript: []string{
+			"CREATE TABLE t(id INT PRIMARY KEY, g INT, v INT NOT NULL);",
+			"INSERT INTO t VALUES (1, 0, 10), (2, 0, -2);",
+			"CREATE TABLE u(id INT PRIMARY KEY, g INT, v INT NOT NULL);",
+			"INSERT INTO u VALUES (1, 0, 100), (2, 0, 200);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `
+SELECT id, g,
+       SUM(v) OVER (
+         PARTITION BY g ORDER BY id ASC
+         ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+       ) AS wf
+FROM t
+ORDER BY SUM(v) OVER (
+           PARTITION BY g ORDER BY id ASC
+           ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+         ), id;`,
+				Expected: []sql.Row{
+					{2, 0, float64(8)},
+					{1, 0, float64(10)},
+				},
+			},
+			{
+				Query: `
+SELECT id, g,
+       SUM(v) OVER (
+         PARTITION BY g ORDER BY id ASC
+         ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+       ) AS wf
+FROM t
+ORDER BY wf, id;`,
+				Expected: []sql.Row{
+					{2, 0, float64(8)},
+					{1, 0, float64(10)},
+				},
+			},
+			// Cross-scope: identical window text in outer query and subquery must
+			// compute independently (different tables).
+			{
+				Query: `
+SELECT SUM(o.v) OVER (PARTITION BY o.g) AS a,
+       (SELECT SUM(o.v) OVER (PARTITION BY o.g) FROM u o LIMIT 1) AS s
+FROM t o
+ORDER BY a;`,
+				Expected: []sql.Row{
+					{float64(8), float64(300)},
+					{float64(8), float64(300)},
+				},
+			},
+			// Subquery-first select-list order: same cross-scope fixture as above
+			// with column order reversed (subquery then outer).
+			{
+				Query: `
+SELECT (SELECT SUM(o.v) OVER (PARTITION BY o.g) FROM u o LIMIT 1),
+       SUM(o.v) OVER (PARTITION BY o.g)
+FROM t o;`,
+				Expected: []sql.Row{
+					{float64(300), float64(8)},
+					{float64(300), float64(8)},
+				},
+			},
+			// Cross-scope same table: both scopes use alias o (identical window
+			// text); each scope's WHERE yields 10 vs -2 — false merge would share.
+			{
+				Query: `
+SELECT SUM(o.v) OVER (PARTITION BY o.g) AS a,
+       (SELECT SUM(o.v) OVER (PARTITION BY o.g) FROM t o WHERE o.id = 2) AS s
+FROM t o
+WHERE o.id = 1;`,
+				Expected: []sql.Row{
+					{float64(10), float64(-2)},
+				},
+			},
+			// Named window reused in ORDER BY via OVER w.
+			{
+				Query: `
+SELECT id, g,
+       SUM(v) OVER w AS wf
+FROM t
+WINDOW w AS (
+  PARTITION BY g ORDER BY id ASC
+  ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+)
+ORDER BY SUM(v) OVER w, id;`,
+				Expected: []sql.Row{
+					{2, 0, float64(8)},
+					{1, 0, float64(10)},
+				},
+			},
+			// Case-insensitive repeat of the window expression.
+			{
+				Query: `
+SELECT id, g,
+       SUM(v) OVER (
+         PARTITION BY g ORDER BY id ASC
+         ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+       ) AS wf
+FROM t
+ORDER BY sum(v) over (
+           partition by g order by id asc
+           rows between unbounded preceding and current row
+         ), id;`,
+				Expected: []sql.Row{
+					{2, 0, float64(8)},
+					{1, 0, float64(10)},
+				},
+			},
+			// Whitespace-normalized repeat (extra spaces / newlines).
+			{
+				Query: `
+SELECT id, g,
+       SUM(v) OVER (PARTITION BY g ORDER BY id ASC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS wf
+FROM t
+ORDER BY SUM( v ) OVER (
+           PARTITION BY g
+           ORDER BY id ASC
+           ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+         ), id;`,
+				Expected: []sql.Row{
+					{2, 0, float64(8)},
+					{1, 0, float64(10)},
+				},
+			},
+			// DESC on the repeated window expression.
+			{
+				Query: `
+SELECT id, g,
+       SUM(v) OVER (
+         PARTITION BY g ORDER BY id ASC
+         ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+       ) AS wf
+FROM t
+ORDER BY SUM(v) OVER (
+           PARTITION BY g ORDER BY id ASC
+           ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+         ) DESC, id;`,
+				Expected: []sql.Row{
+					{1, 0, float64(10)},
+					{2, 0, float64(8)},
+				},
+			},
+			// Wrapped SELECT occurrence; bare window repeat in ORDER BY.
+			{
+				Query: `
+SELECT id, g,
+       SUM(v) OVER (
+         PARTITION BY g ORDER BY id ASC
+         ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+       ) + 1 AS wf
+FROM t
+ORDER BY SUM(v) OVER (
+           PARTITION BY g ORDER BY id ASC
+           ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+         ), id;`,
+				Expected: []sql.Row{
+					{2, 0, float64(9)},
+					{1, 0, float64(11)},
+				},
+			},
+		},
+	},
 }
 
 var BrokenScriptTests = []ScriptTest{
