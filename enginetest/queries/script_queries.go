@@ -10170,6 +10170,73 @@ where
 					{10, 2, uint64(2)},
 				},
 			},
+			{
+				Query:       "select i, ntile(j) over (order by i) from t;",
+				ExpectedErr: sql.ErrInvalidArgument,
+			},
+			{
+				Query: "select i, ntile(1+1) over() from t;",
+				Expected: []sql.Row{
+					{1, uint64(1)},
+					{2, uint64(1)},
+					{3, uint64(1)},
+					{4, uint64(1)},
+					{5, uint64(1)},
+					{6, uint64(2)},
+					{7, uint64(2)},
+					{8, uint64(2)},
+					{9, uint64(2)},
+					{10, uint64(2)},
+				},
+			},
+			{
+				Query:       "select i, ntile(j) over () from t where false;",
+				ExpectedErr: sql.ErrInvalidArgument,
+			},
+			{
+				Query:    "set @v = 2;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "select i, ntile(@v) over() from t;",
+				Expected: []sql.Row{
+					{1, uint64(1)},
+					{2, uint64(1)},
+					{3, uint64(1)},
+					{4, uint64(1)},
+					{5, uint64(1)},
+					{6, uint64(2)},
+					{7, uint64(2)},
+					{8, uint64(2)},
+					{9, uint64(2)},
+					{10, uint64(2)},
+				},
+			},
+			{
+				Query:       "select i, ntile(x) over () from (select i, 2 as x from t) s;",
+				ExpectedErr: sql.ErrInvalidArgument,
+			},
+			{
+				Query:       "select i, ntile((select 2)) over () from t;",
+				ExpectedErr: sql.ErrInvalidArgument,
+			},
+			{
+				Query:       "select i, ntile((select i)) over () from t;",
+				ExpectedErr: sql.ErrInvalidArgument,
+			},
+		},
+	},
+	{
+		Name:    "ntile empty-table column arg",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t (i int primary key, j int);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "select i, ntile(j) over () from t;",
+				ExpectedErr: sql.ErrInvalidArgument,
+			},
 		},
 	},
 	{
