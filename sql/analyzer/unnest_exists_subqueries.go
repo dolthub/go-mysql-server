@@ -106,7 +106,20 @@ func simplifyPartialJoinParents(n sql.Node) (sql.Node, bool) {
 		switch n := ret.(type) {
 		case *plan.Having:
 			return nil, false
-		case *plan.Project, *plan.GroupBy, *plan.Sort, *plan.Distinct, *plan.TopN, *plan.Limit:
+		case *plan.GroupBy:
+			// Scalar aggregates (empty GROUP BY key list) emit exactly one row
+			// even when the child produces no rows. Stripping them changes
+			// empty-input cardinality from 1 to 0, so correlated EXISTS over a
+			// scalar aggregate wrongly drops all outer rows (and NOT EXISTS
+			// wrongly keeps them). Refuse unnest for this shape so the
+			// ExistsSubquery path evaluates the aggregate correctly. Explicit
+			// GROUP BY keys do not have this empty-input row guarantee and may
+			// still be stripped.
+			if len(n.GroupByExprs) == 0 {
+				return nil, false
+			}
+			ret = n.Children()[0]
+		case *plan.Project, *plan.Sort, *plan.Distinct, *plan.TopN, *plan.Limit:
 			// TODO: In most cases, it's necessary to remove *plan.Limit because child Filter nodes will have been
 			//  hoisted out. But what if Limit.Limit evals to 0? https://github.com/dolthub/dolt/issues/10493
 			ret = n.Children()[0]
