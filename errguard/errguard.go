@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"runtime/debug"
 
+	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -34,4 +35,17 @@ func Go(g *errgroup.Group, fn func() error) {
 		}()
 		return fn()
 	})
+}
+
+// RecoverAndLog recovers a panic in the calling goroutine and logs it with a
+// stack trace. |what| describes the work the goroutine was doing and is
+// included in the log message. Defer it as the first statement of the top-level
+// function of a goroutine this project spawns; callers of this project cannot
+// recover a panic that unwinds out of one of our goroutines, so we do it for
+// them. The goroutine's work is abandoned either way, so call sites should
+// document any functionality lost when their goroutine dies.
+func RecoverAndLog(what string) {
+	if r := recover(); r != nil {
+		logrus.Errorf("panic recovered in %s: %v\n%s", what, r, debug.Stack())
+	}
 }

@@ -1099,6 +1099,7 @@ func getThreadsConnected() uint64 {
 // value of Max_used_connections.
 func updateMaxUsedConnectionsStatusVariable() {
 	go func() {
+		defer errguard.RecoverAndLog("Max_used_connections status variable update")
 		maxUsedConnections := getMaxUsedConnections()
 		threadsConnected := getThreadsConnected()
 		if threadsConnected > maxUsedConnections {

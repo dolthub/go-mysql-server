@@ -18,6 +18,8 @@ import (
 	"context"
 	"errors"
 	"sync"
+
+	"github.com/dolthub/go-mysql-server/errguard"
 )
 
 var ErrCannotAddToClosedBackgroundThreads = errors.New("cannot add to a close background threads instance")
@@ -64,6 +66,7 @@ func (bt *BackgroundThreads) Add(name string, f func(ctx context.Context)) error
 	bt.nameToCancel[name] = threadCancel
 	bt.nameToCtx[name] = threadCtx
 	bt.wg.Go(func() {
+		defer errguard.RecoverAndLog("background thread " + name)
 		f(threadCtx)
 	})
 	return nil
