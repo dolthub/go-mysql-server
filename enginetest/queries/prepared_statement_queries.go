@@ -414,6 +414,57 @@ var PreparedScriptTests = []ScriptTest{
 			},
 		},
 	},
+	// TODO: prepare delete
+	{
+		Name:        "prepare create table",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "prepare stmt from 'create table t (i int);' ",
+				Expected: []sql.Row{
+					{types.OkResult{Info: plan.PrepareInfo{}}},
+				},
+			},
+			{
+				Query: "execute stmt",
+				Expected: []sql.Row{
+					{types.OkResult{}},
+				},
+			},
+			{
+				Query:       "execute stmt",
+				ExpectedErr: sql.ErrTableAlreadyExists,
+			},
+			{
+				Query: "show create table t",
+				Expected: []sql.Row{
+					{"t", "CREATE TABLE `t` (\n" +
+						"  `i` int\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+		},
+	},
+	{
+		Name:        "prepare create event",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "prepare bad from 'create event e on schedule at current_timestamp do select 1';",
+				ExpectedErr: sql.ErrUnsupportedPreparedStatement,
+			},
+		},
+	},
+	{
+		Name:        "prepare create procedure",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "prepare bad from 'create procedure p(i int) select 1';",
+				ExpectedErr: sql.ErrUnsupportedPreparedStatement,
+			},
+		},
+	},
 	{
 		Name: "prepare using user vars",
 		SetUpScript: []string{

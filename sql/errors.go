@@ -297,6 +297,9 @@ var (
 	// ErrUnknownPreparedStatement is returned when an unknown query is executed.
 	ErrUnknownPreparedStatement = errors.NewKind(`Unknown prepared statement handler (%s) given to EXECUTE`)
 
+	// ErrUnsupportedPreparedStatement is returned when an unsupported query is prepared.
+	ErrUnsupportedPreparedStatement = errors.NewKind("This command is not supported in the prepared statement protocol yet")
+
 	// ErrTruncateReferencedFromForeignKey is returned when a table is referenced in a foreign key and TRUNCATE is called on it.
 	ErrTruncateReferencedFromForeignKey = errors.NewKind("cannot truncate table %s as it is referenced in foreign key %s on table %s")
 

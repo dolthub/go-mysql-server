@@ -63,6 +63,18 @@ func (b *Builder) buildPrepare(inScope *scope, n *ast.Prepare) (outScope *scope)
 		b.handleErr(err)
 	}
 
+	// Prevent certain statements from getting prepared
+	// TODO: by either saving the original query or avoid reparsing, we can make these statements work
+	switch stmt := childStmt.(type) {
+	case *ast.DDL:
+		if stmt.EventSpec != nil {
+			b.handleErr(sql.ErrUnsupportedPreparedStatement.New())
+		}
+		if stmt.ProcedureSpec != nil {
+			b.handleErr(sql.ErrUnsupportedPreparedStatement.New())
+		}
+	}
+
 	oldCtx := b.BindCtx()
 	defer func() {
 		b.bindCtx = oldCtx
