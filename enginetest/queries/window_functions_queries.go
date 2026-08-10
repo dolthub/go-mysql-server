@@ -1304,9 +1304,6 @@ var WindowRangeFramesScriptTests = []ScriptTest{
 		// RANGE frame arithmetic (offset applied to the order-by expression) on a SET order-by column can
 		// produce a value outside that SET's valid domain. https://github.com/dolthub/dolt/issues/11397
 		Name: "window range frames, SET order-by column",
-		// TODO: Skipped until the fix for dolt/go#11397 lands; without it, this panics instead of
-		//       returning the expected result (out-of-domain SET value breaks the window framer).
-		Skip: true,
 		// The SET syntax isn't supported in Postgres, so this script is restricted to the mysql dialect.
 		Dialect: "mysql",
 		SetUpScript: []string{

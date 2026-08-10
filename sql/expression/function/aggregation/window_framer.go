@@ -23,6 +23,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 //go:generate go run ../../../../optgen/cmd/optgen/main.go -out window_framer.og.go -pkg aggregation framer window_framer.go
@@ -457,6 +458,7 @@ func findInclusionBoundary(ctx *sql.Context, pos, searchStart, partitionEnd int,
 		return 0, err
 	}
 
+	compareType := types.GetCompareType(expr.Type(ctx), inclusion.Type(ctx))
 	i := searchStart
 	cmp := unknown
 	for ; cmp < int(stopCond); i++ {
@@ -469,7 +471,7 @@ func findInclusionBoundary(ctx *sql.Context, pos, searchStart, partitionEnd int,
 			return 0, err
 		}
 
-		cmp, err = expr.Type(ctx).Compare(ctx, res, cur)
+		cmp, err = compareType.Compare(ctx, res, cur)
 		if err != nil {
 			return 0, err
 		}
