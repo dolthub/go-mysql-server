@@ -9484,6 +9484,11 @@ from typestable`,
 		Query:    "SELECT (2, NULL) > (1.5, 2);",
 		Expected: []sql.Row{{true}},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/11454
+		Query:    "SELECT LAST_INSERT_ID(NULL);",
+		Expected: []sql.Row{{nil}},
+	},
 }
 
 var KeylessQueries = []QueryTest{
