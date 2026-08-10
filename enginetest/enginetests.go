@@ -1916,6 +1916,15 @@ func TestGeneratedColumnPlans(t *testing.T, harness Harness) {
 	}
 }
 
+func TestSysbench(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData)
+	e := mustNewEngine(t, harness)
+	defer e.Close()
+	for _, script := range queries.SysbenchQueryTests {
+		TestScript(t, harness, script)
+	}
+}
+
 func TestSysbenchPlans(t *testing.T, harness Harness) {
 	harness.Setup(setup.SysbenchSetup...)
 	e := mustNewEngine(t, harness)

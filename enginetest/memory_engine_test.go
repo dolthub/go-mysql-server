@@ -526,6 +526,10 @@ func TestGeneratedColumnPlans(t *testing.T) {
 	enginetest.TestGeneratedColumnPlans(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestSysbench(t *testing.T) {
+	enginetest.TestSysbench(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestSysbenchPlans(t *testing.T) {
 	enginetest.TestSysbenchPlans(t, enginetest.NewDefaultMemoryHarness())
 }
