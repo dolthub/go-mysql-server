@@ -414,7 +414,68 @@ var PreparedScriptTests = []ScriptTest{
 			},
 		},
 	},
-	// TODO: prepare delete
+	{
+		Name: "prepare delete",
+		SetUpScript: []string{
+			"set @a = 1;",
+			"create table t (i int, j varchar(100));",
+			"insert into t values (1, 'abc'), (2, 'def'), (3, 'ghi');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "prepare s from 'delete from t where i = ?'",
+				Expected: []sql.Row{
+					{types.OkResult{Info: plan.PrepareInfo{}}},
+				},
+			},
+			{
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "execute s using @a",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Query: "select * from t order by i",
+				Expected: []sql.Row{
+					{2, "def"},
+					{3, "ghi"},
+				},
+			},
+			{
+				Query: "deallocate prepare s",
+				Expected: []sql.Row{
+					{types.OkResult{}},
+				},
+			},
+			{
+				Query: "prepare s from 'delete from t where i = 2'",
+				Expected: []sql.Row{
+					{types.OkResult{Info: plan.PrepareInfo{}}},
+				},
+			},
+			{
+				// execute depends on prepare stmt for whether to use 'query' or 'exec' from go sql driver.
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "execute s;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Query: "select * from t order by i",
+				Expected: []sql.Row{
+					{3, "ghi"},
+				},
+			},
+			{
+				Query: "deallocate prepare s",
+				Expected: []sql.Row{
+					{types.OkResult{}},
+				},
+			},
+		},
+	},
 	{
 		Name:        "prepare create table",
 		SetUpScript: []string{},
@@ -440,6 +501,50 @@ var PreparedScriptTests = []ScriptTest{
 				Expected: []sql.Row{
 					{"t", "CREATE TABLE `t` (\n" +
 						"  `i` int\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+		},
+	},
+	{
+		Name: "prepare create index",
+		SetUpScript: []string{
+			"create table t (i int);",
+			"insert into t values (0), (1), (2);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table t;",
+				Expected: []sql.Row{
+					{"t", "CREATE TABLE `t` (\n" +
+						"  `i` int\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "prepare stmt from 'create index idx on t (i)';",
+				Expected: []sql.Row{
+					{types.OkResult{
+						Info: plan.PrepareInfo{},
+					}},
+				},
+			},
+			{
+				Query: "execute stmt",
+				Expected: []sql.Row{
+					{types.OkResult{}},
+				},
+			},
+			{
+				Query:       "execute stmt",
+				ExpectedErr: sql.ErrDuplicateKey,
+			},
+			{
+				Query: "show create table t;",
+				Expected: []sql.Row{
+					{"t", "CREATE TABLE `t` (\n" +
+						"  `i` int,\n" +
+						"  KEY `idx` (`i`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
