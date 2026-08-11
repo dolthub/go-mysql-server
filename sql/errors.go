@@ -641,6 +641,9 @@ var (
 	// ErrInvalidGISData is thrown when a "ST_<spatial_type>FromText" function receives a malformed string
 	ErrInvalidGISData = errors.NewKind("invalid GIS data provided to function %s")
 
+	// ErrInvalidKeyPair is thrown when a function receives an invalid key-pair option
+	ErrInvalidKeyPair = errors.NewKind("the string '%v' is not a valid key paid for function %s")
+
 	// ErrIllegalGISValue is thrown when a spatial type constructor receives a non-geometric when one should be provided
 	ErrIllegalGISValue = errors.NewKind("illegal non geometric '%v' value found during parsing")
 

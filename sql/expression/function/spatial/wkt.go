@@ -664,12 +664,20 @@ func WKTToGeom(ctx *sql.Context, row sql.Row, exprs []sql.Expression, expectedGe
 		if err != nil {
 			return nil, err
 		}
-		if o == nil {
+		switch str := o.(type) {
+		case string:
+			// this only applies to types.GeoSpatialSRID
+			swap, ok := ParseAxisOrder(str)
+			if !ok {
+				return nil, sql.ErrInvalidKeyPair.New(str, "st_geomfromtext")
+			}
+			if srid == types.GeoSpatialSRID && swap {
+				order = !order
+			}
+		case nil:
 			return nil, nil
-		}
-		order, err = ParseAxisOrder(o.(string))
-		if err != nil {
-			return nil, err
+		default:
+			return nil, sql.ErrInvalidKeyPair.New(o, "st_geomfromtext")
 		}
 	}
 

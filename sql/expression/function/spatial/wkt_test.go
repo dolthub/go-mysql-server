@@ -315,6 +315,17 @@ func TestGeomFromText(t *testing.T) {
 		require.Equal(nil, v)
 	})
 
+	t.Run("invalid axis option type returns error", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewGeomFromText(sql.NewEmptyContext(), expression.NewLiteral("POINT(1 2)", types.Blob),
+			expression.NewLiteral(types.GeoSpatialSRID, types.Uint32),
+			expression.NewLiteral(123, types.Int64))
+		require.NoError(err)
+
+		_, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.Error(err)
+	})
+
 	t.Run("create polygon with non linear ring", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewGeomFromText(sql.NewEmptyContext(), expression.NewLiteral("polygon((1 2, 3 4))", types.Blob))

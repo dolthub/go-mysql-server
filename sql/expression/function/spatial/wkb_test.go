@@ -594,6 +594,18 @@ func TestGeomFromWKB(t *testing.T) {
 		require.Equal(nil, v)
 	})
 
+	t.Run("convert null axis option", func(t *testing.T) {
+		require := require.New(t)
+		res, err := hex.DecodeString("0101000000000000000000F03F0000000000000040")
+		require.NoError(err)
+		f, err := NewGeomFromWKB(sql.NewEmptyContext(), expression.NewLiteral(res, types.Blob),
+			expression.NewLiteral(0, types.Uint32),
+			expression.NewLiteral(123, types.Int64))
+
+		_, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.Error(err)
+	})
+
 	t.Run("empty args errors", func(t *testing.T) {
 		ctx := sql.NewEmptyContext()
 		require := require.New(t)
