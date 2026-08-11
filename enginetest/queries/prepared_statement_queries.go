@@ -415,6 +415,507 @@ var PreparedScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "prepare delete",
+		SetUpScript: []string{
+			"set @a = 1;",
+			"create table t (i int, j varchar(100));",
+			"insert into t values (1, 'abc'), (2, 'def'), (3, 'ghi');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "prepare s from 'delete from t where i = ?'",
+				Expected: []sql.Row{
+					{types.OkResult{Info: plan.PrepareInfo{}}},
+				},
+			},
+			{
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "execute s using @a",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Query: "select * from t order by i",
+				Expected: []sql.Row{
+					{2, "def"},
+					{3, "ghi"},
+				},
+			},
+			{
+				Query: "deallocate prepare s",
+				Expected: []sql.Row{
+					{types.OkResult{}},
+				},
+			},
+			{
+				Query: "prepare s from 'delete from t where i = 2'",
+				Expected: []sql.Row{
+					{types.OkResult{Info: plan.PrepareInfo{}}},
+				},
+			},
+			{
+				// execute depends on prepare stmt for whether to use 'query' or 'exec' from go sql driver.
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "execute s;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Query: "select * from t order by i",
+				Expected: []sql.Row{
+					{3, "ghi"},
+				},
+			},
+			{
+				Query: "deallocate prepare s",
+				Expected: []sql.Row{
+					{types.OkResult{}},
+				},
+			},
+		},
+	},
+	{
+		Name:        "prepare create table",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "prepare stmt from 'create table t (i int);' ",
+				Expected: []sql.Row{
+					{types.OkResult{Info: plan.PrepareInfo{}}},
+				},
+			},
+			{
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "execute stmt",
+				Expected: []sql.Row{
+					{types.OkResult{}},
+				},
+			},
+			{
+				Query:       "execute stmt",
+				ExpectedErr: sql.ErrTableAlreadyExists,
+			},
+			{
+				Query: "show create table t",
+				Expected: []sql.Row{
+					{"t", "CREATE TABLE `t` (\n" +
+						"  `i` int\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+		},
+	},
+	{
+		Name: "prepare create index",
+		SetUpScript: []string{
+			"create table t (i int);",
+			"insert into t values (0), (1), (2);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table t;",
+				Expected: []sql.Row{
+					{"t", "CREATE TABLE `t` (\n" +
+						"  `i` int\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "prepare stmt from 'create index idx on t (i)';",
+				Expected: []sql.Row{
+					{types.OkResult{
+						Info: plan.PrepareInfo{},
+					}},
+				},
+			},
+			{
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "execute stmt",
+				Expected: []sql.Row{
+					{types.OkResult{}},
+				},
+			},
+			{
+				Query:       "execute stmt",
+				ExpectedErr: sql.ErrDuplicateKey,
+			},
+			{
+				Query: "show create table t;",
+				Expected: []sql.Row{
+					{"t", "CREATE TABLE `t` (\n" +
+						"  `i` int,\n" +
+						"  KEY `idx` (`i`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+		},
+	},
+	{
+		Name:        "prepare create database",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "prepare stmt from 'create database prepdb;' ",
+				Expected: []sql.Row{
+					{types.OkResult{Info: plan.PrepareInfo{}}},
+				},
+			},
+			{
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "execute stmt",
+				Expected: []sql.Row{
+					{types.OkResult{
+						RowsAffected: 1,
+					}},
+				},
+			},
+			{
+				Query:       "execute stmt",
+				ExpectedErr: sql.ErrDatabaseExists,
+			},
+			{
+				Query: "show create database prepdb",
+				Expected: []sql.Row{
+					{"prepdb", "CREATE DATABASE `prepdb` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin */"},
+				},
+			},
+		},
+	},
+	{
+		Name:        "prepare create event",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "prepare bad from 'create event e on schedule at current_timestamp do select 1';",
+				ExpectedErr: sql.ErrUnsupportedPreparedStatement,
+			},
+		},
+	},
+	{
+		Name:        "prepare create procedure",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "prepare bad from 'create procedure p(i int) select 1';",
+				ExpectedErr: sql.ErrUnsupportedPreparedStatement,
+			},
+		},
+	},
+	{
+		Name: "prepare alter table column",
+		SetUpScript: []string{
+			"create table t (i int);",
+			"insert into t values (0), (1), (2);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "prepare stmt from 'alter table t add column j int';",
+				Expected: []sql.Row{
+					{types.OkResult{Info: plan.PrepareInfo{}}},
+				},
+			},
+			{
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "execute stmt;",
+				Expected: []sql.Row{
+					{types.OkResult{}},
+				},
+			},
+			{
+				Query:       "execute stmt;",
+				ExpectedErr: sql.ErrColumnExists,
+			},
+			{
+				Query: "show columns from t",
+				Expected: []sql.Row{
+					{"i", "int", "YES", "", nil, ""},
+					{"j", "int", "YES", "", nil, ""},
+				},
+			},
+			{
+				Query: "select * from t order by i",
+				Expected: []sql.Row{
+					{0, nil},
+					{1, nil},
+					{2, nil},
+				},
+			},
+
+			{
+				Query: "prepare stmt from 'alter table t change column j k int';",
+				Expected: []sql.Row{
+					{types.OkResult{Info: plan.PrepareInfo{}}},
+				},
+			},
+			{
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "execute stmt;",
+				Expected:                      []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query:       "execute stmt;",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query: "show columns from t",
+				Expected: []sql.Row{
+					{"i", "int", "YES", "", nil, ""},
+					{"k", "int", "YES", "", nil, ""},
+				},
+			},
+			{
+				Query: "select * from t order by i",
+				Expected: []sql.Row{
+					{0, nil},
+					{1, nil},
+					{2, nil},
+				},
+			},
+
+			{
+				Query: "prepare stmt from 'alter table t drop column k';",
+				Expected: []sql.Row{
+					{types.OkResult{Info: plan.PrepareInfo{}}},
+				},
+			},
+			{
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "execute stmt;",
+				Expected:                      []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query:       "execute stmt;",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query: "show columns from t",
+				Expected: []sql.Row{
+					{"i", "int", "YES", "", nil, ""},
+				},
+			},
+			{
+				Query: "select * from t order by i",
+				Expected: []sql.Row{
+					{0},
+					{1},
+					{2},
+				},
+			},
+		},
+	},
+	{
+		Name: "prepare alter table index",
+		SetUpScript: []string{
+			"create table t (i int, j int);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "prepare stmt from 'alter table t add primary key (i)';",
+				Expected: []sql.Row{
+					{types.OkResult{Info: plan.PrepareInfo{}}},
+				},
+			},
+			{
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "execute stmt;",
+				Expected: []sql.Row{
+					{types.OkResult{}},
+				},
+			},
+			{
+				Query:       "execute stmt;",
+				ExpectedErr: sql.ErrMultiplePrimaryKeysDefined,
+			},
+			{
+				Query: "show create table t;",
+				Expected: []sql.Row{
+					{"t", "CREATE TABLE `t` (\n" +
+						"  `i` int NOT NULL,\n" +
+						"  `j` int,\n" +
+						"  PRIMARY KEY (`i`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "prepare stmt from 'alter table t drop primary key';",
+				Expected: []sql.Row{
+					{types.OkResult{Info: plan.PrepareInfo{}}},
+				},
+			},
+			{
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "execute stmt;",
+				Expected: []sql.Row{
+					{types.OkResult{}},
+				},
+			},
+			{
+				Query:       "execute stmt;",
+				ExpectedErr: sql.ErrCantDropFieldOrKey,
+			},
+			{
+				Query: "show create table t;",
+				Expected: []sql.Row{
+					{"t", "CREATE TABLE `t` (\n" +
+						"  `i` int NOT NULL,\n" +
+						"  `j` int\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+
+			{
+				Query: "prepare stmt from 'alter table t add unique index idx (j)';",
+				Expected: []sql.Row{
+					{types.OkResult{Info: plan.PrepareInfo{}}},
+				},
+			},
+			{
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "execute stmt;",
+				Expected: []sql.Row{
+					{types.OkResult{}},
+				},
+			},
+			{
+				Query:       "execute stmt;",
+				ExpectedErr: sql.ErrDuplicateKey,
+			},
+			{
+				Query: "show create table t;",
+				Expected: []sql.Row{
+					{"t", "CREATE TABLE `t` (\n" +
+						"  `i` int NOT NULL,\n" +
+						"  `j` int,\n" +
+						"  UNIQUE KEY `idx` (`j`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+		},
+	},
+	{
+		Name: "prepare alter table foreign key constraint",
+		SetUpScript: []string{
+			"create table parent (i int primary key);",
+			"create table child (x int primary key);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "prepare stmt from 'alter table child add constraint fk foreign key (x) references parent(i)';",
+				Expected: []sql.Row{
+					{types.OkResult{Info: plan.PrepareInfo{}}},
+				},
+			},
+			{
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "execute stmt;",
+				Expected: []sql.Row{
+					{types.OkResult{}},
+				},
+			},
+			{
+				Query:       "execute stmt;",
+				ExpectedErr: sql.ErrForeignKeyDuplicateName,
+			},
+			{
+				Query: "show create table child;",
+				Expected: []sql.Row{
+					{"child", "CREATE TABLE `child` (\n" +
+						"  `x` int NOT NULL,\n" +
+						"  PRIMARY KEY (`x`),\n" +
+						"  CONSTRAINT `fk` FOREIGN KEY (`x`) REFERENCES `parent` (`i`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+
+			{
+				Query: "prepare stmt from 'alter table child drop constraint fk';",
+				Expected: []sql.Row{
+					{types.OkResult{Info: plan.PrepareInfo{}}},
+				},
+			},
+			{
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "execute stmt;",
+				Expected: []sql.Row{
+					{types.OkResult{}},
+				},
+			},
+			{
+				Query:       "execute stmt;",
+				ExpectedErr: sql.ErrUnknownConstraint,
+			},
+			{
+				Query: "show create table child;",
+				Expected: []sql.Row{
+					{"child", "CREATE TABLE `child` (\n" +
+						"  `x` int NOT NULL,\n" +
+						"  PRIMARY KEY (`x`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+		},
+	},
+	{
+		Name: "prepare alter table check constraint",
+		SetUpScript: []string{
+			"create table t (i int);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "prepare stmt from 'alter table t add constraint chk check (i > 0)';",
+				Expected: []sql.Row{
+					{types.OkResult{Info: plan.PrepareInfo{}}},
+				},
+			},
+			{
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "execute stmt;",
+				Expected: []sql.Row{
+					{types.OkResult{}},
+				},
+			},
+			{
+				Query:       "execute stmt;",
+				ExpectedErr: sql.ErrDuplicateCheckName,
+			},
+			{
+				Query: "show create table t;",
+				Expected: []sql.Row{
+					{"t", "CREATE TABLE `t` (\n" +
+						"  `i` int,\n" +
+						"  CONSTRAINT `chk` CHECK ((`i` > 0))\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+
+			{
+				Query: "prepare stmt from 'alter table t drop check chk';",
+				Expected: []sql.Row{
+					{types.OkResult{Info: plan.PrepareInfo{}}},
+				},
+			},
+			{
+				// TODO: should return OkResult
+				Query:    "execute stmt;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:       "execute stmt;",
+				ExpectedErr: sql.ErrUnknownConstraint,
+			},
+			{
+				Query: "show create table t;",
+				Expected: []sql.Row{
+					{"t", "CREATE TABLE `t` (\n" +
+						"  `i` int\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+		},
+	},
+	{
 		Name: "prepare using user vars",
 		SetUpScript: []string{
 			"create table t (i int primary key);",
