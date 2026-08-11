@@ -3254,7 +3254,11 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:    `SELECT BIN_TO_UUID(UUID_TO_BIN(@uuid), 3000)`,
-				Expected: []sql.Row{{"6ccd780c-baba-1026-9564-5b8c656024db"}},
+				Expected: []sql.Row{{"baba1026-780c-6ccd-9564-5b8c656024db"}},
+			},
+			{
+				Query:    `SELECT BIN_TO_UUID(UUID_TO_BIN(@uuid), -10)`,
+				Expected: []sql.Row{{"baba1026-780c-6ccd-9564-5b8c656024db"}},
 			},
 			{
 				Query:    `SELECT UUID_TO_BIN(NULL)`,
