@@ -915,10 +915,7 @@ var WindowFunctionsScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				// TODO: This test should work in Doltgres but it returns the wrong results.
-				//  https://github.com/dolthub/doltgresql/issues/3036
-				Dialect: "mysql",
-				Query:   "SELECT id, SUM(id)  OVER (ORDER BY name) FROM t ORDER BY id;",
+				Query: "SELECT id, SUM(id)  OVER (ORDER BY name) FROM t ORDER BY id;",
 				Expected: []sql.Row{
 					{1, 6.0},
 					{2, 6.0},
@@ -926,10 +923,7 @@ var WindowFunctionsScriptTests = []ScriptTest{
 				},
 			},
 			{
-				// TODO: This test should work in Doltgres but it returns the wrong results.
-				//  https://github.com/dolthub/doltgresql/issues/3036
-				Dialect: "mysql",
-				Query:   "SELECT id, AVG(id)  OVER (ORDER BY name) FROM t ORDER BY id;",
+				Query: "SELECT id, AVG(id)  OVER (ORDER BY name) FROM t ORDER BY id;",
 				Expected: []sql.Row{
 					{1, 2.0},
 					{2, 2.0},
