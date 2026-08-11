@@ -219,7 +219,9 @@ func (r *LastInsertId) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 	if err != nil {
 		return nil, err
 	}
-
+	if id == nil {
+		return nil, nil
+	}
 	ctx.GetLastQueryInfo().LastInsertId.Store(id.(int64))
 	return id, nil
 }
