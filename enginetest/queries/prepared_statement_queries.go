@@ -853,6 +853,63 @@ var PreparedScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "prepare alter table check constraint",
+		SetUpScript: []string{
+			"create table t (i int);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "prepare stmt from 'alter table t add constraint chk check (i > 0)';",
+				Expected: []sql.Row{
+					{types.OkResult{Info: plan.PrepareInfo{}}},
+				},
+			},
+			{
+				Query: "execute stmt;",
+				Expected: []sql.Row{
+					{types.OkResult{}},
+				},
+			},
+			{
+				Query:       "execute stmt;",
+				ExpectedErr: sql.ErrDuplicateCheckName,
+			},
+			{
+				Query: "show create table t;",
+				Expected: []sql.Row{
+					{"t", "CREATE TABLE `t` (\n" +
+						"  `i` int,\n" +
+						"  CONSTRAINT `chk` CHECK ((`i` > 0))\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+
+			{
+				Query: "prepare stmt from 'alter table t drop check chk';",
+				Expected: []sql.Row{
+					{types.OkResult{Info: plan.PrepareInfo{}}},
+				},
+			},
+			{
+				// TODO: should return OkResult
+				Query:    "execute stmt;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:       "execute stmt;",
+				ExpectedErr: sql.ErrUnknownConstraint,
+			},
+			{
+				Query: "show create table t;",
+				Expected: []sql.Row{
+					{"t", "CREATE TABLE `t` (\n" +
+						"  `i` int\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+		},
+	},
+	{
 		Name: "prepare using user vars",
 		SetUpScript: []string{
 			"create table t (i int primary key);",

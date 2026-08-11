@@ -702,6 +702,9 @@ var (
 	// ErrInvalidCheckConstraint is returned when a check constraint is defined incorrectly
 	ErrInvalidCheckConstraint = errors.NewKind("invalid constraint definition: %s")
 
+	// ErrDuplicateCheckName is returned when a check constraint is defined incorrectly
+	ErrDuplicateCheckName = errors.NewKind("duplicate check constraint name: %s")
+
 	// ErrUserCreationFailure is returned when attempting to create a user and it fails for any reason.
 	ErrUserCreationFailure = errors.NewKind("Operation CREATE USER failed for %s")
 
