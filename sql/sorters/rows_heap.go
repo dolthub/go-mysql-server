@@ -16,18 +16,21 @@ package sorters
 
 import (
 	"container/heap"
-	"io"
-
 	"github.com/dolthub/go-mysql-server/sql"
+	"io"
 )
+
+const initHeapSize = 1024
 
 // GetTopNRows uses a Top-N Heap Sort to find the top (min) N rows in a RowIter. It inserts each row of the iter into
 // the max-heap, popping the max row if the size of the heap exceeds N such that the heap only contains the N min rows.
 // At the end, it pops the contents of the heap and returns them in min-first order.
 func GetTopNRows(ctx *sql.Context, iter sql.RowIter, sortConditions sql.SortConditions, n int64) ([]sql.Row, int64, error) {
+	// Limit heapSize
+	heapSize := min(initHeapSize, n)
 	rowsHeap := &maxRowsHeap{
-		RowSorter: NewRowSorterWithRows(ctx, sortConditions, make([]sql.Row, 0, n+1)),
-		order:     make([]int64, 0, n+1),
+		RowSorter: NewRowSorterWithRows(ctx, sortConditions, make([]sql.Row, 0, heapSize+1)),
+		order:     make([]int64, 0, heapSize+1),
 	}
 
 	var rowCount int64
