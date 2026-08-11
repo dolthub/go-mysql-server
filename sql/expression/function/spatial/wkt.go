@@ -376,6 +376,10 @@ func WKTToLine(s string, srid uint32, order bool) (types.LineString, error) {
 
 // WKTToPoly Expects a string like "(1 2, 3 4), (5 6, 7 8), ..."
 func WKTToPoly(s string, srid uint32, order bool) (types.Polygon, error) {
+	if len(s) == 0 {
+		return types.Polygon{}, sql.ErrInvalidGISData.New()
+	}
+
 	var lines []types.LineString
 	for {
 		// Get first linestring
@@ -467,6 +471,10 @@ func WKTToMPoint(s string, srid uint32, order bool) (types.MultiPoint, error) {
 
 // WKTToMLine Expects a string like "(1 2, 3 4), (5 6, 7 8), ..."
 func WKTToMLine(s string, srid uint32, order bool) (types.MultiLineString, error) {
+	if len(s) == 0 {
+		return types.MultiLineString{}, sql.ErrInvalidGISData.New()
+	}
+
 	var lines []types.LineString
 	for {
 		// Get first linestring
@@ -506,6 +514,9 @@ func WKTToMLine(s string, srid uint32, order bool) (types.MultiLineString, error
 
 // WKTToMPoly Expects a string like "((1 2, 3 4), (5 6, 7 8), ...), ..."
 func WKTToMPoly(s string, srid uint32, order bool) (types.MultiPolygon, error) {
+	if len(s) == 0 {
+		return types.MultiPolygon{}, sql.ErrInvalidGISData.New()
+	}
 	var polys []types.Polygon
 	for {
 		// Get first polygon
@@ -626,6 +637,8 @@ func WKTToGeom(ctx *sql.Context, row sql.Row, exprs []sql.Expression, expectedGe
 		return nil, sql.ErrInvalidGISData.New()
 	}
 
+	// only GEOMETRYCOLLECTION is allowed to be empty
+
 	srid := uint32(0)
 	if len(exprs) >= 2 {
 		s, err := exprs[1].Eval(ctx, row)
@@ -651,12 +664,20 @@ func WKTToGeom(ctx *sql.Context, row sql.Row, exprs []sql.Expression, expectedGe
 		if err != nil {
 			return nil, err
 		}
-		if o == nil {
+		switch str := o.(type) {
+		case string:
+			// this only applies to types.GeoSpatialSRID
+			swap, ok := ParseAxisOrder(str)
+			if !ok {
+				return nil, sql.ErrInvalidKeyPair.New(str, "st_geomfromtext")
+			}
+			if srid == types.GeoSpatialSRID && swap {
+				order = !order
+			}
+		case nil:
 			return nil, nil
-		}
-		order, err = ParseAxisOrder(o.(string))
-		if err != nil {
-			return nil, err
+		default:
+			return nil, sql.ErrInvalidKeyPair.New(o, "st_geomfromtext")
 		}
 	}
 

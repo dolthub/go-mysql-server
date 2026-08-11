@@ -915,6 +915,133 @@ var SpatialScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name:        "ST_GeomFromWKT pure empty types",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "select st_isempty(st_geomfromtext('point empty'))",
+				ExpectedErr: sql.ErrInvalidGISData,
+			},
+			{
+				Query:       "select st_isempty(st_geomfromtext('linestring empty'))",
+				ExpectedErr: sql.ErrInvalidGISData,
+			},
+			{
+				Query:       "select st_isempty(st_geomfromtext('polygon empty'))",
+				ExpectedErr: sql.ErrInvalidGISData,
+			},
+			{
+				Query:       "select st_isempty(st_geomfromtext('multipoint empty'))",
+				ExpectedErr: sql.ErrInvalidGISData,
+			},
+			{
+				Query:       "select st_isempty(st_geomfromtext('multilinestring empty'))",
+				ExpectedErr: sql.ErrInvalidGISData,
+			},
+			{
+				Query:       "select st_isempty(st_geomfromtext('multipolygon empty'))",
+				ExpectedErr: sql.ErrInvalidGISData,
+			},
+			{
+				Query:    "select st_isempty(st_geomfromtext('geometrycollection empty'))",
+				Expected: []sql.Row{{true}},
+			},
+		},
+	},
+	{
+		Name:        "ST_GeomFromText and ST_GeomFromWKB axis options",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select st_aswkt(st_geomfromtext('point(1 2)', 0, 'axis-order=lat-long'))",
+				Expected: []sql.Row{{"POINT(1 2)"}},
+			},
+			{
+				Query:    "select st_aswkt(st_geomfromtext('point(1 2)', 0, 'axis-order=long-lat'))",
+				Expected: []sql.Row{{"POINT(1 2)"}},
+			},
+			{
+				Query:    "select st_aswkt(st_geomfromtext('point(1 2)', 0, 'axis-order=srid-defined'))",
+				Expected: []sql.Row{{"POINT(1 2)"}},
+			},
+			{
+				Query:          "select st_aswkt(st_geomfromtext('point(1 2)', 0, 'axis-order=blah-blah'))",
+				ExpectedErrStr: "the string 'axis-order=blah-blah' is not a valid key paid for function st_geomfromtext",
+			},
+			{
+				Query:          "select st_aswkt(st_geomfromtext('point(1 2)', 0, 123))",
+				ExpectedErrStr: "the string '123' is not a valid key paid for function st_geomfromtext",
+			},
+
+			{
+				Query:    "select st_aswkt(st_geomfromtext('point(1 2)', 4326))",
+				Expected: []sql.Row{{"POINT(1 2)"}},
+			},
+			{
+				Query:    "select st_aswkt(st_geomfromtext('point(1 2)', 4326, 'axis-order=lat-long'))",
+				Expected: []sql.Row{{"POINT(1 2)"}},
+			},
+			{
+				Query:    "select st_aswkt(st_geomfromtext('point(1 2)', 4326, 'axis-order=long-lat'))",
+				Expected: []sql.Row{{"POINT(2 1)"}},
+			},
+			{
+				Query:    "select st_aswkt(st_geomfromtext('point(1 2)', 4326, 'axis-order=srid-defined'))",
+				Expected: []sql.Row{{"POINT(1 2)"}},
+			},
+			{
+				Query:          "select st_aswkt(st_geomfromtext('point(1 2)', 4326, 'axis-order=blah-blah'))",
+				ExpectedErrStr: "the string 'axis-order=blah-blah' is not a valid key paid for function st_geomfromtext",
+			},
+			{
+				Query:          "select st_aswkt(st_geomfromtext('point(1 2)', 4326, 123))",
+				ExpectedErrStr: "the string '123' is not a valid key paid for function st_geomfromtext",
+			},
+
+			{
+				Query:    "select st_aswkt(st_geomfromwkb(st_aswkb(point(1,2)), 0, 'axis-order=lat-long'))",
+				Expected: []sql.Row{{"POINT(1 2)"}},
+			},
+			{
+				Query:    "select st_aswkt(st_geomfromwkb(st_aswkb(point(1,2)), 0, 'axis-order=long-lat'))",
+				Expected: []sql.Row{{"POINT(1 2)"}},
+			},
+			{
+				Query:    "select st_aswkt(st_geomfromwkb(st_aswkb(point(1,2)), 0, 'axis-order=srid-defined'))",
+				Expected: []sql.Row{{"POINT(1 2)"}},
+			},
+			{
+				Query:          "select st_aswkt(st_geomfromwkb(st_aswkb(point(1,2)), 0, 'axis-order=blah-blah'))",
+				ExpectedErrStr: "the string 'axis-order=blah-blah' is not a valid key paid for function st_geomfromwkb",
+			},
+			{
+				Query:          "select st_aswkt(st_geomfromwkb(st_aswkb(point(1,2)), 0, 123))",
+				ExpectedErrStr: "the string '123' is not a valid key paid for function st_geomfromwkb",
+			},
+
+			{
+				Query:    "select st_aswkt(st_geomfromwkb(st_aswkb(point(1,2)), 4326, 'axis-order=lat-long'))",
+				Expected: []sql.Row{{"POINT(1 2)"}},
+			},
+			{
+				Query:    "select st_aswkt(st_geomfromwkb(st_aswkb(point(1,2)), 4326, 'axis-order=long-lat'))",
+				Expected: []sql.Row{{"POINT(2 1)"}},
+			},
+			{
+				Query:    "select st_aswkt(st_geomfromwkb(st_aswkb(point(1,2)), 4326, 'axis-order=srid-defined'))",
+				Expected: []sql.Row{{"POINT(1 2)"}},
+			},
+			{
+				Query:          "select st_aswkt(st_geomfromwkb(st_aswkb(point(1,2)), 4326, 'axis-order=blah-blah'))",
+				ExpectedErrStr: "the string 'axis-order=blah-blah' is not a valid key paid for function st_geomfromwkb",
+			},
+			{
+				Query:          "select st_aswkt(st_geomfromwkb(st_aswkb(point(1,2)), 4326, 123))",
+				ExpectedErrStr: "the string '123' is not a valid key paid for function st_geomfromwkb",
+			},
+		},
+	},
 }
 
 var SpatialIndexScriptTests = []ScriptTest{
