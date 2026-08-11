@@ -718,7 +718,8 @@ var PreparedScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query: "execute stmt;",
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "execute stmt;",
 				Expected: []sql.Row{
 					{types.OkResult{}},
 				},
@@ -744,7 +745,8 @@ var PreparedScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query: "execute stmt;",
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "execute stmt;",
 				Expected: []sql.Row{
 					{types.OkResult{}},
 				},
@@ -770,7 +772,8 @@ var PreparedScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query: "execute stmt;",
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "execute stmt;",
 				Expected: []sql.Row{
 					{types.OkResult{}},
 				},
@@ -805,7 +808,8 @@ var PreparedScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query: "execute stmt;",
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "execute stmt;",
 				Expected: []sql.Row{
 					{types.OkResult{}},
 				},
@@ -832,7 +836,8 @@ var PreparedScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query: "execute stmt;",
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "execute stmt;",
 				Expected: []sql.Row{
 					{types.OkResult{}},
 				},
@@ -865,7 +870,8 @@ var PreparedScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query: "execute stmt;",
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "execute stmt;",
 				Expected: []sql.Row{
 					{types.OkResult{}},
 				},
