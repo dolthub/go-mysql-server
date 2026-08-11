@@ -16,8 +16,9 @@ package sorters
 
 import (
 	"container/heap"
-	"github.com/dolthub/go-mysql-server/sql"
 	"io"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 const initHeapSize = 1024
