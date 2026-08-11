@@ -630,4 +630,48 @@ func TestGeomFromText(t *testing.T) {
 		_, ok := typ.(types.GeometryType)
 		require.True(ok)
 	})
+
+	// MySQL only supports "GEOMETRYCOLLECTION EMPTY", and errors for all other pure empty Geomtry forms
+	t.Run("create pure empty geometries", func(t *testing.T) {
+		require := require.New(t)
+		var ctx = sql.NewEmptyContext()
+		var f sql.Expression
+		var err error
+		f, err = NewGeomFromText(ctx, expression.NewLiteral("POINT EMPTY", types.Blob))
+		require.NoError(err)
+		_, err = f.Eval(ctx, nil)
+		require.Error(err)
+
+		f, err = NewGeomFromText(ctx, expression.NewLiteral("LINESTRING EMPTY", types.Blob))
+		require.NoError(err)
+		_, err = f.Eval(ctx, nil)
+		require.Error(err)
+
+		f, err = NewGeomFromText(ctx, expression.NewLiteral("POLYGON EMPTY", types.Blob))
+		require.NoError(err)
+		_, err = f.Eval(ctx, nil)
+		require.Error(err)
+
+		f, err = NewGeomFromText(ctx, expression.NewLiteral("MULTIPOINT EMPTY", types.Blob))
+		require.NoError(err)
+		_, err = f.Eval(ctx, nil)
+		require.Error(err)
+
+		f, err = NewGeomFromText(ctx, expression.NewLiteral("MULTILINESTRING EMPTY", types.Blob))
+		require.NoError(err)
+		_, err = f.Eval(ctx, nil)
+		require.Error(err)
+
+		f, err = NewGeomFromText(ctx, expression.NewLiteral("MULTIPOLYGON EMPTY", types.Blob))
+		require.NoError(err)
+		_, err = f.Eval(ctx, nil)
+		require.Error(err)
+
+		var v any
+		f, err = NewGeomFromText(ctx, expression.NewLiteral("GEOMETRYCOLLECTION EMPTY", types.Blob))
+		require.NoError(err)
+		v, err = f.Eval(ctx, nil)
+		require.NoError(err)
+		require.Equal(types.GeomColl{Geoms: []types.GeometryValue{}}, v)
+	})
 }
