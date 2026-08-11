@@ -3248,6 +3248,15 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{"6ccd780c-baba-1026-9564-5b8c656024db"}},
 			},
 			{
+				// https://github.com/dolthub/dolt/issues/11457
+				Query:    `SELECT BIN_TO_UUID(UUID_TO_BIN(@uuid), null)`,
+				Expected: []sql.Row{{"6ccd780c-baba-1026-9564-5b8c656024db"}},
+			},
+			{
+				Query:    `SELECT BIN_TO_UUID(UUID_TO_BIN(@uuid), 3000)`,
+				Expected: []sql.Row{{"6ccd780c-baba-1026-9564-5b8c656024db"}},
+			},
+			{
 				Query:    `SELECT UUID_TO_BIN(NULL)`,
 				Expected: []sql.Row{{nil}},
 			},

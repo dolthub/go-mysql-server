@@ -486,10 +486,10 @@ func (bu BinToUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	// If the swap flag is 0 we can return uuid's string format as is.
-	if sf.(int8) == 0 {
+	// If the swap flag is null or 0, we can return uuid's string format as is.
+	if sf == nil || sf.(int8) == 0 {
 		return parsed.String(), nil
-	} else if sf.(int8) == 1 {
+	} else {
 		encoding := unswapUUIDBytes(parsed)
 		parsed, err = uuid.FromBytes(encoding)
 
@@ -498,8 +498,6 @@ func (bu BinToUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 
 		return parsed.String(), nil
-	} else {
-		return nil, fmt.Errorf("UUID_TO_BIN received invalid swap flag")
 	}
 }
 
