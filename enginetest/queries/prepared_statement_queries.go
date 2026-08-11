@@ -792,6 +792,67 @@ var PreparedScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "prepare alter table foreign key constraint",
+		SetUpScript: []string{
+			"create table parent (i int primary key);",
+			"create table child (x int primary key);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "prepare stmt from 'alter table child add constraint fk foreign key (x) references parent(i)';",
+				Expected: []sql.Row{
+					{types.OkResult{Info: plan.PrepareInfo{}}},
+				},
+			},
+			{
+				Query: "execute stmt;",
+				Expected: []sql.Row{
+					{types.OkResult{}},
+				},
+			},
+			{
+				Query:       "execute stmt;",
+				ExpectedErr: sql.ErrForeignKeyDuplicateName,
+			},
+			{
+				Query: "show create table child;",
+				Expected: []sql.Row{
+					{"child", "CREATE TABLE `child` (\n" +
+						"  `x` int NOT NULL,\n" +
+						"  PRIMARY KEY (`x`),\n" +
+						"  CONSTRAINT `fk` FOREIGN KEY (`x`) REFERENCES `parent` (`i`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+
+			{
+				Query: "prepare stmt from 'alter table child drop constraint fk';",
+				Expected: []sql.Row{
+					{types.OkResult{Info: plan.PrepareInfo{}}},
+				},
+			},
+			{
+				Query: "execute stmt;",
+				Expected: []sql.Row{
+					{types.OkResult{}},
+				},
+			},
+			{
+				Query:       "execute stmt;",
+				ExpectedErr: sql.ErrUnknownConstraint,
+			},
+			{
+				Query: "show create table child;",
+				Expected: []sql.Row{
+					{"child", "CREATE TABLE `child` (\n" +
+						"  `x` int NOT NULL,\n" +
+						"  PRIMARY KEY (`x`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+		},
+	},
+	{
 		Name: "prepare using user vars",
 		SetUpScript: []string{
 			"create table t (i int primary key);",
