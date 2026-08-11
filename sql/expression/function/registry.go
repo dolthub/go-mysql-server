@@ -272,6 +272,7 @@ var BuiltIns = []sql.Function{
 	sql.Function1{Name: "st_isempty", Fn: spatial.NewIsEmpty},
 	sql.Function1{Name: "st_issimple", Fn: spatial.NewIsSimple},
 	sql.Function1{Name: "st_latfromgeohash", Fn: spatial.NewLatFromGeoHash},
+	sql.FunctionN{Name: "st_latitude", Fn: spatial.NewLatitude},
 	sql.FunctionN{Name: "st_length", Fn: spatial.NewSTLength},
 	sql.Function1{Name: "st_longfromgeohash", Fn: spatial.NewLongFromGeoHash},
 	sql.FunctionN{Name: "st_longitude", Fn: spatial.NewLongitude},

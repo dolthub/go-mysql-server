@@ -385,7 +385,7 @@ func TestGeomFromText(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(types.Point{SRID: types.GeoSpatialSRID, X: 2, Y: 1}, v)
+		require.Equal(types.Point{SRID: types.GeoSpatialSRID, X: 1, Y: 2}, v)
 	})
 
 	t.Run("create valid linestring with valid srid", func(t *testing.T) {
@@ -418,7 +418,7 @@ func TestGeomFromText(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(types.LineString{SRID: types.GeoSpatialSRID, Points: []types.Point{{SRID: types.GeoSpatialSRID, X: 2, Y: 1}, {SRID: types.GeoSpatialSRID, X: 4, Y: 3}}}, v)
+		require.Equal(types.LineString{SRID: types.GeoSpatialSRID, Points: []types.Point{{SRID: types.GeoSpatialSRID, X: 1, Y: 2}, {SRID: types.GeoSpatialSRID, X: 3, Y: 4}}}, v)
 	})
 
 	t.Run("create valid polygon with valid srid", func(t *testing.T) {
@@ -451,7 +451,7 @@ func TestGeomFromText(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(types.Polygon{SRID: types.GeoSpatialSRID, Lines: []types.LineString{{SRID: types.GeoSpatialSRID, Points: []types.Point{{SRID: types.GeoSpatialSRID, X: 0, Y: 0}, {SRID: types.GeoSpatialSRID, X: 1, Y: 0}, {SRID: types.GeoSpatialSRID, X: 0, Y: 1}, {SRID: types.GeoSpatialSRID, X: 0, Y: 0}}}}}, v)
+		require.Equal(types.Polygon{SRID: types.GeoSpatialSRID, Lines: []types.LineString{{SRID: types.GeoSpatialSRID, Points: []types.Point{{SRID: types.GeoSpatialSRID, X: 0, Y: 0}, {SRID: types.GeoSpatialSRID, X: 0, Y: 1}, {SRID: types.GeoSpatialSRID, X: 1, Y: 0}, {SRID: types.GeoSpatialSRID, X: 0, Y: 0}}}}}, v)
 	})
 
 	t.Run("create valid multipoint with valid srid", func(t *testing.T) {
@@ -484,7 +484,7 @@ func TestGeomFromText(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(types.MultiPoint{SRID: types.GeoSpatialSRID, Points: []types.Point{{SRID: types.GeoSpatialSRID, X: 2, Y: 1}, {SRID: types.GeoSpatialSRID, X: 4, Y: 3}}}, v)
+		require.Equal(types.MultiPoint{SRID: types.GeoSpatialSRID, Points: []types.Point{{SRID: types.GeoSpatialSRID, X: 1, Y: 2}, {SRID: types.GeoSpatialSRID, X: 3, Y: 4}}}, v)
 	})
 
 	t.Run("create valid multilinestring with valid srid", func(t *testing.T) {
@@ -517,7 +517,7 @@ func TestGeomFromText(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(types.MultiLineString{SRID: types.GeoSpatialSRID, Lines: []types.LineString{{SRID: types.GeoSpatialSRID, Points: []types.Point{{SRID: types.GeoSpatialSRID, X: 0, Y: 0}, {SRID: types.GeoSpatialSRID, X: 1, Y: 0}, {SRID: types.GeoSpatialSRID, X: 0, Y: 1}, {SRID: types.GeoSpatialSRID, X: 0, Y: 0}}}}}, v)
+		require.Equal(types.MultiLineString{SRID: types.GeoSpatialSRID, Lines: []types.LineString{{SRID: types.GeoSpatialSRID, Points: []types.Point{{SRID: types.GeoSpatialSRID, X: 0, Y: 0}, {SRID: types.GeoSpatialSRID, X: 0, Y: 1}, {SRID: types.GeoSpatialSRID, X: 1, Y: 0}, {SRID: types.GeoSpatialSRID, X: 0, Y: 0}}}}}, v)
 	})
 
 	t.Run("create valid multipolygon with valid srid", func(t *testing.T) {
@@ -554,9 +554,9 @@ func TestGeomFromText(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		line1 := types.LineString{SRID: types.GeoSpatialSRID, Points: []types.Point{{SRID: types.GeoSpatialSRID, X: 0, Y: 0}, {SRID: types.GeoSpatialSRID, X: 2, Y: 1}, {SRID: types.GeoSpatialSRID, X: 4, Y: 3}, {SRID: types.GeoSpatialSRID, X: 0, Y: 0}}}
+		line1 := types.LineString{SRID: types.GeoSpatialSRID, Points: []types.Point{{SRID: types.GeoSpatialSRID, X: 0, Y: 0}, {SRID: types.GeoSpatialSRID, X: 1, Y: 2}, {SRID: types.GeoSpatialSRID, X: 3, Y: 4}, {SRID: types.GeoSpatialSRID, X: 0, Y: 0}}}
 		poly1 := types.Polygon{SRID: types.GeoSpatialSRID, Lines: []types.LineString{line1}}
-		line2 := types.LineString{SRID: types.GeoSpatialSRID, Points: []types.Point{{SRID: types.GeoSpatialSRID, X: 1, Y: 1}, {SRID: types.GeoSpatialSRID, X: 3, Y: 2}, {SRID: types.GeoSpatialSRID, X: 5, Y: 4}, {SRID: types.GeoSpatialSRID, X: 1, Y: 1}}}
+		line2 := types.LineString{SRID: types.GeoSpatialSRID, Points: []types.Point{{SRID: types.GeoSpatialSRID, X: 1, Y: 1}, {SRID: types.GeoSpatialSRID, X: 2, Y: 3}, {SRID: types.GeoSpatialSRID, X: 4, Y: 5}, {SRID: types.GeoSpatialSRID, X: 1, Y: 1}}}
 		poly2 := types.Polygon{SRID: types.GeoSpatialSRID, Lines: []types.LineString{line2}}
 		require.Equal(types.MultiPolygon{SRID: types.GeoSpatialSRID, Polygons: []types.Polygon{poly1, poly2}}, v)
 	})
