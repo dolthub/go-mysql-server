@@ -16,8 +16,9 @@ package queries
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql"
 	"strings"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // TypeWireTest is used to ensure that types are properly represented over the wire (vs being directly returned from the
