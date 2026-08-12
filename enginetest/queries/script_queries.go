@@ -14707,6 +14707,47 @@ select * from t1 except (
 			},
 		},
 	},
+	{
+		Name: "TopN with huge limit",
+		SetUpScript: []string{
+			"create table t (i int);",
+			"insert into t values (1), (2), (3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from t order by i limit 18446744073709551615",
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+			{
+				Query: "select * from t order by i limit 9223372036854775807",
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+			{
+				Query: "select * from t order by i limit 4294967295",
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+			{
+				Query: "select * from t order by i limit 2147483647",
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+		},
+	},
 }
 
 var BrokenScriptTests = []ScriptTest{
