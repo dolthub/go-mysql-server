@@ -15,6 +15,9 @@
 package queries
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -846,7 +849,7 @@ var TypeWireTests = []TypeWireTest{
 		Name: "JSON",
 		SetUpScript: []string{
 			`CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 JSON);`,
-			`INSERT INTO test VALUES (1, '{"key1": {"key": "value"}}'), (2, '{"key1": "value1", "key2": "value2"}'), (3, '{"key1": {"key": [2,3]}}');`,
+			`INSERT INTO test VALUES (1, '{"key1": {"key": "value"}}'), (2, '{"key1": "value1", "key2": "value2"}'), (3, '{"key1": {"key": [2,3]}}'), (4, CONCAT('{"key": "', REPEAT('X', 5000), '"}'));`,
 			`UPDATE test SET v1 = '["a", 1]' WHERE pk = 1;`,
 			`DELETE FROM test WHERE pk = 3;`,
 		},
@@ -856,9 +859,9 @@ var TypeWireTests = []TypeWireTest{
 			`SELECT pk, JSON_ARRAYAGG(v1) FROM (SELECT * FROM test ORDER BY pk) as sub GROUP BY pk, v1 ORDER BY pk;`,
 		},
 		Results: [][]sql.Row{
-			{{"1", "[\"a\",1]"}, {"2", "{\"key1\":\"value1\",\"key2\":\"value2\"}"}},
-			{{"[\"a\",1]", "1"}, {"{\"key1\":\"value1\",\"key2\":\"value2\"}", "2"}},
-			{{"1", "[[\"a\",1]]"}, {"2", "[{\"key1\":\"value1\",\"key2\":\"value2\"}]"}},
+			{{"1", "[\"a\",1]"}, {"2", "{\"key1\":\"value1\",\"key2\":\"value2\"}"}, {"4", fmt.Sprintf("{\"key\":\"%s\"}", strings.Repeat("X", 5000))}},
+			{{"[\"a\",1]", "1"}, {"{\"key1\":\"value1\",\"key2\":\"value2\"}", "2"}, {fmt.Sprintf("{\"key\":\"%s\"}", strings.Repeat("X", 5000)), "4"}},
+			{{"1", "[[\"a\",1]]"}, {"2", "[{\"key1\":\"value1\",\"key2\":\"value2\"}]"}, {"4", fmt.Sprintf("[{\"key\":\"%s\"}]", strings.Repeat("X", 5000))}},
 		},
 	},
 	{
