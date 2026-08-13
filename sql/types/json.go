@@ -15,9 +15,15 @@
 package types
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
+	"io"
+	"math"
 	"reflect"
+	"strconv"
+	"strings"
 
 	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -72,7 +78,7 @@ func convertJSONValue(v interface{}) (interface{}, sql.ConvertInRange, error) {
 	}
 
 	var val interface{}
-	if err := json.Unmarshal(data, &val); err != nil {
+	if err := JsonUnmarshal(data, &val); err != nil {
 		return nil, sql.InRange, sql.ErrInvalidJson.New(err.Error())
 	}
 
@@ -232,8 +238,68 @@ func DeepCopyJson(v interface{}) interface{} {
 
 func MustJSON(s string) JSONDocument {
 	var doc interface{}
-	if err := json.Unmarshal([]byte(s), &doc); err != nil {
+	if err := JsonUnmarshal([]byte(s), &doc); err != nil {
 		panic(err)
 	}
 	return JSONDocument{Val: doc}
+}
+
+// JsonUnmarshal unmarshals JSON data. It picks the best representation
+// for each number to avoid losing precision whenever possible.
+func JsonUnmarshal(data []byte, v *interface{}) error {
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.UseNumber()
+	if err := dec.Decode(v); err != nil {
+		return err
+	}
+
+	// Unlike json.Unmarshal, we need to check that the decoder has no more tokens
+	if _, err := dec.Token(); err != io.EOF {
+		if err == nil {
+			return fmt.Errorf("invalid JSON")
+		}
+		return err
+	}
+	*v = convertJsonNumbers(*v)
+	return nil
+}
+
+// convertJsonNumbers recursively walks a parsed JSON value and converts json.Number values to
+// int64, uint64, or float64, choosing the most precise representation.
+func convertJsonNumbers(v interface{}) interface{} {
+	switch val := v.(type) {
+	case json.Number:
+		s := val.String()
+		// If the number contains a decimal point or exponent, treat as float
+		f, _ := val.Float64()
+		if strings.ContainsAny(s, ".eE") {
+			return f
+		}
+		// If the number can be represented as a float without losing precision, do so.
+		if math.Abs(f) < (1 << 53) {
+			return f
+		}
+		// Try int64 first
+		if i, err := val.Int64(); err == nil {
+			return i
+		}
+		// Then try uint64
+		if u, err := strconv.ParseUint(s, 10, 64); err == nil {
+			return u
+		}
+		// Otherwise fall back to float
+		return f
+	case map[string]interface{}:
+		for k, inner := range val {
+			val[k] = convertJsonNumbers(inner)
+		}
+		return val
+	case []interface{}:
+		for i, inner := range val {
+			val[i] = convertJsonNumbers(inner)
+		}
+		return val
+	default:
+		return v
+	}
 }

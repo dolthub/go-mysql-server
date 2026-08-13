@@ -15,7 +15,6 @@
 package json
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -180,7 +179,7 @@ func GetJSONFromWrapperOrCoercibleString(ctx *sql.Context, js interface{}, funct
 		if err != nil {
 			return nil, err
 		}
-		if err = json.Unmarshal(strData.([]byte), &jsonData); err != nil {
+		if err = types.JsonUnmarshal(strData.([]byte), &jsonData); err != nil {
 			return nil, err
 		}
 		return jsonData, nil

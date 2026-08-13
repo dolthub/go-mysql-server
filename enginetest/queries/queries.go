@@ -8727,6 +8727,26 @@ from typestable`,
 		},
 	},
 	{
+		// 9223372036854775808 cannot be represented as a float64
+		Query: "select cast('-9223372036854775806' as json);",
+		Expected: []sql.Row{
+			{types.JSONDocument{int64(-9223372036854775806)}},
+		},
+	},
+	{
+		// 9223372036854775808 cannot be represented as a float64 or an int64
+		Query: "select cast('18446744073709551615' as json);",
+		Expected: []sql.Row{
+			{types.JSONDocument{uint64(18446744073709551615)}},
+		},
+	},
+	{
+		Query: "select cast('1.5' as json);",
+		Expected: []sql.Row{
+			{types.JSONDocument{float64(1.5)}},
+		},
+	},
+	{
 		Query: "select cast(true as json) = true;",
 		Expected: []sql.Row{
 			{true},
