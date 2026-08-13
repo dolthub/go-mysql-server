@@ -687,6 +687,18 @@ var FunctionQueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: `SELECT RAND(NULL) = RAND(0)`,
+		Expected: []sql.Row{
+			{true},
+		},
+	},
+	{
+		Query: `SELECT RAND('abc') = RAND(0)`,
+		Expected: []sql.Row{
+			{true},
+		},
+	},
+	{
 		Query: `SELECT RAND() = RAND()`,
 		Expected: []sql.Row{
 			{false},
