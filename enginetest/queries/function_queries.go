@@ -904,11 +904,59 @@ var FunctionQueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: "SELECT FORMAT(123456, 3, 1) FROM mytable;",
+		Query: "SELECT FORMAT(123.456, NULL);",
 		Expected: []sql.Row{
-			{"1.000"},
-			{"2.000"},
-			{"3.000"},
+			{nil},
+		},
+	},
+	{
+		Query: "SELECT FORMAT(NULL, 2);",
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
+	{
+		Query: "SELECT FORMAT(123456, 3, 1);",
+		Expected: []sql.Row{
+			{"123,456.000"},
+		},
+	},
+	{
+		Query: "SELECT FORMAT('notanumber', 2);",
+		Expected: []sql.Row{
+			{"0.00"},
+		},
+	},
+	{
+		Query:                 "SELECT FORMAT(123.456, 'notanumber');",
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       1292,
+		Expected: []sql.Row{
+			{"123"},
+		},
+	},
+	{
+		Query:                 "SELECT FORMAT(123.456, 2, 'badlocale');",
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       1649,
+		Expected: []sql.Row{
+			{"123.46"},
+		},
+	},
+	{
+		Query:                 "SELECT FORMAT(123.456, 2, 100);",
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       1649,
+		Expected: []sql.Row{
+			{"123.46"},
+		},
+	},
+	{
+		Query:                 "SELECT FORMAT(123.456, 2, NULL);",
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       1649,
+		Expected: []sql.Row{
+			{"123.46"},
 		},
 	},
 

@@ -112,11 +112,9 @@ func (f *Format) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	numDecimalPlaces := numDP.(float64)
 	numDecimalPlaces = math.Round(numDecimalPlaces)
 
-	if numDecimalPlaces < 0 {
-		numDecimalPlaces = 0
-	} else if numDecimalPlaces > 30 { // MySQL cuts off at 30 for larger values
-		numDecimalPlaces = 30
-	}
+	// MySQL clamps numDecimalPlaces in [0, 30]
+	numDecimalPlaces = max(0, numDecimalPlaces)
+	numDecimalPlaces = min(30, numDecimalPlaces)
 
 	locale := language.English
 	if f.Locale != nil {
@@ -128,7 +126,9 @@ func (f *Format) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		if loc != nil {
+		if loc == nil {
+			ctx.Warn(1649, "Unknown Locale: 'NULL'")
+		} else {
 			locStr := loc.(string)
 			locale, err = language.Parse(locStr)
 			if err != nil {
