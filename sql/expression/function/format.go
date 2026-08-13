@@ -88,40 +88,24 @@ func (f *Format) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	numVal, _, err = types.Float64.Convert(ctx, numVal)
+	if err != nil {
+		return nil, nil
+	}
 	if numVal == nil {
 		return nil, nil
 	}
+	numValue := numVal.(float64)
 
 	numDP, err := f.NumDecimalPlaces.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
-	if numDP == nil {
-		return nil, nil
-	}
-
-	locale := language.English
-	if f.Locale != nil {
-		loc, lErr := f.Locale.Eval(ctx, row)
-		if lErr != nil {
-			return nil, lErr
-		}
-		if loc != nil {
-			locale, err = language.Parse(loc.(string))
-			if err != nil {
-				locale = language.English
-			}
-		}
-	}
-
-	numVal, _, err = types.Float64.Convert(ctx, numVal)
-	if err != nil {
-		return nil, nil
-	}
-	numValue := numVal.(float64)
-
 	numDP, _, err = types.Float64.Convert(ctx, numDP)
 	if err != nil {
+		return nil, nil
+	}
+	if numDP == nil {
 		return nil, nil
 	}
 	numDecimalPlaces := numDP.(float64)
@@ -131,6 +115,26 @@ func (f *Format) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		numDecimalPlaces = 0
 	} else if numDecimalPlaces > 30 { // MySQL cuts off at 30 for larger values
 		numDecimalPlaces = 30
+	}
+
+	locale := language.English
+	if f.Locale != nil {
+		loc, lErr := f.Locale.Eval(ctx, row)
+		if lErr != nil {
+			return nil, lErr
+		}
+		//locStr, _, err := types.Text.Convert(ctx, loc)
+		//if err != nil {
+		//	return nil, err
+		//}
+
+		if loc != nil {
+			locale, err = language.Parse(loc.(string))
+			if err != nil {
+				ctx.Warn(1649, "Unknown Locale: %s", loc)
+				locale = language.English
+			}
+		}
 	}
 
 	// One way to round to a decimal place is to shift the number up by the desired decimal position, round to the
