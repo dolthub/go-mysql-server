@@ -361,41 +361,47 @@ func joinExprsByTable(ctx *sql.Context, exprs []sql.Expression) joinExpressionsB
 // the expression. Returns nils if either side of the expression doesn't reference a table column.
 // Both sides have to have getField (this is currently invalid: a.x + b.y = 1)
 func extractJoinColumnExpr(ctx *sql.Context, e sql.Expression) (leftCol *joinColExpr, rightCol *joinColExpr) {
+	var left, right sql.Expression
+	var matchnull bool
 	switch e := e.(type) {
-	case *expression.Equals, *expression.NullSafeEquals:
-		cmp := e.(expression.Comparer)
-		left, right := cmp.Left(), cmp.Right()
-		if isEvaluable(ctx, left) || isEvaluable(ctx, right) {
+	case expression.Equality:
+		if !e.RepresentsEquality() {
 			return nil, nil
 		}
-
-		leftField, rightField := expression.ExtractGetField(ctx, left), expression.ExtractGetField(ctx, right)
-		if leftField == nil || rightField == nil {
-			return nil, nil
-		}
-
-		_, matchnull := e.(*expression.NullSafeEquals)
-
-		leftCol = &joinColExpr{
-			col:          leftField,
-			colExpr:      left,
-			comparand:    right,
-			comparandCol: rightField,
-			comparison:   cmp,
-			matchnull:    matchnull,
-		}
-		rightCol = &joinColExpr{
-			col:          rightField,
-			colExpr:      right,
-			comparand:    left,
-			comparandCol: leftField,
-			comparison:   cmp,
-			matchnull:    matchnull,
-		}
-		return leftCol, rightCol
+		left, right = e.Left(), e.Right()
+	case *expression.NullSafeEquals:
+		matchnull = true
+		left, right = e.Left(), e.Right()
 	default:
 		return nil, nil
 	}
+
+	if isEvaluable(ctx, left) || isEvaluable(ctx, right) {
+		return nil, nil
+	}
+
+	leftField, rightField := expression.ExtractGetField(ctx, left), expression.ExtractGetField(ctx, right)
+	if leftField == nil || rightField == nil {
+		return nil, nil
+	}
+
+	leftCol = &joinColExpr{
+		col:          leftField,
+		colExpr:      left,
+		comparand:    right,
+		comparandCol: rightField,
+		comparison:   e,
+		matchnull:    matchnull,
+	}
+	rightCol = &joinColExpr{
+		col:          rightField,
+		colExpr:      right,
+		comparand:    left,
+		comparandCol: leftField,
+		comparison:   e,
+		matchnull:    matchnull,
+	}
+	return leftCol, rightCol
 }
 
 // isEvaluable determines if sql.Expression has/contains columns, subqueries, bindvars, or procedure params.
