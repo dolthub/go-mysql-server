@@ -99,6 +99,8 @@ func TestInet6Aton(t *testing.T) {
 		err      bool
 	}{
 		{"null input", sql.NewRow(nil), nil, false},
+		{"int type", sql.NewRow(123), nil, false},
+		{"float type", sql.NewRow(123.456), nil, false},
 		{"valid ipv4 address", sql.NewRow("10.0.5.10"), []byte{10, 0, 5, 10}, false},
 		{"valid ipv4-mapped ipv6 address", sql.NewRow("::10.0.5.10"), []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 0, 5, 10}, false},
 		{"valid short-form ipv4 address", sql.NewRow("10.5.10"), nil, false},
