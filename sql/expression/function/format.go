@@ -88,14 +88,15 @@ func (f *Format) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	var numValue float64
 	numVal, _, err = types.Float64.Convert(ctx, numVal)
 	if err != nil {
-		return nil, nil
+		ctx.Warn(1292, "Truncated incorrect DOUBLE value: %s", numVal)
 	}
 	if numVal == nil {
 		return nil, nil
 	}
-	numValue := numVal.(float64)
+	numValue = numVal.(float64)
 
 	numDP, err := f.NumDecimalPlaces.Eval(ctx, row)
 	if err != nil {
@@ -103,7 +104,7 @@ func (f *Format) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 	numDP, _, err = types.Float64.Convert(ctx, numDP)
 	if err != nil {
-		return nil, nil
+		ctx.Warn(1292, "Truncated incorrect DOUBLE value: %s", numDP)
 	}
 	if numDP == nil {
 		return nil, nil
@@ -123,13 +124,13 @@ func (f *Format) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		if lErr != nil {
 			return nil, lErr
 		}
-		//locStr, _, err := types.Text.Convert(ctx, loc)
-		//if err != nil {
-		//	return nil, err
-		//}
-
+		loc, _, err := types.Text.Convert(ctx, loc)
+		if err != nil {
+			return nil, err
+		}
 		if loc != nil {
-			locale, err = language.Parse(loc.(string))
+			locStr := loc.(string)
+			locale, err = language.Parse(locStr)
 			if err != nil {
 				ctx.Warn(1649, "Unknown Locale: %s", loc)
 				locale = language.English
