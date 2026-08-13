@@ -14728,7 +14728,8 @@ select * from t1 except (
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select * from t order by i limit 18446744073709551615",
+				Dialect: "mysql", // Postgres does not allow a limit of this size
+				Query:   "select * from t order by i limit 18446744073709551615",
 				Expected: []sql.Row{
 					{1},
 					{2},
