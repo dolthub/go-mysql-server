@@ -1218,6 +1218,10 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{{nil}},
 	},
 	{
+		Query:    `SELECT INET6_ATON(123)`,
+		Expected: []sql.Row{{nil}},
+	},
+	{
 		Query:    `SELECT INET6_NTOA(UNHEX("1234ffff5678ffff1234ffff5678ffff"))`,
 		Expected: []sql.Row{{"1234:ffff:5678:ffff:1234:ffff:5678:ffff"}},
 	},
@@ -1243,6 +1247,10 @@ var FunctionQueryTests = []QueryTest{
 	},
 	{
 		Query:    `SELECT INET6_NTOA("notanipaddress")`,
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    `SELECT INET6_NTOA(123)`,
 		Expected: []sql.Row{{nil}},
 	},
 
