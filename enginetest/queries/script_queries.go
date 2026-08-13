@@ -14580,10 +14580,9 @@ select * from t1 except (
 		Assertions: []ScriptTestAssertion{
 			{
 				// https://github.com/dolthub/dolt/issues/10562
-				Query: "select greatest(a, b, c), least(a, b, c) from t;",
-				// TODO: greatest and least currently return a float64 for decimals. MySQL returns a decimal with the
-				//  highest precision https://github.com/dolthub/dolt/issues/10567
-				Expected: []sql.Row{{8.8, 2.75}},
+				// https://github.com/dolthub/dolt/issues/10567
+				Query:    "select greatest(a, b, c), least(a, b, c) from t;",
+				Expected: []sql.Row{{"8.80000", "2.75000"}},
 			},
 		},
 	},
