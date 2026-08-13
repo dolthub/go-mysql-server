@@ -1218,8 +1218,9 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{{nil}},
 	},
 	{
-		Query:    `SELECT INET6_ATON(123)`,
-		Expected: []sql.Row{{nil}},
+		Query:           `SELECT INET6_ATON(123)`,
+		Expected:        []sql.Row{{nil}},
+		ExpectedWarning: 1411,
 	},
 	{
 		Query:    `SELECT INET6_NTOA(UNHEX("1234ffff5678ffff1234ffff5678ffff"))`,
@@ -1250,8 +1251,9 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{{nil}},
 	},
 	{
-		Query:    `SELECT INET6_NTOA(123)`,
-		Expected: []sql.Row{{nil}},
+		Query:           `SELECT INET6_NTOA(123)`,
+		Expected:        []sql.Row{{nil}},
+		ExpectedWarning: 1411,
 	},
 
 	// IS_IPV4/IS_IPV6 Function Tests
