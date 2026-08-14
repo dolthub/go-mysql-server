@@ -150,39 +150,46 @@ func (l *Like) evalRight(ctx *sql.Context, row sql.Row) (right *string, escape r
 	if err != nil {
 		return nil, 0, err
 	}
-	if _, ok := rightVal.(string); !ok {
+	var rightStr string
+	var ok bool
+	if rightStr, ok = rightVal.(string); !ok {
 		// Use type-aware conversion for enum types
-		rightStr, _, err := types.ConvertToCollatedString(ctx, rightVal, l.Right().Type(ctx))
+		rightStr, _, err = types.ConvertToCollatedString(ctx, rightVal, l.Right().Type(ctx))
 		if err != nil {
 			return nil, 0, err
 		}
-		rightVal = rightStr
 	}
+	right = &rightStr
 
-	var escapeVal interface{}
+	escape = '\\'
 	if l.Escape != nil {
+		var escapeVal any
 		escapeVal, err = l.Escape.Eval(ctx, row)
 		if err != nil {
 			return nil, 0, err
 		}
-		if escapeVal == nil {
-			escapeVal = `\`
-		}
-		if _, ok := escapeVal.(string); !ok {
-			escapeVal, _, err = types.LongText.Convert(ctx, escapeVal)
-			if err != nil {
-				return nil, 0, err
+		if escapeVal != nil {
+			var escapeStr string
+			if escapeStr, ok = escapeVal.(string); !ok {
+				escapeVal, _, err = types.LongText.Convert(ctx, escapeVal)
+				if err != nil {
+					return nil, 0, err
+				}
+				escapeStr = escapeVal.(string)
+			}
+			switch utf8.RuneCountInString(escapeStr) {
+			case 0:
+				// an empty string escape character means escape the NUL character (\0)
+				escape = 0
+			case 1:
+				escape = []rune(escapeStr)[0]
+			default:
+				return nil, 0, sql.ErrInvalidArgument.New("ESCAPE")
 			}
 		}
-		if utf8.RuneCountInString(escapeVal.(string)) > 1 {
-			return nil, 0, sql.ErrInvalidArgument.New("ESCAPE")
-		}
-	} else {
-		escapeVal = `\`
 	}
 
-	rightStr := rightVal.(string)
-	return &rightStr, []rune(escapeVal.(string))[0], nil
+	return right, escape, nil
 }
 
 func (l *Like) String() string {
