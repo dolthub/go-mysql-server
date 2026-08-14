@@ -1075,7 +1075,7 @@ var WindowFunctionsScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				// Invalid locale still
+				// Invalid locale still works
 				Query:                 "SELECT FORMAT(1, 0, FIRST_VALUE(locale) OVER ()) AS actual FROM t;",
 				ExpectedWarningsCount: 1,
 				ExpectedWarning:       1649,
