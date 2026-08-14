@@ -850,8 +850,15 @@ var FunctionQueryTests = []QueryTest{
 
 	// FORMAT Function Tests
 	{
-		Query: `SELECT FORMAT(val, 2) FROM
-			(values row(4328904), row(432053.4853), row(5.93288775208e+08), row("5784029.372"), row(-4229842.122), row(-0.009)) a (val)`,
+		Query: `SELECT FORMAT(val, 2) FROM (
+			values 
+				row(4328904), 
+				row(432053.4853), 
+				row(5.93288775208e+08), 
+				row("5784029.372"), 
+				row(-4229842.122), 
+				row(-0.009)
+			) a (val)`,
 		Expected: []sql.Row{
 			{"4,328,904.00"},
 			{"432,053.49"},
@@ -870,8 +877,15 @@ var FunctionQueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT FORMAT(val, 2, 'da_DK') FROM
-			(values row(4328904), row(432053.4853), row(5.93288775208e+08), row("5784029.372"), row(-4229842.122), row(-0.009)) a (val)`,
+		Query: `SELECT FORMAT(val, 2, 'da_DK') FROM (
+			values 
+				row(4328904), 
+			    row(432053.4853), 
+			    row(5.93288775208e+08), 
+			    row("5784029.372"), 
+			    row(-4229842.122), 
+			    row(-0.009)
+			) a (val)`,
 		Expected: []sql.Row{
 			{"4.328.904,00"},
 			{"432.053,49"},
@@ -887,6 +901,62 @@ var FunctionQueryTests = []QueryTest{
 			{"1,000"},
 			{"2,000"},
 			{"3,000"},
+		},
+	},
+	{
+		Query: "SELECT FORMAT(123.456, NULL);",
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
+	{
+		Query: "SELECT FORMAT(NULL, 2);",
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
+	{
+		Query: "SELECT FORMAT(123456, 3, 1);",
+		Expected: []sql.Row{
+			{"123,456.000"},
+		},
+	},
+	{
+		Query: "SELECT FORMAT('notanumber', 2);",
+		Expected: []sql.Row{
+			{"0.00"},
+		},
+	},
+	{
+		Query:                 "SELECT FORMAT(123.456, 'notanumber');",
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       1292,
+		Expected: []sql.Row{
+			{"123"},
+		},
+	},
+	{
+		Query:                 "SELECT FORMAT(123.456, 2, 'badlocale');",
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       1649,
+		Expected: []sql.Row{
+			{"123.46"},
+		},
+	},
+	{
+		Query:                 "SELECT FORMAT(123.456, 2, 100);",
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       1649,
+		Expected: []sql.Row{
+			{"123.46"},
+		},
+	},
+	{
+		Query:                 "SELECT FORMAT(123.456, 2, NULL);",
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       1649,
+		Expected: []sql.Row{
+			{"123.46"},
 		},
 	},
 
