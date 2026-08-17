@@ -154,6 +154,7 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 			} else if sq, ok := e.Child.(*plan.Subquery); ok {
 				col = scopeColumn{col: e.Name(), scalar: e, typ: sq.Type(b.ctx), nullable: sq.IsNullable(b.ctx)}
 			} else {
+				// TODO: panic happens here bc child is a default
 				col = scopeColumn{col: e.Name(), scalar: e, typ: e.Type(b.ctx), nullable: e.IsNullable(b.ctx)}
 			}
 			if e.Unreferencable() {

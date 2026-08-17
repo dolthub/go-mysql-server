@@ -302,14 +302,22 @@ func (b *Builder) assignmentExprsToUpdateExprs(inScope, destScope *scope, tableS
 	for i, updateExpr := range e {
 		colName := b.buildScalar(destScope, updateExpr.Name)
 
-		innerExpr := b.buildScalar(inScope, updateExpr.Expr)
+		// Bare DEFAULT (no column name of its own, e.g. "SET col = DEFAULT") means "use this
+		// column's own default/generated expression"; buildScalar has no way to resolve that
+		// without knowing which column it's being assigned to, so it's resolved below instead
+		// of being passed through buildScalar. DEFAULT(other_col) is a normal, self-contained
+		// expression and is built normally.
+		astDefault, isDefaultExpr := updateExpr.Expr.(*ast.Default)
+		isDefaultExpr = isDefaultExpr && astDefault.ColName == ""
+
+		var innerExpr sql.Expression
+		if !isDefaultExpr {
+			innerExpr = b.buildScalar(inScope, updateExpr.Expr)
+		}
 		if gf, ok := colName.(*expression.GetField); ok {
 			colIdx := tableSch.IndexOfColName(gf.Name())
 			// TODO: during trigger parsing the table in the node is unresolved, so we need this additional bounds check
 			//  This means that trigger execution will be able to update generated columns
-
-			// Check if this is a DEFAULT expression for a generated column
-			_, isDefaultExpr := updateExpr.Expr.(*ast.Default)
 
 			// Prevent update of generated columns, but allow DEFAULT
 			if colIdx >= 0 && tableSch[colIdx].Generated != nil && !isDefaultExpr {
@@ -319,15 +327,20 @@ func (b *Builder) assignmentExprsToUpdateExprs(inScope, destScope *scope, tableS
 
 			// Replace default with column default from resolved schema
 			if isDefaultExpr {
-				if colIdx >= 0 {
-					// For generated columns, use the generated expression as the default
-					if tableSch[colIdx].Generated != nil {
-						innerExpr = expression.WrapExpression(tableSch[colIdx].Generated)
-					} else {
-						innerExpr = expression.WrapExpression(tableSch[colIdx].Default)
-					}
+				if colIdx < 0 {
+					b.handleErr(sql.ErrColumnNotFound.New(gf.Name()))
+				}
+				// For generated columns, use the generated expression as the default
+				if tableSch[colIdx].Generated != nil {
+					innerExpr = expression.WrapExpression(tableSch[colIdx].Generated)
+				} else {
+					innerExpr = expression.WrapExpression(tableSch[colIdx].Default)
 				}
 			}
+		} else if isDefaultExpr {
+			// colName isn't a real table column, so there's no destination schema to pull a
+			// default value from.
+			b.handleErr(sql.ErrColumnNotFound.New(updateExpr.Name.Name.String()))
 		}
 
 		// In the case of an unknown bindvar, give it a target type of the column it's targeting.
