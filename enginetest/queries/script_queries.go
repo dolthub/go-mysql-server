@@ -14763,7 +14763,8 @@ select * from t1 except (
 		},
 	},
 	{
-		Name: "LIKE expression with ESCAPE clause",
+		Name:    "LIKE expression with ESCAPE clause",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE t(value VARCHAR(1), pattern VARCHAR(1));",
 			"INSERT INTO t VALUES ('a', 'a');",
