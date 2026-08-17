@@ -71,18 +71,11 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 
 	switch v := e.(type) {
 	case *ast.Default:
-		if v.ColName == "" {
-			b.handleErr(sql.ErrSyntaxError.New("Invalid use of DEFAULT value"))
-		}
-
 		c, ok := inScope.resolveColumn("", "", v.ColName, true, false)
 		if !ok {
 			b.handleErr(sql.ErrColumnNotFound.New(v.ColName))
 		}
 
-		// Resolve DEFAULT(col) against the schema of the table(s) already bound in inScope,
-		// the same way assignmentExprsToUpdateExprs resolves "SET col = DEFAULT" against the
-		// destination table's schema.
 		tableSch := b.resolveSchemaDefaults(inScope, inScope.node.Schema(b.ctx))
 		colIdx := tableSch.IndexOfColName(c.col)
 		if colIdx == -1 {
