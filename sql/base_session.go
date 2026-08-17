@@ -35,6 +35,10 @@ type BaseSession struct {
 	locks            map[string]bool
 	storedProcParams map[string]*StoredProcParam
 	systemVars       map[string]SystemVarValue
+	// localSysVars holds system variable values set with transaction-local scope (Postgres's SET LOCAL). Entries
+	// override systemVars until cleared by ClearTransactionLocalVariables, which the integrator calls when its
+	// transaction ends. Lazily allocated, and nil whenever no transaction-local values are set.
+	localSysVars     map[string]SystemVarValue
 	statusVars       map[string]StatusVarValue
 	preparedQueries  map[string]sqlparser.Statement
 	cachedQueries    map[string]sqlparser.Statement // TODO: limit size
@@ -105,16 +109,23 @@ func (s *BaseSession) SetClient(c Client) {
 func (s *BaseSession) GetAllSessionVariables() map[string]interface{} {
 	m := make(map[string]interface{})
 
-	for k, v := range s.systemVars {
+	addVar := func(k string, v SystemVarValue) {
 		if sysType, ok := v.Var.GetType().(SetType); ok {
 			if sv, ok := v.Val.(uint64); ok {
 				if svStr, err := sysType.BitsToString(sv); err == nil {
 					m[k] = svStr
 				}
-				continue
+				return
 			}
 		}
 		m[k] = v.Val
+	}
+	for k, v := range s.systemVars {
+		addVar(k, v)
+	}
+	// Values set with transaction-local scope override the session values
+	for k, v := range s.localSysVars {
+		addVar(k, v)
 	}
 	return m
 }
@@ -209,10 +220,14 @@ func (s *BaseSession) SetUserVariable(ctx *Context, varName string, value interf
 	return s.userVars.SetUserVariable(ctx, varName, value, typ)
 }
 
-// GetSessionVariable implements the Session interface.
+// GetSessionVariable implements the Session interface. If the variable has been set with transaction-local scope,
+// the transaction-local value is returned.
 func (s *BaseSession) GetSessionVariable(ctx *Context, sysVarName string) (interface{}, error) {
 	sysVarName = strings.ToLower(sysVarName)
-	sysVar, ok := s.systemVars[sysVarName]
+	sysVar, ok := s.localSysVars[sysVarName]
+	if !ok {
+		sysVar, ok = s.systemVars[sysVarName]
+	}
 	if !ok {
 		return nil, ErrUnknownSystemVariable.New(sysVarName)
 	}
@@ -223,6 +238,73 @@ func (s *BaseSession) GetSessionVariable(ctx *Context, sysVarName string) (inter
 		}
 	}
 	return sysVar.Val, nil
+}
+
+// GetNonLocalSessionVariable implements the Session interface.
+func (s *BaseSession) GetNonLocalSessionVariable(ctx *Context, sysVarName string) (interface{}, error) {
+	sysVarName = strings.ToLower(sysVarName)
+	sysVar, ok := s.systemVars[sysVarName]
+	if !ok {
+		return nil, ErrUnknownSystemVariable.New(sysVarName)
+	}
+	if sysType, ok := sysVar.Var.GetType().(SetType); ok {
+		if sv, ok := sysVar.Val.(uint64); ok {
+			return sysType.BitsToString(sv)
+		}
+	}
+	return sysVar.Val, nil
+}
+
+// SetTransactionLocalVariable implements the Session interface.
+func (s *BaseSession) SetTransactionLocalVariable(ctx *Context, sysVarName string, value interface{}) error {
+	sysVarName = strings.ToLower(sysVarName)
+	sysVar, ok := s.systemVars[sysVarName]
+	var sv SystemVariable
+	if ok {
+		sv = sysVar.Var
+	} else {
+		// See the comment in SetSessionVariable: variables added after session start must be looked up dynamically
+		if SystemVariables == nil {
+			return ErrUnknownSystemVariable.New(sysVarName)
+		}
+		sv, _, ok = SystemVariables.GetGlobal(sysVarName)
+		if !ok {
+			return ErrUnknownSystemVariable.New(sysVarName)
+		}
+	}
+	if sv.IsReadOnly() {
+		return ErrSystemVariableReadOnly.New(sysVarName)
+	}
+	if sv.GetLocalScope() == nil {
+		return ErrSystemVariableCannotBeSetLocal.New(sysVarName)
+	}
+	svv, err := sv.SetValue(ctx, value, false)
+	if err != nil {
+		return err
+	}
+	if s.localSysVars == nil {
+		s.localSysVars = make(map[string]SystemVarValue)
+	}
+	s.localSysVars[sysVarName] = svv
+	return nil
+}
+
+// GetTransactionLocalVariables implements the Session interface.
+func (s *BaseSession) GetTransactionLocalVariables() map[string]SystemVarValue {
+	if len(s.localSysVars) == 0 {
+		return nil
+	}
+	m := make(map[string]SystemVarValue, len(s.localSysVars))
+	for k, v := range s.localSysVars {
+		m[k] = v
+	}
+	return m
+}
+
+// ClearTransactionLocalVariables implements the Session interface.
+func (s *BaseSession) ClearTransactionLocalVariables(ctx *Context) error {
+	s.localSysVars = nil
+	return nil
 }
 
 // GetSessionVariableDefault implements the Session interface.
