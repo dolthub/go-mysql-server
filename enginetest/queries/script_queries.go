@@ -14762,6 +14762,22 @@ select * from t1 except (
 			},
 		},
 	},
+	{
+		Name:    "LIKE expression with ESCAPE clause",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t(value VARCHAR(1), pattern VARCHAR(1));",
+			"INSERT INTO t VALUES ('a', 'a');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT FIRST_VALUE(value LIKE pattern ESCAPE '') OVER () AS actual FROM t;",
+				Expected: []sql.Row{
+					{true},
+				},
+			},
+		},
+	},
 }
 
 var BrokenScriptTests = []ScriptTest{
