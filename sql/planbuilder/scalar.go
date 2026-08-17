@@ -81,10 +81,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 		if colIdx == -1 {
 			b.handleErr(sql.ErrColumnNotFound.New(v.ColName))
 		}
-		if tableSch[colIdx].Generated != nil {
-			return expression.WrapExpression(tableSch[colIdx].Generated)
-		}
-		return expression.WrapExpression(tableSch[colIdx].Default)
+		return expression.WrapExpression(tableSch[colIdx].DefaultExpr())
 	case *ast.SubstrExpr:
 		var name sql.Expression
 		if v.Name != nil {
