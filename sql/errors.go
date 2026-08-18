@@ -1040,21 +1040,50 @@ func CastSQLError(err error) *mysql.SQLError {
 	case ErrInvalidOperandColumns.Is(err):
 		code = mysql.EROperandColumns
 	case ErrInsertIntoNonNullableProvidedNull.Is(err):
+		// NOT NULL constraint violation. MySQL reports SQLSTATE 23000
+		// (integrity constraint violation) for this, not the driver default
+		// of HY000; MySQL clients that branch on SQLSTATE class to detect
+		// constraint violations (e.g. PHP's PDO, whose mysql driver maps
+		// 23000 to a dedicated exception type) cannot otherwise distinguish
+		// this from a generic server error.
 		code = mysql.ERBadNullError
+		sqlState = mysql.SSConstraintViolation
+	case ErrInsertIntoNonNullableDefaultNullColumn.Is(err):
+		// A distinct NOT NULL violation: the column was omitted from the
+		// INSERT entirely (vs. explicitly provided as NULL) and has no
+		// default. Real MySQL 8.0 reports this as error 1364
+		// (ER_NO_DEFAULT_FOR_FIELD) under SQLSTATE HY000 - unlike the other
+		// constraint-violation cases above, MySQL does NOT use 23000 here,
+		// so sqlState is intentionally left at its HY000 default. Before
+		// this fix, this case fell through to the generic `default:` branch
+		// below and was reported as error 1105 (ER_UNKNOWN_ERROR) instead
+		// of 1364. Some clients special-case the exact numeric code 1364 for
+		// this scenario in addition to SQLSTATE (e.g. Drupal's mysql driver,
+		// core/modules/mysql/src/Driver/Database/mysql/ExceptionHandler.php),
+		// since MySQL itself doesn't give this case a distinguishing
+		// SQLSTATE the way it does for duplicate-key/FK violations.
+		code = mysql.ERNoDefaultForField
 	case ErrNonAggregatedColumnWithoutGroupBy.Is(err):
 		code = mysql.ERMixOfGroupFuncAndFields
 	case ErrPrimaryKeyViolation.Is(err):
+		// See the ErrInsertIntoNonNullableProvidedNull comment above:
+		// duplicate-key violations are also SQLSTATE 23000 in MySQL.
 		code = mysql.ERDupEntry
+		sqlState = mysql.SSConstraintViolation
 	case ErrUniqueKeyViolation.Is(err):
 		code = mysql.ERDupEntry
+		sqlState = mysql.SSConstraintViolation
 	case ErrPartitionNotFound.Is(err):
 		code = 1526 // TODO: Needs to be added to vitess
 	case ErrForeignKeyChildViolation.Is(err):
 		code = mysql.ErNoReferencedRow2 // test with mysql returns 1452 vs 1216
+		sqlState = mysql.SSConstraintViolation
 	case ErrForeignKeyParentViolation.Is(err):
 		code = mysql.ERRowIsReferenced2 // test with mysql returns 1451 vs 1215
+		sqlState = mysql.SSConstraintViolation
 	case ErrDuplicateEntry.Is(err):
 		code = mysql.ERDupEntry
+		sqlState = mysql.SSConstraintViolation
 	case ErrInvalidJSONText.Is(err):
 		code = 3141 // TODO: Needs to be added to vitess
 	case ErrMultiplePrimaryKeysDefined.Is(err):
