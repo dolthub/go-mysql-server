@@ -36,7 +36,11 @@ var _ sql.FunctionExpression = (*Trim)(nil)
 var _ sql.CollationCoercible = (*Trim)(nil)
 
 func NewTrim(str sql.Expression, pat sql.Expression, dir string) sql.Expression {
-	return &Trim{str, pat, dir}
+	return &Trim{
+		str: str,
+		pat: pat,
+		dir: dir,
+	}
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -69,7 +73,7 @@ func (t *Trim) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Convert pat into string and unwrap automatically
 	pat, _, err = types.LongText.Convert(ctx, pat)
 	if err != nil {
-		return nil, sql.ErrInvalidType.New(reflect.TypeOf(pat).String())
+		return nil, err
 	}
 
 	// Handle Dolt's TextStorage wrapper that doesn't convert to plain string
@@ -92,7 +96,7 @@ func (t *Trim) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Convert str to text type and unwrap automatically
 	str, _, err = types.LongText.Convert(ctx, str)
 	if err != nil {
-		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str).String())
+		return nil, err
 	}
 
 	// Handle Dolt's TextStorage wrapper that doesn't convert to plain string
@@ -128,11 +132,11 @@ func (t *Trim) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // IsNullable implements the Expression interface.
-func (t Trim) IsNullable(ctx *sql.Context) bool {
+func (t *Trim) IsNullable(ctx *sql.Context) bool {
 	return t.str.IsNullable(ctx) || t.pat.IsNullable(ctx)
 }
 
-func (t Trim) String() string {
+func (t *Trim) String() string {
 	if t.dir == sqlparser.Leading {
 		return fmt.Sprintf("trim(leading %v from %v)", t.pat, t.str)
 	} else if t.dir == sqlparser.Trailing {
@@ -145,20 +149,20 @@ func (t Trim) String() string {
 	}
 }
 
-func (t Trim) Resolved() bool {
+func (t *Trim) Resolved() bool {
 	return t.str.Resolved() && t.pat.Resolved() && t.pat.Resolved()
 }
 
-func (t Trim) Type(ctx *sql.Context) sql.Type { return t.str.Type(ctx) }
+func (t *Trim) Type(ctx *sql.Context) sql.Type { return t.str.Type(ctx) }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
-func (t Trim) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+func (t *Trim) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	leftCollation, leftCoercibility := sql.GetCoercibility(ctx, t.str)
 	rightCollation, rightCoercibility := sql.GetCoercibility(ctx, t.pat)
 	return sql.ResolveCoercibility(leftCollation, leftCoercibility, rightCollation, rightCoercibility)
 }
 
-func (t Trim) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+func (t *Trim) WithChildren(x *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 2)
 	}
@@ -289,7 +293,7 @@ func (t *RightTrim) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	str, _, err = types.LongText.Convert(ctx, str)
 	if err != nil {
-		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str))
+		return nil, err
 	}
 
 	// Handle Dolt's TextStorage wrapper that doesn't convert to plain string
