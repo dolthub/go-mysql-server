@@ -71,6 +71,16 @@ func TestRandWithSeed(t *testing.T) {
 
 	assert.Equal(t, f64, f642)
 
+	r, _ = NewRand(ctx, expression.NewLiteral(nil, types.Null))
+	assert.Equal(t, `rand(NULL)`, r.String())
+
+	f, err = r.Eval(nil, nil)
+	require.NoError(t, err)
+	f64 = f.(float64)
+
+	assert.GreaterOrEqual(t, f64, float64(0))
+	assert.Less(t, f64, float64(1))
+
 	r, _ = NewRand(ctx, expression.NewLiteral("not a number", types.LongText))
 	assert.Equal(t, `rand('not a number')`, r.String())
 

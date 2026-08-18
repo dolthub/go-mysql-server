@@ -14728,7 +14728,8 @@ select * from t1 except (
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select * from t order by i limit 18446744073709551615",
+				Dialect: "mysql", // Postgres does not allow a limit of this size
+				Query:   "select * from t order by i limit 18446744073709551615",
 				Expected: []sql.Row{
 					{1},
 					{2},
@@ -14757,6 +14758,22 @@ select * from t1 except (
 					{1},
 					{2},
 					{3},
+				},
+			},
+		},
+	},
+	{
+		Name:    "LIKE expression with ESCAPE clause",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t(value VARCHAR(1), pattern VARCHAR(1));",
+			"INSERT INTO t VALUES ('a', 'a');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT FIRST_VALUE(value LIKE pattern ESCAPE '') OVER () AS actual FROM t;",
+				Expected: []sql.Row{
+					{true},
 				},
 			},
 		},

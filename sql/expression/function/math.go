@@ -137,6 +137,9 @@ func (r *Rand) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
+	if e == nil {
+		e = int64(0)
+	}
 
 	return rand.New(rand.NewSource(e.(int64))).Float64(), nil
 }

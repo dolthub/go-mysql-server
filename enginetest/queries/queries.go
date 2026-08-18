@@ -4994,6 +4994,78 @@ SELECT * FROM cte WHERE  d = 2;`,
 		},
 	},
 	{
+		Query: `select 'test1' like 'test_';`,
+		Expected: []sql.Row{
+			{true},
+		},
+	},
+	{
+		Query: `select 'test1' like 'test_' escape '\\';`,
+		Expected: []sql.Row{
+			{true},
+		},
+	},
+	{
+		Query: `select 'test1' like 'test_' escape '';`,
+		Expected: []sql.Row{
+			{true},
+		},
+	},
+	{
+		Query: `select 'test1' like 'test\0_' escape '';`,
+		Expected: []sql.Row{
+			{false},
+		},
+	},
+	{
+		Query: `select 'test_' like 'test_';`,
+		Expected: []sql.Row{
+			{true},
+		},
+	},
+	{
+		Query: `select 'test_' like 'test_' escape '\\';`,
+		Expected: []sql.Row{
+			{true},
+		},
+	},
+	{
+		Query: `select 'test_' like 'test_' escape '';`,
+		Expected: []sql.Row{
+			{true},
+		},
+	},
+	{
+		Query: `select 'test_' like 'test\0_' escape '';`,
+		Expected: []sql.Row{
+			{true},
+		},
+	},
+	{
+		Query: `select 'test\0_' like 'test\0_' escape '';`,
+		Expected: []sql.Row{
+			{false},
+		},
+	},
+	{
+		Query: `select 'test\\_' like 'test\\_';`,
+		Expected: []sql.Row{
+			{false},
+		},
+	},
+	{
+		Query: `select 'test\\_' like 'test\\_' escape '\\';`,
+		Expected: []sql.Row{
+			{false},
+		},
+	},
+	{
+		Query: `select 'test\\_' like 'test\\_' escape '';`,
+		Expected: []sql.Row{
+			{true},
+		},
+	},
+	{
 		Query: `SELECT * FROM foo.othertable`,
 		Expected: []sql.Row{
 			{"a", int32(4)},

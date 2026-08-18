@@ -1067,6 +1067,24 @@ var WindowFunctionsScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "format with window function",
+		SetUpScript: []string{
+			"CREATE TABLE t(locale TINYINT);",
+			"INSERT INTO t VALUES (1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// Invalid locale still works
+				Query:                 "SELECT FORMAT(1, 0, FIRST_VALUE(locale) OVER ()) AS actual FROM t;",
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       1649,
+				Expected: []sql.Row{
+					{"1"},
+				},
+			},
+		},
+	},
 }
 
 // WindowRowFramesScriptTests tests window functions using ROWS frame specifications.
