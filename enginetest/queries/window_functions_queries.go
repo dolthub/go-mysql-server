@@ -665,6 +665,14 @@ var WindowFunctionsScriptTests = []ScriptTest{
 				ExpectedErr: sql.ErrInvalidArgument,
 			},
 			{
+				Query:       "select i, ntile(9223372036854775808) over() from t;",
+				ExpectedErr: sql.ErrInvalidArgument,
+			},
+			{
+				Query:       "select i, ntile(18446744073709551615) over() from t;",
+				ExpectedErr: sql.ErrInvalidArgument,
+			},
+			{
 				Query: "select i, ntile(100) over() from t;",
 				Expected: []sql.Row{
 					{1, uint64(1)},
