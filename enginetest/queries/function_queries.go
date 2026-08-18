@@ -1201,6 +1201,42 @@ var FunctionQueryTests = []QueryTest{
 		Query:    `SELECT TRIM(LEADING 1 FROM 11111112)`,
 		Expected: []sql.Row{{"2"}},
 	},
+	{
+		// TODO: TimeSpan type currently always has precision 6, but it has precision 0 on ServerEngine
+		SkipServerEngine: true,
+		Query:            `SELECT TRIM(TIME('12:34:56.123456'))`,
+		Expected:         []sql.Row{{"12:34:56.123456"}},
+	},
+	{
+		// TODO: TimeSpan type currently always has precision 6, but it has precision 0 on ServerEngine
+		SkipServerEngine: true,
+		Query:            `SELECT LTRIM(TIME('12:34:56.123456'))`,
+		Expected:         []sql.Row{{"12:34:56.123456"}},
+	},
+	{
+		// TODO: TimeSpan type currently always has precision 6, but it has precision 0 on ServerEngine
+		SkipServerEngine: true,
+		Query:            `SELECT RTRIM(TIME('12:34:56.123456'))`,
+		Expected:         []sql.Row{{"12:34:56.123456"}},
+	},
+	{
+		// TODO: TimeSpan type currently always has precision 6, but it has precision 0 on ServerEngine
+		SkipServerEngine: true,
+		Query:            `SELECT TRIM(LEADING '12:34:56.' FROM TIME('12:34:56.123456'))`,
+		Expected:         []sql.Row{{"123456"}},
+	},
+	{
+		// TODO: TimeSpan type currently always has precision 6, but it has precision 0 on ServerEngine
+		SkipServerEngine: true,
+		Query:            `SELECT TRIM(TRAILING '.123456' FROM TIME('12:34:56.123456'))`,
+		Expected:         []sql.Row{{"12:34:56"}},
+	},
+	{
+		// TODO: TimeSpan type currently always has precision 6, but it has precision 0 on ServerEngine
+		SkipServerEngine: true,
+		Query:            `SELECT TRIM('0' FROM TIME('00:12:34.123'))`,
+		Expected:         []sql.Row{{":12:34.123"}},
+	},
 
 	// SUBSTRING_INDEX Function Tests
 	{
