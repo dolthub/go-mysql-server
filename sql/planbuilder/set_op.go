@@ -117,11 +117,13 @@ func (b *Builder) buildSetOp(inScope *scope, u *ast.SetOp) (outScope *scope) {
 	tabId := b.tabId
 	ret := plan.NewSetOp(setOpType, leftScope.node, rightScope.node, distinct, limit, offset, sortConditions).WithId(tabId).WithColumns(cols)
 	outScope = leftScope
-	outScope.cols = b.mergeSetOpScopeColumns(leftScope.cols, rightScope.cols, tabId)
 	outScope.node = b.mergeSetOpSchemas(ret.(*plan.SetOp))
+	outScope.cols = b.mergeSetOpScopeColumns(leftScope.cols, rightScope.cols, tabId)
 	return
 }
 
+// mergeSetOpScopeColumns assumes that left and right are the same length.
+// This is condition is checked by mergeSetOpSchemas
 func (b *Builder) mergeSetOpScopeColumns(left, right []scopeColumn, tabId sql.TableId) []scopeColumn {
 	merged := make([]scopeColumn, len(left))
 	for i := range left {
