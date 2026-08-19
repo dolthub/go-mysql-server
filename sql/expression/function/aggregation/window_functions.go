@@ -1369,7 +1369,7 @@ func (n *NTile) StartPartition(ctx *sql.Context, interval sql.WindowInterval, bu
 	}
 	numBucketsVal, _, err = types.Int64.Convert(ctx, numBucketsVal)
 	if err != nil {
-		numBucketsVal = uint64(0)
+		return sql.ErrInvalidArgument.New("NTILE")
 	}
 	if numBucketsVal == nil {
 		return sql.ErrInvalidArgument.New("NTILE")
