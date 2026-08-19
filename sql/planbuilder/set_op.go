@@ -122,9 +122,13 @@ func (b *Builder) buildSetOp(inScope *scope, u *ast.SetOp) (outScope *scope) {
 	return
 }
 
-// mergeSetOpScopeColumns assumes that left and right are the same length.
-// This is condition is checked by mergeSetOpSchemas
 func (b *Builder) mergeSetOpScopeColumns(left, right []scopeColumn, tabId sql.TableId) []scopeColumn {
+	lLen, rLen := len(left), len(right)
+	if lLen != rLen {
+		err := ErrSelectsDifferentLength.New(lLen, rLen)
+		b.handleErr(err)
+	}
+
 	merged := make([]scopeColumn, len(left))
 	for i := range left {
 		merged[i] = scopeColumn{
@@ -144,7 +148,7 @@ func (b *Builder) mergeSetOpScopeColumns(left, right []scopeColumn, tabId sql.Ta
 func (b *Builder) mergeSetOpSchemas(u *plan.SetOp) sql.Node {
 	ls, rs := u.Left().Schema(b.ctx), u.Right().Schema(b.ctx)
 	if len(ls) != len(rs) {
-		err := ErrUnionSchemasDifferentLength.New(len(ls), len(rs))
+		err := ErrSelectsDifferentLength.New(len(ls), len(rs))
 		b.handleErr(err)
 	}
 

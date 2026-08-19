@@ -4926,6 +4926,18 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{},
 	},
 	{
+		Query:       "select 1, 2, 3 union select 4, 5;",
+		ExpectedErr: planbuilder.ErrSelectsDifferentLength,
+	},
+	{
+		Query:       "select 1, 2, 3 intersect select 4, 5;",
+		ExpectedErr: planbuilder.ErrSelectsDifferentLength,
+	},
+	{
+		Query:       "select 1, 2, 3 except select 4, 5;",
+		ExpectedErr: planbuilder.ErrSelectsDifferentLength,
+	},
+	{
 		SkipPrepared: true,
 		Query:        "",
 		Expected:     []sql.Row{},

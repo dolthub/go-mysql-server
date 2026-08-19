@@ -2445,7 +2445,11 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:       "select i, k from `left` union select i, j, k from `right`",
-				ExpectedErr: planbuilder.ErrUnionSchemasDifferentLength,
+				ExpectedErr: planbuilder.ErrSelectsDifferentLength,
+			},
+			{
+				Query:       "select i, j, k from `left` union select i, j from `right`",
+				ExpectedErr: planbuilder.ErrSelectsDifferentLength,
 			},
 			{
 				Query: "table t1 union table t2 order by i;",
