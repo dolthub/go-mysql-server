@@ -195,6 +195,31 @@ var JsonScripts = []ScriptTest{
 		},
 	},
 	{
+		Name: "large integer values keep precision and ordering in document",
+		SetUpScript: []string{
+			// Float between two ints
+			// Int between two floats
+
+			"CREATE TABLE xy (x bigint primary key, y JSON)",
+			`INSERT INTO xy VALUES (0, JSON_ARRAY(9223372036854775807, -9223372036854775807));`,
+			`INSERT INTO xy VALUES (1, CAST(9223372036854775807 AS JSON));`,
+			`INSERT INTO xy VALUES (2, CAST(-9223372036854775807 AS JSON));`,
+			`INSERT INTO xy VALUES (3, JSON_OBJECT("a", 9223372036854775807, "b", -9223372036854775807));`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// According to MySQL JSON type, NUMBER < OBJECT < ARRAY
+				Query: "select x, CAST(y as CHAR) from xy order by y",
+				Expected: []sql.Row{
+					{2, "-9223372036854775807"},
+					{1, "9223372036854775807"},
+					{3, `{"a": 9223372036854775807, "b": -9223372036854775807}`},
+					{0, `[9223372036854775807, -9223372036854775807]`},
+				},
+			},
+		},
+	},
+	{
 		Name: "json_object preserves types",
 		Assertions: []ScriptTestAssertion{
 			{

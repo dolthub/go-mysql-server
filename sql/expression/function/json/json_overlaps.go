@@ -123,9 +123,9 @@ func jsonEquals(left, right interface{}) bool {
 
 func overlaps(left, right interface{}) bool {
 	switch lVal := left.(type) {
-	case nil, bool, string, float64:
+	case nil, bool, string, float64, int64, uint64:
 		switch rVal := right.(type) {
-		case nil, bool, string, float64, map[string]interface{}:
+		case nil, bool, string, float64, int64, uint64, map[string]interface{}:
 			return jsonEquals(left, right)
 		case []interface{}:
 			// scalar must be in array
@@ -137,7 +137,7 @@ func overlaps(left, right interface{}) bool {
 		}
 	case map[string]interface{}:
 		switch rVal := right.(type) {
-		case nil, bool, string, float64:
+		case nil, bool, string, float64, int64, uint64:
 			return overlaps(right, left)
 		case map[string]interface{}:
 			// objects must have at least one key-value pair in common
@@ -159,7 +159,7 @@ func overlaps(left, right interface{}) bool {
 		}
 	case []interface{}:
 		switch rVal := right.(type) {
-		case nil, bool, string, float64:
+		case nil, bool, string, float64, int64, uint64:
 			return overlaps(right, left)
 		case map[string]interface{}:
 			return overlaps(right, left)
