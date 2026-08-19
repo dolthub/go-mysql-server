@@ -653,15 +653,15 @@ var WindowFunctionsScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:       "select i, ntile(null) over() from t;",
-				ExpectedErr: sql.ErrInvalidArgument,
-			},
-			{
 				Query:       "select i, ntile(0) over() from t;",
 				ExpectedErr: sql.ErrInvalidArgument,
 			},
 			{
-				Query:       "select i, ntile(-1) over() from t;",
+				Query:       "select i, ntile(9223372036854775808) over() from t;",
+				ExpectedErr: sql.ErrInvalidArgument,
+			},
+			{
+				Query:       "select i, ntile(18446744073709551615) over() from t;",
 				ExpectedErr: sql.ErrInvalidArgument,
 			},
 			{
