@@ -2768,6 +2768,10 @@ CREATE TABLE tab3 (
 				},
 			},
 			{
+				Query:       "with recursive cte (x,y) as (select 1, 2, 3 union select x, y from cte where x < 5) select * from cte;",
+				ExpectedErr: planbuilder.ErrSelectsDifferentLength,
+			},
+			{
 				Query: "with recursive cte (x,y) as (select 1, 1 intersect select 1, 1 union select x + 1, y + 2 from cte where x < 5) select * from cte;",
 				Expected: []sql.Row{
 					{1, 1},
