@@ -253,11 +253,13 @@ func JsonUnmarshal(data []byte, v *interface{}) error {
 		return err
 	}
 
-	// Unlike json.Unmarshal, we need to check that the decoder has no more tokens
-	if _, err := dec.Token(); err != io.EOF {
-		if err == nil {
-			return fmt.Errorf("invalid JSON")
-		}
+	// Unlike json.Unmarshal, we need to check that the decoder has no more tokens to parse.
+	// If the input was valid JSON, then we are at the end of the stream and should receive an io.EOF here.
+	_, err := dec.Token()
+	if err == nil {
+		return fmt.Errorf("invalid JSON")
+	}
+	if err != io.EOF {
 		return err
 	}
 	*v = convertJsonNumbers(*v)
