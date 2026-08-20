@@ -1539,7 +1539,7 @@ var FunctionQueryTests = []QueryTest{
 		},
 	},
 	{
-		// TODO: This is just testing for panic. The core issue is part of serveral DATE conversion bugs.
+		// TODO: This is just testing for a panic. The core issue is part of several DATE conversion bugs.
 		//  Replace with above skipped test when fixed.
 		//  Tracking Issue: https://github.com/dolthub/dolt/issues/10278
 		Query: `SELECT round(date('2001-02-03')) > 0`,
