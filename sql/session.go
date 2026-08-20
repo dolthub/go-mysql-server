@@ -89,6 +89,21 @@ type Session interface {
 	GetUserVariable(ctx *Context, varName string) (Type, interface{}, error)
 	// GetAllSessionVariables returns a copy of all session variable values.
 	GetAllSessionVariables() map[string]interface{}
+	// SetTransactionLocalVariable sets the transaction-local value of the system variable with the given name
+	// (Postgres's SET LOCAL). The value overrides the variable's session value (as returned by GetSessionVariable)
+	// until ClearTransactionLocalVariables is called. The engine does not track transaction boundaries for these
+	// values itself: the integrator is responsible for calling ClearTransactionLocalVariables when its transaction
+	// ends (both COMMIT and ROLLBACK), restoring the session values.
+	SetTransactionLocalVariable(ctx *Context, sysVarName string, value interface{}) error
+	// GetNonLocalSessionVariable returns the session value of the system variable with the given name, ignoring any
+	// transaction-local value it may have been set to.
+	GetNonLocalSessionVariable(ctx *Context, sysVarName string) (interface{}, error)
+	// GetTransactionLocalVariables returns the values of all system variables currently set with transaction-local
+	// scope, keyed by lowercase variable name.
+	GetTransactionLocalVariables() map[string]SystemVarValue
+	// ClearTransactionLocalVariables removes all transaction-local system variable values, restoring the session
+	// value of every variable overridden. Integrators must call this when the current transaction ends.
+	ClearTransactionLocalVariables(ctx *Context) error
 	// GetStatusVariable returns the value of the status variable with session scope with the given name.
 	// To access global scope, use sql.StatusVariables instead.
 	GetStatusVariable(ctx *Context, statVarName string) (interface{}, error)

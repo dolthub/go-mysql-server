@@ -638,6 +638,10 @@ var (
 	// ErrSessionDoesNotSupportPersistence is thrown when a feature is not already supported
 	ErrSessionDoesNotSupportPersistence = errors.NewKind("session does not support persistence")
 
+	// ErrSystemVariableCannotBeSetLocal is thrown when a system variable that does not support transaction-local
+	// scope is set with transaction-local scope
+	ErrSystemVariableCannotBeSetLocal = errors.NewKind("system variable %s cannot be set with transaction-local scope")
+
 	// ErrInvalidGISData is thrown when a "ST_<spatial_type>FromText" function receives a malformed string
 	ErrInvalidGISData = errors.NewKind("invalid GIS data provided to function %s")
 

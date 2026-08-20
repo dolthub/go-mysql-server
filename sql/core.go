@@ -512,6 +512,9 @@ type SystemVariable interface {
 	GetType() Type
 	// GetSessionScope returns SESSION scope of the sv.
 	GetSessionScope() SystemVariableScope
+	// GetLocalScope returns the scope to use when the sv is set with transaction-local scope (Postgres's
+	// SET LOCAL), or nil if the sv cannot be set with transaction-local scope.
+	GetLocalScope() SystemVariableScope
 	// SetDefault sets the default value of the sv.
 	SetDefault(any)
 	// GetDefault returns the defined default value of the sv.
@@ -586,6 +589,15 @@ func (m *MysqlSystemVariable) GetType() Type {
 // GetSessionScope implements SystemVariable.
 func (m *MysqlSystemVariable) GetSessionScope() SystemVariableScope {
 	return GetMysqlScope(SystemVariableScope_Session)
+}
+
+// GetLocalScope implements SystemVariable. Any variable that can be set at session scope can also be set with
+// transaction-local scope.
+func (m *MysqlSystemVariable) GetLocalScope() SystemVariableScope {
+	if m.Scope != nil && m.Scope.Type == SystemVariableScope_Global {
+		return nil
+	}
+	return GetTransactionLocalScope()
 }
 
 // SetDefault implements SystemVariable.
@@ -774,6 +786,39 @@ func (m *MysqlScope) IsSessionOnly() bool {
 }
 
 var _ SystemVariableScope = (*MysqlScope)(nil)
+
+// TransactionLocalScope is the scope of a system variable set with transaction-local scope (Postgres's SET LOCAL).
+// Values set through this scope override the variable's session value until the session's transaction-local
+// variables are cleared, which the integrator is expected to do when the current transaction ends.
+type TransactionLocalScope struct{}
+
+var _ SystemVariableScope = (*TransactionLocalScope)(nil)
+
+// GetTransactionLocalScope returns the scope used for system variables set with transaction-local scope.
+func GetTransactionLocalScope() SystemVariableScope {
+	return &TransactionLocalScope{}
+}
+
+// SetValue implements sql.SystemVariableScope.
+func (t *TransactionLocalScope) SetValue(ctx *Context, name string, val any) error {
+	return ctx.Session.SetTransactionLocalVariable(ctx, name, val)
+}
+
+// GetValue implements sql.SystemVariableScope. The session value already reflects any transaction-local override,
+// so this reads the same value that session scope would.
+func (t *TransactionLocalScope) GetValue(ctx *Context, name string, _ CollationID) (any, error) {
+	return ctx.GetSessionVariable(ctx, name)
+}
+
+// IsGlobalOnly implements sql.SystemVariableScope.
+func (t *TransactionLocalScope) IsGlobalOnly() bool {
+	return false
+}
+
+// IsSessionOnly implements sql.SystemVariableScope.
+func (t *TransactionLocalScope) IsSessionOnly() bool {
+	return false
+}
 
 // MysqlSVScopeType represents the scope of a system variable.
 type MysqlSVScopeType byte
