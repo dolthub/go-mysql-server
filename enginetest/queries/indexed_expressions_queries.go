@@ -1659,7 +1659,7 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		Name: "multiple expressions: SHOW INDEX reports all key parts in the correct order",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT, c2 INT, c3 INT);",
-			"CREATE INDEX idx1 ON test ((c1 * 10), c2, (c3 * 10));",
+			"CREATE INDEX idx1 ON test ((COALESCE(c1, 0)), c2, (COALESCE(c3, 0)));",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -1673,18 +1673,18 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 			{
 				Query: "SELECT Seq_in_index, Column_name, Expression FROM information_schema.statistics WHERE table_name = 'test' AND index_name = 'idx1' ORDER BY Seq_in_index;",
 				Expected: []sql.Row{
-					{1, nil, "((c1 * 10))"},
+					{1, nil, "(coalesce(c1,0))"},
 					{2, "c2", nil},
-					{3, nil, "((c3 * 10))"},
+					{3, nil, "(coalesce(c3,0))"},
 				},
 			},
 			{
 				Query: "SHOW INDEX FROM test;",
 				Expected: []sql.Row{
 					{"test", 0, "PRIMARY", 1, "pk", nil, int64(0), nil, nil, "", "BTREE", "", "", "YES", nil},
-					{"test", 1, "idx1", 1, nil, nil, int64(0), nil, nil, "YES", "BTREE", "", "", "YES", "((c1 * 10))"},
+					{"test", 1, "idx1", 1, nil, nil, int64(0), nil, nil, "", "BTREE", "", "", "YES", "(coalesce(c1,0))"},
 					{"test", 1, "idx1", 2, "c2", nil, int64(0), nil, nil, "YES", "BTREE", "", "", "YES", nil},
-					{"test", 1, "idx1", 3, nil, nil, int64(0), nil, nil, "YES", "BTREE", "", "", "YES", "((c3 * 10))"},
+					{"test", 1, "idx1", 3, nil, nil, int64(0), nil, nil, "", "BTREE", "", "", "YES", "(coalesce(c3,0))"},
 				},
 			},
 		},
