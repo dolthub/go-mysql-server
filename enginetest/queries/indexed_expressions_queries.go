@@ -1659,16 +1659,59 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		Name: "multiple expressions: SHOW INDEX reports all key parts in the correct order",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT, c2 INT, c3 INT);",
-			"CREATE INDEX idx1 ON test ((c1 * 10), c2, (c3 * 10));",
+			"CREATE INDEX idx1 ON test ((COALESCE(c1, 0)), c2, (COALESCE(c3, 0)));",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT Seq_in_index, Column_name FROM information_schema.statistics WHERE table_name = 'test' AND index_name = 'idx1' ORDER BY Seq_in_index;",
 				Expected: []sql.Row{
-					{1, "!hidden!idx1!0!0"},
+					{1, nil},
 					{2, "c2"},
-					{3, "!hidden!idx1!2!0"},
+					{3, nil},
 				},
+			},
+			{
+				Query: "SELECT Seq_in_index, Column_name, Expression FROM information_schema.statistics WHERE table_name = 'test' AND index_name = 'idx1' ORDER BY Seq_in_index;",
+				Expected: []sql.Row{
+					{1, nil, "(coalesce(c1,0))"},
+					{2, "c2", nil},
+					{3, nil, "(coalesce(c3,0))"},
+				},
+			},
+			{
+				Query: "SHOW INDEX FROM test;",
+				Expected: []sql.Row{
+					{"test", 0, "PRIMARY", 1, "pk", nil, int64(0), nil, nil, "", "BTREE", "", "", "YES", nil},
+					{"test", 1, "idx1", 1, nil, nil, int64(0), nil, nil, "", "BTREE", "", "", "YES", "(coalesce(c1,0))"},
+					{"test", 1, "idx1", 2, "c2", nil, int64(0), nil, nil, "YES", "BTREE", "", "", "YES", nil},
+					{"test", 1, "idx1", 3, nil, nil, int64(0), nil, nil, "", "BTREE", "", "", "YES", "(coalesce(c3,0))"},
+				},
+			},
+		},
+	},
+	{
+		Name: "functional index NULL field reflects the expression's actual nullability, not just the underlying column",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk INT PRIMARY KEY, a VARCHAR(10) NOT NULL, b VARCHAR(10));",
+			"CREATE UNIQUE INDEX idx_not_null ON test ((COALESCE(b, a)));",
+			"CREATE UNIQUE INDEX idx_nullable ON test ((COALESCE(b, b)));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT Column_name, Expression LIKE '%coalesce(b,a)%', Nullable FROM information_schema.statistics WHERE table_name = 'test' AND index_name = 'idx_not_null';",
+				Expected: []sql.Row{
+					{nil, true, ""},
+				},
+			},
+			{
+				Query: "SELECT Column_name, Expression LIKE '%coalesce(b,b)%', Nullable FROM information_schema.statistics WHERE table_name = 'test' AND index_name = 'idx_nullable';",
+				Expected: []sql.Row{
+					{nil, true, "YES"},
+				},
+			},
+			{
+				Query:    "INSERT INTO test VALUES (1, 'x', NULL);",
+				Expected: []sql.Row{{gmstypes.NewOkResult(1)}},
 			},
 		},
 	},

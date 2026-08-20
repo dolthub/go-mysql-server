@@ -2532,7 +2532,7 @@ func (b *BaseBuilder) createHiddenSystemColumn(ctx *sql.Context, n *plan.AlterIn
 		Source:         n.Table.Name(),
 		DatabaseSource: n.Table.Database().Name(),
 		PrimaryKey:     false,
-		Nullable:       true,
+		Nullable:       expr.IsNullable(ctx),
 		Virtual:        true,
 		AutoIncrement:  false,
 		// Marking this as a hidden system column means it can't be referenced
