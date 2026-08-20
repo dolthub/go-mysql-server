@@ -203,8 +203,8 @@ func TestSingleScript(t *testing.T) {
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "SELECT id, ROUND(FIRST_VALUE(d) OVER (ORDER BY id)) AS actual FROM t;",
-					Expected: []sql.Row{},
+					Query:    "SELECT round(date('2001-02-03')) > 0;",
+					Expected: []sql.Row{true},
 				},
 			},
 		},
