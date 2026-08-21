@@ -2500,18 +2500,32 @@ var FunctionQueryTests = []QueryTest{
 		Query:    "select quarter('0000-01-01')",
 		Expected: []sql.Row{{1}},
 	},
+
 	{
-		Query:    "select date('0000-01-01')",
-		Expected: []sql.Row{{"0000-01-01"}},
+		Query:    "select date(NULL)",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "select date(0)",
+		Expected: []sql.Row{{"0000-00-00"}},
 	},
 	{
 		Query:    "select date('0000-00-00')",
 		Expected: []sql.Row{{"0000-00-00"}},
 	},
 	{
-		Query:    "select date(0)",
-		Expected: []sql.Row{{"0000-00-00"}},
+		Query:    "select date('0000-01-01')",
+		Expected: []sql.Row{{"0000-01-01"}},
 	},
+	{
+		Query: "select date('2001-02-03')",
+		Expected: []sql.Row{
+			{
+				time.Date(2001, 2, 3, 0, 0, 0, 0, time.UTC),
+			},
+		},
+	},
+
 	{
 		Query:    "select date(false)",
 		Expected: []sql.Row{{"0000-00-00"}},
@@ -2522,6 +2536,13 @@ var FunctionQueryTests = []QueryTest{
 		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 		ExpectedWarningsCount: 1,
 	},
+	{
+		Query: "select date(20010203)",
+		Expected: []sql.Row{
+			{"2001-02-03"},
+		},
+	},
+
 	{
 		Query:    "select extract(day from 0)",
 		Expected: []sql.Row{{0}},
