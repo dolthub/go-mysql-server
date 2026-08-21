@@ -1532,6 +1532,23 @@ var FunctionQueryTests = []QueryTest{
 		},
 	},
 	{
+		Skip:  true,
+		Query: `SELECT round(date('2001-02-03'))`,
+		Expected: []sql.Row{
+			{20010203},
+		},
+	},
+	{
+		// TODO: This is just testing for a panic. The core issue is part of several DATE conversion bugs.
+		//  Replace with above skipped test when fixed.
+		//  Tracking Issue: https://github.com/dolthub/dolt/issues/10278
+		Query: `SELECT round(date('2001-02-03')) > 0`,
+		Expected: []sql.Row{
+			{true},
+		},
+	},
+
+	{
 		Query:    "SELECT POW(2,3) FROM dual",
 		Expected: []sql.Row{{float64(8)}},
 	},
