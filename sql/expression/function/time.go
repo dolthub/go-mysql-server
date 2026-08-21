@@ -16,6 +16,7 @@ package function
 
 import (
 	"fmt"
+	"github.com/dolthub/vitess/go/mysql"
 	"strings"
 	"time"
 
@@ -1325,30 +1326,26 @@ func (*Date) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID,
 }
 
 // Eval implements the Expression interface.
-func (d *Date) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	dateVal, err := d.Child.Eval(ctx, row)
+func (d *Date) Eval(ctx *sql.Context, row sql.Row) (any, error) {
+	val, err := d.Child.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
-	date, err := getDate(ctx, dateVal)
+	// TODO: why don't we use types.Date.Convert()?
+	if val == nil {
+		return nil, nil
+	}
+
+	date, err := types.DatetimeMaxPrecision.ConvertWithoutRangeCheck(ctx, val)
 	if err != nil {
-		return nil, err
-	}
-	if date == nil {
-		return nil, nil
-	}
-
-	dateTime, ok := date.(time.Time)
-	if !ok {
-		ctx.Warn(1292, "%s", types.ErrConvertingToTime.New(dateVal).Error())
-		return nil, nil
-	}
-	if dateTime.Equal(types.ZeroTime) {
-		return types.ZeroDateStr, nil
+		if sql.ErrTruncatedIncorrect.Is(err) {
+			ctx.Warn(mysql.ERTruncatedWrongValue, err.Error())
+		}
 	}
 
-	return dateTime.Format("2006-01-02"), nil
+	// TODO: zero out the time portion of dateTime
+	return date, nil
 }
 
 // WithChildren implements the Expression interface.
