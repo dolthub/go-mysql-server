@@ -2798,4 +2798,14 @@ var FunctionQueryTests = []QueryTest{
 		Query:    `SELECT SOUNDEX('hello')`,
 		Expected: []sql.Row{{"H400"}},
 	},
+	{
+		// MySQL's my_uni_isalpha counts every code point at or above U+00C0 as a letter,
+		// including U+00D7 MULTIPLICATION SIGN. Used to be skipped as leading garbage.
+		Query:    `SELECT SOUNDEX('×')`,
+		Expected: []sql.Row{{"×000"}},
+	},
+	{
+		Query:    `SELECT SOUNDEX('©x')`,
+		Expected: []sql.Row{{"X000"}},
+	},
 }
