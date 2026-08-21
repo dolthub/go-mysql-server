@@ -575,7 +575,16 @@ func (b *Builder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, 
 		win = w.WithWindow(b.ctx, def)
 	}
 
-	col := scopeColumn{col: strings.ToLower(win.String()), scalar: win, typ: win.Type(b.ctx), nullable: win.IsNullable(b.ctx)}
+	// Reuse a window only if it was already built in *this* scope. Do not call
+	// getExpr: it walks groupBy.outScope, CTEs, and parent scopes, which would
+	// falsely merge a subquery window that is textually identical to an outer
+	// window and skip registering the subquery's own windowFuncs entry.
+	winName := strings.ToLower(win.String())
+	if id, ok := inScope.exprs[winName]; ok {
+		return expression.NewGetFieldWithTable(int(id), 0, win.Type(b.ctx), "", "", winName, win.IsNullable(b.ctx))
+	}
+
+	col := scopeColumn{col: winName, scalar: win, typ: win.Type(b.ctx), nullable: win.IsNullable(b.ctx)}
 	id := inScope.newColumn(col)
 	col.id = id
 	win = win.WithId(sql.ColumnId(id)).(sql.WindowAdaptableExpression)
