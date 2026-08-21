@@ -1298,6 +1298,23 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{{"12.34.56.78"}},
 	},
 	{
+		// Above the signed 32-bit range; used to come back as 127.255.255.255
+		Query:    `SELECT INET_NTOA(INET_ATON("192.0.2.1"))`,
+		Expected: []sql.Row{{"192.0.2.1"}},
+	},
+	{
+		Query:    `SELECT INET_NTOA(3221225985)`,
+		Expected: []sql.Row{{"192.0.2.1"}},
+	},
+	{
+		Query:    `SELECT INET_NTOA(4294967295)`,
+		Expected: []sql.Row{{"255.255.255.255"}},
+	},
+	{
+		Query:    `SELECT INET_NTOA(4294967296)`,
+		Expected: []sql.Row{{nil}},
+	},
+	{
 		Query:    `SELECT INET_ATON(INET_NTOA("12345678"))`,
 		Expected: []sql.Row{{uint64(12345678)}},
 	},

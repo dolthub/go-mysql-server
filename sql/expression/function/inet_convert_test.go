@@ -72,6 +72,16 @@ func TestInetNtoa(t *testing.T) {
 		{"valid ipv4 int as string", sql.NewRow("167773450"), "10.0.5.10", false},
 		{"floating point ipv4", sql.NewRow(10.1), "0.0.0.10", false},
 		{"valid ipv6 int", sql.NewRow("\000\000\000\000"), "0.0.0.0", false},
+		// Everything above 127.255.255.255 does not fit a signed 32-bit int.
+		{"first address above signed 32-bit", sql.NewRow(uint32(2147483648)), "128.0.0.0", false},
+		{"documentation address 192.0.2.1", sql.NewRow(uint32(3221225985)), "192.0.2.1", false},
+		{"last ipv4 address", sql.NewRow(uint32(4294967295)), "255.255.255.255", false},
+		{"above signed 32-bit as string", sql.NewRow("3221225985"), "192.0.2.1", false},
+		{"above signed 32-bit as int64", sql.NewRow(int64(3221225985)), "192.0.2.1", false},
+		// Not addresses: MySQL returns NULL rather than wrapping or clamping.
+		{"just above the ipv4 space", sql.NewRow(int64(4294967296)), nil, false},
+		{"negative", sql.NewRow(-1), nil, false},
+		{"beyond int64", sql.NewRow(uint64(18446744073709551615)), nil, false},
 	}
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
