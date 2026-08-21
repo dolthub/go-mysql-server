@@ -2754,6 +2754,36 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Query:    "SELECT 100 NOT IN (SELECT i2 FROM niltable)",
 		Expected: []sql.Row{{nil}},
 	},
+	// Tuple IN (SELECT ...) three-valued membership (NULL stragglers after #3651)
+	{
+		Query:    "SELECT (1, 5) IN (SELECT 1, NULL FROM dual)",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT (1, 5) IN (SELECT * FROM (SELECT 1, NULL FROM dual UNION ALL SELECT 2, 3 FROM dual) t)",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT (1, NULL) IN (SELECT 1, 2 FROM dual)",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT (NULL, NULL) IN (SELECT 1, 2 FROM dual)",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT (1, 5) NOT IN (SELECT 1, NULL FROM dual)",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		// Definite FALSE: non-null left component mismatches despite right NULL
+		Query:    "SELECT (1, NULL) IN (SELECT 2, NULL FROM dual)",
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    "SELECT (1, 5) IN (SELECT 1, 5 FROM dual)",
+		Expected: []sql.Row{{true}},
+	},
 	{
 		Query:    "SELECT 1 IN (2,3,4,null)",
 		Expected: []sql.Row{{nil}},
@@ -9829,14 +9859,6 @@ FROM mytable;`,
 		Expected: []sql.Row{
 			{"DECIMAL"},
 		},
-	},
-	{
-		Query:    "SELECT (1, 5) IN (SELECT 1, NULL FROM dual)",
-		Expected: []sql.Row{{nil}},
-	},
-	{
-		Query:    "SELECT (1, 5) IN (SELECT * FROM (SELECT 1, NULL FROM dual UNION ALL SELECT 2, 3 FROM dual) t)",
-		Expected: []sql.Row{{nil}},
 	},
 }
 
