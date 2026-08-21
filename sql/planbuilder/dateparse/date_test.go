@@ -32,14 +32,14 @@ func TestParseDate(t *testing.T) {
 
 		{"time_only", "22:23:00", "%H:%i:%s", time.Date(-1, time.November, 30, 22, 23, 0, 0, time.UTC)},
 		{"with_time", "Sep 3, 22:23:00 2000", "%b %e, %H:%i:%s %Y", time.Date(2000, time.September, 3, 22, 23, 0, 0, time.UTC)},
-		{"with_pm", "May 3, 10:23:00 PM 2000", "%b %e, %h:%i:%s %p %Y", time.Date(2000, time.May, 3, 10, 23, 0, 0, time.UTC)},
-		{"lowercase_pm", "Jul 3, 10:23:00 pm 2000", "%b %e, %h:%i:%s %p %Y", time.Date(2000, time.July, 3, 10, 23, 0, 0, time.UTC)},
+		{"with_pm", "May 3, 10:23:00 PM 2000", "%b %e, %h:%i:%s %p %Y", time.Date(2000, time.May, 3, 22, 23, 0, 0, time.UTC)},
+		{"lowercase_pm", "Jul 3, 10:23:00 pm 2000", "%b %e, %h:%i:%s %p %Y", time.Date(2000, time.July, 3, 22, 23, 0, 0, time.UTC)},
 		{"with_am", "Mar 3, 10:23:00 am 2000", "%b %e, %h:%i:%s %p %Y", time.Date(2000, time.March, 3, 10, 23, 0, 0, time.UTC)},
 
-		{"month_number", "1 3, 10:23:00 pm 2000", "%c %e, %h:%i:%s %p %Y", time.Date(2000, time.January, 3, 10, 23, 0, 0, time.UTC)},
+		{"month_number", "1 3, 10:23:00 pm 2000", "%c %e, %h:%i:%s %p %Y", time.Date(2000, time.January, 3, 22, 23, 0, 0, time.UTC)},
 
-		{"day_with_suffix", "Jun 3rd, 10:23:00 pm 2000", "%b %D, %h:%i:%s %p %Y", time.Date(2000, time.June, 3, 10, 23, 0, 0, time.UTC)},
-		{"day_with_suffix_2", "Oct 21st, 10:23:00 pm 2000", "%b %D, %h:%i:%s %p %Y", time.Date(2000, time.October, 21, 10, 23, 0, 0, time.UTC)},
+		{"day_with_suffix", "Jun 3rd, 10:23:00 pm 2000", "%b %D, %h:%i:%s %p %Y", time.Date(2000, time.June, 3, 22, 23, 0, 0, time.UTC)},
+		{"day_with_suffix_2", "Oct 21st, 10:23:00 pm 2000", "%b %D, %h:%i:%s %p %Y", time.Date(2000, time.October, 21, 22, 23, 0, 0, time.UTC)},
 		{"with_timestamp", "01/02/2003, 12:13:14", "%c/%d/%Y, %T", time.Date(2003, time.January, 2, 12, 13, 14, 0, time.UTC)},
 
 		{"month_number", "03: 3, 20", "%m: %e, %y", time.Date(2020, time.March, 3, 0, 0, 0, 0, time.UTC)},
@@ -52,7 +52,7 @@ func TestParseDate(t *testing.T) {
 		{"hour_number", "01/02/99 5:14", "%m/%e/%y %h:%i", time.Date(1999, time.January, 2, 5, 14, 0, 0, time.UTC)},
 		{"hour_number_2", "01/02/99 5:14", "%m/%e/%y %I:%i", time.Date(1999, time.January, 2, 5, 14, 0, 0, time.UTC)},
 
-		{"timestamp", "01/02/99 05:14:12 PM", "%m/%e/%y %r", time.Date(1999, time.January, 2, 5, 14, 12, 0, time.UTC)},
+		{"timestamp", "01/02/99 05:14:12 PM", "%m/%e/%y %r", time.Date(1999, time.January, 2, 17, 14, 12, 0, time.UTC)},
 		{"date_with_seconds", "01/02/99 57", "%m/%e/%y %S", time.Date(1999, time.January, 2, 0, 0, 57, 0, time.UTC)},
 
 		{"date_by_year_offset", "100 20", "%j %y", time.Date(2020, time.April, 9, 0, 0, 0, 0, time.UTC)},
@@ -64,6 +64,72 @@ func TestParseDate(t *testing.T) {
 			actual, err := ParseDateWithFormat(tt.date, tt.format)
 			require.NoError(t, err)
 			require.Equal(t, tt.expected, actual)
+		})
+	}
+}
+
+func TestParseDateTwelveHourClock(t *testing.T) {
+	setupTimezone(t)
+
+	tests := [...]struct {
+		name     string
+		date     string
+		format   string
+		expected interface{}
+	}{
+		// %p moves the hour into the afternoon, and 12 PM stays at noon.
+		{"pm_afternoon", "01:02 PM", "%h:%i %p", time.Date(-1, time.November, 30, 13, 2, 0, 0, time.UTC)},
+		{"pm_noon", "12:02 PM", "%h:%i %p", time.Date(-1, time.November, 30, 12, 2, 0, 0, time.UTC)},
+		{"pm_late", "11:02 PM", "%h:%i %p", time.Date(-1, time.November, 30, 23, 2, 0, 0, time.UTC)},
+		{"am_morning", "01:02 AM", "%h:%i %p", time.Date(-1, time.November, 30, 1, 2, 0, 0, time.UTC)},
+		{"am_midnight", "12:02 AM", "%h:%i %p", time.Date(-1, time.November, 30, 0, 2, 0, 0, time.UTC)},
+		{"pm_lowercase", "01:02 pm", "%h:%i %p", time.Date(-1, time.November, 30, 13, 2, 0, 0, time.UTC)},
+		{"capital_i_specifier", "01:02 PM", "%I:%i %p", time.Date(-1, time.November, 30, 13, 2, 0, 0, time.UTC)},
+		{"lowercase_l_specifier", "1:02 PM", "%l:%i %p", time.Date(-1, time.November, 30, 13, 2, 0, 0, time.UTC)},
+
+		// %r carries its own AM/PM marker.
+		{"r_pm", "05:14:12 PM", "%r", time.Date(-1, time.November, 30, 17, 14, 12, 0, time.UTC)},
+		{"r_am", "05:14:12 AM", "%r", time.Date(-1, time.November, 30, 5, 14, 12, 0, time.UTC)},
+		{"r_noon", "12:14:12 PM", "%r", time.Date(-1, time.November, 30, 12, 14, 12, 0, time.UTC)},
+		{"r_midnight", "12:14:12 AM", "%r", time.Date(-1, time.November, 30, 0, 14, 12, 0, time.UTC)},
+
+		// Without %p a 12-hour specifier still wraps 12 to 0, as MySQL does.
+		{"twelve_without_marker", "12:34", "%h:%i", time.Date(-1, time.November, 30, 0, 34, 0, 0, time.UTC)},
+		{"one_without_marker", "01:34", "%h:%i", time.Date(-1, time.November, 30, 1, 34, 0, 0, time.UTC)},
+
+		{"pm_with_date", "May 3, 10:23:00 PM 2000", "%b %e, %h:%i:%s %p %Y", time.Date(2000, time.May, 3, 22, 23, 0, 0, time.UTC)},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actual, err := ParseDateWithFormat(tt.date, tt.format)
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, actual)
+		})
+	}
+}
+
+func TestParseDateTwelveHourClockOutOfRange(t *testing.T) {
+	setupTimezone(t)
+
+	// MySQL rejects an hour outside 1..12 for the 12-hour specifiers, which
+	// makes STR_TO_DATE return NULL rather than a silently wrong time.
+	tests := [...]struct {
+		name   string
+		date   string
+		format string
+	}{
+		{"thirteen_pm", "13:02 PM", "%h:%i %p"},
+		{"zero_am", "00:02 AM", "%h:%i %p"},
+		{"thirteen_no_marker", "13:02", "%h:%i"},
+		{"zero_no_marker", "00:02", "%I:%i"},
+		{"r_thirteen", "13:14:12 PM", "%r"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := ParseDateWithFormat(tt.date, tt.format)
+			require.Error(t, err)
 		})
 	}
 }

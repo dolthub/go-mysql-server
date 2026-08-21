@@ -104,6 +104,18 @@ func ParseDateWithFormat(date, format string) (interface{}, error) {
 
 	if dt.hours != nil {
 		hours = int(*dt.hours)
+		if dt.twelveHourClock {
+			// MySQL range-checks the hour of a 12-hour specifier and then folds
+			// it onto the 24-hour clock: hour%12, plus 12 when the marker says
+			// PM. That keeps 12 AM at midnight and 12 PM at noon.
+			if hours < 1 || hours > 12 {
+				return nil, fmt.Errorf("hour %d is not in the range 1..12 required by a 12-hour specifier", hours)
+			}
+			hours = hours % 12
+			if dt.am != nil && !*dt.am {
+				hours += 12
+			}
+		}
 	}
 	if dt.minutes != nil {
 		minutes = int(*dt.minutes)
@@ -212,6 +224,12 @@ type datetime struct {
 
 	// true => AM, false => PM, nil => unspecified
 	am *bool
+
+	// twelveHourClock is set when the hour came from a 12-hour specifier
+	// (%h, %I, %l or %r) rather than a 24-hour one. MySQL calls this
+	// usa_time; it decides whether the hour is range-checked against 1..12
+	// and whether the AM/PM marker is applied to it.
+	twelveHourClock bool
 
 	hours        *uint
 	minutes      *uint
