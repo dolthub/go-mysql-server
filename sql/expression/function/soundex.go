@@ -17,7 +17,6 @@ package function
 import (
 	"fmt"
 	"strings"
-	"unicode"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -76,7 +75,7 @@ func (s *Soundex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	var last rune
 	for _, c := range v.(string) {
 		c = soundexToUpper(c)
-		if last == 0 && !unicode.IsLetter(c) {
+		if last == 0 && !soundexIsAlpha(c) {
 			continue
 		}
 		code := s.code(c)
@@ -112,6 +111,16 @@ func soundexToUpper(c rune) rune {
 		return c - 'a' + 'A'
 	}
 	return c
+}
+
+// soundexIsAlpha mirrors MySQL's my_uni_isalpha (sql/item_strfunc.cc), which decides what
+// SOUNDEX treats as a letter. It is deliberately coarser than unicode.IsLetter: MySQL
+// counts every code point at or above U+00C0 as a letter, on the reasoning quoted in its
+// own source that "characters between 'z' and U+00C0 are controls and punctuations".
+// U+00D7 MULTIPLICATION SIGN and U+00F7 DIVISION SIGN sit above that line, so MySQL keeps
+// them as the leading letter where unicode.IsLetter skipped them as garbage.
+func soundexIsAlpha(c rune) bool {
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c >= 0xC0
 }
 
 func (s *Soundex) code(c rune) rune {

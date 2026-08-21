@@ -115,3 +115,45 @@ func TestSoundexNonASCIIInitial(t *testing.T) {
 		})
 	}
 }
+
+// TestSoundexAlphaClassification covers MySQL's my_uni_isalpha (sql/item_strfunc.cc),
+// which decides what counts as a letter for SOUNDEX:
+//
+//	static bool my_uni_isalpha(int wc) {
+//	  /*
+//	    Return true for all Basic Latin letters: a..z A..Z.
+//	    Return true for all Unicode characters with code higher than U+00C0:
+//	    - characters between 'z' and U+00C0 are controls and punctuations.
+//	    - "U+00C0 LATIN CAPITAL LETTER A WITH GRAVE" is the first letter after 'z'.
+//	  */
+//	  return (wc >= 'a' && wc <= 'z') || (wc >= 'A' && wc <= 'Z') || (wc >= 0xC0);
+//	}
+//
+// That is coarser than unicode.IsLetter. Everything at or above U+00C0 is a letter as far
+// as SOUNDEX is concerned, including U+00D7 MULTIPLICATION SIGN and U+00F7 DIVISION SIGN,
+// which unicode.IsLetter rejects -- so they used to be skipped as leading garbage.
+func TestSoundexAlphaClassification(t *testing.T) {
+	testCases := []struct {
+		name     string
+		input    string
+		expected interface{}
+	}{
+		{"multiplication sign is a letter above U+00C0", "×", "×000"},
+		{"division sign is a letter above U+00C0", "÷", "÷000"},
+		{"symbol above U+00C0 takes the initial slot", "×y", "×000"},
+		// Guards: below U+00C0 the two rules agree, so nothing here moves.
+		{"ASCII punctuation is still garbage", "-", "0000"},
+		{"ASCII digit is still garbage", "1", "0000"},
+		{"empty is still empty", "", "0000"},
+		{"copyright sign is below U+00C0", "©x", "X000"},
+		{"latin letters are unaffected", "Wilcox", "W420"},
+	}
+
+	ctx := sql.NewEmptyContext()
+	for _, tt := range testCases {
+		f := NewSoundex(ctx, expression.NewGetField(0, types.LongText, "", true))
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.expected, eval(t, f, sql.NewRow(tt.input)))
+		})
+	}
+}
