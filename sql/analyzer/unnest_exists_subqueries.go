@@ -106,6 +106,10 @@ func simplifyPartialJoinParents(n sql.Node) (sql.Node, bool) {
 		switch n := ret.(type) {
 		case *plan.Having:
 			return nil, false
+		case *plan.Window:
+			// Window functions are 1:1 row-preserving (empty child -> empty output; see
+			// sql/rowexec/rel_iters.go windowToIter), so stripping cannot change row existence.
+			ret = n.Children()[0]
 		case *plan.Project, *plan.GroupBy, *plan.Sort, *plan.Distinct, *plan.TopN, *plan.Limit:
 			// TODO: In most cases, it's necessary to remove *plan.Limit because child Filter nodes will have been
 			//  hoisted out. But what if Limit.Limit evals to 0? https://github.com/dolthub/dolt/issues/10493
