@@ -268,18 +268,18 @@ func (r *Round) Children() []sql.Expression {
 }
 
 // Eval implements the Expression interface.
-func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+func (r *Round) Eval(ctx *sql.Context, row sql.Row) (any, error) {
 	val, err := r.Num.Eval(ctx, row)
 	if err != nil {
 		return nil, err
-	}
-	if val == nil {
-		return nil, nil
 	}
 
 	val, _, err = types.InternalDecimalType.Convert(ctx, val)
 	if err != nil && sql.ErrTruncatedIncorrect.Is(err) {
 		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
+	}
+	if val == nil {
+		return nil, nil
 	}
 
 	prec := int32(0)
@@ -310,22 +310,21 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 	}
 
-	var res interface{}
 	tmp, err := sql.DecimalRound(val.(*apd.Decimal), prec)
 	if err != nil {
 		return nil, err
 	}
 
+	var res any
 	lType := r.Num.Type(ctx)
-	if types.IsSigned(lType) {
-		res, _, err = types.Int64.Convert(ctx, tmp)
-	} else if types.IsUnsigned(lType) {
-		res, _, err = types.Uint64.Convert(ctx, tmp)
-	} else if types.IsFloat(lType) {
-		res, _, err = types.Float64.Convert(ctx, tmp)
-	} else if types.IsDecimal(lType) {
+	switch {
+	case types.IsDecimal(lType):
 		res = tmp
-	} else if types.IsTextBlob(lType) {
+	case types.IsSigned(lType):
+		res, _, err = types.Int64.Convert(ctx, tmp)
+	case types.IsUnsigned(lType):
+		res, _, err = types.Uint64.Convert(ctx, tmp)
+	default:
 		res, _, err = types.Float64.Convert(ctx, tmp)
 	}
 	if err != nil && sql.ErrTruncatedIncorrect.Is(err) {

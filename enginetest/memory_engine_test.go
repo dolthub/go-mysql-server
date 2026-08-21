@@ -19,6 +19,7 @@ import (
 	"log"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/dolthub/sqllogictest/go/logictest"
 	"github.com/stretchr/testify/require"
@@ -193,30 +194,35 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "Parse table name as column",
-			SetUpScript: []string{
-				`CREATE TABLE test (pk INT PRIMARY KEY, v1 VARCHAR(255));`,
-				`INSERT INTO test VALUES (1, 'a'), (2, 'b');`,
-			},
+			Name:        "Parse table name as column",
+			SetUpScript: []string{},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "SELECT temporarytesting(t) FROM test AS t;",
-					Expected: []sql.Row{},
+					Query:    "select date(NULL)",
+					Expected: []sql.Row{{nil}},
 				},
 				{
-					Query:    "SELECT temporarytesting(test) FROM test;",
-					Expected: []sql.Row{},
+					Query:    "select date(0)",
+					Expected: []sql.Row{{"0000-00-00"}},
 				},
 				{
-					Query:    "SELECT temporarytesting(pk, test) FROM test;",
-					Expected: []sql.Row{},
+					Query:    "select date('0000-00-00')",
+					Expected: []sql.Row{{"0000-00-00"}},
 				},
 				{
-					Query:    "SELECT temporarytesting(v1, test, pk) FROM test;",
-					Expected: []sql.Row{},
+					Query:    "select date('0000-01-01')",
+					Expected: []sql.Row{{"0000-01-01"}},
+				},
+				{
+					Query: "select date('2001-02-03')",
+					Expected: []sql.Row{
+						{
+							time.Date(2001, 2, 3, 0, 0, 0, 0, time.UTC),
+						},
+					},
 				},
 			},
 		},
