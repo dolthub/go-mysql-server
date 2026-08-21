@@ -191,16 +191,10 @@ func daysToYear(days int64) (int64, int64) {
 	return years, days
 }
 
-func isLeapYear(year int64) bool {
-	return year != 0 && ((year%4 == 0 && year%100 != 0) || year%400 == 0)
-}
-
-var daysPerMonth = [12]int64{31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}
-
 // daysToMonth converts a number of days to the month and the remaining days in that month
 func daysToMonth(year, days int64) (int64, int64) {
-	for i, m := range daysPerMonth {
-		if i == 1 && isLeapYear(year) {
+	for i, m := range types.DaysPerMonth {
+		if i == 1 && types.IsLeapYear(year) {
 			m++ // leap day
 		}
 		if days < m {
@@ -287,14 +281,6 @@ func (f *LastDay) WithChildren(ctx *sql.Context, children ...sql.Expression) (sq
 	return NewLastDay(ctx, children[0]), nil
 }
 
-// lastDay returns the last day of the month for the given year and month
-func lastDay(year, month int) int {
-	if month == 2 && isLeapYear(int64(year)) {
-		return 29
-	}
-	return int(daysPerMonth[month-1])
-}
-
 // Eval implements sql.Expression
 func (f *LastDay) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	date, err := f.Child.Eval(ctx, row)
@@ -316,7 +302,7 @@ func (f *LastDay) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	lDay := lastDay(d.Year(), int(d.Month()))
+	lDay := GetLastDay(d.Year(), int(d.Month()))
 	return time.Date(d.Year(), d.Month(), lDay, 0, 0, 0, 0, time.UTC), nil
 }
 

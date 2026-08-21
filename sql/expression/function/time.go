@@ -1344,7 +1344,7 @@ func (d *Date) Eval(ctx *sql.Context, row sql.Row) (any, error) {
 		}
 	}
 
-	// TODO: zero out the time portion of dateTime
+	// TODO: zero out the time portion of dateTime?
 	return date, nil
 }
 
