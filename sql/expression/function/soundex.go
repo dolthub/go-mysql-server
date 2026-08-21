@@ -74,7 +74,8 @@ func (s *Soundex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	var b strings.Builder
 	var last rune
-	for _, c := range strings.ToUpper(v.(string)) {
+	for _, c := range v.(string) {
+		c = soundexToUpper(c)
 		if last == 0 && !unicode.IsLetter(c) {
 			continue
 		}
@@ -97,6 +98,20 @@ func (s *Soundex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		b.WriteRune('0')
 	}
 	return b.String(), nil
+}
+
+// soundexToUpper mirrors MySQL's soundex_toupper (sql/item_strfunc.cc), which uppercases
+// ASCII 'a'-'z' and nothing else. The first letter of the input is emitted verbatim after
+// this conversion, so using unicode-wide case folding here changes the returned string:
+// SOUNDEX('é') gave 'É000' where MySQL gives 'é000' (dolthub/dolt#11546). It also matters
+// for the codes, because Go's case folding maps some non-ASCII letters onto ASCII ones --
+// U+017F LATIN SMALL LETTER LONG S becomes 'S' and would then be coded '2' rather than the
+// '0' MySQL assigns to anything outside A-Z.
+func soundexToUpper(c rune) rune {
+	if c >= 'a' && c <= 'z' {
+		return c - 'a' + 'A'
+	}
+	return c
 }
 
 func (s *Soundex) code(c rune) rune {
