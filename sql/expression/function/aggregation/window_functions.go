@@ -928,34 +928,15 @@ func (a *GroupConcatAgg) filterToDistinct(ctx *sql.Context, buf sql.WindowBuffer
 	rows := make([]sql.Row, 0)
 	distinct := make(map[string]struct{}, 0)
 	for _, row := range buf {
-		evalRow, retType, err := evalExprs(ctx, a.gc.selectExprs, row)
+		vs, retType, skip, err := evalSelectExprsForGroupConcat(ctx, a.gc.selectExprs, row)
 		if err != nil {
 			return nil, nil, err
 		}
 
 		a.gc.returnType = retType
-
-		// Skip if this is a null row
-		if evalRow == nil {
+		if skip {
 			continue
 		}
-
-		var v interface{}
-		if retType == types.Blob {
-			v, _, err = types.Blob.Convert(ctx, evalRow[0])
-		} else {
-			v, _, err = types.LongText.Convert(ctx, evalRow[0])
-		}
-
-		if err != nil {
-			return nil, nil, err
-		}
-
-		if v == nil {
-			continue
-		}
-
-		vs := v.(string)
 
 		// Get the current array of rows and the map
 		// Check if distinct is active if so look at and update our map

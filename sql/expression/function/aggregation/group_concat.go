@@ -257,56 +257,17 @@ type groupConcatBuffer struct {
 
 // Update implements the AggregationBuffer interface.
 func (g *groupConcatBuffer) Update(ctx *sql.Context, originalRow sql.Row) error {
-	evalRow, retType, err := evalExprs(ctx, g.gc.selectExprs, originalRow)
+	vs, retType, skip, err := evalSelectExprsForGroupConcat(ctx, g.gc.selectExprs, originalRow)
 	if err != nil {
 		return err
 	}
-
 	g.gc.returnType = retType
-
-	// Skip if this is a null row
-	if evalRow == nil {
+	if skip {
 		return nil
 	}
-
-	var v interface{}
-	var vs string
-	if types.IsBlobType(retType) {
-		v, _, err = types.Blob.Convert(ctx, evalRow[0])
-		if err != nil {
-			return err
-		}
-		vb, _, err := sql.Unwrap[[]byte](ctx, v)
-		if err != nil {
-			return err
-		}
-		vs = string(vb)
-		if len(vs) == 0 {
-			return nil
-		}
-	} else {
-		// Use type-aware conversion for enum types
-		if len(g.gc.selectExprs) > 0 {
-			vs, _, err = types.ConvertToCollatedString(ctx, evalRow[0], g.gc.selectExprs[0].Type(ctx))
-			if err != nil {
-				return err
-			}
-			if vs == "" {
-				return nil
-			}
-		} else {
-			v, _, err = types.LongText.Convert(ctx, evalRow[0])
-			if err != nil {
-				return err
-			}
-			if v == nil {
-				return nil
-			}
-			vs, _, err = sql.Unwrap[string](ctx, v)
-			if err != nil {
-				return err
-			}
-		}
+	// Aggregate path skips empty strings (window path includes them; MySQL-aligned).
+	if len(vs) == 0 {
+		return nil
 	}
 
 	// Get the current array of rows and the map
@@ -396,4 +357,49 @@ func evalExprs(ctx *sql.Context, exprs []sql.Expression, row sql.Row) (sql.Row, 
 	}
 
 	return result, retType, nil
+}
+
+// evalSelectExprsForGroupConcat: MySQL multi-expr CONCAT per row; NULL skips (https://dev.mysql.com/doc/refman/8.0/en/aggregate-functions.html#function_group-concat).
+// skip only for NULL/no-exprs; empty strings returned so callers decide.
+func evalSelectExprsForGroupConcat(ctx *sql.Context, exprs []sql.Expression, row sql.Row) (string, sql.Type, bool, error) {
+	if len(exprs) == 0 {
+		return "", types.Text, true, nil
+	}
+
+	evalRow, retType, err := evalExprs(ctx, exprs, row)
+	if err != nil {
+		return "", nil, false, err
+	}
+
+	for _, v := range evalRow {
+		if v == nil {
+			return "", retType, true, nil
+		}
+	}
+
+	var sb strings.Builder
+	if types.IsBlobType(retType) {
+		for _, v := range evalRow {
+			converted, _, err := types.Blob.Convert(ctx, v)
+			if err != nil {
+				return "", nil, false, err
+			}
+			vb, _, err := sql.Unwrap[[]byte](ctx, converted)
+			if err != nil {
+				return "", nil, false, err
+			}
+			sb.Write(vb)
+		}
+	} else {
+		for i, v := range evalRow {
+			// Use type-aware conversion for enum types
+			part, _, err := types.ConvertToCollatedString(ctx, v, exprs[i].Type(ctx))
+			if err != nil {
+				return "", nil, false, err
+			}
+			sb.WriteString(part)
+		}
+	}
+
+	return sb.String(), retType, false, nil
 }
