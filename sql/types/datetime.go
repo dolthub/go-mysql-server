@@ -23,7 +23,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"unicode"
 
 	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -134,7 +133,7 @@ var (
 		"20060102150405",
 	}, DateOnlyLayouts...)
 
-	// zeroTime is -0001-11-30 00:00:00 UTC which is the closest Go can get to 0000-00-00 00:00:00 without conflicting
+	// ZeroTime is -0001-11-30 00:00:00 UTC which is the closest Go can get to 0000-00-00 00:00:00 without conflicting
 	// with a valid timestamp in MySQL
 	ZeroTime = time.Date(0, 0, 0, 0, 0, 0, 0, time.UTC)
 
@@ -308,10 +307,10 @@ func (t datetimeType) ConvertWithoutRangeCheck(ctx context.Context, v interface{
 	if err != nil {
 		return time.Time{}, err
 	}
-	if bs, ok := v.([]byte); ok {
-		v = string(bs)
-	}
+
 	switch value := v.(type) {
+	case []byte:
+		return t.ConvertWithoutRangeCheck(ctx, string(value))
 	case string:
 		value = strings.Trim(value, " \t\n\r\v\f")
 		if IsZeroTimestampStr(value) {
@@ -416,38 +415,132 @@ func (t datetimeType) ConvertWithoutRangeCheck(ctx context.Context, v interface{
 	return res, err
 }
 
+// IsLeapYear returns if |year| is a leap year
+func IsLeapYear(year int64) bool {
+	return year != 0 && ((year%4 == 0 && year%100 != 0) || year%400 == 0)
+}
+
+var DaysPerMonth = [12]int64{31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}
+
+// GetLastDay returns the last day of the month for the given year and month
+func GetLastDay(year, month int) int {
+	if month == 2 && IsLeapYear(int64(year)) {
+		return 29
+	}
+	return int(DaysPerMonth[month-1])
+}
+
+// DateTimeRegex will match MySQL's DateTime format.
+//
+//	match 1: the entire datetime
+//	group 1: year
+//	group 2: month
+//	group 3: day
+//	group 4: hour (optional)
+//	group 5: minutes (optional)
+//	group 6: seconds (optional)
+//	group 7: microseconds (optional)
+//	group 8: any invalid trailing characters (optional)
+var DateTimeRegex = regexp.MustCompile(`^(\d+)-(\d+)-(\d+) ?(\d*)?(:?\d*)?(:?\d*)?(\.\d*)?(.+)?$`)
+
+// parseDatetime parses a DateTime according to MySQL rules.
+// TODO: not sure if parsed bool return value is necessary
 func parseDatetime(value string) (time.Time, bool, error) {
 	if t, err := time.Parse(TimezoneTimestampDatetimeLayout, value); err == nil {
 		return t.UTC(), true, nil
 	}
+	// TODO: MySQL supports a "relaxed" DateTime format that allows any punctuation (and nothing) as delimiters for
+	//  the date and time portions specifically for INSERT, UPDATE, and comparisons.
+	//  However, since only '-' and empty delimiter don't throw warnings, we are only going to support those.
 
-	valueLen := len(value)
-	end := valueLen
+	// TODO: no delimiters
 
-	for end >= MinDatetimeStringLength {
-		for _, layout := range TimestampDatetimeLayouts {
-			if t, err := time.Parse(layout, value[0:end]); err == nil {
-				if end != valueLen {
-					err = sql.ErrTruncatedIncorrect.New(t, value)
-				}
-				return t.UTC(), true, err
-			}
-		}
-		end = findDatetimeEnd(value, end-1)
+	value = strings.Trim(value, NumericCutSet) // TODO: leading an trailing whitespace should throw warning
+	matchIdxs := DateTimeRegex.FindStringSubmatchIndex(value)
+	if len(matchIdxs) == 0 {
+		return ZeroTime, false, sql.ErrTruncatedIncorrect.New(value)
 	}
-	return time.Time{}, false, nil
-}
 
-// findDatetimeEnd returns the index of the last digit before `end`
-func findDatetimeEnd(value string, end int) int {
-	for end >= MinDatetimeStringLength {
-		char := rune(value[end-1])
-		if unicode.IsDigit(char) {
-			return end
-		}
-		end--
+	// Date portion with the '-' delimiter is required for valid DateTime parsing, so no need to check for -1 indexes
+	yearStr := value[matchIdxs[2]:matchIdxs[3]]
+	monthStr := value[matchIdxs[4]:matchIdxs[5]]
+	dayStr := value[matchIdxs[6]:matchIdxs[7]]
+
+	// TODO: Check for SQL_MODE options NO_ZERO_IN_DATE and NO_ZERO_DATE
+	// TODO: make constants for MIN/MAX values
+	// Negative numbers should be impossible, so we don't check for them
+	year, err := strconv.Atoi(yearStr)
+	if err != nil {
+		return ZeroTime, false, sql.ErrTruncatedIncorrect.New(value)
 	}
-	return end
+	if year > 9999 {
+		return ZeroTime, false, sql.ErrTruncatedIncorrect.New(value)
+	}
+	month, err := strconv.Atoi(monthStr)
+	if err != nil {
+		return ZeroTime, false, sql.ErrTruncatedIncorrect.New(value)
+	}
+	if month > 12 {
+		return ZeroTime, false, sql.ErrTruncatedIncorrect.New(value)
+	}
+	day, err := strconv.Atoi(dayStr)
+	if lastDay := GetLastDay(year, month); day > lastDay {
+		return ZeroTime, false, sql.ErrTruncatedIncorrect.New(value)
+	}
+	if err != nil {
+		return ZeroTime, false, sql.ErrTruncatedIncorrect.New(value)
+	}
+
+	// The remaining match index pairs are optional
+	// Case 1: matchIdx[i] = -1 and matchIdx[i+1] = -1 => empty string
+	// Case 2: matchIdx[i] = x and matchIdx[i] = x => empty string
+	// Case 3: matchIdx[i] = x and matchIdx[i] = y where y > x => [x+1:y]
+	//	We +1 to x because hour, min, sec, and usec are each preceded by exactly 1 delimiter character
+	var hour, mins, sec, usec int
+	if matchIdxs[8] != matchIdxs[9] {
+		hourStr := value[matchIdxs[8]+1 : matchIdxs[9]]
+		hour, err = strconv.Atoi(hourStr)
+		if err != nil {
+			return ZeroTime, false, sql.ErrTruncatedIncorrect.New(value)
+		}
+		if hour > 23 {
+			return ZeroTime, false, sql.ErrTruncatedIncorrect.New(value)
+		}
+	}
+	if matchIdxs[10] != matchIdxs[11] {
+		minStr := value[matchIdxs[10]+1 : matchIdxs[11]]
+		mins, err = strconv.Atoi(minStr)
+		if err != nil {
+			return ZeroTime, false, sql.ErrTruncatedIncorrect.New(value)
+		}
+		if mins > 59 {
+			return ZeroTime, false, sql.ErrTruncatedIncorrect.New(value)
+		}
+	}
+	if matchIdxs[12] != matchIdxs[13] {
+		secStr := value[matchIdxs[12]+1 : matchIdxs[13]]
+		sec, err = strconv.Atoi(secStr)
+		if err != nil {
+			return ZeroTime, false, sql.ErrTruncatedIncorrect.New(value)
+		}
+		if sec > 59 {
+			return ZeroTime, false, sql.ErrTruncatedIncorrect.New(value)
+		}
+	}
+	// TODO: MySQL reads 7 of them and rounds up
+	if matchIdxs[14] != matchIdxs[15] {
+		usecStr := value[matchIdxs[14]+1:]
+		usecStr = usecStr[:6] // Only the first 6 characters are relevant
+		usec, err = strconv.Atoi(usecStr)
+		if err != nil {
+			return ZeroTime, false, sql.ErrTruncatedIncorrect.New(value)
+		}
+	}
+	if matchIdxs[16] != matchIdxs[17] {
+		// TODO: should throw a warning
+	}
+	resTime := time.Date(year, time.Month(month), day, hour, mins, sec, usec*1000, time.UTC)
+	return resTime, true, nil
 }
 
 // Equals implements the Type interface.
