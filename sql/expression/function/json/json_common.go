@@ -16,7 +16,6 @@ package json
 
 import (
 	"context"
-	goJson "encoding/json"
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -81,7 +80,7 @@ func getJSONDocumentFromRow(ctx *sql.Context, row sql.Row, json sql.Expression) 
 		if err != nil {
 			return nil, err
 		}
-		if err = goJson.Unmarshal(strData.([]byte), &jsonData); err != nil {
+		if err = types.JsonUnmarshal(strData.([]byte), &jsonData); err != nil {
 			return nil, invalidJson(jsType)
 		}
 		return types.JSONDocument{Val: jsonData}, nil

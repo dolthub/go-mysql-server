@@ -4926,6 +4926,18 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{},
 	},
 	{
+		Query:       "select 1, 2, 3 union select 4, 5;",
+		ExpectedErr: planbuilder.ErrSelectsDifferentLength,
+	},
+	{
+		Query:       "select 1, 2, 3 intersect select 4, 5;",
+		ExpectedErr: planbuilder.ErrSelectsDifferentLength,
+	},
+	{
+		Query:       "select 1, 2, 3 except select 4, 5;",
+		ExpectedErr: planbuilder.ErrSelectsDifferentLength,
+	},
+	{
 		SkipPrepared: true,
 		Query:        "",
 		Expected:     []sql.Row{},
@@ -8796,6 +8808,26 @@ from typestable`,
 		Query: "select if(cast(0 as binary), 'true', 'false');",
 		Expected: []sql.Row{
 			{"false"},
+		},
+	},
+	{
+		// 9223372036854775808 cannot be represented as a float64
+		Query: "select cast('-9223372036854775806' as json);",
+		Expected: []sql.Row{
+			{types.JSONDocument{int64(-9223372036854775806)}},
+		},
+	},
+	{
+		// 9223372036854775808 cannot be represented as a float64 or an int64
+		Query: "select cast('18446744073709551615' as json);",
+		Expected: []sql.Row{
+			{types.JSONDocument{uint64(18446744073709551615)}},
+		},
+	},
+	{
+		Query: "select cast('1.5' as json);",
+		Expected: []sql.Row{
+			{types.JSONDocument{float64(1.5)}},
 		},
 	},
 	{

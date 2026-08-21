@@ -131,8 +131,13 @@ func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.SetOp, name strin
 	var cols sql.ColSet
 	{
 		rInit = leftScope.node
-		recSch = make(sql.Schema, len(rInit.Schema(b.ctx)))
-		for i, c := range rInit.Schema(b.ctx) {
+		rInitSch := rInit.Schema(b.ctx)
+		// recursive CTEs may leave columns empty
+		if len(columns) != 0 && len(columns) != len(rInitSch) {
+			b.handleErr(ErrSelectsDifferentLength.New(len(columns), len(rInitSch)))
+		}
+		recSch = make(sql.Schema, len(rInitSch))
+		for i, c := range rInitSch {
 			newC := c.Copy()
 			if len(columns) > 0 {
 				newC.Name = columns[i]
