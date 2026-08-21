@@ -69,6 +69,18 @@ func TestLoadFileBadDir(t *testing.T) {
 	assert.Equal(t, nil, res)
 }
 
+func TestLoadFileNumericArg(t *testing.T) {
+	// LOAD_FILE with a non-string (numeric) argument must not panic. MySQL
+	// coerces the argument to a string filename, does not find such a file,
+	// and returns SQL NULL. See dolthub/dolt#11564.
+	fileName := expression.NewLiteral(int8(1), types.Int8)
+	fn := NewLoadFile(sql.NewEmptyContext(), fileName)
+
+	res, err := fn.Eval(sql.NewEmptyContext(), sql.Row{})
+	assert.NoError(t, err)
+	assert.Equal(t, nil, res)
+}
+
 type loadFileTestCase struct {
 	name     string
 	fileData []byte
