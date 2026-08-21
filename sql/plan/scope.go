@@ -147,6 +147,9 @@ func (s *Scope) NewScopeFromSubqueryAlias(sqa *SubqueryAlias) *Scope {
 			if s.CurrentNodeIsFromSubqueryExpression { // TODO: probably copy this for lateral
 				sqa.OuterScopeVisibility = true
 				subScope.nodes = append(subScope.nodes, s.InnerToOuter()...)
+				// Propagate this flag so that derived tables nested inside |sqa| (i.e. a derived
+				// table within a derived table) also receive outer scope visibility.
+				subScope.CurrentNodeIsFromSubqueryExpression = true
 			}
 		}
 		if len(s.joinSiblings) > 0 {

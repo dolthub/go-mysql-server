@@ -1545,7 +1545,14 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 								nullable = ""
 							}
 
-							// TODO: we currently don't support expression index such as ((i * 20))
+							var colNameVal, expression interface{}
+							if col.HiddenSystem && col.Generated != nil {
+								colNameVal = nil
+								expression = plan.GetGeneratedColumnExpressionString(col)
+							} else {
+								colNameVal = colName
+								expression = nil
+							}
 
 							rows = append(rows, Row{
 								db.CatalogName, // table_catalog
@@ -1555,7 +1562,7 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 								db.SchemaName,  // index_schema
 								indexName,      // index_name
 								seqInIndex,     // seq_in_index	NOT NULL
-								colName,        // column_name
+								colNameVal,     // column_name
 								collation,      // collation
 								cardinality,    // cardinality
 								subPart,        // sub_part
@@ -1565,7 +1572,7 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 								comment,        // comment		NOT NULL
 								indexComment,   // index_comment	NOT NULL
 								isVisible,      // is_visible		NOT NULL
-								nil,            // expression
+								expression,     // expression
 							})
 						}
 					}

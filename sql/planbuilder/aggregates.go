@@ -342,7 +342,7 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 	return col.scalarGf()
 }
 
-// newAggregation creates a new aggregation function instanc from the arguments given
+// newAggregation creates a new aggregation function instance from the arguments given
 func (b *Builder) newAggregation(e *ast.FuncExpr, name string, args []sql.Expression) sql.Aggregation {
 	var agg sql.Aggregation
 	if e.Distinct && name == "count" {

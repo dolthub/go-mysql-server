@@ -25,10 +25,10 @@ var (
 
 	ErrPrimaryKeyOnNullField = errors.NewKind("All parts of PRIMARY KEY must be NOT NULL")
 
-	// ErrUnionSchemasDifferentLength is returned when the two sides of a
+	// ErrSelectsDifferentLength is returned when the two sides of a
 	// UNION do not have the same number of columns in their schemas.
-	ErrUnionSchemasDifferentLength = errors.NewKind(
-		"cannot union two queries whose schemas are different lengths; left has %d column(s) right has %d column(s).",
+	ErrSelectsDifferentLength = errors.NewKind(
+		"the used SELECT statements have a different number of columns; left has %d column(s) right has %d column(s).",
 	)
 
 	ErrQualifiedOrderBy = errors.NewKind("Table '%s' from one of the SELECTs cannot be used in global ORDER clause")

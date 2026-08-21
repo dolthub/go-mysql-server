@@ -117,12 +117,18 @@ func (b *Builder) buildSetOp(inScope *scope, u *ast.SetOp) (outScope *scope) {
 	tabId := b.tabId
 	ret := plan.NewSetOp(setOpType, leftScope.node, rightScope.node, distinct, limit, offset, sortConditions).WithId(tabId).WithColumns(cols)
 	outScope = leftScope
-	outScope.cols = b.mergeSetOpScopeColumns(leftScope.cols, rightScope.cols, tabId)
 	outScope.node = b.mergeSetOpSchemas(ret.(*plan.SetOp))
+	outScope.cols = b.mergeSetOpScopeColumns(leftScope.cols, rightScope.cols, tabId)
 	return
 }
 
 func (b *Builder) mergeSetOpScopeColumns(left, right []scopeColumn, tabId sql.TableId) []scopeColumn {
+	lLen, rLen := len(left), len(right)
+	if lLen != rLen {
+		err := ErrSelectsDifferentLength.New(lLen, rLen)
+		b.handleErr(err)
+	}
+
 	merged := make([]scopeColumn, len(left))
 	for i := range left {
 		merged[i] = scopeColumn{
@@ -142,7 +148,7 @@ func (b *Builder) mergeSetOpScopeColumns(left, right []scopeColumn, tabId sql.Ta
 func (b *Builder) mergeSetOpSchemas(u *plan.SetOp) sql.Node {
 	ls, rs := u.Left().Schema(b.ctx), u.Right().Schema(b.ctx)
 	if len(ls) != len(rs) {
-		err := ErrUnionSchemasDifferentLength.New(len(ls), len(rs))
+		err := ErrSelectsDifferentLength.New(len(ls), len(rs))
 		b.handleErr(err)
 	}
 

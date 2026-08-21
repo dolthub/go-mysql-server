@@ -171,3 +171,12 @@ func GetColumnFromIndexExpr(ctx *sql.Context, expr string, table sql.Table) *sql
 
 	return nil
 }
+
+// GetGeneratedColumnExpressionString returns the SQL text of the expression used to generate the hidden,
+// system column |col|, which must have been created to back a functional index key part.
+func GetGeneratedColumnExpressionString(col *sql.Column) string {
+	if _, ok := col.Generated.Expr.(*sql.UnresolvedColumnDefault); ok {
+		return col.Generated.Expr.String()
+	}
+	return col.Generated.String()
+}

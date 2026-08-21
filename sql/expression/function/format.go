@@ -88,17 +88,33 @@ func (f *Format) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	var numValue float64
+	numVal, _, err = types.Float64.Convert(ctx, numVal)
+	if err != nil {
+		ctx.Warn(1292, "Truncated incorrect DOUBLE value: %s", numVal)
+	}
 	if numVal == nil {
 		return nil, nil
 	}
+	numValue = numVal.(float64)
 
 	numDP, err := f.NumDecimalPlaces.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
+	numDP, _, err = types.Float64.Convert(ctx, numDP)
+	if err != nil {
+		ctx.Warn(1292, "Truncated incorrect DOUBLE value: %s", numDP)
+	}
 	if numDP == nil {
 		return nil, nil
 	}
+	numDecimalPlaces := numDP.(float64)
+	numDecimalPlaces = math.Round(numDecimalPlaces)
+
+	// MySQL clamps numDecimalPlaces in [0, 30]
+	numDecimalPlaces = max(0, numDecimalPlaces)
+	numDecimalPlaces = min(30, numDecimalPlaces)
 
 	locale := language.English
 	if f.Locale != nil {
@@ -106,31 +122,20 @@ func (f *Format) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		if lErr != nil {
 			return nil, lErr
 		}
-		if loc != nil {
-			locale, err = language.Parse(loc.(string))
+		loc, _, err := types.Text.Convert(ctx, loc)
+		if err != nil {
+			return nil, err
+		}
+		if loc == nil {
+			ctx.Warn(1649, "Unknown Locale: 'NULL'")
+		} else {
+			locStr := loc.(string)
+			locale, err = language.Parse(locStr)
 			if err != nil {
+				ctx.Warn(1649, "Unknown Locale: %s", loc)
 				locale = language.English
 			}
 		}
-	}
-
-	numVal, _, err = types.Float64.Convert(ctx, numVal)
-	if err != nil {
-		return nil, nil
-	}
-	numValue := numVal.(float64)
-
-	numDP, _, err = types.Float64.Convert(ctx, numDP)
-	if err != nil {
-		return nil, nil
-	}
-	numDecimalPlaces := numDP.(float64)
-	numDecimalPlaces = math.Round(numDecimalPlaces)
-
-	if numDecimalPlaces < 0 {
-		numDecimalPlaces = 0
-	} else if numDecimalPlaces > 30 { // MySQL cuts off at 30 for larger values
-		numDecimalPlaces = 30
 	}
 
 	// One way to round to a decimal place is to shift the number up by the desired decimal position, round to the

@@ -160,8 +160,13 @@ func (i *Inet6Aton) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
+	ipstr, ok := val.(string)
+	if !ok {
+		ctx.Warn(1411, "Incorrect string value: ''%v'' for function %s", val, i.FunctionName())
+		return nil, nil
+	}
+
 	// Parse IP address
-	ipstr := val.(string)
 	ip := net.ParseIP(ipstr)
 	if ip == nil {
 		// Failed to Parse IP correctly
@@ -170,7 +175,7 @@ func (i *Inet6Aton) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// if it doesn't contain colons, treat it as ipv4
-	if strings.Count(val.(string), ":") < 2 {
+	if strings.Count(ipstr, ":") < 2 {
 		ipv4 := ip.To4()
 		return []byte(ipv4), nil
 	}
@@ -314,10 +319,8 @@ func (i *Inet6Ntoa) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Only convert if received string as input
-	switch val.(type) {
+	switch ipbytes := val.(type) {
 	case []byte:
-		ipbytes := val.([]byte)
-
 		// Exactly 4 bytes, treat as IPv4 address
 		if len(ipbytes) == 4 {
 			var ipv4 net.IP = ipbytes
@@ -326,7 +329,7 @@ func (i *Inet6Ntoa) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 		// There must be exactly 4 or 16 bytes (len == 4 satisfied above)
 		if len(ipbytes) != 16 {
-			ctx.Warn(1411, "Incorrect string value: ''%s'' for function %s", string(val.([]byte)), i.FunctionName())
+			ctx.Warn(1411, "Incorrect string value: ''%s'' for function %s", string(ipbytes), i.FunctionName())
 			return nil, nil
 		}
 

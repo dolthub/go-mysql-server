@@ -56,7 +56,6 @@ func TestQueries(t *testing.T, harness Harness) {
 	harness.Setup(setup.SimpleSetup...)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
-	ctx := NewContext(harness)
 	for _, tt := range queries.QueryTests {
 		t.Run(tt.Query, func(t *testing.T) {
 			if sh, ok := harness.(SkippingHarness); tt.Skip || (ok && sh.SkipQueryTest(tt.Query)) {
@@ -65,7 +64,7 @@ func TestQueries(t *testing.T, harness Harness) {
 			if IsServerEngine(e) && tt.SkipServerEngine {
 				t.Skip("skipping for server engine")
 			}
-			TestQueryWithContext(t, ctx, e, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil, nil)
+			TestQueryWithEngine(t, harness, e, tt)
 		})
 	}
 

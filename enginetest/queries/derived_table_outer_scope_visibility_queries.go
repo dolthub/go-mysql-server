@@ -156,4 +156,23 @@ WHERE dcim_rackgroup.id IN ('rackgroup1', 'rackgroup2')`,
 			},
 		},
 	},
+	{
+		Name: "outer scope visibility propagates through multiple levels of derived table nesting",
+		SetUpScript: []string{
+			"create table outer_t (a int primary key);",
+			"create table inner_t (v int primary key);",
+			"insert into outer_t values (1), (2);",
+			"insert into inner_t values (10);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT a, (SELECT colid FROM (SELECT x AS colid FROM (SELECT outer_t.a AS x FROM inner_t) inner1) outer1) FROM outer_t ORDER BY a;",
+				Expected: []sql.Row{{1, 1}, {2, 2}},
+			},
+			{
+				Query:    "SELECT a, (SELECT colid FROM (SELECT y AS colid FROM (SELECT x AS y FROM (SELECT outer_t.a AS x FROM inner_t) inner2) inner1) outer1) FROM outer_t ORDER BY a;",
+				Expected: []sql.Row{{1, 1}, {2, 2}},
+			},
+		},
+	},
 }

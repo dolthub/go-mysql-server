@@ -653,15 +653,15 @@ var WindowFunctionsScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:       "select i, ntile(null) over() from t;",
-				ExpectedErr: sql.ErrInvalidArgument,
-			},
-			{
 				Query:       "select i, ntile(0) over() from t;",
 				ExpectedErr: sql.ErrInvalidArgument,
 			},
 			{
-				Query:       "select i, ntile(-1) over() from t;",
+				Query:       "select i, ntile(9223372036854775808) over() from t;",
+				ExpectedErr: sql.ErrInvalidArgument,
+			},
+			{
+				Query:       "select i, ntile(18446744073709551615) over() from t;",
 				ExpectedErr: sql.ErrInvalidArgument,
 			},
 			{
@@ -1063,6 +1063,24 @@ var WindowFunctionsScriptTests = []ScriptTest{
 				Expected: []sql.Row{
 					{1, 20},
 					{2, nil},
+				},
+			},
+		},
+	},
+	{
+		Name: "format with window function",
+		SetUpScript: []string{
+			"CREATE TABLE t(locale TINYINT);",
+			"INSERT INTO t VALUES (1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// Invalid locale still works
+				Query:                 "SELECT FORMAT(1, 0, FIRST_VALUE(locale) OVER ()) AS actual FROM t;",
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       1649,
+				Expected: []sql.Row{
+					{"1"},
 				},
 			},
 		},
