@@ -19,6 +19,7 @@ import (
 	"log"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/dolthub/sqllogictest/go/logictest"
 	"github.com/stretchr/testify/require"
@@ -196,15 +197,32 @@ func TestSingleScript(t *testing.T) {
 	//t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "Parse table name as column",
-			SetUpScript: []string{
-				"CREATE TABLE t(id INT PRIMARY KEY, d DATE);",
-				"INSERT INTO t VALUES (1, '2024-01-01'), (2, '2024-01-02');",
-			},
+			Name:        "Parse table name as column",
+			SetUpScript: []string{},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "SELECT id, ROUND(FIRST_VALUE(d) OVER (ORDER BY id)) AS actual FROM t;",
-					Expected: []sql.Row{},
+					Query:    "select date(NULL)",
+					Expected: []sql.Row{{nil}},
+				},
+				{
+					Query:    "select date(0)",
+					Expected: []sql.Row{{"0000-00-00"}},
+				},
+				{
+					Query:    "select date('0000-00-00')",
+					Expected: []sql.Row{{"0000-00-00"}},
+				},
+				{
+					Query:    "select date('0000-01-01')",
+					Expected: []sql.Row{{"0000-01-01"}},
+				},
+				{
+					Query: "select date('2001-02-03')",
+					Expected: []sql.Row{
+						{
+							time.Date(2001, 2, 3, 0, 0, 0, 0, time.UTC),
+						},
+					},
 				},
 			},
 		},
