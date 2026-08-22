@@ -43,6 +43,42 @@ func compEval(
 		return nil, nil
 	}
 
+	if dt, ok := returnType.(sql.DecimalType); ok {
+		// exact values compared exactly: going through floats here would
+		// corrupt digits a decimal can hold but a float cannot
+		greatest := cmp(float64(1), float64(0))
+		var selected *apd.Decimal
+		for i, arg := range args {
+			val, err := arg.Eval(ctx, row)
+			if err != nil {
+				return nil, err
+			}
+			if val == nil {
+				return nil, nil
+			}
+			conv, _, err := types.InternalDecimalType.Convert(ctx, val)
+			if err != nil {
+				return nil, err
+			}
+			d := conv.(*apd.Decimal)
+			if i == 0 || (greatest && d.Cmp(selected) > 0) || (!greatest && d.Cmp(selected) < 0) {
+				selected = d
+			}
+		}
+		// MySQL presents the picked value at the unified scale
+		digits := selected.NumDigits() + int64(dt.Scale())
+		if digits < 1 {
+			digits = 1
+		}
+		quantized := new(apd.Decimal)
+		qCtx := sql.DecimalCtx.WithPrecision(uint32(digits))
+		if _, err := qCtx.Quantize(quantized, selected, -int32(dt.Scale())); err != nil {
+			return nil, err
+		}
+		ret, _, err := dt.Convert(ctx, quantized)
+		return ret, err
+	}
+
 	var selectedNum float64
 	var selectedString string
 	var selectedTime time.Time
@@ -158,6 +194,9 @@ func compRetType(ctx *sql.Context, args ...sql.Expression) (sql.Type, error) {
 	allString := true
 	allInt := true
 	allDatetime := true
+	anyDecimal := false
+	anyFloat := false
+	var argTypes []sql.Type
 
 	for _, arg := range args {
 		if !arg.Resolved() {
@@ -177,6 +216,13 @@ func compRetType(ctx *sql.Context, args ...sql.Expression) (sql.Type, error) {
 			if !types.IsInteger(argType) {
 				allInt = false
 			}
+			if types.IsDecimal(argType) {
+				anyDecimal = true
+			}
+			if types.IsFloat(argType) {
+				anyFloat = true
+			}
+			argTypes = append(argTypes, argType)
 		} else if types.IsText(argType) {
 			allInt = false
 			allDatetime = false
@@ -193,13 +239,19 @@ func compRetType(ctx *sql.Context, args ...sql.Expression) (sql.Type, error) {
 		}
 	}
 
-	// TODO: return Decimal type if all Decimals. Account for Decimals of different scales and precisions
 	if allString {
 		return types.LongText, nil
 	} else if allInt {
 		return types.Int64, nil
 	} else if allDatetime {
 		return types.DatetimeMaxPrecision, nil
+	} else if anyDecimal && !anyFloat && len(argTypes) == len(args) {
+		// only numeric arguments, at least one an exact decimal: the result
+		// keeps the widest integer part and the widest scale among them
+		if unified, ok := types.UnifiedDecimalType(argTypes...); ok {
+			return unified, nil
+		}
+		return types.Float64, nil
 	} else {
 		return types.Float64, nil
 	}
