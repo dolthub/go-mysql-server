@@ -1034,6 +1034,20 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 			},
 		},
 	},
+	{
+		Name: "BIT columns advertise the binary charset",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 BIT(3));",
+			"INSERT INTO test VALUES (1, b'010');",
+		},
+		Queries: []CharsetCollationWireTestQuery{
+			{
+				Query:              "SELECT v1 FROM test;",
+				Expected:           []sql.Row{{"\x02"}},
+				ExpectedCollations: []sql.CollationID{sql.Collation_binary},
+			},
+		},
+	},
 }
 
 // DatabaseCollationWireTests are used to validate that CREATE DATABASE and ALTER DATABASE correctly handle having their
