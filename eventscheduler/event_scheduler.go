@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/dolthub/go-mysql-server/errguard"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
@@ -240,7 +241,12 @@ func (es *EventScheduler) loadEventsAndStartEventExecutor(ctx *sql.Context, a *a
 	es.executor.loadAllEvents(ctx)
 	bgCtx, cancel := context.WithCancel(context.Background())
 	es.cancel = cancel
-	es.wg.Go(func() { es.executor.start(bgCtx) })
+	// A recovered panic here leaves the scheduler's status as ON, but no further
+	// events execute until it is turned off and back on again.
+	es.wg.Go(func() {
+		defer errguard.RecoverAndLog("event scheduler executor")
+		es.executor.start(bgCtx)
+	})
 	return nil
 }
 

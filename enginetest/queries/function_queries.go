@@ -687,6 +687,18 @@ var FunctionQueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: `SELECT RAND(NULL) = RAND(0)`,
+		Expected: []sql.Row{
+			{true},
+		},
+	},
+	{
+		Query: `SELECT RAND('abc') = RAND(0)`,
+		Expected: []sql.Row{
+			{true},
+		},
+	},
+	{
 		Query: `SELECT RAND() = RAND()`,
 		Expected: []sql.Row{
 			{false},
@@ -838,8 +850,15 @@ var FunctionQueryTests = []QueryTest{
 
 	// FORMAT Function Tests
 	{
-		Query: `SELECT FORMAT(val, 2) FROM
-			(values row(4328904), row(432053.4853), row(5.93288775208e+08), row("5784029.372"), row(-4229842.122), row(-0.009)) a (val)`,
+		Query: `SELECT FORMAT(val, 2) FROM (
+			values 
+				row(4328904), 
+				row(432053.4853), 
+				row(5.93288775208e+08), 
+				row("5784029.372"), 
+				row(-4229842.122), 
+				row(-0.009)
+			) a (val)`,
 		Expected: []sql.Row{
 			{"4,328,904.00"},
 			{"432,053.49"},
@@ -858,8 +877,15 @@ var FunctionQueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT FORMAT(val, 2, 'da_DK') FROM
-			(values row(4328904), row(432053.4853), row(5.93288775208e+08), row("5784029.372"), row(-4229842.122), row(-0.009)) a (val)`,
+		Query: `SELECT FORMAT(val, 2, 'da_DK') FROM (
+			values 
+				row(4328904), 
+			    row(432053.4853), 
+			    row(5.93288775208e+08), 
+			    row("5784029.372"), 
+			    row(-4229842.122), 
+			    row(-0.009)
+			) a (val)`,
 		Expected: []sql.Row{
 			{"4.328.904,00"},
 			{"432.053,49"},
@@ -875,6 +901,62 @@ var FunctionQueryTests = []QueryTest{
 			{"1,000"},
 			{"2,000"},
 			{"3,000"},
+		},
+	},
+	{
+		Query: "SELECT FORMAT(123.456, NULL);",
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
+	{
+		Query: "SELECT FORMAT(NULL, 2);",
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
+	{
+		Query: "SELECT FORMAT(123456, 3, 1);",
+		Expected: []sql.Row{
+			{"123,456.000"},
+		},
+	},
+	{
+		Query: "SELECT FORMAT('notanumber', 2);",
+		Expected: []sql.Row{
+			{"0.00"},
+		},
+	},
+	{
+		Query:                 "SELECT FORMAT(123.456, 'notanumber');",
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       1292,
+		Expected: []sql.Row{
+			{"123"},
+		},
+	},
+	{
+		Query:                 "SELECT FORMAT(123.456, 2, 'badlocale');",
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       1649,
+		Expected: []sql.Row{
+			{"123.46"},
+		},
+	},
+	{
+		Query:                 "SELECT FORMAT(123.456, 2, 100);",
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       1649,
+		Expected: []sql.Row{
+			{"123.46"},
+		},
+	},
+	{
+		Query:                 "SELECT FORMAT(123.456, 2, NULL);",
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       1649,
+		Expected: []sql.Row{
+			{"123.46"},
 		},
 	},
 
@@ -1119,6 +1201,42 @@ var FunctionQueryTests = []QueryTest{
 		Query:    `SELECT TRIM(LEADING 1 FROM 11111112)`,
 		Expected: []sql.Row{{"2"}},
 	},
+	{
+		// TODO: TimeSpan type currently always has precision 6, but it has precision 0 on ServerEngine
+		SkipServerEngine: true,
+		Query:            `SELECT TRIM(TIME('12:34:56.123456'))`,
+		Expected:         []sql.Row{{"12:34:56.123456"}},
+	},
+	{
+		// TODO: TimeSpan type currently always has precision 6, but it has precision 0 on ServerEngine
+		SkipServerEngine: true,
+		Query:            `SELECT LTRIM(TIME('12:34:56.123456'))`,
+		Expected:         []sql.Row{{"12:34:56.123456"}},
+	},
+	{
+		// TODO: TimeSpan type currently always has precision 6, but it has precision 0 on ServerEngine
+		SkipServerEngine: true,
+		Query:            `SELECT RTRIM(TIME('12:34:56.123456'))`,
+		Expected:         []sql.Row{{"12:34:56.123456"}},
+	},
+	{
+		// TODO: TimeSpan type currently always has precision 6, but it has precision 0 on ServerEngine
+		SkipServerEngine: true,
+		Query:            `SELECT TRIM(LEADING '12:34:56.' FROM TIME('12:34:56.123456'))`,
+		Expected:         []sql.Row{{"123456"}},
+	},
+	{
+		// TODO: TimeSpan type currently always has precision 6, but it has precision 0 on ServerEngine
+		SkipServerEngine: true,
+		Query:            `SELECT TRIM(TRAILING '.123456' FROM TIME('12:34:56.123456'))`,
+		Expected:         []sql.Row{{"12:34:56"}},
+	},
+	{
+		// TODO: TimeSpan type currently always has precision 6, but it has precision 0 on ServerEngine
+		SkipServerEngine: true,
+		Query:            `SELECT TRIM('0' FROM TIME('00:12:34.123'))`,
+		Expected:         []sql.Row{{":12:34.123"}},
+	},
 
 	// SUBSTRING_INDEX Function Tests
 	{
@@ -1218,6 +1336,12 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{{nil}},
 	},
 	{
+		Query:                 `SELECT INET6_ATON(123)`,
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       1411,
+	},
+	{
 		Query:    `SELECT INET6_NTOA(UNHEX("1234ffff5678ffff1234ffff5678ffff"))`,
 		Expected: []sql.Row{{"1234:ffff:5678:ffff:1234:ffff:5678:ffff"}},
 	},
@@ -1244,6 +1368,12 @@ var FunctionQueryTests = []QueryTest{
 	{
 		Query:    `SELECT INET6_NTOA("notanipaddress")`,
 		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:                 `SELECT INET6_NTOA(123)`,
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       1411,
 	},
 
 	// IS_IPV4/IS_IPV6 Function Tests
@@ -1401,6 +1531,23 @@ var FunctionQueryTests = []QueryTest{
 			{int8(15)},
 		},
 	},
+	{
+		Skip:  true,
+		Query: `SELECT round(date('2001-02-03'))`,
+		Expected: []sql.Row{
+			{20010203},
+		},
+	},
+	{
+		// TODO: This is just testing for a panic. The core issue is part of several DATE conversion bugs.
+		//  Replace with above skipped test when fixed.
+		//  Tracking Issue: https://github.com/dolthub/dolt/issues/10278
+		Query: `SELECT round(date('2001-02-03')) > 0`,
+		Expected: []sql.Row{
+			{true},
+		},
+	},
+
 	{
 		Query:    "SELECT POW(2,3) FROM dual",
 		Expected: []sql.Row{{float64(8)}},

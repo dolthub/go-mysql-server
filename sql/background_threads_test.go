@@ -98,4 +98,20 @@ func TestBackgroundThreads(t *testing.T) {
 		sort.Ints(b)
 		assert.Equal(t, []int{}, b)
 	})
+
+	t.Run("panic in a thread does not crash the process", func(t *testing.T) {
+		bThreads = sql.NewBackgroundThreads()
+		defer bThreads.Shutdown()
+
+		ran := make(chan struct{})
+		err = bThreads.Add("panics", func(ctx context.Context) {
+			close(ran)
+			panic("this panic must not be fatal")
+		})
+		assert.NoError(t, err)
+		<-ran
+
+		err = bThreads.Shutdown()
+		assert.NoError(t, err)
+	})
 }

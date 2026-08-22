@@ -180,7 +180,7 @@ func NewLazyJSONDocument(bytes []byte) sql.JSONWrapper {
 		Bytes: bytes,
 		interfaceFunc: sync.OnceValues(func() (interface{}, error) {
 			var val interface{}
-			err := json.Unmarshal(bytes, &val)
+			err := JsonUnmarshal(bytes, &val)
 			if err != nil {
 				return nil, err
 			}
@@ -550,7 +550,7 @@ func ContainsJSON(a, b interface{}) (bool, error) {
 		return containsJSONBool(a, b)
 	case string:
 		return containsJSONString(a, b)
-	case float64:
+	case float64, int64, uint64:
 		return containsJSONNumber(a, b)
 	default:
 		return false, sql.ErrInvalidType.New(a)
@@ -654,15 +654,12 @@ func containsJSONString(a string, b interface{}) (bool, error) {
 	}
 }
 
-func containsJSONNumber(a float64, b interface{}) (bool, error) {
-	switch b := b.(type) {
-	case float64:
-		return a == b, nil
-	case int64:
-		return a == float64(b), nil
-	default:
+func containsJSONNumber(a, b interface{}) (bool, error) {
+	cmp, err := compareJSONNumber(a, b)
+	if err != nil {
 		return false, nil
 	}
+	return cmp == 0, nil
 }
 
 // CompareJSON compares two JSON values. It returns 0 if the values are equal, -1 if a < b, and 1 if a > b.
@@ -752,27 +749,7 @@ func CompareJSON(ctx context.Context, a, b interface{}) (int, error) {
 		return compareJSONObject(ctx, a, b)
 	case string:
 		return compareJSONString(a, b)
-	case int:
-		return compareJSONNumber(float64(a), b)
-	case uint8:
-		return compareJSONNumber(float64(a), b)
-	case uint16:
-		return compareJSONNumber(float64(a), b)
-	case uint32:
-		return compareJSONNumber(float64(a), b)
-	case uint64:
-		return compareJSONNumber(float64(a), b)
-	case int8:
-		return compareJSONNumber(float64(a), b)
-	case int16:
-		return compareJSONNumber(float64(a), b)
-	case int32:
-		return compareJSONNumber(float64(a), b)
-	case int64:
-		return compareJSONNumber(float64(a), b)
-	case float32:
-		return compareJSONNumber(float64(a), b)
-	case float64:
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64:
 		return compareJSONNumber(a, b)
 	case *apd.Decimal:
 		af, _ := a.Float64()
@@ -916,46 +893,16 @@ func compareJSONString(a string, b interface{}) (int, error) {
 	}
 }
 
-func compareJSONNumber(a float64, b interface{}) (int, error) {
-	switch b := b.(type) {
-	case
-		bool,
-		JsonArray,
-		JsonObject,
-		string:
+func compareJSONNumber(a, b interface{}) (int, error) {
+	switch v := b.(type) {
+	case bool, JsonArray, JsonObject, string:
 		// a is lower precedence
 		return -1, nil
-	case int:
-		return compareJSONNumber(a, float64(b))
-	case uint8:
-		return compareJSONNumber(a, float64(b))
-	case uint16:
-		return compareJSONNumber(a, float64(b))
-	case uint32:
-		return compareJSONNumber(a, float64(b))
-	case uint64:
-		return compareJSONNumber(a, float64(b))
-	case int8:
-		return compareJSONNumber(a, float64(b))
-	case int16:
-		return compareJSONNumber(a, float64(b))
-	case int32:
-		return compareJSONNumber(a, float64(b))
-	case int64:
-		return compareJSONNumber(a, float64(b))
-	case float32:
-		return compareJSONNumber(a, float64(b))
-	case float64:
-		if a > b {
-			return 1, nil
-		}
-		if a < b {
-			return -1, nil
-		}
-		return 0, nil
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64:
+		return compareNumbers(a, v), nil
 	case *apd.Decimal:
-		bf, _ := b.Float64()
-		return compareJSONNumber(a, bf)
+		f, _ := v.Float64()
+		return compareNumbers(a, f), nil
 	default:
 		// a is higher precedence
 		return 1, nil

@@ -1982,7 +1982,7 @@ func (t *Table) CreateCheck(ctx *sql.Context, check *sql.CheckDefinition) error 
 
 	for _, key := range data.checks {
 		if key.Name == toInsert.Name {
-			return sql.ErrForeignKeyDuplicateName.New(toInsert.Name)
+			return sql.ErrDuplicateCheckName.New(toInsert.Name)
 		}
 	}
 

@@ -150,16 +150,16 @@ func (g *GeomFromWKB) WithChildren(ctx *sql.Context, children ...sql.Expression)
 }
 
 // ParseAxisOrder takes in a key, value string and determines the order of the xy coords
-func ParseAxisOrder(s string) (bool, error) {
+func ParseAxisOrder(s string) (res bool, ok bool) {
 	s = strings.ToLower(s)
 	s = strings.TrimSpace(s)
 	switch s {
 	case "axis-order=long-lat":
-		return true, nil
+		return true, true
 	case "axis-order=lat-long", "axis-order=srid-defined":
-		return false, nil
+		return false, true
 	default:
-		return false, sql.ErrInvalidArgument.New()
+		return false, false
 	}
 }
 
@@ -231,7 +231,7 @@ func EvalGeomFromWKB(ctx *sql.Context, row sql.Row, exprs []sql.Expression, expe
 		return nil, err
 	}
 
-	order := false
+	order := srid == types.GeoSpatialSRID
 	if len(exprs) == 3 {
 		o, err := exprs[2].Eval(ctx, row)
 		if err != nil {
@@ -240,9 +240,20 @@ func EvalGeomFromWKB(ctx *sql.Context, row sql.Row, exprs []sql.Expression, expe
 		if o == nil {
 			return nil, nil
 		}
-		order, err = ParseAxisOrder(o.(string))
-		if err != nil {
-			return nil, sql.ErrInvalidArgument.New()
+		switch str := o.(type) {
+		case string:
+			// this only applies to types.GeoSpatialSRID
+			swap, ok := ParseAxisOrder(str)
+			if !ok {
+				return nil, sql.ErrInvalidKeyPair.New(str, "st_geomfromwkb")
+			}
+			if srid == types.GeoSpatialSRID && swap {
+				order = !order
+			}
+		case nil:
+			return nil, nil
+		default:
+			return nil, sql.ErrInvalidKeyPair.New(o, "st_geomfromwkb")
 		}
 	}
 	if order {

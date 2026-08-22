@@ -315,6 +315,17 @@ func TestGeomFromText(t *testing.T) {
 		require.Equal(nil, v)
 	})
 
+	t.Run("invalid axis option type returns error", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewGeomFromText(sql.NewEmptyContext(), expression.NewLiteral("POINT(1 2)", types.Blob),
+			expression.NewLiteral(types.GeoSpatialSRID, types.Uint32),
+			expression.NewLiteral(123, types.Int64))
+		require.NoError(err)
+
+		_, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.Error(err)
+	})
+
 	t.Run("create polygon with non linear ring", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewGeomFromText(sql.NewEmptyContext(), expression.NewLiteral("polygon((1 2, 3 4))", types.Blob))
@@ -374,7 +385,7 @@ func TestGeomFromText(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(types.Point{SRID: types.GeoSpatialSRID, X: 2, Y: 1}, v)
+		require.Equal(types.Point{SRID: types.GeoSpatialSRID, X: 1, Y: 2}, v)
 	})
 
 	t.Run("create valid linestring with valid srid", func(t *testing.T) {
@@ -407,7 +418,7 @@ func TestGeomFromText(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(types.LineString{SRID: types.GeoSpatialSRID, Points: []types.Point{{SRID: types.GeoSpatialSRID, X: 2, Y: 1}, {SRID: types.GeoSpatialSRID, X: 4, Y: 3}}}, v)
+		require.Equal(types.LineString{SRID: types.GeoSpatialSRID, Points: []types.Point{{SRID: types.GeoSpatialSRID, X: 1, Y: 2}, {SRID: types.GeoSpatialSRID, X: 3, Y: 4}}}, v)
 	})
 
 	t.Run("create valid polygon with valid srid", func(t *testing.T) {
@@ -440,7 +451,7 @@ func TestGeomFromText(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(types.Polygon{SRID: types.GeoSpatialSRID, Lines: []types.LineString{{SRID: types.GeoSpatialSRID, Points: []types.Point{{SRID: types.GeoSpatialSRID, X: 0, Y: 0}, {SRID: types.GeoSpatialSRID, X: 1, Y: 0}, {SRID: types.GeoSpatialSRID, X: 0, Y: 1}, {SRID: types.GeoSpatialSRID, X: 0, Y: 0}}}}}, v)
+		require.Equal(types.Polygon{SRID: types.GeoSpatialSRID, Lines: []types.LineString{{SRID: types.GeoSpatialSRID, Points: []types.Point{{SRID: types.GeoSpatialSRID, X: 0, Y: 0}, {SRID: types.GeoSpatialSRID, X: 0, Y: 1}, {SRID: types.GeoSpatialSRID, X: 1, Y: 0}, {SRID: types.GeoSpatialSRID, X: 0, Y: 0}}}}}, v)
 	})
 
 	t.Run("create valid multipoint with valid srid", func(t *testing.T) {
@@ -473,7 +484,7 @@ func TestGeomFromText(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(types.MultiPoint{SRID: types.GeoSpatialSRID, Points: []types.Point{{SRID: types.GeoSpatialSRID, X: 2, Y: 1}, {SRID: types.GeoSpatialSRID, X: 4, Y: 3}}}, v)
+		require.Equal(types.MultiPoint{SRID: types.GeoSpatialSRID, Points: []types.Point{{SRID: types.GeoSpatialSRID, X: 1, Y: 2}, {SRID: types.GeoSpatialSRID, X: 3, Y: 4}}}, v)
 	})
 
 	t.Run("create valid multilinestring with valid srid", func(t *testing.T) {
@@ -506,7 +517,7 @@ func TestGeomFromText(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(types.MultiLineString{SRID: types.GeoSpatialSRID, Lines: []types.LineString{{SRID: types.GeoSpatialSRID, Points: []types.Point{{SRID: types.GeoSpatialSRID, X: 0, Y: 0}, {SRID: types.GeoSpatialSRID, X: 1, Y: 0}, {SRID: types.GeoSpatialSRID, X: 0, Y: 1}, {SRID: types.GeoSpatialSRID, X: 0, Y: 0}}}}}, v)
+		require.Equal(types.MultiLineString{SRID: types.GeoSpatialSRID, Lines: []types.LineString{{SRID: types.GeoSpatialSRID, Points: []types.Point{{SRID: types.GeoSpatialSRID, X: 0, Y: 0}, {SRID: types.GeoSpatialSRID, X: 0, Y: 1}, {SRID: types.GeoSpatialSRID, X: 1, Y: 0}, {SRID: types.GeoSpatialSRID, X: 0, Y: 0}}}}}, v)
 	})
 
 	t.Run("create valid multipolygon with valid srid", func(t *testing.T) {
@@ -543,9 +554,9 @@ func TestGeomFromText(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		line1 := types.LineString{SRID: types.GeoSpatialSRID, Points: []types.Point{{SRID: types.GeoSpatialSRID, X: 0, Y: 0}, {SRID: types.GeoSpatialSRID, X: 2, Y: 1}, {SRID: types.GeoSpatialSRID, X: 4, Y: 3}, {SRID: types.GeoSpatialSRID, X: 0, Y: 0}}}
+		line1 := types.LineString{SRID: types.GeoSpatialSRID, Points: []types.Point{{SRID: types.GeoSpatialSRID, X: 0, Y: 0}, {SRID: types.GeoSpatialSRID, X: 1, Y: 2}, {SRID: types.GeoSpatialSRID, X: 3, Y: 4}, {SRID: types.GeoSpatialSRID, X: 0, Y: 0}}}
 		poly1 := types.Polygon{SRID: types.GeoSpatialSRID, Lines: []types.LineString{line1}}
-		line2 := types.LineString{SRID: types.GeoSpatialSRID, Points: []types.Point{{SRID: types.GeoSpatialSRID, X: 1, Y: 1}, {SRID: types.GeoSpatialSRID, X: 3, Y: 2}, {SRID: types.GeoSpatialSRID, X: 5, Y: 4}, {SRID: types.GeoSpatialSRID, X: 1, Y: 1}}}
+		line2 := types.LineString{SRID: types.GeoSpatialSRID, Points: []types.Point{{SRID: types.GeoSpatialSRID, X: 1, Y: 1}, {SRID: types.GeoSpatialSRID, X: 2, Y: 3}, {SRID: types.GeoSpatialSRID, X: 4, Y: 5}, {SRID: types.GeoSpatialSRID, X: 1, Y: 1}}}
 		poly2 := types.Polygon{SRID: types.GeoSpatialSRID, Lines: []types.LineString{line2}}
 		require.Equal(types.MultiPolygon{SRID: types.GeoSpatialSRID, Polygons: []types.Polygon{poly1, poly2}}, v)
 	})
@@ -629,5 +640,49 @@ func TestGeomFromText(t *testing.T) {
 		typ := f.Type(sql.NewEmptyContext())
 		_, ok := typ.(types.GeometryType)
 		require.True(ok)
+	})
+
+	// MySQL only supports "GEOMETRYCOLLECTION EMPTY", and errors for all other pure empty Geomtry forms
+	t.Run("create pure empty geometries", func(t *testing.T) {
+		require := require.New(t)
+		var ctx = sql.NewEmptyContext()
+		var f sql.Expression
+		var err error
+		f, err = NewGeomFromText(ctx, expression.NewLiteral("POINT EMPTY", types.Blob))
+		require.NoError(err)
+		_, err = f.Eval(ctx, nil)
+		require.Error(err)
+
+		f, err = NewGeomFromText(ctx, expression.NewLiteral("LINESTRING EMPTY", types.Blob))
+		require.NoError(err)
+		_, err = f.Eval(ctx, nil)
+		require.Error(err)
+
+		f, err = NewGeomFromText(ctx, expression.NewLiteral("POLYGON EMPTY", types.Blob))
+		require.NoError(err)
+		_, err = f.Eval(ctx, nil)
+		require.Error(err)
+
+		f, err = NewGeomFromText(ctx, expression.NewLiteral("MULTIPOINT EMPTY", types.Blob))
+		require.NoError(err)
+		_, err = f.Eval(ctx, nil)
+		require.Error(err)
+
+		f, err = NewGeomFromText(ctx, expression.NewLiteral("MULTILINESTRING EMPTY", types.Blob))
+		require.NoError(err)
+		_, err = f.Eval(ctx, nil)
+		require.Error(err)
+
+		f, err = NewGeomFromText(ctx, expression.NewLiteral("MULTIPOLYGON EMPTY", types.Blob))
+		require.NoError(err)
+		_, err = f.Eval(ctx, nil)
+		require.Error(err)
+
+		var v any
+		f, err = NewGeomFromText(ctx, expression.NewLiteral("GEOMETRYCOLLECTION EMPTY", types.Blob))
+		require.NoError(err)
+		v, err = f.Eval(ctx, nil)
+		require.NoError(err)
+		require.Equal(types.GeomColl{Geoms: []types.GeometryValue{}}, v)
 	})
 }

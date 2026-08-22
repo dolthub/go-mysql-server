@@ -105,6 +105,10 @@ func (s *STX) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	// If just one argument, return X
 	if len(s.ChildExpressions) == 1 {
+		// Backwards for types.GeoSpatialSRID
+		if _p.SRID == types.GeoSpatialSRID {
+			return _p.Y, nil
+		}
 		return _p.X, nil
 	}
 
@@ -125,8 +129,21 @@ func (s *STX) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
+	// Backwards for types.GeoSpatialSRID
+	if _p.SRID == types.GeoSpatialSRID {
+		return types.Point{
+			SRID: _p.SRID,
+			X:    _p.X,
+			Y:    _x.(float64),
+		}, nil
+	}
+
 	// Create point with new X and old Y
-	return types.Point{SRID: _p.SRID, X: _x.(float64), Y: _p.Y}, nil
+	return types.Point{
+		SRID: _p.SRID,
+		X:    _x.(float64),
+		Y:    _p.Y,
+	}, nil
 }
 
 // STY is a function that returns the y value from a given point.
@@ -207,6 +224,10 @@ func (s *STY) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	// If just one argument, return Y
 	if len(s.ChildExpressions) == 1 {
+		// Backwards for types.GeoSpatialSRID
+		if _p.SRID == types.GeoSpatialSRID {
+			return _p.X, nil
+		}
 		return _p.Y, nil
 	}
 
@@ -227,8 +248,21 @@ func (s *STY) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
+	// Backwards for types.GeoSpatialSRID
+	if _p.SRID == types.GeoSpatialSRID {
+		return types.Point{
+			SRID: _p.SRID,
+			X:    _y.(float64),
+			Y:    _p.Y,
+		}, nil
+	}
+
 	// Create point with old X and new Ys
-	return types.Point{SRID: _p.SRID, X: _p.X, Y: _y.(float64)}, nil
+	return types.Point{
+		SRID: _p.SRID,
+		X:    _p.X,
+		Y:    _y.(float64),
+	}, nil
 }
 
 // Longitude is a function that returns the x value from a given point.
@@ -357,7 +391,7 @@ var _ sql.FunctionExpression = (*Latitude)(nil)
 var _ sql.CollationCoercible = (*Latitude)(nil)
 
 // NewLatitude creates a new ST_LATITUDE expression.
-func NewLatitude(args ...sql.Expression) (sql.Expression, error) {
+func NewLatitude(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) != 1 && len(args) != 2 {
 		return nil, sql.ErrInvalidArgumentNumber.New("ST_LATITUDE", "1 or 2", len(args))
 	}
@@ -398,7 +432,7 @@ func (l *Latitude) String() string {
 
 // WithChildren implements the Expression interface.
 func (l *Latitude) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
-	return NewLatitude(children...)
+	return NewLatitude(ctx, children...)
 }
 
 // Eval implements the sql.Expression interface.

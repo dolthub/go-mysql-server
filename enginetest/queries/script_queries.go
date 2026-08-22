@@ -2445,7 +2445,11 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:       "select i, k from `left` union select i, j, k from `right`",
-				ExpectedErr: planbuilder.ErrUnionSchemasDifferentLength,
+				ExpectedErr: planbuilder.ErrSelectsDifferentLength,
+			},
+			{
+				Query:       "select i, j, k from `left` union select i, j from `right`",
+				ExpectedErr: planbuilder.ErrSelectsDifferentLength,
 			},
 			{
 				Query: "table t1 union table t2 order by i;",
@@ -2762,6 +2766,10 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{
 					{1},
 				},
+			},
+			{
+				Query:       "with recursive cte (x,y) as (select 1, 2, 3 union select x, y from cte where x < 5) select * from cte;",
+				ExpectedErr: planbuilder.ErrSelectsDifferentLength,
 			},
 			{
 				Query: "with recursive cte (x,y) as (select 1, 1 intersect select 1, 1 union select x + 1, y + 2 from cte where x < 5) select * from cte;",
@@ -3246,6 +3254,19 @@ CREATE TABLE tab3 (
 			{
 				Query:    `SELECT BIN_TO_UUID(UUID_TO_BIN(@uuid, 1), 1)`,
 				Expected: []sql.Row{{"6ccd780c-baba-1026-9564-5b8c656024db"}},
+			},
+			{
+				// https://github.com/dolthub/dolt/issues/11457
+				Query:    `SELECT BIN_TO_UUID(UUID_TO_BIN(@uuid), null)`,
+				Expected: []sql.Row{{"6ccd780c-baba-1026-9564-5b8c656024db"}},
+			},
+			{
+				Query:    `SELECT BIN_TO_UUID(UUID_TO_BIN(@uuid), 3000)`,
+				Expected: []sql.Row{{"baba1026-780c-6ccd-9564-5b8c656024db"}},
+			},
+			{
+				Query:    `SELECT BIN_TO_UUID(UUID_TO_BIN(@uuid), -10)`,
+				Expected: []sql.Row{{"baba1026-780c-6ccd-9564-5b8c656024db"}},
 			},
 			{
 				Query:    `SELECT UUID_TO_BIN(NULL)`,
@@ -6271,62 +6292,6 @@ CREATE TABLE tab3 (
 					{0},
 					{1},
 					{2},
-				},
-			},
-		},
-	},
-	{
-		Name: "identical expressions over different windows should produce different results",
-		SetUpScript: []string{
-			"CREATE TABLE t(a INT, b INT);",
-			"INSERT INTO t(a, b) VALUES (1, 1), (1, 2), (1, 3), (2, 4), (2, 5), (2, 6);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "SELECT SUM(b) OVER (PARTITION BY a ORDER BY b) FROM t ORDER BY 1;",
-				Expected: []sql.Row{{float64(1)}, {float64(3)}, {float64(4)}, {float64(6)}, {float64(9)}, {float64(15)}},
-			},
-			{
-				Query:    "SELECT SUM(b) OVER (ORDER BY b) FROM t ORDER BY 1;",
-				Expected: []sql.Row{{float64(1)}, {float64(3)}, {float64(6)}, {float64(10)}, {float64(15)}, {float64(21)}},
-			},
-			{
-				Query: "SELECT SUM(b) OVER (PARTITION BY a ORDER BY b), SUM(b) OVER (ORDER BY b) FROM t ORDER BY 1;",
-				Expected: []sql.Row{
-					{float64(1), float64(1)},
-					{float64(3), float64(3)},
-					{float64(4), float64(10)},
-					{float64(6), float64(6)},
-					{float64(9), float64(15)},
-					{float64(15), float64(21)},
-				},
-			},
-		},
-	},
-	{
-		Name: "windows without ORDER BY should be treated as RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING",
-		SetUpScript: []string{
-			"CREATE TABLE t(a INT, b INT);",
-			"INSERT INTO t(a, b) VALUES (1, 1), (1, 2), (1, 3), (2, 4), (2, 5), (2, 6);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "SELECT SUM(b) OVER (PARTITION BY a) FROM t ORDER BY 1;",
-				Expected: []sql.Row{{float64(6)}, {float64(6)}, {float64(6)}, {float64(15)}, {float64(15)}, {float64(15)}},
-			},
-			{
-				Query:    "SELECT SUM(b) OVER () FROM t ORDER BY 1;",
-				Expected: []sql.Row{{float64(21)}, {float64(21)}, {float64(21)}, {float64(21)}, {float64(21)}, {float64(21)}},
-			},
-			{
-				Query: "SELECT SUM(b) OVER (PARTITION BY a), SUM(b) OVER () FROM t;",
-				Expected: []sql.Row{
-					{float64(6), float64(21)},
-					{float64(6), float64(21)},
-					{float64(6), float64(21)},
-					{float64(15), float64(21)},
-					{float64(15), float64(21)},
-					{float64(15), float64(21)},
 				},
 			},
 		},
@@ -9967,275 +9932,6 @@ where
 					{1, 271.89336144893275, 333.0, 73926.0, 0.0},
 					{1, 271.89336144893275, 333.0, 73926.0, 0.0},
 				},
-			},
-		},
-	},
-	{
-		Name:    "ntile tests",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"create table t (i int primary key, j int);",
-			"insert into t values (1, 1), (2, 1), (3, 1), (4, 1), (5, 1), (6, 2), (7, 2), (8, 2), (9, 2), (10, 2);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:       "select i, ntile(null) over() from t;",
-				ExpectedErr: sql.ErrInvalidArgument,
-			},
-			{
-				Query:       "select i, ntile(0) over() from t;",
-				ExpectedErr: sql.ErrInvalidArgument,
-			},
-			{
-				Query:       "select i, ntile(-1) over() from t;",
-				ExpectedErr: sql.ErrInvalidArgument,
-			},
-			{
-				Query: "select i, ntile(100) over() from t;",
-				Expected: []sql.Row{
-					{1, uint64(1)},
-					{2, uint64(2)},
-					{3, uint64(3)},
-					{4, uint64(4)},
-					{5, uint64(5)},
-					{6, uint64(6)},
-					{7, uint64(7)},
-					{8, uint64(8)},
-					{9, uint64(9)},
-					{10, uint64(10)},
-				},
-			},
-			{
-				Query: "select i, ntile(10) over() from t;",
-				Expected: []sql.Row{
-					{1, uint64(1)},
-					{2, uint64(2)},
-					{3, uint64(3)},
-					{4, uint64(4)},
-					{5, uint64(5)},
-					{6, uint64(6)},
-					{7, uint64(7)},
-					{8, uint64(8)},
-					{9, uint64(9)},
-					{10, uint64(10)},
-				},
-			},
-			{
-				Query: "select i, ntile(9) over() from t;",
-				Expected: []sql.Row{
-					{1, uint64(1)},
-					{2, uint64(1)},
-					{3, uint64(2)},
-					{4, uint64(3)},
-					{5, uint64(4)},
-					{6, uint64(5)},
-					{7, uint64(6)},
-					{8, uint64(7)},
-					{9, uint64(8)},
-					{10, uint64(9)},
-				},
-			},
-			{
-				Query: "select i, ntile(8) over() from t;",
-				Expected: []sql.Row{
-					{1, uint64(1)},
-					{2, uint64(1)},
-					{3, uint64(2)},
-					{4, uint64(2)},
-					{5, uint64(3)},
-					{6, uint64(4)},
-					{7, uint64(5)},
-					{8, uint64(6)},
-					{9, uint64(7)},
-					{10, uint64(8)},
-				},
-			},
-			{
-				Query: "select i, ntile(7) over() from t;",
-				Expected: []sql.Row{
-					{1, uint64(1)},
-					{2, uint64(1)},
-					{3, uint64(2)},
-					{4, uint64(2)},
-					{5, uint64(3)},
-					{6, uint64(3)},
-					{7, uint64(4)},
-					{8, uint64(5)},
-					{9, uint64(6)},
-					{10, uint64(7)},
-				},
-			},
-			{
-				Query: "select i, ntile(6) over() from t;",
-				Expected: []sql.Row{
-					{1, uint64(1)},
-					{2, uint64(1)},
-					{3, uint64(2)},
-					{4, uint64(2)},
-					{5, uint64(3)},
-					{6, uint64(3)},
-					{7, uint64(4)},
-					{8, uint64(4)},
-					{9, uint64(5)},
-					{10, uint64(6)},
-				},
-			},
-			{
-				Query: "select i, ntile(5) over() from t;",
-				Expected: []sql.Row{
-					{1, uint64(1)},
-					{2, uint64(1)},
-					{3, uint64(2)},
-					{4, uint64(2)},
-					{5, uint64(3)},
-					{6, uint64(3)},
-					{7, uint64(4)},
-					{8, uint64(4)},
-					{9, uint64(5)},
-					{10, uint64(5)},
-				},
-			},
-			{
-				Query: "select i, ntile(4) over() from t;",
-				Expected: []sql.Row{
-					{1, uint64(1)},
-					{2, uint64(1)},
-					{3, uint64(1)},
-					{4, uint64(2)},
-					{5, uint64(2)},
-					{6, uint64(2)},
-					{7, uint64(3)},
-					{8, uint64(3)},
-					{9, uint64(4)},
-					{10, uint64(4)},
-				},
-			},
-			{
-				Query: "select i, ntile(3) over() from t;",
-				Expected: []sql.Row{
-					{1, uint64(1)},
-					{2, uint64(1)},
-					{3, uint64(1)},
-					{4, uint64(1)},
-					{5, uint64(2)},
-					{6, uint64(2)},
-					{7, uint64(2)},
-					{8, uint64(3)},
-					{9, uint64(3)},
-					{10, uint64(3)},
-				},
-			},
-			{
-				Query: "select i, ntile(2) over() from t;",
-				Expected: []sql.Row{
-					{1, uint64(1)},
-					{2, uint64(1)},
-					{3, uint64(1)},
-					{4, uint64(1)},
-					{5, uint64(1)},
-					{6, uint64(2)},
-					{7, uint64(2)},
-					{8, uint64(2)},
-					{9, uint64(2)},
-					{10, uint64(2)},
-				},
-			},
-			{
-				Query: "select i, ntile(1) over() from t;",
-				Expected: []sql.Row{
-					{1, uint64(1)},
-					{2, uint64(1)},
-					{3, uint64(1)},
-					{4, uint64(1)},
-					{5, uint64(1)},
-					{6, uint64(1)},
-					{7, uint64(1)},
-					{8, uint64(1)},
-					{9, uint64(1)},
-					{10, uint64(1)},
-				},
-			},
-			{
-				Query: "select i, j, ntile(2) over(partition by j) from t;",
-				Expected: []sql.Row{
-					{1, 1, uint64(1)},
-					{2, 1, uint64(1)},
-					{3, 1, uint64(1)},
-					{4, 1, uint64(2)},
-					{5, 1, uint64(2)},
-					{6, 2, uint64(1)},
-					{7, 2, uint64(1)},
-					{8, 2, uint64(1)},
-					{9, 2, uint64(2)},
-					{10, 2, uint64(2)},
-				},
-			},
-			{
-				Query:       "select i, ntile(j) over (order by i) from t;",
-				ExpectedErr: sql.ErrInvalidArgument,
-			},
-			{
-				Query: "select i, ntile(1+1) over() from t;",
-				Expected: []sql.Row{
-					{1, uint64(1)},
-					{2, uint64(1)},
-					{3, uint64(1)},
-					{4, uint64(1)},
-					{5, uint64(1)},
-					{6, uint64(2)},
-					{7, uint64(2)},
-					{8, uint64(2)},
-					{9, uint64(2)},
-					{10, uint64(2)},
-				},
-			},
-			{
-				Query:       "select i, ntile(j) over () from t where false;",
-				ExpectedErr: sql.ErrInvalidArgument,
-			},
-			{
-				Query:    "set @v = 2;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query: "select i, ntile(@v) over() from t;",
-				Expected: []sql.Row{
-					{1, uint64(1)},
-					{2, uint64(1)},
-					{3, uint64(1)},
-					{4, uint64(1)},
-					{5, uint64(1)},
-					{6, uint64(2)},
-					{7, uint64(2)},
-					{8, uint64(2)},
-					{9, uint64(2)},
-					{10, uint64(2)},
-				},
-			},
-			{
-				Query:       "select i, ntile(x) over () from (select i, 2 as x from t) s;",
-				ExpectedErr: sql.ErrInvalidArgument,
-			},
-			{
-				Query:       "select i, ntile((select 2)) over () from t;",
-				ExpectedErr: sql.ErrInvalidArgument,
-			},
-			{
-				Query:       "select i, ntile((select i)) over () from t;",
-				ExpectedErr: sql.ErrInvalidArgument,
-			},
-		},
-	},
-	{
-		Name:    "ntile empty-table column arg",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"create table t (i int primary key, j int);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:       "select i, ntile(j) over () from t;",
-				ExpectedErr: sql.ErrInvalidArgument,
 			},
 		},
 	},
@@ -14406,64 +14102,6 @@ select * from t1 except (
 		},
 	},
 	{
-		// https://github.com/dolthub/dolt/issues/6899
-		Name: "window function tests",
-		SetUpScript: []string{
-			"CREATE TABLE c (c_id INT PRIMARY KEY, bill TEXT);",
-			"CREATE TABLE o (o_id INT PRIMARY KEY, c_id INT, ship TEXT);",
-			"INSERT INTO c VALUES (1, 'CA'), (2, 'TX'), (3, 'MA'), (4, 'TX'), (5, NULL), (6, 'FL');",
-			"INSERT INTO o VALUES (10, 1, 'CA'), (20, 1, 'CA'), (30, 1, 'CA'), (40, 2, 'CA'), (50, 2, 'TX'), (60, 2, NULL), (70, 4, 'WY'), (80, 4, NULL), (90, 6, 'WA');",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "select row_number() over () as rn from o where c_id=-999",
-				Expected: []sql.Row{},
-			},
-			{
-				// TODO: valid query in Postgres. https://github.com/dolthub/doltgresql/issues/1796
-				Dialect:  "mysql",
-				Query:    "select row_number() over () as rn from o where c_id=1",
-				Expected: []sql.Row{{1}, {2}, {3}},
-			},
-			{
-				Query:    "select rank() over() as rnk from o where c_id=-999",
-				Expected: []sql.Row{},
-			},
-			{
-				// TODO: valid query in Postgres. https://github.com/dolthub/doltgresql/issues/1796
-				Dialect: "mysql",
-				Query:   "select o_id, c_id, rank() over(order by o_id) as rnk from o where c_id=1",
-				Expected: []sql.Row{
-					{10, 1, uint64(1)},
-					{20, 1, uint64(2)},
-					{30, 1, uint64(3)},
-				},
-			},
-			{
-				Query:    "select dense_rank() over() as rnk from o where c_id=-999",
-				Expected: []sql.Row{},
-			},
-			{
-				// TODO: valid query in Postgres. But Postgres orders nil at the end. Maybe rewrite query to filter out
-				//  ship=null https://github.com/dolthub/doltgresql/issues/1796
-				Dialect: "mysql",
-				Query:   "select ship, dense_rank() over (order by ship) as drnk from o where c_id in (1, 2) order by ship",
-				Expected: []sql.Row{
-					{nil, uint64(1)},
-					{"CA", uint64(2)},
-					{"CA", uint64(2)},
-					{"CA", uint64(2)},
-					{"CA", uint64(2)},
-					{"TX", uint64(3)},
-				},
-			},
-			{
-				Query:    "select count(*) from o where c_id=-999",
-				Expected: []sql.Row{{0}},
-			},
-		},
-	},
-	{
 		Name:    "aggregate function with match",
 		Dialect: "mysql",
 		SetUpScript: []string{
@@ -15091,170 +14729,59 @@ select * from t1 except (
 		},
 	},
 	{
-		// https://github.com/dolthub/dolt/issues/11381
-		Name: "window aggregate functions with order by col",
+		Name: "TopN with huge limit",
 		SetUpScript: []string{
-			"CREATE TABLE t (id BIGINT, name VARCHAR(255));",
-			"INSERT INTO t VALUES (1,'a'),(2,'a'),(3,'a');",
-			"CREATE TABLE t2 (id BIGINT PRIMARY KEY, grp VARCHAR(10), val INT);",
-			"INSERT INTO t2 VALUES (1,'a',10), (2,'a',20), (3,'b',30), (4,'b',5), (5,'c',15), (6,'c',25);",
+			"create table t (i int);",
+			"insert into t values (1), (2), (3)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				// TODO: This test should work in Doltgres but it returns the wrong results.
-				//  https://github.com/dolthub/doltgresql/issues/3036
-				Dialect: "mysql",
-				Query:   "SELECT id, SUM(id)  OVER (ORDER BY name) FROM t ORDER BY id;",
+				Dialect: "mysql", // Postgres does not allow a limit of this size
+				Query:   "select * from t order by i limit 18446744073709551615",
 				Expected: []sql.Row{
-					{1, 6.0},
-					{2, 6.0},
-					{3, 6.0},
+					{1},
+					{2},
+					{3},
 				},
 			},
 			{
-				// TODO: This test should work in Doltgres but it returns the wrong results.
-				//  https://github.com/dolthub/doltgresql/issues/3036
-				Dialect: "mysql",
-				Query:   "SELECT id, AVG(id)  OVER (ORDER BY name) FROM t ORDER BY id;",
+				Query: "select * from t order by i limit 9223372036854775807",
 				Expected: []sql.Row{
-					{1, 2.0},
-					{2, 2.0},
-					{3, 2.0},
+					{1},
+					{2},
+					{3},
 				},
 			},
 			{
-				Query: "SELECT id, COUNT(id)  OVER (ORDER BY name) FROM t ORDER BY id;",
+				Query: "select * from t order by i limit 4294967295",
 				Expected: []sql.Row{
-					{1, 3},
-					{2, 3},
-					{3, 3},
+					{1},
+					{2},
+					{3},
 				},
 			},
 			{
-				Query: "SELECT id, MAX(val) OVER (ORDER BY grp) FROM t2 ORDER BY id;",
+				Query: "select * from t order by i limit 2147483647",
 				Expected: []sql.Row{
-					{1, 20},
-					{2, 20},
-					{3, 30},
-					{4, 30},
-					{5, 30},
-					{6, 30},
-				},
-			},
-			{
-				Query: "SELECT id, MIN(val) OVER (ORDER BY grp) FROM t2 ORDER BY id;",
-				Expected: []sql.Row{
-					{1, 10},
-					{2, 10},
-					{3, 5},
-					{4, 5},
-					{5, 5},
-					{6, 5},
-				},
-			},
-			{
-				// TODO: This test should work in Doltgres but panics.
-				//  https://github.com/dolthub/doltgresql/issues/3038
-				Dialect: "mysql",
-				Query:   "SELECT id, STDDEV_POP(val) OVER (ORDER BY grp) FROM t2 ORDER BY id;",
-				Expected: []sql.Row{
-					{1, 5.0},
-					{2, 5.0},
-					{3, 9.60143218483576},
-					{4, 9.60143218483576},
-					{5, 8.539125638299666},
-					{6, 8.539125638299666},
-				},
-			},
-			{
-				// TODO: This test should work in Doltgres but panics.
-				//  https://github.com/dolthub/doltgresql/issues/3038
-				Dialect: "mysql",
-				Query:   "SELECT id, STDDEV_SAMP(val) OVER (ORDER BY grp) FROM t2 ORDER BY id;",
-				Expected: []sql.Row{
-					{1, 7.0710678118654755},
-					{2, 7.0710678118654755},
-					{3, 11.086778913041726},
-					{4, 11.086778913041726},
-					{5, 9.354143466934854},
-					{6, 9.354143466934854},
-				},
-			},
-			{
-				// TODO: This test should work in Doltgres but panics.
-				//  https://github.com/dolthub/doltgresql/issues/3038
-				Dialect: "mysql",
-				Query:   "SELECT id, VAR_POP(val) OVER (ORDER BY grp) FROM t2 ORDER BY id;",
-				Expected: []sql.Row{
-					{1, 25.0},
-					{2, 25.0},
-					{3, 92.1875},
-					{4, 92.1875},
-					{5, 72.91666666666667},
-					{6, 72.91666666666667},
-				},
-			},
-			{
-				// TODO: This test should work in Doltgres but panics.
-				//  https://github.com/dolthub/doltgresql/issues/3038
-				Dialect: "mysql",
-				Query:   "SELECT id, VAR_SAMP(val) OVER (ORDER BY grp) FROM t2 ORDER BY id;",
-				Expected: []sql.Row{
-					{1, 50.0},
-					{2, 50.0},
-					{3, 122.91666666666667},
-					{4, 122.91666666666667},
-					{5, 87.5},
-					{6, 87.5},
-				},
-			},
-			{
-				Query: "SELECT id, JSON_ARRAYAGG(val) OVER (ORDER BY grp) FROM t2 ORDER BY id;",
-				Expected: []sql.Row{
-					{1, types.MustJSON(`[10, 20]`)},
-					{2, types.MustJSON(`[10, 20]`)},
-					{3, types.MustJSON(`[10, 20, 30, 5]`)},
-					{4, types.MustJSON(`[10, 20, 30, 5]`)},
-					{5, types.MustJSON(`[10, 20, 30, 5, 15, 25]`)},
-					{6, types.MustJSON(`[10, 20, 30, 5, 15, 25]`)},
+					{1},
+					{2},
+					{3},
 				},
 			},
 		},
 	},
 	{
-		Name: "Window aggregations with empty OVER clause",
+		Name:    "LIKE expression with ESCAPE clause",
+		Dialect: "mysql",
 		SetUpScript: []string{
-			"CREATE TABLE t(id INT PRIMARY KEY, v INT);",
-			"INSERT INTO t VALUES (1,10),(2,20);",
+			"CREATE TABLE t(value VARCHAR(1), pattern VARCHAR(1));",
+			"INSERT INTO t VALUES ('a', 'a');",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				// https://github.com/dolthub/dolt/issues/11428
-				Query: "SELECT id, FIRST_VALUE(v) OVER () AS fv FROM t ORDER BY id;",
+				Query: "SELECT FIRST_VALUE(value LIKE pattern ESCAPE '') OVER () AS actual FROM t;",
 				Expected: []sql.Row{
-					{1, 10},
-					{2, 10},
-				},
-			},
-			{
-				Query: "SELECT id, LAST_VALUE(v) OVER () AS lv FROM t ORDER BY id;",
-				Expected: []sql.Row{
-					{1, 20},
-					{2, 20},
-				},
-			},
-			{
-				Query: "SELECT id, LAG(v) OVER () AS l FROM t ORDER BY id;",
-				Expected: []sql.Row{
-					{1, nil},
-					{2, 10},
-				},
-			},
-			{
-				Query: "SELECT id, LEAD(v) OVER () AS l FROM t ORDER BY id;",
-				Expected: []sql.Row{
-					{1, 20},
-					{2, nil},
+					{true},
 				},
 			},
 		},

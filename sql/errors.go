@@ -297,6 +297,9 @@ var (
 	// ErrUnknownPreparedStatement is returned when an unknown query is executed.
 	ErrUnknownPreparedStatement = errors.NewKind(`Unknown prepared statement handler (%s) given to EXECUTE`)
 
+	// ErrUnsupportedPreparedStatement is returned when an unsupported query is prepared.
+	ErrUnsupportedPreparedStatement = errors.NewKind("This command is not supported in the prepared statement protocol yet")
+
 	// ErrTruncateReferencedFromForeignKey is returned when a table is referenced in a foreign key and TRUNCATE is called on it.
 	ErrTruncateReferencedFromForeignKey = errors.NewKind("cannot truncate table %s as it is referenced in foreign key %s on table %s")
 
@@ -638,6 +641,9 @@ var (
 	// ErrInvalidGISData is thrown when a "ST_<spatial_type>FromText" function receives a malformed string
 	ErrInvalidGISData = errors.NewKind("invalid GIS data provided to function %s")
 
+	// ErrInvalidKeyPair is thrown when a function receives an invalid key-pair option
+	ErrInvalidKeyPair = errors.NewKind("the string '%v' is not a valid key paid for function %s")
+
 	// ErrIllegalGISValue is thrown when a spatial type constructor receives a non-geometric when one should be provided
 	ErrIllegalGISValue = errors.NewKind("illegal non geometric '%v' value found during parsing")
 
@@ -698,6 +704,9 @@ var (
 
 	// ErrInvalidCheckConstraint is returned when a check constraint is defined incorrectly
 	ErrInvalidCheckConstraint = errors.NewKind("invalid constraint definition: %s")
+
+	// ErrDuplicateCheckName is returned when a check constraint is defined incorrectly
+	ErrDuplicateCheckName = errors.NewKind("duplicate check constraint name: %s")
 
 	// ErrUserCreationFailure is returned when attempting to create a user and it fails for any reason.
 	ErrUserCreationFailure = errors.NewKind("Operation CREATE USER failed for %s")

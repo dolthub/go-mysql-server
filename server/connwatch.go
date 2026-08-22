@@ -23,6 +23,8 @@ import (
 
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/sirupsen/logrus"
+
+	"github.com/dolthub/go-mysql-server/errguard"
 )
 
 const (
@@ -222,8 +224,11 @@ func (w *connWatcher) wake() {
 
 // run is the sweeper loop. It ticks (one reused timer for the whole process)
 // only while there is pending work, and parks on wakeCh with no timer otherwise.
+// A recovered panic stops the loop for the life of the process, after which
+// queries no longer get the client-went-away cancellation it provides.
 func (w *connWatcher) run() {
 	defer close(w.doneCh)
+	defer errguard.RecoverAndLog("connection watcher sweeper")
 	timer := time.NewTimer(w.tick)
 	if !timer.Stop() {
 		<-timer.C

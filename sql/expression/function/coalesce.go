@@ -140,14 +140,16 @@ func (c *Coalesce) CollationCoercibility(ctx *sql.Context) (collation sql.Collat
 }
 
 // IsNullable implements the sql.Expression interface.
-// Returns true if all arguments are nil
-// or of the first non-nil argument is nullable, otherwise false.
+// COALESCE only evaluates to NULL when every argument evaluates to NULL, so it is nullable
+// only if all of its arguments are nullable.
 func (c *Coalesce) IsNullable(ctx *sql.Context) bool {
 	for _, arg := range c.args {
 		if arg == nil {
 			continue
 		}
-		return arg.IsNullable(ctx)
+		if !arg.IsNullable(ctx) {
+			return false
+		}
 	}
 	return true
 }

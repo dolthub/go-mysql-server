@@ -77,6 +77,7 @@ var JsonCompareTests = []JsonCompareTest{
 	{Left: `0`, Right: `0.0`, Cmp: 0},
 	{Left: `0`, Right: `-1`, Cmp: 1},
 	{Left: `0`, Right: `3.14`, Cmp: -1},
+	{Left: `9223372036854775807`, Right: `9223372036854775808`, Cmp: -1},
 
 	// arrays
 	{Left: `[1,2]`, Right: `[1,2]`, Cmp: 0},

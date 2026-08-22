@@ -1099,6 +1099,7 @@ func getThreadsConnected() uint64 {
 // value of Max_used_connections.
 func updateMaxUsedConnectionsStatusVariable() {
 	go func() {
+		defer errguard.RecoverAndLog("Max_used_connections status variable update")
 		maxUsedConnections := getMaxUsedConnections()
 		threadsConnected := getThreadsConnected()
 		if threadsConnected > maxUsedConnections {
@@ -1172,7 +1173,11 @@ func RowValueToSQLValues(ctx *sql.Context, sch sql.Schema, row sql.ValueRow, buf
 				outVals[i] = sqltypes.NULL
 				continue
 			}
-			outVals[i] = sqltypes.MakeTrusted(row[i].Typ, row[i].Val)
+			unwrappedVal, err := row[i].Unwrap(ctx)
+			if err != nil {
+				return nil, err
+			}
+			outVals[i] = sqltypes.MakeTrusted(row[i].Typ, unwrappedVal)
 			continue
 		}
 		if buf == nil {

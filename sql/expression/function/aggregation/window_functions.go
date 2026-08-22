@@ -1371,14 +1371,15 @@ func (n *NTile) StartPartition(ctx *sql.Context, interval sql.WindowInterval, bu
 	if err != nil {
 		return err
 	}
-	numBucketsVal, _, err = types.Int64.Convert(ctx, numBucketsVal)
+	var inRange sql.ConvertInRange
+	numBucketsVal, inRange, err = types.Int64.Convert(ctx, numBucketsVal)
 	if err != nil {
-		numBucketsVal = uint64(0)
+		return err
 	}
 	if numBucketsVal == nil {
 		return sql.ErrInvalidArgument.New("NTILE")
 	}
-	if numBucketsVal.(int64) <= 0 {
+	if numBucketsVal.(int64) <= 0 || inRange != sql.InRange {
 		return sql.ErrInvalidArgument.New("NTILE")
 	}
 
