@@ -18,9 +18,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
+	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
