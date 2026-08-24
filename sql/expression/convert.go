@@ -303,6 +303,7 @@ func convertValue(ctx *sql.Context, val any, castTo string, originType sql.Type,
 		if err != nil {
 			return nil, nil
 		}
+
 		if types.IsTextOnly(originType) {
 			// For string types we need to re-encode the string as we want the binary representation of the character set
 			encoder := originType.(sql.StringType).Collation().CharacterSet().Encoder()
