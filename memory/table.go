@@ -563,7 +563,21 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 
 	if vectorPartition, ok := partition.(*vectorPartitionIter); ok {
 		// Assume only one partition for now
-		rows := data.partitions[string(data.partitionKeys[0])]
+		allRows := data.partitions[string(data.partitionKeys[0])]
+
+		// A vector index contains no entry for a row whose indexed value is NULL, so an index scan never returns those
+		// rows. Built-in types cannot create a vector index over a nullable column, making this a safety check for
+		// them, while integrator types may permit nullable columns.
+		rows := make([]sql.Row, 0, len(allRows))
+		for _, row := range allRows {
+			distance, err := vectorPartition.OrderBy.Eval(ctx, row)
+			if err != nil {
+				return nil, err
+			}
+			if distance != nil {
+				rows = append(rows, row)
+			}
+		}
 
 		sc := sql.SortConditions{
 			{Expr: vectorPartition.OrderBy, Order: sql.Ascending},
@@ -2005,7 +2019,7 @@ func (t *Table) DropCheck(ctx *sql.Context, chName string) error {
 	return fmt.Errorf("check '%s' was not found on the table", chName)
 }
 
-func (t *Table) createIndex(ctx *sql.Context, data *TableData, name string, columns []sql.IndexColumn, constraint sql.IndexConstraint, comment string) (sql.Index, error) {
+func (t *Table) createIndex(ctx *sql.Context, data *TableData, name string, columns []sql.IndexColumn, constraint sql.IndexConstraint, comment string, vectorProps sql.VectorProperties) (sql.Index, error) {
 	if name == "" {
 		for _, column := range columns {
 			name += column.Name + "_"
@@ -2045,9 +2059,12 @@ func (t *Table) createIndex(ctx *sql.Context, data *TableData, name string, colu
 		}
 	}
 
-	var vectorFunction vector.DistanceType
+	var vectorFunction sql.DistanceType
 	if constraint == sql.IndexConstraint_Vector {
-		vectorFunction = vector.DistanceL2Squared{}
+		vectorFunction = vectorProps.DistanceType
+		if vectorFunction == nil {
+			vectorFunction = vector.DistanceL2Squared{}
+		}
 	}
 
 	return &Index{
@@ -2075,7 +2092,7 @@ func (t *Table) CreateIndex(ctx *sql.Context, idx sql.IndexDef) error {
 		data.indexes = make(map[string]sql.Index)
 	}
 
-	index, err := t.createIndex(ctx, data, idx.Name, idx.Columns, idx.Constraint, idx.Comment)
+	index, err := t.createIndex(ctx, data, idx.Name, idx.Columns, idx.Constraint, idx.Comment, idx.VectorProperties)
 	if err != nil {
 		return err
 	}
@@ -2141,7 +2158,7 @@ func (t *Table) CreateFulltextIndex(ctx *sql.Context, indexDef sql.IndexDef, key
 		data.indexes = make(map[string]sql.Index)
 	}
 
-	index, err := t.createIndex(ctx, data, indexDef.Name, indexDef.Columns, indexDef.Constraint, indexDef.Comment)
+	index, err := t.createIndex(ctx, data, indexDef.Name, indexDef.Columns, indexDef.Constraint, indexDef.Comment, indexDef.VectorProperties)
 	if err != nil {
 		return err
 	}
@@ -2160,7 +2177,7 @@ func (t *Table) CreateFulltextIndex(ctx *sql.Context, indexDef sql.IndexDef, key
 	return nil
 }
 
-func (t *Table) CreateVectorIndex(ctx *sql.Context, idx sql.IndexDef, distanceType vector.DistanceType) error {
+func (t *Table) CreateVectorIndex(ctx *sql.Context, idx sql.IndexDef, distanceType sql.DistanceType) error {
 	if len(idx.Columns) > 1 {
 		return fmt.Errorf("vector indexes must have exactly one column")
 	}
@@ -2172,7 +2189,7 @@ func (t *Table) CreateVectorIndex(ctx *sql.Context, idx sql.IndexDef, distanceTy
 		data.indexes = make(map[string]sql.Index)
 	}
 
-	index, err := t.createIndex(ctx, data, idx.Name, idx.Columns, idx.Constraint, idx.Comment)
+	index, err := t.createIndex(ctx, data, idx.Name, idx.Columns, idx.Constraint, idx.Comment, idx.VectorProperties)
 	if err != nil {
 		return err
 	}

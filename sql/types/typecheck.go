@@ -268,10 +268,20 @@ func IsYear(t sql.Type) bool {
 	return ok
 }
 
+// VectorIndexableType is implemented by integrator types whose deserialized values sql.ConvertToVector accepts, making
+// them valid vector index column types.
+type VectorIndexableType interface {
+	// VectorIndexable returns whether values of this type can be used in a vector index.
+	VectorIndexable() bool
+}
+
 // IsVectorConvertable checks if t can be implicitly converted to a vector of floats.
 func IsVectorConvertable(t sql.Type) bool {
 	if t == nil {
 		return false
+	}
+	if vectorIndexable, ok := t.(VectorIndexableType); ok {
+		return vectorIndexable.VectorIndexable()
 	}
 	switch t.Type() {
 	case sqltypes.TypeJSON, sqltypes.Vector, sqltypes.Binary:
