@@ -288,7 +288,10 @@ func (f *LastDay) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	lDay := GetLastDay(d.Year(), int(d.Month()))
+	lDay, ok := types.GetLastDay(d.Year(), int(d.Month()))
+	if !ok {
+		return nil, sql.ErrTruncatedIncorrect.New("datetime", date)
+	}
 	return time.Date(d.Year(), d.Month(), lDay, 0, 0, 0, 0, time.UTC), nil
 }
 

@@ -779,12 +779,23 @@ func TypeAwareConversion(ctx *sql.Context, val interface{}, originalType sql.Typ
 		}
 	}
 	var err error
-	if (IsEnum(originalType) || IsSet(originalType)) && IsText(convertedType) {
-		val, _, err = ConvertToCollatedString(ctx, val, originalType)
-		if err != nil {
-			return nil, sql.InRange, err
+	if IsText(convertedType) {
+		switch {
+		case IsEnum(originalType) || IsSet(originalType):
+			val, _, err = ConvertToCollatedString(ctx, val, originalType)
+			if err != nil {
+				return nil, sql.InRange, err
+			}
+		case IsTime(originalType):
+			dtType := originalType.(datetimeType)
+			val, err = dtType.Serialize(ctx, nil, val)
+			if err != nil {
+				return nil, sql.InRange, err
+			}
+			return string(val.([]byte)), sql.InRange, nil
 		}
 	}
+
 	return convertedType.Convert(ctx, val)
 }
 

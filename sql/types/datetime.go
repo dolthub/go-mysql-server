@@ -316,12 +316,7 @@ func (t datetimeType) ConvertWithoutRangeCheck(ctx context.Context, v interface{
 		if IsZeroTimestampStr(value) {
 			return ZeroTime, nil
 		}
-		// TODO: consider not using time.Parse if we want to match MySQL exactly ('2010-06-03 11:22.:.:.:.:' is a valid timestamp)
-		var parsed bool
-		res, parsed, err = parseDatetime(value)
-		if !parsed {
-			return ZeroTime, ErrConvertingToTime.New(v)
-		}
+		res, _, err = parseDatetime(value)
 	case time.Time:
 		res = value.UTC()
 	// For most integer values, we just return an error (but MySQL is more lenient for some of these). A special case
@@ -423,11 +418,14 @@ func IsLeapYear(year int64) bool {
 var DaysPerMonth = [12]int64{31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}
 
 // GetLastDay returns the last day of the month for the given year and month
-func GetLastDay(year, month int) int {
-	if month == 2 && IsLeapYear(int64(year)) {
-		return 29
+func GetLastDay(year, month int) (res int, ok bool) {
+	if month < 1 || month > 12 {
+		return 31, false // defaults to 31 when month is invalid
 	}
-	return int(DaysPerMonth[month-1])
+	if month == 2 && IsLeapYear(int64(year)) {
+		return 29, true
+	}
+	return int(DaysPerMonth[month-1]), true
 }
 
 // DateTimeRegex will match MySQL's DateTime format.
@@ -484,10 +482,11 @@ func parseDatetime(value string) (time.Time, bool, error) {
 		return ZeroTime, false, sql.ErrTruncatedIncorrect.New(value)
 	}
 	day, err := strconv.Atoi(dayStr)
-	if lastDay := GetLastDay(year, month); day > lastDay {
+	if err != nil {
 		return ZeroTime, false, sql.ErrTruncatedIncorrect.New(value)
 	}
-	if err != nil {
+	// GetLastDay already handles invalid months
+	if lastDay, _ := GetLastDay(year, month); day > lastDay {
 		return ZeroTime, false, sql.ErrTruncatedIncorrect.New(value)
 	}
 
@@ -527,19 +526,27 @@ func parseDatetime(value string) (time.Time, bool, error) {
 			return ZeroTime, false, sql.ErrTruncatedIncorrect.New(value)
 		}
 	}
-	// TODO: MySQL reads 7 of them and rounds up
 	if matchIdxs[14] != matchIdxs[15] {
-		usecStr := value[matchIdxs[14]+1:]
-		usecStr = usecStr[:6] // Only the first 6 characters are relevant
-		usec, err = strconv.Atoi(usecStr)
+		// Extract usec part
+		// [0] = '.'
+		// [1-6] = microseconds
+		// [7] = additional digit for precision
+		usecStr := value[matchIdxs[14]:]
+		if len(usecStr) >= 8 {
+			usecStr = usecStr[:8]
+		}
+		var usecf64 float64
+		usecf64, err = strconv.ParseFloat(usecStr, 64)
 		if err != nil {
 			return ZeroTime, false, sql.ErrTruncatedIncorrect.New(value)
 		}
+		usecf64 = usecf64 * 1000
+		usec = int(math.Round(usecf64))
 	}
 	if matchIdxs[16] != matchIdxs[17] {
-		// TODO: should throw a warning
+		// TODO: throw a warning
 	}
-	resTime := time.Date(year, time.Month(month), day, hour, mins, sec, usec*1000, time.UTC)
+	resTime := time.Date(year, time.Month(month), day, hour, mins, sec, usec, time.UTC)
 	return resTime, true, nil
 }
 
@@ -569,14 +576,24 @@ func (t datetimeType) Promote() sql.Type {
 }
 
 // SQL implements Type interface.
-func (t datetimeType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t datetimeType) SQL(ctx *sql.Context, dest []byte, v any) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
 
-	vt, err := ConvertToTime(ctx, v, t)
+	var err error
+	dest, err = t.Serialize(ctx, dest, v)
 	if err != nil {
 		return sqltypes.Value{}, err
+	}
+
+	return sqltypes.MakeTrusted(t.baseType, dest), nil
+}
+
+func (t datetimeType) Serialize(ctx *sql.Context, dest []byte, v any) ([]byte, error) {
+	vt, err := ConvertToTime(ctx, v, t)
+	if err != nil {
+		return dest, err
 	}
 
 	switch t.baseType {
@@ -585,10 +602,9 @@ func (t datetimeType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltype
 	case sqltypes.Datetime, sqltypes.Timestamp:
 		dest = appendDatetimeFormat(dest, vt, t.precision)
 	default:
-		return sqltypes.Value{}, sql.ErrInvalidBaseType.New(t.baseType.String(), "datetime")
+		return dest, sql.ErrInvalidBaseType.New(t.baseType.String(), "datetime")
 	}
-
-	return sqltypes.MakeTrusted(t.baseType, dest), nil
+	return dest, nil
 }
 
 // SQLValue implements the ValueType interface.
