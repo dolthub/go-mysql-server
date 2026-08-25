@@ -23,7 +23,9 @@ import (
 
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestScalarFunctionTableAliasColumnName(t *testing.T) {
@@ -78,6 +80,34 @@ func TestNativeTableFunctionAliasPreservesColumnName(t *testing.T) {
 	require.Equal(t, "named_column", outScope.node.Schema(ctx)[0].Name)
 }
 
+func TestRecordReturningFunctionAliasPreservesColumnNames(t *testing.T) {
+	db := memory.NewDatabase("mydb")
+	ctx := sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), memory.NewDBProvider(db))))
+	ctx.SetCurrentDatabase("mydb")
+	funcs := function.NewRegistry()
+	require.NoError(t, funcs.Register(sql.Function1{
+		Name: "record_func",
+		Fn: func(_ *sql.Context, _ sql.Expression) sql.Expression {
+			return &recordFunctionExpression{Literal: expression.NewLiteral(nil, types.Int64)}
+		},
+	}))
+	cat := tableFunctionTestCatalog{
+		MapCatalog: sql.MapCatalog{
+			Databases: map[string]sql.Database{"mydb": db},
+			Funcs:     funcs,
+		},
+		overrides: sql.EngineOverrides{Builder: sql.BuilderOverrides{ScalarFunctionAliasAsColumn: true}},
+	}
+	b := New(ctx, cat, nil)
+	outScope := b.buildTableFunc(b.newScope(), tableFuncExpr("record_func", "r", ast.NewIntVal([]byte("1"))))
+
+	require.Equal(t, "r", outScope.node.(sql.Nameable).Name())
+	require.Equal(t, []string{"first", "second"}, []string{
+		outScope.node.Schema(ctx)[0].Name,
+		outScope.node.Schema(ctx)[1].Name,
+	})
+}
+
 func tableFuncExpr(name, alias string, exprs ...ast.Expr) *ast.TableFuncExpr {
 	aliasedExprs := make(ast.SelectExprs, len(exprs))
 	for i, expr := range exprs {
@@ -99,4 +129,19 @@ func (c tableFunctionTestCatalog) TableFunction(_ *sql.Context, name string) (sq
 
 func (c tableFunctionTestCatalog) Overrides() sql.EngineOverrides {
 	return c.overrides
+}
+
+type recordFunctionExpression struct {
+	*expression.Literal
+}
+
+func (e *recordFunctionExpression) OutParametersSchema() sql.Schema {
+	return sql.Schema{
+		{Name: "first", Type: types.Int64},
+		{Name: "second", Type: types.Int64},
+	}
+}
+
+func (e *recordFunctionExpression) Unwrap(v any) sql.Row {
+	return v.(sql.Row)
 }
