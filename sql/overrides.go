@@ -62,7 +62,19 @@ type BuilderOverrides struct {
 	ScalarFunctionAliasAsColumn bool
 	// Represents the parser to use. If this is nil, then the MySQL parser will be used.
 	Parser Parser
+	// InsertIgnoreMode controls the error-handling semantics for ignored inserts.
+	InsertIgnoreMode InsertIgnoreMode
 }
+
+// InsertIgnoreMode controls which compatibility semantics an ignored insert uses.
+type InsertIgnoreMode uint8
+
+const (
+	// InsertIgnoreModeMySQL preserves MySQL's broad INSERT IGNORE behavior.
+	InsertIgnoreModeMySQL InsertIgnoreMode = iota
+	// InsertIgnoreModeDuplicateKeysOnly suppresses only duplicate-key errors.
+	InsertIgnoreModeDuplicateKeysOnly
+)
 
 // ExecutionHooks contain various hooks that are called within a statement's lifecycle. Each inner struct represents a
 // specific statement.

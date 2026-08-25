@@ -111,11 +111,12 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 			return n, transform.SameTree, nil
 		}
 		nn, err := n.WithChildren(ctx, &plan.ForeignKeyHandler{
-			Table:        tbl,
-			Sch:          insertableDest.Schema(ctx),
-			OriginalNode: n.Destination,
-			Editor:       fkEditor,
-			AllUpdaters:  fkChain.GetUpdaters(),
+			Table:                      tbl,
+			Sch:                        insertableDest.Schema(ctx),
+			OriginalNode:               n.Destination,
+			Editor:                     fkEditor,
+			AllUpdaters:                fkChain.GetUpdaters(),
+			CheckReferencesAfterInsert: n.Ignore && n.IgnoreMode == sql.InsertIgnoreModeDuplicateKeysOnly,
 		})
 		return nn, transform.NewTree, err
 	case *plan.Update:

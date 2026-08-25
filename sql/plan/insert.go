@@ -85,6 +85,10 @@ type InsertInto struct {
 
 	IsReplace bool
 	Ignore    bool
+	// IgnoreMode controls the compatibility semantics used when Ignore is true.
+	IgnoreMode sql.InsertIgnoreMode
+	// IgnoreTarget limits duplicate suppression to conflicts matching these columns. An empty target matches any key.
+	IgnoreTarget []string
 	// LiteralValueSource is set to |true| when |Source| is
 	// a |Values| node with only literal expressions.
 	LiteralValueSource bool
