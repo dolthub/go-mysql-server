@@ -468,6 +468,23 @@ func (c *countDistinctBuffer) Update(ctx *sql.Context, row sql.Row) error {
 		}
 		value = val
 	}
+	if len(c.exprs) == 1 {
+		_, isStar := c.exprs[0].(*expression.Star)
+		if !isStar {
+			if extendedType, ok := c.exprs[0].Type(ctx).(sql.ExtendedType); ok {
+				serializedValue, err := extendedType.SerializeValue(ctx, value.(sql.Row)[0])
+				if err != nil {
+					return err
+				}
+				hash := xxhash.New()
+				if _, err = hash.Write(serializedValue); err != nil {
+					return err
+				}
+				c.seen[hash.Sum64()] = struct{}{}
+				return nil
+			}
+		}
+	}
 
 	var str string
 	for _, val := range value.(sql.Row) {
