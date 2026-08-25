@@ -16,6 +16,7 @@ package function
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -86,16 +87,20 @@ func (c *ConvertTz) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	dt, err := c.dt.Eval(ctx, row)
+	dtVal, err := c.dt.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
 	// If either the date, or the timezones/offsets are not correct types we return NULL.
-	datetime, err := types.DatetimeMaxPrecision.ConvertWithoutRangeCheck(ctx, dt)
+	dtVal, err = types.DatetimeMaxPrecision.ConvertWithoutRangeCheck(ctx, dtVal)
 	if err != nil {
 		return nil, nil
 	}
+	if dtVal == nil {
+		return nil, nil
+	}
+	dt := dtVal.(time.Time)
 
 	fromStr, ok := from.(string)
 	if !ok {
@@ -115,7 +120,7 @@ func (c *ConvertTz) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		toStr = sql.SystemTimezoneOffset()
 	}
 
-	converted, success := sql.ConvertTimeZone(datetime, fromStr, toStr)
+	converted, success := sql.ConvertTimeZone(dt, fromStr, toStr)
 	if !success {
 		return nil, nil
 	}
