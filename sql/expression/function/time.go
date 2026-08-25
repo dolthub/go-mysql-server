@@ -1332,19 +1332,17 @@ func (d *Date) Eval(ctx *sql.Context, row sql.Row) (any, error) {
 		return nil, err
 	}
 
-	// TODO: why don't we use types.Date.Convert()?
-	if val == nil {
-		return nil, nil
-	}
-
-	date, err := types.DatetimeMaxPrecision.ConvertWithoutRangeCheck(ctx, val)
+	date, err := types.Date.ConvertWithoutRangeCheck(ctx, val)
 	if err != nil {
 		if sql.ErrTruncatedIncorrect.Is(err) {
 			ctx.Warn(mysql.ERTruncatedWrongValue, err.Error())
 		}
 	}
 
-	// TODO: zero out the time portion of dateTime?
+	if date == nil {
+		return nil, nil
+	}
+
 	return date, nil
 }
 
@@ -1794,8 +1792,9 @@ func (t *Time) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// convert to date
-	date, err := types.DatetimeMaxPrecision.ConvertWithoutRangeCheck(ctx, v)
+	dateVal, err := types.DatetimeMaxPrecision.ConvertWithoutRangeCheck(ctx, v)
 	if err == nil {
+		date := dateVal.(time.Time)
 		h, m, s := date.Clock()
 		us := date.Nanosecond() / 1000
 		return types.Timespan(1000000*(3600*h+60*m+s) + us), nil

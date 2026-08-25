@@ -231,7 +231,7 @@ func IsStringType(t Type) bool {
 // The type of the returned value is time.Time.
 type DatetimeType interface {
 	Type
-	ConvertWithoutRangeCheck(ctx context.Context, v interface{}) (time.Time, error)
+	ConvertWithoutRangeCheck(ctx context.Context, v any) (any, error)
 	MaximumTime() time.Time
 	MinimumTime() time.Time
 	Precision() int

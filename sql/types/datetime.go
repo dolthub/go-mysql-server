@@ -259,21 +259,26 @@ func ConvertToTime(ctx context.Context, v interface{}, t datetimeType) (time.Tim
 	if err != nil && !sql.ErrTruncatedIncorrect.Is(err) {
 		return time.Time{}, err
 	}
+	// TODO: is this correct?
+	if res == nil {
+		return time.Time{}, nil
+	}
 
-	if res.Equal(ZeroTime) {
+	dt := res.(time.Time)
+	if dt.Equal(ZeroTime) {
 		return ZeroTime, nil
 	}
 
 	// Round the date to the precision of this type
 	if t.precision < MaxDatetimePrecision {
 		truncationDuration := time.Second / time.Duration(precisionConversion[t.precision])
-		res = res.Round(truncationDuration)
+		res = dt.Round(truncationDuration)
 	} else {
-		res = res.Round(time.Microsecond)
+		res = dt.Round(time.Microsecond)
 	}
 
 	if t == DatetimeMaxRange {
-		validated := ValidateTime(res)
+		validated := ValidateTime(dt)
 		if validated == nil {
 			return time.Time{}, ErrConvertingToTimeOutOfRange.New(v, t)
 		}
@@ -282,25 +287,27 @@ func ConvertToTime(ctx context.Context, v interface{}, t datetimeType) (time.Tim
 
 	switch t.baseType {
 	case sqltypes.Date:
-		if res.Year() < 0 || res.Year() > 9999 {
-			return time.Time{}, ErrConvertingToTimeOutOfRange.New(res.Format(sql.DateLayout), t.String())
+		if dt.Year() < 0 || dt.Year() > 9999 {
+			return time.Time{}, ErrConvertingToTimeOutOfRange.New(dt.Format(sql.DateLayout), t.String())
 		}
 	case sqltypes.Datetime:
-		if res.Year() < 0 || res.Year() > 9999 {
-			return time.Time{}, ErrConvertingToTimeOutOfRange.New(res.Format(sql.TimestampDatetimeLayout), t.String())
+		if dt.Year() < 0 || dt.Year() > 9999 {
+			return time.Time{}, ErrConvertingToTimeOutOfRange.New(dt.Format(sql.TimestampDatetimeLayout), t.String())
 		}
 	case sqltypes.Timestamp:
-		if ValidateTimestamp(res) == nil {
-			return time.Time{}, ErrConvertingToTimeOutOfRange.New(res.Format(sql.TimestampDatetimeLayout), t.String())
+		if ValidateTimestamp(dt) == nil {
+			return time.Time{}, ErrConvertingToTimeOutOfRange.New(dt.Format(sql.TimestampDatetimeLayout), t.String())
 		}
 	}
 
-	return res, err
+	return dt, err
 }
 
 // ConvertWithoutRangeCheck converts the parameter to time.Time without checking the range.
-func (t datetimeType) ConvertWithoutRangeCheck(ctx context.Context, v interface{}) (time.Time, error) {
-	var res time.Time
+func (t datetimeType) ConvertWithoutRangeCheck(ctx context.Context, v any) (any, error) {
+	if v == nil {
+		return nil, nil
+	}
 
 	var err error
 	v, err = sql.UnwrapAny(ctx, v)
@@ -308,6 +315,7 @@ func (t datetimeType) ConvertWithoutRangeCheck(ctx context.Context, v interface{
 		return time.Time{}, err
 	}
 
+	var res time.Time
 	switch value := v.(type) {
 	case []byte:
 		return t.ConvertWithoutRangeCheck(ctx, string(value))
@@ -315,7 +323,7 @@ func (t datetimeType) ConvertWithoutRangeCheck(ctx context.Context, v interface{
 		if IsZeroTimestampStr(value) {
 			return ZeroTime, nil
 		}
-		res, _, err = parseDatetime(value)
+		return t.parseDatetime(value)
 	case time.Time:
 		res = value.UTC()
 	// For most integer values, we just return an error (but MySQL is more lenient for some of these). A special case
@@ -442,9 +450,9 @@ var DateTimeRegex = regexp.MustCompile(`^(\d+)-(\d+)-(\d+) ?(\d*)?(:?\d*)?(:?\d*
 
 // parseDatetime parses a DateTime according to MySQL rules.
 // TODO: not sure if parsed bool return value is necessary
-func parseDatetime(value string) (time.Time, bool, error) {
+func (t datetimeType) parseDatetime(value string) (any, error) {
 	if t, err := time.Parse(TimezoneTimestampDatetimeLayout, value); err == nil {
-		return t.UTC(), true, nil
+		return t.UTC(), nil
 	}
 	// TODO: MySQL supports a "relaxed" DateTime format that allows any punctuation (and nothing) as delimiters for
 	//  the date and time portions specifically for INSERT, UPDATE, and comparisons.
@@ -455,7 +463,7 @@ func parseDatetime(value string) (time.Time, bool, error) {
 	value = strings.Trim(value, NumericCutSet) // TODO: leading an trailing whitespace should throw warning
 	matchIdxs := DateTimeRegex.FindStringSubmatchIndex(value)
 	if len(matchIdxs) == 0 {
-		return ZeroTime, false, sql.ErrTruncatedIncorrect.New(value)
+		return nil, sql.ErrTruncatedIncorrect.New(value)
 	}
 
 	// Date portion with the '-' delimiter is required for valid DateTime parsing, so no need to check for -1 indexes
@@ -463,30 +471,41 @@ func parseDatetime(value string) (time.Time, bool, error) {
 	monthStr := value[matchIdxs[4]:matchIdxs[5]]
 	dayStr := value[matchIdxs[6]:matchIdxs[7]]
 
-	// TODO: Check for SQL_MODE options NO_ZERO_IN_DATE and NO_ZERO_DATE
+	// TODO: Invalid and Zero Dates are affected by sql_modes:
+	// 	STRICT_TRANS_TABLES, NO_ZERO_DATE, and NO_ZERO_IN_DATE
+	//  We only have STRICT_TRANS_TABLES enabled by default (which is a no-op alone), so we behave accordingly.
+	//  We ignore if NO_ZERO_DATE and NO_ZERO_IN_DATE are enabled.
+	//  MySQL References:
+	//	 https://dev.mysql.com/doc/refman/9.7/en/sql-mode.html#sqlmode_no_zero_date
+	//   https://dev.mysql.com/doc/refman/9.7/en/sql-mode.html#sqlmode_no_zero_in_date
 	// TODO: make constants for MIN/MAX values
 	// Negative numbers should be impossible, so we don't check for them
 	year, err := strconv.Atoi(yearStr)
 	if err != nil {
-		return ZeroTime, false, sql.ErrTruncatedIncorrect.New(value)
+		return nil, sql.ErrTruncatedIncorrect.New(value)
 	}
 	if year > 9999 {
-		return ZeroTime, false, sql.ErrTruncatedIncorrect.New(value)
+		return nil, sql.ErrTruncatedIncorrect.New(value)
 	}
+	// MySQL special case for abbreviated ('00) date formats
+	if len(yearStr) == 2 {
+		year += 2000
+	}
+
 	month, err := strconv.Atoi(monthStr)
 	if err != nil {
-		return ZeroTime, false, sql.ErrTruncatedIncorrect.New(value)
+		return nil, sql.ErrTruncatedIncorrect.New(value)
 	}
 	if month > 12 {
-		return ZeroTime, false, sql.ErrTruncatedIncorrect.New(value)
+		return nil, sql.ErrTruncatedIncorrect.New(value)
 	}
 	day, err := strconv.Atoi(dayStr)
 	if err != nil {
-		return ZeroTime, false, sql.ErrTruncatedIncorrect.New(value)
+		return nil, sql.ErrTruncatedIncorrect.New(value)
 	}
 	// GetLastDay already handles invalid months
 	if lastDay, _ := GetLastDay(year, month); day > lastDay {
-		return ZeroTime, false, sql.ErrTruncatedIncorrect.New(value)
+		return nil, sql.ErrTruncatedIncorrect.New(value)
 	}
 
 	// The remaining match index pairs are optional
@@ -499,33 +518,33 @@ func parseDatetime(value string) (time.Time, bool, error) {
 		hourStr := value[matchIdxs[8]+1 : matchIdxs[9]]
 		hour, err = strconv.Atoi(hourStr)
 		if err != nil {
-			return ZeroTime, false, sql.ErrTruncatedIncorrect.New(value)
+			return nil, sql.ErrTruncatedIncorrect.New(value)
 		}
 		if hour > 23 {
-			return ZeroTime, false, sql.ErrTruncatedIncorrect.New(value)
+			return nil, sql.ErrTruncatedIncorrect.New(value)
 		}
 	}
-	if matchIdxs[10] != matchIdxs[11] {
-		minStr := value[matchIdxs[10]+1 : matchIdxs[11]]
+	if matchIdxs[11]-matchIdxs[10] > 1 { // empty strings and ":" convert to 0
+		minStr := value[matchIdxs[10]+1 : matchIdxs[11]] // +1 to skip over ':'
 		mins, err = strconv.Atoi(minStr)
 		if err != nil {
-			return ZeroTime, false, sql.ErrTruncatedIncorrect.New(value)
+			return nil, sql.ErrTruncatedIncorrect.New(value)
 		}
 		if mins > 59 {
-			return ZeroTime, false, sql.ErrTruncatedIncorrect.New(value)
+			return nil, sql.ErrTruncatedIncorrect.New(value)
 		}
 	}
-	if matchIdxs[12] != matchIdxs[13] {
-		secStr := value[matchIdxs[12]+1 : matchIdxs[13]]
+	if matchIdxs[13]-matchIdxs[12] > 1 { // empty strings and ":" convert to 0
+		secStr := value[matchIdxs[12]+1 : matchIdxs[13]] // +1 to skip over ':'
 		sec, err = strconv.Atoi(secStr)
 		if err != nil {
-			return ZeroTime, false, sql.ErrTruncatedIncorrect.New(value)
+			return nil, sql.ErrTruncatedIncorrect.New(value)
 		}
 		if sec > 59 {
-			return ZeroTime, false, sql.ErrTruncatedIncorrect.New(value)
+			return nil, sql.ErrTruncatedIncorrect.New(value)
 		}
 	}
-	if matchIdxs[14] != matchIdxs[15] {
+	if matchIdxs[15]-matchIdxs[14] > 1 { // empty strings and "." convert to 0
 		// Extract usec part
 		// [0] = '.'
 		// [1-6] = microseconds
@@ -537,7 +556,7 @@ func parseDatetime(value string) (time.Time, bool, error) {
 		var usecf64 float64
 		usecf64, err = strconv.ParseFloat(usecStr, 64)
 		if err != nil {
-			return ZeroTime, false, sql.ErrTruncatedIncorrect.New(value)
+			return nil, sql.ErrTruncatedIncorrect.New(value)
 		}
 		usecf64 = usecf64 * 1000
 		usec = int(math.Round(usecf64))
@@ -545,8 +564,16 @@ func parseDatetime(value string) (time.Time, bool, error) {
 	if matchIdxs[16] != matchIdxs[17] {
 		// TODO: throw a warning
 	}
-	resTime := time.Date(year, time.Month(month), day, hour, mins, sec, usec, time.UTC)
-	return resTime, true, nil
+
+	var resTime time.Time
+	switch t.baseType {
+	case sqltypes.Date:
+		resTime = time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC)
+	default:
+		// TODO: handle precision
+		resTime = time.Date(year, time.Month(month), day, hour, mins, sec, usec, time.UTC)
+	}
+	return resTime, nil
 }
 
 // Equals implements the Type interface.

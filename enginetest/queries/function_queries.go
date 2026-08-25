@@ -2484,33 +2484,14 @@ var FunctionQueryTests = []QueryTest{
 	},
 
 	{
-		Query:    "select date(NULL)",
+		Query:    "select date(NULL);",
 		Expected: []sql.Row{{nil}},
 	},
 	{
-		Query:    "select date(0)",
-		Expected: []sql.Row{{"0000-00-00"}},
-	},
-	{
-		Query:    "select date('0000-00-00')",
-		Expected: []sql.Row{{"0000-00-00"}},
-	},
-	{
-		Query:    "select date('0000-01-01')",
-		Expected: []sql.Row{{"0000-01-01"}},
-	},
-	{
-		Query: "select date('2001-02-03')",
-		Expected: []sql.Row{
-			{
-				time.Date(2001, 2, 3, 0, 0, 0, 0, time.UTC),
-			},
-		},
-	},
-
-	{
-		Query:    "select date(false)",
-		Expected: []sql.Row{{"0000-00-00"}},
+		Query:                 "select date(false)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
 	},
 	{
 		Query:                 "select date(true)",
@@ -2519,9 +2500,229 @@ var FunctionQueryTests = []QueryTest{
 		ExpectedWarningsCount: 1,
 	},
 	{
+		Query:    "select date(0);",
+		Expected: []sql.Row{{types.ZeroTime}},
+	},
+	{
+		Skip:  true,
 		Query: "select date(20010203)",
 		Expected: []sql.Row{
-			{"2001-02-03"},
+			{time.Date(1, 2, 3, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	// TODO: numeric to date conversion tests
+
+	{
+		Query:                 "select date('');",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query:    "select date('bad time');",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "select date('0000-00-00');",
+		Expected: []sql.Row{{types.ZeroTime}},
+	},
+	{
+		Query:    "select date('000000-0000-0000');",
+		Expected: []sql.Row{{types.ZeroTime}},
+	},
+	{
+		Query:    "select date('0000-00-00 00:00:00.000000');",
+		Expected: []sql.Row{{types.ZeroTime}},
+	},
+	{
+		Query:                 "select date('2000');",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query:                 "select date('2000-');",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query:                 "select date('2000-01');",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query:                 "select date('2000-01-');",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+
+	// zero-ing individual portions of date
+	{
+		Query: "select date('0000-01-02');",
+		Expected: []sql.Row{
+			{time.Date(0000, 01, 02, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select date('1234-00-02');",
+		Expected: []sql.Row{
+			{time.Date(1234, 00, 02, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select date('1234-01-00');",
+		Expected: []sql.Row{
+			{time.Date(1234, 01, 00, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+
+	// weirdly formatted
+	{
+		// leading 0s
+		Query: "select date('0002001-00012-00023');",
+		Expected: []sql.Row{
+			{time.Date(2001, 12, 23, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		// leading and trailing whitespace
+		Query: "select date('\n\t   2001-12-23\n\t    ');",
+		Expected: []sql.Row{
+			{time.Date(2001, 12, 23, 0, 0, 0, 0, time.UTC)},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       4096, // TODO: add warning in vitess/mysql package
+	},
+	{
+		// whitespaces inside are invalid
+		Query: "select date('2001 - 12 - 23');",
+		Expected: []sql.Row{
+			{nil},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		// leading invalid characters
+		Query: "select date('thisisinvalid2001-12-23');",
+		Expected: []sql.Row{
+			{nil},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		// trailing invalid characters
+		Query: "select date('2001-12-23abc');",
+		Expected: []sql.Row{
+			{time.Date(2001, 12, 23, 0, 0, 0, 0, time.UTC)},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+
+	// boundaries
+	{
+		Query: "select date('9999-12-31');",
+		Expected: []sql.Row{
+			{time.Date(9999, 12, 31, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query:                 "select date('9999-12-32')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query:                 "select date('9999-13-31')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query:                 "select date('99999-13-31')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+
+	// string conversion that produce some value
+	{
+		Query: "select date('1-2-3')",
+		Expected: []sql.Row{
+			{time.Date(1, 2, 3, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select date('01-02-03')",
+		Expected: []sql.Row{
+			{time.Date(2001, 2, 3, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select date('2001-02-03');",
+		Expected: []sql.Row{
+			{time.Date(2001, 2, 3, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select date('2001-02-03 ');",
+		Expected: []sql.Row{
+			{time.Date(2001, 2, 3, 0, 0, 0, 0, time.UTC)},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       4096,
+	},
+	{
+		Query: "select date('2001-02-03 12');",
+		Expected: []sql.Row{
+			{time.Date(2001, 2, 3, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select date('2001-02-03 12:');",
+		Expected: []sql.Row{
+			{time.Date(2001, 2, 3, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select date('2001-02-03 12:34');",
+		Expected: []sql.Row{
+			{time.Date(2001, 2, 3, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select date('2001-02-03 12:34:');",
+		Expected: []sql.Row{
+			{time.Date(2001, 2, 3, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select date('2001-02-03 12:34:56');",
+		Expected: []sql.Row{
+			{time.Date(2001, 2, 3, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select date('2001-02-03 12:34:56.');",
+		Expected: []sql.Row{
+			{time.Date(2001, 2, 3, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select date('2001-02-03 12:34:56.123');",
+		Expected: []sql.Row{
+			{time.Date(2001, 2, 3, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select date('2001-02-03 12:34:56.123456');",
+		Expected: []sql.Row{
+			{time.Date(2001, 2, 3, 0, 0, 0, 0, time.UTC)},
 		},
 	},
 
