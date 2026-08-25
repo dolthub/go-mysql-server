@@ -456,7 +456,7 @@ func GetLastDay(year, month int) (res int, ok bool) {
 var DateTimeRegex = regexp.MustCompile(`^(\d+)\p{P}+(\d+)\p{P}+(\d+)[\s\p{P}]*(\d*)?\p{P}*(\d*)?\p{P}*(\d*)?\p{P}*(\d*)?.*$`)
 
 // parseDatetime parses a DateTime according to MySQL rules.
-// TODO: not sure if parsed bool return value is necessary
+// TODO: return []error for accumulated warnings
 func (t datetimeType) parseDatetime(value string) (any, error) {
 	if t, err := time.Parse(TimezoneTimestampDatetimeLayout, value); err == nil {
 		return t.UTC(), nil
@@ -470,7 +470,9 @@ func (t datetimeType) parseDatetime(value string) (any, error) {
 		return nil, sql.ErrTruncatedIncorrect.New(value)
 	}
 
-	// Date portion with the '-' delimiter is required for valid DateTime parsing, so no need to check for -1 indexes
+	// TODO: Handle delimiter warnings. These do not stop parsing unlike ErrTruncatedIncorrect warnings.
+
+	// Date portion required for valid DateTime parsing, so no need to check for -1 indexes
 	yearStr := value[matchIdxs[2]:matchIdxs[3]]
 	monthStr := value[matchIdxs[4]:matchIdxs[5]]
 	dayStr := value[matchIdxs[6]:matchIdxs[7]]
@@ -497,7 +499,6 @@ func (t datetimeType) parseDatetime(value string) (any, error) {
 	if len(yearStr) == 2 {
 		year += 2000
 	}
-
 	month, err := strconv.Atoi(monthStr)
 	if err != nil {
 		return nil, sql.ErrTruncatedIncorrect.New(value)
@@ -516,10 +517,10 @@ func (t datetimeType) parseDatetime(value string) (any, error) {
 
 	// The remaining match index pairs are optional
 	// Case 1: matchIdx[i] = -1 and matchIdx[i+1] = -1 => empty string
-	// Case 2: matchIdx[i] = x and matchIdx[i] = x => empty string
-	// Case 3: matchIdx[i] = x and matchIdx[i] = y where y > x => [x+1:y]
+	// Case 2: matchIdx[i] == matchIdx[i+1] => empty string
+	// Case 3: matchIdx[i] = x and matchIdx[i+1] = y where y > x => [x:y]
 	var hour, mins, sec, usec int
-	if matchIdxs[8] != matchIdxs[9] { // empty strings convert to 0
+	if matchIdxs[8] != matchIdxs[9] {
 		hourStr := value[matchIdxs[8]:matchIdxs[9]]
 		hour, err = strconv.Atoi(hourStr)
 		if err != nil {
@@ -529,7 +530,7 @@ func (t datetimeType) parseDatetime(value string) (any, error) {
 			return nil, sql.ErrTruncatedIncorrect.New(value)
 		}
 	}
-	if matchIdxs[10] != matchIdxs[11] { // empty strings convert to 0
+	if matchIdxs[10] != matchIdxs[11] {
 		minStr := value[matchIdxs[10]:matchIdxs[11]]
 		mins, err = strconv.Atoi(minStr)
 		if err != nil {
@@ -539,7 +540,7 @@ func (t datetimeType) parseDatetime(value string) (any, error) {
 			return nil, sql.ErrTruncatedIncorrect.New(value)
 		}
 	}
-	if matchIdxs[12] != matchIdxs[13] { // empty strings convert to 0
+	if matchIdxs[12] != matchIdxs[13] {
 		secStr := value[matchIdxs[12]:matchIdxs[13]]
 		sec, err = strconv.Atoi(secStr)
 		if err != nil {
@@ -549,22 +550,26 @@ func (t datetimeType) parseDatetime(value string) (any, error) {
 			return nil, sql.ErrTruncatedIncorrect.New(value)
 		}
 	}
-	if matchIdxs[15]-matchIdxs[14] > 1 { // empty strings and "." convert to 0
-		// Extract usec part
-		// [0] = '.'
-		// [1-6] = microseconds
-		// [7] = additional digit for precision
-		usecStr := value[matchIdxs[14]:]
-		if len(usecStr) >= 8 {
-			usecStr = usecStr[:8]
+	if matchIdxs[14] != matchIdxs[15] {
+		// microseconds can only be delimited by '.'; everything else causes this to be ignored
+		// this check should be safe because of the outer if statement
+		if matchIdxs[14]-matchIdxs[13] == 1 && matchIdxs[13] == '.' {
+			// Extract usec part
+			// [0] = '.'
+			// [1-6] = microseconds
+			// [7] = additional digit for rounding
+			usecStr := value[matchIdxs[13]:]
+			if len(usecStr) >= 7 {
+				usecStr = usecStr[:7]
+			}
+			var usecf64 float64
+			usecf64, err = strconv.ParseFloat(usecStr, 64)
+			if err != nil {
+				return nil, sql.ErrTruncatedIncorrect.New(value)
+			}
+			usecf64 = usecf64 * 1_000_000
+			usec = int(math.Round(usecf64))
 		}
-		var usecf64 float64
-		usecf64, err = strconv.ParseFloat(usecStr, 64)
-		if err != nil {
-			return nil, sql.ErrTruncatedIncorrect.New(value)
-		}
-		usecf64 = usecf64 * 1000
-		usec = int(math.Round(usecf64))
 	}
 
 	var resTime time.Time
