@@ -427,7 +427,7 @@ var DaysPerMonth = [12]int64{31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}
 // GetLastDay returns the last day of the month for the given year and month
 func GetLastDay(year, month int) (res int, ok bool) {
 	if month < 1 || month > 12 {
-		return 31, false // defaults to 31 when month is invalid
+		return 31, false // defaults to 31 when the month is invalid
 	}
 	if month == 2 && IsLeapYear(int64(year)) {
 		return 29, true
@@ -436,17 +436,24 @@ func GetLastDay(year, month int) (res int, ok bool) {
 }
 
 // DateTimeRegex will match MySQL's DateTime format.
+// The date portion (YYYY-MM-DD) is required all parts of the time portion (HH:MM:SS.MICROS) is optional.
+// The standard datetime format is YYYY-MM-DD HH:MM:SS.MICROS, but MySQL supports a "relaxed" format where
+// any punctuation (of various lengths) can be used between the date and time parts.
+// Some exceptions:
+//   - Whitespace characters are allowed in delimiter between Day and Hour
+//   - The only valid delimiter between Seconds and Microseconds is a single decimal point (.)
 //
-//	match 1: the entire datetime
-//	group 1: year
-//	group 2: month
-//	group 3: day
-//	group 4: hour (optional)
-//	group 5: minutes (optional)
-//	group 6: seconds (optional)
-//	group 7: microseconds (optional)
-//	group 8: any invalid trailing characters (optional)
-var DateTimeRegex = regexp.MustCompile(`^(\d+)-(\d+)-(\d+) ?(\d*)?(:?\d*)?(:?\d*)?(\.\d*)?(.+)?$`)
+// MySQL Reference: https://dev.mysql.com/doc/refman/8.4/en/datetime.html
+//
+//	Match 1: The entire datetime string
+//	Group 1: Year
+//	Group 2: Month
+//	Group 3: Day
+//	Group 4: Hour (optional)
+//	Group 5: Minutes (optional)
+//	Group 6: Seconds (optional)
+//	Group 7: Microseconds (optional)
+var DateTimeRegex = regexp.MustCompile(`^(\d+)\p{P}+(\d+)\p{P}+(\d+)[\s\p{P}]*(\d*)?\p{P}*(\d*)?\p{P}*(\d*)?\p{P}*(\d*)?.*$`)
 
 // parseDatetime parses a DateTime according to MySQL rules.
 // TODO: not sure if parsed bool return value is necessary
@@ -454,13 +461,10 @@ func (t datetimeType) parseDatetime(value string) (any, error) {
 	if t, err := time.Parse(TimezoneTimestampDatetimeLayout, value); err == nil {
 		return t.UTC(), nil
 	}
-	// TODO: MySQL supports a "relaxed" DateTime format that allows any punctuation (and nothing) as delimiters for
-	//  the date and time portions specifically for INSERT, UPDATE, and comparisons.
-	//  However, since only '-' and empty delimiter don't throw warnings, we are only going to support those.
 
 	// TODO: no delimiters
 
-	value = strings.Trim(value, NumericCutSet) // TODO: leading an trailing whitespace should throw warning
+	value = strings.Trim(value, NumericCutSet) // TODO: leading and trailing whitespace(s) should throw warning
 	matchIdxs := DateTimeRegex.FindStringSubmatchIndex(value)
 	if len(matchIdxs) == 0 {
 		return nil, sql.ErrTruncatedIncorrect.New(value)
@@ -473,8 +477,10 @@ func (t datetimeType) parseDatetime(value string) (any, error) {
 
 	// TODO: Invalid and Zero Dates are affected by sql_modes:
 	// 	STRICT_TRANS_TABLES, NO_ZERO_DATE, and NO_ZERO_IN_DATE
-	//  We only have STRICT_TRANS_TABLES enabled by default (which is a no-op alone), so we behave accordingly.
-	//  We ignore if NO_ZERO_DATE and NO_ZERO_IN_DATE are enabled.
+	//  We currently only have STRICT_TRANS_TABLES enabled by default (which is a no-op alone), but it appears we can't
+	//  properly support 0 Month and 0 Day.
+	//  We should copy MySQL's default and have all these sql_modes enabled, and disallow disabling them (or at least
+	//  throw a warning).
 	//  MySQL References:
 	//	 https://dev.mysql.com/doc/refman/9.7/en/sql-mode.html#sqlmode_no_zero_date
 	//   https://dev.mysql.com/doc/refman/9.7/en/sql-mode.html#sqlmode_no_zero_in_date
@@ -512,10 +518,9 @@ func (t datetimeType) parseDatetime(value string) (any, error) {
 	// Case 1: matchIdx[i] = -1 and matchIdx[i+1] = -1 => empty string
 	// Case 2: matchIdx[i] = x and matchIdx[i] = x => empty string
 	// Case 3: matchIdx[i] = x and matchIdx[i] = y where y > x => [x+1:y]
-	//	We +1 to x because hour, min, sec, and usec are each preceded by exactly 1 delimiter character
 	var hour, mins, sec, usec int
-	if matchIdxs[8] != matchIdxs[9] {
-		hourStr := value[matchIdxs[8]+1 : matchIdxs[9]]
+	if matchIdxs[8] != matchIdxs[9] { // empty strings convert to 0
+		hourStr := value[matchIdxs[8]:matchIdxs[9]]
 		hour, err = strconv.Atoi(hourStr)
 		if err != nil {
 			return nil, sql.ErrTruncatedIncorrect.New(value)
@@ -524,8 +529,8 @@ func (t datetimeType) parseDatetime(value string) (any, error) {
 			return nil, sql.ErrTruncatedIncorrect.New(value)
 		}
 	}
-	if matchIdxs[11]-matchIdxs[10] > 1 { // empty strings and ":" convert to 0
-		minStr := value[matchIdxs[10]+1 : matchIdxs[11]] // +1 to skip over ':'
+	if matchIdxs[10] != matchIdxs[11] { // empty strings convert to 0
+		minStr := value[matchIdxs[10]:matchIdxs[11]]
 		mins, err = strconv.Atoi(minStr)
 		if err != nil {
 			return nil, sql.ErrTruncatedIncorrect.New(value)
@@ -534,8 +539,8 @@ func (t datetimeType) parseDatetime(value string) (any, error) {
 			return nil, sql.ErrTruncatedIncorrect.New(value)
 		}
 	}
-	if matchIdxs[13]-matchIdxs[12] > 1 { // empty strings and ":" convert to 0
-		secStr := value[matchIdxs[12]+1 : matchIdxs[13]] // +1 to skip over ':'
+	if matchIdxs[12] != matchIdxs[13] { // empty strings convert to 0
+		secStr := value[matchIdxs[12]:matchIdxs[13]]
 		sec, err = strconv.Atoi(secStr)
 		if err != nil {
 			return nil, sql.ErrTruncatedIncorrect.New(value)
@@ -560,9 +565,6 @@ func (t datetimeType) parseDatetime(value string) (any, error) {
 		}
 		usecf64 = usecf64 * 1000
 		usec = int(math.Round(usecf64))
-	}
-	if matchIdxs[16] != matchIdxs[17] {
-		// TODO: throw a warning
 	}
 
 	var resTime time.Time

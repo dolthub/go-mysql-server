@@ -358,7 +358,19 @@ func (*Hour) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID,
 
 // Eval implements the Expression interface.
 func (h *Hour) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return getDatePart(ctx, h.UnaryExpressionStub, row, hour)
+	val, err := h.Child.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	val, _, err = types.DatetimeMaxPrecision.Convert(ctx, val)
+	if err != nil {
+		return nil, err
+	}
+	if val == nil {
+		return nil, nil
+	}
+	dt := val.(time.Time)
+	return dt.Hour(), nil
 }
 
 // WithChildren implements the Expression interface.
