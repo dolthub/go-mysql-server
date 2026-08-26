@@ -318,7 +318,12 @@ func (b *Builder) assignmentExprsToUpdateExprs(inScope, destScope *scope, tableS
 
 			if isDefaultExpr {
 				if colIdx >= 0 {
-					innerExpr = expression.WrapExpression(tableSch[colIdx].DefaultExpr())
+					// For generated columns, use the generated expression as the default
+					if tableSch[colIdx].Generated != nil {
+						innerExpr = expression.WrapExpression(tableSch[colIdx].Generated)
+					} else {
+						innerExpr = expression.WrapExpression(tableSch[colIdx].Default)
+					}
 				}
 			} else {
 				if colIdx >= 0 && tableSch[colIdx].Generated != nil {

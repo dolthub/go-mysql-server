@@ -171,17 +171,6 @@ func (c *Column) String() string {
 	return c.Source + "." + c.Name
 }
 
-// DefaultExpr returns the default expression for a Column. Note that Generated and Default are mutually exclusive and
-// that this function should be used in conjunction with an expression wrapper in case Generated and Default are both
-// nil.
-func (c *Column) DefaultExpr() Expression {
-	if c.Generated != nil {
-		return c.Generated
-	}
-	// TODO: Wrap in expression Wrapper. Currently not possible due to cyclical import.
-	return c.Default
-}
-
 // TableId is the unique identifier of a table or table alias in a multi-db environment.
 // The long-term goal is to migrate all uses of table name strings to this and minimize places where we
 // construct/inspect TableIDs. By treating this as an opaque identifier, it will be easier to migrate to
