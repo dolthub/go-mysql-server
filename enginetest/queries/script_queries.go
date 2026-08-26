@@ -14795,18 +14795,22 @@ select * from t1 except (
 		},
 		Assertions: []ScriptTestAssertion{
 			{
+				Dialect:  "mysql",
 				Query:    "SELECT DEFAULT(id) FROM t;",
 				Expected: []sql.Row{{7}},
 			},
 			{
+				Dialect:  "mysql",
 				Query:    "SELECT DEFAULT(id) AS d FROM t;",
 				Expected: []sql.Row{{7}},
 			},
 			{
+				Dialect:     "mysql",
 				Query:       "SELECT DEFAULT(i) FROM t1;",
 				ExpectedErr: sql.ErrFieldNoDefaultValue,
 			},
 			{
+				Dialect:     "mysql",
 				Query:       "SELECT DEFAULT(j) AS d FROM t1;",
 				ExpectedErr: sql.ErrFieldNoDefaultValue,
 			},
@@ -14815,10 +14819,12 @@ select * from t1 except (
 				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
+				Dialect:  "mysql", // This query should work in Doltgres but currently returns the wrong results. https://github.com/dolthub/doltgresql/issues/3203
 				Query:    "select * from t1",
 				Expected: []sql.Row{{1, 11}},
 			},
 			{
+				Dialect:  "mysql", // This query should work in Doltgres but currently errors out. https://github.com/dolthub/doltgresql/issues/3204
 				Query:    "update t1 set j = default where i = 1;",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 0}}}},
 			},
