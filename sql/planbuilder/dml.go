@@ -322,7 +322,11 @@ func (b *Builder) assignmentExprsToUpdateExprs(inScope, destScope *scope, tableS
 					if tableSch[colIdx].Generated != nil {
 						innerExpr = expression.WrapExpression(tableSch[colIdx].Generated)
 					} else {
-						innerExpr = expression.WrapExpression(tableSch[colIdx].Default)
+						var err error
+						innerExpr, err = expression.Default(tableSch[colIdx])
+						if err != nil {
+							b.handleErr(err)
+						}
 					}
 				}
 			} else {

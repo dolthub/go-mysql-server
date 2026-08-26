@@ -81,11 +81,11 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 		if colIdx < 0 {
 			b.handleErr(sql.ErrColumnNotFound.New(v.ColName))
 		}
-		col := tableSch[colIdx]
-		if col.Generated == nil && (col.Default != nil || col.Nullable) {
-			return expression.WrapExpression(col.Default)
+		def, err := expression.Default(tableSch[colIdx])
+		if err != nil {
+			b.handleErr(err)
 		}
-		b.handleErr(sql.ErrFieldNoDefaultValue.New(v.ColName))
+		return def
 	case *ast.SubstrExpr:
 		var name sql.Expression
 		if v.Name != nil {
