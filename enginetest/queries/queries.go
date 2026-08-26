@@ -3488,15 +3488,15 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{nil}, {nil}, {nil}},
 	},
 	{
-		Query:    "select i from datetime_table where date_col = date('2019-12-31T12:00:00')",
+		Query:    "select i from datetime_table where date_col = date('2019-12-31 12:00:00')",
 		Expected: []sql.Row{{1}},
 	},
 	{
-		Query:    "select i from datetime_table where date_col = '2019-12-31T00:00:00'",
+		Query:    "select i from datetime_table where date_col = '2019-12-31 00:00:00'",
 		Expected: []sql.Row{{1}},
 	},
 	{
-		Query:    "select i from datetime_table where date_col = '2019-12-31T00:00:01'",
+		Query:    "select i from datetime_table where date_col = '2019-12-31 00:00:01'",
 		Expected: []sql.Row{},
 	},
 	{
@@ -3524,23 +3524,23 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{2}, {3}},
 	},
 	{
-		Query:    "select i from datetime_table where datetime_col = date('2020-01-01T12:00:00')",
+		Query:    "select i from datetime_table where datetime_col = date('2020-01-01 12:00:00')",
 		Expected: []sql.Row{},
 	},
 	{
-		Query:    "select i from datetime_table where datetime_col = '2020-01-01T12:00:00'",
+		Query:    "select i from datetime_table where datetime_col = '2020-01-01 12:00:00'",
 		Expected: []sql.Row{{1}},
 	},
 	{
-		Query:    "select i from datetime_table where datetime_col = datetime('2020-01-01T12:00:00')",
+		Query:    "select i from datetime_table where datetime_col = datetime('2020-01-01 12:00:00')",
 		Expected: []sql.Row{{1}},
 	},
 	{
-		Query:    "select i from datetime_table where datetime_col = '2020-01-01T12:00:01'",
+		Query:    "select i from datetime_table where datetime_col = '2020-01-01 12:00:01'",
 		Expected: []sql.Row{},
 	},
 	{
-		Query:    "select i from datetime_table where datetime_col > '2020-01-01T12:00:00' order by 1",
+		Query:    "select i from datetime_table where datetime_col > '2020-01-01 12:00:00' order by 1",
 		Expected: []sql.Row{{2}, {3}},
 	},
 	{
@@ -3564,23 +3564,23 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{1}, {2}, {3}},
 	},
 	{
-		Query:    "select i from datetime_table where datetime_col > datetime('2020-01-01T12:00:00') order by 1",
+		Query:    "select i from datetime_table where datetime_col > datetime('2020-01-01 12:00:00') order by 1",
 		Expected: []sql.Row{{2}, {3}},
 	},
 	{
-		Query:    "select i from datetime_table where timestamp_col = date('2020-01-02T12:00:00')",
+		Query:    "select i from datetime_table where timestamp_col = date('2020-01-02 12:00:00')",
 		Expected: []sql.Row{},
 	},
 	{
-		Query:    "select i from datetime_table where timestamp_col = '2020-01-02T12:00:00'",
+		Query:    "select i from datetime_table where timestamp_col = '2020-01-02 12:00:00'",
 		Expected: []sql.Row{{1}},
 	},
 	{
-		Query:    "select i from datetime_table where timestamp_col = datetime('2020-01-02T12:00:00')",
+		Query:    "select i from datetime_table where timestamp_col = datetime('2020-01-02 12:00:00')",
 		Expected: []sql.Row{{1}},
 	},
 	{
-		Query:    "select i from datetime_table where timestamp_col = timestamp('2020-01-02T12:00:00')",
+		Query:    "select i from datetime_table where timestamp_col = timestamp('2020-01-02 12:00:00')",
 		Expected: []sql.Row{{1}},
 	},
 	{
@@ -3591,11 +3591,11 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{time.Date(1001, time.January, 1, 0, 0, 0, 0, time.UTC)}},
 	},
 	{
-		Query:    "select i from datetime_table where timestamp_col = '2020-01-02T12:00:01'",
+		Query:    "select i from datetime_table where timestamp_col = '2020-01-02 12:00:01'",
 		Expected: []sql.Row{},
 	},
 	{
-		Query:    "select i from datetime_table where timestamp_col > '2020-01-02T12:00:00' order by 1",
+		Query:    "select i from datetime_table where timestamp_col > '2020-01-02 12:00:00' order by 1",
 		Expected: []sql.Row{{2}, {3}},
 	},
 	{
@@ -3611,7 +3611,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{1}, {2}, {3}},
 	},
 	{
-		Query:    "select i from datetime_table where timestamp_col > datetime('2020-01-02T12:00:00') order by 1",
+		Query:    "select i from datetime_table where timestamp_col > datetime('2020-01-02 12:00:00') order by 1",
 		Expected: []sql.Row{{2}, {3}},
 	},
 	{
@@ -4202,6 +4202,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Query:    "SELECT date_add('9999-12-31:23:59:59.99999944444444444-', INTERVAL 0 day);",
 		Expected: []sql.Row{{nil}},
 	},
+
 	// https://github.com/dolthub/dolt/issues/9917
 	{
 		Query:                 "select cast('2020-01-01 a' as datetime)",

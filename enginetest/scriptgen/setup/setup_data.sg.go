@@ -140,9 +140,9 @@ var Comp_index_tablesData = []SetupScript{{
 var DatetimetableData = []SetupScript{{
 	"CREATE TABLE `datetime_table` (   `i` bigint NOT NULL,   `date_col` date,   `datetime_col` datetime,   `timestamp_col` timestamp,   `time_col` time(6),   PRIMARY KEY (`i`) )",
 	`insert into datetime_table values
-    (1, '2019-12-31T12:00:00Z', '2020-01-01T12:00:00Z', '2020-01-02T12:00:00Z', '03:10:0'),
-    (2, '2020-01-03T12:00:00Z', '2020-01-04T12:00:00Z', '2020-01-05T12:00:00Z', '04:00:44'),
-    (3, '2020-01-07T00:00:00Z', '2020-01-07T12:00:00Z', '2020-01-07T12:00:01Z', '15:00:00.005000')`,
+    (1, '2019-12-31 12:00:00', '2020-01-01 12:00:00', '2020-01-02 12:00:00', '03:10:0'),
+    (2, '2020-01-03 12:00:00', '2020-01-04 12:00:00', '2020-01-05 12:00:00', '04:00:44'),
+    (3, '2020-01-07 00:00:00', '2020-01-07 12:00:00', '2020-01-07 12:00:01', '15:00:00.005000')`,
 	`create index datetime_table_d on datetime_table (date_col)`,
 	`create index datetime_table_dt on datetime_table (datetime_col)`,
 	`create index datetime_table_ts on datetime_table (timestamp_col)`,
@@ -3906,7 +3906,7 @@ var TpchData = []SetupScript{{
 var TypestableData = []SetupScript{{
 	"CREATE TABLE `typestable` (   `id` bigint NOT NULL,   `i8` tinyint,   `i16` smallint,   `i32` int,   `i64` bigint,   `u8` tinyint unsigned,   `u16` smallint unsigned,   `u32` int unsigned,   `u64` bigint unsigned,   `f32` float,   `f64` double,   `ti` timestamp,   `da` date,   `te` varchar(20),   `bo` tinyint,   `js` json,   `bl` blob,   `e1` enum('', 'v1', 'v2'),   `s1` set('', 'v1', 'v2'),   PRIMARY KEY (`id`) )",
 	`insert into typestable values
-    (1,2,3,4,5,6,7,8,9,10.0,11.0,'2019-12-31T12:00:00Z','2019-12-31T00:00:00Z','fourteen', 0,null,null, '', '')`,
+    (1,2,3,4,5,6,7,8,9,10.0,11.0,'2019-12-31 12:00:00','2019-12-31 00:00:00','fourteen', 0,null,null, '', '')`,
 }}
 
 var ViewsData = []SetupScript{{

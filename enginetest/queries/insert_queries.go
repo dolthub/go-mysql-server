@@ -893,7 +893,7 @@ var InsertScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "INSERT INTO xy (y,x) select * from (select cast('2019-12-31T12:00:00Z' as date), 0) dt(a,b) ON DUPLICATE KEY UPDATE x=dt.b+1, y=dt.a",
+				Query:    "INSERT INTO xy (y,x) select * from (select cast('2019-12-31 12:00:00' as date), 0) dt(a,b) ON DUPLICATE KEY UPDATE x=dt.b+1, y=dt.a",
 				Expected: []sql.Row{{types.NewOkResult(2)}},
 			},
 			{

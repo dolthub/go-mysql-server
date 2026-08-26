@@ -4843,9 +4843,9 @@ CREATE TABLE tab3 (
 			"SET @@SESSION.time_zone = 'UTC';",
 			"CREATE TABLE `datetime_table` (   `i` bigint NOT NULL,   `date_col` date,   `datetime_col` datetime,   `timestamp_col` timestamp,   `time_col` time(6),   PRIMARY KEY (`i`) )",
 			`insert into datetime_table values
-    (1, '2019-12-31T12:00:00Z', '2020-01-01T12:00:00Z', '2020-01-02T12:00:00Z', '03:10:0'),
-    (2, '2020-01-03T12:00:00Z', '2020-01-04T12:00:00Z', '2020-01-05T12:00:00Z', '04:00:44'),
-    (3, '2020-01-07T00:00:00Z', '2020-01-07T12:00:00Z', '2020-01-07T12:00:01Z', '15:00:00.005000')`,
+    (1, '2019-12-31 12:00:00', '2020-01-01 12:00:00', '2020-01-02 12:00:00', '03:10:0'),
+    (2, '2020-01-03 12:00:00', '2020-01-04 12:00:00', '2020-01-05 12:00:00', '04:00:44'),
+    (3, '2020-01-07 00:00:00', '2020-01-07 12:00:00', '2020-01-07 12:00:01', '15:00:00.005000')`,
 			`create index datetime_table_d on datetime_table (date_col)`,
 			`create index datetime_table_dt on datetime_table (datetime_col)`,
 			`create index datetime_table_ts on datetime_table (timestamp_col)`,

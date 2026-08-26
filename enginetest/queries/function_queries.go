@@ -2725,6 +2725,25 @@ var FunctionQueryTests = []QueryTest{
 			{time.Date(2001, 2, 3, 0, 0, 0, 0, time.UTC)},
 		},
 	},
+	// rounding
+	{
+		Query: "select date('2001-02-03 23:59:59.9999999');",
+		Expected: []sql.Row{
+			{time.Date(2001, 2, 4, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select date('2001-02-28 23:59:59.9999999');",
+		Expected: []sql.Row{
+			{time.Date(2001, 2, 4, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select date('2001-12-31 23:59:59.9999999');",
+		Expected: []sql.Row{
+			{time.Date(2002, 1, 1, 0, 0, 0, 0, time.UTC)},
+		},
+	},
 
 	{
 		Query:    "select extract(day from 0)",
