@@ -541,6 +541,22 @@ func (b *Builder) buildTableFunc(inScope *scope, t *ast.TableFuncExpr) (outScope
 			b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(t)))
 		}
 		newAlias = tableAlias.WithColumnNames(renameCols)
+	} else if !t.Alias.IsEmpty() && b.overrides.ScalarFunctionAliasAsColumn {
+		// PostgreSQL uses a table alias as the column name as well when a scalar
+		// function appears in FROM without an explicit column alias list. Keep
+		// native table functions unchanged: their aliases name the relation only,
+		// especially when they return a record with named output columns.
+		if _, ok := newInstance.(*dtablefunctions.TableFunctionWrapper); ok {
+			// A regular function may still return a record with named OUT parameters.
+			// Only a single-column result uses the relation alias as its column name.
+			if len(newAlias.Schema(b.ctx)) == 1 {
+				tableAlias, ok := newAlias.(*plan.TableAlias)
+				if !ok {
+					b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(t)))
+				}
+				newAlias = tableAlias.WithColumnNames([]string{name})
+			}
+		}
 	}
 
 	tabId := outScope.addTable(name)

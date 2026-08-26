@@ -15,6 +15,7 @@
 package aggregation
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -23,6 +24,22 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
+
+type countDistinctExtendedValue struct {
+	serialized byte
+}
+
+func (v countDistinctExtendedValue) String() string {
+	return "same display value"
+}
+
+type countDistinctExtendedType struct {
+	sql.FakeExtendedType
+}
+
+func (t countDistinctExtendedType) SerializeValue(_ context.Context, value any) ([]byte, error) {
+	return []byte{value.(countDistinctExtendedValue).serialized}, nil
+}
 
 func TestCountEval1(t *testing.T) {
 	require := require.New(t)
@@ -117,5 +134,22 @@ func TestCountDistinctEvalString(t *testing.T) {
 	require.NoError(b.Update(ctx, sql.NewRow(nil)))
 	require.NoError(b.Update(ctx, sql.NewRow("foo")))
 	require.NoError(b.Update(ctx, sql.NewRow("bar")))
+	require.Equal(int64(2), evalBuffer(t, b))
+}
+
+func TestCountDistinctEvalExtendedType(t *testing.T) {
+	require := require.New(t)
+	ctx := sql.NewEmptyContext()
+
+	extendedType := countDistinctExtendedType{sql.FakeExtendedType{
+		Name:    "count_distinct_extended_type",
+		ZeroVal: countDistinctExtendedValue{},
+	}}
+	c := NewCountDistinct(expression.NewGetField(0, extendedType, "", true))
+	b, _ := c.NewBuffer(ctx)
+	require.NoError(b.Update(ctx, sql.NewRow(countDistinctExtendedValue{serialized: 1})))
+	require.NoError(b.Update(ctx, sql.NewRow(countDistinctExtendedValue{serialized: 1})))
+	require.NoError(b.Update(ctx, sql.NewRow(countDistinctExtendedValue{serialized: 2})))
+	require.NoError(b.Update(ctx, sql.NewRow(nil)))
 	require.Equal(int64(2), evalBuffer(t, b))
 }
