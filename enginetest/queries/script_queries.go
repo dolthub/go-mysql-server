@@ -11859,12 +11859,12 @@ where
 			{
 				Skip:        true,
 				Query:       "insert into t values ();",
-				ExpectedErr: sql.ErrFieldNoDefaultValue, // wrong error
+				ExpectedErr: sql.ErrFieldNoDefaultValue, // wrong error https://github.com/dolthub/dolt/issues/11608
 			},
 			{
 				Skip:        true,
 				Query:       "insert into t values (default);",
-				ExpectedErr: sql.ErrFieldNoDefaultValue, // wrong error
+				ExpectedErr: sql.ErrFieldNoDefaultValue, // wrong error https://github.com/dolthub/dolt/issues/11608
 			},
 		},
 	},
@@ -14783,6 +14783,48 @@ select * from t1 except (
 				Expected: []sql.Row{
 					{true},
 				},
+			},
+		},
+	},
+	{
+		Name: "default column expressions",
+		SetUpScript: []string{
+			"CREATE TABLE t(id INT DEFAULT 7, v INT);",
+			"INSERT INTO t(v) VALUES (1);",
+			"create table t1 (i int primary key, j int generated always as (i + 10));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT DEFAULT(id) FROM t;",
+				Expected: []sql.Row{{7}},
+			},
+			{
+				Query:    "SELECT DEFAULT(id) AS d FROM t;",
+				Expected: []sql.Row{{7}},
+			},
+			{
+				Query:       "SELECT DEFAULT(i) FROM t1;",
+				ExpectedErr: sql.ErrFieldNoDefaultValue,
+			},
+			{
+				Query:       "SELECT DEFAULT(j) AS d FROM t1;",
+				ExpectedErr: sql.ErrFieldNoDefaultValue,
+			},
+			{
+				Query:    "insert into t1 (i, j) values (1, default);",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "select * from t1",
+				Expected: []sql.Row{{1, 11}},
+			},
+			{
+				Query:    "update t1 set j = default where i = 1;",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 0}}}},
+			},
+			{
+				Query:       "update t1 set i = default where i = 1;",
+				ExpectedErr: sql.ErrFieldNoDefaultValue,
 			},
 		},
 	},
