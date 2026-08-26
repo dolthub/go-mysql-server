@@ -324,7 +324,13 @@ func (t datetimeType) ConvertWithoutRangeCheck(ctx context.Context, v any) (any,
 		if IsZeroTimestampStr(value) {
 			return ZeroTime, nil
 		}
-		return t.parseDatetime(value)
+		var val any
+		var ok bool
+		val, err = t.parseDatetime(value)
+		res, ok = val.(time.Time)
+		if !ok {
+			return nil, err
+		}
 	case time.Time:
 		res = value.UTC()
 	// For most integer values, we just return an error (but MySQL is more lenient for some of these). A special case
@@ -411,8 +417,12 @@ func (t datetimeType) ConvertWithoutRangeCheck(ctx context.Context, v any) (any,
 		return ZeroTime, sql.ErrConvertToSQL.New(value, t)
 	}
 
-	if t.baseType == sqltypes.Date {
+	switch t.baseType {
+	case sqltypes.Date:
 		res = res.Truncate(24 * time.Hour)
+	default:
+		roundDuration := time.Second / time.Duration(precisionConversion[t.precision])
+		res = res.Round(roundDuration)
 	}
 
 	return res, err
@@ -446,15 +456,16 @@ func GetLastDay(year, month int) (res int, ok bool) {
 //
 // MySQL Reference: https://dev.mysql.com/doc/refman/8.4/en/datetime.html
 //
-//	Match 1: The entire datetime string
-//	Group 1: Year
-//	Group 2: Month
-//	Group 3: Day
-//	Group 4: Hour (optional)
-//	Group 5: Minutes (optional)
-//	Group 6: Seconds (optional)
-//	Group 7: Microseconds (optional)
-var DateTimeRegex = regexp.MustCompile(`^(\d+)\p{P}+(\d+)\p{P}+(\d+)[\s\p{P}]*(\d*)?\p{P}*(\d*)?\p{P}*(\d*)?\p{P}*(\d*)?.*$`)
+//		Match 1: The entire datetime string
+//		Group 1: Year
+//		Group 2: Month
+//		Group 3: Day
+//		Group 4: Hour (optional)
+//		Group 5: Minutes (optional)
+//		Group 6: Seconds (optional)
+//		Group 7: Microseconds (optional)
+//	 Group 8: any trailing characters to be Truncated
+var DateTimeRegex = regexp.MustCompile(`^(\d+)\p{P}+(\d+)\p{P}+(\d+)[\s\p{P}]*(\d*)?\p{P}*(\d*)?\p{P}*(\d*)?\p{P}*(\d*)?(.*)$`)
 
 // parseDatetime parses a DateTime according to MySQL rules.
 // TODO: return []error for accumulated warnings
@@ -554,34 +565,31 @@ func (t datetimeType) parseDatetime(value string) (any, error) {
 	if matchIdxs[14] != matchIdxs[15] {
 		// microseconds can only be delimited by '.'; everything else causes this to be ignored
 		// this check should be safe because of the outer if statement
-		if matchIdxs[14]-matchIdxs[13] == 1 && matchIdxs[13] == '.' {
+		if matchIdxs[14]-matchIdxs[13] == 1 && value[matchIdxs[13]] == '.' {
 			// Extract usec part
 			// [0] = '.'
 			// [1-6] = microseconds
 			// [7] = additional digit for rounding
-			usecStr := value[matchIdxs[13]:]
-			if len(usecStr) >= 7 {
-				usecStr = usecStr[:7]
+			usecStr := value[matchIdxs[13]:matchIdxs[15]]
+			if len(usecStr) >= 8 {
+				usecStr = usecStr[:8]
 			}
 			var usecf64 float64
 			usecf64, err = strconv.ParseFloat(usecStr, 64)
 			if err != nil {
 				return nil, sql.ErrTruncatedIncorrect.New(value)
 			}
-			usecf64 = usecf64 * 1_000_000
-			usec = int(math.Round(usecf64))
+			usec = int(math.Round(usecf64 * 1_000_000))
 		}
 	}
-
-	var resTime time.Time
-	switch t.baseType {
-	case sqltypes.Date:
-		resTime = time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC)
-	default:
-		// TODO: handle precision
-		resTime = time.Date(year, time.Month(month), day, hour, mins, sec, usec, time.UTC)
+	// Trailing invalid characters
+	if matchIdxs[17] != matchIdxs[16] {
+		err = sql.ErrTruncatedIncorrect.New(value)
 	}
-	return resTime, nil
+
+	resTime := time.Date(year, time.Month(month), day, hour, mins, sec, usec*1000, time.UTC)
+	resTime = resTime.Round(time.Microsecond)
+	return resTime, err
 }
 
 // Equals implements the Type interface.

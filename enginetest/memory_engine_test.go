@@ -202,32 +202,11 @@ func TestSingleScript(t *testing.T) {
 			SetUpScript: []string{},
 
 			Assertions: []queries.ScriptTestAssertion{
-				//
-				//showMatches("2001-02-03abc")
-				//showMatches("2001-02-03 abc")
-				//showMatches("2001-02-03 12abc")
-				//showMatches("2001-02-03 12:abc")
-				//showMatches("2001-02-03 12:34abc")
-				//showMatches("2001-02-03 12:34:abc")
-				//showMatches("2001-02-03 12:34:56abc")
-				//showMatches("2001-02-03 12:34:56.abc")
-				//showMatches("2001-02-03 12:34:56.123456abc")
-
 				// zero/null dates
 				{
-					Query:    "select date(NULL);",
-					Expected: []sql.Row{{nil}},
-				},
-			},
-		},
-		{
-			Name:        "tmp",
-			SetUpScript: []string{},
-			Assertions: []queries.ScriptTestAssertion{
-				{
-					Query: "select date('2001-02-03 12:34:56.');",
+					Query: "select date(false);",
 					Expected: []sql.Row{
-						{time.Date(2001, 2, 3, 0, 0, 0, 0, time.UTC)},
+						{nil},
 					},
 				},
 			},

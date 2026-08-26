@@ -25,5 +25,5 @@ CREATE TABLE `typestable` (
 
 exec
 insert into typestable values
-    (1,2,3,4,5,6,7,8,9,10.0,11.0,'2019-12-31T12:00:00Z','2019-12-31T00:00:00Z','fourteen', 0,null,null, '', '')
+    (1,2,3,4,5,6,7,8,9,10.0,11.0,'2019-12-31 12:00:00','2019-12-31 00:00:00','fourteen', 0,null,null, '', '')
 ----
