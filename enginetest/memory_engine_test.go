@@ -204,9 +204,9 @@ func TestSingleScript(t *testing.T) {
 			Assertions: []queries.ScriptTestAssertion{
 				// zero/null dates
 				{
-					Query: "select date(false);",
+					Query: "select dayname(123);",
 					Expected: []sql.Row{
-						{nil},
+						{11},
 					},
 				},
 			},

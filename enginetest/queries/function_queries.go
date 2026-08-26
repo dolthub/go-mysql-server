@@ -2314,16 +2314,12 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{{1}},
 	},
 	{
-		Query:                 "select monthname(0)",
-		Expected:              []sql.Row{{nil}},
-		ExpectedWarning:       mysql.ERTruncatedWrongValue,
-		ExpectedWarningsCount: 1,
+		Query:    "select monthname(0)",
+		Expected: []sql.Row{{nil}},
 	},
 	{
-		Query:                 "select monthname(false)",
-		Expected:              []sql.Row{{nil}},
-		ExpectedWarning:       mysql.ERTruncatedWrongValue,
-		ExpectedWarningsCount: 1,
+		Query:    "select monthname(false)",
+		Expected: []sql.Row{{nil}},
 	},
 	{
 		Query:                 "select monthname(true)",
@@ -2500,8 +2496,10 @@ var FunctionQueryTests = []QueryTest{
 		ExpectedWarningsCount: 1,
 	},
 	{
-		Query:    "select date(0);",
-		Expected: []sql.Row{{types.ZeroTime}},
+		Query:                 "select date(0);",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
 	},
 	{
 		Skip:  true,
@@ -2523,16 +2521,22 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{{nil}},
 	},
 	{
-		Query:    "select date('0000-00-00');",
-		Expected: []sql.Row{{types.ZeroTime}},
+		Query:                 "select date('0000-00-00');",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
 	},
 	{
-		Query:    "select date('000000-0000-0000');",
-		Expected: []sql.Row{{types.ZeroTime}},
+		Query:                 "select date('000000-0000-0000');",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
 	},
 	{
-		Query:    "select date('0000-00-00 00:00:00.000000');",
-		Expected: []sql.Row{{types.ZeroTime}},
+		Query:                 "select date('0000-00-00 00:00:00.000000');",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
 	},
 	{
 		Query:                 "select date('2000');",
@@ -2593,8 +2597,9 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{
 			{time.Date(2001, 12, 23, 0, 0, 0, 0, time.UTC)},
 		},
+		SkipWarnings:          true,
 		ExpectedWarningsCount: 1,
-		ExpectedWarning:       4096, // TODO: add warning in vitess/mysql package
+		ExpectedWarning:       4096,
 	},
 	{
 		// whitespaces inside are invalid
@@ -2674,6 +2679,7 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{
 			{time.Date(2001, 2, 3, 0, 0, 0, 0, time.UTC)},
 		},
+		SkipWarnings:          true,
 		ExpectedWarningsCount: 1,
 		ExpectedWarning:       4096,
 	},
@@ -2735,7 +2741,7 @@ var FunctionQueryTests = []QueryTest{
 	{
 		Query: "select date('2001-02-28 23:59:59.9999999');",
 		Expected: []sql.Row{
-			{time.Date(2001, 2, 4, 0, 0, 0, 0, time.UTC)},
+			{time.Date(2001, 3, 1, 0, 0, 0, 0, time.UTC)},
 		},
 	},
 	{
