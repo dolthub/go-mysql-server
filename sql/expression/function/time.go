@@ -16,15 +16,18 @@ package function
 
 import (
 	"fmt"
+
 	"strings"
 	"time"
 
-	"github.com/dolthub/vitess/go/mysql"
+	"github.com/cockroachdb/apd/v3"
 	"gopkg.in/src-d/go-errors.v1"
+
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/vitess/go/mysql"
 )
 
 // ErrTimeUnexpectedlyNil is thrown when a function encounters and unexpectedly nil time
@@ -158,7 +161,34 @@ func (q *Quarter) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 
 // Eval implements the Expression interface.
 func (q *Quarter) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return getDatePart(ctx, q.UnaryExpressionStub, row, quarter)
+	val, err := q.Child.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	// TODO: it seems like conversion logic for dates in functions is different. Only deal with 0 for now
+	switch v := val.(type) {
+	case time.Time:
+	case string:
+	default:
+		if isNumericZero(val) {
+			return 0, nil
+		}
+		ctx.Warn(mysql.ERTruncatedWrongValue, sql.ErrTruncatedIncorrect.New("datetime", v).Error())
+		return nil, nil
+	}
+
+	val, _, err = types.DatetimeMaxPrecision.Convert(ctx, val)
+	if err != nil {
+		return 0, nil
+	}
+	if val == nil {
+		return nil, nil
+	}
+	dt := val.(time.Time)
+	if types.ZeroTime.Equal(dt) {
+		return 0, nil
+	}
+	return (int(dt.Month())-1)/3 + 1, nil
 }
 
 // WithChildren implements the Expression interface.
@@ -171,7 +201,7 @@ func (q *Quarter) WithChildren(ctx *sql.Context, children ...sql.Expression) (sq
 
 // Month is a function that returns the month of a date.
 type Month struct {
-	expression.UnaryExpressionStub
+	*UnaryDatetimeFunc
 }
 
 var _ sql.FunctionExpression = (*Month)(nil)
@@ -179,12 +209,9 @@ var _ sql.CollationCoercible = (*Month)(nil)
 
 // NewMonth creates a new Month UDF.
 func NewMonth(ctx *sql.Context, date sql.Expression) sql.Expression {
-	return &Month{expression.UnaryExpressionStub{Child: date}}
-}
-
-// FunctionName implements sql.FunctionExpression
-func (m *Month) FunctionName() string {
-	return "month"
+	return &Month{
+		UnaryDatetimeFunc: NewUnaryDatetimeFunc(date, "MONTH", types.Int32),
+	}
 }
 
 // Description implements sql.FunctionExpression
@@ -192,24 +219,26 @@ func (m *Month) Description() string {
 	return "returns the month of the given date."
 }
 
-func (m *Month) String() string { return fmt.Sprintf("%s(%s)", m.FunctionName(), m.Child) }
-
-// Type implements the Expression interface.
-func (m *Month) Type(ctx *sql.Context) sql.Type { return types.Int32 }
-
-// IsNullable implements the Expression interface
-func (d *Month) IsNullable(ctx *sql.Context) bool {
-	return true
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
-func (*Month) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+func (m *Month) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 5
 }
 
 // Eval implements the Expression interface.
-func (m *Month) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return getDatePart(ctx, m.UnaryExpressionStub, row, month)
+func (m *Month) Eval(ctx *sql.Context, row sql.Row) (any, error) {
+	val, err := m.EvalChild(ctx, row)
+	if err != nil {
+		return 0, nil
+	}
+	switch v := val.(type) {
+	case time.Time:
+		if types.ZeroTime.Equal(v) {
+			return 0, nil
+		}
+		return int(v.Month()), nil
+	default:
+		return nil, nil
+	}
 }
 
 // WithChildren implements the Expression interface.
@@ -222,7 +251,7 @@ func (m *Month) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.
 
 // Day is a function that returns the day of a date.
 type Day struct {
-	expression.UnaryExpressionStub
+	*UnaryDatetimeFunc
 }
 
 var _ sql.FunctionExpression = (*Day)(nil)
@@ -230,27 +259,14 @@ var _ sql.CollationCoercible = (*Day)(nil)
 
 // NewDay creates a new Day UDF.
 func NewDay(ctx *sql.Context, date sql.Expression) sql.Expression {
-	return &Day{expression.UnaryExpressionStub{Child: date}}
-}
-
-// FunctionName implements sql.FunctionExpression
-func (d *Day) FunctionName() string {
-	return "day"
+	return &Day{
+		UnaryDatetimeFunc: NewUnaryDatetimeFunc(date, "DAY", types.Int32),
+	}
 }
 
 // Description implements sql.FunctionExpression
 func (d *Day) Description() string {
 	return "returns the day of the month (0-31)."
-}
-
-func (d *Day) String() string { return fmt.Sprintf("%s(%s)", d.FunctionName(), d.Child) }
-
-// Type implements the Expression interface.
-func (d *Day) Type(ctx *sql.Context) sql.Type { return types.Int32 }
-
-// IsNullable implements the Expression interface
-func (d *Day) IsNullable(ctx *sql.Context) bool {
-	return true
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -260,7 +276,19 @@ func (*Day) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, 
 
 // Eval implements the Expression interface.
 func (d *Day) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return getDatePart(ctx, d.UnaryExpressionStub, row, day)
+	val, err := d.EvalChild(ctx, row)
+	if err != nil {
+		return 0, nil
+	}
+	switch v := val.(type) {
+	case time.Time:
+		if types.ZeroTime.Equal(v) {
+			return 0, nil
+		}
+		return v.Day(), nil
+	default:
+		return nil, nil
+	}
 }
 
 // WithChildren implements the Expression interface.
@@ -1362,11 +1390,17 @@ func (d *Date) Eval(ctx *sql.Context, row sql.Row) (any, error) {
 		}
 	}
 
-	if date == nil {
-		return nil, nil
+	switch v := date.(type) {
+	case time.Time:
+		if !types.ZeroTime.Equal(v) {
+			return v, nil
+		}
+		if err == nil {
+			ctx.Warn(mysql.ERTruncatedWrongValue, sql.ErrTruncatedIncorrect.New("datetime", date).Error())
+		}
 	}
 
-	return date, nil
+	return nil, nil
 }
 
 // WithChildren implements the Expression interface.
@@ -1387,7 +1421,13 @@ type UnaryDatetimeFunc struct {
 }
 
 func NewUnaryDatetimeFunc(arg sql.Expression, name string, sqlType sql.Type) *UnaryDatetimeFunc {
-	return &UnaryDatetimeFunc{UnaryExpressionStub: expression.UnaryExpressionStub{Child: arg}, Name: name, SQLType: sqlType}
+	return &UnaryDatetimeFunc{
+		UnaryExpressionStub: expression.UnaryExpressionStub{
+			Child: arg,
+		},
+		Name:    name,
+		SQLType: sqlType,
+	}
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -1395,23 +1435,59 @@ func (dtf *UnaryDatetimeFunc) FunctionName() string {
 	return dtf.Name
 }
 
-func (dtf *UnaryDatetimeFunc) EvalChild(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	val, err := dtf.Child.Eval(ctx, row)
+// isNumericZero is a helper function for DATE and TIME related functions. Returns |val| is a numeric zero type.
+func isNumericZero(val any) bool {
+	switch v := val.(type) {
+	case bool:
+		return !v
+	case int8:
+		return v == 0
+	case int16:
+		return v == 0
+	case int32:
+		return v == 0
+	case int64:
+		return v == 0
+	case uint8:
+		return v == 0
+	case uint16:
+		return v == 0
+	case uint32:
+		return v == 0
+	case uint64:
+		return v == 0
+	case int:
+		return v == 0
+	case uint:
+		return v == 0
+	case float32:
+		return v == 0
+	case float64:
+		return v == 0
+	case apd.Decimal:
+		return v.IsZero()
+	default:
+		return false
+	}
+}
 
+func (dtf *UnaryDatetimeFunc) EvalChild(ctx *sql.Context, row sql.Row) (any, error) {
+	val, err := dtf.Child.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
-
-	if val == nil {
+	// TODO: it seems like conversion logic for dates in functions is different. Only deal with 0 for now
+	switch v := val.(type) {
+	case time.Time, string:
+		val, _, err = types.DatetimeMaxPrecision.Convert(ctx, val)
+		return val, err // TODO: warn here? // TODO: ZeroTime -> nil?
+	default:
+		if isNumericZero(val) {
+			return types.ZeroTime, nil
+		}
+		ctx.Warn(mysql.ERTruncatedWrongValue, sql.ErrTruncatedIncorrect.New("datetime", v).Error())
 		return nil, nil
 	}
-
-	ret, _, err := types.DatetimeMaxPrecision.Convert(ctx, val)
-	if err != nil {
-		ctx.Warn(1292, "%s", types.ErrConvertingToTime.New(val).Error())
-		return nil, nil
-	}
-	return ret, nil
 }
 
 // String implements the fmt.Stringer interface.
@@ -1431,18 +1507,15 @@ func (dtf *UnaryDatetimeFunc) Type(ctx *sql.Context) sql.Type {
 
 // DayName implements the DAYNAME function
 type DayName struct {
-	*UnaryFunc
+	*UnaryDatetimeFunc
 }
 
 var _ sql.FunctionExpression = (*DayName)(nil)
 
 func NewDayName(ctx *sql.Context, arg sql.Expression) sql.Expression {
-	return &DayName{NewUnaryFunc(arg, "DAYNAME", types.Text)}
-}
-
-// FunctionName implements sql.FunctionExpression
-func (d *DayName) FunctionName() string {
-	return "dayname"
+	return &DayName{
+		UnaryDatetimeFunc: NewUnaryDatetimeFunc(arg, "DAYNAME", types.Text),
+	}
 }
 
 // Description implements sql.FunctionExpression
@@ -1455,33 +1528,19 @@ func (*DayName) CollationCoercibility(ctx *sql.Context) (collation sql.Collation
 	return ctx.GetCollation(), 4
 }
 
-// IsNullable implements the Expression interface
-func (d *DayName) IsNullable(ctx *sql.Context) bool {
-	return true
-}
-
 func (d *DayName) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	val, err := d.EvalChild(ctx, row)
 	if err != nil {
-		ctx.Warn(1292, "%s", types.ErrConvertingToTime.New(val).Error())
-		return nil, nil
+		return nil, err
 	}
-
-	if s, ok := val.(string); ok {
-		val, _, err = types.DatetimeMaxPrecision.Convert(ctx, s)
-		if err != nil {
-			ctx.Warn(1292, "%s", types.ErrConvertingToTime.New(val).Error())
-			return nil, nil
+	switch v := val.(type) {
+	case time.Time:
+		if !v.Equal(types.ZeroTime) {
+			return v.Weekday().String(), nil
 		}
+		ctx.Warn(mysql.ERTruncatedWrongValue, sql.ErrTruncatedIncorrect.New("datetime", v).Error())
 	}
-
-	t, ok := val.(time.Time)
-	if !ok || t.Equal(types.ZeroTime) {
-		ctx.Warn(1292, "%s", types.ErrConvertingToTime.New(val).Error())
-		return nil, nil
-	}
-
-	return t.Weekday().String(), nil
+	return nil, nil
 }
 
 func (d *DayName) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
@@ -1551,25 +1610,19 @@ func (d *MonthName) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
-func (d *MonthName) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+func (d *MonthName) Eval(ctx *sql.Context, row sql.Row) (any, error) {
 	val, err := d.EvalChild(ctx, row)
 	if err != nil {
 		return nil, err
 	}
-
 	switch v := val.(type) {
 	case time.Time:
-		if v.Equal(types.ZeroTime) {
-			ctx.Warn(1292, "%s", types.ErrConvertingToTime.New(val).Error())
-			return nil, nil
+		if !v.Equal(types.ZeroTime) {
+			return v.Month().String(), nil
 		}
-		return v.Month().String(), nil
-	case nil:
-		return nil, nil
-	default:
-		ctx.Warn(1292, "%s", types.ErrConvertingToTime.New(val).Error())
-		return nil, nil
+		ctx.Warn(mysql.ERTruncatedWrongValue, sql.ErrTruncatedIncorrect.New("datetime", v).Error())
 	}
+	return nil, nil
 }
 
 func (d *MonthName) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {

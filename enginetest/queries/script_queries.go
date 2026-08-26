@@ -67,6 +67,9 @@ type ScriptTestAssertion struct {
 	// such as the use of the SIGNAL statement.
 	ExpectedErrStr string
 
+	// SkipWarnings is used to skip the warnings count check
+	SkipWarnings bool
+
 	// ExpectedWarning contains the expected warning code when a query generates warnings but not errors.
 	ExpectedWarning int
 

@@ -141,7 +141,7 @@ func TestScriptWithEngine(t *testing.T, e QueryEngine, harness Harness, script q
 					AssertErr(t, e, harness, assertion.Query, assertion.Bindings, assertion.ExpectedErr)
 				} else if assertion.ExpectedErrStr != "" {
 					AssertErrWithCtx(t, e, harness, ctx, assertion.Query, assertion.Bindings, nil, assertion.ExpectedErrStr)
-				} else if assertion.ExpectedWarning != 0 {
+				} else if !assertion.SkipWarnings && assertion.ExpectedWarning != 0 {
 					if IsServerEngine(e) && assertion.SkipResultCheckOnServerEngine {
 						t.Skip()
 					}
@@ -425,7 +425,7 @@ func TestQueryWithEngine(t *testing.T, harness Harness, e QueryEngine, tt querie
 			AssertErr(t, e, harness, tt.Query, tt.Bindings, tt.ExpectedErr)
 		} else if tt.ExpectedErrStr != "" {
 			AssertErrWithCtx(t, e, harness, ctx, tt.Query, tt.Bindings, nil, tt.ExpectedErrStr)
-		} else if tt.ExpectedWarning != 0 {
+		} else if !tt.SkipWarnings && tt.ExpectedWarning != 0 {
 			AssertWarningAndTestQuery(t, e, ctx, harness,
 				tt.Query,
 				tt.Expected,

@@ -70,6 +70,8 @@ type QueryTest struct {
 	// SkipServerEngine indicates that the query should be skipped when testing a server engine (as opposed to the
 	// simpler in-place engine object)
 	SkipServerEngine bool
+	// SkipWarnings indicates that the warnings assertions should be skipped for this query.
+	SkipWarnings bool
 	// Dialect is the supported dialect for this query, which must match the dialect of the harness if specified.
 	// The query is skipped if the dialect doesn't match.
 	Dialect string
