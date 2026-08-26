@@ -4608,7 +4608,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:       "INSERT INTO test (pk) VALUES (3);",
-				ExpectedErr: sql.ErrInsertIntoNonNullableDefaultNullColumn,
+				ExpectedErr: sql.ErrFieldNoDefaultValue,
 			},
 			{
 				Query:       "ALTER TABLE test ALTER v2 DROP DEFAULT;",
@@ -4624,7 +4624,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:       "INSERT INTO test (pk) VALUES (2);",
-				ExpectedErr: sql.ErrInsertIntoNonNullableDefaultNullColumn,
+				ExpectedErr: sql.ErrFieldNoDefaultValue,
 			},
 			{
 				Query:    "ALTER TABLE test ALTER v1 SET DEFAULT 100, alter v1 SET DEFAULT 200",
@@ -11859,12 +11859,12 @@ where
 			{
 				Skip:        true,
 				Query:       "insert into t values ();",
-				ExpectedErr: sql.ErrInsertIntoNonNullableDefaultNullColumn, // wrong error
+				ExpectedErr: sql.ErrFieldNoDefaultValue, // wrong error
 			},
 			{
 				Skip:        true,
 				Query:       "insert into t values (default);",
-				ExpectedErr: sql.ErrInsertIntoNonNullableDefaultNullColumn, // wrong error
+				ExpectedErr: sql.ErrFieldNoDefaultValue, // wrong error
 			},
 		},
 	},

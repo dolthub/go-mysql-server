@@ -428,7 +428,7 @@ func warnOnIgnorableError(ctx *sql.Context, row sql.Row, err error) error {
 			}
 
 			// In this case the default value gets updated so return nil
-			if sql.ErrInsertIntoNonNullableDefaultNullColumn.Is(err) {
+			if sql.ErrFieldNoDefaultValue.Is(err) {
 				return nil
 			}
 
@@ -466,7 +466,7 @@ func (i *insertIter) validateNullability(ctx *sql.Context, dstSchema sql.Schema,
 			// In the case of an IGNORE we set the nil value to a default and add a warning
 			if !i.ignore {
 				if i.deferredDefaults.Contains(count) {
-					return sql.ErrInsertIntoNonNullableDefaultNullColumn.New(col.Name)
+					return sql.ErrFieldNoDefaultValue.New(col.Name)
 				}
 				return sql.ErrInsertIntoNonNullableProvidedNull.New(col.Name)
 			}
