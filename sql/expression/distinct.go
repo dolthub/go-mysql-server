@@ -100,24 +100,27 @@ func (de *DistinctExpression) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
-// Returns the child value if the cache hasn't seen the value before otherwise returns nil.
-// Since NULLs are ignored in aggregate expressions that use DISTINCT this is a valid return scheme.
-func (de *DistinctExpression) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+// EvalDistinct returns the child value and whether it has not been seen before.
+func (de *DistinctExpression) EvalDistinct(ctx *sql.Context, row sql.Row) (interface{}, bool, error) {
 	val, err := de.Child.Eval(ctx, row)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
-	should, err := de.seenValue(ctx, val)
+	seen, err := de.seenValue(ctx, val)
 	if err != nil {
+		return nil, false, err
+	}
+	return val, seen, nil
+}
+
+// Eval implements sql.Expression.
+func (de *DistinctExpression) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	val, seen, err := de.EvalDistinct(ctx, row)
+	if err != nil || !seen {
 		return nil, err
 	}
-
-	if should {
-		return val, nil
-	}
-
-	return nil, nil
+	return val, nil
 }
 
 func (de *DistinctExpression) Children() []sql.Expression {
