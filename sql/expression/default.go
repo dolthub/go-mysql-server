@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2026 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,73 +15,19 @@
 package expression
 
 import (
-	"errors"
-
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// DefaultColumn is a default expression of a column that is not yet resolved.
-// TODO: Rename to ColumnDefault. DefaultColumn implies this is a default column when really this is a column's default
-// value.
-type DefaultColumn struct {
-	name string
-}
-
-var _ sql.Expression = (*DefaultColumn)(nil)
-var _ sql.CollationCoercible = (*DefaultColumn)(nil)
-
-// NewDefaultColumn creates a new NewDefaultColumn expression.
-func NewDefaultColumn(name string) *DefaultColumn {
-	return &DefaultColumn{name: name}
-}
-
-// Children implements the sql.Expression interface.
-// The function returns always nil
-func (*DefaultColumn) Children() []sql.Expression {
-	return nil
-}
-
-// Resolved implements the sql.Expression interface.
-// The function returns always false
-func (*DefaultColumn) Resolved() bool {
-	return false
-}
-
-// IsNullable implements the sql.Expression interface.
-// The function always panics!
-func (*DefaultColumn) IsNullable(ctx *sql.Context) bool {
-	panic("default column is a placeholder node, but IsNullable was called")
-}
-
-// Type implements the sql.Expression interface.
-// The function always panics!
-func (*DefaultColumn) Type(ctx *sql.Context) sql.Type {
-	panic("default column is a placeholder node, but Type was called")
-}
-
-// CollationCoercibility implements the interface sql.CollationCoercible.
-func (*DefaultColumn) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
-	return sql.Collation_binary, 7
-}
-
-// Name implements the sql.Nameable interface.
-func (c *DefaultColumn) Name() string { return c.name }
-
-// String implements the Stringer
-// The function returns column's name (can be an empty string)
-func (c *DefaultColumn) String() string {
-	return c.name
-}
-
-// Eval implements the sql.Expression interface.
-func (*DefaultColumn) Eval(ctx *sql.Context, r sql.Row) (interface{}, error) {
-	return nil, errors.New("DEFAULT is a placeholder expression, but Eval was called")
-}
-
-// WithChildren implements the Expression interface.
-func (c *DefaultColumn) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
-	if len(children) != 0 {
-		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 0)
+// Default returns the default expression set for a column
+func Default(col *sql.Column) (sql.Expression, error) {
+	if col.Generated == nil {
+		if col.Default != nil {
+			return WrapExpression(col.Default.Expr), nil
+		}
+		if col.Nullable {
+			return NewLiteral(nil, types.Null), nil
+		}
 	}
-	return c, nil
+	return nil, sql.ErrFieldNoDefaultValue.New(col.Name)
 }

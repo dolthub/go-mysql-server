@@ -4608,7 +4608,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:       "INSERT INTO test (pk) VALUES (3);",
-				ExpectedErr: sql.ErrInsertIntoNonNullableDefaultNullColumn,
+				ExpectedErr: sql.ErrFieldNoDefaultValue,
 			},
 			{
 				Query:       "ALTER TABLE test ALTER v2 DROP DEFAULT;",
@@ -4624,7 +4624,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:       "INSERT INTO test (pk) VALUES (2);",
-				ExpectedErr: sql.ErrInsertIntoNonNullableDefaultNullColumn,
+				ExpectedErr: sql.ErrFieldNoDefaultValue,
 			},
 			{
 				Query:    "ALTER TABLE test ALTER v1 SET DEFAULT 100, alter v1 SET DEFAULT 200",
@@ -11859,12 +11859,12 @@ where
 			{
 				Skip:        true,
 				Query:       "insert into t values ();",
-				ExpectedErr: sql.ErrInsertIntoNonNullableDefaultNullColumn, // wrong error
+				ExpectedErr: sql.ErrFieldNoDefaultValue, // wrong error https://github.com/dolthub/dolt/issues/11608
 			},
 			{
 				Skip:        true,
 				Query:       "insert into t values (default);",
-				ExpectedErr: sql.ErrInsertIntoNonNullableDefaultNullColumn, // wrong error
+				ExpectedErr: sql.ErrFieldNoDefaultValue, // wrong error https://github.com/dolthub/dolt/issues/11608
 			},
 		},
 	},
@@ -14783,6 +14783,75 @@ select * from t1 except (
 				Expected: []sql.Row{
 					{true},
 				},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11453
+		Name:    "DEFAULT(col) expression",
+		Dialect: "mysql", // DEFAULT(col) function is not valid Postgres syntax
+		SetUpScript: []string{
+			"create table t(pk int primary key, i int default 7, j int, k int generated always as (i + 10), l int not null, m int default null);",
+			"insert into t(pk, i, l) values (1, 1, 1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "SELECT DEFAULT(pk) FROM t;",
+				ExpectedErr: sql.ErrFieldNoDefaultValue,
+			},
+			{
+				Query:    "SELECT DEFAULT(i) FROM t;",
+				Expected: []sql.Row{{7}},
+			},
+			{
+				Query:    "SELECT DEFAULT(i) AS d FROM t;",
+				Expected: []sql.Row{{7}},
+			},
+			{
+				Query:    "SELECT DEFAULT(j) FROM t;",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:       "SELECT DEFAULT(k) FROM t;",
+				ExpectedErr: sql.ErrFieldNoDefaultValue,
+			},
+			{
+				Query:       "SELECT DEFAULT(l) FROM t;",
+				ExpectedErr: sql.ErrFieldNoDefaultValue,
+			},
+			{
+				Query:    "SELECT DEFAULT(m) FROM t;",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:       "SELECT DEFAULT(asdfadf) FROM t;",
+				ExpectedErr: sql.ErrColumnNotFound,
+			},
+		},
+	},
+	{
+		Name: "inserting and updating using default values",
+		SetUpScript: []string{
+			"create table t1 (i int primary key, j int generated always as (i + 10));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "insert into t1 (i, j) values (1, default);",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Dialect:  "mysql", // This query should work in Doltgres but currently returns the wrong results. https://github.com/dolthub/doltgresql/issues/3203
+				Query:    "select * from t1",
+				Expected: []sql.Row{{1, 11}},
+			},
+			{
+				Dialect:  "mysql", // This query should work in Doltgres but currently errors out. https://github.com/dolthub/doltgresql/issues/3204
+				Query:    "update t1 set j = default where i = 1;",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 0}}}},
+			},
+			{
+				Query:       "update t1 set i = default where i = 1;",
+				ExpectedErr: sql.ErrFieldNoDefaultValue,
 			},
 		},
 	},

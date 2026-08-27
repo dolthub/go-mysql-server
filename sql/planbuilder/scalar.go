@@ -71,7 +71,21 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 
 	switch v := e.(type) {
 	case *ast.Default:
-		return expression.WrapExpression(expression.NewDefaultColumn(v.ColName))
+		c, ok := inScope.resolveColumn("", "", v.ColName, true, false)
+		if !ok {
+			b.handleErr(sql.ErrColumnNotFound.New(v.ColName))
+		}
+
+		tableSch := b.resolveSchemaDefaults(inScope, inScope.node.Schema(b.ctx))
+		colIdx := tableSch.IndexOfColName(c.col)
+		if colIdx < 0 {
+			b.handleErr(sql.ErrColumnNotFound.New(v.ColName))
+		}
+		def, err := expression.Default(tableSch[colIdx])
+		if err != nil {
+			b.handleErr(err)
+		}
+		return def
 	case *ast.SubstrExpr:
 		var name sql.Expression
 		if v.Name != nil {

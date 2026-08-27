@@ -192,6 +192,7 @@ func (e *ColumnDefaultValue) DebugString(ctx *Context) string {
 // Type implements sql.Expression
 func (e *ColumnDefaultValue) Type(ctx *Context) Type {
 	if e == nil {
+		// TODO: This is not correct. The type should be types.Null. But that causes a cyclical import.
 		return nil
 	}
 	if e.OutType == nil {
