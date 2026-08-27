@@ -993,7 +993,7 @@ var FunctionQueryTests = []QueryTest{
 	},
 	{
 		Query: `SELECT TIMESTAMPDIFF(MINUTE, val, '2019/12/28') FROM
-			(values row('2017-11-30 22:59:59'), row('2020/01/02'), row('2019-12-27 23:15:55'), row('2019-12-31T12:00:00')) a (val);`,
+			(values row('2017-11-30 22:59:59'), row('2020/01/02'), row('2019-12-27 23:15:55'), row('2019-12-31 12:00:00')) a (val);`,
 		Expected: []sql.Row{
 			{1090140},
 			{-7200},
