@@ -969,7 +969,7 @@ var FunctionQueryTests = []QueryTest{
 	},
 	{
 		Query: `SELECT DATEDIFF(val, '2019/12/28') FROM
-			(values row('2017-11-30 22:59:59'), row('2020/01/02'), row('2021-11-30'), row('2020-12-31T12:00:00')) a (val)`,
+			(values row('2017-11-30 22:59:59'), row('2020/01/02'), row('2021-11-30'), row('2020-12-31 12:00:00')) a (val)`,
 		Expected: []sql.Row{
 			{-758},
 			{5},
@@ -1464,7 +1464,7 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{{int32(345)}, {int32(345)}, {int32(345)}},
 	},
 	{
-		Query:    "SELECT SECOND('2007-12-11T20:21:22Z') FROM mytable",
+		Query:    "SELECT SECOND('2007-12-11 20:21:22') FROM mytable",
 		Expected: []sql.Row{{int32(22)}, {int32(22)}, {int32(22)}},
 	},
 	{

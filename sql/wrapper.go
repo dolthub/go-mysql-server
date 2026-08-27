@@ -66,8 +66,9 @@ func UnwrapAny(ctx context.Context, v interface{}) (result interface{}, err erro
 	switch vv := v.(type) {
 	case AnyWrapper:
 		return vv.UnwrapAny(ctx)
+	default:
+		return v, nil
 	}
-	return v, nil
 }
 
 // Unwrap takes a possibly-wrapped value and attempts to unwrap it into the requested type.
