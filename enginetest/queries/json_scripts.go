@@ -25,6 +25,28 @@ import (
 
 var JsonScripts = []ScriptTest{
 	{
+		Name: "typed decimal remains exact in JSON",
+		SetUpScript: []string{
+			"CREATE TABLE json_precision (id INT PRIMARY KEY, doc JSON)",
+			`INSERT INTO json_precision VALUES (1, '{"value":0}')`,
+			`UPDATE json_precision SET doc = JSON_SET(doc, '$.value', CAST(1234567890.123456789 AS DECIMAL(30,18))) WHERE id = 1`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    `SELECT JSON_UNQUOTE(JSON_EXTRACT(doc, '$.value')) FROM json_precision WHERE id = 1`,
+				Expected: []sql.Row{{"1234567890.123456789000000000"}},
+			},
+			{
+				Query:    `SELECT JSON_OVERLAPS(JSON_EXTRACT(doc, '$.value'), JSON_EXTRACT(JSON_SET('{}', '$.n', CAST(1234567890.123456789 AS DECIMAL(30,18))), '$.n')), JSON_OVERLAPS(JSON_EXTRACT(doc, '$.value'), JSON_EXTRACT(JSON_SET('{}', '$.n', CAST(1234567890.123456788 AS DECIMAL(30,18))), '$.n')) FROM json_precision WHERE id = 1`,
+				Expected: []sql.Row{{true, false}},
+			},
+			{
+				Query:    `SELECT JSON_CONTAINS(doc, JSON_EXTRACT(JSON_SET('{}', '$.n', CAST(1234567890.123456789 AS DECIMAL(30,18))), '$.n'), '$.value'), JSON_CONTAINS(doc, JSON_EXTRACT(JSON_SET('{}', '$.n', CAST(1234567890.123456788 AS DECIMAL(30,18))), '$.n'), '$.value') FROM json_precision WHERE id = 1`,
+				Expected: []sql.Row{{true, false}},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/10050
 		Name: "TextStorage converts to JSON when using dolt wrapper",
 		SetUpScript: []string{
