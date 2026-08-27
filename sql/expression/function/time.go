@@ -23,7 +23,6 @@ import (
 	"github.com/cockroachdb/apd/v3"
 	"gopkg.in/src-d/go-errors.v1"
 
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -1379,7 +1378,7 @@ func (d *Date) Eval(ctx *sql.Context, row sql.Row) (any, error) {
 			return v, nil
 		}
 		if err == nil {
-			ctx.Warn(mysql.ERTruncatedWrongValue, sql.ErrTruncatedIncorrect.New("datetime", date).Error())
+			ctx.Warn(mysql.ERTruncatedWrongValue, sql.ErrIncorrectDateTimeValue.New(types.Date.String(), date).Error())
 		}
 	}
 
