@@ -104,10 +104,11 @@ var (
 	// datetimeMinTime is the minimum representable time value, MYSQL: 0000-00-00 00:00:00.000000 (microseconds)
 	datetimeMinTime = ZeroTime
 
-	DateOnlyLayouts = []string{
+	NoDelimiterDateLayout = "20060102"
+	DateOnlyLayouts       = []string{
 		"2006-01-02",
 		"2006/01/02",
-		"20060102",
+		NoDelimiterDateLayout,
 		"2006-1-2",
 	}
 
@@ -394,15 +395,24 @@ func GetLastDay(year, month int) (res int, ok bool) {
 //		Group 7: Microseconds (optional)
 //	 Group 8: any trailing characters to be Truncated
 var DateTimeRegex = regexp.MustCompile(`^(\d+)\p{P}+(\d+)\p{P}+(\d+)[\s\p{P}]*(\d*)?\p{P}*(\d*)?\p{P}*(\d*)?\p{P}*(\d*)?(.*)$`)
+var NoDelimiterDateTimeRegex = regexp.MustCompile(`\d+`)
 
 // parseDatetime parses a DateTime according to MySQL rules.
 func (t datetimeType) parseDatetime(str string) (any, bool, error) {
 	var delimWarn bool
+	// TODO: get rid of this
 	if dt, err := time.Parse(TimezoneTimestampDatetimeLayout, str); err == nil {
 		return dt.UTC(), delimWarn, nil
 	}
 
-	// TODO: no delimiters
+	// TODO: Properly implement date only parsing with no delimiters.
+	//  This is just here for existing tests to pass
+	if tmp := NoDelimiterDateTimeRegex.FindString(str); len(tmp) != 0 {
+		if dt, err := time.Parse(NoDelimiterDateLayout, str); err == nil {
+			return dt, delimWarn, nil
+		}
+	}
+
 	value := strings.Trim(str, NumericCutSet) // TODO: leading and trailing whitespace(s) should throw warning
 	matchIdxs := DateTimeRegex.FindStringSubmatchIndex(value)
 	if len(matchIdxs) == 0 {
@@ -555,7 +565,7 @@ func (t datetimeType) SQL(ctx *sql.Context, dest []byte, v any) (sqltypes.Value,
 		return sqltypes.Value{}, err
 	}
 	vt, ok := val.(time.Time)
-	if ok {
+	if !ok {
 		return sqltypes.Value{}, sql.ErrConvertToSQL.New(v, t)
 	}
 

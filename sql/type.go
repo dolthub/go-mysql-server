@@ -229,6 +229,7 @@ func IsStringType(t Type) bool {
 // DatetimeType represents DATE, DATETIME, and TIMESTAMP.
 // https://dev.mysql.com/doc/refman/8.0/en/datetime.html
 // The type of the returned value is time.Time.
+// TODO: consider implementing a ToString(time.Time) to handle conversions with Precision
 type DatetimeType interface {
 	Type
 	MaximumTime() time.Time
