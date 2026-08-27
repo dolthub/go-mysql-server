@@ -4792,19 +4792,17 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		}, nil, nil, nil)
 	})
 
-	// TODO: zero timestamps work slightly differently than they do in MySQL, where the zero time is "0000-00-00 00:00:00"
-	//  We use "0000-01-01 00:00:00"
 	t.Run("DATETIME/TIMESTAMP NOW/CURRENT_TIMESTAMP literals", func(t *testing.T) {
 		if IsServerEngine(e) {
 			t.Skip("TODO: fix result formatting for server engine tests")
 		}
-		TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE t10zero(pk BIGINT PRIMARY KEY, v1 DATETIME DEFAULT '2020-01-01 01:02:03', v2 DATETIME DEFAULT 0,"+
-			"v3 TIMESTAMP DEFAULT '2020-01-01 01:02:03', v4 TIMESTAMP DEFAULT 0)", []sql.Row{{types.NewOkResult(0)}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE t10zero(pk BIGINT PRIMARY KEY, v1 DATETIME DEFAULT '2020-01-01 01:02:03', "+
+			"v2 TIMESTAMP DEFAULT '2020-01-01 01:02:03')", []sql.Row{{types.NewOkResult(0)}}, nil, nil, nil)
 
 		RunQueryWithContext(t, e, harness, ctx, "insert into t10zero(pk) values (1)")
 
 		// TODO: the string conversion does not transform to UTC like other NOW() calls, fix this
-		TestQueryWithContext(t, ctx, e, harness, "select * from t10zero order by 1", []sql.Row{{1, time.Date(2020, 1, 1, 1, 2, 3, 0, time.UTC), types.Datetime.Zero(), time.Date(2020, 1, 1, 1, 2, 3, 0, time.UTC), types.Timestamp.Zero()}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "select * from t10zero order by 1", []sql.Row{{1, time.Date(2020, 1, 1, 1, 2, 3, 0, time.UTC), time.Date(2020, 1, 1, 1, 2, 3, 0, time.UTC)}}, nil, nil, nil)
 	})
 
 	t.Run("Non-DATETIME/TIMESTAMP NOW/CURRENT_TIMESTAMP expression", func(t *testing.T) {

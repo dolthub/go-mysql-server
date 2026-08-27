@@ -106,6 +106,8 @@ var (
 		"2006-1-2",
 	}
 
+	NoDelimiterDatetimeLayout = "20060102150405"
+
 	TimezoneTimestampDatetimeLayout = "2006-01-02 15:04:05.999999999 -0700 MST" // represents standard Time.time.UTC()
 
 	// TimestampDatetimeLayouts hold extra timestamps allowed for parsing. It does
@@ -125,7 +127,7 @@ var (
 		"2006-01-02 15:04:",
 		"2006-01-02 15:04",
 		"2006-01-02 15:4",
-		"20060102150405",
+		NoDelimiterDatetimeLayout,
 	}, DateOnlyLayouts...)
 
 	// ZeroTime is -0001-11-30 00:00:00 UTC which is the closest Go can get to 0000-00-00 00:00:00 without conflicting
@@ -331,13 +333,30 @@ func (t datetimeType) Convert(ctx context.Context, v any) (any, sql.ConvertInRan
 		return nil, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
 	}
 
-	// TODO: this is the range check... so rename function?
 	switch t.baseType {
 	case sqltypes.Date:
 		resTime = resTime.Truncate(24 * time.Hour)
+		res = ValidateTime(resTime)
+		if res == nil {
+			return nil, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
+		}
+		resTime = res.(time.Time)
+	case sqltypes.Timestamp:
+		roundDuration := time.Second / time.Duration(precisionConversion[t.precision])
+		resTime = resTime.Round(roundDuration)
+		res = ValidateTimestamp(resTime)
+		if res == nil {
+			return nil, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
+		}
+		resTime = res.(time.Time)
 	default:
 		roundDuration := time.Second / time.Duration(precisionConversion[t.precision])
 		resTime = resTime.Round(roundDuration)
+		res = ValidateTime(resTime)
+		if res == nil {
+			return nil, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
+		}
+		resTime = res.(time.Time)
 	}
 
 	return resTime, sql.InRange, err // Keep any errors as potential warnings later
@@ -400,7 +419,9 @@ func (t datetimeType) parseDatetime(str string) (any, bool, error) {
 	// TODO: Properly implement date only parsing with no delimiters.
 	//  This is just here for existing tests to pass
 	if tmp := NoDelimiterDateTimeRegex.FindString(str); len(tmp) != 0 {
-		if dt, err := time.Parse(NoDelimiterDateLayout, str); err == nil {
+		if dt, err := time.Parse(NoDelimiterDatetimeLayout, str); err == nil {
+			return dt, delimWarn, nil
+		} else if dt, err = time.Parse(NoDelimiterDateLayout, str); err == nil {
 			return dt, delimWarn, nil
 		}
 	}
