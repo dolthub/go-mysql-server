@@ -1434,66 +1434,84 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{{nil}},
 	},
 
-	// Additional Date/Time Function Tests
 	{
-		Query:    "SELECT YEAR('2007-12-11') FROM mytable",
-		Expected: []sql.Row{{int32(2007)}, {int32(2007)}, {int32(2007)}},
+		Query:    "SELECT YEAR('2007-12-11');",
+		Expected: []sql.Row{{int32(2007)}},
 	},
 	{
-		Query:    "SELECT MONTH('2007-12-11') FROM mytable",
-		Expected: []sql.Row{{int32(12)}, {int32(12)}, {int32(12)}},
+		Query:    "SELECT MONTH('2007-12-11');",
+		Expected: []sql.Row{{int32(12)}},
 	},
 	{
-		Query:    "SELECT DAY('2007-12-11') FROM mytable",
-		Expected: []sql.Row{{int32(11)}, {int32(11)}, {int32(11)}},
+		Query:    "SELECT DAY('2007-12-11');",
+		Expected: []sql.Row{{int32(11)}},
 	},
 	{
-		Query:    "SELECT HOUR('2007-12-11 20:21:22') FROM mytable",
-		Expected: []sql.Row{{int32(20)}, {int32(20)}, {int32(20)}},
+		Query:    "SELECT HOUR('2007-12-11 20:21:22');",
+		Expected: []sql.Row{{int32(20)}},
 	},
 	{
-		Query:    "SELECT MINUTE('2007-12-11 20:21:22') FROM mytable",
-		Expected: []sql.Row{{int32(21)}, {int32(21)}, {int32(21)}},
+		Query:    "SELECT MINUTE('2007-12-11 20:21:22');",
+		Expected: []sql.Row{{int32(21)}},
 	},
 	{
-		Query:    "SELECT SECOND('2007-12-11 20:21:22') FROM mytable",
-		Expected: []sql.Row{{int32(22)}, {int32(22)}, {int32(22)}},
+		Query:    "SELECT SECOND('2007-12-11 20:21:22');",
+		Expected: []sql.Row{{int32(22)}},
 	},
 	{
-		Query:    "SELECT DAYOFYEAR('2007-12-11 20:21:22') FROM mytable",
-		Expected: []sql.Row{{int32(345)}, {int32(345)}, {int32(345)}},
+		Query:    "SELECT DAYOFYEAR('2007-12-11 20:21:22');",
+		Expected: []sql.Row{{int32(345)}},
 	},
 	{
-		Query:    "SELECT SECOND('2007-12-11 20:21:22') FROM mytable",
-		Expected: []sql.Row{{int32(22)}, {int32(22)}, {int32(22)}},
+		Query:    "SELECT SECOND('2007-12-11 20:21:22');",
+		Expected: []sql.Row{{int32(22)}},
 	},
 	{
-		Query:    "SELECT DAYOFYEAR('2007-12-11') FROM mytable",
-		Expected: []sql.Row{{int32(345)}, {int32(345)}, {int32(345)}},
+		Query:    "SELECT DAYOFYEAR('2007-12-11');",
+		Expected: []sql.Row{{int32(345)}},
 	},
 	{
-		Query:    "SELECT DAYOFYEAR('20071211') FROM mytable",
-		Expected: []sql.Row{{int32(345)}, {int32(345)}, {int32(345)}},
+		Query:    "SELECT DAYOFYEAR('20071211');",
+		Expected: []sql.Row{{int32(345)}},
 	},
 	{
-		Query:    "SELECT YEARWEEK('0000-01-01')",
+		Query:    "SELECT YEARWEEK('0000-01-01');",
 		Expected: []sql.Row{{int32(1)}},
 	},
 	{
-		Query:    "SELECT YEARWEEK('9999-12-31')",
+		Query:    "SELECT YEARWEEK('9999-12-31');",
 		Expected: []sql.Row{{int32(999952)}},
 	},
 	{
-		Query:    "SELECT YEARWEEK('2008-02-20', 1)",
+		Query:    "SELECT YEARWEEK('2008-02-20', 1);",
 		Expected: []sql.Row{{int32(200808)}},
 	},
 	{
-		Query:    "SELECT YEARWEEK('1987-01-01')",
+		Query:    "SELECT YEARWEEK('1987-01-01');",
 		Expected: []sql.Row{{int32(198652)}},
 	},
 	{
-		Query:    "SELECT YEARWEEK('1987-01-01', 20), YEARWEEK('1987-01-01', 1), YEARWEEK('1987-01-01', 2), YEARWEEK('1987-01-01', 3), YEARWEEK('1987-01-01', 4), YEARWEEK('1987-01-01', 5), YEARWEEK('1987-01-01', 6), YEARWEEK('1987-01-01', 7)",
-		Expected: []sql.Row{{int32(198653), int32(198701), int32(198652), int32(198701), int32(198653), int32(198652), int32(198653), int32(198652)}},
+		Query: "SELECT " +
+			"YEARWEEK('1987-01-01', 20), " +
+			"YEARWEEK('1987-01-01', 1), " +
+			"YEARWEEK('1987-01-01', 2), " +
+			"YEARWEEK('1987-01-01', 3), " +
+			"YEARWEEK('1987-01-01', 4), " +
+			"YEARWEEK('1987-01-01', 5), " +
+			"YEARWEEK('1987-01-01', 6), " +
+			"YEARWEEK('1987-01-01', 7)",
+		Expected: []sql.Row{
+			{
+				int32(198653),
+				int32(198701),
+				int32(198652),
+				int32(198701),
+				int32(198653),
+				int32(198652),
+				int32(198653),
+				int32(198652),
+			},
+		},
 	},
 
 	// Additional String Function Tests

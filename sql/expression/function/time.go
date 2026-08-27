@@ -553,7 +553,7 @@ func (d *DayOfWeek) WithChildren(ctx *sql.Context, children ...sql.Expression) (
 
 // DayOfYear is a function that returns the day of the year from a date.
 type DayOfYear struct {
-	expression.UnaryExpressionStub
+	*UnaryDatetimeFunc
 }
 
 var _ sql.FunctionExpression = (*DayOfYear)(nil)
@@ -561,27 +561,14 @@ var _ sql.CollationCoercible = (*DayOfYear)(nil)
 
 // NewDayOfYear creates a new DayOfYear UDF.
 func NewDayOfYear(ctx *sql.Context, date sql.Expression) sql.Expression {
-	return &DayOfYear{expression.UnaryExpressionStub{Child: date}}
-}
-
-// FunctionName implements sql.FunctionExpression
-func (d *DayOfYear) FunctionName() string {
-	return "dayofyear"
+	return &DayOfYear{
+		UnaryDatetimeFunc: NewUnaryDatetimeFunc(date, "DAYOFYEAR", types.Int32),
+	}
 }
 
 // Description implements sql.FunctionExpression
 func (d *DayOfYear) Description() string {
 	return "returns the day of the year of the given date."
-}
-
-func (d *DayOfYear) String() string { return fmt.Sprintf("DAYOFYEAR(%s)", d.Child) }
-
-// Type implements the Expression interface.
-func (d *DayOfYear) Type(ctx *sql.Context) sql.Type { return types.Int32 }
-
-// IsNullable implements the Expression interface
-func (d *DayOfYear) IsNullable(ctx *sql.Context) bool {
-	return true
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

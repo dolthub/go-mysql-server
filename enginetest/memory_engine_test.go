@@ -131,7 +131,7 @@ func TestJSONTableQueries(t *testing.T) {
 	enginetest.TestJSONTableQueries(t, enginetest.NewDefaultMemoryHarness())
 }
 
-// TestJSONTableScripts runs the canonical test queries against a single threaded index enabled harness.
+// TestJSONTableScrits runs the canonical test queries against a single threaded index enabled harness.
 func TestJSONTableScripts(t *testing.T) {
 	enginetest.TestJSONTableScripts(t, enginetest.NewDefaultMemoryHarness())
 }
@@ -198,17 +198,12 @@ func TestSingleScript(t *testing.T) {
 	var scripts = []queries.ScriptTest{
 		{
 			//Skip:        true,
-			Name: "Parse table name as column",
-			SetUpScript: []string{
-				"create table t (d date);",
-				"insert into t values ('2019-12-31 12:00:00');",
-				"insert into t values ('2020-01-03 12:00:00');",
-				"insert into t values ('2020-01-07 00:00:00');",
-			},
+			Name:        "Parse table name as column",
+			SetUpScript: []string{},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "select count(*) from t where d = date('2019-12-31 12:00:00');",
-					Expected: []sql.Row{{nil}},
+					Query:    "select json_object(date('1981-02-16'), 10);",
+					Expected: []sql.Row{},
 				},
 			},
 		},
