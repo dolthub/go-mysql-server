@@ -93,7 +93,7 @@ func (c *ConvertTz) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// If either the date, or the timezones/offsets are not correct types we return NULL.
-	dtVal, err = types.DatetimeMaxPrecision.ConvertWithoutRangeCheck(ctx, dtVal)
+	dtVal, _, err = types.DatetimeMaxPrecision.Convert(ctx, dtVal)
 	if err != nil {
 		return nil, nil
 	}
@@ -125,7 +125,7 @@ func (c *ConvertTz) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	return types.DatetimeMaxPrecision.ConvertWithoutRangeCheck(ctx, converted)
+	return converted, nil
 }
 
 // Children implements the sql.Expression interface.

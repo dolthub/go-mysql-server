@@ -198,27 +198,18 @@ func TestSingleScript(t *testing.T) {
 	var scripts = []queries.ScriptTest{
 		{
 			//Skip:        true,
-			Name:        "Parse table name as column",
-			SetUpScript: []string{},
+			Name: "Parse table name as column",
+			SetUpScript: []string{
+				"create table t (d date);",
+				"insert into t values ('2019-12-31 12:00:00');",
+				"insert into t values ('2020-01-03 12:00:00');",
+				"insert into t values ('2020-01-07 00:00:00');",
+			},
 			Assertions: []queries.ScriptTestAssertion{
-				//{
-				//	Query:    "select date('2001-02-03 a')",
-				//	Expected: []sql.Row{{nil}},
-				//},
 				{
-					Query:    "select cast('2001-02-03 a' as datetime)",
+					Query:    "select count(*) from t where d = date('2019-12-31 12:00:00');",
 					Expected: []sql.Row{{nil}},
 				},
-				//{
-				//	Query:    "select convert('2001-02-03 a', date)",
-				//	Expected: []sql.Row{{nil}},
-				//},
-				//{
-				//	Query:                 "SELECT CONVERT('10000-12-31 23:59:59', DATETIME);",
-				//	Expected:              []sql.Row{{nil}},
-				//	ExpectedWarning:       mysql.ERTruncatedWrongValue,
-				//	ExpectedWarningsCount: 1,
-				//},
 			},
 		},
 	}
