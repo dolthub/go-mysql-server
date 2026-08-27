@@ -9790,9 +9790,10 @@ var BrokenQueries = []QueryTest{
 		Expected: []sql.Row{{"2013-08-13"}},
 	},
 	{
-		// TODO:  need to properly handle datetime precision
-		Query:    `SELECT STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s %f') - (STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') - INTERVAL 1 SECOND)`,
-		Expected: []sql.Row{{int64(1)}},
+		Query: `SELECT STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s %f') - (STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') - INTERVAL 1 SECOND)`,
+		Expected: []sql.Row{
+			{int64(1)}, // TODO: should be 1.000000
+		},
 	},
 	{
 		// This panics

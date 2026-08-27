@@ -201,9 +201,13 @@ func TestSingleScript(t *testing.T) {
 			Name:        "Parse table name as column",
 			SetUpScript: []string{},
 			Assertions: []queries.ScriptTestAssertion{
+				//{
+				//	Query:    `SELECT STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s %f') - (STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') - INTERVAL 1 SECOND)`,
+				//	Expected: []sql.Row{{int64(1)}},
+				//},
 				{
-					Query:    "select json_object(date('1981-02-16'), 10);",
-					Expected: []sql.Row{},
+					Query:    `select STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') - INTERVAL 1 SECOND`,
+					Expected: []sql.Row{{int64(1)}},
 				},
 			},
 		},
