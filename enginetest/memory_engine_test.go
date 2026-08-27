@@ -200,15 +200,25 @@ func TestSingleScript(t *testing.T) {
 			//Skip:        true,
 			Name:        "Parse table name as column",
 			SetUpScript: []string{},
-
 			Assertions: []queries.ScriptTestAssertion{
-				// zero/null dates
+				//{
+				//	Query:    "select date('2001-02-03 a')",
+				//	Expected: []sql.Row{{nil}},
+				//},
 				{
-					Query: "select dayname(123);",
-					Expected: []sql.Row{
-						{11},
-					},
+					Query:    "select cast('2001-02-03 a' as datetime)",
+					Expected: []sql.Row{{nil}},
 				},
+				//{
+				//	Query:    "select convert('2001-02-03 a', date)",
+				//	Expected: []sql.Row{{nil}},
+				//},
+				//{
+				//	Query:                 "SELECT CONVERT('10000-12-31 23:59:59', DATETIME);",
+				//	Expected:              []sql.Row{{nil}},
+				//	ExpectedWarning:       mysql.ERTruncatedWrongValue,
+				//	ExpectedWarningsCount: 1,
+				//},
 			},
 		},
 	}

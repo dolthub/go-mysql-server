@@ -16,6 +16,7 @@ package function
 
 import (
 	"fmt"
+	"github.com/dolthub/vitess/go/mysql"
 	"math"
 	"strings"
 	"time"
@@ -91,20 +92,20 @@ func (d *DateDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	if val1 == nil {
-		return nil, nil
-	}
-
-	expr1, _, err := types.DatetimeMaxPrecision.Convert(ctx, val1)
+	expr1, _, err := types.Date.Convert(ctx, val1)
 	if err != nil {
-		ctx.Warn(1292, "Incorrect datetime value: '%s'", val1)
+		ctx.Warn(mysql.ERTruncatedWrongValue, sql.ErrTruncatedIncorrect.New("datetime", val1).Error())
 		return nil, nil
 	}
-
-	expr1str := expr1.(time.Time).String()[:10]
-	expr1, _, _ = types.DatetimeMaxPrecision.Convert(ctx, expr1str)
-	if expr1 == nil {
-		ctx.Warn(1292, "Incorrect datetime value: '%s'", val1)
+	var date1 time.Time
+	switch expr1.(type) {
+	case time.Time:
+		date1 = expr1.(time.Time)
+		if types.ZeroTime.Equal(date1) {
+			ctx.Warn(mysql.ERTruncatedWrongValue, sql.ErrTruncatedIncorrect.New("datetime", val1).Error())
+			return nil, nil
+		}
+	default:
 		return nil, nil
 	}
 
@@ -112,25 +113,22 @@ func (d *DateDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	if val2 == nil {
-		return nil, nil
-	}
-
-	expr2, _, err := types.DatetimeMaxPrecision.Convert(ctx, val2)
+	expr2, _, err := types.Date.Convert(ctx, val2)
 	if err != nil {
-		ctx.Warn(1292, "Incorrect datetime value: '%s'", val2)
+		ctx.Warn(mysql.ERTruncatedWrongValue, sql.ErrTruncatedIncorrect.New("datetime", val2).Error())
 		return nil, nil
 	}
-
-	expr2str := expr2.(time.Time).String()[:10]
-	expr2, _, _ = types.DatetimeMaxPrecision.Convert(ctx, expr2str)
-	if expr2 == nil {
-		ctx.Warn(1292, "Incorrect datetime value: '%s'", val2)
+	var date2 time.Time
+	switch expr2.(type) {
+	case time.Time:
+		date2 = expr2.(time.Time)
+		if types.ZeroTime.Equal(date2) {
+			ctx.Warn(mysql.ERTruncatedWrongValue, sql.ErrTruncatedIncorrect.New("datetime", val2).Error())
+			return nil, nil
+		}
+	default:
 		return nil, nil
 	}
-
-	date1 := expr1.(time.Time)
-	date2 := expr2.(time.Time)
 
 	diff := int64(math.Round(date1.Sub(date2).Hours() / 24))
 

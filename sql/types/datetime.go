@@ -192,36 +192,28 @@ func (t datetimeType) Precision() int {
 }
 
 // Compare implements Type interface.
-func (t datetimeType) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
+func (t datetimeType) Compare(ctx context.Context, a, b any) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
 
-	var at time.Time
-	var bt time.Time
 	var ok bool
-	var err error
-	if at, ok = a.(time.Time); !ok {
-		at, err = ConvertToTime(ctx, a, t)
-		if err != nil {
-			return 0, err
-		}
-	} else if t.baseType == sqltypes.Date {
-		at = at.Truncate(24 * time.Hour)
+	var at, bt time.Time
+	if av, _, err := t.Convert(ctx, a); err != nil {
+		return 0, err
+	} else if at, ok = av.(time.Time); !ok {
+		return 1, nil
 	}
-	if bt, ok = b.(time.Time); !ok {
-		bt, err = ConvertToTime(ctx, b, t)
-		if err != nil {
-			return 0, err
-		}
-
-	} else if t.baseType == sqltypes.Date {
-		bt = bt.Truncate(24 * time.Hour)
+	if bv, _, err := t.Convert(ctx, b); err != nil {
+		return 0, err
+	} else if bv, ok = bv.(time.Time); !ok {
+		return 1, nil
 	}
 
 	if at.Before(bt) {
 		return -1, nil
-	} else if at.After(bt) {
+	}
+	if at.After(bt) {
 		return 1, nil
 	}
 	return 0, nil
@@ -233,203 +225,135 @@ func (t datetimeType) CompareValue(ctx *sql.Context, a, b sql.Value) (int, error
 }
 
 // Convert implements Type interface.
-func (t datetimeType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
-	if v == nil {
-		return nil, sql.InRange, nil
-	}
-	res, err := ConvertToTime(ctx, v, t)
-	if err != nil && !sql.ErrTruncatedIncorrect.Is(err) {
+func (t datetimeType) Convert(ctx context.Context, v any) (any, sql.ConvertInRange, error) {
+	v, err := sql.UnwrapAny(ctx, v)
+	if err != nil {
 		return nil, sql.InRange, err
 	}
-	return res, sql.InRange, err
+
+	var res any
+	switch value := v.(type) {
+	case nil:
+		return nil, sql.InRange, nil
+	case []byte:
+		return t.Convert(ctx, string(value))
+	case string:
+		// TODO: not sure if we still need this
+		value = strings.Trim(value, " \t\n\r\v\f")
+		if IsZeroTimestampStr(value) {
+			return ZeroTime, sql.InRange, nil
+		}
+		res, _, err = t.parseDatetime(value)
+	case Timespan:
+		// when receiving TIME, MySQL fills in date with today
+		nowTimeStr := sql.Now().Format("2006-01-02")
+		nowTime, err := time.Parse("2006-01-02", nowTimeStr)
+		if err != nil {
+			return ZeroTime, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
+		}
+		return nowTime.Add(value.AsTimeDuration()), sql.InRange, nil
+	case time.Time:
+		res = value.UTC()
+	// For most integer values, we just return an error (but MySQL is more lenient for some of these). A special case
+	// is zero values, which are important when converting from postgres defaults.
+	case bool:
+		if !value {
+			return ZeroTime, sql.InRange, nil
+		}
+		return ZeroTime, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
+	case int:
+		if value == 0 {
+			return ZeroTime, sql.InRange, nil
+		}
+		return ZeroTime, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
+	case int8:
+		if value == 0 {
+			return ZeroTime, sql.InRange, nil
+		}
+		return ZeroTime, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
+	case int16:
+		if value == 0 {
+			return ZeroTime, sql.InRange, nil
+		}
+		return ZeroTime, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
+	case int32:
+		if value == 0 {
+			return ZeroTime, sql.InRange, nil
+		}
+		return ZeroTime, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
+	case int64:
+		if value == 0 {
+			return ZeroTime, sql.InRange, nil
+		}
+		return ZeroTime, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
+	case uint:
+		if value == 0 {
+			return ZeroTime, sql.InRange, nil
+		}
+		return ZeroTime, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
+	case uint8:
+		if value == 0 {
+			return ZeroTime, sql.InRange, nil
+		}
+		return ZeroTime, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
+	case uint16:
+		if value == 0 {
+			return ZeroTime, sql.InRange, nil
+		}
+		return ZeroTime, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
+	case uint32:
+		if value == 0 {
+			return ZeroTime, sql.InRange, nil
+		}
+		return ZeroTime, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
+	case uint64:
+		if value == 0 {
+			return ZeroTime, sql.InRange, nil
+		}
+		return ZeroTime, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
+	case float32:
+		if value == 0 {
+			return ZeroTime, sql.InRange, nil
+		}
+		return ZeroTime, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
+	case float64:
+		if value == 0 {
+			return ZeroTime, sql.InRange, nil
+		}
+		return ZeroTime, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
+	case *apd.Decimal:
+		if value.IsZero() {
+			return ZeroTime, sql.InRange, nil
+		}
+		return ZeroTime, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
+	default:
+		return ZeroTime, sql.InRange, sql.ErrConvertToSQL.New(value, t)
+	}
+
+	if res == nil {
+		return nil, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
+	}
+	resTime, ok := res.(time.Time)
+	if !ok {
+		return nil, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
+	}
+
+	// TODO: this is the range check... so rename function?
+	switch t.baseType {
+	case sqltypes.Date:
+		resTime = resTime.Truncate(24 * time.Hour)
+	default:
+		roundDuration := time.Second / time.Duration(precisionConversion[t.precision])
+		resTime = resTime.Round(roundDuration)
+	}
+
+	return res, sql.InRange, err // Keep any errors as potential warnings later
 }
 
 // precisionConversion is a conversion ratio to divide time.Second by to truncate the appropriate amount for the
 // precision of a type with time info
 var precisionConversion = [7]int{
 	1, 10, 100, 1_000, 10_000, 100_000, 1_000_000,
-}
-
-func ConvertToTime(ctx context.Context, v interface{}, t datetimeType) (time.Time, error) {
-	if v == nil {
-		return time.Time{}, nil
-	}
-
-	res, err := t.ConvertWithoutRangeCheck(ctx, v)
-	if err != nil && !sql.ErrTruncatedIncorrect.Is(err) {
-		return time.Time{}, err
-	}
-	// TODO: is this correct?
-	if res == nil {
-		return time.Time{}, nil
-	}
-
-	dt := res.(time.Time)
-	if dt.Equal(ZeroTime) {
-		return ZeroTime, nil
-	}
-
-	// Round the date to the precision of this type
-	if t.precision < MaxDatetimePrecision {
-		truncationDuration := time.Second / time.Duration(precisionConversion[t.precision])
-		res = dt.Round(truncationDuration)
-	} else {
-		res = dt.Round(time.Microsecond)
-	}
-
-	if t == DatetimeMaxRange {
-		validated := ValidateTime(dt)
-		if validated == nil {
-			return time.Time{}, ErrConvertingToTimeOutOfRange.New(v, t)
-		}
-		return validated.(time.Time), err
-	}
-
-	switch t.baseType {
-	case sqltypes.Date:
-		if dt.Year() < 0 || dt.Year() > 9999 {
-			return time.Time{}, ErrConvertingToTimeOutOfRange.New(dt.Format(sql.DateLayout), t.String())
-		}
-	case sqltypes.Datetime:
-		if dt.Year() < 0 || dt.Year() > 9999 {
-			return time.Time{}, ErrConvertingToTimeOutOfRange.New(dt.Format(sql.TimestampDatetimeLayout), t.String())
-		}
-	case sqltypes.Timestamp:
-		if ValidateTimestamp(dt) == nil {
-			return time.Time{}, ErrConvertingToTimeOutOfRange.New(dt.Format(sql.TimestampDatetimeLayout), t.String())
-		}
-	}
-
-	return dt, err
-}
-
-// ConvertWithoutRangeCheck converts the parameter to time.Time without checking the range.
-func (t datetimeType) ConvertWithoutRangeCheck(ctx context.Context, v any) (any, error) {
-	if v == nil {
-		return nil, nil
-	}
-
-	var err error
-	v, err = sql.UnwrapAny(ctx, v)
-	if err != nil {
-		return time.Time{}, err
-	}
-
-	var res time.Time
-	switch value := v.(type) {
-	case []byte:
-		return t.ConvertWithoutRangeCheck(ctx, string(value))
-	case string:
-		value = strings.Trim(value, " \t\n\r\v\f")
-		if IsZeroTimestampStr(value) {
-			return ZeroTime, nil
-		}
-		var val any
-		var delimWarn bool
-		val, delimWarn, err = t.parseDatetime(value)
-		if delimWarn {
-			// TODO
-		}
-		var ok bool
-		res, ok = val.(time.Time)
-		if !ok {
-			return nil, err
-		}
-	case time.Time:
-		res = value.UTC()
-	// For most integer values, we just return an error (but MySQL is more lenient for some of these). A special case
-	// is zero values, which are important when converting from postgres defaults.
-	case int:
-		if value == 0 {
-			return ZeroTime, nil
-		}
-		return ZeroTime, sql.ErrTruncatedIncorrect.New(t.String(), v)
-	case int8:
-		if value == 0 {
-			return ZeroTime, nil
-		}
-		return ZeroTime, sql.ErrTruncatedIncorrect.New(t.String(), v)
-	case int16:
-		if value == 0 {
-			return ZeroTime, nil
-		}
-		return ZeroTime, sql.ErrTruncatedIncorrect.New(t.String(), v)
-	case int32:
-		if value == 0 {
-			return ZeroTime, nil
-		}
-		return ZeroTime, sql.ErrTruncatedIncorrect.New(t.String(), v)
-	case int64:
-		if value == 0 {
-			return ZeroTime, nil
-		}
-		return ZeroTime, sql.ErrTruncatedIncorrect.New(t.String(), v)
-	case uint:
-		if value == 0 {
-			return ZeroTime, nil
-		}
-		return ZeroTime, sql.ErrTruncatedIncorrect.New(t.String(), v)
-	case uint8:
-		if value == 0 {
-			return ZeroTime, nil
-		}
-		return ZeroTime, sql.ErrTruncatedIncorrect.New(t.String(), v)
-	case uint16:
-		if value == 0 {
-			return ZeroTime, nil
-		}
-		return ZeroTime, sql.ErrTruncatedIncorrect.New(t.String(), v)
-	case uint32:
-		if value == 0 {
-			return ZeroTime, nil
-		}
-		return ZeroTime, sql.ErrTruncatedIncorrect.New(t.String(), v)
-	case uint64:
-		if value == 0 {
-			return ZeroTime, nil
-		}
-		return ZeroTime, sql.ErrTruncatedIncorrect.New(t.String(), v)
-	case float32:
-		if value == 0 {
-			return ZeroTime, nil
-		}
-		return ZeroTime, sql.ErrTruncatedIncorrect.New(t.String(), v)
-	case float64:
-		if value == 0 {
-			return ZeroTime, nil
-		}
-		return ZeroTime, sql.ErrTruncatedIncorrect.New(t.String(), v)
-	case *apd.Decimal:
-		if value.IsZero() {
-			return ZeroTime, nil
-		}
-		return ZeroTime, sql.ErrTruncatedIncorrect.New(t.String(), v)
-	case Timespan:
-		// when receiving TIME, MySQL fills in date with today
-		nowTimeStr := sql.Now().Format("2006-01-02")
-		nowTime, err := time.Parse("2006-01-02", nowTimeStr)
-		if err != nil {
-			return ZeroTime, sql.ErrTruncatedIncorrect.New(t.String(), v)
-		}
-		return nowTime.Add(value.AsTimeDuration()), nil
-	case bool:
-		if !value {
-			return ZeroTime, nil
-		}
-		return ZeroTime, sql.ErrTruncatedIncorrect.New(t.String(), v)
-	default:
-		return ZeroTime, sql.ErrConvertToSQL.New(value, t)
-	}
-
-	switch t.baseType {
-	case sqltypes.Date:
-		res = res.Truncate(24 * time.Hour)
-	default:
-		roundDuration := time.Second / time.Duration(precisionConversion[t.precision])
-		res = res.Round(roundDuration)
-	}
-
-	return res, err
 }
 
 // IsLeapYear returns if |year| is a leap year
