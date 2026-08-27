@@ -2049,12 +2049,12 @@ var InsertScripts = []ScriptTest{
 				},
 			},
 			{
-				Query:          "insert into t2(d) select t from t1 where i = 3;",
-				ExpectedErrStr: "Incorrect datetime value: ''",
+				Query:       "insert into t2(d) select t from t1 where i = 3;",
+				ExpectedErr: sql.ErrInvalidValue,
 			},
 			{
-				Query:          "insert into t2(d) select t from t1 where i = 2;",
-				ExpectedErrStr: "Incorrect datetime value: 'badtime'",
+				Query:       "insert into t2(d) select t from t1 where i = 2;",
+				ExpectedErr: sql.ErrInvalidValue,
 			},
 			{
 				Query: "insert into t2(d) select t from t1 where i = 1;",

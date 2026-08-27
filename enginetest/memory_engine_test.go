@@ -198,16 +198,17 @@ func TestSingleScript(t *testing.T) {
 	var scripts = []queries.ScriptTest{
 		{
 			//Skip:        true,
-			Name:        "Parse table name as column",
-			SetUpScript: []string{},
+			Name: "Parse table name as column",
+			SetUpScript: []string{
+				"create table t1 (i int primary key, t text);",
+				"insert into t1 values (1, '2001-01-01'), (2, 'badtime'), (3, '');",
+				"create table t2 (d datetime);",
+			},
 			Assertions: []queries.ScriptTestAssertion{
-				//{
-				//	Query:    `SELECT STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s %f') - (STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') - INTERVAL 1 SECOND)`,
-				//	Expected: []sql.Row{{int64(1)}},
-				//},
+
 				{
-					Query:    `select STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') - INTERVAL 1 SECOND`,
-					Expected: []sql.Row{{int64(1)}},
+					Query:          "insert into t2(d) select t from t1 where i = 3;",
+					ExpectedErrStr: "Incorrect datetime value: ''",
 				},
 			},
 		},
