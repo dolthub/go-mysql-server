@@ -43,7 +43,7 @@ func getDate(ctx *sql.Context, val interface{}) (interface{}, error) {
 		return nil, nil
 	}
 
-	date, err := types.DatetimeMaxPrecision.ConvertWithoutRangeCheck(ctx, val)
+	date, _, err := types.DatetimeMaxPrecision.Convert(ctx, val)
 	if err != nil {
 		ctx.Warn(1292, "Incorrect datetime value: '%s'", val)
 		return nil, nil
@@ -1372,7 +1372,7 @@ func (d *Date) Eval(ctx *sql.Context, row sql.Row) (any, error) {
 		return nil, err
 	}
 
-	date, err := types.Date.ConvertWithoutRangeCheck(ctx, val)
+	date, _, err := types.Date.Convert(ctx, val)
 	if err != nil {
 		if sql.ErrTruncatedIncorrect.Is(err) {
 			ctx.Warn(mysql.ERTruncatedWrongValue, err.Error())
@@ -1857,7 +1857,7 @@ func (t *Time) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// convert to date
-	dateVal, err := types.DatetimeMaxPrecision.ConvertWithoutRangeCheck(ctx, v)
+	dateVal, _, err := types.DatetimeMaxPrecision.Convert(ctx, v)
 	if err == nil {
 		date := dateVal.(time.Time)
 		h, m, s := date.Clock()

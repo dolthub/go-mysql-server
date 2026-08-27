@@ -206,7 +206,7 @@ func (t datetimeType) Compare(ctx context.Context, a, b any) (int, error) {
 	}
 	if bv, _, err := t.Convert(ctx, b); err != nil {
 		return 0, err
-	} else if bv, ok = bv.(time.Time); !ok {
+	} else if bt, ok = bv.(time.Time); !ok {
 		return 1, nil
 	}
 
@@ -346,7 +346,7 @@ func (t datetimeType) Convert(ctx context.Context, v any) (any, sql.ConvertInRan
 		resTime = resTime.Round(roundDuration)
 	}
 
-	return res, sql.InRange, err // Keep any errors as potential warnings later
+	return resTime, sql.InRange, err // Keep any errors as potential warnings later
 }
 
 // precisionConversion is a conversion ratio to divide time.Second by to truncate the appropriate amount for the
@@ -397,8 +397,8 @@ var DateTimeRegex = regexp.MustCompile(`^(\d+)\p{P}+(\d+)\p{P}+(\d+)[\s\p{P}]*(\
 // parseDatetime parses a DateTime according to MySQL rules.
 func (t datetimeType) parseDatetime(str string) (any, bool, error) {
 	var delimWarn bool
-	if t, err := time.Parse(TimezoneTimestampDatetimeLayout, str); err == nil {
-		return t.UTC(), delimWarn, nil
+	if dt, err := time.Parse(TimezoneTimestampDatetimeLayout, str); err == nil {
+		return dt.UTC(), delimWarn, nil
 	}
 
 	// TODO: no delimiters
@@ -549,19 +549,13 @@ func (t datetimeType) SQL(ctx *sql.Context, dest []byte, v any) (sqltypes.Value,
 		return sqltypes.NULL, nil
 	}
 
-	var err error
-	dest, err = t.Serialize(ctx, dest, v)
+	val, _, err := t.Convert(ctx, v)
 	if err != nil {
 		return sqltypes.Value{}, err
 	}
-
-	return sqltypes.MakeTrusted(t.baseType, dest), nil
-}
-
-func (t datetimeType) Serialize(ctx *sql.Context, dest []byte, v any) ([]byte, error) {
-	vt, err := ConvertToTime(ctx, v, t)
-	if err != nil {
-		return dest, err
+	vt, ok := val.(time.Time)
+	if ok {
+		return sqltypes.Value{}, sql.ErrConvertToSQL.New(v, t)
 	}
 
 	switch t.baseType {
@@ -570,9 +564,10 @@ func (t datetimeType) Serialize(ctx *sql.Context, dest []byte, v any) ([]byte, e
 	case sqltypes.Datetime, sqltypes.Timestamp:
 		dest = appendDatetimeFormat(dest, vt, t.precision)
 	default:
-		return dest, sql.ErrInvalidBaseType.New(t.baseType.String(), "datetime")
+		return sqltypes.Value{}, sql.ErrInvalidBaseType.New(t.baseType.String(), "datetime")
 	}
-	return dest, nil
+
+	return sqltypes.MakeTrusted(t.baseType, dest), nil
 }
 
 // SQLValue implements the ValueType interface.
