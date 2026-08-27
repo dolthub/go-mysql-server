@@ -19,20 +19,22 @@ import (
 )
 
 // RowSorter is a sorter implementation for Row slices using SortFields for the comparison.
-// Sort key expressions are evaluated at most once per row and the resulting keys are cached, rather than
-// re-evaluating expressions on every comparison. This matters for correctness, not just speed: a
-// non-deterministic sort expression (e.g. ORDER BY RAND()) must produce a single stable key per row, or the
-// resulting order is biased by comparison order.
+// RowSorter can act as simply a container for sort conditions, or as a sorter for a slice of rows.
+// If the latter, it caches the evaluated sort keys for each row to avoid re-evaluating them during sorting,
+// which is necessary for correctness and desirable for performance.
 type RowSorter struct {
 	lastError      error
 	ctx            *sql.Context
 	sortConditions sql.SortConditions
 	types          []sql.Type
-	rows           []sql.Row
+	// rows is the slice of rows to be sorted. Only used with NewSorterWithRows
+	rows []sql.Row
 	// keys[i] caches the evaluated sort condition expressions for rows[i]; a nil slice means not yet evaluated
+	// Only used with NewSorterWithRows.
 	keys [][]interface{}
 }
 
+// NewRowSorter creates a RowSorter for the given sort conditions
 func NewRowSorter(ctx *sql.Context, sortConditions sql.SortConditions) *RowSorter {
 	return &RowSorter{
 		ctx:            ctx,
@@ -41,6 +43,7 @@ func NewRowSorter(ctx *sql.Context, sortConditions sql.SortConditions) *RowSorte
 	}
 }
 
+// NewRowSorterWithRows creates a RowSorter for the given sort conditions and rows.
 func NewRowSorterWithRows(ctx *sql.Context, sortConditions sql.SortConditions, rows []sql.Row) *RowSorter {
 	return &RowSorter{
 		ctx:            ctx,
@@ -132,17 +135,6 @@ func (s *RowSorter) CompareKeys(a, b []interface{}) int {
 		}
 	}
 	return 0
-}
-
-// CompareRows compares rows a and b based on s.sortConditions. The sort keys are freshly evaluated on each
-// call; prefer EvalKey/CompareKeys when a row participates in more than one comparison.
-func (s *RowSorter) CompareRows(a, b sql.Row) int {
-	return s.CompareKeys(s.EvalKey(a), s.EvalKey(b))
-}
-
-// IsLesserRow determines if sql.Row `a` is less than sql.Row `b` based off s.sortConditions
-func (s *RowSorter) IsLesserRow(a, b sql.Row) bool {
-	return s.CompareRows(a, b) < 0
 }
 
 // Less implements sort.Interface interface.
