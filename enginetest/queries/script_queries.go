@@ -14787,33 +14787,46 @@ select * from t1 except (
 		},
 	},
 	{
-		Name: "default column expressions",
+		// https://github.com/dolthub/dolt/issues/11453
+		Name:    "DEFAULT(col) expression",
+		Dialect: "mysql", // DEFAULT(col) function is not valid Postgres syntax
 		SetUpScript: []string{
-			"CREATE TABLE t(id INT DEFAULT 7, v INT);",
-			"INSERT INTO t(v) VALUES (1);",
-			"create table t1 (i int primary key, j int generated always as (i + 10));",
+			"create table t(pk int primary key, i int default 7, j int, k int generated always as (i + 10));",
+			"insert into t(pk, i) values (1, 1);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Dialect:  "mysql",
-				Query:    "SELECT DEFAULT(id) FROM t;",
-				Expected: []sql.Row{{7}},
-			},
-			{
-				Dialect:  "mysql",
-				Query:    "SELECT DEFAULT(id) AS d FROM t;",
-				Expected: []sql.Row{{7}},
-			},
-			{
-				Dialect:     "mysql",
-				Query:       "SELECT DEFAULT(i) FROM t1;",
+				Query:       "SELECT DEFAULT(pk) FROM t;",
 				ExpectedErr: sql.ErrFieldNoDefaultValue,
 			},
 			{
-				Dialect:     "mysql",
-				Query:       "SELECT DEFAULT(j) AS d FROM t1;",
+				Query:    "SELECT DEFAULT(i) FROM t;",
+				Expected: []sql.Row{{7}},
+			},
+			{
+				Query:    "SELECT DEFAULT(i) AS d FROM t;",
+				Expected: []sql.Row{{7}},
+			},
+			{
+				Query:    "SELECT DEFAULT(j) FROM t;",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:       "SELECT DEFAULT(k) FROM t;",
 				ExpectedErr: sql.ErrFieldNoDefaultValue,
 			},
+			{
+				Query:       "SELECT DEFAULT(asdfadf) FROM t;",
+				ExpectedErr: sql.ErrColumnNotFound,
+			},
+		},
+	},
+	{
+		Name: "inserting and updating using default values",
+		SetUpScript: []string{
+			"create table t1 (i int primary key, j int generated always as (i + 10));",
+		},
+		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "insert into t1 (i, j) values (1, default);",
 				Expected: []sql.Row{{types.NewOkResult(1)}},
