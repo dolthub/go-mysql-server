@@ -329,6 +329,9 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 		if err != nil {
 			b.handleErr(err)
 		}
+		if v.Over != nil && v.Distinct {
+			b.validateDistinctWindow(v, name, rf)
+		}
 
 		switch rf.(type) {
 		case *function.Sleep, sql.NonDeterministicExpression:

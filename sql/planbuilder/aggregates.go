@@ -558,13 +558,14 @@ func (b *Builder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, 
 		}
 
 		newInst, err := f.NewInstance(b.ctx, args)
+		if err != nil {
+			b.handleErr(err)
+		}
+		b.validateDistinctWindow(e, name, newInst)
 
 		win, ok = newInst.(sql.WindowAdaptableExpression)
 		if !ok {
 			err := fmt.Errorf("function is not a window adaptable exprssion: %s", f.FunctionName())
-			b.handleErr(err)
-		}
-		if err != nil {
 			b.handleErr(err)
 		}
 	}
@@ -583,6 +584,18 @@ func (b *Builder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, 
 	col.scalar = win
 	inScope.windowFuncs = append(inScope.windowFuncs, col)
 	return col.scalarGf()
+}
+
+// validateDistinctWindow lets resolved function implementations reject unsupported DISTINCT window calls.
+func (b *Builder) validateDistinctWindow(e *ast.FuncExpr, name string, expr sql.Expression) {
+	if !e.Distinct {
+		return
+	}
+	if validator, ok := expr.(sql.DistinctWindowFunctionValidator); ok {
+		if err := validator.ValidateDistinctWindow(e.Qualifier.String(), name); err != nil {
+			b.handleErr(err)
+		}
+	}
 }
 
 func (b *Builder) buildWindow(fromScope, projScope *scope) *scope {

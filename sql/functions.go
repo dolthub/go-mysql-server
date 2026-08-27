@@ -31,6 +31,17 @@ type FunctionProvider interface {
 	Function(ctx *Context, schema, name string) (Function, bool)
 }
 
+// DistinctWindowFunctionValidator lets a resolved function expression validate DISTINCT window usage.
+// Function providers that need dialect-specific validation must implement this interface on the
+// FunctionExpression returned by Function.NewInstance, not on the provider or function definition.
+type DistinctWindowFunctionValidator interface {
+	FunctionExpression
+
+	// ValidateDistinctWindow returns an engine-specific error for DISTINCT window usage after the
+	// function expression has resolved its exact overload.
+	ValidateDistinctWindow(schema, name string) error
+}
+
 type CreateFunc0Args func(ctx *Context) Expression
 type CreateFunc1Args func(ctx *Context, e1 Expression) Expression
 type CreateFunc2Args func(ctx *Context, e1, e2 Expression) Expression
