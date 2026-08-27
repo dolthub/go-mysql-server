@@ -103,6 +103,9 @@ func (i *topRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, err
 	}
 	sorter := sorters.NewRowSorter(ctx, i.sortConditions)
+	// Sort keys are evaluated exactly once per row: re-evaluating a non-deterministic sort expression
+	// (e.g. ORDER BY RAND()) on every comparison would bias which row is returned.
+	topKey := sorter.EvalKey(topRow)
 	for {
 		var row sql.Row
 		row, err = i.childIter.Next(ctx)
@@ -113,9 +116,16 @@ func (i *topRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return nil, err
 		}
 		i.numFoundRows++
-		if sorter.IsLesserRow(row, topRow) {
-			topRow = row
+		key := sorter.EvalKey(row)
+		if sorter.CompareKeys(key, topKey) < 0 {
+			topRow, topKey = row, key
 		}
+		if err = sorter.GetError(); err != nil {
+			return nil, err
+		}
+	}
+	if err = sorter.GetError(); err != nil {
+		return nil, err
 	}
 	return topRow, nil
 }
