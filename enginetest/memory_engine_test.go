@@ -198,17 +198,12 @@ func TestSingleScript(t *testing.T) {
 	var scripts = []queries.ScriptTest{
 		{
 			//Skip:        true,
-			Name: "Parse table name as column",
-			SetUpScript: []string{
-				"create table t1 (i int primary key, t text);",
-				"insert into t1 values (1, '2001-01-01'), (2, 'badtime'), (3, '');",
-				"create table t2 (d datetime);",
-			},
+			Name:        "Parse table name as column",
+			SetUpScript: []string{},
 			Assertions: []queries.ScriptTestAssertion{
-
 				{
-					Query:          "insert into t2(d) select t from t1 where i = 3;",
-					ExpectedErrStr: "Incorrect datetime value: ''",
+					Query:    "SELECT CONVERT('this is not a date', DATE)",
+					Expected: []sql.Row{{true}},
 				},
 			},
 		},

@@ -27,7 +27,6 @@ import (
 	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
-	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/values"
@@ -75,11 +74,6 @@ const MinDatetimeStringLength = 8 // length of "2000-1-1"
 const MaxDatetimePrecision = 6
 
 var (
-	// ErrConvertingToTime is thrown when a value cannot be converted to a Time
-	ErrConvertingToTime = errors.NewKind("Incorrect datetime value: '%v'")
-
-	ErrConvertingToTimeOutOfRange = errors.NewKind("value %q is outside of %v range")
-
 	// datetimeTypeMaxDatetime is the maximum representable Datetime/Date value. MYSQL: 9999-12-31 23:59:59.499999 (microseconds)
 	datetimeTypeMaxDatetime = time.Date(9999, 12, 31, 23, 59, 59, 499999000, time.UTC)
 
@@ -329,9 +323,8 @@ func (t datetimeType) Convert(ctx context.Context, v any) (any, sql.ConvertInRan
 	default:
 		return ZeroTime, sql.InRange, sql.ErrConvertToSQL.New(value, t)
 	}
-
-	if res == nil {
-		return nil, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
+	if err != nil && !sql.ErrTruncatedIncorrect.Is(err) {
+		return nil, sql.InRange, err
 	}
 	resTime, ok := res.(time.Time)
 	if !ok {
@@ -415,7 +408,7 @@ func (t datetimeType) parseDatetime(str string) (any, bool, error) {
 	value := strings.Trim(str, NumericCutSet) // TODO: leading and trailing whitespace(s) should throw warning
 	matchIdxs := DateTimeRegex.FindStringSubmatchIndex(value)
 	if len(matchIdxs) == 0 {
-		return nil, delimWarn, sql.ErrTruncatedIncorrect.New(value)
+		return nil, delimWarn, sql.ErrIncorrectDateTimeValue.New(t.String(), value)
 	}
 
 	// TODO: Handle delimiter warnings. These do not stop parsing unlike ErrTruncatedIncorrect warnings.
@@ -438,10 +431,10 @@ func (t datetimeType) parseDatetime(str string) (any, bool, error) {
 	// Negative numbers should be impossible, so we don't check for them
 	year, err := strconv.Atoi(yearStr)
 	if err != nil {
-		return nil, delimWarn, sql.ErrTruncatedIncorrect.New(value)
+		return nil, delimWarn, sql.ErrIncorrectDateTimeValue.New(t.String(), value)
 	}
 	if year > 9999 {
-		return nil, delimWarn, sql.ErrTruncatedIncorrect.New(value)
+		return nil, delimWarn, sql.ErrIncorrectDateTimeValue.New(t.String(), value)
 	}
 	// MySQL special case for abbreviated ('00) date formats
 	if len(yearStr) == 2 {
@@ -449,18 +442,18 @@ func (t datetimeType) parseDatetime(str string) (any, bool, error) {
 	}
 	month, err := strconv.Atoi(monthStr)
 	if err != nil {
-		return nil, delimWarn, sql.ErrTruncatedIncorrect.New(value)
+		return nil, delimWarn, sql.ErrIncorrectDateTimeValue.New(t.String(), value)
 	}
 	if month > 12 {
-		return nil, delimWarn, sql.ErrTruncatedIncorrect.New(value)
+		return nil, delimWarn, sql.ErrIncorrectDateTimeValue.New(t.String(), value)
 	}
 	day, err := strconv.Atoi(dayStr)
 	if err != nil {
-		return nil, delimWarn, sql.ErrTruncatedIncorrect.New(value)
+		return nil, delimWarn, sql.ErrIncorrectDateTimeValue.New(t.String(), value)
 	}
 	// GetLastDay already handles invalid months
 	if lastDay, _ := GetLastDay(year, month); day > lastDay {
-		return nil, delimWarn, sql.ErrTruncatedIncorrect.New(value)
+		return nil, delimWarn, sql.ErrIncorrectDateTimeValue.New(t.String(), value)
 	}
 
 	// The remaining match index pairs are optional

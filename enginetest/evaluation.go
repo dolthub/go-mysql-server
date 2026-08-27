@@ -574,7 +574,7 @@ func TestPreparedQueryWithEngine(t *testing.T, harness Harness, e QueryEngine, t
 			AssertErr(t, e, harness, tt.Query, tt.Bindings, tt.ExpectedErr)
 		} else if tt.ExpectedErrStr != "" {
 			AssertErrWithCtx(t, e, harness, ctx, tt.Query, tt.Bindings, nil, tt.ExpectedErrStr)
-		} else if tt.ExpectedWarning != 0 {
+		} else if !tt.SkipWarnings && tt.ExpectedWarning != 0 {
 			AssertWarningAndTestPreparedQuery(t, e, ctx, harness, tt.Query, tt.Expected, tt.ExpectedColumns,
 				tt.ExpectedWarning, tt.ExpectedWarningsCount, tt.ExpectedWarningMessageSubstring, false)
 		} else {

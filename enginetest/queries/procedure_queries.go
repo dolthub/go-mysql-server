@@ -2541,7 +2541,7 @@ var ProcedureCallTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:       "CALL p1('hi')",
-				ExpectedErr: types.ErrConvertingToTime,
+				ExpectedErr: sql.ErrIncorrectDateTimeValue,
 			},
 		},
 	},

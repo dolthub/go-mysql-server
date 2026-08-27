@@ -10440,11 +10440,11 @@ var ErrorQueries = []QueryErrorTest{
 	},
 	{
 		Query:       `SELECT * FROM datetime_table where date_col >= 'not a valid date'`,
-		ExpectedErr: types.ErrConvertingToTime,
+		ExpectedErr: sql.ErrIncorrectDateTimeValue,
 	},
 	{
 		Query:       `SELECT * FROM datetime_table where datetime_col >= 'not a valid datetime'`,
-		ExpectedErr: types.ErrConvertingToTime,
+		ExpectedErr: sql.ErrIncorrectDateTimeValue,
 	},
 	{
 		Query:       "CREATE TABLE table_test (id int PRIMARY KEY, c float DEFAULT rand)",

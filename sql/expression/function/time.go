@@ -45,7 +45,7 @@ func getDate(ctx *sql.Context, val interface{}) (interface{}, error) {
 
 	date, _, err := types.DatetimeMaxPrecision.Convert(ctx, val)
 	if err != nil {
-		ctx.Warn(1292, "Incorrect datetime value: '%s'", val)
+		ctx.Warn(mysql.ERTruncatedWrongValue, "Incorrect datetime value: '%s'", val)
 		return nil, nil
 	}
 
@@ -71,7 +71,7 @@ func getDatePart(ctx *sql.Context,
 
 	part := f(date)
 	if part == nil {
-		ctx.Warn(1292, "Incorrect datetime value: '%s'", val)
+		ctx.Warn(mysql.ERTruncatedWrongValue, "Incorrect datetime value: '%s'", val)
 	}
 	return part, nil
 }
@@ -664,7 +664,7 @@ func (d *YearWeek) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	dateTime, ok := date.(time.Time)
 	if !ok || dateTime.Equal(types.ZeroTime) {
-		ctx.Warn(1292, "%s", types.ErrConvertingToTime.New(dateVal).Error())
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrIncorrectDateTimeValue.New(dateVal).Error())
 		return nil, nil
 	}
 
@@ -784,7 +784,7 @@ func (d *Week) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	dateTime, ok := date.(time.Time)
 	if !ok || dateTime.Equal(types.ZeroTime) {
-		ctx.Warn(1292, "%s", types.ErrConvertingToTime.New(dateVal).Error())
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrIncorrectDateTimeValue.New(dateVal).Error())
 		return nil, nil
 	}
 
@@ -1358,10 +1358,8 @@ func (d *Date) Eval(ctx *sql.Context, row sql.Row) (any, error) {
 	}
 
 	date, _, err := types.Date.Convert(ctx, val)
-	if err != nil {
-		if sql.ErrTruncatedIncorrect.Is(err) {
-			ctx.Warn(mysql.ERTruncatedWrongValue, err.Error())
-		}
+	if err != nil && (sql.ErrTruncatedIncorrect.Is(err) || sql.ErrIncorrectDateTimeValue.Is(err)) {
+		ctx.Warn(mysql.ERTruncatedWrongValue, err.Error())
 	}
 
 	switch v := date.(type) {
@@ -1638,7 +1636,7 @@ func (m *TimeToSec) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case nil:
 		return nil, nil
 	default:
-		ctx.Warn(1292, "%s", types.ErrConvertingToTime.New(val).Error())
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrIncorrectDateTimeValue.New(val).Error())
 		return nil, nil
 	}
 }
@@ -1681,7 +1679,7 @@ func (m *WeekOfYear) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	switch v := val.(type) {
 	case time.Time:
 		if v.Equal(types.ZeroTime) {
-			ctx.Warn(1292, "%s", types.ErrConvertingToTime.New(val).Error())
+			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrIncorrectDateTimeValue.New(val).Error())
 			return nil, nil
 		}
 		_, wk := v.ISOWeek()
@@ -1689,7 +1687,7 @@ func (m *WeekOfYear) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case nil:
 		return nil, nil
 	default:
-		ctx.Warn(1292, "%s", types.ErrConvertingToTime.New(val).Error())
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrIncorrectDateTimeValue.New(val).Error())
 		return nil, nil
 	}
 }
@@ -1851,7 +1849,7 @@ func (t *Time) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// convert to time
 	val, _, err := types.Time.Convert(ctx, v)
 	if err != nil {
-		ctx.Warn(1292, "%s", err.Error())
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 		return nil, nil
 	}
 	return val, nil

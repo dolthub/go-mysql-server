@@ -975,8 +975,11 @@ var (
 
 	ErrEnumTypeTruncated = errors.NewKind("new enum type change truncates value")
 
+	// ErrIncorrectDateTimeValue is thrown when a value cannot be converted to a Time
+	ErrIncorrectDateTimeValue = errors.NewKind("Incorrect %s value: '%v'")
+
 	// ErrTruncatedIncorrect is thrown when converting a value results in portions of the data to be trimmed.
-	ErrTruncatedIncorrect = errors.NewKind("Truncated incorrect %s value: %v")
+	ErrTruncatedIncorrect = errors.NewKind("Truncated incorrect %s value: '%v'")
 
 	// ErrUnresolvedTableLock is returned when a FOR UPDATE OF clause references a table that doesn't exist in the query context.
 	ErrUnresolvedTableLock = errors.NewKind("unresolved table name `%s` in locking clause.")
