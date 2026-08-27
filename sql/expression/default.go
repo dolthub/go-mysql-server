@@ -16,12 +16,18 @@ package expression
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Default returns the default expression set for a column
 func Default(col *sql.Column) (sql.Expression, error) {
-	if col.Generated == nil && (col.Default != nil || col.Nullable) {
-		return WrapExpression(col.Default), nil
+	if col.Generated == nil {
+		if col.Default != nil {
+			return WrapExpression(col.Default.Expr), nil
+		}
+		if col.Nullable {
+			return NewLiteral(nil, types.Null), nil
+		}
 	}
 	return nil, sql.ErrFieldNoDefaultValue.New(col.Name)
 }

@@ -73,6 +73,9 @@ func (lit *Literal) IsNullable(ctx *sql.Context) bool {
 
 // Type implements the Expression interface.
 func (lit *Literal) Type(ctx *sql.Context) sql.Type {
+	if lit.Typ == nil {
+		return types.Null
+	}
 	return lit.Typ
 }
 

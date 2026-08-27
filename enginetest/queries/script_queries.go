@@ -14791,8 +14791,8 @@ select * from t1 except (
 		Name:    "DEFAULT(col) expression",
 		Dialect: "mysql", // DEFAULT(col) function is not valid Postgres syntax
 		SetUpScript: []string{
-			"create table t(pk int primary key, i int default 7, j int, k int generated always as (i + 10));",
-			"insert into t(pk, i) values (1, 1);",
+			"create table t(pk int primary key, i int default 7, j int, k int generated always as (i + 10), l int not null, m int default null);",
+			"insert into t(pk, i, l) values (1, 1, 1);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -14814,6 +14814,14 @@ select * from t1 except (
 			{
 				Query:       "SELECT DEFAULT(k) FROM t;",
 				ExpectedErr: sql.ErrFieldNoDefaultValue,
+			},
+			{
+				Query:       "SELECT DEFAULT(l) FROM t;",
+				ExpectedErr: sql.ErrFieldNoDefaultValue,
+			},
+			{
+				Query:    "SELECT DEFAULT(m) FROM t;",
+				Expected: []sql.Row{{nil}},
 			},
 			{
 				Query:       "SELECT DEFAULT(asdfadf) FROM t;",
