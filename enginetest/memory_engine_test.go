@@ -19,7 +19,6 @@ import (
 	"log"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/dolthub/sqllogictest/go/logictest"
 	"github.com/stretchr/testify/require"
@@ -202,7 +201,7 @@ func TestSingleScript(t *testing.T) {
 			SetUpScript: []string{},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "SELECT CONVERT('this is not a date', DATE)",
+					Query:    "select date('0000-00-00')",
 					Expected: []sql.Row{{true}},
 				},
 			},
