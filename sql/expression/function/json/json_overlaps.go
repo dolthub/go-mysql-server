@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/cockroachdb/apd/v3"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
