@@ -230,15 +230,14 @@ func (m *Month) Eval(ctx *sql.Context, row sql.Row) (any, error) {
 	if err != nil {
 		return 0, nil
 	}
-	switch v := val.(type) {
-	case time.Time:
-		if types.ZeroTime.Equal(v) {
-			return 0, nil
-		}
-		return int(v.Month()), nil
-	default:
+	dt, ok := val.(time.Time)
+	if !ok {
 		return nil, nil
 	}
+	if types.ZeroTime.Equal(dt) {
+		return 0, nil
+	}
+	return int(dt.Month()), nil
 }
 
 // WithChildren implements the Expression interface.
@@ -275,20 +274,19 @@ func (*Day) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, 
 }
 
 // Eval implements the Expression interface.
-func (d *Day) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+func (d *Day) Eval(ctx *sql.Context, row sql.Row) (any, error) {
 	val, err := d.EvalChild(ctx, row)
 	if err != nil {
-		return 0, nil
+		return nil, err
 	}
-	switch v := val.(type) {
-	case time.Time:
-		if types.ZeroTime.Equal(v) {
-			return 0, nil
-		}
-		return v.Day(), nil
-	default:
+	dt, ok := val.(time.Time)
+	if !ok {
 		return nil, nil
 	}
+	if types.ZeroTime.Equal(dt) {
+		return 0, nil
+	}
+	return dt.Day(), nil
 }
 
 // WithChildren implements the Expression interface.
@@ -1465,18 +1463,15 @@ func (dtf *UnaryDatetimeFunc) EvalChild(ctx *sql.Context, row sql.Row) (any, err
 	if err != nil {
 		return nil, err
 	}
-	// TODO: it seems like conversion logic for dates in functions is different. Only deal with 0 for now
-	switch v := val.(type) {
-	case time.Time, string:
-		val, _, err = types.DatetimeMaxPrecision.Convert(ctx, val)
-		return val, err // TODO: warn here? // TODO: ZeroTime -> nil?
-	default:
-		if isNumericZero(val) {
-			return types.ZeroTime, nil
+	val, _, err = types.DatetimeMaxPrecision.Convert(ctx, val)
+	if err != nil {
+		if !sql.ErrTruncatedIncorrect.Is(err) {
+			return nil, err
 		}
-		ctx.Warn(mysql.ERTruncatedWrongValue, sql.ErrTruncatedIncorrect.New("datetime", v).Error())
+		ctx.Warn(mysql.ERTruncatedWrongValue, err.Error())
 		return nil, nil
 	}
+	return val, nil
 }
 
 // String implements the fmt.Stringer interface.
@@ -1522,14 +1517,15 @@ func (d *DayName) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	switch v := val.(type) {
-	case time.Time:
-		if !v.Equal(types.ZeroTime) {
-			return v.Weekday().String(), nil
-		}
-		ctx.Warn(mysql.ERTruncatedWrongValue, sql.ErrTruncatedIncorrect.New("datetime", v).Error())
+	dt, ok := val.(time.Time)
+	if !ok {
+		return nil, nil
 	}
-	return nil, nil
+	if types.ZeroTime.Equal(dt) {
+		ctx.Warn(mysql.ERTruncatedWrongValue, sql.ErrTruncatedIncorrect.New("datetime", dt).Error())
+		return nil, nil
+	}
+	return dt.Weekday().String(), nil
 }
 
 func (d *DayName) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
