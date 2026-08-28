@@ -9593,6 +9593,16 @@ from typestable`,
 		Query:    "SELECT LAST_INSERT_ID(NULL);",
 		Expected: []sql.Row{{nil}},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/11564
+		Query:    "SELECT load_file(1)",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11564
+		Query:    "SELECT FIRST_VALUE(LOAD_FILE(1)) OVER () AS actual FROM (SELECT 1 AS z) q;",
+		Expected: []sql.Row{{nil}},
+	},
 }
 
 var KeylessQueries = []QueryTest{
