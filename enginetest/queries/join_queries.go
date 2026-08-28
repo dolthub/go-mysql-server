@@ -1431,6 +1431,26 @@ var JoinScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/11627
+		Name: "HAVING resolves aggregate inputs from separate aliases",
+		SetUpScript: []string{
+			"CREATE TABLE customers (id BIGINT PRIMARY KEY)",
+			"CREATE TABLE orders (id BIGINT PRIMARY KEY, customer_id BIGINT, status VARCHAR(16), total BIGINT)",
+			"INSERT INTO customers VALUES (1)",
+			"INSERT INTO orders VALUES (1, 1, 'paid', 10), (2, 1, 'paid', 20)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "WITH paid AS (SELECT id, customer_id, total FROM orders WHERE status = 'paid') SELECT c.id, COUNT(p1.total) AS total_count, COUNT(p2.id) AS peer_orders FROM customers c JOIN paid p1 ON p1.customer_id = c.id LEFT JOIN paid p2 ON p2.customer_id = c.id AND p2.id <> p1.id GROUP BY c.id HAVING COUNT(p2.id) > 0",
+				Expected: []sql.Row{{int64(1), int64(2), int64(2)}},
+			},
+			{
+				Query:    "SELECT c.id, COUNT(p1.total) AS total_count, COUNT(p2.id) AS peer_orders FROM customers c JOIN orders p1 ON p1.customer_id = c.id LEFT JOIN orders p2 ON p2.customer_id = c.id AND p2.id <> p1.id WHERE p1.status = 'paid' AND p2.status = 'paid' GROUP BY c.id HAVING COUNT(p2.id) > 0",
+				Expected: []sql.Row{{int64(1), int64(2), int64(2)}},
+			},
+		},
+	},
 }
 
 var LateralJoinScriptTests = []ScriptTest{
