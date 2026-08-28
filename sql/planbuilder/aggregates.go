@@ -873,11 +873,17 @@ func (b *Builder) buildInnerProj(fromScope, projScope *scope) *scope {
 	var proj []sql.Expression
 
 	// eval aliases in project scope
-	for _, col := range projScope.cols {
+	for i, col := range projScope.cols {
 		switch e := col.scalar.(type) {
 		case *expression.Alias:
 			if !e.Unreferencable() {
 				proj = append(proj, e.WithId(sql.ColumnId(col.id)).(*expression.Alias))
+				if exprReturnsRowIter(b.ctx, e) {
+					// This projection expands expressions that return a RowIter (set-returning functions)
+					// into multiple rows. The final projection must reference the expanded column rather
+					// than re-evaluate the expression, which would multiply the rows again.
+					projScope.cols[i].scalar = col.scalarGf()
+				}
 			}
 		}
 	}
@@ -973,4 +979,13 @@ func (b *Builder) buildHaving(fromScope, projScope, outScope *scope, having *ast
 	h := b.buildScalar(havingScope, having.Expr)
 	outScope.node = plan.NewHaving(h, outScope.node)
 	return
+}
+
+// exprReturnsRowIter returns whether any expression in the tree rooted at |e| returns a RowIter rather than a
+// scalar value (sql.RowIterExpression), i.e. a set-returning function.
+func exprReturnsRowIter(ctx *sql.Context, e sql.Expression) bool {
+	return transform.InspectExpr(ctx, e, func(ctx *sql.Context, e sql.Expression) bool {
+		rie, ok := e.(sql.RowIterExpression)
+		return ok && rie.ReturnsRowIter()
+	})
 }
