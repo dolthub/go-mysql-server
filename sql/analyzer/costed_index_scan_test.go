@@ -1172,3 +1172,78 @@ func (i *indexSearchableTable) LookupPartitions(context *sql.Context, lookup sql
 	// TODO implement me
 	panic("implement me")
 }
+
+// TestMax1RowRowIterExprs checks that a strict single-row index lookup sets the max1Row query flag, unless the
+// plan contains an expression that returns a RowIter (e.g. a set-returning function), which can multiply the
+// number of output rows.
+func TestMax1RowRowIterExprs(t *testing.T) {
+	buildPlan := func(proj sql.Expression) sql.Node {
+		return plan.NewProject(
+			sql.NewEmptyContext(),
+			[]sql.Expression{proj},
+			plan.NewFilter(
+				sql.NewEmptyContext(),
+				expression.NewEquals(
+					expression.NewGetFieldWithTable(0, 0, types.Int64, "mydb", "xy", "x", false),
+					expression.NewLiteral(1, types.Int64),
+				),
+				plan.NewResolvedTable(&max1RowIndexSearchableTable{&indexSearchableTable{underlying: plan.NewDualSqlTable()}}, nil, nil),
+			),
+		)
+	}
+
+	t.Run("scalar projection sets max1Row", func(t *testing.T) {
+		qFlags := &sql.QueryFlags{}
+		input := buildPlan(expression.NewGetFieldWithTable(0, 0, types.Int64, "mydb", "xy", "x", false))
+		_, same, err := costedIndexScans(nil, nil, input, qFlags)
+		require.NoError(t, err)
+		require.False(t, bool(same))
+		require.True(t, qFlags.IsSet(sql.QFlagMax1Row))
+	})
+
+	t.Run("RowIter projection does not set max1Row", func(t *testing.T) {
+		qFlags := &sql.QueryFlags{}
+		input := buildPlan(&testRowIterExpr{})
+		_, same, err := costedIndexScans(nil, nil, input, qFlags)
+		require.NoError(t, err)
+		require.False(t, bool(same))
+		require.False(t, qFlags.IsSet(sql.QFlagMax1Row))
+	})
+}
+
+// max1RowIndexSearchableTable is an indexSearchableTable whose lookups report a strict single-row guarantee.
+type max1RowIndexSearchableTable struct {
+	*indexSearchableTable
+}
+
+func (i *max1RowIndexSearchableTable) LookupForExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.IndexLookup, *sql.FuncDepSet, sql.Expression, bool, error) {
+	lookup, _, _, ok, err := i.indexSearchableTable.LookupForExpressions(ctx, exprs...)
+	if !ok || err != nil {
+		return lookup, nil, nil, ok, err
+	}
+	return lookup, sql.NewMax1RowFDs(sql.NewColSet(1), sql.NewColSet(1)), nil, true, nil
+}
+
+// testRowIterExpr is an expression that returns a RowIter rather than a scalar, like a set-returning function.
+type testRowIterExpr struct{}
+
+var _ sql.RowIterExpression = (*testRowIterExpr)(nil)
+
+func (t *testRowIterExpr) Resolved() bool               { return true }
+func (t *testRowIterExpr) String() string               { return "test_row_iter()" }
+func (t *testRowIterExpr) Type(*sql.Context) sql.Type   { return types.Int64 }
+func (t *testRowIterExpr) IsNullable(*sql.Context) bool { return false }
+func (t *testRowIterExpr) Eval(*sql.Context, sql.Row) (interface{}, error) {
+	return nil, fmt.Errorf("test_row_iter must be evaluated as a RowIter")
+}
+func (t *testRowIterExpr) Children() []sql.Expression { return nil }
+func (t *testRowIterExpr) WithChildren(_ *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 0)
+	}
+	return t, nil
+}
+func (t *testRowIterExpr) EvalRowIter(ctx *sql.Context, r sql.Row) (sql.RowIter, error) {
+	return sql.RowsToRowIter(sql.Row{int64(1)}, sql.Row{int64(2)}), nil
+}
+func (t *testRowIterExpr) ReturnsRowIter() bool { return true }
