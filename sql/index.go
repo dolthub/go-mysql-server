@@ -27,7 +27,38 @@ type IndexDef struct {
 	Storage    IndexUsing
 	// Predicate is the WHERE clause expression for partial indexes. May be nil.
 	Predicate Expression
+	// VectorProperties are the vector-index-specific properties of the index. Only set when Constraint is IndexConstraint_Vector.
+	VectorProperties VectorProperties
 }
+
+// DistanceType is a vector distance metric. It measures the distance between two vectors, where a smaller result means
+// the vectors are more similar.
+type DistanceType interface {
+	String() string
+	// Eval returns the distance between the two given vectors
+	Eval(left []float32, right []float32) (float64, error)
+	// CanEval returns whether an index ordered by this metric also orders by the given metric
+	CanEval(distanceType DistanceType) bool
+	FunctionName() string
+	Description() string
+}
+
+// VectorProperties are the vector-index-specific properties of an index definition
+type VectorProperties struct {
+	// DistanceType is the distance metric that the index orders by. When nil, integrators default to squared L2 distance.
+	DistanceType DistanceType
+}
+
+// VectorDistanceTypeOptionName is the index option that specifies the distance metric of a vector index.
+const VectorDistanceTypeOptionName = "vector_distance_type"
+
+// VectorAccessMethodOptionName is the index option that carries the integrator's access method name of a vector index.
+// The engine does not interpret it.
+const VectorAccessMethodOptionName = "vector_access_method"
+
+// VectorOpClassOptionName is the index option that carries the integrator's' operator class name of a vector index. The
+// engine does not interpret it.
+const VectorOpClassOptionName = "vector_opclass"
 
 func (i *IndexDef) String() string {
 	return i.Name

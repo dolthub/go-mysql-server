@@ -30,7 +30,7 @@ const CommentPreventingIndexBuilding = "__FOR TESTING: I cannot be built__"
 type Index struct {
 	// If SupportedVectorFunction is non-nil, this index can be used to optimize ORDER BY
 	// expressions on this type of distance function.
-	SupportedVectorFunction vector.DistanceType
+	SupportedVectorFunction sql.DistanceType
 
 	Tbl        *Table // required for engine tests with driver
 	DriverName string // required for engine tests with driver
@@ -132,8 +132,8 @@ func (idx *Index) CanSupportOrderBy(expr sql.Expression) bool {
 	if idx.SupportedVectorFunction == nil {
 		return false
 	}
-	dist, isDist := expr.(*vector.Distance)
-	return isDist && idx.SupportedVectorFunction.CanEval(dist.DistanceType)
+	dist, isDist := expr.(vector.OrderableDistance)
+	return isDist && idx.SupportedVectorFunction.CanEval(dist.DistanceMetric())
 }
 
 func (idx *Index) Comment() string {

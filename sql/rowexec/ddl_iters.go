@@ -2249,12 +2249,13 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 		indexName := n.IndexName
 		// TODO: this should really be a pointer, but there are too many interfaces that expect a value
 		indexDef := sql.IndexDef{
-			Name:       indexName,
-			Columns:    n.Columns,
-			Constraint: n.Constraint,
-			Storage:    n.Using,
-			Comment:    n.Comment,
-			Predicate:  n.Predicate,
+			Name:             indexName,
+			Columns:          n.Columns,
+			Constraint:       n.Constraint,
+			Storage:          n.Using,
+			Comment:          n.Comment,
+			Predicate:        n.Predicate,
+			VectorProperties: n.VectorProperties,
 		}
 		if len(indexName) == 0 {
 			indexDef.Name, err = getIndexNameGenerator(n.Db).GenerateIndexName(ctx, n.Table.Name(), indexDef, idxAltTbl)
@@ -2287,7 +2288,8 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 					if !types.IsVectorConvertable(tblCol.Type) {
 						return sql.ErrVectorInvalidColumnType.New()
 					}
-					if tblCol.Nullable {
+					// MySQL requires vector index columns to be NOT NULL, but this restriction doesn't have to apply to integrators
+					if _, isIntegratorType := tblCol.Type.(types.VectorIndexableType); !isIntegratorType && tblCol.Nullable {
 						return sql.ErrNullableVectorIdx.New()
 					}
 					break
