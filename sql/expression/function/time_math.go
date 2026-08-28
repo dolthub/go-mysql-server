@@ -264,6 +264,7 @@ func (d *DateAdd) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	resType := d.Type(ctx)
 	if types.IsText(resType) {
+		// TODO: use the regex
 		// If the input is a properly formatted date/datetime string, the output should also be a string
 		if dateStr, isStr := date.(string); isStr {
 			if res.(time.Time).Nanosecond() > 0 {

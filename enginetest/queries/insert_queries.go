@@ -247,7 +247,7 @@ var InsertQueries = []WriteQueryTest{
 			id = 999, i8 = -128, i16 = -32768, i32 = -2147483648, i64 = -9223372036854775808,
 			u8 = 0, u16 = 0, u32 = 0, u64 = 0,
 			f32 = 1.401298464324817070923729583289916131280e-45, f64 = 4.940656458412465441765687928682213723651e-324,
-			ti = '2037-04-05 12:51:36 -0000 UTC', da = '0000-00-00',
+			ti = '2037-04-05 12:51:36', da = '0000-01-01',
 			te = '', bo = false, js = '""', bl = '', e1 = 'v1', s1 = 'v2'
 			;`,
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
@@ -256,7 +256,8 @@ var InsertQueries = []WriteQueryTest{
 			int64(999), int8(-math.MaxInt8 - 1), int16(-math.MaxInt16 - 1), int32(-math.MaxInt32 - 1), int64(-math.MaxInt64 - 1),
 			uint8(0), uint16(0), uint32(0), uint64(0),
 			float32(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
-			sql.MustConvert(types.Timestamp.Convert(sqlCtx, "2037-04-05 12:51:36")), types.Date.Zero(),
+			time.Date(2037, 4, 5, 12, 51, 36, 0, time.UTC),
+			time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC),
 			"", sql.False, types.MustJSON(`""`), []byte(""), "v1", "v2",
 		}},
 	},
