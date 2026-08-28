@@ -121,9 +121,17 @@ func (l *LoadFile) getFile(ctx *sql.Context, row sql.Row, secureFileDir string) 
 		return nil, nil
 	}
 
-	fileName, err := types.ConvertToString(ctx, fileNameVal, types.LongText, nil)
+	converted, _, err := types.TypeAwareConversion(ctx, fileNameVal, l.fileName.Type(ctx), types.LongText)
 	if err != nil {
 		return nil, err
+	}
+	if converted == nil {
+		return nil, nil
+	}
+
+	fileName, ok := converted.(string)
+	if !ok {
+		return nil, fmt.Errorf("unexpected type converting %v to string: %T", fileNameVal, converted)
 	}
 
 	// If the secure_file_priv directory is not set, just read the file from whatever directory it is in
