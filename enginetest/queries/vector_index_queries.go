@@ -213,6 +213,112 @@ var VectorIndexQueries = []ScriptTest{
 		},
 	},
 	{
+		Name: "vector index order by fallbacks and other metrics",
+		SetUpScript: []string{
+			"create table vectors (id int primary key, v json not null);",
+			`insert into vectors values (1, '[4.0,3.0]'), (2, '[0.0,0.0]'), (3, '[-1.0,1.0]'), (4, '[0.0,-2.0]');`,
+			`create vector index v_idx on vectors(v);`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// A vector index only orders ascending; descending order falls back to an exact sort.
+				Query: "select * from vectors order by VEC_DISTANCE('[0.0,0.0]', v) desc limit 2",
+				Expected: []sql.Row{
+					{1, types.MustJSON(`[4.0, 3.0]`)},
+					{4, types.MustJSON(`[0.0, -2.0]`)},
+				},
+				ExpectedIndexes: []string{},
+			},
+			{
+				// A filter between the limit and the table means the limit applies to the filtered
+				// rows; the vector index cannot be used.
+				Query: "select * from vectors where id % 2 = 1 order by VEC_DISTANCE('[0.0,0.0]', v) limit 1",
+				Expected: []sql.Row{
+					{3, types.MustJSON(`[-1.0, 1.0]`)},
+				},
+				ExpectedIndexes: []string{},
+			},
+			{
+				// Rows skipped by an offset must still be produced by the index lookup.
+				Query: "select * from vectors order by VEC_DISTANCE('[0.0,0.0]', v) limit 2 offset 1",
+				Expected: []sql.Row{
+					{3, types.MustJSON(`[-1.0, 1.0]`)},
+					{4, types.MustJSON(`[0.0, -2.0]`)},
+				},
+				ExpectedIndexes: []string{"v_idx"},
+			},
+			{
+				// Euclidean distance produces the same ordering as squared L2 distance, so it can
+				// use the same index.
+				Query: "select * from vectors order by VEC_DISTANCE_EUCLIDEAN('[0.0,0.0]', v) limit 4",
+				Expected: []sql.Row{
+					{2, types.MustJSON(`[0.0, 0.0]`)},
+					{3, types.MustJSON(`[-1.0, 1.0]`)},
+					{4, types.MustJSON(`[0.0, -2.0]`)},
+					{1, types.MustJSON(`[4.0, 3.0]`)},
+				},
+				ExpectedIndexes: []string{"v_idx"},
+			},
+			{
+				// Other metrics don't match an L2 index and fall back to an exact sort.
+				Query: "select * from vectors order by VEC_DISTANCE_COSINE('[1.0,0.0]', v) limit 4",
+				Expected: []sql.Row{
+					{2, types.MustJSON(`[0.0, 0.0]`)},
+					{1, types.MustJSON(`[4.0, 3.0]`)},
+					{4, types.MustJSON(`[0.0, -2.0]`)},
+					{3, types.MustJSON(`[-1.0, 1.0]`)},
+				},
+				ExpectedIndexes: []string{},
+			},
+			{
+				Query: "select * from vectors order by VEC_DISTANCE_INNER_PRODUCT('[1.0,2.0]', v) limit 4",
+				Expected: []sql.Row{
+					{1, types.MustJSON(`[4.0, 3.0]`)},
+					{3, types.MustJSON(`[-1.0, 1.0]`)},
+					{2, types.MustJSON(`[0.0, 0.0]`)},
+					{4, types.MustJSON(`[0.0, -2.0]`)},
+				},
+				ExpectedIndexes: []string{},
+			},
+			{
+				Query: "select * from vectors order by VEC_DISTANCE_L1('[-1.0,1.0]', v) limit 4",
+				Expected: []sql.Row{
+					{3, types.MustJSON(`[-1.0, 1.0]`)},
+					{2, types.MustJSON(`[0.0, 0.0]`)},
+					{4, types.MustJSON(`[0.0, -2.0]`)},
+					{1, types.MustJSON(`[4.0, 3.0]`)},
+				},
+				ExpectedIndexes: []string{},
+			},
+			{
+				Query:    "select VEC_DISTANCE_INNER_PRODUCT('[1.0,2.0]', '[3.0,4.0]')",
+				Expected: []sql.Row{{-11.0}},
+			},
+			{
+				Query:    "select VEC_DISTANCE_L1('[1.0,2.0]', '[3.0,5.0]')",
+				Expected: []sql.Row{{5.0}},
+			},
+		},
+	},
+	{
+		Name: "vector index with null query vector",
+		SetUpScript: []string{
+			"create table vectors (id int primary key, v json not null);",
+			`insert into vectors values (1, '[1.0,2.0]');`,
+			`create vector index v_idx on vectors(v);`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// A NULL query vector has no meaningful nearest-neighbor ordering; the index is not used.
+				Query: "select * from vectors order by VEC_DISTANCE(NULL, v) limit 1",
+				Expected: []sql.Row{
+					{1, types.MustJSON(`[1.0, 2.0]`)},
+				},
+				ExpectedIndexes: []string{},
+			},
+		},
+	},
+	{
 		Name: "vector index errors",
 		SetUpScript: []string{
 			"create table vectors (id int primary key, j json, v vector(2));",

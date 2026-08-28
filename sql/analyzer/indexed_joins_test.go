@@ -183,6 +183,147 @@ func TestIndexedJoinBindVarEqualityFilter(t *testing.T) {
 	})
 }
 
+// TestMergeJoinPartialIndexEligibility verifies that merge joins only use a partial
+// index when the source relation includes the index predicate.
+func TestMergeJoinPartialIndexEligibility(t *testing.T) {
+	for _, tt := range []struct {
+		name             string
+		includePredicate bool
+		expectMergeJoin  bool
+	}{
+		{name: "predicate absent", includePredicate: false, expectMergeJoin: false},
+		{name: "predicate present", includePredicate: true, expectMergeJoin: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			db := memory.NewDatabase("db")
+			ctx := newContext(memory.NewDBProvider(db))
+			left := partialMergeJoinTable(ctx, db)
+			if tt.includePredicate {
+				flag := expression.NewGetFieldWithTable(22, 10, types.Boolean, "db", "t1", "flag", false)
+				left = plan.NewFilter(ctx, flag, left)
+			}
+			joinFilter := expression.NewEquals(
+				expression.NewGetFieldWithTable(21, 10, types.Int64, "db", "t1", "fk", true),
+				expression.NewGetFieldWithTable(23, 11, types.Int64, "db", "t2", "pk", false),
+			)
+			joined := plan.NewInnerJoin(ctx, left, mergeJoinT2(ctx, db), joinFilter)
+
+			m := memo.NewMemo(ctx, memory.NewStatsProv(), nil, memo.NewDefaultCoster(), nil)
+			j := memo.NewJoinOrderBuilder(m)
+			j.ReorderJoin(ctx, joined)
+			require.NoError(t, addMergeJoins(ctx, m))
+			require.Equal(t, tt.expectMergeJoin, strings.Contains(m.String(), "mergejoin"))
+		})
+	}
+}
+
+// TestRangeHeapJoinPartialIndexEligibility verifies that range-heap joins only use
+// a partial value index when the source relation includes the index predicate.
+func TestRangeHeapJoinPartialIndexEligibility(t *testing.T) {
+	for _, tt := range []struct {
+		name             string
+		includePredicate bool
+		expectValueIndex bool
+	}{
+		{name: "predicate absent", includePredicate: false, expectValueIndex: false},
+		{name: "predicate present", includePredicate: true, expectValueIndex: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			db := memory.NewDatabase("db")
+			ctx := newContext(memory.NewDBProvider(db))
+			left := partialMergeJoinTable(ctx, db)
+			if tt.includePredicate {
+				flag := expression.NewGetFieldWithTable(22, 10, types.Boolean, "db", "t1", "flag", false)
+				left = plan.NewFilter(ctx, flag, left)
+			}
+			value := expression.NewGetFieldWithTable(21, 10, types.Int64, "db", "t1", "fk", true)
+			min := expression.NewGetFieldWithTable(23, 11, types.Int64, "db", "ranges", "min", false)
+			max := expression.NewGetFieldWithTable(24, 11, types.Int64, "db", "ranges", "max", false)
+			joined := plan.NewInnerJoin(ctx, left, rangeHeapTable(ctx, db), expression.JoinAnd(
+				expression.NewGreaterThanOrEqual(value, min),
+				expression.NewLessThanOrEqual(value, max),
+			))
+
+			m := memo.NewMemo(ctx, memory.NewStatsProv(), nil, memo.NewDefaultCoster(), nil)
+			j := memo.NewJoinOrderBuilder(m)
+			j.ReorderJoin(ctx, joined)
+			require.NoError(t, addRangeHeapJoin(ctx, m))
+			rangeHeapJoin, ok := m.Root().First.(*memo.RangeHeapJoin)
+			require.True(t, ok, m.String())
+			require.Equal(t, tt.expectValueIndex, rangeHeapJoin.RangeHeap.ValueIndex != nil, m.String())
+		})
+	}
+}
+
+// partialIndex wraps a memory index with a partial-index predicate for optimizer tests.
+type partialIndex struct {
+	*memory.Index
+	predicate string
+}
+
+// Predicate implements sql.PartialIndex.
+func (i *partialIndex) Predicate() string {
+	return i.predicate
+}
+
+// partialIndexTable exposes one memory index as a partial index.
+type partialIndexTable struct {
+	*memory.Table
+	indexName string
+	predicate string
+}
+
+// GetIndexes implements sql.IndexAddressableTable.
+func (t *partialIndexTable) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
+	indexes, err := t.Table.GetIndexes(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for i, idx := range indexes {
+		if idx.ID() == t.indexName {
+			indexes[i] = &partialIndex{Index: idx.(*memory.Index), predicate: t.predicate}
+		}
+	}
+	return indexes, nil
+}
+
+// partialMergeJoinTable returns a table with a partial ordered index on its join key.
+func partialMergeJoinTable(ctx *sql.Context, db *memory.Database) sql.Node {
+	tbl := memory.NewTable(ctx, db, "t1", sql.NewPrimaryKeySchema(sql.Schema{
+		{Name: "pk", Type: types.Int64, Nullable: false, Source: "t1", PrimaryKey: true},
+		{Name: "fk", Type: types.Int64, Nullable: true, Source: "t1"},
+		{Name: "flag", Type: types.Boolean, Nullable: false, Source: "t1"},
+	}), nil)
+	if err := tbl.CreateIndex(ctx, sql.IndexDef{
+		Name:    "t1_fk_partial_idx",
+		Columns: []sql.IndexColumn{{Name: "fk"}},
+	}); err != nil {
+		panic(err)
+	}
+	partialTbl := &partialIndexTable{Table: tbl, indexName: "t1_fk_partial_idx", predicate: "t1.flag"}
+	db.AddTable("t1", partialTbl)
+	return plan.NewResolvedTable(partialTbl, db, nil).WithId(10).WithColumns(sql.NewColSet(20, 21, 22))
+}
+
+// rangeHeapTable returns a table with ordered indexes on both range bounds.
+func rangeHeapTable(ctx *sql.Context, db *memory.Database) sql.Node {
+	tbl := memory.NewTable(ctx, db, "ranges", sql.NewPrimaryKeySchema(sql.Schema{
+		{Name: "pk", Type: types.Int64, Nullable: false, Source: "ranges", PrimaryKey: true},
+		{Name: "min", Type: types.Int64, Nullable: false, Source: "ranges"},
+		{Name: "max", Type: types.Int64, Nullable: false, Source: "ranges"},
+	}), nil)
+	for _, idx := range []sql.IndexDef{
+		{Name: "ranges_min_idx", Columns: []sql.IndexColumn{{Name: "min"}}},
+		{Name: "ranges_max_idx", Columns: []sql.IndexColumn{{Name: "max"}}},
+	} {
+		if err := tbl.CreateIndex(ctx, idx); err != nil {
+			panic(err)
+		}
+	}
+	db.AddTable("ranges", tbl)
+	return plan.NewResolvedTable(tbl, db, nil).WithId(11).WithColumns(sql.NewColSet(25, 23, 24))
+}
+
 // mergeJoinT1 returns a table with a primary key on pk and a secondary index on fk.
 func mergeJoinT1(ctx *sql.Context, db *memory.Database) sql.Node {
 	tbl := memory.NewTable(ctx, db, "t1", sql.NewPrimaryKeySchema(sql.Schema{

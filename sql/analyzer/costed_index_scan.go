@@ -284,6 +284,10 @@ func getCostedIndexScan(
 		projs = projTbl.Projections()
 	}
 	for _, idx := range indexes {
+		// vector indexes only order rows by distance to a query vector, so they cannot answer range filters
+		if idx.IsVector() {
+			continue
+		}
 		// only use the index if the query filters include the index predicate
 		if !canUsePartialIndex(idx, filters) {
 			continue
@@ -523,7 +527,7 @@ func addIndexScans(ctx *sql.Context, m *memo.Memo, catalog *Catalog) error {
 // preciseIndexAccess returns whether an indexed access into a table is a
 // replacement for relational filters.
 func preciseIndexAccess(t sql.IndexAddressableTable, i sql.Index) bool {
-	return t.PreciseMatch() && !i.IsFullText() && !i.IsSpatial() && len(i.PrefixLengths()) == 0
+	return t.PreciseMatch() && !i.IsFullText() && !i.IsSpatial() && !i.IsVector() && len(i.PrefixLengths()) == 0
 }
 
 func newIndexCoster(underlyingName string) *indexCoster {

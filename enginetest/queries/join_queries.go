@@ -1529,6 +1529,24 @@ var LateralJoinScriptTests = []ScriptTest{
 					{3, 5},
 				},
 			},
+			{
+				// A left lateral join with a trivially true condition must still null-extend
+				// left rows for which the lateral subquery produces no rows.
+				Query: "select * from t left join lateral (select * from t1 where t.i = t1.j) as tt on true order by t.i, tt.j",
+				Expected: []sql.Row{
+					{1, 1},
+					{2, nil},
+					{3, nil},
+				},
+			},
+			{
+				Query: "select * from t left join lateral (select * from t1 where t.i = t1.j) as tt on 1 = 1 order by t.i, tt.j",
+				Expected: []sql.Row{
+					{1, 1},
+					{2, nil},
+					{3, nil},
+				},
+			},
 
 			// Lateral Right Join
 			{

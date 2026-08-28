@@ -351,6 +351,8 @@ var BuiltIns = []sql.Function{
 	sql.Function2{Name: "vec_distance_l2_squared", Fn: vector.NewL2SquaredDistance},
 	sql.Function2{Name: "vec_distance_euclidean", Fn: vector.NewEuclideanDistance},
 	sql.Function2{Name: "vec_distance_cosine", Fn: vector.NewCosineDistance},
+	sql.Function2{Name: "vec_distance_inner_product", Fn: vector.NewInnerProductDistance},
+	sql.Function2{Name: "vec_distance_l1", Fn: vector.NewL1Distance},
 	sql.FunctionN{Name: "distance", Fn: vector.NewGenericDistance},
 	sql.Function1{Name: "string_to_vector", Fn: vector.NewStringToVector},
 	sql.Function1{Name: "to_vector", Fn: vector.NewStringToVector},

@@ -634,6 +634,10 @@ func (b *Builder) buildShowVariables(inScope *scope, s *ast.Show) (outScope *sco
 
 func (b *Builder) buildAsOfLit(inScope *scope, t ast.Expr) interface{} {
 	expr := b.buildAsOfExpr(inScope, t)
+	if expr == nil {
+		// buildAsOfExpr returns nil for a bind variable with no value to substitute.
+		b.handleErr(sql.ErrInvalidAsOfExpression.New(t))
+	}
 	res, err := expr.Eval(b.ctx, nil)
 	if err != nil {
 		b.handleErr(err)

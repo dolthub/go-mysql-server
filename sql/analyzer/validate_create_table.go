@@ -914,7 +914,11 @@ func validateIndex(ctx *sql.Context, colMap map[string]*sql.Column, idxDef *sql.
 			return fmt.Errorf("a vector index must have exactly one column")
 		}
 		schCol, _ := colMap[strings.ToLower(idxDef.Columns[0].Name)]
-		if schCol.Nullable {
+		if !types.IsVectorConvertable(schCol.Type) {
+			return sql.ErrVectorInvalidColumnType.New()
+		}
+		// MySQL requires vector index columns to be NOT NULL, but this restriction doesn't have to apply to integrators
+		if _, isIntegratorType := schCol.Type.(types.VectorIndexableType); !isIntegratorType && schCol.Nullable {
 			return sql.ErrNullableVectorIdx.New()
 		}
 	}

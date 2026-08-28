@@ -1531,6 +1531,9 @@ func filterExprToMySQLRangeExpr(filter sql.Expression, colId sql.ColumnId, colTy
 func makeIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, tab plan.TableIdNode, idx *memo.Index, matchedIdx sql.ColumnId, filters []sql.Expression) (*memo.IndexScan, bool, error) {
 	// TODO: This should build a proper range tree to handle all filters.
 	// TODO: We should be able to push all static expressions, even the ones past |matchedIdx|.
+	if !canUsePartialIndex(idx.SqlIdx(), filters) {
+		return nil, false, nil
+	}
 	var i int
 	idxCols := idx.Cols()
 	rang := make(sql.MySQLRange, len(idxCols))
