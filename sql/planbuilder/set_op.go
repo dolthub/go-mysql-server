@@ -20,11 +20,48 @@ import (
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
+
+// setOpOrderByHasAggOrWindow returns true if the top-level ORDER BY of a set
+// operation (UNION/INTERSECT/EXCEPT) contains a call to an aggregate or
+// window function. A plain column reference (including one aliasing an
+// aggregate or window expression already computed in the SELECT list) is
+// not flagged, since it does not introduce a new computation.
+func (b *Builder) setOpOrderByHasAggOrWindow(order ast.OrderBy) bool {
+	for _, o := range order {
+		expr := unwrapExpression(o.Expr)
+		switch expr.(type) {
+		case *ast.ColName, *ast.SQLVal:
+			continue
+		}
+
+		found := false
+		ast.Walk(func(node ast.SQLNode) (bool, error) {
+			fe, ok := node.(*ast.FuncExpr)
+			if !ok {
+				return true, nil
+			}
+			if fe.Over != nil {
+				found = true
+				return false, nil
+			}
+			if isAgg, err := IsAggregateFunc(b.ctx, fe.Name.Lowered()); err == nil && isAgg {
+				found = true
+				return false, nil
+			}
+			return true, nil
+		}, expr)
+		if found {
+			return true
+		}
+	}
+	return false
+}
 
 func hasRecursiveCte(ctx *sql.Context, node sql.Node) bool {
 	hasRCTE := false
@@ -77,6 +114,15 @@ func (b *Builder) buildSetOp(inScope *scope, u *ast.SetOp) (outScope *scope) {
 		if expr, ok := o.Expr.(*ast.ColName); ok && len(expr.Qualifier.Name.String()) != 0 {
 			b.handleErr(ErrQualifiedOrderBy.New(expr.Qualifier.Name.String()))
 		}
+	}
+
+	// A set operation's top-level ORDER BY may only reference columns already
+	// present in its result; it cannot introduce a new aggregate or window
+	// computation. Reject that case here, before analyzeOrderBy resolves the
+	// function call, since doing so would add a column to leftScope that has
+	// no corresponding column on the right side of the set operation.
+	if b.setOpOrderByHasAggOrWindow(u.OrderBy) {
+		b.handleErr(analyzererrors.ErrValidationOrderBy.New())
 	}
 
 	// mysql errors for order by right projection
