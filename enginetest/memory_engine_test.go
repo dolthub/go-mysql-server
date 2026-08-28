@@ -93,7 +93,7 @@ func TestQueriesSimple(t *testing.T) {
 	enginetest.TestQueries(t, harness)
 }
 
-// TestJoinQueries runs the canonical test queries against a single threaded index enabled harness.
+// TestJoinQueries runs the canonical test queries against a single threaded index enabled xharness.
 func TestJoinQueries(t *testing.T) {
 	enginetest.TestJoinQueries(t, enginetest.NewDefaultMemoryHarness())
 }
@@ -193,16 +193,22 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
 			//Skip:        true,
-			Name:        "Parse table name as column",
-			SetUpScript: []string{},
+			Name: "Parse table name as column",
+			SetUpScript: []string{
+				"create table t (tt date);",
+			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "select date('0000-00-00')",
+					Query:    "insert ignore into t values ('asdf')",
 					Expected: []sql.Row{{true}},
+				},
+				{
+					Query:    "select * from t",
+					Expected: []sql.Row{{"asdf"}},
 				},
 			},
 		},
