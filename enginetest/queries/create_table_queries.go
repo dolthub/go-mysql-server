@@ -368,6 +368,76 @@ var CreateTableQueries = []WriteQueryTest{
 
 var CreateTableScriptTests = []ScriptTest{
 	{
+		// https://github.com/dolthub/dolt/issues/11620
+		Name: "CREATE TABLE AS (SELECT ...)",
+		SetUpScript: []string{
+			"CREATE TABLE people (id INT, name VARCHAR(100))",
+			"INSERT INTO people VALUES (3, 'Charlie'), (1, 'Alice'), (4, 'David'), (2, 'Bob')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CREATE TABLE people_copy AS (SELECT * FROM people)",
+				Expected: []sql.Row{{types.NewOkResult(4)}},
+			},
+			{
+				Query: "SELECT * FROM people_copy",
+				Expected: []sql.Row{
+					{3, "Charlie"},
+					{1, "Alice"},
+					{4, "David"},
+					{2, "Bob"},
+				},
+			},
+			{
+				Query:    "CREATE TABLE people_ordered_inside AS (SELECT * FROM people ORDER BY id ASC LIMIT 2)",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query: "SELECT * FROM people_ordered_inside ORDER BY id",
+				Expected: []sql.Row{
+					{1, "Alice"},
+					{2, "Bob"},
+				},
+			},
+			{
+				Query:    "CREATE TABLE people_ordered_outside AS (SELECT * FROM people) ORDER BY id DESC LIMIT 2",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query: "SELECT * FROM people_ordered_outside ORDER BY id",
+				Expected: []sql.Row{
+					{3, "Charlie"},
+					{4, "David"},
+				},
+			},
+			{
+				Query:    "CREATE TABLE people_explicit (id BIGINT, name VARCHAR(50), PRIMARY KEY (id)) AS (SELECT * FROM people)",
+				Expected: []sql.Row{{types.NewOkResult(4)}},
+			},
+			{
+				Query: "SELECT * FROM people_explicit ORDER BY id",
+				Expected: []sql.Row{
+					{1, "Alice"},
+					{2, "Bob"},
+					{3, "Charlie"},
+					{4, "David"},
+				},
+			},
+			{
+				Query:    "CREATE TABLE people_cte AS (WITH cte AS (SELECT id * 10 AS new_id, name FROM people) SELECT new_id, name FROM cte WHERE new_id > 10)",
+				Expected: []sql.Row{{types.NewOkResult(3)}},
+			},
+			{
+				Query: "SELECT * FROM people_cte ORDER BY new_id",
+				Expected: []sql.Row{
+					{20, "Bob"},
+					{30, "Charlie"},
+					{40, "David"},
+				},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/9316
 		Name:         "CREATE TABLE with constraints AS SELECT osticket repro",
 		SkipPrepared: true, // SHOW KEYS with WHERE clause doesn't work with prepared statements

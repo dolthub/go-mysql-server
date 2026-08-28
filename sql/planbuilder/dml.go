@@ -425,14 +425,7 @@ func (b *Builder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scope) {
 	b.buildWhere(outScope, d.Where)
 	orderByScope := b.analyzeOrderBy(outScope, outScope, d.OrderBy)
 	b.buildOrderBy(outScope, orderByScope)
-	offset := b.buildOffset(outScope, d.Limit)
-	if offset != nil {
-		outScope.node = plan.NewOffset(offset, outScope.node)
-	}
-	limit := b.buildLimit(outScope, d.Limit)
-	if limit != nil {
-		outScope.node = plan.NewLimit(limit, outScope.node)
-	}
+	b.buildLimitAndOffset(outScope, outScope, d.Limit, false)
 
 	if len(d.Targets) > 0 {
 		hasExplicitTargets = true
@@ -498,15 +491,7 @@ func (b *Builder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
 	orderByScope := b.analyzeOrderBy(outScope, b.newScope(), u.OrderBy)
 
 	b.buildOrderBy(outScope, orderByScope)
-	offset := b.buildOffset(outScope, u.Limit)
-	if offset != nil {
-		outScope.node = plan.NewOffset(offset, outScope.node)
-	}
-
-	limit := b.buildLimit(outScope, u.Limit)
-	if limit != nil {
-		outScope.node = plan.NewLimit(limit, outScope.node)
-	}
+	b.buildLimitAndOffset(outScope, outScope, u.Limit, false)
 
 	// TODO comments
 	// If the top level node can store comments and one was provided, store it.
