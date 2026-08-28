@@ -40,6 +40,7 @@ const (
 	StrictTransTables      = "STRICT_TRANS_TABLES"
 	StrictAllTables        = "STRICT_ALL_TABLES"
 	NoZeroInDate           = "NO_ZERO_IN_DATE"
+	NoZeroDate             = "NO_ZERO_DATE"
 	AllowInvalidDates      = "ALLOW_INVALID_DATES"
 	ErrorForDivisionByZero = "ERROR_FOR_DIVISION_BY_ZERO"
 	// Traditional mode includes STRICT_TRANS_TABLES, STRICT_ALL_TABLES, NO_ZERO_IN_DATE, ERROR_FOR_DIVISION_BY_ZERO,
@@ -118,9 +119,12 @@ var sqlModeBitMap = map[uint64]string{
 }
 
 var DefaultSqlMode = strings.Join([]string{
-	NoEngineSubstitution,
 	OnlyFullGroupBy,
 	StrictTransTables,
+	NoZeroInDate,
+	NoZeroDate,
+	ErrorForDivisionByZero,
+	NoEngineSubstitution,
 }, ",")
 
 var defaultMode *SqlMode
