@@ -171,7 +171,7 @@ func (q *Quarter) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		if isNumericZero(val) {
 			return 0, nil
 		}
-		ctx.Warn(mysql.ERTruncatedWrongValue, sql.ErrTruncatedIncorrect.New("datetime", v).Error())
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrTruncatedIncorrect.New("datetime", v).Error())
 		return nil, nil
 	}
 

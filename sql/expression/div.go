@@ -394,7 +394,7 @@ func convertToDecimalValue(ctx *sql.Context, valTyp, val any) any {
 		var err error
 		val, err = DateTimeToNumericString(ctx, dtTyp, val)
 		if err != nil {
-			ctx.Warn(mysql.ERTruncatedWrongValue, sql.ErrTruncatedIncorrect.New(dtTyp.String(), val).Error())
+			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrTruncatedIncorrect.New(dtTyp.String(), val).Error())
 		}
 	}
 

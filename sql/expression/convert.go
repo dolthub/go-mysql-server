@@ -279,7 +279,7 @@ func (c *Convert) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		if c.castToType == ConvertToJSON {
 			return nil, ErrConvertExpression.Wrap(err, c.String(), c.castToType)
 		}
-		ctx.Warn(mysql.ERTruncatedWrongValue, err.Error())
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 		return nil, nil
 	}
 
