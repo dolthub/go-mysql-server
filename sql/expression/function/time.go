@@ -43,7 +43,7 @@ func getDate(ctx *sql.Context, val interface{}) (interface{}, error) {
 
 	date, _, err := types.DatetimeMaxPrecision.Convert(ctx, val)
 	if err != nil {
-		ctx.Warn(mysql.ERTruncatedWrongValue, "Incorrect datetime value: '%s'", val)
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 		return nil, nil
 	}
 
@@ -69,7 +69,7 @@ func getDatePart(ctx *sql.Context,
 
 	part := f(date)
 	if part == nil {
-		ctx.Warn(mysql.ERTruncatedWrongValue, "Incorrect datetime value: '%s'", val)
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrTruncatedIncorrect.New("datetime", val).Error())
 	}
 	return part, nil
 }
@@ -1357,7 +1357,7 @@ func (d *Date) Eval(ctx *sql.Context, row sql.Row) (any, error) {
 
 	date, _, err := types.Date.Convert(ctx, val)
 	if err != nil && (sql.ErrTruncatedIncorrect.Is(err) || sql.ErrIncorrectDateTimeValue.Is(err)) {
-		ctx.Warn(mysql.ERTruncatedWrongValue, err.Error())
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 
 	switch v := date.(type) {
@@ -1366,7 +1366,7 @@ func (d *Date) Eval(ctx *sql.Context, row sql.Row) (any, error) {
 			return v, nil
 		}
 		if err == nil {
-			ctx.Warn(mysql.ERTruncatedWrongValue, sql.ErrIncorrectDateTimeValue.New(types.Date.String(), date).Error())
+			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrIncorrectDateTimeValue.New(types.Date.String(), date).Error())
 		}
 	}
 
@@ -1451,7 +1451,7 @@ func (dtf *UnaryDatetimeFunc) EvalChild(ctx *sql.Context, row sql.Row) (any, err
 		if !sql.ErrTruncatedIncorrect.Is(err) {
 			return nil, err
 		}
-		ctx.Warn(mysql.ERTruncatedWrongValue, err.Error())
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 		return nil, nil
 	}
 	return val, nil
@@ -1505,7 +1505,7 @@ func (d *DayName) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 	if types.ZeroTime.Equal(dt) {
-		ctx.Warn(mysql.ERTruncatedWrongValue, sql.ErrTruncatedIncorrect.New("datetime", dt).Error())
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrTruncatedIncorrect.New("datetime", dt).Error())
 		return nil, nil
 	}
 	return dt.Weekday().String(), nil
@@ -1588,7 +1588,7 @@ func (d *MonthName) Eval(ctx *sql.Context, row sql.Row) (any, error) {
 		if !v.Equal(types.ZeroTime) {
 			return v.Month().String(), nil
 		}
-		ctx.Warn(mysql.ERTruncatedWrongValue, sql.ErrTruncatedIncorrect.New("datetime", v).Error())
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrTruncatedIncorrect.New("datetime", v).Error())
 	}
 	return nil, nil
 }
