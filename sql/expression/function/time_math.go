@@ -94,7 +94,7 @@ func (d *DateDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 	expr1, _, err := types.Date.Convert(ctx, val1)
 	if err != nil {
-		ctx.Warn(mysql.ERTruncatedWrongValue, sql.ErrTruncatedIncorrect.New("datetime", val1).Error())
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrTruncatedIncorrect.New("datetime", val1).Error())
 		return nil, nil
 	}
 	var date1 time.Time
@@ -102,7 +102,7 @@ func (d *DateDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case time.Time:
 		date1 = expr1.(time.Time)
 		if types.ZeroTime.Equal(date1) {
-			ctx.Warn(mysql.ERTruncatedWrongValue, sql.ErrTruncatedIncorrect.New("datetime", val1).Error())
+			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrTruncatedIncorrect.New("datetime", val1).Error())
 			return nil, nil
 		}
 	default:
@@ -115,7 +115,7 @@ func (d *DateDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 	expr2, _, err := types.Date.Convert(ctx, val2)
 	if err != nil {
-		ctx.Warn(mysql.ERTruncatedWrongValue, sql.ErrTruncatedIncorrect.New("datetime", val2).Error())
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrTruncatedIncorrect.New("datetime", val2).Error())
 		return nil, nil
 	}
 	var date2 time.Time
@@ -123,7 +123,7 @@ func (d *DateDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case time.Time:
 		date2 = expr2.(time.Time)
 		if types.ZeroTime.Equal(date2) {
-			ctx.Warn(mysql.ERTruncatedWrongValue, sql.ErrTruncatedIncorrect.New("datetime", val2).Error())
+			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrTruncatedIncorrect.New("datetime", val2).Error())
 			return nil, nil
 		}
 	default:
@@ -247,12 +247,12 @@ func (d *DateAdd) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	var dateVal interface{}
 	dateVal, _, err = types.DatetimeMaxRange.Convert(ctx, date)
 	if err != nil {
-		ctx.Warn(1292, "%s", err.Error())
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 		return nil, nil
 	}
 	datetime, ok := dateVal.(time.Time)
 	if !ok || datetime.Equal(types.ZeroTime) {
-		ctx.Warn(1292, "Incorrect datetime value: '%s'", date)
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrIncorrectDateTimeValue.New(types.DatetimeMaxRange.String(), date).Error())
 		return nil, nil
 	}
 
@@ -401,12 +401,12 @@ func (d *DateSub) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	var dateVal interface{}
 	dateVal, _, err = types.DatetimeMaxRange.Convert(ctx, date)
 	if err != nil {
-		ctx.Warn(1292, "%s", err.Error())
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 		return nil, nil
 	}
 	datetime, ok := dateVal.(time.Time)
 	if !ok || datetime.Equal(types.ZeroTime) {
-		ctx.Warn(1292, "Incorrect datetime value: '%s'", date)
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrIncorrectDateTimeValue.New(types.DatetimeMaxRange.String(), date).Error())
 		return nil, nil
 	}
 
@@ -526,14 +526,14 @@ func (td *TimeDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if _, ok := left.(string); ok {
 		left, err = convToDateOrTime(ctx, left)
 		if err != nil {
-			ctx.Warn(1292, "%s", err.Error())
+			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 			return nil, nil
 		}
 	}
 	if _, ok := right.(string); ok {
 		right, err = convToDateOrTime(ctx, right)
 		if err != nil {
-			ctx.Warn(1292, "%s", err.Error())
+			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 			return nil, nil
 		}
 	}

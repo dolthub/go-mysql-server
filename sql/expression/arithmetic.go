@@ -449,7 +449,7 @@ func convertValueToType(ctx *sql.Context, origType, typ sql.Type, val any) (res 
 		var err error
 		val, err = DateTimeToNumericString(ctx, dtTyp, val)
 		if err != nil {
-			ctx.Warn(mysql.ERTruncatedWrongValue, sql.ErrTruncatedIncorrect.New(dtTyp.String(), val).Error())
+			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrTruncatedIncorrect.New(dtTyp.String(), val).Error())
 		}
 	}
 
@@ -460,7 +460,7 @@ func convertValueToType(ctx *sql.Context, origType, typ sql.Type, val any) (res 
 		cVal, _, err = t.Convert(ctx, val)
 		if err == nil {
 			if timeVal, ok := cVal.(time.Time); ok && types.ZeroTime.Equal(timeVal) {
-				ctx.Warn(mysql.ERTruncatedWrongValue, sql.ErrTruncatedIncorrect.New(typ.String(), val).Error())
+				ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrTruncatedIncorrect.New(typ.String(), val).Error())
 				return nil
 			}
 		}
@@ -471,7 +471,7 @@ func convertValueToType(ctx *sql.Context, origType, typ sql.Type, val any) (res 
 	if err != nil {
 		// the value is interpreted as 0, but we need to match the type of the other valid value
 		// to avoid additional conversion, the nil value is handled in each operation
-		ctx.Warn(mysql.ERTruncatedWrongValue, sql.ErrTruncatedIncorrect.New(typ.String(), val).Error())
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrTruncatedIncorrect.New(typ.String(), val).Error())
 	}
 	return cVal
 }
