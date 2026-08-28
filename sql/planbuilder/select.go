@@ -41,7 +41,14 @@ func (b *Builder) buildSelectStmt(inScope *scope, s ast.SelectStatement) (outSco
 		}
 		return b.buildSetOp(inScope, s)
 	case *ast.ParenSelect:
-		return b.buildSelectStmt(inScope, s.Select)
+		outScope = b.buildSelectStmt(inScope, s.Select)
+		// Apply any trailing ORDER BY or LIMIT clauses attached outside the parentheses.
+		if len(s.OrderBy) > 0 {
+			orderByScope := b.analyzeOrderBy(outScope, outScope, s.OrderBy)
+			b.buildOrderBy(outScope, orderByScope)
+		}
+		b.buildLimitAndOffset(inScope, outScope, s.Limit, false)
+		return outScope
 	default:
 		b.handleErr(fmt.Errorf("unknown select statement %T", s))
 	}
@@ -112,20 +119,27 @@ func (b *Builder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
 	}
 
 	// OFFSET and LIMIT are last
-	offset := b.buildOffset(outScope, s.Limit)
-	if offset != nil {
-		outScope.node = plan.NewOffset(offset, outScope.node)
-	}
-	limit := b.buildLimit(outScope, s.Limit)
-	if limit != nil {
-		l := plan.NewLimit(limit, outScope.node)
-		l.CalcFoundRows = s.QueryOpts.SQLCalcFoundRows
-		outScope.node = l
-	}
+	b.buildLimitAndOffset(outScope, outScope, s.Limit, s.QueryOpts.SQLCalcFoundRows)
 
 	b.buildForUpdateOf(s.Lock, fromScope)
 
 	return
+}
+
+func (b *Builder) buildLimitAndOffset(inScope, outScope *scope, limit *ast.Limit, calcFoundRows bool) {
+	if limit == nil {
+		return
+	}
+	offset := b.buildOffset(inScope, limit)
+	if offset != nil {
+		outScope.node = plan.NewOffset(offset, outScope.node)
+	}
+	limitExpr := b.buildLimit(inScope, limit)
+	if limitExpr != nil {
+		l := plan.NewLimit(limitExpr, outScope.node)
+		l.CalcFoundRows = calcFoundRows
+		outScope.node = l
+	}
 }
 
 func (b *Builder) buildLimit(inScope *scope, limit *ast.Limit) sql.Expression {
