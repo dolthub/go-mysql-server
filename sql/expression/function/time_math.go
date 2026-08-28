@@ -16,11 +16,11 @@ package function
 
 import (
 	"fmt"
-	"github.com/dolthub/vitess/go/mysql"
 	"math"
 	"strings"
 	"time"
 
+	"github.com/dolthub/vitess/go/mysql"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
