@@ -20,6 +20,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/cockroachdb/apd/v3"
@@ -62,6 +63,7 @@ func costedIndexScans(
 	node sql.Node,
 	qFlags *sql.QueryFlags,
 ) (sql.Node, transform.TreeIdentity, error) {
+	planReturnsRowIter := rowIterExprChecker(ctx, node)
 	return transform.Node(ctx, node, func(ctx *sql.Context, n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		filter, ok := n.(*plan.Filter)
 		if !ok {
@@ -91,7 +93,7 @@ func costedIndexScans(
 				return n, transform.SameTree, err
 			}
 			if ok {
-				return indexSearchableLookup(ctx, n, tblNode, lookup, filter.Expression, newFilter, lookupFds, qFlags)
+				return indexSearchableLookup(ctx, n, tblNode, lookup, filter.Expression, newFilter, lookupFds, qFlags, planReturnsRowIter)
 			}
 			if idxTbl.SkipIndexCosting() {
 				return n, transform.SameTree, nil
@@ -105,7 +107,7 @@ func costedIndexScans(
 			}
 
 			exprs := expression.SplitConjunction(ctx, filter.Expression)
-			idxedTbl, stats, filters, err := getCostedIndexScan(ctx, a.Catalog, a.Catalog, tblNode, idxs, exprs, qFlags)
+			idxedTbl, stats, filters, err := getCostedIndexScan(ctx, a.Catalog, a.Catalog, tblNode, idxs, exprs, qFlags, planReturnsRowIter)
 			if err != nil || idxedTbl == nil {
 				return n, transform.SameTree, err
 			}
@@ -129,6 +131,23 @@ func costedIndexScans(
 	})
 }
 
+// rowIterExprChecker returns a memoized predicate reporting whether any expression in the tree rooted at
+// |node| returns a RowIter rather than a scalar value (sql.RowIterExpression), e.g. a set-returning function
+// such as Postgres's unnest. Such expressions can multiply the number of output rows, so a plan containing one
+// can return more than one row even when an index lookup proves at most one source row.
+func rowIterExprChecker(ctx *sql.Context, node sql.Node) func() bool {
+	return sync.OnceValue(func() bool {
+		found := false
+		transform.InspectExpressions(ctx, node, func(ctx *sql.Context, e sql.Expression) bool {
+			if rie, ok := e.(sql.RowIterExpression); ok && rie.ReturnsRowIter() {
+				found = true
+			}
+			return !found
+		})
+		return found
+	})
+}
+
 func indexSearchableLookup(
 	ctx *sql.Context,
 	node sql.Node,
@@ -137,6 +156,7 @@ func indexSearchableLookup(
 	oldFilter, newFilter sql.Expression,
 	fds *sql.FuncDepSet,
 	qFlags *sql.QueryFlags,
+	planReturnsRowIter func() bool,
 ) (sql.Node, transform.TreeIdentity, error) {
 
 	if lookup.IsEmpty() {
@@ -164,10 +184,12 @@ func indexSearchableLookup(
 		ret = plan.NewFilter(ctx, newFilter, ret)
 	}
 
-	if fds != nil && fds.HasMax1Row() && !qFlags.JoinIsSet() && !qFlags.SubqueryIsSet() && lookup.Ranges.Len() == 1 {
+	if fds != nil && fds.HasMax1Row() && !qFlags.JoinIsSet() && !qFlags.SubqueryIsSet() && lookup.Ranges.Len() == 1 && !planReturnsRowIter() {
 		// Strict index lookup without a join or subquery scope will return
 		// at most one row. We could also use some sort of scope counting
-		// to check for single scope.
+		// to check for single scope. Expressions that return a RowIter
+		// (set-returning functions) can multiply output rows, so their
+		// presence also disqualifies the plan.
 		qFlags.Set(sql.QFlagMax1Row)
 	}
 
@@ -202,6 +224,7 @@ func getCostedIndexScan(
 	indexes []sql.Index,
 	filters []sql.Expression,
 	qFlags *sql.QueryFlags,
+	planReturnsRowIter func() bool,
 ) (*plan.IndexedTableAccess, sql.Statistic, []sql.Expression, error) {
 	// run each index through coster, save the cheapest
 	tbl := tblNode.UnderlyingTable()
@@ -422,10 +445,12 @@ func getCostedIndexScan(
 		bestStat = stats.UpdateCounts(bestStat)
 	}
 
-	if bestStat.FuncDeps().HasMax1Row() && !qFlags.JoinIsSet() && !qFlags.SubqueryIsSet() && lookup.Ranges.Len() == 1 {
+	if bestStat.FuncDeps().HasMax1Row() && !qFlags.JoinIsSet() && !qFlags.SubqueryIsSet() && lookup.Ranges.Len() == 1 && !planReturnsRowIter() {
 		// Strict index lookup without a join or subquery scope will return
 		// at most one row. We could also use some sort of scope counting
-		// to check for single scope.
+		// to check for single scope. Expressions that return a RowIter
+		// (set-returning functions) can multiply output rows, so their
+		// presence also disqualifies the plan.
 		qFlags.Set(sql.QFlagMax1Row)
 	}
 
@@ -433,6 +458,10 @@ func getCostedIndexScan(
 }
 
 func addIndexScans(ctx *sql.Context, m *memo.Memo, catalog *Catalog) error {
+	// This is only reached when replanning a join, and the memo does not have access to the full plan, so we
+	// conservatively report that the plan may contain RowIter expressions. This cannot cost us the max1Row
+	// shortcut: the join query flag set during replanning already disqualifies it.
+	planReturnsRowIter := func() bool { return true }
 	m.Tracer.PushDebugContext("addIndexScans")
 	defer m.Tracer.PopDebugContext()
 
@@ -505,7 +534,7 @@ func addIndexScans(ctx *sql.Context, m *memo.Memo, catalog *Catalog) error {
 		for i, idx := range indexes {
 			sqlIndexes[i] = idx.SqlIdx()
 		}
-		ita, stat, filters, err := getCostedIndexScan(ctx, m.StatsProvider(), catalog, rt, sqlIndexes, filter.Filters, m.QFlags)
+		ita, stat, filters, err := getCostedIndexScan(ctx, m.StatsProvider(), catalog, rt, sqlIndexes, filter.Filters, m.QFlags, planReturnsRowIter)
 		if err != nil {
 			m.HandleErr(err)
 		}
