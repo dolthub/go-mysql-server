@@ -2557,7 +2557,6 @@ var FunctionQueryTests = []QueryTest{
 		Query:    "select date('bad time');",
 		Expected: []sql.Row{{nil}},
 	},
-	// TODO: it seems like MySQL parses these as datetime then converts them to dates
 	{
 		Query:                           "select date('0000-00-00');",
 		Expected:                        []sql.Row{{nil}},
@@ -2608,8 +2607,10 @@ var FunctionQueryTests = []QueryTest{
 		ExpectedWarningMessageSubstring: "Incorrect date value",
 	},
 
-	// zero-ing individual portions of date
+	// Zero for individual portions of date
+	// The result here depends on NO_ZERO_IN_DATE sql_mode
 	{
+		// Zero year is always valid
 		Query: "select date('0000-01-02');",
 		Expected: []sql.Row{
 			{time.Date(0000, 01, 02, 0, 0, 0, 0, time.UTC)},
@@ -2618,14 +2619,20 @@ var FunctionQueryTests = []QueryTest{
 	{
 		Query: "select date('1234-00-02');",
 		Expected: []sql.Row{
-			{time.Date(1234, 00, 02, 0, 0, 0, 0, time.UTC)},
+			{nil},
 		},
+		ExpectedWarningsCount:           1,
+		ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+		ExpectedWarningMessageSubstring: "Incorrect date value",
 	},
 	{
 		Query: "select date('1234-01-00');",
 		Expected: []sql.Row{
-			{time.Date(1234, 01, 00, 0, 0, 0, 0, time.UTC)},
+			{nil},
 		},
+		ExpectedWarningsCount:           1,
+		ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+		ExpectedWarningMessageSubstring: "Incorrect date value",
 	},
 
 	// weirdly formatted

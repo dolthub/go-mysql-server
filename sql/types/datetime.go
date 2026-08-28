@@ -489,11 +489,13 @@ func (t datetimeType) parseDatetime(str string) (any, bool, error) {
 	if err != nil {
 		return nil, delimWarn, sql.ErrIncorrectDateTimeValue.New(t.String(), value)
 	}
-	if month > 12 {
+	// 0 for the month is allowed if NO_ZERO_IN_DATE is not in sql_mode
+	if month < 1 || month > 12 {
 		return nil, delimWarn, sql.ErrIncorrectDateTimeValue.New(t.String(), value)
 	}
 	day, err := strconv.Atoi(dayStr)
-	if err != nil {
+	// 0 for the day is allowed if NO_ZERO_IN_DATE is not in sql_mode
+	if err != nil || day < 1 || day > 31 {
 		return nil, delimWarn, sql.ErrIncorrectDateTimeValue.New(t.String(), value)
 	}
 	// GetLastDay already handles invalid months
