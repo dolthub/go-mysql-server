@@ -16,17 +16,16 @@ package function
 
 import (
 	"fmt"
-
 	"strings"
 	"time"
 
 	"github.com/cockroachdb/apd/v3"
+	"github.com/dolthub/vitess/go/mysql"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"github.com/dolthub/vitess/go/mysql"
 )
 
 // ErrTimeUnexpectedlyNil is thrown when a function encounters and unexpectedly nil time
