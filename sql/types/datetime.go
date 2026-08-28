@@ -98,29 +98,27 @@ var (
 	// datetimeMinTime is the minimum representable time value, MYSQL: 0000-00-00 00:00:00.000000 (microseconds)
 	datetimeMinTime = ZeroTime
 
-	NoDelimiterDateLayout = "20060102"
-	DateOnlyLayouts       = []string{
+	NoDelimiterDateLayout     = "20060102"
+	NoDelimiterDatetimeLayout = "20060102150405"
+	DateOnlyLayouts           = []string{
 		"2006-01-02",
 		"2006/01/02",
 		NoDelimiterDateLayout,
 		"2006-1-2",
 	}
 
-	NoDelimiterDatetimeLayout = "20060102150405"
-
-	TimezoneTimestampDatetimeLayout = "2006-01-02 15:04:05.999999999 -0700 MST" // represents standard Time.time.UTC()
-
+	// TODO: remove this?
 	// TimestampDatetimeLayouts hold extra timestamps allowed for parsing. It does
-	// not have all the layouts supported by mysql. Missing are two digit year
+	// not have all the layouts supported by MySQL. Missing are two digit year
 	// versions of common cases and dates that use non common separators.
 	//
 	// https://github.com/MariaDB/server/blob/mysql-5.5.36/sql-common/my_time.c#L124
 	TimestampDatetimeLayouts = append([]string{
 		time.RFC3339Nano,
+		time.RFC3339,
 		"2006-01-02 15:04:05.999999999",
 		"2006-1-2 15:4:5.999999999",
 		"2006-1-2:15:4:5.999999999",
-		time.RFC3339,
 		"2006-01-02 15:04:05.",
 		"2006-01-02T15:04:05",
 		"2006-01-02 15:04:.",
@@ -129,6 +127,17 @@ var (
 		"2006-01-02 15:4",
 		NoDelimiterDatetimeLayout,
 	}, DateOnlyLayouts...)
+
+	// DatetimeTimezoneLayout represents standard Time.time.UTC()
+	DatetimeTimezoneLayout = "2006-01-02 15:04:05.999999999 -0700 MST"
+
+	// ExtraDatetimeLayouts hold additional Datetime layouts allowed for parsing.
+	// This is to maintain existing compatibility for drivers that use time.Time directly.
+	ExtraDatetimeLayouts = []string{
+		time.RFC3339Nano,
+		time.RFC3339,
+		DatetimeTimezoneLayout,
+	}
 
 	// ZeroTime is -0001-11-30 00:00:00 UTC which is the closest Go can get to 0000-00-00 00:00:00 without conflicting
 	// with a valid timestamp in MySQL
@@ -408,13 +417,22 @@ func GetLastDay(year, month int) (res int, ok bool) {
 var DateTimeRegex = regexp.MustCompile(`^(\d+)\p{P}+(\d+)\p{P}+(\d+)[\s\p{P}]*(\d*)?\p{P}*(\d*)?\p{P}*(\d*)?\p{P}*(\d*)?(.*)$`)
 var NoDelimiterDateTimeRegex = regexp.MustCompile(`\d+`)
 
-// parseDatetime parses a DateTime according to MySQL rules.
+// parseDatetimeExtraLayouts parses a string Datetime according to formats not directly supported by MySQL
+func (t datetimeType) parseDatetimeExtraLayouts(str string) (any, error) {
+	var res time.Time
+	var err error
+	for _, layout := range ExtraDatetimeLayouts {
+		res, err = time.Parse(layout, str)
+		if err == nil {
+			return res, nil
+		}
+	}
+	return res, err
+}
+
+// parseDatetime parses a Datetime according to MySQL rules.
 func (t datetimeType) parseDatetime(str string) (any, bool, error) {
 	var delimWarn bool
-	// TODO: get rid of this
-	if dt, err := time.Parse(TimezoneTimestampDatetimeLayout, str); err == nil {
-		return dt.UTC(), delimWarn, nil
-	}
 
 	// TODO: Properly implement date only parsing with no delimiters.
 	//  This is just here for existing tests to pass
@@ -427,6 +445,11 @@ func (t datetimeType) parseDatetime(str string) (any, bool, error) {
 	}
 
 	value := strings.Trim(str, NumericCutSet) // TODO: leading and trailing whitespace(s) should throw warning
+	res, err := t.parseDatetimeExtraLayouts(value)
+	if err == nil {
+		return res, delimWarn, nil
+	}
+
 	matchIdxs := DateTimeRegex.FindStringSubmatchIndex(value)
 	if len(matchIdxs) == 0 {
 		return nil, delimWarn, sql.ErrIncorrectDateTimeValue.New(t.String(), value)
