@@ -458,10 +458,6 @@ func getCostedIndexScan(
 }
 
 func addIndexScans(ctx *sql.Context, m *memo.Memo, catalog *Catalog) error {
-	// This is only reached when replanning a join, and the memo does not have access to the full plan, so we
-	// conservatively report that the plan may contain RowIter expressions. This cannot cost us the max1Row
-	// shortcut: the join query flag set during replanning already disqualifies it.
-	planReturnsRowIter := func() bool { return true }
 	m.Tracer.PushDebugContext("addIndexScans")
 	defer m.Tracer.PopDebugContext()
 
@@ -534,6 +530,11 @@ func addIndexScans(ctx *sql.Context, m *memo.Memo, catalog *Catalog) error {
 		for i, idx := range indexes {
 			sqlIndexes[i] = idx.SqlIdx()
 		}
+
+		// the rowIter analysis is a no-op here as it only impacts the QFlagMax1Row setting, which doesn't apply to
+		// this phase of join planning
+		planReturnsRowIter := func() bool { return false }
+
 		ita, stat, filters, err := getCostedIndexScan(ctx, m.StatsProvider(), catalog, rt, sqlIndexes, filter.Filters, m.QFlags, planReturnsRowIter)
 		if err != nil {
 			m.HandleErr(err)
