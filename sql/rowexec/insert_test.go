@@ -198,3 +198,115 @@ func TestInsert(t *testing.T) {
 		})
 	}
 }
+
+// TestInsertOnDuplicateWhereLargeBatch verifies large filtered batches avoid excessive memory use and stack exhaustion.
+func TestInsertOnDuplicateWhereLargeBatch(t *testing.T) {
+	db := memory.NewDatabase("foo")
+	provider := memory.NewDBProvider(db)
+	ctx := newContext(provider)
+	table := memory.NewTable(ctx, db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
+		{Name: "c1", Source: "foo", Type: types.Int64, PrimaryKey: true},
+	}), nil)
+
+	insertOne := plan.NewInsertInto(db, plan.NewResolvedTable(table, nil, nil), plan.NewValues([][]sql.Expression{{
+		expression.NewLiteral(int64(1), types.Int64),
+	}}), false, []string{"c1"}, nil, false)
+	iter, err := DefaultBuilder.Build(ctx, insertOne, nil)
+	require.NoError(t, err)
+	_, err = sql.RowIterToRows(ctx, iter)
+	require.NoError(t, err)
+
+	const conflictCount = 100_000
+	values := make([][]sql.Expression, conflictCount)
+	for idx := range values {
+		values[idx] = []sql.Expression{expression.NewLiteral(int64(1), types.Int64)}
+	}
+	setField := expression.NewSetField(
+		expression.NewGetField(0, types.Int64, "c1", false),
+		expression.NewGetField(1, types.Int64, "c1", false),
+	)
+	insertConflicts := plan.NewInsertInto(
+		db,
+		plan.NewResolvedTable(table, nil, nil),
+		plan.NewValues(values),
+		false,
+		[]string{"c1"},
+		plan.NewUpdateExprs([]sql.Expression{setField}, 1),
+		false,
+	)
+	insertConflicts.OnDupWhere = expression.NewLiteral(false, types.Boolean)
+	iter, err = DefaultBuilder.Build(ctx, insertConflicts, nil)
+	require.NoError(t, err)
+	rows, err := sql.RowIterToRows(ctx, iter)
+	require.NoError(t, err)
+	require.Empty(t, rows)
+}
+
+// TestInsertOnDuplicateReturning verifies that conflict updates project the updated row.
+func TestInsertOnDuplicateReturning(t *testing.T) {
+	db := memory.NewDatabase("foo")
+	provider := memory.NewDBProvider(db)
+	ctx := newContext(provider)
+	table := memory.NewTable(ctx, db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
+		{Name: "c1", Source: "foo", Type: types.Int64, PrimaryKey: true},
+		{Name: "c2", Source: "foo", Type: types.Int64},
+	}), nil)
+
+	insertOne := plan.NewInsertInto(db, plan.NewResolvedTable(table, nil, nil), plan.NewValues([][]sql.Expression{{
+		expression.NewLiteral(int64(1), types.Int64),
+		expression.NewLiteral(int64(1), types.Int64),
+	}}), false, []string{"c1", "c2"}, nil, false)
+	iter, err := DefaultBuilder.Build(ctx, insertOne, nil)
+	require.NoError(t, err)
+	_, err = sql.RowIterToRows(ctx, iter)
+	require.NoError(t, err)
+
+	setField := expression.NewSetField(
+		expression.NewGetField(1, types.Int64, "c2", false),
+		expression.NewGetField(3, types.Int64, "c2", false),
+	)
+	insertConflict := plan.NewInsertInto(
+		db,
+		plan.NewResolvedTable(table, nil, nil),
+		plan.NewValues([][]sql.Expression{{
+			expression.NewLiteral(int64(1), types.Int64),
+			expression.NewLiteral(int64(2), types.Int64),
+		}}),
+		false,
+		[]string{"c1", "c2"},
+		plan.NewUpdateExprs([]sql.Expression{setField}, 1),
+		false,
+	)
+	insertConflict.Returning = []sql.Expression{expression.NewGetField(1, types.Int64, "c2", false)}
+	iter, err = DefaultBuilder.Build(ctx, insertConflict, nil)
+	require.NoError(t, err)
+	rows, err := sql.RowIterToRows(ctx, iter)
+	require.NoError(t, err)
+	require.Equal(t, []sql.Row{{int64(2)}}, rows)
+}
+
+// TestOnDuplicateUpdateAffectedRows verifies MySQL and PostgreSQL duplicate-update counting policies.
+func TestOnDuplicateUpdateAffectedRows(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	schema := sql.Schema{{Name: "c1", Type: types.Int64}}
+	tests := []struct {
+		name                string
+		row                 sql.Row
+		countUpdateAsOneRow bool
+		expected            int
+	}{
+		{name: "MySQL changed update", row: sql.Row{int64(1), int64(2)}, expected: 2},
+		{name: "MySQL unchanged update", row: sql.Row{int64(1), int64(1)}, expected: 0},
+		{name: "PostgreSQL changed update", row: sql.Row{int64(1), int64(2)}, countUpdateAsOneRow: true, expected: 1},
+		{name: "PostgreSQL unchanged update", row: sql.Row{int64(1), int64(1)}, countUpdateAsOneRow: true, expected: 1},
+		{name: "PostgreSQL insert", row: sql.Row{int64(1)}, countUpdateAsOneRow: true, expected: 1},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			handler := &onDuplicateUpdateHandler{schema: schema, countUpdateAsOneRow: test.countUpdateAsOneRow}
+			require.NoError(t, handler.handleRowUpdate(ctx, test.row))
+			require.Equal(t, test.expected, handler.rowsAffected)
+		})
+	}
+}

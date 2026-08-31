@@ -2336,7 +2336,7 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 		// The second way to rebuild an index is with a full table rewrite
 		rwt, isRewritable := idxAltTbl.(sql.RewritableTable)
 		if isRewritable && indexCreateRequiresBuild(n) {
-			return rewriteTableForIndexCreate(ctx, n, table, rwt)
+			return rewriteTableForIndexCreate(ctx, b.EngineOverrides, n, table, rwt)
 		}
 
 		return nil
@@ -2704,8 +2704,14 @@ func assignColumnIndexes(ctx *sql.Context, e sql.Expression, schema sql.Schema) 
 	return e
 }
 
-func rewriteTableForIndexCreate(ctx *sql.Context, n *plan.AlterIndex, table sql.Table, rwt sql.RewritableTable) error {
-	sch := sql.SchemaToPrimaryKeySchema(ctx, table, n.TargetSchema())
+func rewriteTableForIndexCreate(ctx *sql.Context, overrides sql.EngineOverrides, n *plan.AlterIndex, table sql.Table, rwt sql.RewritableTable) error {
+	targetSchema := n.TargetSchema()
+	isVirtual := table.Schema(ctx).HasVirtualColumns()
+	resolvedTargetSchema := targetSchema
+	if isVirtual {
+		resolvedTargetSchema = resolveGeneratedColumns(ctx, overrides, n.Db.Name(), table.Name(), targetSchema)
+	}
+	sch := sql.SchemaToPrimaryKeySchema(ctx, table, targetSchema)
 	inserter, err := rwt.RewriteInserter(ctx, sch, sch, nil, nil, n.Columns)
 	if err != nil {
 		return err
@@ -2719,10 +2725,9 @@ func rewriteTableForIndexCreate(ctx *sql.Context, n *plan.AlterIndex, table sql.
 	var rowIter sql.RowIter = sql.NewTableRowIter(ctx, rwt, partitions)
 	rowIter = withSafepointPeriodicallyIter(rowIter)
 
-	isVirtual := table.Schema(ctx).HasVirtualColumns()
 	var projections []sql.Expression
 	if isVirtual {
-		projections = virtualTableProjections(ctx, n.TargetSchema(), table.Name())
+		projections = virtualTableProjections(ctx, resolvedTargetSchema, table.Name())
 	}
 
 	for {

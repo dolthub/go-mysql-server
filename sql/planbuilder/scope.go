@@ -107,9 +107,9 @@ func (s *scope) resolveColumn(db, table, col string, checkParent, chooseFirst bo
 						return c, true
 					}
 				}
-				if c.table == OnDupValuesPrefix {
+				if s.insertTableAlias != "" && c.table == s.insertTableAlias {
 					return found, true
-				} else if found.table == OnDupValuesPrefix {
+				} else if s.insertTableAlias != "" && found.table == s.insertTableAlias {
 					return c, true
 				}
 				err := sql.ErrAmbiguousColumnName.New(col, []string{c.table, found.table})

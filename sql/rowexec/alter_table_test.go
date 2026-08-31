@@ -174,6 +174,33 @@ func TestAddColumnToSchema(t *testing.T) {
 	}
 }
 
+// TestResolveGeneratedColumnsForIndexRewrite verifies persisted virtual expressions are bound before a table rewrite.
+func TestResolveGeneratedColumnsForIndexRewrite(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	varchar20 := types.MustCreateStringWithDefaults(sqltypes.VarChar, 20)
+	generated := sql.NewUnresolvedColumnDefaultValue("lower(fruit)")
+	schema := sql.Schema{
+		{Name: "fruit", Type: varchar20, Source: "fruits"},
+		{
+			Name:         "lower_fruit",
+			Type:         varchar20,
+			Source:       "fruits",
+			Virtual:      true,
+			HiddenSystem: true,
+			Generated:    generated,
+		},
+	}
+
+	resolved := resolveGeneratedColumns(ctx, sql.EngineOverrides{}, "mydb", "fruits", schema)
+	require.False(t, schema[1].Generated.Resolved())
+	require.True(t, resolved[1].Generated.Resolved())
+
+	projections := virtualTableProjections(ctx, resolved, "fruits")
+	row, err := ProjectRow(ctx, projections, sql.Row{"Apple"})
+	require.NoError(t, err)
+	require.Equal(t, sql.Row{"Apple", "apple"}, row)
+}
+
 func TestModifyColumnInSchema(t *testing.T) {
 	varchar20 := types.MustCreateStringWithDefaults(sqltypes.VarChar, 20)
 

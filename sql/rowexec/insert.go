@@ -39,7 +39,10 @@ type insertIter struct {
 
 	ctx                 *sql.Context
 	onDupKeyUpdateExprs *plan.UpdateExprs
-	unlocker            func()
+	onDupWhere          sql.Expression
+	// countOnDuplicateUpdateAsOneRow applies single-row affected-count semantics to duplicate updates.
+	countOnDuplicateUpdateAsOneRow bool
+	unlocker                       func()
 
 	deferredDefaults sets.FastIntSet
 	checks           sql.CheckConstraints
@@ -69,16 +72,27 @@ func getInsertExpressions(ctx *sql.Context, values sql.Node) []sql.Expression {
 }
 
 func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error) {
+	for {
+		row, skipped, err := i.next(ctx)
+		if skipped || errors.Is(err, sql.ErrRowEditCanceled) {
+			continue
+		}
+		return row, err
+	}
+}
+
+// next processes one row from the insert source.
+func (i *insertIter) next(ctx *sql.Context) (returnRow sql.Row, skipped bool, returnErr error) {
 	row, err := i.rowSource.Next(ctx)
 	if err == io.EOF {
-		return nil, err
+		return nil, false, err
 	}
 
 	if err != nil {
 		if errors.Is(err, sql.ErrRowEditCanceled) {
-			return i.Next(ctx)
+			return nil, false, err
 		}
-		return nil, i.ignoreOrClose(ctx, row, err)
+		return nil, false, i.ignoreOrClose(ctx, row, err)
 	}
 
 	// Increment row number for error reporting (MySQL starts at 1)
@@ -104,12 +118,12 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 
 	err = i.validateNullability(ctx, i.schema, row)
 	if err != nil {
-		return nil, i.ignoreOrClose(ctx, row, err)
+		return nil, false, i.ignoreOrClose(ctx, row, err)
 	}
 
 	err = i.evaluateChecks(ctx, row)
 	if err != nil {
-		return nil, i.ignoreOrClose(ctx, row, err)
+		return nil, false, i.ignoreOrClose(ctx, row, err)
 	}
 
 	origRow := make(sql.Row, len(row))
@@ -172,7 +186,7 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 					case types.ErrConvertingToEnum.Is(cErr), sql.ErrInvalidSetValue.Is(cErr), sql.ErrConvertingToSet.Is(cErr):
 						cErr = types.ErrDataTruncatedForColumnAtRow.New(col.Name, i.rowNumber)
 					}
-					return nil, sql.NewWrappedInsertError(origRow, cErr)
+					return nil, false, sql.NewWrappedInsertError(origRow, cErr)
 				}
 			}
 			row[idx] = converted
@@ -191,7 +205,7 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 				if !sql.ErrPrimaryKeyViolation.Is(err) && !sql.ErrUniqueKeyViolation.Is(err) {
 					i.rowSource.Close(ctx)
 					i.rowSource = nil
-					return nil, sql.NewWrappedInsertError(row, err)
+					return nil, false, sql.NewWrappedInsertError(row, err)
 				}
 
 				// TODO: For multitables, UniqueKeyError.Existing might not be the correct row if the error is coming
@@ -200,7 +214,7 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 				if err = i.replacer.Delete(ctx, ue.Existing); err != nil {
 					i.rowSource.Close(ctx)
 					i.rowSource = nil
-					return nil, sql.NewWrappedInsertError(row, err)
+					return nil, false, sql.NewWrappedInsertError(row, err)
 				}
 				// the row had to be deleted, write the values into the toReturn row
 				copy(toReturn, ue.Existing)
@@ -208,7 +222,7 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 				break
 			}
 		}
-		return toReturn, nil
+		return toReturn, false, nil
 	} else {
 		if err := i.inserter.Insert(ctx, row); err != nil {
 			if (sql.ErrPrimaryKeyViolation.Is(err) || sql.ErrUniqueKeyViolation.Is(err)) &&
@@ -216,20 +230,31 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 				// TODO: For multitables, UniqueKeyError.Existing might not be the correct row if the error is coming
 				//  from a secondary table. https://github.com/dolthub/dolt/issues/10882#issuecomment-4255176383
 				if uniqueKeyError, ok := err.(*errors.Error).Cause().(sql.UniqueKeyError); ok {
-					return i.handleOnDuplicateKeyUpdate(ctx, uniqueKeyError.Existing, row)
+					if i.onDupWhere != nil {
+						matches, err := i.onDupWhere.Eval(ctx, append(uniqueKeyError.Existing, row...))
+						if err != nil {
+							return nil, false, err
+						}
+						if !sql.IsTrue(matches) {
+							return nil, true, nil
+						}
+					}
+					updatedRow, err := i.handleOnDuplicateKeyUpdate(ctx, uniqueKeyError.Existing, row)
+					return updatedRow, false, err
 				}
 			}
-			return nil, i.ignoreOrClose(ctx, row, err)
+			return nil, false, i.ignoreOrClose(ctx, row, err)
 		}
 	}
 
 	i.updateLastInsertId(ctx, row)
 
 	if len(i.returnExprs) > 0 && !i.hasAfterTrigger {
-		return i.getReturningRow(ctx, row)
+		returningRow, err := i.getReturningRow(ctx, row)
+		return returningRow, false, err
 	}
 
-	return row, nil
+	return row, false, nil
 }
 
 func (i *insertIter) getReturningRow(ctx *sql.Context, row sql.Row) (sql.Row, error) {
@@ -294,6 +319,9 @@ func (i *insertIter) handleOnDuplicateKeyUpdate(ctx *sql.Context, oldRow, newRow
 	err = i.updater.Update(ctx, oldRow, evalRow)
 	if err != nil {
 		return nil, i.ignoreOrClose(ctx, newRow, err)
+	}
+	if len(i.returnExprs) > 0 && !i.hasAfterTrigger {
+		return i.getReturningRow(ctx, evalRow)
 	}
 
 	return oldRow.Append(evalRow), nil
