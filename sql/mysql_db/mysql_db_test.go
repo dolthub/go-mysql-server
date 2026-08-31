@@ -33,9 +33,7 @@ func (p *capturingPersistence) Persist(ctx *sql.Context, data []byte) error {
 
 func TestMySQLDbOverwriteUsersAndGrantsData(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	db := CreateEmptyMySQLDb()
-	p := &capturingPersistence{}
-	db.SetPersister(p)
+	db, p := newMySQLDbWithPersistence()
 
 	db.AddRootAccount()
 	ed := db.Editor()
@@ -87,94 +85,112 @@ func TestMySQLDbOverwriteUsersAndGrantsData(t *testing.T) {
 	rd.Close()
 }
 
-// TestMySQLDbOverwriteUsersAndGrantsDataKeepsEphemeralUsers asserts that an
+// account is a user to create in a test database.
+type account struct {
+	user, host, password string
+}
+
+// newMySQLDbWithPersistence returns an empty MySQLDb whose Persist payloads
+// are captured by the returned persistence.
+func newMySQLDbWithPersistence() (*MySQLDb, *capturingPersistence) {
+	db := CreateEmptyMySQLDb()
+	p := &capturingPersistence{}
+	db.SetPersister(p)
+	return db, p
+}
+
+// withEditor runs cb against an Editor for db, closing it afterwards.
+func withEditor(db *MySQLDb, cb func(ed *Editor)) {
+	ed := db.Editor()
+	defer ed.Close()
+	cb(ed)
+}
+
+// primaryPayload returns the serialized users and grants of a database
+// containing the given accounts. This is the payload a primary replicates to
+// its replicas and which they apply with OverwriteUsersAndGrantData.
+func primaryPayload(t *testing.T, ctx *sql.Context, accounts ...account) []byte {
+	primary, persistence := newMySQLDbWithPersistence()
+	withEditor(primary, func(ed *Editor) {
+		for _, a := range accounts {
+			primary.AddSuperUser(ed, a.user, a.host, a.password)
+		}
+		require.NoError(t, primary.Persist(ctx, ed))
+	})
+	require.NotNil(t, persistence.buf)
+	return persistence.buf
+}
+
+// newReplica returns a database standing in for a replica, with an ephemeral
+// super user of its own creation, of the kind a server instance adds for local
+// CLI access.
+func newReplica(ephemeral account) (*MySQLDb, *capturingPersistence) {
+	replica, persistence := newMySQLDbWithPersistence()
+	withEditor(replica, func(ed *Editor) {
+		replica.AddEphemeralSuperUser(ed, ephemeral.user, ephemeral.host, ephemeral.password)
+	})
+	return replica, persistence
+}
+
+// TestMySQLDbOverwriteUsersAndGrantsDataEphemeralUsers asserts that an
 // overwrite, which is how a replica applies a primary's users and grants, keeps
 // the ephemeral users of the process it is applied to. They are never part of a
 // payload, since Persist skips them, so dropping them would leave a replica
 // without the accounts its own server instance created.
-func TestMySQLDbOverwriteUsersAndGrantsDataKeepsEphemeralUsers(t *testing.T) {
+func TestMySQLDbOverwriteUsersAndGrantsDataEphemeralUsers(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
-	// The payload a primary replicates: root and one created user.
-	primary := CreateEmptyMySQLDb()
-	primaryPersistence := &capturingPersistence{}
-	primary.SetPersister(primaryPersistence)
-	primary.AddRootAccount()
-	ed := primary.Editor()
-	primary.AddSuperUser(ed, "aaron", "%", "aaronspassword")
-	require.NoError(t, primary.Persist(ctx, ed))
-	ed.Close()
-	payload := primaryPersistence.buf
-	require.NotNil(t, payload)
+	t.Run("KeptAcrossOverwrite", func(t *testing.T) {
+		payload := primaryPayload(t, ctx,
+			account{"root", "localhost", ""},
+			account{"aaron", "%", "aaronspassword"})
 
-	// The replica has an ephemeral user of its own.
-	replica := CreateEmptyMySQLDb()
-	replicaPersistence := &capturingPersistence{}
-	replica.SetPersister(replicaPersistence)
-	replica.AddRootAccount()
-	ed = replica.Editor()
-	replica.AddEphemeralSuperUser(ed, "ephemeral_user", "localhost", "ephemeralpassword")
-	ed.Close()
+		replica, replicaPersistence := newReplica(account{"ephemeral_user", "localhost", "ephemeralpassword"})
+		withEditor(replica, func(ed *Editor) {
+			require.NoError(t, replica.OverwriteUsersAndGrantData(ctx, ed, payload))
+			require.NoError(t, replica.Persist(ctx, ed))
+		})
 
-	ed = replica.Editor()
-	require.NoError(t, replica.OverwriteUsersAndGrantData(ctx, ed, payload))
-	require.NoError(t, replica.Persist(ctx, ed))
-	ed.Close()
+		rd := replica.Reader()
+		defer rd.Close()
 
-	rd := replica.Reader()
-	defer rd.Close()
+		require.NotNil(t, replica.GetUser(rd, "aaron", "%", false))
 
-	require.NotNil(t, replica.GetUser(rd, "aaron", "%", false))
+		ephemeral := replica.GetUser(rd, "ephemeral_user", "localhost", false)
+		require.NotNil(t, ephemeral)
+		require.True(t, ephemeral.IsEphemeral)
+		require.True(t, ephemeral.IsSuperUser)
 
-	ephemeral := replica.GetUser(rd, "ephemeral_user", "localhost", false)
-	require.NotNil(t, ephemeral)
-	require.True(t, ephemeral.IsEphemeral)
-	require.True(t, ephemeral.IsSuperUser)
+		// The ephemeral user is still not persisted, so the replica's persisted
+		// copy is only what the primary sent.
+		replicaOfPayload := CreateEmptyMySQLDb()
+		require.NoError(t, replicaOfPayload.LoadData(ctx, replicaPersistence.buf))
+		rd2 := replicaOfPayload.Reader()
+		defer rd2.Close()
+		require.NotNil(t, replicaOfPayload.GetUser(rd2, "aaron", "%", false))
+		require.Nil(t, replicaOfPayload.GetUser(rd2, "ephemeral_user", "localhost", false))
+	})
 
-	// The ephemeral user is still not persisted, so the replica's persisted
-	// copy is only what the primary sent.
-	replicaOfPayload := CreateEmptyMySQLDb()
-	require.NoError(t, replicaOfPayload.LoadData(ctx, replicaPersistence.buf))
-	rd2 := replicaOfPayload.Reader()
-	defer rd2.Close()
-	require.NotNil(t, replicaOfPayload.GetUser(rd2, "aaron", "%", false))
-	require.Nil(t, replicaOfPayload.GetUser(rd2, "ephemeral_user", "localhost", false))
-}
+	t.Run("TakePrecedenceOverPayload", func(t *testing.T) {
+		payload := primaryPayload(t, ctx, account{"shared_name", "localhost", "primarypassword"})
 
-// TestMySQLDbOverwriteUsersAndGrantsDataEphemeralUserWins asserts that an
-// ephemeral user takes precedence over an account with the same name and host
-// in the applied payload.
-func TestMySQLDbOverwriteUsersAndGrantsDataEphemeralUserWins(t *testing.T) {
-	ctx := sql.NewEmptyContext()
+		replica, _ := newReplica(account{"shared_name", "localhost", "ephemeralpassword"})
 
-	primary := CreateEmptyMySQLDb()
-	primaryPersistence := &capturingPersistence{}
-	primary.SetPersister(primaryPersistence)
-	ed := primary.Editor()
-	primary.AddSuperUser(ed, "shared_name", "localhost", "primarypassword")
-	require.NoError(t, primary.Persist(ctx, ed))
-	ed.Close()
+		rd := replica.Reader()
+		ephemeralAuthString := replica.GetUser(rd, "shared_name", "localhost", false).AuthString
+		rd.Close()
 
-	replica := CreateEmptyMySQLDb()
-	replica.SetPersister(&capturingPersistence{})
-	ed = replica.Editor()
-	replica.AddEphemeralSuperUser(ed, "shared_name", "localhost", "ephemeralpassword")
-	ed.Close()
+		withEditor(replica, func(ed *Editor) {
+			require.NoError(t, replica.OverwriteUsersAndGrantData(ctx, ed, payload))
+		})
 
-	rd := replica.Reader()
-	ephemeralAuthString := replica.GetUser(rd, "shared_name", "localhost", false).AuthString
-	rd.Close()
-
-	ed = replica.Editor()
-	require.NoError(t, replica.OverwriteUsersAndGrantData(ctx, ed, primaryPersistence.buf))
-	ed.Close()
-
-	rd = replica.Reader()
-	defer rd.Close()
-	user := replica.GetUser(rd, "shared_name", "localhost", false)
-	require.NotNil(t, user)
-	require.True(t, user.IsEphemeral)
-	require.Equal(t, ephemeralAuthString, user.AuthString)
+		rd = replica.Reader()
+		defer rd.Close()
+		user := replica.GetUser(rd, "shared_name", "localhost", false)
+		require.NotNil(t, user)
+		require.True(t, user.IsEphemeral)
+		require.Equal(t, ephemeralAuthString, user.AuthString)
+	})
 }
 
 func TestMatchesHostPattern(t *testing.T) {
@@ -225,9 +241,7 @@ func TestMatchesHostPattern(t *testing.T) {
 
 func TestGetUserWithWildcardAuthentication(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	db := CreateEmptyMySQLDb()
-	p := &capturingPersistence{}
-	db.SetPersister(p)
+	db, _ := newMySQLDbWithPersistence()
 
 	// Add test users with various host patterns
 	ed := db.Editor()
