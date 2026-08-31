@@ -909,16 +909,6 @@ func (b *Builder) buildInnerProj(fromScope, projScope *scope) *scope {
 	return outScope
 }
 
-// getMatchingCol returns the column in cols that matches the name, if it exists
-func getMatchingCol(cols []scopeColumn, name string) (scopeColumn, bool) {
-	for _, c := range cols {
-		if strings.EqualFold(c.col, name) {
-			return c, true
-		}
-	}
-	return scopeColumn{}, false
-}
-
 func (b *Builder) buildHaving(fromScope, projScope, outScope *scope, having *ast.Where) {
 	// expressions in having can be from aggOut or projScop
 	if having == nil {
@@ -944,7 +934,7 @@ func (b *Builder) buildHaving(fromScope, projScope, outScope *scope, having *ast
 		transform.InspectExpr(b.ctx, c.scalar, func(ctx *sql.Context, e sql.Expression) bool {
 			switch e := e.(type) {
 			case *expression.GetField:
-				col, found := getMatchingCol(fromScope.cols, e.Name())
+				col, found := fromScope.resolveColumn(e.Database(), e.Table(), e.Name(), false, false)
 				if found && !havingScope.colset.Contains(sql.ColumnId(col.id)) {
 					havingScope.addColumn(col)
 				}
@@ -969,7 +959,7 @@ func (b *Builder) buildHaving(fromScope, projScope, outScope *scope, having *ast
 		if !isGetField {
 			continue
 		}
-		col, found := getMatchingCol(fromScope.cols, gf.Name())
+		col, found := fromScope.resolveColumn(gf.Database(), gf.Table(), gf.Name(), false, false)
 		if found && !havingScope.colset.Contains(sql.ColumnId(col.id)) {
 			havingScope.addColumn(col)
 		}

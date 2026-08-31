@@ -433,6 +433,8 @@ func (db *MySQLDb) LoadData(ctx *sql.Context, buf []byte) (err error) {
 // This method does not support the legacy JSON serialization of users and
 // grant data. In contrast to most methods which operate with persisted users
 // and grants in *MySQLDb, this method _does_ restore persisted super users.
+//
+// Ephemeral users are not replicated data and are left in place.
 func (db *MySQLDb) OverwriteUsersAndGrantData(ctx *sql.Context, ed *Editor, buf []byte) (err error) {
 	// Recover from panics
 	defer func() {
@@ -477,9 +479,28 @@ func (db *MySQLDb) OverwriteUsersAndGrantData(ctx *sql.Context, ed *Editor, buf 
 		edges = append(edges, LoadRoleEdge(serialRoleEdge))
 	}
 
+	// Ephemeral users are process-local: they are created by the server
+	// instance itself and never appear in a serialized payload, since Persist
+	// skips them. Carry them across the overwrite instead of dropping them,
+	// and put them back after the payload's users so that a process-local
+	// account wins over a same-named account in the payload.
+	var ephemeral []*User
+	ed.VisitUsers(func(u *User) {
+		if u.IsEphemeral {
+			ephemeral = append(ephemeral, u)
+		}
+	})
+
 	ed.reader.users.Clear()
 	ed.reader.roleEdges.Clear()
 	for _, u := range users {
+		ed.PutUser(u)
+	}
+	for _, u := range ephemeral {
+		// Remove by primary key first: PutUser only replaces an identical
+		// entry, so a same-named account from the payload would otherwise
+		// remain alongside this one.
+		ed.RemoveUser(UserPrimaryKey{Host: u.Host, User: u.User})
 		ed.PutUser(u)
 	}
 	for _, e := range edges {
