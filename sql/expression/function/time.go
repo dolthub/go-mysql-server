@@ -1712,7 +1712,7 @@ type CurrTime struct {
 	prec sql.Expression
 }
 
-func (c CurrTime) IsNonDeterministic() bool {
+func (c *CurrTime) IsNonDeterministic() bool {
 	return true
 }
 
@@ -1777,7 +1777,7 @@ func (c *CurrTime) Children() []sql.Expression {
 }
 
 // Eval implements sql.Expression
-func (c *CurrTime) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+func (c *CurrTime) Eval(ctx *sql.Context, row sql.Row) (any, error) {
 	newNow, err := NewNow(ctx, c.prec)
 	if err != nil {
 		return nil, err

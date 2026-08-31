@@ -93,7 +93,7 @@ func TestQueriesSimple(t *testing.T) {
 	enginetest.TestQueries(t, harness)
 }
 
-// TestJoinQueries runs the canonical test queries against a single threaded index enabled xharness.
+// TestJoinQueries runs the canonical test queries against a single threaded index enabled harness.
 func TestJoinQueries(t *testing.T) {
 	enginetest.TestJoinQueries(t, enginetest.NewDefaultMemoryHarness())
 }
@@ -130,7 +130,7 @@ func TestJSONTableQueries(t *testing.T) {
 	enginetest.TestJSONTableQueries(t, enginetest.NewDefaultMemoryHarness())
 }
 
-// TestJSONTableScrits runs the canonical test queries against a single threaded index enabled harness.
+// TestJSONTableScripts runs the canonical test queries against a single threaded index enabled harness.
 func TestJSONTableScripts(t *testing.T) {
 	enginetest.TestJSONTableScripts(t, enginetest.NewDefaultMemoryHarness())
 }
@@ -196,19 +196,27 @@ func TestSingleScript(t *testing.T) {
 	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			//Skip:        true,
 			Name: "Parse table name as column",
 			SetUpScript: []string{
-				"create table t (tt date);",
+				`CREATE TABLE test (pk INT PRIMARY KEY, v1 VARCHAR(255));`,
+				`INSERT INTO test VALUES (1, 'a'), (2, 'b');`,
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "insert ignore into t values ('asdf')",
-					Expected: []sql.Row{{true}},
+					Query:    "SELECT temporarytesting(t) FROM test AS t;",
+					Expected: []sql.Row{},
 				},
 				{
-					Query:    "select * from t",
-					Expected: []sql.Row{{"asdf"}},
+					Query:    "SELECT temporarytesting(test) FROM test;",
+					Expected: []sql.Row{},
+				},
+				{
+					Query:    "SELECT temporarytesting(pk, test) FROM test;",
+					Expected: []sql.Row{},
+				},
+				{
+					Query:    "SELECT temporarytesting(v1, test, pk) FROM test;",
+					Expected: []sql.Row{},
 				},
 			},
 		},
