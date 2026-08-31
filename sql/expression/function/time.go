@@ -1540,8 +1540,19 @@ func NewMicrosecond(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &Microsecond{NewUnaryDatetimeFunc(arg, "MICROSECOND", types.Uint64)}
 }
 
-func (m *Microsecond) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return getDatePart(ctx, m.UnaryExpressionStub, row, microsecond)
+func (m *Microsecond) Eval(ctx *sql.Context, row sql.Row) (any, error) {
+	val, err := m.EvalChild(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	dt, ok := val.(time.Time)
+	if !ok {
+		return nil, nil
+	}
+	if types.ZeroTime.Equal(dt) {
+		return 0, nil
+	}
+	return uint64(dt.Nanosecond()) / 1000, nil // TODO: use time.Round()?
 }
 
 func (m *Microsecond) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
