@@ -371,13 +371,13 @@ func TestTime_Microsecond(t *testing.T) {
 	testCases := []struct {
 		name     string
 		row      sql.Row
-		expected interface{}
+		expected any
 		err      bool
 	}{
 		{"null date", sql.NewRow(nil), nil, false},
 		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, true},
 		{"date as string", sql.NewRow(stringDate), uint64(0), false},
-		{"date as time", sql.NewRow(currTime), uint64(currTime.Nanosecond()) / uint64(time.Microsecond), false},
+		{"date as time", sql.NewRow(currTime), uint64(currTime.Nanosecond()) / 1000, false},
 	}
 
 	for _, tt := range testCases {
