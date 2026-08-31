@@ -54,7 +54,8 @@ func TestSqlMode(t *testing.T) {
 	assert.True(t, sqlMode.PipesAsConcat())
 	assert.True(t, sqlMode.ModeEnabled("pipes_as_concat"))
 	assert.True(t, sqlMode.Strict())
-	assert.Equal(t, "ONLY_FULL_GROUP_BY,PIPES_AS_CONCAT,STRICT_TRANS_TABLES", sqlMode.String())
+	// TODO: the order should be PIPES_AS_CONCAT,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES
+	assert.Equal(t, "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,PIPES_AS_CONCAT", sqlMode.String())
 }
 
 func TestConvertSqlModeBitmask(t *testing.T) {

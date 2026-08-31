@@ -249,7 +249,7 @@ func (s *SqlMode) ParserOptions() sqlparser.ParserOptions {
 // String returns the SQL_MODE string representing this SqlMode instance.
 func (s *SqlMode) String() string {
 	if len(s.modeString) == 0 && len(s.modes) > 0 {
-		// TODO: sort these by the order they appear in the variables
+		// TODO: this should be sorted as it appears in ./sql/variables/system_variables.go
 		modes := make([]string, 0, len(s.modes))
 		for mode := range s.modes {
 			modes = append(modes, mode)
