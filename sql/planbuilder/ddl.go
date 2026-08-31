@@ -274,7 +274,9 @@ func (b *Builder) buildDropTable(inScope *scope, c *ast.DDL) (outScope *scope) {
 		}
 	}
 
-	outScope.node = plan.NewDropTable(dropTables, c.IfExists)
+	dropTable := plan.NewDropTable(dropTables, c.IfExists)
+	dropTable.Cascade = c.Cascade
+	outScope.node = dropTable
 	return
 }
 
