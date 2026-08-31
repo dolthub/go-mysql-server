@@ -377,7 +377,7 @@ func TestTime_Microsecond(t *testing.T) {
 		err      bool
 	}{
 		{"null date", sql.NewRow(nil), nil, false},
-		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, false},
+		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, true},
 		{"date as string", sql.NewRow(stringDate), uint64(0), false},
 		{"date as time", sql.NewRow(currTime), uint64(currTime.Nanosecond()) / uint64(time.Microsecond), false},
 	}
