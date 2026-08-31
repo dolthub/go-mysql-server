@@ -1563,7 +1563,7 @@ func (m *Microsecond) Eval(ctx *sql.Context, row sql.Row) (any, error) {
 	if types.ZeroTime.Equal(dt) {
 		return 0, nil
 	}
-	return uint64(dt.Nanosecond()) / 1000, nil // TODO: use time.Round()?
+	return uint64(dt.Nanosecond()) / 1000, nil
 }
 
 func (m *Microsecond) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
