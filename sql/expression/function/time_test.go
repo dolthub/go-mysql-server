@@ -338,6 +338,7 @@ func TestTime_Minute(t *testing.T) {
 func TestTime_Second(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 	f := NewSecond(ctx, expression.NewGetField(0, types.LongText, "foo", false))
+	currTime := time.Now().UTC()
 
 	testCases := []struct {
 		name     string
@@ -348,7 +349,7 @@ func TestTime_Second(t *testing.T) {
 		{"null date", sql.NewRow(nil), nil, false},
 		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, false},
 		{"date as string", sql.NewRow(stringDate), 16, false},
-		{"date as time", sql.NewRow(time.Now()), time.Now().UTC().Second(), false},
+		{"date as time", sql.NewRow(currTime), currTime.Second(), false},
 	}
 
 	for _, tt := range testCases {
@@ -368,7 +369,7 @@ func TestTime_Second(t *testing.T) {
 func TestTime_Microsecond(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 	f := NewMicrosecond(ctx, expression.NewGetField(0, types.LongText, "foo", false))
-	currTime := time.Now()
+	currTime := time.Now().UTC()
 
 	testCases := []struct {
 		name     string
