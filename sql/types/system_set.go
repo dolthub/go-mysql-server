@@ -36,9 +36,6 @@ var _ sql.CollationCoercible = systemSetType{}
 
 // NewSystemSetType returns a new systemSetType.
 func NewSystemSetType(varName string, collation sql.CollationID, values ...string) sql.SystemVariableType {
-	if varName == "sql_mode" {
-		print()
-	}
 	return systemSetType{MustCreateSetType(values, collation), varName}
 }
 
