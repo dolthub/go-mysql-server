@@ -259,7 +259,7 @@ func TestTime_Weekday(t *testing.T) {
 		err      bool
 	}{
 		{"null date", sql.NewRow(nil), nil, false},
-		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, false},
+		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, true},
 		{"date as string", sql.NewRow(stringDate), 1, false},
 		{"date as time", sql.NewRow(nowTime), int(nowTime.Weekday()+6) % 7, false},
 	}

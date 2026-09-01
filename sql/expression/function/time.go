@@ -269,7 +269,7 @@ func (d *Day) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Ex
 // Weekday is a function that returns the weekday of a date where 0 = Monday,
 // ..., 6 = Sunday.
 type Weekday struct {
-	expression.UnaryExpressionStub
+	*UnaryDatetimeFunc
 }
 
 var _ sql.FunctionExpression = (*Weekday)(nil)
@@ -277,27 +277,14 @@ var _ sql.CollationCoercible = (*Weekday)(nil)
 
 // NewWeekday creates a new Weekday UDF.
 func NewWeekday(ctx *sql.Context, date sql.Expression) sql.Expression {
-	return &Weekday{expression.UnaryExpressionStub{Child: date}}
-}
-
-// FunctionName implements sql.FunctionExpression
-func (d *Weekday) FunctionName() string {
-	return "weekday"
+	return &Weekday{
+		UnaryDatetimeFunc: NewUnaryDatetimeFunc(date, "WEEKDAY", types.Int32),
+	}
 }
 
 // Description implements sql.FunctionExpression
 func (d *Weekday) Description() string {
 	return "returns the weekday of the given date."
-}
-
-func (d *Weekday) String() string { return fmt.Sprintf("%s(%s)", d.FunctionName(), d.Child) }
-
-// Type implements the Expression interface.
-func (d *Weekday) Type(ctx *sql.Context) sql.Type { return types.Int32 }
-
-// IsNullable implements the Expression interface
-func (d *Weekday) IsNullable(ctx *sql.Context) bool {
-	return true
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -306,8 +293,20 @@ func (*Weekday) CollationCoercibility(ctx *sql.Context) (collation sql.Collation
 }
 
 // Eval implements the Expression interface.
-func (d *Weekday) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return getDatePart(ctx, d.UnaryExpressionStub, row, weekday)
+func (d *Weekday) Eval(ctx *sql.Context, row sql.Row) (any, error) {
+	val, err := d.EvalChild(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	dt, ok := val.(time.Time)
+	if !ok {
+		return nil, nil
+	}
+	if types.ZeroTime.Equal(dt) {
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrIncorrectDateTimeValue.New(types.Datetime.String(), val).Error())
+		return nil, nil
+	}
+	return (int(dt.Weekday()) + 6) % 7, nil
 }
 
 // WithChildren implements the Expression interface.
