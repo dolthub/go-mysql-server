@@ -230,7 +230,7 @@ func (c *comparison) CompareValue(ctx *sql.Context, row sql.ValueRow) (int, erro
 	}
 
 	if lv.IsNull() || rv.IsNull() {
-		return 0, nil
+		return 0, ErrNilOperand.New()
 	}
 
 	lTyp, rTyp := c.LeftChild.Type(ctx).(sql.ValueType), c.RightChild.Type(ctx).(sql.ValueType)
@@ -693,6 +693,9 @@ func (gt *GreaterThan) DebugString(ctx *sql.Context) string {
 func (gt *GreaterThan) EvalValue(ctx *sql.Context, row sql.ValueRow) (sql.Value, error) {
 	cmp, err := gt.CompareValue(ctx, row)
 	if err != nil {
+		if ErrNilOperand.Is(err) {
+			return sql.NullValue, nil
+		}
 		return sql.NullValue, err
 	}
 	if cmp != 1 {
@@ -760,6 +763,9 @@ func (lt *LessThan) DebugString(ctx *sql.Context) string {
 func (lt *LessThan) EvalValue(ctx *sql.Context, row sql.ValueRow) (sql.Value, error) {
 	cmp, err := lt.CompareValue(ctx, row)
 	if err != nil {
+		if ErrNilOperand.Is(err) {
+			return sql.NullValue, nil
+		}
 		return sql.NullValue, err
 	}
 	if cmp != -1 {
@@ -828,6 +834,9 @@ func (gte *GreaterThanOrEqual) DebugString(ctx *sql.Context) string {
 func (gte *GreaterThanOrEqual) EvalValue(ctx *sql.Context, row sql.ValueRow) (sql.Value, error) {
 	cmp, err := gte.CompareValue(ctx, row)
 	if err != nil {
+		if ErrNilOperand.Is(err) {
+			return sql.NullValue, nil
+		}
 		return sql.NullValue, err
 	}
 	if cmp == -1 {
@@ -898,6 +907,9 @@ func (lte *LessThanOrEqual) DebugString(ctx *sql.Context) string {
 func (lte *LessThanOrEqual) EvalValue(ctx *sql.Context, row sql.ValueRow) (sql.Value, error) {
 	cmp, err := lte.CompareValue(ctx, row)
 	if err != nil {
+		if ErrNilOperand.Is(err) {
+			return sql.NullValue, nil
+		}
 		return sql.NullValue, err
 	}
 	if cmp == 1 {

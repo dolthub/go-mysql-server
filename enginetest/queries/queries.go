@@ -3468,6 +3468,13 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{int64(6)}},
 	},
 	{
+		Query: "SELECT * FROM niltable WHERE b >= 1",
+		Expected: []sql.Row{
+			{int64(2), int64(2), int32(1), nil},
+			{int64(5), nil, int32(1), 5.0},
+		},
+	},
+	{
 		Query:    "SELECT i FROM niltable WHERE b IS NOT FALSE",
 		Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(4)}, {int64(5)}},
 	},
