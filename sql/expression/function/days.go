@@ -16,6 +16,7 @@ package function
 
 import (
 	"fmt"
+	"github.com/dolthub/vitess/go/mysql"
 	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -223,7 +224,7 @@ func (f *FromDays) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 // LastDay is a function that returns the date at the last day of the month.
 type LastDay struct {
-	expression.UnaryExpressionStub
+	*UnaryDatetimeFunc
 }
 
 var _ sql.FunctionExpression = (*LastDay)(nil)
@@ -231,7 +232,9 @@ var _ sql.CollationCoercible = (*LastDay)(nil)
 
 // NewLastDay creates a new LastDay function.
 func NewLastDay(ctx *sql.Context, date sql.Expression) sql.Expression {
-	return &LastDay{expression.UnaryExpressionStub{Child: date}}
+	return &LastDay{
+		UnaryDatetimeFunc: NewUnaryDatetimeFunc(date, "last_day", types.Date),
+	}
 }
 
 // CollationCoercibility implements sql.CollationCoercible
@@ -239,24 +242,9 @@ func (f *LastDay) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 	return sql.Collation_binary, 5
 }
 
-// String implements sql.Stringer
-func (f *LastDay) String() string {
-	return fmt.Sprintf("%s(%s)", f.FunctionName(), f.Child.String())
-}
-
-// FunctionName implements sql.FunctionExpression
-func (f *LastDay) FunctionName() string {
-	return "last_day"
-}
-
 // Description implements sql.FunctionExpression
 func (f *LastDay) Description() string {
 	return "return the last day of the month for date"
-}
-
-// Type implements sql.Expression
-func (f *LastDay) Type(ctx *sql.Context) sql.Type {
-	return types.Date
 }
 
 // WithChildren implements sql.Expression
@@ -268,31 +256,26 @@ func (f *LastDay) WithChildren(ctx *sql.Context, children ...sql.Expression) (sq
 }
 
 // Eval implements sql.Expression
-func (f *LastDay) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	date, err := f.Child.Eval(ctx, row)
+func (f *LastDay) Eval(ctx *sql.Context, row sql.Row) (any, error) {
+	val, err := f.EvalChild(ctx, row)
 	if err != nil {
 		return nil, err
 	}
-	if date == nil {
-		return nil, nil
-	}
 
-	date, _, err = types.Date.Convert(ctx, date)
-	if err != nil {
-		ctx.Warn(1292, "%s", err.Error())
-		return nil, nil
-	}
-
-	d, ok := date.(time.Time)
+	dt, ok := val.(time.Time)
 	if !ok {
+		return nil, sql.ErrTruncatedIncorrect.New("datetime", val)
+	}
+	if types.ZeroTime.Equal(dt) {
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrIncorrectDateTimeValue.New("datetime", dt).Error())
 		return nil, nil
 	}
 
-	lDay, ok := types.GetLastDay(d.Year(), int(d.Month()))
+	lDay, ok := types.GetLastDay(dt.Year(), int(dt.Month()))
 	if !ok {
-		return nil, sql.ErrTruncatedIncorrect.New("datetime", date)
+		return nil, sql.ErrTruncatedIncorrect.New("datetime", val)
 	}
-	return time.Date(d.Year(), d.Month(), lDay, 0, 0, 0, 0, time.UTC), nil
+	return time.Date(dt.Year(), dt.Month(), lDay, 0, 0, 0, 0, time.UTC), nil
 }
 
 // IsNullable implements sql.Expression
