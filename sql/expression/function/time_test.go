@@ -121,9 +121,9 @@ func TestTime_Quarter(t *testing.T) {
 			expected: nil,
 		},
 		{
-			name:     "invalid type",
-			row:      sql.NewRow([]byte{0, 1, 2}),
-			expected: nil,
+			name: "invalid type",
+			row:  sql.NewRow([]byte{0, 1, 2}),
+			err:  true,
 		},
 		{
 			name:     "date as string",

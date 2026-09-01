@@ -121,7 +121,7 @@ func (y *Year) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.E
 }
 
 type Quarter struct {
-	expression.UnaryExpressionStub
+	*UnaryDatetimeFunc
 }
 
 var _ sql.FunctionExpression = (*Quarter)(nil)
@@ -129,27 +129,14 @@ var _ sql.CollationCoercible = (*Quarter)(nil)
 
 // NewQuarter creates a new Month UDF.
 func NewQuarter(ctx *sql.Context, date sql.Expression) sql.Expression {
-	return &Quarter{expression.UnaryExpressionStub{Child: date}}
-}
-
-// FunctionName implements sql.FunctionExpression
-func (q *Quarter) FunctionName() string {
-	return "quarter"
+	return &Quarter{
+		UnaryDatetimeFunc: NewUnaryDatetimeFunc(date, "QUARTER", types.Int32),
+	}
 }
 
 // Description implements sql.FunctionExpression
 func (q *Quarter) Description() string {
 	return "returns the quarter of the given date."
-}
-
-func (q *Quarter) String() string { return fmt.Sprintf("%s(%s)", q.FunctionName(), q.Child) }
-
-// Type implements the Expression interface.
-func (q *Quarter) Type(ctx *sql.Context) sql.Type { return types.Int32 }
-
-// IsNullable implements the Expression interface
-func (q *Quarter) IsNullable(ctx *sql.Context) bool {
-	return true
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -158,31 +145,15 @@ func (q *Quarter) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 }
 
 // Eval implements the Expression interface.
-func (q *Quarter) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	val, err := q.Child.Eval(ctx, row)
+func (q *Quarter) Eval(ctx *sql.Context, row sql.Row) (any, error) {
+	val, err := q.EvalChild(ctx, row)
 	if err != nil {
 		return nil, err
 	}
-	// TODO: it seems like conversion logic for dates in functions is different. Only deal with 0 for now
-	switch v := val.(type) {
-	case time.Time:
-	case string:
-	default:
-		if isNumericZero(val) {
-			return 0, nil
-		}
-		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrTruncatedIncorrect.New("datetime", v).Error())
+	dt, ok := val.(time.Time)
+	if !ok {
 		return nil, nil
 	}
-
-	val, _, err = types.DatetimeMaxPrecision.Convert(ctx, val)
-	if err != nil {
-		return 0, nil
-	}
-	if val == nil {
-		return nil, nil
-	}
-	dt := val.(time.Time)
 	if types.ZeroTime.Equal(dt) {
 		return 0, nil
 	}
