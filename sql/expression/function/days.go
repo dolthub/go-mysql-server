@@ -26,7 +26,7 @@ import (
 
 // ToDays is a function that converts a date to a number of days since year 0.
 type ToDays struct {
-	expression.UnaryExpressionStub
+	*UnaryDatetimeFunc
 }
 
 var _ sql.FunctionExpression = (*ToDays)(nil)
@@ -34,7 +34,9 @@ var _ sql.CollationCoercible = (*ToDays)(nil)
 
 // NewToDays creates a new ToDays function.
 func NewToDays(ctx *sql.Context, date sql.Expression) sql.Expression {
-	return &ToDays{expression.UnaryExpressionStub{Child: date}}
+	return &ToDays{
+		UnaryDatetimeFunc: NewUnaryDatetimeFunc(date, "to_days", types.Int64),
+	}
 }
 
 // CollationCoercibility implements sql.CollationCoercible
@@ -42,24 +44,9 @@ func (t *ToDays) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 	return sql.Collation_binary, 5
 }
 
-// String implements sql.Stringer
-func (t *ToDays) String() string {
-	return fmt.Sprintf("%s(%s)", t.FunctionName(), t.Child.String())
-}
-
-// FunctionName implements sql.FunctionExpression
-func (t *ToDays) FunctionName() string {
-	return "to_days"
-}
-
 // Description implements sql.FunctionExpression
 func (t *ToDays) Description() string {
 	return "return the date argument converted to days"
-}
-
-// Type implements sql.Expression
-func (t *ToDays) Type(ctx *sql.Context) sql.Type {
-	return types.Int64
 }
 
 // WithChildren implements sql.Expression
@@ -80,36 +67,25 @@ func countLeapYears(year int) int {
 
 // Eval implements sql.Expression
 func (t *ToDays) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	date, err := t.Child.Eval(ctx, row)
+	val, err := t.EvalChild(ctx, row)
 	if err != nil {
 		return nil, err
 	}
-	if date == nil {
+	dt, ok := val.(time.Time)
+	if !ok {
 		return nil, nil
 	}
-
-	// Special case for zero date
-	if dateStr, isStr := date.(string); isStr && types.IsZeroTimestampStr(dateStr) {
-		return nil, nil
-	}
-
-	date, _, err = types.Date.Convert(ctx, date)
-	if err != nil {
-		ctx.Warn(1292, "%s", err.Error())
-		return nil, nil
-	}
-	d := date.(time.Time)
-	if d.Equal(types.ZeroTime) {
+	if types.ZeroTime.Equal(dt) {
 		return nil, nil
 	}
 
 	// Using zeroTime.Sub(date) doesn't work because it overflows time.Duration
 	// so we need to calculate the number of days manually
 	// Additionally, MySQL states that this function isn't really accurate for dates before the year 1582
-	years := d.Year()
+	years := dt.Year()
 
 	// YearDay includes leap day, so we subtract 1 from years to not count it twice
-	res := 365*years + countLeapYears(years-1) + d.YearDay()
+	res := 365*years + countLeapYears(years-1) + dt.YearDay()
 	return res, nil
 }
 
@@ -261,10 +237,9 @@ func (f *LastDay) Eval(ctx *sql.Context, row sql.Row) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	dt, ok := val.(time.Time)
 	if !ok {
-		return nil, sql.ErrTruncatedIncorrect.New("datetime", val)
+		return nil, nil
 	}
 	if types.ZeroTime.Equal(dt) {
 		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrIncorrectDateTimeValue.New("datetime", dt).Error())
