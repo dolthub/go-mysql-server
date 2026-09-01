@@ -44,7 +44,7 @@ func TestTime_Year(t *testing.T) {
 		expected interface{}
 		err      bool
 	}{
-		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, false},
+		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, true},
 		{"date as string", sql.NewRow(stringDate), 2007, false},
 		{"date as time", sql.NewRow(nowTime), nowTime.Year(), false},
 	}
