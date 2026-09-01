@@ -600,8 +600,11 @@ func (t datetimeType) SQL(ctx *sql.Context, dest []byte, v any) (sqltypes.Value,
 	}
 
 	val, _, err := t.Convert(ctx, v)
-	if err != nil {
+	if err != nil && !sql.ErrTruncatedIncorrect.Is(err) {
 		return sqltypes.Value{}, err
+	}
+	if val == nil {
+		val = ZeroTime
 	}
 	vt, ok := val.(time.Time)
 	if !ok {
