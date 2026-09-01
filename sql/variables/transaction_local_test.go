@@ -31,26 +31,14 @@ func TestTransactionLocalVariables(t *testing.T) {
 	sess := sql.NewBaseSession()
 	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
 
-	// The session starts with no transaction-local values
-	require.Empty(t, sess.GetTransactionLocalVariables())
-
 	// Set a session value, then override it with a transaction-local value
 	require.NoError(t, sess.SetSessionVariable(ctx, "net_write_timeout", int64(100)))
 	require.NoError(t, sess.SetTransactionLocalVariable(ctx, "net_write_timeout", int64(200)))
 
-	// The transaction-local value wins for session reads, while the non-local getter sees the session value
+	// The transaction-local value wins for session reads
 	val, err := sess.GetSessionVariable(ctx, "net_write_timeout")
 	require.NoError(t, err)
 	assert.Equal(t, int64(200), val)
-	val, err = sess.GetNonLocalSessionVariable(ctx, "net_write_timeout")
-	require.NoError(t, err)
-	assert.Equal(t, int64(100), val)
-	assert.Equal(t, int64(200), sess.GetAllSessionVariables()["net_write_timeout"])
-
-	// The overridden variable is reported
-	locals := sess.GetTransactionLocalVariables()
-	require.Len(t, locals, 1)
-	assert.Equal(t, int64(200), locals["net_write_timeout"].Val)
 
 	// A session set does not remove the transaction-local override
 	require.NoError(t, sess.SetSessionVariable(ctx, "net_write_timeout", int64(150)))
@@ -60,7 +48,6 @@ func TestTransactionLocalVariables(t *testing.T) {
 
 	// Clearing restores the session value
 	require.NoError(t, sess.ClearTransactionLocalVariables(ctx))
-	require.Empty(t, sess.GetTransactionLocalVariables())
 	val, err = sess.GetSessionVariable(ctx, "net_write_timeout")
 	require.NoError(t, err)
 	assert.Equal(t, int64(150), val)

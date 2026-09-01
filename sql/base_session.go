@@ -271,18 +271,6 @@ func (s *BaseSession) SetTransactionLocalVariable(ctx *Context, sysVarName strin
 	return nil
 }
 
-// GetTransactionLocalVariables implements the Session interface.
-func (s *BaseSession) GetTransactionLocalVariables() map[string]SystemVarValue {
-	if len(s.localSysVars) == 0 {
-		return nil
-	}
-	m := make(map[string]SystemVarValue, len(s.localSysVars))
-	for k, v := range s.localSysVars {
-		m[k] = v
-	}
-	return m
-}
-
 // ClearTransactionLocalVariables implements the Session interface.
 func (s *BaseSession) ClearTransactionLocalVariables(ctx *Context) error {
 	s.localSysVars = nil
