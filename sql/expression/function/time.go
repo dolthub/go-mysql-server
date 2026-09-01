@@ -76,7 +76,7 @@ func getDatePart(ctx *sql.Context,
 
 // Year is a function that returns the year of a date.
 type Year struct {
-	expression.UnaryExpressionStub
+	*UnaryDatetimeFunc
 }
 
 var _ sql.FunctionExpression = (*Year)(nil)
@@ -84,23 +84,15 @@ var _ sql.CollationCoercible = (*Year)(nil)
 
 // NewYear creates a new Year UDF.
 func NewYear(ctx *sql.Context, date sql.Expression) sql.Expression {
-	return &Year{expression.UnaryExpressionStub{Child: date}}
-}
-
-// FunctionName implements sql.FunctionExpression
-func (y *Year) FunctionName() string {
-	return "year"
+	return &Year{
+		UnaryDatetimeFunc: NewUnaryDatetimeFunc(date, "YEAR", types.Int32),
+	}
 }
 
 // Description implements sql.FunctionExpression
 func (y *Year) Description() string {
 	return "returns the year of the given date."
 }
-
-func (y *Year) String() string { return fmt.Sprintf("%s(%s)", y.FunctionName(), y.Child) }
-
-// Type implements the Expression interface.
-func (y *Year) Type(ctx *sql.Context) sql.Type { return types.Int32 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*Year) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
@@ -109,7 +101,18 @@ func (*Year) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID,
 
 // Eval implements the Expression interface.
 func (y *Year) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return getDatePart(ctx, y.UnaryExpressionStub, row, year)
+	val, err := y.EvalChild(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	dt, ok := val.(time.Time)
+	if !ok {
+		return nil, nil
+	}
+	if types.ZeroTime.Equal(dt) {
+		return 0, nil
+	}
+	return dt.Year(), nil
 }
 
 // WithChildren implements the Expression interface.
