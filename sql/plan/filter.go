@@ -145,11 +145,11 @@ func (i *FilterIter) NextValueRow(ctx *sql.Context) (sql.ValueRow, error) {
 		if err != nil {
 			return nil, err
 		}
-		res, err := i.cond.(sql.ValueExpression).EvalValue(ctx, row)
+		b, err := sql.EvaluateConditionValue(ctx, i.cond.(sql.ValueExpression), row)
 		if err != nil {
 			return nil, err
 		}
-		if res.Val[0] == 1 {
+		if b {
 			return row, nil
 		}
 	}

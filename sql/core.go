@@ -25,6 +25,7 @@ import (
 	"unsafe"
 
 	"github.com/cockroachdb/apd/v3"
+	"github.com/dolthub/vitess/go/vt/proto/query"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql/values"
@@ -343,6 +344,58 @@ func ConvertToBool(ctx *Context, v interface{}) (bool, error) {
 	}
 }
 
+// ConvertValueToBool converts a Value to a boolean
+func ConvertValueToBool(ctx *Context, v Value) (bool, error) {
+	if v.IsNull() {
+		return false, fmt.Errorf("unable to cast nil to bool")
+	}
+	switch v.Typ {
+	case query.Type_INT64:
+		return values.ReadInt64(v.Val) != 0, nil
+	case query.Type_INT32:
+		return values.ReadInt32(v.Val) != 0, nil
+	case query.Type_INT16:
+		return values.ReadInt16(v.Val) != 0, nil
+	case query.Type_INT8:
+		return values.ReadInt8(v.Val) != 0, nil
+	case query.Type_UINT64:
+		return values.ReadUint64(v.Val) != 0, nil
+	case query.Type_UINT32:
+		return values.ReadUint32(v.Val) != 0, nil
+	case query.Type_UINT16:
+		return values.ReadUint16(v.Val) != 0, nil
+	case query.Type_UINT8:
+		return values.ReadUint8(v.Val) != 0, nil
+	case query.Type_FLOAT32:
+		return values.ReadFloat32(v.Val) != 0, nil
+	case query.Type_FLOAT64:
+		return values.ReadFloat64(v.Val) != 0, nil
+	case query.Type_TEXT, query.Type_CHAR, query.Type_BINARY, query.Type_VARCHAR, query.Type_VARBINARY, query.Type_BLOB:
+		bFloat, err := strconv.ParseFloat(TrimStringToNumberPrefix(ctx, string(v.Val), false), 64)
+		if err != nil {
+			return false, nil
+		}
+		return bFloat != 0, nil
+	default:
+		// TODO: Implmement remaining types
+		/*
+			Type_TIMESTAMP Type = 2061
+			Type_DATE Type = 2062
+			Type_TIME Type = 2063
+			Type_DATETIME Type = 2064
+			Type_YEAR Type = 785
+			Type_DECIMAL Type = 18
+			Type_BIT Type = 2073
+			Type_ENUM Type = 2074
+			Type_SET Type = 2075
+			Type_GEOMETRY Type = 2077
+			Type_JSON Type = 2078
+			Type_VECTOR Type = 8224
+		*/
+		return false, fmt.Errorf("unable to cast %#v of type %T to bool", v, v)
+	}
+}
+
 const (
 	// IntCutSet is the set of characters that should be trimmed from the beginning and end of a string
 	//   when converting to a signed or unsigned integer
@@ -437,6 +490,25 @@ func EvaluateCondition(ctx *Context, cond Expression, row Row) (interface{}, err
 	res, err := ConvertToBool(ctx, v)
 	if err != nil {
 		return nil, err
+	}
+	return res, nil
+}
+
+// EvaluateConditionValue evaluates a condition, which is an ValueExpression whose value
+// will be nil or coerced boolean.
+func EvaluateConditionValue(ctx *Context, cond ValueExpression, row ValueRow) (bool, error) {
+	defer trace2.StartRegion(ctx, "EvaluateCondition").End()
+
+	v, err := cond.EvalValue(ctx, row)
+	if err != nil {
+		return false, err
+	}
+	if v.IsNull() {
+		return false, nil
+	}
+	res, err := ConvertValueToBool(ctx, v)
+	if err != nil {
+		return false, err
 	}
 	return res, nil
 }
