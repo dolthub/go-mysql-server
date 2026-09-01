@@ -16,8 +16,9 @@ package function
 
 import (
 	"fmt"
-	"github.com/dolthub/vitess/go/mysql"
 	"time"
+
+	"github.com/dolthub/vitess/go/mysql"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
