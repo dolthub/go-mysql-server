@@ -1331,7 +1331,7 @@ var WindowRangeFramesScriptTests = []ScriptTest{
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/11469
-		Name: "window range frames, offset pushes BIT order-by value outside domain",
+		Name:    "window range frames, offset pushes BIT order-by value outside domain",
 		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE t(id INT PRIMARY KEY, k BIT(2), v INT);",
