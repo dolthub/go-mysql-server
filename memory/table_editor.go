@@ -144,7 +144,6 @@ func (t *tableEditor) StatementComplete(ctx *sql.Context) error {
 
 // Insert inserts a new row into the table.
 func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
-	// TODO: this always checks even if we're supposed to ignore errors
 	if err := checkRow(ctx, t.editedTable.data.schema.Schema, row); err != nil {
 		return err
 	}
