@@ -35,11 +35,8 @@ type BaseSession struct {
 	locks            map[string]bool
 	storedProcParams map[string]*StoredProcParam
 	systemVars       map[string]SystemVarValue
-	// localSysVars holds system variable values set with transaction-local scope (Postgres's SET LOCAL). Entries
-	// override systemVars until cleared by ClearTransactionLocalVariables, which the integrator calls when its
-	// transaction ends. Lazily allocated, and nil whenever no transaction-local values are set.
-	localSysVars     map[string]SystemVarValue
 	statusVars       map[string]StatusVarValue
+	localSysVars     map[string]SystemVarValue
 	preparedQueries  map[string]sqlparser.Statement
 	cachedQueries    map[string]sqlparser.Statement // TODO: limit size
 	lastQueryInfo    *LastQueryInfo
@@ -220,10 +217,10 @@ func (s *BaseSession) SetUserVariable(ctx *Context, varName string, value interf
 	return s.userVars.SetUserVariable(ctx, varName, value, typ)
 }
 
-// GetSessionVariable implements the Session interface. If the variable has been set with transaction-local scope,
-// the transaction-local value is returned.
+// GetSessionVariable implements the Session interface
 func (s *BaseSession) GetSessionVariable(ctx *Context, sysVarName string) (interface{}, error) {
 	sysVarName = strings.ToLower(sysVarName)
+	// If the variable has been set with transaction-local scope, the transaction-local value is returned.
 	sysVar, ok := s.localSysVars[sysVarName]
 	if !ok {
 		sysVar, ok = s.systemVars[sysVarName]
@@ -232,21 +229,6 @@ func (s *BaseSession) GetSessionVariable(ctx *Context, sysVarName string) (inter
 		return nil, ErrUnknownSystemVariable.New(sysVarName)
 	}
 	// TODO: this is duplicated from within variables.globalSystemVariables, suggesting the need for an interface
-	if sysType, ok := sysVar.Var.GetType().(SetType); ok {
-		if sv, ok := sysVar.Val.(uint64); ok {
-			return sysType.BitsToString(sv)
-		}
-	}
-	return sysVar.Val, nil
-}
-
-// GetNonLocalSessionVariable implements the Session interface.
-func (s *BaseSession) GetNonLocalSessionVariable(ctx *Context, sysVarName string) (interface{}, error) {
-	sysVarName = strings.ToLower(sysVarName)
-	sysVar, ok := s.systemVars[sysVarName]
-	if !ok {
-		return nil, ErrUnknownSystemVariable.New(sysVarName)
-	}
 	if sysType, ok := sysVar.Var.GetType().(SetType); ok {
 		if sv, ok := sysVar.Val.(uint64); ok {
 			return sysType.BitsToString(sv)
