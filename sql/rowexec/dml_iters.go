@@ -422,12 +422,20 @@ type onDuplicateUpdateHandler struct {
 	schema                    sql.Schema
 	rowsAffected              int
 	clientFoundRowsCapability bool
+	countUpdateAsOneRow       bool
 }
 
 func (o *onDuplicateUpdateHandler) handleRowUpdate(ctx *sql.Context, row sql.Row) error {
 	// See https://dev.mysql.com/doc/refman/8.0/en/insert-on-duplicate.html for row count semantics
 	// If a row was inserted, increment by 1
 	if len(row) == len(o.schema) {
+		o.rowsAffected++
+		return nil
+	}
+
+	// If countUpdateAsOneRow is true, then we use an alternate, simpler way of counting affected rows.
+	// This matches the behavior in PostgreSQL.
+	if o.countUpdateAsOneRow {
 		o.rowsAffected++
 		return nil
 	}
@@ -615,7 +623,11 @@ func getRowHandler(clientFoundRowsToggled bool, iter sql.RowIter) accumulatorRow
 			return &replaceRowHandler{}
 		}
 		if i.updater != nil {
-			return &onDuplicateUpdateHandler{schema: i.schema, clientFoundRowsCapability: clientFoundRowsToggled}
+			return &onDuplicateUpdateHandler{
+				schema:                    i.schema,
+				clientFoundRowsCapability: clientFoundRowsToggled,
+				countUpdateAsOneRow:       i.countOnDuplicateUpdateAsOneRow,
+			}
 		}
 		return &insertRowHandler{
 			lastInsertIdGetter: i.getAutoIncVal,

@@ -510,6 +510,11 @@ func (s *idxScope) visitSelf(ctx *sql.Context, n sql.Node) error {
 						newC = srcSch[oldRowIdx]
 					}
 				}
+				if n.OnDupValuesAlias != "" {
+					newC = newC.Copy()
+					newC.Source = n.OnDupValuesAlias
+					newC.Name = c.Name
+				}
 				newRowIdx := len(destSch) + oldRowIdx
 
 				rightSchema[oldRowIdx] = c
@@ -531,6 +536,9 @@ func (s *idxScope) visitSelf(ctx *sql.Context, n sql.Node) error {
 			newLeft := fixExprToScope(ctx, set.LeftChild, dstScope)
 			newRight := fixExprToScope(ctx, set.RightChild, rightScope)
 			s.expressions = append(s.expressions, expression.NewSetField(newLeft, newRight))
+		}
+		if n.OnDupWhere != nil {
+			s.expressions = append(s.expressions, fixExprToScope(ctx, n.OnDupWhere, rightScope))
 		}
 		for _, c := range n.Checks() {
 			newE := fixExprToScope(ctx, c.Expr, dstScope)
@@ -630,7 +638,12 @@ func (s *idxScope) finalizeSelf(ctx *sql.Context, n sql.Node) (sql.Node, error) 
 		//  match InsertInto.WithExpressions
 		onDupExprsLen := n.OnDupExprs.Length()
 		nn.OnDupExprs, err = n.OnDupExprs.WithExpressions(s.expressions[:onDupExprsLen])
-		nn.Returning = s.expressions[onDupExprsLen:]
+		expressionsOffset := onDupExprsLen
+		if n.OnDupWhere != nil {
+			nn.OnDupWhere = s.expressions[expressionsOffset]
+			expressionsOffset++
+		}
+		nn.Returning = s.expressions[expressionsOffset:]
 		return nn.WithChecks(s.checks), nil
 	default:
 		if nn, ok := n.(*plan.Update); ok {

@@ -95,6 +95,9 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	// If the row alias also provided column names, we create a map from the destination names to the aliases. This will allow us to
 	// rewrite VALUES() function expressions to use the new column names.
 	inScope.insertTableAlias = OnDupValuesPrefix
+	if i.OnDupValuesAlias != "" {
+		inScope.insertTableAlias = i.OnDupValuesAlias
+	}
 	if aliasedValues, ok := insertRows.(*ast.AliasedValues); ok {
 		valueTableName := aliasedValues.As.String()
 		if valueTableName != "" {
@@ -112,13 +115,14 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	srcScope, srcLiteralOnly := b.insertRowsToNode(inScope, insertRows, columns, i.Table.Name.String(), sch)
 
 	var onDupUpdateExprs *plan.UpdateExprs
+	var onDupWhere sql.Expression
 	if len(i.OnDup) > 0 {
 		// TODO: on duplicate expressions need to reference both VALUES and
 		//  derived columns equally in ON DUPLICATE UPDATE expressions.
 		combinedScope := inScope.replace()
 		combinedScope.insertTableAlias = inScope.insertTableAlias
 		combinedScope.insertColumnAliases = inScope.insertColumnAliases
-		for i, c := range destScope.cols {
+		for colIdx, c := range destScope.cols {
 			combinedScope.newColumn(c)
 			// if the srcScope is empty, it is a values statement
 			if len(srcScope.cols) == 0 {
@@ -132,12 +136,23 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 				combinedScope.newColumn(c)
 				continue
 			}
-			if i < len(srcScope.cols) {
-				combinedScope.newColumn(srcScope.cols[i])
+			if colIdx < len(srcScope.cols) {
+				incomingCol := srcScope.cols[colIdx]
+				if i.OnDupValuesAlias != "" {
+					incomingCol.table = combinedScope.insertTableAlias
+					incomingCol.col = c.col
+					incomingCol.originalCol = c.col
+					incomingCol.typ = c.typ
+					incomingCol.nullable = c.nullable
+				}
+				combinedScope.newColumn(incomingCol)
 			}
 		}
 		b.insertActive = true
 		onDupUpdateExprs = b.assignmentExprsToUpdateExprs(combinedScope, destScope, sch, ast.AssignmentExprs(i.OnDup))
+		if i.OnDupWhere != nil {
+			onDupWhere = b.buildScalar(combinedScope, i.OnDupWhere)
+		}
 		b.insertActive = false
 	}
 
@@ -150,6 +165,9 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	dest := destScope.node
 
 	ins := plan.NewInsertInto(db, plan.NewInsertDestination(sch, dest), srcScope.node, isReplace, columns, onDupUpdateExprs, ignore)
+	ins.OnDupValuesAlias = i.OnDupValuesAlias
+	ins.OnDupWhere = onDupWhere
+	ins.CountOnDuplicateUpdateAsOneRow = i.CountOnDuplicateUpdateAsOneRow
 	ins.LiteralValueSource = srcLiteralOnly
 
 	if len(i.Returning) > 0 {
