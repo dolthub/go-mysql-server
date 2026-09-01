@@ -3692,7 +3692,15 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{6}},
 	},
 	{
+		Query:    "select '1.2' div '0.2';",
+		Expected: []sql.Row{{6}},
+	},
+	{
 		Query:    "select 1.2 div 0.4;",
+		Expected: []sql.Row{{3}},
+	},
+	{
+		Query:    "select '1.2' div '0.4';",
 		Expected: []sql.Row{{3}},
 	},
 	{
