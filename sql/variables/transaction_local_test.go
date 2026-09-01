@@ -76,9 +76,42 @@ func TestTransactionLocalVariables(t *testing.T) {
 	assert.True(t, sql.ErrSystemVariableCannotBeSetLocal.Is(err))
 
 	// The TransactionLocalScope routes through the session
-	scope := sql.GetTransactionLocalScope()
+	scope := GetTransactionLocalScope()
 	require.NoError(t, scope.SetValue(ctx, "net_write_timeout", int64(300)))
 	val, err = scope.GetValue(ctx, "net_write_timeout", sql.Collation_Default)
 	require.NoError(t, err)
 	assert.Equal(t, int64(300), val)
+}
+
+// TransactionLocalScope is the scope of a system variable set with transaction-local scope (Postgres's SET LOCAL).
+// Values set through this scope override the variable's session value until the session's transaction-local
+// variables are cleared, which the integrator is expected to do when the current transaction ends.
+type TransactionLocalScope struct{}
+
+var _ sql.SystemVariableScope = (*TransactionLocalScope)(nil)
+
+// GetTransactionLocalScope returns the scope used for system variables set with transaction-local scope.
+func GetTransactionLocalScope() sql.SystemVariableScope {
+	return &TransactionLocalScope{}
+}
+
+// SetValue implements sql.SystemVariableScope.
+func (t *TransactionLocalScope) SetValue(ctx *sql.Context, name string, val any) error {
+	return ctx.Session.SetTransactionLocalVariable(ctx, name, val)
+}
+
+// GetValue implements sql.SystemVariableScope. The session value already reflects any transaction-local override,
+// so this reads the same value that session scope would.
+func (t *TransactionLocalScope) GetValue(ctx *sql.Context, name string, _ sql.CollationID) (any, error) {
+	return ctx.GetSessionVariable(ctx, name)
+}
+
+// IsGlobalOnly implements sql.SystemVariableScope.
+func (t *TransactionLocalScope) IsGlobalOnly() bool {
+	return false
+}
+
+// IsSessionOnly implements sql.SystemVariableScope.
+func (t *TransactionLocalScope) IsSessionOnly() bool {
+	return false
 }
