@@ -492,6 +492,9 @@ func validateSystemVariableValue(ctx *sql.Context, sysVarName string, val any) e
 			hasErrorForDivisionByZero := v&sql.MODE_ERROR_FOR_DIVISION_BY_ZERO != 0
 			hasNoZeroDate := v&sql.MODE_NO_ZERO_DATE != 0
 			hasNoZeroInDate := v&sql.MODE_NO_ZERO_IN_DATE != 0
+			if !hasNoZeroInDate {
+				return sql.ErrMissingNoZeroInDateSQLMode.New()
+			}
 			if (hasStrict || hasErrorForDivisionByZero || hasNoZeroDate || hasNoZeroInDate) &&
 				!(hasStrict && hasErrorForDivisionByZero && hasNoZeroDate && hasNoZeroInDate) {
 				ctx.Warn(3135, "'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' "+
@@ -508,6 +511,9 @@ func validateSystemVariableValue(ctx *sql.Context, sysVarName string, val any) e
 			hasErrorForDivisionByZero := strings.Contains(v, sql.ERROR_FOR_DIVISION_BY_ZERO)
 			hasNoZeroDate := strings.Contains(v, sql.NO_ZERO_DATE)
 			hasNoZeroInDate := strings.Contains(v, sql.NO_ZERO_IN_DATE)
+			if !hasNoZeroInDate {
+				return sql.ErrMissingNoZeroInDateSQLMode.New()
+			}
 			if (hasStrict || hasErrorForDivisionByZero || hasNoZeroDate || hasNoZeroInDate) &&
 				!(hasStrict && hasErrorForDivisionByZero && hasNoZeroDate && hasNoZeroInDate) {
 				ctx.Warn(3135, "'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' "+
