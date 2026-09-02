@@ -103,3 +103,31 @@ func TestTimeFormatEval(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Nil(t, res)
 }
+
+func TestTimeFormatErrorsDoNotPanic(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	tests := []struct {
+		name   string
+		value  interface{}
+		format interface{}
+	}{
+		{"invalid time", "not a time", "%H"},
+		{"non-string format", "04:05:06", 1},
+		{"incomplete format specifier", "04:05:06", "%"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fn := NewTimeFormat(
+				ctx,
+				expression.NewLiteral(tt.value, types.LongText),
+				expression.NewLiteral(tt.format, types.LongText),
+			)
+			var err error
+			assert.NotPanics(t, func() {
+				_, err = fn.Eval(ctx, nil)
+			})
+			assert.Error(t, err)
+		})
+	}
+}

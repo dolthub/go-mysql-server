@@ -77,17 +77,25 @@ func formatTimeDuration(format string, t time.Time, hours int) (string, error) {
 	spec := strftime.NewSpecificationSet()
 	for specifier, fn := range timeFormatSpecifierToFunc {
 		if fn != nil {
-			panicIfErr(spec.Set(specifier, wrap(fn)))
+			if err := spec.Set(specifier, wrap(fn)); err != nil {
+				return "", err
+			}
 		}
 	}
-	panicIfErr(spec.Set('H', wrap(func(time.Time) string { return fmt.Sprintf("%02d", hours) })))
-	panicIfErr(spec.Set('k', wrap(func(time.Time) string { return strconv.Itoa(hours) })))
+	if err := spec.Set('H', wrap(func(time.Time) string { return fmt.Sprintf("%02d", hours) })); err != nil {
+		return "", err
+	}
+	if err := spec.Set('k', wrap(func(time.Time) string { return strconv.Itoa(hours) })); err != nil {
+		return "", err
+	}
 
 	for i := byte('A'); i <= 'Z'; i++ {
 		for _, specifier := range []byte{i, i + byte('a'-'A')} {
 			if _, ok := timeFormatSpecifierToFunc[specifier]; !ok {
 				b := specifier
-				panicIfErr(spec.Set(b, wrap(func(time.Time) string { return string(b) })))
+				if err := spec.Set(b, wrap(func(time.Time) string { return string(b) })); err != nil {
+					return "", err
+				}
 			}
 		}
 	}
