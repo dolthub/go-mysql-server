@@ -10009,7 +10009,7 @@ var DateParseQueries = []QueryTest{
 	},
 	{
 		Query:    "SELECT STR_TO_DATE('09:30:17 pm','%h:%i:%s %p')",
-		Expected: []sql.Row{{time.Date(-1, time.November, 30, 9, 30, 17, 0, time.UTC)}},
+		Expected: []sql.Row{{time.Date(-1, time.November, 30, 21, 30, 17, 0, time.UTC)}},
 	},
 	{
 		Query:    "SELECT STR_TO_DATE('9','%m')",
@@ -10029,7 +10029,7 @@ var DateParseQueries = []QueryTest{
 	},
 	{
 		Query:    "SELECT STR_TO_DATE('01/02/99 05:14:12 PM', '%m/%e/%y %r')",
-		Expected: []sql.Row{{time.Date(1999, time.January, 2, 5, 14, 12, 0, time.UTC)}},
+		Expected: []sql.Row{{time.Date(1999, time.January, 2, 17, 14, 12, 0, time.UTC)}},
 	},
 	{
 		Query:    "SELECT STR_TO_DATE('May 3, 10:23:00 2000', '%b %e, %H:%i:%s %Y')",
@@ -10037,10 +10037,36 @@ var DateParseQueries = []QueryTest{
 	},
 	{
 		Query:    "SELECT STR_TO_DATE('May 3, 10:23:00 PM 2000', '%b %e, %h:%i:%s %p %Y')",
-		Expected: []sql.Row{{time.Date(2000, time.May, 3, 10, 23, 0, 0, time.UTC)}},
+		Expected: []sql.Row{{time.Date(2000, time.May, 3, 22, 23, 0, 0, time.UTC)}},
 	},
 	{
 		Query:    "SELECT STR_TO_DATE('May 3, 10:23:00 PM 2000', '%b %e, %H:%i:%s %p %Y')", // cannot use 24 hour time (%H) with AM/PM (%p)
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		// The PM marker used to be parsed and then dropped, so this came back as 01:02.
+		Query:    "SELECT STR_TO_DATE('01:02 PM','%h:%i %p')",
+		Expected: []sql.Row{{time.Date(-1, time.November, 30, 13, 2, 0, 0, time.UTC)}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('12:02 PM','%h:%i %p')",
+		Expected: []sql.Row{{time.Date(-1, time.November, 30, 12, 2, 0, 0, time.UTC)}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('12:02 AM','%h:%i %p')",
+		Expected: []sql.Row{{time.Date(-1, time.November, 30, 0, 2, 0, 0, time.UTC)}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('01:02 AM','%h:%i %p')",
+		Expected: []sql.Row{{time.Date(-1, time.November, 30, 1, 2, 0, 0, time.UTC)}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('12:14:12 AM','%r')",
+		Expected: []sql.Row{{time.Date(-1, time.November, 30, 0, 14, 12, 0, time.UTC)}},
+	},
+	{
+		// %h is a 1..12 specifier, so an hour outside that range is not a time.
+		Query:    "SELECT STR_TO_DATE('13:02 PM','%h:%i %p')",
 		Expected: []sql.Row{{nil}},
 	},
 	{
