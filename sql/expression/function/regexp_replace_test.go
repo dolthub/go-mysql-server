@@ -184,6 +184,12 @@ func TestRegexpReplaceWithPosition(t *testing.T) {
 			true,
 		},
 		{
+			"position immediately after string",
+			sql.NewRow("abc", "a", "X", 4),
+			"abc",
+			false,
+		},
+		{
 			"string type position",
 			sql.NewRow("abc def ghi", `[a-z]`, "X", "1"),
 			"XXX XXX XXX",

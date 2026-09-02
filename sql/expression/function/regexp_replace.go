@@ -256,8 +256,12 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (val interface{}, er
 		return nil, sql.ErrInvalidArgumentDetails.New(r.FunctionName(), fmt.Sprintf("%d", pos.(int32)))
 	}
 
-	if len(text.(string)) != 0 && int(pos.(int32)) > len(text.(string)) {
+	textLength := len([]rune(text.(string)))
+	if textLength != 0 && int(pos.(int32)) > textLength+1 {
 		return nil, errors.NewKind("Index out of bounds for regular expression search.").New()
+	}
+	if int(pos.(int32)) == textLength+1 {
+		return text, nil
 	}
 
 	occurrence, err := r.Occurrence.Eval(ctx, row)
