@@ -123,6 +123,18 @@ type ScriptTestAssertion struct {
 // the tests.
 var ScriptTests = []ScriptTest{
 	{
+		Name: "aggregate query with filtered aggregate scalar subquery",
+		SetUpScript: []string{
+			"CREATE TABLE t (id INT PRIMARY KEY, d DATETIME, tag VARCHAR(10));",
+			"INSERT INTO t VALUES (1,'2020-01-01 00:00:00','keep'), (2,'2021-01-01 00:00:00','skip'), (3,'2030-01-01 00:00:00','skip');",
+		},
+		Query: "SELECT max(d) AS o, (SELECT max(d) FROM t WHERE tag='keep') AS s FROM t;",
+		Expected: []sql.Row{{
+			time.Date(2030, time.January, 1, 0, 0, 0, 0, time.UTC),
+			time.Date(2020, time.January, 1, 0, 0, 0, 0, time.UTC),
+		}},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/10113
 		Name: "DELETE with NOT EXISTS subquery",
 		SetUpScript: []string{
