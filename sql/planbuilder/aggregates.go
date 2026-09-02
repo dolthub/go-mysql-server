@@ -324,9 +324,8 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 	aggType := agg.Type(b.ctx)
 
 	aggName := strings.ToLower(plan.AliasSubqueryString(b.ctx, agg))
-	if id, ok := gb.outScope.getExpr(aggName, true); ok {
+	if gf := gb.getAggRef(aggName); gf != nil {
 		// if we've already computed use reference here
-		gf := expression.NewGetFieldWithTable(int(id), 0, aggType, "", "", aggName, agg.IsNullable(b.ctx))
 		return gf
 	}
 
