@@ -27,6 +27,10 @@ import (
 
 // FunctionQueryTests contains queries that primarily test SQL function calls
 var FunctionQueryTests = []QueryTest{
+	{
+		Query:    `SELECT TIME_FORMAT('25:01:02', '%H'), TIME_FORMAT('25:01:02', '%k'), TIME_FORMAT('05:01:02', '%k')`,
+		Expected: []sql.Row{{"25", "25", "5"}},
+	},
 	// Truncate function https://github.com/dolthub/dolt/issues/9916
 	{
 		Query: "SELECT TRUNCATE(1.223,1)",

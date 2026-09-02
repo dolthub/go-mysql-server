@@ -73,6 +73,16 @@ func TestTimeFormatEval(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "04-05-06|000007", res)
 
+	timeFormat = NewTimeFormat(ctx, expression.NewLiteral("25:01:02", types.Time), expression.NewLiteral("%H|%k", types.Text))
+	res, err = timeFormat.Eval(nil, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, "25|25", res)
+
+	timeFormat = NewTimeFormat(ctx, expression.NewLiteral("05:01:02", types.Time), expression.NewLiteral("%k", types.Text))
+	res, err = timeFormat.Eval(nil, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, "5", res)
+
 	timeFormat = NewTimeFormat(ctx, timeLit, nil)
 	res, err = timeFormat.Eval(nil, nil)
 	assert.NoError(t, err)
