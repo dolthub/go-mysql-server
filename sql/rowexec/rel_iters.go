@@ -484,8 +484,8 @@ func validateSystemVariableValue(ctx *sql.Context, sysVarName string, val any) e
 		// from disabling `NO_ZERO_IN_DATE` in their `sql_mode`.
 		switch v := val.(type) {
 		case uint64:
-			// If it contains any one of these "strict" sql_modes,
-			// then warn if it does not contain all the "strict" modes
+			// If the assigned SQL_MODE contains any one of these "strict" modes, it should contain every one of
+			// the strict modes. Throw a warning if any of them are missing.
 			hasStrictTransTables := v&sql.MODE_STRICT_TRANS_TABLES != 0
 			hasStrictAllTables := v&sql.MODE_STRICT_ALL_TABLES != 0
 			hasStrict := hasStrictTransTables || hasStrictAllTables
@@ -500,8 +500,8 @@ func validateSystemVariableValue(ctx *sql.Context, sysVarName string, val any) e
 			}
 		case string:
 			v = strings.ToUpper(v)
-			// If it contains any one of these "strict" sql_modes,
-			// then warn if it does not contain all the "strict" modes
+			// If the assigned SQL_MODE contains any one of these "strict" modes, it should contain every one of
+			// the strict modes. Throw a warning if any of them are missing.
 			hasStrictTransTables := strings.Contains(v, sql.STRICT_TRANS_TABLES)
 			hasStrictAllTables := strings.Contains(v, sql.STRICT_ALL_TABLES)
 			hasStrict := hasStrictTransTables || hasStrictAllTables
