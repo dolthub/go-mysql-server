@@ -35,6 +35,7 @@ func TestSoundex(t *testing.T) {
 		{"text empty", types.LongText, sql.NewRow(""), "0000"},
 		{"text ignored character", types.LongText, sql.NewRow("-"), "0000"},
 		{"text runes", types.LongText, sql.NewRow("日本語"), "日000"},
+		{"lowercase non-ASCII initial", types.LongText, sql.NewRow("é"), "é000"},
 		{"text Hello ok", types.LongText, sql.NewRow("Hello"), "H400"},
 		{"text Quadratically ok", types.LongText, sql.NewRow("Quadratically"), "Q36324"},
 		{"text Lee ok", types.LongText, sql.NewRow("Lee"), "L000"},

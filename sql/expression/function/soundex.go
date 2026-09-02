@@ -74,12 +74,16 @@ func (s *Soundex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	var b strings.Builder
 	var last rune
-	for _, c := range strings.ToUpper(v.(string)) {
+	for _, c := range v.(string) {
 		if last == 0 && !unicode.IsLetter(c) {
 			continue
 		}
-		code := s.code(c)
+		upper := unicode.ToUpper(c)
+		code := s.code(upper)
 		if last == 0 {
+			if c >= 'a' && c <= 'z' {
+				c = upper
+			}
 			b.WriteRune(c)
 			last = code
 			continue
