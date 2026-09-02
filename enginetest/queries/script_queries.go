@@ -2782,6 +2782,52 @@ CREATE TABLE tab3 (
 				},
 			},
 			{
+				Query: "with recursive cte(x) as (select 1 union select 2 union select x in (select i from t1) from cte) select x, row_number() over (order by x) as rn from cte order by x;",
+				Expected: []sql.Row{
+					{1, 1},
+					{2, 2},
+				},
+				// PostgreSQL rejects UNION between integer and boolean instead of coercing boolean to integer.
+				Dialect: "mysql",
+			},
+			{
+				Query:    "with recursive cte(x) as (select cast(1 as signed) union select cast(x as unsigned) from cte) select count(*) from cte;",
+				Expected: []sql.Row{{1}},
+				Dialect:  "mysql",
+			},
+			{
+				Query:    "with recursive cte(x) as (select cast('1' as char(3)) union select cast(x as signed) from cte) select count(*) from cte;",
+				Expected: []sql.Row{{1}},
+				Dialect:  "mysql",
+			},
+			{
+				Query:    "with recursive cte(d, f, n) as (select cast('2024-01-02' as date), cast(1.5 as double), cast(2.50 as decimal(5,2)) union select cast(d as char), cast(f as decimal(5,2)), cast(n as double) from cte) select count(*) from cte;",
+				Expected: []sql.Row{{1}},
+				Dialect:  "mysql",
+			},
+			{
+				Query: "with recursive cte(x) as (select cast(null as signed) union select ifnull(x, 0) from cte) select x from cte order by x;",
+				Expected: []sql.Row{
+					{nil},
+					{0},
+				},
+				Dialect: "mysql",
+			},
+			{
+				Query:    "with recursive cte(x) as (select cast('a' as binary(1)) union select cast(x as char) from cte) select count(*), hex(min(x)) from cte;",
+				Expected: []sql.Row{{1, "61"}},
+				Dialect:  "mysql",
+			},
+			{
+				Query: "with recursive cte(x, n) as (select cast(1 as signed), 1 union all select cast(x as unsigned), n + 1 from cte where n < 3) select x, n from cte order by n;",
+				Expected: []sql.Row{
+					{1, 1},
+					{1, 2},
+					{1, 3},
+				},
+				Dialect: "mysql",
+			},
+			{
 				Query: "WITH RECURSIVE\n" +
 					"    rt (foo) AS (\n" +
 					"        SELECT 1 as foo\n" +

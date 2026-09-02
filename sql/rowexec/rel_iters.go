@@ -16,6 +16,7 @@ package rowexec
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 
@@ -572,6 +573,8 @@ type recursiveCteIter struct {
 	cycle int
 	// true if UNION, false if UNION ALL
 	deduplicate bool
+	// output schema inherited from the non-recursive term
+	schema sql.Schema
 }
 
 var _ sql.RowIter = (*recursiveCteIter)(nil)
@@ -606,6 +609,10 @@ func (r *recursiveCteIter) Next(ctx *sql.Context) (sql.Row, error) {
 		} else if err != nil {
 			return nil, err
 		}
+		row, err = r.convertRow(ctx, row)
+		if err != nil {
+			return nil, err
+		}
 
 		var key uint64
 		if r.deduplicate {
@@ -622,6 +629,24 @@ func (r *recursiveCteIter) Next(ctx *sql.Context) (sql.Row, error) {
 		break
 	}
 	return row, nil
+}
+
+// convertRow coerces recursive results to the CTE's established column types.
+func (r *recursiveCteIter) convertRow(ctx *sql.Context, row sql.Row) (sql.Row, error) {
+	start := len(row) - len(r.schema)
+	if start < 0 {
+		return nil, fmt.Errorf("recursive CTE row has %d columns, expected at least %d", len(row), len(r.schema))
+	}
+	converted := make(sql.Row, len(row))
+	copy(converted, row[:start])
+	for i, column := range r.schema {
+		var err error
+		converted[start+i], _, err = column.Type.Convert(ctx, row[start+i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return converted, nil
 }
 
 // store saves a row to the [temp] buffer, and hashes if [deduplicated] = true
