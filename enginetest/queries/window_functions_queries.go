@@ -25,6 +25,17 @@ import (
 // first_value, last_value, lead, lag, and the bitwise aggregate functions.
 var WindowFunctionsScriptTests = []ScriptTest{
 	{
+		Name: "INET_NTOA round trip above signed 32-bit range",
+		SetUpScript: []string{
+			"CREATE TABLE inet_ntoa_test (ip VARCHAR(15))",
+			"INSERT INTO inet_ntoa_test VALUES ('192.0.2.1')",
+		},
+		Query: `SELECT INET_NTOA(
+			FIRST_VALUE(INET_ATON(ip)) OVER ()
+		) FROM inet_ntoa_test`,
+		Expected: []sql.Row{{"192.0.2.1"}},
+	},
+	{
 		Name: "window functions, empty table",
 		SetUpScript: []string{
 			"CREATE TABLE empty_tbl (a int, b int)",

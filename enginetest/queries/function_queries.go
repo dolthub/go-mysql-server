@@ -1286,10 +1286,6 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{{"10.0.5.10"}},
 	},
 	{
-		Query:    `SELECT INET_NTOA(FIRST_VALUE(INET_ATON('192.0.2.1')) OVER ())`,
-		Expected: []sql.Row{{"192.0.2.1"}},
-	},
-	{
 		Query:    `SELECT INET_ATON("10.0.5.11")`,
 		Expected: []sql.Row{{uint64(167773451)}},
 	},
