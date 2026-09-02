@@ -99,13 +99,6 @@ func (s *Soundex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return b.String(), nil
 }
 
-// soundexToUpper mirrors MySQL's soundex_toupper (sql/item_strfunc.cc), which uppercases
-// ASCII 'a'-'z' and nothing else. The first letter of the input is emitted verbatim after
-// this conversion, so using unicode-wide case folding here changes the returned string:
-// SOUNDEX('é') gave 'É000' where MySQL gives 'é000' (dolthub/dolt#11546). It also matters
-// for the codes, because Go's case folding maps some non-ASCII letters onto ASCII ones --
-// U+017F LATIN SMALL LETTER LONG S becomes 'S' and would then be coded '2' rather than the
-// '0' MySQL assigns to anything outside A-Z.
 func soundexToUpper(c rune) rune {
 	if c >= 'a' && c <= 'z' {
 		return c - 'a' + 'A'
@@ -113,12 +106,6 @@ func soundexToUpper(c rune) rune {
 	return c
 }
 
-// soundexIsAlpha mirrors MySQL's my_uni_isalpha (sql/item_strfunc.cc), which decides what
-// SOUNDEX treats as a letter. It is deliberately coarser than unicode.IsLetter: MySQL
-// counts every code point at or above U+00C0 as a letter, on the reasoning quoted in its
-// own source that "characters between 'z' and U+00C0 are controls and punctuations".
-// U+00D7 MULTIPLICATION SIGN and U+00F7 DIVISION SIGN sit above that line, so MySQL keeps
-// them as the leading letter where unicode.IsLetter skipped them as garbage.
 func soundexIsAlpha(c rune) bool {
 	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c >= 0xC0
 }
