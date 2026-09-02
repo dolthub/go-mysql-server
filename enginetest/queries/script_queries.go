@@ -10844,6 +10844,112 @@ where
 		},
 	},
 	{
+		Name:        "MySQL default and strict SQL_MODE behavior",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				// TODO: prevent this entirely?
+				// Disabling `NO_ZERO_IN_DATE` throws error, and doesn't change SQL_MODE
+				Query: "set @@sql_mode = '" +
+					"STRICT_TRANS_TABLES," +
+					"NO_ZERO_DATE," +
+					"ERROR_FOR_DIVISION_BY_ZERO'",
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       3135,
+				ExpectedWarningMessageSubstring: "'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' " +
+					"sql modes should be used with strict mode. " +
+					"They will be merged with strict mode in a future release",
+			},
+			{
+				Query: "select @@sql_mode",
+				Expected: []sql.Row{
+					{"STRICT_TRANS_TABLES,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO"},
+				},
+			},
+			{
+				// Disabling `STRICT_TRANS_TABLES` throws strict mode warning
+				SkipResultCheckOnServerEngine: true,
+				Query: "set @@sql_mode = '" +
+					"NO_ZERO_IN_DATE," +
+					"NO_ZERO_DATE," +
+					"ERROR_FOR_DIVISION_BY_ZERO'",
+				Expected: []sql.Row{
+					{types.OkResult{}},
+				},
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       3135,
+				ExpectedWarningMessageSubstring: "'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' " +
+					"sql modes should be used with strict mode. " +
+					"They will be merged with strict mode in a future release",
+			},
+			{
+				Query: "select @@sql_mode",
+				Expected: []sql.Row{
+					{"NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO"},
+				},
+			},
+			{
+				// Disabling `NO_ZERO_DATE` throws strict mode warning
+				SkipResultCheckOnServerEngine: true,
+				Query: "set @@sql_mode = '" +
+					"STRICT_TRANS_TABLES," +
+					"NO_ZERO_IN_DATE," +
+					"ERROR_FOR_DIVISION_BY_ZERO'",
+				Expected: []sql.Row{
+					{types.OkResult{}},
+				},
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       3135,
+				ExpectedWarningMessageSubstring: "'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' " +
+					"sql modes should be used with strict mode. " +
+					"They will be merged with strict mode in a future release",
+			},
+			{
+				Query: "select @@sql_mode",
+				Expected: []sql.Row{
+					{"STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO"},
+				},
+			},
+			{
+				// Disabling `ERROR_FOR_DIVISION_BY_ZERO` throws strict mode warning
+				SkipResultCheckOnServerEngine: true,
+				Query: "set @@sql_mode = '" +
+					"STRICT_TRANS_TABLES," +
+					"NO_ZERO_IN_DATE," +
+					"NO_ZERO_DATE'",
+				Expected: []sql.Row{
+					{types.OkResult{}},
+				},
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       3135,
+				ExpectedWarningMessageSubstring: "'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' " +
+					"sql modes should be used with strict mode. " +
+					"They will be merged with strict mode in a future release",
+			},
+			{
+				Query: "select @@sql_mode",
+				Expected: []sql.Row{
+					{"STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE"},
+				},
+			},
+			{
+				// TODO: this shouldn't be necessary
+				// Restore SQL_MODE to default, to prevent interfering with other tests
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "set @@sql_mode = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'",
+				Expected: []sql.Row{
+					{types.OkResult{}},
+				},
+			},
+			{
+				Query: "select @@sql_mode",
+				Expected: []sql.Row{
+					{sql.DefaultSqlMode},
+				},
+			},
+		},
+	},
+	{
 		// This is with STRICT_TRANS_TABLES or STRICT_ALL_TABLES in sql_mode
 		Skip:    true, // TODO: Fix error type to match MySQL exactly (should be ErrInvalidColumnDefaultValue)
 		Name:    "enums with empty string",

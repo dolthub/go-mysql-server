@@ -393,7 +393,7 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 	if err != nil {
 		return err
 	}
-	err = validateSystemVariableValue(sysVar.Name, val)
+	err = validateSystemVariableValue(ctx, sysVar.Name, val)
 	if err != nil {
 		return err
 	}
@@ -469,7 +469,7 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 	return nil
 }
 
-func validateSystemVariableValue(sysVarName string, val interface{}) error {
+func validateSystemVariableValue(ctx *sql.Context, sysVarName string, val any) error {
 	switch strings.ToLower(sysVarName) {
 	case "time_zone":
 		valStr, ok := val.(string)
@@ -478,6 +478,42 @@ func validateSystemVariableValue(sysVarName string, val interface{}) error {
 		}
 		if !sql.ValidTimeZone(valStr) {
 			return sql.ErrInvalidTimeZone.New(valStr)
+		}
+	case "sql_mode":
+		// The Golang time library does not properly support using 0 for Month and Day, so we prevent users
+		// from disabling `NO_ZERO_IN_DATE` in their `sql_mode`.
+		switch v := val.(type) {
+		case uint64:
+			// If it contains any one of these "strict" sql_modes,
+			// then warn if it does not contain all the "strict" modes
+			hasStrictTransTables := v&sql.MODE_STRICT_TRANS_TABLES != 0
+			hasStrictAllTables := v&sql.MODE_STRICT_ALL_TABLES != 0
+			hasStrict := hasStrictTransTables || hasStrictAllTables
+			hasErrorForDivisionByZero := v&sql.MODE_ERROR_FOR_DIVISION_BY_ZERO != 0
+			hasNoZeroDate := v&sql.MODE_NO_ZERO_DATE != 0
+			hasNoZeroInDate := v&sql.MODE_NO_ZERO_IN_DATE != 0
+			if (hasStrict || hasErrorForDivisionByZero || hasNoZeroDate || hasNoZeroInDate) &&
+				!(hasStrict && hasErrorForDivisionByZero && hasNoZeroDate && hasNoZeroInDate) {
+				ctx.Warn(3135, "'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' "+
+					"sql modes should be used with strict mode. "+
+					"They will be merged with strict mode in a future release.")
+			}
+		case string:
+			v = strings.ToUpper(v)
+			// If it contains any one of these "strict" sql_modes,
+			// then warn if it does not contain all the "strict" modes
+			hasStrictTransTables := strings.Contains(v, sql.STRICT_TRANS_TABLES)
+			hasStrictAllTables := strings.Contains(v, sql.STRICT_ALL_TABLES)
+			hasStrict := hasStrictTransTables || hasStrictAllTables
+			hasErrorForDivisionByZero := strings.Contains(v, sql.ERROR_FOR_DIVISION_BY_ZERO)
+			hasNoZeroDate := strings.Contains(v, sql.NO_ZERO_DATE)
+			hasNoZeroInDate := strings.Contains(v, sql.NO_ZERO_IN_DATE)
+			if (hasStrict || hasErrorForDivisionByZero || hasNoZeroDate || hasNoZeroInDate) &&
+				!(hasStrict && hasErrorForDivisionByZero && hasNoZeroDate && hasNoZeroInDate) {
+				ctx.Warn(3135, "'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' "+
+					"sql modes should be used with strict mode. "+
+					"They will be merged with strict mode in a future release.")
+			}
 		}
 	}
 	return nil
