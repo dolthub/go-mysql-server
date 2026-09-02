@@ -2786,4 +2786,12 @@ var FunctionQueryTests = []QueryTest{
 		Query:    "select extract(hour from true)",
 		Expected: []sql.Row{{0}},
 	},
+	{
+		Query:    `SELECT SOUNDEX('é')`,
+		Expected: []sql.Row{{"é000"}},
+	},
+	{
+		Query:    `SELECT FIRST_VALUE(SOUNDEX('é')) OVER () AS actual FROM (SELECT 1 AS z) q`,
+		Expected: []sql.Row{{"é000"}},
+	},
 }
