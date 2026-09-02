@@ -9936,6 +9936,25 @@ FROM mytable;`,
 		ExpectedWarningMessageSubstring: "Truncated incorrect time value",
 	},
 	{
+		Query:    "SELECT CAST('-12:00:00' AS TIME);",
+		Expected: []sql.Row{{"-12:00:00"}},
+	},
+	{
+		Query:                           "SELECT CAST('-12:00:00asdf' AS TIME);",
+		Expected:                        []sql.Row{{"-12:00:00"}},
+		ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount:           1,
+		ExpectedWarningMessageSubstring: "Truncated incorrect time value",
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/10000
+		Query:                 "SELECT CAST('-12:00:00 asdf' AS TIME);",
+		Expected:              []sql.Row{{"00:00:00"}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 2,
+		Skip:                  true,
+	},
+	{
 		Query:    "SELECT (1, 5) IN (SELECT 1, NULL FROM dual)",
 		Expected: []sql.Row{{nil}},
 	},
