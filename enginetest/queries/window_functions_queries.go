@@ -1344,6 +1344,31 @@ var WindowRangeFramesScriptTests = []ScriptTest{
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/11469
+		Name:    "window range frames, offset pushes BIT order-by value outside domain",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t(id INT PRIMARY KEY, k BIT(2), v INT);",
+			"INSERT INTO t VALUES (1, b'01', 10), (2, b'01', 20), (3, b'11', 30);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT id,
+       SUM(v) OVER (
+         ORDER BY k
+         RANGE BETWEEN CURRENT ROW AND 1 FOLLOWING
+       ) AS wf
+FROM t
+ORDER BY id;`,
+				Expected: []sql.Row{
+					{1, float64(30)},
+					{2, float64(30)},
+					{3, float64(30)},
+				},
+			},
+		},
+	},
+	{
 		Name: "windows without ORDER BY should be treated as RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING",
 		SetUpScript: []string{
 			"CREATE TABLE t(a INT, b INT);",

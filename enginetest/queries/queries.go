@@ -9984,6 +9984,10 @@ var DateParseQueries = []QueryTest{
 		Expected: []sql.Row{{time.Date(2013, time.May, 1, 0, 0, 0, 0, time.UTC)}},
 	},
 	{
+		Query:    "SELECT STR_TO_DATE(FIRST_VALUE(NULL) OVER (), '%Y-%m-%d')",
+		Expected: []sql.Row{{nil}},
+	},
+	{
 		Query:    "SELECT STR_TO_DATE('May 1, 2013','%M %d,%Y')",
 		Expected: []sql.Row{{time.Date(2013, time.May, 1, 0, 0, 0, 0, time.UTC)}},
 	},
