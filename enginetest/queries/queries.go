@@ -18,6 +18,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"gopkg.in/src-d/go-errors.v1"
@@ -9848,10 +9849,11 @@ FROM mytable;`,
 		},
 	},
 	{
-		Query:                 "SELECT CAST('  12:23 a' AS TIME);",
-		Expected:              []sql.Row{{"12:23:00"}},
-		ExpectedWarning:       mysql.ERTruncatedWrongValue,
-		ExpectedWarningsCount: 1,
+		Query:                           "SELECT CAST('  12:23 a' AS TIME);",
+		Expected:                        []sql.Row{{"12:23:00"}},
+		ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount:           1,
+		ExpectedWarningMessageSubstring: "Truncated incorrect time value",
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/10000
@@ -9884,22 +9886,32 @@ FROM mytable;`,
 		Skip:                  true,
 	},
 	{
-		Query:                 "SELECT CAST('12:23:' AS TIME);",
-		Expected:              []sql.Row{{"12:23:00"}},
-		ExpectedWarning:       mysql.ERTruncatedWrongValue,
-		ExpectedWarningsCount: 1,
+		Query:                           "SELECT CAST('00:00:00 garbage' AS TIME);",
+		Expected:                        []sql.Row{{"00:00:00"}},
+		ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount:           1,
+		ExpectedWarningMessageSubstring: "Truncated incorrect time value",
 	},
 	{
-		Query:                 "SELECT CAST('hello' AS TIME);",
-		Expected:              []sql.Row{{nil}},
-		ExpectedWarning:       mysql.ERTruncatedWrongValue,
-		ExpectedWarningsCount: 1,
+		Query:                           "SELECT CAST('12:23:' AS TIME);",
+		Expected:                        []sql.Row{{"12:23:00"}},
+		ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount:           1,
+		ExpectedWarningMessageSubstring: "Truncated incorrect time value",
 	},
 	{
-		Query:                 "SELECT CAST('   ' AS TIME);",
-		Expected:              []sql.Row{{nil}},
-		ExpectedWarning:       mysql.ERTruncatedWrongValue,
-		ExpectedWarningsCount: 1,
+		Query:                           "SELECT CAST('hello' AS TIME);",
+		Expected:                        []sql.Row{{nil}},
+		ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount:           1,
+		ExpectedWarningMessageSubstring: "Truncated incorrect time value",
+	},
+	{
+		Query:                           "SELECT CAST('   ' AS TIME);",
+		Expected:                        []sql.Row{{nil}},
+		ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount:           1,
+		ExpectedWarningMessageSubstring: "Truncated incorrect time value",
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/10000
@@ -9910,16 +9922,18 @@ FROM mytable;`,
 		Skip:                  true,
 	},
 	{
-		Query:                 "SELECT CAST('12344abc' AS TIME);",
-		Expected:              []sql.Row{{"01:23:44"}},
-		ExpectedWarning:       mysql.ERTruncatedWrongValue,
-		ExpectedWarningsCount: 1,
+		Query:                           "SELECT CAST('12344abc' AS TIME);",
+		Expected:                        []sql.Row{{"01:23:44"}},
+		ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount:           1,
+		ExpectedWarningMessageSubstring: "Truncated incorrect time value",
 	},
 	{
-		Query:                 "SELECT CAST('122341.123456abc' AS TIME(6));",
-		Expected:              []sql.Row{{"12:23:41.123456"}},
-		ExpectedWarning:       mysql.ERTruncatedWrongValue,
-		ExpectedWarningsCount: 1,
+		Query:                           "SELECT CAST('122341.123456abc' AS TIME(6));",
+		Expected:                        []sql.Row{{"12:23:41.123456"}},
+		ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount:           1,
+		ExpectedWarningMessageSubstring: "Truncated incorrect time value",
 	},
 	{
 		Query:    "SELECT (1, 5) IN (SELECT 1, NULL FROM dual)",
