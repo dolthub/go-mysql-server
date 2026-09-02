@@ -47,7 +47,12 @@ type Listener struct {
 	conns chan connRes
 	// channel to close both listener
 	shutdown chan struct{}
-	once     *sync.Once
+	// shutdownOnce guards closing shutdown; connsOnce guards closing conns.
+	// They are separate so Close can wait for accept loops to drain (and thus
+	// stop sending into conns) between the two closings, eliminating the
+	// send-after-close race the previous single-sync.Once implementation had.
+	shutdownOnce *sync.Once
+	connsOnce    *sync.Once
 }
 
 // NewListener creates a new Listener.
@@ -84,7 +89,8 @@ func NewListener(protocol, address string, unixSocketPath string) (*Listener, er
 		conns:        make(chan connRes),
 		eg:           new(errgroup.Group),
 		shutdown:     make(chan struct{}),
-		once:         &sync.Once{},
+		shutdownOnce: &sync.Once{},
+		connsOnce:    &sync.Once{},
 	}
 	errguard.Go(l.eg, func() error {
 		for {
@@ -144,11 +150,26 @@ func (l *Listener) Close() error {
 			return err
 		}
 	}
-	l.once.Do(func() {
+	// Signal the accept loops to stop. Closing the underlying listeners above
+	// also unblocks their Accept() calls (returning net.ErrClosed), so every
+	// loop goroutine will return promptly.
+	l.shutdownOnce.Do(func() {
 		close(l.shutdown)
+	})
+	// Wait for all accept-loop goroutines to finish BEFORE closing the conns
+	// channel. The loops send into conns via a select that also watches
+	// shutdown; if we closed conns here (as the previous code did) a loop
+	// goroutine could win the select's random choice and send into a closed
+	// channel, panicking or tripping the race detector. Waiting guarantees no
+	// sender remains, so the close below is safe.
+	waitErr := l.eg.Wait()
+	l.connsOnce.Do(func() {
 		close(l.conns)
 	})
-	return l.eg.Wait()
+	if waitErr != nil {
+		return waitErr
+	}
+	return err
 }
 
 func (l *Listener) Addr() net.Addr {
