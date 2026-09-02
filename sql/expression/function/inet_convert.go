@@ -245,8 +245,9 @@ func (i *InetNtoa) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	// Convert val into int
-	ipv4int, _, err := types.Int32.Convert(ctx, val)
+	// Convert val into an unsigned int. IPv4 addresses use the full 32-bit
+	// range, so signed conversion corrupts addresses above 127.255.255.255.
+	ipv4int, _, err := types.Uint32.Convert(ctx, val)
 	if ipv4int != nil && err != nil && !sql.ErrTruncatedIncorrect.Is(err) {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(val).String())
 	}
@@ -260,7 +261,7 @@ func (i *InetNtoa) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	// Create new IPv4, and fill with val
 	ipv4 := make(net.IP, 4)
-	binary.BigEndian.PutUint32(ipv4, uint32(ipv4int.(int32)))
+	binary.BigEndian.PutUint32(ipv4, ipv4int.(uint32))
 
 	return ipv4.String(), nil
 }
