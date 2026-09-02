@@ -19,8 +19,6 @@ import (
 	"strings"
 	"sync"
 
-	"gopkg.in/src-d/go-errors.v1"
-
 	"github.com/dolthub/go-mysql-server/internal/regex"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -257,9 +255,7 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (val interface{}, er
 	}
 
 	textLength := len([]rune(text.(string)))
-	if textLength != 0 && int(pos.(int32)) > textLength+1 {
-		return nil, errors.NewKind("Index out of bounds for regular expression search.").New()
-	}
+	positionAfterText := int(pos.(int32)) > textLength
 	occurrence, err := r.Occurrence.Eval(ctx, row)
 	if err != nil {
 		return nil, err
@@ -271,7 +267,7 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (val interface{}, er
 	if err != nil {
 		return nil, err
 	}
-	if int(pos.(int32)) == textLength+1 {
+	if positionAfterText {
 		return text, nil
 	}
 
