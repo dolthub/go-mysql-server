@@ -1010,7 +1010,7 @@ func TestSchemaToFields(t *testing.T) {
 		{Name: "varbinary12345", OrgName: "varbinary12345", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_VARBINARY, Charset: mysql.CharacterSetBinary, ColumnLength: 12345, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
 		{Name: "binary123", OrgName: "binary123", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_BINARY, Charset: mysql.CharacterSetBinary, ColumnLength: 123, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
 		{Name: "char123", OrgName: "char123", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_CHAR, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 123 * 4, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
-		{Name: "bit12", OrgName: "bit12", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_BIT, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 12, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
+		{Name: "bit12", OrgName: "bit12", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_BIT, Charset: mysql.CharacterSetBinary, ColumnLength: 12, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
 
 		// Dates
 		{Name: "datetime", OrgName: "datetime", Table: "table1", OrgTable: "table1", Database: "db1", Type: query.Type_DATETIME, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 26, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
