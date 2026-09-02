@@ -480,8 +480,8 @@ func validateSystemVariableValue(ctx *sql.Context, sysVarName string, val any) e
 			return sql.ErrInvalidTimeZone.New(valStr)
 		}
 	case "sql_mode":
-		// The Golang time library does not properly support using 0 for Month and Day, so we prevent users
-		// from disabling `NO_ZERO_IN_DATE` in their `sql_mode`.
+		// TODO: The Golang time library does not properly support using 0 for Month and Day, so it may be necessary
+		//  for us to prevent users from disabling `NO_ZERO_IN_DATE`
 		switch v := val.(type) {
 		case uint64:
 			// If the assigned SQL_MODE contains any one of these "strict" modes, it should contain every one of

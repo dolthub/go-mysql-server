@@ -10934,9 +10934,8 @@ where
 			},
 			{
 				// TODO: this shouldn't be necessary
-				// Restore SQL_MODE to default, to prevent interfering with other tests
-				SkipResultCheckOnServerEngine: true,
-				Query:                         "set @@sql_mode = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'",
+				// Restore SQL_MODE to default, to prevent interference with other tests
+				Query: "set @@sql_mode = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'",
 				Expected: []sql.Row{
 					{types.OkResult{}},
 				},
