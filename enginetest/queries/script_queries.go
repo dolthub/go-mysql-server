@@ -10854,6 +10854,9 @@ where
 					"STRICT_TRANS_TABLES," +
 					"NO_ZERO_DATE," +
 					"ERROR_FOR_DIVISION_BY_ZERO'",
+				Expected: []sql.Row{
+					{types.OkResult{}},
+				},
 				ExpectedWarningsCount: 1,
 				ExpectedWarning:       3135,
 				ExpectedWarningMessageSubstring: "'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' " +
