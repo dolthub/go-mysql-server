@@ -3662,6 +3662,14 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{uint64(20221111)}},
 	},
 	{
+		Query: "SELECT CAST(' 2024-01-01 ' AS DATE), CAST(CONCAT(' ', '2024-01-01') AS DATE), DATE(' 2024-01-01 ');",
+		Expected: []sql.Row{{
+			time.Date(2024, time.January, 1, 0, 0, 0, 0, time.UTC),
+			time.Date(2024, time.January, 1, 0, 0, 0, 0, time.UTC),
+			"2024-01-01",
+		}},
+	},
+	{
 		Query:    "select '2022-11-19 11:53:45' & '2023-11-11 11:53:45';",
 		Expected: []sql.Row{{uint64(2022)}},
 	},
