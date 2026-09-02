@@ -10871,7 +10871,6 @@ where
 			},
 			{
 				// Disabling `STRICT_TRANS_TABLES` throws strict mode warning
-				SkipResultCheckOnServerEngine: true,
 				Query: "set @@sql_mode = '" +
 					"NO_ZERO_IN_DATE," +
 					"NO_ZERO_DATE," +
@@ -10893,7 +10892,6 @@ where
 			},
 			{
 				// Disabling `NO_ZERO_DATE` throws strict mode warning
-				SkipResultCheckOnServerEngine: true,
 				Query: "set @@sql_mode = '" +
 					"STRICT_TRANS_TABLES," +
 					"NO_ZERO_IN_DATE," +
@@ -10915,7 +10913,6 @@ where
 			},
 			{
 				// Disabling `ERROR_FOR_DIVISION_BY_ZERO` throws strict mode warning
-				SkipResultCheckOnServerEngine: true,
 				Query: "set @@sql_mode = '" +
 					"STRICT_TRANS_TABLES," +
 					"NO_ZERO_IN_DATE," +
