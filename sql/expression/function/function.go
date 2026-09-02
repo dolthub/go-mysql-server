@@ -18,8 +18,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dolthub/vitess/go/mysql"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type UnaryFunc struct {
@@ -60,4 +63,23 @@ func (uf *UnaryFunc) String() string {
 // Type implements the Expression interface.
 func (uf *UnaryFunc) Type(ctx *sql.Context) sql.Type {
 	return uf.RetType
+}
+
+// evalInt64 evaluates |expr| against |row| and coerces the result
+// to an int64, recording any conversion warnings on |ctx|. It
+// returns (0, false, nil) if the evaluated value is SQL NULL.
+func evalInt64(ctx *sql.Context, expr sql.Expression, row sql.Row) (int64, bool, error) {
+	if expr == nil {
+		return 0, false, nil
+	}
+	v, err := expr.Eval(ctx, row)
+	if err != nil || v == nil {
+		return 0, false, err
+	}
+	c, _, err := types.Int64.Convert(ctx, v)
+	if err != nil {
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
+	}
+	n, ok := c.(int64)
+	return n, ok, nil
 }

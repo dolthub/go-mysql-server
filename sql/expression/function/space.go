@@ -15,8 +15,6 @@
 package function
 
 import (
-	"github.com/dolthub/vitess/go/mysql"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -45,25 +43,12 @@ func (s *Space) CollationCoercibility(ctx *sql.Context) (collation sql.Collation
 
 // Eval implements the sql.Expression interface
 func (s *Space) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	val, err := s.EvalChild(ctx, row)
-	if err != nil {
+	v, ok, err := evalInt64(ctx, s.Child, row)
+	if err != nil || !ok {
 		return nil, err
 	}
 
-	if val == nil {
-		return nil, nil
-	}
-
-	// TODO: better truncate integer handling
-	v, _, err := types.Int64.Convert(ctx, val)
-	if err != nil {
-		if !sql.ErrTruncatedIncorrect.Is(err) {
-			return nil, err
-		}
-		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
-	}
-
-	num := int(v.(int64))
+	num := int(v)
 	if num < 0 {
 		num = 0
 	}
