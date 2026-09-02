@@ -545,6 +545,20 @@ var WindowFunctionsScriptTests = []ScriptTest{
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/11468
+		Name: "FIRST_VALUE receives star placeholder",
+		SetUpScript: []string{
+			"CREATE TABLE t(id INT PRIMARY KEY, v INT NOT NULL)",
+			"INSERT INTO t VALUES (1, 10), (2, 20)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "SELECT FIRST_VALUE(*) OVER (ORDER BY id) AS first_row FROM t",
+				ExpectedErr: sql.ErrSyntaxError,
+			},
+		},
+	},
+	{
 		Name: "window functions, bit_and/bit_or/bit_xor",
 		SetUpScript: []string{
 			"CREATE TABLE t2 (a int, b int, c int)",
