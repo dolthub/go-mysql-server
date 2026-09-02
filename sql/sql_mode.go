@@ -16,7 +16,6 @@ package sql
 
 import (
 	"fmt"
-	"sort"
 	"strconv"
 	"strings"
 
@@ -168,7 +167,6 @@ var defaultMode *SqlMode
 
 func init() {
 	elements := strings.Split(strings.ToLower(DefaultSqlMode), ",")
-	sort.Strings(elements)
 	modes := map[string]struct{}{}
 	for _, element := range elements {
 		modes[element] = struct{}{}
