@@ -104,7 +104,7 @@ func TestTimeFormatEval(t *testing.T) {
 	assert.Nil(t, res)
 }
 
-func TestTimeFormatErrorsDoNotPanic(t *testing.T) {
+func TestTimeFormatErrors(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 	tests := []struct {
 		name   string
@@ -123,10 +123,7 @@ func TestTimeFormatErrorsDoNotPanic(t *testing.T) {
 				expression.NewLiteral(tt.value, types.LongText),
 				expression.NewLiteral(tt.format, types.LongText),
 			)
-			var err error
-			assert.NotPanics(t, func() {
-				_, err = fn.Eval(ctx, nil)
-			})
+			_, err := fn.Eval(ctx, nil)
 			assert.Error(t, err)
 		})
 	}
