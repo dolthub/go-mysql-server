@@ -35,7 +35,7 @@ const (
 // TODO: look over all of the "invalid type" tests later, ignoring them for now since they're unlikely to be hit
 func TestTime_Year(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	f := NewYear(expression.NewGetField(0, types.LongText, "foo", false))
+	f := NewYear(ctx, expression.NewGetField(0, types.LongText, "foo", false))
 
 	testCases := []struct {
 		name     string
@@ -64,7 +64,7 @@ func TestTime_Year(t *testing.T) {
 
 func TestTime_Month(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	f := NewMonth(expression.NewGetField(0, types.LongText, "foo", false))
+	f := NewMonth(ctx, expression.NewGetField(0, types.LongText, "foo", false))
 
 	testCases := []struct {
 		name     string
@@ -94,7 +94,7 @@ func TestTime_Month(t *testing.T) {
 
 func TestTime_Quarter(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	f := NewQuarter(expression.NewGetField(0, types.LongText, "foo", false))
+	f := NewQuarter(ctx, expression.NewGetField(0, types.LongText, "foo", false))
 
 	testCases := []struct {
 		name     string
@@ -215,7 +215,7 @@ func TestTime_Quarter(t *testing.T) {
 
 func TestTime_Day(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	f := NewDay(expression.NewGetField(0, types.LongText, "foo", false))
+	f := NewDay(ctx, expression.NewGetField(0, types.LongText, "foo", false))
 
 	testCases := []struct {
 		name     string
@@ -245,7 +245,7 @@ func TestTime_Day(t *testing.T) {
 
 func TestTime_Weekday(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	f := NewWeekday(expression.NewGetField(0, types.LongText, "foo", false))
+	f := NewWeekday(ctx, expression.NewGetField(0, types.LongText, "foo", false))
 
 	testCases := []struct {
 		name     string
@@ -275,7 +275,7 @@ func TestTime_Weekday(t *testing.T) {
 
 func TestTime_Hour(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	f := NewHour(expression.NewGetField(0, types.LongText, "foo", false))
+	f := NewHour(ctx, expression.NewGetField(0, types.LongText, "foo", false))
 
 	testCases := []struct {
 		name     string
@@ -305,7 +305,7 @@ func TestTime_Hour(t *testing.T) {
 
 func TestTime_Minute(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	f := NewMinute(expression.NewGetField(0, types.LongText, "foo", false))
+	f := NewMinute(ctx, expression.NewGetField(0, types.LongText, "foo", false))
 
 	testCases := []struct {
 		name     string
@@ -335,7 +335,7 @@ func TestTime_Minute(t *testing.T) {
 
 func TestTime_Second(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	f := NewSecond(expression.NewGetField(0, types.LongText, "foo", false))
+	f := NewSecond(ctx, expression.NewGetField(0, types.LongText, "foo", false))
 
 	testCases := []struct {
 		name     string
@@ -365,7 +365,7 @@ func TestTime_Second(t *testing.T) {
 
 func TestTime_Microsecond(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	f := NewMicrosecond(expression.NewGetField(0, types.LongText, "foo", false))
+	f := NewMicrosecond(ctx, expression.NewGetField(0, types.LongText, "foo", false))
 	currTime := time.Now()
 
 	testCases := []struct {
@@ -396,7 +396,7 @@ func TestTime_Microsecond(t *testing.T) {
 
 func TestTime_DayOfWeek(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	f := NewDayOfWeek(expression.NewGetField(0, types.LongText, "foo", false))
+	f := NewDayOfWeek(ctx, expression.NewGetField(0, types.LongText, "foo", false))
 
 	testCases := []struct {
 		name     string
@@ -426,7 +426,7 @@ func TestTime_DayOfWeek(t *testing.T) {
 
 func TestTime_DayOfYear(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	f := NewDayOfYear(expression.NewGetField(0, types.LongText, "foo", false))
+	f := NewDayOfYear(ctx, expression.NewGetField(0, types.LongText, "foo", false))
 
 	testCases := []struct {
 		name     string
@@ -456,7 +456,7 @@ func TestTime_DayOfYear(t *testing.T) {
 
 func TestTime_WeekOfYear(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	f := NewWeekOfYear(expression.NewGetField(0, types.LongText, "foo", false))
+	f := NewWeekOfYear(ctx, expression.NewGetField(0, types.LongText, "foo", false))
 	currTime := time.Now()
 	_, week := currTime.ISOWeek()
 
@@ -488,7 +488,7 @@ func TestTime_WeekOfYear(t *testing.T) {
 
 func TestYearWeek(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	f, err := NewYearWeek(expression.NewGetField(0, types.LongText, "foo", false))
+	f, err := NewYearWeek(ctx, expression.NewGetField(0, types.LongText, "foo", false))
 	require.NoError(t, err)
 
 	testCases := []struct {
@@ -592,7 +592,7 @@ func TestUTCTimestamp(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprint(test.args), func(t *testing.T) {
-			ut, err := NewUTCTimestamp(test.args...)
+			ut, err := NewUTCTimestamp(ctx, test.args...)
 			if !test.expectErr {
 				require.NoError(t, err)
 				val, err := ut.Eval(ctx, nil)
@@ -607,7 +607,7 @@ func TestUTCTimestamp(t *testing.T) {
 
 func TestDate(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	f := NewDate(expression.NewGetField(0, types.LongText, "foo", false))
+	f := NewDate(ctx, expression.NewGetField(0, types.LongText, "foo", false))
 
 	testCases := []struct {
 		name     string
@@ -636,7 +636,7 @@ func TestDate(t *testing.T) {
 }
 
 func TestNow(t *testing.T) {
-	f, _ := NewNow(expression.NewGetField(0, types.LongText, "foo", false))
+	f, _ := NewNow(sql.NewEmptyContext(), expression.NewGetField(0, types.LongText, "foo", false))
 	date := time.Date(
 		2021,      // year
 		1,         // month
@@ -692,7 +692,7 @@ func TestNow(t *testing.T) {
 // SYSDATE() should always return the exact current time, and not the cached query start time. That behavior is
 // tested in the enginetests, instead of these unit tests.
 func TestSysdate(t *testing.T) {
-	f, _ := NewSysdate(expression.NewGetField(0, types.LongText, "foo", false))
+	f, _ := NewSysdate(sql.NewEmptyContext(), expression.NewGetField(0, types.LongText, "foo", false))
 	date := time.Date(
 		2021,      // year
 		1,         // month
@@ -746,7 +746,7 @@ func TestSysdate(t *testing.T) {
 
 func TestTime(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	f := NewTime(expression.NewGetField(0, types.LongText, "foo", false))
+	f := NewTime(ctx, expression.NewGetField(0, types.LongText, "foo", false))
 
 	testCases := []struct {
 		name     string
@@ -779,7 +779,7 @@ func TestTime(t *testing.T) {
 
 func TestTime_DayName(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	f := NewDayName(expression.NewGetField(0, types.LongText, "foo", false))
+	f := NewDayName(ctx, expression.NewGetField(0, types.LongText, "foo", false))
 
 	testCases := []struct {
 		name     string
@@ -812,7 +812,7 @@ func TestTime_DayName(t *testing.T) {
 
 func TestTime_MonthName(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	f := NewMonthName(expression.NewGetField(0, types.LongText, "foo", false))
+	f := NewMonthName(ctx, expression.NewGetField(0, types.LongText, "foo", false))
 
 	testCases := []struct {
 		name     string

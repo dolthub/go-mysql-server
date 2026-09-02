@@ -40,7 +40,7 @@ func NewRenameUser(oldNames []UserName, newNames []UserName) *RenameUser {
 }
 
 // Schema implements the interface sql.Node.
-func (n *RenameUser) Schema() sql.Schema {
+func (n *RenameUser) Schema(ctx *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -69,7 +69,7 @@ func (n *RenameUser) Children() []sql.Node {
 }
 
 // WithChildren implements the interface sql.Node.
-func (n *RenameUser) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (n *RenameUser) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 0)
 	}

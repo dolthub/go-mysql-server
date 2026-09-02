@@ -486,6 +486,7 @@ func TestHashInTuple(t *testing.T) {
 			name: "left has a function",
 			left: expression.NewTuple(
 				function.NewLower(
+					sql.NewEmptyContext(),
 					expression.NewLiteral("hi", types.TinyText),
 				),
 			),

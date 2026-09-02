@@ -51,12 +51,12 @@ func (*Star) Children() []sql.Expression {
 }
 
 // IsNullable implements the Expression interface.
-func (*Star) IsNullable() bool {
+func (*Star) IsNullable(ctx *sql.Context) bool {
 	return false
 }
 
 // Type implements the Expression interface.
-func (*Star) Type() sql.Type {
+func (*Star) Type(ctx *sql.Context) sql.Type {
 	panic("star is just a placeholder node, but Type was called")
 }
 
@@ -78,7 +78,7 @@ func (*Star) Eval(ctx *sql.Context, r sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements the Expression interface.
-func (s *Star) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (s *Star) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 0)
 	}

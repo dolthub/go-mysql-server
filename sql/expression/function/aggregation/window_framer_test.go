@@ -272,7 +272,7 @@ func TestWindowRangeFramers(t *testing.T) {
 		t.Run(tt.Name, func(t *testing.T) {
 			ctx := sql.NewEmptyContext()
 			frameDef := dummyFrame{}
-			w := &sql.WindowDefinition{OrderBy: sql.SortFields{{Column: expr, Order: 1}}}
+			w := &sql.WindowDefinition{OrderBy: sql.SortConditions{{Expr: expr, Order: sql.Ascending}}}
 			framer, err := tt.Framer(frameDef, w)
 			require.NoError(t, err)
 

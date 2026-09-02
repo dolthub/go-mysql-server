@@ -42,7 +42,7 @@ var _ sql.FunctionExpression = (*JSONQuote)(nil)
 var _ sql.CollationCoercible = (*JSONQuote)(nil)
 
 // NewJSONQuote creates a new JSONQuote UDF.
-func NewJSONQuote(json sql.Expression) sql.Expression {
+func NewJSONQuote(ctx *sql.Context, json sql.Expression) sql.Expression {
 	return &JSONQuote{expression.UnaryExpressionStub{Child: json}}
 }
 
@@ -62,7 +62,7 @@ func (js *JSONQuote) String() string {
 }
 
 // Type implements the Expression interface.
-func (*JSONQuote) Type() sql.Type {
+func (*JSONQuote) Type(ctx *sql.Context) sql.Type {
 	return types.LongText
 }
 
@@ -72,16 +72,16 @@ func (*JSONQuote) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 }
 
 // WithChildren implements the Expression interface.
-func (js *JSONQuote) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (js *JSONQuote) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(js, len(children), 1)
 	}
-	return NewJSONQuote(children[0]), nil
+	return NewJSONQuote(ctx, children[0]), nil
 }
 
 // Eval implements the Expression interface.
 func (js *JSONQuote) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	typ := js.Child.Type()
+	typ := js.Child.Type(ctx)
 	if typ != types.Null && !types.IsText(typ) {
 		return nil, sql.ErrInvalidType.New(typ)
 	}

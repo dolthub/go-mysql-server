@@ -51,7 +51,7 @@ SELECT c_discount, c_last, c_credit, w_tax FROM customer2, warehouse2 WHERE w_id
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [customer2.c_discount, customer2.c_last, customer2.c_credit, warehouse2.w_tax]\n" +
-			" └─ LookupJoin (estimated cost=3.300 rows=1)\n" +
+			" └─ LookupJoin (estimated cost=3.351 rows=1)\n" +
 			"     ├─ IndexedTableAccess(warehouse2)\n" +
 			"     │   ├─ index: [warehouse2.w_id]\n" +
 			"     │   ├─ filters: [{[1, 1]}]\n" +
@@ -65,7 +65,7 @@ SELECT c_discount, c_last, c_credit, w_tax FROM customer2, warehouse2 WHERE w_id
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [customer2.c_discount, customer2.c_last, customer2.c_credit, warehouse2.w_tax]\n" +
-			" └─ LookupJoin (estimated cost=3.300 rows=1) (actual rows=0 loops=1)\n" +
+			" └─ LookupJoin (estimated cost=3.351 rows=1) (actual rows=0 loops=1)\n" +
 			"     ├─ IndexedTableAccess(warehouse2)\n" +
 			"     │   ├─ index: [warehouse2.w_id]\n" +
 			"     │   ├─ filters: [{[1, 1]}]\n" +
@@ -501,7 +501,7 @@ UPDATE warehouse2 SET w_ytd = w_ytd + 1767 WHERE w_id = 1`,
 	{
 		Query: `UPDATE customer2 SET c_balance=-1777.000000, c_ytd_payment=1777.000000 WHERE c_w_id = 1 AND c_d_id=5 AND c_id=1838`,
 		ExpectedPlan: "Update\n" +
-			" └─ UpdateSource(SET customer2.c_balance:16 = -1777.000000,SET customer2.c_ytd_payment:17 = 1777 (decimal(10,6)))\n" +
+			" └─ UpdateSource(SET customer2.c_balance:16 = -1777.000000,SET customer2.c_ytd_payment:17 = 1777.000000 (decimal(10,6)))\n" +
 			"     └─ IndexedTableAccess(customer2)\n" +
 			"         ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_id]\n" +
 			"         ├─ static: [{[1, 1], [5, 5], [1838, 1838]}]\n" +
@@ -722,7 +722,7 @@ SELECT d_next_o_id FROM district2 WHERE d_id = 5 AND d_w_id= 1`,
 			" └─ GroupBy\n" +
 			"     ├─ select: COUNTDISTINCT([stock2.s_i_id])\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin (estimated cost=130201.500 rows=39455)\n" +
+			"     └─ LookupJoin (estimated cost=132440.651 rows=39455)\n" +
 			"         ├─ IndexedTableAccess(order_line2)\n" +
 			"         │   ├─ index: [order_line2.ol_w_id,order_line2.ol_d_id,order_line2.ol_o_id,order_line2.ol_number]\n" +
 			"         │   ├─ filters: [{[1, 1], [5, 5], [2983, 3003), [NULL, ∞)}]\n" +
@@ -739,7 +739,7 @@ SELECT d_next_o_id FROM district2 WHERE d_id = 5 AND d_w_id= 1`,
 			" └─ GroupBy\n" +
 			"     ├─ select: COUNTDISTINCT([stock2.s_i_id])\n" +
 			"     ├─ group: \n" +
-			"     └─ LookupJoin (estimated cost=130201.500 rows=39455) (actual rows=0 loops=1)\n" +
+			"     └─ LookupJoin (estimated cost=132440.651 rows=39455) (actual rows=0 loops=1)\n" +
 			"         ├─ IndexedTableAccess(order_line2)\n" +
 			"         │   ├─ index: [order_line2.ol_w_id,order_line2.ol_d_id,order_line2.ol_o_id,order_line2.ol_number]\n" +
 			"         │   ├─ filters: [{[1, 1], [5, 5], [2983, 3003), [NULL, ∞)}]\n" +

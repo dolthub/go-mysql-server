@@ -65,7 +65,7 @@ func (l *lruCache) Free() {
 	l.cache, _ = lru.New(l.size)
 }
 
-func (l *lruCache) Dispose() {
+func (l *lruCache) Dispose(ctx *Context) {
 	l.memory = nil
 	l.cache = nil
 }
@@ -105,7 +105,7 @@ func (c *rowsCache) GetValueRow() []ValueRow {
 	return c.valueRows
 }
 
-func (c *rowsCache) Dispose() {
+func (c *rowsCache) Dispose(ctx *Context) {
 	c.memory = nil
 	c.rows = nil
 }
@@ -168,7 +168,7 @@ func (h *historyCache) Get(k uint64) (interface{}, error) {
 	return v, nil
 }
 
-func (h *historyCache) Dispose() {
+func (h *historyCache) Dispose(ctx *Context) {
 	h.memory = nil
 	h.cache = nil
 }

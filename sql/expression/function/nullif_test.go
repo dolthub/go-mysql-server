@@ -39,18 +39,21 @@ func TestNullIf(t *testing.T) {
 		{"", nil, ""},
 	}
 
+	ctx := sql.NewEmptyContext()
 	f := NewNullIf(
+		ctx,
 		expression.NewGetField(0, types.LongText, "ex1", true),
 		expression.NewGetField(1, types.LongText, "ex2", true),
 	)
-	require.Equal(t, types.LongText, f.Type())
+	require.Equal(t, types.LongText, f.Type(ctx))
 
 	var3 := types.MustCreateStringWithDefaults(sqltypes.VarChar, 3)
 	f = NewNullIf(
+		ctx,
 		expression.NewGetField(0, var3, "ex1", true),
 		expression.NewGetField(1, var3, "ex2", true),
 	)
-	require.Equal(t, var3, f.Type())
+	require.Equal(t, var3, f.Type(ctx))
 
 	for _, tc := range testCases {
 		v, err := f.Eval(sql.NewEmptyContext(), sql.NewRow(tc.ex1, tc.ex2))

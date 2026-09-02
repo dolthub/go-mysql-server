@@ -33,7 +33,7 @@ func TestProcessTable(t *testing.T) {
 	pro := memory.NewDBProvider(db)
 	ctx := newContext(pro)
 
-	table := memory.NewPartitionedTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
+	table := memory.NewPartitionedTable(ctx, db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: types.Int64},
 	}), nil, 2)
 
@@ -47,6 +47,7 @@ func TestProcessTable(t *testing.T) {
 	var rowNextNotifications int
 
 	node := plan.NewProject(
+		ctx,
 		[]sql.Expression{
 			expression.NewGetField(0, types.Int64, "a", false),
 		},

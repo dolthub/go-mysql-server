@@ -184,6 +184,7 @@ func TestGroupedAggFuncs(t *testing.T) {
 			Name: "json object null",
 			Agg: NewWindowedJSONObjectAgg(
 				NewJSONObjectAgg(
+					sql.NewEmptyContext(),
 					expression.NewGetField(1, types.LongText, "x", true),
 					expression.NewGetField(0, types.LongText, "y", true),
 				).(*JSONObjectAgg),
@@ -198,6 +199,7 @@ func TestGroupedAggFuncs(t *testing.T) {
 			Name: "json object int",
 			Agg: NewWindowedJSONObjectAgg(
 				NewJSONObjectAgg(
+					sql.NewEmptyContext(),
 					expression.NewGetField(1, types.LongText, "x", true),
 					expression.NewGetField(0, types.LongText, "x", true),
 				).(*JSONObjectAgg),
@@ -212,6 +214,7 @@ func TestGroupedAggFuncs(t *testing.T) {
 			Name: "json object float",
 			Agg: NewWindowedJSONObjectAgg(
 				NewJSONObjectAgg(
+					sql.NewEmptyContext(),
 					expression.NewGetField(1, types.LongText, "x", true),
 					expression.NewGetField(3, types.LongText, "x", true),
 				).(*JSONObjectAgg),
@@ -226,6 +229,7 @@ func TestGroupedAggFuncs(t *testing.T) {
 			Name: "json object float",
 			Agg: NewWindowedJSONObjectAgg(
 				NewJSONObjectAgg(
+					sql.NewEmptyContext(),
 					expression.NewGetField(1, types.LongText, "x", true),
 					expression.NewGetField(3, types.LongText, "x", true),
 				).(*JSONObjectAgg),

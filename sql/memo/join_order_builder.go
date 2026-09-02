@@ -17,18 +17,14 @@ package memo
 import (
 	"errors"
 	"fmt"
-	"math"
-	"math/bits"
 	"strings"
+
+	"github.com/dolthub/go-mysql-server/sql/sets"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
-
-// SplitConjunction is a pseudo-extension point of expression.SplitConjunction, used to alter the logic
-// for different integrators.
-var SplitConjunction func(expr sql.Expression) []sql.Expression = expression.SplitConjunction
 
 // joinOrderBuilder enumerates valid plans for a join tree.  We build the join
 // tree bottom up, first joining single nodes with join condition "edges", then
@@ -169,15 +165,15 @@ func (j *joinOrderBuilder) useFastReorder() bool {
 	return len(j.vertices) > 15
 }
 
-func (j *joinOrderBuilder) ReorderJoin(n sql.Node) {
+func (j *joinOrderBuilder) ReorderJoin(ctx *sql.Context, n sql.Node) {
 	j.m.Tracer.PushDebugContext("ReorderJoin")
 	defer j.m.Tracer.PopDebugContext()
 
-	j.populateSubgraph(n)
+	j.populateSubgraph(ctx, n)
 
 	if j.useFastReorder() {
 		j.m.Tracer.Log("Using fast reorder algorithm (large join with %d tables)", len(j.vertices))
-		if j.buildSingleLookupPlan() {
+		if j.buildSingleLookupPlan(ctx) {
 			j.m.Tracer.Log("Successfully built single lookup plan")
 			return
 		}
@@ -186,7 +182,7 @@ func (j *joinOrderBuilder) ReorderJoin(n sql.Node) {
 	} else if j.hasCrossJoin {
 		j.m.Tracer.Log("Join contains cross joins, attempting single lookup plan first")
 		// Rely on FastReorder to avoid plans that drop filters with cross joins
-		if j.buildSingleLookupPlan() {
+		if j.buildSingleLookupPlan(ctx) {
 			j.m.Tracer.Log("Successfully built single lookup plan for cross join")
 			return
 		}
@@ -196,8 +192,8 @@ func (j *joinOrderBuilder) ReorderJoin(n sql.Node) {
 	// TODO: consider if buildSingleLookupPlan can/should run after ensureClosure. This could allow us to use analysis
 	// from ensureClosure in buildSingleLookupPlan, but the equivalence sets could create multiple possible join orders
 	// for the single-lookup plan, which would complicate things.
-	j.ensureClosure(j.m.root)
-	j.dpEnumerateSubsets()
+	j.ensureClosure(ctx, j.m.root)
+	j.dpEnumerateSubsets(ctx)
 	j.m.Tracer.Log("Completed join reordering")
 	return
 }
@@ -205,58 +201,58 @@ func (j *joinOrderBuilder) ReorderJoin(n sql.Node) {
 // populateSubgraph recursively tracks new join nodes as edges and new
 // leaf nodes as vertices to the joinOrderBuilder graph, returning
 // the subgraph's newly tracked vertices and edges.
-func (j *joinOrderBuilder) populateSubgraph(n sql.Node) (vertexSet, edgeSet, *ExprGroup) {
+func (j *joinOrderBuilder) populateSubgraph(ctx *sql.Context, n sql.Node) (vertexSet, edgeSet, *ExprGroup) {
 	var group *ExprGroup
 	startV := j.allVertices()
 	startE := j.allEdges()
 	// build operator
 	switch n := n.(type) {
 	case *plan.Filter:
-		return j.buildFilter(n.Child, n.Expression)
+		return j.buildFilter(ctx, n.Child, n.Expression)
 	case *plan.Having:
-		return j.buildFilter(n.Child, n.Cond)
+		return j.buildFilter(ctx, n.Child, n.Cond)
 	case *plan.Limit:
-		_, _, group = j.populateSubgraph(n.Child)
+		_, _, group = j.populateSubgraph(ctx, n.Child)
 		group.RelProps.Limit = n.Limit
 	case *plan.Project:
-		return j.buildProject(n)
+		return j.buildProject(ctx, n)
 	case *plan.Sort:
-		_, _, group = j.populateSubgraph(n.Child)
-		group.RelProps.sort = n.SortFields
+		_, _, group = j.populateSubgraph(ctx, n.Child)
+		group.RelProps.sort = n.SortConditions
 	case *plan.Distinct:
-		_, _, group = j.populateSubgraph(n.Child)
+		_, _, group = j.populateSubgraph(ctx, n.Child)
 		group.RelProps.Distinct = HashDistinctOp
 		group.RelProps.DistinctOn = n.Expressions()
 	case *plan.Max1Row:
-		return j.buildMax1Row(n)
+		return j.buildMax1Row(ctx, n)
 	case *plan.JoinNode:
-		group = j.buildJoinOp(n)
+		group = j.buildJoinOp(ctx, n)
 		if n.Op == plan.JoinTypeCross {
 			j.hasCrossJoin = true
 		}
 	case *plan.SetOp:
-		group = j.buildJoinLeaf(n)
+		group = j.buildJoinLeaf(ctx, n)
 	case sql.NameableNode:
-		group = j.buildJoinLeaf(n.(plan.TableIdNode))
+		group = j.buildJoinLeaf(ctx, n.(plan.TableIdNode))
 	case *plan.CachedResults:
-		return j.populateSubgraph(n.Child)
+		return j.populateSubgraph(ctx, n.Child)
 	default:
 		err := fmt.Errorf("%w: %T", ErrUnsupportedReorderNode, n)
 		j.m.HandleErr(err)
 	}
-	return j.allVertices().difference(startV), j.allEdges().Difference(startE), group
+	return j.allVertices().Difference(startV), j.allEdges().Difference(startE), group
 }
 
 // buildSingleLookupPlan attempts to build a plan consisting only of lookup joins.
-func (j *joinOrderBuilder) buildSingleLookupPlan() bool {
-	fds := j.m.root.RelProps.FuncDeps()
+func (j *joinOrderBuilder) buildSingleLookupPlan(ctx *sql.Context) bool {
+	fds := j.m.root.RelProps.FuncDeps(ctx)
 	fdKey, hasKey := fds.StrictKey()
 	// fdKey is a set of columns which constrain all other columns in the join.
 	// If a chain of lookups exists, then the columns in fdKey must be in the innermost join.
 	if !hasKey {
 		return false
 	}
-	// We need to include all of the fdKey columns in the innermost join.
+	// We need to include every fdKey columns in the innermost join.
 	// For now, we just handle the case where the key is exactly one column.
 	if fdKey.Len() != 1 {
 		return false
@@ -268,12 +264,12 @@ func (j *joinOrderBuilder) buildSingleLookupPlan() bool {
 		}
 	}
 	keyColumn, _ := fdKey.Next(1)
-	var currentlyJoinedTables sql.FastIntSet
+	var currentlyJoinedTables sets.FastIntSet
 	var currentlyJoinedVertexes vertexSet
 	for i, n := range j.m.Root().RelProps.TableIdNodes() {
 		if n.Columns().Contains(keyColumn) {
 			currentlyJoinedTables.Add(int(n.Id()))
-			currentlyJoinedVertexes = currentlyJoinedVertexes.add(uint64(i))
+			currentlyJoinedVertexes = currentlyJoinedVertexes.Add(uint64(i))
 			break
 		}
 	}
@@ -301,8 +297,8 @@ func (j *joinOrderBuilder) buildSingleLookupPlan() bool {
 				panic("Found an edge with multiple filters (that was previously validated as an inner join.) This shouldn't be possible.")
 			}
 			filter := edge.filters[0]
-			_, tables, _ := getExprScalarProps(filter)
-			if tables.Len() != 2 || !isSimpleEquality(filter) {
+			_, tables, _ := getExprScalarProps(ctx, filter)
+			if tables.Len() != 2 || !isSimpleEquality(ctx, filter) {
 				// We have encountered a filter condition more complicated than a simple equality check.
 				// We probably can't optimize this, so bail out.
 				return false
@@ -339,7 +335,7 @@ func (j *joinOrderBuilder) buildSingleLookupPlan() bool {
 		var nextVertex vertexSet
 		for i, id := range j.vertexTableIds {
 			if id == nextTableId {
-				nextVertex = nextVertex.add(uint64(i))
+				nextVertex = nextVertex.Add(uint64(i))
 				break
 			}
 		}
@@ -347,9 +343,9 @@ func (j *joinOrderBuilder) buildSingleLookupPlan() bool {
 		edge := j.edges[nextEdgeIdx]
 
 		isRedundant := edge.joinIsRedundant(currentlyJoinedVertexes, nextVertex)
-		j.addJoin(plan.JoinTypeInner, currentlyJoinedVertexes, nextVertex, j.edges[nextEdgeIdx].filters, nil, isRedundant)
+		j.addJoin(ctx, plan.JoinTypeInner, currentlyJoinedVertexes, nextVertex, j.edges[nextEdgeIdx].filters, nil, isRedundant)
 
-		currentlyJoinedVertexes = currentlyJoinedVertexes.union(nextVertex)
+		currentlyJoinedVertexes = currentlyJoinedVertexes.Union(nextVertex)
 		currentlyJoinedTables.Add(int(nextTableId))
 		removedEdges.Add(nextEdgeIdx)
 		succ = true
@@ -361,13 +357,13 @@ func (j *joinOrderBuilder) buildSingleLookupPlan() bool {
 // to the join tree. Each transitive edge will add an inner edge, filter,
 // and join group that inherit join type and tree depth from the original
 // join tree.
-func (j *joinOrderBuilder) ensureClosure(grp *ExprGroup) {
-	fds := grp.RelProps.FuncDeps()
+func (j *joinOrderBuilder) ensureClosure(ctx *sql.Context, grp *ExprGroup) {
+	fds := grp.RelProps.FuncDeps(ctx)
 	for _, set := range fds.Equiv().Sets() {
 		for col1, hasNext1 := set.Next(1); hasNext1; col1, hasNext1 = set.Next(col1 + 1) {
 			for col2, hasNext2 := set.Next(col1 + 1); hasNext2; col2, hasNext2 = set.Next(col2 + 1) {
 				if !j.hasEqEdge(col1, col2) {
-					j.makeTransitiveEdge(col1, col2)
+					j.makeTransitiveEdge(ctx, col1, col2)
 				}
 			}
 		}
@@ -406,10 +402,10 @@ func (j *joinOrderBuilder) hasEqEdge(leftCol, rightCol sql.ColumnId) bool {
 	return false
 }
 
-func (j *joinOrderBuilder) findVertexFromCol(col sql.ColumnId) (vertexIndex, GroupId, bool) {
+func (j *joinOrderBuilder) findVertexFromCol(ctx *sql.Context, col sql.ColumnId) (vertexIndex, GroupId, bool) {
 	for i, v := range j.vertices {
 		if t, ok := v.(SourceRel); ok {
-			if t.Group().RelProps.FuncDeps().All().Contains(col) {
+			if t.Group().RelProps.FuncDeps(ctx).All().Contains(col) {
 				return vertexIndex(i), t.Group().Id, true
 			}
 		}
@@ -430,24 +426,24 @@ func (j *joinOrderBuilder) findVertexFromGroup(grp GroupId) vertexIndex {
 
 // makeTransitiveEdge constructs a new join tree edge and memo group
 // on an equality filter between two columns.
-func (j *joinOrderBuilder) makeTransitiveEdge(col1, col2 sql.ColumnId) {
+func (j *joinOrderBuilder) makeTransitiveEdge(ctx *sql.Context, col1, col2 sql.ColumnId) {
 	j.m.Tracer.PushDebugContext("makeTransitiveEdge")
 	defer j.m.Tracer.PopDebugContext()
 
 	var vert vertexSet
-	v1, _, v1found := j.findVertexFromCol(col1)
-	v2, _, v2found := j.findVertexFromCol(col2)
+	v1, _, v1found := j.findVertexFromCol(ctx, col1)
+	v2, _, v2found := j.findVertexFromCol(ctx, col2)
 	if !v1found || !v2found {
 		return
 	}
-	vert = vert.add(v1).add(v2)
+	vert = vert.Add(v1).Add(v2)
 
 	// find edge where the vertices are provided but partitioned
 	var op *operator
 	for _, e := range j.edges {
-		if vert.isSubsetOf(e.op.leftVertices.union(e.op.rightVertices)) &&
-			!vert.isSubsetOf(e.op.leftVertices) &&
-			!vert.isSubsetOf(e.op.rightVertices) {
+		if vert.IsSubsetOf(e.op.leftVertices.Union(e.op.rightVertices)) &&
+			!vert.IsSubsetOf(e.op.leftVertices) &&
+			!vert.IsSubsetOf(e.op.rightVertices) {
 			op = e.op
 			break
 		}
@@ -484,16 +480,16 @@ func (j *joinOrderBuilder) makeTransitiveEdge(col1, col2 sql.ColumnId) {
 
 	eq := expression.NewEquals(gf1, gf2)
 	j.m.Tracer.Log("adding edge %s", eq)
-	j.edges = append(j.edges, *j.makeEdge(op, eq))
+	j.edges = append(j.edges, *j.makeEdge(ctx, op, eq))
 	j.innerEdges.Add(len(j.edges) - 1)
 }
 
-func (j *joinOrderBuilder) buildJoinOp(n *plan.JoinNode) *ExprGroup {
+func (j *joinOrderBuilder) buildJoinOp(ctx *sql.Context, n *plan.JoinNode) *ExprGroup {
 	j.m.Tracer.PushDebugContext("buildJoinOp")
 	defer j.m.Tracer.PopDebugContext()
 
-	leftV, leftE, _ := j.populateSubgraph(n.Left())
-	rightV, rightE, _ := j.populateSubgraph(n.Right())
+	leftV, leftE, _ := j.populateSubgraph(ctx, n.Left())
+	rightV, rightE, _ := j.populateSubgraph(ctx, n.Right())
 	typ := n.JoinType()
 	if typ.IsPhysical() {
 		typ = plan.JoinTypeInner
@@ -508,15 +504,15 @@ func (j *joinOrderBuilder) buildJoinOp(n *plan.JoinNode) *ExprGroup {
 		rightEdges:    rightE,
 	}
 
-	filters := SplitConjunction(n.JoinCond())
+	filters := expression.SplitConjunction(ctx, n.JoinCond())
 	j.m.Tracer.Log("Join filters: %v", filters)
-	union := leftV.union(rightV)
+	union := leftV.Union(rightV)
 	group, ok := j.plans[union]
 	if !ok {
 		// TODO: memo and root should be initialized prior to join planning
 		left := j.plans[leftV]
 		right := j.plans[rightV]
-		group = j.memoize(op.joinType, left, right, filters)
+		group = j.memoize(ctx, op.joinType, left, right, filters)
 		j.plans[union] = group
 		j.m.root = group
 		j.m.Tracer.Log("Created new memo group for join combination")
@@ -524,19 +520,19 @@ func (j *joinOrderBuilder) buildJoinOp(n *plan.JoinNode) *ExprGroup {
 
 	if !isInner {
 		j.m.Tracer.Log("Building non-inner edge for join type: %s", typ)
-		j.buildNonInnerEdge(op, filters...)
+		j.buildNonInnerEdge(ctx, op, filters...)
 	} else {
 		j.m.Tracer.Log("Building inner edge for join type: %s", typ)
-		j.buildInnerEdge(op, filters...)
+		j.buildInnerEdge(ctx, op, filters...)
 	}
 	return group
 }
 
-func (j *joinOrderBuilder) buildFilter(child sql.Node, e sql.Expression) (vertexSet, edgeSet, *ExprGroup) {
+func (j *joinOrderBuilder) buildFilter(ctx *sql.Context, child sql.Node, e sql.Expression) (vertexSet, edgeSet, *ExprGroup) {
 	// memoize child
-	childV, childE, childGrp := j.populateSubgraph(child)
+	childV, childE, childGrp := j.populateSubgraph(ctx, child)
 
-	filterGrp := j.m.MemoizeFilter(nil, childGrp, SplitConjunction(e))
+	filterGrp := j.m.MemoizeFilter(ctx, nil, childGrp, expression.SplitConjunction(ctx, e))
 
 	// filter will absorb child relation for join reordering
 	j.plans[childV] = filterGrp
@@ -544,28 +540,28 @@ func (j *joinOrderBuilder) buildFilter(child sql.Node, e sql.Expression) (vertex
 	return childV, childE, filterGrp
 }
 
-func (j *joinOrderBuilder) buildProject(n *plan.Project) (vertexSet, edgeSet, *ExprGroup) {
+func (j *joinOrderBuilder) buildProject(ctx *sql.Context, n *plan.Project) (vertexSet, edgeSet, *ExprGroup) {
 	// memoize child
-	childV, childE, childGrp := j.populateSubgraph(n.Child)
+	childV, childE, childGrp := j.populateSubgraph(ctx, n.Child)
 
-	projGrp := j.m.MemoizeProject(nil, childGrp, n.Projections)
+	projGrp := j.m.MemoizeProject(ctx, nil, childGrp, n.Projections)
 
 	// filter will absorb child relation for join reordering
 	j.plans[childV] = projGrp
 	return childV, childE, projGrp
 }
 
-func (j *joinOrderBuilder) buildMax1Row(n *plan.Max1Row) (vertexSet, edgeSet, *ExprGroup) {
+func (j *joinOrderBuilder) buildMax1Row(ctx *sql.Context, n *plan.Max1Row) (vertexSet, edgeSet, *ExprGroup) {
 	// memoize child
-	childV, childE, childGrp := j.populateSubgraph(n.Child)
+	childV, childE, childGrp := j.populateSubgraph(ctx, n.Child)
 
-	max1Grp := j.m.MemoizeMax1Row(nil, childGrp)
+	max1Grp := j.m.MemoizeMax1Row(ctx, nil, childGrp)
 
 	j.plans[childV] = max1Grp
 	return childV, childE, max1Grp
 }
 
-func (j *joinOrderBuilder) buildJoinLeaf(n plan.TableIdNode) *ExprGroup {
+func (j *joinOrderBuilder) buildJoinLeaf(ctx *sql.Context, n plan.TableIdNode) *ExprGroup {
 	j.checkSize()
 
 	var rel SourceRel
@@ -602,34 +598,34 @@ func (j *joinOrderBuilder) buildJoinLeaf(n plan.TableIdNode) *ExprGroup {
 
 	// Initialize the plan for this vertex.
 	idx := vertexIndex(len(j.vertices) - 1)
-	relSet := vertexSet(0).add(idx)
-	grp := j.m.memoizeSourceRel(rel)
+	relSet := vertexSet(0).Add(idx)
+	grp := j.m.memoizeSourceRel(ctx, rel)
 	j.plans[relSet] = grp
 	j.vertexGroups = append(j.vertexGroups, grp.Id)
 	j.vertexTableIds = append(j.vertexTableIds, n.Id())
 	return grp
 }
 
-func (j *joinOrderBuilder) buildInnerEdge(op *operator, filters ...sql.Expression) {
+func (j *joinOrderBuilder) buildInnerEdge(ctx *sql.Context, op *operator, filters ...sql.Expression) {
 	if len(filters) == 0 {
 		// cross join
-		j.edges = append(j.edges, *j.makeEdge(op))
+		j.edges = append(j.edges, *j.makeEdge(ctx, op))
 		j.innerEdges.Add(len(j.edges) - 1)
 		return
 	}
 	for _, f := range filters {
-		j.edges = append(j.edges, *j.makeEdge(op, f))
+		j.edges = append(j.edges, *j.makeEdge(ctx, op, f))
 		j.innerEdges.Add(len(j.edges) - 1)
 	}
 }
 
-func (j *joinOrderBuilder) buildNonInnerEdge(op *operator, filters ...sql.Expression) {
+func (j *joinOrderBuilder) buildNonInnerEdge(ctx *sql.Context, op *operator, filters ...sql.Expression) {
 	// only single edge for non-inner
-	j.edges = append(j.edges, *j.makeEdge(op, filters...))
+	j.edges = append(j.edges, *j.makeEdge(ctx, op, filters...))
 	j.nonInnerEdges.Add(len(j.edges) - 1)
 }
 
-func (j *joinOrderBuilder) makeEdge(op *operator, filters ...sql.Expression) *edge {
+func (j *joinOrderBuilder) makeEdge(ctx *sql.Context, op *operator, filters ...sql.Expression) *edge {
 	// edge is an instance of operator with a unique set of transform rules depending
 	// on the subset of filters used
 	e := &edge{
@@ -641,7 +637,7 @@ func (j *joinOrderBuilder) makeEdge(op *operator, filters ...sql.Expression) *ed
 	// TODO: validate malformed join clauses like `ab join xy on a = u`
 	// prior to join planning, execBuilder currently throws getField errors
 	// for these
-	e.populateEdgeProps(j.vertexTableIds, j.edges)
+	e.populateEdgeProps(ctx, j.vertexTableIds, j.edges)
 	return e
 }
 
@@ -655,45 +651,45 @@ func (j *joinOrderBuilder) checkSize() {
 // dpEnumerateSubsets iterates all disjoint combinations of table sets,
 // adding plans to the tree when we find two sets that can
 // be joined
-func (j *joinOrderBuilder) dpEnumerateSubsets() {
+func (j *joinOrderBuilder) dpEnumerateSubsets(ctx *sql.Context) {
 	j.m.Tracer.PushDebugContext("dpEnumerateSubsets")
 	defer j.m.Tracer.PopDebugContext()
 
 	all := j.allVertices()
 	for subset := vertexSet(1); subset <= all; subset++ {
-		if subset.isSingleton() {
+		if subset.IsSingleton() {
 			continue
 		}
 		for s1 := vertexSet(1); s1 <= subset/2; s1++ {
-			if !s1.isSubsetOf(subset) {
+			if !s1.IsSubsetOf(subset) {
 				continue
 			}
-			s2 := subset.difference(s1)
-			j.addPlans(s1, s2)
+			s2 := subset.Difference(s1)
+			j.addPlans(ctx, s1, s2)
 		}
 	}
 }
 
 func setPrinter(all, s1, s2 vertexSet) {
-	s1Arr := make([]string, all.len())
+	s1Arr := make([]string, all.Size())
 	for i := range s1Arr {
 		s1Arr[i] = "0"
 	}
-	s2Arr := make([]string, all.len())
+	s2Arr := make([]string, all.Size())
 	for i := range s2Arr {
 		s2Arr[i] = "0"
 	}
-	for idx, ok := s1.next(0); ok; idx, ok = s1.next(idx + 1) {
+	for idx, ok := s1.Next(0); ok; idx, ok = s1.Next(idx + 1) {
 		s1Arr[idx] = "1"
 	}
-	for idx, ok := s2.next(0); ok; idx, ok = s2.next(idx + 1) {
+	for idx, ok := s2.Next(0); ok; idx, ok = s2.Next(idx + 1) {
 		s2Arr[idx] = "1"
 	}
 	fmt.Printf("s1: %s, s2: %s\n", strings.Join(s1Arr, ""), strings.Join(s2Arr, ""))
 }
 
 // addPlans finds operators that let us join (s1 op s2) and (s2 op s1).
-func (j *joinOrderBuilder) addPlans(s1, s2 vertexSet) {
+func (j *joinOrderBuilder) addPlans(ctx *sql.Context, s1, s2 vertexSet) {
 	j.m.Tracer.PushDebugContextFmt("addPlans/%s<->%s", s1, s2)
 	defer j.m.Tracer.PopDebugContext()
 
@@ -731,14 +727,14 @@ func (j *joinOrderBuilder) addPlans(s1, s2 vertexSet) {
 		e := &j.edges[i]
 		if e.applicable(s1, s2) {
 			j.m.Tracer.Log("Found applicable non-inner edge %d, adding join: %s", i, e.op.joinType)
-			j.addJoin(e.op.joinType, s1, s2, e.filters, innerJoinFilters, e.joinIsRedundant(s1, s2))
+			j.addJoin(ctx, e.op.joinType, s1, s2, e.filters, innerJoinFilters, e.joinIsRedundant(s1, s2))
 			return
 		}
 		if e.applicable(s2, s1) {
 			// This is necessary because we only iterate s1 up to subset / 2
 			// in DPSube()
 			j.m.Tracer.Log("Found applicable non-inner edge %d (swapped), adding join: %s", i, e.op.joinType)
-			j.addJoin(e.op.joinType, s2, s1, e.filters, innerJoinFilters, e.joinIsRedundant(s2, s1))
+			j.addJoin(ctx, e.op.joinType, s2, s1, e.filters, innerJoinFilters, e.joinIsRedundant(s2, s1))
 			return
 		}
 	}
@@ -749,28 +745,28 @@ func (j *joinOrderBuilder) addPlans(s1, s2 vertexSet) {
 		// inner join replaces a non-inner join.
 		if innerJoinFilters == nil {
 			j.m.Tracer.Log("Adding cross join")
-			j.addJoin(plan.JoinTypeCross, s1, s2, nil, nil, isRedundant)
+			j.addJoin(ctx, plan.JoinTypeCross, s1, s2, nil, nil, isRedundant)
 		} else {
 			j.m.Tracer.Log("Adding inner join with filters: %v", innerJoinFilters)
-			j.addJoin(plan.JoinTypeInner, s1, s2, innerJoinFilters, nil, isRedundant)
+			j.addJoin(ctx, plan.JoinTypeInner, s1, s2, innerJoinFilters, nil, isRedundant)
 		}
 	} else {
 		j.m.Tracer.Log("No applicable edges found for join")
 	}
 }
 
-func (j *joinOrderBuilder) addJoin(op plan.JoinType, s1, s2 vertexSet, joinFilter, selFilters []sql.Expression, isRedundant bool) {
-	if s1.intersects(s2) {
+func (j *joinOrderBuilder) addJoin(ctx *sql.Context, op plan.JoinType, s1, s2 vertexSet, joinFilter, selFilters []sql.Expression, isRedundant bool) {
+	if s1.Intersects(s2) {
 		panic("sets are not disjoint")
 	}
-	union := s1.union(s2)
+	union := s1.Union(s2)
 	left := j.plans[s1]
 	right := j.plans[s2]
 
 	group, ok := j.plans[union]
 	if !isRedundant {
 		if !ok {
-			group = j.memoize(op, left, right, joinFilter)
+			group = j.memoize(ctx, op, left, right, joinFilter)
 			j.plans[union] = group
 		} else {
 			j.addJoinToGroup(op, left, right, joinFilter, selFilters, group)
@@ -814,13 +810,14 @@ func (j *joinOrderBuilder) addJoinToGroup(
 
 // memoize
 func (j *joinOrderBuilder) memoize(
+	ctx *sql.Context,
 	op plan.JoinType,
 	left *ExprGroup,
 	right *ExprGroup,
 	joinFilter []sql.Expression,
 ) *ExprGroup {
 	rel := j.constructJoin(op, left, right, joinFilter, nil)
-	return j.m.NewExprGroup(rel)
+	return j.m.NewExprGroup(ctx, rel)
 }
 
 func (j *joinOrderBuilder) constructJoin(
@@ -928,12 +925,12 @@ type edge struct {
 	tes vertexSet
 }
 
-func (e *edge) populateEdgeProps(tableIds []sql.TableId, edges []edge) {
-	var tables sql.FastIntSet
+func (e *edge) populateEdgeProps(ctx *sql.Context, tableIds []sql.TableId, edges []edge) {
+	var tables sets.FastIntSet
 	var cols sql.ColSet
 	if len(e.filters) > 0 {
 		for _, e := range e.filters {
-			eCols, eTabs, _ := getExprScalarProps(e)
+			eCols, eTabs, _ := getExprScalarProps(ctx, e)
 			cols = cols.Union(eCols)
 			tables = tables.Union(eTabs)
 		}
@@ -996,13 +993,13 @@ func (e *edge) nullRejectingTables(nullAccepting []sql.Expression, allNames []st
 
 // calcSES updates the syntactic eligibility set for an edge. An SES
 // represents all tables this edge's filters requires as input.
-func (e *edge) calcSES(tables sql.FastIntSet, tableIds []sql.TableId) {
+func (e *edge) calcSES(tables sets.FastIntSet, tableIds []sql.TableId) {
 	ses := vertexSet(0)
 	for i, ok := tables.Next(0); ok; i, ok = tables.Next(i + 1) {
 		for j, tabId := range tableIds {
 			// table ids, group ids, and vertex ids are all distinct
 			if sql.TableId(i) == tabId {
-				ses = ses.add(vertexIndex(j))
+				ses = ses.Add(vertexIndex(j))
 				break
 			}
 		}
@@ -1031,16 +1028,16 @@ func (e *edge) calcTES(edges []edge) {
 	//   of s1 or the right tree provides a subset of s2. This is logically
 	//   equivalent to expanding the TES here, but front-loads this logic
 	//   because a bigger TES earlier reduces the conflict checking work.
-	if !e.tes.intersects(e.op.leftVertices) {
-		e.tes = e.tes.union(e.op.leftVertices)
+	if !e.tes.Intersects(e.op.leftVertices) {
+		e.tes = e.tes.Union(e.op.leftVertices)
 	}
-	if !e.tes.intersects(e.op.rightVertices) {
-		e.tes = e.tes.union(e.op.rightVertices)
+	if !e.tes.Intersects(e.op.rightVertices) {
+		e.tes = e.tes.Union(e.op.rightVertices)
 	}
 
 	// left join can't be moved such that we transpose left-dependencies
 	if e.op.joinType.IsLeftOuter() {
-		e.tes = e.tes.union(e.op.leftVertices)
+		e.tes = e.tes.Union(e.op.leftVertices)
 	}
 
 	// CD-C algorithm
@@ -1051,7 +1048,7 @@ func (e *edge) calcTES(edges []edge) {
 	// iterate every eA in STO(left(eB))
 	eB := e
 	for idx, ok := eB.op.leftEdges.Next(0); ok; idx, ok = eB.op.leftEdges.Next(idx + 1) {
-		if eB.op.leftVertices.isSubsetOf(eB.tes) {
+		if eB.op.leftVertices.IsSubsetOf(eB.tes) {
 			// Fast path to break out early: the TES includes all relations from the
 			// left input.
 			break
@@ -1061,9 +1058,9 @@ func (e *edge) calcTES(edges []edge) {
 			// The edges are not associative, so add a conflict rule mapping from the
 			// right input relations of the child to its left input relations.
 			rule := conflictRule{from: eA.op.rightVertices}
-			if eA.op.leftVertices.intersects(eA.ses) {
+			if eA.op.leftVertices.Intersects(eA.ses) {
 				// A less restrictive conflict rule can be added in this case.
-				rule.to = eA.op.leftVertices.intersection(eA.ses)
+				rule.to = eA.op.leftVertices.Intersection(eA.ses)
 			} else {
 				rule.to = eA.op.leftVertices
 			}
@@ -1073,9 +1070,9 @@ func (e *edge) calcTES(edges []edge) {
 			// Left-asscom does not hold, so add a conflict rule mapping from the
 			// left input relations of the child to its right input relations.
 			rule := conflictRule{from: eA.op.leftVertices}
-			if eA.op.rightVertices.intersects(eA.ses) {
+			if eA.op.rightVertices.Intersects(eA.ses) {
 				// A less restrictive conflict rule can be added in this case.
-				rule.to = eA.op.rightVertices.intersection(eA.ses)
+				rule.to = eA.op.rightVertices.Intersection(eA.ses)
 			} else {
 				rule.to = eA.op.rightVertices
 			}
@@ -1084,7 +1081,7 @@ func (e *edge) calcTES(edges []edge) {
 	}
 
 	for idx, ok := e.op.rightEdges.Next(0); ok; idx, ok = e.op.rightEdges.Next(idx + 1) {
-		if e.op.rightVertices.isSubsetOf(e.tes) {
+		if e.op.rightVertices.IsSubsetOf(e.tes) {
 			// Fast path to break out early: the TES includes all relations from the
 			// right input.
 			break
@@ -1094,9 +1091,9 @@ func (e *edge) calcTES(edges []edge) {
 			// The edges are not associative, so add a conflict rule mapping from the
 			// left input relations of the child to its right input relations.
 			rule := conflictRule{from: eA.op.leftVertices}
-			if eA.op.rightVertices.intersects(eA.ses) {
+			if eA.op.rightVertices.Intersects(eA.ses) {
 				// A less restrictive conflict rule can be added in this case.
-				rule.to = eA.op.rightVertices.intersection(eA.ses)
+				rule.to = eA.op.rightVertices.Intersection(eA.ses)
 			} else {
 				rule.to = eA.op.rightVertices
 			}
@@ -1106,9 +1103,9 @@ func (e *edge) calcTES(edges []edge) {
 			// Right-asscom does not hold, so add a conflict rule mapping from the
 			// right input relations of the child to its left input relations.
 			rule := conflictRule{from: eA.op.rightVertices}
-			if eA.op.leftVertices.intersects(eA.ses) {
+			if eA.op.leftVertices.Intersects(eA.ses) {
 				// A less restrictive conflict rule can be added in this case.
-				rule.to = eA.op.leftVertices.intersection(eA.ses)
+				rule.to = eA.op.leftVertices.Intersection(eA.ses)
 			} else {
 				rule.to = eA.op.leftVertices
 			}
@@ -1120,13 +1117,13 @@ func (e *edge) calcTES(edges []edge) {
 // addRule adds the given conflict rule to the edge. Before the rule is added to
 // the rules set, an effort is made to eliminate the need for the rule.
 func (e *edge) addRule(rule conflictRule) {
-	if rule.from.intersects(e.tes) {
+	if rule.from.Intersects(e.tes) {
 		// If the 'from' relation set intersects the total eligibility set, simply
 		// add the 'to' set to the TES because the rule will always be triggered.
-		e.tes = e.tes.union(rule.to)
+		e.tes = e.tes.Union(rule.to)
 		return
 	}
-	if rule.to.isSubsetOf(e.tes) {
+	if rule.to.IsSubsetOf(e.tes) {
 		// If the 'to' relation set is a subset of the total eligibility set, the
 		// rule is a do-nothing.
 		return
@@ -1145,14 +1142,14 @@ func (e *edge) applicable(s1, s2 vertexSet) bool {
 		// The TES must be a subset of the relations of the candidate join inputs. In
 		// addition, the TES must intersect both s1 and s2 (the edge must connect the
 		// two vertex sets).
-		return e.tes.isSubsetOf(s1.union(s2)) && e.tes.intersects(s1) && e.tes.intersects(s2)
+		return e.tes.IsSubsetOf(s1.Union(s2)) && e.tes.Intersects(s1) && e.tes.Intersects(s2)
 	default:
 		// The left TES must be a subset of the s1 relations, and the right TES must
 		// be a subset of the s2 relations. In addition, the TES must intersect both
 		// s1 and s2 (the edge must connect the two vertex sets).
-		return e.tes.intersection(e.op.leftVertices).isSubsetOf(s1) &&
-			e.tes.intersection(e.op.rightVertices).isSubsetOf(s2) &&
-			e.tes.intersects(s1) && e.tes.intersects(s2)
+		return e.tes.Intersection(e.op.leftVertices).IsSubsetOf(s1) &&
+			e.tes.Intersection(e.op.rightVertices).IsSubsetOf(s2) &&
+			e.tes.Intersects(s1) && e.tes.Intersects(s2)
 	}
 }
 
@@ -1160,9 +1157,9 @@ func (e *edge) applicable(s1, s2 vertexSet) bool {
 // is detected for the given sets of join input relations. Otherwise, returns
 // true.
 func (e *edge) checkRules(s1, s2 vertexSet) bool {
-	s := s1.union(s2)
+	s := s1.Union(s2)
 	for _, rule := range e.rules {
-		if rule.from.intersects(s) && !rule.to.isSubsetOf(s) {
+		if rule.from.Intersects(s) && !rule.to.IsSubsetOf(s) {
 			// The join is invalid because it does not obey this conflict rule.
 			return false
 		}
@@ -1190,7 +1187,7 @@ type assocTransform func(eA, eB *edge) bool
 //
 // note: important to compare edge ordering for left deep tree.
 func assoc(eA, eB *edge) bool {
-	if eB.ses.intersects(eA.op.leftVertices) || eA.ses.intersects(eB.op.rightVertices) {
+	if eB.ses.Intersects(eA.op.leftVertices) || eA.ses.Intersects(eB.op.rightVertices) {
 		// associating two operators can estrange the distant relation.
 		// for example:
 		//   (e2 op_a_12 e1) op_b_13 e3
@@ -1219,7 +1216,7 @@ func assoc(eA, eB *edge) bool {
 //	=>
 //	(e1 op_b_13 e3) op_a_12 e2
 func leftAsscom(eA, eB *edge) bool {
-	if eB.ses.intersects(eA.op.rightVertices) || eA.ses.intersects(eB.op.rightVertices) {
+	if eB.ses.Intersects(eA.op.rightVertices) || eA.ses.Intersects(eB.op.rightVertices) {
 		// Associating two operators can estrange the distant relation.
 		// For example:
 		//	(e1 op_a_12 e2) op_b_23 e3
@@ -1240,7 +1237,7 @@ func leftAsscom(eA, eB *edge) bool {
 //	=>
 //	e2 op_a_23 (e1 op_b_13 e3)
 func rightAsscom(eA, eB *edge) bool {
-	if eB.ses.intersects(eA.op.leftVertices) || eA.ses.intersects(eB.op.leftVertices) {
+	if eB.ses.Intersects(eA.op.leftVertices) || eA.ses.Intersects(eB.op.leftVertices) {
 		// Associating two operators can estrange the distant relation.
 		// For example:
 		//	e3 op_b_23 (e1 op_a_12 e3)
@@ -1432,14 +1429,14 @@ func checkProperty(table [8][8]lookupTableEntry, edgeA, edgeB *edge) bool {
 	if entry&filterA != 0 {
 		// The filters of edgeA must reject nulls on one or more of the relations in
 		// nullRejectRelations.
-		if !edgeA.nullRejectedRels.intersects(candidateNullRejectRels) {
+		if !edgeA.nullRejectedRels.Intersects(candidateNullRejectRels) {
 			return false
 		}
 	}
 	if entry&filterB != 0 {
 		// The filters of edgeB must reject nulls on one or more of the relations in
 		// nullRejectRelations.
-		if !edgeB.nullRejectedRels.intersects(candidateNullRejectRels) {
+		if !edgeB.nullRejectedRels.Intersects(candidateNullRejectRels) {
 			return false
 		}
 	}
@@ -1473,109 +1470,12 @@ func getOpIdx(e *edge) int {
 	}
 }
 
-type edgeSet = sql.FastIntSet
-
-type bitSet uint64
+type edgeSet = sets.FastIntSet
 
 // vertexSet represents a set of base relations that form the vertexes of the
 // join graph.
-type vertexSet = bitSet
-
-const maxSetSize = 63
+type vertexSet = sets.BitSet
 
 // vertexIndex represents the ordinal position of a base relation in the
 // JoinOrderBuilder vertexes field. vertexIndex must be less than maxSetSize.
 type vertexIndex = uint64
-
-func newBitSet(idxs ...uint64) (res bitSet) {
-	for _, idx := range idxs {
-		res = res.add(idx)
-	}
-	return res
-}
-
-// add returns a copy of the bitSet with the given element added.
-func (s bitSet) add(idx uint64) bitSet {
-	if idx > maxSetSize {
-		panic(fmt.Sprintf("cannot insert %d into bitSet", idx))
-	}
-	return s | (1 << idx)
-}
-
-// remove returns a copy of the bitSet with the given element removed.
-func (s bitSet) remove(idx uint64) bitSet {
-	if idx > maxSetSize {
-		panic(fmt.Sprintf("%d is invalid index for bitSet", idx))
-	}
-	return s & ^(1 << idx)
-}
-
-// contains returns whether a bitset contains a given element.
-func (s bitSet) contains(idx uint64) bool {
-	if idx > maxSetSize {
-		panic(fmt.Sprintf("%d is invalid index for bitSet", idx))
-	}
-	return s&(1<<idx) != 0
-}
-
-// union returns the set union of this set with the given set.
-func (s bitSet) union(o bitSet) bitSet {
-	return s | o
-}
-
-// intersection returns the set intersection of this set with the given set.
-func (s bitSet) intersection(o bitSet) bitSet {
-	return s & o
-}
-
-// difference returns the set difference of this set with the given set.
-func (s bitSet) difference(o bitSet) bitSet {
-	return s & ^o
-}
-
-// intersects returns true if this set and the given set intersect.
-func (s bitSet) intersects(o bitSet) bool {
-	return s.intersection(o) != 0
-}
-
-// isSubsetOf returns true if this set is a subset of the given set.
-func (s bitSet) isSubsetOf(o bitSet) bool {
-	return s.union(o) == o
-}
-
-// isSingleton returns true if the set has exactly one element.
-func (s bitSet) isSingleton() bool {
-	return s > 0 && (s&(s-1)) == 0
-}
-
-// next returns the next element in the set after the given start index, and
-// a bool indicating whether such an element exists.
-func (s bitSet) next(startVal uint64) (elem uint64, ok bool) {
-	if startVal < maxSetSize {
-		if ntz := bits.TrailingZeros64(uint64(s >> startVal)); ntz < 64 {
-			return startVal + uint64(ntz), true
-		}
-	}
-	return uint64(math.MaxInt64), false
-}
-
-// len returns the number of elements in the set.
-func (s bitSet) len() int {
-	return bits.OnesCount64(uint64(s))
-}
-
-func (s bitSet) String() string {
-	var str string
-	var i vertexSet = 1
-	cnt := 0
-	for cnt < s.len() {
-		if (i & s) != 0 {
-			str += "1"
-			cnt++
-		} else {
-			str += "0"
-		}
-		i = i << 1
-	}
-	return str
-}

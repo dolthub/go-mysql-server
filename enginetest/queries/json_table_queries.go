@@ -25,6 +25,18 @@ var JSONTableQueryTests = []QueryTest{
 		Expected: []sql.Row{},
 	},
 	{
+		Query:    "SELECT * FROM JSON_TABLE('null','$[*]' COLUMNS(x int path '$.a')) as t;",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT * FROM JSON_TABLE('null','$.b' COLUMNS(x int path '$.a')) as t;",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT * FROM JSON_TABLE('null','$' COLUMNS(x int path '$.a')) as t;",
+		Expected: []sql.Row{{nil}},
+	},
+	{
 		Query:    "SELECT * FROM JSON_TABLE('{}','$[*]' COLUMNS(x int path '$.a')) as t;",
 		Expected: []sql.Row{},
 	},

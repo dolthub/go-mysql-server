@@ -14,13 +14,16 @@
 
 package sql
 
-import "fmt"
+import (
+	"context"
+	"fmt"
+)
 
 // RangeCollection is a collection of ranges that represent different (non-overlapping) filter expressions.
 type RangeCollection interface {
 	DebugStringer
 	fmt.Stringer
-	Equals(otherCollection RangeCollection) (bool, error)
+	Equals(ctx context.Context, otherCollection RangeCollection) (bool, error)
 	Len() int
 	ToRanges() []Range
 }
@@ -30,5 +33,5 @@ type RangeCollection interface {
 type Range interface {
 	DebugStringer
 	fmt.Stringer
-	Equals(other Range) (bool, error)
+	Equals(ctx context.Context, other Range) (bool, error)
 }

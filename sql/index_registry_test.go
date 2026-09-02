@@ -444,23 +444,24 @@ func (i dummyIdx) Expressions() []string {
 	return exprs
 }
 
-func (i dummyIdx) ID() string              { return i.id }
-func (i dummyIdx) Database() string        { return i.database }
-func (i dummyIdx) Table() string           { return i.table }
-func (i dummyIdx) Driver() string          { return "dummy" }
-func (i dummyIdx) IsUnique() bool          { return false }
-func (i dummyIdx) IsSpatial() bool         { return false }
-func (i dummyIdx) IsFullText() bool        { return false }
-func (i dummyIdx) IsVector() bool          { return false }
-func (i dummyIdx) Comment() string         { return "" }
-func (i dummyIdx) IsGenerated() bool       { return false }
-func (i dummyIdx) IndexType() string       { return "BTREE" }
-func (i dummyIdx) PrefixLengths() []uint16 { return nil }
+func (i dummyIdx) ID() string                  { return i.id }
+func (i dummyIdx) Database() string            { return i.database }
+func (i dummyIdx) Table() string               { return i.table }
+func (i dummyIdx) Driver() string              { return "dummy" }
+func (i dummyIdx) IsUnique() bool              { return false }
+func (i dummyIdx) IsSpatial() bool             { return false }
+func (i dummyIdx) IsFullText() bool            { return false }
+func (i dummyIdx) IsVector() bool              { return false }
+func (i dummyIdx) Comment() string             { return "" }
+func (i dummyIdx) IsGenerated() bool           { return false }
+func (i dummyIdx) IndexType() string           { return "BTREE" }
+func (i dummyIdx) PrefixLengths() []uint16     { return nil }
+func (i dummyIdx) CoversColumns([]string) bool { return false }
 
 func (i dummyIdx) NewLookup(ctx *Context, ranges ...Range) (IndexLookup, error) {
 	panic("not implemented")
 }
-func (i dummyIdx) ColumnExpressionTypes() []ColumnExpressionType {
+func (i dummyIdx) ColumnExpressionTypes(ctx *Context) []ColumnExpressionType {
 	panic("not implemented")
 }
 
@@ -474,13 +475,13 @@ var _ CollationCoercible = (*dummyExpr)(nil)
 
 func (dummyExpr) Children() []Expression                  { return nil }
 func (dummyExpr) Eval(*Context, Row) (interface{}, error) { panic("not implemented") }
-func (e dummyExpr) WithChildren(children ...Expression) (Expression, error) {
+func (e dummyExpr) WithChildren(ctx *Context, children ...Expression) (Expression, error) {
 	return e, nil
 }
-func (e dummyExpr) String() string { return fmt.Sprintf("dummyExpr{%d, %s}", e.index, e.colName) }
-func (dummyExpr) IsNullable() bool { return false }
-func (dummyExpr) Resolved() bool   { return false }
-func (dummyExpr) Type() Type       { panic("not implemented") }
+func (e dummyExpr) String() string             { return fmt.Sprintf("dummyExpr{%d, %s}", e.index, e.colName) }
+func (dummyExpr) IsNullable(ctx *Context) bool { return false }
+func (dummyExpr) Resolved() bool               { return false }
+func (dummyExpr) Type(*Context) Type           { panic("not implemented") }
 func (e dummyExpr) WithIndex(idx int) Expression {
 	return &dummyExpr{idx, e.colName}
 }

@@ -15,6 +15,9 @@
 package queries
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -380,6 +383,39 @@ var TypeWireTests = []TypeWireTest{
 		},
 	},
 	{
+		Name: "DATETIME precision",
+		SetUpScript: []string{
+			`CREATE TABLE test (d0 datetime(0), d1 datetime(1), d2 datetime(2), d3 datetime(3), d4 datetime(4), d5 datetime(5), d6 datetime(6));`,
+			`INSERT INTO test VALUES (0, 0, 0, 0, 0, 0, 0);`,
+			`INSERT INTO test VALUES ("1994-05-30 12:34:56.789012", "1994-05-30 12:34:56.789012", "1994-05-30 12:34:56.789012", "1994-05-30 12:34:56.789012", "1994-05-30 12:34:56.789012", "1994-05-30 12:34:56.789012", "1994-05-30 12:34:56.789012");`,
+		},
+		Queries: []string{
+			`SELECT * FROM test;`,
+		},
+		Results: [][]sql.Row{
+			{
+				{
+					"0000-00-00 00:00:00",
+					"0000-00-00 00:00:00.0",
+					"0000-00-00 00:00:00.00",
+					"0000-00-00 00:00:00.000",
+					"0000-00-00 00:00:00.0000",
+					"0000-00-00 00:00:00.00000",
+					"0000-00-00 00:00:00.000000",
+				},
+				{
+					"1994-05-30 12:34:57",
+					"1994-05-30 12:34:56.8",
+					"1994-05-30 12:34:56.79",
+					"1994-05-30 12:34:56.789",
+					"1994-05-30 12:34:56.7890",
+					"1994-05-30 12:34:56.78901",
+					"1994-05-30 12:34:56.789012",
+				},
+			},
+		},
+	},
+	{
 		Name: "DATE",
 		SetUpScript: []string{
 			`CREATE TABLE test (pk DATE PRIMARY KEY, v1 DATE);`,
@@ -411,7 +447,7 @@ var TypeWireTests = []TypeWireTest{
 	{
 		Name: "TIME",
 		SetUpScript: []string{
-			`CREATE TABLE test (pk TIME PRIMARY KEY, v1 TIME);`,
+			`CREATE TABLE test (pk TIME PRIMARY KEY, v1 TIME(6));`,
 			`INSERT INTO test VALUES ("-800:00:00", "-20:21:22"), ("00:00:00", "00:00:00"), ("10:26:57", "30:53:14"), ("700:23:51", "300:25:52");`,
 			`UPDATE test SET v1 =  "-120:12:20" WHERE pk < "00:00:00";`,
 			`DELETE FROM test WHERE pk > "600:00:00";`,
@@ -420,15 +456,17 @@ var TypeWireTests = []TypeWireTest{
 			`SELECT * FROM test ORDER BY pk;`,
 			`SELECT pk, v1 FROM test ORDER BY pk;`,
 			`SELECT v1, pk FROM test ORDER BY pk;`,
-			// Known bug  - https://github.com/dolthub/dolt/issues/4643
-			//`SELECT DATE_ADD(TIMEDIFF('12:13:14', '0:0:0'), INTERVAL 1 SECOND);`,
-			//`SELECT DATE_ADD(TIMEDIFF('12:13:14', '0:0:0'), INTERVAL 1 MINUTE);`,
-			//`SELECT DATE_ADD(TIMEDIFF('12:13:14', '0:0:0'), INTERVAL 1 HOUR);`,
+			`SELECT DATE_ADD(TIMEDIFF('12:13:14', '0:0:0'), INTERVAL 1 SECOND);`,
+			`SELECT DATE_ADD(TIMEDIFF('12:13:14', '0:0:0'), INTERVAL 1 MINUTE);`,
+			`SELECT DATE_ADD(TIMEDIFF('12:13:14', '0:0:0'), INTERVAL 1 HOUR);`,
 		},
 		Results: [][]sql.Row{
-			{{"-800:00:00", "-120:12:20"}, {"00:00:00", "00:00:00"}, {"10:26:57", "30:53:14"}},
-			{{"-800:00:00", "-120:12:20"}, {"00:00:00", "00:00:00"}, {"10:26:57", "30:53:14"}},
-			{{"-120:12:20", "-800:00:00"}, {"00:00:00", "00:00:00"}, {"30:53:14", "10:26:57"}},
+			{{"-800:00:00.000000", "-120:12:20.000000"}, {"00:00:00.000000", "00:00:00.000000"}, {"10:26:57.000000", "30:53:14.000000"}},
+			{{"-800:00:00.000000", "-120:12:20.000000"}, {"00:00:00.000000", "00:00:00.000000"}, {"10:26:57.000000", "30:53:14.000000"}},
+			{{"-120:12:20.000000", "-800:00:00.000000"}, {"00:00:00.000000", "00:00:00.000000"}, {"30:53:14.000000", "10:26:57.000000"}},
+			{{"12:13:15.000000"}},
+			{{"12:14:14.000000"}},
+			{{"13:13:14.000000"}},
 		},
 	},
 	{
@@ -811,7 +849,7 @@ var TypeWireTests = []TypeWireTest{
 		Name: "JSON",
 		SetUpScript: []string{
 			`CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 JSON);`,
-			`INSERT INTO test VALUES (1, '{"key1": {"key": "value"}}'), (2, '{"key1": "value1", "key2": "value2"}'), (3, '{"key1": {"key": [2,3]}}');`,
+			`INSERT INTO test VALUES (1, '{"key1": {"key": "value"}}'), (2, '{"key1": "value1", "key2": "value2"}'), (3, '{"key1": {"key": [2,3]}}'), (4, CONCAT('{"key": "', REPEAT('X', 5000), '"}'));`,
 			`UPDATE test SET v1 = '["a", 1]' WHERE pk = 1;`,
 			`DELETE FROM test WHERE pk = 3;`,
 		},
@@ -821,9 +859,9 @@ var TypeWireTests = []TypeWireTest{
 			`SELECT pk, JSON_ARRAYAGG(v1) FROM (SELECT * FROM test ORDER BY pk) as sub GROUP BY pk, v1 ORDER BY pk;`,
 		},
 		Results: [][]sql.Row{
-			{{"1", "[\"a\",1]"}, {"2", "{\"key1\":\"value1\",\"key2\":\"value2\"}"}},
-			{{"[\"a\",1]", "1"}, {"{\"key1\":\"value1\",\"key2\":\"value2\"}", "2"}},
-			{{"1", "[[\"a\",1]]"}, {"2", "[{\"key1\":\"value1\",\"key2\":\"value2\"}]"}},
+			{{"1", "[\"a\",1]"}, {"2", "{\"key1\":\"value1\",\"key2\":\"value2\"}"}, {"4", fmt.Sprintf("{\"key\":\"%s\"}", strings.Repeat("X", 5000))}},
+			{{"[\"a\",1]", "1"}, {"{\"key1\":\"value1\",\"key2\":\"value2\"}", "2"}, {fmt.Sprintf("{\"key\":\"%s\"}", strings.Repeat("X", 5000)), "4"}},
+			{{"1", "[[\"a\",1]]"}, {"2", "[{\"key1\":\"value1\",\"key2\":\"value2\"}]"}, {"4", fmt.Sprintf("[{\"key\":\"%s\"}]", strings.Repeat("X", 5000))}},
 		},
 	},
 	{

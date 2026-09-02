@@ -52,15 +52,16 @@ func TestSoundex(t *testing.T) {
 		{"other type", types.LongText, sql.NewRow(int32(1)), "0000"},
 	}
 
+	ctx := sql.NewEmptyContext()
 	for _, tt := range testCases {
-		f := NewSoundex(expression.NewGetField(0, tt.rowType, "", true))
+		f := NewSoundex(ctx, expression.NewGetField(0, tt.rowType, "", true))
 
 		t.Run(tt.name, func(t *testing.T) {
 			require.Equal(t, tt.expected, eval(t, f, tt.row))
 		})
 
 		req := require.New(t)
-		req.True(f.IsNullable())
-		req.Equal(tt.rowType, f.Type())
+		req.True(f.IsNullable(ctx))
+		req.Equal(tt.rowType, f.Type(ctx))
 	}
 }

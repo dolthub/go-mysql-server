@@ -42,7 +42,7 @@ func (b *Binary) String() string {
 	return fmt.Sprintf("BINARY(%s)", b.Child.String())
 }
 
-func (b *Binary) Type() sql.Type {
+func (b *Binary) Type(ctx *sql.Context) sql.Type {
 	return types.LongBlob
 }
 
@@ -57,10 +57,10 @@ func (b *Binary) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	return convertValue(ctx, val, ConvertToBinary, b.Child.Type(), 0, 0)
+	return convertValue(ctx, val, ConvertToBinary, b.Child.Type(ctx), 0, 0)
 }
 
-func (b *Binary) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (b *Binary) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidArgumentNumber.New("BINARY", "1", len(children))
 	}

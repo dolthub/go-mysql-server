@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
-	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -65,23 +65,23 @@ func (m *Mod) String() string {
 	return fmt.Sprintf("(%s %% %s)", m.LeftChild, m.RightChild)
 }
 
-func (m *Mod) DebugString() string {
-	return fmt.Sprintf("(%s %% %s)", sql.DebugString(m.LeftChild), sql.DebugString(m.RightChild))
+func (m *Mod) DebugString(ctx *sql.Context) string {
+	return fmt.Sprintf("(%s %% %s)", sql.DebugString(ctx, m.LeftChild), sql.DebugString(ctx, m.RightChild))
 }
 
 // IsNullable implements the sql.Expression interface.
-func (m *Mod) IsNullable() bool {
+func (m *Mod) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
 // Type returns the greatest type for given operation.
-func (m *Mod) Type() sql.Type {
+func (m *Mod) Type(ctx *sql.Context) sql.Type {
 	//TODO: what if both BindVars? should be constant folded
-	rTyp := m.RightChild.Type()
+	rTyp := m.RightChild.Type(ctx)
 	if types.IsDeferredType(rTyp) {
 		return rTyp
 	}
-	lTyp := m.LeftChild.Type()
+	lTyp := m.LeftChild.Type(ctx)
 	if types.IsDeferredType(lTyp) {
 		return lTyp
 	}
@@ -90,9 +90,9 @@ func (m *Mod) Type() sql.Type {
 		return types.Float64
 	}
 
-	// for division operation, it's either float or decimal.Decimal type
+	// for division operation, it's either float or *apd.Decimal type
 	// except invalid value will result it either 0 or nil
-	return getFloatOrMaxDecimalType(m, false)
+	return getFloatOrMaxDecimalType(ctx, m, false)
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -101,7 +101,7 @@ func (*Mod) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, 
 }
 
 // WithChildren implements the Expression interface.
-func (m *Mod) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (m *Mod) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(m, len(children), 2)
 	}
@@ -143,9 +143,9 @@ func (m *Mod) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, interfa
 }
 
 func (m *Mod) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}) {
-	typ := m.Type()
-	lIsTimeType := types.IsTime(m.LeftChild.Type())
-	rIsTimeType := types.IsTime(m.RightChild.Type())
+	typ := m.Type(ctx)
+	lIsTimeType := types.IsTime(m.LeftChild.Type(ctx))
+	rIsTimeType := types.IsTime(m.RightChild.Type(ctx))
 
 	if types.IsFloat(typ) {
 		left = convertValueToType(ctx, typ, left, lIsTimeType)
@@ -179,16 +179,16 @@ func mod(ctx *sql.Context, lval, rval interface{}) (interface{}, error) {
 			}
 			return math.Mod(l, r), nil
 		}
-	case decimal.Decimal:
+	case *apd.Decimal:
 		switch r := rval.(type) {
-		case decimal.Decimal:
-			if r.Equal(decimal.NewFromInt(0)) {
+		case *apd.Decimal:
+			if r.IsZero() {
 				arithmeticWarning(ctx, ERDivisionByZero, "Division by 0")
 				return nil, nil
 			}
 
 			// Mod function from the decimal package takes care of precision and scale for the result value
-			return l.Mod(r), nil
+			return types.DecimalMod(l, r)
 		}
 	}
 

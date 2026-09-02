@@ -148,17 +148,11 @@ type enabledEventsList struct {
 	eventsList []*enabledEvent
 }
 
-// newEnabledEventsList returns new enabledEventsList object with the given
-// enabledEvent list and sorts it by the nextExecutionAt time.
-func newEnabledEventsList(list []*enabledEvent) *enabledEventsList {
-	newList := &enabledEventsList{
-		mu:         &sync.Mutex{},
-		eventsList: list,
+// newEnabledEventsList returns a new empty enabledEventsList.
+func newEnabledEventsList() *enabledEventsList {
+	return &enabledEventsList{
+		mu: &sync.Mutex{},
 	}
-	sort.SliceStable(newList.eventsList, func(i, j int) bool {
-		return list[i].nextExecutionAt.Sub(list[j].nextExecutionAt).Seconds() < 1
-	})
-	return newList
 }
 
 // clear sets the current list to empty list.
@@ -166,6 +160,18 @@ func (l *enabledEventsList) clear() {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.eventsList = nil
+}
+
+// reset replaces the contents of the list with the given events and sorts them.
+// This is used instead of replacing the enabledEventsList pointer to avoid races
+// on the pointer field.
+func (l *enabledEventsList) reset(events []*enabledEvent) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.eventsList = events
+	sort.SliceStable(l.eventsList, func(i, j int) bool {
+		return l.eventsList[i].nextExecutionAt.Sub(l.eventsList[j].nextExecutionAt).Seconds() < 1
+	})
 }
 
 // len returns the length of the current list.

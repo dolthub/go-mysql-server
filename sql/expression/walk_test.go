@@ -24,6 +24,7 @@ import (
 )
 
 func TestWalk(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	lit1 := NewLiteral(1, types.Int64)
 	lit2 := NewLiteral(2, types.Int64)
 	col := NewUnresolvedColumn("foo")
@@ -39,12 +40,12 @@ func TestWalk(t *testing.T) {
 
 	var f visitor
 	var visited []sql.Expression
-	f = func(node sql.Expression) sql.Visitor {
+	f = func(ctx *sql.Context, node sql.Expression) sql.Visitor {
 		visited = append(visited, node)
 		return f
 	}
 
-	sql.Walk(f, e)
+	sql.Walk(ctx, f, e)
 
 	require.Equal(t,
 		[]sql.Expression{e, and, col, fn, lit1, lit2},
@@ -52,7 +53,7 @@ func TestWalk(t *testing.T) {
 	)
 
 	visited = nil
-	f = func(node sql.Expression) sql.Visitor {
+	f = func(ctx *sql.Context, node sql.Expression) sql.Visitor {
 		visited = append(visited, node)
 		if _, ok := node.(*UnresolvedFunction); ok {
 			return nil
@@ -60,7 +61,7 @@ func TestWalk(t *testing.T) {
 		return f
 	}
 
-	sql.Walk(f, e)
+	sql.Walk(ctx, f, e)
 
 	require.Equal(t,
 		[]sql.Expression{e, and, col, fn},
@@ -68,13 +69,14 @@ func TestWalk(t *testing.T) {
 	)
 }
 
-type visitor func(sql.Expression) sql.Visitor
+type visitor func(*sql.Context, sql.Expression) sql.Visitor
 
-func (f visitor) Visit(n sql.Expression) sql.Visitor {
-	return f(n)
+func (f visitor) Visit(ctx *sql.Context, n sql.Expression) sql.Visitor {
+	return f(ctx, n)
 }
 
 func TestInspect(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	lit1 := NewLiteral(1, types.Int64)
 	lit2 := NewLiteral(2, types.Int64)
 	col := NewUnresolvedColumn("foo")
@@ -88,14 +90,14 @@ func TestInspect(t *testing.T) {
 	and := NewAnd(col, fn)
 	e := NewNot(and)
 
-	var f func(sql.Expression) bool
+	var f func(*sql.Context, sql.Expression) bool
 	var visited []sql.Expression
-	f = func(node sql.Expression) bool {
+	f = func(ctx *sql.Context, node sql.Expression) bool {
 		visited = append(visited, node)
 		return true
 	}
 
-	sql.Inspect(e, f)
+	sql.Inspect(ctx, e, f)
 
 	require.Equal(t,
 		[]sql.Expression{e, and, col, fn, lit1, lit2},
@@ -103,7 +105,7 @@ func TestInspect(t *testing.T) {
 	)
 
 	visited = nil
-	f = func(node sql.Expression) bool {
+	f = func(ctx *sql.Context, node sql.Expression) bool {
 		visited = append(visited, node)
 		if _, ok := node.(*UnresolvedFunction); ok {
 			return false
@@ -111,7 +113,7 @@ func TestInspect(t *testing.T) {
 		return true
 	}
 
-	sql.Inspect(e, f)
+	sql.Inspect(ctx, e, f)
 
 	require.Equal(t,
 		[]sql.Expression{e, and, col, fn},

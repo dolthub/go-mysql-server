@@ -27,7 +27,7 @@ import (
 // Ranges is the list of ranges to check against each expr.
 //
 // The length of each range must match the length of the exprs slice.
-func NewRangeFilterExpr(exprs []sql.Expression, ranges []sql.MySQLRange) (sql.Expression, error) {
+func NewRangeFilterExpr(ctx *sql.Context, exprs []sql.Expression, ranges []sql.MySQLRange) (sql.Expression, error) {
 	if len(ranges) == 0 {
 		return nil, nil
 	}
@@ -40,7 +40,7 @@ func NewRangeFilterExpr(exprs []sql.Expression, ranges []sql.MySQLRange) (sql.Ex
 		var rangeExpr sql.Expression
 		for i, rce := range rang {
 			var rangeColumnExpr sql.Expression
-			typ := exprs[i].Type().Promote()
+			typ := exprs[i].Type(ctx).Promote()
 			switch rce.Type() {
 			// Both Empty and All may seem like strange inclusions, but if only one range is given we need some
 			// expression to evaluate, otherwise our expression would be a nil expression which would panic.

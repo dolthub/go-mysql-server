@@ -33,7 +33,7 @@ var _ sql.Databaser = (*AlterUser)(nil)
 var _ sql.CollationCoercible = (*AlterUser)(nil)
 
 // Schema implements the interface sql.Node.
-func (a *AlterUser) Schema() sql.Schema {
+func (a *AlterUser) Schema(ctx *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -75,7 +75,7 @@ func (a *AlterUser) Children() []sql.Node {
 }
 
 // WithChildren implements the interface sql.Node.
-func (a *AlterUser) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (a *AlterUser) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(a, len(children), 0)
 	}

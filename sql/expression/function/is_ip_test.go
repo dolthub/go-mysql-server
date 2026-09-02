@@ -25,7 +25,7 @@ import (
 )
 
 func TestIsIPv4(t *testing.T) {
-	f := NewIsIPv4(expression.NewGetField(0, types.LongText, "", false))
+	f := NewIsIPv4(sql.NewEmptyContext(), expression.NewGetField(0, types.LongText, "", false))
 	testCases := []struct {
 		name     string
 		row      sql.Row
@@ -57,7 +57,7 @@ func TestIsIPv4(t *testing.T) {
 }
 
 func TestIsIPv6(t *testing.T) {
-	f := NewIsIPv6(expression.NewGetField(0, types.LongText, "", false))
+	f := NewIsIPv6(sql.NewEmptyContext(), expression.NewGetField(0, types.LongText, "", false))
 	testCases := []struct {
 		name     string
 		row      sql.Row
@@ -90,7 +90,7 @@ func TestIsIPv6(t *testing.T) {
 }
 
 func TestIsIPv4Compat(t *testing.T) {
-	f := NewIsIPv4Compat(expression.NewGetField(0, types.LongText, "", false))
+	f := NewIsIPv4Compat(sql.NewEmptyContext(), expression.NewGetField(0, types.LongText, "", false))
 	testCases := []struct {
 		name     string
 		row      sql.Row
@@ -122,7 +122,7 @@ func TestIsIPv4Compat(t *testing.T) {
 }
 
 func TestIsIPv4Mapped(t *testing.T) {
-	f := NewIsIPv4Mapped(expression.NewGetField(0, types.LongText, "", false))
+	f := NewIsIPv4Mapped(sql.NewEmptyContext(), expression.NewGetField(0, types.LongText, "", false))
 	testCases := []struct {
 		name     string
 		row      sql.Row

@@ -54,7 +54,7 @@ func (s TableFunc) String() string {
 	return fmt.Sprintf("table_func(%s, %d)", s.name, s.value)
 }
 
-func (s TableFunc) DebugString() string {
+func (s TableFunc) DebugString(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("table_func")
 	children := []string{
@@ -65,7 +65,7 @@ func (s TableFunc) DebugString() string {
 	return pr.String()
 }
 
-func (s TableFunc) Schema() sql.Schema {
+func (s TableFunc) Schema(ctx *sql.Context) sql.Schema {
 	schema := []*sql.Column{
 		{
 			DatabaseSource: s.db.Name(),
@@ -87,7 +87,7 @@ func (s TableFunc) RowIter(_ *sql.Context, _ sql.Row) (sql.RowIter, error) {
 	return rowIter, nil
 }
 
-func (s TableFunc) WithChildren(_ ...sql.Node) (sql.Node, error) {
+func (s TableFunc) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	return s, nil
 }
 
@@ -105,7 +105,7 @@ func (s TableFunc) Expressions() []sql.Expression {
 	return []sql.Expression{}
 }
 
-func (s TableFunc) WithExpressions(e ...sql.Expression) (sql.Node, error) {
+func (s TableFunc) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	return s, nil
 }
 

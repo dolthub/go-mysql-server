@@ -32,7 +32,7 @@ var _ sql.FunctionExpression = (*Database)(nil)
 var _ sql.CollationCoercible = (*Database)(nil)
 
 // NewDatabase returns a new Database function
-func NewDatabase() sql.Expression {
+func NewDatabase(ctx *sql.Context) sql.Expression {
 	return &Database{}
 }
 
@@ -47,7 +47,7 @@ func (db *Database) Description() string {
 }
 
 // Type implements the sql.Expression (sql.LongText)
-func (db *Database) Type() sql.Type { return types.LongText }
+func (db *Database) Type(ctx *sql.Context) sql.Type { return types.LongText }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*Database) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
@@ -56,7 +56,7 @@ func (*Database) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 
 // IsNullable implements the sql.Expression interface.
 // The function returns always true
-func (db *Database) IsNullable() bool {
+func (db *Database) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
@@ -65,11 +65,11 @@ func (db *Database) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (db *Database) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (db *Database) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(db, len(children), 0)
 	}
-	return NewDatabase(), nil
+	return NewDatabase(ctx), nil
 }
 
 // Resolved implements the sql.Expression interface.

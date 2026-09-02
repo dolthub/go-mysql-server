@@ -25,7 +25,7 @@ import (
 )
 
 func TestIsBinary(t *testing.T) {
-	f := NewIsBinary(expression.NewGetField(0, types.Blob, "blob", true))
+	f := NewIsBinary(sql.NewEmptyContext(), expression.NewGetField(0, types.Blob, "blob", true))
 
 	testCases := []struct {
 		name     string
@@ -61,7 +61,7 @@ func TestSubstringArity(t *testing.T) {
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
-			f, err := NewSubstring(tt.args...)
+			f, err := NewSubstring(sql.NewEmptyContext(), tt.args...)
 			if tt.ok {
 				require.NotNil(f)
 				require.NoError(err)

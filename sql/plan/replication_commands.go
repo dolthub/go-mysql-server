@@ -114,7 +114,7 @@ func (c *ChangeReplicationSource) String() string {
 	return sb.String()
 }
 
-func (c *ChangeReplicationSource) Schema() sql.Schema {
+func (c *ChangeReplicationSource) Schema(ctx *sql.Context) sql.Schema {
 	return nil
 }
 
@@ -122,7 +122,7 @@ func (c *ChangeReplicationSource) Children() []sql.Node {
 	return nil
 }
 
-func (c *ChangeReplicationSource) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (c *ChangeReplicationSource) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 0)
 	}
@@ -183,7 +183,7 @@ func (c *ChangeReplicationFilter) String() string {
 	return sb.String()
 }
 
-func (c *ChangeReplicationFilter) Schema() sql.Schema {
+func (c *ChangeReplicationFilter) Schema(ctx *sql.Context) sql.Schema {
 	return nil
 }
 
@@ -191,7 +191,7 @@ func (c *ChangeReplicationFilter) Children() []sql.Node {
 	return nil
 }
 
-func (c *ChangeReplicationFilter) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (c *ChangeReplicationFilter) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 0)
 	}
@@ -238,7 +238,7 @@ func (s *StartReplica) String() string {
 	return "START REPLICA"
 }
 
-func (s *StartReplica) Schema() sql.Schema {
+func (s *StartReplica) Schema(ctx *sql.Context) sql.Schema {
 	return nil
 }
 
@@ -246,7 +246,7 @@ func (s *StartReplica) Children() []sql.Node {
 	return nil
 }
 
-func (s *StartReplica) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (s *StartReplica) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 0)
 	}
@@ -293,7 +293,7 @@ func (s *StopReplica) String() string {
 	return "STOP REPLICA"
 }
 
-func (s *StopReplica) Schema() sql.Schema {
+func (s *StopReplica) Schema(ctx *sql.Context) sql.Schema {
 	return nil
 }
 
@@ -301,7 +301,7 @@ func (s *StopReplica) Children() []sql.Node {
 	return nil
 }
 
-func (s *StopReplica) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (s *StopReplica) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 0)
 	}
@@ -356,7 +356,7 @@ func (r *ResetReplica) String() string {
 	return sb.String()
 }
 
-func (r *ResetReplica) Schema() sql.Schema {
+func (r *ResetReplica) Schema(ctx *sql.Context) sql.Schema {
 	return nil
 }
 
@@ -364,7 +364,7 @@ func (r *ResetReplica) Children() []sql.Node {
 	return nil
 }
 
-func (r *ResetReplica) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (r *ResetReplica) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(r, len(children), 0)
 	}

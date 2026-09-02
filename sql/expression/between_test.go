@@ -112,7 +112,7 @@ func TestBetweenIsNullable(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.nullable, tt.b.IsNullable())
+			require.Equal(t, tt.nullable, tt.b.IsNullable(sql.NewEmptyContext()))
 		})
 	}
 }

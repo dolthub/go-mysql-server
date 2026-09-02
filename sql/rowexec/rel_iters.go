@@ -33,7 +33,7 @@ import (
 // of aggregation.WindowPartitionIter and a list of output projection indexes
 // for each window partition.
 // TODO: make partition ordering deterministic
-func windowToIter(w *plan.Window) ([]*aggregation.WindowPartitionIter, [][]int, error) {
+func windowToIter(ctx *sql.Context, w *plan.Window) ([]*aggregation.WindowPartitionIter, [][]int, error) {
 	partIdToOutputIdxs := make(map[uint64][]int, 0)
 	partIdToBlock := make(map[uint64]*aggregation.WindowPartition, 0)
 	var window *sql.WindowDefinition
@@ -48,14 +48,14 @@ func windowToIter(w *plan.Window) ([]*aggregation.WindowPartitionIter, [][]int, 
 		switch e := expr.(type) {
 		case sql.Aggregation:
 			window = e.Window()
-			fn, err = e.NewWindowFunction()
+			fn, err = e.NewWindowFunction(ctx)
 		case sql.WindowAggregation:
 			window = e.Window()
-			fn, err = e.NewWindowFunction()
+			fn, err = e.NewWindowFunction(ctx)
 		default:
 			// non window aggregates resolve to LastAgg with empty over clause
 			window = sql.NewWindowDefinition(nil, nil, nil, "", "")
-			fn, err = aggregation.NewLast(e).NewWindowFunction()
+			fn, err = aggregation.NewLast(e).NewWindowFunction(ctx)
 		}
 		if err != nil {
 			return nil, nil, err
@@ -214,7 +214,7 @@ func (i *ProjectIter) ProjectRowWithNestedIters(
 	var rowIterEvaluators []*RowIterEvaluator
 	newProjs := make([]sql.Expression, len(i.projs))
 	for i, proj := range i.projs {
-		p, _, err := transform.Expr(proj, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		p, _, err := transform.Expr(ctx, proj, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			if rie, ok := e.(sql.RowIterExpression); ok && rie.ReturnsRowIter() {
 				ri, err := rie.EvalRowIter(ctx, row)
 				if err != nil {
@@ -223,7 +223,7 @@ func (i *ProjectIter) ProjectRowWithNestedIters(
 
 				evaluator := &RowIterEvaluator{
 					iter: ri,
-					typ:  rie.Type(),
+					typ:  rie.Type(ctx),
 				}
 				rowIterEvaluators = append(rowIterEvaluators, evaluator)
 				return evaluator, transform.NewTree, nil
@@ -262,11 +262,11 @@ func (r RowIterEvaluator) String() string {
 	return "RowIterEvaluator"
 }
 
-func (r RowIterEvaluator) Type() sql.Type {
+func (r RowIterEvaluator) Type(ctx *sql.Context) sql.Type {
 	return r.typ
 }
 
-func (r RowIterEvaluator) IsNullable() bool {
+func (r RowIterEvaluator) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
@@ -292,7 +292,7 @@ func (r RowIterEvaluator) Children() []sql.Expression {
 	return nil
 }
 
-func (r RowIterEvaluator) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (r RowIterEvaluator) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(r, len(children), 0)
 	}

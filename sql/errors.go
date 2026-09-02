@@ -119,6 +119,10 @@ var (
 	// ErrDeleteRowNotFound is returned when row being deleted was not found
 	ErrDeleteRowNotFound = errors.NewKind("row was not found when attempting to delete")
 
+	// ErrRowEditCanceled is returned when an INSERT, UPDATE, or DELETE operation is canceled due to a trigger
+	// or other circumstances. It is only used as a signal error.
+	ErrRowEditCanceled = errors.NewKind("row edit was canceled")
+
 	// ErrDuplicateAliasOrTable should be returned when a query contains a duplicate alias / table name.
 	ErrDuplicateAliasOrTable = errors.NewKind("Not unique table/alias: %s")
 
@@ -293,6 +297,9 @@ var (
 	// ErrUnknownPreparedStatement is returned when an unknown query is executed.
 	ErrUnknownPreparedStatement = errors.NewKind(`Unknown prepared statement handler (%s) given to EXECUTE`)
 
+	// ErrUnsupportedPreparedStatement is returned when an unsupported query is prepared.
+	ErrUnsupportedPreparedStatement = errors.NewKind("This command is not supported in the prepared statement protocol yet")
+
 	// ErrTruncateReferencedFromForeignKey is returned when a table is referenced in a foreign key and TRUNCATE is called on it.
 	ErrTruncateReferencedFromForeignKey = errors.NewKind("cannot truncate table %s as it is referenced in foreign key %s on table %s")
 
@@ -400,8 +407,8 @@ var (
 	// ErrUnknownConstraint is returned when a DROP CONSTRAINT statement refers to a constraint that doesn't exist
 	ErrUnknownConstraint = errors.NewKind("Constraint %q does not exist")
 
-	// ErrInsertIntoNonNullableDefaultNullColumn is returned when an INSERT excludes a field which is non-nullable and has no default/autoincrement.
-	ErrInsertIntoNonNullableDefaultNullColumn = errors.NewKind("Field '%s' doesn't have a default value")
+	// ErrFieldNoDefaultValue is returned when an expression references a default value for a column that does not have one.
+	ErrFieldNoDefaultValue = errors.NewKind("Field '%s' doesn't have a default value")
 
 	// ErrAlterTableNotSupported is thrown when the table doesn't support ALTER TABLE statements
 	ErrAlterTableNotSupported = errors.NewKind("table %s cannot be altered")
@@ -493,6 +500,7 @@ var (
 	// ErrDuplicateKey is returned when a duplicate key is defined on a table.
 	ErrDuplicateKey = errors.NewKind("Duplicate key name '%s'")
 
+	// TODO: This is not actually how this error Kind is used. It's currently only used when creating a Set type
 	// ErrDuplicateEntry is returns when a duplicate entry is placed on an index such as a UNIQUE or a Primary Key.
 	ErrDuplicateEntry = errors.NewKind("Duplicate entry for key '%s'")
 
@@ -630,8 +638,15 @@ var (
 	// ErrSessionDoesNotSupportPersistence is thrown when a feature is not already supported
 	ErrSessionDoesNotSupportPersistence = errors.NewKind("session does not support persistence")
 
+	// ErrSystemVariableCannotBeSetLocal is thrown when a system variable that does not support transaction-local
+	// scope is set with transaction-local scope
+	ErrSystemVariableCannotBeSetLocal = errors.NewKind("system variable %s cannot be set with transaction-local scope")
+
 	// ErrInvalidGISData is thrown when a "ST_<spatial_type>FromText" function receives a malformed string
 	ErrInvalidGISData = errors.NewKind("invalid GIS data provided to function %s")
+
+	// ErrInvalidKeyPair is thrown when a function receives an invalid key-pair option
+	ErrInvalidKeyPair = errors.NewKind("the string '%v' is not a valid key paid for function %s")
 
 	// ErrIllegalGISValue is thrown when a spatial type constructor receives a non-geometric when one should be provided
 	ErrIllegalGISValue = errors.NewKind("illegal non geometric '%v' value found during parsing")
@@ -693,6 +708,9 @@ var (
 
 	// ErrInvalidCheckConstraint is returned when a check constraint is defined incorrectly
 	ErrInvalidCheckConstraint = errors.NewKind("invalid constraint definition: %s")
+
+	// ErrDuplicateCheckName is returned when a check constraint is defined incorrectly
+	ErrDuplicateCheckName = errors.NewKind("duplicate check constraint name: %s")
 
 	// ErrUserCreationFailure is returned when attempting to create a user and it fails for any reason.
 	ErrUserCreationFailure = errors.NewKind("Operation CREATE USER failed for %s")
@@ -764,7 +782,7 @@ var (
 	ErrCannotCopyWindowFrame = errors.NewKind("cannot copy window '%s' because it has a frame clause")
 
 	// ErrUnknownWindowName is returned when an over by clause references an unknown window definition
-	ErrUnknownWindowName = errors.NewKind("named window not found: '%s'")
+	ErrUnknownWindowName = errors.NewKind("Window name '%s' is not defined")
 
 	// ErrUnexpectedNilRow is returned when an invalid operation is applied to an empty row
 	ErrUnexpectedNilRow = errors.NewKind("unexpected nil row")
@@ -799,17 +817,25 @@ var (
 	// ErrUnsupportedIndexPrefix is returned for an index on a string column with a prefix
 	ErrUnsupportedIndexPrefix = errors.NewKind("prefix index on string column '%s' unsupported")
 
-	// ErrInvalidIndexPrefix is returned for an index prefix on a non-string column, or the prefix is longer than string itself, or just unsupported
-	ErrInvalidIndexPrefix = errors.NewKind("incorrect prefix key '%s'; the used key part isn't a string, the used length is longer than the key part, or the storage engine doesn't support unique prefix keys")
+	// ErrColumnFunctionalIndexDependency is returned when a column referenced in a functional index is dropped or renamed.
+	// This matches MySQL ERROR 3837 (HY000).
+	ErrColumnFunctionalIndexDependency = newMySQLKind("Column '%s' has a functional index dependency and cannot be dropped or renamed.", 3837, "HY000")
 
-	// ErrInvalidBlobTextKey is returned for an index on a blob or text column with no key length specified
-	ErrInvalidBlobTextKey = errors.NewKind("blob/text column '%s' used in key specification without a key length")
+	// ErrInvalidIndexPrefix is returned when a prefix index is not valid for the column type,
+	// or the prefix length exceeds the column's character length.
+	ErrInvalidIndexPrefix = newMySQLKind("incorrect prefix key '%s'; the used key part isn't a string, the used length is longer than the key part, or the storage engine doesn't support unique prefix keys", mysql.ERWrongSubKey)
 
-	// ErrKeyTooLong is returned for an index on a blob or text column that is longer than 3072 bytes
-	ErrKeyTooLong = errors.NewKind("specified key was too long; max key length is 3072 bytes")
+	// ErrInvalidBlobTextKey is returned when a BLOB or TEXT column is included in an index
+	// without a prefix length.
+	ErrInvalidBlobTextKey = newMySQLKind("blob/text column '%s' used in key specification without a key length", mysql.ERBlobKeyWithoutLength)
 
-	// ErrKeyZero is returned for an index on a blob or text column that is 0 in length
-	ErrKeyZero = errors.NewKind("key part '%s' length cannot be 0")
+	// ErrKeyTooLong is returned when a prefix index key exceeds the maximum allowed byte length.
+	// See [analyzer.MaxBytePrefix] for the limit.
+	ErrKeyTooLong = newMySQLKind("specified key was too long; max key length is 3072 bytes", mysql.ERTooLongKey)
+
+	// ErrKeyZero is returned when a column is given a prefix index length of zero.
+	// The corresponding MySQL error code is 1391 (ER_KEY_PART_0), which is not yet defined in vitess.
+	ErrKeyZero = newMySQLKind("key part '%s' length cannot be 0", 1391)
 
 	// ErrDatabaseWriteLocked is returned when a database is locked in read-only mode to avoid
 	// conflicts with an active server
@@ -973,6 +999,10 @@ var (
 
 	// ErrWrongDBName is returned for illegal database names with the [mysql.ERWrongDbName] error code and [mysql.SSClientError] SQLSTATE.
 	ErrWrongDBName = newMySQLKind("Incorrect database name '%s'", mysql.ERWrongDbName, mysql.SSClientError)
+
+	// ErrStoredGeneratedColumnForeignKeyConflict is returned when a foreign key references a column also referenced by
+	// a stored generated column
+	ErrStoredGeneratedColumnForeignKeyConflict = errors.NewKind("Cannot add foreign key on the base column of a stored generated column.")
 )
 
 // CastSQLError returns a *mysql.SQLError with the error code and in some cases, also a SQL state, populated for the

@@ -110,7 +110,7 @@ func TestToDays(t *testing.T) {
 	for _, tt := range tests {
 		name := fmt.Sprintf("to_days(%v)", tt.arg)
 		t.Run(name, func(t *testing.T) {
-			f := NewToDays(tt.arg)
+			f := NewToDays(sql.NewEmptyContext(), tt.arg)
 			res, err := f.Eval(sql.NewEmptyContext(), nil)
 			if tt.err {
 				require.Error(t, err)
@@ -257,7 +257,7 @@ func TestFromDays(t *testing.T) {
 			if tt.skip {
 				t.Skip()
 			}
-			f := NewFromDays(tt.arg)
+			f := NewFromDays(sql.NewEmptyContext(), tt.arg)
 			res, err := f.Eval(sql.NewEmptyContext(), nil)
 			if tt.err {
 				require.Error(t, err)
@@ -364,7 +364,7 @@ func TestLastDay(t *testing.T) {
 			if tt.skip {
 				t.Skip()
 			}
-			f := NewLastDay(tt.arg)
+			f := NewLastDay(sql.NewEmptyContext(), tt.arg)
 			res, err := f.Eval(sql.NewEmptyContext(), nil)
 			if tt.err {
 				require.Error(t, err)

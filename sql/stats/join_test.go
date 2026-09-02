@@ -459,19 +459,20 @@ func TestJoin(t *testing.T) {
 }
 
 func compareHist(t *testing.T, exp, cmp sql.Histogram) {
+	ctx := sql.NewEmptyContext()
 	if len(exp) != len(cmp) {
-		t.Errorf("histograms not same length: %d != %d\n%s\n%s\n", len(exp), len(cmp), exp.DebugString(), cmp.DebugString())
+		t.Errorf("histograms not same length: %d != %d\n%s\n%s\n", len(exp), len(cmp), exp.DebugString(ctx), cmp.DebugString(ctx))
 	}
 	for i, b := range exp {
-		require.Equalf(t, b.UpperBound(), cmp[i].UpperBound(), "bound not equal: %v != %v\n%s\n%s", b.UpperBound(), cmp[i].UpperBound(), exp.DebugString(), cmp.DebugString())
+		require.Equalf(t, b.UpperBound(), cmp[i].UpperBound(), "bound not equal: %v != %v\n%s\n%s", b.UpperBound(), cmp[i].UpperBound(), exp.DebugString(ctx), cmp.DebugString(ctx))
 		if b.RowCount() != cmp[i].RowCount() {
-			t.Errorf("histograms row count not equal: %d != %d\n%s\n%s", b.RowCount(), cmp[i].RowCount(), exp.DebugString(), cmp.DebugString())
+			t.Errorf("histograms row count not equal: %d != %d\n%s\n%s", b.RowCount(), cmp[i].RowCount(), exp.DebugString(ctx), cmp.DebugString(ctx))
 		}
 		if b.DistinctCount() != cmp[i].DistinctCount() {
-			t.Errorf("histograms distinct not equal: %d != %d\n%s\n%s", b.DistinctCount(), cmp[i].DistinctCount(), exp.DebugString(), cmp.DebugString())
+			t.Errorf("histograms distinct not equal: %d != %d\n%s\n%s", b.DistinctCount(), cmp[i].DistinctCount(), exp.DebugString(ctx), cmp.DebugString(ctx))
 		}
 		if b.NullCount() != cmp[i].NullCount() {
-			t.Errorf("histograms null not equal: %d != %d\n%s\n%s", b.NullCount(), cmp[i].NullCount(), exp.DebugString(), cmp.DebugString())
+			t.Errorf("histograms null not equal: %d != %d\n%s\n%s", b.NullCount(), cmp[i].NullCount(), exp.DebugString(ctx), cmp.DebugString(ctx))
 		}
 	}
 }

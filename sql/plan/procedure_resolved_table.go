@@ -53,8 +53,8 @@ func (t *ProcedureResolvedTable) String() string {
 }
 
 // Schema implements the sql.Node interface.
-func (t *ProcedureResolvedTable) Schema() sql.Schema {
-	return t.ResolvedTable.Schema()
+func (t *ProcedureResolvedTable) Schema(ctx *sql.Context) sql.Schema {
+	return t.ResolvedTable.Schema(ctx)
 }
 
 // Collation implements the sql.Table interface.
@@ -68,8 +68,8 @@ func (t *ProcedureResolvedTable) Comment() string {
 }
 
 // DebugString implements the sql.DebugStringer interface.
-func (t *ProcedureResolvedTable) DebugString() string {
-	return sql.DebugString(t.ResolvedTable)
+func (t *ProcedureResolvedTable) DebugString(ctx *sql.Context) string {
+	return sql.DebugString(ctx, t.ResolvedTable)
 }
 
 // Children implements the sql.Node interface.
@@ -78,14 +78,14 @@ func (t *ProcedureResolvedTable) Children() []sql.Node {
 }
 
 // WithChildren implements the sql.Node interface.
-func (t *ProcedureResolvedTable) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (t *ProcedureResolvedTable) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 1)
 	}
 	// Even though we return the *ResolvedTable in Children, we cannot assume that the given child is still
 	// *ResolvedTable. In the analyzer, there are instances where the table is buried under other nodes such as
 	// tracking nodes, so we must walk the tree and find the table.
-	nt, _, err := transform.Node(children[0], func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	nt, _, err := transform.Node(ctx, children[0], func(ctx *sql.Context, n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		rt, ok := children[0].(*ResolvedTable)
 		if !ok {
 			return n, transform.SameTree, nil
@@ -144,7 +144,7 @@ func (t *ProcedureResolvedTable) NewestTable(ctx *sql.Context) (*ResolvedTable, 
 		} else if !ok {
 			return nil, sql.ErrTableNotFound.New(t.ResolvedTable.Table.Name())
 		}
-		rt, err := t.ResolvedTable.ReplaceTable(tbl)
+		rt, err := t.ResolvedTable.ReplaceTable(ctx, tbl)
 		if err != nil {
 			return nil, err
 		}
@@ -161,7 +161,7 @@ func (t *ProcedureResolvedTable) NewestTable(ctx *sql.Context) (*ResolvedTable, 
 		} else if !ok {
 			return nil, sql.ErrTableNotFound.New(t.ResolvedTable.Table.Name())
 		}
-		rt, err := t.ResolvedTable.ReplaceTable(tbl)
+		rt, err := t.ResolvedTable.ReplaceTable(ctx, tbl)
 		if err != nil {
 			return nil, err
 		}

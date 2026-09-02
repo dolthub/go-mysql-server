@@ -16,6 +16,8 @@ import (
 
 func TestHashJoins(t *testing.T) {
 	db := memory.NewDatabase("db")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
 
 	tests := []struct {
 		name string
@@ -25,16 +27,19 @@ func TestHashJoins(t *testing.T) {
 		{
 			name: "hash join 1",
 			plan: plan.NewInnerJoin(
+				ctx,
 				plan.NewInnerJoin(
+					ctx,
 					plan.NewInnerJoin(
-						ab(db),
-						xy(db),
+						ctx,
+						ab(ctx, db),
+						xy(ctx, db),
 						newEq("ab.a=xy.x"),
 					),
-					pq(db),
+					pq(ctx, db),
 					newEq("xy.x=pq.p"),
 				),
-				uv(db),
+				uv(ctx, db),
 				newEq("pq.q=uv.u"),
 			),
 			memo: `memo:
@@ -54,46 +59,43 @@ func TestHashJoins(t *testing.T) {
 		},
 	}
 
-	pro := memory.NewDBProvider(db)
-	ctx := newContext(pro)
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			m := memo.NewMemo(ctx, newTestCatalog(db), nil, memo.NewDefaultCoster(), nil)
 			j := memo.NewJoinOrderBuilder(m)
-			j.ReorderJoin(tt.plan)
-			addHashJoins(m)
+			j.ReorderJoin(ctx, tt.plan)
+			addHashJoins(ctx, m)
 			require.Equal(t, tt.memo, m.String())
 		})
 	}
 }
 
-func uv(db *memory.Database) sql.Node {
-	t := memory.NewTable(db, "uv", sql.NewPrimaryKeySchema(sql.Schema{
+func uv(ctx *sql.Context, db *memory.Database) sql.Node {
+	t := memory.NewTable(ctx, db, "uv", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "u", Type: types.Int64, Nullable: true, Source: "uv"},
 		{Name: "v", Type: types.Text, Nullable: true, Source: "uv"},
 	}, 0), nil)
 	return plan.NewResolvedTable(t, db, nil).WithId(4).WithColumns(sql.NewColSet(7, 8))
 }
 
-func xy(db *memory.Database) sql.Node {
-	t := memory.NewTable(db, "xy", sql.NewPrimaryKeySchema(sql.Schema{
+func xy(ctx *sql.Context, db *memory.Database) sql.Node {
+	t := memory.NewTable(ctx, db, "xy", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "x", Type: types.Int64, Nullable: true, Source: "xy"},
 		{Name: "y", Type: types.Text, Nullable: true, Source: "xy"},
 	}, 0), nil)
 	return plan.NewResolvedTable(t, db, nil).WithId(1).WithColumns(sql.NewColSet(1, 2))
 }
 
-func ab(db *memory.Database) sql.Node {
-	t := memory.NewTable(db, "ab", sql.NewPrimaryKeySchema(sql.Schema{
+func ab(ctx *sql.Context, db *memory.Database) sql.Node {
+	t := memory.NewTable(ctx, db, "ab", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: types.Int64, Nullable: true, Source: "ab"},
 		{Name: "b", Type: types.Text, Nullable: true, Source: "ab"},
 	}, 0), nil)
 	return plan.NewResolvedTable(t, db, nil).WithId(2).WithColumns(sql.NewColSet(3, 4))
 }
 
-func pq(db *memory.Database) sql.Node {
-	t := memory.NewTable(db, "pq", sql.NewPrimaryKeySchema(sql.Schema{
+func pq(ctx *sql.Context, db *memory.Database) sql.Node {
+	t := memory.NewTable(ctx, db, "pq", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "p", Type: types.Int64, Nullable: true, Source: "pq"},
 		{Name: "q", Type: types.Text, Nullable: true, Source: "pq"},
 	}, 0), nil)
@@ -149,4 +151,202 @@ func tabId(n string) int {
 	default:
 		panic("unknown table")
 	}
+}
+
+// TestIndexedJoinBindVarEqualityFilter tests analysis of a join query that contains a
+// bind var on an indexed column.
+//
+// Some engine embedders (i.e. Doltgres, which must answer a Postgres wire-protocol
+// Describe message with accurate result columns before the client has sent bind
+// values) run a full analysis pass on a prepared query's plan while it still holds
+// unbound *expression.BindVar placeholders in place of literals.
+func TestIndexedJoinBindVarEqualityFilter(t *testing.T) {
+	db := memory.NewDatabase("db")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+
+	t1Fk := expression.NewGetFieldWithTable(21, 10, types.Int64, "db", "t1", "fk", true)
+	t2Pk := expression.NewGetFieldWithTable(23, 11, types.Int64, "db", "t2", "pk", false)
+
+	joinFilter := expression.NewEquals(t1Fk, t2Pk)
+	bindVarFilter := expression.NewEquals(t1Fk, expression.NewBindVar("v1"))
+
+	left := plan.NewFilter(ctx, bindVarFilter, mergeJoinT1(ctx, db))
+	joined := plan.NewInnerJoin(ctx, left, mergeJoinT2(ctx, db), joinFilter)
+
+	m := memo.NewMemo(ctx, memory.NewStatsProv(), nil, memo.NewDefaultCoster(), nil)
+	j := memo.NewJoinOrderBuilder(m)
+	j.ReorderJoin(ctx, joined)
+
+	require.NotPanics(t, func() {
+		require.NoError(t, addMergeJoins(ctx, m))
+	})
+}
+
+// TestMergeJoinPartialIndexEligibility verifies that merge joins only use a partial
+// index when the source relation includes the index predicate.
+func TestMergeJoinPartialIndexEligibility(t *testing.T) {
+	for _, tt := range []struct {
+		name             string
+		includePredicate bool
+		expectMergeJoin  bool
+	}{
+		{name: "predicate absent", includePredicate: false, expectMergeJoin: false},
+		{name: "predicate present", includePredicate: true, expectMergeJoin: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			db := memory.NewDatabase("db")
+			ctx := newContext(memory.NewDBProvider(db))
+			left := partialMergeJoinTable(ctx, db)
+			if tt.includePredicate {
+				flag := expression.NewGetFieldWithTable(22, 10, types.Boolean, "db", "t1", "flag", false)
+				left = plan.NewFilter(ctx, flag, left)
+			}
+			joinFilter := expression.NewEquals(
+				expression.NewGetFieldWithTable(21, 10, types.Int64, "db", "t1", "fk", true),
+				expression.NewGetFieldWithTable(23, 11, types.Int64, "db", "t2", "pk", false),
+			)
+			joined := plan.NewInnerJoin(ctx, left, mergeJoinT2(ctx, db), joinFilter)
+
+			m := memo.NewMemo(ctx, memory.NewStatsProv(), nil, memo.NewDefaultCoster(), nil)
+			j := memo.NewJoinOrderBuilder(m)
+			j.ReorderJoin(ctx, joined)
+			require.NoError(t, addMergeJoins(ctx, m))
+			require.Equal(t, tt.expectMergeJoin, strings.Contains(m.String(), "mergejoin"))
+		})
+	}
+}
+
+// TestRangeHeapJoinPartialIndexEligibility verifies that range-heap joins only use
+// a partial value index when the source relation includes the index predicate.
+func TestRangeHeapJoinPartialIndexEligibility(t *testing.T) {
+	for _, tt := range []struct {
+		name             string
+		includePredicate bool
+		expectValueIndex bool
+	}{
+		{name: "predicate absent", includePredicate: false, expectValueIndex: false},
+		{name: "predicate present", includePredicate: true, expectValueIndex: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			db := memory.NewDatabase("db")
+			ctx := newContext(memory.NewDBProvider(db))
+			left := partialMergeJoinTable(ctx, db)
+			if tt.includePredicate {
+				flag := expression.NewGetFieldWithTable(22, 10, types.Boolean, "db", "t1", "flag", false)
+				left = plan.NewFilter(ctx, flag, left)
+			}
+			value := expression.NewGetFieldWithTable(21, 10, types.Int64, "db", "t1", "fk", true)
+			min := expression.NewGetFieldWithTable(23, 11, types.Int64, "db", "ranges", "min", false)
+			max := expression.NewGetFieldWithTable(24, 11, types.Int64, "db", "ranges", "max", false)
+			joined := plan.NewInnerJoin(ctx, left, rangeHeapTable(ctx, db), expression.JoinAnd(
+				expression.NewGreaterThanOrEqual(value, min),
+				expression.NewLessThanOrEqual(value, max),
+			))
+
+			m := memo.NewMemo(ctx, memory.NewStatsProv(), nil, memo.NewDefaultCoster(), nil)
+			j := memo.NewJoinOrderBuilder(m)
+			j.ReorderJoin(ctx, joined)
+			require.NoError(t, addRangeHeapJoin(ctx, m))
+			rangeHeapJoin, ok := m.Root().First.(*memo.RangeHeapJoin)
+			require.True(t, ok, m.String())
+			require.Equal(t, tt.expectValueIndex, rangeHeapJoin.RangeHeap.ValueIndex != nil, m.String())
+		})
+	}
+}
+
+// partialIndex wraps a memory index with a partial-index predicate for optimizer tests.
+type partialIndex struct {
+	*memory.Index
+	predicate string
+}
+
+// Predicate implements sql.PartialIndex.
+func (i *partialIndex) Predicate() string {
+	return i.predicate
+}
+
+// partialIndexTable exposes one memory index as a partial index.
+type partialIndexTable struct {
+	*memory.Table
+	indexName string
+	predicate string
+}
+
+// GetIndexes implements sql.IndexAddressableTable.
+func (t *partialIndexTable) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
+	indexes, err := t.Table.GetIndexes(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for i, idx := range indexes {
+		if idx.ID() == t.indexName {
+			indexes[i] = &partialIndex{Index: idx.(*memory.Index), predicate: t.predicate}
+		}
+	}
+	return indexes, nil
+}
+
+// partialMergeJoinTable returns a table with a partial ordered index on its join key.
+func partialMergeJoinTable(ctx *sql.Context, db *memory.Database) sql.Node {
+	tbl := memory.NewTable(ctx, db, "t1", sql.NewPrimaryKeySchema(sql.Schema{
+		{Name: "pk", Type: types.Int64, Nullable: false, Source: "t1", PrimaryKey: true},
+		{Name: "fk", Type: types.Int64, Nullable: true, Source: "t1"},
+		{Name: "flag", Type: types.Boolean, Nullable: false, Source: "t1"},
+	}), nil)
+	if err := tbl.CreateIndex(ctx, sql.IndexDef{
+		Name:    "t1_fk_partial_idx",
+		Columns: []sql.IndexColumn{{Name: "fk"}},
+	}); err != nil {
+		panic(err)
+	}
+	partialTbl := &partialIndexTable{Table: tbl, indexName: "t1_fk_partial_idx", predicate: "t1.flag"}
+	db.AddTable("t1", partialTbl)
+	return plan.NewResolvedTable(partialTbl, db, nil).WithId(10).WithColumns(sql.NewColSet(20, 21, 22))
+}
+
+// rangeHeapTable returns a table with ordered indexes on both range bounds.
+func rangeHeapTable(ctx *sql.Context, db *memory.Database) sql.Node {
+	tbl := memory.NewTable(ctx, db, "ranges", sql.NewPrimaryKeySchema(sql.Schema{
+		{Name: "pk", Type: types.Int64, Nullable: false, Source: "ranges", PrimaryKey: true},
+		{Name: "min", Type: types.Int64, Nullable: false, Source: "ranges"},
+		{Name: "max", Type: types.Int64, Nullable: false, Source: "ranges"},
+	}), nil)
+	for _, idx := range []sql.IndexDef{
+		{Name: "ranges_min_idx", Columns: []sql.IndexColumn{{Name: "min"}}},
+		{Name: "ranges_max_idx", Columns: []sql.IndexColumn{{Name: "max"}}},
+	} {
+		if err := tbl.CreateIndex(ctx, idx); err != nil {
+			panic(err)
+		}
+	}
+	db.AddTable("ranges", tbl)
+	return plan.NewResolvedTable(tbl, db, nil).WithId(11).WithColumns(sql.NewColSet(25, 23, 24))
+}
+
+// mergeJoinT1 returns a table with a primary key on pk and a secondary index on fk.
+func mergeJoinT1(ctx *sql.Context, db *memory.Database) sql.Node {
+	tbl := memory.NewTable(ctx, db, "t1", sql.NewPrimaryKeySchema(sql.Schema{
+		{Name: "pk", Type: types.Int64, Nullable: false, Source: "t1", PrimaryKey: true},
+		{Name: "fk", Type: types.Int64, Nullable: true, Source: "t1"},
+		{Name: "val", Type: types.Int64, Nullable: true, Source: "t1"},
+	}), nil)
+	if err := tbl.CreateIndex(ctx, sql.IndexDef{
+		Name:    "t1_fk_idx",
+		Columns: []sql.IndexColumn{{Name: "fk"}},
+	}); err != nil {
+		panic(err)
+	}
+	db.AddTable("t1", tbl)
+	return plan.NewResolvedTable(tbl, db, nil).WithId(10).WithColumns(sql.NewColSet(20, 21, 22))
+}
+
+// mergeJoinT2 returns a table with a primary key on pk.
+func mergeJoinT2(ctx *sql.Context, db *memory.Database) sql.Node {
+	tbl := memory.NewTable(ctx, db, "t2", sql.NewPrimaryKeySchema(sql.Schema{
+		{Name: "pk", Type: types.Int64, Nullable: false, Source: "t2", PrimaryKey: true},
+		{Name: "val", Type: types.Int64, Nullable: true, Source: "t2"},
+	}), nil)
+	db.AddTable("t2", tbl)
+	return plan.NewResolvedTable(tbl, db, nil).WithId(11).WithColumns(sql.NewColSet(23, 24))
 }

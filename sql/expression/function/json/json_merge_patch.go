@@ -54,7 +54,7 @@ type JSONMergePatch struct {
 var _ sql.FunctionExpression = &JSONMergePatch{}
 
 // NewJSONMergePatch creates a new JSONMergePatch function.
-func NewJSONMergePatch(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONMergePatch(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 2 {
 		return nil, sql.ErrInvalidArgumentNumber.New("JSON_MERGE_PATCH", 2, len(args))
 	}
@@ -92,14 +92,14 @@ func (j *JSONMergePatch) String() string {
 }
 
 // Type implements the Expression interface.
-func (j *JSONMergePatch) Type() sql.Type {
+func (j *JSONMergePatch) Type(ctx *sql.Context) sql.Type {
 	return types.JSON
 }
 
 // IsNullable implements the Expression interface.
-func (j *JSONMergePatch) IsNullable() bool {
+func (j *JSONMergePatch) IsNullable(ctx *sql.Context) bool {
 	for _, arg := range j.JSONs {
-		if arg.IsNullable() {
+		if arg.IsNullable(ctx) {
 			return true
 		}
 	}
@@ -146,6 +146,6 @@ func (j *JSONMergePatch) Children() []sql.Expression {
 }
 
 // WithChildren implements the Expression interface.
-func (j *JSONMergePatch) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewJSONMergePatch(children...)
+func (j *JSONMergePatch) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewJSONMergePatch(ctx, children...)
 }

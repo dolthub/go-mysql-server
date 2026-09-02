@@ -61,7 +61,7 @@ func (k *Kill) IsReadOnly() bool {
 	return true
 }
 
-func (k *Kill) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (k *Kill) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(k, len(children), 0)
 	}
@@ -73,7 +73,7 @@ func (*Kill) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID,
 	return sql.Collation_binary, 7
 }
 
-func (k *Kill) Schema() sql.Schema {
+func (k *Kill) Schema(ctx *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 

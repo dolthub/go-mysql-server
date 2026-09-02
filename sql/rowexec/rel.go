@@ -23,8 +23,8 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/jsonpath"
-	"github.com/shopspring/decimal"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
@@ -51,9 +51,9 @@ func (b *BaseBuilder) buildTopN(ctx *sql.Context, n *plan.TopN, row sql.Row) (sq
 
 	var topIter sql.RowIter
 	if limit == 1 {
-		topIter = iters.NewTopRowIter(n.Fields, n.CalcFoundRows, i)
+		topIter = iters.NewTopRowIter(n.SortConditions, n.CalcFoundRows, i)
 	} else {
-		topIter = iters.NewTopRowsIter(n.Fields, limit, n.CalcFoundRows, i, len(n.Child.Schema()))
+		topIter = iters.NewTopRowsIter(n.SortConditions, limit, n.CalcFoundRows, i)
 	}
 	return sql.NewSpanIter(span, topIter), nil
 }
@@ -69,13 +69,16 @@ func (b *BaseBuilder) buildValueDerivedTable(ctx *sql.Context, n *plan.ValueDeri
 				return nil, err
 			}
 			// cast all row values to the most permissive type
-			vals[j], _, err = n.Schema()[j].Type.Convert(ctx, p)
+			vals[j], _, err = n.Schema(ctx)[j].Type.Convert(ctx, p)
 			if err != nil {
 				return nil, err
 			}
 			// decimalType.Convert() does not use the given type precision and scale information
-			if t, ok := n.Schema()[j].Type.(sql.DecimalType); ok {
-				vals[j] = vals[j].(decimal.Decimal).Round(int32(t.Scale()))
+			if t, ok := n.Schema(ctx)[j].Type.(sql.DecimalType); ok {
+				vals[j], err = sql.DecimalRound(vals[j].(*apd.Decimal), int32(t.Scale()))
+				if err != nil {
+					return nil, err
+				}
 			}
 		}
 		rows[i] = vals
@@ -120,7 +123,7 @@ func (b *BaseBuilder) buildWindow(ctx *sql.Context, n *plan.Window, row sql.Row)
 	if err != nil {
 		return nil, err
 	}
-	blockIters, outputOrdinals, err := windowToIter(n)
+	blockIters, outputOrdinals, err := windowToIter(ctx, n)
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +131,8 @@ func (b *BaseBuilder) buildWindow(ctx *sql.Context, n *plan.Window, row sql.Row)
 }
 
 func (b *BaseBuilder) buildOffset(ctx *sql.Context, n *plan.Offset, row sql.Row) (sql.RowIter, error) {
-	span, ctx := ctx.Span("plan.Offset", trace.WithAttributes(attribute.Stringer("offset", n.Offset)))
+	span, ctx := ctx.Span("plan.Offset",
+		trace.WithAttributes(attribute.String("offset", ctx.RedactStringerForTrace(n.Offset))))
 
 	offset, err := iters.GetInt64Value(ctx, n.Offset)
 	if err != nil {
@@ -223,6 +227,7 @@ func (b *BaseBuilder) buildJSONTable(ctx *sql.Context, n *plan.JSONTable, row sq
 }
 
 func (b *BaseBuilder) buildHashLookup(ctx *sql.Context, n *plan.HashLookup, row sql.Row) (sql.RowIter, error) {
+	// TODO: pretty sure this Mutex is useless, but keep it for now
 	n.Mutex.Lock()
 	defer n.Mutex.Unlock()
 	if n.Lookup == nil {
@@ -261,7 +266,8 @@ func (b *BaseBuilder) buildTableAlias(ctx *sql.Context, n *plan.TableAlias, row 
 		table = reflect.TypeOf(n.Child).String()
 	}
 
-	span, ctx := ctx.Span("sql.TableAlias", trace.WithAttributes(attribute.String("table", table)))
+	span, ctx := ctx.Span("sql.TableAlias",
+		trace.WithAttributes(attribute.String("table", ctx.RedactNameForTrace(table))))
 
 	iter, err := b.Build(ctx, n.Child, row)
 	if err != nil {
@@ -302,11 +308,7 @@ func (b *BaseBuilder) buildOrderedDistinct(ctx *sql.Context, n *plan.OrderedDist
 		return nil, err
 	}
 
-	return sql.NewSpanIter(span, iters.NewOrderedDistinctIter(it, n.Child.Schema())), nil
-}
-
-func (b *BaseBuilder) buildWith(ctx *sql.Context, n *plan.With, row sql.Row) (sql.RowIter, error) {
-	return nil, fmt.Errorf("*plan.With has no execution iterator")
+	return sql.NewSpanIter(span, iters.NewOrderedDistinctIter(it, n.Child.Schema(ctx))), nil
 }
 
 func (b *BaseBuilder) buildProject(ctx *sql.Context, n *plan.Project, row sql.Row) (sql.RowIter, error) {
@@ -377,7 +379,7 @@ func (b *BaseBuilder) buildSet(ctx *sql.Context, n *plan.Set, row sql.Row) (sql.
 			if err != nil {
 				return nil, err
 			}
-			err = left.Set(ctx, value, setField.RightChild.Type())
+			err = left.Set(ctx, value, setField.RightChild.Type(ctx))
 			if err != nil {
 				return nil, err
 			}
@@ -455,26 +457,27 @@ func (b *BaseBuilder) buildRecursiveCte(ctx *sql.Context, n *plan.RecursiveCte, 
 		deduplicate: n.Union().Distinct,
 		b:           b,
 	}
-	if n.Union().Limit != nil && len(n.Union().SortFields) > 0 {
+	if n.Union().Limit != nil && len(n.Union().SortConditions) > 0 {
 		limit, err := iters.GetInt64Value(ctx, n.Union().Limit)
 		if err != nil {
 			return nil, err
 		}
-		iter = iters.NewTopRowsIter(n.Union().SortFields, limit, false, iter, len(n.Union().Schema()))
+		iter = iters.NewTopRowsIter(n.Union().SortConditions, limit, false, iter)
 	} else if n.Union().Limit != nil {
 		limit, err := iters.GetInt64Value(ctx, n.Union().Limit)
 		if err != nil {
 			return nil, err
 		}
 		iter = &iters.LimitIter{Limit: limit, ChildIter: iter}
-	} else if len(n.Union().SortFields) > 0 {
-		iter = iters.NewSortIter(n.Union().SortFields, iter)
+	} else if len(n.Union().SortConditions) > 0 {
+		iter = iters.NewSortIter(n.Union().SortConditions, iter)
 	}
 	return iter, nil
 }
 
 func (b *BaseBuilder) buildLimit(ctx *sql.Context, n *plan.Limit, row sql.Row) (sql.RowIter, error) {
-	span, ctx := ctx.Span("plan.Limit", trace.WithAttributes(attribute.Stringer("limit", n.Limit)))
+	span, ctx := ctx.Span("plan.Limit",
+		trace.WithAttributes(attribute.String("limit", ctx.RedactStringerForTrace(n.Limit))))
 
 	limit, err := iters.GetInt64Value(ctx, n.Limit)
 	if err != nil {
@@ -507,7 +510,7 @@ func (b *BaseBuilder) buildMax1Row(ctx *sql.Context, n *plan.Max1Row, row sql.Ro
 
 	switch {
 	case n.EmptyResult:
-		return plan.EmptyIter, nil
+		return sql.EmptyIter, nil
 	case n.Result != nil:
 		return sql.RowsToRowIter(n.Result), nil
 	default:
@@ -615,7 +618,7 @@ func (b *BaseBuilder) buildInto(ctx *sql.Context, n *plan.Into, row sql.Row) (sq
 		}
 		defer file.Close()
 
-		sch := n.Child.Schema()
+		sch := n.Child.Schema(ctx)
 		for _, r := range rows {
 			file.WriteString(n.LinesStartingBy)
 			for i, val := range r {
@@ -744,7 +747,7 @@ func (b *BaseBuilder) buildExternalProcedure(ctx *sql.Context, n *plan.ExternalP
 		if paramDefinition.Direction == plan.ProcedureParamDirection_Inout || paramDefinition.Direction == plan.ProcedureParamDirection_Out {
 			exprParam := n.Params[i]
 			funcParamVal := funcParams[i+1].Elem().Interface()
-			err := exprParam.Set(ctx, funcParamVal, exprParam.Type())
+			err := exprParam.Set(ctx, funcParamVal, exprParam.Type(ctx))
 			if err != nil {
 				return nil, err
 			}
@@ -875,20 +878,20 @@ func (b *BaseBuilder) buildSetOp(ctx *sql.Context, s *plan.SetOp, row sql.Row) (
 		}
 		iter = &offsetIter{skip: offset, childIter: iter}
 	}
-	if s.Limit != nil && len(s.SortFields) > 0 {
+	if s.Limit != nil && len(s.SortConditions) > 0 {
 		limit, err := iters.GetInt64Value(ctx, s.Limit)
 		if err != nil {
 			return nil, err
 		}
-		iter = iters.NewTopRowsIter(s.SortFields, limit, false, iter, len(s.Schema()))
+		iter = iters.NewTopRowsIter(s.SortConditions, limit, false, iter)
 	} else if s.Limit != nil {
 		limit, err := iters.GetInt64Value(ctx, s.Limit)
 		if err != nil {
 			return nil, err
 		}
 		iter = &iters.LimitIter{Limit: limit, ChildIter: iter}
-	} else if len(s.SortFields) > 0 {
-		iter = iters.NewSortIter(s.SortFields, iter)
+	} else if len(s.SortConditions) > 0 {
+		iter = iters.NewSortIter(s.SortConditions, iter)
 	}
 	return sql.NewSpanIter(span, iter), nil
 }
@@ -915,7 +918,7 @@ func (b *BaseBuilder) buildSort(ctx *sql.Context, n *plan.Sort, row sql.Row) (sq
 		span.End()
 		return nil, err
 	}
-	return sql.NewSpanIter(span, iters.NewSortIter(n.SortFields, i)), nil
+	return sql.NewSpanIter(span, iters.NewSortIter(n.SortConditions, i)), nil
 }
 
 func (b *BaseBuilder) buildPrepareQuery(ctx *sql.Context, n *plan.PrepareQuery, row sql.Row) (sql.RowIter, error) {

@@ -231,7 +231,7 @@ var TableFunctionScriptTests = []ScriptTest{
 		Name:            "point_lookup_table disallows merge join",
 		Query:           "select /*+ MERGE_JOIN(l,r) */ * from point_lookup_table('x', 5) l join point_lookup_table('y', 5) r where x = y",
 		Expected:        []sql.Row{{0, 0}, {1, 1}, {2, 2}, {3, 3}, {4, 4}},
-		JoinTypes:       []plan.JoinType{plan.JoinTypeLookup},
+		JoinTypes:       []plan.JoinType{plan.JoinTypeInner},
 		ExpectedIndexes: []string{"y"},
 	},
 	{

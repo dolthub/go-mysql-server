@@ -159,6 +159,251 @@ CREATE TABLE tab1 (
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/10741
+		Name: "view with explicit column list renames literal columns",
+		SetUpScript: []string{
+			`CREATE TABLE t (id int primary key, name varchar(10));`,
+			`INSERT INTO t VALUES (1, 'alice'), (2, 'bob');`,
+			`CREATE VIEW v (id, name, tag) AS SELECT id, name, 'abc' FROM t;`,
+			`CREATE VIEW v_renamed (id, name, status) AS SELECT id, name, 'active' FROM t;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM v;",
+				Expected: []sql.Row{
+					{1, "alice", "abc"},
+					{2, "bob", "abc"},
+				},
+			},
+			{
+				Query: "SELECT v.tag FROM v WHERE v.tag = 'abc';",
+				Expected: []sql.Row{
+					{"abc"},
+					{"abc"},
+				},
+			},
+			{
+				Query: "SELECT tag FROM v WHERE tag = 'abc';",
+				Expected: []sql.Row{
+					{"abc"},
+					{"abc"},
+				},
+			},
+			{
+				Query:    "SELECT * FROM v WHERE v.tag = 'xyz';",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "SELECT v.abc FROM v;",
+				// The explicit column list names this column 'tag', so 'abc' (the literal value) is not accessible.
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query: "SELECT v_renamed.status FROM v_renamed WHERE v_renamed.status = 'active';",
+				// The explicit column list names this column 'status', while the literal value is 'active'.
+				Expected: []sql.Row{
+					{"active"},
+					{"active"},
+				},
+			},
+			{
+				Query:       "SELECT v_renamed.active FROM v_renamed;",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query: "SELECT column_name FROM information_schema.columns WHERE table_name = 'v' AND table_schema = database() ORDER BY ordinal_position;",
+				Expected: []sql.Row{
+					{"id"},
+					{"name"},
+					{"tag"},
+				},
+			},
+		},
+	},
+	{
+		Name: "view with explicit column list supports various literal and expression types",
+		SetUpScript: []string{
+			`CREATE VIEW v (str_col, int_col, decimal_col, float_col, null_col, bool_col, hex_col, bit_col, func_col, expr_col) AS SELECT 'abc', 1, 1.5, 1.5e0, NULL, TRUE, 0x41, b'1010', abs(-5), 1 + 1;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * FROM v;",
+				Expected: []sql.Row{{"abc", 1, "1.5", float64(1.5), nil, true, []byte{0x41}, uint64(10), 5, 2}},
+			},
+			{
+				Query:    "SELECT v.str_col FROM v WHERE v.str_col = 'abc';",
+				Expected: []sql.Row{{"abc"}},
+			},
+			{
+				Query:    "SELECT str_col FROM v WHERE str_col = 'abc';",
+				Expected: []sql.Row{{"abc"}},
+			},
+			{
+				Query:    "SELECT int_col FROM v WHERE int_col = 1;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT decimal_col FROM v WHERE decimal_col = 1.5;",
+				Expected: []sql.Row{{"1.5"}},
+			},
+			{
+				Query:    "SELECT float_col FROM v WHERE float_col = 1.5e0;",
+				Expected: []sql.Row{{float64(1.5)}},
+			},
+			{
+				Query:    "SELECT null_col FROM v WHERE null_col IS NULL;",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:    "SELECT bool_col FROM v WHERE bool_col = TRUE;",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    "SELECT hex_col FROM v;",
+				Expected: []sql.Row{{[]byte{0x41}}},
+			},
+			{
+				Query:    "SELECT bit_col FROM v;",
+				Expected: []sql.Row{{uint64(10)}},
+			},
+			{
+				Query:    "SELECT func_col FROM v WHERE func_col = 5;",
+				Expected: []sql.Row{{5}},
+			},
+			{
+				Query:    "SELECT expr_col FROM v WHERE expr_col = 2;",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query: "SELECT column_name FROM information_schema.columns WHERE table_name = 'v' AND table_schema = database() ORDER BY ordinal_position;",
+				Expected: []sql.Row{
+					{"str_col"},
+					{"int_col"},
+					{"decimal_col"},
+					{"float_col"},
+					{"null_col"},
+					{"bool_col"},
+					{"hex_col"},
+					{"bit_col"},
+					{"func_col"},
+					{"expr_col"},
+				},
+			},
+		},
+	},
+	{
+		Name: "view with numeric column name supports dotted and backtick access",
+		SetUpScript: []string{
+			"CREATE VIEW v AS SELECT 'abc', 1, 123, 1 AS `2b`, 1.5, 1.5e0, NULL, TRUE, 0x41, b'1010', abs(1), 1 + 1;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT v.abc FROM v;",
+				Expected: []sql.Row{{"abc"}},
+			},
+			{
+				Query:    "SELECT v.`abc` FROM v;",
+				Expected: []sql.Row{{"abc"}},
+			},
+			{
+				Query:    "SELECT v.1 FROM v;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT v.`1` FROM v;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT v.123 FROM v;",
+				Expected: []sql.Row{{123}},
+			},
+			{
+				Query:    "SELECT v.`123` FROM v;",
+				Expected: []sql.Row{{123}},
+			},
+			{
+				Query:    "SELECT v.2b FROM v;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT v.`2b` FROM v;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT v.`1.5` FROM v;",
+				Expected: []sql.Row{{"1.5"}},
+			},
+			{
+				Query:    "SELECT v.`1.5e0` FROM v;",
+				Expected: []sql.Row{{float64(1.5)}},
+			},
+			{
+				Query:    "SELECT v.NULL FROM v;",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:    "SELECT v.`NULL` FROM v;",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:    "SELECT v.true FROM v;",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    "SELECT v.`true` FROM v;",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    "SELECT v.0x41 FROM v;",
+				Expected: []sql.Row{{[]byte{0x41}}},
+			},
+			{
+				Query:    "SELECT v.`0x41` FROM v;",
+				Expected: []sql.Row{{[]byte{0x41}}},
+			},
+			{
+				Query:    "SELECT v.`b'1010'` FROM v;",
+				Expected: []sql.Row{{uint64(10)}},
+			},
+			{
+				Query:    "SELECT v.abs(1) FROM v;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT v.`abs(1)` FROM v;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT v.`1 + 1` FROM v;",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "SELECT mydb.v.1 FROM v;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT mydb.v.`1` FROM v;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT mydb.v.123 FROM v;",
+				Expected: []sql.Row{{123}},
+			},
+			{
+				Query:    "SELECT mydb.v.2b FROM v;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT mydb.v.0x41 FROM v;",
+				Expected: []sql.Row{{[]byte{0x41}}},
+			},
+			{
+				Query:       "SELECT v.-1 FROM v;",
+				ExpectedErr: sql.ErrSyntaxError,
+			},
+		},
+	},
+	{
 		Name: "view columns retain original case",
 		SetUpScript: []string{
 			`CREATE TABLE strs ( id int NOT NULL AUTO_INCREMENT,
@@ -331,6 +576,78 @@ CREATE TABLE tab1 (
 				Expected: []sql.Row{
 					{1, 1, 100, 121, 223},
 				},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/10902
+		Name: "SHOW CREATE VIEW returns stored definition regardless of underlying object state",
+		SetUpScript: []string{
+			"CREATE TABLE t (pk int PRIMARY KEY, c1 varchar(20));",
+			"CREATE VIEW v AS SELECT * FROM t;",
+			"DROP TABLE t;",
+			"CREATE TABLE t_chain (pk int PRIMARY KEY, c1 int);",
+			"CREATE VIEW v1 AS SELECT * FROM t_chain;",
+			"CREATE VIEW v2 AS SELECT pk FROM v1;",
+			"DROP VIEW v1;",
+			"CREATE TABLE t1 (pk int PRIMARY KEY, c1 int);",
+			"CREATE TABLE t2 (pk int PRIMARY KEY, c1 int);",
+			"CREATE VIEW v_union AS SELECT pk, c1 FROM t1 UNION SELECT pk, c1 FROM t2;",
+			"DROP TABLE t1;",
+			"DROP TABLE t2;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SHOW CREATE VIEW v;",
+				Expected: []sql.Row{{
+					"v",
+					"CREATE VIEW `v` AS SELECT * FROM t",
+					"utf8mb4",
+					"utf8mb4_0900_bin",
+				}},
+			},
+			{
+				Query: "SHOW CREATE VIEW v2;",
+				Expected: []sql.Row{{
+					"v2",
+					"CREATE VIEW `v2` AS SELECT pk FROM v1",
+					"utf8mb4",
+					"utf8mb4_0900_bin",
+				}},
+			},
+			{
+				Query: "SHOW CREATE VIEW v_union;",
+				Expected: []sql.Row{{
+					"v_union",
+					"CREATE VIEW `v_union` AS SELECT pk, c1 FROM t1 UNION SELECT pk, c1 FROM t2",
+					"utf8mb4",
+					"utf8mb4_0900_bin",
+				}},
+			},
+			{
+				Query:       "SHOW CREATE VIEW v1;",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+			{
+				Query:       "SHOW CREATE VIEW no_such_view;",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+		},
+	},
+	{
+		Name: "nested views in correlated subquery",
+		SetUpScript: []string{
+			"CREATE TABLE base (id BIGINT, name VARCHAR(255), created_at VARCHAR(255));",
+			"INSERT INTO base VALUES (1,'a','x'),(2,'b','y'),(3,'a','z');",
+			"CREATE TABLE k AS SELECT id, name, created_at, ROW_NUMBER() OVER (ORDER BY id) AS sk FROM base;",
+			"CREATE VIEW vl AS SELECT id, sk FROM k;",
+			"CREATE VIEW vr AS SELECT name, created_at, sk FROM k;",
+			"CREATE VIEW t AS SELECT l.id AS id, r.name AS name, r.created_at AS created_at FROM vl l LEFT JOIN vr r ON l.sk = r.sk;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT t1.id FROM t t1 WHERE EXISTS (SELECT 1 FROM t t5 WHERE t5.id = t1.id);",
+				Expected: []sql.Row{{1}, {2}, {3}},
 			},
 		},
 	},

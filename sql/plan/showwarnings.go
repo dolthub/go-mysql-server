@@ -31,7 +31,7 @@ func (ShowWarnings) Resolved() bool {
 }
 
 // WithChildren implements the Node interface.
-func (sw ShowWarnings) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (sw ShowWarnings) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(sw, len(children), 0)
 	}
@@ -54,7 +54,7 @@ func (ShowWarnings) IsReadOnly() bool {
 }
 
 // Schema returns a new Schema reference for "SHOW VARIABLES" query.
-func (ShowWarnings) Schema() sql.Schema {
+func (ShowWarnings) Schema(ctx *sql.Context) sql.Schema {
 	return sql.Schema{
 		&sql.Column{Name: "Level", Type: types.LongText, Nullable: false},
 		&sql.Column{Name: "Code", Type: types.Int32, Nullable: true},

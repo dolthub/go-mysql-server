@@ -30,7 +30,7 @@ const (
 
 func TestGetLock(t *testing.T) {
 	ls := sql.NewLockSubsystem()
-	var fn sql.CreateFunc2Args = CreateNewGetLock(ls)
+	var fn sql.CreateFunc2Args = CreateNewGetLock(sql.NewEmptyContext(), ls)
 	tf := NewTestFactory(fn)
 
 	user0 := sql.NewEmptyContext()

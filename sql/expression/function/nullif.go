@@ -31,7 +31,7 @@ var _ sql.FunctionExpression = (*NullIf)(nil)
 var _ sql.CollationCoercible = (*NullIf)(nil)
 
 // NewNullIf returns a new NULLIF UDF
-func NewNullIf(ex1, ex2 sql.Expression) sql.Expression {
+func NewNullIf(ctx *sql.Context, ex1, ex2 sql.Expression) sql.Expression {
 	return &NullIf{
 		expression.BinaryExpressionStub{
 			LeftChild:  ex1,
@@ -52,7 +52,7 @@ func (f *NullIf) Description() string {
 
 // Eval implements the Expression interface.
 func (f *NullIf) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	if types.IsNull(f.LeftChild) && types.IsNull(f.RightChild) {
+	if types.IsNull(ctx, f.LeftChild) && types.IsNull(ctx, f.RightChild) {
 		return nil, nil
 	}
 
@@ -68,24 +68,24 @@ func (f *NullIf) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // Type implements the Expression interface.
-func (f *NullIf) Type() sql.Type {
-	if types.IsNull(f.LeftChild) {
+func (f *NullIf) Type(ctx *sql.Context) sql.Type {
+	if types.IsNull(ctx, f.LeftChild) {
 		return types.Null
 	}
 
-	return f.LeftChild.Type()
+	return f.LeftChild.Type(ctx)
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (f *NullIf) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
-	if types.IsNull(f.LeftChild) {
+	if types.IsNull(ctx, f.LeftChild) {
 		return sql.Collation_binary, 6
 	}
 	return sql.GetCoercibility(ctx, f.LeftChild)
 }
 
 // IsNullable implements the Expression interface.
-func (f *NullIf) IsNullable() bool {
+func (f *NullIf) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
@@ -94,9 +94,9 @@ func (f *NullIf) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (f *NullIf) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (f *NullIf) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 2)
 	}
-	return NewNullIf(children[0], children[1]), nil
+	return NewNullIf(ctx, children[0], children[1]), nil
 }

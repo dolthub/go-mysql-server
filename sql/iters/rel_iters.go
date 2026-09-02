@@ -15,7 +15,6 @@
 package iters
 
 import (
-	"container/heap"
 	"fmt"
 	"io"
 	"sort"
@@ -23,150 +22,9 @@ import (
 	"github.com/dolthub/jsonpath"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/hash"
-	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql/sorters"
 )
-
-// topRowIter is a special case of topRowsIter when N = 1
-type topRowIter struct {
-	childIter     sql.RowIter
-	sortFields    sql.SortFields
-	topRow        sql.Row
-	numFoundRows  int64
-	calcFoundRows bool
-	once          bool
-}
-
-var _ sql.RowIter = (*topRowIter)(nil)
-
-func NewTopRowIter(s sql.SortFields, calcFoundRows bool, child sql.RowIter) *topRowIter {
-	return &topRowIter{
-		childIter:     child,
-		sortFields:    s,
-		calcFoundRows: calcFoundRows,
-	}
-}
-
-func (i *topRowIter) Next(ctx *sql.Context) (sql.Row, error) {
-	if i.once {
-		return nil, io.EOF
-	}
-	i.once = true
-
-	topRow, err := i.childIter.Next(ctx)
-	if err != nil {
-		return nil, err
-	}
-	sorter := expression.Sorter{
-		Ctx:        ctx,
-		SortFields: i.sortFields,
-	}
-	for {
-		var row sql.Row
-		row, err = i.childIter.Next(ctx)
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
-		i.numFoundRows++
-		if sorter.IsLesserRow(row, topRow) {
-			topRow = row
-		}
-	}
-	return topRow, nil
-}
-
-func (i *topRowIter) Close(ctx *sql.Context) error {
-	if i.calcFoundRows {
-		ctx.GetLastQueryInfo().FoundRows.Store(i.numFoundRows)
-	}
-	return i.childIter.Close(ctx)
-}
-
-type topRowsIter struct {
-	childIter     sql.RowIter
-	sortFields    sql.SortFields
-	topRows       []sql.Row
-	idx           int
-	limit         int64
-	numFoundRows  int64
-	calcFoundRows bool
-}
-
-var _ sql.RowIter = (*topRowsIter)(nil)
-
-func NewTopRowsIter(s sql.SortFields, limit int64, calcFoundRows bool, child sql.RowIter, childSchemaLen int) *topRowsIter {
-	return &topRowsIter{
-		sortFields:    append(s, sql.SortField{Column: expression.NewGetField(childSchemaLen, types.Int64, "order", false)}),
-		limit:         limit,
-		calcFoundRows: calcFoundRows,
-		childIter:     child,
-		idx:           -1,
-	}
-}
-
-func (i *topRowsIter) Next(ctx *sql.Context) (sql.Row, error) {
-	if i.idx == -1 {
-		err := i.computeTopRows(ctx)
-		if err != nil {
-			return nil, err
-		}
-		i.idx = 0
-	}
-
-	if i.idx >= len(i.topRows) {
-		return nil, io.EOF
-	}
-	row := i.topRows[i.idx]
-	i.idx++
-	return row[:len(row)-1], nil
-}
-
-func (i *topRowsIter) Close(ctx *sql.Context) error {
-	i.topRows = nil
-	if i.calcFoundRows {
-		ctx.GetLastQueryInfo().FoundRows.Store(i.numFoundRows)
-	}
-	return i.childIter.Close(ctx)
-}
-
-func (i *topRowsIter) computeTopRows(ctx *sql.Context) error {
-	topRowsHeap := &expression.TopRowsHeap{
-		Sorter: expression.Sorter{
-			SortFields: i.sortFields,
-			Rows:       make([]sql.Row, 0, i.limit+1),
-			LastError:  nil,
-			Ctx:        ctx,
-		},
-	}
-	for {
-		row, err := i.childIter.Next(ctx)
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return err
-		}
-		i.numFoundRows++
-
-		row = append(row, i.numFoundRows) // TODO: this triggers a malloc
-
-		heap.Push(topRowsHeap, row)
-		if int64(topRowsHeap.Len()) > i.limit {
-			heap.Pop(topRowsHeap)
-		}
-		if topRowsHeap.LastError != nil {
-			return topRowsHeap.LastError
-		}
-	}
-
-	var err error
-	i.topRows, err = topRowsHeap.Rows()
-	return err
-}
 
 // GetInt64Value returns the int64 literal value in the expression given, or an error with the errStr given if it
 // cannot.
@@ -532,19 +390,19 @@ func (li *LimitIter) Close(ctx *sql.Context) error {
 }
 
 type sortIter struct {
-	sortFields sql.SortFields
-	childIter  sql.RowIter
-	sortedRows []sql.Row
-	idx        int
+	sortConditions sql.SortConditions
+	childIter      sql.RowIter
+	sortedRows     []sql.Row
+	idx            int
 }
 
 var _ sql.RowIter = (*sortIter)(nil)
 
-func NewSortIter(s sql.SortFields, child sql.RowIter) *sortIter {
+func NewSortIter(s sql.SortConditions, child sql.RowIter) *sortIter {
 	return &sortIter{
-		sortFields: s,
-		childIter:  child,
-		idx:        -1,
+		sortConditions: s,
+		childIter:      child,
+		idx:            -1,
 	}
 }
 
@@ -571,7 +429,7 @@ func (i *sortIter) Close(ctx *sql.Context) error {
 }
 
 func (i *sortIter) computeSortedRows(ctx *sql.Context) error {
-	cache, dispose := ctx.Memory.NewRowsCache()
+	cache, dispose := ctx.Memory.NewRowsCache(ctx)
 	defer dispose()
 
 	for {
@@ -590,15 +448,11 @@ func (i *sortIter) computeSortedRows(ctx *sql.Context) error {
 	}
 
 	rows := cache.Get()
-	sorter := &expression.Sorter{
-		SortFields: i.sortFields,
-		Rows:       rows,
-		LastError:  nil,
-		Ctx:        ctx,
-	}
+	sorter := sorters.NewRowSorterWithRows(ctx, i.sortConditions, rows)
 	sort.Stable(sorter)
-	if sorter.LastError != nil {
-		return sorter.LastError
+	err := sorter.GetError()
+	if err != nil {
+		return err
 	}
 	i.sortedRows = rows
 	return nil
@@ -622,7 +476,7 @@ type DistinctHasher interface {
 }
 
 func NewDistinctIter(ctx *sql.Context, child sql.RowIter, hasher DistinctHasher) *distinctIter {
-	cache, dispose := ctx.Memory.NewHistoryCache()
+	cache, dispose := ctx.Memory.NewHistoryCache(ctx)
 	return &distinctIter{
 		childIter:   child,
 		hasher:      hasher,
@@ -636,7 +490,7 @@ func (di *distinctIter) Next(ctx *sql.Context) (sql.Row, error) {
 		row, err := di.childIter.Next(ctx)
 		if err != nil {
 			if err == io.EOF {
-				di.Dispose()
+				di.Dispose(ctx)
 			}
 			return nil, err
 		}
@@ -659,11 +513,11 @@ func (di *distinctIter) Next(ctx *sql.Context) (sql.Row, error) {
 }
 
 func (di *distinctIter) Close(ctx *sql.Context) error {
-	di.Dispose()
+	di.Dispose(ctx)
 	return di.childIter.Close(ctx)
 }
 
-func (di *distinctIter) Dispose() {
+func (di *distinctIter) Dispose(ctx *sql.Context) {
 	if di.DisposeFunc != nil {
 		di.DisposeFunc()
 	}

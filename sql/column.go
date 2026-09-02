@@ -20,6 +20,32 @@ import (
 	"strings"
 )
 
+// HiddenSystemColumnPrefix is a reserved prefix for hidden columns created
+// by the engine that are used for generating functional expressions for
+// indexes. Users are restricted from creating or renaming columns with this
+// prefix.
+const HiddenSystemColumnPrefix = "!hidden!"
+
+// IsHiddenSystemColumn returns true if |name| has the "!hidden!" prefix,
+// indicating it is a system hidden column.
+func IsHiddenSystemColumn(name string) bool {
+	return strings.HasPrefix(strings.ToLower(name), HiddenSystemColumnPrefix)
+}
+
+// HiddenSystemColumnName returns the name used for the hidden, system-generated column that backs
+// the functional expression at the 0-based |position| within the index named |indexName|. MySQL
+// uses the pattern !hidden!<index_name>!<position_in_index>!<subcomponent> for these names;
+// subcomponent is intended for the subcomponent in the generated field, but in practice is always 0.
+func HiddenSystemColumnName(indexName string, position int) string {
+	return fmt.Sprintf("%s%s!%d!0", HiddenSystemColumnPrefix, strings.ToLower(indexName), position)
+}
+
+// IsHiddenSystemColumnForIndex returns true if |colName| is a hidden system column created to back
+// a functional expression in the index named |indexName| (see HiddenSystemColumnName).
+func IsHiddenSystemColumnForIndex(colName, indexName string) bool {
+	return strings.HasPrefix(strings.ToLower(colName), HiddenSystemColumnPrefix+strings.ToLower(indexName)+"!")
+}
+
 // Column is the definition of a table column.
 // As SQL:2016 puts it:
 //
@@ -55,6 +81,17 @@ type Column struct {
 	Virtual bool
 	// AutoIncrement is true if the column auto-increments.
 	AutoIncrement bool
+	// Hidden is true if this column is a user-defined hidden column (e.g. using the  HIDDEN
+	// attribute in the column definition). Hidden columns are not automatically returned
+	// when selecting all columns from a table, but they can be explicitly selected.
+	Hidden bool
+	// HiddenSystem is true if this column is an internal-only system column in a user table.
+	// These columns are not visible in the table schema and do not appear in information_schema
+	// metadata. They are not returned when selecting all columns from a table and unlike HIDDEN
+	// columns, they cannot be explicitly selected either. These columns are used for internal
+	// system information managed by the engine, such as a virtual column for a functional
+	// expression used in an index on the table.
+	HiddenSystem bool
 }
 
 // Check ensures the value is correct for this column.
@@ -75,17 +112,17 @@ func (c *Column) Equals(c2 *Column) bool {
 			strings.EqualFold(c.DatabaseSource, c2.DatabaseSource) &&
 			c.Nullable == c2.Nullable &&
 			reflect.DeepEqual(c.Default, c2.Default) &&
-			reflect.DeepEqual(c.Type, c2.Type)
+			c.Type.Equals(c2.Type)
 	}
 	return c.Name == c2.Name &&
 		strings.EqualFold(c.Source, c2.Source) &&
 		strings.EqualFold(c.DatabaseSource, c2.DatabaseSource) &&
 		c.Nullable == c2.Nullable &&
 		reflect.DeepEqual(c.Default, c2.Default) &&
-		reflect.DeepEqual(c.Type, c2.Type)
+		c.Type.Equals(c2.Type)
 }
 
-func (c *Column) DebugString() string {
+func (c *Column) DebugString(ctx *Context) string {
 	sb := strings.Builder{}
 	sb.WriteString("Name: ")
 	sb.WriteString(c.Name)
@@ -106,9 +143,9 @@ func (c *Column) DebugString() string {
 	sb.WriteString(c.Comment)
 	sb.WriteString(", ")
 	sb.WriteString("Default: ")
-	sb.WriteString(DebugString(c.Default))
+	sb.WriteString(DebugString(ctx, c.Default))
 	sb.WriteString("Generated: ")
-	sb.WriteString(DebugString(c.Generated))
+	sb.WriteString(DebugString(ctx, c.Generated))
 	sb.WriteString(", ")
 	sb.WriteString("AutoIncrement: ")
 	sb.WriteString(fmt.Sprintf("%v", c.AutoIncrement))

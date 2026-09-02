@@ -42,6 +42,7 @@ func TestIf(t *testing.T) {
 
 	for _, tc := range testCases {
 		f := NewIf(
+			sql.NewEmptyContext(),
 			tc.expr,
 			expression.NewGetField(0, tc.type1, "true", true),
 			expression.NewGetField(1, tc.type2, "false", true),

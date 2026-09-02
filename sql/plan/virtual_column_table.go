@@ -70,18 +70,18 @@ func (v *VirtualColumnTable) String() string {
 	return pr.String()
 }
 
-func (v *VirtualColumnTable) DebugString() string {
+func (v *VirtualColumnTable) DebugString(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("VirtualColumnTable")
 	children := make([]string, 3)
 	children[0] = fmt.Sprintf("name: %s", v.Name())
 	exprs := make([]string, len(v.Projections))
 	for i, expr := range v.Projections {
-		exprs[i] = sql.DebugString(expr)
+		exprs[i] = sql.DebugString(ctx, expr)
 	}
 
 	children[1] = fmt.Sprintf("columns: [%s]", strings.Join(exprs, ", "))
-	children[2] = TableDebugString(v.Table)
+	children[2] = TableDebugString(ctx, v.Table)
 	_ = pr.WriteChildren(children...)
 
 	return pr.String()

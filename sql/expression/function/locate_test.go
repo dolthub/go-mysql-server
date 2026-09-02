@@ -83,6 +83,13 @@ func TestLocate(t *testing.T) {
 			Expected: 0,
 		},
 		{
+			Name:     "locate with negative start",
+			Substr:   "o",
+			Str:      "locate",
+			Start:    intPtr(-1),
+			Expected: 0,
+		},
+		{
 			Name:     "locate empty substring",
 			Substr:   "",
 			Str:      "locate",
@@ -124,7 +131,7 @@ func TestLocate(t *testing.T) {
 				row = append(row, *tt.Start)
 			}
 
-			f, err := NewLocate(exprs...)
+			f, err := NewLocate(sql.NewEmptyContext(), exprs...)
 			require.NoError(err)
 
 			result, err := f.Eval(sql.NewEmptyContext(), row)

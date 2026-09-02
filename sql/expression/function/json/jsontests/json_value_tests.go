@@ -78,7 +78,7 @@ func RunJsonValueTests(t *testing.T, prepare prepareJsonValue) {
 			if tt.typ != nil {
 				args = append(args, expression.NewLiteral(tt.typ.Zero(), tt.typ))
 			}
-			f, _ := json.NewJsonValue(args...)
+			f, _ := json.NewJsonValue(sql.NewEmptyContext(), args...)
 			require := require.New(t)
 			// any error case will result in output of 'false' value
 			result, err := f.Eval(sql.NewEmptyContext(), tt.row)

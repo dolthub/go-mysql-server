@@ -65,7 +65,7 @@ func (p *CreateForeignKey) Children() []sql.Node {
 }
 
 // WithChildren implements the interface sql.Node.
-func (p *CreateForeignKey) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (p *CreateForeignKey) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(p, children...)
 }
 
@@ -75,7 +75,7 @@ func (*CreateForeignKey) CollationCoercibility(ctx *sql.Context) (collation sql.
 }
 
 // Schema implements the interface sql.Node.
-func (p *CreateForeignKey) Schema() sql.Schema {
+func (p *CreateForeignKey) Schema(ctx *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -112,6 +112,10 @@ var ValidateForeignKeyDefinition = validateForeignKeyDefinition
 // data as necessary.
 // fkChecks - whether to check the foreign key against the data in the table
 // checkRows - whether to check the existing rows in the table against the foreign key
+// TODO: This function is called in too many different places for different purposes, with varying flags such as
+// shouldAdd, fkChecks, and checkRows to indicate what parts of the function should and shouldn't be called. It would be
+// better to break this function up into parts and just call the parts that are necessary. Note that fkChecks is always
+// true when shouldAdd is false.
 func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.ForeignKeyTable, fkDef sql.ForeignKeyConstraint, shouldAdd, fkChecks, checkRows bool) error {
 	if t, ok := tbl.(sql.TemporaryTable); ok && t.IsTemporary() {
 		return sql.ErrTemporaryTablesForeignKeySupport.New()
@@ -129,7 +133,7 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 	// Make sure that all columns are valid, in the table, and there are no duplicates
 	cols := make(map[string]*sql.Column)
 	seenCols := make(map[string]struct{})
-	for _, col := range tbl.Schema() {
+	for _, col := range tbl.Schema(ctx) {
 		lowerColName := strings.ToLower(col.Name)
 		cols[lowerColName] = col
 	}
@@ -143,9 +147,13 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 		if ok {
 			return sql.ErrAddForeignKeyDuplicateColumn.New(fkCol)
 		}
-		// Non-nullable columns may not have SET NULL as a reference option
-		if !col.Nullable && (fkDef.OnUpdate == sql.ForeignKeyReferentialAction_SetNull || fkDef.OnDelete == sql.ForeignKeyReferentialAction_SetNull) {
-			return sql.ErrForeignKeySetNullNonNullable.New(col.Name)
+
+		// This is checked for Dolt only. Doltgres must have schema name defined.
+		if fkDef.SchemaName == "" {
+			// Non-nullable columns may not have SET NULL as a reference option
+			if !col.Nullable && (fkDef.OnUpdate == sql.ForeignKeyReferentialAction_SetNull || fkDef.OnDelete == sql.ForeignKeyReferentialAction_SetNull) {
+				return sql.ErrForeignKeySetNullNonNullable.New(col.Name)
+			}
 		}
 		seenCols[lowerFkCol] = struct{}{}
 		fkDef.Columns[i] = col.Name
@@ -155,7 +163,7 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 	if fkChecks {
 		parentCols := make(map[string]*sql.Column)
 		seenCols = make(map[string]struct{})
-		for _, col := range refTbl.Schema() {
+		for _, col := range refTbl.Schema(ctx) {
 			lowerColName := strings.ToLower(col.Name)
 			parentCols[lowerColName] = col
 		}
@@ -195,12 +203,12 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 		var selfCols map[string]int
 		if fkDef.IsSelfReferential() {
 			selfCols = make(map[string]int)
-			for i, col := range tbl.Schema() {
+			for i, col := range tbl.Schema(ctx) {
 				selfCols[strings.ToLower(col.Name)] = i
 			}
 		}
 
-		typeConversions, err := GetForeignKeyTypeConversions(refTbl.Schema(), tbl.Schema(), fkDef, ChildToParent)
+		typeConversions, err := GetForeignKeyTypeConversions(refTbl.Schema(ctx), tbl.Schema(ctx), fkDef, ChildToParent)
 		if err != nil {
 			return err
 		}
@@ -211,7 +219,7 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 			RowMapper: ForeignKeyRowMapper{
 				Index:                 refTblIndex,
 				Updater:               refTbl.GetForeignKeyEditor(ctx),
-				SourceSch:             tbl.Schema(),
+				SourceSch:             tbl.Schema(ctx),
 				TargetTypeConversions: typeConversions,
 				IndexPositions:        indexPositions,
 				AppendTypes:           appendTypes,
@@ -372,7 +380,7 @@ func (p *DropForeignKey) Database() string {
 }
 
 // WithChildren implements the interface sql.Node.
-func (p *DropForeignKey) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (p *DropForeignKey) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(p, children...)
 }
 
@@ -382,7 +390,7 @@ func (*DropForeignKey) CollationCoercibility(ctx *sql.Context) (collation sql.Co
 }
 
 // Schema implements the interface sql.Node.
-func (p *DropForeignKey) Schema() sql.Schema {
+func (p *DropForeignKey) Schema(ctx *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -444,7 +452,7 @@ func (p *RenameForeignKey) Database() string {
 }
 
 // WithChildren implements the interface sql.Node.
-func (p *RenameForeignKey) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (p *RenameForeignKey) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(p, children...)
 }
 
@@ -454,7 +462,7 @@ func (p *RenameForeignKey) CollationCoercibility(ctx *sql.Context) (collation sq
 }
 
 // Schema implements the interface sql.Node.
-func (p *RenameForeignKey) Schema() sql.Schema {
+func (p *RenameForeignKey) Schema(ctx *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -510,7 +518,7 @@ func FindForeignKeyColMapping(
 
 	localSchTypeMap := make(map[string]sql.Type)
 	localSchPositionMap := make(map[string]int)
-	for i, col := range localTbl.Schema() {
+	for i, col := range localTbl.Schema(ctx) {
 		colName := strings.ToLower(col.Name)
 		localSchTypeMap[colName] = col.Type
 		localSchPositionMap[colName] = i
@@ -520,9 +528,9 @@ func FindForeignKeyColMapping(
 	indexColMap := make(map[string]int)
 	var columnExpressionTypes []sql.ColumnExpressionType
 	if extendedIndex, ok := index.(sql.ExtendedIndex); ok {
-		columnExpressionTypes = extendedIndex.ExtendedColumnExpressionTypes()
+		columnExpressionTypes = extendedIndex.ExtendedColumnExpressionTypes(ctx)
 	} else {
-		columnExpressionTypes = index.ColumnExpressionTypes()
+		columnExpressionTypes = index.ColumnExpressionTypes(ctx)
 	}
 	for i, indexCol := range columnExpressionTypes {
 		indexColName := strings.ToLower(indexCol.Expression)
@@ -607,7 +615,7 @@ func FindFKIndexWithPrefix(ctx *sql.Context, tbl sql.IndexAddressableTable, pref
 		}
 		var indexExprs []string
 		if extendedIdx, ok := idx.(sql.ExtendedIndex); ok && useExtendedIndexes {
-			indexExprs = lowercaseSlice(extendedIdx.ExtendedExpressions())
+			indexExprs = lowercaseSlice(extendedIdx.ExtendedExpressions(ctx))
 		} else {
 			indexExprs = lowercaseSlice(idx.Expressions())
 		}

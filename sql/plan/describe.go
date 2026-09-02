@@ -35,7 +35,7 @@ func NewDescribe(child sql.Node) *Describe {
 }
 
 // Schema implements the Node interface.
-func (d *Describe) Schema() sql.Schema {
+func (d *Describe) Schema(ctx *sql.Context) sql.Schema {
 	return sql.Schema{{
 		Name: "name",
 		Type: VarChar25000,
@@ -50,7 +50,7 @@ func (d *Describe) IsReadOnly() bool {
 }
 
 // WithChildren implements the Node interface.
-func (d *Describe) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (d *Describe) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
 	}
@@ -74,6 +74,7 @@ func (d Describe) String() string {
 type DescribeQuery struct {
 	UnaryNode
 	Format sql.DescribeOptions
+	ctx    *sql.Context
 }
 
 var _ sql.Node = (*DescribeQuery)(nil)
@@ -91,7 +92,7 @@ func (d *DescribeQuery) Children() []sql.Node {
 	return nil
 }
 
-func (d *DescribeQuery) WithChildren(node ...sql.Node) (sql.Node, error) {
+func (d *DescribeQuery) WithChildren(ctx *sql.Context, node ...sql.Node) (sql.Node, error) {
 	if len(node) > 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(node), 0)
 	}
@@ -125,12 +126,12 @@ var DescribePlanSchema = sql.Schema{
 }
 
 // NewDescribeQuery creates a new DescribeQuery node.
-func NewDescribeQuery(format sql.DescribeOptions, child sql.Node) *DescribeQuery {
-	return &DescribeQuery{UnaryNode{Child: child}, format}
+func NewDescribeQuery(ctx *sql.Context, format sql.DescribeOptions, child sql.Node) *DescribeQuery {
+	return &DescribeQuery{UnaryNode{Child: child}, format, ctx}
 }
 
 // Schema implements the Node interface.
-func (d *DescribeQuery) Schema() sql.Schema {
+func (d *DescribeQuery) Schema(ctx *sql.Context) sql.Schema {
 	if d.Format.Plan {
 		return DescribePlanSchema
 	} else {
@@ -138,27 +139,27 @@ func (d *DescribeQuery) Schema() sql.Schema {
 	}
 }
 
-func (d *DescribeQuery) Describe(options sql.DescribeOptions) string {
+func (d *DescribeQuery) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("DescribeQuery(format=%s)", d.Format)
 	options.Estimates = d.Format.Estimates || options.Estimates
 	options.Analyze = d.Format.Analyze || options.Analyze
 	options.Debug = d.Format.Debug || options.Debug
-	_ = pr.WriteChildren(sql.Describe(d.Child, options))
+	_ = pr.WriteChildren(sql.Describe(ctx, d.Child, options))
 
 	return pr.String()
 }
 
 func (d *DescribeQuery) String() string {
-	return d.Describe(sql.DescribeOptions{
+	return d.Describe(d.ctx, sql.DescribeOptions{
 		Analyze:   false,
 		Estimates: false,
 		Debug:     false,
 	})
 }
 
-func (d *DescribeQuery) DebugString() string {
-	return d.Describe(sql.DescribeOptions{
+func (d *DescribeQuery) DebugString(ctx *sql.Context) string {
+	return d.Describe(ctx, sql.DescribeOptions{
 		Analyze:   false,
 		Estimates: false,
 		Debug:     true,

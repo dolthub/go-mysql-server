@@ -102,6 +102,13 @@ type Config struct {
 	// If false (default behavior), queries will be logged as strings, but newlines and tabs will be replaced with spaces.
 	EncodeLoggedQuery        bool
 	AllowClearTextWithoutTLS bool
+	// DisableConnectionWatcher disables watching the client connection for
+	// disconnects while a query is executing. When false (the default), a
+	// long-running query is cancelled promptly, on all platforms, if the client
+	// goes away or sends data unexpectedly while waiting for the result. Set to
+	// true to let such queries run to completion regardless of the client's
+	// state.
+	DisableConnectionWatcher bool
 }
 
 func (c Config) NewConfig() (Config, error) {

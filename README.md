@@ -22,7 +22,7 @@ for a reference implementation. Or, hop into the Dolt Discord server
 With the exception of specific limitations (see below),
 **go-mysql-server** is a drop-in replacement for MySQL. Any client
 library, tool, query, SQL syntax, SQL function, etc. that works with
-MySQL should also work with **go-mysql-server**. If you find a gap in
+MySQL (including the [MariaDB Java client](SUPPORTED_CLIENTS.md#mariadb-java-client)) should also work with **go-mysql-server**. If you find a gap in
 functionality, please file an issue.
 
 For full MySQL compatibility documentation, see the [Dolt
@@ -152,7 +152,7 @@ func createTestDatabase() *memory.DbProvider {
 	session := memory.NewSession(sql.NewBaseSession(), pro)
 	ctx := sql.NewContext(context.Background(), sql.WithSession(session))
 
-	table := memory.NewTable(db, tableName, sql.NewPrimaryKeySchema(sql.Schema{
+	table := memory.NewTable(ctx, db, tableName, sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "name", Type: types.Text, Nullable: false, Source: tableName, PrimaryKey: true},
 		{Name: "email", Type: types.Text, Nullable: false, Source: tableName, PrimaryKey: true},
 		{Name: "phone_numbers", Type: types.JSON, Nullable: false, Source: tableName},

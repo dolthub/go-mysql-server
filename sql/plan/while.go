@@ -58,23 +58,23 @@ func (w *While) String() string {
 }
 
 // DebugString implements the interface sql.DebugStringer.
-func (w *While) DebugString() string {
+func (w *While) DebugString(ctx *sql.Context) string {
 	label := ""
 	if len(w.Label) > 0 {
 		label = w.Label + ": "
 	}
 	p := sql.NewTreePrinter()
-	_ = p.WriteNode("%s: WHILE(%s)", label, sql.DebugString(w.Condition))
+	_ = p.WriteNode("%s: WHILE(%s)", label, sql.DebugString(ctx, w.Condition))
 	var children []string
 	for _, s := range w.statements {
-		children = append(children, sql.DebugString(s))
+		children = append(children, sql.DebugString(ctx, s))
 	}
 	_ = p.WriteChildren(children...)
 	return p.String()
 }
 
 // WithChildren implements the interface sql.Node.
-func (w *While) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (w *While) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	return &While{
 		&Loop{
 			Label:          w.Loop.Label,
@@ -86,7 +86,7 @@ func (w *While) WithChildren(children ...sql.Node) (sql.Node, error) {
 }
 
 // WithExpressions implements the interface sql.Node.
-func (w *While) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+func (w *While) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(w, len(exprs), 1)
 	}

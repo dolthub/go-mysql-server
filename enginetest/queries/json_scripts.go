@@ -195,6 +195,31 @@ var JsonScripts = []ScriptTest{
 		},
 	},
 	{
+		Name: "large integer values keep precision and ordering in document",
+		SetUpScript: []string{
+			// Float between two ints
+			// Int between two floats
+
+			"CREATE TABLE xy (x bigint primary key, y JSON)",
+			`INSERT INTO xy VALUES (0, JSON_ARRAY(9223372036854775807, -9223372036854775807));`,
+			`INSERT INTO xy VALUES (1, CAST(9223372036854775807 AS JSON));`,
+			`INSERT INTO xy VALUES (2, CAST(-9223372036854775807 AS JSON));`,
+			`INSERT INTO xy VALUES (3, JSON_OBJECT("a", 9223372036854775807, "b", -9223372036854775807));`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// According to MySQL JSON type, NUMBER < OBJECT < ARRAY
+				Query: "select x, CAST(y as CHAR) from xy order by y",
+				Expected: []sql.Row{
+					{2, "-9223372036854775807"},
+					{1, "9223372036854775807"},
+					{3, `{"a": 9223372036854775807, "b": -9223372036854775807}`},
+					{0, `[9223372036854775807, -9223372036854775807]`},
+				},
+			},
+		},
+	},
+	{
 		Name: "json_object preserves types",
 		Assertions: []ScriptTestAssertion{
 			{
@@ -356,6 +381,31 @@ var JsonScripts = []ScriptTest{
 				Query: `select json_length(y, "$.a[0].b") from xy where x = 2`,
 				Expected: []sql.Row{
 					{1},
+				},
+			},
+			// See https://github.com/dolthub/dolt/issues/11224
+			{
+				Query: `select json_length(cast('[]' as json))`,
+				Expected: []sql.Row{
+					{0},
+				},
+			},
+			{
+				Query: `select json_length(cast('{}' as json))`,
+				Expected: []sql.Row{
+					{0},
+				},
+			},
+			{
+				Query: `select json_length(cast('null' as json))`,
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: `select json_length(cast('{"a": []}' as json), "$.a")`,
+				Expected: []sql.Row{
+					{0},
 				},
 			},
 		},
@@ -901,7 +951,9 @@ var JsonScripts = []ScriptTest{
 					{1, types.MustJSON("[1, 2]")},
 					{2, nil},
 					{3, nil},
-					{4, types.MustJSON("null")},
+					// The member wildcard matches only objects, so applying it to
+					// the JSON null stored at items returns SQL NULL.
+					{4, nil},
 					{5, nil},
 				},
 			},
@@ -912,6 +964,44 @@ var JsonScripts = []ScriptTest{
 			{
 				Query:    "select pk from t where json_extract(col1, '$.items') <> null;",
 				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		// See https://github.com/dolthub/dolt/issues/11224
+		Name: "json_extract member access on a non-object yields SQL NULL",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    `select json_extract('{"a":[1,2]}', '$.a.b') is null`,
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    `select json_extract('{"a":[1,2]}', '$.a.*') is null`,
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    `select json_extract('{"a":5}', '$.a.b') is null`,
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    `select json_extract('{"a":5}', '$.a.*') is null`,
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    `select json_extract('{"a":null}', '$.a.b') is null`,
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    `select json_extract('{"a":[1,2]}', '$.a.b')`,
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:    `select json_extract('{"a":{"b":[1,2]}}', '$.a.b')`,
+				Expected: []sql.Row{{types.MustJSON("[1, 2]")}},
+			},
+			{
+				Query:    `select json_extract('{"a":[{"b":1}]}', '$.a[0].b')`,
+				Expected: []sql.Row{{types.MustJSON("1")}},
 			},
 		},
 	},

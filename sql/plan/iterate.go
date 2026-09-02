@@ -51,7 +51,7 @@ func (i *Iterate) String() string {
 }
 
 // Schema implements the interface sql.Node.
-func (i *Iterate) Schema() sql.Schema {
+func (i *Iterate) Schema(ctx *sql.Context) sql.Schema {
 	return nil
 }
 
@@ -61,7 +61,7 @@ func (i *Iterate) Children() []sql.Node {
 }
 
 // WithChildren implements the interface sql.Node.
-func (i *Iterate) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (i *Iterate) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(i, children...)
 }
 

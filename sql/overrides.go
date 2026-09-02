@@ -55,7 +55,11 @@ type BuilderOverrides struct {
 	// table name creates a match, then this function is called to create an expression. The return value of the created
 	// expression will be used in place of the `GetField` expression used for columns. The input `fields` contains the
 	// `GetField` expressions for all of the table's columns. For standard MySQL compatibility, this should be nil.
-	ParseTableAsColumn func(ctx *Context, tableName string, fields []Expression) (Expression, error)
+	ParseTableAsColumn func(ctx *Context, tableName string, fields []Expression, tblSch []*Column) (Expression, error)
+	// ScalarFunctionAliasAsColumn enables PostgreSQL-compatible aliasing for regular scalar functions used in FROM.
+	// When enabled, an alias without an explicit column list names both the relation and its single output column.
+	// Leave this false for standard MySQL compatibility.
+	ScalarFunctionAliasAsColumn bool
 	// Represents the parser to use. If this is nil, then the MySQL parser will be used.
 	Parser Parser
 }

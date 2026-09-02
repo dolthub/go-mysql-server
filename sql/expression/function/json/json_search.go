@@ -65,7 +65,7 @@ var ErrBadEscape = fmt.Errorf("incorrect arguments to ESCAPE")
 var _ sql.FunctionExpression = &JSONSearch{}
 
 // NewJSONSearch creates a new NewJSONSearch function.
-func NewJSONSearch(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONSearch(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	switch len(args) {
 	case 0, 1, 2:
 		return nil, sql.ErrInvalidArgumentNumber.New("JSON_SEARCH", "3 or more", len(args))
@@ -146,21 +146,21 @@ func (j *JSONSearch) String() string {
 }
 
 // Type implements sql.Expression
-func (j *JSONSearch) Type() sql.Type {
+func (j *JSONSearch) Type(ctx *sql.Context) sql.Type {
 	return types.JSON
 }
 
 // IsNullable implements sql.Expression
-func (j *JSONSearch) IsNullable() bool {
+func (j *JSONSearch) IsNullable(ctx *sql.Context) bool {
 	for _, p := range j.Paths {
-		if !p.IsNullable() {
+		if !p.IsNullable(ctx) {
 			return false
 		}
 	}
-	return j.JSON.IsNullable() ||
-		j.OneOrAll.IsNullable() ||
-		j.Search.IsNullable() ||
-		(j.Escape != nil && j.Escape.IsNullable())
+	return j.JSON.IsNullable(ctx) ||
+		j.OneOrAll.IsNullable(ctx) ||
+		j.Search.IsNullable(ctx) ||
+		(j.Escape != nil && j.Escape.IsNullable(ctx))
 }
 
 // jsonSearch recursively searches a JSON object for a string that matches the given matcher. It returns the path to the
@@ -351,8 +351,8 @@ func (j *JSONSearch) Children() []sql.Expression {
 }
 
 // WithChildren implements sql.Expression
-func (j *JSONSearch) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewJSONSearch(children...)
+func (j *JSONSearch) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewJSONSearch(ctx, children...)
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

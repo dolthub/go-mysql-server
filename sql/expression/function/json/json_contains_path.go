@@ -113,20 +113,20 @@ func (j JSONContainsPath) String() string {
 	return fmt.Sprintf("%s(%s)", j.FunctionName(), strings.Join(parts, ","))
 }
 
-func (j JSONContainsPath) Type() sql.Type {
+func (j JSONContainsPath) Type(ctx *sql.Context) sql.Type {
 	return types.Boolean
 }
 
-func (j JSONContainsPath) IsNullable() bool {
+func (j JSONContainsPath) IsNullable(ctx *sql.Context) bool {
 	for _, path := range j.paths {
-		if path.IsNullable() {
+		if path.IsNullable(ctx) {
 			return true
 		}
 	}
-	if j.all.IsNullable() {
+	if j.all.IsNullable(ctx) {
 		return true
 	}
-	return j.doc.IsNullable()
+	return j.doc.IsNullable(ctx)
 }
 func (j JSONContainsPath) Children() []sql.Expression {
 	answer := make([]sql.Expression, 0, len(j.paths)+2)
@@ -138,17 +138,17 @@ func (j JSONContainsPath) Children() []sql.Expression {
 	return answer
 }
 
-func (j JSONContainsPath) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (j JSONContainsPath) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(j.Children()) != len(children) {
 		return nil, fmt.Errorf("json_contains_path did not receive the correct amount of args")
 	}
-	return NewJSONContainsPath(children...)
+	return NewJSONContainsPath(ctx, children...)
 }
 
 var _ sql.FunctionExpression = JSONContainsPath{}
 
 // NewJSONContainsPath creates a new JSONContainsPath function.
-func NewJSONContainsPath(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONContainsPath(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 3 {
 		return nil, sql.ErrInvalidArgumentNumber.New("JSON_CONTAINS_PATH", "3 or more", len(args))
 	}

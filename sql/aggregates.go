@@ -24,7 +24,7 @@ import "fmt"
 type Aggregation interface {
 	WindowAdaptableExpression
 	// NewBuffer creates a new aggregation buffer and returns it as a Row.
-	NewBuffer() (AggregationBuffer, error)
+	NewBuffer(ctx *Context) (AggregationBuffer, error)
 }
 
 // WindowBuffer is a type alias for a window materialization
@@ -57,10 +57,10 @@ type WindowAdaptableExpression interface {
 	Expression
 	IdExpression
 
-	// NewEvalable constructs an executable aggregation WindowFunction
-	NewWindowFunction() (WindowFunction, error)
+	// NewWindowFunction constructs an executable aggregation WindowFunction
+	NewWindowFunction(ctx *Context) (WindowFunction, error)
 	// WithWindow returns a version of this aggregation with the WindowDefinition given
-	WithWindow(window *WindowDefinition) WindowAdaptableExpression
+	WithWindow(ctx *Context, window *WindowDefinition) WindowAdaptableExpression
 	// Window returns this expression's window
 	Window() *WindowDefinition
 }

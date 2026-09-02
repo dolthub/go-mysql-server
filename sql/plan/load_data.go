@@ -57,7 +57,7 @@ func (l *LoadData) String() string {
 	return pr.String()
 }
 
-func (l *LoadData) Schema() sql.Schema {
+func (l *LoadData) Schema(ctx *sql.Context) sql.Schema {
 	return l.DestSch
 }
 
@@ -89,7 +89,7 @@ func (l *LoadData) SplitLines(data []byte, atEOF bool) (advance int, token []byt
 	return
 }
 
-func (l *LoadData) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (l *LoadData) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(l, len(children), 0)
 	}

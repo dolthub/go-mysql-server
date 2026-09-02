@@ -158,7 +158,7 @@ func runTestCases(t *testing.T, ctx *sql.Context, testCases []analyzerFnTestCase
 				expected = tt.node
 			}
 			// Schema of certain nodes aren't filled until needed
-			expected.Schema()
+			expected.Schema(ctx)
 
 			assertNodesEqualWithDiff(t, expected, result)
 		})
@@ -169,8 +169,9 @@ func runTestCases(t *testing.T, ctx *sql.Context, testCases []analyzerFnTestCase
 // methods.
 func assertNodesEqualWithDiff(t *testing.T, expected, actual sql.Node) bool {
 	if !assert.Equal(t, expected, actual) {
-		expectedStr := sql.DebugString(expected)
-		actualStr := sql.DebugString(actual)
+		ctx := sql.NewEmptyContext()
+		expectedStr := sql.DebugString(ctx, expected)
+		actualStr := sql.DebugString(ctx, actual)
 		diff, err := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
 			A:        difflib.SplitLines(expectedStr),
 			B:        difflib.SplitLines(actualStr),
@@ -196,7 +197,7 @@ func assertNodesEqualWithDiff(t *testing.T, expected, actual sql.Node) bool {
 				}
 				// Either no children, or all children were equal. This must the node that's different. Probably should add
 				// enough information in DebugPrint for this node that it shows up in the textual diff.
-				fmt.Printf("Non-textual difference found in node %s -- implement a better DebugPrint?\n", sql.DebugString(expected))
+				fmt.Printf("Non-textual difference found in node %s -- implement a better DebugPrint?\n", sql.DebugString(ctx, expected))
 				break
 			}
 		}

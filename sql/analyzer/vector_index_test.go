@@ -45,13 +45,16 @@ type vectorIndexTestCase struct {
 	expectedRows    []sql.Row
 }
 
-func vectorIndexTestCases(t *testing.T, db *memory.Database, table sql.IndexedTable) []vectorIndexTestCase {
+func vectorIndexTestCases(t *testing.T, db *memory.Database, table sql.IndexedTable, cosineTable sql.IndexedTable) []vectorIndexTestCase {
+	vectorColumn := func() sql.Expression {
+		return expression.NewGetFieldWithTable(2, 1, types.JSON, "", "test-table", "v", false)
+	}
 	return []vectorIndexTestCase{
 		{
 			name: "without limit",
 			inputPlan: plan.NewSort(
-				sql.SortFields{
-					{Column: vector.NewDistance(vector.DistanceL2Squared{}, jsonExpression(t, "[0.0, 0.0]"), expression.NewGetFieldWithTable(2, 1, types.JSON, "", "test-table", "v", false)), Order: sql.Ascending},
+				sql.SortConditions{
+					{Expr: vector.NewDistance(sql.NewEmptyContext(), vector.DistanceL2Squared{}, jsonExpression(t, "[0.0, 0.0]"), expression.NewGetFieldWithTable(2, 1, types.JSON, "", "test-table", "v", false)), Order: sql.Ascending},
 				}, plan.NewResolvedTable(table, db, nil)),
 			usesVectorIndex: false,
 			expectedRows: []sql.Row{
@@ -63,8 +66,8 @@ func vectorIndexTestCases(t *testing.T, db *memory.Database, table sql.IndexedTa
 		{
 			name: "with limit",
 			inputPlan: plan.NewTopN(
-				sql.SortFields{
-					{Column: vector.NewDistance(vector.DistanceL2Squared{}, jsonExpression(t, "[0.0, 0.0]"), expression.NewGetFieldWithTable(2, 1, types.JSON, "", "test-table", "v", false)), Order: sql.Ascending},
+				sql.SortConditions{
+					{Expr: vector.NewDistance(sql.NewEmptyContext(), vector.DistanceL2Squared{}, jsonExpression(t, "[0.0, 0.0]"), expression.NewGetFieldWithTable(2, 1, types.JSON, "", "test-table", "v", false)), Order: sql.Ascending},
 				}, expression.NewLiteral(1, types.Int64), plan.NewResolvedTable(table, db, nil)),
 			usesVectorIndex: true,
 			expectedPlan: `
@@ -74,6 +77,102 @@ IndexedTableAccess(test)
 `,
 			expectedRows: []sql.Row{
 				sql.NewRow(int64(3), jsontests.ConvertToJson(t, "[1.0, 1.0]")),
+			},
+		},
+		{
+			name: "with limit descending",
+			inputPlan: plan.NewTopN(
+				sql.SortConditions{
+					{Expr: vector.NewDistance(sql.NewEmptyContext(), vector.DistanceL2Squared{}, jsonExpression(t, "[0.0, 0.0]"), vectorColumn()), Order: sql.Descending},
+				}, expression.NewLiteral(1, types.Int64), plan.NewResolvedTable(table, db, nil)),
+			usesVectorIndex: false,
+			expectedRows: []sql.Row{
+				sql.NewRow(int64(1), jsontests.ConvertToJson(t, "[3.0, 4.0]")),
+			},
+		},
+		{
+			name: "with limit and filter",
+			inputPlan: plan.NewTopN(
+				sql.SortConditions{
+					{Expr: vector.NewDistance(sql.NewEmptyContext(), vector.DistanceL2Squared{}, jsonExpression(t, "[0.0, 0.0]"), vectorColumn()), Order: sql.Ascending},
+				}, expression.NewLiteral(1, types.Int64),
+				plan.NewFilter(nil,
+					expression.NewLessThan(expression.NewGetFieldWithTable(1, 1, types.Int64, "", "test-table", "pk", false), expression.NewLiteral(int64(3), types.Int64)),
+					plan.NewResolvedTable(table, db, nil))),
+			usesVectorIndex: false,
+			expectedRows: []sql.Row{
+				sql.NewRow(int64(2), jsontests.ConvertToJson(t, "[2.0, 2.0]")),
+			},
+		},
+		{
+			name: "with limit and offset",
+			inputPlan: plan.NewLimit(expression.NewLiteral(1, types.Int64),
+				plan.NewOffset(expression.NewLiteral(1, types.Int64),
+					plan.NewSort(
+						sql.SortConditions{
+							{Expr: vector.NewDistance(sql.NewEmptyContext(), vector.DistanceL2Squared{}, jsonExpression(t, "[0.0, 0.0]"), vectorColumn()), Order: sql.Ascending},
+						}, plan.NewResolvedTable(table, db, nil)))),
+			usesVectorIndex: true,
+			expectedPlan: `
+Limit(1)
+ └─ Offset(1)
+     └─ IndexedTableAccess(test)
+         ├─ index: [test-table.v]
+         └─ order: VEC_DISTANCE_L2_SQUARED([0, 0], test-table.v) LIMIT (1 (bigint) + 1 (bigint))
+`,
+			expectedRows: []sql.Row{
+				sql.NewRow(int64(2), jsontests.ConvertToJson(t, "[2.0, 2.0]")),
+			},
+		},
+		{
+			name: "with null query vector",
+			inputPlan: plan.NewTopN(
+				sql.SortConditions{
+					{Expr: vector.NewDistance(sql.NewEmptyContext(), vector.DistanceL2Squared{}, expression.NewLiteral(nil, types.JSON), vectorColumn()), Order: sql.Ascending},
+				}, expression.NewLiteral(1, types.Int64), plan.NewResolvedTable(table, db, nil)),
+			usesVectorIndex: false,
+		},
+		{
+			name: "euclidean distance uses l2 squared index",
+			inputPlan: plan.NewTopN(
+				sql.SortConditions{
+					{Expr: vector.NewDistance(sql.NewEmptyContext(), vector.DistanceEuclidean{}, jsonExpression(t, "[0.0, 0.0]"), vectorColumn()), Order: sql.Ascending},
+				}, expression.NewLiteral(1, types.Int64), plan.NewResolvedTable(table, db, nil)),
+			usesVectorIndex: true,
+			expectedPlan: `
+IndexedTableAccess(test)
+ ├─ index: [test-table.v]
+ └─ order: VEC_DISTANCE_EUCLIDEAN([0, 0], test-table.v) LIMIT 1 (bigint)
+`,
+			expectedRows: []sql.Row{
+				sql.NewRow(int64(3), jsontests.ConvertToJson(t, "[1.0, 1.0]")),
+			},
+		},
+		{
+			name: "cosine distance does not use l2 squared index",
+			inputPlan: plan.NewTopN(
+				sql.SortConditions{
+					{Expr: vector.NewDistance(sql.NewEmptyContext(), vector.DistanceCosine{}, jsonExpression(t, "[3.0, 4.0]"), vectorColumn()), Order: sql.Ascending},
+				}, expression.NewLiteral(1, types.Int64), plan.NewResolvedTable(table, db, nil)),
+			usesVectorIndex: false,
+			expectedRows: []sql.Row{
+				sql.NewRow(int64(1), jsontests.ConvertToJson(t, "[3.0, 4.0]")),
+			},
+		},
+		{
+			name: "cosine distance uses cosine index",
+			inputPlan: plan.NewTopN(
+				sql.SortConditions{
+					{Expr: vector.NewDistance(sql.NewEmptyContext(), vector.DistanceCosine{}, jsonExpression(t, "[3.0, 4.0]"), vectorColumn()), Order: sql.Ascending},
+				}, expression.NewLiteral(1, types.Int64), plan.NewResolvedTable(cosineTable, db, nil)),
+			usesVectorIndex: true,
+			expectedPlan: `
+IndexedTableAccess(test)
+ ├─ index: [test-table.v]
+ └─ order: VEC_DISTANCE_COSINE([3, 4], test-table.v) LIMIT 1 (bigint)
+`,
+			expectedRows: []sql.Row{
+				sql.NewRow(int64(1), jsontests.ConvertToJson(t, "[3.0, 4.0]")),
 			},
 		},
 	}
@@ -89,7 +188,7 @@ func TestVectorIndex(t *testing.T) {
 		{Name: "pk", Type: types.Int64, Nullable: false},
 		{Name: "v", Type: types.JSON, Nullable: false},
 	})
-	child := memory.NewTable(db.BaseDatabase, "test", childSchema, nil)
+	child := memory.NewTable(ctx, db.BaseDatabase, "test", childSchema, nil)
 
 	rows := []sql.Row{
 		sql.NewRow(int64(1), jsontests.ConvertToJson(t, "[3.0, 4.0]")),
@@ -110,19 +209,23 @@ func TestVectorIndex(t *testing.T) {
 		IsReverse:       false,
 	}
 
-	vectorIndexTable := vectorIndexTable{child.IndexedAccess(ctx, indexLookup)}
+	l2Table := vectorIndexTable{child.IndexedAccess(ctx, indexLookup), &vectorIndex}
+	cosineTable := vectorIndexTable{child.IndexedAccess(ctx, indexLookup), &cosineIndex}
 
-	for _, testCase := range vectorIndexTestCases(t, db, vectorIndexTable) {
+	for _, testCase := range vectorIndexTestCases(t, db, l2Table, cosineTable) {
 		t.Run(testCase.name, func(t *testing.T) {
 			res, same, err := replaceIdxOrderByDistanceHelper(nil, nil, testCase.inputPlan, nil, nil)
 			require.NoError(t, err)
 			require.Equal(t, testCase.usesVectorIndex, !bool(same))
-			res = offsetAssignIndexes(res)
+			res = offsetAssignIndexes(ctx, res)
 			if testCase.usesVectorIndex {
 				require.Equal(t,
 					strings.TrimSpace(testCase.expectedPlan),
 					strings.TrimSpace(res.String()),
 					"expected:\n%s,\nfound:\n%s\n", testCase.expectedPlan, res.String())
+			}
+			if testCase.expectedRows == nil {
+				return
 			}
 
 			iter, err := rowexec.NewBuilder(nil, sql.EngineOverrides{}).Build(ctx, res, nil)
@@ -147,9 +250,9 @@ func TestShowCreateTableWithVectorIndex(t *testing.T) {
 		&sql.Column{Name: "v", Source: "test-table", Type: types.JSON, Default: nil, Nullable: true},
 	}
 
-	table := memory.NewTable(db.BaseDatabase, "test-table", sql.NewPrimaryKeySchema(schema), &memory.ForeignKeyCollection{})
+	table := memory.NewTable(ctx, db.BaseDatabase, "test-table", sql.NewPrimaryKeySchema(schema), &memory.ForeignKeyCollection{})
 
-	showCreateTable, err := plan.NewShowCreateTable(plan.NewResolvedTable(table, nil, nil), false).WithTargetSchema(schema)
+	showCreateTable, err := plan.NewShowCreateTable(ctx, plan.NewResolvedTable(table, nil, nil), false).WithTargetSchema(schema)
 	require.NoError(err)
 
 	// This mimics what happens during analysis (indexes get filled in for the table)
@@ -177,6 +280,7 @@ func TestShowCreateTableWithVectorIndex(t *testing.T) {
 
 type vectorIndexTable struct {
 	underlying sql.IndexedTable
+	idx        *memory.Index
 }
 
 var _ sql.IndexAddressable = (*indexSearchableTable)(nil)
@@ -190,8 +294,8 @@ func (i vectorIndexTable) String() string {
 	return i.underlying.String()
 }
 
-func (i vectorIndexTable) Schema() sql.Schema {
-	return i.underlying.Schema()
+func (i vectorIndexTable) Schema(ctx *sql.Context) sql.Schema {
+	return i.underlying.Schema(ctx)
 }
 
 func (i vectorIndexTable) Collation() sql.CollationID {
@@ -242,8 +346,25 @@ var vectorIndex = memory.Index{
 	PrefixLens:              nil,
 }
 
+var cosineIndex = memory.Index{
+	DB:         database,
+	DriverName: "",
+	Tbl:        nil,
+	TableName:  "test-table",
+	Exprs: []sql.Expression{
+		expression.NewGetFieldWithTable(1, 1, types.JSON, "", "test-table", "v", false),
+	},
+	Name:                    "test",
+	Unique:                  false,
+	Spatial:                 false,
+	Fulltext:                false,
+	SupportedVectorFunction: vector.DistanceCosine{},
+	CommentStr:              "",
+	PrefixLens:              nil,
+}
+
 func (i vectorIndexTable) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
-	return []sql.Index{&vectorIndex}, nil
+	return []sql.Index{i.idx}, nil
 }
 
 func (i vectorIndexTable) PreciseMatch() bool {

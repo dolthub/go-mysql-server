@@ -22,6 +22,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 func (b *Builder) buildWith(inScope *scope, with *ast.With) (outScope *scope) {
@@ -130,8 +131,13 @@ func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.SetOp, name strin
 	var cols sql.ColSet
 	{
 		rInit = leftScope.node
-		recSch = make(sql.Schema, len(rInit.Schema()))
-		for i, c := range rInit.Schema() {
+		rInitSch := rInit.Schema(b.ctx)
+		// recursive CTEs may leave columns empty
+		if len(columns) != 0 && len(columns) != len(rInitSch) {
+			b.handleErr(ErrSelectsDifferentLength.New(len(columns), len(rInitSch)))
+		}
+		recSch = make(sql.Schema, len(rInitSch))
+		for i, c := range rInitSch {
 			newC := c.Copy()
 			if len(columns) > 0 {
 				newC.Name = columns[i]
@@ -172,29 +178,14 @@ func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.SetOp, name strin
 	limit := b.buildLimit(inScope, union.Limit)
 
 	orderByScope := b.analyzeOrderBy(cteScope, leftScope, union.OrderBy)
-	var sortFields sql.SortFields
-	for _, c := range orderByScope.cols {
-		so := sql.Ascending
-		if c.descending {
-			so = sql.Descending
-		}
-		scalar := c.scalar
-		if scalar == nil {
-			scalar = c.scalarGf()
-		}
-		sf := sql.SortField{
-			Column: scalar,
-			Order:  so,
-		}
-		sortFields = append(sortFields, sf)
-	}
+	sortConditions := b.buildSortConditions(orderByScope, transform.SameTree)
 
 	corr := leftSqScope.correlated().Union(rightInScope.correlated())
 	vol := leftSqScope.activeSubquery.volatile || rightInScope.activeSubquery.volatile
 
 	b.qFlags.Set(sql.QFlagRelSubquery)
 	cteScope.node = plan.NewSubqueryAlias(name, "",
-		plan.NewRecursiveCte(rInit, rightScope.node, name, columns, distinct, limit, sortFields).
+		plan.NewRecursiveCte(rInit, rightScope.node, name, columns, distinct, limit, sortConditions).
 			WithSchema(recSch).WithWorking(rTable).WithId(tableId).WithColumns(cols)).
 		WithColumnNames(columns).WithCorrelated(corr).WithVolatile(vol).WithScopeMapping(scopeMapping).
 		WithId(tableId).WithColumns(cols)

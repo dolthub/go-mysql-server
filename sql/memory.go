@@ -29,12 +29,12 @@ import (
 // process.
 type Disposable interface {
 	// Dispose the contents.
-	Dispose()
+	Dispose(ctx *Context)
 }
 
-func Dispose(i interface{}) {
+func Dispose(ctx *Context, i interface{}) {
 	if d, ok := i.(Disposable); ok {
-		d.Dispose()
+		d.Dispose(ctx)
 	}
 }
 
@@ -167,44 +167,44 @@ type DisposeFunc func()
 
 // NewLRUCache returns an empty LRU cache and a function to dispose it when it's
 // no longer needed.
-func (m *MemoryManager) NewLRUCache(size uint) (KeyValueCache, DisposeFunc) {
+func (m *MemoryManager) NewLRUCache(ctx *Context, size uint) (KeyValueCache, DisposeFunc) {
 	c := newLRUCache(m, m.reporter, size)
 	pos := m.addCache(c)
 	return c, func() {
-		c.Dispose()
+		c.Dispose(ctx)
 		m.removeCache(pos)
 	}
 }
 
 // NewHistoryCache returns an empty history cache and a function to dispose it when it's
 // no longer needed.
-func (m *MemoryManager) NewHistoryCache() (KeyValueCache, DisposeFunc) {
+func (m *MemoryManager) NewHistoryCache(ctx *Context) (KeyValueCache, DisposeFunc) {
 	c := newHistoryCache(m, m.reporter)
 	pos := m.addCache(c)
 	return c, func() {
-		c.Dispose()
+		c.Dispose(ctx)
 		m.removeCache(pos)
 	}
 }
 
 // NewRowsCache returns an empty rows cache and a function to dispose it when it's
 // no longer needed.
-func (m *MemoryManager) NewRowsCache() (RowsCache, DisposeFunc) {
+func (m *MemoryManager) NewRowsCache(ctx *Context) (RowsCache, DisposeFunc) {
 	c := newRowsCache(m, m.reporter)
 	pos := m.addCache(c)
 	return c, func() {
-		c.Dispose()
+		c.Dispose(ctx)
 		m.removeCache(pos)
 	}
 }
 
-// NewRowsCache returns an empty rows cache and a function to dispose it when it's
+// NewRows2Cache returns an empty rows cache and a function to dispose it when it's
 // no longer needed.
-func (m *MemoryManager) NewRows2Cache() (ValueRowsCache, DisposeFunc) {
+func (m *MemoryManager) NewRows2Cache(ctx *Context) (ValueRowsCache, DisposeFunc) {
 	c := newRowsCache(m, m.reporter)
 	pos := m.addCache(c)
 	return c, func() {
-		c.Dispose()
+		c.Dispose(ctx)
 		m.removeCache(pos)
 	}
 }

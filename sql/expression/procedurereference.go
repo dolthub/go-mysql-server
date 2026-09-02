@@ -217,7 +217,7 @@ func (ppr *ProcedureReference) FetchCursor(ctx *sql.Context, name string) (sql.R
 				return nil, nil, sql.ErrCursorNotOpen.New(name)
 			}
 			row, err := cursorRefVal.RowIter.Next(ctx)
-			return row, cursorRefVal.SelectStmt.Schema(), err
+			return row, cursorRefVal.SelectStmt.Schema(ctx), err
 		}
 		scope = scope.Parent
 	}
@@ -330,12 +330,12 @@ func (*ProcedureParam) Resolved() bool {
 }
 
 // IsNullable implements the sql.Expression interface.
-func (*ProcedureParam) IsNullable() bool {
+func (*ProcedureParam) IsNullable(ctx *sql.Context) bool {
 	return false
 }
 
 // Type implements the sql.Expression interface.
-func (pp *ProcedureParam) Type() sql.Type {
+func (pp *ProcedureParam) Type(ctx *sql.Context) sql.Type {
 	return pp.typ
 }
 
@@ -361,7 +361,7 @@ func (pp *ProcedureParam) Eval(ctx *sql.Context, r sql.Row) (interface{}, error)
 }
 
 // WithChildren implements the sql.Expression interface.
-func (pp *ProcedureParam) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (pp *ProcedureParam) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(pp, len(children), 0)
 	}
@@ -404,12 +404,12 @@ func (*UnresolvedProcedureParam) Resolved() bool {
 }
 
 // IsNullable implements the sql.Expression interface.
-func (*UnresolvedProcedureParam) IsNullable() bool {
+func (*UnresolvedProcedureParam) IsNullable(ctx *sql.Context) bool {
 	return false
 }
 
 // Type implements the sql.Expression interface.
-func (*UnresolvedProcedureParam) Type() sql.Type {
+func (*UnresolvedProcedureParam) Type(ctx *sql.Context) sql.Type {
 	return types.Null
 }
 
@@ -434,7 +434,7 @@ func (upp *UnresolvedProcedureParam) Eval(ctx *sql.Context, r sql.Row) (interfac
 }
 
 // WithChildren implements the sql.Expression interface.
-func (upp *UnresolvedProcedureParam) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (upp *UnresolvedProcedureParam) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(upp, len(children), 0)
 	}

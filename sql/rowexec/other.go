@@ -24,6 +24,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
+// TODO: organize all these build functions into their own appropriately named files (see TODO in other_iters.go)
+
 func (b *BaseBuilder) buildConcat(ctx *sql.Context, n *plan.Concat, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.Concat")
 	li, err := b.buildNodeExec(ctx, n.Left(), row)
@@ -109,30 +111,6 @@ func (b *BaseBuilder) buildTransformedNamedNode(ctx *sql.Context, n *plan.Transf
 	return b.buildNodeExec(ctx, n.Child, row)
 }
 
-func (b *BaseBuilder) buildCachedResults(ctx *sql.Context, n *plan.CachedResults, row sql.Row) (sql.RowIter, error) {
-	n.Mutex.Lock()
-	defer n.Mutex.Unlock()
-
-	if n.Disposed {
-		return nil, fmt.Errorf("%w: %T", plan.ErrRowIterDisposed, n)
-	}
-
-	if rows := n.GetCachedResults(); rows != nil {
-		return sql.RowsToRowIter(rows...), nil
-	} else if n.NoCache {
-		return b.buildNodeExec(ctx, n.Child, row)
-	} else if n.Finalized {
-		return plan.EmptyIter, nil
-	}
-
-	ci, err := b.buildNodeExec(ctx, n.Child, row)
-	if err != nil {
-		return nil, err
-	}
-	cache, dispose := ctx.Memory.NewRowsCache()
-	return &cachedResultsIter{n, ci, cache, dispose}, nil
-}
-
 func (b *BaseBuilder) buildBlock(ctx *sql.Context, n *plan.Block, row sql.Row) (sql.RowIter, error) {
 	var returnRows []sql.Row
 	var returnNode sql.Node
@@ -187,7 +165,7 @@ func (b *BaseBuilder) buildBlock(ctx *sql.Context, n *plan.Block, row sql.Row) (
 		}
 
 		err = func() error {
-			rowCache, disposeFunc := ctx.Memory.NewRowsCache()
+			rowCache, disposeFunc := ctx.Memory.NewRowsCache(ctx)
 			defer disposeFunc()
 
 			var isSelect bool
@@ -201,12 +179,12 @@ func (b *BaseBuilder) buildBlock(ctx *sql.Context, n *plan.Block, row sql.Row) (
 				return nil
 			}
 			subIterNode := s
-			subIterSch := s.Schema()
+			subIterSch := s.Schema(ctx)
 			if blockSubIter, ok := subIter.(plan.BlockRowIter); ok {
 				subIterNode = blockSubIter.RepresentingNode()
-				subIterSch = blockSubIter.Schema()
+				subIterSch = blockSubIter.Schema(ctx)
 			}
-			if isSelect = plan.NodeRepresentsSelect(subIterNode); isSelect {
+			if isSelect = plan.NodeRepresentsSelect(ctx, subIterNode); isSelect {
 				selectSeen = true
 				returnNode = subIterNode
 				returnIter = subIter
@@ -282,7 +260,7 @@ func (b *BaseBuilder) buildTableCopier(ctx *sql.Context, n *plan.TableCopier, ro
 		return nil, fmt.Errorf("TableCopier only accepts CreateTable or TableNode as the destination")
 	}
 
-	return n.CopyTableOver(ctx, n.Source.Schema()[0].Source, drt.Name())
+	return n.CopyTableOver(ctx, n.Source.Schema(ctx)[0].Source, drt.Name())
 }
 
 func (b *BaseBuilder) buildUnresolvedTable(ctx *sql.Context, n *plan.UnresolvedTable, row sql.Row) (sql.RowIter, error) {

@@ -1977,6 +1977,10 @@ SELECT SUM(x) FROM xy WHERE x IN (
 		name: "where x not in (...)",
 		setup: [][]string{
 			setup.XyData[0],
+			{
+				"CREATE TABLE hasnullid (id INT, c1 INT);",
+				"INSERT INTO hasnullid VALUES (1, 100), (2, 200), (3, 300), (null, null);",
+			},
 		},
 		tests: []JoinOpTests{
 			{
@@ -1994,6 +1998,16 @@ SELECT SUM(x) FROM xy WHERE x IN (
 			{
 				Query:    `SELECT * from xy where null not in (SELECT b from ab)`,
 				Expected: []sql.Row{},
+			},
+			{
+				// https://github.com/dolthub/dolt/issues/10699
+				Query:    "SELECT id FROM hasnullid where id NOT IN (SELECT NULL);",
+				Expected: []sql.Row{},
+			},
+			{
+				// https://github.com/dolthub/dolt/issues/10699
+				Query:    "select id from hasnullid where id not in (select 1) order by id;",
+				Expected: []sql.Row{{2}, {3}},
 			},
 		},
 	},
@@ -2364,6 +2378,36 @@ WHERE
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/10729
+		name: "MATCH AGAINST with JOIN alias",
+		setup: [][]string{
+			{
+				"CREATE TABLE parent (id BIGINT UNSIGNED PRIMARY KEY);",
+				"CREATE TABLE child (id BIGINT UNSIGNED PRIMARY KEY, parent_id BIGINT UNSIGNED, body VARCHAR(200), FULLTEXT idx (body));",
+				"INSERT INTO parent VALUES (1), (2), (3), (4);",
+				"INSERT INTO child VALUES (1, 1, 'the quick brown fox jumps'), (2, 2, 'hello world'), (3, 3, 'another row');",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    "SELECT p.id FROM parent p JOIN child c ON c.parent_id = p.id WHERE MATCH(c.body) AGAINST ('fox');",
+				Expected: []sql.Row{{uint64(1)}},
+			},
+			{
+				Query:    "SELECT p.id FROM parent p LEFT JOIN child c ON c.parent_id = p.id WHERE MATCH(c.body) AGAINST ('fox');",
+				Expected: []sql.Row{{uint64(1)}},
+			},
+			{
+				Query:    "SELECT p.id FROM child c RIGHT JOIN parent p ON c.parent_id = p.id WHERE MATCH(c.body) AGAINST ('fox');",
+				Expected: []sql.Row{{uint64(1)}},
+			},
+			{
+				Query:    "SELECT p.id FROM parent p FULL OUTER JOIN child c ON c.parent_id = p.id WHERE MATCH(c.body) AGAINST ('fox');",
+				Expected: []sql.Row{{uint64(1)}},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/10527
 		name: "join on table with dots in name",
 		setup: [][]string{
@@ -2384,6 +2428,28 @@ WHERE
 			{
 				Query:    "SELECT t1.id, t1.name, t1.location, `t2.with.dot`.country FROM t1 JOIN `t2.with.dot` ON t1.id = `t2.with.dot`.id WHERE t1.id = 1;",
 				Expected: []sql.Row{{1, "name1", "loc1", "CA"}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11350
+		name: "left outer join with duplicate join keys and non-merge filter",
+		setup: [][]string{
+			{
+				"create table b2 (cat varchar(50) not null, code varchar(16) not null, lang varchar(20) not null, primary key(cat, code, lang), key(code))",
+				"create table t2 (id varchar(36) primary key, code varchar(16), lang varchar(16), key(code, lang))",
+				"insert into b2 values ('cat0','P1','de:app'),('cat1','P1','fr:app'),('cat2','P1','nl:app')",
+				"insert into t2 values ('t1','P1','de'),('t2','P1','es'),('t3','P1','fr')",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query: "select p.lang, w.lang from b2 p left join t2 w on w.code = p.code and w.lang = substring_index(p.lang, ':', 1) order by 1, 2",
+				Expected: []sql.Row{
+					{"de:app", "de"},
+					{"fr:app", "fr"},
+					{"nl:app", nil},
+				},
 			},
 		},
 	},

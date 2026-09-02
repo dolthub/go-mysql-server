@@ -24,14 +24,14 @@ type Nothing struct{}
 var _ sql.Node = Nothing{}
 var _ sql.CollationCoercible = Nothing{}
 
-func (Nothing) String() string       { return "NOTHING" }
-func (Nothing) Resolved() bool       { return true }
-func (Nothing) IsReadOnly() bool     { return true }
-func (Nothing) Schema() sql.Schema   { return nil }
-func (Nothing) Children() []sql.Node { return nil }
+func (Nothing) String() string                 { return "NOTHING" }
+func (Nothing) Resolved() bool                 { return true }
+func (Nothing) IsReadOnly() bool               { return true }
+func (Nothing) Schema(*sql.Context) sql.Schema { return nil }
+func (Nothing) Children() []sql.Node           { return nil }
 
 // WithChildren implements the Node interface.
-func (n Nothing) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (n Nothing) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 0)
 	}

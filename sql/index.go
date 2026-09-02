@@ -25,7 +25,40 @@ type IndexDef struct {
 	Columns    []IndexColumn
 	Constraint IndexConstraint
 	Storage    IndexUsing
+	// Predicate is the WHERE clause expression for partial indexes. May be nil.
+	Predicate Expression
+	// VectorProperties are the vector-index-specific properties of the index. Only set when Constraint is IndexConstraint_Vector.
+	VectorProperties VectorProperties
 }
+
+// DistanceType is a vector distance metric. It measures the distance between two vectors, where a smaller result means
+// the vectors are more similar.
+type DistanceType interface {
+	String() string
+	// Eval returns the distance between the two given vectors
+	Eval(left []float32, right []float32) (float64, error)
+	// CanEval returns whether an index ordered by this metric also orders by the given metric
+	CanEval(distanceType DistanceType) bool
+	FunctionName() string
+	Description() string
+}
+
+// VectorProperties are the vector-index-specific properties of an index definition
+type VectorProperties struct {
+	// DistanceType is the distance metric that the index orders by. When nil, integrators default to squared L2 distance.
+	DistanceType DistanceType
+}
+
+// VectorDistanceTypeOptionName is the index option that specifies the distance metric of a vector index.
+const VectorDistanceTypeOptionName = "vector_distance_type"
+
+// VectorAccessMethodOptionName is the index option that carries the integrator's access method name of a vector index.
+// The engine does not interpret it.
+const VectorAccessMethodOptionName = "vector_access_method"
+
+// VectorOpClassOptionName is the index option that carries the integrator's' operator class name of a vector index. The
+// engine does not interpret it.
+const VectorOpClassOptionName = "vector_opclass"
 
 func (i *IndexDef) String() string {
 	return i.Name
@@ -62,11 +95,65 @@ func (i *IndexDef) ColumnNames() []string {
 
 type IndexDefs []*IndexDef
 
+// IndexNameGenerator is an optional interface that a Database can implement to customize how unnamed indexes
+// are named. When GMS needs to generate a name for an index that has no explicit name, it checks whether the
+// current database implements this interface and delegates to it. Implementations are responsible for both
+// choosing the base name and ensuring it does not collide with existing names, querying whatever scope is
+// appropriate (e.g. table-level for MySQL, schema-level for PostgreSQL).
+// If the database does not implement this interface, GMS falls back to MySQL-compatible naming.
+type IndexNameGenerator interface {
+	// GenerateIndexName returns a unique name for the given unnamed index. tableName is the target table,
+	// idxDef describes the index being created (columns, constraint type, etc.), and tbl is the table itself
+	// for implementations that need to inspect existing indexes (e.g. via a type assertion to IndexAddressable).
+	// Implementations that perform their own collision detection (e.g. via a schema-level catalog query) may ignore tbl.
+	GenerateIndexName(ctx *Context, tableName string, idxDef IndexDef, tbl Table) (string, error)
+}
+
+// MySQLIndexNameGenerator is the default IndexNameGenerator, implementing MySQL-compatible naming:
+// the first column name is the base, with _2, _3, … appended on collision.
+type MySQLIndexNameGenerator struct{}
+
+var _ IndexNameGenerator = MySQLIndexNameGenerator{}
+
+// GenerateIndexName implements the IndexNameGenerator interface.
+func (MySQLIndexNameGenerator) GenerateIndexName(ctx *Context, _ string, idxDef IndexDef, tbl Table) (string, error) {
+	return GenerateMySqlIndexName(ctx, idxDef, tbl)
+}
+
+// GenerateMySqlIndexName implements MySQL-compatible index auto-naming: the first column name is used as the
+// base, with _2, _3, … appended on collision against existing indexes on the table. Databases that follow
+// MySQL naming conventions can call this from their GenerateIndexName implementation.
+func GenerateMySqlIndexName(ctx *Context, idxDef IndexDef, tbl Table) (string, error) {
+	indexMap := make(map[string]struct{})
+	if indexedTable, ok := tbl.(IndexAddressable); ok {
+		indexes, err := indexedTable.GetIndexes(ctx)
+		if err != nil {
+			return "", err
+		}
+		for _, index := range indexes {
+			indexMap[strings.ToLower(index.ID())] = struct{}{}
+		}
+	}
+	base := idxDef.ColumnNames()[0]
+	if _, ok := indexMap[strings.ToLower(base)]; !ok {
+		return base, nil
+	}
+	for i := 2; ; i++ {
+		candidate := fmt.Sprintf("%s_%d", base, i)
+		if _, ok := indexMap[strings.ToLower(candidate)]; !ok {
+			return candidate, nil
+		}
+	}
+}
+
 // IndexColumn is the column by which to add to an index.
 type IndexColumn struct {
 	Name string
 	// Length represents the index prefix length. If zero, then no length was specified.
 	Length int64
+	// Expression is an indexed functional expression. When this field is set, the Name
+	// field is empty.
+	Expression Expression
 }
 
 // IndexConstraint represents any constraints that should be applied to the index.
@@ -120,14 +207,15 @@ type Index interface {
 	// ColumnExpressionTypes returns each expression and its associated Type.
 	// Each expression string should exactly match the string returned from
 	// Index.Expressions().
-	ColumnExpressionTypes() []ColumnExpressionType
+	ColumnExpressionTypes(*Context) []ColumnExpressionType
 	// CanSupport returns whether this index supports lookups on the given
 	// range filters.
 	CanSupport(*Context, ...Range) bool
 	// CanSupportOrderBy returns whether this index can optimize ORDER BY a given expression type.
 	// Verifying that the expression's children match the index columns are done separately.
 	CanSupportOrderBy(expr Expression) bool
-
+	// CoversColumns returns whether this index covers the given columns
+	CoversColumns(cols []string) bool
 	// PrefixLengths returns the prefix lengths for each column in this index
 	PrefixLengths() []uint16
 }
@@ -141,10 +229,10 @@ type ExtendedIndex interface {
 	Index
 	// ExtendedExpressions returns the same result as Expressions, but appends any primary keys that are implicitly in
 	// the index. The appended primary keys are in declaration order.
-	ExtendedExpressions() []string
+	ExtendedExpressions(ctx *Context) []string
 	// ExtendedColumnExpressionTypes returns the same result as ColumnExpressionTypes, but appends the type of any
 	// primary keys that are implicitly in the index. The appended primary keys are in declaration order.
-	ExtendedColumnExpressionTypes() []ColumnExpressionType
+	ExtendedColumnExpressionTypes(ctx *Context) []ColumnExpressionType
 }
 
 // IndexLookup is the implementation-specific definition of an index lookup. The IndexLookup must contain all necessary
@@ -236,11 +324,18 @@ func (il IndexLookup) String() string {
 	return pr.String()
 }
 
-func (il IndexLookup) DebugString() string {
+func (il IndexLookup) DebugString(ctx *Context) string {
 	pr := NewTreePrinter()
 	_ = pr.WriteNode("IndexLookup")
-	pr.WriteChildren(fmt.Sprintf("index: %s", il.Index), fmt.Sprintf("ranges: %s", il.Ranges.DebugString()))
+	pr.WriteChildren(fmt.Sprintf("index: %s", il.Index), fmt.Sprintf("ranges: %s", il.Ranges.DebugString(ctx)))
 	return pr.String()
+}
+
+// PartialIndex is an extension of |Index| for partial indexes, which only cover rows matching a WHERE predicate.
+type PartialIndex interface {
+	Index
+	// Predicate returns the WHERE clause expression string for this partial index.
+	Predicate() string
 }
 
 // FilteredIndex is an extension of |Index| that allows an index to declare certain filter predicates handled,
@@ -249,7 +344,7 @@ type FilteredIndex interface {
 	Index
 	// HandledFilters returns a subset of |filters| that are satisfied
 	// by index lookups to this index.
-	HandledFilters(filters []Expression) (handled []Expression)
+	HandledFilters(ctx *Context, filters []Expression) (handled []Expression)
 }
 
 type IndexOrder byte
@@ -265,9 +360,9 @@ const (
 type OrderedIndex interface {
 	Index
 	// Order returns the order of results for reads from this index
-	Order() IndexOrder
+	Order(ctx *Context) IndexOrder
 	// Reversible returns whether or not this index can be iterated on backwards
-	Reversible() bool
+	Reversible(ctx *Context) bool
 }
 
 // ColumnExpressionType returns a column expression along with its Type.

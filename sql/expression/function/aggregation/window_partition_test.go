@@ -97,7 +97,7 @@ func mustNewRowIter(t *testing.T, db *memory.Database, ctx *sql.Context) sql.Row
 		{Name: "y", Type: types.Text, Nullable: true},
 		{Name: "z", Type: types.Int32, Nullable: true},
 	})
-	table := memory.NewTable(db, "test", childSchema, nil)
+	table := memory.NewTable(sql.NewEmptyContext(), db, "test", childSchema, nil)
 
 	rows := []sql.Row{
 		{int64(1), "forest", "leaf", int32(4)},
@@ -205,14 +205,14 @@ func TestWindowPartition_MaterializeOutput(t *testing.T) {
 			{int64(9), "desert", "mummy", 5},
 		}
 		i.partitions = []sql.WindowInterval{{0, 5}, {5, 9}}
-		i.outputOrdering = []int{0, 1, 2, 3, 4, 5, 6, 7, 8}
+		i.outputOrdering = []int{5, 1, 2, 3, 4, 0, 6, 7, 8}
 		output, err := i.materializeOutput(ctx)
 		require.NoError(t, err)
-		expOutput := []sql.Row{
-			{float64(27), 0},
-			{float64(23), 5},
+		expOutput := sql.WindowBuffer{
+			{float64(23)},
+			{float64(27)},
 		}
-		require.ElementsMatch(t, expOutput, output)
+		require.Equal(t, expOutput, output)
 	})
 
 	t.Run("nil input", func(t *testing.T) {
@@ -231,58 +231,4 @@ func TestWindowPartition_MaterializeOutput(t *testing.T) {
 		require.Equal(t, io.EOF, err)
 		require.ElementsMatch(t, nil, output)
 	})
-}
-
-func TestWindowPartition_SortAndFilterOutput(t *testing.T) {
-	tests := []struct {
-		Name     string
-		Output   []sql.Row
-		Expected []sql.Row
-	}{
-		{
-			Name: "no input rows filtered before output, contiguous output indexes",
-			Output: []sql.Row{
-				{0, 0},
-				{3, 3},
-				{2, 2},
-				{1, 1},
-			},
-			Expected: []sql.Row{
-				{0},
-				{1},
-				{2},
-				{3},
-			},
-		},
-		{
-			Name: "input rows filtered before output, non contiguous output indexes",
-			Output: []sql.Row{
-				{0, 0},
-				{3, 3},
-				{2, 7},
-				{1, 1},
-			},
-			Expected: []sql.Row{
-				{0},
-				{1},
-				{3},
-				{2},
-			},
-		},
-		{
-			Name:     "empty output",
-			Output:   []sql.Row{},
-			Expected: nil,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.Name, func(t *testing.T) {
-			i := NewWindowPartitionIter(&WindowPartition{})
-			i.output = tt.Output
-			err := i.sortAndFilterOutput()
-			require.NoError(t, err)
-			require.ElementsMatch(t, tt.Expected, i.output)
-		})
-	}
 }

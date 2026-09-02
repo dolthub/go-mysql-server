@@ -1435,11 +1435,11 @@ Project
 			WINDOW w AS (PARTITION BY y ORDER BY x);`,
 			ExpectedPlan: `
 Project
- ├─ columns: [xy.x:1!null, row_number() over ( partition by xy.y order by xy.x asc rows between unbounded preceding and unbounded following):4!null->row_number:5, rank() over ( partition by xy.y order by xy.x asc rows between unbounded preceding and unbounded following):6!null->rank:7, dense_rank() over ( partition by xy.y order by xy.x asc rows between unbounded preceding and unbounded following):8!null->dense_rank:9]
+ ├─ columns: [xy.x:1!null, row_number() over ( partition by xy.y order by xy.x asc):4!null->row_number:5, rank() over ( partition by xy.y order by xy.x asc):6!null->rank:7, dense_rank() over ( partition by xy.y order by xy.x asc):8!null->dense_rank:9]
  └─ Window
-     ├─ row_number() over ( partition by xy.y order by xy.x ASC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
-     ├─ rank() over ( partition by xy.y order by xy.x ASC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
-     ├─ dense_rank() over ( partition by xy.y order by xy.x ASC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
+     ├─ row_number() over ( partition by xy.y order by xy.x ASC)
+     ├─ rank() over ( partition by xy.y order by xy.x ASC)
+     ├─ dense_rank() over ( partition by xy.y order by xy.x ASC)
      ├─ xy.x:1!null
      └─ Table
          ├─ name: xy
@@ -2668,7 +2668,7 @@ Project
 
 			outScope := b.build(nil, stmt, tt.Query)
 			defer b.Reset()
-			plan := sql.DebugString(outScope.node)
+			plan := sql.DebugString(ctx, outScope.node)
 
 			if rewrite {
 				w.WriteString("\t{\n")
@@ -2684,7 +2684,7 @@ Project
 				print(plan)
 			}
 
-			require.Equal(t, tt.ExpectedPlan, "\n"+sql.DebugString(outScope.node))
+			require.Equal(t, tt.ExpectedPlan, "\n"+sql.DebugString(ctx, outScope.node))
 			require.True(t, outScope.node.Resolved())
 		})
 	}
@@ -2695,13 +2695,13 @@ func newTestCatalog(db *memory.Database) *sql.MapCatalog {
 		Databases: make(map[string]sql.Database),
 		Tables:    make(map[string]sql.Table),
 	}
-
-	cat.Tables["xy"] = memory.NewTable(db, "xy", sql.NewPrimaryKeySchema(sql.Schema{
+	ctx := sql.NewEmptyContext()
+	cat.Tables["xy"] = memory.NewTable(ctx, db, "xy", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "x", Type: types.Int64},
 		{Name: "y", Type: types.Int64},
 		{Name: "z", Type: types.Int64},
 	}, 0), nil)
-	cat.Tables["uv"] = memory.NewTable(db, "uv", sql.NewPrimaryKeySchema(sql.Schema{
+	cat.Tables["uv"] = memory.NewTable(ctx, db, "uv", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "u", Type: types.Int64},
 		{Name: "v", Type: types.Int64},
 		{Name: "w", Type: types.Int64},
@@ -2943,7 +2943,7 @@ func TestParseColumnTypeString(t *testing.T) {
 		ctx := sql.NewEmptyContext()
 		ctx.SetCurrentDatabase("mydb")
 		t.Run("parse "+test.columnType, func(t *testing.T) {
-			res, err := ParseColumnTypeString(test.columnType)
+			res, err := ParseColumnTypeString(ctx, test.columnType)
 			require.NoError(t, err)
 			if collatedType, ok := res.(sql.TypeWithCollation); ok {
 				if collatedType.Collation() == sql.Collation_Unspecified {
@@ -2955,7 +2955,7 @@ func TestParseColumnTypeString(t *testing.T) {
 		})
 		t.Run("round trip "+test.columnType, func(t *testing.T) {
 			str := test.expectedSqlType.String()
-			typ, err := ParseColumnTypeString(str)
+			typ, err := ParseColumnTypeString(ctx, str)
 			require.NoError(t, err)
 			if collatedType, ok := typ.(sql.TypeWithCollation); ok {
 				if collatedType.Collation() == sql.Collation_Unspecified {

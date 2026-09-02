@@ -113,8 +113,9 @@ func TestJSONPretty(t *testing.T) {
 	for _, tt := range testCases {
 		t.Run(tt.arg.String(), func(t *testing.T) {
 			require := require.New(t)
-			f := NewJSONPretty(tt.arg)
-			res, err := f.Eval(sql.NewEmptyContext(), nil)
+			ctx := sql.NewEmptyContext()
+			f := NewJSONPretty(ctx, tt.arg)
+			res, err := f.Eval(ctx, nil)
 			if tt.err != nil {
 				require.Error(err)
 				require.Equal(tt.err.Error(), err.Error())

@@ -27,16 +27,17 @@ import (
 const (
 	// reference https://github.com/postgres/postgres/blob/master/src/include/optimizer/cost.h
 	cpuCostFactor             = 0.01
-	seqIOCostFactor           = 1
+	seqIOCostFactor           = 1.0
 	randIOCostFactor          = 1.3
-	memCostFactor             = 2
+	memCostFactor             = 2.0
 	concatCostFactor          = 0.75
+	indexLookupScalarFactor   = 200.0
 	degeneratePenalty         = 2.0
 	optimisticJoinSel         = .10
 	biasFactor                = 1e5
 	defaultFilterSelectivity  = .85
 	perKeyCostReductionFactor = 0.5
-	defaultTableSize          = 100
+	defaultTableSize          = 100.0
 )
 
 func NewDefaultCoster() Coster {
@@ -67,19 +68,20 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 		lBest := math.Max(1, float64(jp.Left.RelProps.GetStats().RowCount()))
 		rBest := math.Max(1, float64(jp.Right.RelProps.GetStats().RowCount()))
 
+		// TODO: this is not necessarily correct, since we push down filters into that index scan
 		// if a child is an index scan, the table scan will be more expensive
 		var err error
 		lTableScan := uint64(lBest)
 		rTableScan := uint64(rBest)
 
 		if iScan, ok := jp.Left.Best.(*IndexScan); ok {
-			lTableScan, err = s.RowCount(ctx, iScan.Table.Database().Name(), iScan.Table)
+			lTableScan, err = s.RowCount(ctx, sql.TableSchemaName(iScan.Table.UnderlyingTable()), iScan.Table.Database().Name(), iScan.Table)
 			if err != nil {
 				lTableScan = defaultTableSize
 			}
 		}
 		if iScan, ok := jp.Right.Best.(*IndexScan); ok {
-			rTableScan, err = s.RowCount(ctx, iScan.Table.Database().Name(), iScan.Table)
+			rTableScan, err = s.RowCount(ctx, sql.TableSchemaName(iScan.Table.UnderlyingTable()), iScan.Table.Database().Name(), iScan.Table)
 			if err != nil {
 				rTableScan = defaultTableSize
 			}
@@ -87,19 +89,20 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 
 		selfJoinCard := math.Max(1, float64(n.Group().RelProps.GetStats().RowCount()))
 
+		// DO NOT REMOVE THE REDUNDANT FLOAT64 CASTS
+		// THEY ARE NECESSARY TO ENSURE THE SAME COSTER BEHAVIOR OVER DIFFERENT OS AND HARDWARE
 		switch {
 		case jp.Op.IsInner():
 			// arbitrary +1 penalty, prefer lookup
 			return (lBest*rBest+1)*seqIOCostFactor + (lBest*rBest)*cpuCostFactor, nil
-		case jp.Op.IsDegenerate():
-			return ((lBest*rBest)*seqIOCostFactor + (lBest*rBest)*cpuCostFactor) * degeneratePenalty, nil
 		case jp.Op.IsHash():
 			if jp.Op.IsPartial() {
 				cost := lBest * (rBest / 2.0) * (seqIOCostFactor + cpuCostFactor)
 				return cost * .5, nil
 			}
-			return lBest*(seqIOCostFactor+cpuCostFactor) + float64(rBest)*(seqIOCostFactor+memCostFactor) + selfJoinCard*cpuCostFactor, nil
-
+			return float64(lBest*(seqIOCostFactor+cpuCostFactor)) + float64(rBest)*(seqIOCostFactor+memCostFactor) + selfJoinCard*cpuCostFactor, nil
+		case jp.Op.IsCross():
+			return ((lBest*rBest)*seqIOCostFactor + (lBest*rBest)*cpuCostFactor) * degeneratePenalty, nil
 		case jp.Op.IsLateral():
 			return (lBest*rBest-1)*seqIOCostFactor + (lBest*rBest)*cpuCostFactor, nil
 
@@ -119,9 +122,8 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 			// cost is full left scan + full rightScan plus compute/memory overhead
 			// for this merge filter's cardinality
 			// TODO: estimate memory overhead
-			return float64(lTableScan+rTableScan)*(seqIOCostFactor+cpuCostFactor) + cpuCostFactor*selfJoinCard, nil
+			return float64(float64(lTableScan+rTableScan)*float64(seqIOCostFactor+cpuCostFactor)) + cpuCostFactor*selfJoinCard, nil
 		case jp.Op.IsLookup():
-			// TODO added overhead for right lookups
 			switch n := n.(type) {
 			case *LookupJoin:
 				if !n.Injective {
@@ -132,7 +134,9 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 
 				// read the whole left table and randIO into table equivalent to
 				// this join's output cardinality estimate
-				return lBest*seqIOCostFactor + selfJoinCard*(randIOCostFactor+seqIOCostFactor), nil
+				lCost := float64(lBest * seqIOCostFactor)
+				rCost := float64(1 + float64(math.Log(rBest)/indexLookupScalarFactor))
+				return float64(lCost*rCost) + float64(selfJoinCard*float64(randIOCostFactor+seqIOCostFactor)), nil
 			case *ConcatJoin:
 				return c.costConcatJoin(ctx, n, s)
 			}
@@ -155,27 +159,27 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 
 // isInjectiveMerge determines whether either of a merge join's child indexes returns only unique values for the merge
 // comparator.
-func isInjectiveMerge(n *MergeJoin, leftCompareExprs, rightCompareExprs []sql.Expression) bool {
+func isInjectiveMerge(ctx *sql.Context, n *MergeJoin, leftCompareExprs, rightCompareExprs []sql.Expression) bool {
 	{
-		keyExprs, nullmask := keyExprsForIndexFromTupleComparison(n.Left.RelProps.tableNodes[0].Id(), n.InnerScan.Index.Cols(), leftCompareExprs, rightCompareExprs)
-		if isInjectiveLookup(n.InnerScan.Index, n.JoinBase, keyExprs, nullmask) {
+		keyExprs, nullmask := keyExprsForIndexFromTupleComparison(ctx, n.Left.RelProps.tableNodes[0].Id(), n.InnerScan.Index.Cols(), leftCompareExprs, rightCompareExprs)
+		if isInjectiveLookup(ctx, n.InnerScan.Index, n.JoinBase, keyExprs, nullmask) {
 			return true
 		}
 	}
 	{
-		keyExprs, nullmask := keyExprsForIndexFromTupleComparison(n.Right.RelProps.tableNodes[0].Id(), n.OuterScan.Index.Cols(), leftCompareExprs, rightCompareExprs)
-		if isInjectiveLookup(n.OuterScan.Index, n.JoinBase, keyExprs, nullmask) {
+		keyExprs, nullmask := keyExprsForIndexFromTupleComparison(ctx, n.Right.RelProps.tableNodes[0].Id(), n.OuterScan.Index.Cols(), leftCompareExprs, rightCompareExprs)
+		if isInjectiveLookup(ctx, n.OuterScan.Index, n.JoinBase, keyExprs, nullmask) {
 			return true
 		}
 	}
 	return false
 }
 
-func keyExprsForIndexFromTupleComparison(tabId sql.TableId, idxExprs []sql.ColumnId, leftExprs []sql.Expression, rightExprs []sql.Expression) ([]sql.Expression, []bool) {
+func keyExprsForIndexFromTupleComparison(ctx *sql.Context, tabId sql.TableId, idxExprs []sql.ColumnId, leftExprs []sql.Expression, rightExprs []sql.Expression) ([]sql.Expression, []bool) {
 	var keyExprs []sql.Expression
 	var nullmask []bool
 	for _, col := range idxExprs {
-		key, nullable := keyForExprFromTupleComparison(col, tabId, leftExprs, rightExprs)
+		key, nullable := keyForExprFromTupleComparison(ctx, col, tabId, leftExprs, rightExprs)
 		if key == nil {
 			break
 		}
@@ -190,7 +194,7 @@ func keyExprsForIndexFromTupleComparison(tabId sql.TableId, idxExprs []sql.Colum
 
 // keyForExpr returns an equivalence or constant value to satisfy the
 // lookup index expression.
-func keyForExprFromTupleComparison(targetCol sql.ColumnId, tabId sql.TableId, leftExprs []sql.Expression, rightExprs []sql.Expression) (sql.Expression, bool) {
+func keyForExprFromTupleComparison(ctx *sql.Context, targetCol sql.ColumnId, tabId sql.TableId, leftExprs []sql.Expression, rightExprs []sql.Expression) (sql.Expression, bool) {
 	for i, leftExpr := range leftExprs {
 		rightExpr := rightExprs[i]
 
@@ -204,7 +208,7 @@ func keyForExprFromTupleComparison(targetCol sql.ColumnId, tabId sql.TableId, le
 		}
 		// expression key can be arbitrarily complex (or simple), but cannot
 		// reference the lookup table
-		if !exprReferencesTable(key, tabId) {
+		if !exprReferencesTable(ctx, key, tabId) {
 			return key, false
 		}
 
@@ -213,8 +217,8 @@ func keyForExprFromTupleComparison(targetCol sql.ColumnId, tabId sql.TableId, le
 }
 
 // TODO need a way to map memo groups to table ids (or names if this doesn't work)
-func exprReferencesTable(e sql.Expression, tabId sql.TableId) bool {
-	return transform.InspectExpr(e, func(e sql.Expression) bool {
+func exprReferencesTable(ctx *sql.Context, e sql.Expression, tabId sql.TableId) bool {
+	return transform.InspectExpr(ctx, e, func(ctx *sql.Context, e sql.Expression) bool {
 		gf, _ := e.(*expression.GetField)
 		if gf != nil && gf.TableId() == tabId {
 			return true
@@ -223,12 +227,12 @@ func exprReferencesTable(e sql.Expression, tabId sql.TableId) bool {
 	})
 }
 
-func (c *coster) costConcatJoin(_ *sql.Context, n *ConcatJoin, _ sql.StatsProvider) (float64, error) {
+func (c *coster) costConcatJoin(ctx *sql.Context, n *ConcatJoin, _ sql.StatsProvider) (float64, error) {
 	l := float64(n.Left.RelProps.GetStats().RowCount())
 	var sel float64
 	for _, l := range n.Concat {
 		lookup := l
-		sel += lookupJoinSelectivity(lookup, n.JoinBase)
+		sel += lookupJoinSelectivity(ctx, lookup, n.JoinBase)
 	}
 	return l*sel*concatCostFactor*(randIOCostFactor+cpuCostFactor) - float64(n.Right.RelProps.GetStats().RowCount())*seqIOCostFactor, nil
 }
@@ -236,8 +240,8 @@ func (c *coster) costConcatJoin(_ *sql.Context, n *ConcatJoin, _ sql.StatsProvid
 // lookupJoinSelectivity estimates the selectivity of a join condition with n lhs rows and m rhs rows.
 // A join with a selectivity of k will return k*(n*m) rows.
 // Special case: A join with a selectivity of 0 will return n rows.
-func lookupJoinSelectivity(l *IndexScan, joinBase *JoinBase) float64 {
-	if isInjectiveLookup(l.Index, joinBase, l.Table.Expressions(), l.Table.NullMask()) {
+func lookupJoinSelectivity(ctx *sql.Context, l *IndexScan, joinBase *JoinBase) float64 {
+	if isInjectiveLookup(ctx, l.Index, joinBase, l.Table.Expressions(), l.Table.NullMask()) {
 		return 0
 	}
 	return math.Pow(perKeyCostReductionFactor, float64(len(l.Table.Expressions()))) * optimisticJoinSel
@@ -245,17 +249,17 @@ func lookupJoinSelectivity(l *IndexScan, joinBase *JoinBase) float64 {
 
 // isInjectiveLookup returns whether every lookup with the given key expressions is guarenteed to return
 // at most one row.
-func isInjectiveLookup(idx *Index, joinBase *JoinBase, keyExprs []sql.Expression, nullMask []bool) bool {
+func isInjectiveLookup(ctx *sql.Context, idx *Index, joinBase *JoinBase, keyExprs []sql.Expression, nullMask []bool) bool {
 	if !idx.SqlIdx().IsUnique() {
 		return false
 	}
 
-	joinFds := joinBase.Group().RelProps.FuncDeps()
+	joinFds := joinBase.Group().RelProps.FuncDeps(ctx)
 
 	var notNull sql.ColSet
 	var constCols sql.ColSet
 	for i, nullable := range nullMask {
-		cols, _, nullRej := getExprScalarProps(keyExprs[i])
+		cols, _, nullRej := getExprScalarProps(ctx, keyExprs[i])
 		onCols := joinFds.EquivalenceClosure(cols)
 		if !nullable {
 			if nullRej {
@@ -269,7 +273,7 @@ func isInjectiveLookup(idx *Index, joinBase *JoinBase, keyExprs []sql.Expression
 		constCols = constCols.Union(onCols)
 	}
 
-	fds := sql.NewLookupFDs(joinBase.Right.RelProps.FuncDeps(), idx.ColSet(), notNull, constCols, joinFds)
+	fds := sql.NewLookupFDs(joinBase.Right.RelProps.FuncDeps(ctx), idx.ColSet(), notNull, constCols, joinFds)
 	return fds.HasMax1Row()
 }
 

@@ -47,7 +47,7 @@ type JSONSet struct {
 var _ sql.FunctionExpression = (*JSONContains)(nil)
 
 // NewJSONSet creates a new JSONSet function.
-func NewJSONSet(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONSet(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) <= 1 {
 		return nil, sql.ErrInvalidArgumentNumber.New("JSON_SET", "more than 1", len(args))
 	} else if (len(args)-1)%2 == 1 {
@@ -84,12 +84,12 @@ func (j *JSONSet) Children() []sql.Expression {
 }
 
 // WithChildren implements sql.Expression
-func (j *JSONSet) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (j *JSONSet) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(j.Children()) != len(children) {
 		return nil, fmt.Errorf("json_set did not receive the correct amount of args")
 	}
 
-	return NewJSONSet(children...)
+	return NewJSONSet(ctx, children...)
 }
 
 // String implements Stringer
@@ -105,18 +105,18 @@ func (j *JSONSet) String() string {
 }
 
 // Type implements sql.Expression
-func (j *JSONSet) Type() sql.Type {
+func (j *JSONSet) Type(ctx *sql.Context) sql.Type {
 	return types.JSON
 }
 
 // IsNullable implements sql.Expression
-func (j *JSONSet) IsNullable() bool {
+func (j *JSONSet) IsNullable(ctx *sql.Context) bool {
 	for _, pv := range j.PathAndVals {
-		if pv.IsNullable() {
+		if pv.IsNullable(ctx) {
 			return true
 		}
 	}
-	return j.JSONDoc.IsNullable()
+	return j.JSONDoc.IsNullable(ctx)
 }
 
 // Eval implements sql.Expression

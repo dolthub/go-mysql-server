@@ -55,13 +55,13 @@ func (ce *CollatedExpression) Resolved() bool {
 }
 
 // IsNullable implements the sql.Expression interface.
-func (ce *CollatedExpression) IsNullable() bool {
-	return ce.expr.IsNullable()
+func (ce *CollatedExpression) IsNullable(ctx *sql.Context) bool {
+	return ce.expr.IsNullable(ctx)
 }
 
 // Type implements the sql.Expression interface.
-func (ce *CollatedExpression) Type() sql.Type {
-	typ := ce.expr.Type()
+func (ce *CollatedExpression) Type(ctx *sql.Context) sql.Type {
+	typ := ce.expr.Type(ctx)
 	if collatedType, ok := typ.(sql.TypeWithCollation); ok {
 		newType, err := collatedType.WithNewCollation(ce.collation)
 		if err == nil {
@@ -81,7 +81,7 @@ func (ce *CollatedExpression) CollationCoercibility(ctx *sql.Context) (collation
 
 // Eval implements the sql.Expression interface.
 func (ce *CollatedExpression) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	typ := ce.expr.Type()
+	typ := ce.expr.Type(ctx)
 	if !types.IsText(typ) {
 		return nil, sql.ErrCollatedExprWrongType.New()
 	}
@@ -108,10 +108,10 @@ func (ce *CollatedExpression) String() string {
 }
 
 // DebugString implements the sql.DebugStringer interface.
-func (ce *CollatedExpression) DebugString() string {
+func (ce *CollatedExpression) DebugString(ctx *sql.Context) string {
 	var innerDebugStr string
 	if debugExpr, ok := ce.expr.(sql.DebugStringer); ok {
-		innerDebugStr = debugExpr.DebugString()
+		innerDebugStr = debugExpr.DebugString(ctx)
 	} else {
 		innerDebugStr = ce.expr.String()
 	}
@@ -119,7 +119,7 @@ func (ce *CollatedExpression) DebugString() string {
 }
 
 // WithChildren implements the sql.Expression interface.
-func (ce *CollatedExpression) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (ce *CollatedExpression) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(ce, len(children), 1)
 	}

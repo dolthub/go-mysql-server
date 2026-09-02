@@ -615,6 +615,10 @@ func TestSpatialScripts(t *testing.T) {
 	enginetest.TestSpatialScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
+func TestLargeGeometryScripts(t *testing.T) {
+	enginetest.TestLargeGeometryScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
 func TestSpatialIndexScripts(t *testing.T) {
 	enginetest.TestSpatialIndexScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
@@ -736,6 +740,14 @@ func TestPkOrdinalsDML(t *testing.T) {
 
 func TestDropDatabase(t *testing.T) {
 	enginetest.TestDropDatabase(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestConcurrentCreateDatabaseIfNotExists(t *testing.T) {
+	enginetest.TestConcurrentCreateDatabaseIfNotExists(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestConcurrentDropDatabaseIfExists(t *testing.T) {
+	enginetest.TestConcurrentDropDatabaseIfExists(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestCreateForeignKeys(t *testing.T) {
@@ -861,6 +873,10 @@ func TestIndexes(t *testing.T) {
 	enginetest.TestIndexes(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestIndexedExpressions(t *testing.T) {
+	enginetest.TestIndexedExpressions(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestVectorIndexes(t *testing.T) {
 	enginetest.TestVectorIndexes(t, enginetest.NewDefaultMemoryHarness())
 }
@@ -875,6 +891,14 @@ func TestVectorType(t *testing.T) {
 
 func TestIndexPrefix(t *testing.T) {
 	enginetest.TestIndexPrefix(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestTupleQueries(t *testing.T) {
+	harness := enginetest.NewDefaultMemoryHarness()
+	if harness.IsUsingServer() {
+		t.Skip("way we prepare the queries with injectBindVarsAndPrepare() method does not work for ServerEngine test")
+	}
+	enginetest.TestTupleQueries(t, harness)
 }
 
 func TestPersist(t *testing.T) {

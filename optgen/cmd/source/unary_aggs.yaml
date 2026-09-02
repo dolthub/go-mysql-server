@@ -5,6 +5,7 @@ unaryAggs:
 - name:     "Avg"
   desc:     "returns the average value of expr in all rows."
   nullable: true
+  retType:  "types.Float64"
 - name:    "BitAnd"
   desc:    "returns the bitwise AND of all bits in expr."
   retType: "types.Uint64"
@@ -32,6 +33,7 @@ unaryAggs:
 - name:     "Sum"
   desc:     "returns the sum of expr in all rows"
   nullable: false
+  retType:  "types.Float64"
 - name: "StdDevPop"
   desc: "returns the population standard deviation of expr"
 - name: "StdDevSamp"

@@ -62,7 +62,7 @@ func (d *DropProcedure) String() string {
 }
 
 // Schema implements the sql.Node interface.
-func (d *DropProcedure) Schema() sql.Schema {
+func (d *DropProcedure) Schema(ctx *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -72,7 +72,7 @@ func (d *DropProcedure) Children() []sql.Node {
 }
 
 // WithChildren implements the sql.Node interface.
-func (d *DropProcedure) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (d *DropProcedure) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(d, children...)
 }
 

@@ -72,68 +72,6 @@ type TemporaryUser struct {
 	Password string
 }
 
-// PreparedDataCache manages all the prepared data for every session for every query for an engine.
-// There are two types of caching supported:
-// 1. Prepared statements for MySQL, which are stored as sqlparser.Statements
-// 2. Prepared statements for Postgres, which are stored as sql.Nodes
-// TODO: move this into the session
-type PreparedDataCache struct {
-	statements map[uint32]map[string]sqlparser.Statement
-	mu         *sync.Mutex
-}
-
-func NewPreparedDataCache() *PreparedDataCache {
-	return &PreparedDataCache{
-		statements: make(map[uint32]map[string]sqlparser.Statement),
-		mu:         &sync.Mutex{},
-	}
-}
-
-// GetCachedStmt retrieves the prepared statement associated with the ctx.SessionId and query. Returns nil, false if
-// the query does not exist
-func (p *PreparedDataCache) GetCachedStmt(sessId uint32, query string) (sqlparser.Statement, bool) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	if sessData, ok := p.statements[sessId]; ok {
-		data, ok := sessData[query]
-		return data, ok
-	}
-	return nil, false
-}
-
-// CachedStatementsForSession returns all the prepared queries for a particular session
-func (p *PreparedDataCache) CachedStatementsForSession(sessId uint32) map[string]sqlparser.Statement {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	return p.statements[sessId]
-}
-
-// DeleteSessionData clears a session along with all prepared queries for that session
-func (p *PreparedDataCache) DeleteSessionData(sessId uint32) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	delete(p.statements, sessId)
-}
-
-// CacheStmt saves the parsed statement and associates a ctx.SessionId and query to it
-func (p *PreparedDataCache) CacheStmt(sessId uint32, query string, stmt sqlparser.Statement) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	if _, ok := p.statements[sessId]; !ok {
-		p.statements[sessId] = make(map[string]sqlparser.Statement)
-	}
-	p.statements[sessId][query] = stmt
-}
-
-// UncacheStmt removes the prepared node associated with a ctx.SessionId and query to it
-func (p *PreparedDataCache) UncacheStmt(sessId uint32, query string) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	if _, ok := p.statements[sessId]; ok {
-		delete(p.statements[sessId], query)
-	}
-}
-
 // Engine is a SQL engine.
 type Engine struct {
 	Parser            sql.Parser
@@ -142,7 +80,6 @@ type Engine struct {
 	LS                *sql.LockSubsystem
 	MemoryManager     *sql.MemoryManager
 	BackgroundThreads *sql.BackgroundThreads
-	PreparedDataCache *PreparedDataCache
 	mu                *sync.Mutex
 	EventScheduler    *eventscheduler.EventScheduler
 	ReadOnly          atomic.Bool
@@ -175,14 +112,14 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 
 	emptyCtx := sql.NewEmptyContext()
 
-	if _, ok := a.Catalog.Function(emptyCtx, "version"); !ok {
+	if _, ok := a.Catalog.Function(emptyCtx, "", "version"); !ok {
 		a.Catalog.RegisterFunction(emptyCtx, sql.FunctionN{
 			Name: "version",
 			Fn:   function.NewVersion(cfg.VersionPostfix),
 		})
 	}
 
-	a.Catalog.RegisterFunction(emptyCtx, function.GetLockingFuncs(ls)...)
+	a.Catalog.RegisterFunction(emptyCtx, function.GetLockingFuncs(emptyCtx, ls)...)
 
 	ret := &Engine{
 		Analyzer:          a,
@@ -191,7 +128,6 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 		LS:                ls,
 		BackgroundThreads: sql.NewBackgroundThreads(),
 		IsServerLocked:    cfg.IsServerLocked,
-		PreparedDataCache: NewPreparedDataCache(),
 		mu:                &sync.Mutex{},
 		EventScheduler:    nil,
 		Parser:            sql.GetParser(a.Overrides),
@@ -245,12 +181,12 @@ func (e *Engine) PrepareParsedQuery(
 
 	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.EventScheduler)
 	node, _, err := binder.BindOnly(stmt, query, nil)
-
 	if err != nil {
 		return nil, err
 	}
 
-	e.PreparedDataCache.CacheStmt(ctx.Session.ID(), statementKey, stmt)
+	ctx.Session.PrepareQuery(statementKey, stmt)
+
 	return node, nil
 }
 
@@ -391,7 +327,9 @@ func bindingsToExprs(ctx *sql.Context, bindings map[string]*querypb.BindVariable
 
 // QueryWithBindings executes the query given with the bindings provided.
 // If parsed is non-nil, it will be used instead of parsing the query from text.
-func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]sqlparser.Expr, qFlags *sql.QueryFlags) (sql.Schema, sql.RowIter, *sql.QueryFlags, error) {
+func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]sqlparser.Expr, qFlags *sql.QueryFlags) (sch sql.Schema, iter sql.RowIter, retFlags *sql.QueryFlags, err error) {
+	defer clearAutocommitOnError(ctx, &err)
+
 	sql.IncrementStatusVariable(ctx, "Questions", 1)
 
 	query = sql.RemoveSpaceAndDelimiter(query, ';')
@@ -431,7 +369,7 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 		return nil, nil, nil, err
 	}
 
-	if plan.NodeRepresentsSelect(analyzed) {
+	if plan.NodeRepresentsSelect(ctx, analyzed) {
 		sql.IncrementStatusVariable(ctx, "Com_select", 1)
 	}
 
@@ -446,38 +384,31 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 		return nil, nil, nil, err
 	}
 
-	iter, err := e.Analyzer.ExecBuilder.Build(ctx, analyzed, nil)
+	iter, err = e.Analyzer.ExecBuilder.Build(ctx, analyzed, nil)
 	if err != nil {
-		err2 := clearAutocommitTransaction(ctx)
-		if err2 != nil {
-			return nil, nil, nil, errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
-		}
 		return nil, nil, nil, err
 	}
 
-	var schema sql.Schema
-	iter, schema, err = rowexec.FinalizeIters(ctx, analyzed, qFlags, iter)
+	iter, sch, err = rowexec.FinalizeIters(ctx, analyzed, qFlags, iter)
 	if err != nil {
-		clearAutocommitErr := clearAutocommitTransaction(ctx)
-		if clearAutocommitErr != nil {
-			return nil, nil, nil, errors.Wrap(err, "unable to clear autocommit transaction: "+clearAutocommitErr.Error())
-		}
 		return nil, nil, nil, err
 	}
 
-	if schema == nil {
-		schema = analyzed.Schema()
+	if sch == nil {
+		sch = analyzed.Schema(ctx)
 	}
 
-	return schema, iter, qFlags, nil
+	return sch, iter, qFlags, nil
 }
 
 // PrepQueryPlanForExecution prepares a query plan for execution and returns the result schema with a row iterator to
 // begin spooling results
-func (e *Engine) PrepQueryPlanForExecution(ctx *sql.Context, _ string, plan sql.Node, qFlags *sql.QueryFlags) (sql.Schema, sql.RowIter, *sql.QueryFlags, error) {
+func (e *Engine) PrepQueryPlanForExecution(ctx *sql.Context, _ string, plan sql.Node, qFlags *sql.QueryFlags) (sch sql.Schema, iter sql.RowIter, retFlags *sql.QueryFlags, err error) {
+	defer clearAutocommitOnError(ctx, &err)
+
 	// Give the integrator a chance to reject the session before proceeding
 	// TODO: this check doesn't belong here
-	err := ctx.Session.ValidateSession(ctx)
+	err = ctx.Session.ValidateSession(ctx)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -492,34 +423,27 @@ func (e *Engine) PrepQueryPlanForExecution(ctx *sql.Context, _ string, plan sql.
 		return nil, nil, nil, err
 	}
 
-	iter, err := e.Analyzer.ExecBuilder.Build(ctx, plan, nil)
+	iter, err = e.Analyzer.ExecBuilder.Build(ctx, plan, nil)
 	if err != nil {
-		err2 := clearAutocommitTransaction(ctx)
-		if err2 != nil {
-			return nil, nil, nil, errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
-		}
 		return nil, nil, nil, err
 	}
 
-	var schema sql.Schema
-	iter, schema, err = rowexec.FinalizeIters(ctx, plan, qFlags, iter)
+	iter, sch, err = rowexec.FinalizeIters(ctx, plan, qFlags, iter)
 	if err != nil {
-		clearAutocommitErr := clearAutocommitTransaction(ctx)
-		if clearAutocommitErr != nil {
-			return nil, nil, nil, errors.Wrap(err, "unable to clear autocommit transaction: "+clearAutocommitErr.Error())
-		}
 		return nil, nil, nil, err
 	}
 
-	if schema == nil {
-		schema = plan.Schema()
+	if sch == nil {
+		sch = plan.Schema(ctx)
 	}
 
-	return schema, iter, qFlags, nil
+	return sch, iter, qFlags, nil
 }
 
 // BoundQueryPlan returns query plan for the given statement with the given bindings applied
-func (e *Engine) BoundQueryPlan(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]sqlparser.Expr) (sql.Node, error) {
+func (e *Engine) BoundQueryPlan(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]sqlparser.Expr) (node sql.Node, err error) {
+	defer clearAutocommitOnError(ctx, &err)
+
 	if parsed == nil {
 		return nil, errors.New("parsed statement must not be nil")
 	}
@@ -530,28 +454,18 @@ func (e *Engine) BoundQueryPlan(ctx *sql.Context, query string, parsed sqlparser
 	binder.SetBindings(bindings)
 
 	// Begin a transaction if necessary (no-op if one is in flight)
-	err := e.beginTransaction(ctx)
+	err = e.beginTransaction(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO: we need to be more principled about when to clear auto commit transactions here
 	bound, qFlags, err := e.bindQuery(ctx, query, parsed, bindings, binder, nil)
 	if err != nil {
-		err2 := clearAutocommitTransaction(ctx)
-		if err2 != nil {
-			return nil, errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
-		}
-
 		return nil, err
 	}
 
 	analyzed, err := e.analyzeNode(ctx, query, bound, qFlags)
 	if err != nil {
-		err2 := clearAutocommitTransaction(ctx)
-		if err2 != nil {
-			return nil, errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
-		}
 		return nil, err
 	}
 
@@ -565,7 +479,7 @@ func (e *Engine) BoundQueryPlan(ctx *sql.Context, query string, parsed sqlparser
 }
 
 func (e *Engine) preparedStatement(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]sqlparser.Expr) (sqlparser.Statement, *planbuilder.Builder, error) {
-	preparedAst, preparedDataFound := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query)
+	preparedAst, preparedDataFound := ctx.Session.GetPreparedQuery(query)
 
 	// This means that we have bindings but no prepared statement cached, which occurs in tests and in the
 	// dolthub/driver package. We prepare the statement from the query string in this case
@@ -577,7 +491,7 @@ func (e *Engine) preparedStatement(ctx *sql.Context, query string, parsed sqlpar
 			return nil, nil, err
 		}
 
-		preparedAst, preparedDataFound = e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query)
+		preparedAst, preparedDataFound = ctx.Session.GetPreparedQuery(query)
 	}
 
 	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.EventScheduler)
@@ -611,13 +525,13 @@ func (e *Engine) analyzeNode(ctx *sql.Context, query string, bound sql.Node, qFl
 		} else if err != nil {
 			return nil, err
 		}
-		e.PreparedDataCache.CacheStmt(ctx.Session.ID(), n.Name, cacheStmt)
+		ctx.Session.PrepareQuery(n.Name, cacheStmt)
 		return bound, nil
 	case *plan.DeallocateQuery:
-		if _, ok := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), n.Name); !ok {
+		if _, ok := ctx.Session.GetPreparedQuery(n.Name); !ok {
 			return nil, sql.ErrUnknownPreparedStatement.New(n.Name)
 		}
-		e.PreparedDataCache.UncacheStmt(ctx.Session.ID(), n.Name)
+		ctx.Session.UnprepareQuery(n.Name)
 		return bound, nil
 	default:
 		return e.Analyzer.Analyze(ctx, bound, nil, qFlags)
@@ -633,10 +547,6 @@ func (e *Engine) bindQuery(ctx *sql.Context, query string, parsed sqlparser.Stat
 	if parsed == nil {
 		bound, _, _, qFlags, err = binder.Parse(query, qFlags, false)
 		if err != nil {
-			clearAutocommitErr := clearAutocommitTransaction(ctx)
-			if clearAutocommitErr != nil {
-				return nil, nil, errors.Wrap(err, "unable to clear autocommit transaction: "+clearAutocommitErr.Error())
-			}
 			return nil, nil, err
 		}
 	} else {
@@ -658,7 +568,7 @@ func (e *Engine) bindQuery(ctx *sql.Context, query string, parsed sqlparser.Stat
 
 // bindExecuteQueryNode returns the
 func (e *Engine) bindExecuteQueryNode(ctx *sql.Context, query string, eq *plan.ExecuteQuery, bindings map[string]sqlparser.Expr, binder *planbuilder.Builder) (sql.Node, error) {
-	prep, ok := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), eq.Name)
+	prep, ok := ctx.Session.GetPreparedQuery(eq.Name)
 	if !ok {
 		return nil, sql.ErrUnknownPreparedStatement.New(eq.Name)
 	}
@@ -698,15 +608,20 @@ func (e *Engine) bindExecuteQueryNode(ctx *sql.Context, query string, eq *plan.E
 
 	bound, _, err := binder.BindOnly(prep, query, nil)
 	if err != nil {
-		clearAutocommitErr := clearAutocommitTransaction(ctx)
-		if clearAutocommitErr != nil {
-			return nil, errors.Wrap(err, "unable to clear autocommit transaction: "+clearAutocommitErr.Error())
-		}
-
 		return nil, err
 	}
 
 	return bound, nil
+}
+
+// clearAutocommitOnError clears an implicitly created autocommit transaction when `err` holds an error.
+func clearAutocommitOnError(ctx *sql.Context, err *error) {
+	if *err == nil {
+		return
+	}
+	if clearErr := clearAutocommitTransaction(ctx); clearErr != nil {
+		*err = errors.Wrap(*err, "unable to clear autocommit transaction: "+clearErr.Error())
+	}
 }
 
 // clearAutocommitTransaction unsets the transaction from the current session if it is an implicitly
@@ -739,7 +654,6 @@ func clearAutocommitTransaction(ctx *sql.Context) error {
 func (e *Engine) CloseSession(connID uint32) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	e.PreparedDataCache.DeleteSessionData(connID)
 }
 
 func (e *Engine) beginTransaction(ctx *sql.Context) error {
@@ -793,10 +707,6 @@ func (e *Engine) readOnlyCheck(node sql.Node) error {
 	return nil
 }
 
-func (e *Engine) EnginePreparedDataCache() *PreparedDataCache {
-	return e.PreparedDataCache
-}
-
 func (e *Engine) EngineAnalyzer() *analyzer.Analyzer {
 	return e.Analyzer
 }
@@ -823,7 +733,9 @@ func (e *Engine) InitializeEventScheduler(ctxGetterFunc func() (*sql.Context, er
 // parameter, but only the body of the event is executed. (The CREATE EVENT statement is passed in to support event
 // bodies that contain multiple statements in a BEGIN/END block.) If any problems are encounterd, the error return
 // value will be populated.
-func (e *Engine) executeEvent(ctx *sql.Context, dbName, createEventStatement, username, address string) error {
+func (e *Engine) executeEvent(ctx *sql.Context, dbName, createEventStatement, username, address string) (err error) {
+	defer clearAutocommitOnError(ctx, &err)
+
 	// the event must be executed against the correct database and with the definer's identity
 	ctx.SetCurrentDatabase(dbName)
 	ctx.Session.SetClient(sql.Client{User: username, Address: address})
@@ -835,7 +747,7 @@ func (e *Engine) executeEvent(ctx *sql.Context, dbName, createEventStatement, us
 	}
 
 	// and pull out the event body/definition
-	createEventNode, err := findCreateEventNode(planTree)
+	createEventNode, err := findCreateEventNode(ctx, planTree)
 	if err != nil {
 		return err
 	}
@@ -844,19 +756,11 @@ func (e *Engine) executeEvent(ctx *sql.Context, dbName, createEventStatement, us
 	// Build an iterator to execute the event body
 	iter, err := e.Analyzer.ExecBuilder.Build(ctx, definitionNode, nil)
 	if err != nil {
-		clearAutocommitErr := clearAutocommitTransaction(ctx)
-		if clearAutocommitErr != nil {
-			return clearAutocommitErr
-		}
 		return err
 	}
 
 	iter, _, err = rowexec.FinalizeIters(ctx, definitionNode, nil, iter)
 	if err != nil {
-		clearAutocommitErr := clearAutocommitTransaction(ctx)
-		if clearAutocommitErr != nil {
-			return clearAutocommitErr
-		}
 		return err
 	}
 
@@ -869,10 +773,10 @@ func (e *Engine) executeEvent(ctx *sql.Context, dbName, createEventStatement, us
 // findCreateEventNode searches |planTree| for the first plan.CreateEvent node and
 // returns it. If no matching node was found, the returned CreateEvent node will be
 // nil and an error will be populated.
-func findCreateEventNode(planTree sql.Node) (*plan.CreateEvent, error) {
+func findCreateEventNode(ctx *sql.Context, planTree sql.Node) (*plan.CreateEvent, error) {
 	// Search through the node to find the first CREATE EVENT node, and then grab its body
 	var targetNode sql.Node
-	transform.InspectWithOpaque(planTree, func(node sql.Node) bool {
+	transform.InspectWithOpaque(ctx, planTree, func(ctx *sql.Context, node sql.Node) bool {
 		if cen, ok := node.(*plan.CreateEvent); ok {
 			targetNode = cen
 			return false

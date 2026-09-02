@@ -56,34 +56,34 @@ func (j JSONRemove) String() string {
 	return fmt.Sprintf("%s(%s)", j.FunctionName(), strings.Join(parts, ","))
 }
 
-func (j JSONRemove) Type() sql.Type {
+func (j JSONRemove) Type(ctx *sql.Context) sql.Type {
 	return types.JSON
 }
 
-func (j JSONRemove) IsNullable() bool {
+func (j JSONRemove) IsNullable(ctx *sql.Context) bool {
 	for _, path := range j.paths {
-		if path.IsNullable() {
+		if path.IsNullable(ctx) {
 			return true
 		}
 	}
-	return j.doc.IsNullable()
+	return j.doc.IsNullable(ctx)
 }
 
 func (j JSONRemove) Children() []sql.Expression {
 	return append([]sql.Expression{j.doc}, j.paths...)
 }
 
-func (j JSONRemove) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (j JSONRemove) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(j.Children()) != len(children) {
 		return nil, fmt.Errorf("json_remove did not receive the correct amount of args")
 	}
-	return NewJSONRemove(children...)
+	return NewJSONRemove(ctx, children...)
 }
 
 var _ sql.FunctionExpression = JSONRemove{}
 
 // NewJSONRemove creates a new JSONRemove function.
-func NewJSONRemove(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONRemove(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 2 {
 		return nil, sql.ErrInvalidArgumentNumber.New("JSON_REMOVE", "2 or more", len(args))
 	}

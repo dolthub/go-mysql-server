@@ -163,7 +163,7 @@ func TestAddColumnToSchema(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			schema, projections, err := addColumnToSchema(tc.schema, tc.newColumn, tc.order)
+			schema, projections, err := addColumnToSchema(sql.NewEmptyContext(), tc.schema, tc.newColumn, tc.order)
 			if err != nil {
 				return
 			}
@@ -172,6 +172,33 @@ func TestAddColumnToSchema(t *testing.T) {
 			assert.Equal(t, tc.projections, projections)
 		})
 	}
+}
+
+// TestResolveGeneratedColumnsForIndexRewrite verifies persisted virtual expressions are bound before a table rewrite.
+func TestResolveGeneratedColumnsForIndexRewrite(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	varchar20 := types.MustCreateStringWithDefaults(sqltypes.VarChar, 20)
+	generated := sql.NewUnresolvedColumnDefaultValue("lower(fruit)")
+	schema := sql.Schema{
+		{Name: "fruit", Type: varchar20, Source: "fruits"},
+		{
+			Name:         "lower_fruit",
+			Type:         varchar20,
+			Source:       "fruits",
+			Virtual:      true,
+			HiddenSystem: true,
+			Generated:    generated,
+		},
+	}
+
+	resolved := resolveGeneratedColumns(ctx, sql.EngineOverrides{}, "mydb", "fruits", schema)
+	require.False(t, schema[1].Generated.Resolved())
+	require.True(t, resolved[1].Generated.Resolved())
+
+	projections := virtualTableProjections(ctx, resolved, "fruits")
+	row, err := ProjectRow(ctx, projections, sql.Row{"Apple"})
+	require.NoError(t, err)
+	require.Equal(t, sql.Row{"Apple", "apple"}, row)
 }
 
 func TestModifyColumnInSchema(t *testing.T) {
@@ -365,7 +392,7 @@ func TestModifyColumnInSchema(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			schema, projections, err := modifyColumnInSchema(tc.schema, tc.colName, tc.newColumn, tc.order)
+			schema, projections, err := modifyColumnInSchema(sql.NewEmptyContext(), tc.schema, tc.colName, tc.newColumn, tc.order)
 			if err != nil {
 				return
 			}

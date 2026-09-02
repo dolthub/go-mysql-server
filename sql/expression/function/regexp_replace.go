@@ -19,8 +19,6 @@ import (
 	"strings"
 	"sync"
 
-	"gopkg.in/src-d/go-errors.v1"
-
 	"github.com/dolthub/go-mysql-server/internal/regex"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -49,7 +47,7 @@ var _ sql.CollationCoercible = (*RegexpReplace)(nil)
 var _ sql.Disposable = (*RegexpReplace)(nil)
 
 // NewRegexpReplace creates a new RegexpReplace expression.
-func NewRegexpReplace(args ...sql.Expression) (sql.Expression, error) {
+func NewRegexpReplace(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	var r *RegexpReplace
 	switch len(args) {
 	case 6:
@@ -102,7 +100,7 @@ func (r *RegexpReplace) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (r *RegexpReplace) Type() sql.Type { return types.LongText }
+func (r *RegexpReplace) Type(ctx *sql.Context) sql.Type { return types.LongText }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (r *RegexpReplace) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
@@ -115,7 +113,7 @@ func (r *RegexpReplace) CollationCoercibility(ctx *sql.Context) (collation sql.C
 }
 
 // IsNullable implements the sql.Expression interface.
-func (r *RegexpReplace) IsNullable() bool {
+func (r *RegexpReplace) IsNullable(ctx *sql.Context) bool {
 	// TODO: this might be too general. We might want to evaluate IsNullable based on if the arguments are nullable
 	// https://dev.mysql.com/doc/refman/8.4/en/regexp.html#function_regexp-replace
 	return true
@@ -141,7 +139,7 @@ func (r *RegexpReplace) Resolved() bool {
 }
 
 // WithChildren implements the sql.Expression interface.
-func (r *RegexpReplace) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (r *RegexpReplace) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	required := 5
 	if r.Flags != nil {
 		required = 6
@@ -151,7 +149,7 @@ func (r *RegexpReplace) WithChildren(children ...sql.Expression) (sql.Expression
 	}
 
 	// Copy over the regex instance, in case it has already been set to avoid leaking it.
-	replace, err := NewRegexpReplace(children...)
+	replace, err := NewRegexpReplace(ctx, children...)
 	if err != nil {
 		if r.re != nil {
 			if err = r.re.Close(); err != nil {
@@ -176,8 +174,8 @@ func (r *RegexpReplace) String() string {
 
 func (r *RegexpReplace) compile(ctx *sql.Context, row sql.Row) {
 	r.compileOnce.Do(func() {
-		r.cacheRegex = canBeCached(r.Pattern, r.Flags)
-		r.cacheVal = r.cacheRegex && canBeCached(r.Text, r.RText, r.Position, r.Occurrence)
+		r.cacheRegex = canBeCached(ctx, r.Pattern, r.Flags)
+		r.cacheVal = r.cacheRegex && canBeCached(ctx, r.Text, r.RText, r.Position, r.Occurrence)
 		if r.cacheRegex {
 			r.re, r.compileErr = compileRegex(ctx, r.Pattern, r.Text, r.Flags, r.FunctionName(), row)
 		}
@@ -220,6 +218,10 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (val interface{}, er
 	if err != nil {
 		return nil, err
 	}
+	text, err = sql.UnwrapAny(ctx, text)
+	if err != nil {
+		return nil, err
+	}
 
 	rText, err := r.RText.Eval(ctx, row)
 	if err != nil {
@@ -229,6 +231,10 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (val interface{}, er
 		return nil, nil
 	}
 	rText, _, err = types.LongText.Convert(ctx, rText)
+	if err != nil {
+		return nil, err
+	}
+	rText, err = sql.UnwrapAny(ctx, rText)
 	if err != nil {
 		return nil, err
 	}
@@ -248,10 +254,8 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (val interface{}, er
 		return nil, sql.ErrInvalidArgumentDetails.New(r.FunctionName(), fmt.Sprintf("%d", pos.(int32)))
 	}
 
-	if len(text.(string)) != 0 && int(pos.(int32)) > len(text.(string)) {
-		return nil, errors.NewKind("Index out of bounds for regular expression search.").New()
-	}
-
+	textLength := len([]rune(text.(string)))
+	positionAfterText := int(pos.(int32)) > textLength
 	occurrence, err := r.Occurrence.Eval(ctx, row)
 	if err != nil {
 		return nil, err
@@ -262,6 +266,9 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (val interface{}, er
 	occurrence, _, err = types.Int32.Convert(ctx, occurrence)
 	if err != nil {
 		return nil, err
+	}
+	if positionAfterText {
+		return text, nil
 	}
 
 	err = r.re.SetMatchString(ctx, text.(string))
@@ -278,7 +285,7 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (val interface{}, er
 }
 
 // Dispose implements the sql.Disposable interface.
-func (r *RegexpReplace) Dispose() {
+func (r *RegexpReplace) Dispose(ctx *sql.Context) {
 	if r.re != nil {
 		_ = r.re.Close()
 	}

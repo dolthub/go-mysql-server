@@ -153,6 +153,7 @@ func (i *dummyIdx) IsVector() bool                        { return false }
 func (i *dummyIdx) Comment() string                       { return "" }
 func (i *dummyIdx) IsGenerated() bool                     { return false }
 func (i *dummyIdx) CanSupportOrderBy(sql.Expression) bool { return false }
+func (i *dummyIdx) CoversColumns([]string) bool           { return false }
 
 func (i *dummyIdx) IndexType() string       { return "BTREE" }
 func (i *dummyIdx) PrefixLengths() []uint16 { return nil }
@@ -160,6 +161,6 @@ func (i *dummyIdx) PrefixLengths() []uint16 { return nil }
 func (i *dummyIdx) NewLookup(*sql.Context, ...sql.Range) (sql.IndexLookup, error) {
 	panic("not implemented")
 }
-func (i *dummyIdx) ColumnExpressionTypes() []sql.ColumnExpressionType {
+func (i *dummyIdx) ColumnExpressionTypes(ctx *sql.Context) []sql.ColumnExpressionType {
 	panic("not implemented")
 }

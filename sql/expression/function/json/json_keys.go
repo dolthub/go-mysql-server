@@ -44,7 +44,7 @@ type JSONKeys struct {
 var _ sql.FunctionExpression = &JSONKeys{}
 
 // NewJSONKeys creates a new JSONKeys function.
-func NewJSONKeys(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONKeys(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) == 1 {
 		return &JSONKeys{args[0], expression.NewLiteral("$", types.Text)}, nil
 	}
@@ -75,13 +75,13 @@ func (j *JSONKeys) String() string {
 }
 
 // Type implements sql.Expression
-func (j *JSONKeys) Type() sql.Type {
+func (j *JSONKeys) Type(ctx *sql.Context) sql.Type {
 	return types.JSON
 }
 
 // IsNullable implements sql.Expression
-func (j *JSONKeys) IsNullable() bool {
-	return j.JSON.IsNullable()
+func (j *JSONKeys) IsNullable(ctx *sql.Context) bool {
+	return j.JSON.IsNullable(ctx)
 }
 
 // Eval implements sql.Expression
@@ -150,6 +150,6 @@ func (j *JSONKeys) Children() []sql.Expression {
 }
 
 // WithChildren implements sql.Expression
-func (j *JSONKeys) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewJSONKeys(children...)
+func (j *JSONKeys) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewJSONKeys(ctx, children...)
 }

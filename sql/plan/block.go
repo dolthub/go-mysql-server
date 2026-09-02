@@ -93,19 +93,19 @@ func (b *Block) String() string {
 }
 
 // DebugString implements the sql.DebugStringer interface.
-func (b *Block) DebugString() string {
+func (b *Block) DebugString(ctx *sql.Context) string {
 	p := sql.NewTreePrinter()
 	_ = p.WriteNode("BLOCK")
 	var children []string
 	for _, s := range b.statements {
-		children = append(children, sql.DebugString(s))
+		children = append(children, sql.DebugString(ctx, s))
 	}
 	_ = p.WriteChildren(children...)
 	return p.String()
 }
 
 // Schema implements the sql.Node interface.
-func (b *Block) Schema() sql.Schema {
+func (b *Block) Schema(ctx *sql.Context) sql.Schema {
 	return b.rowIterSch
 }
 
@@ -119,7 +119,7 @@ func (b *Block) Children() []sql.Node {
 }
 
 // WithChildren implements the sql.Node interface.
-func (b *Block) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (b *Block) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	nb := *b
 	nb.statements = children
 	return &nb, nil
@@ -136,7 +136,7 @@ func (b *Block) WithParamReference(pRef *expression.ProcedureReference) sql.Node
 func (b *Block) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	// The last SELECT used in the block takes priority
 	for i := len(b.statements) - 1; i >= 0; i-- {
-		if NodeRepresentsSelect(b.statements[i]) {
+		if NodeRepresentsSelect(ctx, b.statements[i]) {
 			return sql.GetCoercibility(ctx, b.statements[i])
 		}
 	}

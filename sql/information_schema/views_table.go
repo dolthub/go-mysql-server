@@ -105,7 +105,7 @@ func viewsRowIter(ctx *Context, catalog Catalog) (RowIter, error) {
 
 			isUpdatable := "YES"
 			// TODO: this function call should be done at CREATE VIEW time, not here
-			if !plan.GetIsUpdatableFromCreateView(viewPlan) {
+			if !plan.GetIsUpdatableFromCreateView(ctx, viewPlan) {
 				isUpdatable = "NO"
 			}
 

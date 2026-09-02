@@ -52,6 +52,14 @@ func (v Value) IsNull() bool {
 	return (v.Val == nil && v.WrappedVal == nil) || v.Typ == query.Type_NULL_TYPE
 }
 
+// Unwrap returns the underlying bytes for the value, unwrapping it if the value is wrapped by the BytesWrapper interface.
+func (v Value) Unwrap(ctx *Context) ([]byte, error) {
+	if v.Val != nil {
+		return v.Val, nil
+	}
+	return v.WrappedVal.Unwrap(ctx)
+}
+
 type RowFrame struct {
 	Types []query.Type
 

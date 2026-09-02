@@ -59,17 +59,17 @@ func (j JSONArrayInsert) String() string {
 	return fmt.Sprintf("%s(%s)", j.FunctionName(), strings.Join(parts, ","))
 }
 
-func (j JSONArrayInsert) Type() sql.Type {
+func (j JSONArrayInsert) Type(ctx *sql.Context) sql.Type {
 	return types.JSON
 }
 
-func (j JSONArrayInsert) IsNullable() bool {
+func (j JSONArrayInsert) IsNullable(ctx *sql.Context) bool {
 	for _, arg := range j.pathVals {
-		if arg.IsNullable() {
+		if arg.IsNullable(ctx) {
 			return true
 		}
 	}
-	return j.doc.IsNullable()
+	return j.doc.IsNullable(ctx)
 }
 
 func (j JSONArrayInsert) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -102,17 +102,17 @@ func (j JSONArrayInsert) Children() []sql.Expression {
 	return append([]sql.Expression{j.doc}, j.pathVals...)
 }
 
-func (j JSONArrayInsert) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (j JSONArrayInsert) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(j.Children()) != len(children) {
 		return nil, fmt.Errorf("json_array_insert did not receive the correct amount of args")
 	}
-	return NewJSONArrayInsert(children...)
+	return NewJSONArrayInsert(ctx, children...)
 }
 
 var _ sql.FunctionExpression = JSONArrayInsert{}
 
 // NewJSONArrayInsert creates a new JSONArrayInsert function.
-func NewJSONArrayInsert(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONArrayInsert(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) <= 1 {
 		return nil, sql.ErrInvalidArgumentNumber.New("JSON_ARRAY_INSERT", "more than 1", len(args))
 	} else if (len(args)-1)%2 == 1 {

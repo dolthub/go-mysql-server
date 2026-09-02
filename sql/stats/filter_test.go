@@ -21,6 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/sets"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -602,7 +603,7 @@ func TestPrefixIsNull(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("is null bound: %#v", tt.vals), func(t *testing.T) {
-			cols := sql.NewFastIntSet()
+			cols := sets.NewFastIntSet()
 			cols.AddRange(1, len(tt.typs))
 			colset := sql.NewColSetFromIntSet(cols)
 			fds := sql.NewTablescanFDs(colset, []sql.ColSet{colset}, nil, colset)
@@ -643,7 +644,7 @@ func TestPrefixIsNotNull(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		cols := sql.NewFastIntSet()
+		cols := sets.NewFastIntSet()
 		cols.AddRange(1, len(tt.typs))
 		colset := sql.NewColSetFromIntSet(cols)
 		fds := sql.NewTablescanFDs(colset, []sql.ColSet{colset}, nil, colset)
@@ -704,7 +705,7 @@ func TestPrefixGt(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		cols := sql.NewFastIntSet()
+		cols := sets.NewFastIntSet()
 		cols.AddRange(1, len(tt.typs))
 		colset := sql.NewColSetFromIntSet(cols)
 		fds := sql.NewTablescanFDs(colset, []sql.ColSet{colset}, nil, colset)
@@ -764,7 +765,7 @@ func TestPrefixGte(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		cols := sql.NewFastIntSet()
+		cols := sets.NewFastIntSet()
 		cols.AddRange(1, len(tt.typs))
 		colset := sql.NewColSetFromIntSet(cols)
 		fds := sql.NewTablescanFDs(colset, []sql.ColSet{colset}, nil, colset)
@@ -838,7 +839,7 @@ func TestPrefixLt(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		cols := sql.NewFastIntSet()
+		cols := sets.NewFastIntSet()
 		cols.AddRange(1, len(tt.typs))
 		colset := sql.NewColSetFromIntSet(cols)
 		fds := sql.NewTablescanFDs(colset, []sql.ColSet{colset}, nil, colset)
@@ -912,7 +913,7 @@ func TestPrefixLte(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		cols := sql.NewFastIntSet()
+		cols := sets.NewFastIntSet()
 		cols.AddRange(1, len(tt.typs))
 		colset := sql.NewColSetFromIntSet(cols)
 		fds := sql.NewTablescanFDs(colset, []sql.ColSet{colset}, nil, colset)

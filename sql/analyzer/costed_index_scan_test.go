@@ -26,6 +26,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/sets"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -184,17 +185,243 @@ Or
      ├─ xy.x:0!null
      └─ 2 (bigint)`,
 		},
+		{
+			name: "tuple IN decomposed to OR-of-ANDs",
+			in: expression.NewInTuple(
+				expression.Tuple{gf(0, "xy", "x"), gf(1, "xy", "y")},
+				expression.Tuple{
+					expression.Tuple{lit(1), lit(2)},
+					expression.Tuple{lit(3), lit(4)},
+				},
+			),
+			exp: `
+(1: or
+  (2: and
+    (3: xy.x = 1)
+    (4: xy.y = 2))
+  (5: and
+    (6: xy.x = 3)
+    (7: xy.y = 4)))`,
+		},
+		{
+			name: "tuple IN inside an AND decomposed to OR-of-ANDs",
+			in: and(
+				expression.NewInTuple(
+					expression.Tuple{gf(0, "xy", "x"), gf(1, "xy", "y")},
+					expression.Tuple{
+						expression.Tuple{lit(1), lit(2)},
+						expression.Tuple{lit(3), lit(4)},
+					},
+				),
+				eq(gf(0, "xy", "z"), lit(5)),
+			),
+			exp: `
+(1: and
+  (9: xy.z = 5)
+  (2: or
+    (3: and
+      (4: xy.x = 1)
+      (5: xy.y = 2))
+    (6: and
+      (7: xy.x = 3)
+      (8: xy.y = 4))))`,
+		},
+		{
+			name: "tuple IN inside an OR decomposed to OR-of-ANDs",
+			in: or(
+				expression.NewInTuple(
+					expression.Tuple{gf(0, "xy", "x"), gf(1, "xy", "y")},
+					expression.Tuple{
+						expression.Tuple{lit(1), lit(2)},
+						expression.Tuple{lit(3), lit(4)},
+					},
+				),
+				eq(gf(0, "xy", "z"), lit(5)),
+			),
+			exp: `
+(1: or
+  (3: and
+    (4: xy.x = 1)
+    (5: xy.y = 2))
+  (6: and
+    (7: xy.x = 3)
+    (8: xy.y = 4))
+  (9: xy.z = 5))`,
+		},
+		{
+			name: "single-element tuple IN decomposed to AND",
+			in: expression.NewInTuple(
+				expression.Tuple{gf(0, "xy", "x"), gf(1, "xy", "y")},
+				expression.Tuple{
+					expression.Tuple{lit(5), lit(6)},
+				},
+			),
+			exp: `
+(1: and
+  (2: xy.x = 5)
+  (3: xy.y = 6))`,
+		},
+		{
+			name: "tuple of single column IN decomposed to AND",
+			in: expression.NewInTuple(
+				expression.Tuple{gf(0, "xy", "x")},
+				expression.Tuple{
+					expression.Tuple{lit(5)},
+				},
+			),
+			exp: `
+(1: xy.x = 5)`,
+		},
+		{
+			name: "IN empty tuple decomposed to false",
+			in: expression.NewInTuple(
+				expression.Tuple{gf(0, "xy", "x"), gf(1, "xy", "y")},
+				expression.Tuple{},
+			),
+			exp:      "",
+			leftover: "false (tinyint(1))",
+		},
+		{
+			name: "tuple equals decomposes to ANDs",
+			in: expression.NewEquals(
+				expression.Tuple{
+					gf(0, "xy", "x"),
+					gf(1, "xy", "y")},
+				expression.Tuple{
+					lit(5),
+					lit(6),
+				},
+			),
+			exp: `
+(1: and
+  (2: xy.x = 5)
+  (3: xy.y = 6))`,
+			leftover: "",
+		},
+		{
+			name: "tuple null safe equals decomposes to ANDs",
+			in: expression.NewNullSafeEquals(
+				expression.Tuple{
+					gf(0, "xy", "x"),
+					gf(1, "xy", "y")},
+				expression.Tuple{
+					lit(5),
+					lit(6),
+				},
+			),
+			exp: `
+(1: and
+  (2: xy.x <=> 5)
+  (3: xy.y <=> 6))`,
+			leftover: "",
+		},
+		{
+			name: "tuple less than decomposes to ORs of ANDs",
+			in: expression.NewLessThan(
+				expression.Tuple{
+					gf(0, "xyz", "x"),
+					gf(1, "xyz", "y"),
+					gf(2, "xyz", "z")},
+				expression.Tuple{
+					lit(5),
+					lit(6),
+					lit(7),
+				},
+			),
+			exp: `
+(1: or
+  (3: and
+    (5: xy.x = 5)
+    (6: xy.y = 6)
+    (7: xy.z < 7))
+  (8: and
+    (9: xy.x = 5)
+    (10: xy.y < 6))
+  (11: xy.x < 5))`,
+		},
+		{
+			name: "tuple less than equals decomposes to ORs of ANDs",
+			in: expression.NewLessThanOrEqual(
+				expression.Tuple{
+					gf(0, "xyz", "x"),
+					gf(1, "xyz", "y"),
+					gf(2, "xyz", "z")},
+				expression.Tuple{
+					lit(5),
+					lit(6),
+					lit(7),
+				},
+			),
+			exp: `
+(1: or
+  (3: and
+    (5: xy.x = 5)
+    (6: xy.y = 6)
+    (7: xy.z <= 7))
+  (8: and
+    (9: xy.x = 5)
+    (10: xy.y < 6))
+  (11: xy.x < 5))`,
+		},
+		{
+			name: "tuple greater than decomposes to ORs of ANDs",
+			in: expression.NewGreaterThan(
+				expression.Tuple{
+					gf(0, "xyz", "x"),
+					gf(1, "xyz", "y"),
+					gf(2, "xyz", "z")},
+				expression.Tuple{
+					lit(5),
+					lit(6),
+					lit(7),
+				},
+			),
+			exp: `
+(1: or
+  (3: and
+    (5: xy.x = 5)
+    (6: xy.y = 6)
+    (7: xy.z > 7))
+  (8: and
+    (9: xy.x = 5)
+    (10: xy.y > 6))
+  (11: xy.x > 5))`,
+		},
+		{
+			name: "tuple greater than equals decomposes to ORs of ANDs",
+			in: expression.NewGreaterThanOrEqual(
+				expression.Tuple{
+					gf(0, "xyz", "x"),
+					gf(1, "xyz", "y"),
+					gf(2, "xyz", "z")},
+				expression.Tuple{
+					lit(5),
+					lit(6),
+					lit(7),
+				},
+			),
+			exp: `
+(1: or
+  (3: and
+    (5: xy.x = 5)
+    (6: xy.y = 6)
+    (7: xy.z >= 7))
+  (8: and
+    (9: xy.x = 5)
+    (10: xy.y > 6))
+  (11: xy.x > 5))`,
+		},
 	}
 
 	ctx := sql.NewEmptyContext()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := newIndexCoster(ctx, "xyz")
-			root, leftover, _ := c.buildRoot(tt.in, NewDefaultLogicTreeWalker())
+			c := newIndexCoster("xy")
+			root, leftover, _ := c.buildRoot(ctx, tt.in, NewDefaultLogicTreeWalker())
 			costTree := formatIndexFilter(root)
-			require.Equal(t, strings.TrimSpace(tt.exp), strings.TrimSpace(costTree), costTree)
+			require.Equal(t, strings.TrimSpace(tt.exp), strings.TrimSpace(costTree))
 			if leftover != nil {
-				leftoverCmp := sql.DebugString(leftover)
+				leftoverCmp := sql.DebugString(ctx, leftover)
 				require.Equal(t, strings.TrimSpace(tt.leftover), strings.TrimSpace(leftoverCmp), leftoverCmp)
 			} else {
 				require.Equal(t, "", tt.leftover)
@@ -550,14 +777,14 @@ func TestRangeBuilder(t *testing.T) {
 
 	var sch = make(sql.Schema, 3)
 	for i, e := range []*expression.GetField{x, y, z} {
-		sch[i] = transform.ExpressionToColumn(e, testTable)
+		sch[i] = transform.ExpressionToColumn(ctx, e, testTable)
 	}
 
 	for _, tt := range tests {
-		t.Run(fmt.Sprintf("Expr:  %s\nRange: %s", tt.filter.String(), tt.exp.DebugString()), func(t *testing.T) {
+		t.Run(fmt.Sprintf("Expr:  %s\nRange: %s", tt.filter.String(), tt.exp.DebugString(ctx)), func(t *testing.T) {
 
-			c := newIndexCoster(ctx, testTable)
-			root, _, _ := c.buildRoot(tt.filter, NewDefaultLogicTreeWalker())
+			c := newIndexCoster(testTable)
+			root, _, _ := c.buildRoot(ctx, tt.filter, NewDefaultLogicTreeWalker())
 
 			var idx sql.Index
 			switch len(tt.exp[0]) {
@@ -569,10 +796,10 @@ func TestRangeBuilder(t *testing.T) {
 				idx = idx_1
 			}
 
-			stat, err := newUniformDistStatistic("mydb", "", testTable, sch, idx, 10, 10)
+			stat, err := newUniformDistStatistic(ctx, "mydb", "", testTable, sch, idx, 10, 10)
 			require.NoError(t, err)
 
-			err = c.cost(root, stat, idx)
+			err = c.cost(ctx, root, stat, idx, false)
 			require.NoError(t, err)
 
 			include := c.bestFilters
@@ -581,25 +808,25 @@ func TestRangeBuilder(t *testing.T) {
 				require.True(t, include.Contains(1))
 			}
 
-			b := newIndexScanRangeBuilder(ctx, idx, include, sql.FastIntSet{}, c.idToExpr)
+			b := newIndexScanRangeBuilder(ctx, idx, include, sets.FastIntSet{}, c.idToExpr)
 			cmpRanges, err := b.buildRangeCollection(root)
 			require.NoError(t, err)
 			if tt.cnt == 1 {
 				require.Equal(t, 0, len(b.leftover))
 			}
-			cmpRanges, err = sql.SortRanges(cmpRanges...)
+			cmpRanges, err = sql.SortRanges(ctx, cmpRanges...)
 			require.NoError(t, err)
 
-			expRanges, err := sql.RemoveOverlappingRanges(tt.exp...)
+			expRanges, err := sql.RemoveOverlappingRanges(ctx, tt.exp...)
 			require.NoError(t, err)
-			expRanges, err = sql.SortRanges(expRanges...)
+			expRanges, err = sql.SortRanges(ctx, expRanges...)
 			require.NoError(t, err)
 
-			ok, err := expRanges.Equals(cmpRanges)
+			ok, err := expRanges.Equals(ctx, cmpRanges)
 			require.NoError(t, err)
 			assert.True(t, ok)
 			if !ok {
-				log.Printf("expected: %s\nfound: %s\n", expRanges.DebugString(), cmpRanges.DebugString())
+				log.Printf("expected: %s\nfound: %s\n", expRanges.DebugString(ctx), cmpRanges.DebugString(ctx))
 			}
 		})
 	}
@@ -612,7 +839,7 @@ func TestRangeBuilderInclude(t *testing.T) {
 	tests := []struct {
 		name    string
 		in      sql.Expression
-		include sql.FastIntSet
+		include sets.FastIntSet
 		exp     sql.MySQLRangeCollection
 	}{
 		{
@@ -624,7 +851,7 @@ func TestRangeBuilderInclude(t *testing.T) {
 				),
 				gt2(y, 0),
 			),
-			include: sql.NewFastIntSet(3, 5),
+			include: sets.NewFastIntSet(3, 5),
 			exp: sql.MySQLRangeCollection{
 				r(req(1), rgt(0)),
 			},
@@ -642,7 +869,7 @@ func TestRangeBuilderInclude(t *testing.T) {
 				),
 				gt2(y, 0),
 			),
-			include: sql.NewFastIntSet(2),
+			include: sets.NewFastIntSet(2),
 			exp: sql.MySQLRangeCollection{
 				r(rlt(1), rlt(1)),
 				r(rgt(5), rgt(5)),
@@ -665,25 +892,25 @@ func TestRangeBuilderInclude(t *testing.T) {
 			// t.Skip("todo add tests and implement")
 
 			// TODO make index
-			c := newIndexCoster(ctx, "xyz")
-			root, _, _ := c.buildRoot(tt.in, NewDefaultLogicTreeWalker())
-			b := newIndexScanRangeBuilder(ctx, dummy1, tt.include, sql.FastIntSet{}, c.idToExpr)
+			c := newIndexCoster("xyz")
+			root, _, _ := c.buildRoot(ctx, tt.in, NewDefaultLogicTreeWalker())
+			b := newIndexScanRangeBuilder(ctx, dummy1, tt.include, sets.FastIntSet{}, c.idToExpr)
 			cmpRanges, err := b.buildRangeCollection(root)
 			require.NoError(t, err)
-			cmpRanges, err = sql.SortRanges(cmpRanges...)
+			cmpRanges, err = sql.SortRanges(ctx, cmpRanges...)
 			require.NoError(t, err)
 
-			expRanges, err := sql.RemoveOverlappingRanges(tt.exp...)
+			expRanges, err := sql.RemoveOverlappingRanges(ctx, tt.exp...)
 			require.NoError(t, err)
-			expRanges, err = sql.SortRanges(expRanges...)
+			expRanges, err = sql.SortRanges(ctx, expRanges...)
 			require.NoError(t, err)
 
 			// TODO how to compare ranges, strings?
-			ok, err := expRanges.Equals(cmpRanges)
+			ok, err := expRanges.Equals(ctx, cmpRanges)
 			require.NoError(t, err)
 			assert.True(t, ok)
 			if !ok {
-				log.Printf("expected: %s\nfound: %s\n", expRanges.DebugString(), cmpRanges.DebugString())
+				log.Printf("expected: %s\nfound: %s\n", expRanges.DebugString(ctx), cmpRanges.DebugString(ctx))
 			}
 		})
 	}
@@ -845,6 +1072,7 @@ func and2(expressions ...sql.Expression) sql.Expression {
 func TestIndexSearchable(t *testing.T) {
 	// we want to run costed index scan rule with the indexSearchableTable as input
 	input := plan.NewFilter(
+		sql.NewEmptyContext(),
 		expression.NewEquals(
 			expression.NewGetFieldWithTable(0, 0, types.Int64, "mydb", "xy", "x", false),
 			expression.NewLiteral(1, types.Int64),
@@ -883,8 +1111,8 @@ func (i *indexSearchableTable) String() string {
 	return i.underlying.String()
 }
 
-func (i *indexSearchableTable) Schema() sql.Schema {
-	return i.underlying.Schema()
+func (i *indexSearchableTable) Schema(ctx *sql.Context) sql.Schema {
+	return i.underlying.Schema(ctx)
 }
 
 func (i *indexSearchableTable) Collation() sql.CollationID {
@@ -921,7 +1149,7 @@ func (i *indexSearchableTable) LookupForExpressions(ctx *sql.Context, exprs ...s
 	if eq, ok := exprs[0].(*expression.Equals); ok {
 		if gf, ok := eq.Left().(*expression.GetField); ok && strings.EqualFold(gf.Name(), "x") {
 			if lit, ok := eq.Right().(*expression.Literal); ok {
-				ranges := sql.MySQLRangeCollection{{sql.ClosedRangeColumnExpr(lit.Value(), lit.Value(), lit.Type())}}
+				ranges := sql.MySQLRangeCollection{{sql.ClosedRangeColumnExpr(lit.Value(), lit.Value(), lit.Type(ctx))}}
 				return sql.IndexLookup{Index: xIdx, Ranges: ranges}, nil, nil, true, nil
 			}
 		}
@@ -944,3 +1172,78 @@ func (i *indexSearchableTable) LookupPartitions(context *sql.Context, lookup sql
 	// TODO implement me
 	panic("implement me")
 }
+
+// TestMax1RowRowIterExprs checks that a strict single-row index lookup sets the max1Row query flag, unless the
+// plan contains an expression that returns a RowIter (e.g. a set-returning function), which can multiply the
+// number of output rows.
+func TestMax1RowRowIterExprs(t *testing.T) {
+	buildPlan := func(proj sql.Expression) sql.Node {
+		return plan.NewProject(
+			sql.NewEmptyContext(),
+			[]sql.Expression{proj},
+			plan.NewFilter(
+				sql.NewEmptyContext(),
+				expression.NewEquals(
+					expression.NewGetFieldWithTable(0, 0, types.Int64, "mydb", "xy", "x", false),
+					expression.NewLiteral(1, types.Int64),
+				),
+				plan.NewResolvedTable(&max1RowIndexSearchableTable{&indexSearchableTable{underlying: plan.NewDualSqlTable()}}, nil, nil),
+			),
+		)
+	}
+
+	t.Run("scalar projection sets max1Row", func(t *testing.T) {
+		qFlags := &sql.QueryFlags{}
+		input := buildPlan(expression.NewGetFieldWithTable(0, 0, types.Int64, "mydb", "xy", "x", false))
+		_, same, err := costedIndexScans(nil, nil, input, qFlags)
+		require.NoError(t, err)
+		require.False(t, bool(same))
+		require.True(t, qFlags.IsSet(sql.QFlagMax1Row))
+	})
+
+	t.Run("RowIter projection does not set max1Row", func(t *testing.T) {
+		qFlags := &sql.QueryFlags{}
+		input := buildPlan(&testRowIterExpr{})
+		_, same, err := costedIndexScans(nil, nil, input, qFlags)
+		require.NoError(t, err)
+		require.False(t, bool(same))
+		require.False(t, qFlags.IsSet(sql.QFlagMax1Row))
+	})
+}
+
+// max1RowIndexSearchableTable is an indexSearchableTable whose lookups report a strict single-row guarantee.
+type max1RowIndexSearchableTable struct {
+	*indexSearchableTable
+}
+
+func (i *max1RowIndexSearchableTable) LookupForExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.IndexLookup, *sql.FuncDepSet, sql.Expression, bool, error) {
+	lookup, _, _, ok, err := i.indexSearchableTable.LookupForExpressions(ctx, exprs...)
+	if !ok || err != nil {
+		return lookup, nil, nil, ok, err
+	}
+	return lookup, sql.NewMax1RowFDs(sql.NewColSet(1), sql.NewColSet(1)), nil, true, nil
+}
+
+// testRowIterExpr is an expression that returns a RowIter rather than a scalar, like a set-returning function.
+type testRowIterExpr struct{}
+
+var _ sql.RowIterExpression = (*testRowIterExpr)(nil)
+
+func (t *testRowIterExpr) Resolved() bool               { return true }
+func (t *testRowIterExpr) String() string               { return "test_row_iter()" }
+func (t *testRowIterExpr) Type(*sql.Context) sql.Type   { return types.Int64 }
+func (t *testRowIterExpr) IsNullable(*sql.Context) bool { return false }
+func (t *testRowIterExpr) Eval(*sql.Context, sql.Row) (interface{}, error) {
+	return nil, fmt.Errorf("test_row_iter must be evaluated as a RowIter")
+}
+func (t *testRowIterExpr) Children() []sql.Expression { return nil }
+func (t *testRowIterExpr) WithChildren(_ *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 0)
+	}
+	return t, nil
+}
+func (t *testRowIterExpr) EvalRowIter(ctx *sql.Context, r sql.Row) (sql.RowIter, error) {
+	return sql.RowsToRowIter(sql.Row{int64(1)}, sql.Row{int64(2)}), nil
+}
+func (t *testRowIterExpr) ReturnsRowIter() bool { return true }

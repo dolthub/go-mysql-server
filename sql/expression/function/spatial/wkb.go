@@ -32,7 +32,7 @@ var _ sql.FunctionExpression = (*AsWKB)(nil)
 var _ sql.CollationCoercible = (*AsWKB)(nil)
 
 // NewAsWKB creates a new point expression.
-func NewAsWKB(e sql.Expression) sql.Expression {
+func NewAsWKB(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &AsWKB{expression.UnaryExpressionStub{Child: e}}
 }
 
@@ -47,12 +47,12 @@ func (a *AsWKB) Description() string {
 }
 
 // IsNullable implements the sql.Expression interface.
-func (a *AsWKB) IsNullable() bool {
-	return a.Child.IsNullable()
+func (a *AsWKB) IsNullable(ctx *sql.Context) bool {
+	return a.Child.IsNullable(ctx)
 }
 
 // Type implements the sql.Expression interface.
-func (a *AsWKB) Type() sql.Type {
+func (a *AsWKB) Type(ctx *sql.Context) sql.Type {
 	return types.LongBlob
 }
 
@@ -66,11 +66,11 @@ func (a *AsWKB) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (a *AsWKB) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (a *AsWKB) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(a, len(children), 1)
 	}
-	return NewAsWKB(children[0]), nil
+	return NewAsWKB(ctx, children[0]), nil
 }
 
 // Eval implements the sql.Expression interface.
@@ -82,6 +82,11 @@ func (a *AsWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	if val == nil {
 		return nil, nil
+	}
+
+	val, err = sql.UnwrapAny(ctx, val)
+	if err != nil {
+		return nil, err
 	}
 
 	switch v := val.(type) {
@@ -104,7 +109,7 @@ var _ sql.FunctionExpression = (*GeomFromWKB)(nil)
 var _ sql.CollationCoercible = (*GeomFromWKB)(nil)
 
 // NewGeomFromWKB creates a new geometry expression.
-func NewGeomFromWKB(args ...sql.Expression) (sql.Expression, error) {
+func NewGeomFromWKB(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 1 || len(args) > 3 {
 		return nil, sql.ErrInvalidArgumentNumber.New("ST_GEOMFROMWKB", "1, 2, or 3", len(args))
 	}
@@ -122,7 +127,7 @@ func (g *GeomFromWKB) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (g *GeomFromWKB) Type() sql.Type {
+func (g *GeomFromWKB) Type(ctx *sql.Context) sql.Type {
 	return types.PointType{} // TODO: replace with generic geometry type
 }
 
@@ -140,21 +145,21 @@ func (g *GeomFromWKB) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (g *GeomFromWKB) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewGeomFromWKB(children...)
+func (g *GeomFromWKB) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewGeomFromWKB(ctx, children...)
 }
 
 // ParseAxisOrder takes in a key, value string and determines the order of the xy coords
-func ParseAxisOrder(s string) (bool, error) {
+func ParseAxisOrder(s string) (res bool, ok bool) {
 	s = strings.ToLower(s)
 	s = strings.TrimSpace(s)
 	switch s {
 	case "axis-order=long-lat":
-		return true, nil
+		return true, true
 	case "axis-order=lat-long", "axis-order=srid-defined":
-		return false, nil
+		return false, true
 	default:
-		return false, sql.ErrInvalidArgument.New()
+		return false, false
 	}
 }
 
@@ -226,7 +231,7 @@ func EvalGeomFromWKB(ctx *sql.Context, row sql.Row, exprs []sql.Expression, expe
 		return nil, err
 	}
 
-	order := false
+	order := srid == types.GeoSpatialSRID
 	if len(exprs) == 3 {
 		o, err := exprs[2].Eval(ctx, row)
 		if err != nil {
@@ -235,9 +240,20 @@ func EvalGeomFromWKB(ctx *sql.Context, row sql.Row, exprs []sql.Expression, expe
 		if o == nil {
 			return nil, nil
 		}
-		order, err = ParseAxisOrder(o.(string))
-		if err != nil {
-			return nil, sql.ErrInvalidArgument.New()
+		switch str := o.(type) {
+		case string:
+			// this only applies to types.GeoSpatialSRID
+			swap, ok := ParseAxisOrder(str)
+			if !ok {
+				return nil, sql.ErrInvalidKeyPair.New(str, "st_geomfromwkb")
+			}
+			if srid == types.GeoSpatialSRID && swap {
+				order = !order
+			}
+		case nil:
+			return nil, nil
+		default:
+			return nil, sql.ErrInvalidKeyPair.New(o, "st_geomfromwkb")
 		}
 	}
 	if order {
@@ -265,7 +281,7 @@ var _ sql.FunctionExpression = (*PointFromWKB)(nil)
 var _ sql.CollationCoercible = (*PointFromWKB)(nil)
 
 // NewPointFromWKB creates a new point expression.
-func NewPointFromWKB(args ...sql.Expression) (sql.Expression, error) {
+func NewPointFromWKB(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 1 || len(args) > 3 {
 		return nil, sql.ErrInvalidArgumentNumber.New("ST_POINTFROMWKB", "1, 2, or 3", len(args))
 	}
@@ -283,7 +299,7 @@ func (p *PointFromWKB) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (p *PointFromWKB) Type() sql.Type {
+func (p *PointFromWKB) Type(ctx *sql.Context) sql.Type {
 	return types.PointType{}
 }
 
@@ -301,8 +317,8 @@ func (p *PointFromWKB) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (p *PointFromWKB) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewPointFromWKB(children...)
+func (p *PointFromWKB) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewPointFromWKB(ctx, children...)
 }
 
 // Eval implements the sql.Expression interface.
@@ -323,7 +339,7 @@ var _ sql.FunctionExpression = (*LineFromWKB)(nil)
 var _ sql.CollationCoercible = (*LineFromWKB)(nil)
 
 // NewLineFromWKB creates a new point expression.
-func NewLineFromWKB(args ...sql.Expression) (sql.Expression, error) {
+func NewLineFromWKB(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 1 || len(args) > 3 {
 		return nil, sql.ErrInvalidArgumentNumber.New("ST_LINEFROMWKB", "1 or 2", len(args))
 	}
@@ -341,7 +357,7 @@ func (l *LineFromWKB) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (l *LineFromWKB) Type() sql.Type {
+func (l *LineFromWKB) Type(ctx *sql.Context) sql.Type {
 	return types.LineStringType{}
 }
 
@@ -359,8 +375,8 @@ func (l *LineFromWKB) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (l *LineFromWKB) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewLineFromWKB(children...)
+func (l *LineFromWKB) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewLineFromWKB(ctx, children...)
 }
 
 // Eval implements the sql.Expression interface.
@@ -381,7 +397,7 @@ var _ sql.FunctionExpression = (*PolyFromWKB)(nil)
 var _ sql.CollationCoercible = (*PolyFromWKB)(nil)
 
 // NewPolyFromWKB creates a new point expression.
-func NewPolyFromWKB(args ...sql.Expression) (sql.Expression, error) {
+func NewPolyFromWKB(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 1 || len(args) > 3 {
 		return nil, sql.ErrInvalidArgumentNumber.New("ST_POLYFROMWKB", "1, 2, or 3", len(args))
 	}
@@ -399,7 +415,7 @@ func (p *PolyFromWKB) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (p *PolyFromWKB) Type() sql.Type {
+func (p *PolyFromWKB) Type(ctx *sql.Context) sql.Type {
 	return types.PolygonType{}
 }
 
@@ -417,8 +433,8 @@ func (p *PolyFromWKB) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (p *PolyFromWKB) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewPolyFromWKB(children...)
+func (p *PolyFromWKB) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewPolyFromWKB(ctx, children...)
 }
 
 // Eval implements the sql.Expression interface.
@@ -439,7 +455,7 @@ var _ sql.FunctionExpression = (*MPointFromWKB)(nil)
 var _ sql.CollationCoercible = (*MPointFromWKB)(nil)
 
 // NewMPointFromWKB creates a new point expression.
-func NewMPointFromWKB(args ...sql.Expression) (sql.Expression, error) {
+func NewMPointFromWKB(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 1 || len(args) > 3 {
 		return nil, sql.ErrInvalidArgumentNumber.New("ST_MPOINTFROMWKB", "1 or 2", len(args))
 	}
@@ -457,7 +473,7 @@ func (p *MPointFromWKB) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (p *MPointFromWKB) Type() sql.Type {
+func (p *MPointFromWKB) Type(ctx *sql.Context) sql.Type {
 	return types.MultiPointType{}
 }
 
@@ -475,8 +491,8 @@ func (p *MPointFromWKB) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (p *MPointFromWKB) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewMPointFromWKB(children...)
+func (p *MPointFromWKB) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewMPointFromWKB(ctx, children...)
 }
 
 // Eval implements the sql.Expression interface.
@@ -497,7 +513,7 @@ var _ sql.FunctionExpression = (*MLineFromWKB)(nil)
 var _ sql.CollationCoercible = (*MLineFromWKB)(nil)
 
 // NewMLineFromWKB creates a new point expression.
-func NewMLineFromWKB(args ...sql.Expression) (sql.Expression, error) {
+func NewMLineFromWKB(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 1 || len(args) > 3 {
 		return nil, sql.ErrInvalidArgumentNumber.New("ST_MLINEFROMWKB", "1, 2, or 3", len(args))
 	}
@@ -515,7 +531,7 @@ func (l *MLineFromWKB) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (l *MLineFromWKB) Type() sql.Type {
+func (l *MLineFromWKB) Type(ctx *sql.Context) sql.Type {
 	return types.PolygonType{}
 }
 
@@ -533,8 +549,8 @@ func (l *MLineFromWKB) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (l *MLineFromWKB) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewMLineFromWKB(children...)
+func (l *MLineFromWKB) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewMLineFromWKB(ctx, children...)
 }
 
 // Eval implements the sql.Expression interface.
@@ -555,7 +571,7 @@ var _ sql.FunctionExpression = (*MPolyFromWKB)(nil)
 var _ sql.CollationCoercible = (*MPolyFromWKB)(nil)
 
 // NewMPolyFromWKB creates a new multipolygon expression.
-func NewMPolyFromWKB(args ...sql.Expression) (sql.Expression, error) {
+func NewMPolyFromWKB(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 1 || len(args) > 3 {
 		return nil, sql.ErrInvalidArgumentNumber.New("ST_MPOLYFROMWKB", "1, 2, or 3", len(args))
 	}
@@ -573,7 +589,7 @@ func (p *MPolyFromWKB) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (p *MPolyFromWKB) Type() sql.Type {
+func (p *MPolyFromWKB) Type(ctx *sql.Context) sql.Type {
 	return types.MultiPolygonType{}
 }
 
@@ -591,8 +607,8 @@ func (p *MPolyFromWKB) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (p *MPolyFromWKB) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewMPolyFromWKB(children...)
+func (p *MPolyFromWKB) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewMPolyFromWKB(ctx, children...)
 }
 
 // Eval implements the sql.Expression interface.
@@ -613,7 +629,7 @@ var _ sql.FunctionExpression = (*GeomCollFromWKB)(nil)
 var _ sql.CollationCoercible = (*GeomCollFromWKB)(nil)
 
 // NewGeomCollFromWKB creates a new geometrycollection expression.
-func NewGeomCollFromWKB(args ...sql.Expression) (sql.Expression, error) {
+func NewGeomCollFromWKB(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 1 || len(args) > 3 {
 		return nil, sql.ErrInvalidArgumentNumber.New("ST_GEOMCOLLFROMWKB", "1, 2, or 3", len(args))
 	}
@@ -631,7 +647,7 @@ func (g *GeomCollFromWKB) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (g *GeomCollFromWKB) Type() sql.Type {
+func (g *GeomCollFromWKB) Type(ctx *sql.Context) sql.Type {
 	return types.GeomCollType{}
 }
 
@@ -649,8 +665,8 @@ func (g *GeomCollFromWKB) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (g *GeomCollFromWKB) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewGeomCollFromWKB(children...)
+func (g *GeomCollFromWKB) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewGeomCollFromWKB(ctx, children...)
 }
 
 // Eval implements the sql.Expression interface.

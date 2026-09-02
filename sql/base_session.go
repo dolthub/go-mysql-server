@@ -21,6 +21,7 @@ import (
 	"sync/atomic"
 
 	"github.com/dolthub/vitess/go/mysql"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/sirupsen/logrus"
 )
 
@@ -35,6 +36,9 @@ type BaseSession struct {
 	storedProcParams map[string]*StoredProcParam
 	systemVars       map[string]SystemVarValue
 	statusVars       map[string]StatusVarValue
+	localSysVars     map[string]SystemVarValue
+	preparedQueries  map[string]sqlparser.Statement
+	cachedQueries    map[string]sqlparser.Statement // TODO: limit size
 	lastQueryInfo    *LastQueryInfo
 	idxReg           *IndexRegistry
 	viewReg          *ViewRegistry
@@ -102,16 +106,23 @@ func (s *BaseSession) SetClient(c Client) {
 func (s *BaseSession) GetAllSessionVariables() map[string]interface{} {
 	m := make(map[string]interface{})
 
-	for k, v := range s.systemVars {
+	addVar := func(k string, v SystemVarValue) {
 		if sysType, ok := v.Var.GetType().(SetType); ok {
 			if sv, ok := v.Val.(uint64); ok {
 				if svStr, err := sysType.BitsToString(sv); err == nil {
 					m[k] = svStr
 				}
-				continue
+				return
 			}
 		}
 		m[k] = v.Val
+	}
+	for k, v := range s.systemVars {
+		addVar(k, v)
+	}
+	// Values set with transaction-local scope override the session values
+	for k, v := range s.localSysVars {
+		addVar(k, v)
 	}
 	return m
 }
@@ -206,10 +217,14 @@ func (s *BaseSession) SetUserVariable(ctx *Context, varName string, value interf
 	return s.userVars.SetUserVariable(ctx, varName, value, typ)
 }
 
-// GetSessionVariable implements the Session interface.
+// GetSessionVariable implements the Session interface
 func (s *BaseSession) GetSessionVariable(ctx *Context, sysVarName string) (interface{}, error) {
 	sysVarName = strings.ToLower(sysVarName)
-	sysVar, ok := s.systemVars[sysVarName]
+	// If the variable has been set with transaction-local scope, the transaction-local value is returned.
+	sysVar, ok := s.localSysVars[sysVarName]
+	if !ok {
+		sysVar, ok = s.systemVars[sysVarName]
+	}
 	if !ok {
 		return nil, ErrUnknownSystemVariable.New(sysVarName)
 	}
@@ -220,6 +235,46 @@ func (s *BaseSession) GetSessionVariable(ctx *Context, sysVarName string) (inter
 		}
 	}
 	return sysVar.Val, nil
+}
+
+// SetTransactionLocalVariable implements the Session interface.
+func (s *BaseSession) SetTransactionLocalVariable(ctx *Context, sysVarName string, value interface{}) error {
+	sysVarName = strings.ToLower(sysVarName)
+	sysVar, ok := s.systemVars[sysVarName]
+	var sv SystemVariable
+	if ok {
+		sv = sysVar.Var
+	} else {
+		// See the comment in SetSessionVariable: variables added after session start must be looked up dynamically
+		if SystemVariables == nil {
+			return ErrUnknownSystemVariable.New(sysVarName)
+		}
+		sv, _, ok = SystemVariables.GetGlobal(sysVarName)
+		if !ok {
+			return ErrUnknownSystemVariable.New(sysVarName)
+		}
+	}
+	if sv.IsReadOnly() {
+		return ErrSystemVariableReadOnly.New(sysVarName)
+	}
+	if sv.GetLocalScope() == nil {
+		return ErrSystemVariableCannotBeSetLocal.New(sysVarName)
+	}
+	svv, err := sv.SetValue(ctx, value, false)
+	if err != nil {
+		return err
+	}
+	if s.localSysVars == nil {
+		s.localSysVars = make(map[string]SystemVarValue)
+	}
+	s.localSysVars[sysVarName] = svv
+	return nil
+}
+
+// ClearTransactionLocalVariables implements the Session interface.
+func (s *BaseSession) ClearTransactionLocalVariables(ctx *Context) error {
+	s.localSysVars = nil
+	return nil
 }
 
 // GetSessionVariableDefault implements the Session interface.
@@ -518,6 +573,28 @@ func (s *BaseSession) SetPrivilegeSet(newPs PrivilegeSet, counter uint64) {
 	s.privilegeSet = newPs
 }
 
+func (s *BaseSession) PrepareQuery(query string, stmt sqlparser.Statement) {
+	s.preparedQueries[query] = stmt
+}
+
+func (s *BaseSession) UnprepareQuery(query string) {
+	delete(s.preparedQueries, query)
+}
+
+func (s *BaseSession) GetPreparedQuery(query string) (sqlparser.Statement, bool) {
+	stmt, ok := s.preparedQueries[query]
+	return stmt, ok
+}
+
+func (s *BaseSession) CacheQuery(query string, stmt sqlparser.Statement) {
+	s.cachedQueries[query] = stmt
+}
+
+func (s *BaseSession) GetCachedQuery(query string) (sqlparser.Statement, bool) {
+	stmt, ok := s.cachedQueries[query]
+	return stmt, ok
+}
+
 // BaseSessionFromConnection is a SessionBuilder that returns a base session for the given connection and remote address
 func BaseSessionFromConnection(ctx context.Context, c *mysql.Conn, addr string) (*BaseSession, error) {
 	host := ""
@@ -554,6 +631,8 @@ func NewBaseSessionWithClientServer(server string, client Client, id uint32) *Ba
 		statusVars:       statusVars,
 		userVars:         NewUserVars(),
 		storedProcParams: make(map[string]*StoredProcParam),
+		preparedQueries:  make(map[string]sqlparser.Statement),
+		cachedQueries:    make(map[string]sqlparser.Statement),
 		idxReg:           NewIndexRegistry(),
 		viewReg:          NewViewRegistry(),
 		locks:            make(map[string]bool),
@@ -583,6 +662,8 @@ func NewBaseSession() *BaseSession {
 		statusVars:       statusVars,
 		userVars:         NewUserVars(),
 		storedProcParams: make(map[string]*StoredProcParam),
+		preparedQueries:  make(map[string]sqlparser.Statement),
+		cachedQueries:    make(map[string]sqlparser.Statement),
 		idxReg:           NewIndexRegistry(),
 		viewReg:          NewViewRegistry(),
 		locks:            make(map[string]bool),

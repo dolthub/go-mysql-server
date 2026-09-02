@@ -403,7 +403,7 @@ func schemaToFields(ctx *sql.Context, cols []*dsql.ColumnType) ([]sql.Type, []*q
 			// default to the maximum width
 			typeStr = ts
 		}
-		types[i], err = planbuilder.ParseColumnTypeString(typeStr)
+		types[i], err = planbuilder.ParseColumnTypeString(ctx, typeStr)
 		if err != nil {
 			return nil, nil, err
 		}

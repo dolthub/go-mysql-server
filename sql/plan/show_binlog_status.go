@@ -51,7 +51,7 @@ func (s *ShowBinlogStatus) String() string {
 	return "SHOW BINARY LOG STATUS"
 }
 
-func (s *ShowBinlogStatus) Schema() sql.Schema {
+func (s *ShowBinlogStatus) Schema(ctx *sql.Context) sql.Schema {
 	return sql.Schema{
 		{Name: "File", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 255), Default: nil, Nullable: false},
 		{Name: "Position", Type: types.Int64, Default: nil, Nullable: false},
@@ -69,7 +69,7 @@ func (s *ShowBinlogStatus) IsReadOnly() bool {
 	return true
 }
 
-func (s *ShowBinlogStatus) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (s *ShowBinlogStatus) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 0)
 	}

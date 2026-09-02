@@ -33,7 +33,7 @@ var _ sql.FunctionExpression = (*MultiLineString)(nil)
 var _ sql.CollationCoercible = (*MultiLineString)(nil)
 
 // NewMultiLineString creates a new multilinestring expression.
-func NewMultiLineString(args ...sql.Expression) (sql.Expression, error) {
+func NewMultiLineString(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 1 {
 		return nil, sql.ErrInvalidArgumentNumber.New("MultiLineString", "1 or more", len(args))
 	}
@@ -51,7 +51,7 @@ func (p *MultiLineString) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (p *MultiLineString) Type() sql.Type {
+func (p *MultiLineString) Type(ctx *sql.Context) sql.Type {
 	return types.MultiLineStringType{}
 }
 
@@ -69,8 +69,8 @@ func (p *MultiLineString) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (p *MultiLineString) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewMultiLineString(children...)
+func (p *MultiLineString) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewMultiLineString(ctx, children...)
 }
 
 // Eval implements the sql.Expression interface.
@@ -81,7 +81,11 @@ func (p *MultiLineString) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 		if err != nil {
 			return nil, err
 		}
-		switch v := val.(type) {
+		gv, err := types.UnwrapGeometry(ctx, val)
+		if err != nil {
+			return nil, sql.ErrIllegalGISValue.New(val)
+		}
+		switch v := gv.(type) {
 		case types.LineString:
 			lines[i] = v
 		case types.GeometryValue:

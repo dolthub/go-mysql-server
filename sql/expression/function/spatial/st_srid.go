@@ -32,7 +32,7 @@ var _ sql.FunctionExpression = (*SRID)(nil)
 var _ sql.CollationCoercible = (*SRID)(nil)
 
 // NewSRID creates a new STX expression.
-func NewSRID(args ...sql.Expression) (sql.Expression, error) {
+func NewSRID(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) != 1 && len(args) != 2 {
 		return nil, sql.ErrInvalidArgumentNumber.New("ST_SRID", "1 or 2", len(args))
 	}
@@ -50,11 +50,11 @@ func (s *SRID) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (s *SRID) Type() sql.Type {
+func (s *SRID) Type(ctx *sql.Context) sql.Type {
 	if len(s.ChildExpressions) == 1 {
 		return types.Int32
 	} else {
-		return s.ChildExpressions[0].Type()
+		return s.ChildExpressions[0].Type(ctx)
 	}
 }
 
@@ -72,8 +72,8 @@ func (s *SRID) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (s *SRID) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewSRID(children...)
+func (s *SRID) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewSRID(ctx, children...)
 }
 
 // Eval implements the sql.Expression interface.
@@ -87,14 +87,14 @@ func (s *SRID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
+	gv, err := types.UnwrapGeometry(ctx, g)
+	if err != nil {
+		return nil, sql.ErrIllegalGISValue.New(g)
+	}
+
 	// If just one argument, return SRID
 	if len(s.ChildExpressions) == 1 {
-		switch g := g.(type) {
-		case types.GeometryValue:
-			return g.GetSRID(), nil
-		default:
-			return nil, sql.ErrIllegalGISValue.New(g)
-		}
+		return gv.GetSRID(), nil
 	}
 
 	v, err := s.ChildExpressions[1].Eval(ctx, row)
@@ -116,11 +116,5 @@ func (s *SRID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 	srid := uint32(val.(int64))
 
-	// Create new geometry object with matching SRID
-	switch g := g.(type) {
-	case types.GeometryValue:
-		return g.SetSRID(srid), nil
-	default:
-		return nil, sql.ErrIllegalGISValue.New(g)
-	}
+	return gv.SetSRID(srid), nil
 }

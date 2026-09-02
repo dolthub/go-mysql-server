@@ -58,16 +58,16 @@ func (ic *IfConditional) String() string {
 }
 
 // DebugString implements the sql.DebugStringer interface.
-func (ic *IfConditional) DebugString() string {
+func (ic *IfConditional) DebugString(ctx *sql.Context) string {
 	p := sql.NewTreePrinter()
-	_ = p.WriteNode("IF(%s)", sql.DebugString(ic.Condition))
-	_ = p.WriteChildren(sql.DebugString(ic.Body))
+	_ = p.WriteNode("IF(%s)", sql.DebugString(ctx, ic.Condition))
+	_ = p.WriteChildren(sql.DebugString(ctx, ic.Body))
 	return p.String()
 }
 
 // Schema implements the sql.Node interface.
-func (ic *IfConditional) Schema() sql.Schema {
-	return ic.Body.Schema()
+func (ic *IfConditional) Schema(ctx *sql.Context) sql.Schema {
+	return ic.Body.Schema(ctx)
 }
 
 // Children implements the sql.Node interface.
@@ -76,7 +76,7 @@ func (ic *IfConditional) Children() []sql.Node {
 }
 
 // WithChildren implements the sql.Node interface.
-func (ic *IfConditional) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (ic *IfConditional) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(ic, len(children), 1)
 	}
@@ -97,7 +97,7 @@ func (ic *IfConditional) Expressions() []sql.Expression {
 }
 
 // WithExpressions implements the sql.Expressioner interface.
-func (ic *IfConditional) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+func (ic *IfConditional) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(ic, len(exprs), 1)
 	}
@@ -166,25 +166,25 @@ func (ieb *IfElseBlock) String() string {
 }
 
 // DebugString implements the sql.DebugStringer interface.
-func (ieb *IfElseBlock) DebugString() string {
+func (ieb *IfElseBlock) DebugString(ctx *sql.Context) string {
 	p := sql.NewTreePrinter()
 	_ = p.WriteNode("IF BLOCK")
 	var children []string
 	for _, s := range ieb.IfConditionals {
-		children = append(children, sql.DebugString(s))
+		children = append(children, sql.DebugString(ctx, s))
 	}
 	_ = p.WriteChildren(children...)
 
 	ep := sql.NewTreePrinter()
 	_ = ep.WriteNode("ELSE")
-	_ = ep.WriteChildren(sql.DebugString(ieb.Else))
+	_ = ep.WriteChildren(sql.DebugString(ctx, ieb.Else))
 	_ = p.WriteChildren(ep.String())
 
 	return p.String()
 }
 
 // Schema implements the sql.Node interface.
-func (ieb *IfElseBlock) Schema() sql.Schema {
+func (ieb *IfElseBlock) Schema(ctx *sql.Context) sql.Schema {
 	// NOTE: nil schema causes no result for over the wire clients
 	return emptySch
 }
@@ -200,7 +200,7 @@ func (ieb *IfElseBlock) Children() []sql.Node {
 }
 
 // WithChildren implements the sql.Node interface.
-func (ieb *IfElseBlock) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (ieb *IfElseBlock) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) < 2 {
 		return nil, fmt.Errorf("%T: invalid children number, got %d, expected at least 2", ieb, len(children))
 	}

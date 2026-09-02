@@ -67,7 +67,7 @@ func (c *CreateProcedure) IsReadOnly() bool {
 }
 
 // Schema implements the sql.Node interface.
-func (c *CreateProcedure) Schema() sql.Schema {
+func (c *CreateProcedure) Schema(ctx *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -77,7 +77,7 @@ func (c *CreateProcedure) Children() []sql.Node {
 }
 
 // WithChildren implements the sql.Node interface.
-func (c *CreateProcedure) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (c *CreateProcedure) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 0)
 	}
@@ -95,6 +95,6 @@ func (c *CreateProcedure) String() string {
 }
 
 // DebugString implements the sql.DebugStringer interface.
-func (c *CreateProcedure) DebugString() string {
+func (c *CreateProcedure) DebugString(ctx *sql.Context) string {
 	return c.StoredProcDetails.CreateStatement
 }

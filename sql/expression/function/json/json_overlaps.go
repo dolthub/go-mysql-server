@@ -42,7 +42,7 @@ type JSONOverlaps struct {
 var _ sql.FunctionExpression = &JSONOverlaps{}
 
 // NewJSONOverlaps creates a new JSONOverlaps function.
-func NewJSONOverlaps(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONOverlaps(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) != 2 {
 		return nil, sql.ErrInvalidArgumentNumber.New("JSON_OVERLAPS", "2", len(args))
 	}
@@ -70,13 +70,13 @@ func (j *JSONOverlaps) String() string {
 }
 
 // Type implements sql.Expression
-func (j *JSONOverlaps) Type() sql.Type {
+func (j *JSONOverlaps) Type(ctx *sql.Context) sql.Type {
 	return types.Boolean
 }
 
 // IsNullable implements sql.Expression
-func (j *JSONOverlaps) IsNullable() bool {
-	return j.Left.IsNullable() || j.Right.IsNullable()
+func (j *JSONOverlaps) IsNullable(ctx *sql.Context) bool {
+	return j.Left.IsNullable(ctx) || j.Right.IsNullable(ctx)
 }
 
 // jsonEquals compares two JSON values.
@@ -123,9 +123,9 @@ func jsonEquals(left, right interface{}) bool {
 
 func overlaps(left, right interface{}) bool {
 	switch lVal := left.(type) {
-	case nil, bool, string, float64:
+	case nil, bool, string, float64, int64, uint64:
 		switch rVal := right.(type) {
-		case nil, bool, string, float64, map[string]interface{}:
+		case nil, bool, string, float64, int64, uint64, map[string]interface{}:
 			return jsonEquals(left, right)
 		case []interface{}:
 			// scalar must be in array
@@ -137,7 +137,7 @@ func overlaps(left, right interface{}) bool {
 		}
 	case map[string]interface{}:
 		switch rVal := right.(type) {
-		case nil, bool, string, float64:
+		case nil, bool, string, float64, int64, uint64:
 			return overlaps(right, left)
 		case map[string]interface{}:
 			// objects must have at least one key-value pair in common
@@ -159,7 +159,7 @@ func overlaps(left, right interface{}) bool {
 		}
 	case []interface{}:
 		switch rVal := right.(type) {
-		case nil, bool, string, float64:
+		case nil, bool, string, float64, int64, uint64:
 			return overlaps(right, left)
 		case map[string]interface{}:
 			return overlaps(right, left)
@@ -216,6 +216,6 @@ func (j *JSONOverlaps) Children() []sql.Expression {
 }
 
 // WithChildren implements sql.Expression
-func (j *JSONOverlaps) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewJSONOverlaps(children...)
+func (j *JSONOverlaps) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewJSONOverlaps(ctx, children...)
 }

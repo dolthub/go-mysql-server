@@ -74,7 +74,7 @@ var errGlobalVariablesNotSupported = errors.NewKind("can't resolve global variab
 // indexColumns returns a map of column identifiers to their index in the node's schema. Columns from outer scopes are
 // included as well, with lower indexes (prepended to node schema) but lower precedence (overwritten by inner nodes in
 // map)
-func indexColumns(_ *sql.Context, _ *Analyzer, n sql.Node, scope *plan.Scope) (map[tableCol]indexedCol, error) {
+func indexColumns(ctx *sql.Context, _ *Analyzer, n sql.Node, scope *plan.Scope) (map[tableCol]indexedCol, error) {
 	var columns = make(map[tableCol]indexedCol)
 	var idx int
 
@@ -98,11 +98,11 @@ func indexColumns(_ *sql.Context, _ *Analyzer, n sql.Node, scope *plan.Scope) (m
 		case *expression.Alias:
 			// Aliases get indexed twice with the same index number: once with the aliased name and once with the
 			// underlying name
-			indexColumn(transform.ExpressionToColumn(e, plan.AliasSubqueryString(e)))
+			indexColumn(transform.ExpressionToColumn(ctx, e, plan.AliasSubqueryString(ctx, e)))
 			idx--
 			indexColumnExpr(e.Child)
 		default:
-			indexColumn(transform.ExpressionToColumn(e, plan.AliasSubqueryString(e)))
+			indexColumn(transform.ExpressionToColumn(ctx, e, plan.AliasSubqueryString(ctx, e)))
 		}
 	}
 
@@ -115,11 +115,11 @@ func indexColumns(_ *sql.Context, _ *Analyzer, n sql.Node, scope *plan.Scope) (m
 		case *plan.Values:
 			// values nodes don't have a schema to index like other nodes that provide columns
 		default:
-			indexSchema(n.Schema())
+			indexSchema(n.Schema(ctx))
 		}
 	}
 
-	if scope.OuterRelUnresolved() {
+	if scope.OuterRelUnresolved(ctx) {
 		// the columns in this relation will be mis-indexed, skip
 		// until outer rel is resolved
 		return nil, nil
@@ -127,7 +127,7 @@ func indexColumns(_ *sql.Context, _ *Analyzer, n sql.Node, scope *plan.Scope) (m
 
 	// Index the columns in the outer scope, outer to inner. This means inner scope columns will overwrite the outer
 	// ones of the same name. This matches the MySQL scope precedence rules.
-	indexSchema(scope.Schema())
+	indexSchema(scope.Schema(ctx))
 
 	// For the innermost scope (the node being evaluated), look at the schemas of the children instead of this node
 	// itself. Skip this for DDL nodes that handle indexing separately.
@@ -196,10 +196,10 @@ func indexColumns(_ *sql.Context, _ *Analyzer, n sql.Node, scope *plan.Scope) (m
 		}
 	case *plan.AddColumn: // Add/Modify need to have the full column set in order to resolve a default expression.
 		tbl := node.Table
-		indexSchemaForDefaults(node.Column(), node.Order(), tbl.Schema())
+		indexSchemaForDefaults(node.Column(), node.Order(ctx), tbl.Schema(ctx))
 	case *plan.ModifyColumn:
 		tbl := node.Table
-		indexSchemaForDefaults(node.NewColumn(), node.Order(), tbl.Schema())
+		indexSchemaForDefaults(node.NewColumn(), node.Order(ctx), tbl.Schema(ctx))
 	case *plan.RecursiveCte, *plan.SetOp:
 		// opaque nodes have derived schemas
 		// TODO also subquery aliases?
@@ -207,25 +207,25 @@ func indexColumns(_ *sql.Context, _ *Analyzer, n sql.Node, scope *plan.Scope) (m
 	case *plan.InsertInto:
 		// should index columns in InsertInto.Source
 		aliasedTables := make(map[sql.Node]bool)
-		transform.InspectWithOpaque(node.Source, func(n sql.Node) bool {
+		transform.InspectWithOpaque(ctx, node.Source, func(ctx *sql.Context, n sql.Node) bool {
 			// need to reset idx for each table found, as this function assumes only 1 table
 			if tblAlias, ok := n.(*plan.TableAlias); ok && tblAlias.Resolved() {
 				idx = 0
-				indexSchema(tblAlias.Schema())
+				indexSchema(tblAlias.Schema(ctx))
 				aliasedTables[tblAlias.Child] = true
 			}
 			return true
 		})
-		transform.InspectWithOpaque(node.Source, func(n sql.Node) bool {
+		transform.InspectWithOpaque(ctx, node.Source, func(ctx *sql.Context, n sql.Node) bool {
 			if resTbl, ok := n.(*plan.ResolvedTable); ok && !aliasedTables[resTbl] {
-				indexSchema(resTbl.Schema())
+				indexSchema(resTbl.Schema(ctx))
 			}
 			return true
 		})
-		transform.InspectWithOpaque(node.Source, func(n sql.Node) bool {
+		transform.InspectWithOpaque(ctx, node.Source, func(ctx *sql.Context, n sql.Node) bool {
 			if resTbl, ok := n.(*plan.SubqueryAlias); ok && resTbl.Resolved() && !aliasedTables[resTbl] {
 				idx = 0
-				indexSchema(resTbl.Schema())
+				indexSchema(resTbl.Schema(ctx))
 			}
 			return true
 		})

@@ -45,7 +45,7 @@ func (t *TableFunctionWrapper) NewInstance(ctx *sql.Context, db sql.Database, ar
 	nt := *t
 	nt.database = db
 	nt.args = args
-	f, err := nt.underlyingFunc.NewInstance(args)
+	f, err := nt.underlyingFunc.NewInstance(ctx, args)
 	if err != nil {
 		return nil, err
 	}
@@ -84,8 +84,22 @@ func (t *TableFunctionWrapper) RowIter(ctx *sql.Context, r sql.Row) (sql.RowIter
 	if err != nil {
 		return nil, err
 	}
+	// RowIterExpression implementations may represent an empty set as nil. Preserve
+	// that distinction from an ordinary scalar NULL, which produces one NULL row.
+	// Keep using Eval instead of EvalRowIter because the latter collapses multi-column
+	// SRFs into a single record for SELECT-list semantics, while FROM requires separate
+	// columns.
+	if v == nil {
+		if rowIterExpr, ok := t.funcExpr.(sql.RowIterExpression); ok && rowIterExpr.ReturnsRowIter() {
+			return sql.RowsToRowIter(), nil
+		}
+	}
 	if ri, ok := v.(sql.RowIter); ok {
 		return ri, nil
+	}
+	// unwrap record result
+	if ef, ok := t.funcExpr.(sql.ExtendedTableFunction); ok {
+		return sql.RowsToRowIter(ef.Unwrap(v)), nil
 	}
 	return sql.RowsToRowIter(sql.Row{v}), nil
 }
@@ -99,8 +113,13 @@ func (t *TableFunctionWrapper) Resolved() bool {
 	return true
 }
 
-func (t *TableFunctionWrapper) Schema() sql.Schema {
-	return sql.Schema{&sql.Column{Name: t.underlyingFunc.FunctionName(), Type: t.funcExpr.Type()}}
+func (t *TableFunctionWrapper) Schema(ctx *sql.Context) sql.Schema {
+	if ef, ok := t.funcExpr.(sql.ExtendedTableFunction); ok {
+		if s := ef.OutParametersSchema(); s != nil {
+			return s
+		}
+	}
+	return sql.Schema{&sql.Column{Name: t.underlyingFunc.FunctionName(), Type: t.funcExpr.Type(ctx)}}
 }
 
 func (t *TableFunctionWrapper) String() string {
@@ -111,7 +130,7 @@ func (t *TableFunctionWrapper) String() string {
 	return fmt.Sprintf("%s(%s)", t.underlyingFunc.FunctionName(), strings.Join(args, ", "))
 }
 
-func (t *TableFunctionWrapper) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (t *TableFunctionWrapper) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 0)
 	}
@@ -124,7 +143,7 @@ func (t *TableFunctionWrapper) WithDatabase(database sql.Database) (sql.Node, er
 	return &nt, nil
 }
 
-func (t *TableFunctionWrapper) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+func (t *TableFunctionWrapper) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	if t.funcExpr == nil {
 		if len(exprs) != 0 {
 			return nil, sql.ErrInvalidChildrenNumber.New(t, len(exprs), 0)

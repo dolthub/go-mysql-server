@@ -160,12 +160,12 @@ func (t *ResolvedTable) String() string {
 	return pr.String()
 }
 
-func (t *ResolvedTable) DebugString() string {
+func (t *ResolvedTable) DebugString(ctx *sql.Context) string {
 	table := t.Table
 	// TableWrappers may want to print their own debug info
 	if wrapper, ok := table.(sql.TableWrapper); ok {
 		if ds, ok := wrapper.(sql.DebugStringer); ok {
-			return sql.DebugString(ds)
+			return sql.DebugString(ctx, ds)
 		}
 	}
 
@@ -176,10 +176,10 @@ func (t *ResolvedTable) DebugString() string {
 
 	additionalChildren = append(additionalChildren, fmt.Sprintf("colSet: %s", t.Columns()), fmt.Sprintf("tableId: %d", t.Id()))
 
-	return TableDebugString(table, additionalChildren...)
+	return TableDebugString(ctx, table, additionalChildren...)
 }
 
-func TableDebugString(table sql.Table, additionalChildren ...string) string {
+func TableDebugString(ctx *sql.Context, table sql.Table, additionalChildren ...string) string {
 	pr := sql.NewTreePrinter()
 	pr.WriteNode("Table")
 	children := []string{fmt.Sprintf("name: %s", table.Name())}
@@ -192,8 +192,8 @@ func TableDebugString(table sql.Table, additionalChildren ...string) string {
 			columns[i] = strings.ToLower(c)
 		}
 	} else {
-		columns = make([]string, len(table.Schema()))
-		for i, c := range table.Schema() {
+		columns = make([]string, len(table.Schema(ctx)))
+		for i, c := range table.Schema(ctx) {
 			columns[i] = strings.ToLower(c.Name)
 		}
 	}
@@ -217,7 +217,7 @@ func TableDebugString(table sql.Table, additionalChildren ...string) string {
 func (*ResolvedTable) Children() []sql.Node { return nil }
 
 // WithChildren implements the Node interface.
-func (t *ResolvedTable) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (t *ResolvedTable) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 0)
 	}
@@ -232,7 +232,7 @@ func (*ResolvedTable) CollationCoercibility(ctx *sql.Context) (collation sql.Col
 
 // WithTable returns this Node with the given table, re-wrapping it with any MutableTableWrapper that was
 // wrapping it prior to this call.
-func (t *ResolvedTable) WithTable(table sql.Table) (sql.MutableTableNode, error) {
+func (t *ResolvedTable) WithTable(ctx *sql.Context, table sql.Table) (sql.MutableTableNode, error) {
 	if t.Name() != table.Name() {
 		return nil, fmt.Errorf("attempted to update TableNode `%s` with table `%s`", t.Name(), table.Name())
 	}
@@ -248,7 +248,7 @@ func (t *ResolvedTable) WithTable(table sql.Table) (sql.MutableTableNode, error)
 }
 
 // ReplaceTable returns this Node with the given table without performing any re-wrapping of any MutableTableWrapper
-func (t *ResolvedTable) ReplaceTable(table sql.Table) (sql.MutableTableNode, error) {
+func (t *ResolvedTable) ReplaceTable(ctx *sql.Context, table sql.Table) (sql.MutableTableNode, error) {
 	if t.Name() != table.Name() {
 		return nil, fmt.Errorf("attempted to update TableNode `%s` with table `%s`", t.Name(), table.Name())
 	}

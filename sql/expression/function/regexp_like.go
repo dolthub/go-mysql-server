@@ -46,7 +46,7 @@ var _ sql.CollationCoercible = (*RegexpLike)(nil)
 var _ sql.Disposable = (*RegexpLike)(nil)
 
 // NewRegexpLike creates a new RegexpLike expression.
-func NewRegexpLike(args ...sql.Expression) (sql.Expression, error) {
+func NewRegexpLike(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	var r *RegexpLike
 	switch len(args) {
 	case 3:
@@ -77,7 +77,7 @@ func (r *RegexpLike) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (r *RegexpLike) Type() sql.Type {
+func (r *RegexpLike) Type(ctx *sql.Context) sql.Type {
 	return types.Boolean
 }
 
@@ -89,7 +89,7 @@ func (r *RegexpLike) CollationCoercibility(ctx *sql.Context) (collation sql.Coll
 }
 
 // IsNullable implements the sql.Expression interface.
-func (r *RegexpLike) IsNullable() bool {
+func (r *RegexpLike) IsNullable(ctx *sql.Context) bool {
 	// TODO: this might be too general. We might want to evaluate IsNullable based on if Text and Pattern are nullable
 	// https://dev.mysql.com/doc/refman/8.4/en/regexp.html#function_regexp-like
 	return true
@@ -110,7 +110,7 @@ func (r *RegexpLike) Resolved() bool {
 }
 
 // WithChildren implements the sql.Expression interface.
-func (r *RegexpLike) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (r *RegexpLike) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	required := 2
 	if r.Flags != nil {
 		required = 3
@@ -120,7 +120,7 @@ func (r *RegexpLike) WithChildren(children ...sql.Expression) (sql.Expression, e
 	}
 
 	// Copy over the regex instance, in case it has already been set to avoid leaking it.
-	like, err := NewRegexpLike(children...)
+	like, err := NewRegexpLike(ctx, children...)
 	if like != nil && r.re != nil {
 		like.(*RegexpLike).re = r.re
 	}
@@ -140,8 +140,8 @@ func (r *RegexpLike) String() string {
 // compile handles compilation of the regex.
 func (r *RegexpLike) compile(ctx *sql.Context, row sql.Row) {
 	r.compileOnce.Do(func() {
-		r.cacheRegex = canBeCached(r.Pattern, r.Flags)
-		r.cacheVal = r.cacheRegex && canBeCached(r.Text)
+		r.cacheRegex = canBeCached(ctx, r.Pattern, r.Flags)
+		r.cacheVal = r.cacheRegex && canBeCached(ctx, r.Text)
 		if r.cacheRegex {
 			r.re, r.compileErr = compileRegex(ctx, r.Pattern, r.Text, r.Flags, r.FunctionName(), row)
 		}
@@ -211,7 +211,7 @@ func (r *RegexpLike) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // Dispose implements the sql.Disposable interface.
-func (r *RegexpLike) Dispose() {
+func (r *RegexpLike) Dispose(ctx *sql.Context) {
 	if r.re != nil {
 		_ = r.re.Close()
 	}
@@ -330,13 +330,13 @@ func consolidateRegexpFlags(flags, funcName string) (string, error) {
 }
 
 // canBeCached returns whether the expression(s) can be cached
-func canBeCached(exprs ...sql.Expression) bool {
+func canBeCached(ctx *sql.Context, exprs ...sql.Expression) bool {
 	hasCols := false
 	for _, expr := range exprs {
 		if expr == nil {
 			continue
 		}
-		sql.Inspect(expr, func(e sql.Expression) bool {
+		sql.Inspect(ctx, expr, func(ctx *sql.Context, e sql.Expression) bool {
 			switch e.(type) {
 			case *expression.GetField, *expression.UserVar, *expression.SystemVar, *expression.ProcedureParam:
 				hasCols = true

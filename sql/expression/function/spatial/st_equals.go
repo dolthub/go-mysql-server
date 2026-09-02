@@ -30,7 +30,7 @@ type STEquals struct {
 var _ sql.FunctionExpression = (*STEquals)(nil)
 
 // NewSTEquals creates a new STEquals expression.
-func NewSTEquals(g1, g2 sql.Expression) sql.Expression {
+func NewSTEquals(ctx *sql.Context, g1, g2 sql.Expression) sql.Expression {
 	return &STEquals{
 		expression.BinaryExpressionStub{
 			LeftChild:  g1,
@@ -50,7 +50,7 @@ func (s *STEquals) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (s *STEquals) Type() sql.Type {
+func (s *STEquals) Type(ctx *sql.Context) sql.Type {
 	return types.Boolean
 }
 
@@ -59,11 +59,11 @@ func (s *STEquals) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (s *STEquals) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (s *STEquals) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 2)
 	}
-	return NewSTEquals(children[0], children[1]), nil
+	return NewSTEquals(ctx, children[0], children[1]), nil
 }
 
 // isEqual checks if the set of types.Points in g1 is spatially equal to g2
@@ -82,7 +82,7 @@ func (s *STEquals) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	g1, g2, err := validateGeomComp(geom1, geom2, s.FunctionName())
+	g1, g2, err := validateGeomComp(ctx, geom1, geom2, s.FunctionName())
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +91,7 @@ func (s *STEquals) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// TODO (james): remove this switch block when the other comparisons are implemented
-	switch geom1.(type) {
+	switch g1.(type) {
 	case types.LineString:
 		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("LineString", s.FunctionName())
 	case types.Polygon:
@@ -107,7 +107,7 @@ func (s *STEquals) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// TODO (james): remove this switch block when the other comparisons are implemented
-	switch geom2.(type) {
+	switch g2.(type) {
 	case types.LineString:
 		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("LineString", s.FunctionName())
 	case types.Polygon:

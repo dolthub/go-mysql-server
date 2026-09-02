@@ -19,7 +19,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"unicode"
 
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
@@ -44,12 +43,6 @@ func (b *Builder) buildCreateTrigger(inScope *scope, subQuery string, fullQuery 
 		triggerOrder = &plan.TriggerOrder{
 			PrecedesOrFollows: c.TriggerSpec.Order.PrecedesOrFollows,
 			OtherTriggerName:  c.TriggerSpec.Order.OtherTriggerName,
-		}
-	} else {
-		//TODO: fix vitess->sql.y, in CREATE TRIGGER, if trigger_order_opt evaluates to empty then SubStatementPositionStart swallows the first token of the body
-		beforeSwallowedToken := strings.LastIndexFunc(strings.TrimRightFunc(fullQuery[:c.SubStatementPositionStart], unicode.IsSpace), unicode.IsSpace)
-		if beforeSwallowedToken != -1 {
-			c.SubStatementPositionStart = beforeSwallowedToken
 		}
 	}
 
@@ -305,7 +298,7 @@ func (b *Builder) validateStatement(inScope *scope, stmt ast.Statement) {
 			for _, v := range s.Variables.Names {
 				varName := strings.ToLower(v.String())
 				param := expression.NewProcedureParam(varName, typ)
-				inScope.proc.AddVar(param)
+				inScope.proc.AddVar(b.ctx, param)
 				inScope.newColumn(scopeColumn{col: varName, typ: typ, scalar: param})
 			}
 		} else if s.Cursor != nil {
@@ -381,8 +374,8 @@ func (b *Builder) validateStatement(inScope *scope, stmt ast.Statement) {
 				if col, ok := inScope.proc.GetVar(expr.String()); ok {
 					// proc param is OK
 					if pp, ok := col.scalarGf().(*expression.ProcedureParam); ok {
-						if !pp.Type().Promote().Equals(types.Int64) && !pp.Type().Promote().Equals(types.Uint64) {
-							err := fmt.Errorf("the variable '%s' has a non-integer based type: %s", pp.Name(), pp.Type().String())
+						if !pp.Type(b.ctx).Promote().Equals(types.Int64) && !pp.Type(b.ctx).Promote().Equals(types.Uint64) {
+							err := fmt.Errorf("the variable '%s' has a non-integer based type: %s", pp.Name(), pp.Type(b.ctx).String())
 							b.handleErr(err)
 						}
 					}
@@ -409,7 +402,7 @@ func (b *Builder) validateCreateProcedure(inScope *scope, createStmt string) {
 
 	inScope.initProc()
 	for _, p := range procParams {
-		inScope.proc.AddVar(expression.NewProcedureParam(strings.ToLower(p.Name), p.Type))
+		inScope.proc.AddVar(b.ctx, expression.NewProcedureParam(strings.ToLower(p.Name), p.Type))
 	}
 
 	bodyStmt := procStmt.ProcedureSpec.Body
@@ -480,6 +473,7 @@ func (b *Builder) buildCreateEvent(inScope *scope, subQuery string, fullQuery st
 	}
 
 	outScope.node = plan.NewCreateEvent(
+		b.ctx,
 		database,
 		b.scheduler,
 		eventSpec.EventName.Name.String(), definer,
@@ -622,6 +616,7 @@ func (b *Builder) buildAlterEvent(inScope *scope, subQuery string, fullQuery str
 
 	outScope = inScope.push()
 	alterEvent := plan.NewAlterEvent(
+		b.ctx,
 		database,
 		b.scheduler,
 		eventName, definer,
@@ -714,7 +709,7 @@ func (b *Builder) buildCreateView(inScope *scope, subQuery string, fullQuery str
 		b.handleErr(sql.ErrDatabaseSchemaNotFound.New(c.Table.SchemaQualifier.String()))
 	}
 	createView := plan.NewCreateView(db, c.ViewSpec.ViewName.Name.String(), queryAlias, c.IfNotExists, c.OrReplace, subQuery, c.ViewSpec.Algorithm, definer, c.ViewSpec.Security)
-	outScope.node = b.modifySchemaTarget(queryScope, createView, createView.Definition.Schema())
+	outScope.node = b.modifySchemaTarget(queryScope, createView, createView.Definition.Schema(b.ctx))
 
 	return outScope
 }

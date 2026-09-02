@@ -70,12 +70,12 @@ func (s *ShowCreateProcedure) Children() []sql.Node {
 }
 
 // Schema implements the sql.Node interface.
-func (s *ShowCreateProcedure) Schema() sql.Schema {
+func (s *ShowCreateProcedure) Schema(ctx *sql.Context) sql.Schema {
 	return showCreateProcedureSchema
 }
 
 // WithChildren implements the sql.Node interface.
-func (s *ShowCreateProcedure) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (s *ShowCreateProcedure) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(s, children...)
 }
 

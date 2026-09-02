@@ -33,7 +33,7 @@ type GtidSubtract struct {
 var _ sql.FunctionExpression = (*GtidSubtract)(nil)
 var _ sql.CollationCoercible = (*GtidSubtract)(nil)
 
-func NewGtidSubtract(gtid1, gtid2 sql.Expression) sql.Expression {
+func NewGtidSubtract(ctx *sql.Context, gtid1, gtid2 sql.Expression) sql.Expression {
 	return &GtidSubtract{gtid1, gtid2}
 }
 
@@ -49,7 +49,7 @@ func (gs *GtidSubtract) Description() string {
 }
 
 // Type implements the Expression interface.
-func (gs *GtidSubtract) Type() sql.Type { return types.LongText }
+func (gs *GtidSubtract) Type(ctx *sql.Context) sql.Type { return types.LongText }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (gs *GtidSubtract) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
@@ -59,24 +59,24 @@ func (gs *GtidSubtract) CollationCoercibility(ctx *sql.Context) (collation sql.C
 }
 
 // IsNullable implements the Expression interface.
-func (gs *GtidSubtract) IsNullable() bool {
-	return gs.gtid1.IsNullable() || gs.gtid2.IsNullable()
+func (gs *GtidSubtract) IsNullable(ctx *sql.Context) bool {
+	return gs.gtid1.IsNullable(ctx) || gs.gtid2.IsNullable(ctx)
 }
 
 func (gs *GtidSubtract) String() string {
 	return fmt.Sprintf("%s(%s, %s)", gs.FunctionName(), gs.gtid1, gs.gtid2)
 }
 
-func (gs *GtidSubtract) DebugString() string {
+func (gs *GtidSubtract) DebugString(ctx *sql.Context) string {
 	return fmt.Sprintf("%s(%s, %s)", gs.FunctionName(), gs.gtid1, gs.gtid2)
 }
 
 // WithChildren implements the Expression interface.
-func (gs *GtidSubtract) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (gs *GtidSubtract) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(gs, len(children), 2)
 	}
-	return NewGtidSubtract(children[0], children[1]), nil
+	return NewGtidSubtract(ctx, children[0], children[1]), nil
 }
 
 // Resolved implements the Expression interface.

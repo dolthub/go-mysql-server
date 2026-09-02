@@ -35,7 +35,7 @@ func TestEvalFilter(t *testing.T) {
 	pro := memory.NewDBProvider(db)
 	ctx := newContext(pro)
 
-	inner := memory.NewTable(db, "foo", sql.PrimaryKeySchema{}, nil)
+	inner := memory.NewTable(ctx, db, "foo", sql.PrimaryKeySchema{}, nil)
 	rule := getRule(simplifyFiltersId)
 
 	testCases := []struct {
@@ -50,6 +50,7 @@ func TestEvalFilter(t *testing.T) {
 					lit(5)),
 			),
 			plan.NewFilter(
+				ctx,
 				eq(
 					expression.NewGetFieldWithTable(0, 0, types.Int64, "", "foo", "bar", false),
 					lit(5)),
@@ -64,6 +65,7 @@ func TestEvalFilter(t *testing.T) {
 				eq(lit(5), lit(5)),
 			),
 			plan.NewFilter(
+				ctx,
 				eq(
 					expression.NewGetFieldWithTable(0, 0, types.Int64, "", "foo", "bar", false),
 					lit(5)),
@@ -77,7 +79,7 @@ func TestEvalFilter(t *testing.T) {
 					expression.NewGetFieldWithTable(0, 0, types.Int64, "", "foo", "bar", false),
 					lit(5)),
 			),
-			plan.NewEmptyTableWithSchema(inner.Schema()),
+			plan.NewEmptyTableWithSchema(inner.Schema(ctx)),
 		},
 		{
 			and(
@@ -86,7 +88,7 @@ func TestEvalFilter(t *testing.T) {
 					lit(5)),
 				eq(lit(5), lit(4)),
 			),
-			plan.NewEmptyTableWithSchema(inner.Schema()),
+			plan.NewEmptyTableWithSchema(inner.Schema(ctx)),
 		},
 		{
 			and(
@@ -103,6 +105,7 @@ func TestEvalFilter(t *testing.T) {
 					lit(5)),
 			),
 			plan.NewFilter(
+				ctx,
 				eq(
 					expression.NewGetFieldWithTable(0, 0, types.Int64, "", "foo", "bar", false),
 					lit(5)),
@@ -117,6 +120,7 @@ func TestEvalFilter(t *testing.T) {
 				eq(lit(5), lit(4)),
 			),
 			plan.NewFilter(
+				ctx,
 				eq(
 					expression.NewGetFieldWithTable(0, 0, types.Int64, "", "foo", "bar", false),
 					lit(5)),
@@ -146,14 +150,14 @@ func TestEvalFilter(t *testing.T) {
 				eq(lit(5), lit(4)),
 				eq(lit(5), lit(4)),
 			),
-			plan.NewEmptyTableWithSchema(inner.Schema()),
+			plan.NewEmptyTableWithSchema(inner.Schema(ctx)),
 		},
 	}
 
 	for _, tt := range testCases {
 		t.Run(tt.filter.String(), func(t *testing.T) {
 			require := require.New(t)
-			node := plan.NewFilter(tt.filter, plan.NewResolvedTable(inner, nil, nil))
+			node := plan.NewFilter(ctx, tt.filter, plan.NewResolvedTable(inner, nil, nil))
 			result, _, err := rule.Apply(ctx, NewDefault(nil), node, nil, DefaultRuleSelector, nil)
 			require.NoError(err)
 			require.Equal(tt.expected, result)
@@ -242,13 +246,13 @@ func newTestCatalog(db *memory.Database) *sql.MapCatalog {
 		Databases: make(map[string]sql.Database),
 		Tables:    make(map[string]sql.Table),
 	}
-
-	cat.Tables["xy"] = memory.NewTable(db, "xy", sql.NewPrimaryKeySchema(sql.Schema{
+	ctx := sql.NewEmptyContext()
+	cat.Tables["xy"] = memory.NewTable(ctx, db, "xy", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "x", Type: types.Int64, Source: "xy"},
 		{Name: "y", Type: types.Int64, Source: "xy"},
 		{Name: "z", Type: types.Int64, Source: "xy"},
 	}, 0), nil)
-	cat.Tables["uv"] = memory.NewTable(db, "uv", sql.NewPrimaryKeySchema(sql.Schema{
+	cat.Tables["uv"] = memory.NewTable(ctx, db, "uv", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "u", Type: types.Int64, Source: "uv"},
 		{Name: "v", Type: types.Int64, Source: "uv"},
 		{Name: "w", Type: types.Int64, Source: "uv"},

@@ -27,7 +27,7 @@ import (
 )
 
 func TestJSONDepth(t *testing.T) {
-	_, err := json.NewJSONDepth()
+	_, err := json.NewJSONDepth(sql.NewEmptyContext())
 	require.True(t, errors.Is(err, sql.ErrInvalidArgumentNumber))
 
 	f1 := buildGetFieldExpressions(t, json.NewJSONDepth, 1)

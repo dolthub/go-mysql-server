@@ -27,7 +27,7 @@ import (
 )
 
 func TestJsonInsert(t *testing.T) {
-	_, err := json.NewJSONInsert()
+	_, err := json.NewJSONInsert(sql.NewEmptyContext())
 	require.True(t, errors.Is(err, sql.ErrInvalidArgumentNumber))
 
 	for _, format := range jsonFormatTests {
@@ -39,7 +39,7 @@ func TestJsonInsert(t *testing.T) {
 }
 
 func TestJsonRemove(t *testing.T) {
-	_, err := json.NewJSONRemove()
+	_, err := json.NewJSONRemove(sql.NewEmptyContext())
 	require.True(t, errors.Is(err, sql.ErrInvalidArgumentNumber))
 
 	for _, format := range jsonFormatTests {
@@ -51,7 +51,7 @@ func TestJsonRemove(t *testing.T) {
 }
 
 func TestJsonReplace(t *testing.T) {
-	_, err := json.NewJSONRemove()
+	_, err := json.NewJSONRemove(sql.NewEmptyContext())
 	require.True(t, errors.Is(err, sql.ErrInvalidArgumentNumber))
 
 	for _, format := range jsonFormatTests {
@@ -63,15 +63,18 @@ func TestJsonReplace(t *testing.T) {
 }
 
 func TestJsonSet(t *testing.T) {
-	_, err := json.NewJSONSet()
+	ctx := sql.NewEmptyContext()
+	_, err := json.NewJSONSet(ctx)
 	require.True(t, errors.Is(err, sql.ErrInvalidArgumentNumber))
 
 	_, err = json.NewJSONSet(
+		ctx,
 		expression.NewGetField(0, types.LongText, "arg1", false),
 	)
 	require.True(t, errors.Is(err, sql.ErrInvalidArgumentNumber))
 
 	_, err = json.NewJSONSet(
+		ctx,
 		expression.NewGetField(0, types.LongText, "arg1", false),
 		expression.NewGetField(1, types.LongText, "arg2", false),
 	)
@@ -86,7 +89,7 @@ func TestJsonSet(t *testing.T) {
 }
 
 func TestJsonExtract(t *testing.T) {
-	_, err := json.NewJSONExtract()
+	_, err := json.NewJSONExtract(sql.NewEmptyContext())
 	require.True(t, errors.Is(err, sql.ErrInvalidArgumentNumber))
 
 	for _, format := range jsonFormatTests {
@@ -99,7 +102,7 @@ func TestJsonExtract(t *testing.T) {
 }
 
 func TestJsonValue(t *testing.T) {
-	_, err := json.NewJSONExtract()
+	_, err := json.NewJSONExtract(sql.NewEmptyContext())
 	require.True(t, errors.Is(err, sql.ErrInvalidArgumentNumber))
 
 	for _, format := range jsonFormatTests {
@@ -110,16 +113,19 @@ func TestJsonValue(t *testing.T) {
 }
 
 func TestJsonContainsPath(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	// Verify arg count 3 or more.
-	_, err := json.NewJSONContainsPath()
+	_, err := json.NewJSONContainsPath(ctx)
 	require.True(t, errors.Is(err, sql.ErrInvalidArgumentNumber))
 
 	_, err = json.NewJSONContainsPath(
+		ctx,
 		expression.NewGetField(0, types.JSON, "arg1", false),
 	)
 	require.True(t, errors.Is(err, sql.ErrInvalidArgumentNumber))
 
 	_, err = json.NewJSONContainsPath(
+		ctx,
 		expression.NewGetField(0, types.JSON, "arg1", false),
 		expression.NewGetField(1, types.LongText, "arg2", false),
 	)

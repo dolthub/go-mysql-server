@@ -28,7 +28,7 @@ func TestPointWithinPoint(t *testing.T) {
 	t.Run("point within point", func(t *testing.T) {
 		require := require.New(t)
 		p := types.Point{X: 1, Y: 2}
-		f := NewWithin(expression.NewLiteral(p, types.PointType{}), expression.NewLiteral(p, types.PointType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(p, types.PointType{}), expression.NewLiteral(p, types.PointType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -38,7 +38,7 @@ func TestPointWithinPoint(t *testing.T) {
 		require := require.New(t)
 		p1 := types.Point{X: 1, Y: 2}
 		p2 := types.Point{X: 123, Y: 456}
-		f := NewWithin(expression.NewLiteral(p1, types.PointType{}), expression.NewLiteral(p2, types.PointType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(p1, types.PointType{}), expression.NewLiteral(p2, types.PointType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -50,7 +50,7 @@ func TestPointWithinLineString(t *testing.T) {
 		require := require.New(t)
 		p := types.Point{X: 1, Y: 1}
 		l := types.LineString{Points: []types.Point{{X: 0, Y: 0}, {X: 2, Y: 2}}}
-		f := NewWithin(expression.NewLiteral(p, types.PointType{}), expression.NewLiteral(l, types.LineStringType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(p, types.PointType{}), expression.NewLiteral(l, types.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -61,13 +61,13 @@ func TestPointWithinLineString(t *testing.T) {
 		p := types.Point{X: 123, Y: 456}
 		l := types.LineString{Points: []types.Point{p, p}}
 
-		f := NewWithin(expression.NewLiteral(p, types.PointType{}), expression.NewLiteral(l, types.PointType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(p, types.PointType{}), expression.NewLiteral(l, types.PointType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
 
 		l = types.LineString{Points: []types.Point{p, p, p, p, p}}
-		f = NewWithin(expression.NewLiteral(p, types.PointType{}), expression.NewLiteral(l, types.PointType{}))
+		f = NewWithin(sql.NewEmptyContext(), expression.NewLiteral(p, types.PointType{}), expression.NewLiteral(l, types.PointType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -77,7 +77,7 @@ func TestPointWithinLineString(t *testing.T) {
 		require := require.New(t)
 		p := types.Point{X: 100, Y: 200}
 		l := types.LineString{Points: []types.Point{{X: 0, Y: 0}, {X: 2, Y: 2}}}
-		f := NewWithin(expression.NewLiteral(p, types.PointType{}), expression.NewLiteral(l, types.PointType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(p, types.PointType{}), expression.NewLiteral(l, types.PointType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -85,12 +85,12 @@ func TestPointWithinLineString(t *testing.T) {
 
 	t.Run("terminal points are not within linestring", func(t *testing.T) {
 		require := require.New(t)
-		f := NewWithin(expression.NewLiteral(simpleLineString.Points[0], types.PointType{}), expression.NewLiteral(simpleLineString, types.PointType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(simpleLineString.Points[0], types.PointType{}), expression.NewLiteral(simpleLineString, types.PointType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
 
-		f = NewWithin(expression.NewLiteral(simpleLineString.Points[2], types.PointType{}), expression.NewLiteral(simpleLineString, types.PointType{}))
+		f = NewWithin(sql.NewEmptyContext(), expression.NewLiteral(simpleLineString.Points[2], types.PointType{}), expression.NewLiteral(simpleLineString, types.PointType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -111,12 +111,12 @@ func TestPointWithinLineString(t *testing.T) {
 
 		l := types.LineString{Points: []types.Point{s, p1, p2, p3, p4, e}}
 
-		f := NewWithin(expression.NewLiteral(s, types.PointType{}), expression.NewLiteral(l, types.PointType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(s, types.PointType{}), expression.NewLiteral(l, types.PointType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
 
-		f = NewWithin(expression.NewLiteral(e, types.PointType{}), expression.NewLiteral(l, types.PointType{}))
+		f = NewWithin(sql.NewEmptyContext(), expression.NewLiteral(e, types.PointType{}), expression.NewLiteral(l, types.PointType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -126,7 +126,7 @@ func TestPointWithinLineString(t *testing.T) {
 func TestPointWithinPolygon(t *testing.T) {
 	t.Run("point within polygon", func(t *testing.T) {
 		require := require.New(t)
-		f := NewWithin(expression.NewLiteral(types.Point{}, types.PointType{}), expression.NewLiteral(square, types.PolygonType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(types.Point{}, types.PointType{}), expression.NewLiteral(square, types.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -140,7 +140,7 @@ func TestPointWithinPolygon(t *testing.T) {
 		c := types.Point{X: 1, Y: 0}
 		d := types.Point{X: 0, Y: -1}
 		poly := types.Polygon{Lines: []types.LineString{{Points: []types.Point{a, b, c, d, a}}}}
-		f := NewWithin(expression.NewLiteral(p, types.PointType{}), expression.NewLiteral(poly, types.PolygonType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(p, types.PointType{}), expression.NewLiteral(poly, types.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -150,21 +150,21 @@ func TestPointWithinPolygon(t *testing.T) {
 		require := require.New(t)
 		// passes through segments c2d2, a1b1, and a2b2; overlaps segment d2a2
 		p1 := types.Point{X: -3, Y: 2}
-		f := NewWithin(expression.NewLiteral(p1, types.PointType{}), expression.NewLiteral(squareWithHole, types.PolygonType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(p1, types.PointType{}), expression.NewLiteral(squareWithHole, types.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
 
 		// passes through segments c2d2, a1b1, and a2b2
 		p2 := types.Point{X: -3, Y: 0}
-		f = NewWithin(expression.NewLiteral(p2, types.PointType{}), expression.NewLiteral(squareWithHole, types.PolygonType{}))
+		f = NewWithin(sql.NewEmptyContext(), expression.NewLiteral(p2, types.PointType{}), expression.NewLiteral(squareWithHole, types.PolygonType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
 
 		// passes through segments c2d2, a1b1, and a2b2; overlaps segment b2c2
 		p3 := types.Point{X: -3, Y: -2}
-		f = NewWithin(expression.NewLiteral(p3, types.PointType{}), expression.NewLiteral(squareWithHole, types.PolygonType{}))
+		f = NewWithin(sql.NewEmptyContext(), expression.NewLiteral(p3, types.PointType{}), expression.NewLiteral(squareWithHole, types.PolygonType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -174,20 +174,20 @@ func TestPointWithinPolygon(t *testing.T) {
 		require := require.New(t)
 
 		p1 := types.Point{X: -3, Y: 0}
-		f := NewWithin(expression.NewLiteral(p1, types.PointType{}), expression.NewLiteral(diamondWithHole, types.PolygonType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(p1, types.PointType{}), expression.NewLiteral(diamondWithHole, types.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
 
 		// passes through vertex a2 and segment a1b1
 		p2 := types.Point{X: -1, Y: 2}
-		f = NewWithin(expression.NewLiteral(p2, types.PointType{}), expression.NewLiteral(diamondWithHole, types.PolygonType{}))
+		f = NewWithin(sql.NewEmptyContext(), expression.NewLiteral(p2, types.PointType{}), expression.NewLiteral(diamondWithHole, types.PolygonType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
 
 		p3 := types.Point{X: -1, Y: -2}
-		f = NewWithin(expression.NewLiteral(p3, types.PointType{}), expression.NewLiteral(diamondWithHole, types.PolygonType{}))
+		f = NewWithin(sql.NewEmptyContext(), expression.NewLiteral(p3, types.PointType{}), expression.NewLiteral(diamondWithHole, types.PolygonType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -196,22 +196,22 @@ func TestPointWithinPolygon(t *testing.T) {
 	t.Run("point on polygon boundary not within", func(t *testing.T) {
 		require := require.New(t)
 
-		f := NewWithin(expression.NewLiteral(diamond.Lines[0].Points[0], types.PointType{}), expression.NewLiteral(diamond, types.PolygonType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(diamond.Lines[0].Points[0], types.PointType{}), expression.NewLiteral(diamond, types.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
 
-		f = NewWithin(expression.NewLiteral(diamond.Lines[0].Points[1], types.PointType{}), expression.NewLiteral(diamond, types.PolygonType{}))
+		f = NewWithin(sql.NewEmptyContext(), expression.NewLiteral(diamond.Lines[0].Points[1], types.PointType{}), expression.NewLiteral(diamond, types.PolygonType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
 
-		f = NewWithin(expression.NewLiteral(diamond.Lines[0].Points[2], types.PointType{}), expression.NewLiteral(diamond, types.PolygonType{}))
+		f = NewWithin(sql.NewEmptyContext(), expression.NewLiteral(diamond.Lines[0].Points[2], types.PointType{}), expression.NewLiteral(diamond, types.PolygonType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
 
-		f = NewWithin(expression.NewLiteral(diamond.Lines[0].Points[3], types.PointType{}), expression.NewLiteral(diamond, types.PolygonType{}))
+		f = NewWithin(sql.NewEmptyContext(), expression.NewLiteral(diamond.Lines[0].Points[3], types.PointType{}), expression.NewLiteral(diamond, types.PolygonType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -222,21 +222,21 @@ func TestPointWithinPolygon(t *testing.T) {
 
 		// passes through vertex b
 		p1 := types.Point{X: -1, Y: 4}
-		f := NewWithin(expression.NewLiteral(p1, types.PointType{}), expression.NewLiteral(diamond, types.PolygonType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(p1, types.PointType{}), expression.NewLiteral(diamond, types.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
 
 		// passes through vertex a and c
 		p2 := types.Point{X: -5, Y: 0}
-		f = NewWithin(expression.NewLiteral(p2, types.PointType{}), expression.NewLiteral(diamond, types.PolygonType{}))
+		f = NewWithin(sql.NewEmptyContext(), expression.NewLiteral(p2, types.PointType{}), expression.NewLiteral(diamond, types.PolygonType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
 
 		// passes through vertex d
 		p3 := types.Point{X: -1, Y: -4}
-		f = NewWithin(expression.NewLiteral(p3, types.PointType{}), expression.NewLiteral(diamond, types.PolygonType{}))
+		f = NewWithin(sql.NewEmptyContext(), expression.NewLiteral(p3, types.PointType{}), expression.NewLiteral(diamond, types.PolygonType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -247,21 +247,21 @@ func TestPointWithinPolygon(t *testing.T) {
 
 		// passes through segments a1b1 and a2b2
 		p1 := types.Point{X: 0, Y: 0}
-		f := NewWithin(expression.NewLiteral(p1, types.PointType{}), expression.NewLiteral(squareWithHole, types.PolygonType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(p1, types.PointType{}), expression.NewLiteral(squareWithHole, types.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
 
 		// passes through segments c1d1, c2d2, a1b1, and a2b2; overlaps segment d2a2
 		p2 := types.Point{X: -5, Y: 2}
-		f = NewWithin(expression.NewLiteral(p2, types.PointType{}), expression.NewLiteral(squareWithHole, types.PolygonType{}))
+		f = NewWithin(sql.NewEmptyContext(), expression.NewLiteral(p2, types.PointType{}), expression.NewLiteral(squareWithHole, types.PolygonType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
 
 		// passes through segments c1d1, c2d2, a1b1, and a2b2; overlaps segment b2c2
 		p3 := types.Point{X: -5, Y: -2}
-		f = NewWithin(expression.NewLiteral(p3, types.PointType{}), expression.NewLiteral(squareWithHole, types.PolygonType{}))
+		f = NewWithin(sql.NewEmptyContext(), expression.NewLiteral(p3, types.PointType{}), expression.NewLiteral(squareWithHole, types.PolygonType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -272,21 +272,21 @@ func TestPointWithinPolygon(t *testing.T) {
 
 		// passes through vertexes d2, b2, and b1
 		p1 := types.Point{X: -3, Y: 0}
-		f := NewWithin(expression.NewLiteral(p1, types.PointType{}), expression.NewLiteral(diamondWithHole, types.PolygonType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(p1, types.PointType{}), expression.NewLiteral(diamondWithHole, types.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
 
 		// passes through vertex a2 and segment a1b1
 		p2 := types.Point{X: -1, Y: 2}
-		f = NewWithin(expression.NewLiteral(p2, types.PointType{}), expression.NewLiteral(diamondWithHole, types.PolygonType{}))
+		f = NewWithin(sql.NewEmptyContext(), expression.NewLiteral(p2, types.PointType{}), expression.NewLiteral(diamondWithHole, types.PolygonType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
 
 		// passes through vertex c2 and segment b1c1
 		p3 := types.Point{X: -1, Y: -2}
-		f = NewWithin(expression.NewLiteral(p3, types.PointType{}), expression.NewLiteral(diamondWithHole, types.PolygonType{}))
+		f = NewWithin(sql.NewEmptyContext(), expression.NewLiteral(p3, types.PointType{}), expression.NewLiteral(diamondWithHole, types.PolygonType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -305,21 +305,21 @@ func TestPointWithinPolygon(t *testing.T) {
 
 		// passes through segments a1b1 and a2b2
 		p1 := types.Point{X: 0, Y: 0}
-		f := NewWithin(expression.NewLiteral(p1, types.PointType{}), expression.NewLiteral(poly, types.PolygonType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(p1, types.PointType{}), expression.NewLiteral(poly, types.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
 
 		// passes through segments c1d1, c2d2, a1b1, and a2b2; overlaps segment d2a2
 		p2 := types.Point{X: -5, Y: 2}
-		f = NewWithin(expression.NewLiteral(p2, types.PointType{}), expression.NewLiteral(poly, types.PolygonType{}))
+		f = NewWithin(sql.NewEmptyContext(), expression.NewLiteral(p2, types.PointType{}), expression.NewLiteral(poly, types.PolygonType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
 
 		// passes through segments c1d1, c2d2, a1b1, and a2b2; overlaps segment b2c2
 		p3 := types.Point{X: -5, Y: -2}
-		f = NewWithin(expression.NewLiteral(p3, types.PointType{}), expression.NewLiteral(poly, types.PolygonType{}))
+		f = NewWithin(sql.NewEmptyContext(), expression.NewLiteral(p3, types.PointType{}), expression.NewLiteral(poly, types.PolygonType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -341,27 +341,27 @@ func TestPointWithinPolygon(t *testing.T) {
 		y := types.Point{X: 1, Y: 0}
 		z := types.Point{X: 0, Y: -1}
 
-		f := NewWithin(expression.NewLiteral(o, types.PointType{}), expression.NewLiteral(p, types.PolygonType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(o, types.PointType{}), expression.NewLiteral(p, types.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
 
-		f = NewWithin(expression.NewLiteral(w, types.PointType{}), expression.NewLiteral(p, types.PolygonType{}))
+		f = NewWithin(sql.NewEmptyContext(), expression.NewLiteral(w, types.PointType{}), expression.NewLiteral(p, types.PolygonType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
 
-		f = NewWithin(expression.NewLiteral(x, types.PointType{}), expression.NewLiteral(p, types.PolygonType{}))
+		f = NewWithin(sql.NewEmptyContext(), expression.NewLiteral(x, types.PointType{}), expression.NewLiteral(p, types.PolygonType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
 
-		f = NewWithin(expression.NewLiteral(y, types.PointType{}), expression.NewLiteral(p, types.PolygonType{}))
+		f = NewWithin(sql.NewEmptyContext(), expression.NewLiteral(y, types.PointType{}), expression.NewLiteral(p, types.PolygonType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
 
-		f = NewWithin(expression.NewLiteral(z, types.PointType{}), expression.NewLiteral(p, types.PolygonType{}))
+		f = NewWithin(sql.NewEmptyContext(), expression.NewLiteral(z, types.PointType{}), expression.NewLiteral(p, types.PolygonType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -372,17 +372,17 @@ func TestPointWithinMultiPoint(t *testing.T) {
 	t.Run("points within multipoint", func(t *testing.T) {
 		require := require.New(t)
 
-		f := NewWithin(expression.NewLiteral(simpleMultiPoint.Points[0], types.PointType{}), expression.NewLiteral(simpleMultiPoint, types.MultiPointType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(simpleMultiPoint.Points[0], types.PointType{}), expression.NewLiteral(simpleMultiPoint, types.MultiPointType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
 
-		f = NewWithin(expression.NewLiteral(simpleMultiPoint.Points[0], types.PointType{}), expression.NewLiteral(simpleMultiPoint, types.MultiPointType{}))
+		f = NewWithin(sql.NewEmptyContext(), expression.NewLiteral(simpleMultiPoint.Points[0], types.PointType{}), expression.NewLiteral(simpleMultiPoint, types.MultiPointType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
 
-		f = NewWithin(expression.NewLiteral(simpleMultiPoint.Points[0], types.PointType{}), expression.NewLiteral(simpleMultiPoint, types.MultiPointType{}))
+		f = NewWithin(sql.NewEmptyContext(), expression.NewLiteral(simpleMultiPoint.Points[0], types.PointType{}), expression.NewLiteral(simpleMultiPoint, types.MultiPointType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -391,7 +391,7 @@ func TestPointWithinMultiPoint(t *testing.T) {
 	t.Run("point not within multipoint", func(t *testing.T) {
 		require := require.New(t)
 
-		f := NewWithin(expression.NewLiteral(types.Point{}, types.PointType{}), expression.NewLiteral(simpleMultiPoint, types.MultiPointType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(types.Point{}, types.PointType{}), expression.NewLiteral(simpleMultiPoint, types.MultiPointType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -408,13 +408,13 @@ func TestPointWithinMultiLineString(t *testing.T) {
 		l2 := types.LineString{Points: []types.Point{p3, p3}}
 		ml := types.MultiLineString{Lines: []types.LineString{l1, l2}}
 
-		f := NewWithin(expression.NewLiteral(p3, types.PointType{}), expression.NewLiteral(ml, types.MultiPointType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(p3, types.PointType{}), expression.NewLiteral(ml, types.MultiPointType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
 
 		p := types.Point{X: 0, Y: 0}
-		f = NewWithin(expression.NewLiteral(p, types.PointType{}), expression.NewLiteral(ml, types.MultiPointType{}))
+		f = NewWithin(sql.NewEmptyContext(), expression.NewLiteral(p, types.PointType{}), expression.NewLiteral(ml, types.MultiPointType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -429,13 +429,13 @@ func TestPointWithinMultiLineString(t *testing.T) {
 		l2 := types.LineString{Points: []types.Point{p3, p3}}
 		ml := types.MultiLineString{Lines: []types.LineString{l1, l2}}
 
-		f := NewWithin(expression.NewLiteral(p1, types.PointType{}), expression.NewLiteral(ml, types.MultiLineStringType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(p1, types.PointType{}), expression.NewLiteral(ml, types.MultiLineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
 
 		p := types.Point{X: 100, Y: 1000}
-		f = NewWithin(expression.NewLiteral(p, types.PointType{}), expression.NewLiteral(ml, types.MultiLineStringType{}))
+		f = NewWithin(sql.NewEmptyContext(), expression.NewLiteral(p, types.PointType{}), expression.NewLiteral(ml, types.MultiLineStringType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -445,7 +445,7 @@ func TestPointWithinMultiLineString(t *testing.T) {
 func TestPointWithinMultiPolygon(t *testing.T) {
 	t.Run("point within multipolygon", func(t *testing.T) {
 		require := require.New(t)
-		f := NewWithin(expression.NewLiteral(types.Point{}, types.PointType{}), expression.NewLiteral(simpleMultiPolygon, types.MultiLineStringType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(types.Point{}, types.PointType{}), expression.NewLiteral(simpleMultiPolygon, types.MultiLineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -470,7 +470,7 @@ func TestPointWithinMultiPolygon(t *testing.T) {
 		l2 := types.LineString{Points: []types.Point{a2, b2, c2, d2, a2}}
 		mp := types.MultiPolygon{Polygons: []types.Polygon{{Lines: []types.LineString{l1}}, {Lines: []types.LineString{l2}}}}
 
-		f := NewWithin(expression.NewLiteral(p, types.PointType{}), expression.NewLiteral(mp, types.MultiLineStringType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(p, types.PointType{}), expression.NewLiteral(mp, types.MultiLineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -483,7 +483,7 @@ func TestPointWithinGeometryCollection(t *testing.T) {
 		p := types.Point{X: 0, Y: 0}
 		gc := types.GeomColl{}
 
-		f := NewWithin(expression.NewLiteral(p, types.PointType{}), expression.NewLiteral(gc, types.GeomCollType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(p, types.PointType{}), expression.NewLiteral(gc, types.GeomCollType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(nil, v)
@@ -494,7 +494,7 @@ func TestPointWithinGeometryCollection(t *testing.T) {
 		p := types.Point{X: 0, Y: 0}
 		gc := types.GeomColl{Geoms: []types.GeometryValue{p}}
 
-		f := NewWithin(expression.NewLiteral(p, types.PointType{}), expression.NewLiteral(gc, types.GeomCollType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(p, types.PointType{}), expression.NewLiteral(gc, types.GeomCollType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -506,7 +506,7 @@ func TestPointWithinGeometryCollection(t *testing.T) {
 		a := types.Point{X: 1, Y: 0}
 		gc := types.GeomColl{Geoms: []types.GeometryValue{a}}
 
-		f := NewWithin(expression.NewLiteral(p, types.PointType{}), expression.NewLiteral(gc, types.GeomCollType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(p, types.PointType{}), expression.NewLiteral(gc, types.GeomCollType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -519,7 +519,7 @@ func TestWithin(t *testing.T) {
 	// LineString vs Point
 	t.Run("linestring never within point", func(t *testing.T) {
 		require := require.New(t)
-		f := NewWithin(expression.NewLiteral(emptyLineString, types.LineStringType{}), expression.NewLiteral(types.Point{}, types.PointType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(emptyLineString, types.LineStringType{}), expression.NewLiteral(types.Point{}, types.PointType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -534,7 +534,7 @@ func TestWithin(t *testing.T) {
 		d := types.Point{X: 5, Y: 5}
 		l1 := types.LineString{Points: []types.Point{a, b}}
 		l2 := types.LineString{Points: []types.Point{c, d}}
-		f := NewWithin(expression.NewLiteral(l1, types.LineStringType{}), expression.NewLiteral(l2, types.LineStringType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(l1, types.LineStringType{}), expression.NewLiteral(l2, types.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -542,7 +542,7 @@ func TestWithin(t *testing.T) {
 
 	t.Run("linestring within itself", func(t *testing.T) {
 		require := require.New(t)
-		f := NewWithin(expression.NewLiteral(simpleLineString, types.LineStringType{}), expression.NewLiteral(simpleLineString, types.LineStringType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(simpleLineString, types.LineStringType{}), expression.NewLiteral(simpleLineString, types.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -554,7 +554,7 @@ func TestWithin(t *testing.T) {
 		q := types.Point{X: 4, Y: 4}
 		l := types.LineString{Points: []types.Point{p, q}}
 
-		f := NewWithin(expression.NewLiteral(simpleLineString, types.LineStringType{}), expression.NewLiteral(l, types.LineStringType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(simpleLineString, types.LineStringType{}), expression.NewLiteral(l, types.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -571,7 +571,7 @@ func TestWithin(t *testing.T) {
 		l1 := types.LineString{Points: []types.Point{b, d}}
 		l2 := types.LineString{Points: []types.Point{a, b, c, d, e}}
 
-		f := NewWithin(expression.NewLiteral(l1, types.LineStringType{}), expression.NewLiteral(l2, types.LineStringType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(l1, types.LineStringType{}), expression.NewLiteral(l2, types.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -588,7 +588,7 @@ func TestWithin(t *testing.T) {
 		l1 := types.LineString{Points: []types.Point{b, d}}
 		l2 := types.LineString{Points: []types.Point{a, c, e}}
 
-		f := NewWithin(expression.NewLiteral(l1, types.LineStringType{}), expression.NewLiteral(l2, types.LineStringType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(l1, types.LineStringType{}), expression.NewLiteral(l2, types.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -602,11 +602,11 @@ func TestWithin(t *testing.T) {
 		d := types.Point{X: 0, Y: 1}
 		l1 := types.LineString{Points: []types.Point{a, b}}
 		l2 := types.LineString{Points: []types.Point{c, d}}
-		f := NewWithin(expression.NewLiteral(l1, types.LineStringType{}), expression.NewLiteral(l2, types.LineStringType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(l1, types.LineStringType{}), expression.NewLiteral(l2, types.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
-		f = NewWithin(expression.NewLiteral(l2, types.LineStringType{}), expression.NewLiteral(l1, types.LineStringType{}))
+		f = NewWithin(sql.NewEmptyContext(), expression.NewLiteral(l2, types.LineStringType{}), expression.NewLiteral(l1, types.LineStringType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -619,11 +619,11 @@ func TestWithin(t *testing.T) {
 		c := types.Point{X: 1, Y: 0}
 		l1 := types.LineString{Points: []types.Point{a, b}}
 		l2 := types.LineString{Points: []types.Point{a, c}}
-		f := NewWithin(expression.NewLiteral(l1, types.LineStringType{}), expression.NewLiteral(l2, types.LineStringType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(l1, types.LineStringType{}), expression.NewLiteral(l2, types.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
-		f = NewWithin(expression.NewLiteral(l2, types.LineStringType{}), expression.NewLiteral(l1, types.LineStringType{}))
+		f = NewWithin(sql.NewEmptyContext(), expression.NewLiteral(l2, types.LineStringType{}), expression.NewLiteral(l1, types.LineStringType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -636,11 +636,11 @@ func TestWithin(t *testing.T) {
 		l := types.LineString{Points: []types.Point{a, b}}
 		la := types.LineString{Points: []types.Point{a, a}}
 		lb := types.LineString{Points: []types.Point{b, b}}
-		f := NewWithin(expression.NewLiteral(la, types.LineStringType{}), expression.NewLiteral(l, types.LineStringType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(la, types.LineStringType{}), expression.NewLiteral(l, types.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
-		f = NewWithin(expression.NewLiteral(lb, types.LineStringType{}), expression.NewLiteral(l, types.LineStringType{}))
+		f = NewWithin(sql.NewEmptyContext(), expression.NewLiteral(lb, types.LineStringType{}), expression.NewLiteral(l, types.LineStringType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -653,7 +653,7 @@ func TestWithin(t *testing.T) {
 		j := types.Point{X: 1, Y: 1}
 		l := types.LineString{Points: []types.Point{i, j}}
 
-		f := NewWithin(expression.NewLiteral(l, types.LineStringType{}), expression.NewLiteral(square, types.LineStringType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(l, types.LineStringType{}), expression.NewLiteral(square, types.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -667,7 +667,7 @@ func TestWithin(t *testing.T) {
 		d := types.Point{X: -4, Y: 4}
 		l := types.LineString{Points: []types.Point{a, b, c, d}}
 
-		f := NewWithin(expression.NewLiteral(l, types.LineStringType{}), expression.NewLiteral(square, types.LineStringType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(l, types.LineStringType{}), expression.NewLiteral(square, types.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -681,7 +681,7 @@ func TestWithin(t *testing.T) {
 		d := types.Point{X: -4, Y: 4}
 		l := types.LineString{Points: []types.Point{a, b, c, d}}
 
-		f := NewWithin(expression.NewLiteral(l, types.LineStringType{}), expression.NewLiteral(square, types.LineStringType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(l, types.LineStringType{}), expression.NewLiteral(square, types.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -693,7 +693,7 @@ func TestWithin(t *testing.T) {
 		j := types.Point{X: 100, Y: 100}
 		l := types.LineString{Points: []types.Point{i, j}}
 
-		f := NewWithin(expression.NewLiteral(l, types.LineStringType{}), expression.NewLiteral(square, types.LineStringType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(l, types.LineStringType{}), expression.NewLiteral(square, types.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -701,7 +701,7 @@ func TestWithin(t *testing.T) {
 
 	t.Run("linestring boundary is not within polygon", func(t *testing.T) {
 		require := require.New(t)
-		f := NewWithin(expression.NewLiteral(square.Lines[0], types.LineStringType{}), expression.NewLiteral(square, types.LineStringType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(square.Lines[0], types.LineStringType{}), expression.NewLiteral(square, types.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -713,7 +713,7 @@ func TestWithin(t *testing.T) {
 		j := types.Point{X: 1, Y: 1}
 		l := types.LineString{Points: []types.Point{i, j}}
 
-		f := NewWithin(expression.NewLiteral(l, types.LineStringType{}), expression.NewLiteral(squareWithHole, types.LineStringType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(l, types.LineStringType{}), expression.NewLiteral(squareWithHole, types.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -733,7 +733,7 @@ func TestWithin(t *testing.T) {
 		j := types.Point{X: 2, Y: 3}
 		l := types.LineString{Points: []types.Point{i, j}}
 
-		f := NewWithin(expression.NewLiteral(l, types.LineStringType{}), expression.NewLiteral(p, types.LineStringType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(l, types.LineStringType{}), expression.NewLiteral(p, types.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -759,23 +759,23 @@ func TestWithin(t *testing.T) {
 		wy := types.LineString{Points: []types.Point{w, y}}
 		xz := types.LineString{Points: []types.Point{x, z}}
 
-		f := NewWithin(expression.NewLiteral(wx, types.LineStringType{}), expression.NewLiteral(p, types.PolygonType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(wx, types.LineStringType{}), expression.NewLiteral(p, types.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
 
-		f = NewWithin(expression.NewLiteral(yz, types.LineStringType{}), expression.NewLiteral(p, types.PolygonType{}))
+		f = NewWithin(sql.NewEmptyContext(), expression.NewLiteral(yz, types.LineStringType{}), expression.NewLiteral(p, types.PolygonType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
 
-		f = NewWithin(expression.NewLiteral(wy, types.LineStringType{}), expression.NewLiteral(p, types.PolygonType{}))
+		f = NewWithin(sql.NewEmptyContext(), expression.NewLiteral(wy, types.LineStringType{}), expression.NewLiteral(p, types.PolygonType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
 
 		// Oddly, the LineString that is completely out of the Polygon is the one that is true
-		f = NewWithin(expression.NewLiteral(xz, types.LineStringType{}), expression.NewLiteral(p, types.PolygonType{}))
+		f = NewWithin(sql.NewEmptyContext(), expression.NewLiteral(xz, types.LineStringType{}), expression.NewLiteral(p, types.PolygonType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -791,7 +791,7 @@ func TestWithin(t *testing.T) {
 		l := types.LineString{Points: []types.Point{a, b, c, d}}
 		mp := types.MultiPoint{Points: []types.Point{a, b, c, d}}
 
-		f := NewWithin(expression.NewLiteral(l, types.LineStringType{}), expression.NewLiteral(mp, types.MultiPointType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(l, types.LineStringType{}), expression.NewLiteral(mp, types.MultiPointType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -806,7 +806,7 @@ func TestWithin(t *testing.T) {
 		l := types.LineString{Points: []types.Point{a, b, c}}
 		ml := types.MultiLineString{Lines: []types.LineString{l}}
 
-		f := NewWithin(expression.NewLiteral(l, types.LineStringType{}), expression.NewLiteral(ml, types.MultiLineStringType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(l, types.LineStringType{}), expression.NewLiteral(ml, types.MultiLineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -822,7 +822,7 @@ func TestWithin(t *testing.T) {
 		l2 := types.LineString{Points: []types.Point{b, c}}
 		ml := types.MultiLineString{Lines: []types.LineString{l1, l2}}
 		l := types.LineString{Points: []types.Point{a, c}}
-		f := NewWithin(expression.NewLiteral(l, types.LineStringType{}), expression.NewLiteral(ml, types.MultiLineStringType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(l, types.LineStringType{}), expression.NewLiteral(ml, types.MultiLineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -840,15 +840,15 @@ func TestWithin(t *testing.T) {
 		aa := types.LineString{Points: []types.Point{a, a}}
 		bb := types.LineString{Points: []types.Point{b, b}}
 		cc := types.LineString{Points: []types.Point{c, c}}
-		f := NewWithin(expression.NewLiteral(aa, types.LineStringType{}), expression.NewLiteral(ml, types.MultiLineStringType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(aa, types.LineStringType{}), expression.NewLiteral(ml, types.MultiLineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
-		f = NewWithin(expression.NewLiteral(bb, types.LineStringType{}), expression.NewLiteral(ml, types.MultiLineStringType{}))
+		f = NewWithin(sql.NewEmptyContext(), expression.NewLiteral(bb, types.LineStringType{}), expression.NewLiteral(ml, types.MultiLineStringType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
-		f = NewWithin(expression.NewLiteral(cc, types.LineStringType{}), expression.NewLiteral(ml, types.MultiLineStringType{}))
+		f = NewWithin(sql.NewEmptyContext(), expression.NewLiteral(cc, types.LineStringType{}), expression.NewLiteral(ml, types.MultiLineStringType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -869,13 +869,13 @@ func TestWithin(t *testing.T) {
 		mp := types.MultiPolygon{Polygons: []types.Polygon{p1, p2}}
 
 		l := types.LineString{Points: []types.Point{{X: -1, Y: 0}, {X: 1, Y: 0}}}
-		ff := NewWithin(expression.NewLiteral(l, types.LineStringType{}), expression.NewLiteral(mp, types.MultiLineStringType{}))
+		ff := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(l, types.LineStringType{}), expression.NewLiteral(mp, types.MultiLineStringType{}))
 		v, err := ff.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
 
 		l = types.LineString{Points: []types.Point{{X: -3, Y: 0}, {X: 3, Y: 0}}}
-		ff = NewWithin(expression.NewLiteral(l, types.LineStringType{}), expression.NewLiteral(mp, types.MultiLineStringType{}))
+		ff = NewWithin(sql.NewEmptyContext(), expression.NewLiteral(l, types.LineStringType{}), expression.NewLiteral(mp, types.MultiLineStringType{}))
 		v, err = ff.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -898,7 +898,7 @@ func TestWithin(t *testing.T) {
 		mp := types.MultiPolygon{Polygons: []types.Polygon{p1, p2}}
 
 		l := types.LineString{Points: []types.Point{{X: -2, Y: 1}, {X: 2, Y: 1}}}
-		ff := NewWithin(expression.NewLiteral(l, types.LineStringType{}), expression.NewLiteral(mp, types.MultiLineStringType{}))
+		ff := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(l, types.LineStringType{}), expression.NewLiteral(mp, types.MultiLineStringType{}))
 		v, err := ff.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -910,7 +910,7 @@ func TestWithin(t *testing.T) {
 		l := types.LineString{Points: []types.Point{{}, {}}}
 		gc := types.GeomColl{}
 
-		f := NewWithin(expression.NewLiteral(l, types.LineStringType{}), expression.NewLiteral(gc, types.GeomCollType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(l, types.LineStringType{}), expression.NewLiteral(gc, types.GeomCollType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(nil, v)
@@ -921,7 +921,7 @@ func TestWithin(t *testing.T) {
 		l := types.LineString{Points: []types.Point{{}, {}}}
 		gc := types.GeomColl{Geoms: []types.GeometryValue{l}}
 
-		f := NewWithin(expression.NewLiteral(l, types.LineStringType{}), expression.NewLiteral(gc, types.GeomCollType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(l, types.LineStringType{}), expression.NewLiteral(gc, types.GeomCollType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -933,7 +933,7 @@ func TestWithin(t *testing.T) {
 		l1 := types.LineString{Points: []types.Point{{X: 1, Y: 1}, {}}}
 		gc := types.GeomColl{Geoms: []types.GeometryValue{l1}}
 
-		f := NewWithin(expression.NewLiteral(l, types.LineStringType{}), expression.NewLiteral(gc, types.GeomCollType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(l, types.LineStringType{}), expression.NewLiteral(gc, types.GeomCollType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -948,7 +948,7 @@ func TestWithin(t *testing.T) {
 		l := types.LineString{Points: []types.Point{p, p, p, p}}
 		poly := types.Polygon{Lines: []types.LineString{l}}
 
-		f := NewWithin(expression.NewLiteral(poly, types.PolygonType{}), expression.NewLiteral(p, types.PointType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(poly, types.PolygonType{}), expression.NewLiteral(p, types.PointType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -961,7 +961,7 @@ func TestWithin(t *testing.T) {
 		l := types.LineString{Points: []types.Point{p, p, p, p}}
 		poly := types.Polygon{Lines: []types.LineString{l}}
 
-		f := NewWithin(expression.NewLiteral(poly, types.PolygonType{}), expression.NewLiteral(l, types.LineStringType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(poly, types.PolygonType{}), expression.NewLiteral(l, types.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -971,7 +971,7 @@ func TestWithin(t *testing.T) {
 	t.Run("empty polygon within polygon", func(t *testing.T) {
 		require := require.New(t)
 
-		f := NewWithin(expression.NewLiteral(emptyPolygon, types.PolygonType{}), expression.NewLiteral(square, types.PolygonType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(emptyPolygon, types.PolygonType{}), expression.NewLiteral(square, types.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -988,7 +988,7 @@ func TestWithin(t *testing.T) {
 		p1 := types.Polygon{Lines: []types.LineString{{Points: []types.Point{a, b, {}, a}}}}
 		p2 := types.Polygon{Lines: []types.LineString{l}}
 
-		f := NewWithin(expression.NewLiteral(p1, types.PolygonType{}), expression.NewLiteral(p2, types.PolygonType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(p1, types.PolygonType{}), expression.NewLiteral(p2, types.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -1005,7 +1005,7 @@ func TestWithin(t *testing.T) {
 		l := types.LineString{Points: []types.Point{a, b, c, d, a}}
 		p2 := types.Polygon{Lines: []types.LineString{l}}
 
-		f := NewWithin(expression.NewLiteral(p1, types.PolygonType{}), expression.NewLiteral(p2, types.PolygonType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(p1, types.PolygonType{}), expression.NewLiteral(p2, types.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -1015,7 +1015,7 @@ func TestWithin(t *testing.T) {
 		require := require.New(t)
 		p := types.Polygon{Lines: []types.LineString{{Points: []types.Point{{}, {}, {}, {}}}}}
 
-		f := NewWithin(expression.NewLiteral(p, types.PolygonType{}), expression.NewLiteral(p, types.PolygonType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(p, types.PolygonType{}), expression.NewLiteral(p, types.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -1031,12 +1031,12 @@ func TestWithin(t *testing.T) {
 		p1 := types.Polygon{Lines: []types.LineString{{Points: []types.Point{a, b, c, a}}}}
 		p2 := types.Polygon{Lines: []types.LineString{{Points: []types.Point{b, c, d, b}}}}
 
-		f := NewWithin(expression.NewLiteral(p1, types.LineStringType{}), expression.NewLiteral(p2, types.MultiLineStringType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(p1, types.LineStringType{}), expression.NewLiteral(p2, types.MultiLineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
 
-		f = NewWithin(expression.NewLiteral(p2, types.LineStringType{}), expression.NewLiteral(p1, types.MultiLineStringType{}))
+		f = NewWithin(sql.NewEmptyContext(), expression.NewLiteral(p2, types.LineStringType{}), expression.NewLiteral(p1, types.MultiLineStringType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -1049,7 +1049,7 @@ func TestWithin(t *testing.T) {
 		l := types.LineString{Points: []types.Point{p, p, p, p}}
 		poly := types.Polygon{Lines: []types.LineString{l}}
 
-		f := NewWithin(expression.NewLiteral(poly, types.PolygonType{}), expression.NewLiteral(p, types.PointType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(poly, types.PolygonType{}), expression.NewLiteral(p, types.PointType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -1063,7 +1063,7 @@ func TestWithin(t *testing.T) {
 		ml := types.MultiLineString{Lines: []types.LineString{l}}
 		poly := types.Polygon{Lines: []types.LineString{l}}
 
-		f := NewWithin(expression.NewLiteral(poly, types.PolygonType{}), expression.NewLiteral(ml, types.PointType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(poly, types.PolygonType{}), expression.NewLiteral(ml, types.PointType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -1091,7 +1091,7 @@ func TestWithin(t *testing.T) {
 		p3 := types.Polygon{Lines: []types.LineString{l3}}
 		mp := types.MultiPolygon{Polygons: []types.Polygon{p2, p3}}
 
-		f := NewWithin(expression.NewLiteral(p1, types.PolygonType{}), expression.NewLiteral(mp, types.PointType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(p1, types.PolygonType{}), expression.NewLiteral(mp, types.PointType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -1103,7 +1103,7 @@ func TestWithin(t *testing.T) {
 
 		g := types.GeomColl{}
 
-		f := NewWithin(expression.NewLiteral(emptyPolygon, types.PolygonType{}), expression.NewLiteral(g, types.GeomCollType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(emptyPolygon, types.PolygonType{}), expression.NewLiteral(g, types.GeomCollType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(nil, v)
@@ -1112,7 +1112,7 @@ func TestWithin(t *testing.T) {
 	t.Run("empty polygon within geometry collection", func(t *testing.T) {
 		require := require.New(t)
 		g := types.GeomColl{Geoms: []types.GeometryValue{square}}
-		f := NewWithin(expression.NewLiteral(emptyPolygon, types.PolygonType{}), expression.NewLiteral(g, types.GeomCollType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(emptyPolygon, types.PolygonType{}), expression.NewLiteral(g, types.GeomCollType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -1124,7 +1124,7 @@ func TestWithin(t *testing.T) {
 		p1 := types.Point{}
 		mp := types.MultiPoint{Points: []types.Point{p1, p1, p1}}
 
-		f := NewWithin(expression.NewLiteral(mp, types.MultiPointType{}), expression.NewLiteral(p1, types.PointType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(mp, types.MultiPointType{}), expression.NewLiteral(p1, types.PointType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -1136,7 +1136,7 @@ func TestWithin(t *testing.T) {
 		p2 := types.Point{X: 1, Y: 2}
 		mp := types.MultiPoint{Points: []types.Point{p1, p2}}
 
-		f := NewWithin(expression.NewLiteral(mp, types.MultiPointType{}), expression.NewLiteral(p1, types.PointType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(mp, types.MultiPointType{}), expression.NewLiteral(p1, types.PointType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -1149,7 +1149,7 @@ func TestWithin(t *testing.T) {
 		mp := types.MultiPoint{Points: []types.Point{p, p}}
 		l := types.LineString{Points: []types.Point{p, p}}
 
-		f := NewWithin(expression.NewLiteral(mp, types.MultiPointType{}), expression.NewLiteral(l, types.LineStringType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(mp, types.MultiPointType{}), expression.NewLiteral(l, types.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -1163,7 +1163,7 @@ func TestWithin(t *testing.T) {
 		mp := types.MultiPoint{Points: []types.Point{p}}
 		ab := types.LineString{Points: []types.Point{a, b}}
 
-		f := NewWithin(expression.NewLiteral(mp, types.MultiPointType{}), expression.NewLiteral(ab, types.LineStringType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(mp, types.MultiPointType{}), expression.NewLiteral(ab, types.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -1177,7 +1177,7 @@ func TestWithin(t *testing.T) {
 		mp := types.MultiPoint{Points: []types.Point{a, p, b}}
 		ab := types.LineString{Points: []types.Point{a, b}}
 
-		f := NewWithin(expression.NewLiteral(mp, types.MultiPointType{}), expression.NewLiteral(ab, types.LineStringType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(mp, types.MultiPointType{}), expression.NewLiteral(ab, types.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -1190,7 +1190,7 @@ func TestWithin(t *testing.T) {
 		mp := types.MultiPoint{Points: []types.Point{a, b}}
 		ab := types.LineString{Points: []types.Point{a, b}}
 
-		f := NewWithin(expression.NewLiteral(mp, types.MultiPointType{}), expression.NewLiteral(ab, types.LineStringType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(mp, types.MultiPointType{}), expression.NewLiteral(ab, types.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -1206,7 +1206,7 @@ func TestWithin(t *testing.T) {
 		d := types.Point{X: -1, Y: -1}
 		poly := types.Polygon{Lines: []types.LineString{{Points: []types.Point{a, b, c, d, a}}}}
 
-		f := NewWithin(expression.NewLiteral(mp, types.MultiPointType{}), expression.NewLiteral(poly, types.PolygonType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(mp, types.MultiPointType{}), expression.NewLiteral(poly, types.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -1222,7 +1222,7 @@ func TestWithin(t *testing.T) {
 		mp := types.MultiPoint{Points: []types.Point{a, b, c, d, {}}}
 		poly := types.Polygon{Lines: []types.LineString{{Points: []types.Point{a, b, c, d, a}}}}
 
-		f := NewWithin(expression.NewLiteral(mp, types.MultiPointType{}), expression.NewLiteral(poly, types.PolygonType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(mp, types.MultiPointType{}), expression.NewLiteral(poly, types.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -1238,7 +1238,7 @@ func TestWithin(t *testing.T) {
 		mp := types.MultiPoint{Points: []types.Point{a, b, c, d}}
 		poly := types.Polygon{Lines: []types.LineString{{Points: []types.Point{a, b, c, d, a}}}}
 
-		f := NewWithin(expression.NewLiteral(mp, types.MultiPointType{}), expression.NewLiteral(poly, types.PolygonType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(mp, types.MultiPointType{}), expression.NewLiteral(poly, types.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -1254,7 +1254,7 @@ func TestWithin(t *testing.T) {
 		mp := types.MultiPoint{Points: []types.Point{a, {}, types.Point{X: 100, Y: 100}}}
 		poly := types.Polygon{Lines: []types.LineString{{Points: []types.Point{a, b, c, d, a}}}}
 
-		f := NewWithin(expression.NewLiteral(mp, types.MultiPointType{}), expression.NewLiteral(poly, types.PolygonType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(mp, types.MultiPointType{}), expression.NewLiteral(poly, types.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -1265,7 +1265,7 @@ func TestWithin(t *testing.T) {
 		mp := types.MultiPoint{Points: []types.Point{{}}}
 		poly := types.Polygon{Lines: []types.LineString{{}, {}, {}, {}}}
 
-		f := NewWithin(expression.NewLiteral(mp, types.MultiPointType{}), expression.NewLiteral(poly, types.PolygonType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(mp, types.MultiPointType{}), expression.NewLiteral(poly, types.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -1283,7 +1283,7 @@ func TestWithin(t *testing.T) {
 		mp := types.MultiPoint{Points: []types.Point{{}, {}}}
 		gc := types.GeomColl{}
 
-		f := NewWithin(expression.NewLiteral(mp, types.MultiPointType{}), expression.NewLiteral(gc, types.GeomCollType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(mp, types.MultiPointType{}), expression.NewLiteral(gc, types.GeomCollType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(nil, v)
@@ -1296,7 +1296,7 @@ func TestWithin(t *testing.T) {
 		l := types.LineString{Points: []types.Point{p, p}}
 		ml := types.MultiLineString{Lines: []types.LineString{l}}
 
-		f := NewWithin(expression.NewLiteral(ml, types.LineStringType{}), expression.NewLiteral(p, types.PointType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(ml, types.LineStringType{}), expression.NewLiteral(p, types.PointType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -1319,7 +1319,7 @@ func TestWithin(t *testing.T) {
 		ml := types.MultiLineString{Lines: []types.LineString{l, l}}
 		gc := types.GeomColl{}
 
-		f := NewWithin(expression.NewLiteral(ml, types.MultiLineStringType{}), expression.NewLiteral(gc, types.GeomCollType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(ml, types.MultiLineStringType{}), expression.NewLiteral(gc, types.GeomCollType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(nil, v)
@@ -1333,7 +1333,7 @@ func TestWithin(t *testing.T) {
 		poly := types.Polygon{Lines: []types.LineString{l}}
 		mpoly := types.MultiPolygon{Polygons: []types.Polygon{poly}}
 
-		f := NewWithin(expression.NewLiteral(mpoly, types.MultiPolygonType{}), expression.NewLiteral(p, types.PointType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(mpoly, types.MultiPolygonType{}), expression.NewLiteral(p, types.PointType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -1347,7 +1347,7 @@ func TestWithin(t *testing.T) {
 		poly := types.Polygon{Lines: []types.LineString{l}}
 		mpoly := types.MultiPolygon{Polygons: []types.Polygon{poly}}
 
-		f := NewWithin(expression.NewLiteral(mpoly, types.MultiPolygonType{}), expression.NewLiteral(l, types.LineStringType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(mpoly, types.MultiPolygonType{}), expression.NewLiteral(l, types.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -1369,7 +1369,7 @@ func TestWithin(t *testing.T) {
 		mp := types.MultiPolygon{Polygons: []types.Polygon{p, p}}
 		gc := types.GeomColl{}
 
-		f := NewWithin(expression.NewLiteral(mp, types.MultiPolygonType{}), expression.NewLiteral(gc, types.GeomCollType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(mp, types.MultiPolygonType{}), expression.NewLiteral(gc, types.GeomCollType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(nil, v)
@@ -1380,7 +1380,7 @@ func TestWithin(t *testing.T) {
 		require := require.New(t)
 		p := types.Point{}
 		gc := types.GeomColl{Geoms: []types.GeometryValue{p}}
-		f := NewWithin(expression.NewLiteral(gc, types.GeomCollType{}), expression.NewLiteral(p, types.PointType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(gc, types.GeomCollType{}), expression.NewLiteral(p, types.PointType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -1396,7 +1396,7 @@ func TestWithin(t *testing.T) {
 		ab := types.LineString{Points: []types.Point{a, b}}
 		cd := types.LineString{Points: []types.Point{c, d}}
 		gc := types.GeomColl{Geoms: []types.GeometryValue{cd}}
-		f := NewWithin(expression.NewLiteral(ab, types.GeomCollType{}), expression.NewLiteral(gc, types.LineStringType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(ab, types.GeomCollType{}), expression.NewLiteral(gc, types.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -1416,7 +1416,7 @@ func TestWithin(t *testing.T) {
 		l := types.LineString{Points: []types.Point{a, b, c, d, a}}
 		p2 := types.Polygon{Lines: []types.LineString{l}}
 
-		f := NewWithin(expression.NewLiteral(gc, types.GeomCollType{}), expression.NewLiteral(p2, types.PolygonType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(gc, types.GeomCollType{}), expression.NewLiteral(p2, types.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -1433,7 +1433,7 @@ func TestWithin(t *testing.T) {
 		require := require.New(t)
 		gc := types.GeomColl{}
 
-		f := NewWithin(expression.NewLiteral(gc, types.GeomCollType{}), expression.NewLiteral(gc, types.GeomCollType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(gc, types.GeomCollType{}), expression.NewLiteral(gc, types.GeomCollType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(nil, v)
@@ -1444,7 +1444,7 @@ func TestWithin(t *testing.T) {
 		gc1 := types.GeomColl{Geoms: []types.GeometryValue{types.Point{}}}
 		gc2 := types.GeomColl{}
 
-		f := NewWithin(expression.NewLiteral(gc1, types.GeomCollType{}), expression.NewLiteral(gc2, types.GeomCollType{}))
+		f := NewWithin(sql.NewEmptyContext(), expression.NewLiteral(gc1, types.GeomCollType{}), expression.NewLiteral(gc2, types.GeomCollType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(nil, v)

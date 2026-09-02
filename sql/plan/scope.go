@@ -60,8 +60,8 @@ func (s *Scope) EnforcesReadOnly() bool {
 // outer scope are not qualified and resolved.
 // note: a subquery in the outer scope is itself a scope,
 // and by definition not an outer relation
-func (s *Scope) OuterRelUnresolved() bool {
-	return !s.IsEmpty() && s.Schema() == nil && len(s.nodes[0].Children()) > 0
+func (s *Scope) OuterRelUnresolved(ctx *sql.Context) bool {
+	return !s.IsEmpty() && s.Schema(ctx) == nil && len(s.nodes[0].Children()) > 0
 }
 
 // NewScope creates a new Scope object with the additional innermost Node context. When constructing with a subquery,
@@ -90,6 +90,7 @@ func (s *Scope) NewScopeFromSubqueryExpression(node sql.Node, corr sql.ColSet) *
 	subScope := s.NewScope(node)
 	subScope.CurrentNodeIsFromSubqueryExpression = true
 	subScope.corr = corr
+	subScope.recursionDepth = s.RecursionDepth() + 1
 	if s != nil {
 		subScope.corr = s.corr.Union(corr)
 	}
@@ -146,6 +147,9 @@ func (s *Scope) NewScopeFromSubqueryAlias(sqa *SubqueryAlias) *Scope {
 			if s.CurrentNodeIsFromSubqueryExpression { // TODO: probably copy this for lateral
 				sqa.OuterScopeVisibility = true
 				subScope.nodes = append(subScope.nodes, s.InnerToOuter()...)
+				// Propagate this flag so that derived tables nested inside |sqa| (i.e. a derived
+				// table within a derived table) also receive outer scope visibility.
+				subScope.CurrentNodeIsFromSubqueryExpression = true
 			}
 		}
 		if len(s.joinSiblings) > 0 {
@@ -254,13 +258,13 @@ func (s *Scope) OuterToInner() []sql.Node {
 
 // Schema returns the equivalent schema of this scope, which consists of the schemas of all constituent scope nodes
 // concatenated from outer to inner. Because we can only calculate the Schema() of nodes that are Resolved(), this
-// method fills in place holder columns as necessary.
-func (s *Scope) Schema() sql.Schema {
+// method fills in placeholder columns as necessary.
+func (s *Scope) Schema(ctx *sql.Context) sql.Schema {
 	var schema sql.Schema
 	for _, n := range s.OuterToInner() {
 		for _, n := range n.Children() {
 			if n.Resolved() {
-				schema = append(schema, n.Schema()...)
+				schema = append(schema, n.Schema(ctx)...)
 				continue
 			}
 
@@ -271,7 +275,7 @@ func (s *Scope) Schema() sql.Schema {
 				for _, expr := range n.Projections {
 					var col *sql.Column
 					if expr.Resolved() {
-						col = transform.ExpressionToColumn(expr, AliasSubqueryString(expr))
+						col = transform.ExpressionToColumn(ctx, expr, AliasSubqueryString(ctx, expr))
 					} else {
 						// TODO: a new type here?
 						col = &sql.Column{
@@ -282,14 +286,13 @@ func (s *Scope) Schema() sql.Schema {
 					schema = append(schema, col)
 				}
 			default:
-				// TODO: log this
-				// panic(fmt.Sprintf("Unsupported scope node %T", n))
+				// TODO: add logging for unsupported scope nodes
 			}
 		}
 	}
 	if s != nil && s.inJoin {
 		for _, n := range s.joinSiblings {
-			schema = append(schema, n.Schema()...)
+			schema = append(schema, n.Schema(ctx)...)
 		}
 	}
 	return schema

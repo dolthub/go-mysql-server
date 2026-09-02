@@ -20,6 +20,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -65,28 +66,29 @@ func TestTimeFormatEval(t *testing.T) {
 	timeLit := expression.NewLiteral("04:05:06.000007", types.Time)
 	format := expression.NewLiteral("%H-%i-%s|%f", types.Text)
 	nullLiteral := expression.NewLiteral(nil, types.Null)
+	ctx := sql.NewEmptyContext()
 
-	timeFormat := NewTimeFormat(timeLit, format)
+	timeFormat := NewTimeFormat(ctx, timeLit, format)
 	res, err := timeFormat.Eval(nil, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, "04-05-06|000007", res)
 
-	timeFormat = NewTimeFormat(timeLit, nil)
+	timeFormat = NewTimeFormat(ctx, timeLit, nil)
 	res, err = timeFormat.Eval(nil, nil)
 	assert.NoError(t, err)
 	assert.Nil(t, res)
 
-	timeFormat = NewTimeFormat(nil, format)
+	timeFormat = NewTimeFormat(ctx, nil, format)
 	res, err = timeFormat.Eval(nil, nil)
 	assert.NoError(t, err)
 	assert.Nil(t, res)
 
-	timeFormat = NewTimeFormat(timeLit, nullLiteral)
+	timeFormat = NewTimeFormat(ctx, timeLit, nullLiteral)
 	res, err = timeFormat.Eval(nil, nil)
 	assert.NoError(t, err)
 	assert.Nil(t, res)
 
-	timeFormat = NewTimeFormat(nullLiteral, format)
+	timeFormat = NewTimeFormat(ctx, nullLiteral, format)
 	res, err = timeFormat.Eval(nil, nil)
 	assert.NoError(t, err)
 	assert.Nil(t, res)

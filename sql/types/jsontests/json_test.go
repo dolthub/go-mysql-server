@@ -26,35 +26,8 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/test"
 )
-
-type mockStringWrapper struct {
-	val string
-}
-
-func (m mockStringWrapper) Unwrap(ctx context.Context) (string, error) {
-	return m.val, nil
-}
-
-func (m mockStringWrapper) UnwrapAny(ctx context.Context) (interface{}, error) {
-	return m.val, nil
-}
-
-func (m mockStringWrapper) IsExactLength() bool {
-	return false
-}
-
-func (m mockStringWrapper) MaxByteLength() int64 {
-	return int64(len(m.val))
-}
-
-func (m mockStringWrapper) Compare(ctx context.Context, other interface{}) (int, bool, error) {
-	return 0, false, nil
-}
-
-func (m mockStringWrapper) Hash() interface{} {
-	return m.val
-}
 
 func TestJsonCompare(t *testing.T) {
 	RunJsonCompareTests(t, JsonCompareTests, func(t *testing.T, left, right interface{}) (interface{}, interface{}) {
@@ -86,7 +59,7 @@ func TestJsonConvert(t *testing.T) {
 		{types.MustJSON(`{"field":"test"}`), types.MustJSON(`{"field":"test"}`), false},
 		{[]string{}, types.MustJSON(`[]`), false},
 		{[]string{`555-555-5555`}, types.MustJSON(`["555-555-5555"]`), false},
-		{mockStringWrapper{val: `{"c": 1}`}, types.MustJSON(`{"c":1}`), false},
+		{test.NewMockStringWrapper(`{"c": 1}`), types.MustJSON(`{"c":1}`), false},
 	}
 
 	for _, test := range tests {
@@ -366,6 +339,48 @@ func TestJsonPathErrors(t *testing.T) {
 			assert.Equal(t, false, changed)
 			require.Error(t, err)
 			assert.Equal(t, test.expectErrStr, err.Error())
+		})
+	}
+}
+
+// TestJsonLookupTypeMismatch verifies that looking up a path that descends into
+// a value of the wrong type (an object key against a non-object, or an array
+// index against a non-array) resolves to SQL NULL rather than surfacing an error
+// from the underlying jsonpath library. This matches the behavior already used
+// for missing keys and out-of-range indices.
+func TestJsonLookupTypeMismatch(t *testing.T) {
+	ctx := context.Background()
+
+	tests := []struct {
+		desc string
+		doc  string
+		path string
+	}{
+		{
+			// Object key against a scalar (e.g. '{"a":1}' #> '{a,b}').
+			desc: "object key on scalar",
+			doc:  `{"a": 1}`,
+			path: `$."a"."b"`,
+		},
+		{
+			// Array index against a scalar (e.g. '{"a":1}' #> '{a,0}').
+			desc: "array index on scalar",
+			doc:  `{"a": 1}`,
+			path: `$."a"[0]`,
+		},
+		{
+			// Array index against an object.
+			desc: "array index on object",
+			doc:  `{"a": {"b": 2}}`,
+			path: `$."a"[0]`,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			result, err := types.MustJSON(test.doc).Lookup(ctx, test.path)
+			require.NoError(t, err)
+			require.Nil(t, result)
 		})
 	}
 }

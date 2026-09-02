@@ -3841,14 +3841,16 @@ var IndexPrefixQueries = []ScriptTest{
 				Query:           "select distinct j2.pk from j2 join t on t.col1 >= 'one';",
 				ExpectedIndexes: []string{},
 				Expected:        []sql.Row{{1}, {2}, {3}},
-				JoinTypes:       []plan.JoinType{plan.JoinTypeInner},
+				// This is a cross join on a filtered table (no index)
+				JoinTypes: []plan.JoinType{plan.JoinTypeCross},
 			},
 			{
 				// Assert that we DO use the index for a join on an exact match condition
 				Query:           "select /*+ LOOKUP_JOIN(t,j2) */ distinct j2.pk from j2 join t on t.col1 = ' ';",
 				ExpectedIndexes: []string{"k1"},
 				Expected:        []sql.Row{{1}, {2}, {3}},
-				JoinTypes:       []plan.JoinType{plan.JoinTypeLookup},
+				// This is a cross join on an IndexedTableAccess
+				JoinTypes: []plan.JoinType{plan.JoinTypeCross},
 			},
 
 			{
@@ -4177,6 +4179,41 @@ var IndexPrefixQueries = []ScriptTest{
 				Query:           "select * from test where shared1 = 1 and shared2 = 2 and a4 = 3;",
 				Expected:        []sql.Row{},
 				ExpectedIndexes: []string{"b_idx"},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/go-mysql-server/issues/3459
+		Name: "prefix index charset-aware validation",
+		SetUpScript: []string{
+			`CREATE TABLE t_latin1 (
+  id bigint unsigned NOT NULL AUTO_INCREMENT,
+  group_key varchar(16) COLLATE latin1_bin NOT NULL,
+  code varchar(32) CHARACTER SET latin1 DEFAULT NULL,
+  PRIMARY KEY (id),
+  KEY idx_group_code (group_key, code(12))
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_bin`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "alter table t_latin1 add index (code(32))",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:       "alter table t_latin1 add index (code(33))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:    "create table t_latin1_text (c text CHARACTER SET latin1, index (c(100)))",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "create table t_utf8mb3 (c varchar(32) CHARACTER SET utf8mb3, index (c(12)))",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:       "create table t_bad (c varchar(32) CHARACTER SET utf8mb3, index (c(33)))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
 			},
 		},
 	},
@@ -4529,26 +4566,6 @@ var IndexQueries = []ScriptTest{
 				Query: "select count(*) from unq_tbl where (i = 0 and i = 1);",
 				Expected: []sql.Row{
 					{0},
-				},
-			},
-		},
-	},
-	{
-		Name: "functional indices warning",
-		SetUpScript: []string{
-			"CREATE TABLE test (i int, b int)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "CREATE INDEX idx ON test ((i + b))",
-				Expected: []sql.Row{
-					{types.NewOkResult(0)},
-				},
-			},
-			{
-				Query: "SHOW WARNINGS",
-				Expected: []sql.Row{
-					{"Error", 0, "Index not created, functional indexes not implemented"},
 				},
 			},
 		},

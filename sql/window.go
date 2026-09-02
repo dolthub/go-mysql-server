@@ -21,7 +21,7 @@ import (
 	"github.com/cespare/xxhash/v2"
 )
 
-func NewWindowDefinition(partitionBy []Expression, orderBy SortFields, frame WindowFrame, ref, name string) *WindowDefinition {
+func NewWindowDefinition(partitionBy []Expression, orderBy SortConditions, frame WindowFrame, ref, name string) *WindowDefinition {
 	return &WindowDefinition{
 		PartitionBy: partitionBy,
 		OrderBy:     orderBy,
@@ -37,8 +37,12 @@ type WindowDefinition struct {
 	Ref         string
 	Name        string
 	PartitionBy []Expression
-	OrderBy     SortFields
+	OrderBy     SortConditions
 	id          uint64
+}
+
+func (w *WindowDefinition) ExpressionsLen() int {
+	return len(w.OrderBy) + len(w.PartitionBy)
 }
 
 // ToExpressions converts the PartitionBy and OrderBy expressions to a single slice of expressions suitable for
@@ -52,17 +56,17 @@ func (w *WindowDefinition) ToExpressions() []Expression {
 
 // FromExpressions returns copy of this window with the given expressions taken to stand in for the partition and order
 // by fields. An error is returned if the lengths or types of these expressions are incompatible with this window.
-func (w *WindowDefinition) FromExpressions(children []Expression) (*WindowDefinition, error) {
+func (w *WindowDefinition) FromExpressions(ctx *Context, children []Expression) (*WindowDefinition, error) {
 	if w == nil {
 		return nil, nil
 	}
 
-	if len(children) != len(w.OrderBy)+len(w.PartitionBy) {
+	if len(children) != w.ExpressionsLen() {
 		return nil, ErrInvalidChildrenNumber.New(w, len(children), len(w.OrderBy)+len(w.PartitionBy))
 	}
 
 	nw := *w
-	nw.OrderBy = nw.OrderBy.FromExpressions(children[:len(nw.OrderBy)]...)
+	nw.OrderBy = nw.OrderBy.FromExpressions(ctx, children[:len(nw.OrderBy)]...)
 	nw.PartitionBy = children[len(nw.OrderBy):]
 	return &nw, nil
 }
@@ -125,7 +129,7 @@ func (w *WindowDefinition) PartitionId() (uint64, error) {
 	return w.id, nil
 }
 
-func (w *WindowDefinition) DebugString() string {
+func (w *WindowDefinition) DebugString(ctx *Context) string {
 	if w == nil {
 		return ""
 	}

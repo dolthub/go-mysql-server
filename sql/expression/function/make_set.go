@@ -33,7 +33,7 @@ var _ sql.FunctionExpression = (*MakeSet)(nil)
 var _ sql.CollationCoercible = (*MakeSet)(nil)
 
 // NewMakeSet creates a new MakeSet expression
-func NewMakeSet(args ...sql.Expression) (sql.Expression, error) {
+func NewMakeSet(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 2 {
 		return nil, sql.ErrInvalidArgumentNumber.New("MAKE_SET", "2 or more", len(args))
 	}
@@ -72,12 +72,12 @@ func (m *MakeSet) Resolved() bool {
 }
 
 // IsNullable implements the Expression interface
-func (m *MakeSet) IsNullable() bool {
-	return m.bits.IsNullable()
+func (m *MakeSet) IsNullable(ctx *sql.Context) bool {
+	return m.bits.IsNullable(ctx)
 }
 
 // Type implements the Expression interface
-func (m *MakeSet) Type() sql.Type {
+func (m *MakeSet) Type(ctx *sql.Context) sql.Type {
 	return types.LongText
 }
 
@@ -106,8 +106,8 @@ func (m *MakeSet) String() string {
 }
 
 // WithChildren implements the Expression interface
-func (m *MakeSet) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewMakeSet(children...)
+func (m *MakeSet) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewMakeSet(ctx, children...)
 }
 
 // Eval implements the Expression interface

@@ -43,7 +43,7 @@ func TestLRUCache(t *testing.T) {
 		require.Error(err)
 		require.True(errors.Is(err, ErrKeyNotFound))
 
-		cache.Dispose()
+		cache.Dispose(NewEmptyContext())
 		require.Panics(func() {
 			_, _ = cache.Get(1)
 		})
@@ -97,7 +97,7 @@ func TestHistoryCache(t *testing.T) {
 		require.Error(err)
 		require.True(errors.Is(err, ErrKeyNotFound))
 
-		cache.Dispose()
+		cache.Dispose(NewEmptyContext())
 		require.Panics(func() {
 			_ = cache.Put(2, "foo")
 		})
@@ -143,7 +143,7 @@ func TestRowsCache(t *testing.T) {
 		require.NoError(cache.Add(Row{1}))
 		require.Len(cache.Get(), 1)
 
-		cache.Dispose()
+		cache.Dispose(NewEmptyContext())
 		require.Panics(func() {
 			_ = cache.Add(Row{2})
 		})

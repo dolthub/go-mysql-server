@@ -23,6 +23,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 //go:generate go run ../../../../optgen/cmd/optgen/main.go -out window_framer.og.go -pkg aggregation framer window_framer.go
@@ -356,7 +357,7 @@ func (f *rangeFramerBase) NewFramer(interval sql.WindowInterval) (sql.WindowFram
 	}
 
 	// TODO: how to validate datetime, interval pair when they aren't type comparable
-	//if startInclusion != nil && startInclusion.Type().Promote()  != f.orderBy.Type().Promote() {
+	//if startInclusion != nil && startInclusion.Type(ctx).Promote()  != f.orderBy.Type(ctx).Promote() {
 	//	return nil, ErrRangeIntervalTypeMismatch
 	//}
 
@@ -371,7 +372,7 @@ func (f *rangeFramerBase) NewFramer(interval sql.WindowInterval) (sql.WindowFram
 	}
 
 	// TODO: how to validate datetime, interval pair when they aren't type comparable
-	//if endInclusion != nil && endInclusion.Type().Promote() != f.orderBy.Type().Promote() {
+	//if endInclusion != nil && endInclusion.Type(ctx).Promote() != f.orderBy.Type(ctx).Promote() {
 	//	return nil, ErrRangeIntervalTypeMismatch
 	//}
 
@@ -457,6 +458,7 @@ func findInclusionBoundary(ctx *sql.Context, pos, searchStart, partitionEnd int,
 		return 0, err
 	}
 
+	compareType := types.GetCompareType(expr.Type(ctx), inclusion.Type(ctx))
 	i := searchStart
 	cmp := unknown
 	for ; cmp < int(stopCond); i++ {
@@ -469,7 +471,7 @@ func findInclusionBoundary(ctx *sql.Context, pos, searchStart, partitionEnd int,
 			return 0, err
 		}
 
-		cmp, err = expr.Type().Compare(ctx, res, cur)
+		cmp, err = compareType.Compare(ctx, res, cur)
 		if err != nil {
 			return 0, err
 		}
@@ -598,7 +600,7 @@ func isNewOrderByValue(ctx *sql.Context, orderByExprs []sql.Expression, last sql
 	}
 
 	for i := range lastExp {
-		compare, err := orderByExprs[i].Type().Compare(ctx, lastExp[i], thisExp[i])
+		compare, err := orderByExprs[i].Type(ctx).Compare(ctx, lastExp[i], thisExp[i])
 		if err != nil {
 			return false, err
 		}

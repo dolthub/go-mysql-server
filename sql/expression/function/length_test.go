@@ -16,6 +16,7 @@ package function
 
 import (
 	"testing"
+	"unicode/utf8"
 
 	"github.com/stretchr/testify/require"
 
@@ -29,7 +30,7 @@ func TestLength(t *testing.T) {
 		name      string
 		input     interface{}
 		inputType sql.Type
-		fn        func(sql.Expression) sql.Expression
+		fn        func(*sql.Context, sql.Expression) sql.Expression
 		expected  interface{}
 	}{
 		{
@@ -102,13 +103,21 @@ func TestLength(t *testing.T) {
 			NewCharLength,
 			nil,
 		},
+		{
+			// See https://github.com/dolthub/dolt/issues/11088
+			"char_length replacement character",
+			string(utf8.RuneError), // U+FFFD, 0xEFBFBD
+			types.LongText,
+			NewCharLength,
+			int32(1),
+		},
 	}
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
 
-			result, err := tt.fn(expression.NewGetField(0, tt.inputType, "foo", false)).Eval(
+			result, err := tt.fn(sql.NewEmptyContext(), expression.NewGetField(0, tt.inputType, "foo", false)).Eval(
 				sql.NewEmptyContext(),
 				sql.Row{tt.input},
 			)

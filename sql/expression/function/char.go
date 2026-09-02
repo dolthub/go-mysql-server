@@ -33,7 +33,7 @@ type Char struct {
 var _ sql.FunctionExpression = (*Char)(nil)
 var _ sql.CollationCoercible = (*Char)(nil)
 
-func NewChar(args ...sql.Expression) (sql.Expression, error) {
+func NewChar(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	return &Char{args: args}, nil
 }
 
@@ -63,7 +63,7 @@ func (c *Char) String() string {
 }
 
 // Type implements sql.Expression
-func (c *Char) Type() sql.Type {
+func (c *Char) Type(ctx *sql.Context) sql.Type {
 	if c.Collation == sql.Collation_binary || c.Collation == sql.Collation_Unspecified {
 		return types.MustCreateString(sqltypes.VarBinary, int64(len(c.args)*4), sql.Collation_binary)
 	}
@@ -71,7 +71,7 @@ func (c *Char) Type() sql.Type {
 }
 
 // IsNullable implements sql.Expression
-func (c *Char) IsNullable() bool {
+func (c *Char) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
@@ -132,7 +132,7 @@ func (c *Char) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		res = append(res, encodeUint32(v.(uint32))...)
 	}
 
-	result, _, err := c.Type().Convert(ctx, res)
+	result, _, err := c.Type(ctx).Convert(ctx, res)
 	if err != nil {
 		return nil, err
 	}
@@ -146,6 +146,6 @@ func (c *Char) Children() []sql.Expression {
 }
 
 // WithChildren implements the sql.Expression interface
-func (c *Char) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewChar(children...)
+func (c *Char) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewChar(ctx, children...)
 }

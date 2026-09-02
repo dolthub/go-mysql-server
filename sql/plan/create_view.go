@@ -85,7 +85,7 @@ func (cv *CreateView) IsReadOnly() bool {
 }
 
 // Schema implements the Node interface. It always returns Query OK result.
-func (cv *CreateView) Schema() sql.Schema {
+func (cv *CreateView) Schema(ctx *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -99,7 +99,7 @@ func (cv *CreateView) String() string {
 
 // WithChildren implements the Node interface. It only succeeds if the length
 // of the specified children equals 1.
-func (cv *CreateView) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (cv *CreateView) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(cv, len(children), 1)
 	}
@@ -145,7 +145,7 @@ func (cv *CreateView) TargetSchema() sql.Schema {
 
 // GetIsUpdatableFromCreateView returns whether the view is updatable or not.
 // https://dev.mysql.com/doc/refman/8.0/en/view-updatability.html
-func GetIsUpdatableFromCreateView(cv *CreateView) bool {
+func GetIsUpdatableFromCreateView(ctx *sql.Context, cv *CreateView) bool {
 	isUpdatable := true
 	node := cv.Child
 
@@ -153,7 +153,7 @@ func GetIsUpdatableFromCreateView(cv *CreateView) bool {
 		return false
 	}
 
-	transform.InspectExpressionsWithNode(node, func(n sql.Node, e sql.Expression) bool {
+	transform.InspectExpressionsWithNode(ctx, node, func(ctx *sql.Context, n sql.Node, e sql.Expression) bool {
 		switch e.(type) {
 		case sql.Aggregation, sql.WindowAggregation, *Subquery:
 			isUpdatable = false
@@ -167,7 +167,7 @@ func GetIsUpdatableFromCreateView(cv *CreateView) bool {
 		case *Project:
 			// Refers only to literal values (in this case, there is no underlying table to update)
 			allLiteral := true
-			transform.InspectExpressions(nn, func(ne sql.Expression) bool {
+			transform.InspectExpressions(ctx, nn, func(ctx *sql.Context, ne sql.Expression) bool {
 				switch ne.(type) {
 				case *expression.Literal:
 

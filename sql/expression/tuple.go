@@ -51,9 +51,9 @@ func (t Tuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // IsNullable implements the Expression interface.
-func (t Tuple) IsNullable() bool {
+func (t Tuple) IsNullable(ctx *sql.Context) bool {
 	if len(t) == 1 {
-		return t[0].IsNullable()
+		return t[0].IsNullable(ctx)
 	}
 
 	return false
@@ -67,10 +67,10 @@ func (t Tuple) String() string {
 	return fmt.Sprintf("(%s)", strings.Join(exprs, ", "))
 }
 
-func (t Tuple) DebugString() string {
+func (t Tuple) DebugString(ctx *sql.Context) string {
 	var exprs = make([]string, len(t))
 	for i, e := range t {
-		exprs[i] = sql.DebugString(e)
+		exprs[i] = sql.DebugString(ctx, e)
 	}
 	return fmt.Sprintf("TUPLE(%s)", strings.Join(exprs, ", "))
 }
@@ -87,21 +87,21 @@ func (t Tuple) Resolved() bool {
 }
 
 // Type implements the Expression interface.
-func (t Tuple) Type() sql.Type {
+func (t Tuple) Type(ctx *sql.Context) sql.Type {
 	if len(t) == 1 {
-		return t[0].Type()
+		return t[0].Type(ctx)
 	}
 
 	types := make([]sql.Type, len(t))
 	for i, e := range t {
-		types[i] = e.Type()
+		types[i] = e.Type(ctx)
 	}
 
 	return types2.CreateTuple(types...)
 }
 
 // WithChildren implements the Expression interface.
-func (t Tuple) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (t Tuple) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != len(t) {
 		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), len(t))
 	}

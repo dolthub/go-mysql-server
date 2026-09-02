@@ -22,6 +22,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/vector"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -58,9 +59,6 @@ type AlterIndex struct {
 	targetSchema sql.Schema
 	// Columns contains the column names (and possibly lengths) when creating an index
 	Columns []sql.IndexColumn
-	// Expression holds the expression when creating an index
-	// TODO: Not currently implemented. Returns a no-op & warning if used
-	Expression sql.Expression
 	// TODO: This should just use sql.IndexDef
 	// Using states whether you're using BTREE, HASH, or non
 	Using sql.IndexUsing
@@ -75,14 +73,23 @@ type AlterIndex struct {
 	IfNotExists bool
 	// DisableKeys determines whether to DISABLE KEYS if true or ENABLE KEYS if false
 	DisableKeys bool
+	// Predicate is the WHERE clause expression for partial indexes. May be nil.
+	Predicate sql.Expression
+	// VectorProperties are the vector-index-specific properties when creating a vector index.
+	VectorProperties sql.VectorProperties
+	// VectorAccessMethod is the integrator's access method name of a vector index. The engine does not interpret it.
+	VectorAccessMethod string
+	// VectorOpClass is the integrator's operator class name of a vector index. The engine does not interpret it.
+	VectorOpClass string
 }
 
 var _ sql.SchemaTarget = (*AlterIndex)(nil)
 var _ sql.Expressioner = (*AlterIndex)(nil)
 var _ sql.Node = (*AlterIndex)(nil)
 var _ sql.CollationCoercible = (*AlterIndex)(nil)
+var _ sql.Databaser = (*AlterIndex)(nil)
 
-func NewAlterCreateIndex(db sql.Database, table sql.TableNode, ifNotExists bool, indexName string, using sql.IndexUsing, constraint sql.IndexConstraint, columns []sql.IndexColumn, expression sql.Expression, comment string) *AlterIndex {
+func NewAlterCreateIndex(db sql.Database, table sql.TableNode, ifNotExists bool, indexName string, using sql.IndexUsing, constraint sql.IndexConstraint, columns []sql.IndexColumn, comment string, predicate sql.Expression) *AlterIndex {
 	return &AlterIndex{
 		Action:      IndexAction_Create,
 		Db:          db,
@@ -92,8 +99,8 @@ func NewAlterCreateIndex(db sql.Database, table sql.TableNode, ifNotExists bool,
 		Using:       using,
 		Constraint:  constraint,
 		Columns:     columns,
-		Expression:  expression,
 		Comment:     comment,
+		Predicate:   predicate,
 	}
 }
 
@@ -127,13 +134,13 @@ func NewAlterDisableEnableKeys(db sql.Database, table sql.TableNode, disableKeys
 }
 
 // Schema implements the Node interface.
-func (p *AlterIndex) Schema() sql.Schema {
+func (p *AlterIndex) Schema(ctx *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
 // WithChildren implements the Node interface. For AlterIndex, the only appropriate input is
 // a single child - The Table.
-func (p *AlterIndex) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (p *AlterIndex) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
 	}
@@ -180,14 +187,14 @@ func (p *AlterIndex) Expressions() []sql.Expression {
 
 // WithExpressions implements the Node Interface. For AlterIndex, expressions represent  column defaults on the
 // targetSchema instance - required to be the same number of columns on the target schema.
-func (p *AlterIndex) WithExpressions(expressions ...sql.Expression) (sql.Node, error) {
+func (p *AlterIndex) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	columns := p.TargetSchema().Copy()
 
-	if len(columns) != len(expressions) {
+	if len(columns) != len(exprs) {
 		return nil, fmt.Errorf("invariant failure: column count does not match expression count")
 	}
 
-	for i, expr := range expressions {
+	for i, expr := range exprs {
 		wrapper, ok := expr.(*expression.Wrapper)
 		if !ok {
 			return nil, fmt.Errorf("*expression.Wrapper cast failure unexpected: %v", expr)
@@ -218,6 +225,11 @@ func (*AlterIndex) CollationCoercibility(ctx *sql.Context) (collation sql.Collat
 	return sql.Collation_binary, 7
 }
 
+// Database implements the sql.Databaser interface.
+func (p *AlterIndex) Database() sql.Database {
+	return p.Db
+}
+
 // WithDatabase implements the sql.Databaser interface.
 func (p *AlterIndex) WithDatabase(database sql.Database) (sql.Node, error) {
 	np := *p
@@ -240,6 +252,9 @@ func (p *AlterIndex) String() string {
 			children = append(children, "Constraint(FULLTEXT)")
 		case sql.IndexConstraint_Vector:
 			children = append(children, "Constraint(VECTOR)")
+			if p.VectorProperties.DistanceType != nil && p.VectorProperties.DistanceType != (vector.DistanceL2Squared{}) {
+				children = append(children, fmt.Sprintf("DistanceType(%s)", p.VectorProperties.DistanceType))
+			}
 		}
 		switch p.Using {
 		case sql.IndexUsing_BTree, sql.IndexUsing_Default:

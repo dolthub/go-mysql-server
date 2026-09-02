@@ -15,7 +15,6 @@
 package function
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -82,7 +81,7 @@ var _ sql.FunctionExpression = (*Year)(nil)
 var _ sql.CollationCoercible = (*Year)(nil)
 
 // NewYear creates a new Year UDF.
-func NewYear(date sql.Expression) sql.Expression {
+func NewYear(ctx *sql.Context, date sql.Expression) sql.Expression {
 	return &Year{expression.UnaryExpressionStub{Child: date}}
 }
 
@@ -99,7 +98,7 @@ func (y *Year) Description() string {
 func (y *Year) String() string { return fmt.Sprintf("%s(%s)", y.FunctionName(), y.Child) }
 
 // Type implements the Expression interface.
-func (y *Year) Type() sql.Type { return types.Int32 }
+func (y *Year) Type(ctx *sql.Context) sql.Type { return types.Int32 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*Year) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
@@ -112,11 +111,11 @@ func (y *Year) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements the Expression interface.
-func (y *Year) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (y *Year) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(y, len(children), 1)
 	}
-	return NewYear(children[0]), nil
+	return NewYear(ctx, children[0]), nil
 }
 
 type Quarter struct {
@@ -127,7 +126,7 @@ var _ sql.FunctionExpression = (*Quarter)(nil)
 var _ sql.CollationCoercible = (*Quarter)(nil)
 
 // NewQuarter creates a new Month UDF.
-func NewQuarter(date sql.Expression) sql.Expression {
+func NewQuarter(ctx *sql.Context, date sql.Expression) sql.Expression {
 	return &Quarter{expression.UnaryExpressionStub{Child: date}}
 }
 
@@ -144,10 +143,10 @@ func (q *Quarter) Description() string {
 func (q *Quarter) String() string { return fmt.Sprintf("%s(%s)", q.FunctionName(), q.Child) }
 
 // Type implements the Expression interface.
-func (q *Quarter) Type() sql.Type { return types.Int32 }
+func (q *Quarter) Type(ctx *sql.Context) sql.Type { return types.Int32 }
 
 // IsNullable implements the Expression interface
-func (q *Quarter) IsNullable() bool {
+func (q *Quarter) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
@@ -162,11 +161,11 @@ func (q *Quarter) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements the Expression interface.
-func (q *Quarter) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (q *Quarter) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(q, len(children), 1)
 	}
-	return NewQuarter(children[0]), nil
+	return NewQuarter(ctx, children[0]), nil
 }
 
 // Month is a function that returns the month of a date.
@@ -178,7 +177,7 @@ var _ sql.FunctionExpression = (*Month)(nil)
 var _ sql.CollationCoercible = (*Month)(nil)
 
 // NewMonth creates a new Month UDF.
-func NewMonth(date sql.Expression) sql.Expression {
+func NewMonth(ctx *sql.Context, date sql.Expression) sql.Expression {
 	return &Month{expression.UnaryExpressionStub{Child: date}}
 }
 
@@ -195,10 +194,10 @@ func (m *Month) Description() string {
 func (m *Month) String() string { return fmt.Sprintf("%s(%s)", m.FunctionName(), m.Child) }
 
 // Type implements the Expression interface.
-func (m *Month) Type() sql.Type { return types.Int32 }
+func (m *Month) Type(ctx *sql.Context) sql.Type { return types.Int32 }
 
 // IsNullable implements the Expression interface
-func (d *Month) IsNullable() bool {
+func (d *Month) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
@@ -213,11 +212,11 @@ func (m *Month) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements the Expression interface.
-func (m *Month) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (m *Month) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(m, len(children), 1)
 	}
-	return NewMonth(children[0]), nil
+	return NewMonth(ctx, children[0]), nil
 }
 
 // Day is a function that returns the day of a date.
@@ -229,7 +228,7 @@ var _ sql.FunctionExpression = (*Day)(nil)
 var _ sql.CollationCoercible = (*Day)(nil)
 
 // NewDay creates a new Day UDF.
-func NewDay(date sql.Expression) sql.Expression {
+func NewDay(ctx *sql.Context, date sql.Expression) sql.Expression {
 	return &Day{expression.UnaryExpressionStub{Child: date}}
 }
 
@@ -246,10 +245,10 @@ func (d *Day) Description() string {
 func (d *Day) String() string { return fmt.Sprintf("%s(%s)", d.FunctionName(), d.Child) }
 
 // Type implements the Expression interface.
-func (d *Day) Type() sql.Type { return types.Int32 }
+func (d *Day) Type(ctx *sql.Context) sql.Type { return types.Int32 }
 
 // IsNullable implements the Expression interface
-func (d *Day) IsNullable() bool {
+func (d *Day) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
@@ -264,11 +263,11 @@ func (d *Day) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements the Expression interface.
-func (d *Day) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (d *Day) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
 	}
-	return NewDay(children[0]), nil
+	return NewDay(ctx, children[0]), nil
 }
 
 // Weekday is a function that returns the weekday of a date where 0 = Monday,
@@ -281,7 +280,7 @@ var _ sql.FunctionExpression = (*Weekday)(nil)
 var _ sql.CollationCoercible = (*Weekday)(nil)
 
 // NewWeekday creates a new Weekday UDF.
-func NewWeekday(date sql.Expression) sql.Expression {
+func NewWeekday(ctx *sql.Context, date sql.Expression) sql.Expression {
 	return &Weekday{expression.UnaryExpressionStub{Child: date}}
 }
 
@@ -298,10 +297,10 @@ func (d *Weekday) Description() string {
 func (d *Weekday) String() string { return fmt.Sprintf("%s(%s)", d.FunctionName(), d.Child) }
 
 // Type implements the Expression interface.
-func (d *Weekday) Type() sql.Type { return types.Int32 }
+func (d *Weekday) Type(ctx *sql.Context) sql.Type { return types.Int32 }
 
 // IsNullable implements the Expression interface
-func (d *Weekday) IsNullable() bool {
+func (d *Weekday) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
@@ -316,11 +315,11 @@ func (d *Weekday) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements the Expression interface.
-func (d *Weekday) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (d *Weekday) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
 	}
-	return NewWeekday(children[0]), nil
+	return NewWeekday(ctx, children[0]), nil
 }
 
 // Hour is a function that returns the hour of a date.
@@ -332,7 +331,7 @@ var _ sql.FunctionExpression = (*Hour)(nil)
 var _ sql.CollationCoercible = (*Hour)(nil)
 
 // NewHour creates a new Hour UDF.
-func NewHour(date sql.Expression) sql.Expression {
+func NewHour(ctx *sql.Context, date sql.Expression) sql.Expression {
 	return &Hour{expression.UnaryExpressionStub{Child: date}}
 }
 
@@ -349,7 +348,7 @@ func (h *Hour) Description() string {
 func (h *Hour) String() string { return fmt.Sprintf("%s(%s)", h.FunctionName(), h.Child) }
 
 // Type implements the Expression interface.
-func (h *Hour) Type() sql.Type { return types.Int32 }
+func (h *Hour) Type(ctx *sql.Context) sql.Type { return types.Int32 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*Hour) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
@@ -362,11 +361,11 @@ func (h *Hour) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements the Expression interface.
-func (h *Hour) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (h *Hour) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(h, len(children), 1)
 	}
-	return NewHour(children[0]), nil
+	return NewHour(ctx, children[0]), nil
 }
 
 // Minute is a function that returns the minute of a date.
@@ -378,7 +377,7 @@ var _ sql.FunctionExpression = (*Minute)(nil)
 var _ sql.CollationCoercible = (*Minute)(nil)
 
 // NewMinute creates a new Minute UDF.
-func NewMinute(date sql.Expression) sql.Expression {
+func NewMinute(ctx *sql.Context, date sql.Expression) sql.Expression {
 	return &Minute{expression.UnaryExpressionStub{Child: date}}
 }
 
@@ -395,7 +394,7 @@ func (m *Minute) Description() string {
 func (m *Minute) String() string { return fmt.Sprintf("%s(%d)", m.FunctionName(), m.Child) }
 
 // Type implements the Expression interface.
-func (m *Minute) Type() sql.Type { return types.Int32 }
+func (m *Minute) Type(ctx *sql.Context) sql.Type { return types.Int32 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*Minute) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
@@ -408,11 +407,11 @@ func (m *Minute) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements the Expression interface.
-func (m *Minute) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (m *Minute) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(m, len(children), 1)
 	}
-	return NewMinute(children[0]), nil
+	return NewMinute(ctx, children[0]), nil
 }
 
 // Second is a function that returns the second of a date.
@@ -424,7 +423,7 @@ var _ sql.FunctionExpression = (*Second)(nil)
 var _ sql.CollationCoercible = (*Second)(nil)
 
 // NewSecond creates a new Second UDF.
-func NewSecond(date sql.Expression) sql.Expression {
+func NewSecond(ctx *sql.Context, date sql.Expression) sql.Expression {
 	return &Second{expression.UnaryExpressionStub{Child: date}}
 }
 
@@ -441,7 +440,7 @@ func (s *Second) Description() string {
 func (s *Second) String() string { return fmt.Sprintf("%s(%s)", s.FunctionName(), s.Child) }
 
 // Type implements the Expression interface.
-func (s *Second) Type() sql.Type { return types.Int32 }
+func (s *Second) Type(ctx *sql.Context) sql.Type { return types.Int32 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*Second) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
@@ -454,11 +453,11 @@ func (s *Second) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements the Expression interface.
-func (s *Second) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (s *Second) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 1)
 	}
-	return NewSecond(children[0]), nil
+	return NewSecond(ctx, children[0]), nil
 }
 
 // DayOfWeek is a function that returns the day of the week from a date where
@@ -471,7 +470,7 @@ var _ sql.FunctionExpression = (*DayOfWeek)(nil)
 var _ sql.CollationCoercible = (*DayOfWeek)(nil)
 
 // NewDayOfWeek creates a new DayOfWeek UDF.
-func NewDayOfWeek(date sql.Expression) sql.Expression {
+func NewDayOfWeek(ctx *sql.Context, date sql.Expression) sql.Expression {
 	return &DayOfWeek{expression.UnaryExpressionStub{Child: date}}
 }
 
@@ -488,10 +487,10 @@ func (d *DayOfWeek) Description() string {
 func (d *DayOfWeek) String() string { return fmt.Sprintf("DAYOFWEEK(%s)", d.Child) }
 
 // Type implements the Expression interface.
-func (d *DayOfWeek) Type() sql.Type { return types.Int32 }
+func (d *DayOfWeek) Type(ctx *sql.Context) sql.Type { return types.Int32 }
 
 // IsNullable implements the Expression interface
-func (d *DayOfWeek) IsNullable() bool {
+func (d *DayOfWeek) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
@@ -506,11 +505,11 @@ func (d *DayOfWeek) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements the Expression interface.
-func (d *DayOfWeek) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (d *DayOfWeek) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
 	}
-	return NewDayOfWeek(children[0]), nil
+	return NewDayOfWeek(ctx, children[0]), nil
 }
 
 // DayOfYear is a function that returns the day of the year from a date.
@@ -522,7 +521,7 @@ var _ sql.FunctionExpression = (*DayOfYear)(nil)
 var _ sql.CollationCoercible = (*DayOfYear)(nil)
 
 // NewDayOfYear creates a new DayOfYear UDF.
-func NewDayOfYear(date sql.Expression) sql.Expression {
+func NewDayOfYear(ctx *sql.Context, date sql.Expression) sql.Expression {
 	return &DayOfYear{expression.UnaryExpressionStub{Child: date}}
 }
 
@@ -539,10 +538,10 @@ func (d *DayOfYear) Description() string {
 func (d *DayOfYear) String() string { return fmt.Sprintf("DAYOFYEAR(%s)", d.Child) }
 
 // Type implements the Expression interface.
-func (d *DayOfYear) Type() sql.Type { return types.Int32 }
+func (d *DayOfYear) Type(ctx *sql.Context) sql.Type { return types.Int32 }
 
 // IsNullable implements the Expression interface
-func (d *DayOfYear) IsNullable() bool {
+func (d *DayOfYear) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
@@ -557,11 +556,11 @@ func (d *DayOfYear) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements the Expression interface.
-func (d *DayOfYear) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (d *DayOfYear) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
 	}
-	return NewDayOfYear(children[0]), nil
+	return NewDayOfYear(ctx, children[0]), nil
 }
 
 func datePartFunc(fn func(time.Time) interface{}) func(interface{}) interface{} {
@@ -586,13 +585,13 @@ var _ sql.FunctionExpression = (*YearWeek)(nil)
 var _ sql.CollationCoercible = (*YearWeek)(nil)
 
 // NewYearWeek creates a new YearWeek UDF
-func NewYearWeek(args ...sql.Expression) (sql.Expression, error) {
+func NewYearWeek(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) == 0 {
 		return nil, sql.ErrInvalidArgumentNumber.New("YEARWEEK", "1 or more", 0)
 	}
 
 	yw := &YearWeek{date: args[0]}
-	if len(args) > 1 && args[1].Resolved() && types.IsInteger(args[1].Type()) {
+	if len(args) > 1 && args[1].Resolved() && types.IsInteger(args[1].Type(ctx)) {
 		yw.mode = args[1]
 	} else if len(args) > 1 && expression.IsBindVar(args[1]) {
 		yw.mode = args[1]
@@ -616,7 +615,7 @@ func (d *YearWeek) Description() string {
 func (d *YearWeek) String() string { return fmt.Sprintf("YEARWEEK(%s, %d)", d.date, d.mode) }
 
 // Type implements the Expression interface.
-func (d *YearWeek) Type() sql.Type { return types.Int32 }
+func (d *YearWeek) Type(ctx *sql.Context) sql.Type { return types.Int32 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*YearWeek) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
@@ -682,13 +681,13 @@ func (d *YearWeek) Resolved() bool {
 func (d *YearWeek) Children() []sql.Expression { return []sql.Expression{d.date, d.mode} }
 
 // IsNullable implements the Expression interface.
-func (d *YearWeek) IsNullable() bool {
+func (d *YearWeek) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
 // WithChildren implements the Expression interface.
-func (*YearWeek) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewYearWeek(children...)
+func (*YearWeek) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewYearWeek(ctx, children...)
 }
 
 // Week is a function that returns year and week for a date.
@@ -703,13 +702,13 @@ var _ sql.FunctionExpression = (*Week)(nil)
 var _ sql.CollationCoercible = (*Week)(nil)
 
 // NewWeek creates a new Week UDF
-func NewWeek(args ...sql.Expression) (sql.Expression, error) {
+func NewWeek(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) == 0 {
 		return nil, sql.ErrInvalidArgumentNumber.New("YEARWEEK", "1 or more", 0)
 	}
 
 	w := &Week{date: args[0]}
-	if len(args) > 1 && args[1].Resolved() && types.IsInteger(args[1].Type()) {
+	if len(args) > 1 && args[1].Resolved() && types.IsInteger(args[1].Type(ctx)) {
 		w.mode = args[1]
 	} else {
 		w.mode = expression.NewLiteral(0, types.Int64)
@@ -730,12 +729,12 @@ func (d *Week) Description() string {
 
 func (d *Week) String() string { return fmt.Sprintf("WEEK(%s, %s)", d.date, d.mode.String()) }
 
-func (d *Week) DebugString() string {
-	return fmt.Sprintf("WEEK(%s, %s)", sql.DebugString(d.date), sql.DebugString(d.mode))
+func (d *Week) DebugString(ctx *sql.Context) string {
+	return fmt.Sprintf("WEEK(%s, %s)", sql.DebugString(ctx, d.date), sql.DebugString(ctx, d.mode))
 }
 
 // Type implements the Expression interface.
-func (d *Week) Type() sql.Type { return types.Int32 }
+func (d *Week) Type(ctx *sql.Context) sql.Type { return types.Int32 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*Week) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
@@ -810,13 +809,13 @@ func (d *Week) Resolved() bool {
 func (d *Week) Children() []sql.Expression { return []sql.Expression{d.date, d.mode} }
 
 // IsNullable implements the Expression interface.
-func (d *Week) IsNullable() bool {
+func (d *Week) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
 // WithChildren implements the Expression interface.
-func (*Week) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewWeek(children...)
+func (*Week) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewWeek(ctx, children...)
 }
 
 // Following solution of YearWeek was taken from tidb: https://github.com/pingcap/tidb/blob/master/types/mytime.go
@@ -991,7 +990,7 @@ var _ sql.FunctionExpression = (*Now)(nil)
 var _ sql.CollationCoercible = (*Now)(nil)
 
 // NewNow returns a new Now node.
-func NewNow(args ...sql.Expression) (sql.Expression, error) {
+func NewNow(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	n := &Now{}
 	// parser should make it impossible to pass in more than one argument
 	if len(args) > 0 {
@@ -1039,7 +1038,7 @@ func (n *Now) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (n *Now) Type() sql.Type {
+func (n *Now) Type(ctx *sql.Context) sql.Type {
 	// TODO: precision
 	if n.prec == nil {
 		return types.Datetime
@@ -1062,7 +1061,7 @@ func (n *Now) String() string {
 }
 
 // IsNullable implements the sql.Expression interface.
-func (n *Now) IsNullable() bool { return false }
+func (n *Now) IsNullable(ctx *sql.Context) bool { return false }
 
 // Resolved implements the sql.Expression interface.
 func (n *Now) Resolved() bool {
@@ -1112,7 +1111,7 @@ func (n *Now) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Should syntax error before this; check anyway
-	if types.IsNull(n.prec) {
+	if types.IsNull(ctx, n.prec) {
 		return nil, ErrTimeUnexpectedlyNil.New(n.FunctionName())
 	}
 
@@ -1164,8 +1163,8 @@ func (n *Now) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements the Expression interface.
-func (n *Now) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewNow(children...)
+func (n *Now) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewNow(ctx, children...)
 }
 
 // NewSysdate returns a new SYSDATE() function, using the supplied |args| for an
@@ -1173,8 +1172,8 @@ func (n *Now) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 // for NOW(), but does NOT use the query's cached start time, and instead always returns
 // the current time, even when executed multiple times in a query or stored procedure.
 // https://dev.mysql.com/doc/refman/8.0/en/date-and-time-functions.html#function_sysdate
-func NewSysdate(args ...sql.Expression) (sql.Expression, error) {
-	n, err := NewNow(args...)
+func NewSysdate(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
+	n, err := NewNow(ctx, args...)
 	n.(*Now).alwaysUseExactTime = true
 	return n, err
 }
@@ -1207,19 +1206,16 @@ var _ sql.FunctionExpression = (*UTCTimestamp)(nil)
 var _ sql.CollationCoercible = (*UTCTimestamp)(nil)
 
 // NewUTCTimestamp returns a new UTCTimestamp node.
-func NewUTCTimestamp(args ...sql.Expression) (sql.Expression, error) {
-	// TODO: Add context parameter
-	ctx := context.Background()
+func NewUTCTimestamp(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	var precision *int
 	if len(args) > 1 {
 		return nil, sql.ErrInvalidArgumentNumber.New("UTC_TIMESTAMP", 1, len(args))
 	} else if len(args) == 1 {
-		argType := args[0].Type().Promote()
+		argType := args[0].Type(ctx).Promote()
 		if argType != types.Int64 && argType != types.Uint64 {
-			return nil, sql.ErrInvalidType.New(args[0].Type().String())
+			return nil, sql.ErrInvalidType.New(args[0].Type(ctx).String())
 		}
-		// todo: making a context here is expensive
-		val, err := args[0].Eval(sql.NewEmptyContext(), nil)
+		val, err := args[0].Eval(ctx, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -1250,7 +1246,7 @@ func (ut *UTCTimestamp) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (ut *UTCTimestamp) Type() sql.Type {
+func (ut *UTCTimestamp) Type(ctx *sql.Context) sql.Type {
 	return types.DatetimeMaxPrecision
 }
 
@@ -1268,7 +1264,7 @@ func (ut *UTCTimestamp) String() string {
 }
 
 // IsNullable implements the sql.Expression interface.
-func (ut *UTCTimestamp) IsNullable() bool { return false }
+func (ut *UTCTimestamp) IsNullable(ctx *sql.Context) bool { return false }
 
 // Resolved implements the sql.Expression interface.
 func (ut *UTCTimestamp) Resolved() bool { return true }
@@ -1286,8 +1282,8 @@ func (ut *UTCTimestamp) Eval(ctx *sql.Context, _ sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements the Expression interface.
-func (ut *UTCTimestamp) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewUTCTimestamp(children...)
+func (ut *UTCTimestamp) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewUTCTimestamp(ctx, children...)
 }
 
 // Date a function takes the DATE part out from a datetime expression.
@@ -1309,17 +1305,17 @@ func (d *Date) Description() string {
 }
 
 // NewDate returns a new Date node.
-func NewDate(date sql.Expression) sql.Expression {
+func NewDate(ctx *sql.Context, date sql.Expression) sql.Expression {
 	return &Date{expression.UnaryExpressionStub{Child: date}}
 }
 
 func (d *Date) String() string { return fmt.Sprintf("DATE(%s)", d.Child) }
 
 // Type implements the Expression interface.
-func (d *Date) Type() sql.Type { return types.Date }
+func (d *Date) Type(ctx *sql.Context) sql.Type { return types.Date }
 
 // IsNullable implements the Expression interface
-func (d *Date) IsNullable() bool {
+func (d *Date) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
@@ -1356,11 +1352,11 @@ func (d *Date) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements the Expression interface.
-func (d *Date) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (d *Date) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
 	}
-	return NewDate(children[0]), nil
+	return NewDate(ctx, children[0]), nil
 }
 
 // UnaryDatetimeFunc is a sql.Function which takes a single datetime argument
@@ -1406,12 +1402,12 @@ func (dtf *UnaryDatetimeFunc) String() string {
 }
 
 // IsNullable implements the Expression interface
-func (dtf *UnaryDatetimeFunc) IsNullable() bool {
+func (dtf *UnaryDatetimeFunc) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
 // Type implements the Expression interface.
-func (dtf *UnaryDatetimeFunc) Type() sql.Type {
+func (dtf *UnaryDatetimeFunc) Type(ctx *sql.Context) sql.Type {
 	return dtf.SQLType
 }
 
@@ -1422,7 +1418,7 @@ type DayName struct {
 
 var _ sql.FunctionExpression = (*DayName)(nil)
 
-func NewDayName(arg sql.Expression) sql.Expression {
+func NewDayName(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &DayName{NewUnaryFunc(arg, "DAYNAME", types.Text)}
 }
 
@@ -1442,7 +1438,7 @@ func (*DayName) CollationCoercibility(ctx *sql.Context) (collation sql.Collation
 }
 
 // IsNullable implements the Expression interface
-func (d *DayName) IsNullable() bool {
+func (d *DayName) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
@@ -1470,11 +1466,11 @@ func (d *DayName) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return t.Weekday().String(), nil
 }
 
-func (d *DayName) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (d *DayName) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
 	}
-	return NewDayName(children[0]), nil
+	return NewDayName(ctx, children[0]), nil
 }
 
 // Microsecond implements the MICROSECOND function
@@ -1495,7 +1491,7 @@ func (*Microsecond) CollationCoercibility(ctx *sql.Context) (collation sql.Colla
 	return sql.Collation_binary, 5
 }
 
-func NewMicrosecond(arg sql.Expression) sql.Expression {
+func NewMicrosecond(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &Microsecond{NewUnaryDatetimeFunc(arg, "MICROSECOND", types.Uint64)}
 }
 
@@ -1503,11 +1499,11 @@ func (m *Microsecond) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return getDatePart(ctx, m.UnaryExpressionStub, row, microsecond)
 }
 
-func (m *Microsecond) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (m *Microsecond) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(m, len(children), 1)
 	}
-	return NewMicrosecond(children[0]), nil
+	return NewMicrosecond(ctx, children[0]), nil
 }
 
 // MonthName implements the MONTHNAME function
@@ -1518,7 +1514,7 @@ type MonthName struct {
 var _ sql.FunctionExpression = (*MonthName)(nil)
 var _ sql.CollationCoercible = (*MonthName)(nil)
 
-func NewMonthName(arg sql.Expression) sql.Expression {
+func NewMonthName(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &MonthName{NewUnaryDatetimeFunc(arg, "MONTHNAME", types.Text)}
 }
 
@@ -1533,7 +1529,7 @@ func (*MonthName) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 }
 
 // IsNullable implements the Expression interface
-func (d *MonthName) IsNullable() bool {
+func (d *MonthName) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
@@ -1558,11 +1554,11 @@ func (d *MonthName) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 }
 
-func (d *MonthName) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (d *MonthName) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
 	}
-	return NewMonthName(children[0]), nil
+	return NewMonthName(ctx, children[0]), nil
 }
 
 // TimeToSec implements the time_to_sec function
@@ -1573,7 +1569,7 @@ type TimeToSec struct {
 var _ sql.FunctionExpression = (*TimeToSec)(nil)
 var _ sql.CollationCoercible = (*TimeToSec)(nil)
 
-func NewTimeToSec(arg sql.Expression) sql.Expression {
+func NewTimeToSec(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &TimeToSec{NewUnaryDatetimeFunc(arg, "TIME_TO_SEC", types.Uint64)}
 }
 
@@ -1604,11 +1600,11 @@ func (m *TimeToSec) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 }
 
-func (m *TimeToSec) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (m *TimeToSec) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(m, len(children), 1)
 	}
-	return NewTimeToSec(children[0]), nil
+	return NewTimeToSec(ctx, children[0]), nil
 }
 
 // WeekOfYear implements the weekofyear function
@@ -1619,7 +1615,7 @@ type WeekOfYear struct {
 var _ sql.FunctionExpression = (*WeekOfYear)(nil)
 var _ sql.CollationCoercible = (*WeekOfYear)(nil)
 
-func NewWeekOfYear(arg sql.Expression) sql.Expression {
+func NewWeekOfYear(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &WeekOfYear{NewUnaryDatetimeFunc(arg, "WEEKOFYEAR", types.Uint64)}
 }
 
@@ -1655,11 +1651,11 @@ func (m *WeekOfYear) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 }
 
-func (m *WeekOfYear) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (m *WeekOfYear) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(m, len(children), 1)
 	}
-	return NewWeekOfYear(children[0]), nil
+	return NewWeekOfYear(ctx, children[0]), nil
 }
 
 type CurrTime struct {
@@ -1673,7 +1669,7 @@ func (c CurrTime) IsNonDeterministic() bool {
 var _ sql.FunctionExpression = (*CurrTime)(nil)
 var _ sql.CollationCoercible = (*CurrTime)(nil)
 
-func NewCurrTime(args ...sql.Expression) (sql.Expression, error) {
+func NewCurrTime(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	c := &CurrTime{}
 	// parser should make it impossible to pass in more than one argument
 	if len(args) > 0 {
@@ -1693,7 +1689,7 @@ func (c *CurrTime) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (c *CurrTime) Type() sql.Type {
+func (c *CurrTime) Type(ctx *sql.Context) sql.Type {
 	return types.Time
 }
 
@@ -1712,7 +1708,7 @@ func (c *CurrTime) String() string {
 }
 
 // IsNullable implements the sql.Expression interface.
-func (c *CurrTime) IsNullable() bool { return false }
+func (c *CurrTime) IsNullable(ctx *sql.Context) bool { return false }
 
 // Resolved implements the sql.Expression interface.
 func (c *CurrTime) Resolved() bool {
@@ -1732,7 +1728,7 @@ func (c *CurrTime) Children() []sql.Expression {
 
 // Eval implements sql.Expression
 func (c *CurrTime) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	newNow, err := NewNow(c.prec)
+	newNow, err := NewNow(ctx, c.prec)
 	if err != nil {
 		return nil, err
 	}
@@ -1751,7 +1747,7 @@ func (c *CurrTime) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements sql.Expression
-func (c *CurrTime) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (c *CurrTime) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	return NoArgFuncWithChildren(c, children)
 }
 
@@ -1764,7 +1760,7 @@ var _ sql.FunctionExpression = (*Time)(nil)
 var _ sql.CollationCoercible = (*Time)(nil)
 
 // NewTime returns a new Date node.
-func NewTime(time sql.Expression) sql.Expression {
+func NewTime(ctx *sql.Context, time sql.Expression) sql.Expression {
 	return &Time{expression.UnaryExpressionStub{Child: time}}
 }
 
@@ -1781,7 +1777,7 @@ func (t *Time) String() string {
 }
 
 // Type implements the Expression interface.
-func (t *Time) Type() sql.Type {
+func (t *Time) Type(ctx *sql.Context) sql.Type {
 	return types.Time
 }
 
@@ -1818,9 +1814,9 @@ func (t *Time) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements the Expression interface.
-func (t *Time) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (t *Time) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 1)
 	}
-	return NewTime(children[0]), nil
+	return NewTime(ctx, children[0]), nil
 }

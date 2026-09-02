@@ -246,8 +246,6 @@ func (b *BaseBuilder) buildNodeExecNoAnalyze(ctx *sql.Context, n sql.Node, row s
 		return b.buildCreateIndex(ctx, n, row)
 	case *plan.Procedure:
 		return b.buildProcedure(ctx, n, row)
-	case *plan.With:
-		return b.buildWith(ctx, n, row)
 	case *plan.Project:
 		return b.buildProject(ctx, n, row)
 	case *plan.ModifyColumn:

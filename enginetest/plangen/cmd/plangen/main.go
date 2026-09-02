@@ -122,7 +122,7 @@ func generatePlans(specPath string, srcRoot string) error {
 		var buf bytes.Buffer
 		writeHeader(&buf, *pkg)
 		if spec.Name == "QueryPlanScriptTests" {
-			_, _ = fmt.Fprint(&buf, "import (\n\t\"github.com/dolthub/go-mysql-server/sql\"\n)\n\n")
+			writeImportsForScriptTests(&buf)
 			err = generatePlansForScriptSuite(spec, &buf)
 		} else {
 			err = generatePlansForSuite(spec, &buf)
@@ -137,6 +137,17 @@ func generatePlans(specPath string, srcRoot string) error {
 		}
 	}
 	return nil
+}
+
+func writeImportsForScriptTests(buf *bytes.Buffer) {
+	_, _ = fmt.Fprint(buf, `import (
+	"fmt"`)
+	_, _ = fmt.Fprint(buf, "\n")
+	_, _ = fmt.Fprint(buf, `
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
+)`)
+	_, _ = fmt.Fprint(buf, "\n\n")
 }
 
 func writePlanString(w *bytes.Buffer, planString string) {
@@ -202,7 +213,7 @@ func generatePlansForSuite(spec PlanSpec, w *bytes.Buffer) error {
 			ctx := enginetest.NewContext(harness)
 			node := analyzeQuery(ctx, engine, tt.Query)
 			_, _ = w.WriteString(`ExpectedPlan: `)
-			planString := sql.Describe(enginetest.ExtractQueryNode(node), sql.DescribeOptions{
+			planString := sql.Describe(ctx, enginetest.ExtractQueryNode(node), sql.DescribeOptions{
 				Debug: true,
 			})
 			writePlanString(w, planString)
@@ -211,7 +222,7 @@ func generatePlansForSuite(spec PlanSpec, w *bytes.Buffer) error {
 				var planString string
 				if tt.ExpectedEstimates != "skip" {
 					_, _ = w.WriteString(`ExpectedEstimates: `)
-					planString = sql.Describe(enginetest.ExtractQueryNode(node), sql.DescribeOptions{
+					planString = sql.Describe(ctx, enginetest.ExtractQueryNode(node), sql.DescribeOptions{
 						Estimates: true,
 					})
 					writePlanString(w, planString)
@@ -225,7 +236,7 @@ func generatePlansForSuite(spec PlanSpec, w *bytes.Buffer) error {
 					if err != nil {
 						exit(fmt.Errorf("%w\nfailed to execute query: %s", err, tt.Query))
 					}
-					planString = sql.Describe(enginetest.ExtractQueryNode(node), sql.DescribeOptions{
+					planString = sql.Describe(ctx, enginetest.ExtractQueryNode(node), sql.DescribeOptions{
 						Analyze:   true,
 						Estimates: true,
 					})
@@ -296,7 +307,7 @@ func generatePlansForScriptSuite(spec PlanSpec, w *bytes.Buffer) error {
 
 			node := analyzeQuery(ctx, engine, assertion.Query)
 			w.WriteString("\t\t\t\tExpectedPlan: ")
-			planString := sql.Describe(enginetest.ExtractQueryNode(node), sql.DescribeOptions{
+			planString := sql.Describe(ctx, enginetest.ExtractQueryNode(node), sql.DescribeOptions{
 				Debug: true,
 			})
 			writePlanString(w, planString)

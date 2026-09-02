@@ -15,19 +15,21 @@
 package harness
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"strconv"
 	"strings"
 	"sync/atomic"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/vt/proto/query"
-	"github.com/shopspring/decimal"
 
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/enginetest"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type memoryHarness struct {
@@ -70,6 +72,18 @@ func (h *memoryHarness) newContext() *sql.Context {
 	ctx.SetCurrentDatabase("mydb")
 	ctx.ApplyOpts(sql.WithPid(uint64(atomic.AddUint32(&pid, 1))))
 	return ctx
+}
+
+func (h *memoryHarness) ExecuteStatementContext(_ context.Context, statement string) error {
+	return h.ExecuteStatement(statement)
+}
+
+func (h *memoryHarness) ExecuteQueryContext(_ context.Context, statement string) (schema string, results []string, err error) {
+	return h.ExecuteQuery(statement)
+}
+
+func (h *memoryHarness) GetTimeout() int64 {
+	return 0
 }
 
 func (h *memoryHarness) ExecuteQuery(statement string) (schema string, results []string, err error) {
@@ -134,9 +148,10 @@ func toSqlString(val interface{}) string {
 	case float32, float64:
 		// exactly 3 decimal points for floats
 		return fmt.Sprintf("%.3f", v)
-	case decimal.Decimal:
+	case *apd.Decimal:
 		// exactly 3 decimal points for floats
-		return v.StringFixed(3)
+		d := types.DecimalTruncate(v, 3)
+		return d.Text('f')
 	case int:
 		return strconv.Itoa(v)
 	case uint:

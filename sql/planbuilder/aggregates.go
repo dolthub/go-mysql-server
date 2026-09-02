@@ -143,7 +143,7 @@ func (b *Builder) buildGroupingCols(fromScope, projScope *scope, groupby ast.Gro
 				col:      expr.String(),
 				typ:      nil,
 				scalar:   expr,
-				nullable: expr.IsNullable(),
+				nullable: expr.IsNullable(b.ctx),
 			}
 		}
 		if col.scalar == nil {
@@ -177,12 +177,12 @@ func (b *Builder) buildNameConst(fromScope *scope, f *ast.FuncExpr) sql.Expressi
 		b.handleErr(fmt.Errorf("incorrect arguments to: NAME_CONST"))
 	}
 	var aliasStr string
-	if types.IsText(aLit.Type()) {
+	if types.IsText(aLit.Type(b.ctx)) {
 		aliasStr = strings.Trim(aLit.String(), "'")
 	} else {
 		aliasStr = aLit.String()
 	}
-	return expression.NewAlias(aliasStr, vLit)
+	return expression.NewAlias(b.ctx, aliasStr, vLit)
 }
 
 func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []sql.Expression) *scope {
@@ -222,8 +222,8 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 		default:
 		}
 
-		var findSelectDeps func(sql.Expression) bool
-		findSelectDeps = func(e sql.Expression) bool {
+		var findSelectDeps func(*sql.Context, sql.Expression) bool
+		findSelectDeps = func(ctx *sql.Context, e sql.Expression) bool {
 			switch e := e.(type) {
 			case *expression.GetField:
 				colName := strings.ToLower(e.String())
@@ -242,7 +242,7 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 			case *plan.Subquery:
 				e.Correlated().ForEach(func(colId sql.ColumnId) {
 					if correlated, found := projScope.parent.getCol(colId); found {
-						findSelectDeps(correlated.scalarGf())
+						findSelectDeps(ctx, correlated.scalarGf())
 					}
 				})
 			default:
@@ -250,7 +250,7 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 			return false
 		}
 
-		transform.InspectExpr(col.scalar, findSelectDeps)
+		transform.InspectExpr(b.ctx, col.scalar, findSelectDeps)
 	}
 	for _, e := range fromScope.extraCols {
 		// accessory cols used by ORDER_BY, HAVING
@@ -265,7 +265,7 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 	outScope.node = gb
 
 	if len(aliases) > 0 {
-		outScope.node = plan.NewProject(append(selectGfs, aliases...), outScope.node).WithAliasDeps(aliasDeps)
+		outScope.node = plan.NewProject(b.ctx, append(selectGfs, aliases...), outScope.node).WithAliasDeps(aliasDeps)
 	}
 	return outScope
 }
@@ -273,16 +273,16 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 // IsAggregateFunc is a hacky "extension point" to allow for other dialects to declare additional aggregate functions
 var IsAggregateFunc = IsMySQLAggregateFuncName
 
-func IsMySQLAggregateFuncName(name string) bool {
+func IsMySQLAggregateFuncName(ctx *sql.Context, name string) (bool, error) {
 	switch name {
 	case "avg", "bit_and", "bit_or", "bit_xor", "count",
 		"group_concat", "json_arrayagg", "json_objectagg",
 		"max", "min", "std", "stddev_pop", "stddev_samp",
 		"stddev", "sum", "var_pop", "var_samp", "variance",
 		"first", "last", "any_value":
-		return true
+		return true, nil
 	default:
-		return false
+		return false, nil
 	}
 }
 
@@ -321,19 +321,15 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 		b.qFlags.Set(sql.QFlagCount)
 	}
 
-	aggType := agg.Type()
-	if name == "avg" || name == "sum" {
-		aggType = types.Float64
-	}
+	aggType := agg.Type(b.ctx)
 
-	aggName := strings.ToLower(plan.AliasSubqueryString(agg))
-	if id, ok := gb.outScope.getExpr(aggName, true); ok {
+	aggName := strings.ToLower(plan.AliasSubqueryString(b.ctx, agg))
+	if gf := gb.getAggRef(aggName); gf != nil {
 		// if we've already computed use reference here
-		gf := expression.NewGetFieldWithTable(int(id), 0, aggType, "", "", aggName, agg.IsNullable())
 		return gf
 	}
 
-	col := scopeColumn{col: aggName, scalar: agg, typ: aggType, nullable: agg.IsNullable()}
+	col := scopeColumn{col: aggName, scalar: agg, typ: aggType, nullable: agg.IsNullable(b.ctx)}
 	id := gb.outScope.newColumn(col)
 
 	agg = agg.WithId(sql.ColumnId(id)).(sql.Aggregation)
@@ -345,7 +341,7 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 	return col.scalarGf()
 }
 
-// newAggregation creates a new aggregation function instanc from the arguments given
+// newAggregation creates a new aggregation function instance from the arguments given
 func (b *Builder) newAggregation(e *ast.FuncExpr, name string, args []sql.Expression) sql.Aggregation {
 	var agg sql.Aggregation
 	if e.Distinct && name == "count" {
@@ -362,14 +358,14 @@ func (b *Builder) newAggregation(e *ast.FuncExpr, name string, args []sql.Expres
 			args[0] = expression.NewDistinctExpression(args[0])
 		}
 
-		f, ok := b.cat.Function(b.ctx, name)
+		f, ok := b.cat.Function(b.ctx, e.Qualifier.String(), name)
 		if !ok {
 			// todo(max): similar names in registry?
 			err := sql.ErrFunctionNotFound.New(name)
 			b.handleErr(err)
 		}
 
-		newInst, err := f.NewInstance(args)
+		newInst, err := f.NewInstance(b.ctx, args)
 		if err != nil {
 			b.handleErr(err)
 		}
@@ -398,18 +394,18 @@ func (b *Builder) buildAggFunctionArgs(inScope *scope, e *ast.FuncExpr, gb *grou
 				b.handleErr(fmt.Errorf("failed to resolve aggregate column argument: %s", e))
 			}
 			args = append(args, e)
-			col := scopeColumn{tableId: e.TableID(), db: e.Database(), table: e.Table(), col: e.Name(), scalar: e, typ: e.Type(), nullable: e.IsNullable()}
+			col := scopeColumn{tableId: e.TableID(), db: e.Database(), table: e.Table(), col: e.Name(), scalar: e, typ: e.Type(b.ctx), nullable: e.IsNullable(b.ctx)}
 			gb.addInCol(col)
 		case *expression.Star:
 			err := sql.ErrStarUnsupported.New()
 			b.handleErr(err)
 		case *plan.Subquery:
 			args = append(args, e)
-			col := scopeColumn{col: e.QueryString, scalar: e, typ: e.Type()}
+			col := scopeColumn{col: e.QueryString, scalar: e, typ: e.Type(b.ctx)}
 			gb.addInCol(col)
 		default:
 			args = append(args, e)
-			col := scopeColumn{col: e.String(), scalar: e, typ: e.Type()}
+			col := scopeColumn{col: e.String(), scalar: e, typ: e.Type(b.ctx)}
 			gb.addInCol(col)
 		}
 	}
@@ -432,7 +428,7 @@ func (b *Builder) buildJsonArrayStarAggregate(gb *groupBy) sql.Expression {
 		return gf
 	}
 
-	col := scopeColumn{col: strings.ToLower(agg.String()), scalar: agg, typ: agg.Type(), nullable: agg.IsNullable()}
+	col := scopeColumn{col: strings.ToLower(agg.String()), scalar: agg, typ: agg.Type(b.ctx), nullable: agg.IsNullable(b.ctx)}
 	id := gb.outScope.newColumn(col)
 
 	agg = agg.WithId(sql.ColumnId(id)).(*aggregation.JsonArray)
@@ -460,7 +456,7 @@ func (b *Builder) buildCountStarAggregate(e *ast.FuncExpr, gb *groupBy) sql.Expr
 		return gf
 	}
 
-	col := scopeColumn{col: strings.ToLower(agg.String()), scalar: agg, typ: agg.Type(), nullable: agg.IsNullable()}
+	col := scopeColumn{col: strings.ToLower(agg.String()), scalar: agg, typ: agg.Type(b.ctx), nullable: agg.IsNullable(b.ctx)}
 	id := gb.outScope.newColumn(col)
 	col.id = id
 
@@ -488,22 +484,7 @@ func (b *Builder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.E
 	}
 
 	orderByScope := b.analyzeOrderBy(inScope, inScope, e.OrderBy)
-	var sortFields sql.SortFields
-	for _, c := range orderByScope.cols {
-		so := sql.Ascending
-		if c.descending {
-			so = sql.Descending
-		}
-		scalar := c.scalar
-		if scalar == nil {
-			scalar = c.scalarGf()
-		}
-		sf := sql.SortField{
-			Column: scalar,
-			Order:  so,
-		}
-		sortFields = append(sortFields, sf)
-	}
+	sortConditions := b.buildSortConditions(orderByScope, transform.SameTree)
 
 	// TODO: this should be acquired at runtime, not at parse time, so fix this
 	gcml, err := b.ctx.GetSessionVariable(b.ctx, "group_concat_max_len")
@@ -513,9 +494,9 @@ func (b *Builder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.E
 	groupConcatMaxLen := gcml.(uint64)
 
 	// todo store ref to aggregate
-	agg := aggregation.NewGroupConcat(e.Distinct, sortFields, separatorS, args, int(groupConcatMaxLen))
-	aggName := strings.ToLower(plan.AliasSubqueryString(agg))
-	col := scopeColumn{col: aggName, scalar: agg, typ: agg.Type(), nullable: agg.IsNullable()}
+	agg := aggregation.NewGroupConcat(e.Distinct, sortConditions, separatorS, args, int(groupConcatMaxLen))
+	aggName := strings.ToLower(plan.AliasSubqueryString(b.ctx, agg))
+	col := scopeColumn{col: aggName, scalar: agg, typ: agg.Type(b.ctx), nullable: agg.IsNullable(b.ctx)}
 
 	id := gb.outScope.newColumn(col)
 
@@ -528,64 +509,10 @@ func (b *Builder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.E
 	return col.scalarGf()
 }
 
-// buildOrderedInjectedExpr builds an InjectedExpr with an ORDER BY dependency
-func (b *Builder) buildOrderedInjectedExpr(inScope *scope, e *ast.OrderedInjectedExpr) sql.Expression {
-	inScope.initGroupBy()
-	gb := inScope.groupBy
+// IsWindowFunc is a hacky "extension point" to allow for other dialects to declare additional window functions
+var IsWindowFunc = IsMySQLWindowFuncName
 
-	var resolvedChildren []any
-	if len(e.Children) > 0 {
-		resolvedChildren = make([]any, len(e.Children))
-		for i, child := range e.Children {
-			resolvedChildren[i] = b.buildScalar(inScope, child)
-		}
-	} else {
-		resolvedChildren = make([]any, len(e.SelectExprChildren))
-		for i, child := range e.SelectExprChildren {
-			resolvedChildren[i] = b.selectExprToExpression(inScope, child)
-		}
-	}
-
-	orderByScope := b.analyzeOrderBy(inScope, inScope, e.OrderBy)
-	var sortFields sql.SortFields
-	for _, c := range orderByScope.cols {
-		so := sql.Ascending
-		if c.descending {
-			so = sql.Descending
-		}
-		scalar := c.scalar
-		if scalar == nil {
-			scalar = c.scalarGf()
-		}
-		sf := sql.SortField{
-			Column: scalar,
-			Order:  so,
-		}
-		sortFields = append(sortFields, sf)
-	}
-
-	resolvedChildren = append(resolvedChildren, sortFields)
-
-	expr := b.buildInjectedExpressionFromResolvedChildren(e.InjectedExpr, resolvedChildren)
-	agg, ok := expr.(sql.Aggregation)
-	if !ok {
-		b.handleErr(fmt.Errorf("expected sql.Aggregation, got %T", expr))
-	}
-
-	aggName := strings.ToLower(plan.AliasSubqueryString(agg))
-	col := scopeColumn{col: aggName, scalar: agg, typ: agg.Type(), nullable: agg.IsNullable()}
-	id := gb.outScope.newColumn(col)
-
-	agg = agg.WithId(sql.ColumnId(id)).(sql.Aggregation)
-	gb.outScope.cols[len(gb.outScope.cols)-1].scalar = agg
-	col.scalar = agg
-
-	gb.addAggStr(col)
-	col.id = id
-	return col.scalarGf()
-}
-
-func isWindowFunc(name string) bool {
+func IsMySQLWindowFuncName(ctx *sql.Context, name string) (bool, error) {
 	switch name {
 	case "first", "last", "count", "sum", "any_value",
 		"avg", "max", "min", "count_distinct", "json_arrayagg",
@@ -595,9 +522,9 @@ func isWindowFunc(name string) bool {
 		"ntile",
 		"std", "stddev", "stddev_pop", "stddev_samp",
 		"variance", "var_pop", "var_samp":
-		return true
+		return true, nil
 	default:
-		return false
+		return false, nil
 	}
 }
 
@@ -622,21 +549,22 @@ func (b *Builder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, 
 		}
 	}
 	if win == nil {
-		f, ok := b.cat.Function(b.ctx, name)
+		f, ok := b.cat.Function(b.ctx, e.Qualifier.String(), name)
 		if !ok {
 			// todo(max): similar names in registry?
 			err := sql.ErrFunctionNotFound.New(name)
 			b.handleErr(err)
 		}
 
-		newInst, err := f.NewInstance(args)
+		newInst, err := f.NewInstance(b.ctx, args)
+		if err != nil {
+			b.handleErr(err)
+		}
+		b.validateDistinctWindow(e, name, newInst)
 
 		win, ok = newInst.(sql.WindowAdaptableExpression)
 		if !ok {
 			err := fmt.Errorf("function is not a window adaptable exprssion: %s", f.FunctionName())
-			b.handleErr(err)
-		}
-		if err != nil {
 			b.handleErr(err)
 		}
 	}
@@ -644,10 +572,10 @@ func (b *Builder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, 
 	def := b.buildWindowDef(inScope, over)
 	switch w := win.(type) {
 	case sql.WindowAdaptableExpression:
-		win = w.WithWindow(def)
+		win = w.WithWindow(b.ctx, def)
 	}
 
-	col := scopeColumn{col: strings.ToLower(win.String()), scalar: win, typ: win.Type(), nullable: win.IsNullable()}
+	col := scopeColumn{col: strings.ToLower(win.String()), scalar: win, typ: win.Type(b.ctx), nullable: win.IsNullable(b.ctx)}
 	id := inScope.newColumn(col)
 	col.id = id
 	win = win.WithId(sql.ColumnId(id)).(sql.WindowAdaptableExpression)
@@ -655,6 +583,18 @@ func (b *Builder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, 
 	col.scalar = win
 	inScope.windowFuncs = append(inScope.windowFuncs, col)
 	return col.scalarGf()
+}
+
+// validateDistinctWindow lets resolved function implementations reject unsupported DISTINCT window calls.
+func (b *Builder) validateDistinctWindow(e *ast.FuncExpr, name string, expr sql.Expression) {
+	if !e.Distinct {
+		return
+	}
+	if validator, ok := expr.(sql.DistinctWindowFunctionValidator); ok {
+		if err := validator.ValidateDistinctWindow(e.Qualifier.String(), name); err != nil {
+			b.handleErr(err)
+		}
+	}
 }
 
 func (b *Builder) buildWindow(fromScope, projScope *scope) *scope {
@@ -691,7 +631,7 @@ func (b *Builder) buildWindow(fromScope, projScope *scope) *scope {
 		}
 
 		// projection dependencies -> table cols needed above
-		transform.InspectExpr(col.scalar, func(e sql.Expression) bool {
+		transform.InspectExpr(b.ctx, col.scalar, func(ctx *sql.Context, e sql.Expression) bool {
 			switch e := e.(type) {
 			case *expression.GetField:
 				colName := strings.ToLower(e.String())
@@ -719,7 +659,7 @@ func (b *Builder) buildWindow(fromScope, projScope *scope) *scope {
 	fromScope.node = window
 
 	if len(aliases) > 0 {
-		outScope.node = plan.NewProject(append(selectGfs, aliases...), outScope.node)
+		outScope.node = plan.NewProject(b.ctx, append(selectGfs, aliases...), outScope.node)
 	}
 
 	return outScope
@@ -739,8 +679,11 @@ func (b *Builder) buildNamedWindows(fromScope *scope, window ast.Window) {
 		if ok, _ := seen[name]; ok {
 			b.handleErr(sql.ErrCircularWindowInheritance.New())
 		}
+		cur, ok := adj[name]
+		if !ok {
+			b.handleErr(sql.ErrUnknownWindowName.New(name))
+		}
 		seen[name] = true
-		cur := adj[name]
 		if ref := cur.NameRef.Lowered(); ref != "" {
 			dfs(ref)
 		}
@@ -763,19 +706,19 @@ func (b *Builder) buildWindowDef(fromScope *scope, def *ast.WindowDef) *sql.Wind
 		return nil
 	}
 
-	var sortFields sql.SortFields
-	for _, c := range def.OrderBy {
+	// TODO: We might be able to reuse b.buildSortConditions with some refactoring
+	sortConditions := make(sql.SortConditions, len(def.OrderBy))
+	for i, c := range def.OrderBy {
 		// resolve col in fromScope
 		e := b.buildScalar(fromScope, c.Expr)
 		so := sql.Ascending
 		if c.Direction == ast.DescScr {
 			so = sql.Descending
 		}
-		sf := sql.SortField{
-			Column: e,
-			Order:  so,
+		sortConditions[i] = sql.SortCondition{
+			Expr:  e,
+			Order: so,
 		}
-		sortFields = append(sortFields, sf)
 	}
 
 	partitions := make([]sql.Expression, len(def.PartitionBy))
@@ -785,20 +728,37 @@ func (b *Builder) buildWindowDef(fromScope *scope, def *ast.WindowDef) *sql.Wind
 
 	frame := b.NewFrame(fromScope, def.Frame)
 
-	// According to MySQL documentation at https://dev.mysql.com/doc/refman/8.0/en/window-functions-usage.html
-	// "If OVER() is empty, the window consists of all query rows and the window function computes a result using all rows."
-	if def.OrderBy == nil && frame == nil {
-		frame = plan.NewRowsUnboundedPrecedingToUnboundedFollowingFrame()
-	}
-
-	windowDef := sql.NewWindowDefinition(partitions, sortFields, frame, def.NameRef.Lowered(), def.Name.Lowered())
-	if ref, ok := fromScope.windowDefs[def.NameRef.Lowered()]; ok {
+	windowDef := sql.NewWindowDefinition(partitions, sortConditions, frame, def.NameRef.Lowered(), def.Name.Lowered())
+	if nameRef := def.NameRef.Lowered(); nameRef != "" {
+		ref, ok := fromScope.windowDefs[nameRef]
+		if !ok {
+			b.handleErr(sql.ErrUnknownWindowName.New(nameRef))
+		}
 		// this is only safe if windows are built in topo order
 		windowDef = b.mergeWindowDefs(windowDef, ref)
 		// collapse dependencies if any reference this window
 		fromScope.windowDefs[windowDef.Name] = windowDef
 	}
+
+	// According to MySQL documentation at https://dev.mysql.com/doc/refman/8.0/en/window-functions-usage.html
+	// "If OVER() is empty, the window consists of all query rows and the window function computes a result using all rows."
+	// This must be evaluated after merging with any referenced named window (OVER w), since the
+	// referenced window's ORDER BY determines the correct default frame, not this def's own (possibly empty) ORDER BY.
+	if len(windowDef.OrderBy) == 0 && windowDef.Frame == nil {
+		windowDef.Frame = plan.NewRowsUnboundedPrecedingToUnboundedFollowingFrame()
+	}
+
 	return windowDef
+}
+
+// windowDisplayName returns a human-readable label for a window definition, for use in error
+// messages. Anonymous windows (an inline OVER (w ...) clause rather than a named WINDOW w AS (...))
+// have no name of their own, so they fall back to a generic label.
+func windowDisplayName(def *sql.WindowDefinition) string {
+	if def.Name != "" {
+		return def.Name
+	}
+	return "OVER clause"
 }
 
 // mergeWindowDefs combines the attributes of two window definitions or returns
@@ -810,10 +770,10 @@ func (b *Builder) mergeWindowDefs(def, ref *sql.WindowDefinition) *sql.WindowDef
 		panic("unreachable; cannot merge unresolved window definition")
 	}
 
-	var orderBy sql.SortFields
+	var orderBy sql.SortConditions
 	switch {
 	case len(def.OrderBy) > 0 && len(ref.OrderBy) > 0:
-		err := sql.ErrInvalidWindowInheritance.New("", "", "both contain order by clause")
+		err := sql.ErrInvalidWindowInheritance.New(windowDisplayName(def), def.Ref, "both contain order by clause")
 		b.handleErr(err)
 	case len(def.OrderBy) > 0:
 		orderBy = def.OrderBy
@@ -825,7 +785,7 @@ func (b *Builder) mergeWindowDefs(def, ref *sql.WindowDefinition) *sql.WindowDef
 	var partitionBy []sql.Expression
 	switch {
 	case len(def.PartitionBy) > 0 && len(ref.PartitionBy) > 0:
-		err := sql.ErrInvalidWindowInheritance.New("", "", "both contain partition by clause")
+		err := sql.ErrInvalidWindowInheritance.New(windowDisplayName(def), def.Ref, "both contain partition by clause")
 		b.handleErr(err)
 	case len(def.PartitionBy) > 0:
 		partitionBy = def.PartitionBy
@@ -835,12 +795,12 @@ func (b *Builder) mergeWindowDefs(def, ref *sql.WindowDefinition) *sql.WindowDef
 		partitionBy = []sql.Expression{}
 	}
 
+	_, isDefDefaultFrame := def.Frame.(*plan.RowsUnboundedPrecedingToUnboundedFollowingFrame)
+	_, isRefDefaultFrame := ref.Frame.(*plan.RowsUnboundedPrecedingToUnboundedFollowingFrame)
+
 	var frame sql.WindowFrame
 	switch {
 	case def.Frame != nil && ref.Frame != nil:
-		_, isDefDefaultFrame := def.Frame.(*plan.RowsUnboundedPrecedingToUnboundedFollowingFrame)
-		_, isRefDefaultFrame := ref.Frame.(*plan.RowsUnboundedPrecedingToUnboundedFollowingFrame)
-
 		// if both frames are set and one is RowsUnboundedPrecedingToUnboundedFollowingFrame (default),
 		// we should use the other frame
 		if isDefDefaultFrame {
@@ -852,11 +812,16 @@ func (b *Builder) mergeWindowDefs(def, ref *sql.WindowDefinition) *sql.WindowDef
 			df := def.Frame.String()
 			rf := ref.Frame.String()
 			if df != rf {
-				err := sql.ErrInvalidWindowInheritance.New("", "", "both contain different frame clauses")
+				err := sql.ErrInvalidWindowInheritance.New(windowDisplayName(def), def.Ref, "both contain different frame clauses")
 				b.handleErr(err)
 			}
 			frame = def.Frame
 		}
+	case isDefDefaultFrame, isRefDefaultFrame:
+		// The default frame was only correct in the context of the (partial) window definition
+		// that computed it, which may not have known about an ORDER BY contributed by the other
+		// side of this merge. Leave frame unset so the caller re-derives the correct default from
+		// the fully merged ORDER BY, rather than blindly propagating a stale sentinel value.
 	case def.Frame != nil:
 		frame = def.Frame
 	case ref.Frame != nil:
@@ -881,11 +846,15 @@ func (b *Builder) analyzeHaving(fromScope, projScope *scope, having *ast.Where) 
 			return false, nil
 		case *ast.FuncExpr:
 			name := n.Name.Lowered()
-			if IsAggregateFunc(name) {
+			if isAggregate, err := IsAggregateFunc(b.ctx, name); err != nil {
+				b.handleErr(err)
+			} else if isAggregate {
 				// record aggregate
 				// TODO: this should get projScope as well
 				_ = b.buildAggregateFunc(fromScope, name, n)
-			} else if isWindowFunc(name) {
+			} else if isWindow, err := IsWindowFunc(b.ctx, name); err != nil {
+				b.handleErr(err)
+			} else if isWindow {
 				_ = b.buildWindowFunc(fromScope, name, n, (*ast.WindowDef)(n.Over))
 			}
 		case *ast.ColName:
@@ -916,11 +885,17 @@ func (b *Builder) buildInnerProj(fromScope, projScope *scope) *scope {
 	var proj []sql.Expression
 
 	// eval aliases in project scope
-	for _, col := range projScope.cols {
+	for i, col := range projScope.cols {
 		switch e := col.scalar.(type) {
 		case *expression.Alias:
 			if !e.Unreferencable() {
 				proj = append(proj, e.WithId(sql.ColumnId(col.id)).(*expression.Alias))
+				if exprReturnsRowIter(b.ctx, e) {
+					// This projection expands expressions that return a RowIter (set-returning functions)
+					// into multiple rows. The final projection must reference the expanded column rather
+					// than re-evaluate the expression, which would multiply the rows again.
+					projScope.cols[i].scalar = col.scalarGf()
+				}
 			}
 		}
 	}
@@ -940,20 +915,10 @@ func (b *Builder) buildInnerProj(fromScope, projScope *scope) *scope {
 	proj = append(proj[aliasCnt:], proj[:aliasCnt]...)
 
 	if len(proj) > 0 {
-		outScope.node = plan.NewProject(proj, outScope.node)
+		outScope.node = plan.NewProject(b.ctx, proj, outScope.node)
 	}
 
 	return outScope
-}
-
-// getMatchingCol returns the column in cols that matches the name, if it exists
-func getMatchingCol(cols []scopeColumn, name string) (scopeColumn, bool) {
-	for _, c := range cols {
-		if strings.EqualFold(c.col, name) {
-			return c, true
-		}
-	}
-	return scopeColumn{}, false
 }
 
 func (b *Builder) buildHaving(fromScope, projScope, outScope *scope, having *ast.Where) {
@@ -978,10 +943,10 @@ func (b *Builder) buildHaving(fromScope, projScope, outScope *scope, having *ast
 
 	// add columns from fromScope referenced in any aggregate expressions
 	for _, c := range fromScope.groupBy.aggregations() {
-		transform.InspectExpr(c.scalar, func(e sql.Expression) bool {
+		transform.InspectExpr(b.ctx, c.scalar, func(ctx *sql.Context, e sql.Expression) bool {
 			switch e := e.(type) {
 			case *expression.GetField:
-				col, found := getMatchingCol(fromScope.cols, e.Name())
+				col, found := fromScope.resolveColumn(e.Database(), e.Table(), e.Name(), false, false)
 				if found && !havingScope.colset.Contains(sql.ColumnId(col.id)) {
 					havingScope.addColumn(col)
 				}
@@ -1006,7 +971,7 @@ func (b *Builder) buildHaving(fromScope, projScope, outScope *scope, having *ast
 		if !isGetField {
 			continue
 		}
-		col, found := getMatchingCol(fromScope.cols, gf.Name())
+		col, found := fromScope.resolveColumn(gf.Database(), gf.Table(), gf.Name(), false, false)
 		if found && !havingScope.colset.Contains(sql.ColumnId(col.id)) {
 			havingScope.addColumn(col)
 		}
@@ -1016,4 +981,13 @@ func (b *Builder) buildHaving(fromScope, projScope, outScope *scope, having *ast
 	h := b.buildScalar(havingScope, having.Expr)
 	outScope.node = plan.NewHaving(h, outScope.node)
 	return
+}
+
+// exprReturnsRowIter returns whether any expression in the tree rooted at |e| returns a RowIter rather than a
+// scalar value (sql.RowIterExpression), i.e. a set-returning function.
+func exprReturnsRowIter(ctx *sql.Context, e sql.Expression) bool {
+	return transform.InspectExpr(ctx, e, func(ctx *sql.Context, e sql.Expression) bool {
+		rie, ok := e.(sql.RowIterExpression)
+		return ok && rie.ReturnsRowIter()
+	})
 }

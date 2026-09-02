@@ -47,6 +47,7 @@ type AlterDefaultDrop struct {
 var _ sql.Node = (*AlterDefaultDrop)(nil)
 var _ sql.SchemaTarget = (*AlterDefaultDrop)(nil)
 var _ sql.CollationCoercible = (*AlterDefaultDrop)(nil)
+var _ sql.Databaser = (*AlterDefaultDrop)(nil)
 
 // NewAlterDefaultSet returns a *AlterDefaultSet node.
 func NewAlterDefaultSet(database sql.Database, table sql.Node, columnName string, defVal *sql.ColumnDefaultValue) *AlterDefaultSet {
@@ -77,7 +78,7 @@ func (d *AlterDefaultDrop) IsReadOnly() bool {
 }
 
 // WithChildren implements the sql.Node interface.
-func (d *AlterDefaultSet) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (d *AlterDefaultSet) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
 	}
@@ -105,7 +106,7 @@ func (d *AlterDefaultSet) Expressions() []sql.Expression {
 	return append(transform.WrappedColumnDefaults(d.targetSchema), expression.WrapExpressions(d.Default)...)
 }
 
-func (d *AlterDefaultSet) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+func (d *AlterDefaultSet) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != 1+len(d.targetSchema) {
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(exprs), 1+len(d.targetSchema))
 	}
@@ -135,6 +136,12 @@ func (d *AlterDefaultSet) TargetSchema() sql.Schema {
 	return d.targetSchema
 }
 
+// Database implements the sql.Databaser interface.
+func (d *AlterDefaultSet) Database() sql.Database {
+	return d.Db
+}
+
+// WithDatabase implements the sql.Databaser interface.
 func (d *AlterDefaultSet) WithDatabase(database sql.Database) (sql.Node, error) {
 	na := *d
 	na.Db = database
@@ -168,7 +175,7 @@ func (d *AlterDefaultDrop) String() string {
 }
 
 // WithChildren implements the sql.Node interface.
-func (d *AlterDefaultDrop) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (d *AlterDefaultDrop) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
 	}
@@ -196,7 +203,7 @@ func (d *AlterDefaultDrop) Expressions() []sql.Expression {
 	return transform.WrappedColumnDefaults(d.targetSchema)
 }
 
-func (d *AlterDefaultDrop) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+func (d *AlterDefaultDrop) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != len(d.targetSchema) {
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(exprs), len(d.targetSchema))
 	}

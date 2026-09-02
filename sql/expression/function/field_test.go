@@ -105,7 +105,7 @@ func TestField(t *testing.T) {
 			}
 
 			ctx := sql.NewEmptyContext()
-			f, err := NewField(tt.args...)
+			f, err := NewField(sql.NewEmptyContext(), tt.args...)
 			require.NoError(t, err)
 
 			res, err := f.Eval(ctx, nil)

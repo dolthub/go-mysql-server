@@ -58,8 +58,8 @@ func (p *UnaryExpressionStub) Resolved() bool {
 }
 
 // IsNullable returns whether the expression can be null.
-func (p *UnaryExpressionStub) IsNullable() bool {
-	return p.Child.IsNullable()
+func (p *UnaryExpressionStub) IsNullable(ctx *sql.Context) bool {
+	return p.Child.IsNullable(ctx)
 }
 
 // BinaryExpression is an expression that has two children
@@ -94,8 +94,8 @@ func (p *BinaryExpressionStub) Resolved() bool {
 }
 
 // IsNullable returns whether the expression can be null.
-func (p *BinaryExpressionStub) IsNullable() bool {
-	return p.LeftChild.IsNullable() || p.RightChild.IsNullable()
+func (p *BinaryExpressionStub) IsNullable(ctx *sql.Context) bool {
+	return p.LeftChild.IsNullable(ctx) || p.RightChild.IsNullable(ctx)
 }
 
 type NaryExpression struct {
@@ -118,9 +118,9 @@ func (n *NaryExpression) Resolved() bool {
 }
 
 // IsNullable returns whether the expression can be null.
-func (n *NaryExpression) IsNullable() bool {
+func (n *NaryExpression) IsNullable(ctx *sql.Context) bool {
 	for _, child := range n.Children() {
-		if child.IsNullable() {
+		if child.IsNullable(ctx) {
 			return true
 		}
 	}
@@ -138,9 +138,9 @@ func ExpressionsResolved(exprs ...sql.Expression) bool {
 	return true
 }
 
-func Dispose(e sql.Expression) {
-	sql.Inspect(e, func(e sql.Expression) bool {
-		sql.Dispose(e)
+func Dispose(ctx *sql.Context, e sql.Expression) {
+	sql.Inspect(ctx, e, func(ctx *sql.Context, e sql.Expression) bool {
+		sql.Dispose(ctx, e)
 		return true
 	})
 }

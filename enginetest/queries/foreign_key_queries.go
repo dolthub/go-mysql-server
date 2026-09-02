@@ -49,6 +49,36 @@ var ForeignKeyTests = []ScriptTest{
 		},
 	},
 	{
+		// See https://github.com/dolthub/dolt/issues/10970
+		Name: "Inline column REFERENCES creates an enforced foreign key",
+		SetUpScript: []string{
+			"CREATE TABLE parent_pk (id INT PRIMARY KEY);",
+			"CREATE TABLE parent_uq (id INT PRIMARY KEY, u INT UNIQUE);",
+			"CREATE TABLE child_pk (id INT PRIMARY KEY, pid INT REFERENCES parent_pk(id));",
+			"CREATE TABLE child_uq (id INT PRIMARY KEY, u INT REFERENCES parent_uq(u));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SHOW CREATE TABLE child_pk;",
+				// The engine auto-generates a constraint name from the table name when no name is provided.
+				Expected: []sql.Row{{"child_pk", "CREATE TABLE `child_pk` (\n  `id` int NOT NULL,\n  `pid` int,\n  PRIMARY KEY (`id`),\n  KEY `pid` (`pid`),\n  CONSTRAINT `child_pk_ibfk_1` FOREIGN KEY (`pid`) REFERENCES `parent_pk` (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: "SHOW CREATE TABLE child_uq;",
+				// The engine auto-generates a constraint name from the table name when no name is provided.
+				Expected: []sql.Row{{"child_uq", "CREATE TABLE `child_uq` (\n  `id` int NOT NULL,\n  `u` int,\n  PRIMARY KEY (`id`),\n  KEY `u` (`u`),\n  CONSTRAINT `child_uq_ibfk_1` FOREIGN KEY (`u`) REFERENCES `parent_uq` (`u`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:       "INSERT INTO child_pk VALUES (1, 999);",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query:       "INSERT INTO child_uq VALUES (1, 999);",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+		},
+	},
+	{
 		Name: "Parent table index required",
 		Assertions: []ScriptTestAssertion{
 			{
@@ -385,7 +415,7 @@ var ForeignKeyTests = []ScriptTest{
 		Name: "DROP TABLE, with multiple tables, sorts by foreign key dependencies",
 		SetUpScript: []string{
 			"create table grandparent1 (pk int primary key);",
-			"create table parent1 (pk int primary key, c1 int references grandparent(pk));",
+			"create table parent1 (pk int primary key, c1 int references grandparent1(pk));",
 			"create table parent2 (pk int primary key);",
 			"create table child1 (pk int primary key, c1 int, c2 int, foreign key (c1) references parent1(pk), foreign key (c2) references parent2(pk));",
 			"create table selfref (pk int primary key, c1 int, foreign key (c1) references selfref(pk));",
@@ -2701,6 +2731,199 @@ var ForeignKeyTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		// See https://github.com/dolthub/dolt/issues/11317
+		Name: "ON UPDATE CASCADE maintains an index over a virtual column",
+		SetUpScript: []string{
+			"CREATE TABLE vc_parent (id int PRIMARY KEY);",
+			"CREATE TABLE vc_child (id int PRIMARY KEY, parentId int, vcol int AS (parentId) VIRTUAL, UNIQUE KEY uk (vcol), FOREIGN KEY (parentId) REFERENCES vc_parent(id) ON UPDATE CASCADE);",
+			"INSERT INTO vc_parent VALUES (2);",
+			"INSERT INTO vc_child (id, parentId) VALUES (20, 2);",
+			"UPDATE vc_parent SET id = 99 WHERE id = 2;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT id, parentId, vcol FROM vc_child ORDER BY id;",
+				Expected: []sql.Row{{20, 99, 99}},
+			},
+			{
+				Query:              "SELECT id FROM vc_child WHERE vcol = 99;",
+				Expected:           []sql.Row{{20}},
+				CheckIndexedAccess: true,
+				ExpectedIndexes:    []string{"uk"},
+			},
+			{
+				Query:              "SELECT id FROM vc_child WHERE vcol = 2;",
+				Expected:           []sql.Row{},
+				CheckIndexedAccess: true,
+				ExpectedIndexes:    []string{"uk"},
+			},
+			{
+				Query:       "INSERT INTO vc_child (id, parentId) VALUES (40, 99);",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+		},
+	},
+	{
+		// See https://github.com/dolthub/dolt/issues/11317
+		Name: "ON UPDATE CASCADE recomputes chained virtual columns",
+		SetUpScript: []string{
+			"CREATE TABLE vc_parent (id int PRIMARY KEY);",
+			"CREATE TABLE vc_child (id int PRIMARY KEY, parentId int, v1 int AS (parentId) VIRTUAL, v2 int AS (v1 + 100) VIRTUAL, UNIQUE KEY uk (v2), FOREIGN KEY (parentId) REFERENCES vc_parent(id) ON UPDATE CASCADE);",
+			"INSERT INTO vc_parent VALUES (2);",
+			"INSERT INTO vc_child (id, parentId) VALUES (20, 2);",
+			"UPDATE vc_parent SET id = 99 WHERE id = 2;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT id, parentId, v1, v2 FROM vc_child ORDER BY id;",
+				Expected: []sql.Row{{20, 99, 99, 199}},
+			},
+			{
+				Query:              "SELECT id FROM vc_child WHERE v2 = 199;",
+				Expected:           []sql.Row{{20}},
+				CheckIndexedAccess: true,
+				ExpectedIndexes:    []string{"uk"},
+			},
+		},
+	},
+	{
+		// See https://github.com/dolthub/dolt/issues/11317
+		Name: "ON DELETE SET NULL maintains an index over a virtual column",
+		SetUpScript: []string{
+			"CREATE TABLE vc_parent (id int PRIMARY KEY);",
+			"CREATE TABLE vc_child (id int PRIMARY KEY, parentId int, vcol int AS (parentId) VIRTUAL, UNIQUE KEY uk (vcol), FOREIGN KEY (parentId) REFERENCES vc_parent(id) ON DELETE SET NULL);",
+			"INSERT INTO vc_parent VALUES (2);",
+			"INSERT INTO vc_child (id, parentId) VALUES (20, 2);",
+			"DELETE FROM vc_parent WHERE id = 2;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT id, parentId, vcol FROM vc_child ORDER BY id;",
+				Expected: []sql.Row{{20, nil, nil}},
+			},
+			{
+				Query:              "SELECT id FROM vc_child WHERE vcol = 2;",
+				Expected:           []sql.Row{},
+				CheckIndexedAccess: true,
+				ExpectedIndexes:    []string{"uk"},
+			},
+		},
+	},
+	{
+		// See https://github.com/dolthub/dolt/issues/11317
+		Name: "ON UPDATE SET NULL maintains an index over a virtual column",
+		SetUpScript: []string{
+			"CREATE TABLE vc_parent (id int PRIMARY KEY);",
+			"CREATE TABLE vc_child (id int PRIMARY KEY, parentId int, vcol int AS (parentId) VIRTUAL, UNIQUE KEY uk (vcol), FOREIGN KEY (parentId) REFERENCES vc_parent(id) ON UPDATE SET NULL);",
+			"INSERT INTO vc_parent VALUES (2);",
+			"INSERT INTO vc_child (id, parentId) VALUES (20, 2);",
+			"UPDATE vc_parent SET id = 99 WHERE id = 2;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT id, parentId, vcol FROM vc_child ORDER BY id;",
+				Expected: []sql.Row{{20, nil, nil}},
+			},
+			{
+				Query:              "SELECT id FROM vc_child WHERE vcol = 2;",
+				Expected:           []sql.Row{},
+				CheckIndexedAccess: true,
+				ExpectedIndexes:    []string{"uk"},
+			},
+		},
+	},
+	{
+		// See https://github.com/dolthub/dolt/issues/11317
+		Name: "self-referential ON DELETE SET NULL maintains an index over a virtual column",
+		SetUpScript: []string{
+			"CREATE TABLE vc_t (id int PRIMARY KEY, parentId int, parentKey int AS (parentId) VIRTUAL, UNIQUE KEY uk (parentKey), FOREIGN KEY (parentId) REFERENCES vc_t(id) ON DELETE SET NULL);",
+			"INSERT INTO vc_t (id, parentId) VALUES (1, NULL), (2, 1), (3, 2);",
+			"DELETE FROM vc_t WHERE id = 2;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT id, parentId, parentKey FROM vc_t ORDER BY id;",
+				Expected: []sql.Row{{1, nil, nil}, {3, nil, nil}},
+			},
+			{
+				Query:              "SELECT id FROM vc_t WHERE parentKey = 2;",
+				Expected:           []sql.Row{},
+				CheckIndexedAccess: true,
+				ExpectedIndexes:    []string{"uk"},
+			},
+		},
+	},
+	{
+		// See https://github.com/dolthub/dolt/issues/11317
+		Name: "ON DELETE CASCADE maintains an index over a virtual column, self-referential",
+		SetUpScript: []string{
+			"CREATE TABLE vc_t2 (id int PRIMARY KEY, parentId int, parentKey int AS (parentId) VIRTUAL, UNIQUE KEY uk (parentKey), FOREIGN KEY (parentId) REFERENCES vc_t2(id) ON DELETE CASCADE);",
+			"INSERT INTO vc_t2 (id, parentId) VALUES (1, NULL), (2, 1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "DELETE FROM vc_t2 WHERE id = 1;",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "SELECT id, parentId, parentKey FROM vc_t2 ORDER BY id;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:              "SELECT parentKey FROM vc_t2 WHERE parentKey = 1;",
+				Expected:           []sql.Row{},
+				CheckIndexedAccess: true,
+				ExpectedIndexes:    []string{"uk"},
+			},
+			{
+				Query:    "INSERT INTO vc_t2 (id, parentId) VALUES (3, NULL), (4, 3);",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "SELECT id, parentId, parentKey FROM vc_t2 ORDER BY id;",
+				Expected: []sql.Row{{3, nil, nil}, {4, 3, 3}},
+			},
+		},
+	},
+	{
+		// See https://github.com/dolthub/dolt/issues/11317
+		Name: "ON DELETE CASCADE maintains an index over a virtual column between stored columns",
+		SetUpScript: []string{
+			"CREATE TABLE vc_parent2 (id int PRIMARY KEY);",
+			"CREATE TABLE vc_child2 (" +
+				"id int PRIMARY KEY, " +
+				"parentId int, " +
+				"doubled int AS (parentId * 2) VIRTUAL, " +
+				"note varchar(10), " +
+				"KEY idx_doubled (doubled), " +
+				"FOREIGN KEY (parentId) REFERENCES vc_parent2(id) ON DELETE CASCADE);",
+			"INSERT INTO vc_parent2 VALUES (1), (2);",
+			"INSERT INTO vc_child2 (id, parentId, note) VALUES (10, 1, 'a'), (20, 1, 'b'), (30, 2, 'c');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "DELETE FROM vc_parent2 WHERE id = 1;",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "SELECT id, parentId, doubled, note FROM vc_child2 ORDER BY id;",
+				Expected: []sql.Row{{30, 2, 4, "c"}},
+			},
+			{
+				Query:              "SELECT id FROM vc_child2 WHERE doubled = 4;",
+				Expected:           []sql.Row{{30}},
+				CheckIndexedAccess: true,
+				ExpectedIndexes:    []string{"idx_doubled"},
+			},
+			{
+				Query:              "SELECT id FROM vc_child2 WHERE doubled = 2;",
+				Expected:           []sql.Row{},
+				CheckIndexedAccess: true,
+				ExpectedIndexes:    []string{"idx_doubled"},
+			},
+		},
+	},
 }
 
 var CreateForeignKeyTests = []ScriptTest{
@@ -2891,6 +3114,54 @@ var CreateForeignKeyTests = []ScriptTest{
 			{
 				Query:       "create table child_unsigned (i int unsigned, foreign key (i) references parent (i));",
 				ExpectedErr: sql.ErrForeignKeyColumnTypeMismatch,
+			},
+		},
+	},
+	{
+		Name: "stored generated column foreign keys",
+		SetUpScript: []string{
+			"create table parent(id int primary key)",
+			"create table child(a int, b int as (a) stored)",
+			"create table child2(a int, b int as (a) virtual)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "alter table child add constraint fk_child foreign key (a) references parent(id) on delete set null;",
+				ExpectedErr: sql.ErrStoredGeneratedColumnForeignKeyConflict,
+			},
+			{
+				// https://github.com/dolthub/dolt/issues/11083
+				Skip:        true,
+				Query:       "alter table child add constraint fk_child foreign key (b) references parent(id) on delete set null;",
+				ExpectedErr: sql.ErrStoredGeneratedColumnForeignKeyConflict,
+			},
+			{
+				Query: "alter table child2 add constraint fk_child foreign key (a) references parent(id) on delete set null;",
+				// This is allowed because the generated column is virtual.
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:       "create table child3(a int, b int as (a) stored, foreign key (a) references parent(id) on update cascade);",
+				ExpectedErr: sql.ErrStoredGeneratedColumnForeignKeyConflict,
+			},
+			{
+				// https://github.com/dolthub/dolt/issues/11083
+				Skip:        true,
+				Query:       "create table child3(a int, b int as (a) stored, foreign key (b) references parent(id) on update cascade);",
+				ExpectedErr: sql.ErrStoredGeneratedColumnForeignKeyConflict,
+			},
+			{
+				// https://github.com/dolthub/dolt/issues/11082
+				Skip:        true,
+				Query:       "select * from child3",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+			{
+				// This should be child3, but we have to use child4 here due to tables still being created despite
+				// erroring out https://github.com/dolthub/dolt/issues/11082
+				Query: "create table child4(a int, b int as (a) virtual, foreign key (a) references parent(id) on update cascade);",
+				// This is allowed because the generated column is virtual.
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 		},
 	},

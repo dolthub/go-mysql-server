@@ -36,7 +36,7 @@ type JSONDepth struct {
 var _ sql.FunctionExpression = &JSONDepth{}
 
 // NewJSONDepth creates a new JSONDepth function.
-func NewJSONDepth(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONDepth(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) != 1 {
 		return nil, sql.ErrInvalidArgumentNumber.New("JSON_DEPTH", "1", len(args))
 	}
@@ -64,13 +64,13 @@ func (j *JSONDepth) String() string {
 }
 
 // Type implements sql.Expression interface.
-func (j *JSONDepth) Type() sql.Type {
+func (j *JSONDepth) Type(ctx *sql.Context) sql.Type {
 	return types.Int64
 }
 
 // IsNullable implements sql.Expression interface.
-func (j *JSONDepth) IsNullable() bool {
-	return j.JSON.IsNullable()
+func (j *JSONDepth) IsNullable(ctx *sql.Context) bool {
+	return j.JSON.IsNullable(ctx)
 }
 
 // depth returns the maximum depth of a JSON document.
@@ -132,6 +132,6 @@ func (j *JSONDepth) Children() []sql.Expression {
 }
 
 // WithChildren implements sql.Expression interface.
-func (j *JSONDepth) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewJSONDepth(children...)
+func (j *JSONDepth) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewJSONDepth(ctx, children...)
 }

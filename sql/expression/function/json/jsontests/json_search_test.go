@@ -29,15 +29,18 @@ import (
 )
 
 func TestJSONSearch(t *testing.T) {
-	_, err := json.NewJSONSearch()
+	ctx := sql.NewEmptyContext()
+	_, err := json.NewJSONSearch(ctx)
 	require.True(t, errors.Is(err, sql.ErrInvalidArgumentNumber))
 
 	_, err = json.NewJSONSearch(
+		ctx,
 		expression.NewGetField(0, types.LongText, "arg1", false),
 	)
 	require.True(t, errors.Is(err, sql.ErrInvalidArgumentNumber))
 
 	_, err = json.NewJSONSearch(
+		ctx,
 		expression.NewGetField(0, types.LongText, "arg1", false),
 		expression.NewGetField(1, types.LongText, "arg2", false),
 	)

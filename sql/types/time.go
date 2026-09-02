@@ -23,9 +23,9 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
-	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -201,12 +201,8 @@ func (t TimespanType_) ConvertToTimespan(v interface{}) (Timespan, error) {
 				return t.MicrosecondsToTimespan(totalMicroseconds), nil
 			}
 		}
-	case decimal.Decimal:
-		return t.ConvertToTimespan(value.IntPart())
-	case decimal.NullDecimal:
-		if value.Valid {
-			return t.ConvertToTimespan(value.Decimal.IntPart())
-		}
+	case *apd.Decimal:
+		return t.ConvertToTimespan(DecimalRoundedIntPart(value))
 	case string:
 		impl, err := stringToTimespan(value)
 		if err == nil {
@@ -539,42 +535,36 @@ func (t Timespan) Bytes() []byte {
 	return ret[:i]
 }
 
+// precision is the number of digits of sub-second precision.
+// For the timespan type, this is currently always 6 (microsecond precision)
+// See https://github.com/dolthub/dolt/issues/10661
+func (t Timespan) precision() int {
+	return 6
+}
+
 func (t Timespan) AppendBytes(dest []byte) []byte {
 	isNeg, h, m, s, ms := t.timespanToUnits()
 	if isNeg {
 		dest = append(dest, '-')
 	}
-	dest = appendTimeFormat(dest, int64(h), int64(m), int64(s), int64(ms))
+	dest = appendTimeFormat(dest, int64(h), int64(m), int64(s), int64(ms), t.precision())
 	return dest
 }
 
-func appendTimeFormat(dest []byte, h, m, s, ms int64) []byte {
+func appendTimeFormat(dest []byte, h, m, s, ms int64, msPrecision int) []byte {
 	if h < 10 {
 		dest = append(dest, '0')
 	}
 	dest = strconv.AppendInt(dest, h, 10)
-	dest = append(dest, ':')
+	dest = append(dest,
+		':',
+		'0'+byte(m/10), '0'+byte(m%10), ':',
+		'0'+byte(s/10), '0'+byte(s%10))
 
-	if m < 10 {
-		dest = append(dest, '0')
+	if msPrecision > 0 {
+		dest = appendMicroseconds(dest, ms, msPrecision)
 	}
-	dest = strconv.AppendInt(dest, m, 10)
-	dest = append(dest, ':')
 
-	if s < 10 {
-		dest = append(dest, '0')
-	}
-	dest = strconv.AppendInt(dest, s, 10)
-
-	if ms > 0 {
-		dest = append(dest, '.')
-		cmp := int64(100000)
-		for cmp > 0 && ms < cmp {
-			dest = append(dest, '0')
-			cmp /= 10
-		}
-		dest = strconv.AppendInt(dest, ms, 10)
-	}
 	return dest
 }
 
@@ -594,6 +584,23 @@ func appendDigit(v int64, extend int, buf []byte, i int) int {
 	}
 	tmpBuf := strconv.AppendInt(buf[i:i], v, 10)
 	return i + len(tmpBuf)
+}
+
+func appendMicroseconds(dest []byte, microseconds int64, precision int) []byte {
+	if precision <= 0 {
+		return dest
+	}
+	powersOfTen := []int64{1, 10, 100, 1000, 10000, 100000, 1000000}
+	subSecondSize := powersOfTen[6-precision]
+	subSeconds := microseconds / subSecondSize
+	dest = append(dest, '.')
+	cmp := powersOfTen[precision-1]
+	for cmp > 1 && subSeconds < cmp {
+		dest = append(dest, '0')
+		cmp /= 10
+	}
+	dest = strconv.AppendInt(dest, subSeconds, 10)
+	return dest
 }
 
 // AsMicroseconds returns the Timespan in microseconds.

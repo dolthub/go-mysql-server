@@ -74,7 +74,7 @@ func (s *ShowEvents) Children() []sql.Node {
 }
 
 // Schema implements the sql.Node interface.
-func (s *ShowEvents) Schema() sql.Schema {
+func (s *ShowEvents) Schema(ctx *sql.Context) sql.Schema {
 	return showEventsSchema
 }
 
@@ -153,7 +153,7 @@ func (s *ShowEvents) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 }
 
 // WithChildren implements the sql.Node interface.
-func (s *ShowEvents) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (s *ShowEvents) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(s, children...)
 }
 

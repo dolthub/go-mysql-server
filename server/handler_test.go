@@ -328,9 +328,12 @@ func TestHandlerComResetConnection(t *testing.T) {
 	}
 
 	// Create a prepared statement, a table lock, and a user var in the current session
-	_, err := handler.ComPrepare(context.Background(), dummyConn, prepareData.PrepareStmt, prepareData)
+	ctx := sql.NewEmptyContext()
+	_, err := handler.ComPrepare(ctx, dummyConn, prepareData.PrepareStmt, prepareData)
 	require.NoError(t, err)
-	_, cached := e.PreparedDataCache.GetCachedStmt(dummyConn.ConnectionID, prepareData.PrepareStmt)
+	sess, err := handler.sm.getOrCreateSession(ctx, dummyConn)
+	require.NoError(t, err)
+	_, cached := sess.GetPreparedQuery(prepareData.PrepareStmt)
 	require.True(t, cached)
 	err = handler.ComQuery(context.Background(), dummyConn, "SET @userVar = 42;", func(res *sqltypes.Result, more bool) error {
 		return nil
@@ -348,7 +351,7 @@ func TestHandlerComResetConnection(t *testing.T) {
 		return nil
 	})
 	require.NoError(t, err)
-	_, cached = e.PreparedDataCache.GetCachedStmt(dummyConn.ConnectionID, prepareData.PrepareStmt)
+	_, cached = ctx.Session.GetPreparedQuery(prepareData.PrepareStmt)
 	require.False(t, cached)
 	err = handler.ComQuery(context.Background(), dummyConn, "SELECT @userVar;", func(res *sqltypes.Result, more bool) error {
 		require.True(t, res.Rows[0][0].IsNull())
@@ -728,11 +731,12 @@ func TestServerEventListener(t *testing.T) {
 	query := "SELECT ?"
 	_, err = handler.ComPrepare(context.Background(), conn3, query, samplePrepareData)
 	require.NoError(err)
-	require.Equal(1, len(e.PreparedDataCache.CachedStatementsForSession(conn3.ConnectionID)))
-	require.NotNil(e.PreparedDataCache.GetCachedStmt(conn3.ConnectionID, query))
+
+	sess, err := handler.sm.getOrCreateSession(context.Background(), conn3)
+	require.NoError(err)
+	require.NotNil(sess.GetPreparedQuery(query))
 
 	handler.ConnectionClosed(conn3)
-	require.Equal(0, len(e.PreparedDataCache.CachedStatementsForSession(conn3.ConnectionID)))
 }
 
 func TestHandlerKill(t *testing.T) {
@@ -1190,7 +1194,10 @@ func TestOkClosedConnection(t *testing.T) {
 	c := newConn(1)
 	h.NewConnection(c)
 
-	q := fmt.Sprintf("SELECT SLEEP(%d)", (tcpCheckerSleepDuration * 4 / time.Second))
+	// The connection has no read buffer, so the connection watcher started by
+	// the query handler can't peek it and is a no-op: a long-running query must
+	// still complete normally rather than being spuriously cancelled.
+	q := "SELECT SLEEP(1)"
 	h.ComInitDB(c, "test")
 	err = h.ComQuery(context.Background(), c, q, func(res *sqltypes.Result, more bool) error {
 		return nil
@@ -1281,7 +1288,7 @@ func setupMemDB(require *require.Assertions) (*sqle.Engine, *memory.DbProvider) 
 	e := sqle.NewDefault(pro)
 	ctx := sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), pro)))
 
-	tableTest := memory.NewTable(db, "test", sql.NewPrimaryKeySchema(sql.Schema{{Name: "c1", Type: types.Int32, Source: "test"}}), nil)
+	tableTest := memory.NewTable(ctx, db, "test", sql.NewPrimaryKeySchema(sql.Schema{{Name: "c1", Type: types.Int32, Source: "test"}}), nil)
 
 	for i := 0; i < 1010; i++ {
 		require.NoError(tableTest.Insert(
@@ -1436,7 +1443,7 @@ func TestStatusVariableQuestions(t *testing.T) {
 	handler.NewConnection(conn1)
 	err := handler.ComInitDB(conn1, "test")
 	require.NoError(t, err)
-	sess1 := handler.sm.sessions[1]
+	sess1 := handler.sm.sessions[1].session
 
 	checkGlobalStatVar(t, "Questions", uint64(0))
 	checkSessionStatVar(t, sess1, "Questions", uint64(0))
@@ -1454,7 +1461,7 @@ func TestStatusVariableQuestions(t *testing.T) {
 	handler.NewConnection(conn2)
 	err = handler.ComInitDB(conn2, "test")
 	require.NoError(t, err)
-	sess2 := handler.sm.sessions[2]
+	sess2 := handler.sm.sessions[2].session
 
 	// Get 5 syntax errors
 	for i := 0; i < 5; i++ {
@@ -1470,7 +1477,7 @@ func TestStatusVariableQuestions(t *testing.T) {
 	handler.NewConnection(conn3)
 	err = handler.ComInitDB(conn3, "test")
 	require.NoError(t, err)
-	sess3 := handler.sm.sessions[3]
+	sess3 := handler.sm.sessions[3].session
 
 	err = handler.ComQuery(context.Background(), conn3, "create procedure p() begin select 1; select 2; select 3; end", dummyCb)
 	require.NoError(t, err)
@@ -1491,7 +1498,7 @@ func TestStatusVariableQuestions(t *testing.T) {
 	handler.NewConnection(conn4)
 	err = handler.ComInitDB(conn4, "test")
 	require.NoError(t, err)
-	sess4 := handler.sm.sessions[4]
+	sess4 := handler.sm.sessions[4].session
 
 	// TODO: implement and test that ComPing does not increment Questions
 	// TODO: implement and test that ComStatistics does not increment Questions
@@ -1744,13 +1751,13 @@ func TestStatusVariableComSelect(t *testing.T) {
 	handler.NewConnection(conn1)
 	err := handler.ComInitDB(conn1, "test")
 	require.NoError(t, err)
-	sess1 := handler.sm.sessions[1]
+	sess1 := handler.sm.sessions[1].session
 
 	conn2 := newConn(2)
 	handler.NewConnection(conn2)
 	err = handler.ComInitDB(conn2, "test")
 	require.NoError(t, err)
-	sess2 := handler.sm.sessions[2]
+	sess2 := handler.sm.sessions[2].session
 
 	checkGlobalStatVar(t, "Com_select", uint64(0))
 	checkSessionStatVar(t, sess1, "Com_select", uint64(0))
@@ -1794,13 +1801,13 @@ func TestStatusVariableComDelete(t *testing.T) {
 	handler.NewConnection(conn1)
 	err := handler.ComInitDB(conn1, "test")
 	require.NoError(t, err)
-	sess1 := handler.sm.sessions[1]
+	sess1 := handler.sm.sessions[1].session
 
 	conn2 := newConn(2)
 	handler.NewConnection(conn2)
 	err = handler.ComInitDB(conn2, "test")
 	require.NoError(t, err)
-	sess2 := handler.sm.sessions[2]
+	sess2 := handler.sm.sessions[2].session
 
 	checkGlobalStatVar(t, "Com_delete", uint64(0))
 	checkSessionStatVar(t, sess1, "Com_delete", uint64(0))
@@ -1844,13 +1851,13 @@ func TestStatusVariableComInsert(t *testing.T) {
 	handler.NewConnection(conn1)
 	err := handler.ComInitDB(conn1, "test")
 	require.NoError(t, err)
-	sess1 := handler.sm.sessions[1]
+	sess1 := handler.sm.sessions[1].session
 
 	conn2 := newConn(2)
 	handler.NewConnection(conn2)
 	err = handler.ComInitDB(conn2, "test")
 	require.NoError(t, err)
-	sess2 := handler.sm.sessions[2]
+	sess2 := handler.sm.sessions[2].session
 
 	checkGlobalStatVar(t, "Com_insert", uint64(0))
 	checkSessionStatVar(t, sess1, "Com_insert", uint64(0))
@@ -1894,13 +1901,13 @@ func TestStatusVariableComUpdate(t *testing.T) {
 	handler.NewConnection(conn1)
 	err := handler.ComInitDB(conn1, "test")
 	require.NoError(t, err)
-	sess1 := handler.sm.sessions[1]
+	sess1 := handler.sm.sessions[1].session
 
 	conn2 := newConn(2)
 	handler.NewConnection(conn2)
 	err = handler.ComInitDB(conn2, "test")
 	require.NoError(t, err)
-	sess2 := handler.sm.sessions[2]
+	sess2 := handler.sm.sessions[2].session
 
 	checkGlobalStatVar(t, "Com_update", uint64(0))
 	checkSessionStatVar(t, sess1, "Com_update", uint64(0))

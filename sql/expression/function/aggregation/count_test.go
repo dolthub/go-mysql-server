@@ -15,6 +15,7 @@
 package aggregation
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -24,12 +25,28 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
+type countDistinctExtendedValue struct {
+	serialized byte
+}
+
+func (v countDistinctExtendedValue) String() string {
+	return "same display value"
+}
+
+type countDistinctExtendedType struct {
+	sql.FakeExtendedType
+}
+
+func (t countDistinctExtendedType) SerializeValue(_ context.Context, value any) ([]byte, error) {
+	return []byte{value.(countDistinctExtendedValue).serialized}, nil
+}
+
 func TestCountEval1(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
 	c := NewCount(expression.NewLiteral(1, types.Int32))
-	b, _ := c.NewBuffer()
+	b, _ := c.NewBuffer(ctx)
 	require.Equal(int64(0), evalBuffer(t, b))
 
 	require.NoError(b.Update(ctx, nil))
@@ -45,7 +62,7 @@ func TestCountEvalStar(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	c := NewCount(expression.NewStar())
-	b, _ := c.NewBuffer()
+	b, _ := c.NewBuffer(ctx)
 	require.Equal(int64(0), evalBuffer(t, b))
 
 	require.NoError(b.Update(ctx, nil))
@@ -61,7 +78,7 @@ func TestCountEvalString(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	c := NewCount(expression.NewGetField(0, types.Text, "", true))
-	b, _ := c.NewBuffer()
+	b, _ := c.NewBuffer(ctx)
 	require.Equal(int64(0), evalBuffer(t, b))
 
 	require.NoError(b.Update(ctx, sql.NewRow("foo")))
@@ -76,7 +93,7 @@ func TestCountDistinctEval1(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	c := NewCountDistinct(expression.NewLiteral(1, types.Int32))
-	b, _ := c.NewBuffer()
+	b, _ := c.NewBuffer(ctx)
 	require.Equal(int64(0), evalBuffer(t, b))
 
 	require.NoError(b.Update(ctx, nil))
@@ -92,7 +109,7 @@ func TestCountDistinctEvalStar(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	c := NewCountDistinct(expression.NewStar())
-	b, _ := c.NewBuffer()
+	b, _ := c.NewBuffer(ctx)
 	require.Equal(int64(0), evalBuffer(t, b))
 
 	require.NoError(b.Update(ctx, nil))
@@ -108,7 +125,7 @@ func TestCountDistinctEvalString(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	c := NewCountDistinct(expression.NewGetField(0, types.Text, "", true))
-	b, _ := c.NewBuffer()
+	b, _ := c.NewBuffer(ctx)
 	require.Equal(int64(0), evalBuffer(t, b))
 
 	require.NoError(b.Update(ctx, sql.NewRow("foo")))
@@ -117,5 +134,22 @@ func TestCountDistinctEvalString(t *testing.T) {
 	require.NoError(b.Update(ctx, sql.NewRow(nil)))
 	require.NoError(b.Update(ctx, sql.NewRow("foo")))
 	require.NoError(b.Update(ctx, sql.NewRow("bar")))
+	require.Equal(int64(2), evalBuffer(t, b))
+}
+
+func TestCountDistinctEvalExtendedType(t *testing.T) {
+	require := require.New(t)
+	ctx := sql.NewEmptyContext()
+
+	extendedType := countDistinctExtendedType{sql.FakeExtendedType{
+		Name:    "count_distinct_extended_type",
+		ZeroVal: countDistinctExtendedValue{},
+	}}
+	c := NewCountDistinct(expression.NewGetField(0, extendedType, "", true))
+	b, _ := c.NewBuffer(ctx)
+	require.NoError(b.Update(ctx, sql.NewRow(countDistinctExtendedValue{serialized: 1})))
+	require.NoError(b.Update(ctx, sql.NewRow(countDistinctExtendedValue{serialized: 1})))
+	require.NoError(b.Update(ctx, sql.NewRow(countDistinctExtendedValue{serialized: 2})))
+	require.NoError(b.Update(ctx, sql.NewRow(nil)))
 	require.Equal(int64(2), evalBuffer(t, b))
 }

@@ -52,6 +52,7 @@ var _ sql.ViewDatabase = (*Database)(nil)
 var _ sql.CollatedDatabase = (*Database)(nil)
 var _ fulltext.Database = (*Database)(nil)
 var _ sql.SchemaValidator = (*BaseDatabase)(nil)
+var _ sql.IndexNameGenerator = (*BaseDatabase)(nil)
 
 // BaseDatabase is an in-memory database that can't store views, only for testing the engine
 type BaseDatabase struct {
@@ -159,6 +160,11 @@ func (d *BaseDatabase) GetTableNames(ctx *sql.Context) ([]string, error) {
 	return tblNames, nil
 }
 
+// GenerateIndexName implements the sql.IndexNameGenerator interface.
+func (d *BaseDatabase) GenerateIndexName(ctx *sql.Context, _ string, idxDef sql.IndexDef, tbl sql.Table) (string, error) {
+	return sql.GenerateMySqlIndexName(ctx, idxDef, tbl)
+}
+
 func (d *BaseDatabase) CreateFulltextTableNames(ctx *sql.Context, parentTableName string, parentIndexName string) (fulltext.IndexTableNames, error) {
 	d.tablesMu.RLock()
 	defer d.tablesMu.RUnlock()
@@ -261,7 +267,7 @@ func (d *BaseDatabase) CreateTable(ctx *sql.Context, name string, schema sql.Pri
 		return sql.ErrTableAlreadyExists.New(name)
 	}
 
-	table := NewTableWithCollation(d, name, schema, d.fkColl, collation)
+	table := NewTableWithCollation(ctx, d, name, schema, d.fkColl, collation)
 	table.db = d
 	table.data.comment = comment
 
@@ -273,7 +279,7 @@ func (d *BaseDatabase) CreateTable(ctx *sql.Context, name string, schema sql.Pri
 }
 
 // CreateIndexedTable creates a table with the given name and schema
-func (d *BaseDatabase) CreateIndexedTable(ctx *sql.Context, name string, sch sql.PrimaryKeySchema, idxDef sql.IndexDef, collation sql.CollationID) error {
+func (d *BaseDatabase) CreateIndexedTable(ctx *sql.Context, name string, sch sql.PrimaryKeySchema, idxDef sql.IndexDef, collation sql.CollationID, comment string) error {
 	d.tablesMu.RLock()
 	_, ok := d.tables[name]
 	d.tablesMu.RUnlock()
@@ -281,8 +287,9 @@ func (d *BaseDatabase) CreateIndexedTable(ctx *sql.Context, name string, sch sql
 		return sql.ErrTableAlreadyExists.New(name)
 	}
 
-	table := NewTableWithCollation(d, name, sch, d.fkColl, collation)
+	table := NewTableWithCollation(ctx, d, name, sch, d.fkColl, collation)
 	table.db = d
+	table.data.comment = comment
 
 	for _, idxCol := range idxDef.Columns {
 		idx := sch.Schema.IndexOfColName(idxCol.Name)
@@ -348,7 +355,7 @@ func (d *BaseDatabase) RenameTable(ctx *sql.Context, oldName, newName string) er
 		memIndex := index.(*Index)
 		for i, expr := range memIndex.Exprs {
 			getField := expr.(*expression.GetField)
-			memIndex.Exprs[i] = expression.NewGetFieldWithTable(i, 0, getField.Type(), d.name, newName, getField.Name(), getField.IsNullable())
+			memIndex.Exprs[i] = expression.NewGetFieldWithTable(i, 0, getField.Type(ctx), d.name, newName, getField.Name(), getField.IsNullable(ctx))
 		}
 	}
 	memTbl.data.tableName = newName

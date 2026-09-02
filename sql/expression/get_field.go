@@ -121,12 +121,12 @@ func (p *GetField) Name() string {
 }
 
 // IsNullable returns whether the field is nullable or not.
-func (p *GetField) IsNullable() bool {
+func (p *GetField) IsNullable(ctx *sql.Context) bool {
 	return p.nullable
 }
 
 // Type returns the type of the field.
-func (p *GetField) Type() sql.Type {
+func (p *GetField) Type(ctx *sql.Context) sql.Type {
 	return p.fieldType
 }
 
@@ -150,12 +150,12 @@ func (p *GetField) EvalValue(ctx *sql.Context, row sql.ValueRow) (sql.Value, err
 }
 
 // IsValueRowIter implements the ValueExpression interface.
-func (p *GetField) IsValueExpression() bool {
+func (p *GetField) IsValueExpression(ctx *sql.Context) bool {
 	return true
 }
 
 // WithChildren implements the Expression interface.
-func (p *GetField) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (p *GetField) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 0)
 	}
@@ -176,7 +176,7 @@ func (p *GetField) String() string {
 	return p.table + "." + p.name
 }
 
-func (p *GetField) DebugString() string {
+func (p *GetField) DebugString(ctx *sql.Context) string {
 	var notNull string
 	if !p.nullable {
 		notNull = "!null"
@@ -242,10 +242,10 @@ func SchemaToGetFields(s sql.Schema, columns sql.ColSet) []sql.Expression {
 
 // ExtractGetField returns the inner GetField expression from another expression. If there are multiple GetField
 // expressions that are not the same, then none of the GetField expressions are returned.
-func ExtractGetField(e sql.Expression) *GetField {
+func ExtractGetField(ctx *sql.Context, e sql.Expression) *GetField {
 	var field *GetField
 	multipleFields := false
-	sql.Inspect(e, func(expr sql.Expression) bool {
+	sql.Inspect(ctx, e, func(ctx *sql.Context, expr sql.Expression) bool {
 		if f, ok := expr.(*GetField); ok {
 			if field == nil {
 				field = f

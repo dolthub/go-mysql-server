@@ -62,7 +62,7 @@ func (u *Use) IsReadOnly() bool {
 }
 
 // Schema implements the sql.Node interface.
-func (Use) Schema() sql.Schema { return nil }
+func (Use) Schema(ctx *sql.Context) sql.Schema { return nil }
 
 // RowIter implements the sql.Node interface.
 func (u *Use) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
@@ -82,7 +82,7 @@ func (u *Use) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 }
 
 // WithChildren implements the Node interface.
-func (u *Use) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (u *Use) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(u, len(children), 1)
 	}

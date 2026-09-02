@@ -57,13 +57,13 @@ func (d *DeclareCursor) String() string {
 }
 
 // DebugString implements the interface sql.DebugStringer.
-func (d *DeclareCursor) DebugString() string {
-	return fmt.Sprintf("DECLARE %s CURSOR FOR %s", d.Name, sql.DebugString(d.Select))
+func (d *DeclareCursor) DebugString(ctx *sql.Context) string {
+	return fmt.Sprintf("DECLARE %s CURSOR FOR %s", d.Name, sql.DebugString(ctx, d.Select))
 }
 
 // Schema implements the interface sql.Node.
-func (d *DeclareCursor) Schema() sql.Schema {
-	return d.Select.Schema()
+func (d *DeclareCursor) Schema(ctx *sql.Context) sql.Schema {
+	return d.Select.Schema(ctx)
 }
 
 // Children implements the interface sql.Node.
@@ -72,7 +72,7 @@ func (d *DeclareCursor) Children() []sql.Node {
 }
 
 // WithChildren implements the interface sql.Node.
-func (d *DeclareCursor) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (d *DeclareCursor) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
 	}

@@ -55,7 +55,7 @@ func (s *StatsProv) AnalyzeTable(ctx *sql.Context, table sql.Table, db string) e
 	}
 
 	ordinals := make(map[string]int)
-	for i, c := range table.Schema() {
+	for i, c := range table.Schema(ctx) {
 		ordinals[strings.ToLower(c.Name)] = i
 	}
 
@@ -111,7 +111,7 @@ func (s *StatsProv) estimateStats(ctx *sql.Context, table sql.Table, keys map[st
 		}
 	}
 
-	sch := table.Schema()
+	sch := table.Schema(ctx)
 	for key, ordinals := range keys {
 		keyVals := make([]sql.Row, len(sample))
 		for i, row := range sample {
@@ -174,7 +174,7 @@ func (s *StatsProv) estimateStats(ctx *sql.Context, table sql.Table, keys map[st
 		stat := stats.NewStatistic(rowCount, rowCount, 0, dataLen, time.Now(), qual, cols, types, buckets, sql.IndexClassDefault, nil)
 
 		// functional dependencies
-		fds, idxCols, err := stats.IndexFds(table.Name(), sch, indexes[strings.ToLower(qual.Index())])
+		fds, idxCols, err := stats.IndexFds(ctx, table.Name(), sch, indexes[strings.ToLower(qual.Index())])
 		if err != nil {
 			return err
 		}
@@ -243,12 +243,16 @@ func (s *StatsProv) reservoirSample(ctx *sql.Context, table sql.Table) ([]sql.Ro
 	return queue, nil
 }
 
-func (s *StatsProv) GetTableStats(ctx *sql.Context, db string, table sql.Table) ([]sql.Statistic, error) {
-	pref := fmt.Sprintf("%s.%s", strings.ToLower(db), strings.ToLower(table.Name()))
+func (s *StatsProv) GetTableStats(_ *sql.Context, sch, db string, table sql.Table) ([]sql.Statistic, error) {
+	pref := strings.ToLower(db) + "." + strings.ToLower(table.Name())
+	if len(sch) != 0 {
+		pref = strings.ToLower(sch) + "." + pref
+	}
+
 	var ret []sql.Statistic
-	for key, stats := range s.colStats {
-		if strings.HasPrefix(string(key), pref) {
-			ret = append(ret, stats)
+	for statKey, colStat := range s.colStats {
+		if strings.HasPrefix(string(statKey), pref) {
+			ret = append(ret, colStat)
 		}
 	}
 	return ret, nil
@@ -278,7 +282,16 @@ func (s *StatsProv) DropStats(ctx *sql.Context, qual sql.StatQualifier, cols []s
 	return nil
 }
 
-func (s *StatsProv) RowCount(ctx *sql.Context, db string, table sql.Table) (uint64, error) {
+func (s *StatsProv) DropDbStats(ctx *sql.Context, sch, db string, flush bool) error {
+	for key := range s.colStats {
+		if strings.HasPrefix(string(key), db) {
+			delete(s.colStats, key)
+		}
+	}
+	return nil
+}
+
+func (s *StatsProv) RowCount(ctx *sql.Context, sch, db string, table sql.Table) (uint64, error) {
 	pref := fmt.Sprintf("%s.%s", strings.ToLower(db), strings.ToLower(table.Name()))
 	var cnt uint64
 	for key, stats := range s.colStats {
@@ -291,7 +304,7 @@ func (s *StatsProv) RowCount(ctx *sql.Context, db string, table sql.Table) (uint
 	return cnt, nil
 }
 
-func (s *StatsProv) DataLength(ctx *sql.Context, db string, table sql.Table) (uint64, error) {
+func (s *StatsProv) DataLength(ctx *sql.Context, sch, db string, table sql.Table) (uint64, error) {
 	pref := fmt.Sprintf("%s.%s", db, table)
 	var size uint64
 	for key, stats := range s.colStats {
@@ -302,13 +315,4 @@ func (s *StatsProv) DataLength(ctx *sql.Context, db string, table sql.Table) (ui
 		}
 	}
 	return size, nil
-}
-
-func (s *StatsProv) DropDbStats(ctx *sql.Context, db string, flush bool) error {
-	for key := range s.colStats {
-		if strings.HasPrefix(string(key), db) {
-			delete(s.colStats, key)
-		}
-	}
-	return nil
 }

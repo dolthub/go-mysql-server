@@ -40,7 +40,7 @@ func (c *ddlNode) Database() sql.Database {
 }
 
 // Schema implements the Node interface.
-func (*ddlNode) Schema() sql.Schema {
+func (*ddlNode) Schema(ctx *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -180,7 +180,7 @@ func (c *CreateTable) String() string {
 }
 
 // DebugString implements the sql.DebugStringer interface.
-func (c *CreateTable) DebugString() string {
+func (c *CreateTable) DebugString(ctx *sql.Context) string {
 	p := sql.NewTreePrinter()
 
 	ifNotExists := ""
@@ -190,75 +190,75 @@ func (c *CreateTable) DebugString() string {
 
 	if c.selectNode != nil {
 		p.WriteNode("Create table %s%s as", ifNotExists, c.name)
-		p.WriteChildren(sql.DebugString(c.selectNode))
+		p.WriteChildren(sql.DebugString(ctx, c.selectNode))
 		return p.String()
 	}
 
 	p.WriteNode("Create table %s%s", ifNotExists, c.name)
 
 	var children []string
-	children = append(children, c.schemaDebugString())
+	children = append(children, c.schemaDebugString(ctx))
 
 	if len(c.fkDefs) > 0 {
-		children = append(children, c.foreignKeysDebugString())
+		children = append(children, c.foreignKeysDebugString(ctx))
 	}
 	if len(c.idxDefs) > 0 {
-		children = append(children, c.indexesDebugString())
+		children = append(children, c.indexesDebugString(ctx))
 	}
 	if len(c.checks) > 0 {
-		children = append(children, c.checkConstraintsDebugString())
+		children = append(children, c.checkConstraintsDebugString(ctx))
 	}
 
 	p.WriteChildren(children...)
 	return p.String()
 }
 
-func (c *CreateTable) foreignKeysDebugString() string {
+func (c *CreateTable) foreignKeysDebugString(ctx *sql.Context) string {
 	p := sql.NewTreePrinter()
 	p.WriteNode("ForeignKeys")
 	var children []string
 	for _, def := range c.fkDefs {
-		children = append(children, sql.DebugString(def))
+		children = append(children, sql.DebugString(ctx, def))
 	}
 	p.WriteChildren(children...)
 	return p.String()
 }
 
-func (c *CreateTable) indexesDebugString() string {
+func (c *CreateTable) indexesDebugString(ctx *sql.Context) string {
 	p := sql.NewTreePrinter()
 	p.WriteNode("Indexes")
 	var children []string
 	for _, def := range c.idxDefs {
-		children = append(children, sql.DebugString(def))
+		children = append(children, sql.DebugString(ctx, def))
 	}
 	p.WriteChildren(children...)
 	return p.String()
 }
 
-func (c *CreateTable) checkConstraintsDebugString() string {
+func (c *CreateTable) checkConstraintsDebugString(ctx *sql.Context) string {
 	p := sql.NewTreePrinter()
 	p.WriteNode("CheckConstraints")
 	var children []string
 	for _, def := range c.checks {
-		children = append(children, sql.DebugString(def))
+		children = append(children, sql.DebugString(ctx, def))
 	}
 	p.WriteChildren(children...)
 	return p.String()
 }
 
-func (c *CreateTable) schemaDebugString() string {
+func (c *CreateTable) schemaDebugString(ctx *sql.Context) string {
 	p := sql.NewTreePrinter()
 	p.WriteNode("Columns")
 	var children []string
 	for _, col := range c.pkSch.Schema {
-		children = append(children, sql.DebugString(col))
+		children = append(children, sql.DebugString(ctx, col))
 	}
 	p.WriteChildren(children...)
 	return p.String()
 }
 
 // Schema implements the sql.Node interface.
-func (c *CreateTable) Schema() sql.Schema {
+func (c *CreateTable) Schema(ctx *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -288,7 +288,7 @@ func (c *CreateTable) Children() []sql.Node {
 }
 
 // WithChildren implements the Node interface.
-func (c *CreateTable) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (c *CreateTable) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	nc := *c
 	if len(children) == 0 {
 		return &nc, nil
@@ -321,7 +321,7 @@ func (c *CreateTable) Expressions() []sql.Expression {
 }
 
 // WithExpressions implements the sql.Expressioner interface.
-func (c *CreateTable) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+func (c *CreateTable) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	schemaLen := len(c.pkSch.Schema)
 	length := schemaLen + len(c.checks)
 	if len(exprs) != length {
@@ -352,48 +352,12 @@ func (*CreateTable) CollationCoercibility(_ *sql.Context) (collation sql.Collati
 	return sql.Collation_binary, 7
 }
 
-// CreateForeignKeys creates the foreign keys on the table.
-func (c *CreateTable) CreateForeignKeys(ctx *sql.Context, tableNode sql.Table) error {
-	fkTbl, ok := tableNode.(sql.ForeignKeyTable)
-	if !ok {
-		return sql.ErrNoForeignKeySupport.New(c.name)
-	}
-
-	fkChecks, err := ctx.GetSessionVariable(ctx, "foreign_key_checks")
-	if err != nil {
-		return err
-	}
-
-	for i, fkDef := range c.fkDefs {
-		if fkChecks.(int8) == 1 {
-			fkParentTbl := c.fkParentTbls[i]
-			// If a foreign key is self-referential then the analyzer uses a nil since the table does not yet exist
-			if fkParentTbl == nil {
-				fkParentTbl = fkTbl
-			}
-			// If foreign_key_checks are true, then the referenced tables will be populated
-			err = ResolveForeignKey(ctx, fkTbl, fkParentTbl, *fkDef, true, true, true)
-			if err != nil {
-				return err
-			}
-		} else {
-			// If foreign_key_checks are true, then the referenced tables will be populated
-			err = ResolveForeignKey(ctx, fkTbl, nil, *fkDef, true, false, false)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
 // ForeignKeys returns any foreign keys that will be declared on this table.
 func (c *CreateTable) ForeignKeys() []*sql.ForeignKeyConstraint {
 	return c.fkDefs
 }
 
-// WithParentForeignKeyTables adds the tables that are referenced in each foreign key. The table indices is assumed
+// WithParentForeignKeyTables adds the tables that are referenced in each foreign key. The table indices are assumed
 // to match the foreign key indices in their respective slices.
 func (c *CreateTable) WithParentForeignKeyTables(refTbls []sql.ForeignKeyTable) (*CreateTable, error) {
 	if len(c.fkDefs) != len(refTbls) {
@@ -403,6 +367,12 @@ func (c *CreateTable) WithParentForeignKeyTables(refTbls []sql.ForeignKeyTable) 
 	nc := *c
 	nc.fkParentTbls = refTbls
 	return &nc, nil
+}
+
+// ParentForeignKeyTables returns tables that are referenced in each foreign key. The table indices are assumed to match
+// the foreign key indices in their respective slices.
+func (c *CreateTable) ParentForeignKeyTables() sql.ForeignKeyTables {
+	return c.fkParentTbls
 }
 
 // CreateChecks creates the check constraints on the table.
@@ -459,12 +429,12 @@ func (c *CreateTable) Select() sql.Node {
 	return c.selectNode
 }
 
-func (c *CreateTable) ValidateDefaultPosition() error {
+func (c *CreateTable) ValidateDefaultPosition(ctx *sql.Context) error {
 	colsAfterThis := make(map[string]*sql.Column)
 	for i := len(c.pkSch.Schema) - 1; i >= 0; i-- {
 		col := c.pkSch.Schema[i]
 		colsAfterThis[col.Name] = col
-		if err := inspectDefaultForInvalidColumns(col, colsAfterThis); err != nil {
+		if err := inspectDefaultForInvalidColumns(ctx, col, colsAfterThis); err != nil {
 			return err
 		}
 	}
@@ -477,6 +447,10 @@ type DropTable struct {
 	Tables       []sql.Node
 	TriggerNames []string
 	ifExists     bool
+	// Cascade is set for DROP TABLE ... CASCADE statements: objects that depend on the dropped tables should be
+	// dropped along with them. The MySQL dialect parses but ignores CASCADE, so this is only set by integrators
+	// whose dialects give it meaning (e.g. Postgres); the engine itself does not act on it.
+	Cascade bool
 }
 
 var _ sql.Node = (*DropTable)(nil)
@@ -539,12 +513,12 @@ func (d *DropTable) IsReadOnly() bool {
 }
 
 // Schema implements the sql.Expression interface.
-func (d *DropTable) Schema() sql.Schema {
+func (d *DropTable) Schema(ctx *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
 // WithChildren implements the Node interface.
-func (d *DropTable) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (d *DropTable) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	// Number of children can be smaller than original as the non-existent
 	// tables get filtered out in some cases
 	var newChildren = make([]sql.Node, len(children))

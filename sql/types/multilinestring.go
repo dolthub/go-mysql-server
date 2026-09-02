@@ -74,6 +74,12 @@ func (t MultiLineStringType) Convert(ctx context.Context, v interface{}) (interf
 			return nil, sql.InRange, err
 		}
 		return buf, sql.InRange, nil
+	case sql.AnyWrapper:
+		unwrapped, err := buf.UnwrapAny(ctx)
+		if err != nil {
+			return nil, sql.InRange, err
+		}
+		return t.Convert(ctx, unwrapped)
 	default:
 		return nil, sql.InRange, sql.ErrSpatialTypeConversion.New()
 	}

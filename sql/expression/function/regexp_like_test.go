@@ -218,11 +218,12 @@ func TestRegexpLikeWithoutFlags(t *testing.T) {
 		t.Run(fmt.Sprintf("%s|%s", test.text, test.pattern), func(t *testing.T) {
 			ctx := sql.NewEmptyContext()
 			f, err := NewRegexpLike(
+				ctx,
 				expression.NewLiteral(test.text, types.LongText),
 				expression.NewLiteral(test.pattern, types.LongText),
 			)
 			require.NoError(t, err)
-			defer f.(*RegexpLike).Dispose()
+			defer f.(*RegexpLike).Dispose(ctx)
 			res, err := f.Eval(ctx, nil)
 			require.Equal(t, test.expected, res)
 		})
@@ -272,12 +273,13 @@ func TestRegexpLikeWithFlags(t *testing.T) {
 		t.Run(fmt.Sprintf("%v|%v", test.text, test.pattern), func(t *testing.T) {
 			ctx := sql.NewEmptyContext()
 			f, err := NewRegexpLike(
+				ctx,
 				expression.NewLiteral(test.text, types.LongText),
 				expression.NewLiteral(test.pattern, types.LongText),
 				expression.NewLiteral(test.flags, types.LongText),
 			)
 			require.NoError(t, err)
-			defer f.(*RegexpLike).Dispose()
+			defer f.(*RegexpLike).Dispose(ctx)
 			res, err := f.Eval(ctx, nil)
 			require.Equal(t, test.expected, res)
 		})
@@ -288,11 +290,13 @@ func TestRegexpLikeNilAndErrors(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	f, err := NewRegexpLike(
+		ctx,
 		expression.NewLiteral("", types.LongText),
 	)
 	require.True(t, sql.ErrInvalidArgumentNumber.Is(err))
 
 	f, err = NewRegexpLike(
+		ctx,
 		expression.NewLiteral("", types.LongText),
 		expression.NewLiteral("", types.LongText),
 		expression.NewLiteral("", types.LongText),
@@ -301,6 +305,7 @@ func TestRegexpLikeNilAndErrors(t *testing.T) {
 	require.True(t, sql.ErrInvalidArgumentNumber.Is(err))
 
 	f, err = NewRegexpLike(
+		ctx,
 		expression.NewLiteral("foo", types.LongText),
 		expression.NewLiteral("foo", types.LongText),
 		expression.NewLiteral("z", types.LongText),
@@ -308,9 +313,10 @@ func TestRegexpLikeNilAndErrors(t *testing.T) {
 	require.NoError(t, err)
 	_, err = f.Eval(ctx, nil)
 	require.True(t, sql.ErrInvalidArgument.Is(err))
-	f.(*RegexpLike).Dispose()
+	f.(*RegexpLike).Dispose(ctx)
 
 	f, err = NewRegexpLike(
+		ctx,
 		expression.NewLiteral(nil, types.Null),
 		expression.NewLiteral("foo", types.LongText),
 		expression.NewLiteral("i", types.LongText),
@@ -319,9 +325,10 @@ func TestRegexpLikeNilAndErrors(t *testing.T) {
 	res, err := f.Eval(ctx, nil)
 	require.NoError(t, err)
 	require.Equal(t, nil, res)
-	f.(*RegexpLike).Dispose()
+	f.(*RegexpLike).Dispose(ctx)
 
 	f, err = NewRegexpLike(
+		ctx,
 		expression.NewLiteral("foo", types.LongText),
 		expression.NewLiteral(nil, types.Null),
 		expression.NewLiteral("i", types.LongText),
@@ -330,9 +337,10 @@ func TestRegexpLikeNilAndErrors(t *testing.T) {
 	res, err = f.Eval(ctx, nil)
 	require.NoError(t, err)
 	require.Equal(t, nil, res)
-	f.(*RegexpLike).Dispose()
+	f.(*RegexpLike).Dispose(ctx)
 
 	f, err = NewRegexpLike(
+		ctx,
 		expression.NewLiteral("foo", types.LongText),
 		expression.NewLiteral("foo", types.LongText),
 		expression.NewLiteral(nil, types.Null),
@@ -341,9 +349,10 @@ func TestRegexpLikeNilAndErrors(t *testing.T) {
 	res, err = f.Eval(ctx, nil)
 	require.NoError(t, err)
 	require.Equal(t, nil, res)
-	f.(*RegexpLike).Dispose()
+	f.(*RegexpLike).Dispose(ctx)
 
 	f, err = NewRegexpLike(
+		ctx,
 		expression.NewLiteral(nil, types.Null),
 		expression.NewLiteral("foo", types.LongText),
 	)
@@ -351,9 +360,10 @@ func TestRegexpLikeNilAndErrors(t *testing.T) {
 	res, err = f.Eval(ctx, nil)
 	require.NoError(t, err)
 	require.Equal(t, nil, res)
-	f.(*RegexpLike).Dispose()
+	f.(*RegexpLike).Dispose(ctx)
 
 	f, err = NewRegexpLike(
+		ctx,
 		expression.NewLiteral("foo", types.LongText),
 		expression.NewLiteral(nil, types.Null),
 	)
@@ -361,7 +371,7 @@ func TestRegexpLikeNilAndErrors(t *testing.T) {
 	res, err = f.Eval(ctx, nil)
 	require.NoError(t, err)
 	require.Equal(t, nil, res)
-	f.(*RegexpLike).Dispose()
+	f.(*RegexpLike).Dispose(ctx)
 }
 
 // Last Run: 06/17/2025
@@ -377,6 +387,7 @@ func BenchmarkRegexpLike(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		f, err := NewRegexpLike(
+			ctx,
 			expression.NewGetField(0, types.LongText, "text", false),
 			expression.NewLiteral("^test[0-9]$", types.LongText),
 		)
@@ -388,6 +399,6 @@ func BenchmarkRegexpLike(b *testing.B) {
 			total += res.(int8)
 		}
 		require.Equal(b, int8(10), total)
-		f.(*RegexpLike).Dispose()
+		f.(*RegexpLike).Dispose(ctx)
 	}
 }

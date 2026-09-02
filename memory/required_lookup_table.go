@@ -39,7 +39,7 @@ func (s RequiredLookupTable) String() string {
 	return fmt.Sprintf("requiredLookup")
 }
 
-func (s RequiredLookupTable) DebugString() string {
+func (s RequiredLookupTable) DebugString(ctx *sql.Context) string {
 	return "requiredLookup"
 }
 
@@ -57,7 +57,7 @@ func (s RequiredLookupTable) PreciseMatch() bool {
 	return true
 }
 
-func (s RequiredLookupTable) WithChildren(_ ...sql.Node) (sql.Node, error) {
+func (s RequiredLookupTable) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	return s, nil
 }
 
@@ -65,7 +65,7 @@ func (s RequiredLookupTable) Expressions() []sql.Expression {
 	return []sql.Expression{}
 }
 
-func (s RequiredLookupTable) WithExpressions(e ...sql.Expression) (sql.Node, error) {
+func (s RequiredLookupTable) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	return s, nil
 }
 

@@ -17,34 +17,35 @@ package plan
 import (
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/transform"
-
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // UpdateSource is the source of updates for an Update node. Its schema is the concatenation of the old and new rows,
 // before and after being updated.
 type UpdateSource struct {
 	UnaryNode
-	UpdateExprs []sql.Expression
+	UpdateExprs *UpdateExprs
 	Ignore      bool
+	ctx         *sql.Context
 }
 
 var _ sql.Node = (*UpdateSource)(nil)
 var _ sql.CollationCoercible = (*UpdateSource)(nil)
 
 // NewUpdateSource returns a new UpdateSource from the node and expressions given.
-func NewUpdateSource(node sql.Node, ignore bool, updateExprs []sql.Expression) *UpdateSource {
+func NewUpdateSource(ctx *sql.Context, node sql.Node, ignore bool, updateExprs *UpdateExprs) *UpdateSource {
 	return &UpdateSource{
 		UnaryNode:   UnaryNode{node},
 		UpdateExprs: updateExprs,
 		Ignore:      ignore,
+		ctx:         ctx,
 	}
 }
 
 // Expressions implements the sql.Expressioner interface.
 func (u *UpdateSource) Expressions() []sql.Expression {
-	return u.UpdateExprs
+	return u.UpdateExprs.AllExpressions()
 }
 
 func (u *UpdateSource) IsReadOnly() bool {
@@ -52,56 +53,48 @@ func (u *UpdateSource) IsReadOnly() bool {
 }
 
 // WithExpressions implements the sql.Expressioner interface.
-func (u *UpdateSource) WithExpressions(newExprs ...sql.Expression) (sql.Node, error) {
-	if len(newExprs) != len(u.UpdateExprs) {
-		return nil, sql.ErrInvalidChildrenNumber.New(u, len(u.UpdateExprs), 1)
-	}
-	return NewUpdateSource(u.Child, u.Ignore, newExprs), nil
+func (u *UpdateSource) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
+	var err error
+	ret := *u
+	ret.UpdateExprs, err = u.UpdateExprs.WithExpressions(exprs)
+	return &ret, err
 }
 
 // Schema implements sql.Node. The schema of an update is a concatenation of the old and new rows.
-func (u *UpdateSource) Schema() sql.Schema {
-	return append(u.Child.Schema(), u.Child.Schema()...)
+func (u *UpdateSource) Schema(ctx *sql.Context) sql.Schema {
+	return append(u.Child.Schema(ctx), u.Child.Schema(ctx)...)
 }
 
 // Resolved implements the Resolvable interface.
 func (u *UpdateSource) Resolved() bool {
-	if !u.Child.Resolved() {
-		return false
-	}
-	for _, updateExpr := range u.UpdateExprs {
-		if !updateExpr.Resolved() {
-			return false
-		}
-	}
-	return true
+	return u.Child.Resolved() && u.UpdateExprs.Resolved()
 }
 
 func (u *UpdateSource) String() string {
 	tp := sql.NewTreePrinter()
-	var updateExprs []string
-	for _, e := range u.UpdateExprs {
-		updateExprs = append(updateExprs, e.String())
+	updateExprs := make([]string, u.UpdateExprs.Length())
+	for i, e := range u.UpdateExprs.AllExpressions() {
+		updateExprs[i] = sql.DebugString(u.ctx, e)
 	}
 	_ = tp.WriteNode("UpdateSource(%s)", strings.Join(updateExprs, ","))
 	_ = tp.WriteChildren(u.Child.String())
 	return tp.String()
 }
 
-func (u *UpdateSource) DebugString() string {
+func (u *UpdateSource) DebugString(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
-	var updateExprs []string
-	for _, e := range u.UpdateExprs {
-		updateExprs = append(updateExprs, sql.DebugString(e))
+	updateExprs := make([]string, u.UpdateExprs.Length())
+	for i, e := range u.UpdateExprs.AllExpressions() {
+		updateExprs[i] = sql.DebugString(ctx, e)
 	}
 	_ = pr.WriteNode("UpdateSource(%s)", strings.Join(updateExprs, ","))
-	_ = pr.WriteChildren(sql.DebugString(u.Child))
+	_ = pr.WriteChildren(sql.DebugString(ctx, u.Child))
 	return pr.String()
 }
 
-func (u *UpdateSource) GetChildSchema() (sql.Schema, error) {
-	if nodeHasJoin(u.Child) {
-		return u.Child.Schema(), nil
+func (u *UpdateSource) GetChildSchema(ctx *sql.Context) (sql.Schema, error) {
+	if nodeHasJoin(ctx, u.Child) {
+		return u.Child.Schema(ctx), nil
 	}
 
 	table, err := GetUpdatable(u.Child)
@@ -109,12 +102,12 @@ func (u *UpdateSource) GetChildSchema() (sql.Schema, error) {
 		return nil, err
 	}
 
-	return table.Schema(), nil
+	return table.Schema(ctx), nil
 }
 
-func nodeHasJoin(node sql.Node) bool {
+func nodeHasJoin(ctx *sql.Context, node sql.Node) bool {
 	hasJoinNode := false
-	transform.InspectWithOpaque(node, func(node sql.Node) bool {
+	transform.InspectWithOpaque(ctx, node, func(ctx *sql.Context, node sql.Node) bool {
 		switch node.(type) {
 		case *JoinNode:
 			hasJoinNode = true
@@ -127,11 +120,13 @@ func nodeHasJoin(node sql.Node) bool {
 	return hasJoinNode
 }
 
-func (u *UpdateSource) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (u *UpdateSource) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(u, len(children), 1)
 	}
-	return NewUpdateSource(children[0], u.Ignore, u.UpdateExprs), nil
+	newU := *u
+	newU.Child = children[0]
+	return &newU, nil
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

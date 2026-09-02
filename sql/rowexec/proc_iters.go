@@ -56,7 +56,7 @@ func (i *ifElseIter) RepresentingNode() sql.Node {
 }
 
 // Schema implements the sql.BlockRowIter interface.
-func (i *ifElseIter) Schema() sql.Schema {
+func (i *ifElseIter) Schema(ctx *sql.Context) sql.Schema {
 	return i.sch
 }
 

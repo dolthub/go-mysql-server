@@ -502,16 +502,6 @@ var ColumnDefaultTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "Function expressions must be enclosed in parens",
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:       "create table t0 (v0 varchar(100) default repeat(\"_\", 99));",
-				ExpectedErr: sql.ErrSyntaxError,
-			},
-		},
-	},
-
-	{
 		Name: "Column references must be enclosed in parens",
 		Assertions: []ScriptTestAssertion{
 			{
@@ -1053,6 +1043,26 @@ var ColumnDefaultTests = []ScriptTest{
 			{
 				Query:       "ALTER TABLE t ALTER COLUMN i SET DEFAULT (@@version);",
 				ExpectedErr: sql.ErrColumnDefaultUserVariable,
+			},
+		},
+	},
+	{
+		Name: "Unparenthesized function expression in DEFAULT clause",
+		SetUpScript: []string{
+			"CREATE TABLE t_unparens (id INT PRIMARY KEY, s LONGTEXT NOT NULL DEFAULT JSON_OBJECT())",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO t_unparens (id) VALUES (1)",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "SELECT * FROM t_unparens ORDER BY id",
+				Expected: []sql.Row{{1, "{}"}},
+			},
+			{
+				Query:    "SHOW CREATE TABLE t_unparens",
+				Expected: []sql.Row{{"t_unparens", "CREATE TABLE `t_unparens` (\n  `id` int NOT NULL,\n  `s` longtext NOT NULL DEFAULT (json_object()),\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 		},
 	},

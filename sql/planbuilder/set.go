@@ -27,6 +27,11 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
+// SetScope_TransactionLocal is the SetVarExpr scope for system variables set with transaction-local scope
+// (Postgres's SET LOCAL). The vitess parser never produces this scope (in MySQL, LOCAL is an alias for SESSION);
+// it exists for integrators that construct the AST themselves.
+const SetScope_TransactionLocal ast.SetScope = "transaction_local"
+
 func (b *Builder) buildSet(inScope *scope, n *ast.Set) (outScope *scope) {
 	var setVarExprs []*ast.SetVarExpr
 	for _, setExpr := range n.Exprs {
@@ -172,7 +177,7 @@ func (b *Builder) setExprsToExpressions(inScope *scope, e ast.SetVarExprs) []sql
 			}
 		}
 
-		sysVarType, _ := setVar.Type().(sql.SystemVariableType)
+		sysVarType, _ := setVar.Type(b.ctx).(sql.SystemVariableType)
 		innerExpr, ok := b.simplifySetExpr(setExpr.Name, setScope, setExpr.Expr, sysVarType)
 		if !ok {
 			innerExpr = b.buildScalar(inScope, setExpr.Expr)
@@ -226,6 +231,13 @@ func (b *Builder) buildSysVar(colName *ast.ColName, scopeHint ast.SetScope) (sql
 			if !ok {
 				return nil, scope, false
 			}
+			// specifiedScope is only non-empty when the scope was explicitly given (e.g. @@SESSION.foo,
+			// @@LOCAL.foo), as opposed to being inferred for a bare @@foo reference. MySQL allows the bare
+			// form to fall back to the global value for GLOBAL-only variables but errors when SESSION scope
+			// is explicitly requested for one.
+			if specifiedScope != "" && sysVar.IsGlobalOnly() {
+				b.handleErr(sql.ErrSystemVariableGlobalOnly.New(varName))
+			}
 			return expression.NewSystemVar(varName, sysVar.GetSessionScope(), specifiedScope), scope, true
 		}
 	case ast.SetScope_User:
@@ -241,6 +253,16 @@ func (b *Builder) buildSysVar(colName *ast.ColName, scopeHint ast.SetScope) (sql
 		return expression.NewSystemVar(varName, sql.GetMysqlScope(sql.SystemVariableScope_Persist), specifiedScope), scope, true
 	case ast.SetScope_PersistOnly:
 		return expression.NewSystemVar(varName, sql.GetMysqlScope(sql.SystemVariableScope_PersistOnly), specifiedScope), scope, true
+	case SetScope_TransactionLocal:
+		sysVar, _, ok := sql.SystemVariables.GetGlobal(varName)
+		if !ok {
+			return nil, scope, false
+		}
+		localScope := sysVar.GetLocalScope()
+		if localScope == nil {
+			b.handleErr(sql.ErrSystemVariableCannotBeSetLocal.New(varName))
+		}
+		return expression.NewSystemVar(varName, localScope, specifiedScope), scope, true
 	default: // shouldn't happen
 		err := fmt.Errorf("unknown set scope %v", scope)
 		b.handleErr(err)

@@ -27,7 +27,7 @@ import (
 func TestMultiLineString(t *testing.T) {
 	t.Run("create valid multilinestring", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewMultiLineString(expression.NewLiteral(types.LineString{Points: []types.Point{{X: 0, Y: 0}, {X: 1, Y: 1}}}, types.LineStringType{}))
+		f, err := NewMultiLineString(sql.NewEmptyContext(), expression.NewLiteral(types.LineString{Points: []types.Point{{X: 0, Y: 0}, {X: 1, Y: 1}}}, types.LineStringType{}))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -37,7 +37,7 @@ func TestMultiLineString(t *testing.T) {
 
 	t.Run("create valid multilinestring with multiple linestrings", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewMultiLineString(expression.NewLiteral(types.LineString{Points: []types.Point{{X: 0, Y: 0}, {X: 1, Y: 1}}}, types.LineStringType{}),
+		f, err := NewMultiLineString(sql.NewEmptyContext(), expression.NewLiteral(types.LineString{Points: []types.Point{{X: 0, Y: 0}, {X: 1, Y: 1}}}, types.LineStringType{}),
 			expression.NewLiteral(types.LineString{Points: []types.Point{{X: 0, Y: 0}, {X: 1, Y: 0}}}, types.LineStringType{}),
 			expression.NewLiteral(types.LineString{Points: []types.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}}}, types.LineStringType{}))
 		require.NoError(err)
@@ -50,7 +50,7 @@ func TestMultiLineString(t *testing.T) {
 
 func TestNewMultiLineString(t *testing.T) {
 	require := require.New(t)
-	_, err := NewMultiLineString(expression.NewLiteral(nil, types.LineStringType{}),
+	_, err := NewMultiLineString(sql.NewEmptyContext(), expression.NewLiteral(nil, types.LineStringType{}),
 		expression.NewLiteral(nil, types.LineStringType{}),
 		expression.NewLiteral(nil, types.LineStringType{}),
 	)

@@ -38,7 +38,7 @@ func TestDistinct(t *testing.T) {
 		{Name: "name", Type: types.Text, Nullable: true},
 		{Name: "email", Type: types.Text, Nullable: true},
 	})
-	child := memory.NewTable(db.BaseDatabase, "test", childSchema, nil)
+	child := memory.NewTable(ctx, db.BaseDatabase, "test", childSchema, nil)
 
 	rows := []sql.Row{
 		sql.NewRow("john", "john@doe.com"),
@@ -52,7 +52,7 @@ func TestDistinct(t *testing.T) {
 		require.NoError(child.Insert(ctx, r))
 	}
 
-	p := plan.NewProject([]sql.Expression{
+	p := plan.NewProject(ctx, []sql.Expression{
 		expression.NewGetField(0, types.Text, "name", true),
 	}, plan.NewResolvedTable(child, nil, nil))
 	d := plan.NewDistinct(p)
@@ -88,7 +88,7 @@ func TestOrderedDistinct(t *testing.T) {
 		{Name: "name", Type: types.Text, Nullable: true},
 		{Name: "email", Type: types.Text, Nullable: true},
 	})
-	child := memory.NewTable(db.BaseDatabase, "test", childSchema, nil)
+	child := memory.NewTable(ctx, db.BaseDatabase, "test", childSchema, nil)
 
 	rows := []sql.Row{
 		sql.NewRow("jane", "jane@doe.com"),
@@ -102,7 +102,7 @@ func TestOrderedDistinct(t *testing.T) {
 		require.NoError(child.Insert(ctx, r))
 	}
 
-	p := plan.NewProject([]sql.Expression{
+	p := plan.NewProject(ctx, []sql.Expression{
 		expression.NewGetField(0, types.Text, "name", true),
 	}, plan.NewResolvedTable(child, nil, nil))
 	d := plan.NewOrderedDistinct(p)
@@ -132,7 +132,7 @@ func BenchmarkDistinct(b *testing.B) {
 	ctx := sql.NewEmptyContext()
 
 	for i := 0; i < b.N; i++ {
-		p := plan.NewProject([]sql.Expression{
+		p := plan.NewProject(ctx, []sql.Expression{
 			expression.NewGetField(0, types.Text, "strfield", true),
 			expression.NewGetField(1, types.Float64, "floatfield", true),
 			expression.NewGetField(2, types.Boolean, "boolfield", false),
@@ -165,7 +165,7 @@ func BenchmarkOrderedDistinct(b *testing.B) {
 	ctx := sql.NewEmptyContext()
 
 	for i := 0; i < b.N; i++ {
-		p := plan.NewProject([]sql.Expression{
+		p := plan.NewProject(ctx, []sql.Expression{
 			expression.NewGetField(0, types.Text, "strfield", true),
 			expression.NewGetField(1, types.Float64, "floatfield", true),
 			expression.NewGetField(2, types.Boolean, "boolfield", false),

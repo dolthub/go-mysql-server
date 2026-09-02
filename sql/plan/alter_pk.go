@@ -82,7 +82,7 @@ func (a *AlterPK) String() string {
 	return fmt.Sprintf("alter table %s %s primary key", a.Table.String(), action)
 }
 
-func (a *AlterPK) Schema() sql.Schema {
+func (a *AlterPK) Schema(ctx *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -99,7 +99,7 @@ func (a *AlterPK) Expressions() []sql.Expression {
 	return transform.WrappedColumnDefaults(a.targetSchema)
 }
 
-func (a AlterPK) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+func (a AlterPK) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != len(a.targetSchema) {
 		return nil, sql.ErrInvalidChildrenNumber.New(a, len(exprs), len(a.targetSchema))
 	}
@@ -113,8 +113,8 @@ func (a AlterPK) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	return &a, nil
 }
 
-func HasPrimaryKeys(table sql.Table) bool {
-	for _, c := range table.Schema() {
+func HasPrimaryKeys(ctx *sql.Context, table sql.Table) bool {
+	for _, c := range table.Schema(ctx) {
 		if c.PrimaryKey {
 			return true
 		}
@@ -123,7 +123,7 @@ func HasPrimaryKeys(table sql.Table) bool {
 	return false
 }
 
-func (a AlterPK) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (a AlterPK) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(a, len(children), 1)
 	}

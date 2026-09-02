@@ -42,12 +42,14 @@ func TestIfNull(t *testing.T) {
 		{nil, types.Int8, 128, types.Int64, int64(128), types.Int64},
 	}
 
+	ctx := sql.NewEmptyContext()
 	for _, tc := range testCases {
 		f := NewIfNull(
+			ctx,
 			expression.NewGetField(0, tc.expressionType, "expression", true),
 			expression.NewGetField(1, tc.valueType, "value", true),
 		)
-		require.Equal(t, tc.expectedType, f.Type())
+		require.Equal(t, tc.expectedType, f.Type(ctx))
 		v, err := f.Eval(sql.NewEmptyContext(), sql.NewRow(tc.expression, tc.value))
 		require.NoError(t, err)
 		require.Equal(t, tc.expected, v)

@@ -30,13 +30,13 @@ var (
 	partitionByX = []sql.Expression{
 		expression.NewGetFieldWithTable(1, 0, types.Text, "mydb", "a", "x", false),
 	}
-	sortByW = sql.SortFields{{
-		Column: expression.NewGetFieldWithTable(0, 0, types.Int64, "mydb", "a", "w", false),
+	sortByW = sql.SortConditions{{
+		Expr: expression.NewGetFieldWithTable(0, 0, types.Int64, "mydb", "a", "w", false),
 	}}
-	sortByWDesc = sql.SortFields{
+	sortByWDesc = sql.SortConditions{
 		{
-			Column: expression.NewGetFieldWithTable(0, 0, types.Int64, "mydb", "a", "w", false),
-			Order:  sql.Descending,
+			Expr:  expression.NewGetFieldWithTable(0, 0, types.Int64, "mydb", "a", "w", false),
+			Order: sql.Descending,
 		},
 	}
 	lastX  = NewLastAgg(expression.NewGetField(1, types.Text, "x", true))

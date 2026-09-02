@@ -22,14 +22,15 @@ import (
 	"fmt"
 	"io"
 	"maps"
+	"math"
 	"regexp"
 	"slices"
 	"strconv"
 	"strings"
 	"sync"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/jsonpath"
-	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -179,7 +180,7 @@ func NewLazyJSONDocument(bytes []byte) sql.JSONWrapper {
 		Bytes: bytes,
 		interfaceFunc: sync.OnceValues(func() (interface{}, error) {
 			var val interface{}
-			err := json.Unmarshal(bytes, &val)
+			err := JsonUnmarshal(bytes, &val)
 			if err != nil {
 				return nil, err
 			}
@@ -222,7 +223,6 @@ func LookupJSONValue(ctx context.Context, j sql.JSONWrapper, path string) (sql.J
 	}
 
 	if searchableJson, ok := j.(SearchableJSON); ok {
-		ctx := context.Background()
 		return searchableJson.Lookup(ctx, path)
 	}
 
@@ -265,6 +265,12 @@ func lookupJson(j interface{}, path string) (SearchableJSON, error) {
 		return nil, nil
 	}
 
+	// The jsonpath library treats a member access against an array as a search
+	// of its elements, but MySQL treats it as no match and returns SQL NULL.
+	if memberAccessOnNonObject(j, path) {
+		return nil, nil
+	}
+
 	val, err := c.Lookup(j)
 	if err != nil {
 		if strings.Contains(err.Error(), "key error") {
@@ -275,10 +281,231 @@ func lookupJson(j interface{}, path string) (SearchableJSON, error) {
 			// A array index out of bounds results in a SQL null
 			return nil, nil
 		}
+		if strings.Contains(err.Error(), "object is not map") {
+			// A key lookup against a non-object (e.g. descending into a
+			// scalar or array with an object key) results in a SQL null
+			return nil, nil
+		}
+		if strings.Contains(err.Error(), "object is not Slice") {
+			// An index lookup against a non-array (e.g. descending into a
+			// scalar or object with an array index) results in a SQL null
+			return nil, nil
+		}
 		return nil, err
 	}
 
 	return JSONDocument{Val: val}, nil
+}
+
+// memberAccessOnNonObject reports whether evaluating |path| against |document|
+// would apply a member access, .key or .*, to a value that is not an object.
+// MySQL matches a member access only against objects and returns SQL NULL
+// otherwise, while the jsonpath library would instead search the elements of an
+// array.
+//
+// It walks only the legs whose result is a single value, namely member accesses,
+// the member wildcard, and non-negative array indices, and reports true only
+// when it is certain a member access lands on a non-object. Any other leg, such
+// as an array-cell wildcard, a range, or the ** ellipsis, stops the walk and
+// reports false so the caller falls back to the jsonpath library.
+//
+// The walk keeps no per-leg state on the heap because lookups happen once per
+// row. See [Allocating on the Stack] and the [MySQL JSON path syntax].
+//
+// [Allocating on the Stack]: https://go.dev/blog/allocation-optimizations
+// [MySQL JSON path syntax]: https://dev.mysql.com/doc/refman/8.4/en/json.html#json-path-syntax
+func memberAccessOnNonObject(document interface{}, path string) bool {
+	if !strings.HasPrefix(path, "$") {
+		return false
+	}
+	scanner := jsonPathScanner{path: path, position: 1}
+	current := document
+	for {
+		switch leg := scanner.next(); leg.kind {
+		case legMember, legMemberWildcard:
+			object, isObject := current.(JsonObject)
+			if !isObject {
+				// A member access matches only objects in MySQL.
+				return true
+			}
+			if leg.kind == legMemberWildcard {
+				// .* selects every member, a multi-valued result we leave to the
+				// jsonpath library.
+				return false
+			}
+			child, exists := object[leg.member]
+			if !exists {
+				return false
+			}
+			current = child
+		case legIndex:
+			array, isArray := current.(JsonArray)
+			if !isArray {
+				// MySQL auto-wraps a non-array as a single-element array, so only
+				// index 0 selects the value and any other index misses.
+				if leg.index != 0 {
+					return false
+				}
+				continue
+			}
+			if leg.index >= len(array) {
+				return false
+			}
+			current = array[leg.index]
+		default:
+			// legEnd or legUnsupported: there is nothing more to follow, so leave
+			// the remaining path to the jsonpath library.
+			return false
+		}
+	}
+}
+
+// jsonPathLegKind classifies one leg of a JSON path. See [jsonPathScanner].
+type jsonPathLegKind int
+
+const (
+	legEnd            jsonPathLegKind = iota // the path has been fully consumed
+	legUnsupported                           // a leg the scanner does not model
+	legMember                                // a named member, such as .key
+	legMemberWildcard                        // the member wildcard, .*
+	legIndex                                 // a non-negative array index, such as [3]
+)
+
+// jsonPathLeg is one leg of a JSON path, produced by [jsonPathScanner.next]. It
+// is returned by value so that walking a path allocates nothing.
+type jsonPathLeg struct {
+	kind   jsonPathLegKind
+	member string // the member name, set when kind is legMember
+	index  int    // the array index, set when kind is legIndex
+}
+
+// jsonPathScanner reads the legs of a MySQL JSON path one at a time.
+type jsonPathScanner struct {
+	path     string
+	position int
+}
+
+// next returns the leg beginning at the current position and advances past it.
+// It returns kind [legEnd] once the path is consumed and [legUnsupported] for
+// any syntax the scanner does not model.
+func (scanner *jsonPathScanner) next() jsonPathLeg {
+	if scanner.position >= len(scanner.path) {
+		return jsonPathLeg{kind: legEnd}
+	}
+	switch scanner.path[scanner.position] {
+	case '.':
+		return scanner.scanMember()
+	case '[':
+		return scanner.scanIndex()
+	default:
+		return jsonPathLeg{kind: legUnsupported}
+	}
+}
+
+// scanMember reads a "." leg, which is either a member name or the member
+// wildcard .*.
+func (scanner *jsonPathScanner) scanMember() jsonPathLeg {
+	scanner.position++ // consume the '.'
+	if scanner.position >= len(scanner.path) {
+		return jsonPathLeg{kind: legUnsupported}
+	}
+	if scanner.path[scanner.position] == '*' {
+		scanner.position++
+		return jsonPathLeg{kind: legMemberWildcard}
+	}
+	member, ok := scanner.scanMemberName()
+	if !ok {
+		return jsonPathLeg{kind: legUnsupported}
+	}
+	return jsonPathLeg{kind: legMember, member: member}
+}
+
+// scanIndex reads a "[...]" leg. Only a non-negative integer index is modelled,
+// so array-cell wildcards and ranges report [legUnsupported].
+func (scanner *jsonPathScanner) scanIndex() jsonPathLeg {
+	closeBracket := strings.IndexByte(scanner.path[scanner.position:], ']')
+	if closeBracket < 0 {
+		return jsonPathLeg{kind: legUnsupported}
+	}
+	contents := scanner.path[scanner.position+1 : scanner.position+closeBracket]
+	index, ok := parseNonNegativeInt(strings.TrimSpace(contents))
+	if !ok {
+		return jsonPathLeg{kind: legUnsupported}
+	}
+	scanner.position += closeBracket + 1
+	return jsonPathLeg{kind: legIndex, index: index}
+}
+
+// scanMemberName reads the member name after a ".". It returns a substring of
+// the path so the common case allocates nothing, unescaping into a new string
+// only when a quoted name actually contains a backslash. It returns false for an
+// empty unquoted name or an unterminated quoted name.
+func (scanner *jsonPathScanner) scanMemberName() (string, bool) {
+	if scanner.path[scanner.position] != '"' {
+		start := scanner.position
+		for scanner.position < len(scanner.path) &&
+			scanner.path[scanner.position] != '.' &&
+			scanner.path[scanner.position] != '[' {
+			scanner.position++
+		}
+		return scanner.path[start:scanner.position], scanner.position > start
+	}
+	scanner.position++ // consume the opening quote
+	start := scanner.position
+	escaped := false
+	for scanner.position < len(scanner.path) && scanner.path[scanner.position] != '"' {
+		if scanner.path[scanner.position] == '\\' {
+			escaped = true
+			scanner.position++ // skip the escaped character
+		}
+		scanner.position++
+	}
+	if scanner.position >= len(scanner.path) {
+		return "", false
+	}
+	member := scanner.path[start:scanner.position]
+	scanner.position++ // consume the closing quote
+	if !escaped {
+		return member, true
+	}
+	return unescapeJSONMemberName(member), true
+}
+
+// unescapeJSONMemberName drops the backslash escapes from a quoted member name.
+func unescapeJSONMemberName(member string) string {
+	var builder strings.Builder
+	builder.Grow(len(member))
+	for position := 0; position < len(member); position++ {
+		if member[position] == '\\' && position+1 < len(member) {
+			position++ // drop the backslash and keep the byte it escaped
+		}
+		builder.WriteByte(member[position])
+	}
+	return builder.String()
+}
+
+// parseNonNegativeInt reports the integer value of |text| when |text| is a
+// non-empty run of ASCII digits no greater than [math.MaxInt32], and false
+// otherwise. It avoids strconv.Atoi, whose error value would escape and allocate
+// for every array-cell wildcard or range leg it rejects. MySQL caps array
+// indices well below MaxInt32, so rejecting larger values also keeps the
+// accumulator from overflowing into a negative index that could panic a caller.
+func parseNonNegativeInt(text string) (int, bool) {
+	if len(text) == 0 {
+		return 0, false
+	}
+	value := 0
+	for position := 0; position < len(text); position++ {
+		digit := text[position]
+		if digit < '0' || digit > '9' {
+			return 0, false
+		}
+		value = value*10 + int(digit-'0')
+		if value > math.MaxInt32 {
+			return 0, false
+		}
+	}
+	return value, true
 }
 
 var _ driver.Valuer = JSONDocument{}
@@ -323,7 +550,7 @@ func ContainsJSON(a, b interface{}) (bool, error) {
 		return containsJSONBool(a, b)
 	case string:
 		return containsJSONString(a, b)
-	case float64:
+	case float64, int64, uint64:
 		return containsJSONNumber(a, b)
 	default:
 		return false, sql.ErrInvalidType.New(a)
@@ -427,15 +654,12 @@ func containsJSONString(a string, b interface{}) (bool, error) {
 	}
 }
 
-func containsJSONNumber(a float64, b interface{}) (bool, error) {
-	switch b := b.(type) {
-	case float64:
-		return a == b, nil
-	case int64:
-		return a == float64(b), nil
-	default:
+func containsJSONNumber(a, b interface{}) (bool, error) {
+	cmp, err := compareJSONNumber(a, b)
+	if err != nil {
 		return false, nil
 	}
+	return cmp == 0, nil
 }
 
 // CompareJSON compares two JSON values. It returns 0 if the values are equal, -1 if a < b, and 1 if a > b.
@@ -500,8 +724,6 @@ func containsJSONNumber(a float64, b interface{}) (bool, error) {
 //   - NULL
 //     For comparison of any JSON value to SQL NULL, the result is UNKNOWN.
 //
-//     TODO(andy): BLOB, BIT, OPAQUE, DATETIME, TIME, DATE, INTEGER
-//
 // https://dev.mysql.com/doc/refman/8.0/en/json.html#json-comparison
 func CompareJSON(ctx context.Context, a, b interface{}) (int, error) {
 	var err error
@@ -527,29 +749,9 @@ func CompareJSON(ctx context.Context, a, b interface{}) (int, error) {
 		return compareJSONObject(ctx, a, b)
 	case string:
 		return compareJSONString(a, b)
-	case int:
-		return compareJSONNumber(float64(a), b)
-	case uint8:
-		return compareJSONNumber(float64(a), b)
-	case uint16:
-		return compareJSONNumber(float64(a), b)
-	case uint32:
-		return compareJSONNumber(float64(a), b)
-	case uint64:
-		return compareJSONNumber(float64(a), b)
-	case int8:
-		return compareJSONNumber(float64(a), b)
-	case int16:
-		return compareJSONNumber(float64(a), b)
-	case int32:
-		return compareJSONNumber(float64(a), b)
-	case int64:
-		return compareJSONNumber(float64(a), b)
-	case float32:
-		return compareJSONNumber(float64(a), b)
-	case float64:
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64:
 		return compareJSONNumber(a, b)
-	case decimal.Decimal:
+	case *apd.Decimal:
 		af, _ := a.Float64()
 		return compareJSONNumber(af, b)
 	case sql.JSONWrapper:
@@ -637,10 +839,21 @@ func compareJSONObject(ctx context.Context, a JsonObject, b interface{}) (int, e
 
 	case JsonObject:
 		// Two JSON objects are equal if they have the same set of keys, and each key has the same value in both
-		// objects. The order of two objects that are not equal is unspecified but deterministic.
-		inter := jsonObjectKeyIntersection(a, b)
-		for _, key := range inter {
-			cmp, err := CompareJSON(ctx, a[key], b[key])
+		// objects. The order of two objects that are not equal is unspecified but deterministic. We define an
+		// order by comparing keys in sorted order, comparing values for matching any matching keys.
+		aKeys := slices.Sorted(maps.Keys(a))
+		bKeys := slices.Sorted(maps.Keys(b))
+		minLen := len(aKeys)
+		if len(bKeys) < minLen {
+			minLen = len(bKeys)
+		}
+		for i := 0; i < minLen; i++ {
+			if c := strings.Compare(aKeys[i], bKeys[i]); c != 0 {
+				// The object with the lexically first key not present in the other object is the greater object, which means
+				// we inverse the call to compare above
+				return -c, nil
+			}
+			cmp, err := CompareJSON(ctx, a[aKeys[i]], b[bKeys[i]])
 			if err != nil {
 				return 0, err
 			}
@@ -648,10 +861,13 @@ func compareJSONObject(ctx context.Context, a JsonObject, b interface{}) (int, e
 				return cmp, nil
 			}
 		}
-		if len(a) == len(b) && len(a) == len(inter) {
-			return 0, nil
+		if len(aKeys) < len(bKeys) {
+			return -1, nil
 		}
-		return jsonObjectDeterministicOrder(a, b, inter)
+		if len(aKeys) > len(bKeys) {
+			return 1, nil
+		}
+		return 0, nil
 
 	default:
 		// a is higher precedence
@@ -677,95 +893,20 @@ func compareJSONString(a string, b interface{}) (int, error) {
 	}
 }
 
-func compareJSONNumber(a float64, b interface{}) (int, error) {
-	switch b := b.(type) {
-	case
-		bool,
-		JsonArray,
-		JsonObject,
-		string:
+func compareJSONNumber(a, b interface{}) (int, error) {
+	switch v := b.(type) {
+	case bool, JsonArray, JsonObject, string:
 		// a is lower precedence
 		return -1, nil
-	case int:
-		return compareJSONNumber(a, float64(b))
-	case uint8:
-		return compareJSONNumber(a, float64(b))
-	case uint16:
-		return compareJSONNumber(a, float64(b))
-	case uint32:
-		return compareJSONNumber(a, float64(b))
-	case uint64:
-		return compareJSONNumber(a, float64(b))
-	case int8:
-		return compareJSONNumber(a, float64(b))
-	case int16:
-		return compareJSONNumber(a, float64(b))
-	case int32:
-		return compareJSONNumber(a, float64(b))
-	case int64:
-		return compareJSONNumber(a, float64(b))
-	case float32:
-		return compareJSONNumber(a, float64(b))
-	case float64:
-		if a > b {
-			return 1, nil
-		}
-		if a < b {
-			return -1, nil
-		}
-		return 0, nil
-	case decimal.Decimal:
-		bf, _ := b.Float64()
-		return compareJSONNumber(a, bf)
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64:
+		return compareNumbers(a, v), nil
+	case *apd.Decimal:
+		f, _ := v.Float64()
+		return compareNumbers(a, f), nil
 	default:
 		// a is higher precedence
 		return 1, nil
 	}
-}
-
-func jsonObjectKeyIntersection(a, b JsonObject) (ks []string) {
-	for key := range a {
-		if _, ok := b[key]; ok {
-			ks = append(ks, key)
-		}
-	}
-	slices.Sort(ks)
-	return
-}
-
-func jsonObjectDeterministicOrder(a, b JsonObject, inter []string) (int, error) {
-	if len(a) > len(b) {
-		return 1, nil
-	}
-	if len(a) < len(b) {
-		return -1, nil
-	}
-
-	// if equal length, compare least non-intersection key
-	iset := make(map[string]bool)
-	for _, key := range inter {
-		iset[key] = true
-	}
-
-	var aa string
-	for key := range a {
-		if _, ok := iset[key]; !ok {
-			if key < aa || aa == "" {
-				aa = key
-			}
-		}
-	}
-
-	var bb string
-	for key := range b {
-		if _, ok := iset[key]; !ok {
-			if key < bb || bb == "" {
-				bb = key
-			}
-		}
-	}
-
-	return strings.Compare(aa, bb), nil
 }
 
 func (doc JSONDocument) Insert(ctx context.Context, path string, val sql.JSONWrapper) (MutableJSON, bool, error) {

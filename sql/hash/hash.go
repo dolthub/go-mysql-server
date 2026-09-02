@@ -17,9 +17,11 @@ package hash
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/cespare/xxhash/v2"
+	"github.com/cockroachdb/apd/v3"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -34,10 +36,10 @@ var digestPool = sync.Pool{
 // ExprsToSchema converts a list of sql.Expression to a sql.Schema.
 // This is used for functions that use HashOf, but don't already have a schema.
 // The generated schema ONLY contains the types of the expressions without any column names or any other info.
-func ExprsToSchema(exprs ...sql.Expression) sql.Schema {
+func ExprsToSchema(ctx *sql.Context, exprs ...sql.Expression) sql.Schema {
 	var sch sql.Schema
 	for _, expr := range exprs {
-		sch = append(sch, &sql.Column{Type: expr.Type()})
+		sch = append(sch, &sql.Column{Type: expr.Type(ctx)})
 	}
 	return sch
 }
@@ -71,14 +73,6 @@ func HashOf(ctx *sql.Context, sch sql.Schema, row sql.Row) (uint64, error) {
 		//  Then, defer to original behavior
 		if i < len(sch) {
 			switch typ := sch[i].Type.(type) {
-			case sql.ExtendedType:
-				// TODO: Doltgres follows Postgres conventions which don't align with the expectations of MySQL,
-				//  so we're using the old (probably incorrect) behavior for now
-				_, err := hash.WriteString(fmt.Sprintf("%v", v))
-				if err != nil {
-					return 0, err
-				}
-				continue
 			case types.StringType:
 				var strVal string
 				strVal, err = types.ConvertToString(ctx, v, typ, nil)
@@ -125,6 +119,8 @@ func HashOf(ctx *sql.Context, sch sql.Schema, row sql.Row) (uint64, error) {
 				str = "0"
 			}
 			_, err = hash.WriteString(str)
+		case *apd.Decimal:
+			_, err = hash.WriteString(v.Text('f'))
 		case string:
 			_, err = hash.WriteString(v)
 		case []byte:
@@ -147,22 +143,9 @@ func HashOfSimple(ctx *sql.Context, i any, t sql.Type) (uint64, sql.ConvertInRan
 
 	var str string
 	var inRange sql.ConvertInRange
-	coll := sql.Collation_Default
-	if types.IsTuple(t) {
-		tup := i.([]any)
-		tupType := t.(types.TupleType)
-		hashes := make([]uint64, len(tup))
-		for idx, v := range tup {
-			// TODO: handle out of range conversions here?
-			h, _, err := HashOfSimple(ctx, v, tupType[idx])
-			if err != nil {
-				return 0, sql.InRange, err
-			}
-			hashes[idx] = h
-		}
-		str = fmt.Sprintf("%v", hashes)
-	} else if types.IsTextOnly(t) {
-		coll = t.(sql.StringType).Collation()
+	if types.IsTextOnly(t) {
+		// Collated strings that are equivalent may have different runes, so we must make them hash to the same value
+		coll := t.(sql.StringType).Collation()
 		if s, ok := i.(string); ok {
 			str = s
 		} else {
@@ -175,35 +158,92 @@ func HashOfSimple(ctx *sql.Context, i any, t sql.Type) (uint64, sql.ConvertInRan
 				return 0, sql.InRange, err
 			}
 		}
-	} else {
-		var val any
-		var err error
-		val, inRange, err = types.ConvertOrTruncate(ctx, i, t.Promote())
+		h, err := coll.HashToUint(str)
 		if err != nil {
 			return 0, sql.InRange, err
 		}
-
-		// Remove trailing 0s from floats
-		switch v := val.(type) {
-		case float32:
-			str = strconv.FormatFloat(float64(v), 'f', -1, 32)
-			if str == "-0" {
-				str = "0"
-			}
-		case float64:
-			str = strconv.FormatFloat(v, 'f', -1, 64)
-			if str == "-0" {
-				str = "0"
-			}
-		default:
-			str = fmt.Sprintf("%v", v)
-		}
+		return h, inRange, nil
 	}
 
-	// Collated strings that are equivalent may have different runes, so we must make them hash to the same value
-	h, err := coll.HashToUint(str)
+	hash := digestPool.Get().(*xxhash.Digest)
+	hash.Reset()
+	defer digestPool.Put(hash)
+
+	if types.IsTuple(t) {
+		tup := i.([]any)
+		tupType := t.(types.TupleType)
+		hashes := make([]uint64, len(tup))
+		for idx, v := range tup {
+			// TODO: handle out of range conversions here?
+			h, _, err := HashOfSimple(ctx, v, tupType[idx])
+			if err != nil {
+				return 0, sql.InRange, err
+			}
+			hashes[idx] = h
+		}
+		str = fmt.Sprintf("%v", hashes) // TODO: avoid Sprintf for performance
+		_, err := hash.WriteString(str)
+		if err != nil {
+			return 0, sql.InRange, err
+		}
+		return hash.Sum64(), inRange, nil
+	}
+
+	var val any
+	var err error
+	val, inRange, err = types.ConvertOrTruncate(ctx, i, t.Promote())
 	if err != nil {
 		return 0, sql.InRange, err
 	}
-	return h, inRange, nil
+
+	// TODO: use strconv.Append...() and a byte buffer
+	switch v := val.(type) {
+	case int:
+		str = strconv.FormatInt(int64(v), 10)
+	case int8:
+		str = strconv.FormatInt(int64(v), 10)
+	case int16:
+		str = strconv.FormatInt(int64(v), 10)
+	case int32:
+		str = strconv.FormatInt(int64(v), 10)
+	case int64:
+		str = strconv.FormatInt(v, 10)
+	case uint:
+		str = strconv.FormatUint(uint64(v), 10)
+	case uint8:
+		str = strconv.FormatUint(uint64(v), 10)
+	case uint16:
+		str = strconv.FormatUint(uint64(v), 10)
+	case uint32:
+		str = strconv.FormatUint(uint64(v), 10)
+	case uint64:
+		str = strconv.FormatUint(v, 10)
+	case float32:
+		str = strconv.FormatFloat(float64(v), 'f', -1, 32)
+		if str == "-0" {
+			str = "0"
+		}
+	case float64:
+		str = strconv.FormatFloat(v, 'f', -1, 64)
+		if str == "-0" {
+			str = "0"
+		}
+	case *apd.Decimal:
+		str = v.Text('f')
+		if strings.IndexByte(str, '.') != -1 {
+			// remove trailing 0s after '.'
+			str = strings.TrimRightFunc(str, func(r rune) bool {
+				return r == '0'
+			})
+			str = strings.TrimRight(str, ".")
+		}
+	default:
+		str = fmt.Sprintf("%v", v) // TODO: avoid Sprintf for performance
+	}
+
+	_, err = hash.WriteString(str)
+	if err != nil {
+		return 0, sql.InRange, err
+	}
+	return hash.Sum64(), inRange, nil
 }

@@ -32,7 +32,7 @@ var _ sql.FunctionExpression = (*FindInSet)(nil)
 var _ sql.CollationCoercible = (*FindInSet)(nil)
 
 // NewFindInSet creates a new FindInSet expression.
-func NewFindInSet(e1, e2 sql.Expression) sql.Expression {
+func NewFindInSet(ctx *sql.Context, e1, e2 sql.Expression) sql.Expression {
 	return &FindInSet{
 		expression.BinaryExpressionStub{
 			LeftChild:  e1,
@@ -52,7 +52,7 @@ func (f *FindInSet) Description() string {
 }
 
 // Type implements the Expression interface.
-func (f *FindInSet) Type() sql.Type { return types.Int64 }
+func (f *FindInSet) Type(ctx *sql.Context) sql.Type { return types.Int64 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*FindInSet) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
@@ -64,11 +64,11 @@ func (f *FindInSet) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (f *FindInSet) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (f *FindInSet) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 2)
 	}
-	return NewFindInSet(children[0], children[1]), nil
+	return NewFindInSet(ctx, children[0], children[1]), nil
 }
 
 // Eval implements the Expression interface.
@@ -111,7 +111,7 @@ func (f *FindInSet) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	rType := f.RightChild.Type()
+	rType := f.RightChild.Type(ctx)
 	if setType, ok := rType.(types.SetType); ok {
 		// TODO: set type should take advantage of bit arithmetic
 		r, err = setType.BitsToString(right.(uint64))

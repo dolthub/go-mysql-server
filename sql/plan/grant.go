@@ -42,7 +42,7 @@ var _ sql.CollationCoercible = (*Grant)(nil)
 var _ sql.AuthorizationCheckerNode = (*Grant)(nil)
 
 // Schema implements the interface sql.Node.
-func (n *Grant) Schema() sql.Schema {
+func (n *Grant) Schema(ctx *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -83,7 +83,7 @@ func (n *Grant) Children() []sql.Node {
 }
 
 // WithChildren implements the interface sql.Node.
-func (n *Grant) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (n *Grant) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 0)
 	}
@@ -562,7 +562,7 @@ func NewGrantRole(roles []UserName, users []UserName, withAdmin bool) *GrantRole
 }
 
 // Schema implements the interface sql.Node.
-func (n *GrantRole) Schema() sql.Schema {
+func (n *GrantRole) Schema(ctx *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -607,7 +607,7 @@ func (n *GrantRole) IsReadOnly() bool {
 }
 
 // WithChildren implements the interface sql.Node.
-func (n *GrantRole) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (n *GrantRole) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 0)
 	}
@@ -676,7 +676,7 @@ func NewGrantProxy(on UserName, to []UserName, withGrant bool) *GrantProxy {
 }
 
 // Schema implements the interface sql.Node.
-func (n *GrantProxy) Schema() sql.Schema {
+func (n *GrantProxy) Schema(ctx *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -704,7 +704,7 @@ func (n *GrantProxy) Children() []sql.Node {
 }
 
 // WithChildren implements the interface sql.Node.
-func (n *GrantProxy) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (n *GrantProxy) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 0)
 	}

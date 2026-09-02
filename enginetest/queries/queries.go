@@ -511,14 +511,14 @@ var SpatialQueryTests = []QueryTest{
 			{"LINESTRING(2 1,4 3)"},
 			{"POLYGON((0 0,0 1,1 1,0 0))"},
 			{"POLYGON((0 0,1 0,1 1,0 0))"},
-			{"MULTIPOINT(1 2,3 4)"},
-			{"MULTIPOINT(2 1,4 3)"},
+			{"MULTIPOINT((1 2),(3 4))"},
+			{"MULTIPOINT((2 1),(4 3))"},
 			{"MULTILINESTRING((1 2,3 4))"},
 			{"MULTILINESTRING((2 1,4 3))"},
 			{"MULTIPOLYGON(((0 0,1 2,3 4,0 0)))"},
 			{"MULTIPOLYGON(((0 0,2 1,4 3,0 0)))"},
-			{"GEOMETRYCOLLECTION(GEOMETRYCOLLECTION())"},
-			{"GEOMETRYCOLLECTION(GEOMETRYCOLLECTION())"},
+			{"GEOMETRYCOLLECTION(GEOMETRYCOLLECTION EMPTY)"},
+			{"GEOMETRYCOLLECTION(GEOMETRYCOLLECTION EMPTY)"},
 		},
 	},
 	{
@@ -697,17 +697,17 @@ var SpatialQueryTests = []QueryTest{
 			{"POINT(1 2)"},
 			{"LINESTRING(1 2,3 4)"},
 			{"POLYGON((0 0,0 1,1 1,0 0))"},
-			{"MULTIPOINT(1 2,3 4)"},
+			{"MULTIPOINT((1 2),(3 4))"},
 			{"MULTILINESTRING((1 2,3 4))"},
 			{"MULTIPOLYGON(((0 0,1 2,3 4,0 0)))"},
-			{"GEOMETRYCOLLECTION(GEOMETRYCOLLECTION())"},
+			{"GEOMETRYCOLLECTION(GEOMETRYCOLLECTION EMPTY)"},
 			{"POINT(2 1)"},
 			{"LINESTRING(2 1,4 3)"},
 			{"POLYGON((0 0,1 0,1 1,0 0))"},
-			{"MULTIPOINT(2 1,4 3)"},
+			{"MULTIPOINT((2 1),(4 3))"},
 			{"MULTILINESTRING((2 1,4 3))"},
 			{"MULTIPOLYGON(((0 0,2 1,4 3,0 0)))"},
-			{"GEOMETRYCOLLECTION(GEOMETRYCOLLECTION())"},
+			{"GEOMETRYCOLLECTION(GEOMETRYCOLLECTION EMPTY)"},
 		},
 	},
 	{
@@ -3165,6 +3165,15 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{false}},
 	},
 	{
+		// values in tuples should be widened, not narrowed. This tests that the ints are converted to decimals, not vice-versa.
+		Query:    "SELECT (1, 1) = (1.1, 1.1);",
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    "SELECT (2, 1) > (2.1, 2);",
+		Expected: []sql.Row{{false}},
+	},
+	{
 		Query:    `SELECT 'a' NOT IN ('b','c',null,'d')`,
 		Expected: []sql.Row{{nil}},
 		ExpectedColumns: sql.Schema{
@@ -3459,6 +3468,13 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{int64(6)}},
 	},
 	{
+		Query: "SELECT * FROM niltable WHERE b >= 1",
+		Expected: []sql.Row{
+			{int64(2), int64(2), int32(1), nil},
+			{int64(5), nil, int32(1), 5.0},
+		},
+	},
+	{
 		Query:    "SELECT i FROM niltable WHERE b IS NOT FALSE",
 		Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(4)}, {int64(5)}},
 	},
@@ -3656,6 +3672,16 @@ SELECT * FROM cte WHERE  d = 2;`,
 	{
 		Query:    "select now() ^ now();",
 		Expected: []sql.Row{{uint64(0)}},
+	},
+	{
+		Query: "select 122.2230000000000000000000000000056874561 as a;",
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "a",
+				Type: types.DecimalType_{},
+			},
+		},
+		Expected: []sql.Row{{"122.2230000000000000000000000000056874561"}},
 	},
 	{
 		Query:    "select -1.00 div 2;",
@@ -4907,6 +4933,18 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{},
 	},
 	{
+		Query:       "select 1, 2, 3 union select 4, 5;",
+		ExpectedErr: planbuilder.ErrSelectsDifferentLength,
+	},
+	{
+		Query:       "select 1, 2, 3 intersect select 4, 5;",
+		ExpectedErr: planbuilder.ErrSelectsDifferentLength,
+	},
+	{
+		Query:       "select 1, 2, 3 except select 4, 5;",
+		ExpectedErr: planbuilder.ErrSelectsDifferentLength,
+	},
+	{
 		SkipPrepared: true,
 		Query:        "",
 		Expected:     []sql.Row{},
@@ -4972,6 +5010,78 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Query: `SELECT s FROM mytable WHERE s NOT LIKE '%d row'`,
 		Expected: []sql.Row{
 			{"first row"},
+		},
+	},
+	{
+		Query: `select 'test1' like 'test_';`,
+		Expected: []sql.Row{
+			{true},
+		},
+	},
+	{
+		Query: `select 'test1' like 'test_' escape '\\';`,
+		Expected: []sql.Row{
+			{true},
+		},
+	},
+	{
+		Query: `select 'test1' like 'test_' escape '';`,
+		Expected: []sql.Row{
+			{true},
+		},
+	},
+	{
+		Query: `select 'test1' like 'test\0_' escape '';`,
+		Expected: []sql.Row{
+			{false},
+		},
+	},
+	{
+		Query: `select 'test_' like 'test_';`,
+		Expected: []sql.Row{
+			{true},
+		},
+	},
+	{
+		Query: `select 'test_' like 'test_' escape '\\';`,
+		Expected: []sql.Row{
+			{true},
+		},
+	},
+	{
+		Query: `select 'test_' like 'test_' escape '';`,
+		Expected: []sql.Row{
+			{true},
+		},
+	},
+	{
+		Query: `select 'test_' like 'test\0_' escape '';`,
+		Expected: []sql.Row{
+			{true},
+		},
+	},
+	{
+		Query: `select 'test\0_' like 'test\0_' escape '';`,
+		Expected: []sql.Row{
+			{false},
+		},
+	},
+	{
+		Query: `select 'test\\_' like 'test\\_';`,
+		Expected: []sql.Row{
+			{false},
+		},
+	},
+	{
+		Query: `select 'test\\_' like 'test\\_' escape '\\';`,
+		Expected: []sql.Row{
+			{false},
+		},
+	},
+	{
+		Query: `select 'test\\_' like 'test\\_' escape '';`,
+		Expected: []sql.Row{
+			{true},
 		},
 	},
 	{
@@ -5379,6 +5489,14 @@ SELECT * FROM cte WHERE  d = 2;`,
 			{"one"},
 			{"two"},
 			{nil},
+		},
+	},
+	{
+		Query: `SELECT CASE WHEN i > (select 1) THEN 'one' ELSE 'two' END FROM mytable`,
+		Expected: []sql.Row{
+			{"two"},
+			{"one"},
+			{"one"},
 		},
 	},
 	{
@@ -6850,11 +6968,11 @@ SELECT * FROM cte WHERE  d = 2;`,
 	{
 		Query: "SELECT pk, row_number() over (partition by v2 order by pk ), max(v3) over (partition by v2 order by pk) FROM one_pk_three_idx ORDER BY pk",
 		Expected: []sql.Row{
-			{0, 1, 3},
-			{1, 2, 3},
+			{0, 1, 0},
+			{1, 2, 1},
 			{2, 1, 0},
 			{3, 1, 2},
-			{4, 3, 3},
+			{4, 3, 1},
 			{5, 4, 3},
 			{6, 1, 0},
 			{7, 1, 4},
@@ -7265,6 +7383,22 @@ SELECT * FROM cte WHERE  d = 2;`,
 	{
 		Query:    "Select RELEASE_ALL_LOCKS()",
 		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select GET_LOCK('try_lock', 0)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "Select IS_FREE_LOCK('try_lock')",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "Select RELEASE_LOCK('try_lock')",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "Select IS_FREE_LOCK('try_lock')",
+		Expected: []sql.Row{{1}},
 	},
 	{
 		Query:    "SELECT CONV('a',16,2)",
@@ -8684,6 +8818,26 @@ from typestable`,
 		},
 	},
 	{
+		// 9223372036854775808 cannot be represented as a float64
+		Query: "select cast('-9223372036854775806' as json);",
+		Expected: []sql.Row{
+			{types.JSONDocument{int64(-9223372036854775806)}},
+		},
+	},
+	{
+		// 9223372036854775808 cannot be represented as a float64 or an int64
+		Query: "select cast('18446744073709551615' as json);",
+		Expected: []sql.Row{
+			{types.JSONDocument{uint64(18446744073709551615)}},
+		},
+	},
+	{
+		Query: "select cast('1.5' as json);",
+		Expected: []sql.Row{
+			{types.JSONDocument{float64(1.5)}},
+		},
+	},
+	{
 		Query: "select cast(true as json) = true;",
 		Expected: []sql.Row{
 			{true},
@@ -9306,6 +9460,156 @@ from typestable`,
 		Query:    "select max(i) as max_i from mytable having max(i) < 3",
 		Expected: []sql.Row{},
 	},
+	{
+		// This diverges from MySQL. MySQL treats the +Inf string here as MaxFloat64 and divides that by 12
+		// while GMS treats it as +Inf to be Postgres-compatible. In MySQL, the result is 1.4980776123852632e+307
+		Query:                 "select '123433221e12343121231212' / 12;",
+		Expected:              []sql.Row{{math.Inf(1)}},
+		ExpectedWarningsCount: 1,
+	},
+	{
+		// This diverges from MySQL. MySQL treats the +Inf string here as MaxFloat64 and divides that by 12
+		// while GMS treats it as +Inf to be Postgres-compatible. In MySQL, the result is 1.7976931348623157e308
+		Query:                 "select '123433221e12343121231212' / 1;",
+		Expected:              []sql.Row{{math.Inf(1)}},
+		ExpectedWarningsCount: 1,
+	},
+	{
+		// +Inf is greater than 0 https://github.com/dolthub/dolt/issues/10710
+		Query:                 "select '612312e12353423132434' > 0;",
+		Expected:              []sql.Row{{true}},
+		ExpectedWarningsCount: 1,
+	},
+	{
+		// -Inf is not greater than 0 https://github.com/dolthub/dolt/issues/10710
+		Query:                 "select '-612312e12353423132434' > 0;",
+		Expected:              []sql.Row{{false}},
+		ExpectedWarningsCount: 1,
+	},
+	{
+		// TODO: Handle erroring out of range values when casting https://github.com/dolthub/dolt/issues/10759
+		Skip:        true,
+		Query:       "select cast('61232343e124312434' as float);",
+		ExpectedErr: sql.ErrValueOutOfRange,
+	},
+	{
+		// This diverges from MySQL. MySQL treats +Inf as Max Float64 while GMS treats it as +Inf to be
+		// Postgres-compatible
+		Query:                 "select cast('61232343e124312434' as double);",
+		Expected:              []sql.Row{{math.Inf(1)}},
+		ExpectedWarningsCount: 1,
+	},
+	{
+		// TODO: Assert equality for math.NaN() results. math.NaN() != math.NaN() so require.Equal does not
+		//  work for it
+		Skip: true,
+		// This diverges from MySQL. MySQL treats the +Inf strings here as MaxFloat64 so they cancel out,
+		// while GMS treats them as +Inf to be Postgres-compatible. In MySQL, the result is 0
+		Query:                 "select '123433221e12343121231212' - '12322312e123243231213';",
+		Expected:              []sql.Row{{math.NaN()}},
+		ExpectedWarningsCount: 2,
+	},
+	{
+		// TODO: Assert equality for math.NaN() results. math.NaN() != math.NaN() so require.Equal does not
+		//  work for it
+		Skip: true,
+		// This diverges from MySQL. MySQL treats the Inf strings here as +/- MaxFloat64 so they cancel out,
+		// while GMS treats them as +/-Inf to be Postgres-compatible. In MySQL, the result is 0
+		Query:                 "select '123433221e12343121231212' + '-12322312e123243231213';",
+		Expected:              []sql.Row{{math.NaN()}},
+		ExpectedWarningsCount: 2,
+	},
+	{
+		Query:    "SELECT (1, 1) in ((NULL, NULL))",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT 1 WHERE (1, 1) in ((NULL, NULL))",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT (1, 1) IN ((NULL, NULL), (1, 1))",
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    "SELECT 1 WHERE (1, 1) IN ((NULL, NULL), (1, 1))",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT (NULL, NULL) IN ((NULL, NULL), (1, 1))",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT 1 WHERE (NULL, NULL) IN ((NULL, NULL), (1, 1))",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT (NULL, NULL) IN ((NULL, NULL))",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT 1 WHERE (NULL, NULL) IN ((NULL, NULL))",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT (NULL, NULL) IN ((1, 1))",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT 1 WHERE (NULL, NULL) IN ((1, 1))",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT (NULL, NULL) in (SELECT NULL, NULL LIMIT 0);",
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    "SELECT 1 WHERE (NULL, NULL) NOT IN (SELECT NULL, NULL LIMIT 0);",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT (NULL, NULL) = (SELECT NULL, NULL)",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT 1 WHERE (NULL, NULL) = (SELECT NULL, NULL)",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, null) in ((1, null))",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (0, null) = (0, null)",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (null, null) = (select null, null from dual)",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT (1, NULL) <=> (1, 2);",
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    "SELECT (2, NULL) > (1.5, 2);",
+		Expected: []sql.Row{{true}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11454
+		Query:    "SELECT LAST_INSERT_ID(NULL);",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11564
+		Query:    "SELECT load_file(1)",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11564
+		Query:    "SELECT FIRST_VALUE(LOAD_FILE(1)) OVER () AS actual FROM (SELECT 1 AS z) q;",
+		Expected: []sql.Row{{nil}},
+	},
 }
 
 var KeylessQueries = []QueryTest{
@@ -9419,20 +9723,6 @@ var BrokenQueries = []QueryTest{
 	},
 	{
 		Query: "SELECT json_value() FROM dual;", // syntax error
-	},
-	// Null-safe and type conversion tuple comparison is not correctly
-	// implemented yet.
-	{
-		Query:    "SELECT 1 FROM DUAL WHERE (1, null) in ((1, null))",
-		Expected: []sql.Row{},
-	},
-	{
-		Query:    "SELECT 1 FROM DUAL WHERE (0, null) = (0, null)",
-		Expected: []sql.Row{},
-	},
-	{
-		Query:    "SELECT 1 FROM DUAL WHERE (null, null) = (select null, null from dual)",
-		Expected: []sql.Row{},
 	},
 	// TODO: support nested recursive CTEs
 	{
@@ -9558,35 +9848,85 @@ FROM mytable;`,
 		},
 	},
 	{
-		Query:    "SELECT CAST('  12:23 a' AS TIME);",
-		Expected: []sql.Row{{"12:23:00"}},
+		Query:                 "SELECT CAST('  12:23 a' AS TIME);",
+		Expected:              []sql.Row{{"12:23:00"}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
 	},
 	{
-		Query:    "SELECT CAST('12:23:18 abc' AS TIME);",
-		Expected: []sql.Row{{"12:23:18"}},
+		// https://github.com/dolthub/dolt/issues/10000
+		Query:                 "SELECT CAST('12:23:18 abc' AS TIME);",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+		Skip:                  true,
 	},
 	{
-		Query:    "SELECT CAST('12:34:56.123.456' AS TIME);",
-		Expected: []sql.Row{{"12:34:56.123"}},
+		// https://github.com/dolthub/dolt/issues/10661
+		Query:                 "SELECT CAST('12:34:56.123.456' AS TIME);",
+		Expected:              []sql.Row{{"12:34:56"}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+		Skip:                  true,
 	},
 	{
-		Query:    "SELECT CAST(' -12:00:00 abc' AS TIME);",
-		Expected: []sql.Row{{"-12:00:00"}},
+		Query:                 "SELECT CAST('12:34:56.123456.123' AS TIME(6));",
+		Expected:              []sql.Row{{"12:34:56.123456"}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
 	},
 	{
-		Query:    "SELECT CAST('00:00:00 garbage' AS TIME);",
-		Expected: []sql.Row{{"00:00:00"}},
+		// https://github.com/dolthub/dolt/issues/10000
+		Query:                 "SELECT CAST(' -12:00:00 abc' AS TIME);",
+		Expected:              []sql.Row{{"00:00:00"}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 2,
+		Skip:                  true,
 	},
 	{
-		Query:    "SELECT CAST('12:23:' AS TIME);",
-		Expected: []sql.Row{{"12:23:00"}},
+		Query:                 "SELECT CAST('12:23:' AS TIME);",
+		Expected:              []sql.Row{{"12:23:00"}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
 	},
 	{
-		Query:    "SELECT CAST('hello' AS TIME);",
+		Query:                 "SELECT CAST('hello' AS TIME);",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "SELECT CAST('   ' AS TIME);",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/10000
+		Query:                 "SELECT CAST('12 23 34' AS TIME);",
+		Expected:              []sql.Row{{"311:00:00"}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 2,
+		Skip:                  true,
+	},
+	{
+		Query:                 "SELECT CAST('12344abc' AS TIME);",
+		Expected:              []sql.Row{{"01:23:44"}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "SELECT CAST('122341.123456abc' AS TIME(6));",
+		Expected:              []sql.Row{{"12:23:41.123456"}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:    "SELECT (1, 5) IN (SELECT 1, NULL FROM dual)",
 		Expected: []sql.Row{{nil}},
 	},
 	{
-		Query:    "SELECT CAST('   ' AS TIME);",
+		Query:    "SELECT (1, 5) IN (SELECT * FROM (SELECT 1, NULL FROM dual UNION ALL SELECT 2, 3 FROM dual) t)",
 		Expected: []sql.Row{{nil}},
 	},
 }
@@ -9716,6 +10056,10 @@ var DateParseQueries = []QueryTest{
 	{
 		Query:    "SELECT STR_TO_DATE('01,5,2013', '%d,%m,%Y')",
 		Expected: []sql.Row{{time.Date(2013, time.May, 1, 0, 0, 0, 0, time.UTC)}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE(FIRST_VALUE(NULL) OVER (), '%Y-%m-%d')",
+		Expected: []sql.Row{{nil}},
 	},
 	{
 		Query:    "SELECT STR_TO_DATE('May 1, 2013','%M %d,%Y')",
@@ -9990,6 +10334,14 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErrStr: "invalid AS OF expression type",
 	},
 	{
+		Query:       "SELECT i FROM myhistorytable AS OF ?",
+		ExpectedErr: sql.ErrInvalidAsOfExpression,
+	},
+	{
+		Query:       "SELECT i FROM myhistorytable AS OF :rev",
+		ExpectedErr: sql.ErrInvalidAsOfExpression,
+	},
+	{
 		Query:       "SELECT pk FROM one_pk WHERE pk > ?",
 		ExpectedErr: sql.ErrUnboundPreparedStatementVariable,
 	},
@@ -10174,10 +10526,6 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErr: types.ErrConvertingToTime,
 	},
 	{
-		Query:       "CREATE TABLE table_test (id int PRIMARY KEY, c float DEFAULT rand())",
-		ExpectedErr: sql.ErrSyntaxError,
-	},
-	{
 		Query:       "CREATE TABLE table_test (id int PRIMARY KEY, c float DEFAULT rand)",
 		ExpectedErr: sql.ErrSyntaxError,
 	},
@@ -10187,14 +10535,6 @@ var ErrorQueries = []QueryErrorTest{
 	},
 	{
 		Query:       "CREATE TABLE table_test (id int PRIMARY KEY, b int DEFAULT '2', c int DEFAULT `b`)",
-		ExpectedErr: sql.ErrSyntaxError,
-	},
-	{
-		Query:       "CREATE TABLE t0 (id INT PRIMARY KEY, v1 POINT DEFAULT POINT(1,2));",
-		ExpectedErr: sql.ErrSyntaxError,
-	},
-	{
-		Query:       "CREATE TABLE t0 (id INT PRIMARY KEY, v1 JSON DEFAULT JSON_ARRAY(1,2));",
 		ExpectedErr: sql.ErrSyntaxError,
 	},
 	{

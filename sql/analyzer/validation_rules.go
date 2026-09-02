@@ -16,7 +16,6 @@ package analyzer
 
 import (
 	"fmt"
-	"reflect"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -33,13 +32,13 @@ import (
 func validateOffsetAndLimit(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	var err error
 	var i, i64 interface{}
-	transform.InspectWithOpaque(n, func(n sql.Node) bool {
+	transform.InspectWithOpaque(ctx, n, func(ctx *sql.Context, n sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.Limit:
 			switch e := n.Limit.(type) {
 			case *expression.Literal:
-				if !types.IsInteger(e.Type()) {
-					err = sql.ErrInvalidType.New(e.Type().String())
+				if !types.IsInteger(e.Type(ctx)) {
+					err = sql.ErrInvalidType.New(e.Type(ctx).String())
 					return false
 				}
 				i, err = e.Eval(ctx, nil)
@@ -58,14 +57,14 @@ func validateOffsetAndLimit(ctx *sql.Context, a *Analyzer, n sql.Node, scope *pl
 			case *expression.BindVar, *expression.ProcedureParam:
 				return true
 			default:
-				err = sql.ErrInvalidType.New(e.Type().String())
+				err = sql.ErrInvalidType.New(e.Type(ctx).String())
 				return false
 			}
 		case *plan.Offset:
 			switch e := n.Offset.(type) {
 			case *expression.Literal:
-				if !types.IsInteger(e.Type()) {
-					err = sql.ErrInvalidType.New(e.Type().String())
+				if !types.IsInteger(e.Type(ctx)) {
+					err = sql.ErrInvalidType.New(e.Type(ctx).String())
 					return false
 				}
 				i, err = e.Eval(ctx, nil)
@@ -84,7 +83,7 @@ func validateOffsetAndLimit(ctx *sql.Context, a *Analyzer, n sql.Node, scope *pl
 			case *expression.BindVar, *expression.ProcedureParam:
 				return true
 			default:
-				err = sql.ErrInvalidType.New(e.Type().String())
+				err = sql.ErrInvalidType.New(e.Type(ctx).String())
 				return false
 			}
 		default:
@@ -100,27 +99,27 @@ func validateResolved(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sco
 	defer span.End()
 
 	if !n.Resolved() {
-		return nil, transform.SameTree, unresolvedError(n)
+		return nil, transform.SameTree, unresolvedError(ctx, n)
 	}
 
 	return n, transform.SameTree, nil
 }
 
 // unresolvedError returns an appropriate error message for the unresolved node given
-func unresolvedError(n sql.Node) error {
+func unresolvedError(ctx *sql.Context, n sql.Node) error {
 	var err error
-	var walkFn func(sql.Expression) bool
-	walkFn = func(e sql.Expression) bool {
+	var walkFn func(*sql.Context, sql.Expression) bool
+	walkFn = func(ctx *sql.Context, e sql.Expression) bool {
 		switch e := e.(type) {
 		case *plan.Subquery:
-			transform.InspectExpressions(e.Query, walkFn)
+			transform.InspectExpressions(ctx, e.Query, walkFn)
 			if err != nil {
 				return false
 			}
 		}
 		return true
 	}
-	transform.InspectExpressions(n, walkFn)
+	transform.InspectExpressions(ctx, n, walkFn)
 
 	if err != nil {
 		return err
@@ -128,14 +127,15 @@ func unresolvedError(n sql.Node) error {
 	return analyzererrors.ErrValidationResolved.New(n)
 }
 
+// TODO: why is this rule necessary? https://github.com/dolthub/dolt/issues/11309
 func validateOrderBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("validate_order_by")
 	defer span.End()
 
 	switch n := n.(type) {
 	case *plan.Sort:
-		for _, field := range n.SortFields {
-			switch field.Column.(type) {
+		for _, cond := range n.SortConditions {
+			switch cond.Expr.(type) {
 			case sql.Aggregation:
 				return nil, transform.SameTree, analyzererrors.ErrValidationOrderBy.New()
 			}
@@ -153,7 +153,7 @@ func validateDeleteFrom(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 	defer span.End()
 
 	var validationError error
-	transform.InspectUp(n, func(n sql.Node) bool {
+	transform.InspectUp(ctx, n, func(ctx *sql.Context, n sql.Node) bool {
 		df, ok := n.(*plan.DeleteFrom)
 		if !ok {
 			return false
@@ -162,7 +162,7 @@ func validateDeleteFrom(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 		// Check that delete from join only targets tables that exist in the join
 		if df.HasExplicitTargets() {
 			sourceTables := make(map[string]struct{})
-			transform.InspectWithOpaque(df.Child, func(node sql.Node) bool {
+			transform.InspectWithOpaque(ctx, df.Child, func(ctx *sql.Context, node sql.Node) bool {
 				if t, ok := node.(sql.Table); ok {
 					sourceTables[t.Name()] = struct{}{}
 				}
@@ -212,7 +212,7 @@ func validateDeleteFrom(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 
 		// DELETE FROM JOIN with no target tables specified
 		deleteFromJoin := false
-		transform.InspectWithOpaque(df.Child, func(node sql.Node) bool {
+		transform.InspectWithOpaque(ctx, df.Child, func(ctx *sql.Context, node sql.Node) bool {
 			if _, ok := node.(*plan.JoinNode); ok {
 				deleteFromJoin = true
 				return false
@@ -254,7 +254,7 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 	var parent sql.Node
 	var project *plan.Project
 	var orderBy *plan.Sort
-	transform.InspectWithOpaque(n, func(n sql.Node) bool {
+	transform.InspectWithOpaque(ctx, n, func(ctx *sql.Context, n sql.Node) bool {
 		defer func() {
 			parent = n
 		}()
@@ -268,7 +268,7 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 			}
 
 			primaryKeys := make(map[string]bool)
-			for _, col := range n.Child.Schema() {
+			for _, col := range n.Child.Schema(ctx) {
 				if col.PrimaryKey {
 					primaryKeys[strings.ToLower(col.String())] = true
 				}
@@ -282,14 +282,14 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 			possibleJoin := n.Child
 			if filter, ok := n.Child.(*plan.Filter); ok {
 				possibleJoin = filter.Child
-				exprs = append(exprs, getEqualsDependencies(filter.Expression)...)
+				exprs = append(exprs, getEqualsDependencies(ctx, filter.Expression)...)
 			}
 			if join, ok := possibleJoin.(*plan.JoinNode); ok {
 				isJoin = true
-				exprs = append(exprs, getEqualsDependencies(join.Filter)...)
+				exprs = append(exprs, getEqualsDependencies(ctx, join.Filter)...)
 			}
 			for _, expr := range exprs {
-				sql.Inspect(expr, func(expr sql.Expression) bool {
+				sql.Inspect(ctx, expr, func(ctx *sql.Context, expr sql.Expression) bool {
 					exprStr := strings.ToLower(expr.String())
 					if primaryKeys[exprStr] && !groupBys[exprStr] {
 						groupByPrimaryKeys++
@@ -312,10 +312,10 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 				return true
 			}
 
-			selectExprs, orderByExprs := getSelectAndOrderByExprs(project, orderBy, n.SelectDeps, groupBys)
+			selectExprs, orderByExprs := getSelectAndOrderByExprs(ctx, project, orderBy, n.SelectDeps, groupBys)
 
 			for i, expr := range selectExprs {
-				if valid, col := expressionReferencesOnlyGroupBys(groupBys, expr, noGroupBy); !valid {
+				if valid, col := expressionReferencesOnlyGroupBys(ctx, groupBys, expr, noGroupBy); !valid {
 					if noGroupBy {
 						err = sql.ErrNonAggregatedColumnWithoutGroupBy.New(i+1, col)
 					} else {
@@ -331,7 +331,7 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 			// validate ORDER BY expressions in aggregate queries without an explicit GROUP BY
 			if !noGroupBy {
 				for i, expr := range orderByExprs {
-					if valid, col := expressionReferencesOnlyGroupBys(groupBys, expr, noGroupBy); !valid {
+					if valid, col := expressionReferencesOnlyGroupBys(ctx, groupBys, expr, noGroupBy); !valid {
 						err = analyzererrors.ErrValidationGroupByOrderBy.New(i+1, col)
 						return false
 					}
@@ -354,16 +354,16 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 }
 
 // getEqualsDependencies looks for Equals expressions and gets any non-literal arguments
-func getEqualsDependencies(expr sql.Expression) []sql.Expression {
+func getEqualsDependencies(ctx *sql.Context, expr sql.Expression) []sql.Expression {
 	exprs := make([]sql.Expression, 0)
-	sql.Inspect(expr, func(expr sql.Expression) bool {
+	sql.Inspect(ctx, expr, func(ctx *sql.Context, expr sql.Expression) bool {
 		switch expr := expr.(type) {
 		case *expression.And:
 			return true
 		case *expression.Equals:
 			for _, e := range expr.Children() {
 				if and, ok := e.(*expression.And); ok {
-					exprs = append(exprs, getEqualsDependencies(and)...)
+					exprs = append(exprs, getEqualsDependencies(ctx, and)...)
 				} else if _, ok := e.(*expression.Literal); !ok {
 					exprs = append(exprs, e)
 				}
@@ -376,7 +376,7 @@ func getEqualsDependencies(expr sql.Expression) []sql.Expression {
 
 // getSelectExprs transforms the projection expressions from a Project node such that it uses the appropriate select
 // dependency expressions.
-func getSelectAndOrderByExprs(project *plan.Project, orderBy *plan.Sort, selectDeps []sql.Expression, groupBys map[string]bool) ([]sql.Expression, []sql.Expression) {
+func getSelectAndOrderByExprs(ctx *sql.Context, project *plan.Project, orderBy *plan.Sort, selectDeps []sql.Expression, groupBys map[string]bool) ([]sql.Expression, []sql.Expression) {
 	if project == nil && orderBy == nil {
 		return selectDeps, nil
 	} else {
@@ -390,14 +390,14 @@ func getSelectAndOrderByExprs(project *plan.Project, orderBy *plan.Sort, selectD
 
 		for _, expr := range project.Projections {
 			if !project.AliasDeps[strings.ToLower(expr.String())] {
-				resolvedExpr := resolveExpr(expr, sd, groupBys)
+				resolvedExpr := resolveExpr(ctx, expr, sd, groupBys)
 				selectExprs = append(selectExprs, resolvedExpr)
 			}
 		}
 
 		if orderBy != nil {
 			for _, expr := range orderBy.Expressions() {
-				resolvedExpr := resolveExpr(expr, sd, groupBys)
+				resolvedExpr := resolveExpr(ctx, expr, sd, groupBys)
 				orderByExprs = append(orderByExprs, resolvedExpr)
 			}
 		}
@@ -406,8 +406,8 @@ func getSelectAndOrderByExprs(project *plan.Project, orderBy *plan.Sort, selectD
 	}
 }
 
-func resolveExpr(expr sql.Expression, selectDeps map[string]sql.Expression, groupBys map[string]bool) sql.Expression {
-	resolvedExpr, _, _ := transform.Expr(expr, func(expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+func resolveExpr(ctx *sql.Context, expr sql.Expression, selectDeps map[string]sql.Expression, groupBys map[string]bool) sql.Expression {
+	resolvedExpr, _, _ := transform.Expr(ctx, expr, func(ctx *sql.Context, expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		if groupBys[strings.ToLower(expr.String())] {
 			return expr, transform.SameTree, nil
 		}
@@ -428,10 +428,10 @@ func resolveExpr(expr sql.Expression, selectDeps map[string]sql.Expression, grou
 }
 
 // expressionReferencesOnlyGroupBys validates that an expression is dependent on only group by expressions
-func expressionReferencesOnlyGroupBys(groupBys map[string]bool, expr sql.Expression, noGroupBy bool) (bool, string) {
+func expressionReferencesOnlyGroupBys(ctx *sql.Context, groupBys map[string]bool, expr sql.Expression, noGroupBy bool) (bool, string) {
 	var col string
 	valid := true
-	sql.Inspect(expr, func(expr sql.Expression) bool {
+	sql.Inspect(ctx, expr, func(ctx *sql.Context, expr sql.Expression) bool {
 		switch expr := expr.(type) {
 		case nil, sql.Aggregation, *expression.Literal:
 			return false
@@ -471,10 +471,10 @@ func validateSchemaSource(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan
 	case *plan.TableAlias:
 		// table aliases should not be validated
 		if child, ok := n.Child.(*plan.ResolvedTable); ok {
-			return n, transform.SameTree, validateSchema(child)
+			return n, transform.SameTree, validateSchema(ctx, child)
 		}
 	case *plan.ResolvedTable:
-		return n, transform.SameTree, validateSchema(n)
+		return n, transform.SameTree, validateSchema(ctx, n)
 	}
 	return n, transform.SameTree, nil
 }
@@ -488,12 +488,12 @@ func validateIndexCreation(ctx *sql.Context, a *Analyzer, n sql.Node, scope *pla
 		return n, transform.SameTree, nil
 	}
 
-	schema := ci.Table.Schema()
+	schema := ci.Table.Schema(ctx)
 	table := schema[0].Source
 
 	var unknownColumns []string
 	for _, expr := range ci.Exprs {
-		sql.Inspect(expr, func(e sql.Expression) bool {
+		sql.Inspect(ctx, expr, func(ctx *sql.Context, e sql.Expression) bool {
 			gf, ok := e.(*expression.GetField)
 			if ok {
 				if gf.Table() != table || !schema.Contains(gf.Name(), gf.Table()) {
@@ -511,8 +511,8 @@ func validateIndexCreation(ctx *sql.Context, a *Analyzer, n sql.Node, scope *pla
 	return n, transform.SameTree, nil
 }
 
-func validateSchema(t *plan.ResolvedTable) error {
-	for _, col := range t.Schema() {
+func validateSchema(ctx *sql.Context, t *plan.ResolvedTable) error {
+	for _, col := range t.Schema(ctx) {
 		if col.Source == "" {
 			return analyzererrors.ErrValidationSchemaSource.New()
 		}
@@ -525,10 +525,10 @@ func validateUnionSchemasMatch(ctx *sql.Context, a *Analyzer, n sql.Node, scope 
 	defer span.End()
 
 	var firstmismatch []string
-	transform.InspectWithOpaque(n, func(n sql.Node) bool {
+	transform.InspectWithOpaque(ctx, n, func(ctx *sql.Context, n sql.Node) bool {
 		if u, ok := n.(*plan.SetOp); ok {
-			ls := u.Left().Schema()
-			rs := u.Right().Schema()
+			ls := u.Left().Schema(ctx)
+			rs := u.Right().Schema(ctx)
 			if len(ls) != len(rs) {
 				firstmismatch = []string{
 					fmt.Sprintf("%d columns", len(ls)),
@@ -537,7 +537,7 @@ func validateUnionSchemasMatch(ctx *sql.Context, a *Analyzer, n sql.Node, scope 
 				return false
 			}
 			for i := range ls {
-				if !reflect.DeepEqual(ls[i].Type, rs[i].Type) {
+				if !ls[i].Type.Equals(rs[i].Type) {
 					firstmismatch = []string{
 						ls[i].Type.String(),
 						rs[i].Type.String(),
@@ -559,7 +559,7 @@ func validateIntervalUsage(ctx *sql.Context, a *Analyzer, n sql.Node, scope *pla
 		return n, transform.SameTree, nil
 	}
 	var invalid bool
-	transform.InspectExpressionsWithNode(n, func(node sql.Node, e sql.Expression) bool {
+	transform.InspectExpressionsWithNode(ctx, n, func(ctx *sql.Context, node sql.Node, e sql.Expression) bool {
 		// If it's already invalid just skip everything else.
 		if invalid {
 			return false
@@ -606,7 +606,7 @@ func validateStarExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *p
 	}
 
 	var err error
-	transform.InspectWithOpaque(n, func(n sql.Node) bool {
+	transform.InspectWithOpaque(ctx, n, func(ctx *sql.Context, n sql.Node) bool {
 		if er, ok := n.(sql.Expressioner); ok {
 			for _, e := range er.Expressions() {
 				// An expression consisting of just a * is allowed.
@@ -615,7 +615,7 @@ func validateStarExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *p
 				}
 				// Otherwise, * can only be used inside acceptable aggregation functions.
 				// Detect any uses of * outside such functions.
-				sql.Inspect(e, func(e sql.Expression) bool {
+				sql.Inspect(ctx, e, func(ctx *sql.Context, e sql.Expression) bool {
 					if err != nil {
 						return false
 					}
@@ -655,7 +655,7 @@ func validateOperands(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sco
 	// We do not use plan.InspectExpressions here because we're treating
 	// top-level expressions of sql.Node differently from subexpressions.
 	var err error
-	transform.InspectWithOpaque(n, func(n sql.Node) bool {
+	transform.InspectWithOpaque(ctx, n, func(ctx *sql.Context, n sql.Node) bool {
 		if n == nil {
 			return false
 		}
@@ -666,7 +666,7 @@ func validateOperands(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sco
 
 		if er, ok := n.(sql.Expressioner); ok {
 			for _, e := range er.Expressions() {
-				nc := types.NumColumns(e.Type())
+				nc := types.NumColumns(e.Type(ctx))
 				if nc != 1 {
 					if _, ok := er.(*plan.HashLookup); ok {
 						// hash lookup expressions are tuples with >= 1 columns
@@ -675,7 +675,7 @@ func validateOperands(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sco
 					err = sql.ErrInvalidOperandColumns.New(1, nc)
 					return false
 				}
-				sql.Inspect(e, func(e sql.Expression) bool {
+				sql.Inspect(ctx, e, func(ctx *sql.Context, e sql.Expression) bool {
 					if e == nil {
 						return err == nil
 					}
@@ -685,21 +685,21 @@ func validateOperands(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sco
 					switch e.(type) {
 					case *plan.InSubquery, *expression.Equals, *expression.NullSafeEquals, *expression.GreaterThan,
 						*expression.LessThan, *expression.GreaterThanOrEqual, *expression.LessThanOrEqual:
-						err = types.ErrIfMismatchedColumns(e.Children()[0].Type(), e.Children()[1].Type())
+						err = types.ErrIfMismatchedColumns(e.Children()[0].Type(ctx), e.Children()[1].Type(ctx))
 					case *expression.InTuple, *expression.HashInTuple:
 						t, ok := e.Children()[1].(expression.Tuple)
 						if ok && len(t.Children()) == 1 {
 							// A single element Tuple treats itself like the element it contains.
-							err = types.ErrIfMismatchedColumns(e.Children()[0].Type(), e.Children()[1].Type())
+							err = types.ErrIfMismatchedColumns(e.Children()[0].Type(ctx), e.Children()[1].Type(ctx))
 						} else {
-							err = types.ErrIfMismatchedColumnsInTuple(e.Children()[0].Type(), e.Children()[1].Type())
+							err = types.ErrIfMismatchedColumnsInTuple(e.Children()[0].Type(ctx), e.Children()[1].Type(ctx))
 						}
 					case *aggregation.Count, *aggregation.CountDistinct, *aggregation.JsonArray:
 						if _, s := e.Children()[0].(*expression.Star); s {
 							return false
 						}
 						for _, e := range e.Children() {
-							nc := types.NumColumns(e.Type())
+							nc := types.NumColumns(e.Type(ctx))
 							if nc != 1 {
 								err = sql.ErrInvalidOperandColumns.New(1, nc)
 							}
@@ -710,7 +710,7 @@ func validateOperands(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sco
 						// Any number of columns are allowed.
 					default:
 						for _, e := range e.Children() {
-							nc := types.NumColumns(e.Type())
+							nc := types.NumColumns(e.Type(ctx))
 							if nc != 1 {
 								err = sql.ErrInvalidOperandColumns.New(1, nc)
 							}
@@ -739,14 +739,14 @@ func validateSubqueryColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *p
 
 	var outOfRangeIndexExpression sql.Expression
 	var outOfRangeColumns int
-	transform.InspectExpressionsWithNode(n, func(n sql.Node, e sql.Expression) bool {
+	transform.InspectExpressionsWithNode(ctx, n, func(ctx *sql.Context, n sql.Node, e sql.Expression) bool {
 		s, ok := e.(*plan.Subquery)
 		if !ok {
 			return true
 		}
 
-		outerScopeRowLen := len(scope.Schema()) + len(Schemas(n.Children()))
-		transform.InspectWithOpaque(s.Query, func(n sql.Node) bool {
+		outerScopeRowLen := len(scope.Schema(ctx)) + len(Schemas(ctx, n.Children()))
+		transform.InspectWithOpaque(ctx, s.Query, func(ctx *sql.Context, n sql.Node) bool {
 			if n == nil {
 				return true
 			}
@@ -760,9 +760,9 @@ func validateSubqueryColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *p
 			default:
 			}
 			if es, ok := n.(sql.Expressioner); ok {
-				childSchemaLen := len(Schemas(n.Children()))
+				childSchemaLen := len(Schemas(ctx, n.Children()))
 				for _, e := range es.Expressions() {
-					sql.Inspect(e, func(e sql.Expression) bool {
+					sql.Inspect(ctx, e, func(ctx *sql.Context, e sql.Expression) bool {
 						if gf, ok := e.(*expression.GetField); ok {
 							if gf.Index() >= outerScopeRowLen+childSchemaLen {
 								outOfRangeIndexExpression = gf
@@ -801,7 +801,7 @@ func validateReadOnlyDatabase(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 	enforceReadOnly := scope.EnforcesReadOnly()
 
 	// if a ReadOnlyDatabase is found, invalidate the query
-	readOnlyDBSearch := func(node sql.Node) bool {
+	readOnlyDBSearch := func(ctx *sql.Context, node sql.Node) bool {
 		if rt, ok := node.(*plan.ResolvedTable); ok {
 			if ro, ok := rt.SqlDatabase.(sql.ReadOnlyDatabase); ok {
 				if ro.IsReadOnly() {
@@ -815,16 +815,16 @@ func validateReadOnlyDatabase(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 		return valid
 	}
 
-	transform.InspectWithOpaque(n, func(node sql.Node) bool {
+	transform.InspectWithOpaque(ctx, n, func(ctx *sql.Context, node sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.DeleteFrom, *plan.Update, *plan.LockTables, *plan.UnlockTables:
-			transform.InspectWithOpaque(node, readOnlyDBSearch)
+			transform.InspectWithOpaque(ctx, node, readOnlyDBSearch)
 			return false
 
 		case *plan.InsertInto:
 			// ReadOnlyDatabase can be an insertion Source,
 			// only inspect the Destination tree
-			transform.InspectWithOpaque(n.Destination, readOnlyDBSearch)
+			transform.InspectWithOpaque(ctx, n.Destination, readOnlyDBSearch)
 			return false
 
 		case *plan.CreateTable:
@@ -846,7 +846,7 @@ func validateReadOnlyDatabase(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 			// CreateTable is the only DDL node allowed
 			// to contain a ReadOnlyDatabase
 			if plan.IsDDLNode(n) {
-				transform.InspectWithOpaque(n, readOnlyDBSearch)
+				transform.InspectWithOpaque(ctx, n, readOnlyDBSearch)
 				return false
 			}
 		}
@@ -888,20 +888,20 @@ func validateReadOnlyTransaction(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 		return tt.IsTemporary()
 	}
 
-	temporaryTableSearch := func(node sql.Node) bool {
+	temporaryTableSearch := func(ctx *sql.Context, node sql.Node) bool {
 		if rt, ok := node.(*plan.ResolvedTable); ok {
 			valid = isTempTable(rt.Table)
 		}
 		return valid
 	}
 
-	transform.InspectWithOpaque(n, func(node sql.Node) bool {
+	transform.InspectWithOpaque(ctx, n, func(ctx *sql.Context, node sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.DeleteFrom, *plan.Update, *plan.UnlockTables:
-			transform.InspectWithOpaque(node, temporaryTableSearch)
+			transform.InspectWithOpaque(ctx, node, temporaryTableSearch)
 			return false
 		case *plan.InsertInto:
-			transform.InspectWithOpaque(n.Destination, temporaryTableSearch)
+			transform.InspectWithOpaque(ctx, n.Destination, temporaryTableSearch)
 			return false
 		case *plan.LockTables:
 			// TODO: Technically we should allow for the locking of temporary tables but the LockTables implementation
@@ -947,14 +947,14 @@ func validateAggregations(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan
 		return n, transform.SameTree, nil
 	}
 	var validationErr error
-	transform.InspectWithOpaque(n, func(n sql.Node) bool {
+	transform.InspectWithOpaque(ctx, n, func(ctx *sql.Context, n sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.GroupBy:
-			validationErr = checkForAggregationFunctions(n.GroupByExprs)
+			validationErr = checkForAggregationFunctions(ctx, n.GroupByExprs)
 		case *plan.Window:
-			validationErr = checkForNonAggregatedColumnReferences(n)
+			validationErr = checkForNonAggregatedColumnReferences(ctx, n)
 		case sql.Expressioner:
-			validationErr = checkForAggregationFunctions(n.Expressions())
+			validationErr = checkForAggregationFunctions(ctx, n.Expressions())
 		default:
 		}
 		return validationErr == nil
@@ -965,10 +965,10 @@ func validateAggregations(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan
 
 // checkForAggregationFunctions returns an ErrAggregationUnsupported error if any aggregation
 // functions are found in the specified expressions.
-func checkForAggregationFunctions(exprs []sql.Expression) error {
+func checkForAggregationFunctions(ctx *sql.Context, exprs []sql.Expression) error {
 	var validationErr error
 	for _, e := range exprs {
-		sql.Inspect(e, func(ie sql.Expression) bool {
+		sql.Inspect(ctx, e, func(ctx *sql.Context, ie sql.Expression) bool {
 			if _, ok := ie.(sql.Aggregation); ok {
 				validationErr = sql.ErrAggregationUnsupported.New(e.String())
 			}
@@ -982,11 +982,11 @@ func checkForAggregationFunctions(exprs []sql.Expression) error {
 // if an aggregate function with the implicit/all-rows grouping is mixed with aggregate window
 // functions that reference a non-aggregated column.
 // You cannot mix aggregations on the implicit/all-rows grouping with window aggregations.
-func checkForNonAggregatedColumnReferences(w *plan.Window) error {
+func checkForNonAggregatedColumnReferences(ctx *sql.Context, w *plan.Window) error {
 	for _, expr := range w.ProjectedExprs() {
 		if agg, ok := expr.(sql.Aggregation); ok {
 			if agg.Window() == nil {
-				index, gf := findFirstWindowAggregationColumnReference(w)
+				index, gf := findFirstWindowAggregationColumnReference(ctx, w)
 
 				if index >= 0 {
 					return sql.ErrNonAggregatedColumnWithoutGroupBy.New(index, gf.String())
@@ -1008,13 +1008,13 @@ func checkForNonAggregatedColumnReferences(w *plan.Window) error {
 // projection expressions. If no window aggregation function with a column reference is found,
 // (-1, nil) is returned. This information is needed to populate an
 // ErrNonAggregatedColumnWithoutGroupBy error.
-func findFirstWindowAggregationColumnReference(w *plan.Window) (index int, gf *expression.GetField) {
+func findFirstWindowAggregationColumnReference(ctx *sql.Context, w *plan.Window) (index int, gf *expression.GetField) {
 	for index, expr := range w.ProjectedExprs() {
 		var firstColumnRef *expression.GetField
 
-		transform.InspectExpr(expr, func(e sql.Expression) bool {
+		transform.InspectExpr(ctx, expr, func(ctx *sql.Context, e sql.Expression) bool {
 			if windowAgg, ok := e.(sql.WindowAggregation); ok {
-				transform.InspectExpr(windowAgg, func(e sql.Expression) bool {
+				transform.InspectExpr(ctx, windowAgg, func(ctx *sql.Context, e sql.Expression) bool {
 					if gf, ok := e.(*expression.GetField); ok {
 						firstColumnRef = gf
 						return true
@@ -1036,8 +1036,8 @@ func findFirstWindowAggregationColumnReference(w *plan.Window) (index int, gf *e
 
 func validateExprSem(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	var err error
-	transform.InspectExpressions(n, func(e sql.Expression) bool {
-		err = validateSem(e)
+	transform.InspectExpressions(ctx, n, func(ctx *sql.Context, e sql.Expression) bool {
+		err = validateSem(ctx, e)
 		return err == nil
 	})
 	return n, transform.SameTree, err
@@ -1048,14 +1048,14 @@ func validateExprSem(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 // todo(max): Refactor and consolidate validation so it can
 // run before the rest of analysis. Add more expression types.
 // Add node equivalent.
-func validateSem(e sql.Expression) error {
+func validateSem(ctx *sql.Context, e sql.Expression) error {
 	switch e := e.(type) {
 	case *expression.And:
-		if err := logicalSem(e.BinaryExpressionStub); err != nil {
+		if err := logicalSem(ctx, e.BinaryExpressionStub); err != nil {
 			return err
 		}
 	case *expression.Or:
-		if err := logicalSem(e.BinaryExpressionStub); err != nil {
+		if err := logicalSem(ctx, e.BinaryExpressionStub); err != nil {
 			return err
 		}
 	default:
@@ -1063,11 +1063,11 @@ func validateSem(e sql.Expression) error {
 	return nil
 }
 
-func logicalSem(e expression.BinaryExpressionStub) error {
-	if lc := fds(e.LeftChild); lc != 1 {
+func logicalSem(ctx *sql.Context, e expression.BinaryExpressionStub) error {
+	if lc := fds(ctx, e.LeftChild); lc != 1 {
 		return sql.ErrInvalidOperandColumns.New(1, lc)
 	}
-	if rc := fds(e.RightChild); rc != 1 {
+	if rc := fds(ctx, e.RightChild); rc != 1 {
 		return sql.ErrInvalidOperandColumns.New(1, rc)
 	}
 	return nil
@@ -1076,13 +1076,13 @@ func logicalSem(e expression.BinaryExpressionStub) error {
 // fds counts the functional dependencies of an expression.
 // todo(max): input/output fd's should be part of the expression
 // interface.
-func fds(e sql.Expression) int {
+func fds(ctx *sql.Context, e sql.Expression) int {
 	switch e.(type) {
 	case *expression.UnresolvedColumn:
 		return 1
 	case *expression.UnresolvedFunction:
 		return 1
 	default:
-		return types.NumColumns(e.Type())
+		return types.NumColumns(e.Type(ctx))
 	}
 }

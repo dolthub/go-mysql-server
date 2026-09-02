@@ -57,7 +57,7 @@ var _ sql.FunctionExpression = (*JSONContains)(nil)
 var _ sql.CollationCoercible = (*JSONContains)(nil)
 
 // NewJSONContains creates a new JSONContains function.
-func NewJSONContains(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONContains(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 2 || len(args) > 3 {
 		return nil, sql.ErrInvalidArgumentNumber.New("JSON_CONTAINS", "2 or 3", len(args))
 	}
@@ -104,7 +104,7 @@ func (j *JSONContains) String() string {
 	return fmt.Sprintf("%s(%s)", j.FunctionName(), strings.Join(parts, ","))
 }
 
-func (j *JSONContains) Type() sql.Type {
+func (j *JSONContains) Type(ctx *sql.Context) sql.Type {
 	return types.Boolean
 }
 
@@ -113,8 +113,8 @@ func (*JSONContains) CollationCoercibility(ctx *sql.Context) (collation sql.Coll
 	return sql.Collation_binary, 5
 }
 
-func (j *JSONContains) IsNullable() bool {
-	return j.JSONTarget.IsNullable() || j.JSONCandidate.IsNullable() || (j.Path != nil && j.Path.IsNullable())
+func (j *JSONContains) IsNullable(ctx *sql.Context) bool {
+	return j.JSONTarget.IsNullable(ctx) || j.JSONCandidate.IsNullable(ctx) || (j.Path != nil && j.Path.IsNullable(ctx))
 }
 
 func (j *JSONContains) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -181,10 +181,10 @@ func (j *JSONContains) Children() []sql.Expression {
 	return []sql.Expression{j.JSONTarget, j.JSONCandidate}
 }
 
-func (j *JSONContains) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (j *JSONContains) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(j.Children()) != len(children) {
 		return nil, fmt.Errorf("json_contains did not receive the correct amount of args")
 	}
 
-	return NewJSONContains(children...)
+	return NewJSONContains(ctx, children...)
 }

@@ -30,7 +30,7 @@ func TestIssue361(t *testing.T) {
 	ctx := newContext(pro)
 
 	t.Run("Update", func(*testing.T) {
-		table := memory.NewTable(db, name, sql.NewPrimaryKeySchema(sql.Schema{
+		table := memory.NewTable(ctx, db, name, sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "json", Type: types.JSON, Nullable: false, Source: name},
 		}), nil)
 
@@ -44,7 +44,7 @@ func TestIssue361(t *testing.T) {
 	})
 
 	t.Run("Delete", func(*testing.T) {
-		table := memory.NewTable(db, name, sql.NewPrimaryKeySchema(sql.Schema{
+		table := memory.NewTable(ctx, db, name, sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "json", Type: types.JSON, Nullable: false, Source: name},
 		}), nil)
 

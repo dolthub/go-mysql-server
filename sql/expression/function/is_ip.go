@@ -32,7 +32,7 @@ type IsIPv4 struct {
 var _ sql.FunctionExpression = (*IsIPv4)(nil)
 var _ sql.CollationCoercible = (*IsIPv4)(nil)
 
-func NewIsIPv4(val sql.Expression) sql.Expression {
+func NewIsIPv4(ctx *sql.Context, val sql.Expression) sql.Expression {
 	return &IsIPv4{expression.UnaryExpressionStub{Child: val}}
 }
 
@@ -50,18 +50,18 @@ func (i *IsIPv4) String() string {
 	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String())
 }
 
-func (i *IsIPv4) Type() sql.Type { return types.Boolean }
+func (i *IsIPv4) Type(ctx *sql.Context) sql.Type { return types.Boolean }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*IsIPv4) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 5
 }
 
-func (i *IsIPv4) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (i *IsIPv4) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
 	}
-	return NewIsIPv4(children[0]), nil
+	return NewIsIPv4(ctx, children[0]), nil
 }
 
 // Eval implements the Expression interface
@@ -100,7 +100,7 @@ type IsIPv6 struct {
 var _ sql.FunctionExpression = (*IsIPv6)(nil)
 var _ sql.CollationCoercible = (*IsIPv6)(nil)
 
-func NewIsIPv6(val sql.Expression) sql.Expression {
+func NewIsIPv6(ctx *sql.Context, val sql.Expression) sql.Expression {
 	return &IsIPv6{expression.UnaryExpressionStub{Child: val}}
 }
 
@@ -118,18 +118,18 @@ func (i *IsIPv6) String() string {
 	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String())
 }
 
-func (i *IsIPv6) Type() sql.Type { return types.Boolean }
+func (i *IsIPv6) Type(ctx *sql.Context) sql.Type { return types.Boolean }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*IsIPv6) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 5
 }
 
-func (i *IsIPv6) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (i *IsIPv6) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
 	}
-	return NewIsIPv6(children[0]), nil
+	return NewIsIPv6(ctx, children[0]), nil
 }
 
 // Eval implements the Expression interface
@@ -168,7 +168,7 @@ type IsIPv4Compat struct {
 var _ sql.FunctionExpression = (*IsIPv4Compat)(nil)
 var _ sql.CollationCoercible = (*IsIPv4Compat)(nil)
 
-func NewIsIPv4Compat(val sql.Expression) sql.Expression {
+func NewIsIPv4Compat(ctx *sql.Context, val sql.Expression) sql.Expression {
 	return &IsIPv4Compat{expression.UnaryExpressionStub{Child: val}}
 }
 
@@ -186,18 +186,18 @@ func (i *IsIPv4Compat) String() string {
 	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String())
 }
 
-func (i *IsIPv4Compat) Type() sql.Type { return types.Boolean }
+func (i *IsIPv4Compat) Type(ctx *sql.Context) sql.Type { return types.Boolean }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*IsIPv4Compat) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 5
 }
 
-func (i *IsIPv4Compat) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (i *IsIPv4Compat) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
 	}
-	return NewIsIPv4Compat(children[0]), nil
+	return NewIsIPv4Compat(ctx, children[0]), nil
 }
 
 // Eval implements the Expression interface
@@ -240,7 +240,7 @@ type IsIPv4Mapped struct {
 var _ sql.FunctionExpression = (*IsIPv4Mapped)(nil)
 var _ sql.CollationCoercible = (*IsIPv4Mapped)(nil)
 
-func NewIsIPv4Mapped(val sql.Expression) sql.Expression {
+func NewIsIPv4Mapped(ctx *sql.Context, val sql.Expression) sql.Expression {
 	return &IsIPv4Mapped{expression.UnaryExpressionStub{Child: val}}
 }
 
@@ -258,18 +258,18 @@ func (i *IsIPv4Mapped) String() string {
 	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String())
 }
 
-func (i *IsIPv4Mapped) Type() sql.Type { return types.Boolean }
+func (i *IsIPv4Mapped) Type(ctx *sql.Context) sql.Type { return types.Boolean }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*IsIPv4Mapped) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 5
 }
 
-func (i *IsIPv4Mapped) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (i *IsIPv4Mapped) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
 	}
-	return NewIsIPv4Mapped(children[0]), nil
+	return NewIsIPv4Mapped(ctx, children[0]), nil
 }
 
 // Eval implements the Expression interface

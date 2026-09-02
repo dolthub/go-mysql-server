@@ -19,35 +19,38 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/sets"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type insertIter struct {
-	ctx *sql.Context
-
-	tableNode sql.Node
+	rowSource sql.RowIter
 	inserter  sql.RowInserter
 	replacer  sql.RowReplacer
 	updater   sql.RowUpdater
-	rowSource sql.RowIter
 
-	deferredDefaults sql.FastIntSet
-	unlocker         func()
+	ctx                 *sql.Context
+	onDupKeyUpdateExprs *plan.UpdateExprs
+	onDupWhere          sql.Expression
+	// countOnDuplicateUpdateAsOneRow applies single-row affected-count semantics to duplicate updates.
+	countOnDuplicateUpdateAsOneRow bool
+	unlocker                       func()
 
-	insertExprs                 []sql.Expression
-	updateExprs                 []sql.Expression
-	returnExprs                 []sql.Expression
-	checks                      sql.CheckConstraints
-	schema                      sql.Schema
-	returnSchema                sql.Schema
+	deferredDefaults sets.FastIntSet
+	checks           sql.CheckConstraints
+	schema           sql.Schema
+	returnSchema     sql.Schema
+	returnExprs      []sql.Expression
+	insertExprs      []sql.Expression
+
 	firstGeneratedAutoIncRowIdx int
 	rowNumber                   int64
 	closed                      bool
@@ -55,9 +58,9 @@ type insertIter struct {
 	hasAfterTrigger             bool
 }
 
-func getInsertExpressions(values sql.Node) []sql.Expression {
+func getInsertExpressions(ctx *sql.Context, values sql.Node) []sql.Expression {
 	var exprs []sql.Expression
-	transform.InspectWithOpaque(values, func(node sql.Node) bool {
+	transform.InspectWithOpaque(ctx, values, func(ctx *sql.Context, node sql.Node) bool {
 		switch node := node.(type) {
 		case *plan.Project:
 			exprs = node.Projections
@@ -69,13 +72,27 @@ func getInsertExpressions(values sql.Node) []sql.Expression {
 }
 
 func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error) {
+	for {
+		row, skipped, err := i.next(ctx)
+		if skipped || errors.Is(err, sql.ErrRowEditCanceled) {
+			continue
+		}
+		return row, err
+	}
+}
+
+// next processes one row from the insert source.
+func (i *insertIter) next(ctx *sql.Context) (returnRow sql.Row, skipped bool, returnErr error) {
 	row, err := i.rowSource.Next(ctx)
 	if err == io.EOF {
-		return nil, err
+		return nil, false, err
 	}
 
 	if err != nil {
-		return nil, i.ignoreOrClose(ctx, row, err)
+		if errors.Is(err, sql.ErrRowEditCanceled) {
+			return nil, false, err
+		}
+		return nil, false, i.ignoreOrClose(ctx, row, err)
 	}
 
 	// Increment row number for error reporting (MySQL starts at 1)
@@ -101,12 +118,12 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 
 	err = i.validateNullability(ctx, i.schema, row)
 	if err != nil {
-		return nil, i.ignoreOrClose(ctx, row, err)
+		return nil, false, i.ignoreOrClose(ctx, row, err)
 	}
 
 	err = i.evaluateChecks(ctx, row)
 	if err != nil {
-		return nil, i.ignoreOrClose(ctx, row, err)
+		return nil, false, i.ignoreOrClose(ctx, row, err)
 	}
 
 	origRow := make(sql.Row, len(row))
@@ -169,7 +186,7 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 					case types.ErrConvertingToEnum.Is(cErr), sql.ErrInvalidSetValue.Is(cErr), sql.ErrConvertingToSet.Is(cErr):
 						cErr = types.ErrDataTruncatedForColumnAtRow.New(col.Name, i.rowNumber)
 					}
-					return nil, sql.NewWrappedInsertError(origRow, cErr)
+					return nil, false, sql.NewWrappedInsertError(origRow, cErr)
 				}
 			}
 			row[idx] = converted
@@ -188,14 +205,16 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 				if !sql.ErrPrimaryKeyViolation.Is(err) && !sql.ErrUniqueKeyViolation.Is(err) {
 					i.rowSource.Close(ctx)
 					i.rowSource = nil
-					return nil, sql.NewWrappedInsertError(row, err)
+					return nil, false, sql.NewWrappedInsertError(row, err)
 				}
 
+				// TODO: For multitables, UniqueKeyError.Existing might not be the correct row if the error is coming
+				//  from a secondary table. https://github.com/dolthub/dolt/issues/10882#issuecomment-4255176383
 				ue := err.(*errors.Error).Cause().(sql.UniqueKeyError)
 				if err = i.replacer.Delete(ctx, ue.Existing); err != nil {
 					i.rowSource.Close(ctx)
 					i.rowSource = nil
-					return nil, sql.NewWrappedInsertError(row, err)
+					return nil, false, sql.NewWrappedInsertError(row, err)
 				}
 				// the row had to be deleted, write the values into the toReturn row
 				copy(toReturn, ue.Existing)
@@ -203,25 +222,39 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 				break
 			}
 		}
-		return toReturn, nil
+		return toReturn, false, nil
 	} else {
 		if err := i.inserter.Insert(ctx, row); err != nil {
-			if (!sql.ErrPrimaryKeyViolation.Is(err) && !sql.ErrUniqueKeyViolation.Is(err) && !sql.ErrDuplicateEntry.Is(err)) || len(i.updateExprs) == 0 {
-				return nil, i.ignoreOrClose(ctx, row, err)
+			if (sql.ErrPrimaryKeyViolation.Is(err) || sql.ErrUniqueKeyViolation.Is(err)) &&
+				i.onDupKeyUpdateExprs.HasUpdates() {
+				// TODO: For multitables, UniqueKeyError.Existing might not be the correct row if the error is coming
+				//  from a secondary table. https://github.com/dolthub/dolt/issues/10882#issuecomment-4255176383
+				if uniqueKeyError, ok := err.(*errors.Error).Cause().(sql.UniqueKeyError); ok {
+					if i.onDupWhere != nil {
+						matches, err := i.onDupWhere.Eval(ctx, append(uniqueKeyError.Existing, row...))
+						if err != nil {
+							return nil, false, err
+						}
+						if !sql.IsTrue(matches) {
+							return nil, true, nil
+						}
+					}
+					updatedRow, err := i.handleOnDuplicateKeyUpdate(ctx, uniqueKeyError.Existing, row)
+					return updatedRow, false, err
+				}
 			}
-
-			ue := err.(*errors.Error).Cause().(sql.UniqueKeyError)
-			return i.handleOnDuplicateKeyUpdate(ctx, ue.Existing, row)
+			return nil, false, i.ignoreOrClose(ctx, row, err)
 		}
 	}
 
 	i.updateLastInsertId(ctx, row)
 
 	if len(i.returnExprs) > 0 && !i.hasAfterTrigger {
-		return i.getReturningRow(ctx, row)
+		returningRow, err := i.getReturningRow(ctx, row)
+		return returningRow, false, err
 	}
 
-	return row, nil
+	return row, false, nil
 }
 
 func (i *insertIter) getReturningRow(ctx *sql.Context, row sql.Row) (sql.Row, error) {
@@ -236,14 +269,10 @@ func (i *insertIter) getReturningRow(ctx *sql.Context, row sql.Row) (sql.Row, er
 	return retExprRow, nil
 }
 
-func (i *insertIter) handleOnDuplicateKeyUpdate(ctx *sql.Context, oldRow, newRow sql.Row) (returnRow sql.Row, returnErr error) {
-	var err error
-	updateAcc := append(oldRow, newRow...)
-	var evalRow sql.Row
-	for _, updateExpr := range i.updateExprs {
-		// this SET <val> indexes into LHS, but the <expr> can
-		// reference the new row on RHS
-		val, err := updateExpr.Eval(i.ctx, updateAcc)
+func (i *insertIter) applyUpdates(ctx *sql.Context, updateExprs []sql.Expression, updateAccumulator sql.Row, newRow sql.Row) (sql.Row, error) {
+	// TODO(max): this SET <val> indexes into LHS, but the <expr> can reference the new row on RHS
+	for _, updateExpr := range updateExprs {
+		val, err := updateExpr.Eval(i.ctx, updateAccumulator)
 		if err != nil {
 			if i.ignore {
 				idx, ok := getFieldIndexFromUpdateExpr(updateExpr)
@@ -255,23 +284,46 @@ func (i *insertIter) handleOnDuplicateKeyUpdate(ctx *sql.Context, oldRow, newRow
 				return nil, err
 			}
 		}
-		updateAcc = val.(sql.Row)
+		updateAccumulator = val.(sql.Row)
 	}
-	// project LHS only
-	evalRow = updateAcc[:len(oldRow)]
+	return updateAccumulator, nil
+}
 
+// TODO: This can probably be combined with applyUpdateExpressionsWithIgnore
+func (i *insertIter) handleOnDuplicateKeyUpdate(ctx *sql.Context, oldRow, newRow sql.Row) (sql.Row, error) {
+	updateAcc, err := i.applyUpdates(ctx, i.onDupKeyUpdateExprs.ExplicitUpdateExprs(), append(oldRow, newRow...), newRow)
+	if err != nil {
+		return nil, err
+	}
+
+	evalRow := updateAcc[:len(oldRow)]
+	if i.onDupKeyUpdateExprs.HasDerivedUpdates() {
+		if same, err := oldRow.Equals(ctx, evalRow, i.schema); err != nil {
+			return nil, err
+		} else if !same {
+			updateAcc, err = i.applyUpdates(ctx, i.onDupKeyUpdateExprs.DerivedUpdateExprs(), updateAcc, newRow)
+			if err != nil {
+				return nil, err
+			}
+			evalRow = updateAcc[:len(oldRow)]
+		}
+	}
+
+	// TODO: we don't need to evaluate checks and perform the update if the oldRow and evalRow are the same. But doing
+	//  the sameness check with oldRow.Equals can be expensive too and we don't want to be doing it unnecessarily
 	// Should revaluate the check conditions.
 	err = i.evaluateChecks(ctx, evalRow)
 	if err != nil {
 		return nil, i.ignoreOrClose(ctx, newRow, err)
 	}
-
 	err = i.updater.Update(ctx, oldRow, evalRow)
 	if err != nil {
 		return nil, i.ignoreOrClose(ctx, newRow, err)
 	}
+	if len(i.returnExprs) > 0 && !i.hasAfterTrigger {
+		return i.getReturningRow(ctx, evalRow)
+	}
 
-	// In the case that we attempted an update, return a concatenated [old,new] row just like update.
 	return oldRow.Append(evalRow), nil
 }
 
@@ -287,31 +339,6 @@ func getFieldIndexFromUpdateExpr(updateExpr sql.Expression) (int, bool) {
 	}
 
 	return getField.Index(), true
-}
-
-// resolveValues resolves all VALUES functions.
-func (i *insertIter) resolveValues(ctx *sql.Context, insertRow sql.Row) error {
-	// if vals empty then no need to resolve
-	for _, updateExpr := range i.updateExprs {
-		var err error
-		sql.Inspect(updateExpr, func(expr sql.Expression) bool {
-			valuesExpr, ok := expr.(*function.Values)
-			if !ok {
-				return true
-			}
-			getField, ok := valuesExpr.Child.(*expression.GetField)
-			if !ok {
-				err = fmt.Errorf("VALUES functions may only contain column names")
-				return false
-			}
-			valuesExpr.Value = insertRow[getField.Index()]
-			return false
-		})
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func (i *insertIter) Close(ctx *sql.Context) error {
@@ -384,6 +411,17 @@ func convertDataAndWarn(ctx *sql.Context, tableSchema sql.Schema, row sql.Row, c
 	if types.ErrLengthBeyondLimit.Is(err) {
 		maxLength := tableSchema[columnIdx].Type.(sql.StringType).MaxCharacterLength()
 		row[columnIdx] = row[columnIdx].(string)[:maxLength] // truncate string
+	} else if types.ErrBadCharsetString.Is(err) {
+		switch v := row[columnIdx].(type) {
+		case string:
+			row[columnIdx] = string(types.TruncateInvalidUTF8([]byte(v)))
+		case []byte:
+			row[columnIdx] = string(types.TruncateInvalidUTF8(v))
+		default:
+			row[columnIdx] = tableSchema[columnIdx].Type.Zero()
+		}
+		ctx.Warn(mysql.ERTruncatedWrongValueForField, "%s", err.Error())
+		return row
 	} else {
 		row[columnIdx] = tableSchema[columnIdx].Type.Zero()
 	}
@@ -418,7 +456,7 @@ func warnOnIgnorableError(ctx *sql.Context, row sql.Row, err error) error {
 			}
 
 			// In this case the default value gets updated so return nil
-			if sql.ErrInsertIntoNonNullableDefaultNullColumn.Is(err) {
+			if sql.ErrFieldNoDefaultValue.Is(err) {
 				return nil
 			}
 
@@ -456,7 +494,7 @@ func (i *insertIter) validateNullability(ctx *sql.Context, dstSchema sql.Schema,
 			// In the case of an IGNORE we set the nil value to a default and add a warning
 			if !i.ignore {
 				if i.deferredDefaults.Contains(count) {
-					return sql.ErrInsertIntoNonNullableDefaultNullColumn.New(col.Name)
+					return sql.ErrFieldNoDefaultValue.New(col.Name)
 				}
 				return sql.ErrInsertIntoNonNullableProvidedNull.New(col.Name)
 			}

@@ -21,6 +21,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/sorters"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -34,11 +35,43 @@ var _ sql.WindowFunction = (*CountAgg)(nil)
 var _ sql.WindowFunction = (*GroupConcatAgg)(nil)
 var _ sql.WindowFunction = (*WindowedJSONArrayAgg)(nil)
 var _ sql.WindowFunction = (*WindowedJSONObjectAgg)(nil)
+var _ sql.WindowFunction = (*StdDevPopAgg)(nil)
+var _ sql.WindowFunction = (*VarSampAgg)(nil)
 
 var _ sql.WindowFunction = (*PercentRank)(nil)
 var _ sql.WindowFunction = (*RowNumber)(nil)
 var _ sql.WindowFunction = (*Lag)(nil)
 var _ sql.WindowFunction = (*Lead)(nil)
+
+type baseWindowFunction struct {
+	expr    sql.Expression
+	framer  sql.WindowFramer
+	orderBy []sql.Expression
+}
+
+func newBaseWindowFunction(e sql.Expression) baseWindowFunction {
+	return baseWindowFunction{
+		expr: e,
+	}
+}
+
+func (b *baseWindowFunction) DefaultFramer() sql.WindowFramer {
+	if b.framer != nil {
+		return b.framer
+	}
+
+	if len(b.orderBy) == 0 {
+		return NewPartitionFramer()
+	}
+
+	return &RangeUnboundedPrecedingToCurrentRowFramer{
+		rangeFramerBase{
+			orderBy:            b.orderBy[0],
+			unboundedPreceding: true,
+			endCurrentRow:      true,
+		},
+	}
+}
 
 type AnyValueAgg struct {
 	expr   sql.Expression
@@ -51,7 +84,7 @@ func NewAnyValueAgg(e sql.Expression) *AnyValueAgg {
 	}
 }
 
-func (a *AnyValueAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+func (a *AnyValueAgg) WithWindow(ctx *sql.Context, w *sql.WindowDefinition) (sql.WindowFunction, error) {
 	na := *a
 	if w.Frame != nil {
 		framer, err := w.Frame.NewFramer(w)
@@ -63,8 +96,8 @@ func (a *AnyValueAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, e
 	return &na, nil
 }
 
-func (a *AnyValueAgg) Dispose() {
-	expression.Dispose(a.expr)
+func (a *AnyValueAgg) Dispose(ctx *sql.Context) {
+	expression.Dispose(ctx, a.expr)
 }
 
 // DefaultFramer returns a NewUnboundedPrecedingToCurrentRowFramer
@@ -76,7 +109,7 @@ func (a *AnyValueAgg) DefaultFramer() sql.WindowFramer {
 }
 
 func (a *AnyValueAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) error {
-	a.Dispose()
+	a.Dispose(ctx)
 	return nil
 }
 
@@ -93,8 +126,7 @@ func (a *AnyValueAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf
 }
 
 type SumAgg struct {
-	expr   sql.Expression
-	framer sql.WindowFramer
+	baseWindowFunction
 	// use prefix sums to quickly calculate arbitrary frame sum within partition
 	prefixSum      []float64
 	partitionStart int
@@ -103,13 +135,13 @@ type SumAgg struct {
 
 func NewSumAgg(e sql.Expression) *SumAgg {
 	return &SumAgg{
-		partitionStart: -1,
-		partitionEnd:   -1,
-		expr:           e,
+		partitionStart:     -1,
+		partitionEnd:       -1,
+		baseWindowFunction: newBaseWindowFunction(e),
 	}
 }
 
-func (a *SumAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+func (a *SumAgg) WithWindow(ctx *sql.Context, w *sql.WindowDefinition) (sql.WindowFunction, error) {
 	na := *a
 	if w.Frame != nil {
 		framer, err := w.Frame.NewFramer(w)
@@ -117,25 +149,21 @@ func (a *SumAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error)
 			return nil, err
 		}
 		na.framer = framer
+		return &na, nil
+	}
+	if w.OrderBy != nil {
+		na.orderBy = w.OrderBy.ToExpressions()
 	}
 	return &na, nil
 }
 
-func (a *SumAgg) Dispose() {
-	expression.Dispose(a.expr)
-}
-
-// DefaultFramer returns a NewUnboundedPrecedingToCurrentRowFramer
-func (a *SumAgg) DefaultFramer() sql.WindowFramer {
-	if a.framer != nil {
-		return a.framer
-	}
-	return NewUnboundedPrecedingToCurrentRowFramer()
+func (a *SumAgg) Dispose(ctx *sql.Context) {
+	expression.Dispose(ctx, a.expr)
 }
 
 func (a *SumAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) error {
 	a.partitionStart, a.partitionEnd = interval.Start, interval.End
-	a.Dispose()
+	a.Dispose(ctx)
 	var err error
 	a.prefixSum, _, err = floatPrefixSum(ctx, interval, buf, a.expr)
 	return err
@@ -190,8 +218,7 @@ func computePrefixSum(interval sql.WindowInterval, partitionStart int, prefixSum
 }
 
 type AvgAgg struct {
-	expr   sql.Expression
-	framer sql.WindowFramer
+	baseWindowFunction
 
 	// use prefix sums to quickly calculate arbitrary frame sum within partition
 	prefixSum []float64
@@ -205,11 +232,11 @@ type AvgAgg struct {
 
 func NewAvgAgg(e sql.Expression) *AvgAgg {
 	return &AvgAgg{
-		expr: e,
+		baseWindowFunction: newBaseWindowFunction(e),
 	}
 }
 
-func (a *AvgAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+func (a *AvgAgg) WithWindow(ctx *sql.Context, w *sql.WindowDefinition) (sql.WindowFunction, error) {
 	na := *a
 	if w.Frame != nil {
 		framer, err := w.Frame.NewFramer(w)
@@ -217,24 +244,20 @@ func (a *AvgAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error)
 			return nil, err
 		}
 		na.framer = framer
+		return &na, nil
+	}
+	if w.OrderBy != nil {
+		na.orderBy = w.OrderBy.ToExpressions()
 	}
 	return &na, nil
 }
 
-func (a *AvgAgg) Dispose() {
-	expression.Dispose(a.expr)
-}
-
-// DefaultFramer returns a NewUnboundedPrecedingToCurrentRowFramer
-func (a *AvgAgg) DefaultFramer() sql.WindowFramer {
-	if a.framer != nil {
-		return a.framer
-	}
-	return NewUnboundedPrecedingToCurrentRowFramer()
+func (a *AvgAgg) Dispose(ctx *sql.Context) {
+	expression.Dispose(ctx, a.expr)
 }
 
 func (a *AvgAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) error {
-	a.Dispose()
+	a.Dispose(ctx)
 	a.partitionStart = interval.Start
 	a.partitionEnd = interval.End
 	var err error
@@ -273,7 +296,7 @@ func NewBitAndAgg(e sql.Expression) *BitAndAgg {
 	}
 }
 
-func (b *BitAndAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+func (b *BitAndAgg) WithWindow(ctx *sql.Context, w *sql.WindowDefinition) (sql.WindowFunction, error) {
 	na := *b
 	if w.Frame != nil {
 		framer, err := w.Frame.NewFramer(w)
@@ -285,8 +308,8 @@ func (b *BitAndAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, err
 	return &na, nil
 }
 
-func (b *BitAndAgg) Dispose() {
-	expression.Dispose(b.expr)
+func (b *BitAndAgg) Dispose(ctx *sql.Context) {
+	expression.Dispose(ctx, b.expr)
 }
 
 // DefaultFramer returns a NewUnboundedPrecedingToCurrentRowFramer
@@ -298,7 +321,7 @@ func (b *BitAndAgg) DefaultFramer() sql.WindowFramer {
 }
 
 func (b *BitAndAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) error {
-	b.Dispose()
+	b.Dispose(ctx)
 	return nil
 }
 
@@ -340,7 +363,7 @@ func NewBitOrAgg(e sql.Expression) *BitOrAgg {
 	}
 }
 
-func (b *BitOrAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+func (b *BitOrAgg) WithWindow(ctx *sql.Context, w *sql.WindowDefinition) (sql.WindowFunction, error) {
 	na := *b
 	if w.Frame != nil {
 		framer, err := w.Frame.NewFramer(w)
@@ -352,8 +375,8 @@ func (b *BitOrAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, erro
 	return &na, nil
 }
 
-func (b *BitOrAgg) Dispose() {
-	expression.Dispose(b.expr)
+func (b *BitOrAgg) Dispose(ctx *sql.Context) {
+	expression.Dispose(ctx, b.expr)
 }
 
 // DefaultFramer returns a NewUnboundedPrecedingToCurrentRowFramer
@@ -365,7 +388,7 @@ func (b *BitOrAgg) DefaultFramer() sql.WindowFramer {
 }
 
 func (b *BitOrAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) error {
-	b.Dispose()
+	b.Dispose(ctx)
 	return nil
 }
 
@@ -407,7 +430,7 @@ func NewBitXorAgg(e sql.Expression) *BitXorAgg {
 	}
 }
 
-func (b *BitXorAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+func (b *BitXorAgg) WithWindow(ctx *sql.Context, w *sql.WindowDefinition) (sql.WindowFunction, error) {
 	na := *b
 	if w.Frame != nil {
 		framer, err := w.Frame.NewFramer(w)
@@ -419,11 +442,11 @@ func (b *BitXorAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, err
 	return &na, nil
 }
 
-func (b *BitXorAgg) Dispose() {
-	expression.Dispose(b.expr)
+func (b *BitXorAgg) Dispose(ctx *sql.Context) {
+	expression.Dispose(ctx, b.expr)
 }
 
-// DefaultFramer returns a NewUnboundedPrecedingToCurrentRowFramer
+// DefaultFramer returns a NewPartitionFramer
 func (b *BitXorAgg) DefaultFramer() sql.WindowFramer {
 	if b.framer != nil {
 		return b.framer
@@ -432,7 +455,7 @@ func (b *BitXorAgg) DefaultFramer() sql.WindowFramer {
 }
 
 func (b *BitXorAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) error {
-	b.Dispose()
+	b.Dispose(ctx)
 	return nil
 }
 
@@ -465,17 +488,16 @@ func (b *BitXorAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf s
 }
 
 type MaxAgg struct {
-	expr   sql.Expression
-	framer sql.WindowFramer
+	baseWindowFunction
 }
 
 func NewMaxAgg(e sql.Expression) *MaxAgg {
 	return &MaxAgg{
-		expr: e,
+		baseWindowFunction: newBaseWindowFunction(e),
 	}
 }
 
-func (a *MaxAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+func (a *MaxAgg) WithWindow(ctx *sql.Context, w *sql.WindowDefinition) (sql.WindowFunction, error) {
 	na := *a
 	if w.Frame != nil {
 		framer, err := w.Frame.NewFramer(w)
@@ -483,24 +505,20 @@ func (a *MaxAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error)
 			return nil, err
 		}
 		na.framer = framer
+		return &na, nil
+	}
+	if w.OrderBy != nil {
+		na.orderBy = w.OrderBy.ToExpressions()
 	}
 	return &na, nil
 }
 
-func (a *MaxAgg) Dispose() {
-	expression.Dispose(a.expr)
-}
-
-// DefaultFramer returns a NewPartitionFramer
-func (a *MaxAgg) DefaultFramer() sql.WindowFramer {
-	if a.framer != nil {
-		return a.framer
-	}
-	return NewPartitionFramer()
+func (a *MaxAgg) Dispose(ctx *sql.Context) {
+	expression.Dispose(ctx, a.expr)
 }
 
 func (a *MaxAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buffer sql.WindowBuffer) error {
-	a.Dispose()
+	a.Dispose(ctx)
 	return nil
 }
 
@@ -525,7 +543,7 @@ func (a *MaxAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buffer s
 			max = v
 		}
 
-		cmp, err := a.expr.Type().Compare(ctx, v, max)
+		cmp, err := a.expr.Type(ctx).Compare(ctx, v, max)
 		if err != nil {
 			return nil, err
 		}
@@ -537,17 +555,16 @@ func (a *MaxAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buffer s
 }
 
 type MinAgg struct {
-	expr   sql.Expression
-	framer sql.WindowFramer
+	baseWindowFunction
 }
 
 func NewMinAgg(e sql.Expression) *MinAgg {
 	return &MinAgg{
-		expr: e,
+		baseWindowFunction: newBaseWindowFunction(e),
 	}
 }
 
-func (a *MinAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+func (a *MinAgg) WithWindow(ctx *sql.Context, w *sql.WindowDefinition) (sql.WindowFunction, error) {
 	na := *a
 	if w.Frame != nil {
 		framer, err := w.Frame.NewFramer(w)
@@ -555,24 +572,20 @@ func (a *MinAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error)
 			return nil, err
 		}
 		na.framer = framer
+		return &na, nil
+	}
+	if w.OrderBy != nil {
+		na.orderBy = w.OrderBy.ToExpressions()
 	}
 	return &na, nil
 }
 
-func (a *MinAgg) Dispose() {
-	expression.Dispose(a.expr)
-}
-
-// DefaultFramer returns a NewUnboundedPrecedingToCurrentRowFramer
-func (a *MinAgg) DefaultFramer() sql.WindowFramer {
-	if a.framer != nil {
-		return a.framer
-	}
-	return NewUnboundedPrecedingToCurrentRowFramer()
+func (a *MinAgg) Dispose(ctx *sql.Context) {
+	expression.Dispose(ctx, a.expr)
 }
 
 func (a *MinAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buffer sql.WindowBuffer) error {
-	a.Dispose()
+	a.Dispose(ctx)
 	return nil
 }
 
@@ -597,7 +610,7 @@ func (a *MinAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.
 			continue
 		}
 
-		cmp, err := a.expr.Type().Compare(ctx, v, min)
+		cmp, err := a.expr.Type(ctx).Compare(ctx, v, min)
 		if err != nil {
 			return nil, err
 		}
@@ -619,7 +632,7 @@ func NewLastAgg(e sql.Expression) *LastAgg {
 	}
 }
 
-func (a *LastAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+func (a *LastAgg) WithWindow(ctx *sql.Context, w *sql.WindowDefinition) (sql.WindowFunction, error) {
 	na := *a
 	if w != nil && w.Frame != nil {
 		framer, err := w.Frame.NewFramer(w)
@@ -631,8 +644,8 @@ func (a *LastAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error
 	return &na, nil
 }
 
-func (a *LastAgg) Dispose() {
-	expression.Dispose(a.expr)
+func (a *LastAgg) Dispose(ctx *sql.Context) {
+	expression.Dispose(ctx, a.expr)
 }
 
 // DefaultFramer returns a NewUnboundedPrecedingToCurrentRowFramer
@@ -644,7 +657,7 @@ func (a *LastAgg) DefaultFramer() sql.WindowFramer {
 }
 
 func (a *LastAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buffer sql.WindowBuffer) error {
-	a.Dispose()
+	a.Dispose(ctx)
 	return nil
 }
 
@@ -677,7 +690,7 @@ func NewFirstAgg(e sql.Expression) *FirstAgg {
 	}
 }
 
-func (a *FirstAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+func (a *FirstAgg) WithWindow(ctx *sql.Context, w *sql.WindowDefinition) (sql.WindowFunction, error) {
 	na := *a
 	if w.Frame != nil {
 		framer, err := w.Frame.NewFramer(w)
@@ -689,8 +702,8 @@ func (a *FirstAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, erro
 	return &na, nil
 }
 
-func (a *FirstAgg) Dispose() {
-	expression.Dispose(a.expr)
+func (a *FirstAgg) Dispose(ctx *sql.Context) {
+	expression.Dispose(ctx, a.expr)
 }
 
 // DefaultFramer returns a NewUnboundedPrecedingToCurrentRowFramer
@@ -702,7 +715,7 @@ func (a *FirstAgg) DefaultFramer() sql.WindowFramer {
 }
 
 func (a *FirstAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buffer sql.WindowBuffer) error {
-	a.Dispose()
+	a.Dispose(ctx)
 	a.partitionStart, a.partitionEnd = interval.Start, interval.End
 	return nil
 }
@@ -724,10 +737,8 @@ func (a *FirstAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buffer
 }
 
 type CountAgg struct {
-	expr      sql.Expression
-	framer    sql.WindowFramer
+	baseWindowFunction
 	prefixSum []float64
-	orderBy   []sql.Expression
 	peerGroup sql.WindowInterval
 
 	pos            int
@@ -737,22 +748,17 @@ type CountAgg struct {
 
 func NewCountAgg(e sql.Expression) *CountAgg {
 	return &CountAgg{
-		partitionStart: -1,
-		partitionEnd:   -1,
-		expr:           e,
+		partitionStart:     -1,
+		partitionEnd:       -1,
+		baseWindowFunction: newBaseWindowFunction(e),
 	}
 }
 
 func NewCountDistinctAgg(e sql.Expression) *CountAgg {
-	e = expression.NewDistinctExpression(e)
-	return &CountAgg{
-		partitionStart: -1,
-		partitionEnd:   -1,
-		expr:           e,
-	}
+	return NewCountAgg(expression.NewDistinctExpression(e))
 }
 
-func (a *CountAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+func (a *CountAgg) WithWindow(ctx *sql.Context, w *sql.WindowDefinition) (sql.WindowFunction, error) {
 	na := *a
 	if w.Frame != nil {
 		framer, err := w.Frame.NewFramer(w)
@@ -768,31 +774,12 @@ func (a *CountAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, erro
 	return &na, nil
 }
 
-func (a *CountAgg) Dispose() {
-	expression.Dispose(a.expr)
-}
-
-// DefaultFramer returns a NewPartitionFramer
-func (a *CountAgg) DefaultFramer() sql.WindowFramer {
-	if a.framer != nil {
-		return a.framer
-	}
-
-	if a.orderBy == nil || len(a.orderBy) < 1 {
-		return NewPartitionFramer()
-	}
-
-	return &RangeUnboundedPrecedingToCurrentRowFramer{
-		rangeFramerBase{
-			orderBy:            a.orderBy[0],
-			unboundedPreceding: true,
-			endCurrentRow:      true,
-		},
-	}
+func (a *CountAgg) Dispose(ctx *sql.Context) {
+	expression.Dispose(ctx, a.expr)
 }
 
 func (a *CountAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) error {
-	a.Dispose()
+	a.Dispose(ctx)
 	a.partitionStart, a.partitionEnd = interval.Start, interval.End
 	a.pos = a.partitionStart
 	a.peerGroup = sql.WindowInterval{}
@@ -857,7 +844,7 @@ func NewGroupConcatAgg(gc *GroupConcat) *GroupConcatAgg {
 	}
 }
 
-func (a *GroupConcatAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+func (a *GroupConcatAgg) WithWindow(ctx *sql.Context, w *sql.WindowDefinition) (sql.WindowFunction, error) {
 	na := *a
 	if w.Frame != nil {
 		framer, err := w.Frame.NewFramer(w)
@@ -869,8 +856,8 @@ func (a *GroupConcatAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction
 	return &na, nil
 }
 
-func (a *GroupConcatAgg) Dispose() {
-	expression.Dispose(a.gc)
+func (a *GroupConcatAgg) Dispose(ctx *sql.Context) {
+	expression.Dispose(ctx, a.gc)
 }
 
 // DefaultFramer returns a NewUnboundedPrecedingToCurrentRowFramer
@@ -882,7 +869,7 @@ func (a *GroupConcatAgg) DefaultFramer() sql.WindowFramer {
 }
 
 func (a *GroupConcatAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) error {
-	a.Dispose()
+	a.Dispose(ctx)
 	var err error
 	a.rows, a.distinct, err = a.filterToDistinct(ctx, buf[interval.Start:interval.End])
 	return err
@@ -900,16 +887,13 @@ func (a *GroupConcatAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, 
 	}
 
 	// Execute the order operation if it exists.
-	if a.gc.sf != nil {
-		sorter := &expression.Sorter{
-			SortFields: a.gc.sf,
-			Rows:       rows,
-			Ctx:        ctx,
-		}
+	if a.gc.sortConditions != nil {
+		sorter := sorters.NewRowSorterWithRows(ctx, a.gc.sortConditions, rows)
 
 		sort.Stable(sorter)
-		if sorter.LastError != nil {
-			return nil, nil
+		err := sorter.GetError()
+		if err != nil {
+			return nil, err
 		}
 	}
 
@@ -992,17 +976,16 @@ func (a *GroupConcatAgg) filterToDistinct(ctx *sql.Context, buf sql.WindowBuffer
 }
 
 type WindowedJSONArrayAgg struct {
-	expr   sql.Expression
-	framer sql.WindowFramer
+	baseWindowFunction
 }
 
 func NewJsonArrayAgg(expr sql.Expression) *WindowedJSONArrayAgg {
 	return &WindowedJSONArrayAgg{
-		expr: expr,
+		baseWindowFunction: newBaseWindowFunction(expr),
 	}
 }
 
-func (a *WindowedJSONArrayAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+func (a *WindowedJSONArrayAgg) WithWindow(ctx *sql.Context, w *sql.WindowDefinition) (sql.WindowFunction, error) {
 	na := *a
 	if w.Frame != nil {
 		framer, err := w.Frame.NewFramer(w)
@@ -1010,21 +993,20 @@ func (a *WindowedJSONArrayAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFu
 			return nil, err
 		}
 		na.framer = framer
+		return &na, nil
+	}
+	if w.OrderBy != nil {
+		na.orderBy = w.OrderBy.ToExpressions()
 	}
 	return &na, nil
 }
 
-func (a *WindowedJSONArrayAgg) Dispose() {
-	expression.Dispose(a.expr)
-}
-
-// DefaultFramer returns a NewUnboundedPrecedingToCurrentRowFramer
-func (a *WindowedJSONArrayAgg) DefaultFramer() sql.WindowFramer {
-	return NewUnboundedPrecedingToCurrentRowFramer()
+func (a *WindowedJSONArrayAgg) Dispose(ctx *sql.Context) {
+	expression.Dispose(ctx, a.expr)
 }
 
 func (a *WindowedJSONArrayAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) error {
-	a.Dispose()
+	a.Dispose(ctx)
 	return nil
 }
 
@@ -1079,7 +1061,7 @@ func NewWindowedJSONObjectAgg(j *JSONObjectAgg) *WindowedJSONObjectAgg {
 	}
 }
 
-func (a *WindowedJSONObjectAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+func (a *WindowedJSONObjectAgg) WithWindow(ctx *sql.Context, w *sql.WindowDefinition) (sql.WindowFunction, error) {
 	na := *a
 	if w.Frame != nil {
 		framer, err := w.Frame.NewFramer(w)
@@ -1091,8 +1073,8 @@ func (a *WindowedJSONObjectAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowF
 	return &na, nil
 }
 
-func (a *WindowedJSONObjectAgg) Dispose() {
-	expression.Dispose(a.j)
+func (a *WindowedJSONObjectAgg) Dispose(ctx *sql.Context) {
+	expression.Dispose(ctx, a.j)
 }
 
 // DefaultFramer returns a NewUnboundedPrecedingToCurrentRowFramer
@@ -1104,7 +1086,7 @@ func (a *WindowedJSONObjectAgg) DefaultFramer() sql.WindowFramer {
 }
 
 func (a *WindowedJSONObjectAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) error {
-	a.Dispose()
+	a.Dispose(ctx)
 	var err error
 	a.vals, err = a.aggregateVals(ctx, interval, buf)
 	return err
@@ -1173,11 +1155,11 @@ func NewRowNumber() *RowNumber {
 	}
 }
 
-func (a *RowNumber) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+func (a *RowNumber) WithWindow(ctx *sql.Context, w *sql.WindowDefinition) (sql.WindowFunction, error) {
 	return a, nil
 }
 
-func (a *RowNumber) Dispose() {
+func (a *RowNumber) Dispose(ctx *sql.Context) {
 	return
 }
 
@@ -1187,7 +1169,7 @@ func (a *RowNumber) DefaultFramer() sql.WindowFramer {
 }
 
 func (a *RowNumber) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buffer sql.WindowBuffer) error {
-	a.Dispose()
+	a.Dispose(ctx)
 	a.pos = 1
 	return nil
 }
@@ -1216,13 +1198,13 @@ type rankBase struct {
 	pos            int
 }
 
-func (a *rankBase) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+func (a *rankBase) WithWindow(ctx *sql.Context, w *sql.WindowDefinition) (sql.WindowFunction, error) {
 	na := *a
 	na.orderBy = w.OrderBy.ToExpressions()
 	return &na, nil
 }
 
-func (a *rankBase) Dispose() {
+func (a *rankBase) Dispose(ctx *sql.Context) {
 	return
 }
 
@@ -1231,7 +1213,7 @@ func (a *rankBase) DefaultFramer() sql.WindowFramer {
 }
 
 func (a *rankBase) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buffer sql.WindowBuffer) error {
-	a.Dispose()
+	a.Dispose(ctx)
 	a.partitionStart, a.partitionEnd = interval.Start, interval.End
 	a.pos = a.partitionStart
 	a.peerGroup = sql.WindowInterval{}
@@ -1361,13 +1343,13 @@ func NewNTile(expr sql.Expression) *NTile {
 	}
 }
 
-func (n *NTile) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+func (n *NTile) WithWindow(ctx *sql.Context, w *sql.WindowDefinition) (sql.WindowFunction, error) {
 	na := *n
 	na.orderBy = w.OrderBy.ToExpressions()
 	return &na, nil
 }
 
-func (n *NTile) Dispose() {
+func (n *NTile) Dispose(ctx *sql.Context) {
 	return
 }
 
@@ -1376,7 +1358,7 @@ func (n *NTile) DefaultFramer() sql.WindowFramer {
 }
 
 func (n *NTile) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) error {
-	n.Dispose()
+	n.Dispose(ctx)
 	if interval.End < interval.Start {
 		return nil
 	}
@@ -1385,14 +1367,15 @@ func (n *NTile) StartPartition(ctx *sql.Context, interval sql.WindowInterval, bu
 	if err != nil {
 		return err
 	}
-	numBucketsVal, _, err = types.Int64.Convert(ctx, numBucketsVal)
+	var inRange sql.ConvertInRange
+	numBucketsVal, inRange, err = types.Int64.Convert(ctx, numBucketsVal)
 	if err != nil {
-		numBucketsVal = uint64(0)
+		return err
 	}
 	if numBucketsVal == nil {
 		return sql.ErrInvalidArgument.New("NTILE")
 	}
-	if numBucketsVal.(int64) <= 0 {
+	if numBucketsVal.(int64) <= 0 || inRange != sql.InRange {
 		return sql.ErrInvalidArgument.New("NTILE")
 	}
 
@@ -1466,11 +1449,11 @@ type leadLagBase struct {
 	pos    int
 }
 
-func (a *leadLagBase) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+func (a *leadLagBase) WithWindow(ctx *sql.Context, w *sql.WindowDefinition) (sql.WindowFunction, error) {
 	return a, nil
 }
 
-func (a *leadLagBase) Dispose() {
+func (a *leadLagBase) Dispose(ctx *sql.Context) {
 	return
 }
 
@@ -1480,7 +1463,7 @@ func (a *leadLagBase) DefaultFramer() sql.WindowFramer {
 }
 
 func (a *leadLagBase) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buffer sql.WindowBuffer) error {
-	a.Dispose()
+	a.Dispose(ctx)
 	return nil
 }
 
@@ -1507,8 +1490,7 @@ func (a *leadLagBase) Compute(ctx *sql.Context, interval sql.WindowInterval, buf
 }
 
 type StdDevPopAgg struct {
-	expr           sql.Expression
-	framer         sql.WindowFramer
+	baseWindowFunction
 	prefixSum      []float64
 	nullCnt        []int
 	partitionStart int
@@ -1517,11 +1499,11 @@ type StdDevPopAgg struct {
 
 func NewStdDevPopAgg(e sql.Expression) *StdDevPopAgg {
 	return &StdDevPopAgg{
-		expr: e,
+		baseWindowFunction: newBaseWindowFunction(e),
 	}
 }
 
-func (s *StdDevPopAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+func (s *StdDevPopAgg) WithWindow(ctx *sql.Context, w *sql.WindowDefinition) (sql.WindowFunction, error) {
 	ns := *s
 	if w.Frame != nil {
 		framer, err := w.Frame.NewFramer(w)
@@ -1529,24 +1511,20 @@ func (s *StdDevPopAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, 
 			return nil, err
 		}
 		ns.framer = framer
+		return &ns, nil
+	}
+	if w.OrderBy != nil {
+		ns.orderBy = w.OrderBy.ToExpressions()
 	}
 	return &ns, nil
 }
 
-func (s *StdDevPopAgg) Dispose() {
-	expression.Dispose(s.expr)
-}
-
-// DefaultFramer returns a NewUnboundedPrecedingToCurrentRowFramer
-func (s *StdDevPopAgg) DefaultFramer() sql.WindowFramer {
-	if s.framer != nil {
-		return s.framer
-	}
-	return NewUnboundedPrecedingToCurrentRowFramer()
+func (s *StdDevPopAgg) Dispose(ctx *sql.Context) {
+	expression.Dispose(ctx, s.expr)
 }
 
 func (s *StdDevPopAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) error {
-	s.Dispose()
+	s.Dispose(ctx)
 	s.partitionStart = interval.Start
 	s.partitionEnd = interval.End
 	var err error
@@ -1554,7 +1532,7 @@ func (s *StdDevPopAgg) StartPartition(ctx *sql.Context, interval sql.WindowInter
 	return err
 }
 
-func computeStd2(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer, expr sql.Expression, m float64) (float64, error) {
+func computeStd(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer, expr sql.Expression, m float64) (float64, error) {
 	var v float64
 	for i := interval.Start; i < interval.End; i++ {
 		row := buf[i]
@@ -1594,7 +1572,7 @@ func (s *StdDevPopAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, bu
 	}
 
 	m := computePrefixSum(interval, s.partitionStart, s.prefixSum) / float64(nonNullCnt)
-	s2, err := computeStd2(ctx, interval, buf, s.expr, m)
+	s2, err := computeStd(ctx, interval, buf, s.expr, m)
 	if err != nil {
 		return nil, err
 	}
@@ -1603,8 +1581,7 @@ func (s *StdDevPopAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, bu
 }
 
 type StdDevSampAgg struct {
-	expr           sql.Expression
-	framer         sql.WindowFramer
+	baseWindowFunction
 	prefixSum      []float64
 	nullCnt        []int
 	partitionStart int
@@ -1613,11 +1590,11 @@ type StdDevSampAgg struct {
 
 func NewStdDevSampAgg(e sql.Expression) *StdDevSampAgg {
 	return &StdDevSampAgg{
-		expr: e,
+		baseWindowFunction: newBaseWindowFunction(e),
 	}
 }
 
-func (s *StdDevSampAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+func (s *StdDevSampAgg) WithWindow(ctx *sql.Context, w *sql.WindowDefinition) (sql.WindowFunction, error) {
 	ns := *s
 	if w.Frame != nil {
 		framer, err := w.Frame.NewFramer(w)
@@ -1625,24 +1602,20 @@ func (s *StdDevSampAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction,
 			return nil, err
 		}
 		ns.framer = framer
+		return &ns, nil
+	}
+	if w.OrderBy != nil {
+		ns.orderBy = w.OrderBy.ToExpressions()
 	}
 	return &ns, nil
 }
 
-func (s *StdDevSampAgg) Dispose() {
-	expression.Dispose(s.expr)
-}
-
-// DefaultFramer returns a NewUnboundedPrecedingToCurrentRowFramer
-func (s *StdDevSampAgg) DefaultFramer() sql.WindowFramer {
-	if s.framer != nil {
-		return s.framer
-	}
-	return NewUnboundedPrecedingToCurrentRowFramer()
+func (s *StdDevSampAgg) Dispose(ctx *sql.Context) {
+	expression.Dispose(ctx, s.expr)
 }
 
 func (s *StdDevSampAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) error {
-	s.Dispose()
+	s.Dispose(ctx)
 	s.partitionStart = interval.Start
 	s.partitionEnd = interval.End
 	var err error
@@ -1668,7 +1641,7 @@ func (s *StdDevSampAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, b
 	}
 
 	m := computePrefixSum(interval, s.partitionStart, s.prefixSum) / float64(nonNullCnt)
-	s2, err := computeStd2(ctx, interval, buf, s.expr, m)
+	s2, err := computeStd(ctx, interval, buf, s.expr, m)
 	if err != nil {
 		return nil, err
 	}
@@ -1677,8 +1650,7 @@ func (s *StdDevSampAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, b
 }
 
 type VarPopAgg struct {
-	expr           sql.Expression
-	framer         sql.WindowFramer
+	baseWindowFunction
 	prefixSum      []float64
 	nullCnt        []int
 	partitionStart int
@@ -1687,11 +1659,11 @@ type VarPopAgg struct {
 
 func NewVarPopAgg(e sql.Expression) *VarPopAgg {
 	return &VarPopAgg{
-		expr: e,
+		baseWindowFunction: newBaseWindowFunction(e),
 	}
 }
 
-func (v *VarPopAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+func (v *VarPopAgg) WithWindow(ctx *sql.Context, w *sql.WindowDefinition) (sql.WindowFunction, error) {
 	ns := *v
 	if w.Frame != nil {
 		framer, err := w.Frame.NewFramer(w)
@@ -1699,24 +1671,20 @@ func (v *VarPopAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, err
 			return nil, err
 		}
 		ns.framer = framer
+		return &ns, nil
+	}
+	if w.OrderBy != nil {
+		ns.orderBy = w.OrderBy.ToExpressions()
 	}
 	return &ns, nil
 }
 
-func (v *VarPopAgg) Dispose() {
-	expression.Dispose(v.expr)
-}
-
-// DefaultFramer returns a NewUnboundedPrecedingToCurrentRowFramer
-func (v *VarPopAgg) DefaultFramer() sql.WindowFramer {
-	if v.framer != nil {
-		return v.framer
-	}
-	return NewUnboundedPrecedingToCurrentRowFramer()
+func (v *VarPopAgg) Dispose(ctx *sql.Context) {
+	expression.Dispose(ctx, v.expr)
 }
 
 func (v *VarPopAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) error {
-	v.Dispose()
+	v.Dispose(ctx)
 	v.partitionStart = interval.Start
 	v.partitionEnd = interval.End
 	var err error
@@ -1742,7 +1710,7 @@ func (v *VarPopAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf s
 	}
 
 	m := computePrefixSum(interval, v.partitionStart, v.prefixSum) / float64(nonNullCnt)
-	s2, err := computeStd2(ctx, interval, buf, v.expr, m)
+	s2, err := computeStd(ctx, interval, buf, v.expr, m)
 	if err != nil {
 		return nil, err
 	}
@@ -1751,8 +1719,7 @@ func (v *VarPopAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf s
 }
 
 type VarSampAgg struct {
-	expr           sql.Expression
-	framer         sql.WindowFramer
+	baseWindowFunction
 	prefixSum      []float64
 	nullCnt        []int
 	partitionStart int
@@ -1761,11 +1728,11 @@ type VarSampAgg struct {
 
 func NewVarSampAgg(e sql.Expression) *VarSampAgg {
 	return &VarSampAgg{
-		expr: e,
+		baseWindowFunction: newBaseWindowFunction(e),
 	}
 }
 
-func (v *VarSampAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+func (v *VarSampAgg) WithWindow(ctx *sql.Context, w *sql.WindowDefinition) (sql.WindowFunction, error) {
 	ns := *v
 	if w.Frame != nil {
 		framer, err := w.Frame.NewFramer(w)
@@ -1773,24 +1740,20 @@ func (v *VarSampAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, er
 			return nil, err
 		}
 		ns.framer = framer
+		return &ns, nil
+	}
+	if w.OrderBy != nil {
+		ns.orderBy = w.OrderBy.ToExpressions()
 	}
 	return &ns, nil
 }
 
-func (v *VarSampAgg) Dispose() {
-	expression.Dispose(v.expr)
-}
-
-// DefaultFramer returns a NewUnboundedPrecedingToCurrentRowFramer
-func (v *VarSampAgg) DefaultFramer() sql.WindowFramer {
-	if v.framer != nil {
-		return v.framer
-	}
-	return NewUnboundedPrecedingToCurrentRowFramer()
+func (v *VarSampAgg) Dispose(ctx *sql.Context) {
+	expression.Dispose(ctx, v.expr)
 }
 
 func (v *VarSampAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) error {
-	v.Dispose()
+	v.Dispose(ctx)
 	v.partitionStart = interval.Start
 	v.partitionEnd = interval.End
 	var err error
@@ -1816,7 +1779,7 @@ func (v *VarSampAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf 
 	}
 
 	m := computePrefixSum(interval, v.partitionStart, v.prefixSum) / float64(nonNullCnt)
-	s2, err := computeStd2(ctx, interval, buf, v.expr, m)
+	s2, err := computeStd(ctx, interval, buf, v.expr, m)
 	if err != nil {
 		return nil, err
 	}

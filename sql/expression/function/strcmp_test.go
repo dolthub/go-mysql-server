@@ -57,7 +57,7 @@ func TestStrCmp(t *testing.T) {
 	for _, tt := range testCases {
 		args0 := expression.NewGetField(0, tt.e1Type, "", false)
 		args1 := expression.NewGetField(1, tt.e2Type, "", false)
-		f := NewStrCmp(args0, args1)
+		f := NewStrCmp(sql.NewEmptyContext(), args0, args1)
 
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
@@ -76,16 +76,16 @@ func TestStrCmp(t *testing.T) {
 	t.Run("too many arguments", func(t *testing.T) {
 		require := require.New(t)
 
-		f := NewStrCmp(expression.NewLiteral('a', types.Text), expression.NewLiteral('b', types.Text))
-		_, err := f.WithChildren(expression.NewLiteral('a', types.Text), expression.NewLiteral('b', types.Text), expression.NewLiteral('c', types.Text))
+		f := NewStrCmp(sql.NewEmptyContext(), expression.NewLiteral('a', types.Text), expression.NewLiteral('b', types.Text))
+		_, err := f.WithChildren(sql.NewEmptyContext(), expression.NewLiteral('a', types.Text), expression.NewLiteral('b', types.Text), expression.NewLiteral('c', types.Text))
 		require.Error(err)
 	})
 
 	t.Run("too few arguments", func(t *testing.T) {
 		require := require.New(t)
 
-		f := NewStrCmp(expression.NewLiteral('a', types.Text), expression.NewLiteral('b', types.Text))
-		_, err := f.WithChildren(expression.NewLiteral('a', types.Text))
+		f := NewStrCmp(sql.NewEmptyContext(), expression.NewLiteral('a', types.Text), expression.NewLiteral('b', types.Text))
+		_, err := f.WithChildren(sql.NewEmptyContext(), expression.NewLiteral('a', types.Text))
 		require.Error(err)
 	})
 }

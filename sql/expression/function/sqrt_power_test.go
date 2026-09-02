@@ -27,6 +27,7 @@ import (
 
 func TestSqrt(t *testing.T) {
 	f := NewSqrt(
+		sql.NewEmptyContext(),
 		expression.NewGetField(0, types.Float64, "n", false),
 	)
 	testCases := []struct {
@@ -89,11 +90,13 @@ func TestPower(t *testing.T) {
 		{"Base and exp are valid float strings truncated", types.Text, sql.NewRow("1.2abc", "2.3abc"), 1.5209567545525318, false},
 		{"Base and exp are valid scientific float notation strings truncated", types.Text, sql.NewRow("0.12e1asdf", "+23e-1asdf"), 1.5209567545525318, false},
 
-		{"positive inf", types.Float64, sql.NewRow(2, math.Inf(1)), nil, true},
-		{"negative inf", types.Float64, sql.NewRow(2, math.Inf(-1)), nil, true},
+		// This is an overflow error in MySQL because it does not allow infinity values, but go-mysql-server does to be Postgres-compatible.
+		{"positive inf", types.Float64, sql.NewRow(2, math.Inf(1)), math.Inf(1), false},
+		{"negative inf", types.Float64, sql.NewRow(2, math.Inf(-1)), 0.0, false},
 	}
 	for _, tt := range testCases {
 		f := NewPower(
+			sql.NewEmptyContext(),
 			expression.NewGetField(0, tt.rowType, "", false),
 			expression.NewGetField(1, tt.rowType, "", false),
 		)

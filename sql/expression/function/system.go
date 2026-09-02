@@ -34,7 +34,7 @@ func connIDFuncLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
 var _ sql.FunctionExpression = ConnectionID{}
 var _ sql.CollationCoercible = ConnectionID{}
 
-func NewConnectionID() sql.Expression {
+func NewConnectionID(ctx *sql.Context) sql.Expression {
 	return ConnectionID{
 		NoArgFunc: NoArgFunc{Name: "connection_id", SQLType: types.Uint32},
 	}
@@ -61,7 +61,7 @@ func (c ConnectionID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements sql.Expression
-func (c ConnectionID) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (c ConnectionID) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	return NoArgFuncWithChildren(c, children)
 }
 
@@ -94,13 +94,13 @@ func (User) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, 
 	return sql.Collation_utf8mb3_general_ci, 3
 }
 
-func NewUser() sql.Expression {
+func NewUser(ctx *sql.Context) sql.Expression {
 	return User{
 		NoArgFunc: NoArgFunc{Name: "user", SQLType: types.LongText},
 	}
 }
 
-func NewCurrentUser() sql.Expression {
+func NewCurrentUser(ctx *sql.Context) sql.Expression {
 	return User{
 		NoArgFunc: NoArgFunc{Name: "current_user", SQLType: types.LongText},
 	}
@@ -112,6 +112,6 @@ func (c User) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements sql.Expression
-func (c User) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (c User) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	return NoArgFuncWithChildren(c, children)
 }

@@ -41,7 +41,7 @@ func NewFlushPrivileges(ft bool) *FlushPrivileges {
 func (*FlushPrivileges) String() string { return "FLUSH PRIVILEGES" }
 
 // WithChildren implements the interface sql.Node.
-func (f *FlushPrivileges) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (f *FlushPrivileges) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 0)
 	}
@@ -69,7 +69,7 @@ func (f *FlushPrivileges) Resolved() bool {
 func (*FlushPrivileges) Children() []sql.Node { return nil }
 
 // Schema implements the sql.Node interface.
-func (*FlushPrivileges) Schema() sql.Schema { return types.OkResultSchema }
+func (*FlushPrivileges) Schema(ctx *sql.Context) sql.Schema { return types.OkResultSchema }
 
 // Database implements the sql.Databaser interface.
 func (f *FlushPrivileges) Database() sql.Database {

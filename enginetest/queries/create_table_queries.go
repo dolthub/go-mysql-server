@@ -35,6 +35,27 @@ var CreateTableQueries = []WriteQueryTest{
 		ExpectedSelect:      []sql.Row{{"tableWithComment", "CREATE TABLE `tableWithComment` (\n  `pk` int\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin COMMENT='Table Comments=Still Work'"}},
 	},
 	{
+		// See https://github.com/dolthub/dolt/issues/11163
+		WriteQuery:          `create table tableWithComment (id int not null, r varchar(8) not null, primary key (r, id)) COMMENT='c'`,
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
+		SelectQuery:         "SHOW CREATE TABLE tableWithComment",
+		ExpectedSelect:      []sql.Row{{"tableWithComment", "CREATE TABLE `tableWithComment` (\n  `id` int NOT NULL,\n  `r` varchar(8) NOT NULL,\n  PRIMARY KEY (`r`,`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin COMMENT='c'"}},
+	},
+	{
+		// See https://github.com/dolthub/dolt/issues/11163
+		WriteQuery:          `create table tableWithComment (id int not null, v int, primary key (id), key k (v)) COMMENT='c'`,
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
+		SelectQuery:         "SHOW CREATE TABLE tableWithComment",
+		ExpectedSelect:      []sql.Row{{"tableWithComment", "CREATE TABLE `tableWithComment` (\n  `id` int NOT NULL,\n  `v` int,\n  PRIMARY KEY (`id`),\n  KEY `k` (`v`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin COMMENT='c'"}},
+	},
+	{
+		// See https://github.com/dolthub/dolt/issues/11163
+		WriteQuery:          `create table tableWithComment (id int not null, primary key (id)) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin COMMENT='c'`,
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
+		SelectQuery:         "SHOW CREATE TABLE tableWithComment",
+		ExpectedSelect:      []sql.Row{{"tableWithComment", "CREATE TABLE `tableWithComment` (\n  `id` int NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin COMMENT='c'"}},
+	},
+	{
 		WriteQuery:          `create table tableWithComment (pk int) COMMENT "~!@ #$ %^ &* ()"`,
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
 		SelectQuery:         "SHOW CREATE TABLE tableWithComment",
@@ -331,9 +352,91 @@ var CreateTableQueries = []WriteQueryTest{
 		SelectQuery:         `SHOW CREATE TABLE t1`,
 		ExpectedSelect:      []sql.Row{{"t1", "CREATE TABLE `t1` (\n  `id` bigint unsigned NOT NULL AUTO_INCREMENT,\n  UNIQUE KEY `id` (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 	},
+	{
+		WriteQuery:          `CREATE TABLE t1 (pk int primary key) TARGET_ROW_SIZE=4096`,
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
+		SelectQuery:         "SHOW CREATE TABLE t1",
+		ExpectedSelect:      []sql.Row{{"t1", "CREATE TABLE `t1` (\n  `pk` int NOT NULL,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin TARGET_ROW_SIZE=4096"}},
+	},
+	{
+		WriteQuery:          `CREATE TABLE t1 (pk int primary key) TOAST_TUPLE_TARGET=1024`,
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
+		SelectQuery:         "SHOW CREATE TABLE t1",
+		ExpectedSelect:      []sql.Row{{"t1", "CREATE TABLE `t1` (\n  `pk` int NOT NULL,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin TARGET_ROW_SIZE=1024"}},
+	},
 }
 
 var CreateTableScriptTests = []ScriptTest{
+	{
+		// https://github.com/dolthub/dolt/issues/11620
+		Name: "CREATE TABLE AS (SELECT ...)",
+		SetUpScript: []string{
+			"CREATE TABLE people (id INT, name VARCHAR(100))",
+			"INSERT INTO people VALUES (3, 'Charlie'), (1, 'Alice'), (4, 'David'), (2, 'Bob')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CREATE TABLE people_copy AS (SELECT * FROM people)",
+				Expected: []sql.Row{{types.NewOkResult(4)}},
+			},
+			{
+				Query: "SELECT * FROM people_copy",
+				Expected: []sql.Row{
+					{3, "Charlie"},
+					{1, "Alice"},
+					{4, "David"},
+					{2, "Bob"},
+				},
+			},
+			{
+				Query:    "CREATE TABLE people_ordered_inside AS (SELECT * FROM people ORDER BY id ASC LIMIT 2)",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query: "SELECT * FROM people_ordered_inside ORDER BY id",
+				Expected: []sql.Row{
+					{1, "Alice"},
+					{2, "Bob"},
+				},
+			},
+			{
+				Query:    "CREATE TABLE people_ordered_outside AS (SELECT * FROM people) ORDER BY id DESC LIMIT 2",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query: "SELECT * FROM people_ordered_outside ORDER BY id",
+				Expected: []sql.Row{
+					{3, "Charlie"},
+					{4, "David"},
+				},
+			},
+			{
+				Query:    "CREATE TABLE people_explicit (id BIGINT, name VARCHAR(50), PRIMARY KEY (id)) AS (SELECT * FROM people)",
+				Expected: []sql.Row{{types.NewOkResult(4)}},
+			},
+			{
+				Query: "SELECT * FROM people_explicit ORDER BY id",
+				Expected: []sql.Row{
+					{1, "Alice"},
+					{2, "Bob"},
+					{3, "Charlie"},
+					{4, "David"},
+				},
+			},
+			{
+				Query:    "CREATE TABLE people_cte AS (WITH cte AS (SELECT id * 10 AS new_id, name FROM people) SELECT new_id, name FROM cte WHERE new_id > 10)",
+				Expected: []sql.Row{{types.NewOkResult(3)}},
+			},
+			{
+				Query: "SELECT * FROM people_cte ORDER BY new_id",
+				Expected: []sql.Row{
+					{20, "Bob"},
+					{30, "Charlie"},
+					{40, "David"},
+				},
+			},
+		},
+	},
 	{
 		// https://github.com/dolthub/dolt/issues/9316
 		Name:         "CREATE TABLE with constraints AS SELECT osticket repro",
@@ -1102,7 +1205,7 @@ var CreateTableScriptTests = []ScriptTest{
 				Query: "show create table t11;",
 				Expected: []sql.Row{
 					{"t11", "CREATE TABLE `t11` (\n" +
-						"  `jj` int NOT NULL\n" +
+						"  `jj` double NOT NULL\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},

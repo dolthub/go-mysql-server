@@ -1919,7 +1919,8 @@ CREATE TABLE teams (
 	{
 		Name: "keyless reverse index",
 		SetUpScript: []string{
-			"create table x (x int, key(x));",
+			"create table x (x int);",
+			"CREATE INDEX idx_x_x ON x(x)",
 			"insert into x values (0),(1)",
 		},
 		Query: "select * from x order by x desc limit 1",
@@ -2078,11 +2079,13 @@ CREATE TABLE table2 (
 		SetUpScript: []string{
 			"CREATE TABLE pk (x varchar(10) primary key)",
 			"INSERT INTO pk values ('3'), ('30'), ('3#')",
-			"CREATE TABLE uniq (y int primary key, x varchar(10), unique key (x))",
+			"CREATE TABLE uniq (y int primary key, x varchar(10), constraint idx_uniq_x unique key (x))",
 			"INSERT INTO uniq values (1,'3'), (2,'30'), (3,'3#')",
-			"CREATE TABLE noncov (y int primary key, x varchar(10), z int, key (x))",
+			"CREATE TABLE noncov (y int primary key, x varchar(10), z int)",
+			"CREATE INDEX idx_noncov_x ON noncov(x);",
 			"INSERT INTO noncov values (1,'3',1), (2,'30',2), (3,'3#',3)",
-			"CREATE TABLE keyless (y int, x varchar(10),key (x))",
+			"CREATE TABLE keyless (y int, x varchar(10))",
+			"CREATE INDEX idx_keyless_x ON keyless(x);",
 			"INSERT INTO keyless values (1,'3'), (2,'30'), (3,'3#')",
 		},
 		Assertions: []ScriptTestAssertion{
@@ -2442,7 +2445,11 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:       "select i, k from `left` union select i, j, k from `right`",
-				ExpectedErr: planbuilder.ErrUnionSchemasDifferentLength,
+				ExpectedErr: planbuilder.ErrSelectsDifferentLength,
+			},
+			{
+				Query:       "select i, j, k from `left` union select i, j from `right`",
+				ExpectedErr: planbuilder.ErrSelectsDifferentLength,
 			},
 			{
 				Query: "table t1 union table t2 order by i;",
@@ -2759,6 +2766,10 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{
 					{1},
 				},
+			},
+			{
+				Query:       "with recursive cte (x,y) as (select 1, 2, 3 union select x, y from cte where x < 5) select * from cte;",
+				ExpectedErr: planbuilder.ErrSelectsDifferentLength,
 			},
 			{
 				Query: "with recursive cte (x,y) as (select 1, 1 intersect select 1, 1 union select x + 1, y + 2 from cte where x < 5) select * from cte;",
@@ -3243,6 +3254,19 @@ CREATE TABLE tab3 (
 			{
 				Query:    `SELECT BIN_TO_UUID(UUID_TO_BIN(@uuid, 1), 1)`,
 				Expected: []sql.Row{{"6ccd780c-baba-1026-9564-5b8c656024db"}},
+			},
+			{
+				// https://github.com/dolthub/dolt/issues/11457
+				Query:    `SELECT BIN_TO_UUID(UUID_TO_BIN(@uuid), null)`,
+				Expected: []sql.Row{{"6ccd780c-baba-1026-9564-5b8c656024db"}},
+			},
+			{
+				Query:    `SELECT BIN_TO_UUID(UUID_TO_BIN(@uuid), 3000)`,
+				Expected: []sql.Row{{"baba1026-780c-6ccd-9564-5b8c656024db"}},
+			},
+			{
+				Query:    `SELECT BIN_TO_UUID(UUID_TO_BIN(@uuid), -10)`,
+				Expected: []sql.Row{{"baba1026-780c-6ccd-9564-5b8c656024db"}},
 			},
 			{
 				Query:    `SELECT UUID_TO_BIN(NULL)`,
@@ -4354,8 +4378,12 @@ CREATE TABLE tab3 (
 				ExpectedErr: sql.ErrExpectedSingleRow,
 			},
 			{
-				Query:    "SELECT group_concat(`attribute`) FROM t where o_id=2 order by attribute",
+				Query:    "SELECT group_concat(`attribute` order by attribute) FROM t where o_id=2 order by attribute",
 				Expected: []sql.Row{{"color,fabric"}},
+			},
+			{
+				Query:    "SELECT group_concat(`attribute` order by attribute desc) FROM t where o_id=2 order by attribute",
+				Expected: []sql.Row{{"fabric,color"}},
 			},
 			{
 				Query:    "SELECT group_concat(DISTINCT `attribute` ORDER BY value DESC SEPARATOR ';') FROM t group by o_id order by o_id asc",
@@ -4366,7 +4394,7 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{"2,3"}},
 			},
 			{
-				Query:    "SELECT group_concat(attribute separator '') FROM t WHERE o_id=2 ORDER BY attribute",
+				Query:    "SELECT group_concat(attribute order by attribute separator '') FROM t WHERE o_id=2 ORDER BY attribute",
 				Expected: []sql.Row{{"colorfabric"}},
 			},
 		},
@@ -4580,7 +4608,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:       "INSERT INTO test (pk) VALUES (3);",
-				ExpectedErr: sql.ErrInsertIntoNonNullableDefaultNullColumn,
+				ExpectedErr: sql.ErrFieldNoDefaultValue,
 			},
 			{
 				Query:       "ALTER TABLE test ALTER v2 DROP DEFAULT;",
@@ -4596,7 +4624,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:       "INSERT INTO test (pk) VALUES (2);",
-				ExpectedErr: sql.ErrInsertIntoNonNullableDefaultNullColumn,
+				ExpectedErr: sql.ErrFieldNoDefaultValue,
 			},
 			{
 				Query:    "ALTER TABLE test ALTER v1 SET DEFAULT 100, alter v1 SET DEFAULT 200",
@@ -5857,6 +5885,47 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
+		Name: "scalar subquery aggregate is scoped independently of outer aggregate",
+		SetUpScript: []string{
+			"CREATE TABLE subquery_aggregate_scope (id INT PRIMARY KEY, d DATETIME, tag VARCHAR(10));",
+			"INSERT INTO subquery_aggregate_scope VALUES (1, '2020-01-01 00:00:00', 'keep'), (2, '2021-01-01 00:00:00', 'skip'), (3, '2030-01-01 00:00:00', 'skip');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT MAX(d), (SELECT MAX(d) FROM subquery_aggregate_scope WHERE tag = 'keep') FROM subquery_aggregate_scope;",
+				Expected: []sql.Row{{time.Date(2030, 1, 1, 0, 0, 0, 0, time.UTC), time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)}},
+			},
+			{
+				Query:    "SELECT SUM(id), (SELECT SUM(id) FROM subquery_aggregate_scope WHERE tag = 'keep') FROM subquery_aggregate_scope;",
+				Expected: []sql.Row{{float64(6), float64(1)}},
+			},
+			{
+				Query:    "SELECT COUNT(id), (SELECT COUNT(id) FROM subquery_aggregate_scope WHERE tag = 'keep') FROM subquery_aggregate_scope;",
+				Expected: []sql.Row{{int64(3), int64(1)}},
+			},
+			{
+				Query:    "SELECT AVG(id), (SELECT AVG(id) FROM subquery_aggregate_scope WHERE tag = 'keep') FROM subquery_aggregate_scope;",
+				Expected: []sql.Row{{float64(2), float64(1)}},
+			},
+			{
+				Query:    "SELECT MAX(id), (SELECT MAX(id) FROM subquery_aggregate_scope WHERE tag = 'keep') FROM subquery_aggregate_scope;",
+				Expected: []sql.Row{{3, 1}},
+			},
+			{
+				Query:    "SELECT MIN(id), (SELECT MIN(id) FROM subquery_aggregate_scope WHERE tag = 'skip') FROM subquery_aggregate_scope;",
+				Expected: []sql.Row{{1, 2}},
+			},
+			{
+				Query:    "SELECT MIN(d), (SELECT MIN(d) FROM subquery_aggregate_scope WHERE tag = 'skip') FROM subquery_aggregate_scope;",
+				Expected: []sql.Row{{time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC), time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC)}},
+			},
+			{
+				Query:    "SELECT MIN(d) AS min_d, (SELECT MIN(d) AS min_d FROM subquery_aggregate_scope WHERE tag = 'skip') FROM subquery_aggregate_scope;",
+				Expected: []sql.Row{{time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC), time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC)}},
+			},
+		},
+	},
+	{
 		Name: "having clause without groupby clause, all rows implicitly form a single aggregate group",
 		SetUpScript: []string{
 			"create table numbers (val int);",
@@ -6264,62 +6333,6 @@ CREATE TABLE tab3 (
 					{0},
 					{1},
 					{2},
-				},
-			},
-		},
-	},
-	{
-		Name: "identical expressions over different windows should produce different results",
-		SetUpScript: []string{
-			"CREATE TABLE t(a INT, b INT);",
-			"INSERT INTO t(a, b) VALUES (1, 1), (1, 2), (1, 3), (2, 4), (2, 5), (2, 6);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "SELECT SUM(b) OVER (PARTITION BY a ORDER BY b) FROM t ORDER BY 1;",
-				Expected: []sql.Row{{float64(1)}, {float64(3)}, {float64(4)}, {float64(6)}, {float64(9)}, {float64(15)}},
-			},
-			{
-				Query:    "SELECT SUM(b) OVER (ORDER BY b) FROM t ORDER BY 1;",
-				Expected: []sql.Row{{float64(1)}, {float64(3)}, {float64(6)}, {float64(10)}, {float64(15)}, {float64(21)}},
-			},
-			{
-				Query: "SELECT SUM(b) OVER (PARTITION BY a ORDER BY b), SUM(b) OVER (ORDER BY b) FROM t ORDER BY 1;",
-				Expected: []sql.Row{
-					{float64(1), float64(1)},
-					{float64(3), float64(3)},
-					{float64(4), float64(10)},
-					{float64(6), float64(6)},
-					{float64(9), float64(15)},
-					{float64(15), float64(21)},
-				},
-			},
-		},
-	},
-	{
-		Name: "windows without ORDER BY should be treated as RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING",
-		SetUpScript: []string{
-			"CREATE TABLE t(a INT, b INT);",
-			"INSERT INTO t(a, b) VALUES (1, 1), (1, 2), (1, 3), (2, 4), (2, 5), (2, 6);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "SELECT SUM(b) OVER (PARTITION BY a) FROM t ORDER BY 1;",
-				Expected: []sql.Row{{float64(6)}, {float64(6)}, {float64(6)}, {float64(15)}, {float64(15)}, {float64(15)}},
-			},
-			{
-				Query:    "SELECT SUM(b) OVER () FROM t ORDER BY 1;",
-				Expected: []sql.Row{{float64(21)}, {float64(21)}, {float64(21)}, {float64(21)}, {float64(21)}, {float64(21)}},
-			},
-			{
-				Query: "SELECT SUM(b) OVER (PARTITION BY a), SUM(b) OVER () FROM t;",
-				Expected: []sql.Row{
-					{float64(6), float64(21)},
-					{float64(6), float64(21)},
-					{float64(6), float64(21)},
-					{float64(15), float64(21)},
-					{float64(15), float64(21)},
-					{float64(15), float64(21)},
 				},
 			},
 		},
@@ -9964,208 +9977,6 @@ where
 		},
 	},
 	{
-		Name:    "ntile tests",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"create table t (i int primary key, j int);",
-			"insert into t values (1, 1), (2, 1), (3, 1), (4, 1), (5, 1), (6, 2), (7, 2), (8, 2), (9, 2), (10, 2);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:       "select i, ntile(null) over() from t;",
-				ExpectedErr: sql.ErrInvalidArgument,
-			},
-			{
-				Query:       "select i, ntile(0) over() from t;",
-				ExpectedErr: sql.ErrInvalidArgument,
-			},
-			{
-				Query:       "select i, ntile(-1) over() from t;",
-				ExpectedErr: sql.ErrInvalidArgument,
-			},
-			{
-				Query: "select i, ntile(100) over() from t;",
-				Expected: []sql.Row{
-					{1, uint64(1)},
-					{2, uint64(2)},
-					{3, uint64(3)},
-					{4, uint64(4)},
-					{5, uint64(5)},
-					{6, uint64(6)},
-					{7, uint64(7)},
-					{8, uint64(8)},
-					{9, uint64(9)},
-					{10, uint64(10)},
-				},
-			},
-			{
-				Query: "select i, ntile(10) over() from t;",
-				Expected: []sql.Row{
-					{1, uint64(1)},
-					{2, uint64(2)},
-					{3, uint64(3)},
-					{4, uint64(4)},
-					{5, uint64(5)},
-					{6, uint64(6)},
-					{7, uint64(7)},
-					{8, uint64(8)},
-					{9, uint64(9)},
-					{10, uint64(10)},
-				},
-			},
-			{
-				Query: "select i, ntile(9) over() from t;",
-				Expected: []sql.Row{
-					{1, uint64(1)},
-					{2, uint64(1)},
-					{3, uint64(2)},
-					{4, uint64(3)},
-					{5, uint64(4)},
-					{6, uint64(5)},
-					{7, uint64(6)},
-					{8, uint64(7)},
-					{9, uint64(8)},
-					{10, uint64(9)},
-				},
-			},
-			{
-				Query: "select i, ntile(8) over() from t;",
-				Expected: []sql.Row{
-					{1, uint64(1)},
-					{2, uint64(1)},
-					{3, uint64(2)},
-					{4, uint64(2)},
-					{5, uint64(3)},
-					{6, uint64(4)},
-					{7, uint64(5)},
-					{8, uint64(6)},
-					{9, uint64(7)},
-					{10, uint64(8)},
-				},
-			},
-			{
-				Query: "select i, ntile(7) over() from t;",
-				Expected: []sql.Row{
-					{1, uint64(1)},
-					{2, uint64(1)},
-					{3, uint64(2)},
-					{4, uint64(2)},
-					{5, uint64(3)},
-					{6, uint64(3)},
-					{7, uint64(4)},
-					{8, uint64(5)},
-					{9, uint64(6)},
-					{10, uint64(7)},
-				},
-			},
-			{
-				Query: "select i, ntile(6) over() from t;",
-				Expected: []sql.Row{
-					{1, uint64(1)},
-					{2, uint64(1)},
-					{3, uint64(2)},
-					{4, uint64(2)},
-					{5, uint64(3)},
-					{6, uint64(3)},
-					{7, uint64(4)},
-					{8, uint64(4)},
-					{9, uint64(5)},
-					{10, uint64(6)},
-				},
-			},
-			{
-				Query: "select i, ntile(5) over() from t;",
-				Expected: []sql.Row{
-					{1, uint64(1)},
-					{2, uint64(1)},
-					{3, uint64(2)},
-					{4, uint64(2)},
-					{5, uint64(3)},
-					{6, uint64(3)},
-					{7, uint64(4)},
-					{8, uint64(4)},
-					{9, uint64(5)},
-					{10, uint64(5)},
-				},
-			},
-			{
-				Query: "select i, ntile(4) over() from t;",
-				Expected: []sql.Row{
-					{1, uint64(1)},
-					{2, uint64(1)},
-					{3, uint64(1)},
-					{4, uint64(2)},
-					{5, uint64(2)},
-					{6, uint64(2)},
-					{7, uint64(3)},
-					{8, uint64(3)},
-					{9, uint64(4)},
-					{10, uint64(4)},
-				},
-			},
-			{
-				Query: "select i, ntile(3) over() from t;",
-				Expected: []sql.Row{
-					{1, uint64(1)},
-					{2, uint64(1)},
-					{3, uint64(1)},
-					{4, uint64(1)},
-					{5, uint64(2)},
-					{6, uint64(2)},
-					{7, uint64(2)},
-					{8, uint64(3)},
-					{9, uint64(3)},
-					{10, uint64(3)},
-				},
-			},
-			{
-				Query: "select i, ntile(2) over() from t;",
-				Expected: []sql.Row{
-					{1, uint64(1)},
-					{2, uint64(1)},
-					{3, uint64(1)},
-					{4, uint64(1)},
-					{5, uint64(1)},
-					{6, uint64(2)},
-					{7, uint64(2)},
-					{8, uint64(2)},
-					{9, uint64(2)},
-					{10, uint64(2)},
-				},
-			},
-			{
-				Query: "select i, ntile(1) over() from t;",
-				Expected: []sql.Row{
-					{1, uint64(1)},
-					{2, uint64(1)},
-					{3, uint64(1)},
-					{4, uint64(1)},
-					{5, uint64(1)},
-					{6, uint64(1)},
-					{7, uint64(1)},
-					{8, uint64(1)},
-					{9, uint64(1)},
-					{10, uint64(1)},
-				},
-			},
-			{
-				Query: "select i, j, ntile(2) over(partition by j) from t;",
-				Expected: []sql.Row{
-					{1, 1, uint64(1)},
-					{2, 1, uint64(1)},
-					{3, 1, uint64(1)},
-					{4, 1, uint64(2)},
-					{5, 1, uint64(2)},
-					{6, 2, uint64(1)},
-					{7, 2, uint64(1)},
-					{8, 2, uint64(1)},
-					{9, 2, uint64(2)},
-					{10, 2, uint64(2)},
-				},
-			},
-		},
-	},
-	{
 		Name:    "bit default value",
 		Dialect: "mysql",
 		SetUpScript: []string{
@@ -12089,12 +11900,12 @@ where
 			{
 				Skip:        true,
 				Query:       "insert into t values ();",
-				ExpectedErr: sql.ErrInsertIntoNonNullableDefaultNullColumn, // wrong error
+				ExpectedErr: sql.ErrFieldNoDefaultValue, // wrong error https://github.com/dolthub/dolt/issues/11608
 			},
 			{
 				Skip:        true,
 				Query:       "insert into t values (default);",
-				ExpectedErr: sql.ErrInsertIntoNonNullableDefaultNullColumn, // wrong error
+				ExpectedErr: sql.ErrFieldNoDefaultValue, // wrong error https://github.com/dolthub/dolt/issues/11608
 			},
 		},
 	},
@@ -14332,64 +14143,6 @@ select * from t1 except (
 		},
 	},
 	{
-		// https://github.com/dolthub/dolt/issues/6899
-		Name: "window function tests",
-		SetUpScript: []string{
-			"CREATE TABLE c (c_id INT PRIMARY KEY, bill TEXT);",
-			"CREATE TABLE o (o_id INT PRIMARY KEY, c_id INT, ship TEXT);",
-			"INSERT INTO c VALUES (1, 'CA'), (2, 'TX'), (3, 'MA'), (4, 'TX'), (5, NULL), (6, 'FL');",
-			"INSERT INTO o VALUES (10, 1, 'CA'), (20, 1, 'CA'), (30, 1, 'CA'), (40, 2, 'CA'), (50, 2, 'TX'), (60, 2, NULL), (70, 4, 'WY'), (80, 4, NULL), (90, 6, 'WA');",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "select row_number() over () as rn from o where c_id=-999",
-				Expected: []sql.Row{},
-			},
-			{
-				// TODO: valid query in Postgres. https://github.com/dolthub/doltgresql/issues/1796
-				Dialect:  "mysql",
-				Query:    "select row_number() over () as rn from o where c_id=1",
-				Expected: []sql.Row{{1}, {2}, {3}},
-			},
-			{
-				Query:    "select rank() over() as rnk from o where c_id=-999",
-				Expected: []sql.Row{},
-			},
-			{
-				// TODO: valid query in Postgres. https://github.com/dolthub/doltgresql/issues/1796
-				Dialect: "mysql",
-				Query:   "select o_id, c_id, rank() over(order by o_id) as rnk from o where c_id=1",
-				Expected: []sql.Row{
-					{10, 1, uint64(1)},
-					{20, 1, uint64(2)},
-					{30, 1, uint64(3)},
-				},
-			},
-			{
-				Query:    "select dense_rank() over() as rnk from o where c_id=-999",
-				Expected: []sql.Row{},
-			},
-			{
-				// TODO: valid query in Postgres. But Postgres orders nil at the end. Maybe rewrite query to filter out
-				//  ship=null https://github.com/dolthub/doltgresql/issues/1796
-				Dialect: "mysql",
-				Query:   "select ship, dense_rank() over (order by ship) as drnk from o where c_id in (1, 2) order by ship",
-				Expected: []sql.Row{
-					{nil, uint64(1)},
-					{"CA", uint64(2)},
-					{"CA", uint64(2)},
-					{"CA", uint64(2)},
-					{"CA", uint64(2)},
-					{"TX", uint64(3)},
-				},
-			},
-			{
-				Query:    "select count(*) from o where c_id=-999",
-				Expected: []sql.Row{{0}},
-			},
-		},
-	},
-	{
 		Name:    "aggregate function with match",
 		Dialect: "mysql",
 		SetUpScript: []string{
@@ -14932,1041 +14685,214 @@ select * from t1 except (
 			},
 		},
 	},
-}
-
-var SpatialScriptTests = []ScriptTest{
 	{
-		Name: "create table using default point value",
+		// See https://github.com/dolthub/dolt/issues/10924
+		Name:    "INSERT IGNORE truncates invalid UTF-8 at first bad byte",
+		Dialect: "mysql",
 		SetUpScript: []string{
-			"CREATE TABLE test (i int primary key, p point default (point(123.456, 7.89)));",
-			"insert into test (i) values (0);",
+			"CREATE TABLE t (id INT PRIMARY KEY, name VARCHAR(255));",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "select st_aswkt(p) from test",
-				Expected: []sql.Row{{"POINT(123.456 7.89)"}},
+				// 0x85 is invalid UTF-8; the row is inserted with the value truncated to the valid prefix.
+				Query:                 "INSERT IGNORE INTO t VALUES (1, UNHEX('5353442031544220322E3585204E564D65'));",
+				Expected:              []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				ExpectedWarning:       mysql.ERTruncatedWrongValueForField,
+				ExpectedWarningsCount: 1,
 			},
 			{
-				Query:    "show create table test",
-				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `p` point DEFAULT (point(123.456,7.89)),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-			},
-			{
-				Query: "describe test",
-				Expected: []sql.Row{
-					{"i", "int", "NO", "PRI", nil, ""},
-					{"p", "point", "YES", "", "(point(123.456,7.89))", "DEFAULT_GENERATED"},
-				},
+				Query:    "SELECT name, HEX(name) FROM t WHERE id = 1;",
+				Expected: []sql.Row{{"SSD 1TB 2.5", "5353442031544220322E35"}},
 			},
 		},
 	},
 	{
-		Name: "create table using default linestring value",
+		// See https://github.com/dolthub/dolt/issues/10924
+		Name:    "LIKE with invalid UTF-8 pattern issues warning and returns no match",
+		Dialect: "mysql",
 		SetUpScript: []string{
-			"CREATE TABLE test (i int primary key, l linestring default (linestring(point(1,2), point(3,4))));",
-			"insert into test (i) values (0);",
+			"CREATE TABLE t (id INT PRIMARY KEY, name VARCHAR(255));",
+			"INSERT INTO t VALUES (1, 'hello');",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "select st_aswkt(l) from test",
-				Expected: []sql.Row{{"LINESTRING(1 2,3 4)"}},
-			},
-			{
-				Query:    "show create table test",
-				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `l` linestring DEFAULT (linestring(point(1,2),point(3,4))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-			},
-			{
-				Query: "describe test",
-				Expected: []sql.Row{
-					{"i", "int", "NO", "PRI", nil, ""},
-					{"l", "linestring", "YES", "", "(linestring(point(1,2),point(3,4)))", "DEFAULT_GENERATED"},
-				},
+				// 0x85 is invalid UTF-8 in the pattern literal; LIKE issues warning 1300 and returns no match.
+				Query:                           "SELECT id FROM t WHERE name LIKE '%" + "\x85" + "%';",
+				Expected:                        []sql.Row{},
+				ExpectedWarning:                 mysql.ERInvalidCharacterString,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "invalid string for character set",
 			},
 		},
 	},
 	{
-		Name: "create table using default polygon value",
+		// https://github.com/dolthub/dolt/issues/11300
+		Name: "TopN rows (Sort with LIMIT) where sort condition is a subquery",
 		SetUpScript: []string{
-			"CREATE TABLE test (i int primary key, p polygon default (polygon(linestring(point(0,0), point(1,1), point(2,2), point(0,0)))));",
-			"insert into test (i) values (0);",
+			"CREATE TABLE foo (id VARCHAR(36) PRIMARY KEY);",
+			"CREATE TABLE bar (id VARCHAR(36) PRIMARY KEY, foo_id VARCHAR(36) NOT NULL, approved_on DATETIME(3), FOREIGN KEY (foo_id) REFERENCES foo(id) ON DELETE CASCADE ON UPDATE CASCADE);",
+			"INSERT INTO foo VALUES('foo-1'), ('foo-2'), ('foo-3'), ('foo-4'), ('foo-5'), ('foo-6'), ('foo-7'), ('foo-8');",
+			`INSERT INTO bar VALUES
+('bar-1', 'foo-1', '2026-07-14 07:18:04.000'),
+('bar-2', 'foo-2', '2026-07-14 07:18:03.000'),
+('bar-3', 'foo-3', '2026-07-14 07:18:05.000'),
+('bar-4', 'foo-4', '2026-07-14 07:18:01.000'),
+('bar-5', 'foo-5', '2026-07-14 07:18:08.000'),
+('bar-6', 'foo-6', '2026-07-14 07:18:02.000'),
+('bar-7', 'foo-7', '2026-07-14 07:18:07.000'),
+('bar-8', 'foo-8', '2026-07-14 07:18:00.000');`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "select st_aswkt(p) from test",
-				Expected: []sql.Row{{"POLYGON((0 0,1 1,2 2,0 0))"}},
+				Query:    "SELECT * FROM foo ORDER BY (SELECT MAX(r.approved_on) FROM bar r WHERE r.foo_id = foo.id) ASC LIMIT 1",
+				Expected: []sql.Row{{"foo-8"}},
 			},
 			{
-				Query:    "show create table test",
-				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `p` polygon DEFAULT (polygon(linestring(point(0,0),point(1,1),point(2,2),point(0,0)))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Query:    "SELECT * FROM foo ORDER BY (SELECT MAX(r.approved_on) FROM bar r WHERE r.foo_id = foo.id) DESC LIMIT 1",
+				Expected: []sql.Row{{"foo-5"}},
 			},
 			{
-				Query: "describe test",
-				Expected: []sql.Row{
-					{"i", "int", "NO", "PRI", nil, ""},
-					{"p", "polygon", "YES", "", "(polygon(linestring(point(0,0),point(1,1),point(2,2),point(0,0))))", "DEFAULT_GENERATED"},
-				},
+				Query:    "SELECT * FROM foo ORDER BY (SELECT MAX(r.approved_on) FROM bar r WHERE r.foo_id = foo.id) ASC LIMIT 2",
+				Expected: []sql.Row{{"foo-8"}, {"foo-4"}},
+			},
+			{
+				Query:    "SELECT * FROM foo ORDER BY (SELECT MAX(r.approved_on) FROM bar r WHERE r.foo_id = foo.id) DESC LIMIT 2",
+				Expected: []sql.Row{{"foo-5"}, {"foo-7"}},
+			},
+			{
+				Query:    "SELECT * FROM foo ORDER BY (SELECT MAX(r.approved_on) FROM bar r WHERE r.foo_id = foo.id) ASC LIMIT 4",
+				Expected: []sql.Row{{"foo-8"}, {"foo-4"}, {"foo-6"}, {"foo-2"}},
+			},
+			{
+				Query:    "SELECT * FROM foo ORDER BY (SELECT MAX(r.approved_on) FROM bar r WHERE r.foo_id = foo.id) DESC LIMIT 4",
+				Expected: []sql.Row{{"foo-5"}, {"foo-7"}, {"foo-3"}, {"foo-1"}},
 			},
 		},
 	},
 	{
-		Name: "create geometry table using default point value",
+		Name: "TopN with huge limit",
 		SetUpScript: []string{
-			"CREATE TABLE test (i int primary key, g geometry  default (point(123.456, 7.89)));",
-			"insert into test (i) values (0);",
+			"create table t (i int);",
+			"insert into t values (1), (2), (3)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "select st_aswkt(g) from test",
-				Expected: []sql.Row{{"POINT(123.456 7.89)"}},
-			},
-			{
-				Query:    "show create table test",
-				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `g` geometry DEFAULT (point(123.456,7.89)),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-			},
-			{
-				Query: "describe test",
-				Expected: []sql.Row{
-					{"i", "int", "NO", "PRI", nil, ""},
-					{"g", "geometry", "YES", "", "(point(123.456,7.89))", "DEFAULT_GENERATED"},
-				},
-			},
-		},
-	},
-	{
-		Name: "create geometry table using default linestring value",
-		SetUpScript: []string{
-			"CREATE TABLE test (i int primary key, g geometry default (linestring(point(1,2), point(3,4))));",
-			"insert into test (i) values (0);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "select st_aswkt(g) from test",
-				Expected: []sql.Row{{"LINESTRING(1 2,3 4)"}},
-			},
-			{
-				Query:    "show create table test",
-				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `g` geometry DEFAULT (linestring(point(1,2),point(3,4))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-			},
-			{
-				Query: "describe test",
-				Expected: []sql.Row{
-					{"i", "int", "NO", "PRI", nil, ""},
-					{"g", "geometry", "YES", "", "(linestring(point(1,2),point(3,4)))", "DEFAULT_GENERATED"},
-				},
-			},
-		},
-	},
-	{
-		Name: "create geometry table using default polygon value",
-		SetUpScript: []string{
-			"CREATE TABLE test (i int primary key, g geometry default (polygon(linestring(point(0,0), point(1,1), point(2,2), point(0,0)))));",
-			"insert into test (i) values (0);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "select st_aswkt(g) from test",
-				Expected: []sql.Row{{"POLYGON((0 0,1 1,2 2,0 0))"}},
-			},
-			{
-				Query:    "show create table test",
-				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `g` geometry DEFAULT (polygon(linestring(point(0,0),point(1,1),point(2,2),point(0,0)))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-			},
-			{
-				Query: "describe test",
-				Expected: []sql.Row{
-					{"i", "int", "NO", "PRI", nil, ""},
-					{"g", "geometry", "YES", "", "(polygon(linestring(point(0,0),point(1,1),point(2,2),point(0,0))))", "DEFAULT_GENERATED"}},
-			},
-		},
-	},
-	{
-		Name: "create table with NULL default values for geometry types",
-		SetUpScript: []string{
-			"CREATE TABLE null_default (pk int NOT NULL PRIMARY KEY, v1 geometry DEFAULT NULL, v2 linestring DEFAULT NULL, v3 point DEFAULT NULL, v4 polygon DEFAULT NULL)",
-			"insert into null_default(pk) values (0)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "select * from null_default",
-				Expected: []sql.Row{{0, nil, nil, nil, nil}},
-			},
-		},
-	},
-	{
-		Name: "create table using SRID value for geometry type",
-		SetUpScript: []string{
-			"CREATE TABLE tab0 (i int primary key, g geometry srid 4326 default (point(1,1)));",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "show create table tab0",
-				Expected: []sql.Row{{"tab0", "CREATE TABLE `tab0` (\n  `i` int NOT NULL,\n  `g` geometry /*!80003 SRID 4326 */ DEFAULT (point(1,1)),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-			},
-			{
-				Query:    "INSERT INTO tab0 VALUES (1, ST_GEOMFROMTEXT(ST_ASWKT(POINT(1,2)), 4326))",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
-			},
-			{
-				Query:    "select i, ST_ASWKT(g) FROM tab0",
-				Expected: []sql.Row{{1, "POINT(1 2)"}},
-			},
-			{
-				Query:       "INSERT INTO tab0 VALUES (2, ST_GEOMFROMTEXT(ST_ASWKT(POINT(2,4))))",
-				ExpectedErr: sql.ErrNotMatchingSRIDWithColName,
-			},
-			{
-				Query:    "INSERT INTO tab0 VALUES (2, ST_GEOMFROMTEXT(ST_ASWKT(LINESTRING(POINT(1, 6),POINT(4, 3))), 4326))",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
-			},
-			{
-				Query:    "select i, ST_ASWKT(g) FROM tab0",
-				Expected: []sql.Row{{1, "POINT(1 2)"}, {2, "LINESTRING(1 6,4 3)"}},
-			},
-		},
-	},
-	{
-		Name: "create table using SRID value for linestring type",
-		SetUpScript: []string{
-			"CREATE TABLE tab1 (i int primary key, l linestring srid 0);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "show create table tab1",
-				Expected: []sql.Row{{"tab1", "CREATE TABLE `tab1` (\n  `i` int NOT NULL,\n  `l` linestring /*!80003 SRID 0 */,\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-			},
-			{
-				Query:    "INSERT INTO tab1 VALUES (1, LINESTRING(POINT(0, 0),POINT(2, 2)))",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
-			},
-			{
-				Query:    "select i, ST_ASWKT(l) FROM tab1",
-				Expected: []sql.Row{{1, "LINESTRING(0 0,2 2)"}},
-			},
-			{
-				Query:       "INSERT INTO tab1 VALUES (2, ST_GEOMFROMTEXT(ST_ASWKT(LINESTRING(POINT(1, 6),POINT(4, 3))), 4326))",
-				ExpectedErr: sql.ErrNotMatchingSRIDWithColName,
-			},
-			{
-				Query:    "select i, ST_ASWKT(l) FROM tab1",
-				Expected: []sql.Row{{1, "LINESTRING(0 0,2 2)"}},
-			},
-		},
-	},
-	{
-		Name: "create table using SRID value for point type",
-		SetUpScript: []string{
-			"CREATE TABLE tab2 (i int primary key);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "ALTER TABLE tab2 ADD COLUMN p POINT NOT NULL SRID 0",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query:    "show create table tab2",
-				Expected: []sql.Row{{"tab2", "CREATE TABLE `tab2` (\n  `i` int NOT NULL,\n  `p` point NOT NULL /*!80003 SRID 0 */,\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-			},
-			{
-				Query:    "INSERT INTO tab2 VALUES (1, POINT(2, 2))",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
-			},
-			{
-				Query:    "select i, ST_ASWKT(p) FROM tab2",
-				Expected: []sql.Row{{1, "POINT(2 2)"}},
-			},
-			{
-				Query:       "INSERT INTO tab2 VALUES (2, ST_GEOMFROMTEXT(ST_ASWKT(POINT(1, 6)), 4326))",
-				ExpectedErr: sql.ErrNotMatchingSRIDWithColName,
-			},
-			{
-				Query:    "select i, ST_ASWKT(p) FROM tab2",
-				Expected: []sql.Row{{1, "POINT(2 2)"}},
-			},
-			{
-				Query:    "ALTER TABLE tab2 CHANGE COLUMN p p POINT NOT NULL",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query:    "INSERT INTO tab2 VALUES (2, ST_GEOMFROMTEXT(ST_ASWKT(POINT(1, 6)), 4326))",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
-			},
-			{
-				Query:    "select i, ST_ASWKT(p) FROM tab2",
-				Expected: []sql.Row{{1, "POINT(2 2)"}, {2, "POINT(1 6)"}},
-			},
-			{
-				Query:       "ALTER TABLE tab2 CHANGE COLUMN p p POINT NOT NULL SRID 4326",
-				ExpectedErr: sql.ErrNotMatchingSRIDWithColName,
-			},
-			{
-				Query:    "delete from tab2 where i = 1",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
-			},
-			{
-				Query:    "ALTER TABLE tab2 CHANGE COLUMN p p POINT NOT NULL SRID 4326",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query:    "show create table tab2",
-				Expected: []sql.Row{{"tab2", "CREATE TABLE `tab2` (\n  `i` int NOT NULL,\n  `p` point NOT NULL /*!80003 SRID 4326 */,\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-			},
-		},
-	},
-	{
-		Name: "create table using SRID value for polygon type",
-		SetUpScript: []string{
-			"CREATE TABLE tab3 (i int primary key, y polygon NOT NULL);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "show create table tab3",
-				Expected: []sql.Row{{"tab3", "CREATE TABLE `tab3` (\n  `i` int NOT NULL,\n  `y` polygon NOT NULL,\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-			},
-			{
-				Query:    "INSERT INTO tab3 VALUES (1, polygon(linestring(point(0,0),point(8,0),point(12,9),point(0,9),point(0,0))))",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
-			},
-			{
-				Query:    "select i, ST_ASWKT(y) FROM tab3",
-				Expected: []sql.Row{{1, "POLYGON((0 0,8 0,12 9,0 9,0 0))"}},
-			},
-			{
-				Query:    "ALTER TABLE tab3 MODIFY COLUMN y POLYGON NOT NULL SRID 0",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query:       "ALTER TABLE tab3 MODIFY COLUMN y POLYGON NOT NULL SRID 4326",
-				ExpectedErr: sql.ErrNotMatchingSRIDWithColName,
-			},
-			{
-				Query:    "select i, ST_ASWKT(y) FROM tab3",
-				Expected: []sql.Row{{1, "POLYGON((0 0,8 0,12 9,0 9,0 0))"}},
-			},
-			{
-				Query:    "ALTER TABLE tab3 MODIFY COLUMN y GEOMETRY NULL SRID 0",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query:    "select i, ST_ASWKT(y) FROM tab3",
-				Expected: []sql.Row{{1, "POLYGON((0 0,8 0,12 9,0 9,0 0))"}},
-			},
-		},
-	},
-	{
-		Name: "invalid cases of SRID value",
-		SetUpScript: []string{
-			"CREATE TABLE table1 (i int primary key, p point srid 4326);",
-			"INSERT INTO table1 VALUES (1, ST_SRID(POINT(1, 5), 4326))",
-			"CREATE TABLE table2 (i int primary key, g geometry /*!80003 SRID 3857*/);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:       "CREATE TABLE table3 (i int primary key, p point srid 1);",
-				ExpectedErr: sql.ErrNoSRID,
-			},
-			{
-				Query:    "CREATE TABLE table3 (i int primary key, p point srid 3857);",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query: "show create table table2",
-				Expected: []sql.Row{
-					{"table2", "CREATE TABLE `table2` (\n  `i` int NOT NULL,\n  `g` geometry /*!80003 SRID 3857 */,\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-				},
-			},
-			{
-				Query:    "SELECT i, ST_ASWKT(p) FROM table1;",
-				Expected: []sql.Row{{1, "POINT(5 1)"}},
-			},
-			{
-				Query:       "INSERT INTO table1 VALUES (2, POINT(2, 5))",
-				ExpectedErr: sql.ErrNotMatchingSRIDWithColName,
-			},
-			{
-				Query:    "SELECT i, ST_ASWKT(p) FROM table1;",
-				Expected: []sql.Row{{1, "POINT(5 1)"}},
-			},
-			{
-				Query:       "ALTER TABLE table1 CHANGE COLUMN p p linestring srid 4326",
-				ExpectedErr: sql.ErrSpatialTypeConversion,
-			},
-			{
-				Query:       "ALTER TABLE table1 CHANGE COLUMN p p geometry srid 0",
-				ExpectedErr: sql.ErrNotMatchingSRIDWithColName,
-			},
-			{
-				Query:    "ALTER TABLE table1 CHANGE COLUMN p p geometry srid 4326",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query:    "show create table table1",
-				Expected: []sql.Row{{"table1", "CREATE TABLE `table1` (\n  `i` int NOT NULL,\n  `p` geometry /*!80003 SRID 4326 */,\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-			},
-			{
-				Query:    "INSERT INTO table1 VALUES (2, ST_SRID(LINESTRING(POINT(0, 0),POINT(2, 2)),4326))",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
-			},
-			{
-				Query:       "ALTER TABLE table1 CHANGE COLUMN p p point srid 4326",
-				ExpectedErr: sql.ErrSpatialTypeConversion,
-			},
-		},
-	},
-}
-
-var SpatialIndexScriptTests = []ScriptTest{
-	{
-		Name:        "create spatial index errors",
-		SetUpScript: []string{},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:       "create table geom(g geometry, SPATIAL INDEX(g))",
-				ExpectedErr: sql.ErrNullableSpatialIdx,
-			},
-			{
-				Query:       "create table geom(g geometry SRID 4326, SPATIAL INDEX(g))",
-				ExpectedErr: sql.ErrNullableSpatialIdx,
-			},
-			{
-				Query:       "create table geom(g1 geometry NOT NULL SRID 0, g2 geometry NOT NULL SRID 4326, SPATIAL INDEX(g1, g2))",
-				ExpectedErr: sql.ErrTooManyKeyParts,
-			},
-		},
-	},
-	{
-		Name: "alter table spatial index nullable",
-		SetUpScript: []string{
-			"create table geom(g geometry)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:       "alter table geom add spatial index (g)",
-				ExpectedErr: sql.ErrNullableSpatialIdx,
-			},
-		},
-	},
-	{
-		Name: "alter table spatial index with srid nullable",
-		SetUpScript: []string{
-			"create table geom(g geometry SRID 4326)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:       "alter table geom add spatial index (g)",
-				ExpectedErr: sql.ErrNullableSpatialIdx,
-			},
-		},
-	},
-	{
-		Name: "show table with spatial indexes",
-		SetUpScript: []string{
-			"create table geom(" +
-				"p point not null srid 0," +
-				"l linestring not null srid 0," +
-				"py polygon not null srid 0," +
-				"mp multipoint not null srid 0," +
-				"ml multilinestring not null srid 0," +
-				"mpy multipolygon not null srid 0," +
-				"gc geometrycollection not null srid 0," +
-				"g geometry not null srid 0)",
-			"alter table geom add spatial index (p)",
-			"alter table geom add spatial index (l)",
-			"alter table geom add spatial index (py)",
-			"alter table geom add spatial index (mp)",
-			"alter table geom add spatial index (ml)",
-			"alter table geom add spatial index (mpy)",
-			"alter table geom add spatial index (gc)",
-			"alter table geom add spatial index (g)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "show create table geom",
-				Expected: []sql.Row{
-					{
-						"geom",
-						"CREATE TABLE `geom` (\n" +
-							"  `p` point NOT NULL /*!80003 SRID 0 */,\n" +
-							"  `l` linestring NOT NULL /*!80003 SRID 0 */,\n" +
-							"  `py` polygon NOT NULL /*!80003 SRID 0 */,\n" +
-							"  `mp` multipoint NOT NULL /*!80003 SRID 0 */,\n" +
-							"  `ml` multilinestring NOT NULL /*!80003 SRID 0 */,\n" +
-							"  `mpy` multipolygon NOT NULL /*!80003 SRID 0 */,\n" +
-							"  `gc` geometrycollection NOT NULL /*!80003 SRID 0 */,\n" +
-							"  `g` geometry NOT NULL /*!80003 SRID 0 */,\n" +
-							"  SPATIAL KEY `g` (`g`),\n" +
-							"  SPATIAL KEY `gc` (`gc`),\n" +
-							"  SPATIAL KEY `l` (`l`),\n" +
-							"  SPATIAL KEY `ml` (`ml`),\n" +
-							"  SPATIAL KEY `mp` (`mp`),\n" +
-							"  SPATIAL KEY `mpy` (`mpy`),\n" +
-							"  SPATIAL KEY `p` (`p`),\n" +
-							"  SPATIAL KEY `py` (`py`)\n" +
-							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
-					},
-				},
-			},
-		},
-	},
-	{
-		Name: "add spatial index to non-empty table",
-		SetUpScript: []string{
-			"create table geom_tbl(g geometry not null srid 0)",
-			"insert into geom_tbl values (point(0,0)), (linestring(point(1,1), point(2,2)))",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "alter table geom_tbl add spatial index (g)",
-				Expected: []sql.Row{
-					{types.NewOkResult(0)},
-				},
-			},
-			{
-				Query: "show create table geom_tbl",
-				Expected: []sql.Row{
-					{"geom_tbl", "CREATE TABLE `geom_tbl` (\n  `g` geometry NOT NULL /*!80003 SRID 0 */,\n  SPATIAL KEY `g` (`g`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-				},
-			},
-			{
-				Query: "select count(*) from geom_tbl where st_intersects(g, st_geomfromtext('polygon((0 0,0 10,10 10,10 0,0 0))'))",
-				Expected: []sql.Row{
-					{2},
-				},
-			},
-		},
-	},
-	{
-		Name: "add spatial index to non-empty table with primary key",
-		SetUpScript: []string{
-			"create table geom_tbl(i int, j int, g geometry not null srid 0, primary key (i, j))",
-			"insert into geom_tbl values (1, 10, point(0,0)), (2, 20, linestring(point(1,1), point(2,2)))",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "alter table geom_tbl add spatial index (g)",
-				Expected: []sql.Row{
-					{types.NewOkResult(0)},
-				},
-			},
-			{
-				Query: "show create table geom_tbl",
-				Expected: []sql.Row{
-					{"geom_tbl", "CREATE TABLE `geom_tbl` (\n  `i` int NOT NULL,\n  `j` int NOT NULL,\n  `g` geometry NOT NULL /*!80003 SRID 0 */,\n  PRIMARY KEY (`i`,`j`),\n  SPATIAL KEY `g` (`g`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-				},
-			},
-			{
-				Query: "select count(*) from geom_tbl where st_intersects(g, st_geomfromtext('polygon((0 0,0 10,10 10,10 0,0 0))'))",
-				Expected: []sql.Row{
-					{2},
-				},
-			},
-		},
-	},
-	{
-		Name: "spatial indexes do not work as foreign keys",
-		SetUpScript: []string{
-			"create table parent (i int primary key, p point not null srid 0, spatial index (p))",
-			"create table child1 (j int primary key, p point not null srid 0, spatial index (p))",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:       "alter table child1 add foreign key (p) references parent (p)",
-				ExpectedErr: sql.ErrForeignKeyMissingReferenceIndex,
-			},
-			{
-				Query:       "create table child2 (p point not null srid 0, spatial index (p), foreign key (p) references parent (p))",
-				ExpectedErr: sql.ErrForeignKeyMissingReferenceIndex,
-			},
-		},
-	},
-}
-
-var PreparedScriptTests = []ScriptTest{
-	{
-		Name: "table_count optimization refreshes result",
-		SetUpScript: []string{
-			"create table a (a int primary key);",
-			"insert into a values (0), (1), (2);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "prepare cnt from 'select count(*) from a';",
-				Expected: []sql.Row{{types.OkResult{Info: plan.PrepareInfo{}}}},
-			},
-			{
-				Query:    "execute cnt",
-				Expected: []sql.Row{{3}},
-			},
-			{
-				Query: "insert into a values (3), (4)",
-				Expected: []sql.Row{
-					{types.OkResult{RowsAffected: 2}},
-				},
-			},
-			{
-				Query:    "execute cnt",
-				Expected: []sql.Row{{5}},
-			},
-		},
-	},
-	{
-		Name:        "bad prepare",
-		SetUpScript: []string{},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:          "prepare s from 'prepare t from ?'",
-				ExpectedErrStr: "syntax error at position 17 near ':v1'",
-			},
-			{
-				Query:          "prepare s from 'a very real query'",
-				ExpectedErrStr: "syntax error at position 2 near 'a'",
-			},
-			{
-				Query:       "deallocate prepare idontexist",
-				ExpectedErr: sql.ErrUnknownPreparedStatement,
-			},
-		},
-	},
-	{
-		Name:        "simple select case no bindings",
-		SetUpScript: []string{},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:       "execute s",
-				ExpectedErr: sql.ErrUnknownPreparedStatement,
-			},
-			{
-				Query: "prepare s from 'select 1'",
-				Expected: []sql.Row{
-					{types.OkResult{Info: plan.PrepareInfo{}}},
-				},
-			},
-			{
-				Query: "execute s",
+				Dialect: "mysql", // Postgres does not allow a limit of this size
+				Query:   "select * from t order by i limit 18446744073709551615",
 				Expected: []sql.Row{
 					{1},
+					{2},
+					{3},
 				},
 			},
 			{
-				Query: "deallocate prepare s",
+				Query: "select * from t order by i limit 9223372036854775807",
 				Expected: []sql.Row{
-					{types.OkResult{}},
-				},
-			},
-			{
-				Query:       "execute s",
-				ExpectedErr: sql.ErrUnknownPreparedStatement,
-			},
-		},
-	},
-	{
-		Name: "simple select case one binding",
-		SetUpScript: []string{
-			"set @a = 1",
-			"set @b = 100",
-			"set @c = 'abc'",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "prepare s from 'select ?'",
-				Expected: []sql.Row{
-					{types.OkResult{Info: plan.PrepareInfo{}}},
-				},
-			},
-			{
-				Query:          "execute s",
-				ExpectedErrStr: "bind variable not provided: 'v1'",
-			},
-			{
-				Query: "execute s using @abc",
-				Expected: []sql.Row{
-					{nil},
-				},
-			},
-			{
-				Query:          "execute s using @a, @b, @c, @abc",
-				ExpectedErrStr: "invalid arguments. expected: 1, found: 4",
-			},
-			{
-				Query: "execute s using @a",
-				Expected: []sql.Row{
-					{1},
-				},
-			},
-			{
-				Query: "execute s using @b",
-				Expected: []sql.Row{
-					{100},
-				},
-			},
-			{
-				Query: "execute s using @c",
-				Expected: []sql.Row{
-					{"abc"},
-				},
-			},
-			{
-				Query: "deallocate prepare s",
-				Expected: []sql.Row{
-					{types.OkResult{}},
-				},
-			},
-			{
-				Query:       "execute s using @a",
-				ExpectedErr: sql.ErrUnknownPreparedStatement,
-			},
-		},
-	},
-	{
-		Name: "prepare with time type binding",
-		SetUpScript: []string{
-			"create table t (d date, dt datetime, t time, ts timestamp);",
-			"set @d = date('2001-02-03');",
-			"set @dt = datetime('2001-02-03 12:34:56');",
-			"set @t = time('12:34:56');",
-			"set @ts = timestamp('2001-02-03 12:34:56');",
-			"prepare s from 'select ?';",
-			"prepare sd from 'insert into t(d) values(?)';",
-			"prepare sdt from 'insert into t(dt) values(?)';",
-			"prepare st from 'insert into t(t) values(?)';",
-			"prepare sts from 'insert into t(ts) values(?)';",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "execute s using @d;",
-				Expected: []sql.Row{
-					{"2001-02-03"},
-				},
-			},
-			{
-				Query: "execute s using @dt;",
-				Expected: []sql.Row{
-					{time.Date(2001, time.February, 3, 12, 34, 56, 0, time.UTC)},
-				},
-			},
-			{
-				// types.Timespan not supported as bindvar
-				Skip:  true,
-				Query: "execute s using @t;",
-				Expected: []sql.Row{
-					{"12:34:56"},
-				},
-			},
-			{
-				Query: "execute s using @ts;",
-				Expected: []sql.Row{
-					{time.Date(2001, time.February, 3, 12, 34, 56, 0, time.UTC)},
-				},
-			},
-			{
-				SkipResultCheckOnServerEngine: true,
-				Query:                         "execute sd using @d;",
-				Expected: []sql.Row{
-					{types.NewOkResult(1)},
-				},
-			},
-			{
-				SkipResultCheckOnServerEngine: true,
-				Query:                         "execute sdt using @dt;",
-				Expected: []sql.Row{
-					{types.NewOkResult(1)},
-				},
-			},
-			{
-				// types.Timespan not supported as bindvar
-				Skip:                          true,
-				SkipResultCheckOnServerEngine: true,
-				Query:                         "execute st using @t;",
-				Expected: []sql.Row{
-					{types.NewOkResult(1)},
-				},
-			},
-			{
-				SkipResultCheckOnServerEngine: true,
-				Query:                         "execute sts using @ts;",
-				Expected: []sql.Row{
-					{types.NewOkResult(1)},
-				},
-			},
-			{
-				// TODO: should also select t when we fix that
-				Query: "select d, dt, ts from t",
-				Expected: []sql.Row{
-					{time.Date(2001, time.February, 3, 0, 0, 0, 0, time.UTC), nil, nil},
-					{nil, time.Date(2001, time.February, 3, 12, 34, 56, 0, time.UTC), nil},
-					{nil, nil, time.Date(2001, time.February, 3, 12, 34, 56, 0, time.UTC)},
-				},
-			},
-		},
-	},
-	{
-		Name: "prepare with decimal type binding",
-		SetUpScript: []string{
-			"create table t (d decimal);",
-			"set @d = cast(123.45 as Decimal(5,2));",
-			"prepare s from 'select ?';",
-			"prepare sd from 'insert into t values(?)';",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Skip:  true,
-				Query: "execute s using @d;",
-				Expected: []sql.Row{
-					{"123.45"},
-				},
-			},
-			{
-				Skip:                          true,
-				SkipResultCheckOnServerEngine: true,
-				Query:                         "execute sd using @d;",
-				Expected: []sql.Row{
-					{"123.45"},
-				},
-			},
-			{
-				Skip:  true,
-				Query: "select * from t",
-				Expected: []sql.Row{
-					{"123.45"},
-				},
-			},
-		},
-	},
-	{
-		Name: "prepare insert",
-		SetUpScript: []string{
-			"set @a = 123",
-			"set @b = 'abc'",
-			"create table t (i int, j varchar(100))",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "prepare s from 'insert into t values (?,?)'",
-				Expected: []sql.Row{
-					{types.OkResult{Info: plan.PrepareInfo{}}},
-				},
-			},
-			{
-				Query:          "execute s using @a",
-				ExpectedErrStr: "bind variable not provided: 'v2'",
-			},
-			{
-				SkipResultCheckOnServerEngine: true, // execute depends on prepare stmt for whether to use 'query' or 'exec' from go sql driver.
-				Query:                         "execute s using @a, @b",
-				Expected: []sql.Row{
-					{types.OkResult{RowsAffected: 1}},
-				},
-			},
-			{
-				Query: "select * from t order by i",
-				Expected: []sql.Row{
-					{123, "abc"},
-				},
-			},
-			{
-				Query: "deallocate prepare s",
-				Expected: []sql.Row{
-					{types.OkResult{}},
-				},
-			},
-			{
-				Query:       "execute s using @a",
-				ExpectedErr: sql.ErrUnknownPreparedStatement,
-			},
-		},
-	},
-	{
-		Name: "prepare using user vars",
-		SetUpScript: []string{
-			"create table t (i int primary key);",
-			"insert into t values (0), (1), (2);",
-			"set @num = 123",
-			"set @bad = 'bad'",
-			"set @a = 'select * from t order by i'",
-			"set @b = concat('select 1',' + 1')",
-			"set @c = 'select 1 from dual limit ?'",
-			"set @d = 'select @num'",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				// non-existent vars is the same as preparing with NULL
-				Query:          "prepare stmt from @asdf",
-				ExpectedErrStr: "syntax error at position 5 near 'NULL'",
-			},
-			{
-				Query:          "prepare stmt from @num",
-				ExpectedErrStr: "syntax error at position 4 near '123'",
-			},
-			{
-				Query:          "prepare stmt from @bad",
-				ExpectedErrStr: "syntax error at position 4 near 'bad'",
-			},
-			{
-				Query: "prepare stmt from @a",
-				Expected: []sql.Row{
-					{types.OkResult{Info: plan.PrepareInfo{}}},
-				},
-			},
-			{
-				Query: "execute stmt",
-				Expected: []sql.Row{
-					{0},
 					{1},
 					{2},
+					{3},
 				},
 			},
 			{
-				Query: "prepare stmt from @b",
-				Expected: []sql.Row{
-					{types.OkResult{Info: plan.PrepareInfo{}}},
-				},
-			},
-			{
-				Query: "execute stmt",
-				Expected: []sql.Row{
-					{2},
-				},
-			},
-			{
-				Query: "prepare stmt from @c",
-				Expected: []sql.Row{
-					{types.OkResult{Info: plan.PrepareInfo{}}},
-				},
-			},
-			{
-				Query: "execute stmt using @num",
+				Query: "select * from t order by i limit 4294967295",
 				Expected: []sql.Row{
 					{1},
+					{2},
+					{3},
 				},
 			},
 			{
-				Query: "prepare stmt from @d",
+				Query: "select * from t order by i limit 2147483647",
 				Expected: []sql.Row{
-					{types.OkResult{Info: plan.PrepareInfo{}}},
+					{1},
+					{2},
+					{3},
 				},
 			},
+		},
+	},
+	{
+		Name:    "LIKE expression with ESCAPE clause",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t(value VARCHAR(1), pattern VARCHAR(1));",
+			"INSERT INTO t VALUES ('a', 'a');",
+		},
+		Assertions: []ScriptTestAssertion{
 			{
-				Query: "execute stmt",
+				Query: "SELECT FIRST_VALUE(value LIKE pattern ESCAPE '') OVER () AS actual FROM t;",
 				Expected: []sql.Row{
-					{123},
+					{true},
 				},
 			},
 		},
 	},
 	{
-		Name: "Complex join query with foreign key constraints",
+		// https://github.com/dolthub/dolt/issues/11453
+		Name:    "DEFAULT(col) expression",
+		Dialect: "mysql", // DEFAULT(col) function is not valid Postgres syntax
 		SetUpScript: []string{
-			"CREATE TABLE `users` (`id` int NOT NULL AUTO_INCREMENT, `username` varchar(255) NOT NULL, PRIMARY KEY (`id`));",
-			"CREATE TABLE `tweet` ( `id` int NOT NULL AUTO_INCREMENT, `user_id` int NOT NULL, `content` text NOT NULL, `timestamp` bigint NOT NULL, PRIMARY KEY (`id`), KEY `tweet_user_id` (`user_id`), CONSTRAINT `0qpfesgd` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`));",
-			"INSERT INTO `users` (`id`,`username`) VALUES (1,'huey'), (2,'zaizee'), (3,'mickey');",
-			"INSERT INTO `tweet` (`id`,`user_id`,`content`,`timestamp`) VALUES (1,1,'meow',1647463727), (2,1,'purr',1647463727), (3,2,'hiss',1647463727), (4,3,'woof',1647463727);",
-			"set @u2 = 'u2';",
-			"set @u3 = 'u3';",
-			"set @u4 = 'u4';",
+			"create table t(pk int primary key, i int default 7, j int, k int generated always as (i + 10), l int not null, m int default null);",
+			"insert into t(pk, i, l) values (1, 1, 1);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "prepare s from 'SELECT `t1`.`username`, COUNT(`t1`.`id`) AS `ct` FROM ((SELECT `t2`.`id`, `t2`.`content`, `t3`.`username` FROM `tweet` AS `t2` INNER JOIN `users` AS `t3` ON (`t2`.`user_id` = `t3`.`id`) WHERE (`t3`.`username` = ?)) UNION (SELECT `t4`.`id`, `t4`.`content`, `t5`.`username` FROM `tweet` AS `t4` INNER JOIN `users` AS `t5` ON (`t4`.`user_id` = `t5`.`id`) WHERE (`t5`.`username` IN (?, ?)))) AS `t1` GROUP BY `t1`.`username` ORDER BY COUNT(`t1`.`id`) DESC'",
-				Expected: []sql.Row{
-					{types.OkResult{Info: plan.PrepareInfo{}}},
-				},
+				Query:       "SELECT DEFAULT(pk) FROM t;",
+				ExpectedErr: sql.ErrFieldNoDefaultValue,
 			},
 			{
-				Query:    "execute s using @u3, @u2, @u4",
-				Expected: []sql.Row{},
+				Query:    "SELECT DEFAULT(i) FROM t;",
+				Expected: []sql.Row{{7}},
 			},
-		},
-	},
-	{
-		Name: "Drop column with check constraint, no other columns",
-		SetUpScript: []string{
-			"create table mytable (pk int primary key);",
-			"ALTER TABLE mytable ADD COLUMN col2 text NOT NULL;",
-			"ALTER TABLE mytable ADD CONSTRAINT constraint_check CHECK (col2 LIKE '%myregex%');",
-		},
-		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "ALTER TABLE mytable DROP COLUMN col2",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Query:    "SELECT DEFAULT(i) AS d FROM t;",
+				Expected: []sql.Row{{7}},
 			},
-		},
-	},
-	{
-		Name: "Drop column with check constraint, other column referenced first",
-		SetUpScript: []string{
-			"create table mytable (pk int primary key);",
-			"ALTER TABLE mytable ADD COLUMN col2 text NOT NULL;",
-			"ALTER TABLE mytable ADD COLUMN col3 text NOT NULL;",
-			"ALTER TABLE mytable ADD CONSTRAINT constraint_check CHECK (col3 LIKE col2);",
-		},
-		Assertions: []ScriptTestAssertion{
 			{
-				Query:       "ALTER TABLE mytable DROP COLUMN col2",
-				ExpectedErr: sql.ErrCheckConstraintInvalidatedByColumnAlter,
+				Query:    "SELECT DEFAULT(j) FROM t;",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:       "SELECT DEFAULT(k) FROM t;",
+				ExpectedErr: sql.ErrFieldNoDefaultValue,
+			},
+			{
+				Query:       "SELECT DEFAULT(l) FROM t;",
+				ExpectedErr: sql.ErrFieldNoDefaultValue,
+			},
+			{
+				Query:    "SELECT DEFAULT(m) FROM t;",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:       "SELECT DEFAULT(asdfadf) FROM t;",
+				ExpectedErr: sql.ErrColumnNotFound,
 			},
 		},
 	},
 	{
-		Name: "Drop column with check constraint, other column referenced second",
+		Name: "inserting and updating using default values",
 		SetUpScript: []string{
-			"create table mytable (pk int primary key);",
-			"ALTER TABLE mytable ADD COLUMN col2 text NOT NULL;",
-			"ALTER TABLE mytable ADD COLUMN col3 text NOT NULL;",
-			"ALTER TABLE mytable ADD CONSTRAINT constraint_check CHECK (col2 LIKE col3);",
+			"create table t1 (i int primary key, j int generated always as (i + 10));",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:       "ALTER TABLE mytable DROP COLUMN col2",
-				ExpectedErr: sql.ErrCheckConstraintInvalidatedByColumnAlter,
+				Query:    "insert into t1 (i, j) values (1, default);",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
-		},
-	},
-	{
-		Name: "Drop column with check constraint, multiple constraints",
-		SetUpScript: []string{
-			"create table mytable (pk int primary key);",
-			"ALTER TABLE mytable ADD COLUMN col2 text NOT NULL;",
-			"ALTER TABLE mytable ADD COLUMN col3 text NOT NULL;",
-			"ALTER TABLE mytable ADD CONSTRAINT ok_check CHECK (col2 LIKE '%myregex%');",
-			"ALTER TABLE mytable ADD CONSTRAINT bad_check CHECK (col2 LIKE col3);",
-		},
-		Assertions: []ScriptTestAssertion{
 			{
-				Query:       "ALTER TABLE mytable DROP COLUMN col2",
-				ExpectedErr: sql.ErrCheckConstraintInvalidatedByColumnAlter,
+				Dialect:  "mysql", // This query should work in Doltgres but currently returns the wrong results. https://github.com/dolthub/doltgresql/issues/3203
+				Query:    "select * from t1",
+				Expected: []sql.Row{{1, 11}},
 			},
-		},
-	},
-	{
-		// https://github.com/dolthub/dolthub-issues/issues/489
-		Name: "Large character data",
-		SetUpScript: []string{
-			"CREATE TABLE `test` (`id` int NOT NULL AUTO_INCREMENT, `data` blob NOT NULL, PRIMARY KEY (`id`))",
-		},
-		Assertions: []ScriptTestAssertion{
 			{
-				Query: `INSERT INTO test (data) values (?)`,
-				Bindings: map[string]sqlparser.Expr{
-					// Vitess chooses VARBINARY as the bindvar type if the client sends CHAR data
-					// If we change how Vitess interprets client bindvar types, we should update this test
-					// Or better yet: have a test harness that uses the server directly
-					"v1": sqlparser.NewStrVal([]byte(
-						"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
-							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
-							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
-							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
-							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
-							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
-							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
-							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
-							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
-							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
-							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
-							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
-							"")),
-				},
-				Expected: []sql.Row{{types.OkResult{
-					RowsAffected: 1,
-					InsertID:     1,
-				}}},
+				Dialect:  "mysql", // This query should work in Doltgres but currently errors out. https://github.com/dolthub/doltgresql/issues/3204
+				Query:    "update t1 set j = default where i = 1;",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 0}}}},
+			},
+			{
+				Query:       "update t1 set i = default where i = 1;",
+				ExpectedErr: sql.ErrFieldNoDefaultValue,
 			},
 		},
 	},

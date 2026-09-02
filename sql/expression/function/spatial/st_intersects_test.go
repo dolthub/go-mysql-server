@@ -62,7 +62,7 @@ func TestPointIntersectsPoint(t *testing.T) {
 	t.Run("point intersects point", func(t *testing.T) {
 		require := require.New(t)
 		p := types.Point{X: 1, Y: 2}
-		f := NewIntersects(expression.NewLiteral(p, types.PointType{}), expression.NewLiteral(p, types.PointType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(p, types.PointType{}), expression.NewLiteral(p, types.PointType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -72,7 +72,7 @@ func TestPointIntersectsPoint(t *testing.T) {
 		require := require.New(t)
 		p1 := types.Point{X: 1, Y: 2}
 		p2 := types.Point{X: 123, Y: 456}
-		f := NewIntersects(expression.NewLiteral(p1, types.PointType{}), expression.NewLiteral(p2, types.PointType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(p1, types.PointType{}), expression.NewLiteral(p2, types.PointType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -83,17 +83,17 @@ func TestPointIntersectsLineString(t *testing.T) {
 	t.Run("points intersects linestring", func(t *testing.T) {
 		require := require.New(t)
 
-		f := NewIntersects(expression.NewLiteral(simpleLineString.Points[0], types.PointType{}), expression.NewLiteral(simpleLineString, types.LineStringType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(simpleLineString.Points[0], types.PointType{}), expression.NewLiteral(simpleLineString, types.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
 
-		f = NewIntersects(expression.NewLiteral(simpleLineString.Points[1], types.PointType{}), expression.NewLiteral(simpleLineString, types.LineStringType{}))
+		f = NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(simpleLineString.Points[1], types.PointType{}), expression.NewLiteral(simpleLineString, types.LineStringType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
 
-		f = NewIntersects(expression.NewLiteral(simpleLineString.Points[2], types.PointType{}), expression.NewLiteral(simpleLineString, types.LineStringType{}))
+		f = NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(simpleLineString.Points[2], types.PointType{}), expression.NewLiteral(simpleLineString, types.LineStringType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -101,7 +101,7 @@ func TestPointIntersectsLineString(t *testing.T) {
 
 	t.Run("point intersects empty linestring", func(t *testing.T) {
 		require := require.New(t)
-		f := NewIntersects(expression.NewLiteral(types.Point{}, types.PointType{}), expression.NewLiteral(emptyLineString, types.LineStringType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(types.Point{}, types.PointType{}), expression.NewLiteral(emptyLineString, types.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -111,7 +111,7 @@ func TestPointIntersectsLineString(t *testing.T) {
 		require := require.New(t)
 		p := types.Point{X: 100, Y: 200}
 		l := types.LineString{Points: []types.Point{{X: 0, Y: 0}, {X: 2, Y: 2}}}
-		f := NewIntersects(expression.NewLiteral(p, types.PointType{}), expression.NewLiteral(l, types.LineStringType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(p, types.PointType{}), expression.NewLiteral(l, types.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -123,30 +123,30 @@ func TestPointIntersectsPolygon(t *testing.T) {
 		require := require.New(t)
 
 		// vertexes intersect
-		f := NewIntersects(expression.NewLiteral(triangle.Lines[0].Points[0], types.PointType{}), expression.NewLiteral(triangle, types.PolygonType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(triangle.Lines[0].Points[0], types.PointType{}), expression.NewLiteral(triangle, types.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
 
-		f = NewIntersects(expression.NewLiteral(triangle.Lines[0].Points[1], types.PointType{}), expression.NewLiteral(triangle, types.PolygonType{}))
+		f = NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(triangle.Lines[0].Points[1], types.PointType{}), expression.NewLiteral(triangle, types.PolygonType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
 
-		f = NewIntersects(expression.NewLiteral(triangle.Lines[0].Points[2], types.PointType{}), expression.NewLiteral(triangle, types.PolygonType{}))
+		f = NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(triangle.Lines[0].Points[2], types.PointType{}), expression.NewLiteral(triangle, types.PolygonType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
 
 		// border intersect
-		f = NewIntersects(expression.NewLiteral(types.Point{}, types.PointType{}), expression.NewLiteral(triangle, types.PolygonType{}))
+		f = NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(types.Point{}, types.PointType{}), expression.NewLiteral(triangle, types.PolygonType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
 
 		// interior intersect
 		q := types.Point{X: 0, Y: 1}
-		f = NewIntersects(expression.NewLiteral(q, types.PointType{}), expression.NewLiteral(triangle, types.PolygonType{}))
+		f = NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(q, types.PointType{}), expression.NewLiteral(triangle, types.PolygonType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -154,7 +154,7 @@ func TestPointIntersectsPolygon(t *testing.T) {
 
 	t.Run("point intersects empty polygon", func(t *testing.T) {
 		require := require.New(t)
-		f := NewIntersects(expression.NewLiteral(types.Point{}, types.PointType{}), expression.NewLiteral(emptyPolygon, types.PolygonType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(types.Point{}, types.PointType{}), expression.NewLiteral(emptyPolygon, types.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -164,24 +164,24 @@ func TestPointIntersectsPolygon(t *testing.T) {
 		require := require.New(t)
 
 		p1 := types.Point{X: -3, Y: 2}
-		f := NewIntersects(expression.NewLiteral(p1, types.PointType{}), expression.NewLiteral(squareWithHole, types.PolygonType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(p1, types.PointType{}), expression.NewLiteral(squareWithHole, types.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
 
 		p2 := types.Point{X: -3, Y: 0}
-		f = NewIntersects(expression.NewLiteral(p2, types.PointType{}), expression.NewLiteral(squareWithHole, types.PolygonType{}))
+		f = NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(p2, types.PointType{}), expression.NewLiteral(squareWithHole, types.PolygonType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
 
 		p3 := types.Point{X: -3, Y: -2}
-		f = NewIntersects(expression.NewLiteral(p3, types.PointType{}), expression.NewLiteral(squareWithHole, types.PolygonType{}))
+		f = NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(p3, types.PointType{}), expression.NewLiteral(squareWithHole, types.PolygonType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
 
-		f = NewIntersects(expression.NewLiteral(types.Point{}, types.PointType{}), expression.NewLiteral(squareWithHole, types.PolygonType{}))
+		f = NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(types.Point{}, types.PointType{}), expression.NewLiteral(squareWithHole, types.PolygonType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -192,17 +192,17 @@ func TestPointIntersectsMultiPoint(t *testing.T) {
 	t.Run("points intersects multipoint", func(t *testing.T) {
 		require := require.New(t)
 
-		f := NewIntersects(expression.NewLiteral(simpleMultiPoint.Points[0], types.PointType{}), expression.NewLiteral(simpleMultiPoint, types.MultiPointType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(simpleMultiPoint.Points[0], types.PointType{}), expression.NewLiteral(simpleMultiPoint, types.MultiPointType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
 
-		f = NewIntersects(expression.NewLiteral(simpleMultiPoint.Points[1], types.PointType{}), expression.NewLiteral(simpleMultiPoint, types.MultiPointType{}))
+		f = NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(simpleMultiPoint.Points[1], types.PointType{}), expression.NewLiteral(simpleMultiPoint, types.MultiPointType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
 
-		f = NewIntersects(expression.NewLiteral(simpleMultiPoint.Points[2], types.PointType{}), expression.NewLiteral(simpleMultiPoint, types.MultiPointType{}))
+		f = NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(simpleMultiPoint.Points[2], types.PointType{}), expression.NewLiteral(simpleMultiPoint, types.MultiPointType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -212,7 +212,7 @@ func TestPointIntersectsMultiPoint(t *testing.T) {
 		require := require.New(t)
 
 		p := types.Point{X: 0, Y: 0}
-		f := NewIntersects(expression.NewLiteral(p, types.PointType{}), expression.NewLiteral(simpleMultiPoint, types.MultiPointType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(p, types.PointType{}), expression.NewLiteral(simpleMultiPoint, types.MultiPointType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -229,13 +229,13 @@ func TestPointIntersectsMultiLineString(t *testing.T) {
 	t.Run("points intersects multilinestring", func(t *testing.T) {
 		require := require.New(t)
 
-		f := NewIntersects(expression.NewLiteral(p3, types.PointType{}), expression.NewLiteral(ml, types.MultiLineStringType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(p3, types.PointType{}), expression.NewLiteral(ml, types.MultiLineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
 
 		p := types.Point{X: 0, Y: 0}
-		f = NewIntersects(expression.NewLiteral(p, types.PointType{}), expression.NewLiteral(ml, types.MultiLineStringType{}))
+		f = NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(p, types.PointType{}), expression.NewLiteral(ml, types.MultiLineStringType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -245,13 +245,13 @@ func TestPointIntersectsMultiLineString(t *testing.T) {
 		require := require.New(t)
 
 		p4 := types.Point{X: -100, Y: -123123}
-		f := NewIntersects(expression.NewLiteral(p4, types.PointType{}), expression.NewLiteral(ml, types.MultiLineStringType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(p4, types.PointType{}), expression.NewLiteral(ml, types.MultiLineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
 
 		p5 := types.Point{X: 100, Y: 1001}
-		f = NewIntersects(expression.NewLiteral(p5, types.PointType{}), expression.NewLiteral(ml, types.MultiLineStringType{}))
+		f = NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(p5, types.PointType{}), expression.NewLiteral(ml, types.MultiLineStringType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -263,7 +263,7 @@ func TestPointIntersectsMultiPolygon(t *testing.T) {
 	t.Run("point intersects multipolygon", func(t *testing.T) {
 		require := require.New(t)
 
-		f := NewIntersects(expression.NewLiteral(types.Point{}, types.PointType{}), expression.NewLiteral(mp, types.MultiPolygonType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(types.Point{}, types.PointType{}), expression.NewLiteral(mp, types.MultiPolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -272,7 +272,7 @@ func TestPointIntersectsMultiPolygon(t *testing.T) {
 	t.Run("points not intersects multipolygon", func(t *testing.T) {
 		require := require.New(t)
 		p := types.Point{X: 100, Y: 100}
-		f := NewIntersects(expression.NewLiteral(p, types.PointType{}), expression.NewLiteral(mp, types.MultiPolygonType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(p, types.PointType{}), expression.NewLiteral(mp, types.MultiPolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -286,7 +286,7 @@ func TestPointIntersectsGeometryCollection(t *testing.T) {
 		require := require.New(t)
 		gc := types.GeomColl{}
 
-		f := NewIntersects(expression.NewLiteral(p, types.PointType{}), expression.NewLiteral(gc, types.GeomCollType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(p, types.PointType{}), expression.NewLiteral(gc, types.GeomCollType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(nil, v)
@@ -296,7 +296,7 @@ func TestPointIntersectsGeometryCollection(t *testing.T) {
 		require := require.New(t)
 		gc := types.GeomColl{Geoms: []types.GeometryValue{p}}
 
-		f := NewIntersects(expression.NewLiteral(p, types.PointType{}), expression.NewLiteral(gc, types.GeomCollType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(p, types.PointType{}), expression.NewLiteral(gc, types.GeomCollType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -307,7 +307,7 @@ func TestPointIntersectsGeometryCollection(t *testing.T) {
 		a := types.Point{X: 1, Y: 0}
 		gc := types.GeomColl{Geoms: []types.GeometryValue{a}}
 
-		f := NewIntersects(expression.NewLiteral(p, types.PointType{}), expression.NewLiteral(gc, types.GeomCollType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(p, types.PointType{}), expression.NewLiteral(gc, types.GeomCollType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -324,7 +324,7 @@ func TestLineStringIntersectsLineString(t *testing.T) {
 		ab := types.LineString{Points: []types.Point{a, b}}
 		cd := types.LineString{Points: []types.Point{c, d}}
 
-		f := NewIntersects(expression.NewLiteral(ab, types.LineStringType{}), expression.NewLiteral(cd, types.LineStringType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(ab, types.LineStringType{}), expression.NewLiteral(cd, types.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -332,7 +332,7 @@ func TestLineStringIntersectsLineString(t *testing.T) {
 
 	t.Run("empty linestring intersects empty linestring", func(t *testing.T) {
 		require := require.New(t)
-		f := NewIntersects(expression.NewLiteral(emptyLineString, types.LineStringType{}), expression.NewLiteral(emptyLineString, types.LineStringType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(emptyLineString, types.LineStringType{}), expression.NewLiteral(emptyLineString, types.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -342,7 +342,7 @@ func TestLineStringIntersectsLineString(t *testing.T) {
 		require := require.New(t)
 		l1 := types.LineString{Points: []types.Point{{X: 0, Y: 0}, {X: 2, Y: 2}}}
 		l2 := types.LineString{Points: []types.Point{{X: 0, Y: 1}, {X: 2, Y: 3}}}
-		f := NewIntersects(expression.NewLiteral(l1, types.LineStringType{}), expression.NewLiteral(l2, types.LineStringType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(l1, types.LineStringType{}), expression.NewLiteral(l2, types.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -354,31 +354,31 @@ func TestLineStringIntersectsPolygon(t *testing.T) {
 		require := require.New(t)
 
 		// border intersect
-		f := NewIntersects(expression.NewLiteral(squareWithHole.Lines[0], types.LineStringType{}), expression.NewLiteral(squareWithHole, types.PolygonType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(squareWithHole.Lines[0], types.LineStringType{}), expression.NewLiteral(squareWithHole, types.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
 
-		f = NewIntersects(expression.NewLiteral(squareWithHole.Lines[1], types.LineStringType{}), expression.NewLiteral(squareWithHole, types.PolygonType{}))
+		f = NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(squareWithHole.Lines[1], types.LineStringType{}), expression.NewLiteral(squareWithHole, types.PolygonType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
 
 		// interior intersect
 		l1 := types.LineString{Points: []types.Point{{X: -3, Y: 3}, {X: 3, Y: 3}}}
-		f = NewIntersects(expression.NewLiteral(l1, types.LineStringType{}), expression.NewLiteral(squareWithHole, types.PolygonType{}))
+		f = NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(l1, types.LineStringType{}), expression.NewLiteral(squareWithHole, types.PolygonType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
 
 		l2 := types.LineString{Points: []types.Point{{X: -3, Y: -3}, {X: 3, Y: 3}}}
-		f = NewIntersects(expression.NewLiteral(l2, types.LineStringType{}), expression.NewLiteral(squareWithHole, types.PolygonType{}))
+		f = NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(l2, types.LineStringType{}), expression.NewLiteral(squareWithHole, types.PolygonType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
 
 		l3 := types.LineString{Points: []types.Point{{X: -5}, {X: 5}}}
-		f = NewIntersects(expression.NewLiteral(l3, types.LineStringType{}), expression.NewLiteral(squareWithHole, types.PolygonType{}))
+		f = NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(l3, types.LineStringType{}), expression.NewLiteral(squareWithHole, types.PolygonType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -388,7 +388,7 @@ func TestLineStringIntersectsPolygon(t *testing.T) {
 		require := require.New(t)
 
 		// in hole
-		f := NewIntersects(expression.NewLiteral(emptyLineString, types.LineStringType{}), expression.NewLiteral(squareWithHole, types.PolygonType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(emptyLineString, types.LineStringType{}), expression.NewLiteral(squareWithHole, types.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -397,7 +397,7 @@ func TestLineStringIntersectsPolygon(t *testing.T) {
 		a := types.Point{X: 100, Y: 100}
 		b := types.Point{X: 200, Y: 200}
 		l := types.LineString{Points: []types.Point{a, b}}
-		f = NewIntersects(expression.NewLiteral(l, types.LineStringType{}), expression.NewLiteral(squareWithHole, types.PolygonType{}))
+		f = NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(l, types.LineStringType{}), expression.NewLiteral(squareWithHole, types.PolygonType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -405,7 +405,7 @@ func TestLineStringIntersectsPolygon(t *testing.T) {
 
 	t.Run("empty linestring intersects empty polygon", func(t *testing.T) {
 		require := require.New(t)
-		f := NewIntersects(expression.NewLiteral(emptyLineString, types.LineStringType{}), expression.NewLiteral(emptyPolygon, types.PolygonType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(emptyLineString, types.LineStringType{}), expression.NewLiteral(emptyPolygon, types.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -415,7 +415,7 @@ func TestLineStringIntersectsPolygon(t *testing.T) {
 func TestLineStringIntersectsMultiPoint(t *testing.T) {
 	t.Run("linestring intersects multipoint", func(t *testing.T) {
 		require := require.New(t)
-		f := NewIntersects(expression.NewLiteral(simpleLineString, types.LineStringType{}), expression.NewLiteral(simpleMultiPoint, types.MultiPointType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(simpleLineString, types.LineStringType{}), expression.NewLiteral(simpleMultiPoint, types.MultiPointType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -424,7 +424,7 @@ func TestLineStringIntersectsMultiPoint(t *testing.T) {
 	t.Run("linestring not intersects multipoint", func(t *testing.T) {
 		require := require.New(t)
 
-		f := NewIntersects(expression.NewLiteral(emptyLineString, types.LineStringType{}), expression.NewLiteral(simpleMultiPoint, types.MultiPointType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(emptyLineString, types.LineStringType{}), expression.NewLiteral(simpleMultiPoint, types.MultiPointType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -435,7 +435,7 @@ func TestLineStringIntersectsMultiLineString(t *testing.T) {
 	t.Run("linestring intersects multilinestring", func(t *testing.T) {
 		require := require.New(t)
 
-		f := NewIntersects(expression.NewLiteral(simpleLineString, types.LineStringType{}), expression.NewLiteral(simpleMultiLineString, types.MultiLineStringType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(simpleLineString, types.LineStringType{}), expression.NewLiteral(simpleMultiLineString, types.MultiLineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -443,7 +443,7 @@ func TestLineStringIntersectsMultiLineString(t *testing.T) {
 		a := types.Point{X: 1.5, Y: 10}
 		b := types.Point{X: 1.5, Y: -10}
 		ab := types.LineString{Points: []types.Point{a, b}}
-		f = NewIntersects(expression.NewLiteral(ab, types.LineStringType{}), expression.NewLiteral(simpleMultiLineString, types.MultiLineStringType{}))
+		f = NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(ab, types.LineStringType{}), expression.NewLiteral(simpleMultiLineString, types.MultiLineStringType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -451,7 +451,7 @@ func TestLineStringIntersectsMultiLineString(t *testing.T) {
 
 	t.Run("linestring not intersects multilinestring", func(t *testing.T) {
 		require := require.New(t)
-		f := NewIntersects(expression.NewLiteral(emptyLineString, types.LineStringType{}), expression.NewLiteral(simpleMultiLineString, types.MultiLineStringType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(emptyLineString, types.LineStringType{}), expression.NewLiteral(simpleMultiLineString, types.MultiLineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -462,7 +462,7 @@ func TestLineStringIntersectsMultiPolygon(t *testing.T) {
 	mp := types.MultiPolygon{Polygons: []types.Polygon{squareWithHole}}
 	t.Run("linestring intersects multipolygon", func(t *testing.T) {
 		require := require.New(t)
-		f := NewIntersects(expression.NewLiteral(squareWithHole.Lines[0], types.LineStringType{}), expression.NewLiteral(mp, types.MultiLineStringType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(squareWithHole.Lines[0], types.LineStringType{}), expression.NewLiteral(mp, types.MultiLineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -470,7 +470,7 @@ func TestLineStringIntersectsMultiPolygon(t *testing.T) {
 
 	t.Run("linestring not intersects multipolygon", func(t *testing.T) {
 		require := require.New(t)
-		f := NewIntersects(expression.NewLiteral(emptyLineString, types.LineStringType{}), expression.NewLiteral(mp, types.MultiLineStringType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(emptyLineString, types.LineStringType{}), expression.NewLiteral(mp, types.MultiLineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -481,7 +481,7 @@ func TestLineStringIntersectsGeometryCollection(t *testing.T) {
 	t.Run("linestring intersects empty geometrycollection returns null", func(t *testing.T) {
 		require := require.New(t)
 		gc := types.GeomColl{}
-		f := NewIntersects(expression.NewLiteral(emptyLineString, types.LineStringType{}), expression.NewLiteral(gc, types.GeomCollType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(emptyLineString, types.LineStringType{}), expression.NewLiteral(gc, types.GeomCollType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(nil, v)
@@ -490,7 +490,7 @@ func TestLineStringIntersectsGeometryCollection(t *testing.T) {
 	t.Run("linestring intersects geometrycollection", func(t *testing.T) {
 		require := require.New(t)
 		gc := types.GeomColl{Geoms: []types.GeometryValue{emptyLineString}}
-		f := NewIntersects(expression.NewLiteral(emptyLineString, types.LineStringType{}), expression.NewLiteral(gc, types.GeomCollType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(emptyLineString, types.LineStringType{}), expression.NewLiteral(gc, types.GeomCollType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -499,7 +499,7 @@ func TestLineStringIntersectsGeometryCollection(t *testing.T) {
 	t.Run("linestring not intersects geometrycollection", func(t *testing.T) {
 		require := require.New(t)
 		gc := types.GeomColl{Geoms: []types.GeometryValue{simpleLineString}}
-		f := NewIntersects(expression.NewLiteral(emptyLineString, types.LineStringType{}), expression.NewLiteral(gc, types.GeomCollType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(emptyLineString, types.LineStringType{}), expression.NewLiteral(gc, types.GeomCollType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -512,12 +512,12 @@ func TestPolygonIntersectsPolygon(t *testing.T) {
 
 		smallSquare := types.Polygon{Lines: []types.LineString{squareWithHole.Lines[1]}}
 
-		f := NewIntersects(expression.NewLiteral(smallSquare, types.PolygonType{}), expression.NewLiteral(square, types.PolygonType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(smallSquare, types.PolygonType{}), expression.NewLiteral(square, types.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
 
-		f = NewIntersects(expression.NewLiteral(square, types.PolygonType{}), expression.NewLiteral(smallSquare, types.PolygonType{}))
+		f = NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(square, types.PolygonType{}), expression.NewLiteral(smallSquare, types.PolygonType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -527,7 +527,7 @@ func TestPolygonIntersectsPolygon(t *testing.T) {
 		require := require.New(t)
 
 		// in hole
-		f := NewIntersects(expression.NewLiteral(emptyPolygon, types.PolygonType{}), expression.NewLiteral(squareWithHole, types.PolygonType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(emptyPolygon, types.PolygonType{}), expression.NewLiteral(squareWithHole, types.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -539,7 +539,7 @@ func TestPolygonIntersectsPolygon(t *testing.T) {
 		d := types.Point{X: 200, Y: 100}
 		l := types.LineString{Points: []types.Point{a, b, c, d, a}}
 		p := types.Polygon{Lines: []types.LineString{l}}
-		f = NewIntersects(expression.NewLiteral(p, types.PolygonType{}), expression.NewLiteral(square, types.PolygonType{}))
+		f = NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(p, types.PolygonType{}), expression.NewLiteral(square, types.PolygonType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -547,7 +547,7 @@ func TestPolygonIntersectsPolygon(t *testing.T) {
 
 	t.Run("empty polygon intersects empty polygon", func(t *testing.T) {
 		require := require.New(t)
-		f := NewIntersects(expression.NewLiteral(emptyPolygon, types.PolygonType{}), expression.NewLiteral(emptyPolygon, types.PolygonType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(emptyPolygon, types.PolygonType{}), expression.NewLiteral(emptyPolygon, types.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -557,7 +557,7 @@ func TestPolygonIntersectsPolygon(t *testing.T) {
 func TestPolygonIntersectsMultiPoint(t *testing.T) {
 	t.Run("polygon intersects multipoint", func(t *testing.T) {
 		require := require.New(t)
-		f := NewIntersects(expression.NewLiteral(square, types.PolygonType{}), expression.NewLiteral(simpleMultiPoint, types.MultiPointType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(square, types.PolygonType{}), expression.NewLiteral(simpleMultiPoint, types.MultiPointType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -566,13 +566,13 @@ func TestPolygonIntersectsMultiPoint(t *testing.T) {
 	t.Run("polygon not intersects multipoint", func(t *testing.T) {
 		require := require.New(t)
 
-		f := NewIntersects(expression.NewLiteral(emptyPolygon, types.PolygonType{}), expression.NewLiteral(simpleMultiPoint, types.MultiPointType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(emptyPolygon, types.PolygonType{}), expression.NewLiteral(simpleMultiPoint, types.MultiPointType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
 
 		mp := types.MultiPoint{Points: []types.Point{{}}}
-		f = NewIntersects(expression.NewLiteral(squareWithHole, types.PolygonType{}), expression.NewLiteral(mp, types.MultiPointType{}))
+		f = NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(squareWithHole, types.PolygonType{}), expression.NewLiteral(mp, types.MultiPointType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -583,7 +583,7 @@ func TestPolygonIntersectsMultiLineString(t *testing.T) {
 	t.Run("polygon intersects multilinestring", func(t *testing.T) {
 		require := require.New(t)
 
-		f := NewIntersects(expression.NewLiteral(square, types.PolygonType{}), expression.NewLiteral(simpleMultiLineString, types.MultiLineStringType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(square, types.PolygonType{}), expression.NewLiteral(simpleMultiLineString, types.MultiLineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -591,13 +591,13 @@ func TestPolygonIntersectsMultiLineString(t *testing.T) {
 
 	t.Run("polygon not intersects multilinestring", func(t *testing.T) {
 		require := require.New(t)
-		f := NewIntersects(expression.NewLiteral(emptyPolygon, types.PolygonType{}), expression.NewLiteral(simpleMultiLineString, types.MultiLineStringType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(emptyPolygon, types.PolygonType{}), expression.NewLiteral(simpleMultiLineString, types.MultiLineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
 
 		ml := types.MultiLineString{Lines: []types.LineString{emptyLineString}}
-		f = NewIntersects(expression.NewLiteral(squareWithHole, types.PolygonType{}), expression.NewLiteral(ml, types.MultiLineStringType{}))
+		f = NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(squareWithHole, types.PolygonType{}), expression.NewLiteral(ml, types.MultiLineStringType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -608,7 +608,7 @@ func TestPolygonIntersectsMultiPolygon(t *testing.T) {
 	mp := types.MultiPolygon{Polygons: []types.Polygon{squareWithHole}}
 	t.Run("polygon intersects multipolygon", func(t *testing.T) {
 		require := require.New(t)
-		f := NewIntersects(expression.NewLiteral(squareWithHole, types.PolygonType{}), expression.NewLiteral(mp, types.MultiPolygonType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(squareWithHole, types.PolygonType{}), expression.NewLiteral(mp, types.MultiPolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -616,7 +616,7 @@ func TestPolygonIntersectsMultiPolygon(t *testing.T) {
 
 	t.Run("polygon not intersects multipolygon", func(t *testing.T) {
 		require := require.New(t)
-		f := NewIntersects(expression.NewLiteral(emptyPolygon, types.PolygonType{}), expression.NewLiteral(mp, types.MultiPolygonType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(emptyPolygon, types.PolygonType{}), expression.NewLiteral(mp, types.MultiPolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -627,7 +627,7 @@ func TestPolygonIntersectsGeometryCollection(t *testing.T) {
 	t.Run("polygon intersects empty geometrycollection returns null", func(t *testing.T) {
 		require := require.New(t)
 		gc := types.GeomColl{}
-		f := NewIntersects(expression.NewLiteral(emptyPolygon, types.PolygonType{}), expression.NewLiteral(gc, types.GeomCollType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(emptyPolygon, types.PolygonType{}), expression.NewLiteral(gc, types.GeomCollType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(nil, v)
@@ -636,7 +636,7 @@ func TestPolygonIntersectsGeometryCollection(t *testing.T) {
 	t.Run("polygon intersects geometrycollection", func(t *testing.T) {
 		require := require.New(t)
 		gc := types.GeomColl{Geoms: []types.GeometryValue{emptyPolygon}}
-		f := NewIntersects(expression.NewLiteral(square, types.PolygonType{}), expression.NewLiteral(gc, types.GeomCollType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(square, types.PolygonType{}), expression.NewLiteral(gc, types.GeomCollType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -645,7 +645,7 @@ func TestPolygonIntersectsGeometryCollection(t *testing.T) {
 	t.Run("polygon not intersects geometrycollection", func(t *testing.T) {
 		require := require.New(t)
 		gc := types.GeomColl{Geoms: []types.GeometryValue{squareWithHole}}
-		f := NewIntersects(expression.NewLiteral(emptyPolygon, types.PolygonType{}), expression.NewLiteral(gc, types.GeomCollType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(emptyPolygon, types.PolygonType{}), expression.NewLiteral(gc, types.GeomCollType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -655,7 +655,7 @@ func TestPolygonIntersectsGeometryCollection(t *testing.T) {
 func TestMultiPointIntersectsMultiPoint(t *testing.T) {
 	t.Run("multipoint intersects multipoint", func(t *testing.T) {
 		require := require.New(t)
-		f := NewIntersects(expression.NewLiteral(simpleMultiPoint, types.MultiPointType{}), expression.NewLiteral(simpleMultiPoint, types.MultiPointType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(simpleMultiPoint, types.MultiPointType{}), expression.NewLiteral(simpleMultiPoint, types.MultiPointType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -664,7 +664,7 @@ func TestMultiPointIntersectsMultiPoint(t *testing.T) {
 	t.Run("multipoint not intersects multipoint", func(t *testing.T) {
 		require := require.New(t)
 
-		f := NewIntersects(expression.NewLiteral(emptyMultiPoint, types.MultiPointType{}), expression.NewLiteral(simpleMultiPoint, types.MultiPointType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(emptyMultiPoint, types.MultiPointType{}), expression.NewLiteral(simpleMultiPoint, types.MultiPointType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -675,7 +675,7 @@ func TestMultiPointIntersectsMultiLineString(t *testing.T) {
 	t.Run("multipoint intersects multilinestring", func(t *testing.T) {
 		require := require.New(t)
 
-		f := NewIntersects(expression.NewLiteral(simpleMultiPoint, types.MultiPointType{}), expression.NewLiteral(simpleMultiLineString, types.MultiLineStringType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(simpleMultiPoint, types.MultiPointType{}), expression.NewLiteral(simpleMultiLineString, types.MultiLineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -683,7 +683,7 @@ func TestMultiPointIntersectsMultiLineString(t *testing.T) {
 
 	t.Run("c not intersects multilinestring", func(t *testing.T) {
 		require := require.New(t)
-		f := NewIntersects(expression.NewLiteral(emptyMultiPoint, types.MultiPointType{}), expression.NewLiteral(simpleMultiLineString, types.MultiLineStringType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(emptyMultiPoint, types.MultiPointType{}), expression.NewLiteral(simpleMultiLineString, types.MultiLineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -694,7 +694,7 @@ func TestMultiPointIntersectsMultiPolygon(t *testing.T) {
 	mp := types.MultiPolygon{Polygons: []types.Polygon{squareWithHole}}
 	t.Run("multipoint intersects multipolygon", func(t *testing.T) {
 		require := require.New(t)
-		f := NewIntersects(expression.NewLiteral(simpleMultiPoint, types.MultiPointType{}), expression.NewLiteral(mp, types.MultiPolygonType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(simpleMultiPoint, types.MultiPointType{}), expression.NewLiteral(mp, types.MultiPolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -702,7 +702,7 @@ func TestMultiPointIntersectsMultiPolygon(t *testing.T) {
 
 	t.Run("multipoint not intersects multipolygon", func(t *testing.T) {
 		require := require.New(t)
-		f := NewIntersects(expression.NewLiteral(emptyMultiPoint, types.MultiPointType{}), expression.NewLiteral(mp, types.MultiPolygonType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(emptyMultiPoint, types.MultiPointType{}), expression.NewLiteral(mp, types.MultiPolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -713,7 +713,7 @@ func TestMultiPointIntersectsGeometryCollection(t *testing.T) {
 	t.Run("multipoint intersects empty geometrycollection returns null", func(t *testing.T) {
 		require := require.New(t)
 		gc := types.GeomColl{}
-		f := NewIntersects(expression.NewLiteral(emptyMultiPoint, types.MultiPointType{}), expression.NewLiteral(gc, types.GeomCollType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(emptyMultiPoint, types.MultiPointType{}), expression.NewLiteral(gc, types.GeomCollType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(nil, v)
@@ -722,7 +722,7 @@ func TestMultiPointIntersectsGeometryCollection(t *testing.T) {
 	t.Run("multipoint intersects geometrycollection", func(t *testing.T) {
 		require := require.New(t)
 		gc := types.GeomColl{Geoms: []types.GeometryValue{emptyMultiPoint}}
-		f := NewIntersects(expression.NewLiteral(emptyMultiPoint, types.MultiPointType{}), expression.NewLiteral(gc, types.GeomCollType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(emptyMultiPoint, types.MultiPointType{}), expression.NewLiteral(gc, types.GeomCollType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -731,7 +731,7 @@ func TestMultiPointIntersectsGeometryCollection(t *testing.T) {
 	t.Run("multipoint not intersects geometrycollection", func(t *testing.T) {
 		require := require.New(t)
 		gc := types.GeomColl{Geoms: []types.GeometryValue{simpleMultiPoint}}
-		f := NewIntersects(expression.NewLiteral(emptyMultiPoint, types.MultiPointType{}), expression.NewLiteral(gc, types.GeomCollType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(emptyMultiPoint, types.MultiPointType{}), expression.NewLiteral(gc, types.GeomCollType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -742,7 +742,7 @@ func TestMultiLineStringIntersectsMultiLineString(t *testing.T) {
 	t.Run("multilinestring intersects multilinestring", func(t *testing.T) {
 		require := require.New(t)
 
-		f := NewIntersects(expression.NewLiteral(simpleLineString, types.MultiLineStringType{}), expression.NewLiteral(simpleMultiLineString, types.MultiLineStringType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(simpleLineString, types.MultiLineStringType{}), expression.NewLiteral(simpleMultiLineString, types.MultiLineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -750,7 +750,7 @@ func TestMultiLineStringIntersectsMultiLineString(t *testing.T) {
 
 	t.Run("multilinestring not intersects multilinestring", func(t *testing.T) {
 		require := require.New(t)
-		f := NewIntersects(expression.NewLiteral(emptyMultiPoint, types.MultiLineStringType{}), expression.NewLiteral(simpleMultiLineString, types.MultiLineStringType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(emptyMultiPoint, types.MultiLineStringType{}), expression.NewLiteral(simpleMultiLineString, types.MultiLineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -761,7 +761,7 @@ func TestMultiLineStringIntersectsMultiPolygon(t *testing.T) {
 	mp := types.MultiPolygon{Polygons: []types.Polygon{squareWithHole}}
 	t.Run("multilinestring intersects multipolygon", func(t *testing.T) {
 		require := require.New(t)
-		f := NewIntersects(expression.NewLiteral(simpleMultiPoint, types.MultiLineStringType{}), expression.NewLiteral(mp, types.MultiPolygonType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(simpleMultiPoint, types.MultiLineStringType{}), expression.NewLiteral(mp, types.MultiPolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -769,7 +769,7 @@ func TestMultiLineStringIntersectsMultiPolygon(t *testing.T) {
 
 	t.Run("multilinestring not intersects multipolygon", func(t *testing.T) {
 		require := require.New(t)
-		f := NewIntersects(expression.NewLiteral(emptyMultiPoint, types.MultiLineStringType{}), expression.NewLiteral(mp, types.MultiPolygonType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(emptyMultiPoint, types.MultiLineStringType{}), expression.NewLiteral(mp, types.MultiPolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -780,7 +780,7 @@ func TestMultiLineStringIntersectsGeometryCollection(t *testing.T) {
 	t.Run("multilinestring intersects empty geometrycollection returns null", func(t *testing.T) {
 		require := require.New(t)
 		gc := types.GeomColl{}
-		f := NewIntersects(expression.NewLiteral(emptyMultiLineString, types.MultiLineStringType{}), expression.NewLiteral(gc, types.GeomCollType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(emptyMultiLineString, types.MultiLineStringType{}), expression.NewLiteral(gc, types.GeomCollType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(nil, v)
@@ -789,7 +789,7 @@ func TestMultiLineStringIntersectsGeometryCollection(t *testing.T) {
 	t.Run("multilinestring intersects geometrycollection", func(t *testing.T) {
 		require := require.New(t)
 		gc := types.GeomColl{Geoms: []types.GeometryValue{emptyMultiLineString}}
-		f := NewIntersects(expression.NewLiteral(emptyMultiLineString, types.MultiLineStringType{}), expression.NewLiteral(gc, types.GeomCollType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(emptyMultiLineString, types.MultiLineStringType{}), expression.NewLiteral(gc, types.GeomCollType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -798,7 +798,7 @@ func TestMultiLineStringIntersectsGeometryCollection(t *testing.T) {
 	t.Run("multilinestring not intersects geometrycollection", func(t *testing.T) {
 		require := require.New(t)
 		gc := types.GeomColl{Geoms: []types.GeometryValue{simpleLineString}}
-		f := NewIntersects(expression.NewLiteral(emptyMultiLineString, types.MultiLineStringType{}), expression.NewLiteral(gc, types.GeomCollType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(emptyMultiLineString, types.MultiLineStringType{}), expression.NewLiteral(gc, types.GeomCollType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -809,7 +809,7 @@ func TestMultiPolygonIntersectsMultiPolygon(t *testing.T) {
 	mp := types.MultiPolygon{Polygons: []types.Polygon{squareWithHole}}
 	t.Run("multipolygon intersects multipolygon", func(t *testing.T) {
 		require := require.New(t)
-		f := NewIntersects(expression.NewLiteral(mp, types.MultiPolygonType{}), expression.NewLiteral(mp, types.MultiPolygonType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(mp, types.MultiPolygonType{}), expression.NewLiteral(mp, types.MultiPolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -817,7 +817,7 @@ func TestMultiPolygonIntersectsMultiPolygon(t *testing.T) {
 
 	t.Run("multipolygon not intersects multipolygon", func(t *testing.T) {
 		require := require.New(t)
-		f := NewIntersects(expression.NewLiteral(emptyMultiPolygon, types.MultiPolygonType{}), expression.NewLiteral(mp, types.MultiPolygonType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(emptyMultiPolygon, types.MultiPolygonType{}), expression.NewLiteral(mp, types.MultiPolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -828,7 +828,7 @@ func TestMultiPolygonIntersectsGeometryCollection(t *testing.T) {
 	t.Run("multipolygon intersects empty geometrycollection returns null", func(t *testing.T) {
 		require := require.New(t)
 		gc := types.GeomColl{}
-		f := NewIntersects(expression.NewLiteral(emptyMultiPolygon, types.MultiPolygonType{}), expression.NewLiteral(gc, types.GeomCollType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(emptyMultiPolygon, types.MultiPolygonType{}), expression.NewLiteral(gc, types.GeomCollType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(nil, v)
@@ -837,7 +837,7 @@ func TestMultiPolygonIntersectsGeometryCollection(t *testing.T) {
 	t.Run("multipolygon intersects geometrycollection", func(t *testing.T) {
 		require := require.New(t)
 		gc := types.GeomColl{Geoms: []types.GeometryValue{emptyMultiPolygon}}
-		f := NewIntersects(expression.NewLiteral(emptyMultiPolygon, types.MultiPolygonType{}), expression.NewLiteral(gc, types.GeomCollType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(emptyMultiPolygon, types.MultiPolygonType{}), expression.NewLiteral(gc, types.GeomCollType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -847,7 +847,7 @@ func TestMultiPolygonIntersectsGeometryCollection(t *testing.T) {
 		require := require.New(t)
 		mp := types.MultiPolygon{Polygons: []types.Polygon{squareWithHole}}
 		gc := types.GeomColl{Geoms: []types.GeometryValue{mp}}
-		f := NewIntersects(expression.NewLiteral(emptyMultiPolygon, types.MultiPolygonType{}), expression.NewLiteral(gc, types.GeomCollType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(emptyMultiPolygon, types.MultiPolygonType{}), expression.NewLiteral(gc, types.GeomCollType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -858,7 +858,7 @@ func TestGeometryCollectionIntersectsGeometryCollection(t *testing.T) {
 	t.Run("empty geometrycollection intersects empty geometrycollection returns null", func(t *testing.T) {
 		require := require.New(t)
 		gc := types.GeomColl{}
-		f := NewIntersects(expression.NewLiteral(gc, types.GeomCollType{}), expression.NewLiteral(gc, types.GeomCollType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(gc, types.GeomCollType{}), expression.NewLiteral(gc, types.GeomCollType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(nil, v)
@@ -868,18 +868,18 @@ func TestGeometryCollectionIntersectsGeometryCollection(t *testing.T) {
 		require := require.New(t)
 
 		gc1 := types.GeomColl{Geoms: []types.GeometryValue{types.Point{}}}
-		f := NewIntersects(expression.NewLiteral(gc1, types.GeomCollType{}), expression.NewLiteral(gc1, types.GeomCollType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(gc1, types.GeomCollType{}), expression.NewLiteral(gc1, types.GeomCollType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
 
 		gc2 := types.GeomColl{Geoms: []types.GeometryValue{square}}
-		f = NewIntersects(expression.NewLiteral(gc1, types.GeomCollType{}), expression.NewLiteral(gc2, types.GeomCollType{}))
+		f = NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(gc1, types.GeomCollType{}), expression.NewLiteral(gc2, types.GeomCollType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
 
-		f = NewIntersects(expression.NewLiteral(gc2, types.GeomCollType{}), expression.NewLiteral(gc1, types.GeomCollType{}))
+		f = NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(gc2, types.GeomCollType{}), expression.NewLiteral(gc1, types.GeomCollType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -889,12 +889,12 @@ func TestGeometryCollectionIntersectsGeometryCollection(t *testing.T) {
 		require := require.New(t)
 		gc1 := types.GeomColl{Geoms: []types.GeometryValue{squareWithHole}}
 		gc2 := types.GeomColl{Geoms: []types.GeometryValue{emptyLineString}}
-		f := NewIntersects(expression.NewLiteral(gc1, types.GeomCollType{}), expression.NewLiteral(gc2, types.GeomCollType{}))
+		f := NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(gc1, types.GeomCollType{}), expression.NewLiteral(gc2, types.GeomCollType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
 
-		f = NewIntersects(expression.NewLiteral(gc1, types.GeomCollType{}), expression.NewLiteral(gc2, types.GeomCollType{}))
+		f = NewIntersects(sql.NewEmptyContext(), expression.NewLiteral(gc1, types.GeomCollType{}), expression.NewLiteral(gc2, types.GeomCollType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)

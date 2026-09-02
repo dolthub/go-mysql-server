@@ -42,7 +42,7 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, 
 	processList := ctx.ProcessList
 
 	var seen = make(map[string]struct{})
-	n, same, err := transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	n, same, err := transform.Node(ctx, n, func(ctx *sql.Context, n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.ResolvedTable:
 			switch n.Table.(type) {
@@ -92,7 +92,7 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, 
 				t = plan.NewProcessTable(table, onPartitionDone, onPartitionStart, onRowNext)
 			}
 
-			rt, err := n.ReplaceTable(t)
+			rt, err := n.ReplaceTable(ctx, t)
 			if err != nil {
 				return nil, false, err
 			}

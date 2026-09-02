@@ -39,7 +39,7 @@ var _ sql.FunctionExpression = (*Substring)(nil)
 var _ sql.CollationCoercible = (*Substring)(nil)
 
 // NewSubstring creates a new substring UDF.
-func NewSubstring(args ...sql.Expression) (sql.Expression, error) {
+func NewSubstring(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	var str, start, ln sql.Expression
 	switch len(args) {
 	case 2:
@@ -162,8 +162,8 @@ func (s *Substring) Eval(
 }
 
 // IsNullable implements the Expression interface.
-func (s *Substring) IsNullable() bool {
-	return s.Str.IsNullable() || s.Start.IsNullable() || (s.Len != nil && s.Len.IsNullable())
+func (s *Substring) IsNullable(ctx *sql.Context) bool {
+	return s.Str.IsNullable(ctx) || s.Start.IsNullable(ctx) || (s.Len != nil && s.Len.IsNullable(ctx))
 }
 
 func (s *Substring) String() string {
@@ -179,7 +179,7 @@ func (s *Substring) Resolved() bool {
 }
 
 // Type implements the Expression interface.
-func (s *Substring) Type() sql.Type { return s.Str.Type() }
+func (s *Substring) Type(ctx *sql.Context) sql.Type { return s.Str.Type(ctx) }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (s *Substring) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
@@ -187,8 +187,8 @@ func (s *Substring) CollationCoercibility(ctx *sql.Context) (collation sql.Colla
 }
 
 // WithChildren implements the Expression interface.
-func (*Substring) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewSubstring(children...)
+func (*Substring) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewSubstring(ctx, children...)
 }
 
 // SubstringIndex returns the substring from string str before count occurrences of the delimiter delim.
@@ -205,7 +205,7 @@ var _ sql.FunctionExpression = (*SubstringIndex)(nil)
 var _ sql.CollationCoercible = (*SubstringIndex)(nil)
 
 // NewSubstringIndex creates a new SubstringIndex UDF.
-func NewSubstringIndex(str, delim, count sql.Expression) sql.Expression {
+func NewSubstringIndex(ctx *sql.Context, str, delim, count sql.Expression) sql.Expression {
 	return &SubstringIndex{str, delim, count}
 }
 
@@ -305,8 +305,8 @@ func (s *SubstringIndex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 }
 
 // IsNullable implements the Expression interface.
-func (s *SubstringIndex) IsNullable() bool {
-	return s.str.IsNullable() || s.delim.IsNullable() || s.count.IsNullable()
+func (s *SubstringIndex) IsNullable(ctx *sql.Context) bool {
+	return s.str.IsNullable(ctx) || s.delim.IsNullable(ctx) || s.count.IsNullable(ctx)
 }
 
 func (s *SubstringIndex) String() string {
@@ -319,7 +319,7 @@ func (s *SubstringIndex) Resolved() bool {
 }
 
 // Type implements the Expression interface.
-func (*SubstringIndex) Type() sql.Type { return types.LongText }
+func (*SubstringIndex) Type(ctx *sql.Context) sql.Type { return types.LongText }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (s *SubstringIndex) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
@@ -327,11 +327,11 @@ func (s *SubstringIndex) CollationCoercibility(ctx *sql.Context) (collation sql.
 }
 
 // WithChildren implements the Expression interface.
-func (s *SubstringIndex) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (s *SubstringIndex) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 3 {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 3)
 	}
-	return NewSubstringIndex(children[0], children[1], children[2]), nil
+	return NewSubstringIndex(ctx, children[0], children[1], children[2]), nil
 }
 
 // Left is a function that returns the first N characters of a string expression.
@@ -344,7 +344,7 @@ var _ sql.FunctionExpression = Left{}
 var _ sql.CollationCoercible = Left{}
 
 // NewLeft creates a new LEFT function.
-func NewLeft(str, len sql.Expression) sql.Expression {
+func NewLeft(ctx *sql.Context, str, len sql.Expression) sql.Expression {
 	return Left{str, len}
 }
 
@@ -423,8 +423,8 @@ func (l Left) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // IsNullable implements the Expression interface.
-func (l Left) IsNullable() bool {
-	return l.str.IsNullable() || l.len.IsNullable()
+func (l Left) IsNullable(ctx *sql.Context) bool {
+	return l.str.IsNullable(ctx) || l.len.IsNullable(ctx)
 }
 
 func (l Left) String() string {
@@ -437,7 +437,7 @@ func (l Left) Resolved() bool {
 }
 
 // Type implements the Expression interface.
-func (Left) Type() sql.Type { return types.LongText }
+func (Left) Type(ctx *sql.Context) sql.Type { return types.LongText }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (l Left) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
@@ -445,11 +445,11 @@ func (l Left) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID
 }
 
 // WithChildren implements the Expression interface.
-func (l Left) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (l Left) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(l, len(children), 2)
 	}
-	return NewLeft(children[0], children[1]), nil
+	return NewLeft(ctx, children[0], children[1]), nil
 }
 
 // Right is a function that returns the last N characters of a string expression.
@@ -462,7 +462,7 @@ var _ sql.FunctionExpression = Right{}
 var _ sql.CollationCoercible = Right{}
 
 // NewRight creates a new RIGHT function.
-func NewRight(str, len sql.Expression) sql.Expression {
+func NewRight(ctx *sql.Context, str, len sql.Expression) sql.Expression {
 	return Right{str, len}
 }
 
@@ -541,20 +541,20 @@ func (r Right) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // IsNullable implements the Expression interface.
-func (r Right) IsNullable() bool {
-	return r.str.IsNullable() || r.len.IsNullable()
+func (r Right) IsNullable(ctx *sql.Context) bool {
+	return r.str.IsNullable(ctx) || r.len.IsNullable(ctx)
 }
 
 func (r Right) String() string {
 	return fmt.Sprintf("RIGHT(%s, %s)", r.str, r.len)
 }
 
-func (r Right) DebugString() string {
+func (r Right) DebugString(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("RIGHT")
 	children := []string{
-		fmt.Sprintf("str: %s", sql.DebugString(r.str)),
-		fmt.Sprintf("len: %s", sql.DebugString(r.len)),
+		fmt.Sprintf("str: %s", sql.DebugString(ctx, r.str)),
+		fmt.Sprintf("len: %s", sql.DebugString(ctx, r.len)),
 	}
 	_ = pr.WriteChildren(children...)
 	return pr.String()
@@ -566,7 +566,7 @@ func (r Right) Resolved() bool {
 }
 
 // Type implements the Expression interface.
-func (Right) Type() sql.Type { return types.LongText }
+func (Right) Type(ctx *sql.Context) sql.Type { return types.LongText }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (r Right) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
@@ -574,11 +574,11 @@ func (r Right) CollationCoercibility(ctx *sql.Context) (collation sql.CollationI
 }
 
 // WithChildren implements the Expression interface.
-func (r Right) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (r Right) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(r, len(children), 2)
 	}
-	return NewRight(children[0], children[1]), nil
+	return NewRight(ctx, children[0], children[1]), nil
 }
 
 type Instr struct {
@@ -590,7 +590,7 @@ var _ sql.FunctionExpression = Instr{}
 var _ sql.CollationCoercible = Instr{}
 
 // NewInstr creates a new instr UDF.
-func NewInstr(str, substr sql.Expression) sql.Expression {
+func NewInstr(ctx *sql.Context, str, substr sql.Expression) sql.Expression {
 	return Instr{str, substr}
 }
 
@@ -688,8 +688,8 @@ func findSubsequence(text []rune, subtext []rune) int64 {
 }
 
 // IsNullable implements the Expression interface.
-func (i Instr) IsNullable() bool {
-	return i.str.IsNullable() || i.substr.IsNullable()
+func (i Instr) IsNullable(ctx *sql.Context) bool {
+	return i.str.IsNullable(ctx) || i.substr.IsNullable(ctx)
 }
 
 func (i Instr) String() string {
@@ -702,7 +702,7 @@ func (i Instr) Resolved() bool {
 }
 
 // Type implements the Expression interface.
-func (Instr) Type() sql.Type { return types.Int64 }
+func (Instr) Type(ctx *sql.Context) sql.Type { return types.Int64 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (Instr) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
@@ -710,9 +710,9 @@ func (Instr) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID,
 }
 
 // WithChildren implements the Expression interface.
-func (i Instr) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (i Instr) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 2)
 	}
-	return NewInstr(children[0], children[1]), nil
+	return NewInstr(ctx, children[0], children[1]), nil
 }

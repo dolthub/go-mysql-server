@@ -155,6 +155,7 @@ var _ sql.TemporaryTableDatabase = PrivilegedDatabase{}
 var _ sql.CollatedDatabase = PrivilegedDatabase{}
 var _ sql.ViewDatabase = PrivilegedDatabase{}
 var _ fulltext.Database = PrivilegedDatabase{}
+var _ sql.QuiescableEventDatabase = PrivilegedDatabase{}
 
 // NewPrivilegedDatabase returns a new PrivilegedDatabase.
 func NewPrivilegedDatabase(grantTables *MySQLDb, db sql.Database, authHandler sql.AuthorizationHandler) sql.Database {
@@ -455,6 +456,13 @@ func (pdb PrivilegedDatabase) SetCollation(ctx *sql.Context, collation sql.Colla
 		return db.SetCollation(ctx, collation)
 	}
 	return sql.ErrDatabaseCollationsNotSupported.New(pdb.db.Name())
+}
+
+func (pdb PrivilegedDatabase) QuiescableEvents() bool {
+	if db, ok := pdb.db.(sql.QuiescableEventDatabase); ok {
+		return db.QuiescableEvents()
+	}
+	return false
 }
 
 // Unwrap returns the wrapped sql.Database.

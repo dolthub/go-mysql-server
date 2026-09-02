@@ -65,6 +65,23 @@ func (r Row) Equals(ctx *Context, row Row, schema Schema) (bool, error) {
 	return true, nil
 }
 
+// EvalProjections evaluates each non-nil expression in projections against row in index order and
+// writes the result back into the matching position, leaving nil positions unchanged. Evaluating in order
+// lets a projection reference a column that comes before it.
+func EvalProjections(ctx *Context, projections []Expression, row Row) error {
+	for i, expr := range projections {
+		if expr == nil {
+			continue
+		}
+		value, err := expr.Eval(ctx, row)
+		if err != nil {
+			return err
+		}
+		row[i] = value
+	}
+	return nil
+}
+
 // FormatRow returns a formatted string representing this row's values
 func FormatRow(row Row) string {
 	var sb strings.Builder
@@ -120,8 +137,25 @@ func RowIterToRows(ctx *Context, i RowIter) ([]Row, error) {
 
 // RowsToRowIter creates a RowIter that iterates over the given rows.
 func RowsToRowIter(rows ...Row) RowIter {
+	if len(rows) == 0 {
+		return EmptyIter
+	}
 	return &sliceRowIter{rows: rows}
 }
+
+var EmptyIter = &emptyIter{}
+
+func IsEmptyIter(i RowIter) bool {
+	return i == EmptyIter
+}
+
+type emptyIter struct{}
+
+var _ RowIter = (*emptyIter)(nil)
+
+func (i *emptyIter) Next(ctx *Context) (Row, error) { return nil, io.EOF }
+
+func (i *emptyIter) Close(ctx *Context) error { return nil }
 
 type sliceRowIter struct {
 	rows []Row

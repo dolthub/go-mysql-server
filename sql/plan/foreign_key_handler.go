@@ -57,13 +57,13 @@ func (n *ForeignKeyHandler) String() string {
 	return n.OriginalNode.String()
 }
 
-func (n *ForeignKeyHandler) DebugString() string {
-	return sql.DebugString(n.OriginalNode)
+func (n *ForeignKeyHandler) DebugString(ctx *sql.Context) string {
+	return sql.DebugString(ctx, n.OriginalNode)
 }
 
 // Schema implements the interface sql.Node.
-func (n *ForeignKeyHandler) Schema() sql.Schema {
-	return n.OriginalNode.Schema()
+func (n *ForeignKeyHandler) Schema(ctx *sql.Context) sql.Schema {
+	return n.OriginalNode.Schema(ctx)
 }
 
 func (n *ForeignKeyHandler) IsReadOnly() bool {
@@ -86,7 +86,7 @@ func (n *ForeignKeyHandler) Children() []sql.Node {
 }
 
 // WithChildren implements the interface sql.Node.
-func (n *ForeignKeyHandler) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (n *ForeignKeyHandler) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 1)
 	}

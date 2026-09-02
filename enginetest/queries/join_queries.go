@@ -746,6 +746,10 @@ on w = 0;`,
 		Expected: []sql.Row{{"third", 1, "a", 4}, {"third", 1, "b", 2}, {"third", 1, "c", 0}},
 	},
 	{
+		Query:    "select * from othertable join foo.othertable where othertable.s2 = 'third'",
+		Expected: []sql.Row{{"third", 1, "a", 4}, {"third", 1, "b", 2}, {"third", 1, "c", 0}},
+	},
+	{
 		Query:    "select * from othertable join foo.othertable on mydb.othertable.s2 = 'third'",
 		Expected: []sql.Row{{"third", 1, "a", 4}, {"third", 1, "b", 2}, {"third", 1, "c", 0}},
 	},
@@ -1409,6 +1413,44 @@ var JoinScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/10899
+		Name: "IS NULL filter is preserved in multi-table join with left join",
+		SetUpScript: []string{
+			"create table p(id int, v int)",
+			"create table q(v int, qid int)",
+			"create table d(id int)",
+			"insert into p values (1, 10), (2, 20)",
+			"insert into q values (10, 100), (20, 200)",
+			"insert into d values (1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT p.id, d.id FROM p JOIN q ON p.v = q.v LEFT JOIN d ON p.id = d.id JOIN q q2 ON q2.qid = q.qid WHERE d.id IS NULL;",
+				Expected: []sql.Row{{2, nil}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11627
+		Name: "HAVING resolves aggregate inputs from separate aliases",
+		SetUpScript: []string{
+			"CREATE TABLE customers (id BIGINT PRIMARY KEY)",
+			"CREATE TABLE orders (id BIGINT PRIMARY KEY, customer_id BIGINT, status VARCHAR(16), total BIGINT)",
+			"INSERT INTO customers VALUES (1)",
+			"INSERT INTO orders VALUES (1, 1, 'paid', 10), (2, 1, 'paid', 20)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "WITH paid AS (SELECT id, customer_id, total FROM orders WHERE status = 'paid') SELECT c.id, COUNT(p1.total) AS total_count, COUNT(p2.id) AS peer_orders FROM customers c JOIN paid p1 ON p1.customer_id = c.id LEFT JOIN paid p2 ON p2.customer_id = c.id AND p2.id <> p1.id GROUP BY c.id HAVING COUNT(p2.id) > 0",
+				Expected: []sql.Row{{int64(1), int64(2), int64(2)}},
+			},
+			{
+				Query:    "SELECT c.id, COUNT(p1.total) AS total_count, COUNT(p2.id) AS peer_orders FROM customers c JOIN orders p1 ON p1.customer_id = c.id LEFT JOIN orders p2 ON p2.customer_id = c.id AND p2.id <> p1.id WHERE p1.status = 'paid' AND p2.status = 'paid' GROUP BY c.id HAVING COUNT(p2.id) > 0",
+				Expected: []sql.Row{{int64(1), int64(2), int64(2)}},
+			},
+		},
+	},
 }
 
 var LateralJoinScriptTests = []ScriptTest{
@@ -1505,6 +1547,24 @@ var LateralJoinScriptTests = []ScriptTest{
 					{2, 4},
 					{3, 4},
 					{3, 5},
+				},
+			},
+			{
+				// A left lateral join with a trivially true condition must still null-extend
+				// left rows for which the lateral subquery produces no rows.
+				Query: "select * from t left join lateral (select * from t1 where t.i = t1.j) as tt on true order by t.i, tt.j",
+				Expected: []sql.Row{
+					{1, 1},
+					{2, nil},
+					{3, nil},
+				},
+			},
+			{
+				Query: "select * from t left join lateral (select * from t1 where t.i = t1.j) as tt on 1 = 1 order by t.i, tt.j",
+				Expected: []sql.Row{
+					{1, 1},
+					{2, nil},
+					{3, nil},
 				},
 			},
 

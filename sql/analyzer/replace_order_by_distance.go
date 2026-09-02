@@ -22,6 +22,17 @@ func replaceIdxOrderByDistanceHelper(ctx *sql.Context, scope *plan.Scope, node s
 		sortNode = n
 	case *plan.Limit:
 		limit = n.Limit
+	case *plan.Offset:
+		// Rows skipped by the offset still need to be produced by the index lookup
+		if limit != nil {
+			limit = expression.NewPlus(limit, n.Offset)
+		}
+	case *plan.Filter:
+		// A filter between the limit and the table means the limit applies to the filtered rows so fetching only the
+		// top rows from the index could return too few, so we fall back to an exact sort
+		if sortNode != nil || limit != nil {
+			return n, transform.SameTree, nil
+		}
 	case *plan.ResolvedTable:
 		if sortNode == nil || limit == nil {
 			return n, transform.SameTree, nil
@@ -32,11 +43,16 @@ func replaceIdxOrderByDistanceHelper(ctx *sql.Context, scope *plan.Scope, node s
 		if !ok {
 			return n, transform.SameTree, nil
 		}
+		// A vector index only orders ascending (nearest first), so a descending sort must fall back to an exact sort
+		sortConds := sortNode.GetSortConditions()
+		if len(sortConds) != 1 || sortConds[0].Order != sql.Ascending {
+			return n, transform.SameTree, nil
+		}
 		if indexSearchable, ok := table.(sql.IndexSearchableTable); ok && indexSearchable.SkipIndexCosting() {
 			return n, transform.SameTree, nil
 		}
 
-		tableAliases, err := getTableAliases(sortNode, scope)
+		tableAliases, err := getTableAliases(ctx, sortNode, scope)
 		if err != nil {
 			return n, transform.SameTree, nil
 		}
@@ -49,44 +65,19 @@ func replaceIdxOrderByDistanceHelper(ctx *sql.Context, scope *plan.Scope, node s
 
 		// Column references have not been assigned their final indexes yet, so do that for the ORDER BY expression now.
 		// We can safely do this because an expression that references other tables won't pass `isSortFieldsValidPrefix` below.
-		sortNode = offsetAssignIndexes(sortNode).(plan.Sortable)
+		sortNode = offsetAssignIndexes(ctx, sortNode).(plan.Sortable)
 
-		sfExprs := normalizeExpressions(tableAliases, nil, sortNode.GetSortFields().ToExpressions()...)
-		sfAliases := aliasedExpressionsInNode(sortNode)
+		sortExprs := normalizeExpressions(ctx, tableAliases, nil, sortNode.GetSortConditions().ToExpressions()...)
+		sortAliases := aliasedExpressionsInNode(sortNode)
 
-		// TODO: Instead of checking both sides of the expression,
-		// use a previous pass to normalize distance functions so
-		// that the literal is always on the same side.
-		if len(sfExprs) != 1 {
-			return n, transform.SameTree, nil
-		}
-		distance, isDistance := sfExprs[0].(*vector.Distance)
+		distance, isDistance := sortExprs[0].(vector.OrderableDistance)
 		if !isDistance {
 			return n, transform.SameTree, nil
 		}
 
-		// We currently require that the query vector to the distance function is a constant value that does not
-		// depend on the row. Right now that can be a Literal or a UserVar.
-		isLiteral := func(expr sql.Expression) bool {
-			switch expr.(type) {
-			case *expression.Literal, *expression.UserVar:
-				return true
-			}
-			return false
-		}
-
-		var column sql.Expression
-		var literal sql.Expression
-		if isLiteral(distance.LeftChild) {
-			column = distance.RightChild
-			literal = distance.LeftChild
-		} else {
-			if isLiteral(distance.RightChild) {
-				column = distance.LeftChild
-				literal = distance.RightChild
-			} else {
-				return n, transform.SameTree, nil
-			}
+		expr, literal, ok := distance.TargetAndQuery()
+		if !ok {
+			return n, transform.SameTree, nil
 		}
 
 		for _, idxCandidate := range idxs {
@@ -96,7 +87,7 @@ func replaceIdxOrderByDistanceHelper(ctx *sql.Context, scope *plan.Scope, node s
 			if !idxCandidate.CanSupportOrderBy(distance) {
 				continue
 			}
-			if isSortFieldsValidPrefix([]sql.Expression{column}, sfAliases, idxCandidate.Expressions()) {
+			if sortExprsMatchIdxColExprs([]sql.Expression{expr}, sortAliases, idxCandidate.Expressions()) {
 				idx = idxCandidate
 				break
 			}
@@ -147,7 +138,7 @@ func replaceIdxOrderByDistanceHelper(ctx *sql.Context, scope *plan.Scope, node s
 		return newChildren[0], transform.NewTree, nil
 	}
 
-	newNode, err := node.WithChildren(newChildren...)
+	newNode, err := node.WithChildren(ctx, newChildren...)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}

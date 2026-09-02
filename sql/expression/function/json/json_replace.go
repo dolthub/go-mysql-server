@@ -59,17 +59,17 @@ func (j JSONReplace) String() string {
 	return fmt.Sprintf("%s(%s)", j.FunctionName(), strings.Join(parts, ","))
 }
 
-func (j JSONReplace) Type() sql.Type {
+func (j JSONReplace) Type(ctx *sql.Context) sql.Type {
 	return types.JSON
 }
 
-func (j JSONReplace) IsNullable() bool {
+func (j JSONReplace) IsNullable(ctx *sql.Context) bool {
 	for _, arg := range j.pathVals {
-		if arg.IsNullable() {
+		if arg.IsNullable(ctx) {
 			return true
 		}
 	}
-	return j.doc.IsNullable()
+	return j.doc.IsNullable(ctx)
 }
 
 func (j JSONReplace) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -102,15 +102,15 @@ func (j JSONReplace) Children() []sql.Expression {
 	return append([]sql.Expression{j.doc}, j.pathVals...)
 }
 
-func (j JSONReplace) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (j JSONReplace) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(j.Children()) != len(children) {
 		return nil, fmt.Errorf("json_replace did not receive the correct amount of args")
 	}
-	return NewJSONReplace(children...)
+	return NewJSONReplace(ctx, children...)
 }
 
 // NewJSONReplace creates a new JSONReplace function.
-func NewJSONReplace(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONReplace(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) <= 1 {
 		return nil, sql.ErrInvalidArgumentNumber.New("JSON_REPLACE", "more than 1", len(args))
 	} else if (len(args)-1)%2 == 1 {

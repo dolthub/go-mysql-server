@@ -22,10 +22,10 @@ var _ sql.Node = (*ValueDerivedTable)(nil)
 var _ sql.CollationCoercible = (*ValueDerivedTable)(nil)
 var _ TableIdNode = (*ValueDerivedTable)(nil)
 
-func NewValueDerivedTable(values *Values, name string) *ValueDerivedTable {
+func NewValueDerivedTable(ctx *sql.Context, values *Values, name string) *ValueDerivedTable {
 	var s sql.Schema
 	if values.Resolved() && len(values.ExpressionTuples) != 0 {
-		s = getSchema(values.ExpressionTuples)
+		s = getSchema(ctx, values.ExpressionTuples)
 	}
 	return &ValueDerivedTable{Values: values, name: name, sch: s}
 }
@@ -60,7 +60,7 @@ func (v *ValueDerivedTable) Name() string {
 }
 
 // Schema implements the Node interface.
-func (v *ValueDerivedTable) Schema() sql.Schema {
+func (v *ValueDerivedTable) Schema(ctx *sql.Context) sql.Schema {
 	if len(v.ExpressionTuples) == 0 {
 		return nil
 	}
@@ -81,7 +81,7 @@ func (v *ValueDerivedTable) Schema() sql.Schema {
 }
 
 // WithChildren implements the Node interface.
-func (v *ValueDerivedTable) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (v *ValueDerivedTable) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(v, len(children), 0)
 	}
@@ -90,8 +90,8 @@ func (v *ValueDerivedTable) WithChildren(children ...sql.Node) (sql.Node, error)
 }
 
 // WithExpressions implements the Expressioner interface.
-func (v *ValueDerivedTable) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
-	newValues, err := v.Values.WithExpressions(exprs...)
+func (v *ValueDerivedTable) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
+	newValues, err := v.Values.WithExpressions(ctx, exprs...)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +99,7 @@ func (v *ValueDerivedTable) WithExpressions(exprs ...sql.Expression) (sql.Node, 
 	nv := *v
 	nv.Values = newValues.(*Values)
 	if nv.Values.Resolved() && len(nv.Values.ExpressionTuples) != 0 {
-		nv.sch = getSchema(nv.Values.ExpressionTuples)
+		nv.sch = getSchema(ctx, nv.Values.ExpressionTuples)
 	}
 	return &nv, nil
 }
@@ -126,7 +126,7 @@ func (v *ValueDerivedTable) String() string {
 	return tp.String()
 }
 
-func (v *ValueDerivedTable) DebugString() string {
+func (v *ValueDerivedTable) DebugString(ctx *sql.Context) string {
 	children := make([]string, len(v.ExpressionTuples))
 	for i, tuple := range v.ExpressionTuples {
 		var sb strings.Builder
@@ -135,7 +135,7 @@ func (v *ValueDerivedTable) DebugString() string {
 			if j > 0 {
 				sb.WriteString(",")
 			}
-			sb.WriteString(sql.DebugString(e))
+			sb.WriteString(sql.DebugString(ctx, e))
 		}
 		sb.WriteRune(')')
 		children[i] = sb.String()
@@ -154,7 +154,7 @@ func (v ValueDerivedTable) WithColumNames(columns []string) *ValueDerivedTable {
 }
 
 // getSchema returns schema created with most permissive types by examining all rows.
-func getSchema(rows [][]sql.Expression) sql.Schema {
+func getSchema(ctx *sql.Context, rows [][]sql.Expression) sql.Schema {
 	s := make(sql.Schema, len(rows[0]))
 
 	for _, exprs := range rows {
@@ -167,11 +167,11 @@ func getSchema(rows [][]sql.Expression) sql.Schema {
 					name = val.String()
 				}
 
-				s[i] = &sql.Column{Name: name, Type: val.Type(), Nullable: val.IsNullable()}
+				s[i] = &sql.Column{Name: name, Type: val.Type(ctx), Nullable: val.IsNullable(ctx)}
 			} else {
-				s[i].Type = getMostPermissiveType(s[i], val)
+				s[i].Type = getMostPermissiveType(ctx, s[i], val)
 				if !s[i].Nullable {
-					s[i].Nullable = val.IsNullable()
+					s[i].Nullable = val.IsNullable(ctx)
 				}
 			}
 		}
@@ -182,15 +182,15 @@ func getSchema(rows [][]sql.Expression) sql.Schema {
 
 // getMostPermissiveType returns the most permissive type given the current type and the expression type.
 // The ordering is "other types < uint < int < decimal (float should be interpreted as decimal) < string"
-func getMostPermissiveType(s *sql.Column, e sql.Expression) sql.Type {
+func getMostPermissiveType(ctx *sql.Context, s *sql.Column, e sql.Expression) sql.Type {
 	if types.IsText(s.Type) {
 		return s.Type
-	} else if types.IsText(e.Type()) {
-		return e.Type()
+	} else if types.IsText(e.Type(ctx)) {
+		return e.Type(ctx)
 	}
 
 	if st, ok := s.Type.(sql.DecimalType); ok {
-		et, eok := e.Type().(sql.DecimalType)
+		et, eok := e.Type(ctx).(sql.DecimalType)
 		if !eok {
 			return s.Type
 		}
@@ -204,26 +204,26 @@ func getMostPermissiveType(s *sql.Column, e sql.Expression) sql.Type {
 			frac = et.Scale()
 		}
 		return types.MustCreateDecimalType(whole+frac, frac)
-	} else if types.IsDecimal(e.Type()) {
-		return e.Type()
+	} else if types.IsDecimal(e.Type(ctx)) {
+		return e.Type(ctx)
 	}
 
 	// TODO: float type should be interpreted as decimal type
 	if types.IsFloat(s.Type) {
 		return s.Type
-	} else if types.IsFloat(e.Type()) {
+	} else if types.IsFloat(e.Type(ctx)) {
 		return types.Float64
 	}
 
 	if types.IsSigned(s.Type) {
 		return s.Type
-	} else if types.IsSigned(e.Type()) {
+	} else if types.IsSigned(e.Type(ctx)) {
 		return types.Int64
 	}
 
 	if types.IsUnsigned(s.Type) {
 		return s.Type
-	} else if types.IsUnsigned(e.Type()) {
+	} else if types.IsUnsigned(e.Type(ctx)) {
 		return types.Uint64
 	}
 

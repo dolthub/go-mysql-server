@@ -27,8 +27,8 @@ var DualTableSchema = sql.NewPrimaryKeySchema(sql.Schema{
 
 // NewDualTable creates the dual table, which is used by the engine for queries with no tables specified, or the
 // `dual` table specified. This table is never supplied by integrators, but always by this stand-in implementation.
-func NewDualTable() *Table {
-	tbl := NewTable(nil, DualTableName, DualTableSchema, nil)
+func NewDualTable(ctx *sql.Context) *Table {
+	tbl := NewTable(ctx, nil, DualTableName, DualTableSchema, nil)
 	tbl.ignoreSessionData = true
 	part := []byte{0}
 	tbl.data.partitions = map[string][]sql.Row{

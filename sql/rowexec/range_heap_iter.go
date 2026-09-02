@@ -55,8 +55,8 @@ func newRangeHeapJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinN
 	}
 
 	span, ctx := ctx.Span("plan.rangeHeapJoinIter", trace.WithAttributes(
-		attribute.String("left", leftName),
-		attribute.String("right", rightName),
+		attribute.String("left", ctx.RedactNameForTrace(leftName)),
+		attribute.String("right", ctx.RedactNameForTrace(rightName)),
 	))
 
 	l, err := b.Build(ctx, j.Left(), row)
@@ -72,7 +72,7 @@ func newRangeHeapJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinN
 
 	parentLen := len(row)
 
-	primaryRow := make(sql.Row, parentLen+len(j.Left().Schema()))
+	primaryRow := make(sql.Row, parentLen+len(j.Left().Schema(ctx)))
 	copy(primaryRow, row)
 
 	return sql.NewSpanIter(span, &rangeHeapJoinIter{
@@ -85,7 +85,7 @@ func newRangeHeapJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinN
 		primaryRow:     primaryRow,
 		loadPrimaryRow: true,
 
-		rowSize:   len(row) + len(j.Left().Schema()) + len(j.Right().Schema()),
+		rowSize:   len(row) + len(j.Left().Schema(ctx)) + len(j.Right().Schema(ctx)),
 		scopeLen:  j.ScopeLen,
 		parentLen: parentLen,
 
@@ -118,9 +118,6 @@ func (iter *rangeHeapJoinIter) loadSecondary(ctx *sql.Context) (sql.Row, error) 
 		rowIter, err := iter.getActiveRanges(ctx, iter.b, iter.primaryRow)
 		if err != nil {
 			return nil, err
-		}
-		if plan.IsEmptyIter(rowIter) {
-			return nil, plan.ErrEmptyCachedResult
 		}
 		iter.secondary = rowIter
 	}
@@ -158,14 +155,6 @@ func (iter *rangeHeapJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 					return iter.removeParentRow(row), nil
 				}
 				continue
-			} else if errors.Is(err, plan.ErrEmptyCachedResult) {
-				if !iter.foundMatch && iter.joinType.IsLeftOuter() {
-					iter.loadPrimaryRow = true
-					row := iter.buildRow(primary, nil)
-					return iter.removeParentRow(row), nil
-				}
-
-				return nil, io.EOF
 			}
 			return nil, err
 		}
@@ -234,7 +223,7 @@ func (iter *rangeHeapJoinIter) initializeHeap(ctx *sql.Context, builder sql.Node
 		return err
 	}
 	iter.activeRanges = nil
-	iter.rangeHeapPlan.ComparisonType = iter.rangeHeapPlan.Schema()[iter.rangeHeapPlan.MaxColumnIndex].Type
+	iter.rangeHeapPlan.ComparisonType = iter.rangeHeapPlan.Schema(ctx)[iter.rangeHeapPlan.MaxColumnIndex].Type
 
 	iter.pendingRow, err = iter.childRowIter.Next(ctx)
 	if err == io.EOF {

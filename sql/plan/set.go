@@ -50,7 +50,7 @@ func (s *Set) Children() []sql.Node { return nil }
 func (s *Set) IsReadOnly() bool { return true }
 
 // WithChildren implements the sql.Node interface.
-func (s *Set) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (s *Set) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 0)
 	}
@@ -64,7 +64,7 @@ func (*Set) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, 
 }
 
 // WithExpressions implements the sql.Expressioner interface.
-func (s *Set) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+func (s *Set) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != len(s.Exprs) {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(exprs), len(s.Exprs))
 	}
@@ -78,7 +78,7 @@ func (s *Set) Expressions() []sql.Expression {
 }
 
 // Schema implements the sql.Node interface.
-func (s *Set) Schema() sql.Schema {
+func (s *Set) Schema(ctx *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -90,10 +90,10 @@ func (s *Set) String() string {
 	return strings.Join(children, ", ")
 }
 
-func (s *Set) DebugString() string {
+func (s *Set) DebugString(ctx *sql.Context) string {
 	var children = make([]string, len(s.Exprs))
 	for i, v := range s.Exprs {
-		children[i] = sql.DebugString(v)
+		children[i] = sql.DebugString(ctx, v)
 	}
 	return strings.Join(children, ", ")
 }

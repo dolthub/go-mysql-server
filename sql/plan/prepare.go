@@ -43,7 +43,7 @@ func NewPrepareQuery(name string, child sql.Node, prepStmt *sqlparser.Prepare) *
 }
 
 // Schema implements the Node interface.
-func (p *PrepareQuery) Schema() sql.Schema {
+func (p *PrepareQuery) Schema(ctx *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -70,7 +70,7 @@ func (p *PrepareQuery) Children() []sql.Node {
 }
 
 // WithChildren implements the Node interface.
-func (p *PrepareQuery) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (p *PrepareQuery) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) > 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 0)
 	}
@@ -101,7 +101,7 @@ func NewExecuteQuery(name string, bindVars ...sql.Expression) *ExecuteQuery {
 }
 
 // Schema implements the Node interface.
-func (p *ExecuteQuery) Schema() sql.Schema {
+func (p *ExecuteQuery) Schema(ctx *sql.Context) sql.Schema {
 	panic("ExecuteQuery methods shouldn't be used")
 }
 
@@ -119,7 +119,7 @@ func (p *ExecuteQuery) Children() []sql.Node {
 }
 
 // WithChildren implements the Node interface.
-func (p *ExecuteQuery) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (p *ExecuteQuery) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	panic("ExecuteQuery methods shouldn't be used")
 }
 
@@ -146,7 +146,7 @@ func NewDeallocateQuery(name string) *DeallocateQuery {
 }
 
 // Schema implements the Node interface.
-func (p *DeallocateQuery) Schema() sql.Schema {
+func (p *DeallocateQuery) Schema(ctx *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -164,7 +164,7 @@ func (p *DeallocateQuery) Children() []sql.Node {
 }
 
 // WithChildren implements the Node interface.
-func (p *DeallocateQuery) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (p *DeallocateQuery) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) > 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 0)
 	}

@@ -16,6 +16,7 @@ package analyzer
 
 import (
 	"strings"
+	"unicode/utf8"
 
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
@@ -41,11 +42,11 @@ func eraseProjection(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 		return node, transform.SameTree, nil
 	}
 
-	return transform.Node(node, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	return transform.Node(ctx, node, func(ctx *sql.Context, node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		project, ok := node.(*plan.Project)
 		if ok {
-			projSch := project.Schema()
-			childSch := project.Child.Schema()
+			projSch := project.Schema(ctx)
+			childSch := project.Child.Schema(ctx)
 			if projSch.CaseSensitiveEquals(childSch) && !childSch.CaseSensitiveEquals(memory.DualTableSchema.Schema) {
 				a.Log("project erased")
 				return project.Child, transform.NewTree, nil
@@ -58,7 +59,7 @@ func eraseProjection(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 }
 
 func flattenDistinct(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
-	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	return transform.Node(ctx, n, func(ctx *sql.Context, n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if d, ok := n.(*plan.Distinct); ok {
 			if d2, ok := d.Child.(*plan.Distinct); ok {
 				return d2, transform.NewTree, nil
@@ -79,138 +80,6 @@ func flattenDistinct(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 	})
 }
 
-// moveJoinConditionsToFilter looks for expressions in a join condition that reference only tables in the left or right
-// side of the join, and move those conditions to a new Filter node instead. If the join condition is empty after these
-// moves, the join is converted to a CrossJoin.
-func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
-	if !n.Resolved() {
-		return n, transform.SameTree, nil
-	}
-
-	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		var rightOnlyFilters []sql.Expression
-		var leftOnlyFilters []sql.Expression
-
-		join, ok := n.(*plan.JoinNode)
-		if !ok {
-			// no join
-			return n, transform.SameTree, nil
-		}
-
-		// no filter or left join: nothing to do to the tree
-		if join.JoinType().IsDegenerate() {
-			return n, transform.SameTree, nil
-		}
-		if !(join.JoinType().IsInner() || join.JoinType().IsSemi()) {
-			return n, transform.SameTree, nil
-		}
-		leftSources := nodeSources(join.Left())
-		rightSources := nodeSources(join.Right())
-		filtersMoved := 0
-		var condFilters []sql.Expression
-		for _, e := range expression.SplitConjunction(join.JoinCond()) {
-			sources, nullRej := expressionSources(e)
-			if !nullRej {
-				condFilters = append(condFilters, e)
-				continue
-			}
-
-			if sources.SubsetOf(leftSources) {
-				leftOnlyFilters = append(leftOnlyFilters, e)
-				filtersMoved++
-			} else if sources.SubsetOf(rightSources) {
-				rightOnlyFilters = append(rightOnlyFilters, e)
-				filtersMoved++
-			} else {
-				condFilters = append(condFilters, e)
-			}
-		}
-
-		if filtersMoved == 0 {
-			return n, transform.SameTree, nil
-		}
-
-		newLeft := join.Left()
-		if len(leftOnlyFilters) > 0 {
-			newLeft = plan.NewFilter(expression.JoinAnd(leftOnlyFilters...), newLeft)
-		}
-
-		newRight := join.Right()
-		if len(rightOnlyFilters) > 0 {
-			newRight = plan.NewFilter(expression.JoinAnd(rightOnlyFilters...), newRight)
-		}
-
-		// TODO: This might not be necessary. JoinAnd returns nil for arrays of length 0 and nil join conditions are
-		//  evaluated as true anyways
-		if len(condFilters) == 0 {
-			condFilters = append(condFilters, expression.NewTrue())
-		}
-
-		return plan.NewJoin(newLeft, newRight, join.Op, expression.JoinAnd(condFilters...)).WithComment(join.CommentStr), transform.NewTree, nil
-	})
-}
-
-// nodeSources returns the set of column sources from the schema of the node given.
-func nodeSources(n sql.Node) sql.FastIntSet {
-	var tables sql.FastIntSet
-	transform.InspectUp(n, func(n sql.Node) bool {
-		tin, _ := n.(plan.TableIdNode)
-		if tin != nil {
-			tables.Add(int(tin.Id()))
-		}
-		return false
-	})
-	return tables
-}
-
-// expressionSources returns the set of sources from any GetField expressions
-// in the expression given, and a boolean indicating whether the expression
-// is null rejecting from those sources.
-func expressionSources(expr sql.Expression) (sql.FastIntSet, bool) {
-	var tables sql.FastIntSet
-	var nullRejecting bool = true
-
-	sql.Inspect(expr, func(e sql.Expression) bool {
-		switch e := e.(type) {
-		case *expression.GetField:
-			tables.Add(int(e.TableId()))
-		case sql.IsNullExpression, sql.IsNotNullExpression:
-			nullRejecting = false
-		case *expression.NullSafeEquals:
-			nullRejecting = false
-		case *expression.Equals:
-			if lit, ok := e.Left().(*expression.Literal); ok && lit.Value() == nil {
-				nullRejecting = false
-			}
-			if lit, ok := e.Right().(*expression.Literal); ok && lit.Value() == nil {
-				nullRejecting = false
-			}
-		case *plan.Subquery:
-			transform.InspectExpressions(e.Query, func(innerExpr sql.Expression) bool {
-				switch e := innerExpr.(type) {
-				case *expression.GetField:
-					tables.Add(int(e.TableId()))
-				case sql.IsNullExpression, sql.IsNotNullExpression:
-					nullRejecting = false
-				case *expression.NullSafeEquals:
-					nullRejecting = false
-				case *expression.Equals:
-					if lit, ok := e.Left().(*expression.Literal); ok && lit.Value() == nil {
-						nullRejecting = false
-					}
-					if lit, ok := e.Right().(*expression.Literal); ok && lit.Value() == nil {
-						nullRejecting = false
-					}
-				}
-				return true
-			})
-		}
-		return true
-	})
-
-	return tables, nullRejecting
-}
-
 // simplifyFilters simplifies filter expressions in nodes where possible. Nodes with filter expressions that can be
 // statically evaluated to true or false are transformed so that the expression no longer needs to be evaluated.
 func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
@@ -218,7 +87,7 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 		return node, transform.SameTree, nil
 	}
 
-	return transform.NodeWithOpaque(node, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	return transform.NodeWithOpaque(ctx, node, func(ctx *sql.Context, node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := node.(type) {
 		case *plan.JoinNode:
 			if n.Filter != nil {
@@ -233,9 +102,9 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 					// If the filter always evaluates to true, convert to cross join if possible
 					switch joinType {
 					case plan.JoinTypeInner:
-						return plan.NewCrossJoin(n.Left(), n.Right()), transform.NewTree, nil
+						return plan.NewCrossJoin(ctx, n.Left(), n.Right()), transform.NewTree, nil
 					case plan.JoinTypeLateralInner:
-						return plan.NewLateralCrossJoin(n.Left(), n.Right()), transform.NewTree, nil
+						return plan.NewLateralCrossJoin(ctx, n.Left(), n.Right()), transform.NewTree, nil
 					default:
 						// Remove filter. Filter does not need to be evaluated if always true
 						return n.WithFilter(nil), transform.NewTree, nil
@@ -247,10 +116,10 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 					case plan.JoinTypeLeftOuter, plan.JoinTypeLateralLeft:
 						// In a left join, we still want all rows on the left side. But because the filter is always
 						// false, it will never match rows on the right side so we can treat it like it's empty
-						return plan.NewJoin(n.Left(), plan.NewEmptyTableWithSchema(n.Right().Schema()), joinType, nil), transform.NewTree, nil
+						return plan.NewJoin(ctx, n.Left(), plan.NewEmptyTableWithSchema(n.Right().Schema(ctx)), joinType, nil), transform.NewTree, nil
 					default:
 						// For non-outer joins, a join condition that always evaluates to false would return an empty set
-						return plan.NewEmptyTableWithSchema(n.Schema()), transform.NewTree, nil
+						return plan.NewEmptyTableWithSchema(n.Schema(ctx)), transform.NewTree, nil
 					}
 				}
 
@@ -272,11 +141,11 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 			}
 			// if the filter always evaluates to false, the result is an empty table
 			if isFalse {
-				return plan.NewEmptyTableWithSchema(n.Schema()), transform.NewTree, nil
+				return plan.NewEmptyTableWithSchema(n.Schema(ctx)), transform.NewTree, nil
 			}
 
 			if !same {
-				return plan.NewFilter(e, n.Child), transform.NewTree, nil
+				return plan.NewFilter(ctx, e, n.Child), transform.NewTree, nil
 			}
 		}
 		return node, transform.SameTree, nil
@@ -286,7 +155,7 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 // simplifyExpressions replaces expressions that can be evaluated statically with their Literal value and removes
 // redundant parts of AND and OR expressions.
 func simplifyExpression(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-	return transform.Expr(e, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+	return transform.Expr(ctx, e, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		switch e := e.(type) {
 		// TODO: if the left and right children of Equals are the same expression, simplify to NullIf(IsNotNull(left), false)
 		case *plan.Subquery:
@@ -354,7 +223,7 @@ func simplifyExpression(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sel Ru
 				// if left side is false, the value of the OR expression is determined by the right side
 				// TODO If RightChild is not a boolean type, it can be returned if converted to a boolean. Nil values
 				//  must be preserved
-				if types.IsBoolean(e.RightChild.Type()) {
+				if types.IsBoolean(e.RightChild.Type(ctx)) {
 					return e.RightChild, transform.NewTree, nil
 				}
 			}
@@ -362,7 +231,7 @@ func simplifyExpression(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sel Ru
 			// if right side is false, the value of the OR expression is determined by the left side
 			// TODO If LeftChild is not a boolean type, it can be returned if converted to a boolean. Nil values must be
 			//  preserved
-			if rightIsFalse && types.IsBoolean(e.LeftChild.Type()) {
+			if rightIsFalse && types.IsBoolean(e.LeftChild.Type(ctx)) {
 				return e.LeftChild, transform.NewTree, nil
 			}
 
@@ -388,7 +257,7 @@ func simplifyExpression(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sel Ru
 				// if left side is true, the value of the AND expression is determined by the right side
 				// TODO If RightChild is not a boolean type, it can be returned if converted to a boolean. Nil values
 				//  must be preserved
-				if types.IsBoolean(e.RightChild.Type()) {
+				if types.IsBoolean(e.RightChild.Type(ctx)) {
 					return e.RightChild, transform.NewTree, nil
 				}
 			}
@@ -396,7 +265,7 @@ func simplifyExpression(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sel Ru
 			// if right side is true, the value of the AND expression is determined by the left side
 			// TODO If LeftChild is not a boolean type, it can be returned if converted to a boolean. Nil values must be
 			//  preserved
-			if rightIsTrue && types.IsBoolean(e.LeftChild.Type()) {
+			if rightIsTrue && types.IsBoolean(e.LeftChild.Type(ctx)) {
 				return e.LeftChild, transform.NewTree, nil
 			}
 
@@ -449,12 +318,22 @@ func simplifyExpression(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sel Ru
 			if len(valStr) == 1 {
 				return e, transform.SameTree, nil
 			}
-			valStr = valStr[:len(valStr)-1]
-			newRightLower := expression.NewLiteral(valStr, e.RightChild.Type())
-			valStr += string(byte(255)) // append largest possible character as upper bound
-			newRightUpper := expression.NewLiteral(valStr, e.RightChild.Type())
-			newExpr := expression.NewAnd(expression.NewGreaterThanOrEqual(e.LeftChild, newRightLower), expression.NewLessThanOrEqual(e.LeftChild, newRightUpper))
-			return newExpr, transform.NewTree, nil
+			prefix := valStr[:len(valStr)-1]
+			rightType := e.RightChild.Type(ctx)
+			lowerBound := expression.NewGreaterThanOrEqual(e.LeftChild, expression.NewLiteral(prefix, rightType))
+			// For a code-point ordered collation every match lies between |prefix| and the next
+			// string above it, so the LIKE becomes a range with an upper bound. When |prefix| has
+			// no such bound, fall through to the residual form below.
+			if coll == sql.Collation_utf8mb4_0900_bin {
+				if upperPrefix, hasUpper := incrementLastRune(prefix); hasUpper {
+					upper := expression.NewLiteral(upperPrefix, rightType)
+					return expression.NewAnd(lowerBound, expression.NewLessThan(e.LeftChild, upper)), transform.NewTree, nil
+				}
+			}
+			// Keep the lower bound as an index hint and keep the LIKE as a residual filter that
+			// rechecks each row. This stays correct for collations whose matches are not one
+			// simple range and for the case above where |prefix| has no upper bound.
+			return expression.NewAnd(lowerBound, e), transform.NewTree, nil
 		case *expression.Not:
 			if lit, ok := e.Child.(*expression.Literal); ok {
 				val, err := sql.ConvertToBool(ctx, lit.Value())
@@ -468,11 +347,11 @@ func simplifyExpression(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sel Ru
 		case *expression.Literal, expression.Tuple, *expression.Interval, *expression.CollatedExpression, *expression.MatchAgainst:
 			return e, transform.SameTree, nil
 		default:
-			if !isEvaluable(e) {
+			if !isEvaluable(ctx, e) {
 				return e, transform.SameTree, nil
 			}
 			if conv, ok := e.(*expression.Convert); ok {
-				if types.IsBinaryType(conv.Type()) {
+				if types.IsBinaryType(conv.Type(ctx)) {
 					return e, transform.SameTree, nil
 				}
 			}
@@ -482,9 +361,27 @@ func simplifyExpression(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sel Ru
 			if err != nil {
 				return e, transform.SameTree, err
 			}
-			return expression.NewLiteral(val, e.Type()), transform.NewTree, nil
+			return expression.NewLiteral(val, e.Type(ctx)), transform.NewTree, nil
 		}
 	})
+}
+
+// incrementLastRune returns |prefix| with its last rune replaced by the next higher rune. The
+// result is the smallest string that sorts after every string starting with |prefix|, so the
+// caller can use it as an exclusive upper bound. It returns false when the last rune is already
+// the highest one, in which case no such bound exists and the caller omits the upper comparison.
+func incrementLastRune(prefix string) (string, bool) {
+	last, size := utf8.DecodeLastRuneInString(prefix)
+	if last == utf8.MaxRune {
+		return "", false
+	}
+	next := last + 1
+	// Skip the surrogate range U+D800 through U+DFFF, which is not valid UTF-8. Otherwise
+	// string(next) would yield the replacement character and push the upper bound too high.
+	if next == 0xD800 {
+		next = 0xE000
+	}
+	return prefix[:len(prefix)-size] + string(next), true
 }
 
 // getDefiniteBoolValues gets the definite boolean values of an expression. isTrue will only be true if the expression
@@ -512,15 +409,15 @@ func pushNotFilters(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *plan.Scope, _ 
 	if !FlagIsSet(qFlags, sql.QFlgNotExpr) {
 		return n, transform.SameTree, nil
 	}
-	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	return transform.Node(ctx, n, func(ctx *sql.Context, n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		var e sql.Expression
 		var err error
 		switch n := n.(type) {
 		case *plan.Filter:
-			e, err = pushNotFiltersHelper(n.Expression)
+			e, err = pushNotFiltersHelper(ctx, n.Expression)
 		case *plan.JoinNode:
 			if n.Filter != nil {
-				e, err = pushNotFiltersHelper(n.Filter)
+				e, err = pushNotFiltersHelper(ctx, n.Filter)
 			}
 		default:
 			return n, transform.SameTree, nil
@@ -528,7 +425,7 @@ func pushNotFilters(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *plan.Scope, _ 
 		if err != nil {
 			return n, transform.SameTree, nil
 		}
-		ret, err := n.(sql.Expressioner).WithExpressions(e)
+		ret, err := n.(sql.Expressioner).WithExpressions(ctx, e)
 		if err != nil {
 			return n, transform.SameTree, nil
 		}
@@ -537,12 +434,12 @@ func pushNotFilters(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *plan.Scope, _ 
 }
 
 // TODO maybe: NOT(INTUPLE(c...)), NOT(EQ(c))=>OR(LT(c), GT(c))
-func pushNotFiltersHelper(e sql.Expression) (sql.Expression, error) {
+func pushNotFiltersHelper(ctx *sql.Context, e sql.Expression) (sql.Expression, error) {
 	// NOT(NOT(c))=>c
 	if not, _ := e.(*expression.Not); not != nil {
 		if f, _ := not.Child.(*expression.Not); f != nil {
-			if types.IsBoolean(f.Child.Type()) {
-				return pushNotFiltersHelper(f.Child)
+			if types.IsBoolean(f.Child.Type(ctx)) {
+				return pushNotFiltersHelper(ctx, f.Child)
 			}
 		}
 	}
@@ -550,49 +447,49 @@ func pushNotFiltersHelper(e sql.Expression) (sql.Expression, error) {
 	// NOT(AND(left,right))=>OR(NOT(left), NOT(right))
 	if not, _ := e.(*expression.Not); not != nil {
 		if f, _ := not.Child.(*expression.And); f != nil {
-			return pushNotFiltersHelper(expression.NewOr(expression.NewNot(f.LeftChild), expression.NewNot(f.RightChild)))
+			return pushNotFiltersHelper(ctx, expression.NewOr(expression.NewNot(f.LeftChild), expression.NewNot(f.RightChild)))
 		}
 	}
 
 	// NOT(OR(left,right))=>AND(NOT(left), NOT(right))
 	if not, _ := e.(*expression.Not); not != nil {
 		if f, _ := not.Child.(*expression.Or); f != nil {
-			return pushNotFiltersHelper(expression.NewAnd(expression.NewNot(f.LeftChild), expression.NewNot(f.RightChild)))
+			return pushNotFiltersHelper(ctx, expression.NewAnd(expression.NewNot(f.LeftChild), expression.NewNot(f.RightChild)))
 		}
 	}
 
 	// NOT(GT(c))=>LTE(c)
 	if not, _ := e.(*expression.Not); not != nil {
 		if f, _ := not.Child.(*expression.GreaterThan); f != nil {
-			return pushNotFiltersHelper(expression.NewLessThanOrEqual(f.Left(), f.Right()))
+			return pushNotFiltersHelper(ctx, expression.NewLessThanOrEqual(f.Left(), f.Right()))
 		}
 	}
 
 	// NOT(GTE(c))=>LT(c)
 	if not, _ := e.(*expression.Not); not != nil {
 		if f, _ := not.Child.(*expression.GreaterThanOrEqual); f != nil {
-			return pushNotFiltersHelper(expression.NewLessThan(f.Left(), f.Right()))
+			return pushNotFiltersHelper(ctx, expression.NewLessThan(f.Left(), f.Right()))
 		}
 	}
 
 	// NOT(LT(c))=>GTE(c)
 	if not, _ := e.(*expression.Not); not != nil {
 		if f, _ := not.Child.(*expression.LessThan); f != nil {
-			return pushNotFiltersHelper(expression.NewGreaterThanOrEqual(f.Left(), f.Right()))
+			return pushNotFiltersHelper(ctx, expression.NewGreaterThanOrEqual(f.Left(), f.Right()))
 		}
 	}
 
 	// NOT(LTE(c))=>GT(c)
 	if not, _ := e.(*expression.Not); not != nil {
 		if f, _ := not.Child.(*expression.LessThanOrEqual); f != nil {
-			return pushNotFiltersHelper(expression.NewGreaterThan(f.Left(), f.Right()))
+			return pushNotFiltersHelper(ctx, expression.NewGreaterThan(f.Left(), f.Right()))
 		}
 	}
 
 	//NOT(BETWEEN(left,right))=>OR(LT(left), GT(right))
 	if not, _ := e.(*expression.Not); not != nil {
 		if f, _ := not.Child.(*expression.Between); f != nil {
-			return pushNotFiltersHelper(expression.NewOr(
+			return pushNotFiltersHelper(ctx, expression.NewOr(
 				expression.NewLessThan(f.Val, f.Lower),
 				expression.NewGreaterThan(f.Val, f.Upper),
 			))
@@ -601,11 +498,11 @@ func pushNotFiltersHelper(e sql.Expression) (sql.Expression, error) {
 
 	var newChildren []sql.Expression
 	for _, c := range e.Children() {
-		newC, err := pushNotFiltersHelper(c)
+		newC, err := pushNotFiltersHelper(ctx, c)
 		if err != nil {
 			return nil, err
 		}
 		newChildren = append(newChildren, newC)
 	}
-	return e.WithChildren(newChildren...)
+	return e.WithChildren(ctx, newChildren...)
 }

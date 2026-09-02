@@ -21,6 +21,8 @@
 package queries
 
 import (
+	"strings"
+
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/internal/regex"
@@ -2158,4 +2160,47 @@ var RegexTests = []RegexTest{
 		Query:    "SELECT REGEXP_SUBSTR('abc def ghi', '[j-z]+');",
 		Expected: []sql.Row{{nil}},
 	},
+}
+
+// RegexScriptTests holds ScriptTests for the regexp functions.
+var RegexScriptTests = []ScriptTest{
+	{
+		Name: "regexp functions over a large text column in a group by grouping key",
+		SetUpScript: []string{
+			"CREATE TABLE writings (phelps TEXT, language TEXT, text LONGTEXT)",
+			"INSERT INTO writings VALUES " +
+				"('AB10000X','en',CONCAT('<p>',REPEAT('a',2000000)))," +
+				"('AB10000Y','en',CONCAT('<p>',REPEAT('a',2000000)))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: regexpGroupByQuery("LEFT(REGEXP_REPLACE(text,'^<p>',''),70)"),
+				// REGEXP_REPLACE built a large native result whose buffer copy
+				// over-read past the end and crashed once the result left the heap.
+				// See https://github.com/dolthub/dolt/issues/11183
+				Expected: []sql.Row{{"AB10000", "en", strings.Repeat("a", 70), int64(2)}},
+			},
+			{
+				Query:    regexpGroupByQuery("LEFT(REGEXP_SUBSTR(text,'^<p>'),70)"),
+				Expected: []sql.Row{{"AB10000", "en", "<p>", int64(2)}},
+			},
+			{
+				Query:    regexpGroupByQuery("REGEXP_LIKE(text,'^<p>')"),
+				Expected: []sql.Row{{"AB10000", "en", int8(1), int64(2)}},
+			},
+			{
+				Query:    regexpGroupByQuery("REGEXP_INSTR(text,'^<p>')"),
+				Expected: []sql.Row{{"AB10000", "en", int32(1), int64(2)}},
+			},
+		},
+	},
+}
+
+// regexpGroupByQuery returns the issue's query with |head| as the grouping-key
+// expression, so each regexp function can run in the same context.
+func regexpGroupByQuery(head string) string {
+	return "SELECT SUBSTRING(phelps,1,7) AS base, language, " + head + " AS head, " +
+		"COUNT(DISTINCT phelps) FROM writings " +
+		"WHERE phelps REGEXP '^(BH|BB|AB)[0-9]{5}[A-Z]' " +
+		"GROUP BY base, language, head HAVING COUNT(DISTINCT phelps) > 1"
 }

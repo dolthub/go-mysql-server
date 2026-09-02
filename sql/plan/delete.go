@@ -85,7 +85,7 @@ func (p *DeleteFrom) GetDeleteTargets() []sql.Node {
 }
 
 // Schema implements the sql.Node interface.
-func (p *DeleteFrom) Schema() sql.Schema {
+func (p *DeleteFrom) Schema(ctx *sql.Context) sql.Schema {
 	// Postgres allows the returned values of the delete statement to be controlled, so if returning
 	// expressions were specified, then we return a different schema.
 	if p.Returning != nil {
@@ -93,13 +93,13 @@ func (p *DeleteFrom) Schema() sql.Schema {
 		// safely until Resolved() is true.
 		returningSchema := sql.Schema{}
 		for _, expr := range p.Returning {
-			returningSchema = append(returningSchema, transform.ExpressionToColumn(expr, ""))
+			returningSchema = append(returningSchema, transform.ExpressionToColumn(ctx, expr, ""))
 		}
 
 		return returningSchema
 	}
 
-	return p.Child.Schema()
+	return p.Child.Schema(ctx)
 }
 
 // Resolved implements the sql.Resolvable interface.
@@ -129,13 +129,13 @@ func (p *DeleteFrom) Expressions() []sql.Expression {
 }
 
 // WithExpressions implements the sql.Expressioner interface.
-func (p *DeleteFrom) WithExpressions(newExprs ...sql.Expression) (sql.Node, error) {
-	if len(newExprs) != len(p.Returning) {
-		return nil, sql.ErrInvalidChildrenNumber.New(p, len(newExprs), len(p.Returning))
+func (p *DeleteFrom) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
+	if len(exprs) != len(p.Returning) {
+		return nil, sql.ErrInvalidChildrenNumber.New(p, len(exprs), len(p.Returning))
 	}
 
 	copy := *p
-	copy.Returning = newExprs
+	copy.Returning = exprs
 	return &copy, nil
 }
 
@@ -157,7 +157,7 @@ func (p *DeleteFrom) Database() string {
 }
 
 // WithChildren implements the Node interface.
-func (p *DeleteFrom) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (p *DeleteFrom) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
 	}
@@ -221,9 +221,9 @@ func (p *DeleteFrom) String() string {
 	return pr.String()
 }
 
-func (p *DeleteFrom) DebugString() string {
+func (p *DeleteFrom) DebugString(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Delete")
-	_ = pr.WriteChildren(sql.DebugString(p.Child))
+	_ = pr.WriteChildren(sql.DebugString(ctx, p.Child))
 	return pr.String()
 }

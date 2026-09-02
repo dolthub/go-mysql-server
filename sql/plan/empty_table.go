@@ -85,11 +85,11 @@ func (e *EmptyTable) Name() string {
 	return e.schema[0].Source
 }
 
-func (e *EmptyTable) Schema() sql.Schema { return e.schema }
-func (*EmptyTable) Children() []sql.Node { return nil }
-func (*EmptyTable) Resolved() bool       { return true }
-func (*EmptyTable) IsReadOnly() bool     { return true }
-func (e *EmptyTable) String() string     { return "EmptyTable\n" }
+func (e *EmptyTable) Schema(ctx *sql.Context) sql.Schema { return e.schema }
+func (*EmptyTable) Children() []sql.Node                 { return nil }
+func (*EmptyTable) Resolved() bool                       { return true }
+func (*EmptyTable) IsReadOnly() bool                     { return true }
+func (e *EmptyTable) String() string                     { return "EmptyTable\n" }
 
 // RowIter implements the sql.Node interface.
 func (*EmptyTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
@@ -97,7 +97,7 @@ func (*EmptyTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 }
 
 // WithChildren implements the sql.Node interface.
-func (e *EmptyTable) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (e *EmptyTable) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(e, len(children), 0)
 	}
@@ -127,7 +127,7 @@ func (e *EmptyTable) Partitions(_ *sql.Context) (sql.PartitionIter, error) {
 
 // PartitionRows implements the sql.UpdatableTable interface.
 func (e *EmptyTable) PartitionRows(_ *sql.Context, _ sql.Partition) (sql.RowIter, error) {
-	return &emptyTableIter{}, nil
+	return sql.EmptyIter, nil
 }
 
 // Deleter implements the sql.DeletableTable interface.
@@ -159,20 +159,6 @@ func (e *emptyTableUpdater) Update(_ *sql.Context, _ sql.Row, _ sql.Row) error {
 
 // Close implements the sql.Closer interface
 func (e *emptyTableUpdater) Close(_ *sql.Context) error {
-	return nil
-}
-
-type emptyTableIter struct{}
-
-var _ sql.RowIter = (*emptyTableIter)(nil)
-
-// Next implements the sql.RowIter interface.
-func (e *emptyTableIter) Next(_ *sql.Context) (sql.Row, error) {
-	return nil, io.EOF
-}
-
-// Close implements the sql.RowIter interface.
-func (e *emptyTableIter) Close(_ *sql.Context) error {
 	return nil
 }
 

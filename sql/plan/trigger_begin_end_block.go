@@ -39,7 +39,7 @@ func NewTriggerBeginEndBlock(block *BeginEndBlock) *TriggerBeginEndBlock {
 }
 
 // WithChildren implements the sql.Node interface.
-func (b *TriggerBeginEndBlock) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (b *TriggerBeginEndBlock) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	return NewTriggerBeginEndBlock(NewBeginEndBlock(b.BeginEndBlock.Label, NewBlock(children))), nil
 }
 

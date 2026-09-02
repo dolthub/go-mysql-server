@@ -16,7 +16,6 @@ package json
 
 import (
 	"context"
-	goJson "encoding/json"
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -61,6 +60,16 @@ func getJSONDocumentFromRow(ctx *sql.Context, row sql.Row, json sql.Expression) 
 		return nil, err
 	}
 
+	// A large text value can arrive as a lazily loaded StringWrapper. Unwrap it
+	// so it follows the string path below.
+	if sw, ok := js.(sql.StringWrapper); ok {
+		s, err := sw.Unwrap(ctx)
+		if err != nil {
+			return nil, err
+		}
+		js = s
+	}
+
 	var jsonData interface{}
 
 	switch jsType := js.(type) {
@@ -71,7 +80,7 @@ func getJSONDocumentFromRow(ctx *sql.Context, row sql.Row, json sql.Expression) 
 		if err != nil {
 			return nil, err
 		}
-		if err = goJson.Unmarshal(strData.([]byte), &jsonData); err != nil {
+		if err = types.JsonUnmarshal(strData.([]byte), &jsonData); err != nil {
 			return nil, invalidJson(jsType)
 		}
 		return types.JSONDocument{Val: jsonData}, nil

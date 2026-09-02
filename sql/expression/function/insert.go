@@ -33,7 +33,7 @@ var _ sql.FunctionExpression = (*Insert)(nil)
 var _ sql.CollationCoercible = (*Insert)(nil)
 
 // NewInsert creates a new Insert expression
-func NewInsert(str, pos, length, newStr sql.Expression) sql.Expression {
+func NewInsert(ctx *sql.Context, str, pos, length, newStr sql.Expression) sql.Expression {
 	return &Insert{str, pos, length, newStr}
 }
 
@@ -58,12 +58,12 @@ func (i *Insert) Resolved() bool {
 }
 
 // IsNullable implements the Expression interface
-func (i *Insert) IsNullable() bool {
-	return i.str.IsNullable() || i.pos.IsNullable() || i.length.IsNullable() || i.newStr.IsNullable()
+func (i *Insert) IsNullable(ctx *sql.Context) bool {
+	return i.str.IsNullable(ctx) || i.pos.IsNullable(ctx) || i.length.IsNullable(ctx) || i.newStr.IsNullable(ctx)
 }
 
 // Type implements the Expression interface
-func (i *Insert) Type() sql.Type {
+func (i *Insert) Type(ctx *sql.Context) sql.Type {
 	return types.LongText
 }
 
@@ -80,11 +80,11 @@ func (i *Insert) String() string {
 }
 
 // WithChildren implements the Expression interface
-func (i *Insert) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (i *Insert) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 4 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 4)
 	}
-	return NewInsert(children[0], children[1], children[2], children[3]), nil
+	return NewInsert(ctx, children[0], children[1], children[2], children[3]), nil
 }
 
 // Eval implements the Expression interface

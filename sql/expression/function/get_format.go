@@ -32,7 +32,7 @@ var _ sql.FunctionExpression = (*GetFormat)(nil)
 var _ sql.CollationCoercible = (*GetFormat)(nil)
 
 // NewGetFormat creates a new GetFormat expression.
-func NewGetFormat(e1, e2 sql.Expression) sql.Expression {
+func NewGetFormat(ctx *sql.Context, e1, e2 sql.Expression) sql.Expression {
 	return &GetFormat{
 		expression.BinaryExpressionStub{
 			LeftChild:  e1,
@@ -52,7 +52,7 @@ func (g *GetFormat) Description() string {
 }
 
 // Type implements the Expression interface.
-func (g *GetFormat) Type() sql.Type {
+func (g *GetFormat) Type(ctx *sql.Context) sql.Type {
 	return types.Text
 }
 
@@ -66,11 +66,11 @@ func (g *GetFormat) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (g *GetFormat) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (g *GetFormat) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(g, len(children), 2)
 	}
-	return NewGetFormat(children[0], children[1]), nil
+	return NewGetFormat(ctx, children[0], children[1]), nil
 }
 
 var formats = map[string]map[string]string{
@@ -138,6 +138,6 @@ func (g *GetFormat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // IsNullable implements sql.Expression
-func (g *GetFormat) IsNullable() bool {
+func (g *GetFormat) IsNullable(ctx *sql.Context) bool {
 	return true
 }

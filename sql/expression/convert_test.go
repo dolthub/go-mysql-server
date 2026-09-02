@@ -19,7 +19,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/shopspring/decimal"
+	"github.com/cockroachdb/apd/v3"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -274,8 +274,8 @@ func TestConvert(t *testing.T) {
 			}
 
 			// Convert any Decimal values to strings for easier comparison (same as we do for engine tests)
-			if d, ok := val.(decimal.Decimal); ok {
-				val = d.String()
+			if d, ok := val.(*apd.Decimal); ok {
+				val = d.Text('f')
 			}
 
 			require.Equal(test.expected, val)

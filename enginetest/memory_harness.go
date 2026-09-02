@@ -213,7 +213,7 @@ func (m *MemoryHarness) NewTableAsOf(db sql.VersionedDatabase, name string, sche
 	} else {
 		panic(fmt.Sprintf("unexpected database type %T", db))
 	}
-	table := memory.NewPartitionedTableRevision(baseDb, name, schema, fkColl, m.numTablePartitions)
+	table := memory.NewPartitionedTableRevision(sql.NewEmptyContext(), baseDb, name, schema, fkColl, m.numTablePartitions)
 	if ro, ok := db.(memory.ReadOnlyDatabase); ok {
 		ro.HistoryDatabase.AddTableAsOf(name, table, asOf)
 	} else {

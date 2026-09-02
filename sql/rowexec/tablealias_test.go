@@ -33,7 +33,7 @@ func TestTableAlias(t *testing.T) {
 	pro := memory.NewDBProvider(db)
 	ctx := newContext(pro)
 
-	table := memory.NewTable(db, "bar", sql.NewPrimaryKeySchema(sql.Schema{
+	table := memory.NewTable(ctx, db, "bar", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: types.Text, Nullable: true},
 		{Name: "b", Type: types.Text, Nullable: true},
 	}), nil)
@@ -52,7 +52,7 @@ func TestTableAlias(t *testing.T) {
 	require.Equal(sql.Schema{
 		{Name: "a", Source: "foo", Type: types.Text, Nullable: true},
 		{Name: "b", Source: "foo", Type: types.Text, Nullable: true},
-	}, alias.Schema())
+	}, alias.Schema(ctx))
 	iter, err := DefaultBuilder.Build(ctx, alias, nil)
 	require.NoError(err)
 

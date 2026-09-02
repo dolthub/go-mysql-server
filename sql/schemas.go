@@ -63,6 +63,18 @@ func (s Schema) HasVirtualColumns() bool {
 	return false
 }
 
+// GeneratedExpressions returns the schema's generated column expressions indexed by column position,
+// with nil where a column has no generated expression.
+func (s Schema) GeneratedExpressions() []Expression {
+	projections := make([]Expression, len(s))
+	for i, col := range s {
+		if col.Generated != nil {
+			projections[i] = col.Generated
+		}
+	}
+	return projections
+}
+
 // PhysicalSchema returns a schema with only the physical (non-virtual) columns
 func (s Schema) PhysicalSchema() Schema {
 	var physical Schema
@@ -202,10 +214,10 @@ func NewPrimaryKeySchema(s Schema, pkOrds ...int) PrimaryKeySchema {
 // SchemaToPrimaryKeySchema adapts the schema given to a PrimaryKey schema using the primary keys of the table given, if
 // present. The resulting PrimaryKeySchema may have an empty key set if the table has no primary keys. Matching for
 // ordinals is performed by column name, with the aid of |renames| when provided.
-func SchemaToPrimaryKeySchema(table Table, sch Schema, renames ...ColumnRename) PrimaryKeySchema {
+func SchemaToPrimaryKeySchema(ctx *Context, table Table, sch Schema, renames ...ColumnRename) PrimaryKeySchema {
 	var pks []*Column
 	if pkt, ok := table.(PrimaryKeyTable); ok {
-		schema := pkt.PrimaryKeySchema()
+		schema := pkt.PrimaryKeySchema(ctx)
 		for _, ordinal := range schema.PkOrdinals {
 			pks = append(pks, schema.Schema[ordinal])
 		}

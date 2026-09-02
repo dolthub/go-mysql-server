@@ -17,6 +17,7 @@ package expression
 import (
 	"fmt"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/stretchr/testify/require"
 
@@ -77,13 +78,14 @@ func TestCustomPatternToRegex(t *testing.T) {
 
 func TestLike(t *testing.T) {
 	testCases := []struct {
-		pattern, value, escape string
-		ok                     bool
-		collation              sql.CollationID
+		pattern, value string
+		escape         any
+		ok             bool
+		collation      sql.CollationID
 	}{
 		{"a__", "abc", "", true, sql.Collation_Default},
 		{"a__", "abcd", "", false, sql.Collation_Default},
-		{"a%b", "acb", "", true, sql.Collation_Default},
+		{"ab\\_", "ab_", "", false, sql.Collation_Default},
 		{"a%b", "acdkeflskjfdklb", "", true, sql.Collation_Default},
 		{"a%b", "ab", "", true, sql.Collation_Default},
 		{"a%b", "a", "", false, sql.Collation_Default},
@@ -95,10 +97,10 @@ func TestLike(t *testing.T) {
 		{"a_%_b%_%c", "AaAbBcCbCc", "", true, sql.Collation_utf8mb4_0900_ai_ci},
 		{"a_%_b%_%c", "AbbbbC", "", true, sql.Collation_utf8mb4_0900_ai_ci},
 		{"a_%_n%_%z", "aBcDeFgHiJkLmNoPqRsTuVwXyZ", "", true, sql.Collation_utf8mb4_0900_ai_ci},
-		{`a\%b`, "acb", "", false, sql.Collation_Default},
-		{`a\%b`, "a%b", "", true, sql.Collation_Default},
-		{`a\%b`, "A%B", "", false, sql.Collation_Default},
-		{`a\%b`, "A%B", "", true, sql.Collation_utf8mb4_0900_ai_ci},
+		{`a\%b`, "acb", nil, false, sql.Collation_Default},
+		{`a\%b`, "a%b", nil, true, sql.Collation_Default},
+		{`a\%b`, "A%B", nil, false, sql.Collation_Default},
+		{`a\%b`, "A%B", nil, true, sql.Collation_utf8mb4_0900_ai_ci},
 		{"a$%b", "acb", "$", false, sql.Collation_Default},
 		{"a$%b", "a%b", "$", true, sql.Collation_Default},
 		{"a$%b", "A%B", "$", false, sql.Collation_Default},
@@ -115,13 +117,17 @@ func TestLike(t *testing.T) {
 		{`a\\\b`, "a", "", false, sql.Collation_utf8mb4_0900_ai_ci},
 		{`A%%%%`, "abc", "", true, sql.Collation_utf8mb4_0900_ai_ci},
 		{`A%%%%bc`, "abc", "", true, sql.Collation_utf8mb4_0900_ai_ci},
+		// See https://github.com/dolthub/dolt/issues/11088
+		{string(utf8.RuneError), string(utf8.RuneError), "", true, sql.Collation_utf8mb4_0900_ai_ci}, // U+FFFD, 0xEFBFBD
+		{"%", string(utf8.RuneError), "", true, sql.Collation_utf8mb4_0900_ai_ci},
+		{"_", string(utf8.RuneError), "", true, sql.Collation_utf8mb4_0900_ai_ci},
 	}
 
 	for _, tt := range testCases {
 		t.Run(fmt.Sprintf("%q LIKE %q", tt.value, tt.pattern), func(t *testing.T) {
 			var escape sql.Expression
-			if tt.escape != "" {
-				escape = NewLiteral(tt.escape, types.LongText)
+			if tt.escape != nil {
+				escape = NewLiteral(tt.escape.(string), types.LongText)
 			}
 			f := NewLike(
 				NewGetField(0, types.CreateText(tt.collation), "", false),

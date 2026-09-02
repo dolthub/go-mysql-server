@@ -47,7 +47,7 @@ var _ sql.CollationCoercible = (*RegexpInstr)(nil)
 var _ sql.Disposable = (*RegexpInstr)(nil)
 
 // NewRegexpInstr creates a new RegexpInstr expression.
-func NewRegexpInstr(args ...sql.Expression) (sql.Expression, error) {
+func NewRegexpInstr(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	var r *RegexpInstr
 	switch len(args) {
 	case 6:
@@ -108,7 +108,7 @@ func (r *RegexpInstr) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (r *RegexpInstr) Type() sql.Type { return types.Int32 }
+func (r *RegexpInstr) Type(ctx *sql.Context) sql.Type { return types.Int32 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (r *RegexpInstr) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
@@ -118,7 +118,7 @@ func (r *RegexpInstr) CollationCoercibility(ctx *sql.Context) (collation sql.Col
 }
 
 // IsNullable implements the sql.Expression interface.
-func (r *RegexpInstr) IsNullable() bool {
+func (r *RegexpInstr) IsNullable(ctx *sql.Context) bool {
 	// TODO: this might be too general. We might want to evaluate IsNullable based on if the arguments are nullable
 	// https://dev.mysql.com/doc/refman/8.4/en/regexp.html#function_regexp-instr
 	return true
@@ -140,7 +140,7 @@ func (r *RegexpInstr) Resolved() bool {
 }
 
 // WithChildren implements the sql.Expression interface.
-func (r *RegexpInstr) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (r *RegexpInstr) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	required := 5
 	if r.Flags != nil {
 		required = 6
@@ -150,7 +150,7 @@ func (r *RegexpInstr) WithChildren(children ...sql.Expression) (sql.Expression, 
 	}
 
 	// Copy over the regex instance, in case it has already been set to avoid leaking it.
-	instr, err := NewRegexpInstr(children...)
+	instr, err := NewRegexpInstr(ctx, children...)
 	if r.re != nil && instr != nil {
 		instr.(*RegexpInstr).re = r.re
 	}
@@ -169,8 +169,8 @@ func (r *RegexpInstr) String() string {
 // compile handles compilation of the regex.
 func (r *RegexpInstr) compile(ctx *sql.Context, row sql.Row) {
 	r.compileOnce.Do(func() {
-		r.cacheRegex = canBeCached(r.Pattern, r.Flags)
-		r.cacheVal = r.cacheRegex && canBeCached(r.Text, r.Position, r.Occurrence, r.ReturnOption)
+		r.cacheRegex = canBeCached(ctx, r.Pattern, r.Flags)
+		r.cacheVal = r.cacheRegex && canBeCached(ctx, r.Text, r.Position, r.Occurrence, r.ReturnOption)
 		if r.cacheRegex {
 			r.re, r.compileErr = compileRegex(ctx, r.Pattern, r.Text, r.Flags, r.FunctionName(), row)
 		}
@@ -267,7 +267,7 @@ func (r *RegexpInstr) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // Dispose implements the sql.Disposable interface.
-func (r *RegexpInstr) Dispose() {
+func (r *RegexpInstr) Dispose(ctx *sql.Context) {
 	if r.re != nil {
 		_ = r.re.Close()
 	}

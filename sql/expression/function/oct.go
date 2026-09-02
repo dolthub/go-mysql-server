@@ -31,7 +31,7 @@ var _ sql.FunctionExpression = (*Oct)(nil)
 var _ sql.CollationCoercible = (*Oct)(nil)
 
 // NewOct returns a new Oct expression.
-func NewOct(n sql.Expression) sql.Expression { return &Oct{n} }
+func NewOct(ctx *sql.Context, n sql.Expression) sql.Expression { return &Oct{n} }
 
 // FunctionName implements sql.FunctionExpression.
 func (o *Oct) FunctionName() string {
@@ -44,12 +44,12 @@ func (o *Oct) Description() string {
 }
 
 // Type implements the Expression interface.
-func (o *Oct) Type() sql.Type {
+func (o *Oct) Type(ctx *sql.Context) sql.Type {
 	return types.LongText
 }
 
 // IsNullable implements the Expression interface.
-func (o *Oct) IsNullable() bool {
+func (o *Oct) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
@@ -57,6 +57,7 @@ func (o *Oct) IsNullable() bool {
 func (o *Oct) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Convert a decimal (base 10) number to octal (base 8)
 	return NewConv(
+		ctx,
 		o.n,
 		expression.NewLiteral(10, types.Int64),
 		expression.NewLiteral(8, types.Int64),
@@ -74,11 +75,11 @@ func (o *Oct) Children() []sql.Expression {
 }
 
 // WithChildren implements the Expression interface.
-func (o *Oct) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (o *Oct) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(o, len(children), 1)
 	}
-	return NewOct(children[0]), nil
+	return NewOct(ctx, children[0]), nil
 }
 
 func (o *Oct) String() string {

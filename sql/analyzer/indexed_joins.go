@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/sets"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/memo"
@@ -56,7 +58,7 @@ func optimizeJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 
 // inOrderReplanJoin replans the first join node found
 func inOrderReplanJoin(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sch sql.Schema, n sql.Node, isUpdate bool, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
-	if _, ok := n.(sql.OpaqueNode); ok {
+	if sql.IsOpaque(n) {
 		return n, transform.SameTree, nil
 	}
 	children := n.Children()
@@ -81,7 +83,7 @@ func inOrderReplanJoin(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sch sql
 		if allSame {
 			return n, transform.SameTree, nil
 		}
-		ret, err := n.WithChildren(newChildren...)
+		ret, err := n.WithChildren(ctx, newChildren...)
 		if err != nil {
 			return nil, transform.SameTree, nil
 		}
@@ -97,7 +99,7 @@ func inOrderReplanJoin(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sch sql
 	if isUpdate {
 		// we pass schema separately because individual nodes do not capture
 		// left join nullability
-		ret = plan.NewProject(recSchemaToGetFields(n, n.Schema()), ret)
+		ret = plan.NewProject(ctx, recSchemaToGetFields(ctx, n, n.Schema(ctx)), ret)
 	}
 	return ret, transform.NewTree, nil
 
@@ -105,30 +107,30 @@ func inOrderReplanJoin(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sch sql
 
 // recSchemaToGetFields creates a set of projection get fields for a node
 // considering column ids and left join nullability.
-func recSchemaToGetFields(n sql.Node, sch sql.Schema) []sql.Expression {
-	if len(n.Schema()) != len(sch) {
+func recSchemaToGetFields(ctx *sql.Context, n sql.Node, sch sql.Schema) []sql.Expression {
+	if len(n.Schema(ctx)) != len(sch) {
 		// Projector nodes can return more or fewer columns than child.
 		// In this case we will return the subset of get fields with column
 		// ids from the child. This does not matter currently for the context
 		// this function is used.
 		// todo: all projector node columns should have column ids
-		sch = n.Schema()
+		sch = n.Schema(ctx)
 	}
 	switch n := n.(type) {
 	case *plan.JoinNode:
 		switch {
 		case n.Op.IsPartial():
-			return recSchemaToGetFields(n.Left(), sch[:len(n.Schema())])
+			return recSchemaToGetFields(ctx, n.Left(), sch[:len(n.Schema(ctx))])
 		default:
-			l := recSchemaToGetFields(n.Left(), sch[:len(n.Left().Schema())])
-			r := recSchemaToGetFields(n.Right(), sch[len(n.Left().Schema()):])
+			l := recSchemaToGetFields(ctx, n.Left(), sch[:len(n.Left().Schema(ctx))])
+			r := recSchemaToGetFields(ctx, n.Right(), sch[len(n.Left().Schema(ctx)):])
 			return append(l, r...)
 		}
 	case plan.TableIdNode:
 		return expression.SchemaToGetFields(sch, n.Columns())
 	default:
 		if plan.IsUnary(n) {
-			return recSchemaToGetFields(n.Children()[0], sch)
+			return recSchemaToGetFields(ctx, n.Children()[0], sch)
 		}
 		return nil
 	}
@@ -155,11 +157,11 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 	}()
 
 	j := memo.NewJoinOrderBuilder(m)
-	j.ReorderJoin(n)
+	j.ReorderJoin(ctx, n)
 
 	qFlags.Set(sql.QFlagInnerJoin)
 
-	hints := m.SessionHints()
+	hints := m.SessionHints(ctx)
 	hints = append(hints, memo.ExtractJoinHint(n)...)
 
 	err = addIndexScans(ctx, m, a.Catalog)
@@ -167,7 +169,7 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 		return nil, err
 	}
 
-	err = convertSemiToInnerJoin(m)
+	err = convertSemiToInnerJoin(ctx, m)
 	if err != nil {
 		return nil, err
 	}
@@ -175,18 +177,18 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 	// TODO: updateJoinIter is not able to handle left joins wrapped in project nodes, which is what an antijoin gets
 	//  converted to. https://github.com/dolthub/dolt/issues/10614
 	if !qFlags.IsSet(sql.QFlagUpdate) {
-		err = convertAntiToLeftJoin(m)
+		err = convertAntiToLeftJoin(ctx, m)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	err = addRightSemiJoins(ctx, m)
+	err = addRightSemiJoins(ctx, m, a.Catalog)
 	if err != nil {
 		return nil, err
 	}
 
-	err = addLookupJoins(ctx, m)
+	err = addLookupJoins(ctx, m, a.Catalog)
 	if err != nil {
 		return nil, err
 	}
@@ -202,17 +204,17 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 
 	m.CardMemoGroups(ctx, m.Root())
 
-	err = addCrossHashJoins(m)
+	err = addCrossHashJoins(ctx, m)
 	if err != nil {
 		return nil, err
 	}
 
-	err = addHashJoins(m)
+	err = addHashJoins(ctx, m)
 	if err != nil {
 		return nil, err
 	}
 
-	err = addRangeHeapJoin(m)
+	err = addRangeHeapJoin(ctx, m)
 	if err != nil {
 		return nil, err
 	}
@@ -228,7 +230,7 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 		m.Tracer.Log("Starting cost-based optimization for groups %s", m)
 	}
 
-	err = m.OptimizeRoot()
+	err = m.OptimizeRoot(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -264,11 +266,11 @@ func mergeJoinsDisabled(hints []memo.Hint) bool {
 // ii) with an index that matches a prefix of the indexable relation's free
 // attributes in the join filter. Costing is responsible for choosing the most
 // appropriate execution plan among options added to an expression group.
-func addLookupJoins(ctx *sql.Context, m *memo.Memo) error {
+func addLookupJoins(ctx *sql.Context, m *memo.Memo, cat sql.Catalog) error {
 	m.Tracer.PushDebugContext("addLookupJoins")
 	defer m.Tracer.PopDebugContext()
 
-	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
+	return memo.DfsRel(ctx, m.Root(), func(ctx *sql.Context, e memo.RelExpr) error {
 		m.Tracer.PushDebugContextFmt("%+v", e)
 		defer m.Tracer.PopDebugContext()
 
@@ -319,6 +321,7 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo) error {
 			return nil
 		}
 
+		columnIdToIndexedExprMap := buildColumnIdToIndexedExprMap(ctx, cat, rt, indexes)
 		if or, ok := join.Filter[0].(*expression.Or); ok && len(join.Filter) == 1 {
 			// Special case disjoint filter. The execution plan will perform an index
 			// lookup for each predicate leaf in the OR tree.
@@ -328,11 +331,13 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo) error {
 			conds := expression.SplitDisjunction(or)
 			var concat []*memo.IndexScan
 			for _, on := range conds {
-				filters := expression.SplitConjunction(on)
+				filters := expression.SplitConjunction(ctx, on)
 				for _, idx := range indexes {
-					keyExprs, _, nullmask := keyExprsForIndex(tableId, idx.Cols(), append(filters, extraFilters...))
+					// TODO: Investigate why matched filters are not being removed from join conditions and filter nodes
+					//  https://github.com/dolthub/dolt/issues/11231
+					keyExprs, _, nullmask := keyExprsForIndex(ctx, tableId, idx.Cols(), append(filters, extraFilters...), columnIdToIndexedExprMap)
 					if keyExprs != nil {
-						ita, err := plan.NewIndexedAccessForTableNode(ctx, rt, plan.NewLookupBuilder(idx.SqlIdx(), keyExprs, nullmask))
+						ita, err := plan.NewIndexedAccessForTableNode(ctx, rt, plan.NewLookupBuilder(ctx, idx.SqlIdx(), keyExprs, nullmask))
 						if err != nil {
 							return err
 						}
@@ -349,19 +354,19 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo) error {
 			if len(concat) != len(conds) {
 				return nil
 			}
-			m.MemoizeConcatLookupJoin(e.Group(), join.Left, join.Right, join.Op, join.Filter, concat)
+			m.MemoizeConcatLookupJoin(ctx, e.Group(), join.Left, join.Right, join.Op, join.Filter, concat)
 			return nil
 		}
 
 		for _, idx := range indexes {
-			keyExprs, matchedFilters, nullmask := keyExprsForIndex(tableId, idx.Cols(), append(join.Filter, extraFilters...))
+			keyExprs, matchedFilters, nullmask := keyExprsForIndex(ctx, tableId, idx.Cols(), append(join.Filter, extraFilters...), columnIdToIndexedExprMap)
 			if keyExprs == nil {
 				m.Tracer.Log("Index %s: no matching key expressions found", idx.SqlIdx().ID())
 				continue
 			}
 			m.Tracer.Log("Index %s: found %d key expressions, %d matched filters", idx.SqlIdx().ID(), len(keyExprs), len(matchedFilters))
 
-			ita, err := plan.NewIndexedAccessForTableNode(ctx, rt, plan.NewLookupBuilder(idx.SqlIdx(), keyExprs, nullmask))
+			ita, err := plan.NewIndexedAccessForTableNode(ctx, rt, plan.NewLookupBuilder(ctx, idx.SqlIdx(), keyExprs, nullmask))
 			if err != nil {
 				m.Tracer.Log("Index %s: failed to create indexed table access: %v", idx.SqlIdx().ID(), err)
 				return err
@@ -372,12 +377,15 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo) error {
 				Index: idx,
 			}
 
+			// TODO: Also remove matched filters from "extraFilters" (filter expressions found in right-side filter
+			//  nodes) https://github.com/dolthub/dolt/issues/11231
 			var filters []sql.Expression
 			for _, filter := range join.Filter {
 				found := false
 				for _, matchedFilter := range matchedFilters {
 					if filter == matchedFilter {
 						found = true
+						break
 					}
 				}
 				if !found {
@@ -386,7 +394,7 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo) error {
 			}
 
 			m.Tracer.Log("Adding lookup join with index %s, %d remaining filters", idx.SqlIdx().ID(), len(filters))
-			m.MemoizeLookupJoin(e.Group(), join.Left, join.Right, join.Op, filters, lookup)
+			m.MemoizeLookupJoin(ctx, e.Group(), join.Left, join.Right, join.Op, filters, lookup)
 		}
 		return nil
 	})
@@ -395,9 +403,14 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo) error {
 // keyExprsForIndex returns a list of expression groups that compute a lookup
 // key into the given index. The key fields will either be equality filters
 // (from ON conditions) or constants.
-func keyExprsForIndex(tableId sql.TableId, idxExprs []sql.ColumnId, filters []sql.Expression) (keyExprs, matchedFilters []sql.Expression, nullmask []bool) {
+func keyExprsForIndex(
+	ctx *sql.Context,
+	tableId sql.TableId,
+	idxExprs []sql.ColumnId,
+	filters []sql.Expression,
+	columnIdToIndexedExprMap map[sql.ColumnId]indexedExprEntry) (keyExprs, matchedFilters []sql.Expression, nullmask []bool) {
 	for _, col := range idxExprs {
-		key, filter, nullable := keyForExpr(col, tableId, filters)
+		key, filter, nullable := keyForExpr(ctx, col, tableId, filters, columnIdToIndexedExprMap)
 		if key == nil {
 			break
 		}
@@ -413,12 +426,20 @@ func keyExprsForIndex(tableId sql.TableId, idxExprs []sql.ColumnId, filters []sq
 
 // keyForExpr returns an equivalence or constant value to satisfy the
 // lookup index expression.
-func keyForExpr(targetCol sql.ColumnId, tableId sql.TableId, filters []sql.Expression) (key sql.Expression, filter sql.Expression, nullable bool) {
+func keyForExpr(
+	ctx *sql.Context,
+	targetCol sql.ColumnId,
+	tableId sql.TableId,
+	filters []sql.Expression,
+	colIdToIdxExpr map[sql.ColumnId]indexedExprEntry) (key sql.Expression, filter sql.Expression, nullable bool) {
 	for _, f := range filters {
 		var left sql.Expression
 		var right sql.Expression
 		switch e := f.(type) {
-		case *expression.Equals:
+		case expression.Equality:
+			if !e.RepresentsEquality() {
+				continue
+			}
 			left = e.Left()
 			right = e.Right()
 		case *expression.NullSafeEquals:
@@ -426,18 +447,28 @@ func keyForExpr(targetCol sql.ColumnId, tableId sql.TableId, filters []sql.Expre
 			left = e.Left()
 			right = e.Right()
 		default:
-			if e, ok := e.(expression.Equality); ok && e.RepresentsEquality() {
-				left = e.Left()
-				right = e.Right()
+			continue
+		}
+
+		if ref, ok := left.(*expression.GetField); ok && ref.Id() == targetCol &&
+			sql.IsConvertibleKeyType(left.Type(ctx), right.Type(ctx)) {
+			key = right
+		} else if ref, ok = right.(*expression.GetField); ok && ref.Id() == targetCol &&
+			sql.IsConvertibleKeyType(right.Type(ctx), left.Type(ctx)) {
+			key = left
+		} else if left != nil && right != nil {
+			// Check if targetCol is an indexed functional expression and if
+			// either side of the filter matches the generated expression.
+			if entry, ok := colIdToIdxExpr[targetCol]; ok {
+				if entry.matches(left) {
+					key = right
+				} else if entry.matches(right) {
+					key = left
+				}
 			}
 		}
-		if ref, ok := left.(*expression.GetField); ok && ref.Id() == targetCol &&
-			sql.IsConvertibleKeyType(left.Type(), right.Type()) {
-			key = right
-		} else if ref, ok := right.(*expression.GetField); ok && ref.Id() == targetCol &&
-			sql.IsConvertibleKeyType(right.Type(), left.Type()) {
-			key = left
-		} else {
+
+		if key == nil {
 			continue
 		}
 
@@ -447,15 +478,15 @@ func keyForExpr(targetCol sql.ColumnId, tableId sql.TableId, filters []sql.Expre
 
 		// expression key can be arbitrarily complex (or simple), but cannot
 		// reference the lookup table
-		if !exprRefsTable(key, tableId) {
+		if !exprRefsTable(ctx, key, tableId) {
 			return key, f, nullable
 		}
 	}
 	return nil, nil, false
 }
 
-func exprRefsTable(e sql.Expression, tableId sql.TableId) bool {
-	return transform.InspectExpr(e, func(e sql.Expression) bool {
+func exprRefsTable(ctx *sql.Context, e sql.Expression, tableId sql.TableId) bool {
+	return transform.InspectExpr(ctx, e, func(ctx *sql.Context, e sql.Expression) bool {
 		gf, _ := e.(*expression.GetField)
 		if gf != nil {
 			return gf.TableId() == tableId
@@ -470,11 +501,11 @@ func exprRefsTable(e sql.Expression, tableId sql.TableId) bool {
 // Ref section 2.1.1 of:
 // https://www.researchgate.net/publication/221311318_Cost-Based_Query_Transformation_in_Oracle
 // TODO: need more elegant way to extend the number of groups, interner
-func convertSemiToInnerJoin(m *memo.Memo) error {
+func convertSemiToInnerJoin(ctx *sql.Context, m *memo.Memo) error {
 	m.Tracer.PushDebugContext("convertSemiToInnerJoin")
 	defer m.Tracer.PopDebugContext()
 
-	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
+	return memo.DfsRel(ctx, m.Root(), func(ctx *sql.Context, e memo.RelExpr) error {
 		semi, ok := e.(*memo.SemiJoin)
 		if !ok {
 			return nil
@@ -484,7 +515,7 @@ func convertSemiToInnerJoin(m *memo.Memo) error {
 		var projectExpressions []sql.Expression
 		var err error
 		for _, f := range semi.Filter {
-			if transform.InspectExpr(f, func(e sql.Expression) bool {
+			if transform.InspectExpr(ctx, f, func(ctx *sql.Context, e sql.Expression) bool {
 				switch e := e.(type) {
 				case *expression.GetField:
 					if rightOutTables.Contains(int(e.TableId())) {
@@ -508,18 +539,18 @@ func convertSemiToInnerJoin(m *memo.Memo) error {
 
 		var rightGrp *memo.ExprGroup
 		if _, ok := semi.Right.First.(*memo.Distinct); ok {
-			rightGrp = m.MemoizeProject(nil, semi.Right, projectExpressions)
+			rightGrp = m.MemoizeProject(ctx, nil, semi.Right, projectExpressions)
 		} else {
-			rightGrp = m.MemoizeDistinctProject(nil, semi.Right, projectExpressions)
+			rightGrp = m.MemoizeDistinctProject(ctx, nil, semi.Right, projectExpressions)
 		}
 
 		// join and its commute are a new group
-		joinGrp := m.MemoizeInnerJoin(nil, semi.Left, rightGrp, plan.JoinTypeInner, semi.Filter)
+		joinGrp := m.MemoizeInnerJoin(ctx, nil, semi.Left, rightGrp, plan.JoinTypeInner, semi.Filter)
 		// TODO: can't commute if right SubqueryAlias references outside scope (OuterScopeVisibility/IsLateral)
-		m.MemoizeInnerJoin(joinGrp, rightGrp, semi.Left, plan.JoinTypeInner, semi.Filter)
+		m.MemoizeInnerJoin(ctx, joinGrp, rightGrp, semi.Left, plan.JoinTypeInner, semi.Filter)
 
 		// project belongs to the original group
-		leftCols := semi.Left.RelProps.OutputCols()
+		leftCols := semi.Left.RelProps.OutputCols(ctx)
 		var projections []sql.Expression
 		for colId, hasNext := leftCols.Next(1); hasNext; colId, hasNext = leftCols.Next(colId + 1) {
 			var srcNode plan.TableIdNode
@@ -533,13 +564,13 @@ func convertSemiToInnerJoin(m *memo.Memo) error {
 				break
 			}
 
-			sch := srcNode.Schema()
+			sch := srcNode.Schema(ctx)
 			var table sql.Table
 			if tw, ok := srcNode.(sql.TableNode); ok {
 				table = tw.UnderlyingTable()
 			}
 			if pkt, ok := table.(sql.PrimaryKeyTable); ok {
-				sch = pkt.PrimaryKeySchema().Schema
+				sch = pkt.PrimaryKeySchema(ctx).Schema
 			}
 
 			firstCol, _ := srcNode.Columns().Next(1)
@@ -555,7 +586,7 @@ func convertSemiToInnerJoin(m *memo.Memo) error {
 			projections = []sql.Expression{p}
 		}
 
-		m.MemoizeProject(e.Group(), joinGrp, projections)
+		m.MemoizeProject(ctx, e.Group(), joinGrp, projections)
 
 		return nil
 	})
@@ -563,11 +594,11 @@ func convertSemiToInnerJoin(m *memo.Memo) error {
 
 // convertAntiToLeftJoin adds left join alternatives for anti join
 // ANTI_JOIN(left, right) => PROJECT(left sch) -> FILTER(right attr IS NULL) -> LEFT_JOIN(left, right)
-func convertAntiToLeftJoin(m *memo.Memo) error {
+func convertAntiToLeftJoin(ctx *sql.Context, m *memo.Memo) error {
 	m.Tracer.PushDebugContext("convertAntiToLeftJoin")
 	defer m.Tracer.PopDebugContext()
 
-	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
+	return memo.DfsRel(ctx, m.Root(), func(ctx *sql.Context, e memo.RelExpr) error {
 		anti, ok := e.(*memo.AntiJoin)
 		if !ok {
 			return nil
@@ -578,7 +609,7 @@ func convertAntiToLeftJoin(m *memo.Memo) error {
 		var nullify []sql.Expression
 		var err error
 		for _, f := range anti.Filter {
-			if transform.InspectExpr(f, func(e sql.Expression) bool {
+			if transform.InspectExpr(ctx, f, func(ctx *sql.Context, e sql.Expression) bool {
 				switch e := e.(type) {
 				case *expression.GetField:
 					if rightOutTables.Contains(int(e.TableId())) {
@@ -587,7 +618,7 @@ func convertAntiToLeftJoin(m *memo.Memo) error {
 						// so if GetField is both nullable and part of an Or expression. We currently have no way of
 						// identifying an expression's parent during InspectExpr so we have to be extra safe by not
 						// allowing nullable GetFields in null filters at all.
-						if !e.IsNullable() {
+						if !e.IsNullable(ctx) {
 							nullify = append(nullify, e)
 						}
 					}
@@ -609,14 +640,14 @@ func convertAntiToLeftJoin(m *memo.Memo) error {
 			nullify = append(nullify, gf)
 		}
 		// project is a new group
-		rightGrp := m.MemoizeProject(nil, anti.Right, projectExpressions)
+		rightGrp := m.MemoizeProject(ctx, nil, anti.Right, projectExpressions)
 
 		// join is a new group
 		joinType := plan.JoinTypeLeftOuter
 		if anti.Op.IsExcludeNulls() {
 			joinType = plan.JoinTypeLeftOuterExcludeNulls
 		}
-		joinGrp := m.MemoizeLeftJoin(nil, anti.Left, rightGrp, joinType, anti.Filter)
+		joinGrp := m.MemoizeLeftJoin(ctx, nil, anti.Left, rightGrp, joinType, anti.Filter)
 
 		// drop null projected columns on right table
 		nullFilters := make([]sql.Expression, len(nullify))
@@ -624,10 +655,10 @@ func convertAntiToLeftJoin(m *memo.Memo) error {
 			nullFilters[i] = expression.DefaultExpressionFactory.NewIsNull(e)
 		}
 
-		filterGrp := m.MemoizeFilter(nil, joinGrp, nullFilters)
+		filterGrp := m.MemoizeFilter(ctx, nil, joinGrp, nullFilters)
 
 		// project belongs to the original group
-		leftCols := anti.Left.RelProps.OutputCols()
+		leftCols := anti.Left.RelProps.OutputCols(ctx)
 		var projections []sql.Expression
 		for colId, hasNext := leftCols.Next(1); hasNext; colId, hasNext = leftCols.Next(colId + 1) {
 			// we have ids and need to get the table back?
@@ -643,7 +674,7 @@ func convertAntiToLeftJoin(m *memo.Memo) error {
 				break
 			}
 
-			sch := srcNode.Schema()
+			sch := srcNode.Schema(ctx)
 			var table sql.Table
 			var node sql.Node = srcNode
 			if ta, ok := node.(*plan.TableAlias); ok {
@@ -653,7 +684,7 @@ func convertAntiToLeftJoin(m *memo.Memo) error {
 				table = tw.UnderlyingTable()
 			}
 			if pkt, ok := table.(sql.PrimaryKeyTable); ok {
-				sch = pkt.PrimaryKeySchema().Schema
+				sch = pkt.PrimaryKeySchema(ctx).Schema
 			}
 
 			firstCol, _ := srcNode.Columns().Next(1)
@@ -668,7 +699,7 @@ func convertAntiToLeftJoin(m *memo.Memo) error {
 			projections = []sql.Expression{p}
 		}
 
-		m.MemoizeProject(e.Group(), filterGrp, projections)
+		m.MemoizeProject(ctx, e.Group(), filterGrp, projections)
 
 		return nil
 	})
@@ -676,11 +707,11 @@ func convertAntiToLeftJoin(m *memo.Memo) error {
 
 // addRightSemiJoins allows for a reversed semiJoin operator when
 // the join attributes of the left side are provably unique.
-func addRightSemiJoins(ctx *sql.Context, m *memo.Memo) error {
+func addRightSemiJoins(ctx *sql.Context, m *memo.Memo, cat sql.Catalog) error {
 	m.Tracer.PushDebugContext("addRightSemiJoins")
 	defer m.Tracer.PopDebugContext()
 
-	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
+	return memo.DfsRel(ctx, m.Root(), func(ctx *sql.Context, e memo.RelExpr) error {
 		m.Tracer.PushDebugContextFmt("%+v", e)
 		defer m.Tracer.PopDebugContext()
 
@@ -712,7 +743,7 @@ func addRightSemiJoins(ctx *sql.Context, m *memo.Memo) error {
 		var projectExpressions []sql.Expression
 		var err error
 		for _, f := range semi.Filter {
-			if transform.InspectExpr(f, func(e sql.Expression) bool {
+			if transform.InspectExpr(ctx, f, func(ctx *sql.Context, e sql.Expression) bool {
 				switch e := e.(type) {
 				case *expression.GetField:
 					if rightOutTables.Contains(int(e.TableId())) {
@@ -730,22 +761,25 @@ func addRightSemiJoins(ctx *sql.Context, m *memo.Memo) error {
 			}
 		}
 
+		columnIdToIndexedExprMap := buildColumnIdToIndexedExprMap(ctx, cat, leftRt, indexes)
 		for _, idx := range indexes {
-			if !semi.Group().RelProps.FuncDeps().ColsAreStrictKey(idx.ColSet()) {
+			if !semi.Group().RelProps.FuncDeps(ctx).ColsAreStrictKey(idx.ColSet()) {
 				continue
 			}
 
-			keyExprs, _, nullmask := keyExprsForIndex(tableId, idx.Cols(), append(semi.Filter, filters...))
+			// TODO: Investigate why matched filters are not being removed from join conditions and filter nodes
+			//  https://github.com/dolthub/dolt/issues/11231
+			keyExprs, _, nullmask := keyExprsForIndex(ctx, tableId, idx.Cols(), append(semi.Filter, filters...), columnIdToIndexedExprMap)
 			if keyExprs == nil {
 				continue
 			}
 
-			rGroup := m.MemoizeProject(nil, semi.Right, projectExpressions)
+			rGroup := m.MemoizeProject(ctx, nil, semi.Right, projectExpressions)
 			if _, ok := semi.Right.First.(*memo.Distinct); !ok {
 				rGroup.RelProps.Distinct = memo.HashDistinctOp
 			}
 
-			ita, err := plan.NewIndexedAccessForTableNode(ctx, leftRt, plan.NewLookupBuilder(idx.SqlIdx(), keyExprs, nullmask))
+			ita, err := plan.NewIndexedAccessForTableNode(ctx, leftRt, plan.NewLookupBuilder(ctx, idx.SqlIdx(), keyExprs, nullmask))
 			if err != nil {
 				return err
 			}
@@ -755,7 +789,7 @@ func addRightSemiJoins(ctx *sql.Context, m *memo.Memo) error {
 				Alias: aliasName,
 				Index: idx,
 			}
-			m.MemoizeLookupJoin(e.Group(), rGroup, semi.Left, plan.JoinTypeLookup, semi.Filter, lookup)
+			m.MemoizeLookupJoin(ctx, e.Group(), rGroup, semi.Left, plan.JoinTypeLookup, semi.Filter, lookup)
 		}
 		return nil
 	})
@@ -806,11 +840,11 @@ func dfsLookupCandidates(rel memo.RelExpr, limitOk bool) (sql.TableId, []*memo.I
 	return 0, nil, nil, false
 }
 
-func addCrossHashJoins(m *memo.Memo) error {
+func addCrossHashJoins(ctx *sql.Context, m *memo.Memo) error {
 	m.Tracer.PushDebugContext("addCrossHashJoins")
 	defer m.Tracer.PopDebugContext()
 
-	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
+	return memo.DfsRel(ctx, m.Root(), func(ctx *sql.Context, e memo.RelExpr) error {
 		switch e.(type) {
 		case *memo.CrossJoin:
 		default:
@@ -845,11 +879,11 @@ func addCrossHashJoins(m *memo.Memo) error {
 	})
 }
 
-func addHashJoins(m *memo.Memo) error {
+func addHashJoins(ctx *sql.Context, m *memo.Memo) error {
 	m.Tracer.PushDebugContext("addHashJoins")
 	defer m.Tracer.PopDebugContext()
 
-	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
+	return memo.DfsRel(ctx, m.Root(), func(ctx *sql.Context, e memo.RelExpr) error {
 		m.Tracer.PushDebugContextFmt("%+v", e)
 		defer m.Tracer.PopDebugContext()
 
@@ -869,24 +903,23 @@ func addHashJoins(m *memo.Memo) error {
 
 		var fromExpr, toExpr []sql.Expression
 		for _, f := range join.Filter {
-			switch f := f.(type) {
-			case *expression.Equals:
-				if satisfiesScalarRefs(f.Left(), join.Left.RelProps.OutputTables()) &&
-					satisfiesScalarRefs(f.Right(), join.Right.RelProps.OutputTables()) {
-					fromExpr = append(fromExpr, f.Right())
-					toExpr = append(toExpr, f.Left())
-					m.Tracer.Log("Filter %s: found a left->right hash key mapping", f)
-				} else if satisfiesScalarRefs(f.Right(), join.Left.RelProps.OutputTables()) &&
-					satisfiesScalarRefs(f.Left(), join.Right.RelProps.OutputTables()) {
-					fromExpr = append(fromExpr, f.Left())
-					toExpr = append(toExpr, f.Right())
-					m.Tracer.Log("Filter %s: found a right->left hash key mapping", f)
-				} else {
-					m.Tracer.Log("Filter %s: does not satisfy scalar refs for hash join", f)
-					return nil
-				}
-			default:
+			eq, isEq := f.(expression.Equality)
+			if !isEq || !eq.RepresentsEquality() {
 				m.Tracer.Log("Filter %s: not an equality expression, skipping hash join", f)
+				return nil
+			}
+			if satisfiesScalarRefs(ctx, eq.Left(), join.Left.RelProps.OutputTables()) &&
+				satisfiesScalarRefs(ctx, eq.Right(), join.Right.RelProps.OutputTables()) {
+				fromExpr = append(fromExpr, eq.Right())
+				toExpr = append(toExpr, eq.Left())
+				m.Tracer.Log("Filter %s: found a left->right hash key mapping", f)
+			} else if satisfiesScalarRefs(ctx, eq.Right(), join.Left.RelProps.OutputTables()) &&
+				satisfiesScalarRefs(ctx, eq.Left(), join.Right.RelProps.OutputTables()) {
+				fromExpr = append(fromExpr, eq.Left())
+				toExpr = append(toExpr, eq.Right())
+				m.Tracer.Log("Filter %s: found a right->left hash key mapping", f)
+			} else {
+				m.Tracer.Log("Filter %s: does not satisfy scalar refs for hash join", f)
 				return nil
 			}
 		}
@@ -897,7 +930,7 @@ func addHashJoins(m *memo.Memo) error {
 		}
 
 		m.Tracer.Log("Adding hash join with %d key expressions", len(toExpr))
-		m.MemoizeHashJoin(e.Group(), join, toExpr, fromExpr)
+		m.MemoizeHashJoin(ctx, e.Group(), join, toExpr, fromExpr)
 		return nil
 	})
 }
@@ -985,11 +1018,11 @@ func getRangeFilters(filters []sql.Expression) (ranges []rangeFilter) {
 // Some example joins that can be implemented as RangeHeap joins:
 // - SELECT * FROM a JOIN b on a.value BETWEEN b.min AND b.max
 // - SELECT * FROM a JOIN b on b.min <= a.value AND a.value < b.max
-func addRangeHeapJoin(m *memo.Memo) error {
+func addRangeHeapJoin(ctx *sql.Context, m *memo.Memo) error {
 	m.Tracer.PushDebugContext("addRangeHeapJoin")
 	defer m.Tracer.PopDebugContext()
 
-	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
+	return memo.DfsRel(ctx, m.Root(), func(ctx *sql.Context, e memo.RelExpr) error {
 		m.Tracer.PushDebugContextFmt("%+v", e)
 		defer m.Tracer.PopDebugContext()
 
@@ -1015,9 +1048,9 @@ func addRangeHeapJoin(m *memo.Memo) error {
 		rightTab := join.Right.RelProps.TableIdNodes()[0]
 
 		for _, filter := range getRangeFilters(join.Filter) {
-			if !(satisfiesScalarRefs(filter.value, join.Left.RelProps.OutputTables()) &&
-				satisfiesScalarRefs(filter.min, join.Right.RelProps.OutputTables()) &&
-				satisfiesScalarRefs(filter.max, join.Right.RelProps.OutputTables())) {
+			if !(satisfiesScalarRefs(ctx, filter.value, join.Left.RelProps.OutputTables()) &&
+				satisfiesScalarRefs(ctx, filter.min, join.Right.RelProps.OutputTables()) &&
+				satisfiesScalarRefs(ctx, filter.max, join.Right.RelProps.OutputTables())) {
 				return nil
 			}
 			// For now, only match expressions that are exactly a column reference.
@@ -1037,16 +1070,16 @@ func addRangeHeapJoin(m *memo.Memo) error {
 				return nil
 			}
 
-			valType := valueColRef.Type()
+			valType := valueColRef.Type(ctx)
 			// TODO: Incompatible sort orders between the value and min columns would be fine if we sorted the tables
 			//  using the same sort order (for example, if value is a number type column and min is a string, we sort
 			//  the right table based on min converted to a number). Incompatible sort orders between value and max
 			//  columns could be fine depending on the heap implementation and if we updated the range heap join iter to
-			//  use a compare expression instead of hard-coding it to use maxColRef.Type().Compare
-			if !compatibleSortOrders(valType, minColRef.Type()) || !compatibleSortOrders(valType, maxColRef.Type()) {
+			//  use a compare expression instead of hard-coding it to use maxColRef.Type(ctx).Compare
+			if !compatibleSortOrders(valType, minColRef.Type(ctx)) || !compatibleSortOrders(valType, maxColRef.Type(ctx)) {
 				return nil
 			}
-			leftIndexScans, err := sortedIndexScansForTableCol(m.Ctx, m.StatsProvider(), leftTab, lIndexes, valueColRef, join.Left.RelProps.FuncDeps().Constants(), lFilters)
+			leftIndexScans, err := sortedIndexScansForTableCol(ctx, m.StatsProvider(), leftTab, lIndexes, valueColRef, join.Left.RelProps.FuncDeps(ctx).Constants(), lFilters)
 			if err != nil {
 				return err
 			}
@@ -1054,7 +1087,7 @@ func addRangeHeapJoin(m *memo.Memo) error {
 				leftIndexScans = []*memo.IndexScan{nil}
 			}
 			for _, lIdx := range leftIndexScans {
-				rightIndexScans, err := sortedIndexScansForTableCol(m.Ctx, m.StatsProvider(), rightTab, rIndexes, minColRef, join.Right.RelProps.FuncDeps().Constants(), rFilters)
+				rightIndexScans, err := sortedIndexScansForTableCol(ctx, m.StatsProvider(), rightTab, rIndexes, minColRef, join.Right.RelProps.FuncDeps(ctx).Constants(), rFilters)
 				if err != nil {
 					return err
 				}
@@ -1088,9 +1121,9 @@ func addRangeHeapJoin(m *memo.Memo) error {
 
 // satisfiesScalarRefs returns true if all GetFields in the expression
 // are columns provided by |tables|
-func satisfiesScalarRefs(e sql.Expression, tables sql.FastIntSet) bool {
+func satisfiesScalarRefs(ctx *sql.Context, e sql.Expression, tables sets.FastIntSet) bool {
 	// |grp| provides all tables referenced in |e|
-	return !transform.InspectExpr(e, func(e sql.Expression) bool {
+	return !transform.InspectExpr(ctx, e, func(ctx *sql.Context, e sql.Expression) bool {
 		gf, _ := e.(*expression.GetField)
 		if gf != nil {
 			if !tables.Contains(int(gf.TableId())) {
@@ -1109,7 +1142,7 @@ func addMergeJoins(ctx *sql.Context, m *memo.Memo) error {
 	m.Tracer.PushDebugContext("addMergeJoins")
 	defer m.Tracer.PopDebugContext()
 
-	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
+	return memo.DfsRel(ctx, m.Root(), func(ctx *sql.Context, e memo.RelExpr) error {
 		m.Tracer.PushDebugContextFmt("%+v", e)
 		defer m.Tracer.PopDebugContext()
 
@@ -1154,22 +1187,22 @@ func addMergeJoins(ctx *sql.Context, m *memo.Memo) error {
 				l := eq.Left()
 				r := eq.Right()
 
-				if !expressionReferencesOneColumn(l) ||
-					!expressionReferencesOneColumn(r) {
+				if !expressionReferencesOneColumn(ctx, l) ||
+					!expressionReferencesOneColumn(ctx, r) {
 					continue
 				}
 
 				// check that comparer is not non-decreasing
-				if !compatibleSortOrders(l.Type(), r.Type()) || !isWeaklyMonotonic(l) || !isWeaklyMonotonic(r) {
+				if !compatibleSortOrders(l.Type(ctx), r.Type(ctx)) || !isWeaklyMonotonic(ctx, l) || !isWeaklyMonotonic(ctx, r) {
 					continue
 				}
 
 				var swap bool
-				if expressionReferencesTable(l, leftTabId) &&
-					expressionReferencesTable(r, rightTabId) {
+				if expressionReferencesTable(ctx, l, leftTabId) &&
+					expressionReferencesTable(ctx, r, rightTabId) {
 
-				} else if expressionReferencesTable(r, leftTabId) &&
-					expressionReferencesTable(l, rightTabId) {
+				} else if expressionReferencesTable(ctx, r, leftTabId) &&
+					expressionReferencesTable(ctx, l, rightTabId) {
 					swap = true
 					l, r = r, l
 				} else {
@@ -1196,23 +1229,23 @@ func addMergeJoins(ctx *sql.Context, m *memo.Memo) error {
 		//    Check to see if any rIndexes match that set of filters
 		//    Remove the last matched filter
 		for _, lIndex := range lIndexes {
-			if lIndex.Order() == sql.IndexOrderNone {
+			if lIndex.Order(ctx) == sql.IndexOrderNone {
 				// lookups can be unordered, merge indexes need to
 				// be globally ordered
 				m.Tracer.Log("Left index %s: skipping - unordered index", lIndex.SqlIdx().ID())
 				continue
 			}
 
-			matchedEqFilters := matchedFiltersForLeftIndex(lIndex, join.Left.RelProps.FuncDeps().Constants(), eqFilters)
+			matchedEqFilters := matchedFiltersForLeftIndex(ctx, lIndex, join.Left.RelProps.FuncDeps(ctx).Constants(), eqFilters)
 			m.Tracer.Log("Left index %s: matched %d equality filters", lIndex.SqlIdx().ID(), len(matchedEqFilters))
 
 			for len(matchedEqFilters) > 0 {
 				for _, rIndex := range rIndexes {
-					if rIndex.Order() == sql.IndexOrderNone {
+					if rIndex.Order(ctx) == sql.IndexOrderNone {
 						m.Tracer.Log("Right index %s: skipping - unordered index", rIndex.SqlIdx().ID())
 						continue
 					}
-					if rightIndexMatchesFilters(rIndex, join.Left.RelProps.FuncDeps().Constants(), matchedEqFilters) {
+					if rightIndexMatchesFilters(ctx, rIndex, join.Left.RelProps.FuncDeps(ctx).Constants(), matchedEqFilters) {
 						m.Tracer.Log("Found matching index pair: left[%s] <-> right[%s]", lIndex.SqlIdx().ID(), rIndex.SqlIdx().ID())
 						jb := join.Copy()
 						if d, ok := jb.Left.First.(*memo.Distinct); ok && lIndex.SqlIdx().IsUnique() {
@@ -1242,16 +1275,16 @@ func addMergeJoins(ctx *sql.Context, m *memo.Memo) error {
 						}
 
 						// To make the index scan, we need the first non-constant column in each index.
-						leftColId := getOnlyColumnId(matchedEqFilters[0].filter.Left())
-						rightColId := getOnlyColumnId(matchedEqFilters[0].filter.Right())
-						lIndexScan, success, err := makeIndexScan(m.Ctx, m.StatsProvider(), leftTab, lIndex, leftColId, lFilters)
+						leftColId := getOnlyColumnId(ctx, matchedEqFilters[0].filter.Left())
+						rightColId := getOnlyColumnId(ctx, matchedEqFilters[0].filter.Right())
+						lIndexScan, success, err := makeIndexScan(ctx, m.StatsProvider(), leftTab, lIndex, leftColId, lFilters)
 						if err != nil {
 							return err
 						}
 						if !success {
 							continue
 						}
-						rIndexScan, success, err := makeIndexScan(m.Ctx, m.StatsProvider(), rightTab, rIndex, rightColId, rFilters)
+						rIndexScan, success, err := makeIndexScan(ctx, m.StatsProvider(), rightTab, rIndex, rightColId, rFilters)
 						if err != nil {
 							return err
 						}
@@ -1260,7 +1293,7 @@ func addMergeJoins(ctx *sql.Context, m *memo.Memo) error {
 							continue
 						}
 						m.Tracer.Log("Adding merge join with left index %s, right index %s", lIndex.SqlIdx().ID(), rIndex.SqlIdx().ID())
-						m.MemoizeMergeJoin(e.Group(), join.Left, join.Right, lIndexScan, rIndexScan, jb.Op.AsMerge(), newFilters, false)
+						m.MemoizeMergeJoin(ctx, e.Group(), join.Left, join.Right, lIndexScan, rIndexScan, jb.Op.AsMerge(), newFilters, false)
 					}
 				}
 				matchedEqFilters = matchedEqFilters[:len(matchedEqFilters)-1]
@@ -1272,9 +1305,9 @@ func addMergeJoins(ctx *sql.Context, m *memo.Memo) error {
 
 // getOnlyColumnId returns the id of the only column referenced in an expression group. We only call this
 // on expressions that are already verified to have exactly one referenced column.
-func getOnlyColumnId(e sql.Expression) sql.ColumnId {
+func getOnlyColumnId(ctx *sql.Context, e sql.Expression) sql.ColumnId {
 	var id sql.ColumnId
-	transform.InspectExpr(e, func(e sql.Expression) bool {
+	transform.InspectExpr(ctx, e, func(ctx *sql.Context, e sql.Expression) bool {
 		gf, ok := e.(*expression.GetField)
 		if ok {
 			id = gf.Id()
@@ -1285,9 +1318,9 @@ func getOnlyColumnId(e sql.Expression) sql.ColumnId {
 	return id
 }
 
-func expressionReferencesOneColumn(e sql.Expression) bool {
+func expressionReferencesOneColumn(ctx *sql.Context, e sql.Expression) bool {
 	var seen bool
-	return !transform.InspectExpr(e, func(e sql.Expression) bool {
+	return !transform.InspectExpr(ctx, e, func(ctx *sql.Context, e sql.Expression) bool {
 		_, ok := e.(*expression.GetField)
 		if ok && seen {
 			return true
@@ -1297,8 +1330,8 @@ func expressionReferencesOneColumn(e sql.Expression) bool {
 	})
 }
 
-func expressionReferencesTable(e sql.Expression, id sql.TableId) bool {
-	return transform.InspectExpr(e, func(e sql.Expression) bool {
+func expressionReferencesTable(ctx *sql.Context, e sql.Expression, id sql.TableId) bool {
+	return transform.InspectExpr(ctx, e, func(ctx *sql.Context, e sql.Expression) bool {
 		gf, ok := e.(*expression.GetField)
 		return ok && gf.TableId() == id
 	})
@@ -1321,7 +1354,7 @@ func combineIntoTuple(m *memo.Memo, filters []filterAndPosition) *expression.Equ
 
 // rightIndexMatchesFilters checks whether the provided rIndex is a candidate for a merge join on the provided filters.
 // The index must have a prefix consisting entirely of constants and the provided filters in order.
-func rightIndexMatchesFilters(rIndex *memo.Index, constants sql.ColSet, filters []filterAndPosition) bool {
+func rightIndexMatchesFilters(ctx *sql.Context, rIndex *memo.Index, constants sql.ColSet, filters []filterAndPosition) bool {
 	if filters == nil {
 		return true
 	}
@@ -1334,7 +1367,7 @@ func rightIndexMatchesFilters(rIndex *memo.Index, constants sql.ColSet, filters 
 			return false
 		}
 		matched := false
-		for getOnlyColumnId(filters[filterPos].filter.Right()) == columnIds[columnPos] {
+		for getOnlyColumnId(ctx, filters[filterPos].filter.Right()) == columnIds[columnPos] {
 			matched = true
 			filterPos++
 			if filterPos >= len(filters) {
@@ -1362,7 +1395,7 @@ type filterAndPosition struct {
 
 // matchedFiltersForLeftIndex computes the maximum-length prefix for an index where every column is matched by the supplied
 // constants and scalar expressions.
-func matchedFiltersForLeftIndex(lIndex *memo.Index, constants sql.ColSet, filters []filterAndPosition) (matchedFilters []filterAndPosition) {
+func matchedFiltersForLeftIndex(ctx *sql.Context, lIndex *memo.Index, constants sql.ColSet, filters []filterAndPosition) (matchedFilters []filterAndPosition) {
 	for _, idxCol := range lIndex.Cols() {
 		if constants.Contains(idxCol) {
 			// column is constant, it can be used in the prefix.
@@ -1370,7 +1403,7 @@ func matchedFiltersForLeftIndex(lIndex *memo.Index, constants sql.ColSet, filter
 		}
 		found := false
 		for _, filter := range filters {
-			if getOnlyColumnId(filter.filter.Left()) == idxCol {
+			if getOnlyColumnId(ctx, filter.filter.Left()) == idxCol {
 				matchedFilters = append(matchedFilters, filter)
 				found = true
 				break
@@ -1417,51 +1450,131 @@ func sortedIndexScansForTableCol(ctx *sql.Context, statsProv sql.StatsProvider, 
 	return ret, nil
 }
 
-func makeIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, tab plan.TableIdNode, idx *memo.Index, matchedIdx sql.ColumnId, filters []sql.Expression) (*memo.IndexScan, bool, error) {
-	rang := make(sql.MySQLRange, len(idx.Cols()))
-	var j int
-	for {
-		found := idx.Cols()[j] == matchedIdx
+func filterExprToMySQLRangeExpr(filter sql.Expression, colId sql.ColumnId, colTyp sql.Type) (res sql.MySQLRangeColumnExpr, ok bool) {
+	// TODO: Could use RangeTree from gms/sql/range_tree.go?
+	switch f := filter.(type) {
+	case expression.Equality:
+		if !f.RepresentsEquality() {
+			return
+		}
 		var lit *expression.Literal
-		for _, f := range filters {
-			if eq, ok := f.(expression.Equality); ok && eq.RepresentsEquality() {
-				if l, ok := eq.Left().(*expression.GetField); ok && l.Id() == idx.Cols()[j] {
-					lit, _ = eq.Right().(*expression.Literal)
-				}
-				if r, ok := eq.Right().(*expression.GetField); ok && r.Id() == idx.Cols()[j] {
-					lit, _ = eq.Left().(*expression.Literal)
-				}
-				if lit != nil {
-					break
-				}
+		lExpr, rExpr := f.Left(), f.Right()
+		if lGf, ok := lExpr.(*expression.GetField); ok && lGf.Id() == colId {
+			lit, _ = rExpr.(*expression.Literal)
+		}
+		if rGf, ok := rExpr.(*expression.GetField); ok && rGf.Id() == colId {
+			lit, _ = lExpr.(*expression.Literal)
+		}
+		if lit == nil {
+			return
+		}
+		return sql.ClosedRangeColumnExpr(lit.Val, lit.Val, colTyp), true
+	case *expression.LessThan:
+		lExpr, rExpr := f.Left(), f.Right()
+		if lGf, isGf := lExpr.(*expression.GetField); isGf && lGf.Id() == colId {
+			if rLit, isLit := rExpr.(*expression.Literal); isLit {
+				return sql.LessThanRangeColumnExpr(rLit.Val, colTyp), true
 			}
 		}
-		if found && lit == nil {
-			break
+		if rGf, isGf := rExpr.(*expression.GetField); isGf && rGf.Id() == colId {
+			if lLit, isLit := lExpr.(*expression.Literal); isLit {
+				return sql.GreaterThanRangeColumnExpr(lLit.Val, colTyp), true
+			}
 		}
-		rang[j] = sql.ClosedRangeColumnExpr(lit.Value(), lit.Value(), idx.SqlIdx().ColumnExpressionTypes()[j].Type)
-		j++
+		return
+	case *expression.LessThanOrEqual:
+		lExpr, rExpr := f.Left(), f.Right()
+		if lGf, isGf := lExpr.(*expression.GetField); isGf && lGf.Id() == colId {
+			if rLit, isLit := rExpr.(*expression.Literal); isLit {
+				return sql.LessOrEqualRangeColumnExpr(rLit.Val, colTyp), true
+			}
+		}
+		if rGf, isGf := rExpr.(*expression.GetField); isGf && rGf.Id() == colId {
+			if lLit, isLit := lExpr.(*expression.Literal); isLit {
+				return sql.GreaterOrEqualRangeColumnExpr(lLit.Val, colTyp), true
+			}
+		}
+		return
+	case *expression.GreaterThan:
+		lExpr, rExpr := f.Left(), f.Right()
+		if lGf, isGf := lExpr.(*expression.GetField); isGf && lGf.Id() == colId {
+			if rLit, isLit := rExpr.(*expression.Literal); isLit {
+				return sql.GreaterThanRangeColumnExpr(rLit.Val, colTyp), true
+			}
+		}
+		if rGf, isGf := rExpr.(*expression.GetField); isGf && rGf.Id() == colId {
+			if lLit, isLit := lExpr.(*expression.Literal); isLit {
+				return sql.LessThanRangeColumnExpr(lLit.Val, colTyp), true
+			}
+		}
+		return
+	case *expression.GreaterThanOrEqual:
+		lExpr, rExpr := f.Left(), f.Right()
+		if lGf, isGf := lExpr.(*expression.GetField); isGf && lGf.Id() == colId {
+			if rLit, isLit := rExpr.(*expression.Literal); isLit {
+				return sql.GreaterOrEqualRangeColumnExpr(rLit.Val, colTyp), true
+			}
+		}
+		if rGf, isGf := rExpr.(*expression.GetField); isGf && rGf.Id() == colId {
+			if lLit, isLit := lExpr.(*expression.Literal); isLit {
+				return sql.LessOrEqualRangeColumnExpr(lLit.Val, colTyp), true
+			}
+		}
+		return
+	default:
+		return
+	}
+}
+
+// makeIndexScan pushes any static filters in |filters| preceeding and possible including |matchedIdx| into an
+// IndexLookup. The result is a series of MySQLRanges that prefixes the index upto |matchedIdx|.
+func makeIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, tab plan.TableIdNode, idx *memo.Index, matchedIdx sql.ColumnId, filters []sql.Expression) (*memo.IndexScan, bool, error) {
+	// TODO: This should build a proper range tree to handle all filters.
+	// TODO: We should be able to push all static expressions, even the ones past |matchedIdx|.
+	if !canUsePartialIndex(idx.SqlIdx(), filters) {
+		return nil, false, nil
+	}
+	var i int
+	idxCols := idx.Cols()
+	rang := make(sql.MySQLRange, len(idxCols))
+	// Create MySQL Range prefix for this index
+	idxColExprTypes := idx.SqlIdx().ColumnExpressionTypes(ctx)
+	for i = 0; i < len(idxCols); {
+		// TODO: It seems like it's possible for no filter to be found for a column before |matchedIdx|, but it is
+		//  ignored. Appears to be impossible to reproduce due to functional dependency logic beforehand.
+		found := matchedIdx == idxCols[i]
+		for _, filter := range filters {
+			if r, ok := filterExprToMySQLRangeExpr(filter, idxCols[i], idxColExprTypes[i].Type); ok {
+				rang[i] = r
+				i++
+				break
+			}
+		}
 		if found {
 			break
 		}
 	}
-	for j < len(idx.Cols()) {
+
+	// Fill remaining ranges with AllRange
+	for ; i < len(idxCols); i++ {
 		// all range bound Compare() is type insensitive
-		rang[j] = sql.AllRangeColumnExpr(types.Null)
-		j++
+		rang[i] = sql.AllRangeColumnExpr(types.Null)
 	}
 
 	if !idx.SqlIdx().CanSupport(ctx, rang) {
 		return nil, false, nil
 	}
 
-	for i, typ := range idx.SqlIdx().ColumnExpressionTypes() {
+	for i, typ := range idxColExprTypes {
 		if !types.Null.Equals(rang[i].Typ) && !typ.Type.Equals(rang[i].Typ) {
 			return nil, false, nil
 		}
 	}
 
-	l := sql.IndexLookup{Index: idx.SqlIdx(), Ranges: sql.MySQLRangeCollection{rang}}
+	l := sql.IndexLookup{
+		Index:  idx.SqlIdx(),
+		Ranges: sql.MySQLRangeCollection{rang},
+	}
 
 	var tn sql.TableNode
 	var alias string
@@ -1486,14 +1599,12 @@ func makeIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, tab plan.Table
 	}
 
 	var cols []string
-	tablePrefix := fmt.Sprintf("%s.", tn.Name())
+	tablePrefix := tn.Name() + "."
 	for _, e := range idx.SqlIdx().Expressions() {
 		cols = append(cols, strings.TrimPrefix(e, tablePrefix))
 	}
-	var schemaName string
-	if schTab, ok := tn.(sql.DatabaseSchemaTable); ok {
-		schemaName = strings.ToLower(schTab.DatabaseSchema().SchemaName())
-	}
+	// The underlying table knows its schema, the wrapping TableNode does not
+	schemaName := strings.ToLower(sql.TableSchemaName(tn.UnderlyingTable()))
 
 	stats, _ := statsProv.GetStats(ctx, sql.NewStatQualifier(tn.Database().Name(), schemaName, tn.Name(), idx.SqlIdx().ID()), cols)
 	return &memo.IndexScan{
@@ -1533,8 +1644,8 @@ func compatibleSortOrders(t1, t2 sql.Type) bool {
 // A non-obvious non-monotonic function is `x+y`. The index `(x,y)`
 // will be non-increasing on (y), and so `x+y` can decrease.
 // TODO: stricter monotonic check
-func isWeaklyMonotonic(e sql.Expression) bool {
-	return !transform.InspectExpr(e, func(e sql.Expression) bool {
+func isWeaklyMonotonic(ctx *sql.Context, e sql.Expression) bool {
+	return !transform.InspectExpr(ctx, e, func(ctx *sql.Context, e sql.Expression) bool {
 		switch e := e.(type) {
 		case expression.ArithmeticOp:
 			if e.Operator() == "-" {

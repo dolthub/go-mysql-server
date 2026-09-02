@@ -43,7 +43,7 @@ func (d *Distinct) Resolved() bool {
 }
 
 // WithChildren implements the Node interface.
-func (d *Distinct) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (d *Distinct) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
 	}
@@ -62,7 +62,7 @@ func (d *Distinct) Expressions() []sql.Expression {
 }
 
 // WithExpressions implements the interface sql.Expressioner.
-func (d *Distinct) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+func (d *Distinct) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	return NewDistinct(d.Child, exprs...), nil
 }
 
@@ -76,10 +76,10 @@ func (d *Distinct) CollationCoercibility(ctx *sql.Context) (collation sql.Collat
 }
 
 // Describe implements sql.Describable
-func (d Distinct) Describe(options sql.DescribeOptions) string {
+func (d Distinct) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
 	p := sql.NewTreePrinter()
 	_ = p.WriteNode("Distinct")
-	_ = p.WriteChildren(sql.Describe(d.Child, options))
+	_ = p.WriteChildren(sql.Describe(ctx, d.Child, options))
 	return p.String()
 }
 
@@ -92,10 +92,10 @@ func (d Distinct) String() string {
 }
 
 // DebugString implements sql.DebugStringer
-func (d Distinct) DebugString() string {
+func (d Distinct) DebugString(ctx *sql.Context) string {
 	p := sql.NewTreePrinter()
 	_ = p.WriteNode("Distinct")
-	_ = p.WriteChildren(sql.DebugString(d.Child))
+	_ = p.WriteChildren(sql.DebugString(ctx, d.Child))
 	return p.String()
 }
 
@@ -157,7 +157,7 @@ func (d *OrderedDistinct) Resolved() bool {
 }
 
 // WithChildren implements the Node interface.
-func (d *OrderedDistinct) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (d *OrderedDistinct) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
 	}
@@ -181,9 +181,9 @@ func (d OrderedDistinct) String() string {
 	return p.String()
 }
 
-func (d OrderedDistinct) DebugString() string {
+func (d OrderedDistinct) DebugString(ctx *sql.Context) string {
 	p := sql.NewTreePrinter()
 	_ = p.WriteNode("OrderedDistinct")
-	_ = p.WriteChildren(sql.DebugString(d.Child))
+	_ = p.WriteChildren(sql.DebugString(ctx, d.Child))
 	return p.String()
 }

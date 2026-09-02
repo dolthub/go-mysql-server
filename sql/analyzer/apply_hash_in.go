@@ -23,14 +23,14 @@ import (
 )
 
 func applyHashIn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
-	return transform.Node(n, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	return transform.Node(ctx, n, func(ctx *sql.Context, node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		filter, ok := node.(*plan.Filter)
 		if !ok {
 			return node, transform.SameTree, nil
 		}
 
-		e, same, err := transform.Expr(filter.Expression, func(expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-			if e, ok := expr.(*expression.InTuple); ok && hasSingleOutput(e.Left()) && isStatic(e.Right()) && isConsistentType(e.Right()) {
+		e, same, err := transform.Expr(ctx, filter.Expression, func(ctx *sql.Context, expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+			if e, ok := expr.(*expression.InTuple); ok && hasSingleOutput(ctx, e.Left()) && isStatic(ctx, e.Right()) && isConsistentType(ctx, e.Right()) {
 				newe, err := expression.NewHashInTuple(ctx, e.Left(), e.Right())
 				if err != nil {
 					return nil, transform.SameTree, err
@@ -45,7 +45,7 @@ func applyHashIn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, s
 		if same {
 			return node, transform.SameTree, nil
 		}
-		ret, err := filter.WithExpressions(e)
+		ret, err := filter.WithExpressions(ctx, e)
 		if err != nil {
 			return node, transform.SameTree, nil
 		}
@@ -54,8 +54,8 @@ func applyHashIn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, s
 }
 
 // hasSingleOutput checks if an expression evaluates to a single output
-func hasSingleOutput(e sql.Expression) bool {
-	return transform.InspectExpr(e, func(expr sql.Expression) bool {
+func hasSingleOutput(ctx *sql.Context, e sql.Expression) bool {
+	return transform.InspectExpr(ctx, e, func(ctx *sql.Context, expr sql.Expression) bool {
 		switch expr.(type) {
 		case *plan.Subquery:
 			return false
@@ -66,8 +66,8 @@ func hasSingleOutput(e sql.Expression) bool {
 }
 
 // isStatic checks if an expression is static
-func isStatic(e sql.Expression) bool {
-	return !transform.InspectExpr(e, func(expr sql.Expression) bool {
+func isStatic(ctx *sql.Context, e sql.Expression) bool {
+	return !transform.InspectExpr(ctx, e, func(ctx *sql.Context, expr sql.Expression) bool {
 		switch expr.(type) {
 		case expression.Tuple, *expression.Literal:
 			return false
@@ -77,14 +77,14 @@ func isStatic(e sql.Expression) bool {
 	})
 }
 
-func isConsistentType(expr sql.Expression) bool {
+func isConsistentType(ctx *sql.Context, expr sql.Expression) bool {
 	tup, isTup := expr.(expression.Tuple)
 	if !isTup {
 		return true
 	}
 	var hasNumeric, hasString, hasTime bool
 	for _, elem := range tup {
-		eType := elem.Type()
+		eType := elem.Type(ctx)
 		if types.IsNumber(eType) {
 			hasNumeric = true
 		} else if types.IsText(eType) {

@@ -55,15 +55,15 @@ func (s *RangeHeap) String() string {
 	return s.Child.String()
 }
 
-func (s *RangeHeap) DebugString() string {
-	return sql.DebugString(s.Child)
+func (s *RangeHeap) DebugString(ctx *sql.Context) string {
+	return sql.DebugString(ctx, s.Child)
 }
 
 func (s *RangeHeap) IsReadOnly() bool {
 	return s.Child.IsReadOnly()
 }
 
-func (s *RangeHeap) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (s *RangeHeap) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, fmt.Errorf("ds")
 	}

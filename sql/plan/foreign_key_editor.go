@@ -15,6 +15,7 @@
 package plan
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -42,7 +43,9 @@ type ForeignKeyRefActionData struct {
 	RowMapper          *ForeignKeyRowMapper
 	Editor             *ForeignKeyEditor
 	ChildParentMapping ChildParentMapping
-	ForeignKey         sql.ForeignKeyConstraint
+	// GeneratedProjections holds the child schema's generated column expressions to eval FK referential actions.
+	GeneratedProjections []sql.Expression
+	ForeignKey           sql.ForeignKeyConstraint
 }
 
 // ForeignKeyEditor handles update and delete operations, as they may have referential actions on other tables (such as
@@ -110,6 +113,13 @@ func (fkEditor *ForeignKeyEditor) Update(ctx *sql.Context, old sql.Row, new sql.
 		case sql.ForeignKeyReferentialAction_Cascade:
 		case sql.ForeignKeyReferentialAction_SetNull:
 		case sql.ForeignKeyReferentialAction_SetDefault:
+		}
+	}
+	// check for null update on non-nullable column
+	// (Doltgres allows adding the constraint SET NULL on NOT NULL column, so we catch the error when it attempts to set it null)
+	for i, col := range fkEditor.Schema {
+		if !col.Nullable && new[i] == nil {
+			return errors.New(fmt.Sprintf(`null value in column "%s" violates not-null constraint`, col.Name))
 		}
 	}
 	if err := fkEditor.Editor.Update(ctx, old, new); err != nil {
@@ -184,6 +194,9 @@ func (fkEditor *ForeignKeyEditor) OnUpdateCascade(ctx *sql.Context, refActionDat
 				updatedRow[i] = new[mappedVal]
 			}
 		}
+		if err = sql.EvalProjections(ctx, refActionData.GeneratedProjections, updatedRow); err != nil {
+			return err
+		}
 		err = refActionData.Editor.Update(ctx, rowToUpdate, updatedRow, depth)
 		if err != nil {
 			return err
@@ -236,6 +249,9 @@ func (fkEditor *ForeignKeyEditor) OnUpdateSetDefault(ctx *sql.Context, refAction
 				}
 			}
 		}
+		if err = sql.EvalProjections(ctx, refActionData.GeneratedProjections, modifiedRow); err != nil {
+			return err
+		}
 		err = refActionData.Editor.Update(ctx, rowToDefault, modifiedRow, depth)
 		if err != nil {
 			return err
@@ -271,6 +287,9 @@ func (fkEditor *ForeignKeyEditor) OnUpdateSetNull(ctx *sql.Context, refActionDat
 			if refActionData.ChildParentMapping[i] == -1 {
 				updatedRow[i] = rowToUpdate[i]
 			}
+		}
+		if err = sql.EvalProjections(ctx, refActionData.GeneratedProjections, updatedRow); err != nil {
+			return err
 		}
 		err = refActionData.Editor.Update(ctx, rowToUpdate, updatedRow, depth)
 		if err != nil {
@@ -400,6 +419,9 @@ func (fkEditor *ForeignKeyEditor) OnDeleteSetDefault(ctx *sql.Context, refAction
 				}
 			}
 		}
+		if err = sql.EvalProjections(ctx, refActionData.GeneratedProjections, modifiedRow); err != nil {
+			return err
+		}
 		err = refActionData.Editor.Update(ctx, rowToDefault, modifiedRow, depth)
 		if err != nil {
 			return err
@@ -435,6 +457,9 @@ func (fkEditor *ForeignKeyEditor) OnDeleteSetNull(ctx *sql.Context, refActionDat
 			if refActionData.ChildParentMapping[i] == -1 {
 				nulledRow[i] = rowToNull[i]
 			}
+		}
+		if err = sql.EvalProjections(ctx, refActionData.GeneratedProjections, nulledRow); err != nil {
+			return err
 		}
 		err = refActionData.Editor.Update(ctx, rowToNull, nulledRow, depth)
 		if err != nil {
@@ -494,9 +519,33 @@ func (reference *ForeignKeyReferenceHandler) IsInitialized() bool {
 
 // CheckReference checks that the given row has an index entry in the referenced table.
 func (reference *ForeignKeyReferenceHandler) CheckReference(ctx *sql.Context, row sql.Row) error {
-	// If even one of the values are NULL then we don't check the parent
+	matchFull := reference.ForeignKey.MatchType == sql.ForeignKeyMatchType_Full
+
+	nullCount := 0
 	for _, pos := range reference.RowMapper.IndexPositions {
 		if row[pos] == nil {
+			if matchFull {
+				nullCount++
+			} else {
+				return nil
+			}
+
+		}
+	}
+
+	if matchFull {
+		// all columns NULL is fine
+		if nullCount == len(reference.RowMapper.IndexPositions) {
+			return nil
+		}
+		// partial NULL is a violation
+		if nullCount != 0 {
+			return sql.ErrForeignKeyChildViolation.New(reference.ForeignKey.Name, reference.ForeignKey.Table,
+				reference.ForeignKey.ParentTable, reference.RowMapper.GetKeyString(row))
+		}
+	} else {
+		// any NULL exempts the row
+		if nullCount > 0 {
 			return nil
 		}
 	}
@@ -556,7 +605,7 @@ func (reference *ForeignKeyReferenceHandler) validateColumnTypeConstraints(ctx *
 		return nil
 	}
 
-	for parentIdx, parentCol := range mapper.Index.ColumnExpressionTypes() {
+	for parentIdx, parentCol := range mapper.Index.ColumnExpressionTypes(ctx) {
 		if parentIdx >= len(mapper.IndexPositions) {
 			break
 		}
@@ -672,7 +721,7 @@ func (mapper *ForeignKeyRowMapper) GetIter(ctx *sql.Context, row sql.Row, refChe
 	}
 
 	if !mapper.Index.CanSupport(ctx, rang) {
-		return nil, ErrInvalidLookupForIndexedTable.New(rang.DebugString())
+		return nil, ErrInvalidLookupForIndexedTable.New(rang.DebugString(ctx))
 	}
 	// TODO: profile this, may need to redesign this or add a fast path
 	lookup := sql.IndexLookup{Ranges: sql.MySQLRangeCollection{rang}, Index: mapper.Index}
@@ -787,7 +836,7 @@ func GetForeignKeyTypeConversions(
 				convFns = make([]ForeignKeyTypeConversionFn, len(childSch))
 			}
 			convFns[childIndex] = func(ctx *sql.Context, val any) (sql.Type, any, error) {
-				convertedVal, inRange, err := toType.ConvertToType(ctx, fromType, val)
+				convertedVal, inRange, err := toType.ConvertToType(ctx, fromType, val, 'a')
 				if inRange != sql.InRange {
 					return toType, nil, sql.ErrValueOutOfRange.New(val, toType)
 				}

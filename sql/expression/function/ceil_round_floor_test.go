@@ -52,7 +52,8 @@ func TestCeil(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
-		f := NewCeil(expression.NewGetField(0, tt.rowType, "", false))
+		ctx := sql.NewEmptyContext()
+		f := NewCeil(ctx, expression.NewGetField(0, tt.rowType, "", false))
 
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
@@ -70,7 +71,7 @@ func TestCeil(t *testing.T) {
 			}
 
 			// unsigned -> unsigned, signed -> signed, everything else -> double
-			resType := f.Type()
+			resType := f.Type(ctx)
 			if types.IsUnsigned(tt.rowType) {
 				require.True(resType.Equals(types.Uint64))
 			} else if types.IsNumber(tt.rowType) {
@@ -78,7 +79,7 @@ func TestCeil(t *testing.T) {
 			} else {
 				require.True(resType.Equals(types.Float64))
 			}
-			require.False(f.IsNullable())
+			require.False(f.IsNullable(ctx))
 		})
 	}
 }
@@ -110,7 +111,8 @@ func TestFloor(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
-		f := NewFloor(expression.NewGetField(0, tt.rowType, "", false))
+		ctx := sql.NewEmptyContext()
+		f := NewFloor(ctx, expression.NewGetField(0, tt.rowType, "", false))
 
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
@@ -128,7 +130,7 @@ func TestFloor(t *testing.T) {
 			}
 
 			// signed -> signed, unsigned -> unsigned, everything else -> double
-			resType := f.Type()
+			resType := f.Type(ctx)
 			if types.IsUnsigned(tt.rowType) {
 				require.True(resType.Equals(types.Uint64))
 			} else if types.IsNumber(tt.rowType) {
@@ -136,7 +138,7 @@ func TestFloor(t *testing.T) {
 			} else {
 				require.True(resType.Equals(types.Float64))
 			}
-			require.False(f.IsNullable())
+			require.False(f.IsNullable(ctx))
 		})
 	}
 }
@@ -668,8 +670,9 @@ func TestRound(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
+		ctx := sql.NewEmptyContext()
 		t.Run(tt.name, func(t *testing.T) {
-			f, err := NewRound(tt.xExpr, tt.dExpr)
+			f, err := NewRound(ctx, tt.xExpr, tt.dExpr)
 			require.NoError(t, err)
 
 			res, err := f.Eval(sql.NewEmptyContext(), nil)

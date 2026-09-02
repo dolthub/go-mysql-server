@@ -74,7 +74,7 @@ func (b *BaseBuilder) buildDescribeQuery(ctx *sql.Context, n *plan.DescribeQuery
 
 	var rows []sql.Row
 	if n.Format.Plan {
-		formatString := sql.Describe(n.Child, n.Format)
+		formatString := sql.Describe(ctx, n.Child, n.Format)
 		formatString = strings.Replace(formatString, "\r", "", -1)
 		for _, l := range strings.Split(formatString, "\n") {
 			if strings.TrimSpace(l) != "" {
@@ -444,8 +444,12 @@ func (b *BaseBuilder) buildShowColumns(ctx *sql.Context, n *plan.ShowColumns, ro
 	span, _ := ctx.Span("plan.ShowColumns")
 
 	schema := n.TargetSchema()
-	var rows = make([]sql.Row, len(schema))
-	for i, col := range schema {
+	var rows = make([]sql.Row, 0, len(schema))
+	for _, col := range schema {
+		if col.HiddenSystem && !n.Extended {
+			continue
+		}
+
 		var row sql.Row
 		var collation interface{}
 		if types.IsTextOnly(col.Type) {
@@ -462,11 +466,11 @@ func (b *BaseBuilder) buildShowColumns(ctx *sql.Context, n *plan.ShowColumns, ro
 		case *plan.ResolvedTable:
 			if col.PrimaryKey {
 				key = "PRI"
-			} else if isPriCol(n, col, table) {
+			} else if isPriCol(ctx, n, col, table) {
 				key = "PRI"
-			} else if isUnqCol(n, col, table) {
+			} else if isUnqCol(ctx, n, col, table) {
 				key = "UNI"
-			} else if isMulCol(n, col, table) {
+			} else if isMulCol(ctx, n, col, table) {
 				key = "MUL"
 			}
 		case *plan.SubqueryAlias:
@@ -514,7 +518,7 @@ func (b *BaseBuilder) buildShowColumns(ctx *sql.Context, n *plan.ShowColumns, ro
 			}
 		}
 
-		rows[i] = row
+		rows = append(rows, row)
 	}
 
 	return sql.NewSpanIter(span, sql.RowsToRowIter(rows...)), nil
@@ -604,7 +608,7 @@ func (b *BaseBuilder) buildShowTriggers(ctx *sql.Context, n *plan.ShowTriggers, 
 }
 
 func (b *BaseBuilder) buildDescribe(ctx *sql.Context, n *plan.Describe, row sql.Row) (sql.RowIter, error) {
-	return &describeIter{schema: n.Child.Schema()}, nil
+	return &describeIter{schema: n.Child.Schema(ctx)}, nil
 }
 
 func (b *BaseBuilder) buildShowDatabases(ctx *sql.Context, n *plan.ShowDatabases, row sql.Row) (sql.RowIter, error) {

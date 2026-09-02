@@ -1885,7 +1885,7 @@ var InsertScripts = []ScriptTest{
 		Name: "Insert throws unique key violations",
 		SetUpScript: []string{
 			"CREATE TABLE t (pk int PRIMARY key, col1 int UNIQUE);",
-			"CREATE TABLE t2 (pk int PRIMARY key, col1 int, col2 int, UNIQUE KEY (col1, col2));",
+			"CREATE TABLE t2 (pk int PRIMARY key, col1 int, col2 int, CONSTRAINT col1_col2 UNIQUE KEY (col1, col2));",
 			"INSERT into t VALUES (1, 1);",
 			"INSERT into t2 VALUES (1, 1, 1);",
 		},
@@ -1936,7 +1936,7 @@ var InsertScripts = []ScriptTest{
 		Name: "Insert throws unique key violations for keyless tables",
 		SetUpScript: []string{
 			"CREATE TABLE t (not_pk int NOT NULL, col1 int UNIQUE);",
-			"CREATE TABLE t2 (not_pk int NOT NULL, col1 int, col2 int, UNIQUE KEY (col1, col2));",
+			"CREATE TABLE t2 (not_pk int NOT NULL, col1 int, col2 int, CONSTRAINT col1_col2 UNIQUE KEY (col1, col2));",
 			"INSERT into t VALUES (1, 1);",
 			"INSERT into t2 VALUES (1, 1, 1);",
 		},
@@ -2607,6 +2607,29 @@ var InsertDuplicateKeyKeyless = []ScriptTest{
 					{0, 2, 2},
 					{0, 3, 3},
 				},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11389
+		Name: "INSERT...ON DUPLICATE KEY UPDATE works with DEFAULT update value",
+		// TODO: This test should work in Doltgres. Even though standard Postgres doesn't support
+		//  ON DUPLICATE KEY UPDATE, it works in Doltgres. The problem is that Doltgres panics when DEFAULT is used
+		//  inside an ON UPDATE KEY UPDATE clause
+		//  https://github.com/dolthub/doltgresql/issues/3045
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t(id INT PRIMARY KEY, a INT DEFAULT 1);",
+			"INSERT INTO t VALUES (1, 5);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO t(id) VALUES (1) ON DUPLICATE KEY UPDATE a = DEFAULT;",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "SELECT * from t;",
+				Expected: []sql.Row{{1, 1}},
 			},
 		},
 	},

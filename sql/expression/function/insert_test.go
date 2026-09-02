@@ -26,6 +26,7 @@ import (
 
 func TestInsert(t *testing.T) {
 	f := NewInsert(
+		sql.NewEmptyContext(),
 		expression.NewGetField(0, types.LongText, "", false),
 		expression.NewGetField(1, types.Int64, "", false),
 		expression.NewGetField(2, types.Int64, "", false),

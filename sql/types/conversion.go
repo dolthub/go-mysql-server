@@ -16,16 +16,15 @@ package types
 
 import (
 	"fmt"
-	"reflect"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
-	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -88,8 +87,8 @@ func ApproximateTypeFromValue(val interface{}) sql.Type {
 			}
 		}
 		return typ
-	case decimal.Decimal:
-		str := v.String()
+	case *apd.Decimal:
+		str := v.Text('f')
 		dotIdx := strings.Index(str, ".")
 		if len(str) > 66 {
 			return Float64
@@ -108,11 +107,6 @@ func ApproximateTypeFromValue(val interface{}) sql.Type {
 			}
 			return typ
 		}
-	case decimal.NullDecimal:
-		if !v.Valid {
-			return Float64
-		}
-		return ApproximateTypeFromValue(v.Decimal)
 	case nil:
 		return Null
 	default:
@@ -669,7 +663,7 @@ func generalizeNumberTypes(a, b sql.Type) sql.Type {
 // TODO: Create and handle "Illegal mix of collations" error
 // TODO: Handle extended types, like DoltgresType
 func GeneralizeTypes(a, b sql.Type) sql.Type {
-	if reflect.DeepEqual(a, b) {
+	if a != nil && b != nil && a.Equals(b) {
 		return a
 	}
 
@@ -771,6 +765,18 @@ func GeneralizeTypes(a, b sql.Type) sql.Type {
 func TypeAwareConversion(ctx *sql.Context, val interface{}, originalType sql.Type, convertedType sql.Type) (interface{}, sql.ConvertInRange, error) {
 	if val == nil {
 		return nil, sql.InRange, nil
+	}
+	// Extended types encode a value's shape (precision/scale, category, etc.) in the type itself,
+	// so converting between two of them requires the source type's identity.
+	// Type.Convert only checks whether a value already matches the target type's own native Go
+	// representation, so it can't perform this kind of cross-type conversion.
+	if oet, ok := originalType.(sql.ExtendedType); ok {
+		if cet, ok := convertedType.(sql.ExtendedType); ok {
+			if oet.Equals(cet) {
+				return val, sql.InRange, nil
+			}
+			return cet.ConvertToType(ctx, oet, val, 'a')
+		}
 	}
 	var err error
 	if (IsEnum(originalType) || IsSet(originalType)) && IsText(convertedType) {

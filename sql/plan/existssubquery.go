@@ -47,7 +47,7 @@ func (e *ExistsSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 }
 
 // WithChildren implements the Expression interface.
-func (e *ExistsSubquery) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (e *ExistsSubquery) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(e, len(children), 1)
 	}
@@ -67,7 +67,7 @@ func (e *ExistsSubquery) Resolved() bool {
 }
 
 // IsNullable implements the Expression interface.
-func (e *ExistsSubquery) IsNullable() bool {
+func (e *ExistsSubquery) IsNullable(ctx *sql.Context) bool {
 	return false
 }
 
@@ -82,12 +82,12 @@ func (e *ExistsSubquery) String() string {
 }
 
 // DebugString implements the Expression interface.
-func (e *ExistsSubquery) DebugString() string {
-	return fmt.Sprintf("EXISTS %s", sql.DebugString(e.Query))
+func (e *ExistsSubquery) DebugString(ctx *sql.Context) string {
+	return fmt.Sprintf("EXISTS %s", sql.DebugString(ctx, e.Query))
 }
 
 // Type implements the Expression interface.
-func (e *ExistsSubquery) Type() sql.Type {
+func (e *ExistsSubquery) Type(ctx *sql.Context) sql.Type {
 	return types.Boolean
 }
 

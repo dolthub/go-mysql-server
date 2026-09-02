@@ -38,6 +38,7 @@ func BenchmarkRegexpInStr(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		f, err := NewRegexpInstr(
+			ctx,
 			expression.NewGetField(0, types.LongText, "text", false),
 			expression.NewLiteral("^test[0-9]$", types.LongText),
 		)
@@ -49,6 +50,6 @@ func BenchmarkRegexpInStr(b *testing.B) {
 			total += int(res.(int32))
 		}
 		require.Equal(b, 10, total)
-		f.(*RegexpInstr).Dispose()
+		f.(*RegexpInstr).Dispose(ctx)
 	}
 }

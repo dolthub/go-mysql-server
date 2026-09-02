@@ -172,7 +172,7 @@ func (t *JSONTable) String() string {
 }
 
 // DebugString implements the sql.Table interface
-func (t *JSONTable) DebugString() string {
+func (t *JSONTable) DebugString(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("json_table")
 	var cols []string
@@ -182,7 +182,7 @@ func (t *JSONTable) DebugString() string {
 	children := []string{
 		fmt.Sprintf("name: %s", t.TableName),
 		fmt.Sprintf("root_path: %s", t.RootPath),
-		fmt.Sprintf("data_expr: %s", sql.DebugString(t.DataExpr)),
+		fmt.Sprintf("data_expr: %s", sql.DebugString(ctx, t.DataExpr)),
 		fmt.Sprintf("cols: %s", strings.Join(cols, ", ")),
 	}
 	_ = pr.WriteChildren(children...)
@@ -208,7 +208,7 @@ func (t *JSONTable) FlattenSchema(cols []JSONTableCol) sql.Schema {
 }
 
 // Schema implements the sql.Table interface
-func (t *JSONTable) Schema() sql.Schema {
+func (t *JSONTable) Schema(ctx *sql.Context) sql.Schema {
 	return t.FlattenSchema(t.Cols)
 }
 
@@ -249,7 +249,7 @@ func (t *JSONTable) Children() []sql.Node {
 }
 
 // WithChildren implements the sql.Node interface
-func (t *JSONTable) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (t *JSONTable) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	return t, nil
 }
 
@@ -269,16 +269,16 @@ func (t *JSONTable) Expressions() []sql.Expression {
 }
 
 // WithExpressions implements the sql.Expressioner interface
-func (t *JSONTable) WithExpressions(expression ...sql.Expression) (sql.Node, error) {
+func (t *JSONTable) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	nt := *t
-	nt.DataExpr = expression[0]
+	nt.DataExpr = exprs[0]
 	idx := 1
 	for i := range nt.Cols {
-		if err := nt.Cols[i].WithExpressions(expression, &idx); err != nil {
+		if err := nt.Cols[i].WithExpressions(exprs, &idx); err != nil {
 			return nil, err
 		}
 	}
-	if idx != len(expression) {
+	if idx != len(exprs) {
 		return nil, fmt.Errorf("too many expressions for JSONTable")
 	}
 	return &nt, nil

@@ -88,7 +88,7 @@ func TestStd(t *testing.T) {
 			require := require.New(t)
 
 			ctx := sql.NewEmptyContext()
-			buf, _ := sum.NewBuffer()
+			buf, _ := sum.NewBuffer(ctx)
 			for _, row := range tt.rows {
 				require.NoError(buf.Update(ctx, row))
 			}
@@ -164,7 +164,7 @@ func TestStdSamp(t *testing.T) {
 			require := require.New(t)
 
 			ctx := sql.NewEmptyContext()
-			buf, _ := sum.NewBuffer()
+			buf, _ := sum.NewBuffer(ctx)
 			for _, row := range tt.rows {
 				require.NoError(buf.Update(ctx, row))
 			}
@@ -240,7 +240,7 @@ func TestVariance(t *testing.T) {
 			require := require.New(t)
 
 			ctx := sql.NewEmptyContext()
-			buf, _ := sum.NewBuffer()
+			buf, _ := sum.NewBuffer(ctx)
 			for _, row := range tt.rows {
 				require.NoError(buf.Update(ctx, row))
 			}
@@ -316,7 +316,7 @@ func TestVarSamp(t *testing.T) {
 			require := require.New(t)
 
 			ctx := sql.NewEmptyContext()
-			buf, _ := sum.NewBuffer()
+			buf, _ := sum.NewBuffer(ctx)
 			for _, row := range tt.rows {
 				require.NoError(buf.Update(ctx, row))
 			}

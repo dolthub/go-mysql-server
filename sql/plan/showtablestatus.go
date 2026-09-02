@@ -72,7 +72,7 @@ func (s *ShowTableStatus) Children() []sql.Node { return nil }
 func (s *ShowTableStatus) Resolved() bool { return true }
 
 // Schema implements the sql.Node interface.
-func (s *ShowTableStatus) Schema() sql.Schema { return showTableStatusSchema }
+func (s *ShowTableStatus) Schema(ctx *sql.Context) sql.Schema { return showTableStatusSchema }
 
 func (s *ShowTableStatus) String() string {
 	return "SHOW TABLE STATUS"
@@ -83,7 +83,7 @@ func (s *ShowTableStatus) IsReadOnly() bool {
 }
 
 // WithChildren implements the Node interface.
-func (s *ShowTableStatus) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (s *ShowTableStatus) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 0)
 	}

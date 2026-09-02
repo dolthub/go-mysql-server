@@ -47,7 +47,7 @@ type JSONPretty struct {
 var _ sql.FunctionExpression = &JSONPretty{}
 
 // NewJSONPretty creates a new JSONPretty function.
-func NewJSONPretty(arg sql.Expression) sql.Expression {
+func NewJSONPretty(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &JSONPretty{expression.UnaryExpressionStub{Child: arg}}
 }
 
@@ -67,7 +67,7 @@ func (j *JSONPretty) String() string {
 }
 
 // Type implements sql.Expression
-func (j *JSONPretty) Type() sql.Type {
+func (j *JSONPretty) Type(ctx *sql.Context) sql.Type {
 	return types.LongText
 }
 
@@ -96,9 +96,9 @@ func (j *JSONPretty) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements sql.Expression
-func (j *JSONPretty) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (j *JSONPretty) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(j, len(children), 1)
 	}
-	return NewJSONPretty(children[0]), nil
+	return NewJSONPretty(ctx, children[0]), nil
 }

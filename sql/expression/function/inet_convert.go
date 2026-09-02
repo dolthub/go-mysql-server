@@ -34,7 +34,7 @@ type InetAton struct {
 var _ sql.FunctionExpression = (*InetAton)(nil)
 var _ sql.CollationCoercible = (*InetAton)(nil)
 
-func NewInetAton(val sql.Expression) sql.Expression {
+func NewInetAton(ctx *sql.Context, val sql.Expression) sql.Expression {
 	return &InetAton{expression.UnaryExpressionStub{Child: val}}
 }
 
@@ -52,7 +52,7 @@ func (i *InetAton) String() string {
 	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String())
 }
 
-func (i *InetAton) Type() sql.Type {
+func (i *InetAton) Type(ctx *sql.Context) sql.Type {
 	return types.Uint32
 }
 
@@ -61,11 +61,11 @@ func (*InetAton) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 	return sql.Collation_binary, 5
 }
 
-func (i *InetAton) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (i *InetAton) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
 	}
-	return NewInetAton(children[0]), nil
+	return NewInetAton(ctx, children[0]), nil
 }
 
 func (i *InetAton) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -114,7 +114,7 @@ type Inet6Aton struct {
 var _ sql.FunctionExpression = (*Inet6Aton)(nil)
 var _ sql.CollationCoercible = (*Inet6Aton)(nil)
 
-func NewInet6Aton(val sql.Expression) sql.Expression {
+func NewInet6Aton(ctx *sql.Context, val sql.Expression) sql.Expression {
 	return &Inet6Aton{expression.UnaryExpressionStub{Child: val}}
 }
 
@@ -132,7 +132,7 @@ func (i *Inet6Aton) String() string {
 	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String())
 }
 
-func (i *Inet6Aton) Type() sql.Type {
+func (i *Inet6Aton) Type(ctx *sql.Context) sql.Type {
 	return types.LongBlob
 }
 
@@ -141,11 +141,11 @@ func (*Inet6Aton) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 	return sql.Collation_binary, 4
 }
 
-func (i *Inet6Aton) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (i *Inet6Aton) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
 	}
-	return NewInet6Aton(children[0]), nil
+	return NewInet6Aton(ctx, children[0]), nil
 }
 
 func (i *Inet6Aton) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -160,8 +160,13 @@ func (i *Inet6Aton) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
+	ipstr, ok := val.(string)
+	if !ok {
+		ctx.Warn(1411, "Incorrect string value: ''%v'' for function %s", val, i.FunctionName())
+		return nil, nil
+	}
+
 	// Parse IP address
-	ipstr := val.(string)
 	ip := net.ParseIP(ipstr)
 	if ip == nil {
 		// Failed to Parse IP correctly
@@ -170,7 +175,7 @@ func (i *Inet6Aton) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// if it doesn't contain colons, treat it as ipv4
-	if strings.Count(val.(string), ":") < 2 {
+	if strings.Count(ipstr, ":") < 2 {
 		ipv4 := ip.To4()
 		return []byte(ipv4), nil
 	}
@@ -194,7 +199,7 @@ type InetNtoa struct {
 var _ sql.FunctionExpression = (*InetNtoa)(nil)
 var _ sql.CollationCoercible = (*InetNtoa)(nil)
 
-func NewInetNtoa(val sql.Expression) sql.Expression {
+func NewInetNtoa(ctx *sql.Context, val sql.Expression) sql.Expression {
 	return &InetNtoa{expression.UnaryExpressionStub{Child: val}}
 }
 
@@ -212,7 +217,7 @@ func (i *InetNtoa) String() string {
 	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String())
 }
 
-func (i *InetNtoa) Type() sql.Type {
+func (i *InetNtoa) Type(ctx *sql.Context) sql.Type {
 	return types.LongText
 }
 
@@ -221,11 +226,11 @@ func (*InetNtoa) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 	return ctx.GetCollation(), 4
 }
 
-func (i *InetNtoa) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (i *InetNtoa) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
 	}
-	return NewInetNtoa(children[0]), nil
+	return NewInetNtoa(ctx, children[0]), nil
 }
 
 func (i *InetNtoa) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -267,7 +272,7 @@ type Inet6Ntoa struct {
 var _ sql.FunctionExpression = (*Inet6Ntoa)(nil)
 var _ sql.CollationCoercible = (*Inet6Ntoa)(nil)
 
-func NewInet6Ntoa(val sql.Expression) sql.Expression {
+func NewInet6Ntoa(ctx *sql.Context, val sql.Expression) sql.Expression {
 	return &Inet6Ntoa{expression.UnaryExpressionStub{Child: val}}
 }
 
@@ -285,7 +290,7 @@ func (i *Inet6Ntoa) String() string {
 	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String())
 }
 
-func (i *Inet6Ntoa) Type() sql.Type {
+func (i *Inet6Ntoa) Type(ctx *sql.Context) sql.Type {
 	return types.LongText
 }
 
@@ -294,11 +299,11 @@ func (*Inet6Ntoa) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 	return ctx.GetCollation(), 4
 }
 
-func (i *Inet6Ntoa) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (i *Inet6Ntoa) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
 	}
-	return NewInet6Ntoa(children[0]), nil
+	return NewInet6Ntoa(ctx, children[0]), nil
 }
 
 func (i *Inet6Ntoa) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -314,10 +319,8 @@ func (i *Inet6Ntoa) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Only convert if received string as input
-	switch val.(type) {
+	switch ipbytes := val.(type) {
 	case []byte:
-		ipbytes := val.([]byte)
-
 		// Exactly 4 bytes, treat as IPv4 address
 		if len(ipbytes) == 4 {
 			var ipv4 net.IP = ipbytes
@@ -326,7 +329,7 @@ func (i *Inet6Ntoa) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 		// There must be exactly 4 or 16 bytes (len == 4 satisfied above)
 		if len(ipbytes) != 16 {
-			ctx.Warn(1411, "Incorrect string value: ''%s'' for function %s", string(val.([]byte)), i.FunctionName())
+			ctx.Warn(1411, "Incorrect string value: ''%s'' for function %s", string(ipbytes), i.FunctionName())
 			return nil, nil
 		}
 

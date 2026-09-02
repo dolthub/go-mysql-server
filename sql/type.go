@@ -22,11 +22,10 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/mysql"
-
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
-	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
 )
 
@@ -285,26 +284,32 @@ func IsEnumType(t Type) bool {
 	return ok
 }
 
+var (
+	// DecimalCtx is the default context for decimal operations.
+	// It has default precision set to 0, which cannot be used
+	// for division operations (.Quo() or .Rem()) and rounding (.Quantize()).
+	// You can either set it to precision using WithPrecision method or use DecimalHighPrecisionCtx.
+	DecimalCtx = apd.BaseContext
+	// DecimalHighPrecisionCtx is a decimal context with high precision.
+	DecimalHighPrecisionCtx = apd.BaseContext.WithPrecision(apd.MaxExponent)
+)
+
 // DecimalType represents the DECIMAL type.
 // https://dev.mysql.com/doc/refman/8.0/en/fixed-point-types.html
-// The type of the returned value is decimal.Decimal.
+// The type of the returned value is *apd.Decimal.
 type DecimalType interface {
 	Type
 	// IsDecimalType returns true if the type is a decimal. Must be checked in addition to a type assertion for
 	// DecimalType, because some implementors of this interface may not be decimal types in all instantiations.
 	IsDecimalType() bool
-	// ConvertToNullDecimal converts the given value to a decimal.NullDecimal if it has a compatible type. It is worth
-	// noting that Convert() returns a nil value for nil inputs, and also returns decimal.Decimal rather than
-	// decimal.NullDecimal.
-	ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, error)
-	// ConvertNoBoundsCheck normalizes an interface{} to a decimal type without performing expensive bound checks
-	ConvertNoBoundsCheck(v interface{}) (decimal.Decimal, error)
+	// ConvertToDecimal converts the given value to an *apd.Decimal if it has a compatible type.
+	ConvertToDecimal(v interface{}) (*apd.Decimal, error)
 	// BoundsCheck rounds and validates a decimal, returning the decimal,
 	// whether the value was out of range, and an error.
-	BoundsCheck(v decimal.Decimal) (decimal.Decimal, ConvertInRange, error)
+	BoundsCheck(v *apd.Decimal) (*apd.Decimal, ConvertInRange, error)
 	// ExclusiveUpperBound returns the exclusive upper bound for this Decimal.
 	// For example, DECIMAL(5,2) would return 1000, as 999.99 is the max represented.
-	ExclusiveUpperBound() decimal.Decimal
+	ExclusiveUpperBound() *apd.Decimal
 	// MaximumScale returns the maximum scale allowed for the current precision.
 	MaximumScale() uint8
 	// Precision returns the base-10 precision of the type, which is the total number of digits. For example, a
@@ -313,6 +318,25 @@ type DecimalType interface {
 	// Scale returns the scale, or number of digits after the decimal, that may be held.
 	// This will always be less than or equal to the precision.
 	Scale() uint8
+}
+
+// DecimalRound rounds the decimal to places decimal places.
+// If places < 0, it will round the integer part to the nearest 10^(-places).
+// 5.45 rounded with scale of 1 = 5.5
+// 545 rounded with scale of -1 = 550
+func DecimalRound(val *apd.Decimal, scale int32) (*apd.Decimal, error) {
+	newVal := new(apd.Decimal)
+	// Must use decimal context with precision set to non-zero to use .Quantize() method.
+	// Instead of using MaxExponent, find the big enough precision
+	p := val.NumDigits()
+	if val.Exponent > 0 {
+		p += int64(val.Exponent)
+	}
+	if scale > 0 {
+		p += int64(scale)
+	}
+	_, err := DecimalCtx.WithPrecision(uint32(p)).Quantize(newVal, val, -scale)
+	return newVal, err
 }
 
 func IsDecimalType(t Type) bool {
@@ -357,9 +381,15 @@ type ExtendedType interface {
 	FormatValue(val any) (string, error)
 	// MaxSerializedWidth returns the maximum size that the serialized value may represent.
 	MaxSerializedWidth() ExtendedTypeSerializedWidth
-	// ConvertToType converts the given value of the given type to this type, or returns an error if
-	// no conversion is possible.
-	ConvertToType(ctx *Context, typ ExtendedType, val any) (any, ConvertInRange, error)
+	// ConvertToType converts the given value of the given type to this type using given cast type ('e', 'a', 'i')
+	// or returns an error if no conversion is possible.
+	ConvertToType(ctx *Context, typ ExtendedType, val any, convTyp byte) (any, ConvertInRange, error)
+}
+
+// GetCommonExtendedType finds a type that both itself and given type can be implicitly casted to.
+// This is a variable as it's changed in Doltgres.
+var GetCommonExtendedType = func(ctx *Context, sourceType, targetType ExtendedType) ExtendedType {
+	return sourceType
 }
 
 type ExtendedTypeSerializedWidth uint8

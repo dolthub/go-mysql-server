@@ -68,8 +68,8 @@ func Join(ctx *sql.Context, s1, s2 sql.Statistic, prefixCnt int, debug bool) (sq
 		return nil, err
 	}
 	if debug {
-		log.Println("left", s1AliHist.DebugString())
-		log.Println("right", s2AliHist.DebugString())
+		log.Println("left", s1AliHist.DebugString(ctx))
+		log.Println("right", s2AliHist.DebugString(ctx))
 	}
 
 	newHist, err := joinAlignedStats(s1AliHist, s2AliHist, cmp)

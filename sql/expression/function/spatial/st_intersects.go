@@ -15,6 +15,7 @@
 package spatial
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -32,7 +33,7 @@ var _ sql.FunctionExpression = (*Intersects)(nil)
 var _ sql.CollationCoercible = (*Intersects)(nil)
 
 // NewIntersects creates a new Intersects expression.
-func NewIntersects(g1, g2 sql.Expression) sql.Expression {
+func NewIntersects(ctx *sql.Context, g1, g2 sql.Expression) sql.Expression {
 	return &Intersects{
 		expression.BinaryExpressionStub{
 			LeftChild:  g1,
@@ -52,7 +53,7 @@ func (i *Intersects) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (i *Intersects) Type() sql.Type {
+func (i *Intersects) Type(ctx *sql.Context) sql.Type {
 	return types.Boolean
 }
 
@@ -65,16 +66,16 @@ func (i *Intersects) String() string {
 	return fmt.Sprintf("%s(%s,%s)", i.FunctionName(), i.LeftChild, i.RightChild)
 }
 
-func (i *Intersects) DebugString() string {
-	return fmt.Sprintf("%s(%s,%s)", i.FunctionName(), sql.DebugString(i.LeftChild), sql.DebugString(i.RightChild))
+func (i *Intersects) DebugString(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s,%s)", i.FunctionName(), sql.DebugString(ctx, i.LeftChild), sql.DebugString(ctx, i.RightChild))
 }
 
 // WithChildren implements the Expression interface.
-func (i *Intersects) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (i *Intersects) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 2)
 	}
-	return NewIntersects(children[0], children[1]), nil
+	return NewIntersects(ctx, children[0], children[1]), nil
 }
 
 // isPointIntersectLine checks if Point p intersects the LineString l
@@ -329,16 +330,16 @@ func isIntersects(g1, g2 types.GeometryValue) bool {
 // 2. Not a types.GeometryValue, return error
 // 3. SRIDs don't match, return error
 // 4. Empty GeometryCollection, return nil
-func validateGeomComp(geom1, geom2 interface{}, funcName string) (types.GeometryValue, types.GeometryValue, error) {
+func validateGeomComp(ctx context.Context, geom1, geom2 interface{}, funcName string) (types.GeometryValue, types.GeometryValue, error) {
 	if geom1 == nil || geom2 == nil {
 		return nil, nil, nil
 	}
-	g1, ok := geom1.(types.GeometryValue)
-	if !ok {
+	g1, err := types.UnwrapGeometry(ctx, geom1)
+	if err != nil {
 		return nil, nil, sql.ErrInvalidGISData.New(funcName)
 	}
-	g2, ok := geom2.(types.GeometryValue)
-	if !ok {
+	g2, err := types.UnwrapGeometry(ctx, geom2)
+	if err != nil {
 		return nil, nil, sql.ErrInvalidGISData.New(funcName)
 	}
 	if g1.GetSRID() != g2.GetSRID() {
@@ -363,7 +364,7 @@ func (i *Intersects) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	g1, g2, err := validateGeomComp(geom1, geom2, i.FunctionName())
+	g1, g2, err := validateGeomComp(ctx, geom1, geom2, i.FunctionName())
 	if err != nil {
 		return nil, err
 	}

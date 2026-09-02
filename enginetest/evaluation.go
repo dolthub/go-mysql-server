@@ -22,10 +22,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/sqltypes"
 	querypb "github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
-	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
@@ -63,17 +63,29 @@ func TestScript(t *testing.T, harness Harness, script queries.ScriptTest) {
 	TestScriptWithEngine(t, e, harness, script)
 }
 
+// ServerBackedEngine is implemented by QueryEngine types that run queries
+// through a real server (i.e. over the wire protocol). Plan-inspection checks
+// like evalIndexTest and evalJoinTypeTest are skipped for these engines.
+type ServerBackedEngine interface {
+	IsServerBacked() bool
+}
+
 func IsServerEngine(e QueryEngine) bool {
-	_, ok := e.(*ServerQueryEngine)
-	return ok
+	if _, ok := e.(*ServerQueryEngine); ok {
+		return true
+	}
+	if sb, ok := e.(ServerBackedEngine); ok {
+		return sb.IsServerBacked()
+	}
+	return false
 }
 
 // CreateNewConnectionForServerEngine creates a new connection in the server engine.
 // If there was an existing one, it gets closed before the new gets created.
 // This function should be called when needing to use new session for the server.
 func CreateNewConnectionForServerEngine(ctx *sql.Context, e QueryEngine) error {
-	if IsServerEngine(e) {
-		return e.(*ServerQueryEngine).NewConnection(ctx)
+	if sre, ok := e.(*ServerQueryEngine); ok {
+		return sre.NewConnection(ctx)
 	}
 	return nil
 }
@@ -364,7 +376,7 @@ func TestTransactionScriptWithEngine(t *testing.T, e QueryEngine, harness Harnes
 }
 
 // TestQuery runs a query on the engine given and asserts that results are as expected.
-// TODO: this should take en engine
+// TODO: this should take an engine https://github.com/dolthub/go-mysql-server/issues/3588
 func TestQuery(t *testing.T, harness Harness, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]sqlparser.Expr) {
 	testQuery(t, harness, q, expected, expectedCols, bindings, queries.WrapBehavior_Unwrap)
 }
@@ -385,6 +397,7 @@ func testQuery(t *testing.T, harness Harness, q string, expected []sql.Row, expe
 }
 
 // TestQuery runs a query on the engine given and asserts that results are as expected.
+// TODO: combine with TestQuery https://github.com/dolthub/go-mysql-server/issues/3588
 func TestQuery2(t *testing.T, harness Harness, e QueryEngine, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]sqlparser.Expr) {
 	t.Run(q, func(t *testing.T) {
 		if sh, ok := harness.(SkippingHarness); ok {
@@ -398,7 +411,7 @@ func TestQuery2(t *testing.T, harness Harness, e QueryEngine, q string, expected
 	})
 }
 
-// TODO: collapse into TestQuery
+// TODO: collapse into TestQuery https://github.com/dolthub/go-mysql-server/issues/3588
 func TestQueryWithEngine(t *testing.T, harness Harness, e QueryEngine, tt queries.QueryTest) {
 	t.Run(tt.Query, func(t *testing.T) {
 		if sh, ok := harness.(SkippingHarness); tt.Skip || (IsServerEngine(e) && tt.SkipServerEngine) ||
@@ -476,9 +489,9 @@ func testQueryWithContext(
 	validateEngine(t, ctx, harness, e)
 }
 
-func GetFilterIndex(n sql.Node) sql.IndexLookup {
+func GetFilterIndex(ctx *sql.Context, n sql.Node) sql.IndexLookup {
 	var lookup sql.IndexLookup
-	transform.InspectUp(n, func(n sql.Node) bool {
+	transform.InspectUp(ctx, n, func(ctx *sql.Context, n sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.IndexedTableAccess:
 			lookup = plan.GetIndexLookup(n)
@@ -501,7 +514,7 @@ func TestQueryWithIndexCheck(t *testing.T, ctx *sql.Context, e QueryEngine, harn
 	if !IsServerEngine(e) {
 		node, err := e.AnalyzeQuery(ctx, q)
 		require.NoError(err, "Unexpected error for query %s: %s", q, err)
-		require.True(CheckIndexedAccess(node), "expected plan to have index, but found: %s", sql.DebugString(node))
+		require.True(CheckIndexedAccess(ctx, node), "expected plan to have index, but found: %s", sql.DebugString(ctx, node))
 	}
 
 	sch, iter, _, err := e.QueryWithBindings(ctx, q, nil, bindings, nil)
@@ -519,9 +532,9 @@ func TestQueryWithIndexCheck(t *testing.T, ctx *sql.Context, e QueryEngine, harn
 	validateEngine(t, ctx, harness, e)
 }
 
-func CheckIndexedAccess(n sql.Node) bool {
+func CheckIndexedAccess(ctx *sql.Context, n sql.Node) bool {
 	var hasIndex bool
-	transform.InspectWithOpaque(n, func(n sql.Node) bool {
+	transform.InspectWithOpaque(ctx, n, func(ctx *sql.Context, n sql.Node) bool {
 		if n == nil {
 			return false
 		}
@@ -565,7 +578,7 @@ func TestPreparedQueryWithEngine(t *testing.T, harness Harness, e QueryEngine, t
 			AssertWarningAndTestPreparedQuery(t, e, ctx, harness, tt.Query, tt.Expected, tt.ExpectedColumns,
 				tt.ExpectedWarning, tt.ExpectedWarningsCount, tt.ExpectedWarningMessageSubstring, false)
 		} else {
-			TestPreparedQueryWithContext(t, ctx, e, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil, false)
+			TestPreparedQueryWithContext(t, ctx, e, harness, tt.Query, tt.Expected, tt.ExpectedColumns, tt.Bindings, false)
 		}
 	})
 }
@@ -676,7 +689,7 @@ func injectBindVarsAndPrepare(
 
 	buf := sqlparser.NewTrackedBuffer(nil)
 	parsed.Format(buf)
-	e.EnginePreparedDataCache().CacheStmt(ctx.Session.ID(), buf.String(), parsed)
+	ctx.Session.PrepareQuery(buf.String(), parsed)
 
 	_, isDatabaser := resPlan.(sql.Databaser)
 
@@ -715,7 +728,7 @@ func runQueryPreparedWithCtx(t *testing.T, ctx *sql.Context, e QueryEngine, q st
 	if checkIndexedAccess {
 		n, err := e.AnalyzeQuery(ctx, q)
 		require.NoError(t, err)
-		require.True(t, CheckIndexedAccess(n), "expected plan to have index, but found: %s", sql.DebugString(n))
+		require.True(t, CheckIndexedAccess(ctx, n), "expected plan to have index, but found: %s", sql.DebugString(ctx, n))
 	}
 
 	sch, iter, _, err := e.QueryWithBindings(ctx, q, nil, bindVars, nil)
@@ -927,10 +940,10 @@ func widenValue(t *testing.T, v interface{}) (vw interface{}) {
 	case float32:
 		// casting it to float64 causes approximation, which doesn't work for server engine results.
 		vw, _ = strconv.ParseFloat(fmt.Sprintf("%v", v), 64)
-	case decimal.Decimal:
+	case *apd.Decimal:
 		// The exact expected decimal type value cannot be defined in enginetests,
 		// so convert the result to string format, which is the value we get on sql shell.
-		vw = x.StringFixed(x.Exponent() * -1)
+		vw = x.Text('f')
 	default:
 		vw = v
 	}

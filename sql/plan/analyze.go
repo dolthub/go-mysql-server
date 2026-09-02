@@ -32,7 +32,7 @@ func NewAnalyze(names []sql.Table) *AnalyzeTable {
 
 // Schema implements the interface sql.Node.
 // TODO: should be |Tables|Op|Msg_type|Msg_text|
-func (n *AnalyzeTable) Schema() sql.Schema {
+func (n *AnalyzeTable) Schema(ctx *sql.Context) sql.Schema {
 	return analyzeSchema
 }
 
@@ -80,7 +80,7 @@ func (n *AnalyzeTable) Children() []sql.Node {
 }
 
 // WithChildren implements the interface sql.Node.
-func (n *AnalyzeTable) WithChildren(_ ...sql.Node) (sql.Node, error) {
+func (n *AnalyzeTable) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	return n, nil
 }
 

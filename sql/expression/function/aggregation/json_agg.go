@@ -43,7 +43,7 @@ var _ sql.WindowAdaptableExpression = (*JSONObjectAgg)(nil)
 var _ sql.CollationCoercible = (*JSONObjectAgg)(nil)
 
 // NewJSONObjectAgg creates a new JSONObjectAgg function.
-func NewJSONObjectAgg(key, value sql.Expression) sql.Expression {
+func NewJSONObjectAgg(ctx *sql.Context, key, value sql.Expression) sql.Expression {
 	return &JSONObjectAgg{key: key, value: value}
 }
 
@@ -79,7 +79,7 @@ func (j *JSONObjectAgg) String() string {
 }
 
 // Type implements the Expression interface.
-func (j *JSONObjectAgg) Type() sql.Type {
+func (j *JSONObjectAgg) Type(ctx *sql.Context) sql.Type {
 	return types.JSON
 }
 
@@ -89,7 +89,7 @@ func (*JSONObjectAgg) CollationCoercibility(ctx *sql.Context) (collation sql.Col
 }
 
 // IsNullable implements the Expression interface.
-func (j *JSONObjectAgg) IsNullable() bool {
+func (j *JSONObjectAgg) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
@@ -99,16 +99,16 @@ func (j *JSONObjectAgg) Children() []sql.Expression {
 }
 
 // WithChildren implements the Expression interface.
-func (j *JSONObjectAgg) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (j *JSONObjectAgg) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(j, len(children), 2)
 	}
 
-	return NewJSONObjectAgg(children[0], children[1]), nil
+	return NewJSONObjectAgg(ctx, children[0], children[1]), nil
 }
 
 // WithWindow implements sql.Aggregation
-func (j *JSONObjectAgg) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
+func (j *JSONObjectAgg) WithWindow(ctx *sql.Context, window *sql.WindowDefinition) sql.WindowAdaptableExpression {
 	nj := *j
 	nj.window = window
 	return &nj
@@ -120,13 +120,13 @@ func (j *JSONObjectAgg) Window() *sql.WindowDefinition {
 }
 
 // NewBuffer implements the Aggregation interface.
-func (j *JSONObjectAgg) NewBuffer() (sql.AggregationBuffer, error) {
+func (j *JSONObjectAgg) NewBuffer(ctx *sql.Context) (sql.AggregationBuffer, error) {
 	row := make(map[string]interface{})
 	return &jsonObjectBuffer{row, j}, nil
 }
 
-// NewWindowFunctionAggregation implements sql.WindowAdaptableExpression
-func (j *JSONObjectAgg) NewWindowFunction() (sql.WindowFunction, error) {
+// NewWindowFunction implements sql.WindowAdaptableExpression
+func (j *JSONObjectAgg) NewWindowFunction(ctx *sql.Context) (sql.WindowFunction, error) {
 	return NewWindowedJSONObjectAgg(j), nil
 }
 
@@ -191,5 +191,5 @@ func (j *jsonObjectBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 }
 
 // Dispose implements the Disposable interface.
-func (j *jsonObjectBuffer) Dispose() {
+func (j *jsonObjectBuffer) Dispose(ctx *sql.Context) {
 }

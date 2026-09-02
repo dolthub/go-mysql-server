@@ -26,10 +26,10 @@ import (
 // tree from the bottom up. Each callback [f] returns a TreeIdentity
 // that is aggregated into a final output indicating whether the
 // expression tree was changed.
-func Expr(e sql.Expression, f ExprFunc) (sql.Expression, TreeIdentity, error) {
+func Expr(ctx *sql.Context, e sql.Expression, f ExprFunc) (sql.Expression, TreeIdentity, error) {
 	children := e.Children()
 	if len(children) == 0 {
-		return f(e)
+		return f(ctx, e)
 	}
 
 	var (
@@ -39,7 +39,7 @@ func Expr(e sql.Expression, f ExprFunc) (sql.Expression, TreeIdentity, error) {
 
 	for i := 0; i < len(children); i++ {
 		c := children[i]
-		c, same, err := Expr(c, f)
+		c, same, err := Expr(ctx, c, f)
 		if err != nil {
 			return nil, SameTree, err
 		}
@@ -55,13 +55,13 @@ func Expr(e sql.Expression, f ExprFunc) (sql.Expression, TreeIdentity, error) {
 	sameC := SameTree
 	if len(newChildren) > 0 {
 		sameC = NewTree
-		e, err = e.WithChildren(newChildren...)
+		e, err = e.WithChildren(ctx, newChildren...)
 		if err != nil {
 			return nil, SameTree, err
 		}
 	}
 
-	e, sameN, err := f(e)
+	e, sameN, err := f(ctx, e)
 	if err != nil {
 		return nil, SameTree, err
 	}
@@ -69,14 +69,14 @@ func Expr(e sql.Expression, f ExprFunc) (sql.Expression, TreeIdentity, error) {
 }
 
 // Exprs applies a transformation function to the given set of expressions and returns the result.
-func Exprs(e []sql.Expression, f ExprFunc) ([]sql.Expression, TreeIdentity, error) {
+func Exprs(ctx *sql.Context, e []sql.Expression, f ExprFunc) ([]sql.Expression, TreeIdentity, error) {
 	var (
 		newExprs []sql.Expression
 	)
 
 	for i := 0; i < len(e); i++ {
 		c := e[i]
-		c, same, err := Expr(c, f)
+		c, same, err := Expr(ctx, c, f)
 		if err != nil {
 			return nil, SameTree, err
 		}
@@ -100,29 +100,29 @@ func Exprs(e []sql.Expression, f ExprFunc) ([]sql.Expression, TreeIdentity, erro
 // First, `f` is called on `expr.Children()` and if stop = false, then InspectExpr is recursively called on node's
 // children.
 // TODO: this conflicts with transform.Inspect which performs a pre-order traversal and stops when cont = false.
-func InspectExpr(expr sql.Expression, f func(sql.Expression) bool) (stop bool) {
+func InspectExpr(ctx *sql.Context, expr sql.Expression, f func(*sql.Context, sql.Expression) bool) (stop bool) {
 	// Avoid allocating []sql.Expression
 	switch e := expr.(type) {
 	case expression.UnaryExpression:
-		if InspectExpr(e.UnaryChild(), f) {
+		if InspectExpr(ctx, e.UnaryChild(), f) {
 			return true
 		}
 	case expression.BinaryExpression:
-		if InspectExpr(e.Left(), f) {
+		if InspectExpr(ctx, e.Left(), f) {
 			return true
 		}
-		if InspectExpr(e.Right(), f) {
+		if InspectExpr(ctx, e.Right(), f) {
 			return true
 		}
 	default:
 		children := e.Children()
 		for _, child := range children {
-			if InspectExpr(child, f) {
+			if InspectExpr(ctx, child, f) {
 				return true
 			}
 		}
 	}
-	if f(expr) {
+	if f(ctx, expr) {
 		return true
 	}
 	return false
@@ -130,10 +130,10 @@ func InspectExpr(expr sql.Expression, f func(sql.Expression) bool) (stop bool) {
 
 // InspectUp traverses the given node tree from the bottom up, breaking if
 // stop = true. Returns a bool indicating whether traversal was interrupted.
-func InspectUp(node sql.Node, f func(sql.Node) bool) bool {
+func InspectUp(ctx *sql.Context, node sql.Node, f func(*sql.Context, sql.Node) bool) bool {
 	stop := errors.New("stop")
-	_, _, err := Node(node, func(e sql.Node) (sql.Node, TreeIdentity, error) {
-		ok := f(e)
+	_, _, err := Node(ctx, node, func(ctx *sql.Context, e sql.Node) (sql.Node, TreeIdentity, error) {
+		ok := f(ctx, e)
 		if ok {
 			return nil, SameTree, stop
 		}
@@ -146,18 +146,18 @@ func InspectUp(node sql.Node, f func(sql.Node) bool) bool {
 // same structure and internal values. It can be useful when dealing with
 // stateful expression nodes where an evaluation needs to create multiple
 // independent histories of the internal state of the expression nodes.
-func Clone(expr sql.Expression) (sql.Expression, error) {
-	expr, _, err := Expr(expr, func(e sql.Expression) (sql.Expression, TreeIdentity, error) {
+func Clone(ctx *sql.Context, expr sql.Expression) (sql.Expression, error) {
+	expr, _, err := Expr(ctx, expr, func(ctx *sql.Context, e sql.Expression) (sql.Expression, TreeIdentity, error) {
 		return e, NewTree, nil
 	})
 	return expr, err
 }
 
 // ExprWithNode applies a transformation function to the given expression from the bottom up.
-func ExprWithNode(n sql.Node, e sql.Expression, f ExprWithNodeFunc) (sql.Expression, TreeIdentity, error) {
+func ExprWithNode(ctx *sql.Context, n sql.Node, e sql.Expression, f ExprWithNodeFunc) (sql.Expression, TreeIdentity, error) {
 	children := e.Children()
 	if len(children) == 0 {
-		return f(n, e)
+		return f(ctx, n, e)
 	}
 
 	var (
@@ -167,7 +167,7 @@ func ExprWithNode(n sql.Node, e sql.Expression, f ExprWithNodeFunc) (sql.Express
 
 	for i := 0; i < len(children); i++ {
 		c := children[i]
-		c, sameC, err := ExprWithNode(n, c, f)
+		c, sameC, err := ExprWithNode(ctx, n, c, f)
 		if err != nil {
 			return nil, SameTree, err
 		}
@@ -183,13 +183,13 @@ func ExprWithNode(n sql.Node, e sql.Expression, f ExprWithNodeFunc) (sql.Express
 	sameC := SameTree
 	if len(newChildren) > 0 {
 		sameC = NewTree
-		e, err = e.WithChildren(newChildren...)
+		e, err = e.WithChildren(ctx, newChildren...)
 		if err != nil {
 			return nil, SameTree, err
 		}
 	}
 
-	e, sameN, err := f(n, e)
+	e, sameN, err := f(ctx, n, e)
 	if err != nil {
 		return nil, SameTree, err
 	}
@@ -199,7 +199,7 @@ func ExprWithNode(n sql.Node, e sql.Expression, f ExprWithNodeFunc) (sql.Express
 // ExpressionToColumn converts the expression to the form that should be used in a Schema. Expressions that have Name()
 // and Table() methods will use these; otherwise, String() and "" are used, respectively. The type and nullability are
 // taken from the expression directly.
-func ExpressionToColumn(e sql.Expression, name string) *sql.Column {
+func ExpressionToColumn(ctx *sql.Context, e sql.Expression, name string) *sql.Column {
 	if n, ok := e.(sql.Nameable); ok {
 		name = n.Name()
 	}
@@ -218,8 +218,8 @@ func ExpressionToColumn(e sql.Expression, name string) *sql.Column {
 		Name:           name,
 		Source:         table,
 		DatabaseSource: db,
-		Type:           e.Type(),
-		Nullable:       e.IsNullable(),
+		Type:           e.Type(ctx),
+		Nullable:       e.IsNullable(ctx),
 	}
 }
 

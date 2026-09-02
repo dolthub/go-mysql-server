@@ -23,9 +23,9 @@ import (
 )
 
 // Returns the underlying table name, unaliased, for the node given
-func getTableName(node sql.Node) string {
+func getTableName(ctx *sql.Context, node sql.Node) string {
 	var tableName string
-	transform.InspectWithOpaque(node, func(node sql.Node) bool {
+	transform.InspectWithOpaque(ctx, node, func(ctx *sql.Context, node sql.Node) bool {
 		switch node := node.(type) {
 		case *plan.ResolvedTable:
 			tableName = node.Name()
@@ -44,9 +44,9 @@ func getTableName(node sql.Node) string {
 }
 
 // Finds first table node that is a descendant of the node given
-func getTable(node sql.Node) sql.Table {
+func getTable(ctx *sql.Context, node sql.Node) sql.Table {
 	var table sql.Table
-	transform.InspectWithOpaque(node, func(n sql.Node) bool {
+	transform.InspectWithOpaque(ctx, node, func(ctx *sql.Context, n sql.Node) bool {
 		// InspectWithOpaque is called on all children of a node even if an earlier child's call returns false.
 		// We only want the first TableNode match.
 		if table != nil {
@@ -69,9 +69,9 @@ func getTable(node sql.Node) sql.Table {
 
 // Finds first ResolvedTable node that is a descendant of the node given
 // This function will not look inside SubqueryAliases
-func getResolvedTable(node sql.Node) *plan.ResolvedTable {
+func getResolvedTable(ctx *sql.Context, node sql.Node) *plan.ResolvedTable {
 	var table *plan.ResolvedTable
-	transform.InspectWithOpaque(node, func(n sql.Node) bool {
+	transform.InspectWithOpaque(ctx, node, func(ctx *sql.Context, n sql.Node) bool {
 		// InspectWithOpaque is called on all children of a node even if an earlier child's call returns false.
 		// We only want the first TableNode match.
 		if table != nil {
@@ -99,7 +99,7 @@ func getResolvedTable(node sql.Node) *plan.ResolvedTable {
 
 // getResolvedTablesByName takes a node and returns all found resolved tables in a map.
 // This function will not look inside sql.OpaqueNodes (like plan.SubqueryAlias).
-func getResolvedTablesByName(node sql.Node) map[string]*plan.ResolvedTable {
+func getResolvedTablesByName(ctx *sql.Context, node sql.Node) map[string]*plan.ResolvedTable {
 	ret := make(map[string]*plan.ResolvedTable)
 	transform.Inspect(node, func(n sql.Node) bool {
 		switch n := n.(type) {
@@ -110,7 +110,7 @@ func getResolvedTablesByName(node sql.Node) map[string]*plan.ResolvedTable {
 				ret[strings.ToLower(rt.Name())] = rt
 			}
 		case *plan.TableAlias:
-			if rt := getResolvedTable(n); rt != nil {
+			if rt := getResolvedTable(ctx, n); rt != nil {
 				ret[n.Name()] = rt
 			}
 		}

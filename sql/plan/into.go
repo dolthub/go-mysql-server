@@ -73,7 +73,7 @@ func NewInto(
 var emptySch = make(sql.Schema, 0)
 
 // Schema implements the Node interface.
-func (i *Into) Schema() sql.Schema {
+func (i *Into) Schema(ctx *sql.Context) sql.Schema {
 	// SELECT INTO does not return results directly (only through SQL vars or files),
 	// so it's result schema is always empty.
 	return types.OkResultSchema
@@ -94,18 +94,18 @@ func (i *Into) String() string {
 	return p.String()
 }
 
-func (i *Into) DebugString() string {
+func (i *Into) DebugString(ctx *sql.Context) string {
 	p := sql.NewTreePrinter()
 	var vars = make([]string, len(i.IntoVars))
 	for j, v := range i.IntoVars {
-		vars[j] = sql.DebugString(v)
+		vars[j] = sql.DebugString(ctx, v)
 	}
 	_ = p.WriteNode("Into(%s, Outfile %s, Dumpfile %s)", strings.Join(vars, ", "), i.Outfile, i.Dumpfile)
-	_ = p.WriteChildren(sql.DebugString(i.Child))
+	_ = p.WriteChildren(sql.DebugString(ctx, i.Child))
 	return p.String()
 }
 
-func (i *Into) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (i *Into) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
 	}
@@ -120,7 +120,7 @@ func (i *Into) CollationCoercibility(ctx *sql.Context) (collation sql.CollationI
 }
 
 // WithExpressions implements the sql.Expressioner interface.
-func (i *Into) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+func (i *Into) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != len(i.IntoVars) {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(exprs), len(i.IntoVars))
 	}

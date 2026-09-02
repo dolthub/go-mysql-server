@@ -33,7 +33,7 @@ type JSONValid struct {
 var _ sql.FunctionExpression = JSONValid{}
 
 // NewJSONValid creates a new JSONValid function.
-func NewJSONValid(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONValid(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) != 1 {
 		return nil, sql.ErrInvalidArgumentNumber.New("JSON_VALID", "1", len(args))
 	}
@@ -63,12 +63,12 @@ func (j JSONValid) String() string {
 	return fmt.Sprintf("%s(%s)", j.FunctionName(), j.JSON.String())
 }
 
-func (j JSONValid) Type() sql.Type {
+func (j JSONValid) Type(ctx *sql.Context) sql.Type {
 	return types.Boolean
 }
 
-func (j JSONValid) IsNullable() bool {
-	return j.JSON.IsNullable()
+func (j JSONValid) IsNullable(ctx *sql.Context) bool {
+	return j.JSON.IsNullable(ctx)
 }
 
 func (j JSONValid) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -86,10 +86,10 @@ func (j JSONValid) Children() []sql.Expression {
 	return []sql.Expression{j.JSON}
 }
 
-func (j JSONValid) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (j JSONValid) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(j.Children()) != len(children) {
 		return nil, fmt.Errorf("json_valid did not receive the correct amount of args")
 	}
 
-	return NewJSONValid(children...)
+	return NewJSONValid(ctx, children...)
 }

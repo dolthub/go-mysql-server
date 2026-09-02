@@ -24,7 +24,7 @@ import (
 // insertTopNNodes replaces Limit(Sort(...)) and Limit(Offset(Sort(...))) with
 // a TopN node.
 func insertTopNNodes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
-	return transform.Node(n, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	return transform.Node(ctx, n, func(ctx *sql.Context, node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		limit, ok := node.(*plan.Limit)
 		if !ok {
 			return node, transform.SameTree, nil
@@ -46,21 +46,21 @@ func insertTopNNodes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 		var newNode sql.Node
 		var err error
 		if offset != nil {
-			newNode = plan.NewTopN(sort.SortFields, expression.NewPlus(limit.Limit, offset.Offset), sort.Child).WithCalcFoundRows(limit.CalcFoundRows)
-			newNode, err = offset.WithChildren(newNode)
+			newNode = plan.NewTopN(sort.SortConditions, expression.NewPlus(limit.Limit, offset.Offset), sort.Child).WithCalcFoundRows(limit.CalcFoundRows)
+			newNode, err = offset.WithChildren(ctx, newNode)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
 		} else {
-			newNode = plan.NewTopN(sort.SortFields, limit.Limit, sort.Child).WithCalcFoundRows(limit.CalcFoundRows)
+			newNode = plan.NewTopN(sort.SortConditions, limit.Limit, sort.Child).WithCalcFoundRows(limit.CalcFoundRows)
 		}
 		if proj != nil {
-			newNode, err = proj.WithChildren(newNode)
+			newNode, err = proj.WithChildren(ctx, newNode)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
 			// For doltgres generate_series(...) to work correctly, the original limit node must remain.
-			newNode, err = limit.WithCalcFoundRows(false).WithChildren(newNode)
+			newNode, err = limit.WithCalcFoundRows(false).WithChildren(ctx, newNode)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}

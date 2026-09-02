@@ -145,37 +145,44 @@ func decodeEscapedUnicode(s []byte) (char [4]byte, size int, err error) {
 	return
 }
 
+const hexDigits = "0123456789abcdef"
+
+const firstNonControlByte = 0x20
+
+// quoteEscape maps an ASCII byte to its JSON escape, or the empty string when
+// the byte is safe to write unchanged.
+var quoteEscape = func() (t [256]string) {
+	for c := 0; c < firstNonControlByte; c++ {
+		t[c] = `\u00` + string([]byte{hexDigits[c>>4], hexDigits[c&0xf]})
+	}
+	t['"'] = `\"`
+	t['\\'] = `\\`
+	t['\b'] = `\b`
+	t['\f'] = `\f`
+	t['\n'] = `\n`
+	t['\r'] = `\r`
+	t['\t'] = `\t`
+	return t
+}()
+
 // Quote returns a json quoted string with escape characters.
 // The implementation is taken from TiDB:
 // https://github.com/pingcap/tidb/blob/a594287e9f402037b06930026906547000006bb6/types/json/binary_functions.go#L155
 func Quote(s string) string {
-	var escapeByteMap = map[byte]string{
-		'\\': "\\\\",
-		'"':  "\\\"",
-		'\b': "\\b",
-		'\f': "\\f",
-		'\n': "\\n",
-		'\r': "\\r",
-		'\t': "\\t",
-	}
-
 	ret := new(bytes.Buffer)
 	ret.WriteByte('"')
 
 	start := 0
 	for i := 0; i < len(s); {
 		if b := s[i]; b < utf8.RuneSelf {
-			escaped, ok := escapeByteMap[b]
-			if ok {
+			if esc := quoteEscape[b]; esc != "" {
 				if start < i {
 					ret.WriteString(s[start:i])
 				}
-				ret.WriteString(escaped)
-				i++
-				start = i
-			} else {
-				i++
+				ret.WriteString(esc)
+				start = i + 1
 			}
+			i++
 		} else {
 			c, size := utf8.DecodeRune([]byte(s[i:]))
 			if c == utf8.RuneError && size == 1 { // refer to codes of `binary.marshalStringTo`

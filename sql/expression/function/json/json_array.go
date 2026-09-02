@@ -36,7 +36,7 @@ var _ sql.FunctionExpression = (*JSONArray)(nil)
 var _ sql.CollationCoercible = (*JSONArray)(nil)
 
 // NewJSONArray creates a new JSONArray function.
-func NewJSONArray(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONArray(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	return &JSONArray{vals: args}, nil
 }
 
@@ -78,7 +78,7 @@ func (j *JSONArray) String() string {
 }
 
 // Type implements the Expression interface.
-func (j *JSONArray) Type() sql.Type {
+func (j *JSONArray) Type(ctx *sql.Context) sql.Type {
 	return types.JSON
 }
 
@@ -88,9 +88,9 @@ func (JSONArray) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 }
 
 // IsNullable implements the Expression interface.
-func (j *JSONArray) IsNullable() bool {
+func (j *JSONArray) IsNullable(ctx *sql.Context) bool {
 	for _, d := range j.vals {
-		if d.IsNullable() {
+		if d.IsNullable(ctx) {
 			return true
 		}
 	}
@@ -133,10 +133,10 @@ func (j *JSONArray) Children() []sql.Expression {
 }
 
 // WithChildren implements the Expression interface.
-func (j *JSONArray) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (j *JSONArray) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(j.Children()) != len(children) {
 		return nil, fmt.Errorf("json_array did not receive the correct amount of args")
 	}
 
-	return NewJSONArray(children...)
+	return NewJSONArray(ctx, children...)
 }

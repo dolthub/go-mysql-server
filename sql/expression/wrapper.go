@@ -63,11 +63,11 @@ func (w *Wrapper) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // IsNullable implements sql.Expression
-func (w *Wrapper) IsNullable() bool {
+func (w *Wrapper) IsNullable(ctx *sql.Context) bool {
 	if w.inner == nil {
 		return true
 	}
-	return w.inner.IsNullable()
+	return w.inner.IsNullable(ctx)
 }
 
 // Resolved implements sql.Expression
@@ -87,19 +87,19 @@ func (w *Wrapper) String() string {
 }
 
 // DebugString implements sql.DebugStringer
-func (w *Wrapper) DebugString() string {
+func (w *Wrapper) DebugString(ctx *sql.Context) string {
 	if w.inner == nil {
 		return ""
 	}
-	return fmt.Sprintf("(%s)", sql.DebugString(w.inner))
+	return fmt.Sprintf("(%s)", sql.DebugString(ctx, w.inner))
 }
 
 // Type implements sql.Expression
-func (w *Wrapper) Type() sql.Type {
+func (w *Wrapper) Type(ctx *sql.Context) sql.Type {
 	if w.inner == nil {
 		return types.Null
 	}
-	return w.inner.Type()
+	return w.inner.Type(ctx)
 }
 
 // Unwrap returns the wrapped expression, or nil if no expression was wrapped.
@@ -108,7 +108,7 @@ func (w *Wrapper) Unwrap() sql.Expression {
 }
 
 // WithChildren implements sql.Expression
-func (w *Wrapper) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (w *Wrapper) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) == 0 {
 		return WrapExpression(nil), nil
 	} else if len(children) != 1 {

@@ -35,7 +35,7 @@ var _ sql.Databaser = (*ShowGrants)(nil)
 var _ sql.CollationCoercible = (*ShowGrants)(nil)
 
 // Schema implements the interface sql.Node.
-func (n *ShowGrants) Schema() sql.Schema {
+func (n *ShowGrants) Schema(ctx *sql.Context) sql.Schema {
 	user := n.For
 	if user == nil {
 		user = &UserName{
@@ -91,7 +91,7 @@ func (n *ShowGrants) Children() []sql.Node {
 }
 
 // WithChildren implements the interface sql.Node.
-func (n *ShowGrants) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (n *ShowGrants) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 0)
 	}

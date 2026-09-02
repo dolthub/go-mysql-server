@@ -21,6 +21,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
+	"github.com/dolthub/go-mysql-server/errguard"
 	"github.com/dolthub/go-mysql-server/internal/similartext"
 )
 
@@ -290,7 +291,7 @@ func (r *IndexRegistry) MatchingIndex(ctx *Context, db string, expr ...Expressio
 	for i, e := range expr {
 		expressions[i] = e.String()
 		var err error
-		Inspect(e, func(e Expression) bool {
+		Inspect(ctx, e, func(ctx *Context, e Expression) bool {
 			if e == nil {
 				return true
 			}
@@ -526,6 +527,7 @@ func (r *IndexRegistry) AddIndex(
 	var _created = make(chan struct{})
 	var _ready = make(chan struct{})
 	go func() {
+		defer errguard.RecoverAndLog("index registry AddIndex")
 		<-_created
 		r.mut.Lock()
 		defer r.mut.Unlock()
@@ -600,6 +602,7 @@ func (r *IndexRegistry) DeleteIndex(db, id string, force bool) (<-chan struct{},
 	r.rcmut.Unlock()
 
 	go func() {
+		defer errguard.RecoverAndLog("index registry DeleteIndex")
 		<-onReadyToDelete
 		r.mut.Lock()
 		defer r.mut.Unlock()

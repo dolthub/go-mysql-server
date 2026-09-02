@@ -20,7 +20,8 @@ import (
 )
 
 // ForeignKeyReferentialAction is the behavior for this foreign key with the relevant action is performed on the foreign
-// table.
+// table. It is equivalent to the reference_option in MySQL.
+// https://dev.mysql.com/doc/refman/8.4/en/create-table-foreign-keys.html#foreign-key-referential-actions
 type ForeignKeyReferentialAction string
 
 const (
@@ -42,6 +43,31 @@ func (f ForeignKeyReferentialAction) IsEquivalentToRestrict() bool {
 		return true
 	}
 }
+
+// allowStoredGeneratedColumnReference returns whether the referential action is allowed when the foreign key is on a
+// column that is referenced by a stored generated column.
+func (f ForeignKeyReferentialAction) allowStoredGeneratedColumnReference() bool {
+	switch f {
+	// MySQL documentation includes SET DEFAULT, but actual MySQL behavior doesn't seem to follow the documentation.
+	// https://dev.mysql.com/doc/refman/8.4/en/create-table-foreign-keys.html#foreign-key-referential-actions
+	case ForeignKeyReferentialAction_Cascade, ForeignKeyReferentialAction_SetNull:
+		return false
+	default:
+		return true
+	}
+}
+
+// ForeignKeyMatchType controls NULL handling semantics for composite FK columns.
+type ForeignKeyMatchType uint8
+
+const (
+	// ForeignKeyMatchType_Simple is default, any NULL in the FK columns exempts the row from the constraint check.
+	ForeignKeyMatchType_Simple ForeignKeyMatchType = iota
+	// ForeignKeyMatchType_Full enforced no NULLs.
+	ForeignKeyMatchType_Full
+	// ForeignKeyMatchType_Partial is not supported.
+	ForeignKeyMatchType_Partial
+)
 
 // ForeignKeyConstraint declares a constraint between the columns of two tables.
 type ForeignKeyConstraint struct {
@@ -69,6 +95,10 @@ type ForeignKeyConstraint struct {
 	ParentColumns []string
 	// IsResolved is true if the foreign key has been resolved, false otherwise
 	IsResolved bool
+	// IsNotValid is true when the constraint was created with NOT VALID, meaning existing rows were not checked
+	IsNotValid bool
+	// MatchType controls NULL handling semantics for composite FK columns
+	MatchType ForeignKeyMatchType
 }
 
 // IsSelfReferential returns whether this foreign key represents a self-referential foreign key.
@@ -79,7 +109,7 @@ func (f *ForeignKeyConstraint) IsSelfReferential() bool {
 }
 
 // DebugString implements the DebugStringer interface.
-func (f *ForeignKeyConstraint) DebugString() string {
+func (f *ForeignKeyConstraint) DebugString(ctx *Context) string {
 	return fmt.Sprintf(
 		"FOREIGN KEY %s (%s) REFERENCES %s (%s)",
 		f.Name,
@@ -87,6 +117,10 @@ func (f *ForeignKeyConstraint) DebugString() string {
 		f.ParentTable,
 		strings.Join(f.ParentColumns, ","),
 	)
+}
+
+func (f *ForeignKeyConstraint) AllowStoredGeneratedColumnReference() bool {
+	return f.OnDelete.allowStoredGeneratedColumnReference() && f.OnUpdate.allowStoredGeneratedColumnReference()
 }
 
 type ForeignKeyConstraints []*ForeignKeyConstraint
@@ -97,17 +131,19 @@ type CheckDefinition struct {
 	Name            string // The name of this check. Check names in a database are unique.
 	CheckExpression string // String serialization of the check expression
 	Enforced        bool   // Whether this constraint is enforced
+	IsNotValid      bool   // Where to check existing rows
 }
 
 // CheckConstraint declares a boolean-eval constraint.
 type CheckConstraint struct {
-	Expr     Expression
-	Name     string
-	Enforced bool
+	Expr       Expression
+	Name       string
+	Enforced   bool
+	IsNotValid bool
 }
 
 // DebugString implements the DebugStringer interface.
-func (c CheckConstraint) DebugString() string {
+func (c CheckConstraint) DebugString(ctx *Context) string {
 	name := c.Name
 	if len(name) > 0 {
 		name += " "
@@ -116,7 +152,7 @@ func (c CheckConstraint) DebugString() string {
 	if !c.Enforced {
 		not = "not "
 	}
-	return fmt.Sprintf("%sCHECK %s %sENFORCED", name, DebugString(c.Expr), not)
+	return fmt.Sprintf("%sCHECK %s %sENFORCED", name, DebugString(ctx, c.Expr), not)
 }
 
 type CheckConstraints []*CheckConstraint
@@ -134,7 +170,7 @@ func (cc CheckConstraints) ToExpressions() []Expression {
 // constraints with the expressions given, holding names and other properties constant.
 func (cc CheckConstraints) FromExpressions(exprs []Expression) (CheckConstraints, error) {
 	if len(cc) != len(exprs) {
-		return nil, ErrInvalidChildrenNumber.New(cc, len(exprs), len(cc))
+		return nil, ErrInvalidExpressionNumber.New(cc, len(exprs), len(cc))
 	}
 
 	newChecks := make(CheckConstraints, len(cc))

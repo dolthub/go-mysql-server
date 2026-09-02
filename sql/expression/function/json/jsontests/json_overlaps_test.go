@@ -27,7 +27,7 @@ import (
 )
 
 func TestJSONOverlaps(t *testing.T) {
-	_, err := json.NewJSONOverlaps()
+	_, err := json.NewJSONOverlaps(sql.NewEmptyContext())
 	require.True(t, errors.Is(err, sql.ErrInvalidArgumentNumber))
 
 	f2 := buildGetFieldExpressions(t, json.NewJSONOverlaps, 2)

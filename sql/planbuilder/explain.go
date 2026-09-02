@@ -51,6 +51,6 @@ func (b *Builder) buildExplain(inScope *scope, n *sqlparser.Explain) (outScope *
 		}
 	}
 
-	outScope.node = plan.NewDescribeQuery(describeOptions, childScope.node)
+	outScope.node = plan.NewDescribeQuery(b.ctx, describeOptions, childScope.node)
 	return outScope
 }

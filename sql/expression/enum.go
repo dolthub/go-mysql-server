@@ -31,18 +31,18 @@ func NewEnumToString(enum sql.Expression) *EnumToString {
 }
 
 // Type implements the sql.Expression interface.
-func (e *EnumToString) Type() sql.Type {
+func (e *EnumToString) Type(ctx *sql.Context) sql.Type {
 	return types.Text
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (e *EnumToString) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
-	return e.Type().CollationCoercibility(ctx)
+	return e.Type(ctx).CollationCoercibility(ctx)
 }
 
 // IsNullable implements the sql.Expression interface.
-func (e *EnumToString) IsNullable() bool {
-	return e.Enum.IsNullable()
+func (e *EnumToString) IsNullable(ctx *sql.Context) bool {
+	return e.Enum.IsNullable(ctx)
 }
 
 // Resolved implements the sql.Expression interface.
@@ -68,7 +68,7 @@ func (e *EnumToString) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 		return nil, nil
 	}
 
-	enumType := e.Enum.Type().(types.EnumType)
+	enumType := e.Enum.Type(ctx).(types.EnumType)
 	var str string
 	val, err = sql.UnwrapAny(ctx, val)
 	if err != nil {
@@ -86,7 +86,7 @@ func (e *EnumToString) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 }
 
 // WithChildren implements the Expression interface.
-func (e *EnumToString) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (e *EnumToString) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(e, len(children), 1)
 	}
@@ -100,6 +100,6 @@ func (e *EnumToString) String() string {
 }
 
 // DebugString implements the sql.Expression interface.
-func (e *EnumToString) DebugString() string {
-	return sql.DebugString(e.Enum)
+func (e *EnumToString) DebugString(ctx *sql.Context) string {
+	return sql.DebugString(ctx, e.Enum)
 }

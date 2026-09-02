@@ -37,9 +37,9 @@ func NewConcat(left, right sql.Node) *Concat {
 	}
 }
 
-func (c *Concat) Schema() sql.Schema {
-	ls := c.left.Schema()
-	rs := c.right.Schema()
+func (c *Concat) Schema(ctx *sql.Context) sql.Schema {
+	ls := c.left.Schema(ctx)
+	rs := c.right.Schema(ctx)
 	ret := make([]*sql.Column, len(ls))
 	for i := range ls {
 		c := *ls[i]
@@ -52,7 +52,7 @@ func (c *Concat) Schema() sql.Schema {
 }
 
 // WithChildren implements the Node interface.
-func (c *Concat) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (c *Concat) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 2)
 	}
@@ -76,9 +76,9 @@ func (c Concat) String() string {
 	return pr.String()
 }
 
-func (c Concat) DebugString() string {
+func (c Concat) DebugString(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Concat")
-	_ = pr.WriteChildren(sql.DebugString(c.left), sql.DebugString(c.right))
+	_ = pr.WriteChildren(sql.DebugString(ctx, c.left), sql.DebugString(ctx, c.right))
 	return pr.String()
 }

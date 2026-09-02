@@ -71,7 +71,7 @@ func (s ExponentialDistTable) String() string {
 	return "normal_dist"
 }
 
-func (s ExponentialDistTable) DebugString() string {
+func (s ExponentialDistTable) DebugString(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("normal_dist")
 	children := []string{
@@ -83,7 +83,7 @@ func (s ExponentialDistTable) DebugString() string {
 	return pr.String()
 }
 
-func (s ExponentialDistTable) Schema() sql.Schema {
+func (s ExponentialDistTable) Schema(ctx *sql.Context) sql.Schema {
 	var sch sql.Schema
 	for i := 0; i < s.colCnt+1; i++ {
 		sch = append(sch, &sql.Column{
@@ -104,7 +104,7 @@ func (s ExponentialDistTable) RowIter(_ *sql.Context, _ sql.Row) (sql.RowIter, e
 	return stats.NewExpDistIter(s.colCnt, s.rowCnt, s.lambda), nil
 }
 
-func (s ExponentialDistTable) WithChildren(_ ...sql.Node) (sql.Node, error) {
+func (s ExponentialDistTable) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	return s, nil
 }
 
@@ -122,7 +122,7 @@ func (s ExponentialDistTable) Expressions() []sql.Expression {
 	return []sql.Expression{}
 }
 
-func (s ExponentialDistTable) WithExpressions(e ...sql.Expression) (sql.Node, error) {
+func (s ExponentialDistTable) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	return s, nil
 }
 

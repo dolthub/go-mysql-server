@@ -111,6 +111,8 @@ func TestFormat(t *testing.T) {
 		{"float64 with loc=zh_CN", types.Float64, types.Int32, sql.NewRow(2409384.855, 4, "zh_CN"), "2,409,384.8550", nil},
 		{"float64 with loc=zh_HK", types.Float64, types.Int32, sql.NewRow(2409384.855, 4, "zh_HK"), "2,409,384.8550", nil},
 		{"float64 with loc=zh_TW", types.Float64, types.Int32, sql.NewRow(2409384.855, 4, "zh_TW"), "2,409,384.8550", nil},
+		{"bad locale", types.Float64, types.Int32, sql.NewRow(2409384.855, 4, 123), "2,409,384.8550", nil},
+		{"bad locale", types.Float64, types.Int32, sql.NewRow(2409384.855, 4, nil), "2,409,384.8550", nil},
 	}
 
 	for _, tt := range testCases {
@@ -118,7 +120,7 @@ func TestFormat(t *testing.T) {
 		args[0] = expression.NewGetField(0, tt.xType, "Val", false)
 		args[1] = expression.NewGetField(1, tt.dType, "Df", false)
 		args[2] = expression.NewGetField(2, types.LongText, "Locale", true)
-		f, err := NewFormat(args...)
+		f, err := NewFormat(sql.NewEmptyContext(), args...)
 
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
@@ -238,7 +240,7 @@ func TestSkippedFormat(t *testing.T) {
 		args[0] = expression.NewGetField(0, tt.xType, "Val", false)
 		args[1] = expression.NewGetField(1, tt.dType, "Df", false)
 		args[2] = expression.NewGetField(2, types.LongText, "Locale", true)
-		f, err := NewFormat(args...)
+		f, err := NewFormat(sql.NewEmptyContext(), args...)
 
 		t.Run(tt.name, func(t *testing.T) {
 			t.Skip()

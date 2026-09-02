@@ -24,6 +24,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
+// TODO: organize all these iterators in their own appropriately named file (see TODO in other.go)
+
 type analyzeTableIter struct {
 	stats  sql.StatsProvider
 	db     string
@@ -140,7 +142,7 @@ func (i *blockIter) RepresentingNode() sql.Node {
 }
 
 // Schema implements the sql.BlockRowIter interface.
-func (i *blockIter) Schema() sql.Schema {
+func (i *blockIter) Schema(ctx *sql.Context) sql.Schema {
 	return i.repSch
 }
 
@@ -159,55 +161,6 @@ func (p *prependRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 func (p *prependRowIter) Close(ctx *sql.Context) error {
 	return p.childIter.Close(ctx)
-}
-
-type cachedResultsIter struct {
-	parent  *plan.CachedResults
-	iter    sql.RowIter
-	cache   sql.RowsCache
-	dispose sql.DisposeFunc
-}
-
-func (i *cachedResultsIter) Next(ctx *sql.Context) (sql.Row, error) {
-	r, err := i.iter.Next(ctx)
-	if i.cache != nil {
-		if err != nil {
-			if err == io.EOF {
-				i.saveResultsInGlobalCache()
-				i.parent.Finalized = true
-			}
-			i.cleanUp()
-		} else {
-			aerr := i.cache.Add(r)
-			if aerr != nil {
-				i.cleanUp()
-				i.parent.Mutex.Lock()
-				defer i.parent.Mutex.Unlock()
-				i.parent.NoCache = true
-			}
-		}
-	}
-	return r, err
-}
-
-func (i *cachedResultsIter) saveResultsInGlobalCache() {
-	if plan.CachedResultsGlobalCache.AddNewCache(i.parent.Id, i.cache, i.dispose) {
-		i.cache = nil
-		i.dispose = nil
-	}
-}
-
-func (i *cachedResultsIter) cleanUp() {
-	if i.dispose != nil {
-		i.dispose()
-		i.cache = nil
-		i.dispose = nil
-	}
-}
-
-func (i *cachedResultsIter) Close(ctx *sql.Context) error {
-	i.cleanUp()
-	return i.iter.Close(ctx)
 }
 
 type hashLookupGeneratingIter struct {
@@ -247,8 +200,8 @@ func (h *hashLookupGeneratingIter) Next(ctx *sql.Context) (sql.Row, error) {
 	return childRow, nil
 }
 
-func (h *hashLookupGeneratingIter) Close(c *sql.Context) error {
-	return nil
+func (h *hashLookupGeneratingIter) Close(ctx *sql.Context) error {
+	return h.childIter.Close(ctx)
 }
 
 var _ sql.RowIter = (*hashLookupGeneratingIter)(nil)
@@ -304,7 +257,7 @@ type concatIter struct {
 }
 
 func newConcatIter(ctx *sql.Context, cur sql.RowIter, nextIter func() (sql.RowIter, error)) *concatIter {
-	seen, dispose := ctx.Memory.NewHistoryCache()
+	seen, dispose := ctx.Memory.NewHistoryCache(ctx)
 	return &concatIter{
 		cur,
 		seen,
@@ -356,12 +309,12 @@ func (ci *concatIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 }
 
-func (ci *concatIter) Dispose() {
+func (ci *concatIter) Dispose(ctx *sql.Context) {
 	ci.dispose()
 }
 
 func (ci *concatIter) Close(ctx *sql.Context) error {
-	ci.Dispose()
+	ci.Dispose(ctx)
 	if ci.cur != nil {
 		return ci.cur.Close(ctx)
 	} else {

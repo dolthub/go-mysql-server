@@ -36,7 +36,7 @@ func TestInSubquery(t *testing.T) {
 	pro := memory.NewDBProvider(db)
 	ctx := newContext(pro)
 
-	table := memory.NewTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
+	table := memory.NewTable(ctx, db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "t", Source: "foo", Type: varChar3},
 	}), nil)
 
@@ -44,7 +44,7 @@ func TestInSubquery(t *testing.T) {
 	require.NoError(t, table.Insert(ctx, sql.Row{"two"}))
 
 	project := func(expr sql.Expression) sql.Node {
-		return plan.NewProject([]sql.Expression{
+		return plan.NewProject(ctx, []sql.Expression{
 			expr,
 		}, plan.NewResolvedTable(table, nil, nil))
 	}
@@ -127,6 +127,7 @@ func TestInSubquery(t *testing.T) {
 			require := require.New(t)
 
 			result, err := plan.NewInSubquery(
+				ctx,
 				tt.left,
 				plan.NewSubquery(tt.right, "").WithExecBuilder(DefaultBuilder),
 			).Eval(ctx, tt.row)
@@ -146,7 +147,7 @@ func TestNotInSubquery(t *testing.T) {
 	pro := memory.NewDBProvider(db)
 	ctx := newContext(pro)
 
-	table := memory.NewTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
+	table := memory.NewTable(ctx, db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "t", Source: "foo", Type: types.Text},
 	}), nil)
 
@@ -155,7 +156,7 @@ func TestNotInSubquery(t *testing.T) {
 	require.NoError(t, table.Insert(ctx, sql.Row{"three"}))
 
 	project := func(expr sql.Expression) sql.Node {
-		return plan.NewProject([]sql.Expression{
+		return plan.NewProject(ctx, []sql.Expression{
 			expr,
 		}, plan.NewResolvedTable(table, nil, nil))
 	}
@@ -218,6 +219,7 @@ func TestNotInSubquery(t *testing.T) {
 			require := require.New(t)
 
 			result, err := plan.NewNotInSubquery(
+				ctx,
 				tt.left,
 				plan.NewSubquery(tt.right, "").WithExecBuilder(DefaultBuilder),
 			).Eval(ctx, tt.row)

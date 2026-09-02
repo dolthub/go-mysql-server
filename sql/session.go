@@ -23,10 +23,13 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/dolthub/go-mysql-server/sql/sqlredact"
 )
 
 type key uint
@@ -86,6 +89,13 @@ type Session interface {
 	GetUserVariable(ctx *Context, varName string) (Type, interface{}, error)
 	// GetAllSessionVariables returns a copy of all session variable values.
 	GetAllSessionVariables() map[string]interface{}
+	// SetTransactionLocalVariable sets the transaction-local value of the system variable with the given name
+	// (Postgres's SET LOCAL). The value overrides the variable's session value (as returned by GetSessionVariable)
+	// until ClearTransactionLocalVariables is called
+	SetTransactionLocalVariable(ctx *Context, sysVarName string, value interface{}) error
+	// ClearTransactionLocalVariables removes all transaction-local system variable values, restoring the session
+	// value of every variable overridden
+	ClearTransactionLocalVariables(ctx *Context) error
 	// GetStatusVariable returns the value of the status variable with session scope with the given name.
 	// To access global scope, use sql.StatusVariables instead.
 	GetStatusVariable(ctx *Context, statVarName string) (interface{}, error)
@@ -176,6 +186,16 @@ type Session interface {
 	// ValidateSession provides integrators a chance to do any custom validation of this session before any query is
 	// executed in it. For example, Dolt uses this hook to validate that the session's working set is valid.
 	ValidateSession(ctx *Context) error
+	// PrepareQuery saves a parsed query AST to the session map keyed by `query`.
+	PrepareQuery(query string, stmt sqlparser.Statement)
+	// UnprepareQuery removes the saved query
+	UnprepareQuery(query string)
+	// GetPreparedQuery retrieves the saved query AST along with a bool indicating if it was found.
+	GetPreparedQuery(query string) (sqlparser.Statement, bool)
+	// CacheQuery saves a parsed query AST to the session.
+	CacheQuery(query string, stmt sqlparser.Statement)
+	// GetCachedQuery retrieves the saved query AST along with a bool indicating it was found.
+	GetCachedQuery(query string) (sqlparser.Statement, bool)
 }
 
 // PersistableSession supports serializing/deserializing global system variables/
@@ -280,6 +300,19 @@ type Context struct {
 	pid         uint64
 	interpreted bool
 	Version     AnalyzerVersion
+	// traceRedactionEnabled, when true, opts the context into SQL
+	// trace redaction. The zero value (false) means redaction is
+	// disabled — opt-in to preserve backward compatibility with
+	// trace consumers that already read the parse-span "query"
+	// attribute and rowexec table-name attrs verbatim. Toggle with
+	// WithTraceRedaction.
+	traceRedactionEnabled bool
+	// redactionMapping is allocated by NewContext when redaction is
+	// enabled (eager — never lazy after construction). It captures
+	// the original → token substitution so resolved-name attributes
+	// (rowexec spans) can be redacted with the same tokens as the
+	// parsed query.
+	redactionMapping *sqlredact.Mapping
 }
 
 // ContextOption is a function to configure the context.
@@ -338,6 +371,98 @@ func WithServices(services Services) ContextOption {
 	return func(ctx *Context) {
 		ctx.services = services
 	}
+}
+
+// WithTraceRedaction toggles SQL redaction for trace span attributes
+// on this context. The default (no option) is DISABLED — opt-in so
+// existing consumers of the parse-span "query" attribute and
+// rowexec table-name attrs aren't surprised by a sudden token
+// substitution on a minor-version upgrade. Pass
+// WithTraceRedaction(true) to enable redaction at deployments where
+// trace data flows to multi-tenant or long-term storage.
+func WithTraceRedaction(enabled bool) ContextOption {
+	return func(ctx *Context) {
+		ctx.traceRedactionEnabled = enabled
+	}
+}
+
+// TraceRedactionEnabled reports whether SQL trace redaction is
+// active for this context. Returns false for nil contexts.
+func (c *Context) TraceRedactionEnabled() bool {
+	if c == nil {
+		return false
+	}
+	return c.traceRedactionEnabled
+}
+
+// RedactionMapping returns the per-query redaction mapping. It is
+// eagerly allocated by NewContext when redaction is enabled, so
+// concurrent rowexec spans never race on lazy initialization.
+// Returns nil when redaction is disabled or the context is nil.
+func (c *Context) RedactionMapping() *sqlredact.Mapping {
+	if c == nil || !c.traceRedactionEnabled {
+		return nil
+	}
+	return c.redactionMapping
+}
+
+// RedactQueryForTrace returns query in its trace-safe form. When
+// redaction is enabled, it parses the query and populates this
+// context's mapping (in place — the pointer is never replaced after
+// NewContext) with the substitutions, then returns the redacted
+// text. On parse failure it returns sqlredact.UnparseableMarker;
+// the parse error itself is intentionally swallowed so
+// trace-attribute callers don't need an error path.
+//
+// When redaction is disabled (the default), the input is returned
+// unchanged.
+func (c *Context) RedactQueryForTrace(query string) string {
+	if c == nil || !c.traceRedactionEnabled {
+		return query
+	}
+	// Populate THE EXISTING mapping (allocated eagerly in
+	// NewContext) rather than replacing it. The mapping pointer is
+	// already shared with in-flight rowexec spans; replacing it
+	// would race those reads. The Mapping's internal mutex covers
+	// the writes done here.
+	redacted, _ := sqlredact.RedactSQLForTraceInto(query, c.redactionMapping)
+	return redacted
+}
+
+// RedactNameForTrace returns name in its trace-safe form using this
+// context's identifier-namespace mapping. Tokens are minted on first
+// use, so a name appearing only in a rowexec span (never in the
+// parsed SQL) still gets a stable token. When redaction is disabled
+// (the default), returns the input unchanged.
+func (c *Context) RedactNameForTrace(name string) string {
+	if c == nil || !c.traceRedactionEnabled {
+		return name
+	}
+	return c.redactionMapping.RedactIdent(name)
+}
+
+// redactedFragmentMarker is what RedactStringerForTrace returns for a
+// SQL fragment when redaction is enabled. We can't safely re-tokenize
+// arbitrary expression text against the per-query mapping (the
+// expression may reference identifiers that were never in the parsed
+// SQL — e.g. internal pushdown rewrites), so we drop the value
+// entirely. The plan-level span itself still fires and preserves
+// timing — only the textual attribute disappears.
+const redactedFragmentMarker = "<redacted>"
+
+// RedactStringerForTrace renders v.String() into a span-attribute-
+// safe form. Used at sites that previously emitted attribute.Stringer
+// for SQL fragments (e.g. LIMIT/OFFSET expressions) — calling
+// .String() on a sql.Expression can return arbitrary user-supplied
+// SQL text, so under redaction we substitute a fixed marker.
+//
+// Returns the original .String() output when redaction is disabled
+// (the default).
+func (c *Context) RedactStringerForTrace(v fmt.Stringer) string {
+	if c == nil || !c.traceRedactionEnabled {
+		return v.String()
+	}
+	return redactedFragmentMarker
 }
 
 var ctxNowFunc = time.Now
@@ -408,6 +533,14 @@ func NewContext(
 	}
 	if c.Session == nil {
 		c.Session = NewBaseSession()
+	}
+	// Eager-allocate the redaction mapping so concurrent callers
+	// (parallel rowexec spans firing while RedactQueryForTrace is
+	// still running on another goroutine) never race on a nil-check
+	// followed by an allocation. The Mapping itself synchronizes
+	// concurrent mints internally.
+	if c.traceRedactionEnabled {
+		c.redactionMapping = sqlredact.NewMapping()
 	}
 
 	return c

@@ -17,7 +17,6 @@ package expression
 import (
 	"testing"
 
-	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -229,7 +228,7 @@ func TestCaseType(t *testing.T) {
 		},
 		{
 			"int and decimal to decimal",
-			caseExpr(NewLiteral(int32(10), types.Int32), NewLiteral(decimal.NewFromInt(1), decimalType)),
+			caseExpr(NewLiteral(int32(10), types.Int32), NewLiteral(types.DecimalFromInt64(1), decimalType)),
 			decimalType,
 		},
 		{
@@ -246,7 +245,7 @@ func TestCaseType(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.t, tt.c.Type())
+			require.Equal(t, tt.t, tt.c.Type(sql.NewEmptyContext()))
 		})
 	}
 }
@@ -266,4 +265,64 @@ func TestCaseNullBranch(t *testing.T) {
 	result, err := f.Eval(sql.NewEmptyContext(), sql.Row{int64(1)})
 	require.NoError(err)
 	require.Nil(result)
+}
+
+// TestCaseTypeExtendedType is a regression test for
+// https://github.com/dolthub/doltgresql/issues/2980: a CASE expression whose branches are two
+// distinct sql.ExtendedType implementations (e.g. Doltgres's int4 vs. numeric(10,2)) must resolve
+// its type via sql.GetCommonExtendedType, not fall back to types.GeneralizeTypes, which doesn't
+// recognize ExtendedType and would collapse the result to LongText.
+func TestCaseTypeExtendedType(t *testing.T) {
+	intLike := sql.FakeExtendedType{Name: "int_like", ZeroVal: int32(0)}
+	numericLike := sql.FakeExtendedType{Name: "numeric_like", ZeroVal: float64(0)}
+
+	oldHook := sql.GetCommonExtendedType
+	defer func() { sql.GetCommonExtendedType = oldHook }()
+	sql.GetCommonExtendedType = func(_ *sql.Context, sourceType, targetType sql.ExtendedType) sql.ExtendedType {
+		if sourceType.Equals(numericLike) || targetType.Equals(numericLike) {
+			return numericLike
+		}
+		return sourceType
+	}
+
+	c := NewCase(
+		nil,
+		[]CaseBranch{
+			{Cond: NewLiteral(true, types.Boolean), Value: NewLiteral(int32(0), intLike)},
+		},
+		NewLiteral(float64(0), numericLike),
+	)
+
+	require.Equal(t, numericLike, c.Type(sql.NewEmptyContext()))
+}
+
+// TestCaseEvalExtendedType is a regression test for
+// https://github.com/dolthub/doltgresql/issues/2980: once a CASE's common type is a distinct
+// ExtendedType from a branch's own type, evaluating that branch must convert the value via
+// ConvertToType (which knows how to convert between two ExtendedTypes), not the plain Convert
+// method.
+func TestCaseEvalExtendedType(t *testing.T) {
+	intLike := sql.FakeExtendedType{Name: "int_like", ZeroVal: int32(0)}
+	numericLike := sql.FakeExtendedType{Name: "numeric_like", ZeroVal: float64(0)}
+
+	oldHook := sql.GetCommonExtendedType
+	defer func() { sql.GetCommonExtendedType = oldHook }()
+	sql.GetCommonExtendedType = func(_ *sql.Context, sourceType, targetType sql.ExtendedType) sql.ExtendedType {
+		if sourceType.Equals(numericLike) || targetType.Equals(numericLike) {
+			return numericLike
+		}
+		return sourceType
+	}
+
+	c := NewCase(
+		nil,
+		[]CaseBranch{
+			{Cond: NewLiteral(true, types.Boolean), Value: NewLiteral(int32(5), intLike)},
+		},
+		NewLiteral(float64(9.5), numericLike),
+	)
+
+	result, err := c.Eval(sql.NewEmptyContext(), nil)
+	require.NoError(t, err)
+	require.Equal(t, float64(5), result)
 }

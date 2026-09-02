@@ -47,7 +47,7 @@ func (a AliasReference) Resolved() bool {
 	return false
 }
 
-func (a AliasReference) IsNullable() bool {
+func (a AliasReference) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
@@ -55,7 +55,7 @@ func (a AliasReference) Children() []sql.Expression {
 	return []sql.Expression{}
 }
 
-func (a AliasReference) Type() sql.Type {
+func (a AliasReference) Type(ctx *sql.Context) sql.Type {
 	return types.Null
 }
 
@@ -68,7 +68,7 @@ func (a AliasReference) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	return nil, fmt.Errorf("tried to call eval on an unresolved AliasReference")
 }
 
-func (a AliasReference) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (a AliasReference) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(a, len(children), 0)
 	}
@@ -84,6 +84,7 @@ type Alias struct {
 	name           string
 	unreferencable bool
 	id             sql.ColumnId
+	ctx            *sql.Context
 }
 
 var _ sql.Expression = (*Alias)(nil)
@@ -91,8 +92,8 @@ var _ sql.IdExpression = (*Alias)(nil)
 var _ sql.CollationCoercible = (*Alias)(nil)
 
 // NewAlias returns a new Alias node.
-func NewAlias(name string, expr sql.Expression) *Alias {
-	return &Alias{UnaryExpressionStub{expr}, name, false, 0}
+func NewAlias(ctx *sql.Context, name string, expr sql.Expression) *Alias {
+	return &Alias{UnaryExpressionStub{expr}, name, false, 0, ctx}
 }
 
 // AsUnreferencable marks the alias outside of scope referencing
@@ -117,8 +118,8 @@ func (e *Alias) Id() sql.ColumnId {
 }
 
 // Type returns the type of the expression.
-func (e *Alias) Type() sql.Type {
-	return e.Child.Type()
+func (e *Alias) Type(ctx *sql.Context) sql.Type {
+	return e.Child.Type(ctx)
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -132,35 +133,35 @@ func (e *Alias) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // Describe implements the sql.Describable interface
-func (e *Alias) Describe(options sql.DescribeOptions) string {
+func (e *Alias) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
 	if options.Debug {
 		if e.unreferencable {
-			return fmt.Sprintf("%s->%s", sql.Describe(e.Child, options), e.name)
+			return fmt.Sprintf("%s->%s", sql.Describe(ctx, e.Child, options), e.name)
 		} else {
-			return fmt.Sprintf("%s->%s:%d", sql.Describe(e.Child, options), e.name, e.id)
+			return fmt.Sprintf("%s->%s:%d", sql.Describe(ctx, e.Child, options), e.name, e.id)
 		}
 	}
-	return fmt.Sprintf("%s as %s", sql.Describe(e.Child, options), e.name)
+	return fmt.Sprintf("%s as %s", sql.Describe(ctx, e.Child, options), e.name)
 }
 
 func (e *Alias) String() string {
-	return e.Describe(sql.DescribeOptions{
+	return e.Describe(e.ctx, sql.DescribeOptions{
 		Debug: false,
 	})
 }
 
-func (e *Alias) DebugString() string {
-	return e.Describe(sql.DescribeOptions{
+func (e *Alias) DebugString(ctx *sql.Context) string {
+	return e.Describe(ctx, sql.DescribeOptions{
 		Debug: true,
 	})
 }
 
 // WithChildren implements the Expression interface.
-func (e *Alias) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (e *Alias) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(e, len(children), 1)
 	}
-	return NewAlias(e.name, children[0]), nil
+	return NewAlias(ctx, e.name, children[0]), nil
 }
 
 // Name implements the Nameable interface.

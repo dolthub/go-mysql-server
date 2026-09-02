@@ -44,12 +44,12 @@ func NewAutoUuid(_ *sql.Context, col *sql.Column, child sql.Expression) *AutoUui
 }
 
 // IsNullable implements the Expression interface.
-func (au *AutoUuid) IsNullable() bool {
+func (au *AutoUuid) IsNullable(ctx *sql.Context) bool {
 	return false
 }
 
 // Type implements the Expression interface.
-func (au *AutoUuid) Type() sql.Type {
+func (au *AutoUuid) Type(ctx *sql.Context) sql.Type {
 	return types.MustCreateString(sqltypes.Char, 36, sql.Collation_Default)
 }
 
@@ -89,7 +89,7 @@ func (au *AutoUuid) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (au *AutoUuid) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (au *AutoUuid) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(au, len(children), 1)
 	}

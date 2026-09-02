@@ -35,7 +35,7 @@ var _ sql.FunctionExpression = JSONObject{}
 var _ sql.CollationCoercible = JSONObject{}
 
 // NewJSONObject creates a new JSONObject function.
-func NewJSONObject(exprs ...sql.Expression) (sql.Expression, error) {
+func NewJSONObject(ctx *sql.Context, exprs ...sql.Expression) (sql.Expression, error) {
 	if len(exprs)%2 != 0 {
 		return nil, sql.ErrInvalidArgumentNumber.New("JSON_OBJECT", "an even number of", len(exprs))
 	}
@@ -79,7 +79,7 @@ func (j JSONObject) String() string {
 	return fmt.Sprintf("%s(%s)", j.FunctionName(), strings.Join(parts, ","))
 }
 
-func (j JSONObject) Type() sql.Type {
+func (j JSONObject) Type(ctx *sql.Context) sql.Type {
 	return types.JSON
 }
 
@@ -88,7 +88,7 @@ func (JSONObject) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 	return ctx.GetCharacterSet().BinaryCollation(), 2
 }
 
-func (j JSONObject) IsNullable() bool {
+func (j JSONObject) IsNullable(ctx *sql.Context) bool {
 	return false
 }
 
@@ -132,10 +132,10 @@ func (j JSONObject) Children() []sql.Expression {
 	return j.keyValPairs
 }
 
-func (j JSONObject) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (j JSONObject) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(j.Children()) != len(children) {
 		return nil, fmt.Errorf("json_object did not receive the correct amount of args")
 	}
 
-	return NewJSONObject(children...)
+	return NewJSONObject(ctx, children...)
 }

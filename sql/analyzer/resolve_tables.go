@@ -47,7 +47,7 @@ func validateDropTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 			}
 			return nil, transform.SameTree, sql.ErrUnknownTable.New(t.Name())
 		default:
-			return nil, transform.SameTree, sql.ErrUnknownTable.New(getTableName(table))
+			return nil, transform.SameTree, sql.ErrUnknownTable.New(getTableName(ctx, table))
 		}
 	}
 
