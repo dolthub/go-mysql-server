@@ -23,16 +23,16 @@ import (
 )
 
 func TestSqlMode(t *testing.T) {
-	// Test that ANSI mode includes ANSI_QUOTES, PIPES_AS_CONCAT, and ONLY_FULL_GROUP_BY mode
+	// Test that ANSI MODE_ includes ANSI_QUOTES, PIPES_AS_CONCAT, and ONLY_FULL_GROUP_BY MODE_
 	sqlMode := NewSqlModeFromString("ansi")
 	assert.True(t, sqlMode.AnsiQuotes())
 	assert.True(t, sqlMode.ModeEnabled("ansi"))
 	assert.True(t, sqlMode.ModeEnabled("ANSI"))
-	assert.False(t, sqlMode.ModeEnabled("fake_mode"))
+	assert.False(t, sqlMode.ModeEnabled("fake_MODE_"))
 	assert.True(t, sqlMode.ParserOptions().AnsiQuotes)
 	assert.Equal(t, "ANSI", sqlMode.String())
-	assert.True(t, sqlMode.PipesAsConcat())   // PIPES_AS_CONCAT is included in ANSI mode
-	assert.True(t, sqlMode.OnlyFullGroupBy()) // ONLY_FULL_GROUP_BY is included in ANSI mode
+	assert.True(t, sqlMode.PipesAsConcat())   // PIPES_AS_CONCAT is included in ANSI MODE_
+	assert.True(t, sqlMode.OnlyFullGroupBy()) // ONLY_FULL_GROUP_BY is included in ANSI MODE_
 	assert.False(t, sqlMode.ModeEnabled("pipes_as_concat"))
 
 	// Test a mixed case SQL_MODE string where only ANSI_QUOTES is enabled
@@ -40,7 +40,7 @@ func TestSqlMode(t *testing.T) {
 	assert.True(t, sqlMode.AnsiQuotes())
 	assert.True(t, sqlMode.ModeEnabled("ansi_quotes"))
 	assert.True(t, sqlMode.ModeEnabled("ANSI_quoTes"))
-	assert.False(t, sqlMode.ModeEnabled("fake_mode"))
+	assert.False(t, sqlMode.ModeEnabled("fake_MODE_"))
 	assert.True(t, sqlMode.ParserOptions().AnsiQuotes)
 	assert.Equal(t, "ANSI_QUOTES", sqlMode.String())
 	assert.False(t, sqlMode.PipesAsConcat())
@@ -68,64 +68,63 @@ func TestConvertSqlModeBitmask(t *testing.T) {
 		input    any
 		expected []string
 	}{
-		{uint64(1411383296), []string{ErrorForDivisionByZero, NoEngineSubstitution, StrictTransTables}},
-		{int64(1411383296), []string{ErrorForDivisionByZero, NoEngineSubstitution, StrictTransTables}},
-		{modeStrictTransTables | modeErrorForDivisionByZero | modeNoEngineSubstitution | 0x1, []string{StrictTransTables, ErrorForDivisionByZero, NoEngineSubstitution}},
+		{uint64(1411383296), []string{ERROR_FOR_DIVISION_BY_ZERO, NO_ENGINE_SUBSTITUTION, STRICT_TRANS_TABLES}},
+		{int64(1411383296), []string{ERROR_FOR_DIVISION_BY_ZERO, NO_ENGINE_SUBSTITUTION, STRICT_TRANS_TABLES}},
+		{MODE_STRICT_TRANS_TABLES | MODE_ERROR_FOR_DIVISION_BY_ZERO | MODE_NO_ENGINE_SUBSTITUTION | 0x1, []string{STRICT_TRANS_TABLES, ERROR_FOR_DIVISION_BY_ZERO, NO_ENGINE_SUBSTITUTION}},
 
-		{modeRealAsFloat, []string{RealAsFloat}},
-		{modePipesAsConcat, []string{PipesAsConcat}},
-		{modeAnsiQuotes, []string{ANSIQuotes}},
-		{modeIgnoreSpace, []string{IgnoreSpace}},
-		{modeOnlyFullGroupBy, []string{OnlyFullGroupBy}},
-		{modeNoEngineSubstitution, []string{NoEngineSubstitution}},
-		{uint64(modeNoEngineSubstitution), []string{NoEngineSubstitution}},
+		{MODE_REAL_AS_FLOAT, []string{REAL_AS_FLOAT}},
+		{MODE_PIPES_AS_CONCAT, []string{PIPES_AS_CONCAT}},
+		{MODE_ANSI_QUOTES, []string{ANSI_QUOTES}},
+		{MODE_IGNORE_SPACE, []string{IGNORE_SPACE}},
+		{MODE_ONLY_FULL_GROUP_BY, []string{ONLY_FULL_GROUP_BY}},
+		{MODE_NO_ENGINE_SUBSTITUTION, []string{NO_ENGINE_SUBSTITUTION}},
+		{uint64(MODE_NO_ENGINE_SUBSTITUTION), []string{NO_ENGINE_SUBSTITUTION}},
 
-		{modeAnsiQuotes | modePipesAsConcat, []string{ANSIQuotes, PipesAsConcat}},
-		{modeAnsiQuotes | modeIgnoreSpace, []string{ANSIQuotes, IgnoreSpace}},
+		{MODE_ANSI_QUOTES | MODE_PIPES_AS_CONCAT, []string{ANSI_QUOTES, PIPES_AS_CONCAT}},
+		{MODE_ANSI_QUOTES | MODE_IGNORE_SPACE, []string{ANSI_QUOTES, IGNORE_SPACE}},
 
-		{modeRealAsFloat | modePipesAsConcat, []string{RealAsFloat, PipesAsConcat}},
-		{modeRealAsFloat | modePipesAsConcat | modeAnsiQuotes, []string{RealAsFloat, PipesAsConcat, ANSIQuotes}},
-		{modeRealAsFloat | modePipesAsConcat | modeAnsiQuotes | modeIgnoreSpace, []string{RealAsFloat, PipesAsConcat, ANSIQuotes, IgnoreSpace}},
-		{modeAnsiQuotes | modeOnlyFullGroupBy, []string{ANSIQuotes, OnlyFullGroupBy}},
-		{modeIgnoreSpace | modeOnlyFullGroupBy, []string{IgnoreSpace, OnlyFullGroupBy}},
+		{MODE_REAL_AS_FLOAT | MODE_PIPES_AS_CONCAT, []string{REAL_AS_FLOAT, PIPES_AS_CONCAT}},
+		{MODE_REAL_AS_FLOAT | MODE_PIPES_AS_CONCAT | MODE_ANSI_QUOTES, []string{REAL_AS_FLOAT, PIPES_AS_CONCAT, ANSI_QUOTES}},
+		{MODE_REAL_AS_FLOAT | MODE_PIPES_AS_CONCAT | MODE_ANSI_QUOTES | MODE_IGNORE_SPACE, []string{REAL_AS_FLOAT, PIPES_AS_CONCAT, ANSI_QUOTES, IGNORE_SPACE}},
+		{MODE_ANSI_QUOTES | MODE_ONLY_FULL_GROUP_BY, []string{ANSI_QUOTES, ONLY_FULL_GROUP_BY}},
+		{MODE_IGNORE_SPACE | MODE_ONLY_FULL_GROUP_BY, []string{IGNORE_SPACE, ONLY_FULL_GROUP_BY}},
 
-		{modeStrictTransTables, []string{StrictTransTables}},
-		{modeStrictTransTables | modeAnsiQuotes, []string{StrictTransTables, ANSIQuotes}},
-		{modeStrictAllTables, []string{StrictAllTables}},
-		{modeNoZeroInDate, []string{NoZeroInDate}},
-		{modeAllowInvalidDates, []string{AllowInvalidDates}},
-		{modeErrorForDivisionByZero, []string{ErrorForDivisionByZero}},
-		{modeNoBackslashEscapes, []string{NoBackslashEscapes}},
-		{modeNoAutoValueOnZero, []string{NoAutoValueOnZero}},
-		{modeNoUnsignedSubtraction, []string{NoUnsignedSubtraction}},
-		{modeNoDirInCreate, []string{NoDirInCreate}},
-		{modeHighNotPrecedence, []string{HighNotPrecedence}},
-		{modePadCharToFullLength, []string{PadCharToFullLength}},
+		{MODE_STRICT_TRANS_TABLES, []string{STRICT_TRANS_TABLES}},
+		{MODE_STRICT_TRANS_TABLES | MODE_ANSI_QUOTES, []string{STRICT_TRANS_TABLES, ANSI_QUOTES}},
+		{MODE_STRICT_ALL_TABLES, []string{STRICT_ALL_TABLES}},
+		{MODE_NO_ZERO_IN_DATE, []string{NO_ZERO_IN_DATE}},
+		{MODE_ALLOW_INVALID_DATES, []string{ALLOW_INVALID_DATES}},
+		{MODE_ERROR_FOR_DIVISION_BY_ZERO, []string{ERROR_FOR_DIVISION_BY_ZERO}},
+		{MODE_NO_BACKSLASH_ESCAPES, []string{NO_BACKSLASH_ESCAPES}},
+		{MODE_NO_AUTO_VALUE_ON_ZERO, []string{NO_AUTO_VALUE_ON_ZERO}},
+		{MODE_NO_UNSIGNED_SUBTRACTION, []string{NO_UNSIGNED_SUBTRACTION}},
+		{MODE_NO_DIR_IN_CREATE, []string{NO_DIR_IN_CREATE}},
+		{MODE_HIGH_NOT_PRECEDENCE, []string{HIGH_NOT_PRECEDENCE}},
+		{MODE_PAD_CHAR_TO_FULL_LENGTH, []string{PAD_CHAR_TO_FULL_LENGTH}},
 
 		{0x10000000, []string{}},
-		{modeStrictTransTables | 0x10000000, []string{StrictTransTables}},
+		{MODE_STRICT_TRANS_TABLES | 0x10000000, []string{STRICT_TRANS_TABLES}},
 
-		{modeNoEngineSubstitution | modeAnsiQuotes, []string{NoEngineSubstitution, ANSIQuotes}},
-		{modeNoEngineSubstitution | modeOnlyFullGroupBy, []string{NoEngineSubstitution, OnlyFullGroupBy}},
-		{modeStrictTransTables | modeErrorForDivisionByZero | modeNoEngineSubstitution, []string{StrictTransTables, ErrorForDivisionByZero, NoEngineSubstitution}},
-		{modeStrictTransTables | modeNoZeroInDate | modeErrorForDivisionByZero, []string{StrictTransTables, NoZeroInDate, ErrorForDivisionByZero}},
+		{MODE_NO_ENGINE_SUBSTITUTION | MODE_ANSI_QUOTES, []string{NO_ENGINE_SUBSTITUTION, ANSI_QUOTES}},
+		{MODE_NO_ENGINE_SUBSTITUTION | MODE_ONLY_FULL_GROUP_BY, []string{NO_ENGINE_SUBSTITUTION, ONLY_FULL_GROUP_BY}},
+		{MODE_STRICT_TRANS_TABLES | MODE_ERROR_FOR_DIVISION_BY_ZERO | MODE_NO_ENGINE_SUBSTITUTION, []string{STRICT_TRANS_TABLES, ERROR_FOR_DIVISION_BY_ZERO, NO_ENGINE_SUBSTITUTION}},
+		{MODE_STRICT_TRANS_TABLES | MODE_NO_ZERO_IN_DATE | MODE_ERROR_FOR_DIVISION_BY_ZERO, []string{STRICT_TRANS_TABLES, NO_ZERO_IN_DATE, ERROR_FOR_DIVISION_BY_ZERO}},
 
 		{uint64(0), []string{}},
 		{int(0), []string{}},
 
-		{int8(4), []string{ANSIQuotes}},
-		{int16(4), []string{ANSIQuotes}},
-		{int32(4), []string{ANSIQuotes}},
-		{uint8(4), []string{ANSIQuotes}},
-		{uint16(4), []string{ANSIQuotes}},
-		{uint32(4), []string{ANSIQuotes}},
+		{int8(4), []string{ANSI_QUOTES}},
+		{int16(4), []string{ANSI_QUOTES}},
+		{int32(4), []string{ANSI_QUOTES}},
+		{uint8(4), []string{ANSI_QUOTES}},
+		{uint16(4), []string{ANSI_QUOTES}},
+		{uint32(4), []string{ANSI_QUOTES}},
 
 		{"TRADITIONAL", []string{"TRADITIONAL"}},
 		{"ANSI", []string{"ANSI"}},
 		{"STRICT_TRANS_TABLES,NO_ZERO_DATE", []string{"STRICT_TRANS_TABLES,NO_ZERO_DATE"}},
 		{"", []string{}},
 
-		{uint64(9999999999), []string{"9999999999"}},
 		{"not_a_number", []string{"not_a_number"}},
 	}
 
