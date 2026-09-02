@@ -281,18 +281,12 @@ func (g *groupConcatBuffer) Update(ctx *sql.Context, originalRow sql.Row) error 
 			return err
 		}
 		vs = string(vb)
-		if len(vs) == 0 {
-			return nil
-		}
 	} else {
 		// Use type-aware conversion for enum types
 		if len(g.gc.selectExprs) > 0 {
 			vs, _, err = types.ConvertToCollatedString(ctx, evalRow[0], g.gc.selectExprs[0].Type(ctx))
 			if err != nil {
 				return err
-			}
-			if vs == "" {
-				return nil
 			}
 		} else {
 			v, _, err = types.LongText.Convert(ctx, evalRow[0])
@@ -382,6 +376,7 @@ func (g *groupConcatBuffer) Dispose(ctx *sql.Context) {
 func evalExprs(ctx *sql.Context, exprs []sql.Expression, row sql.Row) (sql.Row, sql.Type, error) {
 	result := make(sql.Row, len(exprs))
 	retType := types.Blob
+	hasNull := false
 	for i, expr := range exprs {
 		var err error
 		result[i], err = expr.Eval(ctx, row)
@@ -393,6 +388,12 @@ func evalExprs(ctx *sql.Context, exprs []sql.Expression, row sql.Row) (sql.Row, 
 		if expr.Type(ctx) != types.Blob {
 			retType = types.Text
 		}
+		if result[i] == nil {
+			hasNull = true
+		}
+	}
+	if hasNull {
+		return nil, retType, nil
 	}
 
 	return result, retType, nil

@@ -27,6 +27,13 @@ import (
 
 // FunctionQueryTests contains queries that primarily test SQL function calls
 var FunctionQueryTests = []QueryTest{
+	{
+		Query: `SELECT FIRST_VALUE(x) OVER () FROM (
+			SELECT GROUP_CONCAT(v ORDER BY id SEPARATOR '|') AS x
+			FROM (SELECT 1 AS id, '' AS v UNION ALL SELECT 2, 'a' UNION ALL SELECT 3, '') t
+		) q`,
+		Expected: []sql.Row{{"|a|"}},
+	},
 	// Truncate function https://github.com/dolthub/dolt/issues/9916
 	{
 		Query: "SELECT TRUNCATE(1.223,1)",
