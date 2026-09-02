@@ -260,10 +260,6 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (val interface{}, er
 	if textLength != 0 && int(pos.(int32)) > textLength+1 {
 		return nil, errors.NewKind("Index out of bounds for regular expression search.").New()
 	}
-	if int(pos.(int32)) == textLength+1 {
-		return text, nil
-	}
-
 	occurrence, err := r.Occurrence.Eval(ctx, row)
 	if err != nil {
 		return nil, err
@@ -274,6 +270,9 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (val interface{}, er
 	occurrence, _, err = types.Int32.Convert(ctx, occurrence)
 	if err != nil {
 		return nil, err
+	}
+	if int(pos.(int32)) == textLength+1 {
+		return text, nil
 	}
 
 	err = r.re.SetMatchString(ctx, text.(string))
