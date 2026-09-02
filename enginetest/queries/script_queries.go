@@ -8962,7 +8962,7 @@ where
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "set sql_mode = 'STRICT_TRANS_TABLES';",
+				Query:    "SET sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_IN_DATE';",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
 			},
 			{
@@ -8978,7 +8978,7 @@ where
 				ExpectedErrStr: "Incorrect string value: '\\xAE' for column 'txt' at row 1",
 			},
 			{
-				Query:    "set sql_mode = '';",
+				Query:    "set sql_mode = 'NO_ZERO_IN_DATE';",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
 			},
 			{
@@ -9033,7 +9033,7 @@ where
 			},
 			// Test non-strict mode truncation behavior
 			{
-				Query:    "set sql_mode = '';",
+				Query:    "set sql_mode = 'NO_ZERO_IN_DATE';",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
 			},
 			{
@@ -9065,7 +9065,7 @@ where
 		Assertions: []ScriptTestAssertion{
 			// STRICT MODE TESTS
 			{
-				Query:    "set sql_mode = 'STRICT_TRANS_TABLES';",
+				Query:    "SET sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_IN_DATE';",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
 			},
 			// Single invalid byte (0xAE)
@@ -9162,7 +9162,7 @@ where
 
 			// NON-STRICT MODE TESTS (should truncate)
 			{
-				Query:    "set sql_mode = '';",
+				Query:    "set sql_mode = 'NO_ZERO_IN_DATE';",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
 			},
 			{
@@ -9206,7 +9206,7 @@ where
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "set sql_mode = 'STRICT_TRANS_TABLES';",
+				Query:    "SET sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_IN_DATE';",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
 			},
 			// ASCII range 0x00-0x7F
@@ -9267,7 +9267,7 @@ where
 			},
 			// Mixed ASCII and invalid (non-strict mode)
 			{
-				Query:    "set sql_mode = '';", // Non-strict mode
+				Query:    "set sql_mode = 'NO_ZERO_IN_DATE';", // Non-strict mode
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
 			},
 			{
@@ -9283,7 +9283,7 @@ where
 			},
 			// Valid UTF-8 sequences
 			{
-				Query:    "set sql_mode = 'STRICT_TRANS_TABLES';", // Back to strict mode
+				Query:    "SET sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_IN_DATE';", // Back to strict mode
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
 			},
 			{
@@ -10622,7 +10622,7 @@ where
 		Name:    "enums with zero",
 		Dialect: "mysql",
 		SetUpScript: []string{
-			"SET sql_mode = 'STRICT_TRANS_TABLES';",
+			"SET sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_IN_DATE';",
 			"create table t (e enum('a', 'b', 'c'));",
 		},
 		Assertions: []ScriptTestAssertion{
@@ -10654,7 +10654,7 @@ where
 		Name:    "enums with zero strict all tables",
 		Dialect: "mysql",
 		SetUpScript: []string{
-			"SET sql_mode = 'STRICT_ALL_TABLES';",
+			"SET sql_mode = 'STRICT_ALL_TABLES,NO_ZERO_IN_DATE';",
 			"create table t (e enum('a', 'b', 'c'));",
 		},
 		Assertions: []ScriptTestAssertion{
@@ -10676,7 +10676,7 @@ where
 		Name:    "enums with zero non-strict mode",
 		Dialect: "mysql",
 		SetUpScript: []string{
-			"SET sql_mode = '';",
+			"SET sql_mode = 'NO_ZERO_IN_DATE';",
 			"create table t (e enum('a', 'b', 'c'));",
 		},
 		Assertions: []ScriptTestAssertion{
@@ -10698,7 +10698,7 @@ where
 		Name:    "enum import error message validation",
 		Dialect: "mysql",
 		SetUpScript: []string{
-			"SET sql_mode = 'STRICT_TRANS_TABLES';",
+			"SET sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_IN_DATE';",
 			"CREATE TABLE shirts (name VARCHAR(40), size ENUM('x-small', 'small', 'medium', 'large', 'x-large'), color ENUM('red', 'blue'));",
 		},
 		Assertions: []ScriptTestAssertion{
@@ -10718,7 +10718,7 @@ where
 		Name:    "enum default null validation",
 		Dialect: "mysql",
 		SetUpScript: []string{
-			"SET sql_mode = 'STRICT_TRANS_TABLES';",
+			"SET sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_IN_DATE';",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -14194,6 +14194,109 @@ select * from t1 except (
 			{
 				Query:    "select * from t2, t3, t0, t1 order by t0.c0",
 				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		Name:        "Prevent disabling NO_ZERO_IN_DATE sql_mode",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				// Disabling `NO_ZERO_IN_DATE` throws error, and doesn't change SQL_MODE
+				Query: "set @@sql_mode = '" +
+					"ONLY_FULL_GROUP_BY," +
+					"STRICT_TRANS_TABLES," +
+					"NO_ZERO_DATE," +
+					"ERROR_FOR_DIVISION_BY_ZERO," +
+					"NO_ENGINE_SUBSTITUTION'",
+				ExpectedErr: sql.ErrMissingNoZeroInDateSQLMode,
+			},
+			{
+				Query: "select @@sql_mode",
+				Expected: []sql.Row{
+					{sql.DefaultSqlMode},
+				},
+			},
+			{
+				// Disabling `STRICT_TRANS_TABLES` throws strict mode warning
+				SkipResultCheckOnServerEngine: true,
+				Query: "set @@sql_mode = '" +
+					"NO_ZERO_IN_DATE," +
+					"NO_ZERO_DATE," +
+					"ERROR_FOR_DIVISION_BY_ZERO'",
+				Expected: []sql.Row{
+					{types.OkResult{}},
+				},
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       3135,
+				ExpectedWarningMessageSubstring: "'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' " +
+					"sql modes should be used with strict mode. " +
+					"They will be merged with strict mode in a future release",
+			},
+			{
+				Query: "select @@sql_mode",
+				Expected: []sql.Row{
+					{"NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO"},
+				},
+			},
+			{
+				// Disabling `NO_ZERO_DATE` throws strict mode warning
+				SkipResultCheckOnServerEngine: true,
+				Query: "set @@sql_mode = '" +
+					"STRICT_TRANS_TABLES," +
+					"NO_ZERO_IN_DATE," +
+					"ERROR_FOR_DIVISION_BY_ZERO'",
+				Expected: []sql.Row{
+					{types.OkResult{}},
+				},
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       3135,
+				ExpectedWarningMessageSubstring: "'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' " +
+					"sql modes should be used with strict mode. " +
+					"They will be merged with strict mode in a future release",
+			},
+			{
+				Query: "select @@sql_mode",
+				Expected: []sql.Row{
+					{"STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO"},
+				},
+			},
+			{
+				// Disabling `ERROR_FOR_DIVISION_BY_ZERO` throws strict mode warning
+				SkipResultCheckOnServerEngine: true,
+				Query: "set @@sql_mode = '" +
+					"STRICT_TRANS_TABLES," +
+					"NO_ZERO_IN_DATE," +
+					"NO_ZERO_DATE'",
+				Expected: []sql.Row{
+					{types.OkResult{}},
+				},
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       3135,
+				ExpectedWarningMessageSubstring: "'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' " +
+					"sql modes should be used with strict mode. " +
+					"They will be merged with strict mode in a future release",
+			},
+			{
+				Query: "select @@sql_mode",
+				Expected: []sql.Row{
+					{"STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE"},
+				},
+			},
+			{
+				// TODO: this shouldn't be necessary
+				// Restore SQL_MODE to default, to prevent interfering with other tests
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "set @@sql_mode = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'",
+				Expected: []sql.Row{
+					{types.OkResult{}},
+				},
+			},
+			{
+				Query: "select @@sql_mode",
+				Expected: []sql.Row{
+					{sql.DefaultSqlMode},
+				},
 			},
 		},
 	},

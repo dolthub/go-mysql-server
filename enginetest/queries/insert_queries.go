@@ -1357,7 +1357,7 @@ var InsertScripts = []ScriptTest{
 		Dialect: "mysql",
 		SetUpScript: []string{
 			"set @old_sql_mode=@@sql_mode;",
-			"set @@sql_mode='NO_auto_value_ON_ZERO';",
+			"set @@sql_mode='NO_auto_value_ON_ZERO,NO_ZERO_IN_DATE';",
 			"create table auto (i int auto_increment, index (i));",
 			"create table auto_pk (i int auto_increment primary key);",
 		},

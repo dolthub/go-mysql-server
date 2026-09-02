@@ -38,6 +38,9 @@ var (
 	// ErrSystemVariableCodeFail is returned when failing to encode/decode a system variable.
 	ErrSystemVariableCodeFail = errors.NewKind("unable to encode/decode value '%v' for '%s'")
 
+	// ErrMissingNoZeroInDateSQLMode is returned when attempting to set SQL_MODE without NO_ZERO_IN_DATE
+	ErrMissingNoZeroInDateSQLMode = errors.NewKind("SQL_MODE without NO_ZERO_IN_DATE is unsupported")
+
 	// ErrInvalidType is thrown when there is an unexpected type at some part of
 	// the execution tree.
 	ErrInvalidType = errors.NewKind("invalid type: %s")

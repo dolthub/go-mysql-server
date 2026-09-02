@@ -24,7 +24,7 @@ var AnsiQuotesTests = []ScriptTest{
 	{
 		Name: "ANSI_QUOTES: basic cases",
 		SetUpScript: []string{
-			"SET @@sql_mode='ANSI_QUOTES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES';",
+			"SET @@sql_mode='ANSI_QUOTES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE';",
 			"create table auctions (ai int auto_increment, id varchar(32), data varchar(100), primary key (ai));",
 			"insert into auctions (id, data) values (42, 'forty-two');",
 		},
@@ -70,7 +70,7 @@ var AnsiQuotesTests = []ScriptTest{
 			},
 			{
 				// Disable ANSI_QUOTES and make sure we can still run queries
-				Query:    `SET @@sql_mode='NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES';`,
+				Query:    `SET @@sql_mode='NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE';`,
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
@@ -88,7 +88,7 @@ var AnsiQuotesTests = []ScriptTest{
 		// https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html#sql-mode-combo
 		Name: "ANSI_QUOTES: ANSI combination mode",
 		SetUpScript: []string{
-			`SET @@sql_mode='ANSI';`,
+			`SET @@sql_mode='ANSI,NO_ZERO_IN_DATE';`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -109,7 +109,7 @@ var AnsiQuotesTests = []ScriptTest{
 	{
 		Name: "ANSI_QUOTES: views",
 		SetUpScript: []string{
-			`SET @@sql_mode='ANSI_QUOTES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES';`,
+			`SET @@sql_mode='ANSI_QUOTES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE';`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -153,7 +153,7 @@ var AnsiQuotesTests = []ScriptTest{
 			},
 			{
 				// Disable ANSI_QUOTES mode
-				Query:    `SET @@sql_mode='NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES';`,
+				Query:    `SET @@sql_mode='NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE';`,
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
@@ -178,7 +178,7 @@ var AnsiQuotesTests = []ScriptTest{
 	{
 		Name: "ANSI_QUOTES: triggers",
 		SetUpScript: []string{
-			`SET @@sql_mode='ANSI_QUOTES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES';`,
+			`SET @@sql_mode='ANSI_QUOTES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE';`,
 			`create table t (pk int primary key, name varchar(32), data varchar(100));`,
 			`create trigger ansi_quotes_trigger BEFORE INSERT ON "t" FOR EACH ROW SET new."data" = 'triggered!';`,
 			`insert into t values (1, 'John', 'FooBar');`,
@@ -196,7 +196,7 @@ var AnsiQuotesTests = []ScriptTest{
 			},
 			{
 				// Disable ANSI_QUOTES mode
-				Query:    `SET @@sql_mode='NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES';`,
+				Query:    `SET @@sql_mode='NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE';`,
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
@@ -218,7 +218,7 @@ var AnsiQuotesTests = []ScriptTest{
 	{
 		Name: "ANSI_QUOTES: stored procedures",
 		SetUpScript: []string{
-			`SET @@sql_mode='ANSI_QUOTES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES';`,
+			`SET @@sql_mode='ANSI_QUOTES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE';`,
 			`create table t (pk int primary key, name varchar(32), data varchar(100));`,
 			`create procedure AnsiProcedure() BEGIN SELECT "name" from "t" where "pk" = 1; END`,
 			`insert into t values (1, 'John', 'FooBar');`,
@@ -236,7 +236,7 @@ var AnsiQuotesTests = []ScriptTest{
 			},
 			{
 				// Disable ANSI_QUOTES mode
-				Query:    `SET @@sql_mode='NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES';`,
+				Query:    `SET @@sql_mode='NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE';`,
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
@@ -256,7 +256,7 @@ var AnsiQuotesTests = []ScriptTest{
 	{
 		Name: "ANSI_QUOTES: column defaults",
 		SetUpScript: []string{
-			`SET @@sql_mode='ANSI_QUOTES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES';`,
+			`SET @@sql_mode='ANSI_QUOTES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE';`,
 			`create table t ("pk" int primary key, "name" varchar(20), data varchar(100) DEFAULT(CONCAT("name", '!')));`,
 			`insert into t (pk, name) values (1, 'John');`,
 		},
@@ -268,7 +268,7 @@ var AnsiQuotesTests = []ScriptTest{
 			},
 			{
 				// Disable ANSI_QUOTES mode
-				Query:    `SET @@sql_mode='NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES';`,
+				Query:    `SET @@sql_mode='NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE';`,
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
@@ -286,7 +286,7 @@ var AnsiQuotesTests = []ScriptTest{
 	{
 		Name: "ANSI_QUOTES: check constraints",
 		SetUpScript: []string{
-			`SET @@sql_mode='ANSI_QUOTES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES';`,
+			`SET @@sql_mode='ANSI_QUOTES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE';`,
 			`create table t (pk int primary key, data varchar(100), CONSTRAINT "ansi_check" CHECK ("data" != 'forbidden'));`,
 		},
 		Assertions: []ScriptTestAssertion{
@@ -297,7 +297,7 @@ var AnsiQuotesTests = []ScriptTest{
 			},
 			{
 				// Disable ANSI_QUOTES mode
-				Query:    `SET @@sql_mode='NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES';`,
+				Query:    `SET @@sql_mode='NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE';`,
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
@@ -310,7 +310,7 @@ var AnsiQuotesTests = []ScriptTest{
 	{
 		Name: "ANSI_QUOTES: events",
 		SetUpScript: []string{
-			`SET @@sql_mode='ANSI_QUOTES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES';`,
+			`SET @@sql_mode='ANSI_QUOTES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE';`,
 			`create table t (pk int primary key, "count" int);`,
 			`insert into t values (1, 0);`,
 		},
@@ -327,7 +327,7 @@ var AnsiQuotesTests = []ScriptTest{
 			},
 			{
 				// Disable ANSI_QUOTES mode and make sure we can still list and run events
-				Query:    `SET @@sql_mode='NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES';`,
+				Query:    `SET @@sql_mode='NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE';`,
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{

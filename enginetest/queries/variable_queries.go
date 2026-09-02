@@ -161,31 +161,31 @@ var VariableQueries = []ScriptTest{
 	{
 		Name: "set system variable ON / OFF",
 		SetUpScript: []string{
-			"set @@autocommit = ON, sql_mode = \"\"",
+			"set @@autocommit = ON, sql_mode = \"NO_ZERO_IN_DATE\"",
 		},
 		Query: "SELECT @@autocommit, @@session.sql_mode",
 		Expected: []sql.Row{
-			{1, ""},
+			{1, "NO_ZERO_IN_DATE"},
 		},
 	},
 	{
 		Name: "set system variable ON / OFF",
 		SetUpScript: []string{
-			"set @@autocommit = ON, session sql_mode = \"\"",
+			"set @@autocommit = ON, session sql_mode = \"NO_ZERO_IN_DATE\"",
 		},
 		Query: "SELECT @@autocommit, @@session.sql_mode",
 		Expected: []sql.Row{
-			{1, ""},
+			{1, "NO_ZERO_IN_DATE"},
 		},
 	},
 	{
 		Name: "set system variable sql_mode to ANSI for session",
 		SetUpScript: []string{
-			"set SESSION sql_mode = 'ANSI'",
+			"set SESSION sql_mode = 'ANSI,NO_ZERO_IN_DATE'",
 		},
 		Query: "SELECT @@session.sql_mode",
 		Expected: []sql.Row{
-			{"ANSI"},
+			{"ANSI,NO_ZERO_IN_DATE"},
 		},
 	},
 	{
@@ -284,52 +284,52 @@ var VariableQueries = []ScriptTest{
 	{
 		Name: "set multiple variables including 'names'",
 		SetUpScript: []string{
-			"set SESSION sql_mode = 'ANSI'",
+			"set SESSION sql_mode = 'ANSI,NO_ZERO_IN_DATE'",
 			`SET sql_mode=(SELECT CONCAT(@@sql_mode, ',PIPES_AS_CONCAT,NO_ENGINE_SUBSTITUTION')), time_zone='+00:00', NAMES utf8mb3 COLLATE utf8mb3_bin;`,
 		},
 		Query: "SELECT @@sql_mode, @@time_zone, @@character_set_client, @@character_set_connection, @@character_set_results",
 		Expected: []sql.Row{
-			{"PIPES_AS_CONCAT,ANSI,NO_ENGINE_SUBSTITUTION", "+00:00", "utf8mb3", "utf8mb3", "utf8mb3"},
+			{"PIPES_AS_CONCAT,ANSI,NO_ZERO_IN_DATE,NO_ENGINE_SUBSTITUTION", "+00:00", "utf8mb3", "utf8mb3", "utf8mb3"},
 		},
 	},
 	{
 		Name: "set multiple variables including 'charset'",
 		SetUpScript: []string{
-			`SET sql_mode=ALLOW_INVALID_DATES, time_zone='+00:00', CHARSET 'utf8'`,
+			`SET sql_mode=NO_ZERO_IN_DATE, time_zone='+00:00', CHARSET 'utf8'`,
 		},
 		Query: "SELECT @@sql_mode, @@time_zone, @@character_set_client, @@character_set_connection, @@character_set_results",
 		Expected: []sql.Row{
-			{"ALLOW_INVALID_DATES", "+00:00", "utf8", "utf8mb4", "utf8"},
+			{"NO_ZERO_IN_DATE", "+00:00", "utf8", "utf8mb4", "utf8"},
 		},
 	},
 	{
 		Name: "set system variable to bareword",
 		SetUpScript: []string{
-			`set @@sql_mode = ALLOW_INVALID_DATES`,
+			`set @@sql_mode = NO_ZERO_IN_DATE`,
 		},
 		Query: "SELECT @@sql_mode",
 		Expected: []sql.Row{
-			{"ALLOW_INVALID_DATES"},
+			{"NO_ZERO_IN_DATE"},
 		},
 	},
 	{
 		Name: "set system variable to bareword, unqualified",
 		SetUpScript: []string{
-			`set sql_mode = ALLOW_INVALID_DATES`,
+			`set sql_mode = NO_ZERO_IN_DATE`,
 		},
 		Query: "SELECT @@sql_mode",
 		Expected: []sql.Row{
-			{"ALLOW_INVALID_DATES"},
+			{"NO_ZERO_IN_DATE"},
 		},
 	},
 	{
 		Name: "set system variable to no_auto_create_user, which has been deprecated",
 		SetUpScript: []string{
-			`set sql_mode = NO_AUTO_CREATE_USER`,
+			`set sql_mode = 'NO_ZERO_IN_DATE,NO_AUTO_CREATE_USER'`,
 		},
 		Query: "SELECT @@sql_mode",
 		Expected: []sql.Row{
-			{"NO_AUTO_CREATE_USER"},
+			{"NO_AUTO_CREATE_USER,NO_ZERO_IN_DATE"},
 		},
 	},
 	{
@@ -345,23 +345,23 @@ var VariableQueries = []ScriptTest{
 	{
 		Name: "set sql_mode variable ignores empty strings",
 		SetUpScript: []string{
-			`SET sql_mode = ',,,,STRICT_TRANS_TABLES,,,,,NO_AUTO_VALUE_ON_ZERO,,,,NO_ENGINE_SUBSTITUTION,,,,,,'`,
+			`SET sql_mode = ',,,,STRICT_TRANS_TABLES,,,,,NO_AUTO_VALUE_ON_ZERO,,,,NO_ENGINE_SUBSTITUTION,,,NO_ZERO_IN_DATE,,,'`,
 		},
 		Query: "SELECT @@sql_mode",
 		Expected: []sql.Row{
-			{"NO_AUTO_VALUE_ON_ZERO,STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION"},
+			{"NO_AUTO_VALUE_ON_ZERO,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ENGINE_SUBSTITUTION"},
 		},
 	},
 	{
 		Name: "show variables renders enums after set",
 		SetUpScript: []string{
-			`set @@sql_mode='ONLY_FULL_GROUP_BY';`,
+			`set @@sql_mode='ONLY_FULL_GROUP_BY,NO_ZERO_IN_DATE';`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: `SHOW VARIABLES LIKE '%sql_mode%'`,
 				Expected: []sql.Row{
-					{"sql_mode", "ONLY_FULL_GROUP_BY"},
+					{"sql_mode", "ONLY_FULL_GROUP_BY,NO_ZERO_IN_DATE"},
 				},
 			},
 		},
