@@ -107,9 +107,15 @@ func (s *StrToDate) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	if date == nil {
+		return nil, nil
+	}
 	format, err := s.Format.Eval(ctx, row)
 	if err != nil {
 		return nil, err
+	}
+	if format == nil {
+		return nil, nil
 	}
 
 	dateStr, ok := date.(string)
