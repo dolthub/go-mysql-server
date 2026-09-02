@@ -1761,34 +1761,37 @@ order by
 			"         │       ├─ cacheable: true\n" +
 			"         │       ├─ alias-string: select sum(ps_supplycost * ps_availqty) * 0.0001000000 from partsupp, supplier, nation where ps_suppkey = s_suppkey and s_nationkey = n_nationkey and n_name = 'GERMANY'\n" +
 			"         │       └─ Project\n" +
-			"         │           ├─ columns: [(sum((partsupp.ps_supplycost * partsupp.ps_availqty)):0!null * 0.0001000000 (decimal(11,10)))->sum(ps_supplycost * ps_availqty) * 0.0001000000:0]\n" +
-			"         │           └─ LookupJoin\n" +
-			"         │               ├─ LookupJoin\n" +
-			"         │               │   ├─ Table\n" +
-			"         │               │   │   ├─ name: partsupp\n" +
-			"         │               │   │   ├─ columns: [ps_suppkey]\n" +
-			"         │               │   │   ├─ colSet: (19-23)\n" +
-			"         │               │   │   └─ tableId: 4\n" +
-			"         │               │   └─ IndexedTableAccess(supplier)\n" +
-			"         │               │       ├─ index: [supplier.S_SUPPKEY]\n" +
-			"         │               │       ├─ keys: [partsupp.ps_suppkey:5!null]\n" +
-			"         │               │       ├─ colSet: (24-30)\n" +
-			"         │               │       ├─ tableId: 5\n" +
-			"         │               │       └─ Table\n" +
-			"         │               │           ├─ name: supplier\n" +
-			"         │               │           └─ columns: [s_suppkey s_nationkey]\n" +
-			"         │               └─ Filter\n" +
-			"         │                   ├─ Eq\n" +
-			"         │                   │   ├─ nation.n_name:6!null\n" +
-			"         │                   │   └─ GERMANY (longtext)\n" +
-			"         │                   └─ IndexedTableAccess(nation)\n" +
-			"         │                       ├─ index: [nation.N_NATIONKEY]\n" +
-			"         │                       ├─ keys: [supplier.s_nationkey:7!null]\n" +
-			"         │                       ├─ colSet: (31-34)\n" +
-			"         │                       ├─ tableId: 6\n" +
-			"         │                       └─ Table\n" +
-			"         │                           ├─ name: nation\n" +
-			"         │                           └─ columns: [n_nationkey n_name]\n" +
+			"         │           ├─ columns: [(sum((partsupp.ps_supplycost * partsupp.ps_availqty)):5!null * 0.0001000000 (decimal(11,10)))->sum(ps_supplycost * ps_availqty) * 0.0001000000:0]\n" +
+			"         │           └─ GroupBy\n" +
+			"         │               ├─ select: SUM((partsupp.ps_supplycost:7!null * partsupp.ps_availqty:6!null))\n" +
+			"         │               ├─ group: \n" +
+			"         │               └─ LookupJoin\n" +
+			"         │                   ├─ LookupJoin\n" +
+			"         │                   │   ├─ Table\n" +
+			"         │                   │   │   ├─ name: partsupp\n" +
+			"         │                   │   │   ├─ columns: [ps_suppkey ps_availqty ps_supplycost]\n" +
+			"         │                   │   │   ├─ colSet: (19-23)\n" +
+			"         │                   │   │   └─ tableId: 4\n" +
+			"         │                   │   └─ IndexedTableAccess(supplier)\n" +
+			"         │                   │       ├─ index: [supplier.S_SUPPKEY]\n" +
+			"         │                   │       ├─ keys: [partsupp.ps_suppkey:5!null]\n" +
+			"         │                   │       ├─ colSet: (24-30)\n" +
+			"         │                   │       ├─ tableId: 5\n" +
+			"         │                   │       └─ Table\n" +
+			"         │                   │           ├─ name: supplier\n" +
+			"         │                   │           └─ columns: [s_suppkey s_nationkey]\n" +
+			"         │                   └─ Filter\n" +
+			"         │                       ├─ Eq\n" +
+			"         │                       │   ├─ nation.n_name:6!null\n" +
+			"         │                       │   └─ GERMANY (longtext)\n" +
+			"         │                       └─ IndexedTableAccess(nation)\n" +
+			"         │                           ├─ index: [nation.N_NATIONKEY]\n" +
+			"         │                           ├─ keys: [supplier.s_nationkey:9!null]\n" +
+			"         │                           ├─ colSet: (31-34)\n" +
+			"         │                           ├─ tableId: 6\n" +
+			"         │                           └─ Table\n" +
+			"         │                               ├─ name: nation\n" +
+			"         │                               └─ columns: [n_nationkey n_name]\n" +
 			"         └─ Project\n" +
 			"             ├─ columns: [sum((partsupp.ps_supplycost * partsupp.ps_availqty)):0!null, partsupp.ps_partkey:1!null, partsupp.PS_SUPPLYCOST:2!null, partsupp.PS_AVAILQTY:3!null, sum((partsupp.ps_supplycost * partsupp.ps_availqty)):0!null->value:0]\n" +
 			"             └─ GroupBy\n" +
