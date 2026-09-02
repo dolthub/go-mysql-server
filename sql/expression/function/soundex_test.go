@@ -36,6 +36,20 @@ func TestSoundex(t *testing.T) {
 		{"text ignored character", types.LongText, sql.NewRow("-"), "0000"},
 		{"text runes", types.LongText, sql.NewRow("日本語"), "日000"},
 		{"lowercase non-ASCII initial", types.LongText, sql.NewRow("é"), "é000"},
+		{"uppercase non-ASCII initial", types.LongText, sql.NewRow("É"), "É000"},
+		{"non-ASCII initial with tail", types.LongText, sql.NewRow("émile"), "é540"},
+		{"uppercase non-ASCII initial with tail", types.LongText, sql.NewRow("Émile"), "É540"},
+		{"tilde n", types.LongText, sql.NewRow("ñu"), "ñ000"},
+		{"leading garbage before non-ASCII initial", types.LongText, sql.NewRow("-é"), "é000"},
+		{"repeated non-ASCII letter", types.LongText, sql.NewRow("éé"), "é000"},
+		{"long s", types.LongText, sql.NewRow("ſ"), "ſ000"},
+		{"dotless i", types.LongText, sql.NewRow("ı"), "ı000"},
+		{"non-initial accented letter", types.LongText, sql.NewRow("Ré"), "R000"},
+		{"sharp s", types.LongText, sql.NewRow("ß"), "ß000"},
+		{"multiplication sign", types.LongText, sql.NewRow("×"), "×000"},
+		{"division sign", types.LongText, sql.NewRow("÷"), "÷000"},
+		{"symbol initial with tail", types.LongText, sql.NewRow("×y"), "×000"},
+		{"copyright sign", types.LongText, sql.NewRow("©x"), "X000"},
 		{"text Hello ok", types.LongText, sql.NewRow("Hello"), "H400"},
 		{"text Quadratically ok", types.LongText, sql.NewRow("Quadratically"), "Q36324"},
 		{"text Lee ok", types.LongText, sql.NewRow("Lee"), "L000"},
@@ -64,96 +78,5 @@ func TestSoundex(t *testing.T) {
 		req := require.New(t)
 		req.True(f.IsNullable(ctx))
 		req.Equal(tt.rowType, f.Type(ctx))
-	}
-}
-
-// TestSoundexNonASCIIInitial covers dolthub/dolt#11546. MySQL uppercases SOUNDEX input
-// with soundex_toupper() (sql/item_strfunc.cc), which is deliberately ASCII-only:
-//
-//	static int soundex_toupper(int ch) {
-//	  return (ch >= 'a' && ch <= 'z') ? ch - 'a' + 'A' : ch;
-//	}
-//
-// The failing cases here used to run through strings.ToUpper, which case-folds the whole
-// Unicode range, so the retained first character came back uppercased -- or, for U+017F
-// and U+0131, silently rewritten into an ASCII letter -- where MySQL returns it verbatim.
-func TestSoundexNonASCIIInitial(t *testing.T) {
-	testCases := []struct {
-		name     string
-		input    string
-		expected interface{}
-	}{
-		// The exact case reported in dolthub/dolt#11546.
-		{"lowercase accented initial is preserved", "é", "é000"},
-		{"uppercase accented initial is unchanged", "É", "É000"},
-		{"accented initial with ASCII tail", "émile", "é540"},
-		{"uppercase accented initial with ASCII tail", "Émile", "É540"},
-		{"tilde n", "ñu", "ñ000"},
-		{"leading garbage is still skipped", "-é", "é000"},
-		{"repeated accented letter still collapses", "éé", "é000"},
-		// unicode.ToUpper maps U+017F LATIN SMALL LETTER LONG S to 'S' and U+0131 LATIN
-		// SMALL LETTER DOTLESS I to 'I'. Both changed the emitted initial, and U+017F also
-		// changed its own soundex code from '0' (not a letter A-Z) to '2' (as 'S').
-		{"long s stays long s", "ſ", "ſ000"},
-		{"dotless i stays dotless i", "ı", "ı000"},
-		// Guards. A non-ASCII letter that is not the first letter contributes only its
-		// code, so it never reached the emitted-verbatim path and does not move here.
-		{"non-initial accented letter", "Ré", "R000"},
-		{"caseless script initial", "日本語", "日000"},
-		{"ASCII is unaffected", "hello", "H400"},
-		// U+00DF has no simple uppercase mapping in Go's tables, so strings.ToUpper leaves
-		// it alone and it already matched MySQL. Pinned so a future change to the folding
-		// rule cannot break it quietly.
-		{"sharp s is not case-folded", "ß", "ß000"},
-	}
-
-	ctx := sql.NewEmptyContext()
-	for _, tt := range testCases {
-		f := NewSoundex(ctx, expression.NewGetField(0, types.LongText, "", true))
-		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.expected, eval(t, f, sql.NewRow(tt.input)))
-		})
-	}
-}
-
-// TestSoundexAlphaClassification covers MySQL's my_uni_isalpha (sql/item_strfunc.cc),
-// which decides what counts as a letter for SOUNDEX:
-//
-//	static bool my_uni_isalpha(int wc) {
-//	  /*
-//	    Return true for all Basic Latin letters: a..z A..Z.
-//	    Return true for all Unicode characters with code higher than U+00C0:
-//	    - characters between 'z' and U+00C0 are controls and punctuations.
-//	    - "U+00C0 LATIN CAPITAL LETTER A WITH GRAVE" is the first letter after 'z'.
-//	  */
-//	  return (wc >= 'a' && wc <= 'z') || (wc >= 'A' && wc <= 'Z') || (wc >= 0xC0);
-//	}
-//
-// That is coarser than unicode.IsLetter. Everything at or above U+00C0 is a letter as far
-// as SOUNDEX is concerned, including U+00D7 MULTIPLICATION SIGN and U+00F7 DIVISION SIGN,
-// which unicode.IsLetter rejects -- so they used to be skipped as leading garbage.
-func TestSoundexAlphaClassification(t *testing.T) {
-	testCases := []struct {
-		name     string
-		input    string
-		expected interface{}
-	}{
-		{"multiplication sign is a letter above U+00C0", "×", "×000"},
-		{"division sign is a letter above U+00C0", "÷", "÷000"},
-		{"symbol above U+00C0 takes the initial slot", "×y", "×000"},
-		// Guards: below U+00C0 the two rules agree, so nothing here moves.
-		{"ASCII punctuation is still garbage", "-", "0000"},
-		{"ASCII digit is still garbage", "1", "0000"},
-		{"empty is still empty", "", "0000"},
-		{"copyright sign is below U+00C0", "©x", "X000"},
-		{"latin letters are unaffected", "Wilcox", "W420"},
-	}
-
-	ctx := sql.NewEmptyContext()
-	for _, tt := range testCases {
-		f := NewSoundex(ctx, expression.NewGetField(0, types.LongText, "", true))
-		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.expected, eval(t, f, sql.NewRow(tt.input)))
-		})
 	}
 }

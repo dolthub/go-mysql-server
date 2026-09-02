@@ -2787,42 +2787,11 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{{0}},
 	},
 	{
-		// https://github.com/dolthub/dolt/issues/11546 -- SOUNDEX keeps the first letter
-		// verbatim, and MySQL only uppercases it if it is ASCII. Used to return 'É000'.
 		Query:    `SELECT SOUNDEX('é')`,
 		Expected: []sql.Row{{"é000"}},
 	},
 	{
-		// The exact reproduction from dolthub/dolt#11546.
 		Query:    `SELECT FIRST_VALUE(SOUNDEX('é')) OVER () AS actual FROM (SELECT 1 AS z) q`,
 		Expected: []sql.Row{{"é000"}},
-	},
-	{
-		Query:    `SELECT SOUNDEX('émile')`,
-		Expected: []sql.Row{{"é540"}},
-	},
-	{
-		Query:    `SELECT SOUNDEX('Émile')`,
-		Expected: []sql.Row{{"É540"}},
-	},
-	{
-		// U+017F LATIN SMALL LETTER LONG S. Go's case folding turns it into 'S', which
-		// changed both the emitted letter and its soundex code.
-		Query:    `SELECT SOUNDEX('ſ')`,
-		Expected: []sql.Row{{"ſ000"}},
-	},
-	{
-		Query:    `SELECT SOUNDEX('hello')`,
-		Expected: []sql.Row{{"H400"}},
-	},
-	{
-		// MySQL's my_uni_isalpha counts every code point at or above U+00C0 as a letter,
-		// including U+00D7 MULTIPLICATION SIGN. Used to be skipped as leading garbage.
-		Query:    `SELECT SOUNDEX('×')`,
-		Expected: []sql.Row{{"×000"}},
-	},
-	{
-		Query:    `SELECT SOUNDEX('©x')`,
-		Expected: []sql.Row{{"X000"}},
 	},
 }
