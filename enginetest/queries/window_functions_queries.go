@@ -961,15 +961,31 @@ var WindowFunctionsScriptTests = []ScriptTest{
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/11410
 		Name: "window SUM over all-NULL frames",
 		SetUpScript: []string{
-			"CREATE TABLE window_sum_nulls (id INT PRIMARY KEY, v INT)",
-			"INSERT INTO window_sum_nulls VALUES (1, NULL)",
+			"CREATE TABLE t(id INT PRIMARY KEY, v INT);",
+			"INSERT INTO t VALUES (1, NULL);",
 		},
-		Query: `SELECT id, SUM(v) OVER (
-			ORDER BY id ROWS BETWEEN CURRENT ROW AND CURRENT ROW
-		) FROM window_sum_nulls ORDER BY id`,
-		Expected: []sql.Row{{1, nil}},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT id,
+					SUM(v) OVER (
+						ORDER BY id
+						ROWS BETWEEN CURRENT ROW AND CURRENT ROW
+					) AS wf
+				FROM t
+				ORDER BY id;`,
+				Expected: []sql.Row{{1, nil}},
+			},
+			{
+				Query: `SELECT o.id,
+					(SELECT SUM(i.v) FROM t AS i WHERE i.id = o.id) AS wf
+				FROM t AS o
+				ORDER BY o.id;`,
+				Expected: []sql.Row{{1, nil}},
+			},
+		},
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/11381
