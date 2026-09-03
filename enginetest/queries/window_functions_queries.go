@@ -25,6 +25,22 @@ import (
 // first_value, last_value, lead, lag, and the bitwise aggregate functions.
 var WindowFunctionsScriptTests = []ScriptTest{
 	{
+		Name: "bitwise window aggregates",
+		SetUpScript: []string{
+			"CREATE TABLE bitwise_window_values (id INT PRIMARY KEY, v INT)",
+			"INSERT INTO bitwise_window_values VALUES (1, 1), (2, 3)",
+		},
+		Query: `SELECT id,
+			BIT_AND(v) OVER (ORDER BY id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW),
+			BIT_OR(v) OVER (ORDER BY id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW),
+			BIT_XOR(v) OVER (ORDER BY id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
+			FROM bitwise_window_values ORDER BY id`,
+		Expected: []sql.Row{
+			{1, uint64(1), uint64(1), uint64(1)},
+			{2, uint64(1), uint64(3), uint64(2)},
+		},
+	},
+	{
 		Name: "INET_NTOA round trip above signed 32-bit range",
 		SetUpScript: []string{
 			"CREATE TABLE inet_ntoa_test (ip VARCHAR(15))",

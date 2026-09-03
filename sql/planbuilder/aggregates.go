@@ -514,7 +514,7 @@ var IsWindowFunc = IsMySQLWindowFuncName
 
 func IsMySQLWindowFuncName(ctx *sql.Context, name string) (bool, error) {
 	switch name {
-	case "first", "last", "count", "sum", "any_value",
+	case "first", "last", "count", "sum", "any_value", "bit_and", "bit_or", "bit_xor",
 		"avg", "max", "min", "count_distinct", "json_arrayagg",
 		"row_number", "percent_rank", "lead", "lag",
 		"first_value", "last_value",
