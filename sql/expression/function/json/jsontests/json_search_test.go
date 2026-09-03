@@ -50,6 +50,13 @@ func TestJSONSearch(t *testing.T) {
 	f4 := buildGetFieldExpressions(t, json.NewJSONSearch, 4)
 	f5 := buildGetFieldExpressions(t, json.NewJSONSearch, 5)
 	f6 := buildGetFieldExpressions(t, json.NewJSONSearch, 6)
+	require.Equal(t, "json_search(arg0, arg1, arg2)", f3.String())
+	require.Equal(t, "json_search(arg0, arg1, arg2, arg3)", f4.String())
+	require.Equal(t, "json_search(arg0, arg1, arg2, arg3, arg4)", f5.String())
+	for _, expr := range []sql.Expression{f3, f4, f5, f6} {
+		_, err = sql.NewMysqlParser().ParseSimple("SELECT " + expr.String())
+		require.NoError(t, err)
+	}
 
 	jsonInput := `["abc", [{"k": "10"}, "def"], {"x":"abc"}, {"y":"bcd"}]`
 
