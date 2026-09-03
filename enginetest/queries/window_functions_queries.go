@@ -649,6 +649,19 @@ var WindowFunctionsScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "window functions, row_number partitioned by NULL keys",
+		SetUpScript: []string{
+			"CREATE TABLE nullable_partition_keys (id INT PRIMARY KEY, g INT NULL)",
+			"INSERT INTO nullable_partition_keys VALUES (1, NULL), (2, NULL), (3, 1)",
+		},
+		Query: "SELECT id, ROW_NUMBER() OVER (PARTITION BY g ORDER BY id) FROM nullable_partition_keys ORDER BY id",
+		Expected: []sql.Row{
+			{int64(1), int64(1)},
+			{int64(2), int64(2)},
+			{int64(3), int64(1)},
+		},
+	},
+	{
 		Name: "identical expressions over different windows should produce different results",
 		SetUpScript: []string{
 			"CREATE TABLE t(a INT, b INT);",

@@ -264,49 +264,12 @@ func (g *groupConcatBuffer) Update(ctx *sql.Context, originalRow sql.Row) error 
 
 	g.gc.returnType = retType
 
-	// Skip if this is a null row
-	if evalRow == nil {
-		return nil
+	vs, isNull, err := groupConcatValue(ctx, g.gc.selectExprs, evalRow, retType)
+	if err != nil {
+		return err
 	}
-
-	var v interface{}
-	var vs string
-	if types.IsBlobType(retType) {
-		v, _, err = types.Blob.Convert(ctx, evalRow[0])
-		if err != nil {
-			return err
-		}
-		vb, _, err := sql.Unwrap[[]byte](ctx, v)
-		if err != nil {
-			return err
-		}
-		vs = string(vb)
-		if len(vs) == 0 {
-			return nil
-		}
-	} else {
-		// Use type-aware conversion for enum types
-		if len(g.gc.selectExprs) > 0 {
-			vs, _, err = types.ConvertToCollatedString(ctx, evalRow[0], g.gc.selectExprs[0].Type(ctx))
-			if err != nil {
-				return err
-			}
-			if vs == "" {
-				return nil
-			}
-		} else {
-			v, _, err = types.LongText.Convert(ctx, evalRow[0])
-			if err != nil {
-				return err
-			}
-			if v == nil {
-				return nil
-			}
-			vs, _, err = sql.Unwrap[string](ctx, v)
-			if err != nil {
-				return err
-			}
-		}
+	if isNull {
+		return nil
 	}
 
 	// Get the current array of rows and the map
@@ -396,4 +359,34 @@ func evalExprs(ctx *sql.Context, exprs []sql.Expression, row sql.Row) (sql.Row, 
 	}
 
 	return result, retType, nil
+}
+
+// groupConcatValue returns the concatenated value of the evaluated expressions, a boolean that is true when any
+// expression evaluates to NULL, and any conversion error encountered.
+func groupConcatValue(ctx *sql.Context, exprs []sql.Expression, values sql.Row, retType sql.Type) (string, bool, error) {
+	var sb strings.Builder
+	for i, value := range values {
+		if value == nil {
+			return "", true, nil
+		}
+
+		if types.IsBlobType(retType) {
+			converted, _, err := types.Blob.Convert(ctx, value)
+			if err != nil {
+				return "", false, err
+			}
+			bytes, _, err := sql.Unwrap[[]byte](ctx, converted)
+			if err != nil {
+				return "", false, err
+			}
+			sb.Write(bytes)
+		} else {
+			converted, _, err := types.ConvertToCollatedString(ctx, value, exprs[i].Type(ctx))
+			if err != nil {
+				return "", false, err
+			}
+			sb.WriteString(converted)
+		}
+	}
+	return sb.String(), false, nil
 }

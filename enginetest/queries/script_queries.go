@@ -4365,8 +4365,26 @@ CREATE TABLE tab3 (
 
 			"create table nulls(pk int)",
 			"INSERT INTO nulls VALUES (NULL)",
+
+			"CREATE TABLE group_concat_students (id INT PRIMARY KEY, first_name VARCHAR(20), last_name VARCHAR(20))",
+			"INSERT INTO group_concat_students VALUES (1, 'Alice', 'Smith'), (2, 'Bob', 'Jones'), (3, 'Alice', 'Brown'), (4, 'Eve', NULL), (5, '', 'White')",
 		},
 		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT GROUP_CONCAT(first_name, ' ', last_name ORDER BY id SEPARATOR '; ') FROM group_concat_students",
+				Expected: []sql.Row{{"Alice Smith; Bob Jones; Alice Brown;  White"}},
+			},
+			{
+				Query:    "SELECT GROUP_CONCAT(DISTINCT first_name, ' ', last_name ORDER BY id SEPARATOR '; ') FROM group_concat_students",
+				Expected: []sql.Row{{"Alice Smith; Bob Jones; Alice Brown;  White"}},
+			},
+			{
+				Query: `SELECT FIRST_VALUE(x) OVER () FROM (
+					SELECT GROUP_CONCAT(v ORDER BY id SEPARATOR '|') AS x
+					FROM (SELECT 1 AS id, '' AS v UNION ALL SELECT 2, 'a' UNION ALL SELECT 3, '') t
+				) q`,
+				Expected: []sql.Row{{"|a|"}},
+			},
 			{
 				Query:    `SELECT group_concat(pk ORDER BY pk) FROM x;`,
 				Expected: []sql.Row{{"1,2,3,4"}},
