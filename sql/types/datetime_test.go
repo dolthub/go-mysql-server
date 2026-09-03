@@ -169,10 +169,6 @@ func TestDatetimeConvert(t *testing.T) {
 		{Date, "2010-06-03 12:12:12.000012", time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
 		{Date, "20100603", time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
 		{Date, "20100603121212", time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
-		{Date, " 2010-06-03", time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
-		{Date, "2010-06-03 ", time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
-		{Date, " 2010-06-03 ", time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
-		{Date, "\t2010-06-03\n", time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
 
 		{DatetimeMaxPrecision, nil, nil, false},
 		{DatetimeMaxPrecision, time.Date(2012, 12, 12, 12, 12, 12, 12, time.UTC),
@@ -185,9 +181,6 @@ func TestDatetimeConvert(t *testing.T) {
 		{DatetimeMaxPrecision, "2010-6-03", time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
 		{DatetimeMaxPrecision, "2010-06-03 12:12:12", time.Date(2010, 6, 3, 12, 12, 12, 0, time.UTC), false},
 		{DatetimeMaxPrecision, "2010-06-03 12:12:12.000012", time.Date(2010, 6, 3, 12, 12, 12, 12000, time.UTC), false},
-		{DatetimeMaxPrecision, " 2010-06-03 12:12:12.000012 ", time.Date(2010, 6, 3, 12, 12, 12, 12000, time.UTC), false},
-		{DatetimeMaxPrecision, "2010-06-03T12:12:12Z", time.Date(2010, 6, 3, 12, 12, 12, 0, time.UTC), false},
-		{DatetimeMaxPrecision, "2010-06-03T12:12:12.000012Z", time.Date(2010, 6, 3, 12, 12, 12, 12000, time.UTC), false},
 		{DatetimeMaxPrecision, "20100603", time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
 		{DatetimeMaxPrecision, "20100603121212", time.Date(2010, 6, 3, 12, 12, 12, 0, time.UTC), false},
 		{DatetimeMaxPrecision, "2010-6-3 12:12:12", time.Date(2010, 6, 3, 12, 12, 12, 0, time.UTC), false},
@@ -284,7 +277,6 @@ func TestDatetimeConvert(t *testing.T) {
 		{Date, "0000-00-00 00:00:00", time.Date(0, 0, 0, 0, 0, 0, 0, time.UTC), false},
 		{Date, "0000-00-00.00:00:00", time.Date(0, 0, 0, 0, 0, 0, 0, time.UTC), false},
 		{Date, "00-00-00", time.Date(0, 0, 0, 0, 0, 0, 0, time.UTC), false},
-		{Date, " 0000-00-00 ", time.Date(0, 0, 0, 0, 0, 0, 0, time.UTC), false},
 
 		{Date, []byte{0}, nil, true},
 

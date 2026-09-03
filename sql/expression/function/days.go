@@ -18,11 +18,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/dolthub/vitess/go/mysql"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/vitess/go/mysql"
 )
 
 // ToDays is a function that converts a date to a number of days since year 0.

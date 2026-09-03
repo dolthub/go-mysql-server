@@ -197,24 +197,6 @@ func (t datetimeType) Precision() int {
 	return t.precision
 }
 
-// IsLeapYear returns if |year| is a leap year
-func IsLeapYear(year int64) bool {
-	return year != 0 && ((year%4 == 0 && year%100 != 0) || year%400 == 0)
-}
-
-var DaysPerMonth = [12]int64{31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}
-
-// GetLastDay returns the last day of the month for the given year and month
-func GetLastDay(year, month int) (res int, ok bool) {
-	if month < 1 || month > 12 {
-		return 31, false // defaults to 31 when the month is invalid
-	}
-	if month == 2 && IsLeapYear(int64(year)) {
-		return 29, true
-	}
-	return int(DaysPerMonth[month-1]), true
-}
-
 // Compare implements Type interface.
 func (t datetimeType) Compare(ctx context.Context, a, b any) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
@@ -263,7 +245,6 @@ func (t datetimeType) Convert(ctx context.Context, v any) (any, sql.ConvertInRan
 		return t.Convert(ctx, string(value))
 	case string:
 		// TODO: not sure if we still need this
-		value = strings.Trim(value, " \t\n\r\v\f")
 		if IsZeroTimestampStr(value) {
 			return ZeroTime, sql.InRange, nil
 		}
