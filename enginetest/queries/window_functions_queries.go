@@ -735,6 +735,40 @@ var WindowFunctionsScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name:    "LIKE escape characters in window expressions",
+		Dialect: "mysql",
+		Query: `SELECT
+			FIRST_VALUE('a%' LIKE 'a!%' ESCAPE '!') OVER (),
+			FIRST_VALUE('a%' LIKE 'a!%' ESCAPE '#') OVER ()`,
+		Expected: []sql.Row{{true, false}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11498
+		Name:    "customer reproduction: LIKE escape characters in window expressions",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t(id INT PRIMARY KEY)",
+			"INSERT INTO t VALUES (1),(2)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT id,
+					FIRST_VALUE(IF('a%' LIKE 'a!%' ESCAPE '!', 1, 0))
+						OVER (ORDER BY id) AS escape_bang,
+					FIRST_VALUE(IF('a%' LIKE 'a!%' ESCAPE '#', 1, 0))
+						OVER (ORDER BY id) AS escape_hash
+					FROM t
+					ORDER BY id`,
+				Expected: []sql.Row{{1, int32(1), int32(0)}, {2, int32(1), int32(0)}},
+			},
+			{
+				Query: `SELECT 'a%' LIKE 'a!%' ESCAPE '!' AS scalar_bang,
+					'a%' LIKE 'a!%' ESCAPE '#' AS scalar_hash`,
+				Expected: []sql.Row{{true, false}},
+			},
+		},
+	},
+	{
 		Name:    "current time precision in window expressions",
 		Dialect: "mysql",
 		Query: `SELECT FIRST_VALUE(LENGTH(CURRENT_TIME(6))) OVER (
