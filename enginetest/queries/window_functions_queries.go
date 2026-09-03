@@ -25,6 +25,15 @@ import (
 // first_value, last_value, lead, lag, and the bitwise aggregate functions.
 var WindowFunctionsScriptTests = []ScriptTest{
 	{
+		Name: "HOUR over a time-valued window result",
+		SetUpScript: []string{
+			"CREATE TABLE window_time_values (v VARCHAR(8))",
+			"INSERT INTO window_time_values VALUES ('13:04:05')",
+		},
+		Query:    "SELECT HOUR(FIRST_VALUE(v) OVER ()) FROM window_time_values",
+		Expected: []sql.Row{{13}},
+	},
+	{
 		Name: "INET_NTOA round trip above signed 32-bit range",
 		SetUpScript: []string{
 			"CREATE TABLE inet_ntoa_test (ip VARCHAR(15))",

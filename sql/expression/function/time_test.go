@@ -286,6 +286,7 @@ func TestTime_Hour(t *testing.T) {
 		{"null date", sql.NewRow(nil), nil, false},
 		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, false},
 		{"date as string", sql.NewRow(stringDate), 14, false},
+		{"time as string", sql.NewRow("13:04:05"), 13, false},
 		{"date as time", sql.NewRow(time.Now()), time.Now().UTC().Hour(), false},
 	}
 
