@@ -70,7 +70,9 @@ func (n *NTile) Resolved() bool {
 
 func (n *NTile) String() string {
 	sb := strings.Builder{}
-	sb.WriteString("ntile()")
+	sb.WriteString("ntile(")
+	sb.WriteString(n.bucketExpr.String())
+	sb.WriteString(")")
 	if n.window != nil {
 		sb.WriteString(" ")
 		sb.WriteString(n.window.String())

@@ -837,6 +837,14 @@ var WindowFunctionsScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
+				Query: "select i, ntile(2) over(order by i), ntile(3) over(order by i) from t where i <= 3;",
+				Expected: []sql.Row{
+					{1, uint64(1), uint64(1)},
+					{2, uint64(1), uint64(2)},
+					{3, uint64(2), uint64(3)},
+				},
+			},
+			{
 				Query:       "select i, ntile(0) over() from t;",
 				ExpectedErr: sql.ErrInvalidArgument,
 			},
