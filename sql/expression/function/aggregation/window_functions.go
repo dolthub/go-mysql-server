@@ -184,6 +184,7 @@ func (a *SumAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.
 	if startIdx >= 0 {
 		nullCnt -= a.nullCnt[startIdx]
 	}
+	// SUM returns NULL when the frame has no non-NULL values.
 	if nullCnt == interval.End-interval.Start {
 		return nil, nil
 	}
@@ -291,6 +292,10 @@ func (a *AvgAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.
 	if startIdx >= 0 {
 		nonNullCnt -= startIdx + 1
 		nonNullCnt += a.nullCnt[startIdx]
+	}
+	// AVG returns NULL when the frame has no non-NULL values.
+	if nonNullCnt == 0 {
+		return nil, nil
 	}
 	return computePrefixSum(interval, a.partitionStart, a.prefixSum) / float64(nonNullCnt), nil
 }

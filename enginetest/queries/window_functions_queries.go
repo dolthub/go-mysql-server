@@ -988,6 +988,110 @@ var WindowFunctionsScriptTests = []ScriptTest{
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/11410
+		Name: "window SUM over mixed and all-NULL intervals",
+		SetUpScript: []string{
+			"CREATE TABLE window_sum_intervals (id INT PRIMARY KEY, g INT, v INT)",
+			"INSERT INTO window_sum_intervals VALUES (1, 0, NULL), (2, 0, NULL), (3, 1, 5), (4, 1, NULL), (5, 2, NULL)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT id, SUM(v) OVER (
+					ORDER BY id ROWS BETWEEN CURRENT ROW AND CURRENT ROW
+				) FROM window_sum_intervals ORDER BY id`,
+				Expected: []sql.Row{{1, nil}, {2, nil}, {3, float64(5)}, {4, nil}, {5, nil}},
+			},
+			{
+				Query: `SELECT id, SUM(v) OVER (
+					ORDER BY id ROWS BETWEEN 1 PRECEDING AND CURRENT ROW
+				) FROM window_sum_intervals ORDER BY id`,
+				Expected: []sql.Row{{1, nil}, {2, nil}, {3, float64(5)}, {4, float64(5)}, {5, nil}},
+			},
+			{
+				Query: `SELECT id, SUM(v) OVER (
+					ORDER BY id ROWS BETWEEN CURRENT ROW AND 1 FOLLOWING
+				) FROM window_sum_intervals ORDER BY id`,
+				Expected: []sql.Row{{1, nil}, {2, float64(5)}, {3, float64(5)}, {4, nil}, {5, nil}},
+			},
+			{
+				Query: `SELECT id, SUM(v) OVER (
+					ORDER BY id ROWS BETWEEN 1 FOLLOWING AND 2 FOLLOWING
+				) FROM window_sum_intervals ORDER BY id`,
+				Expected: []sql.Row{{1, float64(5)}, {2, float64(5)}, {3, nil}, {4, nil}, {5, nil}},
+			},
+			{
+				Query: `SELECT id, SUM(v) OVER (
+					ORDER BY id ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+				) FROM window_sum_intervals ORDER BY id`,
+				Expected: []sql.Row{{1, float64(5)}, {2, float64(5)}, {3, float64(5)}, {4, float64(5)}, {5, float64(5)}},
+			},
+			{
+				Query: `SELECT id, SUM(v) OVER (
+					PARTITION BY g ORDER BY id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+				) FROM window_sum_intervals ORDER BY id`,
+				Expected: []sql.Row{{1, nil}, {2, nil}, {3, float64(5)}, {4, float64(5)}, {5, nil}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11410
+		Name: "nullable window aggregates over mixed and all-NULL intervals",
+		SetUpScript: []string{
+			"CREATE TABLE nullable_window_intervals (id INT PRIMARY KEY, v INT)",
+			"INSERT INTO nullable_window_intervals VALUES (1, NULL), (2, NULL), (3, 5), (4, NULL), (5, NULL)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT id,
+					AVG(v) OVER w, MIN(v) OVER w, MAX(v) OVER w,
+					STDDEV_POP(v) OVER w, STDDEV_SAMP(v) OVER w,
+					VAR_POP(v) OVER w, VAR_SAMP(v) OVER w, COUNT(v) OVER w
+					FROM nullable_window_intervals
+					WINDOW w AS (ORDER BY id ROWS BETWEEN CURRENT ROW AND CURRENT ROW)
+					ORDER BY id`,
+				Expected: []sql.Row{
+					{1, nil, nil, nil, nil, nil, nil, nil, int64(0)},
+					{2, nil, nil, nil, nil, nil, nil, nil, int64(0)},
+					{3, float64(5), 5, 5, float64(0), nil, float64(0), nil, int64(1)},
+					{4, nil, nil, nil, nil, nil, nil, nil, int64(0)},
+					{5, nil, nil, nil, nil, nil, nil, nil, int64(0)},
+				},
+			},
+			{
+				Query: `SELECT id,
+					AVG(v) OVER w, MIN(v) OVER w, MAX(v) OVER w,
+					STDDEV_POP(v) OVER w, STDDEV_SAMP(v) OVER w,
+					VAR_POP(v) OVER w, VAR_SAMP(v) OVER w, COUNT(v) OVER w
+					FROM nullable_window_intervals
+					WINDOW w AS (ORDER BY id ROWS BETWEEN 1 PRECEDING AND CURRENT ROW)
+					ORDER BY id`,
+				Expected: []sql.Row{
+					{1, nil, nil, nil, nil, nil, nil, nil, int64(0)},
+					{2, nil, nil, nil, nil, nil, nil, nil, int64(0)},
+					{3, float64(5), 5, 5, float64(0), nil, float64(0), nil, int64(1)},
+					{4, float64(5), 5, 5, float64(0), nil, float64(0), nil, int64(1)},
+					{5, nil, nil, nil, nil, nil, nil, nil, int64(0)},
+				},
+			},
+			{
+				Query: `SELECT id,
+					AVG(v) OVER w, MIN(v) OVER w, MAX(v) OVER w,
+					STDDEV_POP(v) OVER w, STDDEV_SAMP(v) OVER w,
+					VAR_POP(v) OVER w, VAR_SAMP(v) OVER w, COUNT(v) OVER w
+					FROM nullable_window_intervals
+					WINDOW w AS (ORDER BY id ROWS BETWEEN CURRENT ROW AND 1 FOLLOWING)
+					ORDER BY id`,
+				Expected: []sql.Row{
+					{1, nil, nil, nil, nil, nil, nil, nil, int64(0)},
+					{2, float64(5), 5, 5, float64(0), nil, float64(0), nil, int64(1)},
+					{3, float64(5), 5, 5, float64(0), nil, float64(0), nil, int64(1)},
+					{4, nil, nil, nil, nil, nil, nil, nil, int64(0)},
+					{5, nil, nil, nil, nil, nil, nil, nil, int64(0)},
+				},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/11381
 		Name: "window aggregate functions with order by col",
 		SetUpScript: []string{
