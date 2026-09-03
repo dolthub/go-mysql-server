@@ -10845,6 +10845,7 @@ where
 	},
 	{
 		Name:        "MySQL default and strict SQL_MODE behavior",
+		Dialect:     "mysql",
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
 			{
