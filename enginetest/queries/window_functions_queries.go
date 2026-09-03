@@ -25,7 +25,8 @@ import (
 // first_value, last_value, lead, lag, and the bitwise aggregate functions.
 var WindowFunctionsScriptTests = []ScriptTest{
 	{
-		Name: "current time precision in window expressions",
+		Name:    "current time precision in window expressions",
+		Dialect: "mysql",
 		Query: `SELECT FIRST_VALUE(LENGTH(CURRENT_TIME(6))) OVER (
 			ROWS BETWEEN CURRENT ROW AND CURRENT ROW
 		)`,
