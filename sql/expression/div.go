@@ -183,13 +183,13 @@ func (d *Div) convertLeftRight(ctx *sql.Context, lVal, rVal any) (any, any) {
 	if types.IsFloat(typ) {
 		lVal = convertValueToType(ctx, lTyp, typ, lVal)
 	} else {
-		lVal = convertToDecimalValue(ctx, lTyp, lVal)
+		lVal = convertToDecimalValue(ctx, lTyp, typ, lVal)
 	}
 
 	if types.IsFloat(typ) {
 		rVal = convertValueToType(ctx, rTyp, typ, rVal)
 	} else {
-		rVal = convertToDecimalValue(ctx, rTyp, rVal)
+		rVal = convertToDecimalValue(ctx, rTyp, typ, rVal)
 	}
 
 	return lVal, rVal
@@ -389,9 +389,30 @@ func getFloatOrMaxDecimalType(ctx *sql.Context, e sql.Expression, treatIntsAsFlo
 // If the value is invalid, it returns decimal 0. This function
 // is used for 'div' or 'mod' arithmetic operation, which requires
 // the result value to have precise precision and scale.
-func convertToDecimalValue(ctx *sql.Context, val interface{}, isTimeType bool) *apd.Decimal {
-	if isTimeType {
-		val = convertTimeTypeToString(val)
+func convertToDecimalValue(ctx *sql.Context, origType, typ sql.Type, val any) *apd.Decimal {
+	// TODO: update type aware implementation for datetime types
+	//  This is a placeholder implementation for existing tests
+	if dtTyp, ok := origType.(sql.DatetimeType); ok && !types.IsTime(typ) {
+		var err error
+		val, err = DateTimeToNumericString(ctx, dtTyp, val)
+		if err != nil {
+			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrTruncatedIncorrect.New(dtTyp.String(), val).Error())
+		}
+	}
+
+	var cVal any
+	var err error
+	switch t := typ.(type) {
+	case sql.DatetimeType:
+		cVal, _, err = t.Convert(ctx, val)
+		if err == nil {
+			if timeVal, ok := cVal.(time.Time); ok && types.ZeroTime.Equal(timeVal) {
+				ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrTruncatedIncorrect.New(typ.String(), val).Error())
+				return nil
+			}
+		}
+	default:
+		cVal, _, err = typ.Convert(ctx, val)
 	}
 
 	switch v := val.(type) {
@@ -745,8 +766,8 @@ func (i *IntDiv) convertLeftRight(ctx *sql.Context, lVal, rVal any) (any, any) {
 		lVal = convertValueToType(ctx, lTyp, typ, lVal)
 		rVal = convertValueToType(ctx, rTyp, typ, rVal)
 	} else {
-		lVal = convertToDecimalValue(ctx, lTyp, lVal)
-		rVal = convertToDecimalValue(ctx, rTyp, rVal)
+		lVal = convertToDecimalValue(ctx, lTyp, typ, lVal)
+		rVal = convertToDecimalValue(ctx, rTyp, typ, rVal)
 	}
 
 	return lVal, rVal

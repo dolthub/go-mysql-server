@@ -149,8 +149,8 @@ func (m *Mod) convertLeftRight(ctx *sql.Context, lVal, rVal any) (any, any) {
 		lVal = convertValueToType(ctx, lTyp, typ, lVal)
 		rVal = convertValueToType(ctx, rTyp, typ, rVal)
 	} else {
-		lVal = convertToDecimalValue(ctx, lTyp, lVal)
-		rVal = convertToDecimalValue(ctx, rTyp, rVal)
+		lVal = convertToDecimalValue(ctx, lTyp, typ, lVal)
+		rVal = convertToDecimalValue(ctx, rTyp, typ, rVal)
 	}
 	return lVal, rVal
 }

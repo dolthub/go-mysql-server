@@ -36,6 +36,9 @@ const (
 	MaxYear              = 9999
 	MaxMonth             = 12
 	MaxDay               = 31
+	MaxHour              = 23
+	MaxMinute            = 59
+	MaxSecond            = 59
 	MaxDatetimePrecision = 6
 )
 
@@ -82,6 +85,9 @@ var (
 		"2006-1-2",
 	}
 
+	// RFC3339NoTz represents the RFC3339 Datetime layout without a specified timezone
+	RFC3339NoTz = "2006-01-02T15:04:05"
+
 	// DatetimeTimezoneLayout represents standard Time.time.UTC()
 	DatetimeTimezoneLayout = "2006-01-02 15:04:05.999999999 -0700 MST"
 
@@ -90,6 +96,7 @@ var (
 	ExtraDatetimeLayouts = []string{
 		time.RFC3339Nano,
 		time.RFC3339,
+		RFC3339NoTz,
 		DatetimeTimezoneLayout,
 	}
 
@@ -101,6 +108,8 @@ var (
 	Date = MustCreateDatetimeType(sqltypes.Date, 0)
 	// Datetime is a date and a time with default precision (no fractional seconds).
 	Datetime = MustCreateDatetimeType(sqltypes.Datetime, 0)
+	// Datetime3 is a date and time with a precision of 3 (fractional seconds to 3 decimal places)
+	Datetime3 = MustCreateDatetimeType(sqltypes.Datetime, 3)
 	// DatetimeMaxPrecision is a date and a time with maximum precision
 	DatetimeMaxPrecision = MustCreateDatetimeType(sqltypes.Datetime, MaxDatetimePrecision)
 	// Timestamp is a UNIX timestamp with default precision (no fractional seconds).
@@ -455,7 +464,7 @@ func (t datetimeType) parseDatetime(str string) (any, bool, error) {
 		if err != nil {
 			return nil, delimWarn, sql.ErrTruncatedIncorrect.New(value)
 		}
-		if hour > 23 {
+		if hour > MaxHour {
 			return nil, delimWarn, sql.ErrTruncatedIncorrect.New(value)
 		}
 	}
@@ -465,7 +474,7 @@ func (t datetimeType) parseDatetime(str string) (any, bool, error) {
 		if err != nil {
 			return nil, delimWarn, sql.ErrTruncatedIncorrect.New(value)
 		}
-		if mins > 59 {
+		if mins > MaxMinute {
 			return nil, delimWarn, sql.ErrTruncatedIncorrect.New(value)
 		}
 	}
