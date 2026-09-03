@@ -480,8 +480,9 @@ func validateSystemVariableValue(ctx *sql.Context, sysVarName string, val any) e
 			return sql.ErrInvalidTimeZone.New(valStr)
 		}
 	case "sql_mode":
-		// TODO: The Golang time library does not properly support using 0 for Month and Day, so it may be necessary
-		//  for us to prevent users from disabling `NO_ZERO_IN_DATE`
+		// The Golang time library does not properly support using 0 for Month and Day, so we throw a warning for
+		// users attempting to remove NO_ZERO_IN_DATE from sql_mode.
+		// Users are still able to make the SQL_MODE change, but it will still behave as if the mode is enabled.
 		switch v := val.(type) {
 		case uint64:
 			// If the assigned SQL_MODE contains any one of these "strict" modes, it should contain every one of
@@ -493,7 +494,8 @@ func validateSystemVariableValue(ctx *sql.Context, sysVarName string, val any) e
 			hasNoZeroDate := v&sql.MODE_NO_ZERO_DATE != 0
 			hasNoZeroInDate := v&sql.MODE_NO_ZERO_IN_DATE != 0
 			if !hasNoZeroInDate {
-				return sql.ErrMissingNoZeroInDateSQLMode.New()
+				ctx.Warn(3135, "Removing NO_ZERO_IN_DATE mode is not supported. "+
+					"DATEs with zero month or zero day will be treated as if NO_ZERO_IN_DATE is enabled.")
 			}
 			if (hasStrict || hasErrorForDivisionByZero || hasNoZeroDate || hasNoZeroInDate) &&
 				!(hasStrict && hasErrorForDivisionByZero && hasNoZeroDate && hasNoZeroInDate) {
@@ -512,7 +514,8 @@ func validateSystemVariableValue(ctx *sql.Context, sysVarName string, val any) e
 			hasNoZeroDate := strings.Contains(v, sql.NO_ZERO_DATE)
 			hasNoZeroInDate := strings.Contains(v, sql.NO_ZERO_IN_DATE)
 			if !hasNoZeroInDate {
-				return sql.ErrMissingNoZeroInDateSQLMode.New()
+				ctx.Warn(3135, "Removing NO_ZERO_IN_DATE mode is not supported. "+
+					"DATEs with zero month or zero day will be treated as if NO_ZERO_IN_DATE is enabled.")
 			}
 			if (hasStrict || hasErrorForDivisionByZero || hasNoZeroDate || hasNoZeroInDate) &&
 				!(hasStrict && hasErrorForDivisionByZero && hasNoZeroDate && hasNoZeroInDate) {
