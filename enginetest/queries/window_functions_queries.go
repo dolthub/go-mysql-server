@@ -25,18 +25,6 @@ import (
 // first_value, last_value, lead, lag, and the bitwise aggregate functions.
 var WindowFunctionsScriptTests = []ScriptTest{
 	{
-		Name: "unary negation of ROW_NUMBER",
-		SetUpScript: []string{
-			"CREATE TABLE row_number_values (id INT PRIMARY KEY, g INT, k INT NOT NULL)",
-			"INSERT INTO row_number_values VALUES (1, 0, 0), (2, 0, 1)",
-		},
-		Query: `SELECT id, -(ROW_NUMBER() OVER (
-			PARTITION BY g ORDER BY k, id
-			ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
-		)) FROM row_number_values ORDER BY id`,
-		Expected: []sql.Row{{1, int64(-1)}, {2, int64(-2)}},
-	},
-	{
 		Name: "INET_NTOA round trip above signed 32-bit range",
 		SetUpScript: []string{
 			"CREATE TABLE inet_ntoa_test (ip VARCHAR(15))",
@@ -652,6 +640,18 @@ var WindowFunctionsScriptTests = []ScriptTest{
 				Expected: []sql.Row{{uint64(0)}},
 			},
 		},
+	},
+	{
+		Name: "unary negation of ROW_NUMBER",
+		SetUpScript: []string{
+			"CREATE TABLE row_number_values (id INT PRIMARY KEY, g INT, k INT NOT NULL)",
+			"INSERT INTO row_number_values VALUES (1, 0, 0), (2, 0, 1)",
+		},
+		Query: `SELECT id, -(ROW_NUMBER() OVER (
+			PARTITION BY g ORDER BY k, id
+			ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+		)) FROM row_number_values ORDER BY id`,
+		Expected: []sql.Row{{1, int64(-1)}, {2, int64(-2)}},
 	},
 	{
 		Name: "window functions, row_number partitioned by multiple columns",
