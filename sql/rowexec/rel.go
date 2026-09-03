@@ -455,6 +455,7 @@ func (b *BaseBuilder) buildRecursiveCte(ctx *sql.Context, n *plan.RecursiveCte, 
 		working:     n.Working,
 		temp:        make([]sql.Row, 0),
 		deduplicate: n.Union().Distinct,
+		schema:      n.Schema(ctx),
 		b:           b,
 	}
 	if n.Union().Limit != nil && len(n.Union().SortConditions) > 0 {
