@@ -103,27 +103,12 @@ func (e *Elt) Children() []sql.Expression {
 
 // Eval implements the Expression interface.
 func (e *Elt) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	if e.args[0] == nil {
-		return nil, nil
-	}
-
-	index, err := e.args[0].Eval(ctx, row)
-	if err != nil {
+	indexInt, ok, err := evalInt64(ctx, e.args[0], row)
+	if err != nil || !ok {
 		return nil, err
 	}
 
-	if index == nil {
-		return nil, nil
-	}
-
-	indexInt, _, err := types.Int64.Convert(ctx, index)
-	if err != nil {
-		// TODO: truncate
-		ctx.Warn(1292, "Truncated incorrect INTEGER value: '%v'", index)
-		indexInt = int64(0)
-	}
-
-	idx := int(indexInt.(int64))
+	idx := int(indexInt)
 	if idx <= 0 || idx >= len(e.args) {
 		return nil, nil
 	}

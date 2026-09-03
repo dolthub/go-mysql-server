@@ -2798,4 +2798,33 @@ var FunctionQueryTests = []QueryTest{
 		Query:    `SELECT FIRST_VALUE(SOUNDEX('é')) OVER () AS actual FROM (SELECT 1 AS z) q`,
 		Expected: []sql.Row{{"é000"}},
 	},
+	// https://github.com/dolthub/dolt/issues/11595
+	{
+		Query:    "SELECT MAKEDATE(2021, 31)",
+		Expected: []sql.Row{{time.Date(2021, time.January, 31, 0, 0, 0, 0, time.UTC)}},
+	},
+	{
+		Query:    "SELECT MAKEDATE(2021, 32)",
+		Expected: []sql.Row{{time.Date(2021, time.February, 1, 0, 0, 0, 0, time.UTC)}},
+	},
+	{
+		Query:    "SELECT MAKEDATE(2021, 0)",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT MAKEDATE(2020, 366)",
+		Expected: []sql.Row{{time.Date(2020, time.December, 31, 0, 0, 0, 0, time.UTC)}},
+	},
+	{
+		Query:    "SELECT MAKEDATE(03, 1)",
+		Expected: []sql.Row{{time.Date(2003, time.January, 1, 0, 0, 0, 0, time.UTC)}},
+	},
+	{
+		Query:    "SELECT DATE_SUB(MAKEDATE(YEAR('2024-05-10'), 1), INTERVAL 1 DAY)",
+		Expected: []sql.Row{{time.Date(2023, time.December, 31, 0, 0, 0, 0, time.UTC)}},
+	},
+	{
+		Query:    "SELECT DATE_SUB(MAKEDATE(YEAR(event.start_date), 1), INTERVAL 1 DAY) FROM (SELECT DATE('2024-05-10') AS start_date) event",
+		Expected: []sql.Row{{time.Date(2023, time.December, 31, 0, 0, 0, 0, time.UTC)}},
+	},
 }

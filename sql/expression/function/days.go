@@ -213,23 +213,9 @@ func daysToMonth(year, days int64) (int64, int64) {
 
 // Eval implements sql.Expression
 func (f *FromDays) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	d, err := f.Child.Eval(ctx, row)
-	if err != nil {
+	days, ok, err := evalInt64(ctx, f.Child, row)
+	if err != nil || !ok {
 		return nil, err
-	}
-	if d == nil {
-		return nil, nil
-	}
-
-	d, _, err = types.Int64.Convert(ctx, d)
-	if err != nil {
-		ctx.Warn(1292, "%s", err.Error())
-		return "0000-00-00", nil
-	}
-
-	days, ok := d.(int64)
-	if !ok {
-		return "0000-00-00", nil
 	}
 
 	// For some reason, MySQL returns 0000-00-00 for days <= 365
