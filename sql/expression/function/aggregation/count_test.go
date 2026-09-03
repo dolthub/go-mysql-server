@@ -104,6 +104,26 @@ func TestCountDistinctEval1(t *testing.T) {
 	require.Equal(int64(1), evalBuffer(t, b))
 }
 
+func TestCountDistinctString(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	count := NewCountDistinct(
+		expression.NewGetField(0, types.Int64, "foo", false),
+		expression.NewGetField(1, types.Int64, "bar", false),
+	)
+	require.Equal(t, "COUNT(DISTINCT foo, bar)", count.String())
+	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + count.String())
+	require.NoError(t, err)
+
+	window := sql.NewWindowDefinition(
+		[]sql.Expression{expression.NewGetField(2, types.Int64, "baz", false)},
+		nil, nil, "", "",
+	)
+	windowed := count.WithWindow(ctx, window)
+	require.Equal(t, "COUNT(DISTINCT foo, bar) over ( partition by baz)", windowed.String())
+	_, err = sql.NewMysqlParser().ParseSimple("SELECT " + windowed.String())
+	require.NoError(t, err)
+}
+
 func TestCountDistinctEvalStar(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
