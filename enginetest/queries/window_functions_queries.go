@@ -650,6 +650,51 @@ var WindowFunctionsScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "bitwise window aggregates",
+		SetUpScript: []string{
+			"CREATE TABLE bitwise_window_values (id INT PRIMARY KEY, v INT)",
+			"INSERT INTO bitwise_window_values VALUES (1, 1), (2, 3)",
+		},
+		Query: `SELECT id,
+			BIT_AND(v) OVER (ORDER BY id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW),
+			BIT_OR(v) OVER (ORDER BY id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW),
+			BIT_XOR(v) OVER (ORDER BY id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
+			FROM bitwise_window_values ORDER BY id`,
+		Expected: []sql.Row{
+			{1, uint64(1), uint64(1), uint64(1)},
+			{2, uint64(1), uint64(3), uint64(2)},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11390
+		Name: "customer reproduction: bitwise window aggregates",
+		SetUpScript: []string{
+			"CREATE TABLE t(id INT PRIMARY KEY, v INT)",
+			"INSERT INTO t VALUES (1, 1), (2, 3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{Query: "SELECT BIT_AND(v) AS ordinary_bit_and FROM t", Expected: []sql.Row{{uint64(1)}}},
+			{
+				Query: `SELECT id, BIT_AND(v) OVER (
+					ORDER BY id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+				) AS wf FROM t ORDER BY id`,
+				Expected: []sql.Row{{1, uint64(1)}, {2, uint64(1)}},
+			},
+			{
+				Query: `SELECT id, BIT_OR(v) OVER (
+					ORDER BY id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+				) AS wf FROM t ORDER BY id`,
+				Expected: []sql.Row{{1, uint64(1)}, {2, uint64(3)}},
+			},
+			{
+				Query: `SELECT id, BIT_XOR(v) OVER (
+					ORDER BY id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+				) AS wf FROM t ORDER BY id`,
+				Expected: []sql.Row{{1, uint64(1)}, {2, uint64(2)}},
+			},
+		},
+	},
+	{
 		Name: "window functions, bit_and/bit_or/bit_xor",
 		SetUpScript: []string{
 			"CREATE TABLE t2 (a int, b int, c int)",
