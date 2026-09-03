@@ -25,7 +25,8 @@ import (
 // first_value, last_value, lead, lag, and the bitwise aggregate functions.
 var WindowFunctionsScriptTests = []ScriptTest{
 	{
-		Name: "LIKE escape characters in window expressions",
+		Name:    "LIKE escape characters in window expressions",
+		Dialect: "mysql",
 		Query: `SELECT
 			FIRST_VALUE('a%' LIKE 'a!%' ESCAPE '!') OVER (),
 			FIRST_VALUE('a%' LIKE 'a!%' ESCAPE '#') OVER ()`,
