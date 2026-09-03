@@ -32,46 +32,26 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/values"
 )
 
-const ZeroDateStr = "0000-00-00"
+const (
+	MaxYear              = 9999
+	MaxMonth             = 12
+	MaxDay               = 31
+	MaxDatetimePrecision = 6
+)
 
-var ZeroTimestampDatetimeStrs = [][]byte{
-	[]byte("0000-00-00 00:00:00"),
-	[]byte("0000-00-00 00:00:00.0"),
-	[]byte("0000-00-00 00:00:00.00"),
-	[]byte("0000-00-00 00:00:00.000"),
-	[]byte("0000-00-00 00:00:00.0000"),
-	[]byte("0000-00-00 00:00:00.00000"),
-	[]byte("0000-00-00 00:00:00.000000"),
-}
-
-// A Zero timestamp or datetime begins with three delimited groups of zeros,
-// and then optionally either a space or a dot, followed by a zero time.
-var zeroTimestampRegex = regexp.MustCompile(`^0+-0+-0+(.*)$`)
-
-// IsZeroTimestampStr checks if a string is a valid zero string for a datetime type.
-func IsZeroTimestampStr(timestamp string) bool {
-	match := zeroTimestampRegex.FindStringSubmatchIndex(timestamp)
-
-	if match == nil {
-		return false
+// TODO: remove these?
+var (
+	ZeroDateStr               = "0000-00-00"
+	ZeroTimestampDatetimeStrs = [][]byte{
+		[]byte("0000-00-00 00:00:00"),
+		[]byte("0000-00-00 00:00:00.0"),
+		[]byte("0000-00-00 00:00:00.00"),
+		[]byte("0000-00-00 00:00:00.000"),
+		[]byte("0000-00-00 00:00:00.0000"),
+		[]byte("0000-00-00 00:00:00.00000"),
+		[]byte("0000-00-00 00:00:00.000000"),
 	}
-	remainder := timestamp[match[2]:]
-	if len(remainder) == 0 {
-		return true
-	}
-	if remainder[0] != '.' && remainder[0] != ' ' {
-		return false
-	}
-	return IsZeroTimeStr(remainder[1:])
-}
-
-func IsZeroTimeStr(time string) bool {
-	return strings.HasPrefix("00:00:00.000000", time)
-}
-
-const MinDatetimeStringLength = 8 // length of "2000-1-1"
-
-const MaxDatetimePrecision = 6
+)
 
 var (
 	// datetimeTypeMaxDatetime is the maximum representable Datetime/Date value. MYSQL: 9999-12-31 23:59:59.499999 (microseconds)
@@ -85,11 +65,6 @@ var (
 
 	// datetimeTypeMinTimestamp is the minimum representable Timestamp value, MYSQL: 1970-01-01 00:00:01.000000 (microseconds)
 	datetimeTypeMinTimestamp = time.Unix(1, 0).UTC()
-
-	datetimeTypeMaxDate = time.Date(9999, 12, 31, 0, 0, 0, 0, time.UTC)
-
-	// datetimeTypeMinDate is the minimum representable Date value, MYSQL: 1000-01-01 00:00:00.000000 (microseconds)
-	datetimeTypeMinDate = time.Date(1000, 1, 1, 0, 0, 0, 0, time.UTC)
 
 	// The MAX and MIN are extrapolated from commit ff05628a530 in the MySQL source code from my_time.cc
 	// datetimeMaxTime is the maximum representable time value, MYSQL: 9999-12-31 23:59:59.999999 (microseconds)
@@ -106,27 +81,6 @@ var (
 		NoDelimiterDateLayout,
 		"2006-1-2",
 	}
-
-	// TODO: remove this?
-	// TimestampDatetimeLayouts hold extra timestamps allowed for parsing. It does
-	// not have all the layouts supported by MySQL. Missing are two digit year
-	// versions of common cases and dates that use non common separators.
-	//
-	// https://github.com/MariaDB/server/blob/mysql-5.5.36/sql-common/my_time.c#L124
-	TimestampDatetimeLayouts = append([]string{
-		time.RFC3339Nano,
-		time.RFC3339,
-		"2006-01-02 15:04:05.999999999",
-		"2006-1-2 15:4:5.999999999",
-		"2006-1-2:15:4:5.999999999",
-		"2006-01-02 15:04:05.",
-		"2006-01-02T15:04:05",
-		"2006-01-02 15:04:.",
-		"2006-01-02 15:04:",
-		"2006-01-02 15:04",
-		"2006-01-02 15:4",
-		NoDelimiterDatetimeLayout,
-	}, DateOnlyLayouts...)
 
 	// DatetimeTimezoneLayout represents standard Time.time.UTC()
 	DatetimeTimezoneLayout = "2006-01-02 15:04:05.999999999 -0700 MST"
@@ -147,8 +101,6 @@ var (
 	Date = MustCreateDatetimeType(sqltypes.Date, 0)
 	// Datetime is a date and a time with default precision (no fractional seconds).
 	Datetime = MustCreateDatetimeType(sqltypes.Datetime, 0)
-	// Datetime3 is a date and time with a precision of 3 (fractional seconds to 3 decimal places)
-	Datetime3 = MustCreateDatetimeType(sqltypes.Datetime, 3)
 	// DatetimeMaxPrecision is a date and a time with maximum precision
 	DatetimeMaxPrecision = MustCreateDatetimeType(sqltypes.Datetime, MaxDatetimePrecision)
 	// Timestamp is a UNIX timestamp with default precision (no fractional seconds).
@@ -244,10 +196,6 @@ func (t datetimeType) Convert(ctx context.Context, v any) (any, sql.ConvertInRan
 	case []byte:
 		return t.Convert(ctx, string(value))
 	case string:
-		// TODO: not sure if we still need this
-		if IsZeroTimestampStr(value) {
-			return ZeroTime, sql.InRange, nil
-		}
 		res, _, err = t.parseDatetime(value)
 	case Timespan:
 		// when receiving TIME, MySQL fills in date with today
@@ -462,43 +410,37 @@ func (t datetimeType) parseDatetime(str string) (any, bool, error) {
 	monthStr := value[matchIdxs[4]:matchIdxs[5]]
 	dayStr := value[matchIdxs[6]:matchIdxs[7]]
 
-	// TODO: Invalid and Zero Dates are affected by sql_modes:
-	// 	STRICT_TRANS_TABLES, NO_ZERO_DATE, and NO_ZERO_IN_DATE
-	//  We currently only have STRICT_TRANS_TABLES enabled by default (which is a no-op alone), but it appears we can't
-	//  properly support 0 Month and 0 Day.
-	//  We should copy MySQL's default and have all these sql_modes enabled, and disallow disabling them (or at least
-	//  throw a warning).
-	//  MySQL References:
-	//	 https://dev.mysql.com/doc/refman/9.7/en/sql-mode.html#sqlmode_no_zero_date
-	//   https://dev.mysql.com/doc/refman/9.7/en/sql-mode.html#sqlmode_no_zero_in_date
-	// TODO: make constants for MIN/MAX values
 	// Negative numbers should be impossible, so we don't check for them
 	year, err := strconv.Atoi(yearStr)
 	if err != nil {
 		return nil, delimWarn, sql.ErrIncorrectDateTimeValue.New(t.String(), value)
 	}
-	if year > 9999 {
+	if year > MaxYear {
 		return nil, delimWarn, sql.ErrIncorrectDateTimeValue.New(t.String(), value)
 	}
 	// MySQL special case for abbreviated ('00) date formats
 	if len(yearStr) == 2 {
-		year += 2000
+		year = TwoDigitYear(year)
 	}
 	month, err := strconv.Atoi(monthStr)
 	if err != nil {
 		return nil, delimWarn, sql.ErrIncorrectDateTimeValue.New(t.String(), value)
 	}
-	// 0 for the month is allowed if NO_ZERO_IN_DATE is not in sql_mode
-	if month < 1 || month > 12 {
+	if month > MaxMonth {
 		return nil, delimWarn, sql.ErrIncorrectDateTimeValue.New(t.String(), value)
 	}
 	day, err := strconv.Atoi(dayStr)
-	// 0 for the day is allowed if NO_ZERO_IN_DATE is not in sql_mode
-	if err != nil || day < 1 || day > 31 {
+	if err != nil || day > MaxDay {
 		return nil, delimWarn, sql.ErrIncorrectDateTimeValue.New(t.String(), value)
 	}
 	// GetLastDay already handles invalid months
 	if lastDay, _ := GetLastDay(year, month); day > lastDay {
+		return nil, delimWarn, sql.ErrIncorrectDateTimeValue.New(t.String(), value)
+	}
+
+	// We do NOT support ZERO_IN_DATE, so zero for month and day are not allowed.
+	// We do support ZERO_DATE, so zero for year, month, and day is allowed.
+	if (month == 0 || day == 0) && (month != 0 || day != 0 || year != 0) {
 		return nil, delimWarn, sql.ErrIncorrectDateTimeValue.New(t.String(), value)
 	}
 
