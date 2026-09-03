@@ -123,6 +123,23 @@ type ScriptTestAssertion struct {
 // the tests.
 var ScriptTests = []ScriptTest{
 	{
+		Name: "GROUP_CONCAT with multiple expressions",
+		SetUpScript: []string{
+			"CREATE TABLE group_concat_students (id INT PRIMARY KEY, first_name VARCHAR(20), last_name VARCHAR(20))",
+			"INSERT INTO group_concat_students VALUES (1, 'Alice', 'Smith'), (2, 'Bob', 'Jones'), (3, 'Alice', 'Brown'), (4, 'Eve', NULL), (5, '', 'White')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT GROUP_CONCAT(first_name, ' ', last_name ORDER BY id SEPARATOR '; ') FROM group_concat_students",
+				Expected: []sql.Row{{"Alice Smith; Bob Jones; Alice Brown;  White"}},
+			},
+			{
+				Query:    "SELECT GROUP_CONCAT(DISTINCT first_name, ' ', last_name ORDER BY id SEPARATOR '; ') FROM group_concat_students",
+				Expected: []sql.Row{{"Alice Smith; Bob Jones; Alice Brown;  White"}},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/10113
 		Name: "DELETE with NOT EXISTS subquery",
 		SetUpScript: []string{
