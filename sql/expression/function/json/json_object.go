@@ -112,6 +112,7 @@ func (j JSONObject) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 				}
 				key = str.ToString()
 			default:
+				// TODO: this should probably use TypeAwareConversion
 				val, _, err = types.LongText.Convert(ctx, val)
 				if err != nil {
 					return nil, err
