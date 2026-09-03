@@ -203,7 +203,7 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 							// If a literal NULL or if 0 is specified and the NO_AUTO_VALUE_ON_ZERO SQL mode is
 							// not active, then MySQL will fill in an auto_increment value.
 							if types.Null.Equals(lit.Type(ctx)) ||
-								(!sql.LoadSqlMode(ctx).ModeEnabled(sql.NoAutoValueOnZero) && isZero(ctx, lit)) {
+								(!sql.LoadSqlMode(ctx).ModeEnabled(sql.NO_AUTO_VALUE_ON_ZERO) && isZero(ctx, lit)) {
 								firstGeneratedAutoIncRowIdx = ii
 								break
 							}
