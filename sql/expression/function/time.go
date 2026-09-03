@@ -1597,14 +1597,16 @@ func (d *MonthName) WithChildren(ctx *sql.Context, children ...sql.Expression) (
 
 // TimeToSec implements the time_to_sec function
 type TimeToSec struct {
-	*UnaryDatetimeFunc
+	*UnaryFunc
 }
 
 var _ sql.FunctionExpression = (*TimeToSec)(nil)
 var _ sql.CollationCoercible = (*TimeToSec)(nil)
 
 func NewTimeToSec(ctx *sql.Context, arg sql.Expression) sql.Expression {
-	return &TimeToSec{NewUnaryDatetimeFunc(arg, "TIME_TO_SEC", types.Uint64)}
+	return &TimeToSec{
+		UnaryFunc: NewUnaryFunc(arg, "TIME_TO_SEC", types.Uint64),
+	}
 }
 
 // Description implements sql.FunctionExpression
@@ -1617,8 +1619,8 @@ func (*TimeToSec) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 	return sql.Collation_binary, 5
 }
 
-func (m *TimeToSec) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	val, err := m.EvalChild(ctx, row)
+func (m *TimeToSec) Eval(ctx *sql.Context, row sql.Row) (any, error) {
+	val, err := m.Child.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
