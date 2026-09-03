@@ -134,6 +134,9 @@ var (
 	// This is meant to wrap a sql.UniqueKey error, which provides the key string
 	ErrUniqueKeyViolation = errors.NewKind("duplicate unique key given")
 
+	// ErrInsertConflictTarget is returned when an insert conflict target does not identify a unique or primary key.
+	ErrInsertConflictTarget = errors.NewKind("there is no unique or exclusion constraint matching the ON CONFLICT specification")
+
 	// ErrMisusedAlias is returned when a alias is defined and used in the same projection.
 	ErrMisusedAlias = errors.NewKind("column %q does not exist in scope, but there is an alias defined in" +
 		" this projection with that name. Aliases cannot be used in the same projection they're defined in")
@@ -637,6 +640,10 @@ var (
 
 	// ErrSessionDoesNotSupportPersistence is thrown when a feature is not already supported
 	ErrSessionDoesNotSupportPersistence = errors.NewKind("session does not support persistence")
+
+	// ErrSystemVariableCannotBeSetLocal is thrown when a system variable that does not support transaction-local
+	// scope is set with transaction-local scope
+	ErrSystemVariableCannotBeSetLocal = errors.NewKind("system variable %s cannot be set with transaction-local scope")
 
 	// ErrInvalidGISData is thrown when a "ST_<spatial_type>FromText" function receives a malformed string
 	ErrInvalidGISData = errors.NewKind("invalid GIS data provided to function %s")
