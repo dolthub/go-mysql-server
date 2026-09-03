@@ -264,9 +264,11 @@ func (g *groupConcatBuffer) Update(ctx *sql.Context, originalRow sql.Row) error 
 
 	g.gc.returnType = retType
 
-	// Skip if this is a null row
-	if evalRow == nil {
-		return nil
+	// GROUP_CONCAT skips a row when any selected expression is NULL.
+	for _, value := range evalRow {
+		if value == nil {
+			return nil
+		}
 	}
 
 	var v interface{}
@@ -376,7 +378,6 @@ func (g *groupConcatBuffer) Dispose(ctx *sql.Context) {
 func evalExprs(ctx *sql.Context, exprs []sql.Expression, row sql.Row) (sql.Row, sql.Type, error) {
 	result := make(sql.Row, len(exprs))
 	retType := types.Blob
-	hasNull := false
 	for i, expr := range exprs {
 		var err error
 		result[i], err = expr.Eval(ctx, row)
@@ -388,12 +389,6 @@ func evalExprs(ctx *sql.Context, exprs []sql.Expression, row sql.Row) (sql.Row, 
 		if expr.Type(ctx) != types.Blob {
 			retType = types.Text
 		}
-		if result[i] == nil {
-			hasNull = true
-		}
-	}
-	if hasNull {
-		return nil, retType, nil
 	}
 
 	return result, retType, nil
