@@ -612,7 +612,7 @@ func (d *YearWeek) Description() string {
 	return "returns year and week for a date. The year in the result may be different from the year in the date argument for the first and the last week of the year."
 }
 
-func (d *YearWeek) String() string { return fmt.Sprintf("YEARWEEK(%s, %d)", d.date, d.mode) }
+func (d *YearWeek) String() string { return fmt.Sprintf("YEARWEEK(%s, %s)", d.date, d.mode) }
 
 // Type implements the Expression interface.
 func (d *YearWeek) Type(ctx *sql.Context) sql.Type { return types.Int32 }
