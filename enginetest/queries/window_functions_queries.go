@@ -25,6 +25,43 @@ import (
 // first_value, last_value, lead, lag, and the bitwise aggregate functions.
 var WindowFunctionsScriptTests = []ScriptTest{
 	{
+		Name: "literal window expressions over zero-width projected rows",
+		SetUpScript: []string{
+			"CREATE TABLE literal_windows (x int, g int)",
+			"INSERT INTO literal_windows VALUES (1, 1), (2, 1), (3, 2)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT COUNT(*) OVER () FROM literal_windows",
+				Expected: []sql.Row{{int64(3)}, {int64(3)}, {int64(3)}},
+			},
+			{
+				Query:    "SELECT SUM(1) OVER () FROM literal_windows",
+				Expected: []sql.Row{{float64(3)}, {float64(3)}, {float64(3)}},
+			},
+			{
+				Query:    "SELECT COUNT(0) OVER (PARTITION BY 1 + 0) FROM literal_windows",
+				Expected: []sql.Row{{int64(3)}, {int64(3)}, {int64(3)}},
+			},
+			{
+				Query:    "SELECT RANK() OVER () FROM literal_windows",
+				Expected: []sql.Row{{uint64(1)}, {uint64(1)}, {uint64(1)}},
+			},
+			{
+				Query:    "SELECT RANK() OVER (ORDER BY 1 + 0) FROM literal_windows",
+				Expected: []sql.Row{{uint64(1)}, {uint64(1)}, {uint64(1)}},
+			},
+			{
+				Query:    "SELECT DENSE_RANK() OVER () FROM literal_windows",
+				Expected: []sql.Row{{uint64(1)}, {uint64(1)}, {uint64(1)}},
+			},
+			{
+				Query:    "SELECT PERCENT_RANK() OVER () FROM literal_windows",
+				Expected: []sql.Row{{float64(0)}, {float64(0)}, {float64(0)}},
+			},
+		},
+	},
+	{
 		Name: "INET_NTOA round trip above signed 32-bit range",
 		SetUpScript: []string{
 			"CREATE TABLE inet_ntoa_test (ip VARCHAR(15))",
@@ -34,6 +71,31 @@ var WindowFunctionsScriptTests = []ScriptTest{
 			FIRST_VALUE(INET_ATON(ip)) OVER ()
 		) FROM inet_ntoa_test`,
 		Expected: []sql.Row{{"192.0.2.1"}},
+	},
+	{
+		Name: "window functions preserve correlated subquery columns",
+		SetUpScript: []string{
+			"CREATE TABLE window_correlated (id INT PRIMARY KEY, c0 INT, c1 INT)",
+			"INSERT INTO window_correlated VALUES (1, 10, 100), (2, 10, 200), (3, 20, 300)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT id, COUNT(*) OVER (PARTITION BY c0) AS w, (SELECT COUNT(*) FROM window_correlated t2 WHERE t2.c0 = t.c0) AS r FROM window_correlated t ORDER BY id",
+				Expected: []sql.Row{
+					{1, int64(2), int64(2)},
+					{2, int64(2), int64(2)},
+					{3, int64(1), int64(1)},
+				},
+			},
+			{
+				Query: "SELECT id, ROW_NUMBER() OVER (ORDER BY id) AS rn, (SELECT SUM(t2.c1) FROM window_correlated t2 WHERE t2.c0 = t.c0) AS s FROM window_correlated t ORDER BY id",
+				Expected: []sql.Row{
+					{1, int64(1), float64(300)},
+					{2, int64(2), float64(300)},
+					{3, int64(3), float64(300)},
+				},
+			},
+		},
 	},
 	{
 		Name: "ceil and floor do not mutate shared decimal window results",
@@ -692,6 +754,58 @@ var WindowFunctionsScriptTests = []ScriptTest{
 			FROM t
 			ORDER BY id`,
 		Expected: []sql.Row{{1, uint8(97), uint8(65)}, {2, uint8(97), uint8(65)}},
+	},
+	{
+		Name:    "LIKE escape characters in window expressions",
+		Dialect: "mysql",
+		Query: `SELECT
+			FIRST_VALUE('a%' LIKE 'a!%' ESCAPE '!') OVER (),
+			FIRST_VALUE('a%' LIKE 'a!%' ESCAPE '#') OVER ()`,
+		Expected: []sql.Row{{true, false}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11498
+		Name:    "customer reproduction: LIKE escape characters in window expressions",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t(id INT PRIMARY KEY)",
+			"INSERT INTO t VALUES (1),(2)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT id,
+					FIRST_VALUE(IF('a%' LIKE 'a!%' ESCAPE '!', 1, 0))
+						OVER (ORDER BY id) AS escape_bang,
+					FIRST_VALUE(IF('a%' LIKE 'a!%' ESCAPE '#', 1, 0))
+						OVER (ORDER BY id) AS escape_hash
+					FROM t
+					ORDER BY id`,
+				Expected: []sql.Row{{1, int32(1), int32(0)}, {2, int32(1), int32(0)}},
+			},
+			{
+				Query: `SELECT 'a%' LIKE 'a!%' ESCAPE '!' AS scalar_bang,
+					'a%' LIKE 'a!%' ESCAPE '#' AS scalar_hash`,
+				Expected: []sql.Row{{true, false}},
+			},
+		},
+	},
+	{
+		Name:    "current time precision in window expressions",
+		Dialect: "mysql",
+		Query: `SELECT FIRST_VALUE(LENGTH(CURRENT_TIME(6))) OVER (
+			ROWS BETWEEN CURRENT ROW AND CURRENT ROW
+		)`,
+		Expected: []sql.Row{{int32(15)}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11543
+		Name:    "customer reproduction: current time precision in window expressions",
+		Dialect: "mysql",
+		Query: `SELECT length_now, LENGTH(current_time_value) FROM (
+			SELECT FIRST_VALUE(LENGTH(CURRENT_TIME(6))) OVER (ROWS BETWEEN CURRENT ROW AND CURRENT ROW) AS length_now,
+				FIRST_VALUE(CURRENT_TIME(6)) OVER (ROWS BETWEEN CURRENT ROW AND CURRENT ROW) AS current_time_value
+		) customer_reproduction`,
+		Expected: []sql.Row{{int32(15), int32(15)}},
 	},
 	{
 		Name: "identical expressions over different windows should produce different results",

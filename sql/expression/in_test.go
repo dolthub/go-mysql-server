@@ -284,6 +284,43 @@ func TestNotInTuple(t *testing.T) {
 }
 
 func TestHashInTuple(t *testing.T) {
+	t.Run("tuple null makes expression nullable", func(t *testing.T) {
+		ctx := sql.NewEmptyContext()
+		expr, err := expression.NewHashInTuple(
+			ctx,
+			expression.NewTuple(
+				expression.NewLiteral(int64(20), types.Int64),
+				expression.NewLiteral(int64(1), types.Int64),
+			),
+			expression.NewTuple(
+				expression.NewTuple(
+					expression.NewLiteral(int64(20), types.Int64),
+					expression.NewLiteral(nil, types.Int64),
+				),
+			),
+		)
+		require.NoError(t, err)
+		require.True(t, expr.IsNullable(ctx))
+	})
+	t.Run("nullable tuple component makes expression nullable", func(t *testing.T) {
+		ctx := sql.NewEmptyContext()
+		expr, err := expression.NewHashInTuple(
+			ctx,
+			expression.NewTuple(
+				expression.NewLiteral(int64(20), types.Int64),
+				expression.NewGetField(0, types.Int64, "nullable", true),
+			),
+			expression.NewTuple(
+				expression.NewTuple(
+					expression.NewLiteral(int64(20), types.Int64),
+					expression.NewLiteral(int64(1), types.Int64),
+				),
+			),
+		)
+		require.NoError(t, err)
+		require.True(t, expr.IsNullable(ctx))
+	})
+
 	testCases := []struct {
 		name      string
 		left      sql.Expression
@@ -390,6 +427,44 @@ func TestHashInTuple(t *testing.T) {
 			),
 			nil,
 			true,
+			nil,
+			nil,
+		},
+		{
+			"matching tuples containing null return null",
+			expression.NewTuple(
+				expression.NewLiteral(int64(20), types.Int64),
+				expression.NewLiteral(nil, types.Int64),
+			),
+			expression.NewTuple(
+				expression.NewTuple(
+					expression.NewLiteral(int64(20), types.Int64),
+					expression.NewLiteral(nil, types.Int64),
+				),
+				expression.NewTuple(
+					expression.NewLiteral(int64(30), types.Int64),
+					expression.NewLiteral(int64(5), types.Int64),
+				),
+			),
+			nil,
+			nil,
+			nil,
+			nil,
+		},
+		{
+			"tuples containing null can still compare unequal",
+			expression.NewTuple(
+				expression.NewLiteral(int64(20), types.Int64),
+				expression.NewLiteral(nil, types.Int64),
+			),
+			expression.NewTuple(
+				expression.NewTuple(
+					expression.NewLiteral(int64(30), types.Int64),
+					expression.NewLiteral(nil, types.Int64),
+				),
+			),
+			nil,
+			false,
 			nil,
 			nil,
 		},
