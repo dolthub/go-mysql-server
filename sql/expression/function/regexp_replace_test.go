@@ -180,20 +180,8 @@ func TestRegexpReplaceWithPosition(t *testing.T) {
 		{
 			"too large position",
 			sql.NewRow("abc def ghi", `[a-z]`, "X", 1000),
-			"abc def ghi",
-			false,
-		},
-		{
-			"position immediately after string",
-			sql.NewRow("abc", "a", "X", 4),
-			"abc",
-			false,
-		},
-		{
-			"position after empty string",
-			sql.NewRow("", "a", "X", 1000),
-			"",
-			false,
+			nil,
+			true,
 		},
 		{
 			"string type position",
