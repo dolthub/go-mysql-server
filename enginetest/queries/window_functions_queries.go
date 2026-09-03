@@ -25,13 +25,6 @@ import (
 // first_value, last_value, lead, lag, and the bitwise aggregate functions.
 var WindowFunctionsScriptTests = []ScriptTest{
 	{
-		Name: "case-sensitive literals in window expressions",
-		Query: `SELECT
-			FIRST_VALUE(ASCII('a')) OVER (),
-			FIRST_VALUE(ASCII('A')) OVER ()`,
-		Expected: []sql.Row{{uint8(97), uint8(65)}},
-	},
-	{
 		Name: "INET_NTOA round trip above signed 32-bit range",
 		SetUpScript: []string{
 			"CREATE TABLE inet_ntoa_test (ip VARCHAR(15))",
@@ -678,6 +671,13 @@ var WindowFunctionsScriptTests = []ScriptTest{
 			{int64(2), int64(2)},
 			{int64(3), int64(1)},
 		},
+	},
+	{
+		Name: "case-sensitive literals in window expressions",
+		Query: `SELECT
+			FIRST_VALUE(ASCII('a')) OVER (),
+			FIRST_VALUE(ASCII('A')) OVER ()`,
+		Expected: []sql.Row{{uint8(97), uint8(65)}},
 	},
 	{
 		Name: "identical expressions over different windows should produce different results",
