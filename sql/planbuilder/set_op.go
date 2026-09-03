@@ -122,7 +122,7 @@ func (b *Builder) buildSetOp(inScope *scope, u *ast.SetOp) (outScope *scope) {
 	// function call, since doing so would add a column to leftScope that has
 	// no corresponding column on the right side of the set operation.
 	if pos := b.setOpOrderByAggOrWindowPos(u.OrderBy); pos != 0 {
-		b.handleErr(sql.ErrAggregationOrderForUnion.New(pos))
+		b.handleErr(sql.ErrSetOpOrderByAggregation.New(pos))
 	}
 
 	// mysql errors for order by right projection

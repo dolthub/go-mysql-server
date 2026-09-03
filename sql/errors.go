@@ -920,10 +920,9 @@ var (
 		"a window function '%s' is in a context where it cannot be evaluated.",
 	)
 
-	// ErrAggregationOrderForUnion is returned when the top-level ORDER BY of a
-	// UNION, INTERSECT, or EXCEPT contains an aggregate or window function.
-	// MySQL error code: 3028, SQL state: HY000
-	ErrAggregationOrderForUnion = errors.NewKind(
+	// ErrSetOpOrderByAggregation is returned when the top-level ORDER BY of a UNION, INTERSECT, or EXCEPT contains an
+	// aggregate or window function.
+	ErrSetOpOrderByAggregation = errors.NewKind(
 		"Expression #%d of ORDER BY contains aggregate function and applies to a UNION, EXCEPT or INTERSECT",
 	)
 
