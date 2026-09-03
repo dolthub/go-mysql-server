@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/cockroachdb/apd/v3"
+	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"gopkg.in/src-d/go-errors.v1"
 
@@ -389,7 +390,7 @@ func getFloatOrMaxDecimalType(ctx *sql.Context, e sql.Expression, treatIntsAsFlo
 // If the value is invalid, it returns decimal 0. This function
 // is used for 'div' or 'mod' arithmetic operation, which requires
 // the result value to have precise precision and scale.
-func convertToDecimalValue(ctx *sql.Context, val interface{}, isTimeType bool) interface{} {
+func convertToDecimalValue(ctx *sql.Context, val interface{}, isTimeType bool) *apd.Decimal {
 	if isTimeType {
 		val = convertTimeTypeToString(val)
 	}
@@ -402,25 +403,29 @@ func convertToDecimalValue(ctx *sql.Context, val interface{}, isTimeType bool) i
 	default:
 	}
 
-	if _, ok := val.(*apd.Decimal); !ok {
-		p, s := GetPrecisionAndScale(val)
-		if p > types.DecimalTypeMaxPrecision {
-			p = types.DecimalTypeMaxPrecision
-		}
-		if s > types.DecimalTypeMaxScale {
-			s = types.DecimalTypeMaxScale
-		}
-		dtyp, err := types.CreateDecimalType(p, s)
-		if err != nil {
-			val = apd.New(0, 0)
-		}
-		val, _, err = dtyp.Convert(ctx, val)
-		if err != nil {
-			val = apd.New(0, 0)
-		}
+	if decimalVal, ok := val.(*apd.Decimal); ok {
+		return decimalVal
 	}
 
-	return val
+	p, s := GetPrecisionAndScale(val)
+	if p > types.DecimalTypeMaxPrecision {
+		p = types.DecimalTypeMaxPrecision
+	}
+	if s > types.DecimalTypeMaxScale {
+		s = types.DecimalTypeMaxScale
+	}
+	dtyp, err := types.CreateDecimalType(p, s)
+	if err != nil {
+		val = apd.New(0, 0)
+	}
+	convertedVal, _, err := dtyp.Convert(ctx, val)
+	if err != nil {
+		arithmeticWarning(ctx, mysql.ERTruncatedWrongValue, fmt.Sprintf("Truncated incorrect DECIMAL value: '%v'", val))
+	}
+	if convertedDecimal, ok := convertedVal.(*apd.Decimal); ok {
+		return convertedDecimal
+	}
+	return apd.New(0, 0)
 }
 
 // countDivs returns the number of division operators in order on the left child node of the current node.
@@ -727,23 +732,18 @@ func (i *IntDiv) convertLeftRight(ctx *sql.Context, left interface{}, right inte
 	lIsTimeType := types.IsTime(lTyp)
 	rIsTimeType := types.IsTime(rTyp)
 
-	if types.IsText(lTyp) || types.IsText(rTyp) {
-		typ = types.Float64
-	} else if types.IsUnsigned(lTyp) && types.IsUnsigned(rTyp) {
+	if types.IsUnsigned(lTyp) && types.IsUnsigned(rTyp) {
 		typ = types.Uint64
 	} else if (lIsTimeType && rIsTimeType) || (types.IsSigned(lTyp) && types.IsSigned(rTyp)) {
 		typ = types.Int64
 	} else {
-		typ = types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, 0)
-	}
-
-	if types.IsInteger(typ) || types.IsFloat(typ) {
-		left = convertValueToType(ctx, typ, left, lIsTimeType)
-		right = convertValueToType(ctx, typ, right, rIsTimeType)
-	} else {
 		left = convertToDecimalValue(ctx, left, lIsTimeType)
 		right = convertToDecimalValue(ctx, right, rIsTimeType)
+		return left, right
 	}
+
+	left = convertValueToType(ctx, typ, left, lIsTimeType)
+	right = convertValueToType(ctx, typ, right, rIsTimeType)
 
 	return left, right
 }

@@ -1222,7 +1222,7 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 				Expected:                        []sql.Row{{0}},
 				ExpectedWarningsCount:           1,
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
-				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 'a'",
+				ExpectedWarningMessageSubstring: "Truncated incorrect DECIMAL value: 'a'",
 			},
 			{
 				Query:                 "select 4 div 'a';",
@@ -1243,7 +1243,7 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 				Expected:                        []sql.Row{{4}},
 				ExpectedWarningsCount:           1,
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
-				ExpectedWarningMessageSubstring: "Truncated incorrect double value: '12a'",
+				ExpectedWarningMessageSubstring: "Truncated incorrect DECIMAL value: '12a'",
 			},
 			{
 				Query:                 "select 'a' mod 'a';",
