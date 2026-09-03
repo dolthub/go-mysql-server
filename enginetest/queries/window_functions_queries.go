@@ -769,6 +769,24 @@ var WindowFunctionsScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name:    "current time precision in window expressions",
+		Dialect: "mysql",
+		Query: `SELECT FIRST_VALUE(LENGTH(CURRENT_TIME(6))) OVER (
+			ROWS BETWEEN CURRENT ROW AND CURRENT ROW
+		)`,
+		Expected: []sql.Row{{int32(15)}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11543
+		Name:    "customer reproduction: current time precision in window expressions",
+		Dialect: "mysql",
+		Query: `SELECT length_now, LENGTH(current_time_value) FROM (
+			SELECT FIRST_VALUE(LENGTH(CURRENT_TIME(6))) OVER (ROWS BETWEEN CURRENT ROW AND CURRENT ROW) AS length_now,
+				FIRST_VALUE(CURRENT_TIME(6)) OVER (ROWS BETWEEN CURRENT ROW AND CURRENT ROW) AS current_time_value
+		) customer_reproduction`,
+		Expected: []sql.Row{{int32(15), int32(15)}},
+	},
+	{
 		Name: "identical expressions over different windows should produce different results",
 		SetUpScript: []string{
 			"CREATE TABLE t(a INT, b INT);",
