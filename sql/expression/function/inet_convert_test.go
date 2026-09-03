@@ -69,6 +69,7 @@ func TestInetNtoa(t *testing.T) {
 	}{
 		{"null input", sql.NewRow(nil), nil, false},
 		{"valid ipv4 int", sql.NewRow(uint32(167773450)), "10.0.5.10", false},
+		{"valid ipv4 int above signed range", sql.NewRow(uint32(3221225985)), "192.0.2.1", false},
 		{"valid ipv4 int as string", sql.NewRow("167773450"), "10.0.5.10", false},
 		{"floating point ipv4", sql.NewRow(10.1), "0.0.0.10", false},
 		{"valid ipv6 int", sql.NewRow("\000\000\000\000"), "0.0.0.0", false},
