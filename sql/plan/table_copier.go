@@ -21,6 +21,14 @@ type TableCopier struct {
 var _ sql.Databaser = (*TableCopier)(nil)
 var _ sql.Node = (*TableCopier)(nil)
 var _ sql.CollationCoercible = (*TableCopier)(nil)
+var _ DisjointedChildrenNode = (*TableCopier)(nil)
+
+// TableCopierCreateTableDestination is a create-table node that TableCopier can execute before copying rows.
+type TableCopierCreateTableDestination interface {
+	sql.Node
+	// TableCopierDestinationName returns the name of the table created for the copy destination.
+	TableCopierDestinationName() string
+}
 
 type CopierProps struct {
 	replace bool
@@ -51,14 +59,16 @@ func (tc *TableCopier) Database() sql.Database {
 }
 
 func (tc *TableCopier) ProcessCreateTable(ctx *sql.Context, b sql.NodeExecBuilder, row sql.Row) (sql.RowIter, error) {
-	ct := tc.Destination.(*CreateTable)
+	destination, ok := tc.Destination.(TableCopierCreateTableDestination)
+	if !ok {
+		return nil, fmt.Errorf("TableCopier requires a create-table destination")
+	}
 
-	_, err := b.Build(ctx, ct, row)
-	if err != nil {
+	if err := buildAndCloseTableCopierDestination(ctx, b, tc.Destination, row); err != nil {
 		return sql.RowsToRowIter(), err
 	}
 
-	table, tableExists, err := tc.db.GetTableInsensitive(ctx, ct.Name())
+	table, tableExists, err := tc.db.GetTableInsensitive(ctx, destination.TableCopierDestinationName())
 	if err != nil {
 		return sql.RowsToRowIter(), err
 	}
@@ -75,6 +85,15 @@ func (tc *TableCopier) ProcessCreateTable(ctx *sql.Context, b sql.NodeExecBuilde
 	ii := NewInsertInto(tc.db, NewResolvedTable(table, tc.db, nil), tc.Source, tc.options.replace, nil, nil, tc.options.ignore)
 
 	return b.Build(ctx, ii, row)
+}
+
+// buildAndCloseTableCopierDestination executes the create phase and releases its iterator before rows are copied.
+func buildAndCloseTableCopierDestination(ctx *sql.Context, b sql.NodeExecBuilder, destination sql.Node, row sql.Row) error {
+	iter, err := b.Build(ctx, destination, row)
+	if err != nil || iter == nil {
+		return err
+	}
+	return iter.Close(ctx)
 }
 
 // createTableSelectCanBeCopied determines whether the newly created table's data can just be copied from the Source table
@@ -135,6 +154,23 @@ func (tc *TableCopier) Children() []sql.Node {
 
 func (tc *TableCopier) WithChildren(*sql.Context, ...sql.Node) (sql.Node, error) {
 	return tc, nil
+}
+
+// DisjointedChildren exposes the independently analyzed destination and source trees.
+func (tc *TableCopier) DisjointedChildren() [][]sql.Node {
+	return [][]sql.Node{{tc.Destination}, {tc.Source}}
+}
+
+// WithDisjointedChildren returns a TableCopier with replacement destination and source trees.
+func (tc *TableCopier) WithDisjointedChildren(children [][]sql.Node) (sql.Node, error) {
+	if len(children) != 2 || len(children[0]) != 1 || len(children[1]) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(tc, len(children), 2)
+	}
+
+	ntc := *tc
+	ntc.Destination = children[0][0]
+	ntc.Source = children[1][0]
+	return &ntc, nil
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
