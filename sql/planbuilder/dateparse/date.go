@@ -104,6 +104,13 @@ func ParseDateWithFormat(date, format string) (interface{}, error) {
 
 	if dt.hours != nil {
 		hours = int(*dt.hours)
+		if dt.am != nil {
+			if *dt.am && hours == 12 {
+				hours = 0
+			} else if !*dt.am && hours < 12 {
+				hours += 12
+			}
+		}
 	}
 	if dt.minutes != nil {
 		minutes = int(*dt.minutes)

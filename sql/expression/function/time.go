@@ -1584,20 +1584,20 @@ func (*TimeToSec) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 }
 
 func (m *TimeToSec) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	val, err := m.EvalChild(ctx, row)
+	val, err := m.Child.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
-
-	switch v := val.(type) {
-	case time.Time:
-		return uint64(v.Hour()*3600 + v.Minute()*60 + v.Second()), nil
-	case nil:
+	if val == nil {
 		return nil, nil
-	default:
+	}
+
+	timespan, err := types.Time.ConvertToTimespan(val)
+	if err != nil {
 		ctx.Warn(1292, "%s", types.ErrConvertingToTime.New(val).Error())
 		return nil, nil
 	}
+	return uint64(timespan.AsMicroseconds() / int64(time.Second/time.Microsecond)), nil
 }
 
 func (m *TimeToSec) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {

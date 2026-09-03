@@ -265,7 +265,9 @@ func (ii *InsertInto) DebugString(ctx *sql.Context) string {
 
 // Expressions implements the sql.Expressioner interface.
 func (ii *InsertInto) Expressions() []sql.Expression {
-	exprs := append(ii.OnDupExprs.AllExpressions(), ii.checks.ToExpressions()...)
+	exprs := make([]sql.Expression, 0, ii.OnDupExprs.Length()+len(ii.checks)+1+len(ii.Returning))
+	exprs = append(exprs, ii.OnDupExprs.AllExpressions()...)
+	exprs = append(exprs, ii.checks.ToExpressions()...)
 	if ii.OnDupWhere != nil {
 		exprs = append(exprs, ii.OnDupWhere)
 	}
