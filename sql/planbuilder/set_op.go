@@ -26,41 +26,37 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// setOpOrderByAggOrWindowPos returns the 1-based position of the first
-// expression in the top-level ORDER BY of a set operation
-// (UNION/INTERSECT/EXCEPT) that contains a call to an aggregate or window
-// function, or 0 if there is none. A plain column reference (including one
-// aliasing an aggregate or window expression already computed in the SELECT
-// list) is not flagged, since it does not introduce a new computation.
-func (b *Builder) setOpOrderByAggOrWindowPos(order ast.OrderBy) int {
+// validateSetOpOrderBy checks the ORDER BY clause in a set op for any possible errors
+func (b *Builder) validateSetOpOrderBy(order ast.OrderBy) {
 	for i, o := range order {
 		expr := unwrapExpression(o.Expr)
-		switch expr.(type) {
-		case *ast.ColName, *ast.SQLVal:
+		switch e := expr.(type) {
+		case *ast.ColName:
+			qualifier := e.Qualifier.Name.String()
+			if len(qualifier) != 0 {
+				b.handleErr(ErrQualifiedOrderBy.New(qualifier))
+			}
+			continue
+		case *ast.SQLVal:
 			continue
 		}
 
-		found := false
 		ast.Walk(func(node ast.SQLNode) (bool, error) {
 			fe, ok := node.(*ast.FuncExpr)
 			if !ok {
 				return true, nil
 			}
 			if fe.Over != nil {
-				found = true
+				b.handleErr(sql.ErrSetOpOrderByAggregation.New(i + 1))
 				return false, nil
 			}
 			if isAgg, err := IsAggregateFunc(b.ctx, fe.Name.Lowered()); err == nil && isAgg {
-				found = true
+				b.handleErr(sql.ErrSetOpOrderByAggregation.New(i + 1))
 				return false, nil
 			}
 			return true, nil
 		}, expr)
-		if found {
-			return i + 1
-		}
 	}
-	return 0
 }
 
 func hasRecursiveCte(ctx *sql.Context, node sql.Node) bool {
@@ -107,28 +103,14 @@ func (b *Builder) buildSetOp(inScope *scope, u *ast.SetOp) (outScope *scope) {
 		distinct = false
 	}
 
-	limit := b.buildLimit(inScope, u.Limit)
-	offset := b.buildOffset(inScope, u.Limit)
-
-	for _, o := range u.OrderBy {
-		if expr, ok := o.Expr.(*ast.ColName); ok && len(expr.Qualifier.Name.String()) != 0 {
-			b.handleErr(ErrQualifiedOrderBy.New(expr.Qualifier.Name.String()))
-		}
-	}
-
-	// A set operation's top-level ORDER BY may only reference columns already
-	// present in its result; it cannot introduce a new aggregate or window
-	// computation. Reject that case here, before analyzeOrderBy resolves the
-	// function call, since doing so would add a column to leftScope that has
-	// no corresponding column on the right side of the set operation.
-	if pos := b.setOpOrderByAggOrWindowPos(u.OrderBy); pos != 0 {
-		b.handleErr(sql.ErrSetOpOrderByAggregation.New(pos))
-	}
+	b.validateSetOpOrderBy(u.OrderBy)
 
 	// mysql errors for order by right projection
 	orderByScope := b.analyzeOrderBy(leftScope, leftScope, u.OrderBy)
 	sortConditions := b.buildSortConditions(orderByScope, transform.NewTree)
 
+	limit := b.buildLimit(inScope, u.Limit)
+	offset := b.buildOffset(inScope, u.Limit)
 	n, ok := leftScope.node.(*plan.SetOp)
 	if ok {
 		if len(n.SortConditions) > 0 {
