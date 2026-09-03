@@ -842,3 +842,24 @@ func TestTime_MonthName(t *testing.T) {
 		})
 	}
 }
+
+func TestTimeToSec(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	f := NewTimeToSec(ctx, expression.NewGetField(0, types.LongText, "foo", true))
+
+	for _, tt := range []struct {
+		name     string
+		value    interface{}
+		expected interface{}
+	}{
+		{"null", nil, nil},
+		{"ordinary time", "01:02:03", uint64(3723)},
+		{"extended hours", "25:00:00", uint64(90000)},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			actual, err := f.Eval(ctx, sql.NewRow(tt.value))
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, actual)
+		})
+	}
+}

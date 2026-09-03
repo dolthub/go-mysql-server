@@ -36,6 +36,24 @@ var WindowFunctionsScriptTests = []ScriptTest{
 		Expected: []sql.Row{{"192.0.2.1"}},
 	},
 	{
+		Name: "ceil and floor do not mutate shared decimal window results",
+		SetUpScript: []string{
+			"CREATE TABLE decimal_window_values (id BIGINT, d DECIMAL(10,2))",
+			"INSERT INTO decimal_window_values VALUES (1, 12.34), (2, 12.34), (3, -12.34), (4, -12.34)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT id, d, CEIL(d), FLOOR(d) FROM (SELECT id, MAX(d) OVER (PARTITION BY d) AS d FROM decimal_window_values) s ORDER BY id",
+				Expected: []sql.Row{
+					{int64(1), "12.34", int64(13), int64(12)},
+					{int64(2), "12.34", int64(13), int64(12)},
+					{int64(3), "-12.34", int64(-12), int64(-13)},
+					{int64(4), "-12.34", int64(-12), int64(-13)},
+				},
+			},
+		},
+	},
+	{
 		Name: "window functions, empty table",
 		SetUpScript: []string{
 			"CREATE TABLE empty_tbl (a int, b int)",
