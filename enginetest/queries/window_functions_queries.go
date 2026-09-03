@@ -25,20 +25,6 @@ import (
 // first_value, last_value, lead, lag, and the bitwise aggregate functions.
 var WindowFunctionsScriptTests = []ScriptTest{
 	{
-		Name:    "FIRST_VALUE nullability for empty frames",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"CREATE TABLE first_value_input (id INT PRIMARY KEY, v INT NOT NULL)",
-			"INSERT INTO first_value_input VALUES (1, 10)",
-			`CREATE TABLE first_value_output AS
-				SELECT id, FIRST_VALUE(v) OVER (
-					ORDER BY id ROWS BETWEEN 2 FOLLOWING AND 2 FOLLOWING
-				) AS wf FROM first_value_input`,
-		},
-		Query:    "SELECT id, wf FROM first_value_output",
-		Expected: []sql.Row{{1, nil}},
-	},
-	{
 		Name: "literal window expressions over zero-width projected rows",
 		SetUpScript: []string{
 			"CREATE TABLE literal_windows (x int, g int)",
@@ -648,6 +634,20 @@ var WindowFunctionsScriptTests = []ScriptTest{
 				ExpectedErr: expression.ErrInvalidOffset,
 			},
 		},
+	},
+	{
+		Name:    "FIRST_VALUE nullability for empty frames",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE first_value_input (id INT PRIMARY KEY, v INT NOT NULL)",
+			"INSERT INTO first_value_input VALUES (1, 10)",
+			`CREATE TABLE first_value_output AS
+				SELECT id, FIRST_VALUE(v) OVER (
+					ORDER BY id ROWS BETWEEN 2 FOLLOWING AND 2 FOLLOWING
+				) AS wf FROM first_value_input`,
+		},
+		Query:    "SELECT id, wf FROM first_value_output",
+		Expected: []sql.Row{{1, nil}},
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/11468
