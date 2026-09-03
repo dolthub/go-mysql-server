@@ -390,7 +390,7 @@ func getFloatOrMaxDecimalType(ctx *sql.Context, e sql.Expression, treatIntsAsFlo
 // If the value is invalid, it returns decimal 0. This function
 // is used for 'div' or 'mod' arithmetic operation, which requires
 // the result value to have precise precision and scale.
-func convertToDecimalValue(ctx *sql.Context, val interface{}, isTimeType bool) interface{} {
+func convertToDecimalValue(ctx *sql.Context, val interface{}, isTimeType bool) *apd.Decimal {
 	if isTimeType {
 		val = convertTimeTypeToString(val)
 	}
@@ -403,26 +403,29 @@ func convertToDecimalValue(ctx *sql.Context, val interface{}, isTimeType bool) i
 	default:
 	}
 
-	if _, ok := val.(*apd.Decimal); !ok {
-		p, s := GetPrecisionAndScale(val)
-		if p > types.DecimalTypeMaxPrecision {
-			p = types.DecimalTypeMaxPrecision
-		}
-		if s > types.DecimalTypeMaxScale {
-			s = types.DecimalTypeMaxScale
-		}
-		dtyp, err := types.CreateDecimalType(p, s)
-		if err != nil {
-			val = apd.New(0, 0)
-		}
-		convertedVal, _, err := dtyp.Convert(ctx, val)
-		if err != nil {
-			arithmeticWarning(ctx, mysql.ERTruncatedWrongValue, fmt.Sprintf("Truncated incorrect DECIMAL value: '%v'", val))
-		}
-		return convertedVal
+	if decimalVal, ok := val.(*apd.Decimal); ok {
+		return decimalVal
 	}
 
-	return val
+	p, s := GetPrecisionAndScale(val)
+	if p > types.DecimalTypeMaxPrecision {
+		p = types.DecimalTypeMaxPrecision
+	}
+	if s > types.DecimalTypeMaxScale {
+		s = types.DecimalTypeMaxScale
+	}
+	dtyp, err := types.CreateDecimalType(p, s)
+	if err != nil {
+		val = apd.New(0, 0)
+	}
+	convertedVal, _, err := dtyp.Convert(ctx, val)
+	if err != nil {
+		arithmeticWarning(ctx, mysql.ERTruncatedWrongValue, fmt.Sprintf("Truncated incorrect DECIMAL value: '%v'", val))
+	}
+	if convertedDecimal, ok := convertedVal.(*apd.Decimal); ok {
+		return convertedDecimal
+	}
+	return apd.New(0, 0)
 }
 
 // countDivs returns the number of division operators in order on the left child node of the current node.
