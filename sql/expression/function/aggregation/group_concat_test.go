@@ -73,6 +73,20 @@ func TestGroupConcat_PastMaxLen(t *testing.T) {
 	require.Equal(t, int(maxLen), len(rs))
 }
 
+func TestGroupConcat_EmptyStrings(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	gc := NewGroupConcat("", nil, "|", []sql.Expression{expression.NewGetField(0, types.Text, "text", true)}, 1024)
+	buf, err := gc.NewBuffer(ctx)
+	require.NoError(t, err)
+
+	for _, row := range []sql.Row{{""}, {"a"}, {""}, {nil}} {
+		require.NoError(t, buf.Update(ctx, row))
+	}
+	result, err := buf.Eval(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "|a|", result)
+}
+
 // Validate that group_concat returns the correct return type
 func TestGroupConcat_ReturnType(t *testing.T) {
 	ctx := sql.NewEmptyContext()
