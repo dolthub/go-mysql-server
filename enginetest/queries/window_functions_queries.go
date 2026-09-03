@@ -25,6 +25,13 @@ import (
 // first_value, last_value, lead, lag, and the bitwise aggregate functions.
 var WindowFunctionsScriptTests = []ScriptTest{
 	{
+		Name: "LIKE escape characters in window expressions",
+		Query: `SELECT
+			FIRST_VALUE('a%' LIKE 'a!%' ESCAPE '!') OVER (),
+			FIRST_VALUE('a%' LIKE 'a!%' ESCAPE '#') OVER ()`,
+		Expected: []sql.Row{{true, false}},
+	},
+	{
 		Name: "INET_NTOA round trip above signed 32-bit range",
 		SetUpScript: []string{
 			"CREATE TABLE inet_ntoa_test (ip VARCHAR(15))",
