@@ -25,6 +25,13 @@ import (
 // first_value, last_value, lead, lag, and the bitwise aggregate functions.
 var WindowFunctionsScriptTests = []ScriptTest{
 	{
+		Name: "current time precision in window expressions",
+		Query: `SELECT FIRST_VALUE(LENGTH(CURRENT_TIME(6))) OVER (
+			ROWS BETWEEN CURRENT ROW AND CURRENT ROW
+		)`,
+		Expected: []sql.Row{{int32(15)}},
+	},
+	{
 		Name: "INET_NTOA round trip above signed 32-bit range",
 		SetUpScript: []string{
 			"CREATE TABLE inet_ntoa_test (ip VARCHAR(15))",

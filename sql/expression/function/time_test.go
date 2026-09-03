@@ -688,6 +688,39 @@ func TestNow(t *testing.T) {
 	}
 }
 
+func TestCurrTime(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	ctx.SetQueryTime(time.Date(2021, 1, 1, 8, 30, 15, 123456789, time.UTC))
+
+	tests := []struct {
+		name      string
+		precision sql.Expression
+		expected  string
+	}{
+		{name: "default precision", expected: "08:30:15"},
+		{name: "zero precision", precision: expression.NewLiteral(0, types.Int64), expected: "08:30:15"},
+		{name: "millisecond precision", precision: expression.NewLiteral(3, types.Int64), expected: "08:30:15.123"},
+		{name: "microsecond precision", precision: expression.NewLiteral(6, types.Int64), expected: "08:30:15.123456"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			args := []sql.Expression(nil)
+			if test.precision != nil {
+				args = append(args, test.precision)
+			}
+			currentTime, err := NewCurrTime(ctx, args...)
+			require.NoError(t, err)
+
+			cloned, err := currentTime.WithChildren(ctx, currentTime.Children()...)
+			require.NoError(t, err)
+			actual, err := cloned.Eval(ctx, nil)
+			require.NoError(t, err)
+			require.Equal(t, test.expected, actual)
+		})
+	}
+}
+
 // TestSysdate tests the SYSDATE() function, which should generally behave identically to NOW(), but unlike NOW(),
 // SYSDATE() should always return the exact current time, and not the cached query start time. That behavior is
 // tested in the enginetests, instead of these unit tests.

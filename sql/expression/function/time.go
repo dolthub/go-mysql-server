@@ -1739,8 +1739,19 @@ func (c *CurrTime) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	if t, ok := result.(time.Time); ok {
-		// TODO: this is wrong, we need to include nanoseconds
-		return fmt.Sprintf("%02d:%02d:%02d", t.Hour(), t.Minute(), t.Second()), nil
+		precision := 0
+		if c.prec != nil {
+			prec, err := c.prec.Eval(ctx, row)
+			if err != nil {
+				return nil, err
+			}
+			fsp, ok := types.CoalesceInt(prec)
+			if !ok {
+				return nil, sql.ErrInvalidArgumentType.New(c.FunctionName())
+			}
+			precision = int(fsp)
+		}
+		return fmt.Sprintf("%02d:%02d:%02d%s", t.Hour(), t.Minute(), t.Second(), subSecondPrecision(t, precision)), nil
 	} else {
 		return nil, fmt.Errorf("unexpected type %T for NOW() result", result)
 	}
@@ -1748,7 +1759,7 @@ func (c *CurrTime) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 // WithChildren implements sql.Expression
 func (c *CurrTime) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
-	return NoArgFuncWithChildren(c, children)
+	return NewCurrTime(ctx, children...)
 }
 
 // Time is a function takes the Time part out from a datetime expression.
