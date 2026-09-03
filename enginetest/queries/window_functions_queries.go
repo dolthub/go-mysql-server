@@ -25,14 +25,6 @@ import (
 // first_value, last_value, lead, lag, and the bitwise aggregate functions.
 var WindowFunctionsScriptTests = []ScriptTest{
 	{
-		Name:    "LIKE escape characters in window expressions",
-		Dialect: "mysql",
-		Query: `SELECT
-			FIRST_VALUE('a%' LIKE 'a!%' ESCAPE '!') OVER (),
-			FIRST_VALUE('a%' LIKE 'a!%' ESCAPE '#') OVER ()`,
-		Expected: []sql.Row{{true, false}},
-	},
-	{
 		Name: "literal window expressions over zero-width projected rows",
 		SetUpScript: []string{
 			"CREATE TABLE literal_windows (x int, g int)",
@@ -741,6 +733,14 @@ var WindowFunctionsScriptTests = []ScriptTest{
 			{int64(2), int64(2)},
 			{int64(3), int64(1)},
 		},
+	},
+	{
+		Name:    "LIKE escape characters in window expressions",
+		Dialect: "mysql",
+		Query: `SELECT
+			FIRST_VALUE('a%' LIKE 'a!%' ESCAPE '!') OVER (),
+			FIRST_VALUE('a%' LIKE 'a!%' ESCAPE '#') OVER ()`,
+		Expected: []sql.Row{{true, false}},
 	},
 	{
 		Name: "identical expressions over different windows should produce different results",
