@@ -743,6 +743,32 @@ var WindowFunctionsScriptTests = []ScriptTest{
 		Expected: []sql.Row{{true, false}},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/11498
+		Name:    "customer reproduction: LIKE escape characters in window expressions",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t(id INT PRIMARY KEY)",
+			"INSERT INTO t VALUES (1),(2)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT id,
+					FIRST_VALUE(IF('a%' LIKE 'a!%' ESCAPE '!', 1, 0))
+						OVER (ORDER BY id) AS escape_bang,
+					FIRST_VALUE(IF('a%' LIKE 'a!%' ESCAPE '#', 1, 0))
+						OVER (ORDER BY id) AS escape_hash
+					FROM t
+					ORDER BY id`,
+				Expected: []sql.Row{{1, int32(1), int32(0)}, {2, int32(1), int32(0)}},
+			},
+			{
+				Query: `SELECT 'a%' LIKE 'a!%' ESCAPE '!' AS scalar_bang,
+					'a%' LIKE 'a!%' ESCAPE '#' AS scalar_hash`,
+				Expected: []sql.Row{{true, false}},
+			},
+		},
+	},
+	{
 		Name: "identical expressions over different windows should produce different results",
 		SetUpScript: []string{
 			"CREATE TABLE t(a INT, b INT);",
