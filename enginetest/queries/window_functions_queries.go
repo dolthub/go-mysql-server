@@ -1291,6 +1291,19 @@ var WindowFunctionsScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "validate window function in set op order by clause",
+		SetUpScript: []string{
+			"CREATE TABLE t(id INT PRIMARY KEY, v INT);",
+			"INSERT INTO t VALUES (1,10),(2,20);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       `SELECT id,v FROM t WHERE id=1 UNION ALL SELECT id,v FROM t WHERE id=2 ORDER BY ROW_NUMBER() OVER (ORDER BY id);`,
+				ExpectedErr: sql.ErrSetOpOrderByAggregation,
+			},
+		},
+	},
 }
 
 // WindowRowFramesScriptTests tests window functions using ROWS frame specifications.
