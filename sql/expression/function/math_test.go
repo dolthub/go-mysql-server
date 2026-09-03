@@ -252,6 +252,19 @@ func TestTrigFunctions(t *testing.T) {
 	}
 }
 
+func TestAtanString(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	expr, err := NewAtan(
+		ctx,
+		expression.NewLiteral(1, types.Int64),
+		expression.NewLiteral(2, types.Int64),
+	)
+	require.NoError(t, err)
+	require.Equal(t, "atan(1, 2)", expr.String())
+	_, err = sql.NewMysqlParser().ParseSimple("SELECT " + expr.String())
+	require.NoError(t, err)
+}
+
 func withinRoundingErr(v1, v2 float64) bool {
 	const roundingErr = 0.00001
 	diff := v1 - v2
