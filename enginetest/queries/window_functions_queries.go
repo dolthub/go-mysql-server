@@ -25,6 +25,23 @@ import (
 // first_value, last_value, lead, lag, and the bitwise aggregate functions.
 var WindowFunctionsScriptTests = []ScriptTest{
 	{
+		Name: "sibling NTILE expressions with different bucket counts",
+		SetUpScript: []string{
+			"CREATE TABLE ntile_counts (id INT PRIMARY KEY, g INT)",
+			"INSERT INTO ntile_counts VALUES (1, 0), (2, 0), (3, 0), (4, 0)",
+		},
+		Query: `SELECT id,
+			NTILE(2) OVER (PARTITION BY g ORDER BY id),
+			NTILE(3) OVER (PARTITION BY g ORDER BY id)
+			FROM ntile_counts ORDER BY id`,
+		Expected: []sql.Row{
+			{1, uint64(1), uint64(1)},
+			{2, uint64(1), uint64(1)},
+			{3, uint64(2), uint64(2)},
+			{4, uint64(2), uint64(3)},
+		},
+	},
+	{
 		Name: "INET_NTOA round trip above signed 32-bit range",
 		SetUpScript: []string{
 			"CREATE TABLE inet_ntoa_test (ip VARCHAR(15))",
