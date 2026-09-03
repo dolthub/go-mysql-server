@@ -244,7 +244,7 @@ func (d *DateAdd) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	var dateVal interface{}
+	var dateVal any
 	dateVal, _, err = types.DatetimeMaxRange.Convert(ctx, date)
 	if err != nil {
 		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
