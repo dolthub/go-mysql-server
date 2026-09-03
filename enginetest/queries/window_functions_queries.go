@@ -654,6 +654,23 @@ var WindowFunctionsScriptTests = []ScriptTest{
 		Expected: []sql.Row{{1, int64(-1)}, {2, int64(-2)}},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/11420
+		Name: "customer reproduction: unary negation of ROW_NUMBER",
+		SetUpScript: []string{
+			"CREATE TABLE t(id INT PRIMARY KEY,g INT,k INT NOT NULL,v INT NOT NULL)",
+			"INSERT INTO t VALUES (1,0,0,10),(2,0,1,20)",
+		},
+		Query: `SELECT id,
+			-(ROW_NUMBER() OVER (
+				PARTITION BY g
+				ORDER BY k ASC,id ASC
+				ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+			)) AS wf
+			FROM t
+			ORDER BY id`,
+		Expected: []sql.Row{{1, int64(-1)}, {2, int64(-2)}},
+	},
+	{
 		Name: "window functions, row_number partitioned by multiple columns",
 		SetUpScript: []string{
 			"CREATE TABLE t5 (a INTEGER, b INTEGER)",
