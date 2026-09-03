@@ -16,6 +16,7 @@ package function
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/lestrrat-go/strftime"
@@ -29,6 +30,7 @@ var mysqlTimeFormatSpec = strftime.NewSpecificationSet()
 var timeFormatSpecifierToFunc = map[byte]func(time.Time) string{
 	'f': microsecondsStr,
 	'H': nil,
+	'k': nil,
 	'h': twelveHourPadded,
 	'I': twelveHourPadded,
 	'i': minutesStr,
@@ -68,6 +70,40 @@ func formatTime(format string, t time.Time) (string, error) {
 		return "", err
 	}
 
+	return formatter.FormatString(t), nil
+}
+
+func formatTimeDuration(format string, t time.Time, hours int) (string, error) {
+	spec := strftime.NewSpecificationSet()
+	for specifier, fn := range timeFormatSpecifierToFunc {
+		if fn != nil {
+			if err := spec.Set(specifier, wrap(fn)); err != nil {
+				return "", err
+			}
+		}
+	}
+	if err := spec.Set('H', wrap(func(time.Time) string { return fmt.Sprintf("%02d", hours) })); err != nil {
+		return "", err
+	}
+	if err := spec.Set('k', wrap(func(time.Time) string { return strconv.Itoa(hours) })); err != nil {
+		return "", err
+	}
+
+	for i := byte('A'); i <= 'Z'; i++ {
+		for _, specifier := range []byte{i, i + byte('a'-'A')} {
+			if _, ok := timeFormatSpecifierToFunc[specifier]; !ok {
+				b := specifier
+				if err := spec.Set(b, wrap(func(time.Time) string { return string(b) })); err != nil {
+					return "", err
+				}
+			}
+		}
+	}
+
+	formatter, err := strftime.New(format, strftime.WithSpecificationSet(spec))
+	if err != nil {
+		return "", err
+	}
 	return formatter.FormatString(t), nil
 }
 
@@ -133,9 +169,10 @@ func (f *TimeFormat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, sql.ErrInvalidArgumentDetails.New("time_format", "format must be a string")
 	}
 
-	return formatTime(
+	return formatTimeDuration(
 		formatStr,
 		time.Date(1980, time.January, 1, int(d.Hours())%24, int(d.Minutes())%60, int(d.Seconds())%60, int(d.Nanoseconds())%1e9, time.UTC),
+		int(d.Hours()),
 	)
 }
 

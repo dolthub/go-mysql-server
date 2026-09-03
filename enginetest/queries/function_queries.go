@@ -28,6 +28,10 @@ import (
 // FunctionQueryTests contains queries that primarily test SQL function calls
 var FunctionQueryTests = []QueryTest{
 	{
+		Query:    `SELECT TIME_FORMAT('25:01:02', '%H'), TIME_FORMAT('25:01:02', '%k'), TIME_FORMAT('05:01:02', '%k')`,
+		Expected: []sql.Row{{"25", "25", "5"}},
+	},
+	{
 		Query:    `SELECT FIRST_VALUE(TIME_TO_SEC('25:00:00')) OVER ()`,
 		Expected: []sql.Row{{uint64(90000)}},
 	},
