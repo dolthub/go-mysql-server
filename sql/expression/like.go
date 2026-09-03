@@ -193,6 +193,9 @@ func (l *Like) evalRight(ctx *sql.Context, row sql.Row) (right *string, escape r
 }
 
 func (l *Like) String() string {
+	if l.Escape != nil {
+		return fmt.Sprintf("%s LIKE %s ESCAPE %s", l.LeftChild, l.RightChild, l.Escape)
+	}
 	return fmt.Sprintf("%s LIKE %s", l.LeftChild, l.RightChild)
 }
 
