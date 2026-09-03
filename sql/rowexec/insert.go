@@ -55,6 +55,8 @@ type insertIter struct {
 	rowNumber                   int64
 	closed                      bool
 	ignore                      bool
+	ignoreMode                  sql.InsertIgnoreMode
+	ignoreTarget                []string
 	hasAfterTrigger             bool
 }
 
@@ -75,6 +77,9 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 	for {
 		row, skipped, err := i.next(ctx)
 		if skipped || errors.Is(err, sql.ErrRowEditCanceled) {
+			continue
+		}
+		if _, ok := err.(sql.IgnorableError); ok && i.ignoreMode == sql.InsertIgnoreModeDuplicateKeysOnly && len(i.returnExprs) > 0 {
 			continue
 		}
 		return row, err
@@ -160,7 +165,7 @@ func (i *insertIter) next(ctx *sql.Context) (returnRow sql.Row, skipped bool, re
 				// IGNORE is specified:
 				// ERROR 3140 (22032): Invalid JSON text: "Invalid value." at position 0 in value for column
 				// 'table.column'.
-				if i.ignore && col.Type.Type() != query.Type_JSON {
+				if i.ignore && i.ignoreMode == sql.InsertIgnoreModeMySQL && col.Type.Type() != query.Type_JSON {
 					if sql.IsNumberType(col.Type) {
 						if converted == nil {
 							converted = i.schema[idx].Type.Zero()
@@ -224,6 +229,17 @@ func (i *insertIter) next(ctx *sql.Context) (returnRow sql.Row, skipped bool, re
 		}
 		return toReturn, false, nil
 	} else {
+		if i.ignore && i.ignoreMode == sql.InsertIgnoreModeDuplicateKeysOnly {
+			if checker, ok := i.inserter.(sql.UniqueKeyConflictCheckingRowInserter); ok {
+				conflict, err := checker.HasUniqueKeyConflict(ctx, row, i.ignoreTarget)
+				if err != nil {
+					return nil, false, sql.NewWrappedInsertError(row, err)
+				}
+				if conflict {
+					return nil, false, sql.NewIgnorableError(row)
+				}
+			}
+		}
 		if err := i.inserter.Insert(ctx, row); err != nil {
 			if (sql.ErrPrimaryKeyViolation.Is(err) || sql.ErrUniqueKeyViolation.Is(err)) &&
 				i.onDupKeyUpdateExprs.HasUpdates() {
@@ -400,8 +416,53 @@ func (i *insertIter) ignoreOrClose(ctx *sql.Context, row sql.Row, err error) err
 	if !i.ignore {
 		return sql.NewWrappedInsertError(row, err)
 	}
+	if i.ignoreMode == sql.InsertIgnoreModeDuplicateKeysOnly &&
+		!sql.ErrPrimaryKeyViolation.Is(err) &&
+		!sql.ErrUniqueKeyViolation.Is(err) &&
+		!sql.ErrDuplicateEntry.Is(err) {
+		return sql.NewWrappedInsertError(row, err)
+	}
+	if i.ignoreMode == sql.InsertIgnoreModeDuplicateKeysOnly && len(i.ignoreTarget) > 0 {
+		matches, probeErr := i.matchesIgnoreTarget(ctx, row, err)
+		if probeErr != nil {
+			return sql.NewWrappedInsertError(row, probeErr)
+		}
+		if !matches {
+			return sql.NewWrappedInsertError(row, err)
+		}
+	}
 
 	return warnOnIgnorableError(ctx, row, err)
+}
+
+// matchesIgnoreTarget reports whether a duplicate row conflicts with the selected unique-key target.
+func (i *insertIter) matchesIgnoreTarget(ctx *sql.Context, row sql.Row, err error) (bool, error) {
+	wrapped, ok := err.(*errors.Error)
+	if ok {
+		if uniqueErr, ok := wrapped.Cause().(sql.UniqueKeyError); ok && uniqueErr.Existing != nil && i.rowsMatchTarget(ctx, row, uniqueErr.Existing) {
+			return true, nil
+		}
+	}
+	checker, ok := i.inserter.(sql.UniqueKeyConflictCheckingRowInserter)
+	if !ok {
+		return false, nil
+	}
+	return checker.HasUniqueKeyConflict(ctx, row, i.ignoreTarget)
+}
+
+// rowsMatchTarget compares two rows using only the selected conflict-target columns.
+func (i *insertIter) rowsMatchTarget(ctx *sql.Context, row, existing sql.Row) bool {
+	for _, name := range i.ignoreTarget {
+		idx := i.schema.IndexOfColName(name)
+		if idx < 0 || idx >= len(row) || idx >= len(existing) || row[idx] == nil || existing[idx] == nil {
+			return false
+		}
+		equal, err := i.schema[idx].Type.Compare(ctx, row[idx], existing[idx])
+		if err != nil || equal != 0 {
+			return false
+		}
+	}
+	return true
 }
 
 // convertDataAndWarn modifies a row with data conversion issues in INSERT/UPDATE IGNORE calls
@@ -492,7 +553,7 @@ func (i *insertIter) validateNullability(ctx *sql.Context, dstSchema sql.Schema,
 	for count, col := range dstSchema {
 		if !col.Nullable && row[count] == nil {
 			// In the case of an IGNORE we set the nil value to a default and add a warning
-			if !i.ignore {
+			if !i.ignore || i.ignoreMode == sql.InsertIgnoreModeDuplicateKeysOnly {
 				if i.deferredDefaults.Contains(count) {
 					return sql.ErrFieldNoDefaultValue.New(col.Name)
 				}

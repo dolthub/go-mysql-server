@@ -44,6 +44,7 @@ var _ sql.CommentedTable = (*tableEditor)(nil)
 var _ sql.RowReplacer = (*tableEditor)(nil)
 var _ sql.RowUpdater = (*tableEditor)(nil)
 var _ sql.RowInserter = (*tableEditor)(nil)
+var _ sql.UniqueKeyConflictCheckingRowInserter = (*tableEditor)(nil)
 var _ sql.RowDeleter = (*tableEditor)(nil)
 var _ sql.AutoIncrementSetter = (*tableEditor)(nil)
 var _ sql.ForeignKeyEditor = (*tableEditor)(nil)
@@ -188,6 +189,63 @@ func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 	}
 
 	return nil
+}
+
+// HasUniqueKeyConflict implements sql.UniqueKeyConflictCheckingRowInserter.
+func (t *tableEditor) HasUniqueKeyConflict(ctx *sql.Context, row sql.Row, columns []string) (bool, error) {
+	if err := checkRow(ctx, t.editedTable.data.schema.Schema, row); err != nil {
+		return false, err
+	}
+	target := make([]int, len(columns))
+	for idx, column := range columns {
+		target[idx] = t.Schema(ctx).IndexOfColName(column)
+		if target[idx] < 0 {
+			return false, fmt.Errorf("unique key conflict target column %q not found", column)
+		}
+	}
+
+	pkCols := t.pkColumnIndexes()
+	if len(columns) == 0 || sameColumnSet(target, pkCols) {
+		_, found, err := t.ea.Get(row)
+		if err != nil || found || len(columns) > 0 {
+			return found, err
+		}
+	}
+	for idx, uniqueCols := range t.uniqueIdxCols {
+		if (len(columns) > 0 && !sameColumnSet(target, uniqueCols)) || hasNullForAnyCols(row, uniqueCols) {
+			continue
+		}
+		_, found, err := t.ea.GetByCols(row, uniqueCols, t.prefixLengths[idx])
+		if err != nil || found || len(columns) > 0 {
+			return found, err
+		}
+	}
+	if len(columns) == 0 {
+		return false, nil
+	}
+	return false, fmt.Errorf("unique key conflict target does not match a unique key")
+}
+
+// sameColumnSet reports whether two column-index slices contain the same indexes regardless of order.
+func sameColumnSet(left, right []int) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	matched := make([]bool, len(right))
+	for _, leftIdx := range left {
+		found := false
+		for idx, rightIdx := range right {
+			if !matched[idx] && leftIdx == rightIdx {
+				matched[idx] = true
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
 }
 
 // Delete the given row from the table.

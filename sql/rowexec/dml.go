@@ -90,6 +90,8 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 		checks:                         ii.Checks(),
 		ctx:                            ctx,
 		ignore:                         ii.Ignore,
+		ignoreMode:                     ii.IgnoreMode,
+		ignoreTarget:                   ii.IgnoreTarget,
 		firstGeneratedAutoIncRowIdx:    ii.FirstGeneratedAutoIncRowIdx,
 		returnExprs:                    ii.Returning,
 		returnSchema:                   ii.Schema(ctx),
@@ -104,11 +106,12 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 		ed = inserter
 	}
 
-	if ii.Ignore {
-		// If ignore is set, then we are either replacing or inserting, but not updating on conflicts
+	if ii.Ignore && ii.IgnoreMode == sql.InsertIgnoreModeMySQL {
+		// MySQL INSERT IGNORE may suppress a row error and continue, so each row needs its own rollback checkpoint.
 		return plan.NewCheckpointingTableEditorIter(insertIter, ed), nil
 	} else {
-		// Otherwise, we are potentially inserting AND updating if there are conflicts
+		// PostgreSQL ON CONFLICT only suppresses matching uniqueness errors. Any other row error must roll back the
+		// entire statement, so duplicate-key-only inserts share one statement boundary with conflict updates.
 		eds := []sql.EditOpenerCloser{ed}
 		if updater != nil {
 			eds = append(eds, updater)

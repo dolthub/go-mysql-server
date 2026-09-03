@@ -168,6 +168,16 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	ins.OnDupValuesAlias = i.OnDupValuesAlias
 	ins.OnDupWhere = onDupWhere
 	ins.CountOnDuplicateUpdateAsOneRow = i.CountOnDuplicateUpdateAsOneRow
+	ins.IgnoreMode = b.overrides.InsertIgnoreMode
+	if len(i.ConflictTarget) > 0 {
+		ins.IgnoreTarget = make([]string, len(i.ConflictTarget))
+		for idx, column := range i.ConflictTarget {
+			ins.IgnoreTarget[idx] = column.String()
+		}
+		if rt != nil {
+			b.validateInsertIgnoreTarget(rt, ins.IgnoreTarget)
+		}
+	}
 	ins.LiteralValueSource = srcLiteralOnly
 
 	if len(i.Returning) > 0 {
@@ -186,6 +196,60 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	}
 
 	return
+}
+
+// validateInsertIgnoreTarget verifies that the requested columns identify a non-partial unique key.
+func (b *Builder) validateInsertIgnoreTarget(rt *plan.ResolvedTable, target []string) {
+	schema := rt.Schema(b.ctx)
+	for _, column := range target {
+		if schema.IndexOfColName(column) < 0 {
+			b.handleErr(sql.ErrColumnNotFound.New(column))
+		}
+	}
+	var primary []string
+	for _, column := range schema {
+		if column.PrimaryKey {
+			primary = append(primary, column.Name)
+		}
+	}
+	if conflictTargetMatches(target, primary) {
+		return
+	}
+	indexed, ok := sql.GetUnderlyingTable(rt.Table).(sql.IndexAddressableTable)
+	if ok {
+		indexes, err := indexed.GetIndexes(b.ctx)
+		if err != nil {
+			b.handleErr(err)
+		}
+		for _, index := range indexes {
+			if partial, ok := index.(sql.PartialIndex); ok && partial.Predicate() != "" {
+				continue
+			}
+			if index.IsUnique() && conflictTargetMatches(target, index.Expressions()) {
+				return
+			}
+		}
+	}
+	b.handleErr(sql.ErrInsertConflictTarget.New())
+}
+
+// conflictTargetMatches reports whether target names the same columns as the indexed expressions.
+func conflictTargetMatches(target, expressions []string) bool {
+	if len(target) == 0 || len(target) != len(expressions) {
+		return false
+	}
+	wanted := make(map[string]struct{}, len(target))
+	for _, column := range target {
+		wanted[strings.ToLower(column)] = struct{}{}
+	}
+	for _, expression := range expressions {
+		parts := strings.Split(expression, ".")
+		column := strings.Trim(parts[len(parts)-1], "`\"")
+		if _, ok := wanted[strings.ToLower(column)]; !ok {
+			return false
+		}
+	}
+	return true
 }
 
 func (b *Builder) insertRowsToNode(inScope *scope, ir ast.InsertRows, columnNames []string, tableName string, destSchema sql.Schema) (outScope *scope, literalOnly bool) {
