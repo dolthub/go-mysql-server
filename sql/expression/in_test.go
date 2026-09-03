@@ -44,7 +44,9 @@ func TestRoundTripNames(t *testing.T) {
 			expression.NewLiteral(int64(2), types.Int64),
 		))
 	assert.NoError(t, err)
-	assert.Equal(t, "(foo HASH IN (2))", hit.String())
+	assert.Equal(t, "(foo IN (2))", hit.String())
+	_, err = sql.NewMysqlParser().ParseSimple("SELECT " + hit.String())
+	require.NoError(t, err)
 }
 
 func TestInTuple(t *testing.T) {

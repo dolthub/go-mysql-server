@@ -363,7 +363,7 @@ func (hit *HashInTuple) Right() sql.Expression {
 }
 
 func (hit *HashInTuple) String() string {
-	return fmt.Sprintf("(%s HASH IN %s)", hit.in.Left(), hit.in.Right())
+	return fmt.Sprintf("(%s IN %s)", hit.in.Left(), hit.in.Right())
 }
 
 func (hit *HashInTuple) DebugString(ctx *sql.Context) string {
