@@ -1618,14 +1618,10 @@ func (*TimeToSec) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 }
 
 func (m *TimeToSec) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	val, err := m.Child.Eval(ctx, row)
+	val, err := m.EvalChild(ctx, row)
 	if err != nil {
 		return nil, err
 	}
-	if val == nil {
-		return nil, nil
-	}
-
 	timespan, err := types.Time.ConvertToTimespan(val)
 	if err != nil {
 		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrIncorrectDateTimeValue.New(val).Error())

@@ -756,8 +756,6 @@ func (c *Crc32) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	switch val := arg.(type) {
 	case string:
 		bytes = []byte(val)
-	case []byte:
-		bytes = val
 	case int8, int16, int32, int64, int:
 		val, _, err := types.Int64.Convert(ctx, arg)
 

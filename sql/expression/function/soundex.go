@@ -17,6 +17,7 @@ package function
 import (
 	"fmt"
 	"strings"
+	"unicode"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -73,9 +74,8 @@ func (s *Soundex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	var b strings.Builder
 	var last rune
-	for _, c := range v.(string) {
-		c = soundexToUpper(c)
-		if last == 0 && !soundexIsAlpha(c) {
+	for _, c := range strings.ToUpper(v.(string)) {
+		if last == 0 && !unicode.IsLetter(c) {
 			continue
 		}
 		code := s.code(c)
@@ -97,17 +97,6 @@ func (s *Soundex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		b.WriteRune('0')
 	}
 	return b.String(), nil
-}
-
-func soundexToUpper(c rune) rune {
-	if c >= 'a' && c <= 'z' {
-		return c - 'a' + 'A'
-	}
-	return c
-}
-
-func soundexIsAlpha(c rune) bool {
-	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c >= 0xC0
 }
 
 func (s *Soundex) code(c rune) rune {

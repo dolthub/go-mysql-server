@@ -159,7 +159,6 @@ func TestCRC32(t *testing.T) {
 	}{
 		{"CRC32('MySQL)", "MySQL", 3259397556},
 		{"CRC32('mysql')", "mysql", 2501908538},
-		{"CRC32(binary 0A)", []byte{0x0A}, 852952723},
 
 		{"CRC32('6')", "6", 498629140},
 		{"CRC32(int 6)", 6, 498629140},
