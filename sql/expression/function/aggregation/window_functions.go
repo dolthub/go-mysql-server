@@ -1169,7 +1169,7 @@ func (a *RowNumber) Compute(ctx *sql.Context, interval sql.WindowInterval, buffe
 		return nil, nil
 	}
 	defer func() { a.pos++ }()
-	return a.pos, nil
+	return int64(a.pos), nil
 }
 
 type rankBase struct {

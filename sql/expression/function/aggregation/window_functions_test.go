@@ -344,7 +344,7 @@ func TestWindowedAggFuncs(t *testing.T) {
 		{
 			Name:     "row number",
 			Agg:      NewRowNumber(),
-			Expected: sql.Row{1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 5, 6},
+			Expected: sql.Row{int64(1), int64(2), int64(3), int64(4), int64(1), int64(2), int64(3), int64(4), int64(1), int64(2), int64(3), int64(4), int64(5), int64(6)},
 		},
 		{
 			Name: "percent rank no peers",
