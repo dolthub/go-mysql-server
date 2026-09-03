@@ -306,6 +306,9 @@ func TestTime_Hour(t *testing.T) {
 func TestTime_Minute(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 	f := NewMinute(ctx, expression.NewGetField(0, types.LongText, "foo", false))
+	require.Equal(t, "minute(foo)", f.String())
+	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + f.String())
+	require.NoError(t, err)
 
 	testCases := []struct {
 		name     string

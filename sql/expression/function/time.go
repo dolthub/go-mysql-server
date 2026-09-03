@@ -391,7 +391,7 @@ func (m *Minute) Description() string {
 	return "returns the minutes of the given date."
 }
 
-func (m *Minute) String() string { return fmt.Sprintf("%s(%d)", m.FunctionName(), m.Child) }
+func (m *Minute) String() string { return fmt.Sprintf("%s(%s)", m.FunctionName(), m.Child) }
 
 // Type implements the Expression interface.
 func (m *Minute) Type(ctx *sql.Context) sql.Type { return types.Int32 }
