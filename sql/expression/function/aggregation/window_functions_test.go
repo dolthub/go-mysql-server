@@ -224,6 +224,24 @@ func TestGroupedAggFuncs(t *testing.T) {
 			Expected: sql.Row{"1,2,3,4", "1,2,3,4", "1,2,3,4,5,6"},
 		},
 		{
+			Name: "group concat multiple expressions",
+			Agg: NewGroupConcatAgg(NewGroupConcat("", nil, ",", []sql.Expression{
+				expression.NewGetField(0, types.LongText, "x", true),
+				expression.NewLiteral("-", types.LongText),
+				expression.NewGetField(1, types.LongText, "y", true),
+			}, 1042)),
+			Expected: sql.Row{"1-1,3-3,4-4", "1-1,3-3,4-4", "1-1,2-2,5-5,6-6"},
+		},
+		{
+			Name: "group concat multiple expressions with later null",
+			Agg: NewGroupConcatAgg(NewGroupConcat("", nil, ",", []sql.Expression{
+				expression.NewGetField(1, types.LongText, "x", true),
+				expression.NewLiteral("-", types.LongText),
+				expression.NewGetField(0, types.LongText, "y", true),
+			}, 1042)),
+			Expected: sql.Row{"1-1,3-3,4-4", "1-1,3-3,4-4", "1-1,2-2,5-5,6-6"},
+		},
+		{
 			Name: "json array null",
 			Agg:  NewJsonArrayAgg(expression.NewGetField(0, types.LongText, "x", true)),
 			Expected: sql.Row{

@@ -122,11 +122,12 @@ func (c *Ceil) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case float64:
 		child = math.Ceil(num)
 	case *apd.Decimal:
-		_, err = sql.DecimalCtx.Ceil(num, num)
+		result := new(apd.Decimal)
+		_, err = sql.DecimalCtx.Ceil(result, num)
 		if err != nil {
 			return nil, err
 		}
-		child = num
+		child = result
 	}
 	child, _, _ = c.Type(ctx).Convert(ctx, child)
 	return child, nil
@@ -209,11 +210,12 @@ func (f *Floor) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case float64:
 		child = math.Floor(num)
 	case *apd.Decimal:
-		_, err = sql.DecimalCtx.Floor(num, num)
+		result := new(apd.Decimal)
+		_, err = sql.DecimalCtx.Floor(result, num)
 		if err != nil {
 			return nil, err
 		}
-		child = num
+		child = result
 	}
 	child, _, _ = f.Type(ctx).Convert(ctx, child)
 	return child, nil

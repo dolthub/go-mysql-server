@@ -969,27 +969,13 @@ func (a *GroupConcatAgg) filterToDistinct(ctx *sql.Context, buf sql.WindowBuffer
 
 		a.gc.returnType = retType
 
-		// Skip if this is a null row
-		if evalRow == nil {
-			continue
-		}
-
-		var v interface{}
-		if retType == types.Blob {
-			v, _, err = types.Blob.Convert(ctx, evalRow[0])
-		} else {
-			v, _, err = types.LongText.Convert(ctx, evalRow[0])
-		}
-
+		vs, isNull, err := groupConcatValue(ctx, a.gc.selectExprs, evalRow, retType)
 		if err != nil {
 			return nil, nil, err
 		}
-
-		if v == nil {
+		if isNull {
 			continue
 		}
-
-		vs := v.(string)
 
 		// Get the current array of rows and the map
 		// Check if distinct is active if so look at and update our map

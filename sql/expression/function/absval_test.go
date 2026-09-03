@@ -15,6 +15,7 @@
 package function
 
 import (
+	"math"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -121,4 +122,10 @@ func TestAbsValue(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestAbsMinInt64(t *testing.T) {
+	f := NewAbsVal(sql.NewEmptyContext(), expression.NewGetField(0, types.Int64, "value", false))
+	_, err := f.Eval(sql.NewEmptyContext(), sql.NewRow(int64(math.MinInt64)))
+	require.True(t, sql.ErrValueOutOfRange.Is(err))
 }
