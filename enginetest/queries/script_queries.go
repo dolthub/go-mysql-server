@@ -1222,7 +1222,7 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 				Expected:                        []sql.Row{{0}},
 				ExpectedWarningsCount:           1,
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
-				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 'a'",
+				ExpectedWarningMessageSubstring: "Truncated incorrect DECIMAL value: 'a'",
 			},
 			{
 				Query:                 "select 4 div 'a';",
@@ -1243,7 +1243,7 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 				Expected:                        []sql.Row{{4}},
 				ExpectedWarningsCount:           1,
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
-				ExpectedWarningMessageSubstring: "Truncated incorrect double value: '12a'",
+				ExpectedWarningMessageSubstring: "Truncated incorrect DECIMAL value: '12a'",
 			},
 			{
 				Query:                 "select 'a' mod 'a';",
@@ -2071,6 +2071,31 @@ CREATE TABLE table2 (
 			{
 				Query:    "INSERT INTO table1 (name) VALUES ('tbl1 row 2');",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 2}}},
+			},
+		},
+	},
+	{
+		Name: "count nullable columns in a keyless table",
+		SetUpScript: []string{
+			"CREATE TABLE keyless_count (p BIGINT, q BIGINT, r BIGINT)",
+			"INSERT INTO keyless_count VALUES (1, NULL, NULL), (2, 20, NULL), (2, 20, NULL), (3, 30, 300), (NULL, NULL, NULL)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT COUNT(*) FROM keyless_count",
+				Expected: []sql.Row{{5}},
+			},
+			{
+				Query:    "SELECT COUNT(p) FROM keyless_count",
+				Expected: []sql.Row{{4}},
+			},
+			{
+				Query:    "SELECT COUNT(q) FROM keyless_count",
+				Expected: []sql.Row{{3}},
+			},
+			{
+				Query:    "SELECT COUNT(r) FROM keyless_count",
+				Expected: []sql.Row{{1}},
 			},
 		},
 	},
@@ -10839,6 +10864,95 @@ where
 				Query: "SELECT pk, e FROM test_enum;",
 				Expected: []sql.Row{
 					{1, nil},
+				},
+			},
+		},
+	},
+	{
+		Name:        "MySQL default and strict SQL_MODE behavior",
+		Dialect:     "mysql",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				// Disabling `NO_ZERO_IN_DATE` throws additional warning
+				Query: "set @@sql_mode = '" +
+					"STRICT_TRANS_TABLES," +
+					"NO_ZERO_DATE," +
+					"ERROR_FOR_DIVISION_BY_ZERO'",
+				Expected: []sql.Row{
+					{types.OkResult{}},
+				},
+				ExpectedWarningsCount:           2,
+				ExpectedWarning:                 3135,
+				ExpectedWarningMessageSubstring: "Removing NO_ZERO_IN_DATE mode is not supported",
+			},
+			{
+				Query: "select @@sql_mode",
+				Expected: []sql.Row{
+					{"STRICT_TRANS_TABLES,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO"},
+				},
+			},
+			{
+				// Disabling `STRICT_TRANS_TABLES` throws strict mode warning
+				Query: "set @@sql_mode = '" +
+					"NO_ZERO_IN_DATE," +
+					"NO_ZERO_DATE," +
+					"ERROR_FOR_DIVISION_BY_ZERO'",
+				Expected: []sql.Row{
+					{types.OkResult{}},
+				},
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       3135,
+				ExpectedWarningMessageSubstring: "'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' " +
+					"sql modes should be used with strict mode. " +
+					"They will be merged with strict mode in a future release",
+			},
+			{
+				Query: "select @@sql_mode",
+				Expected: []sql.Row{
+					{"NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO"},
+				},
+			},
+			{
+				// Disabling `NO_ZERO_DATE` throws strict mode warning
+				Query: "set @@sql_mode = '" +
+					"STRICT_TRANS_TABLES," +
+					"NO_ZERO_IN_DATE," +
+					"ERROR_FOR_DIVISION_BY_ZERO'",
+				Expected: []sql.Row{
+					{types.OkResult{}},
+				},
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       3135,
+				ExpectedWarningMessageSubstring: "'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' " +
+					"sql modes should be used with strict mode. " +
+					"They will be merged with strict mode in a future release",
+			},
+			{
+				Query: "select @@sql_mode",
+				Expected: []sql.Row{
+					{"STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO"},
+				},
+			},
+			{
+				// Disabling `ERROR_FOR_DIVISION_BY_ZERO` throws strict mode warning
+				Query: "set @@sql_mode = '" +
+					"STRICT_TRANS_TABLES," +
+					"NO_ZERO_IN_DATE," +
+					"NO_ZERO_DATE'",
+				Expected: []sql.Row{
+					{types.OkResult{}},
+				},
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       3135,
+				ExpectedWarningMessageSubstring: "'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' " +
+					"sql modes should be used with strict mode. " +
+					"They will be merged with strict mode in a future release",
+			},
+			{
+				Query: "select @@sql_mode",
+				Expected: []sql.Row{
+					{"STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE"},
 				},
 			},
 		},
