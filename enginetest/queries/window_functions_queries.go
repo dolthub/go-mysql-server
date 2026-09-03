@@ -25,7 +25,8 @@ import (
 // first_value, last_value, lead, lag, and the bitwise aggregate functions.
 var WindowFunctionsScriptTests = []ScriptTest{
 	{
-		Name: "FIRST_VALUE nullability for empty frames",
+		Name:    "FIRST_VALUE nullability for empty frames",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE first_value_input (id INT PRIMARY KEY, v INT NOT NULL)",
 			"INSERT INTO first_value_input VALUES (1, 10)",
