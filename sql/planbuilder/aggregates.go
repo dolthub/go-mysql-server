@@ -79,6 +79,42 @@ func (g *groupBy) getAggRef(name string) sql.Expression {
 	return ret.scalarGf()
 }
 
+// outerAggregateScope returns the outer scope that owns every column argument, if one exists.
+func (s *scope) outerAggregateScope(ctx *sql.Context, args []sql.Expression) *scope {
+	var columnIds sql.ColSet
+	var correlated sql.ColSet
+	if subquery := s.nearestSubquery(); subquery != nil {
+		correlated = subquery.correlated
+	}
+	for _, arg := range args {
+		sql.Inspect(ctx, arg, func(ctx *sql.Context, expr sql.Expression) bool {
+			gf, ok := expr.(*expression.GetField)
+			if !ok {
+				return true
+			}
+			columnIds.Add(gf.Id())
+			return false
+		})
+	}
+	if columnIds.Empty() || !columnIds.SubsetOf(correlated) {
+		return nil
+	}
+	for parent := s.parent; parent != nil; parent = parent.parent {
+		if columnIds.SubsetOf(parent.colset) {
+			return parent
+		}
+	}
+	return nil
+}
+
+// isCorrelatedColumn reports whether the column is supplied by an outer query to the active subquery.
+func (s *scope) isCorrelatedColumn(id sql.ColumnId) bool {
+	if subquery := s.nearestSubquery(); subquery != nil {
+		return subquery.correlated.Contains(id)
+	}
+	return false
+}
+
 type aggregateInfo struct {
 	ast.Expr
 }
@@ -308,40 +344,50 @@ func IsMySQLAggregateFuncName(ctx *sql.Context, name string) (bool, error) {
 // buildAggregateFunc tags aggregate functions in the correct scope
 // and makes the aggregate available for reference by other clauses.
 func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExpr) sql.Expression {
-	inScope.initGroupBy()
-	gb := inScope.groupBy
-
 	if b.inAgg {
-		// Window functions evaluate after aggregation, so
-		// aggregates inside window functions are allowed,
-		// but nested aggregates are not.
-		err := sql.ErrInvalidGroupFuncUse.New()
-		b.handleErr(err)
+		// Window functions evaluate after aggregation, so aggregates inside
+		// window functions are allowed, but nested aggregates are not.
+		b.handleErr(sql.ErrInvalidGroupFuncUse.New())
 	}
 
-	switch name {
-	case "count":
+	if strings.EqualFold(name, "count") {
 		if _, ok := e.Exprs[0].(*ast.StarExpr); ok {
-			return b.buildCountStarAggregate(e, gb)
+			inScope.initGroupBy()
+			return b.buildCountStarAggregate(e, inScope.groupBy)
 		}
-		b.qFlags.Set(sql.QFlagCount)
-	case "jsonarray":
+	}
+
+	if strings.EqualFold(name, "jsonarray") {
 		// TODO we don't have any tests for this
 		if _, ok := e.Exprs[0].(*ast.StarExpr); ok {
-			return b.buildJsonArrayStarAggregate(gb)
+			inScope.initGroupBy()
+			return b.buildJsonArrayStarAggregate(inScope.groupBy)
 		}
 	}
 
-	args := b.buildAggFunctionArgs(inScope, e, gb)
+	if strings.EqualFold(name, "any_value") {
+		b.qFlags.Set(sql.QFlagAnyAgg)
+	}
+
+	args := b.buildAggFunctionArgs(inScope, e)
+	var gb *groupBy
+	if outerScope := inScope.outerAggregateScope(b.ctx, args); outerScope != nil {
+		outerScope.initGroupBy()
+		gb = outerScope.groupBy
+	} else {
+		inScope.initGroupBy()
+		gb = inScope.groupBy
+	}
+	b.addAggFunctionArgs(gb, args)
 	agg := b.newAggregation(e, name, args)
+
+	if name == "count" {
+		b.qFlags.Set(sql.QFlagCount)
+	}
 	return b.addAggregate(agg, gb)
 }
 
-// addAggregate registers aggregate expression |agg| on |gb| and returns
-// an output column reference.
-//
-// If an identical aggregate was already registered on |gb|, addAggregate
-// reuses the existing column reference to avoid duplicate computations.
+// addAggregate registers an aggregate and reuses an existing result column when possible.
 func (b *Builder) addAggregate(agg sql.Aggregation, gb *groupBy) sql.Expression {
 	aggType := agg.Type(b.ctx)
 
@@ -350,7 +396,6 @@ func (b *Builder) addAggregate(agg sql.Aggregation, gb *groupBy) sql.Expression 
 		// if we've already computed use reference here
 		return gf
 	}
-
 	col := scopeColumn{col: aggName, scalar: agg, typ: aggType, nullable: agg.IsNullable(b.ctx)}
 	id := gb.outScope.newColumn(col)
 
@@ -401,55 +446,51 @@ func (b *Builder) newAggregation(e *ast.FuncExpr, name string, args []sql.Expres
 	return agg
 }
 
-// addAggInCol adds column dependencies from aggregate argument |e|
-// to |g| as required input columns for underlying table scans.
-func (g *groupBy) addAggInCol(b *Builder, e sql.Expression) {
-	switch e := e.(type) {
-	case *expression.GetField:
-		if e.TableId() == 0 {
-			b.handleErr(fmt.Errorf("failed to resolve aggregate column argument: %s", e))
-		}
-		col := scopeColumn{tableId: e.TableID(), db: e.Database(), table: e.Table(), col: e.Name(), scalar: e, typ: e.Type(b.ctx), nullable: e.IsNullable(b.ctx)}
-		g.addInCol(col)
-	case *expression.Star:
-		err := sql.ErrStarUnsupported.New()
-		b.handleErr(err)
-	case *plan.Subquery:
-		col := scopeColumn{col: e.QueryString, scalar: e, typ: e.Type(b.ctx)}
-		g.addInCol(col)
-	default:
-		col := scopeColumn{col: e.String(), scalar: e, typ: e.Type(b.ctx)}
-		g.addInCol(col)
-	}
-}
-
-// buildAggFunctionArgs builds arguments for an aggregate function.
-func (b *Builder) buildAggFunctionArgs(inScope *scope, e *ast.FuncExpr, gb *groupBy) []sql.Expression {
-	b.inAgg = true
-	defer func() { b.inAgg = false }()
-
+// buildAggFunctionArgs builds the arguments for an aggregate function
+func (b *Builder) buildAggFunctionArgs(inScope *scope, e *ast.FuncExpr) []sql.Expression {
 	var args []sql.Expression
 	for _, arg := range e.Exprs {
 		windowCount := len(inScope.windowFuncs)
 		e := b.selectExprToExpression(inScope, arg)
 		if len(inScope.windowFuncs) > windowCount {
-			expr := inScope.windowFuncs[windowCount].scalar
-			var windowFuncName string
-			if windowFunc, ok := expr.(sql.FunctionExpression); ok {
-				windowFuncName = windowFunc.FunctionName()
-			} else {
-				windowFuncName = expr.String()
-			}
-			b.handleErr(sql.ErrWindowInvalidWindowFuncUse.New(windowFuncName))
+			b.handleErr(sql.ErrNonAggregatedColumnWithoutGroupBy.New())
 		}
 		// if GetField is an alias, alias must be masking a column
-		if gf, ok := e.(*expression.GetField); ok && gf.TableId() == 0 {
+		if gf, ok := e.(*expression.GetField); ok && gf.TableId() == 0 && !inScope.isCorrelatedColumn(gf.Id()) {
 			e = b.selectExprToExpression(inScope.parent, arg)
 		}
-		gb.addAggInCol(b, e)
-		args = append(args, e)
+		switch e := e.(type) {
+		case *expression.GetField:
+			if e.TableId() == 0 && !inScope.isCorrelatedColumn(e.Id()) {
+				b.handleErr(fmt.Errorf("failed to resolve aggregate column argument: %s", e))
+			}
+			args = append(args, e)
+		case *expression.Star:
+			err := sql.ErrStarUnsupported.New()
+			b.handleErr(err)
+		case *plan.Subquery:
+			args = append(args, e)
+		default:
+			args = append(args, e)
+		}
 	}
 	return args
+}
+
+// addAggFunctionArgs records aggregate inputs in the scope that owns the aggregate.
+func (b *Builder) addAggFunctionArgs(gb *groupBy, args []sql.Expression) {
+	for _, arg := range args {
+		var col scopeColumn
+		switch arg := arg.(type) {
+		case *expression.GetField:
+			col = scopeColumn{tableId: arg.TableID(), db: arg.Database(), table: arg.Table(), col: arg.Name(), scalar: arg, typ: arg.Type(b.ctx), nullable: arg.IsNullable(b.ctx)}
+		case *plan.Subquery:
+			col = scopeColumn{col: arg.QueryString, scalar: arg, typ: arg.Type(b.ctx)}
+		default:
+			col = scopeColumn{col: arg.String(), scalar: arg, typ: arg.Type(b.ctx)}
+		}
+		gb.addInCol(col)
+	}
 }
 
 // buildJsonArrayStarAggregate builds a JSON_ARRAY(*) aggregate function
@@ -461,7 +502,23 @@ func (b *Builder) buildJsonArrayStarAggregate(gb *groupBy) sql.Expression {
 	// if e.Distinct {
 	//	agg = plan.NewDistinct(expression.NewLiteral(1, types.Int64))
 	// }
-	return b.addAggregate(agg, gb)
+	aggName := strings.ToLower(agg.String())
+	gf := gb.getAggRef(aggName)
+	if gf != nil {
+		// if we've already computed use reference here
+		return gf
+	}
+
+	col := scopeColumn{col: strings.ToLower(agg.String()), scalar: agg, typ: agg.Type(b.ctx), nullable: agg.IsNullable(b.ctx)}
+	id := gb.outScope.newColumn(col)
+
+	agg = agg.WithId(sql.ColumnId(id)).(*aggregation.JsonArray)
+	gb.outScope.cols[len(gb.outScope.cols)-1].scalar = agg
+	col.scalar = agg
+
+	col.id = id
+	gb.addAggStr(col)
+	return col.scalarGf()
 }
 
 // buildCountStarAggregate builds a COUNT(*) aggregate function
@@ -473,19 +530,27 @@ func (b *Builder) buildCountStarAggregate(e *ast.FuncExpr, gb *groupBy) sql.Expr
 		agg = aggregation.NewCount(expression.NewLiteral(1, types.Int64))
 	}
 	b.qFlags.Set(sql.QFlagCountStar)
-	return b.addAggregate(agg, gb)
-}
-
-// buildGroupConcat builds a GROUP_CONCAT aggregate function.
-func (b *Builder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.Expression {
-	if b.inAgg {
-		err := sql.ErrInvalidGroupFuncUse.New()
-		b.handleErr(err)
+	aggName := strings.ToLower(agg.String())
+	gf := gb.getAggRef(aggName)
+	if gf != nil {
+		// if we've already computed use reference here
+		return gf
 	}
 
-	b.inAgg = true
-	defer func() { b.inAgg = false }()
+	col := scopeColumn{col: strings.ToLower(agg.String()), scalar: agg, typ: agg.Type(b.ctx), nullable: agg.IsNullable(b.ctx)}
+	id := gb.outScope.newColumn(col)
+	col.id = id
 
+	agg = agg.WithId(sql.ColumnId(id)).(sql.Aggregation)
+	gb.outScope.cols[len(gb.outScope.cols)-1].scalar = agg
+	col.scalar = agg
+
+	gb.addAggStr(col)
+	return col.scalarGf()
+}
+
+// buildGroupConcat builds a GROUP_CONCAT aggregate function
+func (b *Builder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.Expression {
 	inScope.initGroupBy()
 	gb := inScope.groupBy
 
@@ -544,12 +609,7 @@ func IsMySQLWindowFuncName(ctx *sql.Context, name string) (bool, error) {
 	}
 }
 
-// buildWindowFunc builds a window function expression and
-// registers its definition.
 func (b *Builder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, over *ast.WindowDef) sql.Expression {
-	b.inWindow = true
-	defer func() { b.inWindow = false }()
-
 	// internal expressions can be complex, but window can't be more than alias
 	var args []sql.Expression
 	for _, arg := range e.Exprs {
@@ -587,7 +647,7 @@ func (b *Builder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, 
 
 		win, ok = newInst.(sql.WindowAdaptableExpression)
 		if !ok {
-			err := fmt.Errorf("function is not a window adaptable expression: %s", f.FunctionName())
+			err := fmt.Errorf("function is not a window adaptable exprssion: %s", f.FunctionName())
 			b.handleErr(err)
 		}
 	}
@@ -924,6 +984,7 @@ func (b *Builder) analyzeHaving(fromScope, projScope *scope, having *ast.Where) 
 	ast.Walk(func(node ast.SQLNode) (bool, error) {
 		switch n := node.(type) {
 		case *ast.Subquery:
+			b.analyzeOuterAggregates(fromScope, n.Select)
 			return false, nil
 		case *ast.FuncExpr:
 			name := n.Name.Lowered()
@@ -959,6 +1020,90 @@ func (b *Builder) analyzeHaving(fromScope, projScope *scope, having *ast.Where) 
 		}
 		return true, nil
 	}, having.Expr)
+}
+
+// analyzeOuterAggregates registers aggregates whose arguments all belong to the enclosing query.
+func (b *Builder) analyzeOuterAggregates(fromScope *scope, node ast.SelectStatement) {
+	selectStmt, ok := node.(*ast.Select)
+	if !ok {
+		return
+	}
+	localTables := localTableNames(selectStmt.From)
+	ast.Walk(func(node ast.SQLNode) (bool, error) {
+		switch n := node.(type) {
+		case *ast.Subquery:
+			return false, nil
+		case *ast.FuncExpr:
+			name := n.Name.Lowered()
+			isAggregate, err := IsAggregateFunc(b.ctx, name)
+			if err != nil {
+				b.handleErr(err)
+			}
+			if isAggregate && aggregateArgsBelongToScope(fromScope, n, localTables, len(selectStmt.From) == 0) {
+				_ = b.buildAggregateFunc(fromScope, name, n)
+				return false, nil
+			}
+			return true, nil
+		}
+		return true, nil
+	}, node)
+}
+
+// localTableNames returns the table names and aliases introduced by a subquery's FROM clause.
+func localTableNames(from ast.TableExprs) map[string]struct{} {
+	names := make(map[string]struct{})
+	for _, tableExpr := range from {
+		ast.Walk(func(node ast.SQLNode) (bool, error) {
+			aliased, ok := node.(*ast.AliasedTableExpr)
+			if !ok {
+				return true, nil
+			}
+			name := strings.ToLower(aliased.As.String())
+			if name == "" {
+				if tableName, ok := aliased.Expr.(ast.TableName); ok {
+					name = strings.ToLower(tableName.Name.String())
+				}
+			}
+			if name != "" {
+				names[name] = struct{}{}
+			}
+			return false, nil
+		}, tableExpr)
+	}
+	return names
+}
+
+// aggregateArgsBelongToScope reports whether every column argument resolves only in the given enclosing scope.
+func aggregateArgsBelongToScope(fromScope *scope, fn *ast.FuncExpr, localTables map[string]struct{}, allowUnqualified bool) bool {
+	hasColumn := false
+	belongs := true
+	for _, arg := range fn.Exprs {
+		ast.Walk(func(node ast.SQLNode) (bool, error) {
+			col, ok := node.(*ast.ColName)
+			if !ok {
+				return true, nil
+			}
+			hasColumn = true
+			dbName := strings.ToLower(col.Qualifier.DbQualifier.String())
+			tblName := strings.ToLower(col.Qualifier.Name.String())
+			colName := strings.ToLower(col.Name.String())
+			if tblName == "" {
+				if !allowUnqualified {
+					belongs = false
+					return false, nil
+				}
+			} else if _, local := localTables[tblName]; local {
+				belongs = false
+				return false, nil
+			}
+			_, ok = fromScope.resolveColumn(dbName, tblName, colName, false, false)
+			if !ok {
+				belongs = false
+			}
+			return false, nil
+		}, arg)
+	}
+	return hasColumn && belongs
 }
 
 func (b *Builder) buildInnerProj(fromScope, projScope *scope) *scope {
