@@ -25,14 +25,6 @@ import (
 // first_value, last_value, lead, lag, and the bitwise aggregate functions.
 var WindowFunctionsScriptTests = []ScriptTest{
 	{
-		Name:    "current time precision in window expressions",
-		Dialect: "mysql",
-		Query: `SELECT FIRST_VALUE(LENGTH(CURRENT_TIME(6))) OVER (
-			ROWS BETWEEN CURRENT ROW AND CURRENT ROW
-		)`,
-		Expected: []sql.Row{{int32(15)}},
-	},
-	{
 		Name: "literal window expressions over zero-width projected rows",
 		SetUpScript: []string{
 			"CREATE TABLE literal_windows (x int, g int)",
@@ -741,6 +733,14 @@ var WindowFunctionsScriptTests = []ScriptTest{
 			{int64(2), int64(2)},
 			{int64(3), int64(1)},
 		},
+	},
+	{
+		Name:    "current time precision in window expressions",
+		Dialect: "mysql",
+		Query: `SELECT FIRST_VALUE(LENGTH(CURRENT_TIME(6))) OVER (
+			ROWS BETWEEN CURRENT ROW AND CURRENT ROW
+		)`,
+		Expected: []sql.Row{{int32(15)}},
 	},
 	{
 		Name: "identical expressions over different windows should produce different results",
