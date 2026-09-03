@@ -45,6 +45,16 @@ var WindowFunctionsScriptTests = []ScriptTest{
 		Expected: []sql.Row{{13}},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/11512
+		Name: "customer reproduction: HOUR over a time-valued window result",
+		SetUpScript: []string{
+			"CREATE TABLE t(v VARCHAR(8))",
+			"INSERT INTO t VALUES ('13:04:05')",
+		},
+		Query:    "SELECT HOUR(FIRST_VALUE(v) OVER ()) AS actual FROM t",
+		Expected: []sql.Row{{13}},
+	},
+	{
 		Name: "ceil and floor do not mutate shared decimal window results",
 		SetUpScript: []string{
 			"CREATE TABLE decimal_window_values (id BIGINT, d DECIMAL(10,2))",
