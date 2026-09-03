@@ -6015,6 +6015,39 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
+		Name: "correlated subquery references outer aggregate",
+		SetUpScript: []string{
+			"CREATE TABLE correlated_aggregate_scope (id INT PRIMARY KEY, grp INT, val INT);",
+			"INSERT INTO correlated_aggregate_scope VALUES (1, 1, 1), (2, 1, 2), (3, 2, 1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT grp, SUM(DISTINCT val) FROM correlated_aggregate_scope a GROUP BY grp HAVING EXISTS (SELECT 1 FROM correlated_aggregate_scope b WHERE SUM(DISTINCT a.val) = b.val) ORDER BY grp;",
+				Expected: []sql.Row{{2, float64(1)}},
+			},
+			{
+				Query:    "SELECT grp FROM correlated_aggregate_scope a GROUP BY grp HAVING EXISTS (SELECT 1 FROM correlated_aggregate_scope b WHERE SUM(DISTINCT a.val) = b.val) ORDER BY grp;",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "SELECT grp FROM correlated_aggregate_scope a GROUP BY grp HAVING EXISTS (SELECT 1 WHERE COALESCE(SUM(a.val), 0) = 1) ORDER BY grp;",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "SELECT grp FROM correlated_aggregate_scope a GROUP BY grp HAVING EXISTS (SELECT 1 WHERE SUM(val) = 1) ORDER BY grp;",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "SELECT grp FROM correlated_aggregate_scope a GROUP BY grp HAVING EXISTS (SELECT SUM(a.val) FROM correlated_aggregate_scope a HAVING SUM(a.val) = 4) ORDER BY grp;",
+				Expected: []sql.Row{{1}, {2}},
+			},
+			{
+				Query:    "SELECT grp FROM correlated_aggregate_scope a GROUP BY grp, a.val HAVING EXISTS (SELECT SUM(a.val + b.val) FROM correlated_aggregate_scope b HAVING SUM(a.val + b.val) > 0) ORDER BY grp;",
+				Expected: []sql.Row{{1}, {1}, {2}},
+			},
+		},
+	},
+	{
 		Name: "having clause without groupby clause, all rows implicitly form a single aggregate group",
 		SetUpScript: []string{
 			"create table numbers (val int);",
