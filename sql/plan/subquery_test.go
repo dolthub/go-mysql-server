@@ -20,11 +20,20 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 func TestSubqueryString(t *testing.T) {
 	expr := NewSubquery(nil, "select 1")
 	require.Equal(t, "(select 1)", expr.String())
+	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + expr.String())
+	require.NoError(t, err)
+}
+
+func TestInSubqueryString(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	expr := NewInSubquery(ctx, expression.NewUnresolvedColumn("i"), NewSubquery(nil, "select j from t"))
+	require.Equal(t, "(i IN (select j from t))", expr.String())
 	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + expr.String())
 	require.NoError(t, err)
 }
