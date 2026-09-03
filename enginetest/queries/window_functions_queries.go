@@ -25,17 +25,6 @@ import (
 // first_value, last_value, lead, lag, and the bitwise aggregate functions.
 var WindowFunctionsScriptTests = []ScriptTest{
 	{
-		Name: "window SUM over all-NULL frames",
-		SetUpScript: []string{
-			"CREATE TABLE window_sum_nulls (id INT PRIMARY KEY, v INT)",
-			"INSERT INTO window_sum_nulls VALUES (1, NULL)",
-		},
-		Query: `SELECT id, SUM(v) OVER (
-			ORDER BY id ROWS BETWEEN CURRENT ROW AND CURRENT ROW
-		) FROM window_sum_nulls ORDER BY id`,
-		Expected: []sql.Row{{1, nil}},
-	},
-	{
 		Name: "INET_NTOA round trip above signed 32-bit range",
 		SetUpScript: []string{
 			"CREATE TABLE inet_ntoa_test (ip VARCHAR(15))",
@@ -970,6 +959,17 @@ var WindowFunctionsScriptTests = []ScriptTest{
 				Expected: []sql.Row{{0}},
 			},
 		},
+	},
+	{
+		Name: "window SUM over all-NULL frames",
+		SetUpScript: []string{
+			"CREATE TABLE window_sum_nulls (id INT PRIMARY KEY, v INT)",
+			"INSERT INTO window_sum_nulls VALUES (1, NULL)",
+		},
+		Query: `SELECT id, SUM(v) OVER (
+			ORDER BY id ROWS BETWEEN CURRENT ROW AND CURRENT ROW
+		) FROM window_sum_nulls ORDER BY id`,
+		Expected: []sql.Row{{1, nil}},
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/11381
