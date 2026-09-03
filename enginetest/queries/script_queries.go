@@ -2574,6 +2574,57 @@ CREATE TABLE tab3 (
 				Query:       "table t1 union table t3 order by t1.j;",
 				ExpectedErr: planbuilder.ErrQualifiedOrderBy,
 			},
+			// A set operation's top-level ORDER BY cannot introduce a new aggregate or window
+			// computation; it may only reference columns already present in the result.
+			// See https://dev.mysql.com/doc/refman/8.0/en/set-operations.html (ER_AGGREGATE_ORDER_FOR_UNION).
+			{
+				Query:       "table t1 union table t2 order by count(*);",
+				ExpectedErr: sql.ErrAggregationOrderForUnion,
+			},
+			{
+				Query:       "table t1 union all table t2 order by max(i);",
+				ExpectedErr: sql.ErrAggregationOrderForUnion,
+			},
+			{
+				Query:       "table t1 union table t2 order by row_number() over (order by i);",
+				ExpectedErr: sql.ErrAggregationOrderForUnion,
+			},
+			{
+				Query:       "table t1 union table t2 order by sum(i) over ();",
+				ExpectedErr: sql.ErrAggregationOrderForUnion,
+			},
+			{
+				Query:       "table t1 union table t2 order by count(*) + 1;",
+				ExpectedErr: sql.ErrAggregationOrderForUnion,
+			},
+			{
+				// The aggregate function is the second ORDER BY expression, so the error reports position 2.
+				Query:          "table t1 union table t2 order by i, count(*);",
+				ExpectedErrStr: "Expression #2 of ORDER BY contains aggregate function and applies to a UNION, EXCEPT or INTERSECT",
+			},
+			{
+				// Referencing an aggregate/window expression already computed in the SELECT list via its
+				// alias is fine -- it doesn't introduce a new computation on the combined result.
+				Query: "select i, sum(i) over () as s from t1 union all select i, sum(i) over () as s from t2 order by s, i;",
+				Expected: []sql.Row{
+					{1, 4.0},
+					{3, 4.0},
+					{1, 6.0},
+					{2, 6.0},
+					{3, 6.0},
+				},
+			},
+			{
+				// Same as above, but referencing the aggregate/window column by ordinal position.
+				Query: "select i, sum(i) over () as s from t1 union all select i, sum(i) over () as s from t2 order by 2, 1;",
+				Expected: []sql.Row{
+					{1, 4.0},
+					{3, 4.0},
+					{1, 6.0},
+					{2, 6.0},
+					{3, 6.0},
+				},
+			},
 		},
 	},
 	{
@@ -2655,6 +2706,16 @@ CREATE TABLE tab3 (
 				},
 			},
 			{
+				// https://dev.mysql.com/doc/refman/8.0/en/set-operations.html: ER_AGGREGATE_ORDER_FOR_UNION
+				// applies equally to UNION, INTERSECT, and EXCEPT.
+				Query:       "table x intersect table y order by max(i);",
+				ExpectedErr: sql.ErrAggregationOrderForUnion,
+			},
+			{
+				Query:       "table x intersect table y order by row_number() over (order by i);",
+				ExpectedErr: sql.ErrAggregationOrderForUnion,
+			},
+			{
 				// Resulting type is string for some reason
 				Skip:  true,
 				Query: "table t1 intersect table t2;",
@@ -2714,6 +2775,10 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{
 					{2},
 				},
+			},
+			{
+				Query:       "table x except table y order by count(*);",
+				ExpectedErr: sql.ErrAggregationOrderForUnion,
 			},
 			{
 				Query:    "table l except table r;",
