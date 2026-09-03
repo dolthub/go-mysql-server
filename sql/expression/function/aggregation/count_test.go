@@ -137,6 +137,21 @@ func TestCountDistinctEvalString(t *testing.T) {
 	require.Equal(int64(2), evalBuffer(t, b))
 }
 
+func TestCountDistinctEvalMultiColumn(t *testing.T) {
+	require := require.New(t)
+	ctx := sql.NewEmptyContext()
+
+	c := NewCountDistinct(
+		expression.NewGetField(0, types.Text, "", true),
+		expression.NewGetField(1, types.Text, "", true),
+	)
+	b, _ := c.NewBuffer(ctx)
+
+	require.NoError(b.Update(ctx, sql.NewRow("a,", "b")))
+	require.NoError(b.Update(ctx, sql.NewRow("a", ",b")))
+	require.Equal(int64(2), evalBuffer(t, b))
+}
+
 func TestCountDistinctEvalExtendedType(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()

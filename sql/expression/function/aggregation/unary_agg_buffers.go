@@ -486,7 +486,7 @@ func (c *countDistinctBuffer) Update(ctx *sql.Context, row sql.Row) error {
 		}
 	}
 
-	var str string
+	hash := xxhash.New()
 	for _, val := range value.(sql.Row) {
 		// skip nil values
 		if val == nil {
@@ -500,16 +500,11 @@ func (c *countDistinctBuffer) Update(ctx *sql.Context, row sql.Row) error {
 		if !ok {
 			return fmt.Errorf("count distinct unable to hash value: %s", err)
 		}
-		str += vv + ","
+		if _, err = fmt.Fprintf(hash, "%d:%s", len(vv), vv); err != nil {
+			return err
+		}
 	}
-
-	hash := xxhash.New()
-	_, err := hash.WriteString(str)
-	if err != nil {
-		return err
-	}
-	h := hash.Sum64()
-	c.seen[h] = struct{}{}
+	c.seen[hash.Sum64()] = struct{}{}
 
 	return nil
 }
