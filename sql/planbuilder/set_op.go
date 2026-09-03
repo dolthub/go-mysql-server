@@ -26,39 +26,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// validateSetOpOrderBy checks the ORDER BY clause in a set op for any possible errors
-func (b *Builder) validateSetOpOrderBy(order ast.OrderBy) {
-	for i, o := range order {
-		expr := unwrapExpression(o.Expr)
-		switch e := expr.(type) {
-		case *ast.ColName:
-			qualifier := e.Qualifier.Name.String()
-			if len(qualifier) != 0 {
-				b.handleErr(ErrQualifiedOrderBy.New(qualifier))
-			}
-			continue
-		case *ast.SQLVal:
-			continue
-		}
-
-		ast.Walk(func(node ast.SQLNode) (bool, error) {
-			fe, ok := node.(*ast.FuncExpr)
-			if !ok {
-				return true, nil
-			}
-			if fe.Over != nil {
-				b.handleErr(sql.ErrSetOpOrderByAggregation.New(i + 1))
-				return false, nil
-			}
-			if isAgg, err := IsAggregateFunc(b.ctx, fe.Name.Lowered()); err == nil && isAgg {
-				b.handleErr(sql.ErrSetOpOrderByAggregation.New(i + 1))
-				return false, nil
-			}
-			return true, nil
-		}, expr)
-	}
-}
-
 func hasRecursiveCte(ctx *sql.Context, node sql.Node) bool {
 	hasRCTE := false
 	transform.InspectWithOpaque(ctx, node, func(ctx *sql.Context, n sql.Node) bool {
@@ -148,6 +115,39 @@ func (b *Builder) buildSetOp(inScope *scope, u *ast.SetOp) (outScope *scope) {
 	outScope.node = b.mergeSetOpSchemas(ret.(*plan.SetOp))
 	outScope.cols = b.mergeSetOpScopeColumns(leftScope.cols, rightScope.cols, tabId)
 	return
+}
+
+// validateSetOpOrderBy checks the ORDER BY clause in a set op for any possible errors
+func (b *Builder) validateSetOpOrderBy(order ast.OrderBy) {
+	for i, o := range order {
+		expr := unwrapExpression(o.Expr)
+		switch e := expr.(type) {
+		case *ast.ColName:
+			qualifier := e.Qualifier.Name.String()
+			if len(qualifier) != 0 {
+				b.handleErr(ErrQualifiedOrderBy.New(qualifier))
+			}
+			continue
+		case *ast.SQLVal:
+			continue
+		}
+
+		ast.Walk(func(node ast.SQLNode) (bool, error) {
+			fe, ok := node.(*ast.FuncExpr)
+			if !ok {
+				return true, nil
+			}
+			if fe.Over != nil {
+				b.handleErr(sql.ErrSetOpOrderByAggregation.New(i + 1))
+				return false, nil
+			}
+			if isAgg, err := IsAggregateFunc(b.ctx, fe.Name.Lowered()); err == nil && isAgg {
+				b.handleErr(sql.ErrSetOpOrderByAggregation.New(i + 1))
+				return false, nil
+			}
+			return true, nil
+		}, expr)
+	}
 }
 
 func (b *Builder) mergeSetOpScopeColumns(left, right []scopeColumn, tabId sql.TableId) []scopeColumn {
