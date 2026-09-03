@@ -2075,6 +2075,31 @@ CREATE TABLE table2 (
 		},
 	},
 	{
+		Name: "count nullable columns in a keyless table",
+		SetUpScript: []string{
+			"CREATE TABLE keyless_count (p BIGINT, q BIGINT, r BIGINT)",
+			"INSERT INTO keyless_count VALUES (1, NULL, NULL), (2, 20, NULL), (2, 20, NULL), (3, 30, 300), (NULL, NULL, NULL)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT COUNT(*) FROM keyless_count",
+				Expected: []sql.Row{{5}},
+			},
+			{
+				Query:    "SELECT COUNT(p) FROM keyless_count",
+				Expected: []sql.Row{{4}},
+			},
+			{
+				Query:    "SELECT COUNT(q) FROM keyless_count",
+				Expected: []sql.Row{{3}},
+			},
+			{
+				Query:    "SELECT COUNT(r) FROM keyless_count",
+				Expected: []sql.Row{{1}},
+			},
+		},
+	},
+	{
 		Name: "index match only exact string, no prefix",
 		SetUpScript: []string{
 			"CREATE TABLE pk (x varchar(10) primary key)",
