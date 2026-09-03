@@ -38,6 +38,9 @@ var (
 	// ErrSystemVariableCodeFail is returned when failing to encode/decode a system variable.
 	ErrSystemVariableCodeFail = errors.NewKind("unable to encode/decode value '%v' for '%s'")
 
+	// ErrMissingNoZeroInDateSQLMode is returned when attempting to set SQL_MODE without NO_ZERO_IN_DATE
+	ErrMissingNoZeroInDateSQLMode = errors.NewKind("SQL_MODE without NO_ZERO_IN_DATE is unsupported")
+
 	// ErrInvalidType is thrown when there is an unexpected type at some part of
 	// the execution tree.
 	ErrInvalidType = errors.NewKind("invalid type: %s")
@@ -133,9 +136,6 @@ var (
 	// ErrUniqueKeyViolation is returned when a unique key constraint is violated
 	// This is meant to wrap a sql.UniqueKey error, which provides the key string
 	ErrUniqueKeyViolation = errors.NewKind("duplicate unique key given")
-
-	// ErrInsertConflictTarget is returned when an insert conflict target does not identify a unique or primary key.
-	ErrInsertConflictTarget = errors.NewKind("there is no unique or exclusion constraint matching the ON CONFLICT specification")
 
 	// ErrMisusedAlias is returned when a alias is defined and used in the same projection.
 	ErrMisusedAlias = errors.NewKind("column %q does not exist in scope, but there is an alias defined in" +
@@ -640,10 +640,6 @@ var (
 
 	// ErrSessionDoesNotSupportPersistence is thrown when a feature is not already supported
 	ErrSessionDoesNotSupportPersistence = errors.NewKind("session does not support persistence")
-
-	// ErrSystemVariableCannotBeSetLocal is thrown when a system variable that does not support transaction-local
-	// scope is set with transaction-local scope
-	ErrSystemVariableCannotBeSetLocal = errors.NewKind("system variable %s cannot be set with transaction-local scope")
 
 	// ErrInvalidGISData is thrown when a "ST_<spatial_type>FromText" function receives a malformed string
 	ErrInvalidGISData = errors.NewKind("invalid GIS data provided to function %s")
