@@ -631,7 +631,8 @@ func (b *Builder) buildWindow(fromScope, projScope *scope) *scope {
 		}
 
 		// projection dependencies -> table cols needed above
-		transform.InspectExpr(b.ctx, col.scalar, func(ctx *sql.Context, e sql.Expression) bool {
+		var findSelectDeps func(*sql.Context, sql.Expression) bool
+		findSelectDeps = func(ctx *sql.Context, e sql.Expression) bool {
 			switch e := e.(type) {
 			case *expression.GetField:
 				colName := strings.ToLower(e.String())
@@ -640,10 +641,17 @@ func (b *Builder) buildWindow(fromScope, projScope *scope) *scope {
 					selectGfs = append(selectGfs, e)
 					selectStr[colName] = true
 				}
+			case *plan.Subquery:
+				e.Correlated().ForEach(func(colId sql.ColumnId) {
+					if correlated, found := projScope.parent.getCol(colId); found {
+						findSelectDeps(ctx, correlated.scalarGf())
+					}
+				})
 			default:
 			}
 			return false
-		})
+		}
+		transform.InspectExpr(b.ctx, col.scalar, findSelectDeps)
 	}
 	for _, e := range fromScope.extraCols {
 		// accessory cols used by ORDER_BY, HAVING

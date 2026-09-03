@@ -36,6 +36,31 @@ var WindowFunctionsScriptTests = []ScriptTest{
 		Expected: []sql.Row{{"192.0.2.1"}},
 	},
 	{
+		Name: "window functions preserve correlated subquery columns",
+		SetUpScript: []string{
+			"CREATE TABLE window_correlated (id INT PRIMARY KEY, c0 INT, c1 INT)",
+			"INSERT INTO window_correlated VALUES (1, 10, 100), (2, 10, 200), (3, 20, 300)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT id, COUNT(*) OVER (PARTITION BY c0) AS w, (SELECT COUNT(*) FROM window_correlated t2 WHERE t2.c0 = t.c0) AS r FROM window_correlated t ORDER BY id",
+				Expected: []sql.Row{
+					{1, int64(2), int64(2)},
+					{2, int64(2), int64(2)},
+					{3, int64(1), int64(1)},
+				},
+			},
+			{
+				Query: "SELECT id, ROW_NUMBER() OVER (ORDER BY id) AS rn, (SELECT SUM(t2.c1) FROM window_correlated t2 WHERE t2.c0 = t.c0) AS s FROM window_correlated t ORDER BY id",
+				Expected: []sql.Row{
+					{1, int64(1), float64(300)},
+					{2, int64(2), float64(300)},
+					{3, int64(3), float64(300)},
+				},
+			},
+		},
+	},
+	{
 		Name: "ceil and floor do not mutate shared decimal window results",
 		SetUpScript: []string{
 			"CREATE TABLE decimal_window_values (id BIGINT, d DECIMAL(10,2))",
