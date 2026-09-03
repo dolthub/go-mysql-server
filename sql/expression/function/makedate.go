@@ -23,6 +23,13 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
+const (
+	// MaxYear is the maximum supported calendar year (9999).
+	MaxYear = 9999
+	// MaxDayNumber is the maximum day count through 9999-12-31.
+	MaxDayNumber = 3652424
+)
+
 // MakeDate constructs a date value from year and day of year.
 type MakeDate struct {
 	expression.BinaryExpressionStub

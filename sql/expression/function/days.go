@@ -168,11 +168,6 @@ const (
 	DaysPer400Years = 400*DaysPerYear + 97
 	DaysPer100Years = 100*DaysPerYear + 24
 	DaysPer4Years   = 4*DaysPerYear + 1
-
-	// MaxYear is the maximum supported calendar year (9999).
-	MaxYear = 9999
-	// MaxDayNumber is the maximum day count through 9999-12-31.
-	MaxDayNumber = 3652424
 )
 
 // daysToYear converts a number of days to number of years since year 0 (including leap years), and the remaining days
