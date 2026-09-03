@@ -329,7 +329,9 @@ func partitionsToSortConditions(partitionExprs []sql.Expression) sql.SortConditi
 }
 
 func isNewPartition(ctx *sql.Context, partitionBy []sql.Expression, last sql.Row, row sql.Row) (bool, error) {
-	if len(last) == 0 {
+	// A non-nil zero-width row is still a row. This occurs when projection pushdown
+	// removes every source column used by a window expression.
+	if last == nil {
 		return true, nil
 	}
 
