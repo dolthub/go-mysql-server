@@ -117,7 +117,7 @@ func (i *AutoIncrement) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	}
 
 	if cmp == 0 {
-		if sql.LoadSqlMode(ctx).ModeEnabled(sql.NoAutoValueOnZero) {
+		if sql.LoadSqlMode(ctx).ModeEnabled(sql.NO_AUTO_VALUE_ON_ZERO) {
 			ret, _, err := i.Type(ctx).Convert(ctx, given)
 			if err != nil {
 				return nil, err

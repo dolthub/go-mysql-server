@@ -164,10 +164,11 @@ func NewNotInTuple(left sql.Expression, right sql.Expression) sql.Expression {
 
 // HashInTuple is an expression that checks an expression is inside a list of expressions using a hashmap.
 type HashInTuple struct {
-	in      *InTuple
-	cmp     map[uint64]struct{}
-	cmpType sql.Type
-	hasNull bool
+	in           *InTuple
+	cmp          map[uint64]struct{}
+	cmpType      sql.Type
+	hasNull      bool
+	hasTupleNull bool
 }
 
 var _ Comparer = (*HashInTuple)(nil)
@@ -181,16 +182,17 @@ func NewHashInTuple(ctx *sql.Context, left, right sql.Expression) (*HashInTuple,
 		return nil, ErrUnsupportedInOperand.New(right)
 	}
 
-	cmp, cmpType, hasNull, err := newInMap(ctx, left.Type(ctx), rightTup)
+	cmp, cmpType, hasNull, hasTupleNull, err := newInMap(ctx, left.Type(ctx), rightTup)
 	if err != nil {
 		return nil, err
 	}
 
 	return &HashInTuple{
-		in:      NewInTuple(left, right),
-		cmp:     cmp,
-		cmpType: cmpType,
-		hasNull: hasNull,
+		in:           NewInTuple(left, right),
+		cmp:          cmp,
+		cmpType:      cmpType,
+		hasNull:      hasNull,
+		hasTupleNull: hasTupleNull,
 	}, nil
 }
 
@@ -198,24 +200,26 @@ func NewHashInTuple(ctx *sql.Context, left, right sql.Expression) (*HashInTuple,
 // returns
 //   - map of the hashed elements
 //   - sql.Type to convert elements to before hashing
-//   - bool indicating if there are null elements
+//   - bool indicating if there are scalar NULL elements
+//   - bool indicating if there are tuple elements containing NULL
 //   - error
-func newInMap(ctx *sql.Context, lType sql.Type, right Tuple) (map[uint64]struct{}, sql.Type, bool, error) {
+func newInMap(ctx *sql.Context, lType sql.Type, right Tuple) (map[uint64]struct{}, sql.Type, bool, bool, error) {
 	if lType == types.Null {
-		return nil, nil, true, nil
+		return nil, nil, true, false, nil
 	}
 	lColCount := types.NumColumns(lType)
 	if len(right) == 0 {
-		return nil, nil, false, nil
+		return nil, nil, false, false, nil
 	}
 	// only non-nil elements are included
 	rVals := make([]any, 0, len(right))
 	var rHasNull bool
+	var rHasTupleNull bool
 	for _, el := range right {
 		rType := el.Type(ctx)
 		rColCount := types.NumColumns(rType)
 		if lColCount != rColCount {
-			return nil, nil, false, sql.ErrInvalidOperandColumns.New(lColCount, rColCount)
+			return nil, nil, false, false, sql.ErrInvalidOperandColumns.New(lColCount, rColCount)
 		}
 		if rType == types.Null {
 			rHasNull = true
@@ -223,10 +227,14 @@ func newInMap(ctx *sql.Context, lType sql.Type, right Tuple) (map[uint64]struct{
 		}
 		rVal, err := el.Eval(ctx, nil)
 		if err != nil {
-			return nil, nil, false, err
+			return nil, nil, false, false, err
 		}
 		if rVal == nil {
 			rHasNull = true
+			continue
+		}
+		if containsNull(rVal) {
+			rHasTupleNull = true
 			continue
 		}
 		rVals = append(rVals, rVal)
@@ -244,13 +252,13 @@ func newInMap(ctx *sql.Context, lType sql.Type, right Tuple) (map[uint64]struct{
 	for _, rVal := range rVals {
 		key, inRange, hErr := hash.HashOfSimple(ctx, rVal, cmpType)
 		if hErr != nil {
-			return nil, nil, false, hErr
+			return nil, nil, false, false, hErr
 		}
 		if inRange == sql.InRange {
 			elements[key] = struct{}{}
 		}
 	}
-	return elements, cmpType, rHasNull, nil
+	return elements, cmpType, rHasNull, rHasTupleNull, nil
 }
 
 // Eval implements the Expression interface.
@@ -262,22 +270,54 @@ func (hit *HashInTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	if leftVal == nil {
 		return nil, nil
 	}
+	if containsNull(leftVal) {
+		return hit.in.Eval(ctx, row)
+	}
 
 	key, inRange, err := hash.HashOfSimple(ctx, leftVal, hit.cmpType)
 	if err != nil {
 		return nil, err
 	}
-	if inRange != sql.InRange {
-		return false, nil
+	if inRange == sql.InRange {
+		if _, ok := hit.cmp[key]; ok {
+			return true, nil
+		}
 	}
-
-	if _, ok := hit.cmp[key]; ok {
-		return true, nil
+	if hit.hasTupleNull {
+		return hit.in.Eval(ctx, row)
 	}
 	if hit.hasNull {
 		return nil, nil
 	}
 	return false, nil
+}
+
+// containsNull reports whether a scalar or nested tuple value contains NULL.
+func containsNull(val interface{}) bool {
+	if val == nil {
+		return true
+	}
+	if tuple, ok := val.([]interface{}); ok {
+		for _, elem := range tuple {
+			if containsNull(elem) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// containsNullable reports whether an expression or nested tuple component may evaluate to NULL.
+func containsNullable(ctx *sql.Context, expr sql.Expression) bool {
+	if tuple, ok := expr.(Tuple); ok {
+		for _, elem := range tuple {
+			if containsNullable(ctx, elem) {
+				return true
+			}
+		}
+		return false
+	}
+	return expr.IsNullable(ctx)
 }
 
 func (hit *HashInTuple) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
@@ -293,7 +333,7 @@ func (hit *HashInTuple) Type(ctx *sql.Context) sql.Type {
 }
 
 func (hit *HashInTuple) IsNullable(ctx *sql.Context) bool {
-	return hit.hasNull || hit.in.Left().IsNullable(ctx)
+	return hit.hasNull || hit.hasTupleNull || containsNullable(ctx, hit.in.Left())
 }
 
 func (hit *HashInTuple) Children() []sql.Expression {

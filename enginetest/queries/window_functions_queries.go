@@ -33,6 +33,43 @@ var WindowFunctionsScriptTests = []ScriptTest{
 		Expected: []sql.Row{{int32(15)}},
 	},
 	{
+		Name: "literal window expressions over zero-width projected rows",
+		SetUpScript: []string{
+			"CREATE TABLE literal_windows (x int, g int)",
+			"INSERT INTO literal_windows VALUES (1, 1), (2, 1), (3, 2)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT COUNT(*) OVER () FROM literal_windows",
+				Expected: []sql.Row{{int64(3)}, {int64(3)}, {int64(3)}},
+			},
+			{
+				Query:    "SELECT SUM(1) OVER () FROM literal_windows",
+				Expected: []sql.Row{{float64(3)}, {float64(3)}, {float64(3)}},
+			},
+			{
+				Query:    "SELECT COUNT(0) OVER (PARTITION BY 1 + 0) FROM literal_windows",
+				Expected: []sql.Row{{int64(3)}, {int64(3)}, {int64(3)}},
+			},
+			{
+				Query:    "SELECT RANK() OVER () FROM literal_windows",
+				Expected: []sql.Row{{uint64(1)}, {uint64(1)}, {uint64(1)}},
+			},
+			{
+				Query:    "SELECT RANK() OVER (ORDER BY 1 + 0) FROM literal_windows",
+				Expected: []sql.Row{{uint64(1)}, {uint64(1)}, {uint64(1)}},
+			},
+			{
+				Query:    "SELECT DENSE_RANK() OVER () FROM literal_windows",
+				Expected: []sql.Row{{uint64(1)}, {uint64(1)}, {uint64(1)}},
+			},
+			{
+				Query:    "SELECT PERCENT_RANK() OVER () FROM literal_windows",
+				Expected: []sql.Row{{float64(0)}, {float64(0)}, {float64(0)}},
+			},
+		},
+	},
+	{
 		Name: "INET_NTOA round trip above signed 32-bit range",
 		SetUpScript: []string{
 			"CREATE TABLE inet_ntoa_test (ip VARCHAR(15))",
@@ -42,6 +79,31 @@ var WindowFunctionsScriptTests = []ScriptTest{
 			FIRST_VALUE(INET_ATON(ip)) OVER ()
 		) FROM inet_ntoa_test`,
 		Expected: []sql.Row{{"192.0.2.1"}},
+	},
+	{
+		Name: "window functions preserve correlated subquery columns",
+		SetUpScript: []string{
+			"CREATE TABLE window_correlated (id INT PRIMARY KEY, c0 INT, c1 INT)",
+			"INSERT INTO window_correlated VALUES (1, 10, 100), (2, 10, 200), (3, 20, 300)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT id, COUNT(*) OVER (PARTITION BY c0) AS w, (SELECT COUNT(*) FROM window_correlated t2 WHERE t2.c0 = t.c0) AS r FROM window_correlated t ORDER BY id",
+				Expected: []sql.Row{
+					{1, int64(2), int64(2)},
+					{2, int64(2), int64(2)},
+					{3, int64(1), int64(1)},
+				},
+			},
+			{
+				Query: "SELECT id, ROW_NUMBER() OVER (ORDER BY id) AS rn, (SELECT SUM(t2.c1) FROM window_correlated t2 WHERE t2.c0 = t.c0) AS s FROM window_correlated t ORDER BY id",
+				Expected: []sql.Row{
+					{1, int64(1), float64(300)},
+					{2, int64(2), float64(300)},
+					{3, int64(3), float64(300)},
+				},
+			},
+		},
 	},
 	{
 		Name: "ceil and floor do not mutate shared decimal window results",
