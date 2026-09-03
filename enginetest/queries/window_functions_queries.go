@@ -25,6 +25,43 @@ import (
 // first_value, last_value, lead, lag, and the bitwise aggregate functions.
 var WindowFunctionsScriptTests = []ScriptTest{
 	{
+		Name: "literal window expressions over zero-width projected rows",
+		SetUpScript: []string{
+			"CREATE TABLE literal_windows (x int, g int)",
+			"INSERT INTO literal_windows VALUES (1, 1), (2, 1), (3, 2)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT COUNT(*) OVER () FROM literal_windows",
+				Expected: []sql.Row{{int64(3)}, {int64(3)}, {int64(3)}},
+			},
+			{
+				Query:    "SELECT SUM(1) OVER () FROM literal_windows",
+				Expected: []sql.Row{{float64(3)}, {float64(3)}, {float64(3)}},
+			},
+			{
+				Query:    "SELECT COUNT(0) OVER (PARTITION BY 1 + 0) FROM literal_windows",
+				Expected: []sql.Row{{int64(3)}, {int64(3)}, {int64(3)}},
+			},
+			{
+				Query:    "SELECT RANK() OVER () FROM literal_windows",
+				Expected: []sql.Row{{uint64(1)}, {uint64(1)}, {uint64(1)}},
+			},
+			{
+				Query:    "SELECT RANK() OVER (ORDER BY 1 + 0) FROM literal_windows",
+				Expected: []sql.Row{{uint64(1)}, {uint64(1)}, {uint64(1)}},
+			},
+			{
+				Query:    "SELECT DENSE_RANK() OVER () FROM literal_windows",
+				Expected: []sql.Row{{uint64(1)}, {uint64(1)}, {uint64(1)}},
+			},
+			{
+				Query:    "SELECT PERCENT_RANK() OVER () FROM literal_windows",
+				Expected: []sql.Row{{float64(0)}, {float64(0)}, {float64(0)}},
+			},
+		},
+	},
+	{
 		Name: "INET_NTOA round trip above signed 32-bit range",
 		SetUpScript: []string{
 			"CREATE TABLE inet_ntoa_test (ip VARCHAR(15))",
