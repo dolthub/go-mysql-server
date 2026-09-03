@@ -757,6 +757,13 @@ var WindowFunctionsScriptTests = []ScriptTest{
 		Expected: []sql.Row{{"$[0]", nil}},
 	},
 	{
+		Name: "JSON_VALUE return types in window expressions",
+		Query: `SELECT
+			FIRST_VALUE(JSON_VALUE('{"a":"12"}', '$.a', 'signed')) OVER (),
+			FIRST_VALUE(JSON_VALUE('{"a":"12"}', '$.a', 'char')) OVER ()`,
+		Expected: []sql.Row{{int64(12), `"12"`}},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/11498
 		Name:    "customer reproduction: LIKE escape characters in window expressions",
 		Dialect: "mysql",

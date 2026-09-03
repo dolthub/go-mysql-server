@@ -112,6 +112,24 @@ func TestJsonValue(t *testing.T) {
 	}
 }
 
+func TestJsonValueString(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	doc := expression.NewGetField(0, types.JSON, "doc", false)
+	path := expression.NewLiteral("$.a", types.Text)
+
+	signed, err := json.NewJsonValue(ctx, doc, path, expression.NewLiteral(int64(0), types.Int64))
+	require.NoError(t, err)
+	require.Equal(t, "json_value(doc, '$.a', 'signed')", signed.String())
+	_, err = sql.NewMysqlParser().ParseSimple("SELECT " + signed.String())
+	require.NoError(t, err)
+
+	defaultType, err := json.NewJsonValue(ctx, doc, path)
+	require.NoError(t, err)
+	require.Equal(t, "json_value(doc, '$.a')", defaultType.String())
+	_, err = sql.NewMysqlParser().ParseSimple("SELECT " + defaultType.String())
+	require.NoError(t, err)
+}
+
 func TestJsonContainsPath(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 	// Verify arg count 3 or more.
