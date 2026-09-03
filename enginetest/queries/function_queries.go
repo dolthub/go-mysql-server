@@ -34,6 +34,10 @@ var FunctionQueryTests = []QueryTest{
 		) q`,
 		Expected: []sql.Row{{"|a|"}},
 	},
+	{
+		Query:    `SELECT FIRST_VALUE(TIME_TO_SEC('25:00:00')) OVER ()`,
+		Expected: []sql.Row{{uint64(90000)}},
+	},
 	// Truncate function https://github.com/dolthub/dolt/issues/9916
 	{
 		Query: "SELECT TRUNCATE(1.223,1)",
