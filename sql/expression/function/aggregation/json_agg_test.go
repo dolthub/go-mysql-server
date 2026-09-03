@@ -31,6 +31,24 @@ func TestJsonArrayAgg_Name(t *testing.T) {
 	assert.Equal("JSON_ARRAYAGG(field)", m.String())
 }
 
+func TestJSONObjectAggString(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	expr := NewJSONObjectAgg(
+		ctx,
+		expression.NewGetField(0, types.Text, "k", false),
+		expression.NewGetField(1, types.Int64, "v", false),
+	).(sql.WindowAdaptableExpression).WithWindow(
+		ctx,
+		sql.NewWindowDefinition(
+			[]sql.Expression{expression.NewGetField(2, types.Int64, "g", false)},
+			nil, nil, "", "",
+		),
+	)
+	require.Equal(t, "JSON_OBJECTAGG(k, v) over ( partition by g)", expr.String())
+	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + expr.String())
+	require.NoError(t, err)
+}
+
 func TestJsonArrayAgg_SimpleIntField(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
