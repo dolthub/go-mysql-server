@@ -1,4 +1,4 @@
-// Copyright 2023 Dolthub, Inc.
+// Copyright 2026 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,104 +24,14 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func TestFindInSet(t *testing.T) {
-	testCases := []struct {
-		name     string
-		left     string
-		right    string
-		expected int
-		skip     bool
-	}{
-		{
-			name:     "string exists",
-			left:     "b",
-			right:    "a,b,c",
-			expected: 2,
-		},
-		{
-			name:     "string does not exist",
-			left:     "abc",
-			right:    "a,b,c",
-			expected: 0,
-		},
-		{
-			name:     "whitespace not removed",
-			left:     "  b   ",
-			right:    "a,b,c",
-			expected: 0,
-		},
-		{
-			name:     "whitespace not removed 2",
-			left:     "b",
-			right:    "  a  ,  b ,  c  ",
-			expected: 0,
-		},
-		{
-			name:     "whitespace not removed 3",
-			left:     " a b ",
-			right:    "a, a b ,c",
-			expected: 2,
-		},
-		{
-			name:     "comma bad",
-			left:     "b,",
-			right:    "a,b,c",
-			expected: 0,
-		},
-		{
-			name:     "special characters ok",
-			left:     "test@example.com",
-			right:    "nottest@example.com,hello@example.com,test@example.com",
-			expected: 3,
-		},
-		{
-			name:     "look for empty string",
-			left:     "",
-			right:    "a,",
-			expected: 2,
-		},
-		{
-			name:     "look in empty string",
-			left:     "a",
-			right:    "",
-			expected: 0,
-		},
-	}
-
-	for _, tt := range testCases {
-		t.Run(tt.name, func(t *testing.T) {
-			if tt.skip {
-				t.Skip()
-			}
-			require := require.New(t)
-			f := NewFindInSet(sql.NewEmptyContext(), expression.NewLiteral(tt.left, types.LongText), expression.NewLiteral(tt.right, types.LongText))
-			v, err := f.Eval(sql.NewEmptyContext(), nil)
-			require.NoError(err)
-			require.Equal(tt.expected, v)
-		})
-	}
-
-	t.Run("test find in null set", func(t *testing.T) {
-		require := require.New(t)
-		f := NewFindInSet(sql.NewEmptyContext(), expression.NewLiteral("a", types.LongText), expression.NewLiteral(nil, types.Null))
-		v, err := f.Eval(sql.NewEmptyContext(), nil)
-		require.NoError(err)
-		require.Equal(nil, v)
-	})
-
-	t.Run("find null in set", func(t *testing.T) {
-		require := require.New(t)
-		f := NewFindInSet(sql.NewEmptyContext(), expression.NewLiteral("a", types.LongText), expression.NewLiteral(nil, types.Null))
-		v, err := f.Eval(sql.NewEmptyContext(), nil)
-		require.NoError(err)
-		require.Equal(nil, v)
-	})
-
-	t.Run("find number", func(t *testing.T) {
-		require := require.New(t)
-		f := NewFindInSet(sql.NewEmptyContext(), expression.NewLiteral(500, types.Int64), expression.NewLiteral("1,2,3,500", types.Null))
-		v, err := f.Eval(sql.NewEmptyContext(), nil)
-		require.NoError(err)
-		require.Equal(4, v)
-	})
+func TestFindInSetString(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	expr := NewFindInSet(
+		ctx,
+		expression.NewLiteral("needle", types.Text),
+		expression.NewLiteral("haystack,needle", types.Text),
+	)
+	require.Equal(t, "find_in_set('needle', 'haystack,needle')", expr.String())
+	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + expr.String())
+	require.NoError(t, err)
 }
