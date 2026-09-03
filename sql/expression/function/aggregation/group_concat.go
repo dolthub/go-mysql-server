@@ -361,6 +361,8 @@ func evalExprs(ctx *sql.Context, exprs []sql.Expression, row sql.Row) (sql.Row, 
 	return result, retType, nil
 }
 
+// groupConcatValue returns the concatenated value of the evaluated expressions, a boolean that is true when any
+// expression evaluates to NULL, and any conversion error encountered.
 func groupConcatValue(ctx *sql.Context, exprs []sql.Expression, values sql.Row, retType sql.Type) (string, bool, error) {
 	var sb strings.Builder
 	for i, value := range values {
