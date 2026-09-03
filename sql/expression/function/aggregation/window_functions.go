@@ -935,15 +935,8 @@ func (a *GroupConcatAgg) filterToDistinct(ctx *sql.Context, buf sql.WindowBuffer
 
 		a.gc.returnType = retType
 
-		// GROUP_CONCAT skips a row when any selected expression is NULL.
-		hasNull := false
-		for _, value := range evalRow {
-			if value == nil {
-				hasNull = true
-				break
-			}
-		}
-		if hasNull {
+		// GROUP_CONCAT skips a row when its selected value is NULL.
+		if evalRow[0] == nil {
 			continue
 		}
 

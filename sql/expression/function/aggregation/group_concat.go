@@ -264,11 +264,9 @@ func (g *groupConcatBuffer) Update(ctx *sql.Context, originalRow sql.Row) error 
 
 	g.gc.returnType = retType
 
-	// GROUP_CONCAT skips a row when any selected expression is NULL.
-	for _, value := range evalRow {
-		if value == nil {
-			return nil
-		}
+	// GROUP_CONCAT skips a row when its selected value is NULL.
+	if evalRow[0] == nil {
+		return nil
 	}
 
 	var v interface{}
