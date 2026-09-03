@@ -30,6 +30,16 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
+const (
+	// MissingNoDateInSQLModeWarningMessage is thrown when users remove NO_ZERO_IN_DATE from SQL_MODE.
+	// The Golang Time library does not properly support 0 month and 0 day.
+	// Users are still able to remove the mode, but it will still behave as if the mode is enabled.
+	MissingNoDateInSQLModeWarningMessage = "Removing NO_ZERO_IN_DATE mode is not supported. " +
+		"DATEs with zero month or zero day will be treated as if NO_ZERO_IN_DATE is enabled."
+	MissingStrictModeWarningMessage = "'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. " +
+		"They will be merged with strict mode in a future release."
+)
+
 // windowToIter transforms a plan.Window into a series
 // of aggregation.WindowPartitionIter and a list of output projection indexes
 // for each window partition.
@@ -480,8 +490,6 @@ func validateSystemVariableValue(ctx *sql.Context, sysVarName string, val any) e
 			return sql.ErrInvalidTimeZone.New(valStr)
 		}
 	case "sql_mode":
-		// TODO: The Golang time library does not properly support using 0 for Month and Day, so it may be necessary
-		//  for us to prevent users from disabling `NO_ZERO_IN_DATE`
 		switch v := val.(type) {
 		case uint64:
 			// If the assigned SQL_MODE contains any one of these "strict" modes, it should contain every one of
@@ -492,11 +500,12 @@ func validateSystemVariableValue(ctx *sql.Context, sysVarName string, val any) e
 			hasErrorForDivisionByZero := v&sql.MODE_ERROR_FOR_DIVISION_BY_ZERO != 0
 			hasNoZeroDate := v&sql.MODE_NO_ZERO_DATE != 0
 			hasNoZeroInDate := v&sql.MODE_NO_ZERO_IN_DATE != 0
+			if !hasNoZeroInDate {
+				ctx.Warn(3135, MissingNoDateInSQLModeWarningMessage)
+			}
 			if (hasStrict || hasErrorForDivisionByZero || hasNoZeroDate || hasNoZeroInDate) &&
 				!(hasStrict && hasErrorForDivisionByZero && hasNoZeroDate && hasNoZeroInDate) {
-				ctx.Warn(3135, "'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' "+
-					"sql modes should be used with strict mode. "+
-					"They will be merged with strict mode in a future release.")
+				ctx.Warn(3135, MissingStrictModeWarningMessage)
 			}
 		case string:
 			v = strings.ToUpper(v)
@@ -508,11 +517,12 @@ func validateSystemVariableValue(ctx *sql.Context, sysVarName string, val any) e
 			hasErrorForDivisionByZero := strings.Contains(v, sql.ERROR_FOR_DIVISION_BY_ZERO)
 			hasNoZeroDate := strings.Contains(v, sql.NO_ZERO_DATE)
 			hasNoZeroInDate := strings.Contains(v, sql.NO_ZERO_IN_DATE)
+			if !hasNoZeroInDate {
+				ctx.Warn(3135, MissingNoDateInSQLModeWarningMessage)
+			}
 			if (hasStrict || hasErrorForDivisionByZero || hasNoZeroDate || hasNoZeroInDate) &&
 				!(hasStrict && hasErrorForDivisionByZero && hasNoZeroDate && hasNoZeroInDate) {
-				ctx.Warn(3135, "'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' "+
-					"sql modes should be used with strict mode. "+
-					"They will be merged with strict mode in a future release.")
+				ctx.Warn(3135, MissingStrictModeWarningMessage)
 			}
 		}
 	}

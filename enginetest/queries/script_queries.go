@@ -10874,8 +10874,7 @@ where
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
 			{
-				// TODO: prevent this entirely?
-				// Disabling `NO_ZERO_IN_DATE` throws error, and doesn't change SQL_MODE
+				// Disabling `NO_ZERO_IN_DATE` throws additional warning
 				Query: "set @@sql_mode = '" +
 					"STRICT_TRANS_TABLES," +
 					"NO_ZERO_DATE," +
@@ -10883,11 +10882,9 @@ where
 				Expected: []sql.Row{
 					{types.OkResult{}},
 				},
-				ExpectedWarningsCount: 1,
-				ExpectedWarning:       3135,
-				ExpectedWarningMessageSubstring: "'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' " +
-					"sql modes should be used with strict mode. " +
-					"They will be merged with strict mode in a future release",
+				ExpectedWarningsCount:           2,
+				ExpectedWarning:                 3135,
+				ExpectedWarningMessageSubstring: "Removing NO_ZERO_IN_DATE mode is not supported",
 			},
 			{
 				Query: "select @@sql_mode",
