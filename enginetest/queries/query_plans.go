@@ -762,13 +762,13 @@ From xy;`,
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [count(1) as count(*)]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [mytable.COUNT(1) as COUNT(1)]\n" +
+			"     ├─ columns: [mytable.COUNT(1) as `COUNT(1)`]\n" +
 			"     └─ table_count(mytable) as COUNT(1)\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [count(1) as count(*)]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [mytable.COUNT(1) as COUNT(1)]\n" +
+			"     ├─ columns: [mytable.COUNT(1) as `COUNT(1)`]\n" +
 			"     └─ table_count(mytable) as COUNT(1)\n" +
 			"",
 	},
@@ -783,13 +783,13 @@ From xy;`,
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [count(1) as cnt]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [mytable.COUNT(1) as COUNT(1)]\n" +
+			"     ├─ columns: [mytable.COUNT(1) as `COUNT(1)`]\n" +
 			"     └─ table_count(mytable) as COUNT(1)\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [count(1) as cnt]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [mytable.COUNT(1) as COUNT(1)]\n" +
+			"     ├─ columns: [mytable.COUNT(1) as `COUNT(1)`]\n" +
 			"     └─ table_count(mytable) as COUNT(1)\n" +
 			"",
 	},
@@ -856,13 +856,13 @@ From xy;`,
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [count(1)]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [mytable.COUNT(1) as COUNT(1)]\n" +
+			"     ├─ columns: [mytable.COUNT(1) as `COUNT(1)`]\n" +
 			"     └─ table_count(mytable) as COUNT(1)\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [count(1)]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [mytable.COUNT(1) as COUNT(1)]\n" +
+			"     ├─ columns: [mytable.COUNT(1) as `COUNT(1)`]\n" +
 			"     └─ table_count(mytable) as COUNT(1)\n" +
 			"",
 	},
