@@ -636,6 +636,37 @@ var WindowFunctionsScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name:    "FIRST_VALUE nullability for empty frames",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE first_value_input (id INT PRIMARY KEY, v INT NOT NULL)",
+			"INSERT INTO first_value_input VALUES (1, 10)",
+			`CREATE TABLE first_value_output AS
+				SELECT id, FIRST_VALUE(v) OVER (
+					ORDER BY id ROWS BETWEEN 2 FOLLOWING AND 2 FOLLOWING
+				) AS wf FROM first_value_input`,
+		},
+		Query:    "SELECT id, wf FROM first_value_output",
+		Expected: []sql.Row{{1, nil}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11471
+		Name:    "customer reproduction: FIRST_VALUE nullability for empty frames",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t(id INT PRIMARY KEY, v INT NOT NULL)",
+			"INSERT INTO t VALUES (1,10)",
+			`CREATE TABLE out_w AS
+				SELECT id,
+					FIRST_VALUE(v) OVER (
+						ORDER BY id ROWS BETWEEN 2 FOLLOWING AND 2 FOLLOWING
+					) AS wf
+				FROM t`,
+		},
+		Query:    "SELECT id, wf FROM out_w",
+		Expected: []sql.Row{{1, nil}},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/11468
 		Name: "FIRST_VALUE receives star placeholder",
 		SetUpScript: []string{

@@ -339,7 +339,7 @@ update histogram  xy.(x,y) using {"statistic":{"avg_size":0,"buckets":[],"column
 			Query: "SELECT b.y as s1, a.y as s2, first_value(a.z) over (partition by a.y) from xy a join xy b on a.y = b.y",
 			ExpectedPlan: `
 Project
- ├─ columns: [b.y:5!null->s1:7, a.y:2!null->s2:8, first_value(a.z) over ( partition by a.y rows between unbounded preceding and unbounded following):9!null->first_value(a.z) over (partition by a.y)]
+ ├─ columns: [b.y:5!null->s1:7, a.y:2!null->s2:8, first_value(a.z) over ( partition by a.y rows between unbounded preceding and unbounded following):9->first_value(a.z) over (partition by a.y)]
  └─ Window
      ├─ first_value(a.z) over ( partition by a.y ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
      ├─ b.y:5!null
@@ -1467,7 +1467,7 @@ Project
 			Query: "SELECT x, first_value(z) over (partition by y) FROM xy order by x*y,x",
 			ExpectedPlan: `
 Project
- ├─ columns: [xy.x:1!null, first_value(xy.z) over ( partition by xy.y rows between unbounded preceding and unbounded following):4!null->first_value(z) over (partition by y)]
+ ├─ columns: [xy.x:1!null, first_value(xy.z) over ( partition by xy.y rows between unbounded preceding and unbounded following):4->first_value(z) over (partition by y)]
  └─ Sort((xy.x:1!null * xy.y:2!null) ASC nullsFirst, xy.x:1!null ASC nullsFirst)
      └─ Window
          ├─ first_value(xy.z) over ( partition by xy.y ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
