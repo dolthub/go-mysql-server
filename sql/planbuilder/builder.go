@@ -200,6 +200,12 @@ func (b *Builder) newScope() *scope {
 	return &scope{b: b}
 }
 
+func (b *Builder) withWindowState(clause string, bareCol bool) func() {
+	outerClause, outerBare := b.windowClause, b.windowClauseBareCol
+	b.windowClause, b.windowClauseBareCol = clause, bareCol
+	return func() { b.windowClause, b.windowClauseBareCol = outerClause, outerBare }
+}
+
 func (b *Builder) Reset() {
 	b.colId = 0
 	b.tabId = 0

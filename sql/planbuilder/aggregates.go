@@ -711,10 +711,8 @@ func (b *Builder) buildNamedWindows(fromScope *scope, window ast.Window) {
 // [window functions]: https://dev.mysql.com/doc/refman/8.4/en/window-functions-usage.html
 // [column aliases]: https://dev.mysql.com/doc/refman/8.4/en/problems-with-alias.html
 func (b *Builder) buildWindowClauseScalar(inScope *scope, e ast.Expr, clause string) sql.Expression {
-	outerClause, outerBare := b.windowClause, b.windowClauseBareCol
 	_, bareCol := e.(*ast.ColName)
-	b.windowClause, b.windowClauseBareCol = clause, bareCol
-	defer func() { b.windowClause, b.windowClauseBareCol = outerClause, outerBare }()
+	defer b.withWindowState(clause, bareCol)()
 	return b.buildScalar(inScope, e)
 }
 

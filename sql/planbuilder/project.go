@@ -41,9 +41,7 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 	inScope.parent = tempScope
 
 	// A nested SELECT list has its own aliases to resolve.
-	outerClause, outerBare := b.windowClause, b.windowClauseBareCol
-	b.windowClause, b.windowClauseBareCol = "", false
-	defer func() { b.windowClause, b.windowClauseBareCol = outerClause, outerBare }()
+	defer b.withWindowState("", false)()
 
 	// need to transfer aggregation state from out -> in
 	var exprs []sql.Expression

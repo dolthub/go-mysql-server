@@ -138,14 +138,15 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 		c, ok := inScope.resolveColumn(dbName, tblName, colName, true, false)
 		if !ok {
 			if aliasedExpr, ok := inScope.selectAliases[colName]; ok {
-				if b.windowClause == "" {
+				switch {
+				case b.windowClause == "":
 					return aliasedExpr
-				}
-				if b.windowClauseBareCol {
+				case b.windowClauseBareCol:
 					b.handleErr(sql.ErrUnknownColumn.New(colName, b.windowClause))
+				default:
+					// The projection output is not in the window input.
+					return aliasedExpr.Child
 				}
-				// The projection output is not in the window input.
-				return aliasedExpr.Child
 			}
 			// Only try system variable lookup if there's no table qualifier.
 			// Qualified names like "A.timestamp" are always column references, never system variables.
