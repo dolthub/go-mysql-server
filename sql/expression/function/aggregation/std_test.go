@@ -28,6 +28,14 @@ func isFloatEqual(a, b float64) bool {
 	return math.Abs(a-b) < 1e-9
 }
 
+func TestStdDevPopString(t *testing.T) {
+	expr := NewStdDevPop(expression.NewGetField(0, nil, "value", false)).
+		WithWindow(sql.NewEmptyContext(), &sql.WindowDefinition{})
+	require.Equal(t, "STDDEV_POP(value) over ()", expr.String())
+	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + expr.String())
+	require.NoError(t, err)
+}
+
 func TestStd(t *testing.T) {
 	sum := NewStdDevPop(expression.NewGetField(0, nil, "", false))
 

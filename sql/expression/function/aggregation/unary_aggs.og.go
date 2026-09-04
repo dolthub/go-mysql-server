@@ -947,25 +947,22 @@ func (a *StdDevPop) IsNullable(ctx *sql.Context) bool {
 }
 
 func (a *StdDevPop) String() string {
+	ret := "STDDEV_POP(" + a.Child.String() + ")"
 	if a.window != nil {
-		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("STDDEVPOP")
-		children := []string{a.window.String(), a.Child.String()}
-		pr.WriteChildren(children...)
-		return pr.String()
+		ret += " " + a.window.String()
 	}
-	return "STDDEVPOP(" + a.Child.String() + ")"
+	return ret
 }
 
 func (a *StdDevPop) DebugString(ctx *sql.Context) string {
 	if a.window != nil {
 		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("STDDEVPOP")
+		_ = pr.WriteNode("STDDEV_POP")
 		children := []string{sql.DebugString(ctx, a.window), sql.DebugString(ctx, a.Child)}
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("STDDEVPOP(%s)", sql.DebugString(ctx, a.Child))
+	return fmt.Sprintf("STDDEV_POP(%s)", sql.DebugString(ctx, a.Child))
 }
 
 func (a *StdDevPop) WithWindow(ctx *sql.Context, window *sql.WindowDefinition) sql.WindowAdaptableExpression {
