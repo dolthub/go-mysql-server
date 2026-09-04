@@ -97,8 +97,8 @@ func (s *scope) resolveColumn(db, table, col string, checkParent, chooseFirst bo
 
 	var found scopeColumn
 	var foundCand bool
-	// Only this scope's aliases are hidden; enclosing scopes stay
-	// visible.
+	// Window input precedes projection, so window clauses must resolve
+	// to table columns; hide this scope's aliases to avoid shadowing.
 	hideAliases := s.selectAliasScope && s.b.windowClause != ""
 	for _, c := range s.cols {
 		if hideAliases {
