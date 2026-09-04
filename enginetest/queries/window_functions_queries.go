@@ -25,7 +25,8 @@ import (
 // first_value, last_value, lead, lag, and the bitwise aggregate functions.
 var WindowFunctionsScriptTests = []ScriptTest{
 	{
-		Name: "window aggregate over grouped aggregate",
+		Name:    "window aggregate over grouped aggregate",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"SET @@sql_mode = ''",
 			"CREATE TABLE grouped_window_values (grp INT, ord INT, val INT)",
