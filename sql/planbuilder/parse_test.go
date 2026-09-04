@@ -1369,10 +1369,7 @@ Project
 			from xy`,
 			ExpectedPlan: `
 Project
- ├─ columns: [xy.x:1!null, (xy.x:1!null * xy.y:2!null)->x*y, row_number() over ( partition by xy.x rows between unbounded preceding and unbounded following):4!null->row_num1:5, sum
- │   ├─ over ( partition by xy.y order by xy.x asc)
- │   └─ xy.x
- │  :6!null->sum:7]
+ ├─ columns: [xy.x:1!null, (xy.x:1!null * xy.y:2!null)->x*y, row_number() over ( partition by xy.x rows between unbounded preceding and unbounded following):4!null->row_num1:5, sum(xy.x) over ( partition by xy.y order by xy.x asc):6!null->sum:7]
  └─ Window
      ├─ row_number() over ( partition by xy.x ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
      ├─ SUM
@@ -1396,22 +1393,13 @@ Project
 			having x > 1;`,
 			ExpectedPlan: `
 Project
- ├─ columns: [(xy.x:1!null + 1 (tinyint))->x:4, sum
- │   ├─ over ( partition by xy.y order by xy.x asc)
- │   └─ xy.x
- │  :5!null->sum:6]
+ ├─ columns: [(xy.x:1!null + 1 (tinyint))->x:4, sum(xy.x) over ( partition by xy.y order by xy.x asc):5!null->sum:6]
  └─ Having
      ├─ GreaterThan
      │   ├─ x:4!null
      │   └─ 1 (bigint)
      └─ Project
-         ├─ columns: [sum
-         │   ├─ over ( partition by xy.y order by xy.x asc)
-         │   └─ xy.x
-         │  :5!null, xy.x:1!null, (xy.x:1!null + 1 (tinyint))->x:4, sum
-         │   ├─ over ( partition by xy.y order by xy.x asc)
-         │   └─ xy.x
-         │  :5!null->sum:6]
+         ├─ columns: [sum(xy.x) over ( partition by xy.y order by xy.x asc):5!null, xy.x:1!null, (xy.x:1!null + 1 (tinyint))->x:4, sum(xy.x) over ( partition by xy.y order by xy.x asc):5!null->sum:6]
          └─ Window
              ├─ SUM
              │   ├─ over ( partition by xy.y order by xy.x ASC)
@@ -1602,10 +1590,7 @@ Project
 			Query: "select x, count(*) over (order by y) from xy order by x",
 			ExpectedPlan: `
 Project
- ├─ columns: [xy.x:1!null, count
- │   ├─ over ( order by xy.y asc)
- │   └─ 1
- │  :4!null->count(*) over (order by y)]
+ ├─ columns: [xy.x:1!null, count(1) over ( order by xy.y asc):4!null->count(*) over (order by y)]
  └─ Sort(xy.x:1!null ASC nullsFirst)
      └─ Window
          ├─ COUNT
@@ -1971,10 +1956,7 @@ Union distinct
 			Query: "SELECT sum(y) over w FROM xy WINDOW w as (partition by z order by x rows unbounded preceding) order by x",
 			ExpectedPlan: `
 Project
- ├─ columns: [sum
- │   ├─ over ( partition by xy.z order by xy.x asc rows between unbounded preceding and unbounded following)
- │   └─ xy.y
- │  :4!null->sum(y) over w]
+ ├─ columns: [sum(xy.y) over ( partition by xy.z order by xy.x asc rows between unbounded preceding and unbounded following):4!null->sum(y) over w]
  └─ Sort(xy.x:1!null ASC nullsFirst)
      └─ Window
          ├─ SUM
