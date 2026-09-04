@@ -1972,13 +1972,13 @@ Union distinct
 			ExpectedPlan: `
 Project
  ├─ columns: [sum
- │   ├─ over ( partition by xy.z order by xy.x asc rows between unbounded preceding and unbounded following)
+ │   ├─ over ( partition by xy.z order by xy.x asc rows between unbounded preceding and current row)
  │   └─ xy.y
  │  :4!null->sum(y) over w]
  └─ Sort(xy.x:1!null ASC nullsFirst)
      └─ Window
          ├─ SUM
-         │   ├─ over ( partition by xy.z order by xy.x ASC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
+         │   ├─ over ( partition by xy.z order by xy.x ASC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
          │   └─ xy.y:2!null
          ├─ xy.x:1!null
          └─ Table

@@ -811,6 +811,41 @@ var WindowFunctionsScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "sibling window aggregates with different frames",
+		SetUpScript: []string{
+			"CREATE TABLE distinct_window_frames (id INT PRIMARY KEY, g INT, v INT NOT NULL)",
+			"INSERT INTO distinct_window_frames VALUES (1, 0, 10), (2, 0, 20)",
+		},
+		Query: `SELECT id,
+			SUM(v) OVER (PARTITION BY g ORDER BY id ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING),
+			SUM(v) OVER (PARTITION BY g ORDER BY id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
+			FROM distinct_window_frames ORDER BY id`,
+		Expected: []sql.Row{
+			{1, float64(30), float64(10)},
+			{2, float64(30), float64(30)},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11395
+		Name: "customer reproduction: sibling window aggregates with different frames",
+		SetUpScript: []string{
+			"CREATE TABLE t(id INT PRIMARY KEY, g INT, v INT NOT NULL)",
+			"INSERT INTO t VALUES (1, 0, 10), (2, 0, 20)",
+		},
+		Query: `SELECT id,
+			SUM(v) OVER (
+				PARTITION BY g ORDER BY id
+				ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+			) AS full_v,
+			SUM(v) OVER (
+				PARTITION BY g ORDER BY id
+				ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+			) AS running_v
+			FROM t
+			ORDER BY id`,
+		Expected: []sql.Row{{1, float64(30), float64(10)}, {2, float64(30), float64(30)}},
+	},
+	{
 		Name:    "LIKE escape characters in window expressions",
 		Dialect: "mysql",
 		Query: `SELECT
