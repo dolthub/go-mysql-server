@@ -3227,7 +3227,23 @@ Select * from (
 			" ├─ columns: [ab.a, ab.b]\n" +
 			" └─ Sort(ab.a ASC)\n" +
 			"     └─ Filter\n" +
-			"         ├─ (ab.b = (select y from xy where y in (select v from uv where v = b)))\n" +
+			"         ├─ (ab.b = Subquery\n" +
+			"         │   ├─ cacheable: false\n" +
+			"         │   └─ Project\n" +
+			"         │       ├─ columns: [xy.y]\n" +
+			"         │       └─ Filter\n" +
+			"         │           ├─ InSubquery\n" +
+			"         │           │   ├─ left: xy.y\n" +
+			"         │           │   └─ right: Subquery\n" +
+			"         │           │       ├─ cacheable: false\n" +
+			"         │           │       └─ Filter\n" +
+			"         │           │           ├─ (uv.v = ab.b)\n" +
+			"         │           │           └─ Table\n" +
+			"         │           │               ├─ name: uv\n" +
+			"         │           │               └─ columns: [v]\n" +
+			"         │           └─ Table\n" +
+			"         │               └─ name: xy\n" +
+			"         │  )\n" +
 			"         └─ LookupJoin (estimated cost=13.338 rows=4)\n" +
 			"             ├─ Table\n" +
 			"             │   └─ name: pq\n" +
@@ -3239,7 +3255,23 @@ Select * from (
 			" ├─ columns: [ab.a, ab.b]\n" +
 			" └─ Sort(ab.a ASC)\n" +
 			"     └─ Filter\n" +
-			"         ├─ (ab.b = (select y from xy where y in (select v from uv where v = b)))\n" +
+			"         ├─ (ab.b = Subquery\n" +
+			"         │   ├─ cacheable: false\n" +
+			"         │   └─ Project\n" +
+			"         │       ├─ columns: [xy.y]\n" +
+			"         │       └─ Filter\n" +
+			"         │           ├─ InSubquery\n" +
+			"         │           │   ├─ left: xy.y\n" +
+			"         │           │   └─ right: Subquery\n" +
+			"         │           │       ├─ cacheable: false\n" +
+			"         │           │       └─ Filter\n" +
+			"         │           │           ├─ (uv.v = ab.b)\n" +
+			"         │           │           └─ Table\n" +
+			"         │           │               ├─ name: uv\n" +
+			"         │           │               └─ columns: [v]\n" +
+			"         │           └─ Table\n" +
+			"         │               └─ name: xy\n" +
+			"         │  )\n" +
 			"         └─ LookupJoin (estimated cost=13.338 rows=4) (actual rows=4 loops=1)\n" +
 			"             ├─ Table\n" +
 			"             │   └─ name: pq\n" +
@@ -16103,7 +16135,23 @@ inner join pq on true
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [mt.i]\n" +
 			" └─ Filter\n" +
-			"     ├─ ((NOT((select i from mytable where i = mt.i and i > 2) IS NULL)) AND (NOT((select i2 from othertable where i2 = i) IS NULL)))\n" +
+			"     ├─ ((NOT(Subquery\n" +
+			"     │   ├─ cacheable: false\n" +
+			"     │   └─ Filter\n" +
+			"     │       ├─ (mytable.i = mt.i)\n" +
+			"     │       └─ IndexedTableAccess(mytable)\n" +
+			"     │           ├─ index: [mytable.i]\n" +
+			"     │           ├─ filters: [{(2, ∞)}]\n" +
+			"     │           └─ columns: [i]\n" +
+			"     │   IS NULL)) AND (NOT(Subquery\n" +
+			"     │   ├─ cacheable: false\n" +
+			"     │   └─ Filter\n" +
+			"     │       ├─ (othertable.i2 = mt.i)\n" +
+			"     │       └─ IndexedTableAccess(othertable)\n" +
+			"     │           ├─ index: [othertable.i2]\n" +
+			"     │           ├─ columns: [i2]\n" +
+			"     │           └─ keys: mt.i\n" +
+			"     │   IS NULL)))\n" +
 			"     └─ TableAlias(mt)\n" +
 			"         └─ Table\n" +
 			"             └─ name: mytable\n" +
@@ -16111,7 +16159,23 @@ inner join pq on true
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [mt.i]\n" +
 			" └─ Filter\n" +
-			"     ├─ ((NOT((select i from mytable where i = mt.i and i > 2) IS NULL)) AND (NOT((select i2 from othertable where i2 = i) IS NULL)))\n" +
+			"     ├─ ((NOT(Subquery\n" +
+			"     │   ├─ cacheable: false\n" +
+			"     │   └─ Filter\n" +
+			"     │       ├─ (mytable.i = mt.i)\n" +
+			"     │       └─ IndexedTableAccess(mytable)\n" +
+			"     │           ├─ index: [mytable.i]\n" +
+			"     │           ├─ filters: [{(2, ∞)}]\n" +
+			"     │           └─ columns: [i]\n" +
+			"     │   IS NULL)) AND (NOT(Subquery\n" +
+			"     │   ├─ cacheable: false\n" +
+			"     │   └─ Filter\n" +
+			"     │       ├─ (othertable.i2 = mt.i)\n" +
+			"     │       └─ IndexedTableAccess(othertable)\n" +
+			"     │           ├─ index: [othertable.i2]\n" +
+			"     │           ├─ columns: [i2]\n" +
+			"     │           └─ keys: mt.i\n" +
+			"     │   IS NULL)))\n" +
 			"     └─ TableAlias(mt)\n" +
 			"         └─ Table\n" +
 			"             └─ name: mytable\n" +
@@ -16172,7 +16236,23 @@ inner join pq on true
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [mt.i]\n" +
 			" └─ Filter\n" +
-			"     ├─ ((NOT((select i from mytable where i = mt.i) IS NULL)) AND (NOT((select i2 from othertable where i2 = i and i > 2) IS NULL)))\n" +
+			"     ├─ ((NOT(Subquery\n" +
+			"     │   ├─ cacheable: false\n" +
+			"     │   └─ Filter\n" +
+			"     │       ├─ (mytable.i = mt.i)\n" +
+			"     │       └─ IndexedTableAccess(mytable)\n" +
+			"     │           ├─ index: [mytable.i]\n" +
+			"     │           ├─ columns: [i]\n" +
+			"     │           └─ keys: mt.i\n" +
+			"     │   IS NULL)) AND (NOT(Subquery\n" +
+			"     │   ├─ cacheable: false\n" +
+			"     │   └─ Filter\n" +
+			"     │       ├─ ((mt.i > 2) AND (othertable.i2 = mt.i))\n" +
+			"     │       └─ IndexedTableAccess(othertable)\n" +
+			"     │           ├─ index: [othertable.i2]\n" +
+			"     │           ├─ columns: [i2]\n" +
+			"     │           └─ keys: mt.i\n" +
+			"     │   IS NULL)))\n" +
 			"     └─ TableAlias(mt)\n" +
 			"         └─ Table\n" +
 			"             └─ name: mytable\n" +
@@ -16180,7 +16260,23 @@ inner join pq on true
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [mt.i]\n" +
 			" └─ Filter\n" +
-			"     ├─ ((NOT((select i from mytable where i = mt.i) IS NULL)) AND (NOT((select i2 from othertable where i2 = i and i > 2) IS NULL)))\n" +
+			"     ├─ ((NOT(Subquery\n" +
+			"     │   ├─ cacheable: false\n" +
+			"     │   └─ Filter\n" +
+			"     │       ├─ (mytable.i = mt.i)\n" +
+			"     │       └─ IndexedTableAccess(mytable)\n" +
+			"     │           ├─ index: [mytable.i]\n" +
+			"     │           ├─ columns: [i]\n" +
+			"     │           └─ keys: mt.i\n" +
+			"     │   IS NULL)) AND (NOT(Subquery\n" +
+			"     │   ├─ cacheable: false\n" +
+			"     │   └─ Filter\n" +
+			"     │       ├─ ((mt.i > 2) AND (othertable.i2 = mt.i))\n" +
+			"     │       └─ IndexedTableAccess(othertable)\n" +
+			"     │           ├─ index: [othertable.i2]\n" +
+			"     │           ├─ columns: [i2]\n" +
+			"     │           └─ keys: mt.i\n" +
+			"     │   IS NULL)))\n" +
 			"     └─ TableAlias(mt)\n" +
 			"         └─ Table\n" +
 			"             └─ name: mytable\n" +
@@ -24094,7 +24190,20 @@ order by xy.x, xy.y, uv.u, uv.v;`,
 			" ├─ columns: [xy.x, xy.y, uv.u, uv.v]\n" +
 			" └─ Sort(xy.x ASC, xy.y ASC, uv.u ASC, uv.v ASC)\n" +
 			"     └─ LookupJoin (estimated cost=13.338 rows=4)\n" +
-			"         ├─ (uv.v = (select max(v) from uv where xy.x = uv.u))\n" +
+			"         ├─ (uv.v = Subquery\n" +
+			"         │   ├─ cacheable: false\n" +
+			"         │   └─ Project\n" +
+			"         │       ├─ columns: [max(uv.v) as `max(v)`]\n" +
+			"         │       └─ GroupBy\n" +
+			"         │           ├─ select: MAX(uv.v)\n" +
+			"         │           ├─ group: \n" +
+			"         │           └─ Filter\n" +
+			"         │               ├─ (xy.x = uv.u)\n" +
+			"         │               └─ IndexedTableAccess(uv)\n" +
+			"         │                   ├─ index: [uv.u]\n" +
+			"         │                   ├─ columns: [u v]\n" +
+			"         │                   └─ keys: xy.x\n" +
+			"         │  )\n" +
 			"         ├─ Table\n" +
 			"         │   └─ name: uv\n" +
 			"         └─ IndexedTableAccess(xy)\n" +
@@ -24105,7 +24214,20 @@ order by xy.x, xy.y, uv.u, uv.v;`,
 			" ├─ columns: [xy.x, xy.y, uv.u, uv.v]\n" +
 			" └─ Sort(xy.x ASC, xy.y ASC, uv.u ASC, uv.v ASC)\n" +
 			"     └─ LookupJoin (estimated cost=13.338 rows=4) (actual rows=4 loops=1)\n" +
-			"         ├─ (uv.v = (select max(v) from uv where xy.x = uv.u))\n" +
+			"         ├─ (uv.v = Subquery\n" +
+			"         │   ├─ cacheable: false\n" +
+			"         │   └─ Project\n" +
+			"         │       ├─ columns: [max(uv.v) as `max(v)`]\n" +
+			"         │       └─ GroupBy\n" +
+			"         │           ├─ select: MAX(uv.v)\n" +
+			"         │           ├─ group: \n" +
+			"         │           └─ Filter\n" +
+			"         │               ├─ (xy.x = uv.u)\n" +
+			"         │               └─ IndexedTableAccess(uv)\n" +
+			"         │                   ├─ index: [uv.u]\n" +
+			"         │                   ├─ columns: [u v]\n" +
+			"         │                   └─ keys: xy.x\n" +
+			"         │  )\n" +
 			"         ├─ Table\n" +
 			"         │   └─ name: uv\n" +
 			"         └─ IndexedTableAccess(xy)\n" +
@@ -24162,7 +24284,19 @@ where exists (
 			"     └─ tableId: 2\n" +
 			"",
 		ExpectedEstimates: "SemiJoin (estimated cost=506000.000 rows=1250)\n" +
-			" ├─ (ab.b = (select max(v) from uv where uv.v = ab2.a and uv.v = ab.a))\n" +
+			" ├─ (ab.b = Subquery\n" +
+			" │   ├─ cacheable: false\n" +
+			" │   └─ Project\n" +
+			" │       ├─ columns: [max(uv.v) as `max(v)`]\n" +
+			" │       └─ GroupBy\n" +
+			" │           ├─ select: MAX(uv.v)\n" +
+			" │           ├─ group: \n" +
+			" │           └─ Filter\n" +
+			" │               ├─ ((uv.v = ab2.a) AND (uv.v = ab.a))\n" +
+			" │               └─ Table\n" +
+			" │                   ├─ name: uv\n" +
+			" │                   └─ columns: [v]\n" +
+			" │  )\n" +
 			" ├─ TableAlias(ab2)\n" +
 			" │   └─ Table\n" +
 			" │       └─ name: ab\n" +
@@ -24170,7 +24304,19 @@ where exists (
 			"     └─ name: ab\n" +
 			"",
 		ExpectedAnalysis: "SemiJoin (estimated cost=506000.000 rows=1250) (actual rows=1 loops=1)\n" +
-			" ├─ (ab.b = (select max(v) from uv where uv.v = ab2.a and uv.v = ab.a))\n" +
+			" ├─ (ab.b = Subquery\n" +
+			" │   ├─ cacheable: false\n" +
+			" │   └─ Project\n" +
+			" │       ├─ columns: [max(uv.v) as `max(v)`]\n" +
+			" │       └─ GroupBy\n" +
+			" │           ├─ select: MAX(uv.v)\n" +
+			" │           ├─ group: \n" +
+			" │           └─ Filter\n" +
+			" │               ├─ ((uv.v = ab2.a) AND (uv.v = ab.a))\n" +
+			" │               └─ Table\n" +
+			" │                   ├─ name: uv\n" +
+			" │                   └─ columns: [v]\n" +
+			" │  )\n" +
 			" ├─ TableAlias(ab2)\n" +
 			" │   └─ Table\n" +
 			" │       └─ name: ab\n" +
@@ -24231,7 +24377,19 @@ order by x, y;
 			"",
 		ExpectedEstimates: "Sort(xy2.x ASC, xy2.y ASC)\n" +
 			" └─ SemiJoin (estimated cost=506000.000 rows=1250)\n" +
-			"     ├─ (xy.y = (select max(v) from uv where uv.v = xy2.x and uv.v = xy.x))\n" +
+			"     ├─ (xy.y = Subquery\n" +
+			"     │   ├─ cacheable: false\n" +
+			"     │   └─ Project\n" +
+			"     │       ├─ columns: [max(uv.v) as `max(v)`]\n" +
+			"     │       └─ GroupBy\n" +
+			"     │           ├─ select: MAX(uv.v)\n" +
+			"     │           ├─ group: \n" +
+			"     │           └─ Filter\n" +
+			"     │               ├─ ((uv.v = xy2.x) AND (uv.v = xy.x))\n" +
+			"     │               └─ Table\n" +
+			"     │                   ├─ name: uv\n" +
+			"     │                   └─ columns: [v]\n" +
+			"     │  )\n" +
 			"     ├─ TableAlias(xy2)\n" +
 			"     │   └─ Table\n" +
 			"     │       └─ name: xy\n" +
@@ -24240,7 +24398,19 @@ order by x, y;
 			"",
 		ExpectedAnalysis: "Sort(xy2.x ASC, xy2.y ASC)\n" +
 			" └─ SemiJoin (estimated cost=506000.000 rows=1250) (actual rows=0 loops=1)\n" +
-			"     ├─ (xy.y = (select max(v) from uv where uv.v = xy2.x and uv.v = xy.x))\n" +
+			"     ├─ (xy.y = Subquery\n" +
+			"     │   ├─ cacheable: false\n" +
+			"     │   └─ Project\n" +
+			"     │       ├─ columns: [max(uv.v) as `max(v)`]\n" +
+			"     │       └─ GroupBy\n" +
+			"     │           ├─ select: MAX(uv.v)\n" +
+			"     │           ├─ group: \n" +
+			"     │           └─ Filter\n" +
+			"     │               ├─ ((uv.v = xy2.x) AND (uv.v = xy.x))\n" +
+			"     │               └─ Table\n" +
+			"     │                   ├─ name: uv\n" +
+			"     │                   └─ columns: [v]\n" +
+			"     │  )\n" +
 			"     ├─ TableAlias(xy2)\n" +
 			"     │   └─ Table\n" +
 			"     │       └─ name: xy\n" +

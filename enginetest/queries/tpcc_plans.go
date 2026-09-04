@@ -795,7 +795,18 @@ WHERE
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [orders2.o_id, orders2.o_entry_d, coalesce(orders2.o_carrier_id,0) as `COALESCE(o_carrier_id,0)`]\n" +
 			" └─ Filter\n" +
-			"     ├─ (orders2.o_id = (select MAX(o_id) from orders2 where o_w_id = 1 and o_d_id = 3 and o_c_id = 20001))\n" +
+			"     ├─ (orders2.o_id = Subquery\n" +
+			"     │   ├─ cacheable: true\n" +
+			"     │   └─ Project\n" +
+			"     │       ├─ columns: [max(orders2.o_id) as `MAX(o_id)`]\n" +
+			"     │       └─ GroupBy\n" +
+			"     │           ├─ select: MAX(orders2.o_id)\n" +
+			"     │           ├─ group: \n" +
+			"     │           └─ IndexedTableAccess(orders2)\n" +
+			"     │               ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_c_id,orders2.o_id]\n" +
+			"     │               ├─ filters: [{[1, 1], [3, 3], [20001, 20001], [NULL, ∞)}]\n" +
+			"     │               └─ columns: [o_id o_d_id o_w_id o_c_id]\n" +
+			"     │  )\n" +
 			"     └─ IndexedTableAccess(orders2)\n" +
 			"         ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_c_id,orders2.o_id]\n" +
 			"         └─ filters: [{[1, 1], [3, 3], [20001, 20001], [NULL, ∞)}]\n" +
@@ -803,7 +814,18 @@ WHERE
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [orders2.o_id, orders2.o_entry_d, coalesce(orders2.o_carrier_id,0) as `COALESCE(o_carrier_id,0)`]\n" +
 			" └─ Filter\n" +
-			"     ├─ (orders2.o_id = (select MAX(o_id) from orders2 where o_w_id = 1 and o_d_id = 3 and o_c_id = 20001))\n" +
+			"     ├─ (orders2.o_id = Subquery\n" +
+			"     │   ├─ cacheable: true\n" +
+			"     │   └─ Project\n" +
+			"     │       ├─ columns: [max(orders2.o_id) as `MAX(o_id)`]\n" +
+			"     │       └─ GroupBy\n" +
+			"     │           ├─ select: MAX(orders2.o_id)\n" +
+			"     │           ├─ group: \n" +
+			"     │           └─ IndexedTableAccess(orders2)\n" +
+			"     │               ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_c_id,orders2.o_id]\n" +
+			"     │               ├─ filters: [{[1, 1], [3, 3], [20001, 20001], [NULL, ∞)}]\n" +
+			"     │               └─ columns: [o_id o_d_id o_w_id o_c_id]\n" +
+			"     │  )\n" +
 			"     └─ IndexedTableAccess(orders2)\n" +
 			"         ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_c_id,orders2.o_id]\n" +
 			"         └─ filters: [{[1, 1], [3, 3], [20001, 20001], [NULL, ∞)}]\n" +

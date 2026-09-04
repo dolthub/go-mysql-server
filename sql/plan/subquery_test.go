@@ -21,6 +21,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestSubqueryString(t *testing.T) {
@@ -34,6 +35,22 @@ func TestInSubqueryString(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 	expr := NewInSubquery(ctx, expression.NewUnresolvedColumn("i"), NewSubquery(nil, "select j from t"))
 	require.Equal(t, "(i IN (select j from t))", expr.String())
+	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + expr.String())
+	require.NoError(t, err)
+}
+
+func TestNestedInSubqueryDescription(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	subquery := NewSubquery(NewUnresolvedTable("t", ""), "select j from t")
+	inSubquery := NewInSubquery(ctx, expression.NewUnresolvedColumn("i"), subquery)
+	expr := expression.NewAnd(expression.NewLiteral(true, types.Boolean), inSubquery)
+
+	description := sql.Describe(ctx, expr, sql.DescribeOptions{Estimates: true})
+	require.Contains(t, description, "InSubquery")
+	require.Contains(t, description, "right: Subquery")
+	require.Contains(t, description, "UnresolvedTable(t)")
+
+	require.Equal(t, "(true AND (i IN (select j from t)))", expr.String())
 	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + expr.String())
 	require.NoError(t, err)
 }
