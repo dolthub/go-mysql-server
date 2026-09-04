@@ -639,6 +639,7 @@ func (a *MinAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.
 type LastAgg struct {
 	expr   sql.Expression
 	framer sql.WindowFramer
+	values map[int]interface{}
 }
 
 func NewLastAgg(e sql.Expression) *LastAgg {
@@ -673,6 +674,7 @@ func (a *LastAgg) DefaultFramer() sql.WindowFramer {
 
 func (a *LastAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buffer sql.WindowBuffer) error {
 	a.Dispose(ctx)
+	clear(a.values)
 	return nil
 }
 
@@ -684,11 +686,19 @@ func (a *LastAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buffer 
 	if interval.End-interval.Start < 1 {
 		return nil, nil
 	}
-	row := buffer[interval.End-1]
+	rowIdx := interval.End - 1
+	if v, ok := a.values[rowIdx]; ok {
+		return v, nil
+	}
+	row := buffer[rowIdx]
 	v, err := a.expr.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
+	if a.values == nil {
+		a.values = make(map[int]interface{})
+	}
+	a.values[rowIdx] = v
 	return v, nil
 }
 
@@ -697,6 +707,7 @@ type FirstAgg struct {
 	framer         sql.WindowFramer
 	partitionStart int
 	partitionEnd   int
+	values         map[int]interface{}
 }
 
 func NewFirstAgg(e sql.Expression) *FirstAgg {
@@ -732,6 +743,7 @@ func (a *FirstAgg) DefaultFramer() sql.WindowFramer {
 func (a *FirstAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buffer sql.WindowBuffer) error {
 	a.Dispose(ctx)
 	a.partitionStart, a.partitionEnd = interval.Start, interval.End
+	clear(a.values)
 	return nil
 }
 
@@ -743,11 +755,18 @@ func (a *FirstAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buffer
 	if interval.End-interval.Start < 1 {
 		return nil, nil
 	}
+	if v, ok := a.values[interval.Start]; ok {
+		return v, nil
+	}
 	row := buffer[interval.Start]
 	v, err := a.expr.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
+	if a.values == nil {
+		a.values = make(map[int]interface{})
+	}
+	a.values[interval.Start] = v
 	return v, nil
 }
 
@@ -1147,7 +1166,7 @@ func (a *WindowedJSONObjectAgg) aggregateVals(ctx *sql.Context, interval sql.Win
 }
 
 type RowNumber struct {
-	pos int
+	pos int64
 }
 
 func NewRowNumber() *RowNumber {

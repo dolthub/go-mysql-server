@@ -357,6 +357,7 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 					id:          0,
 					typ:         c.typ,
 					nullable:    c.nullable,
+					hidden:      c.hidden,
 				})
 				colSet.Add(sql.ColumnId(toId))
 				scopeMapping[sql.ColumnId(toId)] = c.scalarGf()
@@ -387,7 +388,7 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 			tabId := outScope.addTable(tableName)
 			var cols sql.ColSet
 			for _, c := range vdt.Schema(b.ctx) {
-				id := outScope.newColumn(scopeColumn{col: c.Name, db: c.DatabaseSource, table: tableName, typ: c.Type, nullable: c.Nullable})
+				id := outScope.newColumn(scopeColumn{col: c.Name, db: c.DatabaseSource, table: tableName, typ: c.Type, nullable: c.Nullable, hidden: c.Hidden})
 				cols.Add(sql.ColumnId(id))
 			}
 			var renameCols []string
@@ -780,6 +781,7 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 			originalCol: c.Name,
 			typ:         c.Type,
 			nullable:    c.Nullable,
+			hidden:      c.Hidden,
 		})
 		cols.Add(sql.ColumnId(id))
 	}
@@ -806,6 +808,7 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 				originalCol: c.Name,
 				typ:         c.Type,
 				nullable:    c.Nullable,
+				hidden:      c.Hidden,
 			}
 			if !strings.EqualFold(c.Source, startSource) {
 				startSource = c.Source

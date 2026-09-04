@@ -618,11 +618,13 @@ func (b *Builder) buildWindow(fromScope, projScope *scope) *scope {
 	var selectExprs []sql.Expression
 	var selectGfs []sql.Expression
 	selectStr := make(map[string]bool)
+	windowStr := make(map[string]bool)
 	for _, col := range fromScope.windowFuncs {
 		e := col.scalar
-		if !selectStr[strings.ToLower(e.String())] {
+		if !windowStr[e.String()] || expressionIsNonDeterministic(b.ctx, e) {
 			switch e.(type) {
 			case sql.WindowAdaptableExpression:
+				windowStr[e.String()] = true
 				selectStr[strings.ToLower(e.String())] = true
 				selectExprs = append(selectExprs, e)
 				selectGfs = append(selectGfs, col.scalarGf())
@@ -684,6 +686,14 @@ func (b *Builder) buildWindow(fromScope, projScope *scope) *scope {
 	}
 
 	return outScope
+}
+
+// expressionIsNonDeterministic reports whether an expression tree contains a nondeterministic expression.
+func expressionIsNonDeterministic(ctx *sql.Context, expr sql.Expression) bool {
+	return transform.InspectExpr(ctx, expr, func(_ *sql.Context, child sql.Expression) bool {
+		nondeterministic, ok := child.(sql.NonDeterministicExpression)
+		return ok && nondeterministic.IsNonDeterministic()
+	})
 }
 
 func (b *Builder) buildNamedWindows(fromScope *scope, window ast.Window) {

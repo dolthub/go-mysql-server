@@ -6681,6 +6681,17 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/11512
+		Name:    "HOUR preserves extended TIME column values",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE hour_time_values (v TIME)",
+			"INSERT INTO hour_time_values VALUES ('02:00:00'), ('13:04:05'), ('25:00:00'), (NULL)",
+		},
+		Query:    "SELECT HOUR(v) FROM hour_time_values WHERE HOUR(v) >= 13 ORDER BY HOUR(v) DESC",
+		Expected: []sql.Row{{int32(25)}, {int32(13)}},
+	},
+	{
 		Name:    "timestamp timezone conversion",
 		Dialect: "mysql",
 		SetUpScript: []string{

@@ -77,8 +77,8 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 			columns = make([]string, 0, len(schema))
 			for _, col := range schema {
 				// hidden system columns can't be directly referenced,
-				// so exclude them from the column name list.
-				if !col.HiddenSystem {
+				// and user invisible columns are also omitted from default INSERT column lists.
+				if !col.HiddenSystem && !col.Hidden {
 					columns = append(columns, col.Name)
 				}
 			}

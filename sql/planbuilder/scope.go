@@ -667,6 +667,7 @@ type scopeColumn struct {
 	nullable    bool
 	descending  bool
 	outOfScope  bool
+	hidden      bool
 }
 
 // empty returns true if a scopeColumn is the null value

@@ -71,6 +71,30 @@ var WindowFunctionsScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "nondeterministic window expressions are evaluated independently",
+		SetUpScript: []string{
+			"CREATE TABLE nondeterministic_windows (id int primary key)",
+			"INSERT INTO nondeterministic_windows VALUES (1), (2)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT id, a = b AS same FROM (SELECT id, FIRST_VALUE(UUID()) OVER (ORDER BY id) AS a, FIRST_VALUE(UUID()) OVER (ORDER BY id) AS b FROM nondeterministic_windows) q ORDER BY id",
+				Expected: []sql.Row{
+					{1, false},
+					{2, false},
+				},
+			},
+			{
+				Query:    "SELECT COUNT(DISTINCT a), COUNT(DISTINCT b), MIN(a <> b) FROM (SELECT FIRST_VALUE(UUID()) OVER (ORDER BY id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS a, FIRST_VALUE(UUID()) OVER (ORDER BY id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS b FROM nondeterministic_windows) q",
+				Expected: []sql.Row{{int64(1), int64(1), true}},
+			},
+			{
+				Query:    "SELECT COUNT(DISTINCT a), COUNT(DISTINCT b), MIN(a <> b) FROM (SELECT LAST_VALUE(UUID()) OVER (ORDER BY id ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS a, LAST_VALUE(UUID()) OVER (ORDER BY id ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS b FROM nondeterministic_windows) q",
+				Expected: []sql.Row{{int64(1), int64(1), true}},
+			},
+		},
+	},
+	{
 		Name: "literal window expressions over zero-width projected rows",
 		SetUpScript: []string{
 			"CREATE TABLE literal_windows (x int, g int)",
@@ -117,6 +141,25 @@ var WindowFunctionsScriptTests = []ScriptTest{
 			FIRST_VALUE(INET_ATON(ip)) OVER ()
 		) FROM inet_ntoa_test`,
 		Expected: []sql.Row{{"192.0.2.1"}},
+	},
+	{
+		Name: "HOUR over a time-valued window result",
+		SetUpScript: []string{
+			"CREATE TABLE window_time_values (v VARCHAR(8))",
+			"INSERT INTO window_time_values VALUES ('13:04:05')",
+		},
+		Query:    "SELECT HOUR(FIRST_VALUE(v) OVER ()) FROM window_time_values",
+		Expected: []sql.Row{{13}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11512
+		Name: "customer reproduction: HOUR over a time-valued window result",
+		SetUpScript: []string{
+			"CREATE TABLE t(v VARCHAR(8))",
+			"INSERT INTO t VALUES ('13:04:05')",
+		},
+		Query:    "SELECT HOUR(FIRST_VALUE(v) OVER ()) AS actual FROM t",
+		Expected: []sql.Row{{13}},
 	},
 	{
 		Name: "window functions preserve correlated subquery columns",
@@ -826,6 +869,35 @@ var WindowFunctionsScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "unary negation of ROW_NUMBER",
+		SetUpScript: []string{
+			"CREATE TABLE row_number_values (id INT PRIMARY KEY, g INT, k INT NOT NULL)",
+			"INSERT INTO row_number_values VALUES (1, 0, 0), (2, 0, 1)",
+		},
+		Query: `SELECT id, -(ROW_NUMBER() OVER (
+			PARTITION BY g ORDER BY k, id
+			ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+		)) FROM row_number_values ORDER BY id`,
+		Expected: []sql.Row{{1, int64(-1)}, {2, int64(-2)}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11420
+		Name: "customer reproduction: unary negation of ROW_NUMBER",
+		SetUpScript: []string{
+			"CREATE TABLE t(id INT PRIMARY KEY,g INT,k INT NOT NULL,v INT NOT NULL)",
+			"INSERT INTO t VALUES (1,0,0,10),(2,0,1,20)",
+		},
+		Query: `SELECT id,
+			-(ROW_NUMBER() OVER (
+				PARTITION BY g
+				ORDER BY k ASC,id ASC
+				ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+			)) AS wf
+			FROM t
+			ORDER BY id`,
+		Expected: []sql.Row{{1, int64(-1)}, {2, int64(-2)}},
+	},
+	{
 		Name: "window functions, row_number partitioned by multiple columns",
 		SetUpScript: []string{
 			"CREATE TABLE t5 (a INTEGER, b INTEGER)",
@@ -855,6 +927,27 @@ var WindowFunctionsScriptTests = []ScriptTest{
 			{int64(2), int64(2)},
 			{int64(3), int64(1)},
 		},
+	},
+	{
+		Name: "case-sensitive literals in window expressions",
+		Query: `SELECT
+			FIRST_VALUE(ASCII('a')) OVER (),
+			FIRST_VALUE(ASCII('A')) OVER ()`,
+		Expected: []sql.Row{{uint8(97), uint8(65)}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11497
+		Name: "customer reproduction: case-sensitive literals in window expressions",
+		SetUpScript: []string{
+			"CREATE TABLE t(id INT PRIMARY KEY, v INT NOT NULL)",
+			"INSERT INTO t VALUES (1,10),(2,20)",
+		},
+		Query: `SELECT id,
+			FIRST_VALUE(ASCII('a')) OVER (ORDER BY id) AS lower_literal,
+			FIRST_VALUE(ASCII('A')) OVER (ORDER BY id) AS upper_literal
+			FROM t
+			ORDER BY id`,
+		Expected: []sql.Row{{1, uint8(97), uint8(65)}, {2, uint8(97), uint8(65)}},
 	},
 	{
 		Name: "sibling window aggregates with different frames",
@@ -1618,6 +1711,63 @@ var WindowFunctionsScriptTests = []ScriptTest{
 			{
 				Query:       `SELECT id,v FROM t WHERE id=1 UNION ALL SELECT id,v FROM t WHERE id=2 ORDER BY ROW_NUMBER() OVER (ORDER BY id);`,
 				ExpectedErr: sql.ErrSetOpOrderByAggregation,
+			},
+		},
+	},
+	{
+		Name: "count distinct text tuples through first value",
+		SetUpScript: []string{
+			"CREATE TABLE t (id INT PRIMARY KEY, a VARCHAR(16), b VARCHAR(16));",
+			"INSERT INTO t VALUES (1, 'a,', 'b'), (2, 'a', ',b');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT FIRST_VALUE(actual_count) OVER () AS actual_count
+FROM (
+    SELECT COUNT(DISTINCT a, b) AS actual_count
+    FROM t
+) q;`,
+				Expected: []sql.Row{{int64(2)}},
+			},
+		},
+	},
+	{
+		Name: "count distinct blob tuples with null byte",
+		SetUpScript: []string{
+			"CREATE TABLE t (id INT PRIMARY KEY, a BLOB, b BLOB);",
+			"INSERT INTO t VALUES (1, X'610062', X'63'), (2, X'61', X'620063');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT COUNT(DISTINCT a, b) FROM t;",
+				Expected: []sql.Row{{int64(2)}},
+			},
+		},
+	},
+	{
+		Name: "TRIM with window function",
+		SetUpScript: []string{
+			"CREATE TABLE t(s VARCHAR(10));",
+			"INSERT INTO t VALUES ('  a  ');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT TRIM(LEADING FROM FIRST_VALUE(s) OVER ()) AS actual FROM t;",
+				Expected: []sql.Row{
+					{"a  "},
+				},
+			},
+			{
+				Query: "SELECT TRIM(TRAILING FROM FIRST_VALUE(s) OVER ()) AS actual FROM t;",
+				Expected: []sql.Row{
+					{"  a"},
+				},
+			},
+			{
+				Query: "SELECT TRIM(BOTH FROM FIRST_VALUE(s) OVER ()) AS actual FROM t;",
+				Expected: []sql.Row{
+					{"a"},
+				},
 			},
 		},
 	},
