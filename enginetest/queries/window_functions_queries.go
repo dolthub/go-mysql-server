@@ -1615,6 +1615,36 @@ var WindowFunctionsScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "count distinct text tuples through first value",
+		SetUpScript: []string{
+			"CREATE TABLE t (id INT PRIMARY KEY, a VARCHAR(16), b VARCHAR(16));",
+			"INSERT INTO t VALUES (1, 'a,', 'b'), (2, 'a', ',b');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT FIRST_VALUE(actual_count) OVER () AS actual_count
+FROM (
+    SELECT COUNT(DISTINCT a, b) AS actual_count
+    FROM t
+) q;`,
+				Expected: []sql.Row{{int64(2)}},
+			},
+		},
+	},
+	{
+		Name: "count distinct blob tuples with null byte",
+		SetUpScript: []string{
+			"CREATE TABLE t (id INT PRIMARY KEY, a BLOB, b BLOB);",
+			"INSERT INTO t VALUES (1, X'610062', X'63'), (2, X'61', X'620063');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT COUNT(DISTINCT a, b) FROM t;",
+				Expected: []sql.Row{{int64(2)}},
+			},
+		},
+	},
 }
 
 // WindowRowFramesScriptTests tests window functions using ROWS frame specifications.
