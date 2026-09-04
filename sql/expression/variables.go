@@ -17,6 +17,8 @@ package expression
 import (
 	"fmt"
 
+	"github.com/dolthub/vitess/go/vt/sqlparser"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -150,7 +152,9 @@ func (v *UserVar) IsNullable(ctx *sql.Context) bool { return true }
 func (v *UserVar) Resolved() bool { return true }
 
 // String implements the sql.Expression interface.
-func (v *UserVar) String() string { return "@" + v.Name }
+func (v *UserVar) String() string {
+	return "@" + sqlparser.String(sqlparser.NewColIdent(v.Name))
+}
 
 // WithChildren implements the Expression interface.
 func (v *UserVar) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {

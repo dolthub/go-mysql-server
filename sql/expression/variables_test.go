@@ -37,3 +37,21 @@ func TestSystemVarString(t *testing.T) {
 		require.NoError(t, err)
 	}
 }
+
+func TestUserVarString(t *testing.T) {
+	tests := []struct {
+		name     string
+		expected string
+	}{
+		{"normal_name", "@normal_name"},
+		{"var name", "@`var name`"},
+		{"select", "@`select`"},
+	}
+
+	for _, test := range tests {
+		expr := NewUserVar(test.name)
+		require.Equal(t, test.expected, expr.String())
+		_, err := sql.NewMysqlParser().ParseSimple("SELECT " + expr.String())
+		require.NoError(t, err)
+	}
+}
