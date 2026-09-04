@@ -264,6 +264,67 @@ var ColumnAliasQueries = []ScriptTest{
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/11502
+		Name: "column aliases in window definitions",
+		SetUpScript: []string{
+			"create table t (id int primary key, g int, k int, v int);",
+			"insert into t values (1,1,1,25),(2,0,0,-37),(3,1,-2,85);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `select id, g, k as order_alias,
+					lag(v) over (partition by g order by order_alias, id) as prev_v,
+					lead(v) over (partition by g order by order_alias, id) as next_v
+					from t order by id;`,
+				ExpectedErrStr: "Unknown column 'order_alias' in 'window order by'",
+			},
+			{
+				Query:          "select k as order_alias, lag(v) over (order by order_alias) as p from t;",
+				ExpectedErrStr: "Unknown column 'order_alias' in 'window order by'",
+			},
+			{
+				Query:          "select g as part_alias, lag(v) over (partition by part_alias order by id) as p from t;",
+				ExpectedErrStr: "Unknown column 'part_alias' in 'window partition by'",
+			},
+			{
+				Query:          "select k as order_alias, lag(v) over (order by nosuchcol) as p from t;",
+				ExpectedErrStr: "Unknown column 'nosuchcol' in 'window order by'",
+			},
+			{
+				Query:          "select k as order_alias, lag(v) over w as p from t window w as (order by order_alias);",
+				ExpectedErrStr: "Unknown column 'order_alias' in 'window order by'",
+			},
+			{
+				Query:    "select id, k as order_alias, lag(v) over (order by order_alias + 0) as p from t order by id;",
+				Expected: []sql.Row{{1, 1, -37}, {2, 0, 85}, {3, -2, nil}},
+			},
+			{
+				Query:    "select id, g as part_alias, lag(v) over (partition by part_alias + 0 order by id) as p from t order by id;",
+				Expected: []sql.Row{{1, 1, nil}, {2, 0, nil}, {3, 1, 25}},
+			},
+			{
+				Query:    "select id, k + 10 as ke, lag(v) over (order by ke + 0) as p from t order by id;",
+				Expected: []sql.Row{{1, 11, -37}, {2, 10, 85}, {3, 8, nil}},
+			},
+			{
+				Query:    "select id, k as ka, lag(v) over (order by abs(ka)) as p from t order by id;",
+				Expected: []sql.Row{{1, 1, -37}, {2, 0, nil}, {3, -2, 25}},
+			},
+			{
+				Query:    "select id, v as k, lag(v) over (order by k) as p from t order by id;",
+				Expected: []sql.Row{{1, 25, -37}, {2, -37, 85}, {3, 85, nil}},
+			},
+			{
+				Query:    "select id, k as order_alias, lag(v) over (order by k, id) as p from t order by id;",
+				Expected: []sql.Row{{1, 1, -37}, {2, 0, 85}, {3, -2, nil}},
+			},
+			{
+				Query:    "select id, g, k as order_alias, lag(v) over (partition by g order by k, id) as prev_v from t order by order_alias;",
+				Expected: []sql.Row{{3, 1, -2, nil}, {2, 0, 0, nil}, {1, 1, 1, 85}},
+			},
+		},
+	},
+	{
 		Name: "various broken alias queries",
 		Skip: true,
 		Assertions: []ScriptTestAssertion{

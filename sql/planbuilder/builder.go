@@ -49,6 +49,14 @@ type Builder struct {
 	tabId sql.TableId
 	colId columnId
 
+	// windowClause names the window clause being built, and is empty
+	// outside one. It hides SELECT list aliases and labels the error.
+	windowClause string
+
+	// windowClauseBareCol reports a window clause that is a single
+	// column reference, rejected when it names a SELECT list alias.
+	windowClauseBareCol bool
+
 	authEnabled  bool
 	multiDDL     bool
 	insertActive bool

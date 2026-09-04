@@ -37,7 +37,13 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 	// interleave tempScope between inScope and parent, namespace for
 	// alias accumulation within SELECT
 	tempScope := inScope.replace()
+	tempScope.selectAliasScope = true
 	inScope.parent = tempScope
+
+	// A nested SELECT list has its own aliases to resolve.
+	outerClause, outerBare := b.windowClause, b.windowClauseBareCol
+	b.windowClause, b.windowClauseBareCol = "", false
+	defer func() { b.windowClause, b.windowClauseBareCol = outerClause, outerBare }()
 
 	// need to transfer aggregation state from out -> in
 	var exprs []sql.Expression
@@ -167,7 +173,7 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 				tempScope.addColumn(col)
 			}
 			if inScope.selectAliases == nil {
-				inScope.selectAliases = make(map[string]sql.Expression)
+				inScope.selectAliases = make(map[string]*expression.Alias)
 			}
 			inScope.selectAliases[e.Name()] = e
 			exprs = append(exprs, e)

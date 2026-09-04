@@ -40,7 +40,7 @@ type scope struct {
 	tables              map[string]sql.TableId
 	oldTables           map[sql.TableId]string
 	windowDefs          map[string]*sql.WindowDefinition
-	selectAliases       map[string]sql.Expression
+	selectAliases       map[string]*expression.Alias
 	insertColumnAliases map[string]string
 
 	// redirectCol is used for using and natural joins right-table
@@ -68,6 +68,9 @@ type scope struct {
 	// windowFuncs is a list of window functions in the current scope
 	windowFuncs []scopeColumn
 
+	// selectAliasScope marks the temporary SELECT list alias scope.
+	selectAliasScope bool
+
 	refsSubquery bool
 
 	schemaName string
@@ -94,7 +97,13 @@ func (s *scope) resolveColumn(db, table, col string, checkParent, chooseFirst bo
 
 	var found scopeColumn
 	var foundCand bool
+	// Only this scope's aliases are hidden; enclosing scopes stay
+	// visible.
+	hideAliases := s.selectAliasScope && s.b.windowClause != ""
 	for _, c := range s.cols {
+		if hideAliases {
+			break
+		}
 		if strings.EqualFold(c.col, col) && (strings.EqualFold(c.table, table) || table == "") && (strings.EqualFold(c.db, db) || db == "") {
 			if foundCand {
 				if found.equals(c) {
@@ -501,7 +510,7 @@ func (s *scope) copy(ctx *sql.Context) *scope {
 		ret.colset = s.colset.Copy()
 	}
 	if s.selectAliases != nil {
-		ret.selectAliases = make(map[string]sql.Expression, len(s.selectAliases))
+		ret.selectAliases = make(map[string]*expression.Alias, len(s.selectAliases))
 		for k, v := range s.selectAliases {
 			ret.selectAliases[k] = v
 		}
