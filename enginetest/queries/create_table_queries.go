@@ -369,10 +369,13 @@ var CreateTableQueries = []WriteQueryTest{
 var CreateTableScriptTests = []ScriptTest{
 	{
 		// https://github.com/dolthub/dolt/issues/11551
-		Name: "user invisible columns are omitted from qualified and unqualified stars",
+		Name:    "user invisible columns are omitted from qualified and unqualified stars",
+		Dialect: "mysql", // INVISIBLE column syntax is MySQL-specific
 		SetUpScript: []string{
 			"CREATE TABLE t(id INT PRIMARY KEY, hidden INT INVISIBLE, g INT NOT NULL, k INT NOT NULL, v INT NOT NULL)",
 			"INSERT INTO t(id,hidden,g,k,v) VALUES (1,99,0,2,10), (2,98,0,1,20), (3,97,1,1,30)",
+			"CREATE TABLE t2(id INT PRIMARY KEY, hidden INT DEFAULT 7 INVISIBLE, v INT NOT NULL)",
+			"INSERT INTO t2 VALUES (1, 10)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -390,6 +393,10 @@ var CreateTableScriptTests = []ScriptTest{
 			{
 				Query:    "SELECT t.hidden, t.* FROM t ORDER BY id",
 				Expected: []sql.Row{{99, 1, 0, 2, 10}, {98, 2, 0, 1, 20}, {97, 3, 1, 1, 30}},
+			},
+			{
+				Query:    "SELECT hidden, t2.* FROM t2",
+				Expected: []sql.Row{{7, 1, 10}},
 			},
 		},
 	},
