@@ -160,6 +160,21 @@ func TestAsWKT(t *testing.T) {
 	})
 }
 
+func TestGeomCollFromTextString(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	arg := expression.NewLiteral("GEOMETRYCOLLECTION(POINT(1 2))", types.Text)
+	expr, err := NewGeomCollFromText(ctx, arg)
+	require.NoError(t, err)
+	require.IsType(t, &GeomCollFromText{}, expr)
+	require.Equal(t, "st_geomcollfromtext('GEOMETRYCOLLECTION(POINT(1 2))')", expr.String())
+	_, err = sql.NewMysqlParser().ParseSimple("SELECT " + expr.String())
+	require.NoError(t, err)
+
+	cloned, err := expr.WithChildren(ctx, arg)
+	require.NoError(t, err)
+	require.IsType(t, &GeomCollFromText{}, cloned)
+}
+
 func TestGeomFromText(t *testing.T) {
 	t.Run("create valid point with well formatted string", func(t *testing.T) {
 		require := require.New(t)
