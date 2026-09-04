@@ -1460,6 +1460,11 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{{int32(20)}, {int32(20)}, {int32(20)}},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/11543
+		Query:    "SELECT LENGTH(CURRENT_TIME(6)) FROM mytable",
+		Expected: []sql.Row{{int32(15)}, {int32(15)}, {int32(15)}},
+	},
+	{
 		Query:    "SELECT MINUTE('2007-12-11 20:21:22') FROM mytable",
 		Expected: []sql.Row{{int32(21)}, {int32(21)}, {int32(21)}},
 	},
