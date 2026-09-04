@@ -38,6 +38,7 @@ func TestAggGen(t *testing.T) {
 
         var _ sql.FunctionExpression = (*Test)(nil)
         var _ sql.Aggregation = (*Test)(nil)
+        var _ sql.Describable = (*Test)(nil)
         var _ sql.WindowAdaptableExpression = (*Test)(nil)
 
         func NewTest(e sql.Expression) *Test {
@@ -65,15 +66,25 @@ func TestAggGen(t *testing.T) {
 	      return "TEST(" + a.Child.String() + ")"
         }
 
-        func (a *Test) DebugString(ctx *sql.Context) string {
-          if a.window != nil {
-            pr := sql.NewTreePrinter()
-            _ = pr.WriteNode("TEST")
-        	    children := []string{sql.DebugString(ctx, a.window), sql.DebugString(ctx, a.Child)}
-            pr.WriteChildren(children...)
-            return pr.String()
+        func (a *Test) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
+          if options.Debug {
+            if a.window != nil {
+              pr := sql.NewTreePrinter()
+              _ = pr.WriteNode("TEST")
+	      children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
+              pr.WriteChildren(children...)
+              return pr.String()
+            }
+            return fmt.Sprintf("TEST(%s)", sql.Describe(ctx, a.Child, options))
           }
-          return fmt.Sprintf("TEST(%s)", sql.DebugString(ctx, a.Child))
+          if a.window != nil {
+            return "TEST_WINDOW(" + sql.Describe(ctx, a.Child, options) + ") " + sql.Describe(ctx, a.window, options)
+          }
+          return "TEST(" + sql.Describe(ctx, a.Child, options) + ")"
+        }
+
+        func (a *Test) DebugString(ctx *sql.Context) string {
+          return a.Describe(ctx, sql.DescribeOptions{Debug: true})
         }
 
         func (a *Test) WithWindow(ctx *sql.Context, window *sql.WindowDefinition) sql.WindowAdaptableExpression {
