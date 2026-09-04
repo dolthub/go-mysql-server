@@ -280,6 +280,14 @@ func TestVariance(t *testing.T) {
 	}
 }
 
+func TestVarSampString(t *testing.T) {
+	expr := NewVarSamp(expression.NewGetField(0, nil, "value", false)).
+		WithWindow(sql.NewEmptyContext(), &sql.WindowDefinition{})
+	require.Equal(t, "VAR_SAMP(value) over ()", expr.String())
+	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + expr.String())
+	require.NoError(t, err)
+}
+
 func TestVarSamp(t *testing.T) {
 	sum := NewVarSamp(expression.NewGetField(0, nil, "", false))
 

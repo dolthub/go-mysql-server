@@ -1175,25 +1175,22 @@ func (a *VarSamp) IsNullable(ctx *sql.Context) bool {
 }
 
 func (a *VarSamp) String() string {
+	ret := "VAR_SAMP(" + a.Child.String() + ")"
 	if a.window != nil {
-		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("VARSAMP")
-		children := []string{a.window.String(), a.Child.String()}
-		pr.WriteChildren(children...)
-		return pr.String()
+		ret += " " + a.window.String()
 	}
-	return "VARSAMP(" + a.Child.String() + ")"
+	return ret
 }
 
 func (a *VarSamp) DebugString(ctx *sql.Context) string {
 	if a.window != nil {
 		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("VARSAMP")
+		_ = pr.WriteNode("VAR_SAMP")
 		children := []string{sql.DebugString(ctx, a.window), sql.DebugString(ctx, a.Child)}
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("VARSAMP(%s)", sql.DebugString(ctx, a.Child))
+	return fmt.Sprintf("VAR_SAMP(%s)", sql.DebugString(ctx, a.Child))
 }
 
 func (a *VarSamp) WithWindow(ctx *sql.Context, window *sql.WindowDefinition) sql.WindowAdaptableExpression {
