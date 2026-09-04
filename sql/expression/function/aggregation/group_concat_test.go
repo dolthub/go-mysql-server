@@ -20,6 +20,7 @@ import (
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/stretchr/testify/require"
 
+	"github.com/dolthub/go-mysql-server/internal/exprtest"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -44,8 +45,7 @@ func TestGroupConcat_FunctionName(t *testing.T) {
 	m = NewGroupConcat("distinct ", sc, "a'b\\c", []sql.Expression{expression.NewUnresolvedColumn("field")}, 1024)
 
 	assert.Equal("group_concat(distinct field order by field ASC, field2 DESC separator 'a''b\\\\c')", m.String())
-	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + m.String())
-	assert.NoError(err)
+	exprtest.AssertStringRoundTrip(t, m.String())
 
 	windowed := m.WithWindow(sql.NewEmptyContext(), &sql.WindowDefinition{})
 	assert.Equal("group_concat(distinct field order by field ASC, field2 DESC separator 'a''b\\\\c') over ()", windowed.String())

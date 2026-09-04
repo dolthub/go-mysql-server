@@ -19,6 +19,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/dolthub/go-mysql-server/internal/exprtest"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -32,8 +33,7 @@ func TestJsonArrayAgg_Name(t *testing.T) {
 
 	windowed := m.WithWindow(sql.NewEmptyContext(), &sql.WindowDefinition{})
 	assert.Equal("JSON_ARRAYAGG(field) over ()", windowed.String())
-	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + windowed.String())
-	assert.NoError(err)
+	exprtest.AssertStringRoundTrip(t, windowed.String())
 }
 
 func TestJSONObjectAggString(t *testing.T) {
@@ -50,8 +50,7 @@ func TestJSONObjectAggString(t *testing.T) {
 		),
 	)
 	require.Equal(t, "JSON_OBJECTAGG(k, v) over ( partition by g)", expr.String())
-	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + expr.String())
-	require.NoError(t, err)
+	exprtest.AssertStringRoundTrip(t, expr.String())
 }
 
 func TestJsonArrayAgg_SimpleIntField(t *testing.T) {

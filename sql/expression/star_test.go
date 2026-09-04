@@ -17,9 +17,8 @@ package expression
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/internal/exprtest"
 	"github.com/stretchr/testify/require"
-
-	"github.com/dolthub/go-mysql-server/sql"
 )
 
 func TestStarString(t *testing.T) {
@@ -34,7 +33,6 @@ func TestStarString(t *testing.T) {
 
 	for _, test := range tests {
 		require.Equal(t, test.expected, test.expr.String())
-		_, err := sql.NewMysqlParser().ParseSimple("SELECT " + test.expr.String())
-		require.NoError(t, err)
+		exprtest.AssertStringRoundTrip(t, test.expr.String())
 	}
 }

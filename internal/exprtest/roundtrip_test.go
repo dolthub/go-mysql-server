@@ -12,20 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package aggregation
+package exprtest
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-
-	"github.com/dolthub/go-mysql-server/internal/exprtest"
-	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func TestAnyValueString(t *testing.T) {
-	expr := NewAnyValue(expression.NewGetField(0, types.Int64, "value", false))
-	require.Equal(t, "ANY_VALUE(value)", expr.String())
-	exprtest.AssertStringRoundTrip(t, expr.String())
+func TestAssertStringRoundTrip(t *testing.T) {
+	AssertStringRoundTrip(t, "SUM(`value`) over (partition by bucket)")
+	AssertStringRoundTrip(t, "42 AS `alias name`")
+	AssertStringRoundTrip(t, "group_concat(value separator 'a''b\\\\c')")
+}
+
+func TestNormalizePreservesStringValues(t *testing.T) {
+	require.NotEqual(t, normalize("concat('a b')"), normalize("concat('ab')"))
+	require.NotEqual(t, normalize("concat('ABC')"), normalize("concat('abc')"))
 }

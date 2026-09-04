@@ -19,6 +19,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/dolthub/go-mysql-server/internal/exprtest"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -33,6 +34,5 @@ func TestJsonLengthString(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.Equal(t, "json_length(doc, '$.items')", expr.String())
-	_, err = sql.NewMysqlParser().ParseSimple("SELECT " + expr.String())
-	require.NoError(t, err)
+	exprtest.AssertStringRoundTrip(t, expr.String())
 }

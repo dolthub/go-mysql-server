@@ -17,14 +17,12 @@ package expression
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/internal/exprtest"
 	"github.com/stretchr/testify/require"
-
-	"github.com/dolthub/go-mysql-server/sql"
 )
 
 func TestBindVarString(t *testing.T) {
 	expr := NewBindVar("arg1")
 	require.Equal(t, ":arg1", expr.String())
-	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + expr.String())
-	require.NoError(t, err)
+	exprtest.AssertStringRoundTrip(t, expr.String())
 }

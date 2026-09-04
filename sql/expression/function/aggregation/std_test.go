@@ -20,6 +20,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/dolthub/go-mysql-server/internal/exprtest"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
@@ -32,8 +33,7 @@ func TestStdDevPopString(t *testing.T) {
 	expr := NewStdDevPop(expression.NewGetField(0, nil, "value", false)).
 		WithWindow(sql.NewEmptyContext(), &sql.WindowDefinition{})
 	require.Equal(t, "STDDEV_POP(value) over ()", expr.String())
-	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + expr.String())
-	require.NoError(t, err)
+	exprtest.AssertStringRoundTrip(t, expr.String())
 }
 
 func TestStd(t *testing.T) {
@@ -192,16 +192,14 @@ func TestStdDevSampString(t *testing.T) {
 	expr := NewStdDevSamp(expression.NewGetField(0, nil, "value", false)).
 		WithWindow(sql.NewEmptyContext(), &sql.WindowDefinition{})
 	require.Equal(t, "STDDEV_SAMP(value) over ()", expr.String())
-	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + expr.String())
-	require.NoError(t, err)
+	exprtest.AssertStringRoundTrip(t, expr.String())
 }
 
 func TestVarPopString(t *testing.T) {
 	expr := NewVarPop(expression.NewGetField(0, nil, "value", false)).
 		WithWindow(sql.NewEmptyContext(), &sql.WindowDefinition{})
 	require.Equal(t, "VAR_POP(value) over ()", expr.String())
-	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + expr.String())
-	require.NoError(t, err)
+	exprtest.AssertStringRoundTrip(t, expr.String())
 }
 
 func TestVariance(t *testing.T) {
@@ -284,8 +282,7 @@ func TestVarSampString(t *testing.T) {
 	expr := NewVarSamp(expression.NewGetField(0, nil, "value", false)).
 		WithWindow(sql.NewEmptyContext(), &sql.WindowDefinition{})
 	require.Equal(t, "VAR_SAMP(value) over ()", expr.String())
-	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + expr.String())
-	require.NoError(t, err)
+	exprtest.AssertStringRoundTrip(t, expr.String())
 }
 
 func TestVarSamp(t *testing.T) {

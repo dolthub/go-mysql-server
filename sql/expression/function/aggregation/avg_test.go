@@ -19,6 +19,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/dolthub/go-mysql-server/internal/exprtest"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -35,8 +36,7 @@ func TestAvg_String(t *testing.T) {
 		PartitionBy: []sql.Expression{expression.NewGetField(1, types.Int32, "col2", true)},
 	})
 	require.Equal("AVG(col1) over ( partition by col2)", windowed.String())
-	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + windowed.String())
-	require.NoError(err)
+	exprtest.AssertStringRoundTrip(t, windowed.String())
 }
 
 func TestAvg_Float64(t *testing.T) {

@@ -17,6 +17,7 @@ package sql
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/internal/exprtest"
 	"github.com/stretchr/testify/require"
 )
 
@@ -27,6 +28,5 @@ func TestColumnDefaultValueString(t *testing.T) {
 	explicitNull, err := NewColumnDefaultValue(UnresolvedColumnDefault{ExprString: "NULL"}, nil, true, false, true)
 	require.NoError(t, err)
 	require.Equal(t, "NULL", explicitNull.String())
-	_, err = NewMysqlParser().ParseSimple("SELECT " + explicitNull.String())
-	require.NoError(t, err)
+	exprtest.AssertStringRoundTrip(t, explicitNull.String())
 }

@@ -19,6 +19,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/dolthub/go-mysql-server/internal/exprtest"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -31,8 +32,7 @@ func TestBitAnd_String(t *testing.T) {
 
 	windowed := m.WithWindow(sql.NewEmptyContext(), &sql.WindowDefinition{})
 	assert.Equal("BIT_AND(field) over ()", windowed.String())
-	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + windowed.String())
-	assert.NoError(err)
+	exprtest.AssertStringRoundTrip(t, windowed.String())
 }
 
 func TestBitAnd_Eval_Int(t *testing.T) {
@@ -118,8 +118,7 @@ func TestBitOr_String(t *testing.T) {
 
 	windowed := m.WithWindow(sql.NewEmptyContext(), &sql.WindowDefinition{})
 	assert.Equal("BIT_OR(field) over ()", windowed.String())
-	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + windowed.String())
-	assert.NoError(err)
+	exprtest.AssertStringRoundTrip(t, windowed.String())
 }
 
 func TestBitOr_Eval_Int(t *testing.T) {
@@ -205,8 +204,7 @@ func TestBitXor_String(t *testing.T) {
 
 	windowed := m.WithWindow(sql.NewEmptyContext(), &sql.WindowDefinition{})
 	assert.Equal("BIT_XOR(field) over ()", windowed.String())
-	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + windowed.String())
-	assert.NoError(err)
+	exprtest.AssertStringRoundTrip(t, windowed.String())
 }
 
 func TestBitXor_Eval_Int(t *testing.T) {

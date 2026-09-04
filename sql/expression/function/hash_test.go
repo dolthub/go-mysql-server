@@ -20,6 +20,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/dolthub/go-mysql-server/internal/exprtest"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -394,8 +395,7 @@ func TestUncompress(t *testing.T) {
 func TestUncompressedLength(t *testing.T) {
 	stringExpr := NewUncompressedLength(sql.NewEmptyContext(), expression.NewLiteral("value", types.Text))
 	require.Equal(t, "uncompressed_length('value')", stringExpr.String())
-	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + stringExpr.String())
-	require.NoError(t, err)
+	exprtest.AssertStringRoundTrip(t, stringExpr.String())
 
 	tests := []struct {
 		val sql.Expression
@@ -454,8 +454,7 @@ func TestUncompressedLength(t *testing.T) {
 func TestValidatePasswordStrength(t *testing.T) {
 	stringExpr := NewValidatePasswordStrength(sql.NewEmptyContext(), expression.NewLiteral("value", types.Text))
 	require.Equal(t, "validate_password_strength('value')", stringExpr.String())
-	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + stringExpr.String())
-	require.NoError(t, err)
+	exprtest.AssertStringRoundTrip(t, stringExpr.String())
 
 	tests := []struct {
 		val sql.Expression

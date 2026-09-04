@@ -20,6 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
 
+	"github.com/dolthub/go-mysql-server/internal/exprtest"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/json"
@@ -120,14 +121,12 @@ func TestJsonValueString(t *testing.T) {
 	signed, err := json.NewJsonValue(ctx, doc, path, expression.NewLiteral(int64(0), types.Int64))
 	require.NoError(t, err)
 	require.Equal(t, "json_value(doc, '$.a', 'signed')", signed.String())
-	_, err = sql.NewMysqlParser().ParseSimple("SELECT " + signed.String())
-	require.NoError(t, err)
+	exprtest.AssertStringRoundTrip(t, signed.String())
 
 	defaultType, err := json.NewJsonValue(ctx, doc, path)
 	require.NoError(t, err)
 	require.Equal(t, "json_value(doc, '$.a')", defaultType.String())
-	_, err = sql.NewMysqlParser().ParseSimple("SELECT " + defaultType.String())
-	require.NoError(t, err)
+	exprtest.AssertStringRoundTrip(t, defaultType.String())
 }
 
 func TestJsonContainsPath(t *testing.T) {

@@ -19,6 +19,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/dolthub/go-mysql-server/internal/exprtest"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -27,16 +28,14 @@ import (
 func TestSubqueryString(t *testing.T) {
 	expr := NewSubquery(nil, "select 1")
 	require.Equal(t, "(select 1)", expr.String())
-	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + expr.String())
-	require.NoError(t, err)
+	exprtest.AssertStringRoundTrip(t, expr.String())
 }
 
 func TestInSubqueryString(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 	expr := NewInSubquery(ctx, expression.NewUnresolvedColumn("i"), NewSubquery(nil, "select j from t"))
 	require.Equal(t, "(i IN (select j from t))", expr.String())
-	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + expr.String())
-	require.NoError(t, err)
+	exprtest.AssertStringRoundTrip(t, expr.String())
 }
 
 func TestNestedInSubqueryDescription(t *testing.T) {
@@ -51,6 +50,5 @@ func TestNestedInSubqueryDescription(t *testing.T) {
 	require.Contains(t, description, "UnresolvedTable(t)")
 
 	require.Equal(t, "(true AND (i IN (select j from t)))", expr.String())
-	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + expr.String())
-	require.NoError(t, err)
+	exprtest.AssertStringRoundTrip(t, expr.String())
 }

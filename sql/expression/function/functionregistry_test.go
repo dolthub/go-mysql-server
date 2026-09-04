@@ -19,6 +19,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/dolthub/go-mysql-server/internal/exprtest"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
@@ -75,8 +76,7 @@ func TestMultiLineStringFromTextRegistryString(t *testing.T) {
 	require.NoError(t, err)
 	require.IsType(t, &spatial.MLineFromText{}, expr)
 	require.Equal(t, "st_mlinefromtext('MULTILINESTRING((1 2, 3 4))')", expr.String())
-	_, err = sql.NewMysqlParser().ParseSimple("SELECT " + expr.String())
-	require.NoError(t, err)
+	exprtest.AssertStringRoundTrip(t, expr.String())
 }
 
 func TestSTEqualsRegistryString(t *testing.T) {
@@ -90,6 +90,5 @@ func TestSTEqualsRegistryString(t *testing.T) {
 	require.NoError(t, err)
 	require.IsType(t, &spatial.STEquals{}, expr)
 	require.Equal(t, "ST_EQUALS(ST_GeomFromWKB(0x0101000000000000000000F03F0000000000000040, 0), ST_GeomFromWKB(0x0101000000000000000000F03F0000000000000040, 0))", expr.String())
-	_, err = sql.NewMysqlParser().ParseSimple("SELECT " + expr.String())
-	require.NoError(t, err)
+	exprtest.AssertStringRoundTrip(t, expr.String())
 }

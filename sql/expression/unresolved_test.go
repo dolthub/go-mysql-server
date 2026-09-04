@@ -19,6 +19,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/dolthub/go-mysql-server/internal/exprtest"
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -43,14 +44,12 @@ func TestUnresolvedColumnString(t *testing.T) {
 
 	for _, test := range tests {
 		require.Equal(t, test.expected, test.expr.String())
-		_, err := sql.NewMysqlParser().ParseSimple("SELECT " + test.expr.String())
-		require.NoError(t, err)
+		exprtest.AssertStringRoundTrip(t, test.expr.String())
 	}
 }
 
 func TestUnresolvedFunctionString(t *testing.T) {
 	expr := NewUnresolvedFunction("function name", false, nil)
 	require.Equal(t, "`function name`()", expr.String())
-	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + expr.String())
-	require.NoError(t, err)
+	exprtest.AssertStringRoundTrip(t, expr.String())
 }

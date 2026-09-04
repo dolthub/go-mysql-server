@@ -19,6 +19,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/dolthub/go-mysql-server/internal/exprtest"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -29,6 +30,5 @@ func TestNTileString(t *testing.T) {
 	expr := NewNTile(ctx, expression.NewLiteral(2, types.Int64))
 	expr = expr.(sql.WindowAdaptableExpression).WithWindow(ctx, sql.NewWindowDefinition(nil, nil, nil, "", ""))
 	require.Equal(t, "ntile(2) over ()", expr.String())
-	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + expr.String())
-	require.NoError(t, err)
+	exprtest.AssertStringRoundTrip(t, expr.String())
 }

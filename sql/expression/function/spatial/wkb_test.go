@@ -20,6 +20,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/dolthub/go-mysql-server/internal/exprtest"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -170,8 +171,7 @@ func TestGeomCollFromWKBString(t *testing.T) {
 	require.NoError(t, err)
 	require.IsType(t, &GeomCollFromWKB{}, expr)
 	require.Equal(t, "st_geomcollfromwkb(0x010700000000000000)", expr.String())
-	_, err = sql.NewMysqlParser().ParseSimple("SELECT " + expr.String())
-	require.NoError(t, err)
+	exprtest.AssertStringRoundTrip(t, expr.String())
 
 	cloned, err := expr.WithChildren(ctx, arg)
 	require.NoError(t, err)

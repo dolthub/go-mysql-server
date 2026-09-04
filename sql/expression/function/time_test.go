@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/dolthub/go-mysql-server/internal/exprtest"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -307,8 +308,7 @@ func TestTime_Minute(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 	f := NewMinute(ctx, expression.NewGetField(0, types.LongText, "foo", false))
 	require.Equal(t, "minute(foo)", f.String())
-	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + f.String())
-	require.NoError(t, err)
+	exprtest.AssertStringRoundTrip(t, f.String())
 
 	testCases := []struct {
 		name     string
@@ -494,14 +494,12 @@ func TestYearWeek(t *testing.T) {
 	f, err := NewYearWeek(ctx, expression.NewGetField(0, types.LongText, "foo", false))
 	require.NoError(t, err)
 	require.Equal(t, "YEARWEEK(foo, 0)", f.String())
-	_, err = sql.NewMysqlParser().ParseSimple("SELECT " + f.String())
-	require.NoError(t, err)
+	exprtest.AssertStringRoundTrip(t, f.String())
 
 	explicitMode, err := NewYearWeek(ctx, expression.NewGetField(0, types.LongText, "foo", false), expression.NewLiteral(1, types.Int64))
 	require.NoError(t, err)
 	require.Equal(t, "YEARWEEK(foo, 1)", explicitMode.String())
-	_, err = sql.NewMysqlParser().ParseSimple("SELECT " + explicitMode.String())
-	require.NoError(t, err)
+	exprtest.AssertStringRoundTrip(t, explicitMode.String())
 
 	testCases := []struct {
 		name     string
@@ -796,14 +794,12 @@ func TestNowString(t *testing.T) {
 	now, err := NewNow(ctx, precision)
 	require.NoError(t, err)
 	require.Equal(t, "NOW(3)", now.String())
-	_, err = sql.NewMysqlParser().ParseSimple("SELECT " + now.String())
-	require.NoError(t, err)
+	exprtest.AssertStringRoundTrip(t, now.String())
 
 	sysdate, err := NewSysdate(ctx, precision)
 	require.NoError(t, err)
 	require.Equal(t, "SYSDATE(3)", sysdate.String())
-	_, err = sql.NewMysqlParser().ParseSimple("SELECT " + sysdate.String())
-	require.NoError(t, err)
+	exprtest.AssertStringRoundTrip(t, sysdate.String())
 
 	cloned, err := sysdate.WithChildren(ctx, sysdate.Children()...)
 	require.NoError(t, err)

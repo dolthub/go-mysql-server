@@ -19,6 +19,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/dolthub/go-mysql-server/internal/exprtest"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -181,6 +182,5 @@ func TestCharString(t *testing.T) {
 	charExpr.Collation = sql.Collation_utf8mb4_0900_ai_ci
 
 	require.Equal(t, "char(65 USING utf8mb4)", charExpr.String())
-	_, err = sql.NewMysqlParser().ParseSimple("SELECT " + charExpr.String())
-	require.NoError(t, err)
+	exprtest.AssertStringRoundTrip(t, charExpr.String())
 }

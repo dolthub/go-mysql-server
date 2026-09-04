@@ -19,6 +19,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/dolthub/go-mysql-server/internal/exprtest"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
@@ -27,8 +28,7 @@ func TestSumString(t *testing.T) {
 	expr := NewSum(expression.NewGetField(0, nil, "value", false)).
 		WithWindow(sql.NewEmptyContext(), &sql.WindowDefinition{})
 	require.Equal(t, "SUM(value) over ()", expr.String())
-	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + expr.String())
-	require.NoError(t, err)
+	exprtest.AssertStringRoundTrip(t, expr.String())
 }
 
 func TestSum(t *testing.T) {

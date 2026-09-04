@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
 
+	"github.com/dolthub/go-mysql-server/internal/exprtest"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
@@ -45,8 +46,7 @@ func TestRoundTripNames(t *testing.T) {
 		))
 	assert.NoError(t, err)
 	assert.Equal(t, "(foo IN (2))", hit.String())
-	_, err = sql.NewMysqlParser().ParseSimple("SELECT " + hit.String())
-	require.NoError(t, err)
+	exprtest.AssertStringRoundTrip(t, hit.String())
 	assert.Equal(t, "(foo HASH IN (2))", sql.Describe(nil, hit, sql.DescribeOptions{Estimates: true}))
 	nested := expression.NewAnd(expression.NewLiteral(true, types.Boolean), hit)
 	assert.Equal(t, "(true AND (foo HASH IN (2)))", sql.Describe(nil, nested, sql.DescribeOptions{Estimates: true}))

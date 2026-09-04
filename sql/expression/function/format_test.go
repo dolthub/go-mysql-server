@@ -20,6 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
 
+	"github.com/dolthub/go-mysql-server/internal/exprtest"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -30,14 +31,12 @@ func TestFormatString(t *testing.T) {
 	twoArgs, err := NewFormat(ctx, expression.NewLiteral(1234, types.Int64), expression.NewLiteral(2, types.Int64))
 	require.NoError(t, err)
 	require.Equal(t, "format(1234,2)", twoArgs.String())
-	_, err = sql.NewMysqlParser().ParseSimple("SELECT " + twoArgs.String())
-	require.NoError(t, err)
+	exprtest.AssertStringRoundTrip(t, twoArgs.String())
 
 	threeArgs, err := NewFormat(ctx, expression.NewLiteral(1234, types.Int64), expression.NewLiteral(2, types.Int64), expression.NewLiteral("de_DE", types.Text))
 	require.NoError(t, err)
 	require.Equal(t, "format(1234,2,'de_DE')", threeArgs.String())
-	_, err = sql.NewMysqlParser().ParseSimple("SELECT " + threeArgs.String())
-	require.NoError(t, err)
+	exprtest.AssertStringRoundTrip(t, threeArgs.String())
 }
 
 func TestFormat(t *testing.T) {

@@ -21,7 +21,7 @@ import (
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/stretchr/testify/require"
 
-	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/internal/exprtest"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -42,8 +42,7 @@ func TestLiteralStringRoundTrips(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			require.Equal(t, tt.expected, tt.literal.String())
-			_, err := sql.NewMysqlParser().ParseSimple("SELECT " + tt.literal.String())
-			require.NoError(t, err)
+			exprtest.AssertStringRoundTrip(t, tt.literal.String())
 		})
 	}
 }

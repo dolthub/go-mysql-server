@@ -19,6 +19,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/dolthub/go-mysql-server/internal/exprtest"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -48,6 +49,5 @@ func TestFirstString(t *testing.T) {
 	expr := NewFirst(expression.NewGetField(0, types.Text, "value", false)).
 		WithWindow(sql.NewEmptyContext(), &sql.WindowDefinition{})
 	require.Equal(t, "FIRST_VALUE(value) over ()", expr.String())
-	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + expr.String())
-	require.NoError(t, err)
+	exprtest.AssertStringRoundTrip(t, expr.String())
 }

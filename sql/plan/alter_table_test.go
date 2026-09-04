@@ -19,6 +19,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/dolthub/go-mysql-server/internal/exprtest"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -26,6 +27,5 @@ import (
 func TestColDefaultExpressionString(t *testing.T) {
 	expr := ColDefaultExpression{Column: &sql.Column{Name: "odd` name", Type: types.Int64}}
 	require.Equal(t, "DEFAULT(`odd`` name`)", expr.String())
-	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + expr.String())
-	require.NoError(t, err)
+	exprtest.AssertStringRoundTrip(t, expr.String())
 }

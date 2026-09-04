@@ -19,6 +19,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/dolthub/go-mysql-server/internal/exprtest"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -29,12 +30,10 @@ func TestLastInsertIdString(t *testing.T) {
 	withoutArg, err := NewLastInsertId(ctx)
 	require.NoError(t, err)
 	require.Equal(t, "last_insert_id()", withoutArg.String())
-	_, err = sql.NewMysqlParser().ParseSimple("SELECT " + withoutArg.String())
-	require.NoError(t, err)
+	exprtest.AssertStringRoundTrip(t, withoutArg.String())
 
 	withArg, err := NewLastInsertId(ctx, expression.NewLiteral(42, types.Int64))
 	require.NoError(t, err)
 	require.Equal(t, "last_insert_id(42)", withArg.String())
-	_, err = sql.NewMysqlParser().ParseSimple("SELECT " + withArg.String())
-	require.NoError(t, err)
+	exprtest.AssertStringRoundTrip(t, withArg.String())
 }

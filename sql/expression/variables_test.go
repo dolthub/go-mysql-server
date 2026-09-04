@@ -19,6 +19,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/dolthub/go-mysql-server/internal/exprtest"
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -33,8 +34,7 @@ func TestSystemVarString(t *testing.T) {
 	for _, tt := range tests {
 		expr := NewSystemVar("unregistered_system_variable", sql.GetMysqlScope(sql.SystemVariableScope_Session), tt.scope)
 		require.Equal(t, tt.expected, expr.String())
-		_, err := sql.NewMysqlParser().ParseSimple("SELECT " + expr.String())
-		require.NoError(t, err)
+		exprtest.AssertStringRoundTrip(t, expr.String())
 	}
 }
 
@@ -51,7 +51,6 @@ func TestUserVarString(t *testing.T) {
 	for _, test := range tests {
 		expr := NewUserVar(test.name)
 		require.Equal(t, test.expected, expr.String())
-		_, err := sql.NewMysqlParser().ParseSimple("SELECT " + expr.String())
-		require.NoError(t, err)
+		exprtest.AssertStringRoundTrip(t, expr.String())
 	}
 }
