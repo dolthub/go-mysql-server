@@ -362,6 +362,10 @@ func (h *Hour) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
+	if timespan, ok := val.(types.Timespan); ok {
+		return hourFromTimespan(timespan), nil
+	}
+
 	date, err := types.DatetimeMaxPrecision.ConvertWithoutRangeCheck(ctx, val)
 	if err == nil {
 		return date.Hour(), nil
@@ -372,11 +376,15 @@ func (h *Hour) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		ctx.Warn(1292, "Incorrect datetime value: '%s'", val)
 		return nil, nil
 	}
+	return hourFromTimespan(timespan), nil
+}
+
+func hourFromTimespan(timespan types.Timespan) int {
 	microseconds := timespan.AsMicroseconds()
 	if microseconds < 0 {
 		microseconds = -microseconds
 	}
-	return int(microseconds / int64(time.Hour/time.Microsecond)), nil
+	return int(microseconds / int64(time.Hour/time.Microsecond))
 }
 
 // WithChildren implements the Expression interface.
