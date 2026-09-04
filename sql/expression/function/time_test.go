@@ -789,6 +789,27 @@ func TestSysdate(t *testing.T) {
 	}
 }
 
+func TestNowString(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	precision := expression.NewLiteral(3, types.Int64)
+
+	now, err := NewNow(ctx, precision)
+	require.NoError(t, err)
+	require.Equal(t, "NOW(3)", now.String())
+	_, err = sql.NewMysqlParser().ParseSimple("SELECT " + now.String())
+	require.NoError(t, err)
+
+	sysdate, err := NewSysdate(ctx, precision)
+	require.NoError(t, err)
+	require.Equal(t, "SYSDATE(3)", sysdate.String())
+	_, err = sql.NewMysqlParser().ParseSimple("SELECT " + sysdate.String())
+	require.NoError(t, err)
+
+	cloned, err := sysdate.WithChildren(ctx, sysdate.Children()...)
+	require.NoError(t, err)
+	require.Equal(t, "SYSDATE(3)", cloned.String())
+}
+
 func TestTime(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 	f := NewTime(ctx, expression.NewGetField(0, types.LongText, "foo", false))
