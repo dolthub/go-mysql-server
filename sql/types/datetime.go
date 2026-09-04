@@ -428,6 +428,7 @@ func (t datetimeType) parseDatetime(str string) (any, bool, error) {
 		return nil, delimWarn, sql.ErrIncorrectDateTimeValue.New(t.String(), value)
 	}
 	// MySQL special case for abbreviated ('00) date formats
+	// TODO: there's a special special case for 00-00-00
 	if len(yearStr) == 2 {
 		year = TwoDigitYear(year)
 	}
@@ -693,7 +694,7 @@ func (t datetimeType) MinimumTime() time.Time {
 
 // ValidateTime receives a time and returns either that time or nil if it's
 // not a valid time.
-func ValidateTime(t time.Time) interface{} {
+func ValidateTime(t time.Time) any {
 	if t.Before(datetimeMinTime) || t.After(datetimeMaxTime) {
 		return nil
 	}
@@ -702,7 +703,10 @@ func ValidateTime(t time.Time) interface{} {
 
 // ValidateTimestamp receives a time and returns either that time or nil if it's
 // not a valid timestamp.
-func ValidateTimestamp(t time.Time) interface{} {
+func ValidateTimestamp(t time.Time) any {
+	if ZeroTime.Equal(t) {
+		return t
+	}
 	if t.Before(datetimeTypeMinTimestamp) || t.After(datetimeTypeMaxTimestamp) {
 		return nil
 	}
