@@ -283,6 +283,10 @@ var ColumnAliasQueries = []ScriptTest{
 				ExpectedErrStr: "Unknown column 'order_alias' in 'window order by'",
 			},
 			{
+				Query:          "select k as order_key, lag(v) over (order by ORDER_KEY) as p from t;",
+				ExpectedErrStr: "Unknown column 'order_key' in 'window order by'",
+			},
+			{
 				Query:          "select g as part_alias, lag(v) over (partition by part_alias order by id) as p from t;",
 				ExpectedErrStr: "Unknown column 'part_alias' in 'window partition by'",
 			},
