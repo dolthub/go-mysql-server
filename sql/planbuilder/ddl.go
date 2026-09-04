@@ -1751,6 +1751,7 @@ func (b *Builder) columnDefinitionToColumn(inScope *scope, cd *ast.ColumnDefinit
 		PrimaryKey:    isPkey,
 		Comment:       comment,
 		Extra:         extra,
+		Hidden:        bool(cd.Type.Invisible),
 	}
 }
 

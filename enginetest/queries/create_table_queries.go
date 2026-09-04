@@ -368,6 +368,32 @@ var CreateTableQueries = []WriteQueryTest{
 
 var CreateTableScriptTests = []ScriptTest{
 	{
+		// https://github.com/dolthub/dolt/issues/11551
+		Name: "user invisible columns are omitted from qualified and unqualified stars",
+		SetUpScript: []string{
+			"CREATE TABLE t(id INT PRIMARY KEY, hidden INT INVISIBLE, g INT NOT NULL, k INT NOT NULL, v INT NOT NULL)",
+			"INSERT INTO t(id,hidden,g,k,v) VALUES (1,99,0,2,10), (2,98,0,1,20), (3,97,1,1,30)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT t.*, ROW_NUMBER() OVER (PARTITION BY g ORDER BY k,id) AS rn FROM t ORDER BY id",
+				Expected: []sql.Row{
+					{1, 0, 2, 10, 2},
+					{2, 0, 1, 20, 1},
+					{3, 1, 1, 30, 1},
+				},
+			},
+			{
+				Query:    "SELECT * FROM t ORDER BY id",
+				Expected: []sql.Row{{1, 0, 2, 10}, {2, 0, 1, 20}, {3, 1, 1, 30}},
+			},
+			{
+				Query:    "SELECT t.hidden, t.* FROM t ORDER BY id",
+				Expected: []sql.Row{{99, 1, 0, 2, 10}, {98, 2, 0, 1, 20}, {97, 3, 1, 1, 30}},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/11620
 		Name: "CREATE TABLE AS (SELECT ...)",
 		SetUpScript: []string{

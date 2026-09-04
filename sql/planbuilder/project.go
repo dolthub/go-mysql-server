@@ -108,6 +108,11 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 					continue
 				}
 				if strings.EqualFold(c.table, tableName) || tableName == "" {
+					// Don't include user invisible columns or system hidden columns when expanding '*'
+					if c.hidden || sql.IsHiddenSystemColumn(c.col) {
+						continue
+					}
+
 					gf := c.scalarGf()
 					exprs = append(exprs, gf)
 					id, ok := inScope.getExpr(gf.String(), true)
@@ -116,10 +121,6 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 						b.handleErr(err)
 					}
 
-					// Don't include system hidden columns when expanding '*'
-					if strings.Contains(c.col, sql.HiddenSystemColumnPrefix) {
-						continue
-					}
 					c.id = id
 					c.scalar = gf
 					outScope.addColumn(c)
