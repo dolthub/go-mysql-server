@@ -92,6 +92,49 @@ var WindowFunctionsScriptTests = []ScriptTest{
 		Expected: []sql.Row{{13}},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/11470
+		Name:    "Window AVG drops a non-NULL nonnumeric VARCHAR",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t(id INT PRIMARY KEY, v VARCHAR(8));",
+			"INSERT INTO t VALUES (1, 'aa'), (2, NULL), (3, '10');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT id,
+       AVG(v) OVER (
+         ORDER BY id
+         ROWS BETWEEN CURRENT ROW AND CURRENT ROW
+       ) AS wf
+FROM t
+ORDER BY id;`,
+				Expected: []sql.Row{
+					{1, float64(0)},
+					{2, nil},
+					{3, float64(10)},
+				},
+			},
+			{
+				Query: `SELECT id,
+       AVG(v) OVER (
+         ORDER BY id
+         ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+       ) AS wf_avg,
+       SUM(v) OVER (
+         ORDER BY id
+         ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+       ) AS wf_sum
+FROM t
+ORDER BY id;`,
+				Expected: []sql.Row{
+					{1, float64(0), float64(0)},
+					{2, float64(0), float64(0)},
+					{3, float64(5), float64(10)},
+				},
+			},
+		},
+	},
+	{
 		Name: "window functions preserve correlated subquery columns",
 		SetUpScript: []string{
 			"CREATE TABLE window_correlated (id INT PRIMARY KEY, c0 INT, c1 INT)",

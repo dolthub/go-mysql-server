@@ -413,5 +413,24 @@ func TestWindowedAggFuncs(t *testing.T) {
 			require.Equal(t, tt.Expected, res)
 		})
 	}
+}
 
+func TestAvgAgg_NonNumericVarchar(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	buf := []sql.Row{{"aa"}, {nil}, {"10"}}
+	p := sql.WindowInterval{Start: 0, End: len(buf)}
+
+	avg := NewAvgAgg(expression.NewGetField(0, types.LongText, "x", true))
+	require.NoError(t, avg.StartPartition(ctx, p, buf))
+	res, err := avg.Compute(ctx, sql.WindowInterval{Start: 0, End: 1}, buf)
+	require.NoError(t, err)
+	require.Equal(t, float64(0), res)
+
+	res, err = avg.Compute(ctx, sql.WindowInterval{Start: 1, End: 2}, buf)
+	require.NoError(t, err)
+	require.Nil(t, res)
+
+	res, err = avg.Compute(ctx, sql.WindowInterval{Start: 0, End: 3}, buf)
+	require.NoError(t, err)
+	require.Equal(t, float64(5), res)
 }
