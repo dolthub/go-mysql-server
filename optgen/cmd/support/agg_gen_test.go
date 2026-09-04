@@ -15,10 +15,11 @@ func TestAggGen(t *testing.T) {
 		defines: AggDefs{
 			[]AggDef{
 				{
-					Name:      "Test",
-					Desc:      "Test description",
-					RetType:   "sql.Float64",
-					SqlString: true,
+					Name:          "Test",
+					Desc:          "Test description",
+					RetType:       "sql.Float64",
+					SqlString:     true,
+					WindowSqlName: "test_window",
 				},
 			},
 		},
@@ -58,11 +59,10 @@ func TestAggGen(t *testing.T) {
         }
 
         func (a *Test) String() string {
-          ret := "TEST(" + a.Child.String() + ")"
           if a.window != nil {
-            ret += " " + a.window.String()
+	        return "TEST_WINDOW(" + a.Child.String() + ") " + a.window.String()
           }
-          return ret
+	      return "TEST(" + a.Child.String() + ")"
         }
 
         func (a *Test) DebugString(ctx *sql.Context) string {
