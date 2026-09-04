@@ -15,9 +15,10 @@ func TestAggGen(t *testing.T) {
 		defines: AggDefs{
 			[]AggDef{
 				{
-					Name:    "Test",
-					Desc:    "Test description",
-					RetType: "sql.Float64",
+					Name:      "Test",
+					Desc:      "Test description",
+					RetType:   "sql.Float64",
+					SqlString: true,
 				},
 			},
 		},
@@ -57,14 +58,11 @@ func TestAggGen(t *testing.T) {
         }
 
         func (a *Test) String() string {
+          ret := "TEST(" + a.Child.String() + ")"
           if a.window != nil {
-            pr := sql.NewTreePrinter()
-            _ = pr.WriteNode("TEST")
-        	    children := []string{a.window.String(), a.Child.String()}
-            pr.WriteChildren(children...)
-            return pr.String()
+            ret += " " + a.window.String()
           }
-          return "TEST(" + a.Child.String() + ")"
+          return ret
         }
 
         func (a *Test) DebugString(ctx *sql.Context) string {

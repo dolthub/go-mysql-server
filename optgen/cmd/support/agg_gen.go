@@ -15,11 +15,12 @@ type AggDefs struct {
 }
 
 type AggDef struct {
-	Name     string `yaml:"name"`
-	SqlName  string `yaml:"sqlName"`
-	Desc     string `yaml:"desc"`
-	RetType  string `yaml:"retType"` // must be valid sql.Type
-	Nullable bool   `yaml:"nullable"`
+	Name      string `yaml:"name"`
+	SqlName   string `yaml:"sqlName"`
+	Desc      string `yaml:"desc"`
+	RetType   string `yaml:"retType"` // must be valid sql.Type
+	Nullable  bool   `yaml:"nullable"`
+	SqlString bool   `yaml:"sqlString"`
 }
 
 var _ GenDefs = ([]AggDef)(nil)
@@ -113,15 +114,24 @@ func (g *AggGen) genAggStringer(define AggDef) {
 		sqlName = define.SqlName
 	}
 	fmt.Fprintf(g.w, "func (a *%s) String() string {\n", define.Name)
-	fmt.Fprintf(g.w, "  if a.window != nil {\n")
-	fmt.Fprintf(g.w, "    pr := sql.NewTreePrinter()\n")
-	fmt.Fprintf(g.w, "    _ = pr.WriteNode(\"%s\")\n	", strings.ToUpper(sqlName))
-	fmt.Fprintf(g.w, "    children := []string{a.window.String(), a.Child.String()}\n")
-	fmt.Fprintf(g.w, "    pr.WriteChildren(children...)\n")
-	fmt.Fprintf(g.w, "    return pr.String()\n")
-	fmt.Fprintf(g.w, "  }\n")
-	fmt.Fprintf(g.w, " return \"%s(\" + a.Child.String() + \")\"\n", strings.ToUpper(sqlName))
-	fmt.Fprintf(g.w, "}\n\n")
+	if define.SqlString {
+		fmt.Fprintf(g.w, "  ret := \"%s(\" + a.Child.String() + \")\"\n", strings.ToUpper(sqlName))
+		fmt.Fprintf(g.w, "  if a.window != nil {\n")
+		fmt.Fprintf(g.w, "    ret += \" \" + a.window.String()\n")
+		fmt.Fprintf(g.w, "  }\n")
+		fmt.Fprintf(g.w, "  return ret\n")
+		fmt.Fprintf(g.w, "}\n\n")
+	} else {
+		fmt.Fprintf(g.w, "  if a.window != nil {\n")
+		fmt.Fprintf(g.w, "    pr := sql.NewTreePrinter()\n")
+		fmt.Fprintf(g.w, "    _ = pr.WriteNode(\"%s\")\n	", strings.ToUpper(sqlName))
+		fmt.Fprintf(g.w, "    children := []string{a.window.String(), a.Child.String()}\n")
+		fmt.Fprintf(g.w, "    pr.WriteChildren(children...)\n")
+		fmt.Fprintf(g.w, "    return pr.String()\n")
+		fmt.Fprintf(g.w, "  }\n")
+		fmt.Fprintf(g.w, " return \"%s(\" + a.Child.String() + \")\"\n", strings.ToUpper(sqlName))
+		fmt.Fprintf(g.w, "}\n\n")
+	}
 
 	fmt.Fprintf(g.w, "func (a *%s) DebugString(ctx *sql.Context) string {\n", define.Name)
 	fmt.Fprintf(g.w, "  if a.window != nil {\n")
