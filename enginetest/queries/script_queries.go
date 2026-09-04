@@ -67,6 +67,9 @@ type ScriptTestAssertion struct {
 	// such as the use of the SIGNAL statement.
 	ExpectedErrStr string
 
+	// SkipWarnings is used to skip the warnings count check
+	SkipWarnings bool
+
 	// ExpectedWarning contains the expected warning code when a query generates warnings but not errors.
 	ExpectedWarning int
 
@@ -695,49 +698,49 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 				Expected:                        []sql.Row{{true}},
 				ExpectedWarningsCount:           1,
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
-				ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 'A'",
 			},
 			{
 				Query:                           "SELECT 'A' != 0;",
 				Expected:                        []sql.Row{{false}},
 				ExpectedWarningsCount:           1,
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
-				ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 'A'",
 			},
 			{
 				Query:                           "SELECT 'A' <> 0;",
 				Expected:                        []sql.Row{{false}},
 				ExpectedWarningsCount:           1,
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
-				ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 'A'",
 			},
 			{
 				Query:                           "SELECT 'A' < 0;",
 				Expected:                        []sql.Row{{false}},
 				ExpectedWarningsCount:           1,
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
-				ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 'A'",
 			},
 			{
 				Query:                           "SELECT 'A' <= 0;",
 				Expected:                        []sql.Row{{true}},
 				ExpectedWarningsCount:           1,
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
-				ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 'A'",
 			},
 			{
 				Query:                           "SELECT 'A' > 0;",
 				Expected:                        []sql.Row{{false}},
 				ExpectedWarningsCount:           1,
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
-				ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 'A'",
 			},
 			{
 				Query:                           "SELECT 'A' >= 0;",
 				Expected:                        []sql.Row{{true}},
 				ExpectedWarningsCount:           1,
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
-				ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 'A'",
 			},
 			{
 				Query:    "SELECT '' = 0;",
@@ -766,14 +769,14 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 				Expected:                        []sql.Row{{true}},
 				ExpectedWarningsCount:           1,
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
-				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 123A",
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: '123A'",
 			},
 			{
 				Query:                           "SELECT 'A123' = 0;",
 				Expected:                        []sql.Row{{true}},
 				ExpectedWarningsCount:           1,
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
-				ExpectedWarningMessageSubstring: "Truncated incorrect double value: A123",
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 'A123'",
 			},
 			{
 				Query:    "SELECT '123.456' = 123;",
@@ -790,7 +793,7 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 				Expected:                        []sql.Row{{true}},
 				ExpectedWarningsCount:           1,
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
-				ExpectedWarningMessageSubstring: "Truncated incorrect decimal(65,30) value: 123.456ABC",
+				ExpectedWarningMessageSubstring: "Truncated incorrect decimal(65,30) value: '123.456ABC'",
 			},
 			{
 				Query:    "SELECT '123.456e2' = 12345.6;",
@@ -821,14 +824,14 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 				Expected:                        []sql.Row{{true}},
 				ExpectedWarningsCount:           1,
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
-				ExpectedWarningMessageSubstring: "Truncated incorrect decimal(65,30) value: +123.456ABC",
+				ExpectedWarningMessageSubstring: "Truncated incorrect decimal(65,30) value: '+123.456ABC'",
 			},
 			{
 				Query:                           "SELECT '0xBEEF' = 0;",
 				Expected:                        []sql.Row{{true}},
 				ExpectedWarningsCount:           1,
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
-				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 0xBEEF",
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: '0xBEEF'",
 			},
 			{
 				// 'A' is truncated to 0
@@ -836,7 +839,7 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 				Expected:                        []sql.Row{{true}},
 				ExpectedWarningsCount:           1,
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
-				ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 'A'",
 			},
 			{
 				// 'A' is truncated to 0
@@ -844,7 +847,7 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 				Expected:                        []sql.Row{{false}},
 				ExpectedWarningsCount:           1,
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
-				ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 'A'",
 			},
 			{
 				Query:    "SELECT '' in (0);",
@@ -855,21 +858,21 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 				Expected:                        []sql.Row{{true}},
 				ExpectedWarningsCount:           1,
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
-				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 123A",
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: '123A'",
 			},
 			{
 				Query:                           "SELECT 123 in ('123A');",
 				Expected:                        []sql.Row{{true}},
 				ExpectedWarningsCount:           1,
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
-				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 123A",
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: '123A'",
 			},
 			{
 				Query:                           "SELECT 'A123' in (0);",
 				Expected:                        []sql.Row{{true}},
 				ExpectedWarningsCount:           1,
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
-				ExpectedWarningMessageSubstring: "Truncated incorrect double value: A123",
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 'A123'",
 			},
 			{
 				Query:                           "SELECT '123abc' in ('string', 1, 2, 123);",
@@ -890,7 +893,7 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 				Expected:                        []sql.Row{{true}},
 				ExpectedWarningsCount:           1,
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
-				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 123A",
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: '123A'",
 			},
 			{
 				Query:    "SELECT '123.456' in (123);",
@@ -926,7 +929,7 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 				Expected:                        []sql.Row{{true}},
 				ExpectedWarningsCount:           1,
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
-				ExpectedWarningMessageSubstring: "Truncated incorrect decimal(65,30) value: 123.456ABC",
+				ExpectedWarningMessageSubstring: "Truncated incorrect decimal(65,30) value: '123.456ABC'",
 			},
 			{
 				Query:    "SELECT '123.456e2' in (12345.6);",
@@ -941,7 +944,7 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 				Expected:                        []sql.Row{{true}},
 				ExpectedWarningsCount:           1,
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
-				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 0xBEEF",
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: '0xBEEF'",
 			},
 			{
 				Query:                           `select 'a' + 4;`,
@@ -4988,9 +4991,9 @@ CREATE TABLE tab3 (
 			"SET @@SESSION.time_zone = 'UTC';",
 			"CREATE TABLE `datetime_table` (   `i` bigint NOT NULL,   `date_col` date,   `datetime_col` datetime,   `timestamp_col` timestamp,   `time_col` time(6),   PRIMARY KEY (`i`) )",
 			`insert into datetime_table values
-    (1, '2019-12-31T12:00:00Z', '2020-01-01T12:00:00Z', '2020-01-02T12:00:00Z', '03:10:0'),
-    (2, '2020-01-03T12:00:00Z', '2020-01-04T12:00:00Z', '2020-01-05T12:00:00Z', '04:00:44'),
-    (3, '2020-01-07T00:00:00Z', '2020-01-07T12:00:00Z', '2020-01-07T12:00:01Z', '15:00:00.005000')`,
+    (1, '2019-12-31 12:00:00', '2020-01-01 12:00:00', '2020-01-02 12:00:00', '03:10:0'),
+    (2, '2020-01-03 12:00:00', '2020-01-04 12:00:00', '2020-01-05 12:00:00', '04:00:44'),
+    (3, '2020-01-07 00:00:00', '2020-01-07 12:00:00', '2020-01-07 12:00:01', '15:00:00.005000')`,
 			`create index datetime_table_d on datetime_table (date_col)`,
 			`create index datetime_table_dt on datetime_table (datetime_col)`,
 			`create index datetime_table_ts on datetime_table (timestamp_col)`,
@@ -5869,35 +5872,35 @@ CREATE TABLE tab3 (
 				Query:                           "SELECT CONVERT('10000-12-31 23:59:59', DATETIME)",
 				ExpectedWarning:                 1292,
 				ExpectedWarningsCount:           1,
-				ExpectedWarningMessageSubstring: "Incorrect datetime value: 10000-12-31 23:59:59",
+				ExpectedWarningMessageSubstring: "Incorrect datetime value: '10000-12-31 23:59:59'",
 				SkipResultsCheck:                true,
 			},
 			{
 				Query:                           "SELECT CONVERT('this is not a datetime', DATETIME)",
 				ExpectedWarning:                 1292,
 				ExpectedWarningsCount:           1,
-				ExpectedWarningMessageSubstring: "Incorrect datetime value: this is not a datetime",
+				ExpectedWarningMessageSubstring: "Incorrect datetime value: 'this is not a datetime'",
 				SkipResultsCheck:                true,
 			},
 			{
 				Query:                           "SELECT CAST('this is not a datetime' as DATETIME)",
 				ExpectedWarning:                 1292,
 				ExpectedWarningsCount:           1,
-				ExpectedWarningMessageSubstring: "Incorrect datetime value: this is not a datetime",
+				ExpectedWarningMessageSubstring: "Incorrect datetime value: 'this is not a datetime'",
 				SkipResultsCheck:                true,
 			},
 			{
 				Query:                           "SELECT CONVERT('this is not a date', DATE)",
 				ExpectedWarning:                 1292,
 				ExpectedWarningsCount:           1,
-				ExpectedWarningMessageSubstring: "Incorrect date value: this is not a date",
+				ExpectedWarningMessageSubstring: "Incorrect date value: 'this is not a date'",
 				SkipResultsCheck:                true,
 			},
 			{
 				Query:                           "SELECT CAST('this is not a date' as DATE)",
 				ExpectedWarning:                 1292,
 				ExpectedWarningsCount:           1,
-				ExpectedWarningMessageSubstring: "Incorrect date value: this is not a date",
+				ExpectedWarningMessageSubstring: "Incorrect date value: 'this is not a date'",
 				SkipResultsCheck:                true,
 			},
 		},

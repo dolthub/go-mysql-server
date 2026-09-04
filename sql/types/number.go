@@ -280,6 +280,7 @@ func (t NumberTypeImpl_) Convert(ctx context.Context, v interface{}) (interface{
 		return nil, sql.InRange, nil
 	}
 
+	// TODO: don't do this
 	if ti, ok := v.(time.Time); ok {
 		v = ti.UTC().Unix()
 	}

@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -279,6 +280,9 @@ func (t DecimalType_) ConvertToDecimal(v interface{}) (*apd.Decimal, error) {
 		return newVal, nil
 	case []uint8:
 		return t.ConvertToDecimal(string(value))
+	case time.Time:
+		// TODO: need to determine if original type is date, time, or datetime
+		return t.ConvertToDecimal(DateTimeToNumber(value))
 	case JSONDocument:
 		return t.ConvertToDecimal(value.Val)
 	}
@@ -644,4 +648,34 @@ func DecimalTruncate(val *apd.Decimal, scale int32) *apd.Decimal {
 		return newVal
 	}
 	return val
+}
+
+func DateToNumber(t time.Time) (res int) {
+	y, m, d := t.Date()
+	res += y * 100 * 100
+	res += int(m) * 100
+	res += d
+	return
+}
+
+func TimeToNumber(t time.Time) (res float64) {
+	h, m, s, us := t.Hour(), t.Minute(), t.Second(), t.Nanosecond()/1000
+	res += float64(h * 100 * 100)
+	res += float64(m * 100)
+	res += float64(s * 100)
+	res += float64(us) / 1_000_000
+	return
+}
+
+func DateTimeToNumber(t time.Time) (res float64) {
+	date := DateToNumber(t)
+	time := TimeToNumber(t)
+
+	res += float64(date) * 1_00_00_00
+	// it's possible for hour > 100
+	if time >= 1000_00_00 {
+		res *= 10
+	}
+	res += time
+	return res
 }

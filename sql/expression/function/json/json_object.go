@@ -102,13 +102,25 @@ func (j JSONObject) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 		if i%2 == 0 {
-			val, _, err = types.LongText.Convert(ctx, val)
-			if err != nil {
-				return nil, err
-			}
-			key, _, err = sql.Unwrap[string](ctx, val)
-			if err != nil {
-				return nil, err
+			// TODO: update type aware implementation for datetime types
+			//  This is a placeholder implementation for existing tests
+			switch typ := expr.Type(ctx).(type) {
+			case sql.DatetimeType:
+				str, err := typ.SQL(ctx, nil, val)
+				if err != nil {
+					return nil, err
+				}
+				key = str.ToString()
+			default:
+				// TODO: this should probably use TypeAwareConversion
+				val, _, err = types.LongText.Convert(ctx, val)
+				if err != nil {
+					return nil, err
+				}
+				key, _, err = sql.Unwrap[string](ctx, val)
+				if err != nil {
+					return nil, err
+				}
 			}
 		} else {
 			val, err = sql.UnwrapAny(ctx, val)

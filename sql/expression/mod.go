@@ -142,26 +142,23 @@ func (m *Mod) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, interfa
 	return lval, rval, nil
 }
 
-func (m *Mod) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}) {
+func (m *Mod) convertLeftRight(ctx *sql.Context, lVal, rVal any) (any, any) {
 	typ := m.Type(ctx)
-	lIsTimeType := types.IsTime(m.LeftChild.Type(ctx))
-	rIsTimeType := types.IsTime(m.RightChild.Type(ctx))
-
+	lTyp, rTyp := m.LeftChild.Type(ctx), m.RightChild.Type(ctx)
 	if types.IsFloat(typ) {
-		left = convertValueToType(ctx, typ, left, lIsTimeType)
-		right = convertValueToType(ctx, typ, right, rIsTimeType)
+		lVal = convertValueToType(ctx, lTyp, typ, lVal)
+		rVal = convertValueToType(ctx, rTyp, typ, rVal)
 	} else {
-		left = convertToDecimalValue(ctx, left, lIsTimeType)
-		right = convertToDecimalValue(ctx, right, rIsTimeType)
+		lVal = convertToDecimalValue(ctx, lTyp, typ, lVal)
+		rVal = convertToDecimalValue(ctx, rTyp, typ, rVal)
 	}
-
-	return left, right
+	return lVal, rVal
 }
 
-func mod(ctx *sql.Context, lval, rval interface{}) (interface{}, error) {
-	switch l := lval.(type) {
+func mod(ctx *sql.Context, lVal, rVal any) (any, error) {
+	switch l := lVal.(type) {
 	case float32:
-		switch r := rval.(type) {
+		switch r := rVal.(type) {
 		case float32:
 			if r == 0 {
 				arithmeticWarning(ctx, ERDivisionByZero, "Division by 0")
@@ -171,7 +168,7 @@ func mod(ctx *sql.Context, lval, rval interface{}) (interface{}, error) {
 		}
 
 	case float64:
-		switch r := rval.(type) {
+		switch r := rVal.(type) {
 		case float64:
 			if r == 0 {
 				arithmeticWarning(ctx, ERDivisionByZero, "Division by 0")
@@ -180,7 +177,7 @@ func mod(ctx *sql.Context, lval, rval interface{}) (interface{}, error) {
 			return math.Mod(l, r), nil
 		}
 	case *apd.Decimal:
-		switch r := rval.(type) {
+		switch r := rVal.(type) {
 		case *apd.Decimal:
 			if r.IsZero() {
 				arithmeticWarning(ctx, ERDivisionByZero, "Division by 0")
@@ -192,5 +189,5 @@ func mod(ctx *sql.Context, lval, rval interface{}) (interface{}, error) {
 		}
 	}
 
-	return nil, errUnableToCast.New(lval, rval)
+	return nil, errUnableToCast.New(lVal, rVal)
 }

@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dolthub/vitess/go/mysql"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -91,20 +92,20 @@ func (d *DateDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	if val1 == nil {
-		return nil, nil
-	}
-
-	expr1, _, err := types.DatetimeMaxPrecision.Convert(ctx, val1)
+	expr1, _, err := types.Date.Convert(ctx, val1)
 	if err != nil {
-		ctx.Warn(1292, "Incorrect datetime value: '%s'", val1)
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrTruncatedIncorrect.New("datetime", val1).Error())
 		return nil, nil
 	}
-
-	expr1str := expr1.(time.Time).String()[:10]
-	expr1, _, _ = types.DatetimeMaxPrecision.Convert(ctx, expr1str)
-	if expr1 == nil {
-		ctx.Warn(1292, "Incorrect datetime value: '%s'", val1)
+	var date1 time.Time
+	switch expr1.(type) {
+	case time.Time:
+		date1 = expr1.(time.Time)
+		if types.ZeroTime.Equal(date1) {
+			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrTruncatedIncorrect.New("datetime", val1).Error())
+			return nil, nil
+		}
+	default:
 		return nil, nil
 	}
 
@@ -112,25 +113,22 @@ func (d *DateDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	if val2 == nil {
-		return nil, nil
-	}
-
-	expr2, _, err := types.DatetimeMaxPrecision.Convert(ctx, val2)
+	expr2, _, err := types.Date.Convert(ctx, val2)
 	if err != nil {
-		ctx.Warn(1292, "Incorrect datetime value: '%s'", val2)
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrTruncatedIncorrect.New("datetime", val2).Error())
 		return nil, nil
 	}
-
-	expr2str := expr2.(time.Time).String()[:10]
-	expr2, _, _ = types.DatetimeMaxPrecision.Convert(ctx, expr2str)
-	if expr2 == nil {
-		ctx.Warn(1292, "Incorrect datetime value: '%s'", val2)
+	var date2 time.Time
+	switch expr2.(type) {
+	case time.Time:
+		date2 = expr2.(time.Time)
+		if types.ZeroTime.Equal(date2) {
+			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrTruncatedIncorrect.New("datetime", val2).Error())
+			return nil, nil
+		}
+	default:
 		return nil, nil
 	}
-
-	date1 := expr1.(time.Time)
-	date2 := expr2.(time.Time)
 
 	diff := int64(math.Round(date1.Sub(date2).Hours() / 24))
 
@@ -246,15 +244,15 @@ func (d *DateAdd) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	var dateVal interface{}
+	var dateVal any
 	dateVal, _, err = types.DatetimeMaxRange.Convert(ctx, date)
 	if err != nil {
-		ctx.Warn(1292, "%s", err.Error())
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 		return nil, nil
 	}
 	datetime, ok := dateVal.(time.Time)
 	if !ok || datetime.Equal(types.ZeroTime) {
-		ctx.Warn(1292, "Incorrect datetime value: '%s'", date)
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrIncorrectDateTimeValue.New(types.DatetimeMaxRange.String(), date).Error())
 		return nil, nil
 	}
 
@@ -266,6 +264,7 @@ func (d *DateAdd) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	resType := d.Type(ctx)
 	if types.IsText(resType) {
+		// TODO: use the regex
 		// If the input is a properly formatted date/datetime string, the output should also be a string
 		if dateStr, isStr := date.(string); isStr {
 			if res.(time.Time).Nanosecond() > 0 {
@@ -402,12 +401,12 @@ func (d *DateSub) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	var dateVal interface{}
 	dateVal, _, err = types.DatetimeMaxRange.Convert(ctx, date)
 	if err != nil {
-		ctx.Warn(1292, "%s", err.Error())
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 		return nil, nil
 	}
 	datetime, ok := dateVal.(time.Time)
 	if !ok || datetime.Equal(types.ZeroTime) {
-		ctx.Warn(1292, "Incorrect datetime value: '%s'", date)
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrIncorrectDateTimeValue.New(types.DatetimeMaxRange.String(), date).Error())
 		return nil, nil
 	}
 
@@ -527,14 +526,14 @@ func (td *TimeDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if _, ok := left.(string); ok {
 		left, err = convToDateOrTime(ctx, left)
 		if err != nil {
-			ctx.Warn(1292, "%s", err.Error())
+			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 			return nil, nil
 		}
 	}
 	if _, ok := right.(string); ok {
 		right, err = convToDateOrTime(ctx, right)
 		if err != nil {
-			ctx.Warn(1292, "%s", err.Error())
+			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 			return nil, nil
 		}
 	}

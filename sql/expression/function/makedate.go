@@ -24,10 +24,8 @@ import (
 )
 
 const (
-	// MaxYear is the maximum supported calendar year (9999).
-	MaxYear = 9999
-	// MaxDayNumber is the maximum day count through 9999-12-31.
-	MaxDayNumber = 3652424
+	// MaxDayCount is the maximum day count through 9999-12-31.
+	MaxDayCount = 3652424
 )
 
 // MakeDate constructs a date value from year and day of year.
@@ -84,21 +82,20 @@ func (m *MakeDate) Eval(ctx *sql.Context, row sql.Row) (any, error) {
 	if err != nil || !ok {
 		return nil, err
 	}
-	year, ok, err := evalInt64(ctx, m.LeftChild, row)
+	year64, ok, err := evalInt64(ctx, m.LeftChild, row)
 	if err != nil || !ok {
 		return nil, err
 	}
 
-	if year < 0 || year > MaxYear || day <= 0 || day > MaxDayNumber {
+	year := int(year64)
+	if year < 0 || year > types.MaxYear || day <= 0 || day > MaxDayCount {
 		return nil, nil
 	}
 
-	if year < types.TwoDigitYearCutoff {
-		year = types.TwoDigitYear(year)
-	}
+	year = types.TwoDigitYear(year)
 
-	res := time.Date(int(year), time.January, 1, 0, 0, 0, 0, time.UTC).AddDate(0, 0, int(day-1))
-	if res.Year() > MaxYear || res.Year() < 0 {
+	res := time.Date(year, time.January, 1, 0, 0, 0, 0, time.UTC).AddDate(0, 0, int(day-1))
+	if res.Year() > types.MaxYear || res.Year() < 0 {
 		return nil, nil
 	}
 	return res, nil

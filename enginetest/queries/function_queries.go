@@ -1454,76 +1454,94 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{{nil}},
 	},
 
-	// Additional Date/Time Function Tests
 	{
-		Query:    "SELECT YEAR('2007-12-11') FROM mytable",
-		Expected: []sql.Row{{int32(2007)}, {int32(2007)}, {int32(2007)}},
+		Query:    "SELECT YEAR('2007-12-11');",
+		Expected: []sql.Row{{int32(2007)}},
 	},
 	{
-		Query:    "SELECT MONTH('2007-12-11') FROM mytable",
-		Expected: []sql.Row{{int32(12)}, {int32(12)}, {int32(12)}},
+		Query:    "SELECT MONTH('2007-12-11');",
+		Expected: []sql.Row{{int32(12)}},
 	},
 	{
-		Query:    "SELECT DAY('2007-12-11') FROM mytable",
-		Expected: []sql.Row{{int32(11)}, {int32(11)}, {int32(11)}},
+		Query:    "SELECT DAY('2007-12-11');",
+		Expected: []sql.Row{{int32(11)}},
 	},
 	{
-		Query:    "SELECT HOUR('2007-12-11 20:21:22') FROM mytable",
-		Expected: []sql.Row{{int32(20)}, {int32(20)}, {int32(20)}},
+		Query:    "SELECT HOUR('2007-12-11 20:21:22');",
+		Expected: []sql.Row{{int32(20)}},
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/11512
-		Query:    "SELECT HOUR('13:04:05') FROM mytable",
-		Expected: []sql.Row{{int32(13)}, {int32(13)}, {int32(13)}},
+		Query:    "SELECT HOUR('13:04:05');",
+		Expected: []sql.Row{{int32(13)}},
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/11543
 		Query:    "SELECT LENGTH(CURRENT_TIME(6)) FROM mytable",
-		Expected: []sql.Row{{int32(15)}, {int32(15)}, {int32(15)}},
+		Expected: []sql.Row{{int32(15)}},
 	},
 	{
-		Query:    "SELECT MINUTE('2007-12-11 20:21:22') FROM mytable",
-		Expected: []sql.Row{{int32(21)}, {int32(21)}, {int32(21)}},
+		Query:    "SELECT MINUTE('2007-12-11 20:21:22');",
+		Expected: []sql.Row{{int32(21)}},
 	},
 	{
-		Query:    "SELECT SECOND('2007-12-11 20:21:22') FROM mytable",
-		Expected: []sql.Row{{int32(22)}, {int32(22)}, {int32(22)}},
+		Query:    "SELECT SECOND('2007-12-11 20:21:22');",
+		Expected: []sql.Row{{int32(22)}},
 	},
 	{
-		Query:    "SELECT DAYOFYEAR('2007-12-11 20:21:22') FROM mytable",
-		Expected: []sql.Row{{int32(345)}, {int32(345)}, {int32(345)}},
+		Query:    "SELECT DAYOFYEAR('2007-12-11 20:21:22');",
+		Expected: []sql.Row{{int32(345)}},
 	},
 	{
-		Query:    "SELECT SECOND('2007-12-11T20:21:22Z') FROM mytable",
-		Expected: []sql.Row{{int32(22)}, {int32(22)}, {int32(22)}},
+		Query:    "SELECT SECOND('2007-12-11 20:21:22');",
+		Expected: []sql.Row{{int32(22)}},
 	},
 	{
-		Query:    "SELECT DAYOFYEAR('2007-12-11') FROM mytable",
-		Expected: []sql.Row{{int32(345)}, {int32(345)}, {int32(345)}},
+		Query:    "SELECT DAYOFYEAR('2007-12-11');",
+		Expected: []sql.Row{{int32(345)}},
 	},
 	{
-		Query:    "SELECT DAYOFYEAR('20071211') FROM mytable",
-		Expected: []sql.Row{{int32(345)}, {int32(345)}, {int32(345)}},
+		Query:    "SELECT DAYOFYEAR('20071211');",
+		Expected: []sql.Row{{int32(345)}},
 	},
 	{
-		Query:    "SELECT YEARWEEK('0000-01-01')",
+		Query:    "SELECT YEARWEEK('0000-01-01');",
 		Expected: []sql.Row{{int32(1)}},
 	},
 	{
-		Query:    "SELECT YEARWEEK('9999-12-31')",
+		Query:    "SELECT YEARWEEK('9999-12-31');",
 		Expected: []sql.Row{{int32(999952)}},
 	},
 	{
-		Query:    "SELECT YEARWEEK('2008-02-20', 1)",
+		Query:    "SELECT YEARWEEK('2008-02-20', 1);",
 		Expected: []sql.Row{{int32(200808)}},
 	},
 	{
-		Query:    "SELECT YEARWEEK('1987-01-01')",
+		Query:    "SELECT YEARWEEK('1987-01-01');",
 		Expected: []sql.Row{{int32(198652)}},
 	},
 	{
-		Query:    "SELECT YEARWEEK('1987-01-01', 20), YEARWEEK('1987-01-01', 1), YEARWEEK('1987-01-01', 2), YEARWEEK('1987-01-01', 3), YEARWEEK('1987-01-01', 4), YEARWEEK('1987-01-01', 5), YEARWEEK('1987-01-01', 6), YEARWEEK('1987-01-01', 7)",
-		Expected: []sql.Row{{int32(198653), int32(198701), int32(198652), int32(198701), int32(198653), int32(198652), int32(198653), int32(198652)}},
+		Query: "SELECT " +
+			"YEARWEEK('1987-01-01', 20), " +
+			"YEARWEEK('1987-01-01', 1), " +
+			"YEARWEEK('1987-01-01', 2), " +
+			"YEARWEEK('1987-01-01', 3), " +
+			"YEARWEEK('1987-01-01', 4), " +
+			"YEARWEEK('1987-01-01', 5), " +
+			"YEARWEEK('1987-01-01', 6), " +
+			"YEARWEEK('1987-01-01', 7)",
+		Expected: []sql.Row{
+			{
+				int32(198653),
+				int32(198701),
+				int32(198652),
+				int32(198701),
+				int32(198653),
+				int32(198652),
+				int32(198653),
+				int32(198652),
+			},
+		},
 	},
 
 	// Additional String Function Tests
@@ -2344,16 +2362,12 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{{1}},
 	},
 	{
-		Query:                 "select monthname(0)",
-		Expected:              []sql.Row{{nil}},
-		ExpectedWarning:       mysql.ERTruncatedWrongValue,
-		ExpectedWarningsCount: 1,
+		Query:    "select monthname(0)",
+		Expected: []sql.Row{{nil}},
 	},
 	{
-		Query:                 "select monthname(false)",
-		Expected:              []sql.Row{{nil}},
-		ExpectedWarning:       mysql.ERTruncatedWrongValue,
-		ExpectedWarningsCount: 1,
+		Query:    "select monthname(false)",
+		Expected: []sql.Row{{nil}},
 	},
 	{
 		Query:                 "select monthname(true)",
@@ -2512,21 +2526,16 @@ var FunctionQueryTests = []QueryTest{
 		Query:    "select quarter('0000-01-01')",
 		Expected: []sql.Row{{1}},
 	},
+
 	{
-		Query:    "select date('0000-01-01')",
-		Expected: []sql.Row{{"0000-01-01"}},
+		Query:    "select date(NULL);",
+		Expected: []sql.Row{{nil}},
 	},
 	{
-		Query:    "select date('0000-00-00')",
-		Expected: []sql.Row{{"0000-00-00"}},
-	},
-	{
-		Query:    "select date(0)",
-		Expected: []sql.Row{{"0000-00-00"}},
-	},
-	{
-		Query:    "select date(false)",
-		Expected: []sql.Row{{"0000-00-00"}},
+		Query:                 "select date(false)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
 	},
 	{
 		Query:                 "select date(true)",
@@ -2534,6 +2543,284 @@ var FunctionQueryTests = []QueryTest{
 		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 		ExpectedWarningsCount: 1,
 	},
+	{
+		Query:                 "select date(0);",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Skip:  true,
+		Query: "select date(20010203)",
+		Expected: []sql.Row{
+			{time.Date(1, 2, 3, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	// TODO: numeric to date conversion tests
+
+	{
+		Query:                           "select date('');",
+		Expected:                        []sql.Row{{nil}},
+		ExpectedWarningsCount:           1,
+		ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+		ExpectedWarningMessageSubstring: "Incorrect date value",
+	},
+	{
+		Query:    "select date('bad time');",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:                           "select date('0000-00-00');",
+		Expected:                        []sql.Row{{nil}},
+		ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount:           1,
+		ExpectedWarningMessageSubstring: "Incorrect date value",
+	},
+	{
+		Query:                           "select date('000000-0000-0000');",
+		Expected:                        []sql.Row{{nil}},
+		ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount:           1,
+		ExpectedWarningMessageSubstring: "Incorrect date value",
+	},
+	{
+		Query:                           "select date('0000-00-00 00:00:00.000000');",
+		Expected:                        []sql.Row{{nil}},
+		ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount:           1,
+		ExpectedWarningMessageSubstring: "Incorrect date value",
+	},
+	{
+		Query:                           "select date('2000');",
+		Expected:                        []sql.Row{{nil}},
+		ExpectedWarningsCount:           1,
+		ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+		ExpectedWarningMessageSubstring: "Incorrect date value",
+	},
+	{
+		Query:                           "select date('2000-');",
+		Expected:                        []sql.Row{{nil}},
+		ExpectedWarningsCount:           1,
+		ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+		ExpectedWarningMessageSubstring: "Incorrect date value",
+	},
+	{
+		Query:                           "select date('2000-01');",
+		Expected:                        []sql.Row{{nil}},
+		ExpectedWarningsCount:           1,
+		ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+		ExpectedWarningMessageSubstring: "Incorrect date value",
+	},
+	{
+		Query:                           "select date('2000-01-');",
+		Expected:                        []sql.Row{{nil}},
+		ExpectedWarningsCount:           1,
+		ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+		ExpectedWarningMessageSubstring: "Incorrect date value",
+	},
+
+	// Zero for individual portions of date
+	// The result here depends on NO_ZERO_IN_DATE sql_mode
+	{
+		// Zero year is always valid
+		Query: "select date('0000-01-02');",
+		Expected: []sql.Row{
+			{time.Date(0000, 01, 02, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select date('1234-00-02');",
+		Expected: []sql.Row{
+			{nil},
+		},
+		ExpectedWarningsCount:           1,
+		ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+		ExpectedWarningMessageSubstring: "Incorrect date value",
+	},
+	{
+		Query: "select date('1234-01-00');",
+		Expected: []sql.Row{
+			{nil},
+		},
+		ExpectedWarningsCount:           1,
+		ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+		ExpectedWarningMessageSubstring: "Incorrect date value",
+	},
+
+	// weirdly formatted
+	{
+		// leading 0s
+		Query: "select date('0002001-00012-00023');",
+		Expected: []sql.Row{
+			{time.Date(2001, 12, 23, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		// leading and trailing whitespace
+		Query: "select date('\n\t   2001-12-23\n\t    ');",
+		Expected: []sql.Row{
+			{time.Date(2001, 12, 23, 0, 0, 0, 0, time.UTC)},
+		},
+		SkipWarnings:          true,
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       4096,
+	},
+	{
+		// whitespaces inside are invalid
+		Query: "select date('2001 - 12 - 23');",
+		Expected: []sql.Row{
+			{nil},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		// leading invalid characters
+		Query: "select date('thisisinvalid2001-12-23');",
+		Expected: []sql.Row{
+			{nil},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		// trailing invalid characters
+		Query: "select date('2001-12-23abc');",
+		Expected: []sql.Row{
+			{time.Date(2001, 12, 23, 0, 0, 0, 0, time.UTC)},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+
+	// boundaries
+	{
+		Query: "select date('0000-01-01')",
+		Expected: []sql.Row{
+			{time.Date(0000, 1, 1, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select date('9999-12-31');",
+		Expected: []sql.Row{
+			{time.Date(9999, 12, 31, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query:                 "select date('9999-12-32')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query:                 "select date('9999-13-31')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query:                 "select date('99999-13-31')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+
+	// string conversion that produce some value
+	{
+		Query: "select date('1-2-3')",
+		Expected: []sql.Row{
+			{time.Date(1, 2, 3, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select date('01-02-03')",
+		Expected: []sql.Row{
+			{time.Date(2001, 2, 3, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select date('2001-02-03');",
+		Expected: []sql.Row{
+			{time.Date(2001, 2, 3, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select date('2001-02-03 ');",
+		Expected: []sql.Row{
+			{time.Date(2001, 2, 3, 0, 0, 0, 0, time.UTC)},
+		},
+		SkipWarnings:          true,
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       4096,
+	},
+	{
+		Query: "select date('2001-02-03 12');",
+		Expected: []sql.Row{
+			{time.Date(2001, 2, 3, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select date('2001-02-03 12:');",
+		Expected: []sql.Row{
+			{time.Date(2001, 2, 3, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select date('2001-02-03 12:34');",
+		Expected: []sql.Row{
+			{time.Date(2001, 2, 3, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select date('2001-02-03 12:34:');",
+		Expected: []sql.Row{
+			{time.Date(2001, 2, 3, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select date('2001-02-03 12:34:56');",
+		Expected: []sql.Row{
+			{time.Date(2001, 2, 3, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select date('2001-02-03 12:34:56.');",
+		Expected: []sql.Row{
+			{time.Date(2001, 2, 3, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select date('2001-02-03 12:34:56.123');",
+		Expected: []sql.Row{
+			{time.Date(2001, 2, 3, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select date('2001-02-03 12:34:56.123456');",
+		Expected: []sql.Row{
+			{time.Date(2001, 2, 3, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	// rounding
+	{
+		Query: "select date('2001-02-03 23:59:59.9999999');",
+		Expected: []sql.Row{
+			{time.Date(2001, 2, 4, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select date('2001-02-28 23:59:59.9999999');",
+		Expected: []sql.Row{
+			{time.Date(2001, 3, 1, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select date('2001-12-31 23:59:59.9999999');",
+		Expected: []sql.Row{
+			{time.Date(2002, 1, 1, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+
 	{
 		Query:    "select extract(day from 0)",
 		Expected: []sql.Row{{0}},

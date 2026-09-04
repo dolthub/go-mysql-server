@@ -279,7 +279,7 @@ func (c *Convert) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		if c.castToType == ConvertToJSON {
 			return nil, ErrConvertExpression.Wrap(err, c.String(), c.castToType)
 		}
-		ctx.Warn(1292, "Incorrect %s value: %v", c.castToType, val)
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 		return nil, nil
 	}
 
@@ -303,6 +303,7 @@ func convertValue(ctx *sql.Context, val any, castTo string, originType sql.Type,
 		if err != nil {
 			return nil, nil
 		}
+
 		if types.IsTextOnly(originType) {
 			// For string types we need to re-encode the string as we want the binary representation of the character set
 			encoder := originType.(sql.StringType).Collation().CharacterSet().Encoder()
@@ -323,6 +324,7 @@ func convertValue(ctx *sql.Context, val any, castTo string, originType sql.Type,
 		}
 		return truncateConvertedValue(s, typeLength)
 	case ConvertToDate:
+		// TODO: isn't this kinda wack??
 		_, isTime := val.(time.Time)
 		_, isString := val.(string)
 		_, isBinary := val.([]byte)
@@ -344,7 +346,8 @@ func convertValue(ctx *sql.Context, val any, castTo string, originType sql.Type,
 		if !(isTime || isString || isBinary) {
 			return nil, nil
 		}
-		d, _, err := types.MustCreateDatetimeType(sqltypes.Datetime, typeLength).Convert(ctx, val)
+		dtType := types.MustCreateDatetimeType(sqltypes.Datetime, typeLength)
+		d, _, err := dtType.Convert(ctx, val)
 		if err != nil {
 			if !sql.ErrTruncatedIncorrect.Is(err) {
 				return nil, err

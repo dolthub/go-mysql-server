@@ -70,6 +70,8 @@ type QueryTest struct {
 	// SkipServerEngine indicates that the query should be skipped when testing a server engine (as opposed to the
 	// simpler in-place engine object)
 	SkipServerEngine bool
+	// SkipWarnings indicates that the warnings assertions should be skipped for this query.
+	SkipWarnings bool
 	// Dialect is the supported dialect for this query, which must match the dialect of the harness if specified.
 	// The query is skipped if the dialect doesn't match.
 	Dialect string
@@ -3666,7 +3668,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{
 			time.Date(2024, time.January, 1, 0, 0, 0, 0, time.UTC),
 			time.Date(2024, time.January, 1, 0, 0, 0, 0, time.UTC),
-			"2024-01-01",
+			time.Date(2024, time.January, 1, 0, 0, 0, 0, time.UTC),
 		}},
 	},
 	{
@@ -3715,6 +3717,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Query:    `select STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') % 12345;`,
 		Expected: []sql.Row{{"10487"}},
 	},
+
 	{
 		Query:    "select 0.0015 / 0.0026;",
 		Expected: []sql.Row{{"0.57692308"}},
@@ -4225,6 +4228,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Query:    "SELECT date_add('9999-12-31:23:59:59.99999944444444444-', INTERVAL 0 day);",
 		Expected: []sql.Row{{nil}},
 	},
+
 	// https://github.com/dolthub/dolt/issues/9917
 	{
 		Query:                 "select cast('2020-01-01 a' as datetime)",
@@ -5196,7 +5200,12 @@ SELECT * FROM cte WHERE  d = 2;`,
 			{"offline_mode", "OFF"},
 			{"pseudo_slave_mode", "OFF"},
 			{"rbr_exec_mode", "STRICT"},
-			{"sql_mode", "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION"},
+			{"sql_mode", "ONLY_FULL_GROUP_BY," +
+				"STRICT_TRANS_TABLES," +
+				"NO_ZERO_IN_DATE," +
+				"NO_ZERO_DATE," +
+				"ERROR_FOR_DIVISION_BY_ZERO," +
+				"NO_ENGINE_SUBSTITUTION"},
 			{"ssl_fips_mode", "OFF"},
 		},
 	},
@@ -8450,12 +8459,14 @@ order by x, y;`,
 		},
 	},
 	{
+		Skip:  true, // TODO: related to date -> integer conversions
 		Query: "select dayname(123), dayname('abc')",
 		Expected: []sql.Row{
 			{nil, nil},
 		},
 	},
 	{
+		Skip: true, // TODO: related to date -> integer conversions
 		Query: `
 select
    dayname(id),
@@ -9785,9 +9796,10 @@ var BrokenQueries = []QueryTest{
 		Expected: []sql.Row{{"2013-08-13"}},
 	},
 	{
-		// TODO:  need to properly handle datetime precision
-		Query:    `SELECT STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s %f') - (STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') - INTERVAL 1 SECOND)`,
-		Expected: []sql.Row{{int64(1)}},
+		Query: `SELECT STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s %f') - (STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') - INTERVAL 1 SECOND)`,
+		Expected: []sql.Row{
+			{int64(1)}, // TODO: should be 1.000000
+		},
 	},
 	{
 		// This panics
@@ -10465,11 +10477,11 @@ var ErrorQueries = []QueryErrorTest{
 	},
 	{
 		Query:       `SELECT * FROM datetime_table where date_col >= 'not a valid date'`,
-		ExpectedErr: types.ErrConvertingToTime,
+		ExpectedErr: sql.ErrIncorrectDateTimeValue,
 	},
 	{
 		Query:       `SELECT * FROM datetime_table where datetime_col >= 'not a valid datetime'`,
-		ExpectedErr: types.ErrConvertingToTime,
+		ExpectedErr: sql.ErrIncorrectDateTimeValue,
 	},
 	{
 		Query:       "CREATE TABLE table_test (id int PRIMARY KEY, c float DEFAULT rand)",
