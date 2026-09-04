@@ -2599,6 +2599,50 @@ CREATE TABLE tab3 (
 				Query:       "table t1 union table t3 order by t1.j;",
 				ExpectedErr: planbuilder.ErrQualifiedOrderBy,
 			},
+			{
+				Query:       "table t1 union table t2 order by count(*);",
+				ExpectedErr: sql.ErrSetOpOrderByAggregation,
+			},
+			{
+				Query:       "table t1 union all table t2 order by max(i);",
+				ExpectedErr: sql.ErrSetOpOrderByAggregation,
+			},
+			{
+				Query:       "table t1 union table t2 order by row_number() over (order by i);",
+				ExpectedErr: sql.ErrSetOpOrderByAggregation,
+			},
+			{
+				Query:       "table t1 union table t2 order by sum(i) over ();",
+				ExpectedErr: sql.ErrSetOpOrderByAggregation,
+			},
+			{
+				Query:       "table t1 union table t2 order by count(*) + 1;",
+				ExpectedErr: sql.ErrSetOpOrderByAggregation,
+			},
+			{
+				Query:          "table t1 union table t2 order by i, count(*);",
+				ExpectedErrStr: "Expression #2 of ORDER BY contains aggregate function and applies to a UNION, EXCEPT or INTERSECT",
+			},
+			{
+				Query: "select i, sum(i) over () as s from t1 union all select i, sum(i) over () as s from t2 order by s, i;",
+				Expected: []sql.Row{
+					{1, 4.0},
+					{3, 4.0},
+					{1, 6.0},
+					{2, 6.0},
+					{3, 6.0},
+				},
+			},
+			{
+				Query: "select i, sum(i) over () as s from t1 union all select i, sum(i) over () as s from t2 order by 2, 1;",
+				Expected: []sql.Row{
+					{1, 4.0},
+					{3, 4.0},
+					{1, 6.0},
+					{2, 6.0},
+					{3, 6.0},
+				},
+			},
 		},
 	},
 	{
@@ -2680,6 +2724,14 @@ CREATE TABLE tab3 (
 				},
 			},
 			{
+				Query:       "table x intersect table y order by max(i);",
+				ExpectedErr: sql.ErrSetOpOrderByAggregation,
+			},
+			{
+				Query:       "table x intersect table y order by row_number() over (order by i);",
+				ExpectedErr: sql.ErrSetOpOrderByAggregation,
+			},
+			{
 				// Resulting type is string for some reason
 				Skip:  true,
 				Query: "table t1 intersect table t2;",
@@ -2739,6 +2791,10 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{
 					{2},
 				},
+			},
+			{
+				Query:       "table x except table y order by count(*);",
+				ExpectedErr: sql.ErrSetOpOrderByAggregation,
 			},
 			{
 				Query:    "table l except table r;",
