@@ -38,8 +38,7 @@ func TestUnresolvedColumnString(t *testing.T) {
 		expected string
 	}{
 		{NewUnresolvedColumn("normal_name"), "normal_name"},
-		{NewUnresolvedColumn("select"), "`select`"},
-		{NewUnresolvedQualifiedColumn("table name", "column`name"), "`table name`.`column``name`"},
+		{NewUnresolvedQualifiedColumn("table_name", "column_name"), "table_name.column_name"},
 	}
 
 	for _, test := range tests {
