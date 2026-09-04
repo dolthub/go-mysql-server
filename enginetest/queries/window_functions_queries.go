@@ -25,6 +25,30 @@ import (
 // first_value, last_value, lead, lag, and the bitwise aggregate functions.
 var WindowFunctionsScriptTests = []ScriptTest{
 	{
+		Name: "nondeterministic window expressions are evaluated independently",
+		SetUpScript: []string{
+			"CREATE TABLE nondeterministic_windows (id int primary key)",
+			"INSERT INTO nondeterministic_windows VALUES (1), (2)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT id, a = b AS same FROM (SELECT id, FIRST_VALUE(UUID()) OVER (ORDER BY id) AS a, FIRST_VALUE(UUID()) OVER (ORDER BY id) AS b FROM nondeterministic_windows) q ORDER BY id",
+				Expected: []sql.Row{
+					{1, false},
+					{2, false},
+				},
+			},
+			{
+				Query:    "SELECT COUNT(DISTINCT a), COUNT(DISTINCT b), MIN(a <> b) FROM (SELECT FIRST_VALUE(UUID()) OVER (ORDER BY id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS a, FIRST_VALUE(UUID()) OVER (ORDER BY id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS b FROM nondeterministic_windows) q",
+				Expected: []sql.Row{{int64(1), int64(1), true}},
+			},
+			{
+				Query:    "SELECT COUNT(DISTINCT a), COUNT(DISTINCT b), MIN(a <> b) FROM (SELECT LAST_VALUE(UUID()) OVER (ORDER BY id ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS a, LAST_VALUE(UUID()) OVER (ORDER BY id ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS b FROM nondeterministic_windows) q",
+				Expected: []sql.Row{{int64(1), int64(1), true}},
+			},
+		},
+	},
+	{
 		Name: "literal window expressions over zero-width projected rows",
 		SetUpScript: []string{
 			"CREATE TABLE literal_windows (x int, g int)",
