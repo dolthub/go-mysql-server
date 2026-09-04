@@ -3470,6 +3470,13 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{int64(6)}},
 	},
 	{
+		Query: "SELECT * FROM niltable WHERE b >= 1",
+		Expected: []sql.Row{
+			{int64(2), int64(2), int32(1), nil},
+			{int64(5), nil, int32(1), 5.0},
+		},
+	},
+	{
 		Query:    "SELECT i FROM niltable WHERE b IS NOT FALSE",
 		Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(4)}, {int64(5)}},
 	},
@@ -3538,7 +3545,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{1}},
 	},
 	{
-		Query:    "select i from datetime_table where datetime_col = '2020-01-01 12:00:01'",
+		Query:    "select i from datetime_table where datetime_col = '2020-01-01T12:00:01'",
 		Expected: []sql.Row{},
 	},
 	{
@@ -3593,7 +3600,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{time.Date(1001, time.January, 1, 0, 0, 0, 0, time.UTC)}},
 	},
 	{
-		Query:    "select i from datetime_table where timestamp_col = '2020-01-02 12:00:01'",
+		Query:    "select i from datetime_table where timestamp_col = '2020-01-02T12:00:01'",
 		Expected: []sql.Row{},
 	},
 	{
@@ -3695,13 +3702,22 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{6}},
 	},
 	{
+		Query:    "select '1.2' div '0.2';",
+		Expected: []sql.Row{{6}},
+	},
+	{
 		Query:    "select 1.2 div 0.4;",
+		Expected: []sql.Row{{3}},
+	},
+	{
+		Query:    "select '1.2' div '0.4';",
 		Expected: []sql.Row{{3}},
 	},
 	{
 		Query:    `select STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') % 12345;`,
 		Expected: []sql.Row{{"10487"}},
 	},
+
 	{
 		Query:    "select 0.0015 / 0.0026;",
 		Expected: []sql.Row{{"0.57692308"}},
@@ -9996,6 +10012,10 @@ var DateParseQueries = []QueryTest{
 		Expected: []sql.Row{{time.Date(2013, time.May, 1, 0, 0, 0, 0, time.UTC)}},
 	},
 	{
+		Query:    "SELECT STR_TO_DATE(FIRST_VALUE(NULL) OVER (), '%Y-%m-%d')",
+		Expected: []sql.Row{{nil}},
+	},
+	{
 		Query:    "SELECT STR_TO_DATE('May 1, 2013','%M %d,%Y')",
 		Expected: []sql.Row{{time.Date(2013, time.May, 1, 0, 0, 0, 0, time.UTC)}},
 	},
@@ -10022,6 +10042,10 @@ var DateParseQueries = []QueryTest{
 	{
 		Query:    "SELECT STR_TO_DATE('09:30:17 pm','%h:%i:%s %p')",
 		Expected: []sql.Row{{time.Date(-1, time.November, 30, 21, 30, 17, 0, time.UTC)}},
+	},
+	{
+		Query:    "SELECT FIRST_VALUE(STR_TO_DATE('01:02 PM','%h:%i %p')) OVER ()",
+		Expected: []sql.Row{{time.Date(-1, time.November, 30, 13, 2, 0, 0, time.UTC)}},
 	},
 	{
 		Query:    "SELECT STR_TO_DATE('9','%m')",
