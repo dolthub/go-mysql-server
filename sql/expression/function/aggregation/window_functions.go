@@ -1147,7 +1147,7 @@ func (a *WindowedJSONObjectAgg) aggregateVals(ctx *sql.Context, interval sql.Win
 }
 
 type RowNumber struct {
-	pos int
+	pos int64
 }
 
 func NewRowNumber() *RowNumber {
@@ -1184,7 +1184,7 @@ func (a *RowNumber) Compute(ctx *sql.Context, interval sql.WindowInterval, buffe
 		return nil, nil
 	}
 	defer func() { a.pos++ }()
-	return int64(a.pos), nil
+	return a.pos, nil
 }
 
 type rankBase struct {
