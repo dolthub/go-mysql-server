@@ -271,6 +271,7 @@ var ColumnAliasQueries = []ScriptTest{
 			"insert into t values (1,1,1,25),(2,0,0,-37),(3,1,-2,85);",
 		},
 		Assertions: []ScriptTestAssertion{
+			// Bare alias references in window clauses are rejected.
 			{
 				Query: `select id, g, k as order_alias,
 					lag(v) over (partition by g order by order_alias, id) as prev_v,
@@ -298,6 +299,8 @@ var ColumnAliasQueries = []ScriptTest{
 				Query:          "select k as order_alias, lag(v) over w as p from t window w as (order by order_alias);",
 				ExpectedErrStr: "Unknown column 'order_alias' in 'window order by'",
 			},
+
+			// Expressions referencing aliases resolve to the aliased expression.
 			{
 				Query:    "select id, k as order_alias, lag(v) over (order by order_alias + 0) as p from t order by id;",
 				Expected: []sql.Row{{1, 1, -37}, {2, 0, 85}, {3, -2, nil}},
