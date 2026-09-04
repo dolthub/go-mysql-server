@@ -57,6 +57,8 @@ unaryAggs:
   sqlString: true
   desc: "returns the population standard deviation of expr"
 - name: "StdDevSamp"
+  sqlName: "stddev_samp"
+  sqlString: true
   desc: "returns the sample standard deviation of expr"
 - name: "VarPop"
   desc: "returns the population variance of expr"

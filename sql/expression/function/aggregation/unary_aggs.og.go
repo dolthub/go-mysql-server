@@ -1023,25 +1023,22 @@ func (a *StdDevSamp) IsNullable(ctx *sql.Context) bool {
 }
 
 func (a *StdDevSamp) String() string {
+	ret := "STDDEV_SAMP(" + a.Child.String() + ")"
 	if a.window != nil {
-		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("STDDEVSAMP")
-		children := []string{a.window.String(), a.Child.String()}
-		pr.WriteChildren(children...)
-		return pr.String()
+		ret += " " + a.window.String()
 	}
-	return "STDDEVSAMP(" + a.Child.String() + ")"
+	return ret
 }
 
 func (a *StdDevSamp) DebugString(ctx *sql.Context) string {
 	if a.window != nil {
 		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("STDDEVSAMP")
+		_ = pr.WriteNode("STDDEV_SAMP")
 		children := []string{sql.DebugString(ctx, a.window), sql.DebugString(ctx, a.Child)}
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("STDDEVSAMP(%s)", sql.DebugString(ctx, a.Child))
+	return fmt.Sprintf("STDDEV_SAMP(%s)", sql.DebugString(ctx, a.Child))
 }
 
 func (a *StdDevSamp) WithWindow(ctx *sql.Context, window *sql.WindowDefinition) sql.WindowAdaptableExpression {
