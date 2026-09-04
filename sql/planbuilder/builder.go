@@ -49,6 +49,14 @@ type Builder struct {
 	tabId sql.TableId
 	colId columnId
 
+	// windowClause names the window clause being built, and is empty
+	// outside one. It hides SELECT list aliases and labels the error.
+	windowClause string
+
+	// windowClauseBareCol reports a window clause that is a single
+	// column reference, rejected when it names a SELECT list alias.
+	windowClauseBareCol bool
+
 	authEnabled  bool
 	multiDDL     bool
 	insertActive bool
@@ -190,6 +198,12 @@ func (b *Builder) TriggerCtx() *TriggerContext {
 
 func (b *Builder) newScope() *scope {
 	return &scope{b: b}
+}
+
+func (b *Builder) withWindowState(clause string, bareCol bool) func() {
+	outerClause, outerBare := b.windowClause, b.windowClauseBareCol
+	b.windowClause, b.windowClauseBareCol = clause, bareCol
+	return func() { b.windowClause, b.windowClauseBareCol = outerClause, outerBare }
 }
 
 func (b *Builder) Reset() {
