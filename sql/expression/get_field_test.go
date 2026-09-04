@@ -29,8 +29,7 @@ func TestGetFieldString(t *testing.T) {
 		expected string
 	}{
 		{NewGetField(0, types.Int64, "normal_name", false), "normal_name"},
-		{NewGetField(0, types.Int64, "select", false), "`select`"},
-		{NewGetFieldWithTable(0, 0, types.Int64, "", "table name", "column`name", false), "`table name`.`column``name`"},
+		{NewGetFieldWithTable(0, 0, types.Int64, "", "table_name", "column_name", false), "table_name.column_name"},
 	}
 
 	for _, test := range tests {

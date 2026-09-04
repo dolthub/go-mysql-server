@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dolthub/vitess/go/vt/sqlparser"
 	errors "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -171,12 +170,10 @@ func (p *GetField) String() string {
 		if p.quoteName {
 			return p.schemaFormatter.QuoteIdentifier(p.name)
 		}
-		return sqlparser.String(sqlparser.NewColIdent(p.name))
+		return p.name
 	}
 
-	table := sqlparser.String(sqlparser.NewTableIdent(p.table))
-	name := sqlparser.String(sqlparser.NewColIdent(p.name))
-	return table + "." + name
+	return p.table + "." + p.name
 }
 
 func (p *GetField) DebugString(ctx *sql.Context) string {
