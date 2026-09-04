@@ -36,7 +36,7 @@ func TestAvg_String(t *testing.T) {
 		PartitionBy: []sql.Expression{expression.NewGetField(1, types.Int32, "col2", true)},
 	})
 	require.Equal("AVG(col1) over ( partition by col2)", windowed.String())
-	exprtest.AssertStringRoundTrip(t, windowed.String())
+	exprtest.AssertFunctionRoundTrip(t, windowed.(sql.FunctionExpression))
 }
 
 func TestAvg_Float64(t *testing.T) {

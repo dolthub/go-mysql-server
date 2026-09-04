@@ -34,6 +34,6 @@ func TestStarString(t *testing.T) {
 
 	for _, test := range tests {
 		require.Equal(t, test.expected, test.expr.String())
-		exprtest.AssertStringRoundTrip(t, test.expr.String())
+		exprtest.AssertStarRoundTrip(t, test.expr, test.expr.Table)
 	}
 }

@@ -77,7 +77,7 @@ func TestCountEvalStar(t *testing.T) {
 func TestCountString(t *testing.T) {
 	count := NewCount(expression.NewStar()).WithWindow(sql.NewEmptyContext(), &sql.WindowDefinition{})
 	require.Equal(t, "COUNT(*) over ()", count.String())
-	exprtest.AssertStringRoundTrip(t, count.String())
+	exprtest.AssertFunctionRoundTrip(t, count.(sql.FunctionExpression))
 }
 
 func TestCountEvalString(t *testing.T) {
@@ -118,7 +118,7 @@ func TestCountDistinctString(t *testing.T) {
 		expression.NewGetField(1, types.Int64, "bar", false),
 	)
 	require.Equal(t, "COUNT(DISTINCT foo, bar)", count.String())
-	exprtest.AssertStringRoundTrip(t, count.String())
+	exprtest.AssertDistinctFunctionRoundTripAs(t, count, "COUNT")
 
 	window := sql.NewWindowDefinition(
 		[]sql.Expression{expression.NewGetField(2, types.Int64, "baz", false)},
@@ -126,7 +126,7 @@ func TestCountDistinctString(t *testing.T) {
 	)
 	windowed := count.WithWindow(ctx, window)
 	require.Equal(t, "COUNT(DISTINCT foo, bar) over ( partition by baz)", windowed.String())
-	exprtest.AssertStringRoundTrip(t, windowed.String())
+	exprtest.AssertDistinctFunctionRoundTripAs(t, windowed.(sql.FunctionExpression), "COUNT")
 }
 
 func TestCountDistinctEvalStar(t *testing.T) {

@@ -34,5 +34,5 @@ func TestJsonLengthString(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.Equal(t, "json_length(doc, '$.items')", expr.String())
-	exprtest.AssertStringRoundTrip(t, expr.String())
+	exprtest.AssertFunctionRoundTrip(t, expr.(sql.FunctionExpression))
 }

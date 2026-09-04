@@ -33,7 +33,7 @@ func TestMax_String(t *testing.T) {
 
 	windowed := m.WithWindow(sql.NewEmptyContext(), &sql.WindowDefinition{})
 	assert.Equal("MAX(field) over ()", windowed.String())
-	exprtest.AssertStringRoundTrip(t, windowed.String())
+	exprtest.AssertFunctionRoundTrip(t, windowed.(sql.FunctionExpression))
 }
 
 func TestMax_Eval_Int32(t *testing.T) {

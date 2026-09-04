@@ -44,12 +44,15 @@ func TestUnresolvedColumnString(t *testing.T) {
 
 	for _, test := range tests {
 		require.Equal(t, test.expected, test.expr.String())
-		exprtest.AssertStringRoundTrip(t, test.expr.String())
+		exprtest.AssertColumnRoundTrip(t, test.expr)
 	}
 }
 
 func TestUnresolvedFunctionString(t *testing.T) {
 	expr := NewUnresolvedFunction("function name", false, nil)
 	require.Equal(t, "`function name`()", expr.String())
-	exprtest.AssertStringRoundTrip(t, expr.String())
+	parsed := exprtest.RequireFunction(t, exprtest.ParseExpression(t, expr))
+	require.Equal(t, expr.Name(), parsed.Name.String())
+	require.Equal(t, len(expr.Arguments), len(parsed.Exprs))
+	require.Nil(t, parsed.Over)
 }

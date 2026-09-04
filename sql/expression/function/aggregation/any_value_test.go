@@ -27,5 +27,5 @@ import (
 func TestAnyValueString(t *testing.T) {
 	expr := NewAnyValue(expression.NewGetField(0, types.Int64, "value", false))
 	require.Equal(t, "ANY_VALUE(value)", expr.String())
-	exprtest.AssertStringRoundTrip(t, expr.String())
+	exprtest.AssertFunctionRoundTripAs(t, expr, "ANY_VALUE")
 }

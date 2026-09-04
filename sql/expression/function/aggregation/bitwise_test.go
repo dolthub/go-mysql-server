@@ -32,7 +32,7 @@ func TestBitAnd_String(t *testing.T) {
 
 	windowed := m.WithWindow(sql.NewEmptyContext(), &sql.WindowDefinition{})
 	assert.Equal("BIT_AND(field) over ()", windowed.String())
-	exprtest.AssertStringRoundTrip(t, windowed.String())
+	exprtest.AssertFunctionRoundTripAs(t, windowed.(sql.FunctionExpression), "BIT_AND")
 }
 
 func TestBitAnd_Eval_Int(t *testing.T) {
@@ -118,7 +118,7 @@ func TestBitOr_String(t *testing.T) {
 
 	windowed := m.WithWindow(sql.NewEmptyContext(), &sql.WindowDefinition{})
 	assert.Equal("BIT_OR(field) over ()", windowed.String())
-	exprtest.AssertStringRoundTrip(t, windowed.String())
+	exprtest.AssertFunctionRoundTripAs(t, windowed.(sql.FunctionExpression), "BIT_OR")
 }
 
 func TestBitOr_Eval_Int(t *testing.T) {
@@ -204,7 +204,7 @@ func TestBitXor_String(t *testing.T) {
 
 	windowed := m.WithWindow(sql.NewEmptyContext(), &sql.WindowDefinition{})
 	assert.Equal("BIT_XOR(field) over ()", windowed.String())
-	exprtest.AssertStringRoundTrip(t, windowed.String())
+	exprtest.AssertFunctionRoundTripAs(t, windowed.(sql.FunctionExpression), "BIT_XOR")
 }
 
 func TestBitXor_Eval_Int(t *testing.T) {

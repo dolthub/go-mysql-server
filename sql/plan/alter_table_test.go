@@ -17,6 +17,7 @@ package plan
 import (
 	"testing"
 
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/internal/exprtest"
@@ -27,5 +28,7 @@ import (
 func TestColDefaultExpressionString(t *testing.T) {
 	expr := ColDefaultExpression{Column: &sql.Column{Name: "odd` name", Type: types.Int64}}
 	require.Equal(t, "DEFAULT(`odd`` name`)", expr.String())
-	exprtest.AssertStringRoundTrip(t, expr.String())
+	parsed, ok := exprtest.RequireExpression(t, exprtest.ParseExpression(t, expr)).(*sqlparser.Default)
+	require.True(t, ok)
+	require.Equal(t, expr.Column.Name, parsed.ColName)
 }

@@ -17,6 +17,7 @@ package jsontests
 import (
 	"testing"
 
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
 
@@ -121,12 +122,26 @@ func TestJsonValueString(t *testing.T) {
 	signed, err := json.NewJsonValue(ctx, doc, path, expression.NewLiteral(int64(0), types.Int64))
 	require.NoError(t, err)
 	require.Equal(t, "json_value(doc, '$.a', 'signed')", signed.String())
-	exprtest.AssertStringRoundTrip(t, signed.String())
+	parsedSigned := exprtest.RequireFunction(t, exprtest.ParseExpression(t, signed))
+	signedValue := signed.(*json.JsonValue)
+	require.Equal(t, signedValue.FunctionName(), parsedSigned.Name.Lowered())
+	require.Len(t, parsedSigned.Exprs, 3)
+	exprtest.AssertExpressionValue(t, exprtest.RequireFunctionArgument(t, parsedSigned, 0), signedValue.JSON)
+	exprtest.AssertExpressionValue(t, exprtest.RequireFunctionArgument(t, parsedSigned, 1), signedValue.Path)
+	parsedType := exprtest.RequireFunctionArgument(t, parsedSigned, 2).(*sqlparser.SQLVal)
+	require.Equal(t, sqlparser.StrVal, parsedType.Type)
+	require.True(t, types.IsSigned(signedValue.Typ))
+	require.Equal(t, "signed", string(parsedType.Val))
 
 	defaultType, err := json.NewJsonValue(ctx, doc, path)
 	require.NoError(t, err)
 	require.Equal(t, "json_value(doc, '$.a')", defaultType.String())
-	exprtest.AssertStringRoundTrip(t, defaultType.String())
+	parsedDefault := exprtest.RequireFunction(t, exprtest.ParseExpression(t, defaultType))
+	defaultValue := defaultType.(*json.JsonValue)
+	require.Equal(t, defaultValue.FunctionName(), parsedDefault.Name.Lowered())
+	require.Len(t, parsedDefault.Exprs, 2)
+	exprtest.AssertExpressionValue(t, exprtest.RequireFunctionArgument(t, parsedDefault, 0), defaultValue.JSON)
+	exprtest.AssertExpressionValue(t, exprtest.RequireFunctionArgument(t, parsedDefault, 1), defaultValue.Path)
 }
 
 func TestJsonContainsPath(t *testing.T) {

@@ -76,7 +76,7 @@ func TestMultiLineStringFromTextRegistryString(t *testing.T) {
 	require.NoError(t, err)
 	require.IsType(t, &spatial.MLineFromText{}, expr)
 	require.Equal(t, "st_mlinefromtext('MULTILINESTRING((1 2, 3 4))')", expr.String())
-	exprtest.AssertStringRoundTrip(t, expr.String())
+	exprtest.AssertFunctionRoundTrip(t, expr.(sql.FunctionExpression))
 }
 
 func TestSTEqualsRegistryString(t *testing.T) {
@@ -90,5 +90,5 @@ func TestSTEqualsRegistryString(t *testing.T) {
 	require.NoError(t, err)
 	require.IsType(t, &spatial.STEquals{}, expr)
 	require.Equal(t, "ST_EQUALS(ST_GeomFromWKB(0x0101000000000000000000F03F0000000000000040, 0), ST_GeomFromWKB(0x0101000000000000000000F03F0000000000000040, 0))", expr.String())
-	exprtest.AssertStringRoundTrip(t, expr.String())
+	exprtest.AssertFunctionRoundTrip(t, expr.(sql.FunctionExpression))
 }

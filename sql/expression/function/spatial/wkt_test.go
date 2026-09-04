@@ -30,7 +30,7 @@ func TestAsWKT(t *testing.T) {
 	t.Run("string round trip", func(t *testing.T) {
 		f := NewAsWKT(ctx, expression.NewLiteral(types.Point{X: 1, Y: 2}, types.PointType{}))
 		require.Equal(t, "st_aswkt(ST_GeomFromWKB(0x0101000000000000000000F03F0000000000000040, 0))", f.String())
-		exprtest.AssertStringRoundTrip(t, f.String())
+		exprtest.AssertFunctionRoundTrip(t, f.(sql.FunctionExpression))
 	})
 
 	t.Run("convert point", func(t *testing.T) {
@@ -167,7 +167,7 @@ func TestGeomCollFromTextString(t *testing.T) {
 	require.NoError(t, err)
 	require.IsType(t, &GeomCollFromText{}, expr)
 	require.Equal(t, "st_geomcollfromtext('GEOMETRYCOLLECTION(POINT(1 2))')", expr.String())
-	exprtest.AssertStringRoundTrip(t, expr.String())
+	exprtest.AssertFunctionRoundTrip(t, expr.(sql.FunctionExpression))
 
 	cloned, err := expr.WithChildren(ctx, arg)
 	require.NoError(t, err)

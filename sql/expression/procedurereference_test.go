@@ -26,11 +26,11 @@ import (
 func TestProcedureParamString(t *testing.T) {
 	expr := NewProcedureParam("param name", types.Int64)
 	require.Equal(t, "`param name`", expr.String())
-	exprtest.AssertStringRoundTrip(t, expr.String())
+	exprtest.AssertColumnRoundTrip(t, expr)
 }
 
 func TestUnresolvedProcedureParamString(t *testing.T) {
 	expr := NewUnresolvedProcedureParam("param name")
 	require.Equal(t, "`param name`", expr.String())
-	exprtest.AssertStringRoundTrip(t, expr.String())
+	exprtest.AssertColumnRoundTrip(t, expr)
 }

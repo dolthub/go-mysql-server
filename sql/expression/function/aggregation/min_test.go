@@ -34,7 +34,7 @@ func TestMin_Name(t *testing.T) {
 
 	windowed := m.WithWindow(sql.NewEmptyContext(), &sql.WindowDefinition{})
 	assert.Equal("MIN(field) over ()", windowed.String())
-	exprtest.AssertStringRoundTrip(t, windowed.String())
+	exprtest.AssertFunctionRoundTrip(t, windowed.(sql.FunctionExpression))
 }
 
 func TestMin_Eval_Int32(t *testing.T) {

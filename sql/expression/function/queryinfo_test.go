@@ -30,10 +30,10 @@ func TestLastInsertIdString(t *testing.T) {
 	withoutArg, err := NewLastInsertId(ctx)
 	require.NoError(t, err)
 	require.Equal(t, "last_insert_id()", withoutArg.String())
-	exprtest.AssertStringRoundTrip(t, withoutArg.String())
+	exprtest.AssertFunctionRoundTrip(t, withoutArg.(sql.FunctionExpression))
 
 	withArg, err := NewLastInsertId(ctx, expression.NewLiteral(42, types.Int64))
 	require.NoError(t, err)
 	require.Equal(t, "last_insert_id(42)", withArg.String())
-	exprtest.AssertStringRoundTrip(t, withArg.String())
+	exprtest.AssertFunctionRoundTrip(t, withArg.(sql.FunctionExpression))
 }

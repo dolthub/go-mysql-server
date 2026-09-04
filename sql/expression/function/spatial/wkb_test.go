@@ -171,7 +171,7 @@ func TestGeomCollFromWKBString(t *testing.T) {
 	require.NoError(t, err)
 	require.IsType(t, &GeomCollFromWKB{}, expr)
 	require.Equal(t, "st_geomcollfromwkb(0x010700000000000000)", expr.String())
-	exprtest.AssertStringRoundTrip(t, expr.String())
+	exprtest.AssertFunctionRoundTrip(t, expr.(sql.FunctionExpression))
 
 	cloned, err := expr.WithChildren(ctx, arg)
 	require.NoError(t, err)

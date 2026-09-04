@@ -27,11 +27,11 @@ import (
 func TestAliasReferenceString(t *testing.T) {
 	expr := NewAliasReference("alias_name")
 	require.Equal(t, "alias_name", expr.String())
-	exprtest.AssertStringRoundTrip(t, expr.String())
+	exprtest.AssertColumnRoundTrip(t, expr)
 }
 
 func TestAliasString(t *testing.T) {
 	expr := NewAlias(sql.NewEmptyContext(), "alias name", NewLiteral(42, types.Int64))
 	require.Equal(t, "42 as `alias name`", expr.String())
-	exprtest.AssertStringRoundTrip(t, expr.String())
+	exprtest.AssertAliasRoundTrip(t, expr)
 }

@@ -135,5 +135,5 @@ func TestFindInSetString(t *testing.T) {
 		expression.NewLiteral("haystack,needle", types.Text),
 	)
 	require.Equal(t, "find_in_set('needle', 'haystack,needle')", expr.String())
-	exprtest.AssertStringRoundTrip(t, expr.String())
+	exprtest.AssertFunctionRoundTrip(t, expr.(sql.FunctionExpression))
 }

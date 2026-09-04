@@ -17,6 +17,7 @@ package expression
 import (
 	"testing"
 
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/internal/exprtest"
@@ -34,6 +35,13 @@ func TestWrapperString(t *testing.T) {
 
 	for _, test := range tests {
 		require.Equal(t, test.expected, test.expr.String())
-		exprtest.AssertStringRoundTrip(t, test.expr.String())
+		parsed := exprtest.RequireExpression(t, exprtest.ParseExpression(t, test.expr))
+		if test.expr.Unwrap() == nil {
+			require.IsType(t, &sqlparser.NullVal{}, parsed)
+		} else {
+			parenthesized, ok := parsed.(*sqlparser.ParenExpr)
+			require.True(t, ok)
+			exprtest.AssertExpressionValue(t, parenthesized.Expr, test.expr.Unwrap())
+		}
 	}
 }

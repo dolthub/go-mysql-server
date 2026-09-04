@@ -310,7 +310,7 @@ func TestTime_Minute(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 	f := NewMinute(ctx, expression.NewGetField(0, types.LongText, "foo", false))
 	require.Equal(t, "minute(foo)", f.String())
-	exprtest.AssertStringRoundTrip(t, f.String())
+	exprtest.AssertFunctionRoundTrip(t, f.(sql.FunctionExpression))
 
 	testCases := []struct {
 		name     string
@@ -496,12 +496,12 @@ func TestYearWeek(t *testing.T) {
 	f, err := NewYearWeek(ctx, expression.NewGetField(0, types.LongText, "foo", false))
 	require.NoError(t, err)
 	require.Equal(t, "YEARWEEK(foo, 0)", f.String())
-	exprtest.AssertStringRoundTrip(t, f.String())
+	exprtest.AssertFunctionRoundTrip(t, f.(sql.FunctionExpression))
 
 	explicitMode, err := NewYearWeek(ctx, expression.NewGetField(0, types.LongText, "foo", false), expression.NewLiteral(1, types.Int64))
 	require.NoError(t, err)
 	require.Equal(t, "YEARWEEK(foo, 1)", explicitMode.String())
-	exprtest.AssertStringRoundTrip(t, explicitMode.String())
+	exprtest.AssertFunctionRoundTrip(t, explicitMode.(sql.FunctionExpression))
 
 	testCases := []struct {
 		name     string
@@ -796,12 +796,12 @@ func TestNowString(t *testing.T) {
 	now, err := NewNow(ctx, precision)
 	require.NoError(t, err)
 	require.Equal(t, "NOW(3)", now.String())
-	exprtest.AssertStringRoundTrip(t, now.String())
+	exprtest.AssertFunctionRoundTrip(t, now.(sql.FunctionExpression))
 
 	sysdate, err := NewSysdate(ctx, precision)
 	require.NoError(t, err)
 	require.Equal(t, "SYSDATE(3)", sysdate.String())
-	exprtest.AssertStringRoundTrip(t, sysdate.String())
+	exprtest.AssertFunctionRoundTripAs(t, sysdate.(sql.FunctionExpression), "SYSDATE")
 
 	cloned, err := sysdate.WithChildren(ctx, sysdate.Children()...)
 	require.NoError(t, err)

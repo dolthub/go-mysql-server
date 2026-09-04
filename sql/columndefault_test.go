@@ -17,9 +17,8 @@ package sql
 import (
 	"testing"
 
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/stretchr/testify/require"
-
-	"github.com/dolthub/go-mysql-server/internal/exprtest"
 )
 
 func TestColumnDefaultValueString(t *testing.T) {
@@ -29,5 +28,9 @@ func TestColumnDefaultValueString(t *testing.T) {
 	explicitNull, err := NewColumnDefaultValue(UnresolvedColumnDefault{ExprString: "NULL"}, nil, true, false, true)
 	require.NoError(t, err)
 	require.Equal(t, "NULL", explicitNull.String())
-	exprtest.AssertStringRoundTrip(t, explicitNull.String())
+	statement, err := sqlparser.Parse("SELECT " + explicitNull.String())
+	require.NoError(t, err)
+	parsed := statement.(*sqlparser.Select).SelectExprs[0].(*sqlparser.AliasedExpr).Expr
+	require.IsType(t, &sqlparser.NullVal{}, parsed)
+	require.Equal(t, "NULL", explicitNull.Expr.(UnresolvedColumnDefault).ExprString)
 }

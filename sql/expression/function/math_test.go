@@ -262,7 +262,7 @@ func TestAtanString(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.Equal(t, "atan(1, 2)", expr.String())
-	exprtest.AssertStringRoundTrip(t, expr.String())
+	exprtest.AssertFunctionRoundTrip(t, expr.(sql.FunctionExpression))
 }
 
 func withinRoundingErr(v1, v2 float64) bool {

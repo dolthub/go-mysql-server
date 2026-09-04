@@ -17,16 +17,16 @@ package exprtest
 import (
 	"testing"
 
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/stretchr/testify/require"
+
+	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func TestAssertStringRoundTrip(t *testing.T) {
-	AssertStringRoundTrip(t, "SUM(`value`) over (partition by bucket)")
-	AssertStringRoundTrip(t, "42 AS `alias name`")
-	AssertStringRoundTrip(t, "group_concat(value separator 'a''b\\\\c')")
-}
-
-func TestNormalizePreservesStringValues(t *testing.T) {
-	require.NotEqual(t, normalize("concat('a b')"), normalize("concat('ab')"))
-	require.NotEqual(t, normalize("concat('ABC')"), normalize("concat('abc')"))
+func TestParseExpressionReturnsTypedValue(t *testing.T) {
+	original := expression.NewLiteral("value", types.Text)
+	parsed := RequireExpression(t, ParseExpression(t, original))
+	value := requireSQLValue(t, parsed, sqlparser.StrVal)
+	require.Equal(t, original.Value(), string(value.Val))
 }

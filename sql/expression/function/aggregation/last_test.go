@@ -49,5 +49,5 @@ func TestLastString(t *testing.T) {
 	expr := NewLast(expression.NewGetField(0, types.Text, "value", false)).
 		WithWindow(sql.NewEmptyContext(), &sql.WindowDefinition{})
 	require.Equal(t, "LAST_VALUE(value) over ()", expr.String())
-	exprtest.AssertStringRoundTrip(t, expr.String())
+	exprtest.AssertFunctionRoundTripAs(t, expr.(sql.FunctionExpression), "LAST_VALUE")
 }

@@ -25,5 +25,5 @@ import (
 func TestBindVarString(t *testing.T) {
 	expr := NewBindVar("arg1")
 	require.Equal(t, ":arg1", expr.String())
-	exprtest.AssertStringRoundTrip(t, expr.String())
+	exprtest.AssertBindVariableRoundTrip(t, expr, expr.Name)
 }

@@ -15,6 +15,7 @@
 package window
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -27,8 +28,16 @@ import (
 
 func TestNTileString(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	expr := NewNTile(ctx, expression.NewLiteral(2, types.Int64))
+	buckets := expression.NewLiteral(2, types.Int64)
+	expr := NewNTile(ctx, buckets)
 	expr = expr.(sql.WindowAdaptableExpression).WithWindow(ctx, sql.NewWindowDefinition(nil, nil, nil, "", ""))
 	require.Equal(t, "ntile(2) over ()", expr.String())
-	exprtest.AssertStringRoundTrip(t, expr.String())
+	parsed := exprtest.RequireFunction(t, exprtest.ParseExpression(t, expr))
+	require.Equal(t, strings.ToLower(expr.(sql.FunctionExpression).FunctionName()), parsed.Name.Lowered())
+	require.Len(t, parsed.Exprs, 1)
+	exprtest.AssertExpressionValue(t, exprtest.RequireFunctionArgument(t, parsed, 0), buckets)
+	require.NotNil(t, parsed.Over)
+	require.Empty(t, parsed.Over.PartitionBy)
+	require.Empty(t, parsed.Over.OrderBy)
+	require.Nil(t, parsed.Over.Frame)
 }

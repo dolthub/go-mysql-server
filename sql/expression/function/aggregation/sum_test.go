@@ -28,7 +28,7 @@ func TestSumString(t *testing.T) {
 	expr := NewSum(expression.NewGetField(0, nil, "value", false)).
 		WithWindow(sql.NewEmptyContext(), &sql.WindowDefinition{})
 	require.Equal(t, "SUM(value) over ()", expr.String())
-	exprtest.AssertStringRoundTrip(t, expr.String())
+	exprtest.AssertFunctionRoundTrip(t, expr.(sql.FunctionExpression))
 }
 
 func TestSum(t *testing.T) {

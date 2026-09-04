@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/dolthub/vitess/go/vt/proto/query"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/internal/exprtest"
@@ -45,7 +46,24 @@ func TestGroupConcat_FunctionName(t *testing.T) {
 	m = NewGroupConcat("distinct ", sc, "a'b\\c", []sql.Expression{expression.NewUnresolvedColumn("field")}, 1024)
 
 	assert.Equal("group_concat(distinct field order by field ASC, field2 DESC separator 'a''b\\\\c')", m.String())
-	exprtest.AssertStringRoundTrip(t, m.String())
+	parsed, ok := exprtest.RequireExpression(t, exprtest.ParseExpression(t, m)).(*sqlparser.GroupConcatExpr)
+	require.True(t, ok)
+	require.Equal(t, m.distinct, parsed.Distinct)
+	require.Len(t, parsed.Exprs, len(m.selectExprs))
+	for i, output := range m.selectExprs {
+		exprtest.AssertExpressionValue(t, parsed.Exprs[i].(*sqlparser.AliasedExpr).Expr, output)
+	}
+	require.Len(t, parsed.OrderBy, len(m.sortConditions))
+	for i, order := range m.sortConditions {
+		exprtest.AssertExpressionValue(t, parsed.OrderBy[i].Expr, order.Expr)
+		expectedDirection := sqlparser.AscScr
+		if order.Order == sql.Descending {
+			expectedDirection = sqlparser.DescScr
+		}
+		require.Equal(t, expectedDirection, parsed.OrderBy[i].Direction)
+	}
+	require.Equal(t, m.separator, parsed.Separator.SeparatorString)
+	require.False(t, parsed.Separator.DefaultSeparator)
 
 	windowed := m.WithWindow(sql.NewEmptyContext(), &sql.WindowDefinition{})
 	assert.Equal("group_concat(distinct field order by field ASC, field2 DESC separator 'a''b\\\\c') over ()", windowed.String())

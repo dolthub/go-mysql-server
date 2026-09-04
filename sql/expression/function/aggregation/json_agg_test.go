@@ -33,7 +33,7 @@ func TestJsonArrayAgg_Name(t *testing.T) {
 
 	windowed := m.WithWindow(sql.NewEmptyContext(), &sql.WindowDefinition{})
 	assert.Equal("JSON_ARRAYAGG(field) over ()", windowed.String())
-	exprtest.AssertStringRoundTrip(t, windowed.String())
+	exprtest.AssertFunctionRoundTripAs(t, windowed.(sql.FunctionExpression), "JSON_ARRAYAGG")
 }
 
 func TestJSONObjectAggString(t *testing.T) {
@@ -50,7 +50,7 @@ func TestJSONObjectAggString(t *testing.T) {
 		),
 	)
 	require.Equal(t, "JSON_OBJECTAGG(k, v) over ( partition by g)", expr.String())
-	exprtest.AssertStringRoundTrip(t, expr.String())
+	exprtest.AssertFunctionRoundTrip(t, expr.(sql.FunctionExpression))
 }
 
 func TestJsonArrayAgg_SimpleIntField(t *testing.T) {

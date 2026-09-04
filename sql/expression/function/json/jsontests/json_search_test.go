@@ -55,7 +55,7 @@ func TestJSONSearch(t *testing.T) {
 	require.Equal(t, "json_search(arg0, arg1, arg2, arg3)", f4.String())
 	require.Equal(t, "json_search(arg0, arg1, arg2, arg3, arg4)", f5.String())
 	for _, expr := range []sql.Expression{f3, f4, f5, f6} {
-		exprtest.AssertStringRoundTrip(t, expr.String())
+		exprtest.AssertFunctionRoundTrip(t, expr.(sql.FunctionExpression))
 	}
 
 	jsonInput := `["abc", [{"k": "10"}, "def"], {"x":"abc"}, {"y":"bcd"}]`

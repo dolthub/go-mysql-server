@@ -31,12 +31,12 @@ func TestFormatString(t *testing.T) {
 	twoArgs, err := NewFormat(ctx, expression.NewLiteral(1234, types.Int64), expression.NewLiteral(2, types.Int64))
 	require.NoError(t, err)
 	require.Equal(t, "format(1234,2)", twoArgs.String())
-	exprtest.AssertStringRoundTrip(t, twoArgs.String())
+	exprtest.AssertFunctionRoundTrip(t, twoArgs.(sql.FunctionExpression))
 
 	threeArgs, err := NewFormat(ctx, expression.NewLiteral(1234, types.Int64), expression.NewLiteral(2, types.Int64), expression.NewLiteral("de_DE", types.Text))
 	require.NoError(t, err)
 	require.Equal(t, "format(1234,2,'de_DE')", threeArgs.String())
-	exprtest.AssertStringRoundTrip(t, threeArgs.String())
+	exprtest.AssertFunctionRoundTrip(t, threeArgs.(sql.FunctionExpression))
 }
 
 func TestFormat(t *testing.T) {

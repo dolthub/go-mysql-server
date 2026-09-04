@@ -15,6 +15,7 @@
 package expression
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -34,7 +35,13 @@ func TestSystemVarString(t *testing.T) {
 	for _, tt := range tests {
 		expr := NewSystemVar("unregistered_system_variable", sql.GetMysqlScope(sql.SystemVariableScope_Session), tt.scope)
 		require.Equal(t, tt.expected, expr.String())
-		exprtest.AssertStringRoundTrip(t, expr.String())
+		parsed := exprtest.RequireColumn(t, exprtest.ParseExpression(t, expr))
+		parts := strings.Split(strings.TrimPrefix(parsed.Name.String(), "@@"), ".")
+		if expr.SpecifiedScope == "" {
+			require.Equal(t, []string{expr.Name}, parts)
+		} else {
+			require.Equal(t, []string{expr.SpecifiedScope, expr.Name}, parts)
+		}
 	}
 }
 
@@ -51,6 +58,11 @@ func TestUserVarString(t *testing.T) {
 	for _, test := range tests {
 		expr := NewUserVar(test.name)
 		require.Equal(t, test.expected, expr.String())
-		exprtest.AssertStringRoundTrip(t, expr.String())
+		parsed := exprtest.RequireColumn(t, exprtest.ParseExpression(t, expr))
+		parsedName := strings.TrimPrefix(parsed.Name.String(), "@")
+		if strings.HasPrefix(parsedName, "`") {
+			parsedName = strings.ReplaceAll(strings.Trim(parsedName, "`"), "``", "`")
+		}
+		require.Equal(t, expr.Name, parsedName)
 	}
 }

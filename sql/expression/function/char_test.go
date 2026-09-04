@@ -17,6 +17,7 @@ package function
 import (
 	"testing"
 
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/internal/exprtest"
@@ -182,5 +183,11 @@ func TestCharString(t *testing.T) {
 	charExpr.Collation = sql.Collation_utf8mb4_0900_ai_ci
 
 	require.Equal(t, "char(65 USING utf8mb4)", charExpr.String())
-	exprtest.AssertStringRoundTrip(t, charExpr.String())
+	parsed, ok := exprtest.RequireExpression(t, exprtest.ParseExpression(t, charExpr)).(*sqlparser.CharExpr)
+	require.True(t, ok)
+	require.Equal(t, charExpr.Collation.CharacterSet().Name(), parsed.Type)
+	require.Len(t, parsed.Exprs, len(charExpr.Children()))
+	for i, child := range charExpr.Children() {
+		exprtest.AssertExpressionValue(t, parsed.Exprs[i].(*sqlparser.AliasedExpr).Expr, child)
+	}
 }
