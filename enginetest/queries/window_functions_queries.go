@@ -25,6 +25,52 @@ import (
 // first_value, last_value, lead, lag, and the bitwise aggregate functions.
 var WindowFunctionsScriptTests = []ScriptTest{
 	{
+		Name:    "window aggregate over grouped aggregate",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"SET @@sql_mode = ''",
+			"CREATE TABLE grouped_window_values (grp INT, ord INT, val INT)",
+			"INSERT INTO grouped_window_values VALUES (1, 1, 10), (1, 1, 5), (1, 2, 7), (2, 1, 3), (2, 2, 4)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT grp, ord, SUM(SUM(val)) OVER (PARTITION BY grp ORDER BY ord ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_sum FROM grouped_window_values GROUP BY grp, ord ORDER BY grp, ord",
+				Expected: []sql.Row{
+					{1, 1, float64(15)},
+					{1, 2, float64(22)},
+					{2, 1, float64(3)},
+					{2, 2, float64(7)},
+				},
+			},
+			{
+				Query: "SELECT grp, ord, SUM(SUM(val)) OVER (PARTITION BY grp ORDER BY ord ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_sum, ROW_NUMBER() OVER (PARTITION BY grp ORDER BY ord) AS row_num FROM grouped_window_values GROUP BY grp, ord ORDER BY grp, ord",
+				Expected: []sql.Row{
+					{1, 1, float64(15), int64(1)},
+					{1, 2, float64(22), int64(2)},
+					{2, 1, float64(3), int64(1)},
+					{2, 2, float64(7), int64(2)},
+				},
+			},
+			{
+				Query: "SELECT grp, ord, ROW_NUMBER() OVER (PARTITION BY grp ORDER BY ord) AS row_num, SUM(SUM(val)) OVER (PARTITION BY grp ORDER BY ord ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_sum FROM grouped_window_values GROUP BY grp, ord ORDER BY grp, ord",
+				Expected: []sql.Row{
+					{1, 1, int64(1), float64(15)},
+					{1, 2, int64(2), float64(22)},
+					{2, 1, int64(1), float64(3)},
+					{2, 2, int64(2), float64(7)},
+				},
+			},
+			{
+				Query: "SELECT grp, ord, SUM(SUM(val)) OVER (PARTITION BY grp ORDER BY ord ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_sum FROM grouped_window_values GROUP BY grp, ord HAVING SUM(val) <> 3 ORDER BY grp, ord",
+				Expected: []sql.Row{
+					{1, 1, float64(15)},
+					{1, 2, float64(22)},
+					{2, 2, float64(4)},
+				},
+			},
+		},
+	},
+	{
 		Name: "nondeterministic window expressions are evaluated independently",
 		SetUpScript: []string{
 			"CREATE TABLE nondeterministic_windows (id int primary key)",
@@ -947,6 +993,27 @@ var WindowFunctionsScriptTests = []ScriptTest{
 		Expected: []sql.Row{{true, false}},
 	},
 	{
+		Name: "JSON_LENGTH paths in window expressions",
+		Query: `SELECT
+			FIRST_VALUE(JSON_LENGTH('{"a":[1,2]}', '$.a')) OVER (),
+			FIRST_VALUE(JSON_LENGTH('{"a":[1,2]}', '$')) OVER ()`,
+		Expected: []sql.Row{{2, 1}},
+	},
+	{
+		Name: "JSON_SEARCH paths in window expressions",
+		Query: `SELECT
+			JSON_UNQUOTE(FIRST_VALUE(JSON_SEARCH('["abc"]', 'one', 'abc')) OVER ()),
+			JSON_UNQUOTE(FIRST_VALUE(JSON_SEARCH('["abc"]', 'one', 'abc', NULL, NULL)) OVER ())`,
+		Expected: []sql.Row{{"$[0]", nil}},
+	},
+	{
+		Name: "JSON_VALUE return types in window expressions",
+		Query: `SELECT
+			FIRST_VALUE(JSON_VALUE('{"a":"12"}', '$.a', 'signed')) OVER (),
+			FIRST_VALUE(JSON_VALUE('{"a":"12"}', '$.a', 'char')) OVER ()`,
+		Expected: []sql.Row{{int64(12), `"12"`}},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/11498
 		Name:    "customer reproduction: LIKE escape characters in window expressions",
 		Dialect: "mysql",
@@ -1062,6 +1129,14 @@ var WindowFunctionsScriptTests = []ScriptTest{
 			"insert into t values (1, 1), (2, 1), (3, 1), (4, 1), (5, 1), (6, 2), (7, 2), (8, 2), (9, 2), (10, 2);",
 		},
 		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select i, ntile(2) over(order by i), ntile(3) over(order by i) from t where i <= 3;",
+				Expected: []sql.Row{
+					{1, uint64(1), uint64(1)},
+					{2, uint64(1), uint64(2)},
+					{3, uint64(2), uint64(3)},
+				},
+			},
 			{
 				Query:       "select i, ntile(0) over() from t;",
 				ExpectedErr: sql.ErrInvalidArgument,

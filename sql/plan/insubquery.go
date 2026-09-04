@@ -163,11 +163,7 @@ func (in *InSubquery) Describe(ctx *sql.Context, options sql.DescribeOptions) st
 
 // String implements the fmt.Stringer interface
 func (in *InSubquery) String() string {
-	return in.Describe(in.ctx, sql.DescribeOptions{
-		Analyze:   false,
-		Estimates: false,
-		Debug:     false,
-	})
+	return fmt.Sprintf("(%s IN %s)", in.Left(), in.Right())
 }
 
 // DebugString implements the sql.DebugStringer interface

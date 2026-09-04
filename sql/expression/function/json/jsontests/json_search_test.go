@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
 
+	"github.com/dolthub/go-mysql-server/internal/exprtest"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	json "github.com/dolthub/go-mysql-server/sql/expression/function/json"
@@ -50,6 +51,12 @@ func TestJSONSearch(t *testing.T) {
 	f4 := buildGetFieldExpressions(t, json.NewJSONSearch, 4)
 	f5 := buildGetFieldExpressions(t, json.NewJSONSearch, 5)
 	f6 := buildGetFieldExpressions(t, json.NewJSONSearch, 6)
+	require.Equal(t, "json_search(arg0, arg1, arg2)", f3.String())
+	require.Equal(t, "json_search(arg0, arg1, arg2, arg3)", f4.String())
+	require.Equal(t, "json_search(arg0, arg1, arg2, arg3, arg4)", f5.String())
+	for _, expr := range []sql.Expression{f3, f4, f5, f6} {
+		exprtest.AssertFunctionRoundTrip(t, expr.(sql.FunctionExpression))
+	}
 
 	jsonInput := `["abc", [{"k": "10"}, "def"], {"x":"abc"}, {"y":"bcd"}]`
 

@@ -57,7 +57,8 @@ type scope struct {
 	activeSubquery *subquery
 
 	// groupBy collects aggregation functions and inputs
-	groupBy *groupBy
+	groupBy          *groupBy
+	explicitGrouping bool
 
 	insertTableAlias string
 
@@ -659,6 +660,7 @@ type scopeColumn struct {
 	db          string
 	table       string
 	col         string
+	debugCol    string
 	originalCol string
 	id          columnId
 	tableId     sql.TableId
@@ -713,10 +715,15 @@ func (c scopeColumn) scalarGf() sql.Expression {
 			return e
 		}
 	}
+	name := c.col
 	if c.originalCol != "" {
-		return expression.NewGetFieldWithTable(int(c.id), int(c.tableId), c.typ, c.db, c.table, c.originalCol, c.nullable)
+		name = c.originalCol
 	}
-	return expression.NewGetFieldWithTable(int(c.id), int(c.tableId), c.typ, c.db, c.table, c.col, c.nullable)
+	field := expression.NewGetFieldWithTable(int(c.id), int(c.tableId), c.typ, c.db, c.table, name, c.nullable)
+	if c.debugCol != "" {
+		field = field.WithDebugName(c.debugCol)
+	}
+	return field
 }
 
 func (c scopeColumn) String() string {

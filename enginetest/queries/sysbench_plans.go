@@ -146,7 +146,7 @@ var SysbenchPlanTests = []QueryPlanTest{
 			"                 └─ columns: [id small_int_col big_int_col year_col]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [sbtest1.year_col, count(sbtest1.year_col) as count(year_col), max(sbtest1.big_int_col) as max(big_int_col), avg(sbtest1.small_int_col) as avg(small_int_col)]\n" +
+			" ├─ columns: [sbtest1.year_col, count(sbtest1.year_col) as `count(year_col)`, max(sbtest1.big_int_col) as `max(big_int_col)`, avg(sbtest1.small_int_col) as `avg(small_int_col)`]\n" +
 			" └─ Sort(sbtest1.year_col ASC)\n" +
 			"     └─ GroupBy\n" +
 			"         ├─ select: AVG(sbtest1.small_int_col), COUNT(sbtest1.year_col), MAX(sbtest1.big_int_col), sbtest1.year_col\n" +
@@ -157,7 +157,7 @@ var SysbenchPlanTests = []QueryPlanTest{
 			"             └─ columns: [id small_int_col big_int_col year_col]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [sbtest1.year_col, count(sbtest1.year_col) as count(year_col), max(sbtest1.big_int_col) as max(big_int_col), avg(sbtest1.small_int_col) as avg(small_int_col)]\n" +
+			" ├─ columns: [sbtest1.year_col, count(sbtest1.year_col) as `count(year_col)`, max(sbtest1.big_int_col) as `max(big_int_col)`, avg(sbtest1.small_int_col) as `avg(small_int_col)`]\n" +
 			" └─ Sort(sbtest1.year_col ASC)\n" +
 			"     └─ GroupBy\n" +
 			"         ├─ select: AVG(sbtest1.small_int_col), COUNT(sbtest1.year_col), MAX(sbtest1.big_int_col), sbtest1.year_col\n" +
@@ -185,7 +185,7 @@ var SysbenchPlanTests = []QueryPlanTest{
 			"             └─ columns: [id big_int_col]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [count(sbtest1.id) as count(id)]\n" +
+			" ├─ columns: [count(sbtest1.id) as `count(id)`]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: COUNT(sbtest1.id)\n" +
 			"     ├─ group: \n" +
@@ -195,7 +195,7 @@ var SysbenchPlanTests = []QueryPlanTest{
 			"         └─ columns: [id big_int_col]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [count(sbtest1.id) as count(id)]\n" +
+			" ├─ columns: [count(sbtest1.id) as `count(id)`]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: COUNT(sbtest1.id)\n" +
 			"     ├─ group: \n" +

@@ -19,6 +19,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/dolthub/go-mysql-server/internal/exprtest"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -27,7 +28,11 @@ import (
 func TestBitAnd_String(t *testing.T) {
 	assert := require.New(t)
 	m := NewBitAnd(expression.NewGetField(0, types.Int32, "field", true))
-	assert.Equal("BITAND(field)", m.String())
+	assert.Equal("BIT_AND(field)", m.String())
+
+	windowed := m.WithWindow(sql.NewEmptyContext(), &sql.WindowDefinition{})
+	assert.Equal("BIT_AND(field) over ()", windowed.String())
+	exprtest.AssertFunctionRoundTripAs(t, windowed.(sql.FunctionExpression), "BIT_AND")
 }
 
 func TestBitAnd_Eval_Int(t *testing.T) {
@@ -109,7 +114,11 @@ func TestBitAnd_Eval_Empty(t *testing.T) {
 func TestBitOr_String(t *testing.T) {
 	assert := require.New(t)
 	m := NewBitOr(expression.NewGetField(0, types.Int32, "field", true))
-	assert.Equal("BITOR(field)", m.String())
+	assert.Equal("BIT_OR(field)", m.String())
+
+	windowed := m.WithWindow(sql.NewEmptyContext(), &sql.WindowDefinition{})
+	assert.Equal("BIT_OR(field) over ()", windowed.String())
+	exprtest.AssertFunctionRoundTripAs(t, windowed.(sql.FunctionExpression), "BIT_OR")
 }
 
 func TestBitOr_Eval_Int(t *testing.T) {
@@ -191,7 +200,11 @@ func TestBitOr_Eval_Empty(t *testing.T) {
 func TestBitXor_String(t *testing.T) {
 	assert := require.New(t)
 	m := NewBitXor(expression.NewGetField(0, types.Int32, "field", true))
-	assert.Equal("BITXOR(field)", m.String())
+	assert.Equal("BIT_XOR(field)", m.String())
+
+	windowed := m.WithWindow(sql.NewEmptyContext(), &sql.WindowDefinition{})
+	assert.Equal("BIT_XOR(field) over ()", windowed.String())
+	exprtest.AssertFunctionRoundTripAs(t, windowed.(sql.FunctionExpression), "BIT_XOR")
 }
 
 func TestBitXor_Eval_Int(t *testing.T) {

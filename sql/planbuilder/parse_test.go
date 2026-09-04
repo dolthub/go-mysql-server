@@ -1371,7 +1371,7 @@ Project
 Project
  ├─ columns: [xy.x:1!null, (xy.x:1!null * xy.y:2!null)->x*y, row_number() over ( partition by xy.x rows between unbounded preceding and unbounded following):4!null->row_num1:5, sum
  │   ├─ over ( partition by xy.y order by xy.x asc)
- │   └─ xy.x
+ │   └─ xy.x:1!null
  │  :6!null->sum:7]
  └─ Window
      ├─ row_number() over ( partition by xy.x ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
@@ -1398,7 +1398,7 @@ Project
 Project
  ├─ columns: [(xy.x:1!null + 1 (tinyint))->x:4, sum
  │   ├─ over ( partition by xy.y order by xy.x asc)
- │   └─ xy.x
+ │   └─ xy.x:1!null
  │  :5!null->sum:6]
  └─ Having
      ├─ GreaterThan
@@ -1407,10 +1407,10 @@ Project
      └─ Project
          ├─ columns: [sum
          │   ├─ over ( partition by xy.y order by xy.x asc)
-         │   └─ xy.x
+         │   └─ xy.x:1!null
          │  :5!null, xy.x:1!null, (xy.x:1!null + 1 (tinyint))->x:4, sum
          │   ├─ over ( partition by xy.y order by xy.x asc)
-         │   └─ xy.x
+         │   └─ xy.x:1!null
          │  :5!null->sum:6]
          └─ Window
              ├─ SUM
@@ -1604,7 +1604,7 @@ Project
 Project
  ├─ columns: [xy.x:1!null, count
  │   ├─ over ( order by xy.y asc)
- │   └─ 1
+ │   └─ 1 (bigint)
  │  :4!null->count(*) over (order by y)]
  └─ Sort(xy.x:1!null ASC nullsFirst)
      └─ Window
@@ -1973,7 +1973,7 @@ Union distinct
 Project
  ├─ columns: [sum
  │   ├─ over ( partition by xy.z order by xy.x asc rows between unbounded preceding and current row)
- │   └─ xy.y
+ │   └─ xy.y:2!null
  │  :4!null->sum(y) over w]
  └─ Sort(xy.x:1!null ASC nullsFirst)
      └─ Window

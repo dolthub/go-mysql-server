@@ -19,6 +19,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/dolthub/go-mysql-server/internal/exprtest"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -26,6 +27,12 @@ import (
 
 func TestAsWKT(t *testing.T) {
 	ctx := sql.NewEmptyContext()
+	t.Run("string round trip", func(t *testing.T) {
+		f := NewAsWKT(ctx, expression.NewLiteral(types.Point{X: 1, Y: 2}, types.PointType{}))
+		require.Equal(t, "st_aswkt(ST_GeomFromWKB(0x0101000000000000000000F03F0000000000000040, 0))", f.String())
+		exprtest.AssertFunctionRoundTrip(t, f.(sql.FunctionExpression))
+	})
+
 	t.Run("convert point", func(t *testing.T) {
 		require := require.New(t)
 		f := NewAsWKT(sql.NewEmptyContext(), expression.NewLiteral(types.Point{X: 1, Y: 2}, types.PointType{}))
@@ -151,6 +158,20 @@ func TestAsWKT(t *testing.T) {
 		_, _, err = typ.Convert(ctx, v)
 		require.NoError(err)
 	})
+}
+
+func TestGeomCollFromTextString(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	arg := expression.NewLiteral("GEOMETRYCOLLECTION(POINT(1 2))", types.Text)
+	expr, err := NewGeomCollFromText(ctx, arg)
+	require.NoError(t, err)
+	require.IsType(t, &GeomCollFromText{}, expr)
+	require.Equal(t, "st_geomcollfromtext('GEOMETRYCOLLECTION(POINT(1 2))')", expr.String())
+	exprtest.AssertFunctionRoundTrip(t, expr.(sql.FunctionExpression))
+
+	cloned, err := expr.WithChildren(ctx, arg)
+	require.NoError(t, err)
+	require.IsType(t, &GeomCollFromText{}, cloned)
 }
 
 func TestGeomFromText(t *testing.T) {

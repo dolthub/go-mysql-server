@@ -1,44 +1,70 @@
 unaryAggs:
 - name:     "AnyValue"
+  sqlName:  "any_value"
+  sqlString: true
   desc:     "returns any single value in the grouped rows"
   nullable: true
 - name:     "Avg"
+  sqlString: true
   desc:     "returns the average value of expr in all rows."
   nullable: true
   retType:  "types.Float64"
 - name:    "BitAnd"
+  sqlName: "bit_and"
+  sqlString: true
   desc:    "returns the bitwise AND of all bits in expr."
   retType: "types.Uint64"
 - name:    "BitOr"
+  sqlName: "bit_or"
+  sqlString: true
   desc:    "returns the bitwise OR of all bits in expr."
   retType: "types.Uint64"
 - name:    "BitXor"
+  sqlName: "bit_xor"
+  sqlString: true
   desc:    "returns the bitwise XOR of all bits in expr."
   retType: "types.Uint64"
 - name:    "Count"
+  sqlString: true
   desc:    "returns a count of the number of non-NULL values of expr in the rows retrieved by a SELECT statement."
   retType: "types.Int64"
 - name: "First"
+  sqlString: true
+  windowSqlName: "first_value"
   desc: "returns the first value in a sequence of elements of an aggregation."
 - name:    "JsonArray"
   sqlName: "json_arrayagg"
+  sqlString: true
   desc:    "returns result set as a single JSON array."
   retType: "types.JSON"
 - name: "Last"
+  sqlString: true
+  windowSqlName: "last_value"
   desc: "returns the last value in a sequence of elements of an aggregation."
 - name: "Max"
+  sqlString: true
   desc: "returns the maximum value of expr in all rows."
 - name: "Min"
+  sqlString: true
   desc: "returns the minimum value of expr in all rows."
 - name:     "Sum"
+  sqlString: true
   desc:     "returns the sum of expr in all rows"
   nullable: false
   retType:  "types.Float64"
 - name: "StdDevPop"
+  sqlName: "stddev_pop"
+  sqlString: true
   desc: "returns the population standard deviation of expr"
 - name: "StdDevSamp"
+  sqlName: "stddev_samp"
+  sqlString: true
   desc: "returns the sample standard deviation of expr"
 - name: "VarPop"
+  sqlName: "var_pop"
+  sqlString: true
   desc: "returns the population variance of expr"
 - name: "VarSamp"
+  sqlName: "var_samp"
+  sqlString: true
   desc: "returns the sample variance of expr"

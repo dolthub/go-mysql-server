@@ -418,7 +418,7 @@ func (m *Minute) Description() string {
 	return "returns the minutes of the given date."
 }
 
-func (m *Minute) String() string { return fmt.Sprintf("%s(%d)", m.FunctionName(), m.Child) }
+func (m *Minute) String() string { return fmt.Sprintf("%s(%s)", m.FunctionName(), m.Child) }
 
 // Type implements the Expression interface.
 func (m *Minute) Type(ctx *sql.Context) sql.Type { return types.Int32 }
@@ -639,7 +639,7 @@ func (d *YearWeek) Description() string {
 	return "returns year and week for a date. The year in the result may be different from the year in the date argument for the first and the last week of the year."
 }
 
-func (d *YearWeek) String() string { return fmt.Sprintf("YEARWEEK(%s, %d)", d.date, d.mode) }
+func (d *YearWeek) String() string { return fmt.Sprintf("YEARWEEK(%s, %s)", d.date, d.mode) }
 
 // Type implements the Expression interface.
 func (d *YearWeek) Type(ctx *sql.Context) sql.Type { return types.Int32 }
@@ -1080,11 +1080,15 @@ func (*Now) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, 
 
 // String implements the sql.Expression interface.
 func (n *Now) String() string {
+	name := "NOW"
+	if n.alwaysUseExactTime {
+		name = "SYSDATE"
+	}
 	if n.prec == nil {
-		return "NOW()"
+		return name + "()"
 	}
 
-	return fmt.Sprintf("NOW(%s)", n.prec.String())
+	return fmt.Sprintf("%s(%s)", name, n.prec.String())
 }
 
 // IsNullable implements the sql.Expression interface.
@@ -1191,7 +1195,12 @@ func (n *Now) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 // WithChildren implements the Expression interface.
 func (n *Now) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
-	return NewNow(ctx, children...)
+	ret, err := NewNow(ctx, children...)
+	if err != nil {
+		return nil, err
+	}
+	ret.(*Now).alwaysUseExactTime = n.alwaysUseExactTime
+	return ret, nil
 }
 
 // NewSysdate returns a new SYSDATE() function, using the supplied |args| for an

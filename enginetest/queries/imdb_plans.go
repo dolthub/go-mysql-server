@@ -383,7 +383,7 @@ WHERE ci.note LIKE '%(voice)%'
 			"                         └─ columns: [id role]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [min(chn.name) as character, min(t.title) as russian_mov_with_actor_producer]\n" +
+			" ├─ columns: [min(chn.name) as `character`, min(t.title) as russian_mov_with_actor_producer]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(chn.name), MIN(t.title)\n" +
 			"     ├─ group: \n" +
@@ -445,7 +445,7 @@ WHERE ci.note LIKE '%(voice)%'
 			"                     └─ columns: [id role]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [min(chn.name) as character, min(t.title) as russian_mov_with_actor_producer]\n" +
+			" ├─ columns: [min(chn.name) as `character`, min(t.title) as russian_mov_with_actor_producer]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(chn.name), MIN(t.title)\n" +
 			"     ├─ group: \n" +
@@ -621,7 +621,7 @@ WHERE ci.note LIKE '%(voice)%'
 			"                     └─ columns: [id]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [min(chn.name) as character, min(t.title) as movie_with_american_producer]\n" +
+			" ├─ columns: [min(chn.name) as `character`, min(t.title) as movie_with_american_producer]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(chn.name), MIN(t.title)\n" +
 			"     ├─ group: \n" +
@@ -681,7 +681,7 @@ WHERE ci.note LIKE '%(voice)%'
 			"                 └─ columns: [id]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [min(chn.name) as character, min(t.title) as movie_with_american_producer]\n" +
+			" ├─ columns: [min(chn.name) as `character`, min(t.title) as movie_with_american_producer]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: MIN(chn.name), MIN(t.title)\n" +
 			"     ├─ group: \n" +

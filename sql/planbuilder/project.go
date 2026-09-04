@@ -211,6 +211,11 @@ func (b *Builder) selectExprToExpression(inScope *scope, se ast.SelectExpr) sql.
 			return expression.NewAlias(b.ctx, e.As.String(), expr)
 		}
 		if selectExprNeedsAlias(b.ctx, e, expr) {
+			// Scalar subqueries must remain unreferencable by their full text. Their String method is valid SQL, but the
+			// expression text is not an implicit alias that can be resolved from an outer query.
+			if _, ok := expr.(*plan.Subquery); ok {
+				return expression.NewAlias(b.ctx, e.InputExpression, expr).AsUnreferencable()
+			}
 			// if the input expression is the same as expression string, then it's referencable.
 			// E.g. "SLEEP(1)" is the same as "sleep(1)"
 			if strings.EqualFold(e.InputExpression, expr.String()) {

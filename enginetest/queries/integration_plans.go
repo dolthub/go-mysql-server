@@ -278,7 +278,7 @@ WHERE
 			"                                             ├─ columns: [nd.id as id, nd.ZH72S as ZH72S, Subquery\n" +
 			"                                             │   ├─ cacheable: false\n" +
 			"                                             │   └─ Project\n" +
-			"                                             │       ├─ columns: [count(1) as COUNT(*)]\n" +
+			"                                             │       ├─ columns: [count(1) as `COUNT(*)`]\n" +
 			"                                             │       └─ GroupBy\n" +
 			"                                             │           ├─ select: COUNT(1)\n" +
 			"                                             │           ├─ group: \n" +
@@ -293,7 +293,7 @@ WHERE
 			"                                                 ├─ columns: [nd.id, nd.DKCAJ, nd.KNG7T, nd.TW55N, nd.QRQXW, nd.ECXAJ, nd.FGG57, nd.ZH72S, nd.FSK67, nd.XQDYT, nd.TCE7A, nd.IWV2H, nd.HPCMS, nd.N5CC2, nd.FHCYT, nd.ETAQ7, nd.A75X7, nd.id as id, nd.ZH72S as ZH72S, Subquery\n" +
 			"                                                 │   ├─ cacheable: false\n" +
 			"                                                 │   └─ Project\n" +
-			"                                                 │       ├─ columns: [count(1) as COUNT(*)]\n" +
+			"                                                 │       ├─ columns: [count(1) as `COUNT(*)`]\n" +
 			"                                                 │       └─ GroupBy\n" +
 			"                                                 │           ├─ select: COUNT(1)\n" +
 			"                                                 │           ├─ group: \n" +
@@ -348,7 +348,7 @@ WHERE
 			"                                             ├─ columns: [nd.id as id, nd.ZH72S as ZH72S, Subquery\n" +
 			"                                             │   ├─ cacheable: false\n" +
 			"                                             │   └─ Project\n" +
-			"                                             │       ├─ columns: [count(1) as COUNT(*)]\n" +
+			"                                             │       ├─ columns: [count(1) as `COUNT(*)`]\n" +
 			"                                             │       └─ GroupBy\n" +
 			"                                             │           ├─ select: COUNT(1)\n" +
 			"                                             │           ├─ group: \n" +
@@ -363,7 +363,7 @@ WHERE
 			"                                                 ├─ columns: [nd.id, nd.DKCAJ, nd.KNG7T, nd.TW55N, nd.QRQXW, nd.ECXAJ, nd.FGG57, nd.ZH72S, nd.FSK67, nd.XQDYT, nd.TCE7A, nd.IWV2H, nd.HPCMS, nd.N5CC2, nd.FHCYT, nd.ETAQ7, nd.A75X7, nd.id as id, nd.ZH72S as ZH72S, Subquery\n" +
 			"                                                 │   ├─ cacheable: false\n" +
 			"                                                 │   └─ Project\n" +
-			"                                                 │       ├─ columns: [count(1) as COUNT(*)]\n" +
+			"                                                 │       ├─ columns: [count(1) as `COUNT(*)`]\n" +
 			"                                                 │       └─ GroupBy\n" +
 			"                                                 │           ├─ select: COUNT(1)\n" +
 			"                                                 │           ├─ group: \n" +
@@ -613,7 +613,58 @@ WHERE
 			"             └─ columns: [id fv24e uj6xy m22qn nz4mq etpqv pruv2 ykssu fhcyt]\n" +
 			"",
 		ExpectedEstimates: "Filter\n" +
-			" ├─ (((NOT(ism.PRUV2 IS NULL)) AND ((Subquery(select NHMXW.SWCQV from WGSDC as NHMXW where NHMXW.id = ism.PRUV2) = 1) OR (((NOT(ism.FV24E IS NULL)) AND (NOT((Subquery(select nd.id from E2I7U as nd where nd.TW55N = (select NHMXW.FZXV5 from WGSDC as NHMXW where NHMXW.id = ism.PRUV2)) = ism.FV24E)))) OR ((NOT(ism.UJ6XY IS NULL)) AND (NOT((Subquery(select nd.id from E2I7U as nd where nd.TW55N = (select NHMXW.DQYGV from WGSDC as NHMXW where NHMXW.id = ism.PRUV2)) = ism.UJ6XY))))))) OR ((NOT(ism.ETPQV IS NULL)) AND InSubquery\n" +
+			" ├─ (((NOT(ism.PRUV2 IS NULL)) AND ((Subquery\n" +
+			" │   ├─ cacheable: false\n" +
+			" │   └─ Project\n" +
+			" │       ├─ columns: [nhmxw.SWCQV]\n" +
+			" │       └─ Filter\n" +
+			" │           ├─ (nhmxw.id = ism.PRUV2)\n" +
+			" │           └─ TableAlias(nhmxw)\n" +
+			" │               └─ IndexedTableAccess(WGSDC)\n" +
+			" │                   ├─ index: [WGSDC.id]\n" +
+			" │                   ├─ columns: [id swcqv]\n" +
+			" │                   └─ keys: ism.PRUV2\n" +
+			" │   = 1) OR (((NOT(ism.FV24E IS NULL)) AND (NOT((Subquery\n" +
+			" │   ├─ cacheable: false\n" +
+			" │   └─ Project\n" +
+			" │       ├─ columns: [nd.id]\n" +
+			" │       └─ Filter\n" +
+			" │           ├─ (nd.TW55N = Subquery\n" +
+			" │           │   ├─ cacheable: false\n" +
+			" │           │   └─ Project\n" +
+			" │           │       ├─ columns: [nhmxw.FZXV5]\n" +
+			" │           │       └─ Filter\n" +
+			" │           │           ├─ (nhmxw.id = ism.PRUV2)\n" +
+			" │           │           └─ TableAlias(nhmxw)\n" +
+			" │           │               └─ IndexedTableAccess(WGSDC)\n" +
+			" │           │                   ├─ index: [WGSDC.id]\n" +
+			" │           │                   ├─ columns: [id fzxv5]\n" +
+			" │           │                   └─ keys: ism.PRUV2\n" +
+			" │           │  )\n" +
+			" │           └─ TableAlias(nd)\n" +
+			" │               └─ Table\n" +
+			" │                   └─ name: E2I7U\n" +
+			" │   = ism.FV24E)))) OR ((NOT(ism.UJ6XY IS NULL)) AND (NOT((Subquery\n" +
+			" │   ├─ cacheable: false\n" +
+			" │   └─ Project\n" +
+			" │       ├─ columns: [nd.id]\n" +
+			" │       └─ Filter\n" +
+			" │           ├─ (nd.TW55N = Subquery\n" +
+			" │           │   ├─ cacheable: false\n" +
+			" │           │   └─ Project\n" +
+			" │           │       ├─ columns: [nhmxw.DQYGV]\n" +
+			" │           │       └─ Filter\n" +
+			" │           │           ├─ (nhmxw.id = ism.PRUV2)\n" +
+			" │           │           └─ TableAlias(nhmxw)\n" +
+			" │           │               └─ IndexedTableAccess(WGSDC)\n" +
+			" │           │                   ├─ index: [WGSDC.id]\n" +
+			" │           │                   ├─ columns: [id dqygv]\n" +
+			" │           │                   └─ keys: ism.PRUV2\n" +
+			" │           │  )\n" +
+			" │           └─ TableAlias(nd)\n" +
+			" │               └─ Table\n" +
+			" │                   └─ name: E2I7U\n" +
+			" │   = ism.UJ6XY))))))) OR ((NOT(ism.ETPQV IS NULL)) AND InSubquery\n" +
 			" │   ├─ left: ism.ETPQV\n" +
 			" │   └─ right: Subquery\n" +
 			" │       ├─ cacheable: true\n" +
@@ -623,9 +674,9 @@ WHERE
 			" │               ├─ columns: [WGSDC.id, WGSDC.NOHHR, WGSDC.AVPYF, WGSDC.SYPKF, WGSDC.IDUT2, WGSDC.FZXV5, WGSDC.DQYGV, WGSDC.SWCQV, WGSDC.YKSSU, WGSDC.FHCYT, WRZVO.id, WRZVO.TVNW2, WRZVO.ZHITY, WRZVO.SYPKF, WRZVO.IDUT2, WRZVO.O6QJ3, WRZVO.NO2JA, WRZVO.YKSSU, WRZVO.FHCYT, WRZVO.QZ6VT]\n" +
 			" │               └─ Filter\n" +
 			" │                   ├─ 1 IS NULL\n" +
-			" │                   └─ LeftOuterHashJoinExcludingNulls\n" +
+			" │                   └─ LeftOuterHashJoinExcludingNulls (estimated cost=2134.470 rows=39476)\n" +
 			" │                       ├─ (nhmxw.id = hddvb.PRUV2)\n" +
-			" │                       ├─ LookupJoin\n" +
+			" │                       ├─ LookupJoin (estimated cost=244.013 rows=71)\n" +
 			" │                       │   ├─ (((tizhk.TVNW2 = nhmxw.NOHHR) AND (tizhk.ZHITY = nhmxw.AVPYF)) AND (tizhk.IDUT2 = nhmxw.IDUT2))\n" +
 			" │                       │   ├─ Filter\n" +
 			" │                       │   │   ├─ (nhmxw.SWCQV = 0)\n" +
@@ -651,7 +702,58 @@ WHERE
 			"         └─ name: HDDVB\n" +
 			"",
 		ExpectedAnalysis: "Filter\n" +
-			" ├─ (((NOT(ism.PRUV2 IS NULL)) AND ((Subquery(select NHMXW.SWCQV from WGSDC as NHMXW where NHMXW.id = ism.PRUV2) = 1) OR (((NOT(ism.FV24E IS NULL)) AND (NOT((Subquery(select nd.id from E2I7U as nd where nd.TW55N = (select NHMXW.FZXV5 from WGSDC as NHMXW where NHMXW.id = ism.PRUV2)) = ism.FV24E)))) OR ((NOT(ism.UJ6XY IS NULL)) AND (NOT((Subquery(select nd.id from E2I7U as nd where nd.TW55N = (select NHMXW.DQYGV from WGSDC as NHMXW where NHMXW.id = ism.PRUV2)) = ism.UJ6XY))))))) OR ((NOT(ism.ETPQV IS NULL)) AND InSubquery\n" +
+			" ├─ (((NOT(ism.PRUV2 IS NULL)) AND ((Subquery\n" +
+			" │   ├─ cacheable: false\n" +
+			" │   └─ Project\n" +
+			" │       ├─ columns: [nhmxw.SWCQV]\n" +
+			" │       └─ Filter\n" +
+			" │           ├─ (nhmxw.id = ism.PRUV2)\n" +
+			" │           └─ TableAlias(nhmxw)\n" +
+			" │               └─ IndexedTableAccess(WGSDC)\n" +
+			" │                   ├─ index: [WGSDC.id]\n" +
+			" │                   ├─ columns: [id swcqv]\n" +
+			" │                   └─ keys: ism.PRUV2\n" +
+			" │   = 1) OR (((NOT(ism.FV24E IS NULL)) AND (NOT((Subquery\n" +
+			" │   ├─ cacheable: false\n" +
+			" │   └─ Project\n" +
+			" │       ├─ columns: [nd.id]\n" +
+			" │       └─ Filter\n" +
+			" │           ├─ (nd.TW55N = Subquery\n" +
+			" │           │   ├─ cacheable: false\n" +
+			" │           │   └─ Project\n" +
+			" │           │       ├─ columns: [nhmxw.FZXV5]\n" +
+			" │           │       └─ Filter\n" +
+			" │           │           ├─ (nhmxw.id = ism.PRUV2)\n" +
+			" │           │           └─ TableAlias(nhmxw)\n" +
+			" │           │               └─ IndexedTableAccess(WGSDC)\n" +
+			" │           │                   ├─ index: [WGSDC.id]\n" +
+			" │           │                   ├─ columns: [id fzxv5]\n" +
+			" │           │                   └─ keys: ism.PRUV2\n" +
+			" │           │  )\n" +
+			" │           └─ TableAlias(nd)\n" +
+			" │               └─ Table\n" +
+			" │                   └─ name: E2I7U\n" +
+			" │   = ism.FV24E)))) OR ((NOT(ism.UJ6XY IS NULL)) AND (NOT((Subquery\n" +
+			" │   ├─ cacheable: false\n" +
+			" │   └─ Project\n" +
+			" │       ├─ columns: [nd.id]\n" +
+			" │       └─ Filter\n" +
+			" │           ├─ (nd.TW55N = Subquery\n" +
+			" │           │   ├─ cacheable: false\n" +
+			" │           │   └─ Project\n" +
+			" │           │       ├─ columns: [nhmxw.DQYGV]\n" +
+			" │           │       └─ Filter\n" +
+			" │           │           ├─ (nhmxw.id = ism.PRUV2)\n" +
+			" │           │           └─ TableAlias(nhmxw)\n" +
+			" │           │               └─ IndexedTableAccess(WGSDC)\n" +
+			" │           │                   ├─ index: [WGSDC.id]\n" +
+			" │           │                   ├─ columns: [id dqygv]\n" +
+			" │           │                   └─ keys: ism.PRUV2\n" +
+			" │           │  )\n" +
+			" │           └─ TableAlias(nd)\n" +
+			" │               └─ Table\n" +
+			" │                   └─ name: E2I7U\n" +
+			" │   = ism.UJ6XY))))))) OR ((NOT(ism.ETPQV IS NULL)) AND InSubquery\n" +
 			" │   ├─ left: ism.ETPQV\n" +
 			" │   └─ right: Subquery\n" +
 			" │       ├─ cacheable: true\n" +
@@ -661,9 +763,9 @@ WHERE
 			" │               ├─ columns: [WGSDC.id, WGSDC.NOHHR, WGSDC.AVPYF, WGSDC.SYPKF, WGSDC.IDUT2, WGSDC.FZXV5, WGSDC.DQYGV, WGSDC.SWCQV, WGSDC.YKSSU, WGSDC.FHCYT, WRZVO.id, WRZVO.TVNW2, WRZVO.ZHITY, WRZVO.SYPKF, WRZVO.IDUT2, WRZVO.O6QJ3, WRZVO.NO2JA, WRZVO.YKSSU, WRZVO.FHCYT, WRZVO.QZ6VT]\n" +
 			" │               └─ Filter\n" +
 			" │                   ├─ 1 IS NULL\n" +
-			" │                   └─ LeftOuterHashJoinExcludingNulls\n" +
+			" │                   └─ LeftOuterHashJoinExcludingNulls (estimated cost=2134.470 rows=39476)\n" +
 			" │                       ├─ (nhmxw.id = hddvb.PRUV2)\n" +
-			" │                       ├─ LookupJoin\n" +
+			" │                       ├─ LookupJoin (estimated cost=244.013 rows=71)\n" +
 			" │                       │   ├─ (((tizhk.TVNW2 = nhmxw.NOHHR) AND (tizhk.ZHITY = nhmxw.AVPYF)) AND (tizhk.IDUT2 = nhmxw.IDUT2))\n" +
 			" │                       │   ├─ Filter\n" +
 			" │                       │   │   ├─ (nhmxw.SWCQV = 0)\n" +
@@ -1315,7 +1417,7 @@ WHERE
 			"                                             ├─ columns: [nd.id as id, nd.ZH72S as ZH72S, Subquery\n" +
 			"                                             │   ├─ cacheable: false\n" +
 			"                                             │   └─ Project\n" +
-			"                                             │       ├─ columns: [count(1) as COUNT(*)]\n" +
+			"                                             │       ├─ columns: [count(1) as `COUNT(*)`]\n" +
 			"                                             │       └─ GroupBy\n" +
 			"                                             │           ├─ select: COUNT(1)\n" +
 			"                                             │           ├─ group: \n" +
@@ -1330,7 +1432,7 @@ WHERE
 			"                                                 ├─ columns: [nd.id, nd.DKCAJ, nd.KNG7T, nd.TW55N, nd.QRQXW, nd.ECXAJ, nd.FGG57, nd.ZH72S, nd.FSK67, nd.XQDYT, nd.TCE7A, nd.IWV2H, nd.HPCMS, nd.N5CC2, nd.FHCYT, nd.ETAQ7, nd.A75X7, nd.id as id, nd.ZH72S as ZH72S, Subquery\n" +
 			"                                                 │   ├─ cacheable: false\n" +
 			"                                                 │   └─ Project\n" +
-			"                                                 │       ├─ columns: [count(1) as COUNT(*)]\n" +
+			"                                                 │       ├─ columns: [count(1) as `COUNT(*)`]\n" +
 			"                                                 │       └─ GroupBy\n" +
 			"                                                 │           ├─ select: COUNT(1)\n" +
 			"                                                 │           ├─ group: \n" +
@@ -1385,7 +1487,7 @@ WHERE
 			"                                             ├─ columns: [nd.id as id, nd.ZH72S as ZH72S, Subquery\n" +
 			"                                             │   ├─ cacheable: false\n" +
 			"                                             │   └─ Project\n" +
-			"                                             │       ├─ columns: [count(1) as COUNT(*)]\n" +
+			"                                             │       ├─ columns: [count(1) as `COUNT(*)`]\n" +
 			"                                             │       └─ GroupBy\n" +
 			"                                             │           ├─ select: COUNT(1)\n" +
 			"                                             │           ├─ group: \n" +
@@ -1400,7 +1502,7 @@ WHERE
 			"                                                 ├─ columns: [nd.id, nd.DKCAJ, nd.KNG7T, nd.TW55N, nd.QRQXW, nd.ECXAJ, nd.FGG57, nd.ZH72S, nd.FSK67, nd.XQDYT, nd.TCE7A, nd.IWV2H, nd.HPCMS, nd.N5CC2, nd.FHCYT, nd.ETAQ7, nd.A75X7, nd.id as id, nd.ZH72S as ZH72S, Subquery\n" +
 			"                                                 │   ├─ cacheable: false\n" +
 			"                                                 │   └─ Project\n" +
-			"                                                 │       ├─ columns: [count(1) as COUNT(*)]\n" +
+			"                                                 │       ├─ columns: [count(1) as `COUNT(*)`]\n" +
 			"                                                 │       └─ GroupBy\n" +
 			"                                                 │           ├─ select: COUNT(1)\n" +
 			"                                                 │           ├─ group: \n" +
@@ -1648,7 +1750,38 @@ WHERE
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [ct.id as id, ci.FTQLQ as VCGT3, nd.TW55N as UWBAI, aac.BTXC5 as TPXBU, ct.V5DPX as V5DPX, ct.S3Q3Y as S3Q3Y, ct.ZRV3B as ZRV3B]\n" +
 			" └─ Filter\n" +
-			"     ├─ (((NOT(ct.OCA7E IS NULL)) AND ((Subquery(select I7HCR.SWCQV from EPZU6 as I7HCR where I7HCR.id = ct.OCA7E) = 1) OR (NOT((Subquery(select nd.id from E2I7U as nd where nd.TW55N = (select I7HCR.FVUCX from EPZU6 as I7HCR where I7HCR.id = ct.OCA7E)) = ct.LUEVY))))) OR ((NOT(ct.NRURT IS NULL)) AND InSubquery\n" +
+			"     ├─ (((NOT(ct.OCA7E IS NULL)) AND ((Subquery\n" +
+			"     │   ├─ cacheable: false\n" +
+			"     │   └─ Project\n" +
+			"     │       ├─ columns: [i7hcr.SWCQV]\n" +
+			"     │       └─ Filter\n" +
+			"     │           ├─ (i7hcr.id = ct.OCA7E)\n" +
+			"     │           └─ TableAlias(i7hcr)\n" +
+			"     │               └─ IndexedTableAccess(EPZU6)\n" +
+			"     │                   ├─ index: [EPZU6.id]\n" +
+			"     │                   ├─ columns: [id swcqv]\n" +
+			"     │                   └─ keys: ct.OCA7E\n" +
+			"     │   = 1) OR (NOT((Subquery\n" +
+			"     │   ├─ cacheable: false\n" +
+			"     │   └─ Project\n" +
+			"     │       ├─ columns: [nd.id]\n" +
+			"     │       └─ Filter\n" +
+			"     │           ├─ (nd.TW55N = Subquery\n" +
+			"     │           │   ├─ cacheable: false\n" +
+			"     │           │   └─ Project\n" +
+			"     │           │       ├─ columns: [i7hcr.FVUCX]\n" +
+			"     │           │       └─ Filter\n" +
+			"     │           │           ├─ (i7hcr.id = ct.OCA7E)\n" +
+			"     │           │           └─ TableAlias(i7hcr)\n" +
+			"     │           │               └─ IndexedTableAccess(EPZU6)\n" +
+			"     │           │                   ├─ index: [EPZU6.id]\n" +
+			"     │           │                   ├─ columns: [id fvucx]\n" +
+			"     │           │                   └─ keys: ct.OCA7E\n" +
+			"     │           │  )\n" +
+			"     │           └─ TableAlias(nd)\n" +
+			"     │               └─ Table\n" +
+			"     │                   └─ name: E2I7U\n" +
+			"     │   = ct.LUEVY))))) OR ((NOT(ct.NRURT IS NULL)) AND InSubquery\n" +
 			"     │   ├─ left: ct.NRURT\n" +
 			"     │   └─ right: Subquery\n" +
 			"     │       ├─ cacheable: true\n" +
@@ -1658,9 +1791,9 @@ WHERE
 			"     │               ├─ columns: [EPZU6.id, EPZU6.TOFPN, EPZU6.SJYN2, EPZU6.BTXC5, EPZU6.FVUCX, EPZU6.SWCQV, EPZU6.YKSSU, EPZU6.FHCYT, OUBDL.id, OUBDL.FTQLQ, OUBDL.ZH72S, OUBDL.SFJ6L, OUBDL.V5DPX, OUBDL.LJLUM, OUBDL.IDPK7, OUBDL.NO52D, OUBDL.ZRV3B, OUBDL.VYO5E, OUBDL.YKSSU, OUBDL.FHCYT, OUBDL.QZ6VT]\n" +
 			"     │               └─ Filter\n" +
 			"     │                   ├─ 1 IS NULL\n" +
-			"     │                   └─ LeftOuterHashJoinExcludingNulls\n" +
+			"     │                   └─ LeftOuterHashJoinExcludingNulls (estimated cost=39099.660 rows=1670140)\n" +
 			"     │                       ├─ (i7hcr.id = flqlp.OCA7E)\n" +
-			"     │                       ├─ LookupJoin\n" +
+			"     │                       ├─ LookupJoin (estimated cost=730.387 rows=226)\n" +
 			"     │                       │   ├─ ((uct.ZH72S = i7hcr.SJYN2) AND (uct.LJLUM = i7hcr.BTXC5))\n" +
 			"     │                       │   ├─ Filter\n" +
 			"     │                       │   │   ├─ (i7hcr.SWCQV = 0)\n" +
@@ -1708,7 +1841,38 @@ WHERE
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [ct.id as id, ci.FTQLQ as VCGT3, nd.TW55N as UWBAI, aac.BTXC5 as TPXBU, ct.V5DPX as V5DPX, ct.S3Q3Y as S3Q3Y, ct.ZRV3B as ZRV3B]\n" +
 			" └─ Filter\n" +
-			"     ├─ (((NOT(ct.OCA7E IS NULL)) AND ((Subquery(select I7HCR.SWCQV from EPZU6 as I7HCR where I7HCR.id = ct.OCA7E) = 1) OR (NOT((Subquery(select nd.id from E2I7U as nd where nd.TW55N = (select I7HCR.FVUCX from EPZU6 as I7HCR where I7HCR.id = ct.OCA7E)) = ct.LUEVY))))) OR ((NOT(ct.NRURT IS NULL)) AND InSubquery\n" +
+			"     ├─ (((NOT(ct.OCA7E IS NULL)) AND ((Subquery\n" +
+			"     │   ├─ cacheable: false\n" +
+			"     │   └─ Project\n" +
+			"     │       ├─ columns: [i7hcr.SWCQV]\n" +
+			"     │       └─ Filter\n" +
+			"     │           ├─ (i7hcr.id = ct.OCA7E)\n" +
+			"     │           └─ TableAlias(i7hcr)\n" +
+			"     │               └─ IndexedTableAccess(EPZU6)\n" +
+			"     │                   ├─ index: [EPZU6.id]\n" +
+			"     │                   ├─ columns: [id swcqv]\n" +
+			"     │                   └─ keys: ct.OCA7E\n" +
+			"     │   = 1) OR (NOT((Subquery\n" +
+			"     │   ├─ cacheable: false\n" +
+			"     │   └─ Project\n" +
+			"     │       ├─ columns: [nd.id]\n" +
+			"     │       └─ Filter\n" +
+			"     │           ├─ (nd.TW55N = Subquery\n" +
+			"     │           │   ├─ cacheable: false\n" +
+			"     │           │   └─ Project\n" +
+			"     │           │       ├─ columns: [i7hcr.FVUCX]\n" +
+			"     │           │       └─ Filter\n" +
+			"     │           │           ├─ (i7hcr.id = ct.OCA7E)\n" +
+			"     │           │           └─ TableAlias(i7hcr)\n" +
+			"     │           │               └─ IndexedTableAccess(EPZU6)\n" +
+			"     │           │                   ├─ index: [EPZU6.id]\n" +
+			"     │           │                   ├─ columns: [id fvucx]\n" +
+			"     │           │                   └─ keys: ct.OCA7E\n" +
+			"     │           │  )\n" +
+			"     │           └─ TableAlias(nd)\n" +
+			"     │               └─ Table\n" +
+			"     │                   └─ name: E2I7U\n" +
+			"     │   = ct.LUEVY))))) OR ((NOT(ct.NRURT IS NULL)) AND InSubquery\n" +
 			"     │   ├─ left: ct.NRURT\n" +
 			"     │   └─ right: Subquery\n" +
 			"     │       ├─ cacheable: true\n" +
@@ -1718,9 +1882,9 @@ WHERE
 			"     │               ├─ columns: [EPZU6.id, EPZU6.TOFPN, EPZU6.SJYN2, EPZU6.BTXC5, EPZU6.FVUCX, EPZU6.SWCQV, EPZU6.YKSSU, EPZU6.FHCYT, OUBDL.id, OUBDL.FTQLQ, OUBDL.ZH72S, OUBDL.SFJ6L, OUBDL.V5DPX, OUBDL.LJLUM, OUBDL.IDPK7, OUBDL.NO52D, OUBDL.ZRV3B, OUBDL.VYO5E, OUBDL.YKSSU, OUBDL.FHCYT, OUBDL.QZ6VT]\n" +
 			"     │               └─ Filter\n" +
 			"     │                   ├─ 1 IS NULL\n" +
-			"     │                   └─ LeftOuterHashJoinExcludingNulls\n" +
+			"     │                   └─ LeftOuterHashJoinExcludingNulls (estimated cost=39099.660 rows=1670140)\n" +
 			"     │                       ├─ (i7hcr.id = flqlp.OCA7E)\n" +
-			"     │                       ├─ LookupJoin\n" +
+			"     │                       ├─ LookupJoin (estimated cost=730.387 rows=226)\n" +
 			"     │                       │   ├─ ((uct.ZH72S = i7hcr.SJYN2) AND (uct.LJLUM = i7hcr.BTXC5))\n" +
 			"     │                       │   ├─ Filter\n" +
 			"     │                       │   │   ├─ (i7hcr.SWCQV = 0)\n" +
@@ -3256,7 +3420,7 @@ WHERE
 			"                                             ├─ columns: [nd.id as id, nd.ZH72S as ZH72S, Subquery\n" +
 			"                                             │   ├─ cacheable: false\n" +
 			"                                             │   └─ Project\n" +
-			"                                             │       ├─ columns: [count(1) as COUNT(*)]\n" +
+			"                                             │       ├─ columns: [count(1) as `COUNT(*)`]\n" +
 			"                                             │       └─ GroupBy\n" +
 			"                                             │           ├─ select: COUNT(1)\n" +
 			"                                             │           ├─ group: \n" +
@@ -3271,7 +3435,7 @@ WHERE
 			"                                                 ├─ columns: [nd.id, nd.DKCAJ, nd.KNG7T, nd.TW55N, nd.QRQXW, nd.ECXAJ, nd.FGG57, nd.ZH72S, nd.FSK67, nd.XQDYT, nd.TCE7A, nd.IWV2H, nd.HPCMS, nd.N5CC2, nd.FHCYT, nd.ETAQ7, nd.A75X7, nd.id as id, nd.ZH72S as ZH72S, Subquery\n" +
 			"                                                 │   ├─ cacheable: false\n" +
 			"                                                 │   └─ Project\n" +
-			"                                                 │       ├─ columns: [count(1) as COUNT(*)]\n" +
+			"                                                 │       ├─ columns: [count(1) as `COUNT(*)`]\n" +
 			"                                                 │       └─ GroupBy\n" +
 			"                                                 │           ├─ select: COUNT(1)\n" +
 			"                                                 │           ├─ group: \n" +
@@ -3326,7 +3490,7 @@ WHERE
 			"                                             ├─ columns: [nd.id as id, nd.ZH72S as ZH72S, Subquery\n" +
 			"                                             │   ├─ cacheable: false\n" +
 			"                                             │   └─ Project\n" +
-			"                                             │       ├─ columns: [count(1) as COUNT(*)]\n" +
+			"                                             │       ├─ columns: [count(1) as `COUNT(*)`]\n" +
 			"                                             │       └─ GroupBy\n" +
 			"                                             │           ├─ select: COUNT(1)\n" +
 			"                                             │           ├─ group: \n" +
@@ -3341,7 +3505,7 @@ WHERE
 			"                                                 ├─ columns: [nd.id, nd.DKCAJ, nd.KNG7T, nd.TW55N, nd.QRQXW, nd.ECXAJ, nd.FGG57, nd.ZH72S, nd.FSK67, nd.XQDYT, nd.TCE7A, nd.IWV2H, nd.HPCMS, nd.N5CC2, nd.FHCYT, nd.ETAQ7, nd.A75X7, nd.id as id, nd.ZH72S as ZH72S, Subquery\n" +
 			"                                                 │   ├─ cacheable: false\n" +
 			"                                                 │   └─ Project\n" +
-			"                                                 │       ├─ columns: [count(1) as COUNT(*)]\n" +
+			"                                                 │       ├─ columns: [count(1) as `COUNT(*)`]\n" +
 			"                                                 │       └─ GroupBy\n" +
 			"                                                 │           ├─ select: COUNT(1)\n" +
 			"                                                 │           ├─ group: \n" +
@@ -4016,19 +4180,50 @@ WHERE
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [mf.id as id, cla.FTQLQ as T4IBQ, nd.TW55N as UWBAI, aac.BTXC5 as TPXBU, mf.FSDY2 as FSDY2]\n" +
 			" └─ Filter\n" +
-			"     ├─ (((NOT(mf.QQV4M IS NULL)) AND ((Subquery(select TJ5D2.SWCQV from SZW6V as TJ5D2 where TJ5D2.id = mf.QQV4M) = 1) OR (NOT((Subquery(select nd.id from E2I7U as nd where nd.TW55N = (select TJ5D2.H4DMT from SZW6V as TJ5D2 where TJ5D2.id = mf.QQV4M)) = mf.LUEVY))))) OR ((NOT(mf.TEUJA IS NULL)) AND InSubquery\n" +
+			"     ├─ (((NOT(mf.QQV4M IS NULL)) AND ((Subquery\n" +
+			"     │   ├─ cacheable: false\n" +
+			"     │   └─ Project\n" +
+			"     │       ├─ columns: [tj5d2.SWCQV]\n" +
+			"     │       └─ Filter\n" +
+			"     │           ├─ (tj5d2.id = mf.QQV4M)\n" +
+			"     │           └─ TableAlias(tj5d2)\n" +
+			"     │               └─ IndexedTableAccess(SZW6V)\n" +
+			"     │                   ├─ index: [SZW6V.id]\n" +
+			"     │                   ├─ columns: [id swcqv]\n" +
+			"     │                   └─ keys: mf.QQV4M\n" +
+			"     │   = 1) OR (NOT((Subquery\n" +
+			"     │   ├─ cacheable: false\n" +
+			"     │   └─ Project\n" +
+			"     │       ├─ columns: [nd.id]\n" +
+			"     │       └─ Filter\n" +
+			"     │           ├─ (nd.TW55N = Subquery\n" +
+			"     │           │   ├─ cacheable: false\n" +
+			"     │           │   └─ Project\n" +
+			"     │           │       ├─ columns: [tj5d2.H4DMT]\n" +
+			"     │           │       └─ Filter\n" +
+			"     │           │           ├─ (tj5d2.id = mf.QQV4M)\n" +
+			"     │           │           └─ TableAlias(tj5d2)\n" +
+			"     │           │               └─ IndexedTableAccess(SZW6V)\n" +
+			"     │           │                   ├─ index: [SZW6V.id]\n" +
+			"     │           │                   ├─ columns: [id h4dmt]\n" +
+			"     │           │                   └─ keys: mf.QQV4M\n" +
+			"     │           │  )\n" +
+			"     │           └─ TableAlias(nd)\n" +
+			"     │               └─ Table\n" +
+			"     │                   └─ name: E2I7U\n" +
+			"     │   = mf.LUEVY))))) OR ((NOT(mf.TEUJA IS NULL)) AND InSubquery\n" +
 			"     │   ├─ left: mf.TEUJA\n" +
 			"     │   └─ right: Subquery\n" +
 			"     │       ├─ cacheable: true\n" +
 			"     │       └─ Project\n" +
 			"     │           ├─ columns: [umf.id as ORB3K]\n" +
-			"     │           └─ LookupJoin\n" +
+			"     │           └─ LookupJoin (estimated cost=24.084 rows=0)\n" +
 			"     │               ├─ ((umf.FGG57 = tj5d2.V7UFH) AND (umf.SYPKF = tj5d2.SYPKF))\n" +
 			"     │               ├─ Project\n" +
 			"     │               │   ├─ columns: [SZW6V.id, SZW6V.T4IBQ, SZW6V.V7UFH, SZW6V.SYPKF, SZW6V.H4DMT, SZW6V.SWCQV, SZW6V.YKSSU, SZW6V.FHCYT]\n" +
 			"     │               │   └─ Filter\n" +
 			"     │               │       ├─ 1 IS NULL\n" +
-			"     │               │       └─ LeftOuterLookupJoin\n" +
+			"     │               │       └─ LeftOuterLookupJoin (estimated cost=24.062 rows=0)\n" +
 			"     │               │           ├─ Filter\n" +
 			"     │               │           │   ├─ (tj5d2.SWCQV = 0)\n" +
 			"     │               │           │   └─ TableAlias(tj5d2)\n" +
@@ -4084,19 +4279,50 @@ WHERE
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [mf.id as id, cla.FTQLQ as T4IBQ, nd.TW55N as UWBAI, aac.BTXC5 as TPXBU, mf.FSDY2 as FSDY2]\n" +
 			" └─ Filter\n" +
-			"     ├─ (((NOT(mf.QQV4M IS NULL)) AND ((Subquery(select TJ5D2.SWCQV from SZW6V as TJ5D2 where TJ5D2.id = mf.QQV4M) = 1) OR (NOT((Subquery(select nd.id from E2I7U as nd where nd.TW55N = (select TJ5D2.H4DMT from SZW6V as TJ5D2 where TJ5D2.id = mf.QQV4M)) = mf.LUEVY))))) OR ((NOT(mf.TEUJA IS NULL)) AND InSubquery\n" +
+			"     ├─ (((NOT(mf.QQV4M IS NULL)) AND ((Subquery\n" +
+			"     │   ├─ cacheable: false\n" +
+			"     │   └─ Project\n" +
+			"     │       ├─ columns: [tj5d2.SWCQV]\n" +
+			"     │       └─ Filter\n" +
+			"     │           ├─ (tj5d2.id = mf.QQV4M)\n" +
+			"     │           └─ TableAlias(tj5d2)\n" +
+			"     │               └─ IndexedTableAccess(SZW6V)\n" +
+			"     │                   ├─ index: [SZW6V.id]\n" +
+			"     │                   ├─ columns: [id swcqv]\n" +
+			"     │                   └─ keys: mf.QQV4M\n" +
+			"     │   = 1) OR (NOT((Subquery\n" +
+			"     │   ├─ cacheable: false\n" +
+			"     │   └─ Project\n" +
+			"     │       ├─ columns: [nd.id]\n" +
+			"     │       └─ Filter\n" +
+			"     │           ├─ (nd.TW55N = Subquery\n" +
+			"     │           │   ├─ cacheable: false\n" +
+			"     │           │   └─ Project\n" +
+			"     │           │       ├─ columns: [tj5d2.H4DMT]\n" +
+			"     │           │       └─ Filter\n" +
+			"     │           │           ├─ (tj5d2.id = mf.QQV4M)\n" +
+			"     │           │           └─ TableAlias(tj5d2)\n" +
+			"     │           │               └─ IndexedTableAccess(SZW6V)\n" +
+			"     │           │                   ├─ index: [SZW6V.id]\n" +
+			"     │           │                   ├─ columns: [id h4dmt]\n" +
+			"     │           │                   └─ keys: mf.QQV4M\n" +
+			"     │           │  )\n" +
+			"     │           └─ TableAlias(nd)\n" +
+			"     │               └─ Table\n" +
+			"     │                   └─ name: E2I7U\n" +
+			"     │   = mf.LUEVY))))) OR ((NOT(mf.TEUJA IS NULL)) AND InSubquery\n" +
 			"     │   ├─ left: mf.TEUJA\n" +
 			"     │   └─ right: Subquery\n" +
 			"     │       ├─ cacheable: true\n" +
 			"     │       └─ Project\n" +
 			"     │           ├─ columns: [umf.id as ORB3K]\n" +
-			"     │           └─ LookupJoin\n" +
+			"     │           └─ LookupJoin (estimated cost=24.084 rows=0)\n" +
 			"     │               ├─ ((umf.FGG57 = tj5d2.V7UFH) AND (umf.SYPKF = tj5d2.SYPKF))\n" +
 			"     │               ├─ Project\n" +
 			"     │               │   ├─ columns: [SZW6V.id, SZW6V.T4IBQ, SZW6V.V7UFH, SZW6V.SYPKF, SZW6V.H4DMT, SZW6V.SWCQV, SZW6V.YKSSU, SZW6V.FHCYT]\n" +
 			"     │               │   └─ Filter\n" +
 			"     │               │       ├─ 1 IS NULL\n" +
-			"     │               │       └─ LeftOuterLookupJoin\n" +
+			"     │               │       └─ LeftOuterLookupJoin (estimated cost=24.062 rows=0)\n" +
 			"     │               │           ├─ Filter\n" +
 			"     │               │           │   ├─ (tj5d2.SWCQV = 0)\n" +
 			"     │               │           │   └─ TableAlias(tj5d2)\n" +
@@ -4959,7 +5185,16 @@ WHERE
 			"             │               │           │   ├─ (ci.id = ct.FZ2R5)\n" +
 			"             │               │           │   ├─ MergeJoin\n" +
 			"             │               │           │   │   ├─ cmp: (sn.BRQP2 = ct.LUEVY)\n" +
-			"             │               │           │   │   ├─ sel: (ct.M22QN = Subquery(select aac.id from TPXBU as aac where BTXC5 = 'WT'))\n" +
+			"             │               │           │   │   ├─ sel: (ct.M22QN = Subquery\n" +
+			"             │               │           │   │   │   ├─ cacheable: true\n" +
+			"             │               │           │   │   │   └─ Project\n" +
+			"             │               │           │   │   │       ├─ columns: [aac.id]\n" +
+			"             │               │           │   │   │       └─ TableAlias(aac)\n" +
+			"             │               │           │   │   │           └─ IndexedTableAccess(TPXBU)\n" +
+			"             │               │           │   │   │               ├─ index: [TPXBU.BTXC5]\n" +
+			"             │               │           │   │   │               ├─ filters: [{[WT, WT]}]\n" +
+			"             │               │           │   │   │               └─ columns: [id btxc5]\n" +
+			"             │               │           │   │   │  )\n" +
 			"             │               │           │   │   ├─ TableAlias(sn)\n" +
 			"             │               │           │   │   │   └─ IndexedTableAccess(NOXN3)\n" +
 			"             │               │           │   │   │       ├─ index: [NOXN3.BRQP2]\n" +
@@ -5175,7 +5410,16 @@ WHERE
 			"             │               │           │   ├─ (ci.id = ct.FZ2R5)\n" +
 			"             │               │           │   ├─ MergeJoin\n" +
 			"             │               │           │   │   ├─ cmp: (sn.BRQP2 = ct.LUEVY)\n" +
-			"             │               │           │   │   ├─ sel: (ct.M22QN = Subquery(select aac.id from TPXBU as aac where BTXC5 = 'WT'))\n" +
+			"             │               │           │   │   ├─ sel: (ct.M22QN = Subquery\n" +
+			"             │               │           │   │   │   ├─ cacheable: true\n" +
+			"             │               │           │   │   │   └─ Project\n" +
+			"             │               │           │   │   │       ├─ columns: [aac.id]\n" +
+			"             │               │           │   │   │       └─ TableAlias(aac)\n" +
+			"             │               │           │   │   │           └─ IndexedTableAccess(TPXBU)\n" +
+			"             │               │           │   │   │               ├─ index: [TPXBU.BTXC5]\n" +
+			"             │               │           │   │   │               ├─ filters: [{[WT, WT]}]\n" +
+			"             │               │           │   │   │               └─ columns: [id btxc5]\n" +
+			"             │               │           │   │   │  )\n" +
 			"             │               │           │   │   ├─ TableAlias(sn)\n" +
 			"             │               │           │   │   │   └─ IndexedTableAccess(NOXN3)\n" +
 			"             │               │           │   │   │       ├─ index: [NOXN3.BRQP2]\n" +
@@ -5823,7 +6067,16 @@ WHERE
 			"             │               │           │   ├─ (ci.id = ct.FZ2R5)\n" +
 			"             │               │           │   ├─ MergeJoin\n" +
 			"             │               │           │   │   ├─ cmp: (sn.BRQP2 = ct.LUEVY)\n" +
-			"             │               │           │   │   ├─ sel: (ct.M22QN = Subquery(select aac.id from TPXBU as aac where BTXC5 = 'WT'))\n" +
+			"             │               │           │   │   ├─ sel: (ct.M22QN = Subquery\n" +
+			"             │               │           │   │   │   ├─ cacheable: true\n" +
+			"             │               │           │   │   │   └─ Project\n" +
+			"             │               │           │   │   │       ├─ columns: [aac.id]\n" +
+			"             │               │           │   │   │       └─ TableAlias(aac)\n" +
+			"             │               │           │   │   │           └─ IndexedTableAccess(TPXBU)\n" +
+			"             │               │           │   │   │               ├─ index: [TPXBU.BTXC5]\n" +
+			"             │               │           │   │   │               ├─ filters: [{[WT, WT]}]\n" +
+			"             │               │           │   │   │               └─ columns: [id btxc5]\n" +
+			"             │               │           │   │   │  )\n" +
 			"             │               │           │   │   ├─ TableAlias(sn)\n" +
 			"             │               │           │   │   │   └─ IndexedTableAccess(NOXN3)\n" +
 			"             │               │           │   │   │       ├─ index: [NOXN3.BRQP2]\n" +
@@ -6034,7 +6287,16 @@ WHERE
 			"             │               │           │   ├─ (ci.id = ct.FZ2R5)\n" +
 			"             │               │           │   ├─ MergeJoin\n" +
 			"             │               │           │   │   ├─ cmp: (sn.BRQP2 = ct.LUEVY)\n" +
-			"             │               │           │   │   ├─ sel: (ct.M22QN = Subquery(select aac.id from TPXBU as aac where BTXC5 = 'WT'))\n" +
+			"             │               │           │   │   ├─ sel: (ct.M22QN = Subquery\n" +
+			"             │               │           │   │   │   ├─ cacheable: true\n" +
+			"             │               │           │   │   │   └─ Project\n" +
+			"             │               │           │   │   │       ├─ columns: [aac.id]\n" +
+			"             │               │           │   │   │       └─ TableAlias(aac)\n" +
+			"             │               │           │   │   │           └─ IndexedTableAccess(TPXBU)\n" +
+			"             │               │           │   │   │               ├─ index: [TPXBU.BTXC5]\n" +
+			"             │               │           │   │   │               ├─ filters: [{[WT, WT]}]\n" +
+			"             │               │           │   │   │               └─ columns: [id btxc5]\n" +
+			"             │               │           │   │   │  )\n" +
 			"             │               │           │   │   ├─ TableAlias(sn)\n" +
 			"             │               │           │   │   │   └─ IndexedTableAccess(NOXN3)\n" +
 			"             │               │           │   │   │       ├─ index: [NOXN3.BRQP2]\n" +
@@ -6098,15 +6360,15 @@ WHERE
 			"     └─ table_count(NOXN3) as COUNT(1)\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [count(1) as COUNT(*)]\n" +
+			" ├─ columns: [count(1) as `COUNT(*)`]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [NOXN3.COUNT(1) as COUNT(1)]\n" +
+			"     ├─ columns: [NOXN3.COUNT(1) as `COUNT(1)`]\n" +
 			"     └─ table_count(NOXN3) as COUNT(1)\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [count(1) as COUNT(*)]\n" +
+			" ├─ columns: [count(1) as `COUNT(*)`]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [NOXN3.COUNT(1) as COUNT(1)]\n" +
+			"     ├─ columns: [NOXN3.COUNT(1) as `COUNT(1)`]\n" +
 			"     └─ table_count(NOXN3) as COUNT(1)\n" +
 			"",
 	},
@@ -16100,15 +16362,15 @@ SELECT COUNT(*) FROM E2I7U`,
 			"     └─ table_count(E2I7U) as COUNT(1)\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [count(1) as COUNT(*)]\n" +
+			" ├─ columns: [count(1) as `COUNT(*)`]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [E2I7U.COUNT(1) as COUNT(1)]\n" +
+			"     ├─ columns: [E2I7U.COUNT(1) as `COUNT(1)`]\n" +
 			"     └─ table_count(E2I7U) as COUNT(1)\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [count(1) as COUNT(*)]\n" +
+			" ├─ columns: [count(1) as `COUNT(*)`]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [E2I7U.COUNT(1) as COUNT(1)]\n" +
+			"     ├─ columns: [E2I7U.COUNT(1) as `COUNT(1)`]\n" +
 			"     └─ table_count(E2I7U) as COUNT(1)\n" +
 			"",
 	},

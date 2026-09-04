@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/dolthub/go-mysql-server/internal/exprtest"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -308,6 +309,8 @@ func TestTime_Hour(t *testing.T) {
 func TestTime_Minute(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 	f := NewMinute(ctx, expression.NewGetField(0, types.LongText, "foo", false))
+	require.Equal(t, "minute(foo)", f.String())
+	exprtest.AssertFunctionRoundTrip(t, f.(sql.FunctionExpression))
 
 	testCases := []struct {
 		name     string
@@ -492,6 +495,13 @@ func TestYearWeek(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 	f, err := NewYearWeek(ctx, expression.NewGetField(0, types.LongText, "foo", false))
 	require.NoError(t, err)
+	require.Equal(t, "YEARWEEK(foo, 0)", f.String())
+	exprtest.AssertFunctionRoundTrip(t, f.(sql.FunctionExpression))
+
+	explicitMode, err := NewYearWeek(ctx, expression.NewGetField(0, types.LongText, "foo", false), expression.NewLiteral(1, types.Int64))
+	require.NoError(t, err)
+	require.Equal(t, "YEARWEEK(foo, 1)", explicitMode.String())
+	exprtest.AssertFunctionRoundTrip(t, explicitMode.(sql.FunctionExpression))
 
 	testCases := []struct {
 		name     string
@@ -777,6 +787,25 @@ func TestSysdate(t *testing.T) {
 			})
 		})
 	}
+}
+
+func TestNowString(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	precision := expression.NewLiteral(3, types.Int64)
+
+	now, err := NewNow(ctx, precision)
+	require.NoError(t, err)
+	require.Equal(t, "NOW(3)", now.String())
+	exprtest.AssertFunctionRoundTrip(t, now.(sql.FunctionExpression))
+
+	sysdate, err := NewSysdate(ctx, precision)
+	require.NoError(t, err)
+	require.Equal(t, "SYSDATE(3)", sysdate.String())
+	exprtest.AssertFunctionRoundTripAs(t, sysdate.(sql.FunctionExpression), "SYSDATE")
+
+	cloned, err := sysdate.WithChildren(ctx, sysdate.Children()...)
+	require.NoError(t, err)
+	require.Equal(t, "SYSDATE(3)", cloned.String())
 }
 
 func TestTime(t *testing.T) {

@@ -202,6 +202,10 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 	var selectGfs []sql.Expression
 	selectStr := make(map[string]bool)
 	aliasDeps := make(map[string]bool)
+	windowIds := make(map[sql.ColumnId]struct{}, len(fromScope.windowFuncs))
+	for _, col := range fromScope.windowFuncs {
+		windowIds[sql.ColumnId(col.id)] = struct{}{}
+	}
 	for _, e := range group.aggregations() {
 		if !selectStr[strings.ToLower(e.String())] {
 			selectDeps = append(selectDeps, e.scalar)
@@ -215,7 +219,11 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 		// eval aliases in project scope
 		switch e := col.scalar.(type) {
 		case *expression.Alias:
-			if !e.Unreferencable() {
+			var aliasesWindowFunc bool
+			if gf, ok := e.Child.(*expression.GetField); ok {
+				_, aliasesWindowFunc = windowIds[gf.Id()]
+			}
+			if !e.Unreferencable() && !aliasesWindowFunc {
 				aliases = append(aliases, e.WithId(sql.ColumnId(col.id)).(*expression.Alias))
 				inAlias = true
 			}
@@ -226,6 +234,9 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 		findSelectDeps = func(ctx *sql.Context, e sql.Expression) bool {
 			switch e := e.(type) {
 			case *expression.GetField:
+				if _, ok := windowIds[e.Id()]; ok {
+					return false
+				}
 				colName := strings.ToLower(e.String())
 				if !selectStr[colName] {
 					selectDeps = append(selectDeps, e)
@@ -289,7 +300,7 @@ func IsMySQLAggregateFuncName(ctx *sql.Context, name string) (bool, error) {
 // buildAggregateFunc tags aggregate functions in the correct scope
 // and makes the aggregate available for reference by other clauses.
 func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExpr) sql.Expression {
-	if len(inScope.windowFuncs) > 0 {
+	if len(inScope.windowFuncs) > 0 && !inScope.explicitGrouping {
 		err := sql.ErrNonAggregatedColumnWithoutGroupBy.New()
 		b.handleErr(err)
 	}
@@ -529,7 +540,7 @@ func IsMySQLWindowFuncName(ctx *sql.Context, name string) (bool, error) {
 }
 
 func (b *Builder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, over *ast.WindowDef) sql.Expression {
-	if inScope.groupBy != nil {
+	if inScope.groupBy != nil && !inScope.explicitGrouping {
 		err := sql.ErrNonAggregatedColumnWithoutGroupBy.New()
 		b.handleErr(err)
 	}
@@ -540,7 +551,6 @@ func (b *Builder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, 
 		e := b.selectExprToExpression(inScope, arg)
 		args = append(args, e)
 	}
-
 	var win sql.WindowAdaptableExpression
 	if name == "count" {
 		if _, ok := e.Exprs[0].(*ast.StarExpr); ok {
@@ -576,6 +586,9 @@ func (b *Builder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, 
 	}
 
 	col := scopeColumn{col: strings.ToLower(win.String()), scalar: win, typ: win.Type(b.ctx), nullable: win.IsNullable(b.ctx)}
+	if _, ok := win.(sql.Describable); ok {
+		col.debugCol = strings.ToLower(sql.Describe(b.ctx, win, sql.DescribeOptions{Debug: true}))
+	}
 	id := inScope.newColumn(col)
 	col.id = id
 	win = win.WithId(sql.ColumnId(id)).(sql.WindowAdaptableExpression)

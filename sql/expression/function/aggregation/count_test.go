@@ -20,6 +20,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/dolthub/go-mysql-server/internal/exprtest"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -73,6 +74,12 @@ func TestCountEvalStar(t *testing.T) {
 	require.Equal(int64(5), evalBuffer(t, b))
 }
 
+func TestCountString(t *testing.T) {
+	count := NewCount(expression.NewStar()).WithWindow(sql.NewEmptyContext(), &sql.WindowDefinition{})
+	require.Equal(t, "COUNT(*) over ()", count.String())
+	exprtest.AssertFunctionRoundTrip(t, count.(sql.FunctionExpression))
+}
+
 func TestCountEvalString(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
@@ -102,6 +109,24 @@ func TestCountDistinctEval1(t *testing.T) {
 	require.NoError(b.Update(ctx, sql.NewRow(nil)))
 	require.NoError(b.Update(ctx, sql.NewRow(1, 2, 3)))
 	require.Equal(int64(1), evalBuffer(t, b))
+}
+
+func TestCountDistinctString(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	count := NewCountDistinct(
+		expression.NewGetField(0, types.Int64, "foo", false),
+		expression.NewGetField(1, types.Int64, "bar", false),
+	)
+	require.Equal(t, "COUNT(DISTINCT foo, bar)", count.String())
+	exprtest.AssertDistinctFunctionRoundTripAs(t, count, "COUNT")
+
+	window := sql.NewWindowDefinition(
+		[]sql.Expression{expression.NewGetField(2, types.Int64, "baz", false)},
+		nil, nil, "", "",
+	)
+	windowed := count.WithWindow(ctx, window)
+	require.Equal(t, "COUNT(DISTINCT foo, bar) over ( partition by baz)", windowed.String())
+	exprtest.AssertDistinctFunctionRoundTripAs(t, windowed.(sql.FunctionExpression), "COUNT")
 }
 
 func TestCountDistinctEvalStar(t *testing.T) {

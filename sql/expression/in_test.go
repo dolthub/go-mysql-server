@@ -19,10 +19,12 @@ import (
 	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
 
+	"github.com/dolthub/go-mysql-server/internal/exprtest"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
@@ -44,7 +46,20 @@ func TestRoundTripNames(t *testing.T) {
 			expression.NewLiteral(int64(2), types.Int64),
 		))
 	assert.NoError(t, err)
-	assert.Equal(t, "(foo HASH IN (2))", hit.String())
+	assert.Equal(t, "(foo IN (2))", hit.String())
+	parsedParen := exprtest.RequireExpression(t, exprtest.ParseExpression(t, hit)).(*sqlparser.ParenExpr)
+	parsedIn := parsedParen.Expr.(*sqlparser.ComparisonExpr)
+	assert.Equal(t, sqlparser.InStr, parsedIn.Operator)
+	exprtest.AssertExpressionValue(t, parsedIn.Left, hit.Left())
+	parsedTuple := parsedIn.Right.(sqlparser.ValTuple)
+	originalTuple := hit.Right().(expression.Tuple)
+	assert.Len(t, parsedTuple, len(originalTuple))
+	for i, value := range originalTuple {
+		exprtest.AssertExpressionValue(t, parsedTuple[i], value)
+	}
+	assert.Equal(t, "(foo HASH IN (2))", sql.Describe(nil, hit, sql.DescribeOptions{Estimates: true}))
+	nested := expression.NewAnd(expression.NewLiteral(true, types.Boolean), hit)
+	assert.Equal(t, "(true AND (foo HASH IN (2)))", sql.Describe(nil, nested, sql.DescribeOptions{Estimates: true}))
 }
 
 func TestInTuple(t *testing.T) {

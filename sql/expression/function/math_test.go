@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/dolthub/go-mysql-server/internal/exprtest"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -250,6 +251,18 @@ func TestTrigFunctions(t *testing.T) {
 		assert.True(t, withinRoundingErr(math.Atan(tanF), atanVal.(float64)))
 		assert.True(t, withinRoundingErr(math.Atan2(tanF, tanF-1), atan2Val.(float64)))
 	}
+}
+
+func TestAtanString(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	expr, err := NewAtan(
+		ctx,
+		expression.NewLiteral(1, types.Int64),
+		expression.NewLiteral(2, types.Int64),
+	)
+	require.NoError(t, err)
+	require.Equal(t, "atan(1, 2)", expr.String())
+	exprtest.AssertFunctionRoundTrip(t, expr.(sql.FunctionExpression))
 }
 
 func withinRoundingErr(v1, v2 float64) bool {
