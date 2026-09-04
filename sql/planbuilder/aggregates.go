@@ -586,6 +586,9 @@ func (b *Builder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, 
 	}
 
 	col := scopeColumn{col: strings.ToLower(win.String()), scalar: win, typ: win.Type(b.ctx), nullable: win.IsNullable(b.ctx)}
+	if _, ok := win.(sql.Describable); ok {
+		col.debugCol = strings.ToLower(sql.Describe(b.ctx, win, sql.DescribeOptions{Debug: true}))
+	}
 	id := inScope.newColumn(col)
 	col.id = id
 	win = win.WithId(sql.ColumnId(id)).(sql.WindowAdaptableExpression)

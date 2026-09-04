@@ -38,3 +38,11 @@ func TestGetFieldString(t *testing.T) {
 		require.NoError(t, err)
 	}
 }
+
+func TestGetFieldDescribeUsesSeparateDebugName(t *testing.T) {
+	expr := NewGetField(2, types.Int64, "sum(x) over ()", false).WithDebugName("sum\n └─ x\n")
+
+	require.Equal(t, "sum(x) over ()", expr.String())
+	require.Equal(t, "sum(x) over ()", sql.Describe(nil, expr, sql.DescribeOptions{Estimates: true}))
+	require.Equal(t, "sum\n └─ x\n:2!null", sql.Describe(nil, expr, sql.DescribeOptions{Debug: true}))
+}
