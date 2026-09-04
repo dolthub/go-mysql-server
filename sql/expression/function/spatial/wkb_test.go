@@ -163,6 +163,21 @@ func TestAsWKB(t *testing.T) {
 	})
 }
 
+func TestGeomCollFromWKBString(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	arg := expression.NewLiteral([]byte{1, 7, 0, 0, 0, 0, 0, 0, 0}, types.Blob)
+	expr, err := NewGeomCollFromWKB(ctx, arg)
+	require.NoError(t, err)
+	require.IsType(t, &GeomCollFromWKB{}, expr)
+	require.Equal(t, "st_geomcollfromwkb(0x010700000000000000)", expr.String())
+	_, err = sql.NewMysqlParser().ParseSimple("SELECT " + expr.String())
+	require.NoError(t, err)
+
+	cloned, err := expr.WithChildren(ctx, arg)
+	require.NoError(t, err)
+	require.IsType(t, &GeomCollFromWKB{}, cloned)
+}
+
 func TestGeomFromWKB(t *testing.T) {
 	t.Run("convert point in little endian", func(t *testing.T) {
 		require := require.New(t)
