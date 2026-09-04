@@ -2104,6 +2104,18 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{{0}},
 	},
 	{
+		Query:    "select locate('ب', 'ااااب'), char_length('ااااب');",
+		Expected: []sql.Row{{5, 5}},
+	},
+	{
+		Query:    "select locate('a', 'ééa', 2);",
+		Expected: []sql.Row{{3}},
+	},
+	{
+		Query:    "select locate('e', 'café xe');",
+		Expected: []sql.Row{{7}},
+	},
+	{
 		Query: "select find_in_set('second row', s) from mytable;",
 		Expected: []sql.Row{
 			{0},
