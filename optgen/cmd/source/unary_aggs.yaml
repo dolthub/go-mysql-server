@@ -10,6 +10,8 @@ unaryAggs:
   nullable: true
   retType:  "types.Float64"
 - name:    "BitAnd"
+  sqlName: "bit_and"
+  sqlString: true
   desc:    "returns the bitwise AND of all bits in expr."
   retType: "types.Uint64"
 - name:    "BitOr"

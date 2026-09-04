@@ -189,25 +189,22 @@ func (a *BitAnd) IsNullable(ctx *sql.Context) bool {
 }
 
 func (a *BitAnd) String() string {
+	ret := "BIT_AND(" + a.Child.String() + ")"
 	if a.window != nil {
-		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("BITAND")
-		children := []string{a.window.String(), a.Child.String()}
-		pr.WriteChildren(children...)
-		return pr.String()
+		ret += " " + a.window.String()
 	}
-	return "BITAND(" + a.Child.String() + ")"
+	return ret
 }
 
 func (a *BitAnd) DebugString(ctx *sql.Context) string {
 	if a.window != nil {
 		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("BITAND")
+		_ = pr.WriteNode("BIT_AND")
 		children := []string{sql.DebugString(ctx, a.window), sql.DebugString(ctx, a.Child)}
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("BITAND(%s)", sql.DebugString(ctx, a.Child))
+	return fmt.Sprintf("BIT_AND(%s)", sql.DebugString(ctx, a.Child))
 }
 
 func (a *BitAnd) WithWindow(ctx *sql.Context, window *sql.WindowDefinition) sql.WindowAdaptableExpression {

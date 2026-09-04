@@ -27,7 +27,12 @@ import (
 func TestBitAnd_String(t *testing.T) {
 	assert := require.New(t)
 	m := NewBitAnd(expression.NewGetField(0, types.Int32, "field", true))
-	assert.Equal("BITAND(field)", m.String())
+	assert.Equal("BIT_AND(field)", m.String())
+
+	windowed := m.WithWindow(sql.NewEmptyContext(), &sql.WindowDefinition{})
+	assert.Equal("BIT_AND(field) over ()", windowed.String())
+	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + windowed.String())
+	assert.NoError(err)
 }
 
 func TestBitAnd_Eval_Int(t *testing.T) {
