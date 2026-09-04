@@ -5,11 +5,11 @@ import (
 	"math"
 	"reflect"
 
-	"github.com/cespare/xxhash/v2"
 	"github.com/cockroachdb/apd/v3"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/hash"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -439,76 +439,60 @@ func (b *bitXorBuffer) Dispose(ctx *sql.Context) {
 type countDistinctBuffer struct {
 	seen  map[uint64]struct{}
 	exprs []sql.Expression
+	sch   sql.Schema
 }
 
 func NewCountDistinctBuffer(children []sql.Expression) *countDistinctBuffer {
-	return &countDistinctBuffer{make(map[uint64]struct{}), children}
+	return &countDistinctBuffer{seen: make(map[uint64]struct{}), exprs: children}
 }
 
 // Update implements the AggregationBuffer interface.
 func (c *countDistinctBuffer) Update(ctx *sql.Context, row sql.Row) error {
-	var value interface{}
 	if len(c.exprs) == 0 {
 		return fmt.Errorf("no expressions")
 	}
 	if _, ok := c.exprs[0].(*expression.Star); ok {
-		value = row
-	} else {
-		val := make(sql.Row, len(c.exprs))
-		for i, expr := range c.exprs {
-			v, err := expr.Eval(ctx, row)
-			if err != nil {
-				return err
-			}
-			// skip nil values
-			if v == nil {
-				return nil
-			}
-			val[i] = v
-		}
-		value = val
-	}
-	if len(c.exprs) == 1 {
-		_, isStar := c.exprs[0].(*expression.Star)
-		if !isStar {
-			if extendedType, ok := c.exprs[0].Type(ctx).(sql.ExtendedType); ok {
-				serializedValue, err := extendedType.SerializeValue(ctx, value.(sql.Row)[0])
-				if err != nil {
-					return err
-				}
-				hash := xxhash.New()
-				if _, err = hash.Write(serializedValue); err != nil {
-					return err
-				}
-				c.seen[hash.Sum64()] = struct{}{}
+		for _, val := range row {
+			if val == nil {
 				return nil
 			}
 		}
-	}
-
-	var str string
-	for _, val := range value.(sql.Row) {
-		// skip nil values
-		if val == nil {
-			return nil
-		}
-		v, _, err := types.Text.Convert(ctx, val)
+		h, err := hash.HashOf(ctx, nil, row)
 		if err != nil {
 			return err
 		}
-		vv, ok := v.(string)
-		if !ok {
-			return fmt.Errorf("count distinct unable to hash value: %s", err)
-		}
-		str += vv + ","
+		c.seen[h] = struct{}{}
+		return nil
 	}
 
-	hash := xxhash.New()
-	_, err := hash.WriteString(str)
+	if c.sch == nil {
+		c.sch = hash.ExprsToSchema(ctx, c.exprs...)
+	}
+
+	val := make(sql.Row, len(c.exprs))
+	for i, expr := range c.exprs {
+		v, err := expr.Eval(ctx, row)
+		if err != nil {
+			return err
+		}
+		// skip nil values
+		if v == nil {
+			return nil
+		}
+		if extendedType, ok := expr.Type(ctx).(sql.ExtendedType); ok {
+			serializedVal, err := extendedType.SerializeValue(ctx, v)
+			if err != nil {
+				return err
+			}
+			v = string(serializedVal)
+		}
+		val[i] = v
+	}
+
+	h, err := hash.HashOf(ctx, c.sch, val)
 	if err != nil {
 		return err
 	}
-	h := hash.Sum64()
 	c.seen[h] = struct{}{}
 
 	return nil

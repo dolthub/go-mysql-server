@@ -357,7 +357,34 @@ func (*Hour) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID,
 
 // Eval implements the Expression interface.
 func (h *Hour) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return getDatePart(ctx, h.UnaryExpressionStub, row, hour)
+	val, err := h.Child.Eval(ctx, row)
+	if err != nil || val == nil {
+		return nil, err
+	}
+
+	if timespan, ok := val.(types.Timespan); ok {
+		return hourFromTimespan(timespan), nil
+	}
+
+	date, err := types.DatetimeMaxPrecision.ConvertWithoutRangeCheck(ctx, val)
+	if err == nil {
+		return date.Hour(), nil
+	}
+
+	timespan, err := types.Time.ConvertToTimespan(val)
+	if err != nil {
+		ctx.Warn(1292, "Incorrect datetime value: '%s'", val)
+		return nil, nil
+	}
+	return hourFromTimespan(timespan), nil
+}
+
+func hourFromTimespan(timespan types.Timespan) int {
+	microseconds := timespan.AsMicroseconds()
+	if microseconds < 0 {
+		microseconds = -microseconds
+	}
+	return int(microseconds / int64(time.Hour/time.Microsecond))
 }
 
 // WithChildren implements the Expression interface.
@@ -1739,8 +1766,19 @@ func (c *CurrTime) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	if t, ok := result.(time.Time); ok {
-		// TODO: this is wrong, we need to include nanoseconds
-		return fmt.Sprintf("%02d:%02d:%02d", t.Hour(), t.Minute(), t.Second()), nil
+		precision := 0
+		if c.prec != nil {
+			prec, err := c.prec.Eval(ctx, row)
+			if err != nil {
+				return nil, err
+			}
+			fsp, ok := types.CoalesceInt(prec)
+			if !ok {
+				return nil, sql.ErrInvalidArgumentType.New(c.FunctionName())
+			}
+			precision = int(fsp)
+		}
+		return fmt.Sprintf("%02d:%02d:%02d%s", t.Hour(), t.Minute(), t.Second(), subSecondPrecision(t, precision)), nil
 	} else {
 		return nil, fmt.Errorf("unexpected type %T for NOW() result", result)
 	}
@@ -1748,7 +1786,7 @@ func (c *CurrTime) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 // WithChildren implements sql.Expression
 func (c *CurrTime) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
-	return NoArgFuncWithChildren(c, children)
+	return NewCurrTime(ctx, children...)
 }
 
 // Time is a function takes the Time part out from a datetime expression.

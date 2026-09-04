@@ -286,6 +286,8 @@ func TestTime_Hour(t *testing.T) {
 		{"null date", sql.NewRow(nil), nil, false},
 		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, false},
 		{"date as string", sql.NewRow(stringDate), 14, false},
+		{"time as string", sql.NewRow("13:04:05"), 13, false},
+		{"extended time value", sql.NewRow(types.Timespan(25 * time.Hour / time.Microsecond)), 25, false},
 		{"date as time", sql.NewRow(time.Now()), time.Now().UTC().Hour(), false},
 	}
 
@@ -684,6 +686,39 @@ func TestNow(t *testing.T) {
 				}
 				return nil
 			})
+		})
+	}
+}
+
+func TestCurrTime(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	ctx.SetQueryTime(time.Date(2021, 1, 1, 8, 30, 15, 123456789, time.UTC))
+
+	tests := []struct {
+		name      string
+		precision sql.Expression
+		expected  string
+	}{
+		{name: "default precision", expected: "08:30:15"},
+		{name: "zero precision", precision: expression.NewLiteral(0, types.Int64), expected: "08:30:15"},
+		{name: "millisecond precision", precision: expression.NewLiteral(3, types.Int64), expected: "08:30:15.123"},
+		{name: "microsecond precision", precision: expression.NewLiteral(6, types.Int64), expected: "08:30:15.123456"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			args := []sql.Expression(nil)
+			if test.precision != nil {
+				args = append(args, test.precision)
+			}
+			currentTime, err := NewCurrTime(ctx, args...)
+			require.NoError(t, err)
+
+			cloned, err := currentTime.WithChildren(ctx, currentTime.Children()...)
+			require.NoError(t, err)
+			actual, err := cloned.Eval(ctx, nil)
+			require.NoError(t, err)
+			require.Equal(t, test.expected, actual)
 		})
 	}
 }

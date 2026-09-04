@@ -129,6 +129,7 @@ type SumAgg struct {
 	baseWindowFunction
 	// use prefix sums to quickly calculate arbitrary frame sum within partition
 	prefixSum      []float64
+	nullCnt        []int
 	partitionStart int
 	partitionEnd   int
 }
@@ -165,7 +166,7 @@ func (a *SumAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, b
 	a.partitionStart, a.partitionEnd = interval.Start, interval.End
 	a.Dispose(ctx)
 	var err error
-	a.prefixSum, _, err = floatPrefixSum(ctx, interval, buf, a.expr)
+	a.prefixSum, a.nullCnt, err = floatPrefixSum(ctx, interval, buf, a.expr)
 	return err
 }
 
@@ -175,6 +176,16 @@ func (a *SumAgg) NewSlidingFrameInterval(added, dropped sql.WindowInterval) {
 
 func (a *SumAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) (interface{}, error) {
 	if interval.End-interval.Start < 1 {
+		return nil, nil
+	}
+	startIdx := interval.Start - a.partitionStart - 1
+	endIdx := interval.End - a.partitionStart - 1
+	nullCnt := a.nullCnt[endIdx]
+	if startIdx >= 0 {
+		nullCnt -= a.nullCnt[startIdx]
+	}
+	// SUM returns NULL when the frame has no non-NULL values.
+	if nullCnt == interval.End-interval.Start {
 		return nil, nil
 	}
 	return computePrefixSum(interval, a.partitionStart, a.prefixSum), nil
@@ -281,6 +292,10 @@ func (a *AvgAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.
 	if startIdx >= 0 {
 		nonNullCnt -= startIdx + 1
 		nonNullCnt += a.nullCnt[startIdx]
+	}
+	// AVG returns NULL when the frame has no non-NULL values.
+	if nonNullCnt == 0 {
+		return nil, nil
 	}
 	return computePrefixSum(interval, a.partitionStart, a.prefixSum) / float64(nonNullCnt), nil
 }
@@ -1132,7 +1147,7 @@ func (a *WindowedJSONObjectAgg) aggregateVals(ctx *sql.Context, interval sql.Win
 }
 
 type RowNumber struct {
-	pos int
+	pos int64
 }
 
 func NewRowNumber() *RowNumber {

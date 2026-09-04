@@ -927,6 +927,12 @@ var (
 		"a window function '%s' is in a context where it cannot be evaluated.",
 	)
 
+	// ErrSetOpOrderByAggregation is returned when the top-level ORDER BY of a UNION, INTERSECT, or EXCEPT contains an
+	// aggregate or window function.
+	ErrSetOpOrderByAggregation = errors.NewKind(
+		"Expression #%d of ORDER BY contains aggregate function and applies to a UNION, EXCEPT or INTERSECT",
+	)
+
 	// ErrFullTextNotSupported is returned when a table does not support the creation of Full-Text indexes.
 	ErrFullTextNotSupported = errors.NewKind("table does not support FULLTEXT indexes")
 

@@ -2599,6 +2599,50 @@ CREATE TABLE tab3 (
 				Query:       "table t1 union table t3 order by t1.j;",
 				ExpectedErr: planbuilder.ErrQualifiedOrderBy,
 			},
+			{
+				Query:       "table t1 union table t2 order by count(*);",
+				ExpectedErr: sql.ErrSetOpOrderByAggregation,
+			},
+			{
+				Query:       "table t1 union all table t2 order by max(i);",
+				ExpectedErr: sql.ErrSetOpOrderByAggregation,
+			},
+			{
+				Query:       "table t1 union table t2 order by row_number() over (order by i);",
+				ExpectedErr: sql.ErrSetOpOrderByAggregation,
+			},
+			{
+				Query:       "table t1 union table t2 order by sum(i) over ();",
+				ExpectedErr: sql.ErrSetOpOrderByAggregation,
+			},
+			{
+				Query:       "table t1 union table t2 order by count(*) + 1;",
+				ExpectedErr: sql.ErrSetOpOrderByAggregation,
+			},
+			{
+				Query:          "table t1 union table t2 order by i, count(*);",
+				ExpectedErrStr: "Expression #2 of ORDER BY contains aggregate function and applies to a UNION, EXCEPT or INTERSECT",
+			},
+			{
+				Query: "select i, sum(i) over () as s from t1 union all select i, sum(i) over () as s from t2 order by s, i;",
+				Expected: []sql.Row{
+					{1, 4.0},
+					{3, 4.0},
+					{1, 6.0},
+					{2, 6.0},
+					{3, 6.0},
+				},
+			},
+			{
+				Query: "select i, sum(i) over () as s from t1 union all select i, sum(i) over () as s from t2 order by 2, 1;",
+				Expected: []sql.Row{
+					{1, 4.0},
+					{3, 4.0},
+					{1, 6.0},
+					{2, 6.0},
+					{3, 6.0},
+				},
+			},
 		},
 	},
 	{
@@ -2680,6 +2724,14 @@ CREATE TABLE tab3 (
 				},
 			},
 			{
+				Query:       "table x intersect table y order by max(i);",
+				ExpectedErr: sql.ErrSetOpOrderByAggregation,
+			},
+			{
+				Query:       "table x intersect table y order by row_number() over (order by i);",
+				ExpectedErr: sql.ErrSetOpOrderByAggregation,
+			},
+			{
 				// Resulting type is string for some reason
 				Skip:  true,
 				Query: "table t1 intersect table t2;",
@@ -2739,6 +2791,10 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{
 					{2},
 				},
+			},
+			{
+				Query:       "table x except table y order by count(*);",
+				ExpectedErr: sql.ErrSetOpOrderByAggregation,
 			},
 			{
 				Query:    "table l except table r;",
@@ -6623,6 +6679,17 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{"+02:00", true}},
 			},
 		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11512
+		Name:    "HOUR preserves extended TIME column values",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE hour_time_values (v TIME)",
+			"INSERT INTO hour_time_values VALUES ('02:00:00'), ('13:04:05'), ('25:00:00'), (NULL)",
+		},
+		Query:    "SELECT HOUR(v) FROM hour_time_values WHERE HOUR(v) >= 13 ORDER BY HOUR(v) DESC",
+		Expected: []sql.Row{{int32(25)}, {int32(13)}},
 	},
 	{
 		Name:    "timestamp timezone conversion",
@@ -10874,8 +10941,7 @@ where
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
 			{
-				// TODO: prevent this entirely?
-				// Disabling `NO_ZERO_IN_DATE` throws error, and doesn't change SQL_MODE
+				// Disabling `NO_ZERO_IN_DATE` throws additional warning
 				Query: "set @@sql_mode = '" +
 					"STRICT_TRANS_TABLES," +
 					"NO_ZERO_DATE," +
@@ -10883,11 +10949,9 @@ where
 				Expected: []sql.Row{
 					{types.OkResult{}},
 				},
-				ExpectedWarningsCount: 1,
-				ExpectedWarning:       3135,
-				ExpectedWarningMessageSubstring: "'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' " +
-					"sql modes should be used with strict mode. " +
-					"They will be merged with strict mode in a future release",
+				ExpectedWarningsCount:           2,
+				ExpectedWarning:                 3135,
+				ExpectedWarningMessageSubstring: "Removing NO_ZERO_IN_DATE mode is not supported",
 			},
 			{
 				Query: "select @@sql_mode",

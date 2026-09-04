@@ -514,7 +514,7 @@ var IsWindowFunc = IsMySQLWindowFuncName
 
 func IsMySQLWindowFuncName(ctx *sql.Context, name string) (bool, error) {
 	switch name {
-	case "first", "last", "count", "sum", "any_value",
+	case "first", "last", "count", "sum", "any_value", "bit_and", "bit_or", "bit_xor",
 		"avg", "max", "min", "count_distinct", "json_arrayagg",
 		"row_number", "percent_rank", "lead", "lag",
 		"first_value", "last_value",
@@ -605,11 +605,13 @@ func (b *Builder) buildWindow(fromScope, projScope *scope) *scope {
 	var selectExprs []sql.Expression
 	var selectGfs []sql.Expression
 	selectStr := make(map[string]bool)
+	windowStr := make(map[string]bool)
 	for _, col := range fromScope.windowFuncs {
 		e := col.scalar
-		if !selectStr[strings.ToLower(e.String())] {
+		if !windowStr[e.String()] {
 			switch e.(type) {
 			case sql.WindowAdaptableExpression:
+				windowStr[e.String()] = true
 				selectStr[strings.ToLower(e.String())] = true
 				selectExprs = append(selectExprs, e)
 				selectGfs = append(selectGfs, col.scalarGf())
@@ -631,7 +633,8 @@ func (b *Builder) buildWindow(fromScope, projScope *scope) *scope {
 		}
 
 		// projection dependencies -> table cols needed above
-		transform.InspectExpr(b.ctx, col.scalar, func(ctx *sql.Context, e sql.Expression) bool {
+		var findSelectDeps func(*sql.Context, sql.Expression) bool
+		findSelectDeps = func(ctx *sql.Context, e sql.Expression) bool {
 			switch e := e.(type) {
 			case *expression.GetField:
 				colName := strings.ToLower(e.String())
@@ -640,10 +643,17 @@ func (b *Builder) buildWindow(fromScope, projScope *scope) *scope {
 					selectGfs = append(selectGfs, e)
 					selectStr[colName] = true
 				}
+			case *plan.Subquery:
+				e.Correlated().ForEach(func(colId sql.ColumnId) {
+					if correlated, found := projScope.parent.getCol(colId); found {
+						findSelectDeps(ctx, correlated.scalarGf())
+					}
+				})
 			default:
 			}
 			return false
-		})
+		}
+		transform.InspectExpr(b.ctx, col.scalar, findSelectDeps)
 	}
 	for _, e := range fromScope.extraCols {
 		// accessory cols used by ORDER_BY, HAVING
