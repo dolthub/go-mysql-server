@@ -36,6 +36,7 @@ func TestLiteralStringRoundTrips(t *testing.T) {
 		{"datetime", NewLiteral(time.Date(2026, time.September, 4, 1, 2, 3, 456000000, time.UTC), types.DatetimeMaxPrecision), "'2026-09-04 01:02:03.456'"},
 		{"time", NewLiteral(types.Timespan(45_296_123_456), types.Time), "'12:34:56.123456'"},
 		{"json", NewLiteral(types.MustJSON(`{"a": 1}`), types.JSON), `CAST('{"a": 1}' AS JSON)`},
+		{"geometry", NewLiteral(types.Point{SRID: 4326, X: 1, Y: 2}, types.PointType{}), "ST_GeomFromWKB(0x0101000000000000000000F03F0000000000000040, 4326)"},
 	}
 
 	for _, tt := range tests {

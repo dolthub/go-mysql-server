@@ -124,6 +124,9 @@ func (lit *Literal) String() string {
 			return fmt.Sprintf("CAST(%s AS JSON)", quoteSQLString(jsonString))
 		}
 		return quoteSQLString(fmt.Sprint(litVal))
+	case types.GeometryValue:
+		serialized := litVal.Serialize()
+		return fmt.Sprintf("ST_GeomFromWKB(0x%X, %d)", serialized[types.SRIDSize:], litVal.GetSRID())
 	case nil:
 		return "NULL"
 	default:
