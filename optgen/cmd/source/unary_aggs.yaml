@@ -20,6 +20,8 @@ unaryAggs:
   desc:    "returns the bitwise OR of all bits in expr."
   retType: "types.Uint64"
 - name:    "BitXor"
+  sqlName: "bit_xor"
+  sqlString: true
   desc:    "returns the bitwise XOR of all bits in expr."
   retType: "types.Uint64"
 - name:    "Count"

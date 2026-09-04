@@ -341,25 +341,22 @@ func (a *BitXor) IsNullable(ctx *sql.Context) bool {
 }
 
 func (a *BitXor) String() string {
+	ret := "BIT_XOR(" + a.Child.String() + ")"
 	if a.window != nil {
-		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("BITXOR")
-		children := []string{a.window.String(), a.Child.String()}
-		pr.WriteChildren(children...)
-		return pr.String()
+		ret += " " + a.window.String()
 	}
-	return "BITXOR(" + a.Child.String() + ")"
+	return ret
 }
 
 func (a *BitXor) DebugString(ctx *sql.Context) string {
 	if a.window != nil {
 		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("BITXOR")
+		_ = pr.WriteNode("BIT_XOR")
 		children := []string{sql.DebugString(ctx, a.window), sql.DebugString(ctx, a.Child)}
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("BITXOR(%s)", sql.DebugString(ctx, a.Child))
+	return fmt.Sprintf("BIT_XOR(%s)", sql.DebugString(ctx, a.Child))
 }
 
 func (a *BitXor) WithWindow(ctx *sql.Context, window *sql.WindowDefinition) sql.WindowAdaptableExpression {
