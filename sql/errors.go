@@ -29,6 +29,12 @@ var (
 	// ErrUnsupportedFeature is thrown when a feature is not already supported
 	ErrUnsupportedFeature = errors.NewKind("unsupported feature: %s")
 
+	// ErrIntervalInvalidUse is returned when an interval expression is evaluated outside date arithmetic.
+	ErrIntervalInvalidUse = errors.NewKind(
+		"invalid use of an interval, which can only be used with DATE_ADD, " +
+			"DATE_SUB and +/- operators to subtract from or add to a date",
+	)
+
 	// ErrReadOnly is returned when the engine has been set to Read Only but a write operation was attempted.
 	ErrReadOnly = errors.NewKind("database server is set to read only mode")
 

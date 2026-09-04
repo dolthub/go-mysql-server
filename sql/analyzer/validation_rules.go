@@ -586,7 +586,7 @@ func validateIntervalUsage(ctx *sql.Context, a *Analyzer, n sql.Node, scope *pla
 	})
 
 	if invalid {
-		return nil, transform.SameTree, analyzererrors.ErrIntervalInvalidUse.New()
+		return nil, transform.SameTree, sql.ErrIntervalInvalidUse.New()
 	}
 
 	return n, transform.SameTree, nil
