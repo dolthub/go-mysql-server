@@ -22,6 +22,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/spatial"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestFunctionRegistry(t *testing.T) {
@@ -59,4 +61,20 @@ func TestFunctionRegistryMissingFunction(t *testing.T) {
 	f, ok := reg.Function(sql.NewEmptyContext(), "", "func")
 	require.False(ok)
 	require.Nil(f)
+}
+
+func TestMultiLineStringFromTextRegistryString(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	reg := function.NewRegistry()
+	reg.Register(function.BuiltIns...)
+	fn, ok := reg.Function(ctx, "", "st_multilinestringfromtext")
+	require.True(t, ok)
+	expr, err := fn.NewInstance(ctx, []sql.Expression{
+		expression.NewLiteral("MULTILINESTRING((1 2, 3 4))", types.Text),
+	})
+	require.NoError(t, err)
+	require.IsType(t, &spatial.MLineFromText{}, expr)
+	require.Equal(t, "st_mlinefromtext('MULTILINESTRING((1 2, 3 4))')", expr.String())
+	_, err = sql.NewMysqlParser().ParseSimple("SELECT " + expr.String())
+	require.NoError(t, err)
 }

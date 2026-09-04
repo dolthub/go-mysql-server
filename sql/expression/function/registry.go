@@ -283,7 +283,7 @@ var BuiltIns = []sql.Function{
 	sql.FunctionN{Name: "st_linestringfromwkb", Fn: spatial.NewLineFromWKB},
 	sql.FunctionN{Name: "st_mlinefromtext", Fn: spatial.NewMLineFromText},
 	sql.FunctionN{Name: "st_mlinefromwkb", Fn: spatial.NewMLineFromWKB},
-	sql.FunctionN{Name: "st_multilinestringfromtext", Fn: spatial.NewLineFromText},
+	sql.FunctionN{Name: "st_multilinestringfromtext", Fn: spatial.NewMLineFromText},
 	sql.FunctionN{Name: "st_multilinestringfromwkb", Fn: spatial.NewMLineFromWKB},
 	sql.FunctionN{Name: "st_mpointfromtext", Fn: spatial.NewMPointFromText},
 	sql.FunctionN{Name: "st_mpointfromwkb", Fn: spatial.NewMPointFromWKB},
