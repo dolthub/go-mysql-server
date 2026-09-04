@@ -977,7 +977,7 @@ var FunctionQueryTests = []QueryTest{
 	},
 	{
 		Query: `SELECT DATEDIFF(val, '2019/12/28') FROM
-			(values row('2017-11-30 22:59:59'), row('2020/01/02'), row('2021-11-30'), row('2020-12-31 12:00:00')) a (val)`,
+			(values row('2017-11-30 22:59:59'), row('2020/01/02'), row('2021-11-30'), row('2020-12-31T12:00:00')) a (val)`,
 		Expected: []sql.Row{
 			{-758},
 			{5},
@@ -993,7 +993,7 @@ var FunctionQueryTests = []QueryTest{
 	},
 	{
 		Query: `SELECT TIMESTAMPDIFF(MINUTE, val, '2019/12/28') FROM
-			(values row('2017-11-30 22:59:59'), row('2020/01/02'), row('2019-12-27 23:15:55'), row('2019-12-31 12:00:00')) a (val);`,
+			(values row('2017-11-30 22:59:59'), row('2020/01/02'), row('2019-12-27 23:15:55'), row('2019-12-31T12:00:00')) a (val);`,
 		Expected: []sql.Row{
 			{1090140},
 			{-7200},
@@ -2682,6 +2682,12 @@ var FunctionQueryTests = []QueryTest{
 	},
 
 	// boundaries
+	{
+		Query: "select date('0000-01-01')",
+		Expected: []sql.Row{
+			{time.Date(0000, 1, 1, 0, 0, 0, 0, time.UTC)},
+		},
+	},
 	{
 		Query: "select date('9999-12-31');",
 		Expected: []sql.Row{

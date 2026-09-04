@@ -390,6 +390,16 @@ func getFloatOrMaxDecimalType(ctx *sql.Context, e sql.Expression, treatIntsAsFlo
 // is used for 'div' or 'mod' arithmetic operation, which requires
 // the result value to have precise precision and scale.
 func convertToDecimalValue(ctx *sql.Context, origType, typ sql.Type, val any) *apd.Decimal {
+	// TODO: update type aware implementation for datetime types
+	//  This is a placeholder implementation for existing tests
+	if dtTyp, ok := origType.(sql.DatetimeType); ok && !types.IsTime(typ) {
+		var err error
+		val, err = DateTimeToNumericString(ctx, dtTyp, val)
+		if err != nil {
+			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrTruncatedIncorrect.New(dtTyp.String(), val).Error())
+		}
+	}
+	
 	switch v := val.(type) {
 	case bool:
 		if v {
@@ -734,7 +744,11 @@ func (i *IntDiv) convertLeftRight(ctx *sql.Context, lVal, rVal any) (any, any) {
 	default:
 		lVal = convertToDecimalValue(ctx, lTyp, typ, lVal)
 		rVal = convertToDecimalValue(ctx, rTyp, typ, rVal)
+		return lVal, rVal
 	}
+
+	lVal = convertValueToType(ctx, lTyp, typ, lVal)
+	rVal = convertValueToType(ctx, rTyp, typ, rVal)
 	return lVal, rVal
 }
 

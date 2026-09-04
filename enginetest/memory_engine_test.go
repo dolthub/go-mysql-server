@@ -200,8 +200,8 @@ func TestSingleScript(t *testing.T) {
 			SetUpScript: []string{},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "select convert('23:24:25', TIME) DIV NOW();",
-					Expected: []sql.Row{},
+					Query:    `SELECT STR_TO_DATE(FIRST_VALUE(NULL) OVER (), '%Y-%m-%d')`,
+					Expected: []sql.Row{{nil}},
 				},
 			},
 		},
