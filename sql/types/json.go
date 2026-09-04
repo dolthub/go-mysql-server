@@ -212,16 +212,16 @@ func DeepCopyJson(v interface{}) interface{} {
 		return nil
 	}
 
-	switch v.(type) {
+	switch v := v.(type) {
 	case map[string]interface{}:
-		m := v.(map[string]interface{})
+		m := v
 		newMap := make(map[string]interface{})
 		for k, value := range m {
 			newMap[k] = DeepCopyJson(value)
 		}
 		return newMap
 	case []interface{}:
-		arr := v.([]interface{})
+		arr := v
 		newArray := make([]interface{}, len(arr))
 		for i, doc := range arr {
 			newArray[i] = DeepCopyJson(doc)
@@ -231,6 +231,10 @@ func DeepCopyJson(v interface{}) interface{} {
 		int, int8, int16, int32, int64,
 		uint, uint8, uint16, uint32, uint64:
 		return v
+	case *apd.Decimal:
+		return new(apd.Decimal).Set(v)
+	case apd.Decimal:
+		return *new(apd.Decimal).Set(&v)
 	default:
 		return nil
 	}
@@ -247,6 +251,43 @@ func MustJSON(s string) JSONDocument {
 // JsonUnmarshal unmarshals JSON data. It picks the best representation
 // for each number to avoid losing precision whenever possible.
 func JsonUnmarshal(data []byte, v *interface{}) error {
+	if err := decodeJson(data, v); err != nil {
+		return err
+	}
+	*v = convertJsonNumbers(*v)
+	return nil
+}
+
+// JsonUnmarshalPreserveNumberPrecision unmarshals JSON data while representing every
+// JSON number as an arbitrary-precision decimal. Callers that require MySQL JSON
+// number normalization should use JsonUnmarshal instead.
+func JsonUnmarshalPreserveNumberPrecision(data []byte, v *interface{}) error {
+	if err := decodeJson(data, v); err != nil {
+		return err
+	}
+	converted, err := convertJsonNumbersToDecimals(*v)
+	if err != nil {
+		return err
+	}
+	*v = converted
+	return nil
+}
+
+// JsonUnmarshalPreserveNumberTokens unmarshals JSON while retaining each number's
+// original lexical representation as a json.Number. This is useful for textual
+// JSON dialects whose accepted exponent range is wider than numeric types.
+func JsonUnmarshalPreserveNumberTokens(data []byte, v *interface{}) error {
+	return decodeJson(data, v)
+}
+
+// JsonNumbersToDecimals recursively converts retained json.Number tokens to
+// arbitrary-precision decimals without reparsing the surrounding document.
+func JsonNumbersToDecimals(v interface{}) (interface{}, error) {
+	return convertJsonNumbersToDecimals(v)
+}
+
+// decodeJson decodes one complete JSON value while retaining json.Number tokens.
+func decodeJson(data []byte, v *interface{}) error {
 	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.UseNumber()
 	if err := dec.Decode(v); err != nil {
@@ -262,17 +303,16 @@ func JsonUnmarshal(data []byte, v *interface{}) error {
 	if err != io.EOF {
 		return err
 	}
-	*v = convertJsonNumbers(*v)
 	return nil
 }
 
 // convertJsonNumbers recursively walks a parsed JSON value and converts json.Number values to
-// int64, uint64, or float64, choosing the most precise representation.
+// int64, uint64, or float64, choosing the most precise MySQL-compatible representation.
 func convertJsonNumbers(v interface{}) interface{} {
 	switch val := v.(type) {
 	case json.Number:
 		s := val.String()
-		// If the number contains a decimal point or exponent, treat as float
+		// If the number contains a decimal point or exponent, treat as float.
 		f, _ := val.Float64()
 		if strings.ContainsAny(s, ".eE") {
 			return f
@@ -304,4 +344,71 @@ func convertJsonNumbers(v interface{}) interface{} {
 	default:
 		return v
 	}
+}
+
+// convertJsonNumbersToDecimals recursively converts JSON number tokens to exact decimals.
+func convertJsonNumbersToDecimals(v interface{}) (interface{}, error) {
+	switch val := v.(type) {
+	case json.Number:
+		return newJSONDecimal(val.String())
+	case map[string]interface{}:
+		for key, inner := range val {
+			converted, err := convertJsonNumbersToDecimals(inner)
+			if err != nil {
+				return nil, err
+			}
+			val[key] = converted
+		}
+		return val, nil
+	case []interface{}:
+		for i, inner := range val {
+			converted, err := convertJsonNumbersToDecimals(inner)
+			if err != nil {
+				return nil, err
+			}
+			val[i] = converted
+		}
+		return val, nil
+	default:
+		return val, nil
+	}
+}
+
+// newJSONDecimal parses a JSON number across the full exponent range supported by apd.
+func newJSONDecimal(input string) (*apd.Decimal, error) {
+	if decimal, _, err := apd.NewFromString(input); err == nil {
+		return decimal, nil
+	}
+
+	negative := strings.HasPrefix(input, "-")
+	unsigned := strings.TrimPrefix(input, "-")
+	mantissa, exponentText, hasExponent := strings.Cut(unsigned, "e")
+	if !hasExponent {
+		mantissa, exponentText, hasExponent = strings.Cut(unsigned, "E")
+	}
+	if !hasExponent {
+		return nil, fmt.Errorf("invalid JSON decimal %q", input)
+	}
+	exponent, err := strconv.ParseInt(exponentText, 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	if dot := strings.IndexByte(mantissa, '.'); dot >= 0 {
+		scale := int64(len(mantissa) - dot - 1)
+		if exponent < int64(math.MinInt32)+scale || exponent > int64(math.MaxInt32)+scale {
+			return nil, fmt.Errorf("JSON decimal exponent out of range")
+		}
+		exponent -= scale
+		mantissa = mantissa[:dot] + mantissa[dot+1:]
+	}
+	if exponent < math.MinInt32 || exponent > math.MaxInt32 {
+		return nil, fmt.Errorf("JSON decimal exponent out of range")
+	}
+	var coefficient apd.BigInt
+	if _, ok := coefficient.SetString(mantissa, 10); !ok {
+		return nil, fmt.Errorf("invalid JSON decimal %q", input)
+	}
+	decimal := apd.NewWithBigInt(&coefficient, int32(exponent))
+	decimal.Negative = negative
+	return decimal, nil
 }
