@@ -1956,10 +1956,7 @@ Union distinct
 			Query: "SELECT sum(y) over w FROM xy WINDOW w as (partition by z order by x rows unbounded preceding) order by x",
 			ExpectedPlan: `
 Project
- ├─ columns: [sum
- │   ├─ over ( partition by xy.z order by xy.x asc rows between unbounded preceding and current row)
- │   └─ xy.y
- │  :4!null->sum(y) over w]
+ ├─ columns: [sum(xy.y) over ( partition by xy.z order by xy.x asc rows between unbounded preceding and current row):4!null->sum(y) over w]
  └─ Sort(xy.x:1!null ASC nullsFirst)
      └─ Window
          ├─ SUM
