@@ -392,6 +392,11 @@ func TestUncompress(t *testing.T) {
 }
 
 func TestUncompressedLength(t *testing.T) {
+	stringExpr := NewUncompressedLength(sql.NewEmptyContext(), expression.NewLiteral("value", types.Text))
+	require.Equal(t, "uncompressed_length('value')", stringExpr.String())
+	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + stringExpr.String())
+	require.NoError(t, err)
+
 	tests := []struct {
 		val sql.Expression
 		exp interface{}

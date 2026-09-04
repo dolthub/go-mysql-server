@@ -434,7 +434,7 @@ var _ sql.CollationCoercible = (*UncompressedLength)(nil)
 
 // NewUncompressedLength returns a new UncompressedLength function expression
 func NewUncompressedLength(ctx *sql.Context, arg sql.Expression) sql.Expression {
-	return &UncompressedLength{NewUnaryFunc(arg, "UncompressedLength", types.Uint32)}
+	return &UncompressedLength{NewUnaryFunc(arg, "uncompressed_length", types.Uint32)}
 }
 
 // Description implements sql.FunctionExpression
