@@ -25,6 +25,21 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
+func TestFormatString(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	twoArgs, err := NewFormat(ctx, expression.NewLiteral(1234, types.Int64), expression.NewLiteral(2, types.Int64))
+	require.NoError(t, err)
+	require.Equal(t, "format(1234,2)", twoArgs.String())
+	_, err = sql.NewMysqlParser().ParseSimple("SELECT " + twoArgs.String())
+	require.NoError(t, err)
+
+	threeArgs, err := NewFormat(ctx, expression.NewLiteral(1234, types.Int64), expression.NewLiteral(2, types.Int64), expression.NewLiteral("de_DE", types.Text))
+	require.NoError(t, err)
+	require.Equal(t, "format(1234,2,'de_DE')", threeArgs.String())
+	_, err = sql.NewMysqlParser().ParseSimple("SELECT " + threeArgs.String())
+	require.NoError(t, err)
+}
+
 func TestFormat(t *testing.T) {
 	testCases := []struct {
 		name     string
