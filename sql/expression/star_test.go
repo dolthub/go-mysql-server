@@ -17,8 +17,9 @@ package expression
 import (
 	"testing"
 
-	"github.com/dolthub/go-mysql-server/internal/exprtest"
 	"github.com/stretchr/testify/require"
+
+	"github.com/dolthub/go-mysql-server/internal/exprtest"
 )
 
 func TestStarString(t *testing.T) {
