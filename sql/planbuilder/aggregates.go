@@ -701,21 +701,6 @@ func (b *Builder) buildNamedWindows(fromScope *scope, window ast.Window) {
 	return
 }
 
-// buildWindowClauseScalar builds a window ORDER BY or PARTITION BY
-// expression, naming that clause in error messages.
-//
-// A window definition sits outside the SELECT list scope: a bare
-// alias is rejected, a nested one resolves to the aliased expression.
-// See [window functions], [column aliases].
-//
-// [window functions]: https://dev.mysql.com/doc/refman/8.4/en/window-functions-usage.html
-// [column aliases]: https://dev.mysql.com/doc/refman/8.4/en/problems-with-alias.html
-func (b *Builder) buildWindowClauseScalar(inScope *scope, e ast.Expr, clause string) sql.Expression {
-	_, bareCol := e.(*ast.ColName)
-	defer b.withWindowState(clause, bareCol)()
-	return b.buildScalar(inScope, e)
-}
-
 func (b *Builder) buildWindowDef(fromScope *scope, def *ast.WindowDef) *sql.WindowDefinition {
 	if def == nil {
 		return nil
@@ -764,6 +749,21 @@ func (b *Builder) buildWindowDef(fromScope *scope, def *ast.WindowDef) *sql.Wind
 	}
 
 	return windowDef
+}
+
+// buildWindowClauseScalar builds a window ORDER BY or PARTITION BY
+// expression, naming that clause in error messages.
+//
+// A window definition sits outside the SELECT list scope: a bare
+// alias is rejected, a nested one resolves to the aliased expression.
+// See [window functions], [column aliases].
+//
+// [window functions]: https://dev.mysql.com/doc/refman/8.4/en/window-functions-usage.html
+// [column aliases]: https://dev.mysql.com/doc/refman/8.4/en/problems-with-alias.html
+func (b *Builder) buildWindowClauseScalar(inScope *scope, e ast.Expr, clause string) sql.Expression {
+	_, bareCol := e.(*ast.ColName)
+	defer b.withWindowState(clause, bareCol)()
+	return b.buildScalar(inScope, e)
 }
 
 // windowDisplayName returns a human-readable label for a window definition, for use in error
