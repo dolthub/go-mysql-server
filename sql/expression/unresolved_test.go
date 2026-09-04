@@ -31,3 +31,20 @@ func TestUnresolvedExpression(t *testing.T) {
 	o = NewNot(e)
 	require.NotNil(o)
 }
+
+func TestUnresolvedColumnString(t *testing.T) {
+	tests := []struct {
+		expr     *UnresolvedColumn
+		expected string
+	}{
+		{NewUnresolvedColumn("normal_name"), "normal_name"},
+		{NewUnresolvedColumn("select"), "`select`"},
+		{NewUnresolvedQualifiedColumn("table name", "column`name"), "`table name`.`column``name`"},
+	}
+
+	for _, test := range tests {
+		require.Equal(t, test.expected, test.expr.String())
+		_, err := sql.NewMysqlParser().ParseSimple("SELECT " + test.expr.String())
+		require.NoError(t, err)
+	}
+}

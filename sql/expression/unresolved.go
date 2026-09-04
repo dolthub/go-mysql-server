@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -88,10 +89,12 @@ func (uc *UnresolvedColumn) Name() string { return uc.name }
 func (uc *UnresolvedColumn) Table() string { return uc.table }
 
 func (uc *UnresolvedColumn) String() string {
+	name := sqlparser.String(sqlparser.NewColIdent(uc.name))
 	if uc.table == "" {
-		return uc.name
+		return name
 	}
-	return fmt.Sprintf("%s.%s", uc.table, uc.name)
+	table := sqlparser.String(sqlparser.NewTableIdent(uc.table))
+	return fmt.Sprintf("%s.%s", table, name)
 }
 
 // Eval implements the Expression interface.
