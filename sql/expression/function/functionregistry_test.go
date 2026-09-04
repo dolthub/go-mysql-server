@@ -78,3 +78,18 @@ func TestMultiLineStringFromTextRegistryString(t *testing.T) {
 	_, err = sql.NewMysqlParser().ParseSimple("SELECT " + expr.String())
 	require.NoError(t, err)
 }
+
+func TestSTEqualsRegistryString(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	reg := function.NewRegistry()
+	reg.Register(function.BuiltIns...)
+	fn, ok := reg.Function(ctx, "", "st_equals")
+	require.True(t, ok)
+	point := expression.NewLiteral(types.Point{X: 1, Y: 2}, types.PointType{})
+	expr, err := fn.NewInstance(ctx, []sql.Expression{point, point})
+	require.NoError(t, err)
+	require.IsType(t, &spatial.STEquals{}, expr)
+	require.Equal(t, "ST_EQUALS(ST_GeomFromWKB(0x0101000000000000000000F03F0000000000000040, 0), ST_GeomFromWKB(0x0101000000000000000000F03F0000000000000040, 0))", expr.String())
+	_, err = sql.NewMysqlParser().ParseSimple("SELECT " + expr.String())
+	require.NoError(t, err)
+}
