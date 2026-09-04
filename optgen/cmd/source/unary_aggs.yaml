@@ -42,6 +42,7 @@ unaryAggs:
   windowSqlName: "last_value"
   desc: "returns the last value in a sequence of elements of an aggregation."
 - name: "Max"
+  sqlString: true
   desc: "returns the maximum value of expr in all rows."
 - name: "Min"
   desc: "returns the minimum value of expr in all rows."

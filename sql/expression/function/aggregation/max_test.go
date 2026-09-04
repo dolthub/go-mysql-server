@@ -29,6 +29,11 @@ func TestMax_String(t *testing.T) {
 	assert := require.New(t)
 	m := NewMax(expression.NewGetField(0, types.Int32, "field", true))
 	assert.Equal("MAX(field)", m.String())
+
+	windowed := m.WithWindow(sql.NewEmptyContext(), &sql.WindowDefinition{})
+	assert.Equal("MAX(field) over ()", windowed.String())
+	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + windowed.String())
+	assert.NoError(err)
 }
 
 func TestMax_Eval_Int32(t *testing.T) {
