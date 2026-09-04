@@ -175,7 +175,7 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 			if inScope.selectAliases == nil {
 				inScope.selectAliases = make(map[string]*expression.Alias)
 			}
-			inScope.selectAliases[e.Name()] = e
+			inScope.selectAliases[strings.ToLower(e.Name())] = e
 			exprs = append(exprs, e)
 		case *expression.Literal:
 			exprs = append(exprs, e)

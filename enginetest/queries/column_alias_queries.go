@@ -322,6 +322,10 @@ var ColumnAliasQueries = []ScriptTest{
 				Query:    "select id, g, k as order_alias, lag(v) over (partition by g order by k, id) as prev_v from t order by order_alias;",
 				Expected: []sql.Row{{3, 1, -2, nil}, {2, 0, 0, nil}, {1, 1, 1, 85}},
 			},
+			{
+				Query:    "select id, k as ORDER_ALIAS, lag(v) over (order by order_alias + 0) as p from t order by id;",
+				Expected: []sql.Row{{1, 1, -37}, {2, 0, 85}, {3, -2, nil}},
+			},
 		},
 	},
 	{
