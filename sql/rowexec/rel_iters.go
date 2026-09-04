@@ -30,6 +30,16 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
+const (
+	// MissingNoDateInSQLModeWarningMessage is thrown when users remove NO_ZERO_IN_DATE from SQL_MODE.
+	// The Golang Time library does not properly support 0 month and 0 day.
+	// Users are still able to remove the mode, but it will still behave as if the mode is enabled.
+	MissingNoDateInSQLModeWarningMessage = "Removing NO_ZERO_IN_DATE mode is not supported. " +
+		"DATEs with zero month or zero day will be treated as if NO_ZERO_IN_DATE is enabled."
+	MissingStrictModeWarningMessage = "'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. " +
+		"They will be merged with strict mode in a future release."
+)
+
 // windowToIter transforms a plan.Window into a series
 // of aggregation.WindowPartitionIter and a list of output projection indexes
 // for each window partition.
@@ -393,7 +403,7 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 	if err != nil {
 		return err
 	}
-	err = validateSystemVariableValue(sysVar.Name, val)
+	err = validateSystemVariableValue(ctx, sysVar.Name, val)
 	if err != nil {
 		return err
 	}
@@ -469,7 +479,7 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 	return nil
 }
 
-func validateSystemVariableValue(sysVarName string, val interface{}) error {
+func validateSystemVariableValue(ctx *sql.Context, sysVarName string, val any) error {
 	switch strings.ToLower(sysVarName) {
 	case "time_zone":
 		valStr, ok := val.(string)
@@ -478,6 +488,42 @@ func validateSystemVariableValue(sysVarName string, val interface{}) error {
 		}
 		if !sql.ValidTimeZone(valStr) {
 			return sql.ErrInvalidTimeZone.New(valStr)
+		}
+	case "sql_mode":
+		switch v := val.(type) {
+		case uint64:
+			// If the assigned SQL_MODE contains any one of these "strict" modes, it should contain every one of
+			// the strict modes. Throw a warning if any of them are missing.
+			hasStrictTransTables := v&sql.MODE_STRICT_TRANS_TABLES != 0
+			hasStrictAllTables := v&sql.MODE_STRICT_ALL_TABLES != 0
+			hasStrict := hasStrictTransTables || hasStrictAllTables
+			hasErrorForDivisionByZero := v&sql.MODE_ERROR_FOR_DIVISION_BY_ZERO != 0
+			hasNoZeroDate := v&sql.MODE_NO_ZERO_DATE != 0
+			hasNoZeroInDate := v&sql.MODE_NO_ZERO_IN_DATE != 0
+			if !hasNoZeroInDate {
+				ctx.Warn(3135, MissingNoDateInSQLModeWarningMessage)
+			}
+			if (hasStrict || hasErrorForDivisionByZero || hasNoZeroDate || hasNoZeroInDate) &&
+				!(hasStrict && hasErrorForDivisionByZero && hasNoZeroDate && hasNoZeroInDate) {
+				ctx.Warn(3135, MissingStrictModeWarningMessage)
+			}
+		case string:
+			v = strings.ToUpper(v)
+			// If the assigned SQL_MODE contains any one of these "strict" modes, it should contain every one of
+			// the strict modes. Throw a warning if any of them are missing.
+			hasStrictTransTables := strings.Contains(v, sql.STRICT_TRANS_TABLES)
+			hasStrictAllTables := strings.Contains(v, sql.STRICT_ALL_TABLES)
+			hasStrict := hasStrictTransTables || hasStrictAllTables
+			hasErrorForDivisionByZero := strings.Contains(v, sql.ERROR_FOR_DIVISION_BY_ZERO)
+			hasNoZeroDate := strings.Contains(v, sql.NO_ZERO_DATE)
+			hasNoZeroInDate := strings.Contains(v, sql.NO_ZERO_IN_DATE)
+			if !hasNoZeroInDate {
+				ctx.Warn(3135, MissingNoDateInSQLModeWarningMessage)
+			}
+			if (hasStrict || hasErrorForDivisionByZero || hasNoZeroDate || hasNoZeroInDate) &&
+				!(hasStrict && hasErrorForDivisionByZero && hasNoZeroDate && hasNoZeroInDate) {
+				ctx.Warn(3135, MissingStrictModeWarningMessage)
+			}
 		}
 	}
 	return nil

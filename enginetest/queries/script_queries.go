@@ -1222,7 +1222,7 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 				Expected:                        []sql.Row{{0}},
 				ExpectedWarningsCount:           1,
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
-				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 'a'",
+				ExpectedWarningMessageSubstring: "Truncated incorrect DECIMAL value: 'a'",
 			},
 			{
 				Query:                 "select 4 div 'a';",
@@ -1243,7 +1243,7 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 				Expected:                        []sql.Row{{4}},
 				ExpectedWarningsCount:           1,
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
-				ExpectedWarningMessageSubstring: "Truncated incorrect double value: '12a'",
+				ExpectedWarningMessageSubstring: "Truncated incorrect DECIMAL value: '12a'",
 			},
 			{
 				Query:                 "select 'a' mod 'a';",
@@ -2075,6 +2075,31 @@ CREATE TABLE table2 (
 		},
 	},
 	{
+		Name: "count nullable columns in a keyless table",
+		SetUpScript: []string{
+			"CREATE TABLE keyless_count (p BIGINT, q BIGINT, r BIGINT)",
+			"INSERT INTO keyless_count VALUES (1, NULL, NULL), (2, 20, NULL), (2, 20, NULL), (3, 30, 300), (NULL, NULL, NULL)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT COUNT(*) FROM keyless_count",
+				Expected: []sql.Row{{5}},
+			},
+			{
+				Query:    "SELECT COUNT(p) FROM keyless_count",
+				Expected: []sql.Row{{4}},
+			},
+			{
+				Query:    "SELECT COUNT(q) FROM keyless_count",
+				Expected: []sql.Row{{3}},
+			},
+			{
+				Query:    "SELECT COUNT(r) FROM keyless_count",
+				Expected: []sql.Row{{1}},
+			},
+		},
+	},
+	{
 		Name: "index match only exact string, no prefix",
 		SetUpScript: []string{
 			"CREATE TABLE pk (x varchar(10) primary key)",
@@ -2574,6 +2599,50 @@ CREATE TABLE tab3 (
 				Query:       "table t1 union table t3 order by t1.j;",
 				ExpectedErr: planbuilder.ErrQualifiedOrderBy,
 			},
+			{
+				Query:       "table t1 union table t2 order by count(*);",
+				ExpectedErr: sql.ErrSetOpOrderByAggregation,
+			},
+			{
+				Query:       "table t1 union all table t2 order by max(i);",
+				ExpectedErr: sql.ErrSetOpOrderByAggregation,
+			},
+			{
+				Query:       "table t1 union table t2 order by row_number() over (order by i);",
+				ExpectedErr: sql.ErrSetOpOrderByAggregation,
+			},
+			{
+				Query:       "table t1 union table t2 order by sum(i) over ();",
+				ExpectedErr: sql.ErrSetOpOrderByAggregation,
+			},
+			{
+				Query:       "table t1 union table t2 order by count(*) + 1;",
+				ExpectedErr: sql.ErrSetOpOrderByAggregation,
+			},
+			{
+				Query:          "table t1 union table t2 order by i, count(*);",
+				ExpectedErrStr: "Expression #2 of ORDER BY contains aggregate function and applies to a UNION, EXCEPT or INTERSECT",
+			},
+			{
+				Query: "select i, sum(i) over () as s from t1 union all select i, sum(i) over () as s from t2 order by s, i;",
+				Expected: []sql.Row{
+					{1, 4.0},
+					{3, 4.0},
+					{1, 6.0},
+					{2, 6.0},
+					{3, 6.0},
+				},
+			},
+			{
+				Query: "select i, sum(i) over () as s from t1 union all select i, sum(i) over () as s from t2 order by 2, 1;",
+				Expected: []sql.Row{
+					{1, 4.0},
+					{3, 4.0},
+					{1, 6.0},
+					{2, 6.0},
+					{3, 6.0},
+				},
+			},
 		},
 	},
 	{
@@ -2655,6 +2724,14 @@ CREATE TABLE tab3 (
 				},
 			},
 			{
+				Query:       "table x intersect table y order by max(i);",
+				ExpectedErr: sql.ErrSetOpOrderByAggregation,
+			},
+			{
+				Query:       "table x intersect table y order by row_number() over (order by i);",
+				ExpectedErr: sql.ErrSetOpOrderByAggregation,
+			},
+			{
 				// Resulting type is string for some reason
 				Skip:  true,
 				Query: "table t1 intersect table t2;",
@@ -2714,6 +2791,10 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{
 					{2},
 				},
+			},
+			{
+				Query:       "table x except table y order by count(*);",
+				ExpectedErr: sql.ErrSetOpOrderByAggregation,
 			},
 			{
 				Query:    "table l except table r;",
@@ -10839,6 +10920,95 @@ where
 				Query: "SELECT pk, e FROM test_enum;",
 				Expected: []sql.Row{
 					{1, nil},
+				},
+			},
+		},
+	},
+	{
+		Name:        "MySQL default and strict SQL_MODE behavior",
+		Dialect:     "mysql",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				// Disabling `NO_ZERO_IN_DATE` throws additional warning
+				Query: "set @@sql_mode = '" +
+					"STRICT_TRANS_TABLES," +
+					"NO_ZERO_DATE," +
+					"ERROR_FOR_DIVISION_BY_ZERO'",
+				Expected: []sql.Row{
+					{types.OkResult{}},
+				},
+				ExpectedWarningsCount:           2,
+				ExpectedWarning:                 3135,
+				ExpectedWarningMessageSubstring: "Removing NO_ZERO_IN_DATE mode is not supported",
+			},
+			{
+				Query: "select @@sql_mode",
+				Expected: []sql.Row{
+					{"STRICT_TRANS_TABLES,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO"},
+				},
+			},
+			{
+				// Disabling `STRICT_TRANS_TABLES` throws strict mode warning
+				Query: "set @@sql_mode = '" +
+					"NO_ZERO_IN_DATE," +
+					"NO_ZERO_DATE," +
+					"ERROR_FOR_DIVISION_BY_ZERO'",
+				Expected: []sql.Row{
+					{types.OkResult{}},
+				},
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       3135,
+				ExpectedWarningMessageSubstring: "'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' " +
+					"sql modes should be used with strict mode. " +
+					"They will be merged with strict mode in a future release",
+			},
+			{
+				Query: "select @@sql_mode",
+				Expected: []sql.Row{
+					{"NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO"},
+				},
+			},
+			{
+				// Disabling `NO_ZERO_DATE` throws strict mode warning
+				Query: "set @@sql_mode = '" +
+					"STRICT_TRANS_TABLES," +
+					"NO_ZERO_IN_DATE," +
+					"ERROR_FOR_DIVISION_BY_ZERO'",
+				Expected: []sql.Row{
+					{types.OkResult{}},
+				},
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       3135,
+				ExpectedWarningMessageSubstring: "'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' " +
+					"sql modes should be used with strict mode. " +
+					"They will be merged with strict mode in a future release",
+			},
+			{
+				Query: "select @@sql_mode",
+				Expected: []sql.Row{
+					{"STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO"},
+				},
+			},
+			{
+				// Disabling `ERROR_FOR_DIVISION_BY_ZERO` throws strict mode warning
+				Query: "set @@sql_mode = '" +
+					"STRICT_TRANS_TABLES," +
+					"NO_ZERO_IN_DATE," +
+					"NO_ZERO_DATE'",
+				Expected: []sql.Row{
+					{types.OkResult{}},
+				},
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       3135,
+				ExpectedWarningMessageSubstring: "'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' " +
+					"sql modes should be used with strict mode. " +
+					"They will be merged with strict mode in a future release",
+			},
+			{
+				Query: "select @@sql_mode",
+				Expected: []sql.Row{
+					{"STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE"},
 				},
 			},
 		},

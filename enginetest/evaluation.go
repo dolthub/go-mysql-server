@@ -1163,10 +1163,11 @@ func AssertWarningAndTestQuery(
 			}
 		}
 		if len(expectedWarningMessageSubstring) > 0 {
-			// Not ideal. All messages must have the same substring for a given test.
+			var warningMsg string
 			for _, warning := range ctx.Warnings() {
-				assert.Contains(t, warning.Message, expectedWarningMessageSubstring, "Unexpected warning message")
+				warningMsg += warning.Message
 			}
+			assert.Contains(t, warningMsg, expectedWarningMessageSubstring, "Unexpected warning message")
 		}
 	}
 

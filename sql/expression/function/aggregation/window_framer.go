@@ -582,10 +582,16 @@ func nextPeerGroup(ctx *sql.Context, pos, partitionEnd int, orderBy []sql.Expres
 	return sql.WindowInterval{Start: pos, End: i}, nil
 }
 
-// isNewOrderByValue compares the order by columns between two rows, returning true when the last row is null or
-// when the next row's orderBy columns are unique
+// isNewOrderByValue reports whether row begins a new ORDER BY peer group after last.
 func isNewOrderByValue(ctx *sql.Context, orderByExprs []sql.Expression, last sql.Row, row sql.Row) (bool, error) {
-	if len(last) == 0 {
+	// Without ORDER BY, every row in the partition belongs to the same peer group.
+	if len(orderByExprs) == 0 {
+		return false, nil
+	}
+
+	// A non-nil zero-width row is still a row. This occurs when projection pushdown
+	// removes every source column used by a window expression.
+	if last == nil {
 		return true, nil
 	}
 
