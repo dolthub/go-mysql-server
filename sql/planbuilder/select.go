@@ -67,6 +67,7 @@ func (b *Builder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
 	//    projections from (4).
 	// 6) Finish with final target projections.
 	fromScope := b.buildFrom(inScope, s.From)
+	fromScope.explicitGrouping = len(s.GroupBy) > 0
 	if cn, ok := fromScope.node.(sql.CommentedNode); ok && len(s.Comments) > 0 {
 		fromScope.node = cn.WithComment(string(s.Comments[0]))
 	}

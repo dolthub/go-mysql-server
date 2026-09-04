@@ -32,12 +32,34 @@ var WindowFunctionsScriptTests = []ScriptTest{
 			"CREATE TABLE grouped_window_values (grp INT, ord INT, val INT)",
 			"INSERT INTO grouped_window_values VALUES (1, 1, 10), (1, 1, 5), (1, 2, 7), (2, 1, 3), (2, 2, 4)",
 		},
-		Query: "SELECT grp, ord, SUM(SUM(val)) OVER (PARTITION BY grp ORDER BY ord ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_sum FROM grouped_window_values GROUP BY grp, ord ORDER BY grp, ord",
-		Expected: []sql.Row{
-			{1, 1, float64(15)},
-			{1, 2, float64(22)},
-			{2, 1, float64(3)},
-			{2, 2, float64(7)},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT grp, ord, SUM(SUM(val)) OVER (PARTITION BY grp ORDER BY ord ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_sum FROM grouped_window_values GROUP BY grp, ord ORDER BY grp, ord",
+				Expected: []sql.Row{
+					{1, 1, float64(15)},
+					{1, 2, float64(22)},
+					{2, 1, float64(3)},
+					{2, 2, float64(7)},
+				},
+			},
+			{
+				Query: "SELECT grp, ord, SUM(SUM(val)) OVER (PARTITION BY grp ORDER BY ord ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_sum, ROW_NUMBER() OVER (PARTITION BY grp ORDER BY ord) AS row_num FROM grouped_window_values GROUP BY grp, ord ORDER BY grp, ord",
+				Expected: []sql.Row{
+					{1, 1, float64(15), int64(1)},
+					{1, 2, float64(22), int64(2)},
+					{2, 1, float64(3), int64(1)},
+					{2, 2, float64(7), int64(2)},
+				},
+			},
+			{
+				Query: "SELECT grp, ord, ROW_NUMBER() OVER (PARTITION BY grp ORDER BY ord) AS row_num, SUM(SUM(val)) OVER (PARTITION BY grp ORDER BY ord ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_sum FROM grouped_window_values GROUP BY grp, ord ORDER BY grp, ord",
+				Expected: []sql.Row{
+					{1, 1, int64(1), float64(15)},
+					{1, 2, int64(2), float64(22)},
+					{2, 1, int64(1), float64(3)},
+					{2, 2, int64(2), float64(7)},
+				},
+			},
 		},
 	},
 	{

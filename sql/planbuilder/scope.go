@@ -57,7 +57,8 @@ type scope struct {
 	activeSubquery *subquery
 
 	// groupBy collects aggregation functions and inputs
-	groupBy *groupBy
+	groupBy          *groupBy
+	explicitGrouping bool
 
 	insertTableAlias string
 

@@ -300,7 +300,7 @@ func IsMySQLAggregateFuncName(ctx *sql.Context, name string) (bool, error) {
 // buildAggregateFunc tags aggregate functions in the correct scope
 // and makes the aggregate available for reference by other clauses.
 func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExpr) sql.Expression {
-	if len(inScope.windowFuncs) > 0 {
+	if len(inScope.windowFuncs) > 0 && !inScope.explicitGrouping {
 		err := sql.ErrNonAggregatedColumnWithoutGroupBy.New()
 		b.handleErr(err)
 	}
@@ -540,7 +540,10 @@ func IsMySQLWindowFuncName(ctx *sql.Context, name string) (bool, error) {
 }
 
 func (b *Builder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, over *ast.WindowDef) sql.Expression {
-	hadGroupBy := inScope.groupBy != nil
+	if inScope.groupBy != nil && !inScope.explicitGrouping {
+		err := sql.ErrNonAggregatedColumnWithoutGroupBy.New()
+		b.handleErr(err)
+	}
 
 	// internal expressions can be complex, but window can't be more than alias
 	var args []sql.Expression
@@ -548,11 +551,6 @@ func (b *Builder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, 
 		e := b.selectExprToExpression(inScope, arg)
 		args = append(args, e)
 	}
-	if hadGroupBy {
-		err := sql.ErrNonAggregatedColumnWithoutGroupBy.New()
-		b.handleErr(err)
-	}
-
 	var win sql.WindowAdaptableExpression
 	if name == "count" {
 		if _, ok := e.Exprs[0].(*ast.StarExpr); ok {
