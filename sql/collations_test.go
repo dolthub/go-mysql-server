@@ -127,3 +127,35 @@ func TestConvertCollationID(t *testing.T) {
 		})
 	}
 }
+
+func TestCollationExpansionsHash(t *testing.T) {
+	h1, err := Collation_utf8mb4_unicode_ci.HashToUint("ss")
+	require.NoError(t, err)
+	h2, err := Collation_utf8mb4_unicode_ci.HashToUint("ß")
+	require.NoError(t, err)
+	assert.Equal(t, h1, h2)
+
+	hOe1, err := Collation_utf8mb4_unicode_ci.HashToUint("oe")
+	require.NoError(t, err)
+	hOe2, err := Collation_utf8mb4_unicode_ci.HashToUint("œ")
+	require.NoError(t, err)
+	assert.Equal(t, hOe1, hOe2)
+
+	hIj1, err := Collation_utf8mb4_unicode_ci.HashToUint("ij")
+	require.NoError(t, err)
+	hIj2, err := Collation_utf8mb4_unicode_ci.HashToUint("ĳ")
+	require.NoError(t, err)
+	assert.Equal(t, hIj1, hIj2)
+
+	hFf1, err := Collation_utf8mb4_unicode_ci.HashToUint("ff")
+	require.NoError(t, err)
+	hFf2, err := Collation_utf8mb4_unicode_ci.HashToUint("ﬀ")
+	require.NoError(t, err)
+	assert.Equal(t, hFf1, hFf2)
+
+	hGeneral1, err := Collation_utf8mb4_general_ci.HashToUint("ss")
+	require.NoError(t, err)
+	hGeneral2, err := Collation_utf8mb4_general_ci.HashToUint("ß")
+	require.NoError(t, err)
+	assert.NotEqual(t, hGeneral1, hGeneral2)
+}
