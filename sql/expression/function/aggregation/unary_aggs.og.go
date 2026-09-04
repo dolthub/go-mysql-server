@@ -265,25 +265,22 @@ func (a *BitOr) IsNullable(ctx *sql.Context) bool {
 }
 
 func (a *BitOr) String() string {
+	ret := "BIT_OR(" + a.Child.String() + ")"
 	if a.window != nil {
-		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("BITOR")
-		children := []string{a.window.String(), a.Child.String()}
-		pr.WriteChildren(children...)
-		return pr.String()
+		ret += " " + a.window.String()
 	}
-	return "BITOR(" + a.Child.String() + ")"
+	return ret
 }
 
 func (a *BitOr) DebugString(ctx *sql.Context) string {
 	if a.window != nil {
 		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("BITOR")
+		_ = pr.WriteNode("BIT_OR")
 		children := []string{sql.DebugString(ctx, a.window), sql.DebugString(ctx, a.Child)}
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("BITOR(%s)", sql.DebugString(ctx, a.Child))
+	return fmt.Sprintf("BIT_OR(%s)", sql.DebugString(ctx, a.Child))
 }
 
 func (a *BitOr) WithWindow(ctx *sql.Context, window *sql.WindowDefinition) sql.WindowAdaptableExpression {

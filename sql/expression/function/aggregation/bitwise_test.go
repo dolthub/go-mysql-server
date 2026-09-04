@@ -114,7 +114,12 @@ func TestBitAnd_Eval_Empty(t *testing.T) {
 func TestBitOr_String(t *testing.T) {
 	assert := require.New(t)
 	m := NewBitOr(expression.NewGetField(0, types.Int32, "field", true))
-	assert.Equal("BITOR(field)", m.String())
+	assert.Equal("BIT_OR(field)", m.String())
+
+	windowed := m.WithWindow(sql.NewEmptyContext(), &sql.WindowDefinition{})
+	assert.Equal("BIT_OR(field) over ()", windowed.String())
+	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + windowed.String())
+	assert.NoError(err)
 }
 
 func TestBitOr_Eval_Int(t *testing.T) {
