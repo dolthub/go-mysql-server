@@ -399,7 +399,7 @@ func convertToDecimalValue(ctx *sql.Context, origType, typ sql.Type, val any) *a
 			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrTruncatedIncorrect.New(dtTyp.String(), val).Error())
 		}
 	}
-	
+
 	switch v := val.(type) {
 	case bool:
 		if v {

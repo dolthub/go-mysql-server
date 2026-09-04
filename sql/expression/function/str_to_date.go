@@ -110,7 +110,7 @@ func (s *StrToDate) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if date == nil {
 		return nil, nil
 	}
-	
+
 	format, err := s.Format.Eval(ctx, row)
 	if err != nil {
 		return nil, err
