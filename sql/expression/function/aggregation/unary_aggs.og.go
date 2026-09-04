@@ -795,14 +795,11 @@ func (a *Min) IsNullable(ctx *sql.Context) bool {
 }
 
 func (a *Min) String() string {
+	ret := "MIN(" + a.Child.String() + ")"
 	if a.window != nil {
-		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("MIN")
-		children := []string{a.window.String(), a.Child.String()}
-		pr.WriteChildren(children...)
-		return pr.String()
+		ret += " " + a.window.String()
 	}
-	return "MIN(" + a.Child.String() + ")"
+	return ret
 }
 
 func (a *Min) DebugString(ctx *sql.Context) string {

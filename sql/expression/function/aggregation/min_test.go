@@ -30,6 +30,11 @@ func TestMin_Name(t *testing.T) {
 
 	m := NewMin(expression.NewGetField(0, types.Int32, "field", true))
 	assert.Equal("MIN(field)", m.String())
+
+	windowed := m.WithWindow(sql.NewEmptyContext(), &sql.WindowDefinition{})
+	assert.Equal("MIN(field) over ()", windowed.String())
+	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + windowed.String())
+	assert.NoError(err)
 }
 
 func TestMin_Eval_Int32(t *testing.T) {
