@@ -113,14 +113,11 @@ func (a *Avg) IsNullable(ctx *sql.Context) bool {
 }
 
 func (a *Avg) String() string {
+	ret := "AVG(" + a.Child.String() + ")"
 	if a.window != nil {
-		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("AVG")
-		children := []string{a.window.String(), a.Child.String()}
-		pr.WriteChildren(children...)
-		return pr.String()
+		ret += " " + a.window.String()
 	}
-	return "AVG(" + a.Child.String() + ")"
+	return ret
 }
 
 func (a *Avg) DebugString(ctx *sql.Context) string {

@@ -5,6 +5,7 @@ unaryAggs:
   desc:     "returns any single value in the grouped rows"
   nullable: true
 - name:     "Avg"
+  sqlString: true
   desc:     "returns the average value of expr in all rows."
   nullable: true
   retType:  "types.Float64"

@@ -30,6 +30,13 @@ func TestAvg_String(t *testing.T) {
 
 	avg := NewAvg(expression.NewGetField(0, types.Int32, "col1", true))
 	require.Equal("AVG(col1)", avg.String())
+
+	windowed := avg.WithWindow(sql.NewEmptyContext(), &sql.WindowDefinition{
+		PartitionBy: []sql.Expression{expression.NewGetField(1, types.Int32, "col2", true)},
+	})
+	require.Equal("AVG(col1) over ( partition by col2)", windowed.String())
+	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + windowed.String())
+	require.NoError(err)
 }
 
 func TestAvg_Float64(t *testing.T) {
