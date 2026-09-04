@@ -37,25 +37,22 @@ func (a *AnyValue) IsNullable(ctx *sql.Context) bool {
 }
 
 func (a *AnyValue) String() string {
+	ret := "ANY_VALUE(" + a.Child.String() + ")"
 	if a.window != nil {
-		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("ANYVALUE")
-		children := []string{a.window.String(), a.Child.String()}
-		pr.WriteChildren(children...)
-		return pr.String()
+		ret += " " + a.window.String()
 	}
-	return "ANYVALUE(" + a.Child.String() + ")"
+	return ret
 }
 
 func (a *AnyValue) DebugString(ctx *sql.Context) string {
 	if a.window != nil {
 		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("ANYVALUE")
+		_ = pr.WriteNode("ANY_VALUE")
 		children := []string{sql.DebugString(ctx, a.window), sql.DebugString(ctx, a.Child)}
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("ANYVALUE(%s)", sql.DebugString(ctx, a.Child))
+	return fmt.Sprintf("ANY_VALUE(%s)", sql.DebugString(ctx, a.Child))
 }
 
 func (a *AnyValue) WithWindow(ctx *sql.Context, window *sql.WindowDefinition) sql.WindowAdaptableExpression {
