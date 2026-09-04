@@ -862,6 +862,40 @@ var SpatialInsertQueries = []WriteQueryTest{
 
 var InsertScripts = []ScriptTest{
 	{
+		Name: "insert strings into time columns",
+		SetUpScript: []string{
+			"create table time_values (id int primary key, value time(6))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "insert into time_values values (1, '12:23')",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "insert into time_values values (2, '12344')",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:       "insert into time_values values (3, '12344abc')",
+				ExpectedErr: sql.ErrInvalidValue,
+			},
+			{
+				Query:                 "insert ignore into time_values values (3, '12344abc')",
+				Expected:              []sql.Row{{types.NewOkResult(1)}},
+				ExpectedWarning:       mysql.ERTruncatedWrongValueForField,
+				ExpectedWarningsCount: 1,
+			},
+			{
+				Query:       "insert into time_values values (4, 'hello')",
+				ExpectedErr: sql.ErrInvalidValue,
+			},
+			{
+				Query:    "select * from time_values order by id",
+				Expected: []sql.Row{{1, types.Timespan(44580000000)}, {2, types.Timespan(5024000000)}, {3, types.Timespan(0)}},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/7322
 		Name: "issue 7322: values expression is subquery",
 		SetUpScript: []string{

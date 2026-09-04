@@ -203,23 +203,36 @@ func (t TimespanType_) ConvertToTimespan(v interface{}) (Timespan, error) {
 	case *apd.Decimal:
 		return t.ConvertToTimespan(DecimalRoundedIntPart(value))
 	case string:
+		originalValue := value
+		value, truncated := truncateTimeString(value)
 		impl, err := stringToTimespan(value)
 		if err == nil {
+			if truncated {
+				return impl, sql.ErrTruncatedIncorrect.New("time", originalValue)
+			}
 			return impl, nil
 		}
+
 		if strings.Contains(value, ".") {
 			strAsDouble, err := strconv.ParseFloat(value, 64)
 			if err != nil {
-				return Timespan(0), ErrConvertingToTimeType.New(v)
+				return Timespan(0), sql.ErrTruncatedIncorrect.New("time", originalValue)
 			}
-			return t.ConvertToTimespan(strAsDouble)
+			impl, err = t.ConvertToTimespan(strAsDouble)
 		} else {
 			strAsInt, err := strconv.ParseInt(value, 10, 64)
 			if err != nil {
-				return Timespan(0), ErrConvertingToTimeType.New(v)
+				return Timespan(0), sql.ErrTruncatedIncorrect.New("time", originalValue)
 			}
-			return t.ConvertToTimespan(strAsInt)
+			impl, err = t.ConvertToTimespan(strAsInt)
 		}
+		if err != nil {
+			return Timespan(0), sql.ErrTruncatedIncorrect.New("time", originalValue)
+		}
+		if truncated {
+			return impl, sql.ErrTruncatedIncorrect.New("time", originalValue)
+		}
+		return impl, nil
 	case time.Duration:
 		microseconds := value.Nanoseconds() / nanosecondsPerMicrosecond
 		return t.MicrosecondsToTimespan(microseconds), nil
@@ -319,9 +332,15 @@ func stringToTimespan(s string) (Timespan, error) {
 	var seconds int8
 	var microseconds int32
 
+	s = strings.TrimSpace(s)
+
 	if len(s) > 0 && s[0] == '-' {
 		negative = true
 		s = s[1:]
+	}
+
+	if s == "" || s == ":" || s == "." {
+		return Timespan(0), sql.ErrTruncatedIncorrect.New("time", s)
 	}
 
 	comps := strings.SplitN(s, ".", 2)
@@ -335,7 +354,7 @@ func stringToTimespan(s string) (Timespan, error) {
 		microStr, remainStr := microStr[0:6], microStr[6:]
 		convertedMicroseconds, err := strconv.Atoi(microStr)
 		if err != nil {
-			return Timespan(0), ErrConvertingToTimeType.New(s)
+			return Timespan(0), sql.ErrTruncatedIncorrect.New("time", s)
 		}
 		// MySQL just uses the last digit to round up. This is weird, but matches their implementation.
 		if len(remainStr) > 0 && remainStr[len(remainStr)-1:] >= "5" {
@@ -349,16 +368,16 @@ func stringToTimespan(s string) (Timespan, error) {
 	hms := make([]string, 3)
 	if len(hmsComps) >= 2 {
 		if len(hmsComps[0]) > 3 {
-			return Timespan(0), ErrConvertingToTimeType.New(s)
+			return Timespan(0), sql.ErrTruncatedIncorrect.New("time", s)
 		}
 		hms[0] = hmsComps[0]
 		if len(hmsComps[1]) > 2 {
-			return Timespan(0), ErrConvertingToTimeType.New(s)
+			return Timespan(0), sql.ErrTruncatedIncorrect.New("time", s)
 		}
 		hms[1] = hmsComps[1]
 		if len(hmsComps) == 3 {
 			if len(hmsComps[2]) > 2 {
-				return Timespan(0), ErrConvertingToTimeType.New(s)
+				return Timespan(0), sql.ErrTruncatedIncorrect.New("time", s)
 			}
 			hms[2] = hmsComps[2]
 		}
@@ -371,23 +390,23 @@ func stringToTimespan(s string) (Timespan, error) {
 
 	hmsHours, err := strconv.Atoi(hms[0])
 	if len(hms[0]) > 0 && err != nil {
-		return Timespan(0), ErrConvertingToTimeType.New(s)
+		return Timespan(0), sql.ErrTruncatedIncorrect.New("time", s)
 	}
 	hours = int16(hmsHours)
 
 	hmsMinutes, err := strconv.Atoi(hms[1])
 	if len(hms[1]) > 0 && err != nil {
-		return Timespan(0), ErrConvertingToTimeType.New(s)
+		return Timespan(0), sql.ErrTruncatedIncorrect.New("time", s)
 	} else if hmsMinutes >= 60 {
-		return Timespan(0), ErrConvertingToTimeType.New(s)
+		return Timespan(0), sql.ErrTruncatedIncorrect.New("time", s)
 	}
 	minutes = int8(hmsMinutes)
 
 	hmsSeconds, err := strconv.Atoi(hms[2])
 	if len(hms[2]) > 0 && err != nil {
-		return Timespan(0), ErrConvertingToTimeType.New(s)
+		return Timespan(0), sql.ErrTruncatedIncorrect.New("time", s)
 	} else if hmsSeconds >= 60 {
-		return Timespan(0), ErrConvertingToTimeType.New(s)
+		return Timespan(0), sql.ErrTruncatedIncorrect.New("time", s)
 	}
 	seconds = int8(hmsSeconds)
 
@@ -415,6 +434,27 @@ func stringToTimespan(s string) (Timespan, error) {
 	}
 
 	return unitsToTimespan(negative, hours, minutes, seconds, microseconds), nil
+}
+
+// truncateTimeString returns the numeric time prefix MySQL attempts to convert.
+func truncateTimeString(s string) (string, bool) {
+	s = strings.TrimSpace(s)
+	start := 0
+	if len(s) > 0 && (s[0] == '-' || s[0] == '+') {
+		start = 1
+	}
+	dotFound := false
+	for i := start; i < len(s); i++ {
+		c := s[i]
+		if c == '.' && !dotFound {
+			dotFound = true
+			continue
+		}
+		if (c < '0' || c > '9') && c != ':' {
+			return s[:i], true
+		}
+	}
+	return s, false
 }
 
 func safeSubstr(s string, start int, end int) string {

@@ -414,6 +414,10 @@ func convertValue(ctx *sql.Context, val any, castTo string, originType sql.Type,
 	case ConvertToTime:
 		t, _, err := types.Time.Convert(ctx, val)
 		if err != nil {
+			if sql.ErrTruncatedIncorrect.Is(err) {
+				ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
+				return t, nil
+			}
 			return nil, nil
 		}
 		return t, nil
