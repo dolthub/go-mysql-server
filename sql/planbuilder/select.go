@@ -95,6 +95,10 @@ func (b *Builder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
 	if b.needsAggregation(fromScope, s) {
 		groupingCols := b.buildGroupingCols(fromScope, projScope, s.GroupBy, s.SelectExprs)
 		outScope = b.buildAggregation(fromScope, projScope, groupingCols)
+		if len(fromScope.windowFuncs) > 0 {
+			outScope.windowFuncs = fromScope.windowFuncs
+			outScope = b.buildWindow(outScope, projScope)
+		}
 	} else if fromScope.windowFuncs != nil {
 		outScope = b.buildWindow(fromScope, projScope)
 	} else {

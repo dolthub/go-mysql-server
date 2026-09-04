@@ -202,6 +202,10 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 	var selectGfs []sql.Expression
 	selectStr := make(map[string]bool)
 	aliasDeps := make(map[string]bool)
+	windowIds := make(map[sql.ColumnId]struct{}, len(fromScope.windowFuncs))
+	for _, col := range fromScope.windowFuncs {
+		windowIds[sql.ColumnId(col.id)] = struct{}{}
+	}
 	for _, e := range group.aggregations() {
 		if !selectStr[strings.ToLower(e.String())] {
 			selectDeps = append(selectDeps, e.scalar)
@@ -215,7 +219,11 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 		// eval aliases in project scope
 		switch e := col.scalar.(type) {
 		case *expression.Alias:
-			if !e.Unreferencable() {
+			var aliasesWindowFunc bool
+			if gf, ok := e.Child.(*expression.GetField); ok {
+				_, aliasesWindowFunc = windowIds[gf.Id()]
+			}
+			if !e.Unreferencable() && !aliasesWindowFunc {
 				aliases = append(aliases, e.WithId(sql.ColumnId(col.id)).(*expression.Alias))
 				inAlias = true
 			}
@@ -226,6 +234,9 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 		findSelectDeps = func(ctx *sql.Context, e sql.Expression) bool {
 			switch e := e.(type) {
 			case *expression.GetField:
+				if _, ok := windowIds[e.Id()]; ok {
+					return false
+				}
 				colName := strings.ToLower(e.String())
 				if !selectStr[colName] {
 					selectDeps = append(selectDeps, e)
@@ -529,16 +540,17 @@ func IsMySQLWindowFuncName(ctx *sql.Context, name string) (bool, error) {
 }
 
 func (b *Builder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, over *ast.WindowDef) sql.Expression {
-	if inScope.groupBy != nil {
-		err := sql.ErrNonAggregatedColumnWithoutGroupBy.New()
-		b.handleErr(err)
-	}
+	hadGroupBy := inScope.groupBy != nil
 
 	// internal expressions can be complex, but window can't be more than alias
 	var args []sql.Expression
 	for _, arg := range e.Exprs {
 		e := b.selectExprToExpression(inScope, arg)
 		args = append(args, e)
+	}
+	if hadGroupBy {
+		err := sql.ErrNonAggregatedColumnWithoutGroupBy.New()
+		b.handleErr(err)
 	}
 
 	var win sql.WindowAdaptableExpression
