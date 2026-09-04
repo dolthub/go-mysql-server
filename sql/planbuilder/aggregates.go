@@ -605,11 +605,13 @@ func (b *Builder) buildWindow(fromScope, projScope *scope) *scope {
 	var selectExprs []sql.Expression
 	var selectGfs []sql.Expression
 	selectStr := make(map[string]bool)
+	windowStr := make(map[string]bool)
 	for _, col := range fromScope.windowFuncs {
 		e := col.scalar
-		if !selectStr[strings.ToLower(e.String())] {
+		if !windowStr[e.String()] {
 			switch e.(type) {
 			case sql.WindowAdaptableExpression:
+				windowStr[e.String()] = true
 				selectStr[strings.ToLower(e.String())] = true
 				selectExprs = append(selectExprs, e)
 				selectGfs = append(selectGfs, col.scalarGf())
