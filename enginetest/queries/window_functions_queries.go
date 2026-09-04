@@ -636,6 +636,37 @@ var WindowFunctionsScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name:    "FIRST_VALUE nullability for empty frames",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE first_value_input (id INT PRIMARY KEY, v INT NOT NULL)",
+			"INSERT INTO first_value_input VALUES (1, 10)",
+			`CREATE TABLE first_value_output AS
+				SELECT id, FIRST_VALUE(v) OVER (
+					ORDER BY id ROWS BETWEEN 2 FOLLOWING AND 2 FOLLOWING
+				) AS wf FROM first_value_input`,
+		},
+		Query:    "SELECT id, wf FROM first_value_output",
+		Expected: []sql.Row{{1, nil}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11471
+		Name:    "customer reproduction: FIRST_VALUE nullability for empty frames",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t(id INT PRIMARY KEY, v INT NOT NULL)",
+			"INSERT INTO t VALUES (1,10)",
+			`CREATE TABLE out_w AS
+				SELECT id,
+					FIRST_VALUE(v) OVER (
+						ORDER BY id ROWS BETWEEN 2 FOLLOWING AND 2 FOLLOWING
+					) AS wf
+				FROM t`,
+		},
+		Query:    "SELECT id, wf FROM out_w",
+		Expected: []sql.Row{{1, nil}},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/11468
 		Name: "FIRST_VALUE receives star placeholder",
 		SetUpScript: []string{
@@ -646,6 +677,51 @@ var WindowFunctionsScriptTests = []ScriptTest{
 			{
 				Query:       "SELECT FIRST_VALUE(*) OVER (ORDER BY id) AS first_row FROM t",
 				ExpectedErr: sql.ErrSyntaxError,
+			},
+		},
+	},
+	{
+		Name: "bitwise window aggregates",
+		SetUpScript: []string{
+			"CREATE TABLE bitwise_window_values (id INT PRIMARY KEY, v INT)",
+			"INSERT INTO bitwise_window_values VALUES (1, 1), (2, 3)",
+		},
+		Query: `SELECT id,
+			BIT_AND(v) OVER (ORDER BY id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW),
+			BIT_OR(v) OVER (ORDER BY id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW),
+			BIT_XOR(v) OVER (ORDER BY id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
+			FROM bitwise_window_values ORDER BY id`,
+		Expected: []sql.Row{
+			{1, uint64(1), uint64(1), uint64(1)},
+			{2, uint64(1), uint64(3), uint64(2)},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11390
+		Name: "customer reproduction: bitwise window aggregates",
+		SetUpScript: []string{
+			"CREATE TABLE t(id INT PRIMARY KEY, v INT)",
+			"INSERT INTO t VALUES (1, 1), (2, 3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{Query: "SELECT BIT_AND(v) AS ordinary_bit_and FROM t", Expected: []sql.Row{{uint64(1)}}},
+			{
+				Query: `SELECT id, BIT_AND(v) OVER (
+					ORDER BY id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+				) AS wf FROM t ORDER BY id`,
+				Expected: []sql.Row{{1, uint64(1)}, {2, uint64(1)}},
+			},
+			{
+				Query: `SELECT id, BIT_OR(v) OVER (
+					ORDER BY id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+				) AS wf FROM t ORDER BY id`,
+				Expected: []sql.Row{{1, uint64(1)}, {2, uint64(3)}},
+			},
+			{
+				Query: `SELECT id, BIT_XOR(v) OVER (
+					ORDER BY id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+				) AS wf FROM t ORDER BY id`,
+				Expected: []sql.Row{{1, uint64(1)}, {2, uint64(2)}},
 			},
 		},
 	},
@@ -733,6 +809,41 @@ var WindowFunctionsScriptTests = []ScriptTest{
 			{int64(2), int64(2)},
 			{int64(3), int64(1)},
 		},
+	},
+	{
+		Name: "sibling window aggregates with different frames",
+		SetUpScript: []string{
+			"CREATE TABLE distinct_window_frames (id INT PRIMARY KEY, g INT, v INT NOT NULL)",
+			"INSERT INTO distinct_window_frames VALUES (1, 0, 10), (2, 0, 20)",
+		},
+		Query: `SELECT id,
+			SUM(v) OVER (PARTITION BY g ORDER BY id ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING),
+			SUM(v) OVER (PARTITION BY g ORDER BY id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
+			FROM distinct_window_frames ORDER BY id`,
+		Expected: []sql.Row{
+			{1, float64(30), float64(10)},
+			{2, float64(30), float64(30)},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11395
+		Name: "customer reproduction: sibling window aggregates with different frames",
+		SetUpScript: []string{
+			"CREATE TABLE t(id INT PRIMARY KEY, g INT, v INT NOT NULL)",
+			"INSERT INTO t VALUES (1, 0, 10), (2, 0, 20)",
+		},
+		Query: `SELECT id,
+			SUM(v) OVER (
+				PARTITION BY g ORDER BY id
+				ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+			) AS full_v,
+			SUM(v) OVER (
+				PARTITION BY g ORDER BY id
+				ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+			) AS running_v
+			FROM t
+			ORDER BY id`,
+		Expected: []sql.Row{{1, float64(30), float64(10)}, {2, float64(30), float64(30)}},
 	},
 	{
 		Name:    "LIKE escape characters in window expressions",
@@ -833,6 +944,42 @@ var WindowFunctionsScriptTests = []ScriptTest{
 					{float64(15), float64(21)},
 				},
 			},
+		},
+	},
+	{
+		Name: "sibling NTILE expressions with different bucket counts",
+		SetUpScript: []string{
+			"CREATE TABLE ntile_counts (id INT PRIMARY KEY, g INT)",
+			"INSERT INTO ntile_counts VALUES (1, 0), (2, 0), (3, 0), (4, 0)",
+		},
+		Query: `SELECT id,
+			NTILE(2) OVER (PARTITION BY g ORDER BY id),
+			NTILE(3) OVER (PARTITION BY g ORDER BY id)
+			FROM ntile_counts ORDER BY id`,
+		Expected: []sql.Row{
+			{1, uint64(1), uint64(1)},
+			{2, uint64(1), uint64(1)},
+			{3, uint64(2), uint64(2)},
+			{4, uint64(2), uint64(3)},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11466
+		Name: "customer reproduction: sibling NTILE expressions with different bucket counts",
+		SetUpScript: []string{
+			"CREATE TABLE t(id INT PRIMARY KEY, g INT, v INT NOT NULL)",
+			"INSERT INTO t VALUES (1,0,10),(2,0,20),(3,0,30),(4,0,40)",
+		},
+		Query: `SELECT id,
+			NTILE(2) OVER (PARTITION BY g ORDER BY id) AS n2,
+			NTILE(3) OVER (PARTITION BY g ORDER BY id) AS n3
+			FROM t
+			ORDER BY id`,
+		Expected: []sql.Row{
+			{1, uint64(1), uint64(1)},
+			{2, uint64(1), uint64(1)},
+			{3, uint64(2), uint64(2)},
+			{4, uint64(2), uint64(3)},
 		},
 	},
 	{
@@ -1104,6 +1251,137 @@ var WindowFunctionsScriptTests = []ScriptTest{
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/11410
+		Name: "window SUM over all-NULL frames",
+		SetUpScript: []string{
+			"CREATE TABLE t(id INT PRIMARY KEY, v INT);",
+			"INSERT INTO t VALUES (1, NULL);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT id,
+					SUM(v) OVER (
+						ORDER BY id
+						ROWS BETWEEN CURRENT ROW AND CURRENT ROW
+					) AS wf
+				FROM t
+				ORDER BY id;`,
+				Expected: []sql.Row{{1, nil}},
+			},
+			{
+				Query: `SELECT o.id,
+					(SELECT SUM(i.v) FROM t AS i WHERE i.id = o.id) AS wf
+				FROM t AS o
+				ORDER BY o.id;`,
+				Expected: []sql.Row{{1, nil}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11410
+		Name: "window SUM over mixed and all-NULL intervals",
+		SetUpScript: []string{
+			"CREATE TABLE window_sum_intervals (id INT PRIMARY KEY, g INT, v INT)",
+			"INSERT INTO window_sum_intervals VALUES (1, 0, NULL), (2, 0, NULL), (3, 1, 5), (4, 1, NULL), (5, 2, NULL)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT id, SUM(v) OVER (
+					ORDER BY id ROWS BETWEEN CURRENT ROW AND CURRENT ROW
+				) FROM window_sum_intervals ORDER BY id`,
+				Expected: []sql.Row{{1, nil}, {2, nil}, {3, float64(5)}, {4, nil}, {5, nil}},
+			},
+			{
+				Query: `SELECT id, SUM(v) OVER (
+					ORDER BY id ROWS BETWEEN 1 PRECEDING AND CURRENT ROW
+				) FROM window_sum_intervals ORDER BY id`,
+				Expected: []sql.Row{{1, nil}, {2, nil}, {3, float64(5)}, {4, float64(5)}, {5, nil}},
+			},
+			{
+				Query: `SELECT id, SUM(v) OVER (
+					ORDER BY id ROWS BETWEEN CURRENT ROW AND 1 FOLLOWING
+				) FROM window_sum_intervals ORDER BY id`,
+				Expected: []sql.Row{{1, nil}, {2, float64(5)}, {3, float64(5)}, {4, nil}, {5, nil}},
+			},
+			{
+				Query: `SELECT id, SUM(v) OVER (
+					ORDER BY id ROWS BETWEEN 1 FOLLOWING AND 2 FOLLOWING
+				) FROM window_sum_intervals ORDER BY id`,
+				Expected: []sql.Row{{1, float64(5)}, {2, float64(5)}, {3, nil}, {4, nil}, {5, nil}},
+			},
+			{
+				Query: `SELECT id, SUM(v) OVER (
+					ORDER BY id ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+				) FROM window_sum_intervals ORDER BY id`,
+				Expected: []sql.Row{{1, float64(5)}, {2, float64(5)}, {3, float64(5)}, {4, float64(5)}, {5, float64(5)}},
+			},
+			{
+				Query: `SELECT id, SUM(v) OVER (
+					PARTITION BY g ORDER BY id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+				) FROM window_sum_intervals ORDER BY id`,
+				Expected: []sql.Row{{1, nil}, {2, nil}, {3, float64(5)}, {4, float64(5)}, {5, nil}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11410
+		Name: "nullable window aggregates over mixed and all-NULL intervals",
+		SetUpScript: []string{
+			"CREATE TABLE nullable_window_intervals (id INT PRIMARY KEY, v INT)",
+			"INSERT INTO nullable_window_intervals VALUES (1, NULL), (2, NULL), (3, 5), (4, NULL), (5, NULL)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT id,
+					AVG(v) OVER w, MIN(v) OVER w, MAX(v) OVER w,
+					STDDEV_POP(v) OVER w, STDDEV_SAMP(v) OVER w,
+					VAR_POP(v) OVER w, VAR_SAMP(v) OVER w, COUNT(v) OVER w
+					FROM nullable_window_intervals
+					WINDOW w AS (ORDER BY id ROWS BETWEEN CURRENT ROW AND CURRENT ROW)
+					ORDER BY id`,
+				Expected: []sql.Row{
+					{1, nil, nil, nil, nil, nil, nil, nil, int64(0)},
+					{2, nil, nil, nil, nil, nil, nil, nil, int64(0)},
+					{3, float64(5), 5, 5, float64(0), nil, float64(0), nil, int64(1)},
+					{4, nil, nil, nil, nil, nil, nil, nil, int64(0)},
+					{5, nil, nil, nil, nil, nil, nil, nil, int64(0)},
+				},
+			},
+			{
+				Query: `SELECT id,
+					AVG(v) OVER w, MIN(v) OVER w, MAX(v) OVER w,
+					STDDEV_POP(v) OVER w, STDDEV_SAMP(v) OVER w,
+					VAR_POP(v) OVER w, VAR_SAMP(v) OVER w, COUNT(v) OVER w
+					FROM nullable_window_intervals
+					WINDOW w AS (ORDER BY id ROWS BETWEEN 1 PRECEDING AND CURRENT ROW)
+					ORDER BY id`,
+				Expected: []sql.Row{
+					{1, nil, nil, nil, nil, nil, nil, nil, int64(0)},
+					{2, nil, nil, nil, nil, nil, nil, nil, int64(0)},
+					{3, float64(5), 5, 5, float64(0), nil, float64(0), nil, int64(1)},
+					{4, float64(5), 5, 5, float64(0), nil, float64(0), nil, int64(1)},
+					{5, nil, nil, nil, nil, nil, nil, nil, int64(0)},
+				},
+			},
+			{
+				Query: `SELECT id,
+					AVG(v) OVER w, MIN(v) OVER w, MAX(v) OVER w,
+					STDDEV_POP(v) OVER w, STDDEV_SAMP(v) OVER w,
+					VAR_POP(v) OVER w, VAR_SAMP(v) OVER w, COUNT(v) OVER w
+					FROM nullable_window_intervals
+					WINDOW w AS (ORDER BY id ROWS BETWEEN CURRENT ROW AND 1 FOLLOWING)
+					ORDER BY id`,
+				Expected: []sql.Row{
+					{1, nil, nil, nil, nil, nil, nil, nil, int64(0)},
+					{2, float64(5), 5, 5, float64(0), nil, float64(0), nil, int64(1)},
+					{3, float64(5), 5, 5, float64(0), nil, float64(0), nil, int64(1)},
+					{4, nil, nil, nil, nil, nil, nil, nil, int64(0)},
+					{5, nil, nil, nil, nil, nil, nil, nil, int64(0)},
+				},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/11381
 		Name: "window aggregate functions with order by col",
 		SetUpScript: []string{
@@ -1281,6 +1559,19 @@ var WindowFunctionsScriptTests = []ScriptTest{
 				Expected: []sql.Row{
 					{"1"},
 				},
+			},
+		},
+	},
+	{
+		Name: "validate window function in set op order by clause",
+		SetUpScript: []string{
+			"CREATE TABLE t(id INT PRIMARY KEY, v INT);",
+			"INSERT INTO t VALUES (1,10),(2,20);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       `SELECT id,v FROM t WHERE id=1 UNION ALL SELECT id,v FROM t WHERE id=2 ORDER BY ROW_NUMBER() OVER (ORDER BY id);`,
+				ExpectedErr: sql.ErrSetOpOrderByAggregation,
 			},
 		},
 	},

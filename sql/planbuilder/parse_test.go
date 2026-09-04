@@ -339,7 +339,7 @@ update histogram  xy.(x,y) using {"statistic":{"avg_size":0,"buckets":[],"column
 			Query: "SELECT b.y as s1, a.y as s2, first_value(a.z) over (partition by a.y) from xy a join xy b on a.y = b.y",
 			ExpectedPlan: `
 Project
- ├─ columns: [b.y:5!null->s1:7, a.y:2!null->s2:8, first_value(a.z) over ( partition by a.y rows between unbounded preceding and unbounded following):9!null->first_value(a.z) over (partition by a.y)]
+ ├─ columns: [b.y:5!null->s1:7, a.y:2!null->s2:8, first_value(a.z) over ( partition by a.y rows between unbounded preceding and unbounded following):9->first_value(a.z) over (partition by a.y)]
  └─ Window
      ├─ first_value(a.z) over ( partition by a.y ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
      ├─ b.y:5!null
@@ -1455,7 +1455,7 @@ Project
 			Query: "SELECT x, first_value(z) over (partition by y) FROM xy order by x*y,x",
 			ExpectedPlan: `
 Project
- ├─ columns: [xy.x:1!null, first_value(xy.z) over ( partition by xy.y rows between unbounded preceding and unbounded following):4!null->first_value(z) over (partition by y)]
+ ├─ columns: [xy.x:1!null, first_value(xy.z) over ( partition by xy.y rows between unbounded preceding and unbounded following):4->first_value(z) over (partition by y)]
  └─ Sort((xy.x:1!null * xy.y:2!null) ASC nullsFirst, xy.x:1!null ASC nullsFirst)
      └─ Window
          ├─ first_value(xy.z) over ( partition by xy.y ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
@@ -1956,11 +1956,14 @@ Union distinct
 			Query: "SELECT sum(y) over w FROM xy WINDOW w as (partition by z order by x rows unbounded preceding) order by x",
 			ExpectedPlan: `
 Project
- ├─ columns: [sum(xy.y) over ( partition by xy.z order by xy.x asc rows between unbounded preceding and unbounded following):4!null->sum(y) over w]
+ ├─ columns: [sum
+ │   ├─ over ( partition by xy.z order by xy.x asc rows between unbounded preceding and current row)
+ │   └─ xy.y
+ │  :4!null->sum(y) over w]
  └─ Sort(xy.x:1!null ASC nullsFirst)
      └─ Window
          ├─ SUM
-         │   ├─ over ( partition by xy.z order by xy.x ASC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
+         │   ├─ over ( partition by xy.z order by xy.x ASC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
          │   └─ xy.y:2!null
          ├─ xy.x:1!null
          └─ Table

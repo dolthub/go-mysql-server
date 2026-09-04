@@ -82,7 +82,9 @@ func (n *NTile) String() string {
 
 func (n *NTile) DebugString(ctx *sql.Context) string {
 	sb := strings.Builder{}
-	sb.WriteString("ntile()")
+	sb.WriteString("ntile(")
+	sb.WriteString(sql.DebugString(ctx, n.bucketExpr))
+	sb.WriteString(")")
 	if n.window != nil {
 		sb.WriteString(" ")
 		sb.WriteString(sql.DebugString(ctx, n.window))
