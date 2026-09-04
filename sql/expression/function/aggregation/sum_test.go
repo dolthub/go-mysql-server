@@ -23,6 +23,14 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
+func TestSumString(t *testing.T) {
+	expr := NewSum(expression.NewGetField(0, nil, "value", false)).
+		WithWindow(sql.NewEmptyContext(), &sql.WindowDefinition{})
+	require.Equal(t, "SUM(value) over ()", expr.String())
+	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + expr.String())
+	require.NoError(t, err)
+}
+
 func TestSum(t *testing.T) {
 	sum := NewSum(expression.NewGetField(0, nil, "", false))
 

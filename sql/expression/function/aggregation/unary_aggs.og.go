@@ -871,14 +871,11 @@ func (a *Sum) IsNullable(ctx *sql.Context) bool {
 }
 
 func (a *Sum) String() string {
+	ret := "SUM(" + a.Child.String() + ")"
 	if a.window != nil {
-		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("SUM")
-		children := []string{a.window.String(), a.Child.String()}
-		pr.WriteChildren(children...)
-		return pr.String()
+		ret += " " + a.window.String()
 	}
-	return "SUM(" + a.Child.String() + ")"
+	return ret
 }
 
 func (a *Sum) DebugString(ctx *sql.Context) string {
