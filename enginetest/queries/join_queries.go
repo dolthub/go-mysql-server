@@ -864,6 +864,86 @@ on w = 0;`,
 
 var JoinScriptTests = []ScriptTest{
 	{
+		// Correlated EXISTS whose body is a scalar aggregate (implicit grouping)
+		// must remain TRUE even when the match set is empty: aggregates emit one
+		// row over empty input. Stripping *plan.GroupBy during semi-join unnest
+		// used to turn empty-input cardinality 1 into 0.
+		Name: "EXISTS with scalar aggregate body (empty-match cardinality)",
+		SetUpScript: []string{
+			"CREATE TABLE t(id INT PRIMARY KEY, a INT);",
+			"CREATE TABLE u(x INT);",
+			"CREATE TABLE e(y INT);",
+			"INSERT INTO t VALUES (1,10),(2,20),(3,30);",
+			// Only id=1 has a match; 2 and 3 are empty-match outer rows.
+			"INSERT INTO u VALUES (10),(10);",
+		},
+		Assertions: []ScriptTestAssertion{
+			// Bare-column control: existence follows real matches only.
+			{
+				Query: "SELECT id FROM t WHERE EXISTS (SELECT u.x FROM u WHERE u.x = t.a) ORDER BY id",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			// Scalar SUM over empty match set still yields one row (NULL), so
+			// EXISTS is TRUE for every outer row.
+			{
+				Query: "SELECT id FROM t WHERE EXISTS (SELECT SUM(u.x) FROM u WHERE u.x = t.a) ORDER BY id",
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+			// NOT EXISTS of a scalar aggregate is always FALSE per outer row.
+			{
+				Query:    "SELECT id FROM t WHERE NOT EXISTS (SELECT SUM(u.x) FROM u WHERE u.x = t.a) ORDER BY id",
+				Expected: []sql.Row{},
+			},
+			// COUNT(*) is the same scalar-aggregate shape.
+			{
+				Query: "SELECT id FROM t WHERE EXISTS (SELECT COUNT(*) FROM u WHERE u.x = t.a) ORDER BY id",
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+			// Explicit GROUP BY does not emit a row for empty groups, so EXISTS
+			// is FALSE when there is no match.
+			{
+				Query: "SELECT id FROM t WHERE EXISTS (SELECT SUM(u.x) FROM u WHERE u.x = t.a GROUP BY u.x) ORDER BY id",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			// Uncorrelated scalar-aggregate EXISTS in FILTER position with an
+			// empty match set: previously wrong on main (Limit-CrossJoin path
+			// after GroupBy strip). Broken on base; fixed by this patch.
+			{
+				Query: "SELECT id FROM t WHERE EXISTS (SELECT SUM(u.x) FROM u WHERE u.x = 999) ORDER BY id",
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+			{
+				Query:    "SELECT id FROM t WHERE NOT EXISTS (SELECT SUM(u.x) FROM u WHERE u.x = 999) ORDER BY id",
+				Expected: []sql.Row{},
+			},
+			// Fully empty table: scalar SUM still emits one NULL row.
+			{
+				Query: "SELECT id FROM t WHERE EXISTS (SELECT SUM(e.y) FROM e) ORDER BY id",
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+		},
+	},
+	{
 		Name:        "Simple join query",
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
