@@ -645,11 +645,7 @@ func (a *Last) IsNullable(ctx *sql.Context) bool {
 
 func (a *Last) String() string {
 	if a.window != nil {
-		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("LAST")
-		children := []string{a.window.String(), a.Child.String()}
-		pr.WriteChildren(children...)
-		return pr.String()
+		return "LAST_VALUE(" + a.Child.String() + ") " + a.window.String()
 	}
 	return "LAST(" + a.Child.String() + ")"
 }

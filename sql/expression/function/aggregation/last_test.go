@@ -43,3 +43,11 @@ func TestLast(t *testing.T) {
 		})
 	}
 }
+
+func TestLastString(t *testing.T) {
+	expr := NewLast(expression.NewGetField(0, types.Text, "value", false)).
+		WithWindow(sql.NewEmptyContext(), &sql.WindowDefinition{})
+	require.Equal(t, "LAST_VALUE(value) over ()", expr.String())
+	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + expr.String())
+	require.NoError(t, err)
+}
