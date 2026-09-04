@@ -1158,6 +1158,18 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{{"foo"}},
 	},
 	{
+		Query:    `SELECT TRIM(LEADING FROM "   foo   ")`,
+		Expected: []sql.Row{{"foo   "}},
+	},
+	{
+		Query:    `SELECT TRIM(TRAILING FROM "   foo   ")`,
+		Expected: []sql.Row{{"   foo"}},
+	},
+	{
+		Query:    `SELECT TRIM(BOTH FROM "   foo   ")`,
+		Expected: []sql.Row{{"foo"}},
+	},
+	{
 		Query:    `SELECT TRIM("" FROM " foo")`,
 		Expected: []sql.Row{{" foo"}},
 	},

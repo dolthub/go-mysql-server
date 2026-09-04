@@ -1645,6 +1645,33 @@ FROM (
 			},
 		},
 	},
+	{
+		Name: "TRIM with window function",
+		SetUpScript: []string{
+			"CREATE TABLE t(s VARCHAR(10));",
+			"INSERT INTO t VALUES ('  a  ');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT TRIM(LEADING FROM FIRST_VALUE(s) OVER ()) AS actual FROM t;",
+				Expected: []sql.Row{
+					{"a  "},
+				},
+			},
+			{
+				Query: "SELECT TRIM(TRAILING FROM FIRST_VALUE(s) OVER ()) AS actual FROM t;",
+				Expected: []sql.Row{
+					{"  a"},
+				},
+			},
+			{
+				Query: "SELECT TRIM(BOTH FROM FIRST_VALUE(s) OVER ()) AS actual FROM t;",
+				Expected: []sql.Row{
+					{"a"},
+				},
+			},
+		},
+	},
 }
 
 // WindowRowFramesScriptTests tests window functions using ROWS frame specifications.
