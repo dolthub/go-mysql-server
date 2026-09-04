@@ -2034,7 +2034,7 @@ order by
 			"             │   ├─ filters: [{[NULL, ∞)}]\n" +
 			"             │   └─ columns: [o_orderkey o_orderpriority]\n" +
 			"             └─ Filter\n" +
-			"                 ├─ (((((lineitem.l_shipmode IN ('MAIL', 'SHIP')) AND (lineitem.l_commitdate < lineitem.l_receiptdate)) AND (lineitem.l_shipdate < lineitem.l_commitdate)) AND (lineitem.l_receiptdate >= '1994-01-01')) AND (lineitem.l_receiptdate < '1995-01-01 00:00:00'))\n" +
+			"                 ├─ (((((lineitem.l_shipmode HASH IN ('MAIL', 'SHIP')) AND (lineitem.l_commitdate < lineitem.l_receiptdate)) AND (lineitem.l_shipdate < lineitem.l_commitdate)) AND (lineitem.l_receiptdate >= '1994-01-01')) AND (lineitem.l_receiptdate < '1995-01-01 00:00:00'))\n" +
 			"                 └─ IndexedTableAccess(lineitem)\n" +
 			"                     ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
 			"                     ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
@@ -2053,7 +2053,7 @@ order by
 			"             │   ├─ filters: [{[NULL, ∞)}]\n" +
 			"             │   └─ columns: [o_orderkey o_orderpriority]\n" +
 			"             └─ Filter\n" +
-			"                 ├─ (((((lineitem.l_shipmode IN ('MAIL', 'SHIP')) AND (lineitem.l_commitdate < lineitem.l_receiptdate)) AND (lineitem.l_shipdate < lineitem.l_commitdate)) AND (lineitem.l_receiptdate >= '1994-01-01')) AND (lineitem.l_receiptdate < '1995-01-01 00:00:00'))\n" +
+			"                 ├─ (((((lineitem.l_shipmode HASH IN ('MAIL', 'SHIP')) AND (lineitem.l_commitdate < lineitem.l_receiptdate)) AND (lineitem.l_shipdate < lineitem.l_commitdate)) AND (lineitem.l_receiptdate >= '1994-01-01')) AND (lineitem.l_receiptdate < '1995-01-01 00:00:00'))\n" +
 			"                 └─ IndexedTableAccess(lineitem)\n" +
 			"                     ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
 			"                     ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
@@ -2581,7 +2581,7 @@ order by
 			"                         │   │   ├─ index: [partsupp.PS_PARTKEY,partsupp.PS_SUPPKEY]\n" +
 			"                         │   │   └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			"                         │   └─ Filter\n" +
-			"                         │       ├─ (((NOT((part.p_brand = 'Brand#45'))) AND ((part.p_type < 'MEDIUM POLISHED') OR (part.p_type >= 'MEDIUM POLISHEE'))) AND (part.p_size IN (49, 14, 23, 45, 19, 3, 36, 9)))\n" +
+			"                         │       ├─ (((NOT((part.p_brand = 'Brand#45'))) AND ((part.p_type < 'MEDIUM POLISHED') OR (part.p_type >= 'MEDIUM POLISHEE'))) AND (part.p_size HASH IN (49, 14, 23, 45, 19, 3, 36, 9)))\n" +
 			"                         │       └─ IndexedTableAccess(part)\n" +
 			"                         │           ├─ index: [part.P_PARTKEY]\n" +
 			"                         │           └─ filters: [{[NULL, ∞)}]\n" +
@@ -2612,7 +2612,7 @@ order by
 			"                         │   │   ├─ index: [partsupp.PS_PARTKEY,partsupp.PS_SUPPKEY]\n" +
 			"                         │   │   └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			"                         │   └─ Filter\n" +
-			"                         │       ├─ (((NOT((part.p_brand = 'Brand#45'))) AND ((part.p_type < 'MEDIUM POLISHED') OR (part.p_type >= 'MEDIUM POLISHEE'))) AND (part.p_size IN (49, 14, 23, 45, 19, 3, 36, 9)))\n" +
+			"                         │       ├─ (((NOT((part.p_brand = 'Brand#45'))) AND ((part.p_type < 'MEDIUM POLISHED') OR (part.p_type >= 'MEDIUM POLISHEE'))) AND (part.p_size HASH IN (49, 14, 23, 45, 19, 3, 36, 9)))\n" +
 			"                         │       └─ IndexedTableAccess(part)\n" +
 			"                         │           ├─ index: [part.P_PARTKEY]\n" +
 			"                         │           └─ filters: [{[NULL, ∞)}]\n" +
@@ -3712,7 +3712,7 @@ order by
 			"                     │           ├─ select: AVG(customer.c_acctbal)\n" +
 			"                     │           ├─ group: \n" +
 			"                     │           └─ Filter\n" +
-			"                     │               ├─ ((customer.c_acctbal > 0.00) AND (SUBSTRING(customer.c_phone, 1, 2) IN ('13', '31', '23', '29', '30', '18', '17')))\n" +
+			"                     │               ├─ ((customer.c_acctbal > 0.00) AND (SUBSTRING(customer.c_phone, 1, 2) HASH IN ('13', '31', '23', '29', '30', '18', '17')))\n" +
 			"                     │               └─ Table\n" +
 			"                     │                   ├─ name: customer\n" +
 			"                     │                   └─ columns: [c_phone c_acctbal]\n" +
@@ -3724,7 +3724,7 @@ order by
 			"                             └─ LeftOuterHashJoin (estimated cost=3869.120 rows=1062)\n" +
 			"                                 ├─ (orders.o_custkey = customer.c_custkey)\n" +
 			"                                 ├─ Filter\n" +
-			"                                 │   ├─ (SUBSTRING(customer.c_phone, 1, 2) IN ('13', '31', '23', '29', '30', '18', '17'))\n" +
+			"                                 │   ├─ (SUBSTRING(customer.c_phone, 1, 2) HASH IN ('13', '31', '23', '29', '30', '18', '17'))\n" +
 			"                                 │   └─ Table\n" +
 			"                                 │       └─ name: customer\n" +
 			"                                 └─ HashLookup\n" +
@@ -3760,7 +3760,7 @@ order by
 			"                     │           ├─ select: AVG(customer.c_acctbal)\n" +
 			"                     │           ├─ group: \n" +
 			"                     │           └─ Filter\n" +
-			"                     │               ├─ ((customer.c_acctbal > 0.00) AND (SUBSTRING(customer.c_phone, 1, 2) IN ('13', '31', '23', '29', '30', '18', '17')))\n" +
+			"                     │               ├─ ((customer.c_acctbal > 0.00) AND (SUBSTRING(customer.c_phone, 1, 2) HASH IN ('13', '31', '23', '29', '30', '18', '17')))\n" +
 			"                     │               └─ Table\n" +
 			"                     │                   ├─ name: customer\n" +
 			"                     │                   └─ columns: [c_phone c_acctbal]\n" +
@@ -3772,7 +3772,7 @@ order by
 			"                             └─ LeftOuterHashJoin (estimated cost=3869.120 rows=1062) (actual rows=0 loops=1)\n" +
 			"                                 ├─ (orders.o_custkey = customer.c_custkey)\n" +
 			"                                 ├─ Filter\n" +
-			"                                 │   ├─ (SUBSTRING(customer.c_phone, 1, 2) IN ('13', '31', '23', '29', '30', '18', '17'))\n" +
+			"                                 │   ├─ (SUBSTRING(customer.c_phone, 1, 2) HASH IN ('13', '31', '23', '29', '30', '18', '17'))\n" +
 			"                                 │   └─ Table\n" +
 			"                                 │       └─ name: customer\n" +
 			"                                 └─ HashLookup\n" +

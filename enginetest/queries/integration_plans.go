@@ -5126,7 +5126,7 @@ WHERE
 			" │               │           ├─ index: [THNTS.id]\n" +
 			" │               │           └─ keys: mf.GXLUB\n" +
 			" │               └─ Filter\n" +
-			" │                   ├─ (cla.FTQLQ IN ('SQ1'))\n" +
+			" │                   ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
 			" │                   └─ TableAlias(cla)\n" +
 			" │                       └─ IndexedTableAccess(YK2GW)\n" +
 			" │                           ├─ index: [YK2GW.id]\n" +
@@ -5351,7 +5351,7 @@ WHERE
 			" │               │           ├─ index: [THNTS.id]\n" +
 			" │               │           └─ keys: mf.GXLUB\n" +
 			" │               └─ Filter\n" +
-			" │                   ├─ (cla.FTQLQ IN ('SQ1'))\n" +
+			" │                   ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
 			" │                   └─ TableAlias(cla)\n" +
 			" │                       └─ IndexedTableAccess(YK2GW)\n" +
 			" │                           ├─ index: [YK2GW.id]\n" +
@@ -5984,7 +5984,7 @@ WHERE
 			" │               │   │   │   │           │   │               ├─ columns: [fz2r5 luevy m22qn ove3e s3q3y zrv3b]\n" +
 			" │               │   │   │   │           │   │               └─ keys: khjjo.M22QN\n" +
 			" │               │   │   │   │           │   └─ Filter\n" +
-			" │               │   │   │   │           │       ├─ (ci.FTQLQ IN ('SQ1'))\n" +
+			" │               │   │   │   │           │       ├─ (ci.FTQLQ HASH IN ('SQ1'))\n" +
 			" │               │   │   │   │           │       └─ TableAlias(ci)\n" +
 			" │               │   │   │   │           │           └─ IndexedTableAccess(JDLNA)\n" +
 			" │               │   │   │   │           │               ├─ index: [JDLNA.id]\n" +
@@ -6008,7 +6008,7 @@ WHERE
 			" │               │           ├─ index: [THNTS.id]\n" +
 			" │               │           └─ keys: mf.GXLUB\n" +
 			" │               └─ Filter\n" +
-			" │                   ├─ (cla.FTQLQ IN ('SQ1'))\n" +
+			" │                   ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
 			" │                   └─ TableAlias(cla)\n" +
 			" │                       └─ IndexedTableAccess(YK2GW)\n" +
 			" │                           ├─ index: [YK2GW.id]\n" +
@@ -6204,7 +6204,7 @@ WHERE
 			" │               │   │   │   │           │   │               ├─ columns: [fz2r5 luevy m22qn ove3e s3q3y zrv3b]\n" +
 			" │               │   │   │   │           │   │               └─ keys: khjjo.M22QN\n" +
 			" │               │   │   │   │           │   └─ Filter\n" +
-			" │               │   │   │   │           │       ├─ (ci.FTQLQ IN ('SQ1'))\n" +
+			" │               │   │   │   │           │       ├─ (ci.FTQLQ HASH IN ('SQ1'))\n" +
 			" │               │   │   │   │           │       └─ TableAlias(ci)\n" +
 			" │               │   │   │   │           │           └─ IndexedTableAccess(JDLNA)\n" +
 			" │               │   │   │   │           │               ├─ index: [JDLNA.id]\n" +
@@ -6228,7 +6228,7 @@ WHERE
 			" │               │           ├─ index: [THNTS.id]\n" +
 			" │               │           └─ keys: mf.GXLUB\n" +
 			" │               └─ Filter\n" +
-			" │                   ├─ (cla.FTQLQ IN ('SQ1'))\n" +
+			" │                   ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
 			" │                   └─ TableAlias(cla)\n" +
 			" │                       └─ IndexedTableAccess(YK2GW)\n" +
 			" │                           ├─ index: [YK2GW.id]\n" +
@@ -7123,7 +7123,7 @@ WHERE
 			"         │                               └─ MergeJoin\n" +
 			"         │                                   ├─ cmp: (cla.id = bs.IXUXU)\n" +
 			"         │                                   ├─ Filter\n" +
-			"         │                                   │   ├─ (cla.FTQLQ IN ('SQ1'))\n" +
+			"         │                                   │   ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
 			"         │                                   │   └─ TableAlias(cla)\n" +
 			"         │                                   │       └─ IndexedTableAccess(YK2GW)\n" +
 			"         │                                   │           ├─ index: [YK2GW.id]\n" +
@@ -7195,7 +7195,7 @@ WHERE
 			"         │                               └─ MergeJoin\n" +
 			"         │                                   ├─ cmp: (cla.id = bs.IXUXU)\n" +
 			"         │                                   ├─ Filter\n" +
-			"         │                                   │   ├─ (cla.FTQLQ IN ('SQ1'))\n" +
+			"         │                                   │   ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
 			"         │                                   │   └─ TableAlias(cla)\n" +
 			"         │                                   │       └─ IndexedTableAccess(YK2GW)\n" +
 			"         │                                   │           ├─ index: [YK2GW.id]\n" +
@@ -7779,7 +7779,7 @@ WHERE
 			"                                             │   │   │   │           │   ├─ filters: [{[NULL, ∞)}]\n" +
 			"                                             │   │   │   │           │   └─ columns: [id ixuxu]\n" +
 			"                                             │   │   │   │           └─ Filter\n" +
-			"                                             │   │   │   │               ├─ (yk2gw.FTQLQ IN ('SQ1'))\n" +
+			"                                             │   │   │   │               ├─ (yk2gw.FTQLQ HASH IN ('SQ1'))\n" +
 			"                                             │   │   │   │               └─ IndexedTableAccess(YK2GW)\n" +
 			"                                             │   │   │   │                   ├─ index: [YK2GW.id]\n" +
 			"                                             │   │   │   │                   ├─ filters: [{[NULL, ∞)}]\n" +
@@ -7867,7 +7867,7 @@ WHERE
 			"                                             │                       │   │           ├─ MergeJoin\n" +
 			"                                             │                       │   │           │   ├─ cmp: (cla.id = bs.IXUXU)\n" +
 			"                                             │                       │   │           │   ├─ Filter\n" +
-			"                                             │                       │   │           │   │   ├─ (cla.FTQLQ IN ('SQ1'))\n" +
+			"                                             │                       │   │           │   │   ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
 			"                                             │                       │   │           │   │   └─ TableAlias(cla)\n" +
 			"                                             │                       │   │           │   │       └─ IndexedTableAccess(YK2GW)\n" +
 			"                                             │                       │   │           │   │           ├─ index: [YK2GW.id]\n" +
@@ -7989,7 +7989,7 @@ WHERE
 			"                                             │   │   │   │           │   ├─ filters: [{[NULL, ∞)}]\n" +
 			"                                             │   │   │   │           │   └─ columns: [id ixuxu]\n" +
 			"                                             │   │   │   │           └─ Filter\n" +
-			"                                             │   │   │   │               ├─ (yk2gw.FTQLQ IN ('SQ1'))\n" +
+			"                                             │   │   │   │               ├─ (yk2gw.FTQLQ HASH IN ('SQ1'))\n" +
 			"                                             │   │   │   │               └─ IndexedTableAccess(YK2GW)\n" +
 			"                                             │   │   │   │                   ├─ index: [YK2GW.id]\n" +
 			"                                             │   │   │   │                   ├─ filters: [{[NULL, ∞)}]\n" +
@@ -8077,7 +8077,7 @@ WHERE
 			"                                             │                       │   │           ├─ MergeJoin\n" +
 			"                                             │                       │   │           │   ├─ cmp: (cla.id = bs.IXUXU)\n" +
 			"                                             │                       │   │           │   ├─ Filter\n" +
-			"                                             │                       │   │           │   │   ├─ (cla.FTQLQ IN ('SQ1'))\n" +
+			"                                             │                       │   │           │   │   ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
 			"                                             │                       │   │           │   │   └─ TableAlias(cla)\n" +
 			"                                             │                       │   │           │   │       └─ IndexedTableAccess(YK2GW)\n" +
 			"                                             │                       │   │           │   │           ├─ index: [YK2GW.id]\n" +
@@ -8704,7 +8704,7 @@ WHERE
 			"                                             │   │   │   │           │   ├─ filters: [{[NULL, ∞)}]\n" +
 			"                                             │   │   │   │           │   └─ columns: [id ixuxu]\n" +
 			"                                             │   │   │   │           └─ Filter\n" +
-			"                                             │   │   │   │               ├─ (yk2gw.FTQLQ IN ('SQ1'))\n" +
+			"                                             │   │   │   │               ├─ (yk2gw.FTQLQ HASH IN ('SQ1'))\n" +
 			"                                             │   │   │   │               └─ IndexedTableAccess(YK2GW)\n" +
 			"                                             │   │   │   │                   ├─ index: [YK2GW.id]\n" +
 			"                                             │   │   │   │                   ├─ filters: [{[NULL, ∞)}]\n" +
@@ -8828,7 +8828,7 @@ WHERE
 			"                                             │                       │   │                   │       ├─ filters: [{[NULL, ∞)}]\n" +
 			"                                             │                       │   │                   │       └─ columns: [id ixuxu]\n" +
 			"                                             │                       │   │                   └─ Filter\n" +
-			"                                             │                       │   │                       ├─ (cla.FTQLQ IN ('SQ1'))\n" +
+			"                                             │                       │   │                       ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
 			"                                             │                       │   │                       └─ TableAlias(cla)\n" +
 			"                                             │                       │   │                           └─ IndexedTableAccess(YK2GW)\n" +
 			"                                             │                       │   │                               ├─ index: [YK2GW.id]\n" +
@@ -8915,7 +8915,7 @@ WHERE
 			"                                             │   │   │   │           │   ├─ filters: [{[NULL, ∞)}]\n" +
 			"                                             │   │   │   │           │   └─ columns: [id ixuxu]\n" +
 			"                                             │   │   │   │           └─ Filter\n" +
-			"                                             │   │   │   │               ├─ (yk2gw.FTQLQ IN ('SQ1'))\n" +
+			"                                             │   │   │   │               ├─ (yk2gw.FTQLQ HASH IN ('SQ1'))\n" +
 			"                                             │   │   │   │               └─ IndexedTableAccess(YK2GW)\n" +
 			"                                             │   │   │   │                   ├─ index: [YK2GW.id]\n" +
 			"                                             │   │   │   │                   ├─ filters: [{[NULL, ∞)}]\n" +
@@ -9039,7 +9039,7 @@ WHERE
 			"                                             │                       │   │                   │       ├─ filters: [{[NULL, ∞)}]\n" +
 			"                                             │                       │   │                   │       └─ columns: [id ixuxu]\n" +
 			"                                             │                       │   │                   └─ Filter\n" +
-			"                                             │                       │   │                       ├─ (cla.FTQLQ IN ('SQ1'))\n" +
+			"                                             │                       │   │                       ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
 			"                                             │                       │   │                       └─ TableAlias(cla)\n" +
 			"                                             │                       │   │                           └─ IndexedTableAccess(YK2GW)\n" +
 			"                                             │                       │   │                               ├─ index: [YK2GW.id]\n" +
@@ -9865,7 +9865,7 @@ WHERE
 			"             │   │           │   ├─ MergeJoin (estimated cost=5070.940 rows=2498)\n" +
 			"             │   │           │   │   ├─ cmp: (cla.id = bs.IXUXU)\n" +
 			"             │   │           │   │   ├─ Filter\n" +
-			"             │   │           │   │   │   ├─ (cla.FTQLQ IN ('SQ1'))\n" +
+			"             │   │           │   │   │   ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
 			"             │   │           │   │   │   └─ TableAlias(cla)\n" +
 			"             │   │           │   │   │       └─ IndexedTableAccess(YK2GW)\n" +
 			"             │   │           │   │   │           ├─ index: [YK2GW.id]\n" +
@@ -9884,7 +9884,7 @@ WHERE
 			"             │   │           │           │   ├─ MergeJoin (estimated cost=451603.550 rows=14766)\n" +
 			"             │   │           │           │   │   ├─ cmp: (mf.LUEVY = sn.BRQP2)\n" +
 			"             │   │           │           │   │   ├─ Filter\n" +
-			"             │   │           │           │   │   │   ├─ (mf.FSDY2 IN ('SRARY', 'UBQWG'))\n" +
+			"             │   │           │           │   │   │   ├─ (mf.FSDY2 HASH IN ('SRARY', 'UBQWG'))\n" +
 			"             │   │           │           │   │   │   └─ TableAlias(mf)\n" +
 			"             │   │           │           │   │   │       └─ IndexedTableAccess(HGMQ6)\n" +
 			"             │   │           │           │   │   │           ├─ index: [HGMQ6.LUEVY]\n" +
@@ -9987,7 +9987,7 @@ WHERE
 			"             │   │           │   ├─ MergeJoin (estimated cost=5070.940 rows=2498) (actual rows=0 loops=1)\n" +
 			"             │   │           │   │   ├─ cmp: (cla.id = bs.IXUXU)\n" +
 			"             │   │           │   │   ├─ Filter\n" +
-			"             │   │           │   │   │   ├─ (cla.FTQLQ IN ('SQ1'))\n" +
+			"             │   │           │   │   │   ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
 			"             │   │           │   │   │   └─ TableAlias(cla)\n" +
 			"             │   │           │   │   │       └─ IndexedTableAccess(YK2GW)\n" +
 			"             │   │           │   │   │           ├─ index: [YK2GW.id]\n" +
@@ -10006,7 +10006,7 @@ WHERE
 			"             │   │           │           │   ├─ MergeJoin (estimated cost=451603.550 rows=14766)\n" +
 			"             │   │           │           │   │   ├─ cmp: (mf.LUEVY = sn.BRQP2)\n" +
 			"             │   │           │           │   │   ├─ Filter\n" +
-			"             │   │           │           │   │   │   ├─ (mf.FSDY2 IN ('SRARY', 'UBQWG'))\n" +
+			"             │   │           │           │   │   │   ├─ (mf.FSDY2 HASH IN ('SRARY', 'UBQWG'))\n" +
 			"             │   │           │           │   │   │   └─ TableAlias(mf)\n" +
 			"             │   │           │           │   │   │       └─ IndexedTableAccess(HGMQ6)\n" +
 			"             │   │           │           │   │   │           ├─ index: [HGMQ6.LUEVY]\n" +
@@ -10374,7 +10374,7 @@ WHERE
 			"             │   │           │   │   │   │   │       ├─ name: NOXN3\n" +
 			"             │   │           │   │   │   │   │       └─ columns: [id brqp2]\n" +
 			"             │   │           │   │   │   │   └─ Filter\n" +
-			"             │   │           │   │   │   │       ├─ (mf.FSDY2 IN ('SRARY', 'UBQWG'))\n" +
+			"             │   │           │   │   │   │       ├─ (mf.FSDY2 HASH IN ('SRARY', 'UBQWG'))\n" +
 			"             │   │           │   │   │   │       └─ TableAlias(mf)\n" +
 			"             │   │           │   │   │   │           └─ IndexedTableAccess(HGMQ6)\n" +
 			"             │   │           │   │   │   │               ├─ index: [HGMQ6.LUEVY]\n" +
@@ -10396,7 +10396,7 @@ WHERE
 			"             │   │           │       └─ MergeJoin (estimated cost=5070.940 rows=2498)\n" +
 			"             │   │           │           ├─ cmp: (cla.id = bs.IXUXU)\n" +
 			"             │   │           │           ├─ Filter\n" +
-			"             │   │           │           │   ├─ (cla.FTQLQ IN ('SQ1'))\n" +
+			"             │   │           │           │   ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
 			"             │   │           │           │   └─ TableAlias(cla)\n" +
 			"             │   │           │           │       └─ IndexedTableAccess(YK2GW)\n" +
 			"             │   │           │           │           ├─ index: [YK2GW.id]\n" +
@@ -10494,7 +10494,7 @@ WHERE
 			"             │   │           │   │   │   │   │       ├─ name: NOXN3\n" +
 			"             │   │           │   │   │   │   │       └─ columns: [id brqp2]\n" +
 			"             │   │           │   │   │   │   └─ Filter\n" +
-			"             │   │           │   │   │   │       ├─ (mf.FSDY2 IN ('SRARY', 'UBQWG'))\n" +
+			"             │   │           │   │   │   │       ├─ (mf.FSDY2 HASH IN ('SRARY', 'UBQWG'))\n" +
 			"             │   │           │   │   │   │       └─ TableAlias(mf)\n" +
 			"             │   │           │   │   │   │           └─ IndexedTableAccess(HGMQ6)\n" +
 			"             │   │           │   │   │   │               ├─ index: [HGMQ6.LUEVY]\n" +
@@ -10516,7 +10516,7 @@ WHERE
 			"             │   │           │       └─ MergeJoin (estimated cost=5070.940 rows=2498)\n" +
 			"             │   │           │           ├─ cmp: (cla.id = bs.IXUXU)\n" +
 			"             │   │           │           ├─ Filter\n" +
-			"             │   │           │           │   ├─ (cla.FTQLQ IN ('SQ1'))\n" +
+			"             │   │           │           │   ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
 			"             │   │           │           │   └─ TableAlias(cla)\n" +
 			"             │   │           │           │       └─ IndexedTableAccess(YK2GW)\n" +
 			"             │   │           │           │           ├─ index: [YK2GW.id]\n" +
@@ -11762,7 +11762,7 @@ WHERE
 			"                                         └─ MergeJoin\n" +
 			"                                             ├─ cmp: (cla.id = bs.IXUXU)\n" +
 			"                                             ├─ Filter\n" +
-			"                                             │   ├─ (cla.FTQLQ IN ('SQ1'))\n" +
+			"                                             │   ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
 			"                                             │   └─ TableAlias(cla)\n" +
 			"                                             │       └─ IndexedTableAccess(YK2GW)\n" +
 			"                                             │           ├─ index: [YK2GW.id]\n" +
@@ -12120,7 +12120,7 @@ WHERE
 			"                                         └─ MergeJoin\n" +
 			"                                             ├─ cmp: (cla.id = bs.IXUXU)\n" +
 			"                                             ├─ Filter\n" +
-			"                                             │   ├─ (cla.FTQLQ IN ('SQ1'))\n" +
+			"                                             │   ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
 			"                                             │   └─ TableAlias(cla)\n" +
 			"                                             │       └─ IndexedTableAccess(YK2GW)\n" +
 			"                                             │           ├─ index: [YK2GW.id]\n" +
@@ -13406,7 +13406,7 @@ WHERE
 			"             │                                           ├─ MergeJoin\n" +
 			"             │                                           │   ├─ cmp: (cla.id = bs.IXUXU)\n" +
 			"             │                                           │   ├─ Filter\n" +
-			"             │                                           │   │   ├─ (cla.FTQLQ IN ('SQ1'))\n" +
+			"             │                                           │   │   ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
 			"             │                                           │   │   └─ TableAlias(cla)\n" +
 			"             │                                           │   │       └─ IndexedTableAccess(YK2GW)\n" +
 			"             │                                           │   │           ├─ index: [YK2GW.id]\n" +
@@ -13462,7 +13462,7 @@ WHERE
 			"                                         │           ├─ MergeJoin\n" +
 			"                                         │           │   ├─ cmp: (cla.id = bs.IXUXU)\n" +
 			"                                         │           │   ├─ Filter\n" +
-			"                                         │           │   │   ├─ (cla.FTQLQ IN ('SQ1'))\n" +
+			"                                         │           │   │   ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
 			"                                         │           │   │   └─ TableAlias(cla)\n" +
 			"                                         │           │   │       └─ IndexedTableAccess(YK2GW)\n" +
 			"                                         │           │   │           ├─ index: [YK2GW.id]\n" +
@@ -13937,7 +13937,7 @@ WHERE
 			"             │                                           ├─ MergeJoin\n" +
 			"             │                                           │   ├─ cmp: (cla.id = bs.IXUXU)\n" +
 			"             │                                           │   ├─ Filter\n" +
-			"             │                                           │   │   ├─ (cla.FTQLQ IN ('SQ1'))\n" +
+			"             │                                           │   │   ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
 			"             │                                           │   │   └─ TableAlias(cla)\n" +
 			"             │                                           │   │       └─ IndexedTableAccess(YK2GW)\n" +
 			"             │                                           │   │           ├─ index: [YK2GW.id]\n" +
@@ -13993,7 +13993,7 @@ WHERE
 			"                                         │           ├─ MergeJoin\n" +
 			"                                         │           │   ├─ cmp: (cla.id = bs.IXUXU)\n" +
 			"                                         │           │   ├─ Filter\n" +
-			"                                         │           │   │   ├─ (cla.FTQLQ IN ('SQ1'))\n" +
+			"                                         │           │   │   ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
 			"                                         │           │   │   └─ TableAlias(cla)\n" +
 			"                                         │           │   │       └─ IndexedTableAccess(YK2GW)\n" +
 			"                                         │           │   │           ├─ index: [YK2GW.id]\n" +
@@ -15499,7 +15499,7 @@ WHERE
 			"             │                                                   │       ├─ filters: [{[NULL, ∞)}]\n" +
 			"             │                                                   │       └─ columns: [id ixuxu]\n" +
 			"             │                                                   └─ Filter\n" +
-			"             │                                                       ├─ (cla.FTQLQ IN ('SQ1'))\n" +
+			"             │                                                       ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
 			"             │                                                       └─ TableAlias(cla)\n" +
 			"             │                                                           └─ IndexedTableAccess(YK2GW)\n" +
 			"             │                                                               ├─ index: [YK2GW.id]\n" +
@@ -15553,7 +15553,7 @@ WHERE
 			"                                         │                   │       ├─ filters: [{[NULL, ∞)}]\n" +
 			"                                         │                   │       └─ columns: [id ixuxu]\n" +
 			"                                         │                   └─ Filter\n" +
-			"                                         │                       ├─ (cla.FTQLQ IN ('SQ1'))\n" +
+			"                                         │                       ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
 			"                                         │                       └─ TableAlias(cla)\n" +
 			"                                         │                           └─ IndexedTableAccess(YK2GW)\n" +
 			"                                         │                               ├─ index: [YK2GW.id]\n" +
@@ -16026,7 +16026,7 @@ WHERE
 			"             │                                                   │       ├─ filters: [{[NULL, ∞)}]\n" +
 			"             │                                                   │       └─ columns: [id ixuxu]\n" +
 			"             │                                                   └─ Filter\n" +
-			"             │                                                       ├─ (cla.FTQLQ IN ('SQ1'))\n" +
+			"             │                                                       ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
 			"             │                                                       └─ TableAlias(cla)\n" +
 			"             │                                                           └─ IndexedTableAccess(YK2GW)\n" +
 			"             │                                                               ├─ index: [YK2GW.id]\n" +
@@ -16080,7 +16080,7 @@ WHERE
 			"                                         │                   │       ├─ filters: [{[NULL, ∞)}]\n" +
 			"                                         │                   │       └─ columns: [id ixuxu]\n" +
 			"                                         │                   └─ Filter\n" +
-			"                                         │                       ├─ (cla.FTQLQ IN ('SQ1'))\n" +
+			"                                         │                       ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
 			"                                         │                       └─ TableAlias(cla)\n" +
 			"                                         │                           └─ IndexedTableAccess(YK2GW)\n" +
 			"                                         │                               ├─ index: [YK2GW.id]\n" +

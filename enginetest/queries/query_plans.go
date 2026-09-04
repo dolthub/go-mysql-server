@@ -9204,13 +9204,13 @@ inner join pq on true
 			"         └─ columns: [i s]\n" +
 			"",
 		ExpectedEstimates: "Filter\n" +
-			" ├─ (upper(mytable.s) IN ('FIRST ROW', 'SECOND ROW'))\n" +
+			" ├─ (upper(mytable.s) HASH IN ('FIRST ROW', 'SECOND ROW'))\n" +
 			" └─ Table\n" +
 			"     ├─ name: mytable\n" +
 			"     └─ columns: [i s]\n" +
 			"",
 		ExpectedAnalysis: "Filter\n" +
-			" ├─ (upper(mytable.s) IN ('FIRST ROW', 'SECOND ROW'))\n" +
+			" ├─ (upper(mytable.s) HASH IN ('FIRST ROW', 'SECOND ROW'))\n" +
 			" └─ Table\n" +
 			"     ├─ name: mytable\n" +
 			"     └─ columns: [i s]\n" +
@@ -9230,13 +9230,13 @@ inner join pq on true
 			"         └─ columns: [i s]\n" +
 			"",
 		ExpectedEstimates: "Filter\n" +
-			" ├─ (convert(mytable.i, char) IN ('a', 'b'))\n" +
+			" ├─ (convert(mytable.i, char) HASH IN ('a', 'b'))\n" +
 			" └─ Table\n" +
 			"     ├─ name: mytable\n" +
 			"     └─ columns: [i s]\n" +
 			"",
 		ExpectedAnalysis: "Filter\n" +
-			" ├─ (convert(mytable.i, char) IN ('a', 'b'))\n" +
+			" ├─ (convert(mytable.i, char) HASH IN ('a', 'b'))\n" +
 			" └─ Table\n" +
 			"     ├─ name: mytable\n" +
 			"     └─ columns: [i s]\n" +
@@ -9256,13 +9256,13 @@ inner join pq on true
 			"         └─ columns: [i s]\n" +
 			"",
 		ExpectedEstimates: "Filter\n" +
-			" ├─ (convert(mytable.i, char) IN ('1', '2'))\n" +
+			" ├─ (convert(mytable.i, char) HASH IN ('1', '2'))\n" +
 			" └─ Table\n" +
 			"     ├─ name: mytable\n" +
 			"     └─ columns: [i s]\n" +
 			"",
 		ExpectedAnalysis: "Filter\n" +
-			" ├─ (convert(mytable.i, char) IN ('1', '2'))\n" +
+			" ├─ (convert(mytable.i, char) HASH IN ('1', '2'))\n" +
 			" └─ Table\n" +
 			"     ├─ name: mytable\n" +
 			"     └─ columns: [i s]\n" +
@@ -9282,13 +9282,13 @@ inner join pq on true
 			"         └─ columns: [i s]\n" +
 			"",
 		ExpectedEstimates: "Filter\n" +
-			" ├─ ((mytable.i > 2) IN (true))\n" +
+			" ├─ ((mytable.i > 2) HASH IN (true))\n" +
 			" └─ Table\n" +
 			"     ├─ name: mytable\n" +
 			"     └─ columns: [i s]\n" +
 			"",
 		ExpectedAnalysis: "Filter\n" +
-			" ├─ ((mytable.i > 2) IN (true))\n" +
+			" ├─ ((mytable.i > 2) HASH IN (true))\n" +
 			" └─ Table\n" +
 			"     ├─ name: mytable\n" +
 			"     └─ columns: [i s]\n" +
@@ -9306,13 +9306,13 @@ inner join pq on true
 			"         └─ columns: [i s]\n" +
 			"",
 		ExpectedEstimates: "Filter\n" +
-			" ├─ ((mytable.i + 6) IN (7, 8))\n" +
+			" ├─ ((mytable.i + 6) HASH IN (7, 8))\n" +
 			" └─ Table\n" +
 			"     ├─ name: mytable\n" +
 			"     └─ columns: [i s]\n" +
 			"",
 		ExpectedAnalysis: "Filter\n" +
-			" ├─ ((mytable.i + 6) IN (7, 8))\n" +
+			" ├─ ((mytable.i + 6) HASH IN (7, 8))\n" +
 			" └─ Table\n" +
 			"     ├─ name: mytable\n" +
 			"     └─ columns: [i s]\n" +
@@ -9330,13 +9330,13 @@ inner join pq on true
 			"         └─ columns: [i s]\n" +
 			"",
 		ExpectedEstimates: "Filter\n" +
-			" ├─ ((mytable.i + 40) IN (7, 8))\n" +
+			" ├─ ((mytable.i + 40) HASH IN (7, 8))\n" +
 			" └─ Table\n" +
 			"     ├─ name: mytable\n" +
 			"     └─ columns: [i s]\n" +
 			"",
 		ExpectedAnalysis: "Filter\n" +
-			" ├─ ((mytable.i + 40) IN (7, 8))\n" +
+			" ├─ ((mytable.i + 40) HASH IN (7, 8))\n" +
 			" └─ Table\n" +
 			"     ├─ name: mytable\n" +
 			"     └─ columns: [i s]\n" +
@@ -9356,13 +9356,13 @@ inner join pq on true
 			"         └─ columns: [i s]\n" +
 			"",
 		ExpectedEstimates: "Filter\n" +
-			" ├─ ((mytable.i = 1) IN (true))\n" +
+			" ├─ ((mytable.i = 1) HASH IN (true))\n" +
 			" └─ Table\n" +
 			"     ├─ name: mytable\n" +
 			"     └─ columns: [i s]\n" +
 			"",
 		ExpectedAnalysis: "Filter\n" +
-			" ├─ ((mytable.i = 1) IN (true))\n" +
+			" ├─ ((mytable.i = 1) HASH IN (true))\n" +
 			" └─ Table\n" +
 			"     ├─ name: mytable\n" +
 			"     └─ columns: [i s]\n" +
@@ -9382,13 +9382,13 @@ inner join pq on true
 			"         └─ columns: [i s]\n" +
 			"",
 		ExpectedEstimates: "Filter\n" +
-			" ├─ ((mytable.i = 0) IN (true))\n" +
+			" ├─ ((mytable.i = 0) HASH IN (true))\n" +
 			" └─ Table\n" +
 			"     ├─ name: mytable\n" +
 			"     └─ columns: [i s]\n" +
 			"",
 		ExpectedAnalysis: "Filter\n" +
-			" ├─ ((mytable.i = 0) IN (true))\n" +
+			" ├─ ((mytable.i = 0) HASH IN (true))\n" +
 			" └─ Table\n" +
 			"     ├─ name: mytable\n" +
 			"     └─ columns: [i s]\n" +
