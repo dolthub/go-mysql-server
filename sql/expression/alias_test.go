@@ -24,10 +24,12 @@ import (
 )
 
 func TestAliasReferenceString(t *testing.T) {
-	expr := NewAliasReference("alias_name")
-	require.Equal(t, "alias_name", expr.String())
-	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + expr.String())
-	require.NoError(t, err)
+	for _, name := range []string{"alias_name", "alias name", "select", "alias`name"} {
+		expr := NewAliasReference(name)
+		_, err := sql.NewMysqlParser().ParseSimple("SELECT " + expr.String())
+		require.NoError(t, err)
+	}
+	require.Equal(t, "`alias name`", NewAliasReference("alias name").String())
 }
 
 func TestAliasString(t *testing.T) {

@@ -42,7 +42,7 @@ func (a AliasReference) Table() string {
 }
 
 func (a AliasReference) String() string {
-	return a.name
+	return sqlparser.String(sqlparser.NewColIdent(a.name))
 }
 
 func (a AliasReference) Resolved() bool {
