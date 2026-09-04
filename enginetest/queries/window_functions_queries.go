@@ -73,6 +73,25 @@ var WindowFunctionsScriptTests = []ScriptTest{
 		Expected: []sql.Row{{"192.0.2.1"}},
 	},
 	{
+		Name: "HOUR over a time-valued window result",
+		SetUpScript: []string{
+			"CREATE TABLE window_time_values (v VARCHAR(8))",
+			"INSERT INTO window_time_values VALUES ('13:04:05')",
+		},
+		Query:    "SELECT HOUR(FIRST_VALUE(v) OVER ()) FROM window_time_values",
+		Expected: []sql.Row{{13}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11512
+		Name: "customer reproduction: HOUR over a time-valued window result",
+		SetUpScript: []string{
+			"CREATE TABLE t(v VARCHAR(8))",
+			"INSERT INTO t VALUES ('13:04:05')",
+		},
+		Query:    "SELECT HOUR(FIRST_VALUE(v) OVER ()) AS actual FROM t",
+		Expected: []sql.Row{{13}},
+	},
+	{
 		Name: "window functions preserve correlated subquery columns",
 		SetUpScript: []string{
 			"CREATE TABLE window_correlated (id INT PRIMARY KEY, c0 INT, c1 INT)",
