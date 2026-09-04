@@ -417,14 +417,11 @@ func (a *Count) IsNullable(ctx *sql.Context) bool {
 }
 
 func (a *Count) String() string {
+	ret := "COUNT(" + a.Child.String() + ")"
 	if a.window != nil {
-		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("COUNT")
-		children := []string{a.window.String(), a.Child.String()}
-		pr.WriteChildren(children...)
-		return pr.String()
+		ret += " " + a.window.String()
 	}
-	return "COUNT(" + a.Child.String() + ")"
+	return ret
 }
 
 func (a *Count) DebugString(ctx *sql.Context) string {

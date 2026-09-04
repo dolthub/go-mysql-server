@@ -73,6 +73,13 @@ func TestCountEvalStar(t *testing.T) {
 	require.Equal(int64(5), evalBuffer(t, b))
 }
 
+func TestCountString(t *testing.T) {
+	count := NewCount(expression.NewStar()).WithWindow(sql.NewEmptyContext(), &sql.WindowDefinition{})
+	require.Equal(t, "COUNT(*) over ()", count.String())
+	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + count.String())
+	require.NoError(t, err)
+}
+
 func TestCountEvalString(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
