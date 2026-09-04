@@ -278,7 +278,7 @@ WHERE
 			"                                             ├─ columns: [nd.id as id, nd.ZH72S as ZH72S, Subquery\n" +
 			"                                             │   ├─ cacheable: false\n" +
 			"                                             │   └─ Project\n" +
-			"                                             │       ├─ columns: [count(1) as COUNT(*)]\n" +
+			"                                             │       ├─ columns: [count(1) as `COUNT(*)`]\n" +
 			"                                             │       └─ GroupBy\n" +
 			"                                             │           ├─ select: COUNT(1)\n" +
 			"                                             │           ├─ group: \n" +
@@ -293,7 +293,7 @@ WHERE
 			"                                                 ├─ columns: [nd.id, nd.DKCAJ, nd.KNG7T, nd.TW55N, nd.QRQXW, nd.ECXAJ, nd.FGG57, nd.ZH72S, nd.FSK67, nd.XQDYT, nd.TCE7A, nd.IWV2H, nd.HPCMS, nd.N5CC2, nd.FHCYT, nd.ETAQ7, nd.A75X7, nd.id as id, nd.ZH72S as ZH72S, Subquery\n" +
 			"                                                 │   ├─ cacheable: false\n" +
 			"                                                 │   └─ Project\n" +
-			"                                                 │       ├─ columns: [count(1) as COUNT(*)]\n" +
+			"                                                 │       ├─ columns: [count(1) as `COUNT(*)`]\n" +
 			"                                                 │       └─ GroupBy\n" +
 			"                                                 │           ├─ select: COUNT(1)\n" +
 			"                                                 │           ├─ group: \n" +
@@ -348,7 +348,7 @@ WHERE
 			"                                             ├─ columns: [nd.id as id, nd.ZH72S as ZH72S, Subquery\n" +
 			"                                             │   ├─ cacheable: false\n" +
 			"                                             │   └─ Project\n" +
-			"                                             │       ├─ columns: [count(1) as COUNT(*)]\n" +
+			"                                             │       ├─ columns: [count(1) as `COUNT(*)`]\n" +
 			"                                             │       └─ GroupBy\n" +
 			"                                             │           ├─ select: COUNT(1)\n" +
 			"                                             │           ├─ group: \n" +
@@ -363,7 +363,7 @@ WHERE
 			"                                                 ├─ columns: [nd.id, nd.DKCAJ, nd.KNG7T, nd.TW55N, nd.QRQXW, nd.ECXAJ, nd.FGG57, nd.ZH72S, nd.FSK67, nd.XQDYT, nd.TCE7A, nd.IWV2H, nd.HPCMS, nd.N5CC2, nd.FHCYT, nd.ETAQ7, nd.A75X7, nd.id as id, nd.ZH72S as ZH72S, Subquery\n" +
 			"                                                 │   ├─ cacheable: false\n" +
 			"                                                 │   └─ Project\n" +
-			"                                                 │       ├─ columns: [count(1) as COUNT(*)]\n" +
+			"                                                 │       ├─ columns: [count(1) as `COUNT(*)`]\n" +
 			"                                                 │       └─ GroupBy\n" +
 			"                                                 │           ├─ select: COUNT(1)\n" +
 			"                                                 │           ├─ group: \n" +
@@ -613,77 +613,13 @@ WHERE
 			"             └─ columns: [id fv24e uj6xy m22qn nz4mq etpqv pruv2 ykssu fhcyt]\n" +
 			"",
 		ExpectedEstimates: "Filter\n" +
-			" ├─ (((NOT(ism.PRUV2 IS NULL)) AND ((Subquery(select NHMXW.SWCQV from WGSDC as NHMXW where NHMXW.id = ism.PRUV2) = 1) OR (((NOT(ism.FV24E IS NULL)) AND (NOT((Subquery(select nd.id from E2I7U as nd where nd.TW55N = (select NHMXW.FZXV5 from WGSDC as NHMXW where NHMXW.id = ism.PRUV2)) = ism.FV24E)))) OR ((NOT(ism.UJ6XY IS NULL)) AND (NOT((Subquery(select nd.id from E2I7U as nd where nd.TW55N = (select NHMXW.DQYGV from WGSDC as NHMXW where NHMXW.id = ism.PRUV2)) = ism.UJ6XY))))))) OR ((NOT(ism.ETPQV IS NULL)) AND InSubquery\n" +
-			" │   ├─ left: ism.ETPQV\n" +
-			" │   └─ right: Subquery\n" +
-			" │       ├─ cacheable: true\n" +
-			" │       └─ Project\n" +
-			" │           ├─ columns: [tizhk.id as FWATE]\n" +
-			" │           └─ Project\n" +
-			" │               ├─ columns: [WGSDC.id, WGSDC.NOHHR, WGSDC.AVPYF, WGSDC.SYPKF, WGSDC.IDUT2, WGSDC.FZXV5, WGSDC.DQYGV, WGSDC.SWCQV, WGSDC.YKSSU, WGSDC.FHCYT, WRZVO.id, WRZVO.TVNW2, WRZVO.ZHITY, WRZVO.SYPKF, WRZVO.IDUT2, WRZVO.O6QJ3, WRZVO.NO2JA, WRZVO.YKSSU, WRZVO.FHCYT, WRZVO.QZ6VT]\n" +
-			" │               └─ Filter\n" +
-			" │                   ├─ 1 IS NULL\n" +
-			" │                   └─ LeftOuterHashJoinExcludingNulls\n" +
-			" │                       ├─ (nhmxw.id = hddvb.PRUV2)\n" +
-			" │                       ├─ LookupJoin\n" +
-			" │                       │   ├─ (((tizhk.TVNW2 = nhmxw.NOHHR) AND (tizhk.ZHITY = nhmxw.AVPYF)) AND (tizhk.IDUT2 = nhmxw.IDUT2))\n" +
-			" │                       │   ├─ Filter\n" +
-			" │                       │   │   ├─ (nhmxw.SWCQV = 0)\n" +
-			" │                       │   │   └─ TableAlias(nhmxw)\n" +
-			" │                       │   │       └─ Table\n" +
-			" │                       │   │           └─ name: WGSDC\n" +
-			" │                       │   └─ TableAlias(tizhk)\n" +
-			" │                       │       └─ IndexedTableAccess(WRZVO)\n" +
-			" │                       │           ├─ index: [WRZVO.SYPKF]\n" +
-			" │                       │           └─ keys: nhmxw.SYPKF\n" +
-			" │                       └─ HashLookup\n" +
-			" │                           ├─ left-key: (nhmxw.id)\n" +
-			" │                           ├─ right-key: (hddvb.PRUV2)\n" +
-			" │                           └─ Project\n" +
-			" │                               ├─ columns: [hddvb.PRUV2, 1]\n" +
-			" │                               └─ IndexedTableAccess(HDDVB)\n" +
-			" │                                   ├─ index: [HDDVB.PRUV2]\n" +
-			" │                                   ├─ filters: [{(NULL, ∞)}]\n" +
-			" │                                   └─ columns: [pruv2]\n" +
-			" │  ))\n" +
+			" ├─ (((NOT(ism.PRUV2 IS NULL)) AND (((select NHMXW.SWCQV from WGSDC as NHMXW where NHMXW.id = ism.PRUV2) = 1) OR (((NOT(ism.FV24E IS NULL)) AND (NOT(((select nd.id from E2I7U as nd where nd.TW55N = (select NHMXW.FZXV5 from WGSDC as NHMXW where NHMXW.id = ism.PRUV2)) = ism.FV24E)))) OR ((NOT(ism.UJ6XY IS NULL)) AND (NOT(((select nd.id from E2I7U as nd where nd.TW55N = (select NHMXW.DQYGV from WGSDC as NHMXW where NHMXW.id = ism.PRUV2)) = ism.UJ6XY))))))) OR ((NOT(ism.ETPQV IS NULL)) AND (ism.ETPQV IN (select TIZHK.id as FWATE from WGSDC as NHMXW join WRZVO as TIZHK on TIZHK.TVNW2 = NHMXW.NOHHR and TIZHK.ZHITY = NHMXW.AVPYF and TIZHK.SYPKF = NHMXW.SYPKF and TIZHK.IDUT2 = NHMXW.IDUT2 where NHMXW.SWCQV = 0 and NHMXW.id not in (select PRUV2 from HDDVB where PRUV2 is not null)))))\n" +
 			" └─ TableAlias(ism)\n" +
 			"     └─ Table\n" +
 			"         └─ name: HDDVB\n" +
 			"",
 		ExpectedAnalysis: "Filter\n" +
-			" ├─ (((NOT(ism.PRUV2 IS NULL)) AND ((Subquery(select NHMXW.SWCQV from WGSDC as NHMXW where NHMXW.id = ism.PRUV2) = 1) OR (((NOT(ism.FV24E IS NULL)) AND (NOT((Subquery(select nd.id from E2I7U as nd where nd.TW55N = (select NHMXW.FZXV5 from WGSDC as NHMXW where NHMXW.id = ism.PRUV2)) = ism.FV24E)))) OR ((NOT(ism.UJ6XY IS NULL)) AND (NOT((Subquery(select nd.id from E2I7U as nd where nd.TW55N = (select NHMXW.DQYGV from WGSDC as NHMXW where NHMXW.id = ism.PRUV2)) = ism.UJ6XY))))))) OR ((NOT(ism.ETPQV IS NULL)) AND InSubquery\n" +
-			" │   ├─ left: ism.ETPQV\n" +
-			" │   └─ right: Subquery\n" +
-			" │       ├─ cacheable: true\n" +
-			" │       └─ Project\n" +
-			" │           ├─ columns: [tizhk.id as FWATE]\n" +
-			" │           └─ Project\n" +
-			" │               ├─ columns: [WGSDC.id, WGSDC.NOHHR, WGSDC.AVPYF, WGSDC.SYPKF, WGSDC.IDUT2, WGSDC.FZXV5, WGSDC.DQYGV, WGSDC.SWCQV, WGSDC.YKSSU, WGSDC.FHCYT, WRZVO.id, WRZVO.TVNW2, WRZVO.ZHITY, WRZVO.SYPKF, WRZVO.IDUT2, WRZVO.O6QJ3, WRZVO.NO2JA, WRZVO.YKSSU, WRZVO.FHCYT, WRZVO.QZ6VT]\n" +
-			" │               └─ Filter\n" +
-			" │                   ├─ 1 IS NULL\n" +
-			" │                   └─ LeftOuterHashJoinExcludingNulls\n" +
-			" │                       ├─ (nhmxw.id = hddvb.PRUV2)\n" +
-			" │                       ├─ LookupJoin\n" +
-			" │                       │   ├─ (((tizhk.TVNW2 = nhmxw.NOHHR) AND (tizhk.ZHITY = nhmxw.AVPYF)) AND (tizhk.IDUT2 = nhmxw.IDUT2))\n" +
-			" │                       │   ├─ Filter\n" +
-			" │                       │   │   ├─ (nhmxw.SWCQV = 0)\n" +
-			" │                       │   │   └─ TableAlias(nhmxw)\n" +
-			" │                       │   │       └─ Table\n" +
-			" │                       │   │           └─ name: WGSDC\n" +
-			" │                       │   └─ TableAlias(tizhk)\n" +
-			" │                       │       └─ IndexedTableAccess(WRZVO)\n" +
-			" │                       │           ├─ index: [WRZVO.SYPKF]\n" +
-			" │                       │           └─ keys: nhmxw.SYPKF\n" +
-			" │                       └─ HashLookup\n" +
-			" │                           ├─ left-key: (nhmxw.id)\n" +
-			" │                           ├─ right-key: (hddvb.PRUV2)\n" +
-			" │                           └─ Project\n" +
-			" │                               ├─ columns: [hddvb.PRUV2, 1]\n" +
-			" │                               └─ IndexedTableAccess(HDDVB)\n" +
-			" │                                   ├─ index: [HDDVB.PRUV2]\n" +
-			" │                                   ├─ filters: [{(NULL, ∞)}]\n" +
-			" │                                   └─ columns: [pruv2]\n" +
-			" │  ))\n" +
+			" ├─ (((NOT(ism.PRUV2 IS NULL)) AND (((select NHMXW.SWCQV from WGSDC as NHMXW where NHMXW.id = ism.PRUV2) = 1) OR (((NOT(ism.FV24E IS NULL)) AND (NOT(((select nd.id from E2I7U as nd where nd.TW55N = (select NHMXW.FZXV5 from WGSDC as NHMXW where NHMXW.id = ism.PRUV2)) = ism.FV24E)))) OR ((NOT(ism.UJ6XY IS NULL)) AND (NOT(((select nd.id from E2I7U as nd where nd.TW55N = (select NHMXW.DQYGV from WGSDC as NHMXW where NHMXW.id = ism.PRUV2)) = ism.UJ6XY))))))) OR ((NOT(ism.ETPQV IS NULL)) AND (ism.ETPQV IN (select TIZHK.id as FWATE from WGSDC as NHMXW join WRZVO as TIZHK on TIZHK.TVNW2 = NHMXW.NOHHR and TIZHK.ZHITY = NHMXW.AVPYF and TIZHK.SYPKF = NHMXW.SYPKF and TIZHK.IDUT2 = NHMXW.IDUT2 where NHMXW.SWCQV = 0 and NHMXW.id not in (select PRUV2 from HDDVB where PRUV2 is not null)))))\n" +
 			" └─ TableAlias(ism)\n" +
 			"     └─ Table\n" +
 			"         └─ name: HDDVB\n" +
@@ -1315,7 +1251,7 @@ WHERE
 			"                                             ├─ columns: [nd.id as id, nd.ZH72S as ZH72S, Subquery\n" +
 			"                                             │   ├─ cacheable: false\n" +
 			"                                             │   └─ Project\n" +
-			"                                             │       ├─ columns: [count(1) as COUNT(*)]\n" +
+			"                                             │       ├─ columns: [count(1) as `COUNT(*)`]\n" +
 			"                                             │       └─ GroupBy\n" +
 			"                                             │           ├─ select: COUNT(1)\n" +
 			"                                             │           ├─ group: \n" +
@@ -1330,7 +1266,7 @@ WHERE
 			"                                                 ├─ columns: [nd.id, nd.DKCAJ, nd.KNG7T, nd.TW55N, nd.QRQXW, nd.ECXAJ, nd.FGG57, nd.ZH72S, nd.FSK67, nd.XQDYT, nd.TCE7A, nd.IWV2H, nd.HPCMS, nd.N5CC2, nd.FHCYT, nd.ETAQ7, nd.A75X7, nd.id as id, nd.ZH72S as ZH72S, Subquery\n" +
 			"                                                 │   ├─ cacheable: false\n" +
 			"                                                 │   └─ Project\n" +
-			"                                                 │       ├─ columns: [count(1) as COUNT(*)]\n" +
+			"                                                 │       ├─ columns: [count(1) as `COUNT(*)`]\n" +
 			"                                                 │       └─ GroupBy\n" +
 			"                                                 │           ├─ select: COUNT(1)\n" +
 			"                                                 │           ├─ group: \n" +
@@ -1385,7 +1321,7 @@ WHERE
 			"                                             ├─ columns: [nd.id as id, nd.ZH72S as ZH72S, Subquery\n" +
 			"                                             │   ├─ cacheable: false\n" +
 			"                                             │   └─ Project\n" +
-			"                                             │       ├─ columns: [count(1) as COUNT(*)]\n" +
+			"                                             │       ├─ columns: [count(1) as `COUNT(*)`]\n" +
 			"                                             │       └─ GroupBy\n" +
 			"                                             │           ├─ select: COUNT(1)\n" +
 			"                                             │           ├─ group: \n" +
@@ -1400,7 +1336,7 @@ WHERE
 			"                                                 ├─ columns: [nd.id, nd.DKCAJ, nd.KNG7T, nd.TW55N, nd.QRQXW, nd.ECXAJ, nd.FGG57, nd.ZH72S, nd.FSK67, nd.XQDYT, nd.TCE7A, nd.IWV2H, nd.HPCMS, nd.N5CC2, nd.FHCYT, nd.ETAQ7, nd.A75X7, nd.id as id, nd.ZH72S as ZH72S, Subquery\n" +
 			"                                                 │   ├─ cacheable: false\n" +
 			"                                                 │   └─ Project\n" +
-			"                                                 │       ├─ columns: [count(1) as COUNT(*)]\n" +
+			"                                                 │       ├─ columns: [count(1) as `COUNT(*)`]\n" +
 			"                                                 │       └─ GroupBy\n" +
 			"                                                 │           ├─ select: COUNT(1)\n" +
 			"                                                 │           ├─ group: \n" +
@@ -1648,39 +1584,7 @@ WHERE
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [ct.id as id, ci.FTQLQ as VCGT3, nd.TW55N as UWBAI, aac.BTXC5 as TPXBU, ct.V5DPX as V5DPX, ct.S3Q3Y as S3Q3Y, ct.ZRV3B as ZRV3B]\n" +
 			" └─ Filter\n" +
-			"     ├─ (((NOT(ct.OCA7E IS NULL)) AND ((Subquery(select I7HCR.SWCQV from EPZU6 as I7HCR where I7HCR.id = ct.OCA7E) = 1) OR (NOT((Subquery(select nd.id from E2I7U as nd where nd.TW55N = (select I7HCR.FVUCX from EPZU6 as I7HCR where I7HCR.id = ct.OCA7E)) = ct.LUEVY))))) OR ((NOT(ct.NRURT IS NULL)) AND InSubquery\n" +
-			"     │   ├─ left: ct.NRURT\n" +
-			"     │   └─ right: Subquery\n" +
-			"     │       ├─ cacheable: true\n" +
-			"     │       └─ Project\n" +
-			"     │           ├─ columns: [uct.id as FDL23]\n" +
-			"     │           └─ Project\n" +
-			"     │               ├─ columns: [EPZU6.id, EPZU6.TOFPN, EPZU6.SJYN2, EPZU6.BTXC5, EPZU6.FVUCX, EPZU6.SWCQV, EPZU6.YKSSU, EPZU6.FHCYT, OUBDL.id, OUBDL.FTQLQ, OUBDL.ZH72S, OUBDL.SFJ6L, OUBDL.V5DPX, OUBDL.LJLUM, OUBDL.IDPK7, OUBDL.NO52D, OUBDL.ZRV3B, OUBDL.VYO5E, OUBDL.YKSSU, OUBDL.FHCYT, OUBDL.QZ6VT]\n" +
-			"     │               └─ Filter\n" +
-			"     │                   ├─ 1 IS NULL\n" +
-			"     │                   └─ LeftOuterHashJoinExcludingNulls\n" +
-			"     │                       ├─ (i7hcr.id = flqlp.OCA7E)\n" +
-			"     │                       ├─ LookupJoin\n" +
-			"     │                       │   ├─ ((uct.ZH72S = i7hcr.SJYN2) AND (uct.LJLUM = i7hcr.BTXC5))\n" +
-			"     │                       │   ├─ Filter\n" +
-			"     │                       │   │   ├─ (i7hcr.SWCQV = 0)\n" +
-			"     │                       │   │   └─ TableAlias(i7hcr)\n" +
-			"     │                       │   │       └─ Table\n" +
-			"     │                       │   │           └─ name: EPZU6\n" +
-			"     │                       │   └─ TableAlias(uct)\n" +
-			"     │                       │       └─ IndexedTableAccess(OUBDL)\n" +
-			"     │                       │           ├─ index: [OUBDL.FTQLQ]\n" +
-			"     │                       │           └─ keys: i7hcr.TOFPN\n" +
-			"     │                       └─ HashLookup\n" +
-			"     │                           ├─ left-key: (i7hcr.id)\n" +
-			"     │                           ├─ right-key: (flqlp.OCA7E)\n" +
-			"     │                           └─ Project\n" +
-			"     │                               ├─ columns: [flqlp.OCA7E, 1]\n" +
-			"     │                               └─ IndexedTableAccess(FLQLP)\n" +
-			"     │                                   ├─ index: [FLQLP.OCA7E]\n" +
-			"     │                                   ├─ filters: [{(NULL, ∞)}]\n" +
-			"     │                                   └─ columns: [oca7e]\n" +
-			"     │  ))\n" +
+			"     ├─ (((NOT(ct.OCA7E IS NULL)) AND (((select I7HCR.SWCQV from EPZU6 as I7HCR where I7HCR.id = ct.OCA7E) = 1) OR (NOT(((select nd.id from E2I7U as nd where nd.TW55N = (select I7HCR.FVUCX from EPZU6 as I7HCR where I7HCR.id = ct.OCA7E)) = ct.LUEVY))))) OR ((NOT(ct.NRURT IS NULL)) AND (ct.NRURT IN (select uct.id as FDL23 from EPZU6 as I7HCR join OUBDL as uct on uct.FTQLQ = I7HCR.TOFPN and uct.ZH72S = I7HCR.SJYN2 and uct.LJLUM = I7HCR.BTXC5 where I7HCR.SWCQV = 0 and I7HCR.id not in (select OCA7E from FLQLP where OCA7E is not null)))))\n" +
 			"     └─ HashJoin (estimated cost=16273.620 rows=14781)\n" +
 			"         ├─ (ci.id = ct.FZ2R5)\n" +
 			"         ├─ LookupJoin (estimated cost=49643.981 rows=14781)\n" +
@@ -1708,39 +1612,7 @@ WHERE
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [ct.id as id, ci.FTQLQ as VCGT3, nd.TW55N as UWBAI, aac.BTXC5 as TPXBU, ct.V5DPX as V5DPX, ct.S3Q3Y as S3Q3Y, ct.ZRV3B as ZRV3B]\n" +
 			" └─ Filter\n" +
-			"     ├─ (((NOT(ct.OCA7E IS NULL)) AND ((Subquery(select I7HCR.SWCQV from EPZU6 as I7HCR where I7HCR.id = ct.OCA7E) = 1) OR (NOT((Subquery(select nd.id from E2I7U as nd where nd.TW55N = (select I7HCR.FVUCX from EPZU6 as I7HCR where I7HCR.id = ct.OCA7E)) = ct.LUEVY))))) OR ((NOT(ct.NRURT IS NULL)) AND InSubquery\n" +
-			"     │   ├─ left: ct.NRURT\n" +
-			"     │   └─ right: Subquery\n" +
-			"     │       ├─ cacheable: true\n" +
-			"     │       └─ Project\n" +
-			"     │           ├─ columns: [uct.id as FDL23]\n" +
-			"     │           └─ Project\n" +
-			"     │               ├─ columns: [EPZU6.id, EPZU6.TOFPN, EPZU6.SJYN2, EPZU6.BTXC5, EPZU6.FVUCX, EPZU6.SWCQV, EPZU6.YKSSU, EPZU6.FHCYT, OUBDL.id, OUBDL.FTQLQ, OUBDL.ZH72S, OUBDL.SFJ6L, OUBDL.V5DPX, OUBDL.LJLUM, OUBDL.IDPK7, OUBDL.NO52D, OUBDL.ZRV3B, OUBDL.VYO5E, OUBDL.YKSSU, OUBDL.FHCYT, OUBDL.QZ6VT]\n" +
-			"     │               └─ Filter\n" +
-			"     │                   ├─ 1 IS NULL\n" +
-			"     │                   └─ LeftOuterHashJoinExcludingNulls\n" +
-			"     │                       ├─ (i7hcr.id = flqlp.OCA7E)\n" +
-			"     │                       ├─ LookupJoin\n" +
-			"     │                       │   ├─ ((uct.ZH72S = i7hcr.SJYN2) AND (uct.LJLUM = i7hcr.BTXC5))\n" +
-			"     │                       │   ├─ Filter\n" +
-			"     │                       │   │   ├─ (i7hcr.SWCQV = 0)\n" +
-			"     │                       │   │   └─ TableAlias(i7hcr)\n" +
-			"     │                       │   │       └─ Table\n" +
-			"     │                       │   │           └─ name: EPZU6\n" +
-			"     │                       │   └─ TableAlias(uct)\n" +
-			"     │                       │       └─ IndexedTableAccess(OUBDL)\n" +
-			"     │                       │           ├─ index: [OUBDL.FTQLQ]\n" +
-			"     │                       │           └─ keys: i7hcr.TOFPN\n" +
-			"     │                       └─ HashLookup\n" +
-			"     │                           ├─ left-key: (i7hcr.id)\n" +
-			"     │                           ├─ right-key: (flqlp.OCA7E)\n" +
-			"     │                           └─ Project\n" +
-			"     │                               ├─ columns: [flqlp.OCA7E, 1]\n" +
-			"     │                               └─ IndexedTableAccess(FLQLP)\n" +
-			"     │                                   ├─ index: [FLQLP.OCA7E]\n" +
-			"     │                                   ├─ filters: [{(NULL, ∞)}]\n" +
-			"     │                                   └─ columns: [oca7e]\n" +
-			"     │  ))\n" +
+			"     ├─ (((NOT(ct.OCA7E IS NULL)) AND (((select I7HCR.SWCQV from EPZU6 as I7HCR where I7HCR.id = ct.OCA7E) = 1) OR (NOT(((select nd.id from E2I7U as nd where nd.TW55N = (select I7HCR.FVUCX from EPZU6 as I7HCR where I7HCR.id = ct.OCA7E)) = ct.LUEVY))))) OR ((NOT(ct.NRURT IS NULL)) AND (ct.NRURT IN (select uct.id as FDL23 from EPZU6 as I7HCR join OUBDL as uct on uct.FTQLQ = I7HCR.TOFPN and uct.ZH72S = I7HCR.SJYN2 and uct.LJLUM = I7HCR.BTXC5 where I7HCR.SWCQV = 0 and I7HCR.id not in (select OCA7E from FLQLP where OCA7E is not null)))))\n" +
 			"     └─ HashJoin (estimated cost=16273.620 rows=14781) (actual rows=0 loops=1)\n" +
 			"         ├─ (ci.id = ct.FZ2R5)\n" +
 			"         ├─ LookupJoin (estimated cost=49643.981 rows=14781) (actual rows=0 loops=1)\n" +
@@ -3256,7 +3128,7 @@ WHERE
 			"                                             ├─ columns: [nd.id as id, nd.ZH72S as ZH72S, Subquery\n" +
 			"                                             │   ├─ cacheable: false\n" +
 			"                                             │   └─ Project\n" +
-			"                                             │       ├─ columns: [count(1) as COUNT(*)]\n" +
+			"                                             │       ├─ columns: [count(1) as `COUNT(*)`]\n" +
 			"                                             │       └─ GroupBy\n" +
 			"                                             │           ├─ select: COUNT(1)\n" +
 			"                                             │           ├─ group: \n" +
@@ -3271,7 +3143,7 @@ WHERE
 			"                                                 ├─ columns: [nd.id, nd.DKCAJ, nd.KNG7T, nd.TW55N, nd.QRQXW, nd.ECXAJ, nd.FGG57, nd.ZH72S, nd.FSK67, nd.XQDYT, nd.TCE7A, nd.IWV2H, nd.HPCMS, nd.N5CC2, nd.FHCYT, nd.ETAQ7, nd.A75X7, nd.id as id, nd.ZH72S as ZH72S, Subquery\n" +
 			"                                                 │   ├─ cacheable: false\n" +
 			"                                                 │   └─ Project\n" +
-			"                                                 │       ├─ columns: [count(1) as COUNT(*)]\n" +
+			"                                                 │       ├─ columns: [count(1) as `COUNT(*)`]\n" +
 			"                                                 │       └─ GroupBy\n" +
 			"                                                 │           ├─ select: COUNT(1)\n" +
 			"                                                 │           ├─ group: \n" +
@@ -3326,7 +3198,7 @@ WHERE
 			"                                             ├─ columns: [nd.id as id, nd.ZH72S as ZH72S, Subquery\n" +
 			"                                             │   ├─ cacheable: false\n" +
 			"                                             │   └─ Project\n" +
-			"                                             │       ├─ columns: [count(1) as COUNT(*)]\n" +
+			"                                             │       ├─ columns: [count(1) as `COUNT(*)`]\n" +
 			"                                             │       └─ GroupBy\n" +
 			"                                             │           ├─ select: COUNT(1)\n" +
 			"                                             │           ├─ group: \n" +
@@ -3341,7 +3213,7 @@ WHERE
 			"                                                 ├─ columns: [nd.id, nd.DKCAJ, nd.KNG7T, nd.TW55N, nd.QRQXW, nd.ECXAJ, nd.FGG57, nd.ZH72S, nd.FSK67, nd.XQDYT, nd.TCE7A, nd.IWV2H, nd.HPCMS, nd.N5CC2, nd.FHCYT, nd.ETAQ7, nd.A75X7, nd.id as id, nd.ZH72S as ZH72S, Subquery\n" +
 			"                                                 │   ├─ cacheable: false\n" +
 			"                                                 │   └─ Project\n" +
-			"                                                 │       ├─ columns: [count(1) as COUNT(*)]\n" +
+			"                                                 │       ├─ columns: [count(1) as `COUNT(*)`]\n" +
 			"                                                 │       └─ GroupBy\n" +
 			"                                                 │           ├─ select: COUNT(1)\n" +
 			"                                                 │           ├─ group: \n" +
@@ -4016,37 +3888,7 @@ WHERE
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [mf.id as id, cla.FTQLQ as T4IBQ, nd.TW55N as UWBAI, aac.BTXC5 as TPXBU, mf.FSDY2 as FSDY2]\n" +
 			" └─ Filter\n" +
-			"     ├─ (((NOT(mf.QQV4M IS NULL)) AND ((Subquery(select TJ5D2.SWCQV from SZW6V as TJ5D2 where TJ5D2.id = mf.QQV4M) = 1) OR (NOT((Subquery(select nd.id from E2I7U as nd where nd.TW55N = (select TJ5D2.H4DMT from SZW6V as TJ5D2 where TJ5D2.id = mf.QQV4M)) = mf.LUEVY))))) OR ((NOT(mf.TEUJA IS NULL)) AND InSubquery\n" +
-			"     │   ├─ left: mf.TEUJA\n" +
-			"     │   └─ right: Subquery\n" +
-			"     │       ├─ cacheable: true\n" +
-			"     │       └─ Project\n" +
-			"     │           ├─ columns: [umf.id as ORB3K]\n" +
-			"     │           └─ LookupJoin\n" +
-			"     │               ├─ ((umf.FGG57 = tj5d2.V7UFH) AND (umf.SYPKF = tj5d2.SYPKF))\n" +
-			"     │               ├─ Project\n" +
-			"     │               │   ├─ columns: [SZW6V.id, SZW6V.T4IBQ, SZW6V.V7UFH, SZW6V.SYPKF, SZW6V.H4DMT, SZW6V.SWCQV, SZW6V.YKSSU, SZW6V.FHCYT]\n" +
-			"     │               │   └─ Filter\n" +
-			"     │               │       ├─ 1 IS NULL\n" +
-			"     │               │       └─ LeftOuterLookupJoin\n" +
-			"     │               │           ├─ Filter\n" +
-			"     │               │           │   ├─ (tj5d2.SWCQV = 0)\n" +
-			"     │               │           │   └─ TableAlias(tj5d2)\n" +
-			"     │               │           │       └─ Table\n" +
-			"     │               │           │           └─ name: SZW6V\n" +
-			"     │               │           └─ Project\n" +
-			"     │               │               ├─ columns: [hgmq6.QQV4M, 1]\n" +
-			"     │               │               └─ Filter\n" +
-			"     │               │                   ├─ (NOT(hgmq6.QQV4M IS NULL))\n" +
-			"     │               │                   └─ IndexedTableAccess(HGMQ6)\n" +
-			"     │               │                       ├─ index: [HGMQ6.QQV4M]\n" +
-			"     │               │                       ├─ columns: [qqv4m]\n" +
-			"     │               │                       └─ keys: tj5d2.id\n" +
-			"     │               └─ TableAlias(umf)\n" +
-			"     │                   └─ IndexedTableAccess(NZKPM)\n" +
-			"     │                       ├─ index: [NZKPM.T4IBQ]\n" +
-			"     │                       └─ keys: tj5d2.T4IBQ\n" +
-			"     │  ))\n" +
+			"     ├─ (((NOT(mf.QQV4M IS NULL)) AND (((select TJ5D2.SWCQV from SZW6V as TJ5D2 where TJ5D2.id = mf.QQV4M) = 1) OR (NOT(((select nd.id from E2I7U as nd where nd.TW55N = (select TJ5D2.H4DMT from SZW6V as TJ5D2 where TJ5D2.id = mf.QQV4M)) = mf.LUEVY))))) OR ((NOT(mf.TEUJA IS NULL)) AND (mf.TEUJA IN (select umf.id as ORB3K from SZW6V as TJ5D2 join NZKPM as umf on umf.T4IBQ = TJ5D2.T4IBQ and umf.FGG57 = TJ5D2.V7UFH and umf.SYPKF = TJ5D2.SYPKF where TJ5D2.SWCQV = 0 and TJ5D2.id not in (select QQV4M from HGMQ6 where QQV4M is not null)))))\n" +
 			"     └─ HashJoin (estimated cost=529702.380 rows=511969)\n" +
 			"         ├─ (bs.id = mf.GXLUB)\n" +
 			"         ├─ HashJoin (estimated cost=533734.380 rows=511969)\n" +
@@ -4084,37 +3926,7 @@ WHERE
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [mf.id as id, cla.FTQLQ as T4IBQ, nd.TW55N as UWBAI, aac.BTXC5 as TPXBU, mf.FSDY2 as FSDY2]\n" +
 			" └─ Filter\n" +
-			"     ├─ (((NOT(mf.QQV4M IS NULL)) AND ((Subquery(select TJ5D2.SWCQV from SZW6V as TJ5D2 where TJ5D2.id = mf.QQV4M) = 1) OR (NOT((Subquery(select nd.id from E2I7U as nd where nd.TW55N = (select TJ5D2.H4DMT from SZW6V as TJ5D2 where TJ5D2.id = mf.QQV4M)) = mf.LUEVY))))) OR ((NOT(mf.TEUJA IS NULL)) AND InSubquery\n" +
-			"     │   ├─ left: mf.TEUJA\n" +
-			"     │   └─ right: Subquery\n" +
-			"     │       ├─ cacheable: true\n" +
-			"     │       └─ Project\n" +
-			"     │           ├─ columns: [umf.id as ORB3K]\n" +
-			"     │           └─ LookupJoin\n" +
-			"     │               ├─ ((umf.FGG57 = tj5d2.V7UFH) AND (umf.SYPKF = tj5d2.SYPKF))\n" +
-			"     │               ├─ Project\n" +
-			"     │               │   ├─ columns: [SZW6V.id, SZW6V.T4IBQ, SZW6V.V7UFH, SZW6V.SYPKF, SZW6V.H4DMT, SZW6V.SWCQV, SZW6V.YKSSU, SZW6V.FHCYT]\n" +
-			"     │               │   └─ Filter\n" +
-			"     │               │       ├─ 1 IS NULL\n" +
-			"     │               │       └─ LeftOuterLookupJoin\n" +
-			"     │               │           ├─ Filter\n" +
-			"     │               │           │   ├─ (tj5d2.SWCQV = 0)\n" +
-			"     │               │           │   └─ TableAlias(tj5d2)\n" +
-			"     │               │           │       └─ Table\n" +
-			"     │               │           │           └─ name: SZW6V\n" +
-			"     │               │           └─ Project\n" +
-			"     │               │               ├─ columns: [hgmq6.QQV4M, 1]\n" +
-			"     │               │               └─ Filter\n" +
-			"     │               │                   ├─ (NOT(hgmq6.QQV4M IS NULL))\n" +
-			"     │               │                   └─ IndexedTableAccess(HGMQ6)\n" +
-			"     │               │                       ├─ index: [HGMQ6.QQV4M]\n" +
-			"     │               │                       ├─ columns: [qqv4m]\n" +
-			"     │               │                       └─ keys: tj5d2.id\n" +
-			"     │               └─ TableAlias(umf)\n" +
-			"     │                   └─ IndexedTableAccess(NZKPM)\n" +
-			"     │                       ├─ index: [NZKPM.T4IBQ]\n" +
-			"     │                       └─ keys: tj5d2.T4IBQ\n" +
-			"     │  ))\n" +
+			"     ├─ (((NOT(mf.QQV4M IS NULL)) AND (((select TJ5D2.SWCQV from SZW6V as TJ5D2 where TJ5D2.id = mf.QQV4M) = 1) OR (NOT(((select nd.id from E2I7U as nd where nd.TW55N = (select TJ5D2.H4DMT from SZW6V as TJ5D2 where TJ5D2.id = mf.QQV4M)) = mf.LUEVY))))) OR ((NOT(mf.TEUJA IS NULL)) AND (mf.TEUJA IN (select umf.id as ORB3K from SZW6V as TJ5D2 join NZKPM as umf on umf.T4IBQ = TJ5D2.T4IBQ and umf.FGG57 = TJ5D2.V7UFH and umf.SYPKF = TJ5D2.SYPKF where TJ5D2.SWCQV = 0 and TJ5D2.id not in (select QQV4M from HGMQ6 where QQV4M is not null)))))\n" +
 			"     └─ HashJoin (estimated cost=529702.380 rows=511969) (actual rows=0 loops=1)\n" +
 			"         ├─ (bs.id = mf.GXLUB)\n" +
 			"         ├─ HashJoin (estimated cost=533734.380 rows=511969) (actual rows=0 loops=1)\n" +
@@ -4900,7 +4712,7 @@ WHERE
 			" │               │           ├─ index: [THNTS.id]\n" +
 			" │               │           └─ keys: mf.GXLUB\n" +
 			" │               └─ Filter\n" +
-			" │                   ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
+			" │                   ├─ (cla.FTQLQ IN ('SQ1'))\n" +
 			" │                   └─ TableAlias(cla)\n" +
 			" │                       └─ IndexedTableAccess(YK2GW)\n" +
 			" │                           ├─ index: [YK2GW.id]\n" +
@@ -4959,7 +4771,7 @@ WHERE
 			"             │               │           │   ├─ (ci.id = ct.FZ2R5)\n" +
 			"             │               │           │   ├─ MergeJoin\n" +
 			"             │               │           │   │   ├─ cmp: (sn.BRQP2 = ct.LUEVY)\n" +
-			"             │               │           │   │   ├─ sel: (ct.M22QN = Subquery(select aac.id from TPXBU as aac where BTXC5 = 'WT'))\n" +
+			"             │               │           │   │   ├─ sel: (ct.M22QN = (select aac.id from TPXBU as aac where BTXC5 = 'WT'))\n" +
 			"             │               │           │   │   ├─ TableAlias(sn)\n" +
 			"             │               │           │   │   │   └─ IndexedTableAccess(NOXN3)\n" +
 			"             │               │           │   │   │       ├─ index: [NOXN3.BRQP2]\n" +
@@ -5116,7 +4928,7 @@ WHERE
 			" │               │           ├─ index: [THNTS.id]\n" +
 			" │               │           └─ keys: mf.GXLUB\n" +
 			" │               └─ Filter\n" +
-			" │                   ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
+			" │                   ├─ (cla.FTQLQ IN ('SQ1'))\n" +
 			" │                   └─ TableAlias(cla)\n" +
 			" │                       └─ IndexedTableAccess(YK2GW)\n" +
 			" │                           ├─ index: [YK2GW.id]\n" +
@@ -5175,7 +4987,7 @@ WHERE
 			"             │               │           │   ├─ (ci.id = ct.FZ2R5)\n" +
 			"             │               │           │   ├─ MergeJoin\n" +
 			"             │               │           │   │   ├─ cmp: (sn.BRQP2 = ct.LUEVY)\n" +
-			"             │               │           │   │   ├─ sel: (ct.M22QN = Subquery(select aac.id from TPXBU as aac where BTXC5 = 'WT'))\n" +
+			"             │               │           │   │   ├─ sel: (ct.M22QN = (select aac.id from TPXBU as aac where BTXC5 = 'WT'))\n" +
 			"             │               │           │   │   ├─ TableAlias(sn)\n" +
 			"             │               │           │   │   │   └─ IndexedTableAccess(NOXN3)\n" +
 			"             │               │           │   │   │       ├─ index: [NOXN3.BRQP2]\n" +
@@ -5740,7 +5552,7 @@ WHERE
 			" │               │   │   │   │           │   │               ├─ columns: [fz2r5 luevy m22qn ove3e s3q3y zrv3b]\n" +
 			" │               │   │   │   │           │   │               └─ keys: khjjo.M22QN\n" +
 			" │               │   │   │   │           │   └─ Filter\n" +
-			" │               │   │   │   │           │       ├─ (ci.FTQLQ HASH IN ('SQ1'))\n" +
+			" │               │   │   │   │           │       ├─ (ci.FTQLQ IN ('SQ1'))\n" +
 			" │               │   │   │   │           │       └─ TableAlias(ci)\n" +
 			" │               │   │   │   │           │           └─ IndexedTableAccess(JDLNA)\n" +
 			" │               │   │   │   │           │               ├─ index: [JDLNA.id]\n" +
@@ -5764,7 +5576,7 @@ WHERE
 			" │               │           ├─ index: [THNTS.id]\n" +
 			" │               │           └─ keys: mf.GXLUB\n" +
 			" │               └─ Filter\n" +
-			" │                   ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
+			" │                   ├─ (cla.FTQLQ IN ('SQ1'))\n" +
 			" │                   └─ TableAlias(cla)\n" +
 			" │                       └─ IndexedTableAccess(YK2GW)\n" +
 			" │                           ├─ index: [YK2GW.id]\n" +
@@ -5823,7 +5635,7 @@ WHERE
 			"             │               │           │   ├─ (ci.id = ct.FZ2R5)\n" +
 			"             │               │           │   ├─ MergeJoin\n" +
 			"             │               │           │   │   ├─ cmp: (sn.BRQP2 = ct.LUEVY)\n" +
-			"             │               │           │   │   ├─ sel: (ct.M22QN = Subquery(select aac.id from TPXBU as aac where BTXC5 = 'WT'))\n" +
+			"             │               │           │   │   ├─ sel: (ct.M22QN = (select aac.id from TPXBU as aac where BTXC5 = 'WT'))\n" +
 			"             │               │           │   │   ├─ TableAlias(sn)\n" +
 			"             │               │           │   │   │   └─ IndexedTableAccess(NOXN3)\n" +
 			"             │               │           │   │   │       ├─ index: [NOXN3.BRQP2]\n" +
@@ -5951,7 +5763,7 @@ WHERE
 			" │               │   │   │   │           │   │               ├─ columns: [fz2r5 luevy m22qn ove3e s3q3y zrv3b]\n" +
 			" │               │   │   │   │           │   │               └─ keys: khjjo.M22QN\n" +
 			" │               │   │   │   │           │   └─ Filter\n" +
-			" │               │   │   │   │           │       ├─ (ci.FTQLQ HASH IN ('SQ1'))\n" +
+			" │               │   │   │   │           │       ├─ (ci.FTQLQ IN ('SQ1'))\n" +
 			" │               │   │   │   │           │       └─ TableAlias(ci)\n" +
 			" │               │   │   │   │           │           └─ IndexedTableAccess(JDLNA)\n" +
 			" │               │   │   │   │           │               ├─ index: [JDLNA.id]\n" +
@@ -5975,7 +5787,7 @@ WHERE
 			" │               │           ├─ index: [THNTS.id]\n" +
 			" │               │           └─ keys: mf.GXLUB\n" +
 			" │               └─ Filter\n" +
-			" │                   ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
+			" │                   ├─ (cla.FTQLQ IN ('SQ1'))\n" +
 			" │                   └─ TableAlias(cla)\n" +
 			" │                       └─ IndexedTableAccess(YK2GW)\n" +
 			" │                           ├─ index: [YK2GW.id]\n" +
@@ -6034,7 +5846,7 @@ WHERE
 			"             │               │           │   ├─ (ci.id = ct.FZ2R5)\n" +
 			"             │               │           │   ├─ MergeJoin\n" +
 			"             │               │           │   │   ├─ cmp: (sn.BRQP2 = ct.LUEVY)\n" +
-			"             │               │           │   │   ├─ sel: (ct.M22QN = Subquery(select aac.id from TPXBU as aac where BTXC5 = 'WT'))\n" +
+			"             │               │           │   │   ├─ sel: (ct.M22QN = (select aac.id from TPXBU as aac where BTXC5 = 'WT'))\n" +
 			"             │               │           │   │   ├─ TableAlias(sn)\n" +
 			"             │               │           │   │   │   └─ IndexedTableAccess(NOXN3)\n" +
 			"             │               │           │   │   │       ├─ index: [NOXN3.BRQP2]\n" +
@@ -6098,15 +5910,15 @@ WHERE
 			"     └─ table_count(NOXN3) as COUNT(1)\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [count(1) as COUNT(*)]\n" +
+			" ├─ columns: [count(1) as `COUNT(*)`]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [NOXN3.COUNT(1) as COUNT(1)]\n" +
+			"     ├─ columns: [NOXN3.COUNT(1) as `COUNT(1)`]\n" +
 			"     └─ table_count(NOXN3) as COUNT(1)\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [count(1) as COUNT(*)]\n" +
+			" ├─ columns: [count(1) as `COUNT(*)`]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [NOXN3.COUNT(1) as COUNT(1)]\n" +
+			"     ├─ columns: [NOXN3.COUNT(1) as `COUNT(1)`]\n" +
 			"     └─ table_count(NOXN3) as COUNT(1)\n" +
 			"",
 	},
@@ -6861,7 +6673,7 @@ WHERE
 			"         │                               └─ MergeJoin\n" +
 			"         │                                   ├─ cmp: (cla.id = bs.IXUXU)\n" +
 			"         │                                   ├─ Filter\n" +
-			"         │                                   │   ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
+			"         │                                   │   ├─ (cla.FTQLQ IN ('SQ1'))\n" +
 			"         │                                   │   └─ TableAlias(cla)\n" +
 			"         │                                   │       └─ IndexedTableAccess(YK2GW)\n" +
 			"         │                                   │           ├─ index: [YK2GW.id]\n" +
@@ -6933,7 +6745,7 @@ WHERE
 			"         │                               └─ MergeJoin\n" +
 			"         │                                   ├─ cmp: (cla.id = bs.IXUXU)\n" +
 			"         │                                   ├─ Filter\n" +
-			"         │                                   │   ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
+			"         │                                   │   ├─ (cla.FTQLQ IN ('SQ1'))\n" +
 			"         │                                   │   └─ TableAlias(cla)\n" +
 			"         │                                   │       └─ IndexedTableAccess(YK2GW)\n" +
 			"         │                                   │           ├─ index: [YK2GW.id]\n" +
@@ -7517,7 +7329,7 @@ WHERE
 			"                                             │   │   │   │           │   ├─ filters: [{[NULL, ∞)}]\n" +
 			"                                             │   │   │   │           │   └─ columns: [id ixuxu]\n" +
 			"                                             │   │   │   │           └─ Filter\n" +
-			"                                             │   │   │   │               ├─ (yk2gw.FTQLQ HASH IN ('SQ1'))\n" +
+			"                                             │   │   │   │               ├─ (yk2gw.FTQLQ IN ('SQ1'))\n" +
 			"                                             │   │   │   │               └─ IndexedTableAccess(YK2GW)\n" +
 			"                                             │   │   │   │                   ├─ index: [YK2GW.id]\n" +
 			"                                             │   │   │   │                   ├─ filters: [{[NULL, ∞)}]\n" +
@@ -7605,7 +7417,7 @@ WHERE
 			"                                             │                       │   │           ├─ MergeJoin\n" +
 			"                                             │                       │   │           │   ├─ cmp: (cla.id = bs.IXUXU)\n" +
 			"                                             │                       │   │           │   ├─ Filter\n" +
-			"                                             │                       │   │           │   │   ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
+			"                                             │                       │   │           │   │   ├─ (cla.FTQLQ IN ('SQ1'))\n" +
 			"                                             │                       │   │           │   │   └─ TableAlias(cla)\n" +
 			"                                             │                       │   │           │   │       └─ IndexedTableAccess(YK2GW)\n" +
 			"                                             │                       │   │           │   │           ├─ index: [YK2GW.id]\n" +
@@ -7727,7 +7539,7 @@ WHERE
 			"                                             │   │   │   │           │   ├─ filters: [{[NULL, ∞)}]\n" +
 			"                                             │   │   │   │           │   └─ columns: [id ixuxu]\n" +
 			"                                             │   │   │   │           └─ Filter\n" +
-			"                                             │   │   │   │               ├─ (yk2gw.FTQLQ HASH IN ('SQ1'))\n" +
+			"                                             │   │   │   │               ├─ (yk2gw.FTQLQ IN ('SQ1'))\n" +
 			"                                             │   │   │   │               └─ IndexedTableAccess(YK2GW)\n" +
 			"                                             │   │   │   │                   ├─ index: [YK2GW.id]\n" +
 			"                                             │   │   │   │                   ├─ filters: [{[NULL, ∞)}]\n" +
@@ -7815,7 +7627,7 @@ WHERE
 			"                                             │                       │   │           ├─ MergeJoin\n" +
 			"                                             │                       │   │           │   ├─ cmp: (cla.id = bs.IXUXU)\n" +
 			"                                             │                       │   │           │   ├─ Filter\n" +
-			"                                             │                       │   │           │   │   ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
+			"                                             │                       │   │           │   │   ├─ (cla.FTQLQ IN ('SQ1'))\n" +
 			"                                             │                       │   │           │   │   └─ TableAlias(cla)\n" +
 			"                                             │                       │   │           │   │       └─ IndexedTableAccess(YK2GW)\n" +
 			"                                             │                       │   │           │   │           ├─ index: [YK2GW.id]\n" +
@@ -8442,7 +8254,7 @@ WHERE
 			"                                             │   │   │   │           │   ├─ filters: [{[NULL, ∞)}]\n" +
 			"                                             │   │   │   │           │   └─ columns: [id ixuxu]\n" +
 			"                                             │   │   │   │           └─ Filter\n" +
-			"                                             │   │   │   │               ├─ (yk2gw.FTQLQ HASH IN ('SQ1'))\n" +
+			"                                             │   │   │   │               ├─ (yk2gw.FTQLQ IN ('SQ1'))\n" +
 			"                                             │   │   │   │               └─ IndexedTableAccess(YK2GW)\n" +
 			"                                             │   │   │   │                   ├─ index: [YK2GW.id]\n" +
 			"                                             │   │   │   │                   ├─ filters: [{[NULL, ∞)}]\n" +
@@ -8566,7 +8378,7 @@ WHERE
 			"                                             │                       │   │                   │       ├─ filters: [{[NULL, ∞)}]\n" +
 			"                                             │                       │   │                   │       └─ columns: [id ixuxu]\n" +
 			"                                             │                       │   │                   └─ Filter\n" +
-			"                                             │                       │   │                       ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
+			"                                             │                       │   │                       ├─ (cla.FTQLQ IN ('SQ1'))\n" +
 			"                                             │                       │   │                       └─ TableAlias(cla)\n" +
 			"                                             │                       │   │                           └─ IndexedTableAccess(YK2GW)\n" +
 			"                                             │                       │   │                               ├─ index: [YK2GW.id]\n" +
@@ -8653,7 +8465,7 @@ WHERE
 			"                                             │   │   │   │           │   ├─ filters: [{[NULL, ∞)}]\n" +
 			"                                             │   │   │   │           │   └─ columns: [id ixuxu]\n" +
 			"                                             │   │   │   │           └─ Filter\n" +
-			"                                             │   │   │   │               ├─ (yk2gw.FTQLQ HASH IN ('SQ1'))\n" +
+			"                                             │   │   │   │               ├─ (yk2gw.FTQLQ IN ('SQ1'))\n" +
 			"                                             │   │   │   │               └─ IndexedTableAccess(YK2GW)\n" +
 			"                                             │   │   │   │                   ├─ index: [YK2GW.id]\n" +
 			"                                             │   │   │   │                   ├─ filters: [{[NULL, ∞)}]\n" +
@@ -8777,7 +8589,7 @@ WHERE
 			"                                             │                       │   │                   │       ├─ filters: [{[NULL, ∞)}]\n" +
 			"                                             │                       │   │                   │       └─ columns: [id ixuxu]\n" +
 			"                                             │                       │   │                   └─ Filter\n" +
-			"                                             │                       │   │                       ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
+			"                                             │                       │   │                       ├─ (cla.FTQLQ IN ('SQ1'))\n" +
 			"                                             │                       │   │                       └─ TableAlias(cla)\n" +
 			"                                             │                       │   │                           └─ IndexedTableAccess(YK2GW)\n" +
 			"                                             │                       │   │                               ├─ index: [YK2GW.id]\n" +
@@ -9603,7 +9415,7 @@ WHERE
 			"             │   │           │   ├─ MergeJoin (estimated cost=5070.940 rows=2498)\n" +
 			"             │   │           │   │   ├─ cmp: (cla.id = bs.IXUXU)\n" +
 			"             │   │           │   │   ├─ Filter\n" +
-			"             │   │           │   │   │   ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
+			"             │   │           │   │   │   ├─ (cla.FTQLQ IN ('SQ1'))\n" +
 			"             │   │           │   │   │   └─ TableAlias(cla)\n" +
 			"             │   │           │   │   │       └─ IndexedTableAccess(YK2GW)\n" +
 			"             │   │           │   │   │           ├─ index: [YK2GW.id]\n" +
@@ -9622,7 +9434,7 @@ WHERE
 			"             │   │           │           │   ├─ MergeJoin (estimated cost=451603.550 rows=14766)\n" +
 			"             │   │           │           │   │   ├─ cmp: (mf.LUEVY = sn.BRQP2)\n" +
 			"             │   │           │           │   │   ├─ Filter\n" +
-			"             │   │           │           │   │   │   ├─ (mf.FSDY2 HASH IN ('SRARY', 'UBQWG'))\n" +
+			"             │   │           │           │   │   │   ├─ (mf.FSDY2 IN ('SRARY', 'UBQWG'))\n" +
 			"             │   │           │           │   │   │   └─ TableAlias(mf)\n" +
 			"             │   │           │           │   │   │       └─ IndexedTableAccess(HGMQ6)\n" +
 			"             │   │           │           │   │   │           ├─ index: [HGMQ6.LUEVY]\n" +
@@ -9725,7 +9537,7 @@ WHERE
 			"             │   │           │   ├─ MergeJoin (estimated cost=5070.940 rows=2498) (actual rows=0 loops=1)\n" +
 			"             │   │           │   │   ├─ cmp: (cla.id = bs.IXUXU)\n" +
 			"             │   │           │   │   ├─ Filter\n" +
-			"             │   │           │   │   │   ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
+			"             │   │           │   │   │   ├─ (cla.FTQLQ IN ('SQ1'))\n" +
 			"             │   │           │   │   │   └─ TableAlias(cla)\n" +
 			"             │   │           │   │   │       └─ IndexedTableAccess(YK2GW)\n" +
 			"             │   │           │   │   │           ├─ index: [YK2GW.id]\n" +
@@ -9744,7 +9556,7 @@ WHERE
 			"             │   │           │           │   ├─ MergeJoin (estimated cost=451603.550 rows=14766)\n" +
 			"             │   │           │           │   │   ├─ cmp: (mf.LUEVY = sn.BRQP2)\n" +
 			"             │   │           │           │   │   ├─ Filter\n" +
-			"             │   │           │           │   │   │   ├─ (mf.FSDY2 HASH IN ('SRARY', 'UBQWG'))\n" +
+			"             │   │           │           │   │   │   ├─ (mf.FSDY2 IN ('SRARY', 'UBQWG'))\n" +
 			"             │   │           │           │   │   │   └─ TableAlias(mf)\n" +
 			"             │   │           │           │   │   │       └─ IndexedTableAccess(HGMQ6)\n" +
 			"             │   │           │           │   │   │           ├─ index: [HGMQ6.LUEVY]\n" +
@@ -10112,7 +9924,7 @@ WHERE
 			"             │   │           │   │   │   │   │       ├─ name: NOXN3\n" +
 			"             │   │           │   │   │   │   │       └─ columns: [id brqp2]\n" +
 			"             │   │           │   │   │   │   └─ Filter\n" +
-			"             │   │           │   │   │   │       ├─ (mf.FSDY2 HASH IN ('SRARY', 'UBQWG'))\n" +
+			"             │   │           │   │   │   │       ├─ (mf.FSDY2 IN ('SRARY', 'UBQWG'))\n" +
 			"             │   │           │   │   │   │       └─ TableAlias(mf)\n" +
 			"             │   │           │   │   │   │           └─ IndexedTableAccess(HGMQ6)\n" +
 			"             │   │           │   │   │   │               ├─ index: [HGMQ6.LUEVY]\n" +
@@ -10134,7 +9946,7 @@ WHERE
 			"             │   │           │       └─ MergeJoin (estimated cost=5070.940 rows=2498)\n" +
 			"             │   │           │           ├─ cmp: (cla.id = bs.IXUXU)\n" +
 			"             │   │           │           ├─ Filter\n" +
-			"             │   │           │           │   ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
+			"             │   │           │           │   ├─ (cla.FTQLQ IN ('SQ1'))\n" +
 			"             │   │           │           │   └─ TableAlias(cla)\n" +
 			"             │   │           │           │       └─ IndexedTableAccess(YK2GW)\n" +
 			"             │   │           │           │           ├─ index: [YK2GW.id]\n" +
@@ -10232,7 +10044,7 @@ WHERE
 			"             │   │           │   │   │   │   │       ├─ name: NOXN3\n" +
 			"             │   │           │   │   │   │   │       └─ columns: [id brqp2]\n" +
 			"             │   │           │   │   │   │   └─ Filter\n" +
-			"             │   │           │   │   │   │       ├─ (mf.FSDY2 HASH IN ('SRARY', 'UBQWG'))\n" +
+			"             │   │           │   │   │   │       ├─ (mf.FSDY2 IN ('SRARY', 'UBQWG'))\n" +
 			"             │   │           │   │   │   │       └─ TableAlias(mf)\n" +
 			"             │   │           │   │   │   │           └─ IndexedTableAccess(HGMQ6)\n" +
 			"             │   │           │   │   │   │               ├─ index: [HGMQ6.LUEVY]\n" +
@@ -10254,7 +10066,7 @@ WHERE
 			"             │   │           │       └─ MergeJoin (estimated cost=5070.940 rows=2498)\n" +
 			"             │   │           │           ├─ cmp: (cla.id = bs.IXUXU)\n" +
 			"             │   │           │           ├─ Filter\n" +
-			"             │   │           │           │   ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
+			"             │   │           │           │   ├─ (cla.FTQLQ IN ('SQ1'))\n" +
 			"             │   │           │           │   └─ TableAlias(cla)\n" +
 			"             │   │           │           │       └─ IndexedTableAccess(YK2GW)\n" +
 			"             │   │           │           │           ├─ index: [YK2GW.id]\n" +
@@ -11249,46 +11061,7 @@ WHERE
 			"             └─ HashJoin (estimated cost=427.500 rows=125)\n" +
 			"                 ├─ ((mf.LUEVY = sn.BRQP2) AND (mf.M22QN = mjr3d.M22QN))\n" +
 			"                 ├─ LeftOuterJoin (estimated cost=1193112.000 rows=125)\n" +
-			"                 │   ├─ ((((((NOT(mjr3d.QNI57 IS NULL)) AND (sn.id = mjr3d.QNI57)) AND mjr3d.BJUF2 IS NULL) OR (((NOT(mjr3d.QNI57 IS NULL)) AND (NOT(mjr3d.BJUF2 IS NULL))) AND InSubquery\n" +
-			"                 │   │   ├─ left: sn.id\n" +
-			"                 │   │   └─ right: Subquery\n" +
-			"                 │   │       ├─ cacheable: false\n" +
-			"                 │   │       └─ Project\n" +
-			"                 │   │           ├─ columns: [jtehg.id]\n" +
-			"                 │   │           └─ Filter\n" +
-			"                 │   │               ├─ (jtehg.BRQP2 = mjr3d.BJUF2)\n" +
-			"                 │   │               └─ TableAlias(jtehg)\n" +
-			"                 │   │                   └─ IndexedTableAccess(NOXN3)\n" +
-			"                 │   │                       ├─ index: [NOXN3.BRQP2]\n" +
-			"                 │   │                       ├─ columns: [id brqp2]\n" +
-			"                 │   │                       └─ keys: mjr3d.BJUF2\n" +
-			"                 │   │  )) OR (((NOT(mjr3d.TDEIU IS NULL)) AND mjr3d.BJUF2 IS NULL) AND InSubquery\n" +
-			"                 │   │   ├─ left: sn.id\n" +
-			"                 │   │   └─ right: Subquery\n" +
-			"                 │   │       ├─ cacheable: false\n" +
-			"                 │   │       └─ Project\n" +
-			"                 │   │           ├─ columns: [xmafz.id]\n" +
-			"                 │   │           └─ Filter\n" +
-			"                 │   │               ├─ (xmafz.BRQP2 = mjr3d.FJDP5)\n" +
-			"                 │   │               └─ TableAlias(xmafz)\n" +
-			"                 │   │                   └─ IndexedTableAccess(NOXN3)\n" +
-			"                 │   │                       ├─ index: [NOXN3.BRQP2]\n" +
-			"                 │   │                       ├─ columns: [id brqp2]\n" +
-			"                 │   │                       └─ keys: mjr3d.FJDP5\n" +
-			"                 │   │  )) OR (((NOT(mjr3d.TDEIU IS NULL)) AND (NOT(mjr3d.BJUF2 IS NULL))) AND InSubquery\n" +
-			"                 │   │   ├─ left: sn.id\n" +
-			"                 │   │   └─ right: Subquery\n" +
-			"                 │   │       ├─ cacheable: false\n" +
-			"                 │   │       └─ Project\n" +
-			"                 │   │           ├─ columns: [xmafz.id]\n" +
-			"                 │   │           └─ Filter\n" +
-			"                 │   │               ├─ (xmafz.BRQP2 = mjr3d.BJUF2)\n" +
-			"                 │   │               └─ TableAlias(xmafz)\n" +
-			"                 │   │                   └─ IndexedTableAccess(NOXN3)\n" +
-			"                 │   │                       ├─ index: [NOXN3.BRQP2]\n" +
-			"                 │   │                       ├─ columns: [id brqp2]\n" +
-			"                 │   │                       └─ keys: mjr3d.BJUF2\n" +
-			"                 │   │  ))\n" +
+			"                 │   ├─ ((((((NOT(mjr3d.QNI57 IS NULL)) AND (sn.id = mjr3d.QNI57)) AND mjr3d.BJUF2 IS NULL) OR (((NOT(mjr3d.QNI57 IS NULL)) AND (NOT(mjr3d.BJUF2 IS NULL))) AND (sn.id IN (select JTEHG.id from NOXN3 as JTEHG where BRQP2 = MJR3D.BJUF2)))) OR (((NOT(mjr3d.TDEIU IS NULL)) AND mjr3d.BJUF2 IS NULL) AND (sn.id IN (select XMAFZ.id from NOXN3 as XMAFZ where BRQP2 = MJR3D.FJDP5)))) OR (((NOT(mjr3d.TDEIU IS NULL)) AND (NOT(mjr3d.BJUF2 IS NULL))) AND (sn.id IN (select XMAFZ.id from NOXN3 as XMAFZ where BRQP2 = MJR3D.BJUF2))))\n" +
 			"                 │   ├─ CachedResults\n" +
 			"                 │   │   └─ SubqueryAlias\n" +
 			"                 │   │       ├─ name: mjr3d\n" +
@@ -11500,7 +11273,7 @@ WHERE
 			"                                         └─ MergeJoin\n" +
 			"                                             ├─ cmp: (cla.id = bs.IXUXU)\n" +
 			"                                             ├─ Filter\n" +
-			"                                             │   ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
+			"                                             │   ├─ (cla.FTQLQ IN ('SQ1'))\n" +
 			"                                             │   └─ TableAlias(cla)\n" +
 			"                                             │       └─ IndexedTableAccess(YK2GW)\n" +
 			"                                             │           ├─ index: [YK2GW.id]\n" +
@@ -11607,46 +11380,7 @@ WHERE
 			"             └─ HashJoin (estimated cost=427.500 rows=125)\n" +
 			"                 ├─ ((mf.LUEVY = sn.BRQP2) AND (mf.M22QN = mjr3d.M22QN))\n" +
 			"                 ├─ LeftOuterJoin (estimated cost=1193112.000 rows=125)\n" +
-			"                 │   ├─ ((((((NOT(mjr3d.QNI57 IS NULL)) AND (sn.id = mjr3d.QNI57)) AND mjr3d.BJUF2 IS NULL) OR (((NOT(mjr3d.QNI57 IS NULL)) AND (NOT(mjr3d.BJUF2 IS NULL))) AND InSubquery\n" +
-			"                 │   │   ├─ left: sn.id\n" +
-			"                 │   │   └─ right: Subquery\n" +
-			"                 │   │       ├─ cacheable: false\n" +
-			"                 │   │       └─ Project\n" +
-			"                 │   │           ├─ columns: [jtehg.id]\n" +
-			"                 │   │           └─ Filter\n" +
-			"                 │   │               ├─ (jtehg.BRQP2 = mjr3d.BJUF2)\n" +
-			"                 │   │               └─ TableAlias(jtehg)\n" +
-			"                 │   │                   └─ IndexedTableAccess(NOXN3)\n" +
-			"                 │   │                       ├─ index: [NOXN3.BRQP2]\n" +
-			"                 │   │                       ├─ columns: [id brqp2]\n" +
-			"                 │   │                       └─ keys: mjr3d.BJUF2\n" +
-			"                 │   │  )) OR (((NOT(mjr3d.TDEIU IS NULL)) AND mjr3d.BJUF2 IS NULL) AND InSubquery\n" +
-			"                 │   │   ├─ left: sn.id\n" +
-			"                 │   │   └─ right: Subquery\n" +
-			"                 │   │       ├─ cacheable: false\n" +
-			"                 │   │       └─ Project\n" +
-			"                 │   │           ├─ columns: [xmafz.id]\n" +
-			"                 │   │           └─ Filter\n" +
-			"                 │   │               ├─ (xmafz.BRQP2 = mjr3d.FJDP5)\n" +
-			"                 │   │               └─ TableAlias(xmafz)\n" +
-			"                 │   │                   └─ IndexedTableAccess(NOXN3)\n" +
-			"                 │   │                       ├─ index: [NOXN3.BRQP2]\n" +
-			"                 │   │                       ├─ columns: [id brqp2]\n" +
-			"                 │   │                       └─ keys: mjr3d.FJDP5\n" +
-			"                 │   │  )) OR (((NOT(mjr3d.TDEIU IS NULL)) AND (NOT(mjr3d.BJUF2 IS NULL))) AND InSubquery\n" +
-			"                 │   │   ├─ left: sn.id\n" +
-			"                 │   │   └─ right: Subquery\n" +
-			"                 │   │       ├─ cacheable: false\n" +
-			"                 │   │       └─ Project\n" +
-			"                 │   │           ├─ columns: [xmafz.id]\n" +
-			"                 │   │           └─ Filter\n" +
-			"                 │   │               ├─ (xmafz.BRQP2 = mjr3d.BJUF2)\n" +
-			"                 │   │               └─ TableAlias(xmafz)\n" +
-			"                 │   │                   └─ IndexedTableAccess(NOXN3)\n" +
-			"                 │   │                       ├─ index: [NOXN3.BRQP2]\n" +
-			"                 │   │                       ├─ columns: [id brqp2]\n" +
-			"                 │   │                       └─ keys: mjr3d.BJUF2\n" +
-			"                 │   │  ))\n" +
+			"                 │   ├─ ((((((NOT(mjr3d.QNI57 IS NULL)) AND (sn.id = mjr3d.QNI57)) AND mjr3d.BJUF2 IS NULL) OR (((NOT(mjr3d.QNI57 IS NULL)) AND (NOT(mjr3d.BJUF2 IS NULL))) AND (sn.id IN (select JTEHG.id from NOXN3 as JTEHG where BRQP2 = MJR3D.BJUF2)))) OR (((NOT(mjr3d.TDEIU IS NULL)) AND mjr3d.BJUF2 IS NULL) AND (sn.id IN (select XMAFZ.id from NOXN3 as XMAFZ where BRQP2 = MJR3D.FJDP5)))) OR (((NOT(mjr3d.TDEIU IS NULL)) AND (NOT(mjr3d.BJUF2 IS NULL))) AND (sn.id IN (select XMAFZ.id from NOXN3 as XMAFZ where BRQP2 = MJR3D.BJUF2))))\n" +
 			"                 │   ├─ CachedResults\n" +
 			"                 │   │   └─ SubqueryAlias\n" +
 			"                 │   │       ├─ name: mjr3d\n" +
@@ -11858,7 +11592,7 @@ WHERE
 			"                                         └─ MergeJoin\n" +
 			"                                             ├─ cmp: (cla.id = bs.IXUXU)\n" +
 			"                                             ├─ Filter\n" +
-			"                                             │   ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
+			"                                             │   ├─ (cla.FTQLQ IN ('SQ1'))\n" +
 			"                                             │   └─ TableAlias(cla)\n" +
 			"                                             │       └─ IndexedTableAccess(YK2GW)\n" +
 			"                                             │           ├─ index: [YK2GW.id]\n" +
@@ -13014,46 +12748,7 @@ WHERE
 			"             │           │                       │                           └─ keys: mjr3d.TDEIU\n" +
 			"             │           │                       │   END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
 			"             │           │                       └─ LeftOuterJoin (estimated cost=1193112.000 rows=125)\n" +
-			"             │           │                           ├─ ((((((NOT(mjr3d.QNI57 IS NULL)) AND (sn.id = mjr3d.QNI57)) AND mjr3d.BJUF2 IS NULL) OR (((NOT(mjr3d.QNI57 IS NULL)) AND InSubquery\n" +
-			"             │           │                           │   ├─ left: sn.id\n" +
-			"             │           │                           │   └─ right: Subquery\n" +
-			"             │           │                           │       ├─ cacheable: false\n" +
-			"             │           │                           │       └─ Project\n" +
-			"             │           │                           │           ├─ columns: [jtehg.id]\n" +
-			"             │           │                           │           └─ Filter\n" +
-			"             │           │                           │               ├─ (jtehg.BRQP2 = mjr3d.BJUF2)\n" +
-			"             │           │                           │               └─ TableAlias(jtehg)\n" +
-			"             │           │                           │                   └─ IndexedTableAccess(NOXN3)\n" +
-			"             │           │                           │                       ├─ index: [NOXN3.BRQP2]\n" +
-			"             │           │                           │                       ├─ columns: [id brqp2]\n" +
-			"             │           │                           │                       └─ keys: mjr3d.BJUF2\n" +
-			"             │           │                           │  ) AND (NOT(mjr3d.BJUF2 IS NULL)))) OR (((NOT(mjr3d.TDEIU IS NULL)) AND InSubquery\n" +
-			"             │           │                           │   ├─ left: sn.id\n" +
-			"             │           │                           │   └─ right: Subquery\n" +
-			"             │           │                           │       ├─ cacheable: false\n" +
-			"             │           │                           │       └─ Project\n" +
-			"             │           │                           │           ├─ columns: [xmafz.id]\n" +
-			"             │           │                           │           └─ Filter\n" +
-			"             │           │                           │               ├─ (xmafz.BRQP2 = mjr3d.FJDP5)\n" +
-			"             │           │                           │               └─ TableAlias(xmafz)\n" +
-			"             │           │                           │                   └─ IndexedTableAccess(NOXN3)\n" +
-			"             │           │                           │                       ├─ index: [NOXN3.BRQP2]\n" +
-			"             │           │                           │                       ├─ columns: [id brqp2]\n" +
-			"             │           │                           │                       └─ keys: mjr3d.FJDP5\n" +
-			"             │           │                           │  ) AND mjr3d.BJUF2 IS NULL)) OR (((NOT(mjr3d.TDEIU IS NULL)) AND InSubquery\n" +
-			"             │           │                           │   ├─ left: sn.id\n" +
-			"             │           │                           │   └─ right: Subquery\n" +
-			"             │           │                           │       ├─ cacheable: false\n" +
-			"             │           │                           │       └─ Project\n" +
-			"             │           │                           │           ├─ columns: [xmafz.id]\n" +
-			"             │           │                           │           └─ Filter\n" +
-			"             │           │                           │               ├─ (xmafz.BRQP2 = mjr3d.BJUF2)\n" +
-			"             │           │                           │               └─ TableAlias(xmafz)\n" +
-			"             │           │                           │                   └─ IndexedTableAccess(NOXN3)\n" +
-			"             │           │                           │                       ├─ index: [NOXN3.BRQP2]\n" +
-			"             │           │                           │                       ├─ columns: [id brqp2]\n" +
-			"             │           │                           │                       └─ keys: mjr3d.BJUF2\n" +
-			"             │           │                           │  ) AND (NOT(mjr3d.BJUF2 IS NULL))))\n" +
+			"             │           │                           ├─ ((((((NOT(mjr3d.QNI57 IS NULL)) AND (sn.id = mjr3d.QNI57)) AND mjr3d.BJUF2 IS NULL) OR (((NOT(mjr3d.QNI57 IS NULL)) AND (sn.id IN (select JTEHG.id from NOXN3 as JTEHG where BRQP2 = MJR3D.BJUF2))) AND (NOT(mjr3d.BJUF2 IS NULL)))) OR (((NOT(mjr3d.TDEIU IS NULL)) AND (sn.id IN (select XMAFZ.id from NOXN3 as XMAFZ where BRQP2 = MJR3D.FJDP5))) AND mjr3d.BJUF2 IS NULL)) OR (((NOT(mjr3d.TDEIU IS NULL)) AND (sn.id IN (select XMAFZ.id from NOXN3 as XMAFZ where BRQP2 = MJR3D.BJUF2))) AND (NOT(mjr3d.BJUF2 IS NULL))))\n" +
 			"             │           │                           ├─ LookupJoin (estimated cost=335.863 rows=100)\n" +
 			"             │           │                           │   ├─ SubqueryAlias\n" +
 			"             │           │                           │   │   ├─ name: mjr3d\n" +
@@ -13144,7 +12839,7 @@ WHERE
 			"             │                                           ├─ MergeJoin\n" +
 			"             │                                           │   ├─ cmp: (cla.id = bs.IXUXU)\n" +
 			"             │                                           │   ├─ Filter\n" +
-			"             │                                           │   │   ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
+			"             │                                           │   │   ├─ (cla.FTQLQ IN ('SQ1'))\n" +
 			"             │                                           │   │   └─ TableAlias(cla)\n" +
 			"             │                                           │   │       └─ IndexedTableAccess(YK2GW)\n" +
 			"             │                                           │   │           ├─ index: [YK2GW.id]\n" +
@@ -13200,7 +12895,7 @@ WHERE
 			"                                         │           ├─ MergeJoin\n" +
 			"                                         │           │   ├─ cmp: (cla.id = bs.IXUXU)\n" +
 			"                                         │           │   ├─ Filter\n" +
-			"                                         │           │   │   ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
+			"                                         │           │   │   ├─ (cla.FTQLQ IN ('SQ1'))\n" +
 			"                                         │           │   │   └─ TableAlias(cla)\n" +
 			"                                         │           │   │       └─ IndexedTableAccess(YK2GW)\n" +
 			"                                         │           │   │           ├─ index: [YK2GW.id]\n" +
@@ -13320,46 +13015,7 @@ WHERE
 			"                                                             │                           └─ keys: mjr3d.TDEIU\n" +
 			"                                                             │   END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
 			"                                                             └─ LeftOuterJoin\n" +
-			"                                                                 ├─ ((((((NOT(mjr3d.QNI57 IS NULL)) AND (sn.id = mjr3d.QNI57)) AND mjr3d.BJUF2 IS NULL) OR (((NOT(mjr3d.QNI57 IS NULL)) AND InSubquery\n" +
-			"                                                                 │   ├─ left: sn.id\n" +
-			"                                                                 │   └─ right: Subquery\n" +
-			"                                                                 │       ├─ cacheable: false\n" +
-			"                                                                 │       └─ Project\n" +
-			"                                                                 │           ├─ columns: [jtehg.id]\n" +
-			"                                                                 │           └─ Filter\n" +
-			"                                                                 │               ├─ (jtehg.BRQP2 = mjr3d.BJUF2)\n" +
-			"                                                                 │               └─ TableAlias(jtehg)\n" +
-			"                                                                 │                   └─ IndexedTableAccess(NOXN3)\n" +
-			"                                                                 │                       ├─ index: [NOXN3.BRQP2]\n" +
-			"                                                                 │                       ├─ columns: [id brqp2]\n" +
-			"                                                                 │                       └─ keys: mjr3d.BJUF2\n" +
-			"                                                                 │  ) AND (NOT(mjr3d.BJUF2 IS NULL)))) OR (((NOT(mjr3d.TDEIU IS NULL)) AND InSubquery\n" +
-			"                                                                 │   ├─ left: sn.id\n" +
-			"                                                                 │   └─ right: Subquery\n" +
-			"                                                                 │       ├─ cacheable: false\n" +
-			"                                                                 │       └─ Project\n" +
-			"                                                                 │           ├─ columns: [xmafz.id]\n" +
-			"                                                                 │           └─ Filter\n" +
-			"                                                                 │               ├─ (xmafz.BRQP2 = mjr3d.FJDP5)\n" +
-			"                                                                 │               └─ TableAlias(xmafz)\n" +
-			"                                                                 │                   └─ IndexedTableAccess(NOXN3)\n" +
-			"                                                                 │                       ├─ index: [NOXN3.BRQP2]\n" +
-			"                                                                 │                       ├─ columns: [id brqp2]\n" +
-			"                                                                 │                       └─ keys: mjr3d.FJDP5\n" +
-			"                                                                 │  ) AND mjr3d.BJUF2 IS NULL)) OR (((NOT(mjr3d.TDEIU IS NULL)) AND InSubquery\n" +
-			"                                                                 │   ├─ left: sn.id\n" +
-			"                                                                 │   └─ right: Subquery\n" +
-			"                                                                 │       ├─ cacheable: false\n" +
-			"                                                                 │       └─ Project\n" +
-			"                                                                 │           ├─ columns: [xmafz.id]\n" +
-			"                                                                 │           └─ Filter\n" +
-			"                                                                 │               ├─ (xmafz.BRQP2 = mjr3d.BJUF2)\n" +
-			"                                                                 │               └─ TableAlias(xmafz)\n" +
-			"                                                                 │                   └─ IndexedTableAccess(NOXN3)\n" +
-			"                                                                 │                       ├─ index: [NOXN3.BRQP2]\n" +
-			"                                                                 │                       ├─ columns: [id brqp2]\n" +
-			"                                                                 │                       └─ keys: mjr3d.BJUF2\n" +
-			"                                                                 │  ) AND (NOT(mjr3d.BJUF2 IS NULL))))\n" +
+			"                                                                 ├─ ((((((NOT(mjr3d.QNI57 IS NULL)) AND (sn.id = mjr3d.QNI57)) AND mjr3d.BJUF2 IS NULL) OR (((NOT(mjr3d.QNI57 IS NULL)) AND (sn.id IN (select JTEHG.id from NOXN3 as JTEHG where BRQP2 = MJR3D.BJUF2))) AND (NOT(mjr3d.BJUF2 IS NULL)))) OR (((NOT(mjr3d.TDEIU IS NULL)) AND (sn.id IN (select XMAFZ.id from NOXN3 as XMAFZ where BRQP2 = MJR3D.FJDP5))) AND mjr3d.BJUF2 IS NULL)) OR (((NOT(mjr3d.TDEIU IS NULL)) AND (sn.id IN (select XMAFZ.id from NOXN3 as XMAFZ where BRQP2 = MJR3D.BJUF2))) AND (NOT(mjr3d.BJUF2 IS NULL))))\n" +
 			"                                                                 ├─ LookupJoin\n" +
 			"                                                                 │   ├─ SubqueryAlias\n" +
 			"                                                                 │   │   ├─ name: mjr3d\n" +
@@ -13545,46 +13201,7 @@ WHERE
 			"             │           │                       │                           └─ keys: mjr3d.TDEIU\n" +
 			"             │           │                       │   END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
 			"             │           │                       └─ LeftOuterJoin (estimated cost=1193112.000 rows=125) (actual rows=0 loops=1)\n" +
-			"             │           │                           ├─ ((((((NOT(mjr3d.QNI57 IS NULL)) AND (sn.id = mjr3d.QNI57)) AND mjr3d.BJUF2 IS NULL) OR (((NOT(mjr3d.QNI57 IS NULL)) AND InSubquery\n" +
-			"             │           │                           │   ├─ left: sn.id\n" +
-			"             │           │                           │   └─ right: Subquery\n" +
-			"             │           │                           │       ├─ cacheable: false\n" +
-			"             │           │                           │       └─ Project\n" +
-			"             │           │                           │           ├─ columns: [jtehg.id]\n" +
-			"             │           │                           │           └─ Filter\n" +
-			"             │           │                           │               ├─ (jtehg.BRQP2 = mjr3d.BJUF2)\n" +
-			"             │           │                           │               └─ TableAlias(jtehg)\n" +
-			"             │           │                           │                   └─ IndexedTableAccess(NOXN3)\n" +
-			"             │           │                           │                       ├─ index: [NOXN3.BRQP2]\n" +
-			"             │           │                           │                       ├─ columns: [id brqp2]\n" +
-			"             │           │                           │                       └─ keys: mjr3d.BJUF2\n" +
-			"             │           │                           │  ) AND (NOT(mjr3d.BJUF2 IS NULL)))) OR (((NOT(mjr3d.TDEIU IS NULL)) AND InSubquery\n" +
-			"             │           │                           │   ├─ left: sn.id\n" +
-			"             │           │                           │   └─ right: Subquery\n" +
-			"             │           │                           │       ├─ cacheable: false\n" +
-			"             │           │                           │       └─ Project\n" +
-			"             │           │                           │           ├─ columns: [xmafz.id]\n" +
-			"             │           │                           │           └─ Filter\n" +
-			"             │           │                           │               ├─ (xmafz.BRQP2 = mjr3d.FJDP5)\n" +
-			"             │           │                           │               └─ TableAlias(xmafz)\n" +
-			"             │           │                           │                   └─ IndexedTableAccess(NOXN3)\n" +
-			"             │           │                           │                       ├─ index: [NOXN3.BRQP2]\n" +
-			"             │           │                           │                       ├─ columns: [id brqp2]\n" +
-			"             │           │                           │                       └─ keys: mjr3d.FJDP5\n" +
-			"             │           │                           │  ) AND mjr3d.BJUF2 IS NULL)) OR (((NOT(mjr3d.TDEIU IS NULL)) AND InSubquery\n" +
-			"             │           │                           │   ├─ left: sn.id\n" +
-			"             │           │                           │   └─ right: Subquery\n" +
-			"             │           │                           │       ├─ cacheable: false\n" +
-			"             │           │                           │       └─ Project\n" +
-			"             │           │                           │           ├─ columns: [xmafz.id]\n" +
-			"             │           │                           │           └─ Filter\n" +
-			"             │           │                           │               ├─ (xmafz.BRQP2 = mjr3d.BJUF2)\n" +
-			"             │           │                           │               └─ TableAlias(xmafz)\n" +
-			"             │           │                           │                   └─ IndexedTableAccess(NOXN3)\n" +
-			"             │           │                           │                       ├─ index: [NOXN3.BRQP2]\n" +
-			"             │           │                           │                       ├─ columns: [id brqp2]\n" +
-			"             │           │                           │                       └─ keys: mjr3d.BJUF2\n" +
-			"             │           │                           │  ) AND (NOT(mjr3d.BJUF2 IS NULL))))\n" +
+			"             │           │                           ├─ ((((((NOT(mjr3d.QNI57 IS NULL)) AND (sn.id = mjr3d.QNI57)) AND mjr3d.BJUF2 IS NULL) OR (((NOT(mjr3d.QNI57 IS NULL)) AND (sn.id IN (select JTEHG.id from NOXN3 as JTEHG where BRQP2 = MJR3D.BJUF2))) AND (NOT(mjr3d.BJUF2 IS NULL)))) OR (((NOT(mjr3d.TDEIU IS NULL)) AND (sn.id IN (select XMAFZ.id from NOXN3 as XMAFZ where BRQP2 = MJR3D.FJDP5))) AND mjr3d.BJUF2 IS NULL)) OR (((NOT(mjr3d.TDEIU IS NULL)) AND (sn.id IN (select XMAFZ.id from NOXN3 as XMAFZ where BRQP2 = MJR3D.BJUF2))) AND (NOT(mjr3d.BJUF2 IS NULL))))\n" +
 			"             │           │                           ├─ LookupJoin (estimated cost=335.863 rows=100) (actual rows=0 loops=1)\n" +
 			"             │           │                           │   ├─ SubqueryAlias\n" +
 			"             │           │                           │   │   ├─ name: mjr3d\n" +
@@ -13675,7 +13292,7 @@ WHERE
 			"             │                                           ├─ MergeJoin\n" +
 			"             │                                           │   ├─ cmp: (cla.id = bs.IXUXU)\n" +
 			"             │                                           │   ├─ Filter\n" +
-			"             │                                           │   │   ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
+			"             │                                           │   │   ├─ (cla.FTQLQ IN ('SQ1'))\n" +
 			"             │                                           │   │   └─ TableAlias(cla)\n" +
 			"             │                                           │   │       └─ IndexedTableAccess(YK2GW)\n" +
 			"             │                                           │   │           ├─ index: [YK2GW.id]\n" +
@@ -13731,7 +13348,7 @@ WHERE
 			"                                         │           ├─ MergeJoin\n" +
 			"                                         │           │   ├─ cmp: (cla.id = bs.IXUXU)\n" +
 			"                                         │           │   ├─ Filter\n" +
-			"                                         │           │   │   ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
+			"                                         │           │   │   ├─ (cla.FTQLQ IN ('SQ1'))\n" +
 			"                                         │           │   │   └─ TableAlias(cla)\n" +
 			"                                         │           │   │       └─ IndexedTableAccess(YK2GW)\n" +
 			"                                         │           │   │           ├─ index: [YK2GW.id]\n" +
@@ -13851,46 +13468,7 @@ WHERE
 			"                                                             │                           └─ keys: mjr3d.TDEIU\n" +
 			"                                                             │   END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
 			"                                                             └─ LeftOuterJoin\n" +
-			"                                                                 ├─ ((((((NOT(mjr3d.QNI57 IS NULL)) AND (sn.id = mjr3d.QNI57)) AND mjr3d.BJUF2 IS NULL) OR (((NOT(mjr3d.QNI57 IS NULL)) AND InSubquery\n" +
-			"                                                                 │   ├─ left: sn.id\n" +
-			"                                                                 │   └─ right: Subquery\n" +
-			"                                                                 │       ├─ cacheable: false\n" +
-			"                                                                 │       └─ Project\n" +
-			"                                                                 │           ├─ columns: [jtehg.id]\n" +
-			"                                                                 │           └─ Filter\n" +
-			"                                                                 │               ├─ (jtehg.BRQP2 = mjr3d.BJUF2)\n" +
-			"                                                                 │               └─ TableAlias(jtehg)\n" +
-			"                                                                 │                   └─ IndexedTableAccess(NOXN3)\n" +
-			"                                                                 │                       ├─ index: [NOXN3.BRQP2]\n" +
-			"                                                                 │                       ├─ columns: [id brqp2]\n" +
-			"                                                                 │                       └─ keys: mjr3d.BJUF2\n" +
-			"                                                                 │  ) AND (NOT(mjr3d.BJUF2 IS NULL)))) OR (((NOT(mjr3d.TDEIU IS NULL)) AND InSubquery\n" +
-			"                                                                 │   ├─ left: sn.id\n" +
-			"                                                                 │   └─ right: Subquery\n" +
-			"                                                                 │       ├─ cacheable: false\n" +
-			"                                                                 │       └─ Project\n" +
-			"                                                                 │           ├─ columns: [xmafz.id]\n" +
-			"                                                                 │           └─ Filter\n" +
-			"                                                                 │               ├─ (xmafz.BRQP2 = mjr3d.FJDP5)\n" +
-			"                                                                 │               └─ TableAlias(xmafz)\n" +
-			"                                                                 │                   └─ IndexedTableAccess(NOXN3)\n" +
-			"                                                                 │                       ├─ index: [NOXN3.BRQP2]\n" +
-			"                                                                 │                       ├─ columns: [id brqp2]\n" +
-			"                                                                 │                       └─ keys: mjr3d.FJDP5\n" +
-			"                                                                 │  ) AND mjr3d.BJUF2 IS NULL)) OR (((NOT(mjr3d.TDEIU IS NULL)) AND InSubquery\n" +
-			"                                                                 │   ├─ left: sn.id\n" +
-			"                                                                 │   └─ right: Subquery\n" +
-			"                                                                 │       ├─ cacheable: false\n" +
-			"                                                                 │       └─ Project\n" +
-			"                                                                 │           ├─ columns: [xmafz.id]\n" +
-			"                                                                 │           └─ Filter\n" +
-			"                                                                 │               ├─ (xmafz.BRQP2 = mjr3d.BJUF2)\n" +
-			"                                                                 │               └─ TableAlias(xmafz)\n" +
-			"                                                                 │                   └─ IndexedTableAccess(NOXN3)\n" +
-			"                                                                 │                       ├─ index: [NOXN3.BRQP2]\n" +
-			"                                                                 │                       ├─ columns: [id brqp2]\n" +
-			"                                                                 │                       └─ keys: mjr3d.BJUF2\n" +
-			"                                                                 │  ) AND (NOT(mjr3d.BJUF2 IS NULL))))\n" +
+			"                                                                 ├─ ((((((NOT(mjr3d.QNI57 IS NULL)) AND (sn.id = mjr3d.QNI57)) AND mjr3d.BJUF2 IS NULL) OR (((NOT(mjr3d.QNI57 IS NULL)) AND (sn.id IN (select JTEHG.id from NOXN3 as JTEHG where BRQP2 = MJR3D.BJUF2))) AND (NOT(mjr3d.BJUF2 IS NULL)))) OR (((NOT(mjr3d.TDEIU IS NULL)) AND (sn.id IN (select XMAFZ.id from NOXN3 as XMAFZ where BRQP2 = MJR3D.FJDP5))) AND mjr3d.BJUF2 IS NULL)) OR (((NOT(mjr3d.TDEIU IS NULL)) AND (sn.id IN (select XMAFZ.id from NOXN3 as XMAFZ where BRQP2 = MJR3D.BJUF2))) AND (NOT(mjr3d.BJUF2 IS NULL))))\n" +
 			"                                                                 ├─ LookupJoin\n" +
 			"                                                                 │   ├─ SubqueryAlias\n" +
 			"                                                                 │   │   ├─ name: mjr3d\n" +
@@ -15089,46 +14667,7 @@ WHERE
 			"             │           │                       │                           └─ keys: mjr3d.TDEIU\n" +
 			"             │           │                       │   END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
 			"             │           │                       └─ LeftOuterJoin (estimated cost=1193112.000 rows=125)\n" +
-			"             │           │                           ├─ ((((((NOT(mjr3d.QNI57 IS NULL)) AND (sn.id = mjr3d.QNI57)) AND mjr3d.BJUF2 IS NULL) OR (((NOT(mjr3d.QNI57 IS NULL)) AND InSubquery\n" +
-			"             │           │                           │   ├─ left: sn.id\n" +
-			"             │           │                           │   └─ right: Subquery\n" +
-			"             │           │                           │       ├─ cacheable: false\n" +
-			"             │           │                           │       └─ Project\n" +
-			"             │           │                           │           ├─ columns: [jtehg.id]\n" +
-			"             │           │                           │           └─ Filter\n" +
-			"             │           │                           │               ├─ (jtehg.BRQP2 = mjr3d.BJUF2)\n" +
-			"             │           │                           │               └─ TableAlias(jtehg)\n" +
-			"             │           │                           │                   └─ IndexedTableAccess(NOXN3)\n" +
-			"             │           │                           │                       ├─ index: [NOXN3.BRQP2]\n" +
-			"             │           │                           │                       ├─ columns: [id brqp2]\n" +
-			"             │           │                           │                       └─ keys: mjr3d.BJUF2\n" +
-			"             │           │                           │  ) AND (NOT(mjr3d.BJUF2 IS NULL)))) OR (((NOT(mjr3d.TDEIU IS NULL)) AND InSubquery\n" +
-			"             │           │                           │   ├─ left: sn.id\n" +
-			"             │           │                           │   └─ right: Subquery\n" +
-			"             │           │                           │       ├─ cacheable: false\n" +
-			"             │           │                           │       └─ Project\n" +
-			"             │           │                           │           ├─ columns: [xmafz.id]\n" +
-			"             │           │                           │           └─ Filter\n" +
-			"             │           │                           │               ├─ (xmafz.BRQP2 = mjr3d.FJDP5)\n" +
-			"             │           │                           │               └─ TableAlias(xmafz)\n" +
-			"             │           │                           │                   └─ IndexedTableAccess(NOXN3)\n" +
-			"             │           │                           │                       ├─ index: [NOXN3.BRQP2]\n" +
-			"             │           │                           │                       ├─ columns: [id brqp2]\n" +
-			"             │           │                           │                       └─ keys: mjr3d.FJDP5\n" +
-			"             │           │                           │  ) AND mjr3d.BJUF2 IS NULL)) OR (((NOT(mjr3d.TDEIU IS NULL)) AND InSubquery\n" +
-			"             │           │                           │   ├─ left: sn.id\n" +
-			"             │           │                           │   └─ right: Subquery\n" +
-			"             │           │                           │       ├─ cacheable: false\n" +
-			"             │           │                           │       └─ Project\n" +
-			"             │           │                           │           ├─ columns: [xmafz.id]\n" +
-			"             │           │                           │           └─ Filter\n" +
-			"             │           │                           │               ├─ (xmafz.BRQP2 = mjr3d.BJUF2)\n" +
-			"             │           │                           │               └─ TableAlias(xmafz)\n" +
-			"             │           │                           │                   └─ IndexedTableAccess(NOXN3)\n" +
-			"             │           │                           │                       ├─ index: [NOXN3.BRQP2]\n" +
-			"             │           │                           │                       ├─ columns: [id brqp2]\n" +
-			"             │           │                           │                       └─ keys: mjr3d.BJUF2\n" +
-			"             │           │                           │  ) AND (NOT(mjr3d.BJUF2 IS NULL))))\n" +
+			"             │           │                           ├─ ((((((NOT(mjr3d.QNI57 IS NULL)) AND (sn.id = mjr3d.QNI57)) AND mjr3d.BJUF2 IS NULL) OR (((NOT(mjr3d.QNI57 IS NULL)) AND (sn.id IN (select JTEHG.id from NOXN3 as JTEHG where BRQP2 = MJR3D.BJUF2))) AND (NOT(mjr3d.BJUF2 IS NULL)))) OR (((NOT(mjr3d.TDEIU IS NULL)) AND (sn.id IN (select XMAFZ.id from NOXN3 as XMAFZ where BRQP2 = MJR3D.FJDP5))) AND mjr3d.BJUF2 IS NULL)) OR (((NOT(mjr3d.TDEIU IS NULL)) AND (sn.id IN (select XMAFZ.id from NOXN3 as XMAFZ where BRQP2 = MJR3D.BJUF2))) AND (NOT(mjr3d.BJUF2 IS NULL))))\n" +
 			"             │           │                           ├─ LookupJoin (estimated cost=335.863 rows=100)\n" +
 			"             │           │                           │   ├─ SubqueryAlias\n" +
 			"             │           │                           │   │   ├─ name: mjr3d\n" +
@@ -15237,7 +14776,7 @@ WHERE
 			"             │                                                   │       ├─ filters: [{[NULL, ∞)}]\n" +
 			"             │                                                   │       └─ columns: [id ixuxu]\n" +
 			"             │                                                   └─ Filter\n" +
-			"             │                                                       ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
+			"             │                                                       ├─ (cla.FTQLQ IN ('SQ1'))\n" +
 			"             │                                                       └─ TableAlias(cla)\n" +
 			"             │                                                           └─ IndexedTableAccess(YK2GW)\n" +
 			"             │                                                               ├─ index: [YK2GW.id]\n" +
@@ -15291,7 +14830,7 @@ WHERE
 			"                                         │                   │       ├─ filters: [{[NULL, ∞)}]\n" +
 			"                                         │                   │       └─ columns: [id ixuxu]\n" +
 			"                                         │                   └─ Filter\n" +
-			"                                         │                       ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
+			"                                         │                       ├─ (cla.FTQLQ IN ('SQ1'))\n" +
 			"                                         │                       └─ TableAlias(cla)\n" +
 			"                                         │                           └─ IndexedTableAccess(YK2GW)\n" +
 			"                                         │                               ├─ index: [YK2GW.id]\n" +
@@ -15391,46 +14930,7 @@ WHERE
 			"                                                             │                           └─ keys: mjr3d.TDEIU\n" +
 			"                                                             │   END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
 			"                                                             └─ LeftOuterJoin\n" +
-			"                                                                 ├─ ((((((NOT(mjr3d.QNI57 IS NULL)) AND (sn.id = mjr3d.QNI57)) AND mjr3d.BJUF2 IS NULL) OR (((NOT(mjr3d.QNI57 IS NULL)) AND InSubquery\n" +
-			"                                                                 │   ├─ left: sn.id\n" +
-			"                                                                 │   └─ right: Subquery\n" +
-			"                                                                 │       ├─ cacheable: false\n" +
-			"                                                                 │       └─ Project\n" +
-			"                                                                 │           ├─ columns: [jtehg.id]\n" +
-			"                                                                 │           └─ Filter\n" +
-			"                                                                 │               ├─ (jtehg.BRQP2 = mjr3d.BJUF2)\n" +
-			"                                                                 │               └─ TableAlias(jtehg)\n" +
-			"                                                                 │                   └─ IndexedTableAccess(NOXN3)\n" +
-			"                                                                 │                       ├─ index: [NOXN3.BRQP2]\n" +
-			"                                                                 │                       ├─ columns: [id brqp2]\n" +
-			"                                                                 │                       └─ keys: mjr3d.BJUF2\n" +
-			"                                                                 │  ) AND (NOT(mjr3d.BJUF2 IS NULL)))) OR (((NOT(mjr3d.TDEIU IS NULL)) AND InSubquery\n" +
-			"                                                                 │   ├─ left: sn.id\n" +
-			"                                                                 │   └─ right: Subquery\n" +
-			"                                                                 │       ├─ cacheable: false\n" +
-			"                                                                 │       └─ Project\n" +
-			"                                                                 │           ├─ columns: [xmafz.id]\n" +
-			"                                                                 │           └─ Filter\n" +
-			"                                                                 │               ├─ (xmafz.BRQP2 = mjr3d.FJDP5)\n" +
-			"                                                                 │               └─ TableAlias(xmafz)\n" +
-			"                                                                 │                   └─ IndexedTableAccess(NOXN3)\n" +
-			"                                                                 │                       ├─ index: [NOXN3.BRQP2]\n" +
-			"                                                                 │                       ├─ columns: [id brqp2]\n" +
-			"                                                                 │                       └─ keys: mjr3d.FJDP5\n" +
-			"                                                                 │  ) AND mjr3d.BJUF2 IS NULL)) OR (((NOT(mjr3d.TDEIU IS NULL)) AND InSubquery\n" +
-			"                                                                 │   ├─ left: sn.id\n" +
-			"                                                                 │   └─ right: Subquery\n" +
-			"                                                                 │       ├─ cacheable: false\n" +
-			"                                                                 │       └─ Project\n" +
-			"                                                                 │           ├─ columns: [xmafz.id]\n" +
-			"                                                                 │           └─ Filter\n" +
-			"                                                                 │               ├─ (xmafz.BRQP2 = mjr3d.BJUF2)\n" +
-			"                                                                 │               └─ TableAlias(xmafz)\n" +
-			"                                                                 │                   └─ IndexedTableAccess(NOXN3)\n" +
-			"                                                                 │                       ├─ index: [NOXN3.BRQP2]\n" +
-			"                                                                 │                       ├─ columns: [id brqp2]\n" +
-			"                                                                 │                       └─ keys: mjr3d.BJUF2\n" +
-			"                                                                 │  ) AND (NOT(mjr3d.BJUF2 IS NULL))))\n" +
+			"                                                                 ├─ ((((((NOT(mjr3d.QNI57 IS NULL)) AND (sn.id = mjr3d.QNI57)) AND mjr3d.BJUF2 IS NULL) OR (((NOT(mjr3d.QNI57 IS NULL)) AND (sn.id IN (select JTEHG.id from NOXN3 as JTEHG where BRQP2 = MJR3D.BJUF2))) AND (NOT(mjr3d.BJUF2 IS NULL)))) OR (((NOT(mjr3d.TDEIU IS NULL)) AND (sn.id IN (select XMAFZ.id from NOXN3 as XMAFZ where BRQP2 = MJR3D.FJDP5))) AND mjr3d.BJUF2 IS NULL)) OR (((NOT(mjr3d.TDEIU IS NULL)) AND (sn.id IN (select XMAFZ.id from NOXN3 as XMAFZ where BRQP2 = MJR3D.BJUF2))) AND (NOT(mjr3d.BJUF2 IS NULL))))\n" +
 			"                                                                 ├─ LookupJoin\n" +
 			"                                                                 │   ├─ SubqueryAlias\n" +
 			"                                                                 │   │   ├─ name: mjr3d\n" +
@@ -15616,46 +15116,7 @@ WHERE
 			"             │           │                       │                           └─ keys: mjr3d.TDEIU\n" +
 			"             │           │                       │   END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
 			"             │           │                       └─ LeftOuterJoin (estimated cost=1193112.000 rows=125) (actual rows=0 loops=1)\n" +
-			"             │           │                           ├─ ((((((NOT(mjr3d.QNI57 IS NULL)) AND (sn.id = mjr3d.QNI57)) AND mjr3d.BJUF2 IS NULL) OR (((NOT(mjr3d.QNI57 IS NULL)) AND InSubquery\n" +
-			"             │           │                           │   ├─ left: sn.id\n" +
-			"             │           │                           │   └─ right: Subquery\n" +
-			"             │           │                           │       ├─ cacheable: false\n" +
-			"             │           │                           │       └─ Project\n" +
-			"             │           │                           │           ├─ columns: [jtehg.id]\n" +
-			"             │           │                           │           └─ Filter\n" +
-			"             │           │                           │               ├─ (jtehg.BRQP2 = mjr3d.BJUF2)\n" +
-			"             │           │                           │               └─ TableAlias(jtehg)\n" +
-			"             │           │                           │                   └─ IndexedTableAccess(NOXN3)\n" +
-			"             │           │                           │                       ├─ index: [NOXN3.BRQP2]\n" +
-			"             │           │                           │                       ├─ columns: [id brqp2]\n" +
-			"             │           │                           │                       └─ keys: mjr3d.BJUF2\n" +
-			"             │           │                           │  ) AND (NOT(mjr3d.BJUF2 IS NULL)))) OR (((NOT(mjr3d.TDEIU IS NULL)) AND InSubquery\n" +
-			"             │           │                           │   ├─ left: sn.id\n" +
-			"             │           │                           │   └─ right: Subquery\n" +
-			"             │           │                           │       ├─ cacheable: false\n" +
-			"             │           │                           │       └─ Project\n" +
-			"             │           │                           │           ├─ columns: [xmafz.id]\n" +
-			"             │           │                           │           └─ Filter\n" +
-			"             │           │                           │               ├─ (xmafz.BRQP2 = mjr3d.FJDP5)\n" +
-			"             │           │                           │               └─ TableAlias(xmafz)\n" +
-			"             │           │                           │                   └─ IndexedTableAccess(NOXN3)\n" +
-			"             │           │                           │                       ├─ index: [NOXN3.BRQP2]\n" +
-			"             │           │                           │                       ├─ columns: [id brqp2]\n" +
-			"             │           │                           │                       └─ keys: mjr3d.FJDP5\n" +
-			"             │           │                           │  ) AND mjr3d.BJUF2 IS NULL)) OR (((NOT(mjr3d.TDEIU IS NULL)) AND InSubquery\n" +
-			"             │           │                           │   ├─ left: sn.id\n" +
-			"             │           │                           │   └─ right: Subquery\n" +
-			"             │           │                           │       ├─ cacheable: false\n" +
-			"             │           │                           │       └─ Project\n" +
-			"             │           │                           │           ├─ columns: [xmafz.id]\n" +
-			"             │           │                           │           └─ Filter\n" +
-			"             │           │                           │               ├─ (xmafz.BRQP2 = mjr3d.BJUF2)\n" +
-			"             │           │                           │               └─ TableAlias(xmafz)\n" +
-			"             │           │                           │                   └─ IndexedTableAccess(NOXN3)\n" +
-			"             │           │                           │                       ├─ index: [NOXN3.BRQP2]\n" +
-			"             │           │                           │                       ├─ columns: [id brqp2]\n" +
-			"             │           │                           │                       └─ keys: mjr3d.BJUF2\n" +
-			"             │           │                           │  ) AND (NOT(mjr3d.BJUF2 IS NULL))))\n" +
+			"             │           │                           ├─ ((((((NOT(mjr3d.QNI57 IS NULL)) AND (sn.id = mjr3d.QNI57)) AND mjr3d.BJUF2 IS NULL) OR (((NOT(mjr3d.QNI57 IS NULL)) AND (sn.id IN (select JTEHG.id from NOXN3 as JTEHG where BRQP2 = MJR3D.BJUF2))) AND (NOT(mjr3d.BJUF2 IS NULL)))) OR (((NOT(mjr3d.TDEIU IS NULL)) AND (sn.id IN (select XMAFZ.id from NOXN3 as XMAFZ where BRQP2 = MJR3D.FJDP5))) AND mjr3d.BJUF2 IS NULL)) OR (((NOT(mjr3d.TDEIU IS NULL)) AND (sn.id IN (select XMAFZ.id from NOXN3 as XMAFZ where BRQP2 = MJR3D.BJUF2))) AND (NOT(mjr3d.BJUF2 IS NULL))))\n" +
 			"             │           │                           ├─ LookupJoin (estimated cost=335.863 rows=100) (actual rows=0 loops=1)\n" +
 			"             │           │                           │   ├─ SubqueryAlias\n" +
 			"             │           │                           │   │   ├─ name: mjr3d\n" +
@@ -15764,7 +15225,7 @@ WHERE
 			"             │                                                   │       ├─ filters: [{[NULL, ∞)}]\n" +
 			"             │                                                   │       └─ columns: [id ixuxu]\n" +
 			"             │                                                   └─ Filter\n" +
-			"             │                                                       ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
+			"             │                                                       ├─ (cla.FTQLQ IN ('SQ1'))\n" +
 			"             │                                                       └─ TableAlias(cla)\n" +
 			"             │                                                           └─ IndexedTableAccess(YK2GW)\n" +
 			"             │                                                               ├─ index: [YK2GW.id]\n" +
@@ -15818,7 +15279,7 @@ WHERE
 			"                                         │                   │       ├─ filters: [{[NULL, ∞)}]\n" +
 			"                                         │                   │       └─ columns: [id ixuxu]\n" +
 			"                                         │                   └─ Filter\n" +
-			"                                         │                       ├─ (cla.FTQLQ HASH IN ('SQ1'))\n" +
+			"                                         │                       ├─ (cla.FTQLQ IN ('SQ1'))\n" +
 			"                                         │                       └─ TableAlias(cla)\n" +
 			"                                         │                           └─ IndexedTableAccess(YK2GW)\n" +
 			"                                         │                               ├─ index: [YK2GW.id]\n" +
@@ -15918,46 +15379,7 @@ WHERE
 			"                                                             │                           └─ keys: mjr3d.TDEIU\n" +
 			"                                                             │   END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
 			"                                                             └─ LeftOuterJoin\n" +
-			"                                                                 ├─ ((((((NOT(mjr3d.QNI57 IS NULL)) AND (sn.id = mjr3d.QNI57)) AND mjr3d.BJUF2 IS NULL) OR (((NOT(mjr3d.QNI57 IS NULL)) AND InSubquery\n" +
-			"                                                                 │   ├─ left: sn.id\n" +
-			"                                                                 │   └─ right: Subquery\n" +
-			"                                                                 │       ├─ cacheable: false\n" +
-			"                                                                 │       └─ Project\n" +
-			"                                                                 │           ├─ columns: [jtehg.id]\n" +
-			"                                                                 │           └─ Filter\n" +
-			"                                                                 │               ├─ (jtehg.BRQP2 = mjr3d.BJUF2)\n" +
-			"                                                                 │               └─ TableAlias(jtehg)\n" +
-			"                                                                 │                   └─ IndexedTableAccess(NOXN3)\n" +
-			"                                                                 │                       ├─ index: [NOXN3.BRQP2]\n" +
-			"                                                                 │                       ├─ columns: [id brqp2]\n" +
-			"                                                                 │                       └─ keys: mjr3d.BJUF2\n" +
-			"                                                                 │  ) AND (NOT(mjr3d.BJUF2 IS NULL)))) OR (((NOT(mjr3d.TDEIU IS NULL)) AND InSubquery\n" +
-			"                                                                 │   ├─ left: sn.id\n" +
-			"                                                                 │   └─ right: Subquery\n" +
-			"                                                                 │       ├─ cacheable: false\n" +
-			"                                                                 │       └─ Project\n" +
-			"                                                                 │           ├─ columns: [xmafz.id]\n" +
-			"                                                                 │           └─ Filter\n" +
-			"                                                                 │               ├─ (xmafz.BRQP2 = mjr3d.FJDP5)\n" +
-			"                                                                 │               └─ TableAlias(xmafz)\n" +
-			"                                                                 │                   └─ IndexedTableAccess(NOXN3)\n" +
-			"                                                                 │                       ├─ index: [NOXN3.BRQP2]\n" +
-			"                                                                 │                       ├─ columns: [id brqp2]\n" +
-			"                                                                 │                       └─ keys: mjr3d.FJDP5\n" +
-			"                                                                 │  ) AND mjr3d.BJUF2 IS NULL)) OR (((NOT(mjr3d.TDEIU IS NULL)) AND InSubquery\n" +
-			"                                                                 │   ├─ left: sn.id\n" +
-			"                                                                 │   └─ right: Subquery\n" +
-			"                                                                 │       ├─ cacheable: false\n" +
-			"                                                                 │       └─ Project\n" +
-			"                                                                 │           ├─ columns: [xmafz.id]\n" +
-			"                                                                 │           └─ Filter\n" +
-			"                                                                 │               ├─ (xmafz.BRQP2 = mjr3d.BJUF2)\n" +
-			"                                                                 │               └─ TableAlias(xmafz)\n" +
-			"                                                                 │                   └─ IndexedTableAccess(NOXN3)\n" +
-			"                                                                 │                       ├─ index: [NOXN3.BRQP2]\n" +
-			"                                                                 │                       ├─ columns: [id brqp2]\n" +
-			"                                                                 │                       └─ keys: mjr3d.BJUF2\n" +
-			"                                                                 │  ) AND (NOT(mjr3d.BJUF2 IS NULL))))\n" +
+			"                                                                 ├─ ((((((NOT(mjr3d.QNI57 IS NULL)) AND (sn.id = mjr3d.QNI57)) AND mjr3d.BJUF2 IS NULL) OR (((NOT(mjr3d.QNI57 IS NULL)) AND (sn.id IN (select JTEHG.id from NOXN3 as JTEHG where BRQP2 = MJR3D.BJUF2))) AND (NOT(mjr3d.BJUF2 IS NULL)))) OR (((NOT(mjr3d.TDEIU IS NULL)) AND (sn.id IN (select XMAFZ.id from NOXN3 as XMAFZ where BRQP2 = MJR3D.FJDP5))) AND mjr3d.BJUF2 IS NULL)) OR (((NOT(mjr3d.TDEIU IS NULL)) AND (sn.id IN (select XMAFZ.id from NOXN3 as XMAFZ where BRQP2 = MJR3D.BJUF2))) AND (NOT(mjr3d.BJUF2 IS NULL))))\n" +
 			"                                                                 ├─ LookupJoin\n" +
 			"                                                                 │   ├─ SubqueryAlias\n" +
 			"                                                                 │   │   ├─ name: mjr3d\n" +
@@ -16100,15 +15522,15 @@ SELECT COUNT(*) FROM E2I7U`,
 			"     └─ table_count(E2I7U) as COUNT(1)\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [count(1) as COUNT(*)]\n" +
+			" ├─ columns: [count(1) as `COUNT(*)`]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [E2I7U.COUNT(1) as COUNT(1)]\n" +
+			"     ├─ columns: [E2I7U.COUNT(1) as `COUNT(1)`]\n" +
 			"     └─ table_count(E2I7U) as COUNT(1)\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [count(1) as COUNT(*)]\n" +
+			" ├─ columns: [count(1) as `COUNT(*)`]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [E2I7U.COUNT(1) as COUNT(1)]\n" +
+			"     ├─ columns: [E2I7U.COUNT(1) as `COUNT(1)`]\n" +
 			"     └─ table_count(E2I7U) as COUNT(1)\n" +
 			"",
 	},
