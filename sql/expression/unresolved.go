@@ -302,7 +302,8 @@ func (uf *UnresolvedFunction) String() string {
 		over = fmt.Sprintf(" %s", uf.Window)
 	}
 
-	return fmt.Sprintf("%s(%s)%s", uf.name, strings.Join(exprs, ", "), over)
+	name := sqlparser.String(sqlparser.NewColIdent(uf.name))
+	return fmt.Sprintf("%s(%s)%s", name, strings.Join(exprs, ", "), over)
 }
 
 func (uf *UnresolvedFunction) DebugString(ctx *sql.Context) string {

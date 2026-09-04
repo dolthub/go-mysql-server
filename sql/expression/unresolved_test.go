@@ -48,3 +48,10 @@ func TestUnresolvedColumnString(t *testing.T) {
 		require.NoError(t, err)
 	}
 }
+
+func TestUnresolvedFunctionString(t *testing.T) {
+	expr := NewUnresolvedFunction("function name", false, nil)
+	require.Equal(t, "`function name`()", expr.String())
+	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + expr.String())
+	require.NoError(t, err)
+}
