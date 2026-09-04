@@ -20,9 +20,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNilColumnDefaultValueString(t *testing.T) {
-	var expr *ColumnDefaultValue
-	require.Equal(t, "NULL", expr.String())
-	_, err := NewMysqlParser().ParseSimple("SELECT " + expr.String())
+func TestColumnDefaultValueString(t *testing.T) {
+	var implicitDefault *ColumnDefaultValue
+	require.Equal(t, "", implicitDefault.String())
+
+	explicitNull, err := NewColumnDefaultValue(UnresolvedColumnDefault{ExprString: "NULL"}, nil, true, false, true)
+	require.NoError(t, err)
+	require.Equal(t, "NULL", explicitNull.String())
+	_, err = NewMysqlParser().ParseSimple("SELECT " + explicitNull.String())
 	require.NoError(t, err)
 }
