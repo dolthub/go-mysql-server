@@ -196,14 +196,11 @@ func TestSingleScript(t *testing.T) {
 	//t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "Parse table name as column",
-			SetUpScript: []string{
-				"create table t (d date);",
-				"insert into t values ('2000-01-02');",
-			},
+			Name:        "Parse table name as column",
+			SetUpScript: []string{},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "select * from t where d = '2000-01-02T12:34:56';",
+					Query:    "select str_to_date('09:30:17a', '%h:%i:%s %p');",
 					Expected: []sql.Row{},
 				},
 			},
@@ -221,7 +218,7 @@ func TestSingleScript(t *testing.T) {
 		// engine.EngineAnalyzer().Debug = true
 		// engine.EngineAnalyzer().Verbose = true
 
-		enginetest.TestScriptWithEngine(t, engine, harness, test)
+		enginetest.TestScriptWithEnginePrepared(t, engine, harness, test)
 	}
 }
 
