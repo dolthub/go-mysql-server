@@ -173,3 +173,14 @@ func TestChar(t *testing.T) {
 		})
 	}
 }
+
+func TestCharString(t *testing.T) {
+	expr, err := NewChar(sql.NewEmptyContext(), expression.NewLiteral(65, types.Int64))
+	require.NoError(t, err)
+	charExpr := expr.(*Char)
+	charExpr.Collation = sql.Collation_utf8mb4_0900_ai_ci
+
+	require.Equal(t, "char(65 USING utf8mb4)", charExpr.String())
+	_, err = sql.NewMysqlParser().ParseSimple("SELECT " + charExpr.String())
+	require.NoError(t, err)
+}
