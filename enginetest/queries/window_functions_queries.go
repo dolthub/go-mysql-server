@@ -840,6 +840,27 @@ var WindowFunctionsScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "case-sensitive literals in window expressions",
+		Query: `SELECT
+			FIRST_VALUE(ASCII('a')) OVER (),
+			FIRST_VALUE(ASCII('A')) OVER ()`,
+		Expected: []sql.Row{{uint8(97), uint8(65)}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11497
+		Name: "customer reproduction: case-sensitive literals in window expressions",
+		SetUpScript: []string{
+			"CREATE TABLE t(id INT PRIMARY KEY, v INT NOT NULL)",
+			"INSERT INTO t VALUES (1,10),(2,20)",
+		},
+		Query: `SELECT id,
+			FIRST_VALUE(ASCII('a')) OVER (ORDER BY id) AS lower_literal,
+			FIRST_VALUE(ASCII('A')) OVER (ORDER BY id) AS upper_literal
+			FROM t
+			ORDER BY id`,
+		Expected: []sql.Row{{1, uint8(97), uint8(65)}, {2, uint8(97), uint8(65)}},
+	},
+	{
 		Name: "sibling window aggregates with different frames",
 		SetUpScript: []string{
 			"CREATE TABLE distinct_window_frames (id INT PRIMARY KEY, g INT, v INT NOT NULL)",
