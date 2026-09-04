@@ -1540,4 +1540,30 @@ var NamedWindowsScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "distinct window partition and order shapes do not collide",
+		SetUpScript: []string{
+			"CREATE TABLE t (id INT PRIMARY KEY, a INT, ab INT, bc INT, c INT, v INT)",
+			"INSERT INTO t VALUES (1,0,0,2,0,10), (2,0,1,1,1,20), (3,1,0,1,0,30), (4,1,1,2,1,40)",
+		},
+		Query: `SELECT id,
+       SUM(v) OVER (
+         PARTITION BY a
+         ORDER BY bc, id
+         ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+       ) AS w1,
+       SUM(v) OVER (
+         PARTITION BY ab
+         ORDER BY c, id
+         ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+       ) AS w2
+FROM t
+ORDER BY id`,
+		Expected: []sql.Row{
+			{int32(1), float64(30), float64(10)},
+			{int32(2), float64(20), float64(20)},
+			{int32(3), float64(30), float64(40)},
+			{int32(4), float64(70), float64(60)},
+		},
+	},
 }

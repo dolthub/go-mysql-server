@@ -95,3 +95,28 @@ func TestWindowPlanToIter(t *testing.T) {
 			expression.NewGetField(2, types.Int64, "c", false),
 		}})
 }
+
+func TestWindowPlanToIterSeparatesAmbiguousPartitionIds(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	windowedMax := func(partition, order string) sql.Expression {
+		return aggregation.NewMax(
+			expression.NewGetField(2, types.Int64, "v", false),
+		).WithWindow(ctx, &sql.WindowDefinition{
+			PartitionBy: []sql.Expression{
+				expression.NewGetField(0, types.Int64, partition, false)},
+			OrderBy: sql.SortConditions{{
+				Expr:  expression.NewGetField(1, types.Int64, order, false),
+				Order: sql.Ascending,
+			}},
+		})
+	}
+
+	plan := plan.NewWindow([]sql.Expression{
+		windowedMax("a", "bc"),
+		windowedMax("ab", "c"),
+	}, nil)
+	outputIters, outputOrdinals, err := windowToIter(ctx, plan)
+	require.NoError(t, err)
+	require.Len(t, outputIters, 2)
+	require.ElementsMatch(t, outputOrdinals, [][]int{{0}, {1}})
+}
