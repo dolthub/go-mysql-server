@@ -60,6 +60,14 @@ var WindowFunctionsScriptTests = []ScriptTest{
 					{2, 2, int64(2), float64(7)},
 				},
 			},
+			{
+				Query: "SELECT grp, ord, SUM(SUM(val)) OVER (PARTITION BY grp ORDER BY ord ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_sum FROM grouped_window_values GROUP BY grp, ord HAVING SUM(val) <> 3 ORDER BY grp, ord",
+				Expected: []sql.Row{
+					{1, 1, float64(15)},
+					{1, 2, float64(22)},
+					{2, 2, float64(4)},
+				},
+			},
 		},
 	},
 	{
