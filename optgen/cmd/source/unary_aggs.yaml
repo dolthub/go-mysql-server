@@ -29,6 +29,8 @@ unaryAggs:
   desc:    "returns a count of the number of non-NULL values of expr in the rows retrieved by a SELECT statement."
   retType: "types.Int64"
 - name: "First"
+  sqlString: true
+  windowSqlName: "first_value"
   desc: "returns the first value in a sequence of elements of an aggregation."
 - name:    "JsonArray"
   sqlName: "json_arrayagg"
