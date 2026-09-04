@@ -608,7 +608,7 @@ func (b *Builder) buildWindow(fromScope, projScope *scope) *scope {
 	windowStr := make(map[string]bool)
 	for _, col := range fromScope.windowFuncs {
 		e := col.scalar
-		if !windowStr[e.String()] {
+		if !windowStr[e.String()] || expressionIsNonDeterministic(b.ctx, e) {
 			switch e.(type) {
 			case sql.WindowAdaptableExpression:
 				windowStr[e.String()] = true
@@ -673,6 +673,14 @@ func (b *Builder) buildWindow(fromScope, projScope *scope) *scope {
 	}
 
 	return outScope
+}
+
+// expressionIsNonDeterministic reports whether an expression tree contains a nondeterministic expression.
+func expressionIsNonDeterministic(ctx *sql.Context, expr sql.Expression) bool {
+	return transform.InspectExpr(ctx, expr, func(_ *sql.Context, child sql.Expression) bool {
+		nondeterministic, ok := child.(sql.NonDeterministicExpression)
+		return ok && nondeterministic.IsNonDeterministic()
+	})
 }
 
 func (b *Builder) buildNamedWindows(fromScope *scope, window ast.Window) {
