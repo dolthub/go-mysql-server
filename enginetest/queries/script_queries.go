@@ -6019,6 +6019,8 @@ CREATE TABLE tab3 (
 		SetUpScript: []string{
 			"CREATE TABLE correlated_aggregate_scope (id INT PRIMARY KEY, grp INT, val INT);",
 			"INSERT INTO correlated_aggregate_scope VALUES (1, 1, 1), (2, 1, 2), (3, 2, 1);",
+			"CREATE TABLE correlated_aggregate_probe (probe INT);",
+			"INSERT INTO correlated_aggregate_probe VALUES (1);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -6038,11 +6040,50 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{2}},
 			},
 			{
+				// TODO: https://github.com/dolthub/go-mysql-server/issues/3814
+				// The aggregate crosses two subqueries but still belongs to the scope that provides a.val.
+				Skip:     true,
+				Query:    "SELECT grp FROM correlated_aggregate_scope a GROUP BY grp HAVING EXISTS (SELECT 1 FROM correlated_aggregate_probe b WHERE EXISTS (SELECT 1 WHERE SUM(a.val) = b.probe)) ORDER BY grp;",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				// TODO: https://github.com/dolthub/go-mysql-server/issues/3814
+				// The middle a alias shadows outer a, so the deepest aggregate must belong to the middle query.
+				Skip:     true,
+				Query:    "SELECT grp FROM correlated_aggregate_scope a GROUP BY grp HAVING EXISTS (SELECT 1 FROM correlated_aggregate_scope a HAVING EXISTS (SELECT 1 WHERE SUM(a.val) = 4)) ORDER BY grp;",
+				Expected: []sql.Row{{1}, {2}},
+			},
+			{
+				// TODO: https://github.com/dolthub/go-mysql-server/issues/3814
+				// The inner table has no val column, so normal name resolution should fall back to outer a.val.
+				Skip:     true,
+				Query:    "SELECT grp FROM correlated_aggregate_scope a GROUP BY grp HAVING EXISTS (SELECT 1 FROM correlated_aggregate_probe b WHERE SUM(val) = b.probe) ORDER BY grp;",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				// An unqualified local val shadows the outer column, so this aggregate stays in the subquery.
+				Query:    "SELECT grp FROM correlated_aggregate_scope a GROUP BY grp HAVING EXISTS (SELECT 1 FROM correlated_aggregate_scope b HAVING SUM(val) = 4) ORDER BY grp;",
+				Expected: []sql.Row{{1}, {2}},
+			},
+			{
+				// Joins do not change ownership when every aggregate argument comes from the outer scope.
+				Query:    "SELECT grp FROM correlated_aggregate_scope a GROUP BY grp HAVING EXISTS (SELECT 1 FROM correlated_aggregate_probe b JOIN correlated_aggregate_probe c ON b.probe = c.probe WHERE SUM(a.val) = b.probe) ORDER BY grp;",
+				Expected: []sql.Row{{2}},
+			},
+			{
 				Query:    "SELECT grp FROM correlated_aggregate_scope a GROUP BY grp HAVING EXISTS (SELECT SUM(a.val) FROM correlated_aggregate_scope a HAVING SUM(a.val) = 4) ORDER BY grp;",
 				Expected: []sql.Row{{1}, {2}},
 			},
 			{
+				// Mixing outer a.val with inner b.val makes the aggregate belong to the inner query.
 				Query:    "SELECT grp FROM correlated_aggregate_scope a GROUP BY grp, a.val HAVING EXISTS (SELECT SUM(a.val + b.val) FROM correlated_aggregate_scope b HAVING SUM(a.val + b.val) > 0) ORDER BY grp;",
+				Expected: []sql.Row{{1}, {1}, {2}},
+			},
+			{
+				// TODO: https://github.com/dolthub/go-mysql-server/issues/3814
+				// The deepest aggregate mixes top-level a.val and middle-level b.probe, so it belongs to the middle query.
+				Skip:     true,
+				Query:    "SELECT grp FROM correlated_aggregate_scope a GROUP BY grp, a.val HAVING EXISTS (SELECT 1 FROM correlated_aggregate_probe b HAVING EXISTS (SELECT 1 WHERE SUM(a.val + b.probe) > 0)) ORDER BY grp;",
 				Expected: []sql.Row{{1}, {1}, {2}},
 			},
 		},
