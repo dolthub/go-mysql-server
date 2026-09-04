@@ -29,3 +29,10 @@ func TestProcedureParamString(t *testing.T) {
 	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + expr.String())
 	require.NoError(t, err)
 }
+
+func TestUnresolvedProcedureParamString(t *testing.T) {
+	expr := NewUnresolvedProcedureParam("param name")
+	require.Equal(t, "`param name`", expr.String())
+	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + expr.String())
+	require.NoError(t, err)
+}

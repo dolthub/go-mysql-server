@@ -427,7 +427,7 @@ func (upp *UnresolvedProcedureParam) Name() string {
 
 // String implements the sql.Expression interface.
 func (upp *UnresolvedProcedureParam) String() string {
-	return upp.name
+	return sqlparser.String(sqlparser.NewColIdent(upp.name))
 }
 
 // Eval implements the sql.Expression interface.
