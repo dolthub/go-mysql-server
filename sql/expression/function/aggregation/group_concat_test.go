@@ -28,11 +28,11 @@ import (
 func TestGroupConcat_FunctionName(t *testing.T) {
 	assert := require.New(t)
 
-	m := NewGroupConcat("field", nil, ",", nil, 1024)
+	m := NewGroupConcat("distinct ", nil, ",", []sql.Expression{expression.NewUnresolvedColumn("field")}, 1024)
 
 	assert.Equal("group_concat(distinct field separator ',')", m.String())
 
-	m = NewGroupConcat("field", nil, "-", nil, 1024)
+	m = NewGroupConcat("distinct ", nil, "-", []sql.Expression{expression.NewUnresolvedColumn("field")}, 1024)
 
 	assert.Equal("group_concat(distinct field separator '-')", m.String())
 
@@ -41,9 +41,14 @@ func TestGroupConcat_FunctionName(t *testing.T) {
 		{Expr: expression.NewUnresolvedColumn("field2"), Order: sql.Descending},
 	}
 
-	m = NewGroupConcat("field", sc, "-", nil, 1024)
+	m = NewGroupConcat("distinct ", sc, "a'b\\c", []sql.Expression{expression.NewUnresolvedColumn("field")}, 1024)
 
-	assert.Equal("group_concat(distinct field order by field ASC, field2 DESC separator '-')", m.String())
+	assert.Equal("group_concat(distinct field order by field ASC, field2 DESC separator 'a''b\\\\c')", m.String())
+	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + m.String())
+	assert.NoError(err)
+
+	windowed := m.WithWindow(sql.NewEmptyContext(), &sql.WindowDefinition{})
+	assert.Equal("group_concat(distinct field order by field ASC, field2 DESC separator 'a''b\\\\c') over ()", windowed.String())
 }
 
 // Validates that the return length of GROUP_CONCAT is bounded by group_concat_max_len (default 1024)
