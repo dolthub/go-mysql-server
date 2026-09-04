@@ -752,24 +752,14 @@ func (i *IntDiv) convertLeftRight(ctx *sql.Context, lVal, rVal any) (any, any) {
 	var typ sql.Type
 	lTyp, rTyp := i.LeftChild.Type(ctx), i.RightChild.Type(ctx)
 	switch {
-	case types.IsText(lTyp) || types.IsText(rTyp):
-		typ = types.Float64
 	case types.IsUnsigned(lTyp) && types.IsUnsigned(rTyp):
 		typ = types.Uint64
 	case (types.IsTime(lTyp) && types.IsTime(rTyp)) || (types.IsSigned(lTyp) && types.IsSigned(rTyp)):
 		typ = types.Int64
 	default:
-		typ = types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, 0)
-	}
-
-	if types.IsInteger(typ) || types.IsFloat(typ) {
-		lVal = convertValueToType(ctx, lTyp, typ, lVal)
-		rVal = convertValueToType(ctx, rTyp, typ, rVal)
-	} else {
 		lVal = convertToDecimalValue(ctx, lTyp, typ, lVal)
 		rVal = convertToDecimalValue(ctx, rTyp, typ, rVal)
 	}
-
 	return lVal, rVal
 }
 
