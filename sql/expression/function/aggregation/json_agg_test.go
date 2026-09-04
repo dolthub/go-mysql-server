@@ -29,6 +29,11 @@ func TestJsonArrayAgg_Name(t *testing.T) {
 
 	m := NewJsonArray(expression.NewGetField(0, types.Int32, "field", true))
 	assert.Equal("JSON_ARRAYAGG(field)", m.String())
+
+	windowed := m.WithWindow(sql.NewEmptyContext(), &sql.WindowDefinition{})
+	assert.Equal("JSON_ARRAYAGG(field) over ()", windowed.String())
+	_, err := sql.NewMysqlParser().ParseSimple("SELECT " + windowed.String())
+	assert.NoError(err)
 }
 
 func TestJSONObjectAggString(t *testing.T) {

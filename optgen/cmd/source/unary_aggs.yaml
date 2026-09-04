@@ -34,6 +34,7 @@ unaryAggs:
   desc: "returns the first value in a sequence of elements of an aggregation."
 - name:    "JsonArray"
   sqlName: "json_arrayagg"
+  sqlString: true
   desc:    "returns result set as a single JSON array."
   retType: "types.JSON"
 - name: "Last"

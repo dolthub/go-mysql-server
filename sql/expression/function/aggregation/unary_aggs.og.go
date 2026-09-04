@@ -568,14 +568,11 @@ func (a *JsonArray) IsNullable(ctx *sql.Context) bool {
 }
 
 func (a *JsonArray) String() string {
+	ret := "JSON_ARRAYAGG(" + a.Child.String() + ")"
 	if a.window != nil {
-		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("JSON_ARRAYAGG")
-		children := []string{a.window.String(), a.Child.String()}
-		pr.WriteChildren(children...)
-		return pr.String()
+		ret += " " + a.window.String()
 	}
-	return "JSON_ARRAYAGG(" + a.Child.String() + ")"
+	return ret
 }
 
 func (a *JsonArray) DebugString(ctx *sql.Context) string {
