@@ -708,7 +708,7 @@ func TestValidateIntervalUsage(t *testing.T) {
 				require.NoError(err)
 			} else {
 				require.Error(err)
-				require.True(analyzererrors.ErrIntervalInvalidUse.Is(err))
+				require.True(sql.ErrIntervalInvalidUse.Is(err))
 			}
 		})
 	}

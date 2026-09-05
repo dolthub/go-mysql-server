@@ -10086,6 +10086,10 @@ type QueryErrorTest struct {
 
 var ErrorQueries = []QueryErrorTest{
 	{
+		Query:       "SELECT INTERVAL 1 DAY",
+		ExpectedErr: sql.ErrIntervalInvalidUse,
+	},
+	{
 		Query:       "analyze table mytable update histogram on i using data 'unknown'",
 		ExpectedErr: planbuilder.ErrFailedToParseStats,
 	},
