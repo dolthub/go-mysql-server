@@ -81,6 +81,7 @@ var _ sql.Expressioner = (*CreateTable)(nil)
 var _ sql.SchemaTarget = (*CreateTable)(nil)
 var _ sql.CheckConstraintNode = (*CreateTable)(nil)
 var _ sql.CollationCoercible = (*CreateTable)(nil)
+var _ TableCopierCreateTableDestination = (*CreateTable)(nil)
 
 // NewCreateTable creates a new CreateTable node
 func NewCreateTable(db sql.Database, name string, ifn, temp bool, tableSpec *TableSpec) *CreateTable {
@@ -141,6 +142,11 @@ func (c *CreateTable) WithIndexDefs(idxDefs sql.IndexDefs) (*CreateTable, error)
 // Name implements the Nameable interface.
 func (c *CreateTable) Name() string {
 	return c.name
+}
+
+// TableCopierDestinationName returns the name of the table created for a table copy operation.
+func (c *CreateTable) TableCopierDestinationName() string {
+	return c.Name()
 }
 
 // Resolved implements the Resolvable interface.

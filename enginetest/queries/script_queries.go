@@ -123,6 +123,76 @@ type ScriptTestAssertion struct {
 // the tests.
 var ScriptTests = []ScriptTest{
 	{
+		// https://github.com/dolthub/dolt/issues/11489
+		Name: "EXISTS over an ungrouped aggregate in filters and write queries",
+		SetUpScript: []string{
+			"CREATE TABLE t (id INT PRIMARY KEY, k INT, f INT DEFAULT 0)",
+			"INSERT INTO t (id, k) VALUES (1, 10), (2, 99)",
+			"CREATE TABLE u (k INT PRIMARY KEY)",
+			"INSERT INTO u VALUES (10)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT id FROM t WHERE EXISTS(SELECT COUNT(*) FROM u WHERE u.k = t.k) ORDER BY id",
+				Expected: []sql.Row{{1}, {2}},
+			},
+			{
+				Query:    "SELECT id FROM t WHERE NOT EXISTS(SELECT COUNT(*) FROM u WHERE u.k = t.k) ORDER BY id",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT id FROM t WHERE EXISTS(SELECT COUNT(*) FROM u WHERE u.k = t.k HAVING COUNT(*) > 0) ORDER BY id",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT id FROM t WHERE EXISTS(SELECT COUNT(*) FROM u WHERE u.k = t.k LIMIT 0) ORDER BY id",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT id FROM t WHERE EXISTS(SELECT COUNT(*) FROM u WHERE u.k = t.k LIMIT 1 OFFSET 1) ORDER BY id",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "DELETE FROM t WHERE NOT EXISTS(SELECT COUNT(*) FROM u WHERE u.k = t.k)",
+			},
+			{
+				Query:    "SELECT id FROM t ORDER BY id",
+				Expected: []sql.Row{{1}, {2}},
+			},
+			{
+				Query: "DELETE FROM t WHERE NOT EXISTS(SELECT COUNT(*) FROM u WHERE u.k = 99)",
+			},
+			{
+				Query:    "SELECT id FROM t ORDER BY id",
+				Expected: []sql.Row{{1}, {2}},
+			},
+			{
+				Query: "UPDATE t SET f = 9 WHERE NOT EXISTS(SELECT COUNT(*) FROM u WHERE u.k = t.k)",
+			},
+			{
+				Query:    "SELECT id, f FROM t ORDER BY id",
+				Expected: []sql.Row{{1, 0}, {2, 0}},
+			},
+			{
+				Query: "CREATE TABLE r (id INT, k INT)",
+			},
+			{
+				Query: "INSERT INTO r SELECT id, k FROM t WHERE NOT EXISTS(SELECT COUNT(*) FROM u WHERE u.k = t.k)",
+			},
+			{
+				Query:    "SELECT id FROM r ORDER BY id",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "CREATE TABLE c AS SELECT id, k FROM t WHERE NOT EXISTS(SELECT COUNT(*) FROM u WHERE u.k = t.k)",
+			},
+			{
+				Query:    "SELECT id FROM c ORDER BY id",
+				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/10113
 		Name: "DELETE with NOT EXISTS subquery",
 		SetUpScript: []string{

@@ -251,16 +251,14 @@ func (b *BaseBuilder) buildNothing(ctx *sql.Context, n plan.Nothing, row sql.Row
 }
 
 func (b *BaseBuilder) buildTableCopier(ctx *sql.Context, n *plan.TableCopier, row sql.Row) (sql.RowIter, error) {
-	if _, ok := n.Destination.(*plan.CreateTable); ok {
+	switch destination := n.Destination.(type) {
+	case *plan.ResolvedTable:
+		return n.CopyTableOver(ctx, n.Source.Schema(ctx)[0].Source, destination.Name())
+	case plan.TableCopierCreateTableDestination:
 		return n.ProcessCreateTable(ctx, b, row)
+	default:
+		return nil, fmt.Errorf("TableCopier only accepts a create-table node or resolved table as the destination, found %T", destination)
 	}
-
-	drt, ok := n.Destination.(*plan.ResolvedTable)
-	if !ok {
-		return nil, fmt.Errorf("TableCopier only accepts CreateTable or TableNode as the destination")
-	}
-
-	return n.CopyTableOver(ctx, n.Source.Schema(ctx)[0].Source, drt.Name())
 }
 
 func (b *BaseBuilder) buildUnresolvedTable(ctx *sql.Context, n *plan.UnresolvedTable, row sql.Row) (sql.RowIter, error) {

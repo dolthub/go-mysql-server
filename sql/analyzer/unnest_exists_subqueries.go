@@ -106,12 +106,34 @@ func simplifyPartialJoinParents(n sql.Node) (sql.Node, bool) {
 		switch n := ret.(type) {
 		case *plan.Having:
 			return nil, false
-		case *plan.Project, *plan.GroupBy, *plan.Sort, *plan.Distinct, *plan.TopN, *plan.Limit:
+		case *plan.GroupBy:
+			// An aggregate without grouping expressions produces one row even when its child is empty. Removing it
+			// would therefore change the result of the existence check.
+			if len(n.GroupByExprs) == 0 {
+				return nil, false
+			}
+			ret = n.Child
+		case *plan.Project, *plan.Sort, *plan.Distinct, *plan.TopN, *plan.Limit:
 			// TODO: In most cases, it's necessary to remove *plan.Limit because child Filter nodes will have been
 			//  hoisted out. But what if Limit.Limit evals to 0? https://github.com/dolthub/dolt/issues/10493
 			ret = n.Children()[0]
 		default:
 			return ret, true
+		}
+	}
+}
+
+// ungroupedAggregateGuaranteesRow reports whether an existence check is guaranteed to see one aggregate row.
+func ungroupedAggregateGuaranteesRow(n sql.Node) bool {
+	cur := n
+	for {
+		switch node := cur.(type) {
+		case *plan.GroupBy:
+			return len(node.GroupByExprs) == 0
+		case *plan.Project, *plan.Sort, *plan.Distinct:
+			cur = node.Children()[0]
+		default:
+			return false
 		}
 	}
 }
@@ -142,6 +164,21 @@ func unnestExistSubqueries(ctx *sql.Context, scope *plan.Scope, a *Analyzer, fil
 		}
 		if sq == nil {
 			retFilters = append(retFilters, f)
+			continue
+		}
+
+		// An ungrouped aggregate without a cardinality-changing parent always emits one row, even when its filters
+		// match nothing. Eliminate the existence check instead of executing a correlated subquery for every outer row.
+		if ungroupedAggregateGuaranteesRow(sq.Query) {
+			same = transform.NewTree
+			switch joinType {
+			case plan.JoinTypeSemi:
+				// The condition is always true, so ret is unchanged.
+			case plan.JoinTypeAntiIncludeNulls:
+				ret = plan.NewEmptyTableWithSchema(ret.Schema(ctx))
+			default:
+				return filter, transform.SameTree, fmt.Errorf("hoistSelectExists failed on unexpected join type")
+			}
 			continue
 		}
 
