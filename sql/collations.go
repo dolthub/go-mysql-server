@@ -862,6 +862,19 @@ func (c CollationID) Collation() Collation {
 	return collationArray[c]
 }
 
+// IsBinary returns whether this collation is a binary collation.
+func (c CollationID) IsBinary() bool {
+	if c == Collation_binary || c.CharacterSet() == CharacterSet_binary {
+		return true
+	}
+	return strings.HasSuffix(c.Name(), "_bin")
+}
+
+// IsBinary returns whether this collation is a binary collation.
+func (c Collation) IsBinary() bool {
+	return c.ID.IsBinary()
+}
+
 var weightBuffers = sync.Pool{
 	New: func() interface{} {
 		return new([]byte)
