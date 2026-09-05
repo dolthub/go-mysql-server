@@ -645,3 +645,70 @@ func DecimalTruncate(val *apd.Decimal, scale int32) *apd.Decimal {
 	}
 	return val
 }
+
+// DecimalDigitsForType returns the precision and scale MySQL gives a numeric
+// type when it takes part in an operation that produces a DECIMAL result.
+// Integer types contribute as many digits as their widest value, unsigned
+// BIGINT contributing one more than signed. The boolean result is false for
+// non-numeric and floating-point types, which never convert to DECIMAL this
+// way.
+func DecimalDigitsForType(t sql.Type) (uint8, uint8, bool) {
+	if dt, ok := t.(sql.DecimalType); ok {
+		return dt.Precision(), dt.Scale(), true
+	}
+	switch t {
+	case Int8, Uint8, Boolean:
+		return 3, 0, true
+	case Int16, Uint16:
+		return 5, 0, true
+	case Int24, Uint24:
+		return 8, 0, true
+	case Int32, Uint32:
+		return 10, 0, true
+	case Int64:
+		return 19, 0, true
+	case Uint64:
+		return 20, 0, true
+	}
+	return 0, 0, false
+}
+
+// boundDecimalType builds a DECIMAL type with the given count of integer
+// digits and fractional digits, reducing both to the type system's limits
+// while keeping as many integer digits as possible, the way MySQL bounds
+// derived result types.
+func boundDecimalType(intDigits, scale uint16) sql.DecimalType {
+	if scale > DecimalTypeMaxScale {
+		scale = DecimalTypeMaxScale
+	}
+	prec := intDigits + scale
+	if prec > DecimalTypeMaxPrecision {
+		prec = DecimalTypeMaxPrecision
+	}
+	if prec < scale {
+		prec = scale
+	}
+	return MustCreateDecimalType(uint8(prec), uint8(scale))
+}
+
+// UnifiedDecimalType returns the DECIMAL type able to hold every one of the
+// given numeric types: it keeps the largest count of integer digits and the
+// largest scale found among them. This is how MySQL types an expression that
+// picks one of several possible values, and how it unifies result columns of
+// set operations.
+func UnifiedDecimalType(typs ...sql.Type) (sql.DecimalType, bool) {
+	var intDigits, scale uint16
+	for _, t := range typs {
+		p, s, ok := DecimalDigitsForType(t)
+		if !ok {
+			return nil, false
+		}
+		if id := uint16(p - s); id > intDigits {
+			intDigits = id
+		}
+		if uint16(s) > scale {
+			scale = uint16(s)
+		}
+	}
+	return boundDecimalType(intDigits, scale), true
+}
