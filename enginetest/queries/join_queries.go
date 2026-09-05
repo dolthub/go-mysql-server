@@ -864,6 +864,62 @@ on w = 0;`,
 
 var JoinScriptTests = []ScriptTest{
 	{
+		// dolthub/dolt#11421: EXISTS with select-list window (ROW_NUMBER)
+		Name: "EXISTS with select-list window function",
+		SetUpScript: []string{
+			"CREATE TABLE t(id INT PRIMARY KEY, a INT);",
+			"CREATE TABLE u(x INT);",
+			"CREATE TABLE u2(x INT, y INT);",
+			"INSERT INTO t VALUES (1,1),(2,2),(3,3);",
+			"INSERT INTO u VALUES (1),(1),(2);",
+			"INSERT INTO u2 VALUES (1,10),(1,20),(2,30);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT id FROM t WHERE EXISTS (SELECT 1 FROM u WHERE u.x = t.a) ORDER BY id",
+				Expected: []sql.Row{
+					{1},
+					{2},
+				},
+			},
+			{
+				Query: "SELECT id FROM t WHERE EXISTS (SELECT ROW_NUMBER() OVER () FROM u WHERE u.x = t.a) ORDER BY id",
+				Expected: []sql.Row{
+					{1},
+					{2},
+				},
+			},
+			{
+				Query: "SELECT id FROM t WHERE NOT EXISTS (SELECT ROW_NUMBER() OVER () FROM u WHERE u.x = t.a) ORDER BY id",
+				Expected: []sql.Row{
+					{3},
+				},
+			},
+			// Multi-window EXISTS bodies (>=2 distinct partition schemes) silently returned wrong
+			// rows on main (1,2,3 / empty) instead of crashing; assert correct existence.
+			{
+				Query: "SELECT id FROM t WHERE EXISTS (SELECT ROW_NUMBER() OVER (PARTITION BY u2.y), RANK() OVER (ORDER BY u2.y) FROM u2 WHERE u2.x = t.a) ORDER BY id",
+				Expected: []sql.Row{
+					{1},
+					{2},
+				},
+			},
+			{
+				Query: "SELECT id FROM t WHERE NOT EXISTS (SELECT ROW_NUMBER() OVER (PARTITION BY u2.y), RANK() OVER (ORDER BY u2.y) FROM u2 WHERE u2.x = t.a) ORDER BY id",
+				Expected: []sql.Row{
+					{3},
+				},
+			},
+			// Uncorrelated NOT EXISTS + window: on main this panics (nil pointer in
+			// sql.EvaluateCondition via existsIter) via the len(joinFilters)==0 path;
+			// patched build correctly returns empty.
+			{
+				Query:    "SELECT id FROM t WHERE NOT EXISTS (SELECT ROW_NUMBER() OVER () FROM u) ORDER BY id",
+				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
 		Name:        "Simple join query",
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
