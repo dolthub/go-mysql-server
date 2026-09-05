@@ -7237,6 +7237,39 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Query:    `SELECT EXISTS (SELECT pk FROM one_pk WHERE pk > 4)`,
 		Expected: []sql.Row{{false}},
 	},
+	// https://github.com/dolthub/dolt/issues/11722
+	{
+		Query:    `SELECT * FROM two_pk WHERE EXISTS ((SELECT pk FROM one_pk WHERE pk > 4))`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT pk1, pk2 FROM two_pk WHERE NOT EXISTS ((SELECT pk FROM one_pk WHERE pk > 4)) ORDER BY pk1, pk2`,
+		Expected: []sql.Row{{0, 0}, {0, 1}, {1, 0}, {1, 1}},
+	},
+	{
+		Query:    `SELECT 2 + 2 WHERE EXISTS ((SELECT * FROM one_pk WHERE pk < 4))`,
+		Expected: []sql.Row{{4}},
+	},
+	{
+		Query:    `SELECT 2 + 2 WHERE NOT EXISTS ((SELECT * FROM one_pk WHERE pk < 4))`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT distinct pk1 FROM two_pk WHERE EXISTS ((SELECT pk from one_pk where pk <= two_pk.pk1)) ORDER BY pk1`,
+		Expected: []sql.Row{{0}, {1}},
+	},
+	{
+		Query:    `SELECT EXISTS ((SELECT pk FROM one_pk WHERE pk > 4))`,
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    `SELECT NOT EXISTS ((SELECT pk FROM one_pk WHERE pk > 4))`,
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    `SELECT EXISTS (((SELECT pk FROM one_pk WHERE pk < 4)))`,
+		Expected: []sql.Row{{true}},
+	},
 	{
 		Query:    `START TRANSACTION READ ONLY`,
 		Expected: []sql.Row{},
@@ -9625,6 +9658,23 @@ from typestable`,
 		// https://github.com/dolthub/dolt/issues/11564
 		Query:    "SELECT FIRST_VALUE(LOAD_FILE(1)) OVER () AS actual FROM (SELECT 1 AS z) q;",
 		Expected: []sql.Row{{nil}},
+	},
+	// https://github.com/dolthub/dolt/issues/8058
+	{
+		Query:    "SELECT SUM(found) FROM ((SELECT 2 as found FROM dual)) as all_found;",
+		Expected: []sql.Row{{float64(2)}},
+	},
+	{
+		Query:    "SELECT SUM(found) FROM (((SELECT 2 as found FROM dual))) as all_found;",
+		Expected: []sql.Row{{float64(2)}},
+	},
+	{
+		Query:    "SELECT EXISTS ((SELECT 1));",
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    "WITH t AS ((SELECT 1 as x)) SELECT * FROM t;",
+		Expected: []sql.Row{{int64(1)}},
 	},
 }
 
