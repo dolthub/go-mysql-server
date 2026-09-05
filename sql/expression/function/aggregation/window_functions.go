@@ -1379,6 +1379,10 @@ func (n *NTile) DefaultFramer() sql.WindowFramer {
 
 func (n *NTile) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) error {
 	n.Dispose(ctx)
+	// Unreachable via normal engine path once NewWindowFunction gates it; protects direct aggregation.NewNTile callers only.
+	if NTileArgNotConstant(ctx, n.numBucketsExpr) {
+		return sql.ErrInvalidArgument.New("NTILE")
+	}
 	if interval.End < interval.Start {
 		return nil
 	}
@@ -1410,6 +1414,27 @@ func (n *NTile) StartPartition(ctx *sql.Context, interval sql.WindowInterval, bu
 	n.pos = 0
 	n.bucket = 1
 	return nil
+}
+
+// NTileArgNotConstant is true when the bucket-count expr contains a GetField
+// or Subquery (ExpressionWithNodes) — not evaluable against a nil row.
+func NTileArgNotConstant(ctx *sql.Context, expr sql.Expression) bool {
+	notConstant := false
+	sql.Inspect(ctx, expr, func(ctx *sql.Context, e sql.Expression) bool {
+		if e == nil {
+			return false
+		}
+		if _, ok := e.(*expression.GetField); ok {
+			notConstant = true
+			return false
+		}
+		if _, ok := e.(sql.ExpressionWithNodes); ok {
+			notConstant = true
+			return false
+		}
+		return true
+	})
+	return notConstant
 }
 
 // Compute returns the appropriate bucket for the current row.

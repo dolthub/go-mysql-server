@@ -140,5 +140,9 @@ func (n *NTile) WithWindow(ctx *sql.Context, window *sql.WindowDefinition) sql.W
 }
 
 func (n *NTile) NewWindowFunction(ctx *sql.Context) (sql.WindowFunction, error) {
+	// Reject row-dependent bucket counts before partition setup (empty tables too).
+	if aggregation.NTileArgNotConstant(ctx, n.bucketExpr) {
+		return nil, sql.ErrInvalidArgument.New("NTILE")
+	}
 	return aggregation.NewNTile(n.bucketExpr), nil
 }
