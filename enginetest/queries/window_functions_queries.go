@@ -1924,6 +1924,25 @@ var WindowRangeFramesScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "unicode collation expansions form RANGE peers",
+		SetUpScript: []string{
+			"CREATE TABLE t (id INT PRIMARY KEY, g INT, s VARCHAR(8) COLLATE utf8mb4_unicode_ci, v INT)",
+			"INSERT INTO t VALUES (1, 0, 'ss', 1), (2, 0, 'ß', 2), (3, 0, 'x', 3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT id,
+	COUNT(*) OVER (
+		PARTITION BY g ORDER BY s
+		RANGE BETWEEN CURRENT ROW AND CURRENT ROW
+	) AS actual
+FROM t
+ORDER BY id`,
+				Expected: []sql.Row{{1, 2}, {2, 2}, {3, 1}},
+			},
+		},
+	},
+	{
 		// RANGE frame arithmetic (offset applied to the order-by expression) on a SET order-by column can
 		// produce a value outside that SET's valid domain. https://github.com/dolthub/dolt/issues/11397
 		Name: "window range frames, SET order-by column",

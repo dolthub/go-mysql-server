@@ -89,6 +89,74 @@ func TestStringCompare(t *testing.T) {
 	}
 }
 
+func TestStringCompareUnicodeExpansions(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	unicodeTyp, err := CreateString(sqltypes.VarChar, 10, sql.Collation_utf8mb4_unicode_ci)
+	require.NoError(t, err)
+
+	generalTyp, err := CreateString(sqltypes.VarChar, 10, sql.Collation_utf8mb4_general_ci)
+	require.NoError(t, err)
+
+	german2Typ, err := CreateString(sqltypes.VarChar, 10, sql.Collation_utf8mb4_german2_ci)
+	require.NoError(t, err)
+
+	tests := []struct {
+		typ         sql.StringType
+		val1        string
+		val2        string
+		expectedCmp int
+	}{
+		{unicodeTyp, "ss", "ß", 0},
+		{unicodeTyp, "ß", "ss", 0},
+		{unicodeTyp, "SS", "ß", 0},
+		{unicodeTyp, "ß", "s", 1},
+		{unicodeTyp, "s", "ß", -1},
+		{unicodeTyp, "ß", "x", -1},
+		{unicodeTyp, "x", "ß", 1},
+		{unicodeTyp, "œ", "oe", 0},
+		{unicodeTyp, "ĳ", "ij", 0},
+		{unicodeTyp, "Ǆ", "dz", 0},
+		{unicodeTyp, "Ǉ", "lj", 0},
+		{unicodeTyp, "Ǌ", "nj", 0},
+		{unicodeTyp, "Ǳ", "dz", 0},
+		{unicodeTyp, "ﬀ", "ff", 0},
+		{unicodeTyp, "ﬁ", "fi", 0},
+		{unicodeTyp, "ﬂ", "fl", 0},
+		{unicodeTyp, "ﬃ", "ffi", 0},
+		{unicodeTyp, "ﬄ", "ffl", 0},
+		{unicodeTyp, "ﬅ", "st", 0},
+		{unicodeTyp, "ﬆ", "st", 0},
+		{unicodeTyp, "¼", "1/4", 0},
+		{unicodeTyp, "½", "1/2", 0},
+		{unicodeTyp, "¾", "3/4", 0},
+
+		// PAD SPACE handling
+		{unicodeTyp, "a", "a ", 0},
+		{unicodeTyp, "a ", "a", 0},
+		{unicodeTyp, "ss", "ß ", 0},
+		{unicodeTyp, "ß", "ss   ", 0},
+		{unicodeTyp, "a", "a!", -1},
+		{unicodeTyp, "a", "a\t", 1},
+
+		// utf8mb4_general_ci does not expand 'ß' to 'ss'
+		{generalTyp, "ss", "ß", 1},
+
+		// utf8mb4_german2_ci expands umlauts and sharp S
+		{german2Typ, "ss", "ß", 0},
+		{german2Typ, "ä", "ae", 0},
+		{german2Typ, "ö", "oe", 0},
+		{german2Typ, "ü", "ue", 0},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%s vs %s under %s", test.val1, test.val2, test.typ.Collation().Name()), func(t *testing.T) {
+			cmp, err := test.typ.Compare(ctx, test.val1, test.val2)
+			require.NoError(t, err)
+			assert.Equal(t, test.expectedCmp, cmp)
+		})
+	}
+}
+
 func TestStringCreateBlob(t *testing.T) {
 	tests := []struct {
 		baseType     query.Type
