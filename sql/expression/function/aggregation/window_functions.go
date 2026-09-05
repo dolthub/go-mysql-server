@@ -202,10 +202,15 @@ func floatPrefixSum(ctx *sql.Context, interval sql.WindowInterval, buf sql.Windo
 		if err != nil {
 			continue
 		}
+		if v == nil {
+			nullCnt += 1
+			sums[i] = last
+			nulls[i] = nullCnt
+			continue
+		}
 		val, _, err := types.Float64.Convert(ctx, v)
 		if err != nil || val == nil {
 			val = float64(0)
-			nullCnt += 1
 		}
 		last += val.(float64)
 		sums[i] = last
