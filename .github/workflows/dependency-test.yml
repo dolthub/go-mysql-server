@@ -4,9 +4,17 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
+concurrency:
+  group: dependency-test-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test-integration:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [dolt, doltgresql]
 
     steps:
       - name: Set timezone for Unix
@@ -17,6 +25,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
 
       - name: Setup Git User
         uses: fregante/setup-git-user@v2
@@ -24,7 +33,6 @@ jobs:
       - name: Merge main into PR
         id: merge_main
         run: |
-          git fetch --all --unshallow
           git merge origin/main --no-commit --no-ff
           if [ $? -ne 0 ]; then
             echo "Skipping the remainder of the workflow due to a merge conflict."
@@ -36,13 +44,12 @@ jobs:
 
       - name: Check for a Dolt PR link
         id: check_dolt_pr
-        if: steps.merge_main.outputs.skip == 'false'
+        if: steps.merge_main.outputs.skip == 'false' && matrix.target == 'dolt'
         run: |
           PR_DESCRIPTION=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }})
           COMMENTS=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments)
-          echo "$PR_DESCRIPTION$COMMENTS"
           if echo "$PR_DESCRIPTION$COMMENTS" | grep -q "github.com/dolthub/dolt/pull/"; then
             echo "comment_exists=true" >> $GITHUB_OUTPUT
             echo "Dolt PR link exists"
@@ -53,13 +60,12 @@ jobs:
 
       - name: Check for a DoltgreSQL PR link
         id: check_doltgresql_pr
-        if: steps.merge_main.outputs.skip == 'false'
+        if: steps.merge_main.outputs.skip == 'false' && matrix.target == 'doltgresql'
         run: |
           PR_DESCRIPTION=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }})
           COMMENTS=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments)
-          echo "$PR_DESCRIPTION$COMMENTS"
           if echo "$PR_DESCRIPTION$COMMENTS" | grep -q "github.com/dolthub/doltgresql/pull/"; then
             echo "comment_exists=true" >> $GITHUB_OUTPUT
             echo "DoltgreSQL PR link exists"
@@ -75,57 +81,75 @@ jobs:
           go-version-file: go.mod
 
       - name: Clone Dolt
-        if: steps.merge_main.outputs.skip == 'false' && steps.check_dolt_pr.outputs.comment_exists == 'false'
+        if: steps.merge_main.outputs.skip == 'false' && matrix.target == 'dolt' && steps.check_dolt_pr.outputs.comment_exists == 'false'
         run: git clone https://github.com/dolthub/dolt.git
 
-      - name: Clone DoltgreSQL repository
-        if: steps.merge_main.outputs.skip == 'false' && steps.check_doltgresql_pr.outputs.comment_exists == 'false'
-        run: git clone https://github.com/dolthub/doltgresql.git
-
-      - name: Build DoltgreSQL's parser
-        if: steps.merge_main.outputs.skip == 'false' && steps.check_doltgresql_pr.outputs.comment_exists == 'false'
-        run: |
-          cd doltgresql
-          ./postgres/parser/build.sh
-
-      - name: Test Dolt against main
-        id: test_dolt_main
-        if: steps.merge_main.outputs.skip == 'false' && steps.check_dolt_pr.outputs.comment_exists == 'false'
-        continue-on-error: true
-        run: |
-          cd dolt/go
-          go get github.com/dolthub/go-mysql-server@main
-          go mod tidy
-          cd libraries/doltcore/sqle/enginetest
-          go test ./... --count=1 -skip TestDoltServerRunningUnixSocket
-
-      - name: Test DoltgreSQL against main
-        id: test_doltgresql_main
-        if: steps.merge_main.outputs.skip == 'false' && steps.check_doltgresql_pr.outputs.comment_exists == 'false'
-        continue-on-error: true
-        run: |
-          cd doltgresql
-          go get github.com/dolthub/go-mysql-server@main
-          go mod tidy
-          cd testing/go
-          go test ./... --count=1 -skip Replication
-
       - name: Test Dolt against PR
-        if: steps.merge_main.outputs.skip == 'false' && steps.check_dolt_pr.outputs.comment_exists == 'false' && steps.test_dolt_main.outcome == 'success'
+        id: test_dolt_pr
+        if: steps.merge_main.outputs.skip == 'false' && matrix.target == 'dolt' && steps.check_dolt_pr.outputs.comment_exists == 'false'
+        continue-on-error: true
         run: |
           cd dolt/go
-          git reset --hard
           go mod edit -replace github.com/dolthub/go-mysql-server=../..
           go mod tidy
           cd libraries/doltcore/sqle/enginetest
           go test ./... --count=1 -skip TestDoltServerRunningUnixSocket
 
-      - name: Test DoltgreSQL against PR
-        if: steps.merge_main.outputs.skip == 'false' && steps.check_doltgresql_pr.outputs.comment_exists == 'false' && steps.test_doltgresql_main.outcome == 'success'
+      - name: Test Dolt against main
+        id: test_dolt_main
+        if: steps.merge_main.outputs.skip == 'false' && matrix.target == 'dolt' && steps.check_dolt_pr.outputs.comment_exists == 'false' && steps.test_dolt_pr.outcome == 'failure'
+        run: |
+          cd dolt/go
+          git reset --hard
+          go get github.com/dolthub/go-mysql-server@main
+          go mod tidy
+          cd libraries/doltcore/sqle/enginetest
+          go test ./... --count=1 -skip TestDoltServerRunningUnixSocket
+
+      - name: Check Dolt Test Result
+        if: steps.merge_main.outputs.skip == 'false' && matrix.target == 'dolt' && steps.check_dolt_pr.outputs.comment_exists == 'false'
+        run: |
+          if [ "${{ steps.test_dolt_pr.outcome }}" != "success" ] && [ "${{ steps.test_dolt_main.outcome }}" == "success" ]; then
+            echo "Tests passed against main but failed against PR"
+            exit 1
+          fi
+
+      - name: Clone DoltgreSQL repository
+        if: steps.merge_main.outputs.skip == 'false' && matrix.target == 'doltgresql' && steps.check_doltgresql_pr.outputs.comment_exists == 'false'
+        run: git clone https://github.com/dolthub/doltgresql.git
+
+      - name: Build DoltgreSQL's parser
+        if: steps.merge_main.outputs.skip == 'false' && matrix.target == 'doltgresql' && steps.check_doltgresql_pr.outputs.comment_exists == 'false'
         run: |
           cd doltgresql
-          git reset --hard
+          ./postgres/parser/build.sh
+
+      - name: Test DoltgreSQL against PR
+        id: test_doltgresql_pr
+        if: steps.merge_main.outputs.skip == 'false' && matrix.target == 'doltgresql' && steps.check_doltgresql_pr.outputs.comment_exists == 'false'
+        continue-on-error: true
+        run: |
+          cd doltgresql
           go mod edit -replace github.com/dolthub/go-mysql-server=..
           go mod tidy
           cd testing/go
           go test ./... --count=1 -skip Replication
+
+      - name: Test DoltgreSQL against main
+        id: test_doltgresql_main
+        if: steps.merge_main.outputs.skip == 'false' && matrix.target == 'doltgresql' && steps.check_doltgresql_pr.outputs.comment_exists == 'false' && steps.test_doltgresql_pr.outcome == 'failure'
+        run: |
+          cd doltgresql
+          git reset --hard
+          go get github.com/dolthub/go-mysql-server@main
+          go mod tidy
+          cd testing/go
+          go test ./... --count=1 -skip Replication
+
+      - name: Check DoltgreSQL Test Result
+        if: steps.merge_main.outputs.skip == 'false' && matrix.target == 'doltgresql' && steps.check_doltgresql_pr.outputs.comment_exists == 'false'
+        run: |
+          if [ "${{ steps.test_doltgresql_pr.outcome }}" != "success" ] && [ "${{ steps.test_doltgresql_main.outcome }}" == "success" ]; then
+            echo "Tests passed against main but failed against PR"
+            exit 1
+          fi
