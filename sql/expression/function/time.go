@@ -356,18 +356,16 @@ func (*Hour) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID,
 // Eval implements the Expression interface.
 func (h *Hour) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	val, err := h.Child.Eval(ctx, row)
-	if err != nil {
+	if err != nil || val == nil {
 		return nil, err
 	}
-	if timespan, ok := val.(types.Timespan); ok {
+	timespan, err := types.Time.ConvertToTimespan(val)
+	if err == nil {
 		return hourFromTimespan(timespan), nil
 	}
 	val, _, err = types.DatetimeMaxPrecision.Convert(ctx, val)
 	if err != nil {
 		return nil, err
-	}
-	if val == nil {
-		return nil, nil
 	}
 	dt := val.(time.Time)
 	return dt.Hour(), nil

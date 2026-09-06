@@ -1465,7 +1465,7 @@ var FunctionQueryTests = []QueryTest{
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/11543
-		Query:    "SELECT LENGTH(CURRENT_TIME(6)) FROM mytable",
+		Query:    "SELECT LENGTH(CURRENT_TIME(6));",
 		Expected: []sql.Row{{int32(15)}},
 	},
 	{
