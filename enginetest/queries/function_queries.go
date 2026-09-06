@@ -1481,7 +1481,7 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{{int32(345)}},
 	},
 	{
-		Query:    "SELECT SECOND('2007-12-11 20:21:22');",
+		Query:    "SELECT SECOND('2007-12-11T20:21:22Z');",
 		Expected: []sql.Row{{int32(22)}},
 	},
 	{

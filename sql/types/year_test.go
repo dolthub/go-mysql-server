@@ -116,3 +116,22 @@ func TestYearZero(t *testing.T) {
 	_, ok := Year.Zero().(int16)
 	require.True(t, ok)
 }
+
+func TestTwoDigitYear(t *testing.T) {
+	tests := []struct {
+		in  int64
+		exp int64
+	}{
+		{0, 2000},
+		{1, 2001},
+		{69, 2069},
+		{70, 1970},
+		{99, 1999},
+		{-1, -1},
+		{100, 100},
+		{2021, 2021},
+	}
+	for _, tt := range tests {
+		assert.Equal(t, tt.exp, TwoDigitYear(tt.in))
+	}
+}

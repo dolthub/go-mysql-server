@@ -19,7 +19,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/mysql"
 	"gopkg.in/src-d/go-errors.v1"
 
@@ -1385,42 +1384,6 @@ func NewUnaryDatetimeFunc(arg sql.Expression, name string, sqlType sql.Type) *Un
 // FunctionName implements sql.FunctionExpression
 func (dtf *UnaryDatetimeFunc) FunctionName() string {
 	return dtf.Name
-}
-
-// isNumericZero is a helper function for DATE and TIME related functions. Returns |val| is a numeric zero type.
-func isNumericZero(val any) bool {
-	switch v := val.(type) {
-	case bool:
-		return !v
-	case int8:
-		return v == 0
-	case int16:
-		return v == 0
-	case int32:
-		return v == 0
-	case int64:
-		return v == 0
-	case uint8:
-		return v == 0
-	case uint16:
-		return v == 0
-	case uint32:
-		return v == 0
-	case uint64:
-		return v == 0
-	case int:
-		return v == 0
-	case uint:
-		return v == 0
-	case float32:
-		return v == 0
-	case float64:
-		return v == 0
-	case apd.Decimal:
-		return v.IsZero()
-	default:
-		return false
-	}
 }
 
 func (dtf *UnaryDatetimeFunc) EvalChild(ctx *sql.Context, row sql.Row) (any, error) {

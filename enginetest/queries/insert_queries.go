@@ -247,7 +247,7 @@ var InsertQueries = []WriteQueryTest{
 			id = 999, i8 = -128, i16 = -32768, i32 = -2147483648, i64 = -9223372036854775808,
 			u8 = 0, u16 = 0, u32 = 0, u64 = 0,
 			f32 = 1.401298464324817070923729583289916131280e-45, f64 = 4.940656458412465441765687928682213723651e-324,
-			ti = '2037-04-05 12:51:36', da = '0000-01-01',
+			ti = '2037-04-05 12:51:36 -0000 UTC', da = '0000-01-01',
 			te = '', bo = false, js = '""', bl = '', e1 = 'v1', s1 = 'v2'
 			;`,
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
@@ -960,7 +960,7 @@ var InsertScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "INSERT INTO xy (y,x) select * from (select cast('2019-12-31 12:00:00' as date), 0) dt(a,b) ON DUPLICATE KEY UPDATE x=dt.b+1, y=dt.a",
+				Query:    "INSERT INTO xy (y,x) select * from (select cast('2019-12-31T12:00:00Z' as date), 0) dt(a,b) ON DUPLICATE KEY UPDATE x=dt.b+1, y=dt.a",
 				Expected: []sql.Row{{types.NewOkResult(2)}},
 			},
 			{
