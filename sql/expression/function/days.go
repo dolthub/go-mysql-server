@@ -243,7 +243,7 @@ func (f *LastDay) Eval(ctx *sql.Context, row sql.Row) (any, error) {
 		return nil, nil
 	}
 	if types.ZeroTime.Equal(dt) {
-		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrIncorrectDateTimeValue.New("datetime", dt).Error())
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrIncorrectValue.New("datetime", dt).Error())
 		return nil, nil
 	}
 

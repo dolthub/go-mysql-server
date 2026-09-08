@@ -667,7 +667,7 @@ func TestHashInTuple(t *testing.T) {
 				expression.NewLiteral("hi", types.TinyText),
 				expression.NewLiteral("bye", types.TinyText),
 			),
-			staticErr: sql.ErrIncorrectDateTimeValue,
+			staticErr: sql.ErrIncorrectValue,
 			row:       nil,
 			result:    false,
 		},

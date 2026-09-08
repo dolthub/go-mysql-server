@@ -409,7 +409,7 @@ func (t datetimeType) parseDatetime(str string) (any, bool, error) {
 
 	matchIdxs := DateTimeRegex.FindStringSubmatchIndex(value)
 	if len(matchIdxs) == 0 {
-		return nil, delimWarn, sql.ErrIncorrectDateTimeValue.New(t.String(), value)
+		return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), value)
 	}
 
 	// TODO: Handle delimiter warnings. These do not stop parsing unlike ErrTruncatedIncorrect warnings.
@@ -422,10 +422,10 @@ func (t datetimeType) parseDatetime(str string) (any, bool, error) {
 	// Negative numbers should be impossible, so we don't check for them
 	year, err := strconv.Atoi(yearStr)
 	if err != nil {
-		return nil, delimWarn, sql.ErrIncorrectDateTimeValue.New(t.String(), value)
+		return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), value)
 	}
 	if year > MaxYear {
-		return nil, delimWarn, sql.ErrIncorrectDateTimeValue.New(t.String(), value)
+		return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), value)
 	}
 	// MySQL special case for abbreviated ('00) date formats
 	// TODO: there's a special special case for 00-00-00
@@ -434,24 +434,24 @@ func (t datetimeType) parseDatetime(str string) (any, bool, error) {
 	}
 	month, err := strconv.Atoi(monthStr)
 	if err != nil {
-		return nil, delimWarn, sql.ErrIncorrectDateTimeValue.New(t.String(), value)
+		return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), value)
 	}
 	if month > MaxMonth {
-		return nil, delimWarn, sql.ErrIncorrectDateTimeValue.New(t.String(), value)
+		return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), value)
 	}
 	day, err := strconv.Atoi(dayStr)
 	if err != nil || day > MaxDay {
-		return nil, delimWarn, sql.ErrIncorrectDateTimeValue.New(t.String(), value)
+		return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), value)
 	}
 	// GetLastDay already handles invalid months
 	if lastDay, _ := GetLastDay(year, month); day > lastDay {
-		return nil, delimWarn, sql.ErrIncorrectDateTimeValue.New(t.String(), value)
+		return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), value)
 	}
 
 	// We do NOT support ZERO_IN_DATE, so zero for month and day are not allowed.
 	// We do support ZERO_DATE, so zero for year, month, and day is allowed.
 	if (month == 0 || day == 0) && (month != 0 || day != 0 || year != 0) {
-		return nil, delimWarn, sql.ErrIncorrectDateTimeValue.New(t.String(), value)
+		return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), value)
 	}
 
 	// The remaining match index pairs are optional

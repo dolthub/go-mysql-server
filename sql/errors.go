@@ -988,8 +988,8 @@ var (
 
 	ErrEnumTypeTruncated = errors.NewKind("new enum type change truncates value")
 
-	// ErrIncorrectDateTimeValue is thrown when a value cannot be converted to a Time
-	ErrIncorrectDateTimeValue = errors.NewKind("Incorrect %s value: '%v'")
+	// ErrIncorrectValue is thrown when a value cannot be converted to a Time
+	ErrIncorrectValue = errors.NewKind("Incorrect %s value: '%v'")
 
 	// ErrTruncatedIncorrect is thrown when converting a value results in portions of the data to be trimmed.
 	ErrTruncatedIncorrect = errors.NewKind("Truncated incorrect %s value: '%v'")

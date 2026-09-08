@@ -2117,11 +2117,11 @@ var InsertScripts = []ScriptTest{
 			},
 			{
 				Query:       "insert into t2(d) select t from t1 where i = 3;",
-				ExpectedErr: sql.ErrIncorrectDateTimeValue,
+				ExpectedErr: sql.ErrIncorrectValue,
 			},
 			{
 				Query:       "insert into t2(d) select t from t1 where i = 2;",
-				ExpectedErr: sql.ErrIncorrectDateTimeValue,
+				ExpectedErr: sql.ErrIncorrectValue,
 			},
 			{
 				Query: "insert into t2(d) select t from t1 where i = 1;",

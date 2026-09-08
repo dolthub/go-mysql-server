@@ -252,7 +252,7 @@ func (d *DateAdd) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 	datetime, ok := dateVal.(time.Time)
 	if !ok || datetime.Equal(types.ZeroTime) {
-		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrIncorrectDateTimeValue.New(types.DatetimeMaxRange.String(), date).Error())
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrIncorrectValue.New(types.DatetimeMaxRange.String(), date).Error())
 		return nil, nil
 	}
 
@@ -406,7 +406,7 @@ func (d *DateSub) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 	datetime, ok := dateVal.(time.Time)
 	if !ok || datetime.Equal(types.ZeroTime) {
-		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrIncorrectDateTimeValue.New(types.DatetimeMaxRange.String(), date).Error())
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrIncorrectValue.New(types.DatetimeMaxRange.String(), date).Error())
 		return nil, nil
 	}
 
