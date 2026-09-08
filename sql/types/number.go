@@ -280,7 +280,8 @@ func (t NumberTypeImpl_) Convert(ctx context.Context, v interface{}) (interface{
 		return nil, sql.InRange, nil
 	}
 
-	// TODO: don't do this
+	// TODO: for Date and Datetime types, MySQL strips delimiters rather than using UNIX time.
+	//  Tracking issue: https://github.com/dolthub/dolt/issues/10278
 	if ti, ok := v.(time.Time); ok {
 		v = ti.UTC().Unix()
 	}

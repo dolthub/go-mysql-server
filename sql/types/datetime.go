@@ -393,6 +393,7 @@ func (t datetimeType) parseDatetime(str string) (any, bool, error) {
 
 	// TODO: Properly implement date only parsing with no delimiters.
 	//  This is just here for existing tests to pass
+	//  Tracking issue: https://github.com/dolthub/dolt/issues/10278
 	if tmp := NoDelimiterDateTimeRegex.FindString(str); len(tmp) != 0 {
 		if dt, err := time.Parse(NoDelimiterDatetimeLayout, str); err == nil {
 			return dt, delimWarn, nil
@@ -413,6 +414,7 @@ func (t datetimeType) parseDatetime(str string) (any, bool, error) {
 	}
 
 	// TODO: Handle delimiter warnings. These do not stop parsing unlike ErrTruncatedIncorrect warnings.
+	// Tracking issue: https://github.com/dolthub/dolt/issues/10278
 
 	// Date portion required for valid DateTime parsing, so no need to check for -1 indexes
 	yearStr := value[matchIdxs[2]:matchIdxs[3]]

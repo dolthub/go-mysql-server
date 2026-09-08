@@ -281,7 +281,6 @@ func (t DecimalType_) ConvertToDecimal(v interface{}) (*apd.Decimal, error) {
 	case []uint8:
 		return t.ConvertToDecimal(string(value))
 	case time.Time:
-		// TODO: need to determine if original type is date, time, or datetime
 		return t.ConvertToDecimal(DateTimeToNumber(value))
 	case JSONDocument:
 		return t.ConvertToDecimal(value.Val)

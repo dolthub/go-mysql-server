@@ -102,7 +102,7 @@ func (j JSONObject) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 		if i%2 == 0 {
-			// TODO: update type aware implementation for datetime types
+			// TODO: update type-aware implementation for datetime types
 			//  This is a placeholder implementation for existing tests
 			switch typ := expr.Type(ctx).(type) {
 			case sql.DatetimeType:

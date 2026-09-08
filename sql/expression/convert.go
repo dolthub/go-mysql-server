@@ -324,7 +324,8 @@ func convertValue(ctx *sql.Context, val any, castTo string, originType sql.Type,
 		}
 		return truncateConvertedValue(s, typeLength)
 	case ConvertToDate:
-		// TODO: isn't this kinda wack??
+		// TODO: These checks shouldn't be necessary after proper number to date conversion
+		// Tracking issue: https://github.com/dolthub/dolt/issues/10278
 		_, isTime := val.(time.Time)
 		_, isString := val.(string)
 		_, isBinary := val.([]byte)
