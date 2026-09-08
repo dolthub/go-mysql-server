@@ -83,3 +83,28 @@ func evalInt64(ctx *sql.Context, expr sql.Expression, row sql.Row) (int64, bool,
 	n, ok := c.(int64)
 	return n, ok, nil
 }
+
+// evalString evaluates |expr| against |row| and coerces the result
+// to a string. It returns ("", false, nil) if the evaluated value
+// is SQL NULL.
+//
+// TODO(elianddb): Support destination collation conversion during
+// string evaluation.
+func evalString(ctx *sql.Context, expr sql.Expression, row sql.Row) (string, bool, error) {
+	if expr == nil {
+		return "", false, nil
+	}
+	v, err := expr.Eval(ctx, row)
+	if err != nil || v == nil {
+		return "", false, err
+	}
+	c, _, err := types.LongText.Convert(ctx, v)
+	if err != nil {
+		return "", false, err
+	}
+	s, _, err := sql.Unwrap[string](ctx, c)
+	if err != nil {
+		return "", false, err
+	}
+	return s, true, nil
+}
