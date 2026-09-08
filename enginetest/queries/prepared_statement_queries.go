@@ -164,7 +164,7 @@ var PreparedScriptTests = []ScriptTest{
 			{
 				Query: "execute s using @d;",
 				Expected: []sql.Row{
-					{"2001-02-03"},
+					{time.Date(2001, time.February, 3, 0, 0, 0, 0, time.UTC)},
 				},
 			},
 			{

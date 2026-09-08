@@ -101,6 +101,9 @@ func (c *Column) Check(ctx *Context, v interface{}) bool {
 	}
 
 	_, _, err := c.Type.Convert(ctx, v)
+	if ErrTruncatedIncorrect.Is(err) {
+		err = nil
+	}
 	return err == nil
 }
 
