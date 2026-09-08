@@ -23,6 +23,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -141,20 +142,53 @@ func TestWindowPartition_MaterializeInput(t *testing.T) {
 
 	buf, ordering, err := i.materializeInput(ctx)
 	require.NoError(t, err)
-	expBuf := []sql.Row{
+	expBuf := sql.WindowBuffer{
+		{int64(6), "desert", "sand", int32(4)},
+		{int64(7), "desert", "cactus", int32(6)},
+		{int64(8), "desert", "scorpion", int32(8)},
+		{int64(9), "desert", "mummy", int32(5)},
 		{int64(1), "forest", "leaf", int32(4)},
 		{int64(2), "forest", "bark", int32(4)},
 		{int64(3), "forest", "canopy", int32(6)},
 		{int64(4), "forest", "bug", int32(3)},
 		{int64(5), "forest", "wildflower", int32(10)},
-		{int64(6), "desert", "sand", int32(4)},
-		{int64(7), "desert", "cactus", int32(6)},
-		{int64(8), "desert", "scorpion", int32(8)},
-		{int64(9), "desert", "mummy", int32(5)},
 	}
-	require.ElementsMatch(t, expBuf, buf)
-	expOrd := []int{0, 1, 2, 3, 4, 5, 6, 7, 8}
-	require.ElementsMatch(t, expOrd, ordering)
+	require.Equal(t, expBuf, buf)
+	expOrd := []int{5, 6, 7, 8, 0, 1, 2, 3, 4}
+	require.Equal(t, expOrd, ordering)
+}
+
+// TestWindowPartition_MaterializeInputTracksOriginalOrder verifies sorted rows stay paired with their source positions.
+func TestWindowPartition_MaterializeInputTracksOriginalOrder(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	input := []sql.Row{
+		{"b", 2, "b2"},
+		{"a", nil, "a-null"},
+		{"b", 1, "b1"},
+		{"a", 1, "a1-first"},
+		{"a", 1, "a1-second"},
+	}
+	iter := WindowPartitionIter{
+		w: &WindowPartition{
+			PartitionBy: []sql.Expression{expression.NewGetField(0, types.Text, "partition_key", false)},
+			SortBy: sql.SortConditions{{
+				Expr:         expression.NewGetField(1, types.Int64, "sort_key", true),
+				NullOrdering: sql.NullsFirst,
+			}},
+		},
+		child: sql.RowsToRowIter(input...),
+	}
+
+	buf, ordering, err := iter.materializeInput(ctx)
+	require.NoError(t, err)
+	require.Equal(t, sql.WindowBuffer{
+		{"a", nil, "a-null"},
+		{"a", 1, "a1-first"},
+		{"a", 1, "a1-second"},
+		{"b", 1, "b1"},
+		{"b", 2, "b2"},
+	}, buf)
+	require.Equal(t, []int{1, 3, 4, 2, 0}, ordering)
 }
 
 func TestWindowPartition_InitializePartitions(t *testing.T) {

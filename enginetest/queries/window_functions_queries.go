@@ -919,6 +919,25 @@ var WindowFunctionsScriptTests = []ScriptTest{
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/11419
+		Name: "customer reproduction: correlated scalar subquery in window ordering",
+		SetUpScript: []string{
+			"CREATE TABLE window_correlated_order (id INT PRIMARY KEY, g INT, v INT NOT NULL)",
+			"CREATE TABLE window_correlated_delta (g INT PRIMARY KEY, delta INT NOT NULL)",
+			"INSERT INTO window_correlated_order VALUES (1, 0, 10), (2, 0, 20)",
+			"INSERT INTO window_correlated_delta VALUES (0, 7)",
+		},
+		Query: `SELECT t.id,
+			SUM(t.v) OVER (
+				PARTITION BY t.g
+				ORDER BY (SELECT d.delta FROM window_correlated_delta d WHERE d.g = t.g), t.id
+				ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+			) AS wf
+			FROM window_correlated_order t
+			ORDER BY t.id`,
+		Expected: []sql.Row{{1, float64(10)}, {2, float64(30)}},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/11395
 		Name: "customer reproduction: sibling window aggregates with different frames",
 		SetUpScript: []string{
