@@ -278,6 +278,8 @@ func (f *rowFramerBase) Next(ctx *sql.Context, buffer sql.WindowBuffer) (sql.Win
 	newEnd := f.idx + f.endOffset + 1
 	if f.unboundedFollowing || newEnd > f.partitionEnd {
 		newEnd = f.partitionEnd
+	} else if newEnd < f.partitionStart {
+		newEnd = f.partitionStart
 	}
 
 	if newStart > newEnd {

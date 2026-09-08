@@ -1696,6 +1696,30 @@ FROM (
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/11465
+		Name: "min window function empty leading rows",
+		SetUpScript: []string{
+			"CREATE TABLE t(id INT PRIMARY KEY, v INT not null);",
+			"INSERT INTO t VALUES (1,10),(2,20),(3,30);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT id,
+       MIN(v) OVER (
+         ORDER BY id
+         ROWS BETWEEN 2 PRECEDING AND 2 PRECEDING
+       ) AS wf
+FROM t
+ORDER BY id;`,
+				Expected: []sql.Row{
+					{1, nil},
+					{2, nil},
+					{3, 10},
+				},
+			},
+		},
+	},
 }
 
 // WindowRowFramesScriptTests tests window functions using ROWS frame specifications.
