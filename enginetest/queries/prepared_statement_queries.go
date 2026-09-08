@@ -1,6 +1,7 @@
 package queries
 
 import (
+	"math"
 	"time"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -225,6 +226,28 @@ var PreparedScriptTests = []ScriptTest{
 					{nil, time.Date(2001, time.February, 3, 12, 34, 56, 0, time.UTC), nil},
 					{nil, nil, time.Date(2001, time.February, 3, 12, 34, 56, 0, time.UTC)},
 				},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11411
+		Name: "prepared unsigned BIGINT arithmetic rejects overflow",
+		// MySQL-only: PostgreSQL does not support unsigned integer types.
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE prepared_integer_bounds (id INT PRIMARY KEY, u BIGINT UNSIGNED)",
+			"INSERT INTO prepared_integer_bounds VALUES (1, 18446744073709551615)",
+			"SET @zero = 0, @one = 1",
+			"PREPARE add_to_unsigned FROM 'SELECT u + ? FROM prepared_integer_bounds'",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "EXECUTE add_to_unsigned USING @zero",
+				Expected: []sql.Row{{uint64(math.MaxUint64)}},
+			},
+			{
+				Query:       "EXECUTE add_to_unsigned USING @one",
+				ExpectedErr: sql.ErrIntegerOutOfRange,
 			},
 		},
 	},
