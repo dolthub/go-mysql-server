@@ -32,6 +32,7 @@ var GeneratedColumnTests = []ScriptTest{
 			"create table later_t (b int generated always as (a + 1), a int default 1)",
 			"create table invisible_base_t (a int default 1 invisible, b int generated always as (a + 1))",
 			"create table invisible_generated_t (a int default 1, b int generated always as (a + 1) invisible)",
+			"create table select_empty_t (a int default 1, b int generated always as (a + 1))",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -105,6 +106,18 @@ var GeneratedColumnTests = []ScriptTest{
 			{
 				Query:    "select a, b from invisible_generated_t",
 				Expected: []sql.Row{{1, 2}},
+			},
+			{
+				Query:       "insert into select_empty_t select 9, 10 where 1 = 0",
+				ExpectedErr: sql.ErrGeneratedColumnValue,
+			},
+			{
+				Query:    "insert into select_empty_t (a) select 9 where 1 = 0",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "select a, b from select_empty_t",
+				Expected: []sql.Row{},
 			},
 		},
 	},
