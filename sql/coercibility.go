@@ -56,11 +56,6 @@ type CollationCoercible interface {
 // (higher precedence) wins. When coercibilities match, binary
 // character sets take precedent over non-binary character sets.
 // Two explicit collations that differ produce CoercibilityNone.
-//
-// See [coercibility-docs] and [aggregation-ref].
-//
-// [coercibility-docs]: https://dev.mysql.com/doc/refman/8.4/en/charset-collation-coercibility.html
-// [aggregation-ref]: https://github.com/mysql/mysql-server/blob/e174239c5b3c2bcf164649042ab8a7fc972ce88d/sql/item.cc#L2759
 func ResolveCoercibility(leftCollation CollationID, leftCoercibility byte, rightCollation CollationID, rightCoercibility byte) (CollationID, byte) {
 	if leftCollation == Collation_Unspecified {
 		return rightCollation, rightCoercibility
@@ -77,7 +72,7 @@ func ResolveCoercibility(leftCollation CollationID, leftCoercibility byte, right
 	}
 
 	// With two EXPLICIT derivations, collations must be equal.
-	// TODO(elianddb): Support bubbling up collation errors when both
+	// TODO(#3826): Support bubbling up collation errors when both
 	// operands are explicit.
 	if leftCoercibility == CoercibilityExplicit && rightCoercibility == CoercibilityExplicit {
 		return Collation_binary, CoercibilityNone
@@ -94,7 +89,7 @@ func ResolveCoercibility(leftCollation CollationID, leftCoercibility byte, right
 			return rightCollation, rightCoercibility
 		}
 
-		// TODO(elianddb): Implement constant string charset conversion
+		// TODO(#3828): Implement constant string charset conversion
 		// (MY_COLL_ALLOW_COERCIBLE_CONV) during analyzer planning to
 		// transcode literals into the target column charset once for
 		// index lookups, rather than re-converting per row in Eval.
@@ -104,11 +99,9 @@ func ResolveCoercibility(leftCollation CollationID, leftCoercibility byte, right
 			return rightCollation, rightCoercibility
 		}
 
-		// TODO(elianddb): Implement full charset superset conversion
-		// (MY_COLL_ALLOW_SUPERSET_CONV) matching left_is_superset in
-		// [superset-ref]. The current MaxLength check is a heuristic.
-		//
-		// [superset-ref]: https://github.com/mysql/mysql-server/blob/e174239c5b3c2bcf164649042ab8a7fc972ce88d/sql/item.cc#L2637
+		// TODO(#3827): Implement full charset superset conversion
+		// (MY_COLL_ALLOW_SUPERSET_CONV). The current MaxLength check
+		// is a heuristic.
 		if leftCoercibility == rightCoercibility {
 			if leftCharset.MaxLength() > 1 && rightCharset.MaxLength() == 1 {
 				return leftCollation, leftCoercibility
@@ -117,7 +110,7 @@ func ResolveCoercibility(leftCollation CollationID, leftCoercibility byte, right
 			}
 		}
 
-		// TODO(elianddb): Incompatible character sets should error
+		// TODO(#3826): Incompatible character sets should error
 		// (ER_CANT_AGGREGATE_2COLLATIONS) instead of defaulting to
 		// Collation_binary with CoercibilityNone.
 		return Collation_binary, CoercibilityNone
@@ -142,7 +135,7 @@ func ResolveCoercibility(leftCollation CollationID, leftCoercibility byte, right
 	if binCol == Collation_Unspecified {
 		binCol = Collation_binary
 	}
-	// TODO(elianddb): For comparisons (MY_COLL_CMP_CONV), conflicting
+	// TODO(#3826): For comparisons (MY_COLL_CMP_CONV), conflicting
 	// collations within the same charset must error rather than
 	// producing CoercibilityNone.
 	return binCol, CoercibilityNone
@@ -150,7 +143,7 @@ func ResolveCoercibility(leftCollation CollationID, leftCoercibility byte, right
 
 // GetCoercibility returns the coercibility of the given node or expression.
 //
-// TODO(elianddb): Analyzer should lock and assign collations to
+// TODO(#3830): Analyzer should lock and assign collations to
 // nodes during planning rather than inferring them dynamically from
 // children.
 func GetCoercibility(ctx *Context, nodeOrExpr interface{}) (collation CollationID, coercibility byte) {
@@ -189,15 +182,11 @@ func GetCoercibility(ctx *Context, nodeOrExpr interface{}) (collation CollationI
 // It evaluates each expression in order and reduces them using
 // ResolveCoercibility. Empty slices return Collation_binary with
 // CoercibilityIgnorable.
-//
-// See [coercibility-docs].
-//
-// [coercibility-docs]: https://dev.mysql.com/doc/refman/8.4/en/charset-collation-coercibility.html
 func ResolveCoercibilityExpressions(ctx *Context, exprs ...Expression) (CollationID, byte) {
 	if len(exprs) == 0 {
 		return Collation_binary, CoercibilityIgnorable
 	}
-	// TODO(elianddb): Support MY_COLL_ALLOW_NUMERIC_CONV in string
+	// TODO(#3829): Support MY_COLL_ALLOW_NUMERIC_CONV in string
 	// functions when all arguments are numeric.
 	collation, coercibility := GetCoercibility(ctx, exprs[0])
 	for i := 1; i < len(exprs); i++ {
