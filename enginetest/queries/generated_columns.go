@@ -22,6 +22,93 @@ import (
 
 var GeneratedColumnTests = []ScriptTest{
 	{
+		// https://github.com/dolthub/dolt/issues/11388
+		Name:    "empty insert with default and generated columns",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t (a int default 1, b int generated always as (a + 1))",
+			"create table mixed_generated_t (a int default 1, b int generated always as (a + 1))",
+			"create table stored_t (a int default 1, b int generated always as (a + 1) stored)",
+			"create table later_t (b int generated always as (a + 1), a int default 1)",
+			"create table invisible_base_t (a int default 1 invisible, b int generated always as (a + 1))",
+			"create table invisible_generated_t (a int default 1, b int generated always as (a + 1) invisible)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "insert into t values ()",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "insert into t () values ()",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "select a, b from t",
+				Expected: []sql.Row{{1, 2}, {1, 2}},
+			},
+			{
+				Query:    "insert into t (b, a) values (default, default)",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "select a, b from t",
+				Expected: []sql.Row{{1, 2}, {1, 2}, {1, 2}},
+			},
+			{
+				Query:       "insert into mixed_generated_t values (), (3, default)",
+				ExpectedErr: sql.ErrInsertIntoMismatchValueCount,
+			},
+			{
+				Query:       "insert into mixed_generated_t values (3, default), ()",
+				ExpectedErr: sql.ErrInsertIntoMismatchValueCount,
+			},
+			{
+				Query:    "select a, b from mixed_generated_t",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "insert into mixed_generated_t values (default, default), (3, default)",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "select a, b from mixed_generated_t",
+				Expected: []sql.Row{{1, 2}, {3, 4}},
+			},
+			{
+				Query:    "insert into stored_t values (), ()",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "select a, b from stored_t",
+				Expected: []sql.Row{{1, 2}, {1, 2}},
+			},
+			{
+				Query:    "insert into later_t values ()",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "select b, a from later_t",
+				Expected: []sql.Row{{2, 1}},
+			},
+			{
+				Query:    "insert into invisible_base_t values (), ()",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "select a, b from invisible_base_t",
+				Expected: []sql.Row{{1, 2}, {1, 2}},
+			},
+			{
+				Query:    "insert into invisible_generated_t values ()",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "select a, b from invisible_generated_t",
+				Expected: []sql.Row{{1, 2}},
+			},
+		},
+	},
+	{
 		Name: "stored generated column",
 		SetUpScript: []string{
 			"create table t1 (a int primary key, b int as (a + 1) stored)",

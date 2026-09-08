@@ -90,6 +90,20 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	}
 
 	insertRows := i.Rows
+	sourceColumns := columns
+	// Leave implicit empty rows unshaped so the analyzer can materialize defaults for the complete destination schema.
+	if values, ok := insertRows.(*ast.AliasedValues); ok && len(i.Columns) == 0 {
+		allRowsEmpty := true
+		for _, tuple := range values.Values {
+			if len(tuple) > 0 {
+				allRowsEmpty = false
+				break
+			}
+		}
+		if allRowsEmpty {
+			sourceColumns = nil
+		}
+	}
 
 	// We need to give a table name to the scope of the values being inserted. We use the row alias if provided, otherwise go with a default.
 	// If the row alias also provided column names, we create a map from the destination names to the aliases. This will allow us to
@@ -112,7 +126,7 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 		}
 	}
 
-	srcScope, srcLiteralOnly := b.insertRowsToNode(inScope, insertRows, columns, i.Table.Name.String(), sch)
+	srcScope, srcLiteralOnly := b.insertRowsToNode(inScope, insertRows, sourceColumns, i.Table.Name.String(), sch)
 
 	var onDupUpdateExprs *plan.UpdateExprs
 	var onDupWhere sql.Expression
@@ -304,7 +318,7 @@ func (b *Builder) buildInsertValues(inScope *scope, v *ast.AliasedValues, column
 		// table error and do not have a schema for resolving defaults
 		triggerUnknownTable := (len(columnNames) == 0 && len(vt) > 0) && (len(b.TriggerCtx().UnresolvedTables) > 0)
 
-		if len(vt) != len(columnNames) && !noExprs && !triggerUnknownTable {
+		if len(vt) != len(columnNames) && !triggerUnknownTable {
 			err := sql.ErrInsertIntoMismatchValueCount.New()
 			b.handleErr(err)
 		}
