@@ -2853,4 +2853,89 @@ var FunctionQueryTests = []QueryTest{
 		Query:    "SELECT DATE_SUB(MAKEDATE(YEAR(event.start_date), 1), INTERVAL 1 DAY) FROM (SELECT DATE('2024-05-10') AS start_date) event",
 		Expected: []sql.Row{{time.Date(2023, time.December, 31, 0, 0, 0, 0, time.UTC)}},
 	},
+	// https://github.com/dolthub/dolt/issues/11380
+	{
+		Query:    `SELECT HEX(RPAD('é', 1, 'x'))`,
+		Expected: []sql.Row{{"C3A9"}},
+	},
+	{
+		Query:    `SELECT CHAR_LENGTH(RPAD('é', 7, 'ab'))`,
+		Expected: []sql.Row{{int32(7)}},
+	},
+	{
+		Query:    `SELECT RPAD('é', 7, 'ab')`,
+		Expected: []sql.Row{{"éababab"}},
+	},
+	{
+		Query:    `SELECT RPAD('é', 7, 'é')`,
+		Expected: []sql.Row{{"ééééééé"}},
+	},
+	{
+		Query:    `SELECT HEX(LPAD('é', 1, 'x'))`,
+		Expected: []sql.Row{{"C3A9"}},
+	},
+	{
+		Query:    `SELECT CHAR_LENGTH(LPAD('é', 7, 'ab'))`,
+		Expected: []sql.Row{{int32(7)}},
+	},
+	{
+		Query:    `SELECT LPAD('é', 7, 'ab')`,
+		Expected: []sql.Row{{"abababé"}},
+	},
+	{
+		Query:    `SELECT LPAD('é', 7, 'é')`,
+		Expected: []sql.Row{{"ééééééé"}},
+	},
+	{
+		Query:    `SELECT RPAD('é', -1, 'x')`,
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    `SELECT LPAD('é', -1, 'x')`,
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    `SELECT RPAD('é', 0, 'x')`,
+		Expected: []sql.Row{{""}},
+	},
+	{
+		Query:    `SELECT LPAD('é', 0, 'x')`,
+		Expected: []sql.Row{{""}},
+	},
+	{
+		Query:    `SELECT RPAD('hé', 6, '👍')`,
+		Expected: []sql.Row{{"hé👍👍👍👍"}},
+	},
+	{
+		Query:    `SELECT LPAD('hé', 6, '👍')`,
+		Expected: []sql.Row{{"👍👍👍👍hé"}},
+	},
+	{
+		Query:    `SELECT COLLATION(RPAD(_latin1'a', 3, _utf8mb4'b')), COERCIBILITY(RPAD(_latin1'a', 3, _utf8mb4'b'))`,
+		Expected: []sql.Row{{"latin1_swedish_ci", uint64(4)}},
+	},
+	{
+		Query:    `SELECT COLLATION(LPAD(_latin1'a', 3, _utf8mb4'b')), COERCIBILITY(LPAD(_latin1'a', 3, _utf8mb4'b'))`,
+		Expected: []sql.Row{{"latin1_swedish_ci", uint64(4)}},
+	},
+	{
+		Query:    `SELECT RPAD(LPAD(_latin1'a', 3, 'x'), 5, 'y')`,
+		Expected: []sql.Row{{"xxayy"}},
+	},
+	{
+		Query:    `SELECT COLLATION(RPAD(LPAD(_latin1'a', 3, 'x'), 5, 'y')), COERCIBILITY(RPAD(LPAD(_latin1'a', 3, 'x'), 5, 'y'))`,
+		Expected: []sql.Row{{"latin1_swedish_ci", uint64(4)}},
+	},
+	{
+		Query:    `SELECT LPAD('foo', 6, (SELECT 'ab'))`,
+		Expected: []sql.Row{{"abafoo"}},
+	},
+	{
+		Query:    `SELECT RPAD((SELECT 'hello'), 8, '!')`,
+		Expected: []sql.Row{{"hello!!!"}},
+	},
+	{
+		Query:    `SELECT COLLATION(LPAD(CONCAT(_latin1'a', _latin1'b'), 5, 'c')), COERCIBILITY(LPAD(CONCAT(_latin1'a', _latin1'b'), 5, 'c'))`,
+		Expected: []sql.Row{{"latin1_swedish_ci", uint64(4)}},
+	},
 }
