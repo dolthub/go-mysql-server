@@ -655,11 +655,14 @@ func (s *scope) handleErr(err error) {
 type columnId uint16
 
 type scopeColumn struct {
-	typ         sql.Type
-	scalar      sql.Expression
-	db          string
-	table       string
-	col         string
+	typ    sql.Type
+	scalar sql.Expression
+	db     string
+	table  string
+	col    string
+	// debugCol preserves a window expression's detailed EXPLAIN output after it becomes a GetField.
+	// col must retain its SQL identity for name resolution and expression deduplication; storing the
+	// debug tree there would make planning depend on EXPLAIN formatting. This field is only for display.
 	debugCol    string
 	originalCol string
 	id          columnId
