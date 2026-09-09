@@ -250,6 +250,7 @@ var BuiltIns = []sql.Function{
 	sql.Function1{Name: "st_centroid", Fn: spatial.NewCentroid},
 	sql.Function2{Name: "st_contains", Fn: spatial.NewContains},
 	sql.Function2{Name: "st_equal", Fn: spatial.NewSTEquals},
+	sql.Function2{Name: "st_equals", Fn: spatial.NewSTEquals},
 	sql.Function1{Name: "st_endpoint", Fn: spatial.NewEndPoint},
 	sql.Function1{Name: "st_convexhull", Fn: spatial.NewConvexHull},
 	sql.Function1{Name: "st_envelope", Fn: spatial.NewEnvelope},
