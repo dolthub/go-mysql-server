@@ -421,7 +421,12 @@ func (b *BaseBuilder) buildUpdateSource(ctx *sql.Context, n *plan.UpdateSource, 
 		return nil, err
 	}
 
+	applier := b.EngineOverrides.UpdateExpressionApplier
+	if applier == nil {
+		applier = mysqlUpdateExpressionApplier{}
+	}
 	return &updateSourceIter{
+		applier:     applier,
 		childIter:   rowIter,
 		updateExprs: n.UpdateExprs,
 		tableSchema: schema,

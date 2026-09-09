@@ -15,6 +15,7 @@
 package rowexec
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -103,6 +104,57 @@ func TestUpdateIgnoreConversions(t *testing.T) {
 
 			require.Equal(t, 1, len(rows))
 			require.Equal(t, tc.expected, rows[0][0])
+		})
+	}
+}
+
+// rowUpdateApplierFunc lets these tests exercise the public override through the builder.
+type rowUpdateApplierFunc func(*sql.Context, *sql.UpdateExprs, sql.Schema, sql.Row, bool) (sql.Row, error)
+
+func (f rowUpdateApplierFunc) ApplyRowUpdate(ctx *sql.Context, exprs *sql.UpdateExprs, schema sql.Schema, row sql.Row, ignore bool) (sql.Row, error) {
+	return f(ctx, exprs, schema, row, ignore)
+}
+
+func TestUpdateExpressionApplierOverride(t *testing.T) {
+	for _, fail := range []bool{false, true} {
+		t.Run(fmt.Sprintf("error=%v", fail), func(t *testing.T) {
+			db := memory.NewDatabase("foo")
+			ctx := newContext(memory.NewDBProvider(db))
+			schema := sql.Schema{{Name: "a", Source: "t", Type: types.Int64}}
+			table := memory.NewTable(ctx, db, "t", sql.NewPrimaryKeySchema(schema), nil)
+			require.NoError(t, table.Insert(ctx, sql.Row{int64(1)}))
+			field := expression.NewGetField(0, types.Int64, "a", false)
+			exprs := sql.NewUpdateExprs([]sql.Expression{
+				expression.NewSetField(field, expression.NewLiteral(int64(2), types.Int64)),
+			}, 1)
+			source := plan.NewUpdateSource(ctx, plan.NewResolvedTable(table, nil, nil), true, exprs)
+			calls := 0
+			failure := fmt.Errorf("applier failed")
+			applier := rowUpdateApplierFunc(func(actualCtx *sql.Context, actualExprs *sql.UpdateExprs, actualSchema sql.Schema, row sql.Row, ignore bool) (sql.Row, error) {
+				calls++
+				require.Same(t, ctx, actualCtx)
+				require.Same(t, exprs, actualExprs)
+				require.Equal(t, schema, actualSchema)
+				require.Equal(t, sql.Row{int64(1)}, row)
+				require.True(t, ignore)
+				if fail {
+					return nil, failure
+				}
+				return sql.Row{int64(42)}, nil
+			})
+			builder := NewBuilder(nil, sql.EngineOverrides{UpdateExpressionApplier: applier})
+			iter, err := builder.Build(ctx, source, nil)
+			require.NoError(t, err)
+			row, err := iter.Next(ctx)
+			if fail {
+				require.ErrorIs(t, err, failure)
+			} else {
+				require.NoError(t, err)
+				// The override supplies the new half without changing the original half.
+				require.Equal(t, sql.Row{int64(1), int64(42)}, row)
+			}
+			require.Equal(t, 1, calls)
+			require.NoError(t, iter.Close(ctx))
 		})
 	}
 }
