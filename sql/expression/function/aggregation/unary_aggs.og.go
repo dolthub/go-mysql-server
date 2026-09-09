@@ -567,11 +567,7 @@ func (a *First) IsNullable(ctx *sql.Context) bool {
 
 func (a *First) String() string {
 	if a.window != nil {
-		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("FIRST")
-		children := []string{a.window.String(), a.Child.String()}
-		pr.WriteChildren(children...)
-		return pr.String()
+		return "FIRST_VALUE(" + a.Child.String() + ") " + a.window.String()
 	}
 	return "FIRST(" + a.Child.String() + ")"
 }
@@ -588,11 +584,7 @@ func (a *First) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
 		return fmt.Sprintf("FIRST(%s)", sql.Describe(ctx, a.Child, options))
 	}
 	if a.window != nil {
-		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("FIRST")
-		children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
-		pr.WriteChildren(children...)
-		return pr.String()
+		return "FIRST_VALUE(" + sql.Describe(ctx, a.Child, options) + ") " + sql.Describe(ctx, a.window, options)
 	}
 	return "FIRST(" + sql.Describe(ctx, a.Child, options) + ")"
 }

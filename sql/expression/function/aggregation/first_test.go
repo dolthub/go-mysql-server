@@ -19,6 +19,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/dolthub/go-mysql-server/internal/exprtest"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -42,4 +43,11 @@ func TestFirst(t *testing.T) {
 			require.Equal(t, tt.expected, result)
 		})
 	}
+}
+
+func TestFirstString(t *testing.T) {
+	expr := NewFirst(expression.NewGetField(0, types.Text, "value", false)).
+		WithWindow(sql.NewEmptyContext(), &sql.WindowDefinition{})
+	require.Equal(t, "FIRST_VALUE(value) over ()", expr.String())
+	exprtest.AssertFunctionRoundTripAs(t, expr.(sql.FunctionExpression), "FIRST_VALUE")
 }
