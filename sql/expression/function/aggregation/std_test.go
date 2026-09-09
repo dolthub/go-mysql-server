@@ -195,6 +195,13 @@ func TestStdDevSampString(t *testing.T) {
 	exprtest.AssertFunctionRoundTripAs(t, expr.(sql.FunctionExpression), "STDDEV_SAMP")
 }
 
+func TestVarPopString(t *testing.T) {
+	expr := NewVarPop(expression.NewGetField(0, nil, "value", false)).
+		WithWindow(sql.NewEmptyContext(), &sql.WindowDefinition{})
+	require.Equal(t, "VAR_POP(value) over ()", expr.String())
+	exprtest.AssertFunctionRoundTripAs(t, expr.(sql.FunctionExpression), "VAR_POP")
+}
+
 func TestVariance(t *testing.T) {
 	sum := NewVarPop(expression.NewGetField(0, nil, "", false))
 
