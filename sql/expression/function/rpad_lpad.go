@@ -167,13 +167,13 @@ func (p *pad) eval(ctx *sql.Context, row sql.Row, isLeft bool) (interface{}, err
 		return nil, err
 	}
 
-	handler := NewCharSetHandler(collation)
+	handler := sql.NewCharSetHandler(collation)
 	return padString(s, count, ps, isLeft, handler)
 }
 
 // padString pads str on the left (when isLeft is true) or right (when
 // isLeft is false) with padStr to targetLen characters using handler.
-func padString(str string, targetLen int64, padStr string, isLeft bool, handler CharSetHandler) (string, error) {
+func padString(str string, targetLen int64, padStr string, isLeft bool, handler sql.CharSetHandler) (string, error) {
 	if targetLen <= 0 {
 		return "", nil
 	}

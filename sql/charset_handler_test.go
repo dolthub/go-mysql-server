@@ -12,19 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package function
+package sql
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-
-	"github.com/dolthub/go-mysql-server/sql"
 )
 
 func TestCharSetHandler(t *testing.T) {
 	t.Run("binary charset handler", func(t *testing.T) {
-		h := NewCharSetHandler(sql.Collation_binary)
+		h := NewCharSetHandler(Collation_binary)
 
 		l, err := h.NumChars("é")
 		require.NoError(t, err)
@@ -40,7 +38,7 @@ func TestCharSetHandler(t *testing.T) {
 	})
 
 	t.Run("utf8mb4 charset handler", func(t *testing.T) {
-		h := NewCharSetHandler(sql.Collation_utf8mb4_0900_ai_ci)
+		h := NewCharSetHandler(Collation_utf8mb4_0900_ai_ci)
 
 		l, err := h.NumChars("é")
 		require.NoError(t, err)

@@ -12,12 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package function
+package sql
 
 import (
 	"unicode/utf8"
 
-	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/encodings"
 )
 
@@ -35,13 +34,13 @@ type CharSetHandler interface {
 
 // NewCharSetHandler returns a CharSetHandler for the
 // given collation.
-func NewCharSetHandler(collation sql.CollationID) CharSetHandler {
-	if collation.CharacterSet() == sql.CharacterSet_binary {
+func NewCharSetHandler(collation CollationID) CharSetHandler {
+	if collation.CharacterSet() == CharacterSet_binary {
 		return binaryCharSetHandler{}
 	}
 	enc := collation.CharacterSet().Encoder()
 	if enc == nil {
-		enc = sql.CharacterSet_utf8mb4.Encoder()
+		enc = CharacterSet_utf8mb4.Encoder()
 	}
 	return runeCharSetHandler{encoder: enc}
 }
@@ -80,7 +79,7 @@ func (h runeCharSetHandler) NumChars(str string) (int, error) {
 		// TODO(#3837): Malformed byte sequences should emit a
 		// warning or advance by 1 byte instead of failing.
 		if cr == utf8.RuneError && cRead <= 1 {
-			return 0, sql.ErrCollationMalformedString.New("checking length")
+			return 0, ErrCollationMalformedString.New("checking length")
 		}
 		content = content[cRead:]
 		contentLen++
@@ -99,7 +98,7 @@ func (h runeCharSetHandler) CharPos(str string, n int) (int, error) {
 		// TODO(#3837): Malformed byte sequences should emit a
 		// warning or advance by 1 byte instead of failing.
 		if cr == utf8.RuneError && cRead <= 1 {
-			return 0, sql.ErrCollationMalformedString.New("charpos")
+			return 0, ErrCollationMalformedString.New("charpos")
 		}
 		content = content[cRead:]
 		byteOffset += cRead
