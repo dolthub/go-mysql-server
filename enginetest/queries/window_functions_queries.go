@@ -1016,6 +1016,13 @@ ORDER BY id;`,
 		Expected: []sql.Row{{2, 1}},
 	},
 	{
+		Name: "JSON_SEARCH paths in window expressions",
+		Query: `SELECT
+			JSON_UNQUOTE(FIRST_VALUE(JSON_SEARCH('["abc"]', 'one', 'abc')) OVER ()),
+			JSON_UNQUOTE(FIRST_VALUE(JSON_SEARCH('["abc"]', 'one', 'abc', NULL, NULL)) OVER ())`,
+		Expected: []sql.Row{{"$[0]", nil}},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/11498
 		Name:    "customer reproduction: LIKE escape characters in window expressions",
 		Dialect: "mysql",
