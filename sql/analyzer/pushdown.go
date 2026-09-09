@@ -323,7 +323,10 @@ func pushdownFiltersUnderSubqueryAlias(ctx *sql.Context, a *Analyzer, sa *plan.S
 			// Project node. We need to replace the reference with the underlying expression.
 			if gt, ok := e.(*expression.GetField); ok {
 				if aliasedExpression, ok := filters.projectionExpressions[gt.Id()]; ok {
-					return transform.Expr(ctx, aliasedExpression, tf)
+					// Replacing the GetField with its underlying expression is always a change to the tree,
+					// regardless of whether the recursive substitution below finds further changes.
+					newExpr, _, err := transform.Expr(ctx, aliasedExpression, tf)
+					return newExpr, transform.NewTree, err
 				}
 				gf, ok := sa.ScopeMapping[gt.Id()]
 				if !ok {
