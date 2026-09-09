@@ -864,7 +864,7 @@ func (c CollationID) Collation() Collation {
 
 // IsBinary returns whether this collation is a binary collation.
 //
-// TODO(elianddb): Replace suffix check with an explicit metadata flag
+// TODO(#3838): Replace suffix check with an explicit metadata flag
 // on Collation to avoid runtime string operations.
 func (c CollationID) IsBinary() bool {
 	if c == Collation_binary || c.CharacterSet() == CharacterSet_binary {
