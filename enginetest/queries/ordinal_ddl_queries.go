@@ -23,8 +23,8 @@ var OrdinalDDLQueries = []QueryTest{
 	{
 		Query: "show keys from short_ord_pk",
 		Expected: []sql.Row{
-			{"short_ord_pk", 0, "PRIMARY", 1, "y", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-			{"short_ord_pk", 0, "PRIMARY", 2, "x", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"short_ord_pk", 0, "PRIMARY", 1, "y", "A", 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"short_ord_pk", 0, "PRIMARY", 2, "x", "A", 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 		},
 	},
 	{
@@ -37,8 +37,8 @@ var OrdinalDDLQueries = []QueryTest{
 	{
 		Query: "show keys from long_ord_pk1",
 		Expected: []sql.Row{
-			{"long_ord_pk1", 0, "PRIMARY", 1, "y", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-			{"long_ord_pk1", 0, "PRIMARY", 2, "v", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"long_ord_pk1", 0, "PRIMARY", 1, "y", "A", 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"long_ord_pk1", 0, "PRIMARY", 2, "v", "A", 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 		},
 	},
 	{
@@ -51,11 +51,11 @@ var OrdinalDDLQueries = []QueryTest{
 	{
 		Query: "show keys from long_ord_pk2",
 		Expected: []sql.Row{
-			{"long_ord_pk2", 0, "PRIMARY", 1, "y", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-			{"long_ord_pk2", 0, "PRIMARY", 2, "v", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-			{"long_ord_pk2", 0, "PRIMARY", 3, "x", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-			{"long_ord_pk2", 0, "PRIMARY", 4, "z", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-			{"long_ord_pk2", 0, "PRIMARY", 5, "u", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"long_ord_pk2", 0, "PRIMARY", 1, "y", "A", 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"long_ord_pk2", 0, "PRIMARY", 2, "v", "A", 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"long_ord_pk2", 0, "PRIMARY", 3, "x", "A", 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"long_ord_pk2", 0, "PRIMARY", 4, "z", "A", 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"long_ord_pk2", 0, "PRIMARY", 5, "u", "A", 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 		},
 	},
 	{
@@ -71,11 +71,11 @@ var OrdinalDDLQueries = []QueryTest{
 	{
 		Query: "show keys from long_ord_pk3",
 		Expected: []sql.Row{
-			{"long_ord_pk3", 0, "PRIMARY", 1, "y", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-			{"long_ord_pk3", 0, "PRIMARY", 2, "v", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-			{"long_ord_pk3", 0, "PRIMARY", 3, "x", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-			{"long_ord_pk3", 0, "PRIMARY", 4, "z", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-			{"long_ord_pk3", 0, "PRIMARY", 5, "u", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"long_ord_pk3", 0, "PRIMARY", 1, "y", "A", 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"long_ord_pk3", 0, "PRIMARY", 2, "v", "A", 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"long_ord_pk3", 0, "PRIMARY", 3, "x", "A", 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"long_ord_pk3", 0, "PRIMARY", 4, "z", "A", 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"long_ord_pk3", 0, "PRIMARY", 5, "u", "A", 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 		},
 	},
 	{
@@ -136,8 +136,8 @@ var OrdinalDDLWriteQueries = []WriteQueryTest{
 		},
 		SelectQuery: "show keys from ord_kl",
 		ExpectedSelect: []sql.Row{
-			{"ord_kl", 0, "PRIMARY", 1, "y", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-			{"ord_kl", 0, "PRIMARY", 2, "v", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"ord_kl", 0, "PRIMARY", 1, "y", "A", 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"ord_kl", 0, "PRIMARY", 2, "v", "A", 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 		},
 	},
 	{
@@ -170,8 +170,8 @@ var OrdinalDDLWriteQueries = []WriteQueryTest{
 		},
 		SelectQuery: "show keys from long_ord_pk1",
 		ExpectedSelect: []sql.Row{
-			{"long_ord_pk1", 0, "PRIMARY", 1, "y", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-			{"long_ord_pk1", 0, "PRIMARY", 2, "v", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"long_ord_pk1", 0, "PRIMARY", 1, "y", "A", 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"long_ord_pk1", 0, "PRIMARY", 2, "v", "A", 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 		},
 	},
 	{
@@ -192,8 +192,8 @@ var OrdinalDDLWriteQueries = []WriteQueryTest{
 		},
 		SelectQuery: "show keys from long_ord_pk1",
 		ExpectedSelect: []sql.Row{
-			{"long_ord_pk1", 0, "PRIMARY", 1, "yy", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-			{"long_ord_pk1", 0, "PRIMARY", 2, "v", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"long_ord_pk1", 0, "PRIMARY", 1, "yy", "A", 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"long_ord_pk1", 0, "PRIMARY", 2, "v", "A", 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 		},
 	},
 	{
@@ -217,11 +217,11 @@ var OrdinalDDLWriteQueries = []WriteQueryTest{
 		},
 		SelectQuery: "show keys from long_ord_pk2",
 		ExpectedSelect: []sql.Row{
-			{"long_ord_pk2", 0, "PRIMARY", 1, "y", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-			{"long_ord_pk2", 0, "PRIMARY", 2, "v", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-			{"long_ord_pk2", 0, "PRIMARY", 3, "x", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-			{"long_ord_pk2", 0, "PRIMARY", 4, "z", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-			{"long_ord_pk2", 0, "PRIMARY", 5, "u", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"long_ord_pk2", 0, "PRIMARY", 1, "y", "A", 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"long_ord_pk2", 0, "PRIMARY", 2, "v", "A", 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"long_ord_pk2", 0, "PRIMARY", 3, "x", "A", 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"long_ord_pk2", 0, "PRIMARY", 4, "z", "A", 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"long_ord_pk2", 0, "PRIMARY", 5, "u", "A", 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 		},
 	},
 	{
@@ -245,11 +245,11 @@ var OrdinalDDLWriteQueries = []WriteQueryTest{
 		},
 		SelectQuery: "show keys from long_ord_pk3",
 		ExpectedSelect: []sql.Row{
-			{"long_ord_pk3", 0, "PRIMARY", 1, "y", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-			{"long_ord_pk3", 0, "PRIMARY", 2, "v", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-			{"long_ord_pk3", 0, "PRIMARY", 3, "x", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-			{"long_ord_pk3", 0, "PRIMARY", 4, "z", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-			{"long_ord_pk3", 0, "PRIMARY", 5, "u", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"long_ord_pk3", 0, "PRIMARY", 1, "y", "A", 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"long_ord_pk3", 0, "PRIMARY", 2, "v", "A", 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"long_ord_pk3", 0, "PRIMARY", 3, "x", "A", 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"long_ord_pk3", 0, "PRIMARY", 4, "z", "A", 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"long_ord_pk3", 0, "PRIMARY", 5, "u", "A", 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 		},
 	},
 	{
@@ -273,11 +273,11 @@ var OrdinalDDLWriteQueries = []WriteQueryTest{
 		},
 		SelectQuery: "show keys from long_ord_pk2",
 		ExpectedSelect: []sql.Row{
-			{"long_ord_pk2", 0, "PRIMARY", 1, "y", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-			{"long_ord_pk2", 0, "PRIMARY", 2, "v", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-			{"long_ord_pk2", 0, "PRIMARY", 3, "x", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-			{"long_ord_pk2", 0, "PRIMARY", 4, "z", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-			{"long_ord_pk2", 0, "PRIMARY", 5, "u", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"long_ord_pk2", 0, "PRIMARY", 1, "y", "A", 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"long_ord_pk2", 0, "PRIMARY", 2, "v", "A", 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"long_ord_pk2", 0, "PRIMARY", 3, "x", "A", 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"long_ord_pk2", 0, "PRIMARY", 4, "z", "A", 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"long_ord_pk2", 0, "PRIMARY", 5, "u", "A", 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 		},
 	},
 }

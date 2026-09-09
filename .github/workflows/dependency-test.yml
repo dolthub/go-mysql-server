@@ -4,128 +4,138 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
-jobs:
-  test-integration:
-    runs-on: ubuntu-latest
+concurrency:
+  group: dependency-test-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
+env:
+  TZ: "America/Los_Angeles"
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      skip: ${{ steps.setup_gms.outputs.skip }}
+      test_dolt: ${{ steps.setup_gms.outputs.skip == 'false' && steps.check_pr.outputs.test_dolt == 'true' }}
+      test_doltgresql: ${{ steps.setup_gms.outputs.skip == 'false' && steps.check_pr.outputs.test_doltgresql == 'true' }}
     steps:
-      - name: Set timezone for Unix
-        uses: szenius/set-timezone@v2.0
-        with:
-          timezoneLinux: "America/Los_Angeles"
       - name: Checkout go-mysql-server
         uses: actions/checkout@v6
         with:
           ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
 
-      - name: Setup Git User
-        uses: fregante/setup-git-user@v2
+      - name: Setup go-mysql-server
+        id: setup_gms
+        uses: ./.github/actions/setup-gms
 
-      - name: Merge main into PR
-        id: merge_main
-        run: |
-          git fetch --all --unshallow
-          git merge origin/main --no-commit --no-ff
-          if [ $? -ne 0 ]; then
-            echo "Skipping the remainder of the workflow due to a merge conflict."
-            echo "skip=true" >> $GITHUB_OUTPUT
-          else
-            echo "Merge performed successfully, continuing workflow."
-            echo "skip=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Check for a Dolt PR link
-        id: check_dolt_pr
-        if: steps.merge_main.outputs.skip == 'false'
+      - name: Check for PR links
+        id: check_pr
+        if: steps.setup_gms.outputs.skip == 'false'
         run: |
           PR_DESCRIPTION=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }})
           COMMENTS=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments)
-          echo "$PR_DESCRIPTION$COMMENTS"
-          if echo "$PR_DESCRIPTION$COMMENTS" | grep -q "github.com/dolthub/dolt/pull/"; then
-            echo "comment_exists=true" >> $GITHUB_OUTPUT
-            echo "Dolt PR link exists"
+          BODY="$PR_DESCRIPTION$COMMENTS"
+          if echo "$BODY" | grep -q "github.com/dolthub/dolt/pull/"; then
+            echo "test_dolt=false" >> $GITHUB_OUTPUT
           else
-            echo "comment_exists=false" >> $GITHUB_OUTPUT
-            echo "Dolt PR link does not exist"
+            echo "test_dolt=true" >> $GITHUB_OUTPUT
+          fi
+          if echo "$BODY" | grep -q "github.com/dolthub/doltgresql/pull/"; then
+            echo "test_doltgresql=false" >> $GITHUB_OUTPUT
+          else
+            echo "test_doltgresql=true" >> $GITHUB_OUTPUT
           fi
 
-      - name: Check for a DoltgreSQL PR link
-        id: check_doltgresql_pr
-        if: steps.merge_main.outputs.skip == 'false'
-        run: |
-          PR_DESCRIPTION=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }})
-          COMMENTS=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments)
-          echo "$PR_DESCRIPTION$COMMENTS"
-          if echo "$PR_DESCRIPTION$COMMENTS" | grep -q "github.com/dolthub/doltgresql/pull/"; then
-            echo "comment_exists=true" >> $GITHUB_OUTPUT
-            echo "DoltgreSQL PR link exists"
-          else
-            echo "comment_exists=false" >> $GITHUB_OUTPUT
-            echo "DoltgreSQL PR link does not exist"
-          fi
-
-      - name: Install Go
-        uses: actions/setup-go@v5
-        if: steps.merge_main.outputs.skip == 'false'
+  test-dolt:
+    needs: setup
+    if: needs.setup.outputs.test_dolt == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout go-mysql-server
+        uses: actions/checkout@v6
         with:
-          go-version-file: go.mod
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
 
-      - name: Clone Dolt
-        if: steps.merge_main.outputs.skip == 'false' && steps.check_dolt_pr.outputs.comment_exists == 'false'
-        run: git clone https://github.com/dolthub/dolt.git
+      - name: Setup go-mysql-server
+        uses: ./.github/actions/setup-gms
 
-      - name: Clone DoltgreSQL repository
-        if: steps.merge_main.outputs.skip == 'false' && steps.check_doltgresql_pr.outputs.comment_exists == 'false'
-        run: git clone https://github.com/dolthub/doltgresql.git
-
-      - name: Build DoltgreSQL's parser
-        if: steps.merge_main.outputs.skip == 'false' && steps.check_doltgresql_pr.outputs.comment_exists == 'false'
-        run: |
-          cd doltgresql
-          ./postgres/parser/build.sh
-
-      - name: Test Dolt against main
-        id: test_dolt_main
-        if: steps.merge_main.outputs.skip == 'false' && steps.check_dolt_pr.outputs.comment_exists == 'false'
-        continue-on-error: true
-        run: |
-          cd dolt/go
-          go get github.com/dolthub/go-mysql-server@main
-          go mod tidy
-          cd libraries/doltcore/sqle/enginetest
-          go test ./... --count=1 -skip TestDoltServerRunningUnixSocket
-
-      - name: Test DoltgreSQL against main
-        id: test_doltgresql_main
-        if: steps.merge_main.outputs.skip == 'false' && steps.check_doltgresql_pr.outputs.comment_exists == 'false'
-        continue-on-error: true
-        run: |
-          cd doltgresql
-          go get github.com/dolthub/go-mysql-server@main
-          go mod tidy
-          cd testing/go
-          go test ./... --count=1 -skip Replication
+      - name: Checkout Dolt
+        uses: actions/checkout@v6
+        with:
+          repository: dolthub/dolt
+          path: dolt
 
       - name: Test Dolt against PR
-        if: steps.merge_main.outputs.skip == 'false' && steps.check_dolt_pr.outputs.comment_exists == 'false' && steps.test_dolt_main.outcome == 'success'
+        id: test_pr
+        continue-on-error: true
         run: |
           cd dolt/go
-          git reset --hard
           go mod edit -replace github.com/dolthub/go-mysql-server=../..
           go mod tidy
           cd libraries/doltcore/sqle/enginetest
           go test ./... --count=1 -skip TestDoltServerRunningUnixSocket
 
-      - name: Test DoltgreSQL against PR
-        if: steps.merge_main.outputs.skip == 'false' && steps.check_doltgresql_pr.outputs.comment_exists == 'false' && steps.test_doltgresql_main.outcome == 'success'
+      - name: Test Dolt against main
+        if: steps.test_pr.outcome == 'failure'
+        run: |
+          cd dolt/go
+          git reset --hard
+          go get github.com/dolthub/go-mysql-server@main
+          go mod tidy
+          cd libraries/doltcore/sqle/enginetest
+          if go test ./... --count=1 -skip TestDoltServerRunningUnixSocket; then
+            echo "Tests passed against main but failed against PR"
+            exit 1
+          fi
+
+  test-doltgresql:
+    needs: setup
+    if: needs.setup.outputs.test_doltgresql == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout go-mysql-server
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Setup go-mysql-server
+        uses: ./.github/actions/setup-gms
+
+      - name: Checkout DoltgreSQL repository
+        uses: actions/checkout@v6
+        with:
+          repository: dolthub/doltgresql
+          path: doltgresql
+
+      - name: Build DoltgreSQL parser
         run: |
           cd doltgresql
-          git reset --hard
+          ./postgres/parser/build.sh
+
+      - name: Test DoltgreSQL against PR
+        id: test_pr
+        continue-on-error: true
+        run: |
+          cd doltgresql
           go mod edit -replace github.com/dolthub/go-mysql-server=..
           go mod tidy
           cd testing/go
           go test ./... --count=1 -skip Replication
+
+      - name: Test DoltgreSQL against main
+        if: steps.test_pr.outcome == 'failure'
+        run: |
+          cd doltgresql
+          git reset --hard
+          go get github.com/dolthub/go-mysql-server@main
+          go mod tidy
+          cd testing/go
+          if go test ./... --count=1 -skip Replication; then
+            echo "Tests passed against main but failed against PR"
+            exit 1
+          fi

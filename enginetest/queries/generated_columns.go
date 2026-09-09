@@ -1832,6 +1832,32 @@ var GeneratedColumnTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "virtual column index survives creating another expression index",
+		SetUpScript: []string{
+			"create table t1 (a int primary key, b int)",
+			"insert into t1 values (1, 10), (2, 20)",
+			"create index idx1 on t1 ((b * 2))",
+			"create index idx2 on t1 ((b + 1))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table t1",
+				Expected: []sql.Row{{"t1",
+					"CREATE TABLE `t1` (\n" +
+						"  `a` int NOT NULL,\n" +
+						"  `b` int,\n" +
+						"  PRIMARY KEY (`a`),\n" +
+						"  KEY `idx1` (((b * 2))),\n" +
+						"  KEY `idx2` (((b + 1)))\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "select a from t1 where (b * 2) = 40",
+				Expected: []sql.Row{{2}},
+			},
+		},
+	},
 }
 
 var BrokenGeneratedColumnTests = []ScriptTest{

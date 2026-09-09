@@ -41,6 +41,7 @@ type Index struct {
 
 	Exprs      []sql.Expression
 	PrefixLens []uint16
+	ColOrders  []sql.IndexColumnOrder
 	fulltextInfo
 	Unique   bool
 	Spatial  bool
@@ -58,6 +59,7 @@ type fulltextInfo struct {
 var _ sql.Index = (*Index)(nil)
 var _ sql.FilteredIndex = (*Index)(nil)
 var _ sql.OrderedIndex = (*Index)(nil)
+var _ sql.ColumnOrderedIndex = (*Index)(nil)
 var _ sql.ExtendedIndex = (*Index)(nil)
 var _ fulltext.Index = (*Index)(nil)
 
@@ -300,8 +302,23 @@ func (idx *Index) Order(ctx *sql.Context) sql.IndexOrder {
 	if len(idx.contentHashedFields(ctx)) > 0 {
 		return sql.IndexOrderNone
 	}
+	for _, order := range idx.ColumnOrders(ctx) {
+		if order.Descending {
+			return sql.IndexOrderNone
+		}
+	}
 
 	return sql.IndexOrderAsc
+}
+
+// ColumnOrders implements sql.ColumnOrderedIndex.
+func (idx *Index) ColumnOrders(ctx *sql.Context) []sql.IndexColumnOrder {
+	for _, order := range idx.ColOrders {
+		if order.Descending || order.NullsLast {
+			return idx.ColOrders
+		}
+	}
+	return nil
 }
 
 func (idx *Index) Reversible(ctx *sql.Context) bool {

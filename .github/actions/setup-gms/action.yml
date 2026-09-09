@@ -1,0 +1,32 @@
+name: 'Setup go-mysql-server'
+description: 'Setup Git user, merge main into PR, and install Go'
+
+outputs:
+  skip:
+    description: 'Whether merge failed due to conflict'
+    value: ${{ steps.merge_main.outputs.skip }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Git User
+      uses: fregante/setup-git-user@v2
+
+    - name: Merge main into PR
+      id: merge_main
+      shell: bash
+      run: |
+        git merge origin/main --no-commit --no-ff
+        if [ $? -ne 0 ]; then
+          echo "Skipping the remainder of the workflow due to a merge conflict."
+          echo "skip=true" >> $GITHUB_OUTPUT
+        else
+          echo "Merge performed successfully, continuing workflow."
+          echo "skip=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Install Go
+      if: steps.merge_main.outputs.skip == 'false'
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: go.mod

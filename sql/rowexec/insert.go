@@ -305,7 +305,7 @@ func (i *insertIter) applyUpdates(ctx *sql.Context, updateExprs []sql.Expression
 	return updateAccumulator, nil
 }
 
-// TODO: This can probably be combined with applyUpdateExpressionsWithIgnore
+// TODO: This can probably be combined with mysqlUpdateExpressionApplier.ApplyRowUpdate
 func (i *insertIter) handleOnDuplicateKeyUpdate(ctx *sql.Context, oldRow, newRow sql.Row) (sql.Row, error) {
 	updateAcc, err := i.applyUpdates(ctx, i.onDupKeyUpdateExprs.ExplicitUpdateExprs(), append(oldRow, newRow...), newRow)
 	if err != nil {
