@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/dolthub/go-mysql-server/internal/exprtest"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -315,6 +316,8 @@ func TestTime_Minute(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 	f := NewMinute(ctx, expression.NewGetField(0, types.LongText, "foo", false))
 	nowTime := time.Now().UTC()
+	require.Equal(t, "minute(foo)", f.String())
+	exprtest.AssertFunctionRoundTrip(t, f.(sql.FunctionExpression))
 
 	testCases := []struct {
 		name     string
