@@ -191,6 +191,36 @@ func (t datetimeType) CompareValue(ctx *sql.Context, a, b sql.Value) (int, error
 	panic("TODO: implement CompareValue for DatetimeType")
 }
 
+// splitFloat splits the float f into its whole and fractional parts
+// invalid values will return false
+func splitFloat(f float64) (int64, int64, bool) {
+	if math.IsNaN(f) || f > math.MaxInt64 || f < math.MinInt64 {
+		return 0, 0, false
+	}
+	whole := int64(f)
+	return whole, int64((f - float64(whole)) * 1e9), true
+}
+
+// splitDecimal splits the float f into its whole and fractional parts
+// invalid values will return false
+func splitDecimal(d *apd.Decimal) (int64, int64, bool) {
+	if d.Form != apd.Finite {
+		return 0, 0, false
+	}
+	var wholeDec, fracDec apd.Decimal
+	d.Modf(&wholeDec, &fracDec)
+	whole, err := wholeDec.Int64()
+	if err != nil {
+		return 0, 0, false
+	}
+	fracDec.Exponent += 9
+	frac, err := fracDec.Int64()
+	if err != nil {
+		return 0, 0, false
+	}
+	return whole, frac, true
+}
+
 // Convert implements Type interface.
 func (t datetimeType) Convert(ctx context.Context, v any) (any, sql.ConvertInRange, error) {
 	v, err := sql.UnwrapAny(ctx, v)
@@ -250,15 +280,20 @@ func (t datetimeType) Convert(ctx context.Context, v any) (any, sql.ConvertInRan
 		case uint64:
 			res, ok = t.convertNumber(int64(val), 0)
 		case float32:
-			// TODO: split into datetime and micros
-			res, ok = t.convertNumber(int64(val), 0)
+			var datetime, clock int64
+			if datetime, clock, ok = splitFloat(float64(val)); ok {
+				res, ok = t.convertNumber(datetime, clock)
+			}
 		case float64:
-			// TODO: split into datetime and micros
-			res, ok = t.convertNumber(int64(val), 0)
+			var datetime, clock int64
+			if datetime, clock, ok = splitFloat(val); ok {
+				res, ok = t.convertNumber(datetime, clock)
+			}
 		case *apd.Decimal:
-			// TODO: split into datetime and micros
-			intPart, _ := val.Int64()
-			res, ok = t.convertNumber(intPart, 0)
+			var datetime, clock int64
+			if datetime, clock, ok = splitDecimal(val); ok {
+				res, ok = t.convertNumber(datetime, clock)
+			}
 		}
 		if !ok {
 			return res, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
@@ -306,45 +341,6 @@ func (t datetimeType) Convert(ctx context.Context, v any) (any, sql.ConvertInRan
 const ClockOffset = 100_00_00                 // HH_MM_SS
 const MaxDatetimeNumber = 9999_12_31_23_59_59 // YYYY_MM_DD_HH_MM_SS
 
-// convertNumber converts datetime and nanos into the appropriate time.Time object according to the MySQL spec.
-// Reference: https://github.com/google/mysql/blob/master/sql-common/my_time.c#L1209
-func (t datetimeType) convertNumber(datetime int64, micros int64) (any, bool) {
-	if datetime < 0 || micros < 0 {
-		return nil, false
-	}
-	if datetime == 0 && micros == 0 {
-		return ZeroTime, true
-	}
-	// convert each case to YYYY_MM_DD_HH_MM_SS format
-	switch {
-	case datetime < 0000_01_01:
-		return nil, false
-	case datetime <= 69_12_31: // YY_MM_DD, years 2000-2069
-		datetime = (datetime + 2000_00_00) * ClockOffset
-	case datetime < 70_01_01:
-		return nil, false
-	case datetime <= 99_12_31: // YY_MM_DD, years 1970-1999
-		datetime = (datetime + 1900_00_00) * ClockOffset
-	case datetime <= 9999_12_31: // YYYY_MM_DD
-		datetime *= ClockOffset
-	case datetime <= 69_12_31_23_59_59: // YY_MM_DD_HH_MM_SS, years 2000-2069
-		datetime += 2000_00_00_00_00_00
-	case datetime < 70_01_01_00_00_00:
-		return nil, false
-	case datetime <= 99_12_31_23_59_59: // YY_MM_DD_HH_MM_SS, years 1970-1999
-		datetime += 1900_00_00_00_00_00
-	case datetime > MaxDatetimeNumber: // YYYY_MM_DD_HH_MM_SS
-		return nil, false
-	}
-
-	date, clock := int(datetime/ClockOffset), int(datetime%ClockOffset)
-	year, month, day := date/100_00, (date/100)%100, date%100
-	hour, mins, sec := clock/100_00, (clock/100)%100, clock%100
-	nanos := int(micros * 1000)
-	res := time.Date(year, time.Month(month), day, hour, mins, sec, nanos, time.UTC)
-	return res, true
-}
-
 // precisionConversion is a conversion ratio to divide time.Second by to truncate the appropriate amount for the
 // precision of a type with time info
 var precisionConversion = [7]int{
@@ -390,6 +386,27 @@ func GetLastDay(year, month int) (res int, ok bool) {
 //	 Group 8: any trailing characters to be Truncated
 var DateTimeRegex = regexp.MustCompile(`^(\d+)\p{P}+(\d+)\p{P}+(\d+)[\s\p{P}]*(\d*)?\p{P}*(\d*)?\p{P}*(\d*)?\p{P}*(\d*)?(.*)$`)
 var NoDelimiterDateTimeRegex = regexp.MustCompile(`\d+`)
+
+// makeDatetime validates the date/time parameters and returns a time.Time object.
+func makeDatetime(year, month, day, hour, min, sec, nsec int) (time.Time, bool) {
+	if year > MaxYear || month > MaxMonth || day > MaxDay || hour > MaxHour || min > MaxMinute || sec > MaxSecond {
+		return ZeroTime, false
+	}
+	// We do support ZERO_DATE, so zero for year, month, and day is allowed.
+	if year == 0 && month == 0 && day == 0 {
+		return time.Date(0, 0, 0, hour, min, sec, nsec, time.UTC), true
+	}
+	// We do NOT support ZERO_IN_DATE, so zero for month and day are not allowed.
+	if month == 0 || day == 0 {
+		return ZeroTime, false
+	}
+	if lastDay, _ := GetLastDay(year, month); day > lastDay {
+		return ZeroTime, false
+	}
+	res := time.Date(year, time.Month(month), day, hour, min, sec, nsec, time.UTC)
+	res = res.Round(time.Microsecond)
+	return res, true
+}
 
 // parseDatetimeExtraLayouts parses a string Datetime according to formats not directly supported by MySQL
 func (t datetimeType) parseDatetimeExtraLayouts(str string) (any, error) {
@@ -443,9 +460,6 @@ func (t datetimeType) parseDatetime(str string) (any, bool, error) {
 	if err != nil {
 		return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), value)
 	}
-	if year > MaxYear {
-		return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), value)
-	}
 	// MySQL special case for abbreviated ('00) date formats
 	// TODO: there's a special special case for 00-00-00
 	if len(yearStr) == 2 {
@@ -455,21 +469,8 @@ func (t datetimeType) parseDatetime(str string) (any, bool, error) {
 	if err != nil {
 		return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), value)
 	}
-	if month > MaxMonth {
-		return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), value)
-	}
 	day, err := strconv.Atoi(dayStr)
-	if err != nil || day > MaxDay {
-		return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), value)
-	}
-	// GetLastDay already handles invalid months
-	if lastDay, _ := GetLastDay(year, month); day > lastDay {
-		return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), value)
-	}
-
-	// We do NOT support ZERO_IN_DATE, so zero for month and day are not allowed.
-	// We do support ZERO_DATE, so zero for year, month, and day is allowed.
-	if (month == 0 || day == 0) && (month != 0 || day != 0 || year != 0) {
+	if err != nil {
 		return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), value)
 	}
 
@@ -484,9 +485,6 @@ func (t datetimeType) parseDatetime(str string) (any, bool, error) {
 		if err != nil {
 			return nil, delimWarn, sql.ErrTruncatedIncorrect.New(value)
 		}
-		if hour > MaxHour {
-			return nil, delimWarn, sql.ErrTruncatedIncorrect.New(value)
-		}
 	}
 	if matchIdxs[10] != matchIdxs[11] {
 		minStr := value[matchIdxs[10]:matchIdxs[11]]
@@ -494,17 +492,11 @@ func (t datetimeType) parseDatetime(str string) (any, bool, error) {
 		if err != nil {
 			return nil, delimWarn, sql.ErrTruncatedIncorrect.New(value)
 		}
-		if mins > MaxMinute {
-			return nil, delimWarn, sql.ErrTruncatedIncorrect.New(value)
-		}
 	}
 	if matchIdxs[12] != matchIdxs[13] {
 		secStr := value[matchIdxs[12]:matchIdxs[13]]
 		sec, err = strconv.Atoi(secStr)
 		if err != nil {
-			return nil, delimWarn, sql.ErrTruncatedIncorrect.New(value)
-		}
-		if sec > 59 {
 			return nil, delimWarn, sql.ErrTruncatedIncorrect.New(value)
 		}
 	}
@@ -533,9 +525,50 @@ func (t datetimeType) parseDatetime(str string) (any, bool, error) {
 		err = sql.ErrTruncatedIncorrect.New(value)
 	}
 
-	resTime := time.Date(year, time.Month(month), day, hour, mins, sec, usec*1000, time.UTC)
-	resTime = resTime.Round(time.Microsecond)
+	resTime, ok := makeDatetime(year, month, day, hour, mins, sec, usec*1000)
+	if !ok {
+		return nil, delimWarn, sql.ErrTruncatedIncorrect.New(value)
+	}
 	return resTime, delimWarn, err
+}
+
+// convertNumber converts datetime and nanos into the appropriate time.Time object according to the MySQL spec.
+// Reference: https://github.com/google/mysql/blob/master/sql-common/my_time.c#L1209
+func (t datetimeType) convertNumber(datetime int64, micros int64) (any, bool) {
+	if datetime < 0 || micros < 0 {
+		return nil, false
+	}
+	if datetime == 0 && micros == 0 {
+		return ZeroTime, true
+	}
+	// convert each case to YYYY_MM_DD_HH_MM_SS format
+	switch {
+	case datetime < 0000_01_01:
+		return nil, false
+	case datetime <= 69_12_31: // YY_MM_DD, years 2000-2069
+		datetime = (datetime + 2000_00_00) * ClockOffset
+	case datetime < 70_01_01:
+		return nil, false
+	case datetime <= 99_12_31: // YY_MM_DD, years 1970-1999
+		datetime = (datetime + 1900_00_00) * ClockOffset
+	case datetime <= 9999_12_31: // YYYY_MM_DD
+		datetime *= ClockOffset
+	case datetime <= 69_12_31_23_59_59: // YY_MM_DD_HH_MM_SS, years 2000-2069
+		datetime += 2000_00_00_00_00_00
+	case datetime < 70_01_01_00_00_00:
+		return nil, false
+	case datetime <= 99_12_31_23_59_59: // YY_MM_DD_HH_MM_SS, years 1970-1999
+		datetime += 1900_00_00_00_00_00
+	case datetime > MaxDatetimeNumber: // YYYY_MM_DD_HH_MM_SS
+		return nil, false
+	}
+
+	date, clock := int(datetime/ClockOffset), int(datetime%ClockOffset)
+	year, month, day := date/100_00, (date/100)%100, date%100
+	hour, mins, sec := clock/100_00, (clock/100)%100, clock%100
+	nsec := int(micros * 1000)
+
+	return makeDatetime(year, month, day, hour, mins, sec, nsec)
 }
 
 // Equals implements the Type interface.

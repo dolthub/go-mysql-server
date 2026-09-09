@@ -16,6 +16,8 @@ package types
 
 import (
 	"fmt"
+	"github.com/cockroachdb/apd/v3"
+	"math"
 	"reflect"
 	"testing"
 	"time"
@@ -56,9 +58,9 @@ func TestDatetimeCompare(t *testing.T) {
 		{DatetimeMaxPrecision, "2010-06-03 06:03:11.123456", "2010-06-03 06:03:11", 1},
 		{DatetimeMaxPrecision, "2010-06-03 06:03:11", "2010-06-03 06:03:11.123456", -1},
 		{DatetimeMaxPrecision, "2010-06-03 06:03:11.123456111", "2010-06-03 06:03:11.123456333", 0},
-		{MustCreateDatetimeType(sqltypes.Datetime, 3), "2010-06-03 06:03:11.123", "2010-06-03 06:03:11", 1},
-		{MustCreateDatetimeType(sqltypes.Datetime, 3), "2010-06-03 06:03:11", "2010-06-03 06:03:11.123", -1},
-		{MustCreateDatetimeType(sqltypes.Datetime, 3), "2010-06-03 06:03:11.123456", "2010-06-03 06:03:11.123789", -1},
+		{Datetime3, "2010-06-03 06:03:11.123", "2010-06-03 06:03:11", 1},
+		{Datetime3, "2010-06-03 06:03:11", "2010-06-03 06:03:11.123", -1},
+		{Datetime3, "2010-06-03 06:03:11.123456", "2010-06-03 06:03:11.123789", -1},
 		{Timestamp, time.Date(2012, 12, 12, 12, 12, 12, 12, time.UTC),
 			time.Date(2012, 12, 12, 12, 24, 24, 24, time.UTC), -1},
 		{Timestamp, time.Date(2012, 12, 12, 12, 12, 12, 12, time.UTC),
@@ -208,16 +210,16 @@ func TestDatetimeConvert(t *testing.T) {
 		{DatetimeMaxPrecision, "2010-06-03 12:34:56.78", time.Date(2010, 6, 3, 12, 34, 56, 780000000, time.UTC), false},
 		{DatetimeMaxPrecision, "2010-06-03 12:34:56.789", time.Date(2010, 6, 3, 12, 34, 56, 789000000, time.UTC), false},
 
-		{MustCreateDatetimeType(sqltypes.Datetime, 3), nil, nil, false},
-		{MustCreateDatetimeType(sqltypes.Datetime, 3), time.Date(2012, 12, 12, 12, 12, 12, 12345678, time.UTC),
+		{Datetime3, nil, nil, false},
+		{Datetime3, time.Date(2012, 12, 12, 12, 12, 12, 12345678, time.UTC),
 			time.Date(2012, 12, 12, 12, 12, 12, 12000000, time.UTC), false},
-		{MustCreateDatetimeType(sqltypes.Datetime, 3), time.Date(2012, 12, 12, 12, 12, 12, 12345678, time.UTC),
+		{Datetime3, time.Date(2012, 12, 12, 12, 12, 12, 12345678, time.UTC),
 			time.Date(2012, 12, 12, 12, 12, 12, 12000000, time.UTC), false},
-		{MustCreateDatetimeType(sqltypes.Datetime, 3), "2010-06-03 12:12:12.123456", time.Date(2010, 6, 3, 12, 12, 12, 123000000, time.UTC), false},
-		{MustCreateDatetimeType(sqltypes.Datetime, 3), "2010-06-03T12:12:12.123456Z", time.Date(2010, 6, 3, 12, 12, 12, 123000000, time.UTC), false},
-		{MustCreateDatetimeType(sqltypes.Datetime, 3), "2010-06-03 12:34:56.7", time.Date(2010, 6, 3, 12, 34, 56, 700000000, time.UTC), false},
-		{MustCreateDatetimeType(sqltypes.Datetime, 3), "2010-06-03 12:34:56.78", time.Date(2010, 6, 3, 12, 34, 56, 780000000, time.UTC), false},
-		{MustCreateDatetimeType(sqltypes.Datetime, 3), "2010-06-03 12:34:56.789", time.Date(2010, 6, 3, 12, 34, 56, 789000000, time.UTC), false},
+		{Datetime3, "2010-06-03 12:12:12.123456", time.Date(2010, 6, 3, 12, 12, 12, 123000000, time.UTC), false},
+		{Datetime3, "2010-06-03T12:12:12.123456Z", time.Date(2010, 6, 3, 12, 12, 12, 123000000, time.UTC), false},
+		{Datetime3, "2010-06-03 12:34:56.7", time.Date(2010, 6, 3, 12, 34, 56, 700000000, time.UTC), false},
+		{Datetime3, "2010-06-03 12:34:56.78", time.Date(2010, 6, 3, 12, 34, 56, 780000000, time.UTC), false},
+		{Datetime3, "2010-06-03 12:34:56.789", time.Date(2010, 6, 3, 12, 34, 56, 789000000, time.UTC), false},
 
 		{Datetime, nil, nil, false},
 		{Datetime, time.Date(2012, 12, 12, 12, 12, 12, 12345678, time.UTC),
@@ -396,6 +398,122 @@ func TestDatetimeConvert(t *testing.T) {
 			if val != nil {
 				assert.Equal(t, test.typ.ValueType(), reflect.TypeOf(val))
 			}
+		})
+	}
+}
+
+func mustDecimal(s string) *apd.Decimal {
+	d, _, err := apd.NewFromString(s)
+	if err != nil {
+		panic(err)
+	}
+	return d
+}
+
+// TestDatetimeConvertNumber covers MySQL's number_to_datetime() rules: a number is read as a bare YY_MM_DD,
+// YYYY_MM_DD, YY_MM_DD_HH_MM_SS, or YYYY_MM_DD_HH_MM_SS value, with a two digit year below 70 landing in the 2000s and the
+// rest in the 1900s. The ranges between those four forms hold no valid date and are rejected.
+func TestDatetimeConvertNumber(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	tests := []struct {
+		typ         sql.Type
+		val         any
+		expectedVal any
+		expectedErr bool
+	}{
+		// YYYY_MM_DD
+		{DatetimeMaxPrecision, 2010_06_03, time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
+		{DatetimeMaxPrecision, 9999_12_31, time.Date(9999, 12, 31, 0, 0, 0, 0, time.UTC), false},
+		{DatetimeMaxPrecision, 1000_01_01, time.Date(1000, 1, 1, 0, 0, 0, 0, time.UTC), false},
+
+		// YYYY_MM_DD_HH_MM_SS
+		{DatetimeMaxPrecision, int64(2010_06_03_12_12_13), time.Date(2010, 6, 3, 12, 12, 13, 0, time.UTC), false},
+		{DatetimeMaxPrecision, int64(1000_01_01_00_00_00), time.Date(1000, 1, 1, 0, 0, 0, 0, time.UTC), false},
+		{DatetimeMaxPrecision, int64(9999_12_31_23_59_59), time.Date(9999, 12, 31, 23, 59, 59, 0, time.UTC), false},
+
+		// YY_MM_DD, with the century filled in around YY_PART_YEAR
+		{DatetimeMaxPrecision, 101, time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC), false},
+		{DatetimeMaxPrecision, 10_06_03, time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
+		{DatetimeMaxPrecision, 69_12_31, time.Date(2069, 12, 31, 0, 0, 0, 0, time.UTC), false},
+		{DatetimeMaxPrecision, 70_01_01, time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC), false},
+		{DatetimeMaxPrecision, 99_12_31, time.Date(1999, 12, 31, 0, 0, 0, 0, time.UTC), false},
+
+		// YY_MM_DD_HH_MM_SS
+		{DatetimeMaxPrecision, int64(10_10_00_00_0), time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC), false},
+		{DatetimeMaxPrecision, int64(10_06_03_12_12_13), time.Date(2010, 6, 3, 12, 12, 13, 0, time.UTC), false},
+		{DatetimeMaxPrecision, int64(69_12_31_23_59_59), time.Date(2069, 12, 31, 23, 59, 59, 0, time.UTC), false},
+		{DatetimeMaxPrecision, int64(70_01_01_00_00_00), time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC), false},
+		{DatetimeMaxPrecision, int64(99_12_31_23_59_59), time.Date(1999, 12, 31, 23, 59, 59, 0, time.UTC), false},
+
+		// Numbers past the last two digit form are read as they are, without a century
+		{DatetimeMaxPrecision, int64(9991231235959), time.Date(999, 12, 31, 23, 59, 59, 0, time.UTC), false},
+
+		// The gaps between the forms hold no valid date
+		{DatetimeMaxPrecision, 100, nil, true},
+		{DatetimeMaxPrecision, 692000, nil, true},
+		{DatetimeMaxPrecision, 1000000, nil, true},
+		{DatetimeMaxPrecision, int64(100000000), nil, true},
+		{DatetimeMaxPrecision, int64(692000000000), nil, true},
+		{DatetimeMaxPrecision, int64(100000000000000), nil, true},
+
+		// Out of range and impossible dates
+		{DatetimeMaxPrecision, -20100603, nil, true},
+		{DatetimeMaxPrecision, uint64(math.MaxUint64), nil, true},
+		{DatetimeMaxPrecision, 2010_06_31, nil, true},
+		{DatetimeMaxPrecision, 2010_02_29, nil, true},
+		{DatetimeMaxPrecision, 2012_02_29, time.Date(2012, 2, 29, 0, 0, 0, 0, time.UTC), false},
+		{DatetimeMaxPrecision, int64(2010_06_03_24_59_59), nil, true},
+		{DatetimeMaxPrecision, int64(2010_06_03_12_60_13), nil, true},
+		{DatetimeMaxPrecision, int64(2010_06_03_12_12_60), nil, true},
+
+		// NO_ZERO_IN_DATE rejects a zero month or day
+		{DatetimeMaxPrecision, 20100003, nil, true},
+		{DatetimeMaxPrecision, 20100600, nil, true},
+
+		// Every width of integer takes the same path
+		{DatetimeMaxPrecision, int8(101), time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC), false},
+		{DatetimeMaxPrecision, int16(20101), time.Date(2002, 1, 1, 0, 0, 0, 0, time.UTC), false},
+		{DatetimeMaxPrecision, int32(2010_06_03), time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
+		{DatetimeMaxPrecision, uint8(101), time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC), false},
+		{DatetimeMaxPrecision, uint16(2_01_01), time.Date(2002, 1, 1, 0, 0, 0, 0, time.UTC), false},
+		{DatetimeMaxPrecision, uint32(2010_06_03), time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
+		{DatetimeMaxPrecision, uint64(2010_06_03_12_12_13), time.Date(2010, 6, 3, 12, 12, 13, 0, time.UTC), false},
+
+		// The fractional part of a float or decimal becomes fractional seconds
+		{DatetimeMaxPrecision, float64(20100603121213), time.Date(2010, 6, 3, 12, 12, 13, 0, time.UTC), false},
+		{DatetimeMaxPrecision, 2010_06_03_12_12_13.5, time.Date(2010, 6, 3, 12, 12, 13, 500000000, time.UTC), false},
+		{DatetimeMaxPrecision, 2010_06_03.25, time.Date(2010, 6, 3, 0, 0, 0, 250000000, time.UTC), false},
+		{DatetimeMaxPrecision, -0.1, nil, true},
+		{DatetimeMaxPrecision, math.NaN(), nil, true},
+		{DatetimeMaxPrecision, 1e30, nil, true},
+		{DatetimeMaxPrecision, mustDecimal("20100603121213.123456"), time.Date(2010, 6, 3, 12, 12, 13, 123456000, time.UTC), false},
+		{DatetimeMaxPrecision, mustDecimal("20100603121213.1234564"), time.Date(2010, 6, 3, 12, 12, 13, 123456000, time.UTC), false},
+		{DatetimeMaxPrecision, mustDecimal("20100603"), time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
+		{DatetimeMaxPrecision, mustDecimal("-20100603"), nil, true},
+
+		// Fractional seconds are rounded to the precision of the type
+		{Datetime, 2010_06_03_12_12_13.5, time.Date(2010, 6, 3, 12, 12, 14, 0, time.UTC), false},
+		{Datetime3, 2010_06_03_12_12_13.5, time.Date(2010, 6, 3, 12, 12, 13, 500000000, time.UTC), false},
+
+		// A DATE drops the time portion, and a TIMESTAMP is bounded by the epoch
+		{Date, int64(2010_06_03_12_12_13), time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
+		{Date, 10_06_03, time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
+		{TimestampMaxPrecision, int64(1970_01_01_00_00_00), nil, true},
+		{TimestampMaxPrecision, int64(2038_01_19_03_14_08), nil, true},
+		{TimestampMaxPrecision, int64(2010_06_03_12_12_13), time.Date(2010, 6, 3, 12, 12, 13, 0, time.UTC), false},
+		{TimestampMaxPrecision, int64(1970_01_01_00_00_01), time.Date(1970, 1, 1, 0, 0, 1, 0, time.UTC), false},
+		{TimestampMaxPrecision, int64(2038_01_19_03_14_07), time.Date(2038, 1, 19, 3, 14, 7, 0, time.UTC), false},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%v %v %v", test.typ, test.val, test.expectedVal), func(t *testing.T) {
+			val, _, err := test.typ.Convert(ctx, test.val)
+			if test.expectedErr {
+				assert.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, test.expectedVal, val)
 		})
 	}
 }
