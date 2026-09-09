@@ -452,6 +452,10 @@ func TestUncompressedLength(t *testing.T) {
 }
 
 func TestValidatePasswordStrength(t *testing.T) {
+	stringExpr := NewValidatePasswordStrength(sql.NewEmptyContext(), expression.NewLiteral("value", types.Text))
+	require.Equal(t, "validate_password_strength('value')", stringExpr.String())
+	exprtest.AssertFunctionRoundTrip(t, stringExpr.(sql.FunctionExpression))
+
 	tests := []struct {
 		val sql.Expression
 		exp interface{}
