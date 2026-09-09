@@ -664,6 +664,7 @@ type scopeColumn struct {
 	tableId     sql.TableId
 	nullable    bool
 	descending  bool
+	nullsLast   bool
 	outOfScope  bool
 	hidden      bool
 }
