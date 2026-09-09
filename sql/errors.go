@@ -853,6 +853,9 @@ var (
 	// ErrCollationMalformedString is returned when a malformed string is encountered during a collation-related operation.
 	ErrCollationMalformedString = errors.NewKind("malformed string encountered while %s")
 
+	// ErrCannotConvertString is returned when a string cannot be converted from one character set to another.
+	ErrCannotConvertString = newMySQLKind("Cannot convert string '%s' from %s to %s", 3854, "HY000")
+
 	// ErrCollatedExprWrongType is returned when the wrong type is given to a CollatedExpression.
 	ErrCollatedExprWrongType = errors.NewKind("wrong type in collated expression")
 

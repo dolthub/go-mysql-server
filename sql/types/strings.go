@@ -509,7 +509,7 @@ func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest [
 		if charset == sql.CharacterSet_utf8mb4 {
 			if sqlCtx, ok := ctx.(*sql.Context); ok && sql.LoadSqlMode(sqlCtx).Strict() {
 				// Strict mode: reject invalid UTF8
-				invalidByte := formatInvalidByteForError(bytesVal)
+				invalidByte := FormatInvalidByteForError(bytesVal)
 				colName, rowNum := getColumnContext(ctx)
 				return nil, ErrBadCharsetString.New(invalidByte, colName, rowNum)
 			} else {
@@ -519,7 +519,7 @@ func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest [
 		} else {
 			var ok bool
 			if bytesVal, ok = t.CharacterSet().Encoder().Decode(bytesVal); !ok {
-				invalidByte := formatInvalidByteForError(bytesVal)
+				invalidByte := FormatInvalidByteForError(bytesVal)
 				colName, rowNum := getColumnContext(ctx)
 				return nil, ErrBadCharsetString.New(invalidByte, colName, rowNum)
 			}
@@ -556,9 +556,9 @@ func TruncateInvalidUTF8(data []byte) []byte {
 	return data
 }
 
-// formatInvalidByteForError formats invalid bytes for MySQL-compatible error messages.
+// FormatInvalidByteForError formats invalid bytes for error messages.
 // Shows consecutive invalid bytes, truncating with "..." after 6 bytes.
-func formatInvalidByteForError(bytesVal []byte) string {
+func FormatInvalidByteForError(bytesVal []byte) string {
 	if len(bytesVal) == 0 {
 		return fallbackInvalidByte
 	}

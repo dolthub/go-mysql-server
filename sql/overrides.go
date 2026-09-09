@@ -40,6 +40,9 @@ type EngineOverrides struct {
 	// filter expressions. Some expressions may need to be modified or skipped in order to properly apply indexes
 	// for all integrators.
 	CostedIndexScanExpressionFilter ExpressionTreeFilter
+	// UpdateExpressionApplier evaluates UPDATE assignments. If nil, the engine uses
+	// MySQL's sequential assignment evaluation and IGNORE conversion handling.
+	UpdateExpressionApplier UpdateExpressionApplier
 }
 
 // ExpressionTreeFilter is an interface for walking logic expression trees or AND, OR, and leaf nodes.

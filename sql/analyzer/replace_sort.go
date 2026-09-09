@@ -20,9 +20,7 @@ func replaceIdxSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope
 func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, sortNode *plan.Sort) (sql.Node, transform.TreeIdentity, error) {
 	switch n := node.(type) {
 	case *plan.Sort:
-		if isValidSortOrder(n.SortConditions) {
-			sortNode = n // lowest parent sort node
-		}
+		sortNode = n // lowest parent sort node
 	case *plan.IndexedTableAccess:
 		if sortNode == nil {
 			return n, transform.SameTree, nil
@@ -59,23 +57,22 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 		}
 
 		// if the index is unordered, we can't use it for sorting
-		if ordIdx, isOrdIdx := lookup.Index.(sql.OrderedIndex); !isOrdIdx || ordIdx.Order(ctx) == sql.IndexOrderNone {
+		ordered, reverseScan := indexSortOrder(ctx, lookup.Index, sortNode.SortConditions, n.TableNode.UnderlyingTable())
+		if !ordered {
 			return n, transform.SameTree, nil
 		}
 
-		isReverse := sortNode.SortConditions[0].Order == sql.Descending
-
-		// If the lookup does not need any reversing, use it and drop the sort node.
+		// If the lookup already scans in the needed direction, use it and drop the sort node.
 		// Note that |NewTree| triggers replacement of the sort node captured above by the IndexedTableAccess in the
 		// block below, when |replaceIdxSortHelper| is called on the children of the sort node. This is a rare case when
 		// returning the input node with |NewTree| is valid, but it's confusing and could be rewritten to not require this.
-		if (isReverse && lookup.IsReverse) || (!isReverse && !lookup.IsReverse) {
+		if reverseScan == lookup.IsReverse {
 			return n, transform.NewTree, nil
 		}
 
 		// At this point we know we require a reverse range scan. If the index is not reversible, we can't use it for
 		// sorting, so don't drop the Sort node.
-		if ordIdx, isOrdIdx := lookup.Index.(sql.OrderedIndex); !isOrdIdx || !ordIdx.Reversible(ctx) || ordIdx.Order(ctx) == sql.IndexOrderNone {
+		if !lookup.Index.(sql.OrderedIndex).Reversible(ctx) {
 			return n, transform.SameTree, nil
 		}
 		lookup = sql.NewIndexLookup(
@@ -84,7 +81,7 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 			lookup.IsPointLookup,
 			lookup.IsEmptyRange,
 			lookup.IsSpatialLookup,
-			isReverse,
+			reverseScan,
 		)
 		newIdxTbl, err := plan.NewStaticIndexedAccessForTableNode(ctx, n.TableNode, lookup)
 		if err != nil {
@@ -109,6 +106,7 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 		}
 
 		var idx sql.Index
+		var reverseScan bool
 		idxs, err := idxTbl.GetIndexes(ctx)
 		if err != nil {
 			return nil, transform.SameTree, err
@@ -123,10 +121,20 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 				// TODO: It's possible that we may be able to use vector indexes for point lookups, but not range lookups
 				continue
 			}
-			if sortExprsMatchIdxColExprs(sortExprs, sortAliases, idxCandidate.Expressions()) {
-				idx = idxCandidate
-				break
+			if !sortExprsMatchIdxColExprs(sortExprs, sortAliases, idxCandidate.Expressions()) {
+				continue
 			}
+			// Some primary keys (like special tables from integrators) are not in order
+			ordered, reverse := indexSortOrder(ctx, idxCandidate, sortNode.SortConditions, table)
+			if !ordered {
+				continue
+			}
+			// A reverse range scan needs a reversible index
+			if reverse && !idxCandidate.(sql.OrderedIndex).Reversible(ctx) {
+				continue
+			}
+			idx, reverseScan = idxCandidate, reverse
+			break
 		}
 		if idx == nil {
 			return n, transform.SameTree, nil
@@ -137,7 +145,7 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
-		if sortNode.SortConditions[0].Order == sql.Descending {
+		if reverseScan {
 			lookup = sql.NewIndexLookup(
 				lookup.Index,
 				lookup.Ranges.(sql.MySQLRangeCollection),
@@ -146,10 +154,6 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 				lookup.IsSpatialLookup,
 				true,
 			)
-		}
-		// Some Primary Keys (like doltHistoryTable) are not in order
-		if oi, isOrdIdx := idx.(sql.OrderedIndex); !isOrdIdx || (lookup.IsReverse && !oi.Reversible(ctx)) || oi.Order(ctx) == sql.IndexOrderNone {
-			return n, transform.SameTree, nil
 		}
 		if !idx.CanSupport(ctx, lookup.Ranges.(sql.MySQLRangeCollection).ToRanges()...) {
 			return n, transform.SameTree, nil
@@ -212,6 +216,9 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 			// Merge Joins assume that left and right are sorted
 			// Cross Joins and Inner Joins are valid for sort removal if left child is sorted
 			if !c.JoinType().IsMerge() && !c.JoinType().IsCross() && !c.JoinType().IsInner() {
+				continue
+			}
+			if !isValidSortOrder(sortNode.SortConditions) {
 				continue
 			}
 			newLeft, sameLeft, errLeft := replaceIdxSortHelper(ctx, scope, c.Left(), sortNode)
@@ -450,6 +457,44 @@ func sortExprsMatchIdxColExprs(sortExprs []sql.Expression, sortAliases map[strin
 		}
 	}
 	return true
+}
+
+// indexSortOrder returns whether a scan of `idx` returns rows sorted by `scs`, whose expressions must already match the
+// leading index columns, and whether that scan must run in reverse. A column requested in the direction it is stored
+// in, whether ascending or descending, is served by a forward scan. A column requested in the opposite direction needs
+// a reverse scan, which every requested column must then agree on. NULL placement is only checked for nullable columns
+// of `table`.
+func indexSortOrder(ctx *sql.Context, idx sql.Index, scs sql.SortConditions, table sql.Table) (ordered, reverseScan bool) {
+	ordIdx, isOrdIdx := idx.(sql.OrderedIndex)
+	if !isOrdIdx {
+		return false, false
+	}
+	colOrders := sql.IndexColumnOrders(ctx, idx)
+	if colOrders == nil && ordIdx.Order(ctx) == sql.IndexOrderNone {
+		return false, false
+	}
+	exprs := idx.Expressions()
+	for i, sc := range scs {
+		var colOrder sql.IndexColumnOrder
+		if i < len(colOrders) {
+			colOrder = colOrders[i]
+		}
+		descending := sc.Order == sql.Descending
+		if i == 0 {
+			reverseScan = descending != colOrder.Descending
+		} else if reverseScan != (descending != colOrder.Descending) {
+			return false, false
+		}
+		// NullsFirst sorts NULL as the smallest value, so NULLs lead an ascending sort and trail a descending one
+		wantNullsLast := (sc.NullOrdering == sql.NullsLast) != descending
+		if wantNullsLast != (colOrder.NullsLast != reverseScan) {
+			col := plan.GetColumnFromIndexExpr(ctx, exprs[i], table)
+			if col == nil || col.Nullable {
+				return false, false
+			}
+		}
+	}
+	return true, reverseScan
 }
 
 // isValidSortOrder checks if all the sortConditions are same order type

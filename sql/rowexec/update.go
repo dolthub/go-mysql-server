@@ -94,10 +94,14 @@ func (u *updateIter) Next(ctx *sql.Context) (sql.Row, error) {
 	return oldAndNewRow, nil
 }
 
-// Applies the update expressions given to the row given, returning the new resultant row. In the case that ignore is
-// provided and there is a type conversion error, this function sets the value to the zero value as per the MySQL standard.
-// TODO: This can probably be combined with insertIter.handleOnDuplicateKeyUpdate or insertIter.applyUpdates
-func applyUpdateExpressionsWithIgnore(ctx *sql.Context, updateExprs *plan.UpdateExprs, tableSchema sql.Schema, row sql.Row, ignore bool) (sql.Row, error) {
+// mysqlUpdateExpressionApplier implements MySQL's sequential UPDATE assignments.
+type mysqlUpdateExpressionApplier struct{}
+
+var _ sql.UpdateExpressionApplier = mysqlUpdateExpressionApplier{}
+
+// ApplyRowUpdate evaluates explicit assignments sequentially, recovers conversion
+// errors for IGNORE, and then applies derived updates when the row changed.
+func (mysqlUpdateExpressionApplier) ApplyRowUpdate(ctx *sql.Context, updateExprs *sql.UpdateExprs, tableSchema sql.Schema, row sql.Row, ignore bool) (sql.Row, error) {
 	oldRow := row
 	for _, updateExpr := range updateExprs.ExplicitUpdateExprs() {
 		val, err := updateExpr.Eval(ctx, row)

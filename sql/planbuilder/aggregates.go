@@ -185,7 +185,7 @@ func (b *Builder) buildNameConst(fromScope *scope, f *ast.FuncExpr) sql.Expressi
 	return expression.NewAlias(b.ctx, aliasStr, vLit)
 }
 
-func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []sql.Expression) *scope {
+func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []sql.Expression, having *ast.Where) *scope {
 	b.qFlags.Set(sql.QFlagAggregation)
 
 	// GROUP_BY consists of:
@@ -202,40 +202,18 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 	var selectGfs []sql.Expression
 	selectStr := make(map[string]bool)
 	aliasDeps := make(map[string]bool)
-	windowIds := make(map[sql.ColumnId]struct{}, len(fromScope.windowFuncs))
+	windowCols := make(map[columnId]struct{}, len(fromScope.windowFuncs))
 	for _, col := range fromScope.windowFuncs {
-		windowIds[sql.ColumnId(col.id)] = struct{}{}
+		windowCols[col.id] = struct{}{}
 	}
-	for _, e := range group.aggregations() {
-		if !selectStr[strings.ToLower(e.String())] {
-			selectDeps = append(selectDeps, e.scalar)
-			selectGfs = append(selectGfs, e.scalarGf())
-			selectStr[strings.ToLower(e.String())] = true
-		}
-	}
-	var aliases []sql.Expression
-	for _, col := range projScope.cols {
-		inAlias := false
-		// eval aliases in project scope
-		switch e := col.scalar.(type) {
-		case *expression.Alias:
-			var aliasesWindowFunc bool
-			if gf, ok := e.Child.(*expression.GetField); ok {
-				_, aliasesWindowFunc = windowIds[gf.Id()]
-			}
-			if !e.Unreferencable() && !aliasesWindowFunc {
-				aliases = append(aliases, e.WithId(sql.ColumnId(col.id)).(*expression.Alias))
-				inAlias = true
-			}
-		default:
-		}
-
-		var findSelectDeps func(*sql.Context, sql.Expression) bool
-		findSelectDeps = func(ctx *sql.Context, e sql.Expression) bool {
+	var inspectSelectDeps func(sql.Expression, bool) bool
+	inspectSelectDeps = func(expr sql.Expression, inAlias bool) (hasWindowDep bool) {
+		transform.InspectExpr(b.ctx, expr, func(ctx *sql.Context, e sql.Expression) bool {
 			switch e := e.(type) {
 			case *expression.GetField:
-				if _, ok := windowIds[e.Id()]; ok {
-					return false
+				if _, ok := windowCols[columnId(e.Id())]; ok {
+					hasWindowDep = true
+					return true
 				}
 				colName := strings.ToLower(e.String())
 				if !selectStr[colName] {
@@ -244,24 +222,48 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 					selectStr[colName] = true
 				}
 
-				exprStr := strings.ToLower(e.String())
-				if isAliasDep, ok := aliasDeps[exprStr]; !ok && inAlias {
-					aliasDeps[exprStr] = true
+				if isAliasDep, ok := aliasDeps[colName]; !ok && inAlias {
+					aliasDeps[colName] = true
 				} else if isAliasDep && !inAlias {
-					aliasDeps[exprStr] = false
+					aliasDeps[colName] = false
 				}
 			case *plan.Subquery:
 				e.Correlated().ForEach(func(colId sql.ColumnId) {
 					if correlated, found := projScope.parent.getCol(colId); found {
-						findSelectDeps(ctx, correlated.scalarGf())
+						hasWindowDep = inspectSelectDeps(correlated.scalarGf(), inAlias) || hasWindowDep
 					}
 				})
-			default:
 			}
 			return false
+		})
+		return hasWindowDep
+	}
+	for _, e := range group.aggregations() {
+		if !selectStr[strings.ToLower(e.String())] {
+			selectDeps = append(selectDeps, e.scalar)
+			selectGfs = append(selectGfs, e.scalarGf())
+			selectStr[strings.ToLower(e.String())] = true
+		}
+	}
+	for _, col := range fromScope.windowFuncs {
+		inspectSelectDeps(col.scalar, false)
+	}
+	var aliases []sql.Expression
+	for _, col := range projScope.cols {
+		inAlias := false
+		// eval aliases in project scope
+		switch e := col.scalar.(type) {
+		case *expression.Alias:
+			if !e.Unreferencable() {
+				inAlias = true
+			}
+		default:
 		}
 
-		transform.InspectExpr(b.ctx, col.scalar, findSelectDeps)
+		hasWindowDep := inspectSelectDeps(col.scalar, inAlias)
+		if inAlias && !hasWindowDep {
+			aliases = append(aliases, col.scalar.(*expression.Alias).WithId(sql.ColumnId(col.id)).(*expression.Alias))
+		}
 	}
 	for _, e := range fromScope.extraCols {
 		// accessory cols used by ORDER_BY, HAVING
@@ -277,6 +279,12 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 
 	if len(aliases) > 0 {
 		outScope.node = plan.NewProject(b.ctx, append(selectGfs, aliases...), outScope.node).WithAliasDeps(aliasDeps)
+	}
+
+	b.buildHaving(fromScope, projScope, outScope, having)
+	if len(fromScope.windowFuncs) > 0 {
+		outScope.windowFuncs = fromScope.windowFuncs
+		outScope = b.buildWindow(outScope, projScope)
 	}
 	return outScope
 }
@@ -300,11 +308,6 @@ func IsMySQLAggregateFuncName(ctx *sql.Context, name string) (bool, error) {
 // buildAggregateFunc tags aggregate functions in the correct scope
 // and makes the aggregate available for reference by other clauses.
 func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExpr) sql.Expression {
-	if len(inScope.windowFuncs) > 0 && !inScope.explicitGrouping {
-		err := sql.ErrNonAggregatedColumnWithoutGroupBy.New()
-		b.handleErr(err)
-	}
-
 	inScope.initGroupBy()
 	gb := inScope.groupBy
 
@@ -394,7 +397,11 @@ func (b *Builder) newAggregation(e *ast.FuncExpr, name string, args []sql.Expres
 func (b *Builder) buildAggFunctionArgs(inScope *scope, e *ast.FuncExpr, gb *groupBy) []sql.Expression {
 	var args []sql.Expression
 	for _, arg := range e.Exprs {
+		windowCount := len(inScope.windowFuncs)
 		e := b.selectExprToExpression(inScope, arg)
+		if len(inScope.windowFuncs) > windowCount {
+			b.handleErr(sql.ErrNonAggregatedColumnWithoutGroupBy.New())
+		}
 		// if GetField is an alias, alias must be masking a column
 		if gf, ok := e.(*expression.GetField); ok && gf.TableId() == 0 {
 			e = b.selectExprToExpression(inScope.parent, arg)
@@ -540,17 +547,13 @@ func IsMySQLWindowFuncName(ctx *sql.Context, name string) (bool, error) {
 }
 
 func (b *Builder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, over *ast.WindowDef) sql.Expression {
-	if inScope.groupBy != nil && !inScope.explicitGrouping {
-		err := sql.ErrNonAggregatedColumnWithoutGroupBy.New()
-		b.handleErr(err)
-	}
-
 	// internal expressions can be complex, but window can't be more than alias
 	var args []sql.Expression
 	for _, arg := range e.Exprs {
 		e := b.selectExprToExpression(inScope, arg)
 		args = append(args, e)
 	}
+
 	var win sql.WindowAdaptableExpression
 	if name == "count" {
 		if _, ok := e.Exprs[0].(*ast.StarExpr); ok {
@@ -738,20 +741,21 @@ func (b *Builder) buildWindowDef(fromScope *scope, def *ast.WindowDef) *sql.Wind
 	sortConditions := make(sql.SortConditions, len(def.OrderBy))
 	for i, c := range def.OrderBy {
 		// resolve col in fromScope
-		e := b.buildScalar(fromScope, c.Expr)
+		e := b.buildWindowClauseScalar(fromScope, c.Expr, "window order by")
 		so := sql.Ascending
 		if c.Direction == ast.DescScr {
 			so = sql.Descending
 		}
 		sortConditions[i] = sql.SortCondition{
-			Expr:  e,
-			Order: so,
+			Expr:         e,
+			Order:        so,
+			NullOrdering: nullOrdering(sortNullsLast(c, so == sql.Descending)),
 		}
 	}
 
 	partitions := make([]sql.Expression, len(def.PartitionBy))
 	for i, expr := range def.PartitionBy {
-		partitions[i] = b.buildScalar(fromScope, expr)
+		partitions[i] = b.buildWindowClauseScalar(fromScope, expr, "window partition by")
 	}
 
 	frame := b.NewFrame(fromScope, def.Frame)
@@ -777,6 +781,22 @@ func (b *Builder) buildWindowDef(fromScope *scope, def *ast.WindowDef) *sql.Wind
 	}
 
 	return windowDef
+}
+
+// buildWindowClauseScalar builds an expression inside a window
+// PARTITION BY or ORDER BY clause.
+//
+// In window clauses, a plain alias reference (e.g. "ORDER BY my_alias")
+// is not allowed, but an expression using an alias (e.g. "ORDER BY
+// my_alias + 1") is allowed and resolves to the underlying expression.
+// See [window functions], [column aliases].
+//
+// [window functions]: https://dev.mysql.com/doc/refman/8.4/en/window-functions-usage.html
+// [column aliases]: https://dev.mysql.com/doc/refman/8.4/en/problems-with-alias.html
+func (b *Builder) buildWindowClauseScalar(inScope *scope, e ast.Expr, clause string) sql.Expression {
+	_, isColRef := e.(*ast.ColName)
+	defer b.withWindowState(clause, isColRef)()
+	return b.buildScalar(inScope, e)
 }
 
 // windowDisplayName returns a human-readable label for a window definition, for use in error
