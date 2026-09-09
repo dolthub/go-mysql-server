@@ -44,3 +44,25 @@ func TestSystemVarString(t *testing.T) {
 		}
 	}
 }
+
+func TestUserVarString(t *testing.T) {
+	tests := []struct {
+		name     string
+		expected string
+	}{
+		{"normal_name", "@normal_name"},
+		{"var name", "@`var name`"},
+		{"select", "@`select`"},
+	}
+
+	for _, test := range tests {
+		expr := NewUserVar(test.name)
+		require.Equal(t, test.expected, expr.String())
+		parsed := exprtest.RequireColumn(t, exprtest.ParseExpression(t, expr))
+		parsedName := strings.TrimPrefix(parsed.Name.String(), "@")
+		if strings.HasPrefix(parsedName, "`") {
+			parsedName = strings.ReplaceAll(strings.Trim(parsedName, "`"), "``", "`")
+		}
+		require.Equal(t, expr.Name, parsedName)
+	}
+}

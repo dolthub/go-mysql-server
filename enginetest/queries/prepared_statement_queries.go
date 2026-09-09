@@ -94,6 +94,7 @@ var PreparedScriptTests = []ScriptTest{
 			"set @a = 1",
 			"set @b = 100",
 			"set @c = 'abc'",
+			"set @schema = 'reserved name'",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -132,6 +133,12 @@ var PreparedScriptTests = []ScriptTest{
 				Query: "execute s using @c",
 				Expected: []sql.Row{
 					{"abc"},
+				},
+			},
+			{
+				Query: "execute s using @schema",
+				Expected: []sql.Row{
+					{"reserved name"},
 				},
 			},
 			{
