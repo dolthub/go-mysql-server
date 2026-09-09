@@ -291,16 +291,16 @@ func (a *Arithmetic) WithChildren(ctx *sql.Context, children ...sql.Expression) 
 
 // Eval implements the Expression interface.
 func (a *Arithmetic) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	lval, rval, err := a.evalLeftRight(ctx, row)
+	lVal, rVal, err := a.evalLeftRight(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
-	if lval == nil || rval == nil {
+	if lVal == nil || rVal == nil {
 		return nil, nil
 	}
 
-	lval, rval, err = a.convertLeftRight(ctx, lval, rval)
+	lVal, rVal, err = a.convertLeftRight(ctx, lVal, rVal)
 	if err != nil {
 		return nil, err
 	}
@@ -308,11 +308,11 @@ func (a *Arithmetic) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	var result interface{}
 	switch strings.ToLower(a.Op) {
 	case sqlparser.PlusStr:
-		result, err = plus(lval, rval)
+		result, err = plus(lVal, rVal)
 	case sqlparser.MinusStr:
-		result, err = minus(lval, rval)
+		result, err = minus(lVal, rVal)
 	case sqlparser.MultStr:
-		result, err = mult(lval, rval)
+		result, err = mult(lVal, rVal)
 	}
 
 	if err != nil {
@@ -364,35 +364,31 @@ func (a *Arithmetic) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, 
 	return lval, rval, nil
 }
 
-func (a *Arithmetic) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}, error) {
-	typ := a.Type(ctx)
-
-	lIsTimeType := types.IsTime(a.LeftChild.Type(ctx))
-	rIsTimeType := types.IsTime(a.RightChild.Type(ctx))
-
-	if i, ok := left.(*TimeDelta); ok {
-		left = i
+func (a *Arithmetic) convertLeftRight(ctx *sql.Context, lVal, rVal any) (any, any, error) {
+	typ, lTyp, rTyp := a.Type(ctx), a.LeftChild.Type(ctx), a.RightChild.Type(ctx)
+	if i, ok := lVal.(*TimeDelta); ok {
+		lVal = i
 	} else {
 		// these are the types we specifically want to capture from we get from Type()
 		if types.IsInteger(typ) || types.IsFloat(typ) || types.IsTime(typ) {
-			left = convertValueToType(ctx, typ, left, lIsTimeType)
+			lVal = convertValueToType(ctx, lTyp, typ, lVal)
 		} else {
-			left = convertToDecimalValue(ctx, left, lIsTimeType)
+			lVal = convertToDecimalValue(ctx, lTyp, typ, lVal)
 		}
 	}
 
-	if i, ok := right.(*TimeDelta); ok {
-		right = i
+	if i, ok := rVal.(*TimeDelta); ok {
+		rVal = i
 	} else {
 		// these are the types we specifically want to capture from we get from Type()
 		if types.IsInteger(typ) || types.IsFloat(typ) || types.IsTime(typ) {
-			right = convertValueToType(ctx, typ, right, rIsTimeType)
+			rVal = convertValueToType(ctx, rTyp, typ, rVal)
 		} else {
-			right = convertToDecimalValue(ctx, right, rIsTimeType)
+			rVal = convertToDecimalValue(ctx, rTyp, typ, rVal)
 		}
 	}
 
-	return left, right, nil
+	return lVal, rVal, nil
 }
 
 func isInterval(expr sql.Expression) bool {
@@ -446,44 +442,54 @@ func isOutermostArithmeticOp(e sql.Expression, opScale int32) bool {
 // invalid and cannot be converted to the given type, it returns nil, and it should be
 // interpreted as value of 0. For time types, all the numbers are parsed up to seconds only.
 // E.g: `2022-11-10 12:14:36` is parsed into `20221110121436` and `2022-03-24` is parsed into `20220324`.
-func convertValueToType(ctx *sql.Context, typ sql.Type, val interface{}, isTimeType bool) interface{} {
-	var cval interface{}
-	if isTimeType {
-		val = convertTimeTypeToString(val)
-	}
-
-	cval, _, err := typ.Convert(ctx, val)
-	if err != nil {
-		arithmeticWarning(ctx, mysql.ERTruncatedWrongValue, fmt.Sprintf("Truncated incorrect %s value: '%v'", typ.String(), val))
-		// the value is interpreted as 0, but we need to match the type of the other valid value
-		// to avoid additional conversion, the nil value is handled in each operation
-	}
-	if types.IsTime(typ) {
-		time, ok := cval.(time.Time)
-		if !ok || time.Equal(types.ZeroTime) {
-			ctx.Warn(1292, "Incorrect datetime value: '%s'", val)
-			return nil
+func convertValueToType(ctx *sql.Context, origType, typ sql.Type, val any) (res any) {
+	// TODO: update type aware implementation for datetime types
+	//  This is a placeholder implementation for existing tests
+	if dtTyp, ok := origType.(sql.DatetimeType); ok && !types.IsTime(typ) {
+		var err error
+		val, err = DateTimeToNumericString(ctx, dtTyp, val)
+		if err != nil {
+			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrTruncatedIncorrect.New(dtTyp.String(), val).Error())
 		}
 	}
-	return cval
+
+	var cVal any
+	var err error
+	switch t := typ.(type) {
+	case sql.DatetimeType:
+		cVal, _, err = t.Convert(ctx, val)
+		if err == nil {
+			if timeVal, ok := cVal.(time.Time); ok && types.ZeroTime.Equal(timeVal) {
+				ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrTruncatedIncorrect.New(typ.String(), val).Error())
+				return nil
+			}
+		}
+	default:
+		cVal, _, err = typ.Convert(ctx, val)
+	}
+
+	if err != nil {
+		// the value is interpreted as 0, but we need to match the type of the other valid value
+		// to avoid additional conversion, the nil value is handled in each operation
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrTruncatedIncorrect.New(typ.String(), val).Error())
+	}
+	return cVal
 }
 
-// convertTimeTypeToString returns string value parsed from either time.Time or string
-// representation. all the numbers are parsed up to seconds only. The location can be
-// different between two time.Time values, so we set it to default UTC location before
-// parsing. E.g:
+// DateTimeToNumericString converts a time.Time object into a "numeric" string (datetime with all delimiters removed).
 // `2022-11-10 12:14:36` is parsed into `20221110121436`
 // `2022-03-24` is parsed into `20220324`.
-func convertTimeTypeToString(val interface{}) interface{} {
-	if t, ok := val.(time.Time); ok {
-		val = t.In(time.UTC).Format("2006-01-02 15:04:05")
+// TODO: this should just be on the dateTimeType itself
+func DateTimeToNumericString(ctx *sql.Context, typ sql.DatetimeType, val any) (string, error) {
+	// Convert to MySQL formatted DateTime string
+	sqlVal, err := typ.SQL(ctx, nil, val)
+	if err != nil {
+		return "", err
 	}
-	if t, ok := val.(string); ok {
-		nums := timeTypeRegex.FindAllString(t, -1)
-		val = strings.Join(nums, "")
-	}
-
-	return val
+	// Drop all non-digits and concat
+	nums := timeTypeRegex.FindAllString(sqlVal.ToString(), -1)
+	res := strings.Join(nums, "")
+	return res, nil
 }
 
 func plus(lval, rval interface{}) (interface{}, error) {
