@@ -512,7 +512,7 @@ func TestNTileString(t *testing.T) {
 
 func TestNestedInSubqueryDescription(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	subquery := plan.NewSubquery(NewUnresolvedTable("t", ""), "select j from t")
+	subquery := plan.NewSubquery(plan.NewUnresolvedTable("t", ""), "select j from t")
 	inSubquery := plan.NewInSubquery(ctx, expression.NewUnresolvedColumn("i"), subquery)
 	expr := expression.NewAnd(expression.NewLiteral(true, types.Boolean), inSubquery)
 
