@@ -33,6 +33,21 @@ func TestUnresolvedExpression(t *testing.T) {
 	require.NotNil(o)
 }
 
+func TestUnresolvedColumnString(t *testing.T) {
+	tests := []struct {
+		expr     *UnresolvedColumn
+		expected string
+	}{
+		{NewUnresolvedColumn("normal_name"), "normal_name"},
+		{NewUnresolvedQualifiedColumn("table_name", "column_name"), "table_name.column_name"},
+	}
+
+	for _, test := range tests {
+		require.Equal(t, test.expected, test.expr.String())
+		exprtest.AssertColumnRoundTrip(t, test.expr)
+	}
+}
+
 func TestUnresolvedFunctionString(t *testing.T) {
 	expr := NewUnresolvedFunction("function name", false, nil)
 	require.Equal(t, "`function name`()", expr.String())
