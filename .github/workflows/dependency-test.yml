@@ -12,7 +12,7 @@ env:
   TZ: "America/Los_Angeles"
 
 jobs:
-  check:
+  setup:
     runs-on: ubuntu-latest
     outputs:
       skip: ${{ steps.setup_gms.outputs.skip }}
@@ -50,8 +50,8 @@ jobs:
           fi
 
   test-dolt:
-    needs: check
-    if: needs.check.outputs.test_dolt == 'true'
+    needs: setup
+    if: needs.setup.outputs.test_dolt == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout go-mysql-server
@@ -93,8 +93,8 @@ jobs:
           fi
 
   test-doltgresql:
-    needs: check
-    if: needs.check.outputs.test_doltgresql == 'true'
+    needs: setup
+    if: needs.setup.outputs.test_doltgresql == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout go-mysql-server
