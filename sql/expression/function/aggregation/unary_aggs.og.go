@@ -214,35 +214,29 @@ func (a *BitAnd) IsNullable(ctx *sql.Context) bool {
 }
 
 func (a *BitAnd) String() string {
+	ret := "BIT_AND(" + a.Child.String() + ")"
 	if a.window != nil {
-		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("BITAND")
-		children := []string{a.window.String(), a.Child.String()}
-		pr.WriteChildren(children...)
-		return pr.String()
+		ret += " " + a.window.String()
 	}
-	return "BITAND(" + a.Child.String() + ")"
+	return ret
 }
 
 func (a *BitAnd) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
 	if options.Debug {
 		if a.window != nil {
 			pr := sql.NewTreePrinter()
-			_ = pr.WriteNode("BITAND")
+			_ = pr.WriteNode("BIT_AND")
 			children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
 			pr.WriteChildren(children...)
 			return pr.String()
 		}
-		return fmt.Sprintf("BITAND(%s)", sql.Describe(ctx, a.Child, options))
+		return fmt.Sprintf("BIT_AND(%s)", sql.Describe(ctx, a.Child, options))
 	}
+	ret := "BIT_AND(" + sql.Describe(ctx, a.Child, options) + ")"
 	if a.window != nil {
-		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("BITAND")
-		children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
-		pr.WriteChildren(children...)
-		return pr.String()
+		ret += " " + sql.Describe(ctx, a.window, options)
 	}
-	return "BITAND(" + sql.Describe(ctx, a.Child, options) + ")"
+	return ret
 }
 
 func (a *BitAnd) DebugString(ctx *sql.Context) string {
