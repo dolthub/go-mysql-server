@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
-	strings2 "strings"
+	"strings"
 	"time"
 	"unicode/utf8"
 
@@ -306,8 +306,8 @@ func (t StringType) Compare(ctx context.Context, a interface{}, b interface{}) (
 	}
 
 	if IsChar(t) {
-		as = strings2.TrimRight(as, " ")
-		bs = strings2.TrimRight(bs, " ")
+		as = strings.TrimRight(as, " ")
+		bs = strings.TrimRight(bs, " ")
 	}
 
 	encoder := t.collation.CharacterSet().Encoder()
@@ -587,7 +587,7 @@ func FormatInvalidByteForError(bytesVal []byte) string {
 	}
 
 	// Build the error string starting from first invalid byte
-	var result strings2.Builder
+	var result strings.Builder
 	maxBytesToShow := 6 // MySQL seems to show around 6 bytes before truncating
 	remainingBytes := bytesVal[firstInvalidPos:]
 
@@ -791,7 +791,7 @@ func (t StringType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.
 			if len(snippet) > 50 {
 				snippet = snippet[:50]
 			}
-			snippetStr := strings2.ToValidUTF8(string(snippet), string(utf8.RuneError))
+			snippetStr := strings.ToValidUTF8(string(snippet), string(utf8.RuneError))
 			return sqltypes.Value{}, sql.ErrCharSetFailedToEncode.New(resultCharset.Name(), utf8.ValidString(snippetStr), snippet)
 		}
 		val = encodedBytes
@@ -824,7 +824,7 @@ func (t StringType) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltyp
 		if len(v.Val) > 50 {
 			v.Val = v.Val[:50]
 		}
-		snippetStr := strings2.ToValidUTF8(string(v.Val), string(utf8.RuneError))
+		snippetStr := strings.ToValidUTF8(string(v.Val), string(utf8.RuneError))
 		return sqltypes.Value{}, sql.ErrCharSetFailedToEncode.New(charset.Name(), utf8.ValidString(snippetStr), v.Val)
 	}
 
