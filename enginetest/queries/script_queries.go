@@ -6080,8 +6080,37 @@ CREATE TABLE tab3 (
 			"INSERT INTO correlated_aggregate_scope VALUES (1, 1, 1), (2, 1, 2), (3, 2, 1);",
 			"CREATE TABLE correlated_aggregate_probe (probe INT);",
 			"INSERT INTO correlated_aggregate_probe VALUES (1);",
+			"CREATE TABLE concat_scope (grp INT, val TEXT);",
+			"INSERT INTO concat_scope VALUES (1, 'a'), (1, 'b'), (2, 'c');",
+			"CREATE TABLE concat_probe (id INT);",
+			"INSERT INTO concat_probe VALUES (1);",
 		},
 		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT grp, (SELECT GROUP_CONCAT(a.val ORDER BY a.val SEPARATOR '|') FROM concat_probe p) FROM concat_scope a GROUP BY grp HAVING (SELECT GROUP_CONCAT(a.val ORDER BY a.val SEPARATOR '|') FROM concat_probe p) IS NOT NULL ORDER BY grp;",
+				Expected: []sql.Row{{1, "a|b"}, {2, "c"}},
+			},
+			{
+				Query:       "SELECT grp, (SELECT a.val FROM concat_probe p LIMIT 1) FROM concat_scope a GROUP BY grp ORDER BY grp;",
+				ExpectedErr: analyzererrors.ErrValidationGroupBy,
+			},
+			{
+				// A direct use of a.val remains invalid even when the same subquery aggregates a.val.
+				Query:       "SELECT grp, (SELECT GROUP_CONCAT(a.val ORDER BY a.val) FROM concat_probe p WHERE p.id = LENGTH(a.val)) FROM concat_scope a GROUP BY grp ORDER BY grp;",
+				ExpectedErr: analyzererrors.ErrValidationGroupBy,
+			},
+			{
+				Query:    "SELECT grp FROM concat_scope a GROUP BY grp HAVING (SELECT GROUP_CONCAT(a.val) FROM concat_probe p) = 'c' ORDER BY grp;",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "SELECT grp FROM concat_scope a GROUP BY grp HAVING (SELECT GROUP_CONCAT(a.val ORDER BY a.val) FROM concat_probe p) = 'c' ORDER BY grp;",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "SELECT grp FROM concat_scope a GROUP BY grp HAVING (SELECT GROUP_CONCAT(a.val ORDER BY a.val) FROM concat_scope a) = 'a,b,c' ORDER BY grp;",
+				Expected: []sql.Row{{1}, {2}},
+			},
 			{
 				Query:    "SELECT grp, SUM(DISTINCT val) FROM correlated_aggregate_scope a GROUP BY grp HAVING EXISTS (SELECT 1 FROM correlated_aggregate_scope b WHERE SUM(DISTINCT a.val) = b.val) ORDER BY grp;",
 				Expected: []sql.Row{{2, float64(1)}},
@@ -6099,23 +6128,32 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{2}},
 			},
 			{
-				// TODO: https://github.com/dolthub/go-mysql-server/issues/3814
 				// The aggregate crosses two subqueries but still belongs to the scope that provides a.val.
-				Skip:     true,
 				Query:    "SELECT grp FROM correlated_aggregate_scope a GROUP BY grp HAVING EXISTS (SELECT 1 FROM correlated_aggregate_probe b WHERE EXISTS (SELECT 1 WHERE SUM(a.val) = b.probe)) ORDER BY grp;",
 				Expected: []sql.Row{{2}},
 			},
 			{
-				// TODO: https://github.com/dolthub/go-mysql-server/issues/3814
+				// Parenthesized selects preserve the outer aggregate's owning query scope.
+				Query:    "SELECT grp FROM correlated_aggregate_scope a GROUP BY grp HAVING EXISTS ((SELECT 1 WHERE SUM(a.val) = 1)) ORDER BY grp;",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				// Set operation arms bind outer aggregates through normal semantic resolution.
+				Query:    "SELECT grp FROM correlated_aggregate_scope a GROUP BY grp HAVING EXISTS (SELECT 1 WHERE SUM(a.val) = 1 UNION ALL SELECT 1 WHERE FALSE) ORDER BY grp;",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				// Aggregate arguments retain CTEs declared by their nested query.
+				Query:    "SELECT grp FROM correlated_aggregate_scope a GROUP BY grp HAVING EXISTS (WITH q AS (SELECT 1 AS x) SELECT 1 HAVING SUM((SELECT x FROM q)) = 1) ORDER BY grp;",
+				Expected: []sql.Row{{1}, {2}},
+			},
+			{
 				// The middle a alias shadows outer a, so the deepest aggregate must belong to the middle query.
-				Skip:     true,
 				Query:    "SELECT grp FROM correlated_aggregate_scope a GROUP BY grp HAVING EXISTS (SELECT 1 FROM correlated_aggregate_scope a HAVING EXISTS (SELECT 1 WHERE SUM(a.val) = 4)) ORDER BY grp;",
 				Expected: []sql.Row{{1}, {2}},
 			},
 			{
-				// TODO: https://github.com/dolthub/go-mysql-server/issues/3814
 				// The inner table has no val column, so normal name resolution should fall back to outer a.val.
-				Skip:     true,
 				Query:    "SELECT grp FROM correlated_aggregate_scope a GROUP BY grp HAVING EXISTS (SELECT 1 FROM correlated_aggregate_probe b WHERE SUM(val) = b.probe) ORDER BY grp;",
 				Expected: []sql.Row{{2}},
 			},
@@ -6130,6 +6168,11 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{2}},
 			},
 			{
+				// A local join argument makes the aggregate local even when another argument is correlated.
+				Query:    "SELECT grp FROM correlated_aggregate_scope a GROUP BY grp, a.val HAVING EXISTS (SELECT 1 FROM correlated_aggregate_probe b JOIN correlated_aggregate_probe c ON b.probe = c.probe HAVING SUM(a.val + b.probe) > 0) ORDER BY grp;",
+				Expected: []sql.Row{{1}, {1}, {2}},
+			},
+			{
 				Query:    "SELECT grp FROM correlated_aggregate_scope a GROUP BY grp HAVING EXISTS (SELECT SUM(a.val) FROM correlated_aggregate_scope a HAVING SUM(a.val) = 4) ORDER BY grp;",
 				Expected: []sql.Row{{1}, {2}},
 			},
@@ -6139,9 +6182,7 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{1}, {1}, {2}},
 			},
 			{
-				// TODO: https://github.com/dolthub/go-mysql-server/issues/3814
 				// The deepest aggregate mixes top-level a.val and middle-level b.probe, so it belongs to the middle query.
-				Skip:     true,
 				Query:    "SELECT grp FROM correlated_aggregate_scope a GROUP BY grp, a.val HAVING EXISTS (SELECT 1 FROM correlated_aggregate_probe b HAVING EXISTS (SELECT 1 WHERE SUM(a.val + b.probe) > 0)) ORDER BY grp;",
 				Expected: []sql.Row{{1}, {1}, {2}},
 			},
