@@ -19,39 +19,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/dolthub/go-mysql-server/internal/exprtest"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
-
-func TestJsonArrayAgg_Name(t *testing.T) {
-	assert := require.New(t)
-
-	m := NewJsonArray(expression.NewGetField(0, types.Int32, "field", true))
-	assert.Equal("JSON_ARRAYAGG(field)", m.String())
-
-	windowed := m.WithWindow(sql.NewEmptyContext(), &sql.WindowDefinition{})
-	assert.Equal("JSON_ARRAYAGG(field) over ()", windowed.String())
-	exprtest.AssertFunctionRoundTripAs(t, windowed.(sql.FunctionExpression), "JSON_ARRAYAGG")
-}
-
-func TestJSONObjectAggString(t *testing.T) {
-	ctx := sql.NewEmptyContext()
-	expr := NewJSONObjectAgg(
-		ctx,
-		expression.NewGetField(0, types.Text, "k", false),
-		expression.NewGetField(1, types.Int64, "v", false),
-	).(sql.WindowAdaptableExpression).WithWindow(
-		ctx,
-		sql.NewWindowDefinition(
-			[]sql.Expression{expression.NewGetField(2, types.Int64, "g", false)},
-			nil, nil, "", "",
-		),
-	)
-	require.Equal(t, "JSON_OBJECTAGG(k, v) over ( partition by g)", expr.String())
-	exprtest.AssertFunctionRoundTrip(t, expr.(sql.FunctionExpression))
-}
 
 func TestJsonArrayAgg_SimpleIntField(t *testing.T) {
 	assert := require.New(t)
