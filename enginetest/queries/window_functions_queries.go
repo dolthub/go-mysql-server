@@ -1009,6 +1009,8 @@ ORDER BY id;`,
 		Expected: []sql.Row{{true, false}},
 	},
 	{
+		// JSON_LENGTH.String used to omit the path, so these distinct window inputs shared a String key
+		// and the planner reused the first result for both columns.
 		Name: "JSON_LENGTH paths in window expressions",
 		Query: `SELECT
 			FIRST_VALUE(JSON_LENGTH('{"a":[1,2]}', '$.a')) OVER (),
@@ -1016,6 +1018,8 @@ ORDER BY id;`,
 		Expected: []sql.Row{{2, 1}},
 	},
 	{
+		// JSON_SEARCH.String used to print absent escape/path arguments as NULL, making the three-argument
+		// call indistinguishable from explicit NULL arguments when the planner deduplicated window inputs.
 		Name: "JSON_SEARCH paths in window expressions",
 		Query: `SELECT
 			JSON_UNQUOTE(FIRST_VALUE(JSON_SEARCH('["abc"]', 'one', 'abc')) OVER ()),
@@ -1023,6 +1027,8 @@ ORDER BY id;`,
 		Expected: []sql.Row{{"$[0]", nil}},
 	},
 	{
+		// JSON_VALUE.String used to omit the return type, so window input deduplication collapsed these
+		// signed and character results even though they have different values and types.
 		Name: "JSON_VALUE return types in window expressions",
 		Query: `SELECT
 			FIRST_VALUE(JSON_VALUE('{"a":"12"}', '$.a', 'signed')) OVER (),
@@ -1146,6 +1152,8 @@ ORDER BY id;`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
+				// NTILE.String must include the bucket count so window expression deduplication does not
+				// reuse NTILE(2) for NTILE(3), which assigns different buckets on the same input rows.
 				Query: "select i, ntile(2) over(order by i), ntile(3) over(order by i) from t where i <= 3;",
 				Expected: []sql.Row{
 					{1, uint64(1), uint64(1)},

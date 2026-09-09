@@ -18,7 +18,6 @@ func TestAggGen(t *testing.T) {
 					Name:          "Test",
 					Desc:          "Test description",
 					RetType:       "sql.Float64",
-					SqlString:     true,
 					WindowSqlName: "test_window",
 				},
 			},
