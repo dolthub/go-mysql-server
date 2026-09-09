@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -98,25 +99,46 @@ func (lit *Literal) String() string {
 	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
 		return fmt.Sprintf("%d", litVal)
 	case string:
-		switch lit.Typ.Type() {
-		// utf8 charset cannot encode binary string
-		case query.Type_VARBINARY, query.Type_BINARY:
-			return fmt.Sprintf("'0x%X'", litVal)
+		if lit.Typ != nil {
+			switch lit.Typ.Type() {
+			// utf8 charset cannot encode binary string
+			case query.Type_VARBINARY, query.Type_BINARY:
+				return fmt.Sprintf("0x%X", litVal)
+			}
 		}
-		// Conversion of \' to \'\' required as this string will be interpreted by the sql engine.
-		// Backslash chars also need to be replaced.
-		escaped := strings.ReplaceAll(litVal, "'", "''")
-		escaped = strings.ReplaceAll(escaped, "\\", "\\\\")
-		return fmt.Sprintf("'%s'", escaped)
+		return quoteSQLString(litVal)
 	case *apd.Decimal:
 		return litVal.Text('f')
 	case []byte:
 		return fmt.Sprintf("0x%X", litVal)
+	case time.Time:
+		if lit.Typ != nil && lit.Typ.Type() == query.Type_DATE {
+			return quoteSQLString(litVal.Format("2006-01-02"))
+		}
+		return quoteSQLString(litVal.Format(sql.TimestampDatetimeLayout))
+	case types.Timespan:
+		return quoteSQLString(litVal.String())
+	case sql.JSONWrapper:
+		jsonString, err := types.JsonToMySqlString(context.Background(), litVal)
+		if err == nil {
+			return fmt.Sprintf("CAST(%s AS JSON)", quoteSQLString(jsonString))
+		}
+		return quoteSQLString(fmt.Sprint(litVal))
+	case types.GeometryValue:
+		serialized := litVal.Serialize()
+		return fmt.Sprintf("ST_GeomFromWKB(0x%X, %d)", serialized[types.SRIDSize:], litVal.GetSRID())
 	case nil:
 		return "NULL"
 	default:
 		return fmt.Sprint(litVal)
 	}
+}
+
+func quoteSQLString(value string) string {
+	// Conversion of \' to \'\' is required because this string will be interpreted by the SQL engine.
+	escaped := strings.ReplaceAll(value, "'", "''")
+	escaped = strings.ReplaceAll(escaped, "\\", "\\\\")
+	return fmt.Sprintf("'%s'", escaped)
 }
 
 func (lit *Literal) DebugString(ctx *sql.Context) string {
