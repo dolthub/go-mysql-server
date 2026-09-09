@@ -25,7 +25,7 @@ import (
 // LeftPad represents the LPAD function, which returns a string
 // left-padded with a pad string to a specified character length.
 type LeftPad struct {
-	Pad
+	pad
 }
 
 var _ sql.FunctionExpression = (*LeftPad)(nil)
@@ -37,7 +37,7 @@ func NewLeftPad(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error
 	if len(args) != 3 {
 		return nil, sql.ErrInvalidArgumentNumber.New("lpad", "3", len(args))
 	}
-	return &LeftPad{Pad: Pad{str: args[0], length: args[1], padStr: args[2]}}, nil
+	return &LeftPad{pad: pad{str: args[0], length: args[1], padStr: args[2]}}, nil
 }
 
 // FunctionName implements [sql.FunctionExpression].
@@ -67,7 +67,7 @@ func (l *LeftPad) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 // RightPad represents the RPAD function, which returns a string
 // right-padded with a pad string to a specified character length.
 type RightPad struct {
-	Pad
+	pad
 }
 
 var _ sql.FunctionExpression = (*RightPad)(nil)
@@ -79,7 +79,7 @@ func NewRightPad(ctx *sql.Context, args ...sql.Expression) (sql.Expression, erro
 	if len(args) != 3 {
 		return nil, sql.ErrInvalidArgumentNumber.New("rpad", "3", len(args))
 	}
-	return &RightPad{Pad: Pad{str: args[0], length: args[1], padStr: args[2]}}, nil
+	return &RightPad{pad: pad{str: args[0], length: args[1], padStr: args[2]}}, nil
 }
 
 // FunctionName implements [sql.FunctionExpression].
@@ -106,31 +106,31 @@ func (r *RightPad) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return r.eval(ctx, row, false)
 }
 
-// Pad is the base expression for LPAD and RPAD string padding
+// pad is the base expression for LPAD and RPAD string padding
 // functions.
-type Pad struct {
+type pad struct {
 	str    sql.Expression
 	length sql.Expression
 	padStr sql.Expression
 }
 
 // Children implements [sql.Expression].
-func (p *Pad) Children() []sql.Expression {
+func (p *pad) Children() []sql.Expression {
 	return []sql.Expression{p.str, p.length, p.padStr}
 }
 
 // Resolved implements [sql.Expression].
-func (p *Pad) Resolved() bool {
+func (p *pad) Resolved() bool {
 	return p.str.Resolved() && p.length.Resolved() && p.padStr.Resolved()
 }
 
 // IsNullable implements [sql.Expression].
-func (p *Pad) IsNullable(ctx *sql.Context) bool {
+func (p *pad) IsNullable(ctx *sql.Context) bool {
 	return p.str.IsNullable(ctx) || p.length.IsNullable(ctx) || p.padStr.IsNullable(ctx)
 }
 
 // Type implements [sql.Expression].
-func (p *Pad) Type(ctx *sql.Context) sql.Type {
+func (p *pad) Type(ctx *sql.Context) sql.Type {
 	if strType := p.str.Type(ctx); types.IsText(strType) {
 		if tc, ok := strType.(sql.TypeWithCollation); ok {
 			return types.CreateLongText(tc.Collation())
@@ -142,11 +142,11 @@ func (p *Pad) Type(ctx *sql.Context) sql.Type {
 // CollationCoercibility implements [sql.CollationCoercible]. It
 // returns the collation and coercibility of the string expression,
 // deriving them solely from the first argument.
-func (p *Pad) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+func (p *pad) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.ResolveCoercibilityExpressions(ctx, p.str)
 }
 
-func (p *Pad) eval(ctx *sql.Context, row sql.Row, isLeft bool) (interface{}, error) {
+func (p *pad) eval(ctx *sql.Context, row sql.Row, isLeft bool) (interface{}, error) {
 	collation, _ := p.CollationCoercibility(ctx)
 
 	s, ok, err := evalString(ctx, p.str, row, collation)
@@ -197,7 +197,7 @@ func padString(str string, targetLen int64, padStr string, isLeft bool, handler 
 		return "", nil
 	}
 
-	// TODO(elianddb): Check target byte size against
+	// TODO(#3831): Check target byte size against
 	// @@max_allowed_packet and return NULL with a warning if exceeded.
 	remainderCharLen := int(targetLen - int64(resCharLen))
 	quo := remainderCharLen / padCharLen

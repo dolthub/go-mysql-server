@@ -77,8 +77,8 @@ func (h runeCharSetHandler) NumChars(str string) (int, error) {
 	contentLen := 0
 	for len(content) > 0 {
 		cr, cRead := h.encoder.NextRune(content)
-		// TODO(elianddb): Malformed byte sequences should emit a
-		// warning or advance by 1 byte instead of failing.
+		// TODO(dolthub/dolt#11380): Malformed byte sequences should emit
+		// a warning or advance by 1 byte instead of failing.
 		if cr == utf8.RuneError && cRead <= 1 {
 			return 0, sql.ErrCollationMalformedString.New("checking length")
 		}
@@ -96,8 +96,8 @@ func (h runeCharSetHandler) CharPos(str string, n int) (int, error) {
 	byteOffset := 0
 	for count := 0; count < n && len(content) > 0; count++ {
 		cr, cRead := h.encoder.NextRune(content)
-		// TODO(elianddb): Malformed byte sequences should emit a
-		// warning or advance by 1 byte instead of failing.
+		// TODO(dolthub/dolt#11380): Malformed byte sequences should emit
+		// a warning or advance by 1 byte instead of failing.
 		if cr == utf8.RuneError && cRead <= 1 {
 			return 0, sql.ErrCollationMalformedString.New("charpos")
 		}
