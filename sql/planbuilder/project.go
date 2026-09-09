@@ -37,7 +37,12 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 	// interleave tempScope between inScope and parent, namespace for
 	// alias accumulation within SELECT
 	tempScope := inScope.replace()
+	tempScope.selectAliasScope = true
 	inScope.parent = tempScope
+
+	// Reset window state so nested subqueries in the SELECT list
+	// do not inherit this outer query's window context.
+	defer b.withWindowState("", false)()
 
 	// need to transfer aggregation state from out -> in
 	var exprs []sql.Expression
@@ -168,9 +173,9 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 				tempScope.addColumn(col)
 			}
 			if inScope.selectAliases == nil {
-				inScope.selectAliases = make(map[string]sql.Expression)
+				inScope.selectAliases = make(map[string]*expression.Alias)
 			}
-			inScope.selectAliases[e.Name()] = e
+			inScope.selectAliases[strings.ToLower(e.Name())] = e
 			exprs = append(exprs, e)
 		case *expression.Literal:
 			exprs = append(exprs, e)
@@ -211,9 +216,7 @@ func (b *Builder) selectExprToExpression(inScope *scope, se ast.SelectExpr) sql.
 			return expression.NewAlias(b.ctx, e.As.String(), expr)
 		}
 		if selectExprNeedsAlias(b.ctx, e, expr) {
-			// A scalar subquery's SQL text is a column label, not a referenceable SELECT alias. Registering it
-			// in the alias scope can give references to preceding SELECT aliases inside the subquery incorrect
-			// field indexes; see the "Scalar subquery referencing a preceding SELECT alias" script test.
+			// A scalar subquery's SQL text is a column label, not a referenceable SELECT alias.
 			if _, ok := expr.(*plan.Subquery); ok {
 				return expression.NewAlias(b.ctx, e.InputExpression, expr).AsUnreferencable()
 			}
@@ -255,6 +258,36 @@ func (b *Builder) buildProjection(inScope, outScope *scope) {
 	}
 	b.markDeferProjection(proj, inScope, outScope)
 	outScope.node = proj
+}
+
+// buildAliasProject materializes preceding aliases before subqueries that reference them.
+// Every expression in a Project evaluates against its input row, so correlated aliases
+// must be supplied by a child projection rather than another expression in the same Project.
+func (b *Builder) buildAliasProject(projections []sql.Expression, child sql.Node) (sql.Node, bool) {
+	var pendingAliases sql.ColSet
+	split := false
+	for i := range projections {
+		expr := projections[i]
+		dependsOnAlias := transform.InspectExpr(b.ctx, expr, func(ctx *sql.Context, e sql.Expression) bool {
+			sq, ok := e.(*plan.Subquery)
+			return ok && sq.Correlated().Intersects(pendingAliases)
+		})
+		if dependsOnAlias {
+			split = true
+			child = plan.NewProject(b.ctx, projections[:i], child)
+			projections = append([]sql.Expression(nil), projections...)
+			for j, input := range projections[:i] {
+				if alias, ok := input.(*expression.Alias); ok {
+					projections[j] = expression.NewGetField(int(alias.Id()), alias.Type(b.ctx), alias.Name(), alias.IsNullable(b.ctx))
+				}
+			}
+			pendingAliases = sql.ColSet{}
+		}
+		if alias, ok := expr.(*expression.Alias); ok {
+			pendingAliases.Add(alias.Id())
+		}
+	}
+	return plan.NewProject(b.ctx, projections, child), split
 }
 
 func selectExprNeedsAlias(ctx *sql.Context, e *ast.AliasedExpr, expr sql.Expression) bool {

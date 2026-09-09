@@ -92,9 +92,10 @@ func (b *Builder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
 
 	// At this point we've recorded dependencies for higher-level scopes,
 	// so we can build the FROM clause
-	if b.needsAggregation(fromScope, s) {
+	needsAggregation := b.needsAggregation(fromScope, s)
+	if needsAggregation {
 		groupingCols := b.buildGroupingCols(fromScope, projScope, s.GroupBy, s.SelectExprs)
-		outScope = b.buildAggregation(fromScope, projScope, groupingCols)
+		outScope = b.buildAggregation(fromScope, projScope, groupingCols, s.Having)
 	} else if fromScope.windowFuncs != nil {
 		outScope = b.buildWindow(fromScope, projScope)
 	} else {
@@ -106,7 +107,9 @@ func (b *Builder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
 	// expressions in higher level scopes will be replaced with GetField
 	// references.
 
-	b.buildHaving(fromScope, projScope, outScope, s.Having)
+	if !needsAggregation {
+		b.buildHaving(fromScope, projScope, outScope, s.Having)
+	}
 
 	b.buildOrderBy(outScope, orderByScope)
 

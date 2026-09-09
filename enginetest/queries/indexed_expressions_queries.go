@@ -1681,10 +1681,10 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 			{
 				Query: "SHOW INDEX FROM test;",
 				Expected: []sql.Row{
-					{"test", 0, "PRIMARY", 1, "pk", nil, int64(0), nil, nil, "", "BTREE", "", "", "YES", nil},
-					{"test", 1, "idx1", 1, nil, nil, int64(0), nil, nil, "", "BTREE", "", "", "YES", "(coalesce(c1,0))"},
-					{"test", 1, "idx1", 2, "c2", nil, int64(0), nil, nil, "YES", "BTREE", "", "", "YES", nil},
-					{"test", 1, "idx1", 3, nil, nil, int64(0), nil, nil, "", "BTREE", "", "", "YES", "(coalesce(c3,0))"},
+					{"test", 0, "PRIMARY", 1, "pk", "A", int64(0), nil, nil, "", "BTREE", "", "", "YES", nil},
+					{"test", 1, "idx1", 1, nil, "A", int64(0), nil, nil, "", "BTREE", "", "", "YES", "(coalesce(c1,0))"},
+					{"test", 1, "idx1", 2, "c2", "A", int64(0), nil, nil, "YES", "BTREE", "", "", "YES", nil},
+					{"test", 1, "idx1", 3, nil, "A", int64(0), nil, nil, "", "BTREE", "", "", "YES", "(coalesce(c3,0))"},
 				},
 			},
 		},

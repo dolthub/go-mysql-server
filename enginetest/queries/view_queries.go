@@ -651,6 +651,21 @@ CREATE TABLE tab1 (
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/11407
+		Name: "view referenced in subquery with filter on projected literal alias",
+		SetUpScript: []string{
+			"CREATE TABLE base (name VARCHAR(255));",
+			"INSERT INTO base VALUES (NULL);",
+			"CREATE VIEW v AS SELECT name FROM base;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    `SELECT sq.b FROM (SELECT t1.name AS v, 1 AS b FROM v AS t1) AS sq WHERE if(sq.v <> 'x', 1, sq.b);`,
+				Expected: []sql.Row{{1}},
+			},
+		},
+	},
 }
 
 var ViewCreateInSubroutineTests = []ScriptTest{

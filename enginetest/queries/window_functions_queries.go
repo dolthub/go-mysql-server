@@ -49,6 +49,64 @@ var WindowFunctionsScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "window function over grouped one-column input",
+		// PostgreSQL does not support the sql_mode setting required by this MySQL regression.
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"SET sql_mode = ''",
+			"CREATE TABLE grouped_window (id INT PRIMARY KEY, g INT, k INT, v INT)",
+			"INSERT INTO grouped_window VALUES (1,0,2,10), (2,0,1,20), (3,1,1,30)",
+			"CREATE TABLE nullable_grouped_window (id INT PRIMARY KEY, g INT)",
+			"INSERT INTO nullable_grouped_window VALUES (1,NULL), (2,NULL), (3,1), (4,1), (5,2)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT g, ROW_NUMBER() OVER (ORDER BY g) AS r FROM grouped_window GROUP BY g ORDER BY g",
+				Expected: []sql.Row{{0, int64(1)}, {1, int64(2)}},
+			},
+			{
+				Query:    "SELECT g, ROW_NUMBER() OVER (PARTITION BY g ORDER BY g) AS r FROM grouped_window GROUP BY g ORDER BY g",
+				Expected: []sql.Row{{0, int64(1)}, {1, int64(1)}},
+			},
+			{
+				Query:    "SELECT g, ROW_NUMBER() OVER (ORDER BY COUNT(*)) AS r FROM grouped_window GROUP BY g ORDER BY g",
+				Expected: []sql.Row{{0, int64(2)}, {1, int64(1)}},
+			},
+			{
+				Query:    "SELECT g, ROW_NUMBER() OVER (ORDER BY g) + 10 AS r FROM grouped_window GROUP BY g ORDER BY g",
+				Expected: []sql.Row{{0, int64(11)}, {1, int64(12)}},
+			},
+			{
+				Query:    "SELECT g, ROW_NUMBER() OVER (ORDER BY g) AS r FROM grouped_window GROUP BY g HAVING g = 1 ORDER BY g",
+				Expected: []sql.Row{{1, int64(1)}},
+			},
+			{
+				Query:    "SELECT g, COUNT(*) AS n, ROW_NUMBER() OVER (PARTITION BY g ORDER BY g) AS r FROM grouped_window GROUP BY g ORDER BY g",
+				Expected: []sql.Row{{0, int64(2), int64(1)}, {1, int64(1), int64(1)}},
+			},
+			{
+				Query:    "SELECT g, ROW_NUMBER() OVER (PARTITION BY g ORDER BY g) AS r, COUNT(*) AS n FROM grouped_window GROUP BY g ORDER BY g",
+				Expected: []sql.Row{{0, int64(1), int64(2)}, {1, int64(1), int64(1)}},
+			},
+			{
+				Query:    "SELECT g, COUNT(*) AS n, ROW_NUMBER() OVER (PARTITION BY g ORDER BY g) AS r FROM nullable_grouped_window GROUP BY g ORDER BY g",
+				Expected: []sql.Row{{nil, int64(2), int64(1)}, {1, int64(2), int64(1)}, {2, int64(1), int64(1)}},
+			},
+			{
+				Query:    "SELECT ROW_NUMBER() OVER (ORDER BY g) + g AS mixed FROM grouped_window GROUP BY g ORDER BY g",
+				Expected: []sql.Row{{int64(1)}, {int64(3)}},
+			},
+			{
+				Query:    "SELECT COUNT(*) + ROW_NUMBER() OVER (ORDER BY g) AS mixed FROM grouped_window GROUP BY g",
+				Expected: []sql.Row{{int64(3)}, {int64(3)}},
+			},
+			{
+				Query:       "SELECT SUM(ROW_NUMBER() OVER (ORDER BY g)) FROM grouped_window GROUP BY g",
+				ExpectedErr: sql.ErrNonAggregatedColumnWithoutGroupBy,
+			},
+		},
+	},
+	{
 		Name: "literal window expressions over zero-width projected rows",
 		SetUpScript: []string{
 			"CREATE TABLE literal_windows (x int, g int)",
@@ -2210,6 +2268,32 @@ var NamedWindowsScriptTests = []ScriptTest{
 				Query:    `SELECT sum(amt) over (w1 order by id) FROM b WINDOW w1 as (partition by grp) order by id`,
 				Expected: []sql.Row{{float64(10)}, {float64(30)}, {float64(60)}, {float64(5)}, {float64(20)}},
 			},
+		},
+	},
+	{
+		Name: "distinct window partition and order shapes do not collide",
+		SetUpScript: []string{
+			"CREATE TABLE t (id INT PRIMARY KEY, a INT, ab INT, bc INT, c INT, v INT)",
+			"INSERT INTO t VALUES (1,0,0,2,0,10), (2,0,1,1,1,20), (3,1,0,1,0,30), (4,1,1,2,1,40)",
+		},
+		Query: `SELECT id,
+       SUM(v) OVER (
+         PARTITION BY a
+         ORDER BY bc, id
+         ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+       ) AS w1,
+       SUM(v) OVER (
+         PARTITION BY ab
+         ORDER BY c, id
+         ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+       ) AS w2
+FROM t
+ORDER BY id`,
+		Expected: []sql.Row{
+			{int32(1), float64(30), float64(10)},
+			{int32(2), float64(20), float64(20)},
+			{int32(3), float64(30), float64(40)},
+			{int32(4), float64(70), float64(60)},
 		},
 	},
 }

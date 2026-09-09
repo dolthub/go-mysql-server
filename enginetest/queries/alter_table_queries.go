@@ -980,7 +980,7 @@ var AlterTableScripts = []ScriptTest{
 			},
 			{
 				Query:    "show indexes from t2;",
-				Expected: []sql.Row{{"t2", 1, "mySecondIndex", 1, "i", nil, 0, nil, nil, "YES", "BTREE", "", "", "YES", nil}},
+				Expected: []sql.Row{{"t2", 1, "mySecondIndex", 1, "i", "A", 0, nil, nil, "YES", "BTREE", "", "", "YES", nil}},
 			},
 			{
 				Query:    "alter table t3 rename index MYiNDEX3 to anotherIndex;",
@@ -988,7 +988,7 @@ var AlterTableScripts = []ScriptTest{
 			},
 			{
 				Query:    "show indexes from t3;",
-				Expected: []sql.Row{{"t3", 1, "anotherIndex", 1, "i", nil, 0, nil, nil, "YES", "BTREE", "", "", "YES", nil}},
+				Expected: []sql.Row{{"t3", 1, "anotherIndex", 1, "i", "A", 0, nil, nil, "YES", "BTREE", "", "", "YES", nil}},
 			},
 		},
 	},

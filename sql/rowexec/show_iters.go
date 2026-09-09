@@ -266,13 +266,18 @@ func (i *showIndexesIter) Next(ctx *sql.Context) (sql.Row, error) {
 		nonUnique = 1
 	}
 
+	collation := "A"
+	if orders := sql.IndexColumnOrders(ctx, show.index); show.exPosition < len(orders) && orders[show.exPosition].Descending {
+		collation = "D"
+	}
+
 	return sql.NewRow(
 		show.index.Table(),     // "Table" string
 		nonUnique,              // "Non_unique" int32, Values [0, 1]
 		show.index.ID(),        // "Key_name" string
 		show.exPosition+1,      // "Seq_in_index" int32
 		columnName,             // "Column_name" string
-		nil,                    // "Collation" string, Values [A, D, NULL]
+		collation,              // "Collation" string, Values [A, D, NULL]
 		int64(0),               // "Cardinality" int64 (not calculated)
 		nil,                    // "Sub_part" int64
 		nil,                    // "Packed" string
@@ -483,12 +488,14 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 		}
 
 		prefixLengths := index.PrefixLengths()
+		orders := sql.IndexColumnOrders(ctx, index)
 		var indexCols []string
 		for idx, expr := range index.Expressions() {
 			col := plan.GetColumnFromIndexExpr(ctx, expr, table)
 			if col == nil {
 				continue
 			}
+			var indexDef string
 			if col.HiddenSystem && col.Generated != nil {
 				// TODO: The paren-doubling workaround inside GetGeneratedColumnExpressionString is due to
 				// an inconsistency in how Dolt stores generated expressions. Dolt's ToDoltCol() serializes
@@ -503,14 +510,17 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 				//      col.Generated.String(), removing the extra paren at the source. Requires
 				//      migration for any existing databases with functional indexes.
 				// Either fix would let GetGeneratedColumnExpressionString use col.Generated.String() unconditionally.
-				indexCols = append(indexCols, plan.GetGeneratedColumnExpressionString(col))
+				indexDef = plan.GetGeneratedColumnExpressionString(col)
 			} else {
-				indexDef := i.formatter.QuoteIdentifier(col.Name)
+				indexDef = i.formatter.QuoteIdentifier(col.Name)
 				if len(prefixLengths) > idx && prefixLengths[idx] != 0 {
 					indexDef += fmt.Sprintf("(%v)", prefixLengths[idx])
 				}
-				indexCols = append(indexCols, indexDef)
 			}
+			if idx < len(orders) && orders[idx].Descending {
+				indexDef += " DESC"
+			}
+			indexCols = append(indexCols, indexDef)
 		}
 
 		indexDefn, shouldInclude := i.formatter.GenerateCreateTableIndexDefinition(index.IsUnique(), index.IsSpatial(),
