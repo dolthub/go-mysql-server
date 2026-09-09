@@ -38,35 +38,29 @@ func (a *AnyValue) IsNullable(ctx *sql.Context) bool {
 }
 
 func (a *AnyValue) String() string {
+	ret := "ANY_VALUE(" + a.Child.String() + ")"
 	if a.window != nil {
-		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("ANYVALUE")
-		children := []string{a.window.String(), a.Child.String()}
-		pr.WriteChildren(children...)
-		return pr.String()
+		ret += " " + a.window.String()
 	}
-	return "ANYVALUE(" + a.Child.String() + ")"
+	return ret
 }
 
 func (a *AnyValue) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
 	if options.Debug {
 		if a.window != nil {
 			pr := sql.NewTreePrinter()
-			_ = pr.WriteNode("ANYVALUE")
+			_ = pr.WriteNode("ANY_VALUE")
 			children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
 			pr.WriteChildren(children...)
 			return pr.String()
 		}
-		return fmt.Sprintf("ANYVALUE(%s)", sql.Describe(ctx, a.Child, options))
+		return fmt.Sprintf("ANY_VALUE(%s)", sql.Describe(ctx, a.Child, options))
 	}
+	ret := "ANY_VALUE(" + sql.Describe(ctx, a.Child, options) + ")"
 	if a.window != nil {
-		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("ANYVALUE")
-		children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
-		pr.WriteChildren(children...)
-		return pr.String()
+		ret += " " + sql.Describe(ctx, a.window, options)
 	}
-	return "ANYVALUE(" + sql.Describe(ctx, a.Child, options) + ")"
+	return ret
 }
 
 func (a *AnyValue) DebugString(ctx *sql.Context) string {

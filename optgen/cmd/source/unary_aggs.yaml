@@ -1,5 +1,7 @@
 unaryAggs:
 - name:     "AnyValue"
+  sqlName:  "any_value"
+  sqlString: true
   desc:     "returns any single value in the grouped rows"
   nullable: true
 - name:     "Avg"
