@@ -219,75 +219,50 @@ func (t datetimeType) Convert(ctx context.Context, v any) (any, sql.ConvertInRan
 	// For most integer values, we just return an error (but MySQL is more lenient for some of these). A special case
 	// is zero values, which are important when converting from postgres defaults.
 	case bool:
-		if !value {
-			return ZeroTime, sql.InRange, nil
+		if value {
+			err = sql.ErrTruncatedIncorrect.New(t.String(), v)
 		}
-		return ZeroTime, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
-	case int:
-		if value == 0 {
-			return ZeroTime, sql.InRange, nil
+		return ZeroTime, sql.InRange, err
+	case int, int8, int16, int32, int64,
+		uint, uint8, uint16, uint32, uint64,
+		float32, float64, apd.Decimal:
+		var ok bool
+		switch val := value.(type) {
+		case int:
+			res, ok = t.convertNumber(int64(val), 0)
+		case int8:
+			res, ok = t.convertNumber(int64(val), 0)
+		case int16:
+			res, ok = t.convertNumber(int64(val), 0)
+		case int32:
+			res, ok = t.convertNumber(int64(val), 0)
+		case int64:
+			res, ok = t.convertNumber(val, 0)
+		// unsigned integers that overflow an int64 will be negative and fail a check in convertNumber
+		case uint:
+			res, ok = t.convertNumber(int64(val), 0)
+		case uint8:
+			res, ok = t.convertNumber(int64(val), 0)
+		case uint16:
+			res, ok = t.convertNumber(int64(val), 0)
+		case uint32:
+			res, ok = t.convertNumber(int64(val), 0)
+		case uint64:
+			res, ok = t.convertNumber(int64(val), 0)
+		case float32:
+			// TODO: split into datetime and micros
+			res, ok = t.convertNumber(int64(val), 0)
+		case float64:
+			// TODO: split into datetime and micros
+			res, ok = t.convertNumber(int64(val), 0)
+		case *apd.Decimal:
+			// TODO: split into datetime and micros
+			intPart, _ := val.Int64()
+			res, ok = t.convertNumber(intPart, 0)
 		}
-		return ZeroTime, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
-	case int8:
-		if value == 0 {
-			return ZeroTime, sql.InRange, nil
+		if !ok {
+			return res, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
 		}
-		return ZeroTime, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
-	case int16:
-		if value == 0 {
-			return ZeroTime, sql.InRange, nil
-		}
-		return ZeroTime, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
-	case int32:
-		if value == 0 {
-			return ZeroTime, sql.InRange, nil
-		}
-		return ZeroTime, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
-	case int64:
-		if value == 0 {
-			return ZeroTime, sql.InRange, nil
-		}
-		return ZeroTime, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
-	case uint:
-		if value == 0 {
-			return ZeroTime, sql.InRange, nil
-		}
-		return ZeroTime, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
-	case uint8:
-		if value == 0 {
-			return ZeroTime, sql.InRange, nil
-		}
-		return ZeroTime, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
-	case uint16:
-		if value == 0 {
-			return ZeroTime, sql.InRange, nil
-		}
-		return ZeroTime, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
-	case uint32:
-		if value == 0 {
-			return ZeroTime, sql.InRange, nil
-		}
-		return ZeroTime, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
-	case uint64:
-		if value == 0 {
-			return ZeroTime, sql.InRange, nil
-		}
-		return ZeroTime, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
-	case float32:
-		if value == 0 {
-			return ZeroTime, sql.InRange, nil
-		}
-		return ZeroTime, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
-	case float64:
-		if value == 0 {
-			return ZeroTime, sql.InRange, nil
-		}
-		return ZeroTime, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
-	case *apd.Decimal:
-		if value.IsZero() {
-			return ZeroTime, sql.InRange, nil
-		}
-		return ZeroTime, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
 	default:
 		return ZeroTime, sql.InRange, sql.ErrConvertToSQL.New(value, t)
 	}
@@ -326,6 +301,48 @@ func (t datetimeType) Convert(ctx context.Context, v any) (any, sql.ConvertInRan
 	}
 
 	return resTime, sql.InRange, err // Keep any errors as potential warnings later
+}
+
+const ClockOffset = 100_00_00                 // HH_MM_SS
+const MaxDatetimeNumber = 9999_12_31_23_59_59 // YYYY_MM_DD_HH_MM_SS
+
+// convertNumber converts datetime and nanos into the appropriate time.Time object according to the MySQL spec.
+// Reference: https://github.com/google/mysql/blob/master/sql-common/my_time.c#L1209
+func (t datetimeType) convertNumber(datetime int64, micros int64) (any, bool) {
+	if datetime < 0 || micros < 0 {
+		return nil, false
+	}
+	if datetime == 0 && micros == 0 {
+		return ZeroTime, true
+	}
+	// convert each case to YYYY_MM_DD_HH_MM_SS format
+	switch {
+	case datetime < 0000_01_01:
+		return nil, false
+	case datetime <= 69_12_31: // YY_MM_DD, years 2000-2069
+		datetime = (datetime + 2000_00_00) * ClockOffset
+	case datetime < 70_01_01:
+		return nil, false
+	case datetime <= 99_12_31: // YY_MM_DD, years 1970-1999
+		datetime = (datetime + 1900_00_00) * ClockOffset
+	case datetime <= 9999_12_31: // YYYY_MM_DD
+		datetime *= ClockOffset
+	case datetime <= 69_12_31_23_59_59: // YY_MM_DD_HH_MM_SS, years 2000-2069
+		datetime += 2000_00_00_00_00_00
+	case datetime < 70_01_01_00_00_00:
+		return nil, false
+	case datetime <= 99_12_31_23_59_59: // YY_MM_DD_HH_MM_SS, years 1970-1999
+		datetime += 1900_00_00_00_00_00
+	case datetime > MaxDatetimeNumber: // YYYY_MM_DD_HH_MM_SS
+		return nil, false
+	}
+
+	date, clock := int(datetime/ClockOffset), int(datetime%ClockOffset)
+	year, month, day := date/100_00, (date/100)%100, date%100
+	hour, mins, sec := clock/100_00, (clock/100)%100, clock%100
+	nanos := int(micros * 1000)
+	res := time.Date(year, time.Month(month), day, hour, mins, sec, nanos, time.UTC)
+	return res, true
 }
 
 // precisionConversion is a conversion ratio to divide time.Second by to truncate the appropriate amount for the
