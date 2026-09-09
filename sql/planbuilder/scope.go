@@ -654,15 +654,11 @@ func (s *scope) handleErr(err error) {
 type columnId uint16
 
 type scopeColumn struct {
-	typ    sql.Type
-	scalar sql.Expression
-	db     string
-	table  string
-	col    string
-	// debugCol preserves a window expression's detailed EXPLAIN output after it becomes a GetField.
-	// col must retain its SQL identity for name resolution and expression deduplication; storing the
-	// debug tree there would make planning depend on EXPLAIN formatting. This field is only for display.
-	debugCol    string
+	typ         sql.Type
+	scalar      sql.Expression
+	db          string
+	table       string
+	col         string
 	originalCol string
 	id          columnId
 	tableId     sql.TableId
@@ -721,11 +717,7 @@ func (c scopeColumn) scalarGf() sql.Expression {
 	if c.originalCol != "" {
 		name = c.originalCol
 	}
-	field := expression.NewGetFieldWithTable(int(c.id), int(c.tableId), c.typ, c.db, c.table, name, c.nullable)
-	if c.debugCol != "" {
-		field = field.WithDebugName(c.debugCol)
-	}
-	return field
+	return expression.NewGetFieldWithTable(int(c.id), int(c.tableId), c.typ, c.db, c.table, name, c.nullable)
 }
 
 func (c scopeColumn) String() string {

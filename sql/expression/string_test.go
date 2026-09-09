@@ -247,12 +247,12 @@ func TestGeomCollFromWKBString(t *testing.T) {
 	require.IsType(t, &spatial.GeomCollFromWKB{}, cloned)
 }
 
-func TestGetFieldDescribeUsesSeparateDebugName(t *testing.T) {
-	expr := expression.NewGetField(2, types.Int64, "sum(x) over ()", false).WithDebugName("sum\n └─ x\n")
+func TestGetFieldDescribe(t *testing.T) {
+	expr := expression.NewGetField(2, types.Int64, "sum(x) over ()", false)
 
 	require.Equal(t, "sum(x) over ()", expr.String())
 	require.Equal(t, "sum(x) over ()", sql.Describe(nil, expr, sql.DescribeOptions{Estimates: true}))
-	require.Equal(t, "sum\n └─ x\n:2!null", sql.Describe(nil, expr, sql.DescribeOptions{Debug: true}))
+	require.Equal(t, "sum(x) over ():2!null", sql.Describe(nil, expr, sql.DescribeOptions{Debug: true}))
 }
 
 func TestGetFieldString(t *testing.T) {
