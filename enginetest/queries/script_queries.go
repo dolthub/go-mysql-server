@@ -14796,9 +14796,6 @@ select * from t1 except (
 			"INSERT INTO outer_rows VALUES (1), (2), (3)",
 			"INSERT INTO inner_rows VALUES (10), (20), (30)",
 		},
-		// Subquery.String() matches its input SQL, but that text is not a referenceable SELECT alias.
-		// Without the scalar-subquery guard in selectExprToExpression, registering it as an alias
-		// gives the correlated reference to threshold an out-of-bounds field index during execution.
 		Query:    "SELECT x * 10 AS threshold, (SELECT MAX(y) FROM inner_rows WHERE y <= threshold) FROM outer_rows ORDER BY 1",
 		Expected: []sql.Row{{10, 10}, {20, 20}, {30, 30}},
 	},

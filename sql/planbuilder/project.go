@@ -211,9 +211,7 @@ func (b *Builder) selectExprToExpression(inScope *scope, se ast.SelectExpr) sql.
 			return expression.NewAlias(b.ctx, e.As.String(), expr)
 		}
 		if selectExprNeedsAlias(b.ctx, e, expr) {
-			// A scalar subquery's SQL text is a column label, not a referenceable SELECT alias. Registering it
-			// in the alias scope can give references to preceding SELECT aliases inside the subquery incorrect
-			// field indexes; see the "Scalar subquery referencing a preceding SELECT alias" script test.
+			// A scalar subquery's SQL text is a column label, not a referenceable SELECT alias.
 			if _, ok := expr.(*plan.Subquery); ok {
 				return expression.NewAlias(b.ctx, e.InputExpression, expr).AsUnreferencable()
 			}
