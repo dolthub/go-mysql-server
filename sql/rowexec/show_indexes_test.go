@@ -121,7 +121,7 @@ func TestShowIndexes(t *testing.T) {
 					idx.ID(),
 					i+1,
 					columnName,
-					nil,
+					"A",
 					int64(0),
 					nil,
 					nil,

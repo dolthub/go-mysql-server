@@ -507,7 +507,7 @@ var CreateTableScriptTests = []ScriptTest{
 			{
 				Query: "SHOW KEYS FROM ost_user__cdata WHERE Key_name = 'PRIMARY'",
 				Expected: []sql.Row{
-					{"ost_user__cdata", 0, "PRIMARY", 1, "user_id", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+					{"ost_user__cdata", 0, "PRIMARY", 1, "user_id", "A", 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 				},
 			},
 		},
@@ -543,7 +543,7 @@ var CreateTableScriptTests = []ScriptTest{
 			{
 				Query: "SHOW KEYS FROM t2 WHERE Key_name = 'PRIMARY'",
 				Expected: []sql.Row{
-					{"t2", 0, "PRIMARY", 1, "a", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+					{"t2", 0, "PRIMARY", 1, "a", "A", 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 				},
 			},
 			{
@@ -560,7 +560,7 @@ var CreateTableScriptTests = []ScriptTest{
 			{
 				Query: "SHOW KEYS FROM indexed WHERE Key_name = 'name'",
 				Expected: []sql.Row{
-					{"indexed", 1, "name", 1, "name", nil, 0, nil, nil, "YES", "BTREE", "", "", "YES", nil},
+					{"indexed", 1, "name", 1, "name", "A", 0, nil, nil, "YES", "BTREE", "", "", "YES", nil},
 				},
 			},
 			{
@@ -591,7 +591,7 @@ var CreateTableScriptTests = []ScriptTest{
 			{
 				Query: "SHOW KEYS FROM uniq WHERE Key_name = 'a'",
 				Expected: []sql.Row{
-					{"uniq", 0, "a", 1, "a", nil, 0, nil, nil, "YES", "BTREE", "", "", "YES", nil},
+					{"uniq", 0, "a", 1, "a", "A", 0, nil, nil, "YES", "BTREE", "", "", "YES", nil},
 				},
 			},
 			{
