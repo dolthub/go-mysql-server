@@ -75,7 +75,11 @@ func (b *Builder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
 	// 5) Build top-level scopes, replacing aggregation and aliases with
 	//    projections from (4).
 	// 6) Finish with final target projections.
+	outerQuery := inScope.querySource
 	fromScope := b.buildFrom(inScope, s.From)
+	fromScope.querySource = fromScope
+	fromScope.outerQuery = outerQuery
+	fromScope.querySubquery = inScope.nearestSubquery()
 	if cn, ok := fromScope.node.(sql.CommentedNode); ok && len(s.Comments) > 0 {
 		fromScope.node = cn.WithComment(string(s.Comments[0]))
 	}
@@ -96,6 +100,11 @@ func (b *Builder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
 	// Find aggregations in order by
 	orderByScope := b.analyzeOrderBy(fromScope, projScope, s.OrderBy)
 
+	var groupingCols []sql.Expression
+	if len(s.GroupBy) > 0 {
+		groupingCols = b.buildGroupingCols(fromScope, projScope, s.GroupBy, s.SelectExprs)
+	}
+
 	// Find aggregations in having
 	b.analyzeHaving(fromScope, projScope, s.Having)
 
@@ -103,7 +112,6 @@ func (b *Builder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
 	// so we can build the FROM clause
 	needsAggregation := b.needsAggregation(fromScope, s)
 	if needsAggregation {
-		groupingCols := b.buildGroupingCols(fromScope, projScope, s.GroupBy, s.SelectExprs)
 		outScope = b.buildAggregation(fromScope, projScope, groupingCols, s.Having)
 	} else if fromScope.windowFuncs != nil {
 		outScope = b.buildWindow(fromScope, projScope)
