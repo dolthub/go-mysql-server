@@ -15,9 +15,11 @@ func TestAggGen(t *testing.T) {
 		defines: AggDefs{
 			[]AggDef{
 				{
-					Name:    "Test",
-					Desc:    "Test description",
-					RetType: "sql.Float64",
+					Name:          "Test",
+					Desc:          "Test description",
+					RetType:       "sql.Float64",
+					SqlString:     true,
+					WindowSqlName: "test_window",
 				},
 			},
 		},
@@ -36,6 +38,7 @@ func TestAggGen(t *testing.T) {
 
         var _ sql.FunctionExpression = (*Test)(nil)
         var _ sql.Aggregation = (*Test)(nil)
+        var _ sql.Describable = (*Test)(nil)
         var _ sql.WindowAdaptableExpression = (*Test)(nil)
 
         func NewTest(e sql.Expression) *Test {
@@ -58,24 +61,30 @@ func TestAggGen(t *testing.T) {
 
         func (a *Test) String() string {
           if a.window != nil {
-            pr := sql.NewTreePrinter()
-            _ = pr.WriteNode("TEST")
-        	    children := []string{a.window.String(), a.Child.String()}
-            pr.WriteChildren(children...)
-            return pr.String()
+	        return "TEST_WINDOW(" + a.Child.String() + ") " + a.window.String()
           }
-          return "TEST(" + a.Child.String() + ")"
+	      return "TEST(" + a.Child.String() + ")"
+        }
+
+        func (a *Test) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
+          if options.Debug {
+            if a.window != nil {
+              pr := sql.NewTreePrinter()
+              _ = pr.WriteNode("TEST")
+	      children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
+              pr.WriteChildren(children...)
+              return pr.String()
+            }
+            return fmt.Sprintf("TEST(%s)", sql.Describe(ctx, a.Child, options))
+          }
+          if a.window != nil {
+            return "TEST_WINDOW(" + sql.Describe(ctx, a.Child, options) + ") " + sql.Describe(ctx, a.window, options)
+          }
+          return "TEST(" + sql.Describe(ctx, a.Child, options) + ")"
         }
 
         func (a *Test) DebugString(ctx *sql.Context) string {
-          if a.window != nil {
-            pr := sql.NewTreePrinter()
-            _ = pr.WriteNode("TEST")
-        	    children := []string{sql.DebugString(ctx, a.window), sql.DebugString(ctx, a.Child)}
-            pr.WriteChildren(children...)
-            return pr.String()
-          }
-          return fmt.Sprintf("TEST(%s)", sql.DebugString(ctx, a.Child))
+          return a.Describe(ctx, sql.DescribeOptions{Debug: true})
         }
 
         func (a *Test) WithWindow(ctx *sql.Context, window *sql.WindowDefinition) sql.WindowAdaptableExpression {

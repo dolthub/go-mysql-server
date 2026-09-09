@@ -15,11 +15,13 @@ type AggDefs struct {
 }
 
 type AggDef struct {
-	Name     string `yaml:"name"`
-	SqlName  string `yaml:"sqlName"`
-	Desc     string `yaml:"desc"`
-	RetType  string `yaml:"retType"` // must be valid sql.Type
-	Nullable bool   `yaml:"nullable"`
+	Name          string `yaml:"name"`
+	SqlName       string `yaml:"sqlName"`
+	WindowSqlName string `yaml:"windowSqlName"`
+	Desc          string `yaml:"desc"`
+	RetType       string `yaml:"retType"` // must be valid sql.Type
+	Nullable      bool   `yaml:"nullable"`
+	SqlString     bool   `yaml:"sqlString"`
 }
 
 var _ GenDefs = ([]AggDef)(nil)
@@ -59,6 +61,7 @@ func (g *AggGen) Generate(defines GenDefs, w io.Writer) {
 		g.genAggConstructor(define)
 		g.genAggPropAccessors(define)
 		g.genAggStringer(define)
+		g.genAggDescriber(define)
 		g.genAggWithWindow(define)
 		g.genAggWithChildren(define)
 		g.genAggWithId(define)
@@ -76,6 +79,7 @@ func (g *AggGen) genAggType(define AggDef) {
 func (g *AggGen) genAggInterfaces(define AggDef) {
 	fmt.Fprintf(g.w, "var _ sql.FunctionExpression = (*%s)(nil)\n", define.Name)
 	fmt.Fprintf(g.w, "var _ sql.Aggregation = (*%s)(nil)\n", define.Name)
+	fmt.Fprintf(g.w, "var _ sql.Describable = (*%s)(nil)\n", define.Name)
 	fmt.Fprintf(g.w, "var _ sql.WindowAdaptableExpression = (*%s)(nil)\n", define.Name)
 	fmt.Fprintf(g.w, "\n")
 
@@ -113,25 +117,78 @@ func (g *AggGen) genAggStringer(define AggDef) {
 		sqlName = define.SqlName
 	}
 	fmt.Fprintf(g.w, "func (a *%s) String() string {\n", define.Name)
-	fmt.Fprintf(g.w, "  if a.window != nil {\n")
-	fmt.Fprintf(g.w, "    pr := sql.NewTreePrinter()\n")
-	fmt.Fprintf(g.w, "    _ = pr.WriteNode(\"%s\")\n	", strings.ToUpper(sqlName))
-	fmt.Fprintf(g.w, "    children := []string{a.window.String(), a.Child.String()}\n")
-	fmt.Fprintf(g.w, "    pr.WriteChildren(children...)\n")
-	fmt.Fprintf(g.w, "    return pr.String()\n")
+	if define.SqlString {
+		if define.WindowSqlName != "" {
+			fmt.Fprintf(g.w, "  if a.window != nil {\n")
+			fmt.Fprintf(g.w, "    return \"%s(\" + a.Child.String() + \") \" + a.window.String()\n", strings.ToUpper(define.WindowSqlName))
+			fmt.Fprintf(g.w, "  }\n")
+			fmt.Fprintf(g.w, "  return \"%s(\" + a.Child.String() + \")\"\n", strings.ToUpper(sqlName))
+			fmt.Fprintf(g.w, "}\n\n")
+		} else {
+			fmt.Fprintf(g.w, "  ret := \"%s(\" + a.Child.String() + \")\"\n", strings.ToUpper(sqlName))
+			fmt.Fprintf(g.w, "  if a.window != nil {\n")
+			fmt.Fprintf(g.w, "    ret += \" \" + a.window.String()\n")
+			fmt.Fprintf(g.w, "  }\n")
+			fmt.Fprintf(g.w, "  return ret\n")
+			fmt.Fprintf(g.w, "}\n\n")
+		}
+	} else {
+		fmt.Fprintf(g.w, "  if a.window != nil {\n")
+		fmt.Fprintf(g.w, "    pr := sql.NewTreePrinter()\n")
+		fmt.Fprintf(g.w, "    _ = pr.WriteNode(\"%s\")\n	", strings.ToUpper(sqlName))
+		fmt.Fprintf(g.w, "    children := []string{a.window.String(), a.Child.String()}\n")
+		fmt.Fprintf(g.w, "    pr.WriteChildren(children...)\n")
+		fmt.Fprintf(g.w, "    return pr.String()\n")
+		fmt.Fprintf(g.w, "  }\n")
+		fmt.Fprintf(g.w, " return \"%s(\" + a.Child.String() + \")\"\n", strings.ToUpper(sqlName))
+		fmt.Fprintf(g.w, "}\n\n")
+	}
+
+}
+
+func (g *AggGen) genAggDescriber(define AggDef) {
+	sqlName := define.Name
+	if define.SqlName != "" {
+		sqlName = define.SqlName
+	}
+	fmt.Fprintf(g.w, "func (a *%s) Describe(ctx *sql.Context, options sql.DescribeOptions) string {\n", define.Name)
+	fmt.Fprintf(g.w, "  if options.Debug {\n")
+	fmt.Fprintf(g.w, "    if a.window != nil {\n")
+	fmt.Fprintf(g.w, "      pr := sql.NewTreePrinter()\n")
+	fmt.Fprintf(g.w, "      _ = pr.WriteNode(\"%s\")\n	", strings.ToUpper(sqlName))
+	fmt.Fprintf(g.w, "      children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}\n")
+	fmt.Fprintf(g.w, "      pr.WriteChildren(children...)\n")
+	fmt.Fprintf(g.w, "      return pr.String()\n")
+	fmt.Fprintf(g.w, "    }\n")
+	fmt.Fprintf(g.w, "    return fmt.Sprintf(\"%s(%%s)\", sql.Describe(ctx, a.Child, options))\n", strings.ToUpper(sqlName))
 	fmt.Fprintf(g.w, "  }\n")
-	fmt.Fprintf(g.w, " return \"%s(\" + a.Child.String() + \")\"\n", strings.ToUpper(sqlName))
+	if define.SqlString {
+		if define.WindowSqlName != "" {
+			fmt.Fprintf(g.w, "  if a.window != nil {\n")
+			fmt.Fprintf(g.w, "    return \"%s(\" + sql.Describe(ctx, a.Child, options) + \") \" + sql.Describe(ctx, a.window, options)\n", strings.ToUpper(define.WindowSqlName))
+			fmt.Fprintf(g.w, "  }\n")
+			fmt.Fprintf(g.w, "  return \"%s(\" + sql.Describe(ctx, a.Child, options) + \")\"\n", strings.ToUpper(sqlName))
+		} else {
+			fmt.Fprintf(g.w, "  ret := \"%s(\" + sql.Describe(ctx, a.Child, options) + \")\"\n", strings.ToUpper(sqlName))
+			fmt.Fprintf(g.w, "  if a.window != nil {\n")
+			fmt.Fprintf(g.w, "    ret += \" \" + sql.Describe(ctx, a.window, options)\n")
+			fmt.Fprintf(g.w, "  }\n")
+			fmt.Fprintf(g.w, "  return ret\n")
+		}
+	} else {
+		fmt.Fprintf(g.w, "  if a.window != nil {\n")
+		fmt.Fprintf(g.w, "    pr := sql.NewTreePrinter()\n")
+		fmt.Fprintf(g.w, "    _ = pr.WriteNode(\"%s\")\n	", strings.ToUpper(sqlName))
+		fmt.Fprintf(g.w, "    children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}\n")
+		fmt.Fprintf(g.w, "    pr.WriteChildren(children...)\n")
+		fmt.Fprintf(g.w, "    return pr.String()\n")
+		fmt.Fprintf(g.w, "  }\n")
+		fmt.Fprintf(g.w, "  return \"%s(\" + sql.Describe(ctx, a.Child, options) + \")\"\n", strings.ToUpper(sqlName))
+	}
 	fmt.Fprintf(g.w, "}\n\n")
 
 	fmt.Fprintf(g.w, "func (a *%s) DebugString(ctx *sql.Context) string {\n", define.Name)
-	fmt.Fprintf(g.w, "  if a.window != nil {\n")
-	fmt.Fprintf(g.w, "    pr := sql.NewTreePrinter()\n")
-	fmt.Fprintf(g.w, "    _ = pr.WriteNode(\"%s\")\n	", strings.ToUpper(sqlName))
-	fmt.Fprintf(g.w, "    children := []string{sql.DebugString(ctx, a.window), sql.DebugString(ctx, a.Child)}\n")
-	fmt.Fprintf(g.w, "    pr.WriteChildren(children...)\n")
-	fmt.Fprintf(g.w, "    return pr.String()\n")
-	fmt.Fprintf(g.w, "  }\n")
-	fmt.Fprintf(g.w, "  return fmt.Sprintf(\"%s(%%s)\", sql.DebugString(ctx, a.Child))\n", strings.ToUpper(sqlName))
+	fmt.Fprintf(g.w, "  return a.Describe(ctx, sql.DescribeOptions{Debug: true})\n")
 	fmt.Fprintf(g.w, "}\n\n")
 }
 

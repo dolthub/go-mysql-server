@@ -16,6 +16,7 @@ type AnyValue struct {
 
 var _ sql.FunctionExpression = (*AnyValue)(nil)
 var _ sql.Aggregation = (*AnyValue)(nil)
+var _ sql.Describable = (*AnyValue)(nil)
 var _ sql.WindowAdaptableExpression = (*AnyValue)(nil)
 
 func NewAnyValue(e sql.Expression) *AnyValue {
@@ -47,15 +48,29 @@ func (a *AnyValue) String() string {
 	return "ANYVALUE(" + a.Child.String() + ")"
 }
 
-func (a *AnyValue) DebugString(ctx *sql.Context) string {
+func (a *AnyValue) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
+	if options.Debug {
+		if a.window != nil {
+			pr := sql.NewTreePrinter()
+			_ = pr.WriteNode("ANYVALUE")
+			children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
+			pr.WriteChildren(children...)
+			return pr.String()
+		}
+		return fmt.Sprintf("ANYVALUE(%s)", sql.Describe(ctx, a.Child, options))
+	}
 	if a.window != nil {
 		pr := sql.NewTreePrinter()
 		_ = pr.WriteNode("ANYVALUE")
-		children := []string{sql.DebugString(ctx, a.window), sql.DebugString(ctx, a.Child)}
+		children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("ANYVALUE(%s)", sql.DebugString(ctx, a.Child))
+	return "ANYVALUE(" + sql.Describe(ctx, a.Child, options) + ")"
+}
+
+func (a *AnyValue) DebugString(ctx *sql.Context) string {
+	return a.Describe(ctx, sql.DescribeOptions{Debug: true})
 }
 
 func (a *AnyValue) WithWindow(ctx *sql.Context, window *sql.WindowDefinition) sql.WindowAdaptableExpression {
@@ -95,6 +110,7 @@ type Avg struct {
 
 var _ sql.FunctionExpression = (*Avg)(nil)
 var _ sql.Aggregation = (*Avg)(nil)
+var _ sql.Describable = (*Avg)(nil)
 var _ sql.WindowAdaptableExpression = (*Avg)(nil)
 
 func NewAvg(e sql.Expression) *Avg {
@@ -126,15 +142,29 @@ func (a *Avg) String() string {
 	return "AVG(" + a.Child.String() + ")"
 }
 
-func (a *Avg) DebugString(ctx *sql.Context) string {
+func (a *Avg) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
+	if options.Debug {
+		if a.window != nil {
+			pr := sql.NewTreePrinter()
+			_ = pr.WriteNode("AVG")
+			children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
+			pr.WriteChildren(children...)
+			return pr.String()
+		}
+		return fmt.Sprintf("AVG(%s)", sql.Describe(ctx, a.Child, options))
+	}
 	if a.window != nil {
 		pr := sql.NewTreePrinter()
 		_ = pr.WriteNode("AVG")
-		children := []string{sql.DebugString(ctx, a.window), sql.DebugString(ctx, a.Child)}
+		children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("AVG(%s)", sql.DebugString(ctx, a.Child))
+	return "AVG(" + sql.Describe(ctx, a.Child, options) + ")"
+}
+
+func (a *Avg) DebugString(ctx *sql.Context) string {
+	return a.Describe(ctx, sql.DescribeOptions{Debug: true})
 }
 
 func (a *Avg) WithWindow(ctx *sql.Context, window *sql.WindowDefinition) sql.WindowAdaptableExpression {
@@ -174,6 +204,7 @@ type BitAnd struct {
 
 var _ sql.FunctionExpression = (*BitAnd)(nil)
 var _ sql.Aggregation = (*BitAnd)(nil)
+var _ sql.Describable = (*BitAnd)(nil)
 var _ sql.WindowAdaptableExpression = (*BitAnd)(nil)
 
 func NewBitAnd(e sql.Expression) *BitAnd {
@@ -205,15 +236,29 @@ func (a *BitAnd) String() string {
 	return "BITAND(" + a.Child.String() + ")"
 }
 
-func (a *BitAnd) DebugString(ctx *sql.Context) string {
+func (a *BitAnd) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
+	if options.Debug {
+		if a.window != nil {
+			pr := sql.NewTreePrinter()
+			_ = pr.WriteNode("BITAND")
+			children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
+			pr.WriteChildren(children...)
+			return pr.String()
+		}
+		return fmt.Sprintf("BITAND(%s)", sql.Describe(ctx, a.Child, options))
+	}
 	if a.window != nil {
 		pr := sql.NewTreePrinter()
 		_ = pr.WriteNode("BITAND")
-		children := []string{sql.DebugString(ctx, a.window), sql.DebugString(ctx, a.Child)}
+		children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("BITAND(%s)", sql.DebugString(ctx, a.Child))
+	return "BITAND(" + sql.Describe(ctx, a.Child, options) + ")"
+}
+
+func (a *BitAnd) DebugString(ctx *sql.Context) string {
+	return a.Describe(ctx, sql.DescribeOptions{Debug: true})
 }
 
 func (a *BitAnd) WithWindow(ctx *sql.Context, window *sql.WindowDefinition) sql.WindowAdaptableExpression {
@@ -253,6 +298,7 @@ type BitOr struct {
 
 var _ sql.FunctionExpression = (*BitOr)(nil)
 var _ sql.Aggregation = (*BitOr)(nil)
+var _ sql.Describable = (*BitOr)(nil)
 var _ sql.WindowAdaptableExpression = (*BitOr)(nil)
 
 func NewBitOr(e sql.Expression) *BitOr {
@@ -284,15 +330,29 @@ func (a *BitOr) String() string {
 	return "BITOR(" + a.Child.String() + ")"
 }
 
-func (a *BitOr) DebugString(ctx *sql.Context) string {
+func (a *BitOr) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
+	if options.Debug {
+		if a.window != nil {
+			pr := sql.NewTreePrinter()
+			_ = pr.WriteNode("BITOR")
+			children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
+			pr.WriteChildren(children...)
+			return pr.String()
+		}
+		return fmt.Sprintf("BITOR(%s)", sql.Describe(ctx, a.Child, options))
+	}
 	if a.window != nil {
 		pr := sql.NewTreePrinter()
 		_ = pr.WriteNode("BITOR")
-		children := []string{sql.DebugString(ctx, a.window), sql.DebugString(ctx, a.Child)}
+		children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("BITOR(%s)", sql.DebugString(ctx, a.Child))
+	return "BITOR(" + sql.Describe(ctx, a.Child, options) + ")"
+}
+
+func (a *BitOr) DebugString(ctx *sql.Context) string {
+	return a.Describe(ctx, sql.DescribeOptions{Debug: true})
 }
 
 func (a *BitOr) WithWindow(ctx *sql.Context, window *sql.WindowDefinition) sql.WindowAdaptableExpression {
@@ -332,6 +392,7 @@ type BitXor struct {
 
 var _ sql.FunctionExpression = (*BitXor)(nil)
 var _ sql.Aggregation = (*BitXor)(nil)
+var _ sql.Describable = (*BitXor)(nil)
 var _ sql.WindowAdaptableExpression = (*BitXor)(nil)
 
 func NewBitXor(e sql.Expression) *BitXor {
@@ -363,15 +424,29 @@ func (a *BitXor) String() string {
 	return "BITXOR(" + a.Child.String() + ")"
 }
 
-func (a *BitXor) DebugString(ctx *sql.Context) string {
+func (a *BitXor) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
+	if options.Debug {
+		if a.window != nil {
+			pr := sql.NewTreePrinter()
+			_ = pr.WriteNode("BITXOR")
+			children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
+			pr.WriteChildren(children...)
+			return pr.String()
+		}
+		return fmt.Sprintf("BITXOR(%s)", sql.Describe(ctx, a.Child, options))
+	}
 	if a.window != nil {
 		pr := sql.NewTreePrinter()
 		_ = pr.WriteNode("BITXOR")
-		children := []string{sql.DebugString(ctx, a.window), sql.DebugString(ctx, a.Child)}
+		children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("BITXOR(%s)", sql.DebugString(ctx, a.Child))
+	return "BITXOR(" + sql.Describe(ctx, a.Child, options) + ")"
+}
+
+func (a *BitXor) DebugString(ctx *sql.Context) string {
+	return a.Describe(ctx, sql.DescribeOptions{Debug: true})
 }
 
 func (a *BitXor) WithWindow(ctx *sql.Context, window *sql.WindowDefinition) sql.WindowAdaptableExpression {
@@ -411,6 +486,7 @@ type Count struct {
 
 var _ sql.FunctionExpression = (*Count)(nil)
 var _ sql.Aggregation = (*Count)(nil)
+var _ sql.Describable = (*Count)(nil)
 var _ sql.WindowAdaptableExpression = (*Count)(nil)
 
 func NewCount(e sql.Expression) *Count {
@@ -442,15 +518,29 @@ func (a *Count) String() string {
 	return "COUNT(" + a.Child.String() + ")"
 }
 
-func (a *Count) DebugString(ctx *sql.Context) string {
+func (a *Count) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
+	if options.Debug {
+		if a.window != nil {
+			pr := sql.NewTreePrinter()
+			_ = pr.WriteNode("COUNT")
+			children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
+			pr.WriteChildren(children...)
+			return pr.String()
+		}
+		return fmt.Sprintf("COUNT(%s)", sql.Describe(ctx, a.Child, options))
+	}
 	if a.window != nil {
 		pr := sql.NewTreePrinter()
 		_ = pr.WriteNode("COUNT")
-		children := []string{sql.DebugString(ctx, a.window), sql.DebugString(ctx, a.Child)}
+		children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("COUNT(%s)", sql.DebugString(ctx, a.Child))
+	return "COUNT(" + sql.Describe(ctx, a.Child, options) + ")"
+}
+
+func (a *Count) DebugString(ctx *sql.Context) string {
+	return a.Describe(ctx, sql.DescribeOptions{Debug: true})
 }
 
 func (a *Count) WithWindow(ctx *sql.Context, window *sql.WindowDefinition) sql.WindowAdaptableExpression {
@@ -490,6 +580,7 @@ type First struct {
 
 var _ sql.FunctionExpression = (*First)(nil)
 var _ sql.Aggregation = (*First)(nil)
+var _ sql.Describable = (*First)(nil)
 var _ sql.WindowAdaptableExpression = (*First)(nil)
 
 func NewFirst(e sql.Expression) *First {
@@ -521,15 +612,29 @@ func (a *First) String() string {
 	return "FIRST(" + a.Child.String() + ")"
 }
 
-func (a *First) DebugString(ctx *sql.Context) string {
+func (a *First) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
+	if options.Debug {
+		if a.window != nil {
+			pr := sql.NewTreePrinter()
+			_ = pr.WriteNode("FIRST")
+			children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
+			pr.WriteChildren(children...)
+			return pr.String()
+		}
+		return fmt.Sprintf("FIRST(%s)", sql.Describe(ctx, a.Child, options))
+	}
 	if a.window != nil {
 		pr := sql.NewTreePrinter()
 		_ = pr.WriteNode("FIRST")
-		children := []string{sql.DebugString(ctx, a.window), sql.DebugString(ctx, a.Child)}
+		children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("FIRST(%s)", sql.DebugString(ctx, a.Child))
+	return "FIRST(" + sql.Describe(ctx, a.Child, options) + ")"
+}
+
+func (a *First) DebugString(ctx *sql.Context) string {
+	return a.Describe(ctx, sql.DescribeOptions{Debug: true})
 }
 
 func (a *First) WithWindow(ctx *sql.Context, window *sql.WindowDefinition) sql.WindowAdaptableExpression {
@@ -569,6 +674,7 @@ type JsonArray struct {
 
 var _ sql.FunctionExpression = (*JsonArray)(nil)
 var _ sql.Aggregation = (*JsonArray)(nil)
+var _ sql.Describable = (*JsonArray)(nil)
 var _ sql.WindowAdaptableExpression = (*JsonArray)(nil)
 
 func NewJsonArray(e sql.Expression) *JsonArray {
@@ -600,15 +706,29 @@ func (a *JsonArray) String() string {
 	return "JSON_ARRAYAGG(" + a.Child.String() + ")"
 }
 
-func (a *JsonArray) DebugString(ctx *sql.Context) string {
+func (a *JsonArray) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
+	if options.Debug {
+		if a.window != nil {
+			pr := sql.NewTreePrinter()
+			_ = pr.WriteNode("JSON_ARRAYAGG")
+			children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
+			pr.WriteChildren(children...)
+			return pr.String()
+		}
+		return fmt.Sprintf("JSON_ARRAYAGG(%s)", sql.Describe(ctx, a.Child, options))
+	}
 	if a.window != nil {
 		pr := sql.NewTreePrinter()
 		_ = pr.WriteNode("JSON_ARRAYAGG")
-		children := []string{sql.DebugString(ctx, a.window), sql.DebugString(ctx, a.Child)}
+		children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("JSON_ARRAYAGG(%s)", sql.DebugString(ctx, a.Child))
+	return "JSON_ARRAYAGG(" + sql.Describe(ctx, a.Child, options) + ")"
+}
+
+func (a *JsonArray) DebugString(ctx *sql.Context) string {
+	return a.Describe(ctx, sql.DescribeOptions{Debug: true})
 }
 
 func (a *JsonArray) WithWindow(ctx *sql.Context, window *sql.WindowDefinition) sql.WindowAdaptableExpression {
@@ -648,6 +768,7 @@ type Last struct {
 
 var _ sql.FunctionExpression = (*Last)(nil)
 var _ sql.Aggregation = (*Last)(nil)
+var _ sql.Describable = (*Last)(nil)
 var _ sql.WindowAdaptableExpression = (*Last)(nil)
 
 func NewLast(e sql.Expression) *Last {
@@ -679,15 +800,29 @@ func (a *Last) String() string {
 	return "LAST(" + a.Child.String() + ")"
 }
 
-func (a *Last) DebugString(ctx *sql.Context) string {
+func (a *Last) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
+	if options.Debug {
+		if a.window != nil {
+			pr := sql.NewTreePrinter()
+			_ = pr.WriteNode("LAST")
+			children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
+			pr.WriteChildren(children...)
+			return pr.String()
+		}
+		return fmt.Sprintf("LAST(%s)", sql.Describe(ctx, a.Child, options))
+	}
 	if a.window != nil {
 		pr := sql.NewTreePrinter()
 		_ = pr.WriteNode("LAST")
-		children := []string{sql.DebugString(ctx, a.window), sql.DebugString(ctx, a.Child)}
+		children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("LAST(%s)", sql.DebugString(ctx, a.Child))
+	return "LAST(" + sql.Describe(ctx, a.Child, options) + ")"
+}
+
+func (a *Last) DebugString(ctx *sql.Context) string {
+	return a.Describe(ctx, sql.DescribeOptions{Debug: true})
 }
 
 func (a *Last) WithWindow(ctx *sql.Context, window *sql.WindowDefinition) sql.WindowAdaptableExpression {
@@ -727,6 +862,7 @@ type Max struct {
 
 var _ sql.FunctionExpression = (*Max)(nil)
 var _ sql.Aggregation = (*Max)(nil)
+var _ sql.Describable = (*Max)(nil)
 var _ sql.WindowAdaptableExpression = (*Max)(nil)
 
 func NewMax(e sql.Expression) *Max {
@@ -758,15 +894,29 @@ func (a *Max) String() string {
 	return "MAX(" + a.Child.String() + ")"
 }
 
-func (a *Max) DebugString(ctx *sql.Context) string {
+func (a *Max) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
+	if options.Debug {
+		if a.window != nil {
+			pr := sql.NewTreePrinter()
+			_ = pr.WriteNode("MAX")
+			children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
+			pr.WriteChildren(children...)
+			return pr.String()
+		}
+		return fmt.Sprintf("MAX(%s)", sql.Describe(ctx, a.Child, options))
+	}
 	if a.window != nil {
 		pr := sql.NewTreePrinter()
 		_ = pr.WriteNode("MAX")
-		children := []string{sql.DebugString(ctx, a.window), sql.DebugString(ctx, a.Child)}
+		children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("MAX(%s)", sql.DebugString(ctx, a.Child))
+	return "MAX(" + sql.Describe(ctx, a.Child, options) + ")"
+}
+
+func (a *Max) DebugString(ctx *sql.Context) string {
+	return a.Describe(ctx, sql.DescribeOptions{Debug: true})
 }
 
 func (a *Max) WithWindow(ctx *sql.Context, window *sql.WindowDefinition) sql.WindowAdaptableExpression {
@@ -806,6 +956,7 @@ type Min struct {
 
 var _ sql.FunctionExpression = (*Min)(nil)
 var _ sql.Aggregation = (*Min)(nil)
+var _ sql.Describable = (*Min)(nil)
 var _ sql.WindowAdaptableExpression = (*Min)(nil)
 
 func NewMin(e sql.Expression) *Min {
@@ -837,15 +988,29 @@ func (a *Min) String() string {
 	return "MIN(" + a.Child.String() + ")"
 }
 
-func (a *Min) DebugString(ctx *sql.Context) string {
+func (a *Min) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
+	if options.Debug {
+		if a.window != nil {
+			pr := sql.NewTreePrinter()
+			_ = pr.WriteNode("MIN")
+			children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
+			pr.WriteChildren(children...)
+			return pr.String()
+		}
+		return fmt.Sprintf("MIN(%s)", sql.Describe(ctx, a.Child, options))
+	}
 	if a.window != nil {
 		pr := sql.NewTreePrinter()
 		_ = pr.WriteNode("MIN")
-		children := []string{sql.DebugString(ctx, a.window), sql.DebugString(ctx, a.Child)}
+		children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("MIN(%s)", sql.DebugString(ctx, a.Child))
+	return "MIN(" + sql.Describe(ctx, a.Child, options) + ")"
+}
+
+func (a *Min) DebugString(ctx *sql.Context) string {
+	return a.Describe(ctx, sql.DescribeOptions{Debug: true})
 }
 
 func (a *Min) WithWindow(ctx *sql.Context, window *sql.WindowDefinition) sql.WindowAdaptableExpression {
@@ -885,6 +1050,7 @@ type Sum struct {
 
 var _ sql.FunctionExpression = (*Sum)(nil)
 var _ sql.Aggregation = (*Sum)(nil)
+var _ sql.Describable = (*Sum)(nil)
 var _ sql.WindowAdaptableExpression = (*Sum)(nil)
 
 func NewSum(e sql.Expression) *Sum {
@@ -916,15 +1082,29 @@ func (a *Sum) String() string {
 	return "SUM(" + a.Child.String() + ")"
 }
 
-func (a *Sum) DebugString(ctx *sql.Context) string {
+func (a *Sum) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
+	if options.Debug {
+		if a.window != nil {
+			pr := sql.NewTreePrinter()
+			_ = pr.WriteNode("SUM")
+			children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
+			pr.WriteChildren(children...)
+			return pr.String()
+		}
+		return fmt.Sprintf("SUM(%s)", sql.Describe(ctx, a.Child, options))
+	}
 	if a.window != nil {
 		pr := sql.NewTreePrinter()
 		_ = pr.WriteNode("SUM")
-		children := []string{sql.DebugString(ctx, a.window), sql.DebugString(ctx, a.Child)}
+		children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("SUM(%s)", sql.DebugString(ctx, a.Child))
+	return "SUM(" + sql.Describe(ctx, a.Child, options) + ")"
+}
+
+func (a *Sum) DebugString(ctx *sql.Context) string {
+	return a.Describe(ctx, sql.DescribeOptions{Debug: true})
 }
 
 func (a *Sum) WithWindow(ctx *sql.Context, window *sql.WindowDefinition) sql.WindowAdaptableExpression {
@@ -964,6 +1144,7 @@ type StdDevPop struct {
 
 var _ sql.FunctionExpression = (*StdDevPop)(nil)
 var _ sql.Aggregation = (*StdDevPop)(nil)
+var _ sql.Describable = (*StdDevPop)(nil)
 var _ sql.WindowAdaptableExpression = (*StdDevPop)(nil)
 
 func NewStdDevPop(e sql.Expression) *StdDevPop {
@@ -995,15 +1176,29 @@ func (a *StdDevPop) String() string {
 	return "STDDEVPOP(" + a.Child.String() + ")"
 }
 
-func (a *StdDevPop) DebugString(ctx *sql.Context) string {
+func (a *StdDevPop) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
+	if options.Debug {
+		if a.window != nil {
+			pr := sql.NewTreePrinter()
+			_ = pr.WriteNode("STDDEVPOP")
+			children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
+			pr.WriteChildren(children...)
+			return pr.String()
+		}
+		return fmt.Sprintf("STDDEVPOP(%s)", sql.Describe(ctx, a.Child, options))
+	}
 	if a.window != nil {
 		pr := sql.NewTreePrinter()
 		_ = pr.WriteNode("STDDEVPOP")
-		children := []string{sql.DebugString(ctx, a.window), sql.DebugString(ctx, a.Child)}
+		children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("STDDEVPOP(%s)", sql.DebugString(ctx, a.Child))
+	return "STDDEVPOP(" + sql.Describe(ctx, a.Child, options) + ")"
+}
+
+func (a *StdDevPop) DebugString(ctx *sql.Context) string {
+	return a.Describe(ctx, sql.DescribeOptions{Debug: true})
 }
 
 func (a *StdDevPop) WithWindow(ctx *sql.Context, window *sql.WindowDefinition) sql.WindowAdaptableExpression {
@@ -1043,6 +1238,7 @@ type StdDevSamp struct {
 
 var _ sql.FunctionExpression = (*StdDevSamp)(nil)
 var _ sql.Aggregation = (*StdDevSamp)(nil)
+var _ sql.Describable = (*StdDevSamp)(nil)
 var _ sql.WindowAdaptableExpression = (*StdDevSamp)(nil)
 
 func NewStdDevSamp(e sql.Expression) *StdDevSamp {
@@ -1074,15 +1270,29 @@ func (a *StdDevSamp) String() string {
 	return "STDDEVSAMP(" + a.Child.String() + ")"
 }
 
-func (a *StdDevSamp) DebugString(ctx *sql.Context) string {
+func (a *StdDevSamp) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
+	if options.Debug {
+		if a.window != nil {
+			pr := sql.NewTreePrinter()
+			_ = pr.WriteNode("STDDEVSAMP")
+			children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
+			pr.WriteChildren(children...)
+			return pr.String()
+		}
+		return fmt.Sprintf("STDDEVSAMP(%s)", sql.Describe(ctx, a.Child, options))
+	}
 	if a.window != nil {
 		pr := sql.NewTreePrinter()
 		_ = pr.WriteNode("STDDEVSAMP")
-		children := []string{sql.DebugString(ctx, a.window), sql.DebugString(ctx, a.Child)}
+		children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("STDDEVSAMP(%s)", sql.DebugString(ctx, a.Child))
+	return "STDDEVSAMP(" + sql.Describe(ctx, a.Child, options) + ")"
+}
+
+func (a *StdDevSamp) DebugString(ctx *sql.Context) string {
+	return a.Describe(ctx, sql.DescribeOptions{Debug: true})
 }
 
 func (a *StdDevSamp) WithWindow(ctx *sql.Context, window *sql.WindowDefinition) sql.WindowAdaptableExpression {
@@ -1122,6 +1332,7 @@ type VarPop struct {
 
 var _ sql.FunctionExpression = (*VarPop)(nil)
 var _ sql.Aggregation = (*VarPop)(nil)
+var _ sql.Describable = (*VarPop)(nil)
 var _ sql.WindowAdaptableExpression = (*VarPop)(nil)
 
 func NewVarPop(e sql.Expression) *VarPop {
@@ -1153,15 +1364,29 @@ func (a *VarPop) String() string {
 	return "VARPOP(" + a.Child.String() + ")"
 }
 
-func (a *VarPop) DebugString(ctx *sql.Context) string {
+func (a *VarPop) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
+	if options.Debug {
+		if a.window != nil {
+			pr := sql.NewTreePrinter()
+			_ = pr.WriteNode("VARPOP")
+			children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
+			pr.WriteChildren(children...)
+			return pr.String()
+		}
+		return fmt.Sprintf("VARPOP(%s)", sql.Describe(ctx, a.Child, options))
+	}
 	if a.window != nil {
 		pr := sql.NewTreePrinter()
 		_ = pr.WriteNode("VARPOP")
-		children := []string{sql.DebugString(ctx, a.window), sql.DebugString(ctx, a.Child)}
+		children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("VARPOP(%s)", sql.DebugString(ctx, a.Child))
+	return "VARPOP(" + sql.Describe(ctx, a.Child, options) + ")"
+}
+
+func (a *VarPop) DebugString(ctx *sql.Context) string {
+	return a.Describe(ctx, sql.DescribeOptions{Debug: true})
 }
 
 func (a *VarPop) WithWindow(ctx *sql.Context, window *sql.WindowDefinition) sql.WindowAdaptableExpression {
@@ -1201,6 +1426,7 @@ type VarSamp struct {
 
 var _ sql.FunctionExpression = (*VarSamp)(nil)
 var _ sql.Aggregation = (*VarSamp)(nil)
+var _ sql.Describable = (*VarSamp)(nil)
 var _ sql.WindowAdaptableExpression = (*VarSamp)(nil)
 
 func NewVarSamp(e sql.Expression) *VarSamp {
@@ -1232,15 +1458,29 @@ func (a *VarSamp) String() string {
 	return "VARSAMP(" + a.Child.String() + ")"
 }
 
-func (a *VarSamp) DebugString(ctx *sql.Context) string {
+func (a *VarSamp) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
+	if options.Debug {
+		if a.window != nil {
+			pr := sql.NewTreePrinter()
+			_ = pr.WriteNode("VARSAMP")
+			children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
+			pr.WriteChildren(children...)
+			return pr.String()
+		}
+		return fmt.Sprintf("VARSAMP(%s)", sql.Describe(ctx, a.Child, options))
+	}
 	if a.window != nil {
 		pr := sql.NewTreePrinter()
 		_ = pr.WriteNode("VARSAMP")
-		children := []string{sql.DebugString(ctx, a.window), sql.DebugString(ctx, a.Child)}
+		children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("VARSAMP(%s)", sql.DebugString(ctx, a.Child))
+	return "VARSAMP(" + sql.Describe(ctx, a.Child, options) + ")"
+}
+
+func (a *VarSamp) DebugString(ctx *sql.Context) string {
+	return a.Describe(ctx, sql.DescribeOptions{Debug: true})
 }
 
 func (a *VarSamp) WithWindow(ctx *sql.Context, window *sql.WindowDefinition) sql.WindowAdaptableExpression {
