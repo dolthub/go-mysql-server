@@ -390,35 +390,29 @@ func (a *BitXor) IsNullable(ctx *sql.Context) bool {
 }
 
 func (a *BitXor) String() string {
+	ret := "BIT_XOR(" + a.Child.String() + ")"
 	if a.window != nil {
-		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("BITXOR")
-		children := []string{a.window.String(), a.Child.String()}
-		pr.WriteChildren(children...)
-		return pr.String()
+		ret += " " + a.window.String()
 	}
-	return "BITXOR(" + a.Child.String() + ")"
+	return ret
 }
 
 func (a *BitXor) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
 	if options.Debug {
 		if a.window != nil {
 			pr := sql.NewTreePrinter()
-			_ = pr.WriteNode("BITXOR")
+			_ = pr.WriteNode("BIT_XOR")
 			children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
 			pr.WriteChildren(children...)
 			return pr.String()
 		}
-		return fmt.Sprintf("BITXOR(%s)", sql.Describe(ctx, a.Child, options))
+		return fmt.Sprintf("BIT_XOR(%s)", sql.Describe(ctx, a.Child, options))
 	}
+	ret := "BIT_XOR(" + sql.Describe(ctx, a.Child, options) + ")"
 	if a.window != nil {
-		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("BITXOR")
-		children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
-		pr.WriteChildren(children...)
-		return pr.String()
+		ret += " " + sql.Describe(ctx, a.window, options)
 	}
-	return "BITXOR(" + sql.Describe(ctx, a.Child, options) + ")"
+	return ret
 }
 
 func (a *BitXor) DebugString(ctx *sql.Context) string {
