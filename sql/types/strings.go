@@ -480,7 +480,7 @@ func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest [
 				return nil, ErrLengthBeyondLimit.New(val, t.String())
 			}
 		} else {
-			// TODO: this should count the string's length properly according to the character set
+			// TODO(#3846): this should count the string's length properly according to the character set
 			// convert 'val' string to rune to count the character length, not byte length
 			if int64(len(val)) > t.MaxCharacterLength() {
 				if int64(len([]rune(string(val)))) > t.MaxCharacterLength() {
