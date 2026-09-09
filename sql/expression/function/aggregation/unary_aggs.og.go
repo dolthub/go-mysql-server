@@ -126,14 +126,11 @@ func (a *Avg) IsNullable(ctx *sql.Context) bool {
 }
 
 func (a *Avg) String() string {
+	ret := "AVG(" + a.Child.String() + ")"
 	if a.window != nil {
-		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("AVG")
-		children := []string{a.window.String(), a.Child.String()}
-		pr.WriteChildren(children...)
-		return pr.String()
+		ret += " " + a.window.String()
 	}
-	return "AVG(" + a.Child.String() + ")"
+	return ret
 }
 
 func (a *Avg) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
@@ -147,14 +144,11 @@ func (a *Avg) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
 		}
 		return fmt.Sprintf("AVG(%s)", sql.Describe(ctx, a.Child, options))
 	}
+	ret := "AVG(" + sql.Describe(ctx, a.Child, options) + ")"
 	if a.window != nil {
-		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("AVG")
-		children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
-		pr.WriteChildren(children...)
-		return pr.String()
+		ret += " " + sql.Describe(ctx, a.window, options)
 	}
-	return "AVG(" + sql.Describe(ctx, a.Child, options) + ")"
+	return ret
 }
 
 func (a *Avg) DebugString(ctx *sql.Context) string {
