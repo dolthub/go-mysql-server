@@ -55,9 +55,17 @@ type scope struct {
 	proc           *procCtx
 	parent         *scope
 	activeSubquery *subquery
+	// Query links separate SQL query nesting from transient relational scopes.
+	querySource   *scope
+	outerQuery    *scope
+	querySubquery *subquery
+	// aggregateArgs caches the restricted namespace used to bind aggregate arguments.
+	aggregateArgs *scope
 
 	// groupBy collects aggregation functions and inputs
 	groupBy *groupBy
+	// having caches the resolved predicate built before aggregation is finalized.
+	having sql.Expression
 
 	insertTableAlias string
 
@@ -391,9 +399,12 @@ func (s *scope) setColAlias(cols []string) {
 // into this scope.
 func (s *scope) push() *scope {
 	new := &scope{
-		b:          s.b,
-		parent:     s,
-		schemaName: s.schemaName,
+		b:             s.b,
+		parent:        s,
+		querySource:   s.querySource,
+		outerQuery:    s.outerQuery,
+		querySubquery: s.querySubquery,
+		schemaName:    s.schemaName,
 	}
 	if s.procActive() {
 		new.initProc()
@@ -409,8 +420,11 @@ func (s *scope) replace() *scope {
 		return &scope{}
 	}
 	return &scope{
-		b:      s.b,
-		parent: s.parent,
+		b:             s.b,
+		parent:        s.parent,
+		querySource:   s.querySource,
+		outerQuery:    s.outerQuery,
+		querySubquery: s.querySubquery,
 	}
 }
 

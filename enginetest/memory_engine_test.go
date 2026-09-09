@@ -611,6 +611,17 @@ func TestScripts(t *testing.T) {
 	enginetest.TestScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
+// TestCorrelatedAggregateScopePrepared verifies correlated aggregate ownership with prepared execution.
+func TestCorrelatedAggregateScopePrepared(t *testing.T) {
+	for _, script := range queries.ScriptTests {
+		if script.Name == "correlated subquery references outer aggregate" {
+			enginetest.TestScriptPrepared(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver), script)
+			return
+		}
+	}
+	t.Fatal("correlated aggregate scope script not found")
+}
+
 func TestSpatialScripts(t *testing.T) {
 	enginetest.TestSpatialScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }

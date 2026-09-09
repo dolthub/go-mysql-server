@@ -313,9 +313,10 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 			}
 
 			selectExprs, orderByExprs := getSelectAndOrderByExprs(ctx, project, orderBy, n.SelectDeps, groupBys)
+			groupByDeps, groupByDepNames := groupByDependencies(ctx, n)
 
 			for i, expr := range selectExprs {
-				if valid, col := expressionReferencesOnlyGroupBys(ctx, groupBys, expr, noGroupBy); !valid {
+				if valid, col := expressionReferencesOnlyGroupBys(ctx, groupBys, groupByDeps, groupByDepNames, expr, noGroupBy); !valid {
 					if noGroupBy {
 						err = sql.ErrNonAggregatedColumnWithoutGroupBy.New(i+1, col)
 					} else {
@@ -331,7 +332,7 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 			// validate ORDER BY expressions in aggregate queries without an explicit GROUP BY
 			if !noGroupBy {
 				for i, expr := range orderByExprs {
-					if valid, col := expressionReferencesOnlyGroupBys(ctx, groupBys, expr, noGroupBy); !valid {
+					if valid, col := expressionReferencesOnlyGroupBys(ctx, groupBys, groupByDeps, groupByDepNames, expr, noGroupBy); !valid {
 						err = analyzererrors.ErrValidationGroupByOrderBy.New(i+1, col)
 						return false
 					}
@@ -427,13 +428,41 @@ func resolveExpr(ctx *sql.Context, expr sql.Expression, selectDeps map[string]sq
 	return resolvedExpr
 }
 
-// expressionReferencesOnlyGroupBys validates that an expression is dependent on only group by expressions
-func expressionReferencesOnlyGroupBys(ctx *sql.Context, groupBys map[string]bool, expr sql.Expression, noGroupBy bool) (bool, string) {
+// groupByDependencies returns the IDs and canonical names of grouped and aggregate outputs.
+func groupByDependencies(ctx *sql.Context, groupBy *plan.GroupBy) (sql.ColSet, map[string]bool) {
+	var ret sql.ColSet
+	names := make(map[string]bool)
+	for _, expr := range groupBy.GroupByExprs {
+		sql.Inspect(ctx, expr, func(ctx *sql.Context, expr sql.Expression) bool {
+			if gf, ok := expr.(*expression.GetField); ok {
+				ret.Add(gf.Id())
+			}
+			return true
+		})
+	}
+	for _, expr := range groupBy.SelectDeps {
+		if agg, ok := expr.(sql.Aggregation); ok {
+			ret.Add(agg.Id())
+			names[strings.ToLower(agg.String())] = true
+		}
+	}
+	return ret, names
+}
+
+// expressionReferencesOnlyGroupBys validates that an expression is dependent on only group by expressions.
+func expressionReferencesOnlyGroupBys(ctx *sql.Context, groupBys map[string]bool, groupByDeps sql.ColSet, groupByDepNames map[string]bool, expr sql.Expression, noGroupBy bool) (bool, string) {
 	var col string
 	valid := true
 	sql.Inspect(ctx, expr, func(ctx *sql.Context, expr sql.Expression) bool {
 		switch expr := expr.(type) {
 		case nil, sql.Aggregation, *expression.Literal:
+			return false
+		case *plan.Subquery:
+			if noGroupBy || subqueryReferencesOnlyGroupByDeps(ctx, expr, groupByDeps, groupByDepNames) {
+				return false
+			}
+			valid = false
+			col = expr.String()
 			return false
 		default:
 			if groupBys[strings.ToLower(expr.String())] {
@@ -461,6 +490,22 @@ func expressionReferencesOnlyGroupBys(ctx *sql.Context, groupBys map[string]bool
 	})
 
 	return valid, col
+}
+
+// subqueryReferencesOnlyGroupByDeps validates a scalar subquery's outer column dependencies.
+func subqueryReferencesOnlyGroupByDeps(ctx *sql.Context, subquery *plan.Subquery, ids sql.ColSet, names map[string]bool) bool {
+	remaining := subquery.Correlated().Difference(ids)
+	transform.InspectExpressions(ctx, subquery.Query, func(ctx *sql.Context, expr sql.Expression) bool {
+		gf, ok := expr.(*expression.GetField)
+		if !ok || !remaining.Contains(gf.Id()) {
+			return true
+		}
+		if names[strings.ToLower(gf.String())] {
+			remaining.Remove(gf.Id())
+		}
+		return false
+	})
+	return remaining.Empty()
 }
 
 func validateSchemaSource(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
