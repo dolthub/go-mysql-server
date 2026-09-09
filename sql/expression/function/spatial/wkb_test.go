@@ -20,6 +20,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/dolthub/go-mysql-server/internal/exprtest"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -161,6 +162,20 @@ func TestAsWKB(t *testing.T) {
 		_, _, err = typ.Convert(ctx, v)
 		require.NoError(err)
 	})
+}
+
+func TestGeomCollFromWKBString(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	arg := expression.NewLiteral([]byte{1, 7, 0, 0, 0, 0, 0, 0, 0}, types.Blob)
+	expr, err := NewGeomCollFromWKB(ctx, arg)
+	require.NoError(t, err)
+	require.IsType(t, &GeomCollFromWKB{}, expr)
+	require.Equal(t, "st_geomcollfromwkb(0x010700000000000000)", expr.String())
+	exprtest.AssertFunctionRoundTrip(t, expr.(sql.FunctionExpression))
+
+	cloned, err := expr.WithChildren(ctx, arg)
+	require.NoError(t, err)
+	require.IsType(t, &GeomCollFromWKB{}, cloned)
 }
 
 func TestGeomFromWKB(t *testing.T) {
