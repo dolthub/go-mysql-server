@@ -16,6 +16,7 @@ package aggregation
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -25,6 +26,18 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
+
+type closeTrackingIter struct {
+	sql.RowIter
+	closeCount int
+	closeErr   error
+}
+
+// Close records the call and returns the configured error.
+func (i *closeTrackingIter) Close(*sql.Context) error {
+	i.closeCount++
+	return i.closeErr
+}
 
 var (
 	partitionByX = []sql.Expression{
@@ -99,4 +112,18 @@ func TestWindowIter(t *testing.T) {
 			require.Equal(t, tt.Expected, res)
 		})
 	}
+}
+
+// TestWindowIterClose verifies that closing a window iterator releases its child and partitions.
+func TestWindowIterClose(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	closeErr := errors.New("close error")
+	child := &closeTrackingIter{closeErr: closeErr}
+	partition := NewWindowPartitionIter(&WindowPartition{})
+	partition.input = sql.WindowBuffer{{1}}
+
+	iter := NewWindowIter([]*WindowPartitionIter{partition}, [][]int{{0}}, child)
+	require.ErrorIs(t, iter.Close(ctx), closeErr)
+	require.Equal(t, 1, child.closeCount)
+	require.Nil(t, partition.input)
 }

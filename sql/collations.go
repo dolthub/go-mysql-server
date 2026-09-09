@@ -862,6 +862,17 @@ func (c CollationID) Collation() Collation {
 	return collationArray[c]
 }
 
+// IsBinary returns whether this collation is a binary collation.
+//
+// TODO(#3838): Replace suffix check with an explicit metadata flag
+// on Collation to avoid runtime string operations.
+func (c CollationID) IsBinary() bool {
+	if c == Collation_binary || c.CharacterSet() == CharacterSet_binary {
+		return true
+	}
+	return strings.HasSuffix(c.Name(), "_bin")
+}
+
 var weightBuffers = sync.Pool{
 	New: func() interface{} {
 		return new([]byte)

@@ -1765,10 +1765,16 @@ func (t *IndexedTable) PartitionRows(ctx *sql.Context, partition sql.Partition) 
 		idx := t.Lookup.Index.(*Index)
 		sc := make(sql.SortConditions, len(idx.Exprs))
 		for i, e := range idx.Exprs {
-			sc[i] = sql.SortCondition{Expr: e}
-			if t.Lookup.IsReverse {
+			var colOrder sql.IndexColumnOrder
+			if i < len(idx.ColOrders) {
+				colOrder = idx.ColOrders[i]
+			}
+			sc[i] = sql.SortCondition{Expr: e, Order: sql.Ascending, NullOrdering: sql.NullsFirst}
+			if colOrder.Descending != t.Lookup.IsReverse {
 				sc[i].Order = sql.Descending
-				// TODO: null ordering?
+			}
+			if colOrder.NullsLast {
+				sc[i].NullOrdering = sql.NullsLast
 			}
 		}
 
@@ -2019,7 +2025,7 @@ func (t *Table) DropCheck(ctx *sql.Context, chName string) error {
 	return fmt.Errorf("check '%s' was not found on the table", chName)
 }
 
-func (t *Table) createIndex(ctx *sql.Context, data *TableData, name string, columns []sql.IndexColumn, constraint sql.IndexConstraint, comment string, vectorProps sql.VectorProperties) (sql.Index, error) {
+func (t *Table) createIndex(ctx *sql.Context, data *TableData, name string, columns []sql.IndexColumn, colOrders []sql.IndexColumnOrder, constraint sql.IndexConstraint, comment string, vectorProps sql.VectorProperties) (sql.Index, error) {
 	if name == "" {
 		for _, column := range columns {
 			name += column.Name + "_"
@@ -2080,6 +2086,7 @@ func (t *Table) createIndex(ctx *sql.Context, data *TableData, name string, colu
 		SupportedVectorFunction: vectorFunction,
 		CommentStr:              comment,
 		PrefixLens:              prefixLengths,
+		ColOrders:               colOrders,
 	}, nil
 }
 
@@ -2092,7 +2099,7 @@ func (t *Table) CreateIndex(ctx *sql.Context, idx sql.IndexDef) error {
 		data.indexes = make(map[string]sql.Index)
 	}
 
-	index, err := t.createIndex(ctx, data, idx.Name, idx.Columns, idx.Constraint, idx.Comment, idx.VectorProperties)
+	index, err := t.createIndex(ctx, data, idx.Name, idx.Columns, idx.ColumnOrders(), idx.Constraint, idx.Comment, idx.VectorProperties)
 	if err != nil {
 		return err
 	}
@@ -2158,7 +2165,7 @@ func (t *Table) CreateFulltextIndex(ctx *sql.Context, indexDef sql.IndexDef, key
 		data.indexes = make(map[string]sql.Index)
 	}
 
-	index, err := t.createIndex(ctx, data, indexDef.Name, indexDef.Columns, indexDef.Constraint, indexDef.Comment, indexDef.VectorProperties)
+	index, err := t.createIndex(ctx, data, indexDef.Name, indexDef.Columns, indexDef.ColumnOrders(), indexDef.Constraint, indexDef.Comment, indexDef.VectorProperties)
 	if err != nil {
 		return err
 	}
@@ -2189,7 +2196,7 @@ func (t *Table) CreateVectorIndex(ctx *sql.Context, idx sql.IndexDef, distanceTy
 		data.indexes = make(map[string]sql.Index)
 	}
 
-	index, err := t.createIndex(ctx, data, idx.Name, idx.Columns, idx.Constraint, idx.Comment, idx.VectorProperties)
+	index, err := t.createIndex(ctx, data, idx.Name, idx.Columns, idx.ColumnOrders(), idx.Constraint, idx.Comment, idx.VectorProperties)
 	if err != nil {
 		return err
 	}

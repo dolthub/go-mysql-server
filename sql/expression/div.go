@@ -176,24 +176,23 @@ func (d *Div) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, interfa
 // from the expression tree is converted to a Decimal in order to match MySQL's behavior.
 // The decimal types of left and right value does NOT need to be the same. Both the types
 // should be preserved.
-func (d *Div) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}) {
+func (d *Div) convertLeftRight(ctx *sql.Context, lVal, rVal any) (any, any) {
 	typ := d.internalType(ctx)
-	lIsTimeType := types.IsTime(d.LeftChild.Type(ctx))
-	rIsTimeType := types.IsTime(d.RightChild.Type(ctx))
+	lTyp, rTyp := d.LeftChild.Type(ctx), d.RightChild.Type(ctx)
 
 	if types.IsFloat(typ) {
-		left = convertValueToType(ctx, typ, left, lIsTimeType)
+		lVal = convertValueToType(ctx, lTyp, typ, lVal)
 	} else {
-		left = convertToDecimalValue(ctx, left, lIsTimeType)
+		lVal = convertToDecimalValue(ctx, lTyp, typ, lVal)
 	}
 
 	if types.IsFloat(typ) {
-		right = convertValueToType(ctx, typ, right, rIsTimeType)
+		rVal = convertValueToType(ctx, rTyp, typ, rVal)
 	} else {
-		right = convertToDecimalValue(ctx, right, rIsTimeType)
+		rVal = convertToDecimalValue(ctx, rTyp, typ, rVal)
 	}
 
-	return left, right
+	return lVal, rVal
 }
 
 func (d *Div) div(ctx *sql.Context, lval, rval interface{}) (interface{}, error) {
@@ -390,15 +389,23 @@ func getFloatOrMaxDecimalType(ctx *sql.Context, e sql.Expression, treatIntsAsFlo
 // If the value is invalid, it returns decimal 0. This function
 // is used for 'div' or 'mod' arithmetic operation, which requires
 // the result value to have precise precision and scale.
-func convertToDecimalValue(ctx *sql.Context, val interface{}, isTimeType bool) *apd.Decimal {
-	if isTimeType {
-		val = convertTimeTypeToString(val)
+func convertToDecimalValue(ctx *sql.Context, origType, typ sql.Type, val any) *apd.Decimal {
+	// TODO: update type aware implementation for datetime types
+	//  This is a placeholder implementation for existing tests
+	if dtTyp, ok := origType.(sql.DatetimeType); ok && !types.IsTime(typ) {
+		var err error
+		val, err = DateTimeToNumericString(ctx, dtTyp, val)
+		if err != nil {
+			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrTruncatedIncorrect.New(dtTyp.String(), val).Error())
+		}
 	}
+
 	switch v := val.(type) {
 	case bool:
-		val = 0
 		if v {
 			val = 1
+		} else {
+			val = 0
 		}
 	default:
 	}
@@ -726,26 +733,23 @@ func (i *IntDiv) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, inte
 // If there is no float type column reference, both values should be handled as decimal type
 // The decimal types of left and right value does NOT need to be the same. Both the types
 // should be preserved.
-func (i *IntDiv) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}) {
+func (i *IntDiv) convertLeftRight(ctx *sql.Context, lVal, rVal any) (any, any) {
 	var typ sql.Type
 	lTyp, rTyp := i.LeftChild.Type(ctx), i.RightChild.Type(ctx)
-	lIsTimeType := types.IsTime(lTyp)
-	rIsTimeType := types.IsTime(rTyp)
-
-	if types.IsUnsigned(lTyp) && types.IsUnsigned(rTyp) {
+	switch {
+	case types.IsUnsigned(lTyp) && types.IsUnsigned(rTyp):
 		typ = types.Uint64
-	} else if (lIsTimeType && rIsTimeType) || (types.IsSigned(lTyp) && types.IsSigned(rTyp)) {
+	case (types.IsTime(lTyp) && types.IsTime(rTyp)) || (types.IsSigned(lTyp) && types.IsSigned(rTyp)):
 		typ = types.Int64
-	} else {
-		left = convertToDecimalValue(ctx, left, lIsTimeType)
-		right = convertToDecimalValue(ctx, right, rIsTimeType)
-		return left, right
+	default:
+		lVal = convertToDecimalValue(ctx, lTyp, typ, lVal)
+		rVal = convertToDecimalValue(ctx, rTyp, typ, rVal)
+		return lVal, rVal
 	}
 
-	left = convertValueToType(ctx, typ, left, lIsTimeType)
-	right = convertValueToType(ctx, typ, right, rIsTimeType)
-
-	return left, right
+	lVal = convertValueToType(ctx, lTyp, typ, lVal)
+	rVal = convertValueToType(ctx, rTyp, typ, rVal)
+	return lVal, rVal
 }
 
 func intDiv(ctx *sql.Context, lval, rval interface{}) (interface{}, error) {

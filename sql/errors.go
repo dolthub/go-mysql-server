@@ -853,6 +853,9 @@ var (
 	// ErrCollationMalformedString is returned when a malformed string is encountered during a collation-related operation.
 	ErrCollationMalformedString = errors.NewKind("malformed string encountered while %s")
 
+	// ErrCannotConvertString is returned when a string cannot be converted from one character set to another.
+	ErrCannotConvertString = newMySQLKind("Cannot convert string '%s' from %s to %s", 3854, "HY000")
+
 	// ErrCollatedExprWrongType is returned when the wrong type is given to a CollatedExpression.
 	ErrCollatedExprWrongType = errors.NewKind("wrong type in collated expression")
 
@@ -994,8 +997,11 @@ var (
 
 	ErrEnumTypeTruncated = errors.NewKind("new enum type change truncates value")
 
+	// ErrIncorrectValue is thrown when a value cannot be converted to a Time
+	ErrIncorrectValue = errors.NewKind("Incorrect %s value: '%v'")
+
 	// ErrTruncatedIncorrect is thrown when converting a value results in portions of the data to be trimmed.
-	ErrTruncatedIncorrect = errors.NewKind("Truncated incorrect %s value: %v")
+	ErrTruncatedIncorrect = errors.NewKind("Truncated incorrect %s value: '%v'")
 
 	// ErrUnresolvedTableLock is returned when a FOR UPDATE OF clause references a table that doesn't exist in the query context.
 	ErrUnresolvedTableLock = errors.NewKind("unresolved table name `%s` in locking clause.")
