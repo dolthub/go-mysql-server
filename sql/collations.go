@@ -20,7 +20,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"unicode/utf8"
 
 	"github.com/cespare/xxhash/v2"
 
@@ -852,6 +851,13 @@ func (c CollationID) PadAttribute() string {
 	return collationArray[c].PadAttribute
 }
 
+const (
+	// PadAttributePadSpace indicates that trailing spaces are padded.
+	PadAttributePadSpace = "PAD SPACE"
+	// PadAttributeNoPad indicates that trailing spaces are not padded.
+	PadAttributeNoPad = "NO PAD"
+)
+
 // Equals returns whether the given collation is the same as the calling collation.
 func (c CollationID) Equals(other CollationID) bool {
 	return c == other
@@ -890,28 +896,35 @@ func (c CollationID) WriteWeightString(hash io.Writer, str string) error {
 			return err
 		}
 	} else {
-		getRuneWeight := collationArray[c].Sorter
+		scanner := NewWeightScanner(c, str)
 		i := 0
 		buf := *weightBuffers.Get().(*[]byte)
-		if cap(buf) < len(str)*4 {
-			buf = make([]byte, len(str)*4)
+		if cap(buf) < len(str)*8 {
+			buf = make([]byte, len(str)*8)
 		}
-		for len(str) > 0 {
-			// All strings (should) have been decoded at this point, so we can rely on Go's internal string encoding
-			runeFromString, strRead := utf8.DecodeRuneInString(str)
-			if strRead == 0 || strRead == utf8.RuneError {
-				return ErrCollationMalformedString.New("hashing")
+		for {
+			runeWeight, ok, err := scanner.Next()
+			if err != nil {
+				weightBuffers.Put(&buf)
+				return err
 			}
-			runeWeight := getRuneWeight(runeFromString)
+			if !ok {
+				break
+			}
+			if (i+1)*4 > len(buf) {
+				newBuf := make([]byte, len(buf)*2)
+				copy(newBuf, buf[:i*4])
+				buf = newBuf
+			}
 			buf[i*4] = byte(runeWeight)
 			buf[i*4+1] = byte(runeWeight >> 8)
 			buf[i*4+2] = byte(runeWeight >> 16)
 			buf[i*4+3] = byte(runeWeight >> 24)
-			_, err := hash.Write(buf[i*4 : i*4+4])
+			_, err = hash.Write(buf[i*4 : i*4+4])
 			if err != nil {
+				weightBuffers.Put(&buf)
 				return err
 			}
-			str = str[strRead:]
 			i++
 		}
 		weightBuffers.Put(&buf)

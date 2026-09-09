@@ -127,3 +127,31 @@ func TestConvertCollationID(t *testing.T) {
 		})
 	}
 }
+
+func TestCollationExpansionsHash(t *testing.T) {
+	tests := []struct {
+		collation CollationID
+		s1, s2    string
+		equal     bool
+	}{
+		{Collation_utf8mb4_unicode_ci, "ss", "ß", true},
+		{Collation_utf8mb4_unicode_ci, "oe", "œ", true},
+		{Collation_utf8mb4_unicode_ci, "ij", "ĳ", true},
+		{Collation_utf8mb4_unicode_ci, "ff", "ﬀ", true},
+		{Collation_utf8mb4_general_ci, "ss", "ß", false},
+		{Collation_utf8mb4_0900_bin, "ss", "ß", false},
+		{Collation_utf8mb4_0900_as_cs, "ss", "ß", false},
+		{Collation_utf8mb4_0900_ai_ci, "ss", "ß", true},
+	}
+	for _, tt := range tests {
+		h1, err := tt.collation.HashToUint(tt.s1)
+		require.NoError(t, err)
+		h2, err := tt.collation.HashToUint(tt.s2)
+		require.NoError(t, err)
+		if tt.equal {
+			assert.Equal(t, h1, h2, "%s vs %s under %s", tt.s1, tt.s2, tt.collation.Name())
+		} else {
+			assert.NotEqual(t, h1, h2, "%s vs %s under %s", tt.s1, tt.s2, tt.collation.Name())
+		}
+	}
+}

@@ -304,33 +304,81 @@ func (t StringType) Compare(ctx context.Context, a interface{}, b interface{}) (
 		}
 	}
 
-	encoder := t.collation.CharacterSet().Encoder()
-	getRuneWeight := t.collation.Sorter()
-	for len(as) > 0 && len(bs) > 0 {
-		ar, aRead := encoder.NextRune(as)
-		br, bRead := encoder.NextRune(bs)
-		if aRead == 0 || bRead == 0 || aRead == utf8.RuneError || bRead == utf8.RuneError {
-			// TODO: return a real error
-			return 0, fmt.Errorf("malformed string encountered while comparing")
+	iterA := sql.NewWeightScanner(t.collation, as)
+	iterB := sql.NewWeightScanner(t.collation, bs)
+
+	padSpace := t.collation.PadAttribute() == sql.PadAttributePadSpace
+	spaceWeight := int32(0)
+	if padSpace {
+		sorter := t.collation.Sorter()
+		if sorter != nil {
+			spaceWeight = sorter(' ')
 		}
-		aWeight := getRuneWeight(ar)
-		bWeight := getRuneWeight(br)
+	}
+
+	for {
+		aWeight, aOk, aErr := iterA.Next()
+		if aErr != nil {
+			return 0, aErr
+		}
+		bWeight, bOk, bErr := iterB.Next()
+		if bErr != nil {
+			return 0, bErr
+		}
+
+		if !aOk || !bOk {
+			if !aOk && !bOk {
+				return 0, nil
+			}
+			if padSpace {
+				if !aOk {
+					cmp, err := compareTrailingSpaces(&iterB, bWeight, spaceWeight)
+					return -cmp, err
+				}
+				return compareTrailingSpaces(&iterA, aWeight, spaceWeight)
+			}
+			if !aOk {
+				return -1, nil
+			}
+			return 1, nil
+		}
+
 		if aWeight < bWeight {
 			return -1, nil
 		} else if aWeight > bWeight {
 			return 1, nil
 		}
-		as = as[aRead:]
-		bs = bs[bRead:]
 	}
+}
 
-	// Strings are equal up to the compared length, so shorter strings sort before longer strings
-	if len(as) < len(bs) {
-		return -1, nil
-	} else if len(as) > len(bs) {
-		return 1, nil
-	} else {
-		return 0, nil
+// compareTrailingSpaces compares remaining weights in a scanner
+// against the collation's space weight to implement MySQL PAD SPACE
+// semantics.
+//
+// In PAD SPACE collations, shorter strings are compared as if padded
+// with trailing spaces. Any remaining character with weight differing
+// from space determines the comparison order.
+//
+// See MySQL Reference Manual on Trailing Space Handling:
+// [MySQL Trailing Space Handling].
+//
+// [MySQL Trailing Space Handling]: https://dev.mysql.com/doc/refman/8.4/en/charset-binary-collations.html#charset-binary-collations-trailing-space-handling
+func compareTrailingSpaces(scanner *sql.WeightScanner, firstWeight, spaceWeight int32) (int, error) {
+	w := firstWeight
+	for {
+		if w < spaceWeight {
+			return -1, nil
+		} else if w > spaceWeight {
+			return 1, nil
+		}
+		nextWeight, ok, err := scanner.Next()
+		if err != nil {
+			return 0, err
+		}
+		if !ok {
+			return 0, nil
+		}
+		w = nextWeight
 	}
 }
 

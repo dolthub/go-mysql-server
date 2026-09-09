@@ -89,6 +89,127 @@ func TestStringCompare(t *testing.T) {
 	}
 }
 
+func TestStringCompareUnicodeExpansions(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	unicodeTyp, err := CreateString(sqltypes.VarChar, 10, sql.Collation_utf8mb4_unicode_ci)
+	require.NoError(t, err)
+
+	tests := []struct {
+		val1        string
+		val2        string
+		expectedCmp int
+	}{
+		{"ss", "ß", 0},
+		{"ß", "ss", 0},
+		{"SS", "ß", 0},
+		{"ß", "s", 1},
+		{"s", "ß", -1},
+		{"ß", "x", -1},
+		{"x", "ß", 1},
+		{"œ", "oe", 0},
+		{"ĳ", "ij", 0},
+		{"Ǆ", "dz", 0},
+		{"Ǉ", "lj", 0},
+		{"Ǌ", "nj", 0},
+		{"Ǳ", "dz", 0},
+		{"ﬀ", "ff", 0},
+		{"ﬁ", "fi", 0},
+		{"ﬂ", "fl", 0},
+		{"ﬃ", "ffi", 0},
+		{"ﬄ", "ffl", 0},
+		{"ﬅ", "st", 0},
+		{"ﬆ", "st", 0},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%s vs %s", test.val1, test.val2), func(t *testing.T) {
+			cmp, err := unicodeTyp.Compare(ctx, test.val1, test.val2)
+			require.NoError(t, err)
+			assert.Equal(t, test.expectedCmp, cmp)
+		})
+	}
+}
+
+func TestStringComparePadSpace(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	unicodeTyp, err := CreateString(sqltypes.VarChar, 10, sql.Collation_utf8mb4_unicode_ci)
+	require.NoError(t, err)
+
+	tests := []struct {
+		val1        string
+		val2        string
+		expectedCmp int
+	}{
+		{"a", "a ", 0},
+		{"a ", "a", 0},
+		{"ss", "ß ", 0},
+		{"ß", "ss   ", 0},
+		{"a", "a!", -1},
+		{"a", "a\t", 1},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%q vs %q", test.val1, test.val2), func(t *testing.T) {
+			cmp, err := unicodeTyp.Compare(ctx, test.val1, test.val2)
+			require.NoError(t, err)
+			assert.Equal(t, test.expectedCmp, cmp)
+		})
+	}
+}
+
+func TestStringCompareCollationDifferences(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	mk := func(c sql.CollationID) sql.StringType {
+		st, err := CreateString(sqltypes.VarChar, 10, c)
+		require.NoError(t, err)
+		return st
+	}
+
+	tests := []struct {
+		typ         sql.StringType
+		s1, s2      string
+		expectedCmp int
+	}{
+		{mk(sql.Collation_utf8mb4_general_ci), "ss", "ß", 1},
+		{mk(sql.Collation_utf8mb4_german2_ci), "ss", "ß", 0},
+		{mk(sql.Collation_utf8mb4_german2_ci), "ä", "ae", 0},
+		{mk(sql.Collation_utf8mb4_german2_ci), "ö", "oe", 0},
+		{mk(sql.Collation_utf8mb4_german2_ci), "ü", "ue", 0},
+		{mk(sql.Collation_utf8mb4_0900_bin), "ss", "ß", -1},
+		{mk(sql.Collation_utf8mb4_0900_bin), "ß", "ss", 1},
+		{mk(sql.Collation_utf8mb4_0900_as_cs), "ss", "ß", -1},
+		{mk(sql.Collation_utf8mb4_0900_as_cs), "ß", "ss", 1},
+		{mk(sql.Collation_utf8mb4_0900_as_cs), "oe", "Œ", -1},
+		{mk(sql.Collation_utf8mb4_0900_as_cs), "OE", "Œ", -1},
+		{mk(sql.Collation_utf8mb4_0900_ai_ci), "ss", "ß", 0},
+		{mk(sql.Collation_utf8mb4_0900_ai_ci), "oe", "œ", 0},
+		{mk(sql.Collation_utf8mb4_0900_ai_ci), "oe", "Œ", 0},
+		{mk(sql.Collation_utf8mb4_0900_ai_ci), "OE", "Œ", 0},
+		{mk(sql.Collation_utf8mb4_0900_ai_ci), "ae", "æ", 0},
+		{mk(sql.Collation_utf8mb4_unicode_ci), "ae", "æ", -1},
+	}
+	for _, tt := range tests {
+		cmp, err := tt.typ.Compare(ctx, tt.s1, tt.s2)
+		require.NoError(t, err)
+		assert.Equal(t, tt.expectedCmp, cmp, "%s vs %s under %s", tt.s1, tt.s2, tt.typ.Collation().Name())
+	}
+}
+
+func TestStringCompareMalformedUTF8(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	unicodeTyp, err := CreateString(sqltypes.VarChar, 10, sql.Collation_utf8mb4_unicode_ci)
+	require.NoError(t, err)
+
+	malformed := string([]byte{0xff})
+	_, err = unicodeTyp.Compare(ctx, malformed, "x")
+	require.Error(t, err)
+	assert.True(t, sql.ErrCollationMalformedString.Is(err))
+
+	_, err = unicodeTyp.Compare(ctx, malformed, malformed)
+	require.Error(t, err)
+	assert.True(t, sql.ErrCollationMalformedString.Is(err))
+}
+
 func TestStringCreateBlob(t *testing.T) {
 	tests := []struct {
 		baseType     query.Type
