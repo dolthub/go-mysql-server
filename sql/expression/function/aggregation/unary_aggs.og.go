@@ -302,35 +302,29 @@ func (a *BitOr) IsNullable(ctx *sql.Context) bool {
 }
 
 func (a *BitOr) String() string {
+	ret := "BIT_OR(" + a.Child.String() + ")"
 	if a.window != nil {
-		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("BITOR")
-		children := []string{a.window.String(), a.Child.String()}
-		pr.WriteChildren(children...)
-		return pr.String()
+		ret += " " + a.window.String()
 	}
-	return "BITOR(" + a.Child.String() + ")"
+	return ret
 }
 
 func (a *BitOr) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
 	if options.Debug {
 		if a.window != nil {
 			pr := sql.NewTreePrinter()
-			_ = pr.WriteNode("BITOR")
+			_ = pr.WriteNode("BIT_OR")
 			children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
 			pr.WriteChildren(children...)
 			return pr.String()
 		}
-		return fmt.Sprintf("BITOR(%s)", sql.Describe(ctx, a.Child, options))
+		return fmt.Sprintf("BIT_OR(%s)", sql.Describe(ctx, a.Child, options))
 	}
+	ret := "BIT_OR(" + sql.Describe(ctx, a.Child, options) + ")"
 	if a.window != nil {
-		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("BITOR")
-		children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
-		pr.WriteChildren(children...)
-		return pr.String()
+		ret += " " + sql.Describe(ctx, a.window, options)
 	}
-	return "BITOR(" + sql.Describe(ctx, a.Child, options) + ")"
+	return ret
 }
 
 func (a *BitOr) DebugString(ctx *sql.Context) string {
