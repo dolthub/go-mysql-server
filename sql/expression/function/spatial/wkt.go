@@ -39,12 +39,12 @@ func NewAsWKT(ctx *sql.Context, e sql.Expression) sql.Expression {
 
 // FunctionName implements sql.FunctionExpression
 func (p *AsWKT) FunctionName() string {
-	return "st_aswkb"
+	return "st_aswkt"
 }
 
 // Description implements sql.FunctionExpression
 func (p *AsWKT) Description() string {
-	return "returns binary representation of given spatial type."
+	return "returns text representation of given spatial type."
 }
 
 // IsNullable implements the sql.Expression interface.
