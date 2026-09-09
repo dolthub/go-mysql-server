@@ -32,7 +32,6 @@ type GetField struct {
 	db         string
 	table      string
 	name       string
-	debugName  string
 	fieldIndex int
 
 	// exprId lets the lifecycle of getFields be idempotent. We can re-index
@@ -112,13 +111,6 @@ func (p *GetField) WithName(name string) *GetField {
 	return &p2
 }
 
-// WithDebugName returns a copy of this expression with a separate name for debug plan output.
-func (p *GetField) WithDebugName(name string) *GetField {
-	p2 := *p
-	p2.debugName = name
-	return &p2
-}
-
 // Resolved implements the Expression interface.
 func (p *GetField) Resolved() bool {
 	return true
@@ -194,14 +186,10 @@ func (p *GetField) Describe(ctx *sql.Context, options sql.DescribeOptions) strin
 	if !p.nullable {
 		notNull = "!null"
 	}
-	name := p.name
-	if p.debugName != "" {
-		name = p.debugName
-	}
 	if p.table == "" {
-		return fmt.Sprintf("%s:%d%s", name, p.fieldIndex, notNull)
+		return fmt.Sprintf("%s:%d%s", p.name, p.fieldIndex, notNull)
 	}
-	return fmt.Sprintf("%s.%s:%d%s", p.table, name, p.fieldIndex, notNull)
+	return fmt.Sprintf("%s.%s:%d%s", p.table, p.name, p.fieldIndex, notNull)
 
 }
 
