@@ -2177,3 +2177,27 @@ func TestConvertValueToFloat64(t *testing.T) {
 		})
 	}
 }
+
+func TestNumberSQLUnsignedClamp(t *testing.T) {
+	tests := []struct {
+		typ sql.Type
+		val interface{}
+		exp string
+	}{
+		{Uint8, uint64(math.MaxUint8), "255"},
+		{Uint8, uint64(math.MaxUint8 + 1), "255"},
+		{Uint16, uint64(math.MaxUint16 + 1), "65535"},
+		{Uint24, uint64(1<<24 - 1), "16777215"},
+		{Uint24, uint64(1 << 24), "16777215"},
+		{Uint24, uint64(99999999), "16777215"},
+		{Uint32, uint64(math.MaxUint32 + 1), "4294967295"},
+		{Int24, int64(1 << 23), "8388607"},
+	}
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%s %v", test.typ.String(), test.val), func(t *testing.T) {
+			val, err := test.typ.SQL(sql.NewEmptyContext(), nil, test.val)
+			require.NoError(t, err)
+			assert.Equal(t, test.exp, val.ToString())
+		})
+	}
+}
