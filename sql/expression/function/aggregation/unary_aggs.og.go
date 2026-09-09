@@ -1354,35 +1354,29 @@ func (a *VarSamp) IsNullable(ctx *sql.Context) bool {
 }
 
 func (a *VarSamp) String() string {
+	ret := "VAR_SAMP(" + a.Child.String() + ")"
 	if a.window != nil {
-		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("VARSAMP")
-		children := []string{a.window.String(), a.Child.String()}
-		pr.WriteChildren(children...)
-		return pr.String()
+		ret += " " + a.window.String()
 	}
-	return "VARSAMP(" + a.Child.String() + ")"
+	return ret
 }
 
 func (a *VarSamp) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
 	if options.Debug {
 		if a.window != nil {
 			pr := sql.NewTreePrinter()
-			_ = pr.WriteNode("VARSAMP")
+			_ = pr.WriteNode("VAR_SAMP")
 			children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
 			pr.WriteChildren(children...)
 			return pr.String()
 		}
-		return fmt.Sprintf("VARSAMP(%s)", sql.Describe(ctx, a.Child, options))
+		return fmt.Sprintf("VAR_SAMP(%s)", sql.Describe(ctx, a.Child, options))
 	}
+	ret := "VAR_SAMP(" + sql.Describe(ctx, a.Child, options) + ")"
 	if a.window != nil {
-		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("VARSAMP")
-		children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
-		pr.WriteChildren(children...)
-		return pr.String()
+		ret += " " + sql.Describe(ctx, a.window, options)
 	}
-	return "VARSAMP(" + sql.Describe(ctx, a.Child, options) + ")"
+	return ret
 }
 
 func (a *VarSamp) DebugString(ctx *sql.Context) string {
