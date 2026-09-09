@@ -49,6 +49,14 @@ type Builder struct {
 	tabId sql.TableId
 	colId columnId
 
+	// windowClause tracks whether we are currently building an expression
+	// inside a window clause (e.g. "window order by") or empty otherwise.
+	windowClause string
+
+	// windowClauseColRef is true if the window clause is a single column
+	// name (not a composite expression like a + 1).
+	windowClauseColRef bool
+
 	authEnabled  bool
 	multiDDL     bool
 	insertActive bool
@@ -190,6 +198,12 @@ func (b *Builder) TriggerCtx() *TriggerContext {
 
 func (b *Builder) newScope() *scope {
 	return &scope{b: b}
+}
+
+func (b *Builder) withWindowState(clause string, isColRef bool) func() {
+	outerClause, outerColRef := b.windowClause, b.windowClauseColRef
+	b.windowClause, b.windowClauseColRef = clause, isColRef
+	return func() { b.windowClause, b.windowClauseColRef = outerClause, outerColRef }
 }
 
 func (b *Builder) Reset() {
