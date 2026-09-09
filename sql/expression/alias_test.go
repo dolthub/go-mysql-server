@@ -20,10 +20,18 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/internal/exprtest"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestAliasReferenceString(t *testing.T) {
 	expr := NewAliasReference("alias_name")
 	require.Equal(t, "alias_name", expr.String())
 	exprtest.AssertColumnRoundTrip(t, expr)
+}
+
+func TestAliasString(t *testing.T) {
+	expr := NewAlias(sql.NewEmptyContext(), "alias name", NewLiteral(42, types.Int64))
+	require.Equal(t, "42 as `alias name`", expr.String())
+	exprtest.AssertAliasRoundTrip(t, expr)
 }
