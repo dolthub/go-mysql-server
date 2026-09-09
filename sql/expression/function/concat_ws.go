@@ -56,16 +56,8 @@ func (f *ConcatWithSeparator) Description() string {
 func (f *ConcatWithSeparator) Type(ctx *sql.Context) sql.Type { return types.LongText }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
-func (c *ConcatWithSeparator) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
-	if len(c.args) == 0 {
-		return sql.Collation_binary, 6
-	}
-	collation, coercibility = sql.GetCoercibility(ctx, c.args[0])
-	for i := 1; i < len(c.args); i++ {
-		nextCollation, nextCoercibility := sql.GetCoercibility(ctx, c.args[i])
-		collation, coercibility = sql.ResolveCoercibility(collation, coercibility, nextCollation, nextCoercibility)
-	}
-	return collation, coercibility
+func (c *ConcatWithSeparator) CollationCoercibility(ctx *sql.Context) (sql.CollationID, byte) {
+	return sql.ResolveCoercibilityExpressions(ctx, c.args...)
 }
 
 // IsNullable implements the Expression interface.

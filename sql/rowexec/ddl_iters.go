@@ -1584,6 +1584,28 @@ func (i addColumnIter) Close(context *sql.Context) error {
 	return nil
 }
 
+// stripTableNamesFromGeneratedColumns removes the table qualifier from the column references of the resolved
+// generated expressions in the schema, which is persisted by the storage layer.
+func stripTableNamesFromGeneratedColumns(ctx *sql.Context, sch sql.Schema) sql.Schema {
+	for _, col := range sch {
+		if col.Generated == nil || !col.Generated.Resolved() {
+			continue
+		}
+		expr, same, _ := transform.Expr(ctx, col.Generated.Expr, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+			if gf, ok := e.(*expression.GetField); ok && gf.Table() != "" {
+				return gf.WithTable(""), transform.NewTree, nil
+			}
+			return e, transform.SameTree, nil
+		})
+		if !same {
+			generated := *col.Generated
+			generated.Expr = expr
+			col.Generated = &generated
+		}
+	}
+	return sch
+}
+
 // rewriteTable rewrites the table given if required or requested, and returns whether it was rewritten
 func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) (bool, error) {
 	targetSch := i.a.TargetSchema()
@@ -1592,7 +1614,7 @@ func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) 
 		// generated columns, the generated expression must be resolved.
 		if col.Virtual && col.Generated != nil && !col.Generated.Resolved() {
 			b := planbuilder.NewBuilderForColumnDefaultResolution(ctx, i.b.EngineOverrides)
-			targetSch = b.ResolveSchemaDefaults(i.a.Db.Name(), rwt.Name(), targetSch)
+			targetSch = stripTableNamesFromGeneratedColumns(ctx, b.ResolveSchemaDefaults(i.a.Db.Name(), rwt.Name(), targetSch))
 			break
 		}
 	}
