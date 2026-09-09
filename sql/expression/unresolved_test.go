@@ -19,6 +19,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/dolthub/go-mysql-server/internal/exprtest"
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -30,4 +31,13 @@ func TestUnresolvedExpression(t *testing.T) {
 	require.NotNil(o)
 	o = NewNot(e)
 	require.NotNil(o)
+}
+
+func TestUnresolvedFunctionString(t *testing.T) {
+	expr := NewUnresolvedFunction("function name", false, nil)
+	require.Equal(t, "`function name`()", expr.String())
+	parsed := exprtest.RequireFunction(t, exprtest.ParseExpression(t, expr))
+	require.Equal(t, expr.Name(), parsed.Name.String())
+	require.Equal(t, len(expr.Arguments), len(parsed.Exprs))
+	require.Nil(t, parsed.Over)
 }
