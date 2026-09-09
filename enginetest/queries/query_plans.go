@@ -6528,6 +6528,20 @@ inner join pq on true
 			"",
 	},
 	{
+		// Window result references use SQL names; argument debug details remain on the Window node.
+		Query: `SELECT SUM(i) OVER (PARTITION BY s ORDER BY i) AS total FROM mytable`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [sum(mytable.i) over ( partition by mytable.s order by mytable.i asc):0!null->total:0]\n" +
+			" └─ Window\n" +
+			"     ├─ SUM\n" +
+			"     │   ├─ over ( partition by mytable.s order by mytable.i ASC)\n" +
+			"     │   └─ mytable.i:0!null\n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: mytable\n" +
+			"             └─ columns: [i s]\n",
+	},
+	{
 		Query: `select row_number() over (order by i desc), mytable.i as i2
 				from mytable join othertable on i = i2 order by 1`,
 		ExpectedPlan: "Project\n" +
