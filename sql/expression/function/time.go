@@ -1058,11 +1058,15 @@ func (*Now) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, 
 
 // String implements the sql.Expression interface.
 func (n *Now) String() string {
+	name := "NOW"
+	if n.alwaysUseExactTime {
+		name = "SYSDATE"
+	}
 	if n.prec == nil {
-		return "NOW()"
+		return name + "()"
 	}
 
-	return fmt.Sprintf("NOW(%s)", n.prec.String())
+	return fmt.Sprintf("%s(%s)", name, n.prec.String())
 }
 
 // IsNullable implements the sql.Expression interface.
@@ -1169,7 +1173,12 @@ func (n *Now) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 // WithChildren implements the Expression interface.
 func (n *Now) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
-	return NewNow(ctx, children...)
+	ret, err := NewNow(ctx, children...)
+	if err != nil {
+		return nil, err
+	}
+	ret.(*Now).alwaysUseExactTime = n.alwaysUseExactTime
+	return ret, nil
 }
 
 // NewSysdate returns a new SYSDATE() function, using the supplied |args| for an
