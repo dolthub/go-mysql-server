@@ -710,6 +710,338 @@ t1.oid = t2.pid;`,
 			},
 		},
 	},
+	{
+		// Expected results verified against MySQL 8.4.6.
+		// https://github.com/dolthub/doltgresql/issues/3092
+		Name:    "UPDATE assignment customer CASE",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t_seq (a int, b int)",
+			"INSERT INTO t_seq VALUES (1, 0)",
+			"UPDATE t_seq SET a = 2, b = CASE WHEN a = 1 THEN 100 ELSE -1 END",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT a, b FROM t_seq",
+				Expected: []sql.Row{{2, -1}},
+			},
+		},
+	},
+	{
+		// Expected results verified against MySQL 8.4.6.
+		Name:    "UPDATE assignment reversed CASE",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t_seq (a int, b int)",
+			"INSERT INTO t_seq VALUES (1, 0)",
+			"UPDATE t_seq SET b = CASE WHEN a = 1 THEN 100 ELSE -1 END, a = 2",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT a, b FROM t_seq",
+				Expected: []sql.Row{{2, 100}},
+			},
+		},
+	},
+	{
+		// Expected results verified against MySQL 8.4.6.
+		Name:    "UPDATE assignment swap",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t_seq (a int, b int)",
+			"INSERT INTO t_seq VALUES (1, 0)",
+			"UPDATE t_seq SET a = b, b = a",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT a, b FROM t_seq",
+				Expected: []sql.Row{{0, 0}},
+			},
+		},
+	},
+	{
+		// Expected results verified against MySQL 8.4.6.
+		Name:    "UPDATE assignment reversed swap",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t_seq (a int, b int)",
+			"INSERT INTO t_seq VALUES (1, 0)",
+			"UPDATE t_seq SET b = a, a = b",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT a, b FROM t_seq",
+				Expected: []sql.Row{{1, 1}},
+			},
+		},
+	},
+	{
+		// Expected results verified against MySQL 8.4.6.
+		Name:    "UPDATE assignment arithmetic chain",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t_seq (a int, b int)",
+			"INSERT INTO t_seq VALUES (1, 0)",
+			"UPDATE t_seq SET a = a + 1, b = a + 10",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT a, b FROM t_seq",
+				Expected: []sql.Row{{2, 12}},
+			},
+		},
+	},
+	{
+		// Expected results verified against MySQL 8.4.6.
+		Name:    "UPDATE assignment NULL propagation",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t_seq (a int, b int)",
+			"INSERT INTO t_seq VALUES (1, 0)",
+			"UPDATE t_seq SET a = NULL, b = CASE WHEN a IS NULL THEN 100 ELSE -1 END",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT a, b FROM t_seq",
+				Expected: []sql.Row{{nil, 100}},
+			},
+		},
+	},
+	{
+		// Expected results verified against MySQL 8.4.6.
+		Name:    "UPDATE assignment multiple rows",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t_seq (a int, b int)",
+			"INSERT INTO t_seq VALUES (1, 0)",
+			"INSERT INTO t_seq VALUES (3, 9)",
+			"UPDATE t_seq SET a = a + 1, b = a",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT a, b FROM t_seq ORDER BY a",
+				Expected: []sql.Row{{2, 2}, {4, 4}},
+			},
+		},
+	},
+	{
+		// Expected results verified against MySQL 8.4.6.
+		Name:    "UPDATE assignment scalar correlated subquery",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t_seq (a int, b int)",
+			"INSERT INTO t_seq VALUES (1, 0)",
+			"UPDATE t_seq SET a = 2, b = (SELECT a + 10)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT a, b FROM t_seq",
+				Expected: []sql.Row{{2, 12}},
+			},
+		},
+	},
+	{
+		// Expected results verified against MySQL 8.4.6.
+		Name:    "UPDATE assignment WHERE subquery",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t_seq (a int, b int)",
+			"INSERT INTO t_seq VALUES (1, 0)",
+			"CREATE TABLE src (x int PRIMARY KEY)",
+			"INSERT INTO src VALUES (1)",
+			"UPDATE t_seq SET a = 2, b = a WHERE a IN (SELECT x FROM src)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT a, b FROM t_seq",
+				Expected: []sql.Row{{2, 2}},
+			},
+		},
+	},
+	{
+		// Expected results verified against MySQL 8.4.6.
+		Name:    "UPDATE assignment assignment conversion",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t_seq (a int, b int)",
+			"INSERT INTO t_seq VALUES (1, 0)",
+			"UPDATE t_seq SET a = 1.6, b = a",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT a, b FROM t_seq",
+				Expected: []sql.Row{{2, 2}},
+			},
+		},
+	},
+	{
+		// Expected results verified against MySQL 8.4.6.
+		Name:    "UPDATE assignment generated stored column",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t_seq (a int, b int, c int GENERATED ALWAYS AS (a+b) STORED)",
+			"INSERT INTO t_seq (a,b) VALUES (1,0)",
+			"UPDATE t_seq SET a = 2, b = a",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT a,b,c FROM t_seq",
+				Expected: []sql.Row{{2, 2, 4}},
+			},
+		},
+	},
+	{
+		// Expected results verified against MySQL 8.4.6.
+		Name:    "UPDATE assignment repeated target",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t_seq (a int, b int)",
+			"INSERT INTO t_seq VALUES (1, 0)",
+			"UPDATE t_seq SET a = a + 1, a = a + 10, b = a",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT a, b FROM t_seq",
+				Expected: []sql.Row{{12, 12}},
+			},
+		},
+	},
+	{
+		// Expected results verified against MySQL 8.4.6.
+		Name:    "UPDATE assignment IGNORE conversion",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t_seq (a int, b int)",
+			"INSERT INTO t_seq VALUES (1, 0)",
+			"UPDATE IGNORE t_seq SET a = 'bad', b = a",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT a, b FROM t_seq",
+				Expected: []sql.Row{{0, 0}},
+			},
+		},
+	},
+	{
+		// Expected results verified against MySQL 8.4.6.
+		Name:    "UPDATE assignment join same target",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t_seq (id int PRIMARY KEY, a int, b int)",
+			"INSERT INTO t_seq VALUES (1,1,0)",
+			"CREATE TABLE src (id int PRIMARY KEY, x int)",
+			"INSERT INTO src VALUES (1,10)",
+			"UPDATE t_seq JOIN src ON t_seq.id = src.id SET a = 2, b = a",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT a, b FROM t_seq",
+				Expected: []sql.Row{{2, 2}},
+			},
+		},
+	},
+	{
+		// Expected results verified against MySQL 8.4.6.
+		Name:    "UPDATE assignment join swap",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t_seq (id int PRIMARY KEY, a int, b int)",
+			"INSERT INTO t_seq VALUES (1,1,0)",
+			"CREATE TABLE src (id int PRIMARY KEY, x int)",
+			"INSERT INTO src VALUES (1,10)",
+			"UPDATE t_seq JOIN src ON t_seq.id = src.id SET a = b, b = a",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT a, b FROM t_seq",
+				Expected: []sql.Row{{0, 0}},
+			},
+		},
+	},
+	{
+		// Expected results verified against MySQL 8.4.6.
+		Name:    "UPDATE assignment join cross target",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t_seq (id int PRIMARY KEY, a int, b int)",
+			"INSERT INTO t_seq VALUES (1,1,0)",
+			"CREATE TABLE src (id int PRIMARY KEY, x int)",
+			"INSERT INTO src VALUES (1,10)",
+			"UPDATE t_seq JOIN src ON t_seq.id = src.id SET t_seq.a = src.x, src.x = t_seq.a",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT a,x FROM t_seq JOIN src ON t_seq.id = src.id",
+				Expected: []sql.Row{{10, 10}},
+			},
+		},
+	},
+	{
+		// Expected results verified against MySQL 8.4.6.
+		Name: "UPDATE assignment join buffered target",
+		// MySQL buffers this target; GMS always evaluates assignments sequentially.
+		// Multi-table assignment order is unspecified in MySQL. Preserve this
+		// observed difference without requiring GMS to adopt its execution plan.
+		Skip:    true,
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t_seq (id int PRIMARY KEY, a int, b int)",
+			"INSERT INTO t_seq VALUES (1,1,0)",
+			"CREATE TABLE src (id int PRIMARY KEY, x int)",
+			"INSERT INTO src VALUES (1,10)",
+			"UPDATE src STRAIGHT_JOIN t_seq ON t_seq.id = src.id SET a = 2, b = a",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT a, b FROM t_seq",
+				Expected: []sql.Row{{2, 1}},
+			},
+		},
+	},
+	{
+		// Expected results verified against MySQL 8.4.6.
+		Name: "UPDATE assignment join buffered swap",
+		// MySQL buffers this target; GMS always evaluates assignments sequentially.
+		// Multi-table assignment order is unspecified in MySQL. Preserve this
+		// observed difference without requiring GMS to adopt its execution plan.
+		Skip:    true,
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t_seq (id int PRIMARY KEY, a int, b int)",
+			"INSERT INTO t_seq VALUES (1,1,0)",
+			"CREATE TABLE src (id int PRIMARY KEY, x int)",
+			"INSERT INTO src VALUES (1,10)",
+			"UPDATE src STRAIGHT_JOIN t_seq ON t_seq.id = src.id SET a = b, b = a",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT a, b FROM t_seq",
+				Expected: []sql.Row{{0, 1}},
+			},
+		},
+	},
+	{
+		// Expected results verified against MySQL 8.4.6.
+		Name: "UPDATE assignment join buffered cross target",
+		// MySQL buffers this target; GMS always evaluates assignments sequentially.
+		// Multi-table assignment order is unspecified in MySQL. Preserve this
+		// observed difference without requiring GMS to adopt its execution plan.
+		Skip:    true,
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t_seq (id int PRIMARY KEY, a int, b int)",
+			"INSERT INTO t_seq VALUES (1,1,0)",
+			"CREATE TABLE src (id int PRIMARY KEY, x int)",
+			"INSERT INTO src VALUES (1,10)",
+			"UPDATE src STRAIGHT_JOIN t_seq ON t_seq.id = src.id SET t_seq.a = src.x, src.x = t_seq.a",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT a,x FROM t_seq JOIN src ON t_seq.id = src.id",
+				Expected: []sql.Row{{1, 1}},
+			},
+		},
+	},
 }
 
 var SpatialUpdateTests = []WriteQueryTest{
