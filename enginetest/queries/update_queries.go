@@ -159,7 +159,7 @@ var UpdateWriteQueryTests = []WriteQueryTest{
 	},
 	{
 		SkipServerEngine:    true, // datetime returned is non-zero over the wire
-		WriteQuery:          "UPDATE typestable SET da = '0000-00-00', ti = '0000-00-00 00:00:00';",
+		WriteQuery:          "UPDATE typestable SET da = '0000-01-01', ti = '1970-01-01 00:00:01';",
 		ExpectedWriteResult: []sql.Row{{NewUpdateResult(1, 1)}},
 		SelectQuery:         "SELECT * FROM typestable;",
 		ExpectedSelect: []sql.Row{{
@@ -174,8 +174,8 @@ var UpdateWriteQueryTests = []WriteQueryTest{
 			uint64(9),
 			float32(10),
 			float64(11),
-			types.Timestamp.Zero(),
-			types.Date.Zero(),
+			time.Date(1970, 1, 1, 0, 0, 1, 0, time.UTC),
+			time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC),
 			"fourteen",
 			0,
 			nil,
@@ -1101,7 +1101,7 @@ var OnUpdateExprScripts = []ScriptTest{
 	{
 		Name: "basic case",
 		SetUpScript: []string{
-			"create table t (i int, ts timestamp default 0 on update current_timestamp);",
+			"create table t (i int, ts timestamp default null on update current_timestamp);",
 			"insert into t(i) values (1), (2), (3);",
 		},
 		Assertions: []ScriptTestAssertion{
@@ -1110,7 +1110,7 @@ var OnUpdateExprScripts = []ScriptTest{
 				Expected: []sql.Row{
 					{"t", "CREATE TABLE `t` (\n" +
 						"  `i` int,\n" +
-						"  `ts` timestamp DEFAULT 0 ON UPDATE CURRENT_TIMESTAMP\n" +
+						"  `ts` timestamp DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
@@ -1118,9 +1118,9 @@ var OnUpdateExprScripts = []ScriptTest{
 				SkipResultCheckOnServerEngine: true,
 				Query:                         "select * from t order by i;",
 				Expected: []sql.Row{
-					{1, ZeroTime},
-					{2, ZeroTime},
-					{3, ZeroTime},
+					{1, nil},
+					{2, nil},
+					{3, nil},
 				},
 			},
 			{
@@ -1141,8 +1141,8 @@ var OnUpdateExprScripts = []ScriptTest{
 				SkipResultCheckOnServerEngine: true,
 				Query:                         "select * from t order by i;",
 				Expected: []sql.Row{
-					{2, ZeroTime},
-					{3, ZeroTime},
+					{2, nil},
+					{3, nil},
 					{10, Dec15_1_30},
 				},
 			},
@@ -1180,7 +1180,7 @@ var OnUpdateExprScripts = []ScriptTest{
 	{
 		Name: "precision 3",
 		SetUpScript: []string{
-			"create table t (i int, ts timestamp(3) default 0 on update current_timestamp(3));",
+			"create table t (i int, ts timestamp(3) default null on update current_timestamp(3));",
 			"insert into t(i) values (1), (2), (3);",
 		},
 		Assertions: []ScriptTestAssertion{
@@ -1189,7 +1189,7 @@ var OnUpdateExprScripts = []ScriptTest{
 				Expected: []sql.Row{
 					{"t", "CREATE TABLE `t` (\n" +
 						"  `i` int,\n" +
-						"  `ts` timestamp(3) DEFAULT 0 ON UPDATE CURRENT_TIMESTAMP(3)\n" +
+						"  `ts` timestamp(3) DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP(3)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
@@ -1197,9 +1197,9 @@ var OnUpdateExprScripts = []ScriptTest{
 				SkipResultCheckOnServerEngine: true,
 				Query:                         "select * from t order by i;",
 				Expected: []sql.Row{
-					{1, ZeroTime},
-					{2, ZeroTime},
-					{3, ZeroTime},
+					{1, nil},
+					{2, nil},
+					{3, nil},
 				},
 			},
 			{
@@ -1212,8 +1212,8 @@ var OnUpdateExprScripts = []ScriptTest{
 				SkipResultCheckOnServerEngine: true,
 				Query:                         "select * from t order by i;",
 				Expected: []sql.Row{
-					{2, ZeroTime},
-					{3, ZeroTime},
+					{2, nil},
+					{3, nil},
 					{10, Dec15_1_30},
 				},
 			},
@@ -1251,7 +1251,7 @@ var OnUpdateExprScripts = []ScriptTest{
 	{
 		Name: "precision 6",
 		SetUpScript: []string{
-			"create table t (i int, ts timestamp(6) default 0 on update current_timestamp(6));",
+			"create table t (i int, ts timestamp(6) default null on update current_timestamp(6));",
 			"insert into t(i) values (1), (2), (3);",
 		},
 		Assertions: []ScriptTestAssertion{
@@ -1260,7 +1260,7 @@ var OnUpdateExprScripts = []ScriptTest{
 				Expected: []sql.Row{
 					{"t", "CREATE TABLE `t` (\n" +
 						"  `i` int,\n" +
-						"  `ts` timestamp(6) DEFAULT 0 ON UPDATE CURRENT_TIMESTAMP(6)\n" +
+						"  `ts` timestamp(6) DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP(6)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
@@ -1268,9 +1268,9 @@ var OnUpdateExprScripts = []ScriptTest{
 				SkipResultCheckOnServerEngine: true,
 				Query:                         "select * from t order by i;",
 				Expected: []sql.Row{
-					{1, ZeroTime},
-					{2, ZeroTime},
-					{3, ZeroTime},
+					{1, nil},
+					{2, nil},
+					{3, nil},
 				},
 			},
 			{
@@ -1283,8 +1283,8 @@ var OnUpdateExprScripts = []ScriptTest{
 				SkipResultCheckOnServerEngine: true,
 				Query:                         "select * from t order by i;",
 				Expected: []sql.Row{
-					{2, ZeroTime},
-					{3, ZeroTime},
+					{2, nil},
+					{3, nil},
 					{10, Dec15_1_30},
 				},
 			},
@@ -1474,7 +1474,7 @@ var OnUpdateExprScripts = []ScriptTest{
 	{
 		Name: "multiple columns case",
 		SetUpScript: []string{
-			"create table t (i int primary key, ts timestamp default 0 on update current_timestamp, dt datetime default 0 on update current_timestamp);",
+			"create table t (i int primary key, ts timestamp default null on update current_timestamp, dt datetime default null on update current_timestamp);",
 			"insert into t(i) values (1), (2), (3);",
 		},
 		Assertions: []ScriptTestAssertion{
@@ -1483,8 +1483,8 @@ var OnUpdateExprScripts = []ScriptTest{
 				Expected: []sql.Row{
 					{"t", "CREATE TABLE `t` (\n" +
 						"  `i` int NOT NULL,\n" +
-						"  `ts` timestamp DEFAULT 0 ON UPDATE CURRENT_TIMESTAMP,\n" +
-						"  `dt` datetime DEFAULT 0 ON UPDATE CURRENT_TIMESTAMP,\n" +
+						"  `ts` timestamp DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,\n" +
+						"  `dt` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,\n" +
 						"  PRIMARY KEY (`i`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
@@ -1493,9 +1493,9 @@ var OnUpdateExprScripts = []ScriptTest{
 				SkipResultCheckOnServerEngine: true,
 				Query:                         "select * from t order by i;",
 				Expected: []sql.Row{
-					{1, ZeroTime, ZeroTime},
-					{2, ZeroTime, ZeroTime},
-					{3, ZeroTime, ZeroTime},
+					{1, nil, nil},
+					{2, nil, nil},
+					{3, nil, nil},
 				},
 			},
 			{
@@ -1508,8 +1508,8 @@ var OnUpdateExprScripts = []ScriptTest{
 				SkipResultCheckOnServerEngine: true,
 				Query:                         "select * from t order by i;",
 				Expected: []sql.Row{
-					{2, ZeroTime, ZeroTime},
-					{3, ZeroTime, ZeroTime},
+					{2, nil, nil},
+					{3, nil, nil},
 					{10, Dec15_1_30, Dec15_1_30},
 				},
 			},
@@ -1524,7 +1524,7 @@ var OnUpdateExprScripts = []ScriptTest{
 				Query:                         "select * from t order by i;",
 				Expected: []sql.Row{
 					{2, Oct2Midnight, Dec15_1_30},
-					{3, ZeroTime, ZeroTime},
+					{3, nil, nil},
 					{10, Dec15_1_30, Dec15_1_30},
 				},
 			},
@@ -1534,7 +1534,7 @@ var OnUpdateExprScripts = []ScriptTest{
 		// before update triggers that update the timestamp column block the on update
 		Name: "before update trigger",
 		SetUpScript: []string{
-			"create table t (i int primary key, ts timestamp default 0 on update current_timestamp, dt datetime default 0 on update current_timestamp);",
+			"create table t (i int primary key, ts timestamp default null on update current_timestamp, dt datetime default null on update current_timestamp);",
 			"create trigger trig before update on t for each row set new.ts = timestamp('2020-10-2');",
 			"insert into t(i) values (1), (2), (3);",
 		},
@@ -1549,8 +1549,8 @@ var OnUpdateExprScripts = []ScriptTest{
 				SkipResultCheckOnServerEngine: true,
 				Query:                         "select * from t order by i;",
 				Expected: []sql.Row{
-					{2, ZeroTime, ZeroTime},
-					{3, ZeroTime, ZeroTime},
+					{2, nil, nil},
+					{3, nil, nil},
 					{10, Oct2Midnight, Dec15_1_30},
 				},
 			},
@@ -1561,7 +1561,7 @@ var OnUpdateExprScripts = []ScriptTest{
 		Name: "after update trigger",
 		SetUpScript: []string{
 			"create table a (i int primary key);",
-			"create table b (i int, ts timestamp default 0 on update current_timestamp, dt datetime default 0 on update current_timestamp);",
+			"create table b (i int, ts timestamp default null on update current_timestamp, dt datetime default null on update current_timestamp);",
 			"create trigger trig after update on a for each row update b set i = i + 1;",
 			"insert into a values (0);",
 			"insert into b(i) values (0);",
@@ -1571,7 +1571,7 @@ var OnUpdateExprScripts = []ScriptTest{
 				SkipResultCheckOnServerEngine: true,
 				Query:                         "select * from b order by i;",
 				Expected: []sql.Row{
-					{0, ZeroTime, ZeroTime},
+					{0, nil, nil},
 				},
 			},
 			{
@@ -1592,8 +1592,8 @@ var OnUpdateExprScripts = []ScriptTest{
 		Name: "insert triggers",
 		SetUpScript: []string{
 			"create table t (i int primary key);",
-			"create table a (i int, ts timestamp default 0 on update current_timestamp, dt datetime default 0 on update current_timestamp);",
-			"create table b (i int, ts timestamp default 0 on update current_timestamp, dt datetime default 0 on update current_timestamp);",
+			"create table a (i int, ts timestamp default null on update current_timestamp, dt datetime default null on update current_timestamp);",
+			"create table b (i int, ts timestamp default null on update current_timestamp, dt datetime default null on update current_timestamp);",
 			"create trigger trigA after insert on t for each row update a set i = i + 1;",
 			"create trigger trigB before insert on t for each row update b set i = i + 1;",
 			"insert into a(i) values (0);",
@@ -1625,7 +1625,7 @@ var OnUpdateExprScripts = []ScriptTest{
 		Name: "foreign key tests",
 		SetUpScript: []string{
 			"create table parent (i int primary key);",
-			"create table child (i int primary key, ts timestamp default 0 on update current_timestamp, foreign key (i) references parent(i) on update cascade);",
+			"create table child (i int primary key, ts timestamp default null on update current_timestamp, foreign key (i) references parent(i) on update cascade);",
 			"insert into parent values (1);",
 			"insert into child(i) values (1);",
 		},
@@ -1640,7 +1640,7 @@ var OnUpdateExprScripts = []ScriptTest{
 				SkipResultCheckOnServerEngine: true,
 				Query:                         "select * from child;",
 				Expected: []sql.Row{
-					{10, ZeroTime},
+					{10, nil},
 				},
 			},
 		},
@@ -1648,7 +1648,7 @@ var OnUpdateExprScripts = []ScriptTest{
 	{
 		Name: "stored procedure tests",
 		SetUpScript: []string{
-			"create table t (i int, ts timestamp default 0 on update current_timestamp);",
+			"create table t (i int, ts timestamp default null on update current_timestamp);",
 			"insert into t(i) values (0);",
 			"create procedure p() update t set i = i + 1;",
 		},
@@ -1921,7 +1921,7 @@ var OnUpdateExprScripts = []ScriptTest{
 		// https://github.com/dolthub/dolt/issues/10627
 		Name: "ON UPDATE works with INSERT...ON DUPLICATE KEY UPDATE",
 		SetUpScript: []string{
-			"CREATE TABLE test (pk INT PRIMARY KEY, v1 int, dt datetime default 0 on update current_timestamp);",
+			"CREATE TABLE test (pk INT PRIMARY KEY, v1 int, dt datetime default null on update current_timestamp);",
 			"INSERT INTO test (pk, v1) VALUES (1, 1), (2, 2), (3, 3);",
 		},
 		Assertions: []ScriptTestAssertion{
@@ -1939,8 +1939,8 @@ var OnUpdateExprScripts = []ScriptTest{
 				Query: "select * from test",
 				Expected: []sql.Row{
 					{1, 2, Dec15_1_30},
-					{2, 2, ZeroTime},
-					{3, 3, ZeroTime},
+					{2, 2, nil},
+					{3, 3, nil},
 				},
 			},
 		},

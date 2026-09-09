@@ -453,7 +453,7 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (sql.Type, error) {
 // CompareNulls compares two values, and returns true if either is null.
 // The returned integer represents the ordering, with a rule that states nulls
 // as being ordered before non-nulls.
-func CompareNulls(a interface{}, b interface{}) (bool, int) {
+func CompareNulls(a, b any) (bool, int) {
 	aIsNull := a == nil
 	bIsNull := b == nil
 	if aIsNull && bIsNull {
