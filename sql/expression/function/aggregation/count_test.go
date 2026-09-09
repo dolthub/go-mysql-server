@@ -74,6 +74,12 @@ func TestCountEvalStar(t *testing.T) {
 	require.Equal(int64(5), evalBuffer(t, b))
 }
 
+func TestCountString(t *testing.T) {
+	count := NewCount(expression.NewStar()).WithWindow(sql.NewEmptyContext(), &sql.WindowDefinition{})
+	require.Equal(t, "COUNT(*) over ()", count.String())
+	exprtest.AssertFunctionRoundTrip(t, count.(sql.FunctionExpression))
+}
+
 func TestCountEvalString(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()

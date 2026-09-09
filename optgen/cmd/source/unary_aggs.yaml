@@ -25,6 +25,7 @@ unaryAggs:
   desc:    "returns the bitwise XOR of all bits in expr."
   retType: "types.Uint64"
 - name:    "Count"
+  sqlString: true
   desc:    "returns a count of the number of non-NULL values of expr in the rows retrieved by a SELECT statement."
   retType: "types.Int64"
 - name: "First"

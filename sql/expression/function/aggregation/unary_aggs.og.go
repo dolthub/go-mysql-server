@@ -478,14 +478,11 @@ func (a *Count) IsNullable(ctx *sql.Context) bool {
 }
 
 func (a *Count) String() string {
+	ret := "COUNT(" + a.Child.String() + ")"
 	if a.window != nil {
-		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("COUNT")
-		children := []string{a.window.String(), a.Child.String()}
-		pr.WriteChildren(children...)
-		return pr.String()
+		ret += " " + a.window.String()
 	}
-	return "COUNT(" + a.Child.String() + ")"
+	return ret
 }
 
 func (a *Count) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
@@ -499,14 +496,11 @@ func (a *Count) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
 		}
 		return fmt.Sprintf("COUNT(%s)", sql.Describe(ctx, a.Child, options))
 	}
+	ret := "COUNT(" + sql.Describe(ctx, a.Child, options) + ")"
 	if a.window != nil {
-		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("COUNT")
-		children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
-		pr.WriteChildren(children...)
-		return pr.String()
+		ret += " " + sql.Describe(ctx, a.window, options)
 	}
-	return "COUNT(" + sql.Describe(ctx, a.Child, options) + ")"
+	return ret
 }
 
 func (a *Count) DebugString(ctx *sql.Context) string {
