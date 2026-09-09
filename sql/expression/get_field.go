@@ -32,6 +32,7 @@ type GetField struct {
 	db         string
 	table      string
 	name       string
+	debugName  string
 	fieldIndex int
 
 	// exprId lets the lifecycle of getFields be idempotent. We can re-index
@@ -48,6 +49,7 @@ type GetField struct {
 var _ sql.Expression = (*GetField)(nil)
 var _ sql.ValueExpression = (*GetField)(nil)
 var _ sql.CollationCoercible = (*GetField)(nil)
+var _ sql.Describable = (*GetField)(nil)
 var _ sql.IdExpression = (*GetField)(nil)
 
 // NewGetField creates a GetField expression.
@@ -107,6 +109,13 @@ func (p *GetField) WithTable(table string) *GetField {
 func (p *GetField) WithName(name string) *GetField {
 	p2 := *p
 	p2.name = name
+	return &p2
+}
+
+// WithDebugName returns a copy of this expression with a separate name for debug plan output.
+func (p *GetField) WithDebugName(name string) *GetField {
+	p2 := *p
+	p2.debugName = name
 	return &p2
 }
 
@@ -176,15 +185,28 @@ func (p *GetField) String() string {
 	return p.table + "." + p.name
 }
 
-func (p *GetField) DebugString(ctx *sql.Context) string {
+// Describe implements the sql.Describable interface.
+func (p *GetField) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
+	if !options.Debug {
+		return p.String()
+	}
 	var notNull string
 	if !p.nullable {
 		notNull = "!null"
 	}
-	if p.table == "" {
-		return fmt.Sprintf("%s:%d%s", p.name, p.fieldIndex, notNull)
+	name := p.name
+	if p.debugName != "" {
+		name = p.debugName
 	}
-	return fmt.Sprintf("%s.%s:%d%s", p.table, p.name, p.fieldIndex, notNull)
+	if p.table == "" {
+		return fmt.Sprintf("%s:%d%s", name, p.fieldIndex, notNull)
+	}
+	return fmt.Sprintf("%s.%s:%d%s", p.table, name, p.fieldIndex, notNull)
+
+}
+
+func (p *GetField) DebugString(ctx *sql.Context) string {
+	return p.Describe(ctx, sql.DescribeOptions{Debug: true})
 }
 
 // WithIndex returns this same GetField with a new index.
