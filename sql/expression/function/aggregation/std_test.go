@@ -20,12 +20,20 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/dolthub/go-mysql-server/internal/exprtest"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 func isFloatEqual(a, b float64) bool {
 	return math.Abs(a-b) < 1e-9
+}
+
+func TestStdDevPopString(t *testing.T) {
+	expr := NewStdDevPop(expression.NewGetField(0, nil, "value", false)).
+		WithWindow(sql.NewEmptyContext(), &sql.WindowDefinition{})
+	require.Equal(t, "STDDEV_POP(value) over ()", expr.String())
+	exprtest.AssertFunctionRoundTripAs(t, expr.(sql.FunctionExpression), "STDDEV_POP")
 }
 
 func TestStd(t *testing.T) {

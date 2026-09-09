@@ -1090,35 +1090,29 @@ func (a *StdDevPop) IsNullable(ctx *sql.Context) bool {
 }
 
 func (a *StdDevPop) String() string {
+	ret := "STDDEV_POP(" + a.Child.String() + ")"
 	if a.window != nil {
-		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("STDDEVPOP")
-		children := []string{a.window.String(), a.Child.String()}
-		pr.WriteChildren(children...)
-		return pr.String()
+		ret += " " + a.window.String()
 	}
-	return "STDDEVPOP(" + a.Child.String() + ")"
+	return ret
 }
 
 func (a *StdDevPop) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
 	if options.Debug {
 		if a.window != nil {
 			pr := sql.NewTreePrinter()
-			_ = pr.WriteNode("STDDEVPOP")
+			_ = pr.WriteNode("STDDEV_POP")
 			children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
 			pr.WriteChildren(children...)
 			return pr.String()
 		}
-		return fmt.Sprintf("STDDEVPOP(%s)", sql.Describe(ctx, a.Child, options))
+		return fmt.Sprintf("STDDEV_POP(%s)", sql.Describe(ctx, a.Child, options))
 	}
+	ret := "STDDEV_POP(" + sql.Describe(ctx, a.Child, options) + ")"
 	if a.window != nil {
-		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("STDDEVPOP")
-		children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
-		pr.WriteChildren(children...)
-		return pr.String()
+		ret += " " + sql.Describe(ctx, a.window, options)
 	}
-	return "STDDEVPOP(" + sql.Describe(ctx, a.Child, options) + ")"
+	return ret
 }
 
 func (a *StdDevPop) DebugString(ctx *sql.Context) string {
