@@ -22,6 +22,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/internal/exprtest"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestSubqueryString(t *testing.T) {
@@ -29,6 +32,40 @@ func TestSubqueryString(t *testing.T) {
 	require.Equal(t, "(select 1)", expr.String())
 	parsed := exprtest.RequireExpression(t, exprtest.ParseExpression(t, expr)).(*sqlparser.Subquery)
 	assertParsedSubquery(t, parsed, expr)
+}
+
+func TestInSubqueryString(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	expr := NewInSubquery(ctx, expression.NewUnresolvedColumn("i"), NewSubquery(nil, "select j from t"))
+	require.Equal(t, "(i IN (select j from t))", expr.String())
+	assertParsedInSubquery(t, exprtest.RequireExpression(t, exprtest.ParseExpression(t, expr)), expr)
+}
+
+func TestNestedInSubqueryDescription(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	subquery := NewSubquery(NewUnresolvedTable("t", ""), "select j from t")
+	inSubquery := NewInSubquery(ctx, expression.NewUnresolvedColumn("i"), subquery)
+	expr := expression.NewAnd(expression.NewLiteral(true, types.Boolean), inSubquery)
+
+	description := sql.Describe(ctx, expr, sql.DescribeOptions{Estimates: true})
+	require.Contains(t, description, "InSubquery")
+	require.Contains(t, description, "right: Subquery")
+	require.Contains(t, description, "UnresolvedTable(t)")
+
+	require.Equal(t, "(true AND (i IN (select j from t)))", expr.String())
+	parsed := exprtest.RequireExpression(t, exprtest.ParseExpression(t, expr)).(*sqlparser.ParenExpr)
+	parsedAnd := parsed.Expr.(*sqlparser.AndExpr)
+	exprtest.AssertExpressionValue(t, parsedAnd.Left, expr.Children()[0])
+	assertParsedInSubquery(t, parsedAnd.Right, inSubquery)
+}
+
+func assertParsedInSubquery(t *testing.T, parsed sqlparser.Expr, original *InSubquery) {
+	t.Helper()
+	parenthesized := parsed.(*sqlparser.ParenExpr)
+	comparison := parenthesized.Expr.(*sqlparser.ComparisonExpr)
+	require.Equal(t, sqlparser.InStr, comparison.Operator)
+	exprtest.AssertExpressionValue(t, comparison.Left, original.Left())
+	assertParsedSubquery(t, comparison.Right.(*sqlparser.Subquery), original.Right().(*Subquery))
 }
 
 func assertParsedSubquery(t *testing.T, parsed *sqlparser.Subquery, original *Subquery) {
