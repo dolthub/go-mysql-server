@@ -914,14 +914,11 @@ func (a *Min) IsNullable(ctx *sql.Context) bool {
 }
 
 func (a *Min) String() string {
+	ret := "MIN(" + a.Child.String() + ")"
 	if a.window != nil {
-		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("MIN")
-		children := []string{a.window.String(), a.Child.String()}
-		pr.WriteChildren(children...)
-		return pr.String()
+		ret += " " + a.window.String()
 	}
-	return "MIN(" + a.Child.String() + ")"
+	return ret
 }
 
 func (a *Min) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
@@ -935,14 +932,11 @@ func (a *Min) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
 		}
 		return fmt.Sprintf("MIN(%s)", sql.Describe(ctx, a.Child, options))
 	}
+	ret := "MIN(" + sql.Describe(ctx, a.Child, options) + ")"
 	if a.window != nil {
-		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("MIN")
-		children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
-		pr.WriteChildren(children...)
-		return pr.String()
+		ret += " " + sql.Describe(ctx, a.window, options)
 	}
-	return "MIN(" + sql.Describe(ctx, a.Child, options) + ")"
+	return ret
 }
 
 func (a *Min) DebugString(ctx *sql.Context) string {

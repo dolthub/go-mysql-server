@@ -20,6 +20,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/dolthub/go-mysql-server/internal/exprtest"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -30,6 +31,10 @@ func TestMin_Name(t *testing.T) {
 
 	m := NewMin(expression.NewGetField(0, types.Int32, "field", true))
 	assert.Equal("MIN(field)", m.String())
+
+	windowed := m.WithWindow(sql.NewEmptyContext(), &sql.WindowDefinition{})
+	assert.Equal("MIN(field) over ()", windowed.String())
+	exprtest.AssertFunctionRoundTrip(t, windowed.(sql.FunctionExpression))
 }
 
 func TestMin_Eval_Int32(t *testing.T) {

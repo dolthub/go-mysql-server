@@ -45,6 +45,7 @@ unaryAggs:
   sqlString: true
   desc: "returns the maximum value of expr in all rows."
 - name: "Min"
+  sqlString: true
   desc: "returns the minimum value of expr in all rows."
 - name:     "Sum"
   desc:     "returns the sum of expr in all rows"
