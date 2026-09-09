@@ -110,14 +110,18 @@ func (w *WindowDefinition) PartitionId() (uint64, error) {
 		return w.id, nil
 	}
 	sb := strings.Builder{}
+	sb.WriteString("PARTITION:")
 	if len(w.PartitionBy) > 0 {
 		for _, expression := range w.PartitionBy {
 			sb.WriteString(expression.String())
+			sb.WriteByte(0)
 		}
 	}
+	sb.WriteString("ORDER:")
 	if len(w.OrderBy) > 0 {
 		for _, ob := range w.OrderBy {
 			sb.WriteString(ob.String())
+			sb.WriteByte(0)
 		}
 	}
 	hash := xxhash.New()
