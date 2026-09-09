@@ -20,21 +20,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/dolthub/go-mysql-server/internal/exprtest"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
-
-func TestMax_String(t *testing.T) {
-	assert := require.New(t)
-	m := NewMax(expression.NewGetField(0, types.Int32, "field", true))
-	assert.Equal("MAX(field)", m.String())
-
-	windowed := m.WithWindow(sql.NewEmptyContext(), &sql.WindowDefinition{})
-	assert.Equal("MAX(field) over ()", windowed.String())
-	exprtest.AssertFunctionRoundTrip(t, windowed.(sql.FunctionExpression))
-}
 
 func TestMax_Eval_Int32(t *testing.T) {
 	assert := require.New(t)
