@@ -774,5 +774,9 @@ func enableUserAccounts(ctx *sql.Context, engine *sqle.Engine) error {
 // Other queries simply cause incorrect type result, which is not checked for ServerEngine test for now.
 // TODO: remove this map when we fix this issue.
 var cannotBePrepared = map[string]bool{
-	`select """""foo""""";`: true,
+	// Keep this assignment's decimal literal: the harness otherwise sends "1.6"
+	// as a string parameter, which fails conversion to the inferred INT type.
+	// The companion cast test exercises the parameterized path.
+	"UPDATE t_seq SET a = 1.6, b = a": true,
+	`select """""foo""""";`:           true,
 }

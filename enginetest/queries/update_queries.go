@@ -711,7 +711,6 @@ t1.oid = t2.pid;`,
 		},
 	},
 	{
-		// Expected results verified against MySQL 8.4.6.
 		// https://github.com/dolthub/doltgresql/issues/3092
 		Name:    "UPDATE assignment customer CASE",
 		Dialect: "mysql",
@@ -728,7 +727,6 @@ t1.oid = t2.pid;`,
 		},
 	},
 	{
-		// Expected results verified against MySQL 8.4.6.
 		Name:    "UPDATE assignment reversed CASE",
 		Dialect: "mysql",
 		SetUpScript: []string{
@@ -744,7 +742,6 @@ t1.oid = t2.pid;`,
 		},
 	},
 	{
-		// Expected results verified against MySQL 8.4.6.
 		Name:    "UPDATE assignment swap",
 		Dialect: "mysql",
 		SetUpScript: []string{
@@ -760,7 +757,6 @@ t1.oid = t2.pid;`,
 		},
 	},
 	{
-		// Expected results verified against MySQL 8.4.6.
 		Name:    "UPDATE assignment reversed swap",
 		Dialect: "mysql",
 		SetUpScript: []string{
@@ -776,7 +772,6 @@ t1.oid = t2.pid;`,
 		},
 	},
 	{
-		// Expected results verified against MySQL 8.4.6.
 		Name:    "UPDATE assignment arithmetic chain",
 		Dialect: "mysql",
 		SetUpScript: []string{
@@ -792,7 +787,6 @@ t1.oid = t2.pid;`,
 		},
 	},
 	{
-		// Expected results verified against MySQL 8.4.6.
 		Name:    "UPDATE assignment NULL propagation",
 		Dialect: "mysql",
 		SetUpScript: []string{
@@ -808,7 +802,6 @@ t1.oid = t2.pid;`,
 		},
 	},
 	{
-		// Expected results verified against MySQL 8.4.6.
 		Name:    "UPDATE assignment multiple rows",
 		Dialect: "mysql",
 		SetUpScript: []string{
@@ -825,7 +818,6 @@ t1.oid = t2.pid;`,
 		},
 	},
 	{
-		// Expected results verified against MySQL 8.4.6.
 		Name:    "UPDATE assignment scalar correlated subquery",
 		Dialect: "mysql",
 		SetUpScript: []string{
@@ -841,7 +833,6 @@ t1.oid = t2.pid;`,
 		},
 	},
 	{
-		// Expected results verified against MySQL 8.4.6.
 		Name:    "UPDATE assignment WHERE subquery",
 		Dialect: "mysql",
 		SetUpScript: []string{
@@ -859,7 +850,6 @@ t1.oid = t2.pid;`,
 		},
 	},
 	{
-		// Expected results verified against MySQL 8.4.6.
 		Name:    "UPDATE assignment assignment conversion",
 		Dialect: "mysql",
 		SetUpScript: []string{
@@ -875,7 +865,21 @@ t1.oid = t2.pid;`,
 		},
 	},
 	{
-		// Expected results verified against MySQL 8.4.6.
+		// An explicit decimal cast also preserves rounding when the server harness
+		// replaces literals with string parameters. The second assignment must
+		// observe the converted INT value, rather than the decimal source.
+		Name:    "UPDATE assignment conversion with decimal cast",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t_seq (a int, b int)",
+			"INSERT INTO t_seq VALUES (1, 0)",
+			"UPDATE t_seq SET a = CAST('1.6' AS DECIMAL(2,1)), b = a",
+		},
+		Assertions: []ScriptTestAssertion{
+			{Query: "SELECT a, b FROM t_seq", Expected: []sql.Row{{2, 2}}},
+		},
+	},
+	{
 		Name:    "UPDATE assignment generated stored column",
 		Dialect: "mysql",
 		SetUpScript: []string{
@@ -891,7 +895,6 @@ t1.oid = t2.pid;`,
 		},
 	},
 	{
-		// Expected results verified against MySQL 8.4.6.
 		Name:    "UPDATE assignment repeated target",
 		Dialect: "mysql",
 		SetUpScript: []string{
@@ -907,7 +910,6 @@ t1.oid = t2.pid;`,
 		},
 	},
 	{
-		// Expected results verified against MySQL 8.4.6.
 		Name:    "UPDATE assignment IGNORE conversion",
 		Dialect: "mysql",
 		SetUpScript: []string{
@@ -923,7 +925,6 @@ t1.oid = t2.pid;`,
 		},
 	},
 	{
-		// Expected results verified against MySQL 8.4.6.
 		Name:    "UPDATE assignment join same target",
 		Dialect: "mysql",
 		SetUpScript: []string{
@@ -941,7 +942,6 @@ t1.oid = t2.pid;`,
 		},
 	},
 	{
-		// Expected results verified against MySQL 8.4.6.
 		Name:    "UPDATE assignment join swap",
 		Dialect: "mysql",
 		SetUpScript: []string{
@@ -959,7 +959,6 @@ t1.oid = t2.pid;`,
 		},
 	},
 	{
-		// Expected results verified against MySQL 8.4.6.
 		Name:    "UPDATE assignment join cross target",
 		Dialect: "mysql",
 		SetUpScript: []string{
@@ -977,7 +976,6 @@ t1.oid = t2.pid;`,
 		},
 	},
 	{
-		// Expected results verified against MySQL 8.4.6.
 		Name: "UPDATE assignment join buffered target",
 		// MySQL buffers this target; GMS always evaluates assignments sequentially.
 		// Multi-table assignment order is unspecified in MySQL. Preserve this
@@ -999,7 +997,6 @@ t1.oid = t2.pid;`,
 		},
 	},
 	{
-		// Expected results verified against MySQL 8.4.6.
 		Name: "UPDATE assignment join buffered swap",
 		// MySQL buffers this target; GMS always evaluates assignments sequentially.
 		// Multi-table assignment order is unspecified in MySQL. Preserve this
@@ -1021,7 +1018,6 @@ t1.oid = t2.pid;`,
 		},
 	},
 	{
-		// Expected results verified against MySQL 8.4.6.
 		Name: "UPDATE assignment join buffered cross target",
 		// MySQL buffers this target; GMS always evaluates assignments sequentially.
 		// Multi-table assignment order is unspecified in MySQL. Preserve this
