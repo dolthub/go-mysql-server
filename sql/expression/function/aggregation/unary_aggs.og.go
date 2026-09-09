@@ -1178,35 +1178,29 @@ func (a *StdDevSamp) IsNullable(ctx *sql.Context) bool {
 }
 
 func (a *StdDevSamp) String() string {
+	ret := "STDDEV_SAMP(" + a.Child.String() + ")"
 	if a.window != nil {
-		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("STDDEVSAMP")
-		children := []string{a.window.String(), a.Child.String()}
-		pr.WriteChildren(children...)
-		return pr.String()
+		ret += " " + a.window.String()
 	}
-	return "STDDEVSAMP(" + a.Child.String() + ")"
+	return ret
 }
 
 func (a *StdDevSamp) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
 	if options.Debug {
 		if a.window != nil {
 			pr := sql.NewTreePrinter()
-			_ = pr.WriteNode("STDDEVSAMP")
+			_ = pr.WriteNode("STDDEV_SAMP")
 			children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
 			pr.WriteChildren(children...)
 			return pr.String()
 		}
-		return fmt.Sprintf("STDDEVSAMP(%s)", sql.Describe(ctx, a.Child, options))
+		return fmt.Sprintf("STDDEV_SAMP(%s)", sql.Describe(ctx, a.Child, options))
 	}
+	ret := "STDDEV_SAMP(" + sql.Describe(ctx, a.Child, options) + ")"
 	if a.window != nil {
-		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("STDDEVSAMP")
-		children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
-		pr.WriteChildren(children...)
-		return pr.String()
+		ret += " " + sql.Describe(ctx, a.window, options)
 	}
-	return "STDDEVSAMP(" + sql.Describe(ctx, a.Child, options) + ")"
+	return ret
 }
 
 func (a *StdDevSamp) DebugString(ctx *sql.Context) string {
