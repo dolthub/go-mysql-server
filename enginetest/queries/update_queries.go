@@ -56,6 +56,7 @@ var UpdateWriteQueryTests = []WriteQueryTest{
 		ExpectedSelect:      []sql.Row{{int64(1), "updated"}, {int64(2), "updated"}, {int64(3), "updated"}},
 	},
 	{
+		Dialect:             "mysql", // The second assignment reads the updated f32 value.
 		WriteQuery:          "UPDATE floattable SET f32 = f32 + f32, f64 = f32 * f64 WHERE i = 2;",
 		ExpectedWriteResult: []sql.Row{{NewUpdateResult(1, 1)}},
 		SelectQuery:         "SELECT * FROM floattable WHERE i = 2;",
