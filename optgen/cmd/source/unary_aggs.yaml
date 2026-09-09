@@ -48,6 +48,7 @@ unaryAggs:
   sqlString: true
   desc: "returns the minimum value of expr in all rows."
 - name:     "Sum"
+  sqlString: true
   desc:     "returns the sum of expr in all rows"
   nullable: false
   retType:  "types.Float64"

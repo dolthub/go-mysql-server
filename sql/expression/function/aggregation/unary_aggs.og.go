@@ -1002,14 +1002,11 @@ func (a *Sum) IsNullable(ctx *sql.Context) bool {
 }
 
 func (a *Sum) String() string {
+	ret := "SUM(" + a.Child.String() + ")"
 	if a.window != nil {
-		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("SUM")
-		children := []string{a.window.String(), a.Child.String()}
-		pr.WriteChildren(children...)
-		return pr.String()
+		ret += " " + a.window.String()
 	}
-	return "SUM(" + a.Child.String() + ")"
+	return ret
 }
 
 func (a *Sum) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
@@ -1023,14 +1020,11 @@ func (a *Sum) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
 		}
 		return fmt.Sprintf("SUM(%s)", sql.Describe(ctx, a.Child, options))
 	}
+	ret := "SUM(" + sql.Describe(ctx, a.Child, options) + ")"
 	if a.window != nil {
-		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("SUM")
-		children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
-		pr.WriteChildren(children...)
-		return pr.String()
+		ret += " " + sql.Describe(ctx, a.window, options)
 	}
-	return "SUM(" + sql.Describe(ctx, a.Child, options) + ")"
+	return ret
 }
 
 func (a *Sum) DebugString(ctx *sql.Context) string {
