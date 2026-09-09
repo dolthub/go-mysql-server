@@ -14800,6 +14800,34 @@ select * from t1 except (
 		Expected: []sql.Row{{10, 10}, {20, 20}, {30, 30}},
 	},
 	{
+		Name:    "Named scalar subquery referencing a preceding SELECT alias",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE outer_rows (x INT)",
+			"CREATE TABLE inner_rows (y INT)",
+			"INSERT INTO outer_rows VALUES (0), (1), (2)",
+			"INSERT INTO inner_rows VALUES (10)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT x * 10 AS threshold, (SELECT MAX(y) FROM inner_rows WHERE y <= threshold) AS max_y FROM outer_rows ORDER BY threshold",
+				Expected: []sql.Row{{0, nil}, {10, 10}, {20, 10}},
+			},
+			{
+				Query:    "SELECT x * 10 AS threshold, (SELECT MAX(y) FROM inner_rows WHERE y <= threshold) AS max_y, (SELECT max_y + 1) AS next_y FROM outer_rows ORDER BY threshold",
+				Expected: []sql.Row{{0, nil, nil}, {10, 10, 11}, {20, 10, 11}},
+			},
+			{
+				Query:    "SELECT q.max_y, q.threshold FROM (SELECT x * 10 AS threshold, (SELECT MAX(y) FROM inner_rows WHERE y <= threshold) AS max_y FROM outer_rows) AS q ORDER BY q.threshold",
+				Expected: []sql.Row{{nil, 0}, {10, 10}, {10, 20}},
+			},
+			{
+				Query:    "SELECT x * 10 AS threshold, COALESCE((SELECT MAX(y) FROM inner_rows WHERE y <= threshold), -1) AS max_y FROM outer_rows ORDER BY max_y DESC, threshold",
+				Expected: []sql.Row{{10, 10}, {20, 10}, {0, -1}},
+			},
+		},
+	},
+	{
 		Name: "Subqueries inside NOT EXISTS clause with correlated column filter",
 		SetUpScript: []string{
 			"CREATE TABLE issues (id INT PRIMARY KEY, title TEXT, status TEXT);",
