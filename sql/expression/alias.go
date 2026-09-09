@@ -40,7 +40,7 @@ func (a AliasReference) Table() string {
 }
 
 func (a AliasReference) String() string {
-	return fmt.Sprintf("(alias reference)%s", a.name)
+	return a.name
 }
 
 func (a AliasReference) Resolved() bool {
