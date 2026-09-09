@@ -147,7 +147,9 @@ func (p *Pad) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID
 }
 
 func (p *Pad) eval(ctx *sql.Context, row sql.Row, isLeft bool) (interface{}, error) {
-	s, ok, err := evalString(ctx, p.str, row)
+	collation, _ := p.CollationCoercibility(ctx)
+
+	s, ok, err := evalString(ctx, p.str, row, collation)
 	if err != nil || !ok {
 		return nil, err
 	}
@@ -160,12 +162,11 @@ func (p *Pad) eval(ctx *sql.Context, row sql.Row, isLeft bool) (interface{}, err
 		return "", nil
 	}
 
-	ps, ok, err := evalString(ctx, p.padStr, row)
+	ps, ok, err := evalString(ctx, p.padStr, row, collation)
 	if err != nil || !ok {
 		return nil, err
 	}
 
-	collation, _ := p.CollationCoercibility(ctx)
 	handler := NewCharSetHandler(collation)
 	return padString(s, count, ps, isLeft, handler)
 }

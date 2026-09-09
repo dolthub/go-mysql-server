@@ -3225,4 +3225,20 @@ var FunctionQueryTests = []QueryTest{
 		Query:    `SELECT COLLATION(LPAD(CONCAT(_latin1'a', _latin1'b'), 5, 'c')), COERCIBILITY(LPAD(CONCAT(_latin1'a', _latin1'b'), 5, 'c'))`,
 		Expected: []sql.Row{{"latin1_swedish_ci", uint64(4)}},
 	},
+	{
+		Query:    `SELECT LPAD(_latin1'a', 3, _utf8mb4'é')`,
+		Expected: []sql.Row{{"ééa"}},
+	},
+	{
+		Query:    `SELECT RPAD(_latin1'a', 3, _utf8mb4'é')`,
+		Expected: []sql.Row{{"aéé"}},
+	},
+	{
+		Query:       `SELECT LPAD(_latin1'a', 3, _utf8mb4'👍')`,
+		ExpectedErr: sql.ErrCannotConvertString,
+	},
+	{
+		Query:       `SELECT RPAD(_latin1'a', 3, _utf8mb4'👍')`,
+		ExpectedErr: sql.ErrCannotConvertString,
+	},
 }

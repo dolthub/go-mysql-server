@@ -193,3 +193,33 @@ func TestPadCollationCoercibility(t *testing.T) {
 	require.Equal(t, sql.Collation_binary, colSq)
 	require.Equal(t, byte(7), coerSq)
 }
+
+func TestPadTranscoding(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+
+	latin1Type := types.MustCreateString(sqltypes.VarChar, 10, sql.Collation_latin1_swedish_ci)
+	latin1Str := expression.NewLiteral("a", latin1Type)
+
+	// Valid transcoding: utf8mb4 'é' is representable in latin1
+	validPad := expression.NewLiteral("é", types.LongText)
+	lpad, err := NewLeftPad(ctx, latin1Str, expression.NewLiteral(int64(3), types.Int64), validPad)
+	require.NoError(t, err)
+	res, err := lpad.Eval(ctx, nil)
+	require.NoError(t, err)
+	require.Equal(t, "ééa", res)
+
+	rpad, err := NewRightPad(ctx, latin1Str, expression.NewLiteral(int64(3), types.Int64), validPad)
+	require.NoError(t, err)
+	resR, err := rpad.Eval(ctx, nil)
+	require.NoError(t, err)
+	require.Equal(t, "aéé", resR)
+
+	// Non-representable character: emoji into latin1 raises ER_CANNOT_CONVERT_STRING (3854)
+	invalidPad := expression.NewLiteral("👍", types.LongText)
+	lpadErr, err := NewLeftPad(ctx, latin1Str, expression.NewLiteral(int64(3), types.Int64), invalidPad)
+	require.NoError(t, err)
+	_, err = lpadErr.Eval(ctx, nil)
+	require.Error(t, err)
+	require.True(t, sql.ErrCannotConvertString.Is(err))
+	require.Contains(t, err.Error(), "Cannot convert string")
+}
