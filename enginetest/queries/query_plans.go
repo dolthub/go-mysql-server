@@ -210,7 +210,7 @@ offset 1;`,
 			"     │                       └─ Project\n" +
 			"     │                           ├─ columns: [t2.y]\n" +
 			"     │                           └─ Filter\n" +
-			"     │                               ├─ EXISTS Subquery(select t3.y from xy as t3 where t3.y = xy.x)\n" +
+			"     │                               ├─ EXISTS (select t3.y from xy as t3 where t3.y = xy.x)\n" +
 			"     │                               └─ TableAlias(t2)\n" +
 			"     │                                   └─ Table\n" +
 			"     │                                       └─ name: xy\n" +
@@ -243,7 +243,7 @@ offset 1;`,
 			"     │                       └─ Project\n" +
 			"     │                           ├─ columns: [t2.y]\n" +
 			"     │                           └─ Filter\n" +
-			"     │                               ├─ EXISTS Subquery(select t3.y from xy as t3 where t3.y = xy.x)\n" +
+			"     │                               ├─ EXISTS (select t3.y from xy as t3 where t3.y = xy.x)\n" +
 			"     │                               └─ TableAlias(t2)\n" +
 			"     │                                   └─ Table\n" +
 			"     │                                       └─ name: xy\n" +
@@ -2349,14 +2349,14 @@ Select * from (
 			"         └─ columns: [x y]\n" +
 			"",
 		ExpectedEstimates: "AntiJoinIncludingNulls (estimated cost=2024.000 rows=5)\n" +
-			" ├─ ((NOT(EXISTS Subquery(select * from xy where not (u = 1)))) OR (uv.u = 1))\n" +
+			" ├─ ((NOT(EXISTS (select * from xy where not (u = 1)))) OR (uv.u = 1))\n" +
 			" ├─ Table\n" +
 			" │   └─ name: uv\n" +
 			" └─ Table\n" +
 			"     └─ name: xy\n" +
 			"",
 		ExpectedAnalysis: "AntiJoinIncludingNulls (estimated cost=2024.000 rows=5) (actual rows=3 loops=1)\n" +
-			" ├─ ((NOT(EXISTS Subquery(select * from xy where not (u = 1)))) OR (uv.u = 1))\n" +
+			" ├─ ((NOT(EXISTS (select * from xy where not (u = 1)))) OR (uv.u = 1))\n" +
 			" ├─ Table\n" +
 			" │   └─ name: uv\n" +
 			" └─ Table\n" +
@@ -5339,12 +5339,12 @@ Select * from (
 			"         └─ columns: [x y]\n" +
 			"",
 		ExpectedEstimates: "Filter\n" +
-			" ├─ EXISTS Subquery(select * from cte where a = x)\n" +
+			" ├─ EXISTS (select * from cte where a = x)\n" +
 			" └─ Table\n" +
 			"     └─ name: xy\n" +
 			"",
 		ExpectedAnalysis: "Filter\n" +
-			" ├─ EXISTS Subquery(select * from cte where a = x)\n" +
+			" ├─ EXISTS (select * from cte where a = x)\n" +
 			" └─ Table\n" +
 			"     └─ name: xy\n" +
 			"",
