@@ -67,6 +67,7 @@ func (b *Builder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
 	//    projections from (4).
 	// 6) Finish with final target projections.
 	fromScope := b.buildFrom(inScope, s.From)
+	fromScope.explicitGrouping = len(s.GroupBy) > 0
 	if cn, ok := fromScope.node.(sql.CommentedNode); ok && len(s.Comments) > 0 {
 		fromScope.node = cn.WithComment(string(s.Comments[0]))
 	}
@@ -92,9 +93,16 @@ func (b *Builder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
 
 	// At this point we've recorded dependencies for higher-level scopes,
 	// so we can build the FROM clause
-	if b.needsAggregation(fromScope, s) {
+	hasAggregation := b.needsAggregation(fromScope, s)
+	if hasAggregation {
 		groupingCols := b.buildGroupingCols(fromScope, projScope, s.GroupBy, s.SelectExprs)
 		outScope = b.buildAggregation(fromScope, projScope, groupingCols)
+		// Window functions operate on the grouped rows that remain after HAVING.
+		b.buildHaving(fromScope, projScope, outScope, s.Having)
+		if len(fromScope.windowFuncs) > 0 {
+			outScope.windowFuncs = fromScope.windowFuncs
+			outScope = b.buildWindow(outScope, projScope)
+		}
 	} else if fromScope.windowFuncs != nil {
 		outScope = b.buildWindow(fromScope, projScope)
 	} else {
@@ -106,7 +114,9 @@ func (b *Builder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
 	// expressions in higher level scopes will be replaced with GetField
 	// references.
 
-	b.buildHaving(fromScope, projScope, outScope, s.Having)
+	if !hasAggregation {
+		b.buildHaving(fromScope, projScope, outScope, s.Having)
+	}
 
 	b.buildOrderBy(outScope, orderByScope)
 
