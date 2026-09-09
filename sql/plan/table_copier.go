@@ -23,13 +23,6 @@ var _ sql.Node = (*TableCopier)(nil)
 var _ sql.CollationCoercible = (*TableCopier)(nil)
 var _ DisjointedChildrenNode = (*TableCopier)(nil)
 
-// TableCopierCreateTableDestination is a create-table node that TableCopier can execute before copying rows.
-type TableCopierCreateTableDestination interface {
-	sql.Node
-	// TableCopierDestinationName returns the name of the table created for the copy destination.
-	TableCopierDestinationName() string
-}
-
 type CopierProps struct {
 	replace bool
 	ignore  bool
@@ -59,16 +52,16 @@ func (tc *TableCopier) Database() sql.Database {
 }
 
 func (tc *TableCopier) ProcessCreateTable(ctx *sql.Context, b sql.NodeExecBuilder, row sql.Row) (sql.RowIter, error) {
-	destination, ok := tc.Destination.(TableCopierCreateTableDestination)
+	destination, ok := tc.Destination.(sql.Nameable)
 	if !ok {
-		return nil, fmt.Errorf("TableCopier requires a create-table destination")
+		return nil, fmt.Errorf("TableCopier requires a named create-table destination, found %T", tc.Destination)
 	}
 
 	if err := buildAndCloseTableCopierDestination(ctx, b, tc.Destination, row); err != nil {
 		return sql.RowsToRowIter(), err
 	}
 
-	table, tableExists, err := tc.db.GetTableInsensitive(ctx, destination.TableCopierDestinationName())
+	table, tableExists, err := tc.db.GetTableInsensitive(ctx, destination.Name())
 	if err != nil {
 		return sql.RowsToRowIter(), err
 	}

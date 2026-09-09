@@ -254,10 +254,8 @@ func (b *BaseBuilder) buildTableCopier(ctx *sql.Context, n *plan.TableCopier, ro
 	switch destination := n.Destination.(type) {
 	case *plan.ResolvedTable:
 		return n.CopyTableOver(ctx, n.Source.Schema(ctx)[0].Source, destination.Name())
-	case plan.TableCopierCreateTableDestination:
-		return n.ProcessCreateTable(ctx, b, row)
 	default:
-		return nil, fmt.Errorf("TableCopier only accepts a create-table node or resolved table as the destination, found %T", destination)
+		return n.ProcessCreateTable(ctx, b, row)
 	}
 }
 
