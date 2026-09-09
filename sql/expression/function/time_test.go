@@ -505,6 +505,13 @@ func TestYearWeek(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 	f, err := NewYearWeek(ctx, expression.NewGetField(0, types.LongText, "foo", false))
 	require.NoError(t, err)
+	require.Equal(t, "YEARWEEK(foo, 0)", f.String())
+	exprtest.AssertFunctionRoundTrip(t, f.(sql.FunctionExpression))
+
+	explicitMode, err := NewYearWeek(ctx, expression.NewGetField(0, types.LongText, "foo", false), expression.NewLiteral(1, types.Int64))
+	require.NoError(t, err)
+	require.Equal(t, "YEARWEEK(foo, 1)", explicitMode.String())
+	exprtest.AssertFunctionRoundTrip(t, explicitMode.(sql.FunctionExpression))
 
 	testCases := []struct {
 		name     string
