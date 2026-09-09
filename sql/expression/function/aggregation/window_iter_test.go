@@ -16,6 +16,7 @@ package aggregation
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -97,6 +98,35 @@ func TestWindowIter(t *testing.T) {
 			res, err := sql.RowIterToRows(ctx, i)
 			require.NoError(t, err)
 			require.Equal(t, tt.Expected, res)
+		})
+	}
+}
+
+// closeTrackingRowIter records whether the child iterator is released, including when Close fails.
+type closeTrackingRowIter struct {
+	sql.RowIter
+	closed   bool
+	closeErr error
+}
+
+func (i *closeTrackingRowIter) Close(*sql.Context) error {
+	i.closed = true
+	return i.closeErr
+}
+
+func TestWindowIterClosesChild(t *testing.T) {
+	for _, tt := range []struct {
+		name string
+		err  error
+	}{
+		{name: "success"},
+		{name: "child close error", err: errors.New("child close failed")},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			child := &closeTrackingRowIter{closeErr: tt.err}
+			iter := NewWindowIter(nil, nil, child)
+			require.Equal(t, tt.err, iter.Close(sql.NewEmptyContext()))
+			require.True(t, child.closed)
 		})
 	}
 }
