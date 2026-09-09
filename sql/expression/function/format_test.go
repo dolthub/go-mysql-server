@@ -20,10 +20,24 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
 
+	"github.com/dolthub/go-mysql-server/internal/exprtest"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
+
+func TestFormatString(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	twoArgs, err := NewFormat(ctx, expression.NewLiteral(1234, types.Int64), expression.NewLiteral(2, types.Int64))
+	require.NoError(t, err)
+	require.Equal(t, "format(1234,2)", twoArgs.String())
+	exprtest.AssertFunctionRoundTrip(t, twoArgs.(sql.FunctionExpression))
+
+	threeArgs, err := NewFormat(ctx, expression.NewLiteral(1234, types.Int64), expression.NewLiteral(2, types.Int64), expression.NewLiteral("de_DE", types.Text))
+	require.NoError(t, err)
+	require.Equal(t, "format(1234,2,'de_DE')", threeArgs.String())
+	exprtest.AssertFunctionRoundTrip(t, threeArgs.(sql.FunctionExpression))
+}
 
 func TestFormat(t *testing.T) {
 	testCases := []struct {
