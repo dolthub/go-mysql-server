@@ -19,6 +19,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/dolthub/go-mysql-server/internal/exprtest"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -124,4 +125,15 @@ func TestFindInSet(t *testing.T) {
 		require.NoError(err)
 		require.Equal(4, v)
 	})
+}
+
+func TestFindInSetString(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	expr := NewFindInSet(
+		ctx,
+		expression.NewLiteral("needle", types.Text),
+		expression.NewLiteral("haystack,needle", types.Text),
+	)
+	require.Equal(t, "find_in_set('needle', 'haystack,needle')", expr.String())
+	exprtest.AssertFunctionRoundTrip(t, expr.(sql.FunctionExpression))
 }
