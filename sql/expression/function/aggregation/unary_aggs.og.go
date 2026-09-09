@@ -741,11 +741,7 @@ func (a *Last) IsNullable(ctx *sql.Context) bool {
 
 func (a *Last) String() string {
 	if a.window != nil {
-		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("LAST")
-		children := []string{a.window.String(), a.Child.String()}
-		pr.WriteChildren(children...)
-		return pr.String()
+		return "LAST_VALUE(" + a.Child.String() + ") " + a.window.String()
 	}
 	return "LAST(" + a.Child.String() + ")"
 }
@@ -762,11 +758,7 @@ func (a *Last) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
 		return fmt.Sprintf("LAST(%s)", sql.Describe(ctx, a.Child, options))
 	}
 	if a.window != nil {
-		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("LAST")
-		children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
-		pr.WriteChildren(children...)
-		return pr.String()
+		return "LAST_VALUE(" + sql.Describe(ctx, a.Child, options) + ") " + sql.Describe(ctx, a.window, options)
 	}
 	return "LAST(" + sql.Describe(ctx, a.Child, options) + ")"
 }

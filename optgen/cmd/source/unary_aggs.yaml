@@ -38,6 +38,8 @@ unaryAggs:
   desc:    "returns result set as a single JSON array."
   retType: "types.JSON"
 - name: "Last"
+  sqlString: true
+  windowSqlName: "last_value"
   desc: "returns the last value in a sequence of elements of an aggregation."
 - name: "Max"
   desc: "returns the maximum value of expr in all rows."
