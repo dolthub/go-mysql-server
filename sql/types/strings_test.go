@@ -56,6 +56,12 @@ func TestStringCompare(t *testing.T) {
 		{MustCreateStringWithDefaults(sqltypes.VarChar, 10), "0xed54321", "0x12345de", 1},
 		{MustCreateStringWithDefaults(sqltypes.VarChar, 10), []byte("254"), 254, 0},
 		{MustCreateStringWithDefaults(sqltypes.VarChar, 10), []byte("254"), 254.5, -1},
+		{MustCreateStringWithDefaults(sqltypes.Char, 10), "a", "a ", 0},
+		{MustCreateStringWithDefaults(sqltypes.Char, 10), "a ", "a", 0},
+		{MustCreateStringWithDefaults(sqltypes.Char, 10), "a  ", "a", 0},
+		{MustCreateStringWithDefaults(sqltypes.Char, 10), "a", "b", -1},
+		{MustCreateStringWithDefaults(sqltypes.Char, 10), "a ", "b", -1},
+		{MustCreateStringWithDefaults(sqltypes.VarChar, 10), "a", "a ", -1},
 
 		// Sanity checks that behavior is consistent
 		{MustCreateBinary(sqltypes.Binary, 10), 0, 1, -1},
@@ -320,6 +326,11 @@ func TestStringConvert(t *testing.T) {
 		{MustCreateStringWithDefaults(sqltypes.Text, 7), "abcde", "abcde", false},
 		{MustCreateBinary(sqltypes.VarBinary, 7), "abcde", []byte("abcde"), false},
 		{MustCreateStringWithDefaults(sqltypes.VarChar, 7), "abcde", "abcde", false},
+		{MustCreateStringWithDefaults(sqltypes.Char, 7), "a ", "a", false},
+		{MustCreateStringWithDefaults(sqltypes.Char, 7), "a  ", "a", false},
+		{MustCreateStringWithDefaults(sqltypes.VarChar, 7), "a ", "a ", false},
+		{MustCreateStringWithDefaults(sqltypes.Char, 3), "a   ", "a", false},
+		{MustCreateStringWithDefaults(sqltypes.Char, 3), "abc ", "abc", false},
 
 		{MustCreateStringWithDefaults(sqltypes.Char, 4), int(1), "1", false},
 		{MustCreateStringWithDefaults(sqltypes.Text, 4), int8(2), "2", false},

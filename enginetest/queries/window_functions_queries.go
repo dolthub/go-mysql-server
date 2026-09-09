@@ -1840,6 +1840,45 @@ ORDER BY id;`,
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/11464
+		Name: "CHAR PAD SPACE values do not split a window partition",
+		SetUpScript: []string{
+			"CREATE TABLE t (id INT PRIMARY KEY, c CHAR(3), v INT)",
+			"INSERT INTO t VALUES (1, 'a', 10), (2, 'a ', 20), (3, 'b', 30)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT id, c, COUNT(*) OVER (PARTITION BY c) AS pc, SUM(v) OVER (PARTITION BY c) AS sv FROM t ORDER BY id",
+				Expected: []sql.Row{
+					{int32(1), "a", int64(2), float64(30)},
+					{int32(2), "a", int64(2), float64(30)},
+					{int32(3), "b", int64(1), float64(30)},
+				},
+			},
+			{
+				Query: "SELECT c, COUNT(*), SUM(v) FROM t GROUP BY c ORDER BY c",
+				Expected: []sql.Row{
+					{"a", int64(2), float64(30)},
+					{"b", int64(1), float64(30)},
+				},
+			},
+			{
+				Query: "SELECT DISTINCT c FROM t ORDER BY c",
+				Expected: []sql.Row{
+					{"a"},
+					{"b"},
+				},
+			},
+			{
+				Query: "SELECT id FROM t WHERE c = 'a' ORDER BY id",
+				Expected: []sql.Row{
+					{int32(1)},
+					{int32(2)},
+				},
+			},
+		},
+	},
 }
 
 // WindowRowFramesScriptTests tests window functions using ROWS frame specifications.

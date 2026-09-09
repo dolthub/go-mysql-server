@@ -9435,8 +9435,8 @@ where
 			{
 				Query: "select HEX(c), LENGTH(c) from ascii_test where c is not null order by c;",
 				Expected: []sql.Row{
+					{"", 0},
 					{"00", 1},
-					{"20", 1},
 					{"41", 1},
 					{"7F", 1},
 				},

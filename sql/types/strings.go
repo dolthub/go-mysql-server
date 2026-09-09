@@ -15,11 +15,12 @@
 package types
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"reflect"
 	"strconv"
-	strings2 "strings"
+	"strings"
 	"time"
 	"unicode/utf8"
 
@@ -304,6 +305,11 @@ func (t StringType) Compare(ctx context.Context, a interface{}, b interface{}) (
 		}
 	}
 
+	if IsChar(t) {
+		as = strings.TrimRight(as, " ")
+		bs = strings.TrimRight(bs, " ")
+	}
+
 	encoder := t.collation.CharacterSet().Encoder()
 	getRuneWeight := t.collation.Sorter()
 	for len(as) > 0 && len(bs) > 0 {
@@ -458,39 +464,39 @@ func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest [
 		return nil, sql.ErrConvertToSQL.New(s, t)
 	}
 
-	// TODO: add this checking to the interface, rather than relying on the StringType implementation
-	st, isStringType := t.(StringType)
-	if isStringType {
-		if st.baseType == sqltypes.Text {
-			// for TEXT types, we use the byte length instead of the character length
-			if int64(len(val)) > st.maxByteLength {
+	if IsChar(t) {
+		trimmed := bytes.TrimRight(val[start:], " ")
+		val = val[:start+len(trimmed)]
+	}
+	if t.Type() == sqltypes.Text {
+		// for TEXT types, we use the byte length instead of the character length
+		if int64(len(val)) > t.MaxByteLength() {
+			return nil, ErrLengthBeyondLimit.New(val, t.String())
+		}
+	} else {
+		if t.CharacterSet().MaxLength() == 1 {
+			// if the character set only has a max size of 1, we can just count the bytes
+			if int64(len(val)) > t.MaxCharacterLength() {
 				return nil, ErrLengthBeyondLimit.New(val, t.String())
 			}
 		} else {
-			if t.CharacterSet().MaxLength() == 1 {
-				// if the character set only has a max size of 1, we can just count the bytes
-				if int64(len(val)) > st.maxCharLength {
+			// TODO(#3846): this should count the string's length properly according to the character set
+			// convert 'val' string to rune to count the character length, not byte length
+			if int64(len(val)) > t.MaxCharacterLength() {
+				if int64(len([]rune(string(val)))) > t.MaxCharacterLength() {
 					return nil, ErrLengthBeyondLimit.New(val, t.String())
 				}
-			} else {
-				// TODO: this should count the string's length properly according to the character set
-				// convert 'val' string to rune to count the character length, not byte length
-				if int64(len(val)) > st.maxCharLength {
-					if int64(len([]rune(string(val)))) > st.maxCharLength {
-						return nil, ErrLengthBeyondLimit.New(val, t.String())
-					}
-				}
 			}
 		}
+	}
 
-		if st.baseType == sqltypes.Binary {
-			if b, ok := v.([]byte); ok {
-				// Make a copy now to avoid overwriting the original allocation.
-				val = append(dest, b...)
-				start = len(dest)
-			}
-			val = append(val, make([]byte, int(st.maxCharLength)-len(val))...)
+	if t.Type() == sqltypes.Binary {
+		if b, ok := v.([]byte); ok {
+			// Make a copy now to avoid overwriting the original allocation.
+			val = append(dest, b...)
+			start = len(dest)
 		}
+		val = append(val, make([]byte, int(t.MaxCharacterLength())-len(val))...)
 	}
 	val = val[start:]
 
@@ -581,7 +587,7 @@ func FormatInvalidByteForError(bytesVal []byte) string {
 	}
 
 	// Build the error string starting from first invalid byte
-	var result strings2.Builder
+	var result strings.Builder
 	maxBytesToShow := 6 // MySQL seems to show around 6 bytes before truncating
 	remainingBytes := bytesVal[firstInvalidPos:]
 
@@ -785,7 +791,7 @@ func (t StringType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.
 			if len(snippet) > 50 {
 				snippet = snippet[:50]
 			}
-			snippetStr := strings2.ToValidUTF8(string(snippet), string(utf8.RuneError))
+			snippetStr := strings.ToValidUTF8(string(snippet), string(utf8.RuneError))
 			return sqltypes.Value{}, sql.ErrCharSetFailedToEncode.New(resultCharset.Name(), utf8.ValidString(snippetStr), snippet)
 		}
 		val = encodedBytes
@@ -818,7 +824,7 @@ func (t StringType) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltyp
 		if len(v.Val) > 50 {
 			v.Val = v.Val[:50]
 		}
-		snippetStr := strings2.ToValidUTF8(string(v.Val), string(utf8.RuneError))
+		snippetStr := strings.ToValidUTF8(string(v.Val), string(utf8.RuneError))
 		return sqltypes.Value{}, sql.ErrCharSetFailedToEncode.New(charset.Name(), utf8.ValidString(snippetStr), v.Val)
 	}
 
