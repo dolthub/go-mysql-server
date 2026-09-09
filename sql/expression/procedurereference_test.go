@@ -28,3 +28,9 @@ func TestProcedureParamString(t *testing.T) {
 	require.Equal(t, "`param name`", expr.String())
 	exprtest.AssertColumnRoundTrip(t, expr)
 }
+
+func TestUnresolvedProcedureParamString(t *testing.T) {
+	expr := NewUnresolvedProcedureParam("param name")
+	require.Equal(t, "`param name`", expr.String())
+	exprtest.AssertColumnRoundTrip(t, expr)
+}
