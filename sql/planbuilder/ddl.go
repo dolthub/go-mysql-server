@@ -418,10 +418,15 @@ func (b *Builder) getIndexDefs(table sql.Table) sql.IndexDefs {
 			}
 		}
 		exprs := idx.Expressions()
+		orders := sql.IndexColumnOrders(b.ctx, idx)
 		columns := make([]sql.IndexColumn, len(exprs))
 		for i, col := range exprs {
 			col = col[strings.IndexByte(col, '.')+1:]
 			columns[i] = sql.IndexColumn{Name: col}
+			if i < len(orders) {
+				order := orders[i]
+				columns[i].Order = &order
+			}
 		}
 		idxDefs = append(idxDefs, &sql.IndexDef{
 			Name:       idx.ID(),
@@ -1193,10 +1198,20 @@ func (b *Builder) gatherIndexColumns(inScope *scope, idxFields []*ast.IndexField
 			expr = b.buildScalar(inScope, col.Expression)
 		}
 
+		var order *sql.IndexColumnOrder
+		if col.Order == ast.DescScr || col.NullsOrder != "" {
+			descending := col.Order == ast.DescScr
+			order = &sql.IndexColumnOrder{Descending: descending, NullsLast: descending}
+			if col.NullsOrder != "" {
+				order.NullsLast = col.NullsOrder == ast.NullsLastStr
+			}
+		}
 		out[i] = sql.IndexColumn{
 			Name:       col.Column.String(),
 			Expression: expr,
 			Length:     length,
+			Order:      order,
+			OpClass:    col.OpClass,
 		}
 	}
 	return out

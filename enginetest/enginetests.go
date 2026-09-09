@@ -650,7 +650,7 @@ func TestIndexQueryPlans(t *testing.T, harness Harness) {
 		RunQueryWithContext(t, e, harness, ctx, `CREATE INDEX idx1 ON otherdb.a (y);`)
 
 		TestQueryWithContext(t, ctx, e, harness, "SHOW INDEXES FROM otherdb.a", []sql.Row{
-			{"a", 1, "idx1", 1, "y", nil, 0, nil, nil, "YES", "BTREE", "", "", "YES", nil},
+			{"a", 1, "idx1", 1, "y", "A", 0, nil, nil, "YES", "BTREE", "", "", "YES", nil},
 		}, nil, nil, nil)
 
 	})
