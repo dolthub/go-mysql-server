@@ -652,14 +652,11 @@ func (a *JsonArray) IsNullable(ctx *sql.Context) bool {
 }
 
 func (a *JsonArray) String() string {
+	ret := "JSON_ARRAYAGG(" + a.Child.String() + ")"
 	if a.window != nil {
-		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("JSON_ARRAYAGG")
-		children := []string{a.window.String(), a.Child.String()}
-		pr.WriteChildren(children...)
-		return pr.String()
+		ret += " " + a.window.String()
 	}
-	return "JSON_ARRAYAGG(" + a.Child.String() + ")"
+	return ret
 }
 
 func (a *JsonArray) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
@@ -673,14 +670,11 @@ func (a *JsonArray) Describe(ctx *sql.Context, options sql.DescribeOptions) stri
 		}
 		return fmt.Sprintf("JSON_ARRAYAGG(%s)", sql.Describe(ctx, a.Child, options))
 	}
+	ret := "JSON_ARRAYAGG(" + sql.Describe(ctx, a.Child, options) + ")"
 	if a.window != nil {
-		pr := sql.NewTreePrinter()
-		_ = pr.WriteNode("JSON_ARRAYAGG")
-		children := []string{sql.Describe(ctx, a.window, options), sql.Describe(ctx, a.Child, options)}
-		pr.WriteChildren(children...)
-		return pr.String()
+		ret += " " + sql.Describe(ctx, a.window, options)
 	}
-	return "JSON_ARRAYAGG(" + sql.Describe(ctx, a.Child, options) + ")"
+	return ret
 }
 
 func (a *JsonArray) DebugString(ctx *sql.Context) string {

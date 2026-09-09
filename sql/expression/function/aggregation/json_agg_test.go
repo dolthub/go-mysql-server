@@ -30,6 +30,10 @@ func TestJsonArrayAgg_Name(t *testing.T) {
 
 	m := NewJsonArray(expression.NewGetField(0, types.Int32, "field", true))
 	assert.Equal("JSON_ARRAYAGG(field)", m.String())
+
+	windowed := m.WithWindow(sql.NewEmptyContext(), &sql.WindowDefinition{})
+	assert.Equal("JSON_ARRAYAGG(field) over ()", windowed.String())
+	exprtest.AssertFunctionRoundTripAs(t, windowed.(sql.FunctionExpression), "JSON_ARRAYAGG")
 }
 
 func TestJSONObjectAggString(t *testing.T) {
