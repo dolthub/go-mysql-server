@@ -30,9 +30,6 @@ type ExpressionOverriding interface {
 // various engine phases (such as the analysis, node execution, etc.). The empty struct is valid, which will not
 // override any functionality (uses the default MySQL functionality for all applicable situations).
 type EngineOverrides struct {
-	// UpdateExpressionApplier evaluates UPDATE assignments. If nil, the engine uses
-	// MySQL's sequential assignment evaluation and IGNORE conversion handling.
-	UpdateExpressionApplier UpdateExpressionApplier
 	// Builder contains functions and variables that can replace, supplement, or override functionality within the builder.
 	Builder BuilderOverrides
 	// SchemaFormatter is the formatter for schema string creation. If nil, this will format in MySQL's style.
@@ -43,6 +40,9 @@ type EngineOverrides struct {
 	// filter expressions. Some expressions may need to be modified or skipped in order to properly apply indexes
 	// for all integrators.
 	CostedIndexScanExpressionFilter ExpressionTreeFilter
+	// UpdateExpressionApplier evaluates UPDATE assignments. If nil, the engine uses
+	// MySQL's sequential assignment evaluation and IGNORE conversion handling.
+	UpdateExpressionApplier UpdateExpressionApplier
 }
 
 // ExpressionTreeFilter is an interface for walking logic expression trees or AND, OR, and leaf nodes.
