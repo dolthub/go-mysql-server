@@ -342,7 +342,7 @@ var VectorIndexQueries = []ScriptTest{
 	{
 		Name: "vector index on nullable column errors",
 		SetUpScript: []string{
-			"create table vectors_nullable (id int primary key, v vector(2) null);",
+			"create table vectors_nullable (id int primary key, v vector(2) null, j json);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -350,7 +350,23 @@ var VectorIndexQueries = []ScriptTest{
 				ExpectedErr: sql.ErrNullableVectorIdx,
 			},
 			{
+				Query:       `create vector index j_idx on vectors_nullable(j);`,
+				ExpectedErr: sql.ErrNullableVectorIdx,
+			},
+			{
+				Query:       `alter table vectors_nullable add vector index v_idx (v);`,
+				ExpectedErr: sql.ErrNullableVectorIdx,
+			},
+			{
+				Query:       `alter table vectors_nullable add vector index j_idx (j);`,
+				ExpectedErr: sql.ErrNullableVectorIdx,
+			},
+			{
 				Query:       `create table bad_vector_idx (id int primary key, v vector(2), vector index (v));`,
+				ExpectedErr: sql.ErrNullableVectorIdx,
+			},
+			{
+				Query:       `create table bad_json_idx (id int primary key, j json, vector index (j));`,
 				ExpectedErr: sql.ErrNullableVectorIdx,
 			},
 		},
