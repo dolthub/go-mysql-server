@@ -1039,6 +1039,42 @@ ORDER BY id;`,
 		Expected: []sql.Row{{1, float64(10)}, {2, float64(30)}},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/11392
+		Name: "customer reproduction: MySQL distinct aggregate window behavior",
+		// PostgreSQL rejects these forms with different errors and SQLSTATEs.
+		Dialect: "mysql",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "SELECT COUNT(DISTINCT *) OVER () FROM (SELECT 1 AS v) t",
+				ExpectedErrStr: "You have an error in your SQL syntax (errno 1064) (sqlstate 42000)",
+			},
+			{
+				Query:          "SELECT COUNT(DISTINCT v) OVER (ORDER BY id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) FROM (SELECT 1 AS id, 1 AS v UNION ALL SELECT 2, 1 UNION ALL SELECT 3, 2) t",
+				ExpectedErrStr: "This version of MySQL doesn't yet support '<window function>(DISTINCT ..)' (errno 1235) (sqlstate 42000)",
+			},
+			{
+				Query:          "SELECT COUNT(DISTINCT v, id) OVER () FROM (SELECT 1 AS id, 1 AS v UNION ALL SELECT 2, 1) t",
+				ExpectedErrStr: "This version of MySQL doesn't yet support '<window function>(DISTINCT ..)' (errno 1235) (sqlstate 42000)",
+			},
+			{
+				Query:          "SELECT SUM(DISTINCT v) OVER (ORDER BY id ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) FROM (SELECT 1 AS id, 1 AS v UNION ALL SELECT 2, 1 UNION ALL SELECT 3, 2) t",
+				ExpectedErrStr: "This version of MySQL doesn't yet support '<window function>(DISTINCT ..)' (errno 1235) (sqlstate 42000)",
+			},
+			{
+				Query:          "SELECT AVG(DISTINCT v) OVER () FROM (SELECT 1.00 AS v UNION ALL SELECT 1.00 UNION ALL SELECT 4.00) t",
+				ExpectedErrStr: "This version of MySQL doesn't yet support '<window function>(DISTINCT ..)' (errno 1235) (sqlstate 42000)",
+			},
+			{
+				Query:    "SELECT MIN(DISTINCT v) OVER () FROM (SELECT 1 AS v UNION ALL SELECT 2) t",
+				Expected: []sql.Row{{1}, {1}},
+			},
+			{
+				Query:    "SELECT MAX(DISTINCT v) OVER () FROM (SELECT 1 AS v UNION ALL SELECT 2) t",
+				Expected: []sql.Row{{2}, {2}},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/11395
 		Name: "customer reproduction: sibling window aggregates with different frames",
 		SetUpScript: []string{
@@ -1843,6 +1879,8 @@ ORDER BY id;`,
 	{
 		// https://github.com/dolthub/dolt/issues/11464
 		Name: "CHAR PAD SPACE values do not split a window partition",
+		// Doltgres uses its own PostgreSQL CHAR type, so this GMS StringType regression is MySQL-only.
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE t (id INT PRIMARY KEY, c CHAR(3), v INT)",
 			"INSERT INTO t VALUES (1, 'a', 10), (2, 'a ', 20), (3, 'b', 30)",
