@@ -313,12 +313,6 @@ func analyzeSubqueryAlias(ctx *sql.Context, a *Analyzer, sqa *plan.SubqueryAlias
 		return nil, same, err
 	}
 
-	if len(sqa.ColumnNames) > 0 {
-		schemaLen := schemaLength(ctx, child)
-		if schemaLen != len(sqa.ColumnNames) {
-			return nil, transform.SameTree, sql.ErrColumnCountMismatch.New()
-		}
-	}
 	if same {
 		return sqa, transform.SameTree, nil
 	}
