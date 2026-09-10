@@ -2990,6 +2990,7 @@ var FunctionQueryTests = []QueryTest{
 		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 	},
 	{
+		// Tracking Issue: https://github.com/dolthub/dolt/issues/10278
 		Skip:  true,
 		Query: "select date('10203');",
 		Expected: []sql.Row{
@@ -3005,6 +3006,7 @@ var FunctionQueryTests = []QueryTest{
 		},
 	},
 	{
+		// Tracking Issue: https://github.com/dolthub/dolt/issues/10278
 		Skip:  true,
 		Query: "select date('0010203');",
 		Expected: []sql.Row{
@@ -3012,6 +3014,7 @@ var FunctionQueryTests = []QueryTest{
 		},
 	},
 	{
+		// Tracking Issue: https://github.com/dolthub/dolt/issues/10278
 		Skip:  true,
 		Query: "select date('00010203');",
 		Expected: []sql.Row{
