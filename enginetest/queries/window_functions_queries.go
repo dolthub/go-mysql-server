@@ -1039,6 +1039,38 @@ ORDER BY id;`,
 		Expected: []sql.Row{{1, float64(10)}, {2, float64(30)}},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/11392
+		Name: "customer reproduction: MySQL distinct aggregate window behavior",
+		// PostgreSQL uses a different error and SQLSTATE for DISTINCT aggregate windows.
+		Dialect: "mysql",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "SELECT COUNT(DISTINCT v) OVER (ORDER BY id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) FROM (SELECT 1 AS id, 1 AS v UNION ALL SELECT 2, 1 UNION ALL SELECT 3, 2) t",
+				ExpectedErrStr: "This version of MySQL doesn't yet support '<window function>(DISTINCT ..)' (errno 1235) (sqlstate 42000)",
+			},
+			{
+				Query:          "SELECT COUNT(DISTINCT v, id) OVER () FROM (SELECT 1 AS id, 1 AS v UNION ALL SELECT 2, 1) t",
+				ExpectedErrStr: "This version of MySQL doesn't yet support '<window function>(DISTINCT ..)' (errno 1235) (sqlstate 42000)",
+			},
+			{
+				Query:          "SELECT SUM(DISTINCT v) OVER (ORDER BY id ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) FROM (SELECT 1 AS id, 1 AS v UNION ALL SELECT 2, 1 UNION ALL SELECT 3, 2) t",
+				ExpectedErrStr: "This version of MySQL doesn't yet support '<window function>(DISTINCT ..)' (errno 1235) (sqlstate 42000)",
+			},
+			{
+				Query:          "SELECT AVG(DISTINCT v) OVER () FROM (SELECT 1.00 AS v UNION ALL SELECT 1.00 UNION ALL SELECT 4.00) t",
+				ExpectedErrStr: "This version of MySQL doesn't yet support '<window function>(DISTINCT ..)' (errno 1235) (sqlstate 42000)",
+			},
+			{
+				Query:    "SELECT MIN(DISTINCT v) OVER () FROM (SELECT 1 AS v UNION ALL SELECT 2) t",
+				Expected: []sql.Row{{1}, {1}},
+			},
+			{
+				Query:    "SELECT MAX(DISTINCT v) OVER () FROM (SELECT 1 AS v UNION ALL SELECT 2) t",
+				Expected: []sql.Row{{2}, {2}},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/11395
 		Name: "customer reproduction: sibling window aggregates with different frames",
 		SetUpScript: []string{
