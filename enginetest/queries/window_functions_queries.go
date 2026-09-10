@@ -1875,6 +1875,8 @@ ORDER BY id;`,
 	{
 		// https://github.com/dolthub/dolt/issues/11464
 		Name: "CHAR PAD SPACE values do not split a window partition",
+		// Doltgres uses its own PostgreSQL CHAR type, so this GMS StringType regression is MySQL-only.
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE t (id INT PRIMARY KEY, c CHAR(3), v INT)",
 			"INSERT INTO t VALUES (1, 'a', 10), (2, 'a ', 20), (3, 'b', 30)",
