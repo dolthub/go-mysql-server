@@ -1103,6 +1103,27 @@ ORDER BY id;`,
 		Expected: []sql.Row{{true, false}},
 	},
 	{
+		Name: "JSON_LENGTH paths in window expressions",
+		Query: `SELECT
+			FIRST_VALUE(JSON_LENGTH('{"a":[1,2]}', '$.a')) OVER (),
+			FIRST_VALUE(JSON_LENGTH('{"a":[1,2]}', '$')) OVER ()`,
+		Expected: []sql.Row{{2, 1}},
+	},
+	{
+		Name: "JSON_SEARCH paths in window expressions",
+		Query: `SELECT
+			JSON_UNQUOTE(FIRST_VALUE(JSON_SEARCH('["abc"]', 'one', 'abc')) OVER ()),
+			JSON_UNQUOTE(FIRST_VALUE(JSON_SEARCH('["abc"]', 'one', 'abc', NULL, NULL)) OVER ())`,
+		Expected: []sql.Row{{"$[0]", nil}},
+	},
+	{
+		Name: "JSON_VALUE return types in window expressions",
+		Query: `SELECT
+			FIRST_VALUE(JSON_VALUE('{"a":"12"}', '$.a', 'signed')) OVER (),
+			FIRST_VALUE(JSON_VALUE('{"a":"12"}', '$.a', 'char')) OVER ()`,
+		Expected: []sql.Row{{int64(12), `"12"`}},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/11498
 		Name:    "customer reproduction: LIKE escape characters in window expressions",
 		Dialect: "mysql",
@@ -1218,6 +1239,16 @@ ORDER BY id;`,
 			"insert into t values (1, 1), (2, 1), (3, 1), (4, 1), (5, 1), (6, 2), (7, 2), (8, 2), (9, 2), (10, 2);",
 		},
 		Assertions: []ScriptTestAssertion{
+			{
+				// NTILE.String must include the bucket count so window expression deduplication does not
+				// reuse NTILE(2) for NTILE(3), which assigns different buckets on the same input rows.
+				Query: "select i, ntile(2) over(order by i), ntile(3) over(order by i) from t where i <= 3;",
+				Expected: []sql.Row{
+					{1, uint64(1), uint64(1)},
+					{2, uint64(1), uint64(2)},
+					{3, uint64(2), uint64(3)},
+				},
+			},
 			{
 				Query:       "select i, ntile(0) over() from t;",
 				ExpectedErr: sql.ErrInvalidArgument,

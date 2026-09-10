@@ -371,8 +371,10 @@ type ColDefaultExpression struct {
 var _ sql.Expression = ColDefaultExpression{}
 var _ sql.CollationCoercible = ColDefaultExpression{}
 
-func (c ColDefaultExpression) Resolved() bool               { return true }
-func (c ColDefaultExpression) String() string               { return "" }
+func (c ColDefaultExpression) Resolved() bool { return true }
+func (c ColDefaultExpression) String() string {
+	return fmt.Sprintf("DEFAULT(%s)", sql.DefaultMySQLSchemaFormatter.QuoteIdentifier(c.Column.Name))
+}
 func (c ColDefaultExpression) Type(*sql.Context) sql.Type   { return c.Column.Type }
 func (c ColDefaultExpression) IsNullable(*sql.Context) bool { return c.Column.Default == nil }
 func (c ColDefaultExpression) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {

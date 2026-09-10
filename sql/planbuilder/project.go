@@ -216,6 +216,10 @@ func (b *Builder) selectExprToExpression(inScope *scope, se ast.SelectExpr) sql.
 			return expression.NewAlias(b.ctx, e.As.String(), expr)
 		}
 		if selectExprNeedsAlias(b.ctx, e, expr) {
+			// A scalar subquery's SQL text is a column label, not a referenceable SELECT alias.
+			if _, ok := expr.(*plan.Subquery); ok {
+				return expression.NewAlias(b.ctx, e.InputExpression, expr).AsUnreferencable()
+			}
 			// if the input expression is the same as expression string, then it's referencable.
 			// E.g. "SLEEP(1)" is the same as "sleep(1)"
 			if strings.EqualFold(e.InputExpression, expr.String()) {

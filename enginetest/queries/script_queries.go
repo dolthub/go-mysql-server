@@ -14971,6 +14971,18 @@ select * from t1 except (
 		},
 	},
 	{
+		Name:    "Scalar subquery referencing a preceding SELECT alias",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE outer_rows (x INT)",
+			"CREATE TABLE inner_rows (y INT)",
+			"INSERT INTO outer_rows VALUES (1), (2), (3)",
+			"INSERT INTO inner_rows VALUES (10), (20), (30)",
+		},
+		Query:    "SELECT x * 10 AS threshold, (SELECT MAX(y) FROM inner_rows WHERE y <= threshold) FROM outer_rows ORDER BY 1",
+		Expected: []sql.Row{{10, 10}, {20, 20}, {30, 30}},
+	},
+	{
 		Name: "Subqueries inside NOT EXISTS clause with correlated column filter",
 		SetUpScript: []string{
 			"CREATE TABLE issues (id INT PRIMARY KEY, title TEXT, status TEXT);",
