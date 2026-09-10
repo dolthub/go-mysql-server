@@ -416,7 +416,9 @@ func (t datetimeType) parseDatetimeExtraLayouts(str string) (any, error) {
 func (t datetimeType) parseDatetime(str string) (any, bool, error) {
 	var delimWarn bool
 
-	value := strings.Trim(str, NumericCutSet) // TODO: leading and trailing whitespace(s) should throw warning
+	// TODO: leading and trailing whitespace(s) should throw warning
+	// Tracking issue: https://github.com/dolthub/dolt/issues/11750
+	value := strings.Trim(str, NumericCutSet)
 	if matched := NumericDatetimeRegex.MatchString(value); matched {
 		dtNum, err := strconv.ParseFloat(value, 64)
 		if err != nil {
@@ -556,13 +558,13 @@ const (
 	// MaxNumericDatetime is the largest valid Datetime number
 	MaxNumericDatetime = 9999_12_31_23_59_59 // YYYY_MM_DD_HH_MM_SS
 
-	// MinNumeric1900AbbrevDatetime is the smallest valid Date that abbreviates the years 1970-1999
-	MinNumeric1900AbbrevDatetime = 70_01_01_00_00_00
+	// MinNumeric1900AbbrevDatetime is the smallest valid Datetime that abbreviates the years 1970-1999
+	MinNumeric1900AbbrevDatetime = 70_01_01_00_00_00 // YY_MM_DD_HH_MM_SS
 
-	// MaxNumeric1900AbbrevDatetime is the largest valid Date that abbreviates the years 1970-1999
-	MaxNumeric1900AbbrevDatetime = 99_12_31_23_59_59
+	// MaxNumeric1900AbbrevDatetime is the largest valid Datetime that abbreviates the years 1970-1999
+	MaxNumeric1900AbbrevDatetime = 99_12_31_23_59_59 // YY_MM_DD_HH_MM_SS
 
-	// MaxNumeric2000AbbrevDatetime is the largest valid Date that abbreviates the years 2000-2069
+	// MaxNumeric2000AbbrevDatetime is the largest valid Datetime that abbreviates the years 2000-2069
 	MaxNumeric2000AbbrevDatetime = 69_12_31_23_59_59 // YY_MM_DD_HH_MM_SS
 )
 
