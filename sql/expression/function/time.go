@@ -1393,9 +1393,6 @@ func (dtf *UnaryDatetimeFunc) EvalChild(ctx *sql.Context, row sql.Row) (any, err
 	}
 	val, _, err = types.DatetimeMaxPrecision.Convert(ctx, val)
 	if err != nil {
-		if !sql.ErrTruncatedIncorrect.Is(err) {
-			return nil, err
-		}
 		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 		return nil, nil
 	}

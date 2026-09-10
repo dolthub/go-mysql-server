@@ -201,7 +201,7 @@ func splitFloat(f float64) (int64, int64, bool) {
 	return whole, int64((f - float64(whole)) * 1e9), true
 }
 
-// splitDecimal splits the float f into its whole and fractional parts
+// splitDecimal splits the decimal d into its whole and fractional parts
 // invalid values will return false
 func splitDecimal(d *apd.Decimal) (int64, int64, bool) {
 	if d.Form != apd.Finite {
