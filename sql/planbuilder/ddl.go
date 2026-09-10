@@ -630,6 +630,10 @@ func (b *Builder) buildAlterTableClause(inScope *scope, ddl *ast.DDL) []*scope {
 		}
 
 		if ddl.ColumnAction != "" {
+			// If this is ADD COLUMN IF NOT EXISTS, skip if it exists
+			if ddl.IfNotExists && strings.ToLower(ddl.ColumnAction) == ast.AddStr && rt.Schema(b.ctx).Contains(ddl.TableSpec.Columns[0].Name.String(), rt.Name()) {
+				return nil
+			}
 			columnActionOutscope := b.buildAlterTableColumnAction(tableScope, ddl, rt)
 			outScopes = append(outScopes, columnActionOutscope.copy(b.ctx))
 
@@ -722,6 +726,7 @@ func (b *Builder) buildAlterTableColumnAction(inScope *scope, ddl *ast.DDL, tabl
 		outScope.node = plan.NewAddColumnResolved(table, *sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder))
 	case ast.DropStr:
 		drop := plan.NewDropColumnResolved(table, ddl.Column.String())
+		drop.Cascade = ddl.Cascade
 		checks := b.loadChecksFromTable(outScope, table.Table)
 		outScope.node = drop.WithChecks(checks)
 	case ast.RenameStr:

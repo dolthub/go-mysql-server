@@ -418,6 +418,7 @@ type DropColumn struct {
 	Column       string
 	checks       sql.CheckConstraints
 	targetSchema sql.Schema
+	Cascade      bool
 }
 
 var _ sql.Node = (*DropColumn)(nil)
