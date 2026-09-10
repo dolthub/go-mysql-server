@@ -4019,6 +4019,32 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 	for _, tt := range tests {
 		TestScript(t, harness, tt)
 	}
+	TestScriptPrepared(t, harness, queries.ScriptTest{
+		Name:    "multi-row empty insert",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table prepared_empty (a int default 1, b int generated always as (a + 1))",
+			"create table prepared_mixed (a int default 1, b int default 2)",
+		},
+		Assertions: []queries.ScriptTestAssertion{
+			{
+				Query:    "insert into prepared_empty values (), ()",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "select * from prepared_empty",
+				Expected: []sql.Row{{1, 2}, {1, 2}},
+			},
+			{
+				Query:       "insert into prepared_mixed values (), (3, 4)",
+				ExpectedErr: sql.ErrInsertIntoMismatchValueCount,
+			},
+			{
+				Query:    "select * from prepared_mixed",
+				Expected: []sql.Row{},
+			},
+		},
+	})
 }
 
 // TODO: find better way to do this
