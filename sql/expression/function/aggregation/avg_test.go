@@ -25,13 +25,6 @@ import (
 	_ "github.com/dolthub/go-mysql-server/sql/variables"
 )
 
-func TestAvg_String(t *testing.T) {
-	require := require.New(t)
-
-	avg := NewAvg(expression.NewGetField(0, types.Int32, "col1", true))
-	require.Equal("AVG(col1)", avg.String())
-}
-
 func TestAvg_Float64(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()

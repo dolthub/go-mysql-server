@@ -119,30 +119,14 @@ func (j *JSONSearch) Resolved() bool {
 
 // String implements sql.Expression
 func (j *JSONSearch) String() string {
-	// TODO: maybe just don't print if escape/path are nil?
-	var escapeStr, pathStr string
-	if j.Escape == nil {
-		escapeStr = "NULL"
-	} else {
-		escapeStr = j.Escape.String()
-	}
-	if len(j.Paths) == 0 {
-		pathStr = "NULL"
-	} else {
-		var paths []string
-		for _, p := range j.Paths {
-			paths = append(paths, p.String())
+	args := []string{j.JSON.String(), j.OneOrAll.String(), j.Search.String()}
+	if j.Escape != nil {
+		args = append(args, j.Escape.String())
+		for _, path := range j.Paths {
+			args = append(args, path.String())
 		}
-		pathStr = strings.Join(paths, ", ")
 	}
-	return fmt.Sprintf("%s(%s, %s, %s, %s, %s)",
-		j.FunctionName(),
-		j.JSON.String(),
-		j.OneOrAll.String(),
-		j.Search.String(),
-		escapeStr,
-		pathStr,
-	)
+	return fmt.Sprintf("%s(%s)", j.FunctionName(), strings.Join(args, ", "))
 }
 
 // Type implements sql.Expression

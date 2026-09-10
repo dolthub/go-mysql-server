@@ -557,6 +557,9 @@ func (b *Builder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, 
 	var win sql.WindowAdaptableExpression
 	if name == "count" {
 		if _, ok := e.Exprs[0].(*ast.StarExpr); ok {
+			if e.Distinct {
+				b.handleErr(errMySQLDistinctStarWindow)
+			}
 			win = aggregation.NewCount(expression.NewLiteral(1, types.Int64))
 			b.qFlags.Set(sql.QFlagCountStar)
 		}
@@ -571,6 +574,10 @@ func (b *Builder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, 
 
 		newInst, err := f.NewInstance(b.ctx, args)
 		if err != nil {
+			// MySQL reports unsupported DISTINCT window syntax before validating COUNT's argument count.
+			if e.Distinct && name == "count" && len(args) > 1 {
+				b.validateDistinctWindow(e, name, aggregation.NewCountDistinct(args...))
+			}
 			b.handleErr(err)
 		}
 		b.validateDistinctWindow(e, name, newInst)
@@ -607,7 +614,19 @@ func (b *Builder) validateDistinctWindow(e *ast.FuncExpr, name string, expr sql.
 		if err := validator.ValidateDistinctWindow(e.Qualifier.String(), name); err != nil {
 			b.handleErr(err)
 		}
+		return
 	}
+	if b.overrides.ValidateDistinctWindow != nil {
+		if err := b.overrides.ValidateDistinctWindow(e.Qualifier.String(), name, expr); err != nil {
+			b.handleErr(err)
+		}
+		return
+	}
+	switch expr.(type) {
+	case *aggregation.Min, *aggregation.Max:
+		return
+	}
+	b.handleErr(errMySQLDistinctWindow)
 }
 
 func (b *Builder) buildWindow(fromScope, projScope *scope) *scope {

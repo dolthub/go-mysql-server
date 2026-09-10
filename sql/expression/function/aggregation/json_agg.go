@@ -75,7 +75,11 @@ func (j *JSONObjectAgg) Resolved() bool {
 }
 
 func (j *JSONObjectAgg) String() string {
-	return fmt.Sprintf("JSON_OBJECTAGG(%s, %s)", j.key, j.value)
+	ret := fmt.Sprintf("JSON_OBJECTAGG(%s, %s)", j.key, j.value)
+	if j.window != nil {
+		ret += " " + j.window.String()
+	}
+	return ret
 }
 
 // Type implements the Expression interface.

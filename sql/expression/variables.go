@@ -15,6 +15,8 @@
 package expression
 
 import (
+	"fmt"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -80,7 +82,10 @@ func (v *SystemVar) String() string {
 	if sysVar, _, ok := sql.SystemVariables.GetGlobal(v.Name); ok {
 		return sysVar.DisplayString(v.SpecifiedScope)
 	}
-	return ""
+	if v.SpecifiedScope == "" {
+		return "@@" + v.Name
+	}
+	return fmt.Sprintf("@@%s.%s", v.SpecifiedScope, v.Name)
 }
 
 // WithChildren implements the Expression interface.

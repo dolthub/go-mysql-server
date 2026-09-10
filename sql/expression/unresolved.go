@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -299,7 +300,8 @@ func (uf *UnresolvedFunction) String() string {
 		over = fmt.Sprintf(" %s", uf.Window)
 	}
 
-	return fmt.Sprintf("%s(%s)%s", uf.name, strings.Join(exprs, ", "), over)
+	name := sqlparser.String(sqlparser.NewColIdent(uf.name))
+	return fmt.Sprintf("%s(%s)%s", name, strings.Join(exprs, ", "), over)
 }
 
 func (uf *UnresolvedFunction) DebugString(ctx *sql.Context) string {

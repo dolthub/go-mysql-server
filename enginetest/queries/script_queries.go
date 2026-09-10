@@ -6258,6 +6258,104 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/11411
+		Name: "integer arithmetic rejects signed and unsigned BIGINT overflow",
+		// MySQL-only: PostgreSQL does not support unsigned integer types.
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE integer_bounds (id INT PRIMARY KEY, u BIGINT UNSIGNED, s BIGINT)",
+			"INSERT INTO integer_bounds VALUES (1, 18446744073709551615, 9223372036854775807)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT u, u + 0, u + -1, u - 1 FROM integer_bounds",
+				Expected: []sql.Row{{uint64(math.MaxUint64), uint64(math.MaxUint64), uint64(math.MaxUint64 - 1), uint64(math.MaxUint64 - 1)}},
+			},
+			{
+				Query:       "SELECT u + 1 FROM integer_bounds",
+				ExpectedErr: sql.ErrIntegerOutOfRange,
+			},
+			{
+				Query:       "SELECT CAST(18446744073709551615 AS UNSIGNED) * 2",
+				ExpectedErr: sql.ErrIntegerOutOfRange,
+			},
+			{
+				Query:       "SELECT CAST(0 AS UNSIGNED) - 1",
+				ExpectedErr: sql.ErrIntegerOutOfRange,
+			},
+			{
+				Query:    "SELECT -1 + CAST(1 AS UNSIGNED)",
+				Expected: []sql.Row{{uint64(0)}},
+			},
+			{
+				Query:    "SELECT CAST(-1 AS SIGNED) * CAST(0 AS UNSIGNED), CAST(0 AS UNSIGNED) * CAST(-1 AS SIGNED)",
+				Expected: []sql.Row{{uint64(0), uint64(0)}},
+			},
+			{
+				Query:    "SELECT CAST(1 AS UNSIGNED) - -1, 2 - CAST(1 AS UNSIGNED)",
+				Expected: []sql.Row{{uint64(2), uint64(1)}},
+			},
+			{
+				Query:       "SELECT -2 + CAST(1 AS UNSIGNED)",
+				ExpectedErr: sql.ErrIntegerOutOfRange,
+			},
+			{
+				Query:       "SELECT 1 - CAST(2 AS UNSIGNED)",
+				ExpectedErr: sql.ErrIntegerOutOfRange,
+			},
+			{
+				Query:       "SELECT CAST(1 AS UNSIGNED) * -1",
+				ExpectedErr: sql.ErrIntegerOutOfRange,
+			},
+			{
+				Query:       "SELECT s + 1 FROM integer_bounds",
+				ExpectedErr: sql.ErrIntegerOutOfRange,
+			},
+			{
+				Query:       "SELECT CAST(-9223372036854775807 AS SIGNED) - 2",
+				ExpectedErr: sql.ErrIntegerOutOfRange,
+			},
+			{
+				Query:       "SELECT CAST(3037000500 AS SIGNED) * CAST(3037000500 AS SIGNED)",
+				ExpectedErr: sql.ErrIntegerOutOfRange,
+			},
+		},
+	},
+	{
+		Name: "NO_UNSIGNED_SUBTRACTION returns signed BIGINT arithmetic results",
+		// MySQL-only: NO_UNSIGNED_SUBTRACTION is a MySQL SQL mode.
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"SET SESSION sql_mode = 'NO_UNSIGNED_SUBTRACTION'",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT CAST(0 AS UNSIGNED) - 1",
+				Expected: []sql.Row{{-1}},
+			},
+			{
+				Query:    "SELECT 1 - CAST(2 AS UNSIGNED)",
+				Expected: []sql.Row{{-1}},
+			},
+			{
+				Query:    "SELECT CAST(9223372036854775808 AS UNSIGNED) - 1",
+				Expected: []sql.Row{{math.MaxInt64}},
+			},
+			{
+				Query:    "SELECT CAST(9223372036854775807 AS SIGNED) - CAST(18446744073709551615 AS UNSIGNED)",
+				Expected: []sql.Row{{math.MinInt64}},
+			},
+			{
+				Query:       "SELECT CAST(18446744073709551615 AS UNSIGNED) - 1",
+				ExpectedErr: sql.ErrIntegerOutOfRange,
+			},
+			{
+				Query:       "SELECT CAST(-9223372036854775808 AS SIGNED) - CAST(1 AS UNSIGNED)",
+				ExpectedErr: sql.ErrIntegerOutOfRange,
+			},
+		},
+	},
+	{
 		Name: "arithmetic bit operations on int, float and decimal types",
 		SetUpScript: []string{
 			"CREATE TABLE num_types (pk int primary key, a int, b float, c decimal(5,3));",
@@ -14871,6 +14969,18 @@ select * from t1 except (
 				Expected: []sql.Row{{1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}},
 			},
 		},
+	},
+	{
+		Name:    "Scalar subquery referencing a preceding SELECT alias",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE outer_rows (x INT)",
+			"CREATE TABLE inner_rows (y INT)",
+			"INSERT INTO outer_rows VALUES (1), (2), (3)",
+			"INSERT INTO inner_rows VALUES (10), (20), (30)",
+		},
+		Query:    "SELECT x * 10 AS threshold, (SELECT MAX(y) FROM inner_rows WHERE y <= threshold) FROM outer_rows ORDER BY 1",
+		Expected: []sql.Row{{10, 10}, {20, 20}, {30, 30}},
 	},
 	{
 		Name:    "Named scalar subquery referencing a preceding SELECT alias",

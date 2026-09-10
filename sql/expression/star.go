@@ -17,6 +17,8 @@ package expression
 import (
 	"fmt"
 
+	"github.com/dolthub/vitess/go/vt/sqlparser"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -67,7 +69,7 @@ func (*Star) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID,
 
 func (s *Star) String() string {
 	if s.Table != "" {
-		return fmt.Sprintf("%s.*", s.Table)
+		return fmt.Sprintf("%s.*", sqlparser.String(sqlparser.NewTableIdent(s.Table)))
 	}
 	return "*"
 }

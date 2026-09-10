@@ -22,6 +22,7 @@ import (
 	"github.com/dolthub/vitess/go/vt/proto/query"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/sorters"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -133,7 +134,7 @@ func (g *GroupConcat) String() string {
 	sb := strings.Builder{}
 	sb.WriteString("group_concat(")
 	if g.distinct != "" {
-		sb.WriteString(fmt.Sprintf("distinct %s", g.distinct))
+		sb.WriteString(g.distinct)
 	}
 
 	if g.selectExprs != nil {
@@ -156,9 +157,13 @@ func (g *GroupConcat) String() string {
 	}
 
 	sb.WriteString(" separator ")
-	sb.WriteString(fmt.Sprintf("'%s'", g.separator))
+	sb.WriteString(expression.NewLiteral(g.separator, types.Text).String())
 
 	sb.WriteString(")")
+	if g.window != nil {
+		sb.WriteString(" ")
+		sb.WriteString(g.window.String())
+	}
 
 	return sb.String()
 }
