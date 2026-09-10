@@ -10021,6 +10021,8 @@ where
 			"create table tt (i int, j int);",
 			"insert into tt values (0, 1), (0, 2), (0, 3);",
 			"insert into tt values (1, 123), (1, 456), (1, 789);",
+			"create table td (v decimal(10,2));",
+			"insert into td values (1.00), (2.00), (3.00);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -10229,6 +10231,12 @@ where
 					{1, 271.89336144893275, 333.0, 73926.0, 0.0},
 					{1, 271.89336144893275, 333.0, 73926.0, 0.0},
 					{1, 271.89336144893275, 333.0, 73926.0, 0.0},
+				},
+			},
+			{
+				Query: "select std(v), stddev(v), stddev_pop(v), stddev_samp(v), variance(v), var_pop(v), var_samp(v) from td;",
+				Expected: []sql.Row{
+					{0.816496580927726, 0.816496580927726, 0.816496580927726, 1.0, 0.6666666666666666, 0.6666666666666666, 1.0},
 				},
 			},
 		},
