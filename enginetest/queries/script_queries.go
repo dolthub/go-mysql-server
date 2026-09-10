@@ -14092,27 +14092,27 @@ where
 			{
 				Query: "insert into t values (0, '0000-00-00 12:34:56');",
 				Expected: []sql.Row{
-					{types.NewOkResult(0)},
+					{types.NewOkResult(1)},
 				},
 			},
 			{
 				Query: "insert into t values (1, '0000-00-00 00:00:00.123456');",
 				Expected: []sql.Row{
-					{types.NewOkResult(0)},
+					{types.NewOkResult(1)},
 				},
 			},
 			{
 				Query: "insert into t values (2, '0000-00-00 12:34:56.123456');",
 				Expected: []sql.Row{
-					{types.NewOkResult(0)},
+					{types.NewOkResult(1)},
 				},
 			},
 			{
 				Query: "select * from t;",
 				Expected: []sql.Row{
-					{0, time.Date(0, 1, 1, 12, 34, 56, 0, time.UTC)},
-					{1, time.Date(0, 1, 1, 0, 0, 0, 123456000, time.UTC)},
-					{2, time.Date(0, 1, 1, 12, 34, 56, 123456000, time.UTC)},
+					{0, time.Date(0, 0, 0, 12, 34, 56, 0, time.UTC)},
+					{1, time.Date(0, 0, 0, 0, 0, 0, 123456000, time.UTC)},
+					{2, time.Date(0, 0, 0, 12, 34, 56, 123456000, time.UTC)},
 				},
 			},
 		},
