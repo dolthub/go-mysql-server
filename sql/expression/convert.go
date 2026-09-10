@@ -16,13 +16,11 @@ package expression
 
 import (
 	"fmt"
-	"strings"
-	"time"
-
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-errors.v1"
+	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -324,14 +322,6 @@ func convertValue(ctx *sql.Context, val any, castTo string, originType sql.Type,
 		}
 		return truncateConvertedValue(s, typeLength)
 	case ConvertToDate:
-		// TODO: These checks shouldn't be necessary after proper number to date conversion
-		// Tracking issue: https://github.com/dolthub/dolt/issues/10278
-		_, isTime := val.(time.Time)
-		_, isString := val.(string)
-		_, isBinary := val.([]byte)
-		if !(isTime || isString || isBinary) {
-			return nil, nil
-		}
 		d, _, err := types.Date.Convert(ctx, val)
 		if err != nil {
 			if !sql.ErrTruncatedIncorrect.Is(err) {
@@ -341,12 +331,6 @@ func convertValue(ctx *sql.Context, val any, castTo string, originType sql.Type,
 		}
 		return d, nil
 	case ConvertToDatetime:
-		_, isTime := val.(time.Time)
-		_, isString := val.(string)
-		_, isBinary := val.([]byte)
-		if !(isTime || isString || isBinary) {
-			return nil, nil
-		}
 		dtType := types.MustCreateDatetimeType(sqltypes.Datetime, typeLength)
 		d, _, err := dtType.Convert(ctx, val)
 		if err != nil {

@@ -255,7 +255,7 @@ func (t datetimeType) Convert(ctx context.Context, v any) (any, sql.ConvertInRan
 		return ZeroTime, sql.InRange, err
 	case int, int8, int16, int32, int64,
 		uint, uint8, uint16, uint32, uint64,
-		float32, float64, apd.Decimal:
+		float32, float64, *apd.Decimal:
 		var ok bool
 		switch val := value.(type) {
 		case int:
@@ -280,14 +280,14 @@ func (t datetimeType) Convert(ctx context.Context, v any) (any, sql.ConvertInRan
 		case uint64:
 			res, ok = t.convertNumber(int64(val), 0)
 		case float32:
-			var datetime, clock int64
-			if datetime, clock, ok = splitFloat(float64(val)); ok {
-				res, ok = t.convertNumber(datetime, clock)
+			var datetime, nsec int64
+			if datetime, nsec, ok = splitFloat(float64(val)); ok {
+				res, ok = t.convertNumber(datetime, nsec)
 			}
 		case float64:
-			var datetime, clock int64
-			if datetime, clock, ok = splitFloat(val); ok {
-				res, ok = t.convertNumber(datetime, clock)
+			var datetime, nsec int64
+			if datetime, nsec, ok = splitFloat(val); ok {
+				res, ok = t.convertNumber(datetime, nsec)
 			}
 		case *apd.Decimal:
 			var datetime, clock int64
@@ -296,7 +296,7 @@ func (t datetimeType) Convert(ctx context.Context, v any) (any, sql.ConvertInRan
 			}
 		}
 		if !ok {
-			return res, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
+			return nil, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
 		}
 	default:
 		return ZeroTime, sql.InRange, sql.ErrConvertToSQL.New(value, t)
@@ -365,7 +365,7 @@ func GetLastDay(year, month int) (res int, ok bool) {
 	return int(DaysPerMonth[month-1]), true
 }
 
-// DateTimeRegex will match MySQL's DateTime format.
+// DatetimeRegex will match MySQL's DateTime format.
 // The date portion (YYYY-MM-DD) is required all parts of the time portion (HH:MM:SS.MICROS) is optional.
 // The standard datetime format is YYYY-MM-DD HH:MM:SS.MICROS, but MySQL supports a "relaxed" format where
 // any punctuation (of various lengths) can be used between the date and time parts.
@@ -384,8 +384,11 @@ func GetLastDay(year, month int) (res int, ok bool) {
 //		Group 6: Seconds (optional)
 //		Group 7: Microseconds (optional)
 //	 Group 8: any trailing characters to be Truncated
-var DateTimeRegex = regexp.MustCompile(`^(\d+)\p{P}+(\d+)\p{P}+(\d+)[\s\p{P}]*(\d*)?\p{P}*(\d*)?\p{P}*(\d*)?\p{P}*(\d*)?(.*)$`)
-var NoDelimiterDateTimeRegex = regexp.MustCompile(`\d+`)
+var DatetimeRegex = regexp.MustCompile(`^(\d+)\p{P}+(\d+)\p{P}+(\d+)[\s\p{P}]*(\d*)?\p{P}*(\d*)?\p{P}*(\d*)?\p{P}*(\d*)?(.*)$`)
+
+// NumericDatetimeRegex matches strings that represent numeric Datetime formats.
+// The rules here are slightly different from the numbers themselves.
+var NumericDatetimeRegex = regexp.MustCompile(`^\d+\.?\d*$`)
 
 // makeDatetime validates the date/time parameters and returns a time.Time object.
 func makeDatetime(year, month, day, hour, min, sec, nsec int) (time.Time, bool) {
@@ -404,7 +407,6 @@ func makeDatetime(year, month, day, hour, min, sec, nsec int) (time.Time, bool) 
 		return ZeroTime, false
 	}
 	res := time.Date(year, time.Month(month), day, hour, min, sec, nsec, time.UTC)
-	res = res.Round(time.Microsecond)
 	return res, true
 }
 
@@ -425,24 +427,29 @@ func (t datetimeType) parseDatetimeExtraLayouts(str string) (any, error) {
 func (t datetimeType) parseDatetime(str string) (any, bool, error) {
 	var delimWarn bool
 
-	// TODO: Properly implement date only parsing with no delimiters.
-	//  This is just here for existing tests to pass
-	//  Tracking issue: https://github.com/dolthub/dolt/issues/10278
-	if tmp := NoDelimiterDateTimeRegex.FindString(str); len(tmp) != 0 {
-		if dt, err := time.Parse(NoDelimiterDatetimeLayout, str); err == nil {
-			return dt, delimWarn, nil
-		} else if dt, err = time.Parse(NoDelimiterDateLayout, str); err == nil {
-			return dt, delimWarn, nil
+	value := strings.Trim(str, NumericCutSet) // TODO: leading and trailing whitespace(s) should throw warning
+	if matched := NumericDatetimeRegex.MatchString(value); matched {
+		dtNum, err := strconv.ParseFloat(value, 64)
+		if err != nil {
+			return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), value)
 		}
+		datetime, nsec, ok := splitFloat(dtNum)
+		if !ok {
+			return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), value)
+		}
+		res, ok := t.convertNumber(datetime, nsec)
+		if !ok {
+			return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), value)
+		}
+		return res, delimWarn, nil
 	}
 
-	value := strings.Trim(str, NumericCutSet) // TODO: leading and trailing whitespace(s) should throw warning
 	res, err := t.parseDatetimeExtraLayouts(value)
 	if err == nil {
 		return res, delimWarn, nil
 	}
 
-	matchIdxs := DateTimeRegex.FindStringSubmatchIndex(value)
+	matchIdxs := DatetimeRegex.FindStringSubmatchIndex(value)
 	if len(matchIdxs) == 0 {
 		return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), value)
 	}
@@ -527,28 +534,28 @@ func (t datetimeType) parseDatetime(str string) (any, bool, error) {
 
 	resTime, ok := makeDatetime(year, month, day, hour, mins, sec, usec*1000)
 	if !ok {
-		return nil, delimWarn, sql.ErrTruncatedIncorrect.New(value)
+		return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), value)
 	}
 	return resTime, delimWarn, err
 }
 
 // convertNumber converts datetime and nanos into the appropriate time.Time object according to the MySQL spec.
 // Reference: https://github.com/google/mysql/blob/master/sql-common/my_time.c#L1209
-func (t datetimeType) convertNumber(datetime int64, micros int64) (any, bool) {
-	if datetime < 0 || micros < 0 {
-		return nil, false
+func (t datetimeType) convertNumber(datetime int64, nsec int64) (time.Time, bool) {
+	if datetime < 0 || nsec < 0 {
+		return time.Time{}, false
 	}
-	if datetime == 0 && micros == 0 {
+	if datetime == 0 && nsec == 0 {
 		return ZeroTime, true
 	}
 	// convert each case to YYYY_MM_DD_HH_MM_SS format
 	switch {
 	case datetime < 0000_01_01:
-		return nil, false
+		return time.Time{}, false
 	case datetime <= 69_12_31: // YY_MM_DD, years 2000-2069
 		datetime = (datetime + 2000_00_00) * ClockOffset
 	case datetime < 70_01_01:
-		return nil, false
+		return time.Time{}, false
 	case datetime <= 99_12_31: // YY_MM_DD, years 1970-1999
 		datetime = (datetime + 1900_00_00) * ClockOffset
 	case datetime <= 9999_12_31: // YYYY_MM_DD
@@ -556,19 +563,18 @@ func (t datetimeType) convertNumber(datetime int64, micros int64) (any, bool) {
 	case datetime <= 69_12_31_23_59_59: // YY_MM_DD_HH_MM_SS, years 2000-2069
 		datetime += 2000_00_00_00_00_00
 	case datetime < 70_01_01_00_00_00:
-		return nil, false
+		return time.Time{}, false
 	case datetime <= 99_12_31_23_59_59: // YY_MM_DD_HH_MM_SS, years 1970-1999
 		datetime += 1900_00_00_00_00_00
 	case datetime > MaxDatetimeNumber: // YYYY_MM_DD_HH_MM_SS
-		return nil, false
+		return time.Time{}, false
 	}
 
 	date, clock := int(datetime/ClockOffset), int(datetime%ClockOffset)
 	year, month, day := date/100_00, (date/100)%100, date%100
 	hour, mins, sec := clock/100_00, (clock/100)%100, clock%100
-	nsec := int(micros * 1000)
 
-	return makeDatetime(year, month, day, hour, mins, sec, nsec)
+	return makeDatetime(year, month, day, hour, mins, sec, int(nsec))
 }
 
 // Equals implements the Type interface.
