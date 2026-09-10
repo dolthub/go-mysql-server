@@ -1041,9 +1041,13 @@ ORDER BY id;`,
 	{
 		// https://github.com/dolthub/dolt/issues/11392
 		Name: "customer reproduction: MySQL distinct aggregate window behavior",
-		// PostgreSQL uses a different error and SQLSTATE for DISTINCT aggregate windows.
+		// PostgreSQL rejects these forms with different errors and SQLSTATEs.
 		Dialect: "mysql",
 		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "SELECT COUNT(DISTINCT *) OVER () FROM (SELECT 1 AS v) t",
+				ExpectedErrStr: "You have an error in your SQL syntax (errno 1064) (sqlstate 42000)",
+			},
 			{
 				Query:          "SELECT COUNT(DISTINCT v) OVER (ORDER BY id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) FROM (SELECT 1 AS id, 1 AS v UNION ALL SELECT 2, 1 UNION ALL SELECT 3, 2) t",
 				ExpectedErrStr: "This version of MySQL doesn't yet support '<window function>(DISTINCT ..)' (errno 1235) (sqlstate 42000)",

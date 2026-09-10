@@ -19,7 +19,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/dolthub/vitess/go/mysql"
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -558,6 +557,9 @@ func (b *Builder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, 
 	var win sql.WindowAdaptableExpression
 	if name == "count" {
 		if _, ok := e.Exprs[0].(*ast.StarExpr); ok {
+			if e.Distinct {
+				b.handleErr(errMySQLDistinctStarWindow)
+			}
 			win = aggregation.NewCount(expression.NewLiteral(1, types.Int64))
 			b.qFlags.Set(sql.QFlagCountStar)
 		}
@@ -620,16 +622,11 @@ func (b *Builder) validateDistinctWindow(e *ast.FuncExpr, name string, expr sql.
 		}
 		return
 	}
-	if name == "min" || name == "max" {
+	switch expr.(type) {
+	case *aggregation.Min, *aggregation.Max:
 		return
 	}
-	b.handleErr(mysqlDistinctWindowError())
-}
-
-// mysqlDistinctWindowError returns MySQL's error for unsupported DISTINCT aggregate windows.
-func mysqlDistinctWindowError() error {
-	return mysql.NewSQLError(mysql.ERNotSupportedYet, mysql.SSClientError,
-		"This version of MySQL doesn't yet support '<window function>(DISTINCT ..)'")
+	b.handleErr(errMySQLDistinctWindow)
 }
 
 func (b *Builder) buildWindow(fromScope, projScope *scope) *scope {
