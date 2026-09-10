@@ -2214,6 +2214,43 @@ ORDER BY id;`,
 			},
 		},
 	},
+	{
+		Name: "RANGE CURRENT ROW treats NULL as a separate peer",
+		SetUpScript: []string{
+			"CREATE TABLE range_null_peers (id BIGINT PRIMARY KEY, g BIGINT, k BIGINT NULL, v BIGINT NOT NULL)",
+			"INSERT INTO range_null_peers VALUES (1, 0, NULL, 10), (2, 0, 1, 20), (3, 0, 2, 30)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT id, FIRST_VALUE(v) OVER (PARTITION BY g ORDER BY k ASC RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS wf FROM range_null_peers ORDER BY id",
+				Expected: []sql.Row{{int64(1), int64(10)}, {int64(2), int64(10)}, {int64(3), int64(10)}},
+			},
+			{
+				Query:    "SELECT id, LAST_VALUE(v) OVER (PARTITION BY g ORDER BY k ASC RANGE BETWEEN CURRENT ROW AND CURRENT ROW) AS wf FROM range_null_peers ORDER BY id",
+				Expected: []sql.Row{{int64(1), int64(10)}, {int64(2), int64(20)}, {int64(3), int64(30)}},
+			},
+			{
+				Query:    "SELECT id, SUM(v) OVER (PARTITION BY g ORDER BY k ASC RANGE BETWEEN CURRENT ROW AND 1 FOLLOWING) AS wf FROM range_null_peers ORDER BY id",
+				Expected: []sql.Row{{int64(1), float64(10)}, {int64(2), float64(50)}, {int64(3), float64(30)}},
+			},
+			{
+				Query:    "SELECT id, FIRST_VALUE(v) OVER (PARTITION BY g ORDER BY k ASC RANGE BETWEEN CURRENT ROW AND 1 FOLLOWING) AS wf FROM range_null_peers ORDER BY id",
+				Expected: []sql.Row{{int64(1), int64(10)}, {int64(2), int64(20)}, {int64(3), int64(30)}},
+			},
+			{
+				Query:    "SELECT id, SUM(v) OVER (PARTITION BY g ORDER BY k ASC RANGE BETWEEN 1 PRECEDING AND CURRENT ROW) AS wf FROM range_null_peers ORDER BY id",
+				Expected: []sql.Row{{int64(1), float64(10)}, {int64(2), float64(20)}, {int64(3), float64(50)}},
+			},
+			{
+				Query:    "SELECT id, FIRST_VALUE(v) OVER (PARTITION BY g ORDER BY k ASC RANGE BETWEEN 1 PRECEDING AND CURRENT ROW) AS wf FROM range_null_peers ORDER BY id",
+				Expected: []sql.Row{{int64(1), int64(10)}, {int64(2), int64(20)}, {int64(3), int64(20)}},
+			},
+			{
+				Query:    "SELECT id, SUM(v) OVER (PARTITION BY g ORDER BY k ASC RANGE BETWEEN 1 PRECEDING AND 1 FOLLOWING) AS wf FROM range_null_peers ORDER BY id",
+				Expected: []sql.Row{{int64(1), float64(10)}, {int64(2), float64(50)}, {int64(3), float64(50)}},
+			},
+		},
+	},
 }
 
 // NamedWindowsScriptTests tests the WINDOW clause, including window inheritance, merging, and errors.
