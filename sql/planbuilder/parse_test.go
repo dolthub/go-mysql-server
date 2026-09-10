@@ -1972,28 +1972,37 @@ Project
 		},
 		{
 			Query: "select 1 as a, (select a) as a",
-			ExpectedPlan: "\n" +
-				"Project\n" +
-				" ├─ columns: [a:1!null, a:2]\n" +
-				" └─ Project\n" +
-				"     ├─ columns: [dual.:0!null, a:1!null, Subquery\n" +
-				"     │   ├─ cacheable: false\n" +
-				"     │   ├─ alias-string: select a\n" +
-				"     │   └─ Project\n" +
-				"     │       ├─ columns: [a:1!null]\n" +
-				"     │       └─ Table\n" +
-				"     │           ├─ name: \n" +
-				"     │           ├─ columns: []\n" +
-				"     │           ├─ colSet: ()\n" +
-				"     │           └─ tableId: 0\n" +
-				"     │  ->a:2]\n" +
-				"     └─ Project\n" +
-				"         ├─ columns: [dual.:0!null, 1 (tinyint)->a:1]\n" +
-				"         └─ Table\n" +
-				"             ├─ name: \n" +
-				"             ├─ columns: []\n" +
-				"             ├─ colSet: ()\n" +
-				"             └─ tableId: 0\n",
+			ExpectedPlan: `
+Project
+ ├─ columns: [1 (tinyint)->a:1, Subquery
+ │   ├─ cacheable: false
+ │   ├─ alias-string: select a
+ │   └─ Project
+ │       ├─ columns: [a:1!null]
+ │       └─ Table
+ │           ├─ name: 
+ │           ├─ columns: []
+ │           ├─ colSet: ()
+ │           └─ tableId: 0
+ │  ->a:2]
+ └─ Project
+     ├─ columns: [dual.:0!null, 1 (tinyint)->a:1, Subquery
+     │   ├─ cacheable: false
+     │   ├─ alias-string: select a
+     │   └─ Project
+     │       ├─ columns: [a:1!null]
+     │       └─ Table
+     │           ├─ name: 
+     │           ├─ columns: []
+     │           ├─ colSet: ()
+     │           └─ tableId: 0
+     │  ->a:2]
+     └─ Table
+         ├─ name: 
+         ├─ columns: []
+         ├─ colSet: ()
+         └─ tableId: 0
+`,
 		},
 		{
 			Query: "SELECT max(x), (select max(dt.a) from (SELECT x as a) as dt(a)) as a1 from xy group by a1;",

@@ -260,36 +260,6 @@ func (b *Builder) buildProjection(inScope, outScope *scope) {
 	outScope.node = proj
 }
 
-// buildAliasProject materializes preceding aliases before subqueries that reference them.
-// Every expression in a Project evaluates against its input row, so correlated aliases
-// must be supplied by a child projection rather than another expression in the same Project.
-func (b *Builder) buildAliasProject(projections []sql.Expression, child sql.Node) (sql.Node, bool) {
-	var pendingAliases sql.ColSet
-	split := false
-	for i := range projections {
-		expr := projections[i]
-		dependsOnAlias := transform.InspectExpr(b.ctx, expr, func(ctx *sql.Context, e sql.Expression) bool {
-			sq, ok := e.(*plan.Subquery)
-			return ok && sq.Correlated().Intersects(pendingAliases)
-		})
-		if dependsOnAlias {
-			split = true
-			child = plan.NewProject(b.ctx, projections[:i], child)
-			projections = append([]sql.Expression(nil), projections...)
-			for j, input := range projections[:i] {
-				if alias, ok := input.(*expression.Alias); ok {
-					projections[j] = expression.NewGetField(int(alias.Id()), alias.Type(b.ctx), alias.Name(), alias.IsNullable(b.ctx))
-				}
-			}
-			pendingAliases = sql.ColSet{}
-		}
-		if alias, ok := expr.(*expression.Alias); ok {
-			pendingAliases.Add(alias.Id())
-		}
-	}
-	return plan.NewProject(b.ctx, projections, child), split
-}
-
 func selectExprNeedsAlias(ctx *sql.Context, e *ast.AliasedExpr, expr sql.Expression) bool {
 	if len(e.InputExpression) == 0 {
 		return false
