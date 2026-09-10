@@ -695,6 +695,28 @@ func TestUnresolvedProcedureParamString(t *testing.T) {
 	assertColumnRoundTrip(t, expr)
 }
 
+func TestUserVarString(t *testing.T) {
+	tests := []struct {
+		name     string
+		expected string
+	}{
+		{"normal_name", "@normal_name"},
+		{"var name", "@`var name`"},
+		{"select", "@`select`"},
+	}
+
+	for _, test := range tests {
+		expr := expression.NewUserVar(test.name)
+		require.Equal(t, test.expected, expr.String())
+		parsed := requireColumn(t, parseExpression(t, expr))
+		parsedName := strings.TrimPrefix(parsed.Name.String(), "@")
+		if strings.HasPrefix(parsedName, "`") {
+			parsedName = strings.ReplaceAll(strings.Trim(parsedName, "`"), "``", "`")
+		}
+		require.Equal(t, expr.Name, parsedName)
+	}
+}
+
 func TestValidatePasswordStrengthString(t *testing.T) {
 	stringExpr := function.NewValidatePasswordStrength(sql.NewEmptyContext(), expression.NewLiteral("value", types.Text))
 	require.Equal(t, "validate_password_strength('value')", stringExpr.String())
