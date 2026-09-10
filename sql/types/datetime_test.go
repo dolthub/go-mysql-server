@@ -16,12 +16,12 @@ package types
 
 import (
 	"fmt"
-	"github.com/cockroachdb/apd/v3"
 	"math"
 	"reflect"
 	"testing"
 	"time"
 
+	"github.com/cockroachdb/apd/v3"
 	sqltypes "github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/stretchr/testify/assert"
