@@ -147,7 +147,7 @@ func (p *GetField) EvalValue(ctx *sql.Context, row sql.ValueRow) (sql.Value, err
 	if p.fieldIndex < 0 || p.fieldIndex >= len(row) {
 		return sql.Value{}, ErrIndexOutOfBounds.New(p.fieldIndex, len(row))
 	}
-	return row[p.fieldIndex], nil
+	return row[p.exprId], nil
 }
 
 // IsValueRowIter implements the ValueExpression interface.
