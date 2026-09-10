@@ -1082,7 +1082,7 @@ func NewStdDevPop(e sql.Expression) *StdDevPop {
 }
 
 func (a *StdDevPop) Type(ctx *sql.Context) sql.Type {
-	return a.Child.Type(ctx)
+	return types.Float64
 }
 
 func (a *StdDevPop) IsNullable(ctx *sql.Context) bool {
@@ -1170,7 +1170,7 @@ func NewStdDevSamp(e sql.Expression) *StdDevSamp {
 }
 
 func (a *StdDevSamp) Type(ctx *sql.Context) sql.Type {
-	return a.Child.Type(ctx)
+	return types.Float64
 }
 
 func (a *StdDevSamp) IsNullable(ctx *sql.Context) bool {
@@ -1258,7 +1258,7 @@ func NewVarPop(e sql.Expression) *VarPop {
 }
 
 func (a *VarPop) Type(ctx *sql.Context) sql.Type {
-	return a.Child.Type(ctx)
+	return types.Float64
 }
 
 func (a *VarPop) IsNullable(ctx *sql.Context) bool {
@@ -1346,7 +1346,7 @@ func NewVarSamp(e sql.Expression) *VarSamp {
 }
 
 func (a *VarSamp) Type(ctx *sql.Context) sql.Type {
-	return a.Child.Type(ctx)
+	return types.Float64
 }
 
 func (a *VarSamp) IsNullable(ctx *sql.Context) bool {
