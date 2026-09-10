@@ -17,6 +17,7 @@ package function
 import (
 	"testing"
 
+	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -49,6 +50,40 @@ func TestConcat(t *testing.T) {
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(nil, v)
+	})
+
+	t.Run("mixing a CHARACTER SET binary argument with a nonbinary argument evaluates as binary", func(t *testing.T) {
+		// Regression test for https://github.com/dolthub/dolt/issues/11216: MySQL evaluates CONCAT() as binary
+		// (CHARACTER SET 'binary') whenever any argument is itself a binary-charset string, e.g. CHAR(N) without
+		// an explicit collation. Concat.Type() and Eval() must mirror that -- matching how Char.Type()/Eval()
+		// already behave -- rather than silently reporting/producing a nonbinary LongText/string result.
+		require := require.New(t)
+		ctx := sql.NewEmptyContext()
+		binaryArg := expression.NewLiteral([]byte{0xE9}, types.MustCreateBinary(sqltypes.VarBinary, 4))
+		f, err := NewConcat(ctx, expression.NewLiteral(`"`, types.LongText), binaryArg, expression.NewLiteral(`"`, types.LongText))
+		require.NoError(err)
+
+		require.True(types.IsBinaryType(f.Type(ctx)))
+
+		v, err := f.Eval(ctx, nil)
+		require.NoError(err)
+		require.IsType([]byte{}, v)
+		require.Equal([]byte{'"', 0xE9, '"'}, v)
+	})
+
+	t.Run("mixing a numeric argument with a string argument does not force binary", func(t *testing.T) {
+		// Regression test: numeric literals also carry a "no real collation" placeholder in this codebase and
+		// must NOT be confused with a genuine CHARACTER SET 'binary' string argument (see Type, above).
+		require := require.New(t)
+		ctx := sql.NewEmptyContext()
+		f, err := NewConcat(ctx, expression.NewLiteral("foo", types.LongText), expression.NewLiteral(123, types.Int64), expression.NewLiteral("bar", types.LongText))
+		require.NoError(err)
+
+		require.False(types.IsBinaryType(f.Type(ctx)))
+
+		v, err := f.Eval(ctx, nil)
+		require.NoError(err)
+		require.Equal("foo123bar", v)
 	})
 }
 
