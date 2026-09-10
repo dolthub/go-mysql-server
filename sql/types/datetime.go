@@ -686,7 +686,7 @@ func (t datetimeType) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqlt
 }
 
 func appendDateFormat(dest []byte, t time.Time) []byte {
-	if t.Equal(ZeroTime) {
+	if t.Truncate(24 * time.Hour).Equal(ZeroTime) {
 		dest = append(dest, ZeroDateStr...)
 		return dest
 	}
