@@ -250,7 +250,7 @@ func (t datetimeType) Convert(ctx context.Context, v any) (any, sql.ConvertInRan
 	// is zero values, which are important when converting from postgres defaults.
 	case bool:
 		if value {
-			err = sql.ErrTruncatedIncorrect.New(t.String(), v)
+			err = sql.ErrIncorrectValue.New(t.String(), v)
 		}
 		return ZeroTime, sql.InRange, err
 	case int, int8, int16, int32, int64,
