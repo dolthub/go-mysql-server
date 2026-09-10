@@ -95,6 +95,12 @@ func (in *InSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		// convert left to right's type
 		nLeft, _, err := rTyp.Convert(ctx, left)
 		if err != nil {
+			// SELECT 1, NULL yields tuple(..., null). Converting a non-NULL left
+			// component into a null-typed column fails, but membership is still
+			// three-valued — scan rather than treating it as definite FALSE.
+			if tup, ok := rTyp.(types.TupleType); ok {
+				return evalTupleInSubquery(ctx, right, row, left, tup, rTyp)
+			}
 			return false, nil
 		}
 
@@ -105,6 +111,12 @@ func (in *InSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 		val, notFoundErr := values.Get(key)
 		if notFoundErr != nil {
+			// Hash miss: scalars only need a whole-NULL probe. Tuples need a
+			// three-valued scan — right rows with NULL components hash away from
+			// non-NULL lefts (and lefts with NULL components never hash-hit).
+			if tup, ok := rTyp.(types.TupleType); ok {
+				return evalTupleInSubquery(ctx, right, row, nLeft, tup, rTyp)
+			}
 			if _, nilValNotFoundErr := values.Get(nilKey); nilValNotFoundErr == nil {
 				return nil, nil
 			}
@@ -117,7 +129,7 @@ func (in *InSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 
 		if tup, ok := rTyp.(types.TupleType); ok {
-			lVals, lok := left.([]interface{})
+			lVals, lok := nLeft.([]interface{})
 			rVals, rok := val.([]interface{})
 			if lok && rok && len(lVals) == len(rVals) && len(lVals) == len(tup) {
 				cmp, hasNil, cErr := expression.NullUnsafeCompareTuples(ctx, lVals, rVals, tup)
@@ -189,6 +201,59 @@ func (in *InSubquery) Dispose(ctx *sql.Context) {
 	if sq, ok := in.RightChild.(*Subquery); ok {
 		sq.Dispose(ctx)
 	}
+}
+
+// evalTupleInSubquery performs three-valued membership for row constructors
+// against a subquery result set. Definite TRUE wins; otherwise any comparison
+// that is unknown (hasNil && cmp == 0) yields NULL; else FALSE.
+func evalTupleInSubquery(ctx *sql.Context, sq *Subquery, row sql.Row, left interface{}, tup types.TupleType, rTyp sql.Type) (interface{}, error) {
+	lVals, lok := left.([]interface{})
+	if !lok {
+		return false, nil
+	}
+
+	allVals, err := sq.EvalMultiple(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	var hasNullCmp bool
+	for _, rv := range allVals {
+		if rv == nil {
+			hasNullCmp = true
+			continue
+		}
+		rVal, _, cErr := rTyp.Convert(ctx, rv)
+		if cErr != nil {
+			// Fall back to the raw row when type conversion fails (null-typed cols).
+			rVal = rv
+		}
+		if rVal == nil {
+			hasNullCmp = true
+			continue
+		}
+		rVals, rok := rVal.([]interface{})
+		if !rok || len(rVals) != len(lVals) || len(rVals) != len(tup) {
+			continue
+		}
+		cmp, hasNil, cmpErr := expression.NullUnsafeCompareTuples(ctx, lVals, rVals, tup)
+		if cmpErr != nil {
+			return nil, cmpErr
+		}
+		if hasNil {
+			if cmp == 0 {
+				hasNullCmp = true
+			}
+			continue
+		}
+		if cmp == 0 {
+			return true, nil
+		}
+	}
+	if hasNullCmp {
+		return nil, nil
+	}
+	return false, nil
 }
 
 // NewNotInSubquery creates a new NotInSubquery expression.
