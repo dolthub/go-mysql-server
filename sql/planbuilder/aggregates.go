@@ -329,7 +329,16 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 	}
 
 	args := b.buildAggFunctionArgs(inScope, e, gb)
-	agg := b.newAggregation(e, name, args)
+	newInst := b.newAggregation(e, name, args)
+	agg, ok := newInst.(sql.Aggregation)
+	if !ok {
+		return newInst
+	}
+
+	if len(inScope.windowFuncs) > 0 {
+		err := sql.ErrNonAggregatedColumnWithoutGroupBy.New()
+		b.handleErr(err)
+	}
 
 	if name == "count" {
 		b.qFlags.Set(sql.QFlagCount)
@@ -355,9 +364,9 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 	return col.scalarGf()
 }
 
-// newAggregation creates a new aggregation function instance from the arguments given
-func (b *Builder) newAggregation(e *ast.FuncExpr, name string, args []sql.Expression) sql.Aggregation {
-	var agg sql.Aggregation
+// newAggregation creates a new function instance from the arguments given
+func (b *Builder) newAggregation(e *ast.FuncExpr, name string, args []sql.Expression) sql.Expression {
+	var agg sql.Expression
 	if e.Distinct && name == "count" {
 		agg = aggregation.NewCountDistinct(args...)
 	} else {
@@ -384,11 +393,7 @@ func (b *Builder) newAggregation(e *ast.FuncExpr, name string, args []sql.Expres
 			b.handleErr(err)
 		}
 
-		agg, ok = newInst.(sql.Aggregation)
-		if !ok {
-			err := fmt.Errorf("expected function to be aggregation: %s", f.FunctionName())
-			b.handleErr(err)
-		}
+		agg = newInst
 	}
 	return agg
 }
