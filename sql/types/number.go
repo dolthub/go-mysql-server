@@ -678,8 +678,8 @@ func (t NumberTypeImpl_) SQLUint24(ctx *sql.Context, dest []byte, v interface{})
 	if err != nil {
 		return nil, err
 	}
-	if num > (1 << 24) {
-		num = uint64((1 << 24))
+	if num > (1<<24 - 1) {
+		num = uint64(1<<24 - 1)
 	}
 	dest = strconv.AppendUint(dest, num, 10)
 
