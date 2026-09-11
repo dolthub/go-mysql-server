@@ -330,6 +330,17 @@ func (t datetimeType) Convert(ctx context.Context, v any) (any, sql.ConvertInRan
 	return resTime, sql.InRange, err // Keep any errors as potential warnings later
 }
 
+func (t datetimeType) ToFloat64() (float64, error) {
+	switch t.baseType {
+	case sqltypes.Date:
+
+	case sqltypes.Datetime:
+	case sqltypes.Timestamp:
+	default:
+		return 0, sql.ErrInvalidBaseType.New(t.baseType.String(), "datetime")
+	}
+}
+
 // precisionConversion is a conversion ratio to divide time.Second by to truncate the appropriate amount for the
 // precision of a type with time info
 var precisionConversion = [7]int{
