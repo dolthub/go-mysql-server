@@ -281,11 +281,7 @@ func getRowFromColumn(ctx *sql.Context, curOrdPos int, col *sql.Column, catName,
 
 	columnDefault := GetColumnDefault(ctx, col.Default)
 
-	extra := col.Extra
-	// If extra is not defined, fill it here.
-	if extra == "" && !col.Default.IsLiteral() {
-		extra = "DEFAULT_GENERATED"
-	}
+	extra := col.ExtraString()
 
 	var curColPrivStr []string
 	for p := range privSetMap {

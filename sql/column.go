@@ -174,6 +174,21 @@ func (c *Column) String() string {
 	return c.Source + "." + c.Name
 }
 
+// ExtraString returns the formatted EXTRA string for this column.
+func (c *Column) ExtraString() string {
+	extra := c.Extra
+	if extra == "" && !c.Default.IsLiteral() {
+		extra = "DEFAULT_GENERATED"
+	}
+	if suffix := c.OnUpdate.OnUpdateExtraSuffix(); suffix != "" {
+		if extra == "" {
+			return suffix
+		}
+		return extra + " " + suffix
+	}
+	return extra
+}
+
 // TableId is the unique identifier of a table or table alias in a multi-db environment.
 // The long-term goal is to migrate all uses of table name strings to this and minimize places where we
 // construct/inspect TableIDs. By treating this as an opaque identifier, it will be easier to migrate to

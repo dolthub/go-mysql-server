@@ -489,11 +489,7 @@ func (b *BaseBuilder) buildShowColumns(ctx *sql.Context, n *plan.ShowColumns, ro
 			defaultVal = nil
 		}
 
-		extra := col.Extra
-		// If extra is not defined, fill it here.
-		if extra == "" && !col.Default.IsLiteral() {
-			extra = "DEFAULT_GENERATED"
-		}
+		extra := col.ExtraString()
 
 		if n.Full {
 			row = sql.Row{

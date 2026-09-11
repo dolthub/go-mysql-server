@@ -16,6 +16,8 @@ package sql
 
 import (
 	"fmt"
+
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
 // ColumnDefaultValue is an expression representing the default value of a column. May represent both a default literal
@@ -173,6 +175,32 @@ func (e *ColumnDefaultValue) String() string {
 
 	// Non-literal expressions are enclosed in parentheses
 	return fmt.Sprintf("(%s)", str)
+}
+
+// OnUpdateExtraSuffix returns the EXTRA suffix for a column
+// ON UPDATE clause, or "" when there is none.
+func (e *ColumnDefaultValue) OnUpdateExtraSuffix() string {
+	if e == nil {
+		return ""
+	}
+	if e.Resolved() {
+		return "on update " + e.String()
+	}
+	var raw string
+	switch u := e.Expr.(type) {
+	case *UnresolvedColumnDefault:
+		// ExprString is bare; String would wrap it in parens.
+		raw = u.ExprString
+	case UnresolvedColumnDefault:
+		raw = u.ExprString
+	default:
+		raw = e.String()
+	}
+	s, err := sqlparser.ParseOnUpdateClause(raw)
+	if err != nil {
+		return ""
+	}
+	return "on update " + s
 }
 
 func (e *ColumnDefaultValue) DebugString(ctx *Context) string {
