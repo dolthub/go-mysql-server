@@ -15,6 +15,7 @@
 package types
 
 import (
+	"encoding/hex"
 	"fmt"
 	"strconv"
 	"strings"
@@ -778,8 +779,18 @@ func TypeAwareConversion(ctx *sql.Context, val any, origType, convType sql.Type)
 			return cet.ConvertToType(ctx, oet, val, 'a')
 		}
 	}
+
 	var err error
 	switch {
+	// Binary string blobs represent hexadecimal values when converting to a numeric type
+	case IsBlobType(origType) && IsNumber(convType):
+		if bin, isBinary := val.([]byte); isBinary {
+			strVal := hex.EncodeToString(bin)
+			val, err = strconv.ParseUint(strVal, 16, 64)
+			if err != nil {
+				return nil, sql.InRange, err
+			}
+		}
 	case (IsEnum(origType) || IsSet(origType)) && IsText(convType):
 		val, _, err = ConvertToCollatedString(ctx, val, origType)
 		if err != nil {
@@ -788,11 +799,11 @@ func TypeAwareConversion(ctx *sql.Context, val any, origType, convType sql.Type)
 	case IsTime(origType):
 		dtType, ok := origType.(sql.DatetimeType)
 		if !ok {
-			return nil, sql.InRange, fmt.Errorf("type %s does not implement sql.DatetimeType interface", origType)
+			return nil, sql.InRange, sql.ErrInvalidType.New(val)
 		}
 		timeVal, ok := val.(time.Time)
 		if !ok {
-			return nil, sql.InRange, fmt.Errorf("sql.DatetimeType value %v is not time.Time", val)
+			return nil, sql.InRange, sql.ErrInvalidType.New(val)
 		}
 		switch {
 		case IsInteger(convType) || IsFloat(convType):
