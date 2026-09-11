@@ -17,7 +17,6 @@ package types
 import (
 	"context"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/encodings"
 	"math"
 	"reflect"
 	"regexp"
@@ -30,6 +29,7 @@ import (
 	"github.com/dolthub/vitess/go/vt/proto/query"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/encodings"
 	"github.com/dolthub/go-mysql-server/sql/values"
 )
 
