@@ -272,57 +272,55 @@ type hoistSubquery struct {
 	emptyScope  bool
 }
 
-// decorrelateOuterCols returns an optionally modified subquery and extracted filters referencing an outer scope.
-// If the subquery has aliases that conflict with outside aliases, the internal aliases will be renamed to avoid
-// name collisions.
+// decorrelateOuterCols extracts correlated JOIN and WHERE predicates
+// from |sqChild| referencing outer columns in |corr|, returning the
+// rewritten subquery child and extracted filters.
+//
+// If |sqChild| contains aliases conflicting with outside aliases,
+// conflicting aliases in the returned subtree and filters are renamed
+// via |aliasDisambig|.
+//
+// It returns nil and a nil error if decorrelation cannot proceed
+// safely, such as when an offset is encountered.
 func decorrelateOuterCols(ctx *sql.Context, sqChild sql.Node, aliasDisambig *aliasDisambiguator, corr sql.ColSet) (*hoistSubquery, error) {
 	var joinFilters []sql.Expression
 	var filtersToKeep []sql.Expression
 	var emptyScope bool
 	var cantDecorrelate bool
-	n, _, _ := transform.Node(ctx, sqChild, func(ctx *sql.Context, n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	n, _, _ := transform.NodeWithCtx(ctx, sqChild, decorrelateSelector, func(ctx *sql.Context, c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 		if emptyScope {
-			return n, transform.SameTree, nil
+			return c.Node, transform.SameTree, nil
 		}
-		switch f := n.(type) {
+		switch f := c.Node.(type) {
 		case *plan.Offset:
 			cantDecorrelate = true
-			return n, transform.SameTree, nil
+			return c.Node, transform.SameTree, nil
 		case *plan.EmptyTable:
 			emptyScope = true
-			return n, transform.SameTree, nil
+			return c.Node, transform.SameTree, nil
 		case *plan.Filter:
-			filters := expression.SplitConjunction(ctx, f.Expression)
-			for _, f := range filters {
-				outerRef := transform.InspectExpr(ctx, f, func(ctx *sql.Context, e sql.Expression) bool {
-					if gf, ok := e.(*expression.GetField); ok && corr.Contains(gf.Id()) {
-						return true
-					}
-					if sq, ok := e.(*plan.Subquery); ok {
-						if !sq.Correlated().Intersection(corr).Empty() {
-							return true
-						}
-					}
-					return false
-				})
-
-				// based on the GetField analysis, decide where to put the filter
-				if outerRef {
-					joinFilters = append(joinFilters, f)
-				} else {
-					filtersToKeep = append(filtersToKeep, f)
-				}
-			}
-
-			// avoid updating the tree if we don't move any filters
-			if len(filtersToKeep) == len(filters) {
-				filtersToKeep = nil
+			extracted, keep := decorrelateCondition(ctx, f.Expression, corr)
+			if len(extracted) == 0 {
 				return f, transform.SameTree, nil
 			}
-
+			joinFilters = append(joinFilters, extracted...)
+			filtersToKeep = append(filtersToKeep, keep...)
 			return f.Child, transform.NewTree, nil
+		case *plan.JoinNode:
+			// Outer join conditions cannot be hoisted: hoisting them
+			// turns an optional match into a mandatory filter on
+			// preserved rows, dropping rows that should survive.
+			if !f.JoinType().IsInner() || f.Filter == nil {
+				return c.Node, transform.SameTree, nil
+			}
+			extracted, keep := decorrelateCondition(ctx, f.Filter, corr)
+			if len(extracted) == 0 {
+				return c.Node, transform.SameTree, nil
+			}
+			joinFilters = append(joinFilters, extracted...)
+			return f.WithFilter(expression.JoinAnd(keep...)), transform.NewTree, nil
 		default:
-			return n, transform.SameTree, nil
+			return c.Node, transform.SameTree, nil
 		}
 	})
 
@@ -424,4 +422,51 @@ func decorrelateOuterCols(ctx *sql.Context, sqChild sql.Node, aliasDisambig *ali
 		inner:       n,
 		joinFilters: joinFilters,
 	}, nil
+}
+
+// decorrelateCondition splits |cond| into correlated predicates
+// referencing outer columns in |corr| and uncorrelated predicates that
+// remain in scope.
+//
+// Predicates referencing any column in |corr| or a subquery correlated
+// with |corr| are returned in |correlated|. All remaining predicates
+// are returned in |inScope|.
+func decorrelateCondition(ctx *sql.Context, cond sql.Expression, corr sql.ColSet) (correlated, inScope []sql.Expression) {
+	preds := expression.SplitConjunction(ctx, cond)
+	if corr.Empty() {
+		return nil, preds
+	}
+	correlated = make([]sql.Expression, 0, len(preds))
+	inScope = make([]sql.Expression, 0, len(preds))
+	for _, pred := range preds {
+		// A condition is correlated if it refers to any column from an
+		// outer query outside this subquery.
+		isCorrelated := transform.InspectExpr(ctx, pred, func(ctx *sql.Context, e sql.Expression) bool {
+			if gf, ok := e.(*expression.GetField); ok && corr.Contains(gf.Id()) {
+				return true
+			}
+			if sq, ok := e.(*plan.Subquery); ok {
+				if !sq.Correlated().Intersection(corr).Empty() {
+					return true
+				}
+			}
+			return false
+		})
+		if isCorrelated {
+			correlated = append(correlated, pred)
+		} else {
+			inScope = append(inScope, pred)
+		}
+	}
+	return correlated, inScope
+}
+
+// decorrelateSelector reports whether traversal in |c| should enter
+// child nodes to extract decorrelated join conditions.
+func decorrelateSelector(_ *sql.Context, c transform.Context) bool {
+	jn, ok := c.Parent.(*plan.JoinNode)
+	if !ok {
+		return true
+	}
+	return jn.JoinType().IsPreservedTable(c.ChildNum)
 }
