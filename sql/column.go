@@ -58,7 +58,7 @@ type Column struct {
 	Default *ColumnDefaultValue
 	// Generated is non-nil if the column is defined with a generated value. Mutually exclusive with Default
 	Generated *ColumnDefaultValue
-	// OnUpdate contains the on update value of the column or nil if it was not explicitly defined.
+	// OnUpdate specifies automatic timestamp update behavior via [*ColumnDefaultValue].
 	OnUpdate *ColumnDefaultValue
 	// Name is the name of the column.
 	Name string
@@ -68,8 +68,6 @@ type Column struct {
 	DatabaseSource string
 	// Comment contains the string comment for this column.
 	Comment string
-	// Extra contains any additional information to put in the `extra` column under `information_schema.columns`.
-	Extra string
 	// PrimaryKey is true if the column is part of the primary key for its table.
 	PrimaryKey bool
 	// Nullable is true if the column can contain NULL values, or false
@@ -154,24 +152,57 @@ func (c *Column) DebugString(ctx *Context) string {
 	sb.WriteString(fmt.Sprintf("%v", c.AutoIncrement))
 	sb.WriteString(", ")
 	sb.WriteString("Extra: ")
-	sb.WriteString(c.Extra)
+	sb.WriteString(FormatColumnExtra(c))
 
 	return sb.String()
 }
 
 func (c Column) Copy() *Column {
-	// Create a copy of the default and generated column, rather than referencing the same pointer
+	// Create a copy of the default, generated, and on update column, rather than referencing the same pointer
 	if c.Default != nil {
-		c.Default = &(*c.Default)
+		d := *c.Default
+		c.Default = &d
 	}
 	if c.Generated != nil {
-		c.Generated = &(*c.Generated)
+		g := *c.Generated
+		c.Generated = &g
+	}
+	if c.OnUpdate != nil {
+		u := *c.OnUpdate
+		c.OnUpdate = &u
 	}
 	return &c
 }
 
 func (c *Column) String() string {
 	return c.Source + "." + c.Name
+}
+
+// FormatColumnExtra returns the formatted EXTRA string for the given Column.
+func FormatColumnExtra(c *Column) string {
+	if c == nil {
+		return ""
+	}
+	// EXTRA formats auto_increment and on update in lowercase, unlike
+	// SHOW CREATE TABLE:
+	// https://dev.mysql.com/doc/refman/8.4/en/show-columns.html
+	var parts []string
+	if c.AutoIncrement {
+		parts = append(parts, "auto_increment")
+	}
+	if c.Generated != nil {
+		if c.Virtual {
+			parts = append(parts, "VIRTUAL GENERATED")
+		} else {
+			parts = append(parts, "STORED GENERATED")
+		}
+	} else if c.Default != nil && !c.Default.Literal {
+		parts = append(parts, "DEFAULT_GENERATED")
+	}
+	if c.OnUpdate != nil {
+		parts = append(parts, "on update "+c.OnUpdate.String())
+	}
+	return strings.Join(parts, " ")
 }
 
 // TableId is the unique identifier of a table or table alias in a multi-db environment.

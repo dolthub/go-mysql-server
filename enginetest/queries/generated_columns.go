@@ -138,6 +138,13 @@ var GeneratedColumnTests = []ScriptTest{
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
+				Query: "show columns from t1",
+				Expected: []sql.Row{
+					{"a", "int", "NO", "PRI", nil, ""},
+					{"b", "int", "YES", "", nil, "STORED GENERATED"},
+				},
+			},
+			{
 				Query:       "insert into t1 values (1,2)",
 				ExpectedErr: sql.ErrGeneratedColumnValue,
 			},
