@@ -15,7 +15,10 @@
 package json
 
 import (
+	"context"
 	"fmt"
+
+	"github.com/cockroachdb/apd/v3"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -83,6 +86,11 @@ func (j *JSONOverlaps) IsNullable(ctx *sql.Context) bool {
 // It returns true if the two values are exactly equal (type and order are important).
 // It will recursively unwrap arrays and objects to compare their contents.
 func jsonEquals(left, right interface{}) bool {
+	if isJSONNumber(left) && isJSONNumber(right) {
+		cmp, err := types.CompareJSON(context.Background(), left, right)
+		return err == nil && cmp == 0
+	}
+
 	lArr, lIsArr := left.([]interface{})
 	rArr, rIsArr := right.([]interface{})
 	if lIsArr && rIsArr {
@@ -121,11 +129,24 @@ func jsonEquals(left, right interface{}) bool {
 	return left == right
 }
 
+// isJSONNumber reports whether value uses a supported JSON numeric representation.
+func isJSONNumber(value interface{}) bool {
+	switch value.(type) {
+	case int, int8, int16, int32, int64,
+		uint, uint8, uint16, uint32, uint64,
+		float32, float64, *apd.Decimal:
+		return true
+	default:
+		return false
+	}
+}
+
+// overlaps reports whether two JSON values overlap according to MySQL semantics.
 func overlaps(left, right interface{}) bool {
 	switch lVal := left.(type) {
-	case nil, bool, string, float64, int64, uint64:
+	case nil, bool, string, float64, int64, uint64, *apd.Decimal:
 		switch rVal := right.(type) {
-		case nil, bool, string, float64, int64, uint64, map[string]interface{}:
+		case nil, bool, string, float64, int64, uint64, *apd.Decimal, map[string]interface{}:
 			return jsonEquals(left, right)
 		case []interface{}:
 			// scalar must be in array
@@ -137,7 +158,7 @@ func overlaps(left, right interface{}) bool {
 		}
 	case map[string]interface{}:
 		switch rVal := right.(type) {
-		case nil, bool, string, float64, int64, uint64:
+		case nil, bool, string, float64, int64, uint64, *apd.Decimal:
 			return overlaps(right, left)
 		case map[string]interface{}:
 			// objects must have at least one key-value pair in common
@@ -159,7 +180,7 @@ func overlaps(left, right interface{}) bool {
 		}
 	case []interface{}:
 		switch rVal := right.(type) {
-		case nil, bool, string, float64, int64, uint64:
+		case nil, bool, string, float64, int64, uint64, *apd.Decimal:
 			return overlaps(right, left)
 		case map[string]interface{}:
 			return overlaps(right, left)
