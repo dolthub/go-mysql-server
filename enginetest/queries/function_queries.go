@@ -1801,6 +1801,82 @@ var FunctionQueryTests = []QueryTest{
 		Expected:              []sql.Row{{nil}},
 	},
 	{
+		Query: "select cast(cast('2001-02-03 12:34:56.123456' as date) as signed);",
+		Expected: []sql.Row{
+			{20010203},
+		},
+	},
+	{
+		Query: "select cast(cast('2001-02-03 12:34:56.123456' as date) as unsigned);",
+		Expected: []sql.Row{
+			{uint64(20010203)},
+		},
+	},
+	{
+		Query: "select cast(cast('2001-02-03 12:34:56.123456' as date) as float);",
+		Expected: []sql.Row{
+			{float32(20010203)},
+		},
+	},
+	{
+		Query: "select cast(cast('2001-02-03 12:34:56.123456' as date) as double);",
+		Expected: []sql.Row{
+			{float64(20010203)},
+		},
+	},
+	{
+		Query: "select cast(cast('2001-02-03 12:34:56.123456' as date) as decimal(65,30));",
+		Expected: []sql.Row{
+			{"20010203.000000000000000000000000000000"},
+		},
+	},
+
+	{
+		Query: "select cast(cast('2001-02-03 12:34:56.123456' as datetime(6)) as signed);",
+		Expected: []sql.Row{
+			{20010203123456},
+		},
+	},
+	{
+		Query: "select cast(cast('2001-02-03 12:34:56.999999' as datetime(6)) as signed);",
+		Expected: []sql.Row{
+			{20010203123457},
+		},
+	},
+	{
+		Query: "select cast(cast('2001-02-03 12:34:56.123456' as datetime(6)) as unsigned);",
+		Expected: []sql.Row{
+			{uint64(20010203123456)},
+		},
+	},
+	{
+		Query: "select cast(cast('2001-02-03 12:34:56.999999' as datetime(6)) as unsigned);",
+		Expected: []sql.Row{
+			{uint64(20010203123457)},
+		},
+	},
+	{
+		// TODO: MySQL loses more precision when casting to float32 type
+		Skip:  true,
+		Query: "select cast(cast('2001-02-03 12:34:56.123456' as datetime(6)) as float);",
+		Expected: []sql.Row{
+			{float32(20010200000000)},
+		},
+	},
+	{
+		Query: "select cast(cast('2001-02-03 12:34:56.123456' as datetime(6)) as double);",
+		Expected: []sql.Row{
+			{float64(20010203123456.125)},
+		},
+	},
+	{
+		Query: "select cast(cast('2001-02-03 12:34:56.123456' as datetime(6)) as decimal(65,30));",
+		Expected: []sql.Row{
+			{"20010203123456.123456000000000000000000000000"},
+		},
+	},
+
+	{
 		// A string with no delimiters takes a 4 digit year at 4, 8, or 14 or more digits, and 2 otherwise
 		Query:    "select cast('20200101123456' as datetime), cast('200101123456' as datetime)",
 		Expected: []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 0, time.UTC), time.Date(2020, time.January, 1, 12, 34, 56, 0, time.UTC)}},

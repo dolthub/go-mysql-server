@@ -342,12 +342,18 @@ func convertValue(ctx *sql.Context, val any, castTo string, originType sql.Type,
 		}
 		return d, nil
 	case ConvertToDecimal:
-		value, err := types.ConvertHexBlobToDecimalForNumericContext(val, originType)
+		dt := createConvertedDecimalType(typeLength, typeScale, false)
+		var err error
+		switch {
+		case types.IsBlobType(originType):
+			val, err = types.ConvertHexBlobToDecimalForNumericContext(val, originType)
+		case types.IsTime(originType):
+			val, _, err = types.TypeAwareConversion(ctx, val, originType, dt)
+		}
 		if err != nil {
 			return nil, err
 		}
-		dt := createConvertedDecimalType(typeLength, typeScale, false)
-		d, _, err := dt.Convert(ctx, value)
+		d, _, err := dt.Convert(ctx, val)
 		if err != nil {
 			if !sql.ErrTruncatedIncorrect.Is(err) {
 				return dt.Zero(), nil
@@ -356,11 +362,17 @@ func convertValue(ctx *sql.Context, val any, castTo string, originType sql.Type,
 		}
 		return d, nil
 	case ConvertToFloat:
-		value, err := types.ConvertHexBlobToDecimalForNumericContext(val, originType)
+		var err error
+		switch {
+		case types.IsBlobType(originType):
+			val, err = types.ConvertHexBlobToDecimalForNumericContext(val, originType)
+		case types.IsTime(originType):
+			val, _, err = types.TypeAwareConversion(ctx, val, originType, types.Float32)
+		}
 		if err != nil {
 			return nil, err
 		}
-		d, _, err := types.Float32.Convert(ctx, value)
+		d, _, err := types.Float32.Convert(ctx, val)
 		if err != nil {
 			if !sql.ErrTruncatedIncorrect.Is(err) {
 				return types.Float64.Zero(), nil
@@ -369,11 +381,17 @@ func convertValue(ctx *sql.Context, val any, castTo string, originType sql.Type,
 		}
 		return d, nil
 	case ConvertToDouble, ConvertToReal:
-		value, err := types.ConvertHexBlobToDecimalForNumericContext(val, originType)
+		var err error
+		switch {
+		case types.IsBlobType(originType):
+			val, err = types.ConvertHexBlobToDecimalForNumericContext(val, originType)
+		case types.IsTime(originType):
+			val, _, err = types.TypeAwareConversion(ctx, val, originType, types.Float64)
+		}
 		if err != nil {
 			return nil, err
 		}
-		d, _, err := types.Float64.Convert(ctx, value)
+		d, _, err := types.Float64.Convert(ctx, val)
 		if err != nil {
 			if !sql.ErrTruncatedIncorrect.Is(err) {
 				return types.Float64.Zero(), nil
@@ -388,11 +406,19 @@ func convertValue(ctx *sql.Context, val any, castTo string, originType sql.Type,
 		}
 		return js, nil
 	case ConvertToSigned:
-		value, err := types.ConvertHexBlobToDecimalForNumericContext(val, originType)
+		var err error
+		switch {
+		case types.IsBlobType(originType):
+			// TODO: should this just be in TypeAwareConversion?
+			val, err = types.ConvertHexBlobToDecimalForNumericContext(val, originType)
+		case types.IsTime(originType):
+			val, _, err = types.TypeAwareConversion(ctx, val, originType, types.Int64)
+		}
 		if err != nil {
 			return nil, err
 		}
-		num, _, err := types.Int64.Convert(ctx, value)
+		// TODO: if we merge ConvertHexBlobToDecimalForNumericContext into TypeAwareConversion, this call is unnecessary
+		num, _, err := types.Int64.Convert(ctx, val)
 		if err != nil {
 			if !sql.ErrTruncatedIncorrect.Is(err) {
 				return types.Int64.Zero(), nil
@@ -407,11 +433,18 @@ func convertValue(ctx *sql.Context, val any, castTo string, originType sql.Type,
 		}
 		return t, nil
 	case ConvertToUnsigned:
-		value, err := types.ConvertHexBlobToDecimalForNumericContext(val, originType)
+		var err error
+		switch {
+		case types.IsBlobType(originType):
+			// TODO: should this just be in TypeAwareConversion?
+			val, err = types.ConvertHexBlobToDecimalForNumericContext(val, originType)
+		case types.IsTime(originType):
+			val, _, err = types.TypeAwareConversion(ctx, val, originType, types.Uint64)
+		}
 		if err != nil {
 			return nil, err
 		}
-		num, inRange, err := types.Uint64.Convert(ctx, value)
+		num, inRange, err := types.Uint64.Convert(ctx, val)
 		if err != nil {
 			if !sql.ErrTruncatedIncorrect.Is(err) {
 				return types.Uint64.Zero(), nil

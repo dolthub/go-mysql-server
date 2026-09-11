@@ -16,7 +16,6 @@ package types
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/types"
 	"strconv"
 	"strings"
 	"time"
@@ -787,13 +786,25 @@ func TypeAwareConversion(ctx *sql.Context, val any, origType, convType sql.Type)
 			return nil, sql.InRange, err
 		}
 	case IsTime(origType):
-		dtType := convType.(sql.DatetimeType)
-		switch {
-		case IsNumber(convType):
-			dtType.ToFloat64()
-		case IsText(convType):
+		dtType, ok := origType.(sql.DatetimeType)
+		if !ok {
+			return nil, sql.InRange, fmt.Errorf("type %s does not implement sql.DatetimeType interface", origType)
 		}
-
+		timeVal, ok := val.(time.Time)
+		if !ok {
+			return nil, sql.InRange, fmt.Errorf("sql.DatetimeType value %v is not time.Time", val)
+		}
+		switch {
+		case IsInteger(convType) || IsFloat(convType):
+			val, err = dtType.ToFloat64(timeVal)
+		case IsDecimal(convType):
+			val, err = dtType.ToDecimal(timeVal)
+		case IsText(convType):
+			val, err = dtType.ToString(timeVal)
+		}
+		if err != nil {
+			return nil, sql.InRange, err
+		}
 	}
 
 	return convType.Convert(ctx, val)

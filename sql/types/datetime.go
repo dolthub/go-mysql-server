@@ -17,6 +17,7 @@ package types
 import (
 	"context"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/encodings"
 	"math"
 	"reflect"
 	"regexp"
@@ -330,20 +331,70 @@ func (t datetimeType) Convert(ctx context.Context, v any) (any, sql.ConvertInRan
 	return resTime, sql.InRange, err // Keep any errors as potential warnings later
 }
 
-func (t datetimeType) ToFloat64() (float64, error) {
+// getNumericParts is a helper function for converting Date and Time types to numeric types.
+// Depending on t.baseType, this will return:
+// - |whole| an int64 representing the date (and time) portion
+// - |nsec| an int64 representing the nanoseconds
+func (t datetimeType) getNumericParts(val time.Time) (int64, int64, error) {
+	var nsec int64
+	year, month, day := val.Date()
+	hour, mins, sec := val.Clock()
+	whole := int64(year*100_00 + int(month)*100 + day)
 	switch t.baseType {
 	case sqltypes.Date:
-
-	case sqltypes.Datetime:
-	case sqltypes.Timestamp:
+	case sqltypes.Datetime, sqltypes.Timestamp:
+		whole *= ClockScalar
+		whole += int64(hour*100_00 + mins*100 + sec)
+		nsec = int64(val.Nanosecond())
 	default:
-		return 0, sql.ErrInvalidBaseType.New(t.baseType.String(), "datetime")
+		return 0, 0, sql.ErrInvalidBaseType.New(t.baseType.String(), "datetime")
 	}
+	return whole, nsec, nil
+}
+
+// ToFloat64 implements the sql.DatetimeType interface.
+// It converts time.Time{} into float64 according to MySQL's behavior.
+func (t datetimeType) ToFloat64(val time.Time) (float64, error) {
+	whole, nsec, err := t.getNumericParts(val)
+	if err != nil {
+		return 0, err
+	}
+	return float64(whole) + float64(nsec)/1e9, nil
+}
+
+// ToDecimal implements the sql.DatetimeType interface.
+// It converts time.Time{} into *apd.Decimal according to MySQL's behavior.
+func (t datetimeType) ToDecimal(val time.Time) (*apd.Decimal, error) {
+	whole, nsec, err := t.getNumericParts(val)
+	if err != nil {
+		return nil, err
+	}
+	res := &apd.Decimal{}
+	_, err = apd.BaseContext.Add(res, apd.New(whole, 0), apd.New(nsec, -9))
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
+}
+
+// ToString implements the sql.DatetimeType interface.
+// It converts time.Time{} into string truncating the values according to the baseType and precision.
+func (t datetimeType) ToString(val time.Time) (string, error) {
+	buf := make([]byte, 0, len("9999-12-31 23:59:59.999999")) // TODO: make constant
+	switch t.baseType {
+	case sqltypes.Date:
+		appendDateFormat(buf, val)
+	case sqltypes.Datetime, sqltypes.Timestamp:
+		appendDatetimeFormat(buf, val, t.precision)
+	default:
+		return "", sql.ErrInvalidBaseType.New(t.baseType.String(), "datetime")
+	}
+	return encodings.BytesToString(buf), nil
 }
 
 // precisionConversion is a conversion ratio to divide time.Second by to truncate the appropriate amount for the
 // precision of a type with time info
-var precisionConversion = [7]int{
+var precisionConversion = [7]int64{
 	1, 10, 100, 1_000, 10_000, 100_000, 1_000_000,
 }
 
