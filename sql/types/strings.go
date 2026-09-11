@@ -663,6 +663,8 @@ func ConvertToCollatedString(ctx context.Context, val interface{}, typ sql.Type)
 		} else if byteVal, ok := val.([]byte); ok {
 			content = encodings.BytesToString(byteVal)
 		} else {
+			// TODO: it seems like the logic for converting enums and sets to string should be implemented
+			//  on the types themselves.
 			switch typ := typ.(type) {
 			case EnumType:
 				content, err = convertEnumToString(ctx, val, typ)
