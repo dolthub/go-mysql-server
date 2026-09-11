@@ -41,6 +41,9 @@ func Join(ctx *sql.Context, s1, s2 sql.Statistic, prefixCnt int, debug bool) (sq
 		for i := 0; i < prefixCnt; i++ {
 			if s1.Types()[i].Equals(s2.Types()[i]) {
 				cmp, err = s1.Types()[i].Compare(ctx, row1[i], row2[i])
+				if err != nil {
+					return 0, err
+				}
 			} else {
 				k1 := row1[i]
 				k2, _, err := s1.Types()[i].Convert(ctx, row2[i])
@@ -48,9 +51,9 @@ func Join(ctx *sql.Context, s1, s2 sql.Statistic, prefixCnt int, debug bool) (sq
 					return 0, fmt.Errorf("incompatible types")
 				}
 				cmp, err = s1.Types()[i].Compare(ctx, k1, k2)
-			}
-			if err != nil {
-				return 0, err
+				if err != nil {
+					return 0, err
+				}
 			}
 			if cmp == 0 {
 				continue
@@ -73,6 +76,9 @@ func Join(ctx *sql.Context, s1, s2 sql.Statistic, prefixCnt int, debug bool) (sq
 	}
 
 	newHist, err := joinAlignedStats(s1AliHist, s2AliHist, cmp)
+	if err != nil {
+		return nil, err
+	}
 	ret := NewStatistic(0, 0, 0, s1.AvgSize(), time.Now(), s1.Qualifier(), s1.Columns(), s1.Types(), newHist, s1.IndexClass(), nil)
 	return UpdateCounts(ret), nil
 }
