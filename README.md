@@ -22,7 +22,7 @@ for a reference implementation. Or, hop into the Dolt Discord server
 With the exception of specific limitations (see below),
 **go-mysql-server** is a drop-in replacement for MySQL. Any client
 library, tool, query, SQL syntax, SQL function, etc. that works with
-MySQL (including the [MariaDB Java client](SUPPORTED_CLIENTS.md#mariadb-java-client)) should also work with **go-mysql-server**. If you find a gap in
+MySQL (including the [MariaDB Java client](SUPPORTED\_CLIENTS.md#mariadb-java-client)) should also work with **go-mysql-server**. If you find a gap in
 functionality, please file an issue.
 
 For full MySQL compatibility documentation, see the [Dolt
@@ -66,15 +66,15 @@ equivalent for your environment, installed and available to your C++ toolchain.
 For convenience, `go-mysql-server` also includes a non-compatible regex
 implementation based on the Go standard library `regex.Regex`. To build against
 that, instead of the `go-icu-regex` implementation, you must compile with
-`-tags=gms_pure_go`.  Please note that some of go-mysql-server's tests do not
-pass with `-tags=gms_pure_go` and in general `gms_pure_go` is not recommended
+`-tags=gms\_pure\_go`.  Please note that some of go-mysql-server's tests do not
+pass with `-tags=gms\_pure\_go` and in general `gms\_pure\_go` is not recommended
 for users seeking MySQL compatibility.
 
 ## Using the in-memory test server
 
 The in-memory test server can replace a real MySQL server in
-tests. Start the server using the code in the [_example
-directory](_example/main.go), also reproduced below.
+tests. Start the server using the code in the [\_example
+directory](\_example/main.go), also reproduced below.
 
 ```go
 package main
@@ -98,7 +98,7 @@ import (
 //
 // > mysql --host=localhost --port=3306 --user=root mydb --execute="SELECT * FROM mytable;"
 // +----------+-------------------+-------------------------------+----------------------------+
-// | name     | email             | phone_numbers                 | created_at                 |
+// | name     | email             | phone\_numbers                 | created\_at                 |
 // +----------+-------------------+-------------------------------+----------------------------+
 // | Jane Deo | janedeo@gmail.com | ["556-565-566","777-777-777"] | 2022-11-01 12:00:00.000001 |
 // | Jane Doe | jane@doe.com      | []                            | 2022-11-01 12:00:00.000001 |
@@ -123,7 +123,7 @@ func main() {
 	ctx := sql.NewContext(context.Background(), sql.WithSession(session))
 	ctx.SetCurrentDatabase(dbName)
 
-	// This variable may be found in the "users_example.go" file. Please refer to that file for a walkthrough on how to
+	// This variable may be found in the "users\_example.go" file. Please refer to that file for a walkthrough on how to
 	// set up the "mysql" database to allow user creation and user checking when establishing connections. This is set
 	// to false for this example, but feel free to play around with it and see how it works.
 	if enableUsers {
@@ -155,16 +155,16 @@ func createTestDatabase() *memory.DbProvider {
 	table := memory.NewTable(ctx, db, tableName, sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "name", Type: types.Text, Nullable: false, Source: tableName, PrimaryKey: true},
 		{Name: "email", Type: types.Text, Nullable: false, Source: tableName, PrimaryKey: true},
-		{Name: "phone_numbers", Type: types.JSON, Nullable: false, Source: tableName},
-		{Name: "created_at", Type: types.MustCreateDatetimeType(query.Type_DATETIME, 6), Nullable: false, Source: tableName},
+		{Name: "phone\_numbers", Type: types.JSON, Nullable: false, Source: tableName},
+		{Name: "created\_at", Type: types.MustCreateDatetimeType(query.Type\_DATETIME, 6), Nullable: false, Source: tableName},
 	}), db.GetForeignKeyCollection())
 	db.AddTable(tableName, table)
 
 	creationTime := time.Unix(0, 1667304000000001000).UTC()
-	_ = table.Insert(ctx, sql.NewRow("Jane Deo", "janedeo@gmail.com", types.MustJSON(`["556-565-566", "777-777-777"]`), creationTime))
-	_ = table.Insert(ctx, sql.NewRow("Jane Doe", "jane@doe.com", types.MustJSON(`[]`), creationTime))
-	_ = table.Insert(ctx, sql.NewRow("John Doe", "john@doe.com", types.MustJSON(`["555-555-555"]`), creationTime))
-	_ = table.Insert(ctx, sql.NewRow("John Doe", "johnalt@doe.com", types.MustJSON(`[]`), creationTime))
+	\_ = table.Insert(ctx, sql.NewRow("Jane Deo", "janedeo@gmail.com", types.MustJSON(`["556-565-566", "777-777-777"]`), creationTime))
+	\_ = table.Insert(ctx, sql.NewRow("Jane Doe", "jane@doe.com", types.MustJSON(`[]`), creationTime))
+	\_ = table.Insert(ctx, sql.NewRow("John Doe", "john@doe.com", types.MustJSON(`["555-555-555"]`), creationTime))
+	\_ = table.Insert(ctx, sql.NewRow("John Doe", "johnalt@doe.com", types.MustJSON(`[]`), creationTime))
 
 	return pro
 }
@@ -181,7 +181,7 @@ the golang MySQL connector and the `mysql` shell.
 ```bash
 > mysql --host=localhost --port=3306 --user=root mydb --execute="SELECT * FROM mytable;"
 +----------+-------------------+-------------------------------+----------------------------+
-| name     | email             | phone_numbers                 | created_at                 |
+| name     | email             | phone\_numbers                 | created\_at                 |
 +----------+-------------------+-------------------------------+----------------------------+
 | Jane Deo | janedeo@gmail.com | ["556-565-566","777-777-777"] | 2022-11-01 12:00:00.000001 |
 | Jane Doe | jane@doe.com      | []                            | 2022-11-01 12:00:00.000001 |
