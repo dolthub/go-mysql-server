@@ -965,7 +965,23 @@ func setConnStatusFlags(ctx *sql.Context, c *mysql.Conn) error {
 		c.StatusFlags &= ^uint16(mysql.ServerStatusAutocommit)
 	}
 
-	if t := ctx.GetTransaction(); t != nil {
+	// A non-nil transaction alone does not mean the client is inside an
+	// explicit transaction: the engine also opens an implicit, per-statement
+	// transaction for ordinary autocommit statements. Reporting
+	// ServerInTransaction for those implicit transactions leaks an internal
+	// implementation detail onto the wire and desyncs MySQL clients (e.g.
+	// PDO_MySQL, whose BEGIN/COMMIT bookkeeping mirrors this flag) from the
+	// server's actual, client-visible transaction state: a client can end up
+	// believing a transaction is still open immediately after an ordinary
+	// autocommit statement, and its next explicit BEGIN is then refused
+	// client-side with "There is already an active transaction" even though
+	// it never issued a matching COMMIT/ROLLBACK for anything.
+	//
+	// GetIgnoreAutoCommit() is true only between an explicit
+	// BEGIN/START TRANSACTION and its COMMIT/ROLLBACK (see
+	// sql/rowexec/transaction.go), so it is the correct signal for whether
+	// the current transaction is client-visible.
+	if t := ctx.GetTransaction(); t != nil && ctx.GetIgnoreAutoCommit() {
 		c.StatusFlags |= uint16(mysql.ServerInTransaction)
 	} else {
 		c.StatusFlags &= ^uint16(mysql.ServerInTransaction)
