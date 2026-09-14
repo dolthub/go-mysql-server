@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package test
+package testutils
 
 import (
 	"context"
@@ -30,10 +30,6 @@ type MemTracer struct {
 	sync.Mutex
 
 	embedded.Tracer
-}
-
-type memSpan struct {
-	opName string
 }
 
 func (t *MemTracer) Start(ctx context.Context, operationName string, opts ...trace.SpanStartOption) (context.Context, trace.Span) {

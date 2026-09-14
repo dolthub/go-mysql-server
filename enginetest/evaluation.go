@@ -40,6 +40,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/testutils"
 )
 
 // RunQueryWithContext runs the query given and asserts that it doesn't result in an error.
@@ -740,11 +741,6 @@ func runQueryPreparedWithCtx(t *testing.T, ctx *sql.Context, e QueryEngine, q st
 	return rows, sch, err
 }
 
-// CustomValueValidator is an interface for custom validation of values in the result set
-type CustomValueValidator interface {
-	Validate(interface{}) (bool, error)
-}
-
 // toSQL converts the given expected value into appropriate type of given column.
 // |isZeroTime| is true if the query is any `SHOW` statement, except for `SHOW EVENTS`.
 // This is set earlier in `checkResult()` method.
@@ -824,7 +820,7 @@ func checkResultsDefault(t *testing.T, ctx *sql.Context, expected []sql.Row, exp
 	for i, row := range widenedExpected {
 		for j, field := range row {
 			// Special case for custom values
-			if cvv, isCustom := field.(CustomValueValidator); isCustom {
+			if cvv, isCustom := field.(testutils.CustomValueValidator); isCustom {
 				if i >= len(widenedRows) {
 					continue
 				}
