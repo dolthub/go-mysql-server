@@ -26,7 +26,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"github.com/dolthub/go-mysql-server/test"
+	"github.com/dolthub/go-mysql-server/testutils"
 )
 
 func TestJsonCompare(t *testing.T) {
@@ -59,7 +59,7 @@ func TestJsonConvert(t *testing.T) {
 		{types.MustJSON(`{"field":"test"}`), types.MustJSON(`{"field":"test"}`), false},
 		{[]string{}, types.MustJSON(`[]`), false},
 		{[]string{`555-555-5555`}, types.MustJSON(`["555-555-5555"]`), false},
-		{test.NewMockStringWrapper(`{"c": 1}`), types.MustJSON(`{"c":1}`), false},
+		{testutils.NewMockStringWrapper(`{"c": 1}`), types.MustJSON(`{"c":1}`), false},
 	}
 
 	for _, test := range tests {

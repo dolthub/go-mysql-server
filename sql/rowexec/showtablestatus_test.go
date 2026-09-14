@@ -22,7 +22,7 @@ import (
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/test"
+	"github.com/dolthub/go-mysql-server/testutils"
 )
 
 func TestShowTableStatus(t *testing.T) {
@@ -37,7 +37,7 @@ func TestShowTableStatus(t *testing.T) {
 	db2.AddTable("t4", memory.NewTable(sql.NewEmptyContext(), db2, "t4", sql.PrimaryKeySchema{}, db2.GetForeignKeyCollection()))
 	db2.AddTable("t5", memory.NewPartitionedTableWithCollation(sql.NewEmptyContext(), db2.Database(), "t5", sql.PrimaryKeySchema{}, db2.GetForeignKeyCollection(), 0, sql.Collation_Default, "table comment"))
 
-	catalog := test.NewCatalog(sql.NewDatabaseProvider(db1, db2))
+	catalog := testutils.NewCatalog(sql.NewDatabaseProvider(db1, db2))
 	pro := memory.NewDBProvider(db1, db2)
 	ctx := newContext(pro)
 
