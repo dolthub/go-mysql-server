@@ -3014,6 +3014,10 @@ func TestPlanBuilderErr(t *testing.T) {
 			Query: "SELECT * FROM (SELECT 'parent' as db, * FROM xy) as combined",
 			Err:   "Invalid syntax: cannot mix named columns with '*' in SELECT clause",
 		},
+		{
+			Query: "CHANGE REPLICATION FILTER REPLICATE_WILD_DO_TABLE = ('badformat'), REPLICATE_WILD_IGNORE_TABLE = ()",
+			Err:   "Supplied filter list contains a value which is not in the required format 'db_pattern.table_pattern' (errno 3067) (sqlstate HY000)",
+		},
 	}
 
 	db := memory.NewDatabase("mydb")
