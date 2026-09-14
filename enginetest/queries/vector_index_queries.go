@@ -116,6 +116,19 @@ var VectorIndexQueries = []ScriptTest{
 			},
 		},
 	},
+	// https://github.com/dolthub/dolt/issues/8657
+	{
+		Name: "Test non-covering vector lookups",
+		SetUpScript: []string{
+			"CREATE TABLE noncovering(pk INT PRIMARY KEY,c0 INT,embedding JSON NOT NULL)",
+			"CREATE VECTOR INDEX vidx ON noncovering(embedding)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{Query: "SELECT c0 FROM noncovering ORDER BY VEC_DISTANCE('[0.0]',embedding)", Expected: []sql.Row{}},
+			{Query: "INSERT INTO noncovering VALUES(1,10,'[1.0]'),(2,20,'[2.0]')", Expected: []sql.Row{{types.NewOkResult(2)}}},
+			{Query: "SELECT c0 FROM noncovering ORDER BY VEC_DISTANCE('[0.0]',embedding) LIMIT 1", Expected: []sql.Row{{int32(10)}}},
+		},
+	},
 	{
 		Name: "basic VECTOR vector index",
 		SetUpScript: []string{
