@@ -1003,6 +1003,8 @@ var JsonScripts = []ScriptTest{
 				Query:    `select json_extract('{"a":[{"b":1}]}', '$.a[0].b')`,
 				Expected: []sql.Row{{types.MustJSON("1")}},
 			},
+			// https://github.com/dolthub/dolt/issues/7905
+			{Query: "SELECT JSON_EXTRACT('[{\"a\":1},{\"a\":2}]','$.a'),JSON_VALUE('[{\"a\":1},{\"a\":2}]','$.a'),JSON_EXTRACT('[{\"a\":[{\"b\":1},{\"b\":2}]},{\"a\":[{\"b\":3},{\"b\":4}]}]','$.a.b')", Expected: []sql.Row{{nil, nil, nil}}},
 		},
 	},
 	{
