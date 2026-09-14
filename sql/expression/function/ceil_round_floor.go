@@ -275,7 +275,11 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	val, _, err = types.TypeAwareConversion(ctx, val, r.Num.Type(ctx), types.InternalDecimalType)
+	if typ := r.Num.Type(ctx); types.IsTime(typ) {
+		val, _, err = types.TypeAwareConversion(ctx, val, typ, types.InternalDecimalType)
+	} else {
+		val, _, err = types.InternalDecimalType.Convert(ctx, val)
+	}
 	if err != nil && sql.ErrTruncatedIncorrect.Is(err) {
 		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
