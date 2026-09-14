@@ -1361,7 +1361,22 @@ END`,
 		SetUpScript: []string{
 			"CREATE TABLE checksums(id INT AUTO_INCREMENT PRIMARY KEY,checksum VARCHAR(40))",
 			"INSERT INTO checksums VALUES(1,SHA('macneale'))",
-			"CREATE PROCEDURE calculate_checksum()\nBEGIN\n DECLARE done INT DEFAULT 0;\n DECLARE current_checksum VARCHAR(40);\n DECLARE concat_string VARCHAR(10000) DEFAULT '';\n DECLARE cur CURSOR FOR SELECT checksum FROM checksums ORDER BY id;\n DECLARE CONTINUE HANDLER FOR NOT FOUND SET done=1;\n OPEN cur;\n read_loop: LOOP\n  FETCH cur INTO current_checksum;\n  IF done THEN LEAVE read_loop; END IF;\n  SET concat_string=CONCAT(concat_string,current_checksum);\n END LOOP;\n CLOSE cur;\n INSERT INTO checksums(checksum) VALUES(SHA1(concat_string));\nEND",
+			`CREATE PROCEDURE calculate_checksum()
+BEGIN
+ DECLARE done INT DEFAULT 0;
+ DECLARE current_checksum VARCHAR(40);
+ DECLARE concat_string VARCHAR(10000) DEFAULT '';
+ DECLARE cur CURSOR FOR SELECT checksum FROM checksums ORDER BY id;
+ DECLARE CONTINUE HANDLER FOR NOT FOUND SET done=1;
+ OPEN cur;
+ read_loop: LOOP
+  FETCH cur INTO current_checksum;
+  IF done THEN LEAVE read_loop; END IF;
+  SET concat_string=CONCAT(concat_string,current_checksum);
+ END LOOP;
+ CLOSE cur;
+ INSERT INTO checksums(checksum) VALUES(SHA1(concat_string));
+END`,
 			"CALL calculate_checksum()",
 		},
 		Assertions: []ScriptTestAssertion{
