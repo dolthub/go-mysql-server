@@ -189,7 +189,7 @@ func filterPushdownSelector(ctx *sql.Context, c transform.Context) bool {
 	case *plan.TableAlias:
 		return false
 	case *plan.JoinNode:
-		if (n.Op.IsLeftOuter() || n.Op.IsAnti()) && c.ChildNum != 0 {
+		if !n.Op.IsPreservedTable(c.ChildNum) {
 			return false
 		}
 	}

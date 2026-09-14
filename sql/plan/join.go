@@ -100,6 +100,26 @@ func (i JoinType) IsFullOuter() bool {
 	return i == JoinTypeFullOuter
 }
 
+// IsPreservedTable reports whether the table or nest at child index
+// |childNum| is on the preserved side of this join operation.
+// In an outer join, rows from the preserved table are returned even when
+// there is no match in the inner (null-supplied) table, as described in
+// [MySQL Outer Join Simplification].
+//
+// [MySQL Outer Join Simplification]: https://dev.mysql.com/doc/refman/8.4/en/outer-join-simplification.html
+func (i JoinType) IsPreservedTable(childNum int) bool {
+	switch {
+	case i.IsLeftOuter():
+		return childNum == 0
+	case i.IsRightOuter():
+		return childNum == 1
+	case !i.IsInner():
+		return false
+	default:
+		return true
+	}
+}
+
 func (i JoinType) IsPhysical() bool {
 	switch i {
 	case JoinTypeLookup, JoinTypeLeftOuterLookup,
