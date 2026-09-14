@@ -1052,6 +1052,22 @@ var GeneratedColumnTests = []ScriptTest{
 			},
 		},
 	},
+	// https://github.com/dolthub/dolt/issues/8323
+	{
+		Name: "Test virtual-column filtering and sorting",
+		SetUpScript: []string{
+			"CREATE TABLE virtual_one(pk INT PRIMARY KEY,j INT,value INT AS(pk*pk))",
+			"INSERT INTO virtual_one(pk,j) VALUES(-1,1),(2,1),(-3,1)",
+			"CREATE TABLE virtual_two(pk INT PRIMARY KEY,j INT,k INT,value INT AS(pk*pk))",
+			"INSERT INTO virtual_two(pk,j,k) VALUES(-1,1,2),(2,1,2),(-3,1,2)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{Query: "SELECT value FROM virtual_one ORDER BY value", Expected: []sql.Row{{int32(1)}, {int32(4)}, {int32(9)}}},
+			{Query: "SELECT pk FROM virtual_one WHERE value>1 ORDER BY pk", Expected: []sql.Row{{int32(-3)}, {int32(2)}}},
+			{Query: "SELECT value FROM virtual_two ORDER BY value", Expected: []sql.Row{{int32(1)}, {int32(4)}, {int32(9)}}},
+			{Query: "SELECT pk FROM virtual_two WHERE value>1 ORDER BY pk", Expected: []sql.Row{{int32(-3)}, {int32(2)}}},
+		},
+	},
 	{
 		Name: "virtual column in triggers",
 		SetUpScript: []string{
