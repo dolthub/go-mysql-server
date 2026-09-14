@@ -1895,6 +1895,36 @@ var OnUpdateExprScripts = []ScriptTest{
 					{"ts4", "timestamp(3)", "YES", "", "NULL", "on update CURRENT_TIMESTAMP(3)"},
 				},
 			},
+			{
+				Query: "show columns from t;",
+				Expected: []sql.Row{
+					{"i", "int", "NO", "PRI", nil, ""},
+					{"ts1", "timestamp", "YES", "", "NULL", "on update CURRENT_TIMESTAMP"},
+					{"ts2", "timestamp(3)", "YES", "", "NULL", "on update CURRENT_TIMESTAMP(3)"},
+					{"ts3", "datetime(6)", "YES", "", "NULL", "on update CURRENT_TIMESTAMP(6)"},
+					{"ts4", "timestamp(3)", "YES", "", "NULL", "on update CURRENT_TIMESTAMP(3)"},
+				},
+			},
+			{
+				Query: "show full columns from t;",
+				Expected: []sql.Row{
+					{"i", "int", nil, "NO", "PRI", nil, "", "", ""},
+					{"ts1", "timestamp", nil, "YES", "", "NULL", "on update CURRENT_TIMESTAMP", "", ""},
+					{"ts2", "timestamp(3)", nil, "YES", "", "NULL", "on update CURRENT_TIMESTAMP(3)", "", ""},
+					{"ts3", "datetime(6)", nil, "YES", "", "NULL", "on update CURRENT_TIMESTAMP(6)", "", ""},
+					{"ts4", "timestamp(3)", nil, "YES", "", "NULL", "on update CURRENT_TIMESTAMP(3)", "", ""},
+				},
+			},
+			{
+				Query: "select column_name, extra from information_schema.columns where table_name = 't' order by ordinal_position;",
+				Expected: []sql.Row{
+					{"i", ""},
+					{"ts1", "on update CURRENT_TIMESTAMP"},
+					{"ts2", "on update CURRENT_TIMESTAMP(3)"},
+					{"ts3", "on update CURRENT_TIMESTAMP(6)"},
+					{"ts4", "on update CURRENT_TIMESTAMP(3)"},
+				},
+			},
 		},
 	},
 	{
@@ -1928,6 +1958,12 @@ var OnUpdateExprScripts = []ScriptTest{
 				Expected: []sql.Row{
 					{"id", "int", "NO", "PRI", nil, ""},
 					{"ts", "timestamp(3)", "YES", "", "CURRENT_TIMESTAMP(3)", "DEFAULT_GENERATED on update CURRENT_TIMESTAMP(3)"},
+				},
+			},
+			{
+				Query: "select extra from information_schema.columns where table_name = 't' and column_name = 'ts';",
+				Expected: []sql.Row{
+					{"DEFAULT_GENERATED on update CURRENT_TIMESTAMP(3)"},
 				},
 			},
 			{
