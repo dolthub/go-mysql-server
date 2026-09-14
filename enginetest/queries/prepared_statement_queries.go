@@ -268,7 +268,6 @@ var PreparedScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Skip:  true,
 				Query: "execute s using @d;",
 				Expected: []sql.Row{
 					{"123.45"},
