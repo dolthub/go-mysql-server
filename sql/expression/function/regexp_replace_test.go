@@ -23,7 +23,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"github.com/dolthub/go-mysql-server/test"
+	"github.com/dolthub/go-mysql-server/testutils"
 )
 
 func TestRegexpReplaceInvalidArgNumber(t *testing.T) {
@@ -118,9 +118,9 @@ func TestRegexpReplace(t *testing.T) {
 		{
 			"string wrapper input",
 			sql.NewRow(
-				test.NewMockStringWrapper("abc def ghi"),
-				test.NewMockStringWrapper(`[a-z]`),
-				test.NewMockStringWrapper("X")),
+				testutils.NewMockStringWrapper("abc def ghi"),
+				testutils.NewMockStringWrapper(`[a-z]`),
+				testutils.NewMockStringWrapper("X")),
 			"XXX XXX XXX",
 			false,
 		},
