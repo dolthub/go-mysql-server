@@ -59,7 +59,10 @@ func (c *Char) String() string {
 		args[i] = arg.String()
 	}
 	str := strings.Join(args, ", ")
-	return fmt.Sprintf("%s(%s)", c.FunctionName(), str)
+	if c.Collation == sql.Collation_Unspecified {
+		return fmt.Sprintf("%s(%s)", c.FunctionName(), str)
+	}
+	return fmt.Sprintf("%s(%s USING %s)", c.FunctionName(), str, c.Collation.CharacterSet().Name())
 }
 
 // Type implements sql.Expression

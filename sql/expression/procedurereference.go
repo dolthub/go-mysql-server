@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dolthub/vitess/go/vt/sqlparser"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -352,7 +354,7 @@ func (pp *ProcedureParam) Name() string {
 
 // String implements the sql.Expression interface.
 func (pp *ProcedureParam) String() string {
-	return pp.name
+	return sqlparser.String(sqlparser.NewColIdent(pp.name))
 }
 
 // Eval implements the sql.Expression interface.
@@ -425,7 +427,7 @@ func (upp *UnresolvedProcedureParam) Name() string {
 
 // String implements the sql.Expression interface.
 func (upp *UnresolvedProcedureParam) String() string {
-	return upp.name
+	return sqlparser.String(sqlparser.NewColIdent(upp.name))
 }
 
 // Eval implements the sql.Expression interface.

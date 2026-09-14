@@ -173,6 +173,7 @@ type HashInTuple struct {
 
 var _ Comparer = (*HashInTuple)(nil)
 var _ sql.CollationCoercible = (*HashInTuple)(nil)
+var _ sql.Describable = (*HashInTuple)(nil)
 var _ sql.Expression = (*HashInTuple)(nil)
 
 // NewHashInTuple creates an InTuple expression.
@@ -363,7 +364,17 @@ func (hit *HashInTuple) Right() sql.Expression {
 }
 
 func (hit *HashInTuple) String() string {
-	return fmt.Sprintf("(%s HASH IN %s)", hit.in.Left(), hit.in.Right())
+	return fmt.Sprintf("(%s IN %s)", hit.in.Left(), hit.in.Right())
+}
+
+// Describe preserves the physical hash lookup in plan output while String emits parseable SQL.
+func (hit *HashInTuple) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
+	if options.Debug {
+		return hit.DebugString(ctx)
+	}
+	return fmt.Sprintf("(%s HASH IN %s)",
+		sql.Describe(ctx, hit.in.Left(), options),
+		sql.Describe(ctx, hit.in.Right(), options))
 }
 
 func (hit *HashInTuple) DebugString(ctx *sql.Context) string {

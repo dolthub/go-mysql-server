@@ -15,6 +15,7 @@
 package planbuilder
 
 import (
+	"github.com/dolthub/vitess/go/mysql"
 	"gopkg.in/src-d/go-errors.v1"
 )
 
@@ -36,4 +37,12 @@ var (
 	ErrOrderByBinding = errors.NewKind("bindings in sort clauses not supported yet")
 
 	ErrFailedToParseStats = errors.NewKind("failed to parse data: %s\n%s")
+
+	// errMySQLDistinctWindow is returned for DISTINCT aggregate windows unsupported by MySQL.
+	errMySQLDistinctWindow = mysql.NewSQLError(mysql.ERNotSupportedYet, mysql.SSClientError,
+		"This version of MySQL doesn't yet support '<window function>(DISTINCT ..)'")
+
+	// errMySQLDistinctStarWindow is returned for COUNT(DISTINCT *) windows, which are invalid MySQL syntax.
+	errMySQLDistinctStarWindow = mysql.NewSQLError(mysql.ERParseError, mysql.SSClientError,
+		"You have an error in your SQL syntax")
 )

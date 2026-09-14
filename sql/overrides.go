@@ -67,6 +67,9 @@ type BuilderOverrides struct {
 	Parser Parser
 	// InsertIgnoreMode controls the error-handling semantics for ignored inserts.
 	InsertIgnoreMode InsertIgnoreMode
+	// ValidateDistinctWindow validates DISTINCT window calls that use built-in expressions without their own
+	// DistinctWindowFunctionValidator. When nil, the call is rejected using MySQL-compatible behavior.
+	ValidateDistinctWindow func(schema, name string, expr Expression) error
 }
 
 // InsertIgnoreMode controls which compatibility semantics an ignored insert uses.

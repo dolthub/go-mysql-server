@@ -1039,6 +1039,42 @@ ORDER BY id;`,
 		Expected: []sql.Row{{1, float64(10)}, {2, float64(30)}},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/11392
+		Name: "customer reproduction: MySQL distinct aggregate window behavior",
+		// PostgreSQL rejects these forms with different errors and SQLSTATEs.
+		Dialect: "mysql",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "SELECT COUNT(DISTINCT *) OVER () FROM (SELECT 1 AS v) t",
+				ExpectedErrStr: "You have an error in your SQL syntax (errno 1064) (sqlstate 42000)",
+			},
+			{
+				Query:          "SELECT COUNT(DISTINCT v) OVER (ORDER BY id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) FROM (SELECT 1 AS id, 1 AS v UNION ALL SELECT 2, 1 UNION ALL SELECT 3, 2) t",
+				ExpectedErrStr: "This version of MySQL doesn't yet support '<window function>(DISTINCT ..)' (errno 1235) (sqlstate 42000)",
+			},
+			{
+				Query:          "SELECT COUNT(DISTINCT v, id) OVER () FROM (SELECT 1 AS id, 1 AS v UNION ALL SELECT 2, 1) t",
+				ExpectedErrStr: "This version of MySQL doesn't yet support '<window function>(DISTINCT ..)' (errno 1235) (sqlstate 42000)",
+			},
+			{
+				Query:          "SELECT SUM(DISTINCT v) OVER (ORDER BY id ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) FROM (SELECT 1 AS id, 1 AS v UNION ALL SELECT 2, 1 UNION ALL SELECT 3, 2) t",
+				ExpectedErrStr: "This version of MySQL doesn't yet support '<window function>(DISTINCT ..)' (errno 1235) (sqlstate 42000)",
+			},
+			{
+				Query:          "SELECT AVG(DISTINCT v) OVER () FROM (SELECT 1.00 AS v UNION ALL SELECT 1.00 UNION ALL SELECT 4.00) t",
+				ExpectedErrStr: "This version of MySQL doesn't yet support '<window function>(DISTINCT ..)' (errno 1235) (sqlstate 42000)",
+			},
+			{
+				Query:    "SELECT MIN(DISTINCT v) OVER () FROM (SELECT 1 AS v UNION ALL SELECT 2) t",
+				Expected: []sql.Row{{1}, {1}},
+			},
+			{
+				Query:    "SELECT MAX(DISTINCT v) OVER () FROM (SELECT 1 AS v UNION ALL SELECT 2) t",
+				Expected: []sql.Row{{2}, {2}},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/11395
 		Name: "customer reproduction: sibling window aggregates with different frames",
 		SetUpScript: []string{
@@ -1065,6 +1101,27 @@ ORDER BY id;`,
 			FIRST_VALUE('a%' LIKE 'a!%' ESCAPE '!') OVER (),
 			FIRST_VALUE('a%' LIKE 'a!%' ESCAPE '#') OVER ()`,
 		Expected: []sql.Row{{true, false}},
+	},
+	{
+		Name: "JSON_LENGTH paths in window expressions",
+		Query: `SELECT
+			FIRST_VALUE(JSON_LENGTH('{"a":[1,2]}', '$.a')) OVER (),
+			FIRST_VALUE(JSON_LENGTH('{"a":[1,2]}', '$')) OVER ()`,
+		Expected: []sql.Row{{2, 1}},
+	},
+	{
+		Name: "JSON_SEARCH paths in window expressions",
+		Query: `SELECT
+			JSON_UNQUOTE(FIRST_VALUE(JSON_SEARCH('["abc"]', 'one', 'abc')) OVER ()),
+			JSON_UNQUOTE(FIRST_VALUE(JSON_SEARCH('["abc"]', 'one', 'abc', NULL, NULL)) OVER ())`,
+		Expected: []sql.Row{{"$[0]", nil}},
+	},
+	{
+		Name: "JSON_VALUE return types in window expressions",
+		Query: `SELECT
+			FIRST_VALUE(JSON_VALUE('{"a":"12"}', '$.a', 'signed')) OVER (),
+			FIRST_VALUE(JSON_VALUE('{"a":"12"}', '$.a', 'char')) OVER ()`,
+		Expected: []sql.Row{{int64(12), `"12"`}},
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/11498
@@ -1182,6 +1239,16 @@ ORDER BY id;`,
 			"insert into t values (1, 1), (2, 1), (3, 1), (4, 1), (5, 1), (6, 2), (7, 2), (8, 2), (9, 2), (10, 2);",
 		},
 		Assertions: []ScriptTestAssertion{
+			{
+				// NTILE.String must include the bucket count so window expression deduplication does not
+				// reuse NTILE(2) for NTILE(3), which assigns different buckets on the same input rows.
+				Query: "select i, ntile(2) over(order by i), ntile(3) over(order by i) from t where i <= 3;",
+				Expected: []sql.Row{
+					{1, uint64(1), uint64(1)},
+					{2, uint64(1), uint64(2)},
+					{3, uint64(2), uint64(3)},
+				},
+			},
 			{
 				Query:       "select i, ntile(0) over() from t;",
 				ExpectedErr: sql.ErrInvalidArgument,
@@ -1431,6 +1498,52 @@ ORDER BY id;`,
 			{
 				Query:    "select count(*) from o where c_id=-999",
 				Expected: []sql.Row{{0}},
+			},
+		},
+	},
+	{
+		Name:    "window aggregate over grouped aggregate",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"SET @@sql_mode = ''",
+			"CREATE TABLE grouped_window_values (grp INT, ord INT, val INT)",
+			"INSERT INTO grouped_window_values VALUES (1, 1, 10), (1, 1, 5), (1, 2, 7), (2, 1, 3), (2, 2, 4)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT grp, ord, SUM(SUM(val)) OVER (PARTITION BY grp ORDER BY ord ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_sum FROM grouped_window_values GROUP BY grp, ord ORDER BY grp, ord",
+				Expected: []sql.Row{
+					{1, 1, float64(15)},
+					{1, 2, float64(22)},
+					{2, 1, float64(3)},
+					{2, 2, float64(7)},
+				},
+			},
+			{
+				Query: "SELECT grp, ord, SUM(SUM(val)) OVER (PARTITION BY grp ORDER BY ord ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_sum, ROW_NUMBER() OVER (PARTITION BY grp ORDER BY ord) AS row_num FROM grouped_window_values GROUP BY grp, ord ORDER BY grp, ord",
+				Expected: []sql.Row{
+					{1, 1, float64(15), int64(1)},
+					{1, 2, float64(22), int64(2)},
+					{2, 1, float64(3), int64(1)},
+					{2, 2, float64(7), int64(2)},
+				},
+			},
+			{
+				Query: "SELECT grp, ord, ROW_NUMBER() OVER (PARTITION BY grp ORDER BY ord) AS row_num, SUM(SUM(val)) OVER (PARTITION BY grp ORDER BY ord ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_sum FROM grouped_window_values GROUP BY grp, ord ORDER BY grp, ord",
+				Expected: []sql.Row{
+					{1, 1, int64(1), float64(15)},
+					{1, 2, int64(2), float64(22)},
+					{2, 1, int64(1), float64(3)},
+					{2, 2, int64(2), float64(7)},
+				},
+			},
+			{
+				Query: "SELECT grp, ord, SUM(SUM(val)) OVER (PARTITION BY grp ORDER BY ord ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_sum FROM grouped_window_values GROUP BY grp, ord HAVING SUM(val) <> 3 ORDER BY grp, ord",
+				Expected: []sql.Row{
+					{1, 1, float64(15)},
+					{1, 2, float64(22)},
+					{2, 2, float64(4)},
+				},
 			},
 		},
 	},
@@ -1843,6 +1956,8 @@ ORDER BY id;`,
 	{
 		// https://github.com/dolthub/dolt/issues/11464
 		Name: "CHAR PAD SPACE values do not split a window partition",
+		// Doltgres uses its own PostgreSQL CHAR type, so this GMS StringType regression is MySQL-only.
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE t (id INT PRIMARY KEY, c CHAR(3), v INT)",
 			"INSERT INTO t VALUES (1, 'a', 10), (2, 'a ', 20), (3, 'b', 30)",

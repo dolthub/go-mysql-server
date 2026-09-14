@@ -1766,6 +1766,60 @@ var FunctionQueryTests = []QueryTest{
 		Query:    `SELECT CONVERT(10, DECIMAL(4,2))`,
 		Expected: []sql.Row{{"10.00"}},
 	},
+	{
+		Query:    "select cast(20200101 as date);",
+		Expected: []sql.Row{{time.Date(2020, time.January, 1, 0, 0, 0, 0, time.UTC)}},
+	},
+	{
+		Query:    "select cast(20200101123456 as datetime)",
+		Expected: []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 0, time.UTC)}},
+	},
+	{
+		// A two digit year below 70 lands in the 2000s, the rest in the 1900s
+		Query:    "select cast(200101 as date), cast(690101 as date), cast(700101 as date)",
+		Expected: []sql.Row{{time.Date(2020, time.January, 1, 0, 0, 0, 0, time.UTC), time.Date(2069, time.January, 1, 0, 0, 0, 0, time.UTC), time.Date(1970, time.January, 1, 0, 0, 0, 0, time.UTC)}},
+	},
+	{
+		// The fractional part of a number becomes fractional seconds
+		Query:    "select cast(20200101123456.123456 as datetime(6))",
+		Expected: []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 123456000, time.UTC)}},
+	},
+	{
+		Query:    "select cast(cast(20200101123456.123456 as decimal(20,1)) as datetime(6))",
+		Expected: []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 100000000, time.UTC)}},
+	},
+	{
+		Query:                 "select cast(1 as date)",
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+		Expected:              []sql.Row{{nil}},
+	},
+	{
+		Query:                 "select cast(20200231 as date)",
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+		Expected:              []sql.Row{{nil}},
+	},
+	{
+		// A string with no delimiters takes a 4 digit year at 4, 8, or 14 or more digits, and 2 otherwise
+		Query:    "select cast('20200101123456' as datetime), cast('200101123456' as datetime)",
+		Expected: []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 0, time.UTC), time.Date(2020, time.January, 1, 12, 34, 56, 0, time.UTC)}},
+	},
+	{
+		// TODO: leading zeroes change numeric string behavior
+		// Tracking Issue: https://github.com/dolthub/dolt/issues/10278
+		Skip:     true,
+		Query:    "select cast('00200101' as date), cast('200101' as date)",
+		Expected: []sql.Row{{time.Date(20, time.January, 1, 0, 0, 0, 0, time.UTC), time.Date(2020, time.January, 1, 0, 0, 0, 0, time.UTC)}},
+	},
+	{
+		Query:    "select cast('20200101123456.75' as datetime(6))",
+		Expected: []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 750000000, time.UTC)}},
+	},
+	{
+		Query:    "select cast('20200101' as date) = cast(20200101 as date)",
+		Expected: []sql.Row{{true}},
+	},
 
 	// Additional JSON Function Tests
 	{
@@ -2550,13 +2604,101 @@ var FunctionQueryTests = []QueryTest{
 		ExpectedWarningsCount: 1,
 	},
 	{
-		Skip:  true,
-		Query: "select date(20010203)",
+		Query: "select date(101);",
 		Expected: []sql.Row{
-			{time.Date(1, 2, 3, 0, 0, 0, 0, time.UTC)},
+			{time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)},
 		},
 	},
-	// TODO: numeric to date conversion tests
+	{
+		Query: "select date(00000101);",
+		Expected: []sql.Row{
+			{time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select date(0.123456);",
+		Expected: []sql.Row{
+			{nil},
+		},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query: "select date(20010000 + 0200 + 03);",
+		Expected: []sql.Row{
+			{time.Date(2001, 2, 3, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select date(20010203);",
+		Expected: []sql.Row{
+			{time.Date(2001, 2, 3, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select date(20010203123456);",
+		Expected: []sql.Row{
+			{time.Date(2001, 2, 3, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select date(20010203123456.123456);",
+		Expected: []sql.Row{
+			{time.Date(2001, 2, 3, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select date(1.0203e10);",
+		Expected: []sql.Row{
+			{time.Date(2001, 2, 3, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select date(20010203000e-3);",
+		Expected: []sql.Row{
+			{time.Date(2001, 2, 3, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select date(-1);",
+		Expected: []sql.Row{
+			{nil},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select date(-101);",
+		Expected: []sql.Row{
+			{nil},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select date(-20010203);",
+		Expected: []sql.Row{
+			{nil},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select date(-20010203.123456);",
+		Expected: []sql.Row{
+			{nil},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select date(cast(-20010203.123456 as decimal(10,6)));",
+		Expected: []sql.Row{
+			{nil},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
 
 	{
 		Query:                           "select date('');",
@@ -2725,7 +2867,7 @@ var FunctionQueryTests = []QueryTest{
 		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 	},
 
-	// string conversion that produce some value
+	// string conversions that produce some value
 	{
 		Query: "select date('1-2-3')",
 		Expected: []sql.Row{
@@ -2818,6 +2960,65 @@ var FunctionQueryTests = []QueryTest{
 		Query: "select date('2001-12-31 23:59:59.9999999');",
 		Expected: []sql.Row{
 			{time.Date(2002, 1, 1, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+
+	{
+		Query: "select date('20010203');",
+		Expected: []sql.Row{
+			{time.Date(2001, 2, 3, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select date('20010203123456');",
+		Expected: []sql.Row{
+			{time.Date(2001, 2, 3, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select date('20010203123456.123456');",
+		Expected: []sql.Row{
+			{time.Date(2001, 2, 3, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select date('20010203asdf');",
+		Expected: []sql.Row{
+			{nil},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		// Tracking Issue: https://github.com/dolthub/dolt/issues/10278
+		Skip:  true,
+		Query: "select date('10203');",
+		Expected: []sql.Row{
+			{nil},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select date('010203');",
+		Expected: []sql.Row{
+			{time.Date(2001, 2, 3, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		// Tracking Issue: https://github.com/dolthub/dolt/issues/10278
+		Skip:  true,
+		Query: "select date('0010203');",
+		Expected: []sql.Row{
+			{time.Date(2000, 10, 20, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		// Tracking Issue: https://github.com/dolthub/dolt/issues/10278
+		Skip:  true,
+		Query: "select date('00010203');",
+		Expected: []sql.Row{
+			{time.Date(0001, 2, 3, 0, 0, 0, 0, time.UTC)},
 		},
 	},
 

@@ -929,6 +929,90 @@ var SpatialInsertQueries = []WriteQueryTest{
 
 var InsertScripts = []ScriptTest{
 	{
+		// https://github.com/dolthub/dolt/issues/11388
+		Name:    "multi-row empty insert compatibility",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table empty_defaults (a int default 1, b int default 2)",
+			"create table empty_column_list (a int default 1, b int default 2)",
+			"create table mixed_defaults (a int default 1, b int default 2)",
+			"create table empty_named (a int default 1, b int default 2)",
+			"create table empty_auto (id int auto_increment primary key, v int default 5)",
+			"create table empty_nullable (a int, b int)",
+			"create table empty_required (a int not null, b int default 2)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "insert into empty_defaults values (), ()",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "select * from empty_defaults",
+				Expected: []sql.Row{{1, 2}, {1, 2}},
+			},
+			{
+				Query:    "insert into empty_column_list () values (), ()",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "select * from empty_column_list",
+				Expected: []sql.Row{{1, 2}, {1, 2}},
+			},
+			{
+				Query:       "insert into mixed_defaults values (), (3, 4)",
+				ExpectedErr: sql.ErrInsertIntoMismatchValueCount,
+			},
+			{
+				Query:       "insert into mixed_defaults values (3, 4), ()",
+				ExpectedErr: sql.ErrInsertIntoMismatchValueCount,
+			},
+			{
+				Query:    "select * from mixed_defaults",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "insert into mixed_defaults values (default, default), (3, default)",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "select * from mixed_defaults",
+				Expected: []sql.Row{{1, 2}, {3, 2}},
+			},
+			{
+				Query:       "insert into empty_named (a) values (), ()",
+				ExpectedErr: sql.ErrInsertIntoMismatchValueCount,
+			},
+			{
+				Query:    "select * from empty_named",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "insert into empty_auto values (), ()",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 1}}},
+			},
+			{
+				Query:    "select * from empty_auto order by id",
+				Expected: []sql.Row{{1, 5}, {2, 5}},
+			},
+			{
+				Query:    "insert into empty_nullable values (), ()",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "select * from empty_nullable",
+				Expected: []sql.Row{{nil, nil}, {nil, nil}},
+			},
+			{
+				Query:       "insert into empty_required values (), ()",
+				ExpectedErr: sql.ErrFieldNoDefaultValue,
+			},
+			{
+				Query:    "select * from empty_required",
+				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/7322
 		Name: "issue 7322: values expression is subquery",
 		SetUpScript: []string{
@@ -1408,24 +1492,17 @@ var InsertScripts = []ScriptTest{
 				},
 			},
 			{
-				Query: "insert into auto_pk values (0), (1), (NULL), ()",
-				Expected: []sql.Row{
-					{types.OkResult{RowsAffected: 4}},
-				},
+				Query:       "insert into auto_pk values (0), (1), (NULL), ()",
+				ExpectedErr: sql.ErrInsertIntoMismatchValueCount,
 			},
 			{
-				Query: "select * from auto_pk",
-				Expected: []sql.Row{
-					{0},
-					{1},
-					{2},
-					{3},
-				},
+				Query:    "select * from auto_pk",
+				Expected: []sql.Row{},
 			},
 			{
 				Query: "select auto_increment from information_schema.tables where table_name='auto_pk' and table_schema=database()",
 				Expected: []sql.Row{
-					{uint64(4)},
+					{nil},
 				},
 			},
 

@@ -93,7 +93,8 @@ type Describable interface {
 }
 
 // Describe produces a human-readable string for |n|, based on the values set in |options|.
-// For |n| to benefit from |options|, it must implement `sql.Describable`.
+// Describable values control their own output. Non-debug expression descriptions recursively pass the options to
+// their children so nested Describable expressions retain their detailed output.
 func Describe(ctx *Context, n fmt.Stringer, options DescribeOptions) string {
 	if d, ok := n.(Describable); ok {
 		return d.Describe(ctx, options)
@@ -101,7 +102,52 @@ func Describe(ctx *Context, n fmt.Stringer, options DescribeOptions) string {
 	if d, ok := n.(DebugStringer); ok && options.Debug {
 		return d.DebugString(ctx)
 	}
+	if e, ok := n.(Expression); ok && !options.Debug {
+		return describeExpression(ctx, e, options)
+	}
 	return n.String()
+}
+
+// describedExpression delegates all expression behavior except String to the wrapped expression. It allows
+// describeExpression to preserve an expression's own formatting while substituting descriptions for its children.
+type describedExpression struct {
+	Expression
+	description string
+}
+
+func (e describedExpression) String() string {
+	return e.description
+}
+
+// describeExpression recursively propagates describe options through expressions that do not implement Describable.
+// This is necessary for plan expressions such as Subquery to include their plan details when nested in ordinary
+// scalar expressions such as AND, OR, and comparisons.
+func describeExpression(ctx *Context, e Expression, options DescribeOptions) string {
+	children := e.Children()
+	if len(children) == 0 {
+		return e.String()
+	}
+
+	describedChildren := make([]Expression, len(children))
+	changed := false
+	for i, child := range children {
+		description := Describe(ctx, child, options)
+		if description != child.String() {
+			describedChildren[i] = describedExpression{Expression: child, description: description}
+			changed = true
+		} else {
+			describedChildren[i] = child
+		}
+	}
+	if !changed {
+		return e.String()
+	}
+
+	described, err := e.WithChildren(ctx, describedChildren...)
+	if err != nil {
+		return e.String()
+	}
+	return described.String()
 }
 
 type DescribeOptions struct {

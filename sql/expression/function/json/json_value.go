@@ -164,7 +164,37 @@ func (j *JsonValue) String() string {
 	for i, c := range children {
 		parts[i] = c.String()
 	}
+	if !j.Typ.Equals(jsonValueDefaultType) {
+		parts = append(parts, fmt.Sprintf("'%s'", jsonValueTypeName(j.Typ)))
+	}
 	return fmt.Sprintf("json_value(%s)", strings.Join(parts, ", "))
+}
+
+func jsonValueTypeName(typ sql.Type) string {
+	switch {
+	case typ.Type() == sqltypes.Year:
+		return "year"
+	case typ.Type() == sqltypes.Time:
+		return "time"
+	case typ.Type() == sqltypes.Date:
+		return "date"
+	case typ.Type() == sqltypes.Datetime || typ.Type() == sqltypes.Timestamp:
+		return "datetime"
+	case types.IsJSON(typ):
+		return "json"
+	case typ == types.Float32:
+		return "float"
+	case typ == types.Float64:
+		return "double"
+	case types.IsSigned(typ):
+		return "signed"
+	case types.IsUnsigned(typ):
+		return "unsigned"
+	case types.IsText(typ):
+		return "char"
+	default:
+		return typ.String()
+	}
 }
 
 // GetJSONFromWrapperOrCoercibleString takes a valid argument for JSON functions (either a JSON wrapper type or a string)

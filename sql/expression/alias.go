@@ -17,6 +17,8 @@ package expression
 import (
 	"fmt"
 
+	"github.com/dolthub/vitess/go/vt/sqlparser"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -40,7 +42,7 @@ func (a AliasReference) Table() string {
 }
 
 func (a AliasReference) String() string {
-	return fmt.Sprintf("(alias reference)%s", a.name)
+	return a.name
 }
 
 func (a AliasReference) Resolved() bool {
@@ -141,7 +143,8 @@ func (e *Alias) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
 			return fmt.Sprintf("%s->%s:%d", sql.Describe(ctx, e.Child, options), e.name, e.id)
 		}
 	}
-	return fmt.Sprintf("%s as %s", sql.Describe(ctx, e.Child, options), e.name)
+	name := sqlparser.String(sqlparser.NewColIdent(e.name))
+	return fmt.Sprintf("%s as %s", sql.Describe(ctx, e.Child, options), name)
 }
 
 func (e *Alias) String() string {

@@ -902,6 +902,9 @@ var (
 	// ErrValueOutOfRange is returned when a value is out of range for a type.
 	ErrValueOutOfRange = errors.NewKind("%v out of range for %v")
 
+	// ErrIntegerOutOfRange is returned when integer arithmetic exceeds the result type's range.
+	ErrIntegerOutOfRange = newMySQLKind("%s value is out of range in '%s'", mysql.ERDataOutOfRange, mysql.SSDataOutOfRange)
+
 	ErrConvertingToSet   = errors.NewKind("value %v is not valid for this set")
 	ErrDuplicateEntrySet = errors.NewKind("duplicate entry: %v")
 	ErrInvalidSetValue   = errors.NewKind("value %v was not found in the set")

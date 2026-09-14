@@ -203,11 +203,13 @@ func (a *Arithmetic) getReturnType(ctx *sql.Context) sql.Type {
 		}
 	}
 
-	if types.IsUnsigned(lTyp) && types.IsUnsigned(rTyp) {
-		return types.Uint64
-	}
-
 	if types.IsInteger(lTyp) && types.IsInteger(rTyp) {
+		if types.IsUnsigned(lTyp) || types.IsUnsigned(rTyp) {
+			if a.Op == sqlparser.MinusStr && sql.LoadSqlMode(ctx).ModeEnabled(sql.NO_UNSIGNED_SUBTRACTION) {
+				return types.Int64
+			}
+			return types.Uint64
+		}
 		return types.Int64
 	}
 
@@ -299,6 +301,9 @@ func (a *Arithmetic) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if lVal == nil || rVal == nil {
 		return nil, nil
 	}
+	if types.IsInteger(a.Type(ctx)) {
+		return a.evalInteger(ctx, lVal, rVal)
+	}
 
 	lVal, rVal, err = a.convertLeftRight(ctx, lVal, rVal)
 	if err != nil {
@@ -331,6 +336,250 @@ func (a *Arithmetic) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	return result, nil
+}
+
+// evalInteger evaluates integer arithmetic exactly and rejects results outside the signed or unsigned BIGINT range.
+func (a *Arithmetic) evalInteger(ctx *sql.Context, lval, rval interface{}) (interface{}, error) {
+	typ := a.Type(ctx)
+	leftUnsigned := types.IsUnsigned(a.LeftChild.Type(ctx))
+	rightUnsigned := types.IsUnsigned(a.RightChild.Type(ctx))
+	if leftUnsigned != rightUnsigned || (!types.IsUnsigned(typ) && (leftUnsigned || rightUnsigned)) {
+		return a.evalMixedInteger(ctx, typ, lval, rval)
+	}
+
+	lval, rval, err := a.convertLeftRight(ctx, lval, rval)
+	if err != nil {
+		return nil, err
+	}
+
+	switch left := lval.(type) {
+	case uint64:
+		right, ok := rval.(uint64)
+		if !ok {
+			return nil, errUnableToCast.New(lval, rval)
+		}
+		var result uint64
+		switch strings.ToLower(a.Op) {
+		case sqlparser.PlusStr:
+			if right > math.MaxUint64-left {
+				return nil, a.integerOutOfRange(typ)
+			}
+			result = left + right
+		case sqlparser.MinusStr:
+			if left < right {
+				return nil, a.integerOutOfRange(typ)
+			}
+			result = left - right
+		case sqlparser.MultStr:
+			if right != 0 && left > math.MaxUint64/right {
+				return nil, a.integerOutOfRange(typ)
+			}
+			result = left * right
+		default:
+			return nil, errUnableToEval.New(lval, a.Op, rval)
+		}
+		return result, nil
+	case int64:
+		right, ok := rval.(int64)
+		if !ok {
+			return nil, errUnableToCast.New(lval, rval)
+		}
+		var result int64
+		switch strings.ToLower(a.Op) {
+		case sqlparser.PlusStr:
+			if (right > 0 && left > math.MaxInt64-right) || (right < 0 && left < math.MinInt64-right) {
+				return nil, a.integerOutOfRange(typ)
+			}
+			result = left + right
+		case sqlparser.MinusStr:
+			if (right > 0 && left < math.MinInt64+right) || (right < 0 && left > math.MaxInt64+right) {
+				return nil, a.integerOutOfRange(typ)
+			}
+			result = left - right
+		case sqlparser.MultStr:
+			if (left == math.MinInt64 && right == -1) || (right == math.MinInt64 && left == -1) ||
+				(right != 0 && (left*right)/right != left) {
+				return nil, a.integerOutOfRange(typ)
+			}
+			result = left * right
+		default:
+			return nil, errUnableToEval.New(lval, a.Op, rval)
+		}
+		return result, nil
+	default:
+		return nil, errUnableToCast.New(lval, rval)
+	}
+}
+
+// integerMagnitude stores an integer as a sign and an unsigned magnitude.
+type integerMagnitude struct {
+	magnitude uint64
+	negative  bool
+}
+
+// evalMixedInteger evaluates mixed signed and unsigned operands without decimal conversion.
+func (a *Arithmetic) evalMixedInteger(ctx *sql.Context, typ sql.Type, lval, rval interface{}) (interface{}, error) {
+	if types.IsUnsigned(typ) {
+		return a.evalMixedUnsignedInteger(ctx, lval, rval)
+	}
+
+	left := integerMagnitudeFromValue(ctx, a.LeftChild.Type(ctx), lval)
+	right := integerMagnitudeFromValue(ctx, a.RightChild.Type(ctx), rval)
+	if strings.ToLower(a.Op) != sqlparser.MinusStr {
+		return nil, errUnableToEval.New(lval, a.Op, rval)
+	}
+	if right.magnitude != 0 {
+		right.negative = !right.negative
+	}
+	result, overflow := addIntegerMagnitudes(left, right)
+	if overflow {
+		return nil, a.integerOutOfRange(typ)
+	}
+
+	if result.negative {
+		const minInt64Magnitude = uint64(math.MaxInt64) + 1
+		if result.magnitude > minInt64Magnitude {
+			return nil, a.integerOutOfRange(typ)
+		}
+		if result.magnitude == minInt64Magnitude {
+			return int64(math.MinInt64), nil
+		}
+		return -int64(result.magnitude), nil
+	}
+	if result.magnitude > math.MaxInt64 {
+		return nil, a.integerOutOfRange(typ)
+	}
+	return int64(result.magnitude), nil
+}
+
+// evalMixedUnsignedInteger evaluates an unsigned result without constructing intermediate signed magnitudes.
+func (a *Arithmetic) evalMixedUnsignedInteger(ctx *sql.Context, lval, rval interface{}) (interface{}, error) {
+	leftUnsigned := types.IsUnsigned(a.LeftChild.Type(ctx))
+	var unsignedValue uint64
+	var signedValue int64
+	if leftUnsigned {
+		if converted := convertValueToType(ctx, a.LeftChild.Type(ctx), types.Uint64, lval); converted != nil {
+			unsignedValue = converted.(uint64)
+		}
+		if converted := convertValueToType(ctx, a.RightChild.Type(ctx), types.Int64, rval); converted != nil {
+			signedValue = converted.(int64)
+		}
+	} else {
+		if converted := convertValueToType(ctx, a.LeftChild.Type(ctx), types.Int64, lval); converted != nil {
+			signedValue = converted.(int64)
+		}
+		if converted := convertValueToType(ctx, a.RightChild.Type(ctx), types.Uint64, rval); converted != nil {
+			unsignedValue = converted.(uint64)
+		}
+	}
+
+	negativeMagnitude := uint64(0)
+	if signedValue < 0 {
+		negativeMagnitude = uint64(-(signedValue + 1)) + 1
+	}
+
+	switch strings.ToLower(a.Op) {
+	case sqlparser.PlusStr:
+		if signedValue < 0 {
+			if unsignedValue < negativeMagnitude {
+				return nil, a.integerOutOfRange(types.Uint64)
+			}
+			return unsignedValue - negativeMagnitude, nil
+		}
+		positive := uint64(signedValue)
+		if unsignedValue > math.MaxUint64-positive {
+			return nil, a.integerOutOfRange(types.Uint64)
+		}
+		return unsignedValue + positive, nil
+	case sqlparser.MinusStr:
+		if leftUnsigned {
+			if signedValue < 0 {
+				if unsignedValue > math.MaxUint64-negativeMagnitude {
+					return nil, a.integerOutOfRange(types.Uint64)
+				}
+				return unsignedValue + negativeMagnitude, nil
+			}
+			positive := uint64(signedValue)
+			if unsignedValue < positive {
+				return nil, a.integerOutOfRange(types.Uint64)
+			}
+			return unsignedValue - positive, nil
+		}
+		if signedValue < 0 || uint64(signedValue) < unsignedValue {
+			return nil, a.integerOutOfRange(types.Uint64)
+		}
+		return uint64(signedValue) - unsignedValue, nil
+	case sqlparser.MultStr:
+		if signedValue == 0 || unsignedValue == 0 {
+			return uint64(0), nil
+		}
+		if signedValue < 0 {
+			return nil, a.integerOutOfRange(types.Uint64)
+		}
+		positive := uint64(signedValue)
+		if unsignedValue > math.MaxUint64/positive {
+			return nil, a.integerOutOfRange(types.Uint64)
+		}
+		return unsignedValue * positive, nil
+	default:
+		return nil, errUnableToEval.New(lval, a.Op, rval)
+	}
+}
+
+// integerMagnitudeFromValue converts an integer operand without losing a signed value's sign.
+func integerMagnitudeFromValue(ctx *sql.Context, typ sql.Type, val interface{}) integerMagnitude {
+	if types.IsUnsigned(typ) {
+		converted := convertValueToType(ctx, typ, types.Uint64, val)
+		if converted == nil {
+			return integerMagnitude{}
+		}
+		return integerMagnitude{magnitude: converted.(uint64)}
+	}
+
+	converted := convertValueToType(ctx, typ, types.Int64, val)
+	if converted == nil {
+		return integerMagnitude{}
+	}
+	signed := converted.(int64)
+	if signed >= 0 {
+		return integerMagnitude{magnitude: uint64(signed)}
+	}
+	return integerMagnitude{
+		magnitude: uint64(-(signed + 1)) + 1,
+		negative:  true,
+	}
+}
+
+// addIntegerMagnitudes adds two signed magnitudes and reports uint64 magnitude overflow.
+func addIntegerMagnitudes(left, right integerMagnitude) (integerMagnitude, bool) {
+	if left.negative == right.negative {
+		if left.magnitude > math.MaxUint64-right.magnitude {
+			return integerMagnitude{}, true
+		}
+		return integerMagnitude{
+			magnitude: left.magnitude + right.magnitude,
+			negative:  left.negative,
+		}, false
+	}
+	if left.magnitude >= right.magnitude {
+		return integerMagnitude{
+			magnitude: left.magnitude - right.magnitude,
+			negative:  left.negative && left.magnitude != right.magnitude,
+		}, false
+	}
+	return integerMagnitude{
+		magnitude: right.magnitude - left.magnitude,
+		negative:  right.negative,
+	}, false
+}
+
+// integerOutOfRange returns MySQL's BIGINT range error for this arithmetic expression.
+func (a *Arithmetic) integerOutOfRange(typ sql.Type) error {
+	typeName := "BIGINT"
+	if types.IsUnsigned(typ) {
+		typeName = "BIGINT UNSIGNED"
+	}
+	return sql.ErrIntegerOutOfRange.New(typeName, a.String())
 }
 
 func (a *Arithmetic) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, interface{}, error) {

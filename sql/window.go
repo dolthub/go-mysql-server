@@ -102,6 +102,42 @@ func (w *WindowDefinition) String() string {
 	return sb.String()
 }
 
+// Describe implements the Describable interface. Window definitions must pass describe options to their expressions
+// so that physical expression details are not lost when they are nested in an aggregate.
+func (w *WindowDefinition) Describe(ctx *Context, options DescribeOptions) string {
+	if w == nil {
+		return ""
+	}
+	if options.Debug {
+		return w.DebugString(ctx)
+	}
+	sb := strings.Builder{}
+	sb.WriteString("over (")
+	if len(w.PartitionBy) > 0 {
+		sb.WriteString(" partition by ")
+		for i, expression := range w.PartitionBy {
+			if i > 0 {
+				sb.WriteString(", ")
+			}
+			sb.WriteString(Describe(ctx, expression, options))
+		}
+	}
+	if len(w.OrderBy) > 0 {
+		sb.WriteString(" order by ")
+		for i, condition := range w.OrderBy {
+			if i > 0 {
+				sb.WriteString(", ")
+			}
+			sb.WriteString(fmt.Sprintf("%s %s", Describe(ctx, condition.Expr, options), condition.Order))
+		}
+	}
+	if w.Frame != nil {
+		sb.WriteString(fmt.Sprintf(" %s", w.Frame.String()))
+	}
+	sb.WriteString(")")
+	return sb.String()
+}
+
 func (w *WindowDefinition) PartitionId() (uint64, error) {
 	if w == nil {
 		return 0, nil
