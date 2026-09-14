@@ -834,6 +834,18 @@ var JsonScripts = []ScriptTest{
 			},
 		},
 	},
+	// https://github.com/dolthub/dolt/issues/7196
+	{
+		Name: "Test consistent JSON object comparisons",
+		SetUpScript: []string{
+			"SET @r=JSON_OBJECT('a',2e0,'b',1e0)",
+			"SET @p=JSON_OBJECT('b',2e0,'c',1e0)",
+			"SET @s=JSON_OBJECT('c',2e0,'a',1e0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{Query: "SELECT ((CAST(@r AS JSON)<CAST(@p AS JSON))+(CAST(@p AS JSON)<CAST(@s AS JSON))+(CAST(@s AS JSON)<CAST(@r AS JSON))) IN (1,2)", Expected: []sql.Row{{true}}},
+		},
+	},
 	{
 		// https://github.com/dolthub/dolt/issues/4499
 		Name: "json is formatted correctly",
