@@ -838,12 +838,24 @@ var JsonScripts = []ScriptTest{
 	{
 		Name: "Test consistent JSON object comparisons",
 		SetUpScript: []string{
-			"SET @r=JSON_OBJECT('a',2e0,'b',1e0)",
-			"SET @p=JSON_OBJECT('b',2e0,'c',1e0)",
-			"SET @s=JSON_OBJECT('c',2e0,'a',1e0)",
+			"SET @ROCK = JSON_OBJECT('a', 2e0, 'b', 1e0)",
+			"SET @PAPER = JSON_OBJECT('b', 2e0, 'c', 1e0)",
+			"SET @SCISSORS = JSON_OBJECT('c', 2e0, 'a', 1e0)",
 		},
 		Assertions: []ScriptTestAssertion{
-			{Query: "SELECT ((CAST(@r AS JSON)<CAST(@p AS JSON))+(CAST(@p AS JSON)<CAST(@s AS JSON))+(CAST(@s AS JSON)<CAST(@r AS JSON))) IN (1,2)", Expected: []sql.Row{{true}}},
+			// JSON object ordering is implementation-defined; these expectations use Dolt's ordering.
+			{
+				Query:    "SELECT CAST(@ROCK AS JSON) < CAST(@PAPER AS JSON)",
+				Expected: []sql.Row{{false}},
+			},
+			{
+				Query:    "SELECT CAST(@PAPER AS JSON) < CAST(@SCISSORS AS JSON)",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    "SELECT CAST(@SCISSORS AS JSON) < CAST(@ROCK AS JSON)",
+				Expected: []sql.Row{{true}},
+			},
 		},
 	},
 	{
