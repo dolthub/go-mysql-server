@@ -16,13 +16,13 @@ package expression
 
 import (
 	"fmt"
-	"github.com/dolthub/vitess/go/sqltypes"
 	"math"
 	"strings"
 	"time"
 
 	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/mysql"
+	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"gopkg.in/src-d/go-errors.v1"
 
