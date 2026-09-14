@@ -18,3 +18,11 @@ package testutils
 type CustomValueValidator interface {
 	Validate(interface{}) (bool, error)
 }
+
+// isUUIDString is a CustomValueValidator for UUID strings
+type IsUUIDString struct{}
+
+func (IsUUIDString) Validate(v interface{}) (bool, error) {
+	s, ok := v.(string)
+	return ok && len(s) == 36, nil
+}
