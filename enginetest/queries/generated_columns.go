@@ -537,7 +537,6 @@ var GeneratedColumnTests = []ScriptTest{
 						"  PRIMARY KEY (`a`),\n" +
 						"  KEY `i1` (`b`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-				Skip: true, // https://github.com/dolthub/dolt/issues/8275
 			},
 			{
 				Query:    "select * from t1 where b = 2 order by a",
@@ -663,7 +662,6 @@ var GeneratedColumnTests = []ScriptTest{
 						"  PRIMARY KEY (`a`),\n" +
 						"  KEY `i1` (`b`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-				Skip: true, // https://github.com/dolthub/dolt/issues/8275
 			},
 			{
 				Query:    "select * from t1 where b = 2 order by a",
@@ -1285,7 +1283,6 @@ var GeneratedColumnTests = []ScriptTest{
 						"  PRIMARY KEY (`a`),\n" +
 						"  KEY `i1` (`b`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-				Skip: true, // https://github.com/dolthub/dolt/issues/8275
 			},
 			{
 				Query:    "select * from t1 where b = 2 order by a",
@@ -1659,7 +1656,6 @@ var GeneratedColumnTests = []ScriptTest{
 						"  PRIMARY KEY (`a`),\n" +
 						"  KEY `i1` (`b`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-				Skip: true, // https://github.com/dolthub/dolt/issues/8275
 			},
 			{
 				Query:    "select * from t1 where b = 2 order by a",
@@ -1692,12 +1688,11 @@ var GeneratedColumnTests = []ScriptTest{
 					"CREATE TABLE `t1` (\n" +
 						"  `a` int NOT NULL,\n" +
 						"  `b` int GENERATED ALWAYS AS ((`a` + 1)),\n" +
-						"  `c` int GENERATED ALWAYS AS ((`b` + 1)),\n" +
-						"  `d` int GENERATED ALWAYS AS ((`b` + 2)),\n" +
+						"  `c` int GENERATED ALWAYS AS ((`b` + 1)) STORED,\n" +
+						"  `d` int GENERATED ALWAYS AS ((`b` + 2)) STORED,\n" +
 						"  PRIMARY KEY (`a`),\n" +
-						"  KEY `i1` (`b`)\n" +
+						"  KEY `b1` (`b`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-				Skip: true, // https://github.com/dolthub/dolt/issues/8275
 			},
 			{
 				Query:    "select * from t1 where b = 2 order by a",
@@ -1736,9 +1731,8 @@ var GeneratedColumnTests = []ScriptTest{
 						"  `b` int GENERATED ALWAYS AS ((`a` * `a`)),\n" +
 						"  `c` int GENERATED ALWAYS AS (0),\n" +
 						"  PRIMARY KEY (`a`),\n" +
-						"  KEY `i1` (`b`)\n" +
+						"  UNIQUE KEY `i1` (`b`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-				Skip: true, // https://github.com/dolthub/dolt/issues/8275
 			},
 			{
 				Query:    "select * from t1 where b = 4 order by a",
