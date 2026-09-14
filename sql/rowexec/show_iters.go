@@ -23,6 +23,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
 type describeIter struct {
@@ -460,10 +461,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 
 		var onUpdateStr string
 		if col.OnUpdate != nil {
-			onUpdateStr, err = convertColumnDefaultToString(ctx, col.OnUpdate)
-			if err != nil {
-				return "", err
-			}
+			onUpdateStr = sqlparser.String(col.OnUpdate)
 		}
 
 		if col.PrimaryKey && len(pkSchema.Schema) == 0 {

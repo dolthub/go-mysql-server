@@ -281,7 +281,7 @@ func getRowFromColumn(ctx *sql.Context, curOrdPos int, col *sql.Column, catName,
 
 	columnDefault := GetColumnDefault(ctx, col.Default)
 
-	extra := col.ExtraString()
+	extra := sql.FormatColumnExtra(col)
 
 	var curColPrivStr []string
 	for p := range privSetMap {

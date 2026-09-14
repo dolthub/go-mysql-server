@@ -1860,6 +1860,119 @@ var OnUpdateExprScripts = []ScriptTest{
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/11774
+		Name: "on update synonyms case",
+		SetUpScript: []string{
+			`create table t (
+				i int primary key,
+				ts1 timestamp default null on update now(),
+				ts2 timestamp(3) default null on update localtime(3),
+				ts3 datetime(6) default null on update localtimestamp(6),
+				ts4 timestamp(3) default null on update current_timestamp(3)
+			);`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table t",
+				Expected: []sql.Row{
+					{"t", "CREATE TABLE `t` (\n" +
+						"  `i` int NOT NULL,\n" +
+						"  `ts1` timestamp DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,\n" +
+						"  `ts2` timestamp(3) DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP(3),\n" +
+						"  `ts3` datetime(6) DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP(6),\n" +
+						"  `ts4` timestamp(3) DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP(3),\n" +
+						"  PRIMARY KEY (`i`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "describe t;",
+				Expected: []sql.Row{
+					{"i", "int", "NO", "PRI", nil, ""},
+					{"ts1", "timestamp", "YES", "", "NULL", "on update CURRENT_TIMESTAMP"},
+					{"ts2", "timestamp(3)", "YES", "", "NULL", "on update CURRENT_TIMESTAMP(3)"},
+					{"ts3", "datetime(6)", "YES", "", "NULL", "on update CURRENT_TIMESTAMP(6)"},
+					{"ts4", "timestamp(3)", "YES", "", "NULL", "on update CURRENT_TIMESTAMP(3)"},
+				},
+			},
+		},
+	},
+	{
+		Name: "dynamic extra column modifications",
+		SetUpScript: []string{
+			"create table t (id int primary key, ts timestamp);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "describe t;",
+				Expected: []sql.Row{
+					{"id", "int", "NO", "PRI", nil, ""},
+					{"ts", "timestamp", "YES", "", nil, ""},
+				},
+			},
+			{
+				Query: "alter table t modify column ts timestamp on update current_timestamp;",
+			},
+			{
+				Query: "describe t;",
+				Expected: []sql.Row{
+					{"id", "int", "NO", "PRI", nil, ""},
+					{"ts", "timestamp", "YES", "", nil, "on update CURRENT_TIMESTAMP"},
+				},
+			},
+			{
+				Query: "alter table t modify column ts timestamp(3) default current_timestamp(3) on update current_timestamp(3);",
+			},
+			{
+				Query: "describe t;",
+				Expected: []sql.Row{
+					{"id", "int", "NO", "PRI", nil, ""},
+					{"ts", "timestamp(3)", "YES", "", "CURRENT_TIMESTAMP(3)", "DEFAULT_GENERATED on update CURRENT_TIMESTAMP(3)"},
+				},
+			},
+			{
+				Query: "alter table t modify column ts timestamp(3) default null on update current_timestamp(3);",
+			},
+			{
+				Query: "describe t;",
+				Expected: []sql.Row{
+					{"id", "int", "NO", "PRI", nil, ""},
+					{"ts", "timestamp(3)", "YES", "", "NULL", "on update CURRENT_TIMESTAMP(3)"},
+				},
+			},
+			{
+				Query: "alter table t modify column ts timestamp(3) default current_timestamp(3);",
+			},
+			{
+				Query: "describe t;",
+				Expected: []sql.Row{
+					{"id", "int", "NO", "PRI", nil, ""},
+					{"ts", "timestamp(3)", "YES", "", "CURRENT_TIMESTAMP(3)", "DEFAULT_GENERATED"},
+				},
+			},
+			{
+				Query: "alter table t modify column ts timestamp(3) default '2020-01-01 00:00:00';",
+			},
+			{
+				Query: "describe t;",
+				Expected: []sql.Row{
+					{"id", "int", "NO", "PRI", nil, ""},
+					{"ts", "timestamp(3)", "YES", "", "'2020-01-01 00:00:00'", ""},
+				},
+			},
+			{
+				Query: "alter table t modify column ts timestamp(3) default null;",
+			},
+			{
+				Query: "describe t;",
+				Expected: []sql.Row{
+					{"id", "int", "NO", "PRI", nil, ""},
+					{"ts", "timestamp(3)", "YES", "", "NULL", ""},
+				},
+			},
+		},
+	},
+	{
 		// before update triggers that update the timestamp column block the on update
 		Name: "before update trigger",
 		SetUpScript: []string{

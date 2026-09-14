@@ -489,7 +489,7 @@ func (b *BaseBuilder) buildShowColumns(ctx *sql.Context, n *plan.ShowColumns, ro
 			defaultVal = nil
 		}
 
-		extra := col.ExtraString()
+		extra := sql.FormatColumnExtra(col)
 
 		if n.Full {
 			row = sql.Row{

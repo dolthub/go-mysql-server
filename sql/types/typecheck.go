@@ -227,6 +227,12 @@ func IsTimestampType(t sql.Type) bool {
 	return ok && dt.baseType == sqltypes.Timestamp
 }
 
+// IsDatetimeOrTimestamp checks if t is a datetime or timestamp.
+func IsDatetimeOrTimestamp(t sql.Type) bool {
+	dt, ok := t.(datetimeType)
+	return ok && (dt.baseType == sqltypes.Datetime || dt.baseType == sqltypes.Timestamp)
+}
+
 // IsEnum checks if t is a enum
 func IsEnum(t sql.Type) bool {
 	// TODO: We can likely get rid of this function and replace calls to it with sql.IsEnumType. But we need to make
