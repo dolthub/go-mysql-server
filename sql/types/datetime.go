@@ -34,14 +34,19 @@ import (
 )
 
 const (
-	MaxYear              = 9999
-	MaxMonth             = 12
-	MaxDay               = 31
-	MaxHour              = 23
-	MaxMinute            = 59
-	MaxSecond            = 59
-	MaxDatetimePrecision = 6
+	MaxYear   = 9999
+	MaxMonth  = 12
+	MaxDay    = 31
+	MaxHour   = 23
+	MaxMinute = 59
+	MaxSecond = 59
 
+	// MaxDateWholeScale is the maximum number of digits needed to represent the whole portion of a date
+	MaxDateWholeScale = 8
+	// MaxDatetimeWholeScale is the maximum number of digits needed to represent the whole portion of a datetime
+	MaxDatetimeWholeScale = 14
+	// MaxDatetimePrecision is the maximum number of digits needed to represent the fractional portion of a datetime
+	MaxDatetimePrecision = 6
 	// MaxDatetimeStringLength is the longest the string representation of a datetime should ever be
 	MaxDatetimeStringLength = 25
 )

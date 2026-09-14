@@ -453,22 +453,22 @@ func (a *Arithmetic) evalMixedInteger(ctx *sql.Context, typ sql.Type, lval, rval
 }
 
 // evalMixedUnsignedInteger evaluates an unsigned result without constructing intermediate signed magnitudes.
-func (a *Arithmetic) evalMixedUnsignedInteger(ctx *sql.Context, lval, rval interface{}) (interface{}, error) {
+func (a *Arithmetic) evalMixedUnsignedInteger(ctx *sql.Context, lVal, rVal any) (any, error) {
 	leftUnsigned := types.IsUnsigned(a.LeftChild.Type(ctx))
 	var unsignedValue uint64
 	var signedValue int64
 	if leftUnsigned {
-		if converted := convertValueToType(ctx, a.LeftChild.Type(ctx), types.Uint64, lval); converted != nil {
+		if converted := convertValueToType(ctx, lVal, a.LeftChild.Type(ctx), types.Uint64); converted != nil {
 			unsignedValue = converted.(uint64)
 		}
-		if converted := convertValueToType(ctx, a.RightChild.Type(ctx), types.Int64, rval); converted != nil {
+		if converted := convertValueToType(ctx, rVal, a.RightChild.Type(ctx), types.Int64); converted != nil {
 			signedValue = converted.(int64)
 		}
 	} else {
-		if converted := convertValueToType(ctx, a.LeftChild.Type(ctx), types.Int64, lval); converted != nil {
+		if converted := convertValueToType(ctx, lVal, a.LeftChild.Type(ctx), types.Int64); converted != nil {
 			signedValue = converted.(int64)
 		}
-		if converted := convertValueToType(ctx, a.RightChild.Type(ctx), types.Uint64, rval); converted != nil {
+		if converted := convertValueToType(ctx, rVal, a.RightChild.Type(ctx), types.Uint64); converted != nil {
 			unsignedValue = converted.(uint64)
 		}
 	}
@@ -522,21 +522,21 @@ func (a *Arithmetic) evalMixedUnsignedInteger(ctx *sql.Context, lval, rval inter
 		}
 		return unsignedValue * positive, nil
 	default:
-		return nil, errUnableToEval.New(lval, a.Op, rval)
+		return nil, errUnableToEval.New(lVal, a.Op, rVal)
 	}
 }
 
 // integerMagnitudeFromValue converts an integer operand without losing a signed value's sign.
-func integerMagnitudeFromValue(ctx *sql.Context, typ sql.Type, val interface{}) integerMagnitude {
+func integerMagnitudeFromValue(ctx *sql.Context, typ sql.Type, val any) integerMagnitude {
 	if types.IsUnsigned(typ) {
-		converted := convertValueToType(ctx, typ, types.Uint64, val)
+		converted := convertValueToType(ctx, val, typ, types.Uint64)
 		if converted == nil {
 			return integerMagnitude{}
 		}
 		return integerMagnitude{magnitude: converted.(uint64)}
 	}
 
-	converted := convertValueToType(ctx, typ, types.Int64, val)
+	converted := convertValueToType(ctx, val, typ, types.Int64)
 	if converted == nil {
 		return integerMagnitude{}
 	}
@@ -620,9 +620,9 @@ func (a *Arithmetic) convertLeftRight(ctx *sql.Context, lVal, rVal any) (any, an
 	} else {
 		// these are the types we specifically want to capture from we get from Type()
 		if types.IsInteger(typ) || types.IsFloat(typ) || types.IsTime(typ) {
-			lVal = convertValueToType(ctx, lTyp, typ, lVal)
+			lVal = convertValueToType(ctx, lVal, lTyp, typ)
 		} else {
-			lVal = convertToDecimalValue(ctx, lTyp, typ, lVal)
+			lVal = convertToDecimalValue(ctx, lVal, lTyp, typ)
 		}
 	}
 
@@ -631,9 +631,9 @@ func (a *Arithmetic) convertLeftRight(ctx *sql.Context, lVal, rVal any) (any, an
 	} else {
 		// these are the types we specifically want to capture from we get from Type()
 		if types.IsInteger(typ) || types.IsFloat(typ) || types.IsTime(typ) {
-			rVal = convertValueToType(ctx, rTyp, typ, rVal)
+			rVal = convertValueToType(ctx, rVal, rTyp, typ)
 		} else {
-			rVal = convertToDecimalValue(ctx, rTyp, typ, rVal)
+			rVal = convertToDecimalValue(ctx, rVal, rTyp, typ)
 		}
 	}
 
@@ -691,12 +691,11 @@ func isOutermostArithmeticOp(e sql.Expression, opScale int32) bool {
 // invalid and cannot be converted to the given type, it returns nil, and it should be
 // interpreted as value of 0. For time types, all the numbers are parsed up to seconds only.
 // E.g: `2022-11-10 12:14:36` is parsed into `20221110121436` and `2022-03-24` is parsed into `20220324`.
-func convertValueToType(ctx *sql.Context, origType, typ sql.Type, val any) (res any) {
-	// TODO: update type aware implementation for datetime types
-	//  This is a placeholder implementation for existing tests
-	if dtTyp, ok := origType.(sql.DatetimeType); ok && !types.IsTime(typ) {
+func convertValueToType(ctx *sql.Context, val any, origType, convType sql.Type) (res any) {
+	// TODO: seems like the entirety of convertValueToType can just be types.TypeAwareConversion
+	if dtTyp, ok := origType.(sql.DatetimeType); ok && !types.IsTime(convType) {
 		var err error
-		val, err = DateTimeToNumericString(ctx, dtTyp, val)
+		val, _, err = types.TypeAwareConversion(ctx, val, dtTyp, convType)
 		if err != nil {
 			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrTruncatedIncorrect.New(dtTyp.String(), val).Error())
 		}
@@ -704,41 +703,26 @@ func convertValueToType(ctx *sql.Context, origType, typ sql.Type, val any) (res 
 
 	var cVal any
 	var err error
-	switch t := typ.(type) {
+	switch t := convType.(type) {
 	case sql.DatetimeType:
+		// TODO: is this still necessary?
 		cVal, _, err = t.Convert(ctx, val)
 		if err == nil {
 			if timeVal, ok := cVal.(time.Time); ok && types.ZeroTime.Equal(timeVal) {
-				ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrTruncatedIncorrect.New(typ.String(), val).Error())
+				ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrTruncatedIncorrect.New(convType.String(), val).Error())
 				return nil
 			}
 		}
 	default:
-		cVal, _, err = typ.Convert(ctx, val)
+		cVal, _, err = convType.Convert(ctx, val)
 	}
 
 	if err != nil {
 		// the value is interpreted as 0, but we need to match the type of the other valid value
 		// to avoid additional conversion, the nil value is handled in each operation
-		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrTruncatedIncorrect.New(typ.String(), val).Error())
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrTruncatedIncorrect.New(convType.String(), val).Error())
 	}
 	return cVal
-}
-
-// DateTimeToNumericString converts a time.Time object into a "numeric" string (datetime with all delimiters removed).
-// `2022-11-10 12:14:36` is parsed into `20221110121436`
-// `2022-03-24` is parsed into `20220324`.
-// TODO: this should just be on the dateTimeType itself
-func DateTimeToNumericString(ctx *sql.Context, typ sql.DatetimeType, val any) (string, error) {
-	// Convert to MySQL formatted DateTime string
-	sqlVal, err := typ.SQL(ctx, nil, val)
-	if err != nil {
-		return "", err
-	}
-	// Drop all non-digits and concat
-	nums := timeTypeRegex.FindAllString(sqlVal.ToString(), -1)
-	res := strings.Join(nums, "")
-	return res, nil
 }
 
 func plus(lval, rval interface{}) (interface{}, error) {

@@ -2794,33 +2794,94 @@ var FunctionQueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: "select date('2001-02-03') + 20010203;",
+		Query: "select date('2001-04-08') & date('2020-01-02');",
 		Expected: []sql.Row{
-			{40020406},
+			{uint64(19927200)},
 		},
 	},
 	{
-		Query: "select date('2001-02-03') - 123456;",
+		Query: "select date('2001-04-08') | date('2020-01-02');",
 		Expected: []sql.Row{
-			{19886747},
+			{uint64(20283310)},
 		},
 	},
 	{
-		Query: "select date('2001-04-08') * 25;",
+		Query: "select date('2001-04-08') > date('2020-01-02');",
 		Expected: []sql.Row{
-			{500260200},
+			{false},
 		},
 	},
 	{
-		Query: "select date('2001-04-08') / 2;",
+		Query: "select date('2001-04-08') < date('2020-01-02');",
 		Expected: []sql.Row{
-			{"10005204.0000"},
+			{true},
 		},
 	},
 	{
-		Query: "select date('2001-04-08') % 2;",
+		Query: "select date('2001-04-08') = date('2020-01-02');",
+		Expected: []sql.Row{
+			{false},
+		},
+	},
+
+	{
+		Query: "select cast('2001-02-03 12:34:56.123456' as datetime(6)) + 20010203.654321;",
+		Expected: []sql.Row{
+			{"20010223133659.777777"},
+		},
+	},
+	{
+		Query: "select cast('2001-02-03' as datetime(6)) - 123456;",
+		Expected: []sql.Row{
+			{"20010202876544.000000"},
+		},
+	},
+	{
+		Query: "select cast('2001-04-08 12:34:56.123456' as datetime(6)) * 25;",
+		Expected: []sql.Row{
+			{"500260203086403.086400"},
+		},
+	},
+	{
+		Query: "select cast('2001-04-08 1:2:3.102030' as datetime(6)) / 2;",
+		Expected: []sql.Row{
+			{"10005204005101.5510150000"},
+		},
+	},
+	{
+		Query: "select cast('2001-04-08 12:34:56' as datetime(6)) % 2;",
 		Expected: []sql.Row{
 			{"0"},
+		},
+	},
+	{
+		Query: "select cast('2001-04-08 12:34:56.123456' as datetime(6)) & cast('2001-01-02' as datetime(6));",
+		Expected: []sql.Row{
+			{uint64(20005974738944)},
+		},
+	},
+	{
+		Query: "select cast('2001-04-08 12:34:56.123456' as datetime(6)) | cast('2001-01-02' as datetime(6));",
+		Expected: []sql.Row{
+			{uint64(20014535384512)},
+		},
+	},
+	{
+		Query: "select cast('2001-04-08 12:34:56.123456' as datetime(6)) > cast('2001-01-02' as datetime(6));",
+		Expected: []sql.Row{
+			{true},
+		},
+	},
+	{
+		Query: "select cast('2001-04-08 12:34:56.123456' as datetime(6)) < cast('2001-01-02' as datetime(6));",
+		Expected: []sql.Row{
+			{false},
+		},
+	},
+	{
+		Query: "select cast('2001-04-08 12:34:56.123456' as datetime(6)) = cast('2001-01-02' as datetime(6));",
+		Expected: []sql.Row{
+			{false},
 		},
 	},
 

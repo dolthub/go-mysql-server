@@ -16,6 +16,7 @@ package expression
 
 import (
 	"fmt"
+	"github.com/dolthub/vitess/go/sqltypes"
 	"math"
 	"strings"
 	"time"
@@ -181,24 +182,24 @@ func (d *Div) convertLeftRight(ctx *sql.Context, lVal, rVal any) (any, any) {
 	lTyp, rTyp := d.LeftChild.Type(ctx), d.RightChild.Type(ctx)
 
 	if types.IsFloat(typ) {
-		lVal = convertValueToType(ctx, lTyp, typ, lVal)
+		lVal = convertValueToType(ctx, lVal, lTyp, typ)
 	} else {
-		lVal = convertToDecimalValue(ctx, lTyp, typ, lVal)
+		lVal = convertToDecimalValue(ctx, lVal, lTyp, typ)
 	}
 
 	if types.IsFloat(typ) {
-		rVal = convertValueToType(ctx, rTyp, typ, rVal)
+		rVal = convertValueToType(ctx, rVal, rTyp, typ)
 	} else {
-		rVal = convertToDecimalValue(ctx, rTyp, typ, rVal)
+		rVal = convertToDecimalValue(ctx, rVal, rTyp, typ)
 	}
 
 	return lVal, rVal
 }
 
-func (d *Div) div(ctx *sql.Context, lval, rval interface{}) (interface{}, error) {
-	switch l := lval.(type) {
+func (d *Div) div(ctx *sql.Context, lVal, rVal any) (any, error) {
+	switch l := lVal.(type) {
 	case float32:
-		switch r := rval.(type) {
+		switch r := rVal.(type) {
 		case float32:
 			if r == 0 {
 				arithmeticWarning(ctx, ERDivisionByZero, "Division by 0")
@@ -207,7 +208,7 @@ func (d *Div) div(ctx *sql.Context, lval, rval interface{}) (interface{}, error)
 			return l / r, nil
 		}
 	case float64:
-		switch r := rval.(type) {
+		switch r := rVal.(type) {
 		case float64:
 			if r == 0 {
 				arithmeticWarning(ctx, ERDivisionByZero, "Division by 0")
@@ -216,7 +217,7 @@ func (d *Div) div(ctx *sql.Context, lval, rval interface{}) (interface{}, error)
 			return l / r, nil
 		}
 	case *apd.Decimal:
-		switch r := rval.(type) {
+		switch r := rVal.(type) {
 		case *apd.Decimal:
 			if r.IsZero() {
 				arithmeticWarning(ctx, ERDivisionByZero, "Division by 0")
@@ -242,7 +243,7 @@ func (d *Div) div(ctx *sql.Context, lval, rval interface{}) (interface{}, error)
 		}
 	}
 
-	return nil, errUnableToCast.New(lval, rval)
+	return nil, errUnableToCast.New(lVal, rVal)
 }
 
 // determineResultType looks at the expressions in the expression tree with this division operation and determines
@@ -356,18 +357,23 @@ func getFloatOrMaxDecimalType(ctx *sql.Context, e sql.Expression, treatIntsAsFlo
 				l, err := c.Eval(nil, nil)
 				if err == nil {
 					p, s := GetPrecisionAndScale(l)
-					if whole := p - s; whole > maxWhole {
-						maxWhole = whole
-					}
-					if s > maxFrac {
-						maxFrac = s
-					}
+					maxWhole = max(maxWhole, p-s)
+					maxFrac = max(maxFrac, s)
 				}
 			}
 		case sql.FunctionExpression:
 			// Mod.Type(ctx) calls this, so ignore it for infinite loop
 			if c.FunctionName() != "mod" {
 				resType = c.Type(ctx)
+				if dtTyp, ok := resType.(sql.DatetimeType); ok {
+					switch dtTyp.Type() {
+					case sqltypes.Date:
+						maxWhole = max(maxWhole, uint8(types.MaxDateWholeScale))
+					case sqltypes.Datetime, sqltypes.Timestamp:
+						maxWhole = max(maxWhole, uint8(types.MaxDatetimeWholeScale))
+					}
+					maxFrac = max(maxFrac, uint8(dtTyp.Precision()))
+				}
 			}
 		}
 		return true
@@ -389,12 +395,11 @@ func getFloatOrMaxDecimalType(ctx *sql.Context, e sql.Expression, treatIntsAsFlo
 // If the value is invalid, it returns decimal 0. This function
 // is used for 'div' or 'mod' arithmetic operation, which requires
 // the result value to have precise precision and scale.
-func convertToDecimalValue(ctx *sql.Context, origType, typ sql.Type, val any) *apd.Decimal {
-	// TODO: update type aware implementation for datetime types
-	//  This is a placeholder implementation for existing tests
-	if dtTyp, ok := origType.(sql.DatetimeType); ok && !types.IsTime(typ) {
+func convertToDecimalValue(ctx *sql.Context, val any, origType, convType sql.Type) *apd.Decimal {
+	// TODO: seems like we can refactor convertToDecimalValue to just use types.TypeAwareConversion()
+	if dtTyp, ok := origType.(sql.DatetimeType); ok && !types.IsTime(convType) {
 		var err error
-		val, err = DateTimeToNumericString(ctx, dtTyp, val)
+		val, _, err = types.TypeAwareConversion(ctx, val, origType, convType)
 		if err != nil {
 			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrTruncatedIncorrect.New(dtTyp.String(), val).Error())
 		}
@@ -524,14 +529,21 @@ func getFinalScale(ctx *sql.Context, row sql.Row, expr sql.Expression, divOpCnt 
 		divOpCnt = divOpCnt + 1
 		if divOpCnt == div.divOps {
 			// TODO: redundant call to Eval for LeftChild
+			// TODO: this is whole process is hacky. string conversions should be unnecessary
 			lval, err := div.LeftChild.Eval(ctx, row)
 			if err != nil {
 				return 0, false
 			}
 			_, s := GetPrecisionAndScale(lval)
 			typ := div.LeftChild.Type(ctx)
-			if dt, dok := typ.(sql.DecimalType); dok {
+			switch dt := typ.(type) {
+			case sql.DecimalType:
 				ts := dt.Scale()
+				if ts > s {
+					s = ts
+				}
+			case sql.DatetimeType:
+				ts := uint8(dt.Precision())
 				if ts > s {
 					s = ts
 				}
@@ -742,13 +754,13 @@ func (i *IntDiv) convertLeftRight(ctx *sql.Context, lVal, rVal any) (any, any) {
 	case (types.IsTime(lTyp) && types.IsTime(rTyp)) || (types.IsSigned(lTyp) && types.IsSigned(rTyp)):
 		typ = types.Int64
 	default:
-		lVal = convertToDecimalValue(ctx, lTyp, typ, lVal)
-		rVal = convertToDecimalValue(ctx, rTyp, typ, rVal)
+		lVal = convertToDecimalValue(ctx, lVal, lTyp, types.InternalDecimalType)
+		rVal = convertToDecimalValue(ctx, rVal, rTyp, types.InternalDecimalType)
 		return lVal, rVal
 	}
 
-	lVal = convertValueToType(ctx, lTyp, typ, lVal)
-	rVal = convertValueToType(ctx, rTyp, typ, rVal)
+	lVal = convertValueToType(ctx, lVal, lTyp, typ)
+	rVal = convertValueToType(ctx, rVal, rTyp, typ)
 	return lVal, rVal
 }
 
