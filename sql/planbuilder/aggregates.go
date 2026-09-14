@@ -595,16 +595,6 @@ func (b *Builder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, 
 		win = w.WithWindow(b.ctx, def)
 	}
 
-	// Reuse an identical window function already built in this scope (e.g. the same  expression repeated in ORDER BY)
-	// instead of registering a duplicate column
-	if !expressionIsNonDeterministic(b.ctx, win) {
-		for _, c := range inScope.windowFuncs {
-			if existing, ok := c.scalar.(sql.WindowAdaptableExpression); ok && existing.String() == win.String() {
-				return c.scalarGf()
-			}
-		}
-	}
-
 	col := scopeColumn{col: strings.ToLower(win.String()), scalar: win, typ: win.Type(b.ctx), nullable: win.IsNullable(b.ctx)}
 	id := inScope.newColumn(col)
 	col.id = id
