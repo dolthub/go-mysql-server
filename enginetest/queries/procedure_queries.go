@@ -278,7 +278,8 @@ END;`,
 				},
 			},
 			{
-				Query: "CALL p1(2)",
+				SkipResultCheckOnServerEngine: true, // Affected-row counts still differ over the wire: https://github.com/dolthub/dolt/issues/6918
+				Query:                         "CALL p1(2)",
 				Expected: []sql.Row{
 					{
 						types.NewOkResult(2),
