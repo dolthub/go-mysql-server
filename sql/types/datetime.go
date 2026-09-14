@@ -41,6 +41,9 @@ const (
 	MaxMinute            = 59
 	MaxSecond            = 59
 	MaxDatetimePrecision = 6
+
+	// MaxDatetimeStringLength is the longest the string representation of a datetime should ever be
+	MaxDatetimeStringLength = 25
 )
 
 // TODO: remove these?
@@ -380,7 +383,7 @@ func (t datetimeType) ToDecimal(val time.Time) (*apd.Decimal, error) {
 // ToString implements the sql.DatetimeType interface.
 // It converts time.Time{} into string truncating the values according to the baseType and precision.
 func (t datetimeType) ToString(val time.Time) (string, error) {
-	buf := make([]byte, 0, len("9999-12-31 23:59:59.999999")) // TODO: make constant
+	buf := make([]byte, 0, MaxDatetimeStringLength)
 	switch t.baseType {
 	case sqltypes.Date:
 		buf = appendDateFormat(buf, val)
