@@ -17,9 +17,10 @@ package plan
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/binlogreplication"
-	"github.com/stretchr/testify/require"
 )
 
 // TestReplicationCommandString verifies native replication option values retain readable plan formatting.
