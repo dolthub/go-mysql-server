@@ -383,9 +383,9 @@ func (t datetimeType) ToString(val time.Time) (string, error) {
 	buf := make([]byte, 0, len("9999-12-31 23:59:59.999999")) // TODO: make constant
 	switch t.baseType {
 	case sqltypes.Date:
-		appendDateFormat(buf, val)
+		buf = appendDateFormat(buf, val)
 	case sqltypes.Datetime, sqltypes.Timestamp:
-		appendDatetimeFormat(buf, val, t.precision)
+		buf = appendDatetimeFormat(buf, val, t.precision)
 	default:
 		return "", sql.ErrInvalidBaseType.New(t.baseType.String(), "datetime")
 	}
