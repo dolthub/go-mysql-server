@@ -849,12 +849,24 @@ var JsonScripts = []ScriptTest{
 				Expected: []sql.Row{{false}},
 			},
 			{
+				Query:    "SELECT CAST(@PAPER AS JSON) < CAST(@ROCK AS JSON)",
+				Expected: []sql.Row{{true}},
+			},
+			{
 				Query:    "SELECT CAST(@PAPER AS JSON) < CAST(@SCISSORS AS JSON)",
 				Expected: []sql.Row{{true}},
 			},
 			{
+				Query:    "SELECT CAST(@SCISSORS AS JSON) < CAST(@PAPER AS JSON)",
+				Expected: []sql.Row{{false}},
+			},
+			{
 				Query:    "SELECT CAST(@SCISSORS AS JSON) < CAST(@ROCK AS JSON)",
 				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    "SELECT CAST(@ROCK AS JSON) < CAST(@SCISSORS AS JSON)",
+				Expected: []sql.Row{{false}},
 			},
 		},
 	},
