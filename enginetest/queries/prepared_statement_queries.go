@@ -291,6 +291,19 @@ var PreparedScriptTests = []ScriptTest{
 			},
 		},
 	},
+	// https://github.com/dolthub/dolt/issues/4989
+	{
+		Name: "Test invalid binary decimal parameters",
+		SetUpScript: []string{
+			"CREATE TABLE decimal_bindings(id INT PRIMARY KEY AUTO_INCREMENT,decimal_col DECIMAL(9,2))",
+			"PREPARE stmt FROM 'INSERT INTO decimal_bindings(decimal_col) VALUES (?)'",
+			"SET @a=_binary\"X'10'\"",
+		},
+		Assertions: []ScriptTestAssertion{
+			{Query: "EXECUTE stmt USING @a", ExpectedErr: sql.ErrInvalidValue},
+			{Query: "SELECT COUNT(*) FROM decimal_bindings", Expected: []sql.Row{{int64(0)}}},
+		},
+	},
 	{
 		Name: "prepare insert",
 		SetUpScript: []string{
