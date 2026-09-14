@@ -319,7 +319,6 @@ func (a *Arithmetic) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case sqlparser.MultStr:
 		result, err = mult(lVal, rVal)
 	}
-
 	if err != nil {
 		return nil, err
 	}
