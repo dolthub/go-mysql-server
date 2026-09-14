@@ -42,5 +42,3 @@ require (
 )
 
 go 1.26.2
-
-replace github.com/dolthub/vitess => ../vitess
