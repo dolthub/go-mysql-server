@@ -11746,6 +11746,15 @@ where
 			},
 		},
 	},
+	// https://github.com/dolthub/dolt/issues/4233
+	{
+		Name:        "Test CTE definition ordering",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{Query: "WITH c AS (SELECT * FROM b), b AS (SELECT * FROM a), a AS (SELECT 1 AS n) SELECT * FROM c", ExpectedErr: sql.ErrTableNotFound},
+			{Query: "WITH a AS (SELECT 1 AS n), b AS (SELECT * FROM a), c AS (SELECT * FROM b) SELECT * FROM c", Expected: []sql.Row{{1}}},
+		},
+	},
 
 	// Set tests
 	{
