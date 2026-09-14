@@ -1994,6 +1994,22 @@ ORDER BY id;`,
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/11421
+		Name: "exists subquery with window function",
+		SetUpScript: []string{
+			`CREATE TABLE t(id INT PRIMARY KEY, a INT);`,
+			`CREATE TABLE u(x INT);`,
+			`INSERT INTO t VALUES (1,1),(2,2),(3,3);`,
+			`INSERT INTO u VALUES (1),(1),(2);`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    `SELECT id FROM t WHERE EXISTS (SELECT ROW_NUMBER() OVER () FROM u WHERE u.x = t.a) ORDER BY id;`,
+				Expected: []sql.Row{{1}, {2}},
+			},
+		},
+	},
 }
 
 // WindowRowFramesScriptTests tests window functions using ROWS frame specifications.
