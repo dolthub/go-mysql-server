@@ -395,8 +395,8 @@ func getFloatOrMaxDecimalType(ctx *sql.Context, e sql.Expression, treatIntsAsFlo
 // If the value is invalid, it returns decimal 0. This function
 // is used for 'div' or 'mod' arithmetic operation, which requires
 // the result value to have precise precision and scale.
+// TODO: Simplify this and convertValueToType to just use types.TypeAwareConversion
 func convertToDecimalValue(ctx *sql.Context, val any, origType, convType sql.Type) *apd.Decimal {
-	// TODO: seems like we can refactor convertToDecimalValue to just use types.TypeAwareConversion()
 	if dtTyp, ok := origType.(sql.DatetimeType); ok && !types.IsTime(convType) {
 		var err error
 		val, _, err = types.TypeAwareConversion(ctx, val, origType, convType)

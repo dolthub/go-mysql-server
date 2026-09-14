@@ -686,12 +686,9 @@ func isOutermostArithmeticOp(e sql.Expression, opScale int32) bool {
 	return opScale == countArithmeticOps(e)
 }
 
-// convertValueToType returns |val| converted into type |typ|. If the value is
-// invalid and cannot be converted to the given type, it returns nil, and it should be
-// interpreted as value of 0. For time types, all the numbers are parsed up to seconds only.
-// E.g: `2022-11-10 12:14:36` is parsed into `20221110121436` and `2022-03-24` is parsed into `20220324`.
+// convertValueToType returns |val| converted into type |typ|.
+// TODO: Simplify this and convertValueToDecimal to just use types.TypeAwareConversion
 func convertValueToType(ctx *sql.Context, val any, origType, convType sql.Type) (res any) {
-	// TODO: seems like the entirety of convertValueToType can just be types.TypeAwareConversion
 	if dtTyp, ok := origType.(sql.DatetimeType); ok && !types.IsTime(convType) {
 		var err error
 		val, _, err = types.TypeAwareConversion(ctx, val, dtTyp, convType)
@@ -699,7 +696,6 @@ func convertValueToType(ctx *sql.Context, val any, origType, convType sql.Type) 
 			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrTruncatedIncorrect.New(dtTyp.String(), val).Error())
 		}
 	}
-
 	var cVal any
 	var err error
 	switch t := convType.(type) {
@@ -715,7 +711,6 @@ func convertValueToType(ctx *sql.Context, val any, origType, convType sql.Type) 
 	default:
 		cVal, _, err = convType.Convert(ctx, val)
 	}
-
 	if err != nil {
 		// the value is interpreted as 0, but we need to match the type of the other valid value
 		// to avoid additional conversion, the nil value is handled in each operation
