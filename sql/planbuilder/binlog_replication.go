@@ -16,6 +16,7 @@ package planbuilder
 
 import (
 	"fmt"
+	"strings"
 
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
@@ -60,8 +61,10 @@ func (b *Builder) buildReplicationOption(inScope *scope, option *ast.Replication
 		}
 		return binlogreplication.NewReplicationOption(option.Name, urts)
 	case ast.StringList:
-		if err := binlogreplication.ValidateWildcardTablePatterns([]string(vv)); err != nil {
-			b.handleErr(err)
+		if strings.EqualFold(option.Name, "REPLICATE_WILD_DO_TABLE") || strings.EqualFold(option.Name, "REPLICATE_WILD_IGNORE_TABLE") {
+			if err := binlogreplication.ValidateWildcardTablePatterns([]string(vv)); err != nil {
+				b.handleErr(err)
+			}
 		}
 		return binlogreplication.NewReplicationOption(option.Name, []string(vv))
 	default:

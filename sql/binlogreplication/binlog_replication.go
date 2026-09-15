@@ -198,11 +198,11 @@ type ReplicationOption struct {
 	Name  string
 }
 
-// ValidateWildcardTablePatterns requires MySQL's database-pattern and table-pattern separator.
+// ValidateWildcardTablePatterns checks that each pattern contains a database qualifier and table pattern separated by a period.
 func ValidateWildcardTablePatterns(patterns []string) error {
 	for _, pattern := range patterns {
 		if !strings.Contains(pattern, ".") {
-			return mysql.NewSQLError(3067, "HY000", "Supplied filter list contains a value which is not in the required format 'db_pattern.table_pattern'")
+			return sql.CastSQLError(sql.ErrInvalidReplicationFilter.New())
 		}
 	}
 	return nil
