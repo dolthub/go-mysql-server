@@ -286,6 +286,9 @@ func getRowFromColumn(ctx *sql.Context, curOrdPos int, col *sql.Column, catName,
 	if extra == "" && !col.Default.IsLiteral() {
 		extra = "DEFAULT_GENERATED"
 	}
+	if col.OnUpdate != nil {
+		extra = "on update " + col.OnUpdate.Expr.String()
+	}
 
 	var curColPrivStr []string
 	for p := range privSetMap {
