@@ -395,7 +395,6 @@ func getFloatOrMaxDecimalType(ctx *sql.Context, e sql.Expression, treatIntsAsFlo
 // If the value is invalid, it returns decimal 0. This function
 // is used for 'div' or 'mod' arithmetic operation, which requires
 // the result value to have precise precision and scale.
-// TODO: Simplify this and convertValueToType to just use types.TypeAwareConversion
 func convertToDecimalValue(ctx *sql.Context, val any, origType, convType sql.Type) *apd.Decimal {
 	if dtTyp, ok := origType.(sql.DatetimeType); ok && !types.IsTime(convType) {
 		var err error
@@ -529,7 +528,8 @@ func getFinalScale(ctx *sql.Context, row sql.Row, expr sql.Expression, divOpCnt 
 		divOpCnt = divOpCnt + 1
 		if divOpCnt == div.divOps {
 			// TODO: redundant call to Eval for LeftChild
-			// TODO: this is whole process is hacky. string conversions should be unnecessary
+			// TODO: this is whole process is hacky. string conversions should be unnecessary for datetime types
+			// Tracking issue: https://github.com/dolthub/dolt/issues/10278
 			lval, err := div.LeftChild.Eval(ctx, row)
 			if err != nil {
 				return 0, false
