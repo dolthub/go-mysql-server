@@ -79,6 +79,99 @@ func (g *groupBy) getAggRef(name string) sql.Expression {
 	return ret.scalarGf()
 }
 
+// aggregateScope returns the closest query source referenced by an aggregate's arguments.
+func (s *scope) aggregateScope(ctx *sql.Context, args []sql.Expression) *scope {
+	var columnIds sql.ColSet
+	for _, arg := range args {
+		sql.Inspect(ctx, arg, func(ctx *sql.Context, expr sql.Expression) bool {
+			if _, ok := expr.(*plan.Subquery); ok {
+				return false
+			}
+			gf, ok := expr.(*expression.GetField)
+			if !ok {
+				return true
+			}
+			columnIds.Add(gf.Id())
+			return false
+		})
+	}
+	if columnIds.Empty() {
+		return s.querySource
+	}
+	for candidate := s.querySource; candidate != nil; candidate = candidate.outerQuery {
+		for _, col := range candidate.cols {
+			if columnIds.Contains(sql.ColumnId(col.id)) {
+				return candidate
+			}
+		}
+	}
+	return s.querySource
+}
+
+// isCorrelatedColumn reports whether the column is supplied by an outer query to the active subquery.
+func (s *scope) isCorrelatedColumn(id sql.ColumnId) bool {
+	for candidate := s.querySource; candidate != nil; candidate = candidate.outerQuery {
+		if _, found := candidate.queryColumn(id); found {
+			return candidate != s.querySource
+		}
+	}
+	return false
+}
+
+// queryColumn returns a source column by ID, including join scopes whose colset is populated later.
+func (s *scope) queryColumn(id sql.ColumnId) (scopeColumn, bool) {
+	for _, col := range s.cols {
+		if sql.ColumnId(col.id) == id {
+			return col, true
+		}
+	}
+	return scopeColumn{}, false
+}
+
+// aggregateArgScope exposes only the namespaces used to resolve aggregate arguments at each query level.
+func (s *scope) aggregateArgScope() *scope {
+	source := s.querySource
+	if source == nil {
+		return nil
+	}
+	if source.aggregateArgs != nil {
+		return source.aggregateArgs
+	}
+	visibleCtes := make(map[string]*scope)
+	for lexical := source; lexical != nil; lexical = lexical.parent {
+		for name, cte := range lexical.ctes {
+			if _, found := visibleCtes[name]; !found {
+				visibleCtes[name] = cte
+			}
+		}
+	}
+	argScope := &scope{
+		colset:           source.colset,
+		exprs:            source.exprs,
+		tables:           source.tables,
+		oldTables:        source.oldTables,
+		selectAliases:    source.selectAliases,
+		redirectCol:      source.redirectCol,
+		ctes:             visibleCtes,
+		b:                source.b,
+		proc:             source.proc,
+		activeSubquery:   source.querySubquery,
+		outerQuery:       source.outerQuery,
+		querySubquery:    source.querySubquery,
+		insertTableAlias: source.insertTableAlias,
+		cols:             source.cols,
+		schemaName:       source.schemaName,
+	}
+	if source.outerQuery != nil {
+		argScope.parent = source.outerQuery.aggregateArgScope()
+	} else {
+		argScope.parent = source.parent
+	}
+	argScope.querySource = argScope
+	source.aggregateArgs = argScope
+	return argScope
+}
+
 type aggregateInfo struct {
 	ast.Expr
 }
@@ -308,19 +401,18 @@ func IsMySQLAggregateFuncName(ctx *sql.Context, name string) (bool, error) {
 // buildAggregateFunc tags aggregate functions in the correct scope
 // and makes the aggregate available for reference by other clauses.
 func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExpr) sql.Expression {
-	inScope.initGroupBy()
-	gb := inScope.groupBy
-
 	if strings.EqualFold(name, "count") {
 		if _, ok := e.Exprs[0].(*ast.StarExpr); ok {
-			return b.buildCountStarAggregate(e, gb)
+			inScope.initGroupBy()
+			return b.buildCountStarAggregate(e, inScope.groupBy)
 		}
 	}
 
 	if strings.EqualFold(name, "jsonarray") {
 		// TODO we don't have any tests for this
 		if _, ok := e.Exprs[0].(*ast.StarExpr); ok {
-			return b.buildJsonArrayStarAggregate(gb)
+			inScope.initGroupBy()
+			return b.buildJsonArrayStarAggregate(inScope.groupBy)
 		}
 	}
 
@@ -328,7 +420,21 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 		b.qFlags.Set(sql.QFlagAnyAgg)
 	}
 
-	args := b.buildAggFunctionArgs(inScope, e, gb)
+	argScope := inScope.aggregateArgScope()
+	if argScope == nil {
+		argScope = inScope
+	}
+	correlations := inScope.aggregateCorrelationSnapshot()
+	args := b.buildAggFunctionArgs(argScope, e)
+	var gb *groupBy
+	aggScope := inScope.aggregateScope(b.ctx, args)
+	if aggScope == nil {
+		aggScope = inScope
+	}
+	aggScope.initGroupBy()
+	gb = aggScope.groupBy
+	b.addOuterAggregateArgDeps(aggScope, args)
+	b.addAggFunctionArgs(gb, args)
 	agg := b.newAggregation(e, name, args)
 
 	if name == "count" {
@@ -340,9 +446,9 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 	aggName := strings.ToLower(plan.AliasSubqueryString(b.ctx, agg))
 	if gf := gb.getAggRef(aggName); gf != nil {
 		// if we've already computed use reference here
+		b.recordOuterAggregateArgDeps(inScope, aggScope, correlations, sql.ColumnId(gf.(*expression.GetField).Id()))
 		return gf
 	}
-
 	col := scopeColumn{col: aggName, scalar: agg, typ: aggType, nullable: agg.IsNullable(b.ctx)}
 	id := gb.outScope.newColumn(col)
 
@@ -352,6 +458,7 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 
 	col.id = id
 	gb.addAggStr(col)
+	b.recordOuterAggregateArgDeps(inScope, aggScope, correlations, sql.ColumnId(id))
 	return col.scalarGf()
 }
 
@@ -394,7 +501,7 @@ func (b *Builder) newAggregation(e *ast.FuncExpr, name string, args []sql.Expres
 }
 
 // buildAggFunctionArgs builds the arguments for an aggregate function
-func (b *Builder) buildAggFunctionArgs(inScope *scope, e *ast.FuncExpr, gb *groupBy) []sql.Expression {
+func (b *Builder) buildAggFunctionArgs(inScope *scope, e *ast.FuncExpr) []sql.Expression {
 	var args []sql.Expression
 	for _, arg := range e.Exprs {
 		windowCount := len(inScope.windowFuncs)
@@ -403,31 +510,83 @@ func (b *Builder) buildAggFunctionArgs(inScope *scope, e *ast.FuncExpr, gb *grou
 			b.handleErr(sql.ErrNonAggregatedColumnWithoutGroupBy.New())
 		}
 		// if GetField is an alias, alias must be masking a column
-		if gf, ok := e.(*expression.GetField); ok && gf.TableId() == 0 {
+		if gf, ok := e.(*expression.GetField); ok && gf.TableId() == 0 && !inScope.isCorrelatedColumn(gf.Id()) {
 			e = b.selectExprToExpression(inScope.parent, arg)
 		}
 		switch e := e.(type) {
 		case *expression.GetField:
-			if e.TableId() == 0 {
+			if e.TableId() == 0 && !inScope.isCorrelatedColumn(e.Id()) {
 				b.handleErr(fmt.Errorf("failed to resolve aggregate column argument: %s", e))
 			}
 			args = append(args, e)
-			col := scopeColumn{tableId: e.TableID(), db: e.Database(), table: e.Table(), col: e.Name(), scalar: e, typ: e.Type(b.ctx), nullable: e.IsNullable(b.ctx)}
-			gb.addInCol(col)
 		case *expression.Star:
 			err := sql.ErrStarUnsupported.New()
 			b.handleErr(err)
 		case *plan.Subquery:
 			args = append(args, e)
-			col := scopeColumn{col: e.QueryString, scalar: e, typ: e.Type(b.ctx)}
-			gb.addInCol(col)
 		default:
 			args = append(args, e)
-			col := scopeColumn{col: e.String(), scalar: e, typ: e.Type(b.ctx)}
-			gb.addInCol(col)
 		}
 	}
 	return args
+}
+
+// addAggFunctionArgs records aggregate inputs in the scope that owns the aggregate.
+func (b *Builder) addAggFunctionArgs(gb *groupBy, args []sql.Expression) {
+	for _, arg := range args {
+		var col scopeColumn
+		switch arg := arg.(type) {
+		case *expression.GetField:
+			col = scopeColumn{tableId: arg.TableID(), db: arg.Database(), table: arg.Table(), col: arg.Name(), scalar: arg, typ: arg.Type(b.ctx), nullable: arg.IsNullable(b.ctx)}
+		case *plan.Subquery:
+			col = scopeColumn{col: arg.QueryString, scalar: arg, typ: arg.Type(b.ctx)}
+		default:
+			col = scopeColumn{col: arg.String(), scalar: arg, typ: arg.Type(b.ctx)}
+		}
+		gb.addInCol(col)
+	}
+}
+
+// addOuterAggregateArgDeps projects outer arguments needed to evaluate an aggregate owned by a nested query.
+func (b *Builder) addOuterAggregateArgDeps(aggScope *scope, args []sql.Expression) {
+	for _, arg := range args {
+		sql.Inspect(b.ctx, arg, func(ctx *sql.Context, expr sql.Expression) bool {
+			if _, ok := expr.(*plan.Subquery); ok {
+				return false
+			}
+			gf, ok := expr.(*expression.GetField)
+			if !ok {
+				return true
+			}
+			for outer := aggScope.outerQuery; outer != nil; outer = outer.outerQuery {
+				col, found := outer.queryColumn(gf.Id())
+				if !found {
+					continue
+				}
+				col.scalar = col.scalarGf()
+				outer.addExtraColumn(col)
+				break
+			}
+			return false
+		})
+	}
+}
+
+// aggregateCorrelationSnapshot preserves correlations established before resolving an aggregate's arguments.
+func (s *scope) aggregateCorrelationSnapshot() sql.ColSet {
+	if s.querySubquery == nil {
+		return sql.ColSet{}
+	}
+	return s.querySubquery.correlated.Copy()
+}
+
+// recordOuterAggregateArgDeps replaces correlations introduced by outer aggregate arguments with the result column.
+func (b *Builder) recordOuterAggregateArgDeps(inScope, aggScope *scope, before sql.ColSet, aggId sql.ColumnId) {
+	if inScope.querySource == aggScope || inScope.querySubquery == nil {
+		return
+	}
+	inScope.querySubquery.correlated = before
+	inScope.querySubquery.correlated.Add(aggId)
 }
 
 // buildJsonArrayStarAggregate builds a JSON_ARRAY(*) aggregate function
@@ -488,12 +647,15 @@ func (b *Builder) buildCountStarAggregate(e *ast.FuncExpr, gb *groupBy) sql.Expr
 
 // buildGroupConcat builds a GROUP_CONCAT aggregate function
 func (b *Builder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.Expression {
-	inScope.initGroupBy()
-	gb := inScope.groupBy
+	argScope := inScope.aggregateArgScope()
+	if argScope == nil {
+		argScope = inScope
+	}
+	correlations := inScope.aggregateCorrelationSnapshot()
 
 	args := make([]sql.Expression, len(e.Exprs))
 	for i, a := range e.Exprs {
-		args[i] = b.selectExprToExpression(inScope, a)
+		args[i] = b.selectExprToExpression(argScope, a)
 	}
 
 	separatorS := ","
@@ -501,8 +663,17 @@ func (b *Builder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.E
 		separatorS = e.Separator.SeparatorString
 	}
 
-	orderByScope := b.analyzeOrderBy(inScope, inScope, e.OrderBy)
+	orderByScope := b.analyzeOrderBy(argScope, argScope, e.OrderBy)
 	sortConditions := b.buildSortConditions(orderByScope, transform.SameTree)
+	deps := append(sortConditions.ToExpressions(), args...)
+	aggScope := inScope.aggregateScope(b.ctx, deps)
+	if aggScope == nil {
+		aggScope = inScope
+	}
+	aggScope.initGroupBy()
+	gb := aggScope.groupBy
+	b.addOuterAggregateArgDeps(aggScope, deps)
+	b.addAggFunctionArgs(gb, deps)
 
 	// TODO: this should be acquired at runtime, not at parse time, so fix this
 	gcml, err := b.ctx.GetSessionVariable(b.ctx, "group_concat_max_len")
@@ -511,9 +682,12 @@ func (b *Builder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.E
 	}
 	groupConcatMaxLen := gcml.(uint64)
 
-	// todo store ref to aggregate
 	agg := aggregation.NewGroupConcat(e.Distinct, sortConditions, separatorS, args, int(groupConcatMaxLen))
 	aggName := strings.ToLower(plan.AliasSubqueryString(b.ctx, agg))
+	if gf := gb.getAggRef(aggName); gf != nil {
+		b.recordOuterAggregateArgDeps(inScope, aggScope, correlations, sql.ColumnId(gf.(*expression.GetField).Id()))
+		return gf
+	}
 	col := scopeColumn{col: aggName, scalar: agg, typ: agg.Type(b.ctx), nullable: agg.IsNullable(b.ctx)}
 
 	id := gb.outScope.newColumn(col)
@@ -524,6 +698,7 @@ func (b *Builder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.E
 
 	gb.addAggStr(col)
 	col.id = id
+	b.recordOuterAggregateArgDeps(inScope, aggScope, correlations, sql.ColumnId(id))
 	return col.scalarGf()
 }
 
@@ -900,51 +1075,53 @@ func (b *Builder) mergeWindowDefs(def, ref *sql.WindowDefinition) *sql.WindowDef
 }
 
 func (b *Builder) analyzeHaving(fromScope, projScope *scope, having *ast.Where) {
-	// build having filter expr
-	// aggregates added to fromScope.groupBy
-	// can see projScope outputs
-	if having == nil {
-		return
-	}
+	// Resolve the HAVING expression early so its aggregates are registered with
+	// the query scopes that own their resolved arguments. buildHaving caches the
+	// expression for reuse after the aggregation node has been constructed.
+	b.buildHaving(fromScope, projScope, nil, having)
+}
 
-	ast.Walk(func(node ast.SQLNode) (bool, error) {
-		switch n := node.(type) {
-		case *ast.Subquery:
-			return false, nil
-		case *ast.FuncExpr:
-			name := n.Name.Lowered()
-			if isAggregate, err := IsAggregateFunc(b.ctx, name); err != nil {
-				b.handleErr(err)
-			} else if isAggregate {
-				// record aggregate
-				// TODO: this should get projScope as well
-				_ = b.buildAggregateFunc(fromScope, name, n)
-			} else if isWindow, err := IsWindowFunc(b.ctx, name); err != nil {
-				b.handleErr(err)
-			} else if isWindow {
-				_ = b.buildWindowFunc(fromScope, name, n, (*ast.WindowDef)(n.Over))
-			}
-		case *ast.ColName:
-			// add to extra cols
-			dbName := strings.ToLower(n.Qualifier.DbQualifier.String())
-			tblName := strings.ToLower(n.Qualifier.Name.String())
-			colName := strings.ToLower(n.Name.String())
-			c, ok := fromScope.resolveColumn(dbName, tblName, colName, true, false)
-			if ok {
-				c.scalar = expression.NewGetFieldWithTable(int(c.id), 0, c.typ, c.db, c.table, c.col, c.nullable)
-				fromScope.addExtraColumn(c)
-				break
-			}
-			c, ok = projScope.resolveColumn(dbName, tblName, colName, false, true)
-			if ok {
-				// references projection alias
-				break
-			}
-			err := sql.ErrColumnNotFound.New(n.Name)
-			b.handleErr(err)
+// addHavingDeps preserves source columns needed by HAVING expressions and their aggregates.
+func (b *Builder) addHavingDeps(fromScope *scope, having sql.Expression) {
+	addField := func(gf *expression.GetField) {
+		col, found := fromScope.queryColumn(gf.Id())
+		if !found {
+			return
 		}
-		return true, nil
-	}, having.Expr)
+		col.scalar = expression.NewGetFieldWithTable(int(col.id), 0, col.typ, col.db, col.table, col.col, col.nullable)
+		fromScope.addExtraColumn(col)
+	}
+	addAggregateFields := func(id sql.ColumnId) bool {
+		for _, col := range fromScope.groupBy.aggregations() {
+			if sql.ColumnId(col.id) != id {
+				continue
+			}
+			sql.Inspect(b.ctx, col.scalar, func(ctx *sql.Context, expr sql.Expression) bool {
+				if gf, ok := expr.(*expression.GetField); ok {
+					addField(gf)
+					return false
+				}
+				return true
+			})
+			return true
+		}
+		return false
+	}
+	sql.Inspect(b.ctx, having, func(ctx *sql.Context, expr sql.Expression) bool {
+		if _, ok := expr.(*plan.Subquery); ok {
+			return false
+		}
+		if gf, ok := expr.(*expression.GetField); ok {
+			if gf.TableId() == 0 && addAggregateFields(gf.Id()) {
+				return false
+			}
+			if _, found := fromScope.queryColumn(gf.Id()); found {
+				addField(gf)
+			}
+			return false
+		}
+		return true
+	})
 }
 
 func (b *Builder) buildInnerProj(fromScope, projScope *scope) *scope {
@@ -989,47 +1166,58 @@ func (b *Builder) buildInnerProj(fromScope, projScope *scope) *scope {
 }
 
 func (b *Builder) buildHaving(fromScope, projScope, outScope *scope, having *ast.Where) {
-	// expressions in having can be from aggOut or projScop
 	if having == nil {
+		return
+	}
+	// HAVING is resolved during analysis, before the aggregation node exists.
+	// Reuse that expression when this later call attaches the filter to the plan.
+	if fromScope.having != nil {
+		if outScope != nil {
+			outScope.node = plan.NewHaving(fromScope.having, outScope.node)
+		}
 		return
 	}
 	fromScope.initGroupBy()
 
+	// HAVING can reference grouped inputs, aggregate results, and SELECT aliases.
+	// Build a namespace with that precedence while retaining the enclosing query
+	// chain needed by correlated subqueries.
 	havingScope := b.newScope()
+	havingScope.querySource = fromScope
+	havingScope.outerQuery = fromScope.outerQuery
+	havingScope.querySubquery = fromScope.querySubquery
 	if fromScope.parent != nil {
 		havingScope.parent = fromScope.parent
 		havingScope.parent.selectAliases = fromScope.selectAliases
 	}
 
-	// add columns from fromScope referenced in the groupBy
+	// Include columns referenced by GROUP BY and aggregate inputs.
 	for _, c := range fromScope.groupBy.inCols {
 		if !havingScope.colset.Contains(sql.ColumnId(c.id)) {
 			havingScope.addColumn(c)
 		}
 	}
-
-	// add columns from fromScope referenced in any aggregate expressions
+	// Include source columns referenced inside registered aggregate expressions.
 	for _, c := range fromScope.groupBy.aggregations() {
 		transform.InspectExpr(b.ctx, c.scalar, func(ctx *sql.Context, e sql.Expression) bool {
-			switch e := e.(type) {
-			case *expression.GetField:
-				col, found := fromScope.resolveColumn(e.Database(), e.Table(), e.Name(), false, false)
-				if found && !havingScope.colset.Contains(sql.ColumnId(col.id)) {
-					havingScope.addColumn(col)
-				}
+			gf, ok := e.(*expression.GetField)
+			if !ok {
+				return false
+			}
+			col, found := fromScope.resolveColumn(gf.Database(), gf.Table(), gf.Name(), false, false)
+			if found && !havingScope.colset.Contains(sql.ColumnId(col.id)) {
+				havingScope.addColumn(col)
 			}
 			return false
 		})
 	}
-
-	// Add columns from projScope referenced in any aggregate expressions, that are not already in the havingScope
-	// This prevents aliases with the same name from overriding columns in the fromScope
-	// Additionally, the original name from plain aliases (not expressions) are added to havingScope
+	// Add SELECT outputs after source columns so an identically named alias does
+	// not mask a source column. Plain column aliases also retain their unaliased
+	// source name, which MySQL permits in HAVING.
 	for _, c := range projScope.cols {
 		if !havingScope.colset.Contains(sql.ColumnId(c.id)) {
 			havingScope.addColumn(c)
 		}
-		// The unaliased column is allowed in having clauses regardless if it is just an aliased getfield and not an expression
 		alias, isAlias := c.scalar.(*expression.Alias)
 		if !isAlias {
 			continue
@@ -1045,9 +1233,11 @@ func (b *Builder) buildHaving(fromScope, projScope, outScope *scope, having *ast
 	}
 
 	havingScope.groupBy = fromScope.groupBy
-	h := b.buildScalar(havingScope, having.Expr)
-	outScope.node = plan.NewHaving(h, outScope.node)
-	return
+	fromScope.having = b.buildScalar(havingScope, having.Expr)
+	b.addHavingDeps(fromScope, fromScope.having)
+	if outScope != nil {
+		outScope.node = plan.NewHaving(fromScope.having, outScope.node)
+	}
 }
 
 // exprReturnsRowIter returns whether any expression in the tree rooted at |e| returns a RowIter rather than a
