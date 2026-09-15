@@ -275,6 +275,7 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (any, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Blob type here is not interpreted as a hexadecimal
 	if typ := r.Num.Type(ctx); types.IsBlobType(typ) {
 		val, _, err = types.InternalDecimalType.Convert(ctx, val)
 	} else {
