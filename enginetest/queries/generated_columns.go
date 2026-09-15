@@ -529,7 +529,9 @@ var GeneratedColumnTests = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query: "show create table t1",
+				// SHOW CREATE TABLE is MySQL syntax.
+				Dialect: "mysql",
+				Query:   "show create table t1",
 				Expected: []sql.Row{{"t1",
 					"CREATE TABLE `t1` (\n" +
 						"  `a` int NOT NULL,\n" +
@@ -654,7 +656,9 @@ var GeneratedColumnTests = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query: "show create table t1",
+				// SHOW CREATE TABLE is MySQL syntax.
+				Dialect: "mysql",
+				Query:   "show create table t1",
 				Expected: []sql.Row{{"t1",
 					"CREATE TABLE `t1` (\n" +
 						"  `a` int NOT NULL,\n" +
@@ -1275,7 +1279,9 @@ var GeneratedColumnTests = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query: "show create table t1",
+				// SHOW CREATE TABLE is MySQL syntax.
+				Dialect: "mysql",
+				Query:   "show create table t1",
 				Expected: []sql.Row{{"t1",
 					"CREATE TABLE `t1` (\n" +
 						"  `a` int NOT NULL,\n" +
@@ -1648,7 +1654,9 @@ var GeneratedColumnTests = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query: "show create table t1",
+				// SHOW CREATE TABLE is MySQL syntax.
+				Dialect: "mysql",
+				Query:   "show create table t1",
 				Expected: []sql.Row{{"t1",
 					"CREATE TABLE `t1` (\n" +
 						"  `a` int NOT NULL,\n" +
@@ -1683,7 +1691,9 @@ var GeneratedColumnTests = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query: "show create table t1",
+				// SHOW CREATE TABLE is MySQL syntax.
+				Dialect: "mysql",
+				Query:   "show create table t1",
 				Expected: []sql.Row{{"t1",
 					"CREATE TABLE `t1` (\n" +
 						"  `a` int NOT NULL,\n" +
@@ -1724,7 +1734,9 @@ var GeneratedColumnTests = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query: "show create table t1",
+				// SHOW CREATE TABLE is MySQL syntax.
+				Dialect: "mysql",
+				Query:   "show create table t1",
 				Expected: []sql.Row{{"t1",
 					"CREATE TABLE `t1` (\n" +
 						"  `a` int NOT NULL,\n" +
