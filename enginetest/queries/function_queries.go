@@ -1886,6 +1886,42 @@ var FunctionQueryTests = []QueryTest{
 		Query:    "select cast('20200101' as date) = cast(20200101 as date)",
 		Expected: []sql.Row{{true}},
 	},
+	{
+		Query: "select cast(cast('2001-02-03 12:34:56.123456' as datetime(6)) as char)",
+		Expected: []sql.Row{
+			{"2001-02-03 12:34:56.123456"},
+		},
+	},
+	{
+		Query: "select cast(cast('2001-02-03 12:34:56.123000' as datetime(6)) as char)",
+		Expected: []sql.Row{
+			{"2001-02-03 12:34:56.123000"},
+		},
+	},
+	{
+		Query: "select cast(cast('2001-02-03 12:34:56.000000' as datetime(6)) as char)",
+		Expected: []sql.Row{
+			{"2001-02-03 12:34:56.000000"},
+		},
+	},
+	{
+		Query: "select cast(cast('0000-01-01' as datetime(6)) as char)",
+		Expected: []sql.Row{
+			{"0000-01-01 00:00:00.000000"},
+		},
+	},
+	{
+		Query: "select cast(cast('0000-01-01' as datetime) as char)",
+		Expected: []sql.Row{
+			{"0000-01-01 00:00:00"},
+		},
+	},
+	{
+		Query: "select cast(cast(101 as date) as char)",
+		Expected: []sql.Row{
+			{"2000-01-01"},
+		},
+	},
 
 	// Additional JSON Function Tests
 	{
