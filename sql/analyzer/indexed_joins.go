@@ -300,6 +300,14 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo, cat sql.Catalog) error {
 			return nil
 		}
 
+		// Same reason the ANTI_JOIN above is not a valid lookup acceptor: a
+		// null-rejecting join has to observe the comparisons that evaluate to
+		// NULL, and a lookup only returns rows whose key matches.
+		if memo.DropsNullRejection(ctx, join.Op, join.Filter) {
+			m.Tracer.Log("Skipping lookup join for %T - join rejects null comparisons", e)
+			return nil
+		}
+
 		tableId, indexes, extraFilters := lookupCandidates(right.First, false)
 		m.Tracer.Log("Found %d index candidates for lookup join", len(indexes))
 
@@ -1159,6 +1167,13 @@ func addMergeJoins(ctx *sql.Context, m *memo.Memo) error {
 
 		if len(join.Filter) == 0 {
 			m.Tracer.Log("Skipping merge join for %T - no filters", e)
+			return nil
+		}
+
+		// A merge join only compares rows whose keys are equal, so it never
+		// observes a comparison that evaluates to NULL.
+		if memo.DropsNullRejection(ctx, join.Op, join.Filter) {
+			m.Tracer.Log("Skipping merge join for %T - join rejects null comparisons", e)
 			return nil
 		}
 
