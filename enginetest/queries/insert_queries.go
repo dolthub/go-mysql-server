@@ -1992,6 +1992,18 @@ var InsertScripts = []ScriptTest{
 			},
 		},
 	},
+	// https://github.com/dolthub/dolt/issues/6500
+	{
+		Name: "Test INSERT aliases in duplicate-key updates",
+		SetUpScript: []string{
+			"CREATE TABLE alias_insert(a INT PRIMARY KEY,b INT,c INT)",
+			"INSERT INTO alias_insert VALUES(1,0,0)",
+			"INSERT INTO alias_insert(a,b,c) VALUES(1,2,3),(4,5,6) AS new(m,n,p) ON DUPLICATE KEY UPDATE c=m+n",
+		},
+		Assertions: []ScriptTestAssertion{
+			{Query: "SELECT * FROM alias_insert ORDER BY a", Expected: []sql.Row{{int32(1), int32(0), int32(3)}, {int32(4), int32(5), int32(6)}}},
+		},
+	},
 	{
 		Name: "Insert throws primary key violations",
 		SetUpScript: []string{
