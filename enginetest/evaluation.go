@@ -655,6 +655,12 @@ func injectBindVarsAndPrepare(
 	var skipTypeConv bool
 	err = sqlparser.Walk(func(n sqlparser.SQLNode) (kontinue bool, err error) {
 		switch sqlVal := n.(type) {
+		case *sqlparser.UnaryExpr:
+			// Character set introducers require a literal, not a bind variable.
+			// Preserve the entire expression, including any COLLATE clause.
+			if strings.HasPrefix(strings.TrimSpace(sqlVal.Operator), "_") {
+				return false, nil
+			}
 		case *sqlparser.SQLVal:
 			if n == nil {
 				return false, nil
