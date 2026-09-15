@@ -278,7 +278,7 @@ END;`,
 				},
 			},
 			{
-				SkipResultCheckOnServerEngine: true, // tracking issue: https://github.com/dolthub/dolt/issues/6918
+				SkipResultCheckOnServerEngine: true, // Affected-row counts still differ over the wire: https://github.com/dolthub/dolt/issues/6918
 				Query:                         "CALL p1(2)",
 				Expected: []sql.Row{
 					{
@@ -572,8 +572,7 @@ END;`,
 				},
 			},
 			{
-				SkipResultCheckOnServerEngine: true, // tracking issue: https://github.com/dolthub/dolt/issues/6918
-				Query:                         "CALL p3()",
+				Query: "CALL p3()",
 				Expected: []sql.Row{
 					{int64(1), "z", "d"},
 					{int64(2), "y", "e"},
@@ -589,8 +588,7 @@ END;`,
 				},
 			},
 			{
-				SkipResultCheckOnServerEngine: true, // tracking issue: https://github.com/dolthub/dolt/issues/6918
-				Query:                         "CALL p5()",
+				Query: "CALL p5()",
 				Expected: []sql.Row{
 					{int64(1), "z", "d"},
 					{int64(2), "y", "e"},
