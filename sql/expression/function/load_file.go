@@ -140,23 +140,13 @@ func (l *LoadFile) getFile(ctx *sql.Context, row sql.Row, secureFileDir string) 
 		return os.Open(fileName)
 	}
 
-	// Open the two directories (secure_file_priv and the file dir) and validate they are the same.
-	sDir, err := os.Open(secureFileDir)
+	// Compare directory identities without retaining open directory handles.
+	sStat, err := os.Stat(secureFileDir)
 	if err != nil {
 		return nil, err
 	}
 
-	sStat, err := sDir.Stat()
-	if err != nil {
-		return nil, err
-	}
-
-	ffDir, err := os.Open(filepath.Dir(fileName))
-	if err != nil {
-		return nil, err
-	}
-
-	fStat, err := ffDir.Stat()
+	fStat, err := os.Stat(filepath.Dir(fileName))
 	if err != nil {
 		return nil, err
 	}
