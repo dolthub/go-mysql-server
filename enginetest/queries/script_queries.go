@@ -4975,7 +4975,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: `CREATE TABLE test SELECT * FROM t1`,
-				Expected: []sql.Row{sql.Row{types.OkResult{
+				Expected: []sql.Row{{types.OkResult{
 					RowsAffected: 3,
 					InsertID:     0,
 					Info:         nil,
@@ -14838,6 +14838,104 @@ select * from t1 except (
 			{
 				Query:    "SELECT id FROM c ORDER BY id",
 				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11771
+		Name: "EXISTS and NOT EXISTS with join and correlated ON clause",
+		SetUpScript: []string{
+			"CREATE TABLE a (id INT PRIMARY KEY)",
+			"CREATE TABLE b (a_id INT, c_id INT)",
+			"CREATE TABLE c (id INT PRIMARY KEY)",
+			"INSERT INTO a VALUES (1), (2)",
+			"INSERT INTO c VALUES (9)",
+			"INSERT INTO b VALUES (1, 9)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT b.a_id, b.c_id FROM b JOIN c ON c.id = b.c_id",
+				Expected: []sql.Row{{1, 9}},
+			},
+			{
+				Query:    "SELECT a.id FROM a WHERE EXISTS (SELECT 1 FROM b JOIN c ON c.id = b.c_id WHERE b.a_id = a.id)",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT a.id FROM a WHERE EXISTS (SELECT 1 FROM b JOIN c ON c.id = b.c_id AND b.a_id = a.id)",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT a.id FROM a WHERE NOT EXISTS (SELECT 1 FROM b JOIN c ON c.id = b.c_id WHERE b.a_id = a.id)",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "SELECT a.id FROM a WHERE NOT EXISTS (SELECT 1 FROM b JOIN c ON c.id = b.c_id AND b.a_id = a.id)",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "SELECT a.id FROM a WHERE EXISTS (SELECT 1 FROM b LEFT JOIN c ON c.id = b.c_id AND b.a_id = a.id) ORDER BY a.id",
+				Expected: []sql.Row{{1}, {2}},
+			},
+			{
+				Query:    "SELECT a.id FROM a WHERE EXISTS (SELECT 1 FROM b WHERE b.a_id = a.id)",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT a.id FROM a WHERE EXISTS (SELECT 1 FROM b JOIN c ON b.a_id = a.id) ORDER BY a.id",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT a.id FROM a WHERE NOT EXISTS (SELECT 1 FROM b JOIN c ON b.a_id = a.id) ORDER BY a.id",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "SELECT a.id FROM a WHERE EXISTS (SELECT 1 FROM b JOIN c ON c.id = b.c_id AND (b.a_id = a.id OR a.id = 99)) ORDER BY a.id",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT a.id FROM a WHERE NOT EXISTS (SELECT 1 FROM b JOIN c ON c.id = b.c_id AND (b.a_id = a.id OR a.id = 99)) ORDER BY a.id",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "SELECT a.id FROM a WHERE EXISTS (SELECT 1 FROM b JOIN c ON c.id = b.c_id AND b.a_id = a.id - 0) ORDER BY a.id",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT a.id FROM a WHERE EXISTS (SELECT 1 FROM b JOIN c ON c.id = b.c_id AND b.a_id = a.id WHERE a.id > 0) ORDER BY a.id",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT a.id FROM a WHERE EXISTS (SELECT 1 FROM b JOIN c ON c.id = b.c_id AND b.a_id = a.id WHERE b.c_id = 9) ORDER BY a.id",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT a.id FROM a WHERE EXISTS (SELECT 1 FROM b JOIN c ON c.id = b.c_id AND b.a_id = a.id WHERE b.c_id = 999) ORDER BY a.id",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT a.id FROM a WHERE EXISTS (SELECT 1 FROM b AS a JOIN c ON c.id = a.c_id AND a.a_id = mydb.a.id) ORDER BY a.id",
+				Expected: []sql.Row{{1}},
+			},
+		},
+	},
+	{
+		Name: "EXISTS with nested inner join on null-supplying side of outer join",
+		SetUpScript: []string{
+			"CREATE TABLE outer_rows (id INT PRIMARY KEY)",
+			"CREATE TABLE left_rows (owner_id INT)",
+			"CREATE TABLE middle (id INT)",
+			"CREATE TABLE right_rows (middle_id INT)",
+			"INSERT INTO outer_rows VALUES (1)",
+			"INSERT INTO left_rows VALUES (1)",
+			"INSERT INTO middle VALUES (7)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT o.id FROM outer_rows o WHERE EXISTS (" +
+					"SELECT 1 FROM left_rows l LEFT JOIN (middle m JOIN right_rows r ON r.middle_id = m.id AND m.id = o.id) ON l.owner_id = o.id" +
+					") ORDER BY o.id",
+				Expected: []sql.Row{{1}},
 			},
 		},
 	},
