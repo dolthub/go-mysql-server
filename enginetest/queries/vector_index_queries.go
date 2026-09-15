@@ -227,6 +227,26 @@ var VectorIndexQueries = []ScriptTest{
 		},
 	},
 	{
+		Name: "vector index projects stored and virtual columns",
+		SetUpScript: []string{
+			"CREATE TABLE projected_vectors(pk INT PRIMARY KEY, label VARCHAR(20) AS(CONCAT('row-', pk)), embedding JSON NOT NULL, payload VARCHAR(20))",
+			"INSERT INTO projected_vectors(pk, embedding, payload) VALUES(1, '[4.0]', 'far'), (2, '[1.0]', 'near')",
+			"CREATE VECTOR INDEX vidx ON projected_vectors(embedding)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:           "SELECT payload FROM projected_vectors ORDER BY VEC_DISTANCE('[0.0]', embedding) LIMIT 2",
+				Expected:        []sql.Row{{"near"}, {"far"}},
+				ExpectedIndexes: []string{"vidx"},
+			},
+			{
+				Query:           "SELECT label, payload, pk FROM projected_vectors ORDER BY VEC_DISTANCE('[0.0]', embedding) LIMIT 2",
+				Expected:        []sql.Row{{"row-2", "near", int32(2)}, {"row-1", "far", int32(1)}},
+				ExpectedIndexes: []string{"vidx"},
+			},
+		},
+	},
+	{
 		Name: "vector index order by fallbacks and other metrics",
 		SetUpScript: []string{
 			"create table vectors (id int primary key, v json not null);",
