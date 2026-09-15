@@ -562,6 +562,22 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 	}
 
 	if vectorPartition, ok := partition.(*vectorPartitionIter); ok {
+		// The lookup expression refers to the analyzer's row layout. Sort full table rows
+		// before applying projections, so resolve its fields against the table schema.
+		orderBy, _, err := transform.Expr(ctx, vectorPartition.OrderBy, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+			if gf, ok := e.(*expression.GetField); ok {
+				idx := data.schema.Schema.IndexOfColName(gf.Name())
+				if idx < 0 {
+					return nil, transform.SameTree, errColumnNotFound.New(gf.Name())
+				}
+				return gf.WithIndex(idx), transform.NewTree, nil
+			}
+			return e, transform.SameTree, nil
+		})
+		if err != nil {
+			return nil, err
+		}
+
 		// Assume only one partition for now
 		allRows := data.partitions[string(data.partitionKeys[0])]
 
@@ -569,8 +585,10 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 		// rows. Built-in types cannot create a vector index over a nullable column, making this a safety check for
 		// them, while integrator types may permit nullable columns.
 		rows := make([]sql.Row, 0, len(allRows))
+		virtualCols := data.virtualColIndexes()
 		for _, row := range allRows {
-			distance, err := vectorPartition.OrderBy.Eval(ctx, row)
+			row = normalizeRowForRead(row, len(data.schema.Schema), virtualCols)
+			distance, err := orderBy.Eval(ctx, row)
 			if err != nil {
 				return nil, err
 			}
@@ -580,7 +598,7 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 		}
 
 		sc := sql.SortConditions{
-			{Expr: vectorPartition.OrderBy, Order: sql.Ascending},
+			{Expr: orderBy, Order: sql.Ascending},
 		}
 
 		if vectorPartition.Limit != nil {
@@ -588,10 +606,10 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 			if err != nil {
 				return nil, err
 			}
-			return iters.NewTopRowsIter(sc, limit, vectorPartition.CalcFoundRows, sql.RowsToRowIter(rows...)), nil
+			return &vectorTableIter{RowIter: iters.NewTopRowsIter(sc, limit, vectorPartition.CalcFoundRows, sql.RowsToRowIter(rows...)), columns: t.columns}, nil
 		}
 
-		return iters.NewSortIter(sc, sql.RowsToRowIter(rows...)), nil
+		return &vectorTableIter{RowIter: iters.NewSortIter(sc, sql.RowsToRowIter(rows...)), columns: t.columns}, nil
 	}
 
 	rows, ok := data.partitions[string(partition.Key())]
@@ -701,6 +719,20 @@ func (p *partitionIter) Next(*sql.Context) (sql.Partition, error) {
 }
 
 func (p *partitionIter) Close(*sql.Context) error { return nil }
+
+// vectorTableIter applies projections after sorting by vector distance.
+type vectorTableIter struct {
+	sql.RowIter
+	columns []int
+}
+
+func (i *vectorTableIter) Next(ctx *sql.Context) (sql.Row, error) {
+	row, err := i.RowIter.Next(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return projectRow(i.columns, row), nil
+}
 
 type tableIter struct {
 	indexValues sql.IndexValueIter
