@@ -669,9 +669,6 @@ func (r *recursiveCteIter) Next(ctx *sql.Context) (sql.Row, error) {
 			}
 		}
 		r.store(row, key)
-		if err != nil {
-			return nil, err
-		}
 		break
 	}
 	return row, nil

@@ -15,6 +15,7 @@
 package types
 
 import (
+	"encoding/hex"
 	"fmt"
 	"strconv"
 	"strings"
@@ -762,7 +763,7 @@ func GeneralizeTypes(a, b sql.Type) sql.Type {
 // TypeAwareConversion converts a value to a specified type, with awareness of the value's original type. This is
 // necessary because some types, such as EnumType and SetType, are stored as ints and require information from the
 // original type to properly convert to strings.
-func TypeAwareConversion(ctx *sql.Context, val interface{}, originalType sql.Type, convertedType sql.Type) (interface{}, sql.ConvertInRange, error) {
+func TypeAwareConversion(ctx *sql.Context, val any, origType, convType sql.Type) (any, sql.ConvertInRange, error) {
 	if val == nil {
 		return nil, sql.InRange, nil
 	}
@@ -770,22 +771,54 @@ func TypeAwareConversion(ctx *sql.Context, val interface{}, originalType sql.Typ
 	// so converting between two of them requires the source type's identity.
 	// Type.Convert only checks whether a value already matches the target type's own native Go
 	// representation, so it can't perform this kind of cross-type conversion.
-	if oet, ok := originalType.(sql.ExtendedType); ok {
-		if cet, ok := convertedType.(sql.ExtendedType); ok {
+	if oet, ok := origType.(sql.ExtendedType); ok {
+		if cet, ok := convType.(sql.ExtendedType); ok {
 			if oet.Equals(cet) {
 				return val, sql.InRange, nil
 			}
 			return cet.ConvertToType(ctx, oet, val, 'a')
 		}
 	}
+
 	var err error
-	if (IsEnum(originalType) || IsSet(originalType)) && IsText(convertedType) {
-		val, _, err = ConvertToCollatedString(ctx, val, originalType)
+	switch {
+	// Binary string blobs represent hexadecimal values when converting to a numeric type
+	case IsBlobType(origType) && IsNumber(convType):
+		if bin, isBinary := val.([]byte); isBinary {
+			strVal := hex.EncodeToString(bin)
+			val, err = strconv.ParseUint(strVal, 16, 64)
+			if err != nil {
+				return nil, sql.InRange, err
+			}
+		}
+	case (IsEnum(origType) || IsSet(origType)) && IsText(convType):
+		val, _, err = ConvertToCollatedString(ctx, val, origType)
+		if err != nil {
+			return nil, sql.InRange, err
+		}
+	case IsTime(origType):
+		dtType, ok := origType.(sql.DatetimeType)
+		if !ok {
+			return nil, sql.InRange, sql.ErrInvalidType.New(val)
+		}
+		timeVal, ok := val.(time.Time)
+		if !ok {
+			return nil, sql.InRange, sql.ErrInvalidType.New(val)
+		}
+		switch {
+		case IsInteger(convType) || IsFloat(convType):
+			val, err = dtType.ToFloat64(timeVal)
+		case IsDecimal(convType):
+			val, err = dtType.ToDecimal(timeVal)
+		case IsText(convType):
+			val, err = dtType.ToString(timeVal)
+		}
 		if err != nil {
 			return nil, sql.InRange, err
 		}
 	}
-	return convertedType.Convert(ctx, val)
+
+	return convType.Convert(ctx, val)
 }
 
 // ConvertOrTruncate converts the value |i| to type |t| and returns the converted value; if the value does not convert

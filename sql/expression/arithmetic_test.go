@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/cockroachdb/apd/v3"
-	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
@@ -29,6 +28,13 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 	_ "github.com/dolthub/go-mysql-server/sql/variables"
+)
+
+var (
+	date2001               = time.Date(2001, time.January, 1, 0, 0, 0, 0, time.UTC)
+	datetime2001noon       = time.Date(2001, time.January, 1, 12, 0, 0, 0, time.UTC)
+	datetime2001noon123    = time.Date(2001, time.January, 1, 12, 0, 0, 123000000, time.UTC)
+	datetime2001noon123456 = time.Date(2001, time.January, 1, 12, 0, 0, 123456000, time.UTC)
 )
 
 func TestPlus(t *testing.T) {
@@ -116,43 +122,38 @@ func TestPlus(t *testing.T) {
 			exp:   uint64(4003),
 		},
 		{
-			left:  NewLiteral("2001-01-01", types.Date),
-			right: NewLiteral("2001-01-01", types.Date),
+			left:  NewLiteral(date2001, types.Date),
+			right: NewLiteral(date2001, types.Date),
 			exp:   int64(40020202),
 		},
 		{
-			skip:  true, // need to trim just the date portion
-			left:  NewLiteral("2001-01-01 12:00:00", types.Date),
-			right: NewLiteral("2001-01-01 12:00:00", types.Date),
+			left:  NewLiteral(datetime2001noon, types.Date),
+			right: NewLiteral(datetime2001noon, types.Date),
 			exp:   int64(40020202),
 		},
 		{
-			skip:  true, // need to trim just the date portion
-			left:  NewLiteral("2001-01-01 12:00:00.123456", types.Date),
-			right: NewLiteral("2001-01-01 12:00:00.123456", types.Date),
+			left:  NewLiteral(datetime2001noon123456, types.Date),
+			right: NewLiteral(datetime2001noon123456, types.Date),
 			exp:   int64(40020202),
 		},
 		{
-			left:  NewLiteral("2001-01-01 12:00:00", types.Datetime),
-			right: NewLiteral("2001-01-01 12:00:00", types.Datetime),
+			left:  NewLiteral(datetime2001noon, types.Datetime),
+			right: NewLiteral(datetime2001noon, types.Datetime),
 			exp:   int64(40020202240000),
 		},
 		{
-			skip:  true, // need to trim just the datetime portion according to precision
-			left:  NewLiteral("2001-01-01 12:00:00.123456", types.Datetime),
-			right: NewLiteral("2001-01-01 12:00:00.123456", types.Datetime),
+			left:  NewLiteral(datetime2001noon123456, types.Datetime),
+			right: NewLiteral(datetime2001noon123456, types.Datetime),
 			exp:   int64(40020202240000),
 		},
 		{
-			skip:  true, // need to trim just the datetime portion according to precision and use as exponent
-			left:  NewLiteral("2001-01-01 12:00:00.123456", types.MustCreateDatetimeType(sqltypes.Datetime, 3)),
-			right: NewLiteral("2001-01-01 12:00:00.123456", types.MustCreateDatetimeType(sqltypes.Datetime, 3)),
+			left:  NewLiteral(datetime2001noon123, types.Datetime3),
+			right: NewLiteral(datetime2001noon123, types.Datetime3),
 			exp:   "40020202240000.246",
 		},
 		{
-			skip:  true, // need to use precision as exponent
-			left:  NewLiteral("2001-01-01 12:00:00.123456", types.DatetimeMaxPrecision),
-			right: NewLiteral("2001-01-01 12:00:00.123456", types.DatetimeMaxPrecision),
+			left:  NewLiteral(datetime2001noon123456, types.DatetimeMaxPrecision),
+			right: NewLiteral(datetime2001noon123456, types.DatetimeMaxPrecision),
 			exp:   "40020202240000.246912",
 		},
 		{
@@ -280,43 +281,41 @@ func TestMinus(t *testing.T) {
 			exp:   uint64(1),
 		},
 		{
-			left:  NewLiteral("2001-01-01", types.Date),
-			right: NewLiteral("2001-01-01", types.Date),
+			left:  NewLiteral(date2001, types.Date),
+			right: NewLiteral(date2001, types.Date),
 			exp:   int64(0),
 		},
 		{
 			skip:  true, // need to trim just the date portion
-			left:  NewLiteral("2001-01-01 12:00:00", types.Date),
-			right: NewLiteral("2001-01-01 12:00:00", types.Date),
+			left:  NewLiteral(datetime2001noon, types.Date),
+			right: NewLiteral(datetime2001noon, types.Date),
 			exp:   int64(0),
 		},
 		{
 			skip:  true, // need to trim just the date portion
-			left:  NewLiteral("2001-01-01 12:00:00.123456", types.Date),
-			right: NewLiteral("2001-01-01 12:00:00.123456", types.Date),
+			left:  NewLiteral(datetime2001noon123456, types.Date),
+			right: NewLiteral(datetime2001noon123456, types.Date),
 			exp:   int64(0),
 		},
 		{
-			left:  NewLiteral("2001-01-01 12:00:00", types.Datetime),
-			right: NewLiteral("2001-01-01 12:00:00", types.Datetime),
+			left:  NewLiteral(datetime2001noon, types.Datetime),
+			right: NewLiteral(datetime2001noon, types.Datetime),
 			exp:   int64(0),
 		},
 		{
-			skip:  true, // need to trim just the datetime portion according to precision
-			left:  NewLiteral("2001-01-01 12:00:00.123456", types.Datetime),
-			right: NewLiteral("2001-01-01 12:00:00.123456", types.Datetime),
+			left:  NewLiteral(datetime2001noon123456, types.Datetime),
+			right: NewLiteral(datetime2001noon123456, types.Datetime),
 			exp:   int64(0),
 		},
 		{
-			skip:  true, // need to trim just the datetime portion according to precision and use as exponent
-			left:  NewLiteral("2001-01-01 12:00:00.123456", types.MustCreateDatetimeType(sqltypes.Datetime, 3)),
-			right: NewLiteral("2001-01-01 12:00:00.123456", types.MustCreateDatetimeType(sqltypes.Datetime, 3)),
+			left:  NewLiteral(datetime2001noon123, types.Datetime3),
+			right: NewLiteral(datetime2001noon123, types.Datetime3),
 			exp:   "0.000",
 		},
 		{
 			skip:  true, // need to use precision as exponent
-			left:  NewLiteral("2001-01-01 12:00:00.123456", types.DatetimeMaxPrecision),
-			right: NewLiteral("2001-01-01 12:00:00.123456", types.DatetimeMaxPrecision),
+			left:  NewLiteral(datetime2001noon123456, types.DatetimeMaxPrecision),
+			right: NewLiteral(datetime2001noon123456, types.DatetimeMaxPrecision),
 			exp:   "0.000000",
 		},
 		{
@@ -450,46 +449,39 @@ func TestMult(t *testing.T) {
 			exp:   uint64(4006002),
 		},
 		{
-			left:  NewLiteral("2001-01-01", types.Date),
-			right: NewLiteral("2001-01-01", types.Date),
+			left:  NewLiteral(date2001, types.Date),
+			right: NewLiteral(date2001, types.Date),
 			exp:   int64(400404142030201),
 		},
 		{
-			skip:  true, // need to trim just the date portion
-			left:  NewLiteral("2001-01-01 12:00:00", types.Date),
-			right: NewLiteral("2001-01-01 12:00:00", types.Date),
+			left:  NewLiteral(datetime2001noon, types.Date),
+			right: NewLiteral(datetime2001noon, types.Date),
 			exp:   int64(400404142030201),
 		},
 		{
-			skip:  true, // need to trim just the date portion
-			left:  NewLiteral("2001-01-01 12:00:00.123456", types.Date),
-			right: NewLiteral("2001-01-01 12:00:00.123456", types.Date),
+			left:  NewLiteral(datetime2001noon123456, types.Date),
+			right: NewLiteral(datetime2001noon123456, types.Date),
 			exp:   int64(400404142030201),
 		},
 		{
-			// MySQL throws out of range
-			skip:  true,
-			left:  NewLiteral("2001-01-01 12:00:00", types.Datetime),
-			right: NewLiteral("2001-01-01 12:00:00", types.Datetime),
-			err:   sql.ErrValueOutOfRange,
+			left:  NewLiteral(datetime2001noon, types.Datetime),
+			right: NewLiteral(datetime2001noon, types.Datetime),
+			err:   sql.ErrIntegerOutOfRange,
 		},
 		{
-			skip:  true, // need to trim just the datetime portion according to precision
-			left:  NewLiteral("2001-01-01 12:00:00.123456", types.Datetime),
-			right: NewLiteral("2001-01-01 12:00:00.123456", types.Datetime),
-			err:   sql.ErrValueOutOfRange,
+			left:  NewLiteral(datetime2001noon123456, types.Datetime),
+			right: NewLiteral(datetime2001noon123456, types.Datetime),
+			err:   sql.ErrIntegerOutOfRange,
 		},
 		{
-			skip:  true, // need to trim just the datetime portion according to precision and use as exponent
-			left:  NewLiteral("2001-01-01 12:00:00.123456", types.MustCreateDatetimeType(sqltypes.Datetime, 3)),
-			right: NewLiteral("2001-01-01 12:00:00.123456", types.MustCreateDatetimeType(sqltypes.Datetime, 3)),
-			exp:   "400404146832630176884875520.015129",
+			left:  NewLiteral(datetime2001noon123, types.Datetime3),
+			right: NewLiteral(datetime2001noon123, types.Datetime3),
+			exp:   "400404146832630176884875520.015129000000",
 		},
 		{
-			skip:  true, // need to use precision as exponent
-			left:  NewLiteral("2001-01-01 12:00:00.123456", types.DatetimeMaxPrecision),
-			right: NewLiteral("2001-01-01 12:00:00.123456", types.DatetimeMaxPrecision),
-			exp:   "400404146832630195134087741.455241383936",
+			left:  NewLiteral(datetime2001noon123456, types.DatetimeMaxPrecision),
+			right: NewLiteral(datetime2001noon123456, types.DatetimeMaxPrecision),
+			exp:   "400404146832630195134087741.455241383936000000",
 		},
 		{
 			left:  NewLiteral("10", types.Text),
@@ -520,7 +512,7 @@ func TestMult(t *testing.T) {
 			result, err := f.Eval(sql.NewEmptyContext(), nil)
 			if tt.err != nil {
 				require.Error(err)
-				require.True(tt.err.Is(err), err.Error())
+				require.True(tt.err.Is(err), fmt.Sprintf("Expected: '%s'\nReceived:'%s'", tt.err, err.Error()))
 				return
 			}
 			require.NoError(err)

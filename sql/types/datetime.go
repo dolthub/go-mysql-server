@@ -29,17 +29,26 @@ import (
 	"github.com/dolthub/vitess/go/vt/proto/query"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/encodings"
 	"github.com/dolthub/go-mysql-server/sql/values"
 )
 
 const (
-	MaxYear              = 9999
-	MaxMonth             = 12
-	MaxDay               = 31
-	MaxHour              = 23
-	MaxMinute            = 59
-	MaxSecond            = 59
+	MaxYear   = 9999
+	MaxMonth  = 12
+	MaxDay    = 31
+	MaxHour   = 23
+	MaxMinute = 59
+	MaxSecond = 59
+
+	// MaxDateWholeScale is the maximum number of digits needed to represent the whole portion of a date
+	MaxDateWholeScale = 8
+	// MaxDatetimeWholeScale is the maximum number of digits needed to represent the whole portion of a datetime
+	MaxDatetimeWholeScale = 14
+	// MaxDatetimePrecision is the maximum number of digits needed to represent the fractional portion of a datetime
 	MaxDatetimePrecision = 6
+	// MaxDatetimeStringLength is the longest the string representation of a datetime should ever be
+	MaxDatetimeStringLength = 25
 )
 
 // TODO: remove these?
@@ -330,9 +339,70 @@ func (t datetimeType) Convert(ctx context.Context, v any) (any, sql.ConvertInRan
 	return resTime, sql.InRange, err // Keep any errors as potential warnings later
 }
 
+// getNumericParts is a helper function for converting Date and Time types to numeric types.
+// Depending on t.baseType, this will return:
+// - |whole| an int64 representing the date (and time) portion
+// - |nsec| an int64 representing the nanoseconds
+func (t datetimeType) getNumericParts(val time.Time) (int64, int64, error) {
+	var nsec int64
+	year, month, day := val.Date()
+	hour, mins, sec := val.Clock()
+	whole := int64(year*100_00 + int(month)*100 + day)
+	switch t.baseType {
+	case sqltypes.Date:
+	case sqltypes.Datetime, sqltypes.Timestamp:
+		whole *= ClockScalar
+		whole += int64(hour*100_00 + mins*100 + sec)
+		nsec = int64(val.Nanosecond())
+	default:
+		return 0, 0, sql.ErrInvalidBaseType.New(t.baseType.String(), "datetime")
+	}
+	return whole, nsec, nil
+}
+
+// ToFloat64 implements the sql.DatetimeType interface.
+// It converts time.Time{} into float64 according to MySQL's behavior.
+func (t datetimeType) ToFloat64(val time.Time) (float64, error) {
+	whole, nsec, err := t.getNumericParts(val)
+	if err != nil {
+		return 0, err
+	}
+	return float64(whole) + float64(nsec)/1e9, nil
+}
+
+// ToDecimal implements the sql.DatetimeType interface.
+// It converts time.Time{} into *apd.Decimal according to MySQL's behavior.
+func (t datetimeType) ToDecimal(val time.Time) (*apd.Decimal, error) {
+	whole, nsec, err := t.getNumericParts(val)
+	if err != nil {
+		return nil, err
+	}
+	res := &apd.Decimal{}
+	_, err = apd.BaseContext.Add(res, apd.New(whole, 0), apd.New(nsec, -9))
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
+}
+
+// ToString implements the sql.DatetimeType interface.
+// It converts time.Time{} into string truncating the values according to the baseType and precision.
+func (t datetimeType) ToString(val time.Time) (string, error) {
+	buf := make([]byte, 0, MaxDatetimeStringLength)
+	switch t.baseType {
+	case sqltypes.Date:
+		buf = appendDateFormat(buf, val)
+	case sqltypes.Datetime, sqltypes.Timestamp:
+		buf = appendDatetimeFormat(buf, val, t.precision)
+	default:
+		return "", sql.ErrInvalidBaseType.New(t.baseType.String(), "datetime")
+	}
+	return encodings.BytesToString(buf), nil
+}
+
 // precisionConversion is a conversion ratio to divide time.Second by to truncate the appropriate amount for the
 // precision of a type with time info
-var precisionConversion = [7]int{
+var precisionConversion = [7]int64{
 	1, 10, 100, 1_000, 10_000, 100_000, 1_000_000,
 }
 

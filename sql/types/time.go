@@ -550,15 +550,14 @@ func appendDigit(v int64, extend int, buf []byte, i int) int {
 	return i + len(tmpBuf)
 }
 
-func appendMicroseconds(dest []byte, microseconds int64, precision int) []byte {
+func appendMicroseconds(dest []byte, micros int64, precision int) []byte {
 	if precision <= 0 {
 		return dest
 	}
-	powersOfTen := []int64{1, 10, 100, 1000, 10000, 100000, 1000000}
-	subSecondSize := powersOfTen[6-precision]
-	subSeconds := microseconds / subSecondSize
+	subSecondSize := precisionConversion[MaxDatetimePrecision-precision]
+	subSeconds := micros / subSecondSize
 	dest = append(dest, '.')
-	cmp := powersOfTen[precision-1]
+	cmp := precisionConversion[precision-1]
 	for cmp > 1 && subSeconds < cmp {
 		dest = append(dest, '0')
 		cmp /= 10

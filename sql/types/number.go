@@ -280,12 +280,6 @@ func (t NumberTypeImpl_) Convert(ctx context.Context, v interface{}) (interface{
 		return nil, sql.InRange, nil
 	}
 
-	// TODO: for Date and Datetime types, MySQL strips delimiters rather than using UNIX time.
-	//  Tracking issue: https://github.com/dolthub/dolt/issues/10278
-	if ti, ok := v.(time.Time); ok {
-		v = ti.UTC().Unix()
-	}
-
 	if jv, ok := v.(sql.JSONWrapper); ok {
 		v, err = jv.ToInterface(ctx)
 		if err != nil {
@@ -983,7 +977,13 @@ func (t NumberTypeImpl_) DisplayWidth() int {
 func convertToInt64(t NumberTypeImpl_, v any, round Round) (int64, sql.ConvertInRange, error) {
 	switch v := v.(type) {
 	case time.Time:
-		return v.UTC().Unix(), sql.InRange, nil
+		// TODO: types.TypeAwareConversion() should be used a majority of the time as the original precision should be
+		//  preserved. Use MaxDatetimePrecision to cover cases that avoid that code path for now.
+		f64, err := DatetimeMaxPrecision.ToFloat64(v)
+		if err != nil {
+			return 0, sql.InRange, err
+		}
+		return int64(f64), sql.InRange, nil
 	case int:
 		return int64(v), sql.InRange, nil
 	case int8:
@@ -1084,7 +1084,13 @@ func convertToInt64(t NumberTypeImpl_, v any, round Round) (int64, sql.ConvertIn
 func convertToUint64(t NumberTypeImpl_, v any, round Round) (uint64, sql.ConvertInRange, error) {
 	switch v := v.(type) {
 	case time.Time:
-		return uint64(v.UTC().Unix()), sql.InRange, nil
+		// TODO: types.TypeAwareConversion() should be used a majority of the time as the original precision should be
+		//  preserved. Use MaxDatetimePrecision to cover cases that avoid that code path for now.
+		f64, err := DatetimeMaxPrecision.ToFloat64(v)
+		if err != nil {
+			return 0, sql.InRange, err
+		}
+		return uint64(f64), sql.InRange, nil
 	case int:
 		if v < 0 {
 			return uint64(v), sql.Underflow, nil
@@ -1214,8 +1220,9 @@ func convertToUint64(t NumberTypeImpl_, v any, round Round) (uint64, sql.Convert
 func convertToFloat64(t NumberTypeImpl_, v interface{}) (float64, error) {
 	switch v := v.(type) {
 	case time.Time:
-		// TODO: This is not how datetime is converted in MySQL https://github.com/dolthub/dolt/issues/10278
-		return float64(v.UTC().Unix()), nil
+		// TODO: types.TypeAwareConversion() should be used a majority of the time as the original precision should be
+		//  preserved. Use MaxDatetimePrecision to cover cases that avoid that code path for now.
+		return DatetimeMaxPrecision.ToFloat64(v)
 	case int:
 		return float64(v), nil
 	case int8:
@@ -1526,20 +1533,4 @@ func TruncateStringToDouble(s string) (string, bool) {
 		return "0", i != n
 	}
 	return s[:i], i != n
-}
-
-// ConvertHexBlobToDecimalForNumericContext converts byte array value to unsigned int value if originType is BLOB type.
-// This function is called when convertTo type is number type only. The hex literal values are parsed into blobs as
-// binary string as default, but for numeric context, the value should be a number.
-// Byte arrays of other SQL types are not handled here.
-func ConvertHexBlobToDecimalForNumericContext(val interface{}, originType sql.Type) (interface{}, error) {
-	if bin, isBinary := val.([]byte); isBinary && IsBlobType(originType) {
-		stringVal := hex.EncodeToString(bin)
-		decimalNum, err := strconv.ParseUint(stringVal, 16, 64)
-		if err != nil {
-			return nil, errors.New("failed to convert hex blob value to unsigned int")
-		}
-		val = decimalNum
-	}
-	return val, nil
 }
