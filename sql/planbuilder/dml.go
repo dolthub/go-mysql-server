@@ -22,8 +22,10 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 const OnDupValuesPrefix = "__new_ins"
@@ -466,24 +468,44 @@ func (b *Builder) assignmentExprsToUpdateExprs(inScope, destScope *scope, tableS
 // addDependentUpdateExprs adds update expressions for any generated columns and ON UPDATE expressions since their
 // values still need to be updated despite not being part of an explicit update expression
 func (b *Builder) addDependentUpdateExprs(inScope *scope, schema sql.Schema, updateExprs []sql.Expression) []sql.Expression {
-	if len(schema) > 0 {
-		for _, col := range schema {
-			var generated *sql.ColumnDefaultValue
-			if col.Generated != nil {
-				generated = b.resolveColumnDefaultExpression(inScope, col, col.Generated)
-			} else if col.OnUpdate != nil {
-				// don't add if column is already being updated
-				if !isColumnUpdated(col, updateExprs) {
-					generated = b.resolveColumnDefaultExpression(inScope, col, col.OnUpdate)
-				}
+	for _, col := range schema {
+		if col.Generated != nil {
+			if expr := b.buildGeneratedExpr(inScope, col, schema); expr != nil {
+				updateExprs = append(updateExprs, expr)
 			}
-			if generated != nil {
-				colExpr := b.buildColumnExpr(inScope, col.Name, col.Source, col.DatabaseSource)
-				updateExprs = append(updateExprs, expression.NewSetField(colExpr, assignColumnIndexes(b.ctx, generated, schema)))
-			}
+		} else if col.OnUpdate != nil && !isColumnUpdated(col, updateExprs) {
+			updateExprs = append(updateExprs, b.buildOnUpdateExpr(inScope, col))
 		}
 	}
 	return updateExprs
+}
+
+// buildGeneratedExpr constructs the update [expression.SetField] for a
+// generated column.
+func (b *Builder) buildGeneratedExpr(inScope *scope, col *sql.Column, schema sql.Schema) sql.Expression {
+	generated := b.resolveColumnDefaultExpression(inScope, col, col.Generated)
+	if generated == nil {
+		return nil
+	}
+	colExpr := b.buildColumnExpr(inScope, col.Name, col.Source, col.DatabaseSource)
+	return expression.NewSetField(colExpr, assignColumnIndexes(b.ctx, generated, schema))
+}
+
+// buildOnUpdateExpr constructs the update [expression.SetField] for a
+// column with an ON UPDATE clause.
+func (b *Builder) buildOnUpdateExpr(inScope *scope, col *sql.Column) sql.Expression {
+	// ON UPDATE synonyms all evaluate to the current timestamp:
+	// https://dev.mysql.com/doc/refman/8.4/en/timestamp-initialization.html
+	var args []sql.Expression
+	if col.OnUpdate.Precision > 0 {
+		args = []sql.Expression{expression.NewLiteral(int64(col.OnUpdate.Precision), types.Int64)}
+	}
+	nowExpr, err := function.NewNow(b.ctx, args...)
+	if err != nil {
+		b.handleErr(err)
+	}
+	colExpr := b.buildColumnExpr(inScope, col.Name, col.Source, col.DatabaseSource)
+	return expression.NewSetField(colExpr, nowExpr)
 }
 
 func isColumnUpdated(col *sql.Column, updateExprs []sql.Expression) bool {

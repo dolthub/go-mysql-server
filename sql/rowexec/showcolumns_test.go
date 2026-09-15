@@ -17,6 +17,7 @@ package rowexec
 import (
 	"testing"
 
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/memory"
@@ -36,6 +37,7 @@ func TestShowColumns(t *testing.T) {
 		{Name: "a", Source: "foo", Type: types.Text, PrimaryKey: true},
 		{Name: "b", Source: "foo", Type: types.Int64, Nullable: true},
 		{Name: "c", Source: "foo", Type: types.Int64, Default: planbuilder.MustStringToColumnDefaultValue(ctx, "1", types.Int64, false)},
+		{Name: "d", Source: "foo", Type: types.Timestamp, OnUpdate: &sqlparser.OnUpdateExpr{Precision: 3}},
 	}
 	table := NewResolvedTable(memory.NewTable(ctx, db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(schema), nil), nil, nil)
 
@@ -52,6 +54,7 @@ func TestShowColumns(t *testing.T) {
 		{"a", "text", "NO", "PRI", nil, ""},
 		{"b", "bigint", "YES", "", nil, ""},
 		{"c", "bigint", "NO", "", "1", ""},
+		{"d", "timestamp", "NO", "", nil, "on update CURRENT_TIMESTAMP(3)"},
 	}
 
 	require.Equal(expected, rows)

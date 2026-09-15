@@ -180,10 +180,8 @@ func NewPartitionedTableWithCollation(ctx *sql.Context, db *BaseDatabase, name s
 			cCopy.Generated = unrDef
 		}
 		if cCopy.OnUpdate != nil {
-			newDef, _, _ := transform.Expr(ctx, cCopy.OnUpdate, stripTblNames)
-			defStr := newDef.String()
-			unrDef := sql.NewUnresolvedColumnDefaultValue(defStr)
-			cCopy.OnUpdate = unrDef
+			prec := *cCopy.OnUpdate
+			cCopy.OnUpdate = &prec
 		}
 		newSchema[i] = cCopy
 	}

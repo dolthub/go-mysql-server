@@ -1473,7 +1473,7 @@ func validateDefaultExprs(col *sql.Column) error {
 	if col.Default == nil {
 		return nil
 	}
-	if !(types.IsDatetimeType(col.Type) || types.IsTimestampType(col.Type)) {
+	if !types.IsDatetimeOrTimestamp(col.Type) {
 		return nil
 	}
 	var colPrec int
@@ -1484,26 +1484,6 @@ func validateDefaultExprs(col *sql.Column) error {
 		return err
 	} else if !isValid {
 		return sql.ErrInvalidColumnDefaultValue.New(col.Name)
-	}
-	return nil
-}
-
-// validateOnUpdateExprs ensures that the Time functions used for OnUpdate for columns is correct
-func validateOnUpdateExprs(col *sql.Column) error {
-	if col.OnUpdate == nil {
-		return nil
-	}
-	if !(types.IsDatetimeType(col.Type) || types.IsTimestampType(col.Type)) {
-		return sql.ErrInvalidOnUpdate.New(col.Name)
-	}
-	var colPrec int
-	if dt, ok := col.Type.(sql.DatetimeType); ok {
-		colPrec = dt.Precision()
-	}
-	if isValid, err := validatePrec(col.OnUpdate.Expr, colPrec); err != nil {
-		return err
-	} else if !isValid {
-		return sql.ErrInvalidOnUpdate.New(col.Name)
 	}
 	return nil
 }
@@ -1631,15 +1611,40 @@ func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, t
 	}
 
 	for i, onUpdateExpr := range updates {
-		schema[i].OnUpdate = b.convertDefaultExpression(outScope, onUpdateExpr, schema[i].Type, schema[i].Nullable)
-		err := validateOnUpdateExprs(schema[i])
-		if err != nil {
-			b.handleErr(err)
+		if onUpdateExpr != nil {
+			onUpdate, ok := onUpdateExpr.(*ast.OnUpdateExpr)
+			if !ok {
+				b.handleErr(sql.ErrInvalidOnUpdate.New(schema[i].Name))
+			}
+			schema[i].OnUpdate = onUpdate
+			err := validateOnUpdateExpr(schema[i])
+			if err != nil {
+				b.handleErr(err)
+			}
 		}
 	}
 
 	pkSch := sql.NewPrimaryKeySchema(schema, getPkOrdinals(tableSpec)...)
 	return pkSch, tableCollation, tblOpts
+}
+
+// validateOnUpdateExpr ensures that the column type is a DATETIME or
+// TIMESTAMP and its precision matches [ast.OnUpdateExpr.Precision].
+func validateOnUpdateExpr(col *sql.Column) error {
+	if col.OnUpdate == nil {
+		return nil
+	}
+	if !types.IsDatetimeOrTimestamp(col.Type) {
+		return sql.ErrInvalidOnUpdate.New(col.Name)
+	}
+	var colPrec int
+	if dt, ok := col.Type.(sql.DatetimeType); ok {
+		colPrec = dt.Precision()
+	}
+	if col.OnUpdate.Precision != colPrec {
+		return sql.ErrInvalidOnUpdate.New(col.Name)
+	}
+	return nil
 }
 
 // jsonTableSpecToSchemaHelper creates a sql.Schema from a parsed TableSpec
@@ -1741,11 +1746,6 @@ func (b *Builder) columnDefinitionToColumn(inScope *scope, cd *ast.ColumnDefinit
 	}
 
 	nullable := !isPkey && !bool(cd.Type.NotNull)
-	extra := ""
-
-	if cd.Type.Autoincrement {
-		extra = "auto_increment"
-	}
 
 	if cd.Type.SRID != nil {
 		sridVal, err := strconv.ParseInt(string(cd.Type.SRID.Val), 10, 32)
@@ -1770,7 +1770,6 @@ func (b *Builder) columnDefinitionToColumn(inScope *scope, cd *ast.ColumnDefinit
 		Nullable:      nullable && !bool(cd.Type.Autoincrement),
 		PrimaryKey:    isPkey,
 		Comment:       comment,
-		Extra:         extra,
 		Hidden:        bool(cd.Type.Invisible),
 	}
 }
@@ -1845,7 +1844,6 @@ func (b *Builder) resolveSchemaDefaults(inScope *scope, schema sql.Schema) sql.S
 		for _, col := range newSch {
 			col.Default = b.resolveColumnDefaultExpression(inScope, col, col.Default)
 			col.Generated = b.resolveColumnDefaultExpression(inScope, col, col.Generated)
-			col.OnUpdate = b.resolveColumnDefaultExpression(inScope, col, col.OnUpdate)
 		}
 	} else {
 		for _, part := range partitions {
@@ -1858,7 +1856,6 @@ func (b *Builder) resolveSchemaDefaults(inScope *scope, schema sql.Schema) sql.S
 			for _, col := range newSch[start:end] {
 				col.Default = b.resolveColumnDefaultExpression(subScope, col, col.Default)
 				col.Generated = b.resolveColumnDefaultExpression(subScope, col, col.Generated)
-				col.OnUpdate = b.resolveColumnDefaultExpression(subScope, col, col.OnUpdate)
 			}
 		}
 	}

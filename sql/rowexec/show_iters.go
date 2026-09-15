@@ -458,19 +458,11 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 			}
 		}
 
-		var onUpdateStr string
-		if col.OnUpdate != nil {
-			onUpdateStr, err = convertColumnDefaultToString(ctx, col.OnUpdate)
-			if err != nil {
-				return "", err
-			}
-		}
-
 		if col.PrimaryKey && len(pkSchema.Schema) == 0 {
 			pkOrdinals = append(pkOrdinals, idx)
 		}
 
-		colStmts = append(colStmts, i.formatter.GenerateCreateTableColumnDefinition(col, colDefaultStr, onUpdateStr, tableCollation))
+		colStmts = append(colStmts, i.formatter.GenerateCreateTableColumnDefinition(col, colDefaultStr, tableCollation))
 	}
 
 	for _, idx := range pkOrdinals {
