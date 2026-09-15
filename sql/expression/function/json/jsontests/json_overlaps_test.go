@@ -23,7 +23,9 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/json"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestJSONOverlaps(t *testing.T) {
@@ -252,4 +254,44 @@ func TestJSONOverlaps(t *testing.T) {
 			require.Equal(tt.exp, result)
 		})
 	}
+}
+
+// TestJSONOverlapsExactDecimals verifies overlap comparisons without decimal rounding.
+func TestJSONOverlapsExactDecimals(t *testing.T) {
+	fields := []sql.Expression{
+		expression.NewGetField(0, types.JSON, "left", false),
+		expression.NewGetField(1, types.JSON, "right", false),
+	}
+	fn, err := json.NewJSONOverlaps(sql.NewEmptyContext(), fields...)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name     string
+		left     string
+		right    string
+		expected bool
+	}{
+		{name: "equal scale", left: `9007199254740992.10`, right: `9007199254740992.1`, expected: true},
+		{name: "adjacent", left: `9007199254740992.1`, right: `9007199254740992.2`, expected: false},
+		{name: "nested object", left: `{"nested":{"n":1234567890.123456789}}`, right: `{"nested":{"n":1234567890.1234567890}}`, expected: true},
+		{name: "nested array equal", left: `[9007199254740992.1]`, right: `[9007199254740992.10]`, expected: true},
+		{name: "nested array adjacent", left: `[9007199254740992.1]`, right: `[9007199254740992.2]`, expected: false},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			left := preciseJSONDocument(t, test.left)
+			right := preciseJSONDocument(t, test.right)
+			actual, err := fn.Eval(sql.NewEmptyContext(), sql.Row{left, right})
+			require.NoError(t, err)
+			require.Equal(t, test.expected, actual)
+		})
+	}
+}
+
+// preciseJSONDocument parses an exact-decimal JSON test value.
+func preciseJSONDocument(t *testing.T, input string) types.JSONDocument {
+	t.Helper()
+	var value any
+	require.NoError(t, types.JsonUnmarshalPreserveNumberPrecision([]byte(input), &value))
+	return types.JSONDocument{Val: value}
 }
