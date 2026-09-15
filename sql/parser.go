@@ -59,7 +59,7 @@ type SchemaFormatter interface {
 	GenerateCreateTableStatement(tblName string, colStmts []string, temp, autoInc, tblCharsetName, tblCollName, comment string) string
 	// GenerateCreateTableColumnDefinition returns column definition string for 'CREATE TABLE' statement for given column.
 	// This part comes first in the 'CREATE TABLE' statement.
-	GenerateCreateTableColumnDefinition(col *Column, colDefault, onUpdate string, tableCollation CollationID) string
+	GenerateCreateTableColumnDefinition(col *Column, colDefault string, tableCollation CollationID) string
 	// GenerateCreateTablePrimaryKeyDefinition returns primary key definition string for 'CREATE TABLE' statement
 	// for given column(s). This part comes after each column definitions.
 	GenerateCreateTablePrimaryKeyDefinition(pkCols []string) string
@@ -190,7 +190,7 @@ func (m *MySqlSchemaFormatter) GenerateCreateTableStatement(tblName string, colS
 }
 
 // GenerateCreateTableColumnDefinition implements the SchemaFormatter interface.
-func (m *MySqlSchemaFormatter) GenerateCreateTableColumnDefinition(col *Column, colDefault, onUpdate string, tableCollation CollationID) string {
+func (m *MySqlSchemaFormatter) GenerateCreateTableColumnDefinition(col *Column, colDefault string, tableCollation CollationID) string {
 	var colTypeString string
 	if collationType, ok := col.Type.(TypeWithCollation); ok {
 		colTypeString = collationType.StringWithTableCollation(tableCollation)
@@ -225,7 +225,7 @@ func (m *MySqlSchemaFormatter) GenerateCreateTableColumnDefinition(col *Column, 
 	}
 
 	if col.OnUpdate != nil {
-		stmt = fmt.Sprintf("%s ON UPDATE %s", stmt, onUpdate)
+		stmt = fmt.Sprintf("%s ON UPDATE %s", stmt, ast.String(col.OnUpdate))
 	}
 
 	if col.Comment != "" {

@@ -20,8 +20,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dolthub/vitess/go/vt/sqlparser"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -460,16 +458,11 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 			}
 		}
 
-		var onUpdateStr string
-		if col.OnUpdate != nil {
-			onUpdateStr = sqlparser.String(col.OnUpdate)
-		}
-
 		if col.PrimaryKey && len(pkSchema.Schema) == 0 {
 			pkOrdinals = append(pkOrdinals, idx)
 		}
 
-		colStmts = append(colStmts, i.formatter.GenerateCreateTableColumnDefinition(col, colDefaultStr, onUpdateStr, tableCollation))
+		colStmts = append(colStmts, i.formatter.GenerateCreateTableColumnDefinition(col, colDefaultStr, tableCollation))
 	}
 
 	for _, idx := range pkOrdinals {
