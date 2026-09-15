@@ -1021,6 +1021,12 @@ var (
 	// ErrDistinctOnMatchOrderBy is returned when DISTINCT ON does not match the initial ORDER BY expressions
 	ErrDistinctOnMatchOrderBy = errors.NewKind("SELECT DISTINCT ON expressions must match initial ORDER BY expressions")
 
+	// ErrInvalidReplicationFilter is returned when a wildcard table filter is missing its database and table separator.
+	ErrInvalidReplicationFilter = newMySQLKind("Supplied filter list contains a value which is not in the required format 'db_pattern.table_pattern'", 3067, "HY000")
+
+	// ErrReplicaRunning is returned when replica configuration is changed while the replica SQL thread is running.
+	ErrReplicaRunning = newMySQLKind("This operation cannot be performed with a running replica sql thread; run STOP REPLICA SQL_THREAD FOR CHANNEL '' first.", 3085, "HY000")
+
 	// ErrWrongDBName is returned for illegal database names with the [mysql.ERWrongDbName] error code and [mysql.SSClientError] SQLSTATE.
 	ErrWrongDBName = newMySQLKind("Incorrect database name '%s'", mysql.ERWrongDbName, mysql.SSClientError)
 
