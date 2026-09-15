@@ -22,6 +22,49 @@ import (
 
 var GeneratedColumnTests = []ScriptTest{
 	{
+		Name: "modify stored generated enum evaluates new expression",
+		SetUpScript: []string{
+			"create table t (id int primary key, z enum('a', 'b') as ('a') stored, w varchar(10) as (concat(z)) stored)",
+			"insert into t (id) values (1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{Query: "alter table t modify column z enum('b', 'a') as ('a') stored", Expected: []sql.Row{{types.NewOkResult(0)}}},
+			{Query: "select id, z, w from t", Expected: []sql.Row{{1, "a", "a"}}},
+			{Query: "alter table t modify column z enum('b') as ('b') stored", Expected: []sql.Row{{types.NewOkResult(0)}}},
+			{Query: "select id, z, w from t", Expected: []sql.Row{{1, "b", "b"}}},
+		},
+	},
+	{
+		Name: "modify stored generated expression rebuilds rows and indexes",
+		SetUpScript: []string{
+			"create table t (id int primary key, x int, y int, z int as (x + y) stored, index iz (z))",
+			"insert into t (id, x, y) values (1, 2, 3), (2, 10, 20), (3, null, 4)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{Query: "alter table t modify column z int as (x * y) stored", Expected: []sql.Row{{types.NewOkResult(0)}}},
+			{Query: "select id, z, x * y from t order by id", Expected: []sql.Row{{1, 6, 6}, {2, 200, 200}, {3, nil, nil}}},
+			{Query: "select id from t where z = 6", Expected: []sql.Row{{1}}, ExpectedIndexes: []string{"iz"}},
+			{Query: "select id from t where z = 5", Expected: []sql.Row{}, ExpectedIndexes: []string{"iz"}},
+			{Query: "select id from t where z = 200", Expected: []sql.Row{{2}}, ExpectedIndexes: []string{"iz"}},
+			{Query: "select id from t where z = 30", Expected: []sql.Row{}, ExpectedIndexes: []string{"iz"}},
+		},
+	},
+	{
+		Name: "change stored generated expression rebuilds dependent columns",
+		SetUpScript: []string{
+			"create table t (id int primary key, x int, y int, z int as (x + y) stored, w int as (z + 1) stored, v int as (w + 1) virtual, index iz (z), index iw (w))",
+			"insert into t (id, x, y) values (1, 2, 3), (2, 10, 20)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{Query: "alter table t change column z z int as (x * y) stored", Expected: []sql.Row{{types.NewOkResult(0)}}},
+			{Query: "select id, z, w, v from t order by id", Expected: []sql.Row{{1, 6, 7, 8}, {2, 200, 201, 202}}},
+			{Query: "select id from t where z = 6", Expected: []sql.Row{{1}}, ExpectedIndexes: []string{"iz"}},
+			{Query: "select id from t where z = 5", Expected: []sql.Row{}, ExpectedIndexes: []string{"iz"}},
+			{Query: "select id from t where w = 7", Expected: []sql.Row{{1}}, ExpectedIndexes: []string{"iw"}},
+			{Query: "select id from t where w = 6", Expected: []sql.Row{}, ExpectedIndexes: []string{"iw"}},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/11388
 		Name:    "empty insert with default and generated columns",
 		Dialect: "mysql",
