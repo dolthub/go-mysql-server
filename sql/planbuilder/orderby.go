@@ -142,10 +142,13 @@ func (b *Builder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy)
 				//  get fields outside of aggs need to be in extra cols
 				switch e := e.(type) {
 				case *expression.GetField:
-					c, ok := fromScope.resolveColumn("", strings.ToLower(e.Table()), strings.ToLower(e.Name()), true, false)
+					c, ok := fromScope.getCol(e.Id())
 					if !ok {
-						err := sql.ErrColumnNotFound.New(e.Name)
-						b.handleErr(err)
+						c, ok = fromScope.resolveColumn("", strings.ToLower(e.Table()), strings.ToLower(e.Name()), true, false)
+						if !ok {
+							err := sql.ErrColumnNotFound.New(e.Name())
+							b.handleErr(err)
+						}
 					}
 					fromScope.addExtraColumn(c)
 				case sql.WindowAdaptableExpression:
