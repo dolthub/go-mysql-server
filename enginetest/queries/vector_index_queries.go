@@ -335,7 +335,7 @@ var VectorIndexQueries = []ScriptTest{
 		},
 	},
 	{
-		Name: "vector index with null query vector",
+		Name: "vector index with SQL NULL and JSON null",
 		SetUpScript: []string{
 			"create table vectors (id int primary key, v json not null);",
 			`insert into vectors values (1, '[1.0,2.0]');`,
@@ -349,6 +349,15 @@ var VectorIndexQueries = []ScriptTest{
 					{1, types.MustJSON(`[1.0, 2.0]`)},
 				},
 				ExpectedIndexes: []string{},
+			},
+			{
+				Query:    "select VEC_DISTANCE(NULL, v) from vectors",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				// JSON null is a JSON value, not SQL NULL, and cannot be converted to a vector.
+				Query:          "select VEC_DISTANCE('[0.0,0.0]', CAST('null' AS JSON))",
+				ExpectedErrStr: "can't convert JSON to vector; expected array, got <nil>",
 			},
 		},
 	},

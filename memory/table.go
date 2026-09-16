@@ -581,9 +581,10 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 		// Assume only one partition for now
 		allRows := data.partitions[string(data.partitionKeys[0])]
 
-		// A vector index contains no entry for a row whose indexed value is NULL, so an index scan never returns those
+		// A vector index contains no entry for a row whose indexed value is SQL NULL, so an index scan never returns those
 		// rows. Built-in types cannot create a vector index over a nullable column, making this a safety check for
-		// them, while integrator types may permit nullable columns.
+		// them, while integrator types may permit nullable columns. JSON null is not SQL NULL:
+		// it is an invalid vector and must still report a conversion error.
 		rows := make([]sql.Row, 0, len(allRows))
 		virtualCols := data.virtualColIndexes()
 		for _, row := range allRows {
