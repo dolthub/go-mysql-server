@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2026 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -99,7 +99,7 @@ func (ut *UTCTimestamp) Resolved() bool { return true }
 func (ut *UTCTimestamp) Children() []sql.Expression { return nil }
 
 // Eval implements the sql.Expression interface.
-func (ut *UTCTimestamp) Eval(ctx *sql.Context, _ sql.Row) (interface{}, error) {
+func (ut *UTCTimestamp) Eval(ctx *sql.Context, _ sql.Row) (any, error) {
 	t := ctx.QueryTime()
 	// TODO: UTC Timestamp needs to also handle precision arguments
 	nano := 1000 * (t.Nanosecond() / 1000)

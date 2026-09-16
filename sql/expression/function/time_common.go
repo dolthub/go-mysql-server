@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2026 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -36,7 +36,7 @@ var ErrUnknownType = errors.NewKind("function '%s' encountered unknown type %T")
 var ErrTooHighPrecision = errors.NewKind("Too-big precision %d for '%s'. Maximum is %d.")
 
 // getDate converts |val| to a datetime value, returning a nil value and warning the session if it cannot be converted.
-func getDate(ctx *sql.Context, val interface{}) (interface{}, error) {
+func getDate(ctx *sql.Context, val any) (any, error) {
 	if val == nil {
 		return nil, nil
 	}
@@ -54,7 +54,7 @@ func getDate(ctx *sql.Context, val interface{}) (interface{}, error) {
 func getDatePart(ctx *sql.Context,
 	u expression.UnaryExpressionStub,
 	row sql.Row,
-	f func(interface{}) interface{}) (interface{}, error) {
+	f func(any) any) (any, error) {
 	val, err := u.Child.Eval(ctx, row)
 	if err != nil {
 		return nil, err
@@ -76,8 +76,8 @@ func getDatePart(ctx *sql.Context,
 }
 
 // datePartFunc converts |fn| into a function that extracts a part of a date value, passing nil values through untouched.
-func datePartFunc(fn func(time.Time) interface{}) func(interface{}) interface{} {
-	return func(v interface{}) interface{} {
+func datePartFunc(fn func(time.Time) any) func(any) any {
+	return func(v any) any {
 		if v == nil {
 			return nil
 		}
@@ -87,52 +87,52 @@ func datePartFunc(fn func(time.Time) interface{}) func(interface{}) interface{} 
 }
 
 var (
-	year = datePartFunc(func(t time.Time) interface{} {
+	year = datePartFunc(func(t time.Time) any {
 		if t.Equal(types.ZeroTime) {
 			return 0
 		}
 		return t.Year()
 	})
-	month = datePartFunc(func(t time.Time) interface{} {
+	month = datePartFunc(func(t time.Time) any {
 		if t.Equal(types.ZeroTime) {
 			return 0
 		}
 		return int(t.Month())
 	})
-	day = datePartFunc(func(t time.Time) interface{} {
+	day = datePartFunc(func(t time.Time) any {
 		if t.Equal(types.ZeroTime) {
 			return 0
 		}
 		return t.Day()
 	})
-	weekday = datePartFunc(func(t time.Time) interface{} {
+	weekday = datePartFunc(func(t time.Time) any {
 		if t.Equal(types.ZeroTime) {
 			return nil
 		}
 		return (int(t.Weekday()) + 6) % 7
 	})
-	hour      = datePartFunc(func(t time.Time) interface{} { return t.Hour() })
-	minute    = datePartFunc(func(t time.Time) interface{} { return t.Minute() })
-	second    = datePartFunc(func(t time.Time) interface{} { return t.Second() })
-	dayOfWeek = datePartFunc(func(t time.Time) interface{} {
+	hour      = datePartFunc(func(t time.Time) any { return t.Hour() })
+	minute    = datePartFunc(func(t time.Time) any { return t.Minute() })
+	second    = datePartFunc(func(t time.Time) any { return t.Second() })
+	dayOfWeek = datePartFunc(func(t time.Time) any {
 		if t.Equal(types.ZeroTime) {
 			return nil
 		}
 		return int(t.Weekday()) + 1
 	})
-	dayOfYear = datePartFunc(func(t time.Time) interface{} {
+	dayOfYear = datePartFunc(func(t time.Time) any {
 		if t.Equal(types.ZeroTime) {
 			return nil
 		}
 		return t.YearDay()
 	})
-	quarter = datePartFunc(func(t time.Time) interface{} {
+	quarter = datePartFunc(func(t time.Time) any {
 		if t.Equal(types.ZeroTime) {
 			return 0
 		}
 		return (int(t.Month())-1)/3 + 1
 	})
-	microsecond = datePartFunc(func(t time.Time) interface{} {
+	microsecond = datePartFunc(func(t time.Time) any {
 		return uint64(t.Nanosecond()) / uint64(time.Microsecond)
 	})
 )

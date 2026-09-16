@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2026 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -76,7 +76,7 @@ func (*YearWeek) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 }
 
 // Eval implements the Expression interface.
-func (d *YearWeek) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+func (d *YearWeek) Eval(ctx *sql.Context, row sql.Row) (any, error) {
 	dateVal, err := d.date.Eval(ctx, row)
 	if err != nil {
 		return nil, err

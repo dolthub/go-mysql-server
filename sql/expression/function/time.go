@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2020-2026 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -64,7 +64,7 @@ func (*Time) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID,
 }
 
 // Eval implements the Expression interface.
-func (t *Time) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+func (t *Time) Eval(ctx *sql.Context, row sql.Row) (any, error) {
 	v, err := t.UnaryExpressionStub.Child.Eval(ctx, row)
 	if err != nil {
 		return nil, err
