@@ -242,6 +242,36 @@ ORDER BY id;`,
 		},
 	},
 	{
+		Name: "window function and correlated scalar subquery writes (CTAS and INSERT SELECT)",
+		SetUpScript: []string{
+			"CREATE TABLE m0 (id INT PRIMARY KEY, c0 INT)",
+			"INSERT INTO m0 VALUES (1, 10), (2, 20)",
+			"CREATE TABLE r (id INT PRIMARY KEY, rn INT, c INT)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CREATE TABLE c AS SELECT id, " +
+					"ROW_NUMBER() OVER (ORDER BY id) AS rn, " +
+					"(SELECT COUNT(*) FROM m0 x WHERE x.c0 = m0.c0) AS c " +
+					"FROM m0",
+			},
+			{
+				Query:    "SELECT id, c FROM c ORDER BY id",
+				Expected: []sql.Row{{1, 1}, {2, 1}},
+			},
+			{
+				Query: "INSERT INTO r SELECT id, " +
+					"ROW_NUMBER() OVER (ORDER BY id), " +
+					"(SELECT COUNT(*) FROM m0 x WHERE x.c0 = m0.c0) " +
+					"FROM m0",
+			},
+			{
+				Query:    "SELECT id, rn, c FROM r ORDER BY id",
+				Expected: []sql.Row{{1, 1, 1}, {2, 2, 1}},
+			},
+		},
+	},
+	{
 		Name: "ceil and floor do not mutate shared decimal window results",
 		SetUpScript: []string{
 			"CREATE TABLE decimal_window_values (id BIGINT, d DECIMAL(10,2))",
