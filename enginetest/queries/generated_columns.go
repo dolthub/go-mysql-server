@@ -1980,6 +1980,24 @@ var GeneratedColumnTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "information_schema.columns describes generated columns",
+		SetUpScript: []string{
+			"create table t1 (a int primary key, b int generated always as (a + 1) stored, c int as (a * 2) virtual, d int as (0) stored, e int default (a + 1))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select column_name, column_default, extra, generation_expression from information_schema.columns where table_name = 't1' order by ordinal_position",
+				Expected: []sql.Row{
+					{"a", nil, "", ""},
+					{"b", nil, "STORED GENERATED", "(`a` + 1)"},
+					{"c", nil, "VIRTUAL GENERATED", "(`a` * 2)"},
+					{"d", nil, "STORED GENERATED", "0"},
+					{"e", "(`a` + 1)", "DEFAULT_GENERATED", ""},
+				},
+			},
+		},
+	},
 }
 
 var BrokenGeneratedColumnTests = []ScriptTest{
