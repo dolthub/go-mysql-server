@@ -1741,11 +1741,6 @@ func (b *Builder) columnDefinitionToColumn(inScope *scope, cd *ast.ColumnDefinit
 	}
 
 	nullable := !isPkey && !bool(cd.Type.NotNull)
-	extra := ""
-
-	if cd.Type.Autoincrement {
-		extra = "auto_increment"
-	}
 
 	if cd.Type.SRID != nil {
 		sridVal, err := strconv.ParseInt(string(cd.Type.SRID.Val), 10, 32)
@@ -1770,7 +1765,6 @@ func (b *Builder) columnDefinitionToColumn(inScope *scope, cd *ast.ColumnDefinit
 		Nullable:      nullable && !bool(cd.Type.Autoincrement),
 		PrimaryKey:    isPkey,
 		Comment:       comment,
-		Extra:         extra,
 		Hidden:        bool(cd.Type.Invisible),
 	}
 }

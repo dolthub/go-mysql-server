@@ -2120,8 +2120,8 @@ Create table myTable
  ├─ Columns
  │   ├─ Name: a, Source: myTable, Type: int, PrimaryKey: true, Nullable: false, Comment: , Default: Generated: , AutoIncrement: false, Extra: 
  │   ├─ Name: b, Source: myTable, Type: int, PrimaryKey: false, Nullable: true, Comment: , Default: Generated: , AutoIncrement: false, Extra: 
- │   ├─ Name: c, Source: myTable, Type: int, PrimaryKey: false, Nullable: true, Comment: , Default: Generated: parenthesized(((mytable.a:0!null + mytable.b:1) + 1 (tinyint))), AutoIncrement: false, Extra: 
- │   └─ Name: d, Source: myTable, Type: int, PrimaryKey: false, Nullable: true, Comment: , Default: parenthesized((mytable.b:1 + 1 (tinyint)))Generated: , AutoIncrement: false, Extra: 
+ │   ├─ Name: c, Source: myTable, Type: int, PrimaryKey: false, Nullable: true, Comment: , Default: Generated: parenthesized(((mytable.a:0!null + mytable.b:1) + 1 (tinyint))), AutoIncrement: false, Extra: VIRTUAL GENERATED
+ │   └─ Name: d, Source: myTable, Type: int, PrimaryKey: false, Nullable: true, Comment: , Default: parenthesized((mytable.b:1 + 1 (tinyint)))Generated: , AutoIncrement: false, Extra: DEFAULT_GENERATED
  └─ CheckConstraints
      └─ CHECK GreaterThan
          ├─ (mytable.b:1 + mytable.d:3)

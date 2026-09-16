@@ -40,3 +40,19 @@ func TestIsHiddenSystemColumnForIndex(t *testing.T) {
 	require.False(t, IsHiddenSystemColumnForIndex("!hidden!idx10!0!0", "idx1"))
 	require.False(t, IsHiddenSystemColumnForIndex("c1", "idx1"))
 }
+
+func TestColumnCopy(t *testing.T) {
+	col := &Column{
+		Name:      "ts",
+		Default:   &ColumnDefaultValue{Literal: true},
+		Generated: &ColumnDefaultValue{Literal: false},
+		OnUpdate:  NewUnresolvedColumnDefaultValue("NOW(3)"),
+	}
+	copied := col.Copy()
+
+	require.Equal(t, col, copied)
+	require.False(t, col == copied)
+	require.False(t, col.Default == copied.Default)
+	require.False(t, col.Generated == copied.Generated)
+	require.False(t, col.OnUpdate == copied.OnUpdate)
+}
