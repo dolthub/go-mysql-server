@@ -847,10 +847,9 @@ func TestJsonScripts(t *testing.T) {
 	enginetest.TestJsonScripts(t, enginetest.NewDefaultMemoryHarness(), skippedTests)
 }
 
-// TestJsonScriptsPrepared runs JSON scripts through prepared execution.
-func TestJsonScriptsPrepared(t *testing.T) {
-	var skippedTests []string = nil
-	enginetest.TestJsonScriptsPrepared(t, enginetest.NewDefaultMemoryHarness(), skippedTests)
+// TestJsonPrecisionScriptPrepared verifies exact decimal JSON behavior through prepared execution.
+func TestJsonPrecisionScriptPrepared(t *testing.T) {
+	enginetest.TestScriptPrepared(t, enginetest.NewDefaultMemoryHarness(), queries.JsonPrecisionScript)
 }
 
 func TestShowTableStatus(t *testing.T) {
