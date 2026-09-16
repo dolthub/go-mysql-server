@@ -24,35 +24,23 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func TestTime(t *testing.T) {
+func TestTimeToSec(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	f := NewTime(ctx, expression.NewGetField(0, types.LongText, "foo", false))
+	f := NewTimeToSec(ctx, expression.NewGetField(0, types.LongText, "foo", true))
 
-	testCases := []struct {
+	for _, tt := range []struct {
 		name     string
-		row      sql.Row
+		value    interface{}
 		expected interface{}
-		err      bool
 	}{
-		{"null date", sql.NewRow(nil), nil, false},
-		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, false},
-		{"time as string", sql.NewRow(stringDate), "14:15:16", false},
-	}
-
-	for _, tt := range testCases {
+		{"null", nil, nil},
+		{"ordinary time", "01:02:03", uint64(3723)},
+		{"extended hours", "25:00:00", uint64(90000)},
+	} {
 		t.Run(tt.name, func(t *testing.T) {
-			require := require.New(t)
-			val, err := f.Eval(ctx, tt.row)
-			if tt.err {
-				require.Error(err)
-			} else {
-				require.NoError(err)
-				if v, ok := val.(types.Timespan); ok {
-					require.Equal(tt.expected, v.String())
-				} else {
-					require.Equal(tt.expected, val)
-				}
-			}
+			actual, err := f.Eval(ctx, sql.NewRow(tt.value))
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, actual)
 		})
 	}
 }

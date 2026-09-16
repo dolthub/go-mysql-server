@@ -24,9 +24,10 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func TestTime(t *testing.T) {
+func TestYearWeek(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	f := NewTime(ctx, expression.NewGetField(0, types.LongText, "foo", false))
+	f, err := NewYearWeek(ctx, expression.NewGetField(0, types.LongText, "foo", false))
+	require.NoError(t, err)
 
 	testCases := []struct {
 		name     string
@@ -36,7 +37,7 @@ func TestTime(t *testing.T) {
 	}{
 		{"null date", sql.NewRow(nil), nil, false},
 		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, false},
-		{"time as string", sql.NewRow(stringDate), "14:15:16", false},
+		{"date as string", sql.NewRow(stringDate), int32(200653), false},
 	}
 
 	for _, tt := range testCases {
@@ -47,11 +48,7 @@ func TestTime(t *testing.T) {
 				require.Error(err)
 			} else {
 				require.NoError(err)
-				if v, ok := val.(types.Timespan); ok {
-					require.Equal(tt.expected, v.String())
-				} else {
-					require.Equal(tt.expected, val)
-				}
+				require.Equal(tt.expected, val)
 			}
 		})
 	}

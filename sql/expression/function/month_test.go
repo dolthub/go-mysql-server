@@ -16,6 +16,7 @@ package function
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -24,9 +25,10 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func TestTime(t *testing.T) {
+func TestTime_Month(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	f := NewTime(ctx, expression.NewGetField(0, types.LongText, "foo", false))
+	f := NewMonth(ctx, expression.NewGetField(0, types.LongText, "foo", false))
+	nowTime := time.Now().UTC()
 
 	testCases := []struct {
 		name     string
@@ -36,7 +38,8 @@ func TestTime(t *testing.T) {
 	}{
 		{"null date", sql.NewRow(nil), nil, false},
 		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, false},
-		{"time as string", sql.NewRow(stringDate), "14:15:16", false},
+		{"date as string", sql.NewRow(stringDate), 1, false},
+		{"date as time", sql.NewRow(nowTime), int(nowTime.Month()), false},
 	}
 
 	for _, tt := range testCases {
@@ -47,11 +50,7 @@ func TestTime(t *testing.T) {
 				require.Error(err)
 			} else {
 				require.NoError(err)
-				if v, ok := val.(types.Timespan); ok {
-					require.Equal(tt.expected, v.String())
-				} else {
-					require.Equal(tt.expected, val)
-				}
+				require.Equal(tt.expected, val)
 			}
 		})
 	}
