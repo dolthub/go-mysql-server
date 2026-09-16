@@ -205,9 +205,9 @@ func (c ColumnsTable) WithDefaultsSchema(sch sql.Schema) (sql.Table, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(sch), len(c.allColsWithDefaultValue))
 	}
 
-	// TODO: generated values
 	for i, col := range sch {
 		c.allColsWithDefaultValue[i].Default = col.Default
+		c.allColsWithDefaultValue[i].Generated = col.Generated
 	}
 	return &c, nil
 }
@@ -287,6 +287,16 @@ func getRowFromColumn(ctx *sql.Context, curOrdPos int, col *sql.Column, catName,
 		extra = "DEFAULT_GENERATED"
 	}
 
+	var generationExpression interface{} = ""
+	if col.Generated != nil {
+		generationExpression = GetColumnDefault(ctx, col.Generated) // Always returns either nil or a string
+		if col.Virtual {
+			extra = "VIRTUAL GENERATED"
+		} else {
+			extra = "STORED GENERATED"
+		}
+	}
+
 	var curColPrivStr []string
 	for p := range privSetMap {
 		curColPrivStr = append(curColPrivStr, p)
@@ -304,28 +314,28 @@ func getRowFromColumn(ctx *sql.Context, curOrdPos int, col *sql.Column, catName,
 	privileges := strings.Join(curColPrivStr, ",")
 
 	return sql.Row{
-		catName,           // table_catalog
-		schName,           // table_schema
-		tblName,           // table_name
-		col.Name,          // column_name
-		ordinalPos,        // ordinal_position
-		columnDefault,     // column_default
-		nullable,          // is_nullable
-		dataType,          // data_type
-		charMaxLen,        // character_maximum_length
-		charOctetLen,      // character_octet_length
-		numericPrecision,  // numeric_precision
-		numericScale,      // numeric_scale
-		datetimePrecision, // datetime_precision
-		charName,          // character_set_name
-		collName,          // collation_name
-		colType,           // column_type
-		columnKey,         // column_key
-		extra,             // extra
-		privileges,        // privileges
-		col.Comment,       // column_comment
-		"",                // generation_expression
-		srsId,             // srs_id
+		catName,              // table_catalog
+		schName,              // table_schema
+		tblName,              // table_name
+		col.Name,             // column_name
+		ordinalPos,           // ordinal_position
+		columnDefault,        // column_default
+		nullable,             // is_nullable
+		dataType,             // data_type
+		charMaxLen,           // character_maximum_length
+		charOctetLen,         // character_octet_length
+		numericPrecision,     // numeric_precision
+		numericScale,         // numeric_scale
+		datetimePrecision,    // datetime_precision
+		charName,             // character_set_name
+		collName,             // collation_name
+		colType,              // column_type
+		columnKey,            // column_key
+		extra,                // extra
+		privileges,           // privileges
+		col.Comment,          // column_comment
+		generationExpression, // generation_expression
+		srsId,                // srs_id
 	}
 }
 
