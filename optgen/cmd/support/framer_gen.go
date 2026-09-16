@@ -54,6 +54,11 @@ func (g *FramerGen) genFramerType(def frameDef) {
 func (g *FramerGen) genNewFramer(def frameDef) {
 	framerName := fmt.Sprintf("%sFramer", def.Name())
 	fmt.Fprintf(g.w, "func New%sFramer(frame sql.WindowFrame, window *sql.WindowDefinition) (sql.WindowFramer, error) {\n", def.Name())
+	if def.unit == rang && def.start == unboundedPreceding && def.end == endCurrentRow {
+		fmt.Fprintf(g.w, "  return NewUnboundedPrecedingToPeerGroupFramer(window.OrderBy.ToExpressions()), nil\n")
+		fmt.Fprintf(g.w, "}\n\n")
+		return
+	}
 
 	for _, a := range def.Args() {
 		switch a.argType() {
