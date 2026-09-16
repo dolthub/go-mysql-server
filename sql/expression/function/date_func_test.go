@@ -1,4 +1,4 @@
-// Copyright 2020-2026 Dolthub, Inc.
+// Copyright 2026 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@ package function
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -24,10 +25,13 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func TestTime(t *testing.T) {
+func TestDate(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	f := NewTime(ctx, expression.NewGetField(0, types.LongText, "foo", false))
+	f := NewDate(ctx, expression.NewGetField(0, types.LongText, "foo", false))
 
+	now := time.Now().UTC()
+	nowDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+	res := time.Date(2007, 1, 2, 0, 0, 0, 0, time.UTC)
 	testCases := []struct {
 		name     string
 		row      sql.Row
@@ -36,7 +40,8 @@ func TestTime(t *testing.T) {
 	}{
 		{"null date", sql.NewRow(nil), nil, false},
 		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, false},
-		{"time as string", sql.NewRow(stringDate), "14:15:16", false},
+		{"date as string", sql.NewRow(stringDate), res, false},
+		{"date as time", sql.NewRow(now), nowDate, false},
 	}
 
 	for _, tt := range testCases {
@@ -47,11 +52,7 @@ func TestTime(t *testing.T) {
 				require.Error(err)
 			} else {
 				require.NoError(err)
-				if v, ok := val.(types.Timespan); ok {
-					require.Equal(tt.expected, v.String())
-				} else {
-					require.Equal(tt.expected, val)
-				}
+				require.Equal(tt.expected, val)
 			}
 		})
 	}

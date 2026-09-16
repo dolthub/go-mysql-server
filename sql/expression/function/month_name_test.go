@@ -1,4 +1,4 @@
-// Copyright 2020-2026 Dolthub, Inc.
+// Copyright 2026 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,9 +24,9 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func TestTime(t *testing.T) {
+func TestTime_MonthName(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	f := NewTime(ctx, expression.NewGetField(0, types.LongText, "foo", false))
+	f := NewMonthName(ctx, expression.NewGetField(0, types.LongText, "foo", false))
 
 	testCases := []struct {
 		name     string
@@ -36,7 +36,7 @@ func TestTime(t *testing.T) {
 	}{
 		{"null date", sql.NewRow(nil), nil, false},
 		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, false},
-		{"time as string", sql.NewRow(stringDate), "14:15:16", false},
+		{"time as string", sql.NewRow(stringDate), "January", false},
 	}
 
 	for _, tt := range testCases {
