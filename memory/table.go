@@ -588,10 +588,10 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 			if err != nil {
 				return nil, err
 			}
-			return iters.NewTopRowsIter(sc, limit, vectorPartition.CalcFoundRows, sql.RowsToRowIter(rows...)), nil
+			return &projectedRowIter{RowIter: iters.NewTopRowsIter(sc, limit, vectorPartition.CalcFoundRows, sql.RowsToRowIter(rows...)), columns: t.columns}, nil
 		}
 
-		return iters.NewSortIter(sc, sql.RowsToRowIter(rows...)), nil
+		return &projectedRowIter{RowIter: iters.NewSortIter(sc, sql.RowsToRowIter(rows...)), columns: t.columns}, nil
 	}
 
 	rows, ok := data.partitions[string(partition.Key())]
@@ -733,6 +733,21 @@ func (i *tableIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 	}
 
+	return projectRow(i.columns, row), nil
+}
+
+// projectedRowIter applies the requested columns after vector distance sorting,
+// which must evaluate its expressions against the full stored row.
+type projectedRowIter struct {
+	sql.RowIter
+	columns []int
+}
+
+func (i *projectedRowIter) Next(ctx *sql.Context) (sql.Row, error) {
+	row, err := i.RowIter.Next(ctx)
+	if err != nil {
+		return nil, err
+	}
 	return projectRow(i.columns, row), nil
 }
 

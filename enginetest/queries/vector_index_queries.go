@@ -145,6 +145,12 @@ var VectorIndexQueries = []ScriptTest{
 				ExpectedIndexes: []string{"vidx"},
 			},
 			{
+				// Project non-index columns in a different order from the stored row.
+				Query:           "SELECT c0, pk FROM noncovering ORDER BY VEC_DISTANCE('[0.0]',embedding) LIMIT 3",
+				Expected:        []sql.Row{{int32(40), int32(4)}, {int32(10), int32(1)}, {int32(20), int32(2)}},
+				ExpectedIndexes: []string{"vidx"},
+			},
+			{
 				Query:           "SELECT c0 FROM noncovering ORDER BY VEC_DISTANCE('[0.0]',embedding) LIMIT 10",
 				Expected:        []sql.Row{{int32(40)}, {int32(10)}, {int32(20)}, {int32(30)}, {int32(50)}},
 				ExpectedIndexes: []string{"vidx"},
