@@ -64,13 +64,7 @@ func (b *baseWindowFunction) DefaultFramer() sql.WindowFramer {
 		return NewPartitionFramer()
 	}
 
-	return &RangeUnboundedPrecedingToCurrentRowFramer{
-		rangeFramerBase{
-			orderBy:            b.orderBy[0],
-			unboundedPreceding: true,
-			endCurrentRow:      true,
-		},
-	}
+	return NewUnboundedPrecedingToPeerGroupFramer(b.orderBy)
 }
 
 type SumAgg struct {
@@ -254,13 +248,12 @@ func (a *AvgAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.
 }
 
 type BitAndAgg struct {
-	expr   sql.Expression
-	framer sql.WindowFramer
+	baseWindowFunction
 }
 
 func NewBitAndAgg(e sql.Expression) *BitAndAgg {
 	return &BitAndAgg{
-		expr: e,
+		baseWindowFunction: newBaseWindowFunction(e),
 	}
 }
 
@@ -272,20 +265,16 @@ func (b *BitAndAgg) WithWindow(ctx *sql.Context, w *sql.WindowDefinition) (sql.W
 			return nil, err
 		}
 		na.framer = framer
+		return &na, nil
+	}
+	if w.OrderBy != nil {
+		na.orderBy = w.OrderBy.ToExpressions()
 	}
 	return &na, nil
 }
 
 func (b *BitAndAgg) Dispose(ctx *sql.Context) {
 	expression.Dispose(ctx, b.expr)
-}
-
-// DefaultFramer returns a NewUnboundedPrecedingToCurrentRowFramer
-func (b *BitAndAgg) DefaultFramer() sql.WindowFramer {
-	if b.framer != nil {
-		return b.framer
-	}
-	return NewPartitionFramer()
 }
 
 func (b *BitAndAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) error {
@@ -321,13 +310,12 @@ func (b *BitAndAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf s
 }
 
 type BitOrAgg struct {
-	expr   sql.Expression
-	framer sql.WindowFramer
+	baseWindowFunction
 }
 
 func NewBitOrAgg(e sql.Expression) *BitOrAgg {
 	return &BitOrAgg{
-		expr: e,
+		baseWindowFunction: newBaseWindowFunction(e),
 	}
 }
 
@@ -339,20 +327,16 @@ func (b *BitOrAgg) WithWindow(ctx *sql.Context, w *sql.WindowDefinition) (sql.Wi
 			return nil, err
 		}
 		na.framer = framer
+		return &na, nil
+	}
+	if w.OrderBy != nil {
+		na.orderBy = w.OrderBy.ToExpressions()
 	}
 	return &na, nil
 }
 
 func (b *BitOrAgg) Dispose(ctx *sql.Context) {
 	expression.Dispose(ctx, b.expr)
-}
-
-// DefaultFramer returns a NewUnboundedPrecedingToCurrentRowFramer
-func (b *BitOrAgg) DefaultFramer() sql.WindowFramer {
-	if b.framer != nil {
-		return b.framer
-	}
-	return NewPartitionFramer()
 }
 
 func (b *BitOrAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) error {
@@ -388,13 +372,12 @@ func (b *BitOrAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sq
 }
 
 type BitXorAgg struct {
-	expr   sql.Expression
-	framer sql.WindowFramer
+	baseWindowFunction
 }
 
 func NewBitXorAgg(e sql.Expression) *BitXorAgg {
 	return &BitXorAgg{
-		expr: e,
+		baseWindowFunction: newBaseWindowFunction(e),
 	}
 }
 
@@ -406,20 +389,16 @@ func (b *BitXorAgg) WithWindow(ctx *sql.Context, w *sql.WindowDefinition) (sql.W
 			return nil, err
 		}
 		na.framer = framer
+		return &na, nil
+	}
+	if w.OrderBy != nil {
+		na.orderBy = w.OrderBy.ToExpressions()
 	}
 	return &na, nil
 }
 
 func (b *BitXorAgg) Dispose(ctx *sql.Context) {
 	expression.Dispose(ctx, b.expr)
-}
-
-// DefaultFramer returns a NewPartitionFramer
-func (b *BitXorAgg) DefaultFramer() sql.WindowFramer {
-	if b.framer != nil {
-		return b.framer
-	}
-	return NewPartitionFramer()
 }
 
 func (b *BitXorAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) error {
@@ -603,8 +582,14 @@ func NewLastAgg(e sql.Expression) *LastAgg {
 
 func (a *LastAgg) WithWindow(ctx *sql.Context, w *sql.WindowDefinition) (sql.WindowFunction, error) {
 	na := *a
-	if w != nil && w.Frame != nil {
-		framer, err := w.Frame.NewFramer(w)
+	if w != nil {
+		var framer sql.WindowFramer
+		var err error
+		if w.Frame != nil {
+			framer, err = w.Frame.NewFramer(w)
+		} else if len(w.OrderBy) > 0 {
+			framer = NewUnboundedPrecedingToPeerGroupFramer(w.OrderBy.ToExpressions())
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -617,7 +602,7 @@ func (a *LastAgg) Dispose(ctx *sql.Context) {
 	expression.Dispose(ctx, a.expr)
 }
 
-// DefaultFramer returns a NewUnboundedPrecedingToCurrentRowFramer
+// DefaultFramer returns a frame spanning from the partition start through the current row.
 func (a *LastAgg) DefaultFramer() sql.WindowFramer {
 	if a.framer != nil {
 		return a.framer
