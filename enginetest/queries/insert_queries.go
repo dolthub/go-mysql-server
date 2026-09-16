@@ -1994,7 +1994,8 @@ var InsertScripts = []ScriptTest{
 	},
 	// https://github.com/dolthub/dolt/issues/6500
 	{
-		Name: "Test INSERT aliases in duplicate-key updates",
+		Name:    "Test INSERT aliases in duplicate-key updates",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE alias_insert(a INT PRIMARY KEY,b INT,c INT)",
 			"INSERT INTO alias_insert VALUES(1,0,0)",
