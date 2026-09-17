@@ -17,15 +17,18 @@ package function
 import (
 	"fmt"
 	"strings"
+	"unicode"
+	"unicode/utf8"
+
+	"github.com/dolthub/vitess/go/sqltypes"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// Locate returns the position of the first occurrence of a substring in a string.
-// If the substring is not found within the original string, this function returns 0.
-// This function performs a case-insensitive search.
+// Locate returns the 1-based character position of the first occurrence of a
+// substring in a string, or 0 if not found. Positions are character-based.
 type Locate struct {
 	expression.NaryExpression
 }
@@ -87,6 +90,29 @@ func (l *Locate) DebugString(ctx *sql.Context) string {
 		return fmt.Sprintf("%s(%s,%s,%s)", l.FunctionName(), sql.DebugString(ctx, l.ChildExpressions[0]), sql.DebugString(ctx, l.ChildExpressions[1]), sql.DebugString(ctx, l.ChildExpressions[2]))
 	}
 	return ""
+}
+
+// isBinaryStringType is true for BINARY, VARBINARY, and BLOB only.
+// types.IsBinaryType also matches JSON/GEOMETRY/VECTOR, which LOCATE must fold.
+func isBinaryStringType(t sql.Type) bool {
+	if t == nil {
+		return false
+	}
+	switch t.Type() {
+	case sqltypes.Binary, sqltypes.VarBinary, sqltypes.Blob:
+		return true
+	default:
+		return false
+	}
+}
+
+func isAllASCII(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if s[i] >= utf8.RuneSelf {
+			return false
+		}
+	}
+	return true
 }
 
 // Eval implements the sql.Expression interface.
@@ -162,22 +188,60 @@ func (l *Locate) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 	}
 
-	// Edge cases that cannot be handled by strings.Index.
-	switch {
-	// Position 0 and negative positions don't exist.
-	case position <= 0 || (len(str) > 0 && position > len(str)):
-		return int32(0), nil
-	// Locate("", "") returns 1 if start is 1.
-	case len(substr) == 0 && len(str) == 0:
-		if position == 1 {
-			return int32(1), nil
+	caseSensitive := isBinaryStringType(l.ChildExpressions[0].Type(ctx)) ||
+		isBinaryStringType(l.ChildExpressions[1].Type(ctx))
+
+	// Fast path when every byte is a single character.
+	if isAllASCII(str) && isAllASCII(substr) {
+		switch {
+		case position <= 0 || position > len(str)+1:
+			return int32(0), nil
+		case len(substr) == 0:
+			return int32(position), nil
 		}
-		return int32(0), nil
+
+		haystack := str[position-1:]
+		needle := substr
+		if !caseSensitive {
+			haystack = strings.ToLower(haystack)
+			needle = strings.ToLower(needle)
+		}
+		res := strings.Index(haystack, needle)
+		if res == -1 {
+			return int32(0), nil
+		}
+		return int32(res + position), nil
 	}
 
-	res := strings.Index(strings.ToLower(str[position-1:]), strings.ToLower(substr))
+	strRunes := []rune(str)
+	substrRunes := []rune(substr)
+
+	// Out of range, or empty needle at a valid start (including len+1).
+	switch {
+	case position <= 0 || position > len(strRunes)+1:
+		return int32(0), nil
+	case len(substrRunes) == 0:
+		return int32(position), nil
+	}
+
+	haystack := strRunes[position-1:]
+	needle := substrRunes
+	if !caseSensitive {
+		haystack = runesToLower(haystack)
+		needle = runesToLower(needle)
+	}
+
+	res := findSubsequence(haystack, needle)
 	if res == -1 {
 		return int32(0), nil
 	}
-	return int32(res + position), nil
+	return int32(res + int64(position)), nil
+}
+
+func runesToLower(rs []rune) []rune {
+	out := make([]rune, len(rs))
+	for i, r := range rs {
+		out[i] = unicode.ToLower(r)
+	}
+	return out
 }
