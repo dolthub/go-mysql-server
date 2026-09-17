@@ -223,8 +223,11 @@ func (b *Builder) restoreAggregateResolution(previousRoot *scope) {
 
 // resolvesAggregateThrough reports whether aggregate argument lookup crosses target.
 func (b *Builder) resolvesAggregateThrough(target *scope) bool {
-	for query := b.aggregateResolutionRoot; query != nil; query = query.outerQuery {
-		if query == target {
+	if b.aggregateResolutionRoot == nil {
+		return false
+	}
+	for query := b.aggregateResolutionRoot.query; query != nil; query = query.outer {
+		if query.source == target {
 			return true
 		}
 	}

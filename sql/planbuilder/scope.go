@@ -26,6 +26,18 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
+// queryBlock records semantic SELECT nesting independently of the transient
+// scopes used while building a query.
+type queryBlock struct {
+	// source is the FROM scope that owns this query block.
+	source *scope
+	// outer is the enclosing query block visible to correlated references.
+	outer *queryBlock
+	// correlations records columns resolved outside this query block. It is nil
+	// for a top-level query.
+	correlations *subquery
+}
+
 // scope tracks relational dependencies necessary to type check expressions,
 // resolve name definitions, and build relational nodes.
 type scope struct {
@@ -55,15 +67,12 @@ type scope struct {
 	proc           *procCtx
 	parent         *scope
 	activeSubquery *subquery
-	// Query links separate SQL query nesting from transient relational scopes.
-	querySource   *scope
-	outerQuery    *scope
-	querySubquery *subquery
+
+	// query is the semantic SELECT block containing this scope.
+	query *queryBlock
 
 	// groupBy collects aggregation functions and inputs
 	groupBy *groupBy
-	// having caches the resolved predicate built before aggregation is finalized.
-	having sql.Expression
 
 	insertTableAlias string
 
@@ -240,10 +249,10 @@ func (s *scope) parentForColumnResolution() (*scope, *subquery) {
 	if s.b == nil || !s.b.resolvesAggregateThrough(s) {
 		return s.parent, nil
 	}
-	if s.outerQuery != nil {
-		return s.outerQuery, s.querySubquery
+	if s.query.outer != nil {
+		return s.query.outer.source, s.query.correlations
 	}
-	if s.querySubquery == nil {
+	if s.query.correlations == nil {
 		return s.parent, nil
 	}
 	return nil, nil
@@ -428,12 +437,10 @@ func (s *scope) setColAlias(cols []string) {
 // into this scope.
 func (s *scope) push() *scope {
 	new := &scope{
-		b:             s.b,
-		parent:        s,
-		querySource:   s.querySource,
-		outerQuery:    s.outerQuery,
-		querySubquery: s.querySubquery,
-		schemaName:    s.schemaName,
+		b:          s.b,
+		parent:     s,
+		query:      s.query,
+		schemaName: s.schemaName,
 	}
 	if s.procActive() {
 		new.initProc()
@@ -449,11 +456,9 @@ func (s *scope) replace() *scope {
 		return &scope{}
 	}
 	return &scope{
-		b:             s.b,
-		parent:        s.parent,
-		querySource:   s.querySource,
-		outerQuery:    s.outerQuery,
-		querySubquery: s.querySubquery,
+		b:      s.b,
+		parent: s.parent,
+		query:  s.query,
 	}
 }
 
