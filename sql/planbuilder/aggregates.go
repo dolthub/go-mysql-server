@@ -982,7 +982,16 @@ func (b *Builder) buildInnerProj(fromScope, projScope *scope) *scope {
 	proj = append(proj[aliasCnt:], proj[:aliasCnt]...)
 
 	if len(proj) > 0 {
-		outScope.node = plan.NewProject(b.ctx, proj, outScope.node)
+		var split bool
+		outScope.node, split = b.buildAliasProject(proj, outScope.node)
+		if split {
+			// Reuse the materialized aliases instead of inlining their expressions back into dependent subqueries.
+			for i, col := range projScope.cols {
+				if alias, ok := col.scalar.(*expression.Alias); ok && !alias.Unreferencable() {
+					projScope.cols[i].scalar = col.scalarGf()
+				}
+			}
+		}
 	}
 
 	return outScope
