@@ -55,10 +55,14 @@ type scope struct {
 	proc           *procCtx
 	parent         *scope
 	activeSubquery *subquery
-	// Query links separate SQL query nesting from transient relational scopes.
-	querySource   *scope
-	outerQuery    *scope
-	querySubquery *subquery
+
+	// querySource is the topmost source scope for the SQL query containing this scope.
+	querySource *scope
+	// outerQuery is the next enclosing query source visible to correlated references.
+	outerQuery *scope
+	// queryCorrelations tracks outer-column references made by this query, or is nil
+	// when this query is not a subquery.
+	queryCorrelations *subquery
 
 	// groupBy collects aggregation functions and inputs
 	groupBy *groupBy
@@ -235,15 +239,24 @@ func (s *scope) getTable(table string) sql.TableId {
 	return 0
 }
 
+// querySourceOrSelf returns the current query source, meaning the highest level scope for the current query. If
+// there is no query source, then the current scope is returned.
+func (s *scope) querySourceOrSelf() *scope {
+	if s.querySource != nil {
+		return s.querySource
+	}
+	return s
+}
+
 // parentForColumnResolution returns the next namespace and any correlation recorder crossed to reach it.
 func (s *scope) parentForColumnResolution() (*scope, *subquery) {
 	if s.b == nil || !s.b.resolvesAggregateThrough(s) {
 		return s.parent, nil
 	}
 	if s.outerQuery != nil {
-		return s.outerQuery, s.querySubquery
+		return s.outerQuery, s.queryCorrelations
 	}
-	if s.querySubquery == nil {
+	if s.queryCorrelations == nil {
 		return s.parent, nil
 	}
 	return nil, nil
@@ -428,12 +441,12 @@ func (s *scope) setColAlias(cols []string) {
 // into this scope.
 func (s *scope) push() *scope {
 	new := &scope{
-		b:             s.b,
-		parent:        s,
-		querySource:   s.querySource,
-		outerQuery:    s.outerQuery,
-		querySubquery: s.querySubquery,
-		schemaName:    s.schemaName,
+		b:                 s.b,
+		parent:            s,
+		querySource:       s.querySource,
+		outerQuery:        s.outerQuery,
+		queryCorrelations: s.queryCorrelations,
+		schemaName:        s.schemaName,
 	}
 	if s.procActive() {
 		new.initProc()
@@ -449,11 +462,11 @@ func (s *scope) replace() *scope {
 		return &scope{}
 	}
 	return &scope{
-		b:             s.b,
-		parent:        s.parent,
-		querySource:   s.querySource,
-		outerQuery:    s.outerQuery,
-		querySubquery: s.querySubquery,
+		b:                 s.b,
+		parent:            s.parent,
+		querySource:       s.querySource,
+		outerQuery:        s.outerQuery,
+		queryCorrelations: s.queryCorrelations,
 	}
 }
 

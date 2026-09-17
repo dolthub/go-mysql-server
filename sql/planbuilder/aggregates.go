@@ -95,17 +95,21 @@ func (s *scope) aggregateScope(ctx *sql.Context, args []sql.Expression) *scope {
 			return false
 		})
 	}
+	source := s.querySourceOrSelf()
 	if columnIds.Empty() {
-		return s.querySource
+		return source
 	}
-	for candidate := s.querySource; candidate != nil; candidate = candidate.outerQuery {
+	// The first query source that supplies any argument column owns the aggregate.
+	// Columns supplied by farther-out queries remain correlations of that aggregate.
+	for candidate := source; candidate != nil; candidate = candidate.outerQuery {
 		for _, col := range candidate.cols {
 			if columnIds.Contains(sql.ColumnId(col.id)) {
 				return candidate
 			}
 		}
 	}
-	return s.querySource
+	// Keep incomplete expressions in their syntactic query so normal validation can reject them.
+	return source
 }
 
 // isCorrelatedColumn reports whether the column is supplied by an outer query to the active subquery.
@@ -118,7 +122,8 @@ func (s *scope) isCorrelatedColumn(id sql.ColumnId) bool {
 	return false
 }
 
-// queryColumn returns a source column by ID, including join scopes whose colset is populated later.
+// queryColumn scans cols in this scope to find one with column ID |id| and returns it, if found. It
+// intentionally scans the columns looking for |id|, instead of using a ColSet.
 func (s *scope) queryColumn(id sql.ColumnId) (scopeColumn, bool) {
 	for _, col := range s.cols {
 		if sql.ColumnId(col.id) == id {
@@ -376,17 +381,11 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 		b.qFlags.Set(sql.QFlagAnyAgg)
 	}
 
-	argScope := inScope.querySource
-	if argScope == nil {
-		argScope = inScope
-	}
+	argScope := inScope.querySourceOrSelf()
 	correlations := inScope.aggregateCorrelationSnapshot()
 	args := b.buildAggFunctionArgs(argScope, e)
 	var gb *groupBy
 	aggScope := inScope.aggregateScope(b.ctx, args)
-	if aggScope == nil {
-		aggScope = inScope
-	}
 	aggScope.initGroupBy()
 	gb = aggScope.groupBy
 	b.addOuterAggregateArgDeps(aggScope, args)
@@ -533,19 +532,19 @@ func (b *Builder) addOuterAggregateArgDeps(aggScope *scope, args []sql.Expressio
 
 // aggregateCorrelationSnapshot preserves correlations established before resolving an aggregate's arguments.
 func (s *scope) aggregateCorrelationSnapshot() sql.ColSet {
-	if s.querySubquery == nil {
+	if s.queryCorrelations == nil {
 		return sql.ColSet{}
 	}
-	return s.querySubquery.correlated.Copy()
+	return s.queryCorrelations.correlated.Copy()
 }
 
 // recordOuterAggregateArgDeps replaces correlations introduced by outer aggregate arguments with the result column.
 func (b *Builder) recordOuterAggregateArgDeps(inScope, aggScope *scope, before sql.ColSet, aggId sql.ColumnId) {
-	if inScope.querySource == aggScope || inScope.querySubquery == nil {
+	if inScope.querySource == aggScope || inScope.queryCorrelations == nil {
 		return
 	}
-	inScope.querySubquery.correlated = before
-	inScope.querySubquery.correlated.Add(aggId)
+	inScope.queryCorrelations.correlated = before
+	inScope.queryCorrelations.correlated.Add(aggId)
 }
 
 // buildJsonArrayStarAggregate builds a JSON_ARRAY(*) aggregate function
@@ -606,10 +605,7 @@ func (b *Builder) buildCountStarAggregate(e *ast.FuncExpr, gb *groupBy) sql.Expr
 
 // buildGroupConcat builds a GROUP_CONCAT aggregate function
 func (b *Builder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.Expression {
-	argScope := inScope.querySource
-	if argScope == nil {
-		argScope = inScope
-	}
+	argScope := inScope.querySourceOrSelf()
 	correlations := inScope.aggregateCorrelationSnapshot()
 
 	args, sortConditions := b.buildGroupConcatArgs(argScope, e)
@@ -621,9 +617,6 @@ func (b *Builder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.E
 
 	deps := append(sortConditions.ToExpressions(), args...)
 	aggScope := inScope.aggregateScope(b.ctx, deps)
-	if aggScope == nil {
-		aggScope = inScope
-	}
 	aggScope.initGroupBy()
 	gb := aggScope.groupBy
 	b.addOuterAggregateArgDeps(aggScope, deps)
@@ -1153,7 +1146,7 @@ func (b *Builder) buildHaving(fromScope, projScope, outScope *scope, having *ast
 	havingScope := b.newScope()
 	havingScope.querySource = fromScope
 	havingScope.outerQuery = fromScope.outerQuery
-	havingScope.querySubquery = fromScope.querySubquery
+	havingScope.queryCorrelations = fromScope.queryCorrelations
 	if fromScope.parent != nil {
 		havingScope.parent = fromScope.parent
 		havingScope.parent.selectAliases = fromScope.selectAliases

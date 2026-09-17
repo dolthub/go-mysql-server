@@ -70,7 +70,7 @@ func (b *Builder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
 	fromScope := b.buildFrom(inScope, s.From)
 	fromScope.querySource = fromScope
 	fromScope.outerQuery = outerQuery
-	fromScope.querySubquery = inScope.nearestSubquery()
+	fromScope.queryCorrelations = inScope.nearestSubquery()
 	if cn, ok := fromScope.node.(sql.CommentedNode); ok && len(s.Comments) > 0 {
 		fromScope.node = cn.WithComment(string(s.Comments[0]))
 	}
