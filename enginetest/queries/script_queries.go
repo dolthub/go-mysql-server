@@ -6080,6 +6080,8 @@ CREATE TABLE tab3 (
 			"INSERT INTO correlated_aggregate_scope VALUES (1, 1, 1), (2, 1, 2), (3, 2, 1);",
 			"CREATE TABLE correlated_aggregate_probe (probe INT);",
 			"INSERT INTO correlated_aggregate_probe VALUES (1);",
+			"CREATE TABLE correlated_aggregate_pair (grp INT, val INT);",
+			"INSERT INTO correlated_aggregate_pair VALUES (1, 1);",
 			"CREATE TABLE concat_scope (grp INT, val TEXT);",
 			"INSERT INTO concat_scope VALUES (1, 'a'), (1, 'b'), (2, 'c');",
 			"CREATE TABLE concat_probe (id INT);",
@@ -6184,6 +6186,26 @@ CREATE TABLE tab3 (
 			{
 				// The deepest aggregate mixes top-level a.val and middle-level b.probe, so it belongs to the middle query.
 				Query:    "SELECT grp FROM correlated_aggregate_scope a GROUP BY grp, a.val HAVING EXISTS (SELECT 1 FROM correlated_aggregate_probe b HAVING EXISTS (SELECT 1 WHERE SUM(a.val + b.probe) > 0)) ORDER BY grp;",
+				Expected: []sql.Row{{1}, {1}, {2}},
+			},
+			{
+				// An outer-only aggregate remains owned by the outer query and is valid without grouping by a.val.
+				Query:    "SELECT a.grp FROM correlated_aggregate_scope a GROUP BY a.grp HAVING EXISTS (SELECT 1 FROM correlated_aggregate_pair b GROUP BY b.grp HAVING EXISTS (SELECT 1 WHERE SUM(a.val) > 0)) ORDER BY grp;",
+				Expected: []sql.Row{{1}, {2}},
+			},
+			{
+				// A local aggregate does not add a dependency to the outer query.
+				Query:    "SELECT a.grp FROM correlated_aggregate_scope a GROUP BY a.grp HAVING EXISTS (SELECT 1 FROM correlated_aggregate_pair b GROUP BY b.grp HAVING EXISTS (SELECT 1 WHERE SUM(b.val) > 0)) ORDER BY grp;",
+				Expected: []sql.Row{{1}, {2}},
+			},
+			{
+				// The mixed aggregate belongs to b's query, leaving a.val as an ungrouped outer dependency.
+				Query:       "SELECT a.grp FROM correlated_aggregate_scope a GROUP BY a.grp HAVING EXISTS (SELECT 1 FROM correlated_aggregate_pair b GROUP BY b.grp HAVING EXISTS (SELECT 1 WHERE SUM(a.val + b.val) > 0)) ORDER BY grp;",
+				ExpectedErr: analyzererrors.ErrValidationGroupByHaving,
+			},
+			{
+				// Grouping the outer dependency makes the mixed aggregate valid.
+				Query:    "SELECT a.grp FROM correlated_aggregate_scope a GROUP BY a.grp, a.val HAVING EXISTS (SELECT 1 FROM correlated_aggregate_pair b GROUP BY b.grp HAVING EXISTS (SELECT 1 WHERE SUM(a.val + b.val) > 0)) ORDER BY grp;",
 				Expected: []sql.Row{{1}, {1}, {2}},
 			},
 		},
