@@ -473,9 +473,19 @@ func findInclusionBoundary(ctx *sql.Context, pos, searchStart, partitionEnd int,
 			return 0, err
 		}
 
-		cmp, err = compareType.Compare(ctx, res, cur)
-		if err != nil {
-			return 0, err
+		// RANGE frames scan an ascending buffer, where NULL order values precede non-NULL values.
+		switch {
+		case res == nil && cur == nil:
+			cmp = 0
+		case res == nil:
+			cmp = -1
+		case cur == nil:
+			cmp = 1
+		default:
+			cmp, err = compareType.Compare(ctx, res, cur)
+			if err != nil {
+				return 0, err
+			}
 		}
 	}
 

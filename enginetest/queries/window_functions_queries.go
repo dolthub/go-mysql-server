@@ -2184,6 +2184,48 @@ var WindowRangeFramesScriptTests = []ScriptTest{
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/11858
+		Name: "window range frames with nullable numeric bounds",
+		SetUpScript: []string{
+			"CREATE TABLE nullable_range_bounds (id INT PRIMARY KEY, k INT NULL, v INT NOT NULL)",
+			"INSERT INTO nullable_range_bounds VALUES (1,NULL,10),(2,NULL,20),(3,1,30),(4,2,40),(5,4,50)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT id, k,
+					SUM(v) OVER (
+						ORDER BY k
+						RANGE BETWEEN 1 PRECEDING AND CURRENT ROW
+					) AS total
+					FROM nullable_range_bounds
+					ORDER BY id`,
+				Expected: []sql.Row{
+					{1, nil, float64(30)},
+					{2, nil, float64(30)},
+					{3, 1, float64(30)},
+					{4, 2, float64(70)},
+					{5, 4, float64(50)},
+				},
+			},
+			{
+				Query: `SELECT id, k,
+					SUM(v) OVER (
+						ORDER BY k
+						RANGE BETWEEN CURRENT ROW AND 1 FOLLOWING
+					) AS total
+					FROM nullable_range_bounds
+					ORDER BY id`,
+				Expected: []sql.Row{
+					{1, nil, float64(30)},
+					{2, nil, float64(30)},
+					{3, 1, float64(70)},
+					{4, 2, float64(40)},
+					{5, 4, float64(50)},
+				},
+			},
+		},
+	},
+	{
 		Name: "window range frames, fixed interval size",
 		// These queries use MySQL's bare numeric interval literal ("interval 1 DAY"), which isn't
 		// valid syntax in Postgres (Postgres requires a quoted quantity: "interval '1' DAY").
