@@ -183,6 +183,12 @@ func getSchema(ctx *sql.Context, rows [][]sql.Expression) sql.Schema {
 // getMostPermissiveType returns the most permissive type given the current type and the expression type.
 // The ordering is "other types < uint < int < decimal (float should be interpreted as decimal) < string"
 func getMostPermissiveType(ctx *sql.Context, s *sql.Column, e sql.Expression) sql.Type {
+	if sourceType, sourceOK := s.Type.(sql.ExtendedType); sourceOK {
+		if targetType, targetOK := e.Type(ctx).(sql.ExtendedType); targetOK {
+			return sql.GetCommonExtendedType(ctx, sourceType, targetType)
+		}
+	}
+
 	if types.IsText(s.Type) {
 		return s.Type
 	} else if types.IsText(e.Type(ctx)) {
