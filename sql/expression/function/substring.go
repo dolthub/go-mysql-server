@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"unicode"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -654,7 +655,7 @@ func (i Instr) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		text = []rune(s)
+		subtext = []rune(s)
 	case []byte:
 		subtext = []rune(string(substr))
 	case sql.BytesWrapper:
@@ -676,7 +677,7 @@ func findSubsequence(text []rune, subtext []rune) int64 {
 	for i := 0; i <= len(text)-len(subtext); i++ {
 		var j int
 		for j = 0; j < len(subtext); j++ {
-			if text[i+j] != subtext[j] {
+			if !runeEqualFold(text[i+j], subtext[j]) {
 				break
 			}
 		}
@@ -685,6 +686,13 @@ func findSubsequence(text []rune, subtext []rune) int64 {
 		}
 	}
 	return -1
+}
+
+// runeEqualFold reports whether two runes are equal under simple case folding.
+// MySQL's INSTR is case-insensitive unless one argument is a binary string, so
+// the rune comparison folds case to match that behavior.
+func runeEqualFold(a, b rune) bool {
+	return a == b || unicode.ToLower(a) == unicode.ToLower(b)
 }
 
 // IsNullable implements the Expression interface.
