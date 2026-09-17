@@ -57,6 +57,9 @@ type Builder struct {
 	// name (not a composite expression like a + 1).
 	windowClauseColRef bool
 
+	// aggregateResolutionRoot is the query source whose aggregate arguments are being bound.
+	aggregateResolutionRoot *scope
+
 	authEnabled  bool
 	multiDDL     bool
 	insertActive bool
@@ -206,9 +209,32 @@ func (b *Builder) withWindowState(clause string, isColRef bool) func() {
 	return func() { b.windowClause, b.windowClauseColRef = outerClause, outerColRef }
 }
 
+// beginAggregateResolutionFrom makes column lookup follow the outer-query chain rooted at source.
+func (b *Builder) beginAggregateResolutionFrom(source *scope) *scope {
+	previousRoot := b.aggregateResolutionRoot
+	b.aggregateResolutionRoot = source
+	return previousRoot
+}
+
+// restoreAggregateResolution restores the aggregate resolution active before the current arguments.
+func (b *Builder) restoreAggregateResolution(previousRoot *scope) {
+	b.aggregateResolutionRoot = previousRoot
+}
+
+// resolvesAggregateThrough reports whether aggregate argument lookup crosses target.
+func (b *Builder) resolvesAggregateThrough(target *scope) bool {
+	for query := b.aggregateResolutionRoot; query != nil; query = query.outerQuery {
+		if query == target {
+			return true
+		}
+	}
+	return false
+}
+
 func (b *Builder) Reset() {
 	b.colId = 0
 	b.tabId = 0
+	b.aggregateResolutionRoot = nil
 	b.bindCtx = nil
 	b.currentDatabase = nil
 	b.procCtx = nil

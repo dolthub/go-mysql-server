@@ -128,50 +128,6 @@ func (s *scope) queryColumn(id sql.ColumnId) (scopeColumn, bool) {
 	return scopeColumn{}, false
 }
 
-// aggregateArgScope exposes only the namespaces used to resolve aggregate arguments at each query level.
-func (s *scope) aggregateArgScope() *scope {
-	source := s.querySource
-	if source == nil {
-		return nil
-	}
-	if source.aggregateArgs != nil {
-		return source.aggregateArgs
-	}
-	visibleCtes := make(map[string]*scope)
-	for lexical := source; lexical != nil; lexical = lexical.parent {
-		for name, cte := range lexical.ctes {
-			if _, found := visibleCtes[name]; !found {
-				visibleCtes[name] = cte
-			}
-		}
-	}
-	argScope := &scope{
-		colset:           source.colset,
-		exprs:            source.exprs,
-		tables:           source.tables,
-		oldTables:        source.oldTables,
-		selectAliases:    source.selectAliases,
-		redirectCol:      source.redirectCol,
-		ctes:             visibleCtes,
-		b:                source.b,
-		proc:             source.proc,
-		activeSubquery:   source.querySubquery,
-		outerQuery:       source.outerQuery,
-		querySubquery:    source.querySubquery,
-		insertTableAlias: source.insertTableAlias,
-		cols:             source.cols,
-		schemaName:       source.schemaName,
-	}
-	if source.outerQuery != nil {
-		argScope.parent = source.outerQuery.aggregateArgScope()
-	} else {
-		argScope.parent = source.parent
-	}
-	argScope.querySource = argScope
-	source.aggregateArgs = argScope
-	return argScope
-}
-
 type aggregateInfo struct {
 	ast.Expr
 }
@@ -420,7 +376,7 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 		b.qFlags.Set(sql.QFlagAnyAgg)
 	}
 
-	argScope := inScope.aggregateArgScope()
+	argScope := inScope.querySource
 	if argScope == nil {
 		argScope = inScope
 	}
@@ -500,8 +456,11 @@ func (b *Builder) newAggregation(e *ast.FuncExpr, name string, args []sql.Expres
 	return agg
 }
 
-// buildAggFunctionArgs builds the arguments for an aggregate function
+// buildAggFunctionArgs builds aggregate arguments using the existing outer-query chain.
 func (b *Builder) buildAggFunctionArgs(inScope *scope, e *ast.FuncExpr) []sql.Expression {
+	previousRoot := b.beginAggregateResolutionFrom(inScope)
+	defer b.restoreAggregateResolution(previousRoot)
+
 	var args []sql.Expression
 	for _, arg := range e.Exprs {
 		windowCount := len(inScope.windowFuncs)
@@ -647,24 +606,19 @@ func (b *Builder) buildCountStarAggregate(e *ast.FuncExpr, gb *groupBy) sql.Expr
 
 // buildGroupConcat builds a GROUP_CONCAT aggregate function
 func (b *Builder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.Expression {
-	argScope := inScope.aggregateArgScope()
+	argScope := inScope.querySource
 	if argScope == nil {
 		argScope = inScope
 	}
 	correlations := inScope.aggregateCorrelationSnapshot()
 
-	args := make([]sql.Expression, len(e.Exprs))
-	for i, a := range e.Exprs {
-		args[i] = b.selectExprToExpression(argScope, a)
-	}
+	args, sortConditions := b.buildGroupConcatArgs(argScope, e)
 
 	separatorS := ","
 	if !e.Separator.DefaultSeparator {
 		separatorS = e.Separator.SeparatorString
 	}
 
-	orderByScope := b.analyzeOrderBy(argScope, argScope, e.OrderBy)
-	sortConditions := b.buildSortConditions(orderByScope, transform.SameTree)
 	deps := append(sortConditions.ToExpressions(), args...)
 	aggScope := inScope.aggregateScope(b.ctx, deps)
 	if aggScope == nil {
@@ -700,6 +654,20 @@ func (b *Builder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.E
 	col.id = id
 	b.recordOuterAggregateArgDeps(inScope, aggScope, correlations, sql.ColumnId(id))
 	return col.scalarGf()
+}
+
+// buildGroupConcatArgs builds GROUP_CONCAT arguments and ordering using the existing outer-query chain.
+func (b *Builder) buildGroupConcatArgs(inScope *scope, e *ast.GroupConcatExpr) ([]sql.Expression, sql.SortConditions) {
+	previousRoot := b.beginAggregateResolutionFrom(inScope)
+	defer b.restoreAggregateResolution(previousRoot)
+
+	args := make([]sql.Expression, len(e.Exprs))
+	for i, arg := range e.Exprs {
+		args[i] = b.selectExprToExpression(inScope, arg)
+	}
+
+	orderByScope := b.analyzeOrderBy(inScope, inScope, e.OrderBy)
+	return args, b.buildSortConditions(orderByScope, transform.SameTree)
 }
 
 // IsWindowFunc is a hacky "extension point" to allow for other dialects to declare additional window functions
