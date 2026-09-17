@@ -55,9 +55,15 @@ type scope struct {
 	proc           *procCtx
 	parent         *scope
 	activeSubquery *subquery
+	// Query links separate SQL query nesting from transient relational scopes.
+	querySource   *scope
+	outerQuery    *scope
+	querySubquery *subquery
 
 	// groupBy collects aggregation functions and inputs
 	groupBy *groupBy
+	// having caches the resolved predicate built before aggregation is finalized.
+	having sql.Expression
 
 	insertTableAlias string
 
@@ -151,16 +157,22 @@ func (s *scope) resolveColumn(db, table, col string, checkParent, chooseFirst bo
 		}
 	}
 
-	if !checkParent || s.parent == nil {
+	if !checkParent {
 		return scopeColumn{}, false
 	}
 
-	c, foundCand := s.parent.resolveColumn(db, table, col, true, false)
+	parent, correlations := s.parentForColumnResolution()
+	if parent == nil {
+		return scopeColumn{}, false
+	}
+	c, foundCand := parent.resolveColumn(db, table, col, true, false)
 	if !foundCand {
 		return scopeColumn{}, false
 	}
 
-	if s.activeSubquery != nil {
+	if correlations != nil {
+		correlations.addOutOfScope(c.id)
+	} else if s.activeSubquery != nil {
 		s.activeSubquery.addOutOfScope(c.id)
 	}
 	return c, true
@@ -177,8 +189,10 @@ func (s *scope) resolveColumnAsTable(db, table string) []scopeColumn {
 		}
 		tableCols = append(tableCols, col)
 	}
-	if len(tableCols) == 0 && s.parent != nil {
-		return s.parent.resolveColumnAsTable(db, table)
+	if len(tableCols) == 0 {
+		if parent, _ := s.parentForColumnResolution(); parent != nil {
+			return parent.resolveColumnAsTable(db, table)
+		}
 	}
 	sort.Slice(tableCols, func(i, j int) bool {
 		return tableCols[i].id < tableCols[j].id
@@ -203,8 +217,8 @@ func (s *scope) hasTable(table string) bool {
 	if ok {
 		return true
 	}
-	if s.parent != nil {
-		return s.parent.hasTable(table)
+	if parent, _ := s.parentForColumnResolution(); parent != nil {
+		return parent.hasTable(table)
 	}
 	return false
 }
@@ -215,10 +229,24 @@ func (s *scope) getTable(table string) sql.TableId {
 	if ok {
 		return id
 	}
-	if s.parent != nil {
-		return s.parent.getTable(table)
+	if parent, _ := s.parentForColumnResolution(); parent != nil {
+		return parent.getTable(table)
 	}
 	return 0
+}
+
+// parentForColumnResolution returns the next namespace and any correlation recorder crossed to reach it.
+func (s *scope) parentForColumnResolution() (*scope, *subquery) {
+	if s.b == nil || !s.b.resolvesAggregateThrough(s) {
+		return s.parent, nil
+	}
+	if s.outerQuery != nil {
+		return s.outerQuery, s.querySubquery
+	}
+	if s.querySubquery == nil {
+		return s.parent, nil
+	}
+	return nil, nil
 }
 
 // triggerCol is used to hallucinate a new column during trigger DDL
@@ -400,9 +428,12 @@ func (s *scope) setColAlias(cols []string) {
 // into this scope.
 func (s *scope) push() *scope {
 	new := &scope{
-		b:          s.b,
-		parent:     s,
-		schemaName: s.schemaName,
+		b:             s.b,
+		parent:        s,
+		querySource:   s.querySource,
+		outerQuery:    s.outerQuery,
+		querySubquery: s.querySubquery,
+		schemaName:    s.schemaName,
 	}
 	if s.procActive() {
 		new.initProc()
@@ -418,8 +449,11 @@ func (s *scope) replace() *scope {
 		return &scope{}
 	}
 	return &scope{
-		b:      s.b,
-		parent: s.parent,
+		b:             s.b,
+		parent:        s.parent,
+		querySource:   s.querySource,
+		outerQuery:    s.outerQuery,
+		querySubquery: s.querySubquery,
 	}
 }
 
