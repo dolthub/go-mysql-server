@@ -1451,6 +1451,28 @@ var JoinScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/11886
+		Name: "Lookup join drops an AND conjunct when the ON clause also has an OR over indexed columns",
+		SetUpScript: []string{
+			"create table deps (id int primary key, type varchar(16), col_a varchar(32), col_b varchar(32), key k_type (type), key k_a (col_a));",
+			"insert into deps values (1, 'keep', 'X', null), (2, 'drop', 'X', null);",
+			"create table r (id varchar(32) primary key);",
+			"insert into r values ('X');",
+			"create table deps_comp (id int primary key, type varchar(16), col_a varchar(32), col_b varchar(32), key k_type_a (type, col_a), key k_type_b (type, col_b));",
+			"insert into deps_comp values (1, 'keep', 'X', null), (2, 'drop', 'X', null), (3, 'keep', null, 'X'), (4, 'drop', null, 'X');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select d.id, d.type from r join deps d on d.type = 'keep' and (d.col_a = r.id or d.col_b = r.id) order by d.id;",
+				Expected: []sql.Row{{1, "keep"}},
+			},
+			{
+				Query:    "select d.id, d.type, d.col_a, d.col_b from r join deps_comp d on d.type = 'keep' and (d.col_a = r.id or d.col_b = r.id) order by d.id;",
+				Expected: []sql.Row{{1, "keep", "X", nil}, {3, "keep", nil, "X"}},
+			},
+		},
+	},
 }
 
 var LateralJoinScriptTests = []ScriptTest{
