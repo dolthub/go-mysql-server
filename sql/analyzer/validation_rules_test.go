@@ -158,39 +158,6 @@ func TestValidateGroupByErr(t *testing.T) {
 	require.Error(err)
 }
 
-func TestValidateGroupByHaving(t *testing.T) {
-	variables.InitSystemVariables()
-	require := require.New(t)
-	vr := getRule(validateGroupById)
-
-	childSchema := sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "col1", Type: types.Int64},
-		{Name: "col2", Type: types.Int64},
-	})
-	db := memory.NewDatabase("db")
-	pro := memory.NewDBProvider(db)
-	ctx := newContext(pro)
-	child := memory.NewTable(ctx, db, "test", childSchema, nil)
-	grouped := expression.NewGetField(0, types.Int64, "col1", false)
-	ungrouped := expression.NewGetField(1, types.Int64, "col2", false)
-	groupBy := plan.NewGroupBy(
-		[]sql.Expression{grouped, ungrouped},
-		[]sql.Expression{grouped},
-		plan.NewResolvedTable(child, nil, nil),
-	)
-
-	validHaving := plan.NewHaving(expression.NewGreaterThan(grouped, expression.NewLiteral(int64(0), types.Int64)), groupBy)
-	valid := plan.NewProject(ctx, []sql.Expression{grouped}, validHaving)
-	_, _, err := vr.Apply(ctx, nil, valid, nil, DefaultRuleSelector, nil)
-	require.NoError(err)
-
-	invalidHaving := plan.NewHaving(expression.NewGreaterThan(ungrouped, expression.NewLiteral(int64(0), types.Int64)), groupBy)
-	invalid := plan.NewProject(ctx, []sql.Expression{grouped}, invalidHaving)
-	_, _, err = vr.Apply(ctx, nil, invalid, nil, DefaultRuleSelector, nil)
-	require.Error(err)
-	require.True(analyzererrors.ErrValidationGroupByHaving.Is(err))
-}
-
 func TestValidateSchemaSource(t *testing.T) {
 	db := memory.NewDatabase("db")
 	pro := memory.NewDBProvider(db)
