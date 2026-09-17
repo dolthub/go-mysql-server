@@ -26304,4 +26304,134 @@ order by x, y;
 			"     └─ reverse: true\n" +
 			"",
 	},
+	{
+		Query: `SELECT MIN(pk2) FROM two_pk WHERE pk1=1`,
+		ExpectedPlan: "Limit(1)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [two_pk.pk2:1!null->MIN(pk2):0]\n" +
+			"     └─ IndexedTableAccess(two_pk)\n" +
+			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         ├─ static: [{[1, 1], [NULL, ∞)}]\n" +
+			"         ├─ colSet: (1-7)\n" +
+			"         ├─ tableId: 1\n" +
+			"         └─ Table\n" +
+			"             ├─ name: two_pk\n" +
+			"             └─ columns: [pk1 pk2]\n" +
+			"",
+		ExpectedEstimates: "Limit(1)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [two_pk.pk2 as `MIN(pk2)`]\n" +
+			"     └─ IndexedTableAccess(two_pk)\n" +
+			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         ├─ filters: [{[1, 1], [NULL, ∞)}]\n" +
+			"         └─ columns: [pk1 pk2]\n" +
+			"",
+		ExpectedAnalysis: "Limit(1)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [two_pk.pk2 as `MIN(pk2)`]\n" +
+			"     └─ IndexedTableAccess(two_pk)\n" +
+			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         ├─ filters: [{[1, 1], [NULL, ∞)}]\n" +
+			"         └─ columns: [pk1 pk2]\n" +
+			"",
+	},
+	{
+		Query: `SELECT MAX(pk2) FROM two_pk WHERE pk1=1`,
+		ExpectedPlan: "Limit(1)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [two_pk.pk2:1!null->MAX(pk2):0]\n" +
+			"     └─ IndexedTableAccess(two_pk)\n" +
+			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         ├─ static: [{[1, 1], [NULL, ∞)}]\n" +
+			"         ├─ reverse: true\n" +
+			"         ├─ colSet: (1-7)\n" +
+			"         ├─ tableId: 1\n" +
+			"         └─ Table\n" +
+			"             ├─ name: two_pk\n" +
+			"             └─ columns: [pk1 pk2]\n" +
+			"",
+		ExpectedEstimates: "Limit(1)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [two_pk.pk2 as `MAX(pk2)`]\n" +
+			"     └─ IndexedTableAccess(two_pk)\n" +
+			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         ├─ filters: [{[1, 1], [NULL, ∞)}]\n" +
+			"         ├─ columns: [pk1 pk2]\n" +
+			"         └─ reverse: true\n" +
+			"",
+		ExpectedAnalysis: "Limit(1)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [two_pk.pk2 as `MAX(pk2)`]\n" +
+			"     └─ IndexedTableAccess(two_pk)\n" +
+			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         ├─ filters: [{[1, 1], [NULL, ∞)}]\n" +
+			"         ├─ columns: [pk1 pk2]\n" +
+			"         └─ reverse: true\n" +
+			"",
+	},
+	{
+		Query: `SELECT MIN(pk2) FROM two_pk WHERE pk1=1 GROUP BY pk1`,
+		ExpectedPlan: "Limit(1)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [two_pk.pk2:1!null->MIN(pk2):0]\n" +
+			"     └─ IndexedTableAccess(two_pk)\n" +
+			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         ├─ static: [{[1, 1], [NULL, ∞)}]\n" +
+			"         ├─ colSet: (1-7)\n" +
+			"         ├─ tableId: 1\n" +
+			"         └─ Table\n" +
+			"             ├─ name: two_pk\n" +
+			"             └─ columns: [pk1 pk2]\n" +
+			"",
+		ExpectedEstimates: "Limit(1)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [two_pk.pk2 as `MIN(pk2)`]\n" +
+			"     └─ IndexedTableAccess(two_pk)\n" +
+			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         ├─ filters: [{[1, 1], [NULL, ∞)}]\n" +
+			"         └─ columns: [pk1 pk2]\n" +
+			"",
+		ExpectedAnalysis: "Limit(1)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [two_pk.pk2 as `MIN(pk2)`]\n" +
+			"     └─ IndexedTableAccess(two_pk)\n" +
+			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         ├─ filters: [{[1, 1], [NULL, ∞)}]\n" +
+			"         └─ columns: [pk1 pk2]\n" +
+			"",
+	},
+	{
+		Query: `SELECT MAX(pk2) FROM two_pk WHERE pk1=1 GROUP BY pk1`,
+		ExpectedPlan: "Limit(1)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [two_pk.pk2:1!null->MAX(pk2):0]\n" +
+			"     └─ IndexedTableAccess(two_pk)\n" +
+			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         ├─ static: [{[1, 1], [NULL, ∞)}]\n" +
+			"         ├─ reverse: true\n" +
+			"         ├─ colSet: (1-7)\n" +
+			"         ├─ tableId: 1\n" +
+			"         └─ Table\n" +
+			"             ├─ name: two_pk\n" +
+			"             └─ columns: [pk1 pk2]\n" +
+			"",
+		ExpectedEstimates: "Limit(1)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [two_pk.pk2 as `MAX(pk2)`]\n" +
+			"     └─ IndexedTableAccess(two_pk)\n" +
+			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         ├─ filters: [{[1, 1], [NULL, ∞)}]\n" +
+			"         ├─ columns: [pk1 pk2]\n" +
+			"         └─ reverse: true\n" +
+			"",
+		ExpectedAnalysis: "Limit(1)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [two_pk.pk2 as `MAX(pk2)`]\n" +
+			"     └─ IndexedTableAccess(two_pk)\n" +
+			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         ├─ filters: [{[1, 1], [NULL, ∞)}]\n" +
+			"         ├─ columns: [pk1 pk2]\n" +
+			"         └─ reverse: true\n" +
+			"",
+	},
 }
