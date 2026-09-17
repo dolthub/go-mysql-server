@@ -95,30 +95,37 @@ func (s *scope) aggregateScope(ctx *sql.Context, args []sql.Expression) *scope {
 			return false
 		})
 	}
+	source := s.query.source
 	if columnIds.Empty() {
-		return s.querySource
+		return source
 	}
-	for candidate := s.querySource; candidate != nil; candidate = candidate.outerQuery {
+	// The first query source that supplies any argument column owns the aggregate.
+	// Columns supplied by farther-out queries remain correlations of that aggregate.
+	for query := s.query; query != nil; query = query.outer {
+		candidate := query.source
 		for _, col := range candidate.cols {
 			if columnIds.Contains(sql.ColumnId(col.id)) {
 				return candidate
 			}
 		}
 	}
-	return s.querySource
+	// Keep incomplete expressions in their syntactic query so normal validation can reject them.
+	return source
 }
 
 // isCorrelatedColumn reports whether the column is supplied by an outer query to the active subquery.
 func (s *scope) isCorrelatedColumn(id sql.ColumnId) bool {
-	for candidate := s.querySource; candidate != nil; candidate = candidate.outerQuery {
+	for query := s.query; query != nil; query = query.outer {
+		candidate := query.source
 		if _, found := candidate.queryColumn(id); found {
-			return candidate != s.querySource
+			return candidate != s.query.source
 		}
 	}
 	return false
 }
 
-// queryColumn returns a source column by ID, including join scopes whose colset is populated later.
+// queryColumn scans cols in this scope to find one with column ID |id| and returns it, if found. It
+// intentionally scans the columns looking for |id|, instead of using a ColSet.
 func (s *scope) queryColumn(id sql.ColumnId) (scopeColumn, bool) {
 	for _, col := range s.cols {
 		if sql.ColumnId(col.id) == id {
@@ -234,7 +241,7 @@ func (b *Builder) buildNameConst(fromScope *scope, f *ast.FuncExpr) sql.Expressi
 	return expression.NewAlias(b.ctx, aliasStr, vLit)
 }
 
-func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []sql.Expression, having *ast.Where) *scope {
+func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []sql.Expression, having sql.Expression) *scope {
 	b.qFlags.Set(sql.QFlagAggregation)
 
 	// GROUP_BY consists of:
@@ -330,7 +337,7 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 		outScope.node = plan.NewProject(b.ctx, append(selectGfs, aliases...), outScope.node).WithAliasDeps(aliasDeps)
 	}
 
-	b.buildHaving(fromScope, projScope, outScope, having)
+	b.attachHaving(outScope, having)
 	if len(fromScope.windowFuncs) > 0 {
 		outScope.windowFuncs = fromScope.windowFuncs
 		outScope = b.buildWindow(outScope, projScope)
@@ -376,17 +383,11 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 		b.qFlags.Set(sql.QFlagAnyAgg)
 	}
 
-	argScope := inScope.querySource
-	if argScope == nil {
-		argScope = inScope
-	}
+	argScope := inScope.query.source
 	correlations := inScope.aggregateCorrelationSnapshot()
 	args := b.buildAggFunctionArgs(argScope, e)
 	var gb *groupBy
 	aggScope := inScope.aggregateScope(b.ctx, args)
-	if aggScope == nil {
-		aggScope = inScope
-	}
 	aggScope.initGroupBy()
 	gb = aggScope.groupBy
 	b.addOuterAggregateArgDeps(aggScope, args)
@@ -517,13 +518,13 @@ func (b *Builder) addOuterAggregateArgDeps(aggScope *scope, args []sql.Expressio
 			if !ok {
 				return true
 			}
-			for outer := aggScope.outerQuery; outer != nil; outer = outer.outerQuery {
-				col, found := outer.queryColumn(gf.Id())
+			for outer := aggScope.query.outer; outer != nil; outer = outer.outer {
+				col, found := outer.source.queryColumn(gf.Id())
 				if !found {
 					continue
 				}
 				col.scalar = col.scalarGf()
-				outer.addExtraColumn(col)
+				outer.source.addExtraColumn(col)
 				break
 			}
 			return false
@@ -533,19 +534,19 @@ func (b *Builder) addOuterAggregateArgDeps(aggScope *scope, args []sql.Expressio
 
 // aggregateCorrelationSnapshot preserves correlations established before resolving an aggregate's arguments.
 func (s *scope) aggregateCorrelationSnapshot() sql.ColSet {
-	if s.querySubquery == nil {
+	if s.query.correlations == nil {
 		return sql.ColSet{}
 	}
-	return s.querySubquery.correlated.Copy()
+	return s.query.correlations.correlated.Copy()
 }
 
 // recordOuterAggregateArgDeps replaces correlations introduced by outer aggregate arguments with the result column.
 func (b *Builder) recordOuterAggregateArgDeps(inScope, aggScope *scope, before sql.ColSet, aggId sql.ColumnId) {
-	if inScope.querySource == aggScope || inScope.querySubquery == nil {
+	if inScope.query.source == aggScope || inScope.query.correlations == nil {
 		return
 	}
-	inScope.querySubquery.correlated = before
-	inScope.querySubquery.correlated.Add(aggId)
+	inScope.query.correlations.correlated = before
+	inScope.query.correlations.correlated.Add(aggId)
 }
 
 // buildJsonArrayStarAggregate builds a JSON_ARRAY(*) aggregate function
@@ -606,10 +607,7 @@ func (b *Builder) buildCountStarAggregate(e *ast.FuncExpr, gb *groupBy) sql.Expr
 
 // buildGroupConcat builds a GROUP_CONCAT aggregate function
 func (b *Builder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.Expression {
-	argScope := inScope.querySource
-	if argScope == nil {
-		argScope = inScope
-	}
+	argScope := inScope.query.source
 	correlations := inScope.aggregateCorrelationSnapshot()
 
 	args, sortConditions := b.buildGroupConcatArgs(argScope, e)
@@ -621,9 +619,6 @@ func (b *Builder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.E
 
 	deps := append(sortConditions.ToExpressions(), args...)
 	aggScope := inScope.aggregateScope(b.ctx, deps)
-	if aggScope == nil {
-		aggScope = inScope
-	}
 	aggScope.initGroupBy()
 	gb := aggScope.groupBy
 	b.addOuterAggregateArgDeps(aggScope, deps)
@@ -1053,13 +1048,6 @@ func (b *Builder) mergeWindowDefs(def, ref *sql.WindowDefinition) *sql.WindowDef
 	return sql.NewWindowDefinition(partitionBy, orderBy, frame, "", def.Name)
 }
 
-func (b *Builder) analyzeHaving(fromScope, projScope *scope, having *ast.Where) {
-	// Resolve the HAVING expression early so its aggregates are registered with
-	// the query scopes that own their resolved arguments. buildHaving caches the
-	// expression for reuse after the aggregation node has been constructed.
-	b.buildHaving(fromScope, projScope, nil, having)
-}
-
 // addHavingDeps preserves source columns needed by HAVING expressions and their aggregates.
 func (b *Builder) addHavingDeps(fromScope *scope, having sql.Expression) {
 	addField := func(gf *expression.GetField) {
@@ -1144,17 +1132,10 @@ func (b *Builder) buildInnerProj(fromScope, projScope *scope) *scope {
 	return outScope
 }
 
-func (b *Builder) buildHaving(fromScope, projScope, outScope *scope, having *ast.Where) {
+// resolveHaving builds a HAVING predicate and registers the source columns and aggregates it needs.
+func (b *Builder) resolveHaving(fromScope, projScope *scope, having *ast.Where) sql.Expression {
 	if having == nil {
-		return
-	}
-	// HAVING is resolved during analysis, before the aggregation node exists.
-	// Reuse that expression when this later call attaches the filter to the plan.
-	if fromScope.having != nil {
-		if outScope != nil {
-			outScope.node = plan.NewHaving(fromScope.having, outScope.node)
-		}
-		return
+		return nil
 	}
 	fromScope.initGroupBy()
 
@@ -1162,9 +1143,7 @@ func (b *Builder) buildHaving(fromScope, projScope, outScope *scope, having *ast
 	// Build a namespace with that precedence while retaining the enclosing query
 	// chain needed by correlated subqueries.
 	havingScope := b.newScope()
-	havingScope.querySource = fromScope
-	havingScope.outerQuery = fromScope.outerQuery
-	havingScope.querySubquery = fromScope.querySubquery
+	havingScope.query = fromScope.query
 	if fromScope.parent != nil {
 		havingScope.parent = fromScope.parent
 		havingScope.parent.selectAliases = fromScope.selectAliases
@@ -1212,10 +1191,16 @@ func (b *Builder) buildHaving(fromScope, projScope, outScope *scope, having *ast
 	}
 
 	havingScope.groupBy = fromScope.groupBy
-	fromScope.having = b.buildScalar(havingScope, having.Expr)
-	b.addHavingDeps(fromScope, fromScope.having)
-	if outScope != nil {
-		outScope.node = plan.NewHaving(fromScope.having, outScope.node)
+	resolved := b.buildScalar(havingScope, having.Expr)
+	b.addHavingDeps(fromScope, resolved)
+	return resolved
+}
+
+// attachHaving adds a previously resolved HAVING predicate to the current plan.
+// HAVING is resolved early so its aggregates can be assigned to their owning query blocks.
+func (b *Builder) attachHaving(outScope *scope, having sql.Expression) {
+	if having != nil {
+		outScope.node = plan.NewHaving(having, outScope.node)
 	}
 }
 
