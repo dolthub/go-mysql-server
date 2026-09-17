@@ -15,6 +15,8 @@
 package queries
 
 import (
+	"github.com/dolthub/vitess/go/mysql"
+
 	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -866,6 +868,47 @@ var CharsetCollationEngineTests = []ScriptTest{
 				Expected: []sql.Row{
 					{int32(1)},
 				},
+			},
+		},
+	},
+	{
+		// See https://github.com/dolthub/go-mysql-server/issues/3837
+		Name: "CONVERT() USING with malformed multi-byte strings",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:                           "SELECT CONVERT(0x61FF62 USING utf8mb4);",
+				Expected:                        []sql.Row{{nil}},
+				ExpectedWarning:                 mysql.ERInvalidCharacterString,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "invalid string for character set",
+			},
+			{
+				Query:                           "SELECT CHAR_LENGTH(CONVERT(0x61FF62 USING utf8mb4));",
+				Expected:                        []sql.Row{{nil}},
+				ExpectedWarning:                 mysql.ERInvalidCharacterString,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "invalid string for character set",
+			},
+			{
+				Query:                           "SELECT HEX(LPAD(CONVERT(0x61FF62 USING utf8mb4), 5, 'x'));",
+				Expected:                        []sql.Row{{nil}},
+				ExpectedWarning:                 mysql.ERInvalidCharacterString,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "invalid string for character set",
+			},
+			{
+				// Valid multi-byte sequences are still converted and padded.
+				Query:    "SELECT HEX(CONVERT(0x61C3A962 USING utf8mb4));",
+				Expected: []sql.Row{{"61C3A962"}},
+			},
+			{
+				// A binary target accepts any byte sequence.
+				Query:    "SELECT HEX(CONVERT(0x61FF62 USING binary));",
+				Expected: []sql.Row{{"61FF62"}},
+			},
+			{
+				Query:    "SELECT HEX(LPAD(CONVERT(0x61C3A962 USING utf8mb4), 5, 'x'));",
+				Expected: []sql.Row{{"787861C3A962"}},
 			},
 		},
 	},
