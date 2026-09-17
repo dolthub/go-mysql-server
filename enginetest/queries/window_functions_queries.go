@@ -260,12 +260,15 @@ ORDER BY id;`,
 				Expected: []sql.Row{{1, 1}, {2, 1}},
 			},
 			{
+				// TODO: Doltgres does not yet translate built-in bigint expression types for INSERT sources.
+				Dialect: "mysql",
 				Query: "INSERT INTO r SELECT id, " +
 					"ROW_NUMBER() OVER (ORDER BY id), " +
 					"(SELECT COUNT(*) FROM m0 x WHERE x.c0 = m0.c0) " +
 					"FROM m0",
 			},
 			{
+				Dialect:  "mysql",
 				Query:    "SELECT id, rn, c FROM r ORDER BY id",
 				Expected: []sql.Row{{1, 1, 1}, {2, 2, 1}},
 			},
