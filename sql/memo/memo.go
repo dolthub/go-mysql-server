@@ -156,6 +156,29 @@ func (m *Memo) MemoizeInnerJoin(ctx *sql.Context, grp, left, right *ExprGroup, o
 	return grp
 }
 
+// DropsNullRejection reports whether executing op as a lookup or merge join
+// would silently drop its null-rejecting semantics. Those joins only compare
+// rows whose join keys are equal, so a filter evaluating to NULL is never
+// observed, and a join that has to reject those rows cannot be executed that
+// way. Hash and nested loop joins evaluate the filter against every candidate
+// row, so they are unaffected. A filter can only evaluate to NULL if one of
+// its columns is nullable, which keeps index joins available for the common
+// case of a join over non-nullable columns.
+func DropsNullRejection(ctx *sql.Context, op plan.JoinType, filter []sql.Expression) bool {
+	if op != plan.JoinTypeLeftOuterExcludeNulls {
+		return false
+	}
+	for _, f := range filter {
+		if transform.InspectExpr(ctx, f, func(ctx *sql.Context, e sql.Expression) bool {
+			gf, ok := e.(*expression.GetField)
+			return ok && gf.IsNullable(ctx)
+		}) {
+			return true
+		}
+	}
+	return false
+}
+
 func (m *Memo) MemoizeLookupJoin(ctx *sql.Context, grp, left, right *ExprGroup, op plan.JoinType, filter []sql.Expression, lookup *IndexScan) *ExprGroup {
 	if right.RelProps.reqIdxCols.Difference(lookup.Index.set).Len() > 0 {
 		// the index lookup does not cover the requested RHS indexScan columns,
