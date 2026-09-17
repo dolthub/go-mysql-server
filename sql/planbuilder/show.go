@@ -558,7 +558,34 @@ func (b *Builder) buildShowIndex(inScope *scope, s *ast.Show) (outScope *scope) 
 		err := sql.ErrTableNotFound.New(s.Table.Name.String())
 		b.handleErr(err)
 	}
-	outScope.node = showIdx
+
+	// SHOW INDEX supports a WHERE clause (MySQL:
+	// https://dev.mysql.com/doc/refman/8.0/en/show-index.html), but that
+	// clause was never applied here. Unlike most other SHOW statements
+	// (which carry their filter in the generic s.Filter field, a
+	// *ShowFilter), the grammar parses SHOW INDEX's WHERE clause into its
+	// own dedicated s.ShowIndexFilterOpt field (see sql.y's "SHOW
+	// indexes_or_keys ... where_expression_opt" rule) - a plain
+	// ast.Expr, not a *ShowFilter. That field was never read here, so it
+	// was silently discarded and every SHOW INDEX query always returned
+	// every index on the table regardless of the predicate. Apply it the
+	// same way the other column-filtering SHOW statements above do (see
+	// buildShowProcedureStatus): register the output columns of showIdx so
+	// the filter expression can resolve references like `key_name`, then
+	// wrap the node in a Having filter.
+	var node sql.Node = showIdx
+	if s.ShowIndexFilterOpt != nil {
+		for _, c := range showIdx.Schema(b.ctx) {
+			outScope.newColumn(scopeColumn{table: "", col: c.Name, typ: c.Type, nullable: c.Nullable})
+		}
+
+		filter := b.buildScalar(outScope, s.ShowIndexFilterOpt)
+		if filter != nil {
+			node = plan.NewHaving(filter, showIdx)
+		}
+	}
+
+	outScope.node = node
 	return
 }
 

@@ -16,7 +16,7 @@ engine and perform queries.
 
 Engine tests live in the `enginetest` package, and are written in a
 harnessed manner to allow integrators to run them on their own
-database implementation. The `memory_engine_test.go` runs these tests
+database implementation. The `memory\_engine\_test.go` runs these tests
 on the built-in in-memory database implementation in the `memory`
 package.
 
@@ -33,7 +33,7 @@ several main roles:
   `Expression`, ...
 - Provides implementations of components used in the rest of the
   packages `Row`, `Context`, `ProcessList`, `Catalog`, ...
-- Defines the `information_schema` database, which is a special
+- Defines the `information\_schema` database, which is a special
   database and contains some information about the schemas of other
   tables.
 
@@ -125,14 +125,14 @@ Contains a function to `Find` the most similar name from an array to a
 given one using the Levenshtein distance algorithm. Used for
 suggestions on errors.
 
-## `_integration`
+## `\_integration`
 
 To ensure compatibility with some clients, there is a small example
 connecting and querying a go-mysql-server server from those
 clients. Each folder corresponds to a different client.
 
 For more info about supported clients see
-[SUPPORTED_CLIENTS.md](/SUPPORTED_CLIENTS.md).
+[SUPPORTED\_CLIENTS.md](/SUPPORTED\_CLIENTS.md).
 
 These integrations tests can be run using this command:
 
@@ -142,7 +142,7 @@ make TEST=${CLIENT FOLDER NAME} integration
 
 It will take care of setting up the test server and shutting it down.
 
-## `_example`
+## `\_example`
 
 A small example of how to use go-mysql-server to create a server and
 run it.

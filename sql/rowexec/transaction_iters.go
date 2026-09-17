@@ -145,6 +145,21 @@ func (t *TransactionCommittingIter) Close(ctx *sql.Context) error {
 	// Clearing out the current transaction will tell us to start a new one the next time this session queries
 	ctx.SetTransaction(nil)
 
+	// An implicit commit (e.g. a DDL statement issued mid-transaction) ends
+	// whatever explicit, client-initiated transaction was in progress, exactly
+	// like MySQL's own implicit-commit semantics. If that explicit transaction
+	// had set ctx.SetIgnoreAutoCommit(true) (see rowexec/transaction.go
+	// buildStartTransaction), that flag must be cleared here too - otherwise it
+	// stays incorrectly true, causing the *next* ordinary autocommit statement
+	// to be misreported as inside a client-visible transaction (see
+	// server/handler.go setConnStatusFlags), which desyncs MySQL clients whose
+	// BEGIN/COMMIT bookkeeping mirrors that wire status flag (e.g. PHP's
+	// PDO_MySQL) and makes their next legitimate BEGIN fail client-side with
+	// "There is already an active transaction".
+	if t.implicitCommit {
+		ctx.SetIgnoreAutoCommit(false)
+	}
+
 	return nil
 }
 

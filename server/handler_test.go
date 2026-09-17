@@ -2066,3 +2066,53 @@ func TestHandlerNewConnectionProcessListInteractions(t *testing.T) {
 		assert.Equal(t, "test", procs[0].Database)
 	}
 }
+
+// fakeTransaction is a minimal sql.Transaction fixture for tests that only
+// need a non-nil transaction, not real commit/rollback semantics.
+type fakeTransaction struct{}
+
+func (fakeTransaction) String() string   { return "fakeTransaction" }
+func (fakeTransaction) IsReadOnly() bool { return false }
+
+// TestSetConnStatusFlagsInTransaction verifies that the ServerInTransaction
+// status flag reflects only client-visible (explicit) transactions, not the
+// engine's internal, per-statement implicit transactions used for ordinary
+// autocommit statements. A non-nil ctx.GetTransaction() alone is not
+// sufficient: an implicit transaction with GetIgnoreAutoCommit() == false
+// must not set the flag, or MySQL clients (whose own BEGIN/COMMIT
+// bookkeeping mirrors this wire flag, e.g. PHP's PDO_MySQL) end up believing
+// a transaction is open when the server considers none to be, and refuse a
+// subsequent, legitimate client-issued BEGIN.
+func TestSetConnStatusFlagsInTransaction(t *testing.T) {
+	newCtx := func() *sql.Context {
+		session := sql.NewBaseSession()
+		return sql.NewContext(context.Background(), sql.WithSession(session))
+	}
+
+	t.Run("no transaction", func(t *testing.T) {
+		ctx := newCtx()
+		conn := &mysql.Conn{}
+		require.NoError(t, setConnStatusFlags(ctx, conn))
+		assert.Equal(t, uint16(0), conn.StatusFlags&uint16(mysql.ServerInTransaction))
+	})
+
+	t.Run("implicit per-statement transaction (ordinary autocommit statement)", func(t *testing.T) {
+		ctx := newCtx()
+		ctx.SetTransaction(fakeTransaction{})
+		// GetIgnoreAutoCommit() defaults to false: no explicit BEGIN was issued.
+		conn := &mysql.Conn{}
+		require.NoError(t, setConnStatusFlags(ctx, conn))
+		assert.Equal(t, uint16(0), conn.StatusFlags&uint16(mysql.ServerInTransaction),
+			"an implicit, per-statement transaction must not set ServerInTransaction")
+	})
+
+	t.Run("explicit client transaction (after BEGIN)", func(t *testing.T) {
+		ctx := newCtx()
+		ctx.SetTransaction(fakeTransaction{})
+		ctx.SetIgnoreAutoCommit(true)
+		conn := &mysql.Conn{}
+		require.NoError(t, setConnStatusFlags(ctx, conn))
+		assert.NotEqual(t, uint16(0), conn.StatusFlags&uint16(mysql.ServerInTransaction),
+			"an explicit client transaction must set ServerInTransaction")
+	})
+}

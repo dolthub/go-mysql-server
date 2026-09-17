@@ -396,6 +396,29 @@ var InfoSchemaQueries = []QueryTest{
 		},
 	},
 	{
+		// The WHERE clause was previously silently ignored, always returning
+		// every index on the table regardless of the predicate (found via a
+		// downstream Drupal core compatibility failure: Drupal's mysql
+		// driver implements Schema::indexExists() with exactly this query
+		// shape). MySQL: https://dev.mysql.com/doc/refman/8.0/en/show-index.html
+		Query: `SHOW INDEX FROM mytable WHERE key_name = 'mytable_s'`,
+		Expected: []sql.Row{
+			{"mytable", 0, "mytable_s", 1, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+		},
+	},
+	{
+		Query:    `SHOW INDEX FROM mytable WHERE key_name = 'no_such_index'`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query: `SHOW INDEX FROM mytable WHERE key_name LIKE 'mytable_%'`,
+		Expected: []sql.Row{
+			{"mytable", 0, "mytable_s", 1, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"mytable", 1, "mytable_i_s", 1, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"mytable", 1, "mytable_i_s", 2, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+		},
+	},
+	{
 		Query: `SHOW CREATE TABLE mytaBLE`,
 		Expected: []sql.Row{
 			{"mytable", "CREATE TABLE `mytable` (\n" +
