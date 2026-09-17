@@ -40,6 +40,14 @@ var (
 			"this is incompatible with sql_mode=only_full_group_by",
 	)
 
+	// ErrValidationGroupByHaving is returned when a HAVING expression contains a nonaggregated column that does not
+	// appear in the group by clause.
+	ErrValidationGroupByHaving = errors.NewKind(
+		"Expression #%d of HAVING clause is not in GROUP BY clause and contains nonaggregated column '%s' which " +
+			"is not functionally dependent on columns in GROUP BY clause; " +
+			"this is incompatible with sql_mode=only_full_group_by",
+	)
+
 	// ErrValidationSchemaSource is returned when there is any column source
 	// that does not match the table name.
 	ErrValidationSchemaSource = errors.NewKind("one or more schema sources are empty")
