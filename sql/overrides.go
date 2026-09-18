@@ -63,6 +63,9 @@ type BuilderOverrides struct {
 	// When enabled, an alias without an explicit column list names both the relation and its single output column.
 	// Leave this false for standard MySQL compatibility.
 	ScalarFunctionAliasAsColumn bool
+	// PermitDuplicateColumnNames allows a derived table to expose several columns that share a name, which some
+	// integrators permit. Leave this false for standard MySQL compatibility.
+	PermitDuplicateColumnNames bool
 	// Represents the parser to use. If this is nil, then the MySQL parser will be used.
 	Parser Parser
 	// InsertIgnoreMode controls the error-handling semantics for ignored inserts.
