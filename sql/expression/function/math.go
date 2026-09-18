@@ -22,6 +22,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/cockroachdb/apd/v3"
@@ -116,7 +117,15 @@ func (r *Rand) Children() []sql.Expression {
 	return []sql.Expression{r.Child}
 }
 
-// Eval implements sql.Expression.
+// randPool caches [*rand.Rand] instances to avoid allocating a new PRNG
+// state on every row evaluation of seeded Rand.
+var randPool = sync.Pool{
+	New: func() any {
+		return rand.New(rand.NewSource(0))
+	},
+}
+
+// Eval implements [sql.Expression]. Evaluates Rand against |row|.
 func (r *Rand) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if r.Child == nil {
 		return rand.Float64(), nil
@@ -129,7 +138,11 @@ func (r *Rand) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	return rand.New(rand.NewSource(seed)).Float64(), nil
+	rng := randPool.Get().(*rand.Rand)
+	rng.Seed(seed)
+	val := rng.Float64()
+	randPool.Put(rng)
+	return val, nil
 }
 
 // Sin is the SIN function
