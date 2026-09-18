@@ -288,5 +288,8 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (val interface{}, er
 func (r *RegexpReplace) Dispose(ctx *sql.Context) {
 	if r.re != nil {
 		_ = r.re.Close()
+		r.re = nil
 	}
+	r.compileOnce = sync.Once{}
+	r.compileErr = nil
 }

@@ -247,5 +247,8 @@ func (r *RegexpSubstr) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 func (r *RegexpSubstr) Dispose(ctx *sql.Context) {
 	if r.re != nil {
 		_ = r.re.Close()
+		r.re = nil
 	}
+	r.compileOnce = sync.Once{}
+	r.compileErr = nil
 }
