@@ -322,6 +322,7 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo, cat sql.Catalog) error {
 		}
 
 		columnIdToIndexedExprMap := buildColumnIdToIndexedExprMap(ctx, cat, rt, indexes)
+		// TODO: select the OR expression with the best index coverage.
 		var or *expression.Or
 		for _, f := range join.Filter {
 			if o, ok := f.(*expression.Or); ok {
@@ -408,9 +409,17 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo, cat sql.Catalog) error {
 	})
 }
 
-// keyExprsForIndex returns a list of expression groups that compute a lookup
-// key into the given index. The key fields will either be equality filters
-// (from ON conditions) or constants.
+// keyExprsForIndex maps [sql.Expression] filter conditions onto index
+// columns to produce lookup keys, returning nil if no columns match.
+// It returns lookup keys, matched filter expressions, a nullmask, and
+// whether any primary filter matched.
+//
+// Index columns match against primary |filters| first, falling back
+// to secondary |extraFilters| to satisfy leading columns in
+// multi-column indexes. The returned matchesFilters boolean reports
+// whether the index matched at least one condition in |filters|,
+// allowing callers to reject indexes matched solely through
+// |extraFilters|.
 func keyExprsForIndex(
 	ctx *sql.Context,
 	tableId sql.TableId,

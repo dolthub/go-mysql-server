@@ -1461,6 +1461,8 @@ var JoinScriptTests = []ScriptTest{
 			"insert into r values ('X');",
 			"create table deps_comp (id int primary key, type varchar(16), col_a varchar(32), col_b varchar(32), key k_type_a (type, col_a), key k_type_b (type, col_b));",
 			"insert into deps_comp values (1, 'keep', 'X', null), (2, 'drop', 'X', null), (3, 'keep', null, 'X'), (4, 'drop', null, 'X');",
+			"create table deps_sep (id int primary key, type varchar(16), col_a varchar(32), col_b varchar(32), key k_type (type), key k_a (col_a), key k_b (col_b));",
+			"insert into deps_sep values (1, 'keep', 'X', null), (2, 'drop', 'X', null), (3, 'keep', null, 'X'), (4, 'drop', null, 'X');",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -1470,6 +1472,10 @@ var JoinScriptTests = []ScriptTest{
 			{
 				Query:    "select d.id, d.type, d.col_a, d.col_b from r join deps_comp d on d.type = 'keep' and (d.col_a = r.id or d.col_b = r.id) order by d.id;",
 				Expected: []sql.Row{{1, "keep", "X", nil}, {3, "keep", nil, "X"}},
+			},
+			{
+				Query:    "select d.id, d.type from r join deps_sep d on d.type = 'keep' and (d.col_a = r.id or d.col_b = r.id) order by d.id;",
+				Expected: []sql.Row{{1, "keep"}, {3, "keep"}},
 			},
 		},
 	},
