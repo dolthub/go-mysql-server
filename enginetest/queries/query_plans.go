@@ -26245,4 +26245,63 @@ order by x, y;
 			"         └─ columns: [s2 i2]\n" +
 			"",
 	},
+	{
+		Query: `SELECT pk2 FROM two_pk WHERE pk1=1 ORDER BY pk2`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [two_pk.pk2:1!null]\n" +
+			" └─ IndexedTableAccess(two_pk)\n" +
+			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     ├─ static: [{[1, 1], [NULL, ∞)}]\n" +
+			"     ├─ colSet: (1-7)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: two_pk\n" +
+			"         └─ columns: [pk1 pk2]\n" +
+			"",
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [two_pk.pk2]\n" +
+			" └─ IndexedTableAccess(two_pk)\n" +
+			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     ├─ filters: [{[1, 1], [NULL, ∞)}]\n" +
+			"     └─ columns: [pk1 pk2]\n" +
+			"",
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [two_pk.pk2]\n" +
+			" └─ IndexedTableAccess(two_pk)\n" +
+			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     ├─ filters: [{[1, 1], [NULL, ∞)}]\n" +
+			"     └─ columns: [pk1 pk2]\n" +
+			"",
+	},
+	{
+		Query: `SELECT pk2 FROM two_pk WHERE pk1=1 ORDER BY pk2 DESC`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [two_pk.pk2:1!null]\n" +
+			" └─ IndexedTableAccess(two_pk)\n" +
+			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     ├─ static: [{[1, 1], [NULL, ∞)}]\n" +
+			"     ├─ reverse: true\n" +
+			"     ├─ colSet: (1-7)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: two_pk\n" +
+			"         └─ columns: [pk1 pk2]\n" +
+			"",
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [two_pk.pk2]\n" +
+			" └─ IndexedTableAccess(two_pk)\n" +
+			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     ├─ filters: [{[1, 1], [NULL, ∞)}]\n" +
+			"     ├─ columns: [pk1 pk2]\n" +
+			"     └─ reverse: true\n" +
+			"",
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [two_pk.pk2]\n" +
+			" └─ IndexedTableAccess(two_pk)\n" +
+			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     ├─ filters: [{[1, 1], [NULL, ∞)}]\n" +
+			"     ├─ columns: [pk1 pk2]\n" +
+			"     └─ reverse: true\n" +
+			"",
+	},
 }
