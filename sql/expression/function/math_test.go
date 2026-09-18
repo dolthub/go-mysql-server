@@ -114,6 +114,52 @@ func TestRandWithSeed(t *testing.T) {
 	assert.Equal(t, f64, f642)
 }
 
+func TestRandWithSeedPool(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	r, err := NewRand(ctx, expression.NewLiteral(42, types.Int64))
+	require.NoError(t, err)
+
+	res1, err := r.Eval(ctx, sql.Row{})
+	require.NoError(t, err)
+	val1, ok := res1.(float64)
+	require.True(t, ok)
+
+	// Verify that the same seed returns the exact same value across runs.
+	for i := 0; i < 100; i++ {
+		res, err := r.Eval(ctx, sql.Row{})
+		require.NoError(t, err)
+		val, ok := res.(float64)
+		require.True(t, ok)
+		assert.Equal(t, val1, val)
+	}
+
+	// Verify that evaluating a different seed produces a different value.
+	rOther, err := NewRand(ctx, expression.NewLiteral(100, types.Int64))
+	require.NoError(t, err)
+	resOther, err := rOther.Eval(ctx, sql.Row{})
+	require.NoError(t, err)
+	valOther, ok := resOther.(float64)
+	require.True(t, ok)
+	assert.NotEqual(t, val1, valOther)
+
+	// Verify that evaluating another seed did not alter the first seed's output.
+	resAgain, err := r.Eval(ctx, sql.Row{})
+	require.NoError(t, err)
+	valAgain, ok := resAgain.(float64)
+	require.True(t, ok)
+	assert.Equal(t, val1, valAgain)
+
+	// Verify that generator reuse keeps heap allocations to one per call.
+	// Converting float64 to interface{} allocates once.
+	allocs := testing.AllocsPerRun(100, func() {
+		_, err := r.Eval(ctx, sql.Row{})
+		if err != nil {
+			t.Fatal(err)
+		}
+	})
+	assert.LessOrEqual(t, allocs, float64(1))
+}
+
 func TestRadians(t *testing.T) {
 	f := sql.Function1{Name: "radians", Fn: NewRadians}
 	tf := NewTestFactory(f.Fn)
