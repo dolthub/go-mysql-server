@@ -2043,6 +2043,43 @@ ORDER BY id;`,
 			},
 		},
 	},
+	{
+		Name: "derived table with duplicate column names",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       `SELECT *, ROW_NUMBER() OVER () FROM (SELECT 1 AS a, 'x' AS a) t;`,
+				ExpectedErr: sql.ErrDuplicateColumn,
+			},
+			{
+				Query:       `SELECT * FROM (SELECT 1 AS a, 'x' AS a) t;`,
+				ExpectedErr: sql.ErrDuplicateColumn,
+			},
+			{
+				Query:       `SELECT * FROM (SELECT 1, 2) t(a, a);`,
+				ExpectedErr: sql.ErrDuplicateColumn,
+			},
+		},
+	},
+	{
+		Name: "window function reused inside a larger projection",
+		SetUpScript: []string{
+			"CREATE TABLE t (id INT PRIMARY KEY, two INT, four INT, ten INT, hundred INT)",
+			"INSERT INTO t VALUES (1,0,0,0,10), (2,1,1,1,20), (3,0,2,2,30), (4,1,3,3,40)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT * FROM (
+  SELECT count(*) OVER (PARTITION BY four ORDER BY ten) +
+    sum(hundred) OVER (PARTITION BY two ORDER BY ten) AS total,
+    count(*) OVER (PARTITION BY four ORDER BY ten) AS fourcount,
+    sum(hundred) OVER (PARTITION BY two ORDER BY ten) AS twosum
+    FROM t
+) sub
+WHERE total <> fourcount + twosum;`,
+				Expected: []sql.Row{},
+			},
+		},
+	},
 }
 
 // WindowRowFramesScriptTests tests window functions using ROWS frame specifications.
