@@ -670,10 +670,11 @@ func (b *Builder) buildWindow(fromScope, projScope *scope) *scope {
 			switch e := e.(type) {
 			case *expression.GetField:
 				colName := strings.ToLower(e.String())
-				if !selectStr[colName] {
+				key := windowPassthroughKey(e)
+				if !selectStr[colName] && !selectStr[key] {
 					selectExprs = append(selectExprs, e)
 					selectGfs = append(selectGfs, e)
-					selectStr[colName] = true
+					selectStr[key] = true
 				}
 			case *plan.Subquery:
 				e.Correlated().ForEach(func(colId sql.ColumnId) {
@@ -689,10 +690,11 @@ func (b *Builder) buildWindow(fromScope, projScope *scope) *scope {
 	}
 	for _, e := range fromScope.extraCols {
 		// accessory cols used by ORDER_BY, HAVING
-		if !selectStr[e.String()] {
+		key := windowPassthroughKey(e.scalarGf())
+		if !selectStr[e.String()] && !selectStr[key] {
 			selectExprs = append(selectExprs, e.scalarGf())
 			selectGfs = append(selectGfs, e.scalarGf())
-			selectStr[e.String()] = true
+			selectStr[key] = true
 		}
 	}
 
@@ -705,6 +707,15 @@ func (b *Builder) buildWindow(fromScope, projScope *scope) *scope {
 	}
 
 	return outScope
+}
+
+// windowPassthroughKey identifies a column passed through a window node. Columns with an id are keyed by it, since a
+// derived table may expose several columns sharing a name.
+func windowPassthroughKey(e sql.Expression) string {
+	if gf, ok := e.(*expression.GetField); ok && gf.Id() != 0 {
+		return fmt.Sprintf("#%d", gf.Id())
+	}
+	return strings.ToLower(e.String())
 }
 
 // expressionIsNonDeterministic reports whether an expression tree contains a nondeterministic expression.
