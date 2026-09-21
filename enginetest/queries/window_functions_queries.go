@@ -50,10 +50,7 @@ var WindowFunctionsScriptTests = []ScriptTest{
 	},
 	{
 		Name: "window function over grouped one-column input",
-		// PostgreSQL does not support the sql_mode setting required by this MySQL regression.
-		Dialect: "mysql",
 		SetUpScript: []string{
-			"SET sql_mode = ''",
 			"CREATE TABLE grouped_window (id INT PRIMARY KEY, g INT, k INT, v INT)",
 			"INSERT INTO grouped_window VALUES (1,0,2,10), (2,0,1,20), (3,1,1,30)",
 			"CREATE TABLE nullable_grouped_window (id INT PRIMARY KEY, g INT)",
@@ -103,6 +100,23 @@ var WindowFunctionsScriptTests = []ScriptTest{
 			{
 				Query:       "SELECT SUM(ROW_NUMBER() OVER (ORDER BY g)) FROM grouped_window GROUP BY g",
 				ExpectedErr: sql.ErrNonAggregatedColumnWithoutGroupBy,
+			},
+		},
+	},
+	{
+		Name: "window function is considered an aggregate function for group by validation",
+		SetUpScript: []string{
+			"CREATE TABLE window_gb_outer (id INT PRIMARY KEY, a INT)",
+			"CREATE TABLE window_gb_inner (x INT)",
+			"INSERT INTO window_gb_outer VALUES (1,1), (2,2), (3,3)",
+			"INSERT INTO window_gb_inner VALUES (1), (1), (2)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT id FROM window_gb_outer WHERE EXISTS (SELECT ROW_NUMBER() OVER (ORDER BY x) FROM window_gb_inner WHERE window_gb_inner.x = window_gb_outer.a GROUP BY window_gb_inner.x) ORDER BY id",
+				Expected: []sql.Row{
+					{1}, {2},
+				},
 			},
 		},
 	},
