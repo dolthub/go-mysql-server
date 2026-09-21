@@ -26305,6 +26305,130 @@ order by x, y;
 			"",
 	},
 	{
+		Query: `SELECT pk2 FROM two_pk WHERE pk1=1 ORDER BY pk1 ASC, pk2 DESC`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [two_pk.pk2:1!null]\n" +
+			" └─ IndexedTableAccess(two_pk)\n" +
+			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     ├─ static: [{[1, 1], [NULL, ∞)}]\n" +
+			"     ├─ reverse: true\n" +
+			"     ├─ colSet: (1-7)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: two_pk\n" +
+			"         └─ columns: [pk1 pk2]\n" +
+			"",
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [two_pk.pk2]\n" +
+			" └─ IndexedTableAccess(two_pk)\n" +
+			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     ├─ filters: [{[1, 1], [NULL, ∞)}]\n" +
+			"     ├─ columns: [pk1 pk2]\n" +
+			"     └─ reverse: true\n" +
+			"",
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [two_pk.pk2]\n" +
+			" └─ IndexedTableAccess(two_pk)\n" +
+			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     ├─ filters: [{[1, 1], [NULL, ∞)}]\n" +
+			"     ├─ columns: [pk1 pk2]\n" +
+			"     └─ reverse: true\n" +
+			"",
+	},
+	{
+		Query: `SELECT pk3 FROM three_pk WHERE pk1=0 AND pk2=1 ORDER BY pk1, pk3`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [three_pk.pk3:2!null]\n" +
+			" └─ IndexedTableAccess(three_pk)\n" +
+			"     ├─ index: [three_pk.pk1,three_pk.pk2,three_pk.pk3]\n" +
+			"     ├─ static: [{[0, 0], [1, 1], [NULL, ∞)}]\n" +
+			"     ├─ colSet: (1-8)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: three_pk\n" +
+			"         └─ columns: [pk1 pk2 pk3]\n" +
+			"",
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [three_pk.pk3]\n" +
+			" └─ IndexedTableAccess(three_pk)\n" +
+			"     ├─ index: [three_pk.pk1,three_pk.pk2,three_pk.pk3]\n" +
+			"     ├─ filters: [{[0, 0], [1, 1], [NULL, ∞)}]\n" +
+			"     └─ columns: [pk1 pk2 pk3]\n" +
+			"",
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [three_pk.pk3]\n" +
+			" └─ IndexedTableAccess(three_pk)\n" +
+			"     ├─ index: [three_pk.pk1,three_pk.pk2,three_pk.pk3]\n" +
+			"     ├─ filters: [{[0, 0], [1, 1], [NULL, ∞)}]\n" +
+			"     └─ columns: [pk1 pk2 pk3]\n" +
+			"",
+	},
+	{
+		Query: `SELECT pk2 FROM three_pk WHERE pk1=0 AND c5=0 ORDER BY pk2, c5`,
+		Skip:  true, // TODO: Remove sort nodes when ordered by a constant column, even if that column isn't in the index.
+	},
+	{
+		Query: `SELECT pk2 FROM three_pk WHERE pk1=0 AND c5=0 ORDER BY c5, pk2`,
+		Skip:  true, // TODO: Remove sort nodes when ordered by a constant column, even if that column isn't in the index.
+	},
+	{
+		Query: `SELECT pk2 FROM two_pk WHERE pk1=0 ORDER BY pk2, pk1`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [two_pk.pk2:1!null]\n" +
+			" └─ IndexedTableAccess(two_pk)\n" +
+			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     ├─ static: [{[0, 0], [NULL, ∞)}]\n" +
+			"     ├─ colSet: (1-7)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: two_pk\n" +
+			"         └─ columns: [pk1 pk2]\n" +
+			"",
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [two_pk.pk2]\n" +
+			" └─ IndexedTableAccess(two_pk)\n" +
+			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     ├─ filters: [{[0, 0], [NULL, ∞)}]\n" +
+			"     └─ columns: [pk1 pk2]\n" +
+			"",
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [two_pk.pk2]\n" +
+			" └─ IndexedTableAccess(two_pk)\n" +
+			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     ├─ filters: [{[0, 0], [NULL, ∞)}]\n" +
+			"     └─ columns: [pk1 pk2]\n" +
+			"",
+	},
+	{
+		Query: `SELECT pk2 FROM two_pk WHERE pk1=0 ORDER BY pk2, pk2, pk2`,
+		Skip:  true, // TODO: Remove duplicate ORDER BY expressions
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [two_pk.pk2:1!null]\n" +
+			" └─ IndexedTableAccess(two_pk)\n" +
+			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     ├─ static: [{[0, 0], [NULL, ∞)}]\n" +
+			"     ├─ colSet: (1-7)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: two_pk\n" +
+			"         └─ columns: [pk1 pk2]\n" +
+			"",
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [two_pk.pk2]\n" +
+			" └─ IndexedTableAccess(two_pk)\n" +
+			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     ├─ filters: [{[0, 0], [NULL, ∞)}]\n" +
+			"     └─ columns: [pk1 pk2]\n" +
+			"",
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [two_pk.pk2]\n" +
+			" └─ IndexedTableAccess(two_pk)\n" +
+			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     ├─ filters: [{[0, 0], [NULL, ∞)}]\n" +
+			"     └─ columns: [pk1 pk2]\n" +
+			"",
+	},
+	{
 		Query: `SELECT MIN(pk2) FROM two_pk WHERE pk1=1`,
 		ExpectedPlan: "Limit(1)\n" +
 			" └─ Project\n" +
