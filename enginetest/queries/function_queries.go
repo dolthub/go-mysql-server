@@ -1882,6 +1882,56 @@ var FunctionQueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "select cast('002001010203' as date);",
+		Expected: []sql.Row{
+			{nil},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('00200101.0203' as date);",
+		Expected: []sql.Row{
+			{time.Date(20, 01, 01, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select cast('00200101-0203' as date);",
+		Expected: []sql.Row{
+			{nil},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('00200101-02-03' as date);",
+		Expected: []sql.Row{
+			{nil},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('00200101-02.03' as date);",
+		Expected: []sql.Row{
+			{nil},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('00200101.02.03' as date);",
+		Expected: []sql.Row{
+			{time.Date(20, 01, 01, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select cast('00200101.02-03' as date);",
+		Expected: []sql.Row{
+			{time.Date(20, 01, 01, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
 		Query: "select cast('20101' as datetime(6));",
 		Expected: []sql.Row{
 			{time.Date(2020, time.October, 1, 0, 0, 0, 0, time.UTC)},
