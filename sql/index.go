@@ -280,6 +280,7 @@ type IndexLookup struct {
 	Index               Index
 	Ranges              RangeCollection
 	VectorOrderAndLimit OrderAndLimit
+	Ordinals            []uint64
 	// IsPointLookup is true if the lookup will return one or zero
 	// values; the range is null safe, the index is unique, every index
 	// column has a range expression, and every range expression is an
@@ -351,6 +352,15 @@ func NewIndexLookup(idx Index, ranges MySQLRangeCollection, isPointLookup, isEmp
 	}
 }
 
+// NewOrdinalIndexLookup creates an [IndexLookup] for a set of
+// discrete 0-based ordinal offsets on an [OrdinalAddressableIndex].
+func NewOrdinalIndexLookup(idx Index, ordinals ...uint64) IndexLookup {
+	return IndexLookup{
+		Index:    idx,
+		Ordinals: ordinals,
+	}
+}
+
 func (il IndexLookup) IsEmpty() bool {
 	return il.Index == nil
 }
@@ -358,14 +368,34 @@ func (il IndexLookup) IsEmpty() bool {
 func (il IndexLookup) String() string {
 	pr := NewTreePrinter()
 	_ = pr.WriteNode("IndexLookup")
-	pr.WriteChildren(fmt.Sprintf("index: %s", il.Index), fmt.Sprintf("ranges: %s", il.Ranges.String()))
+	var children []string
+	if il.Index != nil {
+		children = append(children, fmt.Sprintf("index: %s", il.Index))
+	}
+	if len(il.Ordinals) > 0 {
+		children = append(children, fmt.Sprintf("ordinals: %v", il.Ordinals))
+	}
+	if il.Ranges != nil {
+		children = append(children, fmt.Sprintf("ranges: %s", il.Ranges.String()))
+	}
+	pr.WriteChildren(children...)
 	return pr.String()
 }
 
 func (il IndexLookup) DebugString(ctx *Context) string {
 	pr := NewTreePrinter()
 	_ = pr.WriteNode("IndexLookup")
-	pr.WriteChildren(fmt.Sprintf("index: %s", il.Index), fmt.Sprintf("ranges: %s", il.Ranges.DebugString(ctx)))
+	var children []string
+	if il.Index != nil {
+		children = append(children, fmt.Sprintf("index: %s", il.Index))
+	}
+	if len(il.Ordinals) > 0 {
+		children = append(children, fmt.Sprintf("ordinals: %v", il.Ordinals))
+	}
+	if il.Ranges != nil {
+		children = append(children, fmt.Sprintf("ranges: %s", il.Ranges.DebugString(ctx)))
+	}
+	pr.WriteChildren(children...)
 	return pr.String()
 }
 
@@ -429,6 +459,18 @@ type OpClassIndex interface {
 	Index
 	// OpClasses returns the operator class of each column, or nil when no column names one.
 	OpClasses() []string
+}
+
+// OrdinalAddressableIndex is an extension of [Index] that supports
+// seeking entries by their 0-based ordinal rank in sorted order.
+type OrdinalAddressableIndex interface {
+	Index
+	// Count returns the total number of entries in the index.
+	Count(ctx *Context) (uint64, error)
+	// MaxOrdinalSampleLimit returns the maximum sample size where
+	// random ordinal seeks outperform a sequential table scan of
+	// |totalRows|.
+	MaxOrdinalSampleLimit(ctx *Context, totalRows uint64) int64
 }
 
 // ColumnExpressionType returns a column expression along with its Type.
