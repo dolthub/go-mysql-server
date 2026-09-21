@@ -363,6 +363,9 @@ func convertValue(ctx *sql.Context, val any, castTo string, origType sql.Type, t
 	case ConvertToDouble, ConvertToReal:
 		convType = types.Float64
 	case ConvertToSigned:
+		if u, ok := val.(uint64); ok {
+			return int64(u), nil
+		}
 		convType = types.Int64
 	case ConvertToUnsigned:
 		convType = types.Uint64
