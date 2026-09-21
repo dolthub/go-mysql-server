@@ -174,6 +174,8 @@ func (b *BaseBuilder) buildNodeExecNoAnalyze(ctx *sql.Context, n sql.Node, row s
 		return b.buildMax1Row(ctx, n, row)
 	case *plan.Rollback:
 		return b.buildRollback(ctx, n, row)
+	case *plan.RandomSample:
+		return b.buildRandomSample(ctx, n, row)
 	case *plan.Limit:
 		return b.buildLimit(ctx, n, row)
 	case *plan.RecursiveCte:
