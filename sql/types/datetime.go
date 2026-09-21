@@ -503,6 +503,7 @@ func (t datetimeType) parseDatetimeExtraLayouts(str string) (any, error) {
 	return res, err
 }
 
+// matchNumericDate will parse the input string according to the length of the string.
 func matchNumericDate(str string, pos int) (matchIdxs []int) {
 	if pos != 8 && pos < 14 {
 		matchIdxs = TwoDigitYearDateRegex.FindStringSubmatchIndex(str)
@@ -512,9 +513,10 @@ func matchNumericDate(str string, pos int) (matchIdxs []int) {
 	return
 }
 
-// parseDate takes in a string
-// len(str) is expected to be >= 5
-// TODO: fix comment
+// parseDate converts a string into the year, month, and day according to MySQL's rules.
+// The input string is expected to be at least MinDatetimeStringLength.
+// All date portions (year, month, and day) must be present for this function to be successful.
+// Additionally, parseDate returns the next index.
 func parseDate(str string) (yearStr, monthStr, dayStr string, pos int, ok bool) {
 	// string inputs are expected to be at least length 5
 	// extract portion (find first non-digit)
@@ -545,13 +547,16 @@ func parseDate(str string) (yearStr, monthStr, dayStr string, pos int, ok bool) 
 	return yearStr, monthStr, dayStr, pos, true
 }
 
-func parseTime(str string) (hourStr, minStr, secStr string, pos int, ok bool) {
+// parseTime takes in a string and parses it into hours, minutes, and seconds according to MySQL's rules.
+// Additionally, parseTime will return the next index.
+// Any invalid strings will result in empty strings and 0 value for pos.
+func parseTime(str string) (hourStr, minStr, secStr string, pos int) {
 	if len(str) == 0 {
-		return hourStr, minStr, secStr, pos, false
+		return hourStr, minStr, secStr, pos
 	}
 	matchIdxs := TimeRegex.FindStringSubmatchIndex(str)
 	if len(matchIdxs) == 0 {
-		return hourStr, minStr, secStr, pos, false
+		return hourStr, minStr, secStr, pos
 	}
 	// The time parts are optional, so we much check indexes
 	// Case 1: matchIdx[i] = -1 and matchIdx[i+1] = -1 => empty string
@@ -566,16 +571,20 @@ func parseTime(str string) (hourStr, minStr, secStr string, pos int, ok bool) {
 	if matchIdxs[6] != matchIdxs[7] {
 		secStr = str[matchIdxs[6]:matchIdxs[7]]
 	}
-	return hourStr, minStr, secStr, matchIdxs[1], true
+	return hourStr, minStr, secStr, matchIdxs[1]
 }
 
-func parseMicros(str string) (micros string, pos int, ok bool) {
+// parseMicros takes in a string and parses it as microseconds according to MySQL's rules.
+// Only up to MaxDateTimePrecision + 1 digits are preserved to properly round the resulting value.
+// Additionally, parseMicros will return the next index.
+// Any invalid strings will result in empty string and 0 value for pos.
+func parseMicros(str string) (micros string, pos int) {
 	matchIdxs := MicrosRegex.FindStringIndex(str)
 	if len(matchIdxs) == 0 {
-		return micros, pos, false
+		return micros, pos
 	}
-	micros = str[matchIdxs[0]:min(matchIdxs[1], MaxDatetimePrecision+2)] // only retain 1 extra digit (+1 again for '.')
-	return micros, matchIdxs[1], true
+	micros = str[matchIdxs[0]:min(matchIdxs[1], MaxDatetimePrecision+2)] // +1 for digit and +1 for '.'
+	return micros, matchIdxs[1]
 }
 
 // parseDatetime parses a Datetime according to MySQL rules.
@@ -628,7 +637,7 @@ func (t datetimeType) parseDatetime(str string) (any, bool, error) {
 		value = value[newPos:]
 	}
 
-	hourStr, minStr, secStr, pos, _ := parseTime(value)
+	hourStr, minStr, secStr, pos := parseTime(value)
 	var hour, mins, sec int
 	if len(hourStr) != 0 {
 		hour, err = strconv.Atoi(hourStr)
@@ -659,7 +668,7 @@ func (t datetimeType) parseDatetime(str string) (any, bool, error) {
 		// time and microsecond delimiter MUST be decimal point
 		if value[0] == '.' {
 			var microsStr string
-			microsStr, pos, _ = parseMicros(value)
+			microsStr, pos = parseMicros(value)
 			if len(microsStr) > 1 { // a single decimal point is 0
 				var microsf64 float64
 				microsf64, err = strconv.ParseFloat(microsStr, 64)
