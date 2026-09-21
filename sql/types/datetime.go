@@ -574,7 +574,7 @@ func parseMicros(str string) (micros string, pos int, ok bool) {
 	if len(matchIdxs) == 0 {
 		return micros, pos, false
 	}
-	micros = str[matchIdxs[0]:min(matchIdxs[1], MaxDatetimePrecision+2)] // only 7 digits of precision are necessary
+	micros = str[matchIdxs[0]:min(matchIdxs[1], MaxDatetimePrecision+2)] // only retain 1 extra digit (+1 again for '.')
 	return micros, matchIdxs[1], true
 }
 
@@ -591,8 +591,7 @@ func (t datetimeType) parseDatetime(str string) (any, bool, error) {
 
 	// TODO: Handle delimiter warnings. These do not stop parsing unlike ErrTruncatedIncorrect warnings.
 	// Tracking issue: https://github.com/dolthub/dolt/issues/10278
-	res, err := t.parseDatetimeExtraLayouts(value)
-	if err == nil {
+	if res, err := t.parseDatetimeExtraLayouts(value); err == nil {
 		return res, delimWarn, nil
 	}
 
