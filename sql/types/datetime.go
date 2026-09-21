@@ -425,50 +425,60 @@ func GetLastDay(year, month int) (res int, ok bool) {
 	return int(DaysPerMonth[month-1]), true
 }
 
-// DatetimeRegex will match MySQL's DateTime format.
-// The date portion (YYYY-MM-DD) is required all parts of the time portion (HH:MM:SS.MICROS) is optional.
-// The standard datetime format is YYYY-MM-DD HH:MM:SS.MICROS, but MySQL supports a "relaxed" format where
-// any punctuation (of various lengths) can be used between the date and time parts.
-// Some exceptions:
-//   - Whitespace characters are allowed in delimiter between Day and Hour
-//   - The only valid delimiter between Seconds and Microseconds is a single decimal point (.)
-//
-// MySQL Reference: https://dev.mysql.com/doc/refman/8.4/en/datetime.html
-//
-//	Match 1: The entire datetime string
-//	Group 1: Year
-//	Group 2: Month
-//	Group 3: Day
-//	Group 4: Hour (optional)
-//	Group 5: Minutes (optional)
-//	Group 6: Seconds (optional)
-//	Group 7: Microseconds (optional)
-//	Group 8: any trailing characters to be Truncated
-var DatetimeRegex = regexp.MustCompile(`^(\d+)\p{P}+(\d+)\p{P}+(\d+)[\s\p{P}]*(\d*)?\p{P}*(\d*)?\p{P}*(\d*)?\p{P}*(\d*)?(.*)$`)
+var (
+	// DelimitedDateRegex matches strings in Date format with delimiters and groups them into their date portions.
+	// MySQL Reference: https://dev.mysql.com/doc/refman/8.4/en/datetime.html
+	//
+	//	Match 1: The entire date string
+	//	Group 1: Year
+	//	Group 2: Month
+	//	Group 3: Day
+	DelimitedDateRegex = regexp.MustCompile(`^(\d+)\p{P}+(\d+)\p{P}+(\d+)`)
 
-// NumericDatetimeRegex matches strings that represent numeric Datetime formats.
-// The rules here are slightly different from the literal numbers themselves.
-// Depending on the length of the string, the string will be interpreted as YYMMDDHHMMSS.MICROS or YYYYMMDDHHSS.MICROS
-// where the clock portion is optional.
-//
-//	Match 1: The entire datetime string
-//	Group 1: Date and Time Portion
-//	Group 2: Microseconds
-var NumericDatetimeRegex = regexp.MustCompile(`^(\d+)?\.?(\d*)$`)
+	// TwoDigitYearDateRegex matches strings in Date format without delimiters using abbreviated years and groups them
+	// into their date potions.
+	// MySQL Reference: https://dev.mysql.com/doc/refman/8.4/en/datetime.html
+	//
+	//	Match 1: The entire date string
+	//	Group 1: Year
+	//	Group 2: Month
+	//	Group 3: Day
+	TwoDigitYearDateRegex = regexp.MustCompile(`^(\d{2})(\d{2})(\d{1,2})`)
 
-var DelimitedDateRegex = regexp.MustCompile(`^(\d+)\p{P}+(\d+)\p{P}+(\d+)`)
+	// FourDigitYearDateRegex matches strings in Date format without delimiters and groups them into their date potions.
+	// MySQL Reference: https://dev.mysql.com/doc/refman/8.4/en/datetime.html
+	//
+	//	Match 1: The entire date string
+	//	Group 1: Year
+	//	Group 2: Month
+	//	Group 3: Day
+	FourDigitYearDateRegex = regexp.MustCompile(`^(\d{4})(\d{2})(\d{1,2})`)
 
-var TwoDigitYearDateRegex = regexp.MustCompile(`^(\d{2})(\d{2})(\d{1,2})`)
+	// TimeRegex matches strings in Time format and groups them into their time potions.
+	// MySQL Reference: https://dev.mysql.com/doc/refman/8.4/en/datetime.html
+	//
+	//	Match 1: The entire date string
+	//	Group 1: Hours
+	//	Group 2: Minutes (optional)
+	//	Group 3: Seconds (optional)
+	TimeRegex = regexp.MustCompile(`^(\d{1,2})\p{P}*(\d\d?)?\p{P}*(\d\d?)?`)
 
-var FourDigitYearDateRegex = regexp.MustCompile(`^(\d{4})(\d{2})(\d{1,2})`)
+	// MicrosRegex matches strings representing microseconds.
+	// MySQL Reference: https://dev.mysql.com/doc/refman/8.4/en/datetime.html
+	MicrosRegex = regexp.MustCompile(`^(\.\d*)`)
+)
 
-var TimeRegex = regexp.MustCompile(`^(\d{1,2})\p{P}*(\d\d?)?\p{P}*(\d\d?)?`)
-
-var MicrosRegex = regexp.MustCompile(`^(\.\d*)`)
-
-const MinDatetimeStringLength = 5
-const MaxNumericDatetimeLength = 14
-const FourDigitNumericDatetimeLength = 8
+const (
+	// MinDatetimeStringLength represents the length of the shortest possible datetime string
+	// Example: 'Y-M-D' or 'YYMMD'
+	MinDatetimeStringLength = 5
+	// MaxNumericDatetimeLength represents the maximum length for a datetime without superfluous delimiters
+	// Example: YYYY-MM-DD HH:MM:SS.MICROS
+	MaxNumericDatetimeLength = 14
+	// FourDigitNumericDatetimeLength represents the length of a datetime without delimiters
+	// Example: YYMMDDHHMMSS
+	FourDigitNumericDatetimeLength = 8
+)
 
 // makeDatetime validates the date/time parameters and returns a time.Time object.
 func makeDatetime(year, month, day, hour, min, sec, nsec int) (time.Time, bool) {
@@ -505,7 +515,7 @@ func (t datetimeType) parseDatetimeExtraLayouts(str string) (any, error) {
 
 // matchNumericDate will parse the input string according to the length of the string.
 func matchNumericDate(str string, pos int) (matchIdxs []int) {
-	if pos != 8 && pos < 14 {
+	if pos != FourDigitNumericDatetimeLength && pos < MaxNumericDatetimeLength {
 		matchIdxs = TwoDigitYearDateRegex.FindStringSubmatchIndex(str)
 	} else {
 		matchIdxs = FourDigitYearDateRegex.FindStringSubmatchIndex(str)
@@ -588,6 +598,14 @@ func parseMicros(str string) (micros string, pos int) {
 }
 
 // parseDatetime parses a Datetime according to MySQL rules.
+// The date portion (YYYY-MM-DD) is required while all parts of the time portion (HH:MM:SS.MICROS) is optional.
+// The standard datetime format is YYYY-MM-DD HH:MM:SS.MICROS, but MySQL supports a "relaxed" format where
+// any punctuation (of various lengths) can be used between the date and time parts.
+// Some exceptions:
+//   - Whitespace characters are allowed in delimiter between Day and Hour
+//   - The only valid delimiter between Seconds and Microseconds is a single decimal point (.)
+//
+// MySQL Reference: https://dev.mysql.com/doc/refman/8.4/en/datetime.html
 func (t datetimeType) parseDatetime(str string) (any, bool, error) {
 	var delimWarn bool
 
