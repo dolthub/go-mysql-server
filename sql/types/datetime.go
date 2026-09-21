@@ -428,7 +428,7 @@ func GetLastDay(year, month int) (res int, ok bool) {
 var (
 	// DelimitedDateRegex matches strings in Date format with delimiters and groups them into their date portions.
 	// MySQL Reference: https://dev.mysql.com/doc/refman/8.4/en/datetime.html
-	//
+	// The output from regexp.FindStringSubmatchIndex is:
 	//	Match 1: The entire date string
 	//	Group 1: Year
 	//	Group 2: Month
@@ -438,7 +438,7 @@ var (
 	// TwoDigitYearDateRegex matches strings in Date format without delimiters using abbreviated years and groups them
 	// into their date potions.
 	// MySQL Reference: https://dev.mysql.com/doc/refman/8.4/en/datetime.html
-	//
+	// The output from regexp.FindStringSubmatchIndex is:
 	//	Match 1: The entire date string
 	//	Group 1: Year
 	//	Group 2: Month
@@ -447,7 +447,7 @@ var (
 
 	// FourDigitYearDateRegex matches strings in Date format without delimiters and groups them into their date potions.
 	// MySQL Reference: https://dev.mysql.com/doc/refman/8.4/en/datetime.html
-	//
+	// The output from regexp.FindStringSubmatchIndex is:
 	//	Match 1: The entire date string
 	//	Group 1: Year
 	//	Group 2: Month
@@ -456,8 +456,8 @@ var (
 
 	// TimeRegex matches strings in Time format and groups them into their time potions.
 	// MySQL Reference: https://dev.mysql.com/doc/refman/8.4/en/datetime.html
-	//
-	//	Match 1: The entire date string
+	// The output from regexp.FindStringSubmatchIndex is:
+	//	Match 1: The entire time string
 	//	Group 1: Hours
 	//	Group 2: Minutes (optional)
 	//	Group 3: Seconds (optional)
