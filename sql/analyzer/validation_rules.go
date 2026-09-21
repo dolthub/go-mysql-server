@@ -261,13 +261,8 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 		}()
 		switch n := n.(type) {
 		case *plan.Window:
-			windowSelectExprs = nil
+			windowSelectExprs = make([]sql.Expression, 0, len(n.SelectExprs))
 			for _, e := range n.SelectExprs {
-				// Only the window function expressions themselves are relevant here; their internal
-				// column dependencies (e.g. PARTITION BY/ORDER BY columns) are already present in the
-				// GroupBy's own SelectDeps, and re-adding them here as bare GetFields can clobber a
-				// same-named aggregate entry (e.g. a GetField referencing an aliased COUNT(*) output)
-				// already correctly keyed there.
 				if _, ok := e.(sql.WindowAdaptableExpression); ok {
 					windowSelectExprs = append(windowSelectExprs, e)
 				}
@@ -327,7 +322,7 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 
 			selectDeps := n.SelectDeps
 			if len(windowSelectExprs) > 0 {
-				selectDeps = append(append([]sql.Expression{}, selectDeps...), windowSelectExprs...)
+				selectDeps = append(selectDeps, windowSelectExprs...)
 				windowSelectExprs = nil
 			}
 
@@ -409,14 +404,14 @@ func getSelectAndOrderByExprs(ctx *sql.Context, project *plan.Project, orderBy *
 
 		for _, expr := range project.Projections {
 			if !project.AliasDeps[strings.ToLower(expr.String())] {
-				resolvedExpr := resolveExpr(ctx, expr, sd, groupBys)
+				resolvedExpr := resolveExpr(ctx, expr, sd, groupBys, make(map[string]bool))
 				selectExprs = append(selectExprs, resolvedExpr)
 			}
 		}
 
 		if orderBy != nil {
 			for _, expr := range orderBy.Expressions() {
-				resolvedExpr := resolveExpr(ctx, expr, sd, groupBys)
+				resolvedExpr := resolveExpr(ctx, expr, sd, groupBys, make(map[string]bool))
 				orderByExprs = append(orderByExprs, resolvedExpr)
 			}
 		}
@@ -425,15 +420,9 @@ func getSelectAndOrderByExprs(ctx *sql.Context, project *plan.Project, orderBy *
 	}
 }
 
-func resolveExpr(ctx *sql.Context, expr sql.Expression, selectDeps map[string]sql.Expression, groupBys map[string]bool) sql.Expression {
-	return resolveExprVisited(ctx, expr, selectDeps, groupBys, make(map[string]bool))
-}
-
-// resolveExprVisited resolves aliases and GetFields against selectDeps, same as resolveExpr, but additionally
-// resolves any GetField references found nested inside a substituted expression (e.g. a window function that
-// references another group-computed aggregate, such as ROW_NUMBER() OVER (ORDER BY COUNT(*))). visited guards
-// against infinite recursion on self-referential selectDeps entries (e.g. a passthrough column mapped to itself).
-func resolveExprVisited(ctx *sql.Context, expr sql.Expression, selectDeps map[string]sql.Expression, groupBys map[string]bool, visited map[string]bool) sql.Expression {
+// resolveExpr resolves aliases and GetFields against selectDeps. visited guards  against infinite recursion on
+// self-referential selectDeps entries (e.g. a passthrough column mapped to itself).
+func resolveExpr(ctx *sql.Context, expr sql.Expression, selectDeps map[string]sql.Expression, groupBys map[string]bool, visited map[string]bool) sql.Expression {
 	resolvedExpr, _, _ := transform.Expr(ctx, expr, func(ctx *sql.Context, expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		key := strings.ToLower(expr.String())
 		if groupBys[key] || visited[key] {
@@ -444,7 +433,7 @@ func resolveExprVisited(ctx *sql.Context, expr sql.Expression, selectDeps map[st
 			childKey := strings.ToLower(e.Child.String())
 			if dep, ok := selectDeps[childKey]; ok {
 				visited[key] = true
-				resolved := resolveExprVisited(ctx, dep, selectDeps, groupBys, visited)
+				resolved := resolveExpr(ctx, dep, selectDeps, groupBys, visited)
 				delete(visited, key)
 				selectDeps[strings.ToLower(e.Name())] = resolved
 				return resolved, transform.NewTree, nil
@@ -452,7 +441,7 @@ func resolveExprVisited(ctx *sql.Context, expr sql.Expression, selectDeps map[st
 		case *expression.GetField:
 			if dep, ok := selectDeps[key]; ok {
 				visited[key] = true
-				resolved := resolveExprVisited(ctx, dep, selectDeps, groupBys, visited)
+				resolved := resolveExpr(ctx, dep, selectDeps, groupBys, visited)
 				delete(visited, key)
 				return resolved, transform.NewTree, nil
 			}
