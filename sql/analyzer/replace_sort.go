@@ -355,12 +355,14 @@ func replaceAgg(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope,
 			return n, transform.SameTree, nil
 		}
 		// TODO: optimize when there are multiple aggregations; use LATERAL JOINS
-		if len(gb.SelectDeps) != 1 || len(gb.GroupByExprs) != 0 {
+		if len(gb.SelectDeps) != 1 {
 			return n, transform.SameTree, nil
 		}
 
 		// TODO: support secondary indexes
 		var pkIdx sql.Index
+		// constantColumns is the set of index columns that are constrained to constant values.
+		var constantColumns sets.FastIntSet
 		switch t := gb.Child.(type) {
 		case *plan.IndexedTableAccess:
 			if _, ok := t.Table.(sql.IndexAddressableTable); ok {
@@ -369,6 +371,21 @@ func replaceAgg(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope,
 					return n, transform.SameTree, nil
 				}
 				pkIdx = idx
+				lookup, inRange, err := t.GetLookup(ctx, nil)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+
+				if !inRange {
+					return n, transform.SameTree, nil
+				}
+
+				mysqlRanges, ok := lookup.Ranges.(sql.MySQLRangeCollection)
+				if !ok {
+					return n, transform.SameTree, nil
+				}
+
+				constantColumns = constantRanges(ctx, mysqlRanges)
 			}
 		case *plan.ResolvedTable:
 			if tbl, ok := t.UnderlyingTable().(sql.IndexAddressableTable); ok {
@@ -414,13 +431,27 @@ func replaceAgg(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope,
 			return n, transform.SameTree, nil
 		}
 
-		// since we're only supporting one aggregation, it must be on the first column of the primary key
-		if pkCols := pkIdx.Expressions(); len(pkCols) < 1 {
-			return n, transform.SameTree, nil
-		} else if !strings.EqualFold(pkCols[0], sortBy.Expr.String()) {
+		pkCols := pkIdx.Expressions()
+		if len(pkCols) < 1 {
 			return n, transform.SameTree, nil
 		}
 
+		// GROUP BY, if present, must only group by columns known to be constant.
+		if !allGroupByColumnsAreConstant(gb.GroupByExprs, pkCols, constantColumns) {
+			return n, transform.SameTree, nil
+		}
+
+		// find the aggregated column
+		var colIdx int
+		for colIdx = 0; colIdx <= len(pkCols); colIdx++ {
+			if strings.EqualFold(pkCols[colIdx], sortBy.Expr.String()) {
+				break
+			}
+			if !constantColumns.Contains(colIdx) {
+				// A non-constant column appears before the aggregated column in the index.
+				return n, transform.SameTree, nil
+			}
+		}
 		// replace all aggs in proj.Projections with GetField
 		name := gb.SelectDeps[0].String()
 		newProjs, _, err := transform.Exprs(ctx, proj.Projections, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
@@ -653,6 +684,32 @@ func isEqualityRangeColumnExpr(ctx *sql.Context, rce sql.MySQLRangeColumnExpr) b
 	}
 	cmp, err := rce.Typ.Compare(ctx, lower.Key, upper.Key)
 	return err == nil && cmp == 0
+}
+
+// allGroupByColumnsAreConstant validates that all GROUP BY expressions
+// correspond to columns in the equality-constrained prefix of the index.
+func allGroupByColumnsAreConstant(groupByExprs []sql.Expression, pkCols []string, constantColumns sets.FastIntSet) bool {
+	for _, gbExpr := range groupByExprs {
+		gf, ok := gbExpr.(*expression.GetField)
+		if !ok {
+			return false
+		}
+		found := false
+		for i := 0; i < len(pkCols); i++ {
+			if strings.EqualFold(pkCols[i], gf.String()) {
+				if constantColumns.Contains(i) {
+					found = true
+					break
+				} else {
+					return false
+				}
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
 }
 
 // hasOverlapping checks if the ranges in a RangeCollection that are part of the sortfield exprs are overlapping
