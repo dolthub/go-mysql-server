@@ -142,7 +142,7 @@ type mockOrdinalIndex struct {
 
 var _ sql.OrdinalAddressableIndex = (*mockOrdinalIndex)(nil)
 
-func (m *mockOrdinalIndex) Count(*sql.Context) (uint64, error) { return m.count, nil }
+func (m *mockOrdinalIndex) Count(*sql.Context) (uint64, error)               { return m.count, nil }
 func (m *mockOrdinalIndex) MaxOrdinalSampleLimit(*sql.Context, uint64) int64 { return m.maxLimit }
 
 type mockOrdinalTable struct {
@@ -152,7 +152,9 @@ type mockOrdinalTable struct {
 
 var _ sql.IndexAddressableTable = (*mockOrdinalTable)(nil)
 
-func (m *mockOrdinalTable) GetIndexes(*sql.Context) ([]sql.Index, error) { return []sql.Index{m.idx}, nil }
+func (m *mockOrdinalTable) GetIndexes(*sql.Context) ([]sql.Index, error) {
+	return []sql.Index{m.idx}, nil
+}
 func (m *mockOrdinalTable) IndexedAccess(*sql.Context, sql.IndexLookup) sql.IndexedTable {
 	return &mockIndexedTable{m}
 }
