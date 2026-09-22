@@ -43,11 +43,7 @@ func (b *BaseBuilder) buildRandomSample(
 		return sql.RowsToRowIter(), nil
 	}
 
-	maxLimit := maxMemorySampleLimit(ctx)
-	if ioLimit := n.Index.MaxOrdinalSampleLimit(ctx, count); ioLimit < maxLimit {
-		maxLimit = ioLimit
-	}
-
+	maxLimit := min(maxMemorySampleLimit(ctx), n.Index.MaxOrdinalSampleLimit(ctx, count))
 	if limit > maxLimit {
 		span.End()
 		childIter, err := b.buildNodeExec(ctx, n.TableNode, row)
@@ -68,8 +64,7 @@ func (b *BaseBuilder) buildRandomSample(
 		return iters.NewTopRowsIter(sortConds, limit, false, childIter), nil
 	}
 
-	seed := mathrand.Int63()
-	rng := mathrand.New(mathrand.NewSource(seed))
+	rng := mathrand.New(mathrand.NewSource(mathrand.Int63()))
 	selected := make(map[uint64]struct{}, limit)
 	ordinals := make([]uint64, 0, limit)
 
@@ -117,9 +112,5 @@ func maxMemorySampleLimit(ctx *sql.Context) int64 {
 	if !ok || bytes <= 0 {
 		return defaultLimit
 	}
-	limit := bytes / 24
-	if limit <= 0 {
-		return 1
-	}
-	return limit
+	return max(1, bytes/24)
 }

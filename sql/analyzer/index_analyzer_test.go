@@ -150,6 +150,7 @@ func (i *dummyIdx) IsUnique() bool                        { return false }
 func (i *dummyIdx) IsSpatial() bool                       { return false }
 func (i *dummyIdx) IsFullText() bool                      { return false }
 func (i *dummyIdx) IsVector() bool                        { return false }
+func (i *dummyIdx) IsPrimary() bool                       { return i.id == "PRIMARY" }
 func (i *dummyIdx) Comment() string                       { return "" }
 func (i *dummyIdx) IsGenerated() bool                     { return false }
 func (i *dummyIdx) CanSupportOrderBy(sql.Expression) bool { return false }
