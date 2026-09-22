@@ -209,16 +209,11 @@ func (b *Builder) withWindowState(clause string, isColRef bool) func() {
 	return func() { b.windowClause, b.windowClauseColRef = outerClause, outerColRef }
 }
 
-// beginAggregateResolutionFrom makes column lookup follow the outer-query chain rooted at source.
-func (b *Builder) beginAggregateResolutionFrom(source *scope) *scope {
+// withAggregateResolution makes column lookup follow the outer-query chain rooted at source.
+func (b *Builder) withAggregateResolution(source *scope) func() {
 	previousRoot := b.aggregateResolutionRoot
 	b.aggregateResolutionRoot = source
-	return previousRoot
-}
-
-// restoreAggregateResolution restores the aggregate resolution active before the current arguments.
-func (b *Builder) restoreAggregateResolution(previousRoot *scope) {
-	b.aggregateResolutionRoot = previousRoot
+	return func() { b.aggregateResolutionRoot = previousRoot }
 }
 
 // resolvesAggregateThrough reports whether aggregate argument lookup crosses target.
@@ -226,7 +221,7 @@ func (b *Builder) resolvesAggregateThrough(target *scope) bool {
 	if b.aggregateResolutionRoot == nil {
 		return false
 	}
-	for query := b.aggregateResolutionRoot.query; query != nil; query = query.outer {
+	for query := b.aggregateResolutionRoot.queryBlock; query != nil; query = query.outer {
 		if query.source == target {
 			return true
 		}
