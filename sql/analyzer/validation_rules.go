@@ -286,7 +286,6 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 			}
 
 			groupBys := make(map[string]bool)
-			var groupByCols sql.ColSet
 			groupByPrimaryKeys := 0
 			isJoin := false
 			exprs := make([]sql.Expression, 0)
@@ -312,9 +311,6 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 						groupBys[strings.ToLower(nameable.Name())] = true
 					}
 
-					if gf, ok := expr.(*expression.GetField); ok {
-						groupByCols.Add(gf.Id())
-					}
 
 					_, isAlias := expr.(*expression.Alias)
 					return isAlias
@@ -564,17 +560,6 @@ func expressionReferencesOnlyGroupBys(ctx *sql.Context, groupBys map[string]bool
 
 			if len(expr.Children()) == 0 {
 				switch expr := expr.(type) {
-				case *plan.Subquery:
-					ungrouped := expr.Correlated()
-					if !noGroupBy {
-						ungrouped = ungrouped.Difference(groupByCols)
-					}
-					if !ungrouped.Empty() {
-						valid = false
-						firstId, _ := ungrouped.Next(1)
-						col = correlatedColumnName(ctx, expr, firstId)
-					}
-					return false
 				case sql.WindowAdaptableExpression:
 					// A window function with no arguments and an empty OVER clause (e.g. ROW_NUMBER() OVER ())
 					// has no column dependencies to validate, so it's trivially valid under an explicit GROUP BY.
