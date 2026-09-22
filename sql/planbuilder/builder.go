@@ -57,8 +57,10 @@ type Builder struct {
 	// name (not a composite expression like a + 1).
 	windowClauseColRef bool
 
-	// aggregateResolutionRoot is the query source whose aggregate arguments are being bound.
-	aggregateResolutionRoot *scope
+	// aggregateArgumentRoot is non-nil while aggregate arguments are being bound.
+	// It makes column lookup cross semantic query blocks instead of treating
+	// builder scopes as query boundaries.
+	aggregateArgumentRoot *scope
 
 	authEnabled  bool
 	multiDDL     bool
@@ -209,19 +211,20 @@ func (b *Builder) withWindowState(clause string, isColRef bool) func() {
 	return func() { b.windowClause, b.windowClauseColRef = outerClause, outerColRef }
 }
 
-// withAggregateResolution makes column lookup follow the outer-query chain rooted at source.
-func (b *Builder) withAggregateResolution(source *scope) func() {
-	previousRoot := b.aggregateResolutionRoot
-	b.aggregateResolutionRoot = source
-	return func() { b.aggregateResolutionRoot = previousRoot }
+// beginAggregateArgumentResolution makes column lookup follow the query-block
+// chain rooted at source. The returned function restores the previous state.
+func (b *Builder) beginAggregateArgumentResolution(source *scope) (restore func()) {
+	previousRoot := b.aggregateArgumentRoot
+	b.aggregateArgumentRoot = source
+	return func() { b.aggregateArgumentRoot = previousRoot }
 }
 
-// resolvesAggregateThrough reports whether aggregate argument lookup crosses target.
-func (b *Builder) resolvesAggregateThrough(target *scope) bool {
-	if b.aggregateResolutionRoot == nil {
+// isAggregateArgumentQuerySource reports whether target is on the active aggregate argument's query-block chain.
+func (b *Builder) isAggregateArgumentQuerySource(target *scope) bool {
+	if b.aggregateArgumentRoot == nil {
 		return false
 	}
-	for query := b.aggregateResolutionRoot.queryBlock; query != nil; query = query.outer {
+	for query := b.aggregateArgumentRoot.queryBlock; query != nil; query = query.outer {
 		if query.source == target {
 			return true
 		}
@@ -232,7 +235,7 @@ func (b *Builder) resolvesAggregateThrough(target *scope) bool {
 func (b *Builder) Reset() {
 	b.colId = 0
 	b.tabId = 0
-	b.aggregateResolutionRoot = nil
+	b.aggregateArgumentRoot = nil
 	b.bindCtx = nil
 	b.currentDatabase = nil
 	b.procCtx = nil

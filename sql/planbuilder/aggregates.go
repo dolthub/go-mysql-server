@@ -458,7 +458,8 @@ func (b *Builder) newAggregation(e *ast.FuncExpr, name string, args []sql.Expres
 
 // buildAggFunctionArgs builds aggregate arguments using the existing outer-query chain.
 func (b *Builder) buildAggFunctionArgs(inScope *scope, e *ast.FuncExpr) []sql.Expression {
-	defer b.withAggregateResolution(inScope)()
+	restoreArgumentResolution := b.beginAggregateArgumentResolution(inScope)
+	defer restoreArgumentResolution()
 
 	var args []sql.Expression
 	for _, arg := range e.Exprs {
@@ -581,7 +582,8 @@ func (b *Builder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.E
 
 // buildGroupConcatArgs builds GROUP_CONCAT arguments and ordering using the existing outer-query chain.
 func (b *Builder) buildGroupConcatArgs(inScope *scope, e *ast.GroupConcatExpr) ([]sql.Expression, sql.SortConditions) {
-	defer b.withAggregateResolution(inScope)()
+	restoreArgumentResolution := b.beginAggregateArgumentResolution(inScope)
+	defer restoreArgumentResolution()
 
 	args := make([]sql.Expression, len(e.Exprs))
 	for i, arg := range e.Exprs {
