@@ -28,34 +28,28 @@ import (
 )
 
 type Builder struct {
+	overrides sql.BuilderOverrides
 	// EventScheduler is used to communicate with the event scheduler
 	// for any EVENT related statements. It can be nil if EventScheduler is not defined.
 	scheduler       sql.EventScheduler
-	cat             sql.Catalog
 	authQueryState  sql.AuthorizationQueryState
 	parser          sql.Parser
 	currentDatabase sql.Database
+	cat             sql.Catalog
 
+	qFlags     *sql.QueryFlags
 	f          *factory
 	viewCtx    *ViewContext
 	procCtx    *ProcContext
 	triggerCtx *TriggerContext
 	bindCtx    *BindvarContext
 	ctx        *sql.Context
-	qFlags     *sql.QueryFlags
-
-	nesting int
-
-	tabId sql.TableId
-	colId columnId
 
 	// windowClause tracks whether we are currently building an expression
 	// inside a window clause (e.g. "window order by") or empty otherwise.
 	windowClause string
 
-	// windowClauseColRef is true if the window clause is a single column
-	// name (not a composite expression like a + 1).
-	windowClauseColRef bool
+	nesting int
 
 	// aggArgDepth tracks aggregate argument nesting.
 	aggArgDepth int
@@ -63,11 +57,17 @@ type Builder struct {
 	// windowArgDepth tracks window argument nesting.
 	windowArgDepth int
 
+	tabId      sql.TableId
+	colId      columnId
+	parserOpts ast.ParserOptions
+
+	// windowClauseColRef is true if the window clause is a single column
+	// name (not a composite expression like a + 1).
+	windowClauseColRef bool
+
 	authEnabled  bool
 	multiDDL     bool
 	insertActive bool
-	parserOpts   ast.ParserOptions
-	overrides    sql.BuilderOverrides
 }
 
 // BindvarContext holds bind variable replacement literals.
