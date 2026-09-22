@@ -569,6 +569,8 @@ func parseTime(str string) (hourStr, minStr, secStr string, pos int) {
 		return hourStr, minStr, secStr, pos
 	}
 	// The time parts are optional, so we much check indexes
+	// These are the possible cases for match index pairs.
+	// We only care about the case where the start and end indexes are not equal.
 	// Case 1: matchIdx[i] = -1 and matchIdx[i+1] = -1 => empty string
 	// Case 2: matchIdx[i] == matchIdx[i+1] => empty string
 	// Case 3: matchIdx[i] = x and matchIdx[i+1] = y where y > x => [x:y]
