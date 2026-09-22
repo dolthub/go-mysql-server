@@ -32,48 +32,27 @@ func replaceIdxOrderByRand(
 	sel RuleSelector,
 	qFlags *sql.QueryFlags,
 ) (sql.Node, transform.TreeIdentity, error) {
-	return replaceIdxOrderByRandHelper(ctx, scope, n, nil, nil)
-}
+	return transform.Node(ctx, n, func(ctx *sql.Context, node sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		var sortConds sql.SortConditions
+		var limit sql.Expression
+		var child sql.Node
 
-func replaceIdxOrderByRandHelper(
-	ctx *sql.Context,
-	scope *plan.Scope,
-	node sql.Node,
-	sortNode plan.Sortable,
-	limit sql.Expression,
-) (sql.Node, transform.TreeIdentity, error) {
-	switch n := node.(type) {
-	case *plan.TopN:
-		sortNode = n
-		limit = n.Limit
-	case plan.Sortable:
-		sortNode = n
-	case *plan.Limit:
-		limit = n.Limit
-	case *plan.Offset:
-		// Offsets with random ordering cannot be resolved by ordinal
-		// rank-sampling without altering the sample distribution.
-		if sortNode != nil || limit != nil {
-			return node, transform.SameTree, nil
-		}
-	case *plan.Filter:
-		// Filters between TopN and table require evaluating
-		// predicates on rows, so rank-sampling is ineligible.
-		if sortNode != nil || limit != nil {
-			return node, transform.SameTree, nil
-		}
-	case *plan.ResolvedTable:
-		if sortNode == nil || limit == nil {
+		switch n := node.(type) {
+		case *plan.TopN:
+			if n.CalcFoundRows {
+				return node, transform.SameTree, nil
+			}
+			sortConds, limit, child = n.GetSortConditions(), n.Limit, n.Child
+		case *plan.Limit:
+			s, ok := n.Child.(*plan.Sort)
+			if n.CalcFoundRows || !ok {
+				return node, transform.SameTree, nil
+			}
+			sortConds, limit, child = s.SortConditions, n.Limit, s.Child
+		default:
 			return node, transform.SameTree, nil
 		}
 
-		table := n.UnderlyingTable()
-		idxTbl, ok := table.(sql.IndexAddressableTable)
-		if !ok {
-			return node, transform.SameTree, nil
-		}
-
-		sortConds := sortNode.GetSortConditions()
 		if len(sortConds) != 1 {
 			return node, transform.SameTree, nil
 		}
@@ -82,7 +61,21 @@ func replaceIdxOrderByRandHelper(
 			return node, transform.SameTree, nil
 		}
 
-		if topN, ok := sortNode.(*plan.TopN); ok && topN.CalcFoundRows {
+		var proj *plan.Project
+		if p, ok := child.(*plan.Project); ok {
+			proj, child = p, p.Child
+		}
+		var alias *plan.TableAlias
+		if a, ok := child.(*plan.TableAlias); ok {
+			alias, child = a, a.Child
+		}
+		resTbl, ok := child.(*plan.ResolvedTable)
+		if !ok {
+			return node, transform.SameTree, nil
+		}
+
+		idxTbl, ok := resTbl.UnderlyingTable().(sql.IndexAddressableTable)
+		if !ok {
 			return node, transform.SameTree, nil
 		}
 
@@ -93,69 +86,42 @@ func replaceIdxOrderByRandHelper(
 
 		var candidate sql.OrdinalAddressableIndex
 		for _, idx := range idxs {
-			ordIdx, ok := idx.(sql.OrdinalAddressableIndex)
-			if !ok {
-				continue
-			}
-			if idx.ID() == "PRIMARY" {
-				candidate = ordIdx
-				break
-			}
-			if candidate == nil {
-				candidate = ordIdx
+			if ordIdx, ok := idx.(sql.OrdinalAddressableIndex); ok {
+				if idx.IsPrimary() {
+					candidate = ordIdx
+					break
+				}
+				if candidate == nil {
+					candidate = ordIdx
+				}
 			}
 		}
-
 		if candidate == nil {
 			return node, transform.SameTree, nil
 		}
 
-		// If limit is a literal, pre-validate lower bound and
-		// storage crossover thresholds at analysis time.
 		if k, err := iters.GetInt64Value(ctx, limit); err == nil {
 			if k <= 0 {
 				return node, transform.SameTree, nil
 			}
-			if totalRows, err := candidate.Count(ctx); err == nil && totalRows > 0 {
-				maxLimit := candidate.MaxOrdinalSampleLimit(ctx, totalRows)
-				if k > maxLimit {
-					return node, transform.SameTree, nil
-				}
+			if totalRows, err := candidate.Count(ctx); err == nil && totalRows > 0 && k > candidate.MaxOrdinalSampleLimit(ctx, totalRows) {
+				return node, transform.SameTree, nil
 			}
 		}
 
-		randomSample := plan.NewRandomSample(n, idxTbl, candidate, limit)
-		return randomSample, transform.NewTree, nil
-	}
-
-	allSame := transform.SameTree
-	newChildren := make([]sql.Node, len(node.Children()))
-	for i, child := range node.Children() {
-		var err error
-		same := transform.SameTree
-		switch child.(type) {
-		case *plan.Project, *plan.TableAlias, *plan.ResolvedTable, *plan.Filter, *plan.Limit, *plan.TopN, *plan.Offset, *plan.Sort, *plan.IndexedTableAccess:
-			newChildren[i], same, err = replaceIdxOrderByRandHelper(ctx, scope, child, sortNode, limit)
-		default:
-			newChildren[i] = child
+		var ret sql.Node = plan.NewRandomSample(resTbl, idxTbl, candidate, limit)
+		if alias != nil {
+			ret, err = alias.WithChildren(ctx, ret)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
 		}
-		if err != nil {
-			return nil, transform.SameTree, err
+		if proj != nil {
+			ret, err = proj.WithChildren(ctx, ret)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
 		}
-		allSame = allSame && same
-	}
-
-	if allSame {
-		return node, transform.SameTree, nil
-	}
-
-	if node == sortNode {
-		return newChildren[0], transform.NewTree, nil
-	}
-
-	newNode, err := node.WithChildren(ctx, newChildren...)
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-	return newNode, transform.NewTree, nil
+		return ret, transform.NewTree, nil
+	})
 }

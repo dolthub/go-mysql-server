@@ -233,6 +233,10 @@ func (dummyIndex) IsVector() bool {
 	return false
 }
 
+func (dummyIndex) IsPrimary() bool {
+	return false
+}
+
 func (dummyIndex) CanSupportOrderBy(sql.Expression) bool {
 	return false
 }

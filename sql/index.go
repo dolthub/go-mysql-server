@@ -235,6 +235,8 @@ type Index interface {
 	IsFullText() bool
 	// IsVector returns whether this index is a Full-Text index
 	IsVector() bool
+	// IsPrimary returns whether this index is a primary key index.
+	IsPrimary() bool
 	// Comment returns the comment for this index
 	Comment() string
 	// IndexType returns the type of this index, e.g. BTREE
@@ -355,10 +357,7 @@ func NewIndexLookup(idx Index, ranges MySQLRangeCollection, isPointLookup, isEmp
 // NewOrdinalIndexLookup creates an [IndexLookup] for a set of
 // discrete 0-based ordinal offsets on an [OrdinalAddressableIndex].
 func NewOrdinalIndexLookup(idx Index, ordinals ...uint64) IndexLookup {
-	return IndexLookup{
-		Index:    idx,
-		Ordinals: ordinals,
-	}
+	return IndexLookup{Index: idx, Ordinals: ordinals}
 }
 
 func (il IndexLookup) IsEmpty() bool {
@@ -368,34 +367,22 @@ func (il IndexLookup) IsEmpty() bool {
 func (il IndexLookup) String() string {
 	pr := NewTreePrinter()
 	_ = pr.WriteNode("IndexLookup")
-	var children []string
-	if il.Index != nil {
-		children = append(children, fmt.Sprintf("index: %s", il.Index))
-	}
 	if len(il.Ordinals) > 0 {
-		children = append(children, fmt.Sprintf("ordinals: %v", il.Ordinals))
+		pr.WriteChildren(fmt.Sprintf("index: %s", il.Index), fmt.Sprintf("ordinals: %v", il.Ordinals))
+		return pr.String()
 	}
-	if il.Ranges != nil {
-		children = append(children, fmt.Sprintf("ranges: %s", il.Ranges.String()))
-	}
-	pr.WriteChildren(children...)
+	pr.WriteChildren(fmt.Sprintf("index: %s", il.Index), fmt.Sprintf("ranges: %s", il.Ranges.String()))
 	return pr.String()
 }
 
 func (il IndexLookup) DebugString(ctx *Context) string {
 	pr := NewTreePrinter()
 	_ = pr.WriteNode("IndexLookup")
-	var children []string
-	if il.Index != nil {
-		children = append(children, fmt.Sprintf("index: %s", il.Index))
-	}
 	if len(il.Ordinals) > 0 {
-		children = append(children, fmt.Sprintf("ordinals: %v", il.Ordinals))
+		pr.WriteChildren(fmt.Sprintf("index: %s", il.Index), fmt.Sprintf("ordinals: %v", il.Ordinals))
+		return pr.String()
 	}
-	if il.Ranges != nil {
-		children = append(children, fmt.Sprintf("ranges: %s", il.Ranges.DebugString(ctx)))
-	}
-	pr.WriteChildren(children...)
+	pr.WriteChildren(fmt.Sprintf("index: %s", il.Index), fmt.Sprintf("ranges: %s", il.Ranges.DebugString(ctx)))
 	return pr.String()
 }
 

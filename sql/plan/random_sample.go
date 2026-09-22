@@ -58,24 +58,7 @@ func (r *RandomSample) Resolved() bool {
 // String implements [sql.Node].
 func (r *RandomSample) String() string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode(fmt.Sprintf(
-		"RandomSample(%s, %s, %s)",
-		r.TableNode.Name(),
-		r.Index.ID(),
-		r.Limit.String(),
-	))
-	return pr.String()
-}
-
-// DebugString implements [sql.DebugStringer].
-func (r *RandomSample) DebugString(ctx *sql.Context) string {
-	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode(fmt.Sprintf(
-		"RandomSample(%s, %s, %s)",
-		r.TableNode.Name(),
-		r.Index.ID(),
-		sql.DebugString(ctx, r.Limit),
-	))
+	_ = pr.WriteNode("RandomSample(%s, %s, %s)", r.TableNode.Name(), r.Index.ID(), r.Limit.String())
 	return pr.String()
 }
 
@@ -98,12 +81,9 @@ func (r *RandomSample) WithChildren(ctx *sql.Context, children ...sql.Node) (sql
 	if !ok {
 		return nil, fmt.Errorf("expected child to be sql.TableNode, got %T", children[0])
 	}
-	return &RandomSample{
-		TableNode: tn,
-		Table:     r.Table,
-		Index:     r.Index,
-		Limit:     r.Limit,
-	}, nil
+	ret := *r
+	ret.TableNode = tn
+	return &ret, nil
 }
 
 // Expressions implements [sql.Expressioner].
@@ -116,12 +96,9 @@ func (r *RandomSample) WithExpressions(ctx *sql.Context, exprs ...sql.Expression
 	if len(exprs) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(r, len(exprs), 1)
 	}
-	return &RandomSample{
-		TableNode: r.TableNode,
-		Table:     r.Table,
-		Index:     r.Index,
-		Limit:     exprs[0],
-	}, nil
+	ret := *r
+	ret.Limit = exprs[0]
+	return &ret, nil
 }
 
 // CollationCoercibility implements [sql.CollationCoercible].
