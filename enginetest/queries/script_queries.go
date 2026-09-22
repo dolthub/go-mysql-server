@@ -126,6 +126,35 @@ type ScriptTestAssertion struct {
 // the tests.
 var ScriptTests = []ScriptTest{
 	{
+		// https://github.com/dolthub/dolt/issues/11913
+		Name: "NOT IN union subquery keeps NOT when a sibling NOT IN is unnested",
+		SetUpScript: []string{
+			"CREATE TABLE items (id VARCHAR(64) PRIMARY KEY, state VARCHAR(32));",
+			"CREATE TABLE tags (item_id VARCHAR(64), tag VARCHAR(255));",
+			"CREATE TABLE links (item_id VARCHAR(64), other_id VARCHAR(64), kind VARCHAR(32));",
+			"INSERT INTO items VALUES ('a','live'),('b','live'),('root','live'),('leaf','busy');",
+			"INSERT INTO tags VALUES ('a','x');",
+			"INSERT INTO links VALUES ('leaf','root','holds');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT id FROM items
+WHERE id NOT IN (SELECT DISTINCT l.item_id FROM links l INNER JOIN items i ON l.other_id = i.id WHERE i.state IN ('live','busy')
+UNION SELECT DISTINCT l.other_id FROM links l INNER JOIN items i ON l.item_id = i.id WHERE i.state IN ('live','busy'))
+AND id NOT IN (SELECT item_id FROM tags WHERE tag = 'x')`,
+				Expected: []sql.Row{{"b"}},
+			},
+			{
+				Query:    "SELECT id FROM items WHERE id NOT IN (SELECT item_id FROM tags WHERE tag = 'x') AND id NOT IN (SELECT item_id FROM links UNION SELECT other_id FROM links) ORDER BY id",
+				Expected: []sql.Row{{"b"}},
+			},
+			{
+				Query:    "SELECT id FROM items WHERE id IN (SELECT item_id FROM links UNION SELECT other_id FROM links) AND id NOT IN (SELECT item_id FROM tags WHERE tag = 'x') ORDER BY id",
+				Expected: []sql.Row{{"leaf"}, {"root"}},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/10113
 		Name: "DELETE with NOT EXISTS subquery",
 		SetUpScript: []string{
