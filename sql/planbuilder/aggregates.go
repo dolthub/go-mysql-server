@@ -308,6 +308,19 @@ func IsMySQLAggregateFuncName(ctx *sql.Context, name string) (bool, error) {
 // buildAggregateFunc tags aggregate functions in the correct scope
 // and makes the aggregate available for reference by other clauses.
 func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExpr) sql.Expression {
+	if strings.EqualFold(name, "any_value") {
+		if (b.aggArgDepth > 0 || b.windowArgDepth > 0) && len(e.Exprs) == 1 && !e.Distinct {
+			return b.selectExprToExpression(inScope, e.Exprs[0])
+		}
+		b.qFlags.Set(sql.QFlagAnyAgg)
+	} else if b.aggArgDepth > 0 {
+		// Window functions evaluate after aggregation, so
+		// aggregates inside window functions are allowed,
+		// but nested aggregates are not.
+		err := sql.ErrInvalidGroupFuncUse.New()
+		b.handleErr(err)
+	}
+
 	inScope.initGroupBy()
 	gb := inScope.groupBy
 
@@ -322,13 +335,6 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 		if _, ok := e.Exprs[0].(*ast.StarExpr); ok {
 			return b.buildJsonArrayStarAggregate(gb)
 		}
-	}
-
-	if strings.EqualFold(name, "any_value") {
-		if b.aggArgDepth > 0 && len(e.Exprs) == 1 && !e.Distinct {
-			return b.selectExprToExpression(inScope, e.Exprs[0])
-		}
-		b.qFlags.Set(sql.QFlagAnyAgg)
 	}
 
 	args := b.buildAggFunctionArgs(inScope, e, gb)
@@ -396,7 +402,7 @@ func (b *Builder) newAggregation(e *ast.FuncExpr, name string, args []sql.Expres
 	return agg
 }
 
-// buildAggFunctionArgs builds the arguments for an aggregate function
+// buildAggFunctionArgs builds arguments for an aggregate function.
 func (b *Builder) buildAggFunctionArgs(inScope *scope, e *ast.FuncExpr, gb *groupBy) []sql.Expression {
 	b.aggArgDepth++
 	defer func() { b.aggArgDepth-- }()
@@ -492,8 +498,13 @@ func (b *Builder) buildCountStarAggregate(e *ast.FuncExpr, gb *groupBy) sql.Expr
 	return col.scalarGf()
 }
 
-// buildGroupConcat builds a GROUP_CONCAT aggregate function
+// buildGroupConcat builds a GROUP_CONCAT aggregate function.
 func (b *Builder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.Expression {
+	if b.aggArgDepth > 0 {
+		err := sql.ErrInvalidGroupFuncUse.New()
+		b.handleErr(err)
+	}
+
 	b.aggArgDepth++
 	defer func() { b.aggArgDepth-- }()
 
@@ -555,9 +566,11 @@ func IsMySQLWindowFuncName(ctx *sql.Context, name string) (bool, error) {
 	}
 }
 
+// buildWindowFunc builds a window function expression and
+// registers its definition.
 func (b *Builder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, over *ast.WindowDef) sql.Expression {
-	b.aggArgDepth++
-	defer func() { b.aggArgDepth-- }()
+	b.windowArgDepth++
+	defer func() { b.windowArgDepth-- }()
 
 	// internal expressions can be complex, but window can't be more than alias
 	var args []sql.Expression

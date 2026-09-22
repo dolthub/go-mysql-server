@@ -57,9 +57,11 @@ type Builder struct {
 	// name (not a composite expression like a + 1).
 	windowClauseColRef bool
 
-	// aggArgDepth is how deep the builder is inside the arguments
-	// of aggregate and window functions.
+	// aggArgDepth tracks aggregate argument nesting.
 	aggArgDepth int
+
+	// windowArgDepth tracks window argument nesting.
+	windowArgDepth int
 
 	authEnabled  bool
 	multiDDL     bool
