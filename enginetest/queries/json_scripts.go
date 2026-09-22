@@ -834,6 +834,42 @@ var JsonScripts = []ScriptTest{
 			},
 		},
 	},
+	// https://github.com/dolthub/dolt/issues/7196
+	{
+		Name: "Test consistent JSON object comparisons",
+		SetUpScript: []string{
+			"SET @ROCK = JSON_OBJECT('a', 2e0, 'b', 1e0)",
+			"SET @PAPER = JSON_OBJECT('b', 2e0, 'c', 1e0)",
+			"SET @SCISSORS = JSON_OBJECT('c', 2e0, 'a', 1e0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			// JSON object ordering is implementation-defined; these expectations use Dolt's ordering.
+			{
+				Query:    "SELECT CAST(@ROCK AS JSON) < CAST(@PAPER AS JSON)",
+				Expected: []sql.Row{{false}},
+			},
+			{
+				Query:    "SELECT CAST(@PAPER AS JSON) < CAST(@ROCK AS JSON)",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    "SELECT CAST(@PAPER AS JSON) < CAST(@SCISSORS AS JSON)",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    "SELECT CAST(@SCISSORS AS JSON) < CAST(@PAPER AS JSON)",
+				Expected: []sql.Row{{false}},
+			},
+			{
+				Query:    "SELECT CAST(@SCISSORS AS JSON) < CAST(@ROCK AS JSON)",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    "SELECT CAST(@ROCK AS JSON) < CAST(@SCISSORS AS JSON)",
+				Expected: []sql.Row{{false}},
+			},
+		},
+	},
 	{
 		// https://github.com/dolthub/dolt/issues/4499
 		Name: "json is formatted correctly",
@@ -1003,6 +1039,8 @@ var JsonScripts = []ScriptTest{
 				Query:    `select json_extract('{"a":[{"b":1}]}', '$.a[0].b')`,
 				Expected: []sql.Row{{types.MustJSON("1")}},
 			},
+			// https://github.com/dolthub/dolt/issues/7905
+			{Query: "SELECT JSON_EXTRACT('[{\"a\":1},{\"a\":2}]','$.a'),JSON_VALUE('[{\"a\":1},{\"a\":2}]','$.a'),JSON_EXTRACT('[{\"a\":[{\"b\":1},{\"b\":2}]},{\"a\":[{\"b\":3},{\"b\":4}]}]','$.a.b')", Expected: []sql.Row{{nil, nil, nil}}},
 		},
 	},
 	{

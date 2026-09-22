@@ -2,9 +2,12 @@ package function
 
 import (
 	"os"
+	"path/filepath"
+	"runtime/debug"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -101,6 +104,45 @@ func TestLoadFile(t *testing.T) {
 	for _, tt := range testCases {
 		runLoadFileTest(t, tt, dir)
 	}
+
+	t.Run("releases file and directory handles", func(t *testing.T) {
+		// Cleanup must not depend on finalizers closing leaked handles.
+		gcPercent := debug.SetGCPercent(-1)
+		t.Cleanup(func() { debug.SetGCPercent(gcPercent) })
+		_, oldSecureFilePriv, ok := sql.SystemVariables.GetGlobal("secure_file_priv")
+		require.True(t, ok)
+		t.Cleanup(func() {
+			require.NoError(t, sql.SystemVariables.AssignValues(map[string]interface{}{"secure_file_priv": oldSecureFilePriv}))
+		})
+		for _, mode := range []string{"allowed", "different directory", "missing directory"} {
+			t.Run(mode, func(t *testing.T) {
+				dir := t.TempDir()
+				other := t.TempDir()
+				path := filepath.Join(dir, "data")
+				require.NoError(t, os.WriteFile(path, []byte("data"), 0600))
+				if mode == "different directory" {
+					path = filepath.Join(other, "data")
+					require.NoError(t, os.WriteFile(path, []byte("data"), 0600))
+				} else if mode == "missing directory" {
+					path = filepath.Join(other, "missing", "data")
+				}
+				require.NoError(t, sql.SystemVariables.AssignValues(map[string]interface{}{"secure_file_priv": dir}))
+				ctx := sql.NewEmptyContext()
+				fn := NewLoadFile(ctx, expression.NewLiteral(path, types.Text))
+				res, err := fn.Eval(ctx, nil)
+				require.NoError(t, err)
+				if mode == "allowed" {
+					assert.Equal(t, []byte("data"), res)
+				} else {
+					assert.Nil(t, res)
+				}
+				// Windows rejects deletion while a file or directory handle is open.
+				require.NoError(t, os.RemoveAll(dir))
+				require.NoError(t, os.RemoveAll(other))
+			})
+		}
+	})
+
 }
 
 // runLoadFileTest takes in a loadFileTestCase and its relevant directory and validates whether LOAD_FILE is reading

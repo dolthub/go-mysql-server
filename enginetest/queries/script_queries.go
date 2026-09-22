@@ -11746,6 +11746,15 @@ where
 			},
 		},
 	},
+	// https://github.com/dolthub/dolt/issues/4233
+	{
+		Name:        "Test CTE definition ordering",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{Query: "WITH c AS (SELECT * FROM b), b AS (SELECT * FROM a), a AS (SELECT 1 AS n) SELECT * FROM c", ExpectedErr: sql.ErrTableNotFound},
+			{Query: "WITH a AS (SELECT 1 AS n), b AS (SELECT * FROM a), c AS (SELECT * FROM b) SELECT * FROM c", Expected: []sql.Row{{1}}},
+		},
+	},
 
 	// Set tests
 	{
@@ -14317,6 +14326,33 @@ where
 			{
 				Query:       "insert into child2_datetime6 values ('2001-02-03 12:34:56.123456');",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+		},
+	},
+	{
+		// TODO: every aggregation function needs to use types.TypeAwareConversion
+		// Tracking issue: https://github.com/dolthub/dolt/issues/10278
+		Skip:    true,
+		Name:    "aggregations with date types",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t (i int primary key, d date, dt datetime, dt6 datetime(6), ts timestamp, ts6 timestamp(6));",
+			"insert into t values (1, '2001-02-03', '2001-02-03 12:34:56', '2001-02-03 12:34:56.123456', '2001-02-03 12:34:56', '2001-02-03 12:34:56.123456');",
+			"insert into t values (2, '2010-03-30', '2010-02-03 22:22:22', '2010-02-03 11:11:11.111111', '2010-03-30 22:22:22', '2010-03-30 11:11:11.111111');",
+			"insert into t values (3, '2100-02-03', '2100-02-03 23:23:23', '2100-02-03 23:23:23.654321', '2001-02-03 23:23:23', '2001-02-03 23:23:23.654321');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select sum(d), sum(dt), sum(dt6), sum(ts), sum(ts6) from t;",
+				Expected: []sql.Row{
+					{float64(61110736), float64(61110609578001), float64(61110609466890.888888), float64(60120736578001), float64(60120736466890.888888)},
+				},
+			},
+			{
+				Query: "select var_pop(d), var_pop(dt), var_pop(dt6), var_pop(ts), var_pop(ts6) from t;",
+				Expected: []sql.Row{
+					{float64(199777143584.22263), float64(1.998000279462624e23), float64(1.998000479464689e23), float64(1.8050853600269382e21), float64(1.8050809093046277e21)},
+				},
 			},
 		},
 	},

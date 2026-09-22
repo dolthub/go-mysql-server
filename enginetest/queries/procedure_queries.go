@@ -278,7 +278,7 @@ END;`,
 				},
 			},
 			{
-				SkipResultCheckOnServerEngine: true, // tracking issue: https://github.com/dolthub/dolt/issues/6918
+				SkipResultCheckOnServerEngine: true, // Affected-row counts still differ over the wire: https://github.com/dolthub/dolt/issues/6918
 				Query:                         "CALL p1(2)",
 				Expected: []sql.Row{
 					{
@@ -572,8 +572,7 @@ END;`,
 				},
 			},
 			{
-				SkipResultCheckOnServerEngine: true, // tracking issue: https://github.com/dolthub/dolt/issues/6918
-				Query:                         "CALL p3()",
+				Query: "CALL p3()",
 				Expected: []sql.Row{
 					{int64(1), "z", "d"},
 					{int64(2), "y", "e"},
@@ -589,8 +588,7 @@ END;`,
 				},
 			},
 			{
-				SkipResultCheckOnServerEngine: true, // tracking issue: https://github.com/dolthub/dolt/issues/6918
-				Query:                         "CALL p5()",
+				Query: "CALL p5()",
 				Expected: []sql.Row{
 					{int64(1), "z", "d"},
 					{int64(2), "y", "e"},
@@ -1353,6 +1351,34 @@ END`,
 				Query:    "SELECT * from t3",
 				Expected: []sql.Row{{"a", 10}, {"b", 15}},
 			},
+		},
+	},
+	// https://github.com/dolthub/dolt/issues/6742
+	{
+		Name: "Test cursor continue-handler checksum loops",
+		SetUpScript: []string{
+			"CREATE TABLE checksums(id INT AUTO_INCREMENT PRIMARY KEY,checksum VARCHAR(40))",
+			"INSERT INTO checksums VALUES(1,SHA('macneale'))",
+			`CREATE PROCEDURE calculate_checksum()
+BEGIN
+ DECLARE done INT DEFAULT 0;
+ DECLARE current_checksum VARCHAR(40);
+ DECLARE concat_string VARCHAR(10000) DEFAULT '';
+ DECLARE cur CURSOR FOR SELECT checksum FROM checksums ORDER BY id;
+ DECLARE CONTINUE HANDLER FOR NOT FOUND SET done=1;
+ OPEN cur;
+ read_loop: LOOP
+  FETCH cur INTO current_checksum;
+  IF done THEN LEAVE read_loop; END IF;
+  SET concat_string=CONCAT(concat_string,current_checksum);
+ END LOOP;
+ CLOSE cur;
+ INSERT INTO checksums(checksum) VALUES(SHA1(concat_string));
+END`,
+			"CALL calculate_checksum()",
+		},
+		Assertions: []ScriptTestAssertion{
+			{Query: "SELECT * FROM checksums ORDER BY id", Expected: []sql.Row{{int32(1), "ca530ba53d2e3b54206e62c7ab257657b7367cc7"}, {int32(2), "89fa71febbc9effd2fa58c7441ad2ed899fcdcf1"}}},
 		},
 	},
 	{

@@ -2127,6 +2127,22 @@ var ForeignKeyTests = []ScriptTest{
 			},
 		},
 	},
+	// https://github.com/dolthub/dolt/issues/3024
+	{
+		Name: "Test foreign keys with spatial parent columns",
+		SetUpScript: []string{
+			"CREATE TABLE restaurants(id INT PRIMARY KEY,coordinate POINT)",
+			"CREATE TABLE hours(restaurant_id INT PRIMARY KEY AUTO_INCREMENT,FOREIGN KEY(restaurant_id) REFERENCES restaurants(id))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{Query: "SELECT column_name,referenced_table_name,referenced_column_name FROM information_schema.key_column_usage WHERE table_name='hours' AND referenced_table_name IS NOT NULL", Expected: []sql.Row{{"restaurant_id", "restaurants", "id"}}},
+			{Query: "INSERT INTO hours VALUES(123)", ExpectedErr: sql.ErrForeignKeyChildViolation},
+			{Query: "SELECT * FROM hours", Expected: []sql.Row{}},
+			{Query: "INSERT INTO restaurants VALUES(123,POINT(1,2))", Expected: []sql.Row{{types.NewOkResult(1)}}},
+			{Query: "INSERT INTO hours VALUES(123)", Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 123}}}},
+			{Query: "SELECT * FROM hours", Expected: []sql.Row{{int32(123)}}},
+		},
+	},
 	{
 		Name: "Referenced index includes implicit primary key columns",
 		SetUpScript: []string{

@@ -50,10 +50,7 @@ var WindowFunctionsScriptTests = []ScriptTest{
 	},
 	{
 		Name: "window function over grouped one-column input",
-		// PostgreSQL does not support the sql_mode setting required by this MySQL regression.
-		Dialect: "mysql",
 		SetUpScript: []string{
-			"SET sql_mode = ''",
 			"CREATE TABLE grouped_window (id INT PRIMARY KEY, g INT, k INT, v INT)",
 			"INSERT INTO grouped_window VALUES (1,0,2,10), (2,0,1,20), (3,1,1,30)",
 			"CREATE TABLE nullable_grouped_window (id INT PRIMARY KEY, g INT)",
@@ -103,6 +100,23 @@ var WindowFunctionsScriptTests = []ScriptTest{
 			{
 				Query:       "SELECT SUM(ROW_NUMBER() OVER (ORDER BY g)) FROM grouped_window GROUP BY g",
 				ExpectedErr: sql.ErrNonAggregatedColumnWithoutGroupBy,
+			},
+		},
+	},
+	{
+		Name: "window function is considered an aggregate function for group by validation",
+		SetUpScript: []string{
+			"CREATE TABLE window_gb_outer (id INT PRIMARY KEY, a INT)",
+			"CREATE TABLE window_gb_inner (x INT)",
+			"INSERT INTO window_gb_outer VALUES (1,1), (2,2), (3,3)",
+			"INSERT INTO window_gb_inner VALUES (1), (1), (2)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT id FROM window_gb_outer WHERE EXISTS (SELECT ROW_NUMBER() OVER (ORDER BY x) FROM window_gb_inner WHERE window_gb_inner.x = window_gb_outer.a GROUP BY window_gb_inner.x) ORDER BY id",
+				Expected: []sql.Row{
+					{1}, {2},
+				},
 			},
 		},
 	},
@@ -238,6 +252,39 @@ ORDER BY id;`,
 					{2, int64(2), float64(300)},
 					{3, int64(3), float64(300)},
 				},
+			},
+		},
+	},
+	{
+		Name: "window function and correlated scalar subquery writes (CTAS and INSERT SELECT)",
+		SetUpScript: []string{
+			"CREATE TABLE m0 (id INT PRIMARY KEY, c0 INT)",
+			"INSERT INTO m0 VALUES (1, 10), (2, 20)",
+			"CREATE TABLE r (id INT PRIMARY KEY, rn INT, c INT)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CREATE TABLE c AS SELECT id, " +
+					"ROW_NUMBER() OVER (ORDER BY id) AS rn, " +
+					"(SELECT COUNT(*) FROM m0 x WHERE x.c0 = m0.c0) AS c " +
+					"FROM m0",
+			},
+			{
+				Query:    "SELECT id, c FROM c ORDER BY id",
+				Expected: []sql.Row{{1, 1}, {2, 1}},
+			},
+			{
+				// TODO: Doltgres does not yet translate built-in bigint expression types for INSERT sources.
+				Dialect: "mysql",
+				Query: "INSERT INTO r SELECT id, " +
+					"ROW_NUMBER() OVER (ORDER BY id), " +
+					"(SELECT COUNT(*) FROM m0 x WHERE x.c0 = m0.c0) " +
+					"FROM m0",
+			},
+			{
+				Dialect:  "mysql",
+				Query:    "SELECT id, rn, c FROM r ORDER BY id",
+				Expected: []sql.Row{{1, 1, 1}, {2, 2, 1}},
 			},
 		},
 	},
@@ -1991,6 +2038,59 @@ ORDER BY id;`,
 					{int32(1)},
 					{int32(2)},
 				},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11421
+		Name: "exists subquery with window function",
+		SetUpScript: []string{
+			`CREATE TABLE t(id INT PRIMARY KEY, a INT);`,
+			`CREATE TABLE u(x INT);`,
+			`INSERT INTO t VALUES (1,1),(2,2),(3,3);`,
+			`INSERT INTO u VALUES (1),(1),(2);`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    `SELECT id FROM t WHERE EXISTS (SELECT ROW_NUMBER() OVER () FROM u WHERE u.x = t.a) ORDER BY id;`,
+				Expected: []sql.Row{{1}, {2}},
+			},
+		},
+	},
+	{
+		Name: "derived table with duplicate column names",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       `SELECT *, ROW_NUMBER() OVER () FROM (SELECT 1 AS a, 'x' AS a) t;`,
+				ExpectedErr: sql.ErrDuplicateColumn,
+			},
+			{
+				Query:       `SELECT * FROM (SELECT 1 AS a, 'x' AS a) t;`,
+				ExpectedErr: sql.ErrDuplicateColumn,
+			},
+			{
+				Query:       `SELECT * FROM (SELECT 1, 2) t(a, a);`,
+				ExpectedErr: sql.ErrDuplicateColumn,
+			},
+		},
+	},
+	{
+		Name: "window function reused inside a larger projection",
+		SetUpScript: []string{
+			"CREATE TABLE t (id INT PRIMARY KEY, two INT, four INT, ten INT, hundred INT)",
+			"INSERT INTO t VALUES (1,0,0,0,10), (2,1,1,1,20), (3,0,2,2,30), (4,1,3,3,40)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT * FROM (
+  SELECT count(*) OVER (PARTITION BY four ORDER BY ten) +
+    sum(hundred) OVER (PARTITION BY two ORDER BY ten) AS total,
+    count(*) OVER (PARTITION BY four ORDER BY ten) AS fourcount,
+    sum(hundred) OVER (PARTITION BY two ORDER BY ten) AS twosum
+    FROM t
+) sub
+WHERE total <> fourcount + twosum;`,
+				Expected: []sql.Row{},
 			},
 		},
 	},

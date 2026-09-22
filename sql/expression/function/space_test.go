@@ -15,6 +15,7 @@
 package function
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -158,4 +159,23 @@ func TestSpace(t *testing.T) {
 			require.Equal(t, tt.exp, res)
 		})
 	}
+}
+
+func TestSpaceBoundedAllocations(t *testing.T) {
+	const count = 100_000
+	ctx := sql.NewEmptyContext()
+	f := NewSpace(ctx, expression.NewLiteral(int64(count), types.Int64))
+
+	res, err := f.Eval(ctx, nil)
+	require.NoError(t, err)
+	spaces, ok := res.(string)
+	require.True(t, ok)
+	require.Equal(t, strings.Repeat(" ", count), spaces)
+
+	allocations := testing.AllocsPerRun(1, func() {
+		_, err := f.Eval(ctx, nil)
+		require.NoError(t, err)
+	})
+	// A linear construction should not allocate once per output byte.
+	require.Less(t, allocations, float64(count)/100)
 }

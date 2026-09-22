@@ -292,159 +292,105 @@ func (c *Convert) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 // |typeLength| and |typeScale|).
 // Only returns an error if converting to JSON, Date, and Datetime; the zero value is returned for float types.
 // Nil is returned in all other cases.
-func convertValue(ctx *sql.Context, val any, castTo string, originType sql.Type, typeLength, typeScale int) (any, error) {
+func convertValue(ctx *sql.Context, val any, castTo string, origType sql.Type, typeLength, typeScale int) (any, error) {
 	if val == nil {
 		return nil, nil
 	}
-	switch strings.ToLower(castTo) {
+	var convType sql.Type
+	var err error
+	castTo = strings.ToLower(castTo)
+	switch castTo {
 	case ConvertToBinary:
-		b, _, err := types.TypeAwareConversion(ctx, val, originType, types.LongBlob)
+		val, _, err = types.TypeAwareConversion(ctx, val, origType, types.LongBlob)
 		if err != nil {
 			return nil, nil
 		}
 
-		if types.IsTextOnly(originType) {
+		if types.IsTextOnly(origType) {
 			// For string types we need to re-encode the string as we want the binary representation of the character set
-			encoder := originType.(sql.StringType).Collation().CharacterSet().Encoder()
-			encodedBytes, ok := encoder.Encode(b.([]byte))
+			encoder := origType.(sql.StringType).Collation().CharacterSet().Encoder()
+			encodedBytes, ok := encoder.Encode(val.([]byte))
 			if !ok {
 				return nil, fmt.Errorf("unable to re-encode string to convert to binary")
 			}
-			b = encodedBytes
+			val = encodedBytes
 		}
-		if bb, ok := b.([]byte); ok && len(bb) < typeLength {
-			b = append(bb, make([]byte, typeLength-len(bb))...)
+		if bb, ok := val.([]byte); ok && len(bb) < typeLength {
+			val = append(bb, make([]byte, typeLength-len(bb))...)
 		}
-		return truncateConvertedValue(b, typeLength)
+		return truncateConvertedValue(val, typeLength)
 	case ConvertToChar, ConvertToNChar:
-		s, _, err := types.TypeAwareConversion(ctx, val, originType, types.LongText)
+		val, _, err = types.TypeAwareConversion(ctx, val, origType, types.LongText)
 		if err != nil {
 			return nil, nil
 		}
-		return truncateConvertedValue(s, typeLength)
+		return truncateConvertedValue(val, typeLength)
+	case ConvertToJSON:
+		val, _, err = types.JSON.Convert(ctx, val)
+		if err != nil {
+			return nil, err
+		}
+		return val, nil
 	case ConvertToDate:
-		d, _, err := types.Date.Convert(ctx, val)
+		val, _, err = types.Date.Convert(ctx, val)
 		if err != nil {
 			if !sql.ErrTruncatedIncorrect.Is(err) {
 				return nil, err
 			}
 			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 		}
-		return d, nil
+		return val, nil
 	case ConvertToDatetime:
 		dtType := types.MustCreateDatetimeType(sqltypes.Datetime, typeLength)
-		d, _, err := dtType.Convert(ctx, val)
+		val, _, err = dtType.Convert(ctx, val)
 		if err != nil {
 			if !sql.ErrTruncatedIncorrect.Is(err) {
 				return nil, err
 			}
 			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 		}
-		return d, nil
-	case ConvertToDecimal:
-		value, err := types.ConvertHexBlobToDecimalForNumericContext(val, originType)
-		if err != nil {
-			return nil, err
-		}
-		dt := createConvertedDecimalType(typeLength, typeScale, false)
-		d, _, err := dt.Convert(ctx, value)
-		if err != nil {
-			if !sql.ErrTruncatedIncorrect.Is(err) {
-				return dt.Zero(), nil
-			}
-			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
-		}
-		return d, nil
-	case ConvertToFloat:
-		value, err := types.ConvertHexBlobToDecimalForNumericContext(val, originType)
-		if err != nil {
-			return nil, err
-		}
-		d, _, err := types.Float32.Convert(ctx, value)
-		if err != nil {
-			if !sql.ErrTruncatedIncorrect.Is(err) {
-				return types.Float64.Zero(), nil
-			}
-			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
-		}
-		return d, nil
-	case ConvertToDouble, ConvertToReal:
-		value, err := types.ConvertHexBlobToDecimalForNumericContext(val, originType)
-		if err != nil {
-			return nil, err
-		}
-		d, _, err := types.Float64.Convert(ctx, value)
-		if err != nil {
-			if !sql.ErrTruncatedIncorrect.Is(err) {
-				return types.Float64.Zero(), nil
-			}
-			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
-		}
-		return d, nil
-	case ConvertToJSON:
-		js, _, err := types.JSON.Convert(ctx, val)
-		if err != nil {
-			return nil, err
-		}
-		return js, nil
-	case ConvertToSigned:
-		value, err := types.ConvertHexBlobToDecimalForNumericContext(val, originType)
-		if err != nil {
-			return nil, err
-		}
-		num, _, err := types.Int64.Convert(ctx, value)
-		if err != nil {
-			if !sql.ErrTruncatedIncorrect.Is(err) {
-				return types.Int64.Zero(), nil
-			}
-			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
-		}
-		return num, nil
+		return val, nil
 	case ConvertToTime:
-		t, _, err := types.Time.Convert(ctx, val)
+		val, _, err = types.Time.Convert(ctx, val)
 		if err != nil {
 			return nil, nil
 		}
-		return t, nil
+		return val, nil
+	case ConvertToDecimal:
+		convType = createConvertedDecimalType(typeLength, typeScale, false)
+	case ConvertToFloat:
+		convType = types.Float32
+	case ConvertToDouble, ConvertToReal:
+		convType = types.Float64
+	case ConvertToSigned:
+		convType = types.Int64
 	case ConvertToUnsigned:
-		value, err := types.ConvertHexBlobToDecimalForNumericContext(val, originType)
-		if err != nil {
-			return nil, err
-		}
-		num, inRange, err := types.Uint64.Convert(ctx, value)
-		if err != nil {
-			if !sql.ErrTruncatedIncorrect.Is(err) {
-				return types.Uint64.Zero(), nil
-			}
-			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
-		}
-		if inRange != sql.InRange {
-			ctx.Warn(1105, "Cast to unsigned converted negative integer to its positive complement")
-		}
-		return num, nil
+		convType = types.Uint64
 	case ConvertToYear:
-		value, err := types.ConvertHexBlobToDecimalForNumericContext(val, originType)
-		if err != nil {
-			return nil, err
-		}
-		num, _, err := types.Uint64.Convert(ctx, value)
-		if err != nil {
-			if !sql.ErrTruncatedIncorrect.Is(err) {
-				return types.Float64.Zero(), nil
-			}
-			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
-		}
-		return num, nil
+		convType = types.Uint64
 	default:
 		return nil, nil
 	}
+
+	var inRange sql.ConvertInRange
+	val, inRange, err = types.TypeAwareConversion(ctx, val, origType, convType)
+	if err != nil {
+		if !sql.ErrTruncatedIncorrect.Is(err) {
+			return convType.Zero(), nil
+		}
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
+	}
+	if inRange != sql.InRange && castTo == ConvertToUnsigned {
+		ctx.Warn(1105, "Cast to unsigned converted negative integer to its positive complement")
+	}
+	return val, nil
 }
 
 // truncateConvertedValue truncates |val| to the specified |typeLength| if |val|
 // is a string or byte slice. If the typeLength is 0, or if it is greater than
 // the length of |val|, then |val| is simply returned as is. If |val| is not a
 // string or []byte, then an error is returned.
-func truncateConvertedValue(val interface{}, typeLength int) (interface{}, error) {
+func truncateConvertedValue(val any, typeLength int) (any, error) {
 	if typeLength <= 0 {
 		return val, nil
 	}

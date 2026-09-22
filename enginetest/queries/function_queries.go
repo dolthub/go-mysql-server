@@ -1580,22 +1580,11 @@ var FunctionQueryTests = []QueryTest{
 		},
 	},
 	{
-		Skip:  true,
 		Query: `SELECT round(date('2001-02-03'))`,
 		Expected: []sql.Row{
-			{20010203},
+			{20010203.0},
 		},
 	},
-	{
-		// TODO: This is just testing for a panic. The core issue is part of several DATE conversion bugs.
-		//  Replace with above skipped test when fixed.
-		//  Tracking Issue: https://github.com/dolthub/dolt/issues/10278
-		Query: `SELECT round(date('2001-02-03')) > 0`,
-		Expected: []sql.Row{
-			{true},
-		},
-	},
-
 	{
 		Query:    "SELECT POW(2,3) FROM dual",
 		Expected: []sql.Row{{float64(8)}},
@@ -1801,16 +1790,258 @@ var FunctionQueryTests = []QueryTest{
 		Expected:              []sql.Row{{nil}},
 	},
 	{
+		Query: "select cast(cast('2001-02-03 12:34:56.123456' as date) as signed);",
+		Expected: []sql.Row{
+			{20010203},
+		},
+	},
+	{
+		Query: "select cast(cast('2001-02-03 12:34:56.123456' as date) as unsigned);",
+		Expected: []sql.Row{
+			{uint64(20010203)},
+		},
+	},
+	{
+		Query: "select cast(cast('2001-02-03 12:34:56.123456' as date) as float);",
+		Expected: []sql.Row{
+			{float32(20010203)},
+		},
+	},
+	{
+		Query: "select cast(cast('2001-02-03 12:34:56.123456' as date) as double);",
+		Expected: []sql.Row{
+			{float64(20010203)},
+		},
+	},
+	{
+		Query: "select cast(cast('2001-02-03 12:34:56.123456' as date) as decimal(65,30));",
+		Expected: []sql.Row{
+			{"20010203.000000000000000000000000000000"},
+		},
+	},
+
+	{
+		Query: "select cast(cast('2001-02-03 12:34:56.123456' as datetime(6)) as signed);",
+		Expected: []sql.Row{
+			{20010203123456},
+		},
+	},
+	{
+		Query: "select cast(cast('2001-02-03 12:34:56.999999' as datetime(6)) as signed);",
+		Expected: []sql.Row{
+			{20010203123457},
+		},
+	},
+	{
+		Query: "select cast(cast('2001-02-03 12:34:56.123456' as datetime(6)) as unsigned);",
+		Expected: []sql.Row{
+			{uint64(20010203123456)},
+		},
+	},
+	{
+		Query: "select cast(cast('2001-02-03 12:34:56.999999' as datetime(6)) as unsigned);",
+		Expected: []sql.Row{
+			{uint64(20010203123457)},
+		},
+	},
+	{
+		// TODO: MySQL loses more precision when casting to float32 type
+		// Tracking issue: https://github.com/dolthub/dolt/issues/11801
+		Skip:  true,
+		Query: "select cast(cast('2001-02-03 12:34:56.123456' as datetime(6)) as float);",
+		Expected: []sql.Row{
+			{float32(20010200000000)},
+		},
+	},
+	{
+		Query: "select cast(cast('2001-02-03 12:34:56.123456' as datetime(6)) as double);",
+		Expected: []sql.Row{
+			{float64(20010203123456.125)},
+		},
+	},
+	{
+		Query: "select cast(cast('2001-02-03 12:34:56.123456' as datetime(6)) as decimal(65,30));",
+		Expected: []sql.Row{
+			{"20010203123456.123456000000000000000000000000"},
+		},
+	},
+
+	{
 		// A string with no delimiters takes a 4 digit year at 4, 8, or 14 or more digits, and 2 otherwise
 		Query:    "select cast('20200101123456' as datetime), cast('200101123456' as datetime)",
 		Expected: []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 0, time.UTC), time.Date(2020, time.January, 1, 12, 34, 56, 0, time.UTC)}},
 	},
 	{
-		// TODO: leading zeroes change numeric string behavior
-		// Tracking Issue: https://github.com/dolthub/dolt/issues/10278
-		Skip:     true,
-		Query:    "select cast('00200101' as date), cast('200101' as date)",
-		Expected: []sql.Row{{time.Date(20, time.January, 1, 0, 0, 0, 0, time.UTC), time.Date(2020, time.January, 1, 0, 0, 0, 0, time.UTC)}},
+		// https://github.com/dolthub/dolt/issues/10278
+		Query: "select cast('00200101' as date), cast('200101' as date)",
+		Expected: []sql.Row{
+			{
+				time.Date(20, time.January, 1, 0, 0, 0, 0, time.UTC),
+				time.Date(2020, time.January, 1, 0, 0, 0, 0, time.UTC),
+			},
+		},
+	},
+	{
+		Query: "select cast('002001010203' as date);",
+		Expected: []sql.Row{
+			{nil},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('00200101.0203' as date);",
+		Expected: []sql.Row{
+			{time.Date(20, 01, 01, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select cast('00200101-0203' as date);",
+		Expected: []sql.Row{
+			{nil},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('00200101-02-03' as date);",
+		Expected: []sql.Row{
+			{nil},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('00200101-02.03' as date);",
+		Expected: []sql.Row{
+			{nil},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('00200101.02.03' as date);",
+		Expected: []sql.Row{
+			{time.Date(20, 01, 01, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select cast('00200101.02-03' as date);",
+		Expected: []sql.Row{
+			{time.Date(20, 01, 01, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select cast('20101' as datetime(6));",
+		Expected: []sql.Row{
+			{time.Date(2020, time.October, 1, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select cast('201012' as datetime(6));",
+		Expected: []sql.Row{
+			{time.Date(2020, time.October, 12, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select cast('2010121' as datetime(6));",
+		Expected: []sql.Row{
+			{time.Date(2020, time.October, 12, 1, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select cast('20101210' as datetime(6));",
+		Expected: []sql.Row{
+			{time.Date(2010, time.December, 10, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select cast('201012101' as datetime(6));",
+		Expected: []sql.Row{
+			{time.Date(2020, time.October, 12, 10, 1, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select cast('20101210101' as datetime(6));",
+		Expected: []sql.Row{
+			{time.Date(2020, time.October, 12, 10, 10, 1, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select cast('201012101010' as datetime(6));",
+		Expected: []sql.Row{
+			{time.Date(2020, time.October, 12, 10, 10, 10, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select cast('2010121010101' as datetime(6));",
+		Expected: []sql.Row{
+			{time.Date(2020, time.October, 12, 10, 10, 10, 0, time.UTC)},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('20101210101010' as datetime(6));",
+		Expected: []sql.Row{
+			{time.Date(2010, time.December, 10, 10, 10, 10, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select cast('20101210101010123456' as datetime(6));",
+		Expected: []sql.Row{
+			{time.Date(2010, time.December, 10, 10, 10, 10, 0, time.UTC)},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('20101210101010.123456' as datetime(6));",
+		Expected: []sql.Row{
+			{time.Date(2010, time.December, 10, 10, 10, 10, 123456000, time.UTC)},
+		},
+	},
+	{
+		Query: "select cast('201012101010101.123456' as datetime(6));",
+		Expected: []sql.Row{
+			{time.Date(2010, time.December, 10, 10, 10, 10, 0, time.UTC)},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('20101210101010abc.123456' as datetime(6));",
+		Expected: []sql.Row{
+			{nil},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('20101210101010.abc.123456' as datetime(6));",
+		Expected: []sql.Row{
+			{time.Date(2010, time.December, 10, 10, 10, 10, 0, time.UTC)},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('20101210101010.123456900' as datetime(6));",
+		Expected: []sql.Row{
+			{time.Date(2010, time.December, 10, 10, 10, 10, 123457000, time.UTC)},
+		},
+	},
+	{
+		Query: "select cast('20101210.101010.123456' as datetime(6));",
+		Expected: []sql.Row{
+			{time.Date(2010, time.December, 10, 10, 10, 10, 123456000, time.UTC)},
+		},
+	},
+	{
+		Query: "select cast('2010.12.10.10.10.10.123456' as datetime(6));",
+		Expected: []sql.Row{
+			{time.Date(2010, time.December, 10, 10, 10, 10, 123456000, time.UTC)},
+		},
 	},
 	{
 		Query:    "select cast('20200101123456.75' as datetime(6))",
@@ -1819,6 +2050,42 @@ var FunctionQueryTests = []QueryTest{
 	{
 		Query:    "select cast('20200101' as date) = cast(20200101 as date)",
 		Expected: []sql.Row{{true}},
+	},
+	{
+		Query: "select cast(cast('2001-02-03 12:34:56.123456' as datetime(6)) as char)",
+		Expected: []sql.Row{
+			{"2001-02-03 12:34:56.123456"},
+		},
+	},
+	{
+		Query: "select cast(cast('2001-02-03 12:34:56.123000' as datetime(6)) as char)",
+		Expected: []sql.Row{
+			{"2001-02-03 12:34:56.123000"},
+		},
+	},
+	{
+		Query: "select cast(cast('2001-02-03 12:34:56.000000' as datetime(6)) as char)",
+		Expected: []sql.Row{
+			{"2001-02-03 12:34:56.000000"},
+		},
+	},
+	{
+		Query: "select cast(cast('0000-01-01' as datetime(6)) as char)",
+		Expected: []sql.Row{
+			{"0000-01-01 00:00:00.000000"},
+		},
+	},
+	{
+		Query: "select cast(cast('0000-01-01' as datetime) as char)",
+		Expected: []sql.Row{
+			{"0000-01-01 00:00:00"},
+		},
+	},
+	{
+		Query: "select cast(cast(101 as date) as char)",
+		Expected: []sql.Row{
+			{"2000-01-01"},
+		},
 	},
 
 	// Additional JSON Function Tests
@@ -2018,9 +2285,7 @@ var FunctionQueryTests = []QueryTest{
 	},
 	{
 		Query:    "select abs(date('2020-12-15'))",
-		Expected: []sql.Row{{float64(20201215)}},
-		// https://github.com/dolthub/dolt/issues/10278
-		Skip: true,
+		Expected: []sql.Row{{float64(20201215.0)}},
 	},
 	{
 		Query:    "select abs(time('12:23:43'))",
@@ -2699,6 +2964,127 @@ var FunctionQueryTests = []QueryTest{
 		ExpectedWarningsCount: 1,
 		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 	},
+	{
+		Query: "select date('2001-02-03') + 20010203;",
+		Expected: []sql.Row{
+			{40020406},
+		},
+	},
+	{
+		Query: "select date('2001-02-03') - 123456;",
+		Expected: []sql.Row{
+			{19886747},
+		},
+	},
+	{
+		Query: "select date('2001-04-08') * 25;",
+		Expected: []sql.Row{
+			{500260200},
+		},
+	},
+	{
+		Query: "select date('2001-04-08') / 2;",
+		Expected: []sql.Row{
+			{"10005204.0000"},
+		},
+	},
+	{
+		Query: "select date('2001-04-08') % 2;",
+		Expected: []sql.Row{
+			{"0"},
+		},
+	},
+	{
+		Query: "select date('2001-04-08') & date('2020-01-02');",
+		Expected: []sql.Row{
+			{uint64(19927200)},
+		},
+	},
+	{
+		Query: "select date('2001-04-08') | date('2020-01-02');",
+		Expected: []sql.Row{
+			{uint64(20283310)},
+		},
+	},
+	{
+		Query: "select date('2001-04-08') > date('2020-01-02');",
+		Expected: []sql.Row{
+			{false},
+		},
+	},
+	{
+		Query: "select date('2001-04-08') < date('2020-01-02');",
+		Expected: []sql.Row{
+			{true},
+		},
+	},
+	{
+		Query: "select date('2001-04-08') = date('2020-01-02');",
+		Expected: []sql.Row{
+			{false},
+		},
+	},
+
+	{
+		Query: "select cast('2001-02-03 12:34:56.123456' as datetime(6)) + 20010203.654321;",
+		Expected: []sql.Row{
+			{"20010223133659.777777"},
+		},
+	},
+	{
+		Query: "select cast('2001-02-03' as datetime(6)) - 123456;",
+		Expected: []sql.Row{
+			{"20010202876544.000000"},
+		},
+	},
+	{
+		Query: "select cast('2001-04-08 12:34:56.123456' as datetime(6)) * 25;",
+		Expected: []sql.Row{
+			{"500260203086403.086400"},
+		},
+	},
+	{
+		Query: "select cast('2001-04-08 1:2:3.102030' as datetime(6)) / 2;",
+		Expected: []sql.Row{
+			{"10005204005101.5510150000"},
+		},
+	},
+	{
+		Query: "select cast('2001-04-08 12:34:56' as datetime(6)) % 2;",
+		Expected: []sql.Row{
+			{"0"},
+		},
+	},
+	{
+		Query: "select cast('2001-04-08 12:34:56.123456' as datetime(6)) & cast('2001-01-02' as datetime(6));",
+		Expected: []sql.Row{
+			{uint64(20005974738944)},
+		},
+	},
+	{
+		Query: "select cast('2001-04-08 12:34:56.123456' as datetime(6)) | cast('2001-01-02' as datetime(6));",
+		Expected: []sql.Row{
+			{uint64(20014535384512)},
+		},
+	},
+	{
+		Query: "select cast('2001-04-08 12:34:56.123456' as datetime(6)) > cast('2001-01-02' as datetime(6));",
+		Expected: []sql.Row{
+			{true},
+		},
+	},
+	{
+		Query: "select cast('2001-04-08 12:34:56.123456' as datetime(6)) < cast('2001-01-02' as datetime(6));",
+		Expected: []sql.Row{
+			{false},
+		},
+	},
+	{
+		Query: "select cast('2001-04-08 12:34:56.123456' as datetime(6)) = cast('2001-01-02' as datetime(6));",
+		Expected: []sql.Row{
+			{false},
+		},
+	},
 
 	{
 		Query:                           "select date('');",
@@ -2990,8 +3376,13 @@ var FunctionQueryTests = []QueryTest{
 		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 	},
 	{
-		// Tracking Issue: https://github.com/dolthub/dolt/issues/10278
-		Skip:  true,
+		Query: "select date('20101');",
+		Expected: []sql.Row{
+			{time.Date(2020, 10, 1, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/10278
 		Query: "select date('10203');",
 		Expected: []sql.Row{
 			{nil},
@@ -3006,16 +3397,14 @@ var FunctionQueryTests = []QueryTest{
 		},
 	},
 	{
-		// Tracking Issue: https://github.com/dolthub/dolt/issues/10278
-		Skip:  true,
+		// https://github.com/dolthub/dolt/issues/10278
 		Query: "select date('0010203');",
 		Expected: []sql.Row{
 			{time.Date(2000, 10, 20, 0, 0, 0, 0, time.UTC)},
 		},
 	},
 	{
-		// Tracking Issue: https://github.com/dolthub/dolt/issues/10278
-		Skip:  true,
+		// https://github.com/dolthub/dolt/issues/10278
 		Query: "select date('00010203');",
 		Expected: []sql.Row{
 			{time.Date(0001, 2, 3, 0, 0, 0, 0, time.UTC)},

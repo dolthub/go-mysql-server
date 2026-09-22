@@ -254,11 +254,19 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 	var parent sql.Node
 	var project *plan.Project
 	var orderBy *plan.Sort
+	var windowSelectExprs []sql.Expression
 	transform.InspectWithOpaque(ctx, n, func(ctx *sql.Context, n sql.Node) bool {
 		defer func() {
 			parent = n
 		}()
 		switch n := n.(type) {
+		case *plan.Window:
+			windowSelectExprs = make([]sql.Expression, 0, len(n.SelectExprs))
+			for _, e := range n.SelectExprs {
+				if _, ok := e.(sql.WindowAdaptableExpression); ok {
+					windowSelectExprs = append(windowSelectExprs, e)
+				}
+			}
 		case *plan.GroupBy:
 			var noGroupBy bool
 			// Allow the parser use the GroupBy node to eval the aggregation functions for sql statements that don't
@@ -312,7 +320,13 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 				return true
 			}
 
-			selectExprs, orderByExprs := getSelectAndOrderByExprs(ctx, project, orderBy, n.SelectDeps, groupBys)
+			selectDeps := n.SelectDeps
+			if len(windowSelectExprs) > 0 {
+				selectDeps = append(selectDeps, windowSelectExprs...)
+				windowSelectExprs = nil
+			}
+
+			selectExprs, orderByExprs := getSelectAndOrderByExprs(ctx, project, orderBy, selectDeps, groupBys)
 
 			for i, expr := range selectExprs {
 				if valid, col := expressionReferencesOnlyGroupBys(ctx, groupBys, expr, noGroupBy); !valid {
@@ -390,14 +404,14 @@ func getSelectAndOrderByExprs(ctx *sql.Context, project *plan.Project, orderBy *
 
 		for _, expr := range project.Projections {
 			if !project.AliasDeps[strings.ToLower(expr.String())] {
-				resolvedExpr := resolveExpr(ctx, expr, sd, groupBys)
+				resolvedExpr := resolveExpr(ctx, expr, sd, groupBys, make(map[string]bool))
 				selectExprs = append(selectExprs, resolvedExpr)
 			}
 		}
 
 		if orderBy != nil {
 			for _, expr := range orderBy.Expressions() {
-				resolvedExpr := resolveExpr(ctx, expr, sd, groupBys)
+				resolvedExpr := resolveExpr(ctx, expr, sd, groupBys, make(map[string]bool))
 				orderByExprs = append(orderByExprs, resolvedExpr)
 			}
 		}
@@ -406,20 +420,30 @@ func getSelectAndOrderByExprs(ctx *sql.Context, project *plan.Project, orderBy *
 	}
 }
 
-func resolveExpr(ctx *sql.Context, expr sql.Expression, selectDeps map[string]sql.Expression, groupBys map[string]bool) sql.Expression {
+// resolveExpr resolves aliases and GetFields against selectDeps. visited guards  against infinite recursion on
+// self-referential selectDeps entries (e.g. a passthrough column mapped to itself).
+func resolveExpr(ctx *sql.Context, expr sql.Expression, selectDeps map[string]sql.Expression, groupBys map[string]bool, visited map[string]bool) sql.Expression {
 	resolvedExpr, _, _ := transform.Expr(ctx, expr, func(ctx *sql.Context, expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-		if groupBys[strings.ToLower(expr.String())] {
+		key := strings.ToLower(expr.String())
+		if groupBys[key] || visited[key] {
 			return expr, transform.SameTree, nil
 		}
-		switch expr := expr.(type) {
+		switch e := expr.(type) {
 		case *expression.Alias:
-			if dep, ok := selectDeps[strings.ToLower(expr.Child.String())]; ok {
-				selectDeps[strings.ToLower(expr.Name())] = dep
-				return dep, transform.NewTree, nil
+			childKey := strings.ToLower(e.Child.String())
+			if dep, ok := selectDeps[childKey]; ok {
+				visited[key] = true
+				resolved := resolveExpr(ctx, dep, selectDeps, groupBys, visited)
+				delete(visited, key)
+				selectDeps[strings.ToLower(e.Name())] = resolved
+				return resolved, transform.NewTree, nil
 			}
 		case *expression.GetField:
-			if dep, ok := selectDeps[strings.ToLower(expr.String())]; ok {
-				return dep, transform.NewTree, nil
+			if dep, ok := selectDeps[key]; ok {
+				visited[key] = true
+				resolved := resolveExpr(ctx, dep, selectDeps, groupBys, visited)
+				delete(visited, key)
+				return resolved, transform.NewTree, nil
 			}
 		}
 		return expr, transform.SameTree, nil
@@ -449,10 +473,19 @@ func expressionReferencesOnlyGroupBys(ctx *sql.Context, groupBys map[string]bool
 			if len(expr.Children()) == 0 {
 				// Allow non-matching subqueries when no explicit group by clause. If the subquery returns more than
 				// one row for an aggregated query, we will error out later on.
-				if _, isSubquery := expr.(*plan.Subquery); !(isSubquery && noGroupBy) {
-					valid = false
-					col = expr.String()
+				if _, isSubquery := expr.(*plan.Subquery); isSubquery && noGroupBy {
+					return false
 				}
+				// A window function with no arguments and an empty OVER clause (e.g. ROW_NUMBER() OVER ())
+				// has no column dependencies to validate, so it's trivially valid under an explicit GROUP BY.
+				// With no explicit GROUP BY (implicit whole-table aggregation), a window function can't be
+				// reconciled with the aggregate's single-row collapse regardless of its arguments, so it's
+				// still invalid there.
+				if _, isWindowFn := expr.(sql.WindowAdaptableExpression); isWindowFn && !noGroupBy {
+					return false
+				}
+				valid = false
+				col = expr.String()
 				return false
 			}
 

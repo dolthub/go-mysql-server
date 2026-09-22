@@ -16,6 +16,7 @@ package planbuilder
 
 import (
 	"fmt"
+	"strings"
 
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
@@ -49,16 +50,23 @@ func (b *Builder) buildReplicationOption(inScope *scope, option *ast.Replication
 	}
 	switch vv := option.Value.(type) {
 	case string:
-		return binlogreplication.NewReplicationOption(option.Name, binlogreplication.StringReplicationOptionValue{Value: vv})
+		return binlogreplication.NewReplicationOption(option.Name, vv)
 	case int:
-		return binlogreplication.NewReplicationOption(option.Name, binlogreplication.IntegerReplicationOptionValue{Value: vv})
+		return binlogreplication.NewReplicationOption(option.Name, vv)
 	case ast.TableNames:
 		urts := make([]sql.UnresolvedTable, len(vv))
 		for i, tableName := range vv {
 			// downstream logic expects these to specifically be unresolved tables
 			urts[i] = plan.NewUnresolvedTable(tableName.Name.String(), tableName.DbQualifier.String())
 		}
-		return binlogreplication.NewReplicationOption(option.Name, binlogreplication.TableNamesReplicationOptionValue{Value: urts})
+		return binlogreplication.NewReplicationOption(option.Name, urts)
+	case ast.StringList:
+		if strings.EqualFold(option.Name, "REPLICATE_WILD_DO_TABLE") || strings.EqualFold(option.Name, "REPLICATE_WILD_IGNORE_TABLE") {
+			if err := binlogreplication.ValidateWildcardTablePatterns([]string(vv)); err != nil {
+				b.handleErr(err)
+			}
+		}
+		return binlogreplication.NewReplicationOption(option.Name, []string(vv))
 	default:
 		err := fmt.Errorf("unsupported option value type '%T' specified for option %q", option.Value, option.Name)
 		b.handleErr(err)
