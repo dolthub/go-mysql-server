@@ -247,7 +247,7 @@ func (s *scope) getTable(table string) sql.TableId {
 // blocks while binding aggregate arguments. It also returns the correlation
 // recorder crossed when lookup enters an outer query.
 func (s *scope) parentForColumnResolution() (*scope, *subquery) {
-	if s.b == nil || s.queryBlock == nil || !s.b.resolvesAggregateThrough(s) {
+	if s.b == nil || s.queryBlock == nil || !s.b.isAggregateArgumentQuerySource(s) {
 		return s.parent, nil
 	}
 	if s.queryBlock.outer != nil {

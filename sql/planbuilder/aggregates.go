@@ -379,6 +379,14 @@ func IsMySQLAggregateFuncName(ctx *sql.Context, name string) (bool, error) {
 // buildAggregateFunc tags aggregate functions in the correct scope
 // and makes the aggregate available for reference by other clauses.
 func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExpr) sql.Expression {
+	if name == "any_value" {
+		inScope.initGroupBy()
+		return b.buildAnyValue(inScope, name, e, inScope.groupBy)
+	}
+	if b.inAgg {
+		b.handleErr(sql.ErrInvalidGroupFuncUse.New())
+	}
+
 	if strings.EqualFold(name, "count") {
 		if _, ok := e.Exprs[0].(*ast.StarExpr); ok {
 			inScope.initGroupBy()
@@ -416,6 +424,35 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 	gf := gb.registerAggregate(b.ctx, plan.AliasSubqueryString(b.ctx, agg), agg)
 	inScope.replaceArgumentCorrelations(owner, correlations, gf.Id())
 	return gf
+}
+
+// buildAnyValue builds an [aggregation.AnyValue] function expression.
+//
+// If ANY_VALUE wraps or is wrapped by an aggregate or window function,
+// it unwraps and returns the inner expression.
+//
+// Otherwise, it records column scan dependencies for |expr| on |gb| via
+// [groupBy.addInputs], sets [sql.QFlagAnyAgg], and registers an
+// [aggregation.AnyValue] on |gb| via [groupBy.registerAggregate].
+func (b *Builder) buildAnyValue(inScope *scope, name string, e *ast.FuncExpr, gb *groupBy) sql.Expression {
+	if len(e.Exprs) != 1 {
+		err := sql.ErrInvalidArgumentNumber.New(name, 1, len(e.Exprs))
+		b.handleErr(err)
+	}
+	if b.inAgg || b.inWindow {
+		return b.selectExprToExpression(inScope, e.Exprs[0])
+	}
+
+	startAggs, startWins := inScope.aggCount(), inScope.windowFuncCount()
+	expr := b.selectExprToExpression(inScope, e.Exprs[0])
+	if inScope.aggCount() > startAggs || inScope.windowFuncCount() > startWins {
+		return expr
+	}
+
+	gb.addInputs(b.ctx, []sql.Expression{expr})
+	b.qFlags.Set(sql.QFlagAnyAgg)
+	agg := b.newAggregation(e, name, []sql.Expression{expr})
+	return gb.registerAggregate(b.ctx, plan.AliasSubqueryString(b.ctx, agg), agg)
 }
 
 // newAggregation creates a new aggregation function instance from the arguments given
@@ -458,14 +495,25 @@ func (b *Builder) newAggregation(e *ast.FuncExpr, name string, args []sql.Expres
 
 // buildAggFunctionArgs builds aggregate arguments using the existing outer-query chain.
 func (b *Builder) buildAggFunctionArgs(inScope *scope, e *ast.FuncExpr) []sql.Expression {
-	defer b.withAggregateResolution(inScope)()
+	b.inAgg = true
+	defer func() { b.inAgg = false }()
+
+	restoreArgumentResolution := b.beginAggregateArgumentResolution(inScope)
+	defer restoreArgumentResolution()
 
 	var args []sql.Expression
 	for _, arg := range e.Exprs {
 		windowCount := len(inScope.windowFuncs)
 		e := b.selectExprToExpression(inScope, arg)
 		if len(inScope.windowFuncs) > windowCount {
-			b.handleErr(sql.ErrNonAggregatedColumnWithoutGroupBy.New())
+			expr := inScope.windowFuncs[windowCount].scalar
+			var windowFuncName string
+			if windowFunc, ok := expr.(sql.FunctionExpression); ok {
+				windowFuncName = windowFunc.FunctionName()
+			} else {
+				windowFuncName = expr.String()
+			}
+			b.handleErr(sql.ErrWindowInvalidWindowFuncUse.New(windowFuncName))
 		}
 		// if GetField is an alias, alias must be masking a column
 		if gf, ok := e.(*expression.GetField); ok && gf.TableId() == 0 && !inScope.isCorrelatedColumn(gf.Id()) {
@@ -548,6 +596,12 @@ func (b *Builder) buildCountStarAggregate(e *ast.FuncExpr, gb *groupBy) sql.Expr
 
 // buildGroupConcat builds a GROUP_CONCAT aggregate function
 func (b *Builder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.Expression {
+	if b.inAgg {
+		b.handleErr(sql.ErrInvalidGroupFuncUse.New())
+	}
+	b.inAgg = true
+	defer func() { b.inAgg = false }()
+
 	argScope := inScope.aggregateSource()
 	correlations := inScope.aggregateCorrelationSnapshot()
 
@@ -581,7 +635,8 @@ func (b *Builder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.E
 
 // buildGroupConcatArgs builds GROUP_CONCAT arguments and ordering using the existing outer-query chain.
 func (b *Builder) buildGroupConcatArgs(inScope *scope, e *ast.GroupConcatExpr) ([]sql.Expression, sql.SortConditions) {
-	defer b.withAggregateResolution(inScope)()
+	restoreArgumentResolution := b.beginAggregateArgumentResolution(inScope)
+	defer restoreArgumentResolution()
 
 	args := make([]sql.Expression, len(e.Exprs))
 	for i, arg := range e.Exprs {
@@ -611,7 +666,12 @@ func IsMySQLWindowFuncName(ctx *sql.Context, name string) (bool, error) {
 	}
 }
 
+// buildWindowFunc builds a window function expression and
+// registers its definition.
 func (b *Builder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, over *ast.WindowDef) sql.Expression {
+	b.inWindow = true
+	defer func() { b.inWindow = false }()
+
 	// internal expressions can be complex, but window can't be more than alias
 	var args []sql.Expression
 	for _, arg := range e.Exprs {
@@ -649,7 +709,7 @@ func (b *Builder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, 
 
 		win, ok = newInst.(sql.WindowAdaptableExpression)
 		if !ok {
-			err := fmt.Errorf("function is not a window adaptable exprssion: %s", f.FunctionName())
+			err := fmt.Errorf("function is not a window adaptable expression: %s", f.FunctionName())
 			b.handleErr(err)
 		}
 	}
