@@ -27,6 +27,10 @@ import (
 )
 
 func (b *Builder) buildSelectStmt(inScope *scope, s ast.SelectStatement) (outScope *scope) {
+	// A nested SELECT has its own aggregation context.
+	defer func(depth int) { b.aggArgDepth = depth }(b.aggArgDepth)
+	b.aggArgDepth = 0
+
 	switch s := s.(type) {
 	case *ast.Select:
 		if s.With != nil {

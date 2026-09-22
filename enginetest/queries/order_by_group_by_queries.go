@@ -250,6 +250,97 @@ var OrderByGroupByScriptTests = []ScriptTest{
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/11912
+		Name: "any_value() inside an aggregate function",
+		SetUpScript: []string{
+			"use mydb;",
+			"create table t1 (id int primary key, is_active bool, status int);",
+			"insert into t1 values (1, true, 10), (2, false, 20), (3, true, 30);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select max(any_value(tom1.is_active)) as v from t1 as tom1",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "select max((any_value(tom1.is_active)) not like ('_')) as v from t1 as tom1",
+				Expected: []sql.Row{{false}},
+			},
+			{
+				Query:    "select sum(any_value(tom1.id)) as v from t1 as tom1",
+				Expected: []sql.Row{{float64(6)}},
+			},
+			{
+				Query:    "select tom1.is_active, count(any_value(tom1.status)) as v from t1 as tom1 group by tom1.is_active order by 1",
+				Expected: []sql.Row{{0, 1}, {1, 2}},
+			},
+			{
+				Query:    "select max(any_value(any_value(tom1.id))) as v from t1 as tom1",
+				Expected: []sql.Row{{3}},
+			},
+			{
+				Query:    "select max((select any_value(s.status) from t1 s where s.id = 1 group by s.is_active)) as v from t1 as tom1",
+				Expected: []sql.Row{{10}},
+			},
+			{
+				Query:    "select count(any_value(tom1.status)), count(distinct any_value(tom1.is_active)), min(any_value(tom1.status)), bit_or(any_value(tom1.status)) from t1 as tom1",
+				Expected: []sql.Row{{3, 2, 10, uint64(30)}},
+			},
+			{
+				Query:    "select max(any_value(tom1.status) + any_value(tom1.id)) as v from t1 as tom1",
+				Expected: []sql.Row{{33}},
+			},
+			{
+				Query:    "select max(any_value(tom1.status)) as v from t1 as tom1 where 1 = 0",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:    "select group_concat(any_value(tom1.status) order by tom1.status) as v from t1 as tom1",
+				Expected: []sql.Row{{"10,20,30"}},
+			},
+			{
+				Query:    "select tom1.is_active, group_concat(any_value(tom1.status) order by tom1.status) as v from t1 as tom1 group by tom1.is_active order by 1",
+				Expected: []sql.Row{{0, "20"}, {1, "10,30"}},
+			},
+			{
+				Query:    "select tom1.is_active from t1 as tom1 group by tom1.is_active having max(any_value(tom1.status)) > 25",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "select tom1.is_active from t1 as tom1 group by tom1.is_active order by max(any_value(tom1.status)) desc",
+				Expected: []sql.Row{{1}, {0}},
+			},
+			{
+				Query:    "select max((select max(any_value(s.status)) from t1 s)) as v from t1 as tom1",
+				Expected: []sql.Row{{30}},
+			},
+			{
+				Query:    "with c as (select max(any_value(status)) v from t1) select max(v) from c",
+				Expected: []sql.Row{{30}},
+			},
+			{
+				Query:    "select max(least(any_value(status), 25)) v from t1 except select max(least(any_value(status), 25)) from t1 where id = 2",
+				Expected: []sql.Row{{25}},
+			},
+			{
+				Query:    "select tom1.id, sum(any_value(tom1.status)) over (order by tom1.id) as v from t1 as tom1 order by 1",
+				Expected: []sql.Row{{1, float64(10)}, {2, float64(30)}, {3, float64(60)}},
+			},
+			{
+				Query:       "select tom1.id, max(any_value(tom1.status)) from t1 as tom1",
+				ExpectedErr: sql.ErrNonAggregatedColumnWithoutGroupBy,
+			},
+			{
+				Query:       "select max(any_value()) from t1",
+				ExpectedErr: sql.ErrInvalidArgumentNumber,
+			},
+			{
+				Query:       "select max(any_value(id, status)) from t1",
+				ExpectedErr: sql.ErrInvalidArgumentNumber,
+			},
+		},
+	},
+	{
 		Name: "group by with strict errors",
 		SetUpScript: []string{
 			"use mydb;",
