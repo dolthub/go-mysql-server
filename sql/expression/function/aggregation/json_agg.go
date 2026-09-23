@@ -59,8 +59,8 @@ func (j *JSONObjectAgg) WithId(id sql.ColumnId) sql.IdExpression {
 	return &ret
 }
 
-// FunctionName implements sql.FunctionExpression
-func (j *JSONObjectAgg) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (j *JSONObjectAgg) Name() string {
 	return "json_objectagg"
 }
 

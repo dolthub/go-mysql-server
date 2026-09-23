@@ -45,8 +45,8 @@ func NewJsonLength(ctx *sql.Context, args ...sql.Expression) (sql.Expression, er
 	}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (j *JsonLength) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (j *JsonLength) Name() string {
 	return "json_length"
 }
 

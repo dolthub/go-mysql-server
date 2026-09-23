@@ -52,8 +52,8 @@ type NamedLockFunction struct {
 	funcName string
 }
 
-// FunctionName implements sql.FunctionExpression
-func (nl *NamedLockFunction) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (nl *NamedLockFunction) Name() string {
 	return nl.funcName
 }
 
@@ -283,8 +283,8 @@ func CreateNewGetLock(ctx *sql.Context, ls *sql.LockSubsystem) func(ctx *sql.Con
 	}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (gl *GetLock) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (gl *GetLock) Name() string {
 	return "get_lock"
 }
 
@@ -325,12 +325,12 @@ func (gl *GetLock) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	s, ok := gl.LeftChild.Type(ctx).(sql.StringType)
 	if !ok {
-		return nil, ErrIllegalLockNameArgType.New(gl.LeftChild.Type(ctx).String(), gl.FunctionName())
+		return nil, ErrIllegalLockNameArgType.New(gl.LeftChild.Type(ctx).String(), gl.Name())
 	}
 
 	lockName, err := types.ConvertToString(ctx, leftVal, s, nil)
 	if err != nil {
-		return nil, fmt.Errorf("%w; %s", ErrIllegalLockNameArgType.New(gl.LeftChild.Type(ctx).String(), gl.FunctionName()), err)
+		return nil, fmt.Errorf("%w; %s", ErrIllegalLockNameArgType.New(gl.LeftChild.Type(ctx).String(), gl.Name()), err)
 	}
 
 	timeout, _, err := types.Int64.Convert(ctx, rightVal)
@@ -405,7 +405,7 @@ var _ sql.CollationCoercible = ReleaseAllLocks{}
 func NewReleaseAllLocks(ctx *sql.Context, ls *sql.LockSubsystem) func(ctx *sql.Context) sql.Expression {
 	return func(ctx *sql.Context) sql.Expression {
 		return ReleaseAllLocks{
-			NoArgFunc: NoArgFunc{Name: "release_all_locks", SQLType: types.Int32},
+			NoArgFunc: NoArgFunc{name: "release_all_locks", SQLType: types.Int32},
 			ls:        ls,
 		}
 	}

@@ -47,8 +47,8 @@ func NewEmptyGroupConcat(ctx *sql.Context) sql.Expression {
 	return &GroupConcat{}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (g *GroupConcat) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (g *GroupConcat) Name() string {
 	return "group_concat"
 }
 

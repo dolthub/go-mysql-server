@@ -39,8 +39,8 @@ func NewConcat(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error)
 	return &Concat{args}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (c *Concat) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (c *Concat) Name() string {
 	return "concat"
 }
 
@@ -72,7 +72,7 @@ func (c *Concat) String() string {
 	for i, arg := range c.args {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("%s(%s)", c.FunctionName(), strings.Join(args, ","))
+	return fmt.Sprintf("%s(%s)", c.Name(), strings.Join(args, ","))
 }
 
 func (c *Concat) DebugString(ctx *sql.Context) string {
@@ -80,7 +80,7 @@ func (c *Concat) DebugString(ctx *sql.Context) string {
 	for i, arg := range c.args {
 		args[i] = sql.DebugString(ctx, arg)
 	}
-	return fmt.Sprintf("%s(%s)", c.FunctionName(), strings.Join(args, ","))
+	return fmt.Sprintf("%s(%s)", c.Name(), strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.

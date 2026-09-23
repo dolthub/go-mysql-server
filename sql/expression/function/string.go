@@ -417,8 +417,8 @@ func NewBin(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &Bin{NewUnaryFunc(arg, "BIN", types.Text)}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (b *Bin) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (b *Bin) Name() string {
 	return "bin"
 }
 
@@ -564,8 +564,8 @@ func NewBitlength(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &Bitlength{NewUnaryFunc(arg, "BIT_LENGTH", types.Int32)}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (b *Bitlength) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (b *Bitlength) Name() string {
 	return "bit_length"
 }
 

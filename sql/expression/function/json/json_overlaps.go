@@ -49,8 +49,8 @@ func NewJSONOverlaps(ctx *sql.Context, args ...sql.Expression) (sql.Expression, 
 	return &JSONOverlaps{Left: args[0], Right: args[1]}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (j *JSONOverlaps) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (j *JSONOverlaps) Name() string {
 	return "json_overlaps"
 }
 
@@ -66,7 +66,7 @@ func (j *JSONOverlaps) Resolved() bool {
 
 // String implements sql.Expression
 func (j *JSONOverlaps) String() string {
-	return fmt.Sprintf("%s(%s, %s)", j.FunctionName(), j.Left.String(), j.Right.String())
+	return fmt.Sprintf("%s(%s, %s)", j.Name(), j.Left.String(), j.Right.String())
 }
 
 // Type implements sql.Expression
@@ -180,7 +180,7 @@ func overlaps(left, right interface{}) bool {
 
 // Eval implements sql.Expression
 func (j *JSONOverlaps) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	span, ctx := ctx.Span(fmt.Sprintf("function.%s", j.FunctionName()))
+	span, ctx := ctx.Span(fmt.Sprintf("function.%s", j.Name()))
 	defer span.End()
 
 	left, err := getJSONDocumentFromRow(ctx, row, j.Left)

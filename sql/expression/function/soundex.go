@@ -39,8 +39,8 @@ func NewSoundex(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &Soundex{expression.UnaryExpressionStub{Child: e}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (s *Soundex) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (s *Soundex) Name() string {
 	return "soundex"
 }
 
@@ -129,7 +129,7 @@ func (s *Soundex) code(c rune) rune {
 }
 
 func (s *Soundex) String() string {
-	return fmt.Sprintf("%s(%s)", s.FunctionName(), s.Child)
+	return fmt.Sprintf("%s(%s)", s.Name(), s.Child)
 }
 
 // WithChildren implements the Expression interface.

@@ -229,8 +229,8 @@ func NewGreatest(ctx *sql.Context, args ...sql.Expression) (sql.Expression, erro
 	return &Greatest{Args: args, returnType: retType}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (f *Greatest) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (f *Greatest) Name() string {
 	return "greatest"
 }
 
@@ -262,7 +262,7 @@ func (f *Greatest) String() string {
 	for i, arg := range f.Args {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("%s(%s)", f.FunctionName(), strings.Join(args, ","))
+	return fmt.Sprintf("%s(%s)", f.Name(), strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.
@@ -339,8 +339,8 @@ func NewLeast(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) 
 	return &Least{Args: args, returnType: retType}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (f *Least) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (f *Least) Name() string {
 	return "least"
 }
 
@@ -372,7 +372,7 @@ func (f *Least) String() string {
 	for i, arg := range f.Args {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("%s(%s)", f.FunctionName(), strings.Join(args, ", "))
+	return fmt.Sprintf("%s(%s)", f.Name(), strings.Join(args, ", "))
 }
 
 // WithChildren implements the Expression interface.

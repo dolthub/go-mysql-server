@@ -52,8 +52,8 @@ func NewWeek(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	return w, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (d *Week) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (d *Week) Name() string {
 	return "week"
 }
 

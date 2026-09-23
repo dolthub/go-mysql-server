@@ -92,8 +92,8 @@ func (n *NTile) DebugString(ctx *sql.Context) string {
 	return sb.String()
 }
 
-// FunctionName implements sql.FunctionExpression
-func (n *NTile) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (n *NTile) Name() string {
 	return "NTILE"
 }
 
@@ -114,7 +114,7 @@ func (n *NTile) IsNullable(ctx *sql.Context) bool {
 
 // Eval implements sql.Expression
 func (n *NTile) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return nil, sql.ErrWindowUnsupported.New(n.FunctionName())
+	return nil, sql.ErrWindowUnsupported.New(n.Name())
 }
 
 // Children implements sql.Expression

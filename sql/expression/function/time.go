@@ -38,8 +38,8 @@ func NewTime(ctx *sql.Context, time sql.Expression) sql.Expression {
 	return &Time{expression.UnaryExpressionStub{Child: time}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (t *Time) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (t *Time) Name() string {
 	return "time"
 }
 

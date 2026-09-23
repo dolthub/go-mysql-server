@@ -40,8 +40,8 @@ func NewStrCmp(ctx *sql.Context, e1, e2 sql.Expression) sql.Expression {
 	}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (s *StrCmp) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (s *StrCmp) Name() string {
 	return "strcmp"
 }
 
@@ -63,7 +63,7 @@ func (s *StrCmp) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 }
 
 func (s *StrCmp) String() string {
-	return fmt.Sprintf("%s(%s,%s)", s.FunctionName(), s.LeftChild, s.RightChild)
+	return fmt.Sprintf("%s(%s,%s)", s.Name(), s.LeftChild, s.RightChild)
 }
 
 // WithChildren implements the Expression interface.

@@ -57,8 +57,8 @@ func NewJSONSet(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error
 	return &JSONSet{args[0], args[1:]}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (j *JSONSet) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (j *JSONSet) Name() string {
 	return "json_set"
 }
 
@@ -101,7 +101,7 @@ func (j *JSONSet) String() string {
 		parts[i] = c.String()
 	}
 
-	return fmt.Sprintf("%s(%s)", j.FunctionName(), strings.Join(parts, ","))
+	return fmt.Sprintf("%s(%s)", j.Name(), strings.Join(parts, ","))
 }
 
 // Type implements sql.Expression

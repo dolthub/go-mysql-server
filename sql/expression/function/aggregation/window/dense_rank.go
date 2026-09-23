@@ -83,8 +83,8 @@ func (p *DenseRank) DebugString(ctx *sql.Context) string {
 	return sb.String()
 }
 
-// FunctionName implements sql.FunctionExpression
-func (p *DenseRank) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (p *DenseRank) Name() string {
 	return "DENSE_RANK"
 }
 
@@ -105,7 +105,7 @@ func (p *DenseRank) IsNullable(ctx *sql.Context) bool {
 
 // Eval implements sql.Expression
 func (p *DenseRank) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return nil, sql.ErrWindowUnsupported.New(p.FunctionName())
+	return nil, sql.ErrWindowUnsupported.New(p.Name())
 }
 
 // Children implements sql.Expression

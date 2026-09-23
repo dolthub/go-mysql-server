@@ -56,7 +56,7 @@ func (j JSONArrayInsert) String() string {
 		parts[i] = c.String()
 	}
 
-	return fmt.Sprintf("%s(%s)", j.FunctionName(), strings.Join(parts, ","))
+	return fmt.Sprintf("%s(%s)", j.Name(), strings.Join(parts, ","))
 }
 
 func (j JSONArrayInsert) Type(ctx *sql.Context) sql.Type {
@@ -122,8 +122,8 @@ func NewJSONArrayInsert(ctx *sql.Context, args ...sql.Expression) (sql.Expressio
 	return JSONArrayInsert{args[0], args[1:]}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (j JSONArrayInsert) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (j JSONArrayInsert) Name() string {
 	return "json_array_insert"
 }
 

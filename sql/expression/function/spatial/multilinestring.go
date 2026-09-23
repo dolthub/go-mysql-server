@@ -40,8 +40,8 @@ func NewMultiLineString(ctx *sql.Context, args ...sql.Expression) (sql.Expressio
 	return &MultiLineString{expression.NaryExpression{ChildExpressions: args}}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (p *MultiLineString) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (p *MultiLineString) Name() string {
 	return "multilinestring"
 }
 
@@ -65,7 +65,7 @@ func (p *MultiLineString) String() string {
 	for i, arg := range p.ChildExpressions {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("%s(%s)", p.FunctionName(), strings.Join(args, ","))
+	return fmt.Sprintf("%s(%s)", p.Name(), strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.
@@ -89,7 +89,7 @@ func (p *MultiLineString) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 		case types.LineString:
 			lines[i] = v
 		case types.GeometryValue:
-			return nil, sql.ErrInvalidArgumentDetails.New(p.FunctionName(), v)
+			return nil, sql.ErrInvalidArgumentDetails.New(p.Name(), v)
 		default:
 			return nil, sql.ErrIllegalGISValue.New(v)
 		}

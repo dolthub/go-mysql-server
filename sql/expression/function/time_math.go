@@ -46,8 +46,8 @@ func NewDateDiff(ctx *sql.Context, expr1, expr2 sql.Expression) sql.Expression {
 	}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (d *DateDiff) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (d *DateDiff) Name() string {
 	return "datediff"
 }
 
@@ -178,8 +178,8 @@ func NewAddDate(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error
 	return &DateAdd{args[0], i}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (d *DateAdd) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (d *DateAdd) Name() string {
 	return "date_add"
 }
 
@@ -190,7 +190,7 @@ func (d *DateAdd) Description() string {
 
 // String implements Stringer
 func (d *DateAdd) String() string {
-	return fmt.Sprintf("%s(%s,%s)", d.FunctionName(), d.Date, d.Interval)
+	return fmt.Sprintf("%s(%s,%s)", d.Name(), d.Date, d.Interval)
 }
 
 // Children implements the sql.Expression interface.
@@ -332,8 +332,8 @@ func NewSubDate(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error
 	return &DateSub{args[0], i}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (d *DateSub) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (d *DateSub) Name() string {
 	return "date_sub"
 }
 
@@ -344,7 +344,7 @@ func (d *DateSub) Description() string {
 
 // String implements Stringer
 func (d *DateSub) String() string {
-	return fmt.Sprintf("%s(%s,%s)", d.FunctionName(), d.Date, d.Interval)
+	return fmt.Sprintf("%s(%s,%s)", d.Name(), d.Date, d.Interval)
 }
 
 // Children implements the sql.Expression interface.
@@ -460,8 +460,8 @@ func NewTimeDiff(ctx *sql.Context, e1, e2 sql.Expression) sql.Expression {
 	}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (td *TimeDiff) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (td *TimeDiff) Name() string {
 	return "timediff"
 }
 
@@ -479,7 +479,7 @@ func (*TimeDiff) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 }
 
 func (td *TimeDiff) String() string {
-	return fmt.Sprintf("%s(%s,%s)", td.FunctionName(), td.LeftChild, td.RightChild)
+	return fmt.Sprintf("%s(%s,%s)", td.Name(), td.LeftChild, td.RightChild)
 }
 
 // WithChildren implements the Expression interface.
@@ -577,8 +577,8 @@ func NewTimestampDiff(ctx *sql.Context, u, e1, e2 sql.Expression) sql.Expression
 	return &TimestampDiff{u, e1, e2}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (t *TimestampDiff) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (t *TimestampDiff) Name() string {
 	return "timestampdiff"
 }
 

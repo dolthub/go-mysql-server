@@ -36,8 +36,8 @@ func NewHour(ctx *sql.Context, date sql.Expression) sql.Expression {
 	return &Hour{expression.UnaryExpressionStub{Child: date}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (h *Hour) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (h *Hour) Name() string {
 	return "hour"
 }
 
@@ -47,7 +47,7 @@ func (h *Hour) Description() string {
 }
 
 // String implements the sql.Expression interface.
-func (h *Hour) String() string { return fmt.Sprintf("%s(%s)", h.FunctionName(), h.Child) }
+func (h *Hour) String() string { return fmt.Sprintf("%s(%s)", h.Name(), h.Child) }
 
 // Type implements the Expression interface.
 func (h *Hour) Type(ctx *sql.Context) sql.Type { return types.Int32 }

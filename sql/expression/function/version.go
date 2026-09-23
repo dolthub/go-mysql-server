@@ -39,8 +39,8 @@ func NewVersion(versionPostfix string) func(ctx *sql.Context, exprs ...sql.Expre
 	}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (f Version) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (f Version) Name() string {
 	return "version"
 }
 
@@ -63,7 +63,7 @@ func (f Version) IsNullable(ctx *sql.Context) bool {
 }
 
 func (f Version) String() string {
-	return fmt.Sprintf("%s()", f.FunctionName())
+	return fmt.Sprintf("%s()", f.Name())
 }
 
 // WithChildren implements the Expression interface.

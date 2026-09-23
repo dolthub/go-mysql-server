@@ -51,7 +51,7 @@ func (p *Values) Schema(ctx *sql.Context) sql.Schema {
 	s := make(sql.Schema, len(exprs))
 	for i, e := range exprs {
 		var name string
-		if n, ok := e.(sql.Nameable); ok {
+		if n, ok := e.(sql.Nameable); ok && !sql.IsFunctionExpression(e) {
 			name = n.Name()
 		} else {
 			name = e.String()

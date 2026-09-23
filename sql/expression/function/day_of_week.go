@@ -36,8 +36,8 @@ func NewDayOfWeek(ctx *sql.Context, date sql.Expression) sql.Expression {
 	return &DayOfWeek{expression.UnaryExpressionStub{Child: date}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (d *DayOfWeek) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (d *DayOfWeek) Name() string {
 	return "dayofweek"
 }
 

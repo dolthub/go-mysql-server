@@ -45,8 +45,8 @@ func NewCurrTime(ctx *sql.Context, args ...sql.Expression) (sql.Expression, erro
 	return c, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (c *CurrTime) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (c *CurrTime) Name() string {
 	return "current_time"
 }
 
@@ -114,7 +114,7 @@ func (c *CurrTime) Eval(ctx *sql.Context, row sql.Row) (any, error) {
 			}
 			fsp, ok := types.CoalesceInt(prec)
 			if !ok {
-				return nil, sql.ErrInvalidArgumentType.New(c.FunctionName())
+				return nil, sql.ErrInvalidArgumentType.New(c.Name())
 			}
 			precision = int(fsp)
 		}

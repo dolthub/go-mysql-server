@@ -35,8 +35,8 @@ type DatetimeConversion struct {
 var _ sql.FunctionExpression = (*DatetimeConversion)(nil)
 var _ sql.CollationCoercible = (*DatetimeConversion)(nil)
 
-// FunctionName implements sql.FunctionExpression
-func (t *DatetimeConversion) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (t *DatetimeConversion) Name() string {
 	return "datetime"
 }
 
@@ -50,7 +50,7 @@ func (t *DatetimeConversion) Resolved() bool {
 }
 
 func (t *DatetimeConversion) String() string {
-	return fmt.Sprintf("%s(%s)", t.FunctionName(), t.Date)
+	return fmt.Sprintf("%s(%s)", t.Name(), t.Date)
 }
 
 func (t *DatetimeConversion) Type(ctx *sql.Context) sql.Type {
@@ -224,8 +224,8 @@ func NewUnixTimestamp(ctx *sql.Context, args ...sql.Expression) (sql.Expression,
 	return &UnixTimestamp{Date: arg, typ: types.Int64}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (ut *UnixTimestamp) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (ut *UnixTimestamp) Name() string {
 	return "unix_timestamp"
 }
 
@@ -342,9 +342,9 @@ func toUnixTimestamp(t time.Time, resType sql.Type) interface{} {
 
 func (ut *UnixTimestamp) String() string {
 	if ut.Date != nil {
-		return fmt.Sprintf("%s(%s)", ut.FunctionName(), ut.Date)
+		return fmt.Sprintf("%s(%s)", ut.Name(), ut.Date)
 	} else {
-		return fmt.Sprintf("%s()", ut.FunctionName())
+		return fmt.Sprintf("%s()", ut.Name())
 	}
 }
 
@@ -426,7 +426,7 @@ func (r *FromUnixtime) WithChildren(ctx *sql.Context, children ...sql.Expression
 	return NewFromUnixtime(ctx, children...)
 }
 
-func (r *FromUnixtime) FunctionName() string {
+func (r *FromUnixtime) Name() string {
 	return "FROM_UNIXTIME"
 }
 
@@ -470,13 +470,13 @@ func (c CurrDate) Description() string {
 
 func NewCurrDate(ctx *sql.Context) sql.Expression {
 	return CurrDate{
-		NoArgFunc: NoArgFunc{Name: "curdate", SQLType: types.LongText},
+		NoArgFunc: NoArgFunc{name: "curdate", SQLType: types.LongText},
 	}
 }
 
 func NewCurrentDate(ctx *sql.Context) sql.Expression {
 	return CurrDate{
-		NoArgFunc: NoArgFunc{Name: "current_date", SQLType: types.LongText},
+		NoArgFunc: NoArgFunc{name: "current_date", SQLType: types.LongText},
 	}
 }
 

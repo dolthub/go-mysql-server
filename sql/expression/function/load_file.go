@@ -49,7 +49,7 @@ func (l *LoadFile) Resolved() bool {
 
 // String implements sql.Expression.
 func (l *LoadFile) String() string {
-	return fmt.Sprintf("%s(%s)", l.FunctionName(), l.fileName)
+	return fmt.Sprintf("%s(%s)", l.Name(), l.fileName)
 }
 
 // Type implements sql.Expression.
@@ -188,7 +188,7 @@ func (l *LoadFile) WithChildren(ctx *sql.Context, children ...sql.Expression) (s
 	return NewLoadFile(ctx, children[0]), nil
 }
 
-// FunctionName implements sql.FunctionExpression.
-func (l *LoadFile) FunctionName() string {
+// Name implements sql.FunctionExpression.
+func (l *LoadFile) Name() string {
 	return "load_file"
 }

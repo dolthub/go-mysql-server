@@ -37,8 +37,8 @@ func NewEnvelope(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &Envelope{expression.UnaryExpressionStub{Child: e}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (e *Envelope) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (e *Envelope) Name() string {
 	return "st_envelope"
 }
 
@@ -63,7 +63,7 @@ func (*Envelope) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 }
 
 func (e *Envelope) String() string {
-	return fmt.Sprintf("%s(%s)", e.FunctionName(), e.Child.String())
+	return fmt.Sprintf("%s(%s)", e.Name(), e.Child.String())
 }
 
 // WithChildren implements the Expression interface.
@@ -87,7 +87,7 @@ func (e *Envelope) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	gv, err := types.UnwrapGeometry(ctx, val)
 	if err != nil {
-		return nil, sql.ErrInvalidGISData.New(e.FunctionName())
+		return nil, sql.ErrInvalidGISData.New(e.Name())
 	}
 
 	srid := gv.GetSRID()

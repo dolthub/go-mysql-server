@@ -89,8 +89,8 @@ func NewRegexpReplace(ctx *sql.Context, args ...sql.Expression) (sql.Expression,
 	return r, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (r *RegexpReplace) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (r *RegexpReplace) Name() string {
 	return "regexp_replace"
 }
 
@@ -169,7 +169,7 @@ func (r *RegexpReplace) String() string {
 	for _, e := range r.Children() {
 		args = append(args, e.String())
 	}
-	return fmt.Sprintf("%s(%s)", r.FunctionName(), strings.Join(args, ","))
+	return fmt.Sprintf("%s(%s)", r.Name(), strings.Join(args, ","))
 }
 
 func (r *RegexpReplace) compile(ctx *sql.Context, row sql.Row) {
@@ -177,7 +177,7 @@ func (r *RegexpReplace) compile(ctx *sql.Context, row sql.Row) {
 		r.cacheRegex = canBeCached(ctx, r.Pattern, r.Flags)
 		r.cacheVal = r.cacheRegex && canBeCached(ctx, r.Text, r.RText, r.Position, r.Occurrence)
 		if r.cacheRegex {
-			r.re, r.compileErr = compileRegex(ctx, r.Pattern, r.Text, r.Flags, r.FunctionName(), row)
+			r.re, r.compileErr = compileRegex(ctx, r.Pattern, r.Text, r.Flags, r.Name(), row)
 		}
 	})
 	if !r.cacheRegex {
@@ -186,7 +186,7 @@ func (r *RegexpReplace) compile(ctx *sql.Context, row sql.Row) {
 				return
 			}
 		}
-		r.re, r.compileErr = compileRegex(ctx, r.Pattern, r.Text, r.Flags, r.FunctionName(), row)
+		r.re, r.compileErr = compileRegex(ctx, r.Pattern, r.Text, r.Flags, r.Name(), row)
 	}
 }
 
@@ -251,7 +251,7 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (val interface{}, er
 		return nil, err
 	}
 	if pos.(int32) <= 0 {
-		return nil, sql.ErrInvalidArgumentDetails.New(r.FunctionName(), fmt.Sprintf("%d", pos.(int32)))
+		return nil, sql.ErrInvalidArgumentDetails.New(r.Name(), fmt.Sprintf("%d", pos.(int32)))
 	}
 
 	textLength := len([]rune(text.(string)))

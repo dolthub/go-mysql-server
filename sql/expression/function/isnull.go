@@ -35,8 +35,8 @@ func NewIsNull(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &IsNull{expression.UnaryExpressionStub{Child: e}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (ib *IsNull) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (ib *IsNull) Name() string {
 	return "isnull"
 }
 

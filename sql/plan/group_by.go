@@ -68,7 +68,7 @@ func (g *GroupBy) Schema(ctx *sql.Context) sql.Schema {
 	var s = make(sql.Schema, len(g.SelectDeps))
 	for i, e := range g.SelectDeps {
 		var name string
-		if n, ok := e.(sql.Nameable); ok {
+		if n, ok := e.(sql.Nameable); ok && !sql.IsFunctionExpression(e) {
 			name = n.Name()
 		} else {
 			name = AliasSubqueryString(ctx, e)

@@ -41,8 +41,8 @@ func NewDisjoint(ctx *sql.Context, g1, g2 sql.Expression) sql.Expression {
 	}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (d *Disjoint) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (d *Disjoint) Name() string {
 	return "st_disjoint"
 }
 
@@ -67,7 +67,7 @@ func (*Disjoint) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 }
 
 func (d *Disjoint) String() string {
-	return fmt.Sprintf("%s(%s,%s)", d.FunctionName(), d.LeftChild.String(), d.RightChild.String())
+	return fmt.Sprintf("%s(%s,%s)", d.Name(), d.LeftChild.String(), d.RightChild.String())
 }
 
 // WithChildren implements the Expression interface.
@@ -90,7 +90,7 @@ func (d *Disjoint) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	g1, g2, err := validateGeomComp(ctx, geom1, geom2, d.FunctionName())
+	g1, g2, err := validateGeomComp(ctx, geom1, geom2, d.Name())
 	if err != nil {
 		return nil, err
 	}

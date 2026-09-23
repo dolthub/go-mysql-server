@@ -28,7 +28,7 @@ import (
 )
 
 func TestAsciiFunc(t *testing.T) {
-	f := sql.Function1{Name: "ascii", Fn: NewAscii}
+	f := sql.NewFunction1("ascii", NewAscii)
 	tf := NewTestFactory(f.Fn)
 	tf.AddSucceeding(nil, nil)
 	tf.AddSucceeding(uint8(0), "")
@@ -42,7 +42,7 @@ func TestAsciiFunc(t *testing.T) {
 }
 
 func TestOrdFunc(t *testing.T) {
-	f := sql.Function1{Name: "ord", Fn: NewOrd}
+	f := sql.NewFunction1("ord", NewOrd)
 	tf := NewTestFactory(f.Fn)
 	tf.AddSucceeding(nil, nil)
 	tf.AddSucceeding(int64(0), "")
@@ -58,7 +58,7 @@ func TestOrdFunc(t *testing.T) {
 }
 
 func TestHexFunc(t *testing.T) {
-	f := sql.Function1{Name: "hex", Fn: NewHex}
+	f := sql.NewFunction1("hex", NewHex)
 	tf := NewTestFactory(f.Fn)
 	tf.AddSucceeding(nil, nil)
 	tf.AddSucceeding("8F", []byte("\x8f"))
@@ -82,7 +82,7 @@ func TestHexFunc(t *testing.T) {
 }
 
 func TestUnhexFunc(t *testing.T) {
-	f := sql.Function1{Name: "unhex", Fn: NewUnhex}
+	f := sql.NewFunction1("unhex", NewUnhex)
 	tf := NewTestFactory(f.Fn)
 	tf.AddSucceeding(nil, nil)
 	tf.AddSucceeding([]byte("MySQL"), "4D7953514C")
@@ -129,7 +129,7 @@ func TestHexRoundTrip(t *testing.T) {
 }
 
 func TestBinFunc(t *testing.T) {
-	f := sql.Function1{Name: "bin", Fn: NewBin}
+	f := sql.NewFunction1("bin", NewBin)
 	tf := NewTestFactory(f.Fn)
 	tf.AddSucceeding(nil, nil)
 	tf.AddSucceeding("1100", "12")
@@ -144,7 +144,7 @@ func TestBinFunc(t *testing.T) {
 }
 
 func TestBitLength(t *testing.T) {
-	f := sql.Function1{Name: "bit_length", Fn: NewBitlength}
+	f := sql.NewFunction1("bit_length", NewBitlength)
 	tf := NewTestFactory(f.Fn)
 	tf.AddSucceeding(nil, nil)
 	tf.AddSucceeding(32, "test")
@@ -156,7 +156,7 @@ func TestBitLength(t *testing.T) {
 }
 
 func TestQuote(t *testing.T) {
-	f := sql.Function1{Name: "quote", Fn: NewQuote}
+	f := sql.NewFunction1("quote", NewQuote)
 	tf := NewTestFactory(f.Fn)
 	tf.AddSucceeding(nil, nil)
 	tf.AddSucceeding("'test'", "test")

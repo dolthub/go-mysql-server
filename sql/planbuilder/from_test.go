@@ -85,12 +85,9 @@ func TestRecordReturningFunctionAliasPreservesColumnNames(t *testing.T) {
 	ctx := sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), memory.NewDBProvider(db))))
 	ctx.SetCurrentDatabase("mydb")
 	funcs := function.NewRegistry()
-	require.NoError(t, funcs.Register(sql.Function1{
-		Name: "record_func",
-		Fn: func(_ *sql.Context, _ sql.Expression) sql.Expression {
-			return &recordFunctionExpression{Literal: expression.NewLiteral(nil, types.Int64)}
-		},
-	}))
+	require.NoError(t, funcs.Register(sql.NewFunction1("record_func", func(_ *sql.Context, _ sql.Expression) sql.Expression {
+		return &recordFunctionExpression{Literal: expression.NewLiteral(nil, types.Int64)}
+	})))
 	cat := tableFunctionTestCatalog{
 		MapCatalog: sql.MapCatalog{
 			Databases: map[string]sql.Database{"mydb": db},

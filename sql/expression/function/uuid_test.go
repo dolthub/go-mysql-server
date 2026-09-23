@@ -292,7 +292,7 @@ func TestUUIDShortProperties(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 	uuidShortE := NewUUIDShortFunc(ctx).(*UUIDShortFunc)
 
-	require.Equal(t, "UUID_SHORT", uuidShortE.FunctionName())
+	require.Equal(t, "UUID_SHORT", uuidShortE.Name())
 	require.Equal(t, "returns a short universal identifier as a 64-bit unsigned integer.", uuidShortE.Description())
 	require.Equal(t, "UUID_SHORT()", uuidShortE.String())
 	require.Equal(t, types.Uint64, uuidShortE.Type(ctx))

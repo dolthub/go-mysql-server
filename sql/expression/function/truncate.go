@@ -44,8 +44,8 @@ func NewTruncate(ctx *sql.Context, left, right sql.Expression) sql.Expression {
 
 const TruncateFunctionName = "truncate"
 
-// FunctionName implements sql.FunctionExpression
-func (t *Truncate) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (t *Truncate) Name() string {
 	return TruncateFunctionName
 }
 
@@ -140,7 +140,7 @@ func (t *Truncate) IsNullable(ctx *sql.Context) bool {
 }
 
 func (t *Truncate) String() string {
-	return fmt.Sprintf("%s(%s,%s)", t.FunctionName(), t.LeftChild.String(), t.RightChild.String())
+	return fmt.Sprintf("%s(%s,%s)", t.Name(), t.LeftChild.String(), t.RightChild.String())
 }
 
 // Resolved implements the Expression interface.

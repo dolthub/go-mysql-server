@@ -35,8 +35,8 @@ func NewNumInteriorRings(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &NumInteriorRings{expression.UnaryExpressionStub{Child: e}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (n *NumInteriorRings) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (n *NumInteriorRings) Name() string {
 	return "st_numinteriorrings"
 }
 
@@ -61,7 +61,7 @@ func (*NumInteriorRings) CollationCoercibility(ctx *sql.Context) (collation sql.
 }
 
 func (n *NumInteriorRings) String() string {
-	return fmt.Sprintf("%s(%s)", n.FunctionName(), n.Child.String())
+	return fmt.Sprintf("%s(%s)", n.Name(), n.Child.String())
 }
 
 // WithChildren implements the Expression interface.
@@ -85,12 +85,12 @@ func (n *NumInteriorRings) Eval(ctx *sql.Context, row sql.Row) (interface{}, err
 
 	gv, err := types.UnwrapGeometry(ctx, val)
 	if err != nil {
-		return nil, sql.ErrInvalidGISData.New(n.FunctionName())
+		return nil, sql.ErrInvalidGISData.New(n.Name())
 	}
 
 	p, ok := gv.(types.Polygon)
 	if !ok {
-		return nil, sql.ErrInvalidArgument.New(n.FunctionName())
+		return nil, sql.ErrInvalidArgument.New(n.Name())
 	}
 
 	// The first ring is the exterior ring; all subsequent rings are interior

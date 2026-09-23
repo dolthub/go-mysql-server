@@ -39,8 +39,8 @@ func NewField(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) 
 	return &Field{args}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (f *Field) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (f *Field) Name() string {
 	return "field"
 }
 
@@ -70,7 +70,7 @@ func (f *Field) String() string {
 	for i, arg := range f.args {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("%s(%s)", f.FunctionName(), strings.Join(args, ","))
+	return fmt.Sprintf("%s(%s)", f.Name(), strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.

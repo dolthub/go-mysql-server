@@ -54,8 +54,8 @@ func NewYearWeek(ctx *sql.Context, args ...sql.Expression) (sql.Expression, erro
 	return yw, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (d *YearWeek) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (d *YearWeek) Name() string {
 	return "yearweek"
 }
 

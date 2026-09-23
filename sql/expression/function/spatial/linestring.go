@@ -40,8 +40,8 @@ func NewLineString(ctx *sql.Context, args ...sql.Expression) (sql.Expression, er
 	return &LineString{expression.NaryExpression{ChildExpressions: args}}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (l *LineString) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (l *LineString) Name() string {
 	return "linestring"
 }
 
@@ -65,7 +65,7 @@ func (l *LineString) String() string {
 	for i, arg := range l.ChildExpressions {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("%s(%s)", l.FunctionName(), strings.Join(args, ","))
+	return fmt.Sprintf("%s(%s)", l.Name(), strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.
@@ -94,7 +94,7 @@ func (l *LineString) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		case types.Point:
 			points[i] = v
 		case types.GeometryValue:
-			return nil, sql.ErrInvalidArgumentDetails.New(l.FunctionName(), v)
+			return nil, sql.ErrInvalidArgumentDetails.New(l.Name(), v)
 		default:
 			return nil, sql.ErrIllegalGISValue.New(v)
 		}

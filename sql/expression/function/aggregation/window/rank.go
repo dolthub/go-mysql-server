@@ -83,8 +83,8 @@ func (p *Rank) DebugString(ctx *sql.Context) string {
 	return sb.String()
 }
 
-// FunctionName implements sql.FunctionExpression
-func (p *Rank) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (p *Rank) Name() string {
 	return "RANK"
 }
 
@@ -105,7 +105,7 @@ func (p *Rank) IsNullable(ctx *sql.Context) bool {
 
 // Eval implements sql.Expression
 func (p *Rank) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return nil, sql.ErrWindowUnsupported.New(p.FunctionName())
+	return nil, sql.ErrWindowUnsupported.New(p.Name())
 }
 
 // Children implements sql.Expression

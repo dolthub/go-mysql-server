@@ -35,8 +35,8 @@ func NewStartPoint(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &StartPoint{expression.UnaryExpressionStub{Child: arg}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (s *StartPoint) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (s *StartPoint) Name() string {
 	return "st_startpoint"
 }
 
@@ -56,13 +56,13 @@ func (*StartPoint) CollationCoercibility(ctx *sql.Context) (collation sql.Collat
 }
 
 func (s *StartPoint) String() string {
-	return fmt.Sprintf("%s(%s)", s.FunctionName(), s.Child.String())
+	return fmt.Sprintf("%s(%s)", s.Name(), s.Child.String())
 }
 
 // WithChildren implements the Expression interface.
 func (s *StartPoint) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
-		return nil, sql.ErrInvalidArgumentNumber.New(s.FunctionName(), "1", len(children))
+		return nil, sql.ErrInvalidArgumentNumber.New(s.Name(), "1", len(children))
 	}
 	return NewStartPoint(ctx, children[0]), nil
 }
@@ -84,7 +84,7 @@ func (s *StartPoint) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	gv, err := types.UnwrapGeometry(ctx, g)
 	if err != nil {
-		return nil, sql.ErrInvalidGISData.New(s.FunctionName())
+		return nil, sql.ErrInvalidGISData.New(s.Name())
 	}
 
 	l, ok := gv.(types.LineString)
@@ -108,8 +108,8 @@ func NewEndPoint(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &EndPoint{expression.UnaryExpressionStub{Child: arg}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (e *EndPoint) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (e *EndPoint) Name() string {
 	return "st_endpoint"
 }
 
@@ -129,13 +129,13 @@ func (*EndPoint) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 }
 
 func (e *EndPoint) String() string {
-	return fmt.Sprintf("%s(%s)", e.FunctionName(), e.Child.String())
+	return fmt.Sprintf("%s(%s)", e.Name(), e.Child.String())
 }
 
 // WithChildren implements the Expression interface.
 func (e *EndPoint) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
-		return nil, sql.ErrInvalidArgumentNumber.New(e.FunctionName(), "1", len(children))
+		return nil, sql.ErrInvalidArgumentNumber.New(e.Name(), "1", len(children))
 	}
 	return NewEndPoint(ctx, children[0]), nil
 }
@@ -157,7 +157,7 @@ func (e *EndPoint) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	gv, err := types.UnwrapGeometry(ctx, g)
 	if err != nil {
-		return nil, sql.ErrInvalidGISData.New(e.FunctionName())
+		return nil, sql.ErrInvalidGISData.New(e.Name())
 	}
 
 	l, ok := gv.(types.LineString)
@@ -181,8 +181,8 @@ func NewIsClosed(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &IsClosed{expression.UnaryExpressionStub{Child: arg}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (i *IsClosed) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (i *IsClosed) Name() string {
 	return "st_isclosed"
 }
 
@@ -202,13 +202,13 @@ func (*IsClosed) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 }
 
 func (i *IsClosed) String() string {
-	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String())
+	return fmt.Sprintf("%s(%s)", i.Name(), i.Child.String())
 }
 
 // WithChildren implements the Expression interface.
 func (i *IsClosed) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
-		return nil, sql.ErrInvalidArgumentNumber.New(i.FunctionName(), "1", len(children))
+		return nil, sql.ErrInvalidArgumentNumber.New(i.Name(), "1", len(children))
 	}
 	return NewIsClosed(ctx, children[0]), nil
 }
@@ -234,7 +234,7 @@ func (i *IsClosed) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	gv, err := types.UnwrapGeometry(ctx, g)
 	if err != nil {
-		return nil, sql.ErrInvalidGISData.New(i.FunctionName())
+		return nil, sql.ErrInvalidGISData.New(i.Name())
 	}
 
 	switch g := gv.(type) {

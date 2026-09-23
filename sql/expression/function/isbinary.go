@@ -36,8 +36,8 @@ func NewIsBinary(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &IsBinary{expression.UnaryExpressionStub{Child: e}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (ib *IsBinary) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (ib *IsBinary) Name() string {
 	return "is_binary"
 }
 
@@ -74,7 +74,7 @@ func (ib *IsBinary) IsNullable(ctx *sql.Context) bool {
 }
 
 func (ib *IsBinary) String() string {
-	return fmt.Sprintf("%s(%s)", ib.FunctionName(), ib.Child)
+	return fmt.Sprintf("%s(%s)", ib.Name(), ib.Child)
 }
 
 // WithChildren implements the Expression interface.

@@ -389,7 +389,7 @@ func TestJsonValueString(t *testing.T) {
 	require.Equal(t, "json_value(doc, '$.a', 'signed')", signed.String())
 	parsedSigned := requireFunction(t, parseExpression(t, signed))
 	signedValue := signed.(*json.JsonValue)
-	require.Equal(t, signedValue.FunctionName(), parsedSigned.Name.Lowered())
+	require.Equal(t, signedValue.Name(), parsedSigned.Name.Lowered())
 	require.Len(t, parsedSigned.Exprs, 3)
 	assertExpressionValue(t, requireFunctionArgument(t, parsedSigned, 0), signedValue.JSON)
 	assertExpressionValue(t, requireFunctionArgument(t, parsedSigned, 1), signedValue.Path)
@@ -403,7 +403,7 @@ func TestJsonValueString(t *testing.T) {
 	require.Equal(t, "json_value(doc, '$.a')", defaultType.String())
 	parsedDefault := requireFunction(t, parseExpression(t, defaultType))
 	defaultValue := defaultType.(*json.JsonValue)
-	require.Equal(t, defaultValue.FunctionName(), parsedDefault.Name.Lowered())
+	require.Equal(t, defaultValue.Name(), parsedDefault.Name.Lowered())
 	require.Len(t, parsedDefault.Exprs, 2)
 	assertExpressionValue(t, requireFunctionArgument(t, parsedDefault, 0), defaultValue.JSON)
 	assertExpressionValue(t, requireFunctionArgument(t, parsedDefault, 1), defaultValue.Path)
@@ -501,7 +501,7 @@ func TestNTileString(t *testing.T) {
 	expr = expr.(sql.WindowAdaptableExpression).WithWindow(ctx, sql.NewWindowDefinition(nil, nil, nil, "", ""))
 	require.Equal(t, "ntile(2) over ()", expr.String())
 	parsed := requireFunction(t, parseExpression(t, expr))
-	require.Equal(t, strings.ToLower(expr.(sql.FunctionExpression).FunctionName()), parsed.Name.Lowered())
+	require.Equal(t, strings.ToLower(expr.(sql.FunctionExpression).Name()), parsed.Name.Lowered())
 	require.Len(t, parsed.Exprs, 1)
 	assertExpressionValue(t, requireFunctionArgument(t, parsed, 0), buckets)
 	require.NotNil(t, parsed.Over)
@@ -823,7 +823,7 @@ func requireFunctionArgument(t testing.TB, function *sqlparser.FuncExpr, index i
 // assertFunctionRoundTrip compares the semantic fields parsed from original.String() to the fields of original.
 func assertFunctionRoundTrip(t testing.TB, original sql.FunctionExpression) {
 	t.Helper()
-	assertFunctionRoundTripAs(t, original, original.FunctionName())
+	assertFunctionRoundTripAs(t, original, original.Name())
 }
 
 // assertFunctionRoundTripAs is assertFunctionRoundTrip for expressions whose parser-visible name differs from their
@@ -974,7 +974,7 @@ func assertExpressionValue(t testing.TB, parsed sqlparser.Expr, original sql.Exp
 	if function, ok := original.(sql.FunctionExpression); ok {
 		parsedFunction, ok := parsed.(*sqlparser.FuncExpr)
 		require.Truef(t, ok, "expected function expression, found %T", parsed)
-		assertFunction(t, parsedFunction, function, function.FunctionName())
+		assertFunction(t, parsedFunction, function, function.Name())
 		return
 	}
 	if nameable, ok := original.(sql.Nameable); ok {

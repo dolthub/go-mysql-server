@@ -39,8 +39,8 @@ func NewSTEquals(ctx *sql.Context, g1, g2 sql.Expression) sql.Expression {
 	}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (s *STEquals) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (s *STEquals) Name() string {
 	return "st_equals"
 }
 
@@ -82,7 +82,7 @@ func (s *STEquals) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	g1, g2, err := validateGeomComp(ctx, geom1, geom2, s.FunctionName())
+	g1, g2, err := validateGeomComp(ctx, geom1, geom2, s.Name())
 	if err != nil {
 		return nil, err
 	}
@@ -93,33 +93,33 @@ func (s *STEquals) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// TODO (james): remove this switch block when the other comparisons are implemented
 	switch g1.(type) {
 	case types.LineString:
-		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("LineString", s.FunctionName())
+		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("LineString", s.Name())
 	case types.Polygon:
-		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("Polygon", s.FunctionName())
+		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("Polygon", s.Name())
 	case types.MultiPoint:
-		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("MultiPoint", s.FunctionName())
+		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("MultiPoint", s.Name())
 	case types.MultiLineString:
-		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("MultiLineString", s.FunctionName())
+		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("MultiLineString", s.Name())
 	case types.MultiPolygon:
-		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("MultiPolygon", s.FunctionName())
+		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("MultiPolygon", s.Name())
 	case types.GeomColl:
-		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("GeomColl", s.FunctionName())
+		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("GeomColl", s.Name())
 	}
 
 	// TODO (james): remove this switch block when the other comparisons are implemented
 	switch g2.(type) {
 	case types.LineString:
-		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("LineString", s.FunctionName())
+		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("LineString", s.Name())
 	case types.Polygon:
-		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("Polygon", s.FunctionName())
+		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("Polygon", s.Name())
 	case types.MultiPoint:
-		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("MultiPoint", s.FunctionName())
+		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("MultiPoint", s.Name())
 	case types.MultiLineString:
-		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("MultiLineString", s.FunctionName())
+		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("MultiLineString", s.Name())
 	case types.MultiPolygon:
-		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("MultiPolygon", s.FunctionName())
+		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("MultiPolygon", s.Name())
 	case types.GeomColl:
-		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("GeomColl", s.FunctionName())
+		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("GeomColl", s.Name())
 	}
 
 	return isEqual(g1, g2), nil

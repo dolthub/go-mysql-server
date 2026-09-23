@@ -36,8 +36,8 @@ func NewCentroid(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &Centroid{expression.UnaryExpressionStub{Child: e}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (c *Centroid) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (c *Centroid) Name() string {
 	return "st_centroid"
 }
 
@@ -62,7 +62,7 @@ func (*Centroid) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 }
 
 func (c *Centroid) String() string {
-	return fmt.Sprintf("%s(%s)", c.FunctionName(), c.Child.String())
+	return fmt.Sprintf("%s(%s)", c.Name(), c.Child.String())
 }
 
 // WithChildren implements the Expression interface.
@@ -110,7 +110,7 @@ func (c *Centroid) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	gv, err := types.UnwrapGeometry(ctx, val)
 	if err != nil {
-		return nil, sql.ErrInvalidGISData.New(c.FunctionName())
+		return nil, sql.ErrInvalidGISData.New(c.Name())
 	}
 
 	srid := gv.GetSRID()
@@ -246,7 +246,7 @@ func (c *Centroid) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return types.Point{SRID: srid, X: cx / n, Y: cy / n}, nil
 
 	default:
-		return nil, sql.ErrInvalidGISData.New(c.FunctionName())
+		return nil, sql.ErrInvalidGISData.New(c.Name())
 	}
 }
 

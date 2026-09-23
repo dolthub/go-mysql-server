@@ -40,8 +40,8 @@ func NewLeftPad(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error
 	return &LeftPad{pad: pad{str: args[0], length: args[1], padStr: args[2]}}, nil
 }
 
-// FunctionName implements [sql.FunctionExpression].
-func (l *LeftPad) FunctionName() string {
+// Name implements [sql.FunctionExpression].
+func (l *LeftPad) Name() string {
 	return "lpad"
 }
 
@@ -82,8 +82,8 @@ func NewRightPad(ctx *sql.Context, args ...sql.Expression) (sql.Expression, erro
 	return &RightPad{pad: pad{str: args[0], length: args[1], padStr: args[2]}}, nil
 }
 
-// FunctionName implements [sql.FunctionExpression].
-func (r *RightPad) FunctionName() string {
+// Name implements [sql.FunctionExpression].
+func (r *RightPad) Name() string {
 	return "rpad"
 }
 

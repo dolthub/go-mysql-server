@@ -35,8 +35,8 @@ func NewPoint(ctx *sql.Context, e1, e2 sql.Expression) sql.Expression {
 	return &Point{e1, e2}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (p *Point) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (p *Point) Name() string {
 	return "point"
 }
 
@@ -71,7 +71,7 @@ func (*Point) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID
 }
 
 func (p *Point) String() string {
-	return fmt.Sprintf("%s(%s,%s)", p.FunctionName(), p.X.String(), p.Y.String())
+	return fmt.Sprintf("%s(%s,%s)", p.Name(), p.X.String(), p.Y.String())
 }
 
 // WithChildren implements the Expression interface.

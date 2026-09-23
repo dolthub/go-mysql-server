@@ -45,7 +45,7 @@ func (r *RowCount) Resolved() bool {
 
 // String implements sql.Expression
 func (r *RowCount) String() string {
-	return fmt.Sprintf("%s()", r.FunctionName())
+	return fmt.Sprintf("%s()", r.Name())
 }
 
 // Type implements sql.Expression
@@ -78,8 +78,8 @@ func (r *RowCount) WithChildren(ctx *sql.Context, children ...sql.Expression) (s
 	return sql.NillaryWithChildren(ctx, r, children...)
 }
 
-// FunctionName implements sql.FunctionExpression
-func (r *RowCount) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (r *RowCount) Name() string {
 	return "row_count"
 }
 
@@ -112,7 +112,7 @@ func (l *LastInsertUuid) Resolved() bool {
 }
 
 func (l *LastInsertUuid) String() string {
-	return fmt.Sprintf("%s()", l.FunctionName())
+	return fmt.Sprintf("%s()", l.Name())
 }
 
 func (l *LastInsertUuid) Type(ctx *sql.Context) sql.Type {
@@ -140,7 +140,7 @@ func (l *LastInsertUuid) WithChildren(ctx *sql.Context, children ...sql.Expressi
 	return NewLastInsertUuid(ctx, children...)
 }
 
-func (l *LastInsertUuid) FunctionName() string {
+func (l *LastInsertUuid) Name() string {
 	return "last_insert_uuid"
 }
 
@@ -181,9 +181,9 @@ func (r *LastInsertId) Resolved() bool {
 // String implements sql.Expression
 func (r *LastInsertId) String() string {
 	if r.Child == nil {
-		return fmt.Sprintf("%s()", r.FunctionName())
+		return fmt.Sprintf("%s()", r.Name())
 	}
-	return fmt.Sprintf("%s(%s)", r.FunctionName(), r.Child)
+	return fmt.Sprintf("%s(%s)", r.Name(), r.Child)
 }
 
 // Type implements sql.Expression
@@ -242,8 +242,8 @@ func (r *LastInsertId) WithChildren(ctx *sql.Context, children ...sql.Expression
 	return NewLastInsertId(ctx, children...)
 }
 
-// FunctionName implements sql.FunctionExpression
-func (r *LastInsertId) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (r *LastInsertId) Name() string {
 	return "last_insert_id"
 }
 
@@ -262,8 +262,8 @@ func NewFoundRows(ctx *sql.Context) sql.Expression {
 var _ sql.FunctionExpression = &FoundRows{}
 var _ sql.CollationCoercible = &FoundRows{}
 
-// FunctionName implements sql.FunctionExpression
-func (r *FoundRows) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (r *FoundRows) Name() string {
 	return "found_rows"
 }
 
@@ -279,7 +279,7 @@ func (r *FoundRows) Resolved() bool {
 
 // String implements sql.Expression
 func (r *FoundRows) String() string {
-	return fmt.Sprintf("%s()", r.FunctionName())
+	return fmt.Sprintf("%s()", r.Name())
 }
 
 // Type implements sql.Expression

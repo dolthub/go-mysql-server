@@ -39,8 +39,8 @@ func NewElt(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	return &Elt{args}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (e *Elt) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (e *Elt) Name() string {
 	return "elt"
 }
 
@@ -70,7 +70,7 @@ func (e *Elt) String() string {
 	for i, arg := range e.args {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("%s(%s)", e.FunctionName(), strings.Join(args, ","))
+	return fmt.Sprintf("%s(%s)", e.Name(), strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.

@@ -39,7 +39,7 @@ type DistanceType interface {
 	Eval(left []float32, right []float32) (float64, error)
 	// CanEval returns whether an index ordered by this metric also orders by the given metric
 	CanEval(distanceType DistanceType) bool
-	FunctionName() string
+	Name() string
 	Description() string
 }
 

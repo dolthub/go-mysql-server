@@ -37,8 +37,8 @@ func NewInsert(ctx *sql.Context, str, pos, length, newStr sql.Expression) sql.Ex
 	return &Insert{str, pos, length, newStr}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (i *Insert) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (i *Insert) Name() string {
 	return "insert"
 }
 

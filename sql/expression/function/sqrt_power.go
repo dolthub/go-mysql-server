@@ -38,8 +38,8 @@ func NewSqrt(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &Sqrt{expression.UnaryExpressionStub{Child: e}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (s *Sqrt) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (s *Sqrt) Name() string {
 	return "sqrt"
 }
 
@@ -119,8 +119,8 @@ func NewPower(ctx *sql.Context, e1, e2 sql.Expression) sql.Expression {
 	}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (p *Power) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (p *Power) Name() string {
 	return "power"
 }
 

@@ -29,8 +29,8 @@ func NewAsGeoJSON(ctx *sql.Context, args ...sql.Expression) (sql.Expression, err
 	return &AsGeoJSON{expression.NaryExpression{ChildExpressions: args}}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (g *AsGeoJSON) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (g *AsGeoJSON) Name() string {
 	return "st_asgeojson"
 }
 
@@ -54,7 +54,7 @@ func (g *AsGeoJSON) String() string {
 	for i, arg := range g.ChildExpressions {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("%s(%s)", g.FunctionName(), strings.Join(args, ","))
+	return fmt.Sprintf("%s(%s)", g.Name(), strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.
@@ -264,7 +264,7 @@ func (g *AsGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	val, err = types.UnwrapGeometry(ctx, val)
 	if err != nil {
-		return nil, sql.ErrInvalidArgumentType.New(g.FunctionName())
+		return nil, sql.ErrInvalidArgumentType.New(g.Name())
 	}
 
 	obj := make(map[string]interface{})
@@ -291,7 +291,7 @@ func (g *AsGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		obj["type"] = "GeometryCollection"
 		obj["geometries"] = GeomCollToSlice(v)
 	default:
-		return nil, sql.ErrInvalidArgumentType.New(g.FunctionName())
+		return nil, sql.ErrInvalidArgumentType.New(g.Name())
 	}
 
 	if len(g.ChildExpressions) == 1 {
@@ -334,7 +334,7 @@ func (g *AsGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 	flag := f.(int)
 	if flag < 0 || flag > 7 {
-		return nil, sql.ErrInvalidArgumentDetails.New(g.FunctionName(), flag)
+		return nil, sql.ErrInvalidArgumentDetails.New(g.Name(), flag)
 	}
 	// TODO: the flags do very different things for when the SRID is GeoSpatial
 	switch flag {
@@ -401,8 +401,8 @@ func NewGeomFromGeoJSON(ctx *sql.Context, args ...sql.Expression) (sql.Expressio
 	return &GeomFromGeoJSON{expression.NaryExpression{ChildExpressions: args}}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (g *GeomFromGeoJSON) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (g *GeomFromGeoJSON) Name() string {
 	return "st_geomfromgeojson"
 }
 
@@ -714,7 +714,7 @@ func (g *GeomFromGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 	}
 	flag := f.(int)
 	if flag < 1 || flag > 4 {
-		return nil, sql.ErrInvalidArgumentDetails.New(g.FunctionName(), flag)
+		return nil, sql.ErrInvalidArgumentDetails.New(g.Name(), flag)
 	}
 	// reject higher dimensions; otherwise, higher dimensions are already stripped off
 	if flag == 1 {
@@ -758,7 +758,7 @@ func (g *GeomFromGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 	if err != nil {
 		return nil, errors.New("incorrect srid value")
 	}
-	if err = types.ValidateSRID(s.(int), g.FunctionName()); err != nil {
+	if err = types.ValidateSRID(s.(int), g.Name()); err != nil {
 		return nil, err
 	}
 	srid := uint32(s.(int))

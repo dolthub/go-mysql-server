@@ -42,8 +42,8 @@ func NewMakeDate(ctx *sql.Context, year, dayOfYear sql.Expression) sql.Expressio
 	return &MakeDate{expression.BinaryExpressionStub{LeftChild: year, RightChild: dayOfYear}}
 }
 
-// FunctionName implements [sql.FunctionExpression].
-func (m *MakeDate) FunctionName() string { return "makedate" }
+// Name implements [sql.FunctionExpression].
+func (m *MakeDate) Name() string { return "makedate" }
 
 // Description implements [sql.FunctionExpression].
 func (m *MakeDate) Description() string {

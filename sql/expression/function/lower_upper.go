@@ -35,8 +35,8 @@ func NewLower(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &Lower{expression.UnaryExpressionStub{Child: e}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (l *Lower) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (l *Lower) Name() string {
 	return "lower"
 }
 
@@ -67,7 +67,7 @@ func (l *Lower) Eval(
 }
 
 func (l *Lower) String() string {
-	return fmt.Sprintf("%s(%s)", l.FunctionName(), l.Child)
+	return fmt.Sprintf("%s(%s)", l.Name(), l.Child)
 }
 
 // WithChildren implements the Expression interface.
@@ -101,8 +101,8 @@ func NewUpper(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &Upper{expression.UnaryExpressionStub{Child: e}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (u *Upper) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (u *Upper) Name() string {
 	return "upper"
 }
 
@@ -133,7 +133,7 @@ func (u *Upper) Eval(
 }
 
 func (u *Upper) String() string {
-	return fmt.Sprintf("%s(%s)", u.FunctionName(), u.Child)
+	return fmt.Sprintf("%s(%s)", u.Name(), u.Child)
 }
 
 // WithChildren implements the Expression interface.

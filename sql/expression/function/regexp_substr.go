@@ -84,8 +84,8 @@ func NewRegexpSubstr(ctx *sql.Context, args ...sql.Expression) (sql.Expression, 
 	return r, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (r *RegexpSubstr) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (r *RegexpSubstr) Name() string {
 	return "regexp_substr"
 }
 
@@ -150,7 +150,7 @@ func (r *RegexpSubstr) String() string {
 	for _, e := range r.Children() {
 		args = append(args, e.String())
 	}
-	return fmt.Sprintf("%s(%s)", r.FunctionName(), strings.Join(args, ","))
+	return fmt.Sprintf("%s(%s)", r.Name(), strings.Join(args, ","))
 }
 
 // compile handles compilation of the regex.
@@ -159,7 +159,7 @@ func (r *RegexpSubstr) compile(ctx *sql.Context, row sql.Row) {
 		r.cacheRegex = canBeCached(ctx, r.Pattern, r.Flags)
 		r.cacheVal = r.cacheRegex && canBeCached(ctx, r.Text, r.Position, r.Occurrence)
 		if r.cacheRegex {
-			r.re, r.compileErr = compileRegex(ctx, r.Pattern, r.Text, r.Flags, r.FunctionName(), row)
+			r.re, r.compileErr = compileRegex(ctx, r.Pattern, r.Text, r.Flags, r.Name(), row)
 		}
 	})
 	if !r.cacheRegex {
@@ -168,7 +168,7 @@ func (r *RegexpSubstr) compile(ctx *sql.Context, row sql.Row) {
 				return
 			}
 		}
-		r.re, r.compileErr = compileRegex(ctx, r.Pattern, r.Text, r.Flags, r.FunctionName(), row)
+		r.re, r.compileErr = compileRegex(ctx, r.Pattern, r.Text, r.Flags, r.Name(), row)
 	}
 }
 

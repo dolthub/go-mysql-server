@@ -75,7 +75,7 @@ func (u UUIDFunc) Description() string {
 }
 
 func (u UUIDFunc) String() string {
-	return fmt.Sprintf("%s()", u.FunctionName())
+	return fmt.Sprintf("%s()", u.Name())
 }
 
 func (u UUIDFunc) Type(ctx *sql.Context) sql.Type {
@@ -99,7 +99,7 @@ func (u UUIDFunc) WithChildren(ctx *sql.Context, children ...sql.Expression) (sq
 	return &UUIDFunc{}, nil
 }
 
-func (u UUIDFunc) FunctionName() string {
+func (u UUIDFunc) Name() string {
 	return "uuid"
 }
 
@@ -140,8 +140,8 @@ func NewIsUUID(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &IsUUID{child: arg}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (u IsUUID) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (u IsUUID) Name() string {
 	return "is_uuid"
 }
 
@@ -151,7 +151,7 @@ func (u IsUUID) Description() string {
 }
 
 func (u IsUUID) String() string {
-	return fmt.Sprintf("%s(%s)", u.FunctionName(), u.child)
+	return fmt.Sprintf("%s(%s)", u.Name(), u.child)
 }
 
 func (u IsUUID) Type(ctx *sql.Context) sql.Type {
@@ -357,7 +357,7 @@ func (ub UUIDToBin) WithChildren(ctx *sql.Context, children ...sql.Expression) (
 	return NewUUIDToBin(ctx, children...)
 }
 
-func (ub UUIDToBin) FunctionName() string {
+func (ub UUIDToBin) Name() string {
 	return "uuid_to_bin"
 }
 
@@ -418,8 +418,8 @@ func NewBinToUUID(ctx *sql.Context, args ...sql.Expression) (sql.Expression, err
 	}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (bu BinToUUID) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (bu BinToUUID) Name() string {
 	return "bin_to_uuid"
 }
 
@@ -608,8 +608,8 @@ func (u *UUIDShortFunc) WithChildren(ctx *sql.Context, children ...sql.Expressio
 	return &UUIDShortFunc{}, nil
 }
 
-// FunctionName returns the name of the UUID_SHORT function.
-func (u *UUIDShortFunc) FunctionName() string {
+// Name returns the name of the UUID_SHORT function.
+func (u *UUIDShortFunc) Name() string {
 	return "UUID_SHORT"
 }
 

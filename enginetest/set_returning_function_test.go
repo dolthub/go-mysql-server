@@ -56,12 +56,9 @@ func TestSetReturningFunctionQueries(t *testing.T) {
 	require.NoError(t, err)
 	defer engine.Close()
 
-	engine.EngineAnalyzer().Catalog.RegisterFunction(enginetest.NewContext(harness), sql.Function1{
-		Name: "srf_seq",
-		Fn: func(ctx *sql.Context, e sql.Expression) sql.Expression {
-			return &srfSeqExpr{child: e}
-		},
-	})
+	engine.EngineAnalyzer().Catalog.RegisterFunction(enginetest.NewContext(harness), sql.NewFunction1("srf_seq", func(ctx *sql.Context, e sql.Expression) sql.Expression {
+		return &srfSeqExpr{child: e}
+	}))
 
 	script := queries.ScriptTest{
 		Name: "set-returning function expansion",

@@ -37,8 +37,8 @@ func NewGeomColl(ctx *sql.Context, args ...sql.Expression) (sql.Expression, erro
 	return &GeomColl{expression.NaryExpression{ChildExpressions: args}}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (g *GeomColl) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (g *GeomColl) Name() string {
 	return "geometrycollection"
 }
 

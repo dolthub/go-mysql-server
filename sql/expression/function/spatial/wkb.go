@@ -36,8 +36,8 @@ func NewAsWKB(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &AsWKB{expression.UnaryExpressionStub{Child: e}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (a *AsWKB) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (a *AsWKB) Name() string {
 	return "st_aswkb"
 }
 
@@ -62,7 +62,7 @@ func (*AsWKB) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID
 }
 
 func (a *AsWKB) String() string {
-	return fmt.Sprintf("%s(%s)", a.FunctionName(), a.Child.String())
+	return fmt.Sprintf("%s(%s)", a.Name(), a.Child.String())
 }
 
 // WithChildren implements the Expression interface.
@@ -96,7 +96,7 @@ func (a *AsWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 		return v.Serialize()[types.SRIDSize:], nil
 	default:
-		return nil, sql.ErrInvalidGISData.New(a.FunctionName())
+		return nil, sql.ErrInvalidGISData.New(a.Name())
 	}
 }
 
@@ -116,8 +116,8 @@ func NewGeomFromWKB(ctx *sql.Context, args ...sql.Expression) (sql.Expression, e
 	return &GeomFromWKB{expression.NaryExpression{ChildExpressions: args}}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (g *GeomFromWKB) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (g *GeomFromWKB) Name() string {
 	return "st_geomfromwkb"
 }
 
@@ -141,7 +141,7 @@ func (g *GeomFromWKB) String() string {
 	for i, arg := range g.ChildExpressions {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("%s(%s)", g.FunctionName(), strings.Join(args, ","))
+	return fmt.Sprintf("%s(%s)", g.Name(), strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.
@@ -267,7 +267,7 @@ func EvalGeomFromWKB(ctx *sql.Context, row sql.Row, exprs []sql.Expression, expe
 func (g *GeomFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	geom, err := EvalGeomFromWKB(ctx, row, g.ChildExpressions, types.WKBUnknown)
 	if sql.ErrInvalidGISData.Is(err) {
-		return nil, sql.ErrInvalidGISData.New(g.FunctionName())
+		return nil, sql.ErrInvalidGISData.New(g.Name())
 	}
 	return geom, err
 }
@@ -288,8 +288,8 @@ func NewPointFromWKB(ctx *sql.Context, args ...sql.Expression) (sql.Expression, 
 	return &PointFromWKB{expression.NaryExpression{ChildExpressions: args}}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (p *PointFromWKB) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (p *PointFromWKB) Name() string {
 	return "st_pointfromwkb"
 }
 
@@ -313,7 +313,7 @@ func (p *PointFromWKB) String() string {
 	for i, arg := range p.ChildExpressions {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("%s(%s)", p.FunctionName(), strings.Join(args, ","))
+	return fmt.Sprintf("%s(%s)", p.Name(), strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.
@@ -325,7 +325,7 @@ func (p *PointFromWKB) WithChildren(ctx *sql.Context, children ...sql.Expression
 func (p *PointFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	point, err := EvalGeomFromWKB(ctx, row, p.ChildExpressions, types.WKBPointID)
 	if sql.ErrInvalidGISData.Is(err) {
-		return nil, sql.ErrInvalidGISData.New(p.FunctionName())
+		return nil, sql.ErrInvalidGISData.New(p.Name())
 	}
 	return point, err
 }
@@ -346,8 +346,8 @@ func NewLineFromWKB(ctx *sql.Context, args ...sql.Expression) (sql.Expression, e
 	return &LineFromWKB{expression.NaryExpression{ChildExpressions: args}}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (l *LineFromWKB) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (l *LineFromWKB) Name() string {
 	return "st_linefromwkb"
 }
 
@@ -371,7 +371,7 @@ func (l *LineFromWKB) String() string {
 	for i, arg := range l.ChildExpressions {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("%s(%s)", l.FunctionName(), strings.Join(args, ","))
+	return fmt.Sprintf("%s(%s)", l.Name(), strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.
@@ -383,7 +383,7 @@ func (l *LineFromWKB) WithChildren(ctx *sql.Context, children ...sql.Expression)
 func (l *LineFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	line, err := EvalGeomFromWKB(ctx, row, l.ChildExpressions, types.WKBLineID)
 	if sql.ErrInvalidGISData.Is(err) {
-		return nil, sql.ErrInvalidGISData.New(l.FunctionName())
+		return nil, sql.ErrInvalidGISData.New(l.Name())
 	}
 	return line, err
 }
@@ -404,8 +404,8 @@ func NewPolyFromWKB(ctx *sql.Context, args ...sql.Expression) (sql.Expression, e
 	return &PolyFromWKB{expression.NaryExpression{ChildExpressions: args}}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (p *PolyFromWKB) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (p *PolyFromWKB) Name() string {
 	return "st_polyfromwkb"
 }
 
@@ -429,7 +429,7 @@ func (p *PolyFromWKB) String() string {
 	for i, arg := range p.ChildExpressions {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("%s(%s)", p.FunctionName(), strings.Join(args, ","))
+	return fmt.Sprintf("%s(%s)", p.Name(), strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.
@@ -441,7 +441,7 @@ func (p *PolyFromWKB) WithChildren(ctx *sql.Context, children ...sql.Expression)
 func (p *PolyFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	poly, err := EvalGeomFromWKB(ctx, row, p.ChildExpressions, types.WKBPolyID)
 	if sql.ErrInvalidGISData.Is(err) {
-		return nil, sql.ErrInvalidGISData.New(p.FunctionName())
+		return nil, sql.ErrInvalidGISData.New(p.Name())
 	}
 	return poly, err
 }
@@ -462,8 +462,8 @@ func NewMPointFromWKB(ctx *sql.Context, args ...sql.Expression) (sql.Expression,
 	return &MPointFromWKB{expression.NaryExpression{ChildExpressions: args}}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (p *MPointFromWKB) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (p *MPointFromWKB) Name() string {
 	return "st_mpointfromwkb"
 }
 
@@ -487,7 +487,7 @@ func (p *MPointFromWKB) String() string {
 	for i, arg := range p.ChildExpressions {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("%s(%s)", p.FunctionName(), strings.Join(args, ","))
+	return fmt.Sprintf("%s(%s)", p.Name(), strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.
@@ -499,7 +499,7 @@ func (p *MPointFromWKB) WithChildren(ctx *sql.Context, children ...sql.Expressio
 func (p *MPointFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	mPoint, err := EvalGeomFromWKB(ctx, row, p.ChildExpressions, types.WKBMultiPointID)
 	if sql.ErrInvalidGISData.Is(err) {
-		return nil, sql.ErrInvalidGISData.New(p.FunctionName())
+		return nil, sql.ErrInvalidGISData.New(p.Name())
 	}
 	return mPoint, err
 }
@@ -520,8 +520,8 @@ func NewMLineFromWKB(ctx *sql.Context, args ...sql.Expression) (sql.Expression, 
 	return &MLineFromWKB{expression.NaryExpression{ChildExpressions: args}}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (l *MLineFromWKB) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (l *MLineFromWKB) Name() string {
 	return "st_mlinefromwkb"
 }
 
@@ -545,7 +545,7 @@ func (l *MLineFromWKB) String() string {
 	for i, arg := range l.ChildExpressions {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("%s(%s)", l.FunctionName(), strings.Join(args, ","))
+	return fmt.Sprintf("%s(%s)", l.Name(), strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.
@@ -557,7 +557,7 @@ func (l *MLineFromWKB) WithChildren(ctx *sql.Context, children ...sql.Expression
 func (l *MLineFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	mline, err := EvalGeomFromWKB(ctx, row, l.ChildExpressions, types.WKBMultiLineID)
 	if sql.ErrInvalidGISData.Is(err) {
-		return nil, sql.ErrInvalidGISData.New(l.FunctionName())
+		return nil, sql.ErrInvalidGISData.New(l.Name())
 	}
 	return mline, err
 }
@@ -578,8 +578,8 @@ func NewMPolyFromWKB(ctx *sql.Context, args ...sql.Expression) (sql.Expression, 
 	return &MPolyFromWKB{expression.NaryExpression{ChildExpressions: args}}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (p *MPolyFromWKB) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (p *MPolyFromWKB) Name() string {
 	return "st_mpolyfromwkb"
 }
 
@@ -603,7 +603,7 @@ func (p *MPolyFromWKB) String() string {
 	for i, arg := range p.ChildExpressions {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("%s(%s)", p.FunctionName(), strings.Join(args, ","))
+	return fmt.Sprintf("%s(%s)", p.Name(), strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.
@@ -615,7 +615,7 @@ func (p *MPolyFromWKB) WithChildren(ctx *sql.Context, children ...sql.Expression
 func (p *MPolyFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	mpoly, err := EvalGeomFromWKB(ctx, row, p.ChildExpressions, types.WKBPolyID)
 	if sql.ErrInvalidGISData.Is(err) {
-		return nil, sql.ErrInvalidGISData.New(p.FunctionName())
+		return nil, sql.ErrInvalidGISData.New(p.Name())
 	}
 	return mpoly, err
 }
@@ -636,8 +636,8 @@ func NewGeomCollFromWKB(ctx *sql.Context, args ...sql.Expression) (sql.Expressio
 	return &GeomCollFromWKB{expression.NaryExpression{ChildExpressions: args}}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (g *GeomCollFromWKB) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (g *GeomCollFromWKB) Name() string {
 	return "st_geomcollfromwkb"
 }
 
@@ -661,7 +661,7 @@ func (g *GeomCollFromWKB) String() string {
 	for i, arg := range g.ChildExpressions {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("%s(%s)", g.FunctionName(), strings.Join(args, ","))
+	return fmt.Sprintf("%s(%s)", g.Name(), strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.
@@ -673,7 +673,7 @@ func (g *GeomCollFromWKB) WithChildren(ctx *sql.Context, children ...sql.Express
 func (g *GeomCollFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	geom, err := EvalGeomFromWKB(ctx, row, g.ChildExpressions, types.WKBGeomCollID)
 	if sql.ErrInvalidGISData.Is(err) {
-		return nil, sql.ErrInvalidGISData.New(g.FunctionName())
+		return nil, sql.ErrInvalidGISData.New(g.Name())
 	}
 	return geom, err
 }

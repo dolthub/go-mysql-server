@@ -115,11 +115,11 @@ func (f *FromDays) CollationCoercibility(ctx *sql.Context) (collation sql.Collat
 
 // String implements sql.Stringer
 func (f *FromDays) String() string {
-	return fmt.Sprintf("%s(%s)", f.FunctionName(), f.Child.String())
+	return fmt.Sprintf("%s(%s)", f.Name(), f.Child.String())
 }
 
-// FunctionName implements sql.FunctionExpression
-func (f *FromDays) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (f *FromDays) Name() string {
 	return "from_days"
 }
 

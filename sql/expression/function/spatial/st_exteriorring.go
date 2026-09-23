@@ -35,8 +35,8 @@ func NewExteriorRing(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &ExteriorRing{expression.UnaryExpressionStub{Child: e}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (e *ExteriorRing) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (e *ExteriorRing) Name() string {
 	return "st_exteriorring"
 }
 
@@ -61,7 +61,7 @@ func (*ExteriorRing) CollationCoercibility(ctx *sql.Context) (collation sql.Coll
 }
 
 func (e *ExteriorRing) String() string {
-	return fmt.Sprintf("%s(%s)", e.FunctionName(), e.Child.String())
+	return fmt.Sprintf("%s(%s)", e.Name(), e.Child.String())
 }
 
 // WithChildren implements the Expression interface.
@@ -85,12 +85,12 @@ func (e *ExteriorRing) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 
 	gv, err := types.UnwrapGeometry(ctx, val)
 	if err != nil {
-		return nil, sql.ErrInvalidGISData.New(e.FunctionName())
+		return nil, sql.ErrInvalidGISData.New(e.Name())
 	}
 
 	p, ok := gv.(types.Polygon)
 	if !ok {
-		return nil, sql.ErrInvalidArgument.New(e.FunctionName())
+		return nil, sql.ErrInvalidArgument.New(e.Name())
 	}
 
 	if len(p.Lines) == 0 {

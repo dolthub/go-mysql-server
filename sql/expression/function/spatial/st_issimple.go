@@ -36,8 +36,8 @@ func NewIsSimple(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &IsSimple{expression.UnaryExpressionStub{Child: e}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (s *IsSimple) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (s *IsSimple) Name() string {
 	return "st_issimple"
 }
 
@@ -62,7 +62,7 @@ func (*IsSimple) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 }
 
 func (s *IsSimple) String() string {
-	return fmt.Sprintf("%s(%s)", s.FunctionName(), s.Child.String())
+	return fmt.Sprintf("%s(%s)", s.Name(), s.Child.String())
 }
 
 // WithChildren implements the Expression interface.
@@ -153,7 +153,7 @@ func (s *IsSimple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	gv, err := types.UnwrapGeometry(ctx, val)
 	if err != nil {
-		return nil, sql.ErrInvalidGISData.New(s.FunctionName())
+		return nil, sql.ErrInvalidGISData.New(s.Name())
 	}
 
 	switch v := gv.(type) {
@@ -204,7 +204,7 @@ func (s *IsSimple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return true, nil
 
 	default:
-		return nil, sql.ErrInvalidGISData.New(s.FunctionName())
+		return nil, sql.ErrInvalidGISData.New(s.Name())
 	}
 }
 

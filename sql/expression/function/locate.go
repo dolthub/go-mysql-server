@@ -42,8 +42,8 @@ func NewLocate(ctx *sql.Context, exprs ...sql.Expression) (sql.Expression, error
 	return &Locate{expression.NaryExpression{ChildExpressions: exprs}}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (l *Locate) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (l *Locate) Name() string {
 	return "locate"
 }
 
@@ -72,9 +72,9 @@ func (*Locate) CollationCoercibility(ctx *sql.Context) (collation sql.CollationI
 func (l *Locate) String() string {
 	switch len(l.ChildExpressions) {
 	case 2:
-		return fmt.Sprintf("%s(%s,%s)", l.FunctionName(), l.ChildExpressions[0], l.ChildExpressions[1])
+		return fmt.Sprintf("%s(%s,%s)", l.Name(), l.ChildExpressions[0], l.ChildExpressions[1])
 	case 3:
-		return fmt.Sprintf("%s(%s,%s,%s)", l.FunctionName(), l.ChildExpressions[0], l.ChildExpressions[1], l.ChildExpressions[2])
+		return fmt.Sprintf("%s(%s,%s,%s)", l.Name(), l.ChildExpressions[0], l.ChildExpressions[1], l.ChildExpressions[2])
 	}
 	return ""
 }
@@ -82,9 +82,9 @@ func (l *Locate) String() string {
 func (l *Locate) DebugString(ctx *sql.Context) string {
 	switch len(l.ChildExpressions) {
 	case 2:
-		return fmt.Sprintf("%s(%s,%s)", l.FunctionName(), sql.DebugString(ctx, l.ChildExpressions[0]), sql.DebugString(ctx, l.ChildExpressions[1]))
+		return fmt.Sprintf("%s(%s,%s)", l.Name(), sql.DebugString(ctx, l.ChildExpressions[0]), sql.DebugString(ctx, l.ChildExpressions[1]))
 	case 3:
-		return fmt.Sprintf("%s(%s,%s,%s)", l.FunctionName(), sql.DebugString(ctx, l.ChildExpressions[0]), sql.DebugString(ctx, l.ChildExpressions[1]), sql.DebugString(ctx, l.ChildExpressions[2]))
+		return fmt.Sprintf("%s(%s,%s,%s)", l.Name(), sql.DebugString(ctx, l.ChildExpressions[0]), sql.DebugString(ctx, l.ChildExpressions[1]), sql.DebugString(ctx, l.ChildExpressions[2]))
 	}
 	return ""
 }

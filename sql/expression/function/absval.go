@@ -39,8 +39,8 @@ func NewAbsVal(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &AbsVal{expression.UnaryExpressionStub{Child: e}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (t *AbsVal) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (t *AbsVal) Name() string {
 	return "abs"
 }
 
@@ -74,7 +74,7 @@ func (t *AbsVal) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case int64:
 		if x < 0 {
 			if x == math.MinInt64 {
-				return nil, sql.ErrValueOutOfRange.New("BIGINT", t.FunctionName())
+				return nil, sql.ErrValueOutOfRange.New("BIGINT", t.Name())
 			}
 			return -x, nil
 		} else {
@@ -128,11 +128,11 @@ func (t *AbsVal) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 // String implements the fmt.Stringer interface.
 func (t *AbsVal) String() string {
-	return fmt.Sprintf("%s(%s)", t.FunctionName(), t.Child.String())
+	return fmt.Sprintf("%s(%s)", t.Name(), t.Child.String())
 }
 
 func (t *AbsVal) DebugString(ctx *sql.Context) string {
-	return fmt.Sprintf("%s(%s)", t.FunctionName(), sql.DebugString(ctx, t.Child))
+	return fmt.Sprintf("%s(%s)", t.Name(), sql.DebugString(ctx, t.Child))
 }
 
 // IsNullable implements the Expression interface.

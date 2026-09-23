@@ -24,18 +24,18 @@ import (
 // sql.FunctionExpression.
 type NoArgFunc struct {
 	SQLType sql.Type
-	Name    string
+	name    string
 }
 
-// FunctionName implements sql.FunctionExpression
-func (fn NoArgFunc) FunctionName() string {
-	return strings.ToLower(fn.Name)
+// Name implements sql.FunctionExpression
+func (fn NoArgFunc) Name() string {
+	return strings.ToLower(fn.name)
 }
 
 // Type implements the Expression interface.
 func (fn NoArgFunc) Type(ctx *sql.Context) sql.Type { return fn.SQLType }
 
-func (fn NoArgFunc) String() string { return fn.FunctionName() + "()" }
+func (fn NoArgFunc) String() string { return fn.Name() + "()" }
 
 // IsNullable implements the Expression interface.
 func (fn NoArgFunc) IsNullable(ctx *sql.Context) bool { return false }

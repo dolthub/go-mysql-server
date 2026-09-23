@@ -60,8 +60,8 @@ func NewUTCTimestamp(ctx *sql.Context, args ...sql.Expression) (sql.Expression, 
 	return &UTCTimestamp{precision}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (ut *UTCTimestamp) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (ut *UTCTimestamp) Name() string {
 	return "utc_timestamp"
 }
 

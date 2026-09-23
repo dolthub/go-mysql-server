@@ -35,8 +35,8 @@ func NewMinute(ctx *sql.Context, date sql.Expression) sql.Expression {
 	return &Minute{expression.UnaryExpressionStub{Child: date}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (m *Minute) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (m *Minute) Name() string {
 	return "minute"
 }
 
@@ -46,7 +46,7 @@ func (m *Minute) Description() string {
 }
 
 // String implements the sql.Expression interface.
-func (m *Minute) String() string { return fmt.Sprintf("%s(%s)", m.FunctionName(), m.Child) }
+func (m *Minute) String() string { return fmt.Sprintf("%s(%s)", m.Name(), m.Child) }
 
 // Type implements the Expression interface.
 func (m *Minute) Type(ctx *sql.Context) sql.Type { return types.Int32 }

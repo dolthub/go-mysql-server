@@ -26,7 +26,7 @@ func NewStrToDate(ctx *sql.Context, arg1, arg2 sql.Expression) sql.Expression {
 	}
 }
 
-func (s *StrToDate) FunctionName() string {
+func (s *StrToDate) Name() string {
 	return "str_to_date"
 }
 
@@ -43,7 +43,7 @@ func (s *StrToDate) Resolved() bool {
 }
 
 func (s *StrToDate) String() string {
-	return fmt.Sprintf("%s(%s,%s)", s.FunctionName(), s.Date, s.Format)
+	return fmt.Sprintf("%s(%s,%s)", s.Name(), s.Date, s.Format)
 }
 
 // Type returns the expression type.
@@ -132,7 +132,7 @@ func (s *StrToDate) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	goTime, err := dateparse.ParseDateWithFormat(dateStr, formatStr)
 	if err != nil {
-		ctx.Warn(1411, "Incorrect value: '%s' for function %s", dateStr, s.FunctionName())
+		ctx.Warn(1411, "Incorrect value: '%s' for function %s", dateStr, s.Name())
 		return nil, nil
 	}
 

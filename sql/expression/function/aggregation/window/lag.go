@@ -123,8 +123,8 @@ func (l *Lag) DebugString(ctx *sql.Context) string {
 	return sb.String()
 }
 
-// FunctionName implements sql.FunctionExpression
-func (l *Lag) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (l *Lag) Name() string {
 	return "LAG"
 }
 
@@ -150,7 +150,7 @@ func (l *Lag) IsNullable(ctx *sql.Context) bool {
 
 // Eval implements sql.Expression
 func (l *Lag) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return nil, sql.ErrWindowUnsupported.New(l.FunctionName())
+	return nil, sql.ErrWindowUnsupported.New(l.Name())
 }
 
 // Children implements sql.Expression

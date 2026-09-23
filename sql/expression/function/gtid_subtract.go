@@ -37,8 +37,8 @@ func NewGtidSubtract(ctx *sql.Context, gtid1, gtid2 sql.Expression) sql.Expressi
 	return &GtidSubtract{gtid1, gtid2}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (gs *GtidSubtract) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (gs *GtidSubtract) Name() string {
 	return "gtid_subtract"
 }
 
@@ -64,11 +64,11 @@ func (gs *GtidSubtract) IsNullable(ctx *sql.Context) bool {
 }
 
 func (gs *GtidSubtract) String() string {
-	return fmt.Sprintf("%s(%s, %s)", gs.FunctionName(), gs.gtid1, gs.gtid2)
+	return fmt.Sprintf("%s(%s, %s)", gs.Name(), gs.gtid1, gs.gtid2)
 }
 
 func (gs *GtidSubtract) DebugString(ctx *sql.Context) string {
-	return fmt.Sprintf("%s(%s, %s)", gs.FunctionName(), gs.gtid1, gs.gtid2)
+	return fmt.Sprintf("%s(%s, %s)", gs.Name(), gs.gtid1, gs.gtid2)
 }
 
 // WithChildren implements the Expression interface.

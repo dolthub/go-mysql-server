@@ -39,8 +39,8 @@ func NewSleep(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &Sleep{expression.UnaryExpressionStub{Child: e}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (s *Sleep) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (s *Sleep) Name() string {
 	return "sleep"
 }
 
@@ -79,7 +79,7 @@ func (s *Sleep) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 // String implements the fmt.Stringer interface.
 func (s *Sleep) String() string {
-	return fmt.Sprintf("%s(%s)", s.FunctionName(), s.Child)
+	return fmt.Sprintf("%s(%s)", s.Name(), s.Child)
 }
 
 // IsNullable implements the Expression interface.

@@ -33,8 +33,8 @@ var _ sql.CollationCoercible = (*Oct)(nil)
 // NewOct returns a new Oct expression.
 func NewOct(ctx *sql.Context, n sql.Expression) sql.Expression { return &Oct{n} }
 
-// FunctionName implements sql.FunctionExpression.
-func (o *Oct) FunctionName() string {
+// Name implements sql.FunctionExpression.
+func (o *Oct) Name() string {
 	return "oct"
 }
 
@@ -83,7 +83,7 @@ func (o *Oct) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Ex
 }
 
 func (o *Oct) String() string {
-	return fmt.Sprintf("%s(%s)", o.FunctionName(), o.n)
+	return fmt.Sprintf("%s(%s)", o.Name(), o.n)
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

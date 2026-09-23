@@ -40,8 +40,8 @@ func NewJSONArray(ctx *sql.Context, args ...sql.Expression) (sql.Expression, err
 	return &JSONArray{vals: args}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (j JSONArray) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (j JSONArray) Name() string {
 	return "json_array"
 }
 
@@ -74,7 +74,7 @@ func (j *JSONArray) String() string {
 		parts[i] = c.String()
 	}
 
-	return fmt.Sprintf("%s(%s)", j.FunctionName(), strings.Join(parts, ","))
+	return fmt.Sprintf("%s(%s)", j.Name(), strings.Join(parts, ","))
 }
 
 // Type implements the Expression interface.

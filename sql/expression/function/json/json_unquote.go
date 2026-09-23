@@ -39,8 +39,8 @@ func NewJSONUnquote(ctx *sql.Context, json sql.Expression) sql.Expression {
 	return &JSONUnquote{expression.UnaryExpressionStub{Child: json}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (js *JSONUnquote) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (js *JSONUnquote) Name() string {
 	return "json_unquote"
 }
 
@@ -55,7 +55,7 @@ func (js *JSONUnquote) IsUnsupported() bool {
 }
 
 func (js *JSONUnquote) String() string {
-	return fmt.Sprintf("%s(%s)", js.FunctionName(), js.Child)
+	return fmt.Sprintf("%s(%s)", js.Name(), js.Child)
 }
 
 // Type implements the Expression interface.

@@ -84,8 +84,8 @@ func fractionOfSecString(t time.Time) string {
 	return "." + s
 }
 
-// FunctionName implements sql.FunctionExpression
-func (n *Now) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (n *Now) Name() string {
 	return "now"
 }
 
@@ -173,7 +173,7 @@ func (n *Now) Eval(ctx *sql.Context, row sql.Row) (any, error) {
 
 	// Should syntax error before this; check anyway
 	if types.IsNull(ctx, n.prec) {
-		return nil, ErrTimeUnexpectedlyNil.New(n.FunctionName())
+		return nil, ErrTimeUnexpectedlyNil.New(n.Name())
 	}
 
 	// Evaluate precision
@@ -184,22 +184,22 @@ func (n *Now) Eval(ctx *sql.Context, row sql.Row) (any, error) {
 
 	// Should syntax error before this; check anyway
 	if prec == nil {
-		return nil, ErrTimeUnexpectedlyNil.New(n.FunctionName())
+		return nil, ErrTimeUnexpectedlyNil.New(n.Name())
 	}
 
 	// Must receive integer
 	// Should syntax error before this; check anyway
 	fsp, ok := types.CoalesceInt(prec)
 	if !ok {
-		return nil, sql.ErrInvalidArgumentType.New(n.FunctionName())
+		return nil, sql.ErrInvalidArgumentType.New(n.Name())
 	}
 
 	// Parse and return answer
 	if fsp > maxCurrTimestampPrecision {
-		return nil, ErrTooHighPrecision.New(fsp, n.FunctionName(), maxCurrTimestampPrecision)
+		return nil, ErrTooHighPrecision.New(fsp, n.Name(), maxCurrTimestampPrecision)
 	} else if fsp < 0 {
 		// Should syntax error before this; check anyway
-		return nil, sql.ErrInvalidArgumentType.New(n.FunctionName())
+		return nil, sql.ErrInvalidArgumentType.New(n.Name())
 	}
 
 	// Get the timestamp

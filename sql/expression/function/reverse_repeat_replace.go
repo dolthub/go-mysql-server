@@ -38,8 +38,8 @@ func NewReverse(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &Reverse{expression.UnaryExpressionStub{Child: e}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (r *Reverse) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (r *Reverse) Name() string {
 	return "reverse"
 }
 
@@ -118,8 +118,8 @@ func NewRepeat(ctx *sql.Context, str sql.Expression, count sql.Expression) sql.E
 	return &Repeat{expression.BinaryExpressionStub{LeftChild: str, RightChild: count}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (r *Repeat) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (r *Repeat) Name() string {
 	return "repeat"
 }
 
@@ -205,8 +205,8 @@ func NewReplace(ctx *sql.Context, str sql.Expression, fromStr sql.Expression, to
 	return &Replace{str, fromStr, toStr}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (r *Replace) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (r *Replace) Name() string {
 	return "replace"
 }
 

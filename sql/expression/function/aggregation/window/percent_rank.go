@@ -83,8 +83,8 @@ func (p *PercentRank) DebugString(ctx *sql.Context) string {
 	return sb.String()
 }
 
-// FunctionName implements sql.FunctionExpression
-func (p *PercentRank) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (p *PercentRank) Name() string {
 	return "PERCENT_RANK"
 }
 
@@ -105,7 +105,7 @@ func (p *PercentRank) IsNullable(ctx *sql.Context) bool {
 
 // Eval implements sql.Expression
 func (p *PercentRank) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return nil, sql.ErrWindowUnsupported.New(p.FunctionName())
+	return nil, sql.ErrWindowUnsupported.New(p.Name())
 }
 
 // Children implements sql.Expression

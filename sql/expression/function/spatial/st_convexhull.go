@@ -36,8 +36,8 @@ func NewConvexHull(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &ConvexHull{expression.UnaryExpressionStub{Child: e}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (c *ConvexHull) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (c *ConvexHull) Name() string {
 	return "st_convexhull"
 }
 
@@ -62,7 +62,7 @@ func (*ConvexHull) CollationCoercibility(ctx *sql.Context) (collation sql.Collat
 }
 
 func (c *ConvexHull) String() string {
-	return fmt.Sprintf("%s(%s)", c.FunctionName(), c.Child.String())
+	return fmt.Sprintf("%s(%s)", c.Name(), c.Child.String())
 }
 
 // WithChildren implements the Expression interface.
@@ -183,7 +183,7 @@ func (c *ConvexHull) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	gv, err := types.UnwrapGeometry(ctx, val)
 	if err != nil {
-		return nil, sql.ErrInvalidGISData.New(c.FunctionName())
+		return nil, sql.ErrInvalidGISData.New(c.Name())
 	}
 
 	srid := gv.GetSRID()

@@ -27,12 +27,9 @@ import (
 
 func TestTableFunctionWrapperEmptySet(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	fn := sql.Function1{
-		Name: "empty_set",
-		Fn: func(_ *sql.Context, _ sql.Expression) sql.Expression {
-			return &emptySetExpression{Literal: expression.NewLiteral(nil, types.Int64)}
-		},
-	}
+	fn := sql.NewFunction1("empty_set", func(_ *sql.Context, _ sql.Expression) sql.Expression {
+		return &emptySetExpression{Literal: expression.NewLiteral(nil, types.Int64)}
+	})
 	wrapper := NewTableFunctionWrapper(fn)
 	instance, err := wrapper.NewInstance(ctx, nil, []sql.Expression{expression.NewLiteral(nil, types.Int64)})
 	require.NoError(t, err)
@@ -46,12 +43,9 @@ func TestTableFunctionWrapperEmptySet(t *testing.T) {
 
 func TestTableFunctionWrapperScalarNull(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	fn := sql.Function1{
-		Name: "scalar_null",
-		Fn: func(_ *sql.Context, _ sql.Expression) sql.Expression {
-			return expression.NewLiteral(nil, types.Int64)
-		},
-	}
+	fn := sql.NewFunction1("scalar_null", func(_ *sql.Context, _ sql.Expression) sql.Expression {
+		return expression.NewLiteral(nil, types.Int64)
+	})
 	wrapper := NewTableFunctionWrapper(fn)
 	instance, err := wrapper.NewInstance(ctx, nil, []sql.Expression{expression.NewLiteral(nil, types.Int64)})
 	require.NoError(t, err)
@@ -66,12 +60,9 @@ func TestTableFunctionWrapperScalarNull(t *testing.T) {
 
 func TestTableFunctionWrapperPreservesMultiColumnRows(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	fn := sql.Function1{
-		Name: "multi_column_set",
-		Fn: func(_ *sql.Context, _ sql.Expression) sql.Expression {
-			return &multiColumnSetExpression{Literal: expression.NewLiteral(nil, types.Int64)}
-		},
-	}
+	fn := sql.NewFunction1("multi_column_set", func(_ *sql.Context, _ sql.Expression) sql.Expression {
+		return &multiColumnSetExpression{Literal: expression.NewLiteral(nil, types.Int64)}
+	})
 	wrapper := NewTableFunctionWrapper(fn)
 	instance, err := wrapper.NewInstance(ctx, nil, []sql.Expression{expression.NewLiteral(1, types.Int64)})
 	require.NoError(t, err)

@@ -34,8 +34,8 @@ func NewBitCount(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &BitCount{NewUnaryFunc(arg, "BIT_COUNT", types.Int32)}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (b *BitCount) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (b *BitCount) Name() string {
 	return "bit_count"
 }
 
@@ -55,7 +55,7 @@ func (b *BitCount) CollationCoercibility(ctx *sql.Context) (collation sql.Collat
 }
 
 func (b *BitCount) String() string {
-	return fmt.Sprintf("%s(%s)", b.FunctionName(), b.Child)
+	return fmt.Sprintf("%s(%s)", b.Name(), b.Child)
 }
 
 // WithChildren implements the Expression interface.

@@ -37,8 +37,8 @@ func NewChar(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	return &Char{args: args}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (c *Char) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (c *Char) Name() string {
 	return "char"
 }
 
@@ -60,9 +60,9 @@ func (c *Char) String() string {
 	}
 	str := strings.Join(args, ", ")
 	if c.Collation == sql.Collation_Unspecified {
-		return fmt.Sprintf("%s(%s)", c.FunctionName(), str)
+		return fmt.Sprintf("%s(%s)", c.Name(), str)
 	}
-	return fmt.Sprintf("%s(%s USING %s)", c.FunctionName(), str, c.Collation.CharacterSet().Name())
+	return fmt.Sprintf("%s(%s USING %s)", c.Name(), str, c.Collation.CharacterSet().Name())
 }
 
 // Type implements sql.Expression

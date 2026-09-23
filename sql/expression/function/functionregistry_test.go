@@ -31,10 +31,7 @@ func TestFunctionRegistry(t *testing.T) {
 	reg := function.NewRegistry()
 	name := "func"
 	var expected sql.Expression = expression.NewStar()
-	reg.Register(sql.Function1{
-		Name: name,
-		Fn:   func(ctx *sql.Context, arg sql.Expression) sql.Expression { return expected },
-	})
+	reg.Register(sql.NewFunction1(name, func(ctx *sql.Context, arg sql.Expression) sql.Expression { return expected }))
 
 	f, ok := reg.Function(sql.NewEmptyContext(), "", name)
 	require.True(ok)

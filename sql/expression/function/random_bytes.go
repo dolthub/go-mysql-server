@@ -40,8 +40,8 @@ func NewRandomBytes(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &RandomBytes{expression.UnaryExpressionStub{Child: e}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (r *RandomBytes) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (r *RandomBytes) Name() string {
 	return "random_bytes"
 }
 
@@ -71,7 +71,7 @@ func (*RandomBytes) CollationCoercibility(ctx *sql.Context) (collation sql.Colla
 
 // String implements the sql.Expression interface.
 func (r *RandomBytes) String() string {
-	return fmt.Sprintf("%s(%s)", r.FunctionName(), r.Child)
+	return fmt.Sprintf("%s(%s)", r.Name(), r.Child)
 }
 
 // IsNonDeterministic implements the sql.Expression interface.
@@ -102,7 +102,7 @@ func (r *RandomBytes) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	if length <= 0 || length > randomBytesMax {
-		return nil, sql.ErrValueOutOfRange.New(length, r.FunctionName())
+		return nil, sql.ErrValueOutOfRange.New(length, r.Name())
 	}
 
 	res := make([]byte, length)

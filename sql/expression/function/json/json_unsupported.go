@@ -51,11 +51,11 @@ var _ sql.FunctionExpression = JSONTable{}
 
 // NewJSONTable creates a new JSONTable function.
 func NewJSONTable(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
-	return nil, ErrUnsupportedJSONFunction.New(JSONTable{}.FunctionName())
+	return nil, ErrUnsupportedJSONFunction.New(JSONTable{}.Name())
 }
 
-// FunctionName implements sql.FunctionExpression
-func (j JSONTable) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (j JSONTable) Name() string {
 	return "json_table"
 }
 
@@ -87,11 +87,11 @@ var _ sql.FunctionExpression = JSONSchemaValid{}
 
 // NewJSONSchemaValid creates a new JSONSchemaValid function.
 func NewJSONSchemaValid(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
-	return nil, ErrUnsupportedJSONFunction.New(JSONSchemaValid{}.FunctionName())
+	return nil, ErrUnsupportedJSONFunction.New(JSONSchemaValid{}.Name())
 }
 
-// FunctionName implements sql.FunctionExpression
-func (j JSONSchemaValid) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (j JSONSchemaValid) Name() string {
 	return "json_schema_valid"
 }
 
@@ -131,11 +131,11 @@ var _ sql.FunctionExpression = JSONSchemaValidationReport{}
 
 // NewJSONSchemaValidationReport creates a new JSONSchemaValidationReport function.
 func NewJSONSchemaValidationReport(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
-	return nil, ErrUnsupportedJSONFunction.New(JSONSchemaValidationReport{}.FunctionName())
+	return nil, ErrUnsupportedJSONFunction.New(JSONSchemaValidationReport{}.Name())
 }
 
-// FunctionName implements sql.FunctionExpression
-func (j JSONSchemaValidationReport) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (j JSONSchemaValidationReport) Name() string {
 	return "json_schema_validation_report"
 }
 
@@ -174,11 +174,11 @@ var _ sql.FunctionExpression = JSONStorageFree{}
 
 // NewJSONStorageFree creates a new JSONStorageFree function.
 func NewJSONStorageFree(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
-	return nil, ErrUnsupportedJSONFunction.New(JSONStorageFree{}.FunctionName())
+	return nil, ErrUnsupportedJSONFunction.New(JSONStorageFree{}.Name())
 }
 
-// FunctionName implements sql.FunctionExpression
-func (j JSONStorageFree) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (j JSONStorageFree) Name() string {
 	return "json_storage_free"
 }
 
@@ -211,11 +211,11 @@ var _ sql.FunctionExpression = JSONStorageSize{}
 
 // NewJSONStorageSize creates a new JSONStorageSize function.
 func NewJSONStorageSize(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
-	return nil, ErrUnsupportedJSONFunction.New(JSONStorageSize{}.FunctionName())
+	return nil, ErrUnsupportedJSONFunction.New(JSONStorageSize{}.Name())
 }
 
-// FunctionName implements sql.FunctionExpression
-func (j JSONStorageSize) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (j JSONStorageSize) Name() string {
 	return "json_storage_size"
 }
 

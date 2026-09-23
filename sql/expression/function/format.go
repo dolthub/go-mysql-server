@@ -55,8 +55,8 @@ func NewFormat(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error)
 	return &Format{numValue, numDecimalPlaces, locale}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (f *Format) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (f *Format) Name() string {
 	return "format"
 }
 
@@ -80,9 +80,9 @@ func (f *Format) IsNullable(ctx *sql.Context) bool {
 
 func (f *Format) String() string {
 	if f.Locale == nil {
-		return fmt.Sprintf("%s(%s,%s)", f.FunctionName(), f.NumValue, f.NumDecimalPlaces)
+		return fmt.Sprintf("%s(%s,%s)", f.Name(), f.NumValue, f.NumDecimalPlaces)
 	}
-	return fmt.Sprintf("%s(%s,%s,%s)", f.FunctionName(), f.NumValue, f.NumDecimalPlaces, f.Locale)
+	return fmt.Sprintf("%s(%s,%s,%s)", f.Name(), f.NumValue, f.NumDecimalPlaces, f.Locale)
 }
 
 // Eval implements the Expression interface.

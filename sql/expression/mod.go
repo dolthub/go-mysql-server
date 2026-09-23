@@ -45,7 +45,7 @@ func NewMod(left, right sql.Expression) *Mod {
 	return a
 }
 
-func (m *Mod) FunctionName() string {
+func (m *Mod) Name() string {
 	return "mod"
 }
 

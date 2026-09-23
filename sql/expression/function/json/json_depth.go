@@ -43,8 +43,8 @@ func NewJSONDepth(ctx *sql.Context, args ...sql.Expression) (sql.Expression, err
 	return &JSONDepth{JSON: args[0]}, nil
 }
 
-// FunctionName implements sql.FunctionExpression interface.
-func (j *JSONDepth) FunctionName() string {
+// Name implements sql.FunctionExpression interface.
+func (j *JSONDepth) Name() string {
 	return "json_depth"
 }
 
@@ -60,7 +60,7 @@ func (j *JSONDepth) Resolved() bool {
 
 // String implements sql.Expression interface.
 func (j *JSONDepth) String() string {
-	return fmt.Sprintf("%s(%s)", j.FunctionName(), j.JSON.String())
+	return fmt.Sprintf("%s(%s)", j.Name(), j.JSON.String())
 }
 
 // Type implements sql.Expression interface.
@@ -103,7 +103,7 @@ func depth(obj interface{}) (int, error) {
 
 // Eval implements sql.Expression interface.
 func (j *JSONDepth) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	span, ctx := ctx.Span(fmt.Sprintf("function.%s", j.FunctionName()))
+	span, ctx := ctx.Span(fmt.Sprintf("function.%s", j.Name()))
 	defer span.End()
 
 	doc, err := getJSONDocumentFromRow(ctx, row, j.JSON)

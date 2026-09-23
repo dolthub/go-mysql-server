@@ -85,8 +85,8 @@ func (a *CountDistinct) WithChildren(ctx *sql.Context, children ...sql.Expressio
 	return NewCountDistinct(children...), nil
 }
 
-// FunctionName implements the FunctionExpression interface.
-func (a *CountDistinct) FunctionName() string {
+// Name implements the FunctionExpression interface.
+func (a *CountDistinct) Name() string {
 	return "CountDistinct"
 }
 

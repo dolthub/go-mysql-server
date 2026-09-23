@@ -31,8 +31,8 @@ type If struct {
 var _ sql.FunctionExpression = (*If)(nil)
 var _ sql.CollationCoercible = (*If)(nil)
 
-// FunctionName implements sql.FunctionExpression
-func (f *If) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (f *If) Name() string {
 	return "if"
 }
 
@@ -113,7 +113,7 @@ func (f *If) IsNullable(ctx *sql.Context) bool {
 }
 
 func (f *If) String() string {
-	return fmt.Sprintf("%s(%s,%s,%s)", f.FunctionName(), f.expr, f.ifTrue, f.ifFalse)
+	return fmt.Sprintf("%s(%s,%s,%s)", f.Name(), f.expr, f.ifTrue, f.ifFalse)
 }
 
 // WithChildren implements the Expression interface.

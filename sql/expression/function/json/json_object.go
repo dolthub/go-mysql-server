@@ -43,8 +43,8 @@ func NewJSONObject(ctx *sql.Context, exprs ...sql.Expression) (sql.Expression, e
 	return JSONObject{keyValPairs: exprs}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (j JSONObject) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (j JSONObject) Name() string {
 	return "json_object"
 }
 
@@ -76,7 +76,7 @@ func (j JSONObject) String() string {
 		parts[i] = c.String()
 	}
 
-	return fmt.Sprintf("%s(%s)", j.FunctionName(), strings.Join(parts, ","))
+	return fmt.Sprintf("%s(%s)", j.Name(), strings.Join(parts, ","))
 }
 
 func (j JSONObject) Type(ctx *sql.Context) sql.Type {

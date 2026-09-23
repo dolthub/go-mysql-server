@@ -36,8 +36,8 @@ func NewValidate(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &Validate{expression.UnaryExpressionStub{Child: e}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (v *Validate) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (v *Validate) Name() string {
 	return "st_validate"
 }
 
@@ -62,7 +62,7 @@ func (*Validate) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 }
 
 func (v *Validate) String() string {
-	return fmt.Sprintf("%s(%s)", v.FunctionName(), v.Child.String())
+	return fmt.Sprintf("%s(%s)", v.Name(), v.Child.String())
 }
 
 // WithChildren implements the Expression interface.
@@ -146,7 +146,7 @@ func (v *Validate) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	gv, err := types.UnwrapGeometry(ctx, val)
 	if err != nil {
-		return nil, sql.ErrInvalidGISData.New(v.FunctionName())
+		return nil, sql.ErrInvalidGISData.New(v.Name())
 	}
 
 	if isValidGeometry(gv) {

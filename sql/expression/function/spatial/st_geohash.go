@@ -42,8 +42,8 @@ func NewGeoHash(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error
 	return &GeoHash{expression.NaryExpression{ChildExpressions: args}}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (g *GeoHash) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (g *GeoHash) Name() string {
 	return "st_geohash"
 }
 
@@ -72,7 +72,7 @@ func (g *GeoHash) String() string {
 	for i, arg := range g.ChildExpressions {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("%s(%s)", g.FunctionName(), strings.Join(args, ","))
+	return fmt.Sprintf("%s(%s)", g.Name(), strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.
@@ -139,11 +139,11 @@ func (g *GeoHash) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 		gv, err := types.UnwrapGeometry(ctx, val)
 		if err != nil {
-			return nil, sql.ErrInvalidGISData.New(g.FunctionName())
+			return nil, sql.ErrInvalidGISData.New(g.Name())
 		}
 		p, ok := gv.(types.Point)
 		if !ok {
-			return nil, sql.ErrInvalidArgument.New(g.FunctionName())
+			return nil, sql.ErrInvalidArgument.New(g.Name())
 		}
 		// For SRID 4326, X is longitude, Y is latitude
 		lon = p.X
@@ -213,10 +213,10 @@ func (g *GeoHash) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	if lat < -90 || lat > 90 {
-		return nil, fmt.Errorf("latitude %v is out of range in function %s. It must be within [-90, 90]", lat, g.FunctionName())
+		return nil, fmt.Errorf("latitude %v is out of range in function %s. It must be within [-90, 90]", lat, g.Name())
 	}
 	if lon < -180 || lon > 180 {
-		return nil, fmt.Errorf("longitude %v is out of range in function %s. It must be within [-180, 180]", lon, g.FunctionName())
+		return nil, fmt.Errorf("longitude %v is out of range in function %s. It must be within [-180, 180]", lon, g.Name())
 	}
 
 	return encodeGeoHash(lon, lat, maxLen), nil
@@ -240,8 +240,8 @@ func NewPointFromGeoHash(ctx *sql.Context, hash, srid sql.Expression) sql.Expres
 	}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (p *PointFromGeoHash) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (p *PointFromGeoHash) Name() string {
 	return "st_pointfromgeohash"
 }
 
@@ -266,7 +266,7 @@ func (*PointFromGeoHash) CollationCoercibility(ctx *sql.Context) (collation sql.
 }
 
 func (p *PointFromGeoHash) String() string {
-	return fmt.Sprintf("%s(%s,%s)", p.FunctionName(), p.LeftChild.String(), p.RightChild.String())
+	return fmt.Sprintf("%s(%s,%s)", p.Name(), p.LeftChild.String(), p.RightChild.String())
 }
 
 // WithChildren implements the Expression interface.
@@ -333,7 +333,7 @@ func (p *PointFromGeoHash) Eval(ctx *sql.Context, row sql.Row) (interface{}, err
 
 	hashStr, ok := hashVal.(string)
 	if !ok {
-		return nil, sql.ErrInvalidArgument.New(p.FunctionName())
+		return nil, sql.ErrInvalidArgument.New(p.Name())
 	}
 
 	s, _, err := types.Int64.Convert(ctx, sridVal)
@@ -363,8 +363,8 @@ func NewLatFromGeoHash(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &LatFromGeoHash{expression.UnaryExpressionStub{Child: e}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (l *LatFromGeoHash) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (l *LatFromGeoHash) Name() string {
 	return "st_latfromgeohash"
 }
 
@@ -389,7 +389,7 @@ func (*LatFromGeoHash) CollationCoercibility(ctx *sql.Context) (collation sql.Co
 }
 
 func (l *LatFromGeoHash) String() string {
-	return fmt.Sprintf("%s(%s)", l.FunctionName(), l.Child.String())
+	return fmt.Sprintf("%s(%s)", l.Name(), l.Child.String())
 }
 
 // WithChildren implements the Expression interface.
@@ -412,7 +412,7 @@ func (l *LatFromGeoHash) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 
 	hashStr, ok := val.(string)
 	if !ok {
-		return nil, sql.ErrInvalidArgument.New(l.FunctionName())
+		return nil, sql.ErrInvalidArgument.New(l.Name())
 	}
 
 	_, lat, err := decodeGeoHash(hashStr)
@@ -435,8 +435,8 @@ func NewLongFromGeoHash(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &LongFromGeoHash{expression.UnaryExpressionStub{Child: e}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (l *LongFromGeoHash) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (l *LongFromGeoHash) Name() string {
 	return "st_longfromgeohash"
 }
 
@@ -461,7 +461,7 @@ func (*LongFromGeoHash) CollationCoercibility(ctx *sql.Context) (collation sql.C
 }
 
 func (l *LongFromGeoHash) String() string {
-	return fmt.Sprintf("%s(%s)", l.FunctionName(), l.Child.String())
+	return fmt.Sprintf("%s(%s)", l.Name(), l.Child.String())
 }
 
 // WithChildren implements the Expression interface.
@@ -484,7 +484,7 @@ func (l *LongFromGeoHash) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 
 	hashStr, ok := val.(string)
 	if !ok {
-		return nil, sql.ErrInvalidArgument.New(l.FunctionName())
+		return nil, sql.ErrInvalidArgument.New(l.Name())
 	}
 
 	lon, _, err := decodeGeoHash(hashStr)

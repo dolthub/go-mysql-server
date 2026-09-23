@@ -61,7 +61,7 @@ func (j JSONInsert) String() string {
 		parts[i] = c.String()
 	}
 
-	return fmt.Sprintf("%s(%s)", j.FunctionName(), strings.Join(parts, ","))
+	return fmt.Sprintf("%s(%s)", j.Name(), strings.Join(parts, ","))
 }
 
 func (j JSONInsert) Type(ctx *sql.Context) sql.Type {
@@ -125,8 +125,8 @@ func NewJSONInsert(ctx *sql.Context, args ...sql.Expression) (sql.Expression, er
 	return JSONInsert{args[0], args[1:]}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (j JSONInsert) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (j JSONInsert) Name() string {
 	return "json_insert"
 }
 

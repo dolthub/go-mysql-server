@@ -45,8 +45,8 @@ func NewDistance(ctx *sql.Context, args ...sql.Expression) (sql.Expression, erro
 	return &Distance{expression.NaryExpression{ChildExpressions: args}}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (d *Distance) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (d *Distance) Name() string {
 	return "st_distance"
 }
 
@@ -70,7 +70,7 @@ func (d *Distance) String() string {
 	for i, arg := range d.ChildExpressions {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("%s(%s)", d.FunctionName(), strings.Join(args, ","))
+	return fmt.Sprintf("%s(%s)", d.Name(), strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.
@@ -156,18 +156,18 @@ func (d *Distance) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	geom1, err := types.UnwrapGeometry(ctx, g1)
 	if err != nil {
-		return nil, sql.ErrInvalidGISData.New(d.FunctionName())
+		return nil, sql.ErrInvalidGISData.New(d.Name())
 	}
 
 	geom2, err := types.UnwrapGeometry(ctx, g2)
 	if err != nil {
-		return nil, sql.ErrInvalidGISData.New(d.FunctionName())
+		return nil, sql.ErrInvalidGISData.New(d.Name())
 	}
 
 	srid1 := geom1.GetSRID()
 	srid2 := geom2.GetSRID()
 	if srid1 != srid2 {
-		return nil, sql.ErrDiffSRIDs.New(d.FunctionName(), srid1, srid2)
+		return nil, sql.ErrDiffSRIDs.New(d.Name(), srid1, srid2)
 	}
 
 	if srid1 != types.CartesianSRID {

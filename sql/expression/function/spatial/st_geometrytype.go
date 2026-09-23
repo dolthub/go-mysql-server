@@ -35,8 +35,8 @@ func NewGeometryType(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &GeometryType{expression.UnaryExpressionStub{Child: e}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (g *GeometryType) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (g *GeometryType) Name() string {
 	return "st_geometrytype"
 }
 
@@ -61,7 +61,7 @@ func (*GeometryType) CollationCoercibility(ctx *sql.Context) (collation sql.Coll
 }
 
 func (g *GeometryType) String() string {
-	return fmt.Sprintf("%s(%s)", g.FunctionName(), g.Child.String())
+	return fmt.Sprintf("%s(%s)", g.Name(), g.Child.String())
 }
 
 // WithChildren implements the Expression interface.
@@ -85,7 +85,7 @@ func (g *GeometryType) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 
 	gv, err := types.UnwrapGeometry(ctx, val)
 	if err != nil {
-		return nil, sql.ErrInvalidGISData.New(g.FunctionName())
+		return nil, sql.ErrInvalidGISData.New(g.Name())
 	}
 
 	switch gv.(type) {
@@ -104,6 +104,6 @@ func (g *GeometryType) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 	case types.GeomColl:
 		return "GEOMCOLLECTION", nil
 	default:
-		return nil, sql.ErrInvalidGISData.New(g.FunctionName())
+		return nil, sql.ErrInvalidGISData.New(g.Name())
 	}
 }

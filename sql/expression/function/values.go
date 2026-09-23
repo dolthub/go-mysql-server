@@ -48,8 +48,8 @@ func (v *Values) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return v.Value, nil
 }
 
-// FunctionName implements sql.FunctionExpression.
-func (v *Values) FunctionName() string {
+// Name implements sql.FunctionExpression.
+func (v *Values) Name() string {
 	return "values"
 }
 
@@ -60,7 +60,7 @@ func (v *Values) Description() string {
 
 // String implements sql.FunctionExpression.
 func (v *Values) String() string {
-	return fmt.Sprintf("%s(%s)", v.FunctionName(), v.Child.String())
+	return fmt.Sprintf("%s(%s)", v.Name(), v.Child.String())
 }
 
 // Type implements sql.FunctionExpression.

@@ -35,8 +35,8 @@ func NewSecond(ctx *sql.Context, date sql.Expression) sql.Expression {
 	return &Second{expression.UnaryExpressionStub{Child: date}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (s *Second) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (s *Second) Name() string {
 	return "second"
 }
 
@@ -46,7 +46,7 @@ func (s *Second) Description() string {
 }
 
 // String implements the sql.Expression interface.
-func (s *Second) String() string { return fmt.Sprintf("%s(%s)", s.FunctionName(), s.Child) }
+func (s *Second) String() string { return fmt.Sprintf("%s(%s)", s.Name(), s.Child) }
 
 // Type implements the Expression interface.
 func (s *Second) Type(ctx *sql.Context) sql.Type { return types.Int32 }

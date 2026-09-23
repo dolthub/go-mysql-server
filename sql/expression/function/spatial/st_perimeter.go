@@ -40,8 +40,8 @@ func NewPerimeter(ctx *sql.Context, args ...sql.Expression) (sql.Expression, err
 	return &Perimeter{expression.NaryExpression{ChildExpressions: args}}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (p *Perimeter) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (p *Perimeter) Name() string {
 	return "st_perimeter"
 }
 
@@ -65,7 +65,7 @@ func (p *Perimeter) String() string {
 	for i, arg := range p.ChildExpressions {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("%s(%s)", p.FunctionName(), strings.Join(args, ","))
+	return fmt.Sprintf("%s(%s)", p.Name(), strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.
@@ -89,11 +89,11 @@ func (p *Perimeter) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Argument must be a polygon
 	gv, err := types.UnwrapGeometry(ctx, v1)
 	if err != nil {
-		return nil, sql.ErrInvalidArgument.New(p.FunctionName())
+		return nil, sql.ErrInvalidArgument.New(p.Name())
 	}
 	poly, ok := gv.(types.Polygon)
 	if !ok {
-		return nil, sql.ErrInvalidArgument.New(p.FunctionName())
+		return nil, sql.ErrInvalidArgument.New(p.Name())
 	}
 
 	// TODO: if SRID is not 0, find geodetic distance

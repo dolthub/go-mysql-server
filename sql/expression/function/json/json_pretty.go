@@ -51,8 +51,8 @@ func NewJSONPretty(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &JSONPretty{expression.UnaryExpressionStub{Child: arg}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (j *JSONPretty) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (j *JSONPretty) Name() string {
 	return "json_pretty"
 }
 
@@ -63,7 +63,7 @@ func (j *JSONPretty) Description() string {
 
 // String implements sql.Expression
 func (j *JSONPretty) String() string {
-	return fmt.Sprintf("%s(%s)", j.FunctionName(), j.Child.String())
+	return fmt.Sprintf("%s(%s)", j.Name(), j.Child.String())
 }
 
 // Type implements sql.Expression
@@ -73,7 +73,7 @@ func (j *JSONPretty) Type(ctx *sql.Context) sql.Type {
 
 // Eval implements sql.Expression
 func (j *JSONPretty) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	span, ctx := ctx.Span(fmt.Sprintf("function.%s", j.FunctionName()))
+	span, ctx := ctx.Span(fmt.Sprintf("function.%s", j.Name()))
 	defer span.End()
 
 	doc, err := getJSONDocumentFromRow(ctx, row, j.Child)

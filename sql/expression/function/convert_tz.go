@@ -40,8 +40,8 @@ func NewConvertTz(ctx *sql.Context, dt, fromTz, toTz sql.Expression) sql.Express
 	}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (c *ConvertTz) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (c *ConvertTz) Name() string {
 	return "convert_tz"
 }
 
@@ -57,7 +57,7 @@ func (c *ConvertTz) Resolved() bool {
 
 // String implements the sql.Expression interface.
 func (c *ConvertTz) String() string {
-	return fmt.Sprintf("%s(%s,%s,%s)", c.FunctionName(), c.dt, c.fromTz, c.toTz)
+	return fmt.Sprintf("%s(%s,%s,%s)", c.Name(), c.dt, c.fromTz, c.toTz)
 }
 
 // Type implements the sql.Expression interface.

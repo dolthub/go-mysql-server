@@ -42,8 +42,8 @@ func NewConcatWithSeparator(ctx *sql.Context, args ...sql.Expression) (sql.Expre
 	return &ConcatWithSeparator{args}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (f *ConcatWithSeparator) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (f *ConcatWithSeparator) Name() string {
 	return "concat_ws"
 }
 
@@ -70,7 +70,7 @@ func (f *ConcatWithSeparator) String() string {
 	for i, arg := range f.args {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("%s(%s)", f.FunctionName(), strings.Join(args, ","))
+	return fmt.Sprintf("%s(%s)", f.Name(), strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.

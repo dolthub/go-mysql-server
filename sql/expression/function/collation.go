@@ -36,8 +36,8 @@ func NewCollation(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &Collation{expression.UnaryExpressionStub{Child: e}}
 }
 
-// FunctionName implements sql.FunctionExpression.
-func (c *Collation) FunctionName() string {
+// Name implements sql.FunctionExpression.
+func (c *Collation) Name() string {
 	return "collation"
 }
 
@@ -68,7 +68,7 @@ func (c *Collation) IsNullable(ctx *sql.Context) bool {
 
 // String implements the fmt.Stringer interface.
 func (c *Collation) String() string {
-	return fmt.Sprintf("%s(%s)", c.FunctionName(), c.Child.String())
+	return fmt.Sprintf("%s(%s)", c.Name(), c.Child.String())
 }
 
 // WithChildren implements sql.Expression.
@@ -102,8 +102,8 @@ func NewCoercibility(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &Coercibility{expression.UnaryExpressionStub{Child: e}}
 }
 
-// FunctionName implements sql.FunctionExpression.
-func (c *Coercibility) FunctionName() string {
+// Name implements sql.FunctionExpression.
+func (c *Coercibility) Name() string {
 	return "coercibility"
 }
 
@@ -134,7 +134,7 @@ func (c *Coercibility) IsNullable(ctx *sql.Context) bool {
 
 // String implements the fmt.Stringer interface.
 func (c *Coercibility) String() string {
-	return fmt.Sprintf("%s(%s)", c.FunctionName(), c.Child.String())
+	return fmt.Sprintf("%s(%s)", c.Name(), c.Child.String())
 }
 
 // WithChildren implements sql.Expression.
@@ -168,8 +168,8 @@ func NewCharset(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &Charset{expression.UnaryExpressionStub{Child: e}}
 }
 
-// FunctionName implements sql.FunctionExpression.
-func (c *Charset) FunctionName() string {
+// Name implements sql.FunctionExpression.
+func (c *Charset) Name() string {
 	return "charset"
 }
 
@@ -200,7 +200,7 @@ func (c *Charset) IsNullable(ctx *sql.Context) bool {
 
 // String implements the fmt.Stringer interface.
 func (c *Charset) String() string {
-	return fmt.Sprintf("%s(%s)", c.FunctionName(), c.Child.String())
+	return fmt.Sprintf("%s(%s)", c.Name(), c.Child.String())
 }
 
 // WithChildren implements the sql.Expression interface.

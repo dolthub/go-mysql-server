@@ -68,7 +68,7 @@ func (d DistanceL2Squared) CanEval(other sql.DistanceType) bool {
 	return other == DistanceL2Squared{} || other == DistanceEuclidean{}
 }
 
-func (d DistanceL2Squared) FunctionName() string {
+func (d DistanceL2Squared) Name() string {
 	return "vec_distance_l2_squared"
 }
 
@@ -102,7 +102,7 @@ func (d DistanceEuclidean) CanEval(other sql.DistanceType) bool {
 	return other == DistanceEuclidean{} || other == DistanceL2Squared{}
 }
 
-func (d DistanceEuclidean) FunctionName() string {
+func (d DistanceEuclidean) Name() string {
 	return "vec_distance_euclidean"
 }
 
@@ -152,7 +152,7 @@ func (d DistanceCosine) CanEval(other sql.DistanceType) bool {
 	return other == DistanceCosine{}
 }
 
-func (d DistanceCosine) FunctionName() string {
+func (d DistanceCosine) Name() string {
 	return "vec_distance_cosine"
 }
 
@@ -185,7 +185,7 @@ func (d DistanceInnerProduct) CanEval(other sql.DistanceType) bool {
 	return other == DistanceInnerProduct{}
 }
 
-func (d DistanceInnerProduct) FunctionName() string {
+func (d DistanceInnerProduct) Name() string {
 	return "vec_distance_inner_product"
 }
 
@@ -218,7 +218,7 @@ func (d DistanceL1) CanEval(other sql.DistanceType) bool {
 	return other == DistanceL1{}
 }
 
-func (d DistanceL1) FunctionName() string {
+func (d DistanceL1) Name() string {
 	return "vec_distance_l1"
 }
 
@@ -231,8 +231,8 @@ type Distance struct {
 	expression.BinaryExpressionStub
 }
 
-func (d Distance) FunctionName() string {
-	return d.DistanceType.FunctionName()
+func (d Distance) Name() string {
+	return d.DistanceType.Name()
 }
 
 func (d Distance) Description() string {
@@ -381,7 +381,7 @@ func NewGenericDistance(ctx *sql.Context, args ...sql.Expression) (sql.Expressio
 	return &GenericDistance{NaryExpression: expression.NaryExpression{ChildExpressions: args}}, nil
 }
 
-func (g *GenericDistance) FunctionName() string {
+func (g *GenericDistance) Name() string {
 	return "distance"
 }
 

@@ -41,8 +41,8 @@ func NewToBase64(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &ToBase64{expression.UnaryExpressionStub{Child: e}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (t *ToBase64) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (t *ToBase64) Name() string {
 	return "to_base64"
 }
 
@@ -110,7 +110,7 @@ func (t *ToBase64) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 // String implements the fmt.Stringer interface.
 func (t *ToBase64) String() string {
-	return fmt.Sprintf("%s(%s)", t.FunctionName(), t.Child)
+	return fmt.Sprintf("%s(%s)", t.Name(), t.Child)
 }
 
 // IsNullable implements the Expression interface.
@@ -150,8 +150,8 @@ func NewFromBase64(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &FromBase64{expression.UnaryExpressionStub{Child: e}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (t *FromBase64) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (t *FromBase64) Name() string {
 	return "from_base64"
 }
 
@@ -187,7 +187,7 @@ func (t *FromBase64) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 // String implements the fmt.Stringer interface.
 func (t *FromBase64) String() string {
-	return fmt.Sprintf("%s(%s)", t.FunctionName(), t.Child)
+	return fmt.Sprintf("%s(%s)", t.Name(), t.Child)
 }
 
 // IsNullable implements the Expression interface.

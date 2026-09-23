@@ -40,8 +40,8 @@ func NewJSONValid(ctx *sql.Context, args ...sql.Expression) (sql.Expression, err
 	return &JSONValid{args[0]}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (j JSONValid) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (j JSONValid) Name() string {
 	return "json_valid"
 }
 
@@ -60,7 +60,7 @@ func (j JSONValid) Resolved() bool {
 }
 
 func (j JSONValid) String() string {
-	return fmt.Sprintf("%s(%s)", j.FunctionName(), j.JSON.String())
+	return fmt.Sprintf("%s(%s)", j.Name(), j.JSON.String())
 }
 
 func (j JSONValid) Type(ctx *sql.Context) sql.Type {

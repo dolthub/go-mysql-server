@@ -115,8 +115,8 @@ type TimeFormat struct {
 var _ sql.FunctionExpression = (*TimeFormat)(nil)
 var _ sql.CollationCoercible = (*TimeFormat)(nil)
 
-// FunctionName implements sql.FunctionExpression
-func (f *TimeFormat) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (f *TimeFormat) Name() string {
 	return "time_format"
 }
 
@@ -192,7 +192,7 @@ func (f *TimeFormat) IsNullable(ctx *sql.Context) bool {
 }
 
 func (f *TimeFormat) String() string {
-	return fmt.Sprintf("%s(%s,%s)", f.FunctionName(), f.LeftChild, f.RightChild)
+	return fmt.Sprintf("%s(%s,%s)", f.Name(), f.LeftChild, f.RightChild)
 }
 
 // WithChildren implements the Expression interface.

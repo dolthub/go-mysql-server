@@ -29,21 +29,21 @@ type UnaryFunc struct {
 	expression.UnaryExpressionStub
 	// The type returned by the function
 	RetType sql.Type
-	// Name is the name of the function
-	Name string
+	// name is the name of the function
+	name string
 }
 
 func NewUnaryFunc(arg sql.Expression, name string, returnType sql.Type) *UnaryFunc {
 	return &UnaryFunc{
 		UnaryExpressionStub: expression.UnaryExpressionStub{Child: arg},
-		Name:                name,
+		name:                name,
 		RetType:             returnType,
 	}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (uf *UnaryFunc) FunctionName() string {
-	return strings.ToLower(uf.Name)
+// Name implements sql.FunctionExpression
+func (uf *UnaryFunc) Name() string {
+	return strings.ToLower(uf.name)
 }
 
 // EvalChild is a convenience function for safely evaluating a child expression
@@ -57,7 +57,7 @@ func (uf *UnaryFunc) EvalChild(ctx *sql.Context, row sql.Row) (interface{}, erro
 
 // String implements the fmt.Stringer interface.
 func (uf *UnaryFunc) String() string {
-	return fmt.Sprintf("%s(%s)", uf.FunctionName(), uf.Child.String())
+	return fmt.Sprintf("%s(%s)", uf.Name(), uf.Child.String())
 }
 
 // Type implements the Expression interface.

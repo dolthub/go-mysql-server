@@ -36,8 +36,8 @@ func NewNumGeometries(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &NumGeometries{expression.UnaryExpressionStub{Child: e}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (n *NumGeometries) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (n *NumGeometries) Name() string {
 	return "st_numgeometries"
 }
 
@@ -62,7 +62,7 @@ func (*NumGeometries) CollationCoercibility(ctx *sql.Context) (collation sql.Col
 }
 
 func (n *NumGeometries) String() string {
-	return fmt.Sprintf("%s(%s)", n.FunctionName(), n.Child.String())
+	return fmt.Sprintf("%s(%s)", n.Name(), n.Child.String())
 }
 
 // WithChildren implements the Expression interface.
@@ -86,7 +86,7 @@ func (n *NumGeometries) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 
 	gv, err := types.UnwrapGeometry(ctx, val)
 	if err != nil {
-		return nil, sql.ErrInvalidGISData.New(n.FunctionName())
+		return nil, sql.ErrInvalidGISData.New(n.Name())
 	}
 
 	// For GeometryCollection, MultiPoint, MultiLineString, MultiPolygon: return component count

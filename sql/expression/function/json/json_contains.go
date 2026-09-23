@@ -69,8 +69,8 @@ func NewJSONContains(ctx *sql.Context, args ...sql.Expression) (sql.Expression, 
 	return &JSONContains{args[0], args[1], args[2]}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (j *JSONContains) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (j *JSONContains) Name() string {
 	return "json_contains"
 }
 
@@ -101,7 +101,7 @@ func (j *JSONContains) String() string {
 		parts[i] = c.String()
 	}
 
-	return fmt.Sprintf("%s(%s)", j.FunctionName(), strings.Join(parts, ","))
+	return fmt.Sprintf("%s(%s)", j.Name(), strings.Join(parts, ","))
 }
 
 func (j *JSONContains) Type(ctx *sql.Context) sql.Type {

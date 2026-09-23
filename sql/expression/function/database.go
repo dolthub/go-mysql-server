@@ -36,8 +36,8 @@ func NewDatabase(ctx *sql.Context) sql.Expression {
 	return &Database{}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (db *Database) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (db *Database) Name() string {
 	return "database"
 }
 
@@ -61,7 +61,7 @@ func (db *Database) IsNullable(ctx *sql.Context) bool {
 }
 
 func (db *Database) String() string {
-	return fmt.Sprintf("%s()", db.FunctionName())
+	return fmt.Sprintf("%s()", db.Name())
 }
 
 // WithChildren implements the Expression interface.

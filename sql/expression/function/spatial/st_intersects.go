@@ -42,8 +42,8 @@ func NewIntersects(ctx *sql.Context, g1, g2 sql.Expression) sql.Expression {
 	}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (i *Intersects) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (i *Intersects) Name() string {
 	return "st_intersects"
 }
 
@@ -63,11 +63,11 @@ func (*Intersects) CollationCoercibility(ctx *sql.Context) (collation sql.Collat
 }
 
 func (i *Intersects) String() string {
-	return fmt.Sprintf("%s(%s,%s)", i.FunctionName(), i.LeftChild, i.RightChild)
+	return fmt.Sprintf("%s(%s,%s)", i.Name(), i.LeftChild, i.RightChild)
 }
 
 func (i *Intersects) DebugString(ctx *sql.Context) string {
-	return fmt.Sprintf("%s(%s,%s)", i.FunctionName(), sql.DebugString(ctx, i.LeftChild), sql.DebugString(ctx, i.RightChild))
+	return fmt.Sprintf("%s(%s,%s)", i.Name(), sql.DebugString(ctx, i.LeftChild), sql.DebugString(ctx, i.RightChild))
 }
 
 // WithChildren implements the Expression interface.
@@ -364,7 +364,7 @@ func (i *Intersects) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	g1, g2, err := validateGeomComp(ctx, geom1, geom2, i.FunctionName())
+	g1, g2, err := validateGeomComp(ctx, geom1, geom2, i.Name())
 	if err != nil {
 		return nil, err
 	}

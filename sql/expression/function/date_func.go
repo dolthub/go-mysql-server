@@ -33,8 +33,8 @@ type Date struct {
 var _ sql.FunctionExpression = (*Date)(nil)
 var _ sql.CollationCoercible = (*Date)(nil)
 
-// FunctionName implements sql.FunctionExpression
-func (d *Date) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (d *Date) Name() string {
 	return "date"
 }
 

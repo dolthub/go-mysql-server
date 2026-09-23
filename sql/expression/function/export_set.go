@@ -57,8 +57,8 @@ func NewExportSet(ctx *sql.Context, args ...sql.Expression) (sql.Expression, err
 	}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (e *ExportSet) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (e *ExportSet) Name() string {
 	return "export_set"
 }
 

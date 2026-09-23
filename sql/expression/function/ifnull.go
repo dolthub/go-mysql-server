@@ -40,8 +40,8 @@ func NewIfNull(ctx *sql.Context, ex, value sql.Expression) sql.Expression {
 	}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (f *IfNull) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (f *IfNull) Name() string {
 	return "ifnull"
 }
 

@@ -54,8 +54,8 @@ func NewRand(ctx *sql.Context, exprs ...sql.Expression) (sql.Expression, error) 
 	return &Rand{}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (r *Rand) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (r *Rand) Name() string {
 	return "rand"
 }
 
@@ -91,9 +91,9 @@ func (r *Rand) Resolved() bool {
 
 func (r *Rand) String() string {
 	if r.Child != nil {
-		return fmt.Sprintf("%s(%s)", r.FunctionName(), r.Child)
+		return fmt.Sprintf("%s(%s)", r.Name(), r.Child)
 	}
-	return fmt.Sprintf("%s()", r.FunctionName())
+	return fmt.Sprintf("%s()", r.Name())
 }
 
 // WithChildren implements sql.Expression.
@@ -441,8 +441,8 @@ func NewAtan(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	return nil, sql.ErrInvalidArgumentNumber.New("atan", "1 or 2", len(args))
 }
 
-// FunctionName implements sql.FunctionExpression
-func (a *Atan) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (a *Atan) Name() string {
 	return "atan"
 }
 
@@ -460,9 +460,9 @@ func (a *Atan) Resolved() bool {
 // String implements sql.Expression
 func (a *Atan) String() string {
 	if a.x != nil {
-		return fmt.Sprintf("%s(%s, %s)", a.FunctionName(), a.y, a.x)
+		return fmt.Sprintf("%s(%s, %s)", a.Name(), a.y, a.x)
 	}
-	return fmt.Sprintf("%s(%s)", a.FunctionName(), a.y)
+	return fmt.Sprintf("%s(%s)", a.Name(), a.y)
 }
 
 // Type implements sql.Expression
@@ -596,7 +596,7 @@ func (c *Cot) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	res := 1.0 / tan
 	if math.IsInf(res, 0) {
-		return nil, sql.ErrValueOutOfRange.New("DOUBLE", c.Name)
+		return nil, sql.ErrValueOutOfRange.New("DOUBLE", c.name)
 	}
 
 	return res, nil
@@ -622,8 +622,8 @@ func NewDegrees(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &Degrees{NewUnaryFunc(arg, "DEGREES", types.Float64)}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (d *Degrees) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (d *Degrees) Name() string {
 	return "degrees"
 }
 
@@ -928,8 +928,8 @@ func NewPi(ctx *sql.Context) sql.Expression {
 var _ sql.FunctionExpression = &Pi{}
 var _ sql.CollationCoercible = &Pi{}
 
-// FunctionName implements sql.FunctionExpression
-func (p *Pi) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (p *Pi) Name() string {
 	return "pi"
 }
 
@@ -945,7 +945,7 @@ func (p *Pi) Resolved() bool {
 
 // String implements sql.Expression
 func (p *Pi) String() string {
-	return fmt.Sprintf("%s()", p.FunctionName())
+	return fmt.Sprintf("%s()", p.Name())
 }
 
 // Type implements sql.Expression

@@ -61,8 +61,8 @@ func NewJSONMergePatch(ctx *sql.Context, args ...sql.Expression) (sql.Expression
 	return &JSONMergePatch{JSONs: args}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (j *JSONMergePatch) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (j *JSONMergePatch) Name() string {
 	return "json_merge_patch"
 }
 
@@ -88,7 +88,7 @@ func (j *JSONMergePatch) String() string {
 	for i, c := range children {
 		parts[i] = c.String()
 	}
-	return fmt.Sprintf("%s(%s)", j.FunctionName(), strings.Join(parts, ","))
+	return fmt.Sprintf("%s(%s)", j.Name(), strings.Join(parts, ","))
 }
 
 // Type implements the Expression interface.

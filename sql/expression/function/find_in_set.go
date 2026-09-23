@@ -41,8 +41,8 @@ func NewFindInSet(ctx *sql.Context, e1, e2 sql.Expression) sql.Expression {
 	}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (f *FindInSet) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (f *FindInSet) Name() string {
 	return "find_in_set"
 }
 
@@ -60,7 +60,7 @@ func (*FindInSet) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 }
 
 func (f *FindInSet) String() string {
-	return fmt.Sprintf("%s(%s, %s)", f.FunctionName(), f.LeftChild, f.RightChild)
+	return fmt.Sprintf("%s(%s, %s)", f.Name(), f.LeftChild, f.RightChild)
 }
 
 // WithChildren implements the Expression interface.

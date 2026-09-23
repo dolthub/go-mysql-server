@@ -42,8 +42,8 @@ func NewCoalesce(ctx *sql.Context, args ...sql.Expression) (sql.Expression, erro
 	return &Coalesce{args: args}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (c *Coalesce) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (c *Coalesce) Name() string {
 	return "coalesce"
 }
 
@@ -159,7 +159,7 @@ func (c *Coalesce) String() string {
 	for i, arg := range c.args {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("%s(%s)", c.FunctionName(), strings.Join(args, ","))
+	return fmt.Sprintf("%s(%s)", c.Name(), strings.Join(args, ","))
 }
 
 func (c *Coalesce) DebugString(ctx *sql.Context) string {
@@ -167,7 +167,7 @@ func (c *Coalesce) DebugString(ctx *sql.Context) string {
 	for i, arg := range c.args {
 		args[i] = sql.DebugString(ctx, arg)
 	}
-	return fmt.Sprintf("%s(%s)", c.FunctionName(), strings.Join(args, ","))
+	return fmt.Sprintf("%s(%s)", c.Name(), strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.

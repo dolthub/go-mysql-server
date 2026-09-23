@@ -35,8 +35,8 @@ func NewIsEmpty(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &IsEmpty{expression.UnaryExpressionStub{Child: e}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (i *IsEmpty) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (i *IsEmpty) Name() string {
 	return "st_isempty"
 }
 
@@ -61,7 +61,7 @@ func (*IsEmpty) CollationCoercibility(ctx *sql.Context) (collation sql.Collation
 }
 
 func (i *IsEmpty) String() string {
-	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String())
+	return fmt.Sprintf("%s(%s)", i.Name(), i.Child.String())
 }
 
 // WithChildren implements the Expression interface.
@@ -85,7 +85,7 @@ func (i *IsEmpty) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	gv, err := types.UnwrapGeometry(ctx, val)
 	if err != nil {
-		return nil, sql.ErrInvalidGISData.New(i.FunctionName())
+		return nil, sql.ErrInvalidGISData.New(i.Name())
 	}
 
 	// In MySQL, only an empty GeometryCollection is considered "empty".

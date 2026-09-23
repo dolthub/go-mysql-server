@@ -44,8 +44,8 @@ func NewMakeSet(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error
 	}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (m *MakeSet) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (m *MakeSet) Name() string {
 	return "make_set"
 }
 

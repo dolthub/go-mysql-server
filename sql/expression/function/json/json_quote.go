@@ -46,8 +46,8 @@ func NewJSONQuote(ctx *sql.Context, json sql.Expression) sql.Expression {
 	return &JSONQuote{expression.UnaryExpressionStub{Child: json}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (js *JSONQuote) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (js *JSONQuote) Name() string {
 	return "json_quote"
 }
 
@@ -58,7 +58,7 @@ func (js *JSONQuote) Description() string {
 
 // String implements the fmt.Stringer interface.
 func (js *JSONQuote) String() string {
-	return fmt.Sprintf("%s(%s)", js.FunctionName(), js.Child)
+	return fmt.Sprintf("%s(%s)", js.Name(), js.Child)
 }
 
 // Type implements the Expression interface.

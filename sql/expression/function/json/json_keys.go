@@ -54,8 +54,8 @@ func NewJSONKeys(ctx *sql.Context, args ...sql.Expression) (sql.Expression, erro
 	return nil, sql.ErrInvalidArgumentNumber.New("JSON_KEYS", "1 or 2", len(args))
 }
 
-// FunctionName implements sql.FunctionExpression
-func (j *JSONKeys) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (j *JSONKeys) Name() string {
 	return "json_keys"
 }
 
@@ -71,7 +71,7 @@ func (j *JSONKeys) Resolved() bool {
 
 // String implements sql.Expression
 func (j *JSONKeys) String() string {
-	return fmt.Sprintf("%s(%s, %s)", j.FunctionName(), j.JSON.String(), j.Path.String())
+	return fmt.Sprintf("%s(%s, %s)", j.Name(), j.JSON.String(), j.Path.String())
 }
 
 // Type implements sql.Expression
@@ -86,7 +86,7 @@ func (j *JSONKeys) IsNullable(ctx *sql.Context) bool {
 
 // Eval implements sql.Expression
 func (j *JSONKeys) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	span, ctx := ctx.Span(fmt.Sprintf("function.%s", j.FunctionName()))
+	span, ctx := ctx.Span(fmt.Sprintf("function.%s", j.Name()))
 	defer span.End()
 
 	doc, err := getJSONDocumentFromRow(ctx, row, j.JSON)

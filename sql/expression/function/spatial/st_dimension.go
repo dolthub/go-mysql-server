@@ -35,8 +35,8 @@ func NewDimension(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &Dimension{expression.UnaryExpressionStub{Child: e}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (p *Dimension) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (p *Dimension) Name() string {
 	return "st_dimension"
 }
 
@@ -61,7 +61,7 @@ func (*Dimension) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 }
 
 func (p *Dimension) String() string {
-	return fmt.Sprintf("%s(%s)", p.FunctionName(), p.Child.String())
+	return fmt.Sprintf("%s(%s)", p.Name(), p.Child.String())
 }
 
 // WithChildren implements the Expression interface.

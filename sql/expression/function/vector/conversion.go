@@ -35,7 +35,7 @@ func NewStringToVector(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &StringToVector{UnaryExpressionStub: expression.UnaryExpressionStub{Child: e}}
 }
 
-func (s *StringToVector) FunctionName() string {
+func (s *StringToVector) Name() string {
 	return "string_to_vector"
 }
 
@@ -93,7 +93,7 @@ func NewVectorToString(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &VectorToString{UnaryExpressionStub: expression.UnaryExpressionStub{Child: e}}
 }
 
-func (v *VectorToString) FunctionName() string {
+func (v *VectorToString) Name() string {
 	return "vector_to_string"
 }
 

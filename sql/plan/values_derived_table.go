@@ -161,7 +161,7 @@ func getSchema(ctx *sql.Context, rows [][]sql.Expression) sql.Schema {
 		for i, val := range exprs {
 			if s[i] == nil {
 				var name string
-				if n, ok := val.(sql.Nameable); ok {
+				if n, ok := val.(sql.Nameable); ok && !sql.IsFunctionExpression(val) {
 					name = n.Name()
 				} else {
 					name = val.String()

@@ -45,8 +45,8 @@ func NewJSONType(ctx *sql.Context, args ...sql.Expression) (sql.Expression, erro
 	return &JSONType{JSON: args[0]}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (j JSONType) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (j JSONType) Name() string {
 	return "json_type"
 }
 
@@ -62,7 +62,7 @@ func (j JSONType) Resolved() bool {
 
 // String implements fmt.Stringer
 func (j JSONType) String() string {
-	return fmt.Sprintf("%s(%s)", j.FunctionName(), j.JSON.String())
+	return fmt.Sprintf("%s(%s)", j.Name(), j.JSON.String())
 }
 
 // Type implements sql.Expression
@@ -77,7 +77,7 @@ func (j JSONType) IsNullable(ctx *sql.Context) bool {
 
 // Eval implements sql.Expression
 func (j JSONType) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	span, ctx := ctx.Span(fmt.Sprintf("function.%s", j.FunctionName()))
+	span, ctx := ctx.Span(fmt.Sprintf("function.%s", j.Name()))
 	defer span.End()
 
 	doc, err := getJSONDocumentFromRow(ctx, row, j.JSON)

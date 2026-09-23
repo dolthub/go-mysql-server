@@ -200,7 +200,7 @@ func ExprWithNode(ctx *sql.Context, n sql.Node, e sql.Expression, f ExprWithNode
 // and Table() methods will use these; otherwise, String() and "" are used, respectively. The type and nullability are
 // taken from the expression directly.
 func ExpressionToColumn(ctx *sql.Context, e sql.Expression, name string) *sql.Column {
-	if n, ok := e.(sql.Nameable); ok {
+	if n, ok := e.(sql.Nameable); ok && !sql.IsFunctionExpression(e) {
 		name = n.Name()
 	}
 

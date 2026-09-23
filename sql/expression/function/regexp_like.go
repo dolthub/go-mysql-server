@@ -66,8 +66,8 @@ func NewRegexpLike(ctx *sql.Context, args ...sql.Expression) (sql.Expression, er
 	return r, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (r *RegexpLike) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (r *RegexpLike) Name() string {
 	return "regexp_like"
 }
 
@@ -134,7 +134,7 @@ func (r *RegexpLike) String() string {
 	for _, e := range r.Children() {
 		args = append(args, e.String())
 	}
-	return fmt.Sprintf("%s(%s)", r.FunctionName(), strings.Join(args, ","))
+	return fmt.Sprintf("%s(%s)", r.Name(), strings.Join(args, ","))
 }
 
 // compile handles compilation of the regex.
@@ -143,7 +143,7 @@ func (r *RegexpLike) compile(ctx *sql.Context, row sql.Row) {
 		r.cacheRegex = canBeCached(ctx, r.Pattern, r.Flags)
 		r.cacheVal = r.cacheRegex && canBeCached(ctx, r.Text)
 		if r.cacheRegex {
-			r.re, r.compileErr = compileRegex(ctx, r.Pattern, r.Text, r.Flags, r.FunctionName(), row)
+			r.re, r.compileErr = compileRegex(ctx, r.Pattern, r.Text, r.Flags, r.Name(), row)
 		}
 	})
 	if !r.cacheRegex {
@@ -152,7 +152,7 @@ func (r *RegexpLike) compile(ctx *sql.Context, row sql.Row) {
 				return
 			}
 		}
-		r.re, r.compileErr = compileRegex(ctx, r.Pattern, r.Text, r.Flags, r.FunctionName(), row)
+		r.re, r.compileErr = compileRegex(ctx, r.Pattern, r.Text, r.Flags, r.Name(), row)
 	}
 }
 

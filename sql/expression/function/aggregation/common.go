@@ -87,7 +87,7 @@ func (a *unaryAggBase) CollationCoercibility(ctx *sql.Context) (collation sql.Co
 }
 
 func (a *unaryAggBase) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return nil, ErrEvalUnsupportedOnAggregation.New(a.FunctionName())
+	return nil, ErrEvalUnsupportedOnAggregation.New(a.Name())
 }
 
 func (a *unaryAggBase) Children() []sql.Expression {
@@ -129,7 +129,7 @@ func (a *unaryAggBase) WithChildren(ctx *sql.Context, children ...sql.Expression
 	return &na, nil
 }
 
-func (a *unaryAggBase) FunctionName() string {
+func (a *unaryAggBase) Name() string {
 	return a.functionName
 }
 

@@ -55,8 +55,8 @@ func NewCharLength(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &Length{expression.UnaryExpressionStub{Child: e}, NumChars}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (l *Length) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (l *Length) Name() string {
 	if l.CountType == NumChars {
 		return "character_length"
 	} else if l.CountType == NumBytes {

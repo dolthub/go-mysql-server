@@ -363,7 +363,7 @@ func getFloatOrMaxDecimalType(ctx *sql.Context, e sql.Expression, treatIntsAsFlo
 			}
 		case sql.FunctionExpression:
 			// Mod.Type(ctx) calls this, so ignore it for infinite loop
-			if c.FunctionName() != "mod" {
+			if c.Name() != "mod" {
 				resType = c.Type(ctx)
 				if dtTyp, ok := resType.(sql.DatetimeType); ok {
 					switch dtTyp.Type() {

@@ -38,8 +38,8 @@ func NewInetAton(ctx *sql.Context, val sql.Expression) sql.Expression {
 	return &InetAton{expression.UnaryExpressionStub{Child: val}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (i *InetAton) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (i *InetAton) Name() string {
 	return "inet_aton"
 }
 
@@ -49,7 +49,7 @@ func (i *InetAton) Description() string {
 }
 
 func (i *InetAton) String() string {
-	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String())
+	return fmt.Sprintf("%s(%s)", i.Name(), i.Child.String())
 }
 
 func (i *InetAton) Type(ctx *sql.Context) sql.Type {
@@ -90,7 +90,7 @@ func (i *InetAton) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	ip := net.ParseIP(ipstr)
 	if ip == nil {
 		// Failed to Parse IP correctly
-		ctx.Warn(1411, "Incorrect string value: ''%s'' for function %s", ipstr, i.FunctionName())
+		ctx.Warn(1411, "Incorrect string value: ''%s'' for function %s", ipstr, i.Name())
 		return nil, nil
 	}
 
@@ -98,7 +98,7 @@ func (i *InetAton) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	ipv4 := ip.To4()
 	if ipv4 == nil {
 		// Received invalid IPv4 address (IPv6 address are invalid)
-		ctx.Warn(1411, "Incorrect string value: ''%s'' for function %s", ipstr, i.FunctionName())
+		ctx.Warn(1411, "Incorrect string value: ''%s'' for function %s", ipstr, i.Name())
 		return nil, nil
 	}
 
@@ -118,8 +118,8 @@ func NewInet6Aton(ctx *sql.Context, val sql.Expression) sql.Expression {
 	return &Inet6Aton{expression.UnaryExpressionStub{Child: val}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (i *Inet6Aton) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (i *Inet6Aton) Name() string {
 	return "inet6_aton"
 }
 
@@ -129,7 +129,7 @@ func (i *Inet6Aton) Description() string {
 }
 
 func (i *Inet6Aton) String() string {
-	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String())
+	return fmt.Sprintf("%s(%s)", i.Name(), i.Child.String())
 }
 
 func (i *Inet6Aton) Type(ctx *sql.Context) sql.Type {
@@ -162,7 +162,7 @@ func (i *Inet6Aton) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	ipstr, ok := val.(string)
 	if !ok {
-		ctx.Warn(1411, "Incorrect string value: ''%v'' for function %s", val, i.FunctionName())
+		ctx.Warn(1411, "Incorrect string value: ''%v'' for function %s", val, i.Name())
 		return nil, nil
 	}
 
@@ -170,7 +170,7 @@ func (i *Inet6Aton) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	ip := net.ParseIP(ipstr)
 	if ip == nil {
 		// Failed to Parse IP correctly
-		ctx.Warn(1411, "Incorrect string value: ''%s'' for function %s", ipstr, i.FunctionName())
+		ctx.Warn(1411, "Incorrect string value: ''%s'' for function %s", ipstr, i.Name())
 		return nil, nil
 	}
 
@@ -184,7 +184,7 @@ func (i *Inet6Aton) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	ipv6 := ip.To16()
 	if ipv6 == nil {
 		// Invalid IPv6 address
-		ctx.Warn(1411, "Incorrect string value: ''%s'' for function %s", ipstr, i.FunctionName())
+		ctx.Warn(1411, "Incorrect string value: ''%s'' for function %s", ipstr, i.Name())
 		return nil, nil
 	}
 
@@ -203,8 +203,8 @@ func NewInetNtoa(ctx *sql.Context, val sql.Expression) sql.Expression {
 	return &InetNtoa{expression.UnaryExpressionStub{Child: val}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (i *InetNtoa) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (i *InetNtoa) Name() string {
 	return "inet_ntoa"
 }
 
@@ -214,7 +214,7 @@ func (i *InetNtoa) Description() string {
 }
 
 func (i *InetNtoa) String() string {
-	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String())
+	return fmt.Sprintf("%s(%s)", i.Name(), i.Child.String())
 }
 
 func (i *InetNtoa) Type(ctx *sql.Context) sql.Type {
@@ -277,8 +277,8 @@ func NewInet6Ntoa(ctx *sql.Context, val sql.Expression) sql.Expression {
 	return &Inet6Ntoa{expression.UnaryExpressionStub{Child: val}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (i *Inet6Ntoa) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (i *Inet6Ntoa) Name() string {
 	return "inet6_ntoa"
 }
 
@@ -288,7 +288,7 @@ func (i *Inet6Ntoa) Description() string {
 }
 
 func (i *Inet6Ntoa) String() string {
-	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String())
+	return fmt.Sprintf("%s(%s)", i.Name(), i.Child.String())
 }
 
 func (i *Inet6Ntoa) Type(ctx *sql.Context) sql.Type {
@@ -330,7 +330,7 @@ func (i *Inet6Ntoa) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 		// There must be exactly 4 or 16 bytes (len == 4 satisfied above)
 		if len(ipbytes) != 16 {
-			ctx.Warn(1411, "Incorrect string value: ''%s'' for function %s", string(ipbytes), i.FunctionName())
+			ctx.Warn(1411, "Incorrect string value: ''%s'' for function %s", string(ipbytes), i.Name())
 			return nil, nil
 		}
 
@@ -359,7 +359,7 @@ func (i *Inet6Ntoa) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		var ipv6 net.IP = ipbytes
 		return ipv6.String(), nil
 	default:
-		ctx.Warn(1411, "Incorrect string value: ''%v'' for function %s", val, i.FunctionName())
+		ctx.Warn(1411, "Incorrect string value: ''%v'' for function %s", val, i.Name())
 		return nil, nil
 	}
 }

@@ -58,8 +58,8 @@ func NewCeil(ctx *sql.Context, num sql.Expression) sql.Expression {
 	return &Ceil{expression.UnaryExpressionStub{Child: num}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (c *Ceil) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (c *Ceil) Name() string {
 	return "ceil"
 }
 
@@ -86,7 +86,7 @@ func (*Ceil) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID,
 }
 
 func (c *Ceil) String() string {
-	return fmt.Sprintf("%s(%s)", c.FunctionName(), c.Child)
+	return fmt.Sprintf("%s(%s)", c.Name(), c.Child)
 }
 
 // WithChildren implements the Expression interface.
@@ -146,8 +146,8 @@ func NewFloor(ctx *sql.Context, num sql.Expression) sql.Expression {
 	return &Floor{expression.UnaryExpressionStub{Child: num}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (f *Floor) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (f *Floor) Name() string {
 	return "floor"
 }
 
@@ -174,7 +174,7 @@ func (*Floor) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID
 }
 
 func (f *Floor) String() string {
-	return fmt.Sprintf("%s(%s)", f.FunctionName(), f.Child)
+	return fmt.Sprintf("%s(%s)", f.Name(), f.Child)
 }
 
 // WithChildren implements the Expression interface.
@@ -251,8 +251,8 @@ func NewRound(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) 
 	}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (r *Round) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (r *Round) Name() string {
 	return "round"
 }
 
@@ -347,9 +347,9 @@ func (r *Round) IsNullable(ctx *sql.Context) bool {
 
 func (r *Round) String() string {
 	if r.Dec == nil {
-		return fmt.Sprintf("%s(%s,0)", r.FunctionName(), r.Num.String())
+		return fmt.Sprintf("%s(%s,0)", r.Name(), r.Num.String())
 	}
-	return fmt.Sprintf("%s(%s,%s)", r.FunctionName(), r.Num.String(), r.Dec.String())
+	return fmt.Sprintf("%s(%s,%s)", r.Name(), r.Num.String(), r.Dec.String())
 }
 
 // Resolved implements the Expression interface.

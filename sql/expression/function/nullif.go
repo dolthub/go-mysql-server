@@ -40,8 +40,8 @@ func NewNullIf(ctx *sql.Context, ex1, ex2 sql.Expression) sql.Expression {
 	}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (f *NullIf) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (f *NullIf) Name() string {
 	return "nullif"
 }
 
@@ -90,7 +90,7 @@ func (f *NullIf) IsNullable(ctx *sql.Context) bool {
 }
 
 func (f *NullIf) String() string {
-	return fmt.Sprintf("%s(%s,%s)", f.FunctionName(), f.LeftChild, f.RightChild)
+	return fmt.Sprintf("%s(%s,%s)", f.Name(), f.LeftChild, f.RightChild)
 }
 
 // WithChildren implements the Expression interface.

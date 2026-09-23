@@ -386,7 +386,7 @@ func (b *Builder) newAggregation(e *ast.FuncExpr, name string, args []sql.Expres
 
 		agg, ok = newInst.(sql.Aggregation)
 		if !ok {
-			err := fmt.Errorf("expected function to be aggregation: %s", f.FunctionName())
+			err := fmt.Errorf("expected function to be aggregation: %s", f.Name())
 			b.handleErr(err)
 		}
 	}
@@ -584,7 +584,7 @@ func (b *Builder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, 
 
 		win, ok = newInst.(sql.WindowAdaptableExpression)
 		if !ok {
-			err := fmt.Errorf("function is not a window adaptable exprssion: %s", f.FunctionName())
+			err := fmt.Errorf("function is not a window adaptable exprssion: %s", f.Name())
 			b.handleErr(err)
 		}
 	}

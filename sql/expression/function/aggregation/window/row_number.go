@@ -84,8 +84,8 @@ func (r *RowNumber) DebugString(ctx *sql.Context) string {
 	return sb.String()
 }
 
-// FunctionName implements sql.FunctionExpression
-func (r *RowNumber) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (r *RowNumber) Name() string {
 	return "ROW_NUMBER"
 }
 
@@ -106,7 +106,7 @@ func (r *RowNumber) IsNullable(ctx *sql.Context) bool {
 
 // Eval implements sql.Expression
 func (r *RowNumber) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return nil, sql.ErrWindowUnsupported.New(r.FunctionName())
+	return nil, sql.ErrWindowUnsupported.New(r.Name())
 }
 
 // Children implements sql.Expression

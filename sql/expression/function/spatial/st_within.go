@@ -41,8 +41,8 @@ func NewWithin(ctx *sql.Context, g1, g2 sql.Expression) sql.Expression {
 	}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (w *Within) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (w *Within) Name() string {
 	return "st_within"
 }
 
@@ -62,7 +62,7 @@ func (*Within) CollationCoercibility(ctx *sql.Context) (collation sql.CollationI
 }
 
 func (w *Within) String() string {
-	return fmt.Sprintf("%s(%s,%s)", w.FunctionName(), w.LeftChild, w.RightChild)
+	return fmt.Sprintf("%s(%s,%s)", w.Name(), w.LeftChild, w.RightChild)
 }
 
 // WithChildren implements the Expression interface.
@@ -234,7 +234,7 @@ func (w *Within) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	g1, g2, err := validateGeomComp(ctx, geom1, geom2, w.FunctionName())
+	g1, g2, err := validateGeomComp(ctx, geom1, geom2, w.Name())
 	if err != nil {
 		return nil, err
 	}
@@ -245,17 +245,17 @@ func (w *Within) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// TODO (james): remove this switch block when the other comparisons are implemented
 	switch g1.(type) {
 	case types.LineString:
-		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("LineString", w.FunctionName())
+		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("LineString", w.Name())
 	case types.Polygon:
-		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("Polygon", w.FunctionName())
+		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("Polygon", w.Name())
 	case types.MultiPoint:
-		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("MultiPoint", w.FunctionName())
+		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("MultiPoint", w.Name())
 	case types.MultiLineString:
-		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("MultiLineString", w.FunctionName())
+		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("MultiLineString", w.Name())
 	case types.MultiPolygon:
-		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("MultiPolygon", w.FunctionName())
+		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("MultiPolygon", w.Name())
 	case types.GeomColl:
-		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("GeomColl", w.FunctionName())
+		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("GeomColl", w.Name())
 	}
 
 	return isWithin(g1, g2), nil

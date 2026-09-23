@@ -41,8 +41,8 @@ func NewExtract(ctx *sql.Context, e1, e2 sql.Expression) sql.Expression {
 	}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (td *Extract) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (td *Extract) Name() string {
 	return "extract"
 }
 
@@ -65,7 +65,7 @@ func (*Extract) CollationCoercibility(ctx *sql.Context) (collation sql.Collation
 }
 
 func (td *Extract) String() string {
-	return fmt.Sprintf("%s(%s from %s)", td.FunctionName(), td.LeftChild, td.RightChild)
+	return fmt.Sprintf("%s(%s from %s)", td.Name(), td.LeftChild, td.RightChild)
 }
 
 // WithChildren implements the Expression interface.

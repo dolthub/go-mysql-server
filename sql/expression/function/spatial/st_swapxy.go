@@ -35,8 +35,8 @@ func NewSwapXY(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &SwapXY{expression.UnaryExpressionStub{Child: e}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (s *SwapXY) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (s *SwapXY) Name() string {
 	return "st_swapxy"
 }
 
@@ -61,7 +61,7 @@ func (*SwapXY) CollationCoercibility(ctx *sql.Context) (collation sql.CollationI
 }
 
 func (s *SwapXY) String() string {
-	return fmt.Sprintf("%s(%s)", s.FunctionName(), s.Child.String())
+	return fmt.Sprintf("%s(%s)", s.Name(), s.Child.String())
 }
 
 // WithChildren implements the Expression interface.
@@ -88,7 +88,7 @@ func (s *SwapXY) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Expect one of the geometry types
 	gv, err := types.UnwrapGeometry(ctx, val)
 	if err != nil {
-		return nil, sql.ErrInvalidGISData.New(s.FunctionName())
+		return nil, sql.ErrInvalidGISData.New(s.Name())
 	}
 	return gv.Swap(), nil
 }

@@ -110,7 +110,7 @@ func (j JSONContainsPath) String() string {
 	for i, c := range children {
 		parts[i] = c.String()
 	}
-	return fmt.Sprintf("%s(%s)", j.FunctionName(), strings.Join(parts, ","))
+	return fmt.Sprintf("%s(%s)", j.Name(), strings.Join(parts, ","))
 }
 
 func (j JSONContainsPath) Type(ctx *sql.Context) sql.Type {
@@ -156,8 +156,8 @@ func NewJSONContainsPath(ctx *sql.Context, args ...sql.Expression) (sql.Expressi
 	return &JSONContainsPath{args[0], args[1], args[2:]}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (j JSONContainsPath) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (j JSONContainsPath) Name() string {
 	return "json_contains_path"
 }
 

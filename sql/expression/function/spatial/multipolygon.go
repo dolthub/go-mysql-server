@@ -40,8 +40,8 @@ func NewMultiPolygon(ctx *sql.Context, args ...sql.Expression) (sql.Expression, 
 	return &MultiPolygon{expression.NaryExpression{ChildExpressions: args}}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (p *MultiPolygon) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (p *MultiPolygon) Name() string {
 	return "multipolygon"
 }
 
@@ -65,7 +65,7 @@ func (p *MultiPolygon) String() string {
 	for i, arg := range p.ChildExpressions {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("%s(%s)", p.FunctionName(), strings.Join(args, ","))
+	return fmt.Sprintf("%s(%s)", p.Name(), strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.
@@ -89,7 +89,7 @@ func (p *MultiPolygon) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 		case types.Polygon:
 			polys[i] = v
 		case types.GeometryValue:
-			return nil, sql.ErrInvalidArgumentDetails.New(p.FunctionName(), v)
+			return nil, sql.ErrInvalidArgumentDetails.New(p.Name(), v)
 		default:
 			return nil, sql.ErrIllegalGISValue.New(v)
 		}

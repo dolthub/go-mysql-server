@@ -35,8 +35,8 @@ func NewNumPoints(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &NumPoints{expression.UnaryExpressionStub{Child: e}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (n *NumPoints) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (n *NumPoints) Name() string {
 	return "st_numpoints"
 }
 
@@ -61,7 +61,7 @@ func (*NumPoints) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 }
 
 func (n *NumPoints) String() string {
-	return fmt.Sprintf("%s(%s)", n.FunctionName(), n.Child.String())
+	return fmt.Sprintf("%s(%s)", n.Name(), n.Child.String())
 }
 
 // WithChildren implements the Expression interface.
@@ -85,7 +85,7 @@ func (n *NumPoints) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	gv, err := types.UnwrapGeometry(ctx, val)
 	if err != nil {
-		return nil, sql.ErrInvalidGISData.New(n.FunctionName())
+		return nil, sql.ErrInvalidGISData.New(n.Name())
 	}
 
 	// ST_NumPoints is only defined for LineString; returns NULL for other types

@@ -304,7 +304,7 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 					}
 					groupBys[exprStr] = true
 
-					if nameable, ok := expr.(sql.Nameable); ok {
+					if nameable, ok := expr.(sql.Nameable); ok && !sql.IsFunctionExpression(expr) {
 						groupBys[strings.ToLower(nameable.Name())] = true
 					}
 					_, isAlias := expr.(*expression.Alias)
@@ -464,7 +464,7 @@ func expressionReferencesOnlyGroupBys(ctx *sql.Context, groupBys map[string]bool
 				return false
 			}
 
-			if nameable, ok := expr.(sql.Nameable); ok {
+			if nameable, ok := expr.(sql.Nameable); ok && !sql.IsFunctionExpression(expr) {
 				if groupBys[strings.ToLower(nameable.Name())] {
 					return false
 				}

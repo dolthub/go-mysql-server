@@ -36,8 +36,8 @@ func NewIsIPv4(ctx *sql.Context, val sql.Expression) sql.Expression {
 	return &IsIPv4{expression.UnaryExpressionStub{Child: val}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (i *IsIPv4) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (i *IsIPv4) Name() string {
 	return "is_ipv4"
 }
 
@@ -47,7 +47,7 @@ func (i *IsIPv4) Description() string {
 }
 
 func (i *IsIPv4) String() string {
-	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String())
+	return fmt.Sprintf("%s(%s)", i.Name(), i.Child.String())
 }
 
 func (i *IsIPv4) Type(ctx *sql.Context) sql.Type { return types.Boolean }
@@ -104,8 +104,8 @@ func NewIsIPv6(ctx *sql.Context, val sql.Expression) sql.Expression {
 	return &IsIPv6{expression.UnaryExpressionStub{Child: val}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (i *IsIPv6) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (i *IsIPv6) Name() string {
 	return "is_ipv6"
 }
 
@@ -115,7 +115,7 @@ func (i *IsIPv6) Description() string {
 }
 
 func (i *IsIPv6) String() string {
-	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String())
+	return fmt.Sprintf("%s(%s)", i.Name(), i.Child.String())
 }
 
 func (i *IsIPv6) Type(ctx *sql.Context) sql.Type { return types.Boolean }
@@ -172,8 +172,8 @@ func NewIsIPv4Compat(ctx *sql.Context, val sql.Expression) sql.Expression {
 	return &IsIPv4Compat{expression.UnaryExpressionStub{Child: val}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (i *IsIPv4Compat) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (i *IsIPv4Compat) Name() string {
 	return "is_ipv4_compat"
 }
 
@@ -183,7 +183,7 @@ func (i *IsIPv4Compat) Description() string {
 }
 
 func (i *IsIPv4Compat) String() string {
-	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String())
+	return fmt.Sprintf("%s(%s)", i.Name(), i.Child.String())
 }
 
 func (i *IsIPv4Compat) Type(ctx *sql.Context) sql.Type { return types.Boolean }
@@ -244,8 +244,8 @@ func NewIsIPv4Mapped(ctx *sql.Context, val sql.Expression) sql.Expression {
 	return &IsIPv4Mapped{expression.UnaryExpressionStub{Child: val}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (i *IsIPv4Mapped) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (i *IsIPv4Mapped) Name() string {
 	return "is_ipv4_mapped"
 }
 
@@ -255,7 +255,7 @@ func (i *IsIPv4Mapped) Description() string {
 }
 
 func (i *IsIPv4Mapped) String() string {
-	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String())
+	return fmt.Sprintf("%s(%s)", i.Name(), i.Child.String())
 }
 
 func (i *IsIPv4Mapped) Type(ctx *sql.Context) sql.Type { return types.Boolean }

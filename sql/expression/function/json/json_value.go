@@ -56,8 +56,8 @@ func NewJsonValue(ctx *sql.Context, args ...sql.Expression) (sql.Expression, err
 	}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (j *JsonValue) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (j *JsonValue) Name() string {
 	return "json_value"
 }
 

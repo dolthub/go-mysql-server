@@ -94,8 +94,8 @@ func NewJSONSearch(ctx *sql.Context, args ...sql.Expression) (sql.Expression, er
 	}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (j *JSONSearch) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (j *JSONSearch) Name() string {
 	return "json_search"
 }
 
@@ -126,7 +126,7 @@ func (j *JSONSearch) String() string {
 			args = append(args, path.String())
 		}
 	}
-	return fmt.Sprintf("%s(%s)", j.FunctionName(), strings.Join(args, ", "))
+	return fmt.Sprintf("%s(%s)", j.Name(), strings.Join(args, ", "))
 }
 
 // Type implements sql.Expression
@@ -185,7 +185,7 @@ func jsonSearch(json interface{}, matcher *expression.LikeMatcher, currPath stri
 
 // Eval implements sql.Expression
 func (j *JSONSearch) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	span, ctx := ctx.Span(fmt.Sprintf("function.%s", j.FunctionName()))
+	span, ctx := ctx.Span(fmt.Sprintf("function.%s", j.Name()))
 	defer span.End()
 
 	doc, err := getJSONDocumentFromRow(ctx, row, j.JSON)

@@ -39,8 +39,8 @@ func NewSRID(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	return &SRID{expression.NaryExpression{ChildExpressions: args}}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (s *SRID) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (s *SRID) Name() string {
 	return "st_srid"
 }
 
@@ -111,7 +111,7 @@ func (s *SRID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	if err = types.ValidateSRID(int(val.(int64)), s.FunctionName()); err != nil {
+	if err = types.ValidateSRID(int(val.(int64)), s.Name()); err != nil {
 		return nil, err
 	}
 	srid := uint32(val.(int64))

@@ -51,8 +51,8 @@ func NewLogBase(ctx *sql.Context, base float64, e sql.Expression) sql.Expression
 	return &LogBase{UnaryExpressionStub: expression.UnaryExpressionStub{Child: e}, base: base}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (l *LogBase) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (l *LogBase) Name() string {
 	switch l.base {
 	case float64(math.E):
 		return "ln"
@@ -160,8 +160,8 @@ func NewLog(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (l *Log) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (l *Log) Name() string {
 	return "log"
 }
 
@@ -171,7 +171,7 @@ func (l *Log) Description() string {
 }
 
 func (l *Log) String() string {
-	return fmt.Sprintf("%s(%s,%s)", l.FunctionName(), l.LeftChild, l.RightChild)
+	return fmt.Sprintf("%s(%s,%s)", l.Name(), l.LeftChild, l.RightChild)
 }
 
 // WithChildren implements the Expression interface.

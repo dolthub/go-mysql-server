@@ -56,8 +56,8 @@ func NewSubstring(ctx *sql.Context, args ...sql.Expression) (sql.Expression, err
 	return &Substring{str, start, ln}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (s *Substring) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (s *Substring) Name() string {
 	return "substring"
 }
 
@@ -209,8 +209,8 @@ func NewSubstringIndex(ctx *sql.Context, str, delim, count sql.Expression) sql.E
 	return &SubstringIndex{str, delim, count}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (s *SubstringIndex) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (s *SubstringIndex) Name() string {
 	return "substring_index"
 }
 
@@ -348,8 +348,8 @@ func NewLeft(ctx *sql.Context, str, len sql.Expression) sql.Expression {
 	return Left{str, len}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (l Left) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (l Left) Name() string {
 	return "left"
 }
 
@@ -466,8 +466,8 @@ func NewRight(ctx *sql.Context, str, len sql.Expression) sql.Expression {
 	return Right{str, len}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (r Right) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (r Right) Name() string {
 	return "right"
 }
 
@@ -594,8 +594,8 @@ func NewInstr(ctx *sql.Context, str, substr sql.Expression) sql.Expression {
 	return Instr{str, substr}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (i Instr) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (i Instr) Name() string {
 	return "instr"
 }
 

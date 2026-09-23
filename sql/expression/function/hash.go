@@ -223,14 +223,14 @@ func (f *SHA2) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
-// FunctionName implements sql.FunctionExpression
-func (f *SHA2) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (f *SHA2) Name() string {
 	return "sha2"
 }
 
 // String implements sql.Expression
 func (f *SHA2) String() string {
-	return fmt.Sprintf("%s(%s,%s)", f.FunctionName(), f.LeftChild, f.RightChild)
+	return fmt.Sprintf("%s(%s,%s)", f.Name(), f.LeftChild, f.RightChild)
 }
 
 // Type implements sql.Expression

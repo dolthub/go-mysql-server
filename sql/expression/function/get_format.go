@@ -41,8 +41,8 @@ func NewGetFormat(ctx *sql.Context, e1, e2 sql.Expression) sql.Expression {
 	}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (g *GetFormat) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (g *GetFormat) Name() string {
 	return "get_format"
 }
 
@@ -62,7 +62,7 @@ func (*GetFormat) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 }
 
 func (g *GetFormat) String() string {
-	return fmt.Sprintf("%s(%s, %s)", g.FunctionName(), g.LeftChild, g.RightChild)
+	return fmt.Sprintf("%s(%s, %s)", g.Name(), g.LeftChild, g.RightChild)
 }
 
 // WithChildren implements the Expression interface.

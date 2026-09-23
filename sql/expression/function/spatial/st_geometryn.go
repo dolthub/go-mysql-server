@@ -42,8 +42,8 @@ func NewGeometryN(ctx *sql.Context, g, n sql.Expression) sql.Expression {
 	}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (g *GeometryN) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (g *GeometryN) Name() string {
 	return "st_geometryn"
 }
 
@@ -68,7 +68,7 @@ func (*GeometryN) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 }
 
 func (g *GeometryN) String() string {
-	return fmt.Sprintf("%s(%s,%s)", g.FunctionName(), g.LeftChild.String(), g.RightChild.String())
+	return fmt.Sprintf("%s(%s,%s)", g.Name(), g.LeftChild.String(), g.RightChild.String())
 }
 
 // WithChildren implements the Expression interface.
@@ -107,7 +107,7 @@ func (g *GeometryN) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	gv, err := types.UnwrapGeometry(ctx, val)
 	if err != nil {
-		return nil, sql.ErrInvalidGISData.New(g.FunctionName())
+		return nil, sql.ErrInvalidGISData.New(g.Name())
 	}
 
 	// N is 1-based; out-of-range returns NULL

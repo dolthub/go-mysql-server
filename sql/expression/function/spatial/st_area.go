@@ -35,8 +35,8 @@ func NewArea(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &Area{expression.UnaryExpressionStub{Child: arg}}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (a *Area) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (a *Area) Name() string {
 	return "st_area"
 }
 
@@ -56,7 +56,7 @@ func (*Area) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID,
 }
 
 func (a *Area) String() string {
-	return fmt.Sprintf("%s(%s)", a.FunctionName(), a.Child)
+	return fmt.Sprintf("%s(%s)", a.Name(), a.Child)
 }
 
 // WithChildren implements the Expression interface.
@@ -102,11 +102,11 @@ func (a *Area) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Only allow polygons
 	gv, err := types.UnwrapGeometry(ctx, v)
 	if err != nil {
-		return nil, sql.ErrInvalidArgument.New(a.FunctionName())
+		return nil, sql.ErrInvalidArgument.New(a.Name())
 	}
 	p, ok := gv.(types.Polygon)
 	if !ok {
-		return nil, sql.ErrInvalidArgument.New(a.FunctionName())
+		return nil, sql.ErrInvalidArgument.New(a.Name())
 	}
 	if p.SRID != types.CartesianSRID {
 		return nil, sql.ErrUnsupportedSRID.New(p.SRID)

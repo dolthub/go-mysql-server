@@ -43,8 +43,8 @@ func NewSTX(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	return &STX{expression.NaryExpression{ChildExpressions: args}}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (s *STX) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (s *STX) Name() string {
 	return "st_x"
 }
 
@@ -96,11 +96,11 @@ func (s *STX) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Check that it is a point
 	gv, err := types.UnwrapGeometry(ctx, p)
 	if err != nil {
-		return nil, ErrInvalidType.New(s.FunctionName())
+		return nil, ErrInvalidType.New(s.Name())
 	}
 	_p, ok := gv.(types.Point)
 	if !ok {
-		return nil, ErrInvalidType.New(s.FunctionName())
+		return nil, ErrInvalidType.New(s.Name())
 	}
 
 	// If just one argument, return X
@@ -162,8 +162,8 @@ func NewSTY(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	return &STY{expression.NaryExpression{ChildExpressions: args}}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (s *STY) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (s *STY) Name() string {
 	return "st_y"
 }
 
@@ -215,11 +215,11 @@ func (s *STY) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Check that it is a point
 	gv, err := types.UnwrapGeometry(ctx, p)
 	if err != nil {
-		return nil, ErrInvalidType.New(s.FunctionName())
+		return nil, ErrInvalidType.New(s.Name())
 	}
 	_p, ok := gv.(types.Point)
 	if !ok {
-		return nil, ErrInvalidType.New(s.FunctionName())
+		return nil, ErrInvalidType.New(s.Name())
 	}
 
 	// If just one argument, return Y
@@ -285,8 +285,8 @@ func NewLongitude(ctx *sql.Context, args ...sql.Expression) (sql.Expression, err
 	return &Longitude{expression.NaryExpression{ChildExpressions: args}}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (l *Longitude) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (l *Longitude) Name() string {
 	return "st_longitude"
 }
 
@@ -338,16 +338,16 @@ func (l *Longitude) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Check that it is a point
 	gv, err := types.UnwrapGeometry(ctx, p)
 	if err != nil {
-		return nil, ErrInvalidType.New(l.FunctionName())
+		return nil, ErrInvalidType.New(l.Name())
 	}
 	_p, ok := gv.(types.Point)
 	if !ok {
-		return nil, ErrInvalidType.New(l.FunctionName())
+		return nil, ErrInvalidType.New(l.Name())
 	}
 
 	// Point needs to have SRID 4326
 	if _p.SRID != types.GeoSpatialSRID {
-		return nil, ErrNonGeographic.New(l.FunctionName(), _p.SRID)
+		return nil, ErrNonGeographic.New(l.Name(), _p.SRID)
 	}
 
 	// If just one argument, return X
@@ -375,7 +375,7 @@ func (l *Longitude) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Check that value is within longitude range [-180, 180]
 	_x := x.(float64)
 	if _x < -180.0 || _x > 180.0 {
-		return nil, ErrLongitudeOutOfRange.New(_x, l.FunctionName())
+		return nil, ErrLongitudeOutOfRange.New(_x, l.Name())
 	}
 
 	// Create point with new X and old Y
@@ -398,8 +398,8 @@ func NewLatitude(ctx *sql.Context, args ...sql.Expression) (sql.Expression, erro
 	return &Latitude{expression.NaryExpression{ChildExpressions: args}}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (l *Latitude) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (l *Latitude) Name() string {
 	return "st_latitude"
 }
 
@@ -451,17 +451,17 @@ func (l *Latitude) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Check that it is a point
 	gv, err := types.UnwrapGeometry(ctx, p)
 	if err != nil {
-		return nil, ErrInvalidType.New(l.FunctionName())
+		return nil, ErrInvalidType.New(l.Name())
 	}
 	_p, ok := gv.(types.Point)
 	if !ok {
-		return nil, ErrInvalidType.New(l.FunctionName())
+		return nil, ErrInvalidType.New(l.Name())
 	}
 
 	// Point needs to have SRID 4326
 	// TODO: might need to be == Cartesian instead for other SRIDs
 	if _p.SRID != types.GeoSpatialSRID {
-		return nil, ErrNonGeographic.New(l.FunctionName(), _p.SRID)
+		return nil, ErrNonGeographic.New(l.Name(), _p.SRID)
 	}
 
 	// If just one argument, return Y
@@ -489,7 +489,7 @@ func (l *Latitude) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Check that value is within latitude range [-90, 90]
 	_y := y.(float64)
 	if _y < -90.0 || _y > 90.0 {
-		return nil, ErrLongitudeOutOfRange.New(_y, l.FunctionName())
+		return nil, ErrLongitudeOutOfRange.New(_y, l.Name())
 	}
 
 	// Create point with old X and new Y

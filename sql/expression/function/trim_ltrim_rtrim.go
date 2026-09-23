@@ -43,8 +43,8 @@ func NewTrim(str sql.Expression, pat sql.Expression, dir string) sql.Expression 
 	}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (t *Trim) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (t *Trim) Name() string {
 	return "trim"
 }
 
@@ -180,8 +180,8 @@ func NewLeftTrim(ctx *sql.Context, str sql.Expression) sql.Expression {
 var _ sql.FunctionExpression = (*LeftTrim)(nil)
 var _ sql.CollationCoercible = (*LeftTrim)(nil)
 
-// FunctionName implements sql.FunctionExpression
-func (t *LeftTrim) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (t *LeftTrim) Name() string {
 	return "ltrim"
 }
 
@@ -249,8 +249,8 @@ func NewRightTrim(ctx *sql.Context, str sql.Expression) sql.Expression {
 var _ sql.FunctionExpression = (*RightTrim)(nil)
 var _ sql.CollationCoercible = (*RightTrim)(nil)
 
-// FunctionName implements sql.FunctionExpression
-func (t *RightTrim) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (t *RightTrim) Name() string {
 	return "rtrim"
 }
 

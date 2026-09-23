@@ -87,8 +87,8 @@ func (f *LastValue) DebugString(ctx *sql.Context) string {
 	return sb.String()
 }
 
-// FunctionName implements sql.FunctionExpression
-func (f *LastValue) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (f *LastValue) Name() string {
 	return "LAST_VALUE"
 }
 
@@ -109,7 +109,7 @@ func (f *LastValue) IsNullable(ctx *sql.Context) bool {
 
 // Eval implements sql.Expression
 func (f *LastValue) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return nil, sql.ErrWindowUnsupported.New(f.FunctionName())
+	return nil, sql.ErrWindowUnsupported.New(f.Name())
 }
 
 // Children implements sql.Expression

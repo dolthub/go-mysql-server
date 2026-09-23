@@ -123,8 +123,8 @@ func (l *Lead) DebugString(ctx *sql.Context) string {
 	return sb.String()
 }
 
-// FunctionName implements sql.FunctionExpression
-func (l *Lead) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (l *Lead) Name() string {
 	return "LEAD"
 }
 
@@ -149,7 +149,7 @@ func (l *Lead) IsNullable(ctx *sql.Context) bool {
 
 // Eval implements sql.Expression
 func (l *Lead) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return nil, sql.ErrWindowUnsupported.New(l.FunctionName())
+	return nil, sql.ErrWindowUnsupported.New(l.Name())
 }
 
 // Children implements sql.Expression

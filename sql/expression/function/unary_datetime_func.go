@@ -30,8 +30,8 @@ type UnaryDatetimeFunc struct {
 	expression.UnaryExpressionStub
 	// SQLType is the return type of the function
 	SQLType sql.Type
-	// Name is the name of the function
-	Name string
+	// name is the name of the function
+	name string
 }
 
 // NewUnaryDatetimeFunc returns a new UnaryDatetimeFunc over |arg| with the given function name and return type.
@@ -40,14 +40,14 @@ func NewUnaryDatetimeFunc(arg sql.Expression, name string, sqlType sql.Type) *Un
 		UnaryExpressionStub: expression.UnaryExpressionStub{
 			Child: arg,
 		},
-		Name:    name,
+		name:    name,
 		SQLType: sqlType,
 	}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (dtf *UnaryDatetimeFunc) FunctionName() string {
-	return dtf.Name
+// Name implements sql.FunctionExpression
+func (dtf *UnaryDatetimeFunc) Name() string {
+	return dtf.name
 }
 
 // EvalChild evaluates the child expression and converts the result to a datetime value, returning a nil value if it cannot be converted.
@@ -66,7 +66,7 @@ func (dtf *UnaryDatetimeFunc) EvalChild(ctx *sql.Context, row sql.Row) (any, err
 
 // String implements the fmt.Stringer interface.
 func (dtf *UnaryDatetimeFunc) String() string {
-	return fmt.Sprintf("%s(%s)", strings.ToUpper(dtf.Name), dtf.Child.String())
+	return fmt.Sprintf("%s(%s)", strings.ToUpper(dtf.name), dtf.Child.String())
 }
 
 // IsNullable implements the Expression interface

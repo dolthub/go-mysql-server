@@ -76,7 +76,7 @@ func (t *TableFunctionWrapper) IsReadOnly() bool {
 }
 
 func (t *TableFunctionWrapper) Name() string {
-	return t.underlyingFunc.FunctionName()
+	return t.underlyingFunc.Name()
 }
 
 func (t *TableFunctionWrapper) RowIter(ctx *sql.Context, r sql.Row) (sql.RowIter, error) {
@@ -119,7 +119,7 @@ func (t *TableFunctionWrapper) Schema(ctx *sql.Context) sql.Schema {
 			return s
 		}
 	}
-	return sql.Schema{&sql.Column{Name: t.underlyingFunc.FunctionName(), Type: t.funcExpr.Type(ctx)}}
+	return sql.Schema{&sql.Column{Name: t.underlyingFunc.Name(), Type: t.funcExpr.Type(ctx)}}
 }
 
 func (t *TableFunctionWrapper) String() string {
@@ -127,7 +127,7 @@ func (t *TableFunctionWrapper) String() string {
 	for _, expr := range t.args {
 		args = append(args, expr.String())
 	}
-	return fmt.Sprintf("%s(%s)", t.underlyingFunc.FunctionName(), strings.Join(args, ", "))
+	return fmt.Sprintf("%s(%s)", t.underlyingFunc.Name(), strings.Join(args, ", "))
 }
 
 func (t *TableFunctionWrapper) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {

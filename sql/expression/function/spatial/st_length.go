@@ -40,8 +40,8 @@ func NewSTLength(ctx *sql.Context, args ...sql.Expression) (sql.Expression, erro
 	return &STLength{expression.NaryExpression{ChildExpressions: args}}, nil
 }
 
-// FunctionName implements sql.FunctionExpression
-func (s *STLength) FunctionName() string {
+// Name implements sql.FunctionExpression
+func (s *STLength) Name() string {
 	return "st_length"
 }
 
@@ -65,7 +65,7 @@ func (s *STLength) String() string {
 	for i, arg := range s.ChildExpressions {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("%s(%s)", s.FunctionName(), strings.Join(args, ","))
+	return fmt.Sprintf("%s(%s)", s.Name(), strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.
@@ -100,7 +100,7 @@ func (s *STLength) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Unwrap if needed (e.g. adaptive storage)
 	v1, err = types.UnwrapGeometry(ctx, v1)
 	if err != nil {
-		return nil, sql.ErrInvalidGISData.New(s.FunctionName())
+		return nil, sql.ErrInvalidGISData.New(s.Name())
 	}
 
 	// Return nil if argument is geometry typ, but not linestring
@@ -111,7 +111,7 @@ func (s *STLength) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case types.Point, types.Polygon:
 		return nil, nil
 	default:
-		return nil, sql.ErrInvalidGISData.New(s.FunctionName())
+		return nil, sql.ErrInvalidGISData.New(s.Name())
 	}
 
 	// TODO: if SRID is not 0, find geodetic distance

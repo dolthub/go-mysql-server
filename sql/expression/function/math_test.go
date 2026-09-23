@@ -115,7 +115,7 @@ func TestRandWithSeed(t *testing.T) {
 }
 
 func TestRadians(t *testing.T) {
-	f := sql.Function1{Name: "radians", Fn: NewRadians}
+	f := sql.NewFunction1("radians", NewRadians)
 	tf := NewTestFactory(f.Fn)
 	tf.AddSucceeding(0.0, "0")
 	tf.AddSucceeding(-math.Pi, "-180")
@@ -139,7 +139,7 @@ func TestDegrees(t *testing.T) {
 		{"string truncates", "3.1415926536ABC", 180.0},
 	}
 
-	f := sql.Function1{Name: "degrees", Fn: NewDegrees}
+	f := sql.NewFunction1("degrees", NewDegrees)
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -178,7 +178,7 @@ func TestCRC32(t *testing.T) {
 		{"CRC32(float64 6.0)", float64(6.0), 4068047280},
 	}
 
-	f := sql.Function1{Name: "crc32", Fn: NewCrc32}
+	f := sql.NewFunction1("crc32", NewCrc32)
 	ctx := sql.NewEmptyContext()
 
 	for _, test := range tests {
@@ -203,13 +203,13 @@ func TestCRC32(t *testing.T) {
 }
 
 func TestTrigFunctions(t *testing.T) {
-	asin := sql.Function1{Name: "asin", Fn: NewAsin}
-	acos := sql.Function1{Name: "acos", Fn: NewAcos}
-	atan := sql.FunctionN{Name: "atan", Fn: NewAtan}
-	atan2 := sql.FunctionN{Name: "atan2", Fn: NewAtan}
-	sin := sql.Function1{Name: "sin", Fn: NewSin}
-	cos := sql.Function1{Name: "cos", Fn: NewCos}
-	tan := sql.Function1{Name: "tan", Fn: NewTan}
+	asin := sql.NewFunction1("asin", NewAsin)
+	acos := sql.NewFunction1("acos", NewAcos)
+	atan := sql.NewFunctionN("atan", NewAtan)
+	atan2 := sql.NewFunctionN("atan2", NewAtan)
+	sin := sql.NewFunction1("sin", NewSin)
+	cos := sql.NewFunction1("cos", NewCos)
+	tan := sql.NewFunction1("tan", NewTan)
 
 	const numChecks = 24
 	delta := (2 * math.Pi) / float64(numChecks)
@@ -264,7 +264,7 @@ func withinRoundingErr(v1, v2 float64) bool {
 }
 
 func TestSignFunc(t *testing.T) {
-	f := sql.Function1{Name: "sign", Fn: NewSign}
+	f := sql.NewFunction1("sign", NewSign)
 	tf := NewTestFactory(f.Fn)
 	tf.AddSucceeding(nil, nil)
 	tf.AddSignedVariations(int8(-1), -10)
@@ -309,7 +309,7 @@ func TestMod(t *testing.T) {
 		{"MOD(NULL,NULL)", nil, nil, nil},
 	}
 
-	f := sql.FunctionN{Name: "mod", Fn: NewMod}
+	f := sql.NewFunctionN("mod", NewMod)
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
