@@ -24,6 +24,28 @@ create table two_pk (
 ----
 
 exec
+create table three_pk (
+    pk1 tinyint,
+    pk2 tinyint,
+    pk3 tinyint,
+    c1 tinyint NOT NULL,
+    c2 tinyint NOT NULL,
+    c3 tinyint NOT NULL,
+    c4 tinyint NOT NULL,
+    c5 tinyint NOT NULL,
+    primary key (pk1, pk2, pk3)
+)
+----
+
+exec
+insert into three_pk values
+    (0,0,20,0,1,2,3,4),
+    (0,1,10,20,11,12,13,14),
+    (1,0,10,40,21,22,23,24),
+    (1,1,0,60,31,32,33,34)
+----
+
+exec
 insert into two_pk values
     (0,0,0,1,2,3,4),
     (0,1,10,11,12,13,14),
