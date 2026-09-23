@@ -465,7 +465,14 @@ func (b *Builder) buildAggFunctionArgs(inScope *scope, e *ast.FuncExpr, gb *grou
 		windowCount := len(inScope.windowFuncs)
 		e := b.selectExprToExpression(inScope, arg)
 		if len(inScope.windowFuncs) > windowCount {
-			b.handleErr(sql.ErrNonAggregatedColumnWithoutGroupBy.New())
+			expr := inScope.windowFuncs[windowCount].scalar
+			var windowFuncName string
+			if windowFunc, ok := expr.(sql.FunctionExpression); ok {
+				windowFuncName = windowFunc.FunctionName()
+			} else {
+				windowFuncName = expr.String()
+			}
+			b.handleErr(sql.ErrWindowInvalidWindowFuncUse.New(windowFuncName))
 		}
 		// if GetField is an alias, alias must be masking a column
 		if gf, ok := e.(*expression.GetField); ok && gf.TableId() == 0 {
@@ -612,7 +619,7 @@ func (b *Builder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, 
 
 		win, ok = newInst.(sql.WindowAdaptableExpression)
 		if !ok {
-			err := fmt.Errorf("function is not a window adaptable exprssion: %s", f.FunctionName())
+			err := fmt.Errorf("function is not a window adaptable expression: %s", f.FunctionName())
 			b.handleErr(err)
 		}
 	}

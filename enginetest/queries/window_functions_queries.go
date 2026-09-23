@@ -86,7 +86,7 @@ var WindowFunctionsScriptTests = []ScriptTest{
 				Expected: []sql.Row{{0, int64(1), int64(2)}, {1, int64(1), int64(1)}},
 			},
 			{
-				Query:    "SELECT g, COUNT(*) AS n, ROW_NUMBER() OVER (PARTITION BY g ORDER BY g) AS r FROM nullable_grouped_window GROUP BY g ORDER BY g",
+				Query:    "SELECT g, COUNT(*) AS n, ROW_NUMBER() OVER (PARTITION BY g ORDER BY g) AS r FROM nullable_grouped_window GROUP BY g ORDER BY g IS NOT NULL, g",
 				Expected: []sql.Row{{nil, int64(2), int64(1)}, {1, int64(2), int64(1)}, {2, int64(1), int64(1)}},
 			},
 			{
@@ -99,7 +99,7 @@ var WindowFunctionsScriptTests = []ScriptTest{
 			},
 			{
 				Query:       "SELECT SUM(ROW_NUMBER() OVER (ORDER BY g)) FROM grouped_window GROUP BY g",
-				ExpectedErr: sql.ErrNonAggregatedColumnWithoutGroupBy,
+				ExpectedErr: sql.ErrWindowInvalidWindowFuncUse,
 			},
 		},
 	},
