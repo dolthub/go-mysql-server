@@ -17,6 +17,7 @@ package sql
 import (
 	"context"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql"
 	"reflect"
 	"strings"
 	"time"
@@ -237,6 +238,26 @@ type DatetimeType interface {
 	ToFloat64(time.Time) (float64, error)
 	ToDecimal(time.Time) (*apd.Decimal, error)
 	ToString(time.Time) (string, error)
+}
+
+// Time represents TIME values.
+// These are used as both a duration and time of day.
+// The value is essentially the number of microseconds.
+type Time int64
+
+// TimeType represents the TIME type.
+// https://dev.mysql.com/doc/refman/8.0/en/time.html
+// The type of the returned value is Time.
+type TimeType interface {
+	Type
+	// ConvertToTimeDuration returns a time.Duration from the given interface. Follows the same conversion rules as
+	// Convert(), in that this will process the value based on its base-10 visual representation (for example, Convert()
+	// will interpret the value `1234` as 12 minutes and 34 seconds). Returns an error for nil values.
+	ConvertToTimeDuration(any) (time.Duration, error)
+	// MicrosecondsToTimespan returns a Timespan from the given number of microseconds. This differs from Convert(), as
+	// that will process the value based on its base-10 visual representation (for example, Convert() will interpret
+	// the value `1234` as 12 minutes and 34 seconds). This clamps the given microseconds to the allowed range.
+	MicrosecondsToTimespan(v int64) int64
 }
 
 // YearType represents the YEAR type.

@@ -25,65 +25,173 @@ import (
 	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
-	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/values"
 )
 
-var (
-	Time TimeType = TimespanType_{}
+const (
+	MaxTimePrecision = 6
 
-	ErrConvertingToTimeType = errors.NewKind("value %v is not a valid Time")
+	MinTime int64 = -3020399000000 // -838:59:59
+	MaxTime int64 = 3020399000000  // 838:59:59
 
-	timespanMinimum           int64 = -3020399000000
-	timespanMaximum           int64 = 3020399000000
-	microsecondsPerSecond     int64 = 1000000
-	microsecondsPerMinute     int64 = 60000000
-	microsecondsPerHour       int64 = 3600000000
-	nanosecondsPerMicrosecond int64 = 1000
-
-	timeValueType = reflect.TypeOf(Timespan(0))
+	MicrosPerSec  int64 = 1_000_000
+	MicrosPerMin  int64 = 60 * MicrosPerSec
+	MicrosPerHour int64 = 60 * MicrosPerMin
+	MicrosPerDay  int64 = 24 * MicrosPerHour
 )
 
-// TimeType represents the TIME type.
-// https://dev.mysql.com/doc/refman/8.0/en/time.html
-// TIME is implemented as TIME(6).
-// The type of the returned value is Timespan.
-// TODO: implement parameters on the TIME type
-type TimeType interface {
-	sql.Type
-	// ConvertToTimespan returns a Timespan from the given interface. Follows the same conversion rules as
-	// Convert(), in that this will process the value based on its base-10 visual representation (for example, Convert()
-	// will interpret the value `1234` as 12 minutes and 34 seconds). Returns an error for nil values.
-	ConvertToTimespan(v interface{}) (Timespan, error)
-	// ConvertToTimeDuration returns a time.Duration from the given interface. Follows the same conversion rules as
-	// Convert(), in that this will process the value based on its base-10 visual representation (for example, Convert()
-	// will interpret the value `1234` as 12 minutes and 34 seconds). Returns an error for nil values.
-	ConvertToTimeDuration(v interface{}) (time.Duration, error)
-	// MicrosecondsToTimespan returns a Timespan from the given number of microseconds. This differs from Convert(), as
-	// that will process the value based on its base-10 visual representation (for example, Convert() will interpret
-	// the value `1234` as 12 minutes and 34 seconds). This clamps the given microseconds to the allowed range.
-	MicrosecondsToTimespan(v int64) Timespan
+var (
+	Time             = MustCreateTimeType(0)
+	TimeMaxPrecision = MustCreateTimeType(MaxTimePrecision)
+	timeValueType    = reflect.TypeOf(int64(0))
+)
+
+type timeType struct {
+	precision int
 }
 
-type TimespanType_ struct{}
+var _ sql.TimeType = timeType{}
+var _ sql.CollationCoercible = timeType{}
 
-var _ TimeType = TimespanType_{}
-var _ sql.CollationCoercible = TimespanType_{}
-
-// MaxTextResponseByteLength implements the Type interface
-func (t TimespanType_) MaxTextResponseByteLength(*sql.Context) uint32 {
-	// 10 digits are required for a text representation without microseconds, but with microseconds
-	// requires 17, so return 17 as an upper limit (i.e. len(+123:00:00.999999"))
-	return 17
+// CreateTimeType creates a Type dealing with TIME.
+func CreateTimeType(precision int) (sql.TimeType, error) {
+	if precision < 0 || precision > MaxTimePrecision {
+		return nil, sql.ErrTooBigPrecision.New(precision, MaxTimePrecision)
+	}
+	return timeType{
+		precision: precision,
+	}, nil
 }
 
-// Timespan is the value type returned by TimeType.Convert().
-type Timespan int64
+// MustCreateTimeType is the same as CreateTimeType except it panics on errors.
+func MustCreateTimeType(precision int) sql.TimeType {
+	typ, err := CreateTimeType(precision)
+	if err != nil {
+		panic(err)
+	}
+	return typ
+}
 
-// Compare implements Type interface.
-func (t TimespanType_) Compare(s context.Context, a interface{}, b interface{}) (int, error) {
+// Convert implements the sql.Type interface.
+func (t timeType) Convert(ctx context.Context, v any) (any, sql.ConvertInRange, error) {
+	v, err := sql.UnwrapAny(ctx, v)
+	if err != nil {
+		return nil, sql.InRange, err
+	}
+	if v == nil {
+		return nil, sql.InRange, nil
+	}
+
+	var res any
+	var canConvNum bool = true
+	switch value := v.(type) {
+	case nil:
+		return nil, sql.InRange, nil
+	case []byte:
+		return t.Convert(ctx, string(value))
+	case string:
+		// TODO: res, _, err = t.parseTime(value)
+		impl, err := stringToTimespan(value)
+		if err == nil {
+			return impl, sql.InRange, nil
+		}
+		if strings.Contains(value, ".") {
+			var val float64
+			val, err = strconv.ParseFloat(value, 64)
+			if err != nil {
+				return nil, sql.InRange, err
+			}
+			return t.ConvertToTimespan(strAsDouble)
+		} else {
+			strAsInt, err := strconv.ParseInt(value, 10, 64)
+			if err != nil {
+				return Timespan(0), ErrConvertingToTimeType.New(v)
+			}
+			return t.ConvertToTimespan(strAsInt)
+		}
+	case bool:
+		if !value {
+			return sql.Time(0), sql.InRange, nil
+		}
+		return sql.Time(MicrosPerSec), sql.InRange, nil
+	case int:
+		res, canConvNum = t.convertNumber(int64(value), 0)
+	case int8:
+		res, canConvNum = t.convertNumber(int64(value), 0)
+	case int16:
+		res, canConvNum = t.convertNumber(int64(value), 0)
+	case int32:
+		res, canConvNum = t.convertNumber(int64(value), 0)
+	case int64:
+		res, canConvNum = t.convertNumber(value, 0)
+	case uint:
+		res, canConvNum = t.convertNumber(int64(value), 0)
+	case uint8:
+		res, canConvNum = t.convertNumber(int64(value), 0)
+	case uint16:
+		res, canConvNum = t.convertNumber(int64(value), 0)
+	case uint32:
+		res, canConvNum = t.convertNumber(int64(value), 0)
+	case uint64:
+		res, canConvNum = t.convertNumber(int64(value), 0)
+	case float32:
+		if datetime, nsec, ok := splitFloat(float64(value)); ok {
+			res, canConvNum = t.convertNumber(datetime, nsec)
+		}
+	case float64:
+		if datetime, nsec, ok := splitFloat(value); ok {
+			res, canConvNum = t.convertNumber(datetime, nsec)
+		}
+	case *apd.Decimal:
+		if datetime, nsec, ok := splitDecimal(value); ok {
+			res, canConvNum = t.convertNumber(datetime, nsec)
+		}
+	case time.Duration:
+		microseconds := value.Nanoseconds() / nanosecondsPerMicrosecond
+		return t.MicrosecondsToTimespan(microseconds), nil
+	case time.Time:
+		h, m, s := value.Clock()
+		us := int64(value.Nanosecond())/nanosecondsPerMicrosecond +
+			microsecondsPerSecond*int64(s) +
+			microsecondsPerMinute*int64(m) +
+			microsecondsPerHour*int64(h)
+		return Timespan(us), nil
+	}
+	return ret, sql.InRange, err
+}
+
+func (t timeType) convertNumber(clock int64, micros int64) (sql.Time, bool) {
+	absValue := int64Abs(value)
+	if absValue >= -59 && absValue <= 59 {
+		return t.MicrosecondsToTimespan(value * microsecondsPerSecond), nil
+	} else if absValue >= 100 && absValue <= 9999 {
+		minutes := absValue / 100
+		seconds := absValue % 100
+		if minutes <= 59 && seconds <= 59 {
+			microseconds := (seconds * microsecondsPerSecond) + (minutes * microsecondsPerMinute)
+			if value < 0 {
+				return t.MicrosecondsToTimespan(-1 * microseconds), nil
+			}
+			return t.MicrosecondsToTimespan(microseconds), nil
+		}
+	} else if absValue >= 10000 && absValue <= 9999999 {
+		hours := absValue / 10000
+		minutes := (absValue / 100) % 100
+		seconds := absValue % 100
+		if minutes <= 59 && seconds <= 59 {
+			microseconds := (seconds * microsecondsPerSecond) + (minutes * microsecondsPerMinute) + (hours * microsecondsPerHour)
+			if value < 0 {
+				return t.MicrosecondsToTimespan(-1 * microseconds), nil
+			}
+			return t.MicrosecondsToTimespan(microseconds), nil
+		}
+	}
+}
+
+// Compare implements the sql.Type interface.
+func (t timeType) Compare(s context.Context, a, b any) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
@@ -101,22 +209,14 @@ func (t TimespanType_) Compare(s context.Context, a interface{}, b interface{}) 
 }
 
 // CompareValue implements the ValueType interface
-func (t TimespanType_) CompareValue(ctx *sql.Context, a, b sql.Value) (int, error) {
+func (t timeType) CompareValue(ctx *sql.Context, a, b sql.Value) (int, error) {
 	panic("TODO: implement CompareValue for TimespanType")
-}
-
-func (t TimespanType_) Convert(c context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
-	if v == nil {
-		return nil, sql.InRange, nil
-	}
-	ret, err := t.ConvertToTimespan(v)
-	return ret, sql.InRange, err
 }
 
 // ConvertToTimespan converts the given interface value to a Timespan. This follows the conversion rules of MySQL, which
 // are based on the base-10 visual representation of numbers (for example, Time.Convert() will interpret the value
 // `1234` as 12 minutes and 34 seconds). Returns an error on a nil value.
-func (t TimespanType_) ConvertToTimespan(v interface{}) (Timespan, error) {
+func (t timeType) ConvertToTimespan(v interface{}) (Timespan, error) {
 	switch value := v.(type) {
 	case Timespan:
 		// We only create a Timespan if it's valid, so we can skip this check if we receive a Timespan.
@@ -236,7 +336,7 @@ func (t TimespanType_) ConvertToTimespan(v interface{}) (Timespan, error) {
 }
 
 // ConvertToTimeDuration implements the TimeType interface.
-func (t TimespanType_) ConvertToTimeDuration(v interface{}) (time.Duration, error) {
+func (t timeType) ConvertToTimeDuration(v interface{}) (time.Duration, error) {
 	val, err := t.ConvertToTimespan(v)
 	if err != nil {
 		return time.Duration(0), err
@@ -245,18 +345,18 @@ func (t TimespanType_) ConvertToTimeDuration(v interface{}) (time.Duration, erro
 }
 
 // Equals implements the Type interface.
-func (t TimespanType_) Equals(otherType sql.Type) bool {
+func (t timeType) Equals(otherType sql.Type) bool {
 	_, ok := otherType.(TimespanType_)
 	return ok
 }
 
 // Promote implements the Type interface.
-func (t TimespanType_) Promote() sql.Type {
+func (t timeType) Promote() sql.Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t TimespanType_) SQL(_ *sql.Context, dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t timeType) SQL(_ *sql.Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -271,33 +371,36 @@ func (t TimespanType_) SQL(_ *sql.Context, dest []byte, v interface{}) (sqltypes
 }
 
 // SQLValue implements ValueType interface.
-func (t TimespanType_) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltypes.Value, error) {
+func (t timeType) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltypes.Value, error) {
 	if v.IsNull() {
 		return sqltypes.NULL, nil
 	}
 
 	x := values.ReadInt64(v.Val)
+	Timespan(x).timespanToUnits()
+
+	appendTimeFormat()
 	dest = Timespan(x).AppendBytes(dest)
 	return sqltypes.MakeTrusted(sqltypes.Time, dest), nil
 }
 
 // String implements Type interface.
-func (t TimespanType_) String() string {
+func (t timeType) String() string {
 	return "time(6)"
 }
 
 // Type implements Type interface.
-func (t TimespanType_) Type() query.Type {
+func (t timeType) Type() query.Type {
 	return sqltypes.Time
 }
 
 // ValueType implements Type interface.
-func (t TimespanType_) ValueType() reflect.Type {
+func (t timeType) ValueType() reflect.Type {
 	return timeValueType
 }
 
 // Zero implements Type interface.
-func (t TimespanType_) Zero() interface{} {
+func (t timeType) Zero() interface{} {
 	return Timespan(0)
 }
 
@@ -435,10 +538,10 @@ func safeSubstr(s string, start int, end int) string {
 
 // MicrosecondsToTimespan implements the TimeType interface.
 func (_ TimespanType_) MicrosecondsToTimespan(v int64) Timespan {
-	if v < timespanMinimum {
-		v = timespanMinimum
-	} else if v > timespanMaximum {
-		v = timespanMaximum
+	if v < MinTime {
+		v = MinTime
+	} else if v > MaxTime {
+		v = MaxTime
 	}
 	return Timespan(v)
 }
@@ -497,13 +600,6 @@ func (t Timespan) Bytes() []byte {
 	}
 
 	return ret[:i]
-}
-
-// precision is the number of digits of sub-second precision.
-// For the timespan type, this is currently always 6 (microsecond precision)
-// See https://github.com/dolthub/dolt/issues/10661
-func (t Timespan) precision() int {
-	return 6
 }
 
 func (t Timespan) AppendBytes(dest []byte) []byte {
@@ -602,10 +698,10 @@ func (t Timespan) Negate() Timespan {
 // clamped to the allowed range.
 func (t Timespan) Add(other Timespan) Timespan {
 	v := int64(t + other)
-	if v < timespanMinimum {
-		v = timespanMinimum
-	} else if v > timespanMaximum {
-		v = timespanMaximum
+	if v < MinTime {
+		v = MinTime
+	} else if v > MaxTime {
+		v = MaxTime
 	}
 	return Timespan(v)
 }
@@ -614,10 +710,10 @@ func (t Timespan) Add(other Timespan) Timespan {
 // Timespan is clamped to the allowed range.
 func (t Timespan) Subtract(other Timespan) Timespan {
 	v := int64(t - other)
-	if v < timespanMinimum {
-		v = timespanMinimum
-	} else if v > timespanMaximum {
-		v = timespanMaximum
+	if v < MinTime {
+		v = MinTime
+	} else if v > MaxTime {
+		v = MaxTime
 	}
 	return Timespan(v)
 }

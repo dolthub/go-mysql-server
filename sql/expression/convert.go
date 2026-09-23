@@ -351,7 +351,12 @@ func convertValue(ctx *sql.Context, val any, castTo string, origType sql.Type, t
 		}
 		return val, nil
 	case ConvertToTime:
-		val, _, err = types.Time.Convert(ctx, val)
+		var timeType sql.Type
+		timeType, err = types.CreateTimespanType(typeLength)
+		if err != nil {
+			return nil, err
+		}
+		val, _, err = timeType.Convert(ctx, val)
 		if err != nil {
 			return nil, nil
 		}

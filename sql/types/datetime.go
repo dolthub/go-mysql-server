@@ -145,7 +145,7 @@ func CreateDatetimeType(baseType query.Type, precision int) (sql.DatetimeType, e
 	switch baseType {
 	case sqltypes.Date, sqltypes.Datetime, sqltypes.Timestamp:
 		if precision < 0 || precision > MaxDatetimePrecision {
-			return nil, fmt.Errorf("precision must be between 0 and 6, got %d", precision)
+			return nil, sql.ErrTooBigPrecision.New(precision, MaxDatetimePrecision)
 		}
 		return datetimeType{
 			baseType:  baseType,
@@ -162,10 +162,6 @@ func MustCreateDatetimeType(baseType query.Type, precision int) sql.DatetimeType
 		panic(err)
 	}
 	return dt
-}
-
-func (t datetimeType) Precision() int {
-	return t.precision
 }
 
 // Compare implements Type interface.
@@ -247,7 +243,7 @@ func (t datetimeType) Convert(ctx context.Context, v any) (any, sql.ConvertInRan
 		return t.Convert(ctx, string(value))
 	case string:
 		res, _, err = t.parseDatetime(value)
-	case Timespan:
+	case sql.Time:
 		// when receiving TIME, MySQL fills in date with today
 		nowTimeStr := sql.Now().Format("2006-01-02")
 		nowTime, err := time.Parse("2006-01-02", nowTimeStr)
@@ -359,6 +355,27 @@ func (t datetimeType) getNumericParts(val time.Time) (int64, int64, error) {
 		return 0, 0, sql.ErrInvalidBaseType.New(t.baseType.String(), "datetime")
 	}
 	return whole, nsec, nil
+}
+
+// MaximumTime is the latest accepted time for this type.
+func (t datetimeType) MaximumTime() time.Time {
+	if t.baseType == sqltypes.Timestamp {
+		return datetimeTypeMaxTimestamp
+	}
+	return datetimeTypeMaxDatetime
+}
+
+// MinimumTime is the earliest accepted time for this type.
+func (t datetimeType) MinimumTime() time.Time {
+	if t.baseType == sqltypes.Timestamp {
+		return datetimeTypeMinTimestamp
+	}
+	return datetimeTypeMinDatetime
+}
+
+// Precision implements the sql.DatetimeType interface.
+func (t datetimeType) Precision() int {
+	return t.precision
 }
 
 // ToFloat64 implements the sql.DatetimeType interface.
@@ -945,22 +962,6 @@ func (t datetimeType) Zero() interface{} {
 // CollationCoercibility implements sql.CollationCoercible interface.
 func (datetimeType) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 5
-}
-
-// MaximumTime is the latest accepted time for this type.
-func (t datetimeType) MaximumTime() time.Time {
-	if t.baseType == sqltypes.Timestamp {
-		return datetimeTypeMaxTimestamp
-	}
-	return datetimeTypeMaxDatetime
-}
-
-// MinimumTime is the earliest accepted time for this type.
-func (t datetimeType) MinimumTime() time.Time {
-	if t.baseType == sqltypes.Timestamp {
-		return datetimeTypeMinTimestamp
-	}
-	return datetimeTypeMinDatetime
 }
 
 // ValidateTime receives a time and returns either that time or nil if it's
