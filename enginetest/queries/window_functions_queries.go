@@ -2519,4 +2519,28 @@ ORDER BY id`,
 			{int32(4), float64(70), float64(60)},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/11912
+		Name: "any_value with window functions",
+		SetUpScript: []string{
+			"use mydb;",
+			"set @@sql_mode = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES';",
+			"create table members (id bigint primary key, team text);",
+			"insert into members values (3,'red'), (4,'red'),(5,'orange'),(6,'orange'),(7,'orange'),(8,'purple');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select id, sum(any_value(id)) over (order by id) from members order by 1 limit 2",
+				Expected: []sql.Row{{3, float64(3)}, {4, float64(7)}},
+			},
+			{
+				Query:    "select id, any_value(sum(id) over (order by id)) from members order by 1 limit 2",
+				Expected: []sql.Row{{3, float64(3)}, {4, float64(7)}},
+			},
+			{
+				Query:    "select any_value(sum(id) over ()) from members order by 1 limit 2",
+				Expected: []sql.Row{{float64(33)}, {float64(33)}},
+			},
+		},
+	},
 }
