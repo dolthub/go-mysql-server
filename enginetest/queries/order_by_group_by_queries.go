@@ -276,6 +276,29 @@ var OrderByGroupByScriptTests = []ScriptTest{
 		},
 	},
 	{
+		// Function expressions are matched against group by expressions by their full expression, not just the
+		// function name, so calling the same function on a different column is not grouped.
+		Name: "Validation mode on: same function with different arguments",
+		SetUpScript: []string{
+			"create table t (id int primary key, a varchar(10), b varchar(10));",
+			"insert into t values (1, 'x', 'p'), (2, 'x', 'q');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "select concat(b) from t group by concat(a);",
+				ExpectedErr: analyzererrors.ErrValidationGroupBy,
+			},
+			{
+				Query:       "select upper(b) from t group by upper(a);",
+				ExpectedErr: analyzererrors.ErrValidationGroupBy,
+			},
+			{
+				Query:    "select concat(a) from t group by concat(a);",
+				Expected: []sql.Row{{"x"}},
+			},
+		},
+	},
+	{
 		Name: "Group by null handling",
 		// https://github.com/dolthub/go-mysql-server/issues/1503
 		SetUpScript: []string{
