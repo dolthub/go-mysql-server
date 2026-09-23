@@ -51,12 +51,6 @@ type Builder struct {
 
 	nesting int
 
-	// aggArgDepth tracks aggregate argument nesting.
-	aggArgDepth int
-
-	// windowArgDepth tracks window argument nesting.
-	windowArgDepth int
-
 	tabId      sql.TableId
 	colId      columnId
 	parserOpts ast.ParserOptions
@@ -64,6 +58,12 @@ type Builder struct {
 	// windowClauseColRef is true if the window clause is a single column
 	// name (not a composite expression like a + 1).
 	windowClauseColRef bool
+
+	// inAgg tracks whether we are inside aggregate arguments.
+	inAgg bool
+
+	// inWindow tracks whether we are inside window function arguments.
+	inWindow bool
 
 	authEnabled  bool
 	multiDDL     bool

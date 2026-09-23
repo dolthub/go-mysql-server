@@ -254,19 +254,34 @@ var OrderByGroupByScriptTests = []ScriptTest{
 		Name: "any_value() inside an aggregate function",
 		SetUpScript: []string{
 			"use mydb;",
+			"set @@sql_mode = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES';",
 			"create table members (id bigint primary key, team text);",
 			"insert into members values (3,'red'), (4,'red'),(5,'orange'),(6,'orange'),(7,'orange'),(8,'purple');",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select @@session.sql_mode like '%ONLY_FULL_GROUP_BY%'",
-				Expected: []sql.Row{
-					{true},
-				},
-			},
-			{
 				Query:    "select max(any_value(team)) from members",
 				Expected: []sql.Row{{"red"}},
+			},
+			{
+				Query:    "select any_value(max(team)) from members",
+				Expected: []sql.Row{{"red"}},
+			},
+			{
+				Query:    "select any_value(max(id) + 1) from members",
+				Expected: []sql.Row{{int64(9)}},
+			},
+			{
+				Query:    "select any_value(max(id) + min(id)) from members",
+				Expected: []sql.Row{{int64(11)}},
+			},
+			{
+				Query:    "select any_value(case when 1=1 then max(id) else 0 end) from members",
+				Expected: []sql.Row{{int64(8)}},
+			},
+			{
+				Query:    "select any_value(group_concat(team order by id)) from members",
+				Expected: []sql.Row{{"red,red,orange,orange,orange,purple"}},
 			},
 			{
 				Query:    "select max(any_value(any_value(id))) from members",
@@ -285,14 +300,20 @@ var OrderByGroupByScriptTests = []ScriptTest{
 				Expected: []sql.Row{{"red,red,orange,orange,orange,purple"}},
 			},
 			{
-				// Window function unwraps any_value to column value.
-				Query:    "select id, sum(any_value(id)) over (order by id) from members order by 1 limit 2",
-				Expected: []sql.Row{{3, float64(3)}, {4, float64(7)}},
+				Query:    "select any_value((select team from members where id = 3)) from members limit 1",
+				Expected: []sql.Row{{"red"}},
 			},
 			{
-				// Unaggregated column without GROUP BY still errors.
 				Query:       "select id, max(any_value(team)) from members",
 				ExpectedErr: sql.ErrNonAggregatedColumnWithoutGroupBy,
+			},
+			{
+				Query:       "select any_value() from members",
+				ExpectedErr: sql.ErrInvalidArgumentNumber,
+			},
+			{
+				Query:       "select any_value(id, team) from members",
+				ExpectedErr: sql.ErrInvalidArgumentNumber,
 			},
 			{
 				Query:       "select max(any_value()) from members",
@@ -302,6 +323,22 @@ var OrderByGroupByScriptTests = []ScriptTest{
 				Query:       "select max(any_value(id, team)) from members",
 				ExpectedErr: sql.ErrInvalidArgumentNumber,
 			},
+			{
+				Query:       "select any_value(max(sum(id))) from members",
+				ExpectedErr: sql.ErrInvalidGroupFuncUse,
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11912
+		Name: "invalid nested aggregate functions",
+		SetUpScript: []string{
+			"use mydb;",
+			"set @@sql_mode = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES';",
+			"create table members (id bigint primary key, team text);",
+			"insert into members values (3,'red'), (4,'red'),(5,'orange'),(6,'orange'),(7,'orange'),(8,'purple');",
+		},
+		Assertions: []ScriptTestAssertion{
 			{
 				Query:       "select max(sum(id)) from members",
 				ExpectedErr: sql.ErrInvalidGroupFuncUse,
