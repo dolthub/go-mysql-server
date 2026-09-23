@@ -298,17 +298,7 @@ func (b *Builder) buildOrderedInjectedExpr(inScope *scope, e *ast.OrderedInjecte
 		b.handleErr(fmt.Errorf("expected sql.Aggregation, got %T", expr))
 	}
 
-	aggName := strings.ToLower(plan.AliasSubqueryString(b.ctx, agg))
-	col := scopeColumn{col: aggName, scalar: agg, typ: agg.Type(b.ctx), nullable: agg.IsNullable(b.ctx)}
-	id := gb.outScope.newColumn(col)
-
-	agg = agg.WithId(sql.ColumnId(id)).(sql.Aggregation)
-	gb.outScope.cols[len(gb.outScope.cols)-1].scalar = agg
-	col.scalar = agg
-
-	gb.addAggStr(col)
-	col.id = id
-	return col.scalarGf()
+	return gb.registerAggregate(b.ctx, plan.AliasSubqueryString(b.ctx, agg), agg)
 }
 
 // unwrapExpression unwraps expressions wrapped in ParenExpr (parenthesis)

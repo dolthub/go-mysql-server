@@ -26,6 +26,18 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
+// queryBlock records semantic SELECT nesting independently of the transient
+// scopes used while building a query.
+type queryBlock struct {
+	// source is the FROM scope that owns this query block.
+	source *scope
+	// outer is the enclosing query block visible to correlated references.
+	outer *queryBlock
+	// correlations records columns resolved outside this query block. It is nil
+	// for a top-level query.
+	correlations *subquery
+}
+
 // scope tracks relational dependencies necessary to type check expressions,
 // resolve name definitions, and build relational nodes.
 type scope struct {
@@ -55,6 +67,9 @@ type scope struct {
 	proc           *procCtx
 	parent         *scope
 	activeSubquery *subquery
+
+	// queryBlock is the semantic SELECT block containing this scope.
+	queryBlock *queryBlock
 
 	// groupBy collects aggregation functions and inputs
 	groupBy *groupBy
@@ -151,16 +166,22 @@ func (s *scope) resolveColumn(db, table, col string, checkParent, chooseFirst bo
 		}
 	}
 
-	if !checkParent || s.parent == nil {
+	if !checkParent {
 		return scopeColumn{}, false
 	}
 
-	c, foundCand := s.parent.resolveColumn(db, table, col, true, false)
+	parent, correlations := s.parentForColumnResolution()
+	if parent == nil {
+		return scopeColumn{}, false
+	}
+	c, foundCand := parent.resolveColumn(db, table, col, true, false)
 	if !foundCand {
 		return scopeColumn{}, false
 	}
 
-	if s.activeSubquery != nil {
+	if correlations != nil {
+		correlations.addOutOfScope(c.id)
+	} else if s.activeSubquery != nil {
 		s.activeSubquery.addOutOfScope(c.id)
 	}
 	return c, true
@@ -177,8 +198,10 @@ func (s *scope) resolveColumnAsTable(db, table string) []scopeColumn {
 		}
 		tableCols = append(tableCols, col)
 	}
-	if len(tableCols) == 0 && s.parent != nil {
-		return s.parent.resolveColumnAsTable(db, table)
+	if len(tableCols) == 0 {
+		if parent, _ := s.parentForColumnResolution(); parent != nil {
+			return parent.resolveColumnAsTable(db, table)
+		}
 	}
 	sort.Slice(tableCols, func(i, j int) bool {
 		return tableCols[i].id < tableCols[j].id
@@ -188,25 +211,24 @@ func (s *scope) resolveColumnAsTable(db, table string) []scopeColumn {
 
 // getCol gets a scopeColumn based on a columnId
 func (s *scope) getCol(colId sql.ColumnId) (scopeColumn, bool) {
-	if s.colset.Contains(colId) {
-		for _, c := range s.cols {
-			if sql.ColumnId(c.id) == colId {
-				return c, true
-			}
+	if !s.colset.Contains(colId) {
+		return scopeColumn{}, false
+	}
+	return s.findColumn(colId)
+}
+
+// findColumn returns the column with the given ID from this scope only.
+func (s *scope) findColumn(id sql.ColumnId) (scopeColumn, bool) {
+	for _, col := range s.cols {
+		if sql.ColumnId(col.id) == id {
+			return col, true
 		}
 	}
 	return scopeColumn{}, false
 }
 
 func (s *scope) hasTable(table string) bool {
-	_, ok := s.tables[strings.ToLower(table)]
-	if ok {
-		return true
-	}
-	if s.parent != nil {
-		return s.parent.hasTable(table)
-	}
-	return false
+	return s.getTable(table) != 0
 }
 
 // getTable returns the table ID matching the given name.
@@ -215,10 +237,26 @@ func (s *scope) getTable(table string) sql.TableId {
 	if ok {
 		return id
 	}
-	if s.parent != nil {
-		return s.parent.getTable(table)
+	if parent, _ := s.parentForColumnResolution(); parent != nil {
+		return parent.getTable(table)
 	}
 	return 0
+}
+
+// parentForColumnResolution follows lexical scopes normally and semantic query
+// blocks while binding aggregate arguments. It also returns the correlation
+// recorder crossed when lookup enters an outer query.
+func (s *scope) parentForColumnResolution() (*scope, *subquery) {
+	if s.b == nil || s.queryBlock == nil || !s.b.isAggregateArgumentQuerySource(s) {
+		return s.parent, nil
+	}
+	if s.queryBlock.outer != nil {
+		return s.queryBlock.outer.source, s.queryBlock.correlations
+	}
+	if s.queryBlock.correlations == nil {
+		return s.parent, nil
+	}
+	return nil, nil
 }
 
 // triggerCol is used to hallucinate a new column during trigger DDL
@@ -402,6 +440,7 @@ func (s *scope) push() *scope {
 	new := &scope{
 		b:          s.b,
 		parent:     s,
+		queryBlock: s.queryBlock,
 		schemaName: s.schemaName,
 	}
 	if s.procActive() {
@@ -418,8 +457,9 @@ func (s *scope) replace() *scope {
 		return &scope{}
 	}
 	return &scope{
-		b:      s.b,
-		parent: s.parent,
+		b:          s.b,
+		parent:     s.parent,
+		queryBlock: s.queryBlock,
 	}
 }
 
@@ -676,11 +716,6 @@ type scopeColumn struct {
 	nullsLast   bool
 	outOfScope  bool
 	hidden      bool
-}
-
-// empty returns true if a scopeColumn is the null value
-func (c scopeColumn) empty() bool {
-	return c.id == 0
 }
 
 func (c scopeColumn) equals(other scopeColumn) bool {
