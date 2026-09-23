@@ -393,6 +393,14 @@ func (b *Builder) newAggregation(e *ast.FuncExpr, name string, args []sql.Expres
 	return agg
 }
 
+// windowFuncName returns the lowercase function name of a window function expression, for use in error messages.
+func windowFuncName(e sql.Expression) string {
+	if f, ok := e.(sql.FunctionExpression); ok {
+		return strings.ToLower(f.FunctionName())
+	}
+	return strings.ToLower(e.String())
+}
+
 // buildAggFunctionArgs builds the arguments for an aggregate function
 func (b *Builder) buildAggFunctionArgs(inScope *scope, e *ast.FuncExpr, gb *groupBy) []sql.Expression {
 	var args []sql.Expression
@@ -400,7 +408,7 @@ func (b *Builder) buildAggFunctionArgs(inScope *scope, e *ast.FuncExpr, gb *grou
 		windowCount := len(inScope.windowFuncs)
 		e := b.selectExprToExpression(inScope, arg)
 		if len(inScope.windowFuncs) > windowCount {
-			b.handleErr(sql.ErrNonAggregatedColumnWithoutGroupBy.New())
+			b.handleErr(sql.ErrWindowInvalidWindowFuncUse.New(windowFuncName(inScope.windowFuncs[windowCount].scalar)))
 		}
 		// if GetField is an alias, alias must be masking a column
 		if gf, ok := e.(*expression.GetField); ok && gf.TableId() == 0 {

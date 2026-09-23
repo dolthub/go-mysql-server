@@ -590,6 +590,10 @@ var (
 	ErrNonAggregatedColumnWithoutGroupBy = errors.NewKind("in aggregated query without GROUP BY, expression #%d of SELECT list contains nonaggregated column '%s'; " +
 		"this is incompatible with sql_mode=only_full_group_by")
 
+	// ErrWindowInvalidWindowFuncUse is thrown when a window function is used in a context where it is not allowed,
+	// such as the argument of an aggregate function.
+	ErrWindowInvalidWindowFuncUse = newMySQLKind("You cannot use the window function '%s' in this context.'", 3593, "HY000")
+
 	// ErrInvalidArgumentNumber is returned when the number of arguments to call a
 	// function is different from the function arity.
 	ErrInvalidArgumentNumber = errors.NewKind("function '%s' expected %v arguments, %v received")
