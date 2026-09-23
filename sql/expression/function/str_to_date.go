@@ -119,15 +119,13 @@ func (s *StrToDate) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	dateStr, ok := date.(string)
-	if !ok {
-		// TODO: improve this error
-		return nil, sql.ErrInvalidType.New(fmt.Sprintf("%T", date))
+	dateStr, err := types.ConvertToString(ctx, date, types.LongBlob, nil)
+	if err != nil {
+		return nil, err
 	}
-	formatStr, ok := format.(string)
-	if !ok {
-		// TODO: improve this error
-		return nil, sql.ErrInvalidType.New(fmt.Sprintf("%T", formatStr))
+	formatStr, err := types.ConvertToString(ctx, format, types.LongBlob, nil)
+	if err != nil {
+		return nil, err
 	}
 
 	goTime, err := dateparse.ParseDateWithFormat(dateStr, formatStr)

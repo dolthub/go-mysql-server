@@ -47,6 +47,34 @@ func TestStrToDate(t *testing.T) {
 	}
 }
 
+func TestStrToDateBinaryArgs(t *testing.T) {
+	setupTimezone(t)
+
+	testCases := [...]struct {
+		name     string
+		date     interface{}
+		format   interface{}
+		expected interface{}
+	}{
+		{"binary date", []byte("Dec 26, 2000 2:13:15"), "%b %e, %Y %T", time.Date(2000, time.December, 26, 2, 13, 15, 0, time.UTC)},
+		{"binary format", "20240101", []byte("%Y%m%d"), time.Date(2024, time.January, 1, 0, 0, 0, 0, time.UTC)},
+		{"binary date unparseable", []byte{0xFF, 0xD8, 0xFF, 0xE0}, "%h:%i:%s", nil},
+	}
+
+	for _, tt := range testCases {
+		ctx := sql.NewEmptyContext()
+		f := NewStrToDate(
+			ctx,
+			expression.NewGetField(0, types.Blob, "", true),
+			expression.NewGetField(1, types.Text, "", true),
+		)
+		t.Run(tt.name, func(t *testing.T) {
+			dtime := eval(t, f, sql.NewRow(tt.date, tt.format))
+			require.Equal(t, tt.expected, dtime)
+		})
+	}
+}
+
 func TestStrToDateFailure(t *testing.T) {
 	setupTimezone(t)
 
