@@ -308,6 +308,9 @@ func IsMySQLAggregateFuncName(ctx *sql.Context, name string) (bool, error) {
 // buildAggregateFunc tags aggregate functions in the correct scope
 // and makes the aggregate available for reference by other clauses.
 func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExpr) sql.Expression {
+	if b.aggArgDepth > 0 {
+		b.handleErr(sql.ErrInvalidGroupFuncUse.New())
+	}
 	inScope.initGroupBy()
 	gb := inScope.groupBy
 
@@ -395,6 +398,8 @@ func (b *Builder) newAggregation(e *ast.FuncExpr, name string, args []sql.Expres
 
 // buildAggFunctionArgs builds the arguments for an aggregate function
 func (b *Builder) buildAggFunctionArgs(inScope *scope, e *ast.FuncExpr, gb *groupBy) []sql.Expression {
+	b.aggArgDepth++
+	defer func() { b.aggArgDepth-- }()
 	var args []sql.Expression
 	for _, arg := range e.Exprs {
 		windowCount := len(inScope.windowFuncs)

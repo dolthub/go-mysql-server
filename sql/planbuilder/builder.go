@@ -46,6 +46,9 @@ type Builder struct {
 
 	nesting int
 
+	// aggArgDepth is non-zero while building the arguments of an aggregate function
+	aggArgDepth int
+
 	tabId sql.TableId
 	colId columnId
 
@@ -217,6 +220,7 @@ func (b *Builder) Reset() {
 	b.triggerCtx = nil
 	b.viewCtx = nil
 	b.nesting = 0
+	b.aggArgDepth = 0
 	b.qFlags = &sql.QueryFlags{}
 	b.authQueryState = b.cat.AuthorizationHandler().NewQueryState(b.ctx)
 }

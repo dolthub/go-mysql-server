@@ -578,6 +578,9 @@ var (
 
 	ErrTableFunctionNotInFrom = errors.NewKind("function: '%s' is a table function and must be used in a FROM clause")
 
+	// ErrInvalidGroupFuncUse is returned when an aggregate function is nested inside another aggregate function
+	ErrInvalidGroupFuncUse = newMySQLKind("Invalid use of group function", mysql.ERInvalidGroupFuncUse, "HY000")
+
 	// ErrConflictingExternalQuery is thrown when a scope's parent has a conflicting sort or limit node
 	ErrConflictingExternalQuery = errors.NewKind("found external scope with conflicting ORDER BY/LIMIT")
 

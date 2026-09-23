@@ -14639,6 +14639,49 @@ select * from t1 except (
 		},
 	},
 	{
+		Name:    "aggregate function nested inside another aggregate function",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (id INT PRIMARY KEY, is_active BOOL, status INT);",
+			"INSERT INTO t1 VALUES (1, TRUE, 10), (2, FALSE, 20), (3, TRUE, 30);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// https://github.com/dolthub/dolt/issues/11912
+				Query:       "SELECT MAX(ANY_VALUE(tom1.is_active)) AS v FROM t1 AS tom1;",
+				ExpectedErr: sql.ErrInvalidGroupFuncUse,
+			},
+			{
+				Query:       "SELECT MAX((ANY_VALUE(tom1.is_active)) NOT LIKE ('_')) AS v FROM t1 AS tom1;",
+				ExpectedErr: sql.ErrInvalidGroupFuncUse,
+			},
+			{
+				Query:       "SELECT ANY_VALUE(MAX(status)) FROM t1;",
+				ExpectedErr: sql.ErrInvalidGroupFuncUse,
+			},
+			{
+				Query:       "SELECT SUM(COUNT(id)) FROM t1;",
+				ExpectedErr: sql.ErrInvalidGroupFuncUse,
+			},
+			{
+				Query:       "SELECT MAX(status + MIN(status)) FROM t1 GROUP BY is_active;",
+				ExpectedErr: sql.ErrInvalidGroupFuncUse,
+			},
+			{
+				Query:    "SELECT MAX((SELECT MIN(status) FROM t1)) FROM t1;",
+				Expected: []sql.Row{{10}},
+			},
+			{
+				Query:    "SELECT MAX(status), ANY_VALUE(is_active) FROM t1;",
+				Expected: []sql.Row{{30, 1}},
+			},
+			{
+				Query:    "SELECT (SELECT MAX(status) FROM t1) + (SELECT MIN(status) FROM t1);",
+				Expected: []sql.Row{{40}},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/9789
 		Name: "order by on empty set from joins",
 		SetUpScript: []string{

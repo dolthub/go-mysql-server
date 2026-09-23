@@ -56,6 +56,9 @@ func (b *Builder) buildSelectStmt(inScope *scope, s ast.SelectStatement) (outSco
 }
 
 func (b *Builder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
+	outerAggArgDepth := b.aggArgDepth
+	b.aggArgDepth = 0
+	defer func() { b.aggArgDepth = outerAggArgDepth }()
 	// General order of binding:
 	// 1) Get definitions in FROM.
 	// 2) Build WHERE, which can only reference FROM columns.
