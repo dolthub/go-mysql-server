@@ -1014,6 +1014,43 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{float64(1), 1}, {float64(2), 2}, {float64(3), 3}},
 	},
 	{
+		Query: `SELECT * FROM three_pk WHERE pk1=1 ORDER BY pk2`,
+		Expected: []sql.Row{
+			{1, 0, 10, 40, 21, 22, 23, 24},
+			{1, 1, 0, 60, 31, 32, 33, 34},
+		},
+	},
+	{
+		Query: `SELECT * FROM three_pk WHERE pk1=1 ORDER BY pk3`,
+		Expected: []sql.Row{
+			{1, 1, 0, 60, 31, 32, 33, 34},
+			{1, 0, 10, 40, 21, 22, 23, 24},
+		},
+	},
+	{
+		Query: `SELECT MIN(pk2) FROM three_pk WHERE pk2=1`,
+		Expected: []sql.Row{
+			{1},
+		},
+	},
+	{
+		Query:    `SELECT MIN(pk2) FROM three_pk WHERE pk2=2`,
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query: `SELECT MIN(pk3) FROM three_pk WHERE pk1=1`,
+		Expected: []sql.Row{
+			{0},
+		},
+	},
+	{
+		Query: `SELECT MIN(pk1) FROM three_pk WHERE pk3=10`,
+		Expected: []sql.Row{
+			{0},
+		},
+	},
+
+	{
 		Query:    "select count(1)",
 		Expected: []sql.Row{{1}},
 	},
