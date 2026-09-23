@@ -463,6 +463,17 @@ var (
 	//	Group 3: Seconds (optional)
 	TimeRegex = regexp.MustCompile(`^(\d{1,2})\p{P}*(\d\d?)?\p{P}*(\d\d?)?`)
 
+	// DelimitedTimeRegex matches strings in Time format that follow a delimited date and groups them into their time
+	// portions. Unlike TimeRegex, each portion consumes all of its digits, so that out of range values (e.g. an hour
+	// of 123) are rejected instead of being split across multiple portions.
+	// MySQL Reference: https://dev.mysql.com/doc/refman/8.4/en/datetime.html
+	// The output from regexp.FindStringSubmatchIndex is:
+	//	Match 1: The entire time string
+	//	Group 1: Hours
+	//	Group 2: Minutes (optional)
+	//	Group 3: Seconds (optional)
+	DelimitedTimeRegex = regexp.MustCompile(`^(\d+)(?:\p{P}+(\d+))?(?:\p{P}+(\d+))?`)
+
 	// MicrosRegex matches strings representing microseconds.
 	// MySQL Reference: https://dev.mysql.com/doc/refman/8.4/en/datetime.html
 	MicrosRegex = regexp.MustCompile(`^(\.\d*)`)
@@ -526,8 +537,8 @@ func matchNumericDate(str string, pos int) (matchIdxs []int) {
 // parseDate converts a string into the year, month, and day according to MySQL's rules.
 // The input string is expected to be at least MinDatetimeStringLength.
 // All date portions (year, month, and day) must be present for this function to be successful.
-// Additionally, parseDate returns the next index.
-func parseDate(str string) (yearStr, monthStr, dayStr string, pos int, ok bool) {
+// Additionally, parseDate returns the next index and whether the date was delimited.
+func parseDate(str string) (yearStr, monthStr, dayStr string, pos int, delimited bool, ok bool) {
 	// string inputs are expected to be at least length 5
 	// extract portion (find first non-digit)
 	pos = strings.IndexFunc(str, func(r rune) bool {
@@ -543,28 +554,34 @@ func parseDate(str string) (yearStr, monthStr, dayStr string, pos int, ok bool) 
 		matchIdxs = matchNumericDate(str, pos)
 	} else if unicode.IsPunct(delim) || unicode.IsSpace(delim) {
 		matchIdxs = DelimitedDateRegex.FindStringSubmatchIndex(str)
+		delimited = true
 	} else {
 		// contains invalid characters, should error
-		return yearStr, monthStr, dayStr, 0, false
+		return yearStr, monthStr, dayStr, 0, false, false
 	}
 	if len(matchIdxs) == 0 {
-		return yearStr, monthStr, dayStr, 0, false
+		return yearStr, monthStr, dayStr, 0, false, false
 	}
 	yearStr = str[matchIdxs[2]:matchIdxs[3]]
 	monthStr = str[matchIdxs[4]:matchIdxs[5]]
 	dayStr = str[matchIdxs[6]:matchIdxs[7]]
 	pos = matchIdxs[1] // set to end of date
-	return yearStr, monthStr, dayStr, pos, true
+	return yearStr, monthStr, dayStr, pos, delimited, true
 }
 
 // parseTime takes in a string and parses it into hours, minutes, and seconds according to MySQL's rules.
 // Additionally, parseTime will return the next index.
+// If delimited is true, the time follows a delimited date and is matched with DelimitedTimeRegex.
 // Any invalid strings will result in empty strings and 0 value for pos.
-func parseTime(str string) (hourStr, minStr, secStr string, pos int) {
+func parseTime(str string, delimited bool) (hourStr, minStr, secStr string, pos int) {
 	if len(str) == 0 {
 		return hourStr, minStr, secStr, pos
 	}
-	matchIdxs := TimeRegex.FindStringSubmatchIndex(str)
+	timeRegex := TimeRegex
+	if delimited {
+		timeRegex = DelimitedTimeRegex
+	}
+	matchIdxs := timeRegex.FindStringSubmatchIndex(str)
 	if len(matchIdxs) == 0 {
 		return hourStr, minStr, secStr, pos
 	}
@@ -624,7 +641,7 @@ func (t datetimeType) parseDatetime(str string) (any, bool, error) {
 		return res, delimWarn, nil
 	}
 
-	yearStr, monthStr, dayStr, pos, ok := parseDate(value)
+	yearStr, monthStr, dayStr, pos, delimited, ok := parseDate(value)
 	if !ok {
 		return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), str)
 	}
@@ -657,7 +674,7 @@ func (t datetimeType) parseDatetime(str string) (any, bool, error) {
 		value = value[newPos:]
 	}
 
-	hourStr, minStr, secStr, pos := parseTime(value)
+	hourStr, minStr, secStr, pos := parseTime(value, delimited)
 	var hour, mins, sec int
 	if len(hourStr) != 0 {
 		hour, err = strconv.Atoi(hourStr)
