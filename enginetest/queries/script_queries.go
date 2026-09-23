@@ -126,6 +126,52 @@ type ScriptTestAssertion struct {
 // the tests.
 var ScriptTests = []ScriptTest{
 	{
+		Name: "NOT IN subquery over an indexed nullable column is NULL aware",
+		SetUpScript: []string{
+			"CREATE TABLE nullable_left (id int PRIMARY KEY, k int, INDEX k_idx (k));",
+			"CREATE TABLE nullable_right (id int PRIMARY KEY, k int, INDEX k_idx (k));",
+			"INSERT INTO nullable_left VALUES (1,1),(2,2),(3,3),(4,NULL),(5,5);",
+			"INSERT INTO nullable_right VALUES (1,1),(2,2);",
+			"CREATE TABLE null_key (id int PRIMARY KEY, k int, INDEX k_idx (k));",
+			"INSERT INTO null_key VALUES (1,1),(2,2),(3,NULL);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// NOT IN a list that contains NULL is UNKNOWN for every row, so
+				// no row qualifies. The index joins must not answer this by
+				// skipping the NULL key.
+				Query:    "SELECT k FROM nullable_left WHERE k NOT IN (SELECT k FROM null_key) ORDER BY k;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT /*+ MERGE_JOIN(nullable_left,null_key) */ k FROM nullable_left WHERE k NOT IN (SELECT k FROM null_key) ORDER BY k;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT /*+ LOOKUP_JOIN(nullable_left,null_key) */ k FROM nullable_left WHERE k NOT IN (SELECT k FROM null_key) ORDER BY k;",
+				Expected: []sql.Row{},
+			},
+			{
+				// a NULL on the left is UNKNOWN as well, and is never returned
+				Query:    "SELECT k FROM nullable_left WHERE k NOT IN (SELECT k FROM nullable_right) ORDER BY k;",
+				Expected: []sql.Row{{3}, {5}},
+			},
+			{
+				Query:    "SELECT /*+ MERGE_JOIN(nullable_left,nullable_right) */ k FROM nullable_left WHERE k NOT IN (SELECT k FROM nullable_right) ORDER BY k;",
+				Expected: []sql.Row{{3}, {5}},
+			},
+			{
+				Query:    "SELECT /*+ LOOKUP_JOIN(nullable_left,nullable_right) */ k FROM nullable_left WHERE k NOT IN (SELECT k FROM nullable_right) ORDER BY k;",
+				Expected: []sql.Row{{3}, {5}},
+			},
+			{
+				// NOT EXISTS is two valued, so a NULL key is returned
+				Query:    "SELECT k FROM nullable_left WHERE NOT EXISTS (SELECT 1 FROM null_key WHERE null_key.k = nullable_left.k) ORDER BY k;",
+				Expected: []sql.Row{{nil}, {3}, {5}},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/10113
 		Name: "DELETE with NOT EXISTS subquery",
 		SetUpScript: []string{
