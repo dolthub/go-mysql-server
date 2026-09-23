@@ -16,7 +16,6 @@ package types
 
 import (
 	"context"
-	"math"
 	"reflect"
 	"strconv"
 	"strings"
@@ -239,67 +238,52 @@ func (t timeType) ConvertToTimespan(v interface{}) (Timespan, error) {
 	case uint32:
 		return t.ConvertToTimespan(int64(value))
 	case int64:
-		absValue := int64Abs(value)
-		if absValue >= -59 && absValue <= 59 {
-			return t.MicrosecondsToTimespan(value * microsecondsPerSecond), nil
-		} else if absValue >= 100 && absValue <= 9999 {
-			minutes := absValue / 100
-			seconds := absValue % 100
-			if minutes <= 59 && seconds <= 59 {
-				microseconds := (seconds * microsecondsPerSecond) + (minutes * microsecondsPerMinute)
-				if value < 0 {
-					return t.MicrosecondsToTimespan(-1 * microseconds), nil
-				}
-				return t.MicrosecondsToTimespan(microseconds), nil
-			}
-		} else if absValue >= 10000 && absValue <= 9999999 {
-			hours := absValue / 10000
-			minutes := (absValue / 100) % 100
-			seconds := absValue % 100
-			if minutes <= 59 && seconds <= 59 {
-				microseconds := (seconds * microsecondsPerSecond) + (minutes * microsecondsPerMinute) + (hours * microsecondsPerHour)
-				if value < 0 {
-					return t.MicrosecondsToTimespan(-1 * microseconds), nil
-				}
-				return t.MicrosecondsToTimespan(microseconds), nil
-			}
+		// TODO: handle datetimes here too
+		// TODO: constants
+		// TODO: errors should be err truncated
+		if value > 838_59_59 {
+			return Timespan(0), ErrConvertingToTimeType.New(v) // should be null
 		}
+		if value < -838_59_59 {
+			return Timespan(0), ErrConvertingToTimeType.New(v) // should be null
+		}
+		var isNeg bool
+		absValue := value
+		if value < 0 {
+			isNeg = true
+			absValue = -value
+		}
+		hours := absValue / ClockScalar
+		mins := (absValue / 100) % 100
+		secs := absValue % 100
+		ts, ok := makeTime(isNeg, hours, mins, secs, 0)
+		if !ok {
+			return Timespan(0), ErrConvertingToTimeType.New(v)
+		}
+		return ts, nil
 	case uint64:
 		return t.ConvertToTimespan(int64(value))
 	case float32:
 		return t.ConvertToTimespan(float64(value))
 	case float64:
-		intValue := int64(value)
-		microseconds := int64Abs(int64(math.Round((value - float64(intValue)) * float64(microsecondsPerSecond))))
-		absValue := int64Abs(intValue)
-		if absValue >= -59 && absValue <= 59 {
-			totalMicroseconds := (absValue * microsecondsPerSecond) + microseconds
-			if value < 0 {
-				return t.MicrosecondsToTimespan(-1 * totalMicroseconds), nil
-			}
-			return t.MicrosecondsToTimespan(totalMicroseconds), nil
-		} else if absValue >= 100 && absValue <= 9999 {
-			minutes := absValue / 100
-			seconds := absValue % 100
-			if minutes <= 59 && seconds <= 59 {
-				totalMicroseconds := (seconds * microsecondsPerSecond) + (minutes * microsecondsPerMinute) + microseconds
-				if value < 0 {
-					return t.MicrosecondsToTimespan(-1 * totalMicroseconds), nil
-				}
-				return t.MicrosecondsToTimespan(totalMicroseconds), nil
-			}
-		} else if absValue >= 10000 && absValue <= 9999999 {
-			hours := absValue / 10000
-			minutes := (absValue / 100) % 100
-			seconds := absValue % 100
-			if minutes <= 59 && seconds <= 59 {
-				totalMicroseconds := (seconds * microsecondsPerSecond) + (minutes * microsecondsPerMinute) + (hours * microsecondsPerHour) + microseconds
-				if value < 0 {
-					return t.MicrosecondsToTimespan(-1 * totalMicroseconds), nil
-				}
-				return t.MicrosecondsToTimespan(totalMicroseconds), nil
-			}
+		var isNeg bool
+		absValue := value
+		if value < 0 {
+			isNeg = true
+			absValue = -value
 		}
+		clock, micros, ok := splitFloat(absValue)
+		if !ok {
+			return Timespan(0), ErrConvertingToTimeType.New(v)
+		}
+		hours := clock / ClockScalar
+		mins := (clock / 100) % 100
+		secs := clock % 100
+		ts, ok := makeTime(isNeg, hours, mins, secs, micros/1000)
+		if !ok {
+			return Timespan(0), ErrConvertingToTimeType.New(v)
+		}
+		return ts, nil
 	case *apd.Decimal:
 		return t.ConvertToTimespan(DecimalRoundedIntPart(value))
 	case string:
@@ -556,6 +540,27 @@ func unitsToTimespan(isNegative bool, hours int16, minutes int8, seconds int8, m
 			(int64(seconds) * microsecondsPerSecond) +
 			(int64(minutes) * microsecondsPerMinute) +
 			(int64(hours) * microsecondsPerHour)))
+}
+
+func makeTime(isNeg bool, hours, mins, secs, micros int64) (Timespan, bool) {
+	neg := int64(1)
+	if isNeg {
+		neg = -1
+	}
+	if hours > 838 {
+		return Timespan(0), false
+	}
+	if mins > MaxMinute {
+		return Timespan(0), false
+	}
+	if secs > MaxSecond {
+		return Timespan(0), false
+	}
+	return Timespan(neg * (micros +
+		(secs * microsecondsPerSecond) +
+		(mins * microsecondsPerMinute) +
+		(hours * microsecondsPerHour)),
+	), true
 }
 
 func (t Timespan) timespanToUnits() (isNegative bool, hours int16, minutes int8, seconds int8, microseconds int32) {
