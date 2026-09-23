@@ -61,6 +61,7 @@ const (
 	replaceIdxSortId             // replaceIdxSort
 	insertTopNId                 // insertTopNNodes
 	replaceIdxOrderByDistanceId  // replaceIdxOrderByDistance
+	replaceIdxOrderByRandId      // replaceIdxOrderByRand
 	applyHashInId                // applyHashIn
 	resolveInsertRowsId          // resolveInsertRows
 	applyTriggersId              // applyTriggers

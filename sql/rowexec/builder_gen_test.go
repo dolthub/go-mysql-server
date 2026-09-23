@@ -128,6 +128,7 @@ func TestGenBuilder(t *testing.T) {
 		"RecursiveTable":            "*plan.RecursiveTable",
 		"RenameUser":                "*plan.RenameUser",
 		"Repeat":                    "*plan.Repeat",
+		"RandomSample":              "*plan.RandomSample",
 		"ChangeReplicationSource":   "*plan.ChangeReplicationSource",
 		"ChangeReplicationFilter":   "*plan.ChangeReplicationFilter",
 		"StartReplica":              "*plan.StartReplica",

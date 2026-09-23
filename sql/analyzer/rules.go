@@ -91,6 +91,7 @@ var OnceAfterDefault = []Rule{
 	{Id: flattenDistinctId, Apply: flattenDistinct},
 	{Id: insertTopNId, Apply: insertTopNNodes},
 	{Id: replaceIdxOrderByDistanceId, Apply: replaceIdxOrderByDistance},
+	{Id: replaceIdxOrderByRandId, Apply: replaceIdxOrderByRand},
 	{Id: applyHashInId, Apply: applyHashIn},
 	{Id: assignRoutinesId, Apply: assignRoutines},
 	{Id: modifyUpdateExprsForJoinId, Apply: modifyUpdateExprsForJoin},
