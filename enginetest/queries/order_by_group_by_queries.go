@@ -254,7 +254,6 @@ var OrderByGroupByScriptTests = []ScriptTest{
 		Name: "any_value() inside an aggregate function",
 		SetUpScript: []string{
 			"use mydb;",
-			"set @@sql_mode = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES';",
 			"create table members (id bigint primary key, team text);",
 			"insert into members values (3,'red'), (4,'red'),(5,'orange'),(6,'orange'),(7,'orange'),(8,'purple');",
 		},
@@ -281,6 +280,8 @@ var OrderByGroupByScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "select any_value(group_concat(team order by id)) from members",
+				// group_concat is a MySQL-specific aggregation function.
+				Dialect:  "mysql",
 				Expected: []sql.Row{{"red,red,orange,orange,orange,purple"}},
 			},
 			{
@@ -297,6 +298,8 @@ var OrderByGroupByScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "select group_concat(any_value(team) order by id) from members",
+				// group_concat is a MySQL-specific aggregation function.
+				Dialect:  "mysql",
 				Expected: []sql.Row{{"red,red,orange,orange,orange,purple"}},
 			},
 			{
@@ -334,7 +337,6 @@ var OrderByGroupByScriptTests = []ScriptTest{
 		Name: "invalid nested aggregate functions",
 		SetUpScript: []string{
 			"use mydb;",
-			"set @@sql_mode = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES';",
 			"create table members (id bigint primary key, team text);",
 			"insert into members values (3,'red'), (4,'red'),(5,'orange'),(6,'orange'),(7,'orange'),(8,'purple');",
 		},
@@ -345,6 +347,8 @@ var OrderByGroupByScriptTests = []ScriptTest{
 			},
 			{
 				Query:       "select max(group_concat(team)) from members",
+				// group_concat is a MySQL-specific aggregation function.
+				Dialect:     "mysql",
 				ExpectedErr: sql.ErrInvalidGroupFuncUse,
 			},
 			{

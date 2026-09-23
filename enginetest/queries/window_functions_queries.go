@@ -2524,7 +2524,6 @@ ORDER BY id`,
 		Name: "any_value with window functions",
 		SetUpScript: []string{
 			"use mydb;",
-			"set @@sql_mode = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES';",
 			"create table members (id bigint primary key, team text);",
 			"insert into members values (3,'red'), (4,'red'),(5,'orange'),(6,'orange'),(7,'orange'),(8,'purple');",
 		},
