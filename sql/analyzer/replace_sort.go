@@ -654,10 +654,8 @@ func isValidSortOrder(scs sql.SortConditions) bool {
 	return true
 }
 
-// countFixedPrefix returns the number of leading index columns that are
-// constrained to a single constant value.
-// These columns do not affect row ordering and can be skipped when matching
-// ORDER BY expressions to index columns.
+// constantRanges computes the set of index columns that are constrained to a single constant value.
+// These columns do not affect row ordering and can be skipped when matching ORDER BY expressions to index columns.
 func constantRanges(ctx *sql.Context, ranges sql.MySQLRangeCollection) (result sets.FastIntSet) {
 	if len(ranges) != 1 {
 		return result
