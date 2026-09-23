@@ -1033,6 +1033,10 @@ var (
 	// ErrStoredGeneratedColumnForeignKeyConflict is returned when a foreign key references a column also referenced by
 	// a stored generated column
 	ErrStoredGeneratedColumnForeignKeyConflict = errors.NewKind("Cannot add foreign key on the base column of a stored generated column.")
+
+	// ErrInvalidGroupFuncUse is returned when an aggregate function is
+	// used in an invalid context, such as nested in another aggregate.
+	ErrInvalidGroupFuncUse = newMySQLKind("Invalid use of group function", mysql.ERInvalidGroupFuncUse, mysql.SSUnknownSQLState)
 )
 
 // CastSQLError returns a *mysql.SQLError with the error code and in some cases, also a SQL state, populated for the
