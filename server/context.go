@@ -270,6 +270,12 @@ func (s *SessionManager) session(conn *mysql.Conn) sql.Session {
 	return nil
 }
 
+// GetSession returns the existing session for a connection without creating a
+// query context or a new session. It returns nil if no session exists.
+func (s *SessionManager) GetSession(conn *mysql.Conn) sql.Session {
+	return s.session(conn)
+}
+
 func (s *SessionManager) getOrCreateSession(ctx context.Context, conn *mysql.Conn) (sql.Session, error) {
 	ci, err := s.getOrCreateConnInfo(ctx, conn)
 	if err != nil {
