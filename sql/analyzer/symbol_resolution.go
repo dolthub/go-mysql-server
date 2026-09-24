@@ -103,7 +103,7 @@ func pruneTables(ctx *sql.Context, a *Analyzer, n sql.Node, s *plan.Scope, sel R
 				push(outerCols, outerStars, outerUnq)
 				push(aliasCols, aliasStars, false)
 			}
-		case *plan.Filter, *plan.Distinct, *plan.GroupBy, *plan.Project, *plan.TableAlias,
+		case *plan.Filter, *plan.Having, *plan.Distinct, *plan.GroupBy, *plan.Project, *plan.TableAlias,
 			*plan.Window, *plan.Sort, *plan.Limit, *plan.RecursiveCte,
 			*plan.RecursiveTable, *plan.TopN, *plan.Offset:
 		default:
