@@ -292,8 +292,11 @@ func (t TimespanType_) SQL(_ *sql.Context, dest []byte, v any) (sqltypes.Value, 
 	if err != nil {
 		return sqltypes.Value{}, err
 	}
-
-	dest = ti.AppendBytes(dest)
+	isNeg, hours, mins, secs, micros := ti.timespanToUnits()
+	if isNeg {
+		dest = append(dest, '-')
+	}
+	dest = appendTimeFormat(dest, int64(hours), int64(mins), int64(secs), int64(micros), t.precision)
 	return sqltypes.MakeTrusted(sqltypes.Time, dest), nil
 }
 
@@ -304,7 +307,11 @@ func (t TimespanType_) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sql
 	}
 
 	x := values.ReadInt64(v.Val)
-	dest = Timespan(x).AppendBytes(dest)
+	isNeg, hours, mins, secs, micros := Timespan(x).timespanToUnits()
+	if isNeg {
+		dest = append(dest, '-')
+	}
+	dest = appendTimeFormat(dest, int64(hours), int64(mins), int64(secs), int64(micros), t.precision)
 	return sqltypes.MakeTrusted(sqltypes.Time, dest), nil
 }
 
