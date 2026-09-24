@@ -2122,6 +2122,15 @@ var FunctionQueryTests = []QueryTest{
 		},
 	},
 	{
+		// TODO: When the date portion is delimited by '.', MySQL parses a following run of digits as HHMMSS.
+		//  MySQL also returns a 4095 warning for the deprecated '.' delimiter.
+		Skip:  true,
+		Query: "select cast('2001.02.03.123456' as datetime);",
+		Expected: []sql.Row{
+			{time.Date(2001, time.February, 3, 12, 34, 56, 0, time.UTC)},
+		},
+	},
+	{
 		Query:    "select cast('20200101123456.75' as datetime(6))",
 		Expected: []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 750000000, time.UTC)}},
 	},
