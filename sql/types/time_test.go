@@ -66,7 +66,7 @@ func TestTimeCompare(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v %v", test.val1, test.val2), func(t *testing.T) {
-			cmp, err := Time.Compare(ctx, test.val1, test.val2)
+			cmp, err := TimeMaxPrecision.Compare(ctx, test.val1, test.val2)
 			require.NoError(t, err)
 			assert.Equal(t, test.expectedCmp, cmp)
 		})
@@ -211,7 +211,7 @@ func TestTimeConvertToTimeDuration(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v %v", test.val, test.expectedVal), func(t *testing.T) {
-			val, err := Time.ConvertToTimeDuration(test.val)
+			val, err := TimeMaxPrecision.ConvertToTimeDuration(test.val)
 			require.NoError(t, err)
 			assert.Equal(t, test.expectedVal, val)
 		})
@@ -219,7 +219,8 @@ func TestTimeConvertToTimeDuration(t *testing.T) {
 }
 
 func TestTimeString(t *testing.T) {
-	require.Equal(t, "time(6)", Time.String())
+	require.Equal(t, "time", Time.String())
+	require.Equal(t, "time(6)", TimeMaxPrecision.String())
 }
 
 func TestTimeZero(t *testing.T) {
