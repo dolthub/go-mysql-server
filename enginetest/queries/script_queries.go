@@ -7037,8 +7037,7 @@ CREATE TABLE tab3 (
 			"SET time_zone = '+07:00';",
 			"create table dt (dt0 datetime(0), dt1 datetime(1), dt2 datetime(2), dt3 datetime(3), dt4 datetime(4), dt5 datetime(5), dt6 datetime(6));",
 			"insert into dt values ('2020-01-02 12:34:56.123456', '2020-01-02 12:34:56.123456', '2020-01-02 12:34:56.123456', '2020-01-02 12:34:56.123456', '2020-01-02 12:34:56.123456', '2020-01-02 12:34:56.123456', '2020-01-02 12:34:56.123456')",
-			// TODO: time length not supported, so by default we have max precision
-			"create table t (d date, tt time);",
+			"create table t (d date, tt time(6));",
 			"insert into t values ('2020-01-02 12:34:56.123456', '12:34:56.123456');",
 		},
 		Assertions: []ScriptTestAssertion{
@@ -14390,6 +14389,43 @@ where
 	},
 
 	// Time Tests
+	{
+		Dialect: "mysql",
+		Name:    "time with precision",
+		SetUpScript: []string{
+			"create table tbl (t0 time(0), t1 time(1), t2 time(2), t3 time(3), t4 time(4), t5 time(5), t6 time(6));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into tbl values(" +
+					"'12:34:56.123456', " +
+					"'12:34:56.123456', " +
+					"'12:34:56.123456', " +
+					"'12:34:56.123456', " +
+					"'12:34:56.123456', " +
+					"'12:34:56.123456', " +
+					"'12:34:56.123456'" +
+					")",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "select * from tbl;",
+				Expected: []sql.Row{
+					{
+						types.Timespan(45296_000000),
+						types.Timespan(45296_100000),
+						types.Timespan(45296_120000),
+						types.Timespan(45296_123000),
+						types.Timespan(45296_123500),
+						types.Timespan(45296_123460),
+						types.Timespan(45296_123456),
+					},
+				},
+			},
+		},
+	},
 	{
 		Name:        "time with auto_increment",
 		Dialect:     "mysql",

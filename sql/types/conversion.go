@@ -357,14 +357,7 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (sql.Type, error) {
 			if err != nil {
 				return nil, err
 			}
-			switch length {
-			case 0, 1, 2, 3, 4, 5:
-				return nil, fmt.Errorf("TIME length not yet supported")
-			case 6:
-				return Time, nil
-			default:
-				return nil, fmt.Errorf("TIME only supports a length from 0 to 6")
-			}
+			return CreateTimespanType(int(length))
 		}
 		return Time, nil
 	case "timestamp":

@@ -55,6 +55,8 @@ var (
 // The type of the returned value is Timespan.
 type TimeType interface {
 	sql.Type
+	// Precision returns the specified precision for this TimeType instance
+	Precision() int
 	// ConvertToTimespan returns a Timespan from the given interface. Follows the same conversion rules as
 	// Convert(), in that this will process the value based on its base-10 visual representation (for example, Convert()
 	// will interpret the value `1234` as 12 minutes and 34 seconds). Returns an error for nil values.
@@ -467,6 +469,11 @@ func (_ TimespanType_) MicrosecondsToTimespan(v int64) Timespan {
 		v = timespanMaximum
 	}
 	return Timespan(v)
+}
+
+// Precision implements the TimeType interface.
+func (t TimespanType_) Precision() int {
+	return t.precision
 }
 
 func unitsToTimespan(isNegative bool, hours int16, minutes int8, seconds int8, microseconds int32) Timespan {
