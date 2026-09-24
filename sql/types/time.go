@@ -397,6 +397,12 @@ func (t timeType) parseTime(str string) (sql.Time, error) {
 		return sql.Time(0), sql.ErrIncorrectValue.New(t.String(), str)
 	}
 	secs = int64(hmsSecs)
+
+	res, ok := makeTime(isNeg, hours, mins, secs, micros)
+	if !ok {
+		return sql.Time(0), sql.ErrIncorrectValue.New(t.String(), str)
+	}
+	return res, nil
 }
 
 func safeSubstr(s string, start int, end int) string {
@@ -442,7 +448,7 @@ func (t timeType) timeToUnits(timeVal sql.Time) (isNeg bool, hours, mins, secs, 
 	hours = absTimeVal / MicrosPerHour
 	mins = (absTimeVal / MicrosPerMin) % MinsPerHour
 	secs = (absTimeVal / MicrosPerSec) % SecsPerMin
-	micros = absTimeVal % MicrosPerSec // TODO: handle precision here?
+	micros = absTimeVal % MicrosPerSec
 	return
 }
 
