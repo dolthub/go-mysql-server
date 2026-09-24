@@ -1045,6 +1045,9 @@ var (
 	// ErrInvalidGroupFuncUse is returned when an aggregate function is
 	// used in an invalid context, such as nested in another aggregate.
 	ErrInvalidGroupFuncUse = newMySQLKind("Invalid use of group function", mysql.ERInvalidGroupFuncUse, mysql.SSUnknownSQLState)
+
+	// ErrTooBigPrecision is returned when a type receives a precision that is too large.
+	ErrTooBigPrecision = errors.NewKind("Too big precision %v. Maximum is %v.")
 )
 
 // CastSQLError returns a *mysql.SQLError with the error code and in some cases, also a SQL state, populated for the

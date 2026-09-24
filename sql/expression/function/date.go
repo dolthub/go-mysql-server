@@ -532,8 +532,8 @@ func dateOffsetType(ctx *sql.Context, input sql.Expression, interval *expression
 	}
 
 	// set type flags
-	isInputDate := inputType == types.Date
-	isInputTime := inputType == types.Time
+	isInputDate := types.IsDateType(inputType)
+	isInputTime := types.IsTimespan(inputType)
 
 	// determine what kind of interval we're dealing with
 	isYmd := isYmdInterval(interval)

@@ -2166,6 +2166,48 @@ var FunctionQueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "select convert('12:34:56.123456', TIME(0));",
+		Expected: []sql.Row{
+			{types.Timespan(45296_000000)},
+		},
+	},
+	{
+		Query: "select convert('12:34:56.123456', TIME(1));",
+		Expected: []sql.Row{
+			{types.Timespan(45296_100000)},
+		},
+	},
+	{
+		Query: "select convert('12:34:56.123456', TIME(2));",
+		Expected: []sql.Row{
+			{types.Timespan(45296_120000)},
+		},
+	},
+	{
+		Query: "select convert('12:34:56.123456', TIME(3));",
+		Expected: []sql.Row{
+			{types.Timespan(45296_123000)},
+		},
+	},
+	{
+		Query: "select convert('12:34:56.123456', TIME(4));",
+		Expected: []sql.Row{
+			{types.Timespan(45296_123500)},
+		},
+	},
+	{
+		Query: "select convert('12:34:56.123456', TIME(5));",
+		Expected: []sql.Row{
+			{types.Timespan(45296_123460)},
+		},
+	},
+	{
+		Query: "select convert('12:34:56.123456', TIME(6));",
+		Expected: []sql.Row{
+			{types.Timespan(45296_123456)},
+		},
+	},
+	{
 		Query: "select cast(cast('0000-01-01' as datetime(6)) as char)",
 		Expected: []sql.Row{
 			{"0000-01-01 00:00:00.000000"},
