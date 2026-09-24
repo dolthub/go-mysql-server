@@ -871,7 +871,7 @@ from
 			"         │                       ├─ tableId: 2\n" +
 			"         │                       └─ Table\n" +
 			"         │                           ├─ name: orders2\n" +
-			"         │                           └─ columns: [o_id o_d_id o_w_id o_c_id o_entry_d o_carrier_id o_ol_cnt o_all_local]\n" +
+			"         │                           └─ columns: [o_id o_d_id o_w_id o_c_id]\n" +
 			"         └─ TableAlias(o)\n" +
 			"             └─ IndexedTableAccess(orders2)\n" +
 			"                 ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_c_id,orders2.o_id]\n" +
@@ -902,7 +902,8 @@ from
 			"         │                   ├─ group: orders2.o_c_id, orders2.o_d_id, orders2.o_w_id\n" +
 			"         │                   └─ IndexedTableAccess(orders2)\n" +
 			"         │                       ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_id]\n" +
-			"         │                       └─ filters: [{[1, 1], [NULL, ∞), (2100, 11153)}]\n" +
+			"         │                       ├─ filters: [{[1, 1], [NULL, ∞), (2100, 11153)}]\n" +
+			"         │                       └─ columns: [o_id o_d_id o_w_id o_c_id]\n" +
 			"         └─ TableAlias(o)\n" +
 			"             └─ IndexedTableAccess(orders2)\n" +
 			"                 ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_c_id,orders2.o_id]\n" +
@@ -929,7 +930,8 @@ from
 			"         │                   ├─ group: orders2.o_c_id, orders2.o_d_id, orders2.o_w_id\n" +
 			"         │                   └─ IndexedTableAccess(orders2)\n" +
 			"         │                       ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_id]\n" +
-			"         │                       └─ filters: [{[1, 1], [NULL, ∞), (2100, 11153)}]\n" +
+			"         │                       ├─ filters: [{[1, 1], [NULL, ∞), (2100, 11153)}]\n" +
+			"         │                       └─ columns: [o_id o_d_id o_w_id o_c_id]\n" +
 			"         └─ TableAlias(o)\n" +
 			"             └─ IndexedTableAccess(orders2)\n" +
 			"                 ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_c_id,orders2.o_id]\n" +
