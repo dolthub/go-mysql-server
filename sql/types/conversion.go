@@ -809,6 +809,22 @@ func TypeAwareConversion(ctx *sql.Context, val any, origType, convType sql.Type)
 		if err != nil {
 			return nil, sql.InRange, err
 		}
+	case IsTimespan(origType):
+		timeType, ok := origType.(TimeType)
+		if !ok {
+			return nil, sql.InRange, sql.ErrInvalidType.New(val)
+		}
+		timeVal, ok := val.(Timespan)
+		if !ok {
+			return nil, sql.InRange, sql.ErrInvalidType.New(val)
+		}
+		switch {
+		case IsText(convType):
+			val, err = timeType.ToString(timeVal)
+		}
+		if err != nil {
+			return nil, sql.InRange, err
+		}
 	}
 
 	return convType.Convert(ctx, val)

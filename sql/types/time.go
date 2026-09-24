@@ -17,6 +17,7 @@ package types
 import (
 	"context"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/encodings"
 	"math"
 	"reflect"
 	"strconv"
@@ -39,6 +40,9 @@ const (
 	microsecondsPerMinute     int64 = 60000000
 	microsecondsPerHour       int64 = 3600000000
 	nanosecondsPerMicrosecond int64 = 1000
+
+	// MaxTimespanStringLength is the longest string representation of a valid TIME value (len(+111:22:33.123456))
+	MaxTimespanStringLength = 17
 )
 
 var (
@@ -55,8 +59,6 @@ var (
 // The type of the returned value is Timespan.
 type TimeType interface {
 	sql.Type
-	// Precision returns the specified precision for this TimeType instance
-	Precision() int
 	// ConvertToTimespan returns a Timespan from the given interface. Follows the same conversion rules as
 	// Convert(), in that this will process the value based on its base-10 visual representation (for example, Convert()
 	// will interpret the value `1234` as 12 minutes and 34 seconds). Returns an error for nil values.
@@ -69,6 +71,11 @@ type TimeType interface {
 	// that will process the value based on its base-10 visual representation (for example, Convert() will interpret
 	// the value `1234` as 12 minutes and 34 seconds). This clamps the given microseconds to the allowed range.
 	MicrosecondsToTimespan(v int64) Timespan
+
+	// Precision returns the specified precision for this TimeType instance
+	Precision() int
+	// ToString converts the given valid Timespan to its string representation
+	ToString(Timespan) (string, error)
 }
 
 type TimespanType_ struct {
@@ -99,9 +106,7 @@ func MustCreateTimespanType(precision int) TimeType {
 
 // MaxTextResponseByteLength implements the Type interface
 func (t TimespanType_) MaxTextResponseByteLength(*sql.Context) uint32 {
-	// 10 digits are required for a text representation without microseconds, but with microseconds
-	// requires 17, so return 17 as an upper limit (i.e. len(+123:00:00.999999"))
-	return 17
+	return MaxTimespanStringLength
 }
 
 // Compare implements Type interface.
@@ -278,7 +283,7 @@ func (t TimespanType_) Promote() sql.Type {
 }
 
 // SQL implements Type interface.
-func (t TimespanType_) SQL(_ *sql.Context, dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t TimespanType_) SQL(_ *sql.Context, dest []byte, v any) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -306,9 +311,9 @@ func (t TimespanType_) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sql
 // String implements Type interface.
 func (t TimespanType_) String() string {
 	if t.precision == 0 {
-		return "TIME"
+		return "time"
 	}
-	return fmt.Sprintf("TIME(%d)", t.precision)
+	return fmt.Sprintf("time(%d)", t.precision)
 }
 
 // Type implements Type interface.
@@ -476,6 +481,18 @@ func (t TimespanType_) Precision() int {
 	return t.precision
 }
 
+// ToString implements the sql.TimeType interface.
+// It converts a value Timespan into a string rounding the microseconds accord to the Type's precision.
+func (t TimespanType_) ToString(val Timespan) (string, error) {
+	dest := make([]byte, 0, MaxTimespanStringLength)
+	isNeg, hours, mins, secs, micros := val.timespanToUnits()
+	if isNeg {
+		dest = append(dest, '-')
+	}
+	dest = appendTimeFormat(dest, int64(hours), int64(mins), int64(secs), int64(micros), t.precision)
+	return encodings.BytesToString(dest), nil
+}
+
 func unitsToTimespan(isNegative bool, hours int16, minutes int8, seconds int8, microseconds int32) Timespan {
 	negative := int64(1)
 	if isNegative {
@@ -529,7 +546,7 @@ func (t Timespan) Bytes() []byte {
 	if microseconds > 0 {
 		ret[i] = '.'
 		i++
-		i = appendDigit(int64(microseconds), 6, ret, i)
+		i = appendDigit(int64(microseconds), t.precision(), ret, i)
 	}
 
 	return ret[:i]
