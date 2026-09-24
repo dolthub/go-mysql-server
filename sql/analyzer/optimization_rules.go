@@ -15,7 +15,6 @@
 package analyzer
 
 import (
-	"strings"
 	"unicode/utf8"
 
 	"github.com/dolthub/go-mysql-server/memory"
@@ -277,49 +276,18 @@ func simplifyExpression(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sel Ru
 			if charset != sql.CharacterSet_utf8mb4 {
 				return e, transform.SameTree, nil
 			}
-			// TODO: maybe more cases to simplify
-			r, ok := e.RightChild.(*expression.Literal)
+			prefix, complete, ok := e.LiteralPrefix(ctx)
 			if !ok {
 				return e, transform.SameTree, nil
 			}
-			// TODO: handle escapes
-			if e.Escape != nil {
-				return e, transform.SameTree, nil
-			}
-			val := r.Value()
-			valStr, ok := val.(string)
-			if !ok {
-				return e, transform.SameTree, nil
-			}
-			if len(valStr) == 0 {
-				return e, transform.SameTree, nil
-			}
-			// if there are single character wildcards, don't simplify
-			if strings.Count(valStr, "_")-strings.Count(valStr, "\\_") > 0 {
-				return e, transform.SameTree, nil
-			}
-			// if there are also no multiple character wildcards, this is just a plain equals
-			numWild := strings.Count(valStr, "%") - strings.Count(valStr, "\\%")
-			if numWild == 0 {
-				return expression.NewEquals(e.LeftChild, e.RightChild), transform.NewTree, nil
-			}
-			// if there are many multiple character wildcards, don't simplify
-			if numWild != 1 {
-				return e, transform.SameTree, nil
-			}
-			// if the last character is an escaped multiple character wildcard, don't simplify
-			if len(valStr) >= 2 && valStr[len(valStr)-2:] == "\\%" {
-				return e, transform.SameTree, nil
-			}
-			if valStr[len(valStr)-1] != '%' {
-				return e, transform.SameTree, nil
-			}
-			// TODO: like expression with just a wild card shouldn't even make it here; analyzer rule should just drop filter
-			if len(valStr) == 1 {
-				return e, transform.SameTree, nil
-			}
-			prefix := valStr[:len(valStr)-1]
 			rightType := e.RightChild.Type(ctx)
+			if complete {
+				return expression.NewEquals(e.LeftChild, expression.NewLiteral(prefix, rightType)), transform.NewTree, nil
+			}
+			if len(prefix) == 0 {
+				// TODO: a pattern of only '%' could be simplified to IS NOT NULL.
+				return e, transform.SameTree, nil
+			}
 			lowerBound := expression.NewGreaterThanOrEqual(e.LeftChild, expression.NewLiteral(prefix, rightType))
 			// For a code-point ordered collation every match lies between |prefix| and the next
 			// string above it, so the LIKE becomes a range with an upper bound. When |prefix| has
