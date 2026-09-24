@@ -71,7 +71,7 @@ func TestInsert(t *testing.T) {
 			name:      "inserting a negative into an unsigned int results in 0 (with ignore)",
 			colType:   types.Uint64,
 			value:     int64(-1),
-			expected:  uint64(1<<64 - 1),
+			expected:  uint64(0),
 			valueType: types.Uint64,
 			warning:   true,
 			ignore:    true,

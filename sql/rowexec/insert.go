@@ -154,7 +154,7 @@ func (i *insertIter) next(ctx *sql.Context) (returnRow sql.Row, skipped bool, re
 				converted, inRange, cErr = col.Type.Convert(ctxWithColumnInfo, val)
 			}
 			if cErr == nil && inRange != sql.InRange {
-				cErr = sql.ErrValueOutOfRange.New(val, col.Type)
+				cErr = sql.ErrValueOutOfRangeForColumn.New(col.Name, i.rowNumber)
 			}
 			if sql.ErrTruncatedIncorrect.Is(cErr) {
 				cErr = sql.ErrInvalidValue.New(val, col.Type)
@@ -167,7 +167,9 @@ func (i *insertIter) next(ctx *sql.Context) (returnRow sql.Row, skipped bool, re
 				// 'table.column'.
 				if i.ignore && i.ignoreMode == sql.InsertIgnoreModeMySQL && col.Type.Type() != query.Type_JSON {
 					if sql.IsNumberType(col.Type) {
-						if converted == nil {
+						// A negative value in an unsigned column is stored
+						// as 0, not wrapped.
+						if converted == nil || (inRange == sql.Underflow && types.IsUnsigned(col.Type)) {
 							converted = i.schema[idx].Type.Zero()
 						}
 						row[idx] = converted

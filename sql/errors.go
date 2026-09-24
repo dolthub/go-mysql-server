@@ -906,6 +906,10 @@ var (
 	// ErrValueOutOfRange is returned when a value is out of range for a type.
 	ErrValueOutOfRange = errors.NewKind("%v out of range for %v")
 
+	// ErrValueOutOfRangeForColumn is returned when a value stored in a
+	// column is out of range for the column type.
+	ErrValueOutOfRangeForColumn = newMySQLKind("Out of range value for column '%s' at row %d", mysql.ERWarnDataOutOfRange, mysql.SSDataOutOfRange)
+
 	// ErrIntegerOutOfRange is returned when integer arithmetic exceeds the result type's range.
 	ErrIntegerOutOfRange = newMySQLKind("%s value is out of range in '%s'", mysql.ERDataOutOfRange, mysql.SSDataOutOfRange)
 

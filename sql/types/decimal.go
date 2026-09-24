@@ -20,7 +20,6 @@ import (
 	"math/big"
 	"reflect"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/cockroachdb/apd/v3"
@@ -229,39 +228,17 @@ func (t DecimalType_) ConvertToDecimal(v interface{}) (*apd.Decimal, error) {
 	case float64:
 		return t.ConvertToDecimal(DecimalFromFloat64(value))
 	case string:
-		truncStr := strings.Trim(value, sql.NumericCutSet)
+		truncStr, didTrunc := TruncateStringToDouble(value, true)
+		// An out-of-range exponent such as "1e99999999999" fails to parse.
 		res, _, err := apd.NewFromString(truncStr)
-		if err == nil {
-			return t.ConvertToDecimal(res)
+		if err != nil {
+			return nil, err
 		}
-		// The decimal library cannot handle all the different formats
-		bf, _, err := new(big.Float).SetPrec(217).Parse(truncStr, 0)
-		if err == nil {
-			res, _, err = apd.NewFromString(bf.Text('f', -1))
-			if err == nil {
-				return t.ConvertToDecimal(res)
-			}
-		}
-		truncStr, didTrunc := TruncateStringToDouble(value)
-		if truncStr == "0" {
-			nullDec, cErr := t.ConvertToDecimal(apd.New(0, 0))
-			if cErr != nil {
-				return nil, cErr
-			}
-			if didTrunc {
-				return nullDec, sql.ErrTruncatedIncorrect.New(t, value)
-			}
-			return nullDec, nil
-		}
-		res, _, _ = apd.NewFromString(truncStr)
-		nullDec, cErr := t.ConvertToDecimal(res)
-		if cErr != nil {
-			return nil, cErr
-		}
-		if didTrunc {
+		dec, err := t.ConvertToDecimal(res)
+		if err == nil && didTrunc {
 			err = sql.ErrTruncatedIncorrect.New(t, value)
 		}
-		return nullDec, err
+		return dec, err
 	case *big.Float:
 		return t.ConvertToDecimal(value.Text('f', -1))
 	case *big.Int:

@@ -929,6 +929,28 @@ var SpatialInsertQueries = []WriteQueryTest{
 
 var InsertScripts = []ScriptTest{
 	{
+		// https://github.com/dolthub/dolt/issues/11918
+		Name:    "insert strings with dangling exponent into integer columns",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t (pk INT PRIMARY KEY, i INT, u INT UNSIGNED);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO t VALUES (1, '1E', '1E'), (2, '1.5E', '1.5E');",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:       "INSERT INTO t VALUES (3, '1eE', '1eE');",
+				ExpectedErr: sql.ErrInvalidValue,
+			},
+			{
+				Query:    "SELECT * FROM t ORDER BY pk;",
+				Expected: []sql.Row{{1, 1, uint32(1)}, {2, 2, uint32(2)}},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/11388
 		Name:    "multi-row empty insert compatibility",
 		Dialect: "mysql",
@@ -2926,6 +2948,27 @@ var InsertErrorScripts = []ScriptTest{
 }
 
 var InsertIgnoreScripts = []ScriptTest{
+	{
+		// https://github.com/dolthub/dolt/issues/11918
+		Name:    "insert ignore negative string with dangling exponent into unsigned column",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t (pk INT PRIMARY KEY, i INT, u INT UNSIGNED);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:                           "INSERT IGNORE INTO t VALUES (1, '-1e', '-1e');",
+				Expected:                        []sql.Row{{types.NewOkResult(1)}},
+				ExpectedWarning:                 mysql.ERWarnDataOutOfRange,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "Out of range value for column 'u' at row 1",
+			},
+			{
+				Query:    "SELECT * FROM t;",
+				Expected: []sql.Row{{1, -1, uint32(0)}},
+			},
+		},
+	},
 	{
 		Name: "Test that INSERT IGNORE with Non nullable columns works",
 		SetUpScript: []string{
