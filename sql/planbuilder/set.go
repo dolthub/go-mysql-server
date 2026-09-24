@@ -32,6 +32,10 @@ import (
 // it exists for integrators that construct the AST themselves.
 const SetScope_TransactionLocal ast.SetScope = "transaction_local"
 
+// These scopes are emitted only by PostgreSQL integrators for custom GUCs.
+const SetScope_PostgresSession ast.SetScope = "postgres_session"
+const SetScope_PostgresLocal ast.SetScope = "postgres_local"
+
 func (b *Builder) buildSet(inScope *scope, n *ast.Set) (outScope *scope) {
 	var setVarExprs []*ast.SetVarExpr
 	for _, setExpr := range n.Exprs {
@@ -211,6 +215,10 @@ func (b *Builder) buildSysVar(colName *ast.ColName, scopeHint ast.SetScope) (sql
 	}
 
 	switch scope {
+	case SetScope_PostgresSession:
+		return expression.NewSystemVar(varName, sql.PostgresSettingScope{}, ""), scope, true
+	case SetScope_PostgresLocal:
+		return expression.NewSystemVar(varName, sql.PostgresSettingScope{Local: true}, ""), scope, true
 	case ast.SetScope_Global:
 		_, _, ok := sql.SystemVariables.GetGlobal(varName)
 		if !ok {

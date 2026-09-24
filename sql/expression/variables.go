@@ -58,6 +58,9 @@ func (v *SystemVar) Type(ctx *sql.Context) sql.Type {
 	if sysVar, _, ok := sql.SystemVariables.GetGlobal(v.Name); ok {
 		return sysVar.GetType()
 	}
+	if _, ok := v.Scope.(sql.PostgresSettingScope); ok {
+		return types.LongText
+	}
 	return types.Null
 }
 
