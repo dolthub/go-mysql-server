@@ -14197,6 +14197,8 @@ where
 		},
 	},
 	{
+		// PostgreSQL has no DATETIME type or SHOW WARNINGS.
+		Dialect:     "mysql",
 		Name:        "delimited datetime strings with trailing delimiters and zero-padded time portions",
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
