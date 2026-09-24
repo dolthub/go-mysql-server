@@ -459,15 +459,15 @@ func TestDateSub(t *testing.T) {
 	require.Nil(result)
 }
 
-func TestTimeDiff(t *testing.T) {
-	toTimespan := func(str string) types.Timespan {
-		res, err := types.Time.ConvertToTimespan(str)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return res
+func toTimespan(str string) types.Timespan {
+	res, err := types.TimeMaxPrecision.ConvertToTimespan(str)
+	if err != nil {
+		panic(err)
 	}
+	return res
+}
 
+func TestTimeDiff(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 	testCases := []struct {
 		name     string
@@ -527,15 +527,15 @@ func TestTimeDiff(t *testing.T) {
 		},
 		{
 			"time types 1",
-			expression.NewConvert(expression.NewLiteral("00:00:00.1", types.Text), expression.ConvertToTime),
-			expression.NewConvert(expression.NewLiteral("00:00:00.2", types.Text), expression.ConvertToTime),
+			expression.NewConvert(expression.NewLiteral(types.Timespan(100_000), types.TimeMaxPrecision), expression.ConvertToTime),
+			expression.NewConvert(expression.NewLiteral(types.Timespan(200_000), types.TimeMaxPrecision), expression.ConvertToTime),
 			toTimespan("-00:00:00.100000"),
 			false,
 		},
 		{
 			"time types 2",
-			expression.NewLiteral("00:00:00.2", types.Text),
-			expression.NewLiteral("00:00:00.4", types.Text),
+			expression.NewConvert(expression.NewLiteral(types.Timespan(200_000), types.TimeMaxPrecision), expression.ConvertToTime),
+			expression.NewConvert(expression.NewLiteral(types.Timespan(400_000), types.TimeMaxPrecision), expression.ConvertToTime),
 			toTimespan("-00:00:00.200000"),
 			false,
 		},
