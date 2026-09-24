@@ -2124,6 +2124,7 @@ var FunctionQueryTests = []QueryTest{
 	{
 		// TODO: When the date portion is delimited by '.', MySQL parses a following run of digits as HHMMSS.
 		//  MySQL also returns a 4095 warning for the deprecated '.' delimiter.
+		//  https://github.com/dolthub/dolt/issues/11939
 		Skip:  true,
 		Query: "select cast('2001.02.03.123456' as datetime);",
 		Expected: []sql.Row{

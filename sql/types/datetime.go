@@ -470,6 +470,7 @@ var (
 	// TODO: MySQL allows any ASCII punctuation character as a delimiter, but \p{P} does not match ASCII symbols such
 	//  as '+', '^', '~', '$', and '|' (these are \p{S}), so values like '2012-12-12 12+12+12' are truncated after the
 	//  hour. The same applies to DelimitedDateRegex and the delimiter checks in parseDate and parseDatetime.
+	//  https://github.com/dolthub/dolt/issues/11939
 	// MySQL Reference: https://dev.mysql.com/doc/refman/8.4/en/datetime.html
 	// The output from regexp.FindStringSubmatchIndex is:
 	//	Match 1: The entire time string
