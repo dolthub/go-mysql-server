@@ -8625,6 +8625,13 @@ from typestable`,
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/11918
+		Query:                 "SELECT COUNT( * ) FROM (SELECT 25 AS age UNION ALL SELECT 30) t WHERE ROUND( HEX( age ) );",
+		Expected:              []sql.Row{{2}},
+		ExpectedWarning:       1292,
+		ExpectedWarningsCount: 1,
+	},
+	{
 		Query: "select 1 in (null, 0.8)",
 		Expected: []sql.Row{
 			{nil},
