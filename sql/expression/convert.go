@@ -178,7 +178,7 @@ func (c *Convert) Type(ctx *sql.Context) sql.Type {
 	case ConvertToSigned:
 		return types.Int64
 	case ConvertToTime:
-		return types.Time
+		return types.MustCreateTimespanType(c.typeLength)
 	case ConvertToUnsigned:
 		return types.Uint64
 	case ConvertToYear:
