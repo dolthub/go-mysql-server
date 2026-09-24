@@ -367,9 +367,17 @@ func (t TimespanType_) stringToTimespan(s string) (Timespan, error) {
 		if err != nil {
 			return Timespan(0), ErrConvertingToTimeType.New(s)
 		}
-		// MySQL just uses the last digit to round up
-		if len(remainStr) > 0 && remainStr[0] >= '5' {
-			convertedMicroseconds++
+		if len(remainStr) > 0 {
+			var roundChar byte
+			// MySQL has a weird special case where MaxPrecision causes it to use the last digit to round.
+			if t.precision == MaxDatetimePrecision {
+				roundChar = remainStr[len(remainStr)-1]
+			} else {
+				roundChar = remainStr[0]
+			}
+			if roundChar >= '5' {
+				convertedMicroseconds++
+			}
 		}
 		microseconds = int32(convertedMicroseconds)
 		for i := 0; i < MaxDatetimePrecision-t.precision; i++ {
