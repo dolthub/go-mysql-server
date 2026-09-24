@@ -16,6 +16,7 @@ package types
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
@@ -35,10 +36,15 @@ const (
 	MinTime int64 = -3020399000000 // -838:59:59
 	MaxTime int64 = 3020399000000  // 838:59:59
 
+	SecsPerMin  int64 = 60
+	MinsPerHour int64 = 60
+	HoursPerDay int64 = 24
+
 	MicrosPerSec  int64 = 1_000_000
-	MicrosPerMin  int64 = 60 * MicrosPerSec
-	MicrosPerHour int64 = 60 * MicrosPerMin
-	MicrosPerDay  int64 = 24 * MicrosPerHour
+	MicrosPerMin  int64 = MicrosPerSec * SecsPerMin
+	MicrosPerHour int64 = MicrosPerMin * MinsPerHour
+	MicrosPerDay  int64 = MicrosPerHour * HoursPerDay
+	NanosPerMicro int64 = 1_000
 )
 
 var (
@@ -74,6 +80,9 @@ func MustCreateTimeType(precision int) sql.TimeType {
 }
 
 // Convert implements the sql.Type interface.
+// This follows the conversion rules of MySQL, which are based on the base-10 visual representation of numbers.
+// For example, Time.Convert() will interpret the value `1234` as 12 minutes and 34 seconds).
+// Returns an error on a nil value.
 func (t timeType) Convert(ctx context.Context, v any) (any, sql.ConvertInRange, error) {
 	v, err := sql.UnwrapAny(ctx, v)
 	if err != nil {
@@ -91,25 +100,21 @@ func (t timeType) Convert(ctx context.Context, v any) (any, sql.ConvertInRange, 
 	case []byte:
 		return t.Convert(ctx, string(value))
 	case string:
-		// TODO: res, _, err = t.parseTime(value)
-		impl, err := stringToTimespan(value)
+		// TODO: sometimes these are parsed as datetimes
+		res, err = t.parseTime(value)
 		if err == nil {
-			return impl, sql.InRange, nil
+			return res, sql.InRange, nil
 		}
+		// Treat string as either a float64 or int64
 		if strings.Contains(value, ".") {
-			var val float64
-			val, err = strconv.ParseFloat(value, 64)
-			if err != nil {
-				return nil, sql.InRange, err
-			}
-			return t.ConvertToTimespan(strAsDouble)
+			v, err = strconv.ParseFloat(value, 64)
 		} else {
-			strAsInt, err := strconv.ParseInt(value, 10, 64)
-			if err != nil {
-				return Timespan(0), ErrConvertingToTimeType.New(v)
-			}
-			return t.ConvertToTimespan(strAsInt)
+			v, err = strconv.ParseInt(value, 10, 64)
 		}
+		if err != nil {
+			return nil, sql.InRange, err
+		}
+		return t.Convert(ctx, v)
 	case bool:
 		if !value {
 			return sql.Time(0), sql.InRange, nil
@@ -137,74 +142,87 @@ func (t timeType) Convert(ctx context.Context, v any) (any, sql.ConvertInRange, 
 		res, canConvNum = t.convertNumber(int64(value), 0)
 	case float32:
 		if datetime, nsec, ok := splitFloat(float64(value)); ok {
-			res, canConvNum = t.convertNumber(datetime, nsec)
+			res, canConvNum = t.convertNumber(datetime, nsec/NanosPerMicro)
 		}
 	case float64:
 		if datetime, nsec, ok := splitFloat(value); ok {
-			res, canConvNum = t.convertNumber(datetime, nsec)
+			res, canConvNum = t.convertNumber(datetime, nsec/NanosPerMicro)
 		}
 	case *apd.Decimal:
 		if datetime, nsec, ok := splitDecimal(value); ok {
-			res, canConvNum = t.convertNumber(datetime, nsec)
+			res, canConvNum = t.convertNumber(datetime, nsec/NanosPerMicro)
 		}
 	case time.Duration:
-		microseconds := value.Nanoseconds() / nanosecondsPerMicrosecond
-		return t.MicrosecondsToTimespan(microseconds), nil
+		// TODO: check bounds
+		micros := value.Nanoseconds() / NanosPerMicro
+		return sql.Time(micros), sql.InRange, nil
 	case time.Time:
-		h, m, s := value.Clock()
-		us := int64(value.Nanosecond())/nanosecondsPerMicrosecond +
-			microsecondsPerSecond*int64(s) +
-			microsecondsPerMinute*int64(m) +
-			microsecondsPerHour*int64(h)
-		return Timespan(us), nil
+		hours, mins, secs := value.Clock()
+		res, _ = makeTime(false, int64(hours), int64(mins), int64(secs), int64(value.Nanosecond())/NanosPerMicro)
+	default:
+		return sql.Time(0), sql.InRange, sql.ErrConvertToSQL.New(value, t.String())
 	}
-	return ret, sql.InRange, err
+
+	if !canConvNum {
+		return nil, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
+	}
+	if err != nil && !sql.ErrTruncatedIncorrect.Is(err) {
+		return nil, sql.InRange, err
+	}
+	return res, sql.InRange, err
 }
 
 func (t timeType) convertNumber(clock int64, micros int64) (sql.Time, bool) {
-	absValue := int64Abs(value)
-	if absValue >= -59 && absValue <= 59 {
-		return t.MicrosecondsToTimespan(value * microsecondsPerSecond), nil
-	} else if absValue >= 100 && absValue <= 9999 {
-		minutes := absValue / 100
-		seconds := absValue % 100
-		if minutes <= 59 && seconds <= 59 {
-			microseconds := (seconds * microsecondsPerSecond) + (minutes * microsecondsPerMinute)
-			if value < 0 {
-				return t.MicrosecondsToTimespan(-1 * microseconds), nil
-			}
-			return t.MicrosecondsToTimespan(microseconds), nil
-		}
-	} else if absValue >= 10000 && absValue <= 9999999 {
-		hours := absValue / 10000
-		minutes := (absValue / 100) % 100
-		seconds := absValue % 100
-		if minutes <= 59 && seconds <= 59 {
-			microseconds := (seconds * microsecondsPerSecond) + (minutes * microsecondsPerMinute) + (hours * microsecondsPerHour)
-			if value < 0 {
-				return t.MicrosecondsToTimespan(-1 * microseconds), nil
-			}
-			return t.MicrosecondsToTimespan(microseconds), nil
-		}
+	// TODO: handle datetimes here too
+	// TODO: constants
+	if clock > 838_59_59 {
+		return sql.Time(0), false
 	}
+	if clock < -838_59_59 {
+		return sql.Time(0), false
+	}
+	var isNeg bool
+	absClock := clock
+	if clock < 0 {
+		isNeg = true
+		absClock = -clock
+	}
+	hours := absClock / ClockScalar
+	mins := (absClock / 100) % 100
+	secs := absClock % 100
+	ts, ok := makeTime(isNeg, hours, mins, secs, micros)
+	if !ok {
+		return sql.Time(0), false
+	}
+	return ts, true
 }
 
 // Compare implements the sql.Type interface.
-func (t timeType) Compare(s context.Context, a, b any) (int, error) {
+func (t timeType) Compare(ctx context.Context, a, b any) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
 
-	as, err := t.ConvertToTimespan(a)
-	if err != nil {
+	var ok bool
+	var at, bt sql.Time
+	if av, _, err := t.Convert(ctx, a); err != nil {
 		return 0, err
+	} else if at, ok = av.(sql.Time); !ok {
+		return 1, nil
 	}
-	bs, err := t.ConvertToTimespan(b)
-	if err != nil {
+	if bv, _, err := t.Convert(ctx, b); err != nil {
 		return 0, err
+	} else if bt, ok = bv.(sql.Time); !ok {
+		return 1, nil
 	}
 
-	return as.Compare(bs), nil
+	if at > bt {
+		return 1, nil
+	}
+	if at < bt {
+		return -1, nil
+	}
+	return 0, nil
 }
 
 // CompareValue implements the ValueType interface
@@ -212,126 +230,29 @@ func (t timeType) CompareValue(ctx *sql.Context, a, b sql.Value) (int, error) {
 	panic("TODO: implement CompareValue for TimespanType")
 }
 
-// ConvertToTimespan converts the given interface value to a Timespan. This follows the conversion rules of MySQL, which
-// are based on the base-10 visual representation of numbers (for example, Time.Convert() will interpret the value
-// `1234` as 12 minutes and 34 seconds). Returns an error on a nil value.
-func (t timeType) ConvertToTimespan(v interface{}) (Timespan, error) {
-	switch value := v.(type) {
-	case Timespan:
-		// We only create a Timespan if it's valid, so we can skip this check if we receive a Timespan.
-		// Timespan values are not intended to be modified by an integrator, therefore it is on the integrator if they corrupt a Timespan.
-		return value, nil
-	case int:
-		return t.ConvertToTimespan(int64(value))
-	case uint:
-		return t.ConvertToTimespan(int64(value))
-	case int8:
-		return t.ConvertToTimespan(int64(value))
-	case uint8:
-		return t.ConvertToTimespan(int64(value))
-	case int16:
-		return t.ConvertToTimespan(int64(value))
-	case uint16:
-		return t.ConvertToTimespan(int64(value))
-	case int32:
-		return t.ConvertToTimespan(int64(value))
-	case uint32:
-		return t.ConvertToTimespan(int64(value))
-	case int64:
-		// TODO: handle datetimes here too
-		// TODO: constants
-		// TODO: errors should be err truncated
-		if value > 838_59_59 {
-			return Timespan(0), ErrConvertingToTimeType.New(v) // should be null
-		}
-		if value < -838_59_59 {
-			return Timespan(0), ErrConvertingToTimeType.New(v) // should be null
-		}
-		var isNeg bool
-		absValue := value
-		if value < 0 {
-			isNeg = true
-			absValue = -value
-		}
-		hours := absValue / ClockScalar
-		mins := (absValue / 100) % 100
-		secs := absValue % 100
-		ts, ok := makeTime(isNeg, hours, mins, secs, 0)
-		if !ok {
-			return Timespan(0), ErrConvertingToTimeType.New(v)
-		}
-		return ts, nil
-	case uint64:
-		return t.ConvertToTimespan(int64(value))
-	case float32:
-		return t.ConvertToTimespan(float64(value))
-	case float64:
-		var isNeg bool
-		absValue := value
-		if value < 0 {
-			isNeg = true
-			absValue = -value
-		}
-		clock, micros, ok := splitFloat(absValue)
-		if !ok {
-			return Timespan(0), ErrConvertingToTimeType.New(v)
-		}
-		hours := clock / ClockScalar
-		mins := (clock / 100) % 100
-		secs := clock % 100
-		ts, ok := makeTime(isNeg, hours, mins, secs, micros/1000)
-		if !ok {
-			return Timespan(0), ErrConvertingToTimeType.New(v)
-		}
-		return ts, nil
-	case *apd.Decimal:
-		return t.ConvertToTimespan(DecimalRoundedIntPart(value))
-	case string:
-		impl, err := stringToTimespan(value)
-		if err == nil {
-			return impl, nil
-		}
-		if strings.Contains(value, ".") {
-			strAsDouble, err := strconv.ParseFloat(value, 64)
-			if err != nil {
-				return Timespan(0), ErrConvertingToTimeType.New(v)
-			}
-			return t.ConvertToTimespan(strAsDouble)
-		} else {
-			strAsInt, err := strconv.ParseInt(value, 10, 64)
-			if err != nil {
-				return Timespan(0), ErrConvertingToTimeType.New(v)
-			}
-			return t.ConvertToTimespan(strAsInt)
-		}
-	case time.Duration:
-		microseconds := value.Nanoseconds() / nanosecondsPerMicrosecond
-		return t.MicrosecondsToTimespan(microseconds), nil
-	case time.Time:
-		h, m, s := value.Clock()
-		us := int64(value.Nanosecond())/nanosecondsPerMicrosecond +
-			microsecondsPerSecond*int64(s) +
-			microsecondsPerMinute*int64(m) +
-			microsecondsPerHour*int64(h)
-		return Timespan(us), nil
-	}
-
-	return Timespan(0), ErrConvertingToTimeType.New(v)
-}
-
 // ConvertToTimeDuration implements the TimeType interface.
-func (t timeType) ConvertToTimeDuration(v interface{}) (time.Duration, error) {
-	val, err := t.ConvertToTimespan(v)
+func (t timeType) ConvertToTimeDuration(ctx context.Context, v any) (time.Duration, error) {
+	val, _, err := t.Convert(ctx, v)
 	if err != nil {
 		return time.Duration(0), err
 	}
-	return val.AsTimeDuration(), nil
+	return time.Duration(int64(val.(sql.Time)) * NanosPerMicro), nil
 }
 
 // Equals implements the Type interface.
 func (t timeType) Equals(otherType sql.Type) bool {
-	_, ok := otherType.(TimespanType_)
-	return ok
+	otherTimeType, ok := otherType.(sql.TimeType)
+	if !ok {
+		return false
+	}
+	return t.precision == otherTimeType.Precision()
+}
+
+// MaxTextResponseByteLength implements the Type interface
+func (t timeType) MaxTextResponseByteLength(_ *sql.Context) uint32 {
+	// 10 digits are required for a text representation without microseconds, but with microseconds
+	// requires 17, so return 17 as an upper limit (i.e. len(+123:00:00.999999"))
+	return 17
 }
 
 // Promote implements the Type interface.
@@ -340,17 +261,20 @@ func (t timeType) Promote() sql.Type {
 }
 
 // SQL implements Type interface.
-func (t timeType) SQL(_ *sql.Context, dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t timeType) SQL(ctx *sql.Context, dest []byte, v any) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
-
-	ti, err := t.ConvertToTimespan(v)
+	val, _, err := t.Convert(ctx, v)
 	if err != nil {
 		return sqltypes.Value{}, err
 	}
-
-	dest = ti.AppendBytes(dest)
+	vt, ok := val.(sql.Time)
+	if !ok {
+		return sqltypes.Value{}, sql.ErrConvertToSQL.New(v, t)
+	}
+	isNeg, hours, mins, secs, micros := t.timeToUnits(vt)
+	dest = appendTimeFormat(dest, isNeg, hours, mins, secs, micros, t.precision)
 	return sqltypes.MakeTrusted(sqltypes.Time, dest), nil
 }
 
@@ -361,16 +285,17 @@ func (t timeType) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltypes
 	}
 
 	x := values.ReadInt64(v.Val)
-	Timespan(x).timespanToUnits()
-
-	appendTimeFormat()
-	dest = Timespan(x).AppendBytes(dest)
+	isNeg, hours, mins, secs, micros := t.timeToUnits(sql.Time(x))
+	dest = appendTimeFormat(dest, isNeg, hours, mins, secs, micros, t.precision)
 	return sqltypes.MakeTrusted(sqltypes.Time, dest), nil
 }
 
 // String implements Type interface.
 func (t timeType) String() string {
-	return "time(6)"
+	if t.precision == 0 {
+		return "TIME"
+	}
+	return fmt.Sprintf("TIME(%d)", t.precision)
 }
 
 // Type implements Type interface.
@@ -385,12 +310,7 @@ func (t timeType) ValueType() reflect.Type {
 
 // Zero implements Type interface.
 func (t timeType) Zero() interface{} {
-	return Timespan(0)
-}
-
-// CollationCoercibility implements sql.CollationCoercible interface.
-func (TimespanType_) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
-	return sql.Collation_binary, 5
+	return sql.Time(0)
 }
 
 // No built in for absolute values on int64
@@ -399,36 +319,37 @@ func int64Abs(v int64) int64 {
 	return (v ^ shift) - shift
 }
 
-func stringToTimespan(s string) (Timespan, error) {
-	var negative bool
-	var hours int16
-	var minutes int8
-	var seconds int8
-	var microseconds int32
-
-	if len(s) > 0 && s[0] == '-' {
-		negative = true
-		s = s[1:]
+func (t timeType) parseTime(str string) (sql.Time, error) {
+	value := strings.Trim(str, NumericCutSet)
+	if len(value) == 0 {
+		return sql.Time(0), sql.ErrIncorrectValue.New(t.String(), str)
 	}
 
-	comps := strings.SplitN(s, ".", 2)
+	var isNeg bool
+	var hours, mins, secs, micros int64
+	if value[0] == '-' {
+		isNeg = true
+		value = value[1:]
+	}
+
+	comps := strings.SplitN(value, ".", 2)
 
 	// Parse microseconds
 	if len(comps) == 2 {
 		microStr := comps[1]
-		if len(microStr) < 6 {
-			microStr += strings.Repeat("0", 6-len(comps[1]))
+		if len(microStr) < MaxTimePrecision {
+			microStr += strings.Repeat("0", MaxTimePrecision-len(comps[1]))
 		}
 		microStr, remainStr := microStr[0:6], microStr[6:]
 		convertedMicroseconds, err := strconv.Atoi(microStr)
 		if err != nil {
-			return Timespan(0), ErrConvertingToTimeType.New(s)
+			return sql.Time(0), sql.ErrIncorrectValue.New(t.String(), str)
 		}
-		// MySQL just uses the last digit to round up. This is weird, but matches their implementation.
+		// MySQL just uses the last digit to round up.
 		if len(remainStr) > 0 && remainStr[len(remainStr)-1:] >= "5" {
 			convertedMicroseconds++
 		}
-		microseconds = int32(convertedMicroseconds)
+		micros = int64(convertedMicroseconds)
 	}
 
 	// Parse H-M-S time
@@ -436,16 +357,16 @@ func stringToTimespan(s string) (Timespan, error) {
 	hms := make([]string, 3)
 	if len(hmsComps) >= 2 {
 		if len(hmsComps[0]) > 3 {
-			return Timespan(0), ErrConvertingToTimeType.New(s)
+			return sql.Time(0), sql.ErrIncorrectValue.New(t.String(), str)
 		}
 		hms[0] = hmsComps[0]
 		if len(hmsComps[1]) > 2 {
-			return Timespan(0), ErrConvertingToTimeType.New(s)
+			return sql.Time(0), sql.ErrIncorrectValue.New(t.String(), str)
 		}
 		hms[1] = hmsComps[1]
 		if len(hmsComps) == 3 {
 			if len(hmsComps[2]) > 2 {
-				return Timespan(0), ErrConvertingToTimeType.New(s)
+				return sql.Time(0), sql.ErrIncorrectValue.New(t.String(), str)
 			}
 			hms[2] = hmsComps[2]
 		}
@@ -457,51 +378,25 @@ func stringToTimespan(s string) (Timespan, error) {
 	}
 
 	hmsHours, err := strconv.Atoi(hms[0])
-	if len(hms[0]) > 0 && err != nil {
-		return Timespan(0), ErrConvertingToTimeType.New(s)
+	if err != nil {
+		return sql.Time(0), sql.ErrIncorrectValue.New(t.String(), str)
 	}
-	hours = int16(hmsHours)
+	hours = int64(hmsHours)
 
-	hmsMinutes, err := strconv.Atoi(hms[1])
+	hmsMins, err := strconv.Atoi(hms[1])
 	if len(hms[1]) > 0 && err != nil {
-		return Timespan(0), ErrConvertingToTimeType.New(s)
-	} else if hmsMinutes >= 60 {
-		return Timespan(0), ErrConvertingToTimeType.New(s)
+		return sql.Time(0), sql.ErrIncorrectValue.New(t.String(), str)
+	} else if hmsMins > MaxMinute {
+		return sql.Time(0), sql.ErrIncorrectValue.New(t.String(), str)
 	}
-	minutes = int8(hmsMinutes)
 
-	hmsSeconds, err := strconv.Atoi(hms[2])
+	hmsSecs, err := strconv.Atoi(hms[2])
 	if len(hms[2]) > 0 && err != nil {
-		return Timespan(0), ErrConvertingToTimeType.New(s)
-	} else if hmsSeconds >= 60 {
-		return Timespan(0), ErrConvertingToTimeType.New(s)
+		return sql.Time(0), sql.ErrIncorrectValue.New(t.String(), str)
+	} else if hmsSecs > MaxSecond {
+		return sql.Time(0), sql.ErrIncorrectValue.New(t.String(), str)
 	}
-	seconds = int8(hmsSeconds)
-
-	if microseconds == int32(microsecondsPerSecond) {
-		microseconds = 0
-		seconds++
-	}
-	if seconds == 60 {
-		seconds = 0
-		minutes++
-	}
-	if minutes == 60 {
-		minutes = 0
-		hours++
-	}
-
-	if hours > 838 {
-		hours = 838
-		minutes = 59
-		seconds = 59
-	}
-
-	if hours == 838 && minutes == 59 && seconds == 59 {
-		microseconds = 0
-	}
-
-	return unitsToTimespan(negative, hours, minutes, seconds, microseconds), nil
+	secs = int64(hmsSecs)
 }
 
 func safeSubstr(s string, start int, end int) string {
@@ -520,205 +415,43 @@ func safeSubstr(s string, start int, end int) string {
 	return s[start:end]
 }
 
-// MicrosecondsToTimespan implements the TimeType interface.
-func (_ TimespanType_) MicrosecondsToTimespan(v int64) Timespan {
-	if v < MinTime {
-		v = MinTime
-	} else if v > MaxTime {
-		v = MaxTime
-	}
-	return Timespan(v)
-}
-
-func unitsToTimespan(isNegative bool, hours int16, minutes int8, seconds int8, microseconds int32) Timespan {
-	negative := int64(1)
-	if isNegative {
-		negative = -1
-	}
-	return Timespan(negative *
-		(int64(microseconds) +
-			(int64(seconds) * microsecondsPerSecond) +
-			(int64(minutes) * microsecondsPerMinute) +
-			(int64(hours) * microsecondsPerHour)))
-}
-
-func makeTime(isNeg bool, hours, mins, secs, micros int64) (Timespan, bool) {
+func makeTime(isNeg bool, hours, mins, secs, micros int64) (sql.Time, bool) {
 	neg := int64(1)
 	if isNeg {
 		neg = -1
 	}
 	if hours > 838 {
-		return Timespan(0), false
+		return sql.Time(0), false
 	}
 	if mins > MaxMinute {
-		return Timespan(0), false
+		return sql.Time(0), false
 	}
 	if secs > MaxSecond {
-		return Timespan(0), false
+		return sql.Time(0), false
 	}
-	return Timespan(neg * (micros +
-		(secs * microsecondsPerSecond) +
-		(mins * microsecondsPerMinute) +
-		(hours * microsecondsPerHour)),
+	return sql.Time(neg * (micros +
+		(secs * MicrosPerSec) +
+		(mins * MicrosPerMin) +
+		(hours * MicrosPerHour)),
 	), true
 }
 
-func (t Timespan) timespanToUnits() (isNegative bool, hours int16, minutes int8, seconds int8, microseconds int32) {
-	isNegative = t < 0
-	absV := int64Abs(int64(t))
-	hours = int16(absV / microsecondsPerHour)
-	minutes = int8((absV / microsecondsPerMinute) % 60)
-	seconds = int8((absV / microsecondsPerSecond) % 60)
-	microseconds = int32(absV % microsecondsPerSecond)
+func (t timeType) timeToUnits(timeVal sql.Time) (isNeg bool, hours, mins, secs, micros int64) {
+	isNeg = timeVal < 0
+	absTimeVal := int64Abs(int64(timeVal))
+	hours = absTimeVal / MicrosPerHour
+	mins = (absTimeVal / MicrosPerMin) % MinsPerHour
+	secs = (absTimeVal / MicrosPerSec) % SecsPerMin
+	micros = absTimeVal % MicrosPerSec // TODO: handle precision here?
 	return
 }
 
-// String returns the Timespan formatted as a string (such as for display purposes).
-func (t Timespan) String() string {
-	return string(t.Bytes())
+// Precision implements the sql.TimeType interface.
+func (t timeType) Precision() int {
+	return t.precision
 }
 
-func (t Timespan) Bytes() []byte {
-	isNegative, hours, minutes, seconds, microseconds := t.timespanToUnits()
-	sz := 10
-	if microseconds > 0 {
-		sz += 7
-	}
-	ret := make([]byte, sz)
-	i := 0
-	if isNegative {
-		ret[0] = '-'
-		i++
-	}
-
-	i = appendDigit(int64(hours), 2, ret, i)
-	ret[i] = ':'
-	i++
-	i = appendDigit(int64(minutes), 2, ret, i)
-	ret[i] = ':'
-	i++
-	i = appendDigit(int64(seconds), 2, ret, i)
-	if microseconds > 0 {
-		ret[i] = '.'
-		i++
-		i = appendDigit(int64(microseconds), 6, ret, i)
-	}
-
-	return ret[:i]
-}
-
-func (t Timespan) AppendBytes(dest []byte) []byte {
-	isNeg, h, m, s, ms := t.timespanToUnits()
-	if isNeg {
-		dest = append(dest, '-')
-	}
-	dest = appendTimeFormat(dest, int64(h), int64(m), int64(s), int64(ms), t.precision())
-	return dest
-}
-
-func appendTimeFormat(dest []byte, h, m, s, ms int64, msPrecision int) []byte {
-	if h < 10 {
-		dest = append(dest, '0')
-	}
-	dest = strconv.AppendInt(dest, h, 10)
-	dest = append(dest,
-		':',
-		'0'+byte(m/10), '0'+byte(m%10), ':',
-		'0'+byte(s/10), '0'+byte(s%10))
-
-	if msPrecision > 0 {
-		dest = appendMicroseconds(dest, ms, msPrecision)
-	}
-
-	return dest
-}
-
-// appendDigit format prints 0-extended integer into buffer
-func appendDigit(v int64, extend int, buf []byte, i int) int {
-	cmp := int64(1)
-	for _ = range extend - 1 {
-		cmp *= 10
-	}
-	for cmp > 0 && v < cmp {
-		buf[i] = '0'
-		i++
-		cmp /= 10
-	}
-	if v == 0 {
-		return i
-	}
-	tmpBuf := strconv.AppendInt(buf[i:i], v, 10)
-	return i + len(tmpBuf)
-}
-
-func appendMicroseconds(dest []byte, micros int64, precision int) []byte {
-	if precision <= 0 {
-		return dest
-	}
-	subSecondSize := precisionConversion[MaxDatetimePrecision-precision]
-	subSeconds := micros / subSecondSize
-	dest = append(dest, '.')
-	cmp := precisionConversion[precision-1]
-	for cmp > 1 && subSeconds < cmp {
-		dest = append(dest, '0')
-		cmp /= 10
-	}
-	dest = strconv.AppendInt(dest, subSeconds, 10)
-	return dest
-}
-
-// AsMicroseconds returns the Timespan in microseconds.
-func (t Timespan) AsMicroseconds() int64 {
-	// Timespan already being implemented in microseconds is an implementation detail that integrators do not need to
-	// know about. This is also the reason for the comparison functions.
-	return int64(t)
-}
-
-// AsTimeDuration returns the Timespan as a time.Duration.
-func (t Timespan) AsTimeDuration() time.Duration {
-	return time.Duration(t.AsMicroseconds() * nanosecondsPerMicrosecond)
-}
-
-// Equals returns whether the calling Timespan and given Timespan are equivalent.
-func (t Timespan) Equals(other Timespan) bool {
-	return t == other
-}
-
-// Compare returns an integer comparing two values. The result will be 0 if t==other, -1 if t < other, and +1 if t > other.
-func (t Timespan) Compare(other Timespan) int {
-	if t < other {
-		return -1
-	} else if t > other {
-		return 1
-	}
-	return 0
-}
-
-// Negate returns a new Timespan that has been negated.
-func (t Timespan) Negate() Timespan {
-	return -1 * t
-}
-
-// Add returns a new Timespan that is the sum of the calling Timespan and given Timespan. The resulting Timespan is
-// clamped to the allowed range.
-func (t Timespan) Add(other Timespan) Timespan {
-	v := int64(t + other)
-	if v < MinTime {
-		v = MinTime
-	} else if v > MaxTime {
-		v = MaxTime
-	}
-	return Timespan(v)
-}
-
-// Subtract returns a new Timespan that is the difference of the calling Timespan and given Timespan. The resulting
-// Timespan is clamped to the allowed range.
-func (t Timespan) Subtract(other Timespan) Timespan {
-	v := int64(t - other)
-	if v < MinTime {
-		v = MinTime
-	} else if v > MaxTime {
-		v = MaxTime
-	}
-	return Timespan(v)
+// CollationCoercibility implements sql.CollationCoercible interface.
+func (t timeType) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }

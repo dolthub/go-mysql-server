@@ -914,15 +914,51 @@ func appendDateFormat(dest []byte, t time.Time) []byte {
 	return dest
 }
 
-func appendDatetimeFormat(dest []byte, t time.Time, precision int) []byte {
+func appendDatetimeFormat(dest []byte, t time.Time, prec int) []byte {
 	if t.Equal(ZeroTime) {
-		dest = append(dest, ZeroTimestampDatetimeStrs[precision]...)
+		dest = append(dest, ZeroTimestampDatetimeStrs[prec]...)
 		return dest
 	}
 	dest = appendDateFormat(dest, t)
 	dest = append(dest, ' ')
-	h, m, s := t.Clock()
-	dest = appendTimeFormat(dest, int64(h), int64(m), int64(s), int64(t.Nanosecond()/1000), precision)
+	hours, mins, secs := t.Clock()
+	dest = appendTimeFormat(dest, false, int64(hours), int64(mins), int64(secs), int64(t.Nanosecond()/1000), prec)
+	return dest
+}
+
+func appendTimeFormat(dest []byte, isNeg bool, hours, mins, secs, micros int64, prec int) []byte {
+	if isNeg {
+		dest = append(dest, '-')
+	}
+	if hours < 10 {
+		dest = append(dest, '0')
+	}
+	dest = strconv.AppendInt(dest, hours, 10)
+	dest = append(dest,
+		':',
+		'0'+byte(mins/10), '0'+byte(mins%10), ':',
+		'0'+byte(secs/10), '0'+byte(secs%10))
+
+	if prec > 0 {
+		dest = appendMicroseconds(dest, micros, prec)
+	}
+
+	return dest
+}
+
+func appendMicroseconds(dest []byte, micros int64, precision int) []byte {
+	if precision <= 0 {
+		return dest
+	}
+	subSecondSize := precisionConversion[MaxDatetimePrecision-precision]
+	subSeconds := micros / subSecondSize
+	dest = append(dest, '.')
+	cmp := precisionConversion[precision-1]
+	for cmp > 1 && subSeconds < cmp {
+		dest = append(dest, '0')
+		cmp /= 10
+	}
+	dest = strconv.AppendInt(dest, subSeconds, 10)
 	return dest
 }
 

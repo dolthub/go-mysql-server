@@ -250,6 +250,7 @@ type Time int64
 // The type of the returned value is Time.
 type TimeType interface {
 	Type
+	Precision() int
 	// ConvertToTimeDuration returns a time.Duration from the given interface. Follows the same conversion rules as
 	// Convert(), in that this will process the value based on its base-10 visual representation (for example, Convert()
 	// will interpret the value `1234` as 12 minutes and 34 seconds). Returns an error for nil values.
