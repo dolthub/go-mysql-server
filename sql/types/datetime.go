@@ -465,14 +465,15 @@ var (
 
 	// DelimitedTimeRegex matches strings in Time format that follow a delimited date and groups them into their time
 	// portions. Unlike TimeRegex, each portion consumes all of its digits, so that out of range values (e.g. an hour
-	// of 123) are rejected instead of being split across multiple portions.
+	// of 123) are rejected instead of being split across multiple portions. A trailing delimiter with no digits after
+	// it (e.g. '12:') is consumed so that it is not treated as truncated input.
 	// MySQL Reference: https://dev.mysql.com/doc/refman/8.4/en/datetime.html
 	// The output from regexp.FindStringSubmatchIndex is:
 	//	Match 1: The entire time string
 	//	Group 1: Hours
 	//	Group 2: Minutes (optional)
 	//	Group 3: Seconds (optional)
-	DelimitedTimeRegex = regexp.MustCompile(`^(\d+)(?:\p{P}+(\d+))?(?:\p{P}+(\d+))?`)
+	DelimitedTimeRegex = regexp.MustCompile(`^(\d+)(?:\p{P}+(\d+)?)?(?:\p{P}+(\d+)?)?`)
 
 	// MicrosRegex matches strings representing microseconds.
 	// MySQL Reference: https://dev.mysql.com/doc/refman/8.4/en/datetime.html

@@ -2100,6 +2100,22 @@ var FunctionQueryTests = []QueryTest{
 		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 	},
 	{
+		Query: "select cast('2012-12-12 121212' as datetime);",
+		Expected: []sql.Row{
+			{nil},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('2012-12-12 1212' as datetime);",
+		Expected: []sql.Row{
+			{nil},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
 		Query: "select cast('12:12:12' as datetime), cast('2012-12-12 012:12' as datetime), cast('2012-12-12 12.12.12' as datetime);",
 		Expected: []sql.Row{
 			{time.Date(2012, time.December, 12, 0, 0, 0, 0, time.UTC), time.Date(2012, time.December, 12, 12, 12, 0, 0, time.UTC), time.Date(2012, time.December, 12, 12, 12, 12, 0, time.UTC)},

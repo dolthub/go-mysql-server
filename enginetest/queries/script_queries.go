@@ -14197,6 +14197,36 @@ where
 		},
 	},
 	{
+		Name:        "delimited datetime strings with trailing delimiters and zero-padded time portions",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select cast('2012-12-12 12:' as datetime);",
+				Expected: []sql.Row{{time.Date(2012, time.December, 12, 12, 0, 0, 0, time.UTC)}},
+			},
+			{
+				Query:    "show warnings;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select cast('2012-12-12 12:12:' as datetime);",
+				Expected: []sql.Row{{time.Date(2012, time.December, 12, 12, 12, 0, 0, time.UTC)}},
+			},
+			{
+				Query:    "show warnings;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select cast('2012-12-12 12:12:0012' as datetime);",
+				Expected: []sql.Row{{time.Date(2012, time.December, 12, 12, 12, 12, 0, time.UTC)}},
+			},
+			{
+				Query:    "show warnings;",
+				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/10088
 		Name:    "datetime with zero date and non-zero times",
 		Dialect: "mysql",
