@@ -538,13 +538,14 @@ func matchNumericDate(str string, pos int) (matchIdxs []int) {
 // parseDate converts a string into the year, month, and day according to MySQL's rules.
 // The input string is expected to be at least MinDatetimeStringLength.
 // All date portions (year, month, and day) must be present for this function to be successful.
-// Additionally, parseDate returns the next index and whether the date was delimited.
-func parseDate(str string) (yearStr, monthStr, dayStr string, pos int, delimited bool, ok bool) {
+// Additionally, parseDate returns the next index and which timeRegex.
+func parseDate(str string) (yearStr, monthStr, dayStr string, pos int, timeRegex *regexp.Regexp, ok bool) {
 	// string inputs are expected to be at least length 5
 	// extract portion (find first non-digit)
 	pos = strings.IndexFunc(str, func(r rune) bool {
 		return !unicode.IsDigit(r)
 	})
+	timeRegex = TimeRegex
 	var matchIdxs []int
 	if pos == -1 {
 		// The entire string is digits, so treat it as a numeric date
@@ -555,32 +556,27 @@ func parseDate(str string) (yearStr, monthStr, dayStr string, pos int, delimited
 		matchIdxs = matchNumericDate(str, pos)
 	} else if unicode.IsPunct(delim) || unicode.IsSpace(delim) {
 		matchIdxs = DelimitedDateRegex.FindStringSubmatchIndex(str)
-		delimited = true
+		timeRegex = DelimitedTimeRegex
 	} else {
 		// contains invalid characters, should error
-		return yearStr, monthStr, dayStr, 0, false, false
+		return yearStr, monthStr, dayStr, 0, nil, false
 	}
 	if len(matchIdxs) == 0 {
-		return yearStr, monthStr, dayStr, 0, false, false
+		return yearStr, monthStr, dayStr, 0, nil, false
 	}
 	yearStr = str[matchIdxs[2]:matchIdxs[3]]
 	monthStr = str[matchIdxs[4]:matchIdxs[5]]
 	dayStr = str[matchIdxs[6]:matchIdxs[7]]
 	pos = matchIdxs[1] // set to end of date
-	return yearStr, monthStr, dayStr, pos, delimited, true
+	return yearStr, monthStr, dayStr, pos, timeRegex, true
 }
 
 // parseTime takes in a string and parses it into hours, minutes, and seconds according to MySQL's rules.
 // Additionally, parseTime will return the next index.
-// If delimited is true, the time follows a delimited date and is matched with DelimitedTimeRegex.
 // Any invalid strings will result in empty strings and 0 value for pos.
-func parseTime(str string, delimited bool) (hourStr, minStr, secStr string, pos int) {
+func parseTime(str string, timeRegex *regexp.Regexp) (hourStr, minStr, secStr string, pos int) {
 	if len(str) == 0 {
 		return hourStr, minStr, secStr, pos
-	}
-	timeRegex := TimeRegex
-	if delimited {
-		timeRegex = DelimitedTimeRegex
 	}
 	matchIdxs := timeRegex.FindStringSubmatchIndex(str)
 	if len(matchIdxs) == 0 {
@@ -642,7 +638,7 @@ func (t datetimeType) parseDatetime(str string) (any, bool, error) {
 		return res, delimWarn, nil
 	}
 
-	yearStr, monthStr, dayStr, pos, delimited, ok := parseDate(value)
+	yearStr, monthStr, dayStr, pos, timeRegex, ok := parseDate(value)
 	if !ok {
 		return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), str)
 	}
@@ -675,7 +671,7 @@ func (t datetimeType) parseDatetime(str string) (any, bool, error) {
 		value = value[newPos:]
 	}
 
-	hourStr, minStr, secStr, pos := parseTime(value, delimited)
+	hourStr, minStr, secStr, pos := parseTime(value, timeRegex)
 	var hour, mins, sec int
 	if len(hourStr) != 0 {
 		hour, err = strconv.Atoi(hourStr)
