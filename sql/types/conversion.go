@@ -357,14 +357,7 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (sql.Type, error) {
 			if err != nil {
 				return nil, err
 			}
-			switch length {
-			case 0, 1, 2, 3, 4, 5:
-				return nil, fmt.Errorf("TIME length not yet supported")
-			case 6:
-				return Time, nil
-			default:
-				return nil, fmt.Errorf("TIME only supports a length from 0 to 6")
-			}
+			return CreateTimespanType(int(length))
 		}
 		return Time, nil
 	case "timestamp":
@@ -812,6 +805,22 @@ func TypeAwareConversion(ctx *sql.Context, val any, origType, convType sql.Type)
 			val, err = dtType.ToDecimal(timeVal)
 		case IsText(convType):
 			val, err = dtType.ToString(timeVal)
+		}
+		if err != nil {
+			return nil, sql.InRange, err
+		}
+	case IsTimespan(origType):
+		timeType, ok := origType.(TimeType)
+		if !ok {
+			return nil, sql.InRange, sql.ErrInvalidType.New(val)
+		}
+		timeVal, ok := val.(Timespan)
+		if !ok {
+			return nil, sql.InRange, sql.ErrInvalidType.New(val)
+		}
+		switch {
+		case IsText(convType):
+			val, err = timeType.ToString(timeVal)
 		}
 		if err != nil {
 			return nil, sql.InRange, err

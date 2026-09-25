@@ -55,7 +55,7 @@ func (t *Time) String() string {
 
 // Type implements the Expression interface.
 func (t *Time) Type(ctx *sql.Context) sql.Type {
-	return types.Time
+	return types.TimeMaxPrecision
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -83,7 +83,7 @@ func (t *Time) Eval(ctx *sql.Context, row sql.Row) (any, error) {
 	}
 
 	// convert to time
-	val, _, err := types.Time.Convert(ctx, v)
+	val, _, err := types.TimeMaxPrecision.Convert(ctx, v)
 	if err != nil {
 		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 		return nil, nil

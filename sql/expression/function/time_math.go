@@ -471,7 +471,7 @@ func (td *TimeDiff) Description() string {
 }
 
 // Type implements the Expression interface.
-func (td *TimeDiff) Type(ctx *sql.Context) sql.Type { return types.Time }
+func (td *TimeDiff) Type(ctx *sql.Context) sql.Type { return types.TimeMaxPrecision }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*TimeDiff) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
@@ -495,7 +495,7 @@ func convToDateOrTime(ctx *sql.Context, val interface{}) (interface{}, error) {
 	if err == nil {
 		return date, nil
 	}
-	tim, _, err := types.Time.Convert(ctx, val)
+	tim, _, err := types.TimeMaxPrecision.Convert(ctx, val)
 	if err == nil {
 		return tim, err
 	}
@@ -547,7 +547,7 @@ func (td *TimeDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		if leftDatetime.Location() != rightDatetime.Location() {
 			rightDatetime = rightDatetime.In(leftDatetime.Location())
 		}
-		ret, _, err := types.Time.Convert(ctx, leftDatetime.Sub(rightDatetime))
+		ret, _, err := types.TimeMaxPrecision.Convert(ctx, leftDatetime.Sub(rightDatetime))
 		return ret, err
 	}
 

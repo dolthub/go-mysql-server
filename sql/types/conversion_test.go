@@ -84,13 +84,13 @@ func TestColumnTypeToType_Time(t *testing.T) {
 		err      bool
 	}{
 		{"", Time, false},
-		{"0", nil, true},
-		{"1", nil, true},
-		{"2", nil, true},
-		{"3", nil, true},
-		{"4", nil, true},
-		{"5", nil, true},
-		{"6", Time, false},
+		{"0", Time, false},
+		{"1", MustCreateTimespanType(1), false},
+		{"2", MustCreateTimespanType(2), false},
+		{"3", MustCreateTimespanType(3), false},
+		{"4", MustCreateTimespanType(4), false},
+		{"5", MustCreateTimespanType(5), false},
+		{"6", TimeMaxPrecision, false},
 		{"7", nil, true},
 	}
 
