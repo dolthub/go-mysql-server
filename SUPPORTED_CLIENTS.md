@@ -76,11 +76,11 @@ finally:
 import pandas as pd
 import sqlalchemy
 
-engine = sqlalchemy.create_engine('mysql+pymysql://root:@127.0.0.1:3306/mydb')
+engine = sqlalchemy.create\_engine('mysql+pymysql://root:@127.0.0.1:3306/mydb')
 with engine.connect() as conn:
-     repo_df = pd.read_sql_table("mytable", con=conn)
-     for table_name in repo_df.to_dict():
-        print(table_name)
+     repo\_df = pd.read\_sql\_table("mytable", con=conn)
+     for table\_name in repo\_df.to\_dict():
+        print(table\_name)
 ```
 
 ### ruby-mysql
@@ -101,10 +101,10 @@ conn.close()
 ```php
 try {
     $conn = new PDO("mysql:host=127.0.0.1:3306;dbname=mydb", "root", "");
-    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $conn->setAttribute(PDO::ATTR\_ERRMODE, PDO::ERRMODE\_EXCEPTION);
 
     $stmt = $conn->query('SELECT * FROM mytable LIMIT 1');
-    $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $result = $stmt->fetchAll(PDO::FETCH\_ASSOC);
 
     // use result
 } catch (PDOException $e) {
@@ -127,7 +127,7 @@ const connection = mysql.createConnection({
 connection.connect();
 
 const query = 'SELECT * FROM mytable LIMIT 1';
-connection.query(query, function (error, results, _) {
+connection.query(query, function (error, results, \_) {
     if (error) throw error;
 
     // use results
@@ -202,7 +202,7 @@ package main
 import (
 	"database/sql"
 
-	_ "github.com/go-sql-driver/mysql"
+	\_ "github.com/go-sql-driver/mysql"
 )
 
 func main() {
@@ -223,53 +223,53 @@ func main() {
 ### mysql-connector-c
 
 ```c
-#include <my_global.h>
+#include <my\_global.h>
 #include <mysql.h>
 
-void finish_with_error(MYSQL *con)
+void finish\_with\_error(MYSQL *con)
 {
-    fprintf(stderr, "%s\n", mysql_error(con));
-    mysql_close(con);
+    fprintf(stderr, "%s\n", mysql\_error(con));
+    mysql\_close(con);
     exit(1);
 }
 
 int main(int argc, char **argv)
 {
     MYSQL *con = NULL;
-    MYSQL_RES *result = NULL;
-    int num_fields = 0;
-    MYSQL_ROW row;
+    MYSQL\_RES *result = NULL;
+    int num\_fields = 0;
+    MYSQL\_ROW row;
 
-    printf("MySQL client version: %s\n", mysql_get_client_info());
+    printf("MySQL client version: %s\n", mysql\_get\_client\_info());
 
-    con = mysql_init(NULL);
+    con = mysql\_init(NULL);
     if (con == NULL) {
-        finish_with_error(con);
+        finish\_with\_error(con);
     }
 
-    if (mysql_real_connect(con, "127.0.0.1", "root", "", "mydb", 3306, NULL, 0) == NULL) {
-        finish_with_error(con);
+    if (mysql\_real\_connect(con, "127.0.0.1", "root", "", "mydb", 3306, NULL, 0) == NULL) {
+        finish\_with\_error(con);
     }
 
-    if (mysql_query(con, "SELECT name, email, phone_numbers FROM mytable")) {
-        finish_with_error(con);
+    if (mysql\_query(con, "SELECT name, email, phone\_numbers FROM mytable")) {
+        finish\_with\_error(con);
     }
 
-    result = mysql_store_result(con);
+    result = mysql\_store\_result(con);
     if (result == NULL) {
-        finish_with_error(con);
+        finish\_with\_error(con);
     }
 
-    num_fields = mysql_num_fields(result);
-    while ((row = mysql_fetch_row(result))) {
-        for(int i = 0; i < num_fields; i++) {
+    num\_fields = mysql\_num\_fields(result);
+    while ((row = mysql\_fetch\_row(result))) {
+        for(int i = 0; i < num\_fields; i++) {
             printf("%s ", row[i] ? row[i] : "NULL");
         }
         printf("\n");
     }
 
-    mysql_free_result(result);
-    mysql_close(con);
+    mysql\_free\_result(result);
+    mysql\_close(con);
 
     return 0;
 }
