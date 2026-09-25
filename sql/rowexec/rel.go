@@ -74,7 +74,7 @@ func (b *BaseBuilder) buildValueDerivedTable(ctx *sql.Context, n *plan.ValueDeri
 				return nil, err
 			}
 			// decimalType.Convert() does not use the given type precision and scale information
-			if t, ok := n.Schema(ctx)[j].Type.(sql.DecimalType); ok {
+			if t, ok := n.Schema(ctx)[j].Type.(sql.DecimalType); ok && vals[j] != nil {
 				vals[j], err = sql.DecimalRound(vals[j].(*apd.Decimal), int32(t.Scale()))
 				if err != nil {
 					return nil, err

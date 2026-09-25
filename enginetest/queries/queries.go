@@ -1683,6 +1683,14 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{nil}, {"1.00"}, {"2"}},
 	},
 	{
+		Query:    `SELECT * FROM (values row(cast(null as decimal(20,6)))) a (x);`,
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    `SELECT * FROM (values row(cast(null as decimal(20,6))), row(1.5)) a (x);`,
+		Expected: []sql.Row{{nil}, {"1.500000"}},
+	},
+	{
 		Query:    `SELECT column_0 FROM (values row(1+1.5,2+2), row(floor(1.5),concat("a","b"))) a order by 1;`,
 		Expected: []sql.Row{{"1.0"}, {"2.5"}},
 	},
