@@ -214,7 +214,10 @@ func (r *RegexpLike) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 func (r *RegexpLike) Dispose(ctx *sql.Context) {
 	if r.re != nil {
 		_ = r.re.Close()
+		r.re = nil
 	}
+	r.compileOnce = sync.Once{}
+	r.compileErr = nil
 }
 
 func compileRegex(ctx *sql.Context, pattern, text, flags sql.Expression, funcName string, row sql.Row) (regex.Regex, error) {
