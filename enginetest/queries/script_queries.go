@@ -290,6 +290,43 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/11906
+		Name:    "cast out-of-range bigint unsigned to signed",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t0 (id INT PRIMARY KEY, c0 BIGINT UNSIGNED NULL);",
+			"INSERT INTO t0 VALUES (1, 18446744073709551615), (2, 9223372036854775808), (3, 9223372036854775807), (4, 1), (5, NULL);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT CAST(CAST(18446744073709551615 AS UNSIGNED) AS SIGNED);",
+				Expected: []sql.Row{{int64(-1)}},
+			},
+			{
+				Query:    "SELECT CAST(CAST(9223372036854775808 AS UNSIGNED) AS SIGNED);",
+				Expected: []sql.Row{{int64(-9223372036854775808)}},
+			},
+			{
+				Query:    "SELECT CAST(CAST(9223372036854775807 AS UNSIGNED) AS SIGNED);",
+				Expected: []sql.Row{{int64(9223372036854775807)}},
+			},
+			{
+				Query: "SELECT id, CAST(c0 AS SIGNED) FROM t0 ORDER BY id;",
+				Expected: []sql.Row{
+					{1, int64(-1)},
+					{2, int64(-9223372036854775808)},
+					{3, int64(9223372036854775807)},
+					{4, int64(1)},
+					{5, nil},
+				},
+			},
+			{
+				Query:    "SELECT id FROM t0 WHERE CAST(c0 AS SIGNED) < 0 ORDER BY id;",
+				Expected: []sql.Row{{1}, {2}},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/9927
 		// https://github.com/dolthub/dolt/issues/9053
 		Name:    "double negation of integer minimum values",
