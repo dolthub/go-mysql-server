@@ -110,7 +110,6 @@ var _ sql.CollationCoercible = (*UnixTimestamp)(nil)
 const MaxUnixTimeMicroSecs = 32536771199999999
 const MaxUnixTimeSecs = 32536771199
 
-
 func evalNowType(ctx *sql.Context, now *Now) sql.Type {
 	if now.prec == nil {
 		return types.Int64
