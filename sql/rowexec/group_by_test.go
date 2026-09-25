@@ -15,6 +15,7 @@
 package rowexec
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -252,6 +253,34 @@ func TestGroupByCollations(t *testing.T) {
 			require.Equal(expected, rows)
 		})
 	}
+}
+
+// A grouping whose consumer fails while more rows are waiting than its channel holds must return
+// the error rather than block the producer forever.
+func TestGroupByGroupingReturnsConsumerError(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+
+	rows := make([]sql.Row, 1000)
+	for i := range rows {
+		rows[i] = sql.NewRow(int64(i))
+	}
+	errKey := errors.New("grouping key failed")
+	groupBy := []sql.Expression{failingExpression{expression.NewGetField(0, types.Int64, "a", false), errKey}}
+	selected := []sql.Expression{aggregation.NewCount(expression.NewStar())}
+
+	iter := newGroupByGroupingIter(ctx, selected, groupBy, sql.RowsToRowIter(rows...))
+	_, err := iter.Next(ctx)
+	require.ErrorIs(t, err, errKey)
+}
+
+// failingExpression evaluates to err on every row.
+type failingExpression struct {
+	*expression.GetField
+	err error
+}
+
+func (e failingExpression) Eval(*sql.Context, sql.Row) (interface{}, error) {
+	return nil, e.err
 }
 
 func BenchmarkGroupBy(b *testing.B) {
