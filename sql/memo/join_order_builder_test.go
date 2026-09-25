@@ -408,6 +408,32 @@ func TestJoinOrderBuilder_populateSubgraph(t *testing.T) {
 	}
 }
 
+func TestJoinOrderBuilder_tooManyTables(t *testing.T) {
+	db := memory.NewDatabase("test")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+
+	crossJoin := func(n int) sql.Node {
+		var j sql.Node = tableNode(db, "a")
+		for i := 1; i < n; i++ {
+			j = plan.NewCrossJoin(ctx, j, tableNode(db, "a"))
+		}
+		return j
+	}
+
+	b := NewJoinOrderBuilder(NewMemo(ctx, nil, nil, NewDefaultCoster(), nil))
+	b.populateSubgraph(ctx, crossJoin(maxJoinTables))
+	require.Len(t, b.vertices, maxJoinTables)
+
+	b = NewJoinOrderBuilder(NewMemo(ctx, nil, nil, NewDefaultCoster(), nil))
+	defer func() {
+		memoErr, ok := recover().(MemoErr)
+		require.True(t, ok, "expected a MemoErr")
+		require.True(t, sql.ErrTooManyTables.Is(memoErr.Err), "unexpected error: %v", memoErr.Err)
+	}()
+	b.populateSubgraph(ctx, crossJoin(maxJoinTables+1))
+}
+
 func newEq(eq string) sql.Expression {
 	vars := strings.Split(strings.Replace(eq, " ", "", -1), "=")
 	if len(vars) > 2 {
