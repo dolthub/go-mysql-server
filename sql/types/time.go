@@ -24,13 +24,11 @@ import (
 	"time"
 
 	"github.com/cockroachdb/apd/v3"
-	"github.com/dolthub/vitess/go/sqltypes"
-	"github.com/dolthub/vitess/go/vt/proto/query"
-	"gopkg.in/src-d/go-errors.v1"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/encodings"
 	"github.com/dolthub/go-mysql-server/sql/values"
+	"github.com/dolthub/vitess/go/sqltypes"
+	"github.com/dolthub/vitess/go/vt/proto/query"
 )
 
 const (
@@ -46,8 +44,7 @@ const (
 )
 
 var (
-	ErrConvertingToTimeType = errors.NewKind("value %v is not a valid Time")
-	timeValueType           = reflect.TypeOf(Timespan(0))
+	timeValueType = reflect.TypeOf(Timespan(0))
 
 	Time             = MustCreateTimespanType(0)
 	TimeMaxPrecision = MustCreateTimespanType(6)
@@ -237,13 +234,13 @@ func (t TimespanType_) ConvertToTimespan(v any) (Timespan, error) {
 		if strings.Contains(value, ".") {
 			strAsDouble, err := strconv.ParseFloat(value, 64)
 			if err != nil {
-				return Timespan(0), ErrConvertingToTimeType.New(v)
+				return Timespan(0), sql.ErrTruncatedIncorrect.New(t.String(), value)
 			}
 			return t.ConvertToTimespan(strAsDouble)
 		} else {
 			strAsInt, err := strconv.ParseInt(value, 10, 64)
 			if err != nil {
-				return Timespan(0), ErrConvertingToTimeType.New(v)
+				return Timespan(0), sql.ErrTruncatedIncorrect.New(t.String(), value)
 			}
 			return t.ConvertToTimespan(strAsInt)
 		}
@@ -259,7 +256,7 @@ func (t TimespanType_) ConvertToTimespan(v any) (Timespan, error) {
 		return Timespan(us), nil
 	}
 
-	return Timespan(0), ErrConvertingToTimeType.New(v)
+	return Timespan(0), sql.ErrTruncatedIncorrect.New(t.String(), v)
 }
 
 // ConvertToTimeDuration implements the TimeType interface.
@@ -375,7 +372,7 @@ func (t TimespanType_) stringToTimespan(s string) (Timespan, error) {
 			var err error
 			convertedMicroseconds, err = strconv.Atoi(microStr)
 			if err != nil {
-				return Timespan(0), ErrConvertingToTimeType.New(s)
+				return Timespan(0), sql.ErrTruncatedIncorrect.New(t.String(), s)
 			}
 		}
 
@@ -402,16 +399,16 @@ func (t TimespanType_) stringToTimespan(s string) (Timespan, error) {
 	hms := make([]string, 3)
 	if len(hmsComps) >= 2 {
 		if len(hmsComps[0]) > 3 {
-			return Timespan(0), ErrConvertingToTimeType.New(s)
+			return Timespan(0), sql.ErrTruncatedIncorrect.New(t.String(), s)
 		}
 		hms[0] = hmsComps[0]
 		if len(hmsComps[1]) > 2 {
-			return Timespan(0), ErrConvertingToTimeType.New(s)
+			return Timespan(0), sql.ErrTruncatedIncorrect.New(t.String(), s)
 		}
 		hms[1] = hmsComps[1]
 		if len(hmsComps) == 3 {
 			if len(hmsComps[2]) > 2 {
-				return Timespan(0), ErrConvertingToTimeType.New(s)
+				return Timespan(0), sql.ErrTruncatedIncorrect.New(t.String(), s)
 			}
 			hms[2] = hmsComps[2]
 		}
@@ -424,23 +421,23 @@ func (t TimespanType_) stringToTimespan(s string) (Timespan, error) {
 
 	hmsHours, err := strconv.Atoi(hms[0])
 	if len(hms[0]) > 0 && err != nil {
-		return Timespan(0), ErrConvertingToTimeType.New(s)
+		return Timespan(0), sql.ErrTruncatedIncorrect.New(t.String(), s)
 	}
 	hours = int16(hmsHours)
 
 	hmsMinutes, err := strconv.Atoi(hms[1])
 	if len(hms[1]) > 0 && err != nil {
-		return Timespan(0), ErrConvertingToTimeType.New(s)
+		return Timespan(0), sql.ErrTruncatedIncorrect.New(t.String(), s)
 	} else if hmsMinutes >= 60 {
-		return Timespan(0), ErrConvertingToTimeType.New(s)
+		return Timespan(0), sql.ErrTruncatedIncorrect.New(t.String(), s)
 	}
 	minutes = int8(hmsMinutes)
 
 	hmsSeconds, err := strconv.Atoi(hms[2])
 	if len(hms[2]) > 0 && err != nil {
-		return Timespan(0), ErrConvertingToTimeType.New(s)
+		return Timespan(0), sql.ErrTruncatedIncorrect.New(t.String(), s)
 	} else if hmsSeconds >= 60 {
-		return Timespan(0), ErrConvertingToTimeType.New(s)
+		return Timespan(0), sql.ErrTruncatedIncorrect.New(t.String(), s)
 	}
 	seconds = int8(hmsSeconds)
 
