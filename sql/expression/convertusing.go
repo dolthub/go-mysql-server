@@ -16,6 +16,9 @@ package expression
 
 import (
 	"fmt"
+	"unicode/utf8"
+
+	"github.com/dolthub/vitess/go/mysql"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/encodings"
@@ -68,6 +71,16 @@ func (c *ConvertUsing) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 	} else if v, ok := val.(string); ok {
 		valBytes = encodings.StringToBytes(v)
 	}
+
+	// Strings are stored internally as utf8mb4. A byte sequence that is not
+	// valid utf8mb4 cannot be represented in the target character set, so
+	// MySQL evaluates the conversion to NULL and issues warning 1300
+	// (ER_INVALID_CHARACTER_STRING) instead of producing a value.
+	if c.TargetCharSet == sql.CharacterSet_utf8mb4 && !utf8.Valid(valBytes) {
+		ctx.Warn(mysql.ERInvalidCharacterString, "%s", sql.ErrCharSetInvalidString.New(c.TargetCharSet.Name(), string(valBytes)))
+		return nil, nil
+	}
+
 	newString := c.TargetCharSet.Encoder().EncodeReplaceUnknown(valBytes)
 	return encodings.BytesToString(newString), nil
 }
