@@ -1046,6 +1046,9 @@ var (
 	// used in an invalid context, such as nested in another aggregate.
 	ErrInvalidGroupFuncUse = newMySQLKind("Invalid use of group function", mysql.ERInvalidGroupFuncUse, mysql.SSUnknownSQLState)
 
+	// ErrTooManyTables is returned when a join has more tables than can be planned.
+	ErrTooManyTables = newMySQLKind("Too many tables; can only use %d tables in a join", mysql.ERTooManyTables, mysql.SSUnknownSQLState)
+
 	// ErrTooBigPrecision is returned when a type receives a precision that is too large.
 	ErrTooBigPrecision = errors.NewKind("Too big precision %v. Maximum is %v.")
 )
