@@ -1977,6 +1977,39 @@ FROM (
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/11855
+		Name: "qualified window operands with colliding display strings",
+		SetUpScript: []string{
+			"CREATE TABLE t(id INT PRIMARY KEY, `a.b` INT);",
+			"CREATE TABLE u(id INT PRIMARY KEY, b INT);",
+			"INSERT INTO t VALUES (1,10),(2,10);",
+			"INSERT INTO u VALUES (1,100),(2,200);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT t.id, SUM(t.`a.b`) OVER () AS s1, SUM(`t.a`.b) OVER () AS s2 FROM t JOIN u AS `t.a` ON t.id = `t.a`.id ORDER BY t.id;",
+				Expected: []sql.Row{
+					{1, float64(20), float64(300)},
+					{2, float64(20), float64(300)},
+				},
+			},
+			{
+				Query: "SELECT t.id, SUM(t.id) OVER (PARTITION BY t.`a.b`) AS s1, SUM(t.id) OVER (PARTITION BY `t.a`.b) AS s2 FROM t JOIN u AS `t.a` ON t.id = `t.a`.id ORDER BY t.id;",
+				Expected: []sql.Row{
+					{1, float64(3), float64(1)},
+					{2, float64(3), float64(2)},
+				},
+			},
+			{
+				Query: "SELECT t.id, SUM(t.id) OVER (ORDER BY t.`a.b`) AS s1, SUM(t.id) OVER (ORDER BY `t.a`.b) AS s2 FROM t JOIN u AS `t.a` ON t.id = `t.a`.id ORDER BY t.id;",
+				Expected: []sql.Row{
+					{1, float64(3), float64(1)},
+					{2, float64(3), float64(3)},
+				},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/11465
 		Name: "min window function empty leading rows",
 		SetUpScript: []string{
