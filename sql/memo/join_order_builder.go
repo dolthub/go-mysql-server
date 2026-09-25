@@ -641,10 +641,13 @@ func (j *joinOrderBuilder) makeEdge(ctx *sql.Context, op *operator, filters ...s
 	return e
 }
 
-// checkSize prevents more than 64 tables
+// maxJoinTables is the capacity of vertexSet, which holds one bit per table.
+const maxJoinTables = 64
+
+// checkSize raises ErrTooManyTables before adding a table that vertexSet cannot hold.
 func (j *joinOrderBuilder) checkSize() {
-	if len(j.vertices) > 1<<7 {
-		panic("tried joining > 64 tables")
+	if len(j.vertices) >= maxJoinTables {
+		j.m.HandleErr(sql.ErrTooManyTables.New(maxJoinTables))
 	}
 }
 

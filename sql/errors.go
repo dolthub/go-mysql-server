@@ -1058,6 +1058,9 @@ var (
 	// ErrDeprecatedDelimiter is returned when a type receives a precision that is too large.
 	// TODO: this error should include position and row number
 	ErrDeprecatedDelimiter = newMySQLKind("Delimiter '%c' in %s value '%s' is superfluous and deprecated. Prefer the standard '-'.", 4095, mysql.SSClientError)
+
+	// ErrTooManyTables is returned when a join has more tables than the join planner can hold.
+	ErrTooManyTables = newMySQLKind("Too many tables; can only use %d tables in a join", mysql.ERTooManyTables, mysql.SSUnknownSQLState)
 )
 
 // CastSQLError returns a *mysql.SQLError with the error code and in some cases, also a SQL state, populated for the
