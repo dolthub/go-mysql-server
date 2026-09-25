@@ -858,6 +858,32 @@ ORDER BY id;`,
 		Expected: []sql.Row{{1, nil}},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/11941
+		Name:    "customer reproduction: CTAS materializes untyped NULL",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t(id INT PRIMARY KEY, g INT)",
+			"INSERT INTO t VALUES (1,1),(2,2)",
+			`CREATE TABLE out_t AS
+				SELECT id,
+				       FIRST_VALUE(NULL) OVER (
+				         PARTITION BY g
+				         RANGE BETWEEN CURRENT ROW AND CURRENT ROW
+				       ) AS wf
+				FROM t`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT id, wf FROM out_t ORDER BY id",
+				Expected: []sql.Row{{1, nil}, {2, nil}},
+			},
+			{
+				Query:    "SHOW CREATE TABLE out_t",
+				Expected: []sql.Row{{"out_t", "CREATE TABLE `out_t` (\n  `id` int NOT NULL,\n  `wf` varbinary(0)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/11468
 		Name: "FIRST_VALUE receives star placeholder",
 		SetUpScript: []string{

@@ -471,6 +471,60 @@ var CreateTableScriptTests = []ScriptTest{
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/11941
+		Name:    "CREATE TABLE AS SELECT untyped NULL",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE out_null AS SELECT NULL AS wf",
+			"CREATE TABLE out_null_multi AS SELECT NULL AS a, 1 AS b",
+			"CREATE TABLE out_null_expr AS SELECT COALESCE(NULL, NULL) AS c, CASE WHEN 1=1 THEN NULL ELSE NULL END AS cs",
+			"CREATE TABLE out_null_union AS SELECT NULL AS u UNION ALL SELECT NULL",
+			"CREATE TABLE out_explicit (b INT) AS SELECT 1 AS b, NULL AS a",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT wf FROM out_null",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:    "SHOW CREATE TABLE out_null",
+				Expected: []sql.Row{{"out_null", "CREATE TABLE `out_null` (\n  `wf` varbinary(0)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "SELECT a, b FROM out_null_multi",
+				Expected: []sql.Row{{nil, 1}},
+			},
+			{
+				Query:    "SHOW CREATE TABLE out_null_multi",
+				Expected: []sql.Row{{"out_null_multi", "CREATE TABLE `out_null_multi` (\n  `a` varbinary(0),\n  `b` tinyint NOT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "SELECT c, cs FROM out_null_expr",
+				Expected: []sql.Row{{nil, nil}},
+			},
+			{
+				Query:    "SHOW CREATE TABLE out_null_expr",
+				Expected: []sql.Row{{"out_null_expr", "CREATE TABLE `out_null_expr` (\n  `c` varbinary(0),\n  `cs` varbinary(0)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "SELECT u FROM out_null_union",
+				Expected: []sql.Row{{nil}, {nil}},
+			},
+			{
+				Query:    "SHOW CREATE TABLE out_null_union",
+				Expected: []sql.Row{{"out_null_union", "CREATE TABLE `out_null_union` (\n  `u` varbinary(0)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "SELECT b, a FROM out_explicit",
+				Expected: []sql.Row{{1, nil}},
+			},
+			{
+				Query:    "SHOW CREATE TABLE out_explicit",
+				Expected: []sql.Row{{"out_explicit", "CREATE TABLE `out_explicit` (\n  `b` int,\n  `a` varbinary(0)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/9316
 		Name:         "CREATE TABLE with constraints AS SELECT osticket repro",
 		SkipPrepared: true, // SHOW KEYS with WHERE clause doesn't work with prepared statements
