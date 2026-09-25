@@ -3754,6 +3754,10 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Query:    `select STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') % 12345;`,
 		Expected: []sql.Row{{"10487"}},
 	},
+	{
+		Query:    `select STR_TO_DATE(UNHEX('30312c352c323031332030393a33303a3137'), '%d,%m,%Y %h:%i:%s');`,
+		Expected: []sql.Row{{time.Date(2013, time.May, 1, 9, 30, 17, 0, time.UTC)}},
+	},
 
 	{
 		Query:    "select 0.0015 / 0.0026;",
