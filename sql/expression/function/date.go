@@ -23,7 +23,6 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -111,40 +110,15 @@ var _ sql.CollationCoercible = (*UnixTimestamp)(nil)
 const MaxUnixTimeMicroSecs = 32536771199999999
 const MaxUnixTimeSecs = 32536771199
 
-// canEval returns if the expression contains an expression that cannot be evaluated without sql.Context or sql.Row.
-func canEval(ctx *sql.Context, expr sql.Expression) bool {
-	evaluable := true
-	transform.InspectExpr(ctx, expr, func(ctx *sql.Context, e sql.Expression) bool {
-		switch e.(type) {
-		case *expression.GetField, *ConvertTz:
-			evaluable = false
-			return true
-		}
-		return false
-	})
-	return evaluable
-}
-
-func getNowExpr(ctx *sql.Context, expr sql.Expression) *Now {
-	var now *Now
-	transform.InspectExpr(ctx, expr, func(ctx *sql.Context, e sql.Expression) bool {
-		if n, ok := e.(*Now); ok {
-			now = n
-			return true
-		}
-		return false
-	})
-	return now
-}
-
 func evalNowType(ctx *sql.Context, now *Now) sql.Type {
 	if now.prec == nil {
 		return types.Int64
 	}
-	if !canEval(ctx, now.prec) {
+	lit, ok := now.prec.(*expression.Literal)
+	if !ok {
 		return types.MustCreateDecimalType(19, 6)
 	}
-	prec, pErr := now.prec.Eval(nil, nil)
+	prec, pErr := lit.Eval(nil, nil)
 	if pErr != nil {
 		return nil
 	}
@@ -171,16 +145,23 @@ func NewUnixTimestamp(ctx *sql.Context, args ...sql.Expression) (sql.Expression,
 	if dtType, isDtType := arg.Type(ctx).(sql.DatetimeType); isDtType {
 		return &UnixTimestamp{Date: arg, typ: types.MustCreateDecimalType(19, uint8(dtType.Precision()))}, nil
 	}
-	if !canEval(ctx, arg) {
+	if types.IsTimespan(arg.Type(ctx)) {
 		return &UnixTimestamp{Date: arg, typ: types.MustCreateDecimalType(19, 6)}, nil
 	}
-	if now := getNowExpr(ctx, arg); now != nil {
+	if now, ok := arg.(*Now); ok {
 		return &UnixTimestamp{Date: arg, typ: evalNowType(ctx, now)}, nil
 	}
 
-	// evaluate arg to determine return type
-	// no need to consider timezone conversions, because they have no impact on precision
-	date, err := arg.Eval(nil, nil)
+	// Only constant values can be evaluated before query execution.
+	lit, ok := arg.(*expression.Literal)
+	if !ok {
+		if types.IsText(arg.Type(ctx)) {
+			return &UnixTimestamp{Date: arg, typ: types.MustCreateDecimalType(19, 6)}, nil
+		}
+		return &UnixTimestamp{Date: arg, typ: types.Int64}, nil
+	}
+
+	date, err := lit.Eval(nil, nil)
 	if err != nil || date == nil {
 		return &UnixTimestamp{Date: arg}, nil
 	}
@@ -289,7 +270,7 @@ func (ut *UnixTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 		// If we aren't able to convert the value to a date, return 0 and set
 		// a warning to match MySQL's behavior
 		ctx.Warn(1292, "Incorrect datetime value: %s", ut.Date.String())
-		return int64(0), nil
+		return ut.Type(ctx).Zero(), nil
 	}
 
 	// https://dev.mysql.com/doc/refman/8.4/en/date-and-time-functions.html#function_unix-timestamp

@@ -3963,4 +3963,37 @@ var FunctionQueryTests = []QueryTest{
 		Query:       `SELECT RPAD(_latin1'a', 3, _utf8mb4'👍')`,
 		ExpectedErr: sql.ErrCannotConvertString,
 	},
+	// https://github.com/dolthub/dolt/issues/11917
+	{
+		Query:    "SELECT UNIX_TIMESTAMP(IFNULL(SIN(WEEKDAY(UUID())), (SELECT 1)));",
+		Expected: []sql.Row{{int64(0)}},
+	},
+	{
+		Query:    "SELECT UNIX_TIMESTAMP((SELECT 1));",
+		Expected: []sql.Row{{int64(0)}},
+	},
+	{
+		Query:    "SELECT UNIX_TIMESTAMP((SELECT '2023-01-01 12:34:56.789'));",
+		Expected: []sql.Row{{"1672576496.789000"}},
+	},
+	{
+		Query:    "SELECT UNIX_TIMESTAMP((SELECT NULL));",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT UNIX_TIMESTAMP((SELECT 1 FROM (SELECT 1) t WHERE 1=0));",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT UNIX_TIMESTAMP(NULLIF((SELECT 1), 1));",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT UNIX_TIMESTAMP(COALESCE((SELECT NULL), (SELECT 1)));",
+		Expected: []sql.Row{{int64(0)}},
+	},
+	{
+		Query:       "SELECT UNIX_TIMESTAMP((SELECT 1 UNION ALL SELECT 2));",
+		ExpectedErr: sql.ErrExpectedSingleRow,
+	},
 }
