@@ -364,16 +364,21 @@ func (t TimespanType_) stringToTimespan(s string) (Timespan, error) {
 	comps := strings.SplitN(s, ".", 2)
 
 	// Parse microseconds
-	if t.precision > 0 && len(comps) == 2 {
+	if len(comps) == 2 {
 		microStr := comps[1]
 		if len(microStr) < t.precision {
 			microStr += strings.Repeat("0", t.precision-len(microStr))
 		}
 		microStr, remainStr := microStr[0:t.precision], microStr[t.precision:]
-		convertedMicroseconds, err := strconv.Atoi(microStr)
-		if err != nil {
-			return Timespan(0), ErrConvertingToTimeType.New(s)
+		var convertedMicroseconds int
+		if len(microStr) > 0 {
+			var err error
+			convertedMicroseconds, err = strconv.Atoi(microStr)
+			if err != nil {
+				return Timespan(0), ErrConvertingToTimeType.New(s)
+			}
 		}
+
 		if len(remainStr) > 0 {
 			var roundChar byte
 			// MySQL has a weird special case where MaxPrecision causes it to use the last digit to round.

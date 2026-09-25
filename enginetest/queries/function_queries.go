@@ -2154,6 +2154,12 @@ var FunctionQueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "select convert('12:34:56.999999', TIME);",
+		Expected: []sql.Row{
+			{types.Timespan(45297_000000)},
+		},
+	},
+	{
 		Query: "select convert('12:34:56.123456', TIME(0));",
 		Expected: []sql.Row{
 			{types.Timespan(45296_000000)},
