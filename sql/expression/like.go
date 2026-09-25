@@ -28,6 +28,13 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
+const (
+	likeWildcardMany     = '%'
+	likeWildcardOne      = '_'
+	likeDefaultEscape    = '\\'
+	likePatternMetaChars = `\%_`
+)
+
 // Like performs pattern matching against two strings.
 type Like struct {
 	BinaryExpressionStub
@@ -161,7 +168,7 @@ func (l *Like) evalRight(ctx *sql.Context, row sql.Row) (right *string, escape r
 	}
 	right = &rightStr
 
-	escape = '\\'
+	escape = likeDefaultEscape
 	if l.Escape != nil {
 		var escapeVal any
 		escapeVal, err = l.Escape.Eval(ctx, row)
@@ -197,6 +204,70 @@ func (l *Like) String() string {
 		return fmt.Sprintf("%s LIKE %s ESCAPE %s", l.LeftChild, l.RightChild, l.Escape)
 	}
 	return fmt.Sprintf("%s LIKE %s", l.LeftChild, l.RightChild)
+}
+
+// LiteralPrefix returns a literal string that begins the pattern, and
+// reports whether the pattern has a usable prefix.
+//
+// The |complete| result reports whether the literal string comprises
+// the entire pattern without any wildcards.
+//
+// The |ok| result is false when the pattern is not a string literal,
+// when it contains wildcards before the end, or when an ESCAPE clause
+// is present.
+func (l *Like) LiteralPrefix(
+	ctx *sql.Context,
+) (prefix string, complete bool, ok bool) {
+	// TODO: handle custom ESCAPE
+	if l.Escape != nil {
+		return "", false, false
+	}
+	r, isLit := l.RightChild.(*Literal)
+	if !isLit || r.Value() == nil {
+		return "", false, false
+	}
+	pattern, isStr := r.Value().(string)
+	if !isStr || len(pattern) == 0 {
+		return "", false, false
+	}
+	idx := strings.IndexAny(pattern, likePatternMetaChars)
+	if idx == -1 {
+		return pattern, true, true
+	}
+	if idx == len(pattern)-1 && pattern[idx] == likeWildcardMany {
+		return pattern[:idx], false, true
+	}
+	var b strings.Builder
+	b.Grow(len(pattern))
+	escaped := false
+	for i := 0; i < len(pattern); {
+		r, size := utf8.DecodeRuneInString(pattern[i:])
+		i += size
+
+		if !escaped && r == likeDefaultEscape {
+			escaped = true
+			continue
+		}
+		if escaped {
+			escaped = false
+			b.WriteRune(r)
+			continue
+		}
+		if r == likeWildcardOne {
+			return "", false, false
+		}
+		if r == likeWildcardMany {
+			if i == len(pattern) && b.Len() > 0 {
+				return b.String(), false, true
+			}
+			return "", false, false
+		}
+		b.WriteRune(r)
+	}
+	if escaped {
+		b.WriteRune(likeDefaultEscape)
+	}
+	return b.String(), true, true
 }
 
 // WithChildren implements the Expression interface.
@@ -327,6 +398,11 @@ func ConstructLikeMatcher(collation sql.CollationID, pattern string, escape rune
 		case '%': // Matches any sequence of characters, including the empty sequence
 			matcher.nodes = append(matcher.nodes, likeMatcherAny{})
 		case escape: // States that the next character should be taken literally
+			if i >= len(pattern) {
+				// A trailing escape character is matched literally.
+				matcher.nodes = append(matcher.nodes, likeMatcherRune{escape, sorter(escape)})
+				break
+			}
 			nextRune, advance = charsetEncoder.NextRune(pattern[i:])
 			if nextRune == utf8.RuneError && advance <= 1 {
 				return LikeMatcher{}, sql.ErrCharSetInvalidString.New(collation.CharacterSet().Name(), pattern)
