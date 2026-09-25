@@ -9559,6 +9559,23 @@ from typestable`,
 		Query:    "select pk, (select max(pk) from one_pk where pk < opk.pk) as x from one_pk opk",
 		Expected: []sql.Row{{0, nil}, {1, 0}, {2, 1}, {3, 2}},
 	},
+	// Correlated columns in subqueries are included in select dependencies when the outer query joins
+	{
+		Query:    "select mt.s, (select count(*) from othertable where i2 <= mt.i) as x from mytable mt left join othertable ot on mt.i = ot.i2 where mt.i = 2 group by mt.i, mt.s",
+		Expected: []sql.Row{{"second row", 2}},
+	},
+	{
+		Query:    "select mt.s, count(ot.s2), (select count(*) from othertable where i2 <= mt.i) as x from mytable mt join othertable ot on mt.i = ot.i2 where mt.i = 2 group by mt.i, mt.s",
+		Expected: []sql.Row{{"second row", 1, 2}},
+	},
+	{
+		Query:    "select mt.s, count(distinct ot.s2), (select count(*) from othertable where i2 <= mt.i) as x from mytable mt left join othertable ot on mt.i = ot.i2 where mt.i = 2",
+		Expected: []sql.Row{{"second row", 1, 2}},
+	},
+	{
+		Query:    "select mt.i, (select count(*) from othertable where i2 <= mt.i) as x from mytable mt join othertable ot on mt.i = ot.i2 group by mt.i order by mt.i",
+		Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}},
+	},
 	{
 		// https://github.com/dolthub/dolt/issues/9963
 		Query:    "select max(i) as max_i from mytable having max(i) < 3",
