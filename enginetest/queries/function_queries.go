@@ -2044,6 +2044,102 @@ var FunctionQueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "select cast('12:12:12.123' as datetime(3));",
+		Expected: []sql.Row{
+			{nil},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('2012-12-12.123' as datetime(3));",
+		Expected: []sql.Row{
+			{nil},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('2012-12-12 12.123' as datetime(3));",
+		Expected: []sql.Row{
+			{nil},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('2012-12-12 12:12.123' as datetime(3));",
+		Expected: []sql.Row{
+			{nil},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('2012-12-12 .123' as datetime(3));",
+		Expected: []sql.Row{
+			{nil},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('2012-12-12 123' as datetime(3));",
+		Expected: []sql.Row{
+			{nil},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('2012-12-12 12:1212' as datetime(3));",
+		Expected: []sql.Row{
+			{nil},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('2012-12-12 121212' as datetime);",
+		Expected: []sql.Row{
+			{nil},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('20121212 121212' as datetime);",
+		Expected: []sql.Row{
+			{nil},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('2012-12-12 1212' as datetime);",
+		Expected: []sql.Row{
+			{nil},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('12:12:12' as datetime), cast('2012-12-12 012:12' as datetime), cast('2012-12-12 12.12.12' as datetime);",
+		Expected: []sql.Row{
+			{time.Date(2012, time.December, 12, 0, 0, 0, 0, time.UTC), time.Date(2012, time.December, 12, 12, 12, 0, 0, time.UTC), time.Date(2012, time.December, 12, 12, 12, 12, 0, time.UTC)},
+		},
+	},
+	{
+		// TODO: When the date portion is delimited by '.', MySQL parses a following run of digits as HHMMSS.
+		//  MySQL also returns a 4095 warning for the deprecated '.' delimiter.
+		//  https://github.com/dolthub/dolt/issues/11939
+		Skip:  true,
+		Query: "select cast('2001.02.03.123456' as datetime);",
+		Expected: []sql.Row{
+			{time.Date(2001, time.February, 3, 12, 34, 56, 0, time.UTC)},
+		},
+	},
+	{
 		Query:    "select cast('20200101123456.75' as datetime(6))",
 		Expected: []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 750000000, time.UTC)}},
 	},
