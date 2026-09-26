@@ -283,6 +283,7 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 			}
 
 			groupBys := make(map[string]bool)
+			var groupByCols sql.ColSet
 			groupByPrimaryKeys := 0
 			isJoin := false
 			exprs := make([]sql.Expression, 0)
@@ -307,6 +308,9 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 					if nameable, ok := expr.(sql.Nameable); ok {
 						groupBys[strings.ToLower(nameable.Name())] = true
 					}
+					if gf, ok := expr.(*expression.GetField); ok {
+						groupByCols.Add(gf.Id())
+					}
 					_, isAlias := expr.(*expression.Alias)
 					return isAlias
 				})
@@ -329,7 +333,7 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 			selectExprs, orderByExprs := getSelectAndOrderByExprs(ctx, project, orderBy, selectDeps, groupBys)
 
 			for i, expr := range selectExprs {
-				if valid, col := expressionReferencesOnlyGroupBys(ctx, groupBys, expr, noGroupBy); !valid {
+				if valid, col := expressionReferencesOnlyGroupBys(ctx, groupBys, groupByCols, expr, noGroupBy); !valid {
 					if noGroupBy {
 						err = sql.ErrNonAggregatedColumnWithoutGroupBy.New(i+1, col)
 					} else {
@@ -345,7 +349,7 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 			// validate ORDER BY expressions in aggregate queries without an explicit GROUP BY
 			if !noGroupBy {
 				for i, expr := range orderByExprs {
-					if valid, col := expressionReferencesOnlyGroupBys(ctx, groupBys, expr, noGroupBy); !valid {
+					if valid, col := expressionReferencesOnlyGroupBys(ctx, groupBys, groupByCols, expr, noGroupBy); !valid {
 						err = analyzererrors.ErrValidationGroupByOrderBy.New(i+1, col)
 						return false
 					}
@@ -451,8 +455,10 @@ func resolveExpr(ctx *sql.Context, expr sql.Expression, selectDeps map[string]sq
 	return resolvedExpr
 }
 
-// expressionReferencesOnlyGroupBys validates that an expression is dependent on only group by expressions
-func expressionReferencesOnlyGroupBys(ctx *sql.Context, groupBys map[string]bool, expr sql.Expression, noGroupBy bool) (bool, string) {
+// expressionReferencesOnlyGroupBys validates that an expression is dependent on only group by expressions.
+// groupByCols holds the ids of the columns grouped on, which a correlated subquery's outer references are checked
+// against.
+func expressionReferencesOnlyGroupBys(ctx *sql.Context, groupBys map[string]bool, groupByCols sql.ColSet, expr sql.Expression, noGroupBy bool) (bool, string) {
 	var col string
 	valid := true
 	sql.Inspect(ctx, expr, func(ctx *sql.Context, expr sql.Expression) bool {
@@ -471,17 +477,26 @@ func expressionReferencesOnlyGroupBys(ctx *sql.Context, groupBys map[string]bool
 			}
 
 			if len(expr.Children()) == 0 {
-				// Allow non-matching subqueries when no explicit group by clause. If the subquery returns more than
-				// one row for an aggregated query, we will error out later on.
-				if _, isSubquery := expr.(*plan.Subquery); isSubquery && noGroupBy {
-					return false
-				}
-				// A window function with no arguments and an empty OVER clause (e.g. ROW_NUMBER() OVER ())
-				// has no column dependencies to validate, so it's trivially valid under an explicit GROUP BY.
-				// With no explicit GROUP BY (implicit whole-table aggregation), a window function can't be
-				// reconciled with the aggregate's single-row collapse regardless of its arguments, so it's
-				// still invalid there.
-				if _, isWindowFn := expr.(sql.WindowAdaptableExpression); isWindowFn && !noGroupBy {
+				switch expr := expr.(type) {
+				case *plan.Subquery:
+					// Allow non-matching subqueries when no explicit group by clause. If the subquery returns more
+					// than one row for an aggregated query, we will error out later on. A correlated subquery whose
+					// outer references are all grouped columns has one value per group.
+					if noGroupBy || (!expr.Correlated().Empty() && expr.Correlated().SubsetOf(groupByCols)) {
+						return false
+					}
+				case sql.WindowAdaptableExpression:
+					// A window function with no arguments and an empty OVER clause (e.g. ROW_NUMBER() OVER ())
+					// has no column dependencies to validate, so it's trivially valid under an explicit GROUP BY.
+					// With no explicit GROUP BY (implicit whole-table aggregation), a window function can't be
+					// reconciled with the aggregate's single-row collapse regardless of its arguments, so it's
+					// still invalid there.
+					if !noGroupBy {
+						return false
+					}
+				case *expression.GetField:
+				default:
+					// An expression without column references, such as CURDATE(), has one value per group.
 					return false
 				}
 				valid = false
