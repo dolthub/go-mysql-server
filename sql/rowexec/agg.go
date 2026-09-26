@@ -181,7 +181,11 @@ func (i *groupByGroupingIter) compute(ctx *sql.Context) error {
 				}
 				return err
 			}
-			rowChan <- row
+			select {
+			case rowChan <- row:
+			case <-subCtx.Done():
+				return subCtx.Err()
+			}
 		}
 	})
 

@@ -10769,6 +10769,12 @@ var ErrorQueries = []QueryErrorTest{
 		Query:       `select s from mytable group by s order by i`,
 		ExpectedErr: analyzererrors.ErrValidationGroupByOrderBy,
 	},
+	{
+		// A grouping key that fails while more rows are waiting to be grouped than the grouping buffers must return
+		// the error rather than hang. The key is slow to compute so that the rows pile up before it fails.
+		Query:       "select count(*) from mytable a, mytable b, mytable c, mytable d, mytable e, mytable f group by json_extract(concat('[', length(repeat(a.i, 10000000))), '$')",
+		ExpectedErr: sql.ErrInvalidJSONText,
+	},
 }
 
 var BrokenErrorQueries = []QueryErrorTest{
