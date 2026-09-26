@@ -137,6 +137,33 @@ func TestCountDistinctEvalString(t *testing.T) {
 	require.Equal(int64(2), evalBuffer(t, b))
 }
 
+type countDistinctReporter struct {
+	used uint64
+}
+
+func (r *countDistinctReporter) UsedMemory() uint64 { return r.used }
+func (r *countDistinctReporter) MaxMemory() uint64  { return 10 }
+
+func TestCountDistinctMemoryLimit(t *testing.T) {
+	require := require.New(t)
+	reporter := &countDistinctReporter{used: 1}
+	mm := sql.NewMemoryManager(reporter)
+	ctx := sql.NewContext(context.Background(), sql.WithMemoryManager(mm))
+
+	c := NewCountDistinct(expression.NewGetField(0, types.Text, "", true))
+	b, _ := c.NewBuffer(ctx)
+	require.NoError(b.Update(ctx, sql.NewRow("foo")))
+
+	reporter.used = 20
+	require.NoError(b.Update(ctx, sql.NewRow("foo")))
+	err := b.Update(ctx, sql.NewRow("bar"))
+	require.True(sql.ErrNoMemoryAvailable.Is(err), "unexpected error: %v", err)
+	require.Equal(int64(1), evalBuffer(t, b))
+
+	b.Dispose(ctx)
+	require.Equal(0, mm.NumCaches())
+}
+
 func TestCountDistinctEvalExtendedType(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()

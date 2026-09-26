@@ -1007,6 +1007,38 @@ func TestTimestampBindingsCanBeCompared(t *testing.T) {
 	require.Equal(t, 1, count)
 }
 
+type exhaustedMemory struct{}
+
+func (exhaustedMemory) UsedMemory() uint64 { return 2 }
+func (exhaustedMemory) MaxMemory() uint64  { return 1 }
+
+func TestCountDistinctMemoryLimit(t *testing.T) {
+	db := memory.NewDatabase("mydb")
+	pro := memory.NewDBProvider(db)
+	e := sqle.NewDefault(pro)
+	newCtx := func(opts ...sql.ContextOption) *sql.Context {
+		opts = append(opts, sql.WithSession(memory.NewSession(sql.NewBaseSession(), pro)))
+		ctx := sql.NewContext(context.Background(), opts...)
+		ctx.SetCurrentDatabase("mydb")
+		return ctx
+	}
+
+	for _, q := range []string{"CREATE TABLE t (i int primary key)", "INSERT INTO t VALUES (1), (2), (3)"} {
+		ctx := newCtx()
+		_, iter, _, err := e.Query(ctx, q)
+		require.NoError(t, err)
+		_, err = sql.RowIterToRows(ctx, iter)
+		require.NoError(t, err)
+	}
+
+	ctx := newCtx(sql.WithMemoryManager(sql.NewMemoryManager(exhaustedMemory{})))
+	_, iter, _, err := e.Query(ctx, "SELECT COUNT(DISTINCT i) FROM t")
+	if err == nil {
+		_, err = sql.RowIterToRows(ctx, iter)
+	}
+	require.True(t, sql.ErrNoMemoryAvailable.Is(err), "unexpected error: %v", err)
+}
+
 // TestAlterTableWithBadSchema is a backwards compatibility test that
 // ensures tables made with old versions of the engine can be altered.
 func TestAlterTableWithBadSchema(t *testing.T) {
