@@ -643,6 +643,9 @@ func (s *scope) addExpressions(newExprs map[string]columnId) {
 // multi-relational expressions.
 func (s *scope) appendColumnsFromScope(src *scope) {
 	s.cols = append(s.cols, src.cols...)
+	for _, c := range src.cols {
+		s.colset.Add(sql.ColumnId(c.id))
+	}
 	if len(src.exprs) > 0 && s.exprs == nil {
 		s.exprs = make(map[string]columnId)
 	}
