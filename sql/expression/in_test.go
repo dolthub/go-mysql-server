@@ -737,3 +737,48 @@ func TestHashInTuple(t *testing.T) {
 		})
 	}
 }
+
+// TestInTupleCollation checks that both IN implementations compare strings under the collation the operands resolve
+// to, as = does: a column's collation outranks a literal's, and an explicit COLLATE outranks both.
+func TestInTupleCollation(t *testing.T) {
+	ciColumn := expression.NewGetField(0, types.MustCreateString(sqltypes.VarChar, 255, sql.Collation_utf8mb4_0900_ai_ci), "v1", true)
+	binColumn := expression.NewGetField(0, types.MustCreateString(sqltypes.VarChar, 255, sql.Collation_utf8mb4_0900_bin), "v1", true)
+	literal := func(s string) sql.Expression { return expression.NewLiteral(s, types.LongText) }
+	collated := func(s string, c sql.CollationID) sql.Expression {
+		return expression.NewCollatedExpression(literal(s), c)
+	}
+
+	testCases := []struct {
+		name   string
+		left   sql.Expression
+		right  sql.Expression
+		row    sql.Row
+		result interface{}
+	}{
+		{"case-insensitive column matches another case", ciColumn, expression.NewTuple(literal("ABC")), sql.NewRow("abc"), true},
+		{"case-insensitive column matches another accent", ciColumn, expression.NewTuple(literal("ABC")), sql.NewRow("ábc"), true},
+		{"case-insensitive column matches a later element", ciColumn, expression.NewTuple(literal("XYZ"), literal("ABC")), sql.NewRow("abc"), true},
+		{"case-insensitive column does not match another value", ciColumn, expression.NewTuple(literal("ABC")), sql.NewRow("xyz"), false},
+		{"binary column does not match another case", binColumn, expression.NewTuple(literal("ABC")), sql.NewRow("abc"), false},
+		{"binary column matches the same bytes", binColumn, expression.NewTuple(literal("ABC")), sql.NewRow("ABC"), true},
+		{"explicit binary COLLATE outranks the column", ciColumn, expression.NewTuple(collated("ABC", sql.Collation_utf8mb4_0900_bin)), sql.NewRow("abc"), false},
+		{"explicit case-insensitive COLLATE outranks the column", binColumn, expression.NewTuple(collated("ABC", sql.Collation_utf8mb4_0900_ai_ci)), sql.NewRow("abc"), true},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := sql.NewEmptyContext()
+			require := require.New(t)
+
+			result, err := expression.NewInTuple(tt.left, tt.right).Eval(ctx, tt.row)
+			require.NoError(err)
+			require.Equal(tt.result, result, "InTuple")
+
+			hashed, err := expression.NewHashInTuple(ctx, tt.left, tt.right)
+			require.NoError(err)
+			result, err = hashed.Eval(ctx, tt.row)
+			require.NoError(err)
+			require.Equal(tt.result, result, "HashInTuple")
+		})
+	}
+}

@@ -236,6 +236,55 @@ var CharsetCollationEngineTests = []ScriptTest{
 		},
 	},
 	{
+		// Without an index, IN is evaluated as a filter over every row rather than as an index lookup, so the
+		// comparison collation must come from the operands as it does for =.
+		Name: "IN respects the column collation without an index",
+		SetUpScript: []string{
+			"CREATE TABLE ci (pk BIGINT PRIMARY KEY, v1 VARCHAR(255) COLLATE utf8mb4_0900_ai_ci);",
+			"CREATE TABLE bin (pk BIGINT PRIMARY KEY, v1 VARCHAR(255) COLLATE utf8mb4_0900_bin);",
+			"INSERT INTO ci VALUES (1, 'abc'), (2, 'ABC'), (3, 'ábc'), (4, 'xyz');",
+			"INSERT INTO bin VALUES (1, 'abc'), (2, 'ABC'), (3, 'ábc'), (4, 'xyz');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT pk FROM ci WHERE v1 = 'ABC' ORDER BY pk;",
+				Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+			},
+			{
+				Query:    "SELECT pk FROM ci WHERE v1 IN ('ABC') ORDER BY pk;",
+				Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+			},
+			{
+				Query:    "SELECT pk FROM ci WHERE v1 IN ('ABC', 'XYZ') ORDER BY pk;",
+				Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}, {int64(4)}},
+			},
+			{
+				Query:    "SELECT pk FROM ci WHERE v1 NOT IN ('ABC') ORDER BY pk;",
+				Expected: []sql.Row{{int64(4)}},
+			},
+			{
+				Query:    "SELECT pk FROM ci WHERE v1 IN ('ABC', CONCAT('X', 'YZ')) ORDER BY pk;",
+				Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}, {int64(4)}},
+			},
+			{
+				Query:    "SELECT pk, v1 IN ('ABC') FROM ci ORDER BY pk;",
+				Expected: []sql.Row{{int64(1), true}, {int64(2), true}, {int64(3), true}, {int64(4), false}},
+			},
+			{
+				Query:    "SELECT pk FROM ci WHERE v1 IN ('ABC' COLLATE utf8mb4_0900_bin) ORDER BY pk;",
+				Expected: []sql.Row{{int64(2)}},
+			},
+			{
+				Query:    "SELECT pk FROM bin WHERE v1 IN ('ABC') ORDER BY pk;",
+				Expected: []sql.Row{{int64(2)}},
+			},
+			{
+				Query:    "SELECT pk FROM bin WHERE v1 IN ('ABC' COLLATE utf8mb4_0900_ai_ci) ORDER BY pk;",
+				Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+			},
+		},
+	},
+	{
 		Name: "Table collation is respected",
 		SetUpScript: []string{
 			"CREATE TABLE test1 (pk BIGINT PRIMARY KEY, v1 VARCHAR(255)) COLLATE utf16_unicode_ci;",
