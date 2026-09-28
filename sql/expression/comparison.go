@@ -355,10 +355,22 @@ func castLeftAndRight(ctx *sql.Context, left, right any, lType, rType sql.Type) 
 		convType = types.LongBlob
 	case types.IsNumber(lType) || types.IsNumber(rType):
 		switch {
-		case types.IsDecimal(lType):
-			convType = lType
-		case types.IsDecimal(rType):
-			convType = rType
+		case types.IsDecimal(lType) || types.IsDecimal(rType):
+			// Use types.InternalDecimalType for comparison, but return either left or right Decimal type
+			l, err := convertValue(ctx, left, lType, types.InternalDecimalType)
+			if err != nil {
+				return nil, nil, nil, err
+			}
+			r, err := convertValue(ctx, right, rType, types.InternalDecimalType)
+			if err != nil {
+				return nil, nil, nil, err
+			}
+			if types.IsDecimal(lType) {
+				convType = lType
+			} else {
+				convType = rType
+			}
+			return l, r, convType, nil
 		case types.IsSigned(lType) && types.IsSigned(rType):
 			convType = types.Int64
 		case types.IsUnsigned(lType) && types.IsUnsigned(rType):
