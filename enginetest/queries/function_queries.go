@@ -2228,11 +2228,11 @@ var FunctionQueryTests = []QueryTest{
 	},
 	{
 		Query:       "select cast(123 as decimal(66, 0));",
-		ExpectedErr: sql.ErrTooBigScale,
+		ExpectedErr: sql.ErrTooBigPrecision,
 	},
 	{
 		Query:       "select cast(123 as decimal(0, 31));",
-		ExpectedErr: sql.ErrTooBigPrecision,
+		ExpectedErr: sql.ErrTooBigScale,
 	},
 	{
 		Query:       "select cast(123 as datetime(7));",
@@ -3116,7 +3116,7 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{
 			{nil},
 		},
-		ExpectedWarningsCount: 1,
+		ExpectedWarningsCount: 2,
 		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 	},
 	{

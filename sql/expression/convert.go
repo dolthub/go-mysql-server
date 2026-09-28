@@ -227,10 +227,13 @@ func (c *Convert) Eval(ctx *sql.Context, row sql.Row) (any, error) {
 	origType := c.Child.Type(ctx)
 	val, inRange, err := types.TypeAwareConversion(ctx, val, origType, c.convType)
 	if err != nil {
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 		if !sql.ErrTruncatedIncorrect.Is(err) {
+			if types.IsTime(c.convType) {
+				return nil, nil
+			}
 			return c.convType.Zero(), nil
 		}
-		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 	if inRange != sql.InRange && types.IsUnsigned(c.convType) {
 		ctx.Warn(1105, "Cast to unsigned converted negative integer to its positive complement")
