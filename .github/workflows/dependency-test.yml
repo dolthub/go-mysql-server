@@ -13,8 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       skip: ${{ steps.setup_gms.outputs.skip }}
-      test_dolt: ${{ steps.setup_gms.outputs.skip == 'false' && steps.check_pr.outputs.test_dolt == 'true' }}
-      test_doltgresql: ${{ steps.setup_gms.outputs.skip == 'false' && steps.check_pr.outputs.test_doltgresql == 'true' }}
+      dolt_pr_linked: ${{ steps.check_pr.outputs.dolt_pr_linked == 'true' }}
+      doltgresql_pr_linked: ${{ steps.check_pr.outputs.doltgresql_pr_linked == 'true' }}
     steps:
       - name: Checkout go-mysql-server
         uses: actions/checkout@v6
@@ -36,19 +36,19 @@ jobs:
             https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments)
           BODY="$PR_DESCRIPTION$COMMENTS"
           if echo "$BODY" | grep -Eq "github.com/dolthub/dolt/pull/|dolthub/dolt#[0-9]"; then
-            echo "test_dolt=false" >> $GITHUB_OUTPUT
+            echo "dolt_pr_linked=true" >> $GITHUB_OUTPUT
           else
-            echo "test_dolt=true" >> $GITHUB_OUTPUT
+            echo "dolt_pr_linked=false" >> $GITHUB_OUTPUT
           fi
           if echo "$BODY" | grep -Eq "github.com/dolthub/doltgresql/pull/|dolthub/doltgresql#[0-9]"; then
-            echo "test_doltgresql=false" >> $GITHUB_OUTPUT
+            echo "doltgresql_pr_linked=true" >> $GITHUB_OUTPUT
           else
-            echo "test_doltgresql=true" >> $GITHUB_OUTPUT
+            echo "doltgresql_pr_linked=false" >> $GITHUB_OUTPUT
           fi
 
   test-dolt:
     needs: setup
-    if: needs.setup.outputs.test_dolt == 'true'
+    if: needs.setup.outputs.skip == 'false'
     runs-on: ubuntu-latest
     env:
       TZ: "America/Los_Angeles"
@@ -96,7 +96,7 @@ jobs:
 
   test-doltgresql:
     needs: setup
-    if: needs.setup.outputs.test_doltgresql == 'true'
+    if: needs.setup.outputs.skip == 'false'
     runs-on: ubuntu-latest
     steps:
       - name: Set timezone for Unix
@@ -148,4 +148,58 @@ jobs:
           fi
           echo "::error title=DoltgreSQL tests fail against main::DoltgreSQL tests failed against both this PR and go-mysql-server main. Check that the PR's failures are the same as main's and aren't caused by this PR."
           echo "### :x: DoltgreSQL tests failed against both this PR and go-mysql-server main. Check that the PR's failures are the same as main's and aren't caused by this PR." >> $GITHUB_STEP_SUMMARY
+          exit 1
+
+  # Required check for merging. test-dolt fails whenever the Dolt tests fail, so the failure is
+  # visible, but this passes anyway if the PR links a Dolt PR that is expected to fix it.
+  dolt-gate:
+    needs: [setup, test-dolt]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Dolt integration test result
+        env:
+          SETUP_RESULT: ${{ needs.setup.result }}
+          TEST_RESULT: ${{ needs.test-dolt.result }}
+          PR_LINKED: ${{ needs.setup.outputs.dolt_pr_linked }}
+        run: |
+          if [ "$SETUP_RESULT" != "success" ]; then
+            echo "::error title=Setup failed::The setup job did not succeed: $SETUP_RESULT"
+            exit 1
+          fi
+          if [ "$TEST_RESULT" = "success" ] || [ "$TEST_RESULT" = "skipped" ]; then
+            exit 0
+          fi
+          if [ "$PR_LINKED" = "true" ]; then
+            echo "::warning title=Dolt tests failed::test-dolt failed ($TEST_RESULT), but this PR links a Dolt PR, so it doesn't block merging."
+            exit 0
+          fi
+          echo "::error title=Dolt tests failed::test-dolt failed ($TEST_RESULT). Link the Dolt PR that fixes it (dolthub/dolt#N) to unblock merging."
+          exit 1
+
+  # Required check for merging. test-doltgresql fails whenever the DoltgreSQL tests fail, so the failure is
+  # visible, but this passes anyway if the PR links a DoltgreSQL PR that is expected to fix it.
+  doltgresql-gate:
+    needs: [setup, test-doltgresql]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check DoltgreSQL integration test result
+        env:
+          SETUP_RESULT: ${{ needs.setup.result }}
+          TEST_RESULT: ${{ needs.test-doltgresql.result }}
+          PR_LINKED: ${{ needs.setup.outputs.doltgresql_pr_linked }}
+        run: |
+          if [ "$SETUP_RESULT" != "success" ]; then
+            echo "::error title=Setup failed::The setup job did not succeed: $SETUP_RESULT"
+            exit 1
+          fi
+          if [ "$TEST_RESULT" = "success" ] || [ "$TEST_RESULT" = "skipped" ]; then
+            exit 0
+          fi
+          if [ "$PR_LINKED" = "true" ]; then
+            echo "::warning title=DoltgreSQL tests failed::test-doltgresql failed ($TEST_RESULT), but this PR links a DoltgreSQL PR, so it doesn't block merging."
+            exit 0
+          fi
+          echo "::error title=DoltgreSQL tests failed::test-doltgresql failed ($TEST_RESULT). Link the DoltgreSQL PR that fixes it (dolthub/doltgresql#N) to unblock merging."
           exit 1
