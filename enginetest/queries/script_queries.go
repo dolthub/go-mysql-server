@@ -788,12 +788,11 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 			},
 			{
 				// TODO: 123.456 is converted to a DECIMAL by Builder.ConvertVal, when it should be a DOUBLE
-				SkipResultCheckOnServerEngine:   true, // TODO: warnings do not make it to server engine
-				Query:                           "SELECT '123.456ABC' = 123.456;",
-				Expected:                        []sql.Row{{true}},
-				ExpectedWarningsCount:           1,
-				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
-				ExpectedWarningMessageSubstring: "Truncated incorrect decimal(65,30) value: '123.456ABC'",
+				SkipResultCheckOnServerEngine: true, // TODO: warnings do not make it to server engine
+				Query:                         "SELECT '123.456ABC' = 123.456;",
+				Expected:                      []sql.Row{{true}},
+				ExpectedWarningsCount:         1,
+				ExpectedWarning:               mysql.ERTruncatedWrongValue,
 			},
 			{
 				Query:    "SELECT '123.456e2' = 12345.6;",

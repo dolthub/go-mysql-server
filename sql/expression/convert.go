@@ -21,14 +21,10 @@ import (
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/sirupsen/logrus"
-	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
-
-// ErrConvertExpression is returned when a conversion is not possible.
-var ErrConvertExpression = errors.NewKind("expression '%v': couldn't convert to %v")
 
 const (
 	// ConvertToBinary is a conversion to binary.
@@ -177,6 +173,7 @@ func GetConvertToType(l, r sql.Type) sql.Type {
 // IsNullable implements the Expression interface.
 func (c *Convert) IsNullable(ctx *sql.Context) bool {
 	// TODO: investigate
+	return c.Child.IsNullable(ctx)
 	switch c.castToType {
 	case ConvertToDate, ConvertToDatetime, ConvertToBinary, ConvertToChar, ConvertToNChar:
 		return true
@@ -192,7 +189,14 @@ func (c *Convert) Type(_ *sql.Context) sql.Type {
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (c *Convert) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
-	return c.convType.CollationCoercibility(ctx)
+	switch c.convType {
+	case types.LongBlob:
+		return sql.Collation_binary, 2
+	case types.JSON:
+		return ctx.GetCharacterSet().BinaryCollation(), 2
+	default:
+		return c.convType.CollationCoercibility(ctx)
+	}
 }
 
 // String implements the Stringer interface.
@@ -249,110 +253,23 @@ func (c *Convert) Eval(ctx *sql.Context, row sql.Row) (any, error) {
 // |typeLength| and |typeScale|).
 // Only returns an error if converting to JSON, Date, and Datetime; the zero value is returned for float types.
 // Nil is returned in all other cases.
-func convertValue(ctx *sql.Context, val any, castTo string, origType sql.Type, typeLength, typeScale int) (any, error) {
-	if val == nil {
-		return nil, nil
-	}
-	var convType sql.Type
-	var err error
-	castTo = strings.ToLower(castTo)
-	switch castTo {
-	case ConvertToBinary:
-		val, _, err = types.TypeAwareConversion(ctx, val, origType, types.LongBlob)
-		if err != nil {
-			return nil, nil
-		}
-
-		if types.IsTextOnly(origType) {
-			// For string types we need to re-encode the string as we want the binary representation of the character set
-			encoder := origType.(sql.StringType).Collation().CharacterSet().Encoder()
-			encodedBytes, ok := encoder.Encode(val.([]byte))
-			if !ok {
-				return nil, fmt.Errorf("unable to re-encode string to convert to binary")
-			}
-			val = encodedBytes
-		}
-		if bb, ok := val.([]byte); ok && len(bb) < typeLength {
-			val = append(bb, make([]byte, typeLength-len(bb))...)
-		}
-		return truncateConvertedValue(val, typeLength)
-	case ConvertToChar, ConvertToNChar:
-		val, _, err = types.TypeAwareConversion(ctx, val, origType, types.LongText)
-		if err != nil {
-			return nil, nil
-		}
-		return truncateConvertedValue(val, typeLength)
-	case ConvertToJSON:
-		val, _, err = types.JSON.Convert(ctx, val)
-		if err != nil {
-			return nil, err
-		}
-		return val, nil
-	case ConvertToDate:
-		val, _, err = types.Date.Convert(ctx, val)
-		if err != nil {
-			if !sql.ErrTruncatedIncorrect.Is(err) {
-				return nil, err
-			}
-			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
-		}
-		return val, nil
-	case ConvertToDatetime:
-		var dtType sql.Type
-		dtType, err = types.CreateDatetimeType(sqltypes.Datetime, typeLength)
-		if err != nil {
-			return nil, err
-		}
-		val, _, err = dtType.Convert(ctx, val)
-		if err != nil {
-			if !sql.ErrTruncatedIncorrect.Is(err) {
-				return nil, err
-			}
-			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
-		}
-		return val, nil
-	case ConvertToTime:
-		var timeType sql.Type
-		timeType, err = types.CreateTimespanType(typeLength)
-		if err != nil {
-			return nil, err
-		}
-		val, _, err = timeType.Convert(ctx, val)
-		if err != nil {
-			if !sql.ErrTruncatedIncorrect.Is(err) {
-				return nil, err
-			}
-			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
-		}
-		return val, nil
-	case ConvertToDecimal:
-		convType = createConvertedDecimalType(typeLength, typeScale, false)
-	case ConvertToFloat:
-		convType = types.Float32
-	case ConvertToDouble, ConvertToReal:
-		convType = types.Float64
-	case ConvertToSigned:
-		convType = types.Int64
-	case ConvertToUnsigned:
-		convType = types.Uint64
-	case ConvertToYear:
-		convType = types.Uint64
-	default:
-		return nil, nil
-	}
-
-	var inRange sql.ConvertInRange
-	val, inRange, err = types.TypeAwareConversion(ctx, val, origType, convType)
+func convertValue(ctx *sql.Context, val any, origType, convType sql.Type) (any, error) {
+	res, inRange, err := types.TypeAwareConversion(ctx, val, origType, convType)
 	if err != nil {
-		if !sql.ErrTruncatedIncorrect.Is(err) {
-			return convType.Zero(), nil
-		}
+		// TODO: maybe TypeAwareConversion should be throwing warnings and adjusting "nullable" outputs
 		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
+		if !sql.ErrTruncatedIncorrect.Is(err) {
+			if types.IsTime(convType) {
+				return nil, nil
+			} else {
+				return convType.Zero(), nil
+			}
+		}
 	}
-	if inRange != sql.InRange && castTo == ConvertToUnsigned {
+	if inRange != sql.InRange && types.IsUnsigned(convType) {
 		ctx.Warn(1105, "Cast to unsigned converted negative integer to its positive complement")
 	}
-	return val, nil
+	return res, nil
 }
 
 // truncateConvertedValue truncates |val| to the specified |typeLength| if |val|

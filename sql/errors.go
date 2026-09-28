@@ -1047,10 +1047,10 @@ var (
 	ErrInvalidGroupFuncUse = newMySQLKind("Invalid use of group function", mysql.ERInvalidGroupFuncUse, mysql.SSUnknownSQLState)
 
 	// ErrTooBigScale is returned when a type receives a scale that is too large.
-	ErrTooBigScale = newMySQLKind("Too big scale %v. Maximum is %v.", 1425, mysql.SSClientError)
+	ErrTooBigScale = newMySQLKind("Too big scale %v specified. Maximum is %v.", 1425, mysql.SSClientError)
 
 	// ErrTooBigPrecision is returned when a type receives a precision that is too large.
-	ErrTooBigPrecision = newMySQLKind("Too big precision %v. Maximum is %v.", 1426, mysql.SSClientError)
+	ErrTooBigPrecision = newMySQLKind("Too big precision %v specified. Maximum is %v.", 1426, mysql.SSClientError)
 )
 
 // CastSQLError returns a *mysql.SQLError with the error code and in some cases, also a SQL state, populated for the

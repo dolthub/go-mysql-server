@@ -51,13 +51,13 @@ func (*Binary) CollationCoercibility(ctx *sql.Context) (collation sql.CollationI
 	return sql.Collation_binary, 2
 }
 
-func (b *Binary) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+func (b *Binary) Eval(ctx *sql.Context, row sql.Row) (any, error) {
 	val, err := b.Child.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
-	return convertValue(ctx, val, ConvertToBinary, b.Child.Type(ctx), 0, 0)
+	return convertValue(ctx, val, b.Child.Type(ctx), types.LongBlob)
 }
 
 func (b *Binary) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
