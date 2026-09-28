@@ -173,7 +173,6 @@ func GetConvertToType(l, r sql.Type) sql.Type {
 // IsNullable implements the Expression interface.
 func (c *Convert) IsNullable(ctx *sql.Context) bool {
 	// TODO: investigate
-	return c.Child.IsNullable(ctx)
 	switch c.castToType {
 	case ConvertToDate, ConvertToDatetime, ConvertToBinary, ConvertToChar, ConvertToNChar:
 		return true

@@ -200,9 +200,9 @@ func TestSingleScript(t *testing.T) {
 			SetUpScript: []string{},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "select '123.45a' in (123.5);",
+					Query: "select cast('abcdef' as binary(10));",
 					Expected: []sql.Row{
-						{false},
+						{""},
 					},
 				},
 			},
