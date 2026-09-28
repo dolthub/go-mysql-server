@@ -80,30 +80,19 @@ jobs:
 
       - name: Test Dolt against main
         if: steps.test_pr.outcome == 'failure'
-        env:
-          PR_LINKED: ${{ needs.setup.outputs.dolt_pr_linked }}
         run: |
-          # Fails the job, unless this PR links a Dolt PR, in which case the failure is expected
-          # to be fixed there and is only reported as a warning.
-          report() {
-            if [ "$PR_LINKED" = "true" ]; then
-              echo "::warning title=$1::$2 Not failing because this PR links a Dolt PR."
-              echo "### :warning: $2 Not failing because this PR links a Dolt PR." >> $GITHUB_STEP_SUMMARY
-              exit 0
-            fi
-            echo "::error title=$1::$2"
-            echo "### :x: $2" >> $GITHUB_STEP_SUMMARY
-            exit 1
-          }
           cd dolt/go
           git reset --hard
           go get github.com/dolthub/go-mysql-server@main
           go mod tidy
           cd libraries/doltcore/sqle/enginetest
           if go test ./... --count=1 -skip TestDoltServerRunningUnixSocket; then
-            report "Dolt tests fail against PR" "Dolt tests passed against go-mysql-server main but failed against this PR."
+            echo "Tests passed against main but failed against PR"
+            exit 1
           fi
-          report "Dolt tests fail against main" "Dolt tests failed against both this PR and go-mysql-server main. Check that the PR's failures are the same as main's and aren't caused by this PR."
+          echo "::error title=Dolt tests fail against main::Dolt tests failed against both this PR and go-mysql-server main. Check that the PR's failures are the same as main's and aren't caused by this PR."
+          echo "### :x: Dolt tests failed against both this PR and go-mysql-server main. Check that the PR's failures are the same as main's and aren't caused by this PR." >> $GITHUB_STEP_SUMMARY
+          exit 1
 
   test-doltgresql:
     needs: setup
@@ -147,27 +136,70 @@ jobs:
 
       - name: Test DoltgreSQL against main
         if: steps.test_pr.outcome == 'failure'
-        env:
-          PR_LINKED: ${{ needs.setup.outputs.doltgresql_pr_linked }}
         run: |
-          # Fails the job, unless this PR links a DoltgreSQL PR, in which case the failure is expected
-          # to be fixed there and is only reported as a warning.
-          report() {
-            if [ "$PR_LINKED" = "true" ]; then
-              echo "::warning title=$1::$2 Not failing because this PR links a DoltgreSQL PR."
-              echo "### :warning: $2 Not failing because this PR links a DoltgreSQL PR." >> $GITHUB_STEP_SUMMARY
-              exit 0
-            fi
-            echo "::error title=$1::$2"
-            echo "### :x: $2" >> $GITHUB_STEP_SUMMARY
-            exit 1
-          }
           cd doltgresql
           git reset --hard
           go get github.com/dolthub/go-mysql-server@main
           go mod tidy
           cd testing/go
           if go test ./... --count=1 -skip Replication; then
-            report "DoltgreSQL tests fail against PR" "DoltgreSQL tests passed against go-mysql-server main but failed against this PR."
+            echo "Tests passed against main but failed against PR"
+            exit 1
           fi
-          report "DoltgreSQL tests fail against main" "DoltgreSQL tests failed against both this PR and go-mysql-server main. Check that the PR's failures are the same as main's and aren't caused by this PR."
+          echo "::error title=DoltgreSQL tests fail against main::DoltgreSQL tests failed against both this PR and go-mysql-server main. Check that the PR's failures are the same as main's and aren't caused by this PR."
+          echo "### :x: DoltgreSQL tests failed against both this PR and go-mysql-server main. Check that the PR's failures are the same as main's and aren't caused by this PR." >> $GITHUB_STEP_SUMMARY
+          exit 1
+
+  # Required check for merging. test-dolt fails whenever the Dolt tests fail, so the failure is
+  # visible, but this passes anyway if the PR links a Dolt PR that is expected to fix it.
+  dolt-gate:
+    needs: [setup, test-dolt]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Dolt integration test result
+        env:
+          SETUP_RESULT: ${{ needs.setup.result }}
+          TEST_RESULT: ${{ needs.test-dolt.result }}
+          PR_LINKED: ${{ needs.setup.outputs.dolt_pr_linked }}
+        run: |
+          if [ "$SETUP_RESULT" != "success" ]; then
+            echo "::error title=Setup failed::The setup job did not succeed: $SETUP_RESULT"
+            exit 1
+          fi
+          if [ "$TEST_RESULT" = "success" ] || [ "$TEST_RESULT" = "skipped" ]; then
+            exit 0
+          fi
+          if [ "$PR_LINKED" = "true" ]; then
+            echo "::warning title=Dolt tests failed::test-dolt failed ($TEST_RESULT), but this PR links a Dolt PR, so it doesn't block merging."
+            exit 0
+          fi
+          echo "::error title=Dolt tests failed::test-dolt failed ($TEST_RESULT). Link the Dolt PR that fixes it (dolthub/dolt#N) to unblock merging."
+          exit 1
+
+  # Required check for merging. test-doltgresql fails whenever the DoltgreSQL tests fail, so the failure is
+  # visible, but this passes anyway if the PR links a DoltgreSQL PR that is expected to fix it.
+  doltgresql-gate:
+    needs: [setup, test-doltgresql]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check DoltgreSQL integration test result
+        env:
+          SETUP_RESULT: ${{ needs.setup.result }}
+          TEST_RESULT: ${{ needs.test-doltgresql.result }}
+          PR_LINKED: ${{ needs.setup.outputs.doltgresql_pr_linked }}
+        run: |
+          if [ "$SETUP_RESULT" != "success" ]; then
+            echo "::error title=Setup failed::The setup job did not succeed: $SETUP_RESULT"
+            exit 1
+          fi
+          if [ "$TEST_RESULT" = "success" ] || [ "$TEST_RESULT" = "skipped" ]; then
+            exit 0
+          fi
+          if [ "$PR_LINKED" = "true" ]; then
+            echo "::warning title=DoltgreSQL tests failed::test-doltgresql failed ($TEST_RESULT), but this PR links a DoltgreSQL PR, so it doesn't block merging."
+            exit 0
+          fi
+          echo "::error title=DoltgreSQL tests failed::test-doltgresql failed ($TEST_RESULT). Link the DoltgreSQL PR that fixes it (dolthub/doltgresql#N) to unblock merging."
+          exit 1
