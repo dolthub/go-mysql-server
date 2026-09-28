@@ -90,8 +90,9 @@ jobs:
             echo "Tests passed against main but failed against PR"
             exit 1
           fi
-          echo "::warning title=Dolt tests fail against main::Dolt tests failed against both this PR and go-mysql-server main. Check that the PR's failures are the same as main's and aren't caused by this PR."
-          echo "### :warning: Dolt tests failed against both this PR and go-mysql-server main. Check that the PR's failures are the same as main's and aren't caused by this PR." >> $GITHUB_STEP_SUMMARY
+          echo "::error title=Dolt tests fail against main::Dolt tests failed against both this PR and go-mysql-server main. Check that the PR's failures are the same as main's and aren't caused by this PR."
+          echo "### :x: Dolt tests failed against both this PR and go-mysql-server main. Check that the PR's failures are the same as main's and aren't caused by this PR." >> $GITHUB_STEP_SUMMARY
+          exit 1
 
   test-doltgresql:
     needs: setup
@@ -145,5 +146,6 @@ jobs:
             echo "Tests passed against main but failed against PR"
             exit 1
           fi
-          echo "::warning title=DoltgreSQL tests fail against main::DoltgreSQL tests failed against both this PR and go-mysql-server main. Check that the PR's failures are the same as main's and aren't caused by this PR."
-          echo "### :warning: DoltgreSQL tests failed against both this PR and go-mysql-server main. Check that the PR's failures are the same as main's and aren't caused by this PR." >> $GITHUB_STEP_SUMMARY
+          echo "::error title=DoltgreSQL tests fail against main::DoltgreSQL tests failed against both this PR and go-mysql-server main. Check that the PR's failures are the same as main's and aren't caused by this PR."
+          echo "### :x: DoltgreSQL tests failed against both this PR and go-mysql-server main. Check that the PR's failures are the same as main's and aren't caused by this PR." >> $GITHUB_STEP_SUMMARY
+          exit 1
