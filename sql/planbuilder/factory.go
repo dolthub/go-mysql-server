@@ -112,21 +112,26 @@ func aliasTrackAndReplace(ctx *sql.Context, adj map[sql.ColumnId]sql.Expression,
 }
 
 func (f *factory) buildConvert(ctx *sql.Context, expr sql.Expression, castToType string, typeLength, typeScale int) (sql.Expression, error) {
-	n := expression.NewConvertWithLengthAndScale(expr, castToType, typeLength, typeScale)
-	{
-		// deduplicate redundant convert
-		if expr.Type(ctx).Equals(n.Type(ctx)) {
-			f.log(ctx, "eliminated convert")
-			return expr, nil
-		}
+	convType, err := expression.CreateConvertType(castToType, typeLength, typeScale)
+	if err != nil {
+		return nil, err
 	}
-	if types.IsText(n.Type(ctx)) && types.IsEnum(expr.Type(ctx)) {
-		newNode, err := n.WithChildren(ctx, expression.NewEnumToString(expr))
+
+	// deduplicate redundant convert
+	exprType := expr.Type(ctx)
+	if exprType.Equals(convType) {
+		f.log(ctx, "eliminated convert")
+		return expr, nil
+	}
+
+	var n sql.Expression = expression.NewConvert(expr, convType)
+	if types.IsText(convType) && types.IsEnum(exprType) {
+		n, err = n.WithChildren(ctx, expression.NewEnumToString(expr))
 		if err != nil {
 			return nil, err
 		}
-		return newNode, nil
 	}
+
 	return n, nil
 }
 

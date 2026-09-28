@@ -196,11 +196,11 @@ func (b *Builder) mergeSetOpSchemas(u *plan.SetOp) sql.Node {
 		hasdiff = true
 
 		// try to get optimal type to convert both into
-		convertTo := expression.GetConvertToType(ls[i].Type, rs[i].Type)
+		convType := expression.GetConvertToType(ls[i].Type, rs[i].Type)
 
-		// TODO: Principled type coercion...
-		les[i], err = b.f.buildConvert(b.ctx, les[i], convertTo, 0, 0)
-		res[i], err = b.f.buildConvert(b.ctx, res[i], convertTo, 0, 0)
+		// TODO: might need other logic from b.f.buildConvert()
+		les[i] = expression.NewConvert(les[i], convType)
+		res[i] = expression.NewConvert(res[i], convType)
 
 		// Preserve schema names across the conversion.
 		les[i] = expression.NewAlias(b.ctx, ls[i].Name, les[i])

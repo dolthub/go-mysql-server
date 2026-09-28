@@ -64,6 +64,7 @@ const (
 // Convert represent a CAST(x AS T) or CONVERT(x, T) operation that casts x expression to type T.
 type Convert struct {
 	UnaryExpressionStub
+	convType sql.Type
 
 	// cachedDecimalType is the cached Decimal type for this convert expression. Because new Decimal types
 	// must be created with their specific scale and precision values, unlike other types, we cache the created
@@ -81,34 +82,63 @@ type Convert struct {
 var _ sql.Expression = (*Convert)(nil)
 var _ sql.CollationCoercible = (*Convert)(nil)
 
+// CreateConvertType maps the castToType string to the matching type.
+// TODO: consider moving this to planbuilder
+func CreateConvertType(castToType string, typeLength, typeScale int) (sql.Type, error) {
+	var res sql.Type
+	var err error
+	switch strings.ToLower(castToType) {
+	case ConvertToBinary:
+		res = types.LongBlob
+	case ConvertToChar, ConvertToNChar:
+		res = types.LongText
+	case ConvertToDate:
+		res = types.Date
+	case ConvertToDatetime:
+		res, err = types.CreateDatetimeType(sqltypes.Datetime, typeLength)
+	case ConvertToDecimal:
+		res, err = types.CreateDecimalType(uint8(typeLength), uint8(typeScale))
+	case ConvertToFloat:
+		res = types.Float32
+	case ConvertToDouble, ConvertToReal:
+		res = types.Float64
+	case ConvertToJSON:
+		res = types.JSON
+	case ConvertToSigned:
+		res = types.Int64
+	case ConvertToTime:
+		res, err = types.CreateTimespanType(typeLength)
+	case ConvertToUnsigned:
+		res = types.Uint64
+	case ConvertToYear:
+		res = types.Year
+	default:
+		res = types.Null
+	}
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
+}
+
 // NewConvert creates a new Convert expression that will attempt to convert the specified expression |expr| into the
 // |castToType| type. All optional parameters (i.e. typeLength, typeScale, and charset) are omitted and initialized
 // to their zero values.
-func NewConvert(expr sql.Expression, castToType string) *Convert {
+func NewConvert(expr sql.Expression, convType sql.Type) *Convert {
 	disableRounding(expr)
 	return &Convert{
 		UnaryExpressionStub: UnaryExpressionStub{Child: expr},
-		castToType:          strings.ToLower(castToType),
-	}
-}
-
-// NewConvertWithLengthAndScale creates a new Convert expression that will attempt to convert |expr| into the
-// |castToType| type, with |typeLength| specifying a length constraint of the converted type, and |typeScale| specifying
-// a scale constraint of the converted type.
-func NewConvertWithLengthAndScale(expr sql.Expression, castToType string, typeLength, typeScale int) *Convert {
-	disableRounding(expr)
-	return &Convert{
-		UnaryExpressionStub: UnaryExpressionStub{Child: expr},
-		castToType:          strings.ToLower(castToType),
-		typeLength:          typeLength,
-		typeScale:           typeScale,
+		convType:            convType,
 	}
 }
 
 // GetConvertToType returns which type the both left and right values should be converted to.
 // If neither sql.Type represent number, then converted to string. Otherwise, we try to get
 // the appropriate type to avoid any precision loss.
-func GetConvertToType(l, r sql.Type) string {
+func GetConvertToType(l, r sql.Type) sql.Type {
+	if types.Null == l && types.Null == r {
+		return types.LongText
+	}
 	if types.Null == l {
 		return GetConvertToType(r, r)
 	}
@@ -119,32 +149,34 @@ func GetConvertToType(l, r sql.Type) string {
 	if !types.IsNumber(l) || !types.IsNumber(r) {
 		// Special handling for BLOB types - preserve binary data
 		if types.IsBlobType(l) || types.IsBlobType(r) {
-			return ConvertToBinary
+			return types.LongBlob
 		}
-		return ConvertToChar
+		return types.LongText
 	}
 
 	if types.IsDecimal(l) || types.IsDecimal(r) {
-		return ConvertToDecimal
+		// TODO: find scale and precision
+		return types.InternalDecimalType
 	}
 	if types.IsBit(l) || types.IsBit(r) {
-		return ConvertToSigned
+		return types.Int64
 	}
 	if types.IsUnsigned(l) && types.IsUnsigned(r) {
-		return ConvertToUnsigned
+		return types.Uint64
 	}
 	if types.IsSigned(l) && types.IsSigned(r) {
-		return ConvertToSigned
+		return types.Int64
 	}
 	if types.IsInteger(l) && types.IsInteger(r) {
-		return ConvertToSigned
+		return types.Int64
 	}
 
-	return ConvertToChar
+	return types.LongText
 }
 
 // IsNullable implements the Expression interface.
 func (c *Convert) IsNullable(ctx *sql.Context) bool {
+	// TODO: investigate
 	switch c.castToType {
 	case ConvertToDate, ConvertToDatetime, ConvertToBinary, ConvertToChar, ConvertToNChar:
 		return true
@@ -154,102 +186,25 @@ func (c *Convert) IsNullable(ctx *sql.Context) bool {
 }
 
 // Type implements the Expression interface.
-func (c *Convert) Type(ctx *sql.Context) sql.Type {
-	switch c.castToType {
-	case ConvertToBinary:
-		return types.LongBlob
-	case ConvertToChar, ConvertToNChar:
-		return types.LongText
-	case ConvertToDate:
-		return types.Date
-	case ConvertToDatetime:
-		return types.MustCreateDatetimeType(sqltypes.Datetime, c.typeLength)
-	case ConvertToDecimal:
-		if c.cachedDecimalType == nil {
-			c.cachedDecimalType = createConvertedDecimalType(c.typeLength, c.typeScale, true)
-		}
-		return c.cachedDecimalType
-	case ConvertToFloat:
-		return types.Float32
-	case ConvertToDouble, ConvertToReal:
-		return types.Float64
-	case ConvertToJSON:
-		return types.JSON
-	case ConvertToSigned:
-		return types.Int64
-	case ConvertToTime:
-		return types.MustCreateTimespanType(c.typeLength)
-	case ConvertToUnsigned:
-		return types.Uint64
-	case ConvertToYear:
-		return types.Year
-	default:
-		return types.Null
-	}
+func (c *Convert) Type(_ *sql.Context) sql.Type {
+	return c.convType
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (c *Convert) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
-	switch c.castToType {
-	case ConvertToBinary:
-		return sql.Collation_binary, 2
-	case ConvertToChar, ConvertToNChar:
-		return ctx.GetCollation(), 2
-	case ConvertToDate:
-		return sql.Collation_binary, 5
-	case ConvertToDatetime:
-		return sql.Collation_binary, 5
-	case ConvertToDecimal:
-		return sql.Collation_binary, 5
-	case ConvertToDouble, ConvertToReal, ConvertToFloat:
-		return sql.Collation_binary, 5
-	case ConvertToJSON:
-		return ctx.GetCharacterSet().BinaryCollation(), 2
-	case ConvertToSigned:
-		return sql.Collation_binary, 5
-	case ConvertToTime:
-		return sql.Collation_binary, 5
-	case ConvertToUnsigned:
-		return sql.Collation_binary, 5
-	case ConvertToYear:
-		return sql.Collation_binary, 5
-	default:
-		return sql.Collation_binary, 7
-	}
+	return c.convType.CollationCoercibility(ctx)
 }
 
 // String implements the Stringer interface.
 func (c *Convert) String() string {
-	extraTypeInfo := ""
-	if c.typeLength > 0 {
-		if c.typeScale > 0 {
-			extraTypeInfo = fmt.Sprintf("(%d,%d)", c.typeLength, c.typeScale)
-		} else {
-			extraTypeInfo = fmt.Sprintf("(%d)", c.typeLength)
-		}
-	}
-	return fmt.Sprintf("convert(%v, %v%s)", c.Child, c.castToType, extraTypeInfo)
+	return c.convType.String()
 }
 
 // DebugString implements the Expression interface.
 func (c *Convert) DebugString(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("convert")
-	children := []string{
-		fmt.Sprintf("type: %v", c.castToType),
-	}
-
-	if c.typeLength > 0 {
-		children = append(children, fmt.Sprintf("typeLength: %v", c.typeLength))
-	}
-
-	if c.typeScale > 0 {
-		children = append(children, fmt.Sprintf("typeScale: %v", c.typeScale))
-	}
-
-	children = append(children, sql.DebugString(ctx, c.Child))
-
-	_ = pr.WriteChildren(children...)
+	_ = pr.WriteChildren(fmt.Sprintf("type: %v", c.convType))
 	return pr.String()
 }
 
@@ -258,31 +213,30 @@ func (c *Convert) WithChildren(ctx *sql.Context, children ...sql.Expression) (sq
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
 	}
-	return NewConvertWithLengthAndScale(children[0], c.castToType, c.typeLength, c.typeScale), nil
+	return NewConvert(children[0], c.convType), nil
 }
 
 // Eval implements the Expression interface.
-func (c *Convert) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+func (c *Convert) Eval(ctx *sql.Context, row sql.Row) (any, error) {
 	val, err := c.Child.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
-	if val == nil {
-		return nil, nil
-	}
-
-	// Should always return nil, and a warning instead
-	casted, err := convertValue(ctx, val, c.castToType, c.Child.Type(ctx), c.typeLength, c.typeScale)
+	// TODO: handle special errors and trimming
+	origType := c.Child.Type(ctx)
+	val, inRange, err := types.TypeAwareConversion(ctx, val, origType, c.convType)
 	if err != nil {
-		if c.castToType == ConvertToJSON {
-			return nil, ErrConvertExpression.Wrap(err, c.String(), c.castToType)
+		if !sql.ErrTruncatedIncorrect.Is(err) {
+			return c.convType.Zero(), nil
 		}
 		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
-		return nil, nil
+	}
+	if inRange != sql.InRange && types.IsUnsigned(c.convType) {
+		ctx.Warn(1105, "Cast to unsigned converted negative integer to its positive complement")
 	}
 
-	return casted, nil
+	return val, nil
 }
 
 // convertValue converts a value from its current type to the specified target type for CAST/CONVERT operations.

@@ -86,44 +86,7 @@ func (c *Coalesce) Type(ctx *sql.Context) sql.Type {
 			continue
 		}
 
-		convType := expression.GetConvertToType(retType, argType)
-		switch convType {
-		case expression.ConvertToChar:
-			// special case for float64s
-			if (argType == types.Float64 || retType == types.Float64) && !types.IsText(argType) && !types.IsText(retType) {
-				retType = types.Float64
-				continue
-			}
-			// Can't get any larger than this
-			return types.LongText
-		case expression.ConvertToDecimal:
-			if retType == types.Float64 || argType == types.Float64 {
-				retType = types.Float64
-			} else if types.IsDecimal(argType) {
-				retType = argType
-			} else if !types.IsDecimal(retType) {
-				retType = types.MustCreateDecimalType(10, 0)
-			}
-		case expression.ConvertToUnsigned:
-			if retType == types.Uint64 || argType == types.Uint64 {
-				retType = types.Uint64
-			} else {
-				retType = types.Uint32
-			}
-		case expression.ConvertToSigned:
-			if retType == types.Int64 || argType == types.Int64 {
-				retType = types.Int64
-			} else {
-				retType = types.Int32
-			}
-		case expression.ConvertToFloat:
-			if retType == types.Float64 || argType == types.Float64 {
-				retType = types.Float64
-			} else {
-				retType = types.Float32
-			}
-		default:
-		}
+		retType = expression.GetConvertToType(retType, argType)
 	}
 
 	c.typ = retType

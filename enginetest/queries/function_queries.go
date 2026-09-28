@@ -2220,6 +2220,37 @@ var FunctionQueryTests = []QueryTest{
 		},
 	},
 
+	{
+		Query: "select cast('abc' as char(4294967296));",
+		Expected: []sql.Row{
+			{},
+		},
+	},
+	{
+		Query: "select cast(123 as decimal(66, 0));",
+		Expected: []sql.Row{
+			{},
+		},
+	},
+	{
+		Query: "select cast(123 as decimal(0, 31));",
+		Expected: []sql.Row{
+			{},
+		},
+	},
+	{
+		Query: "select cast(123 as datetime(7));",
+		Expected: []sql.Row{
+			{},
+		},
+	},
+	{
+		Query: "select cast(123 as time(7));",
+		Expected: []sql.Row{
+			{},
+		},
+	},
+
 	// Additional JSON Function Tests
 	{
 		Query:    `SELECT JSON_UNQUOTE('"foo"')`,
