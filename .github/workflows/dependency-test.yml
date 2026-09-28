@@ -8,9 +8,6 @@ concurrency:
   group: dependency-test-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
-env:
-  TZ: "America/Los_Angeles"
-
 jobs:
   setup:
     runs-on: ubuntu-latest
@@ -53,6 +50,8 @@ jobs:
     needs: setup
     if: needs.setup.outputs.test_dolt == 'true'
     runs-on: ubuntu-latest
+    env:
+      TZ: "America/Los_Angeles"
     steps:
       - name: Checkout go-mysql-server
         uses: actions/checkout@v6
@@ -97,6 +96,11 @@ jobs:
     if: needs.setup.outputs.test_doltgresql == 'true'
     runs-on: ubuntu-latest
     steps:
+      - name: Set timezone for Unix
+        uses: szenius/set-timezone@v2.0
+        with:
+          timezoneLinux: "America/Los_Angeles"
+
       - name: Checkout go-mysql-server
         uses: actions/checkout@v6
         with:

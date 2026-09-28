@@ -1014,6 +1014,43 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{float64(1), 1}, {float64(2), 2}, {float64(3), 3}},
 	},
 	{
+		Query: `SELECT * FROM three_pk WHERE pk1=1 ORDER BY pk2`,
+		Expected: []sql.Row{
+			{1, 0, 10, 40, 21, 22, 23, 24},
+			{1, 1, 0, 60, 31, 32, 33, 34},
+		},
+	},
+	{
+		Query: `SELECT * FROM three_pk WHERE pk1=1 ORDER BY pk3`,
+		Expected: []sql.Row{
+			{1, 1, 0, 60, 31, 32, 33, 34},
+			{1, 0, 10, 40, 21, 22, 23, 24},
+		},
+	},
+	{
+		Query: `SELECT MIN(pk2) FROM three_pk WHERE pk2=1`,
+		Expected: []sql.Row{
+			{1},
+		},
+	},
+	{
+		Query:    `SELECT MIN(pk2) FROM three_pk WHERE pk2=2`,
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query: `SELECT MIN(pk3) FROM three_pk WHERE pk1=1`,
+		Expected: []sql.Row{
+			{0},
+		},
+	},
+	{
+		Query: `SELECT MIN(pk1) FROM three_pk WHERE pk3=10`,
+		Expected: []sql.Row{
+			{0},
+		},
+	},
+
+	{
 		Query:    "select count(1)",
 		Expected: []sql.Row{{1}},
 	},
@@ -1644,6 +1681,55 @@ SELECT * FROM cte WHERE  d = 2;`,
 	{
 		Query:    `SELECT DISTINCT val FROM (values row(null), row(1.00), row('2'), row(2)) a (val);`,
 		Expected: []sql.Row{{nil}, {"1.00"}, {"2"}},
+	},
+	// https://github.com/dolthub/dolt/issues/11942
+	{
+		Query:    `SELECT * FROM (VALUES ROW(CAST(NULL AS DECIMAL(20,6)))) AS t(x);`,
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    `SELECT * FROM (VALUES ROW(CAST(NULL AS DECIMAL(20,6))), ROW(1.23)) AS t(x);`,
+		Expected: []sql.Row{{nil}, {"1.230000"}},
+	},
+	{
+		Query:    `SELECT * FROM (VALUES ROW(1.23), ROW(CAST(NULL AS DECIMAL(20,6)))) AS t(x);`,
+		Expected: []sql.Row{{"1.230000"}, {nil}},
+	},
+	{
+		Query:    `SELECT * FROM (VALUES ROW(NULL), ROW(CAST(NULL AS DECIMAL(20,6)))) AS t(x);`,
+		Expected: []sql.Row{{nil}, {nil}},
+	},
+	{
+		Query:    `SELECT * FROM (VALUES ROW(1.23), ROW(NULL)) AS t(x);`,
+		Expected: []sql.Row{{"1.23"}, {nil}},
+	},
+	{
+		Query:    `SELECT * FROM (VALUES ROW(1), ROW(CAST(NULL AS DECIMAL(20,6)))) AS t(x);`,
+		Expected: []sql.Row{{"1.000000"}, {nil}},
+	},
+	{
+		Query:    `SELECT * FROM (VALUES ROW(CAST(NULL AS DECIMAL(10,2)), 1), ROW(3.1415, CAST(NULL AS DECIMAL(20,6)))) AS t(a, b);`,
+		Expected: []sql.Row{{nil, "1.000000"}, {"3.1415", nil}},
+	},
+	{
+		Query:    `SELECT * FROM (VALUES ROW(CAST(NULL AS DECIMAL(10,2)) + 1.5)) AS t(x);`,
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    `SELECT * FROM (VALUES ROW(CASE WHEN 1=0 THEN 1.0 ELSE NULL END)) AS t(x);`,
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    `SELECT * FROM (VALUES ROW(COALESCE(NULL, CAST(NULL AS DECIMAL(10,2))))) AS t(x);`,
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    `SELECT * FROM (VALUES ROW(CAST(1234.5 AS DECIMAL(8,2))), ROW(CAST(NULL AS DECIMAL(8,4)))) AS t(x);`,
+		Expected: []sql.Row{{"1234.5000"}, {nil}},
+	},
+	{
+		Query:    `SELECT * FROM (VALUES ROW(CAST(NULL AS DECIMAL(8,4))), ROW(CAST(1234.5 AS DECIMAL(8,2)))) AS t(x);`,
+		Expected: []sql.Row{{nil}, {"1234.5000"}},
 	},
 	{
 		Query:    `SELECT column_0 FROM (values row(1+1.5,2+2), row(floor(1.5),concat("a","b"))) a order by 1;`,
@@ -8586,6 +8672,13 @@ from typestable`,
 		Expected: []sql.Row{
 			{1},
 		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11918
+		Query:                 "SELECT COUNT( * ) FROM (SELECT 25 AS age UNION ALL SELECT 30) t WHERE ROUND( HEX( age ) );",
+		Expected:              []sql.Row{{2}},
+		ExpectedWarning:       1292,
+		ExpectedWarningsCount: 1,
 	},
 	{
 		Query: "select 1 in (null, 0.8)",
