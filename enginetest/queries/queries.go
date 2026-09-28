@@ -1682,6 +1682,55 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Query:    `SELECT DISTINCT val FROM (values row(null), row(1.00), row('2'), row(2)) a (val);`,
 		Expected: []sql.Row{{nil}, {"1.00"}, {"2"}},
 	},
+	// https://github.com/dolthub/dolt/issues/11942
+	{
+		Query:    `SELECT * FROM (VALUES ROW(CAST(NULL AS DECIMAL(20,6)))) AS t(x);`,
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    `SELECT * FROM (VALUES ROW(CAST(NULL AS DECIMAL(20,6))), ROW(1.23)) AS t(x);`,
+		Expected: []sql.Row{{nil}, {"1.230000"}},
+	},
+	{
+		Query:    `SELECT * FROM (VALUES ROW(1.23), ROW(CAST(NULL AS DECIMAL(20,6)))) AS t(x);`,
+		Expected: []sql.Row{{"1.230000"}, {nil}},
+	},
+	{
+		Query:    `SELECT * FROM (VALUES ROW(NULL), ROW(CAST(NULL AS DECIMAL(20,6)))) AS t(x);`,
+		Expected: []sql.Row{{nil}, {nil}},
+	},
+	{
+		Query:    `SELECT * FROM (VALUES ROW(1.23), ROW(NULL)) AS t(x);`,
+		Expected: []sql.Row{{"1.23"}, {nil}},
+	},
+	{
+		Query:    `SELECT * FROM (VALUES ROW(1), ROW(CAST(NULL AS DECIMAL(20,6)))) AS t(x);`,
+		Expected: []sql.Row{{"1.000000"}, {nil}},
+	},
+	{
+		Query:    `SELECT * FROM (VALUES ROW(CAST(NULL AS DECIMAL(10,2)), 1), ROW(3.1415, CAST(NULL AS DECIMAL(20,6)))) AS t(a, b);`,
+		Expected: []sql.Row{{nil, "1.000000"}, {"3.1415", nil}},
+	},
+	{
+		Query:    `SELECT * FROM (VALUES ROW(CAST(NULL AS DECIMAL(10,2)) + 1.5)) AS t(x);`,
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    `SELECT * FROM (VALUES ROW(CASE WHEN 1=0 THEN 1.0 ELSE NULL END)) AS t(x);`,
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    `SELECT * FROM (VALUES ROW(COALESCE(NULL, CAST(NULL AS DECIMAL(10,2))))) AS t(x);`,
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    `SELECT * FROM (VALUES ROW(CAST(1234.5 AS DECIMAL(8,2))), ROW(CAST(NULL AS DECIMAL(8,4)))) AS t(x);`,
+		Expected: []sql.Row{{"1234.5000"}, {nil}},
+	},
+	{
+		Query:    `SELECT * FROM (VALUES ROW(CAST(NULL AS DECIMAL(8,4))), ROW(CAST(1234.5 AS DECIMAL(8,2)))) AS t(x);`,
+		Expected: []sql.Row{{nil}, {"1234.5000"}},
+	},
 	{
 		Query:    `SELECT column_0 FROM (values row(1+1.5,2+2), row(floor(1.5),concat("a","b"))) a order by 1;`,
 		Expected: []sql.Row{{"1.0"}, {"2.5"}},
