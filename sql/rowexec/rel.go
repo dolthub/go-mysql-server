@@ -58,15 +58,8 @@ func (b *BaseBuilder) buildTopN(ctx *sql.Context, n *plan.TopN, row sql.Row) (sq
 	return sql.NewSpanIter(span, topIter), nil
 }
 
-// buildValueDerivedTable builds a row iterator for inline table
-// values |n|.
-//
-// It calculates each row expression in |n.ExpressionTuples| with
-// |row|, converts each value to match the column data type, and
-// returns an iterator [sql.RowIter] over all resulting rows.
-//
-// The caller must provide an active context |ctx|, the values table
-// plan |n|, and any outer row values |row| needed by expressions.
+// buildValueDerivedTable returns a [sql.RowIter] over evaluated
+// and type-converted rows for inline table values |n|.
 func (b *BaseBuilder) buildValueDerivedTable(ctx *sql.Context, n *plan.ValueDerivedTable, row sql.Row) (sql.RowIter, error) {
 	rows := make([]sql.Row, len(n.ExpressionTuples))
 	for i, et := range n.ExpressionTuples {
