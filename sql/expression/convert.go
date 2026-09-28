@@ -265,9 +265,44 @@ func convertValue(ctx *sql.Context, val any, origType, convType sql.Type) (any, 
 			}
 		}
 	}
-	if inRange != sql.InRange && types.IsUnsigned(convType) {
-		ctx.Warn(1105, "Cast to unsigned converted negative integer to its positive complement")
+	// Type-specific quirks
+	switch {
+	case types.IsUnsigned(convType):
+		if inRange != sql.InRange {
+			ctx.Warn(1105, "Cast to unsigned converted negative integer to its positive complement")
+		}
+	case types.LongBlob.Equals(convType):
+		if types.IsTextOnly(origType) {
+			// For string types we need to re-encode the string as we want the binary representation of the character set
+			encoder := origType.(sql.StringType).Collation().CharacterSet().Encoder()
+			encodedBytes, ok := encoder.Encode(val.([]byte))
+			if !ok {
+				return nil, fmt.Errorf("unable to re-encode string to convert to binary")
+			}
+			val = encodedBytes
+		}
+		if bb, ok := val.([]byte); ok && len(bb) < typeLength {
+			val = append(bb, make([]byte, typeLength-len(bb))...)
+		}
+		return truncateConvertedValue(val, typeLength)
+
 	}
+	if inRange != sql.InRange && types.IsUnsigned(convType) {
+
+	}
+	if types.IsTextOnly(origType) {
+		// For string types we need to re-encode the string as we want the binary representation of the character set
+		encoder := origType.(sql.StringType).Collation().CharacterSet().Encoder()
+		encodedBytes, ok := encoder.Encode(val.([]byte))
+		if !ok {
+			return nil, fmt.Errorf("unable to re-encode string to convert to binary")
+		}
+		val = encodedBytes
+	}
+	if bb, ok := val.([]byte); ok && len(bb) < typeLength {
+		val = append(bb, make([]byte, typeLength-len(bb))...)
+	}
+	return truncateConvertedValue(val, typeLength)
 	return res, nil
 }
 
