@@ -10659,16 +10659,16 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrColumnNotFound,
 	},
 	{
-		Query:          "CREATE TABLE invalid_decimal (number DECIMAL(65,31));",
-		ExpectedErrStr: "Too big scale 31 specified. Maximum is 30.",
+		Query:       "CREATE TABLE invalid_decimal (number DECIMAL(65,31));",
+		ExpectedErr: sql.ErrTooBigScale,
 	},
 	{
-		Query:          "CREATE TABLE invalid_decimal (number DECIMAL(66,30));",
-		ExpectedErrStr: "Too big precision 66 specified. Maximum is 65.",
+		Query:       "CREATE TABLE invalid_decimal (number DECIMAL(66,30));",
+		ExpectedErr: sql.ErrTooBigPrecision,
 	},
 	{
-		Query:          "CREATE TABLE invalid_decimal (number DECIMAL(66,31));",
-		ExpectedErrStr: "Too big scale 31 specified. Maximum is 30.",
+		Query:       "CREATE TABLE invalid_decimal (number DECIMAL(66,31));",
+		ExpectedErr: sql.ErrTooBigScale,
 	},
 	{
 		Query:       "select 18446744073709551615 div 0.1;",
