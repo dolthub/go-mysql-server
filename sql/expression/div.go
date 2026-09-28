@@ -343,8 +343,8 @@ func getFloatOrMaxDecimalType(ctx *sql.Context, e sql.Expression, treatIntsAsFlo
 				}
 			}
 		case *Convert:
-			if c.cachedDecimalType != nil {
-				p, s := GetPrecisionAndScale(c.cachedDecimalType)
+			if dt, ok := c.convType.(sql.DecimalType); ok {
+				p, s := GetPrecisionAndScale(dt)
 				if whole := p - s; whole > maxWhole {
 					maxWhole = whole
 				}

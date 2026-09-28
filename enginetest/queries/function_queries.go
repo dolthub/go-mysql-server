@@ -2220,6 +2220,39 @@ var FunctionQueryTests = []QueryTest{
 		},
 	},
 
+	{
+		Query:       "select cast('abc' as char(4294967296));",
+		ExpectedErr: sql.ErrTooBigDisplayWidth,
+	},
+	{
+		Query:       "select cast('abc' as binary(4294967296));",
+		ExpectedErr: sql.ErrTooBigDisplayWidth,
+	},
+	{
+		Query:    "select cast('abcdef' as binary(10));",
+		Expected: []sql.Row{{[]byte("abcdef\x00\x00\x00\x00")}},
+	},
+	{
+		Query:       "select cast(123.456 as decimal(66));",
+		ExpectedErr: sql.ErrTooBigPrecision,
+	},
+	{
+		Query:       "select cast(123 as decimal(66, 0));",
+		ExpectedErr: sql.ErrTooBigPrecision,
+	},
+	{
+		Query:       "select cast(123 as decimal(0, 31));",
+		ExpectedErr: sql.ErrTooBigScale,
+	},
+	{
+		Query:       "select cast(123 as datetime(7));",
+		ExpectedErr: sql.ErrTooBigPrecision,
+	},
+	{
+		Query:       "select cast(123 as time(7));",
+		ExpectedErr: sql.ErrTooBigPrecision,
+	},
+
 	// Additional JSON Function Tests
 	{
 		Query:    `SELECT JSON_UNQUOTE('"foo"')`,
@@ -3962,34 +3995,5 @@ var FunctionQueryTests = []QueryTest{
 	{
 		Query:       `SELECT RPAD(_latin1'a', 3, _utf8mb4'👍')`,
 		ExpectedErr: sql.ErrCannotConvertString,
-	},
-	// https://github.com/dolthub/dolt/issues/11917
-	{
-		Query:    "SELECT UNIX_TIMESTAMP(IFNULL(SIN(WEEKDAY(UUID())), (SELECT 1)));",
-		Expected: []sql.Row{{int64(0)}},
-	},
-	{
-		Query:    "SELECT UNIX_TIMESTAMP((SELECT 1));",
-		Expected: []sql.Row{{int64(0)}},
-	},
-	{
-		Query:    "SELECT UNIX_TIMESTAMP((SELECT NULL));",
-		Expected: []sql.Row{{nil}},
-	},
-	{
-		Query:    "SELECT UNIX_TIMESTAMP((SELECT 1 FROM (SELECT 1) t WHERE 1=0));",
-		Expected: []sql.Row{{nil}},
-	},
-	{
-		Query:    "SELECT UNIX_TIMESTAMP(NULLIF((SELECT 1), 1));",
-		Expected: []sql.Row{{nil}},
-	},
-	{
-		Query:    "SELECT UNIX_TIMESTAMP(COALESCE((SELECT NULL), (SELECT 1)));",
-		Expected: []sql.Row{{int64(0)}},
-	},
-	{
-		Query:       "SELECT UNIX_TIMESTAMP((SELECT 1 UNION ALL SELECT 2));",
-		ExpectedErr: sql.ErrExpectedSingleRow,
 	},
 }

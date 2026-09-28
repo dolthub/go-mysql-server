@@ -1,12 +1,9 @@
 package analyzer
 
 import (
-	"github.com/dolthub/vitess/go/sqltypes"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
-	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // todo this should be split into two rules. The first should be in
@@ -37,11 +34,6 @@ func resolveCreateSelect(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 		// replace system variable types with their underlying types
 		if sysType, isSysTyp := tempCol.Type.(sql.SystemVariableType); isSysTyp {
 			tempCol.Type = sysType.UnderlyingType()
-		}
-		// Untyped NULL items materialized without an explicit column
-		// definition default to empty binary storage.
-		if types.IsNullType(tempCol.Type) {
-			tempCol.Type = types.MustCreateBinary(sqltypes.VarBinary, 0)
 		}
 		newSch[i] = &tempCol
 	}

@@ -112,22 +112,26 @@ func aliasTrackAndReplace(ctx *sql.Context, adj map[sql.ColumnId]sql.Expression,
 }
 
 func (f *factory) buildConvert(ctx *sql.Context, expr sql.Expression, castToType string, typeLength, typeScale int) (sql.Expression, error) {
-	n := expression.NewConvertWithLengthAndScale(expr, castToType, typeLength, typeScale)
-	{
-		// deduplicate redundant convert
-		if expr.Type(ctx).Equals(n.Type(ctx)) {
-			f.log(ctx, "eliminated convert")
-			return expr, nil
-		}
+	convType, err := expression.CreateConvertType(castToType, typeLength, typeScale)
+	if err != nil {
+		return nil, err
 	}
-	if types.IsText(n.Type(ctx)) && types.IsEnum(expr.Type(ctx)) {
-		newNode, err := n.WithChildren(ctx, expression.NewEnumToString(expr))
-		if err != nil {
-			return nil, err
-		}
-		return newNode, nil
+	return f.buildConvertToType(ctx, expr, convType, typeLength)
+}
+
+// buildConvertToType builds an expression that converts |expr| to |convType|, with |typeLength| specifying a length
+// constraint for char and binary conversions.
+func (f *factory) buildConvertToType(ctx *sql.Context, expr sql.Expression, convType sql.Type, typeLength int) (sql.Expression, error) {
+	// deduplicate redundant convert; char and binary conversions with a length may still need to truncate
+	exprType := expr.Type(ctx)
+	if exprType.Equals(convType) && (typeLength == 0 || !types.IsText(convType)) {
+		f.log(ctx, "eliminated convert")
+		return expr, nil
 	}
-	return n, nil
+	if types.IsText(convType) && types.IsEnum(exprType) {
+		expr = expression.NewEnumToString(expr)
+	}
+	return expression.NewConvertWithLength(expr, convType, typeLength), nil
 }
 
 func (f *factory) buildJoin(ctx *sql.Context, l, r sql.Node, op plan.JoinType, cond sql.Expression) (sql.Node, error) {

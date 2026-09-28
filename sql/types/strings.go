@@ -382,7 +382,7 @@ func ConvertToString(ctx context.Context, v interface{}, t sql.StringType, dest 
 	return string(ret), err
 }
 
-func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest []byte) ([]byte, error) {
+func ConvertToBytes(ctx context.Context, v any, t sql.StringType, dest []byte) ([]byte, error) {
 	var val []byte
 	start := len(dest)
 	// Based on the type of the input, convert it into a byte array, writing it into |dest| to avoid an allocation.

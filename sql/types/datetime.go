@@ -145,7 +145,7 @@ func CreateDatetimeType(baseType query.Type, precision int) (sql.DatetimeType, e
 	switch baseType {
 	case sqltypes.Date, sqltypes.Datetime, sqltypes.Timestamp:
 		if precision < 0 || precision > MaxDatetimePrecision {
-			return nil, fmt.Errorf("precision must be between 0 and 6, got %d", precision)
+			return nil, sql.ErrTooBigPrecision.New(precision, MaxDatetimePrecision)
 		}
 		return datetimeType{
 			baseType:  baseType,
