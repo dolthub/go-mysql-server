@@ -97,7 +97,7 @@ func CreateConvertType(castToType string, typeLength, typeScale int) (sql.Type, 
 	case ConvertToDatetime:
 		res, err = types.CreateDatetimeType(sqltypes.Datetime, typeLength)
 	case ConvertToDecimal:
-		res, err = types.CreateDecimalType(uint8(typeLength), uint8(typeScale))
+		res, err = types.CreateColumnDecimalType(uint8(typeLength), uint8(typeScale))
 	case ConvertToFloat:
 		res = types.Float32
 	case ConvertToDouble, ConvertToReal:

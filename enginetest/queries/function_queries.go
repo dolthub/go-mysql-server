@@ -2227,28 +2227,20 @@ var FunctionQueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: "select cast(123 as decimal(66, 0));",
-		Expected: []sql.Row{
-			{},
-		},
+		Query:       "select cast(123 as decimal(66, 0));",
+		ExpectedErr: sql.ErrTooBigScale,
 	},
 	{
-		Query: "select cast(123 as decimal(0, 31));",
-		Expected: []sql.Row{
-			{},
-		},
+		Query:       "select cast(123 as decimal(0, 31));",
+		ExpectedErr: sql.ErrTooBigPrecision,
 	},
 	{
-		Query: "select cast(123 as datetime(7));",
-		Expected: []sql.Row{
-			{},
-		},
+		Query:       "select cast(123 as datetime(7));",
+		ExpectedErr: sql.ErrTooBigPrecision,
 	},
 	{
-		Query: "select cast(123 as time(7));",
-		Expected: []sql.Row{
-			{},
-		},
+		Query:       "select cast(123 as time(7));",
+		ExpectedErr: sql.ErrTooBigPrecision,
 	},
 
 	// Additional JSON Function Tests
