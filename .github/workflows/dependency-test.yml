@@ -35,12 +35,12 @@ jobs:
           COMMENTS=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments)
           BODY="$PR_DESCRIPTION$COMMENTS"
-          if echo "$BODY" | grep -q "github.com/dolthub/dolt/pull/"; then
+          if echo "$BODY" | grep -Eq "github.com/dolthub/dolt/pull/|dolthub/dolt#[0-9]"; then
             echo "test_dolt=false" >> $GITHUB_OUTPUT
           else
             echo "test_dolt=true" >> $GITHUB_OUTPUT
           fi
-          if echo "$BODY" | grep -q "github.com/dolthub/doltgresql/pull/"; then
+          if echo "$BODY" | grep -Eq "github.com/dolthub/doltgresql/pull/|dolthub/doltgresql#[0-9]"; then
             echo "test_doltgresql=false" >> $GITHUB_OUTPUT
           else
             echo "test_doltgresql=true" >> $GITHUB_OUTPUT
