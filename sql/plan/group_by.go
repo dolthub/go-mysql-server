@@ -32,6 +32,8 @@ type GroupBy struct {
 	UnaryNode
 	SelectDeps   []sql.Expression
 	GroupByExprs []sql.Expression
+	// IsAggregated reports whether the query groups rows.
+	IsAggregated bool
 }
 
 var _ sql.Expressioner = (*GroupBy)(nil)
@@ -40,15 +42,18 @@ var _ sql.Projector = (*GroupBy)(nil)
 var _ sql.CollationCoercible = (*GroupBy)(nil)
 var _ sql.Describable = (*GroupBy)(nil)
 
-// NewGroupBy creates a new GroupBy node. Like Project, GroupBy is a top-level node, and contains all the fields that
-// will appear in the output of the query. Some of these fields may be aggregate functions, some may be columns or
-// other expressions. Unlike a project, the GroupBy also has a list of group-by expressions, which usually also appear
-// in the list of selected expressions.
-func NewGroupBy(selectDeps, groupByExprs []sql.Expression, child sql.Node) *GroupBy {
+// NewGroupBy returns a new [GroupBy] node that selects [SelectDeps]
+// from [Child].
+//
+// When isAggregated is true, the query groups rows using
+// [GroupByExprs] and computes aggregate functions. Otherwise, rows
+// pass through without grouping.
+func NewGroupBy(selectDeps, groupByExprs []sql.Expression, child sql.Node, isAggregated bool) *GroupBy {
 	return &GroupBy{
 		UnaryNode:    UnaryNode{Child: child},
 		SelectDeps:   selectDeps,
 		GroupByExprs: groupByExprs,
+		IsAggregated: isAggregated,
 	}
 }
 
@@ -102,7 +107,7 @@ func (g *GroupBy) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node
 		return nil, sql.ErrInvalidChildrenNumber.New(g, len(children), 1)
 	}
 
-	return NewGroupBy(g.SelectDeps, g.GroupByExprs, children[0]), nil
+	return NewGroupBy(g.SelectDeps, g.GroupByExprs, children[0], g.IsAggregated), nil
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -123,7 +128,7 @@ func (g *GroupBy) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sq
 	grouping := make([]sql.Expression, len(g.GroupByExprs))
 	copy(grouping, exprs[len(g.SelectDeps):])
 
-	return NewGroupBy(agg, grouping, g.Child), nil
+	return NewGroupBy(agg, grouping, g.Child, g.IsAggregated), nil
 }
 
 func (g *GroupBy) String() string {

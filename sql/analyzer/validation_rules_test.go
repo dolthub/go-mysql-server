@@ -103,6 +103,7 @@ func TestValidateGroupBy(t *testing.T) {
 			expression.NewGetField(0, types.Text, "col1", true),
 		},
 		plan.NewResolvedTable(child, nil, nil),
+		true,
 	)
 
 	_, _, err = vr.Apply(sql.NewEmptyContext(), nil, p, nil, DefaultRuleSelector, nil)
@@ -150,6 +151,7 @@ func TestValidateGroupByErr(t *testing.T) {
 			expression.NewGetField(0, types.Text, "col1", true),
 		},
 		plan.NewResolvedTable(child, nil, nil),
+		true,
 	)
 
 	err = sql.SystemVariables.SetGlobal(ctx, "sql_mode", "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION")
@@ -460,7 +462,7 @@ func TestValidateOperands(t *testing.T) {
 			"groupby with no tuple",
 			plan.NewGroupBy([]sql.Expression{
 				expression.NewLiteral(1, types.Int64),
-			}, nil, nil),
+			}, nil, nil, true),
 			true,
 		},
 		{
@@ -469,7 +471,7 @@ func TestValidateOperands(t *testing.T) {
 				expression.NewTuple(
 					expression.NewLiteral(1, types.Int64),
 				),
-			}, nil, nil),
+			}, nil, nil, true),
 			true,
 		},
 		{
@@ -479,7 +481,7 @@ func TestValidateOperands(t *testing.T) {
 					expression.NewLiteral(1, types.Int64),
 					expression.NewLiteral(1, types.Int64),
 				),
-			}, nil, nil),
+			}, nil, nil, true),
 			false,
 		},
 		{

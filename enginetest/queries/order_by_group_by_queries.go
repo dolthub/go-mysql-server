@@ -510,4 +510,58 @@ var OrderByGroupByScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/11911
+		Name: "Scalar subqueries in grouped SELECT list with ONLY_FULL_GROUP_BY",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (id INT PRIMARY KEY, active INT, status INT);",
+			"INSERT INTO t1 VALUES (1, 1, 10), (2, 0, 20), (3, 1, 30);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT (SELECT 1 FROM t1 LIMIT 1) AS s FROM t1 GROUP BY active;",
+				Expected: []sql.Row{{int8(1)}, {int8(1)}},
+			},
+			{
+				Query:    "SELECT (SELECT MAX(t9.id) FROM t1 AS t9 WHERE t9.active = t8.active) AS s FROM t1 AS t8 GROUP BY t8.active;",
+				Expected: []sql.Row{{3}, {2}},
+			},
+			{
+				Query:       "SELECT (SELECT MAX(t9.id) FROM t1 AS t9 WHERE t9.status = t8.status) AS s FROM t1 AS t8 GROUP BY t8.active;",
+				ExpectedErr: analyzererrors.ErrValidationGroupBy,
+			},
+			{
+				Query:    "SELECT COALESCE((SELECT 1 FROM t1 LIMIT 1), 0) AS s FROM t1 GROUP BY active;",
+				Expected: []sql.Row{{int8(1)}, {int8(1)}},
+			},
+			{
+				Query:    "SELECT active FROM t1 GROUP BY active ORDER BY (SELECT 1 FROM t1 LIMIT 1), active;",
+				Expected: []sql.Row{{0}, {1}},
+			},
+			{
+				Query:    "SELECT active FROM t1 GROUP BY active ORDER BY (SELECT MAX(t9.id) FROM t1 AS t9 WHERE t9.active = t1.active);",
+				Expected: []sql.Row{{0}, {1}},
+			},
+			{
+				Query:       "SELECT active FROM t1 GROUP BY active ORDER BY (SELECT MAX(t9.id) FROM t1 AS t9 WHERE t9.status = t1.status);",
+				ExpectedErr: analyzererrors.ErrValidationGroupByOrderBy,
+			},
+			{
+				Query:    "SELECT COUNT(*), (SELECT 1 FROM t1 LIMIT 1) FROM t1;",
+				Expected: []sql.Row{{3, int8(1)}},
+			},
+			{
+				Query:       "SELECT COUNT(*), (SELECT MAX(t9.id) FROM t1 AS t9 WHERE t9.active = t1.active) FROM t1;",
+				ExpectedErr: sql.ErrNonAggregatedColumnWithoutGroupBy,
+			},
+			{
+				Query:    "SELECT ANY_VALUE(active), (SELECT MAX(t9.id) FROM t1 AS t9 WHERE t9.active = t1.active) FROM t1;",
+				Expected: []sql.Row{{1, 3}, {0, 2}, {1, 3}},
+			},
+			{
+				Query:       "SELECT COUNT(*), ANY_VALUE(active), (SELECT MAX(t9.id) FROM t1 AS t9 WHERE t9.active = t1.active) FROM t1;",
+				ExpectedErr: sql.ErrNonAggregatedColumnWithoutGroupBy,
+			},
+		},
+	},
 }
