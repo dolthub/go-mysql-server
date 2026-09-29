@@ -5196,6 +5196,10 @@ SELECT * FROM cte WHERE  d = 2;`,
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/11903
+		Query:    `select length('a\_b'), 'a\_b'`,
+		Expected: []sql.Row{{int32(4), "a\\_b"}},
+	},
+	{
 		Query:    `select 'a_b' like 'a\_b'`,
 		Expected: []sql.Row{{true}},
 	},

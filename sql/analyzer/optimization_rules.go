@@ -285,7 +285,7 @@ func simplifyExpression(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sel Ru
 				return expression.NewEquals(e.LeftChild, expression.NewLiteral(prefix, rightType)), transform.NewTree, nil
 			}
 			if len(prefix) == 0 {
-				// TODO: a pattern of only '%' could be simplified to IS NOT NULL.
+				// TODO(#3943): a pattern of only '%' could be simplified to IS NOT NULL.
 				return e, transform.SameTree, nil
 			}
 			lowerBound := expression.NewGreaterThanOrEqual(e.LeftChild, expression.NewLiteral(prefix, rightType))

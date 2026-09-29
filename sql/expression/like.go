@@ -218,7 +218,7 @@ func (l *Like) String() string {
 func (l *Like) LiteralPrefix(
 	ctx *sql.Context,
 ) (prefix string, complete bool, ok bool) {
-	// TODO: handle custom ESCAPE
+	// TODO(#3942): handle custom ESCAPE
 	if l.Escape != nil {
 		return "", false, false
 	}
@@ -244,25 +244,22 @@ func (l *Like) LiteralPrefix(
 		r, size := utf8.DecodeRuneInString(pattern[i:])
 		i += size
 
-		if !escaped && r == likeDefaultEscape {
+		switch {
+		case !escaped && r == likeDefaultEscape:
 			escaped = true
-			continue
-		}
-		if escaped {
+		case escaped:
 			escaped = false
 			b.WriteRune(r)
-			continue
-		}
-		if r == likeWildcardOne {
+		case r == likeWildcardOne:
 			return "", false, false
-		}
-		if r == likeWildcardMany {
+		case r == likeWildcardMany:
 			if i == len(pattern) && b.Len() > 0 {
 				return b.String(), false, true
 			}
 			return "", false, false
+		default:
+			b.WriteRune(r)
 		}
-		b.WriteRune(r)
 	}
 	if escaped {
 		b.WriteRune(likeDefaultEscape)
