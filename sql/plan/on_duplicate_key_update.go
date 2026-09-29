@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2026 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,20 +30,28 @@ func NewOnDuplicateKeyUpdateSource(destination sql.Node, exprs *UpdateExprs, ign
 	return &OnDuplicateKeyUpdateSource{UnaryNode: UnaryNode{Child: destination}, UpdateExprs: exprs, Ignore: ignore}
 }
 
+// Schema implements sql.Node.
 func (n *OnDuplicateKeyUpdateSource) Schema(ctx *sql.Context) sql.Schema {
 	return append(n.Child.Schema(ctx).Copy(), n.Child.Schema(ctx)...)
 }
 
+// Resolved implements sql.Node.
 func (n *OnDuplicateKeyUpdateSource) Resolved() bool {
 	return n.Child.Resolved() && n.UpdateExprs.Resolved()
 }
+
+// IsReadOnly implements sql.Node.
 func (n *OnDuplicateKeyUpdateSource) IsReadOnly() bool { return true }
+
+// String implements sql.Node.
 func (n *OnDuplicateKeyUpdateSource) String() string {
 	p := sql.NewTreePrinter()
 	_ = p.WriteNode("OnDuplicateKeyUpdateSource")
 	_ = p.WriteChildren(n.Child.String())
 	return p.String()
 }
+
+// WithChildren implements sql.Node.
 func (n *OnDuplicateKeyUpdateSource) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 1)
@@ -52,9 +60,13 @@ func (n *OnDuplicateKeyUpdateSource) WithChildren(ctx *sql.Context, children ...
 	nn.Child = children[0]
 	return &nn, nil
 }
+
+// Expressions implements sql.Expressioner.
 func (n *OnDuplicateKeyUpdateSource) Expressions() []sql.Expression {
 	return n.UpdateExprs.AllExpressions()
 }
+
+// WithExpressions implements sql.Expressioner.
 func (n *OnDuplicateKeyUpdateSource) WithExpressions(ctx *sql.Context, expressions ...sql.Expression) (sql.Node, error) {
 	exprs, err := n.UpdateExprs.WithExpressions(expressions)
 	if err != nil {
