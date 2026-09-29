@@ -285,8 +285,16 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 	// build individual table, collect column definitions
 	switch t := (te).(type) {
 	case *ast.AliasedTableExpr:
-		if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, t.Auth); err != nil && b.authEnabled {
-			b.handleErr(err)
+		var cteScope *scope
+		e, isTableName := t.Expr.(ast.TableName)
+		if isTableName {
+			cteScope = inScope.getCte(strings.ToLower(e.Name.String()))
+		}
+		resolvedAuth, checksResolvedTables := b.cat.AuthorizationHandler().(sql.ResolvedTableAuthorizationHandler)
+		if !isTableName || (cteScope == nil && !checksResolvedTables) {
+			if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, t.Auth); err != nil && b.authEnabled {
+				b.handleErr(err)
+			}
 		}
 		switch e := t.Expr.(type) {
 		case ast.TableName:
@@ -294,7 +302,7 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 			schemaName := strings.ToLower(e.SchemaQualifier.String())
 			inScope.schemaName = schemaName
 			tAlias := strings.ToLower(t.As.String())
-			if cteScope := inScope.getCte(tableName); cteScope != nil {
+			if cteScope != nil {
 				outScope = cteScope.aliasCte(b.ctx, tAlias)
 				outScope.parent = inScope
 			} else {
@@ -302,6 +310,11 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 				outScope, ok = b.buildTablescan(inScope, e, t.AsOf)
 				if !ok {
 					b.handleErr(sql.ErrTableNotFound.New(tableName))
+				}
+				if checksResolvedTables {
+					if err := resolvedAuth.HandleResolvedTableAuth(b.ctx, b.authQueryState, t.Auth, outScope.node); err != nil && b.authEnabled {
+						b.handleErr(err)
+					}
 				}
 			}
 			if tAlias != "" {
