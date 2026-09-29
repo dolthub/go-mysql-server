@@ -515,10 +515,6 @@ func (t TimespanType_) stringToTimespan(s string) (Timespan, error) {
 		seconds = 59
 	}
 
-	if hours == 838 && minutes == 59 && seconds == 59 {
-		microseconds = 0
-	}
-
 	return unitsToTimespan(negative, hours, minutes, seconds, microseconds), nil
 }
 
