@@ -6089,6 +6089,11 @@ CREATE TABLE tab3 (
 		},
 		Assertions: []ScriptTestAssertion{
 			{
+				// The primary key determines val, so HAVING may use it without grouping by val.
+				Query:    "SELECT id, val FROM correlated_aggregate_scope GROUP BY id HAVING val > 1 ORDER BY id;",
+				Expected: []sql.Row{{2, 2}},
+			},
+			{
 				Query:    "SELECT grp, (SELECT GROUP_CONCAT(a.val ORDER BY a.val SEPARATOR '|') FROM concat_probe p) FROM concat_scope a GROUP BY grp HAVING (SELECT GROUP_CONCAT(a.val ORDER BY a.val SEPARATOR '|') FROM concat_probe p) IS NOT NULL ORDER BY grp;",
 				Expected: []sql.Row{{1, "a|b"}, {2, "c"}},
 			},

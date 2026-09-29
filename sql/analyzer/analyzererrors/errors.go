@@ -40,8 +40,8 @@ var (
 			"this is incompatible with sql_mode=only_full_group_by",
 	)
 
-	// ErrValidationGroupByHaving is returned when a HAVING expression contains a nonaggregated column that does not
-	// appear in the group by clause.
+	// ErrValidationGroupByHaving is returned when a HAVING expression contains a nonaggregated column that is neither
+	// grouped nor functionally dependent on the GROUP BY columns.
 	ErrValidationGroupByHaving = errors.NewKind(
 		"Expression #%d of HAVING clause is not in GROUP BY clause and contains nonaggregated column '%s' which " +
 			"is not functionally dependent on columns in GROUP BY clause; " +

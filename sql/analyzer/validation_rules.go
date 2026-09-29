@@ -417,6 +417,11 @@ func getSelectAndOrderByExprs(ctx *sql.Context, project *plan.Project, orderBy *
 			if !project.AliasDeps[strings.ToLower(expr.String())] {
 				resolvedExpr := resolveExpr(ctx, expr, sd, groupBys, make(map[string]bool))
 				selectExprs = append(selectExprs, resolvedExpr)
+				if alias, ok := expr.(*expression.Alias); ok && !groupBys[strings.ToLower(expr.String())] {
+					if _, found := sd[strings.ToLower(alias.Child.String())]; found {
+						sd[strings.ToLower(alias.Name())] = resolvedExpr
+					}
+				}
 			}
 		}
 
@@ -445,14 +450,16 @@ func resolveHavingExpr(ctx *sql.Context, expr sql.Expression, project *plan.Proj
 	deps := selectDependencies(selectDeps)
 	if project != nil {
 		for _, projection := range project.Projections {
-			resolveExpr(ctx, projection, deps, groupBys, make(map[string]bool))
+			if alias, ok := projection.(*expression.Alias); ok {
+				deps[strings.ToLower(alias.Name())] = resolveExpr(ctx, alias.Child, deps, groupBys, make(map[string]bool))
+			}
 		}
 	}
 	return resolveExpr(ctx, expr, deps, groupBys, make(map[string]bool))
 }
 
-// resolveExpr resolves aliases and GetFields against selectDeps. visited guards  against infinite recursion on
-// self-referential selectDeps entries (e.g. a passthrough column mapped to itself).
+// resolveExpr substitutes aliases and GetFields using selectDeps. |visited| prevents recursion
+// through self-referential dependencies.
 func resolveExpr(ctx *sql.Context, expr sql.Expression, selectDeps map[string]sql.Expression, groupBys map[string]bool, visited map[string]bool) sql.Expression {
 	resolvedExpr, _, _ := transform.Expr(ctx, expr, func(ctx *sql.Context, expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		key := strings.ToLower(expr.String())
@@ -466,7 +473,6 @@ func resolveExpr(ctx *sql.Context, expr sql.Expression, selectDeps map[string]sq
 				visited[key] = true
 				resolved := resolveExpr(ctx, dep, selectDeps, groupBys, visited)
 				delete(visited, key)
-				selectDeps[strings.ToLower(e.Name())] = resolved
 				return resolved, transform.NewTree, nil
 			}
 		case *expression.GetField:
@@ -578,23 +584,35 @@ func expressionReferencesOnlyGroupBys(ctx *sql.Context, groupBys map[string]bool
 	return valid, col
 }
 
-// subqueryReferencesOnlyGroupByDeps reports whether a scalar subquery's outer column dependencies are valid and returns the first invalid column.
-func subqueryReferencesOnlyGroupByDeps(ctx *sql.Context, subquery *plan.Subquery, ids sql.ColSet, names map[string]bool, outputs sql.ColSet) (bool, string) {
-	remaining := subquery.Correlated().Intersection(outputs).Difference(ids)
+// subqueryReferencesOnlyGroupByDeps checks whether a scalar subquery depends on
+// ungrouped columns from this GROUP BY. groupByOutputIDs limits the check to this
+// query's outputs, excluding columns from more distant queries;
+// allowedDependencyIDs contains grouped columns and aggregate results.
+// aggregateOutputNames recognizes valid aggregate references by expression name
+// when their GetField IDs alone do not identify them. The string result names the
+// first invalid column, or the subquery when no matching GetField is available.
+func subqueryReferencesOnlyGroupByDeps(ctx *sql.Context, subquery *plan.Subquery, allowedDependencyIDs sql.ColSet, aggregateOutputNames map[string]bool, groupByOutputIDs sql.ColSet) (bool, string) {
+	// This GROUP BY can validate only correlated columns it supplies; columns
+	// from farther-out queries belong to those queries' grouping checks. Grouped
+	// columns and aggregate results are already valid here, so only the remaining
+	// references can violate this GROUP BY.
+	// For example, correlated {grp, val, enclosingID}, outputs {grp, val},
+	// and allowed {grp} leave only val to check.
+	uncheckedOuterColumns := subquery.Correlated().Intersection(groupByOutputIDs).Difference(allowedDependencyIDs)
 	var col string
 	transform.InspectExpressions(ctx, subquery.Query, func(ctx *sql.Context, expr sql.Expression) bool {
 		gf, ok := expr.(*expression.GetField)
-		if !ok || !remaining.Contains(gf.Id()) {
+		if !ok || !uncheckedOuterColumns.Contains(gf.Id()) {
 			return true
 		}
-		if names[strings.ToLower(gf.String())] {
-			remaining.Remove(gf.Id())
+		if aggregateOutputNames[strings.ToLower(gf.String())] {
+			uncheckedOuterColumns.Remove(gf.Id())
 		} else if col == "" {
 			col = gf.String()
 		}
 		return false
 	})
-	if remaining.Empty() {
+	if uncheckedOuterColumns.Empty() {
 		return true, ""
 	}
 	if col == "" {
