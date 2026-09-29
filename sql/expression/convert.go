@@ -20,7 +20,6 @@ import (
 
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
-	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -92,7 +91,7 @@ func CreateConvertType(castToType string, typeLength, typeScale int) (sql.Type, 
 	case ConvertToDatetime:
 		res, err = types.CreateDatetimeType(sqltypes.Datetime, typeLength)
 	case ConvertToDecimal:
-		res, err = types.CreateColumnDecimalType(uint8(typeLength), uint8(typeScale))
+		res, err = createConvertedDecimalType(typeLength, typeScale)
 	case ConvertToFloat:
 		res = types.Float32
 	case ConvertToDouble, ConvertToReal:
@@ -376,7 +375,10 @@ func convertValue(ctx *sql.Context, val any, castTo string, origType sql.Type, t
 		}
 		return val, nil
 	case ConvertToDecimal:
-		convType = createConvertedDecimalType(typeLength, typeScale, false)
+		convType, err = createConvertedDecimalType(typeLength, typeScale)
+		if err != nil {
+			return nil, err
+		}
 	case ConvertToFloat:
 		convType = types.Float32
 	case ConvertToDouble, ConvertToReal:
@@ -430,22 +432,15 @@ func truncateConvertedValue(val any, typeLength int) (any, error) {
 	}
 }
 
-// createConvertedDecimalType creates a new Decimal type with the specified |precision| and |scale|. If a Decimal
-// type cannot be created from the values specified, the internal Decimal type is returned. If |logErrors| is true,
-// an error will also logged to the standard logger. (Setting |logErrors| to false, allows the caller to prevent
-// spurious error message from being logged multiple times for the same error.) This function is intended to be
-// used in places where an error cannot be returned (e.g. Node.Type(ctx) implementations), hence why it logs an error
-// instead of returning one.
-func createConvertedDecimalType(length, scale int, logErrors bool) sql.DecimalType {
+// createConvertedDecimalType creates a new Decimal type with the specified |precision| and |scale|.
+// if length and scale are zero, types.InternalDecimalType is returned
+func createConvertedDecimalType(length, scale int) (sql.DecimalType, error) {
 	if length > 0 && scale > 0 {
 		dt, err := types.CreateColumnDecimalType(uint8(length), uint8(scale))
 		if err != nil {
-			if logErrors {
-				logrus.StandardLogger().Errorf("unable to create decimal type with length %d and scale %d: %v", length, scale, err)
-			}
-			return types.InternalDecimalType
+			return nil, err
 		}
-		return dt
+		return dt, nil
 	}
-	return types.InternalDecimalType
+	return types.InternalDecimalType, nil
 }
