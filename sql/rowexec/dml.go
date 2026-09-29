@@ -77,9 +77,6 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 		}
 	}
 	insertIter := &insertIter{
-		b:                              b,
-		onDupBeforeTriggers:            ii.OnDupBeforeTriggers,
-		onDupAfterTriggers:             ii.OnDupAfterTriggers,
 		schema:                         dstSchema,
 		inserter:                       inserter,
 		replacer:                       replacer,
@@ -362,28 +359,12 @@ func (b *BaseBuilder) buildTriggerExecutor(ctx *sql.Context, n *plan.TriggerExec
 		return nil, err
 	}
 
-	// Wrappers such as QueryProcess may not expose the insert's schema.
-	// Find the destination width to distinguish an inserted row from OLD+NEW.
-	var onDupRowSize int
-	if n.TriggerEvent == plan.InsertTrigger && n.TriggerTime == plan.AfterTrigger {
-		transform.Inspect(n.Left(), func(node sql.Node) bool {
-			if insert, ok := node.(*plan.InsertInto); ok {
-				if insert.OnDupExprs.HasUpdates() {
-					onDupRowSize = len(insert.Destination.Schema(ctx))
-				}
-				return false
-			}
-			return onDupRowSize == 0
-		})
-	}
-
 	return &triggerIter{
 		child:          childIter,
 		triggerTime:    n.TriggerTime,
 		triggerEvent:   n.TriggerEvent,
 		executionLogic: n.Right(),
 		b:              b,
-		onDupRowSize:   onDupRowSize,
 	}, nil
 }
 

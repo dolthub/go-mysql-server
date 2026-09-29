@@ -157,14 +157,12 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 
 	var affectedTables []string
 	var triggerEvent plan.TriggerEvent
-	var onDuplicateUpdate bool
 	db := ctx.GetCurrentDatabase()
 	transform.InspectWithOpaque(ctx, n, func(ctx *sql.Context, n sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.InsertInto:
 			affectedTables = append(affectedTables, getTableName(ctx, n))
 			triggerEvent = plan.InsertTrigger
-			onDuplicateUpdate = n.OnDupExprs.HasUpdates()
 			if n.Database() != nil && n.Database().Name() != "" {
 				db = n.Database().Name()
 			}
@@ -238,8 +236,7 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 				triggerTable = t.Name()
 			default:
 			}
-			if stringContains(affectedTables, triggerTable) && (triggerEventsMatch(triggerEvent, ct.TriggerEvent) ||
-				(onDuplicateUpdate && triggerEventsMatch(plan.UpdateTrigger, ct.TriggerEvent))) {
+			if stringContains(affectedTables, triggerTable) && triggerEventsMatch(triggerEvent, ct.TriggerEvent) {
 				// first pass does not parse the trigger body and is only so we know whether trigger is relevant
 				b.SetParserOptions(sqlMode.ParserOptions())
 				b.TriggerCtx().Call = true
@@ -389,16 +386,6 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 		switch n := c.Node.(type) {
 		case *plan.InsertInto:
 			qFlags.Set(sql.QFlagTrigger)
-			if trigger.TriggerEvent == sqlparser.UpdateStr {
-				nn := *n
-				if trigger.TriggerTime == sqlparser.BeforeStr {
-					nn.OnDupBeforeTriggers = append(append([]sql.Node(nil), n.OnDupBeforeTriggers...), triggerLogic)
-				} else {
-					// AFTER triggers are visited in reverse execution order.
-					nn.OnDupAfterTriggers = append([]sql.Node{triggerLogic}, n.OnDupAfterTriggers...)
-				}
-				return &nn, transform.NewTree, nil
-			}
 			if trigger.TriggerTime == sqlparser.BeforeStr {
 				triggerExecutor := plan.NewTriggerExecutor(n.Source, triggerLogic, plan.InsertTrigger, plan.TriggerTime(trigger.TriggerTime), sql.TriggerDefinition{
 					Name:            trigger.TriggerName,

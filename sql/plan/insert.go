@@ -93,10 +93,6 @@ type InsertInto struct {
 	// a |Values| node with only literal expressions.
 	LiteralValueSource bool
 	HasAfterTrigger    bool
-	// Duplicate-key trigger bodies are analyzed independently, like Source, and
-	// executed only after an insert encounters a conflicting row.
-	OnDupBeforeTriggers []sql.Node
-	OnDupAfterTriggers  []sql.Node
 }
 
 var _ sql.Databaser = (*InsertInto)(nil)
@@ -135,12 +131,6 @@ func (ii *InsertInto) WithChecks(checks sql.CheckConstraints) sql.Node {
 // Dispose implements the sql.Disposable interface.
 func (ii *InsertInto) Dispose(ctx *sql.Context) {
 	disposeNode(ctx, ii.Source)
-	for _, trigger := range ii.OnDupBeforeTriggers {
-		disposeNode(ctx, trigger)
-	}
-	for _, trigger := range ii.OnDupAfterTriggers {
-		disposeNode(ctx, trigger)
-	}
 }
 
 // Schema implements the sql.Node interface.

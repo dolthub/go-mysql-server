@@ -32,13 +32,10 @@ import (
 )
 
 type insertIter struct {
-	b                   *BaseBuilder
-	onDupBeforeTriggers []sql.Node
-	onDupAfterTriggers  []sql.Node
-	rowSource           sql.RowIter
-	inserter            sql.RowInserter
-	replacer            sql.RowReplacer
-	updater             sql.RowUpdater
+	rowSource sql.RowIter
+	inserter  sql.RowInserter
+	replacer  sql.RowReplacer
+	updater   sql.RowUpdater
 
 	ctx                 *sql.Context
 	onDupKeyUpdateExprs *plan.UpdateExprs
@@ -330,15 +327,6 @@ func (i *insertIter) handleOnDuplicateKeyUpdate(ctx *sql.Context, oldRow, newRow
 		}
 	}
 
-	for _, logic := range i.onDupBeforeTriggers {
-		trigger := &triggerIter{b: i.b, executionLogic: logic, triggerEvent: plan.UpdateTrigger, triggerTime: plan.BeforeTrigger}
-		updated, err := trigger.execute(ctx, oldRow.Append(evalRow))
-		if err != nil {
-			return nil, err
-		}
-		evalRow = updated[len(oldRow):]
-	}
-
 	// TODO: we don't need to evaluate checks and perform the update if the oldRow and evalRow are the same. But doing
 	//  the sameness check with oldRow.Equals can be expensive too and we don't want to be doing it unnecessarily
 	// Should revaluate the check conditions.
@@ -349,12 +337,6 @@ func (i *insertIter) handleOnDuplicateKeyUpdate(ctx *sql.Context, oldRow, newRow
 	err = i.updater.Update(ctx, oldRow, evalRow)
 	if err != nil {
 		return nil, i.ignoreOrClose(ctx, newRow, err)
-	}
-	for _, logic := range i.onDupAfterTriggers {
-		trigger := &triggerIter{b: i.b, executionLogic: logic, triggerEvent: plan.UpdateTrigger, triggerTime: plan.AfterTrigger}
-		if _, err := trigger.execute(ctx, oldRow.Append(evalRow)); err != nil {
-			return nil, err
-		}
 	}
 	if len(i.returnExprs) > 0 && !i.hasAfterTrigger {
 		return i.getReturningRow(ctx, evalRow)
