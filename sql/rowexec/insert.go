@@ -41,15 +41,16 @@ type directDuplicateKeyHandler struct {
 	insertIter *insertIter
 }
 
-// plannedDuplicateKeyHandler executes the update branch and its trigger executors.
-type plannedDuplicateKeyHandler struct {
-	builder    *BaseBuilder
-	updatePlan sql.Node
+// updateTriggerDuplicateKeyHandler executes the update branch and its trigger executors.
+type updateTriggerDuplicateKeyHandler struct {
+	updateIter sql.RowIter
+	source     *duplicateKeyUpdateIter
 	insertIter *insertIter
 }
 
 var _ DuplicateKeyHandler = (*directDuplicateKeyHandler)(nil)
-var _ DuplicateKeyHandler = (*plannedDuplicateKeyHandler)(nil)
+var _ DuplicateKeyHandler = (*updateTriggerDuplicateKeyHandler)(nil)
+var _ sql.Closer = (*updateTriggerDuplicateKeyHandler)(nil)
 
 type insertIter struct {
 	rowSource sql.RowIter
@@ -369,22 +370,19 @@ func (h *directDuplicateKeyHandler) update(ctx *sql.Context, oldRow, newRow sql.
 }
 
 // update implements DuplicateKeyHandler.
-func (h *plannedDuplicateKeyHandler) update(ctx *sql.Context, oldRow, proposedRow sql.Row) (result sql.Row, err error) {
-	iter, err := h.builder.buildNodeExec(ctx, h.updatePlan, oldRow.Append(proposedRow))
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		closeErr := iter.Close(ctx)
-		if err == nil {
-			err = closeErr
-		}
-	}()
-	result, err = iter.Next(ctx)
+func (h *updateTriggerDuplicateKeyHandler) update(ctx *sql.Context, oldRow, proposedRow sql.Row) (sql.Row, error) {
+	h.source.row = oldRow.Append(proposedRow)
+	result, err := h.updateIter.Next(ctx)
 	if err == nil && len(h.insertIter.returnExprs) > 0 && !h.insertIter.hasAfterTrigger {
 		return h.insertIter.getReturningRow(ctx, result[len(oldRow):])
 	}
 	return result, err
+}
+
+// Close implements sql.Closer. The update branch is shared by all duplicate rows
+// and must remain open until the enclosing insert is closed.
+func (h *updateTriggerDuplicateKeyHandler) Close(ctx *sql.Context) error {
+	return h.updateIter.Close(ctx)
 }
 
 func getFieldIndexFromUpdateExpr(updateExpr sql.Expression) (int, bool) {
@@ -407,7 +405,10 @@ func (i *insertIter) Close(ctx *sql.Context) error {
 		if i.unlocker != nil {
 			i.unlocker()
 		}
-		var rsErr, iErr, rErr, uErr error
+		var rsErr, iErr, rErr, uErr, dupErr error
+		if closer, ok := i.duplicateKeyHandler.(sql.Closer); ok {
+			dupErr = closer.Close(ctx)
+		}
 		if i.rowSource != nil {
 			rsErr = i.rowSource.Close(ctx)
 		}
@@ -419,6 +420,9 @@ func (i *insertIter) Close(ctx *sql.Context) error {
 		}
 		if i.updater != nil {
 			uErr = i.updater.Close(ctx)
+		}
+		if dupErr != nil {
+			return dupErr
 		}
 		if rsErr != nil {
 			return rsErr
@@ -639,4 +643,65 @@ func toInt64(x interface{}) int64 {
 	default:
 		panic(fmt.Sprintf("Expected a numeric auto increment value, but got %T", x))
 	}
+}
+
+// duplicateKeyUpdateSourceNode binds the planned source to this execution's row
+// slot. It is created only while building an insert, never stored in a cached plan.
+type duplicateKeyUpdateSourceNode struct {
+	*plan.OnDuplicateKeyUpdateSource
+	iter *duplicateKeyUpdateIter
+}
+
+var _ sql.ExecSourceRel = (*duplicateKeyUpdateSourceNode)(nil)
+
+// RowIter implements sql.ExecSourceRel.
+func (n *duplicateKeyUpdateSourceNode) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	return n.iter, nil
+}
+
+// duplicateKeyUpdateIter evaluates one supplied duplicate row at a time. The
+// handler supplies the next pair before advancing the shared update branch.
+type duplicateKeyUpdateIter struct {
+	schema      sql.Schema
+	updateExprs *plan.UpdateExprs
+	ignore      bool
+	row         sql.Row
+}
+
+var _ sql.RowIter = (*duplicateKeyUpdateIter)(nil)
+
+// Next implements sql.RowIter.
+func (i *duplicateKeyUpdateIter) Next(ctx *sql.Context) (sql.Row, error) {
+	if i.row == nil {
+		return nil, io.EOF
+	}
+	row := i.row
+	i.row = nil
+	schema := i.schema
+	width := len(schema)
+	oldRow, proposedRow := row[:width], row[width:]
+	updateAcc, err := applyInsertUpdates(ctx, schema, i.ignore, i.updateExprs.ExplicitUpdateExprs(), append(oldRow, proposedRow...), proposedRow)
+	if err != nil {
+		return nil, err
+	}
+
+	evalRow := updateAcc[:len(oldRow)]
+	if i.updateExprs.HasDerivedUpdates() {
+		if same, err := oldRow.Equals(ctx, evalRow, schema); err != nil {
+			return nil, err
+		} else if !same {
+			updateAcc, err = applyInsertUpdates(ctx, schema, i.ignore, i.updateExprs.DerivedUpdateExprs(), updateAcc, proposedRow)
+			if err != nil {
+				return nil, err
+			}
+			evalRow = updateAcc[:len(oldRow)]
+		}
+	}
+	return oldRow.Append(evalRow), nil
+}
+
+// Close implements sql.RowIter.
+func (i *duplicateKeyUpdateIter) Close(ctx *sql.Context) error {
+	i.row = nil
+	return nil
 }

@@ -103,6 +103,7 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 		insertIter.duplicateKeyHandler = &directDuplicateKeyHandler{insertIter: insertIter}
 	}
 	if ii.OnDup != nil {
+		source := &duplicateKeyUpdateIter{schema: dstSchema, updateExprs: ii.OnDupExprs, ignore: ii.Ignore}
 		// Bind the update branch to the final destination (including foreign-key
 		// wrappers) and assignments, which may have been rewritten since planning.
 		updatePlan, _, err := transform.NodeWithCtx(ctx, ii.OnDup, func(ctx *sql.Context, c transform.Context) bool {
@@ -112,7 +113,10 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 			node := c.Node
 			switch n := node.(type) {
 			case *plan.OnDuplicateKeyUpdateSource:
-				return plan.NewOnDuplicateKeyUpdateSource(ii.Destination, ii.OnDupExprs, ii.Ignore), transform.NewTree, nil
+				return &duplicateKeyUpdateSourceNode{
+					OnDuplicateKeyUpdateSource: plan.NewOnDuplicateKeyUpdateSource(ii.Destination, ii.OnDupExprs, ii.Ignore),
+					iter:                       source,
+				}, transform.NewTree, nil
 			case *plan.Update:
 				return n.WithChecks(ii.Checks()), transform.NewTree, nil
 			default:
@@ -122,9 +126,14 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 		if err != nil {
 			return nil, err
 		}
-		insertIter.duplicateKeyHandler = &plannedDuplicateKeyHandler{
-			builder:    b,
-			updatePlan: updatePlan,
+		updateIter, err := b.buildNodeExec(ctx, updatePlan, nil)
+		if err != nil {
+			_ = insertIter.Close(ctx)
+			return nil, err
+		}
+		insertIter.duplicateKeyHandler = &updateTriggerDuplicateKeyHandler{
+			updateIter: updateIter,
+			source:     source,
 			insertIter: insertIter,
 		}
 	}
@@ -541,25 +550,5 @@ func (b *BaseBuilder) buildRenameForeignKey(ctx *sql.Context, n *plan.RenameFore
 }
 
 func (b *BaseBuilder) buildOnDupUpdateSource(ctx *sql.Context, n *plan.OnDuplicateKeyUpdateSource, row sql.Row) (sql.RowIter, error) {
-	schema := n.Child.Schema(ctx)
-	width := len(schema)
-	oldRow, proposedRow := row[:width], row[width:]
-	updateAcc, err := applyInsertUpdates(ctx, schema, n.Ignore, n.UpdateExprs.ExplicitUpdateExprs(), append(oldRow, proposedRow...), proposedRow)
-	if err != nil {
-		return nil, err
-	}
-
-	evalRow := updateAcc[:len(oldRow)]
-	if n.UpdateExprs.HasDerivedUpdates() {
-		if same, err := oldRow.Equals(ctx, evalRow, schema); err != nil {
-			return nil, err
-		} else if !same {
-			updateAcc, err = applyInsertUpdates(ctx, schema, n.Ignore, n.UpdateExprs.DerivedUpdateExprs(), updateAcc, proposedRow)
-			if err != nil {
-				return nil, err
-			}
-			evalRow = updateAcc[:len(oldRow)]
-		}
-	}
-	return sql.RowsToRowIter(oldRow.Append(evalRow)), nil
+	return &duplicateKeyUpdateIter{schema: n.Child.Schema(ctx), updateExprs: n.UpdateExprs, ignore: n.Ignore, row: row}, nil
 }

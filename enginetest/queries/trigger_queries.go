@@ -144,6 +144,21 @@ var TriggerTests = []ScriptTest{
 			{Query: "SELECT event, old_v, new_v FROM audit ORDER BY seq", Expected: []sql.Row{{"bi", nil, 21}, {"bu", 10, 31}, {"au", 10, 31}, {"bi", nil, 31}, {"ai", nil, 31}}},
 		},
 	},
+	{
+		Name: "duplicate key update reuses trigger execution across repeated keys",
+		SetUpScript: []string{
+			"CREATE TABLE h (id INT PRIMARY KEY, v INT)",
+			"CREATE TABLE audit (old_v INT, new_v INT, PRIMARY KEY (old_v, new_v))",
+			"INSERT INTO h VALUES (1, 10)",
+			"CREATE TRIGGER bu BEFORE UPDATE ON h FOR EACH ROW SET NEW.v = NEW.v + OLD.v",
+			"CREATE TRIGGER au AFTER UPDATE ON h FOR EACH ROW INSERT INTO audit(old_v, new_v) VALUES (OLD.v, NEW.v)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{Query: "INSERT INTO h VALUES (1, 20), (2, 30), (1, 40), (2, 50) ON DUPLICATE KEY UPDATE v = VALUES(v)", Expected: []sql.Row{{types.NewOkResult(7)}}},
+			{Query: "SELECT * FROM h ORDER BY id", Expected: []sql.Row{{1, 70}, {2, 80}}},
+			{Query: "SELECT old_v, new_v FROM audit ORDER BY old_v, new_v", Expected: []sql.Row{{10, 30}, {30, 70}, {30, 80}}},
+		},
+	},
 	// INSERT triggers
 	{
 		Name: "trigger before inserts, use updated reference to other table",
@@ -4177,6 +4192,18 @@ var TriggerCreateInSubroutineTests = []ScriptTest{
 
 // RollbackTriggerTests are trigger tests that require rollback logic to work correctly
 var RollbackTriggerTests = []ScriptTest{
+	{
+		Name: "duplicate key trigger failure rolls back earlier duplicate updates",
+		SetUpScript: []string{
+			"CREATE TABLE h (id INT PRIMARY KEY, v INT)",
+			"INSERT INTO h VALUES (1, 10), (2, 20)",
+			"CREATE TRIGGER au AFTER UPDATE ON h FOR EACH ROW BEGIN IF NEW.v = 99 THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'blocked'; END IF; END",
+		},
+		Assertions: []ScriptTestAssertion{
+			{Query: "INSERT INTO h VALUES (1, 30), (3, 40), (2, 99) ON DUPLICATE KEY UPDATE v = VALUES(v)", ExpectedErrStr: "blocked (errno 1644) (sqlstate 45000)"},
+			{Query: "SELECT * FROM h ORDER BY id", Expected: []sql.Row{{1, 10}, {2, 20}}},
+		},
+	},
 	{
 		Name: "duplicate key update rolls back mixed batches on trigger failure",
 		SetUpScript: []string{
