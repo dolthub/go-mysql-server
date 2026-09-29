@@ -40,6 +40,9 @@ const (
 	microsPerHour   int64 = 3600000000
 	nanosPerMicro   int64 = 1000
 
+	MinTimespan Timespan = Timespan(-3020399000000)
+	MaxTimespan Timespan = Timespan(3020399000000)
+
 	// MaxTimespanStringLength is the longest string representation of a valid TIME value (len(+111:22:33.123456))
 	MaxTimespanStringLength = 17
 )
@@ -206,7 +209,7 @@ func (t TimespanType_) ConvertToTimespan(v any) (Timespan, error) {
 	case time.Time:
 		hours, mins, secs := value.Clock()
 		micros := int64(value.Nanosecond()) / nanosPerMicro
-		res, ok = makeTime(false, int64(hours), int64(mins), int64(secs), micros)
+		res, ok = t.makeTime(false, int64(hours), int64(mins), int64(secs), micros)
 	case []byte:
 		return t.ConvertToTimespan(string(value))
 	case string:
@@ -233,6 +236,7 @@ func (t TimespanType_) ConvertToTimespan(v any) (Timespan, error) {
 	if !ok {
 		return Timespan(0), sql.ErrTruncatedIncorrect.New(t.String(), v)
 	}
+
 	return res, nil
 }
 
@@ -252,7 +256,7 @@ func (t TimespanType_) convertNumber(clock int64, micros int64) (Timespan, bool)
 			return 0, false
 		}
 		hours, mins, secs := timeVal.Clock()
-		return makeTime(false, int64(hours), int64(mins), int64(secs), micros)
+		return t.makeTime(false, int64(hours), int64(mins), int64(secs), micros)
 	}
 	if clock < MinNumericTime || clock > MaxNumericTime {
 		return 0, false
@@ -264,13 +268,13 @@ func (t TimespanType_) convertNumber(clock int64, micros int64) (Timespan, bool)
 		clock = -clock
 	}
 
-	secs := clock % 100
-	mins := (clock / 100) % 100
-	hours := clock / 100_00
-	return makeTime(isNeg, hours, mins, secs, micros)
+	hours, mins, secs := clock/100_00, (clock/100)%100, clock%100
+	return t.makeTime(isNeg, hours, mins, secs, micros)
 }
 
-func makeTime(isNeg bool, hours, mins, secs, micros int64) (Timespan, bool) {
+// makeTime creates a Timespan with the given parameters.
+// nanos will be rounded according to TimespanType precision.
+func (t TimespanType_) makeTime(isNeg bool, hours, mins, secs, nanos int64) (Timespan, bool) {
 	var neg int64 = 1
 	if isNeg {
 		neg = -1
@@ -284,10 +288,24 @@ func makeTime(isNeg bool, hours, mins, secs, micros int64) (Timespan, bool) {
 	if hours > MaxTimeHour {
 		return 0, false
 	}
-	return Timespan(neg * (microsPerSec*secs +
+
+	precConv := precisionConversion[MaxDatetimePrecision-t.precision]
+	microsFrac := float64(nanos) / float64(precConv*nanosPerMicro)
+	microsFrac = math.Round(microsFrac)
+	micros := int64(microsFrac * float64(precConv))
+	res := Timespan(neg * (microsPerSec*secs +
 		microsPerMin*mins +
 		microsPerHour*hours +
-		micros)), true
+		micros))
+
+	// TODO: should this be able to report overflow/underflow?
+	if res < MinTimespan {
+		return MinTimespan, false
+	}
+	if res > MaxTimespan {
+		return MaxTimespan, false
+	}
+	return res, true
 }
 
 // ConvertToTimeDuration implements the TimeType interface.

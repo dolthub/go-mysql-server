@@ -2154,6 +2154,25 @@ var FunctionQueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "select cast(cast('0000-01-01' as datetime(6)) as char)",
+		Expected: []sql.Row{
+			{"0000-01-01 00:00:00.000000"},
+		},
+	},
+	{
+		Query: "select cast(cast('0000-01-01' as datetime) as char)",
+		Expected: []sql.Row{
+			{"0000-01-01 00:00:00"},
+		},
+	},
+	{
+		Query: "select cast(cast(101 as date) as char)",
+		Expected: []sql.Row{
+			{"2000-01-01"},
+		},
+	},
+
+	{
 		Query: "select convert('12:34:56.999999', TIME);",
 		Expected: []sql.Row{
 			{types.Timespan(45297_000000)},
@@ -2199,24 +2218,6 @@ var FunctionQueryTests = []QueryTest{
 		Query: "select convert('12:34:56.123456', TIME(6));",
 		Expected: []sql.Row{
 			{types.Timespan(45296_123456)},
-		},
-	},
-	{
-		Query: "select cast(cast('0000-01-01' as datetime(6)) as char)",
-		Expected: []sql.Row{
-			{"0000-01-01 00:00:00.000000"},
-		},
-	},
-	{
-		Query: "select cast(cast('0000-01-01' as datetime) as char)",
-		Expected: []sql.Row{
-			{"0000-01-01 00:00:00"},
-		},
-	},
-	{
-		Query: "select cast(cast(101 as date) as char)",
-		Expected: []sql.Row{
-			{"2000-01-01"},
 		},
 	},
 
