@@ -3060,6 +3060,7 @@ var QuickPrivTests = []QuickPrivilegeTest{
 		ExpectingErr: true,
 	},
 	{
+		// Authorization checks are unconditional: UPDATE is required even when key 99 has no duplicate.
 		Queries:      []string{"GRANT SELECT, INSERT ON mydb.test TO tester@localhost", "INSERT INTO mydb.test VALUES (99, 9) ON DUPLICATE KEY UPDATE v1 = 9"},
 		ExpectingErr: true,
 	},
