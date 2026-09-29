@@ -435,7 +435,7 @@ func truncateConvertedValue(val any, typeLength int) (any, error) {
 // createConvertedDecimalType creates a new Decimal type with the specified |precision| and |scale|.
 // if length and scale are zero, types.InternalDecimalType is returned
 func createConvertedDecimalType(length, scale int) (sql.DecimalType, error) {
-	if length > 0 && scale > 0 {
+	if length > 0 || scale > 0 {
 		dt, err := types.CreateColumnDecimalType(uint8(length), uint8(scale))
 		if err != nil {
 			return nil, err
