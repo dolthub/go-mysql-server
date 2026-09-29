@@ -2098,10 +2098,10 @@ ORDER BY SUM(v) OVER (
 FROM t
 ORDER BY FIRST_VALUE(UUID()) OVER (ORDER BY id), id;`,
 				Expected: []sql.Row{{1, testutils.UUIDStringValidator{}}, {2, testutils.UUIDStringValidator{}}},
-      },
-    },
-  },
-  {
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/11421
 		Name: "exists subquery with window function",
 		SetUpScript: []string{
