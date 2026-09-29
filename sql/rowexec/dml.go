@@ -100,7 +100,7 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 	}
 
 	if ii.OnDupExprs.HasUpdates() {
-		insertIter.onDuplicateKeyUpdate = insertIter.handleOnDuplicateKeyUpdate
+		insertIter.duplicateKeyHandler = &directDuplicateKeyHandler{insertIter: insertIter}
 	}
 	if ii.OnDup != nil {
 		// Bind the update branch to the final destination (including foreign-key
@@ -122,22 +122,10 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 		if err != nil {
 			return nil, err
 		}
-		insertIter.onDuplicateKeyUpdate = func(ctx *sql.Context, oldRow, proposedRow sql.Row) (result sql.Row, err error) {
-			iter, err := b.buildNodeExec(ctx, updatePlan, oldRow.Append(proposedRow))
-			if err != nil {
-				return nil, err
-			}
-			defer func() {
-				closeErr := iter.Close(ctx)
-				if err == nil {
-					err = closeErr
-				}
-			}()
-			result, err = iter.Next(ctx)
-			if err == nil && len(ii.Returning) > 0 && !ii.HasAfterTrigger {
-				return insertIter.getReturningRow(ctx, result[len(oldRow):])
-			}
-			return result, err
+		insertIter.duplicateKeyHandler = &plannedDuplicateKeyHandler{
+			builder:    b,
+			updatePlan: updatePlan,
+			insertIter: insertIter,
 		}
 	}
 

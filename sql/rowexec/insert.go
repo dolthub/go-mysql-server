@@ -31,12 +31,32 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
+// DuplicateKeyHandler updates an existing row when an insert encounters a duplicate key.
+type DuplicateKeyHandler interface {
+	update(ctx *sql.Context, oldRow, proposedRow sql.Row) (sql.Row, error)
+}
+
+// directDuplicateKeyHandler applies assignments through the table's row updater.
+type directDuplicateKeyHandler struct {
+	insertIter *insertIter
+}
+
+// plannedDuplicateKeyHandler executes the update branch and its trigger executors.
+type plannedDuplicateKeyHandler struct {
+	builder    *BaseBuilder
+	updatePlan sql.Node
+	insertIter *insertIter
+}
+
+var _ DuplicateKeyHandler = (*directDuplicateKeyHandler)(nil)
+var _ DuplicateKeyHandler = (*plannedDuplicateKeyHandler)(nil)
+
 type insertIter struct {
-	onDuplicateKeyUpdate func(*sql.Context, sql.Row, sql.Row) (sql.Row, error)
-	rowSource            sql.RowIter
-	inserter             sql.RowInserter
-	replacer             sql.RowReplacer
-	updater              sql.RowUpdater
+	duplicateKeyHandler DuplicateKeyHandler
+	rowSource           sql.RowIter
+	inserter            sql.RowInserter
+	replacer            sql.RowReplacer
+	updater             sql.RowUpdater
 
 	ctx                 *sql.Context
 	onDupKeyUpdateExprs *plan.UpdateExprs
@@ -258,7 +278,7 @@ func (i *insertIter) next(ctx *sql.Context) (returnRow sql.Row, skipped bool, re
 							return nil, true, nil
 						}
 					}
-					updatedRow, err := i.onDuplicateKeyUpdate(ctx, uniqueKeyError.Existing, row)
+					updatedRow, err := i.duplicateKeyHandler.update(ctx, uniqueKeyError.Existing, row)
 					return updatedRow, false, err
 				}
 			}
@@ -308,8 +328,10 @@ func applyInsertUpdates(ctx *sql.Context, schema sql.Schema, ignore bool, update
 	return updateAccumulator, nil
 }
 
+// update implements DuplicateKeyHandler.
 // TODO: This can probably be combined with mysqlUpdateExpressionApplier.ApplyRowUpdate
-func (i *insertIter) handleOnDuplicateKeyUpdate(ctx *sql.Context, oldRow, newRow sql.Row) (sql.Row, error) {
+func (h *directDuplicateKeyHandler) update(ctx *sql.Context, oldRow, newRow sql.Row) (sql.Row, error) {
+	i := h.insertIter
 	evalRow, err := applyOnDuplicateKeyUpdates(ctx, i.schema, i.onDupKeyUpdateExprs, i.ignore, oldRow, newRow)
 	if err != nil {
 		return nil, err
@@ -331,6 +353,25 @@ func (i *insertIter) handleOnDuplicateKeyUpdate(ctx *sql.Context, oldRow, newRow
 	}
 
 	return oldRow.Append(evalRow), nil
+}
+
+// update implements DuplicateKeyHandler.
+func (h *plannedDuplicateKeyHandler) update(ctx *sql.Context, oldRow, proposedRow sql.Row) (result sql.Row, err error) {
+	iter, err := h.builder.buildNodeExec(ctx, h.updatePlan, oldRow.Append(proposedRow))
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		closeErr := iter.Close(ctx)
+		if err == nil {
+			err = closeErr
+		}
+	}()
+	result, err = iter.Next(ctx)
+	if err == nil && len(h.insertIter.returnExprs) > 0 && !h.insertIter.hasAfterTrigger {
+		return h.insertIter.getReturningRow(ctx, result[len(oldRow):])
+	}
+	return result, err
 }
 
 func getFieldIndexFromUpdateExpr(updateExpr sql.Expression) (int, bool) {

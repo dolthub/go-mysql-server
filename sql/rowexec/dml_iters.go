@@ -446,7 +446,7 @@ func (o *onDuplicateUpdateHandler) handleRowUpdate(ctx *sql.Context, row sql.Row
 		return nil
 	}
 
-	// TODO: This check is already being done in insertIter.handleOnDuplicateKeyUpdate to check if derived updates need
+	// TODO: This check is already being done in directDuplicateKeyHandler.update to check if derived updates need
 	//  to be applied
 	// Otherwise (a row was updated), increment by 2 if the row changed, 0 if not
 	oldRow := row[:len(row)/2]
