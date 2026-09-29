@@ -191,17 +191,17 @@ func (t TimespanType_) ConvertToTimespan(v any) (Timespan, error) {
 	case float32:
 		var clock, nanos int64
 		if clock, nanos, ok = splitFloat(float64(value)); ok {
-			res, ok = t.convertNumber(clock, nanos/nanosPerMicro)
+			res, ok = t.convertNumber(clock, nanos)
 		}
 	case float64:
 		var clock, nanos int64
 		if clock, nanos, ok = splitFloat(value); ok {
-			res, ok = t.convertNumber(clock, nanos/nanosPerMicro)
+			res, ok = t.convertNumber(clock, nanos)
 		}
 	case *apd.Decimal:
 		var clock, nanos int64
 		if clock, nanos, ok = splitDecimal(value); ok {
-			res, ok = t.convertNumber(clock, nanos/nanosPerMicro)
+			res, ok = t.convertNumber(clock, nanos)
 		}
 	case time.Duration:
 		micros := value.Nanoseconds() / nanosPerMicro
@@ -247,7 +247,7 @@ const (
 	MinNumericDatetimeCutoff int64 = 01_01_01_00_00_00 // 2001-01-01 00:00:00.000000
 )
 
-func (t TimespanType_) convertNumber(clock int64, micros int64) (Timespan, bool) {
+func (t TimespanType_) convertNumber(clock int64, nanos int64) (Timespan, bool) {
 	// Some values are treated as Datetime types, and the time portion is extracted.
 	// This only applies in the positive direction.
 	if clock >= MinNumericDatetimeCutoff {
@@ -256,7 +256,7 @@ func (t TimespanType_) convertNumber(clock int64, micros int64) (Timespan, bool)
 			return 0, false
 		}
 		hours, mins, secs := timeVal.Clock()
-		return t.makeTime(false, int64(hours), int64(mins), int64(secs), micros)
+		return t.makeTime(false, int64(hours), int64(mins), int64(secs), nanos)
 	}
 	if clock < MinNumericTime || clock > MaxNumericTime {
 		return 0, false
@@ -266,10 +266,11 @@ func (t TimespanType_) convertNumber(clock int64, micros int64) (Timespan, bool)
 	if clock < 0 {
 		isNeg = true
 		clock = -clock
+		nanos = -nanos
 	}
 
 	hours, mins, secs := clock/100_00, (clock/100)%100, clock%100
-	return t.makeTime(isNeg, hours, mins, secs, micros)
+	return t.makeTime(isNeg, hours, mins, secs, nanos)
 }
 
 // makeTime creates a Timespan with the given parameters.
@@ -298,12 +299,11 @@ func (t TimespanType_) makeTime(isNeg bool, hours, mins, secs, nanos int64) (Tim
 		microsPerHour*hours +
 		micros))
 
-	// TODO: should this be able to report overflow/underflow?
 	if res < MinTimespan {
-		return MinTimespan, false
+		return MinTimespan, true
 	}
 	if res > MaxTimespan {
-		return MaxTimespan, false
+		return MaxTimespan, true
 	}
 	return res, true
 }
