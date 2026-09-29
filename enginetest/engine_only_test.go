@@ -45,6 +45,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/rowexec"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -1145,4 +1146,46 @@ func TestClearAutocommitTransactionOnError(t *testing.T) {
 		require.Error(t, err)
 		require.NotNil(t, ctx.GetTransaction())
 	})
+}
+
+func TestDuplicateKeyUpdateTriggerPlan(t *testing.T) {
+	h := enginetest.NewDefaultMemoryHarness()
+	h.Setup(setup.MydbData)
+	e, err := h.NewEngine(t)
+	require.NoError(t, err)
+	defer e.Close()
+	ctx := h.NewContext()
+	ctx.SetCurrentDatabase("mydb")
+	for _, query := range []string{
+		"CREATE TABLE h (id INT PRIMARY KEY, v INT)",
+		"CREATE TRIGGER bu BEFORE UPDATE ON h FOR EACH ROW SET NEW.v = NEW.v + 1",
+		"CREATE TRIGGER au AFTER UPDATE ON h FOR EACH ROW SET @seen = NEW.v",
+	} {
+		_, iter, _, err := e.Query(ctx, query)
+		require.NoError(t, err)
+		_, err = sql.RowIterToRows(ctx, iter)
+		require.NoError(t, err)
+	}
+	n, err := e.AnalyzeQuery(ctx, "INSERT INTO h VALUES (1, 2) ON DUPLICATE KEY UPDATE v = VALUES(v)")
+	require.NoError(t, err)
+	var insert *plan.InsertInto
+	transform.Inspect(n, func(n sql.Node) bool {
+		if i, ok := n.(*plan.InsertInto); ok {
+			insert = i
+			return false
+		}
+		return true
+	})
+	require.NotNil(t, insert)
+	require.IsType(t, &plan.TriggerExecutor{}, insert.OnDup)
+	after := insert.OnDup.(*plan.TriggerExecutor)
+	require.Equal(t, plan.AfterTrigger, after.TriggerTime)
+	require.Equal(t, plan.UpdateTrigger, after.TriggerEvent)
+	require.IsType(t, &plan.Update{}, after.Left())
+	update := after.Left().(*plan.Update)
+	require.IsType(t, &plan.TriggerExecutor{}, update.Child)
+	before := update.Child.(*plan.TriggerExecutor)
+	require.Equal(t, plan.BeforeTrigger, before.TriggerTime)
+	require.Equal(t, plan.UpdateTrigger, before.TriggerEvent)
+	require.IsType(t, &plan.OnDuplicateKeyUpdateSource{}, before.Left())
 }

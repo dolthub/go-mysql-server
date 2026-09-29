@@ -99,6 +99,48 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 		hasAfterTrigger:                ii.HasAfterTrigger,
 	}
 
+	if ii.OnDupExprs.HasUpdates() {
+		insertIter.onDuplicateKeyUpdate = insertIter.handleOnDuplicateKeyUpdate
+	}
+	if ii.OnDup != nil {
+		// Bind the update branch to the final destination (including foreign-key
+		// wrappers) and assignments, which may have been rewritten since planning.
+		updatePlan, _, err := transform.NodeWithCtx(ctx, ii.OnDup, func(ctx *sql.Context, c transform.Context) bool {
+			_, trigger := c.Parent.(*plan.TriggerExecutor)
+			return !trigger || c.ChildNum != 1
+		}, func(ctx *sql.Context, c transform.Context) (sql.Node, transform.TreeIdentity, error) {
+			node := c.Node
+			switch n := node.(type) {
+			case *plan.OnDuplicateKeyUpdateSource:
+				return plan.NewOnDuplicateKeyUpdateSource(ii.Destination, ii.OnDupExprs, ii.Ignore), transform.NewTree, nil
+			case *plan.Update:
+				return n.WithChecks(ii.Checks()), transform.NewTree, nil
+			default:
+				return node, transform.SameTree, nil
+			}
+		})
+		if err != nil {
+			return nil, err
+		}
+		insertIter.onDuplicateKeyUpdate = func(ctx *sql.Context, oldRow, proposedRow sql.Row) (result sql.Row, err error) {
+			iter, err := b.buildNodeExec(ctx, updatePlan, oldRow.Append(proposedRow))
+			if err != nil {
+				return nil, err
+			}
+			defer func() {
+				closeErr := iter.Close(ctx)
+				if err == nil {
+					err = closeErr
+				}
+			}()
+			result, err = iter.Next(ctx)
+			if err == nil && len(ii.Returning) > 0 && !ii.HasAfterTrigger {
+				return insertIter.getReturningRow(ctx, result[len(oldRow):])
+			}
+			return result, err
+		}
+	}
+
 	var ed sql.EditOpenerCloser
 	if replacer != nil {
 		ed = replacer
@@ -359,8 +401,21 @@ func (b *BaseBuilder) buildTriggerExecutor(ctx *sql.Context, n *plan.TriggerExec
 		return nil, err
 	}
 
+	var onDupRowSize int
+	if n.TriggerEvent == plan.InsertTrigger && n.TriggerTime == plan.AfterTrigger {
+		transform.Inspect(n.Left(), func(node sql.Node) bool {
+			if insert, ok := node.(*plan.InsertInto); ok {
+				if insert.OnDupExprs.HasUpdates() {
+					onDupRowSize = len(insert.Destination.Schema(ctx))
+				}
+				return false
+			}
+			return onDupRowSize == 0
+		})
+	}
 	return &triggerIter{
 		child:          childIter,
+		onDupRowSize:   onDupRowSize,
 		triggerTime:    n.TriggerTime,
 		triggerEvent:   n.TriggerEvent,
 		executionLogic: n.Right(),
@@ -495,4 +550,14 @@ func (b *BaseBuilder) buildRenameForeignKey(ctx *sql.Context, n *plan.RenameFore
 		return nil, err
 	}
 	return rowIterWithOkResultWithZeroRowsAffected(), nil
+}
+
+func (b *BaseBuilder) buildOnDupUpdateSource(ctx *sql.Context, n *plan.OnDuplicateKeyUpdateSource, row sql.Row) (sql.RowIter, error) {
+	width := len(n.Child.Schema(ctx))
+	oldRow, proposedRow := row[:width], row[width:]
+	updated, err := applyOnDuplicateKeyUpdates(ctx, n.Child.Schema(ctx), n.UpdateExprs, n.Ignore, oldRow, proposedRow)
+	if err != nil {
+		return nil, err
+	}
+	return sql.RowsToRowIter(oldRow.Append(updated)), nil
 }

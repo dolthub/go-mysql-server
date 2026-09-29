@@ -178,6 +178,7 @@ func (i *triggerBlockIter) Close(*sql.Context) error {
 }
 
 type triggerIter struct {
+	onDupRowSize   int
 	child          sql.RowIter
 	executionLogic sql.Node
 	b              *BaseBuilder
@@ -248,6 +249,11 @@ func (t *triggerIter) Next(ctx *sql.Context) (row sql.Row, returnErr error) {
 	childRow, err := t.child.Next(ctx)
 	if err != nil {
 		return nil, err
+	}
+
+	// A duplicate returns OLD+NEW and must not also fire AFTER INSERT.
+	if t.onDupRowSize > 0 && len(childRow) == 2*t.onDupRowSize {
+		return childRow, nil
 	}
 
 	// Wrap the execution logic with the current child row before executing it.

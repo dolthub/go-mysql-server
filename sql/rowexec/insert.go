@@ -32,10 +32,11 @@ import (
 )
 
 type insertIter struct {
-	rowSource sql.RowIter
-	inserter  sql.RowInserter
-	replacer  sql.RowReplacer
-	updater   sql.RowUpdater
+	onDuplicateKeyUpdate func(*sql.Context, sql.Row, sql.Row) (sql.Row, error)
+	rowSource            sql.RowIter
+	inserter             sql.RowInserter
+	replacer             sql.RowReplacer
+	updater              sql.RowUpdater
 
 	ctx                 *sql.Context
 	onDupKeyUpdateExprs *plan.UpdateExprs
@@ -257,7 +258,7 @@ func (i *insertIter) next(ctx *sql.Context) (returnRow sql.Row, skipped bool, re
 							return nil, true, nil
 						}
 					}
-					updatedRow, err := i.handleOnDuplicateKeyUpdate(ctx, uniqueKeyError.Existing, row)
+					updatedRow, err := i.onDuplicateKeyUpdate(ctx, uniqueKeyError.Existing, row)
 					return updatedRow, false, err
 				}
 			}
@@ -287,17 +288,17 @@ func (i *insertIter) getReturningRow(ctx *sql.Context, row sql.Row) (sql.Row, er
 	return retExprRow, nil
 }
 
-func (i *insertIter) applyUpdates(ctx *sql.Context, updateExprs []sql.Expression, updateAccumulator sql.Row, newRow sql.Row) (sql.Row, error) {
+func applyInsertUpdates(ctx *sql.Context, schema sql.Schema, ignore bool, updateExprs []sql.Expression, updateAccumulator sql.Row, newRow sql.Row) (sql.Row, error) {
 	// TODO(max): this SET <val> indexes into LHS, but the <expr> can reference the new row on RHS
 	for _, updateExpr := range updateExprs {
-		val, err := updateExpr.Eval(i.ctx, updateAccumulator)
+		val, err := updateExpr.Eval(ctx, updateAccumulator)
 		if err != nil {
-			if i.ignore {
+			if ignore {
 				idx, ok := getFieldIndexFromUpdateExpr(updateExpr)
 				if !ok {
 					return nil, err
 				}
-				val = convertDataAndWarn(ctx, i.schema, newRow, idx, err)
+				val = convertDataAndWarn(ctx, schema, newRow, idx, err)
 			} else {
 				return nil, err
 			}
@@ -309,22 +310,9 @@ func (i *insertIter) applyUpdates(ctx *sql.Context, updateExprs []sql.Expression
 
 // TODO: This can probably be combined with mysqlUpdateExpressionApplier.ApplyRowUpdate
 func (i *insertIter) handleOnDuplicateKeyUpdate(ctx *sql.Context, oldRow, newRow sql.Row) (sql.Row, error) {
-	updateAcc, err := i.applyUpdates(ctx, i.onDupKeyUpdateExprs.ExplicitUpdateExprs(), append(oldRow, newRow...), newRow)
+	evalRow, err := applyOnDuplicateKeyUpdates(ctx, i.schema, i.onDupKeyUpdateExprs, i.ignore, oldRow, newRow)
 	if err != nil {
 		return nil, err
-	}
-
-	evalRow := updateAcc[:len(oldRow)]
-	if i.onDupKeyUpdateExprs.HasDerivedUpdates() {
-		if same, err := oldRow.Equals(ctx, evalRow, i.schema); err != nil {
-			return nil, err
-		} else if !same {
-			updateAcc, err = i.applyUpdates(ctx, i.onDupKeyUpdateExprs.DerivedUpdateExprs(), updateAcc, newRow)
-			if err != nil {
-				return nil, err
-			}
-			evalRow = updateAcc[:len(oldRow)]
-		}
 	}
 
 	// TODO: we don't need to evaluate checks and perform the update if the oldRow and evalRow are the same. But doing
@@ -597,4 +585,26 @@ func toInt64(x interface{}) int64 {
 	default:
 		panic(fmt.Sprintf("Expected a numeric auto increment value, but got %T", x))
 	}
+}
+
+func applyOnDuplicateKeyUpdates(ctx *sql.Context, schema sql.Schema, updateExprs *plan.UpdateExprs, ignore bool, oldRow, newRow sql.Row) (sql.Row, error) {
+	updateAcc, err := applyInsertUpdates(ctx, schema, ignore, updateExprs.ExplicitUpdateExprs(), append(oldRow, newRow...), newRow)
+	if err != nil {
+		return nil, err
+	}
+
+	evalRow := updateAcc[:len(oldRow)]
+	if updateExprs.HasDerivedUpdates() {
+		if same, err := oldRow.Equals(ctx, evalRow, schema); err != nil {
+			return nil, err
+		} else if !same {
+			updateAcc, err = applyInsertUpdates(ctx, schema, ignore, updateExprs.DerivedUpdateExprs(), updateAcc, newRow)
+			if err != nil {
+				return nil, err
+			}
+			evalRow = updateAcc[:len(oldRow)]
+		}
+	}
+
+	return evalRow, nil
 }

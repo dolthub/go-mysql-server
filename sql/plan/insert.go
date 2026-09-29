@@ -70,6 +70,9 @@ type InsertInto struct {
 
 	checks     sql.CheckConstraints
 	OnDupExprs *UpdateExprs
+	// OnDup is an independently planned update branch, invoked with the existing
+	// row followed by the proposed insert row when a duplicate key is found.
+	OnDup sql.Node
 	// OnDupValuesAlias names the proposed row exposed to duplicate-key expressions.
 	OnDupValuesAlias string
 	// OnDupWhere limits duplicate-key updates to rows that satisfy the expression.
@@ -131,6 +134,9 @@ func (ii *InsertInto) WithChecks(checks sql.CheckConstraints) sql.Node {
 // Dispose implements the sql.Disposable interface.
 func (ii *InsertInto) Dispose(ctx *sql.Context) {
 	disposeNode(ctx, ii.Source)
+	if ii.OnDup != nil {
+		disposeNode(ctx, ii.OnDup)
+	}
 }
 
 // Schema implements the sql.Node interface.
@@ -203,20 +209,28 @@ func (*InsertInto) CollationCoercibility(ctx *sql.Context) (collation sql.Collat
 
 // DisjointedChildren implements the interface DisjointedChildrenNode.
 func (ii *InsertInto) DisjointedChildren() [][]sql.Node {
-	return [][]sql.Node{
-		{ii.Destination},
-		{ii.Source},
+	children := [][]sql.Node{{ii.Destination}, {ii.Source}}
+	if ii.OnDup != nil {
+		children = append(children, []sql.Node{ii.OnDup})
 	}
+	return children
 }
 
 // WithDisjointedChildren implements the interface DisjointedChildrenNode.
 func (ii *InsertInto) WithDisjointedChildren(children [][]sql.Node) (sql.Node, error) {
-	if len(children) != 2 || len(children[0]) != 1 || len(children[1]) != 1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(ii, len(children), 2)
+	expected := len(ii.DisjointedChildren())
+	if len(children) != expected || len(children[0]) != 1 || len(children[1]) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(ii, len(children), expected)
 	}
 	np := *ii
 	np.Destination = children[0][0]
 	np.Source = children[1][0]
+	if len(children) == 3 {
+		if len(children[2]) != 1 {
+			return nil, sql.ErrInvalidChildrenNumber.New(ii, len(children[2]), 1)
+		}
+		np.OnDup = children[2][0]
+	}
 	return &np, nil
 }
 
@@ -251,7 +265,11 @@ func (ii *InsertInto) String() string {
 	} else {
 		_ = pr.WriteNode("Insert(%s)", strings.Join(ii.ColumnNames, ", "))
 	}
-	_ = pr.WriteChildren(ii.Destination.String(), ii.Source.String())
+	children := []string{ii.Destination.String(), ii.Source.String()}
+	if ii.OnDup != nil {
+		children = append(children, ii.OnDup.String())
+	}
+	_ = pr.WriteChildren(children...)
 	return pr.String()
 }
 
@@ -263,7 +281,11 @@ func (ii *InsertInto) DebugString(ctx *sql.Context) string {
 	} else {
 		_ = pr.WriteNode("Insert(%s)", strings.Join(ii.ColumnNames, ", "))
 	}
-	_ = pr.WriteChildren(sql.DebugString(ctx, ii.Destination), sql.DebugString(ctx, ii.Source))
+	children := []string{sql.DebugString(ctx, ii.Destination), sql.DebugString(ctx, ii.Source)}
+	if ii.OnDup != nil {
+		children = append(children, sql.DebugString(ctx, ii.OnDup))
+	}
+	_ = pr.WriteChildren(children...)
 	return pr.String()
 }
 
@@ -316,6 +338,7 @@ func (ii *InsertInto) WithExpressions(ctx *sql.Context, exprs ...sql.Expression)
 // Resolved implements the Resolvable interface.
 func (ii *InsertInto) Resolved() bool {
 	return ii.Destination.Resolved() && ii.Source.Resolved() &&
+		(ii.OnDup == nil || ii.OnDup.Resolved()) &&
 		expression.ExpressionsResolved(ii.checks.ToExpressions()...) &&
 		ii.OnDupExprs.Resolved() &&
 		(ii.OnDupWhere == nil || ii.OnDupWhere.Resolved()) &&

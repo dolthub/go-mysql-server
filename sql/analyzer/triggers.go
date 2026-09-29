@@ -157,12 +157,14 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 
 	var affectedTables []string
 	var triggerEvent plan.TriggerEvent
+	var onDuplicateUpdate bool
 	db := ctx.GetCurrentDatabase()
 	transform.InspectWithOpaque(ctx, n, func(ctx *sql.Context, n sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.InsertInto:
 			affectedTables = append(affectedTables, getTableName(ctx, n))
 			triggerEvent = plan.InsertTrigger
+			onDuplicateUpdate = n.OnDupExprs.HasUpdates()
 			if n.Database() != nil && n.Database().Name() != "" {
 				db = n.Database().Name()
 			}
@@ -236,7 +238,7 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 				triggerTable = t.Name()
 			default:
 			}
-			if stringContains(affectedTables, triggerTable) && triggerEventsMatch(triggerEvent, ct.TriggerEvent) {
+			if stringContains(affectedTables, triggerTable) && (triggerEventsMatch(triggerEvent, ct.TriggerEvent) || (onDuplicateUpdate && triggerEventsMatch(plan.UpdateTrigger, ct.TriggerEvent))) {
 				// first pass does not parse the trigger body and is only so we know whether trigger is relevant
 				b.SetParserOptions(sqlMode.ParserOptions())
 				b.TriggerCtx().Call = true
@@ -371,6 +373,12 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 		}
 	}
 
+	return applyTriggerLogic(ctx, n, trigger, triggerLogic, qFlags)
+}
+
+// applyTriggerLogic places the analyzed trigger body around its write operation.
+// Duplicate-key updates use the same Update wrapping as ordinary UPDATE queries.
+func applyTriggerLogic(ctx *sql.Context, n sql.Node, trigger *plan.CreateTrigger, triggerLogic sql.Node, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	canApplyTriggerExecutor := func(ctx *sql.Context, c transform.Context) bool {
 		// Don't double-apply trigger executors to the bodies of triggers. To avoid this, don't apply the trigger if the
 		// parent is a trigger body. Having this as a selector function will also prevent walking the child nodes in the
@@ -386,6 +394,17 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 		switch n := c.Node.(type) {
 		case *plan.InsertInto:
 			qFlags.Set(sql.QFlagTrigger)
+			if trigger.TriggerEvent == sqlparser.UpdateStr {
+				nn := *n
+				if nn.OnDup == nil {
+					source := plan.NewOnDuplicateKeyUpdateSource(n.Destination, n.OnDupExprs, n.Ignore)
+					update := &plan.Update{UnaryNode: plan.UnaryNode{Child: source}, Ignore: n.Ignore}
+					nn.OnDup = update.WithChecks(n.Checks())
+				}
+				var err error
+				nn.OnDup, _, err = applyTriggerLogic(ctx, nn.OnDup, trigger, triggerLogic, qFlags)
+				return &nn, transform.NewTree, err
+			}
 			if trigger.TriggerTime == sqlparser.BeforeStr {
 				triggerExecutor := plan.NewTriggerExecutor(n.Source, triggerLogic, plan.InsertTrigger, plan.TriggerTime(trigger.TriggerTime), sql.TriggerDefinition{
 					Name:            trigger.TriggerName,
