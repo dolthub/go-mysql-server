@@ -35,7 +35,7 @@ import (
 const (
 	timespanMinimum int64 = -3020399000000
 	timespanMaximum int64 = 3020399000000
-	microsPerSec    int64 = 1000000
+	microsPerSec    int64 = 1_000_000
 	microsPerMin    int64 = 60 * microsPerSec
 	microsPerHour   int64 = 60 * microsPerMin
 	nanosPerMicro   int64 = 1000
