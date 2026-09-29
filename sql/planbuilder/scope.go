@@ -26,8 +26,15 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-// queryBlock records semantic SELECT nesting independently of the transient
-// scopes used while building a query.
+// queryBlock identifies a SELECT and its enclosing SELECT. One SELECT produces
+// several scopes: for SELECT x FROM t HAVING x > 0, buildSelect creates a FROM
+// scope for t, pushes a projection scope for x, and builds a HAVING scope for
+// x > 0. All three belong to the same queryBlock, though their scope parents
+// differ. In SELECT t.x FROM t WHERE EXISTS (SELECT 1 FROM u WHERE u.y = t.x),
+// the outer and nested SELECT each have their own queryBlock and builder scopes.
+// Tracking the scope parent chain and queryBlock outer chain separately is
+// required to analyze name lookup, correlated references, and expression
+// ownership correctly.
 type queryBlock struct {
 	// source is the FROM scope that owns this query block.
 	source *scope
@@ -243,10 +250,16 @@ func (s *scope) getTable(table string) sql.TableId {
 	return 0
 }
 
-// parentForColumnResolution follows lexical scopes normally and semantic query
-// blocks while binding aggregate arguments. It also returns the correlation
-// recorder crossed when lookup enters an outer query.
-func (s *scope) parentForColumnResolution() (*scope, *subquery) {
+// parentForColumnResolution returns the next scope to search after a column is
+// absent locally. Normal parent lookup follows the builder's parent scope. When
+// resolving aggregate arguments, lookup instead enters the enclosing query's
+// source scope (i.e. following the semantic queryBlock), skipping intermediate
+// projection and HAVING namespaces, since those are not valid for aggregation
+// argument resolution.
+// When lookup finds a column across that boundary, the caller adds its ID to
+// the returned subquery's correlated dependencies. At the outermost query,
+// lookup retains the normal parent fallback.
+func (s *scope) parentForColumnResolution() (nextScope *scope, correlatedSubquery *subquery) {
 	if s.b == nil || s.queryBlock == nil || !s.b.isAggregateArgumentQuerySource(s) {
 		return s.parent, nil
 	}
