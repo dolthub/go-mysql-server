@@ -16256,7 +16256,8 @@ AND id NOT IN (SELECT item_id FROM tags WHERE tag = 'x')`,
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/11910
-		Name: "LIKE default backslash escape and explicit ESCAPE clause",
+		Name:    "LIKE default backslash escape and explicit ESCAPE clause",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE t (id INT PRIMARY KEY, s VARCHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin);",
 			"INSERT INTO t VALUES (1, '100%'), (2, '100_'), (3, '100\\\\'), (4, '100x'), (5, '100xx');",
