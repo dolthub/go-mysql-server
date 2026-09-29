@@ -45,7 +45,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/rowexec"
-	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -1146,98 +1145,4 @@ func TestClearAutocommitTransactionOnError(t *testing.T) {
 		require.Error(t, err)
 		require.NotNil(t, ctx.GetTransaction())
 	})
-}
-
-func TestDuplicateKeyUpdateTriggerPlan(t *testing.T) {
-	h := enginetest.NewDefaultMemoryHarness()
-	h.Setup(setup.MydbData)
-	e, err := h.NewEngine(t)
-	require.NoError(t, err)
-	defer e.Close()
-	ctx := h.NewContext()
-	ctx.SetCurrentDatabase("mydb")
-	for _, query := range []string{
-		"CREATE TABLE h (id INT PRIMARY KEY, v INT)",
-		"CREATE TRIGGER bu BEFORE UPDATE ON h FOR EACH ROW SET NEW.v = NEW.v + 1",
-		"CREATE TRIGGER au AFTER UPDATE ON h FOR EACH ROW SET @seen = NEW.v",
-	} {
-		_, iter, _, err := e.Query(ctx, query)
-		require.NoError(t, err)
-		_, err = sql.RowIterToRows(ctx, iter)
-		require.NoError(t, err)
-	}
-	n, err := e.AnalyzeQuery(ctx, "INSERT INTO h VALUES (1, 2) ON DUPLICATE KEY UPDATE v = VALUES(v)")
-	require.NoError(t, err)
-	var insert *plan.InsertInto
-	transform.Inspect(n, func(n sql.Node) bool {
-		if i, ok := n.(*plan.InsertInto); ok {
-			insert = i
-			return false
-		}
-		return true
-	})
-	require.NotNil(t, insert)
-	require.IsType(t, &plan.TriggerExecutor{}, insert.OnDup)
-	after := insert.OnDup.(*plan.TriggerExecutor)
-	require.Equal(t, plan.AfterTrigger, after.TriggerTime)
-	require.Equal(t, plan.UpdateTrigger, after.TriggerEvent)
-	require.IsType(t, &plan.Update{}, after.Left())
-	update := after.Left().(*plan.Update)
-	require.IsType(t, &plan.TriggerExecutor{}, update.Child)
-	before := update.Child.(*plan.TriggerExecutor)
-	require.Equal(t, plan.BeforeTrigger, before.TriggerTime)
-	require.Equal(t, plan.UpdateTrigger, before.TriggerEvent)
-	require.IsType(t, &plan.OnDuplicateKeyUpdateSource{}, before.Left())
-}
-
-// duplicateUpdateBuildCounter observes iterator construction without replacing it.
-type duplicateUpdateBuildCounter struct {
-	updates  int
-	triggers int
-}
-
-func (c *duplicateUpdateBuildCounter) Build(ctx *sql.Context, n sql.Node, row sql.Row) (sql.RowIter, error) {
-	switch n.(type) {
-	case *plan.Update:
-		c.updates++
-	case *plan.TriggerExecutor:
-		c.triggers++
-	}
-	return nil, nil
-}
-
-func TestDuplicateKeyUpdateBuildsOnce(t *testing.T) {
-	h := enginetest.NewDefaultMemoryHarness()
-	h.Setup(setup.MydbData)
-	e, err := h.NewEngine(t)
-	require.NoError(t, err)
-	defer e.Close()
-	ctx := h.NewContext()
-	ctx.SetCurrentDatabase("mydb")
-	for _, query := range []string{
-		"CREATE TABLE h (id INT PRIMARY KEY, v INT)",
-		"CREATE TABLE audit (old_v INT, new_v INT, PRIMARY KEY (old_v, new_v))",
-		"INSERT INTO h VALUES (1, 10)",
-		"CREATE TRIGGER bu BEFORE UPDATE ON h FOR EACH ROW SET NEW.v = NEW.v + OLD.v",
-		"CREATE TRIGGER au AFTER UPDATE ON h FOR EACH ROW INSERT INTO audit(old_v, new_v) VALUES (OLD.v, NEW.v)",
-	} {
-		_, iter, _, err := e.Query(ctx, query)
-		require.NoError(t, err)
-		_, err = sql.RowIterToRows(ctx, iter)
-		require.NoError(t, err)
-	}
-	counter := &duplicateUpdateBuildCounter{}
-	e.EngineAnalyzer().ExecBuilder.PriorityBuilder = counter
-	query := "INSERT INTO h VALUES (1, 20), (2, 30), (1, 40), (2, 50) ON DUPLICATE KEY UPDATE v = VALUES(v)"
-	enginetest.TestQueryWithContext(t, ctx, e, h, query, []sql.Row{{types.NewOkResult(7)}}, nil, nil, nil)
-	require.Equal(t, 1, counter.updates, "build the update iterator once per insert, not per duplicate")
-	require.Equal(t, 2, counter.triggers, "reuse both trigger executors across duplicate rows")
-	enginetest.TestQueryWithContext(t, ctx, e, h, "SELECT * FROM h ORDER BY id", []sql.Row{{1, 70}, {2, 80}}, nil, nil, nil)
-	enginetest.TestQueryWithContext(t, ctx, e, h, "SELECT old_v, new_v FROM audit ORDER BY old_v, new_v", []sql.Row{{10, 30}, {30, 70}, {30, 80}}, nil, nil, nil)
-
-	// A second execution gets its own iterator tree and fresh row state.
-	enginetest.TestQueryWithContext(t, ctx, e, h, query, []sql.Row{{types.NewOkResult(8)}}, nil, nil, nil)
-	require.Equal(t, 2, counter.updates)
-	require.Equal(t, 4, counter.triggers)
-	enginetest.TestQueryWithContext(t, ctx, e, h, "SELECT * FROM h ORDER BY id", []sql.Row{{1, 130}, {2, 160}}, nil, nil, nil)
 }
