@@ -660,6 +660,7 @@ func TestHashInTuple(t *testing.T) {
 			name: "left has a convert (type cast)",
 			left: expression.NewConvert(
 				expression.NewGetField(0, types.Int64, "foo", false),
+				types.LongText,
 				"char",
 			),
 			right: expression.NewTuple(

@@ -65,11 +65,8 @@ const (
 type Convert struct {
 	UnaryExpressionStub
 
-	// cachedDecimalType is the cached Decimal type for this convert expression. Because new Decimal types
-	// must be created with their specific scale and precision values, unlike other types, we cache the created
-	// type to avoid re-creating it on every call to Type().
-	cachedDecimalType sql.DecimalType
-
+	// convType is the type expressions will be converted to
+	convType sql.Type
 	// castToType is a string representation of the base type to which we are casting (e.g. "char", "float", "decimal")
 	castToType string
 	// typeLength is the optional length parameter for types that support it (e.g. "char(10)")
@@ -81,13 +78,52 @@ type Convert struct {
 var _ sql.Expression = (*Convert)(nil)
 var _ sql.CollationCoercible = (*Convert)(nil)
 
+// CreateConvertType maps the castToType string to the matching type.
+func CreateConvertType(castToType string, typeLength, typeScale int) (sql.Type, error) {
+	var res sql.Type
+	var err error
+	switch strings.ToLower(castToType) {
+	case ConvertToBinary:
+		res = types.LongBlob
+	case ConvertToChar, ConvertToNChar:
+		res = types.LongText
+	case ConvertToDate:
+		res = types.Date
+	case ConvertToDatetime:
+		res, err = types.CreateDatetimeType(sqltypes.Datetime, typeLength)
+	case ConvertToDecimal:
+		res, err = types.CreateColumnDecimalType(uint8(typeLength), uint8(typeScale))
+	case ConvertToFloat:
+		res = types.Float32
+	case ConvertToDouble, ConvertToReal:
+		res = types.Float64
+	case ConvertToJSON:
+		res = types.JSON
+	case ConvertToSigned:
+		res = types.Int64
+	case ConvertToTime:
+		res, err = types.CreateTimespanType(typeLength)
+	case ConvertToUnsigned:
+		res = types.Uint64
+	case ConvertToYear:
+		res = types.Year
+	default:
+		res = types.Null
+	}
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
+}
+
 // NewConvert creates a new Convert expression that will attempt to convert the specified expression |expr| into the
 // |castToType| type. All optional parameters (i.e. typeLength, typeScale, and charset) are omitted and initialized
 // to their zero values.
-func NewConvert(expr sql.Expression, castToType string) *Convert {
+func NewConvert(expr sql.Expression, convType sql.Type, castToType string) *Convert {
 	disableRounding(expr)
 	return &Convert{
 		UnaryExpressionStub: UnaryExpressionStub{Child: expr},
+		convType:            convType,
 		castToType:          strings.ToLower(castToType),
 	}
 }
@@ -95,10 +131,11 @@ func NewConvert(expr sql.Expression, castToType string) *Convert {
 // NewConvertWithLengthAndScale creates a new Convert expression that will attempt to convert |expr| into the
 // |castToType| type, with |typeLength| specifying a length constraint of the converted type, and |typeScale| specifying
 // a scale constraint of the converted type.
-func NewConvertWithLengthAndScale(expr sql.Expression, castToType string, typeLength, typeScale int) *Convert {
+func NewConvertWithLengthAndScale(expr sql.Expression, convType sql.Type, castToType string, typeLength, typeScale int) *Convert {
 	disableRounding(expr)
 	return &Convert{
 		UnaryExpressionStub: UnaryExpressionStub{Child: expr},
+		convType:            convType,
 		castToType:          strings.ToLower(castToType),
 		typeLength:          typeLength,
 		typeScale:           typeScale,
@@ -155,37 +192,7 @@ func (c *Convert) IsNullable(ctx *sql.Context) bool {
 
 // Type implements the Expression interface.
 func (c *Convert) Type(ctx *sql.Context) sql.Type {
-	switch c.castToType {
-	case ConvertToBinary:
-		return types.LongBlob
-	case ConvertToChar, ConvertToNChar:
-		return types.LongText
-	case ConvertToDate:
-		return types.Date
-	case ConvertToDatetime:
-		return types.MustCreateDatetimeType(sqltypes.Datetime, c.typeLength)
-	case ConvertToDecimal:
-		if c.cachedDecimalType == nil {
-			c.cachedDecimalType = createConvertedDecimalType(c.typeLength, c.typeScale, true)
-		}
-		return c.cachedDecimalType
-	case ConvertToFloat:
-		return types.Float32
-	case ConvertToDouble, ConvertToReal:
-		return types.Float64
-	case ConvertToJSON:
-		return types.JSON
-	case ConvertToSigned:
-		return types.Int64
-	case ConvertToTime:
-		return types.MustCreateTimespanType(c.typeLength)
-	case ConvertToUnsigned:
-		return types.Uint64
-	case ConvertToYear:
-		return types.Year
-	default:
-		return types.Null
-	}
+	return c.convType
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -258,7 +265,7 @@ func (c *Convert) WithChildren(ctx *sql.Context, children ...sql.Expression) (sq
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
 	}
-	return NewConvertWithLengthAndScale(children[0], c.castToType, c.typeLength, c.typeScale), nil
+	return NewConvertWithLengthAndScale(children[0], c.convType, c.castToType, c.typeLength, c.typeScale), nil
 }
 
 // Eval implements the Expression interface.
