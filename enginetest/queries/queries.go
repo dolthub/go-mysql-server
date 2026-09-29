@@ -6861,6 +6861,14 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{nil}},
 	},
 	{
+		Query:    `SELECT DISTINCT 37, 40 * - + CASE - - CAST( + COUNT( 59 ) AS DECIMAL ) WHEN - - 96 * - 48 / - 89 * + 32 THEN - ( 32 ) WHEN + 92 / + 93 THEN + ( 7 ) ELSE 8 * - ( - CAST( NULL AS SIGNED ) * 89 ) - ( + 28 ) END AS col1`,
+		Expected: []sql.Row{{37, nil}},
+	},
+	{
+		Query:    "select cast(1 as decimal) = 0.9892, cast(1 as decimal) = 92/93, 92/93 = cast(1 as decimal), cast(1 as decimal) = 0.9892e0, cast(1 as decimal) > 0.9892, cast(1 as decimal) = 1.0",
+		Expected: []sql.Row{{false, false, false, false, true, true}},
+	},
+	{
 		Query: "select cast(X'9876543210' as char(10))",
 		Expected: []sql.Row{
 			{nil},
