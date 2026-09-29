@@ -541,11 +541,25 @@ func (b *BaseBuilder) buildRenameForeignKey(ctx *sql.Context, n *plan.RenameFore
 }
 
 func (b *BaseBuilder) buildOnDupUpdateSource(ctx *sql.Context, n *plan.OnDuplicateKeyUpdateSource, row sql.Row) (sql.RowIter, error) {
-	width := len(n.Child.Schema(ctx))
+	schema := n.Child.Schema(ctx)
+	width := len(schema)
 	oldRow, proposedRow := row[:width], row[width:]
-	updated, err := applyOnDuplicateKeyUpdates(ctx, n.Child.Schema(ctx), n.UpdateExprs, n.Ignore, oldRow, proposedRow)
+	updateAcc, err := applyInsertUpdates(ctx, schema, n.Ignore, n.UpdateExprs.ExplicitUpdateExprs(), append(oldRow, proposedRow...), proposedRow)
 	if err != nil {
 		return nil, err
 	}
-	return sql.RowsToRowIter(oldRow.Append(updated)), nil
+
+	evalRow := updateAcc[:len(oldRow)]
+	if n.UpdateExprs.HasDerivedUpdates() {
+		if same, err := oldRow.Equals(ctx, evalRow, schema); err != nil {
+			return nil, err
+		} else if !same {
+			updateAcc, err = applyInsertUpdates(ctx, schema, n.Ignore, n.UpdateExprs.DerivedUpdateExprs(), updateAcc, proposedRow)
+			if err != nil {
+				return nil, err
+			}
+			evalRow = updateAcc[:len(oldRow)]
+		}
+	}
+	return sql.RowsToRowIter(oldRow.Append(evalRow)), nil
 }

@@ -52,13 +52,13 @@ var _ DuplicateKeyHandler = (*directDuplicateKeyHandler)(nil)
 var _ DuplicateKeyHandler = (*plannedDuplicateKeyHandler)(nil)
 
 type insertIter struct {
-	duplicateKeyHandler DuplicateKeyHandler
-	rowSource           sql.RowIter
-	inserter            sql.RowInserter
-	replacer            sql.RowReplacer
-	updater             sql.RowUpdater
+	rowSource sql.RowIter
+	inserter  sql.RowInserter
+	replacer  sql.RowReplacer
+	updater   sql.RowUpdater
 
 	ctx                 *sql.Context
+	duplicateKeyHandler DuplicateKeyHandler
 	onDupKeyUpdateExprs *plan.UpdateExprs
 	onDupWhere          sql.Expression
 	// countOnDuplicateUpdateAsOneRow applies single-row affected-count semantics to duplicate updates.
@@ -332,9 +332,22 @@ func applyInsertUpdates(ctx *sql.Context, schema sql.Schema, ignore bool, update
 // TODO: This can probably be combined with mysqlUpdateExpressionApplier.ApplyRowUpdate
 func (h *directDuplicateKeyHandler) update(ctx *sql.Context, oldRow, newRow sql.Row) (sql.Row, error) {
 	i := h.insertIter
-	evalRow, err := applyOnDuplicateKeyUpdates(ctx, i.schema, i.onDupKeyUpdateExprs, i.ignore, oldRow, newRow)
+	updateAcc, err := applyInsertUpdates(ctx, i.schema, i.ignore, i.onDupKeyUpdateExprs.ExplicitUpdateExprs(), append(oldRow, newRow...), newRow)
 	if err != nil {
 		return nil, err
+	}
+
+	evalRow := updateAcc[:len(oldRow)]
+	if i.onDupKeyUpdateExprs.HasDerivedUpdates() {
+		if same, err := oldRow.Equals(ctx, evalRow, i.schema); err != nil {
+			return nil, err
+		} else if !same {
+			updateAcc, err = applyInsertUpdates(ctx, i.schema, i.ignore, i.onDupKeyUpdateExprs.DerivedUpdateExprs(), updateAcc, newRow)
+			if err != nil {
+				return nil, err
+			}
+			evalRow = updateAcc[:len(oldRow)]
+		}
 	}
 
 	// TODO: we don't need to evaluate checks and perform the update if the oldRow and evalRow are the same. But doing
@@ -626,26 +639,4 @@ func toInt64(x interface{}) int64 {
 	default:
 		panic(fmt.Sprintf("Expected a numeric auto increment value, but got %T", x))
 	}
-}
-
-func applyOnDuplicateKeyUpdates(ctx *sql.Context, schema sql.Schema, updateExprs *plan.UpdateExprs, ignore bool, oldRow, newRow sql.Row) (sql.Row, error) {
-	updateAcc, err := applyInsertUpdates(ctx, schema, ignore, updateExprs.ExplicitUpdateExprs(), append(oldRow, newRow...), newRow)
-	if err != nil {
-		return nil, err
-	}
-
-	evalRow := updateAcc[:len(oldRow)]
-	if updateExprs.HasDerivedUpdates() {
-		if same, err := oldRow.Equals(ctx, evalRow, schema); err != nil {
-			return nil, err
-		} else if !same {
-			updateAcc, err = applyInsertUpdates(ctx, schema, ignore, updateExprs.DerivedUpdateExprs(), updateAcc, newRow)
-			if err != nil {
-				return nil, err
-			}
-			evalRow = updateAcc[:len(oldRow)]
-		}
-	}
-
-	return evalRow, nil
 }
