@@ -3056,6 +3056,18 @@ var ServerAuthTests = []ServerAuthenticationTest{
 // are as quick to write as possible.
 var QuickPrivTests = []QuickPrivilegeTest{
 	{
+		Queries:      []string{"GRANT SELECT, INSERT ON mydb.test TO tester@localhost", "INSERT INTO mydb.test VALUES (0, 9) ON DUPLICATE KEY UPDATE v1 = 9"},
+		ExpectingErr: true,
+	},
+	{
+		Queries:      []string{"GRANT SELECT, INSERT ON mydb.test TO tester@localhost", "INSERT INTO mydb.test VALUES (99, 9) ON DUPLICATE KEY UPDATE v1 = 9"},
+		ExpectingErr: true,
+	},
+	{
+		Queries:  []string{"GRANT SELECT, INSERT, UPDATE ON mydb.test TO tester@localhost", "INSERT INTO mydb.test VALUES (0, 9) ON DUPLICATE KEY UPDATE v1 = 9"},
+		Expected: []sql.Row{{types.NewOkResult(2)}},
+	},
+	{
 		Queries: []string{
 			"GRANT SELECT ON *.* TO tester@localhost",
 			"SELECT * FROM mydb.test",
