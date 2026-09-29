@@ -138,6 +138,13 @@ var GeneratedColumnTests = []ScriptTest{
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
+				Query: "show columns from t1",
+				Expected: []sql.Row{
+					{"a", "int", "NO", "PRI", nil, ""},
+					{"b", "int", "YES", "", nil, "STORED GENERATED"},
+				},
+			},
+			{
 				Query:       "insert into t1 values (1,2)",
 				ExpectedErr: sql.ErrGeneratedColumnValue,
 			},
@@ -529,7 +536,9 @@ var GeneratedColumnTests = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query: "show create table t1",
+				// SHOW CREATE TABLE is MySQL syntax.
+				Dialect: "mysql",
+				Query:   "show create table t1",
 				Expected: []sql.Row{{"t1",
 					"CREATE TABLE `t1` (\n" +
 						"  `a` int NOT NULL,\n" +
@@ -537,7 +546,6 @@ var GeneratedColumnTests = []ScriptTest{
 						"  PRIMARY KEY (`a`),\n" +
 						"  KEY `i1` (`b`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-				Skip: true, // https://github.com/dolthub/dolt/issues/8275
 			},
 			{
 				Query:    "select * from t1 where b = 2 order by a",
@@ -655,7 +663,9 @@ var GeneratedColumnTests = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query: "show create table t1",
+				// SHOW CREATE TABLE is MySQL syntax.
+				Dialect: "mysql",
+				Query:   "show create table t1",
 				Expected: []sql.Row{{"t1",
 					"CREATE TABLE `t1` (\n" +
 						"  `a` int NOT NULL,\n" +
@@ -663,7 +673,6 @@ var GeneratedColumnTests = []ScriptTest{
 						"  PRIMARY KEY (`a`),\n" +
 						"  KEY `i1` (`b`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-				Skip: true, // https://github.com/dolthub/dolt/issues/8275
 			},
 			{
 				Query:    "select * from t1 where b = 2 order by a",
@@ -1052,6 +1061,22 @@ var GeneratedColumnTests = []ScriptTest{
 			},
 		},
 	},
+	// https://github.com/dolthub/dolt/issues/8323
+	{
+		Name: "Test virtual-column filtering and sorting",
+		SetUpScript: []string{
+			"CREATE TABLE virtual_one(pk INT PRIMARY KEY,j INT,value INT AS(pk*pk))",
+			"INSERT INTO virtual_one(pk,j) VALUES(-1,1),(2,1),(-3,1)",
+			"CREATE TABLE virtual_two(pk INT PRIMARY KEY,j INT,k INT,value INT AS(pk*pk))",
+			"INSERT INTO virtual_two(pk,j,k) VALUES(-1,1,2),(2,1,2),(-3,1,2)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{Query: "SELECT value FROM virtual_one ORDER BY value", Expected: []sql.Row{{int32(1)}, {int32(4)}, {int32(9)}}},
+			{Query: "SELECT pk FROM virtual_one WHERE value>1 ORDER BY pk", Expected: []sql.Row{{int32(-3)}, {int32(2)}}},
+			{Query: "SELECT value FROM virtual_two ORDER BY value", Expected: []sql.Row{{int32(1)}, {int32(4)}, {int32(9)}}},
+			{Query: "SELECT pk FROM virtual_two WHERE value>1 ORDER BY pk", Expected: []sql.Row{{int32(-3)}, {int32(2)}}},
+		},
+	},
 	{
 		Name: "virtual column in triggers",
 		SetUpScript: []string{
@@ -1277,7 +1302,9 @@ var GeneratedColumnTests = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query: "show create table t1",
+				// SHOW CREATE TABLE is MySQL syntax.
+				Dialect: "mysql",
+				Query:   "show create table t1",
 				Expected: []sql.Row{{"t1",
 					"CREATE TABLE `t1` (\n" +
 						"  `a` int NOT NULL,\n" +
@@ -1285,7 +1312,6 @@ var GeneratedColumnTests = []ScriptTest{
 						"  PRIMARY KEY (`a`),\n" +
 						"  KEY `i1` (`b`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-				Skip: true, // https://github.com/dolthub/dolt/issues/8275
 			},
 			{
 				Query:    "select * from t1 where b = 2 order by a",
@@ -1651,7 +1677,9 @@ var GeneratedColumnTests = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query: "show create table t1",
+				// SHOW CREATE TABLE is MySQL syntax.
+				Dialect: "mysql",
+				Query:   "show create table t1",
 				Expected: []sql.Row{{"t1",
 					"CREATE TABLE `t1` (\n" +
 						"  `a` int NOT NULL,\n" +
@@ -1659,7 +1687,6 @@ var GeneratedColumnTests = []ScriptTest{
 						"  PRIMARY KEY (`a`),\n" +
 						"  KEY `i1` (`b`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-				Skip: true, // https://github.com/dolthub/dolt/issues/8275
 			},
 			{
 				Query:    "select * from t1 where b = 2 order by a",
@@ -1687,17 +1714,18 @@ var GeneratedColumnTests = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query: "show create table t1",
+				// SHOW CREATE TABLE is MySQL syntax.
+				Dialect: "mysql",
+				Query:   "show create table t1",
 				Expected: []sql.Row{{"t1",
 					"CREATE TABLE `t1` (\n" +
 						"  `a` int NOT NULL,\n" +
 						"  `b` int GENERATED ALWAYS AS ((`a` + 1)),\n" +
-						"  `c` int GENERATED ALWAYS AS ((`b` + 1)),\n" +
-						"  `d` int GENERATED ALWAYS AS ((`b` + 2)),\n" +
+						"  `c` int GENERATED ALWAYS AS ((`b` + 1)) STORED,\n" +
+						"  `d` int GENERATED ALWAYS AS ((`b` + 2)) STORED,\n" +
 						"  PRIMARY KEY (`a`),\n" +
-						"  KEY `i1` (`b`)\n" +
+						"  KEY `b1` (`b`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-				Skip: true, // https://github.com/dolthub/dolt/issues/8275
 			},
 			{
 				Query:    "select * from t1 where b = 2 order by a",
@@ -1729,16 +1757,17 @@ var GeneratedColumnTests = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query: "show create table t1",
+				// SHOW CREATE TABLE is MySQL syntax.
+				Dialect: "mysql",
+				Query:   "show create table t1",
 				Expected: []sql.Row{{"t1",
 					"CREATE TABLE `t1` (\n" +
 						"  `a` int NOT NULL,\n" +
 						"  `b` int GENERATED ALWAYS AS ((`a` * `a`)),\n" +
 						"  `c` int GENERATED ALWAYS AS (0),\n" +
 						"  PRIMARY KEY (`a`),\n" +
-						"  KEY `i1` (`b`)\n" +
+						"  UNIQUE KEY `i1` (`b`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-				Skip: true, // https://github.com/dolthub/dolt/issues/8275
 			},
 			{
 				Query:    "select * from t1 where b = 4 order by a",
@@ -1955,6 +1984,24 @@ var GeneratedColumnTests = []ScriptTest{
 			{
 				Query:    "select a from t1 where (b * 2) = 40",
 				Expected: []sql.Row{{2}},
+			},
+		},
+	},
+	{
+		Name: "information_schema.columns describes generated columns",
+		SetUpScript: []string{
+			"create table t1 (a int primary key, b int generated always as (a + 1) stored, c int as (a * 2) virtual, d int as (0) stored, e int default (a + 1))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select column_name, column_default, extra, generation_expression from information_schema.columns where table_name = 't1' order by ordinal_position",
+				Expected: []sql.Row{
+					{"a", nil, "", ""},
+					{"b", nil, "STORED GENERATED", "(`a` + 1)"},
+					{"c", nil, "VIRTUAL GENERATED", "(`a` * 2)"},
+					{"d", nil, "STORED GENERATED", "0"},
+					{"e", "(`a` + 1)", "DEFAULT_GENERATED", ""},
+				},
 			},
 		},
 	},

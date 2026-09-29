@@ -280,12 +280,6 @@ func (t NumberTypeImpl_) Convert(ctx context.Context, v interface{}) (interface{
 		return nil, sql.InRange, nil
 	}
 
-	// TODO: for Date and Datetime types, MySQL strips delimiters rather than using UNIX time.
-	//  Tracking issue: https://github.com/dolthub/dolt/issues/10278
-	if ti, ok := v.(time.Time); ok {
-		v = ti.UTC().Unix()
-	}
-
 	if jv, ok := v.(sql.JSONWrapper); ok {
 		v, err = jv.ToInterface(ctx)
 		if err != nil {
@@ -983,7 +977,13 @@ func (t NumberTypeImpl_) DisplayWidth() int {
 func convertToInt64(t NumberTypeImpl_, v any, round Round) (int64, sql.ConvertInRange, error) {
 	switch v := v.(type) {
 	case time.Time:
-		return v.UTC().Unix(), sql.InRange, nil
+		// TODO: types.TypeAwareConversion() should be used a majority of the time as the original precision should be
+		//  preserved. Use MaxDatetimePrecision to cover cases that avoid that code path for now.
+		f64, err := DatetimeMaxPrecision.ToFloat64(v)
+		if err != nil {
+			return 0, sql.InRange, err
+		}
+		return int64(f64), sql.InRange, nil
 	case int:
 		return int64(v), sql.InRange, nil
 	case int8:
@@ -1043,7 +1043,8 @@ func convertToInt64(t NumberTypeImpl_, v any, round Round) (int64, sql.ConvertIn
 	case string:
 		var err error
 		if round {
-			truncStr, didTrunc := TruncateStringToDouble(v)
+			// An integer column accepts a dangling exponent, as in "1E".
+			truncStr, didTrunc := TruncateStringToDouble(v, false)
 			if didTrunc {
 				err = sql.ErrTruncatedIncorrect.New(t, v)
 			}
@@ -1084,7 +1085,13 @@ func convertToInt64(t NumberTypeImpl_, v any, round Round) (int64, sql.ConvertIn
 func convertToUint64(t NumberTypeImpl_, v any, round Round) (uint64, sql.ConvertInRange, error) {
 	switch v := v.(type) {
 	case time.Time:
-		return uint64(v.UTC().Unix()), sql.InRange, nil
+		// TODO: types.TypeAwareConversion() should be used a majority of the time as the original precision should be
+		//  preserved. Use MaxDatetimePrecision to cover cases that avoid that code path for now.
+		f64, err := DatetimeMaxPrecision.ToFloat64(v)
+		if err != nil {
+			return 0, sql.InRange, err
+		}
+		return uint64(f64), sql.InRange, nil
 	case int:
 		if v < 0 {
 			return uint64(v), sql.Underflow, nil
@@ -1161,7 +1168,7 @@ func convertToUint64(t NumberTypeImpl_, v any, round Round) (uint64, sql.Convert
 	case string:
 		var err error
 		if round {
-			truncStr, didTrunc := TruncateStringToDouble(v)
+			truncStr, didTrunc := TruncateStringToDouble(v, false)
 			if didTrunc {
 				err = sql.ErrTruncatedIncorrect.New(t, v)
 			}
@@ -1214,8 +1221,9 @@ func convertToUint64(t NumberTypeImpl_, v any, round Round) (uint64, sql.Convert
 func convertToFloat64(t NumberTypeImpl_, v interface{}) (float64, error) {
 	switch v := v.(type) {
 	case time.Time:
-		// TODO: This is not how datetime is converted in MySQL https://github.com/dolthub/dolt/issues/10278
-		return float64(v.UTC().Unix()), nil
+		// TODO: types.TypeAwareConversion() should be used a majority of the time as the original precision should be
+		//  preserved. Use MaxDatetimePrecision to cover cases that avoid that code path for now.
+		return DatetimeMaxPrecision.ToFloat64(v)
 	case int:
 		return float64(v), nil
 	case int8:
@@ -1251,7 +1259,7 @@ func convertToFloat64(t NumberTypeImpl_, v interface{}) (float64, error) {
 		return float64(i), nil
 	case string:
 		var err error
-		truncStr, didTrunc := TruncateStringToDouble(v)
+		truncStr, didTrunc := TruncateStringToDouble(v, true)
 		if didTrunc {
 			err = sql.ErrTruncatedIncorrect.New(t, v)
 		}
@@ -1495,11 +1503,20 @@ func TruncateStringToInt(s string) (string, bool) {
 	return s[:i], i != n
 }
 
-// TruncateStringToDouble trims any whitespace from s, then truncates the string to the left most characters that make
-// up a valid double. Empty strings are converted "0". Additionally, returns a flag indicating if truncation occurred.
-func TruncateStringToDouble(s string) (string, bool) {
-	var signIndex int
-	var seenDigit, seenDot, seenExp bool
+// TruncateStringToDouble returns the longest prefix of |s| that is a
+// valid double, after trimming surrounding whitespace, and reports
+// whether any characters after that prefix were truncated.
+//
+// The prefix is "0" if |s| does not begin with a number.
+//
+// An exponent marker and optional sign with no digits after them
+// are dropped from the prefix, and count as truncation only if
+// |truncExp| is true.
+func TruncateStringToDouble(s string, truncExp bool) (prefix string, truncated bool) {
+	// expIndex is the exponent marker's position. It follows a digit,
+	// so 0 means no exponent has been seen.
+	var signIndex, expIndex int
+	var seenDigit, seenDot bool
 	s = strings.Trim(s, NumericCutSet)
 	i, n := 0, len(s)
 	for ; i < n; i++ {
@@ -1508,12 +1525,13 @@ func TruncateStringToDouble(s string) (string, bool) {
 			seenDigit = true
 			continue
 		}
-		if char == '.' && !seenDot {
+		// A decimal point is only valid before the exponent.
+		if char == '.' && !seenDot && expIndex == 0 {
 			seenDot = true
 			continue
 		}
-		if (char == 'e' || char == 'E') && !seenExp && seenDigit {
-			seenExp = true
+		if (char == 'e' || char == 'E') && expIndex == 0 && seenDigit {
+			expIndex = i
 			signIndex = i + 1 // allow a sign following exponent
 			continue
 		}
@@ -1525,21 +1543,10 @@ func TruncateStringToDouble(s string) (string, bool) {
 	if !seenDigit {
 		return "0", i != n
 	}
-	return s[:i], i != n
-}
-
-// ConvertHexBlobToDecimalForNumericContext converts byte array value to unsigned int value if originType is BLOB type.
-// This function is called when convertTo type is number type only. The hex literal values are parsed into blobs as
-// binary string as default, but for numeric context, the value should be a number.
-// Byte arrays of other SQL types are not handled here.
-func ConvertHexBlobToDecimalForNumericContext(val interface{}, originType sql.Type) (interface{}, error) {
-	if bin, isBinary := val.([]byte); isBinary && IsBlobType(originType) {
-		stringVal := hex.EncodeToString(bin)
-		decimalNum, err := strconv.ParseUint(stringVal, 16, 64)
-		if err != nil {
-			return nil, errors.New("failed to convert hex blob value to unsigned int")
-		}
-		val = decimalNum
+	// The scan ended on the exponent marker or its sign, so the
+	// exponent has no digits.
+	if expIndex != 0 && !unicode.IsDigit(rune(s[i-1])) {
+		return s[:expIndex], i != n || truncExp
 	}
-	return val, nil
+	return s[:i], i != n
 }
