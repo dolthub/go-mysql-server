@@ -200,9 +200,9 @@ func TestSingleScript(t *testing.T) {
 			SetUpScript: []string{},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "select cast(-123456.123456 as time(6));",
+					Query: "select cast(1234567 as time(6));",
 					Expected: []sql.Row{
-						{types.Timespan(45296000000)},
+						{nil},
 					},
 				},
 			},
@@ -212,6 +212,116 @@ func TestSingleScript(t *testing.T) {
 			Name:        "Parse table name as column",
 			SetUpScript: []string{},
 			Assertions: []queries.ScriptTestAssertion{
+				{
+					Query: "select cast(false as time(6));",
+					Expected: []sql.Row{
+						{types.Timespan(0)},
+					},
+				},
+				{
+					Query: "select cast(true as time(6));",
+					Expected: []sql.Row{
+						{types.Timespan(1000000)},
+					},
+				},
+				{
+					Query: "select cast(0 as time(6));",
+					Expected: []sql.Row{
+						{types.Timespan(0)},
+					},
+				},
+				{
+					Query: "select cast(-0 as time(6));",
+					Expected: []sql.Row{
+						{types.Timespan(0)},
+					},
+				},
+
+				{
+					Query: "select cast(1 as time(6));",
+					Expected: []sql.Row{
+						{types.Timespan(1000000)},
+					},
+				},
+				{
+					Query: "select cast(12 as time(6));",
+					Expected: []sql.Row{
+						{types.Timespan(12000000)},
+					},
+				},
+				{
+					Query: "select cast(123 as time(6));",
+					Expected: []sql.Row{
+						{types.Timespan(83000000)},
+					},
+				},
+				{
+					Query: "select cast(1234 as time(6));",
+					Expected: []sql.Row{
+						{types.Timespan(754000000)},
+					},
+				},
+				{
+					Query: "select cast(12345 as time(6));",
+					Expected: []sql.Row{
+						{types.Timespan(5025000000)},
+					},
+				},
+				{
+					Query: "select cast(123456 as time(6));",
+					Expected: []sql.Row{
+						{types.Timespan(45296000000)},
+					},
+				},
+				{
+					Query: "select cast(1234567 as time(6));",
+					Expected: []sql.Row{
+						{nil},
+					},
+				},
+				{
+					Query: "select cast(-1 as time(6));",
+					Expected: []sql.Row{
+						{types.Timespan(1000000)},
+					},
+				},
+				{
+					Query: "select cast(-12 as time(6));",
+					Expected: []sql.Row{
+						{types.Timespan(-12000000)},
+					},
+				},
+				{
+					Query: "select cast(-123 as time(6));",
+					Expected: []sql.Row{
+						{types.Timespan(-83000000)},
+					},
+				},
+				{
+					Query: "select cast(-1234 as time(6));",
+					Expected: []sql.Row{
+						{types.Timespan(-754000000)},
+					},
+				},
+				{
+					Query: "select cast(-12345 as time(6));",
+					Expected: []sql.Row{
+						{types.Timespan(-5025000000)},
+					},
+				},
+				{
+					Query: "select cast(-123456 as time(6));",
+					Expected: []sql.Row{
+						{types.Timespan(-45296000000)},
+					},
+				},
+				{
+					Query: "select cast(-1234567 as time(6));",
+					Expected: []sql.Row{
+						{nil},
+					},
+				},
+
 				{
 					Query: "select cast(123456 as time(6));",
 					Expected: []sql.Row{
@@ -234,6 +344,49 @@ func TestSingleScript(t *testing.T) {
 					Query: "select cast(-123456.123456 as time(6));",
 					Expected: []sql.Row{
 						{types.Timespan(-45296123456)},
+					},
+				},
+
+				{
+					Query: "select cast(123456.1234567 as time(0));",
+					Expected: []sql.Row{
+						{types.Timespan(45296000000)},
+					},
+				},
+				{
+					Query: "select cast(123456.1234567 as time(1));",
+					Expected: []sql.Row{
+						{types.Timespan(45296100000)},
+					},
+				},
+				{
+					Query: "select cast(123456.1234567 as time(2));",
+					Expected: []sql.Row{
+						{types.Timespan(45296120000)},
+					},
+				},
+				{
+					Query: "select cast(123456.1234567 as time(3));",
+					Expected: []sql.Row{
+						{types.Timespan(45296123000)},
+					},
+				},
+				{
+					Query: "select cast(123456.1234567 as time(4));",
+					Expected: []sql.Row{
+						{types.Timespan(45296123500)},
+					},
+				},
+				{
+					Query: "select cast(123456.1234567 as time(5));",
+					Expected: []sql.Row{
+						{types.Timespan(45296123460)},
+					},
+				},
+				{
+					Query: "select cast(123456.1234567 as time(6));",
+					Expected: []sql.Row{
+						{types.Timespan(45296123457)},
 					},
 				},
 
@@ -282,13 +435,7 @@ func TestSingleScript(t *testing.T) {
 				{
 					Query: "select cast(8385959.9999999 as time(6));",
 					Expected: []sql.Row{
-						{types.Timespan(3020399999999)},
-					},
-				},
-				{
-					Query: "select cast(8385959.99999999 as time(6));",
-					Expected: []sql.Row{
-						{types.Timespan(30203000000)},
+						{types.Timespan(3020399000000)},
 					},
 				},
 
@@ -305,8 +452,10 @@ func TestSingleScript(t *testing.T) {
 					},
 				},
 				{
-					Query:    "select cast(20010203123456.123456 as time(6));",
-					Expected: []sql.Row{},
+					Query: "select cast(20010203123456.123456 as time(6));",
+					Expected: []sql.Row{
+						{types.Timespan(45296123456)},
+					},
 				},
 			},
 		},

@@ -36,11 +36,13 @@ const (
 	timespanMinimum int64 = -3020399000000
 	timespanMaximum int64 = 3020399000000
 	microsPerSec    int64 = 1000000
-	microsPerMin    int64 = 60000000
-	microsPerHour   int64 = 3600000000
+	microsPerMin    int64 = 60 * microsPerSec
+	microsPerHour   int64 = 60 * microsPerMin
 	nanosPerMicro   int64 = 1000
 
+	// MinTimespan represents the smallest valid TIME value -838:59:59 (excluding microseconds)
 	MinTimespan Timespan = Timespan(-3020399000000)
+	// MaxTimespan represents the largest valid TIME value -838:59:59  (excluding microseconds)
 	MaxTimespan Timespan = Timespan(3020399000000)
 
 	// MaxTimespanStringLength is the longest string representation of a valid TIME value (len(+111:22:33.123456))
@@ -142,6 +144,9 @@ func (t TimespanType_) Convert(ctx context.Context, v any) (any, sql.ConvertInRa
 		return nil, sql.InRange, err
 	}
 	ret, err := t.ConvertToTimespan(v)
+	if err != nil {
+		return nil, sql.InRange, err
+	}
 	return ret, sql.InRange, err
 }
 
@@ -299,10 +304,11 @@ func (t TimespanType_) makeTime(isNeg bool, hours, mins, secs, nanos int64) (Tim
 		microsPerHour*hours +
 		micros))
 
-	if res < MinTimespan {
+	// clip timespan only if microseconds overflowed
+	if res < MinTimespan && micros >= microsPerSec {
 		return MinTimespan, true
 	}
-	if res > MaxTimespan {
+	if res > MaxTimespan && micros >= microsPerSec {
 		return MaxTimespan, true
 	}
 	return res, true
