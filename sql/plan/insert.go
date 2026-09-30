@@ -63,6 +63,9 @@ type InsertInto struct {
 	db          sql.Database
 	Destination sql.Node
 	Source      sql.Node
+	// OnDup is an independently planned update branch, invoked with the existing
+	// row followed by the proposed insert row when a duplicate key is found.
+	OnDup sql.Node
 	// DeferredDefaults marks which columns in the destination schema are expected to have default values.
 	DeferredDefaults sets.FastIntSet
 
@@ -70,9 +73,6 @@ type InsertInto struct {
 
 	checks     sql.CheckConstraints
 	OnDupExprs *UpdateExprs
-	// OnDup is an independently planned update branch, invoked with the existing
-	// row followed by the proposed insert row when a duplicate key is found.
-	OnDup sql.Node
 	// OnDupValuesAlias names the proposed row exposed to duplicate-key expressions.
 	OnDupValuesAlias string
 	// OnDupWhere limits duplicate-key updates to rows that satisfy the expression.
