@@ -9634,6 +9634,14 @@ from typestable`,
 		Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}},
 	},
 	{
+		Query:    "select mt.s, (select count(*) from othertable where i2 <= mt.i) as x from mytable mt left join othertable ot on mt.i = ot.i2 group by mt.i, mt.s order by mt.i",
+		Expected: []sql.Row{{"first row", 1}, {"second row", 2}, {"third row", 3}},
+	},
+	{
+		Query:    "select mt.s, (select count(*) from mytable inner_mt where inner_mt.i <= ot.i2) as x from mytable mt left join othertable ot on mt.i = ot.i2 and ot.i2 = 2 group by mt.i, mt.s, ot.i2 order by mt.i",
+		Expected: []sql.Row{{"first row", 0}, {"second row", 2}, {"third row", 0}},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/9963
 		Query:    "select max(i) as max_i from mytable having max(i) < 3",
 		Expected: []sql.Row{},
