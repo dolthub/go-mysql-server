@@ -291,8 +291,8 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 			cteScope = inScope.getCte(strings.ToLower(e.Name.String()))
 		}
 		resolvedAuth, checksResolvedTables := b.cat.AuthorizationHandler().(sql.ResolvedTableAuthorizationHandler)
-		if !isTableName || (cteScope == nil && !checksResolvedTables) {
-			if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, t.Auth); err != nil && b.authEnabled {
+		if b.authEnabled && (!isTableName || (cteScope == nil && !checksResolvedTables)) {
+			if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, t.Auth); err != nil {
 				b.handleErr(err)
 			}
 		}
@@ -311,8 +311,8 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 				if !ok {
 					b.handleErr(sql.ErrTableNotFound.New(tableName))
 				}
-				if checksResolvedTables {
-					if err := resolvedAuth.HandleResolvedTableAuth(b.ctx, b.authQueryState, t.Auth, outScope.node); err != nil && b.authEnabled {
+				if b.authEnabled && checksResolvedTables {
+					if err := resolvedAuth.HandleResolvedTableAuth(b.ctx, b.authQueryState, t.Auth, outScope.node); err != nil {
 						b.handleErr(err)
 					}
 				}

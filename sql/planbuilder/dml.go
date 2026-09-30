@@ -35,17 +35,17 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	b.qFlags.Set(sql.QFlagInsert)
 
 	resolvedAuth, checksResolvedTables := b.cat.AuthorizationHandler().(sql.ResolvedTableAuthorizationHandler)
-	if !checksResolvedTables {
-		if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, i.Auth); err != nil && b.authEnabled {
+	updateAuth := i.Auth
+	updateAuth.AuthType = ast.AuthType_UPDATE
+	if b.authEnabled && !checksResolvedTables {
+		if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, i.Auth); err != nil {
 			b.handleErr(err)
 		}
-	}
-	// An upsert requires UPDATE even when none of its candidate rows conflict.
-	if len(i.OnDup) > 0 {
-		updateAuth := i.Auth
-		updateAuth.AuthType = ast.AuthType_UPDATE
-		if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, updateAuth); err != nil && b.authEnabled {
-			b.handleErr(err)
+		// An upsert requires UPDATE even when none of its candidate rows conflict.
+		if len(i.OnDup) > 0 {
+			if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, updateAuth); err != nil {
+				b.handleErr(err)
+			}
 		}
 	}
 	if i.With != nil {
@@ -56,9 +56,14 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	if !ok {
 		b.handleErr(sql.ErrTableNotFound.New(i.Table.Name.String()))
 	}
-	if checksResolvedTables {
-		if err := resolvedAuth.HandleResolvedTableAuth(b.ctx, b.authQueryState, i.Auth, destScope.node); err != nil && b.authEnabled {
+	if b.authEnabled && checksResolvedTables {
+		if err := resolvedAuth.HandleResolvedTableAuth(b.ctx, b.authQueryState, i.Auth, destScope.node); err != nil {
 			b.handleErr(err)
+		}
+		if len(i.OnDup) > 0 {
+			if err := resolvedAuth.HandleResolvedTableAuth(b.ctx, b.authQueryState, updateAuth, destScope.node); err != nil {
+				b.handleErr(err)
+			}
 		}
 	}
 	var db sql.Database

@@ -123,8 +123,8 @@ func (b *Builder) buildAlterTable(inScope *scope, query string, c *ast.AlterTabl
 
 func (b *Builder) buildDDL(inScope *scope, subQuery string, fullQuery string, c *ast.DDL) (outScope *scope) {
 	_, checksResolvedTables := b.cat.AuthorizationHandler().(sql.ResolvedTableAuthorizationHandler)
-	if c.Action != ast.TruncateStr || !checksResolvedTables {
-		if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, c.Auth); err != nil && b.authEnabled {
+	if b.authEnabled && (c.Action != ast.TruncateStr || !checksResolvedTables) {
+		if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, c.Auth); err != nil {
 			b.handleErr(err)
 		}
 	}
@@ -302,8 +302,8 @@ func (b *Builder) buildTruncateTable(inScope *scope, c *ast.DDL) (outScope *scop
 	if !ok {
 		b.handleErr(sql.ErrTableNotFound.New(c.Table.Name.String()))
 	}
-	if resolvedAuth, ok := b.cat.AuthorizationHandler().(sql.ResolvedTableAuthorizationHandler); ok {
-		if err := resolvedAuth.HandleResolvedTableAuth(b.ctx, b.authQueryState, c.Auth, tableScope.node); err != nil && b.authEnabled {
+	if resolvedAuth, ok := b.cat.AuthorizationHandler().(sql.ResolvedTableAuthorizationHandler); ok && b.authEnabled {
+		if err := resolvedAuth.HandleResolvedTableAuth(b.ctx, b.authQueryState, c.Auth, tableScope.node); err != nil {
 			b.handleErr(err)
 		}
 	}
