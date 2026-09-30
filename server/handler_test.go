@@ -1229,6 +1229,13 @@ func TestHandlerFoundRowsCapabilities(t *testing.T) {
 	}
 
 	handler.NewConnection(dummyConn)
+	handler.ComInitDB(dummyConn, "test")
+	for _, query := range []string{
+		"CREATE TABLE join_test (c1 INT PRIMARY KEY)",
+		"INSERT INTO join_test VALUES (1), (2), (3)",
+	} {
+		require.NoError(t, handler.ComQuery(context.Background(), dummyConn, query, func(*sqltypes.Result, bool) error { return nil }))
+	}
 
 	tests := []struct {
 		name                 string
@@ -1243,6 +1250,13 @@ func TestHandlerFoundRowsCapabilities(t *testing.T) {
 			conn:                 dummyConn,
 			query:                "UPDATE test set c1 = c1 where c1 < 10",
 			expectedRowsAffected: uint64(10),
+		},
+		{
+			name:                 "Joined update should count unchanged matched rows",
+			handler:              handler,
+			conn:                 dummyConn,
+			query:                "UPDATE join_test AS t JOIN join_test AS u ON t.c1 = u.c1 SET t.c1 = t.c1",
+			expectedRowsAffected: uint64(3),
 		},
 		{
 			name:                 "INSERT ON UPDATE returns +1 for every row that already exists",
@@ -1282,10 +1296,74 @@ func TestHandlerFoundRowsCapabilities(t *testing.T) {
 	}
 }
 
+// TestHandlerCountMatchedRowsOnUpdate test the various update row count modes.
+func TestHandlerCountMatchedRowsOnUpdate(t *testing.T) {
+	for _, mode := range []struct {
+		name                     string
+		countMatchedRowsOnUpdate bool
+		clientFoundRows          bool
+		unchangedCount           uint64
+		changedDuplicateCount    uint64
+	}{
+		{name: "MySQL default", unchangedCount: 0, changedDuplicateCount: 2},
+		{name: "MySQL CLIENT_FOUND_ROWS", clientFoundRows: true, unchangedCount: 1, changedDuplicateCount: 2},
+		{name: "PostgreSQL policy", countMatchedRowsOnUpdate: true, unchangedCount: 1, changedDuplicateCount: 1},
+		{name: "PostgreSQL policy overrides CLIENT_FOUND_ROWS", countMatchedRowsOnUpdate: true, clientFoundRows: true, unchangedCount: 1, changedDuplicateCount: 1},
+	} {
+		t.Run(mode.name, func(t *testing.T) {
+			e, pro := setupMemDBWithOverrides(require.New(t), sql.EngineOverrides{CountMatchedRowsOnUpdate: mode.countMatchedRowsOnUpdate})
+			conn := newConn(1)
+			if mode.clientFoundRows {
+				conn.Capabilities = mysql.CapabilityClientFoundRows
+			}
+			handler := &Handler{
+				e: e,
+				sm: NewSessionManager(sql.NewContext, testSessionBuilder(pro), sql.NoopTracer, pro.Database,
+					sql.NewMemoryManager(nil), sqle.NewProcessList(), "foo"),
+			}
+			handler.NewConnection(conn)
+			handler.ComInitDB(conn, "test")
+
+			for _, query := range []string{
+				"CREATE TABLE count_test (id INT PRIMARY KEY, v INT)",
+				"INSERT INTO count_test VALUES (1, 10), (2, 20), (3, 30)",
+			} {
+				require.NoError(t, handler.ComQuery(context.Background(), conn, query, func(*sqltypes.Result, bool) error { return nil }))
+			}
+
+			for _, test := range []struct {
+				query string
+				want  uint64
+			}{
+				{query: "UPDATE count_test SET v = v WHERE id = 1", want: mode.unchangedCount},
+				{query: "UPDATE count_test AS t JOIN count_test AS u ON t.id = u.id SET t.v = t.v", want: 3 * mode.unchangedCount},
+				{query: "UPDATE count_test SET v = CASE WHEN id = 1 THEN v ELSE v + 1 END WHERE id IN (1, 2)", want: 1 + mode.unchangedCount},
+				{query: "INSERT INTO count_test VALUES (1, 10) ON DUPLICATE KEY UPDATE v = VALUES(v)", want: mode.unchangedCount},
+				{query: "INSERT INTO count_test VALUES (1, 11) ON DUPLICATE KEY UPDATE v = VALUES(v)", want: mode.changedDuplicateCount},
+				{query: "INSERT INTO count_test VALUES (4, 40)", want: 1},
+				{query: "INSERT INTO count_test VALUES (1, 11), (2, 22), (5, 50) ON DUPLICATE KEY UPDATE v = VALUES(v)", want: mode.unchangedCount + mode.changedDuplicateCount + 1},
+			} {
+				var got uint64
+				err := handler.ComQuery(context.Background(), conn, test.query, func(res *sqltypes.Result, more bool) error {
+					got = uint64(res.RowsAffected)
+					return nil
+				})
+				require.NoError(t, err)
+				require.Equal(t, test.want, got, test.query)
+			}
+		})
+	}
+}
+
 func setupMemDB(require *require.Assertions) (*sqle.Engine, *memory.DbProvider) {
+	return setupMemDBWithOverrides(require, sql.EngineOverrides{})
+}
+
+// setupMemDBWithOverrides creates the handler test database with an engine policy.
+func setupMemDBWithOverrides(require *require.Assertions, overrides sql.EngineOverrides) (*sqle.Engine, *memory.DbProvider) {
 	db := memory.NewDatabase("test")
 	pro := memory.NewDBProvider(db)
-	e := sqle.NewDefault(pro)
+	e := sqle.New(analyzer.NewBuilder(pro).AddOverrides(overrides).Build(), nil)
 	ctx := sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), pro)))
 
 	tableTest := memory.NewTable(ctx, db, "test", sql.NewPrimaryKeySchema(sql.Schema{{Name: "c1", Type: types.Int32, Source: "test"}}), nil)

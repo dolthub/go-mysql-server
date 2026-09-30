@@ -202,7 +202,6 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	ins := plan.NewInsertInto(db, plan.NewInsertDestination(sch, dest), srcScope.node, isReplace, columns, onDupUpdateExprs, ignore)
 	ins.OnDupValuesAlias = i.OnDupValuesAlias
 	ins.OnDupWhere = onDupWhere
-	ins.CountOnDuplicateUpdateAsOneRow = i.CountOnDuplicateUpdateAsOneRow
 	ins.IgnoreMode = b.overrides.InsertIgnoreMode
 	if len(i.ConflictTarget) > 0 {
 		ins.IgnoreTarget = make([]string, len(i.ConflictTarget))
