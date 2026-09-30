@@ -15381,11 +15381,11 @@ select * from t1 except (
 	{
 		Name: "NOT IN subquery over an indexed nullable column is NULL aware",
 		SetUpScript: []string{
-			"CREATE TABLE nullable_left (id int PRIMARY KEY, k int, INDEX k_idx (k));",
-			"CREATE TABLE nullable_right (id int PRIMARY KEY, k int, INDEX k_idx (k));",
+			"CREATE TABLE nullable_left (id int PRIMARY KEY, k int, INDEX nullable_left_k_idx (k));",
+			"CREATE TABLE nullable_right (id int PRIMARY KEY, k int, INDEX nullable_right_k_idx (k));",
 			"INSERT INTO nullable_left VALUES (1,1),(2,2),(3,3),(4,NULL),(5,5);",
 			"INSERT INTO nullable_right VALUES (1,1),(2,2);",
-			"CREATE TABLE null_key (id int PRIMARY KEY, k int, INDEX k_idx (k));",
+			"CREATE TABLE null_key (id int PRIMARY KEY, k int, INDEX null_key_k_idx (k));",
 			"INSERT INTO null_key VALUES (1,1),(2,2),(3,NULL);",
 		},
 		Assertions: []ScriptTestAssertion{
@@ -15419,7 +15419,7 @@ select * from t1 except (
 			},
 			{
 				// NOT EXISTS is two valued, so a NULL key is returned
-				Query:    "SELECT k FROM nullable_left WHERE NOT EXISTS (SELECT 1 FROM null_key WHERE null_key.k = nullable_left.k) ORDER BY k;",
+				Query:    "SELECT k FROM nullable_left WHERE NOT EXISTS (SELECT 1 FROM null_key WHERE null_key.k = nullable_left.k) ORDER BY k IS NOT NULL, k;",
 				Expected: []sql.Row{{nil}, {3}, {5}},
 			},
 		},
