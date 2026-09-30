@@ -126,6 +126,28 @@ type ScriptTestAssertion struct {
 // the tests.
 var ScriptTests = []ScriptTest{
 	{
+		// https://github.com/dolthub/dolt/issues/11968
+		Name: "IN with mixed integer and fractional list compares without truncation",
+		SetUpScript: []string{
+			"CREATE TABLE t (v INT)",
+			"INSERT INTO t VALUES (0), (9)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT v, v IN (9, 0.49) AS in_result FROM t ORDER BY v",
+				Expected: []sql.Row{{0, false}, {9, true}},
+			},
+			{
+				Query:    "SELECT v FROM t WHERE v IN (9, 0.49) ORDER BY v",
+				Expected: []sql.Row{{9}},
+			},
+			{
+				Query:    "SELECT v FROM t WHERE v NOT IN (9, 0.49) ORDER BY v",
+				Expected: []sql.Row{{0}},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/10113
 		Name: "DELETE with NOT EXISTS subquery",
 		SetUpScript: []string{
