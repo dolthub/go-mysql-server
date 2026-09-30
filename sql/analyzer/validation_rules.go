@@ -445,7 +445,9 @@ func resolveExpr(ctx *sql.Context, expr sql.Expression, selectDeps map[string]sq
 	return resolvedExpr
 }
 
-// expressionReferencesOnlyGroupBys validates that an expression is dependent on only group by expressions
+// expressionReferencesOnlyGroupBys validates that an expression is dependent on only group by expressions.
+// groupBys.cols holds the ids of the columns grouped on, which a correlated subquery's outer references are checked
+// against.
 func expressionReferencesOnlyGroupBys(ctx *sql.Context, groupBys *groupByClause, expr sql.Expression, noGroupBy bool) (bool, string) {
 	var col string
 	valid := true
@@ -459,24 +461,30 @@ func expressionReferencesOnlyGroupBys(ctx *sql.Context, groupBys *groupByClause,
 			}
 
 			if len(expr.Children()) == 0 {
-				if sq, isSubquery := expr.(*plan.Subquery); isSubquery {
-					ungroupedCols := sq.Correlated()
+				switch expr := expr.(type) {
+				case *plan.Subquery:
+					ungroupedCols := expr.Correlated()
 					if !noGroupBy {
 						ungroupedCols = ungroupedCols.Difference(groupBys.cols)
 					}
 					if !ungroupedCols.Empty() {
 						valid = false
 						firstId, _ := ungroupedCols.Next(1)
-						col = subqueryColumnName(ctx, sq, firstId)
+						col = subqueryColumnName(ctx, expr, firstId)
 					}
 					return false
-				}
-				// A window function with no arguments and an empty OVER clause (e.g. ROW_NUMBER() OVER ())
-				// has no column dependencies to validate, so it's trivially valid under an explicit GROUP BY.
-				// With no explicit GROUP BY (implicit whole-table aggregation), a window function can't be
-				// reconciled with the aggregate's single-row collapse regardless of its arguments, so it's
-				// still invalid there.
-				if _, isWindowFn := expr.(sql.WindowAdaptableExpression); isWindowFn && !noGroupBy {
+				case sql.WindowAdaptableExpression:
+					// A window function with no arguments and an empty OVER clause (e.g. ROW_NUMBER() OVER ())
+					// has no column dependencies to validate, so it's trivially valid under an explicit GROUP BY.
+					// With no explicit GROUP BY (implicit whole-table aggregation), a window function can't be
+					// reconciled with the aggregate's single-row collapse regardless of its arguments, so it's
+					// still invalid there.
+					if !noGroupBy {
+						return false
+					}
+				case *expression.GetField:
+				default:
+					// An expression without column references, such as CURDATE(), has one value per group.
 					return false
 				}
 				valid = false

@@ -143,6 +143,7 @@ func parse12HourNumeric(result *datetime, chars string) (rest string, _ error) {
 		return "", err
 	}
 	result.hours = &num
+	result.twelveHourClock = true
 	return rest, nil
 }
 
@@ -193,6 +194,7 @@ func parse12HourTimestamp(result *datetime, chars string) (rest string, _ error)
 	result.seconds = &sec
 	result.minutes = &min
 	result.hours = &hour
+	result.twelveHourClock = true
 	return rest, nil
 }
 

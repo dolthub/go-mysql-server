@@ -145,7 +145,7 @@ func CreateDatetimeType(baseType query.Type, precision int) (sql.DatetimeType, e
 	switch baseType {
 	case sqltypes.Date, sqltypes.Datetime, sqltypes.Timestamp:
 		if precision < 0 || precision > MaxDatetimePrecision {
-			return nil, sql.ErrTooBigPrecision.New(baseType.String(), precision)
+			return nil, sql.ErrTooBigPrecision.New(precision, MaxDatetimePrecision)
 		}
 		return datetimeType{
 			baseType:  baseType,
@@ -224,6 +224,7 @@ func splitDecimal(d *apd.Decimal) (int64, int64, bool) {
 		return 0, 0, false
 	}
 	fracDec.Exponent += 9
+	fracDec.Modf(&fracDec, nil)
 	frac, err := fracDec.Int64()
 	if err != nil {
 		return 0, 0, false

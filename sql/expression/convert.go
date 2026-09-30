@@ -16,6 +16,8 @@ package expression
 
 import (
 	"fmt"
+	"math"
+	"strconv"
 	"strings"
 
 	"github.com/dolthub/vitess/go/mysql"
@@ -384,6 +386,28 @@ func convertValue(ctx *sql.Context, val any, castTo string, origType sql.Type, t
 	case ConvertToDouble, ConvertToReal:
 		convType = types.Float64
 	case ConvertToSigned:
+		if u, ok := val.(uint64); ok {
+			return int64(u), nil
+		}
+
+		if str, ok := val.(string); ok {
+			prefix, truncated := types.TruncateStringToInt(str)
+			u, parseErr := strconv.ParseUint(strings.TrimPrefix(prefix, "+"), 10, 64)
+			if u > math.MaxInt64 {
+				// ParseUint saturates at MaxUint64 on overflow. MySQL returns its
+				// signed complement with only a truncation warning in that case.
+				if truncated || parseErr != nil {
+					ctx.Warn(mysql.ERTruncatedWrongValue, "Truncated incorrect INTEGER value: '%s'", str)
+				}
+
+				if parseErr == nil {
+					ctx.Warn(1105, "Cast to signed converted positive out-of-range integer to its negative complement")
+				}
+
+				return int64(u), nil
+			}
+		}
+
 		convType = types.Int64
 	case ConvertToUnsigned:
 		convType = types.Uint64

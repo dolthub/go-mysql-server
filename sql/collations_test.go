@@ -16,6 +16,7 @@ package sql
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -125,5 +126,21 @@ func TestConvertCollationID(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expected, result)
 		})
+	}
+}
+
+func TestCollationIsBinaryMetadata(t *testing.T) {
+	require.Equal(t, Collation_Default.IsBinary(), Collation_Unspecified.IsBinary())
+
+	iter := NewCollationsIterator()
+	for {
+		c, ok := iter.Next()
+		if !ok {
+			break
+		}
+
+		expected := c.ID == Collation_binary || c.CharacterSet == CharacterSet_binary || strings.HasSuffix(c.Name, "_bin")
+		require.Equal(t, expected, c.IsBinary, "Collation %s (ID %d) IsBinary flag mismatch", c.Name, c.ID)
+		require.Equal(t, expected, c.ID.IsBinary(), "CollationID %s (ID %d) IsBinary() method mismatch", c.Name, c.ID)
 	}
 }

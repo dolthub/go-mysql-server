@@ -70,6 +70,72 @@ func TestParseDate(t *testing.T) {
 	}
 }
 
+func TestParseDateTwelveHourClock(t *testing.T) {
+	setupTimezone(t)
+
+	tests := [...]struct {
+		name     string
+		date     string
+		format   string
+		expected interface{}
+	}{
+		// %p moves the hour into the afternoon, and 12 PM stays at noon.
+		{"pm_afternoon", "01:02 PM", "%h:%i %p", time.Date(-1, time.November, 30, 13, 2, 0, 0, time.UTC)},
+		{"pm_noon", "12:02 PM", "%h:%i %p", time.Date(-1, time.November, 30, 12, 2, 0, 0, time.UTC)},
+		{"pm_late", "11:02 PM", "%h:%i %p", time.Date(-1, time.November, 30, 23, 2, 0, 0, time.UTC)},
+		{"am_morning", "01:02 AM", "%h:%i %p", time.Date(-1, time.November, 30, 1, 2, 0, 0, time.UTC)},
+		{"am_midnight", "12:02 AM", "%h:%i %p", time.Date(-1, time.November, 30, 0, 2, 0, 0, time.UTC)},
+		{"pm_lowercase", "01:02 pm", "%h:%i %p", time.Date(-1, time.November, 30, 13, 2, 0, 0, time.UTC)},
+		{"capital_i_specifier", "01:02 PM", "%I:%i %p", time.Date(-1, time.November, 30, 13, 2, 0, 0, time.UTC)},
+		{"lowercase_l_specifier", "1:02 PM", "%l:%i %p", time.Date(-1, time.November, 30, 13, 2, 0, 0, time.UTC)},
+
+		// %r carries its own AM/PM marker.
+		{"r_pm", "05:14:12 PM", "%r", time.Date(-1, time.November, 30, 17, 14, 12, 0, time.UTC)},
+		{"r_am", "05:14:12 AM", "%r", time.Date(-1, time.November, 30, 5, 14, 12, 0, time.UTC)},
+		{"r_noon", "12:14:12 PM", "%r", time.Date(-1, time.November, 30, 12, 14, 12, 0, time.UTC)},
+		{"r_midnight", "12:14:12 AM", "%r", time.Date(-1, time.November, 30, 0, 14, 12, 0, time.UTC)},
+
+		// Without %p a 12-hour specifier still wraps 12 to 0, as MySQL does.
+		{"twelve_without_marker", "12:34", "%h:%i", time.Date(-1, time.November, 30, 0, 34, 0, 0, time.UTC)},
+		{"one_without_marker", "01:34", "%h:%i", time.Date(-1, time.November, 30, 1, 34, 0, 0, time.UTC)},
+
+		{"pm_with_date", "May 3, 10:23:00 PM 2000", "%b %e, %h:%i:%s %p %Y", time.Date(2000, time.May, 3, 22, 23, 0, 0, time.UTC)},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actual, err := ParseDateWithFormat(tt.date, tt.format)
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, actual)
+		})
+	}
+}
+
+func TestParseDateTwelveHourClockOutOfRange(t *testing.T) {
+	setupTimezone(t)
+
+	// MySQL rejects an hour outside 1..12 for the 12-hour specifiers, which
+	// makes STR_TO_DATE return NULL rather than a silently wrong time.
+	tests := [...]struct {
+		name   string
+		date   string
+		format string
+	}{
+		{"thirteen_pm", "13:02 PM", "%h:%i %p"},
+		{"zero_am", "00:02 AM", "%h:%i %p"},
+		{"thirteen_no_marker", "13:02", "%h:%i"},
+		{"zero_no_marker", "00:02", "%I:%i"},
+		{"r_thirteen", "13:14:12 PM", "%r"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := ParseDateWithFormat(tt.date, tt.format)
+			require.Error(t, err)
+		})
+	}
+}
+
 func setupTimezone(t *testing.T) {
 	loc, err := time.LoadLocation("America/Chicago")
 	if err != nil {
@@ -94,6 +160,12 @@ func TestConversionFailure(t *testing.T) {
 		{"day_of_month_and_day_of_year", "Jan 3, 100 2000", "%b %e, %j %Y", time.Date(2000, time.April, 9, 0, 0, 0, 0, time.UTC), ""},
 
 		{"24hour_time_with_pm", "May 3, 10:23:00 PM 2000", "%b %e, %H:%i:%s %p %Y", nil, "cannot use 24 hour time (H) with AM/PM (p)"},
+		{"24hour_H_fraction_with_pm", "23:02:03.123 PM", "%H:%i:%s.%f %p", nil, "cannot use 24 hour time (H) with AM/PM (p)"},
+		{"24hour_k_with_pm", "23 PM", "%k %p", nil, "cannot use 24 hour time (H) with AM/PM (p)"},
+		{"24hour_k_minutes_with_pm", "23:02:03 PM", "%k:%i:%s %p", nil, "cannot use 24 hour time (H) with AM/PM (p)"},
+		{"24hour_T_with_pm", "23:02:03 PM", "%T %p", nil, "cannot use 24 hour time (H) with AM/PM (p)"},
+		{"24hour_T_with_am", "01:02:03 AM", "%T %p", nil, "cannot use 24 hour time (H) with AM/PM (p)"},
+		{"24hour_T_marker_first", "PM 23:02:03", "%p %T", nil, "cannot use 24 hour time (H) with AM/PM (p)"},
 		{"specifier_end_of_line", "Jan 3", "%b %e %", nil, `"%" found at end of format string`},
 		{"unknown_format_specifier", "Jan 3", "%b %e %L", nil, `unknown format specifier "L"`},
 		{"invalid_number_hour", "0021:12:14", "%T", nil, `specifier %T failed to parse "0021:12:14": expected literal ":", got "2"`},

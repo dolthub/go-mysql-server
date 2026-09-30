@@ -194,6 +194,22 @@ var TypeWireTests = []TypeWireTest{
 		},
 	},
 	{
+		Name: "MEDIUMINT UNSIGNED boundary",
+		SetUpScript: []string{
+			`CREATE TABLE test (pk MEDIUMINT UNSIGNED PRIMARY KEY, v1 MEDIUMINT UNSIGNED);`,
+			`INSERT INTO test VALUES (1, 16777215), (16777214, 8388608), (16777215, 0);`,
+			`UPDATE test SET v1 = v1 + 1 WHERE pk = 16777214;`,
+		},
+		Queries: []string{
+			`SELECT * FROM test ORDER BY pk;`,
+			`SELECT v1, pk FROM test ORDER BY pk DESC;`,
+		},
+		Results: [][]sql.Row{
+			{{"1", "16777215"}, {"16777214", "8388609"}, {"16777215", "0"}},
+			{{"0", "16777215"}, {"8388609", "16777214"}, {"16777215", "1"}},
+		},
+	},
+	{
 		Name: "INT UNSIGNED",
 		SetUpScript: []string{
 			`CREATE TABLE test (pk INT UNSIGNED PRIMARY KEY, v1 INT UNSIGNED);`,
