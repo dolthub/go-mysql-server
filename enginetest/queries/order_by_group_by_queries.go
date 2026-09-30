@@ -510,4 +510,41 @@ var OrderByGroupByScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "functional dependence without a primary key",
+		SetUpScript: []string{
+			"create table teams (id varchar(8) not null, name varchar(16));",
+			"create table members (team_id varchar(8), role varchar(8));",
+			"insert into teams values ('a', 'alpha'), ('b', 'bravo');",
+			"insert into members values ('a', 'x'), ('a', 'y'), ('a', 'z'), ('b', 'x');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// an expression without column references has one value per group
+				Query:    "select curdate() is not null, count(*) from members",
+				Expected: []sql.Row{{true, 4}},
+			},
+			{
+				Query:    "select now() is not null, team_id, count(*) from members group by team_id order by team_id",
+				Expected: []sql.Row{{true, "a", 3}, {true, "b", 1}},
+			},
+			{
+				// a correlated subquery whose outer references are all grouped columns has one value per group
+				Query:    "select t.name, count(*), (select count(*) from members where team_id = t.id) from teams t group by t.id, t.name order by t.name",
+				Expected: []sql.Row{{"alpha", 1, 3}, {"bravo", 1, 1}},
+			},
+			{
+				Query:       "select team_id, role, count(*) from members group by team_id",
+				ExpectedErr: analyzererrors.ErrValidationGroupBy,
+			},
+			{
+				Query:       "select role, count(*) from members",
+				ExpectedErr: sql.ErrNonAggregatedColumnWithoutGroupBy,
+			},
+			{
+				Query:       "select t.name, count(*), (select count(*) from members where team_id = t.id) from teams t group by t.name",
+				ExpectedErr: analyzererrors.ErrValidationGroupBy,
+			},
+		},
+	},
 }
