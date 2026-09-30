@@ -311,7 +311,6 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 						groupBys[strings.ToLower(nameable.Name())] = true
 					}
 
-
 					_, isAlias := expr.(*expression.Alias)
 					return isAlias
 				})
@@ -515,9 +514,12 @@ func groupByDependencies(ctx *sql.Context, groupBy *plan.GroupBy) (sql.ColSet, m
 	return ret, names
 }
 
-// groupByOutputIds returns the columns made available by a grouping operation.
+// groupByOutputIds returns source column IDs and aggregate result IDs for this grouping query.
 func groupByOutputIds(ctx *sql.Context, groupBy *plan.GroupBy) sql.ColSet {
 	var ret sql.ColSet
+	for _, id := range columnIdsForNode(ctx, groupBy.Child) {
+		ret.Add(id)
+	}
 	for _, dep := range groupBy.SelectDeps {
 		sql.Inspect(ctx, dep, func(ctx *sql.Context, expr sql.Expression) bool {
 			switch expr := expr.(type) {
@@ -547,7 +549,7 @@ func expressionReferencesOnlyGroupBys(ctx *sql.Context, groupBys map[string]bool
 			return false
 		case *plan.Subquery:
 			validSubquery, subqueryCol := subqueryReferencesOnlyGroupByDeps(ctx, expr, groupByDeps, groupByDepNames, groupByOutputs)
-			if noGroupBy || validSubquery {
+			if validSubquery {
 				return false
 			}
 			valid = false
@@ -565,7 +567,7 @@ func expressionReferencesOnlyGroupBys(ctx *sql.Context, groupBys map[string]bool
 			}
 
 			if len(expr.Children()) == 0 {
-				switch expr := expr.(type) {
+				switch expr.(type) {
 				case sql.WindowAdaptableExpression:
 					// A window function with no arguments and an empty OVER clause (e.g. ROW_NUMBER() OVER ())
 					// has no column dependencies to validate, so it's trivially valid under an explicit GROUP BY.
@@ -598,7 +600,7 @@ func expressionReferencesOnlyGroupBys(ctx *sql.Context, groupBys map[string]bool
 // allowedDependencyIDs contains grouped columns and aggregate results.
 // aggregateOutputNames recognizes valid aggregate references by expression name
 // when their GetField IDs alone do not identify them. The string result names the
-// first invalid column, or the subquery when no matching GetField is available.
+// first invalid column. Correlation IDs no longer used by a GetField are ignored.
 func subqueryReferencesOnlyGroupByDeps(ctx *sql.Context, subquery *plan.Subquery, allowedDependencyIDs sql.ColSet, aggregateOutputNames map[string]bool, groupByOutputIDs sql.ColSet) (bool, string) {
 	// This GROUP BY can validate only correlated columns it supplies; columns
 	// from farther-out queries belong to those queries' grouping checks. Grouped
@@ -608,25 +610,25 @@ func subqueryReferencesOnlyGroupByDeps(ctx *sql.Context, subquery *plan.Subquery
 	// and allowed {grp} leave only val to check.
 	uncheckedOuterColumns := subquery.Correlated().Intersection(groupByOutputIDs).Difference(allowedDependencyIDs)
 	var col string
-	transform.InspectExpressions(ctx, subquery.Query, func(ctx *sql.Context, expr sql.Expression) bool {
+	var inspect func(*sql.Context, sql.Expression) bool
+	// Inspect nested queries too: binding an outer aggregate can leave an input
+	// ID in an intermediate query's correlations after replacing its expression.
+	inspect = func(ctx *sql.Context, expr sql.Expression) bool {
+		if nested, ok := expr.(*plan.Subquery); ok {
+			transform.InspectExpressions(ctx, nested.Query, inspect)
+			return false
+		}
 		gf, ok := expr.(*expression.GetField)
 		if !ok || !uncheckedOuterColumns.Contains(gf.Id()) {
 			return true
 		}
-		if aggregateOutputNames[strings.ToLower(gf.String())] {
-			uncheckedOuterColumns.Remove(gf.Id())
-		} else if col == "" {
+		if !aggregateOutputNames[strings.ToLower(gf.String())] && col == "" {
 			col = gf.String()
 		}
 		return false
-	})
-	if uncheckedOuterColumns.Empty() {
-		return true, ""
 	}
-	if col == "" {
-		col = subquery.String()
-	}
-	return false, col
+	transform.InspectExpressions(ctx, subquery.Query, inspect)
+	return col == "", col
 }
 
 func validateSchemaSource(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {

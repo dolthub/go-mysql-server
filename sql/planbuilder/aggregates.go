@@ -400,7 +400,6 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 		}
 	}
 
-
 	argScope := inScope.aggregateSource()
 	correlations := inScope.aggregateCorrelationSnapshot()
 	args := b.buildAggFunctionArgs(argScope, e)
