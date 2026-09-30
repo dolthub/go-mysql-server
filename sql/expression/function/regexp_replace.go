@@ -290,6 +290,7 @@ func (r *RegexpReplace) Dispose(ctx *sql.Context) {
 		_ = r.re.Close()
 		r.re = nil
 	}
+
 	r.compileOnce = sync.Once{}
 	r.compileErr = nil
 }
