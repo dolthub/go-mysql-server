@@ -1421,7 +1421,7 @@ var TransactionTests = []TransactionTest{
 			},
 			{
 				Query:    "/* client b */ show create event e;",
-				Expected: []sql.Row{{"e", "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES", "SYSTEM", "CREATE DEFINER = `root`@`localhost` EVENT `e` ON SCHEDULE EVERY 1 SECOND STARTS '2025-01-01 00:00:00' ON COMPLETION NOT PRESERVE ENABLE DO begin select 1; end", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"}},
+				Expected: []sql.Row{{"e", "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION", "SYSTEM", "CREATE DEFINER = `root`@`localhost` EVENT `e` ON SCHEDULE EVERY 1 SECOND STARTS '2025-01-01 00:00:00' ON COMPLETION NOT PRESERVE ENABLE DO begin select 1; end", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"}},
 			},
 		},
 	},

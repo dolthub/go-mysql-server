@@ -39,12 +39,12 @@ func NewAsWKT(ctx *sql.Context, e sql.Expression) sql.Expression {
 
 // FunctionName implements sql.FunctionExpression
 func (p *AsWKT) FunctionName() string {
-	return "st_aswkb"
+	return "st_aswkt"
 }
 
 // Description implements sql.FunctionExpression
 func (p *AsWKT) Description() string {
-	return "returns binary representation of given spatial type."
+	return "returns text representation of given spatial type."
 }
 
 // IsNullable implements the sql.Expression interface.
@@ -1058,7 +1058,7 @@ func (p *MPolyFromText) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	return mpoly, err
 }
 
-// GeomCollFromText is a function that returns a MultiPolygon type from a WKT string
+// GeomCollFromText is a function that returns a GeometryCollection type from a WKT string
 type GeomCollFromText struct {
 	expression.NaryExpression
 }
@@ -1066,12 +1066,12 @@ type GeomCollFromText struct {
 var _ sql.FunctionExpression = (*GeomCollFromText)(nil)
 var _ sql.CollationCoercible = (*GeomCollFromText)(nil)
 
-// NewGeomCollFromText creates a new multilinestring expression.
+// NewGeomCollFromText creates a new geometry collection expression.
 func NewGeomCollFromText(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 1 || len(args) > 3 {
 		return nil, sql.ErrInvalidArgumentNumber.New("ST_GeomCollFromText", "1 or 2", len(args))
 	}
-	return &MPolyFromText{expression.NaryExpression{ChildExpressions: args}}, nil
+	return &GeomCollFromText{expression.NaryExpression{ChildExpressions: args}}, nil
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -1104,7 +1104,7 @@ func (p *GeomCollFromText) String() string {
 
 // WithChildren implements the Expression interface.
 func (p *GeomCollFromText) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
-	return NewGeomFromText(ctx, children...)
+	return NewGeomCollFromText(ctx, children...)
 }
 
 // Eval implements the sql.Expression interface.

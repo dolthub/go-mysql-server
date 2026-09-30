@@ -125,23 +125,11 @@ func (r *Rand) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// For child expressions, the mysql semantics are to seed the PRNG with an int64 value of the expression given. For
 	// non-numeric types, the seed will always be 0, which means that rand() will always return the same result for all
 	// non-numeric seed arguments.
-	e, err := r.Child.Eval(ctx, row)
+	seed, _, err := evalInt64(ctx, r.Child, row)
 	if err != nil {
 		return nil, err
 	}
-
-	e, _, err = types.Int64.Convert(ctx, e)
-	if err != nil {
-		if !sql.ErrTruncatedIncorrect.Is(err) {
-			return nil, err
-		}
-		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
-	}
-	if e == nil {
-		e = int64(0)
-	}
-
-	return rand.New(rand.NewSource(e.(int64))).Float64(), nil
+	return rand.New(rand.NewSource(seed)).Float64(), nil
 }
 
 // Sin is the SIN function
@@ -472,7 +460,7 @@ func (a *Atan) Resolved() bool {
 // String implements sql.Expression
 func (a *Atan) String() string {
 	if a.x != nil {
-		return fmt.Sprintf("%s(%s, %s)", a.FunctionName(), a.x, a.y)
+		return fmt.Sprintf("%s(%s, %s)", a.FunctionName(), a.y, a.x)
 	}
 	return fmt.Sprintf("%s(%s)", a.FunctionName(), a.y)
 }
@@ -768,6 +756,8 @@ func (c *Crc32) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	switch val := arg.(type) {
 	case string:
 		bytes = []byte(val)
+	case []byte:
+		bytes = val
 	case int8, int16, int32, int64, int:
 		val, _, err := types.Int64.Convert(ctx, arg)
 

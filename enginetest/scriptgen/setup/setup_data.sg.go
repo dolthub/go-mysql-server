@@ -119,22 +119,6 @@ var Comp_index_tablesData = []SetupScript{{
 (96,94,"[92,38]"),(97,95,"[89,66]"),(98,97,"[63,19]"),(99,98,"[31,21]"),(100,98,"[42,22]")`,
 	`create VECTOR INDEX v_idx_json on comp_vector_index_t0 (json_column)`,
 	`create VECTOR INDEX v_idx_vec on comp_vector_index_t0 (vector_column)`,
-	`create table three_pk (
-    pk1 tinyint,
-    pk2 tinyint,
-    pk3 tinyint,
-    c1 tinyint NOT NULL,
-    c2 tinyint NOT NULL,
-    c3 tinyint NOT NULL,
-    c4 tinyint NOT NULL,
-    c5 tinyint NOT NULL,
-    primary key (pk1, pk2, pk3)
-)`,
-	`insert into three_pk values
-    (0,0,0,0,1,2,3,4),
-    (0,1,10,20,11,12,13,14),
-    (1,0,20,40,21,22,23,24),
-    (1,1,30,60,31,32,33,34)`,
 }}
 
 var DatetimetableData = []SetupScript{{
@@ -3148,6 +3132,22 @@ var Pk_tablesData = []SetupScript{{
     c5 tinyint NOT NULL,
     primary key (pk1, pk2)
 )`,
+	`create table three_pk (
+    pk1 tinyint,
+    pk2 tinyint,
+    pk3 tinyint,
+    c1 tinyint NOT NULL,
+    c2 tinyint NOT NULL,
+    c3 tinyint NOT NULL,
+    c4 tinyint NOT NULL,
+    c5 tinyint NOT NULL,
+    primary key (pk1, pk2, pk3)
+)`,
+	`insert into three_pk values
+    (0,0,20,0,1,2,3,4),
+    (0,1,10,20,11,12,13,14),
+    (1,0,10,40,21,22,23,24),
+    (1,1,0,60,31,32,33,34)`,
 	`insert into two_pk values
     (0,0,0,1,2,3,4),
     (0,1,10,11,12,13,14),

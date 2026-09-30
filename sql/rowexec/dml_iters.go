@@ -422,12 +422,20 @@ type onDuplicateUpdateHandler struct {
 	schema                    sql.Schema
 	rowsAffected              int
 	clientFoundRowsCapability bool
+	countUpdateAsOneRow       bool
 }
 
 func (o *onDuplicateUpdateHandler) handleRowUpdate(ctx *sql.Context, row sql.Row) error {
 	// See https://dev.mysql.com/doc/refman/8.0/en/insert-on-duplicate.html for row count semantics
 	// If a row was inserted, increment by 1
 	if len(row) == len(o.schema) {
+		o.rowsAffected++
+		return nil
+	}
+
+	// If countUpdateAsOneRow is true, then we use an alternate, simpler way of counting affected rows.
+	// This matches the behavior in PostgreSQL.
+	if o.countUpdateAsOneRow {
 		o.rowsAffected++
 		return nil
 	}
@@ -467,7 +475,7 @@ type updateRowHandler struct {
 func (u *updateRowHandler) handleRowUpdate(ctx *sql.Context, row sql.Row) error {
 	u.rowsMatched++
 
-	// TODO: This check is already being done in applyUpdateExpressionsWithIgnore to check if derived updates need to be
+	// TODO: This check is already being done by the update expression applier to check if derived updates need to be
 	//  applied
 	oldRow := row[:len(row)/2]
 	newRow := row[len(row)/2:]
@@ -615,7 +623,11 @@ func getRowHandler(clientFoundRowsToggled bool, iter sql.RowIter) accumulatorRow
 			return &replaceRowHandler{}
 		}
 		if i.updater != nil {
-			return &onDuplicateUpdateHandler{schema: i.schema, clientFoundRowsCapability: clientFoundRowsToggled}
+			return &onDuplicateUpdateHandler{
+				schema:                    i.schema,
+				clientFoundRowsCapability: clientFoundRowsToggled,
+				countUpdateAsOneRow:       i.countOnDuplicateUpdateAsOneRow,
+			}
 		}
 		return &insertRowHandler{
 			lastInsertIdGetter: i.getAutoIncVal,
@@ -804,6 +816,7 @@ type matchingAccumulator interface {
 }
 
 type updateSourceIter struct {
+	applier     sql.UpdateExpressionApplier
 	childIter   sql.RowIter
 	updateExprs *plan.UpdateExprs
 	tableSchema sql.Schema
@@ -816,7 +829,7 @@ func (u *updateSourceIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, err
 	}
 
-	newRow, err := applyUpdateExpressionsWithIgnore(ctx, u.updateExprs, u.tableSchema, oldRow, u.ignore)
+	newRow, err := u.applier.ApplyRowUpdate(ctx, u.updateExprs, u.tableSchema, oldRow, u.ignore)
 	if err != nil {
 		return nil, err
 	}

@@ -36,7 +36,7 @@ func (bv *BindVar) Resolved() bool {
 }
 
 func (bv *BindVar) String() string {
-	return "BindVar(" + bv.Name + ")"
+	return ":" + bv.Name
 }
 
 func (bv *BindVar) Type(ctx *sql.Context) sql.Type {

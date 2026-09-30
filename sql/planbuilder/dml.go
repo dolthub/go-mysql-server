@@ -37,6 +37,14 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, i.Auth); err != nil && b.authEnabled {
 		b.handleErr(err)
 	}
+	// An upsert requires UPDATE even when none of its candidate rows conflict.
+	if len(i.OnDup) > 0 {
+		updateAuth := i.Auth
+		updateAuth.AuthType = ast.AuthType_UPDATE
+		if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, updateAuth); err != nil && b.authEnabled {
+			b.handleErr(err)
+		}
+	}
 	if i.With != nil {
 		inScope = b.buildWith(inScope, i.With)
 	}
@@ -77,8 +85,8 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 			columns = make([]string, 0, len(schema))
 			for _, col := range schema {
 				// hidden system columns can't be directly referenced,
-				// so exclude them from the column name list.
-				if !col.HiddenSystem {
+				// and user invisible columns are also omitted from default INSERT column lists.
+				if !col.HiddenSystem && !col.Hidden {
 					columns = append(columns, col.Name)
 				}
 			}
@@ -90,11 +98,28 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	}
 
 	insertRows := i.Rows
+	sourceColumns := columns
+	// Leave implicit empty rows unshaped so the analyzer can materialize defaults for the complete destination schema.
+	if values, ok := insertRows.(*ast.AliasedValues); ok && len(i.Columns) == 0 {
+		allRowsEmpty := true
+		for _, tuple := range values.Values {
+			if len(tuple) > 0 {
+				allRowsEmpty = false
+				break
+			}
+		}
+		if allRowsEmpty {
+			sourceColumns = nil
+		}
+	}
 
 	// We need to give a table name to the scope of the values being inserted. We use the row alias if provided, otherwise go with a default.
 	// If the row alias also provided column names, we create a map from the destination names to the aliases. This will allow us to
 	// rewrite VALUES() function expressions to use the new column names.
 	inScope.insertTableAlias = OnDupValuesPrefix
+	if i.OnDupValuesAlias != "" {
+		inScope.insertTableAlias = i.OnDupValuesAlias
+	}
 	if aliasedValues, ok := insertRows.(*ast.AliasedValues); ok {
 		valueTableName := aliasedValues.As.String()
 		if valueTableName != "" {
@@ -109,16 +134,17 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 		}
 	}
 
-	srcScope, srcLiteralOnly := b.insertRowsToNode(inScope, insertRows, columns, i.Table.Name.String(), sch)
+	srcScope, srcLiteralOnly := b.insertRowsToNode(inScope, insertRows, sourceColumns, i.Table.Name.String(), sch)
 
 	var onDupUpdateExprs *plan.UpdateExprs
+	var onDupWhere sql.Expression
 	if len(i.OnDup) > 0 {
 		// TODO: on duplicate expressions need to reference both VALUES and
 		//  derived columns equally in ON DUPLICATE UPDATE expressions.
 		combinedScope := inScope.replace()
 		combinedScope.insertTableAlias = inScope.insertTableAlias
 		combinedScope.insertColumnAliases = inScope.insertColumnAliases
-		for i, c := range destScope.cols {
+		for colIdx, c := range destScope.cols {
 			combinedScope.newColumn(c)
 			// if the srcScope is empty, it is a values statement
 			if len(srcScope.cols) == 0 {
@@ -132,12 +158,23 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 				combinedScope.newColumn(c)
 				continue
 			}
-			if i < len(srcScope.cols) {
-				combinedScope.newColumn(srcScope.cols[i])
+			if colIdx < len(srcScope.cols) {
+				incomingCol := srcScope.cols[colIdx]
+				if i.OnDupValuesAlias != "" {
+					incomingCol.table = combinedScope.insertTableAlias
+					incomingCol.col = c.col
+					incomingCol.originalCol = c.col
+					incomingCol.typ = c.typ
+					incomingCol.nullable = c.nullable
+				}
+				combinedScope.newColumn(incomingCol)
 			}
 		}
 		b.insertActive = true
 		onDupUpdateExprs = b.assignmentExprsToUpdateExprs(combinedScope, destScope, sch, ast.AssignmentExprs(i.OnDup))
+		if i.OnDupWhere != nil {
+			onDupWhere = b.buildScalar(combinedScope, i.OnDupWhere)
+		}
 		b.insertActive = false
 	}
 
@@ -150,6 +187,19 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	dest := destScope.node
 
 	ins := plan.NewInsertInto(db, plan.NewInsertDestination(sch, dest), srcScope.node, isReplace, columns, onDupUpdateExprs, ignore)
+	ins.OnDupValuesAlias = i.OnDupValuesAlias
+	ins.OnDupWhere = onDupWhere
+	ins.CountOnDuplicateUpdateAsOneRow = i.CountOnDuplicateUpdateAsOneRow
+	ins.IgnoreMode = b.overrides.InsertIgnoreMode
+	if len(i.ConflictTarget) > 0 {
+		ins.IgnoreTarget = make([]string, len(i.ConflictTarget))
+		for idx, column := range i.ConflictTarget {
+			ins.IgnoreTarget[idx] = column.String()
+		}
+		if rt != nil {
+			b.validateInsertIgnoreTarget(rt, ins.IgnoreTarget)
+		}
+	}
 	ins.LiteralValueSource = srcLiteralOnly
 
 	if len(i.Returning) > 0 {
@@ -168,6 +218,60 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	}
 
 	return
+}
+
+// validateInsertIgnoreTarget verifies that the requested columns identify a non-partial unique key.
+func (b *Builder) validateInsertIgnoreTarget(rt *plan.ResolvedTable, target []string) {
+	schema := rt.Schema(b.ctx)
+	for _, column := range target {
+		if schema.IndexOfColName(column) < 0 {
+			b.handleErr(sql.ErrColumnNotFound.New(column))
+		}
+	}
+	var primary []string
+	for _, column := range schema {
+		if column.PrimaryKey {
+			primary = append(primary, column.Name)
+		}
+	}
+	if conflictTargetMatches(target, primary) {
+		return
+	}
+	indexed, ok := sql.GetUnderlyingTable(rt.Table).(sql.IndexAddressableTable)
+	if ok {
+		indexes, err := indexed.GetIndexes(b.ctx)
+		if err != nil {
+			b.handleErr(err)
+		}
+		for _, index := range indexes {
+			if partial, ok := index.(sql.PartialIndex); ok && partial.Predicate() != "" {
+				continue
+			}
+			if index.IsUnique() && conflictTargetMatches(target, index.Expressions()) {
+				return
+			}
+		}
+	}
+	b.handleErr(sql.ErrInsertConflictTarget.New())
+}
+
+// conflictTargetMatches reports whether target names the same columns as the indexed expressions.
+func conflictTargetMatches(target, expressions []string) bool {
+	if len(target) == 0 || len(target) != len(expressions) {
+		return false
+	}
+	wanted := make(map[string]struct{}, len(target))
+	for _, column := range target {
+		wanted[strings.ToLower(column)] = struct{}{}
+	}
+	for _, expression := range expressions {
+		parts := strings.Split(expression, ".")
+		column := strings.Trim(parts[len(parts)-1], "`\"")
+		if _, ok := wanted[strings.ToLower(column)]; !ok {
+			return false
+		}
+	}
+	return true
 }
 
 func (b *Builder) insertRowsToNode(inScope *scope, ir ast.InsertRows, columnNames []string, tableName string, destSchema sql.Schema) (outScope *scope, literalOnly bool) {
@@ -222,7 +326,7 @@ func (b *Builder) buildInsertValues(inScope *scope, v *ast.AliasedValues, column
 		// table error and do not have a schema for resolving defaults
 		triggerUnknownTable := (len(columnNames) == 0 && len(vt) > 0) && (len(b.TriggerCtx().UnresolvedTables) > 0)
 
-		if len(vt) != len(columnNames) && !noExprs && !triggerUnknownTable {
+		if len(vt) != len(columnNames) && !triggerUnknownTable {
 			err := sql.ErrInsertIntoMismatchValueCount.New()
 			b.handleErr(err)
 		}
@@ -302,32 +406,41 @@ func (b *Builder) assignmentExprsToUpdateExprs(inScope, destScope *scope, tableS
 	for i, updateExpr := range e {
 		colName := b.buildScalar(destScope, updateExpr.Name)
 
-		innerExpr := b.buildScalar(inScope, updateExpr.Expr)
+		var innerExpr sql.Expression
 		if gf, ok := colName.(*expression.GetField); ok {
 			colIdx := tableSch.IndexOfColName(gf.Name())
 			// TODO: during trigger parsing the table in the node is unresolved, so we need this additional bounds check
 			//  This means that trigger execution will be able to update generated columns
 
-			// Check if this is a DEFAULT expression for a generated column
-			_, isDefaultExpr := updateExpr.Expr.(*ast.Default)
+			// Bare DEFAULT (no column name of its own, e.g. "SET col = DEFAULT") means "use this
+			// column's own default/generated expression"; buildScalar has no way to resolve that
+			// without knowing which column it's being assigned to, so it's resolved below instead
+			// of being passed through buildScalar. DEFAULT(other_col) is a normal, self-contained
+			// expression and is built normally.
+			astDefault, isDefaultExpr := updateExpr.Expr.(*ast.Default)
+			isDefaultExpr = isDefaultExpr && astDefault.ColName == ""
 
-			// Prevent update of generated columns, but allow DEFAULT
-			if colIdx >= 0 && tableSch[colIdx].Generated != nil && !isDefaultExpr {
-				err := sql.ErrGeneratedColumnValue.New(tableSch[colIdx].Name, inScope.node.(sql.NameableNode).Name())
-				b.handleErr(err)
-			}
-
-			// Replace default with column default from resolved schema
 			if isDefaultExpr {
 				if colIdx >= 0 {
 					// For generated columns, use the generated expression as the default
 					if tableSch[colIdx].Generated != nil {
 						innerExpr = expression.WrapExpression(tableSch[colIdx].Generated)
 					} else {
-						innerExpr = expression.WrapExpression(tableSch[colIdx].Default)
+						var err error
+						innerExpr, err = expression.Default(tableSch[colIdx])
+						if err != nil {
+							b.handleErr(err)
+						}
 					}
 				}
+			} else {
+				if colIdx >= 0 && tableSch[colIdx].Generated != nil {
+					b.handleErr(sql.ErrGeneratedColumnValue.New(tableSch[colIdx].Name, inScope.node.(sql.NameableNode).Name()))
+				}
+				innerExpr = b.buildScalar(inScope, updateExpr.Expr)
 			}
+		} else {
+			b.handleErr(sql.ErrColumnNotFound.New(updateExpr.Name.Name.String()))
 		}
 
 		// In the case of an unknown bindvar, give it a target type of the column it's targeting.
@@ -416,14 +529,7 @@ func (b *Builder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scope) {
 	b.buildWhere(outScope, d.Where)
 	orderByScope := b.analyzeOrderBy(outScope, outScope, d.OrderBy)
 	b.buildOrderBy(outScope, orderByScope)
-	offset := b.buildOffset(outScope, d.Limit)
-	if offset != nil {
-		outScope.node = plan.NewOffset(offset, outScope.node)
-	}
-	limit := b.buildLimit(outScope, d.Limit)
-	if limit != nil {
-		outScope.node = plan.NewLimit(limit, outScope.node)
-	}
+	b.buildLimitAndOffset(outScope, outScope, d.Limit, false)
 
 	if len(d.Targets) > 0 {
 		hasExplicitTargets = true
@@ -489,15 +595,7 @@ func (b *Builder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
 	orderByScope := b.analyzeOrderBy(outScope, b.newScope(), u.OrderBy)
 
 	b.buildOrderBy(outScope, orderByScope)
-	offset := b.buildOffset(outScope, u.Limit)
-	if offset != nil {
-		outScope.node = plan.NewOffset(offset, outScope.node)
-	}
-
-	limit := b.buildLimit(outScope, u.Limit)
-	if limit != nil {
-		outScope.node = plan.NewLimit(limit, outScope.node)
-	}
+	b.buildLimitAndOffset(outScope, outScope, u.Limit, false)
 
 	// TODO comments
 	// If the top level node can store comments and one was provided, store it.

@@ -105,7 +105,7 @@ func (td *Extract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	right, err = types.DatetimeMaxPrecision.ConvertWithoutRangeCheck(ctx, right)
+	right, _, err = types.DatetimeMaxPrecision.Convert(ctx, right)
 	if err != nil {
 		ctx.Warn(1292, "%s", err.Error())
 		return nil, nil

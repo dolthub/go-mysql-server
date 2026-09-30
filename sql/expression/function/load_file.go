@@ -113,34 +113,40 @@ func (l *LoadFile) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 // getFile returns the file handler for the passed in filename. The file must be in the secure_file_priv
 // directory.
 func (l *LoadFile) getFile(ctx *sql.Context, row sql.Row, secureFileDir string) (*os.File, error) {
-	fileName, err := l.fileName.Eval(ctx, row)
+	fileNameVal, err := l.fileName.Eval(ctx, row)
 	if err != nil {
 		return nil, err
+	}
+	if fileNameVal == nil {
+		return nil, nil
+	}
+
+	converted, _, err := types.TypeAwareConversion(ctx, fileNameVal, l.fileName.Type(ctx), types.LongText)
+	if err != nil {
+		return nil, err
+	}
+	if converted == nil {
+		return nil, nil
+	}
+
+	fileName, ok := converted.(string)
+	if !ok {
+		return nil, fmt.Errorf("unexpected type converting %v to string: %T", fileNameVal, converted)
 	}
 
 	// If the secure_file_priv directory is not set, just read the file from whatever directory it is in
 	// Otherwise determine whether the file is in the secure_file_priv directory.
 	if secureFileDir == "" {
-		return os.Open(fileName.(string))
+		return os.Open(fileName)
 	}
 
-	// Open the two directories (secure_file_priv and the file dir) and validate they are the same.
-	sDir, err := os.Open(secureFileDir)
+	// Compare directory identities without retaining open directory handles.
+	sStat, err := os.Stat(secureFileDir)
 	if err != nil {
 		return nil, err
 	}
 
-	sStat, err := sDir.Stat()
-	if err != nil {
-		return nil, err
-	}
-
-	ffDir, err := os.Open(filepath.Dir(fileName.(string)))
-	if err != nil {
-		return nil, err
-	}
-
-	fStat, err := ffDir.Stat()
+	fStat, err := os.Stat(filepath.Dir(fileName))
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +156,7 @@ func (l *LoadFile) getFile(ctx *sql.Context, row sql.Row, secureFileDir string) 
 		return nil, nil
 	}
 
-	return os.Open(fileName.(string))
+	return os.Open(fileName)
 }
 
 // isFileTooBig return the current file size and whether or not it is larger than max_allowed_packet.

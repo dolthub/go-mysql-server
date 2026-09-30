@@ -485,7 +485,7 @@ func (s *Subquery) Describe(ctx *sql.Context, options sql.DescribeOptions) strin
 }
 
 func (s *Subquery) String() string {
-	return fmt.Sprintf("Subquery(%s)", s.QueryString)
+	return fmt.Sprintf("(%s)", s.QueryString)
 }
 
 func (s *Subquery) DebugString(ctx *sql.Context) string {

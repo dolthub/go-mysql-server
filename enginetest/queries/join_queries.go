@@ -1431,6 +1431,54 @@ var JoinScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/11627
+		Name: "HAVING resolves aggregate inputs from separate aliases",
+		SetUpScript: []string{
+			"CREATE TABLE customers (id BIGINT PRIMARY KEY)",
+			"CREATE TABLE orders (id BIGINT PRIMARY KEY, customer_id BIGINT, status VARCHAR(16), total BIGINT)",
+			"INSERT INTO customers VALUES (1)",
+			"INSERT INTO orders VALUES (1, 1, 'paid', 10), (2, 1, 'paid', 20)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "WITH paid AS (SELECT id, customer_id, total FROM orders WHERE status = 'paid') SELECT c.id, COUNT(p1.total) AS total_count, COUNT(p2.id) AS peer_orders FROM customers c JOIN paid p1 ON p1.customer_id = c.id LEFT JOIN paid p2 ON p2.customer_id = c.id AND p2.id <> p1.id GROUP BY c.id HAVING COUNT(p2.id) > 0",
+				Expected: []sql.Row{{int64(1), int64(2), int64(2)}},
+			},
+			{
+				Query:    "SELECT c.id, COUNT(p1.total) AS total_count, COUNT(p2.id) AS peer_orders FROM customers c JOIN orders p1 ON p1.customer_id = c.id LEFT JOIN orders p2 ON p2.customer_id = c.id AND p2.id <> p1.id WHERE p1.status = 'paid' AND p2.status = 'paid' GROUP BY c.id HAVING COUNT(p2.id) > 0",
+				Expected: []sql.Row{{int64(1), int64(2), int64(2)}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11886
+		Name: "Lookup join drops an AND conjunct when the ON clause also has an OR over indexed columns",
+		SetUpScript: []string{
+			"create table deps (id int primary key, type varchar(16), col_a varchar(32), col_b varchar(32), key k_type (type), key k_a (col_a));",
+			"insert into deps values (1, 'keep', 'X', null), (2, 'drop', 'X', null);",
+			"create table r (id varchar(32) primary key);",
+			"insert into r values ('X');",
+			"create table deps_comp (id int primary key, type varchar(16), col_a varchar(32), col_b varchar(32), key k_type_a (type, col_a), key k_type_b (type, col_b));",
+			"insert into deps_comp values (1, 'keep', 'X', null), (2, 'drop', 'X', null), (3, 'keep', null, 'X'), (4, 'drop', null, 'X');",
+			"create table deps_sep (id int primary key, type varchar(16), col_a varchar(32), col_b varchar(32), key k_type (type), key k_a (col_a), key k_b (col_b));",
+			"insert into deps_sep values (1, 'keep', 'X', null), (2, 'drop', 'X', null), (3, 'keep', null, 'X'), (4, 'drop', null, 'X');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select d.id, d.type from r join deps d on d.type = 'keep' and (d.col_a = r.id or d.col_b = r.id) order by d.id;",
+				Expected: []sql.Row{{1, "keep"}},
+			},
+			{
+				Query:    "select d.id, d.type, d.col_a, d.col_b from r join deps_comp d on d.type = 'keep' and (d.col_a = r.id or d.col_b = r.id) order by d.id;",
+				Expected: []sql.Row{{1, "keep", "X", nil}, {3, "keep", nil, "X"}},
+			},
+			{
+				Query:    "select d.id, d.type from r join deps_sep d on d.type = 'keep' and (d.col_a = r.id or d.col_b = r.id) order by d.id;",
+				Expected: []sql.Row{{1, "keep"}, {3, "keep"}},
+			},
+		},
+	},
 }
 
 var LateralJoinScriptTests = []ScriptTest{
@@ -1527,6 +1575,24 @@ var LateralJoinScriptTests = []ScriptTest{
 					{2, 4},
 					{3, 4},
 					{3, 5},
+				},
+			},
+			{
+				// A left lateral join with a trivially true condition must still null-extend
+				// left rows for which the lateral subquery produces no rows.
+				Query: "select * from t left join lateral (select * from t1 where t.i = t1.j) as tt on true order by t.i, tt.j",
+				Expected: []sql.Row{
+					{1, 1},
+					{2, nil},
+					{3, nil},
+				},
+			},
+			{
+				Query: "select * from t left join lateral (select * from t1 where t.i = t1.j) as tt on 1 = 1 order by t.i, tt.j",
+				Expected: []sql.Row{
+					{1, 1},
+					{2, nil},
+					{3, nil},
 				},
 			},
 

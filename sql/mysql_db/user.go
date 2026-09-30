@@ -40,6 +40,8 @@ type User struct {
 	IsSuperUser bool
 	// IsEphemeral is true if this user is ephemeral, meaning it will only exist
 	// for the lifetime of the server process and will not be persisted to disk.
+	// Ephemeral users are not part of the persisted or replicated user set:
+	// Persist skips them and OverwriteUsersAndGrantData leaves them in place.
 	IsEphemeral bool
 
 	SslType     string

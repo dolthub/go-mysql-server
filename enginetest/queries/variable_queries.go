@@ -289,7 +289,7 @@ var VariableQueries = []ScriptTest{
 		},
 		Query: "SELECT @@sql_mode, @@time_zone, @@character_set_client, @@character_set_connection, @@character_set_results",
 		Expected: []sql.Row{
-			{"NO_ENGINE_SUBSTITUTION,PIPES_AS_CONCAT,ANSI", "+00:00", "utf8mb3", "utf8mb3", "utf8mb3"},
+			{"PIPES_AS_CONCAT,ANSI,NO_ENGINE_SUBSTITUTION", "+00:00", "utf8mb3", "utf8mb3", "utf8mb3"},
 		},
 	},
 	{
@@ -339,7 +339,7 @@ var VariableQueries = []ScriptTest{
 		},
 		Query: "SELECT @@sql_mode",
 		Expected: []sql.Row{
-			{"ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION,NO_ZERO_DATE,NO_ZERO_IN_DATE,STRICT_ALL_TABLES,STRICT_TRANS_TABLES,TRADITIONAL"},
+			{"STRICT_TRANS_TABLES,STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,TRADITIONAL,NO_ENGINE_SUBSTITUTION"},
 		},
 	},
 	{
@@ -349,7 +349,7 @@ var VariableQueries = []ScriptTest{
 		},
 		Query: "SELECT @@sql_mode",
 		Expected: []sql.Row{
-			{"NO_AUTO_VALUE_ON_ZERO,NO_ENGINE_SUBSTITUTION,STRICT_TRANS_TABLES"},
+			{"NO_AUTO_VALUE_ON_ZERO,STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION"},
 		},
 	},
 	{

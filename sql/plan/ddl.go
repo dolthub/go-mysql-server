@@ -447,6 +447,10 @@ type DropTable struct {
 	Tables       []sql.Node
 	TriggerNames []string
 	ifExists     bool
+	// Cascade is set for DROP TABLE ... CASCADE statements: objects that depend on the dropped tables should be
+	// dropped along with them. The MySQL dialect parses but ignores CASCADE, so this is only set by integrators
+	// whose dialects give it meaning (e.g. Postgres); the engine itself does not act on it.
+	Cascade bool
 }
 
 var _ sql.Node = (*DropTable)(nil)

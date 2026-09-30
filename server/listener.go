@@ -126,11 +126,12 @@ func NewListener(protocol, address string, unixSocketPath string) (*Listener, er
 }
 
 func (l *Listener) Accept() (net.Conn, error) {
-	cr, ok := <-l.conns
-	if !ok {
+	select {
+	case cr := <-l.conns:
+		return cr.conn, cr.err
+	case <-l.shutdown:
 		return nil, net.ErrClosed
 	}
-	return cr.conn, cr.err
 }
 
 func (l *Listener) Close() error {
@@ -146,7 +147,6 @@ func (l *Listener) Close() error {
 	}
 	l.once.Do(func() {
 		close(l.shutdown)
-		close(l.conns)
 	})
 	return l.eg.Wait()
 }

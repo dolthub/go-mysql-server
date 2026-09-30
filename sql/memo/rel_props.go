@@ -629,7 +629,6 @@ func allTableCols(ctx *sql.Context, rel SourceRel) sql.Schema {
 			DatabaseSource: c.DatabaseSource,
 			PrimaryKey:     c.PrimaryKey,
 			Comment:        c.Comment,
-			Extra:          c.Extra,
 		}
 	}
 	return ret

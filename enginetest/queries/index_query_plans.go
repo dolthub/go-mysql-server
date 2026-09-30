@@ -16369,7 +16369,7 @@ var IndexPlanTests = []QueryPlanTest{
 			"",
 		ExpectedEstimates: "Limit(5)\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [(comp_vector_index_t0.pk + 1) as pk+1]\n" +
+			"     ├─ columns: [(comp_vector_index_t0.pk + 1) as `pk+1`]\n" +
 			"     └─ IndexedTableAccess(comp_vector_index_t0)\n" +
 			"         ├─ index: [comp_vector_index_t0.vector_column]\n" +
 			"         ├─ order: VEC_DISTANCE_L2_SQUARED('[50,50]', comp_vector_index_t0.vector_column) LIMIT 5 (bigint)\n" +
@@ -16377,7 +16377,7 @@ var IndexPlanTests = []QueryPlanTest{
 			"",
 		ExpectedAnalysis: "Limit(5)\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [(comp_vector_index_t0.pk + 1) as pk+1]\n" +
+			"     ├─ columns: [(comp_vector_index_t0.pk + 1) as `pk+1`]\n" +
 			"     └─ IndexedTableAccess(comp_vector_index_t0)\n" +
 			"         ├─ index: [comp_vector_index_t0.vector_column]\n" +
 			"         ├─ order: VEC_DISTANCE_L2_SQUARED('[50,50]', comp_vector_index_t0.vector_column) LIMIT 5 (bigint)\n" +
@@ -16400,7 +16400,7 @@ var IndexPlanTests = []QueryPlanTest{
 			"",
 		ExpectedEstimates: "Limit(5)\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [(comp_vector_index_t0.v1 + 1) as v1+1]\n" +
+			"     ├─ columns: [(comp_vector_index_t0.v1 + 1) as `v1+1`]\n" +
 			"     └─ IndexedTableAccess(comp_vector_index_t0)\n" +
 			"         ├─ index: [comp_vector_index_t0.vector_column]\n" +
 			"         ├─ order: VEC_DISTANCE_L2_SQUARED(comp_vector_index_t0.vector_column, '[50,50]') LIMIT 5 (bigint)\n" +
@@ -16408,7 +16408,7 @@ var IndexPlanTests = []QueryPlanTest{
 			"",
 		ExpectedAnalysis: "Limit(5)\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [(comp_vector_index_t0.v1 + 1) as v1+1]\n" +
+			"     ├─ columns: [(comp_vector_index_t0.v1 + 1) as `v1+1`]\n" +
 			"     └─ IndexedTableAccess(comp_vector_index_t0)\n" +
 			"         ├─ index: [comp_vector_index_t0.vector_column]\n" +
 			"         ├─ order: VEC_DISTANCE_L2_SQUARED(comp_vector_index_t0.vector_column, '[50,50]') LIMIT 5 (bigint)\n" +

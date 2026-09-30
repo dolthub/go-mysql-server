@@ -22,6 +22,17 @@ func replaceIdxOrderByDistanceHelper(ctx *sql.Context, scope *plan.Scope, node s
 		sortNode = n
 	case *plan.Limit:
 		limit = n.Limit
+	case *plan.Offset:
+		// Rows skipped by the offset still need to be produced by the index lookup
+		if limit != nil {
+			limit = expression.NewPlus(limit, n.Offset)
+		}
+	case *plan.Filter:
+		// A filter between the limit and the table means the limit applies to the filtered rows so fetching only the
+		// top rows from the index could return too few, so we fall back to an exact sort
+		if sortNode != nil || limit != nil {
+			return n, transform.SameTree, nil
+		}
 	case *plan.ResolvedTable:
 		if sortNode == nil || limit == nil {
 			return n, transform.SameTree, nil
@@ -30,6 +41,11 @@ func replaceIdxOrderByDistanceHelper(ctx *sql.Context, scope *plan.Scope, node s
 		table := n.UnderlyingTable()
 		idxTbl, ok := table.(sql.IndexAddressableTable)
 		if !ok {
+			return n, transform.SameTree, nil
+		}
+		// A vector index only orders ascending (nearest first), so a descending sort must fall back to an exact sort
+		sortConds := sortNode.GetSortConditions()
+		if len(sortConds) != 1 || sortConds[0].Order != sql.Ascending {
 			return n, transform.SameTree, nil
 		}
 		if indexSearchable, ok := table.(sql.IndexSearchableTable); ok && indexSearchable.SkipIndexCosting() {
@@ -54,39 +70,14 @@ func replaceIdxOrderByDistanceHelper(ctx *sql.Context, scope *plan.Scope, node s
 		sortExprs := normalizeExpressions(ctx, tableAliases, nil, sortNode.GetSortConditions().ToExpressions()...)
 		sortAliases := aliasedExpressionsInNode(sortNode)
 
-		// TODO: Instead of checking both sides of the expression,
-		// use a previous pass to normalize distance functions so
-		// that the literal is always on the same side.
-		if len(sortExprs) != 1 {
-			return n, transform.SameTree, nil
-		}
-		distance, isDistance := sortExprs[0].(*vector.Distance)
+		distance, isDistance := sortExprs[0].(vector.OrderableDistance)
 		if !isDistance {
 			return n, transform.SameTree, nil
 		}
 
-		// We currently require that the query vector to the distance function is a constant value that does not
-		// depend on the row. Right now that can be a Literal or a UserVar.
-		isLiteral := func(e sql.Expression) bool {
-			switch e.(type) {
-			case *expression.Literal, *expression.UserVar:
-				return true
-			}
-			return false
-		}
-
-		var expr sql.Expression
-		var literal sql.Expression
-		if isLiteral(distance.LeftChild) {
-			expr = distance.RightChild
-			literal = distance.LeftChild
-		} else {
-			if isLiteral(distance.RightChild) {
-				expr = distance.LeftChild
-				literal = distance.RightChild
-			} else {
-				return n, transform.SameTree, nil
-			}
+		expr, literal, ok := distance.TargetAndQuery()
+		if !ok {
+			return n, transform.SameTree, nil
 		}
 
 		for _, idxCandidate := range idxs {

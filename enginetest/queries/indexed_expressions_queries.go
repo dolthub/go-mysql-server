@@ -660,7 +660,7 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 				Expected: []sql.Row{
 					{"pk", "int", "NO", "PRI", nil, ""},
 					{"c1", "int", "YES", "", nil, ""},
-					{"!hidden!idx1!0!0", "bigint", "YES", "UNI", nil, ""},
+					{"!hidden!idx1!0!0", "bigint", "YES", "UNI", nil, "VIRTUAL GENERATED"},
 				},
 			},
 			{
@@ -702,7 +702,7 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 				Expected: []sql.Row{
 					{"pk", "int", "NO", "PRI", nil, ""},
 					{"c1", "int", "YES", "", nil, ""},
-					{"!hidden!idx1!0!0", "bigint", "YES", "MUL", nil, ""},
+					{"!hidden!idx1!0!0", "bigint", "YES", "MUL", nil, "VIRTUAL GENERATED"},
 				},
 			},
 			{
@@ -766,7 +766,7 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 				Expected: []sql.Row{
 					{"pk", "int", "NO", "PRI", nil, ""},
 					{"c1", "int", "YES", "", nil, ""},
-					{"!hidden!idx1!0!0", "bigint", "YES", "UNI", nil, ""},
+					{"!hidden!idx1!0!0", "bigint", "YES", "UNI", nil, "VIRTUAL GENERATED"},
 				},
 			},
 			{
@@ -848,7 +848,7 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 					{"pk", "int", "NO", "PRI", nil, ""},
 					{"c1", "int", "YES", "", nil, ""},
 					{"c2", "varchar(100)", "YES", "", nil, ""},
-					{"!hidden!idx1!0!0", "bigint", "YES", "UNI", nil, ""},
+					{"!hidden!idx1!0!0", "bigint", "YES", "UNI", nil, "VIRTUAL GENERATED"},
 				},
 			},
 		},
@@ -1410,8 +1410,8 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 					{"age", "int", "YES", "", nil, ""},
 					{"c1", "int", "YES", "", nil, ""},
 					{"c2", "int", "YES", "", nil, ""},
-					{"!hidden!idx1!0!0", "varchar(100)", "YES", "MUL", nil, ""},
-					{"!hidden!idx1!2!0", "bigint", "YES", "", nil, ""},
+					{"!hidden!idx1!0!0", "varchar(100)", "YES", "MUL", nil, "VIRTUAL GENERATED"},
+					{"!hidden!idx1!2!0", "bigint", "YES", "", nil, "VIRTUAL GENERATED"},
 				},
 			},
 			{
@@ -1445,8 +1445,8 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 					{"age", "int", "YES", "", nil, ""},
 					{"c1", "int", "YES", "", nil, ""},
 					{"c2", "int", "YES", "", nil, ""},
-					{"!hidden!idx1!0!0", "varchar(100)", "YES", "MUL", nil, ""},
-					{"!hidden!idx1!2!0", "bigint", "YES", "", nil, ""},
+					{"!hidden!idx1!0!0", "varchar(100)", "YES", "MUL", nil, "VIRTUAL GENERATED"},
+					{"!hidden!idx1!2!0", "bigint", "YES", "", nil, "VIRTUAL GENERATED"},
 				},
 			},
 			{
@@ -1476,8 +1476,8 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 					{"c1", "int", "YES", "", nil, ""},
 					{"c2", "int", "YES", "", nil, ""},
 					{"c3", "int", "YES", "", nil, ""},
-					{"!hidden!idx1!0!0", "bigint", "YES", "MUL", nil, ""},
-					{"!hidden!idx1!2!0", "bigint", "YES", "", nil, ""},
+					{"!hidden!idx1!0!0", "bigint", "YES", "MUL", nil, "VIRTUAL GENERATED"},
+					{"!hidden!idx1!2!0", "bigint", "YES", "", nil, "VIRTUAL GENERATED"},
 				},
 			},
 			{
@@ -1526,9 +1526,9 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 					{"c1", "int", "YES", "", nil, ""},
 					{"c2", "int", "YES", "", nil, ""},
 					{"c3", "int", "YES", "", nil, ""},
-					{"!hidden!idx2!0!0", "bigint", "YES", "MUL", nil, ""},
-					{"!hidden!idx1!0!0", "bigint", "YES", "MUL", nil, ""},
-					{"!hidden!idx1!2!0", "bigint", "YES", "", nil, ""},
+					{"!hidden!idx2!0!0", "bigint", "YES", "MUL", nil, "VIRTUAL GENERATED"},
+					{"!hidden!idx1!0!0", "bigint", "YES", "MUL", nil, "VIRTUAL GENERATED"},
+					{"!hidden!idx1!2!0", "bigint", "YES", "", nil, "VIRTUAL GENERATED"},
 				},
 			},
 			{
@@ -1543,7 +1543,7 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 					{"c1", "int", "YES", "", nil, ""},
 					{"c2", "int", "YES", "", nil, ""},
 					{"c3", "int", "YES", "", nil, ""},
-					{"!hidden!idx2!0!0", "bigint", "YES", "MUL", nil, ""},
+					{"!hidden!idx2!0!0", "bigint", "YES", "MUL", nil, "VIRTUAL GENERATED"},
 				},
 			},
 			{
@@ -1681,10 +1681,10 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 			{
 				Query: "SHOW INDEX FROM test;",
 				Expected: []sql.Row{
-					{"test", 0, "PRIMARY", 1, "pk", nil, int64(0), nil, nil, "", "BTREE", "", "", "YES", nil},
-					{"test", 1, "idx1", 1, nil, nil, int64(0), nil, nil, "", "BTREE", "", "", "YES", "(coalesce(c1,0))"},
-					{"test", 1, "idx1", 2, "c2", nil, int64(0), nil, nil, "YES", "BTREE", "", "", "YES", nil},
-					{"test", 1, "idx1", 3, nil, nil, int64(0), nil, nil, "", "BTREE", "", "", "YES", "(coalesce(c3,0))"},
+					{"test", 0, "PRIMARY", 1, "pk", "A", int64(0), nil, nil, "", "BTREE", "", "", "YES", nil},
+					{"test", 1, "idx1", 1, nil, "A", int64(0), nil, nil, "", "BTREE", "", "", "YES", "(coalesce(c1,0))"},
+					{"test", 1, "idx1", 2, "c2", "A", int64(0), nil, nil, "YES", "BTREE", "", "", "YES", nil},
+					{"test", 1, "idx1", 3, nil, "A", int64(0), nil, nil, "", "BTREE", "", "", "YES", "(coalesce(c3,0))"},
 				},
 			},
 		},

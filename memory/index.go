@@ -30,7 +30,7 @@ const CommentPreventingIndexBuilding = "__FOR TESTING: I cannot be built__"
 type Index struct {
 	// If SupportedVectorFunction is non-nil, this index can be used to optimize ORDER BY
 	// expressions on this type of distance function.
-	SupportedVectorFunction vector.DistanceType
+	SupportedVectorFunction sql.DistanceType
 
 	Tbl        *Table // required for engine tests with driver
 	DriverName string // required for engine tests with driver
@@ -41,6 +41,7 @@ type Index struct {
 
 	Exprs      []sql.Expression
 	PrefixLens []uint16
+	ColOrders  []sql.IndexColumnOrder
 	fulltextInfo
 	Unique   bool
 	Spatial  bool
@@ -58,6 +59,7 @@ type fulltextInfo struct {
 var _ sql.Index = (*Index)(nil)
 var _ sql.FilteredIndex = (*Index)(nil)
 var _ sql.OrderedIndex = (*Index)(nil)
+var _ sql.ColumnOrderedIndex = (*Index)(nil)
 var _ sql.ExtendedIndex = (*Index)(nil)
 var _ fulltext.Index = (*Index)(nil)
 
@@ -132,8 +134,8 @@ func (idx *Index) CanSupportOrderBy(expr sql.Expression) bool {
 	if idx.SupportedVectorFunction == nil {
 		return false
 	}
-	dist, isDist := expr.(*vector.Distance)
-	return isDist && idx.SupportedVectorFunction.CanEval(dist.DistanceType)
+	dist, isDist := expr.(vector.OrderableDistance)
+	return isDist && idx.SupportedVectorFunction.CanEval(dist.DistanceMetric())
 }
 
 func (idx *Index) Comment() string {
@@ -300,8 +302,23 @@ func (idx *Index) Order(ctx *sql.Context) sql.IndexOrder {
 	if len(idx.contentHashedFields(ctx)) > 0 {
 		return sql.IndexOrderNone
 	}
+	for _, order := range idx.ColumnOrders(ctx) {
+		if order.Descending {
+			return sql.IndexOrderNone
+		}
+	}
 
 	return sql.IndexOrderAsc
+}
+
+// ColumnOrders implements sql.ColumnOrderedIndex.
+func (idx *Index) ColumnOrders(ctx *sql.Context) []sql.IndexColumnOrder {
+	for _, order := range idx.ColOrders {
+		if order.Descending || order.NullsLast {
+			return idx.ColOrders
+		}
+	}
+	return nil
 }
 
 func (idx *Index) Reversible(ctx *sql.Context) bool {

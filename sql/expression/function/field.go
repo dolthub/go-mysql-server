@@ -56,15 +56,7 @@ func (f *Field) Type(ctx *sql.Context) sql.Type {
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (f *Field) CollationCoercibility(ctx *sql.Context) (sql.CollationID, byte) {
-	if len(f.args) == 0 {
-		return sql.Collation_binary, 6
-	}
-	collation, coercibility := sql.GetCoercibility(ctx, f.args[0])
-	for i := 1; i < len(f.args); i++ {
-		nextCollation, nextCoercibility := sql.GetCoercibility(ctx, f.args[i])
-		collation, coercibility = sql.ResolveCoercibility(collation, coercibility, nextCollation, nextCoercibility)
-	}
-	return collation, coercibility
+	return sql.ResolveCoercibilityExpressions(ctx, f.args...)
 }
 
 // IsNullable implements the Expression interface.

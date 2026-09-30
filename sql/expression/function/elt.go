@@ -56,15 +56,7 @@ func (e *Elt) Type(ctx *sql.Context) sql.Type {
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (e *Elt) CollationCoercibility(ctx *sql.Context) (sql.CollationID, byte) {
-	if len(e.args) == 0 {
-		return sql.Collation_binary, 6
-	}
-	collation, coercibility := sql.GetCoercibility(ctx, e.args[0])
-	for i := 1; i < len(e.args); i++ {
-		nextCollation, nextCoercibility := sql.GetCoercibility(ctx, e.args[i])
-		collation, coercibility = sql.ResolveCoercibility(collation, coercibility, nextCollation, nextCoercibility)
-	}
-	return collation, coercibility
+	return sql.ResolveCoercibilityExpressions(ctx, e.args...)
 }
 
 // IsNullable implements the Expression interface.
@@ -103,27 +95,12 @@ func (e *Elt) Children() []sql.Expression {
 
 // Eval implements the Expression interface.
 func (e *Elt) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	if e.args[0] == nil {
-		return nil, nil
-	}
-
-	index, err := e.args[0].Eval(ctx, row)
-	if err != nil {
+	indexInt, ok, err := evalInt64(ctx, e.args[0], row)
+	if err != nil || !ok {
 		return nil, err
 	}
 
-	if index == nil {
-		return nil, nil
-	}
-
-	indexInt, _, err := types.Int64.Convert(ctx, index)
-	if err != nil {
-		// TODO: truncate
-		ctx.Warn(1292, "Truncated incorrect INTEGER value: '%v'", index)
-		indexInt = int64(0)
-	}
-
-	idx := int(indexInt.(int64))
+	idx := int(indexInt)
 	if idx <= 0 || idx >= len(e.args) {
 		return nil, nil
 	}

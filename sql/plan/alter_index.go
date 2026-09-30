@@ -22,6 +22,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/vector"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -74,6 +75,12 @@ type AlterIndex struct {
 	DisableKeys bool
 	// Predicate is the WHERE clause expression for partial indexes. May be nil.
 	Predicate sql.Expression
+	// VectorProperties are the vector-index-specific properties when creating a vector index.
+	VectorProperties sql.VectorProperties
+	// VectorAccessMethod is the integrator's access method name of a vector index. The engine does not interpret it.
+	VectorAccessMethod string
+	// VectorOpClass is the integrator's operator class name of a vector index. The engine does not interpret it.
+	VectorOpClass string
 }
 
 var _ sql.SchemaTarget = (*AlterIndex)(nil)
@@ -245,6 +252,9 @@ func (p *AlterIndex) String() string {
 			children = append(children, "Constraint(FULLTEXT)")
 		case sql.IndexConstraint_Vector:
 			children = append(children, "Constraint(VECTOR)")
+			if p.VectorProperties.DistanceType != nil && p.VectorProperties.DistanceType != (vector.DistanceL2Squared{}) {
+				children = append(children, fmt.Sprintf("DistanceType(%s)", p.VectorProperties.DistanceType))
+			}
 		}
 		switch p.Using {
 		case sql.IndexUsing_BTree, sql.IndexUsing_Default:

@@ -73,6 +73,9 @@ func (t *AbsVal) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 	case int64:
 		if x < 0 {
+			if x == math.MinInt64 {
+				return nil, sql.ErrValueOutOfRange.New("BIGINT", t.FunctionName())
+			}
 			return -x, nil
 		} else {
 			return x, nil
@@ -112,7 +115,7 @@ func (t *AbsVal) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 		return 0, nil
 	default:
-		v, _, err := types.Float64.Convert(ctx, val)
+		v, _, err := types.TypeAwareConversion(ctx, val, t.Child.Type(ctx), types.Float64)
 		if err != nil {
 			if !sql.ErrTruncatedIncorrect.Is(err) {
 				return nil, err

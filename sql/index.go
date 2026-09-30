@@ -27,7 +27,38 @@ type IndexDef struct {
 	Storage    IndexUsing
 	// Predicate is the WHERE clause expression for partial indexes. May be nil.
 	Predicate Expression
+	// VectorProperties are the vector-index-specific properties of the index. Only set when Constraint is IndexConstraint_Vector.
+	VectorProperties VectorProperties
 }
+
+// DistanceType is a vector distance metric. It measures the distance between two vectors, where a smaller result means
+// the vectors are more similar.
+type DistanceType interface {
+	String() string
+	// Eval returns the distance between the two given vectors
+	Eval(left []float32, right []float32) (float64, error)
+	// CanEval returns whether an index ordered by this metric also orders by the given metric
+	CanEval(distanceType DistanceType) bool
+	FunctionName() string
+	Description() string
+}
+
+// VectorProperties are the vector-index-specific properties of an index definition
+type VectorProperties struct {
+	// DistanceType is the distance metric that the index orders by. When nil, integrators default to squared L2 distance.
+	DistanceType DistanceType
+}
+
+// VectorDistanceTypeOptionName is the index option that specifies the distance metric of a vector index.
+const VectorDistanceTypeOptionName = "vector_distance_type"
+
+// VectorAccessMethodOptionName is the index option that carries the integrator's access method name of a vector index.
+// The engine does not interpret it.
+const VectorAccessMethodOptionName = "vector_access_method"
+
+// VectorOpClassOptionName is the index option that carries the integrator's' operator class name of a vector index. The
+// engine does not interpret it.
+const VectorOpClassOptionName = "vector_opclass"
 
 func (i *IndexDef) String() string {
 	return i.Name
@@ -60,6 +91,34 @@ func (i *IndexDef) ColumnNames() []string {
 		colNames[i] = col.Name
 	}
 	return colNames
+}
+
+// ColumnOrders returns the sort order of each column, or nil when every column uses the default order.
+func (i *IndexDef) ColumnOrders() []IndexColumnOrder {
+	var orders []IndexColumnOrder
+	for j, col := range i.Columns {
+		if col.Order != nil && *col.Order != (IndexColumnOrder{}) {
+			if orders == nil {
+				orders = make([]IndexColumnOrder, len(i.Columns))
+			}
+			orders[j] = *col.Order
+		}
+	}
+	return orders
+}
+
+// OpClasses returns the operator class of each column, or nil when no column names one.
+func (i *IndexDef) OpClasses() []string {
+	var opClasses []string
+	for j, col := range i.Columns {
+		if col.OpClass != "" {
+			if opClasses == nil {
+				opClasses = make([]string, len(i.Columns))
+			}
+			opClasses[j] = col.OpClass
+		}
+	}
+	return opClasses
 }
 
 type IndexDefs []*IndexDef
@@ -123,6 +182,16 @@ type IndexColumn struct {
 	// Expression is an indexed functional expression. When this field is set, the Name
 	// field is empty.
 	Expression Expression
+	// Order is the sort order of the column, or nil when the column uses the default order.
+	Order *IndexColumnOrder
+	// OpClass is the integrator's operator class name for the column. The engine does not interpret it.
+	OpClass string
+}
+
+// IndexColumnOrder is the physical sort order of one index column. The zero value is ascending with NULLs first.
+type IndexColumnOrder struct {
+	Descending bool
+	NullsLast  bool
 }
 
 // IndexConstraint represents any constraints that should be applied to the index.
@@ -332,6 +401,34 @@ type OrderedIndex interface {
 	Order(ctx *Context) IndexOrder
 	// Reversible returns whether or not this index can be iterated on backwards
 	Reversible(ctx *Context) bool
+}
+
+// ColumnOrderedIndex is an OrderedIndex whose columns may each be stored in their own order. Order still describes the
+// index as a whole: it returns IndexOrderNone when a descending column leaves the index without a single order, so that
+// consumers that only understand OrderedIndex treat the index as unordered. Placing NULLs last keeps the values
+// ascending, which is all those consumers rely on. Reversible keeps its meaning, a reverse scan returns every column
+// in the opposite of its stored order.
+type ColumnOrderedIndex interface {
+	OrderedIndex
+	// ColumnOrders returns the sort order each column was defined with. It returns nil when no column was given one,
+	// or when the index is unordered.
+	ColumnOrders(ctx *Context) []IndexColumnOrder
+}
+
+// IndexColumnOrders returns the sort order each column of the index was defined with, or nil when no column was given
+// one or the index does not report them.
+func IndexColumnOrders(ctx *Context, idx Index) []IndexColumnOrder {
+	if colOrdIdx, ok := idx.(ColumnOrderedIndex); ok {
+		return colOrdIdx.ColumnOrders(ctx)
+	}
+	return nil
+}
+
+// OpClassIndex is an Index whose columns may each name an operator class, which the engine does not interpret.
+type OpClassIndex interface {
+	Index
+	// OpClasses returns the operator class of each column, or nil when no column names one.
+	OpClasses() []string
 }
 
 // ColumnExpressionType returns a column expression along with its Type.

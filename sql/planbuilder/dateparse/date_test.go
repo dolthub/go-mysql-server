@@ -32,14 +32,16 @@ func TestParseDate(t *testing.T) {
 
 		{"time_only", "22:23:00", "%H:%i:%s", time.Date(-1, time.November, 30, 22, 23, 0, 0, time.UTC)},
 		{"with_time", "Sep 3, 22:23:00 2000", "%b %e, %H:%i:%s %Y", time.Date(2000, time.September, 3, 22, 23, 0, 0, time.UTC)},
-		{"with_pm", "May 3, 10:23:00 PM 2000", "%b %e, %h:%i:%s %p %Y", time.Date(2000, time.May, 3, 10, 23, 0, 0, time.UTC)},
-		{"lowercase_pm", "Jul 3, 10:23:00 pm 2000", "%b %e, %h:%i:%s %p %Y", time.Date(2000, time.July, 3, 10, 23, 0, 0, time.UTC)},
+		{"with_pm", "May 3, 10:23:00 PM 2000", "%b %e, %h:%i:%s %p %Y", time.Date(2000, time.May, 3, 22, 23, 0, 0, time.UTC)},
+		{"lowercase_pm", "Jul 3, 10:23:00 pm 2000", "%b %e, %h:%i:%s %p %Y", time.Date(2000, time.July, 3, 22, 23, 0, 0, time.UTC)},
 		{"with_am", "Mar 3, 10:23:00 am 2000", "%b %e, %h:%i:%s %p %Y", time.Date(2000, time.March, 3, 10, 23, 0, 0, time.UTC)},
+		{"midnight", "12:00 AM", "%h:%i %p", time.Date(-1, time.November, 30, 0, 0, 0, 0, time.UTC)},
+		{"noon", "12:00 PM", "%h:%i %p", time.Date(-1, time.November, 30, 12, 0, 0, 0, time.UTC)},
 
-		{"month_number", "1 3, 10:23:00 pm 2000", "%c %e, %h:%i:%s %p %Y", time.Date(2000, time.January, 3, 10, 23, 0, 0, time.UTC)},
+		{"month_number", "1 3, 10:23:00 pm 2000", "%c %e, %h:%i:%s %p %Y", time.Date(2000, time.January, 3, 22, 23, 0, 0, time.UTC)},
 
-		{"day_with_suffix", "Jun 3rd, 10:23:00 pm 2000", "%b %D, %h:%i:%s %p %Y", time.Date(2000, time.June, 3, 10, 23, 0, 0, time.UTC)},
-		{"day_with_suffix_2", "Oct 21st, 10:23:00 pm 2000", "%b %D, %h:%i:%s %p %Y", time.Date(2000, time.October, 21, 10, 23, 0, 0, time.UTC)},
+		{"day_with_suffix", "Jun 3rd, 10:23:00 pm 2000", "%b %D, %h:%i:%s %p %Y", time.Date(2000, time.June, 3, 22, 23, 0, 0, time.UTC)},
+		{"day_with_suffix_2", "Oct 21st, 10:23:00 pm 2000", "%b %D, %h:%i:%s %p %Y", time.Date(2000, time.October, 21, 22, 23, 0, 0, time.UTC)},
 		{"with_timestamp", "01/02/2003, 12:13:14", "%c/%d/%Y, %T", time.Date(2003, time.January, 2, 12, 13, 14, 0, time.UTC)},
 
 		{"month_number", "03: 3, 20", "%m: %e, %y", time.Date(2020, time.March, 3, 0, 0, 0, 0, time.UTC)},
@@ -52,7 +54,7 @@ func TestParseDate(t *testing.T) {
 		{"hour_number", "01/02/99 5:14", "%m/%e/%y %h:%i", time.Date(1999, time.January, 2, 5, 14, 0, 0, time.UTC)},
 		{"hour_number_2", "01/02/99 5:14", "%m/%e/%y %I:%i", time.Date(1999, time.January, 2, 5, 14, 0, 0, time.UTC)},
 
-		{"timestamp", "01/02/99 05:14:12 PM", "%m/%e/%y %r", time.Date(1999, time.January, 2, 5, 14, 12, 0, time.UTC)},
+		{"timestamp", "01/02/99 05:14:12 PM", "%m/%e/%y %r", time.Date(1999, time.January, 2, 17, 14, 12, 0, time.UTC)},
 		{"date_with_seconds", "01/02/99 57", "%m/%e/%y %S", time.Date(1999, time.January, 2, 0, 0, 57, 0, time.UTC)},
 
 		{"date_by_year_offset", "100 20", "%j %y", time.Date(2020, time.April, 9, 0, 0, 0, 0, time.UTC)},

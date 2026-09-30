@@ -26,6 +26,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/vector"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -273,7 +274,9 @@ func (b *Builder) buildDropTable(inScope *scope, c *ast.DDL) (outScope *scope) {
 		}
 	}
 
-	outScope.node = plan.NewDropTable(dropTables, c.IfExists)
+	dropTable := plan.NewDropTable(dropTables, c.IfExists)
+	dropTable.Cascade = c.Cascade
+	outScope.node = dropTable
 	return
 }
 
@@ -415,10 +418,15 @@ func (b *Builder) getIndexDefs(table sql.Table) sql.IndexDefs {
 			}
 		}
 		exprs := idx.Expressions()
+		orders := sql.IndexColumnOrders(b.ctx, idx)
 		columns := make([]sql.IndexColumn, len(exprs))
 		for i, col := range exprs {
 			col = col[strings.IndexByte(col, '.')+1:]
 			columns[i] = sql.IndexColumn{Name: col}
+			if i < len(orders) {
+				order := orders[i]
+				columns[i].Order = &order
+			}
 		}
 		idxDefs = append(idxDefs, &sql.IndexDef{
 			Name:       idx.ID(),
@@ -622,6 +630,10 @@ func (b *Builder) buildAlterTableClause(inScope *scope, ddl *ast.DDL) []*scope {
 		}
 
 		if ddl.ColumnAction != "" {
+			// If this is ADD COLUMN IF NOT EXISTS, skip if it exists
+			if ddl.IfNotExists && strings.ToLower(ddl.ColumnAction) == ast.AddStr && rt.Schema(b.ctx).Contains(ddl.TableSpec.Columns[0].Name.String(), rt.Name()) {
+				return nil
+			}
 			columnActionOutscope := b.buildAlterTableColumnAction(tableScope, ddl, rt)
 			outScopes = append(outScopes, columnActionOutscope.copy(b.ctx))
 
@@ -714,6 +726,7 @@ func (b *Builder) buildAlterTableColumnAction(inScope *scope, ddl *ast.DDL, tabl
 		outScope.node = plan.NewAddColumnResolved(table, *sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder))
 	case ast.DropStr:
 		drop := plan.NewDropColumnResolved(table, ddl.Column.String())
+		drop.Cascade = ddl.Cascade
 		checks := b.loadChecksFromTable(outScope, table.Table)
 		outScope.node = drop.WithChecks(checks)
 	case ast.RenameStr:
@@ -916,17 +929,25 @@ func (b *Builder) buildIndexDefs(inScope *scope, spec *ast.TableSpec) (idxDefs s
 		columns := b.gatherIndexColumns(inScope, idxDef.Fields)
 
 		var comment string
+		var vectorProps sql.VectorProperties
 		for _, option := range idxDef.Options {
-			if strings.ToLower(option.Name) == strings.ToLower(ast.KeywordString(ast.COMMENT_KEYWORD)) {
+			optionName := strings.ToLower(option.Name)
+			if optionName == strings.ToLower(ast.KeywordString(ast.COMMENT_KEYWORD)) {
 				comment = string(option.Value.Val)
+			} else if optionName == sql.VectorDistanceTypeOptionName {
+				vectorProps.DistanceType = b.buildVectorDistanceType(string(option.Value.Val))
 			}
 		}
+		if constraint == sql.IndexConstraint_Vector && vectorProps.DistanceType == nil {
+			vectorProps.DistanceType = vector.DistanceL2Squared{}
+		}
 		idxDefs = append(idxDefs, &sql.IndexDef{
-			Name:       idxDef.Info.Name.String(),
-			Storage:    sql.IndexUsing_Default, // TODO: add vitess support for USING
-			Constraint: constraint,
-			Columns:    columns,
-			Comment:    comment,
+			Name:             idxDef.Info.Name.String(),
+			Storage:          sql.IndexUsing_Default, // TODO: add vitess support for USING
+			Constraint:       constraint,
+			Columns:          columns,
+			Comment:          comment,
+			VectorProperties: vectorProps,
 		})
 	}
 
@@ -1064,10 +1085,22 @@ func (b *Builder) buildAlterIndex(inScope *scope, ddl *ast.DDL, table *plan.Reso
 		columns := b.gatherIndexColumns(inScope, ddl.IndexSpec.Fields)
 
 		var comment string
+		var vectorProps sql.VectorProperties
+		var vectorAccessMethod, vectorOpClass string
 		for _, option := range ddl.IndexSpec.Options {
-			if strings.ToLower(option.Name) == strings.ToLower(ast.KeywordString(ast.COMMENT_KEYWORD)) {
+			optionName := strings.ToLower(option.Name)
+			if optionName == strings.ToLower(ast.KeywordString(ast.COMMENT_KEYWORD)) {
 				comment = string(option.Value.Val)
+			} else if optionName == sql.VectorDistanceTypeOptionName {
+				vectorProps.DistanceType = b.buildVectorDistanceType(string(option.Value.Val))
+			} else if optionName == sql.VectorAccessMethodOptionName {
+				vectorAccessMethod = string(option.Value.Val)
+			} else if optionName == sql.VectorOpClassOptionName {
+				vectorOpClass = string(option.Value.Val)
 			}
+		}
+		if constraint == sql.IndexConstraint_Vector && vectorProps.DistanceType == nil {
+			vectorProps.DistanceType = vector.DistanceL2Squared{}
 		}
 
 		var predicate sql.Expression
@@ -1097,6 +1130,9 @@ func (b *Builder) buildAlterIndex(inScope *scope, ddl *ast.DDL, table *plan.Reso
 			comment,
 			predicate,
 		)
+		createIndex.VectorProperties = vectorProps
+		createIndex.VectorAccessMethod = vectorAccessMethod
+		createIndex.VectorOpClass = vectorOpClass
 		outScope.node = b.modifySchemaTarget(inScope, createIndex, table.Schema(b.ctx))
 		return
 	case ast.DropStr:
@@ -1120,6 +1156,24 @@ func (b *Builder) buildAlterIndex(inScope *scope, ddl *ast.DDL, table *plan.Reso
 		b.handleErr(err)
 	}
 	return
+}
+
+// buildVectorDistanceType resolves the value of the "vector_distance_type" index option into a vector distance metric,
+// erroring on unknown names.
+func (b *Builder) buildVectorDistanceType(name string) sql.DistanceType {
+	for _, distanceType := range []sql.DistanceType{
+		vector.DistanceL2Squared{},
+		vector.DistanceEuclidean{},
+		vector.DistanceCosine{},
+		vector.DistanceInnerProduct{},
+		vector.DistanceL1{},
+	} {
+		if strings.EqualFold(name, distanceType.String()) {
+			return distanceType
+		}
+	}
+	b.handleErr(fmt.Errorf("unknown vector index distance type: %s", name))
+	return nil
 }
 
 // gatherIndexColumns converts a slice of AST index column definitions into
@@ -1149,10 +1203,20 @@ func (b *Builder) gatherIndexColumns(inScope *scope, idxFields []*ast.IndexField
 			expr = b.buildScalar(inScope, col.Expression)
 		}
 
+		var order *sql.IndexColumnOrder
+		if col.Order == ast.DescScr || col.NullsOrder != "" {
+			descending := col.Order == ast.DescScr
+			order = &sql.IndexColumnOrder{Descending: descending, NullsLast: descending}
+			if col.NullsOrder != "" {
+				order.NullsLast = col.NullsOrder == ast.NullsLastStr
+			}
+		}
 		out[i] = sql.IndexColumn{
 			Name:       col.Column.String(),
 			Expression: expr,
 			Length:     length,
+			Order:      order,
+			OpClass:    col.OpClass,
 		}
 	}
 	return out
@@ -1677,11 +1741,6 @@ func (b *Builder) columnDefinitionToColumn(inScope *scope, cd *ast.ColumnDefinit
 	}
 
 	nullable := !isPkey && !bool(cd.Type.NotNull)
-	extra := ""
-
-	if cd.Type.Autoincrement {
-		extra = "auto_increment"
-	}
 
 	if cd.Type.SRID != nil {
 		sridVal, err := strconv.ParseInt(string(cd.Type.SRID.Val), 10, 32)
@@ -1706,7 +1765,7 @@ func (b *Builder) columnDefinitionToColumn(inScope *scope, cd *ast.ColumnDefinit
 		Nullable:      nullable && !bool(cd.Type.Autoincrement),
 		PrimaryKey:    isPkey,
 		Comment:       comment,
-		Extra:         extra,
+		Hidden:        bool(cd.Type.Invisible),
 	}
 }
 

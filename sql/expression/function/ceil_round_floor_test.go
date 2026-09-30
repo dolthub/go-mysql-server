@@ -17,6 +17,7 @@ package function
 import (
 	"testing"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
 
@@ -24,6 +25,25 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
+
+// TestCeilAndFloorDoNotMutateDecimalInput verifies rounding expressions leave shared decimal values unchanged.
+func TestCeilAndFloorDoNotMutateDecimalInput(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	decimalType := types.MustCreateDecimalType(10, 2)
+	input := apd.New(1234, -2)
+	row := sql.NewRow(input)
+	field := expression.NewGetField(0, decimalType, "", false)
+
+	ceilResult, err := NewCeil(ctx, field).Eval(ctx, row)
+	require.NoError(t, err)
+	require.Equal(t, int64(13), ceilResult)
+	require.Equal(t, "12.34", input.String())
+
+	floorResult, err := NewFloor(ctx, field).Eval(ctx, row)
+	require.NoError(t, err)
+	require.Equal(t, int64(12), floorResult)
+	require.Equal(t, "12.34", input.String())
+}
 
 func TestCeil(t *testing.T) {
 	testCases := []struct {

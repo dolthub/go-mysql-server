@@ -1,6 +1,7 @@
 package queries
 
 import (
+	"math"
 	"time"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -94,6 +95,7 @@ var PreparedScriptTests = []ScriptTest{
 			"set @a = 1",
 			"set @b = 100",
 			"set @c = 'abc'",
+			"set @schema = 'reserved name'",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -135,6 +137,12 @@ var PreparedScriptTests = []ScriptTest{
 				},
 			},
 			{
+				Query: "execute s using @schema",
+				Expected: []sql.Row{
+					{"reserved name"},
+				},
+			},
+			{
 				Query: "deallocate prepare s",
 				Expected: []sql.Row{
 					{types.OkResult{}},
@@ -164,7 +172,7 @@ var PreparedScriptTests = []ScriptTest{
 			{
 				Query: "execute s using @d;",
 				Expected: []sql.Row{
-					{"2001-02-03"},
+					{time.Date(2001, time.February, 3, 0, 0, 0, 0, time.UTC)},
 				},
 			},
 			{
@@ -229,6 +237,28 @@ var PreparedScriptTests = []ScriptTest{
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/11411
+		Name: "prepared unsigned BIGINT arithmetic rejects overflow",
+		// MySQL-only: PostgreSQL does not support unsigned integer types.
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE prepared_integer_bounds (id INT PRIMARY KEY, u BIGINT UNSIGNED)",
+			"INSERT INTO prepared_integer_bounds VALUES (1, 18446744073709551615)",
+			"SET @zero = 0, @one = 1",
+			"PREPARE add_to_unsigned FROM 'SELECT u + ? FROM prepared_integer_bounds'",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "EXECUTE add_to_unsigned USING @zero",
+				Expected: []sql.Row{{uint64(math.MaxUint64)}},
+			},
+			{
+				Query:       "EXECUTE add_to_unsigned USING @one",
+				ExpectedErr: sql.ErrIntegerOutOfRange,
+			},
+		},
+	},
+	{
 		Name: "prepare with decimal type binding",
 		SetUpScript: []string{
 			"create table t (d decimal);",
@@ -238,7 +268,6 @@ var PreparedScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Skip:  true,
 				Query: "execute s using @d;",
 				Expected: []sql.Row{
 					{"123.45"},
@@ -259,6 +288,19 @@ var PreparedScriptTests = []ScriptTest{
 					{"123.45"},
 				},
 			},
+		},
+	},
+	// https://github.com/dolthub/dolt/issues/4989
+	{
+		Name: "Test invalid binary decimal parameters",
+		SetUpScript: []string{
+			"CREATE TABLE decimal_bindings(id INT PRIMARY KEY AUTO_INCREMENT,decimal_col DECIMAL(9,2))",
+			"PREPARE stmt FROM 'INSERT INTO decimal_bindings(decimal_col) VALUES (?)'",
+			"SET @a=_binary\"X'10'\"",
+		},
+		Assertions: []ScriptTestAssertion{
+			{Query: "EXECUTE stmt USING @a", ExpectedErr: sql.ErrInvalidValue},
+			{Query: "SELECT COUNT(*) FROM decimal_bindings", Expected: []sql.Row{{int64(0)}}},
 		},
 	},
 	{

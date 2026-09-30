@@ -71,7 +71,21 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 
 	switch v := e.(type) {
 	case *ast.Default:
-		return expression.WrapExpression(expression.NewDefaultColumn(v.ColName))
+		c, ok := inScope.resolveColumn("", "", v.ColName, true, false)
+		if !ok {
+			b.handleErr(sql.ErrColumnNotFound.New(v.ColName))
+		}
+
+		tableSch := b.resolveSchemaDefaults(inScope, inScope.node.Schema(b.ctx))
+		colIdx := tableSch.IndexOfColName(c.col)
+		if colIdx < 0 {
+			b.handleErr(sql.ErrColumnNotFound.New(v.ColName))
+		}
+		def, err := expression.Default(tableSch[colIdx])
+		if err != nil {
+			b.handleErr(err)
+		}
+		return def
 	case *ast.SubstrExpr:
 		var name sql.Expression
 		if v.Name != nil {
@@ -124,7 +138,15 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 		c, ok := inScope.resolveColumn(dbName, tblName, colName, true, false)
 		if !ok {
 			if aliasedExpr, ok := inScope.selectAliases[colName]; ok {
-				return aliasedExpr
+				switch {
+				case b.windowClause == "":
+					return aliasedExpr
+				case b.windowClauseColRef:
+					b.handleErr(sql.ErrUnknownColumn.New(colName, b.windowClause))
+				default:
+					// Use the expression that the alias stands for.
+					return aliasedExpr.Child
+				}
 			}
 			// Only try system variable lookup if there's no table qualifier.
 			// Qualified names like "A.timestamp" are always column references, never system variables.
@@ -193,6 +215,9 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 				}
 				return tableExpr
 			} else {
+				if b.windowClause != "" {
+					b.handleErr(sql.ErrUnknownColumn.New(colName, b.windowClause))
+				}
 				err := sql.ErrColumnNotFound.New(v)
 				b.handleErr(err)
 			}
@@ -314,6 +339,9 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 		rf, err := f.NewInstance(b.ctx, args)
 		if err != nil {
 			b.handleErr(err)
+		}
+		if v.Over != nil && v.Distinct {
+			b.validateDistinctWindow(v, name, rf)
 		}
 
 		switch rf.(type) {

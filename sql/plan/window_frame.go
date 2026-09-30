@@ -55,7 +55,7 @@ func (f *windowFrameBase) String() string {
 
 	var endExtent string
 	switch {
-	case f.unboundedPreceding:
+	case f.unboundedFollowing:
 		endExtent = "UNBOUNDED FOLLOWING"
 	case f.endCurrentRow:
 		endExtent = "CURRENT ROW"

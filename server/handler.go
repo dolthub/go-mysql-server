@@ -1206,8 +1206,10 @@ func schemaToFields(ctx *sql.Context, s sql.Schema) []*querypb.Field {
 		}
 
 		// Binary types always use a binary collation, but non-binary types must
-		// respect character_set_results if it is set.
-		if types.IsBinaryType(c.Type) {
+		// respect character_set_results if it is set. BIT is not a string type,
+		// but MySQL advertises it with the binary charset so that clients render
+		// its values as binary data rather than text.
+		if types.IsBinaryType(c.Type) || types.IsBit(c.Type) {
 			charset = uint32(sql.Collation_binary)
 		} else if charSetResults != sql.CharacterSet_Unspecified {
 			charset = uint32(charSetResults)
@@ -1239,12 +1241,13 @@ func schemaToFields(ctx *sql.Context, s sql.Schema) []*querypb.Field {
 			Flags:        uint32(flags),
 		}
 
-		if types.IsDecimal(c.Type) {
-			decimalType := c.Type.(sql.DecimalType)
-			fields[i].Decimals = uint32(decimalType.Scale())
-		} else if types.IsDatetimeType(c.Type) {
-			dtType := c.Type.(sql.DatetimeType)
-			fields[i].Decimals = uint32(dtType.Precision())
+		switch typ := c.Type.(type) {
+		case sql.DecimalType:
+			fields[i].Decimals = uint32(typ.Scale())
+		case sql.DatetimeType:
+			fields[i].Decimals = uint32(typ.Precision())
+		case types.TimeType:
+			fields[i].Decimals = uint32(typ.Precision())
 		}
 	}
 

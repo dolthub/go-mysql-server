@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2026 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,15 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package analyzer
+package function
 
-import (
-	"github.com/dolthub/go-mysql-server/sql"
+const (
+	tsDate     = 1258882545 // Sunday, November 22, 2009 10:35:45 PM GMT+01:00
+	stringDate = "2007-01-02 14:15:16"
 )
-
-func mustExpr(e sql.Expression, err error) sql.Expression {
-	if err != nil {
-		panic(err)
-	}
-	return e
-}

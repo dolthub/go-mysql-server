@@ -1584,6 +1584,28 @@ func (i addColumnIter) Close(context *sql.Context) error {
 	return nil
 }
 
+// stripTableNamesFromGeneratedColumns removes the table qualifier from the column references of the resolved
+// generated expressions in the schema, which is persisted by the storage layer.
+func stripTableNamesFromGeneratedColumns(ctx *sql.Context, sch sql.Schema) sql.Schema {
+	for _, col := range sch {
+		if col.Generated == nil || !col.Generated.Resolved() {
+			continue
+		}
+		expr, same, _ := transform.Expr(ctx, col.Generated.Expr, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+			if gf, ok := e.(*expression.GetField); ok && gf.Table() != "" {
+				return gf.WithTable(""), transform.NewTree, nil
+			}
+			return e, transform.SameTree, nil
+		})
+		if !same {
+			generated := *col.Generated
+			generated.Expr = expr
+			col.Generated = &generated
+		}
+	}
+	return sch
+}
+
 // rewriteTable rewrites the table given if required or requested, and returns whether it was rewritten
 func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) (bool, error) {
 	targetSch := i.a.TargetSchema()
@@ -1592,7 +1614,7 @@ func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) 
 		// generated columns, the generated expression must be resolved.
 		if col.Virtual && col.Generated != nil && !col.Generated.Resolved() {
 			b := planbuilder.NewBuilderForColumnDefaultResolution(ctx, i.b.EngineOverrides)
-			targetSch = b.ResolveSchemaDefaults(i.a.Db.Name(), rwt.Name(), targetSch)
+			targetSch = stripTableNamesFromGeneratedColumns(ctx, b.ResolveSchemaDefaults(i.a.Db.Name(), rwt.Name(), targetSch))
 			break
 		}
 	}
@@ -2249,12 +2271,13 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 		indexName := n.IndexName
 		// TODO: this should really be a pointer, but there are too many interfaces that expect a value
 		indexDef := sql.IndexDef{
-			Name:       indexName,
-			Columns:    n.Columns,
-			Constraint: n.Constraint,
-			Storage:    n.Using,
-			Comment:    n.Comment,
-			Predicate:  n.Predicate,
+			Name:             indexName,
+			Columns:          n.Columns,
+			Constraint:       n.Constraint,
+			Storage:          n.Using,
+			Comment:          n.Comment,
+			Predicate:        n.Predicate,
+			VectorProperties: n.VectorProperties,
 		}
 		if len(indexName) == 0 {
 			indexDef.Name, err = getIndexNameGenerator(n.Db).GenerateIndexName(ctx, n.Table.Name(), indexDef, idxAltTbl)
@@ -2287,7 +2310,8 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 					if !types.IsVectorConvertable(tblCol.Type) {
 						return sql.ErrVectorInvalidColumnType.New()
 					}
-					if tblCol.Nullable {
+					// MySQL requires vector index columns to be NOT NULL, but this restriction doesn't have to apply to integrators
+					if _, isIntegratorType := tblCol.Type.(types.VectorIndexableType); !isIntegratorType && tblCol.Nullable {
 						return sql.ErrNullableVectorIdx.New()
 					}
 					break
@@ -2334,7 +2358,7 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 		// The second way to rebuild an index is with a full table rewrite
 		rwt, isRewritable := idxAltTbl.(sql.RewritableTable)
 		if isRewritable && indexCreateRequiresBuild(n) {
-			return rewriteTableForIndexCreate(ctx, n, table, rwt)
+			return rewriteTableForIndexCreate(ctx, b.EngineOverrides, n, table, rwt)
 		}
 
 		return nil
@@ -2702,8 +2726,14 @@ func assignColumnIndexes(ctx *sql.Context, e sql.Expression, schema sql.Schema) 
 	return e
 }
 
-func rewriteTableForIndexCreate(ctx *sql.Context, n *plan.AlterIndex, table sql.Table, rwt sql.RewritableTable) error {
-	sch := sql.SchemaToPrimaryKeySchema(ctx, table, n.TargetSchema())
+func rewriteTableForIndexCreate(ctx *sql.Context, overrides sql.EngineOverrides, n *plan.AlterIndex, table sql.Table, rwt sql.RewritableTable) error {
+	targetSchema := n.TargetSchema()
+	isVirtual := table.Schema(ctx).HasVirtualColumns()
+	resolvedTargetSchema := targetSchema
+	if isVirtual {
+		resolvedTargetSchema = resolveGeneratedColumns(ctx, overrides, n.Db.Name(), table.Name(), targetSchema)
+	}
+	sch := sql.SchemaToPrimaryKeySchema(ctx, table, targetSchema)
 	inserter, err := rwt.RewriteInserter(ctx, sch, sch, nil, nil, n.Columns)
 	if err != nil {
 		return err
@@ -2717,10 +2747,9 @@ func rewriteTableForIndexCreate(ctx *sql.Context, n *plan.AlterIndex, table sql.
 	var rowIter sql.RowIter = sql.NewTableRowIter(ctx, rwt, partitions)
 	rowIter = withSafepointPeriodicallyIter(rowIter)
 
-	isVirtual := table.Schema(ctx).HasVirtualColumns()
 	var projections []sql.Expression
 	if isVirtual {
-		projections = virtualTableProjections(ctx, n.TargetSchema(), table.Name())
+		projections = virtualTableProjections(ctx, resolvedTargetSchema, table.Name())
 	}
 
 	for {

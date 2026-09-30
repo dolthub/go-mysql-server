@@ -55,6 +55,31 @@ var tupleEqualityTests = []tupleEqualityTest{
 	},
 }
 
+// TupleScriptTests verifies tuple comparisons that require table-backed query planning.
+var TupleScriptTests = []ScriptTest{
+	{
+		Name: "row-value in with null components",
+		SetUpScript: []string{
+			"CREATE TABLE tuple_in_t (id INT PRIMARY KEY, c0 INT, c1 INT);",
+			"INSERT INTO tuple_in_t VALUES (1, 10, 100), (2, 20, NULL);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT id FROM tuple_in_t WHERE (c0, c1) IN ((20, NULL), (30, 5)) ORDER BY id;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT (c0, c1) IN ((20, NULL), (30, 5)) FROM tuple_in_t WHERE id = 2;",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:    "SELECT (c0, c1) IN ((30, NULL)) FROM tuple_in_t WHERE id = 2;",
+				Expected: []sql.Row{{false}},
+			},
+		},
+	},
+}
+
 func mustBuildBindVariable(v interface{}) sqlparser.Expr {
 	bv, err := sqltypes.BuildBindVariable(v)
 	if err != nil {
