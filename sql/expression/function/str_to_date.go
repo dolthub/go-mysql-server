@@ -123,6 +123,7 @@ func (s *StrToDate) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	formatStr, err := types.ConvertToString(ctx, format, types.LongBlob, nil)
 	if err != nil {
 		return nil, err

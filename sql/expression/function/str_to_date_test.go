@@ -56,9 +56,31 @@ func TestStrToDateBinaryArgs(t *testing.T) {
 		format   interface{}
 		expected interface{}
 	}{
-		{"binary date", []byte("Dec 26, 2000 2:13:15"), "%b %e, %Y %T", time.Date(2000, time.December, 26, 2, 13, 15, 0, time.UTC)},
-		{"binary format", "20240101", []byte("%Y%m%d"), time.Date(2024, time.January, 1, 0, 0, 0, 0, time.UTC)},
-		{"binary date unparseable", []byte{0xFF, 0xD8, 0xFF, 0xE0}, "%h:%i:%s", nil},
+		{
+			name:     "binary date",
+			date:     []byte("Dec 26, 2000 2:13:15"),
+			format:   "%b %e, %Y %T",
+			expected: time.Date(2000, time.December, 26, 2, 13, 15, 0, time.UTC),
+		},
+		{
+			name:     "binary format",
+			date:     "20240101",
+			format:   []byte("%Y%m%d"),
+			expected: time.Date(2024, time.January, 1, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			name:     "binary date and format",
+			date:     []byte("20240101"),
+			format:   []byte("%Y%m%d"),
+			expected: time.Date(2024, time.January, 1, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			name:     "numeric date",
+			date:     int64(20240101),
+			format:   "%Y%m%d",
+			expected: time.Date(2024, time.January, 1, 0, 0, 0, 0, time.UTC),
+		},
+		{name: "binary date unparseable", date: []byte{0xFF, 0xD8, 0xFF, 0xE0}, format: "%h:%i:%s"},
 	}
 
 	for _, tt := range testCases {
