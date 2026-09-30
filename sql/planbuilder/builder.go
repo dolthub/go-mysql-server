@@ -65,6 +65,11 @@ type Builder struct {
 	// inWindow tracks whether we are inside window function arguments.
 	inWindow bool
 
+	// aggregateArgumentRoot is non-nil while aggregate arguments are being bound.
+	// It makes column lookup cross semantic query blocks instead of treating
+	// builder scopes as query boundaries.
+	aggregateArgumentRoot *scope
+
 	authEnabled  bool
 	multiDDL     bool
 	insertActive bool
@@ -212,9 +217,31 @@ func (b *Builder) withWindowState(clause string, isColRef bool) func() {
 	return func() { b.windowClause, b.windowClauseColRef = outerClause, outerColRef }
 }
 
+// beginAggregateArgumentResolution makes column lookup follow the query-block
+// chain rooted at source. The returned function restores the previous state.
+func (b *Builder) beginAggregateArgumentResolution(source *scope) (restore func()) {
+	previousRoot := b.aggregateArgumentRoot
+	b.aggregateArgumentRoot = source
+	return func() { b.aggregateArgumentRoot = previousRoot }
+}
+
+// isAggregateArgumentQuerySource reports whether target is on the active aggregate argument's query-block chain.
+func (b *Builder) isAggregateArgumentQuerySource(target *scope) bool {
+	if b.aggregateArgumentRoot == nil {
+		return false
+	}
+	for query := b.aggregateArgumentRoot.queryBlock; query != nil; query = query.outer {
+		if query.source == target {
+			return true
+		}
+	}
+	return false
+}
+
 func (b *Builder) Reset() {
 	b.colId = 0
 	b.tabId = 0
+	b.aggregateArgumentRoot = nil
 	b.bindCtx = nil
 	b.currentDatabase = nil
 	b.procCtx = nil
