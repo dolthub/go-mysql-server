@@ -499,6 +499,7 @@ func (f *rangeFramerBase) Interval() (sql.WindowInterval, error) {
 
 type PeerGroupFramer struct {
 	orderBy        []sql.Expression
+	unboundedStart bool
 	idx            int
 	partitionStart int
 	partitionEnd   int
@@ -517,6 +518,14 @@ func NewPeerGroupFramer(orderBy []sql.Expression) *PeerGroupFramer {
 	}
 }
 
+// NewUnboundedPrecedingToPeerGroupFramer creates frames that extend from the
+// partition start through the current row's complete ORDER BY peer group.
+func NewUnboundedPrecedingToPeerGroupFramer(orderBy []sql.Expression) *PeerGroupFramer {
+	framer := NewPeerGroupFramer(orderBy)
+	framer.unboundedStart = true
+	return framer
+}
+
 func (f *PeerGroupFramer) NewFramer(interval sql.WindowInterval) (sql.WindowFramer, error) {
 	return &PeerGroupFramer{
 		idx:            interval.Start,
@@ -526,6 +535,7 @@ func (f *PeerGroupFramer) NewFramer(interval sql.WindowInterval) (sql.WindowFram
 		frameEnd:       interval.Start,
 		partitionSet:   true,
 		orderBy:        f.orderBy,
+		unboundedStart: f.unboundedStart,
 	}, nil
 }
 
@@ -538,7 +548,9 @@ func (f *PeerGroupFramer) Next(ctx *sql.Context, buf sql.WindowBuffer) (sql.Wind
 		if err != nil {
 			return sql.WindowInterval{}, err
 		}
-		f.frameStart = peerGroup.Start
+		if !f.unboundedStart {
+			f.frameStart = peerGroup.Start
+		}
 		f.frameEnd = peerGroup.End
 	}
 	f.idx++
@@ -597,18 +609,16 @@ func isNewOrderByValue(ctx *sql.Context, orderByExprs []sql.Expression, last sql
 		return true, nil
 	}
 
-	lastExp, _, err := evalExprs(ctx, orderByExprs, last)
-	if err != nil {
-		return false, err
-	}
-
-	thisExp, _, err := evalExprs(ctx, orderByExprs, row)
-	if err != nil {
-		return false, err
-	}
-
-	for i := range lastExp {
-		compare, err := orderByExprs[i].Type(ctx).Compare(ctx, lastExp[i], thisExp[i])
+	for _, orderBy := range orderByExprs {
+		lastValue, err := orderBy.Eval(ctx, last)
+		if err != nil {
+			return false, err
+		}
+		thisValue, err := orderBy.Eval(ctx, row)
+		if err != nil {
+			return false, err
+		}
+		compare, err := orderBy.Type(ctx).Compare(ctx, lastValue, thisValue)
 		if err != nil {
 			return false, err
 		}

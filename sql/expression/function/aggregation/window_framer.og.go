@@ -359,19 +359,7 @@ type RangeUnboundedPrecedingToCurrentRowFramer struct {
 var _ sql.WindowFramer = (*RangeUnboundedPrecedingToCurrentRowFramer)(nil)
 
 func NewRangeUnboundedPrecedingToCurrentRowFramer(frame sql.WindowFrame, window *sql.WindowDefinition) (sql.WindowFramer, error) {
-	unboundedPreceding := true
-	endCurrentRow := true
-	var orderBy sql.Expression
-	if len(window.OrderBy) > 0 {
-		orderBy = window.OrderBy.ToExpressions()[0]
-	}
-	return &RangeUnboundedPrecedingToCurrentRowFramer{
-		rangeFramerBase{
-			orderBy:            orderBy,
-			unboundedPreceding: unboundedPreceding,
-			endCurrentRow:      endCurrentRow,
-		},
-	}, nil
+	return NewUnboundedPrecedingToPeerGroupFramer(window.OrderBy.ToExpressions()), nil
 }
 
 type RangeUnboundedPrecedingToNFollowingFramer struct {
