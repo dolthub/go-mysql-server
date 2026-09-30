@@ -63,7 +63,7 @@ func TestTimeFormatting(t *testing.T) {
 }
 
 func TestTimeFormatEval(t *testing.T) {
-	timeLit := expression.NewLiteral("04:05:06.000007", types.Time)
+	timeLit := expression.NewLiteral(toTimespan("04:05:06.000007"), types.TimeMaxPrecision)
 	format := expression.NewLiteral("%H-%i-%s|%f", types.Text)
 	nullLiteral := expression.NewLiteral(nil, types.Null)
 	ctx := sql.NewEmptyContext()

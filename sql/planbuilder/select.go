@@ -27,6 +27,15 @@ import (
 )
 
 func (b *Builder) buildSelectStmt(inScope *scope, s ast.SelectStatement) (outScope *scope) {
+	// A nested SELECT has its own context, so the defer restores the
+	// outer query's aggregate and window settings when done.
+	defer func(inAgg, inWin bool) {
+		b.inAgg = inAgg
+		b.inWindow = inWin
+	}(b.inAgg, b.inWindow)
+	b.inAgg = false
+	b.inWindow = false
+
 	switch s := s.(type) {
 	case *ast.Select:
 		if s.With != nil {

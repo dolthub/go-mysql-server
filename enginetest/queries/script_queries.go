@@ -5021,7 +5021,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: `CREATE TABLE test SELECT * FROM t1`,
-				Expected: []sql.Row{sql.Row{types.OkResult{
+				Expected: []sql.Row{{types.OkResult{
 					RowsAffected: 3,
 					InsertID:     0,
 					Info:         nil,
@@ -7067,6 +7067,10 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{1695625377}},
 			},
 			{
+				Query:    "SELECT UNIX_TIMESTAMP((SELECT '2023-01-01 12:34:56.789'));",
+				Expected: []sql.Row{{"1672576496.789000"}},
+			},
+			{
 				Query:    "SET time_zone = '-06:00';",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
@@ -7083,8 +7087,7 @@ CREATE TABLE tab3 (
 			"SET time_zone = '+07:00';",
 			"create table dt (dt0 datetime(0), dt1 datetime(1), dt2 datetime(2), dt3 datetime(3), dt4 datetime(4), dt5 datetime(5), dt6 datetime(6));",
 			"insert into dt values ('2020-01-02 12:34:56.123456', '2020-01-02 12:34:56.123456', '2020-01-02 12:34:56.123456', '2020-01-02 12:34:56.123456', '2020-01-02 12:34:56.123456', '2020-01-02 12:34:56.123456', '2020-01-02 12:34:56.123456')",
-			// TODO: time length not supported, so by default we have max precision
-			"create table t (d date, tt time);",
+			"create table t (d date, tt time(6));",
 			"insert into t values ('2020-01-02 12:34:56.123456', '12:34:56.123456');",
 		},
 		Assertions: []ScriptTestAssertion{
@@ -11792,6 +11795,15 @@ where
 			},
 		},
 	},
+	// https://github.com/dolthub/dolt/issues/4233
+	{
+		Name:        "Test CTE definition ordering",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{Query: "WITH c AS (SELECT * FROM b), b AS (SELECT * FROM a), a AS (SELECT 1 AS n) SELECT * FROM c", ExpectedErr: sql.ErrTableNotFound},
+			{Query: "WITH a AS (SELECT 1 AS n), b AS (SELECT * FROM a), c AS (SELECT * FROM b) SELECT * FROM c", Expected: []sql.Row{{1}}},
+		},
+	},
 
 	// Set tests
 	{
@@ -14234,6 +14246,38 @@ where
 		},
 	},
 	{
+		// PostgreSQL has no DATETIME type or SHOW WARNINGS.
+		Dialect:     "mysql",
+		Name:        "delimited datetime strings with trailing delimiters and zero-padded time portions",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select cast('2012-12-12 12:' as datetime);",
+				Expected: []sql.Row{{time.Date(2012, time.December, 12, 12, 0, 0, 0, time.UTC)}},
+			},
+			{
+				Query:    "show warnings;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select cast('2012-12-12 12:12:' as datetime);",
+				Expected: []sql.Row{{time.Date(2012, time.December, 12, 12, 12, 0, 0, time.UTC)}},
+			},
+			{
+				Query:    "show warnings;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select cast('2012-12-12 12:12:0012' as datetime);",
+				Expected: []sql.Row{{time.Date(2012, time.December, 12, 12, 12, 12, 0, time.UTC)}},
+			},
+			{
+				Query:    "show warnings;",
+				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/10088
 		Name:    "datetime with zero date and non-zero times",
 		Dialect: "mysql",
@@ -14366,8 +14410,72 @@ where
 			},
 		},
 	},
+	{
+		// TODO: every aggregation function needs to use types.TypeAwareConversion
+		// Tracking issue: https://github.com/dolthub/dolt/issues/10278
+		Skip:    true,
+		Name:    "aggregations with date types",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t (i int primary key, d date, dt datetime, dt6 datetime(6), ts timestamp, ts6 timestamp(6));",
+			"insert into t values (1, '2001-02-03', '2001-02-03 12:34:56', '2001-02-03 12:34:56.123456', '2001-02-03 12:34:56', '2001-02-03 12:34:56.123456');",
+			"insert into t values (2, '2010-03-30', '2010-02-03 22:22:22', '2010-02-03 11:11:11.111111', '2010-03-30 22:22:22', '2010-03-30 11:11:11.111111');",
+			"insert into t values (3, '2100-02-03', '2100-02-03 23:23:23', '2100-02-03 23:23:23.654321', '2001-02-03 23:23:23', '2001-02-03 23:23:23.654321');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select sum(d), sum(dt), sum(dt6), sum(ts), sum(ts6) from t;",
+				Expected: []sql.Row{
+					{float64(61110736), float64(61110609578001), float64(61110609466890.888888), float64(60120736578001), float64(60120736466890.888888)},
+				},
+			},
+			{
+				Query: "select var_pop(d), var_pop(dt), var_pop(dt6), var_pop(ts), var_pop(ts6) from t;",
+				Expected: []sql.Row{
+					{float64(199777143584.22263), float64(1.998000279462624e23), float64(1.998000479464689e23), float64(1.8050853600269382e21), float64(1.8050809093046277e21)},
+				},
+			},
+		},
+	},
 
 	// Time Tests
+	{
+		Dialect: "mysql",
+		Name:    "time with precision",
+		SetUpScript: []string{
+			"create table tbl (t0 time(0), t1 time(1), t2 time(2), t3 time(3), t4 time(4), t5 time(5), t6 time(6));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into tbl values(" +
+					"'12:34:56.123456', " +
+					"'12:34:56.123456', " +
+					"'12:34:56.123456', " +
+					"'12:34:56.123456', " +
+					"'12:34:56.123456', " +
+					"'12:34:56.123456', " +
+					"'12:34:56.123456'" +
+					")",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "select * from tbl;",
+				Expected: []sql.Row{
+					{
+						types.Timespan(45296_000000),
+						types.Timespan(45296_100000),
+						types.Timespan(45296_120000),
+						types.Timespan(45296_123000),
+						types.Timespan(45296_123500),
+						types.Timespan(45296_123460),
+						types.Timespan(45296_123456),
+					},
+				},
+			},
+		},
+	},
 	{
 		Name:        "time with auto_increment",
 		Dialect:     "mysql",
@@ -14884,6 +14992,104 @@ select * from t1 except (
 			{
 				Query:    "SELECT id FROM c ORDER BY id",
 				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11771
+		Name: "EXISTS and NOT EXISTS with join and correlated ON clause",
+		SetUpScript: []string{
+			"CREATE TABLE a (id INT PRIMARY KEY)",
+			"CREATE TABLE b (a_id INT, c_id INT)",
+			"CREATE TABLE c (id INT PRIMARY KEY)",
+			"INSERT INTO a VALUES (1), (2)",
+			"INSERT INTO c VALUES (9)",
+			"INSERT INTO b VALUES (1, 9)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT b.a_id, b.c_id FROM b JOIN c ON c.id = b.c_id",
+				Expected: []sql.Row{{1, 9}},
+			},
+			{
+				Query:    "SELECT a.id FROM a WHERE EXISTS (SELECT 1 FROM b JOIN c ON c.id = b.c_id WHERE b.a_id = a.id)",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT a.id FROM a WHERE EXISTS (SELECT 1 FROM b JOIN c ON c.id = b.c_id AND b.a_id = a.id)",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT a.id FROM a WHERE NOT EXISTS (SELECT 1 FROM b JOIN c ON c.id = b.c_id WHERE b.a_id = a.id)",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "SELECT a.id FROM a WHERE NOT EXISTS (SELECT 1 FROM b JOIN c ON c.id = b.c_id AND b.a_id = a.id)",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "SELECT a.id FROM a WHERE EXISTS (SELECT 1 FROM b LEFT JOIN c ON c.id = b.c_id AND b.a_id = a.id) ORDER BY a.id",
+				Expected: []sql.Row{{1}, {2}},
+			},
+			{
+				Query:    "SELECT a.id FROM a WHERE EXISTS (SELECT 1 FROM b WHERE b.a_id = a.id)",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT a.id FROM a WHERE EXISTS (SELECT 1 FROM b JOIN c ON b.a_id = a.id) ORDER BY a.id",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT a.id FROM a WHERE NOT EXISTS (SELECT 1 FROM b JOIN c ON b.a_id = a.id) ORDER BY a.id",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "SELECT a.id FROM a WHERE EXISTS (SELECT 1 FROM b JOIN c ON c.id = b.c_id AND (b.a_id = a.id OR a.id = 99)) ORDER BY a.id",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT a.id FROM a WHERE NOT EXISTS (SELECT 1 FROM b JOIN c ON c.id = b.c_id AND (b.a_id = a.id OR a.id = 99)) ORDER BY a.id",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "SELECT a.id FROM a WHERE EXISTS (SELECT 1 FROM b JOIN c ON c.id = b.c_id AND b.a_id = a.id - 0) ORDER BY a.id",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT a.id FROM a WHERE EXISTS (SELECT 1 FROM b JOIN c ON c.id = b.c_id AND b.a_id = a.id WHERE a.id > 0) ORDER BY a.id",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT a.id FROM a WHERE EXISTS (SELECT 1 FROM b JOIN c ON c.id = b.c_id AND b.a_id = a.id WHERE b.c_id = 9) ORDER BY a.id",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT a.id FROM a WHERE EXISTS (SELECT 1 FROM b JOIN c ON c.id = b.c_id AND b.a_id = a.id WHERE b.c_id = 999) ORDER BY a.id",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT a.id FROM a WHERE EXISTS (SELECT 1 FROM b AS a JOIN c ON c.id = a.c_id AND a.a_id = mydb.a.id) ORDER BY a.id",
+				Expected: []sql.Row{{1}},
+			},
+		},
+	},
+	{
+		Name: "EXISTS with nested inner join on null-supplying side of outer join",
+		SetUpScript: []string{
+			"CREATE TABLE outer_rows (id INT PRIMARY KEY)",
+			"CREATE TABLE left_rows (owner_id INT)",
+			"CREATE TABLE middle (id INT)",
+			"CREATE TABLE right_rows (middle_id INT)",
+			"INSERT INTO outer_rows VALUES (1)",
+			"INSERT INTO left_rows VALUES (1)",
+			"INSERT INTO middle VALUES (7)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT o.id FROM outer_rows o WHERE EXISTS (" +
+					"SELECT 1 FROM left_rows l LEFT JOIN (middle m JOIN right_rows r ON r.middle_id = m.id AND m.id = o.id) ON l.owner_id = o.id" +
+					") ORDER BY o.id",
+				Expected: []sql.Row{{1}},
 			},
 		},
 	},

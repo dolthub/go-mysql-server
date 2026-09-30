@@ -338,6 +338,12 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 				b.handleErr(err)
 			}
 
+			if !b.overrides.PermitDerivedTableDuplicateColumnNames {
+				if col, ok := duplicateDerivedColumn(e.Select, renameCols); ok {
+					b.handleErr(sql.ErrDuplicateColumn.New(col))
+				}
+			}
+
 			outScope = inScope.push()
 			tabId := outScope.addTable(sq.Name())
 
@@ -421,6 +427,39 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 		b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(te)))
 	}
 	return
+}
+
+// duplicateDerivedColumn returns the first column name that a derived table gives to more than one of its output
+// columns, which MySQL rejects. Only names written by the user are considered: names produced by expanding a star
+// over a join may repeat.
+func duplicateDerivedColumn(sel ast.SelectStatement, renameCols []string) (string, bool) {
+	seen := make(map[string]struct{})
+	if len(renameCols) > 0 {
+		for _, col := range renameCols {
+			lowered := strings.ToLower(col)
+			if _, ok := seen[lowered]; ok {
+				return col, true
+			}
+			seen[lowered] = struct{}{}
+		}
+		return "", false
+	}
+	s, ok := sel.(*ast.Select)
+	if !ok {
+		return "", false
+	}
+	for _, se := range s.SelectExprs {
+		ae, ok := se.(*ast.AliasedExpr)
+		if !ok || ae.As.IsEmpty() {
+			continue
+		}
+		lowered := ae.As.Lowered()
+		if _, ok := seen[lowered]; ok {
+			return ae.As.String(), true
+		}
+		seen[lowered] = struct{}{}
+	}
+	return "", false
 }
 
 func columnsToStrings(cols ast.Columns) []string {
