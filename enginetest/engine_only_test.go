@@ -1007,6 +1007,64 @@ func TestTimestampBindingsCanBeCompared(t *testing.T) {
 	require.Equal(t, 1, count)
 }
 
+type exhaustedMemory struct{}
+
+func (exhaustedMemory) UsedMemory() uint64 { return 2 }
+func (exhaustedMemory) MaxMemory() uint64  { return 1 }
+
+func TestCountDistinctMemoryLimit(t *testing.T) {
+	db := memory.NewDatabase("mydb")
+	pro := memory.NewDBProvider(db)
+	e := sqle.NewDefault(pro)
+	newCtx := func(opts ...sql.ContextOption) *sql.Context {
+		opts = append(opts, sql.WithSession(memory.NewSession(sql.NewBaseSession(), pro)))
+		ctx := sql.NewContext(context.Background(), opts...)
+		ctx.SetCurrentDatabase("mydb")
+		return ctx
+	}
+
+	for _, q := range []string{"CREATE TABLE t (i int primary key)", "INSERT INTO t VALUES (1), (2), (3)"} {
+		ctx := newCtx()
+		_, iter, _, err := e.Query(ctx, q)
+		require.NoError(t, err)
+		_, err = sql.RowIterToRows(ctx, iter)
+		require.NoError(t, err)
+	}
+
+	ctx := newCtx(sql.WithMemoryManager(sql.NewMemoryManager(exhaustedMemory{})))
+	_, iter, _, err := e.Query(ctx, "SELECT COUNT(DISTINCT i) FROM t")
+	if err == nil {
+		_, err = sql.RowIterToRows(ctx, iter)
+	}
+
+	require.True(t, sql.ErrNoMemoryAvailable.Is(err), "unexpected error: %v", err)
+	require.Zero(t, ctx.Memory.NumCaches())
+
+	for _, tt := range []struct {
+		query    string
+		expected []sql.Row
+	}{
+		{
+			query:    "SELECT COUNT(DISTINCT i), COUNT(DISTINCT i, i) FROM t",
+			expected: []sql.Row{{int64(3), int64(3)}},
+		},
+		{
+			query:    "SELECT CAST(i % 2 AS SIGNED), COUNT(DISTINCT i) FROM t GROUP BY i % 2 ORDER BY i % 2",
+			expected: []sql.Row{{int64(0), int64(1)}, {int64(1), int64(2)}},
+		},
+	} {
+		t.Run(tt.query, func(t *testing.T) {
+			ctx := newCtx()
+			_, iter, _, err := e.Query(ctx, tt.query)
+			require.NoError(t, err)
+			rows, err := sql.RowIterToRows(ctx, iter)
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, rows)
+			require.Zero(t, ctx.Memory.NumCaches())
+		})
+	}
+}
+
 // TestTemporalCastPrecision checks the client error metadata and the largest valid precision.
 func TestTemporalCastPrecision(t *testing.T) {
 	db := memory.NewDatabase("mydb")
