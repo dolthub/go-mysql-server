@@ -224,6 +224,7 @@ func splitDecimal(d *apd.Decimal) (int64, int64, bool) {
 		return 0, 0, false
 	}
 	fracDec.Exponent += 9
+	fracDec.Modf(&fracDec, nil)
 	frac, err := fracDec.Int64()
 	if err != nil {
 		return 0, 0, false
