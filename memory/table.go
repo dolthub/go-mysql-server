@@ -939,8 +939,8 @@ func (t *Table) getTableEditor(ctx *sql.Context) sql.TableEditor {
 	return editor
 }
 
-func (t *Table) getRewriteTableEditor(ctx *sql.Context, oldSchema, newSchema sql.PrimaryKeySchema) sql.TableEditor {
-	editor, err := t.tableEditorForRewrite(ctx, oldSchema, newSchema)
+func (t *Table) getRewriteTableEditor(ctx *sql.Context, oldSchema, newSchema sql.PrimaryKeySchema, renames ...sql.ColumnRename) sql.TableEditor {
+	editor, err := t.tableEditorForRewrite(ctx, oldSchema, newSchema, renames...)
 	if err != nil {
 		panic(err)
 	}
@@ -1036,14 +1036,14 @@ func (t *Table) newTableEditor(ctx *sql.Context) (sql.TableEditor, error) {
 	return editor, nil
 }
 
-func (t *Table) tableEditorForRewrite(ctx *sql.Context, oldSchema, newSchema sql.PrimaryKeySchema) (sql.TableEditor, error) {
+func (t *Table) tableEditorForRewrite(ctx *sql.Context, oldSchema, newSchema sql.PrimaryKeySchema, renames ...sql.ColumnRename) (sql.TableEditor, error) {
 	// Make a copy of the table under edit with the new schema and no data
 	tableUnderEdit := t.copy()
 	// Use session indexes so that indexes created in this session are preserved during rewrite
 	if !t.ignoreSessionData {
 		tableUnderEdit.data.indexes = t.sessionTableData(ctx).indexes
 	}
-	tableData := tableUnderEdit.data.truncate(ctx, normalizeSchemaForRewrite(newSchema))
+	tableData := tableUnderEdit.data.truncate(ctx, normalizeSchemaForRewrite(newSchema), renames...)
 	tableUnderEdit.data = tableData
 
 	// TODO: |editedTableAnd| and |ea| should have the same tableData reference
@@ -2448,7 +2448,7 @@ func isColumnDrop(oldSchema sql.PrimaryKeySchema, newSchema sql.PrimaryKeySchema
 	return len(oldSchema.Schema) > len(newSchema.Schema)
 }
 
-func (t *Table) RewriteInserter(ctx *sql.Context, oldSchema, newSchema sql.PrimaryKeySchema, _, _ *sql.Column, idxCols []sql.IndexColumn) (sql.RowInserter, error) {
+func (t *Table) RewriteInserter(ctx *sql.Context, oldSchema, newSchema sql.PrimaryKeySchema, oldColumn, newColumn *sql.Column, idxCols []sql.IndexColumn) (sql.RowInserter, error) {
 	// TODO: this is insufficient: we need prevent dropping any index that is used by a primary key (or the engine does)
 	if isPrimaryKeyDrop(oldSchema, newSchema) {
 		err := sql.ValidatePrimaryKeyDrop(ctx, t, oldSchema)
@@ -2464,7 +2464,12 @@ func (t *Table) RewriteInserter(ctx *sql.Context, oldSchema, newSchema sql.Prima
 		}
 	}
 
-	return t.getRewriteTableEditor(ctx, oldSchema, newSchema), nil
+	var renames []sql.ColumnRename
+	if oldColumn != nil && newColumn != nil && oldColumn.Name != newColumn.Name {
+		renames = []sql.ColumnRename{{Before: oldColumn.Name, After: newColumn.Name}}
+	}
+
+	return t.getRewriteTableEditor(ctx, oldSchema, newSchema, renames...), nil
 }
 
 func validatePrimaryKeyChange(ctx *sql.Context, oldSchema sql.PrimaryKeySchema, newSchema sql.PrimaryKeySchema, idxCols []sql.IndexColumn) error {

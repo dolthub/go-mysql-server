@@ -465,6 +465,79 @@ var GeneratedColumnTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "update after modifying stored generated expression",
+		SetUpScript: []string{
+			"create table t (id int primary key, x int, y int, z int as (x + y) stored)",
+			"insert into t (id, x, y) values (1, 2, 3)",
+			"alter table t modify column z int as (x * y) stored",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "update t set x = 4 where id = 1",
+				Expected: []sql.Row{{types.OkResult{
+					RowsAffected: 1,
+					Info: plan.UpdateInfo{
+						Matched: 1,
+						Updated: 1,
+					},
+				}}},
+			},
+			{
+				Query:    "insert into t (id, x, y) values (2, 5, 6)",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "select id, x, y, z from t order by id",
+				Expected: []sql.Row{{1, 4, 3, 12}, {2, 5, 6, 30}},
+			},
+			{
+				Query:    "alter table t modify column z int as (x * y) stored first",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "update t set x = 7, y = 8 where id = 1",
+				Expected: []sql.Row{{types.OkResult{
+					RowsAffected: 1,
+					Info: plan.UpdateInfo{
+						Matched: 1,
+						Updated: 1,
+					},
+				}}},
+			},
+			{
+				Query:    "select id, x, y, z from t order by id",
+				Expected: []sql.Row{{1, 7, 8, 56}, {2, 5, 6, 30}},
+			},
+		},
+	},
+	{
+		Name: "rename stored generated column preserves indexes",
+		SetUpScript: []string{
+			"create table t (id int primary key, x int, y int, z int as (x + y) stored, w int as (x * y + 1) stored, index iz (z), index iw (w))",
+			"insert into t (id, x, y) values (1, 2, 3), (2, 10, 20)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "alter table t change column z total int as (x * y) stored",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "select id, total, w from t order by id",
+				Expected: []sql.Row{{1, 6, 7}, {2, 200, 201}},
+			},
+			{
+				Query:           "select id from t where total = 6",
+				Expected:        []sql.Row{{1}},
+				ExpectedIndexes: []string{"iz"},
+			},
+			{
+				Query:           "select id from t where w = 7",
+				Expected:        []sql.Row{{1}},
+				ExpectedIndexes: []string{"iw"},
+			},
+		},
+	},
+	{
 		Name: "creating index on stored generated column",
 		SetUpScript: []string{
 			"create table t1 (a int primary key, b int as (a + 1) stored)",

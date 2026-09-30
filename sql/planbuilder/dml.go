@@ -486,8 +486,21 @@ func (b *Builder) addDependentUpdateExprs(inScope *scope, schema sql.Schema, upd
 				}
 			}
 			if generated != nil {
+				// Resolved defaults may retain field IDs from a previous statement,
+				// such as an ALTER TABLE. Bind their references to this update's scope.
+				bound, _, err := transform.Expr(b.ctx, generated, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+					if gf, ok := e.(*expression.GetField); ok {
+						return b.buildColumnExpr(inScope, gf.Name(), col.Source, col.DatabaseSource), transform.NewTree, nil
+					}
+
+					return e, transform.SameTree, nil
+				})
+				if err != nil {
+					b.handleErr(err)
+				}
+
 				colExpr := b.buildColumnExpr(inScope, col.Name, col.Source, col.DatabaseSource)
-				updateExprs = append(updateExprs, expression.NewSetField(colExpr, assignColumnIndexes(b.ctx, generated, schema)))
+				updateExprs = append(updateExprs, expression.NewSetField(colExpr, assignColumnIndexes(b.ctx, bound, schema)))
 			}
 		}
 	}
