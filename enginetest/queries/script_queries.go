@@ -15427,6 +15427,50 @@ select * from t1 except (
 		},
 	},
 	{
+		Name: "NOT IN subquery over indexed non-nullable columns",
+		SetUpScript: []string{
+			"CREATE TABLE nonnull_left (id int PRIMARY KEY, k int NOT NULL, INDEX nonnull_left_k_idx (k));",
+			"CREATE TABLE nonnull_right (id int PRIMARY KEY, k int NOT NULL, INDEX nonnull_right_k_idx (k));",
+			"INSERT INTO nonnull_left VALUES (1,1),(2,2),(3,3),(4,5);",
+			"INSERT INTO nonnull_right VALUES (1,1),(2,2);",
+			"CREATE TABLE null_key (id int PRIMARY KEY, k int, INDEX null_key_k_idx (k));",
+			"INSERT INTO null_key VALUES (1,1),(2,2),(3,NULL);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT k FROM nonnull_left WHERE k NOT IN (SELECT k FROM nonnull_right) ORDER BY k;",
+				Expected: []sql.Row{{3}, {5}},
+			},
+			{
+				Query:     "SELECT /*+ MERGE_JOIN(nonnull_left,nonnull_right) */ k FROM nonnull_left WHERE k NOT IN (SELECT k FROM nonnull_right) ORDER BY k;",
+				Expected:  []sql.Row{{3}, {5}},
+				JoinTypes: []plan.JoinType{plan.JoinTypeLeftOuterMerge},
+			},
+			{
+				Query:     "SELECT /*+ LOOKUP_JOIN(nonnull_left,nonnull_right) */ k FROM nonnull_left WHERE k NOT IN (SELECT k FROM nonnull_right) ORDER BY k;",
+				Expected:  []sql.Row{{3}, {5}},
+				JoinTypes: []plan.JoinType{plan.JoinTypeLeftOuterLookup},
+			},
+			{
+				// A non-nullable left key must still observe NULLs on the right.
+				Query:    "SELECT k FROM nonnull_left WHERE k NOT IN (SELECT k FROM null_key) ORDER BY k;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT /*+ MERGE_JOIN(nonnull_left,null_key) */ k FROM nonnull_left WHERE k NOT IN (SELECT k FROM null_key) ORDER BY k;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT /*+ LOOKUP_JOIN(nonnull_left,null_key) */ k FROM nonnull_left WHERE k NOT IN (SELECT k FROM null_key) ORDER BY k;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT k FROM nonnull_left WHERE NOT EXISTS (SELECT 1 FROM nonnull_right WHERE nonnull_right.k = nonnull_left.k) ORDER BY k;",
+				Expected: []sql.Row{{3}, {5}},
+			},
+		},
+	},
+	{
 		// See https://github.com/dolthub/dolt/issues/10924
 		Name:    "INSERT IGNORE truncates invalid UTF-8 at first bad byte",
 		Dialect: "mysql",
