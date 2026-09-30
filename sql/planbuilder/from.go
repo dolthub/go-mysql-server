@@ -285,8 +285,16 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 	// build individual table, collect column definitions
 	switch t := (te).(type) {
 	case *ast.AliasedTableExpr:
-		if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, t.Auth); err != nil && b.authEnabled {
-			b.handleErr(err)
+		var cteScope *scope
+		e, isTableName := t.Expr.(ast.TableName)
+		if isTableName {
+			cteScope = inScope.getCte(strings.ToLower(e.Name.String()))
+		}
+		resolvedAuth, checksResolvedTables := b.cat.AuthorizationHandler().(sql.ResolvedTableAuthorizationHandler)
+		if b.authEnabled && (!isTableName || (cteScope == nil && !checksResolvedTables)) {
+			if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, t.Auth); err != nil {
+				b.handleErr(err)
+			}
 		}
 		switch e := t.Expr.(type) {
 		case ast.TableName:
@@ -294,7 +302,7 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 			schemaName := strings.ToLower(e.SchemaQualifier.String())
 			inScope.schemaName = schemaName
 			tAlias := strings.ToLower(t.As.String())
-			if cteScope := inScope.getCte(tableName); cteScope != nil {
+			if cteScope != nil {
 				outScope = cteScope.aliasCte(b.ctx, tAlias)
 				outScope.parent = inScope
 			} else {
@@ -302,6 +310,11 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 				outScope, ok = b.buildTablescan(inScope, e, t.AsOf)
 				if !ok {
 					b.handleErr(sql.ErrTableNotFound.New(tableName))
+				}
+				if b.authEnabled && checksResolvedTables {
+					if err := resolvedAuth.HandleResolvedTableAuth(b.ctx, b.authQueryState, t.Auth, outScope.node); err != nil {
+						b.handleErr(err)
+					}
 				}
 			}
 			if tAlias != "" {
@@ -336,6 +349,12 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 			if len(renameCols) > 0 && len(fromScope.cols) != len(renameCols) {
 				err := sql.ErrColumnCountMismatch.New()
 				b.handleErr(err)
+			}
+
+			if !b.overrides.PermitDerivedTableDuplicateColumnNames {
+				if col, ok := duplicateDerivedColumn(e.Select, renameCols); ok {
+					b.handleErr(sql.ErrDuplicateColumn.New(col))
+				}
 			}
 
 			outScope = inScope.push()
@@ -421,6 +440,39 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 		b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(te)))
 	}
 	return
+}
+
+// duplicateDerivedColumn returns the first column name that a derived table gives to more than one of its output
+// columns, which MySQL rejects. Only names written by the user are considered: names produced by expanding a star
+// over a join may repeat.
+func duplicateDerivedColumn(sel ast.SelectStatement, renameCols []string) (string, bool) {
+	seen := make(map[string]struct{})
+	if len(renameCols) > 0 {
+		for _, col := range renameCols {
+			lowered := strings.ToLower(col)
+			if _, ok := seen[lowered]; ok {
+				return col, true
+			}
+			seen[lowered] = struct{}{}
+		}
+		return "", false
+	}
+	s, ok := sel.(*ast.Select)
+	if !ok {
+		return "", false
+	}
+	for _, se := range s.SelectExprs {
+		ae, ok := se.(*ast.AliasedExpr)
+		if !ok || ae.As.IsEmpty() {
+			continue
+		}
+		lowered := ae.As.Lowered()
+		if _, ok := seen[lowered]; ok {
+			return ae.As.String(), true
+		}
+		seen[lowered] = struct{}{}
+	}
+	return "", false
 }
 
 func columnsToStrings(cols ast.Columns) []string {

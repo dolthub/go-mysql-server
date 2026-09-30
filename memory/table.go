@@ -179,12 +179,6 @@ func NewPartitionedTableWithCollation(ctx *sql.Context, db *BaseDatabase, name s
 			unrDef := sql.NewUnresolvedColumnDefaultValue(defStr)
 			cCopy.Generated = unrDef
 		}
-		if cCopy.OnUpdate != nil {
-			newDef, _, _ := transform.Expr(ctx, cCopy.OnUpdate, stripTblNames)
-			defStr := newDef.String()
-			unrDef := sql.NewUnresolvedColumnDefaultValue(defStr)
-			cCopy.OnUpdate = unrDef
-		}
 		newSchema[i] = cCopy
 	}
 
@@ -607,10 +601,16 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 			if err != nil {
 				return nil, err
 			}
-			return &vectorTableIter{RowIter: iters.NewTopRowsIter(sc, limit, vectorPartition.CalcFoundRows, sql.RowsToRowIter(rows...)), columns: t.columns}, nil
+			return &projectedRowIter{
+				RowIter: iters.NewTopRowsIter(sc, limit, vectorPartition.CalcFoundRows, sql.RowsToRowIter(rows...)),
+				columns: t.columns,
+			}, nil
 		}
 
-		return &vectorTableIter{RowIter: iters.NewSortIter(sc, sql.RowsToRowIter(rows...)), columns: t.columns}, nil
+		return &projectedRowIter{
+			RowIter: iters.NewSortIter(sc, sql.RowsToRowIter(rows...)),
+			columns: t.columns,
+		}, nil
 	}
 
 	rows, ok := data.partitions[string(partition.Key())]
@@ -721,20 +721,6 @@ func (p *partitionIter) Next(*sql.Context) (sql.Partition, error) {
 
 func (p *partitionIter) Close(*sql.Context) error { return nil }
 
-// vectorTableIter applies projections after sorting by vector distance.
-type vectorTableIter struct {
-	sql.RowIter
-	columns []int
-}
-
-func (i *vectorTableIter) Next(ctx *sql.Context) (sql.Row, error) {
-	row, err := i.RowIter.Next(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return projectRow(i.columns, row), nil
-}
-
 type tableIter struct {
 	indexValues sql.IndexValueIter
 	rows        []sql.Row
@@ -766,6 +752,21 @@ func (i *tableIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 	}
 
+	return projectRow(i.columns, row), nil
+}
+
+// projectedRowIter applies the requested columns after vector distance sorting,
+// which must evaluate its expressions against the full stored row.
+type projectedRowIter struct {
+	sql.RowIter
+	columns []int
+}
+
+func (i *projectedRowIter) Next(ctx *sql.Context) (sql.Row, error) {
+	row, err := i.RowIter.Next(ctx)
+	if err != nil {
+		return nil, err
+	}
 	return projectRow(i.columns, row), nil
 }
 

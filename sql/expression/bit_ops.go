@@ -158,7 +158,7 @@ func (b *BitOp) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, inter
 	return lval, rval, nil
 }
 
-func (b *BitOp) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}, error) {
+func (b *BitOp) convertLeftRight(ctx *sql.Context, lVal, rVal any) (any, any, error) {
 	// Determine the appropriate conversion type based on operand types
 	var typ sql.Type
 	lTyp := b.LeftChild.Type(ctx)
@@ -173,10 +173,10 @@ func (b *BitOp) convertLeftRight(ctx *sql.Context, left interface{}, right inter
 		typ = types.Float64
 	}
 
-	left = convertValueToType(ctx, lTyp, typ, left)
-	right = convertValueToType(ctx, rTyp, typ, right)
+	lVal = convertValueToType(ctx, lVal, lTyp, typ)
+	rVal = convertValueToType(ctx, rVal, rTyp, typ)
 
-	return left, right, nil
+	return lVal, rVal, nil
 }
 
 // convertUintFromInt returns any int64 value converted to uint64 value

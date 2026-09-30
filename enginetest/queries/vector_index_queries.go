@@ -116,6 +116,62 @@ var VectorIndexQueries = []ScriptTest{
 			},
 		},
 	},
+	// https://github.com/dolthub/dolt/issues/8657
+	{
+		Name: "Test non-covering vector lookups",
+		SetUpScript: []string{
+			"CREATE TABLE noncovering(pk INT PRIMARY KEY,c0 INT,embedding JSON NOT NULL)",
+			"CREATE VECTOR INDEX vidx ON noncovering(embedding)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:           "SELECT c0 FROM noncovering ORDER BY VEC_DISTANCE('[0.0]',embedding)",
+				Expected:        []sql.Row{},
+				ExpectedIndexes: []string{},
+			},
+			{
+				// Distance order differs from both primary-key and insertion order, with no ties.
+				Query:    "INSERT INTO noncovering VALUES(3,30,'[-4.0]'),(1,10,'[1.0]'),(5,50,'[8.0]'),(2,20,'[2.0]'),(4,40,'[0.0]')",
+				Expected: []sql.Row{{types.NewOkResult(5)}},
+			},
+			{
+				Query:           "SELECT c0 FROM noncovering ORDER BY VEC_DISTANCE('[0.0]',embedding) LIMIT 1",
+				Expected:        []sql.Row{{int32(40)}},
+				ExpectedIndexes: []string{"vidx"},
+			},
+			{
+				Query:           "SELECT c0 FROM noncovering ORDER BY VEC_DISTANCE('[0.0]',embedding) LIMIT 3",
+				Expected:        []sql.Row{{int32(40)}, {int32(10)}, {int32(20)}},
+				ExpectedIndexes: []string{"vidx"},
+			},
+			{
+				// Project non-index columns in a different order from the stored row.
+				Query:           "SELECT c0, pk FROM noncovering ORDER BY VEC_DISTANCE('[0.0]',embedding) LIMIT 3",
+				Expected:        []sql.Row{{int32(40), int32(4)}, {int32(10), int32(1)}, {int32(20), int32(2)}},
+				ExpectedIndexes: []string{"vidx"},
+			},
+			{
+				Query:           "SELECT c0 FROM noncovering ORDER BY VEC_DISTANCE('[0.0]',embedding) LIMIT 10",
+				Expected:        []sql.Row{{int32(40)}, {int32(10)}, {int32(20)}, {int32(30)}, {int32(50)}},
+				ExpectedIndexes: []string{"vidx"},
+			},
+			{
+				Query:           "SELECT c0 FROM noncovering ORDER BY VEC_DISTANCE('[3.0]',embedding) LIMIT 3",
+				Expected:        []sql.Row{{int32(20)}, {int32(10)}, {int32(40)}},
+				ExpectedIndexes: []string{"vidx"},
+			},
+			{
+				Query:           "SELECT c0 FROM noncovering ORDER BY VEC_DISTANCE('[-4.0]',embedding) LIMIT 3",
+				Expected:        []sql.Row{{int32(30)}, {int32(40)}, {int32(10)}},
+				ExpectedIndexes: []string{"vidx"},
+			},
+			{
+				Query:           "SELECT c0 FROM noncovering ORDER BY VEC_DISTANCE('[0.0]',embedding)",
+				Expected:        []sql.Row{{int32(40)}, {int32(10)}, {int32(20)}, {int32(30)}, {int32(50)}},
+				ExpectedIndexes: []string{},
+			},
+		},
+	},
 	{
 		Name: "basic VECTOR vector index",
 		SetUpScript: []string{

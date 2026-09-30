@@ -122,8 +122,11 @@ func (b *Builder) buildAlterTable(inScope *scope, query string, c *ast.AlterTabl
 }
 
 func (b *Builder) buildDDL(inScope *scope, subQuery string, fullQuery string, c *ast.DDL) (outScope *scope) {
-	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, c.Auth); err != nil && b.authEnabled {
-		b.handleErr(err)
+	_, checksResolvedTables := b.cat.AuthorizationHandler().(sql.ResolvedTableAuthorizationHandler)
+	if b.authEnabled && (c.Action != ast.TruncateStr || !checksResolvedTables) {
+		if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, c.Auth); err != nil {
+			b.handleErr(err)
+		}
 	}
 	if !c.Temporary {
 		b.qFlags.Set(sql.QFlagDDL)
@@ -298,6 +301,11 @@ func (b *Builder) buildTruncateTable(inScope *scope, c *ast.DDL) (outScope *scop
 	tableScope, ok := b.buildResolvedTableForTablename(inScope, c.Table, nil)
 	if !ok {
 		b.handleErr(sql.ErrTableNotFound.New(c.Table.Name.String()))
+	}
+	if resolvedAuth, ok := b.cat.AuthorizationHandler().(sql.ResolvedTableAuthorizationHandler); ok && b.authEnabled {
+		if err := resolvedAuth.HandleResolvedTableAuth(b.ctx, b.authQueryState, c.Auth, tableScope.node); err != nil {
+			b.handleErr(err)
+		}
 	}
 	outScope.node = plan.NewTruncate(
 		c.Table.DbQualifier.String(),
@@ -1741,11 +1749,6 @@ func (b *Builder) columnDefinitionToColumn(inScope *scope, cd *ast.ColumnDefinit
 	}
 
 	nullable := !isPkey && !bool(cd.Type.NotNull)
-	extra := ""
-
-	if cd.Type.Autoincrement {
-		extra = "auto_increment"
-	}
 
 	if cd.Type.SRID != nil {
 		sridVal, err := strconv.ParseInt(string(cd.Type.SRID.Val), 10, 32)
@@ -1770,7 +1773,6 @@ func (b *Builder) columnDefinitionToColumn(inScope *scope, cd *ast.ColumnDefinit
 		Nullable:      nullable && !bool(cd.Type.Autoincrement),
 		PrimaryKey:    isPkey,
 		Comment:       comment,
-		Extra:         extra,
 		Hidden:        bool(cd.Type.Invisible),
 	}
 }

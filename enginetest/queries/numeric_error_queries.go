@@ -92,4 +92,12 @@ var NumericErrorQueries = []ScriptTest{
 			},
 		},
 	},
+	// https://github.com/dolthub/dolt/issues/7130
+	{
+		Name:        "Test large DOUBLE arithmetic",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{Query: "SELECT 1.7e308+0,1.7e308+0.0,1.7e308+1e10,1.7e64+123,1.7e65+123", Expected: []sql.Row{{float64(1.7e308), float64(1.7e308), float64(1.7e308), float64(1.7e64), float64(1.7e65)}}},
+		},
+	},
 }

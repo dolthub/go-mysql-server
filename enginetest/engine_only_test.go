@@ -1007,6 +1007,19 @@ func TestTimestampBindingsCanBeCompared(t *testing.T) {
 	require.Equal(t, 1, count)
 }
 
+func TestColumnStatisticsWithoutPrivileges(t *testing.T) {
+	db := memory.NewDatabase("mydb")
+	pro := memory.NewDBProvider(db)
+	e := sqle.NewDefault(pro)
+	ctx := sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), pro)))
+
+	_, iter, _, err := e.Query(ctx, "SELECT * FROM information_schema.column_statistics")
+	require.NoError(t, err)
+	rows, err := sql.RowIterToRows(ctx, iter)
+	require.NoError(t, err)
+	require.Empty(t, rows)
+}
+
 // TestAlterTableWithBadSchema is a backwards compatibility test that
 // ensures tables made with old versions of the engine can be altered.
 func TestAlterTableWithBadSchema(t *testing.T) {
