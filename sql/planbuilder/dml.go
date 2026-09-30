@@ -37,6 +37,14 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, i.Auth); err != nil && b.authEnabled {
 		b.handleErr(err)
 	}
+	// An upsert requires UPDATE even when none of its candidate rows conflict.
+	if len(i.OnDup) > 0 {
+		updateAuth := i.Auth
+		updateAuth.AuthType = ast.AuthType_UPDATE
+		if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, updateAuth); err != nil && b.authEnabled {
+			b.handleErr(err)
+		}
+	}
 	if i.With != nil {
 		inScope = b.buildWith(inScope, i.With)
 	}
