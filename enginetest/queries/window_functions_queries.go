@@ -50,6 +50,47 @@ var WindowFunctionsScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "regexp functions inside window aggregates are evaluated in every partition",
+		SetUpScript: []string{
+			"CREATE TABLE regexp_windows (g int primary key, v int not null, s varchar(8) not null)",
+			"INSERT INTO regexp_windows VALUES (0, 10, 'a'), (1, 50, 'a'), (2, 7, 'b')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT g, SUM(CASE WHEN REGEXP_LIKE(s, 'a') THEN v ELSE 0 END) OVER (PARTITION BY g) AS total FROM regexp_windows ORDER BY g",
+				Expected: []sql.Row{
+					{0, float64(10)},
+					{1, float64(50)},
+					{2, float64(0)},
+				},
+			},
+			{
+				Query: "SELECT g, SUM(REGEXP_INSTR(s, 'a')) OVER (PARTITION BY g) AS pos FROM regexp_windows ORDER BY g",
+				Expected: []sql.Row{
+					{0, float64(1)},
+					{1, float64(1)},
+					{2, float64(0)},
+				},
+			},
+			{
+				Query: "SELECT g, MAX(REGEXP_SUBSTR(s, 'a')) OVER (PARTITION BY g) AS m FROM regexp_windows ORDER BY g",
+				Expected: []sql.Row{
+					{0, "a"},
+					{1, "a"},
+					{2, nil},
+				},
+			},
+			{
+				Query: "SELECT g, MAX(REGEXP_REPLACE(s, 'a', 'x')) OVER (PARTITION BY g) AS m FROM regexp_windows ORDER BY g",
+				Expected: []sql.Row{
+					{0, "x"},
+					{1, "x"},
+					{2, "b"},
+				},
+			},
+		},
+	},
+	{
 		Name: "window function over grouped one-column input",
 		SetUpScript: []string{
 			"CREATE TABLE grouped_window (id INT PRIMARY KEY, g INT, k INT, v INT)",
