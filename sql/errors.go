@@ -755,7 +755,7 @@ var (
 	ErrTableAccessDeniedForUser = errors.NewKind("Access denied for user %s to table '%s'")
 
 	// ErrPrivilegeCheckFailed is returned when a user does not have the correct privileges to perform an operation.
-	ErrPrivilegeCheckFailed = errors.NewKind("command denied to user %s")
+	ErrPrivilegeCheckFailed = newMySQLKind("command denied to user %s", 1142, "42000")
 
 	// ErrGrantUserDoesNotExist is returned when a user does not exist when attempting to grant them privileges.
 	ErrGrantUserDoesNotExist = errors.NewKind("You are not allowed to create a user with GRANT")
@@ -1045,6 +1045,12 @@ var (
 	// ErrInvalidGroupFuncUse is returned when an aggregate function is
 	// used in an invalid context, such as nested in another aggregate.
 	ErrInvalidGroupFuncUse = newMySQLKind("Invalid use of group function", mysql.ERInvalidGroupFuncUse, mysql.SSUnknownSQLState)
+
+	// ErrTooBigScale is returned when a type receives a scale that is too large.
+	ErrTooBigScale = newMySQLKind("Too big scale %v specified. Maximum is %v.", 1425, mysql.SSClientError)
+
+	// ErrTooBigPrecision is returned when a type receives a precision that is too large.
+	ErrTooBigPrecision = newMySQLKind("Too big precision %v specified. Maximum is %v.", 1426, mysql.SSClientError)
 )
 
 // CastSQLError returns a *mysql.SQLError with the error code and in some cases, also a SQL state, populated for the

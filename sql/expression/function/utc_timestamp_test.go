@@ -76,7 +76,7 @@ func TestUTCTimestamp(t *testing.T) {
 			expectErr: true,
 		},
 		{
-			args:      []sql.Expression{expression.NewConvert(expression.NewLiteral("2020-10-10 01:02:03", types.Text), expression.ConvertToDatetime)},
+			args:      []sql.Expression{expression.NewConvert(expression.NewLiteral("2020-10-10 01:02:03", types.Text), types.Datetime, expression.ConvertToDatetime)},
 			result:    time.Time{},
 			expectErr: true,
 		},

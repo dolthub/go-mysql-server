@@ -1222,40 +1222,28 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{{"2"}},
 	},
 	{
-		// TODO: TimeSpan type currently always has precision 6, but it has precision 0 on ServerEngine
-		SkipServerEngine: true,
-		Query:            `SELECT TRIM(TIME('12:34:56.123456'))`,
-		Expected:         []sql.Row{{"12:34:56.123456"}},
+		Query:    `SELECT TRIM(TIME('12:34:56.123456'))`,
+		Expected: []sql.Row{{"12:34:56.123456"}},
 	},
 	{
-		// TODO: TimeSpan type currently always has precision 6, but it has precision 0 on ServerEngine
-		SkipServerEngine: true,
-		Query:            `SELECT LTRIM(TIME('12:34:56.123456'))`,
-		Expected:         []sql.Row{{"12:34:56.123456"}},
+		Query:    `SELECT LTRIM(TIME('12:34:56.123456'))`,
+		Expected: []sql.Row{{"12:34:56.123456"}},
 	},
 	{
-		// TODO: TimeSpan type currently always has precision 6, but it has precision 0 on ServerEngine
-		SkipServerEngine: true,
-		Query:            `SELECT RTRIM(TIME('12:34:56.123456'))`,
-		Expected:         []sql.Row{{"12:34:56.123456"}},
+		Query:    `SELECT RTRIM(TIME('12:34:56.123456'))`,
+		Expected: []sql.Row{{"12:34:56.123456"}},
 	},
 	{
-		// TODO: TimeSpan type currently always has precision 6, but it has precision 0 on ServerEngine
-		SkipServerEngine: true,
-		Query:            `SELECT TRIM(LEADING '12:34:56.' FROM TIME('12:34:56.123456'))`,
-		Expected:         []sql.Row{{"123456"}},
+		Query:    `SELECT TRIM(LEADING '12:34:56.' FROM TIME('12:34:56.123456'))`,
+		Expected: []sql.Row{{"123456"}},
 	},
 	{
-		// TODO: TimeSpan type currently always has precision 6, but it has precision 0 on ServerEngine
-		SkipServerEngine: true,
-		Query:            `SELECT TRIM(TRAILING '.123456' FROM TIME('12:34:56.123456'))`,
-		Expected:         []sql.Row{{"12:34:56"}},
+		Query:    `SELECT TRIM(TRAILING '.123456' FROM TIME('12:34:56.123456'))`,
+		Expected: []sql.Row{{"12:34:56"}},
 	},
 	{
-		// TODO: TimeSpan type currently always has precision 6, but it has precision 0 on ServerEngine
-		SkipServerEngine: true,
-		Query:            `SELECT TRIM('0' FROM TIME('00:12:34.123'))`,
-		Expected:         []sql.Row{{":12:34.123"}},
+		Query:    `SELECT TRIM('0' FROM TIME('00:12:34.123'))`,
+		Expected: []sql.Row{{":12:34.123"}},
 	},
 
 	// SUBSTRING_INDEX Function Tests
@@ -2163,6 +2151,54 @@ var FunctionQueryTests = []QueryTest{
 		Query: "select cast(cast('2001-02-03 12:34:56.000000' as datetime(6)) as char)",
 		Expected: []sql.Row{
 			{"2001-02-03 12:34:56.000000"},
+		},
+	},
+	{
+		Query: "select convert('12:34:56.999999', TIME);",
+		Expected: []sql.Row{
+			{types.Timespan(45297_000000)},
+		},
+	},
+	{
+		Query: "select convert('12:34:56.123456', TIME(0));",
+		Expected: []sql.Row{
+			{types.Timespan(45296_000000)},
+		},
+	},
+	{
+		Query: "select convert('12:34:56.123456', TIME(1));",
+		Expected: []sql.Row{
+			{types.Timespan(45296_100000)},
+		},
+	},
+	{
+		Query: "select convert('12:34:56.123456', TIME(2));",
+		Expected: []sql.Row{
+			{types.Timespan(45296_120000)},
+		},
+	},
+	{
+		Query: "select convert('12:34:56.123456', TIME(3));",
+		Expected: []sql.Row{
+			{types.Timespan(45296_123000)},
+		},
+	},
+	{
+		Query: "select convert('12:34:56.123456', TIME(4));",
+		Expected: []sql.Row{
+			{types.Timespan(45296_123500)},
+		},
+	},
+	{
+		Query: "select convert('12:34:56.123456', TIME(5));",
+		Expected: []sql.Row{
+			{types.Timespan(45296_123460)},
+		},
+	},
+	{
+		Query: "select convert('12:34:56.123456', TIME(6));",
+		Expected: []sql.Row{
+			{types.Timespan(45296_123456)},
 		},
 	},
 	{
@@ -3508,6 +3544,23 @@ var FunctionQueryTests = []QueryTest{
 	},
 
 	{
+		Query:       "select cast(123 as decimal(66, 0));",
+		ExpectedErr: sql.ErrTooBigPrecision,
+	},
+	{
+		Query:       "select cast(123 as decimal(0, 31));",
+		ExpectedErr: sql.ErrTooBigScale,
+	},
+	{
+		Query:       "select cast(123 as datetime(7));",
+		ExpectedErr: sql.ErrTooBigPrecision,
+	},
+	{
+		Query:       "select cast(123 as time(7));",
+		ExpectedErr: sql.ErrTooBigPrecision,
+	},
+
+	{
 		Query:    "select extract(day from 0)",
 		Expected: []sql.Row{{0}},
 	},
@@ -3926,5 +3979,34 @@ var FunctionQueryTests = []QueryTest{
 	{
 		Query:       `SELECT RPAD(_latin1'a', 3, _utf8mb4'👍')`,
 		ExpectedErr: sql.ErrCannotConvertString,
+	},
+	// https://github.com/dolthub/dolt/issues/11917
+	{
+		Query:    "SELECT UNIX_TIMESTAMP(IFNULL(SIN(WEEKDAY(UUID())), (SELECT 1)));",
+		Expected: []sql.Row{{int64(0)}},
+	},
+	{
+		Query:    "SELECT UNIX_TIMESTAMP((SELECT 1));",
+		Expected: []sql.Row{{int64(0)}},
+	},
+	{
+		Query:    "SELECT UNIX_TIMESTAMP((SELECT NULL));",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT UNIX_TIMESTAMP((SELECT 1 FROM (SELECT 1) t WHERE 1=0));",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT UNIX_TIMESTAMP(NULLIF((SELECT 1), 1));",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT UNIX_TIMESTAMP(COALESCE((SELECT NULL), (SELECT 1)));",
+		Expected: []sql.Row{{int64(0)}},
+	},
+	{
+		Query:       "SELECT UNIX_TIMESTAMP((SELECT 1 UNION ALL SELECT 2));",
+		ExpectedErr: sql.ErrExpectedSingleRow,
 	},
 }
