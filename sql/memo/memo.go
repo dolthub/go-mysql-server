@@ -168,6 +168,7 @@ func DropsNullRejection(ctx *sql.Context, op plan.JoinType, filter []sql.Express
 	if op != plan.JoinTypeLeftOuterExcludeNulls {
 		return false
 	}
+
 	for _, f := range filter {
 		if transform.InspectExpr(ctx, f, func(ctx *sql.Context, e sql.Expression) bool {
 			gf, ok := e.(*expression.GetField)
@@ -176,6 +177,7 @@ func DropsNullRejection(ctx *sql.Context, op plan.JoinType, filter []sql.Express
 			return true
 		}
 	}
+
 	return false
 }
 
