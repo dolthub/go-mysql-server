@@ -66,14 +66,38 @@ func TestInetNtoa(t *testing.T) {
 		row      sql.Row
 		expected interface{}
 		err      bool
+		warning  bool
 	}{
-		{"null input", sql.NewRow(nil), nil, false},
-		{"valid ipv4 int", sql.NewRow(uint32(167773450)), "10.0.5.10", false},
-		{"valid ipv4 int above signed range", sql.NewRow(uint32(3221225985)), "192.0.2.1", false},
-		{"valid ipv4 int as string", sql.NewRow("167773450"), "10.0.5.10", false},
-		{"floating point ipv4", sql.NewRow(10.1), "0.0.0.10", false},
-		{"valid ipv6 int", sql.NewRow("\000\000\000\000"), "0.0.0.0", false},
+		{name: "null input", row: sql.NewRow(nil)},
+		{name: "valid ipv4 int", row: sql.NewRow(uint32(167773450)), expected: "10.0.5.10"},
+		{
+			name:     "valid ipv4 int above signed range",
+			row:      sql.NewRow(uint32(3221225985)),
+			expected: "192.0.2.1",
+		},
+		{name: "valid ipv4 int as string", row: sql.NewRow("167773450"), expected: "10.0.5.10"},
+		{name: "floating point ipv4", row: sql.NewRow(10.1), expected: "0.0.0.10"},
+		{name: "valid ipv6 int", row: sql.NewRow("\000\000\000\000"), expected: "0.0.0.0"},
+		// Everything above 127.255.255.255 does not fit a signed 32-bit int.
+		{
+			name:     "first address above signed 32-bit",
+			row:      sql.NewRow(uint32(2147483648)),
+			expected: "128.0.0.0",
+		},
+		{
+			name:     "documentation address 192.0.2.1",
+			row:      sql.NewRow(uint32(3221225985)),
+			expected: "192.0.2.1",
+		},
+		{name: "last ipv4 address", row: sql.NewRow(uint32(4294967295)), expected: "255.255.255.255"},
+		{name: "above signed 32-bit as string", row: sql.NewRow("3221225985"), expected: "192.0.2.1"},
+		{name: "above signed 32-bit as int64", row: sql.NewRow(int64(3221225985)), expected: "192.0.2.1"},
+		// Not addresses: MySQL returns NULL rather than wrapping or clamping.
+		{name: "just above the ipv4 space", row: sql.NewRow(int64(4294967296)), warning: true},
+		{name: "negative", row: sql.NewRow(-1), warning: true},
+		{name: "beyond int64", row: sql.NewRow(uint64(18446744073709551615)), warning: true},
 	}
+
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Helper()
@@ -86,6 +110,11 @@ func TestInetNtoa(t *testing.T) {
 			} else {
 				require.NoError(err)
 				require.Equal(tt.expected, v)
+			}
+
+			if tt.warning {
+				require.Len(ctx.Warnings(), 1)
+				require.Equal(1411, ctx.Warnings()[0].Code)
 			}
 		})
 	}
