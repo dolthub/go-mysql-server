@@ -311,30 +311,70 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 	inScope.initGroupBy()
 	gb := inScope.groupBy
 
-	if strings.EqualFold(name, "count") {
+	if name == "any_value" {
+		return b.buildAnyValue(inScope, name, e, gb)
+	}
+	if b.inAgg {
+		// Window functions evaluate after aggregation, so
+		// aggregates inside window functions are allowed,
+		// but nested aggregates are not.
+		err := sql.ErrInvalidGroupFuncUse.New()
+		b.handleErr(err)
+	}
+
+	switch name {
+	case "count":
 		if _, ok := e.Exprs[0].(*ast.StarExpr); ok {
 			return b.buildCountStarAggregate(e, gb)
 		}
-	}
-
-	if strings.EqualFold(name, "jsonarray") {
+		b.qFlags.Set(sql.QFlagCount)
+	case "jsonarray":
 		// TODO we don't have any tests for this
 		if _, ok := e.Exprs[0].(*ast.StarExpr); ok {
 			return b.buildJsonArrayStarAggregate(gb)
 		}
 	}
 
-	if strings.EqualFold(name, "any_value") {
-		b.qFlags.Set(sql.QFlagAnyAgg)
-	}
-
 	args := b.buildAggFunctionArgs(inScope, e, gb)
 	agg := b.newAggregation(e, name, args)
+	return b.addAggregate(agg, gb)
+}
 
-	if name == "count" {
-		b.qFlags.Set(sql.QFlagCount)
+// buildAnyValue builds an [aggregation.AnyValue] function expression.
+//
+// If ANY_VALUE wraps or is wrapped by an aggregate or window function,
+// it unwraps and returns the inner expression.
+//
+// Otherwise, it records column scan dependencies for |expr| on |gb| via
+// [groupBy.addAggInCol], sets [sql.QFlagAnyAgg], and registers an
+// [aggregation.AnyValue] on |gb| via [Builder.addAggregate].
+func (b *Builder) buildAnyValue(inScope *scope, name string, e *ast.FuncExpr, gb *groupBy) sql.Expression {
+	if len(e.Exprs) != 1 {
+		err := sql.ErrInvalidArgumentNumber.New(name, 1, len(e.Exprs))
+		b.handleErr(err)
+	}
+	if b.inAgg || b.inWindow {
+		return b.selectExprToExpression(inScope, e.Exprs[0])
 	}
 
+	startAggs, startWins := inScope.aggCount(), inScope.windowFuncCount()
+	expr := b.selectExprToExpression(inScope, e.Exprs[0])
+	if inScope.aggCount() > startAggs || inScope.windowFuncCount() > startWins {
+		return expr
+	}
+
+	gb.addAggInCol(b, expr)
+	b.qFlags.Set(sql.QFlagAnyAgg)
+	agg := b.newAggregation(e, name, []sql.Expression{expr})
+	return b.addAggregate(agg, gb)
+}
+
+// addAggregate registers aggregate expression |agg| on |gb| and returns
+// an output column reference.
+//
+// If an identical aggregate was already registered on |gb|, addAggregate
+// reuses the existing column reference to avoid duplicate computations.
+func (b *Builder) addAggregate(agg sql.Aggregation, gb *groupBy) sql.Expression {
 	aggType := agg.Type(b.ctx)
 
 	aggName := strings.ToLower(plan.AliasSubqueryString(b.ctx, agg))
@@ -393,39 +433,53 @@ func (b *Builder) newAggregation(e *ast.FuncExpr, name string, args []sql.Expres
 	return agg
 }
 
-// buildAggFunctionArgs builds the arguments for an aggregate function
+// addAggInCol adds column dependencies from aggregate argument |e|
+// to |g| as required input columns for underlying table scans.
+func (g *groupBy) addAggInCol(b *Builder, e sql.Expression) {
+	switch e := e.(type) {
+	case *expression.GetField:
+		if e.TableId() == 0 {
+			b.handleErr(fmt.Errorf("failed to resolve aggregate column argument: %s", e))
+		}
+		col := scopeColumn{tableId: e.TableID(), db: e.Database(), table: e.Table(), col: e.Name(), scalar: e, typ: e.Type(b.ctx), nullable: e.IsNullable(b.ctx)}
+		g.addInCol(col)
+	case *expression.Star:
+		err := sql.ErrStarUnsupported.New()
+		b.handleErr(err)
+	case *plan.Subquery:
+		col := scopeColumn{col: e.QueryString, scalar: e, typ: e.Type(b.ctx)}
+		g.addInCol(col)
+	default:
+		col := scopeColumn{col: e.String(), scalar: e, typ: e.Type(b.ctx)}
+		g.addInCol(col)
+	}
+}
+
+// buildAggFunctionArgs builds arguments for an aggregate function.
 func (b *Builder) buildAggFunctionArgs(inScope *scope, e *ast.FuncExpr, gb *groupBy) []sql.Expression {
+	b.inAgg = true
+	defer func() { b.inAgg = false }()
+
 	var args []sql.Expression
 	for _, arg := range e.Exprs {
 		windowCount := len(inScope.windowFuncs)
 		e := b.selectExprToExpression(inScope, arg)
 		if len(inScope.windowFuncs) > windowCount {
-			b.handleErr(sql.ErrNonAggregatedColumnWithoutGroupBy.New())
+			expr := inScope.windowFuncs[windowCount].scalar
+			var windowFuncName string
+			if windowFunc, ok := expr.(sql.FunctionExpression); ok {
+				windowFuncName = windowFunc.FunctionName()
+			} else {
+				windowFuncName = expr.String()
+			}
+			b.handleErr(sql.ErrWindowInvalidWindowFuncUse.New(windowFuncName))
 		}
 		// if GetField is an alias, alias must be masking a column
 		if gf, ok := e.(*expression.GetField); ok && gf.TableId() == 0 {
 			e = b.selectExprToExpression(inScope.parent, arg)
 		}
-		switch e := e.(type) {
-		case *expression.GetField:
-			if e.TableId() == 0 {
-				b.handleErr(fmt.Errorf("failed to resolve aggregate column argument: %s", e))
-			}
-			args = append(args, e)
-			col := scopeColumn{tableId: e.TableID(), db: e.Database(), table: e.Table(), col: e.Name(), scalar: e, typ: e.Type(b.ctx), nullable: e.IsNullable(b.ctx)}
-			gb.addInCol(col)
-		case *expression.Star:
-			err := sql.ErrStarUnsupported.New()
-			b.handleErr(err)
-		case *plan.Subquery:
-			args = append(args, e)
-			col := scopeColumn{col: e.QueryString, scalar: e, typ: e.Type(b.ctx)}
-			gb.addInCol(col)
-		default:
-			args = append(args, e)
-			col := scopeColumn{col: e.String(), scalar: e, typ: e.Type(b.ctx)}
-			gb.addInCol(col)
-		}
+		gb.addAggInCol(b, e)
+		args = append(args, e)
 	}
 	return args
 }
@@ -439,23 +493,7 @@ func (b *Builder) buildJsonArrayStarAggregate(gb *groupBy) sql.Expression {
 	// if e.Distinct {
 	//	agg = plan.NewDistinct(expression.NewLiteral(1, types.Int64))
 	// }
-	aggName := strings.ToLower(agg.String())
-	gf := gb.getAggRef(aggName)
-	if gf != nil {
-		// if we've already computed use reference here
-		return gf
-	}
-
-	col := scopeColumn{col: strings.ToLower(agg.String()), scalar: agg, typ: agg.Type(b.ctx), nullable: agg.IsNullable(b.ctx)}
-	id := gb.outScope.newColumn(col)
-
-	agg = agg.WithId(sql.ColumnId(id)).(*aggregation.JsonArray)
-	gb.outScope.cols[len(gb.outScope.cols)-1].scalar = agg
-	col.scalar = agg
-
-	col.id = id
-	gb.addAggStr(col)
-	return col.scalarGf()
+	return b.addAggregate(agg, gb)
 }
 
 // buildCountStarAggregate builds a COUNT(*) aggregate function
@@ -467,27 +505,19 @@ func (b *Builder) buildCountStarAggregate(e *ast.FuncExpr, gb *groupBy) sql.Expr
 		agg = aggregation.NewCount(expression.NewLiteral(1, types.Int64))
 	}
 	b.qFlags.Set(sql.QFlagCountStar)
-	aggName := strings.ToLower(agg.String())
-	gf := gb.getAggRef(aggName)
-	if gf != nil {
-		// if we've already computed use reference here
-		return gf
-	}
-
-	col := scopeColumn{col: strings.ToLower(agg.String()), scalar: agg, typ: agg.Type(b.ctx), nullable: agg.IsNullable(b.ctx)}
-	id := gb.outScope.newColumn(col)
-	col.id = id
-
-	agg = agg.WithId(sql.ColumnId(id)).(sql.Aggregation)
-	gb.outScope.cols[len(gb.outScope.cols)-1].scalar = agg
-	col.scalar = agg
-
-	gb.addAggStr(col)
-	return col.scalarGf()
+	return b.addAggregate(agg, gb)
 }
 
-// buildGroupConcat builds a GROUP_CONCAT aggregate function
+// buildGroupConcat builds a GROUP_CONCAT aggregate function.
 func (b *Builder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.Expression {
+	if b.inAgg {
+		err := sql.ErrInvalidGroupFuncUse.New()
+		b.handleErr(err)
+	}
+
+	b.inAgg = true
+	defer func() { b.inAgg = false }()
+
 	inScope.initGroupBy()
 	gb := inScope.groupBy
 
@@ -546,7 +576,12 @@ func IsMySQLWindowFuncName(ctx *sql.Context, name string) (bool, error) {
 	}
 }
 
+// buildWindowFunc builds a window function expression and
+// registers its definition.
 func (b *Builder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, over *ast.WindowDef) sql.Expression {
+	b.inWindow = true
+	defer func() { b.inWindow = false }()
+
 	// internal expressions can be complex, but window can't be more than alias
 	var args []sql.Expression
 	for _, arg := range e.Exprs {
@@ -557,6 +592,9 @@ func (b *Builder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, 
 	var win sql.WindowAdaptableExpression
 	if name == "count" {
 		if _, ok := e.Exprs[0].(*ast.StarExpr); ok {
+			if e.Distinct {
+				b.handleErr(errMySQLDistinctStarWindow)
+			}
 			win = aggregation.NewCount(expression.NewLiteral(1, types.Int64))
 			b.qFlags.Set(sql.QFlagCountStar)
 		}
@@ -571,13 +609,17 @@ func (b *Builder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, 
 
 		newInst, err := f.NewInstance(b.ctx, args)
 		if err != nil {
+			// MySQL reports unsupported DISTINCT window syntax before validating COUNT's argument count.
+			if e.Distinct && name == "count" && len(args) > 1 {
+				b.validateDistinctWindow(e, name, aggregation.NewCountDistinct(args...))
+			}
 			b.handleErr(err)
 		}
 		b.validateDistinctWindow(e, name, newInst)
 
 		win, ok = newInst.(sql.WindowAdaptableExpression)
 		if !ok {
-			err := fmt.Errorf("function is not a window adaptable exprssion: %s", f.FunctionName())
+			err := fmt.Errorf("function is not a window adaptable expression: %s", f.FunctionName())
 			b.handleErr(err)
 		}
 	}
@@ -607,7 +649,19 @@ func (b *Builder) validateDistinctWindow(e *ast.FuncExpr, name string, expr sql.
 		if err := validator.ValidateDistinctWindow(e.Qualifier.String(), name); err != nil {
 			b.handleErr(err)
 		}
+		return
 	}
+	if b.overrides.ValidateDistinctWindow != nil {
+		if err := b.overrides.ValidateDistinctWindow(e.Qualifier.String(), name, expr); err != nil {
+			b.handleErr(err)
+		}
+		return
+	}
+	switch expr.(type) {
+	case *aggregation.Min, *aggregation.Max:
+		return
+	}
+	b.handleErr(errMySQLDistinctWindow)
 }
 
 func (b *Builder) buildWindow(fromScope, projScope *scope) *scope {
@@ -651,10 +705,11 @@ func (b *Builder) buildWindow(fromScope, projScope *scope) *scope {
 			switch e := e.(type) {
 			case *expression.GetField:
 				colName := strings.ToLower(e.String())
-				if !selectStr[colName] {
+				key := windowPassthroughKey(e)
+				if !selectStr[colName] && !selectStr[key] {
 					selectExprs = append(selectExprs, e)
 					selectGfs = append(selectGfs, e)
-					selectStr[colName] = true
+					selectStr[key] = true
 				}
 			case *plan.Subquery:
 				e.Correlated().ForEach(func(colId sql.ColumnId) {
@@ -670,10 +725,11 @@ func (b *Builder) buildWindow(fromScope, projScope *scope) *scope {
 	}
 	for _, e := range fromScope.extraCols {
 		// accessory cols used by ORDER_BY, HAVING
-		if !selectStr[e.String()] {
+		key := windowPassthroughKey(e.scalarGf())
+		if !selectStr[e.String()] && !selectStr[key] {
 			selectExprs = append(selectExprs, e.scalarGf())
 			selectGfs = append(selectGfs, e.scalarGf())
-			selectStr[e.String()] = true
+			selectStr[key] = true
 		}
 	}
 
@@ -686,6 +742,15 @@ func (b *Builder) buildWindow(fromScope, projScope *scope) *scope {
 	}
 
 	return outScope
+}
+
+// windowPassthroughKey identifies a column passed through a window node. Columns with an id are keyed by it, since a
+// derived table may expose several columns sharing a name.
+func windowPassthroughKey(e sql.Expression) string {
+	if gf, ok := e.(*expression.GetField); ok && gf.Id() != 0 {
+		return fmt.Sprintf("#%d", gf.Id())
+	}
+	return strings.ToLower(e.String())
 }
 
 // expressionIsNonDeterministic reports whether an expression tree contains a nondeterministic expression.
@@ -741,7 +806,7 @@ func (b *Builder) buildWindowDef(fromScope *scope, def *ast.WindowDef) *sql.Wind
 	sortConditions := make(sql.SortConditions, len(def.OrderBy))
 	for i, c := range def.OrderBy {
 		// resolve col in fromScope
-		e := b.buildScalar(fromScope, c.Expr)
+		e := b.buildWindowClauseScalar(fromScope, c.Expr, "window order by")
 		so := sql.Ascending
 		if c.Direction == ast.DescScr {
 			so = sql.Descending
@@ -755,7 +820,7 @@ func (b *Builder) buildWindowDef(fromScope *scope, def *ast.WindowDef) *sql.Wind
 
 	partitions := make([]sql.Expression, len(def.PartitionBy))
 	for i, expr := range def.PartitionBy {
-		partitions[i] = b.buildScalar(fromScope, expr)
+		partitions[i] = b.buildWindowClauseScalar(fromScope, expr, "window partition by")
 	}
 
 	frame := b.NewFrame(fromScope, def.Frame)
@@ -781,6 +846,22 @@ func (b *Builder) buildWindowDef(fromScope *scope, def *ast.WindowDef) *sql.Wind
 	}
 
 	return windowDef
+}
+
+// buildWindowClauseScalar builds an expression inside a window
+// PARTITION BY or ORDER BY clause.
+//
+// In window clauses, a plain alias reference (e.g. "ORDER BY my_alias")
+// is not allowed, but an expression using an alias (e.g. "ORDER BY
+// my_alias + 1") is allowed and resolves to the underlying expression.
+// See [window functions], [column aliases].
+//
+// [window functions]: https://dev.mysql.com/doc/refman/8.4/en/window-functions-usage.html
+// [column aliases]: https://dev.mysql.com/doc/refman/8.4/en/problems-with-alias.html
+func (b *Builder) buildWindowClauseScalar(inScope *scope, e ast.Expr, clause string) sql.Expression {
+	_, isColRef := e.(*ast.ColName)
+	defer b.withWindowState(clause, isColRef)()
+	return b.buildScalar(inScope, e)
 }
 
 // windowDisplayName returns a human-readable label for a window definition, for use in error

@@ -37,7 +37,12 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 	// interleave tempScope between inScope and parent, namespace for
 	// alias accumulation within SELECT
 	tempScope := inScope.replace()
+	tempScope.selectAliasScope = true
 	inScope.parent = tempScope
+
+	// Reset window state so nested subqueries in the SELECT list
+	// do not inherit this outer query's window context.
+	defer b.withWindowState("", false)()
 
 	// need to transfer aggregation state from out -> in
 	var exprs []sql.Expression
@@ -168,9 +173,9 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 				tempScope.addColumn(col)
 			}
 			if inScope.selectAliases == nil {
-				inScope.selectAliases = make(map[string]sql.Expression)
+				inScope.selectAliases = make(map[string]*expression.Alias)
 			}
-			inScope.selectAliases[e.Name()] = e
+			inScope.selectAliases[strings.ToLower(e.Name())] = e
 			exprs = append(exprs, e)
 		case *expression.Literal:
 			exprs = append(exprs, e)
@@ -211,6 +216,10 @@ func (b *Builder) selectExprToExpression(inScope *scope, se ast.SelectExpr) sql.
 			return expression.NewAlias(b.ctx, e.As.String(), expr)
 		}
 		if selectExprNeedsAlias(b.ctx, e, expr) {
+			// A scalar subquery's SQL text is a column label, not a referenceable SELECT alias.
+			if _, ok := expr.(*plan.Subquery); ok {
+				return expression.NewAlias(b.ctx, e.InputExpression, expr).AsUnreferencable()
+			}
 			// if the input expression is the same as expression string, then it's referencable.
 			// E.g. "SLEEP(1)" is the same as "sleep(1)"
 			if strings.EqualFold(e.InputExpression, expr.String()) {

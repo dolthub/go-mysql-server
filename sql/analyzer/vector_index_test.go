@@ -73,7 +73,7 @@ func vectorIndexTestCases(t *testing.T, db *memory.Database, table sql.IndexedTa
 			expectedPlan: `
 IndexedTableAccess(test)
  ├─ index: [test-table.v]
- └─ order: VEC_DISTANCE_L2_SQUARED([0, 0], test-table.v) LIMIT 1 (bigint)
+ └─ order: VEC_DISTANCE_L2_SQUARED(CAST('[0, 0]' AS JSON), test-table.v) LIMIT 1 (bigint)
 `,
 			expectedRows: []sql.Row{
 				sql.NewRow(int64(3), jsontests.ConvertToJson(t, "[1.0, 1.0]")),
@@ -118,7 +118,7 @@ Limit(1)
  └─ Offset(1)
      └─ IndexedTableAccess(test)
          ├─ index: [test-table.v]
-         └─ order: VEC_DISTANCE_L2_SQUARED([0, 0], test-table.v) LIMIT (1 (bigint) + 1 (bigint))
+         └─ order: VEC_DISTANCE_L2_SQUARED(CAST('[0, 0]' AS JSON), test-table.v) LIMIT (1 (bigint) + 1 (bigint))
 `,
 			expectedRows: []sql.Row{
 				sql.NewRow(int64(2), jsontests.ConvertToJson(t, "[2.0, 2.0]")),
@@ -142,7 +142,7 @@ Limit(1)
 			expectedPlan: `
 IndexedTableAccess(test)
  ├─ index: [test-table.v]
- └─ order: VEC_DISTANCE_EUCLIDEAN([0, 0], test-table.v) LIMIT 1 (bigint)
+ └─ order: VEC_DISTANCE_EUCLIDEAN(CAST('[0, 0]' AS JSON), test-table.v) LIMIT 1 (bigint)
 `,
 			expectedRows: []sql.Row{
 				sql.NewRow(int64(3), jsontests.ConvertToJson(t, "[1.0, 1.0]")),
@@ -169,7 +169,7 @@ IndexedTableAccess(test)
 			expectedPlan: `
 IndexedTableAccess(test)
  ├─ index: [test-table.v]
- └─ order: VEC_DISTANCE_COSINE([3, 4], test-table.v) LIMIT 1 (bigint)
+ └─ order: VEC_DISTANCE_COSINE(CAST('[3, 4]' AS JSON), test-table.v) LIMIT 1 (bigint)
 `,
 			expectedRows: []sql.Row{
 				sql.NewRow(int64(1), jsontests.ConvertToJson(t, "[3.0, 4.0]")),

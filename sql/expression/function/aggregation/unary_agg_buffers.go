@@ -81,9 +81,12 @@ func (m *sumBuffer) Update(ctx *sql.Context, row sql.Row) error {
 	return nil
 }
 
-func (m *sumBuffer) PerformSum(ctx *sql.Context, v interface{}) {
+func (m *sumBuffer) PerformSum(ctx *sql.Context, v any) {
+	// TODO: To handle datetime conversions properly this needs to use types.TypeAwareConversion
+	//  Additionally, this could be rewritten to be cleaner and more efficient.
+	//  Tracking issue: https://github.com/dolthub/dolt/issues/10278
 	// *apd.Decimal values are evaluated to string value even though the Literal expr type is Decimal type,
-	// so convert it to appropriate Decimal type
+	// so convert it to the appropriate Decimal type
 	if s, isStr := v.(string); isStr && types.IsDecimal(m.expr.Type(ctx)) {
 		val, _, err := m.expr.Type(ctx).Convert(ctx, s)
 		if err == nil {

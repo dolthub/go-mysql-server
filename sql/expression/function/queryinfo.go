@@ -180,6 +180,9 @@ func (r *LastInsertId) Resolved() bool {
 
 // String implements sql.Expression
 func (r *LastInsertId) String() string {
+	if r.Child == nil {
+		return fmt.Sprintf("%s()", r.FunctionName())
+	}
 	return fmt.Sprintf("%s(%s)", r.FunctionName(), r.Child)
 }
 

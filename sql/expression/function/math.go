@@ -460,7 +460,7 @@ func (a *Atan) Resolved() bool {
 // String implements sql.Expression
 func (a *Atan) String() string {
 	if a.x != nil {
-		return fmt.Sprintf("%s(%s, %s)", a.FunctionName(), a.x, a.y)
+		return fmt.Sprintf("%s(%s, %s)", a.FunctionName(), a.y, a.x)
 	}
 	return fmt.Sprintf("%s(%s)", a.FunctionName(), a.y)
 }

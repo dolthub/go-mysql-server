@@ -929,6 +929,112 @@ var SpatialInsertQueries = []WriteQueryTest{
 
 var InsertScripts = []ScriptTest{
 	{
+		// https://github.com/dolthub/dolt/issues/11918
+		Name:    "insert strings with dangling exponent into integer columns",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t (pk INT PRIMARY KEY, i INT, u INT UNSIGNED);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO t VALUES (1, '1E', '1E'), (2, '1.5E', '1.5E');",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:       "INSERT INTO t VALUES (3, '1eE', '1eE');",
+				ExpectedErr: sql.ErrInvalidValue,
+			},
+			{
+				Query:    "SELECT * FROM t ORDER BY pk;",
+				Expected: []sql.Row{{1, 1, uint32(1)}, {2, 2, uint32(2)}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11388
+		Name:    "multi-row empty insert compatibility",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table empty_defaults (a int default 1, b int default 2)",
+			"create table empty_column_list (a int default 1, b int default 2)",
+			"create table mixed_defaults (a int default 1, b int default 2)",
+			"create table empty_named (a int default 1, b int default 2)",
+			"create table empty_auto (id int auto_increment primary key, v int default 5)",
+			"create table empty_nullable (a int, b int)",
+			"create table empty_required (a int not null, b int default 2)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "insert into empty_defaults values (), ()",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "select * from empty_defaults",
+				Expected: []sql.Row{{1, 2}, {1, 2}},
+			},
+			{
+				Query:    "insert into empty_column_list () values (), ()",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "select * from empty_column_list",
+				Expected: []sql.Row{{1, 2}, {1, 2}},
+			},
+			{
+				Query:       "insert into mixed_defaults values (), (3, 4)",
+				ExpectedErr: sql.ErrInsertIntoMismatchValueCount,
+			},
+			{
+				Query:       "insert into mixed_defaults values (3, 4), ()",
+				ExpectedErr: sql.ErrInsertIntoMismatchValueCount,
+			},
+			{
+				Query:    "select * from mixed_defaults",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "insert into mixed_defaults values (default, default), (3, default)",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "select * from mixed_defaults",
+				Expected: []sql.Row{{1, 2}, {3, 2}},
+			},
+			{
+				Query:       "insert into empty_named (a) values (), ()",
+				ExpectedErr: sql.ErrInsertIntoMismatchValueCount,
+			},
+			{
+				Query:    "select * from empty_named",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "insert into empty_auto values (), ()",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 1}}},
+			},
+			{
+				Query:    "select * from empty_auto order by id",
+				Expected: []sql.Row{{1, 5}, {2, 5}},
+			},
+			{
+				Query:    "insert into empty_nullable values (), ()",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "select * from empty_nullable",
+				Expected: []sql.Row{{nil, nil}, {nil, nil}},
+			},
+			{
+				Query:       "insert into empty_required values (), ()",
+				ExpectedErr: sql.ErrFieldNoDefaultValue,
+			},
+			{
+				Query:    "select * from empty_required",
+				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/7322
 		Name: "issue 7322: values expression is subquery",
 		SetUpScript: []string{
@@ -1408,24 +1514,17 @@ var InsertScripts = []ScriptTest{
 				},
 			},
 			{
-				Query: "insert into auto_pk values (0), (1), (NULL), ()",
-				Expected: []sql.Row{
-					{types.OkResult{RowsAffected: 4}},
-				},
+				Query:       "insert into auto_pk values (0), (1), (NULL), ()",
+				ExpectedErr: sql.ErrInsertIntoMismatchValueCount,
 			},
 			{
-				Query: "select * from auto_pk",
-				Expected: []sql.Row{
-					{0},
-					{1},
-					{2},
-					{3},
-				},
+				Query:    "select * from auto_pk",
+				Expected: []sql.Row{},
 			},
 			{
 				Query: "select auto_increment from information_schema.tables where table_name='auto_pk' and table_schema=database()",
 				Expected: []sql.Row{
-					{uint64(4)},
+					{nil},
 				},
 			},
 
@@ -1913,6 +2012,19 @@ var InsertScripts = []ScriptTest{
 				Query:       `insert into a values (1) as new(c, d) on duplicate key update i = c`,
 				ExpectedErr: sql.ErrColumnCountMismatch,
 			},
+		},
+	},
+	// https://github.com/dolthub/dolt/issues/6500
+	{
+		Name:    "Test INSERT aliases in duplicate-key updates",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE alias_insert(a INT PRIMARY KEY,b INT,c INT)",
+			"INSERT INTO alias_insert VALUES(1,0,0)",
+			"INSERT INTO alias_insert(a,b,c) VALUES(1,2,3),(4,5,6) AS new(m,n,p) ON DUPLICATE KEY UPDATE c=m+n",
+		},
+		Assertions: []ScriptTestAssertion{
+			{Query: "SELECT * FROM alias_insert ORDER BY a", Expected: []sql.Row{{int32(1), int32(0), int32(3)}, {int32(4), int32(5), int32(6)}}},
 		},
 	},
 	{
@@ -2836,6 +2948,27 @@ var InsertErrorScripts = []ScriptTest{
 }
 
 var InsertIgnoreScripts = []ScriptTest{
+	{
+		// https://github.com/dolthub/dolt/issues/11918
+		Name:    "insert ignore negative string with dangling exponent into unsigned column",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t (pk INT PRIMARY KEY, i INT, u INT UNSIGNED);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:                           "INSERT IGNORE INTO t VALUES (1, '-1e', '-1e');",
+				Expected:                        []sql.Row{{types.NewOkResult(1)}},
+				ExpectedWarning:                 mysql.ERWarnDataOutOfRange,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "Out of range value for column 'u' at row 1",
+			},
+			{
+				Query:    "SELECT * FROM t;",
+				Expected: []sql.Row{{1, -1, uint32(0)}},
+			},
+		},
+	},
 	{
 		Name: "Test that INSERT IGNORE with Non nullable columns works",
 		SetUpScript: []string{

@@ -59,15 +59,17 @@ func (b *Builder) validateInsert(ins *plan.InsertInto) {
 		columnNames[i] = strings.ToLower(name)
 	}
 
-	// If no columns are given and value tuples are not all empty, use the full schema
-	if len(columnNames) == 0 && existsNonZeroValueCount(ins.Source) {
+	// Empty value tuples implicitly target no columns so that every destination column is populated from its default.
+	if !existsNonZeroValueCount(ins.Source) {
+		columnNames = nil
+	} else if len(columnNames) == 0 {
 		columnNames = make([]string, len(dstSchema))
 		for i, f := range dstSchema {
 			columnNames[i] = f.Name
 		}
 	}
 
-	if len(ins.ColumnNames) > 0 {
+	if len(columnNames) > 0 {
 		err := validateInsertColumns(table.Name(), columnNames, dstSchema, ins.Source)
 		if err != nil {
 			b.handleErr(err)
@@ -80,7 +82,7 @@ func (b *Builder) validateInsert(ins *plan.InsertInto) {
 	}
 }
 
-// Ensures that the number of elements in each Value tuple is empty
+// existsNonZeroValueCount reports whether a row source contains values rather than only empty tuples.
 func existsNonZeroValueCount(values sql.Node) bool {
 	switch node := values.(type) {
 	case *plan.Values:
