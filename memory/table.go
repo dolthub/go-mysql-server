@@ -2365,7 +2365,9 @@ func normalizeSchemaForRewrite(ctx *sql.Context, newSch sql.PrimaryKeySchema) sq
 // unresolveColumnExpressions stores schema expressions as text, as CREATE TABLE
 // does, so later statements bind column references in their own scope.
 func unresolveColumnExpressions(ctx *sql.Context, col *sql.Column) {
-	for _, value := range []**sql.ColumnDefaultValue{&col.Default, &col.Generated, &col.OnUpdate} {
+	// ON UPDATE only permits timestamp functions, which have no column bindings.
+	// Keep its resolved form so metadata preserves CURRENT_TIMESTAMP formatting.
+	for _, value := range []**sql.ColumnDefaultValue{&col.Default, &col.Generated} {
 		if *value == nil {
 			continue
 		}
