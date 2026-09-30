@@ -300,3 +300,45 @@ func TestConvert(t *testing.T) {
 		})
 	}
 }
+
+func TestConvertToSignedStringOverflow(t *testing.T) {
+	tests := []struct {
+		input        string
+		expected     int64
+		warningCodes []int
+	}{
+		{input: "9223372036854775807", expected: math.MaxInt64},
+		{input: "9223372036854775808", expected: math.MinInt64, warningCodes: []int{1105}},
+		{input: "18446744073709551615", expected: -1, warningCodes: []int{1105}},
+		{input: "+18446744073709551615", expected: -1, warningCodes: []int{1105}},
+		{input: "  18446744073709551615  ", expected: -1, warningCodes: []int{1105}},
+		{input: "18446744073709551616", expected: -1, warningCodes: []int{1292}},
+		{input: "18446744073709551615xyz", expected: -1, warningCodes: []int{1292, 1105}},
+		{input: "18446744073709551615.9", expected: -1, warningCodes: []int{1292, 1105}},
+		{input: "18446744073709551615e2", expected: -1, warningCodes: []int{1292, 1105}},
+		{input: "-9223372036854775808", expected: math.MinInt64},
+		{input: "123abc", expected: 123, warningCodes: []int{1292}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			ctx := sql.NewEmptyContext()
+			converted := NewConvert(NewLiteral(tt.input, types.LongText), nil, ConvertToSigned)
+			actual, err := converted.Eval(ctx, nil)
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, actual)
+			warnings := ctx.Warnings()
+			require.Len(t, warnings, len(tt.warningCodes))
+			for i, code := range tt.warningCodes {
+				// Session warnings are returned in reverse order.
+				warning := warnings[len(warnings)-1-i]
+				require.Equal(t, code, warning.Code)
+				if code == 1105 {
+					require.Equal(t, "Cast to signed converted positive out-of-range integer to its negative complement", warning.Message)
+				} else {
+					require.Contains(t, warning.Message, "Truncated incorrect")
+					require.Contains(t, warning.Message, "'"+tt.input+"'")
+				}
+			}
+		})
+	}
+}

@@ -327,6 +327,46 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name:    "cast out-of-range integer strings to signed",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t0 (id INT PRIMARY KEY, c0 VARCHAR(30));",
+			"INSERT INTO t0 VALUES (1, '18446744073709551615'), (2, '9223372036854775808'), (3, '9223372036854775807'), (4, NULL);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:                           "SELECT CAST('18446744073709551615' AS SIGNED);",
+				Expected:                        []sql.Row{{int64(-1)}},
+				ExpectedWarning:                 1105,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "negative complement",
+			},
+			{
+				Query:                 "SELECT CONVERT('9223372036854775808', SIGNED);",
+				Expected:              []sql.Row{{int64(-9223372036854775808)}},
+				ExpectedWarning:       1105,
+				ExpectedWarningsCount: 1,
+			},
+			{
+				Query:                 "SELECT CAST('18446744073709551616' AS SIGNED);",
+				Expected:              []sql.Row{{int64(-1)}},
+				ExpectedWarning:       1292,
+				ExpectedWarningsCount: 1,
+			},
+			{
+				Query: "SELECT id, CAST(c0 AS SIGNED) FROM t0 ORDER BY id;",
+				Expected: []sql.Row{
+					{1, int64(-1)},
+					{2, int64(-9223372036854775808)},
+					{3, int64(9223372036854775807)},
+					{4, nil},
+				},
+				ExpectedWarning:       1105,
+				ExpectedWarningsCount: 2,
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/9927
 		// https://github.com/dolthub/dolt/issues/9053
 		Name:    "double negation of integer minimum values",
