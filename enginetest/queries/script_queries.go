@@ -6193,6 +6193,7 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{2, 2}},
 			},
 			{
+				Dialect: "mysql",
 				Query:    "SELECT grp, (SELECT GROUP_CONCAT(a.val ORDER BY a.val SEPARATOR '|') FROM concat_probe p) FROM concat_scope a GROUP BY grp HAVING (SELECT GROUP_CONCAT(a.val ORDER BY a.val SEPARATOR '|') FROM concat_probe p) IS NOT NULL ORDER BY grp;",
 				Expected: []sql.Row{{1, "a|b"}, {2, "c"}},
 			},
@@ -6202,18 +6203,22 @@ CREATE TABLE tab3 (
 			},
 			{
 				// A direct use of a.val remains invalid even when the same subquery aggregates a.val.
+				Dialect:    "mysql",
 				Query:       "SELECT grp, (SELECT GROUP_CONCAT(a.val ORDER BY a.val) FROM concat_probe p WHERE p.id = LENGTH(a.val)) FROM concat_scope a GROUP BY grp ORDER BY grp;",
 				ExpectedErr: analyzererrors.ErrValidationGroupBy,
 			},
 			{
+				Dialect: "mysql",
 				Query:    "SELECT grp FROM concat_scope a GROUP BY grp HAVING (SELECT GROUP_CONCAT(a.val) FROM concat_probe p) = 'c' ORDER BY grp;",
 				Expected: []sql.Row{{2}},
 			},
 			{
+				Dialect: "mysql",
 				Query:    "SELECT grp FROM concat_scope a GROUP BY grp HAVING (SELECT GROUP_CONCAT(a.val ORDER BY a.val) FROM concat_probe p) = 'c' ORDER BY grp;",
 				Expected: []sql.Row{{2}},
 			},
 			{
+				Dialect: "mysql",
 				Query:    "SELECT grp FROM concat_scope a GROUP BY grp HAVING (SELECT GROUP_CONCAT(a.val ORDER BY a.val) FROM concat_scope a) = 'a,b,c' ORDER BY grp;",
 				Expected: []sql.Row{{1}, {2}},
 			},
