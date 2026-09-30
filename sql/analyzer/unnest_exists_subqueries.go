@@ -113,7 +113,7 @@ func simplifyPartialJoinParents(n sql.Node) (sql.Node, bool) {
 				return nil, false
 			}
 			ret = n.Child
-		case *plan.Project, *plan.Sort, *plan.Distinct, *plan.TopN, *plan.Limit:
+		case *plan.Project, *plan.Sort, *plan.Distinct, *plan.TopN, *plan.Limit, *plan.Window:
 			// TODO: In most cases, it's necessary to remove *plan.Limit because child Filter nodes will have been
 			//  hoisted out. But what if Limit.Limit evals to 0? https://github.com/dolthub/dolt/issues/10493
 			ret = n.Children()[0]

@@ -1241,12 +1241,13 @@ func schemaToFields(ctx *sql.Context, s sql.Schema) []*querypb.Field {
 			Flags:        uint32(flags),
 		}
 
-		if types.IsDecimal(c.Type) {
-			decimalType := c.Type.(sql.DecimalType)
-			fields[i].Decimals = uint32(decimalType.Scale())
-		} else if types.IsDatetimeType(c.Type) {
-			dtType := c.Type.(sql.DatetimeType)
-			fields[i].Decimals = uint32(dtType.Precision())
+		switch typ := c.Type.(type) {
+		case sql.DecimalType:
+			fields[i].Decimals = uint32(typ.Scale())
+		case sql.DatetimeType:
+			fields[i].Decimals = uint32(typ.Precision())
+		case types.TimeType:
+			fields[i].Decimals = uint32(typ.Precision())
 		}
 	}
 

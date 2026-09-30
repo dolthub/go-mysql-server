@@ -3,13 +3,13 @@ package analyzer
 import (
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/types"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/sets"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // replaceIdxSort applies an IndexAccess when there is an `OrderBy` over a prefix of any columns with Indexes
@@ -37,16 +37,20 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 			return n, transform.SameTree, nil
 		}
 
+		mysqlRanges, ok := lookup.Ranges.(sql.MySQLRangeCollection)
+		if !ok {
+			return n, transform.SameTree, nil
+		}
+
 		tableAliases, err := getTableAliases(ctx, sortNode, scope)
 		if err != nil {
 			return n, transform.SameTree, nil
 		}
 		sortExprs := normalizeExpressions(ctx, tableAliases, nil, sortNode.SortConditions.ToExpressions()...)
 		sortAliases := aliasedExpressionsInNode(sortNode)
-		if !sortExprsMatchIdxColExprs(sortExprs, sortAliases, lookup.Index.Expressions()) {
-			return n, transform.SameTree, nil
-		}
-		mysqlRanges, ok := lookup.Ranges.(sql.MySQLRangeCollection)
+
+		constantColumns := constantRanges(ctx, mysqlRanges)
+		ok, relevantOrderByColumns := sortExprsMatchIdxColExprsWithConstantColumns(sortExprs, sortAliases, lookup.Index.Expressions(), constantColumns)
 		if !ok {
 			return n, transform.SameTree, nil
 		}
@@ -57,7 +61,7 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 		}
 
 		// if the index is unordered, we can't use it for sorting
-		ordered, reverseScan := indexSortOrder(ctx, lookup.Index, sortNode.SortConditions, n.TableNode.UnderlyingTable())
+		ordered, reverseScan := indexSortOrder(ctx, lookup.Index, sortNode.SortConditions, n.TableNode.UnderlyingTable(), relevantOrderByColumns)
 		if !ordered {
 			return n, transform.SameTree, nil
 		}
@@ -125,7 +129,7 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 				continue
 			}
 			// Some primary keys (like special tables from integrators) are not in order
-			ordered, reverse := indexSortOrder(ctx, idxCandidate, sortNode.SortConditions, table)
+			ordered, reverse := indexSortOrder(ctx, idxCandidate, sortNode.SortConditions, table, nil)
 			if !ordered {
 				continue
 			}
@@ -350,12 +354,14 @@ func replaceAgg(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope,
 			return n, transform.SameTree, nil
 		}
 		// TODO: optimize when there are multiple aggregations; use LATERAL JOINS
-		if len(gb.SelectDeps) != 1 || len(gb.GroupByExprs) != 0 {
+		if len(gb.SelectDeps) != 1 {
 			return n, transform.SameTree, nil
 		}
 
 		// TODO: support secondary indexes
 		var pkIdx sql.Index
+		// constantColumns is the set of index columns that are constrained to constant values.
+		var constantColumns sets.FastIntSet
 		switch t := gb.Child.(type) {
 		case *plan.IndexedTableAccess:
 			if _, ok := t.Table.(sql.IndexAddressableTable); ok {
@@ -364,6 +370,21 @@ func replaceAgg(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope,
 					return n, transform.SameTree, nil
 				}
 				pkIdx = idx
+				lookup, inRange, err := t.GetLookup(ctx, nil)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+
+				if !inRange {
+					return n, transform.SameTree, nil
+				}
+
+				mysqlRanges, ok := lookup.Ranges.(sql.MySQLRangeCollection)
+				if !ok {
+					return n, transform.SameTree, nil
+				}
+
+				constantColumns = constantRanges(ctx, mysqlRanges)
 			}
 		case *plan.ResolvedTable:
 			if tbl, ok := t.UnderlyingTable().(sql.IndexAddressableTable); ok {
@@ -409,13 +430,27 @@ func replaceAgg(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope,
 			return n, transform.SameTree, nil
 		}
 
-		// since we're only supporting one aggregation, it must be on the first column of the primary key
-		if pkCols := pkIdx.Expressions(); len(pkCols) < 1 {
-			return n, transform.SameTree, nil
-		} else if !strings.EqualFold(pkCols[0], sortBy.Expr.String()) {
+		pkCols := pkIdx.Expressions()
+		if len(pkCols) < 1 {
 			return n, transform.SameTree, nil
 		}
 
+		// GROUP BY, if present, must only group by columns known to be constant.
+		if !allGroupByColumnsAreConstant(gb.GroupByExprs, pkCols, constantColumns) {
+			return n, transform.SameTree, nil
+		}
+
+		// find the aggregated column
+		var colIdx int
+		for colIdx = 0; colIdx <= len(pkCols); colIdx++ {
+			if strings.EqualFold(pkCols[colIdx], sortBy.Expr.String()) {
+				break
+			}
+			if !constantColumns.Contains(colIdx) {
+				// A non-constant column appears before the aggregated column in the index.
+				return n, transform.SameTree, nil
+			}
+		}
 		// replace all aggs in proj.Projections with GetField
 		name := gb.SelectDeps[0].String()
 		newProjs, _, err := transform.Exprs(ctx, proj.Projections, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
@@ -437,26 +472,101 @@ func replaceAgg(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope,
 	})
 }
 
-// sortExprsMatchIdxColExprs checks if the SortCondition expressions in a Sort node match the index column expressions
 func sortExprsMatchIdxColExprs(sortExprs []sql.Expression, sortAliases map[string]string, idxColExprs []string) bool {
+	ok, _ := sortExprsMatchIdxColExprsWithConstantColumns(sortExprs, sortAliases, idxColExprs, sets.FastIntSet{})
+	return ok
+}
+
+type indexAndOrderByOffsets struct {
+	indexOffset   int
+	orderByOffset int
+}
+
+// sortExprsMatchIdxColExprs checks if the SortCondition expressions in a Sort node match the index column expressions.
+// It returns a list of index-offset / sort-exprs-offset pairs, where each pair represents a non-trivial sort expression
+// and its corresponding non-trivial indexed column offset (a sort expression or index column is "trivial" if it is known
+// to have a constant value.
+func sortExprsMatchIdxColExprsWithConstantColumns(sortExprs []sql.Expression, sortAliases map[string]string, idxColExprs []string, constantColumns sets.FastIntSet) (ok bool, orderByColumns []indexAndOrderByOffsets) {
 	if len(sortExprs) > len(idxColExprs) {
-		return false
+		return false, nil
 	}
-	for i, sortExpr := range sortExprs {
+
+	matchesExprAlias := func(idxColExpr, exprName string) bool {
+		alias, ok := sortAliases[strings.ToLower(idxColExpr)]
+		matchesSortAlias := ok && alias == exprName
+		return matchesSortAlias || strings.EqualFold(idxColExpr, exprName)
+	}
+
+	sortExprIdx := 0
+	// A sort expression that doesn't match the next column is allowed if it matches a later column that is constant.
+	// We track these expressions as we encounter them so that we can verify them at the end.
+	outOfOrderSortExpressions := make(map[string]struct{}, len(sortExprs))
+	for idxColExprIdx, idxColExpr := range idxColExprs {
+		if sortExprIdx >= len(sortExprs) {
+			break
+		}
+		sortExpr := sortExprs[sortExprIdx]
 		var exprName string
 		if alias, ok := sortExpr.(*expression.Alias); ok {
 			exprName = alias.Child.String()
 		} else {
 			exprName = sortExpr.String()
 		}
-		if alias, ok := sortAliases[strings.ToLower(idxColExprs[i])]; ok && alias == exprName {
+		if matchesExprAlias(idxColExpr, exprName) {
+			// The sort expression matches a column. If the column isn't constant, add it to the return set for additional
+			// validation. If it is constant, we can safely ignore the sort expression and the index column.
+			if !constantColumns.Contains(idxColExprIdx) {
+				orderByColumns = append(orderByColumns, indexAndOrderByOffsets{indexOffset: idxColExprIdx, orderByOffset: sortExprIdx})
+			}
+			sortExprIdx++
 			continue
 		}
-		if !strings.EqualFold(idxColExprs[i], exprName) {
-			return false
+		// If the sort expression doesn't match the next column in the index, but the index column is constant,
+		// we can skip that index column.
+		if constantColumns.Contains(idxColExprIdx) {
+			continue
+		}
+		// The sort expression did not match the next column. Track it so we can see if it matches a constant column
+		// elsewhere in the index.
+		outOfOrderSortExpressions[exprName] = struct{}{}
+	}
+	// The remaining sort expressions did not match any index columns
+	for sortExprIdx < len(sortExprs) {
+		var exprName string
+		sortExpr := sortExprs[sortExprIdx]
+		if alias, ok := sortExpr.(*expression.Alias); ok {
+			exprName = alias.Child.String()
+		} else {
+			exprName = sortExpr.String()
+		}
+		outOfOrderSortExpressions[exprName] = struct{}{}
+		sortExprIdx++
+	}
+	if len(outOfOrderSortExpressions) == 0 {
+		return true, orderByColumns
+	}
+	// We can still remove the Sort Node if every outstanding sort expression is on a column with a constant value
+	// TODO: This can only check if the outstanding sort expression match an index column with a constant value,
+	// and will not detect expressions matching non-index columns. A better solution would be a separate pass that runs
+	// before this, to remove SORT BY expressions on any constant column.
+	for exprName := range outOfOrderSortExpressions {
+		found := false
+		var idxColExprIdx int
+		var idxColExpr string
+		for idxColExprIdx, idxColExpr = range idxColExprs {
+			if matchesExprAlias(idxColExpr, exprName) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false, nil
+		}
+		if !constantColumns.Contains(idxColExprIdx) {
+			return false, nil
 		}
 	}
-	return true
+	return true, orderByColumns
 }
 
 // indexSortOrder returns whether a scan of `idx` returns rows sorted by `scs`, whose expressions must already match the
@@ -464,7 +574,9 @@ func sortExprsMatchIdxColExprs(sortExprs []sql.Expression, sortAliases map[strin
 // in, whether ascending or descending, is served by a forward scan. A column requested in the opposite direction needs
 // a reverse scan, which every requested column must then agree on. NULL placement is only checked for nullable columns
 // of `table`.
-func indexSortOrder(ctx *sql.Context, idx sql.Index, scs sql.SortConditions, table sql.Table) (ordered, reverseScan bool) {
+// If relevantOrderByColumns is not nil, each element describes each relevant offset into the order-by expression and its
+// corresponding offset into the index. All other parts of the ORDER BY and the rest of the index can be safely ignored.
+func indexSortOrder(ctx *sql.Context, idx sql.Index, scs sql.SortConditions, table sql.Table, relevantOrderByColumns []indexAndOrderByOffsets) (ordered, reverseScan bool) {
 	ordIdx, isOrdIdx := idx.(sql.OrderedIndex)
 	if !isOrdIdx {
 		return false, false
@@ -473,23 +585,56 @@ func indexSortOrder(ctx *sql.Context, idx sql.Index, scs sql.SortConditions, tab
 	if colOrders == nil && ordIdx.Order(ctx) == sql.IndexOrderNone {
 		return false, false
 	}
-	exprs := idx.Expressions()
-	for i, sc := range scs {
-		var colOrder sql.IndexColumnOrder
-		if i < len(colOrders) {
-			colOrder = colOrders[i]
-		}
+	validateColumn := func(sc sql.SortCondition, indexExpr string, colOrder sql.IndexColumnOrder) (bool, bool) {
 		descending := sc.Order == sql.Descending
-		if i == 0 {
-			reverseScan = descending != colOrder.Descending
-		} else if reverseScan != (descending != colOrder.Descending) {
-			return false, false
-		}
+		reverseScan := descending != colOrder.Descending
 		// NullsFirst sorts NULL as the smallest value, so NULLs lead an ascending sort and trail a descending one
 		wantNullsLast := (sc.NullOrdering == sql.NullsLast) != descending
 		if wantNullsLast != (colOrder.NullsLast != reverseScan) {
-			col := plan.GetColumnFromIndexExpr(ctx, exprs[i], table)
+			col := plan.GetColumnFromIndexExpr(ctx, indexExpr, table)
 			if col == nil || col.Nullable {
+				return false, false
+			}
+		}
+		return true, reverseScan
+	}
+
+	exprs := idx.Expressions()
+	if relevantOrderByColumns == nil {
+		for i, sc := range scs {
+			indexExpr := exprs[i]
+			var colOrder sql.IndexColumnOrder
+			if i < len(colOrders) {
+				colOrder = colOrders[i]
+			}
+			ok, descending := validateColumn(sc, indexExpr, colOrder)
+			if !ok {
+				return false, false
+			}
+			if i == 0 {
+				reverseScan = descending
+			} else if reverseScan != descending {
+				return false, false
+			}
+		}
+	} else {
+		first := true
+		for _, indexAndOrderByOffset := range relevantOrderByColumns {
+			i := indexAndOrderByOffset.indexOffset
+			indexExpr := exprs[i]
+			var colOrder sql.IndexColumnOrder
+			if i < len(colOrders) {
+				colOrder = colOrders[i]
+			}
+			sc := scs[indexAndOrderByOffset.orderByOffset]
+			ok, reverseScanColumn := validateColumn(sc, indexExpr, colOrder)
+			if !ok {
+				return false, false
+			}
+			if first {
+				reverseScan = reverseScanColumn
+				first = false
+			} else if reverseScan != reverseScanColumn {
 				return false, false
 			}
 		}
@@ -503,6 +648,61 @@ func isValidSortOrder(scs sql.SortConditions) bool {
 		// TODO: could generalize this to more monotonic expressions.
 		//   For example, order by x+1 is ok, but order by mod(x) is not
 		if scs[0].Order != sc.Order {
+			return false
+		}
+	}
+	return true
+}
+
+// constantRanges computes the set of index columns that are constrained to a single constant value.
+// These columns do not affect row ordering and can be skipped when matching ORDER BY expressions to index columns.
+func constantRanges(ctx *sql.Context, ranges sql.MySQLRangeCollection) (result sets.FastIntSet) {
+	if len(ranges) != 1 {
+		return result
+	}
+	for i, rce := range ranges[0] {
+		if isEqualityRangeColumnExpr(ctx, rce) {
+			result.Add(i)
+		}
+	}
+	return result
+}
+
+// isEqualityRangeColumnExpr checks if a MySQLRangeColumnExpr represents a
+// point/equality range (e.g. col = 1).
+func isEqualityRangeColumnExpr(ctx *sql.Context, rce sql.MySQLRangeColumnExpr) bool {
+	if rce.Type() != sql.RangeType_ClosedClosed {
+		return false
+	}
+	lower, lOk := rce.LowerBound.(sql.Below)
+	upper, uOk := rce.UpperBound.(sql.Above)
+	if !lOk || !uOk {
+		return false
+	}
+	cmp, err := rce.Typ.Compare(ctx, lower.Key, upper.Key)
+	return err == nil && cmp == 0
+}
+
+// allGroupByColumnsAreConstant validates that all GROUP BY expressions
+// correspond to columns in the equality-constrained prefix of the index.
+func allGroupByColumnsAreConstant(groupByExprs []sql.Expression, pkCols []string, constantColumns sets.FastIntSet) bool {
+	for _, gbExpr := range groupByExprs {
+		gf, ok := gbExpr.(*expression.GetField)
+		if !ok {
+			return false
+		}
+		found := false
+		for i := 0; i < len(pkCols); i++ {
+			if strings.EqualFold(pkCols[i], gf.String()) {
+				if constantColumns.Contains(i) {
+					found = true
+					break
+				} else {
+					return false
+				}
+			}
+		}
+		if !found {
 			return false
 		}
 	}

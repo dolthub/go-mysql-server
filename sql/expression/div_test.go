@@ -223,41 +223,38 @@ func TestDiv(t *testing.T) {
 
 		// Time
 		{
-			left:  NewLiteral("2001-01-01", types.Date),
-			right: NewLiteral("2001-01-01", types.Date),
+			left:  NewLiteral(date2001, types.Date),
+			right: NewLiteral(date2001, types.Date),
 			exp:   "1.0000",
 		},
 		{
-			left:  NewLiteral("2001-01-01 12:00:00", types.Date),
-			right: NewLiteral("2001-01-01 12:00:00", types.Date),
+			left:  NewLiteral(datetime2001noon, types.Date),
+			right: NewLiteral(datetime2001noon, types.Date),
 			exp:   "1.0000",
 		},
 		{
-			skip:  true, // need to trim just the date portion
-			left:  NewLiteral("2001-01-01 12:00:00.123456", types.Date),
-			right: NewLiteral("2001-01-01 12:00:00.123456", types.Date),
+			left:  NewLiteral(datetime2001noon123456, types.Date),
+			right: NewLiteral(datetime2001noon123456, types.Date),
 			exp:   "1.0000",
 		},
 		{
-			left:  NewLiteral("2001-01-01 12:00:00", types.Datetime),
-			right: NewLiteral("2001-01-01 12:00:00", types.Datetime),
+			left:  NewLiteral(datetime2001noon, types.Datetime),
+			right: NewLiteral(datetime2001noon, types.Datetime),
 			exp:   "1.0000",
 		},
 		{
-			skip:  true, // need to trim just the datetime portion according to precision and use as exponent
-			left:  NewLiteral("2001-01-01 12:00:00.123456", types.Datetime),
-			right: NewLiteral("2001-01-01 12:00:00.123456", types.Datetime),
+			left:  NewLiteral(datetime2001noon123456, types.Datetime),
+			right: NewLiteral(datetime2001noon123456, types.Datetime),
 			exp:   "1.0000",
 		},
 		{
-			skip:  true, // need to trim just the datetime portion according to precision and use as exponent
-			left:  NewLiteral("2001-01-01 12:00:00.123456", types.MustCreateDatetimeType(sqltypes.Datetime, 3)),
-			right: NewLiteral("2001-01-01 12:00:00.123456", types.MustCreateDatetimeType(sqltypes.Datetime, 3)),
+			left:  NewLiteral(datetime2001noon123456, types.MustCreateDatetimeType(sqltypes.Datetime, 3)),
+			right: NewLiteral(datetime2001noon123456, types.MustCreateDatetimeType(sqltypes.Datetime, 3)),
 			exp:   "1.0000000",
 		},
 		{
-			left:  NewLiteral("2001-01-01 12:00:00.123456", types.DatetimeMaxPrecision),
-			right: NewLiteral("2001-01-01 12:00:00.123456", types.DatetimeMaxPrecision),
+			left:  NewLiteral(datetime2001noon123456, types.DatetimeMaxPrecision),
+			right: NewLiteral(datetime2001noon123456, types.DatetimeMaxPrecision),
 			exp:   "1.0000000000",
 		},
 

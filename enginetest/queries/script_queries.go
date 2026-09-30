@@ -7021,6 +7021,10 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{1695625377}},
 			},
 			{
+				Query:    "SELECT UNIX_TIMESTAMP((SELECT '2023-01-01 12:34:56.789'));",
+				Expected: []sql.Row{{"1672576496.789000"}},
+			},
+			{
 				Query:    "SET time_zone = '-06:00';",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
@@ -7037,8 +7041,7 @@ CREATE TABLE tab3 (
 			"SET time_zone = '+07:00';",
 			"create table dt (dt0 datetime(0), dt1 datetime(1), dt2 datetime(2), dt3 datetime(3), dt4 datetime(4), dt5 datetime(5), dt6 datetime(6));",
 			"insert into dt values ('2020-01-02 12:34:56.123456', '2020-01-02 12:34:56.123456', '2020-01-02 12:34:56.123456', '2020-01-02 12:34:56.123456', '2020-01-02 12:34:56.123456', '2020-01-02 12:34:56.123456', '2020-01-02 12:34:56.123456')",
-			// TODO: time length not supported, so by default we have max precision
-			"create table t (d date, tt time);",
+			"create table t (d date, tt time(6));",
 			"insert into t values ('2020-01-02 12:34:56.123456', '12:34:56.123456');",
 		},
 		Assertions: []ScriptTestAssertion{
@@ -11746,6 +11749,15 @@ where
 			},
 		},
 	},
+	// https://github.com/dolthub/dolt/issues/4233
+	{
+		Name:        "Test CTE definition ordering",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{Query: "WITH c AS (SELECT * FROM b), b AS (SELECT * FROM a), a AS (SELECT 1 AS n) SELECT * FROM c", ExpectedErr: sql.ErrTableNotFound},
+			{Query: "WITH a AS (SELECT 1 AS n), b AS (SELECT * FROM a), c AS (SELECT * FROM b) SELECT * FROM c", Expected: []sql.Row{{1}}},
+		},
+	},
 
 	// Set tests
 	{
@@ -14188,6 +14200,38 @@ where
 		},
 	},
 	{
+		// PostgreSQL has no DATETIME type or SHOW WARNINGS.
+		Dialect:     "mysql",
+		Name:        "delimited datetime strings with trailing delimiters and zero-padded time portions",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select cast('2012-12-12 12:' as datetime);",
+				Expected: []sql.Row{{time.Date(2012, time.December, 12, 12, 0, 0, 0, time.UTC)}},
+			},
+			{
+				Query:    "show warnings;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select cast('2012-12-12 12:12:' as datetime);",
+				Expected: []sql.Row{{time.Date(2012, time.December, 12, 12, 12, 0, 0, time.UTC)}},
+			},
+			{
+				Query:    "show warnings;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select cast('2012-12-12 12:12:0012' as datetime);",
+				Expected: []sql.Row{{time.Date(2012, time.December, 12, 12, 12, 12, 0, time.UTC)}},
+			},
+			{
+				Query:    "show warnings;",
+				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/10088
 		Name:    "datetime with zero date and non-zero times",
 		Dialect: "mysql",
@@ -14320,8 +14364,72 @@ where
 			},
 		},
 	},
+	{
+		// TODO: every aggregation function needs to use types.TypeAwareConversion
+		// Tracking issue: https://github.com/dolthub/dolt/issues/10278
+		Skip:    true,
+		Name:    "aggregations with date types",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t (i int primary key, d date, dt datetime, dt6 datetime(6), ts timestamp, ts6 timestamp(6));",
+			"insert into t values (1, '2001-02-03', '2001-02-03 12:34:56', '2001-02-03 12:34:56.123456', '2001-02-03 12:34:56', '2001-02-03 12:34:56.123456');",
+			"insert into t values (2, '2010-03-30', '2010-02-03 22:22:22', '2010-02-03 11:11:11.111111', '2010-03-30 22:22:22', '2010-03-30 11:11:11.111111');",
+			"insert into t values (3, '2100-02-03', '2100-02-03 23:23:23', '2100-02-03 23:23:23.654321', '2001-02-03 23:23:23', '2001-02-03 23:23:23.654321');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select sum(d), sum(dt), sum(dt6), sum(ts), sum(ts6) from t;",
+				Expected: []sql.Row{
+					{float64(61110736), float64(61110609578001), float64(61110609466890.888888), float64(60120736578001), float64(60120736466890.888888)},
+				},
+			},
+			{
+				Query: "select var_pop(d), var_pop(dt), var_pop(dt6), var_pop(ts), var_pop(ts6) from t;",
+				Expected: []sql.Row{
+					{float64(199777143584.22263), float64(1.998000279462624e23), float64(1.998000479464689e23), float64(1.8050853600269382e21), float64(1.8050809093046277e21)},
+				},
+			},
+		},
+	},
 
 	// Time Tests
+	{
+		Dialect: "mysql",
+		Name:    "time with precision",
+		SetUpScript: []string{
+			"create table tbl (t0 time(0), t1 time(1), t2 time(2), t3 time(3), t4 time(4), t5 time(5), t6 time(6));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into tbl values(" +
+					"'12:34:56.123456', " +
+					"'12:34:56.123456', " +
+					"'12:34:56.123456', " +
+					"'12:34:56.123456', " +
+					"'12:34:56.123456', " +
+					"'12:34:56.123456', " +
+					"'12:34:56.123456'" +
+					")",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "select * from tbl;",
+				Expected: []sql.Row{
+					{
+						types.Timespan(45296_000000),
+						types.Timespan(45296_100000),
+						types.Timespan(45296_120000),
+						types.Timespan(45296_123000),
+						types.Timespan(45296_123500),
+						types.Timespan(45296_123460),
+						types.Timespan(45296_123456),
+					},
+				},
+			},
+		},
+	},
 	{
 		Name:        "time with auto_increment",
 		Dialect:     "mysql",

@@ -146,11 +146,11 @@ func (m *Mod) convertLeftRight(ctx *sql.Context, lVal, rVal any) (any, any) {
 	typ := m.Type(ctx)
 	lTyp, rTyp := m.LeftChild.Type(ctx), m.RightChild.Type(ctx)
 	if types.IsFloat(typ) {
-		lVal = convertValueToType(ctx, lTyp, typ, lVal)
-		rVal = convertValueToType(ctx, rTyp, typ, rVal)
+		lVal = convertValueToType(ctx, lVal, lTyp, typ)
+		rVal = convertValueToType(ctx, rVal, rTyp, typ)
 	} else {
-		lVal = convertToDecimalValue(ctx, lTyp, typ, lVal)
-		rVal = convertToDecimalValue(ctx, rTyp, typ, rVal)
+		lVal = convertToDecimalValue(ctx, lVal, lTyp, typ)
+		rVal = convertToDecimalValue(ctx, rVal, rTyp, typ)
 	}
 	return lVal, rVal
 }
