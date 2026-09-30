@@ -14,7 +14,10 @@
 
 package plan
 
-import "github.com/dolthub/go-mysql-server/sql"
+import (
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/transform"
+)
 
 // OnDuplicateKeyUpdateSource evaluates the duplicate-key assignments against a
 // single existing/proposed row pair supplied by InsertInto. Its output is the
@@ -27,7 +30,11 @@ type OnDuplicateKeyUpdateSource struct {
 }
 
 func NewOnDuplicateKeyUpdateSource(destination sql.Node, exprs *UpdateExprs, ignore bool) *OnDuplicateKeyUpdateSource {
-	return &OnDuplicateKeyUpdateSource{UnaryNode: UnaryNode{Child: destination}, UpdateExprs: exprs, Ignore: ignore}
+	return &OnDuplicateKeyUpdateSource{
+		UnaryNode:   UnaryNode{Child: destination},
+		UpdateExprs: exprs,
+		Ignore:      ignore,
+	}
 }
 
 // Schema implements sql.Node.
@@ -56,6 +63,7 @@ func (n *OnDuplicateKeyUpdateSource) WithChildren(ctx *sql.Context, children ...
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 1)
 	}
+
 	nn := *n
 	nn.Child = children[0]
 	return &nn, nil
@@ -72,7 +80,55 @@ func (n *OnDuplicateKeyUpdateSource) WithExpressions(ctx *sql.Context, expressio
 	if err != nil {
 		return nil, err
 	}
+
 	nn := *n
 	nn.UpdateExprs = exprs
+	return &nn, nil
+}
+
+// OnDupExpressions returns the assignments owned by the duplicate update source.
+func (ii *InsertInto) OnDupExpressions() *UpdateExprs {
+	for node := ii.OnDup; node != nil; {
+		if source, ok := node.(*OnDuplicateKeyUpdateSource); ok {
+			return source.UpdateExprs
+		}
+
+		children := node.Children()
+		if len(children) == 0 {
+			break
+		}
+
+		node = children[0]
+	}
+
+	return nil
+}
+
+// WithOnDupExpressions rewrites the assignments without changing trigger bodies.
+func (ii *InsertInto) WithOnDupExpressions(ctx *sql.Context, expressions ...sql.Expression) (*InsertInto, error) {
+	nn := *ii
+	if ii.OnDup == nil {
+		if len(expressions) != 0 {
+			return nil, sql.ErrInvalidExpressionNumber.New(ii, len(expressions), 0)
+		}
+
+		return &nn, nil
+	}
+
+	branch, _, err := transform.NodeWithCtx(ctx, ii.OnDup, func(ctx *sql.Context, c transform.Context) bool {
+		_, trigger := c.Parent.(*TriggerExecutor)
+		return !trigger || c.ChildNum != 1
+	}, func(ctx *sql.Context, c transform.Context) (sql.Node, transform.TreeIdentity, error) {
+		if source, ok := c.Node.(*OnDuplicateKeyUpdateSource); ok {
+			node, err := source.WithExpressions(ctx, expressions...)
+			return node, transform.NewTree, err
+		}
+		return c.Node, transform.SameTree, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	nn.OnDup = branch
 	return &nn, nil
 }

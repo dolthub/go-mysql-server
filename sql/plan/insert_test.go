@@ -39,12 +39,39 @@ func TestInsertExpressionsDoesNotMutatePlan(t *testing.T) {
 	analyzedExpressions := []sql.Expression{update, predicate, returning}
 
 	insert := &InsertInto{
-		OnDupExprs: NewUpdateExprs(analyzedExpressions[:1], 1),
+		OnDup:      NewOnDuplicateKeyUpdateSource(nil, NewUpdateExprs(analyzedExpressions[:1], 1), false),
 		checks:     sql.CheckConstraints{{Expr: check}},
 		OnDupWhere: analyzedExpressions[1],
 		Returning:  analyzedExpressions[2:],
 	}
 
-	require.Equal(t, []sql.Expression{update, check, predicate, returning}, insert.Expressions())
+	require.Equal(t, []sql.Expression{check, predicate, returning}, insert.Expressions())
 	require.Same(t, returning, insert.Returning[0])
+}
+
+func TestInsertDuplicateAssignmentsOwnedBySource(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	destination := NewValues([][]sql.Expression{{expression.NewLiteral(int64(1), types.Int64)}})
+	assignment := expression.NewSetField(
+		expression.NewGetField(0, types.Int64, "value", false),
+		expression.NewLiteral(int64(2), types.Int64),
+	)
+	replacement := expression.NewSetField(
+		expression.NewGetField(0, types.Int64, "value", false),
+		expression.NewLiteral(int64(3), types.Int64),
+	)
+	insert := NewInsertInto(nil, destination, destination, false, nil, NewUpdateExprs([]sql.Expression{assignment}, 1), false)
+	source := insert.OnDup.(*OnDuplicateKeyUpdateSource)
+	require.Empty(t, insert.Expressions())
+	require.Equal(t, []sql.Expression{assignment}, source.Expressions())
+
+	logic := NewOnDuplicateKeyUpdateSource(destination, NewUpdateExprs([]sql.Expression{assignment}, 1), false)
+	insert.OnDup = NewTriggerExecutor(
+		&Update{UnaryNode: UnaryNode{Child: source}}, logic, UpdateTrigger, BeforeTrigger, sql.TriggerDefinition{},
+	)
+	rewritten, err := insert.WithOnDupExpressions(ctx, replacement)
+	require.NoError(t, err)
+	require.Equal(t, []sql.Expression{replacement}, rewritten.OnDupExpressions().AllExpressions())
+	require.Equal(t, []sql.Expression{assignment}, insert.OnDupExpressions().AllExpressions())
+	require.Same(t, logic, rewritten.OnDup.(*TriggerExecutor).Right())
 }

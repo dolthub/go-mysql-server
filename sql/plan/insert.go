@@ -63,16 +63,16 @@ type InsertInto struct {
 	db          sql.Database
 	Destination sql.Node
 	Source      sql.Node
-	// OnDup is an independently planned update branch, invoked with the existing
-	// row followed by the proposed insert row when a duplicate key is found.
+	// OnDup owns the duplicate assignments and optional update trigger branch.
+	// It receives the existing row followed by the proposed insert row when a
+	// duplicate key is found.
 	OnDup sql.Node
 	// DeferredDefaults marks which columns in the destination schema are expected to have default values.
 	DeferredDefaults sets.FastIntSet
 
 	ColumnNames []string
 
-	checks     sql.CheckConstraints
-	OnDupExprs *UpdateExprs
+	checks sql.CheckConstraints
 	// OnDupValuesAlias names the proposed row exposed to duplicate-key expressions.
 	OnDupValuesAlias string
 	// OnDupWhere limits duplicate-key updates to rows that satisfy the expression.
@@ -106,15 +106,20 @@ var _ DisjointedChildrenNode = (*InsertInto)(nil)
 
 // NewInsertInto creates an InsertInto node.
 func NewInsertInto(db sql.Database, dst, src sql.Node, isReplace bool, cols []string, onDupExprs *UpdateExprs, ignore bool) *InsertInto {
-	return &InsertInto{
+	insert := &InsertInto{
 		db:          db,
 		Destination: dst,
 		Source:      src,
 		ColumnNames: cols,
 		IsReplace:   isReplace,
-		OnDupExprs:  onDupExprs,
 		Ignore:      ignore,
 	}
+
+	if onDupExprs.HasUpdates() {
+		insert.OnDup = NewOnDuplicateKeyUpdateSource(dst, onDupExprs, ignore)
+	}
+
+	return insert
 }
 
 var _ sql.CheckConstraintNode = (*RenameColumn)(nil)
@@ -291,8 +296,7 @@ func (ii *InsertInto) DebugString(ctx *sql.Context) string {
 
 // Expressions implements the sql.Expressioner interface.
 func (ii *InsertInto) Expressions() []sql.Expression {
-	exprs := make([]sql.Expression, 0, ii.OnDupExprs.Length()+len(ii.checks)+1+len(ii.Returning))
-	exprs = append(exprs, ii.OnDupExprs.AllExpressions()...)
+	exprs := make([]sql.Expression, 0, len(ii.checks)+1+len(ii.Returning))
 	exprs = append(exprs, ii.checks.ToExpressions()...)
 	if ii.OnDupWhere != nil {
 		exprs = append(exprs, ii.OnDupWhere)
@@ -302,24 +306,17 @@ func (ii *InsertInto) Expressions() []sql.Expression {
 
 // WithExpressions implements the sql.Expressioner interface.
 func (ii *InsertInto) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
-	numOnDupExprs := len(ii.OnDupExprs.AllExpressions())
 	numOnDupWhereExprs := 0
 	if ii.OnDupWhere != nil {
 		numOnDupWhereExprs = 1
 	}
-	expectedLen := numOnDupExprs + len(ii.checks) + numOnDupWhereExprs + len(ii.Returning)
+	expectedLen := len(ii.checks) + numOnDupWhereExprs + len(ii.Returning)
 	if len(exprs) != expectedLen {
 		return nil, sql.ErrInvalidExpressionNumber.New(ii, len(exprs), expectedLen)
 	}
 
 	nii := *ii
 	var err error
-	nii.OnDupExprs, err = ii.OnDupExprs.WithExpressions(exprs[:numOnDupExprs])
-	if err != nil {
-		return nil, err
-	}
-	exprs = exprs[numOnDupExprs:]
-
 	nii.checks, err = nii.checks.FromExpressions(exprs[:len(nii.checks)])
 	if err != nil {
 		return nil, err
@@ -340,7 +337,6 @@ func (ii *InsertInto) Resolved() bool {
 	return ii.Destination.Resolved() && ii.Source.Resolved() &&
 		(ii.OnDup == nil || ii.OnDup.Resolved()) &&
 		expression.ExpressionsResolved(ii.checks.ToExpressions()...) &&
-		ii.OnDupExprs.Resolved() &&
 		(ii.OnDupWhere == nil || ii.OnDupWhere.Resolved()) &&
 		expression.ExpressionsResolved(ii.Returning...)
 }

@@ -164,7 +164,7 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 		case *plan.InsertInto:
 			affectedTables = append(affectedTables, getTableName(ctx, n))
 			triggerEvent = plan.InsertTrigger
-			onDuplicateUpdate = n.OnDupExprs.HasUpdates()
+			onDuplicateUpdate = n.OnDupExpressions().HasUpdates()
 			if n.Database() != nil && n.Database().Name() != "" {
 				db = n.Database().Name()
 			}
@@ -396,8 +396,7 @@ func applyTriggerLogic(ctx *sql.Context, n sql.Node, trigger *plan.CreateTrigger
 			qFlags.Set(sql.QFlagTrigger)
 			if trigger.TriggerEvent == sqlparser.UpdateStr {
 				nn := *n
-				if nn.OnDup == nil {
-					source := plan.NewOnDuplicateKeyUpdateSource(n.Destination, n.OnDupExprs, n.Ignore)
+				if source, ok := nn.OnDup.(*plan.OnDuplicateKeyUpdateSource); ok {
 					update := &plan.Update{UnaryNode: plan.UnaryNode{Child: source}, Ignore: n.Ignore}
 					nn.OnDup = update.WithChecks(n.Checks())
 				}

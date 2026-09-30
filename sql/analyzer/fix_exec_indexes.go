@@ -38,7 +38,7 @@ func assignExecIndexes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 	}
 	switch n := n.(type) {
 	case *plan.InsertInto:
-		if n.LiteralValueSource && len(n.Checks()) == 0 && !n.OnDupExprs.HasUpdates() && len(n.Returning) == 0 {
+		if n.LiteralValueSource && len(n.Checks()) == 0 && !n.OnDupExpressions().HasUpdates() && len(n.Returning) == 0 {
 			return n, transform.SameTree, nil
 		}
 	case *plan.Update:
@@ -526,7 +526,7 @@ func (s *idxScope) visitSelf(ctx *sql.Context, n sql.Node) error {
 		rightScope.addSchema(rightSchema)
 		dstScope := s.childScopes[0]
 
-		for _, e := range n.OnDupExprs.AllExpressions() {
+		for _, e := range n.OnDupExpressions().AllExpressions() {
 			set, ok := e.(*expression.SetField)
 			if !ok {
 				return fmt.Errorf("on duplicate update expressions should be *expression.SetField; found %T", e)
@@ -634,10 +634,14 @@ func (s *idxScope) finalizeSelf(ctx *sql.Context, n sql.Node) (sql.Node, error) 
 		nn := *n
 		nn.Source = s.children[0]
 		nn.Destination = s.children[1]
-		// TODO: We could just return nn.WithExpressions if we rearranged how expressions are added to s.expressions to
-		//  match InsertInto.WithExpressions
-		onDupExprsLen := n.OnDupExprs.Length()
-		nn.OnDupExprs, err = n.OnDupExprs.WithExpressions(s.expressions[:onDupExprsLen])
+		// Duplicate assignments use the existing/proposed row scope, while the
+		// remaining insert expressions use the destination scope.
+		onDupExprsLen := n.OnDupExpressions().Length()
+		rewritten, err := nn.WithOnDupExpressions(ctx, s.expressions[:onDupExprsLen]...)
+		if err != nil {
+			return nil, err
+		}
+		nn = *rewritten
 		expressionsOffset := onDupExprsLen
 		if n.OnDupWhere != nil {
 			nn.OnDupWhere = s.expressions[expressionsOffset]

@@ -44,7 +44,7 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 		replacer = insertable.(sql.ReplaceableTable).Replacer(ctx)
 	} else {
 		inserter = insertable.Inserter(ctx)
-		if ii.OnDupExprs.HasUpdates() {
+		if ii.OnDupExpressions().HasUpdates() {
 			updater = insertable.(sql.UpdatableTable).Updater(ctx)
 		}
 	}
@@ -83,7 +83,7 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 		updater:                        updater,
 		rowSource:                      rowIter,
 		unlocker:                       unlocker,
-		onDupKeyUpdateExprs:            ii.OnDupExprs,
+		onDupKeyUpdateExprs:            ii.OnDupExpressions(),
 		onDupWhere:                     ii.OnDupWhere,
 		countOnDuplicateUpdateAsOneRow: ii.CountOnDuplicateUpdateAsOneRow,
 		insertExprs:                    insertExpressions,
@@ -99,11 +99,11 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 		hasAfterTrigger:                ii.HasAfterTrigger,
 	}
 
-	if ii.OnDupExprs.HasUpdates() {
+	if ii.OnDupExpressions().HasUpdates() {
 		insertIter.duplicateKeyHandler = &directDuplicateKeyHandler{insertIter: insertIter}
 	}
-	if ii.OnDup != nil {
-		source := &duplicateKeyUpdateIter{schema: dstSchema, updateExprs: ii.OnDupExprs, ignore: ii.Ignore}
+	if _, direct := ii.OnDup.(*plan.OnDuplicateKeyUpdateSource); ii.OnDup != nil && !direct {
+		source := &duplicateKeyUpdateIter{schema: dstSchema, updateExprs: ii.OnDupExpressions(), ignore: ii.Ignore}
 		// Bind the update branch to the final destination (including foreign-key
 		// wrappers) and assignments, which may have been rewritten since planning.
 		updatePlan, _, err := transform.NodeWithCtx(ctx, ii.OnDup, func(ctx *sql.Context, c transform.Context) bool {
@@ -114,7 +114,7 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 			switch n := node.(type) {
 			case *plan.OnDuplicateKeyUpdateSource:
 				return &duplicateKeyUpdateSourceNode{
-					OnDuplicateKeyUpdateSource: plan.NewOnDuplicateKeyUpdateSource(ii.Destination, ii.OnDupExprs, ii.Ignore),
+					OnDuplicateKeyUpdateSource: plan.NewOnDuplicateKeyUpdateSource(ii.Destination, ii.OnDupExpressions(), ii.Ignore),
 					iter:                       source,
 				}, transform.NewTree, nil
 			case *plan.Update:
@@ -402,7 +402,7 @@ func (b *BaseBuilder) buildTriggerExecutor(ctx *sql.Context, n *plan.TriggerExec
 	if n.TriggerEvent == plan.InsertTrigger && n.TriggerTime == plan.AfterTrigger {
 		transform.Inspect(n.Left(), func(node sql.Node) bool {
 			if insert, ok := node.(*plan.InsertInto); ok {
-				if insert.OnDupExprs.HasUpdates() {
+				if insert.OnDupExpressions().HasUpdates() {
 					onDupRowSize = len(insert.Destination.Schema(ctx))
 				}
 				return false
