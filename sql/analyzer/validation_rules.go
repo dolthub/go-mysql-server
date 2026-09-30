@@ -308,9 +308,11 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 					if nameable, ok := expr.(sql.Nameable); ok {
 						groupBys[strings.ToLower(nameable.Name())] = true
 					}
+
 					if gf, ok := expr.(*expression.GetField); ok {
 						groupByCols.Add(gf.Id())
 					}
+
 					_, isAlias := expr.(*expression.Alias)
 					return isAlias
 				})
