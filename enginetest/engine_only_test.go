@@ -1007,6 +1007,56 @@ func TestTimestampBindingsCanBeCompared(t *testing.T) {
 	require.Equal(t, 1, count)
 }
 
+// TestTemporalCastPrecision checks the client error metadata and the largest valid precision.
+func TestTemporalCastPrecision(t *testing.T) {
+	db := memory.NewDatabase("mydb")
+	pro := memory.NewDBProvider(db)
+	e := sqle.NewDefault(pro)
+	ctx := sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), pro)))
+
+	for _, query := range []string{
+		"SELECT CAST('2020-01-01' AS DATETIME(7))",
+		"SELECT CONVERT('2020-01-01', DATETIME(7))",
+		"SELECT CAST('10:00:00' AS TIME(7))",
+		"SELECT CONVERT('10:00:00', TIME(7))",
+	} {
+		t.Run(query, func(t *testing.T) {
+			_, _, _, err := e.Query(ctx, query)
+			require.True(t, sql.ErrTooBigPrecision.Is(err), "unexpected error: %v", err)
+			require.EqualError(t, err, "Too big precision 7 specified. Maximum is 6.")
+			mysqlErr := sql.CastSQLError(err)
+			require.Equal(t, 1426, mysqlErr.Number())
+			require.Equal(t, "42000", mysqlErr.SQLState())
+		})
+	}
+
+	for _, query := range []string{
+		"SELECT CAST(CAST('10:00:00.123456' AS TIME(6)) AS CHAR)",
+		"SELECT CAST(CONVERT('10:00:00.123456', TIME(6)) AS CHAR)",
+	} {
+		t.Run(query, func(t *testing.T) {
+			_, iter, _, err := e.Query(ctx, query)
+			require.NoError(t, err)
+			rows, err := sql.RowIterToRows(ctx, iter)
+			require.NoError(t, err)
+			require.Equal(t, []sql.Row{{"10:00:00.123456"}}, rows)
+		})
+	}
+
+	for _, query := range []string{
+		"SELECT CAST(CAST('2020-01-01 10:00:00.123456' AS DATETIME(6)) AS CHAR)",
+		"SELECT CAST(CONVERT('2020-01-01 10:00:00.123456', DATETIME(6)) AS CHAR)",
+	} {
+		t.Run(query, func(t *testing.T) {
+			_, iter, _, err := e.Query(ctx, query)
+			require.NoError(t, err)
+			rows, err := sql.RowIterToRows(ctx, iter)
+			require.NoError(t, err)
+			require.Equal(t, []sql.Row{{"2020-01-01 10:00:00.123456"}}, rows)
+		})
+	}
+}
+
 func TestColumnStatisticsWithoutPrivileges(t *testing.T) {
 	db := memory.NewDatabase("mydb")
 	pro := memory.NewDBProvider(db)
