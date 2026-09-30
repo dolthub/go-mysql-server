@@ -2366,7 +2366,7 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 			}
 
 			if shouldRebuild || indexCreateRequiresBuild(n) {
-				return buildIndex(ctx, n, ibt, indexDef)
+				return buildIndex(ctx, b.EngineOverrides, n, ibt, indexDef)
 			}
 		}
 
@@ -2651,7 +2651,7 @@ func warnOnDuplicateSecondaryIndex(ctx *sql.Context, newIndexName string, idxAlt
 }
 
 // buildIndex builds an index on a table, as a less expensive alternative to doing a complete table rewrite.
-func buildIndex(ctx *sql.Context, n *plan.AlterIndex, ibt sql.IndexBuildingTable, indexDef sql.IndexDef) error {
+func buildIndex(ctx *sql.Context, overrides sql.EngineOverrides, n *plan.AlterIndex, ibt sql.IndexBuildingTable, indexDef sql.IndexDef) error {
 	inserter, err := ibt.BuildIndex(ctx, indexDef)
 	if err != nil {
 		return err
@@ -2672,7 +2672,8 @@ func buildIndex(ctx *sql.Context, n *plan.AlterIndex, ibt sql.IndexBuildingTable
 	isVirtual := n.TargetSchema().HasVirtualColumns()
 	var projections []sql.Expression
 	if isVirtual {
-		projections = virtualTableProjections(ctx, n.TargetSchema(), ibt.Name())
+		targetSchema := resolveGeneratedColumns(ctx, overrides, n.Db.Name(), ibt.Name(), n.TargetSchema())
+		projections = virtualTableProjections(ctx, targetSchema, ibt.Name())
 	}
 
 	for {

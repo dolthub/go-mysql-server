@@ -164,25 +164,10 @@ func NewPartitionedTableWithCollation(ctx *sql.Context, db *BaseDatabase, name s
 		}
 	}
 
-	newSchema := make(sql.Schema, len(schema.Schema))
-	for i, c := range schema.Schema {
-		cCopy := c.Copy()
-		if cCopy.Default != nil {
-			newDef, _, _ := transform.Expr(ctx, cCopy.Default, stripTblNames)
-			defStr := newDef.String()
-			unrDef := sql.NewUnresolvedColumnDefaultValue(defStr)
-			cCopy.Default = unrDef
-		}
-		if cCopy.Generated != nil {
-			newDef, _, _ := transform.Expr(ctx, cCopy.Generated, stripTblNames)
-			defStr := newDef.String()
-			unrDef := sql.NewUnresolvedColumnDefaultValue(defStr)
-			cCopy.Generated = unrDef
-		}
-		newSchema[i] = cCopy
+	schema.Schema = schema.Schema.Copy()
+	for _, col := range schema.Schema {
+		unresolveColumnExpressions(ctx, col)
 	}
-
-	schema.Schema = newSchema
 
 	// The dual table has a nil database
 	dbName := ""
@@ -1043,7 +1028,7 @@ func (t *Table) tableEditorForRewrite(ctx *sql.Context, oldSchema, newSchema sql
 	if !t.ignoreSessionData {
 		tableUnderEdit.data.indexes = t.sessionTableData(ctx).indexes
 	}
-	tableData := tableUnderEdit.data.truncate(ctx, normalizeSchemaForRewrite(newSchema), renames...)
+	tableData := tableUnderEdit.data.truncate(ctx, normalizeSchemaForRewrite(ctx, newSchema), renames...)
 	tableUnderEdit.data = tableData
 
 	// TODO: |editedTableAnd| and |ea| should have the same tableData reference
@@ -1234,6 +1219,9 @@ func (t *Table) AddColumn(ctx *sql.Context, column *sql.Column, order *sql.Colum
 
 // addColumnToSchema adds the given column to the schema and returns the new index
 func addColumnToSchema(ctx *sql.Context, data *TableData, newCol *sql.Column, order *sql.ColumnOrder) (int, *TableData, error) {
+	newCol = newCol.Copy()
+	unresolveColumnExpressions(ctx, newCol)
+
 	// TODO: might have wrong case
 	newCol.Source = data.tableName
 	newSch := make(sql.Schema, len(data.schema.Schema)+1)
@@ -2361,15 +2349,38 @@ func (t *Table) replaceData(src *TableData) {
 // normalizeSchemaForRewrite returns a copy of the schema provided suitable for rewriting. This is necessary because
 // the engine doesn't currently enforce that primary key columns are not nullable, rather taking the definition
 // directly from the user.
-func normalizeSchemaForRewrite(newSch sql.PrimaryKeySchema) sql.PrimaryKeySchema {
+func normalizeSchemaForRewrite(ctx *sql.Context, newSch sql.PrimaryKeySchema) sql.PrimaryKeySchema {
 	schema := newSch.Schema.Copy()
 	for _, col := range schema {
 		if col.PrimaryKey {
 			col.Nullable = false
 		}
+
+		unresolveColumnExpressions(ctx, col)
 	}
 
 	return sql.NewPrimaryKeySchema(schema, newSch.PkOrdinals...)
+}
+
+// unresolveColumnExpressions stores schema expressions as text, as CREATE TABLE
+// does, so later statements bind column references in their own scope.
+func unresolveColumnExpressions(ctx *sql.Context, col *sql.Column) {
+	for _, value := range []**sql.ColumnDefaultValue{&col.Default, &col.Generated, &col.OnUpdate} {
+		if *value == nil {
+			continue
+		}
+
+		if _, unresolved := (*value).Expr.(*sql.UnresolvedColumnDefault); unresolved {
+			continue
+		}
+
+		expr, _, err := transform.Expr(ctx, *value, stripTblNames)
+		if err != nil {
+			panic(err)
+		}
+
+		*value = sql.NewUnresolvedColumnDefaultValue(expr.String())
+	}
 }
 
 // DropPrimaryKey implements the PrimaryKeyAlterableTable
