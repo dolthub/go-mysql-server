@@ -47,6 +47,56 @@ func TestStrToDate(t *testing.T) {
 	}
 }
 
+func TestStrToDateBinaryArgs(t *testing.T) {
+	setupTimezone(t)
+
+	testCases := [...]struct {
+		name     string
+		date     interface{}
+		format   interface{}
+		expected interface{}
+	}{
+		{
+			name:     "binary date",
+			date:     []byte("Dec 26, 2000 2:13:15"),
+			format:   "%b %e, %Y %T",
+			expected: time.Date(2000, time.December, 26, 2, 13, 15, 0, time.UTC),
+		},
+		{
+			name:     "binary format",
+			date:     "20240101",
+			format:   []byte("%Y%m%d"),
+			expected: time.Date(2024, time.January, 1, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			name:     "binary date and format",
+			date:     []byte("20240101"),
+			format:   []byte("%Y%m%d"),
+			expected: time.Date(2024, time.January, 1, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			name:     "numeric date",
+			date:     int64(20240101),
+			format:   "%Y%m%d",
+			expected: time.Date(2024, time.January, 1, 0, 0, 0, 0, time.UTC),
+		},
+		{name: "binary date unparseable", date: []byte{0xFF, 0xD8, 0xFF, 0xE0}, format: "%h:%i:%s"},
+	}
+
+	for _, tt := range testCases {
+		ctx := sql.NewEmptyContext()
+		f := NewStrToDate(
+			ctx,
+			expression.NewGetField(0, types.Blob, "", true),
+			expression.NewGetField(1, types.Text, "", true),
+		)
+		t.Run(tt.name, func(t *testing.T) {
+			dtime := eval(t, f, sql.NewRow(tt.date, tt.format))
+			require.Equal(t, tt.expected, dtime)
+		})
+	}
+}
+
 func TestStrToDateFailure(t *testing.T) {
 	setupTimezone(t)
 
