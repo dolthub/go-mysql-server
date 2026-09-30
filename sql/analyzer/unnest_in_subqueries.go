@@ -113,7 +113,7 @@ func unnestInSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 				default:
 				}
 				if sq != nil && sq.CanCacheResults() {
-					matches = append(matches, applyJoin{l: l, r: sq, op: op, filter: joinF, max1: max1, original: candE})
+					matches = append(matches, applyJoin{l: l, r: sq, op: op, filter: joinF, max1: max1, original: e})
 				} else {
 					newFilters = append(newFilters, e)
 				}
