@@ -387,6 +387,7 @@ func convertValue(ctx *sql.Context, val any, castTo string, origType sql.Type, t
 		if u, ok := val.(uint64); ok {
 			return int64(u), nil
 		}
+
 		convType = types.Int64
 	case ConvertToUnsigned:
 		convType = types.Uint64
