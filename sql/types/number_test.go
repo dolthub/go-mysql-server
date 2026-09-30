@@ -485,6 +485,31 @@ func TestNumberSQL_NumberFromString(t *testing.T) {
 	assert.Equal(t, "0", val.ToString())
 }
 
+func TestNumberSQLUnsignedClamp(t *testing.T) {
+	tests := []struct {
+		typ sql.Type
+		val interface{}
+		exp string
+	}{
+		{typ: Uint8, val: uint64(math.MaxUint8), exp: "255"},
+		{typ: Uint8, val: uint64(math.MaxUint8 + 1), exp: "255"},
+		{typ: Uint16, val: uint64(math.MaxUint16 + 1), exp: "65535"},
+		{typ: Uint24, val: uint64(1<<24 - 1), exp: "16777215"},
+		{typ: Uint24, val: uint64(1 << 24), exp: "16777215"},
+		{typ: Uint24, val: uint64(99999999), exp: "16777215"},
+		{typ: Uint32, val: uint64(math.MaxUint32 + 1), exp: "4294967295"},
+		{typ: Int24, val: int64(1 << 23), exp: "8388607"},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%s %v", test.typ.String(), test.val), func(t *testing.T) {
+			val, err := test.typ.SQL(sql.NewEmptyContext(), nil, test.val)
+			require.NoError(t, err)
+			assert.Equal(t, test.exp, val.ToString())
+		})
+	}
+}
+
 func TestNumberString(t *testing.T) {
 	tests := []struct {
 		typ         sql.Type
@@ -2210,30 +2235,6 @@ func TestConvertValueToFloat64(t *testing.T) {
 				return
 			}
 			require.InEpsilonf(t, test.exp, res, epsilon, fmt.Sprintf("Actual is: %v", res))
-		})
-	}
-}
-
-func TestNumberSQLUnsignedClamp(t *testing.T) {
-	tests := []struct {
-		typ sql.Type
-		val interface{}
-		exp string
-	}{
-		{Uint8, uint64(math.MaxUint8), "255"},
-		{Uint8, uint64(math.MaxUint8 + 1), "255"},
-		{Uint16, uint64(math.MaxUint16 + 1), "65535"},
-		{Uint24, uint64(1<<24 - 1), "16777215"},
-		{Uint24, uint64(1 << 24), "16777215"},
-		{Uint24, uint64(99999999), "16777215"},
-		{Uint32, uint64(math.MaxUint32 + 1), "4294967295"},
-		{Int24, int64(1 << 23), "8388607"},
-	}
-	for _, test := range tests {
-		t.Run(fmt.Sprintf("%s %v", test.typ.String(), test.val), func(t *testing.T) {
-			val, err := test.typ.SQL(sql.NewEmptyContext(), nil, test.val)
-			require.NoError(t, err)
-			assert.Equal(t, test.exp, val.ToString())
 		})
 	}
 }
