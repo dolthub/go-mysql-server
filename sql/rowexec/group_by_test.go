@@ -17,6 +17,7 @@ package rowexec
 import (
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/stretchr/testify/require"
@@ -264,13 +265,29 @@ func TestGroupByGroupingReturnsConsumerError(t *testing.T) {
 	for i := range rows {
 		rows[i] = sql.NewRow(int64(i))
 	}
+
 	errKey := errors.New("grouping key failed")
-	groupBy := []sql.Expression{failingExpression{expression.NewGetField(0, types.Int64, "a", false), errKey}}
+	groupBy := []sql.Expression{failingExpression{
+		GetField: expression.NewGetField(0, types.Int64, "a", false),
+		err:      errKey,
+	}}
 	selected := []sql.Expression{aggregation.NewCount(expression.NewStar())}
 
 	iter := newGroupByGroupingIter(ctx, selected, groupBy, sql.RowsToRowIter(rows...))
-	_, err := iter.Next(ctx)
-	require.ErrorIs(t, err, errKey)
+	errors := make(chan error, 1)
+	go func() {
+		_, err := iter.Next(ctx)
+		errors <- err
+	}()
+
+	select {
+	case err := <-errors:
+		require.ErrorIs(t, err, errKey)
+	case <-time.After(5 * time.Second):
+		t.Fatal("grouping did not return its consumer error")
+	}
+
+	require.NoError(t, iter.Close(ctx))
 }
 
 // failingExpression evaluates to err on every row.
