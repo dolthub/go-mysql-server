@@ -402,14 +402,11 @@ func int64Abs(v int64) int64 {
 }
 
 func (t TimespanType_) stringToTimespan(s string) (Timespan, error) {
-	var negative bool
-	var hours int16
-	var minutes int8
-	var seconds int8
-	var microseconds int32
+	var isNeg bool
+	var hours, mins, secs, nanos int64
 
 	if len(s) > 0 && s[0] == '-' {
-		negative = true
+		isNeg = true
 		s = s[1:]
 	}
 
@@ -443,10 +440,11 @@ func (t TimespanType_) stringToTimespan(s string) (Timespan, error) {
 				convertedMicroseconds++
 			}
 		}
-		microseconds = int32(convertedMicroseconds)
+		nanos = int64(convertedMicroseconds)
 		for i := 0; i < MaxDatetimePrecision-t.precision; i++ {
-			microseconds *= 10
+			nanos *= 10
 		}
+		nanos *= nanosPerMicro
 	}
 
 	// Parse H-M-S time
@@ -478,7 +476,7 @@ func (t TimespanType_) stringToTimespan(s string) (Timespan, error) {
 	if len(hms[0]) > 0 && err != nil {
 		return Timespan(0), sql.ErrTruncatedIncorrect.New(t.String(), s)
 	}
-	hours = int16(hmsHours)
+	hours = int64(hmsHours)
 
 	hmsMinutes, err := strconv.Atoi(hms[1])
 	if len(hms[1]) > 0 && err != nil {
@@ -486,7 +484,7 @@ func (t TimespanType_) stringToTimespan(s string) (Timespan, error) {
 	} else if hmsMinutes >= 60 {
 		return Timespan(0), sql.ErrTruncatedIncorrect.New(t.String(), s)
 	}
-	minutes = int8(hmsMinutes)
+	mins = int64(hmsMinutes)
 
 	hmsSeconds, err := strconv.Atoi(hms[2])
 	if len(hms[2]) > 0 && err != nil {
@@ -494,28 +492,28 @@ func (t TimespanType_) stringToTimespan(s string) (Timespan, error) {
 	} else if hmsSeconds >= 60 {
 		return Timespan(0), sql.ErrTruncatedIncorrect.New(t.String(), s)
 	}
-	seconds = int8(hmsSeconds)
+	secs = int64(hmsSeconds)
 
-	if microseconds == int32(microsPerSec) {
-		microseconds = 0
-		seconds++
+	// special case for time strings overflowing hours results in max time
+	if hours > MaxTimeHour {
+		if isNeg {
+			return MinTimespan, nil
+		}
+		return MaxTimespan, nil
 	}
-	if seconds == 60 {
-		seconds = 0
-		minutes++
-	}
-	if minutes == 60 {
-		minutes = 0
-		hours++
-	}
-
-	if hours > 838 {
-		hours = 838
-		minutes = 59
-		seconds = 59
+	// another special case for strings that are max time
+	if hours == MaxTimeHour && mins == MaxMinute && secs == MaxSecond {
+		if isNeg {
+			return MinTimespan, nil
+		}
+		return MaxTimespan, nil
 	}
 
-	return unitsToTimespan(negative, hours, minutes, seconds, microseconds), nil
+	res, ok := t.makeTime(isNeg, hours, mins, secs, nanos)
+	if !ok {
+		return Timespan(0), sql.ErrTruncatedIncorrect.New(t.String(), s)
+	}
+	return res, nil
 }
 
 func safeSubstr(s string, start int, end int) string {
