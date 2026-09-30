@@ -454,9 +454,11 @@ func (c *countDistinctBuffer) add(ctx *sql.Context, h uint64) error {
 	if c.seen == nil {
 		c.seen, c.dispose = ctx.Memory.NewHistoryCache(ctx)
 	}
+
 	if _, err := c.seen.Get(h); err == nil {
 		return nil
 	}
+
 	return c.seen.Put(h, struct{}{})
 }
 
@@ -465,16 +467,19 @@ func (c *countDistinctBuffer) Update(ctx *sql.Context, row sql.Row) error {
 	if len(c.exprs) == 0 {
 		return fmt.Errorf("no expressions")
 	}
+
 	if _, ok := c.exprs[0].(*expression.Star); ok {
 		for _, val := range row {
 			if val == nil {
 				return nil
 			}
 		}
+
 		h, err := hash.HashOf(ctx, nil, row)
 		if err != nil {
 			return err
 		}
+
 		return c.add(ctx, h)
 	}
 
@@ -488,10 +493,12 @@ func (c *countDistinctBuffer) Update(ctx *sql.Context, row sql.Row) error {
 		if err != nil {
 			return err
 		}
+
 		// skip nil values
 		if v == nil {
 			return nil
 		}
+
 		if extendedType, ok := expr.Type(ctx).(sql.ExtendedType); ok {
 			serializedVal, err := extendedType.SerializeValue(ctx, v)
 			if err != nil {
@@ -499,6 +506,7 @@ func (c *countDistinctBuffer) Update(ctx *sql.Context, row sql.Row) error {
 			}
 			v = string(serializedVal)
 		}
+
 		val[i] = v
 	}
 
@@ -506,6 +514,7 @@ func (c *countDistinctBuffer) Update(ctx *sql.Context, row sql.Row) error {
 	if err != nil {
 		return err
 	}
+
 	return c.add(ctx, h)
 }
 
@@ -514,6 +523,7 @@ func (c *countDistinctBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 	if c.seen == nil {
 		return int64(0), nil
 	}
+
 	return int64(c.seen.Size()), nil
 }
 
@@ -523,6 +533,7 @@ func (c *countDistinctBuffer) Dispose(ctx *sql.Context) {
 		c.dispose = nil
 		c.seen = nil
 	}
+
 	for _, e := range c.exprs {
 		expression.Dispose(ctx, e)
 	}

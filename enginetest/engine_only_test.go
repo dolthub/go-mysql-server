@@ -1036,7 +1036,33 @@ func TestCountDistinctMemoryLimit(t *testing.T) {
 	if err == nil {
 		_, err = sql.RowIterToRows(ctx, iter)
 	}
+
 	require.True(t, sql.ErrNoMemoryAvailable.Is(err), "unexpected error: %v", err)
+	require.Zero(t, ctx.Memory.NumCaches())
+
+	for _, tt := range []struct {
+		query    string
+		expected []sql.Row
+	}{
+		{
+			query:    "SELECT COUNT(DISTINCT i), COUNT(DISTINCT i, i) FROM t",
+			expected: []sql.Row{{int64(3), int64(3)}},
+		},
+		{
+			query:    "SELECT CAST(i % 2 AS SIGNED), COUNT(DISTINCT i) FROM t GROUP BY i % 2 ORDER BY i % 2",
+			expected: []sql.Row{{int64(0), int64(1)}, {int64(1), int64(2)}},
+		},
+	} {
+		t.Run(tt.query, func(t *testing.T) {
+			ctx := newCtx()
+			_, iter, _, err := e.Query(ctx, tt.query)
+			require.NoError(t, err)
+			rows, err := sql.RowIterToRows(ctx, iter)
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, rows)
+			require.Zero(t, ctx.Memory.NumCaches())
+		})
+	}
 }
 
 // TestAlterTableWithBadSchema is a backwards compatibility test that
