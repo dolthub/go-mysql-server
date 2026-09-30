@@ -112,13 +112,6 @@ func aliasTrackAndReplace(ctx *sql.Context, adj map[sql.ColumnId]sql.Expression,
 }
 
 func (f *factory) buildConvert(ctx *sql.Context, expr sql.Expression, castToType string, typeLength, typeScale int) (sql.Expression, error) {
-	switch strings.ToLower(castToType) {
-	case expression.ConvertToDatetime, expression.ConvertToTime:
-		if typeLength > types.MaxDatetimePrecision {
-			return nil, sql.ErrTooBigPrecision.New(typeLength, types.MaxDatetimePrecision)
-		}
-	}
-
 	convType, err := expression.CreateConvertType(castToType, typeLength, typeScale)
 	if err != nil {
 		return nil, err
