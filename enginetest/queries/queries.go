@@ -10850,6 +10850,13 @@ var ErrorQueries = []QueryErrorTest{
 	{
 		Query:       `select s from mytable group by s order by i`,
 		ExpectedErr: analyzererrors.ErrValidationGroupByOrderBy,
+	}, {
+		Query:       "SELECT CAST('2020-01-01 10:00:00' AS DATETIME(7))",
+		ExpectedErr: sql.ErrTooBigPrecision,
+	},
+	{
+		Query:       "SELECT CAST('10:00:00' AS TIME(7))",
+		ExpectedErr: sql.ErrTooBigPrecision,
 	},
 	{
 		// A grouping key that fails while more rows are waiting to be grouped than the grouping buffers must return
