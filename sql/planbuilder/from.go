@@ -338,6 +338,12 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 				b.handleErr(err)
 			}
 
+			if !b.overrides.PermitDerivedTableDuplicateColumnNames {
+				if col, ok := duplicateDerivedColumn(e.Select, renameCols); ok {
+					b.handleErr(sql.ErrDuplicateColumn.New(col))
+				}
+			}
+
 			outScope = inScope.push()
 			tabId := outScope.addTable(sq.Name())
 
@@ -357,6 +363,7 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 					id:          0,
 					typ:         c.typ,
 					nullable:    c.nullable,
+					hidden:      c.hidden,
 				})
 				colSet.Add(sql.ColumnId(toId))
 				scopeMapping[sql.ColumnId(toId)] = c.scalarGf()
@@ -387,7 +394,7 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 			tabId := outScope.addTable(tableName)
 			var cols sql.ColSet
 			for _, c := range vdt.Schema(b.ctx) {
-				id := outScope.newColumn(scopeColumn{col: c.Name, db: c.DatabaseSource, table: tableName, typ: c.Type, nullable: c.Nullable})
+				id := outScope.newColumn(scopeColumn{col: c.Name, db: c.DatabaseSource, table: tableName, typ: c.Type, nullable: c.Nullable, hidden: c.Hidden})
 				cols.Add(sql.ColumnId(id))
 			}
 			var renameCols []string
@@ -420,6 +427,39 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 		b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(te)))
 	}
 	return
+}
+
+// duplicateDerivedColumn returns the first column name that a derived table gives to more than one of its output
+// columns, which MySQL rejects. Only names written by the user are considered: names produced by expanding a star
+// over a join may repeat.
+func duplicateDerivedColumn(sel ast.SelectStatement, renameCols []string) (string, bool) {
+	seen := make(map[string]struct{})
+	if len(renameCols) > 0 {
+		for _, col := range renameCols {
+			lowered := strings.ToLower(col)
+			if _, ok := seen[lowered]; ok {
+				return col, true
+			}
+			seen[lowered] = struct{}{}
+		}
+		return "", false
+	}
+	s, ok := sel.(*ast.Select)
+	if !ok {
+		return "", false
+	}
+	for _, se := range s.SelectExprs {
+		ae, ok := se.(*ast.AliasedExpr)
+		if !ok || ae.As.IsEmpty() {
+			continue
+		}
+		lowered := ae.As.Lowered()
+		if _, ok := seen[lowered]; ok {
+			return ae.As.String(), true
+		}
+		seen[lowered] = struct{}{}
+	}
+	return "", false
 }
 
 func columnsToStrings(cols ast.Columns) []string {
@@ -541,6 +581,22 @@ func (b *Builder) buildTableFunc(inScope *scope, t *ast.TableFuncExpr) (outScope
 			b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(t)))
 		}
 		newAlias = tableAlias.WithColumnNames(renameCols)
+	} else if !t.Alias.IsEmpty() && b.overrides.ScalarFunctionAliasAsColumn {
+		// PostgreSQL uses a table alias as the column name as well when a scalar
+		// function appears in FROM without an explicit column alias list. Keep
+		// native table functions unchanged: their aliases name the relation only,
+		// especially when they return a record with named output columns.
+		if _, ok := newInstance.(*dtablefunctions.TableFunctionWrapper); ok {
+			// A regular function may still return a record with named OUT parameters.
+			// Only a single-column result uses the relation alias as its column name.
+			if len(newAlias.Schema(b.ctx)) == 1 {
+				tableAlias, ok := newAlias.(*plan.TableAlias)
+				if !ok {
+					b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(t)))
+				}
+				newAlias = tableAlias.WithColumnNames([]string{name})
+			}
+		}
 	}
 
 	tabId := outScope.addTable(name)
@@ -764,6 +820,7 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 			originalCol: c.Name,
 			typ:         c.Type,
 			nullable:    c.Nullable,
+			hidden:      c.Hidden,
 		})
 		cols.Add(sql.ColumnId(id))
 	}
@@ -790,6 +847,7 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 				originalCol: c.Name,
 				typ:         c.Type,
 				nullable:    c.Nullable,
+				hidden:      c.Hidden,
 			}
 			if !strings.EqualFold(c.Source, startSource) {
 				startSource = c.Source

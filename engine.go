@@ -579,9 +579,9 @@ func (e *Engine) bindExecuteQueryNode(ctx *sql.Context, query string, eq *plan.E
 
 	// TODO: overwrite the current binding if bindings are not empty???
 	tempBindings := make(map[string]sql.Expression)
-	for i, name := range eq.BindVars {
-		if strings.HasPrefix(name.String(), "@") {
-			t, val, err := ctx.GetUserVariable(ctx, strings.TrimPrefix(name.String(), "@"))
+	for i, binding := range eq.BindVars {
+		if userVar, ok := binding.(*expression.UserVar); ok {
+			t, val, err := ctx.GetUserVariable(ctx, userVar.Name)
 			if err != nil {
 				return nil, nil
 			}
@@ -596,7 +596,7 @@ func (e *Engine) bindExecuteQueryNode(ctx *sql.Context, query string, eq *plan.E
 			}
 			tempBindings[fmt.Sprintf("v%d", i+1)] = expression.NewLiteral(val, t)
 		} else {
-			tempBindings[fmt.Sprintf("v%d", i)] = name
+			tempBindings[fmt.Sprintf("v%d", i)] = binding
 		}
 	}
 

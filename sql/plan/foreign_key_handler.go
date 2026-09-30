@@ -23,11 +23,12 @@ import (
 // ForeignKeyHandler handles all referencing and cascading operations that would need to be executed for an operation
 // on a table.
 type ForeignKeyHandler struct {
-	Table        sql.ForeignKeyTable
-	Sch          sql.Schema
-	OriginalNode sql.Node
-	Editor       *ForeignKeyEditor
-	AllUpdaters  []sql.ForeignKeyEditor
+	Table                      sql.ForeignKeyTable
+	Sch                        sql.Schema
+	OriginalNode               sql.Node
+	Editor                     *ForeignKeyEditor
+	AllUpdaters                []sql.ForeignKeyEditor
+	CheckReferencesAfterInsert bool // allows a duplicate-key error to take precedence over FK validation
 }
 
 func (n *ForeignKeyHandler) Underlying() sql.Table {
@@ -176,12 +177,33 @@ func (n *ForeignKeyHandler) StatementComplete(ctx *sql.Context) error {
 
 // Insert implements the interface sql.RowInserter.
 func (n *ForeignKeyHandler) Insert(ctx *sql.Context, row sql.Row) error {
-	for _, reference := range n.Editor.References {
-		if err := reference.CheckReference(ctx, row); err != nil {
-			return err
+	if !n.CheckReferencesAfterInsert {
+		for _, reference := range n.Editor.References {
+			if err := reference.CheckReference(ctx, row); err != nil {
+				return err
+			}
 		}
 	}
-	return n.Editor.Editor.Insert(ctx, row)
+	if err := n.Editor.Editor.Insert(ctx, row); err != nil {
+		return err
+	}
+	if n.CheckReferencesAfterInsert {
+		for _, reference := range n.Editor.References {
+			if err := reference.CheckReference(ctx, row); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// HasUniqueKeyConflict implements sql.UniqueKeyConflictCheckingRowInserter.
+func (n *ForeignKeyHandler) HasUniqueKeyConflict(ctx *sql.Context, row sql.Row, columns []string) (bool, error) {
+	checker, ok := n.Editor.Editor.(sql.UniqueKeyConflictCheckingRowInserter)
+	if !ok {
+		return false, nil
+	}
+	return checker.HasUniqueKeyConflict(ctx, row, columns)
 }
 
 // Update implements the interface sql.RowUpdater.

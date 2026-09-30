@@ -72,7 +72,7 @@ type maxRowsHeap struct {
 
 // Less implements heap.Interface. It is inverted to implement a max-heap.
 func (h *maxRowsHeap) Less(i, j int) bool {
-	cmp := h.RowSorter.CompareRows(h.RowSorter.rows[i], h.RowSorter.rows[j])
+	cmp := h.RowSorter.CompareKeys(h.RowSorter.keyAt(i), h.RowSorter.keyAt(j))
 	if cmp == 0 {
 		return h.order[i] > h.order[j]
 	}
@@ -89,6 +89,7 @@ func (h *maxRowsHeap) Swap(i, j int) {
 func (h *maxRowsHeap) Push(x interface{}) {
 	e := x.(rowWithOrder)
 	h.RowSorter.rows = append(h.RowSorter.rows, e.row)
+	h.RowSorter.keys = append(h.RowSorter.keys, nil)
 	h.order = append(h.order, e.order)
 }
 
@@ -97,6 +98,7 @@ func (h *maxRowsHeap) Pop() interface{} {
 	n := len(h.RowSorter.rows)
 	row := h.RowSorter.rows[n-1]
 	h.RowSorter.rows = h.RowSorter.rows[:n-1]
+	h.RowSorter.keys = h.RowSorter.keys[:n-1]
 	h.order = h.order[:n-1]
 	return row
 }

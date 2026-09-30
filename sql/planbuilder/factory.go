@@ -112,7 +112,12 @@ func aliasTrackAndReplace(ctx *sql.Context, adj map[sql.ColumnId]sql.Expression,
 }
 
 func (f *factory) buildConvert(ctx *sql.Context, expr sql.Expression, castToType string, typeLength, typeScale int) (sql.Expression, error) {
-	n := expression.NewConvertWithLengthAndScale(expr, castToType, typeLength, typeScale)
+	convType, err := expression.CreateConvertType(castToType, typeLength, typeScale)
+	if err != nil {
+		return nil, err
+	}
+
+	n := expression.NewConvertWithLengthAndScale(expr, convType, castToType, typeLength, typeScale)
 	{
 		// deduplicate redundant convert
 		if expr.Type(ctx).Equals(n.Type(ctx)) {

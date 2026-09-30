@@ -29,6 +29,12 @@ var (
 	// ErrUnsupportedFeature is thrown when a feature is not already supported
 	ErrUnsupportedFeature = errors.NewKind("unsupported feature: %s")
 
+	// ErrIntervalInvalidUse is returned when an interval expression is evaluated outside date arithmetic.
+	ErrIntervalInvalidUse = errors.NewKind(
+		"invalid use of an interval, which can only be used with DATE_ADD, " +
+			"DATE_SUB and +/- operators to subtract from or add to a date",
+	)
+
 	// ErrReadOnly is returned when the engine has been set to Read Only but a write operation was attempted.
 	ErrReadOnly = errors.NewKind("database server is set to read only mode")
 
@@ -133,6 +139,9 @@ var (
 	// ErrUniqueKeyViolation is returned when a unique key constraint is violated
 	// This is meant to wrap a sql.UniqueKey error, which provides the key string
 	ErrUniqueKeyViolation = errors.NewKind("duplicate unique key given")
+
+	// ErrInsertConflictTarget is returned when an insert conflict target does not identify a unique or primary key.
+	ErrInsertConflictTarget = errors.NewKind("there is no unique or exclusion constraint matching the ON CONFLICT specification")
 
 	// ErrMisusedAlias is returned when a alias is defined and used in the same projection.
 	ErrMisusedAlias = errors.NewKind("column %q does not exist in scope, but there is an alias defined in" +
@@ -407,8 +416,8 @@ var (
 	// ErrUnknownConstraint is returned when a DROP CONSTRAINT statement refers to a constraint that doesn't exist
 	ErrUnknownConstraint = errors.NewKind("Constraint %q does not exist")
 
-	// ErrInsertIntoNonNullableDefaultNullColumn is returned when an INSERT excludes a field which is non-nullable and has no default/autoincrement.
-	ErrInsertIntoNonNullableDefaultNullColumn = errors.NewKind("Field '%s' doesn't have a default value")
+	// ErrFieldNoDefaultValue is returned when an expression references a default value for a column that does not have one.
+	ErrFieldNoDefaultValue = errors.NewKind("Field '%s' doesn't have a default value")
 
 	// ErrAlterTableNotSupported is thrown when the table doesn't support ALTER TABLE statements
 	ErrAlterTableNotSupported = errors.NewKind("table %s cannot be altered")
@@ -581,6 +590,10 @@ var (
 	ErrNonAggregatedColumnWithoutGroupBy = errors.NewKind("in aggregated query without GROUP BY, expression #%d of SELECT list contains nonaggregated column '%s'; " +
 		"this is incompatible with sql_mode=only_full_group_by")
 
+	// ErrWindowInvalidWindowFuncUse is thrown when a window function is used in a context where it is not allowed,
+	// such as the argument of an aggregate function.
+	ErrWindowInvalidWindowFuncUse = newMySQLKind("You cannot use the window function '%s' in this context.'", 3593, "HY000")
+
 	// ErrInvalidArgumentNumber is returned when the number of arguments to call a
 	// function is different from the function arity.
 	ErrInvalidArgumentNumber = errors.NewKind("function '%s' expected %v arguments, %v received")
@@ -637,6 +650,10 @@ var (
 
 	// ErrSessionDoesNotSupportPersistence is thrown when a feature is not already supported
 	ErrSessionDoesNotSupportPersistence = errors.NewKind("session does not support persistence")
+
+	// ErrSystemVariableCannotBeSetLocal is thrown when a system variable that does not support transaction-local
+	// scope is set with transaction-local scope
+	ErrSystemVariableCannotBeSetLocal = errors.NewKind("system variable %s cannot be set with transaction-local scope")
 
 	// ErrInvalidGISData is thrown when a "ST_<spatial_type>FromText" function receives a malformed string
 	ErrInvalidGISData = errors.NewKind("invalid GIS data provided to function %s")
@@ -738,7 +755,7 @@ var (
 	ErrTableAccessDeniedForUser = errors.NewKind("Access denied for user %s to table '%s'")
 
 	// ErrPrivilegeCheckFailed is returned when a user does not have the correct privileges to perform an operation.
-	ErrPrivilegeCheckFailed = errors.NewKind("command denied to user %s")
+	ErrPrivilegeCheckFailed = newMySQLKind("command denied to user %s", 1142, "42000")
 
 	// ErrGrantUserDoesNotExist is returned when a user does not exist when attempting to grant them privileges.
 	ErrGrantUserDoesNotExist = errors.NewKind("You are not allowed to create a user with GRANT")
@@ -840,6 +857,9 @@ var (
 	// ErrCollationMalformedString is returned when a malformed string is encountered during a collation-related operation.
 	ErrCollationMalformedString = errors.NewKind("malformed string encountered while %s")
 
+	// ErrCannotConvertString is returned when a string cannot be converted from one character set to another.
+	ErrCannotConvertString = newMySQLKind("Cannot convert string '%s' from %s to %s", 3854, "HY000")
+
 	// ErrCollatedExprWrongType is returned when the wrong type is given to a CollatedExpression.
 	ErrCollatedExprWrongType = errors.NewKind("wrong type in collated expression")
 
@@ -886,6 +906,13 @@ var (
 	// ErrValueOutOfRange is returned when a value is out of range for a type.
 	ErrValueOutOfRange = errors.NewKind("%v out of range for %v")
 
+	// ErrValueOutOfRangeForColumn is returned when a value stored in a
+	// column is out of range for the column type.
+	ErrValueOutOfRangeForColumn = newMySQLKind("Out of range value for column '%s' at row %d", mysql.ERWarnDataOutOfRange, mysql.SSDataOutOfRange)
+
+	// ErrIntegerOutOfRange is returned when integer arithmetic exceeds the result type's range.
+	ErrIntegerOutOfRange = newMySQLKind("%s value is out of range in '%s'", mysql.ERDataOutOfRange, mysql.SSDataOutOfRange)
+
 	ErrConvertingToSet   = errors.NewKind("value %v is not valid for this set")
 	ErrDuplicateEntrySet = errors.NewKind("duplicate entry: %v")
 	ErrInvalidSetValue   = errors.NewKind("value %v was not found in the set")
@@ -918,6 +945,12 @@ var (
 
 	ErrWindowUnsupported = errors.NewKind(
 		"a window function '%s' is in a context where it cannot be evaluated.",
+	)
+
+	// ErrSetOpOrderByAggregation is returned when the top-level ORDER BY of a UNION, INTERSECT, or EXCEPT contains an
+	// aggregate or window function.
+	ErrSetOpOrderByAggregation = errors.NewKind(
+		"Expression #%d of ORDER BY contains aggregate function and applies to a UNION, EXCEPT or INTERSECT",
 	)
 
 	// ErrFullTextNotSupported is returned when a table does not support the creation of Full-Text indexes.
@@ -975,8 +1008,11 @@ var (
 
 	ErrEnumTypeTruncated = errors.NewKind("new enum type change truncates value")
 
+	// ErrIncorrectValue is thrown when a value cannot be converted to a Time
+	ErrIncorrectValue = errors.NewKind("Incorrect %s value: '%v'")
+
 	// ErrTruncatedIncorrect is thrown when converting a value results in portions of the data to be trimmed.
-	ErrTruncatedIncorrect = errors.NewKind("Truncated incorrect %s value: %v")
+	ErrTruncatedIncorrect = errors.NewKind("Truncated incorrect %s value: '%v'")
 
 	// ErrUnresolvedTableLock is returned when a FOR UPDATE OF clause references a table that doesn't exist in the query context.
 	ErrUnresolvedTableLock = errors.NewKind("unresolved table name `%s` in locking clause.")
@@ -993,12 +1029,28 @@ var (
 	// ErrDistinctOnMatchOrderBy is returned when DISTINCT ON does not match the initial ORDER BY expressions
 	ErrDistinctOnMatchOrderBy = errors.NewKind("SELECT DISTINCT ON expressions must match initial ORDER BY expressions")
 
+	// ErrInvalidReplicationFilter is returned when a wildcard table filter is missing its database and table separator.
+	ErrInvalidReplicationFilter = newMySQLKind("Supplied filter list contains a value which is not in the required format 'db_pattern.table_pattern'", 3067, "HY000")
+
+	// ErrReplicaRunning is returned when replica configuration is changed while the replica SQL thread is running.
+	ErrReplicaRunning = newMySQLKind("This operation cannot be performed with a running replica sql thread; run STOP REPLICA SQL_THREAD FOR CHANNEL '' first.", 3085, "HY000")
+
 	// ErrWrongDBName is returned for illegal database names with the [mysql.ERWrongDbName] error code and [mysql.SSClientError] SQLSTATE.
 	ErrWrongDBName = newMySQLKind("Incorrect database name '%s'", mysql.ERWrongDbName, mysql.SSClientError)
 
 	// ErrStoredGeneratedColumnForeignKeyConflict is returned when a foreign key references a column also referenced by
 	// a stored generated column
 	ErrStoredGeneratedColumnForeignKeyConflict = errors.NewKind("Cannot add foreign key on the base column of a stored generated column.")
+
+	// ErrInvalidGroupFuncUse is returned when an aggregate function is
+	// used in an invalid context, such as nested in another aggregate.
+	ErrInvalidGroupFuncUse = newMySQLKind("Invalid use of group function", mysql.ERInvalidGroupFuncUse, mysql.SSUnknownSQLState)
+
+	// ErrTooBigScale is returned when a type receives a scale that is too large.
+	ErrTooBigScale = newMySQLKind("Too big scale %v specified. Maximum is %v.", 1425, mysql.SSClientError)
+
+	// ErrTooBigPrecision is returned when a type receives a precision that is too large.
+	ErrTooBigPrecision = newMySQLKind("Too big precision %v specified. Maximum is %v.", 1426, mysql.SSClientError)
 )
 
 // CastSQLError returns a *mysql.SQLError with the error code and in some cases, also a SQL state, populated for the

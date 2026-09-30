@@ -35,6 +35,8 @@ func TestParseDate(t *testing.T) {
 		{"with_pm", "May 3, 10:23:00 PM 2000", "%b %e, %h:%i:%s %p %Y", time.Date(2000, time.May, 3, 22, 23, 0, 0, time.UTC)},
 		{"lowercase_pm", "Jul 3, 10:23:00 pm 2000", "%b %e, %h:%i:%s %p %Y", time.Date(2000, time.July, 3, 22, 23, 0, 0, time.UTC)},
 		{"with_am", "Mar 3, 10:23:00 am 2000", "%b %e, %h:%i:%s %p %Y", time.Date(2000, time.March, 3, 10, 23, 0, 0, time.UTC)},
+		{"midnight", "12:00 AM", "%h:%i %p", time.Date(-1, time.November, 30, 0, 0, 0, 0, time.UTC)},
+		{"noon", "12:00 PM", "%h:%i %p", time.Date(-1, time.November, 30, 12, 0, 0, 0, time.UTC)},
 
 		{"month_number", "1 3, 10:23:00 pm 2000", "%c %e, %h:%i:%s %p %Y", time.Date(2000, time.January, 3, 22, 23, 0, 0, time.UTC)},
 

@@ -339,7 +339,7 @@ update histogram  xy.(x,y) using {"statistic":{"avg_size":0,"buckets":[],"column
 			Query: "SELECT b.y as s1, a.y as s2, first_value(a.z) over (partition by a.y) from xy a join xy b on a.y = b.y",
 			ExpectedPlan: `
 Project
- ├─ columns: [b.y:5!null->s1:7, a.y:2!null->s2:8, first_value(a.z) over ( partition by a.y rows between unbounded preceding and unbounded following):9!null->first_value(a.z) over (partition by a.y)]
+ ├─ columns: [b.y:5!null->s1:7, a.y:2!null->s2:8, first_value(a.z) over ( partition by a.y rows between unbounded preceding and unbounded following):9->first_value(a.z) over (partition by a.y)]
  └─ Window
      ├─ first_value(a.z) over ( partition by a.y ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
      ├─ b.y:5!null
@@ -1369,10 +1369,7 @@ Project
 			from xy`,
 			ExpectedPlan: `
 Project
- ├─ columns: [xy.x:1!null, (xy.x:1!null * xy.y:2!null)->x*y, row_number() over ( partition by xy.x rows between unbounded preceding and unbounded following):4!null->row_num1:5, sum
- │   ├─ over ( partition by xy.y order by xy.x asc)
- │   └─ xy.x
- │  :6!null->sum:7]
+ ├─ columns: [xy.x:1!null, (xy.x:1!null * xy.y:2!null)->x*y, row_number() over ( partition by xy.x rows between unbounded preceding and unbounded following):4!null->row_num1:5, sum(xy.x) over ( partition by xy.y order by xy.x asc):6!null->sum:7]
  └─ Window
      ├─ row_number() over ( partition by xy.x ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
      ├─ SUM
@@ -1396,22 +1393,13 @@ Project
 			having x > 1;`,
 			ExpectedPlan: `
 Project
- ├─ columns: [(xy.x:1!null + 1 (tinyint))->x:4, sum
- │   ├─ over ( partition by xy.y order by xy.x asc)
- │   └─ xy.x
- │  :5!null->sum:6]
+ ├─ columns: [(xy.x:1!null + 1 (tinyint))->x:4, sum(xy.x) over ( partition by xy.y order by xy.x asc):5!null->sum:6]
  └─ Having
      ├─ GreaterThan
      │   ├─ x:4!null
      │   └─ 1 (bigint)
      └─ Project
-         ├─ columns: [sum
-         │   ├─ over ( partition by xy.y order by xy.x asc)
-         │   └─ xy.x
-         │  :5!null, xy.x:1!null, (xy.x:1!null + 1 (tinyint))->x:4, sum
-         │   ├─ over ( partition by xy.y order by xy.x asc)
-         │   └─ xy.x
-         │  :5!null->sum:6]
+         ├─ columns: [sum(xy.x) over ( partition by xy.y order by xy.x asc):5!null, xy.x:1!null, (xy.x:1!null + 1 (tinyint))->x:4, sum(xy.x) over ( partition by xy.y order by xy.x asc):5!null->sum:6]
          └─ Window
              ├─ SUM
              │   ├─ over ( partition by xy.y order by xy.x ASC)
@@ -1467,7 +1455,7 @@ Project
 			Query: "SELECT x, first_value(z) over (partition by y) FROM xy order by x*y,x",
 			ExpectedPlan: `
 Project
- ├─ columns: [xy.x:1!null, first_value(xy.z) over ( partition by xy.y rows between unbounded preceding and unbounded following):4!null->first_value(z) over (partition by y)]
+ ├─ columns: [xy.x:1!null, first_value(xy.z) over ( partition by xy.y rows between unbounded preceding and unbounded following):4->first_value(z) over (partition by y)]
  └─ Sort((xy.x:1!null * xy.y:2!null) ASC nullsFirst, xy.x:1!null ASC nullsFirst)
      └─ Window
          ├─ first_value(xy.z) over ( partition by xy.y ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
@@ -1602,10 +1590,7 @@ Project
 			Query: "select x, count(*) over (order by y) from xy order by x",
 			ExpectedPlan: `
 Project
- ├─ columns: [xy.x:1!null, count
- │   ├─ over ( order by xy.y asc)
- │   └─ 1
- │  :4!null->count(*) over (order by y)]
+ ├─ columns: [xy.x:1!null, count(1) over ( order by xy.y asc):4!null->count(*) over (order by y)]
  └─ Sort(xy.x:1!null ASC nullsFirst)
      └─ Window
          ├─ COUNT
@@ -1971,14 +1956,11 @@ Union distinct
 			Query: "SELECT sum(y) over w FROM xy WINDOW w as (partition by z order by x rows unbounded preceding) order by x",
 			ExpectedPlan: `
 Project
- ├─ columns: [sum
- │   ├─ over ( partition by xy.z order by xy.x asc rows between unbounded preceding and unbounded following)
- │   └─ xy.y
- │  :4!null->sum(y) over w]
+ ├─ columns: [sum(xy.y) over ( partition by xy.z order by xy.x asc rows between unbounded preceding and current row):4!null->sum(y) over w]
  └─ Sort(xy.x:1!null ASC nullsFirst)
      └─ Window
          ├─ SUM
-         │   ├─ over ( partition by xy.z order by xy.x ASC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
+         │   ├─ over ( partition by xy.z order by xy.x ASC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
          │   └─ xy.y:2!null
          ├─ xy.x:1!null
          └─ Table
@@ -2138,8 +2120,8 @@ Create table myTable
  ├─ Columns
  │   ├─ Name: a, Source: myTable, Type: int, PrimaryKey: true, Nullable: false, Comment: , Default: Generated: , AutoIncrement: false, Extra: 
  │   ├─ Name: b, Source: myTable, Type: int, PrimaryKey: false, Nullable: true, Comment: , Default: Generated: , AutoIncrement: false, Extra: 
- │   ├─ Name: c, Source: myTable, Type: int, PrimaryKey: false, Nullable: true, Comment: , Default: Generated: parenthesized(((mytable.a:0!null + mytable.b:1) + 1 (tinyint))), AutoIncrement: false, Extra: 
- │   └─ Name: d, Source: myTable, Type: int, PrimaryKey: false, Nullable: true, Comment: , Default: parenthesized((mytable.b:1 + 1 (tinyint)))Generated: , AutoIncrement: false, Extra: 
+ │   ├─ Name: c, Source: myTable, Type: int, PrimaryKey: false, Nullable: true, Comment: , Default: Generated: parenthesized(((mytable.a:0!null + mytable.b:1) + 1 (tinyint))), AutoIncrement: false, Extra: VIRTUAL GENERATED
+ │   └─ Name: d, Source: myTable, Type: int, PrimaryKey: false, Nullable: true, Comment: , Default: parenthesized((mytable.b:1 + 1 (tinyint)))Generated: , AutoIncrement: false, Extra: DEFAULT_GENERATED
  └─ CheckConstraints
      └─ CHECK GreaterThan
          ├─ (mytable.b:1 + mytable.d:3)
@@ -3031,6 +3013,10 @@ func TestPlanBuilderErr(t *testing.T) {
 		{
 			Query: "SELECT * FROM (SELECT 'parent' as db, * FROM xy) as combined",
 			Err:   "Invalid syntax: cannot mix named columns with '*' in SELECT clause",
+		},
+		{
+			Query: "CHANGE REPLICATION FILTER REPLICATE_WILD_DO_TABLE = ('badformat'), REPLICATE_WILD_IGNORE_TABLE = ()",
+			Err:   "Supplied filter list contains a value which is not in the required format 'db_pattern.table_pattern' (errno 3067) (sqlstate HY000)",
 		},
 	}
 

@@ -84,6 +84,16 @@ func (t *TableFunctionWrapper) RowIter(ctx *sql.Context, r sql.Row) (sql.RowIter
 	if err != nil {
 		return nil, err
 	}
+	// RowIterExpression implementations may represent an empty set as nil. Preserve
+	// that distinction from an ordinary scalar NULL, which produces one NULL row.
+	// Keep using Eval instead of EvalRowIter because the latter collapses multi-column
+	// SRFs into a single record for SELECT-list semantics, while FROM requires separate
+	// columns.
+	if v == nil {
+		if rowIterExpr, ok := t.funcExpr.(sql.RowIterExpression); ok && rowIterExpr.ReturnsRowIter() {
+			return sql.RowsToRowIter(), nil
+		}
+	}
 	if ri, ok := v.(sql.RowIter); ok {
 		return ri, nil
 	}

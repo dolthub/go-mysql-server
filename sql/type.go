@@ -231,10 +231,12 @@ func IsStringType(t Type) bool {
 // The type of the returned value is time.Time.
 type DatetimeType interface {
 	Type
-	ConvertWithoutRangeCheck(ctx context.Context, v interface{}) (time.Time, error)
 	MaximumTime() time.Time
 	MinimumTime() time.Time
 	Precision() int
+	ToFloat64(time.Time) (float64, error)
+	ToDecimal(time.Time) (*apd.Decimal, error)
+	ToString(time.Time) (string, error)
 }
 
 // YearType represents the YEAR type.

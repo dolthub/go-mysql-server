@@ -63,7 +63,7 @@ func TestTimeFormatting(t *testing.T) {
 }
 
 func TestTimeFormatEval(t *testing.T) {
-	timeLit := expression.NewLiteral("04:05:06.000007", types.Time)
+	timeLit := expression.NewLiteral(toTimespan("04:05:06.000007"), types.TimeMaxPrecision)
 	format := expression.NewLiteral("%H-%i-%s|%f", types.Text)
 	nullLiteral := expression.NewLiteral(nil, types.Null)
 	ctx := sql.NewEmptyContext()
@@ -72,6 +72,16 @@ func TestTimeFormatEval(t *testing.T) {
 	res, err := timeFormat.Eval(nil, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, "04-05-06|000007", res)
+
+	timeFormat = NewTimeFormat(ctx, expression.NewLiteral("25:01:02", types.Time), expression.NewLiteral("%H|%k", types.Text))
+	res, err = timeFormat.Eval(nil, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, "25|25", res)
+
+	timeFormat = NewTimeFormat(ctx, expression.NewLiteral("05:01:02", types.Time), expression.NewLiteral("%k", types.Text))
+	res, err = timeFormat.Eval(nil, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, "5", res)
 
 	timeFormat = NewTimeFormat(ctx, timeLit, nil)
 	res, err = timeFormat.Eval(nil, nil)
@@ -92,4 +102,29 @@ func TestTimeFormatEval(t *testing.T) {
 	res, err = timeFormat.Eval(nil, nil)
 	assert.NoError(t, err)
 	assert.Nil(t, res)
+}
+
+func TestTimeFormatErrors(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	tests := []struct {
+		name   string
+		value  interface{}
+		format interface{}
+	}{
+		{"invalid time", "not a time", "%H"},
+		{"non-string format", "04:05:06", 1},
+		{"incomplete format specifier", "04:05:06", "%"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fn := NewTimeFormat(
+				ctx,
+				expression.NewLiteral(tt.value, types.LongText),
+				expression.NewLiteral(tt.format, types.LongText),
+			)
+			_, err := fn.Eval(ctx, nil)
+			assert.Error(t, err)
+		})
+	}
 }

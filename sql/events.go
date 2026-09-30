@@ -20,8 +20,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"gopkg.in/src-d/go-errors.v1"
 )
 
 const EventDateSpaceTimeFormat = "2006-01-02 15:04:05"
@@ -353,7 +351,6 @@ func EventOnScheduleEveryIntervalFromString(every string) (*EventOnScheduleEvery
 //  Events datetime parsing
 // -------------------------
 
-var ErrIncorrectValue = errors.NewKind("Incorrect %s value: '%s'")
 var dateRegex = regexp.MustCompile(`(?m)^(\d{1,4})-(\d{1,2})-(\d{1,2})(.*)$`)
 var timeRegex = regexp.MustCompile(`(?m)^([ T])?(\d{1,2})?(:)?(\d{1,2})?(:)?(\d{1,2})?(\.)?(\d{1,6})?(.*)$`)
 var tzRegex = regexp.MustCompile(`(?m)^([+\-])(\d{2}):(\d{2})$`)

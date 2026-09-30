@@ -129,6 +129,7 @@ type SumAgg struct {
 	baseWindowFunction
 	// use prefix sums to quickly calculate arbitrary frame sum within partition
 	prefixSum      []float64
+	nullCnt        []int
 	partitionStart int
 	partitionEnd   int
 }
@@ -165,7 +166,7 @@ func (a *SumAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, b
 	a.partitionStart, a.partitionEnd = interval.Start, interval.End
 	a.Dispose(ctx)
 	var err error
-	a.prefixSum, _, err = floatPrefixSum(ctx, interval, buf, a.expr)
+	a.prefixSum, a.nullCnt, err = floatPrefixSum(ctx, interval, buf, a.expr)
 	return err
 }
 
@@ -175,6 +176,16 @@ func (a *SumAgg) NewSlidingFrameInterval(added, dropped sql.WindowInterval) {
 
 func (a *SumAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) (interface{}, error) {
 	if interval.End-interval.Start < 1 {
+		return nil, nil
+	}
+	startIdx := interval.Start - a.partitionStart - 1
+	endIdx := interval.End - a.partitionStart - 1
+	nullCnt := a.nullCnt[endIdx]
+	if startIdx >= 0 {
+		nullCnt -= a.nullCnt[startIdx]
+	}
+	// SUM returns NULL when the frame has no non-NULL values.
+	if nullCnt == interval.End-interval.Start {
 		return nil, nil
 	}
 	return computePrefixSum(interval, a.partitionStart, a.prefixSum), nil
@@ -191,10 +202,15 @@ func floatPrefixSum(ctx *sql.Context, interval sql.WindowInterval, buf sql.Windo
 		if err != nil {
 			continue
 		}
+		if v == nil {
+			nullCnt += 1
+			sums[i] = last
+			nulls[i] = nullCnt
+			continue
+		}
 		val, _, err := types.Float64.Convert(ctx, v)
 		if err != nil || val == nil {
 			val = float64(0)
-			nullCnt += 1
 		}
 		last += val.(float64)
 		sums[i] = last
@@ -281,6 +297,10 @@ func (a *AvgAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.
 	if startIdx >= 0 {
 		nonNullCnt -= startIdx + 1
 		nonNullCnt += a.nullCnt[startIdx]
+	}
+	// AVG returns NULL when the frame has no non-NULL values.
+	if nonNullCnt == 0 {
+		return nil, nil
 	}
 	return computePrefixSum(interval, a.partitionStart, a.prefixSum) / float64(nonNullCnt), nil
 }
@@ -624,6 +644,7 @@ func (a *MinAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.
 type LastAgg struct {
 	expr   sql.Expression
 	framer sql.WindowFramer
+	values map[int]interface{}
 }
 
 func NewLastAgg(e sql.Expression) *LastAgg {
@@ -658,6 +679,7 @@ func (a *LastAgg) DefaultFramer() sql.WindowFramer {
 
 func (a *LastAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buffer sql.WindowBuffer) error {
 	a.Dispose(ctx)
+	clear(a.values)
 	return nil
 }
 
@@ -669,11 +691,19 @@ func (a *LastAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buffer 
 	if interval.End-interval.Start < 1 {
 		return nil, nil
 	}
-	row := buffer[interval.End-1]
+	rowIdx := interval.End - 1
+	if v, ok := a.values[rowIdx]; ok {
+		return v, nil
+	}
+	row := buffer[rowIdx]
 	v, err := a.expr.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
+	if a.values == nil {
+		a.values = make(map[int]interface{})
+	}
+	a.values[rowIdx] = v
 	return v, nil
 }
 
@@ -682,6 +712,7 @@ type FirstAgg struct {
 	framer         sql.WindowFramer
 	partitionStart int
 	partitionEnd   int
+	values         map[int]interface{}
 }
 
 func NewFirstAgg(e sql.Expression) *FirstAgg {
@@ -717,6 +748,7 @@ func (a *FirstAgg) DefaultFramer() sql.WindowFramer {
 func (a *FirstAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buffer sql.WindowBuffer) error {
 	a.Dispose(ctx)
 	a.partitionStart, a.partitionEnd = interval.Start, interval.End
+	clear(a.values)
 	return nil
 }
 
@@ -728,11 +760,18 @@ func (a *FirstAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buffer
 	if interval.End-interval.Start < 1 {
 		return nil, nil
 	}
+	if v, ok := a.values[interval.Start]; ok {
+		return v, nil
+	}
 	row := buffer[interval.Start]
 	v, err := a.expr.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
+	if a.values == nil {
+		a.values = make(map[int]interface{})
+	}
+	a.values[interval.Start] = v
 	return v, nil
 }
 
@@ -935,27 +974,13 @@ func (a *GroupConcatAgg) filterToDistinct(ctx *sql.Context, buf sql.WindowBuffer
 
 		a.gc.returnType = retType
 
-		// Skip if this is a null row
-		if evalRow == nil {
-			continue
-		}
-
-		var v interface{}
-		if retType == types.Blob {
-			v, _, err = types.Blob.Convert(ctx, evalRow[0])
-		} else {
-			v, _, err = types.LongText.Convert(ctx, evalRow[0])
-		}
-
+		vs, isNull, err := groupConcatValue(ctx, a.gc.selectExprs, evalRow, retType)
 		if err != nil {
 			return nil, nil, err
 		}
-
-		if v == nil {
+		if isNull {
 			continue
 		}
-
-		vs := v.(string)
 
 		// Get the current array of rows and the map
 		// Check if distinct is active if so look at and update our map
@@ -1146,7 +1171,7 @@ func (a *WindowedJSONObjectAgg) aggregateVals(ctx *sql.Context, interval sql.Win
 }
 
 type RowNumber struct {
-	pos int
+	pos int64
 }
 
 func NewRowNumber() *RowNumber {

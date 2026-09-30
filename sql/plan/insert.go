@@ -70,6 +70,12 @@ type InsertInto struct {
 
 	checks     sql.CheckConstraints
 	OnDupExprs *UpdateExprs
+	// OnDupValuesAlias names the proposed row exposed to duplicate-key expressions.
+	OnDupValuesAlias string
+	// OnDupWhere limits duplicate-key updates to rows that satisfy the expression.
+	OnDupWhere sql.Expression
+	// CountOnDuplicateUpdateAsOneRow uses single-row affected-count semantics for duplicate updates.
+	CountOnDuplicateUpdateAsOneRow bool
 	// Returning is a list of expressions to return after the insert operation. This feature is not supported
 	// in MySQL's syntax, but is exposed through PostgreSQL's and MariaDB's syntax.
 	Returning []sql.Expression
@@ -79,6 +85,10 @@ type InsertInto struct {
 
 	IsReplace bool
 	Ignore    bool
+	// IgnoreMode controls the compatibility semantics used when Ignore is true.
+	IgnoreMode sql.InsertIgnoreMode
+	// IgnoreTarget limits duplicate suppression to conflicts matching these columns. An empty target matches any key.
+	IgnoreTarget []string
 	// LiteralValueSource is set to |true| when |Source| is
 	// a |Values| node with only literal expressions.
 	LiteralValueSource bool
@@ -259,14 +269,23 @@ func (ii *InsertInto) DebugString(ctx *sql.Context) string {
 
 // Expressions implements the sql.Expressioner interface.
 func (ii *InsertInto) Expressions() []sql.Expression {
-	exprs := append(ii.OnDupExprs.AllExpressions(), ii.checks.ToExpressions()...)
+	exprs := make([]sql.Expression, 0, ii.OnDupExprs.Length()+len(ii.checks)+1+len(ii.Returning))
+	exprs = append(exprs, ii.OnDupExprs.AllExpressions()...)
+	exprs = append(exprs, ii.checks.ToExpressions()...)
+	if ii.OnDupWhere != nil {
+		exprs = append(exprs, ii.OnDupWhere)
+	}
 	return append(exprs, ii.Returning...)
 }
 
 // WithExpressions implements the sql.Expressioner interface.
 func (ii *InsertInto) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	numOnDupExprs := len(ii.OnDupExprs.AllExpressions())
-	expectedLen := numOnDupExprs + len(ii.checks) + len(ii.Returning)
+	numOnDupWhereExprs := 0
+	if ii.OnDupWhere != nil {
+		numOnDupWhereExprs = 1
+	}
+	expectedLen := numOnDupExprs + len(ii.checks) + numOnDupWhereExprs + len(ii.Returning)
 	if len(exprs) != expectedLen {
 		return nil, sql.ErrInvalidExpressionNumber.New(ii, len(exprs), expectedLen)
 	}
@@ -285,6 +304,10 @@ func (ii *InsertInto) WithExpressions(ctx *sql.Context, exprs ...sql.Expression)
 	}
 
 	exprs = exprs[len(nii.checks):]
+	if nii.OnDupWhere != nil {
+		nii.OnDupWhere = exprs[0]
+		exprs = exprs[1:]
+	}
 	nii.Returning = exprs
 
 	return &nii, nil
@@ -295,6 +318,7 @@ func (ii *InsertInto) Resolved() bool {
 	return ii.Destination.Resolved() && ii.Source.Resolved() &&
 		expression.ExpressionsResolved(ii.checks.ToExpressions()...) &&
 		ii.OnDupExprs.Resolved() &&
+		(ii.OnDupWhere == nil || ii.OnDupWhere.Resolved()) &&
 		expression.ExpressionsResolved(ii.Returning...)
 }
 

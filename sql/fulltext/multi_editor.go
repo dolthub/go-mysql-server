@@ -29,6 +29,7 @@ type MultiTableEditor struct {
 var _ sql.TableEditor = MultiTableEditor{}
 var _ sql.ForeignKeyEditor = MultiTableEditor{}
 var _ sql.AutoIncrementSetter = MultiTableEditor{}
+var _ sql.UniqueKeyConflictCheckingRowInserter = MultiTableEditor{}
 
 // CreateMultiTableEditor creates a TableEditor that writes to both the primary and secondary editors. The primary
 // editor must implement ForeignKeyEditor and AutoIncrementSetter in addition to TableEditor.
@@ -103,6 +104,15 @@ func (editor MultiTableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 		}
 	}
 	return editor.primary.Insert(ctx, row)
+}
+
+// HasUniqueKeyConflict implements sql.UniqueKeyConflictCheckingRowInserter.
+func (editor MultiTableEditor) HasUniqueKeyConflict(ctx *sql.Context, row sql.Row, columns []string) (bool, error) {
+	checker, ok := editor.primary.(sql.UniqueKeyConflictCheckingRowInserter)
+	if !ok {
+		return false, nil
+	}
+	return checker.HasUniqueKeyConflict(ctx, row, columns)
 }
 
 // Update implements the interface sql.TableEditor.

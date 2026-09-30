@@ -26,6 +26,76 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
+// windowCountingExpr counts evaluations while returning the selected row value.
+type windowCountingExpr struct {
+	sql.Expression
+	count *int
+}
+
+// Eval implements sql.Expression and records each underlying evaluation.
+func (e *windowCountingExpr) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	*e.count++
+	return e.Expression.Eval(ctx, row)
+}
+
+// TestFirstAndLastValueCacheSourceRows verifies that source-row values are evaluated once per partition.
+func TestFirstAndLastValueCacheSourceRows(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	buffer := sql.WindowBuffer{{nil}, {1}, {2}}
+
+	firstCount := 0
+	first := NewFirstAgg(&windowCountingExpr{
+		Expression: expression.NewGetField(0, types.Int64, "value", true),
+		count:      &firstCount,
+	})
+	require.NoError(t, first.StartPartition(ctx, sql.WindowInterval{Start: 0, End: 3}, buffer))
+	for _, test := range []struct {
+		interval sql.WindowInterval
+		expected interface{}
+	}{
+		{sql.WindowInterval{Start: 0, End: 1}, nil},
+		{sql.WindowInterval{Start: 0, End: 2}, nil},
+		{sql.WindowInterval{Start: 1, End: 2}, 1},
+		{sql.WindowInterval{Start: 1, End: 3}, 1},
+	} {
+		actual, err := first.Compute(ctx, test.interval, buffer)
+		require.NoError(t, err)
+		require.Equal(t, test.expected, actual)
+	}
+	require.Equal(t, 2, firstCount)
+	require.NoError(t, first.StartPartition(ctx, sql.WindowInterval{Start: 0, End: 3}, buffer))
+	_, err := first.Compute(ctx, sql.WindowInterval{Start: 0, End: 1}, buffer)
+	require.NoError(t, err)
+	require.Equal(t, 3, firstCount)
+
+	lastCount := 0
+	last := NewLastAgg(&windowCountingExpr{
+		Expression: expression.NewGetField(0, types.Int64, "value", true),
+		count:      &lastCount,
+	})
+	require.NoError(t, last.StartPartition(ctx, sql.WindowInterval{Start: 0, End: 3}, buffer))
+	for _, test := range []struct {
+		interval sql.WindowInterval
+		expected interface{}
+	}{
+		{sql.WindowInterval{Start: 0, End: 3}, 2},
+		{sql.WindowInterval{Start: 1, End: 3}, 2},
+		{sql.WindowInterval{Start: 0, End: 2}, 1},
+		{sql.WindowInterval{Start: 1, End: 2}, 1},
+		{sql.WindowInterval{Start: 0, End: 1}, nil},
+		{sql.WindowInterval{Start: 0, End: 1}, nil},
+	} {
+		actual, err := last.Compute(ctx, test.interval, buffer)
+		require.NoError(t, err)
+		require.Equal(t, test.expected, actual)
+	}
+	require.Equal(t, 3, lastCount)
+	require.NoError(t, last.StartPartition(ctx, sql.WindowInterval{Start: 0, End: 3}, buffer))
+	_, err = last.Compute(ctx, sql.WindowInterval{Start: 0, End: 3}, buffer)
+	require.NoError(t, err)
+	require.Equal(t, 4, lastCount)
+}
+
 func TestGroupedAggFuncs(t *testing.T) {
 	tests := []struct {
 		Name     string
@@ -152,6 +222,24 @@ func TestGroupedAggFuncs(t *testing.T) {
 			Name:     "group concat float",
 			Agg:      NewGroupConcatAgg(NewGroupConcat("", nil, ",", []sql.Expression{expression.NewGetField(3, types.LongText, "x", true)}, 1042)),
 			Expected: sql.Row{"1,2,3,4", "1,2,3,4", "1,2,3,4,5,6"},
+		},
+		{
+			Name: "group concat multiple expressions",
+			Agg: NewGroupConcatAgg(NewGroupConcat("", nil, ",", []sql.Expression{
+				expression.NewGetField(0, types.LongText, "x", true),
+				expression.NewLiteral("-", types.LongText),
+				expression.NewGetField(1, types.LongText, "y", true),
+			}, 1042)),
+			Expected: sql.Row{"1-1,3-3,4-4", "1-1,3-3,4-4", "1-1,2-2,5-5,6-6"},
+		},
+		{
+			Name: "group concat multiple expressions with later null",
+			Agg: NewGroupConcatAgg(NewGroupConcat("", nil, ",", []sql.Expression{
+				expression.NewGetField(1, types.LongText, "x", true),
+				expression.NewLiteral("-", types.LongText),
+				expression.NewGetField(0, types.LongText, "y", true),
+			}, 1042)),
+			Expected: sql.Row{"1-1,3-3,4-4", "1-1,3-3,4-4", "1-1,2-2,5-5,6-6"},
 		},
 		{
 			Name: "json array null",
@@ -326,7 +414,7 @@ func TestWindowedAggFuncs(t *testing.T) {
 		{
 			Name:     "row number",
 			Agg:      NewRowNumber(),
-			Expected: sql.Row{1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 5, 6},
+			Expected: sql.Row{int64(1), int64(2), int64(3), int64(4), int64(1), int64(2), int64(3), int64(4), int64(1), int64(2), int64(3), int64(4), int64(5), int64(6)},
 		},
 		{
 			Name: "percent rank no peers",
@@ -395,5 +483,24 @@ func TestWindowedAggFuncs(t *testing.T) {
 			require.Equal(t, tt.Expected, res)
 		})
 	}
+}
 
+func TestAvgAgg_NonNumericVarchar(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	buf := []sql.Row{{"aa"}, {nil}, {"10"}}
+	p := sql.WindowInterval{Start: 0, End: len(buf)}
+
+	avg := NewAvgAgg(expression.NewGetField(0, types.LongText, "x", true))
+	require.NoError(t, avg.StartPartition(ctx, p, buf))
+	res, err := avg.Compute(ctx, sql.WindowInterval{Start: 0, End: 1}, buf)
+	require.NoError(t, err)
+	require.Equal(t, float64(0), res)
+
+	res, err = avg.Compute(ctx, sql.WindowInterval{Start: 1, End: 2}, buf)
+	require.NoError(t, err)
+	require.Nil(t, res)
+
+	res, err = avg.Compute(ctx, sql.WindowInterval{Start: 0, End: 3}, buf)
+	require.NoError(t, err)
+	require.Equal(t, float64(5), res)
 }

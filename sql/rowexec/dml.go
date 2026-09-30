@@ -77,22 +77,26 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 		}
 	}
 	insertIter := &insertIter{
-		schema:                      dstSchema,
-		inserter:                    inserter,
-		replacer:                    replacer,
-		updater:                     updater,
-		rowSource:                   rowIter,
-		unlocker:                    unlocker,
-		onDupKeyUpdateExprs:         ii.OnDupExprs,
-		insertExprs:                 insertExpressions,
-		checks:                      ii.Checks(),
-		ctx:                         ctx,
-		ignore:                      ii.Ignore,
-		firstGeneratedAutoIncRowIdx: ii.FirstGeneratedAutoIncRowIdx,
-		returnExprs:                 ii.Returning,
-		returnSchema:                ii.Schema(ctx),
-		deferredDefaults:            ii.DeferredDefaults,
-		hasAfterTrigger:             ii.HasAfterTrigger,
+		schema:                         dstSchema,
+		inserter:                       inserter,
+		replacer:                       replacer,
+		updater:                        updater,
+		rowSource:                      rowIter,
+		unlocker:                       unlocker,
+		onDupKeyUpdateExprs:            ii.OnDupExprs,
+		onDupWhere:                     ii.OnDupWhere,
+		countOnDuplicateUpdateAsOneRow: ii.CountOnDuplicateUpdateAsOneRow,
+		insertExprs:                    insertExpressions,
+		checks:                         ii.Checks(),
+		ctx:                            ctx,
+		ignore:                         ii.Ignore,
+		ignoreMode:                     ii.IgnoreMode,
+		ignoreTarget:                   ii.IgnoreTarget,
+		firstGeneratedAutoIncRowIdx:    ii.FirstGeneratedAutoIncRowIdx,
+		returnExprs:                    ii.Returning,
+		returnSchema:                   ii.Schema(ctx),
+		deferredDefaults:               ii.DeferredDefaults,
+		hasAfterTrigger:                ii.HasAfterTrigger,
 	}
 
 	var ed sql.EditOpenerCloser
@@ -102,11 +106,12 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 		ed = inserter
 	}
 
-	if ii.Ignore {
-		// If ignore is set, then we are either replacing or inserting, but not updating on conflicts
+	if ii.Ignore && ii.IgnoreMode == sql.InsertIgnoreModeMySQL {
+		// MySQL INSERT IGNORE may suppress a row error and continue, so each row needs its own rollback checkpoint.
 		return plan.NewCheckpointingTableEditorIter(insertIter, ed), nil
 	} else {
-		// Otherwise, we are potentially inserting AND updating if there are conflicts
+		// PostgreSQL ON CONFLICT only suppresses matching uniqueness errors. Any other row error must roll back the
+		// entire statement, so duplicate-key-only inserts share one statement boundary with conflict updates.
 		eds := []sql.EditOpenerCloser{ed}
 		if updater != nil {
 			eds = append(eds, updater)
@@ -416,7 +421,12 @@ func (b *BaseBuilder) buildUpdateSource(ctx *sql.Context, n *plan.UpdateSource, 
 		return nil, err
 	}
 
+	applier := b.EngineOverrides.UpdateExpressionApplier
+	if applier == nil {
+		applier = mysqlUpdateExpressionApplier{}
+	}
 	return &updateSourceIter{
+		applier:     applier,
 		childIter:   rowIter,
 		updateExprs: n.UpdateExprs,
 		tableSchema: schema,

@@ -214,7 +214,6 @@ func TestGenBuilder(t *testing.T) {
 		"GreaterThanOrEqual":       "*expression.GreaterThanOrEqual",
 		"LessThanOrEqual":          "*expression.LessThanOrEqual",
 		"Convert":                  "*expression.Convert",
-		"DefaultColumn":            "*expression.DefaultColumn",
 		"DistinctExpression":       "*expression.DistinctExpression",
 		"Rand":                     "*expression.Rand",
 		"Time":                     "*expression.Time",

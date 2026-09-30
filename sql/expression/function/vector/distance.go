@@ -25,18 +25,27 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-type DistanceType interface {
-	String() string
-	Eval(left []float32, right []float32) (float64, error)
-	CanEval(distanceType DistanceType) bool
-	FunctionName() string
-	Description() string
+// DistanceType is an alias for sql.DistanceType so that integrators can access it without having to import the `sql`
+// package.
+type DistanceType = sql.DistanceType
+
+// OrderableDistance is implemented by expressions whose ascending sort order is a vector distance between an indexable
+// column expression and a row-independent query vector. The analyzer uses it to replace an ORDER BY ... LIMIT over a
+// matching expression with a vector index lookup.
+type OrderableDistance interface {
+	sql.Expression
+	// DistanceMetric returns the distance metric that this expression evaluates.
+	DistanceMetric() sql.DistanceType
+	// TargetAndQuery returns the column-side expression and the row-independent query-vector expression. `ok` is false
+	// when the expression cannot be split that way, such as when neither argument is a row-independent query vector,
+	// meaning a vector index cannot serve the ordering.
+	TargetAndQuery() (target sql.Expression, query sql.Expression, ok bool)
 }
 
 type DistanceL2Squared struct{}
 
 var _ fmt.Stringer = DistanceL2Squared{}
-var _ DistanceType = DistanceL2Squared{}
+var _ sql.DistanceType = DistanceL2Squared{}
 
 func (d DistanceL2Squared) String() string {
 	return "VEC_DISTANCE_L2_SQUARED"
@@ -54,8 +63,9 @@ func (d DistanceL2Squared) Eval(left []float32, right []float32) (float64, error
 	return total, nil
 }
 
-func (d DistanceL2Squared) CanEval(other DistanceType) bool {
-	return other == DistanceL2Squared{}
+func (d DistanceL2Squared) CanEval(other sql.DistanceType) bool {
+	// DistanceEuclidean is a monotone transform of DistanceL2Squared, so both produce the same ordering
+	return other == DistanceL2Squared{} || other == DistanceEuclidean{}
 }
 
 func (d DistanceL2Squared) FunctionName() string {
@@ -69,7 +79,7 @@ func (d DistanceL2Squared) Description() string {
 type DistanceEuclidean struct{}
 
 var _ fmt.Stringer = DistanceEuclidean{}
-var _ DistanceType = DistanceEuclidean{}
+var _ sql.DistanceType = DistanceEuclidean{}
 
 func (d DistanceEuclidean) String() string {
 	return "VEC_DISTANCE_EUCLIDEAN"
@@ -87,8 +97,9 @@ func (d DistanceEuclidean) Eval(left []float32, right []float32) (float64, error
 	return math.Sqrt(total), nil
 }
 
-func (d DistanceEuclidean) CanEval(other DistanceType) bool {
-	return other == DistanceEuclidean{}
+func (d DistanceEuclidean) CanEval(other sql.DistanceType) bool {
+	// DistanceL2Squared is a monotone transform of DistanceEuclidean, so both produce the same ordering
+	return other == DistanceEuclidean{} || other == DistanceL2Squared{}
 }
 
 func (d DistanceEuclidean) FunctionName() string {
@@ -102,7 +113,7 @@ func (d DistanceEuclidean) Description() string {
 type DistanceCosine struct{}
 
 var _ fmt.Stringer = DistanceCosine{}
-var _ DistanceType = DistanceCosine{}
+var _ sql.DistanceType = DistanceCosine{}
 
 func (d DistanceCosine) String() string {
 	return "VEC_DISTANCE_COSINE"
@@ -137,7 +148,7 @@ func (d DistanceCosine) Eval(left []float32, right []float32) (float64, error) {
 	return 1 - cosineSimilarity, nil
 }
 
-func (d DistanceCosine) CanEval(other DistanceType) bool {
+func (d DistanceCosine) CanEval(other sql.DistanceType) bool {
 	return other == DistanceCosine{}
 }
 
@@ -149,8 +160,74 @@ func (d DistanceCosine) Description() string {
 	return "returns the cosine distance between two vectors"
 }
 
+// DistanceInnerProduct is the negative inner product between two vectors, so that ascending order means most similar first
+type DistanceInnerProduct struct{}
+
+var _ sql.DistanceType = DistanceInnerProduct{}
+
+func (d DistanceInnerProduct) String() string {
+	return "VEC_DISTANCE_INNER_PRODUCT"
+}
+
+func (d DistanceInnerProduct) Eval(left []float32, right []float32) (float64, error) {
+	if len(left) != len(right) {
+		return 0, fmt.Errorf("attempting to find distance between vectors of different lengths: %d vs %d", len(left), len(right))
+	}
+	var total float64 = 0
+	for i, l := range left {
+		r := right[i]
+		total -= float64(l) * float64(r)
+	}
+	return total, nil
+}
+
+func (d DistanceInnerProduct) CanEval(other sql.DistanceType) bool {
+	return other == DistanceInnerProduct{}
+}
+
+func (d DistanceInnerProduct) FunctionName() string {
+	return "vec_distance_inner_product"
+}
+
+func (d DistanceInnerProduct) Description() string {
+	return "returns the negative inner product between two vectors"
+}
+
+// DistanceL1 is the L1 (Manhattan / taxicab) distance between two vectors
+type DistanceL1 struct{}
+
+var _ sql.DistanceType = DistanceL1{}
+
+func (d DistanceL1) String() string {
+	return "VEC_DISTANCE_L1"
+}
+
+func (d DistanceL1) Eval(left []float32, right []float32) (float64, error) {
+	if len(left) != len(right) {
+		return 0, fmt.Errorf("attempting to find distance between vectors of different lengths: %d vs %d", len(left), len(right))
+	}
+	var total float64 = 0
+	for i, l := range left {
+		r := right[i]
+		total += math.Abs(float64(l) - float64(r))
+	}
+	return total, nil
+}
+
+func (d DistanceL1) CanEval(other sql.DistanceType) bool {
+	return other == DistanceL1{}
+}
+
+func (d DistanceL1) FunctionName() string {
+	return "vec_distance_l1"
+}
+
+func (d DistanceL1) Description() string {
+	return "returns the l1 (manhattan) distance between two vectors"
+}
+
 type Distance struct {
-	DistanceType DistanceType
+	DistanceType sql.DistanceType
 	expression.BinaryExpressionStub
 }
 
@@ -167,7 +244,7 @@ var _ sql.FunctionExpression = (*Distance)(nil)
 var _ sql.CollationCoercible = (*Distance)(nil)
 
 // NewDistance creates a new Distance expression.
-func NewDistance(ctx *sql.Context, distanceType DistanceType, left sql.Expression, right sql.Expression) sql.Expression {
+func NewDistance(ctx *sql.Context, distanceType sql.DistanceType, left sql.Expression, right sql.Expression) sql.Expression {
 	return &Distance{DistanceType: distanceType, BinaryExpressionStub: expression.BinaryExpressionStub{LeftChild: left, RightChild: right}}
 }
 
@@ -187,6 +264,18 @@ var _ sql.CreateFunc2Args = NewCosineDistance
 
 func NewCosineDistance(ctx *sql.Context, left, right sql.Expression) sql.Expression {
 	return NewDistance(ctx, DistanceCosine{}, left, right)
+}
+
+var _ sql.CreateFunc2Args = NewInnerProductDistance
+
+func NewInnerProductDistance(ctx *sql.Context, left, right sql.Expression) sql.Expression {
+	return NewDistance(ctx, DistanceInnerProduct{}, left, right)
+}
+
+var _ sql.CreateFunc2Args = NewL1Distance
+
+func NewL1Distance(ctx *sql.Context, left, right sql.Expression) sql.Expression {
+	return NewDistance(ctx, DistanceL1{}, left, right)
 }
 
 func (d Distance) CollationCoercibility(_ *sql.Context) (collation sql.CollationID, coercibility byte) {
@@ -228,7 +317,36 @@ func (d Distance) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return MeasureDistance(ctx, lval, rval, d.DistanceType)
 }
 
-func MeasureDistance(ctx context.Context, left, right interface{}, distanceType DistanceType) (interface{}, error) {
+var _ OrderableDistance = (*Distance)(nil)
+
+// DistanceMetric implements the interface OrderableDistance.
+func (d Distance) DistanceMetric() sql.DistanceType {
+	return d.DistanceType
+}
+
+// TargetAndQuery implements the interface OrderableDistance. The query vector must be a constant
+// value that does not depend on the row.
+func (d Distance) TargetAndQuery() (sql.Expression, sql.Expression, bool) {
+	isConstantQueryVector := func(e sql.Expression) bool {
+		switch e := e.(type) {
+		case *expression.Literal:
+			// A NULL query vector has no meaningful nearest-neighbor ordering
+			return e.Value() != nil
+		case *expression.UserVar:
+			return true
+		}
+		return false
+	}
+	if isConstantQueryVector(d.LeftChild) {
+		return d.RightChild, d.LeftChild, true
+	}
+	if isConstantQueryVector(d.RightChild) {
+		return d.LeftChild, d.RightChild, true
+	}
+	return nil, nil, false
+}
+
+func MeasureDistance(ctx context.Context, left, right interface{}, distanceType sql.DistanceType) (interface{}, error) {
 	leftVec, err := sql.ConvertToVector(ctx, left)
 	if err != nil {
 		return nil, err
@@ -324,7 +442,7 @@ func (g *GenericDistance) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 		return nil, fmt.Errorf(`DISTANCE must be "EUCLIDEAN", "L2_SQUARED", or "COSINE", got %T`, metricVal)
 	}
 
-	var distanceType DistanceType
+	var distanceType sql.DistanceType
 	switch strings.ToUpper(metricStr) {
 	case "EUCLIDEAN":
 		distanceType = DistanceEuclidean{}

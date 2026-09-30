@@ -368,6 +368,163 @@ var CreateTableQueries = []WriteQueryTest{
 
 var CreateTableScriptTests = []ScriptTest{
 	{
+		// https://github.com/dolthub/dolt/issues/11551
+		Name:    "user invisible columns are omitted from qualified and unqualified stars",
+		Dialect: "mysql", // INVISIBLE column syntax is MySQL-specific
+		SetUpScript: []string{
+			"CREATE TABLE t(id INT PRIMARY KEY, hidden INT INVISIBLE, g INT NOT NULL, k INT NOT NULL, v INT NOT NULL)",
+			"INSERT INTO t(id,hidden,g,k,v) VALUES (1,99,0,2,10), (2,98,0,1,20), (3,97,1,1,30)",
+			"CREATE TABLE t2(id INT PRIMARY KEY, hidden INT DEFAULT 7 INVISIBLE, v INT NOT NULL)",
+			"INSERT INTO t2 VALUES (1, 10)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT t.*, ROW_NUMBER() OVER (PARTITION BY g ORDER BY k,id) AS rn FROM t ORDER BY id",
+				Expected: []sql.Row{
+					{1, 0, 2, 10, 2},
+					{2, 0, 1, 20, 1},
+					{3, 1, 1, 30, 1},
+				},
+			},
+			{
+				Query:    "SELECT * FROM t ORDER BY id",
+				Expected: []sql.Row{{1, 0, 2, 10}, {2, 0, 1, 20}, {3, 1, 1, 30}},
+			},
+			{
+				Query:    "SELECT t.hidden, t.* FROM t ORDER BY id",
+				Expected: []sql.Row{{99, 1, 0, 2, 10}, {98, 2, 0, 1, 20}, {97, 3, 1, 1, 30}},
+			},
+			{
+				Query:    "SELECT hidden, t2.* FROM t2",
+				Expected: []sql.Row{{7, 1, 10}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11620
+		Name: "CREATE TABLE AS (SELECT ...)",
+		SetUpScript: []string{
+			"CREATE TABLE people (id INT, name VARCHAR(100))",
+			"INSERT INTO people VALUES (3, 'Charlie'), (1, 'Alice'), (4, 'David'), (2, 'Bob')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CREATE TABLE people_copy AS (SELECT * FROM people)",
+				Expected: []sql.Row{{types.NewOkResult(4)}},
+			},
+			{
+				Query: "SELECT * FROM people_copy",
+				Expected: []sql.Row{
+					{3, "Charlie"},
+					{1, "Alice"},
+					{4, "David"},
+					{2, "Bob"},
+				},
+			},
+			{
+				Query:    "CREATE TABLE people_ordered_inside AS (SELECT * FROM people ORDER BY id ASC LIMIT 2)",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query: "SELECT * FROM people_ordered_inside ORDER BY id",
+				Expected: []sql.Row{
+					{1, "Alice"},
+					{2, "Bob"},
+				},
+			},
+			{
+				Query:    "CREATE TABLE people_ordered_outside AS (SELECT * FROM people) ORDER BY id DESC LIMIT 2",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query: "SELECT * FROM people_ordered_outside ORDER BY id",
+				Expected: []sql.Row{
+					{3, "Charlie"},
+					{4, "David"},
+				},
+			},
+			{
+				Query:    "CREATE TABLE people_explicit (id BIGINT, name VARCHAR(50), PRIMARY KEY (id)) AS (SELECT * FROM people)",
+				Expected: []sql.Row{{types.NewOkResult(4)}},
+			},
+			{
+				Query: "SELECT * FROM people_explicit ORDER BY id",
+				Expected: []sql.Row{
+					{1, "Alice"},
+					{2, "Bob"},
+					{3, "Charlie"},
+					{4, "David"},
+				},
+			},
+			{
+				Query:    "CREATE TABLE people_cte AS (WITH cte AS (SELECT id * 10 AS new_id, name FROM people) SELECT new_id, name FROM cte WHERE new_id > 10)",
+				Expected: []sql.Row{{types.NewOkResult(3)}},
+			},
+			{
+				Query: "SELECT * FROM people_cte ORDER BY new_id",
+				Expected: []sql.Row{
+					{20, "Bob"},
+					{30, "Charlie"},
+					{40, "David"},
+				},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11941
+		Name:    "CREATE TABLE AS SELECT untyped NULL",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE out_null AS SELECT NULL AS wf",
+			"CREATE TABLE out_null_multi AS SELECT NULL AS a, 1 AS b",
+			"CREATE TABLE out_null_expr AS SELECT COALESCE(NULL, NULL) AS c, CASE WHEN 1=1 THEN NULL ELSE NULL END AS cs",
+			"CREATE TABLE out_null_union AS SELECT NULL AS u UNION ALL SELECT NULL",
+			"CREATE TABLE out_explicit (b INT) AS SELECT 1 AS b, NULL AS a",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT wf FROM out_null",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:    "SHOW CREATE TABLE out_null",
+				Expected: []sql.Row{{"out_null", "CREATE TABLE `out_null` (\n  `wf` varbinary(0)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "SELECT a, b FROM out_null_multi",
+				Expected: []sql.Row{{nil, 1}},
+			},
+			{
+				Query:    "SHOW CREATE TABLE out_null_multi",
+				Expected: []sql.Row{{"out_null_multi", "CREATE TABLE `out_null_multi` (\n  `a` varbinary(0),\n  `b` tinyint NOT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "SELECT c, cs FROM out_null_expr",
+				Expected: []sql.Row{{nil, nil}},
+			},
+			{
+				Query:    "SHOW CREATE TABLE out_null_expr",
+				Expected: []sql.Row{{"out_null_expr", "CREATE TABLE `out_null_expr` (\n  `c` varbinary(0),\n  `cs` varbinary(0)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "SELECT u FROM out_null_union",
+				Expected: []sql.Row{{nil}, {nil}},
+			},
+			{
+				Query:    "SHOW CREATE TABLE out_null_union",
+				Expected: []sql.Row{{"out_null_union", "CREATE TABLE `out_null_union` (\n  `u` varbinary(0)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "SELECT b, a FROM out_explicit",
+				Expected: []sql.Row{{1, nil}},
+			},
+			{
+				Query:    "SHOW CREATE TABLE out_explicit",
+				Expected: []sql.Row{{"out_explicit", "CREATE TABLE `out_explicit` (\n  `b` int,\n  `a` varbinary(0)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/9316
 		Name:         "CREATE TABLE with constraints AS SELECT osticket repro",
 		SkipPrepared: true, // SHOW KEYS with WHERE clause doesn't work with prepared statements
@@ -404,7 +561,7 @@ var CreateTableScriptTests = []ScriptTest{
 			{
 				Query: "SHOW KEYS FROM ost_user__cdata WHERE Key_name = 'PRIMARY'",
 				Expected: []sql.Row{
-					{"ost_user__cdata", 0, "PRIMARY", 1, "user_id", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+					{"ost_user__cdata", 0, "PRIMARY", 1, "user_id", "A", 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 				},
 			},
 		},
@@ -440,7 +597,7 @@ var CreateTableScriptTests = []ScriptTest{
 			{
 				Query: "SHOW KEYS FROM t2 WHERE Key_name = 'PRIMARY'",
 				Expected: []sql.Row{
-					{"t2", 0, "PRIMARY", 1, "a", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+					{"t2", 0, "PRIMARY", 1, "a", "A", 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 				},
 			},
 			{
@@ -457,7 +614,7 @@ var CreateTableScriptTests = []ScriptTest{
 			{
 				Query: "SHOW KEYS FROM indexed WHERE Key_name = 'name'",
 				Expected: []sql.Row{
-					{"indexed", 1, "name", 1, "name", nil, 0, nil, nil, "YES", "BTREE", "", "", "YES", nil},
+					{"indexed", 1, "name", 1, "name", "A", 0, nil, nil, "YES", "BTREE", "", "", "YES", nil},
 				},
 			},
 			{
@@ -488,7 +645,7 @@ var CreateTableScriptTests = []ScriptTest{
 			{
 				Query: "SHOW KEYS FROM uniq WHERE Key_name = 'a'",
 				Expected: []sql.Row{
-					{"uniq", 0, "a", 1, "a", nil, 0, nil, nil, "YES", "BTREE", "", "", "YES", nil},
+					{"uniq", 0, "a", 1, "a", "A", 0, nil, nil, "YES", "BTREE", "", "", "YES", nil},
 				},
 			},
 			{

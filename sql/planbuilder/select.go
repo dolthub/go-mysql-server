@@ -27,6 +27,15 @@ import (
 )
 
 func (b *Builder) buildSelectStmt(inScope *scope, s ast.SelectStatement) (outScope *scope) {
+	// A nested SELECT has its own context, so the defer restores the
+	// outer query's aggregate and window settings when done.
+	defer func(inAgg, inWin bool) {
+		b.inAgg = inAgg
+		b.inWindow = inWin
+	}(b.inAgg, b.inWindow)
+	b.inAgg = false
+	b.inWindow = false
+
 	switch s := s.(type) {
 	case *ast.Select:
 		if s.With != nil {
@@ -41,7 +50,14 @@ func (b *Builder) buildSelectStmt(inScope *scope, s ast.SelectStatement) (outSco
 		}
 		return b.buildSetOp(inScope, s)
 	case *ast.ParenSelect:
-		return b.buildSelectStmt(inScope, s.Select)
+		outScope = b.buildSelectStmt(inScope, s.Select)
+		// Apply any trailing ORDER BY or LIMIT clauses attached outside the parentheses.
+		if len(s.OrderBy) > 0 {
+			orderByScope := b.analyzeOrderBy(outScope, outScope, s.OrderBy)
+			b.buildOrderBy(outScope, orderByScope)
+		}
+		b.buildLimitAndOffset(inScope, outScope, s.Limit, false)
+		return outScope
 	default:
 		b.handleErr(fmt.Errorf("unknown select statement %T", s))
 	}
@@ -85,9 +101,10 @@ func (b *Builder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
 
 	// At this point we've recorded dependencies for higher-level scopes,
 	// so we can build the FROM clause
-	if b.needsAggregation(fromScope, s) {
+	needsAggregation := b.needsAggregation(fromScope, s)
+	if needsAggregation {
 		groupingCols := b.buildGroupingCols(fromScope, projScope, s.GroupBy, s.SelectExprs)
-		outScope = b.buildAggregation(fromScope, projScope, groupingCols)
+		outScope = b.buildAggregation(fromScope, projScope, groupingCols, s.Having)
 	} else if fromScope.windowFuncs != nil {
 		outScope = b.buildWindow(fromScope, projScope)
 	} else {
@@ -99,7 +116,9 @@ func (b *Builder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
 	// expressions in higher level scopes will be replaced with GetField
 	// references.
 
-	b.buildHaving(fromScope, projScope, outScope, s.Having)
+	if !needsAggregation {
+		b.buildHaving(fromScope, projScope, outScope, s.Having)
+	}
 
 	b.buildOrderBy(outScope, orderByScope)
 
@@ -112,20 +131,27 @@ func (b *Builder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
 	}
 
 	// OFFSET and LIMIT are last
-	offset := b.buildOffset(outScope, s.Limit)
-	if offset != nil {
-		outScope.node = plan.NewOffset(offset, outScope.node)
-	}
-	limit := b.buildLimit(outScope, s.Limit)
-	if limit != nil {
-		l := plan.NewLimit(limit, outScope.node)
-		l.CalcFoundRows = s.QueryOpts.SQLCalcFoundRows
-		outScope.node = l
-	}
+	b.buildLimitAndOffset(outScope, outScope, s.Limit, s.QueryOpts.SQLCalcFoundRows)
 
 	b.buildForUpdateOf(s.Lock, fromScope)
 
 	return
+}
+
+func (b *Builder) buildLimitAndOffset(inScope, outScope *scope, limit *ast.Limit, calcFoundRows bool) {
+	if limit == nil {
+		return
+	}
+	offset := b.buildOffset(inScope, limit)
+	if offset != nil {
+		outScope.node = plan.NewOffset(offset, outScope.node)
+	}
+	limitExpr := b.buildLimit(inScope, limit)
+	if limitExpr != nil {
+		l := plan.NewLimit(limitExpr, outScope.node)
+		l.CalcFoundRows = calcFoundRows
+		outScope.node = l
+	}
 }
 
 func (b *Builder) buildLimit(inScope *scope, limit *ast.Limit) sql.Expression {

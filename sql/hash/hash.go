@@ -15,6 +15,7 @@
 package hash
 
 import (
+	"encoding/binary"
 	"fmt"
 	"strconv"
 	"strings"
@@ -67,6 +68,23 @@ func HashOf(ctx *sql.Context, sch sql.Schema, row sql.Row) (uint64, error) {
 				return 0, err
 			}
 			continue
+		}
+
+		if len(row) > 1 {
+			var length int
+			switch v := v.(type) {
+			case string:
+				length = len(v)
+			case []byte:
+				length = len(v)
+			}
+			if length > 0 {
+				var lenBuf [8]byte
+				binary.LittleEndian.PutUint64(lenBuf[:], uint64(length))
+				if _, err := hash.Write(lenBuf[:]); err != nil {
+					return 0, err
+				}
+			}
 		}
 
 		// TODO: we may not always have the type information available, so we check schema length.
@@ -157,6 +175,9 @@ func HashOfSimple(ctx *sql.Context, i any, t sql.Type) (uint64, sql.ConvertInRan
 			if err != nil {
 				return 0, sql.InRange, err
 			}
+		}
+		if types.IsChar(t) {
+			str = strings.TrimRight(str, " ")
 		}
 		h, err := coll.HashToUint(str)
 		if err != nil {

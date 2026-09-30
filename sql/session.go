@@ -89,6 +89,13 @@ type Session interface {
 	GetUserVariable(ctx *Context, varName string) (Type, interface{}, error)
 	// GetAllSessionVariables returns a copy of all session variable values.
 	GetAllSessionVariables() map[string]interface{}
+	// SetTransactionLocalVariable sets the transaction-local value of the system variable with the given name
+	// (Postgres's SET LOCAL). The value overrides the variable's session value (as returned by GetSessionVariable)
+	// until ClearTransactionLocalVariables is called
+	SetTransactionLocalVariable(ctx *Context, sysVarName string, value interface{}) error
+	// ClearTransactionLocalVariables removes all transaction-local system variable values, restoring the session
+	// value of every variable overridden
+	ClearTransactionLocalVariables(ctx *Context) error
 	// GetStatusVariable returns the value of the status variable with session scope with the given name.
 	// To access global scope, use sql.StatusVariables instead.
 	GetStatusVariable(ctx *Context, statVarName string) (interface{}, error)

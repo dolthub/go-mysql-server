@@ -335,6 +335,15 @@ type RowInserter interface {
 	Closer
 }
 
+// UniqueKeyConflictCheckingRowInserter is a RowInserter that can detect conflicts against unique keys, including edits
+// pending in this inserter.
+type UniqueKeyConflictCheckingRowInserter interface {
+	RowInserter
+	// HasUniqueKeyConflict reports whether the row conflicts with the unique key identified by columns. An empty
+	// column list checks every unique key.
+	HasUniqueKeyConflict(*Context, Row, []string) (bool, error)
+}
+
 // DeletableTable is a table that can delete rows.
 type DeletableTable interface {
 	Table

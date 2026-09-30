@@ -669,7 +669,7 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:       "INSERT INTO t (i) VALUES (1);",
-				ExpectedErr: sql.ErrInsertIntoNonNullableDefaultNullColumn,
+				ExpectedErr: sql.ErrFieldNoDefaultValue,
 			},
 			{
 				Query:       "INSERT INTO t (i, j) VALUES (1, 2);",
@@ -691,7 +691,7 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:       "INSERT INTO t (i) VALUES (1);",
-				ExpectedErr: sql.ErrInsertIntoNonNullableDefaultNullColumn,
+				ExpectedErr: sql.ErrFieldNoDefaultValue,
 			},
 			{
 				Query: "INSERT INTO t (i, j) VALUES (1, 2);",

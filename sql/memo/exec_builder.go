@@ -299,7 +299,9 @@ func (b *ExecBuilder) buildMergeJoin(ctx *sql.Context, j *MergeJoin, children ..
 }
 
 func (b *ExecBuilder) buildLateralJoin(ctx *sql.Context, j *LateralJoin, children ...sql.Node) (sql.Node, error) {
-	if len(j.Filter) == 0 {
+	// An outer lateral join must keep its join type even with no filters (e.g. a LEFT JOIN LATERAL with a
+	// trivially true condition), since it null-extends left rows when the lateral subquery produces no rows.
+	if len(j.Filter) == 0 && j.Op.AsLateral() != plan.JoinTypeLateralLeft {
 		return plan.NewLateralCrossJoin(ctx, children[0], children[1]), nil
 	}
 	filters := b.buildFilterConjunction(ctx, j.Filter...)

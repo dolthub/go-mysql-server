@@ -55,13 +55,6 @@ var (
 			"but found value %q of type %s on %s",
 	)
 
-	// ErrIntervalInvalidUse is returned when an interval expression is not
-	// correctly used.
-	ErrIntervalInvalidUse = errors.NewKind(
-		"invalid use of an interval, which can only be used with DATE_ADD, " +
-			"DATE_SUB and +/- operators to subtract from or add to a date",
-	)
-
 	// ErrExplodeInvalidUse is returned when an EXPLODE function is used
 	// outside a Project node.
 	ErrExplodeInvalidUse = errors.NewKind(
