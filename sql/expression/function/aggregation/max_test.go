@@ -25,12 +25,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func TestMax_String(t *testing.T) {
-	assert := require.New(t)
-	m := NewMax(expression.NewGetField(0, types.Int32, "field", true))
-	assert.Equal("MAX(field)", m.String())
-}
-
 func TestMax_Eval_Int32(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()

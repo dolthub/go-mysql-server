@@ -48,7 +48,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/go-mysql-server/sql/variables"
-	"github.com/dolthub/go-mysql-server/test"
+	"github.com/dolthub/go-mysql-server/testutils"
 )
 
 // TestQueries tests a variety of queries against databases and tables provided by the given harness.
@@ -4019,6 +4019,32 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 	for _, tt := range tests {
 		TestScript(t, harness, tt)
 	}
+	TestScriptPrepared(t, harness, queries.ScriptTest{
+		Name:    "multi-row empty insert",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table prepared_empty (a int default 1, b int generated always as (a + 1))",
+			"create table prepared_mixed (a int default 1, b int default 2)",
+		},
+		Assertions: []queries.ScriptTestAssertion{
+			{
+				Query:    "insert into prepared_empty values (), ()",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "select * from prepared_empty",
+				Expected: []sql.Row{{1, 2}, {1, 2}},
+			},
+			{
+				Query:       "insert into prepared_mixed values (), (3, 4)",
+				ExpectedErr: sql.ErrInsertIntoMismatchValueCount,
+			},
+			{
+				Query:    "select * from prepared_mixed",
+				Expected: []sql.Row{},
+			},
+		},
+	})
 }
 
 // TODO: find better way to do this
@@ -4532,7 +4558,7 @@ func TestTracing(t *testing.T, harness Harness) {
 	defer e.Close()
 
 	ctx := NewContext(harness)
-	tracer := new(test.MemTracer)
+	tracer := new(testutils.MemTracer)
 
 	sql.WithTracer(tracer)(ctx)
 

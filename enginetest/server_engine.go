@@ -406,7 +406,7 @@ func convertValue(ctx *sql.Context, sch sql.Schema, row sql.Row) sql.Row {
 			}
 		case query.Type_TIME:
 			if row[i] != nil {
-				r, _, err := types.TimespanType_{}.Convert(ctx, string(row[i].([]byte)))
+				r, _, err := col.Type.Convert(ctx, string(row[i].([]byte)))
 				if err != nil {
 					//t.Skip(fmt.Sprintf("received error converting returned timespan result"))
 				} else {
@@ -663,7 +663,15 @@ func convertGoSqlType(columnType *gosql.ColumnType) (sql.Type, error) {
 	case "timestamp":
 		return types.Timestamp, nil
 	case "time":
-		return types.Time, nil
+		precision, _, ok := columnType.DecimalSize()
+		if !ok {
+			return nil, fmt.Errorf("could not get precision size for column %s", columnType.Name())
+		}
+		timeType, err := types.CreateTimespanType(int(precision))
+		if err != nil {
+			return nil, err
+		}
+		return timeType, nil
 	case "year":
 		return types.Year, nil
 	case "char", "varchar":

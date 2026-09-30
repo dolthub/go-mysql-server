@@ -23,23 +23,33 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/encodings"
 	"github.com/dolthub/go-mysql-server/sql/values"
 )
 
 const (
-	MaxYear              = 9999
-	MaxMonth             = 12
-	MaxDay               = 31
-	MaxHour              = 23
-	MaxMinute            = 59
-	MaxSecond            = 59
+	MaxYear   = 9999
+	MaxMonth  = 12
+	MaxDay    = 31
+	MaxHour   = 23
+	MaxMinute = 59
+	MaxSecond = 59
+
+	// MaxDateWholeScale is the maximum number of digits needed to represent the whole portion of a date
+	MaxDateWholeScale = 8
+	// MaxDatetimeWholeScale is the maximum number of digits needed to represent the whole portion of a datetime
+	MaxDatetimeWholeScale = 14
+	// MaxDatetimePrecision is the maximum number of digits needed to represent the fractional portion of a datetime
 	MaxDatetimePrecision = 6
+	// MaxDatetimeStringLength is the longest the string representation of a datetime should ever be
+	MaxDatetimeStringLength = 25
 )
 
 // TODO: remove these?
@@ -135,7 +145,7 @@ func CreateDatetimeType(baseType query.Type, precision int) (sql.DatetimeType, e
 	switch baseType {
 	case sqltypes.Date, sqltypes.Datetime, sqltypes.Timestamp:
 		if precision < 0 || precision > MaxDatetimePrecision {
-			return nil, fmt.Errorf("precision must be between 0 and 6, got %d", precision)
+			return nil, sql.ErrTooBigPrecision.New(baseType.String(), precision)
 		}
 		return datetimeType{
 			baseType:  baseType,
@@ -191,6 +201,36 @@ func (t datetimeType) CompareValue(ctx *sql.Context, a, b sql.Value) (int, error
 	panic("TODO: implement CompareValue for DatetimeType")
 }
 
+// splitFloat splits the float f into its whole and fractional parts
+// invalid values will return false
+func splitFloat(f float64) (int64, int64, bool) {
+	if math.IsNaN(f) || f > math.MaxInt64 || f < math.MinInt64 {
+		return 0, 0, false
+	}
+	whole := int64(f)
+	return whole, int64((f - float64(whole)) * 1e9), true
+}
+
+// splitDecimal splits the decimal d into its whole and fractional parts
+// invalid values will return false
+func splitDecimal(d *apd.Decimal) (int64, int64, bool) {
+	if d.Form != apd.Finite {
+		return 0, 0, false
+	}
+	var wholeDec, fracDec apd.Decimal
+	d.Modf(&wholeDec, &fracDec)
+	whole, err := wholeDec.Int64()
+	if err != nil {
+		return 0, 0, false
+	}
+	fracDec.Exponent += 9
+	frac, err := fracDec.Int64()
+	if err != nil {
+		return 0, 0, false
+	}
+	return whole, frac, true
+}
+
 // Convert implements Type interface.
 func (t datetimeType) Convert(ctx context.Context, v any) (any, sql.ConvertInRange, error) {
 	v, err := sql.UnwrapAny(ctx, v)
@@ -199,6 +239,7 @@ func (t datetimeType) Convert(ctx context.Context, v any) (any, sql.ConvertInRan
 	}
 
 	var res any
+	var numericConvertible bool = true
 	switch value := v.(type) {
 	case nil:
 		return nil, sql.InRange, nil
@@ -219,77 +260,48 @@ func (t datetimeType) Convert(ctx context.Context, v any) (any, sql.ConvertInRan
 	// For most integer values, we just return an error (but MySQL is more lenient for some of these). A special case
 	// is zero values, which are important when converting from postgres defaults.
 	case bool:
-		if !value {
-			return ZeroTime, sql.InRange, nil
+		if value {
+			err = sql.ErrIncorrectValue.New(t.String(), v)
 		}
-		return ZeroTime, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
+		return ZeroTime, sql.InRange, err
 	case int:
-		if value == 0 {
-			return ZeroTime, sql.InRange, nil
-		}
-		return ZeroTime, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
+		res, numericConvertible = t.convertNumber(int64(value), 0)
 	case int8:
-		if value == 0 {
-			return ZeroTime, sql.InRange, nil
-		}
-		return ZeroTime, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
+		res, numericConvertible = t.convertNumber(int64(value), 0)
 	case int16:
-		if value == 0 {
-			return ZeroTime, sql.InRange, nil
-		}
-		return ZeroTime, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
+		res, numericConvertible = t.convertNumber(int64(value), 0)
 	case int32:
-		if value == 0 {
-			return ZeroTime, sql.InRange, nil
-		}
-		return ZeroTime, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
+		res, numericConvertible = t.convertNumber(int64(value), 0)
 	case int64:
-		if value == 0 {
-			return ZeroTime, sql.InRange, nil
-		}
-		return ZeroTime, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
+		res, numericConvertible = t.convertNumber(value, 0)
+	// unsigned integers that overflow an int64 will be negative and fail a check in convertNumber
 	case uint:
-		if value == 0 {
-			return ZeroTime, sql.InRange, nil
-		}
-		return ZeroTime, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
+		res, numericConvertible = t.convertNumber(int64(value), 0)
 	case uint8:
-		if value == 0 {
-			return ZeroTime, sql.InRange, nil
-		}
-		return ZeroTime, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
+		res, numericConvertible = t.convertNumber(int64(value), 0)
 	case uint16:
-		if value == 0 {
-			return ZeroTime, sql.InRange, nil
-		}
-		return ZeroTime, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
+		res, numericConvertible = t.convertNumber(int64(value), 0)
 	case uint32:
-		if value == 0 {
-			return ZeroTime, sql.InRange, nil
-		}
-		return ZeroTime, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
+		res, numericConvertible = t.convertNumber(int64(value), 0)
 	case uint64:
-		if value == 0 {
-			return ZeroTime, sql.InRange, nil
-		}
-		return ZeroTime, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
+		res, numericConvertible = t.convertNumber(int64(value), 0)
 	case float32:
-		if value == 0 {
-			return ZeroTime, sql.InRange, nil
+		if datetime, nsec, ok := splitFloat(float64(value)); ok {
+			res, numericConvertible = t.convertNumber(datetime, nsec)
 		}
-		return ZeroTime, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
 	case float64:
-		if value == 0 {
-			return ZeroTime, sql.InRange, nil
+		if datetime, nsec, ok := splitFloat(value); ok {
+			res, numericConvertible = t.convertNumber(datetime, nsec)
 		}
-		return ZeroTime, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
 	case *apd.Decimal:
-		if value.IsZero() {
-			return ZeroTime, sql.InRange, nil
+		if datetime, nsec, ok := splitDecimal(value); ok {
+			res, numericConvertible = t.convertNumber(datetime, nsec)
 		}
-		return ZeroTime, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
 	default:
 		return ZeroTime, sql.InRange, sql.ErrConvertToSQL.New(value, t)
+	}
+	if !numericConvertible {
+		return nil, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
 	}
 	if err != nil && !sql.ErrTruncatedIncorrect.Is(err) {
 		return nil, sql.InRange, err
@@ -328,9 +340,70 @@ func (t datetimeType) Convert(ctx context.Context, v any) (any, sql.ConvertInRan
 	return resTime, sql.InRange, err // Keep any errors as potential warnings later
 }
 
+// getNumericParts is a helper function for converting Date and Time types to numeric types.
+// Depending on t.baseType, this will return:
+// - |whole| an int64 representing the date (and time) portion
+// - |nsec| an int64 representing the nanoseconds
+func (t datetimeType) getNumericParts(val time.Time) (int64, int64, error) {
+	var nsec int64
+	year, month, day := val.Date()
+	hour, mins, sec := val.Clock()
+	whole := int64(year*100_00 + int(month)*100 + day)
+	switch t.baseType {
+	case sqltypes.Date:
+	case sqltypes.Datetime, sqltypes.Timestamp:
+		whole *= ClockScalar
+		whole += int64(hour*100_00 + mins*100 + sec)
+		nsec = int64(val.Nanosecond())
+	default:
+		return 0, 0, sql.ErrInvalidBaseType.New(t.baseType.String(), "datetime")
+	}
+	return whole, nsec, nil
+}
+
+// ToFloat64 implements the sql.DatetimeType interface.
+// It converts time.Time{} into float64 according to MySQL's behavior.
+func (t datetimeType) ToFloat64(val time.Time) (float64, error) {
+	whole, nsec, err := t.getNumericParts(val)
+	if err != nil {
+		return 0, err
+	}
+	return float64(whole) + float64(nsec)/1e9, nil
+}
+
+// ToDecimal implements the sql.DatetimeType interface.
+// It converts time.Time{} into *apd.Decimal according to MySQL's behavior.
+func (t datetimeType) ToDecimal(val time.Time) (*apd.Decimal, error) {
+	whole, nsec, err := t.getNumericParts(val)
+	if err != nil {
+		return nil, err
+	}
+	res := &apd.Decimal{}
+	_, err = apd.BaseContext.Add(res, apd.New(whole, 0), apd.New(nsec, -9))
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
+}
+
+// ToString implements the sql.DatetimeType interface.
+// It converts time.Time{} into string truncating the values according to the baseType and precision.
+func (t datetimeType) ToString(val time.Time) (string, error) {
+	buf := make([]byte, 0, MaxDatetimeStringLength)
+	switch t.baseType {
+	case sqltypes.Date:
+		buf = appendDateFormat(buf, val)
+	case sqltypes.Datetime, sqltypes.Timestamp:
+		buf = appendDatetimeFormat(buf, val, t.precision)
+	default:
+		return "", sql.ErrInvalidBaseType.New(t.baseType.String(), "datetime")
+	}
+	return encodings.BytesToString(buf), nil
+}
+
 // precisionConversion is a conversion ratio to divide time.Second by to truncate the appropriate amount for the
 // precision of a type with time info
-var precisionConversion = [7]int{
+var precisionConversion = [7]int64{
 	1, 10, 100, 1_000, 10_000, 100_000, 1_000_000,
 }
 
@@ -352,27 +425,96 @@ func GetLastDay(year, month int) (res int, ok bool) {
 	return int(DaysPerMonth[month-1]), true
 }
 
-// DateTimeRegex will match MySQL's DateTime format.
-// The date portion (YYYY-MM-DD) is required all parts of the time portion (HH:MM:SS.MICROS) is optional.
-// The standard datetime format is YYYY-MM-DD HH:MM:SS.MICROS, but MySQL supports a "relaxed" format where
-// any punctuation (of various lengths) can be used between the date and time parts.
-// Some exceptions:
-//   - Whitespace characters are allowed in delimiter between Day and Hour
-//   - The only valid delimiter between Seconds and Microseconds is a single decimal point (.)
-//
-// MySQL Reference: https://dev.mysql.com/doc/refman/8.4/en/datetime.html
-//
-//		Match 1: The entire datetime string
-//		Group 1: Year
-//		Group 2: Month
-//		Group 3: Day
-//		Group 4: Hour (optional)
-//		Group 5: Minutes (optional)
-//		Group 6: Seconds (optional)
-//		Group 7: Microseconds (optional)
-//	 Group 8: any trailing characters to be Truncated
-var DateTimeRegex = regexp.MustCompile(`^(\d+)\p{P}+(\d+)\p{P}+(\d+)[\s\p{P}]*(\d*)?\p{P}*(\d*)?\p{P}*(\d*)?\p{P}*(\d*)?(.*)$`)
-var NoDelimiterDateTimeRegex = regexp.MustCompile(`\d+`)
+var (
+	// DelimitedDateRegex matches strings in Date format with delimiters and groups them into their date portions.
+	// MySQL Reference: https://dev.mysql.com/doc/refman/8.4/en/datetime.html
+	// The output from regexp.FindStringSubmatchIndex is:
+	//	Match 1: The entire date string
+	//	Group 1: Year
+	//	Group 2: Month
+	//	Group 3: Day
+	DelimitedDateRegex = regexp.MustCompile(`^(\d+)\p{P}+(\d+)\p{P}+(\d+)`)
+
+	// TwoDigitYearDateRegex matches strings in Date format without delimiters using abbreviated years and groups them
+	// into their date potions.
+	// MySQL Reference: https://dev.mysql.com/doc/refman/8.4/en/datetime.html
+	// The output from regexp.FindStringSubmatchIndex is:
+	//	Match 1: The entire date string
+	//	Group 1: Year
+	//	Group 2: Month
+	//	Group 3: Day
+	TwoDigitYearDateRegex = regexp.MustCompile(`^(\d{2})(\d{2})(\d{1,2})`)
+
+	// FourDigitYearDateRegex matches strings in Date format without delimiters and groups them into their date potions.
+	// MySQL Reference: https://dev.mysql.com/doc/refman/8.4/en/datetime.html
+	// The output from regexp.FindStringSubmatchIndex is:
+	//	Match 1: The entire date string
+	//	Group 1: Year
+	//	Group 2: Month
+	//	Group 3: Day
+	FourDigitYearDateRegex = regexp.MustCompile(`^(\d{4})(\d{2})(\d{1,2})`)
+
+	// TimeRegex matches strings in Time format and groups them into their time potions.
+	// MySQL Reference: https://dev.mysql.com/doc/refman/8.4/en/datetime.html
+	// The output from regexp.FindStringSubmatchIndex is:
+	//	Match 1: The entire time string
+	//	Group 1: Hours
+	//	Group 2: Minutes (optional)
+	//	Group 3: Seconds (optional)
+	TimeRegex = regexp.MustCompile(`^(\d{1,2})\p{P}*(\d\d?)?\p{P}*(\d\d?)?`)
+
+	// DelimitedTimeRegex matches strings in Time format that follow a delimited date and groups them into their time
+	// portions. Unlike TimeRegex, each portion consumes all of its digits, so that out of range values (e.g. an hour
+	// of 123) are rejected instead of being split across multiple portions. A trailing delimiter with no digits after
+	// it (e.g. '12:') is consumed so that it is not treated as truncated input.
+	// TODO: MySQL allows any ASCII punctuation character as a delimiter, but \p{P} does not match ASCII symbols such
+	//  as '+', '^', '~', '$', and '|' (these are \p{S}), so values like '2012-12-12 12+12+12' are truncated after the
+	//  hour. The same applies to DelimitedDateRegex and the delimiter checks in parseDate and parseDatetime.
+	//  https://github.com/dolthub/dolt/issues/11939
+	// MySQL Reference: https://dev.mysql.com/doc/refman/8.4/en/datetime.html
+	// The output from regexp.FindStringSubmatchIndex is:
+	//	Match 1: The entire time string
+	//	Group 1: Hours
+	//	Group 2: Minutes (optional)
+	//	Group 3: Seconds (optional)
+	DelimitedTimeRegex = regexp.MustCompile(`^(\d+)\p{P}*(\d+)?\p{P}*(\d+)?`)
+
+	// MicrosRegex matches strings representing microseconds.
+	// MySQL Reference: https://dev.mysql.com/doc/refman/8.4/en/datetime.html
+	MicrosRegex = regexp.MustCompile(`^(\.\d*)`)
+)
+
+const (
+	// MinDatetimeStringLength represents the length of the shortest possible datetime string
+	// Example: 'Y-M-D' or 'YYMMD'
+	MinDatetimeStringLength = 5
+	// MaxNumericDatetimeLength represents the maximum length for a datetime without superfluous delimiters
+	// Example: YYYY-MM-DD HH:MM:SS.MICROS
+	MaxNumericDatetimeLength = 14
+	// FourDigitNumericDatetimeLength represents the length of a datetime without delimiters
+	// Example: YYMMDDHHMMSS
+	FourDigitNumericDatetimeLength = 8
+)
+
+// makeDatetime validates the date/time parameters and returns a time.Time object.
+func makeDatetime(year, month, day, hour, min, sec, nsec int) (time.Time, bool) {
+	if year > MaxYear || month > MaxMonth || day > MaxDay || hour > MaxHour || min > MaxMinute || sec > MaxSecond {
+		return ZeroTime, false
+	}
+	// We do support ZERO_DATE, so zero for year, month, and day is allowed.
+	if year == 0 && month == 0 && day == 0 {
+		return time.Date(0, 0, 0, hour, min, sec, nsec, time.UTC), true
+	}
+	// We do NOT support ZERO_IN_DATE, so zero for month and day are not allowed.
+	if month == 0 || day == 0 {
+		return ZeroTime, false
+	}
+	if lastDay, _ := GetLastDay(year, month); day > lastDay {
+		return ZeroTime, false
+	}
+	res := time.Date(year, time.Month(month), day, hour, min, sec, nsec, time.UTC)
+	return res, true
+}
 
 // parseDatetimeExtraLayouts parses a string Datetime according to formats not directly supported by MySQL
 func (t datetimeType) parseDatetimeExtraLayouts(str string) (any, error) {
@@ -387,47 +529,127 @@ func (t datetimeType) parseDatetimeExtraLayouts(str string) (any, error) {
 	return res, err
 }
 
+// matchNumericDate will parse the input string according to the length of the string.
+func matchNumericDate(str string, pos int) (matchIdxs []int) {
+	if pos != FourDigitNumericDatetimeLength && pos < MaxNumericDatetimeLength {
+		matchIdxs = TwoDigitYearDateRegex.FindStringSubmatchIndex(str)
+	} else {
+		matchIdxs = FourDigitYearDateRegex.FindStringSubmatchIndex(str)
+	}
+	return
+}
+
+// parseDate converts a string into the year, month, and day according to MySQL's rules.
+// The input string is expected to be at least MinDatetimeStringLength.
+// All date portions (year, month, and day) must be present for this function to be successful.
+// Additionally, parseDate returns the next index and which timeRegex.
+func parseDate(str string) (yearStr, monthStr, dayStr string, pos int, timeRegex *regexp.Regexp, ok bool) {
+	// string inputs are expected to be at least length 5
+	// extract portion (find first non-digit)
+	pos = strings.IndexFunc(str, func(r rune) bool {
+		return !unicode.IsDigit(r)
+	})
+	timeRegex = TimeRegex
+	var matchIdxs []int
+	if pos == -1 {
+		// The entire string is digits, so treat it as a numeric date
+		matchIdxs = matchNumericDate(str, len(str))
+	} else if delim := rune(str[pos]); delim == '.' && pos >= 5 {
+		// The decimal point is a special delimiter
+		// Depending on the length, it can be interpreted as a numeric date or delimited date
+		matchIdxs = matchNumericDate(str, pos)
+	} else if unicode.IsPunct(delim) || unicode.IsSpace(delim) {
+		matchIdxs = DelimitedDateRegex.FindStringSubmatchIndex(str)
+		timeRegex = DelimitedTimeRegex
+	} else {
+		// contains invalid characters, should error
+		return yearStr, monthStr, dayStr, 0, nil, false
+	}
+	if len(matchIdxs) == 0 {
+		return yearStr, monthStr, dayStr, 0, nil, false
+	}
+	yearStr = str[matchIdxs[2]:matchIdxs[3]]
+	monthStr = str[matchIdxs[4]:matchIdxs[5]]
+	dayStr = str[matchIdxs[6]:matchIdxs[7]]
+	pos = matchIdxs[1] // set to end of date
+	return yearStr, monthStr, dayStr, pos, timeRegex, true
+}
+
+// parseTime takes in a string and parses it into hours, minutes, and seconds according to MySQL's rules.
+// Additionally, parseTime will return the next index.
+// Any invalid strings will result in empty strings and 0 value for pos.
+func parseTime(str string, timeRegex *regexp.Regexp) (hourStr, minStr, secStr string, pos int) {
+	if len(str) == 0 {
+		return hourStr, minStr, secStr, pos
+	}
+	matchIdxs := timeRegex.FindStringSubmatchIndex(str)
+	if len(matchIdxs) == 0 {
+		return hourStr, minStr, secStr, pos
+	}
+	// The time parts are optional, so we much check indexes
+	// These are the possible cases for match index pairs.
+	// We only care about the case where the start and end indexes are not equal.
+	// Case 1: matchIdx[i] = -1 and matchIdx[i+1] = -1 => empty string
+	// Case 2: matchIdx[i] == matchIdx[i+1] => empty string
+	// Case 3: matchIdx[i] = x and matchIdx[i+1] = y where y > x => [x:y]
+	if matchIdxs[2] != matchIdxs[3] {
+		hourStr = str[matchIdxs[2]:matchIdxs[3]]
+	}
+	if matchIdxs[4] != matchIdxs[5] {
+		minStr = str[matchIdxs[4]:matchIdxs[5]]
+	}
+	if matchIdxs[6] != matchIdxs[7] {
+		secStr = str[matchIdxs[6]:matchIdxs[7]]
+	}
+	return hourStr, minStr, secStr, matchIdxs[1]
+}
+
+// parseMicros takes in a string and parses it as microseconds according to MySQL's rules.
+// Only up to MaxDateTimePrecision + 1 digits are preserved to properly round the resulting value.
+// Additionally, parseMicros will return the next index.
+// Any invalid strings will result in empty string and 0 value for pos.
+func parseMicros(str string) (micros string, pos int) {
+	matchIdxs := MicrosRegex.FindStringIndex(str)
+	if len(matchIdxs) == 0 {
+		return micros, pos
+	}
+	micros = str[matchIdxs[0]:min(matchIdxs[1], MaxDatetimePrecision+2)] // +1 for digit and +1 for '.'
+	return micros, matchIdxs[1]
+}
+
 // parseDatetime parses a Datetime according to MySQL rules.
+// The date portion (YYYY-MM-DD) is required while all parts of the time portion (HH:MM:SS.MICROS) is optional.
+// The standard datetime format is YYYY-MM-DD HH:MM:SS.MICROS, but MySQL supports a "relaxed" format where
+// any punctuation (of various lengths) can be used between the date and time parts.
+// Some exceptions:
+//   - Whitespace characters are allowed in delimiter between Day and Hour
+//   - The only valid delimiter between Seconds and Microseconds is a single decimal point (.)
+//
+// MySQL Reference: https://dev.mysql.com/doc/refman/8.4/en/datetime.html
 func (t datetimeType) parseDatetime(str string) (any, bool, error) {
 	var delimWarn bool
 
-	// TODO: Properly implement date only parsing with no delimiters.
-	//  This is just here for existing tests to pass
-	//  Tracking issue: https://github.com/dolthub/dolt/issues/10278
-	if tmp := NoDelimiterDateTimeRegex.FindString(str); len(tmp) != 0 {
-		if dt, err := time.Parse(NoDelimiterDatetimeLayout, str); err == nil {
-			return dt, delimWarn, nil
-		} else if dt, err = time.Parse(NoDelimiterDateLayout, str); err == nil {
-			return dt, delimWarn, nil
-		}
-	}
-
-	value := strings.Trim(str, NumericCutSet) // TODO: leading and trailing whitespace(s) should throw warning
-	res, err := t.parseDatetimeExtraLayouts(value)
-	if err == nil {
-		return res, delimWarn, nil
-	}
-
-	matchIdxs := DateTimeRegex.FindStringSubmatchIndex(value)
-	if len(matchIdxs) == 0 {
-		return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), value)
+	// TODO: leading and trailing whitespace(s) should throw warning
+	// Tracking issue: https://github.com/dolthub/dolt/issues/11750
+	value := strings.Trim(str, NumericCutSet)
+	if len(str) < MinDatetimeStringLength {
+		return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), str)
 	}
 
 	// TODO: Handle delimiter warnings. These do not stop parsing unlike ErrTruncatedIncorrect warnings.
 	// Tracking issue: https://github.com/dolthub/dolt/issues/10278
+	if res, err := t.parseDatetimeExtraLayouts(value); err == nil {
+		return res, delimWarn, nil
+	}
 
-	// Date portion required for valid DateTime parsing, so no need to check for -1 indexes
-	yearStr := value[matchIdxs[2]:matchIdxs[3]]
-	monthStr := value[matchIdxs[4]:matchIdxs[5]]
-	dayStr := value[matchIdxs[6]:matchIdxs[7]]
-
+	yearStr, monthStr, dayStr, pos, timeRegex, ok := parseDate(value)
+	if !ok {
+		return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), str)
+	}
 	// Negative numbers should be impossible, so we don't check for them
 	year, err := strconv.Atoi(yearStr)
 	if err != nil {
-		return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), value)
-	}
-	if year > MaxYear {
-		return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), value)
+		return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), str)
 	}
 	// MySQL special case for abbreviated ('00) date formats
 	// TODO: there's a special special case for 00-00-00
@@ -436,89 +658,154 @@ func (t datetimeType) parseDatetime(str string) (any, bool, error) {
 	}
 	month, err := strconv.Atoi(monthStr)
 	if err != nil {
-		return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), value)
-	}
-	if month > MaxMonth {
-		return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), value)
+		return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), str)
 	}
 	day, err := strconv.Atoi(dayStr)
-	if err != nil || day > MaxDay {
-		return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), value)
-	}
-	// GetLastDay already handles invalid months
-	if lastDay, _ := GetLastDay(year, month); day > lastDay {
-		return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), value)
+	if err != nil {
+		return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), str)
 	}
 
-	// We do NOT support ZERO_IN_DATE, so zero for month and day are not allowed.
-	// We do support ZERO_DATE, so zero for year, month, and day is allowed.
-	if (month == 0 || day == 0) && (month != 0 || day != 0 || year != 0) {
-		return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), value)
+	// trim date portion
+	value = value[pos:]
+
+	// skip over any number of spaces and punctuation
+	if newPos := strings.IndexFunc(value, func(r rune) bool {
+		return !unicode.IsPunct(r) && !unicode.IsSpace(r)
+	}); newPos != -1 {
+		value = value[newPos:]
 	}
 
-	// The remaining match index pairs are optional
-	// Case 1: matchIdx[i] = -1 and matchIdx[i+1] = -1 => empty string
-	// Case 2: matchIdx[i] == matchIdx[i+1] => empty string
-	// Case 3: matchIdx[i] = x and matchIdx[i+1] = y where y > x => [x:y]
-	var hour, mins, sec, usec int
-	if matchIdxs[8] != matchIdxs[9] {
-		hourStr := value[matchIdxs[8]:matchIdxs[9]]
+	hourStr, minStr, secStr, pos := parseTime(value, timeRegex)
+	var hour, mins, sec int
+	if len(hourStr) != 0 {
 		hour, err = strconv.Atoi(hourStr)
 		if err != nil {
 			return nil, delimWarn, sql.ErrTruncatedIncorrect.New(value)
 		}
-		if hour > MaxHour {
-			return nil, delimWarn, sql.ErrTruncatedIncorrect.New(value)
-		}
 	}
-	if matchIdxs[10] != matchIdxs[11] {
-		minStr := value[matchIdxs[10]:matchIdxs[11]]
+	if len(minStr) != 0 {
 		mins, err = strconv.Atoi(minStr)
 		if err != nil {
 			return nil, delimWarn, sql.ErrTruncatedIncorrect.New(value)
 		}
-		if mins > MaxMinute {
-			return nil, delimWarn, sql.ErrTruncatedIncorrect.New(value)
-		}
 	}
-	if matchIdxs[12] != matchIdxs[13] {
-		secStr := value[matchIdxs[12]:matchIdxs[13]]
+	if len(secStr) != 0 {
 		sec, err = strconv.Atoi(secStr)
 		if err != nil {
 			return nil, delimWarn, sql.ErrTruncatedIncorrect.New(value)
 		}
-		if sec > 59 {
-			return nil, delimWarn, sql.ErrTruncatedIncorrect.New(value)
+	}
+
+	// trim time portion
+	if len(value) > 0 {
+		value = value[pos:]
+	}
+
+	var micros int
+	if len(value) > 0 {
+		// time and microsecond delimiter MUST be decimal point
+		if value[0] == '.' {
+			var microsStr string
+			microsStr, pos = parseMicros(value)
+			if len(microsStr) > 1 { // a single decimal point is 0
+				var microsf64 float64
+				microsf64, err = strconv.ParseFloat(microsStr, 64)
+				if err != nil {
+					return nil, delimWarn, sql.ErrTruncatedIncorrect.New(value)
+				}
+				micros = int(math.Round(microsf64 * 1_000_000))
+			}
+			value = value[pos:] // trim microseconds
 		}
 	}
-	if matchIdxs[14] != matchIdxs[15] {
-		// microseconds can only be delimited by '.'; everything else causes this to be ignored
-		// this check should be safe because of the outer if statement
-		if matchIdxs[14]-matchIdxs[13] == 1 && value[matchIdxs[13]] == '.' {
-			// Extract usec part
-			// [0] = '.'
-			// [1-6] = microseconds
-			// [7] = additional digit for rounding
-			usecStr := value[matchIdxs[13]:matchIdxs[15]]
-			if len(usecStr) >= 8 {
-				usecStr = usecStr[:8]
-			}
-			var usecf64 float64
-			usecf64, err = strconv.ParseFloat(usecStr, 64)
-			if err != nil {
-				return nil, delimWarn, sql.ErrTruncatedIncorrect.New(value)
-			}
-			usec = int(math.Round(usecf64 * 1_000_000))
-		}
+
+	resTime, ok := makeDatetime(year, month, day, hour, mins, sec, micros*1000)
+	if !ok {
+		return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), str)
 	}
-	// Trailing invalid characters
-	if matchIdxs[17] != matchIdxs[16] {
+
+	// detect trailing characters
+	if len(value) > 0 {
 		err = sql.ErrTruncatedIncorrect.New(value)
 	}
 
-	resTime := time.Date(year, time.Month(month), day, hour, mins, sec, usec*1000, time.UTC)
-	resTime = resTime.Round(time.Microsecond)
 	return resTime, delimWarn, err
+}
+
+const (
+	// ClockScalar is used to shift datetime numbers into the appropriate powers during number to datetime conversions
+	ClockScalar = 100_00_00 // HH_MM_SS
+
+	// MinNumericDate is the smallest valid Date number
+	MinNumericDate = 0000_01_01 // YYYY_MM_DD
+
+	// MaxNumericDate is the largest valid Date number
+	MaxNumericDate = 9999_12_31 // YYYY_MM_DD
+
+	// MinNumeric1900AbbrevDate is the smallest valid Date that abbreviates the years 1970-1999
+	MinNumeric1900AbbrevDate = 70_01_01 // YY_MM_DD
+
+	// MaxNumeric1900AbbrevDate is the largest valid Date that abbreviates the years 1970-1999
+	MaxNumeric1900AbbrevDate = 99_12_31 // YY_MM_DD
+
+	// NumericDate1900Offset is used to convert numeric abbreviated dates to their unabbreviated form for 1900-1970
+	NumericDate1900Offset = 1900_00_00 // YYYY_MM_DD
+
+	// MaxNumeric2000AbbrevDate is the largest valid Date that abbreviates the years 2000-2069
+	MaxNumeric2000AbbrevDate = 69_12_31 // YY_MM_DD
+
+	// NumericDate2000Offset is used to convert numeric abbreviated dates to their unabbreviated form for 2000-2069
+	NumericDate2000Offset = 2000_00_00 // YYYY_MM_DD
+
+	// MaxNumericDatetime is the largest valid Datetime number
+	MaxNumericDatetime = 9999_12_31_23_59_59 // YYYY_MM_DD_HH_MM_SS
+
+	// MinNumeric1900AbbrevDatetime is the smallest valid Datetime that abbreviates the years 1970-1999
+	MinNumeric1900AbbrevDatetime = 70_01_01_00_00_00 // YY_MM_DD_HH_MM_SS
+
+	// MaxNumeric1900AbbrevDatetime is the largest valid Datetime that abbreviates the years 1970-1999
+	MaxNumeric1900AbbrevDatetime = 99_12_31_23_59_59 // YY_MM_DD_HH_MM_SS
+
+	// MaxNumeric2000AbbrevDatetime is the largest valid Datetime that abbreviates the years 2000-2069
+	MaxNumeric2000AbbrevDatetime = 69_12_31_23_59_59 // YY_MM_DD_HH_MM_SS
+)
+
+// convertNumber converts datetime and nanos into the appropriate time.Time object according to the MySQL spec.
+// Reference: https://github.com/google/mysql/blob/master/sql-common/my_time.c#L1209
+func (t datetimeType) convertNumber(datetime int64, nsec int64) (time.Time, bool) {
+	if datetime < 0 || nsec < 0 {
+		return time.Time{}, false
+	}
+	if datetime == 0 && nsec == 0 {
+		return ZeroTime, true
+	}
+	// convert each case to YYYY_MM_DD_HH_MM_SS format
+	switch {
+	case datetime < MinNumericDate:
+		return time.Time{}, false
+	case datetime <= MaxNumeric2000AbbrevDate:
+		datetime = (datetime + NumericDate2000Offset) * ClockScalar
+	case datetime < MinNumeric1900AbbrevDate:
+		return time.Time{}, false
+	case datetime <= MaxNumeric1900AbbrevDate:
+		datetime = (datetime + NumericDate1900Offset) * ClockScalar
+	case datetime <= MaxNumericDate:
+		datetime *= ClockScalar
+	case datetime <= MaxNumeric2000AbbrevDatetime:
+		datetime += NumericDate2000Offset * ClockScalar
+	case datetime < MinNumeric1900AbbrevDatetime:
+		return time.Time{}, false
+	case datetime <= MaxNumeric1900AbbrevDatetime:
+		datetime += NumericDate1900Offset * ClockScalar
+	case datetime > MaxNumericDatetime:
+		return time.Time{}, false
+	}
+
+	date, clock := int(datetime/ClockScalar), int(datetime%ClockScalar)
+	year, month, day := date/100_00, (date/100)%100, date%100
+	hour, mins, sec := clock/100_00, (clock/100)%100, clock%100
+
+	return makeDatetime(year, month, day, hour, mins, sec, int(nsec))
 }
 
 // Equals implements the Type interface.
@@ -601,7 +888,7 @@ func (t datetimeType) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqlt
 }
 
 func appendDateFormat(dest []byte, t time.Time) []byte {
-	if t.Equal(ZeroTime) {
+	if t.Truncate(24 * time.Hour).Equal(ZeroTime) {
 		dest = append(dest, ZeroDateStr...)
 		return dest
 	}

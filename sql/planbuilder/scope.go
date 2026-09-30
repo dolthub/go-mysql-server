@@ -292,6 +292,19 @@ func (s *scope) initGroupBy() {
 	}
 }
 
+// aggCount returns the count of aggregate expressions in this scope.
+func (s *scope) aggCount() int {
+	if s.groupBy == nil {
+		return 0
+	}
+	return len(s.groupBy.aggs)
+}
+
+// windowFuncCount returns the count of window functions in this scope.
+func (s *scope) windowFuncCount() int {
+	return len(s.windowFuncs)
+}
+
 // pushSubquery creates a new scope with the subquery already initialized.
 func (s *scope) pushSubquery() *scope {
 	newScope := s.push()
@@ -723,10 +736,11 @@ func (c scopeColumn) scalarGf() sql.Expression {
 			return e
 		}
 	}
+	name := c.col
 	if c.originalCol != "" {
-		return expression.NewGetFieldWithTable(int(c.id), int(c.tableId), c.typ, c.db, c.table, c.originalCol, c.nullable)
+		name = c.originalCol
 	}
-	return expression.NewGetFieldWithTable(int(c.id), int(c.tableId), c.typ, c.db, c.table, c.col, c.nullable)
+	return expression.NewGetFieldWithTable(int(c.id), int(c.tableId), c.typ, c.db, c.table, name, c.nullable)
 }
 
 func (c scopeColumn) String() string {

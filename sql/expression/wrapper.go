@@ -81,7 +81,7 @@ func (w *Wrapper) Resolved() bool {
 // String implements sql.Expression
 func (w *Wrapper) String() string {
 	if w.inner == nil {
-		return ""
+		return "NULL"
 	}
 	return fmt.Sprintf("(%s)", w.inner.String())
 }

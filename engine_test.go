@@ -82,7 +82,7 @@ func TestBindingsToExprs(t *testing.T) {
 		{
 			"BadDate",
 			map[string]*query.BindVariable{
-				"v1": &query.BindVariable{Type: query.Type_DATE, Value: []byte("00000000")},
+				"v1": &query.BindVariable{Type: query.Type_DATE, Value: []byte("baddate")},
 			},
 			nil,
 			true,
@@ -98,7 +98,7 @@ func TestBindingsToExprs(t *testing.T) {
 		{
 			"BadDatetime",
 			map[string]*query.BindVariable{
-				"v1": &query.BindVariable{Type: query.Type_DATETIME, Value: []byte("0000")},
+				"v1": &query.BindVariable{Type: query.Type_DATETIME, Value: []byte("baddatetime")},
 			},
 			nil,
 			true,
@@ -106,7 +106,7 @@ func TestBindingsToExprs(t *testing.T) {
 		{
 			"BadTimestamp",
 			map[string]*query.BindVariable{
-				"v1": &query.BindVariable{Type: query.Type_TIMESTAMP, Value: []byte("0000")},
+				"v1": &query.BindVariable{Type: query.Type_TIMESTAMP, Value: []byte("badtimestamp")},
 			},
 			nil,
 			true,

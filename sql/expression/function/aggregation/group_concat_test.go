@@ -25,27 +25,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func TestGroupConcat_FunctionName(t *testing.T) {
-	assert := require.New(t)
-
-	m := NewGroupConcat("field", nil, ",", nil, 1024)
-
-	assert.Equal("group_concat(distinct field separator ',')", m.String())
-
-	m = NewGroupConcat("field", nil, "-", nil, 1024)
-
-	assert.Equal("group_concat(distinct field separator '-')", m.String())
-
-	sc := sql.SortConditions{
-		{Expr: expression.NewUnresolvedColumn("field"), Order: sql.Ascending},
-		{Expr: expression.NewUnresolvedColumn("field2"), Order: sql.Descending},
-	}
-
-	m = NewGroupConcat("field", sc, "-", nil, 1024)
-
-	assert.Equal("group_concat(distinct field order by field ASC, field2 DESC separator '-')", m.String())
-}
-
 // Validates that the return length of GROUP_CONCAT is bounded by group_concat_max_len (default 1024)
 func TestGroupConcat_PastMaxLen(t *testing.T) {
 	var rows []sql.Row

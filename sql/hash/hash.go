@@ -176,6 +176,9 @@ func HashOfSimple(ctx *sql.Context, i any, t sql.Type) (uint64, sql.ConvertInRan
 				return 0, sql.InRange, err
 			}
 		}
+		if types.IsChar(t) {
+			str = strings.TrimRight(str, " ")
+		}
 		h, err := coll.HashToUint(str)
 		if err != nil {
 			return 0, sql.InRange, err

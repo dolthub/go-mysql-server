@@ -213,8 +213,10 @@ func TestExprToTableFilters(t *testing.T) {
 	})
 
 	t.Run("random expression", func(t *testing.T) {
+		randExpr, err := function.NewRand(ctx)
+		require.NoError(t, err)
 		filters := exprToTableFilters(ctx, expression.NewAnd(
-			expression.NewEquals(lit(1), mustExpr(function.NewRand(ctx))),
+			expression.NewEquals(lit(1), randExpr),
 			expression.NewGetFieldWithTable(0, 1, types.Int64, "db", "mytable", "f", false),
 		), nil, nil)
 		expected := filtersByTable{

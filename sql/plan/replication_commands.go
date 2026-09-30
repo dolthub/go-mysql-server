@@ -109,7 +109,7 @@ func (c *ChangeReplicationSource) String() string {
 		if i > 0 {
 			sb.WriteString(", ")
 		}
-		sb.WriteString(fmt.Sprintf("%s = %s", option.Name, option.Value))
+		sb.WriteString(fmt.Sprintf("%s = %s", option.Name, formatReplicationOptionValue(option.Value)))
 	}
 	return sb.String()
 }
@@ -177,10 +177,32 @@ func (c *ChangeReplicationFilter) String() string {
 		}
 		sb.WriteString(option.Name)
 		sb.WriteString(" = ")
-		// TODO: Fix this to use better typing
-		sb.WriteString(fmt.Sprintf("%s", option.Value))
+		sb.WriteString(formatReplicationOptionValue(option.Value))
 	}
 	return sb.String()
+}
+
+// formatReplicationOptionValue formats the native value representations used by replication plan nodes.
+func formatReplicationOptionValue(value interface{}) string {
+	switch value := value.(type) {
+	case string:
+		return value
+	case int:
+		return fmt.Sprintf("%d", value)
+	case []sql.UnresolvedTable:
+		values := make([]string, len(value))
+		for i, table := range value {
+			values[i] = table.Name()
+			if database := table.Database().Name(); database != "" {
+				values[i] = database + "." + values[i]
+			}
+		}
+		return strings.Join(values, ", ")
+	case []string:
+		return strings.Join(value, ", ")
+	default:
+		return fmt.Sprint(value)
+	}
 }
 
 func (c *ChangeReplicationFilter) Schema(ctx *sql.Context) sql.Schema {

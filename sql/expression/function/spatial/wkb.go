@@ -633,7 +633,7 @@ func NewGeomCollFromWKB(ctx *sql.Context, args ...sql.Expression) (sql.Expressio
 	if len(args) < 1 || len(args) > 3 {
 		return nil, sql.ErrInvalidArgumentNumber.New("ST_GEOMCOLLFROMWKB", "1, 2, or 3", len(args))
 	}
-	return &MPolyFromWKB{expression.NaryExpression{ChildExpressions: args}}, nil
+	return &GeomCollFromWKB{expression.NaryExpression{ChildExpressions: args}}, nil
 }
 
 // FunctionName implements sql.FunctionExpression

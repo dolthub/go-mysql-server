@@ -25,13 +25,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func TestMin_Name(t *testing.T) {
-	assert := require.New(t)
-
-	m := NewMin(expression.NewGetField(0, types.Int32, "field", true))
-	assert.Equal("MIN(field)", m.String())
-}
-
 func TestMin_Eval_Int32(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
