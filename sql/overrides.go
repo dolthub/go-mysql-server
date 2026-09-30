@@ -40,6 +40,9 @@ type EngineOverrides struct {
 	// filter expressions. Some expressions may need to be modified or skipped in order to properly apply indexes
 	// for all integrators.
 	CostedIndexScanExpressionFilter ExpressionTreeFilter
+	// UpdateExpressionApplier evaluates UPDATE assignments. If nil, the engine uses
+	// MySQL's sequential assignment evaluation and IGNORE conversion handling.
+	UpdateExpressionApplier UpdateExpressionApplier
 }
 
 // ExpressionTreeFilter is an interface for walking logic expression trees or AND, OR, and leaf nodes.
@@ -60,10 +63,16 @@ type BuilderOverrides struct {
 	// When enabled, an alias without an explicit column list names both the relation and its single output column.
 	// Leave this false for standard MySQL compatibility.
 	ScalarFunctionAliasAsColumn bool
+	// PermitDerivedTableDuplicateColumnNames allows a derived table to expose several columns that share a name, which
+	// some integrators permit. Leave this false for standard MySQL compatibility.
+	PermitDerivedTableDuplicateColumnNames bool
 	// Represents the parser to use. If this is nil, then the MySQL parser will be used.
 	Parser Parser
 	// InsertIgnoreMode controls the error-handling semantics for ignored inserts.
 	InsertIgnoreMode InsertIgnoreMode
+	// ValidateDistinctWindow validates DISTINCT window calls that use built-in expressions without their own
+	// DistinctWindowFunctionValidator. When nil, the call is rejected using MySQL-compatible behavior.
+	ValidateDistinctWindow func(schema, name string, expr Expression) error
 }
 
 // InsertIgnoreMode controls which compatibility semantics an ignored insert uses.

@@ -156,7 +156,6 @@ func (i *WindowPartitionIter) Next(ctx *sql.Context) (sql.Row, error) {
 // a sorted sql.WindowBuffer and a list of original row indices for resorting.
 func (i *WindowPartitionIter) materializeInput(ctx *sql.Context) (sql.WindowBuffer, []int, error) {
 	input := make(sql.WindowBuffer, 0)
-	j := 0
 	for {
 		row, err := i.child.Next(ctx)
 		if err != nil {
@@ -165,30 +164,27 @@ func (i *WindowPartitionIter) materializeInput(ctx *sql.Context) (sql.WindowBuff
 			}
 			return nil, nil, err
 		}
-		// TODO: Appending the row number to the end of the row can likely cause indexing issues
-		//  https://github.com/dolthub/dolt/issues/11328
-		input = append(input, append(row, j))
-		j++
+		input = append(input, row)
 	}
 
 	if len(input) == 0 {
 		return nil, nil, nil
 	}
 
-	// sort all rows by partition
-	sorter := sorters.NewRowSorterWithRows(ctx, append(partitionsToSortConditions(i.w.PartitionBy), i.w.SortBy...), input)
+	// Sort all rows by partition while tracking their original positions separately. Adding
+	// positions to the rows would expose them to expressions evaluated by the sorter.
+	outputOrdering := make([]int, len(input))
+	for idx := range outputOrdering {
+		outputOrdering[idx] = idx
+	}
+	sorter := &windowSorter{
+		RowSorter:      sorters.NewRowSorterWithRows(ctx, append(partitionsToSortConditions(i.w.PartitionBy), i.w.SortBy...), input),
+		outputOrdering: outputOrdering,
+	}
 	sort.Stable(sorter)
 	err := sorter.GetError()
 	if err != nil {
 		return nil, nil, err
-	}
-
-	// maintain output sort ordering
-	// TODO: push sort above aggregation, makes this code unnecessarily complex
-	outputOrdering := make([]int, len(input))
-	outputIdx := len(input[0]) - 1
-	for k, row := range input {
-		outputOrdering[k], input[k] = row[outputIdx].(int), row[:outputIdx]
 	}
 
 	return input, outputOrdering, nil
@@ -315,6 +311,18 @@ func (i *WindowPartitionIter) nextPartition(ctx *sql.Context) error {
 	}
 
 	return nil
+}
+
+// windowSorter keeps original row positions aligned with rows during window sorting.
+type windowSorter struct {
+	*sorters.RowSorter
+	outputOrdering []int
+}
+
+// Swap keeps original row positions aligned with rows as the window input is sorted.
+func (s *windowSorter) Swap(i, j int) {
+	s.RowSorter.Swap(i, j)
+	s.outputOrdering[i], s.outputOrdering[j] = s.outputOrdering[j], s.outputOrdering[i]
 }
 
 func partitionsToSortConditions(partitionExprs []sql.Expression) sql.SortConditions {

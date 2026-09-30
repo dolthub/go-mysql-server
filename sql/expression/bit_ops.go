@@ -158,26 +158,25 @@ func (b *BitOp) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, inter
 	return lval, rval, nil
 }
 
-func (b *BitOp) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}, error) {
+func (b *BitOp) convertLeftRight(ctx *sql.Context, lVal, rVal any) (any, any, error) {
 	// Determine the appropriate conversion type based on operand types
 	var typ sql.Type
 	lTyp := b.LeftChild.Type(ctx)
 	rTyp := b.RightChild.Type(ctx)
 
-	if types.IsText(lTyp) || types.IsText(rTyp) {
-		typ = types.Float64
-	} else if types.IsUnsigned(lTyp) && types.IsUnsigned(rTyp) {
-		typ = types.Uint64
-	} else if types.IsSigned(lTyp) && types.IsSigned(rTyp) {
+	switch {
+	case types.IsSigned(lTyp) && types.IsSigned(rTyp):
 		typ = types.Int64
-	} else {
+	case types.IsUnsigned(lTyp) && types.IsUnsigned(rTyp):
+		typ = types.Uint64
+	default:
 		typ = types.Float64
 	}
 
-	left = convertValueToType(ctx, typ, left, types.IsTime(b.LeftChild.Type(ctx)))
-	right = convertValueToType(ctx, typ, right, types.IsTime(b.RightChild.Type(ctx)))
+	lVal = convertValueToType(ctx, lVal, lTyp, typ)
+	rVal = convertValueToType(ctx, rVal, rTyp, typ)
 
-	return left, right, nil
+	return lVal, rVal, nil
 }
 
 // convertUintFromInt returns any int64 value converted to uint64 value

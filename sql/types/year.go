@@ -116,7 +116,7 @@ func (t YearType_) Convert(ctx context.Context, v interface{}) (interface{}, sql
 			return int16(0), sql.InRange, nil
 		}
 		if value >= 1 && value < TwoDigitYearCutoff {
-			return int16(TwoDigitYear(value)), sql.InRange, nil
+			return int16(TwoDigitYear(int(value))), sql.InRange, nil
 		}
 		if value >= 1901 && value <= 2155 {
 			return int16(value), sql.InRange, nil
@@ -292,8 +292,12 @@ func ConvertValueToYear(ctx *sql.Context, v sql.Value) (uint16, error) {
 	}
 }
 
-// TwoDigitYearCutoff is the upper bound for 2-digit years.
-const TwoDigitYearCutoff = 100
+const (
+	TwoDigitYearCutoff    = 100
+	TwoDigitCenturyCutoff = 70
+	Year1900              = 1900
+	Year2000              = 2000
+)
 
 // TwoDigitYear converts a two-digit |year| to a four-digit year
 // following the [2-digit year rules].
@@ -303,12 +307,12 @@ const TwoDigitYearCutoff = 100
 // unchanged.
 //
 // [2-digit year rules]: https://dev.mysql.com/doc/refman/8.0/en/two-digit-years.html
-func TwoDigitYear(year int64) int64 {
-	if year >= 70 && year < TwoDigitYearCutoff {
-		return year + 1900
+func TwoDigitYear(year int) int {
+	if year >= TwoDigitCenturyCutoff && year < TwoDigitYearCutoff {
+		return year + Year1900
 	}
-	if year >= 0 && year < 70 {
-		return year + 2000
+	if year >= 0 && year < TwoDigitCenturyCutoff {
+		return year + Year2000
 	}
 	return year
 }

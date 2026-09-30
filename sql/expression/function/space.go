@@ -15,6 +15,8 @@
 package function
 
 import (
+	"strings"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -53,11 +55,7 @@ func (s *Space) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		num = 0
 	}
 
-	res := ""
-	for i := 0; i < num; i++ {
-		res += " "
-	}
-	return res, nil
+	return strings.Repeat(" ", num), nil
 }
 
 // WithChildren implements the sql.Expression interface

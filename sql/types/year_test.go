@@ -119,8 +119,8 @@ func TestYearZero(t *testing.T) {
 
 func TestTwoDigitYear(t *testing.T) {
 	tests := []struct {
-		in  int64
-		exp int64
+		in  int
+		exp int
 	}{
 		{0, 2000},
 		{1, 2001},

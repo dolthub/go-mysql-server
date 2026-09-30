@@ -475,7 +475,7 @@ type updateRowHandler struct {
 func (u *updateRowHandler) handleRowUpdate(ctx *sql.Context, row sql.Row) error {
 	u.rowsMatched++
 
-	// TODO: This check is already being done in applyUpdateExpressionsWithIgnore to check if derived updates need to be
+	// TODO: This check is already being done by the update expression applier to check if derived updates need to be
 	//  applied
 	oldRow := row[:len(row)/2]
 	newRow := row[len(row)/2:]
@@ -816,6 +816,7 @@ type matchingAccumulator interface {
 }
 
 type updateSourceIter struct {
+	applier     sql.UpdateExpressionApplier
 	childIter   sql.RowIter
 	updateExprs *plan.UpdateExprs
 	tableSchema sql.Schema
@@ -828,7 +829,7 @@ func (u *updateSourceIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, err
 	}
 
-	newRow, err := applyUpdateExpressionsWithIgnore(ctx, u.updateExprs, u.tableSchema, oldRow, u.ignore)
+	newRow, err := u.applier.ApplyRowUpdate(ctx, u.updateExprs, u.tableSchema, oldRow, u.ignore)
 	if err != nil {
 		return nil, err
 	}

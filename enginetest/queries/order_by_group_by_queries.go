@@ -250,6 +250,114 @@ var OrderByGroupByScriptTests = []ScriptTest{
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/11912
+		Name: "any_value() inside an aggregate function",
+		SetUpScript: []string{
+			"use mydb;",
+			"create table members (id bigint primary key, team text);",
+			"insert into members values (3,'red'), (4,'red'),(5,'orange'),(6,'orange'),(7,'orange'),(8,'purple');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select max(any_value(team)) from members",
+				Expected: []sql.Row{{"red"}},
+			},
+			{
+				Query:    "select any_value(max(team)) from members",
+				Expected: []sql.Row{{"red"}},
+			},
+			{
+				Query:    "select any_value(max(id) + 1) from members",
+				Expected: []sql.Row{{int64(9)}},
+			},
+			{
+				Query:    "select any_value(max(id) + min(id)) from members",
+				Expected: []sql.Row{{int64(11)}},
+			},
+			{
+				Query:    "select any_value(case when 1=1 then max(id) else 0 end) from members",
+				Expected: []sql.Row{{int64(8)}},
+			},
+			{
+				Query: "select any_value(group_concat(team order by id)) from members",
+				// group_concat is a MySQL-specific aggregation function.
+				Dialect:  "mysql",
+				Expected: []sql.Row{{"red,red,orange,orange,orange,purple"}},
+			},
+			{
+				Query:    "select max(any_value(any_value(id))) from members",
+				Expected: []sql.Row{{8}},
+			},
+			{
+				Query:    "select sum(any_value(id)) from members",
+				Expected: []sql.Row{{float64(33)}},
+			},
+			{
+				Query:    "select count(distinct any_value(team)) from members",
+				Expected: []sql.Row{{3}},
+			},
+			{
+				Query: "select group_concat(any_value(team) order by id) from members",
+				// group_concat is a MySQL-specific aggregation function.
+				Dialect:  "mysql",
+				Expected: []sql.Row{{"red,red,orange,orange,orange,purple"}},
+			},
+			{
+				Query:    "select any_value((select team from members where id = 3)) from members limit 1",
+				Expected: []sql.Row{{"red"}},
+			},
+			{
+				Query:       "select id, max(any_value(team)) from members",
+				ExpectedErr: sql.ErrNonAggregatedColumnWithoutGroupBy,
+			},
+			{
+				Query:       "select any_value() from members",
+				ExpectedErr: sql.ErrInvalidArgumentNumber,
+			},
+			{
+				Query:       "select any_value(id, team) from members",
+				ExpectedErr: sql.ErrInvalidArgumentNumber,
+			},
+			{
+				Query:       "select max(any_value()) from members",
+				ExpectedErr: sql.ErrInvalidArgumentNumber,
+			},
+			{
+				Query:       "select max(any_value(id, team)) from members",
+				ExpectedErr: sql.ErrInvalidArgumentNumber,
+			},
+			{
+				Query:       "select any_value(max(sum(id))) from members",
+				ExpectedErr: sql.ErrInvalidGroupFuncUse,
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11912
+		Name: "invalid nested aggregate functions",
+		SetUpScript: []string{
+			"use mydb;",
+			"create table members (id bigint primary key, team text);",
+			"insert into members values (3,'red'), (4,'red'),(5,'orange'),(6,'orange'),(7,'orange'),(8,'purple');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "select max(sum(id)) from members",
+				ExpectedErr: sql.ErrInvalidGroupFuncUse,
+			},
+			{
+				Query: "select max(group_concat(team)) from members",
+				// group_concat is a MySQL-specific aggregation function.
+				Dialect:     "mysql",
+				ExpectedErr: sql.ErrInvalidGroupFuncUse,
+			},
+			{
+				Query:       "select max(sum(count(id))) from members",
+				ExpectedErr: sql.ErrInvalidGroupFuncUse,
+			},
+		},
+	},
+	{
 		Name: "group by with strict errors",
 		SetUpScript: []string{
 			"use mydb;",

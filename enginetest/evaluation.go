@@ -40,6 +40,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/testutils"
 )
 
 // RunQueryWithContext runs the query given and asserts that it doesn't result in an error.
@@ -141,7 +142,7 @@ func TestScriptWithEngine(t *testing.T, e QueryEngine, harness Harness, script q
 					AssertErr(t, e, harness, assertion.Query, assertion.Bindings, assertion.ExpectedErr)
 				} else if assertion.ExpectedErrStr != "" {
 					AssertErrWithCtx(t, e, harness, ctx, assertion.Query, assertion.Bindings, nil, assertion.ExpectedErrStr)
-				} else if assertion.ExpectedWarning != 0 {
+				} else if !assertion.SkipWarnings && assertion.ExpectedWarning != 0 {
 					if IsServerEngine(e) && assertion.SkipResultCheckOnServerEngine {
 						t.Skip()
 					}
@@ -425,7 +426,7 @@ func TestQueryWithEngine(t *testing.T, harness Harness, e QueryEngine, tt querie
 			AssertErr(t, e, harness, tt.Query, tt.Bindings, tt.ExpectedErr)
 		} else if tt.ExpectedErrStr != "" {
 			AssertErrWithCtx(t, e, harness, ctx, tt.Query, tt.Bindings, nil, tt.ExpectedErrStr)
-		} else if tt.ExpectedWarning != 0 {
+		} else if !tt.SkipWarnings && tt.ExpectedWarning != 0 {
 			AssertWarningAndTestQuery(t, e, ctx, harness,
 				tt.Query,
 				tt.Expected,
@@ -574,7 +575,7 @@ func TestPreparedQueryWithEngine(t *testing.T, harness Harness, e QueryEngine, t
 			AssertErr(t, e, harness, tt.Query, tt.Bindings, tt.ExpectedErr)
 		} else if tt.ExpectedErrStr != "" {
 			AssertErrWithCtx(t, e, harness, ctx, tt.Query, tt.Bindings, nil, tt.ExpectedErrStr)
-		} else if tt.ExpectedWarning != 0 {
+		} else if !tt.SkipWarnings && tt.ExpectedWarning != 0 {
 			AssertWarningAndTestPreparedQuery(t, e, ctx, harness, tt.Query, tt.Expected, tt.ExpectedColumns,
 				tt.ExpectedWarning, tt.ExpectedWarningsCount, tt.ExpectedWarningMessageSubstring, false)
 		} else {
@@ -655,6 +656,12 @@ func injectBindVarsAndPrepare(
 	var skipTypeConv bool
 	err = sqlparser.Walk(func(n sqlparser.SQLNode) (kontinue bool, err error) {
 		switch sqlVal := n.(type) {
+		case *sqlparser.UnaryExpr:
+			// Character set introducers require a literal, not a bind variable.
+			// Preserve the entire expression, including any COLLATE clause.
+			if strings.HasPrefix(strings.TrimSpace(sqlVal.Operator), "_") {
+				return false, nil
+			}
 		case *sqlparser.SQLVal:
 			if n == nil {
 				return false, nil
@@ -740,11 +747,6 @@ func runQueryPreparedWithCtx(t *testing.T, ctx *sql.Context, e QueryEngine, q st
 	return rows, sch, err
 }
 
-// CustomValueValidator is an interface for custom validation of values in the result set
-type CustomValueValidator interface {
-	Validate(interface{}) (bool, error)
-}
-
 // toSQL converts the given expected value into appropriate type of given column.
 // |isZeroTime| is true if the query is any `SHOW` statement, except for `SHOW EVENTS`.
 // This is set earlier in `checkResult()` method.
@@ -824,7 +826,7 @@ func checkResultsDefault(t *testing.T, ctx *sql.Context, expected []sql.Row, exp
 	for i, row := range widenedExpected {
 		for j, field := range row {
 			// Special case for custom values
-			if cvv, isCustom := field.(CustomValueValidator); isCustom {
+			if cvv, isCustom := field.(testutils.CustomValueValidator); isCustom {
 				if i >= len(widenedRows) {
 					continue
 				}

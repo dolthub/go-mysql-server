@@ -79,6 +79,9 @@ func (f *Format) IsNullable(ctx *sql.Context) bool {
 }
 
 func (f *Format) String() string {
+	if f.Locale == nil {
+		return fmt.Sprintf("%s(%s,%s)", f.FunctionName(), f.NumValue, f.NumDecimalPlaces)
+	}
 	return fmt.Sprintf("%s(%s,%s,%s)", f.FunctionName(), f.NumValue, f.NumDecimalPlaces, f.Locale)
 }
 

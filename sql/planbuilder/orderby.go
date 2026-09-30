@@ -47,6 +47,7 @@ func (b *Builder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy)
 		case ast.DescScr:
 			descending = true
 		}
+		nullsLast := sortNullsLast(o, descending)
 		expr := unwrapExpression(o.Expr)
 		switch e := expr.(type) {
 		case *ast.ColName:
@@ -61,6 +62,7 @@ func (b *Builder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy)
 					c.scalar = nil
 				}
 				c.descending = descending
+				c.nullsLast = nullsLast
 				outScope.addColumn(c)
 				continue
 			}
@@ -72,6 +74,7 @@ func (b *Builder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy)
 				b.handleErr(err)
 			}
 			c.descending = descending
+			c.nullsLast = nullsLast
 			c.scalar = c.scalarGf()
 			outScope.addColumn(c)
 			fromScope.addExtraColumn(c)
@@ -120,6 +123,7 @@ func (b *Builder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy)
 					typ:        target.typ,
 					nullable:   target.nullable,
 					descending: descending,
+					nullsLast:  nullsLast,
 					id:         target.id,
 				})
 			}
@@ -138,10 +142,13 @@ func (b *Builder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy)
 				//  get fields outside of aggs need to be in extra cols
 				switch e := e.(type) {
 				case *expression.GetField:
-					c, ok := fromScope.resolveColumn("", strings.ToLower(e.Table()), strings.ToLower(e.Name()), true, false)
+					c, ok := fromScope.getCol(e.Id())
 					if !ok {
-						err := sql.ErrColumnNotFound.New(e.Name)
-						b.handleErr(err)
+						c, ok = fromScope.resolveColumn("", strings.ToLower(e.Table()), strings.ToLower(e.Name()), true, false)
+						if !ok {
+							err := sql.ErrColumnNotFound.New(e.Name())
+							b.handleErr(err)
+						}
 					}
 					fromScope.addExtraColumn(c)
 				case sql.WindowAdaptableExpression:
@@ -162,6 +169,7 @@ func (b *Builder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy)
 				typ:        expr.Type(b.ctx),
 				nullable:   expr.IsNullable(b.ctx),
 				descending: descending,
+				nullsLast:  nullsLast,
 			}
 			outScope.newColumn(col)
 		}
@@ -236,11 +244,32 @@ func (b *Builder) buildSortConditions(orderByScope *scope, sameAlias transform.T
 			})
 		}
 		sortConditions[i] = sql.SortCondition{
-			Expr:  scalar,
-			Order: so,
+			Expr:         scalar,
+			Order:        so,
+			NullOrdering: nullOrdering(c.nullsLast),
 		}
 	}
 	return sortConditions
+}
+
+// sortNullsLast returns whether an ORDER BY term ranks NULL above every other value. MySQL ranks NULL below every
+// value, and a NULLS FIRST or NULLS LAST clause places NULL relative to the sort direction.
+func sortNullsLast(o *ast.Order, descending bool) bool {
+	switch o.NullsOrder {
+	case ast.NullsFirstStr:
+		return descending
+	case ast.NullsLastStr:
+		return !descending
+	}
+	return false
+}
+
+// nullOrdering converts the NULL rank of an ORDER BY term into a sql.NullOrdering.
+func nullOrdering(nullsLast bool) sql.NullOrdering {
+	if nullsLast {
+		return sql.NullsLast
+	}
+	return sql.NullsFirst
 }
 
 // buildOrderedInjectedExpr builds an InjectedExpr with an ORDER BY dependency

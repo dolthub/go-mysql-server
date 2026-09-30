@@ -40,7 +40,7 @@ type scope struct {
 	tables              map[string]sql.TableId
 	oldTables           map[sql.TableId]string
 	windowDefs          map[string]*sql.WindowDefinition
-	selectAliases       map[string]sql.Expression
+	selectAliases       map[string]*expression.Alias
 	insertColumnAliases map[string]string
 
 	// redirectCol is used for using and natural joins right-table
@@ -68,6 +68,9 @@ type scope struct {
 	// windowFuncs is a list of window functions in the current scope
 	windowFuncs []scopeColumn
 
+	// selectAliasScope marks the temporary SELECT list alias scope.
+	selectAliasScope bool
+
 	refsSubquery bool
 
 	schemaName string
@@ -94,7 +97,13 @@ func (s *scope) resolveColumn(db, table, col string, checkParent, chooseFirst bo
 
 	var found scopeColumn
 	var foundCand bool
+	// In window clauses (PARTITION BY, ORDER BY), column names must match
+	// table columns, not same-level SELECT aliases with the same name.
+	hideAliases := s.selectAliasScope && s.b.windowClause != ""
 	for _, c := range s.cols {
+		if hideAliases {
+			break
+		}
 		if strings.EqualFold(c.col, col) && (strings.EqualFold(c.table, table) || table == "") && (strings.EqualFold(c.db, db) || db == "") {
 			if foundCand {
 				if found.equals(c) {
@@ -281,6 +290,19 @@ func (s *scope) initGroupBy() {
 	if s.groupBy == nil {
 		s.groupBy = &groupBy{outScope: s.replace()}
 	}
+}
+
+// aggCount returns the count of aggregate expressions in this scope.
+func (s *scope) aggCount() int {
+	if s.groupBy == nil {
+		return 0
+	}
+	return len(s.groupBy.aggs)
+}
+
+// windowFuncCount returns the count of window functions in this scope.
+func (s *scope) windowFuncCount() int {
+	return len(s.windowFuncs)
 }
 
 // pushSubquery creates a new scope with the subquery already initialized.
@@ -501,7 +523,7 @@ func (s *scope) copy(ctx *sql.Context) *scope {
 		ret.colset = s.colset.Copy()
 	}
 	if s.selectAliases != nil {
-		ret.selectAliases = make(map[string]sql.Expression, len(s.selectAliases))
+		ret.selectAliases = make(map[string]*expression.Alias, len(s.selectAliases))
 		for k, v := range s.selectAliases {
 			ret.selectAliases[k] = v
 		}
@@ -664,6 +686,7 @@ type scopeColumn struct {
 	tableId     sql.TableId
 	nullable    bool
 	descending  bool
+	nullsLast   bool
 	outOfScope  bool
 	hidden      bool
 }
@@ -713,10 +736,11 @@ func (c scopeColumn) scalarGf() sql.Expression {
 			return e
 		}
 	}
+	name := c.col
 	if c.originalCol != "" {
-		return expression.NewGetFieldWithTable(int(c.id), int(c.tableId), c.typ, c.db, c.table, c.originalCol, c.nullable)
+		name = c.originalCol
 	}
-	return expression.NewGetFieldWithTable(int(c.id), int(c.tableId), c.typ, c.db, c.table, c.col, c.nullable)
+	return expression.NewGetFieldWithTable(int(c.id), int(c.tableId), c.typ, c.db, c.table, name, c.nullable)
 }
 
 func (c scopeColumn) String() string {

@@ -83,3 +83,46 @@ func evalInt64(ctx *sql.Context, expr sql.Expression, row sql.Row) (int64, bool,
 	n, ok := c.(int64)
 	return n, ok, nil
 }
+
+// evalString evaluates |expr| against |row| and coerces the result
+// to a string in the given target collation. It returns ("", false, nil)
+// if the evaluated value is SQL NULL.
+func evalString(ctx *sql.Context, expr sql.Expression, row sql.Row, targetCollation sql.CollationID) (string, bool, error) {
+	if expr == nil {
+		return "", false, nil
+	}
+	v, err := expr.Eval(ctx, row)
+	if err != nil || v == nil {
+		return "", false, err
+	}
+	c, _, err := types.LongText.Convert(ctx, v)
+	if err != nil {
+		return "", false, err
+	}
+	s, _, err := sql.Unwrap[string](ctx, c)
+	if err != nil {
+		return "", false, err
+	}
+
+	if targetCollation == sql.Collation_Unspecified {
+		return s, true, nil
+	}
+
+	targetCharset := targetCollation.CharacterSet()
+	targetEncoder := targetCharset.Encoder()
+	if targetEncoder == nil || targetCharset == sql.CharacterSet_binary || targetCharset == sql.CharacterSet_utf8mb4 {
+		return s, true, nil
+	}
+
+	// Transcode to target character set to ensure all characters are valid.
+	b := []byte(s)
+	if _, ok := targetEncoder.Encode(b); !ok {
+		return "", false, sql.ErrCannotConvertString.New(
+			types.FormatInvalidByteForError(b),
+			sql.CharacterSet_utf8mb4.Name(),
+			targetCharset.Name(),
+		)
+	}
+
+	return s, true, nil
+}

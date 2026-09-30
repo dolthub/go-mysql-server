@@ -1540,6 +1540,7 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 					}
 					indexType := index.IndexType()
 					indexComment = index.Comment()
+					orders := IndexColumnOrders(ctx, index)
 					// setting `VISIBLE` is not supported, so defaulting it to "YES"
 					isVisible = "YES"
 
@@ -1561,10 +1562,13 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 
 							// collation is "A" for ASC ; "D" for DESC ; "NULL" for not sorted
 							collation = "A"
+							if j < len(orders) && orders[j].Descending {
+								collation = "D"
+							}
 
 							// TODO : cardinality is an estimate of the number of unique values in the index.
 
-							if j < len(index.PrefixLengths()) {
+							if j < len(index.PrefixLengths()) && index.PrefixLengths()[j] != 0 {
 								subPart = int64(index.PrefixLengths()[j])
 							}
 

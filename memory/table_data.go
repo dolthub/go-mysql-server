@@ -416,18 +416,23 @@ func (td *TableData) sortSecondaryIndexes(ctx *sql.Context) {
 		}
 		sort.SliceStable(idxStorage, func(i, j int) bool {
 			for t, typ := range types {
+				var colOrder sql.IndexColumnOrder
+				if t < len(idx.ColOrders) {
+					colOrder = idx.ColOrders[t]
+				}
 				left := idxStorage[i][t]
 				right := idxStorage[j][t]
 
 				// Compare doesn't handle nil values, so we need to handle that case. Nils sort before other values
+				// unless the column stores them last
 				if left == nil {
 					if right == nil {
 						continue
 					} else {
-						return true
+						return !colOrder.NullsLast
 					}
 				} else if right == nil {
-					return false
+					return colOrder.NullsLast
 				}
 
 				compare, err := typ.Compare(ctx, left, right)
@@ -435,7 +440,7 @@ func (td *TableData) sortSecondaryIndexes(ctx *sql.Context) {
 					panic(err)
 				}
 				if compare != 0 {
-					return compare < 0
+					return (compare < 0) != colOrder.Descending
 				}
 			}
 			return false

@@ -189,6 +189,14 @@ func IsTextOnly(t sql.Type) bool {
 	}
 }
 
+// IsChar reports whether t is a CHAR type.
+func IsChar(t sql.Type) bool {
+	if t == nil {
+		return false
+	}
+	return t.Type() == sqltypes.Char
+}
+
 // IsTimespan checks if t is a time (timespan)
 func IsTimespan(t sql.Type) bool {
 	_, ok := t.(TimespanType_)

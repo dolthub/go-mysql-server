@@ -265,7 +265,7 @@ func TestConvert(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			require := require.New(t)
-			convert := NewConvertWithLengthAndScale(test.expression, test.castTo, test.typeLength, test.typeScale)
+			convert := NewConvertWithLengthAndScale(test.expression, nil, test.castTo, test.typeLength, test.typeScale)
 			val, err := convert.Eval(sql.NewEmptyContext(), test.row)
 			if test.expectedErr {
 				require.Error(err)

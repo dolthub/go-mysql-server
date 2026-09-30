@@ -112,16 +112,18 @@ func (s *RowSorter) CompareKeys(a, b []interface{}) int {
 			av, bv = bv, av
 		}
 
-		if av == nil && bv == nil {
-			continue
-		}
-		if sc.NullOrdering == sql.NullsFirst {
+		if av == nil || bv == nil {
+			if av == nil && bv == nil {
+				continue
+			}
+			cmp := 1
 			if av == nil {
-				return -1
+				cmp = -1
 			}
-			if bv == nil {
-				return 1
+			if sc.NullOrdering == sql.NullsLast {
+				cmp = -cmp
 			}
+			return cmp
 		}
 
 		cmp, err := s.types[i].Compare(s.ctx, av, bv)

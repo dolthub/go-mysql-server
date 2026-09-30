@@ -115,7 +115,7 @@ func (t *AbsVal) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 		return 0, nil
 	default:
-		v, _, err := types.Float64.Convert(ctx, val)
+		v, _, err := types.TypeAwareConversion(ctx, val, t.Child.Type(ctx), types.Float64)
 		if err != nil {
 			if !sql.ErrTruncatedIncorrect.Is(err) {
 				return nil, err

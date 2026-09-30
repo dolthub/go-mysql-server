@@ -27,6 +27,15 @@ import (
 )
 
 func (b *Builder) buildSelectStmt(inScope *scope, s ast.SelectStatement) (outScope *scope) {
+	// A nested SELECT has its own context, so the defer restores the
+	// outer query's aggregate and window settings when done.
+	defer func(inAgg, inWin bool) {
+		b.inAgg = inAgg
+		b.inWindow = inWin
+	}(b.inAgg, b.inWindow)
+	b.inAgg = false
+	b.inWindow = false
+
 	switch s := s.(type) {
 	case *ast.Select:
 		if s.With != nil {
@@ -92,9 +101,10 @@ func (b *Builder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
 
 	// At this point we've recorded dependencies for higher-level scopes,
 	// so we can build the FROM clause
-	if b.needsAggregation(fromScope, s) {
+	needsAggregation := b.needsAggregation(fromScope, s)
+	if needsAggregation {
 		groupingCols := b.buildGroupingCols(fromScope, projScope, s.GroupBy, s.SelectExprs)
-		outScope = b.buildAggregation(fromScope, projScope, groupingCols)
+		outScope = b.buildAggregation(fromScope, projScope, groupingCols, s.Having)
 	} else if fromScope.windowFuncs != nil {
 		outScope = b.buildWindow(fromScope, projScope)
 	} else {
@@ -106,7 +116,9 @@ func (b *Builder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
 	// expressions in higher level scopes will be replaced with GetField
 	// references.
 
-	b.buildHaving(fromScope, projScope, outScope, s.Having)
+	if !needsAggregation {
+		b.buildHaving(fromScope, projScope, outScope, s.Having)
+	}
 
 	b.buildOrderBy(outScope, orderByScope)
 

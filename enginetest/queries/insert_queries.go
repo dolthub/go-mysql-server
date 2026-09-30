@@ -103,21 +103,50 @@ var InsertQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery: `INSERT INTO typestable VALUES (
-			999, 127, 32767, 2147483647, 9223372036854775807,
-			255, 65535, 4294967295, 18446744073709551615,
-			3.40282346638528859811704183484516925440e+38, 1.797693134862315708145274237317043567981e+308,
-			'2037-04-05 12:51:36', '2231-11-07',
-			'random text', true, '{"key":"value"}', 'blobdata', 'v1', 'v2'
-			);`,
+			999, 
+			127, 
+			32767, 
+			2147483647, 
+			9223372036854775807, 
+			255, 
+			65535, 
+			4294967295, 
+			18446744073709551615,
+			3.40282346638528859811704183484516925440e+38, 
+			1.797693134862315708145274237317043567981e+308,
+			'2037-04-05 12:51:36', 
+			'2231-11-07',
+			'random text', 
+			true, 
+			'{"key":"value"}', 
+			'blobdata', 
+			'v1', 
+			'v2'
+		);`,
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM typestable WHERE id = 999;",
-		ExpectedSelect: []sql.Row{{
-			int64(999), int8(math.MaxInt8), int16(math.MaxInt16), int32(math.MaxInt32), int64(math.MaxInt64),
-			uint8(math.MaxUint8), uint16(math.MaxUint16), uint32(math.MaxUint32), uint64(math.MaxUint64),
-			float32(math.MaxFloat32), float64(math.MaxFloat64),
-			sql.MustConvert(types.Timestamp.Convert(sqlCtx, "2037-04-05 12:51:36")), sql.MustConvert(types.Date.Convert(sqlCtx, "2231-11-07")),
-			"random text", sql.True, types.MustJSON(`{"key":"value"}`), []byte("blobdata"), "v1", "v2",
-		}},
+		ExpectedSelect: []sql.Row{
+			{
+				int64(999),
+				int8(math.MaxInt8),
+				int16(math.MaxInt16),
+				int32(math.MaxInt32),
+				int64(math.MaxInt64),
+				uint8(math.MaxUint8),
+				uint16(math.MaxUint16),
+				uint32(math.MaxUint32),
+				uint64(math.MaxUint64),
+				float32(math.MaxFloat32),
+				float64(math.MaxFloat64),
+				sql.MustConvert(types.Timestamp.Convert(sqlCtx, "2037-04-05 12:51:36")),
+				sql.MustConvert(types.Date.Convert(sqlCtx, "2231-11-07")),
+				"random text",
+				sql.True,
+				types.MustJSON(`{"key":"value"}`),
+				[]byte("blobdata"),
+				"v1",
+				"v2",
+			}},
 	},
 	{
 		WriteQuery: `INSERT INTO typestable SET
@@ -140,20 +169,48 @@ var InsertQueries = []WriteQueryTest{
 	{
 		SkipServerEngine: true, // the datetime returned is not non-zero
 		WriteQuery: `INSERT INTO typestable VALUES (
-			999, -128, -32768, -2147483648, -9223372036854775808,
-			0, 0, 0, 0,
-			1.401298464324817070923729583289916131280e-45, 4.940656458412465441765687928682213723651e-324,
-			'0000-00-00 00:00:00', '0000-00-00',
-			'', false, '""', '', '', ''
+			999, 
+			-128, 
+			-32768, 
+			-2147483648, 
+			-9223372036854775808,
+			0, 
+			0, 
+			0, 
+			0,
+			1.401298464324817070923729583289916131280e-45, 
+			4.940656458412465441765687928682213723651e-324,
+			'1970-01-01 00:00:01', 
+			'0000-01-01',
+			'', 
+			false, 
+			'""', 
+			'', 
+			'', 
+			''
 			);`,
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM typestable WHERE id = 999;",
 		ExpectedSelect: []sql.Row{{
-			int64(999), int8(-math.MaxInt8 - 1), int16(-math.MaxInt16 - 1), int32(-math.MaxInt32 - 1), int64(-math.MaxInt64 - 1),
-			uint8(0), uint16(0), uint32(0), uint64(0),
-			float32(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
-			types.Timestamp.Zero(), types.Date.Zero(),
-			"", sql.False, types.MustJSON(`""`), []byte(""), "", "",
+			int64(999),
+			int8(-math.MaxInt8 - 1),
+			int16(-math.MaxInt16 - 1),
+			int32(-math.MaxInt32 - 1),
+			int64(-math.MaxInt64 - 1),
+			uint8(0),
+			uint16(0),
+			uint32(0),
+			uint64(0),
+			float32(math.SmallestNonzeroFloat32),
+			float64(math.SmallestNonzeroFloat64),
+			time.Date(1970, 1, 1, 0, 0, 1, 0, time.UTC),
+			time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC),
+			"",
+			sql.False,
+			types.MustJSON(`""`),
+			[]byte(""),
+			"",
+			"",
 		}},
 	},
 	{
@@ -162,16 +219,25 @@ var InsertQueries = []WriteQueryTest{
 			id = 999, i8 = -128, i16 = -32768, i32 = -2147483648, i64 = -9223372036854775808,
 			u8 = 0, u16 = 0, u32 = 0, u64 = 0,
 			f32 = 1.401298464324817070923729583289916131280e-45, f64 = 4.940656458412465441765687928682213723651e-324,
-			ti = '0000-00-00 00:00:00', da = '0000-00-00',
+			ti = '1970-01-01 00:00:01', da = '0000-01-01',
 			te = '', bo = false, js = '""', bl = '', e1 = 'v1', s1 = 'v2'
 			;`,
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM typestable WHERE id = 999;",
 		ExpectedSelect: []sql.Row{{
-			int64(999), int8(-math.MaxInt8 - 1), int16(-math.MaxInt16 - 1), int32(-math.MaxInt32 - 1), int64(-math.MaxInt64 - 1),
-			uint8(0), uint16(0), uint32(0), uint64(0),
-			float32(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
-			types.Timestamp.Zero(), types.Date.Zero(),
+			int64(999),
+			int8(-math.MaxInt8 - 1),
+			int16(-math.MaxInt16 - 1),
+			int32(-math.MaxInt32 - 1),
+			int64(-math.MaxInt64 - 1),
+			uint8(0),
+			uint16(0),
+			uint32(0),
+			uint64(0),
+			float32(math.SmallestNonzeroFloat32),
+			float64(math.SmallestNonzeroFloat64),
+			time.Date(1970, 1, 1, 0, 0, 1, 0, time.UTC),
+			time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC),
 			"", sql.False, types.MustJSON(`""`), []byte(""), "v1", "v2",
 		}},
 	},
@@ -181,7 +247,7 @@ var InsertQueries = []WriteQueryTest{
 			id = 999, i8 = -128, i16 = -32768, i32 = -2147483648, i64 = -9223372036854775808,
 			u8 = 0, u16 = 0, u32 = 0, u64 = 0,
 			f32 = 1.401298464324817070923729583289916131280e-45, f64 = 4.940656458412465441765687928682213723651e-324,
-			ti = '2037-04-05 12:51:36 -0000 UTC', da = '0000-00-00',
+			ti = '2037-04-05 12:51:36 -0000 UTC', da = '0000-01-01',
 			te = '', bo = false, js = '""', bl = '', e1 = 'v1', s1 = 'v2'
 			;`,
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
@@ -190,7 +256,8 @@ var InsertQueries = []WriteQueryTest{
 			int64(999), int8(-math.MaxInt8 - 1), int16(-math.MaxInt16 - 1), int32(-math.MaxInt32 - 1), int64(-math.MaxInt64 - 1),
 			uint8(0), uint16(0), uint32(0), uint64(0),
 			float32(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
-			sql.MustConvert(types.Timestamp.Convert(sqlCtx, "2037-04-05 12:51:36")), types.Date.Zero(),
+			time.Date(2037, 4, 5, 12, 51, 36, 0, time.UTC),
+			time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC),
 			"", sql.False, types.MustJSON(`""`), []byte(""), "v1", "v2",
 		}},
 	},
@@ -862,6 +929,112 @@ var SpatialInsertQueries = []WriteQueryTest{
 
 var InsertScripts = []ScriptTest{
 	{
+		// https://github.com/dolthub/dolt/issues/11918
+		Name:    "insert strings with dangling exponent into integer columns",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t (pk INT PRIMARY KEY, i INT, u INT UNSIGNED);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO t VALUES (1, '1E', '1E'), (2, '1.5E', '1.5E');",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:       "INSERT INTO t VALUES (3, '1eE', '1eE');",
+				ExpectedErr: sql.ErrInvalidValue,
+			},
+			{
+				Query:    "SELECT * FROM t ORDER BY pk;",
+				Expected: []sql.Row{{1, 1, uint32(1)}, {2, 2, uint32(2)}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11388
+		Name:    "multi-row empty insert compatibility",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table empty_defaults (a int default 1, b int default 2)",
+			"create table empty_column_list (a int default 1, b int default 2)",
+			"create table mixed_defaults (a int default 1, b int default 2)",
+			"create table empty_named (a int default 1, b int default 2)",
+			"create table empty_auto (id int auto_increment primary key, v int default 5)",
+			"create table empty_nullable (a int, b int)",
+			"create table empty_required (a int not null, b int default 2)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "insert into empty_defaults values (), ()",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "select * from empty_defaults",
+				Expected: []sql.Row{{1, 2}, {1, 2}},
+			},
+			{
+				Query:    "insert into empty_column_list () values (), ()",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "select * from empty_column_list",
+				Expected: []sql.Row{{1, 2}, {1, 2}},
+			},
+			{
+				Query:       "insert into mixed_defaults values (), (3, 4)",
+				ExpectedErr: sql.ErrInsertIntoMismatchValueCount,
+			},
+			{
+				Query:       "insert into mixed_defaults values (3, 4), ()",
+				ExpectedErr: sql.ErrInsertIntoMismatchValueCount,
+			},
+			{
+				Query:    "select * from mixed_defaults",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "insert into mixed_defaults values (default, default), (3, default)",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "select * from mixed_defaults",
+				Expected: []sql.Row{{1, 2}, {3, 2}},
+			},
+			{
+				Query:       "insert into empty_named (a) values (), ()",
+				ExpectedErr: sql.ErrInsertIntoMismatchValueCount,
+			},
+			{
+				Query:    "select * from empty_named",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "insert into empty_auto values (), ()",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 1}}},
+			},
+			{
+				Query:    "select * from empty_auto order by id",
+				Expected: []sql.Row{{1, 5}, {2, 5}},
+			},
+			{
+				Query:    "insert into empty_nullable values (), ()",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "select * from empty_nullable",
+				Expected: []sql.Row{{nil, nil}, {nil, nil}},
+			},
+			{
+				Query:       "insert into empty_required values (), ()",
+				ExpectedErr: sql.ErrFieldNoDefaultValue,
+			},
+			{
+				Query:    "select * from empty_required",
+				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/7322
 		Name: "issue 7322: values expression is subquery",
 		SetUpScript: []string{
@@ -1341,24 +1514,17 @@ var InsertScripts = []ScriptTest{
 				},
 			},
 			{
-				Query: "insert into auto_pk values (0), (1), (NULL), ()",
-				Expected: []sql.Row{
-					{types.OkResult{RowsAffected: 4}},
-				},
+				Query:       "insert into auto_pk values (0), (1), (NULL), ()",
+				ExpectedErr: sql.ErrInsertIntoMismatchValueCount,
 			},
 			{
-				Query: "select * from auto_pk",
-				Expected: []sql.Row{
-					{0},
-					{1},
-					{2},
-					{3},
-				},
+				Query:    "select * from auto_pk",
+				Expected: []sql.Row{},
 			},
 			{
 				Query: "select auto_increment from information_schema.tables where table_name='auto_pk' and table_schema=database()",
 				Expected: []sql.Row{
-					{uint64(4)},
+					{nil},
 				},
 			},
 
@@ -1848,6 +2014,19 @@ var InsertScripts = []ScriptTest{
 			},
 		},
 	},
+	// https://github.com/dolthub/dolt/issues/6500
+	{
+		Name:    "Test INSERT aliases in duplicate-key updates",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE alias_insert(a INT PRIMARY KEY,b INT,c INT)",
+			"INSERT INTO alias_insert VALUES(1,0,0)",
+			"INSERT INTO alias_insert(a,b,c) VALUES(1,2,3),(4,5,6) AS new(m,n,p) ON DUPLICATE KEY UPDATE c=m+n",
+		},
+		Assertions: []ScriptTestAssertion{
+			{Query: "SELECT * FROM alias_insert ORDER BY a", Expected: []sql.Row{{int32(1), int32(0), int32(3)}, {int32(4), int32(5), int32(6)}}},
+		},
+	},
 	{
 		Name: "Insert throws primary key violations",
 		SetUpScript: []string{
@@ -2049,12 +2228,12 @@ var InsertScripts = []ScriptTest{
 				},
 			},
 			{
-				Query:          "insert into t2(d) select t from t1 where i = 3;",
-				ExpectedErrStr: "Incorrect datetime value: ''",
+				Query:       "insert into t2(d) select t from t1 where i = 3;",
+				ExpectedErr: sql.ErrIncorrectValue,
 			},
 			{
-				Query:          "insert into t2(d) select t from t1 where i = 2;",
-				ExpectedErrStr: "Incorrect datetime value: 'badtime'",
+				Query:       "insert into t2(d) select t from t1 where i = 2;",
+				ExpectedErr: sql.ErrIncorrectValue,
 			},
 			{
 				Query: "insert into t2(d) select t from t1 where i = 1;",
@@ -2769,6 +2948,27 @@ var InsertErrorScripts = []ScriptTest{
 }
 
 var InsertIgnoreScripts = []ScriptTest{
+	{
+		// https://github.com/dolthub/dolt/issues/11918
+		Name:    "insert ignore negative string with dangling exponent into unsigned column",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t (pk INT PRIMARY KEY, i INT, u INT UNSIGNED);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:                           "INSERT IGNORE INTO t VALUES (1, '-1e', '-1e');",
+				Expected:                        []sql.Row{{types.NewOkResult(1)}},
+				ExpectedWarning:                 mysql.ERWarnDataOutOfRange,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "Out of range value for column 'u' at row 1",
+			},
+			{
+				Query:    "SELECT * FROM t;",
+				Expected: []sql.Row{{1, -1, uint32(0)}},
+			},
+		},
+	},
 	{
 		Name: "Test that INSERT IGNORE with Non nullable columns works",
 		SetUpScript: []string{

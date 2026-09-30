@@ -651,6 +651,36 @@ CREATE TABLE tab1 (
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/11407
+		Name: "view referenced in subquery with filter on projected literal alias",
+		SetUpScript: []string{
+			"CREATE TABLE base (name VARCHAR(255));",
+			"INSERT INTO base VALUES (NULL);",
+			"CREATE VIEW v AS SELECT name FROM base;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    `SELECT sq.b FROM (SELECT t1.name AS v, 1 AS b FROM v AS t1) AS sq WHERE if(sq.v <> 'x', 1, sq.b);`,
+				Expected: []sql.Row{{1}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11501
+		Name: "nested view with self EXISTS subquery",
+		SetUpScript: []string{
+			"CREATE TABLE t__base (c_pk BIGINT NOT NULL, c1 BIGINT);",
+			"INSERT INTO t__base VALUES (1, 10), (2, 20);",
+			"CREATE VIEW t1 AS SELECT c_pk, c1 FROM (SELECT c_pk, c1 FROM t__base) AS eq_ns_1;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * FROM t1 a WHERE EXISTS (SELECT 1 FROM t1 b WHERE b.c_pk = a.c_pk);",
+				Expected: []sql.Row{{1, 10}, {2, 20}},
+			},
+		},
+	},
 }
 
 var ViewCreateInSubroutineTests = []ScriptTest{
