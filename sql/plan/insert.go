@@ -74,8 +74,6 @@ type InsertInto struct {
 	OnDupValuesAlias string
 	// OnDupWhere limits duplicate-key updates to rows that satisfy the expression.
 	OnDupWhere sql.Expression
-	// CountOnDuplicateUpdateAsOneRow uses single-row affected-count semantics for duplicate updates.
-	CountOnDuplicateUpdateAsOneRow bool
 	// Returning is a list of expressions to return after the insert operation. This feature is not supported
 	// in MySQL's syntax, but is exposed through PostgreSQL's and MariaDB's syntax.
 	Returning []sql.Expression

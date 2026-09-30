@@ -389,7 +389,7 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 		return nil, nil, nil, err
 	}
 
-	iter, sch, err = rowexec.FinalizeIters(ctx, analyzed, qFlags, iter)
+	iter, sch, err = rowexec.FinalizeIters(ctx, analyzed, qFlags, iter, e.Analyzer.Overrides.CountMatchedRowsOnUpdate)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -428,7 +428,7 @@ func (e *Engine) PrepQueryPlanForExecution(ctx *sql.Context, _ string, plan sql.
 		return nil, nil, nil, err
 	}
 
-	iter, sch, err = rowexec.FinalizeIters(ctx, plan, qFlags, iter)
+	iter, sch, err = rowexec.FinalizeIters(ctx, plan, qFlags, iter, e.Analyzer.Overrides.CountMatchedRowsOnUpdate)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -759,7 +759,7 @@ func (e *Engine) executeEvent(ctx *sql.Context, dbName, createEventStatement, us
 		return err
 	}
 
-	iter, _, err = rowexec.FinalizeIters(ctx, definitionNode, nil, iter)
+	iter, _, err = rowexec.FinalizeIters(ctx, definitionNode, nil, iter, e.Analyzer.Overrides.CountMatchedRowsOnUpdate)
 	if err != nil {
 		return err
 	}

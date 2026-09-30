@@ -291,21 +291,23 @@ func TestOnDuplicateUpdateAffectedRows(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 	schema := sql.Schema{{Name: "c1", Type: types.Int64}}
 	tests := []struct {
-		name                string
-		row                 sql.Row
-		countUpdateAsOneRow bool
-		expected            int
+		name     string
+		row      sql.Row
+		mode     updateRowCountMode
+		expected int
 	}{
 		{name: "MySQL changed update", row: sql.Row{int64(1), int64(2)}, expected: 2},
 		{name: "MySQL unchanged update", row: sql.Row{int64(1), int64(1)}, expected: 0},
-		{name: "PostgreSQL changed update", row: sql.Row{int64(1), int64(2)}, countUpdateAsOneRow: true, expected: 1},
-		{name: "PostgreSQL unchanged update", row: sql.Row{int64(1), int64(1)}, countUpdateAsOneRow: true, expected: 1},
-		{name: "PostgreSQL insert", row: sql.Row{int64(1)}, countUpdateAsOneRow: true, expected: 1},
+		{name: "MySQL found rows changed update", row: sql.Row{int64(1), int64(2)}, mode: countMatchedRowsWithChangedDuplicatesTwice, expected: 2},
+		{name: "MySQL found rows unchanged update", row: sql.Row{int64(1), int64(1)}, mode: countMatchedRowsWithChangedDuplicatesTwice, expected: 1},
+		{name: "PostgreSQL changed update", row: sql.Row{int64(1), int64(2)}, mode: countMatchedRowsOnce, expected: 1},
+		{name: "PostgreSQL unchanged update", row: sql.Row{int64(1), int64(1)}, mode: countMatchedRowsOnce, expected: 1},
+		{name: "PostgreSQL insert", row: sql.Row{int64(1)}, mode: countMatchedRowsOnce, expected: 1},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			handler := &onDuplicateUpdateHandler{schema: schema, countUpdateAsOneRow: test.countUpdateAsOneRow}
+			handler := &onDuplicateUpdateHandler{schema: schema, countMode: test.mode}
 			require.NoError(t, handler.handleRowUpdate(ctx, test.row))
 			require.Equal(t, test.expected, handler.rowsAffected)
 		})
