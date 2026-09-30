@@ -3020,15 +3020,15 @@ func TestPlanBuilderErr(t *testing.T) {
 		},
 		{
 			Query: "SELECT CAST('2020-01-01' AS DATETIME(7))",
-			Err:   "Too big precision 7. Maximum is 6.",
+			Err:   "Too big precision 7 specified. Maximum is 6.",
 		},
 		{
 			Query: "SELECT CONVERT('2020-01-01', DATETIME(7))",
-			Err:   "Too big precision 7. Maximum is 6.",
+			Err:   "Too big precision 7 specified. Maximum is 6.",
 		},
 		{
 			Query: "SELECT CAST('10:00:00' AS TIME(7))",
-			Err:   "Too big precision 7. Maximum is 6.",
+			Err:   "Too big precision 7 specified. Maximum is 6.",
 		},
 	}
 
