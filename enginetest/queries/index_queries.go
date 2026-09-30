@@ -4570,4 +4570,16 @@ var IndexQueries = []ScriptTest{
 			},
 		},
 	},
+	// https://github.com/dolthub/dolt/issues/5942
+	{
+		Name: "Test oversized primary-key lookups",
+		SetUpScript: []string{
+			"CREATE TABLE django_session(session_key VARCHAR(5) PRIMARY KEY)",
+			"INSERT INTO django_session VALUES('01234')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{Query: "SELECT * FROM django_session WHERE session_key='0123456789'", Expected: []sql.Row{}},
+			{Query: "SELECT * FROM django_session WHERE session_key='01234'", Expected: []sql.Row{{"01234"}}},
+		},
+	},
 }

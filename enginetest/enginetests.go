@@ -48,7 +48,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/go-mysql-server/sql/variables"
-	"github.com/dolthub/go-mysql-server/test"
+	"github.com/dolthub/go-mysql-server/testutils"
 )
 
 // TestQueries tests a variety of queries against databases and tables provided by the given harness.
@@ -4558,7 +4558,7 @@ func TestTracing(t *testing.T, harness Harness) {
 	defer e.Close()
 
 	ctx := NewContext(harness)
-	tracer := new(test.MemTracer)
+	tracer := new(testutils.MemTracer)
 
 	sql.WithTracer(tracer)(ctx)
 
