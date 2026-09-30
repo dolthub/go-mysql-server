@@ -16,9 +16,9 @@ package sql
 
 import (
 	"fmt"
-	"testing"
 	"strings"
-	
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -130,6 +130,8 @@ func TestConvertCollationID(t *testing.T) {
 }
 
 func TestCollationIsBinaryMetadata(t *testing.T) {
+	require.Equal(t, Collation_Default.IsBinary(), Collation_Unspecified.IsBinary())
+
 	iter := NewCollationsIterator()
 	for {
 		c, ok := iter.Next()
