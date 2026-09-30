@@ -38,7 +38,7 @@ func assignExecIndexes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 	}
 	switch n := n.(type) {
 	case *plan.InsertInto:
-		if n.LiteralValueSource && len(n.Checks()) == 0 && !n.OnDupExpressions().HasUpdates() && len(n.Returning) == 0 {
+		if n.LiteralValueSource && len(n.Checks()) == 0 && n.OnDup == nil && len(n.Returning) == 0 {
 			return n, transform.SameTree, nil
 		}
 	case *plan.Update:
@@ -526,7 +526,12 @@ func (s *idxScope) visitSelf(ctx *sql.Context, n sql.Node) error {
 		rightScope.addSchema(rightSchema)
 		dstScope := s.childScopes[0]
 
-		for _, e := range n.OnDupExpressions().AllExpressions() {
+		var duplicateExpressions []sql.Expression
+		if source := plan.GetOnDuplicateKeyUpdateSource(n.OnDup); source != nil {
+			duplicateExpressions = source.Expressions()
+		}
+
+		for _, e := range duplicateExpressions {
 			set, ok := e.(*expression.SetField)
 			if !ok {
 				return fmt.Errorf("on duplicate update expressions should be *expression.SetField; found %T", e)
@@ -636,12 +641,25 @@ func (s *idxScope) finalizeSelf(ctx *sql.Context, n sql.Node) (sql.Node, error) 
 		nn.Destination = s.children[1]
 		// Duplicate assignments use the existing/proposed row scope, while the
 		// remaining insert expressions use the destination scope.
-		onDupExprsLen := n.OnDupExpressions().Length()
-		rewritten, err := nn.WithOnDupExpressions(ctx, s.expressions[:onDupExprsLen]...)
-		if err != nil {
-			return nil, err
+		onDupExprsLen := 0
+		if source := plan.GetOnDuplicateKeyUpdateSource(nn.OnDup); source != nil {
+			onDupExprsLen = len(source.Expressions())
+			nn.OnDup, _, err = transform.NodeWithCtx(ctx, nn.OnDup, func(ctx *sql.Context, c transform.Context) bool {
+				_, trigger := c.Parent.(*plan.TriggerExecutor)
+				return !trigger || c.ChildNum != 1
+			}, func(ctx *sql.Context, c transform.Context) (sql.Node, transform.TreeIdentity, error) {
+				if source, ok := c.Node.(*plan.OnDuplicateKeyUpdateSource); ok {
+					node, err := source.WithExpressions(ctx, s.expressions[:onDupExprsLen]...)
+					return node, transform.NewTree, err
+				}
+
+				return c.Node, transform.SameTree, nil
+			})
+			if err != nil {
+				return nil, err
+			}
 		}
-		nn = *rewritten
+
 		expressionsOffset := onDupExprsLen
 		if n.OnDupWhere != nil {
 			nn.OnDupWhere = s.expressions[expressionsOffset]

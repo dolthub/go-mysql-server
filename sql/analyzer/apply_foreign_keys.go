@@ -96,7 +96,7 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 			return n, transform.SameTree, nil
 		}
 		var fkEditor *plan.ForeignKeyEditor
-		if n.IsReplace || n.OnDupExpressions().HasUpdates() {
+		if n.IsReplace || n.OnDup != nil {
 			fkEditor, err = getForeignKeyEditor(ctx, a.Catalog, tbl, cache, fkChain, true)
 			if err != nil {
 				return nil, transform.SameTree, err
@@ -118,7 +118,7 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 			OriginalNode:               n.Destination,
 			Editor:                     fkEditor,
 			AllUpdaters:                fkChain.GetUpdaters(),
-			CheckReferencesAfterInsert: n.OnDupExpressions().HasUpdates() || (n.Ignore && n.IgnoreMode == sql.InsertIgnoreModeDuplicateKeysOnly),
+			CheckReferencesAfterInsert: n.OnDup != nil || (n.Ignore && n.IgnoreMode == sql.InsertIgnoreModeDuplicateKeysOnly),
 		})
 		return nn, transform.NewTree, err
 	case *plan.Update:

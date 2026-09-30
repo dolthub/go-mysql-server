@@ -164,7 +164,7 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 		case *plan.InsertInto:
 			affectedTables = append(affectedTables, getTableName(ctx, n))
 			triggerEvent = plan.InsertTrigger
-			onDuplicateUpdate = n.OnDupExpressions().HasUpdates()
+			onDuplicateUpdate = n.OnDup != nil
 			if n.Database() != nil && n.Database().Name() != "" {
 				db = n.Database().Name()
 			}

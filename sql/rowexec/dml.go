@@ -44,7 +44,7 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 		replacer = insertable.(sql.ReplaceableTable).Replacer(ctx)
 	} else {
 		inserter = insertable.Inserter(ctx)
-		if ii.OnDupExpressions().HasUpdates() {
+		if ii.OnDup != nil {
 			updater = insertable.(sql.UpdatableTable).Updater(ctx)
 		}
 	}
@@ -76,6 +76,12 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 			}
 		}
 	}
+
+	var onDupExprs *plan.UpdateExprs
+	if source := plan.GetOnDuplicateKeyUpdateSource(ii.OnDup); source != nil {
+		onDupExprs = source.UpdateExprs
+	}
+
 	insertIter := &insertIter{
 		schema:                         dstSchema,
 		inserter:                       inserter,
@@ -83,7 +89,7 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 		updater:                        updater,
 		rowSource:                      rowIter,
 		unlocker:                       unlocker,
-		onDupKeyUpdateExprs:            ii.OnDupExpressions(),
+		onDupKeyUpdateExprs:            onDupExprs,
 		onDupWhere:                     ii.OnDupWhere,
 		countOnDuplicateUpdateAsOneRow: ii.CountOnDuplicateUpdateAsOneRow,
 		insertExprs:                    insertExpressions,
@@ -99,13 +105,13 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 		hasAfterTrigger:                ii.HasAfterTrigger,
 	}
 
-	if ii.OnDupExpressions().HasUpdates() {
+	if ii.OnDup != nil {
 		insertIter.duplicateKeyHandler = &directDuplicateKeyHandler{insertIter: insertIter}
 	}
 	if _, direct := ii.OnDup.(*plan.OnDuplicateKeyUpdateSource); ii.OnDup != nil && !direct {
-		source := &duplicateKeyUpdateIter{schema: dstSchema, updateExprs: ii.OnDupExpressions(), ignore: ii.Ignore}
-		// Bind the update branch to the final destination (including foreign-key
-		// wrappers) and assignments, which may have been rewritten since planning.
+		source := &duplicateKeyUpdateIter{schema: dstSchema, updateExprs: onDupExprs, ignore: ii.Ignore}
+		// Bind the update branch to the final destination, including foreign-key
+		// wrappers, while retaining the assignments owned by its source node.
 		updatePlan, _, err := transform.NodeWithCtx(ctx, ii.OnDup, func(ctx *sql.Context, c transform.Context) bool {
 			_, trigger := c.Parent.(*plan.TriggerExecutor)
 			return !trigger || c.ChildNum != 1
@@ -113,8 +119,13 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 			node := c.Node
 			switch n := node.(type) {
 			case *plan.OnDuplicateKeyUpdateSource:
+				rebound, err := n.WithChildren(ctx, ii.Destination)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+
 				return &duplicateKeyUpdateSourceNode{
-					OnDuplicateKeyUpdateSource: plan.NewOnDuplicateKeyUpdateSource(ii.Destination, ii.OnDupExpressions(), ii.Ignore),
+					OnDuplicateKeyUpdateSource: rebound.(*plan.OnDuplicateKeyUpdateSource),
 					iter:                       source,
 				}, transform.NewTree, nil
 			case *plan.Update:
@@ -402,7 +413,7 @@ func (b *BaseBuilder) buildTriggerExecutor(ctx *sql.Context, n *plan.TriggerExec
 	if n.TriggerEvent == plan.InsertTrigger && n.TriggerTime == plan.AfterTrigger {
 		transform.Inspect(n.Left(), func(node sql.Node) bool {
 			if insert, ok := node.(*plan.InsertInto); ok {
-				if insert.OnDupExpressions().HasUpdates() {
+				if insert.OnDup != nil {
 					onDupRowSize = len(insert.Destination.Schema(ctx))
 				}
 				return false
