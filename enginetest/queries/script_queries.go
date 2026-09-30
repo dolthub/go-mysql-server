@@ -7021,6 +7021,10 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{1695625377}},
 			},
 			{
+				Query:    "SELECT UNIX_TIMESTAMP((SELECT '2023-01-01 12:34:56.789'));",
+				Expected: []sql.Row{{"1672576496.789000"}},
+			},
+			{
 				Query:    "SET time_zone = '-06:00';",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},

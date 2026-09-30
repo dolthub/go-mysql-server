@@ -3544,6 +3544,23 @@ var FunctionQueryTests = []QueryTest{
 	},
 
 	{
+		Query:       "select cast(123 as decimal(66, 0));",
+		ExpectedErr: sql.ErrTooBigPrecision,
+	},
+	{
+		Query:       "select cast(123 as decimal(0, 31));",
+		ExpectedErr: sql.ErrTooBigScale,
+	},
+	{
+		Query:       "select cast(123 as datetime(7));",
+		ExpectedErr: sql.ErrTooBigPrecision,
+	},
+	{
+		Query:       "select cast(123 as time(7));",
+		ExpectedErr: sql.ErrTooBigPrecision,
+	},
+
+	{
 		Query:    "select extract(day from 0)",
 		Expected: []sql.Row{{0}},
 	},
@@ -3962,5 +3979,34 @@ var FunctionQueryTests = []QueryTest{
 	{
 		Query:       `SELECT RPAD(_latin1'a', 3, _utf8mb4'👍')`,
 		ExpectedErr: sql.ErrCannotConvertString,
+	},
+	// https://github.com/dolthub/dolt/issues/11917
+	{
+		Query:    "SELECT UNIX_TIMESTAMP(IFNULL(SIN(WEEKDAY(UUID())), (SELECT 1)));",
+		Expected: []sql.Row{{int64(0)}},
+	},
+	{
+		Query:    "SELECT UNIX_TIMESTAMP((SELECT 1));",
+		Expected: []sql.Row{{int64(0)}},
+	},
+	{
+		Query:    "SELECT UNIX_TIMESTAMP((SELECT NULL));",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT UNIX_TIMESTAMP((SELECT 1 FROM (SELECT 1) t WHERE 1=0));",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT UNIX_TIMESTAMP(NULLIF((SELECT 1), 1));",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT UNIX_TIMESTAMP(COALESCE((SELECT NULL), (SELECT 1)));",
+		Expected: []sql.Row{{int64(0)}},
+	},
+	{
+		Query:       "SELECT UNIX_TIMESTAMP((SELECT 1 UNION ALL SELECT 2));",
+		ExpectedErr: sql.ErrExpectedSingleRow,
 	},
 }

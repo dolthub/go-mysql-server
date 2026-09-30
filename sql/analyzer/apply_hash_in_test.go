@@ -513,6 +513,7 @@ func TestApplyHashIn(t *testing.T) {
 				expression.NewInTuple(
 					expression.NewConvert(
 						expression.NewGetField(0, types.Int64, "foo", false),
+						types.LongText,
 						"char",
 					),
 					expression.NewTuple(
@@ -527,6 +528,7 @@ func TestApplyHashIn(t *testing.T) {
 					ctx,
 					expression.NewConvert(
 						expression.NewGetField(0, types.Int64, "foo", false),
+						types.LongText,
 						"char",
 					),
 					expression.NewTuple(
@@ -545,6 +547,7 @@ func TestApplyHashIn(t *testing.T) {
 					expression.NewTuple(
 						expression.NewConvert(
 							expression.NewGetField(0, types.Int64, "foo", false),
+							types.LongText,
 							"char",
 						),
 					),
@@ -558,6 +561,7 @@ func TestApplyHashIn(t *testing.T) {
 					expression.NewTuple(
 						expression.NewConvert(
 							expression.NewGetField(0, types.Int64, "foo", false),
+							types.LongText,
 							"char",
 						),
 					),
