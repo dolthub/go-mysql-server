@@ -703,11 +703,47 @@ func TestTruncateStringToDouble(t *testing.T) {
 			exp:      ".0e123",
 			expTrunc: false,
 		},
+		{
+			// https://github.com/dolthub/dolt/issues/11918
+			input:    "1E",
+			exp:      "1",
+			expTrunc: true,
+		},
+		{
+			input:    "1e+",
+			exp:      "1",
+			expTrunc: true,
+		},
+		{
+			input:    "-1.5e-",
+			exp:      "-1.5",
+			expTrunc: true,
+		},
+		{
+			input:    "1.e",
+			exp:      "1.",
+			expTrunc: true,
+		},
+		{
+			input:    "1ee2",
+			exp:      "1",
+			expTrunc: true,
+		},
+		{
+			input:    "1e2.5",
+			exp:      "1e2",
+			expTrunc: true,
+		},
+		{
+			input:    "1e.5",
+			exp:      "1",
+			expTrunc: true,
+		},
 	}
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v", test.input), func(t *testing.T) {
-			truncStr, didTrunc := TruncateStringToDouble(test.input)
+			truncStr, didTrunc := TruncateStringToDouble(test.input, true)
 			assert.Equal(t, test.exp, truncStr)
 			assert.Equal(t, test.expTrunc, didTrunc)
 		})
