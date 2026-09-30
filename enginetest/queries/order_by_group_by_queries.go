@@ -510,12 +510,16 @@ var OrderByGroupByScriptTests = []ScriptTest{
 			},
 		},
 	},
+	// https://github.com/dolthub/dolt/issues/11911
 	{
-		// https://github.com/dolthub/dolt/issues/11911
 		Name: "Scalar subqueries in grouped SELECT list with ONLY_FULL_GROUP_BY",
 		SetUpScript: []string{
 			"CREATE TABLE t1 (id INT PRIMARY KEY, active INT, status INT);",
 			"INSERT INTO t1 VALUES (1, 1, 10), (2, 0, 20), (3, 1, 30);",
+			"CREATE TABLE l(id INT, k INT);",
+			"CREATE TABLE r(id INT, k INT);",
+			"INSERT INTO l VALUES (1,10), (2,20);",
+			"INSERT INTO r VALUES (1,10), (3,20);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -561,6 +565,22 @@ var OrderByGroupByScriptTests = []ScriptTest{
 			{
 				Query:       "SELECT COUNT(*), ANY_VALUE(active), (SELECT MAX(t9.id) FROM t1 AS t9 WHERE t9.active = t1.active) FROM t1;",
 				ExpectedErr: sql.ErrNonAggregatedColumnWithoutGroupBy,
+			},
+			{
+				Query:    "SELECT ANY_VALUE(active), COUNT(*) FROM t1 GROUP BY active;",
+				Expected: []sql.Row{{1, 2}, {0, 1}},
+			},
+			{
+				Query:    "SELECT ANY_VALUE(status) AS s FROM t1 GROUP BY active HAVING s > 15 ORDER BY s;",
+				Expected: []sql.Row{{20}},
+			},
+			{
+				Query:    "SELECT l.k, (SELECT MAX(r2.id) FROM r AS r2 WHERE r2.id = l.id) FROM l JOIN r ON l.k = r.k GROUP BY l.k, l.id;",
+				Expected: []sql.Row{{10, 1}, {20, nil}},
+			},
+			{
+				Query:       "SELECT l.k, (SELECT MAX(r2.id) FROM r AS r2 WHERE r2.id = r.id) FROM l JOIN r ON l.k = r.k GROUP BY l.k, l.id;",
+				ExpectedErr: analyzererrors.ErrValidationGroupBy,
 			},
 		},
 	},

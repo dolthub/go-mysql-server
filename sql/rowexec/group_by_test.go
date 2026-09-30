@@ -38,7 +38,7 @@ func TestGroupBySchema(t *testing.T) {
 		expression.NewAlias(ctx, "c1", expression.NewLiteral("s", types.LongText)),
 		expression.NewAlias(ctx, "c2", aggregation.NewCount(expression.NewStar())),
 	}
-	gb := plan.NewGroupBy(agg, nil, plan.NewResolvedTable(child, nil, nil), true)
+	gb := plan.NewGroupBy(agg, nil, plan.NewResolvedTable(child, nil, nil))
 	require.Equal(sql.Schema{
 		{Name: "c1", Type: types.LongText},
 		{Name: "c2", Type: types.Int64},
@@ -54,13 +54,13 @@ func TestGroupByResolved(t *testing.T) {
 	agg := []sql.Expression{
 		expression.NewAlias(ctx, "c2", aggregation.NewCount(expression.NewStar())),
 	}
-	gb := plan.NewGroupBy(agg, nil, plan.NewResolvedTable(child, nil, nil), true)
+	gb := plan.NewGroupBy(agg, nil, plan.NewResolvedTable(child, nil, nil))
 	require.True(gb.Resolved())
 
 	agg = []sql.Expression{
 		expression.NewStar(),
 	}
-	gb = plan.NewGroupBy(agg, nil, plan.NewResolvedTable(child, nil, nil), true)
+	gb = plan.NewGroupBy(agg, nil, plan.NewResolvedTable(child, nil, nil))
 	require.False(gb.Resolved())
 }
 
@@ -109,7 +109,6 @@ func TestGroupByRowIter(t *testing.T) {
 				expression.NewGetField(1, types.Int64, "col2", true),
 			},
 			plan.NewResolvedTable(child, nil, nil),
-			true,
 		))
 
 	require.Equal(1, len(p.Children()))
@@ -158,7 +157,6 @@ func TestGroupByAggregationGrouping(t *testing.T) {
 			expression.NewIsNull(expression.NewGetField(1, types.Int64, "col2", true)),
 		},
 		plan.NewResolvedTable(child, nil, nil),
-		true,
 	)
 
 	rows, err := NodeToRows(ctx, p)
@@ -241,7 +239,6 @@ func TestGroupByCollations(t *testing.T) {
 					expression.NewGetFieldWithTable(0, 1, tc.Type, "", "test", "col1", false),
 				},
 				plan.NewResolvedTable(child, nil, nil),
-				true,
 			)
 
 			rows, err := NodeToRows(ctx, p)
@@ -268,7 +265,6 @@ func BenchmarkGroupBy(b *testing.B) {
 		},
 		nil,
 		plan.NewResolvedTable(table, nil, nil),
-		true,
 	)
 
 	expected := []sql.Row{{int64(200)}}
@@ -302,7 +298,6 @@ func BenchmarkGroupBy(b *testing.B) {
 			expression.NewGetField(0, types.Int64, "a", false),
 		},
 		plan.NewResolvedTable(table, nil, nil),
-		true,
 	)
 
 	expected = []sql.Row{}

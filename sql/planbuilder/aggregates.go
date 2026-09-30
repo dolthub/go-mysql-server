@@ -32,11 +32,10 @@ import (
 var _ ast.Expr = (*aggregateInfo)(nil)
 
 type groupBy struct {
-	outScope  *scope
-	aggs      map[string]scopeColumn
-	anyValues map[string]scopeColumn
-	grouping  map[string]bool
-	inCols    []scopeColumn
+	outScope *scope
+	aggs     map[string]scopeColumn
+	grouping map[string]bool
+	inCols   []scopeColumn
 }
 
 func (g *groupBy) addInCol(c scopeColumn) {
@@ -47,32 +46,19 @@ func (g *groupBy) addOutCol(c scopeColumn) columnId {
 	return g.outScope.newColumn(c)
 }
 
-// hasAggs reports whether [groupBy] contains aggregate functions.
 func (g *groupBy) hasAggs() bool {
 	return len(g.aggs) > 0
 }
 
-// isAggregated reports whether this [groupBy] represents an aggregated
-// query given grouping expressions |cols|.
-func (g *groupBy) isAggregated(cols []sql.Expression) bool {
-	return len(cols) > 0 || len(g.aggs) > 0
-}
-
-// outCols returns all aggregated and ANY_VALUE output columns registered
-// on [groupBy].
-func (g *groupBy) outCols() []scopeColumn {
-	total := len(g.aggs) + len(g.anyValues)
-	cols := make([]scopeColumn, 0, total)
+func (g *groupBy) aggregations() []scopeColumn {
+	aggregations := make([]scopeColumn, 0, len(g.aggs))
 	for _, agg := range g.aggs {
-		cols = append(cols, agg)
+		aggregations = append(aggregations, agg)
 	}
-	for _, av := range g.anyValues {
-		cols = append(cols, av)
-	}
-	sort.Slice(cols, func(i, j int) bool {
-		return cols[i].scalar.String() < cols[j].scalar.String()
+	sort.Slice(aggregations, func(i, j int) bool {
+		return aggregations[i].scalar.String() < aggregations[j].scalar.String()
 	})
-	return cols
+	return aggregations
 }
 
 func (g *groupBy) addAggStr(c scopeColumn) {
@@ -82,37 +68,24 @@ func (g *groupBy) addAggStr(c scopeColumn) {
 	g.aggs[strings.ToLower(c.scalar.String())] = c
 }
 
-func (g *groupBy) addAnyValueStr(c scopeColumn) {
-	if g.anyValues == nil {
-		g.anyValues = make(map[string]scopeColumn)
-	}
-	g.anyValues[strings.ToLower(c.scalar.String())] = c
-}
-
 func (g *groupBy) getAggRef(name string) sql.Expression {
-	if ret, ok := g.aggs[name]; ok && !ret.empty() {
-		return ret.scalarGf()
+	if g.aggs == nil {
+		return nil
 	}
-	return nil
-}
-
-func (g *groupBy) getAnyValueRef(name string) sql.Expression {
-	if ret, ok := g.anyValues[name]; ok && !ret.empty() {
-		return ret.scalarGf()
+	ret, _ := g.aggs[name]
+	if ret.empty() {
+		return nil
 	}
-	return nil
+	return ret.scalarGf()
 }
 
 type aggregateInfo struct {
 	ast.Expr
 }
 
-// needsGroupByNode reports whether the select statement requires a
-// [plan.GroupBy] node to process grouping, aggregate functions, or
-// ANY_VALUE expressions.
-func (b *Builder) needsGroupByNode(fromScope *scope, sel *ast.Select) bool {
+func (b *Builder) needsAggregation(fromScope *scope, sel *ast.Select) bool {
 	return len(sel.GroupBy) > 0 ||
-		(fromScope.groupBy != nil && (fromScope.groupBy.hasAggs() || len(fromScope.groupBy.anyValues) > 0))
+		(fromScope.groupBy != nil && fromScope.groupBy.hasAggs())
 }
 
 func (b *Builder) buildGroupingCols(fromScope, projScope *scope, groupby ast.GroupBy, selects ast.SelectExprs) []sql.Expression {
@@ -255,8 +228,6 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 					aliasDeps[colName] = false
 				}
 			case *plan.Subquery:
-				// TODO(#3944): Retain subquery outer columns in grouped
-				// rows so outer projections can evaluate the subquery.
 				e.Correlated().ForEach(func(colId sql.ColumnId) {
 					if correlated, found := projScope.parent.getCol(colId); found {
 						hasWindowDep = inspectSelectDeps(correlated.scalarGf(), inAlias) || hasWindowDep
@@ -267,7 +238,7 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 		})
 		return hasWindowDep
 	}
-	for _, e := range group.outCols() {
+	for _, e := range group.aggregations() {
 		if !selectStr[strings.ToLower(e.String())] {
 			selectDeps = append(selectDeps, e.scalar)
 			selectGfs = append(selectGfs, e.scalarGf())
@@ -303,7 +274,7 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 			selectStr[e.String()] = true
 		}
 	}
-	gb := plan.NewGroupBy(selectDeps, groupingCols, fromScope.node, group.isAggregated(groupingCols))
+	gb := plan.NewGroupBy(selectDeps, groupingCols, fromScope.node)
 	outScope.node = gb
 
 	if len(aliases) > 0 {
@@ -395,7 +366,7 @@ func (b *Builder) buildAnyValue(inScope *scope, name string, e *ast.FuncExpr, gb
 	gb.addAggInCol(b, expr)
 	b.qFlags.Set(sql.QFlagAnyAgg)
 	agg := b.newAggregation(e, name, []sql.Expression{expr})
-	return b.addAnyValue(agg, gb)
+	return b.addAggregate(agg, gb)
 }
 
 // addAggregate registers aggregate expression |agg| on |gb| and returns
@@ -421,26 +392,6 @@ func (b *Builder) addAggregate(agg sql.Aggregation, gb *groupBy) sql.Expression 
 
 	col.id = id
 	gb.addAggStr(col)
-	return col.scalarGf()
-}
-
-// addAnyValue registers [aggregation.AnyValue] expression |e| on |gb|.
-func (b *Builder) addAnyValue(e sql.Aggregation, gb *groupBy) sql.Expression {
-	typ := e.Type(b.ctx)
-	name := strings.ToLower(plan.AliasSubqueryString(b.ctx, e))
-	if gf := gb.getAnyValueRef(name); gf != nil {
-		return gf
-	}
-
-	col := scopeColumn{col: name, scalar: e, typ: typ, nullable: e.IsNullable(b.ctx)}
-	id := gb.outScope.newColumn(col)
-
-	e = e.WithId(sql.ColumnId(id)).(sql.Aggregation)
-	gb.outScope.cols[len(gb.outScope.cols)-1].scalar = e
-	col.scalar = e
-
-	col.id = id
-	gb.addAnyValueStr(col)
 	return col.scalarGf()
 }
 
@@ -1104,7 +1055,7 @@ func (b *Builder) buildHaving(fromScope, projScope, outScope *scope, having *ast
 	}
 
 	// add columns from fromScope referenced in any aggregate expressions
-	for _, c := range fromScope.groupBy.outCols() {
+	for _, c := range fromScope.groupBy.aggregations() {
 		transform.InspectExpr(b.ctx, c.scalar, func(ctx *sql.Context, e sql.Expression) bool {
 			switch e := e.(type) {
 			case *expression.GetField:
