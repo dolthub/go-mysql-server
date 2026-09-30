@@ -266,6 +266,7 @@ func (i *InetNtoa) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// returns NULL for them rather than wrapping or clamping.
 	addr := ipv4int.(int64)
 	if addr < 0 || addr > math.MaxUint32 {
+		ctx.Warn(1411, "Incorrect integer value: '%v' for function inet_ntoa", val)
 		return nil, nil
 	}
 
