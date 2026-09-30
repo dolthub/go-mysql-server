@@ -819,6 +819,7 @@ func modifyColumnInSchema(ctx *sql.Context, schema sql.Schema, name string, colu
 			// Regenerated values have the new type, including any new ENUM ordinals.
 			fieldType, nullable = newSch[newSchemaIdx].Type, newSch[newSchemaIdx].Nullable
 		}
+
 		return expression.NewGetFieldWithTable(newSchemaIdx, int(gf.TableId()), fieldType, gf.Database(), gf.Table(), colName, nullable), transform.NewTree, nil
 	}
 	for i := range newSch {

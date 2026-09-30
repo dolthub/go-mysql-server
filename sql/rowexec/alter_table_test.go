@@ -408,24 +408,36 @@ func TestModifyStoredGeneratedColumnProjection(t *testing.T) {
 	field := func(index int, name string) sql.Expression {
 		return expression.NewGetField(index, types.Int64, name, false)
 	}
+
 	generated := func(left sql.Expression, op string, right sql.Expression) *sql.ColumnDefaultValue {
 		return mustDefault(expression.NewArithmetic(left, right, op), types.Int64, false, true, false)
 	}
+
 	for _, name := range []string{"resolved", "persisted"} {
 		t.Run(name, func(t *testing.T) {
 			sch := sql.Schema{
 				{Name: "x", Type: types.Int64},
 				{Name: "y", Type: types.Int64},
 				{Name: "z", Type: types.Int64, Generated: generated(field(0, "x"), "+", field(1, "y"))},
-				{Name: "w", Type: types.Int64, Generated: generated(field(2, "z"), "+", expression.NewLiteral(int64(1), types.Int64))},
+				{
+					Name:      "w",
+					Type:      types.Int64,
+					Generated: generated(field(2, "z"), "+", expression.NewLiteral(int64(1), types.Int64)),
+				},
 			}
+
 			if name == "persisted" {
 				sch[2].Generated = sql.NewUnresolvedColumnDefaultValue("(x + y)")
 				sch[3].Generated = sql.NewUnresolvedColumnDefaultValue("(z + 1)")
 				sch = resolveGeneratedColumns(ctx, sql.EngineOverrides{}, "mydb", "t", sch)
 				require.True(t, sch[3].Generated.Resolved())
 			}
-			newCol := &sql.Column{Name: "product", Type: types.Int64, Generated: generated(field(0, "x"), "*", field(1, "y"))}
+
+			newCol := &sql.Column{
+				Name:      "product",
+				Type:      types.Int64,
+				Generated: generated(field(0, "x"), "*", field(1, "y")),
+			}
 			_, projections, err := modifyColumnInSchema(ctx, sch, "z", newCol, &sql.ColumnOrder{First: true})
 			require.NoError(t, err)
 			row, err := ProjectRow(ctx, projections, sql.Row{int64(2), int64(3), int64(5), int64(6)})
