@@ -15,6 +15,7 @@
 package rowexec
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
@@ -288,6 +289,42 @@ func TestGroupByGroupingReturnsConsumerError(t *testing.T) {
 	}
 
 	require.NoError(t, iter.Close(ctx))
+}
+
+type exhaustedGroupingMemory struct{}
+
+func (exhaustedGroupingMemory) MaxMemory() uint64 { return 1 }
+func (exhaustedGroupingMemory) UsedMemory() uint64 {
+	// Give the producer time to fill its channel before the consumer fails.
+	time.Sleep(100 * time.Millisecond)
+	return 2
+}
+
+func TestGroupByGroupingReturnsDistinctMemoryError(t *testing.T) {
+	ctx := sql.NewContext(context.Background(), sql.WithMemoryManager(sql.NewMemoryManager(exhaustedGroupingMemory{})))
+	rows := make([]sql.Row, 1000)
+	for i := range rows {
+		rows[i] = sql.NewRow(int64(i))
+	}
+
+	field := expression.NewGetField(0, types.Int64, "a", false)
+	selected := []sql.Expression{aggregation.NewCountDistinct(field)}
+	groupBy := []sql.Expression{expression.NewLiteral(int64(1), types.Int64)}
+	iter := newGroupByGroupingIter(ctx, selected, groupBy, sql.RowsToRowIter(rows...))
+	result := make(chan error, 1)
+	go func() {
+		_, err := iter.Next(ctx)
+		result <- err
+	}()
+
+	select {
+	case err := <-result:
+		require.True(t, sql.ErrNoMemoryAvailable.Is(err), "unexpected error: %v", err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("grouped COUNT DISTINCT memory error hung")
+	}
+	require.NoError(t, iter.Close(ctx))
+	require.Zero(t, ctx.Memory.NumCaches())
 }
 
 // failingExpression evaluates to err on every row.
