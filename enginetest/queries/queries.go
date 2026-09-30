@@ -10231,6 +10231,42 @@ var DateParseQueries = []QueryTest{
 		Expected: []sql.Row{{nil}},
 	},
 	{
+		Query:                 "SELECT STR_TO_DATE('23:02:03.123 PM', '%H:%i:%s.%f %p')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       1411,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "SELECT STR_TO_DATE('23 PM', '%k %p')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       1411,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "SELECT STR_TO_DATE('23:02:03 PM', '%k:%i:%s %p')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       1411,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "SELECT STR_TO_DATE('23:02:03 PM', '%T %p')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       1411,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "SELECT STR_TO_DATE('01:02:03 AM', '%T %p')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       1411,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "SELECT STR_TO_DATE('PM 23:02:03', '%p %T')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       1411,
+		ExpectedWarningsCount: 1,
+	},
+	{
 		// The PM marker used to be parsed and then dropped, so this came back as 01:02.
 		Query:    "SELECT STR_TO_DATE('01:02 PM','%h:%i %p')",
 		Expected: []sql.Row{{time.Date(-1, time.November, 30, 13, 2, 0, 0, time.UTC)}},

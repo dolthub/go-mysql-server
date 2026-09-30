@@ -50,19 +50,11 @@ func ParseDateWithFormat(date, format string) (interface{}, error) {
 		return nil, err
 	}
 
-	for _, s := range dateSpecifiers {
-		if _, ok := specifiers[s]; ok {
-			break
-		}
-	}
-	_, hasAmPm := specifiers['p']
-	for _, s := range timeSpecifiers {
-		if _, ok := specifiers[s]; ok {
-			// validate that am/pm is not used with 24 hour time specifiers
-			if (s == 'H' || s == 'k' || s == 'T') && hasAmPm {
+	if _, hasAmPm := specifiers['p']; hasAmPm {
+		for _, specifier := range []uint8{'H', 'k', 'T'} {
+			if _, has24Hour := specifiers[specifier]; has24Hour {
 				return nil, fmt.Errorf("cannot use 24 hour time (H) with AM/PM (p)")
 			}
-			break
 		}
 	}
 

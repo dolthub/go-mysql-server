@@ -17,223 +17,48 @@ func TestParseDate(t *testing.T) {
 		format   string
 		expected interface{}
 	}{
-		{
-			name:     "simple",
-			date:     "Jan 3, 2000",
-			format:   "%b %e, %Y",
-			expected: time.Date(2000, time.January, 3, 0, 0, 0, 0, time.UTC),
-		},
-		{
-			name:     "simple_with_spaces",
-			date:     "Nov  03 ,   2000",
-			format:   "%b %e, %Y",
-			expected: time.Date(2000, time.November, 3, 0, 0, 0, 0, time.UTC),
-		},
-		{
-			name:     "simple_with_spaces_2",
-			date:     "Dec  15 ,   2000",
-			format:   "%b %e, %Y",
-			expected: time.Date(2000, time.December, 15, 0, 0, 0, 0, time.UTC),
-		},
-		{
-			name:     "reverse",
-			date:     "2023/Feb/ 1",
-			format:   "%Y/%b/%e",
-			expected: time.Date(2023, time.February, 1, 0, 0, 0, 0, time.UTC),
-		},
-		{
-			name:     "reverse_with_spaces",
-			date:     " 2023 /Apr/ 01  ",
-			format:   "%Y/%b/%e",
-			expected: time.Date(2023, time.April, 1, 0, 0, 0, 0, time.UTC),
-		},
-		{
-			name:     "weekday",
-			date:     "Thu, Aug 5, 2021",
-			format:   "%a, %b %e, %Y",
-			expected: time.Date(2021, time.August, 5, 0, 0, 0, 0, time.UTC),
-		},
-		{
-			name:     "weekday",
-			date:     "Fri, Aug 6, 2021",
-			format:   "%a, %b %e, %Y",
-			expected: time.Date(2021, time.August, 6, 0, 0, 0, 0, time.UTC),
-		},
-		{
-			name:     "weekday",
-			date:     "Sat, Aug 7, 2021",
-			format:   "%a, %b %e, %Y",
-			expected: time.Date(2021, time.August, 7, 0, 0, 0, 0, time.UTC),
-		},
-		{
-			name:     "weekday",
-			date:     "Sun, Aug 8, 2021",
-			format:   "%a, %b %e, %Y",
-			expected: time.Date(2021, time.August, 8, 0, 0, 0, 0, time.UTC),
-		},
-		{
-			name:     "weekday",
-			date:     "Mon, Aug 9, 2021",
-			format:   "%a, %b %e, %Y",
-			expected: time.Date(2021, time.August, 9, 0, 0, 0, 0, time.UTC),
-		},
-		{
-			name:     "weekday",
-			date:     "Tue, Aug 10, 2021",
-			format:   "%a, %b %e, %Y",
-			expected: time.Date(2021, time.August, 10, 0, 0, 0, 0, time.UTC),
-		},
-		{
-			name:     "weekday",
-			date:     "Wed, Aug 11, 2021",
-			format:   "%a, %b %e, %Y",
-			expected: time.Date(2021, time.August, 11, 0, 0, 0, 0, time.UTC),
-		},
+		{"simple", "Jan 3, 2000", "%b %e, %Y", time.Date(2000, time.January, 3, 0, 0, 0, 0, time.UTC)},
+		{"simple_with_spaces", "Nov  03 ,   2000", "%b %e, %Y", time.Date(2000, time.November, 3, 0, 0, 0, 0, time.UTC)},
+		{"simple_with_spaces_2", "Dec  15 ,   2000", "%b %e, %Y", time.Date(2000, time.December, 15, 0, 0, 0, 0, time.UTC)},
+		{"reverse", "2023/Feb/ 1", "%Y/%b/%e", time.Date(2023, time.February, 1, 0, 0, 0, 0, time.UTC)},
+		{"reverse_with_spaces", " 2023 /Apr/ 01  ", "%Y/%b/%e", time.Date(2023, time.April, 1, 0, 0, 0, 0, time.UTC)},
+		{"weekday", "Thu, Aug 5, 2021", "%a, %b %e, %Y", time.Date(2021, time.August, 5, 0, 0, 0, 0, time.UTC)},
+		{"weekday", "Fri, Aug 6, 2021", "%a, %b %e, %Y", time.Date(2021, time.August, 6, 0, 0, 0, 0, time.UTC)},
+		{"weekday", "Sat, Aug 7, 2021", "%a, %b %e, %Y", time.Date(2021, time.August, 7, 0, 0, 0, 0, time.UTC)},
+		{"weekday", "Sun, Aug 8, 2021", "%a, %b %e, %Y", time.Date(2021, time.August, 8, 0, 0, 0, 0, time.UTC)},
+		{"weekday", "Mon, Aug 9, 2021", "%a, %b %e, %Y", time.Date(2021, time.August, 9, 0, 0, 0, 0, time.UTC)},
+		{"weekday", "Tue, Aug 10, 2021", "%a, %b %e, %Y", time.Date(2021, time.August, 10, 0, 0, 0, 0, time.UTC)},
+		{"weekday", "Wed, Aug 11, 2021", "%a, %b %e, %Y", time.Date(2021, time.August, 11, 0, 0, 0, 0, time.UTC)},
 
-		{
-			name:     "time_only",
-			date:     "22:23:00",
-			format:   "%H:%i:%s",
-			expected: time.Date(-1, time.November, 30, 22, 23, 0, 0, time.UTC),
-		},
-		{
-			name:     "with_time",
-			date:     "Sep 3, 22:23:00 2000",
-			format:   "%b %e, %H:%i:%s %Y",
-			expected: time.Date(2000, time.September, 3, 22, 23, 0, 0, time.UTC),
-		},
-		{
-			name:     "with_pm",
-			date:     "May 3, 10:23:00 PM 2000",
-			format:   "%b %e, %h:%i:%s %p %Y",
-			expected: time.Date(2000, time.May, 3, 22, 23, 0, 0, time.UTC),
-		},
-		{
-			name:     "lowercase_pm",
-			date:     "Jul 3, 10:23:00 pm 2000",
-			format:   "%b %e, %h:%i:%s %p %Y",
-			expected: time.Date(2000, time.July, 3, 22, 23, 0, 0, time.UTC),
-		},
-		{
-			name:     "with_am",
-			date:     "Mar 3, 10:23:00 am 2000",
-			format:   "%b %e, %h:%i:%s %p %Y",
-			expected: time.Date(2000, time.March, 3, 10, 23, 0, 0, time.UTC),
-		},
-		{
-			name:     "midnight",
-			date:     "12:00 AM",
-			format:   "%h:%i %p",
-			expected: time.Date(-1, time.November, 30, 0, 0, 0, 0, time.UTC),
-		},
-		{
-			name:     "noon",
-			date:     "12:00 PM",
-			format:   "%h:%i %p",
-			expected: time.Date(-1, time.November, 30, 12, 0, 0, 0, time.UTC),
-		},
+		{"time_only", "22:23:00", "%H:%i:%s", time.Date(-1, time.November, 30, 22, 23, 0, 0, time.UTC)},
+		{"with_time", "Sep 3, 22:23:00 2000", "%b %e, %H:%i:%s %Y", time.Date(2000, time.September, 3, 22, 23, 0, 0, time.UTC)},
+		{"with_pm", "May 3, 10:23:00 PM 2000", "%b %e, %h:%i:%s %p %Y", time.Date(2000, time.May, 3, 22, 23, 0, 0, time.UTC)},
+		{"lowercase_pm", "Jul 3, 10:23:00 pm 2000", "%b %e, %h:%i:%s %p %Y", time.Date(2000, time.July, 3, 22, 23, 0, 0, time.UTC)},
+		{"with_am", "Mar 3, 10:23:00 am 2000", "%b %e, %h:%i:%s %p %Y", time.Date(2000, time.March, 3, 10, 23, 0, 0, time.UTC)},
+		{"midnight", "12:00 AM", "%h:%i %p", time.Date(-1, time.November, 30, 0, 0, 0, 0, time.UTC)},
+		{"noon", "12:00 PM", "%h:%i %p", time.Date(-1, time.November, 30, 12, 0, 0, 0, time.UTC)},
 
-		{
-			name:     "month_number",
-			date:     "1 3, 10:23:00 pm 2000",
-			format:   "%c %e, %h:%i:%s %p %Y",
-			expected: time.Date(2000, time.January, 3, 22, 23, 0, 0, time.UTC),
-		},
+		{"month_number", "1 3, 10:23:00 pm 2000", "%c %e, %h:%i:%s %p %Y", time.Date(2000, time.January, 3, 22, 23, 0, 0, time.UTC)},
 
-		{
-			name:     "day_with_suffix",
-			date:     "Jun 3rd, 10:23:00 pm 2000",
-			format:   "%b %D, %h:%i:%s %p %Y",
-			expected: time.Date(2000, time.June, 3, 22, 23, 0, 0, time.UTC),
-		},
-		{
-			name:     "day_with_suffix_2",
-			date:     "Oct 21st, 10:23:00 pm 2000",
-			format:   "%b %D, %h:%i:%s %p %Y",
-			expected: time.Date(2000, time.October, 21, 22, 23, 0, 0, time.UTC),
-		},
-		{
-			name:     "with_timestamp",
-			date:     "01/02/2003, 12:13:14",
-			format:   "%c/%d/%Y, %T",
-			expected: time.Date(2003, time.January, 2, 12, 13, 14, 0, time.UTC),
-		},
+		{"day_with_suffix", "Jun 3rd, 10:23:00 pm 2000", "%b %D, %h:%i:%s %p %Y", time.Date(2000, time.June, 3, 22, 23, 0, 0, time.UTC)},
+		{"day_with_suffix_2", "Oct 21st, 10:23:00 pm 2000", "%b %D, %h:%i:%s %p %Y", time.Date(2000, time.October, 21, 22, 23, 0, 0, time.UTC)},
+		{"with_timestamp", "01/02/2003, 12:13:14", "%c/%d/%Y, %T", time.Date(2003, time.January, 2, 12, 13, 14, 0, time.UTC)},
 
-		{
-			name:     "month_number",
-			date:     "03: 3, 20",
-			format:   "%m: %e, %y",
-			expected: time.Date(2020, time.March, 3, 0, 0, 0, 0, time.UTC),
-		},
-		{
-			name:     "month_name",
-			date:     "march: 3, 20",
-			format:   "%M: %e, %y",
-			expected: time.Date(2020, time.March, 3, 0, 0, 0, 0, time.UTC),
-		},
-		{
-			name:     "two_digit_date",
-			date:     "january: 3, 20",
-			format:   "%M: %e, %y",
-			expected: time.Date(2020, time.January, 3, 0, 0, 0, 0, time.UTC),
-		},
-		{
-			name:     "two_digit_date_2000",
-			date:     "september: 3, 70",
-			format:   "%M: %e, %y",
-			expected: time.Date(1970, time.September, 3, 0, 0, 0, 0, time.UTC),
-		},
-		{
-			name:     "two_digit_date_1900",
-			date:     "may: 3, 69",
-			format:   "%M: %e, %y",
-			expected: time.Date(2069, time.May, 3, 0, 0, 0, 0, time.UTC),
-		},
+		{"month_number", "03: 3, 20", "%m: %e, %y", time.Date(2020, time.March, 3, 0, 0, 0, 0, time.UTC)},
+		{"month_name", "march: 3, 20", "%M: %e, %y", time.Date(2020, time.March, 3, 0, 0, 0, 0, time.UTC)},
+		{"two_digit_date", "january: 3, 20", "%M: %e, %y", time.Date(2020, time.January, 3, 0, 0, 0, 0, time.UTC)},
+		{"two_digit_date_2000", "september: 3, 70", "%M: %e, %y", time.Date(1970, time.September, 3, 0, 0, 0, 0, time.UTC)},
+		{"two_digit_date_1900", "may: 3, 69", "%M: %e, %y", time.Date(2069, time.May, 3, 0, 0, 0, 0, time.UTC)},
 
-		{
-			name:     "microseconds",
-			date:     "01/02/99 314",
-			format:   "%m/%e/%y %f",
-			expected: time.Date(1999, time.January, 2, 0, 0, 0, 314000, time.UTC),
-		},
-		{
-			name:     "hour_number",
-			date:     "01/02/99 5:14",
-			format:   "%m/%e/%y %h:%i",
-			expected: time.Date(1999, time.January, 2, 5, 14, 0, 0, time.UTC),
-		},
-		{
-			name:     "hour_number_2",
-			date:     "01/02/99 5:14",
-			format:   "%m/%e/%y %I:%i",
-			expected: time.Date(1999, time.January, 2, 5, 14, 0, 0, time.UTC),
-		},
+		{"microseconds", "01/02/99 314", "%m/%e/%y %f", time.Date(1999, time.January, 2, 0, 0, 0, 314000, time.UTC)},
+		{"hour_number", "01/02/99 5:14", "%m/%e/%y %h:%i", time.Date(1999, time.January, 2, 5, 14, 0, 0, time.UTC)},
+		{"hour_number_2", "01/02/99 5:14", "%m/%e/%y %I:%i", time.Date(1999, time.January, 2, 5, 14, 0, 0, time.UTC)},
 
-		{
-			name:     "timestamp",
-			date:     "01/02/99 05:14:12 PM",
-			format:   "%m/%e/%y %r",
-			expected: time.Date(1999, time.January, 2, 17, 14, 12, 0, time.UTC),
-		},
-		{
-			name:     "date_with_seconds",
-			date:     "01/02/99 57",
-			format:   "%m/%e/%y %S",
-			expected: time.Date(1999, time.January, 2, 0, 0, 57, 0, time.UTC),
-		},
+		{"timestamp", "01/02/99 05:14:12 PM", "%m/%e/%y %r", time.Date(1999, time.January, 2, 17, 14, 12, 0, time.UTC)},
+		{"date_with_seconds", "01/02/99 57", "%m/%e/%y %S", time.Date(1999, time.January, 2, 0, 0, 57, 0, time.UTC)},
 
-		{
-			name:     "date_by_year_offset",
-			date:     "100 20",
-			format:   "%j %y",
-			expected: time.Date(2020, time.April, 9, 0, 0, 0, 0, time.UTC),
-		},
-		{
-			name:     "date_by_year_offset_singledigit_year",
-			date:     "100 5",
-			format:   "%j %y",
-			expected: time.Date(2005, time.April, 10, 0, 0, 0, 0, time.UTC),
-		},
+		{"date_by_year_offset", "100 20", "%j %y", time.Date(2020, time.April, 9, 0, 0, 0, 0, time.UTC)},
+		{"date_by_year_offset_singledigit_year", "100 5", "%j %y", time.Date(2005, time.April, 10, 0, 0, 0, 0, time.UTC)},
 	}
 
 	for _, tt := range tests {
@@ -255,101 +80,26 @@ func TestParseDateTwelveHourClock(t *testing.T) {
 		expected interface{}
 	}{
 		// %p moves the hour into the afternoon, and 12 PM stays at noon.
-		{
-			name:     "pm_afternoon",
-			date:     "01:02 PM",
-			format:   "%h:%i %p",
-			expected: time.Date(-1, time.November, 30, 13, 2, 0, 0, time.UTC),
-		},
-		{
-			name:     "pm_noon",
-			date:     "12:02 PM",
-			format:   "%h:%i %p",
-			expected: time.Date(-1, time.November, 30, 12, 2, 0, 0, time.UTC),
-		},
-		{
-			name:     "pm_late",
-			date:     "11:02 PM",
-			format:   "%h:%i %p",
-			expected: time.Date(-1, time.November, 30, 23, 2, 0, 0, time.UTC),
-		},
-		{
-			name:     "am_morning",
-			date:     "01:02 AM",
-			format:   "%h:%i %p",
-			expected: time.Date(-1, time.November, 30, 1, 2, 0, 0, time.UTC),
-		},
-		{
-			name:     "am_midnight",
-			date:     "12:02 AM",
-			format:   "%h:%i %p",
-			expected: time.Date(-1, time.November, 30, 0, 2, 0, 0, time.UTC),
-		},
-		{
-			name:     "pm_lowercase",
-			date:     "01:02 pm",
-			format:   "%h:%i %p",
-			expected: time.Date(-1, time.November, 30, 13, 2, 0, 0, time.UTC),
-		},
-		{
-			name:     "capital_i_specifier",
-			date:     "01:02 PM",
-			format:   "%I:%i %p",
-			expected: time.Date(-1, time.November, 30, 13, 2, 0, 0, time.UTC),
-		},
-		{
-			name:     "lowercase_l_specifier",
-			date:     "1:02 PM",
-			format:   "%l:%i %p",
-			expected: time.Date(-1, time.November, 30, 13, 2, 0, 0, time.UTC),
-		},
+		{"pm_afternoon", "01:02 PM", "%h:%i %p", time.Date(-1, time.November, 30, 13, 2, 0, 0, time.UTC)},
+		{"pm_noon", "12:02 PM", "%h:%i %p", time.Date(-1, time.November, 30, 12, 2, 0, 0, time.UTC)},
+		{"pm_late", "11:02 PM", "%h:%i %p", time.Date(-1, time.November, 30, 23, 2, 0, 0, time.UTC)},
+		{"am_morning", "01:02 AM", "%h:%i %p", time.Date(-1, time.November, 30, 1, 2, 0, 0, time.UTC)},
+		{"am_midnight", "12:02 AM", "%h:%i %p", time.Date(-1, time.November, 30, 0, 2, 0, 0, time.UTC)},
+		{"pm_lowercase", "01:02 pm", "%h:%i %p", time.Date(-1, time.November, 30, 13, 2, 0, 0, time.UTC)},
+		{"capital_i_specifier", "01:02 PM", "%I:%i %p", time.Date(-1, time.November, 30, 13, 2, 0, 0, time.UTC)},
+		{"lowercase_l_specifier", "1:02 PM", "%l:%i %p", time.Date(-1, time.November, 30, 13, 2, 0, 0, time.UTC)},
 
 		// %r carries its own AM/PM marker.
-		{
-			name:     "r_pm",
-			date:     "05:14:12 PM",
-			format:   "%r",
-			expected: time.Date(-1, time.November, 30, 17, 14, 12, 0, time.UTC),
-		},
-		{
-			name:     "r_am",
-			date:     "05:14:12 AM",
-			format:   "%r",
-			expected: time.Date(-1, time.November, 30, 5, 14, 12, 0, time.UTC),
-		},
-		{
-			name:     "r_noon",
-			date:     "12:14:12 PM",
-			format:   "%r",
-			expected: time.Date(-1, time.November, 30, 12, 14, 12, 0, time.UTC),
-		},
-		{
-			name:     "r_midnight",
-			date:     "12:14:12 AM",
-			format:   "%r",
-			expected: time.Date(-1, time.November, 30, 0, 14, 12, 0, time.UTC),
-		},
+		{"r_pm", "05:14:12 PM", "%r", time.Date(-1, time.November, 30, 17, 14, 12, 0, time.UTC)},
+		{"r_am", "05:14:12 AM", "%r", time.Date(-1, time.November, 30, 5, 14, 12, 0, time.UTC)},
+		{"r_noon", "12:14:12 PM", "%r", time.Date(-1, time.November, 30, 12, 14, 12, 0, time.UTC)},
+		{"r_midnight", "12:14:12 AM", "%r", time.Date(-1, time.November, 30, 0, 14, 12, 0, time.UTC)},
 
 		// Without %p a 12-hour specifier still wraps 12 to 0, as MySQL does.
-		{
-			name:     "twelve_without_marker",
-			date:     "12:34",
-			format:   "%h:%i",
-			expected: time.Date(-1, time.November, 30, 0, 34, 0, 0, time.UTC),
-		},
-		{
-			name:     "one_without_marker",
-			date:     "01:34",
-			format:   "%h:%i",
-			expected: time.Date(-1, time.November, 30, 1, 34, 0, 0, time.UTC),
-		},
+		{"twelve_without_marker", "12:34", "%h:%i", time.Date(-1, time.November, 30, 0, 34, 0, 0, time.UTC)},
+		{"one_without_marker", "01:34", "%h:%i", time.Date(-1, time.November, 30, 1, 34, 0, 0, time.UTC)},
 
-		{
-			name:     "pm_with_date",
-			date:     "May 3, 10:23:00 PM 2000",
-			format:   "%b %e, %h:%i:%s %p %Y",
-			expected: time.Date(2000, time.May, 3, 22, 23, 0, 0, time.UTC),
-		},
+		{"pm_with_date", "May 3, 10:23:00 PM 2000", "%b %e, %h:%i:%s %p %Y", time.Date(2000, time.May, 3, 22, 23, 0, 0, time.UTC)},
 	}
 
 	for _, tt := range tests {
@@ -371,11 +121,11 @@ func TestParseDateTwelveHourClockOutOfRange(t *testing.T) {
 		date   string
 		format string
 	}{
-		{name: "thirteen_pm", date: "13:02 PM", format: "%h:%i %p"},
-		{name: "zero_am", date: "00:02 AM", format: "%h:%i %p"},
-		{name: "thirteen_no_marker", date: "13:02", format: "%h:%i"},
-		{name: "zero_no_marker", date: "00:02", format: "%I:%i"},
-		{name: "r_thirteen", date: "13:14:12 PM", format: "%r"},
+		{"thirteen_pm", "13:02 PM", "%h:%i %p"},
+		{"zero_am", "00:02 AM", "%h:%i %p"},
+		{"thirteen_no_marker", "13:02", "%h:%i"},
+		{"zero_no_marker", "00:02", "%I:%i"},
+		{"r_thirteen", "13:14:12 PM", "%r"},
 	}
 
 	for _, tt := range tests {
@@ -410,6 +160,12 @@ func TestConversionFailure(t *testing.T) {
 		{"day_of_month_and_day_of_year", "Jan 3, 100 2000", "%b %e, %j %Y", time.Date(2000, time.April, 9, 0, 0, 0, 0, time.UTC), ""},
 
 		{"24hour_time_with_pm", "May 3, 10:23:00 PM 2000", "%b %e, %H:%i:%s %p %Y", nil, "cannot use 24 hour time (H) with AM/PM (p)"},
+		{"24hour_H_fraction_with_pm", "23:02:03.123 PM", "%H:%i:%s.%f %p", nil, "cannot use 24 hour time (H) with AM/PM (p)"},
+		{"24hour_k_with_pm", "23 PM", "%k %p", nil, "cannot use 24 hour time (H) with AM/PM (p)"},
+		{"24hour_k_minutes_with_pm", "23:02:03 PM", "%k:%i:%s %p", nil, "cannot use 24 hour time (H) with AM/PM (p)"},
+		{"24hour_T_with_pm", "23:02:03 PM", "%T %p", nil, "cannot use 24 hour time (H) with AM/PM (p)"},
+		{"24hour_T_with_am", "01:02:03 AM", "%T %p", nil, "cannot use 24 hour time (H) with AM/PM (p)"},
+		{"24hour_T_marker_first", "PM 23:02:03", "%p %T", nil, "cannot use 24 hour time (H) with AM/PM (p)"},
 		{"specifier_end_of_line", "Jan 3", "%b %e %", nil, `"%" found at end of format string`},
 		{"unknown_format_specifier", "Jan 3", "%b %e %L", nil, `unknown format specifier "L"`},
 		{"invalid_number_hour", "0021:12:14", "%T", nil, `specifier %T failed to parse "0021:12:14": expected literal ":", got "2"`},
