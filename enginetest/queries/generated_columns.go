@@ -538,6 +538,98 @@ var GeneratedColumnTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "modify stored generated column changes value type",
+		SetUpScript: []string{
+			"CREATE TABLE generated_type_repro (id INT PRIMARY KEY, x INT, z DATETIME AS ('2020-01-01') STORED)",
+			"INSERT INTO generated_type_repro(id, x) VALUES (1, 2)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "ALTER TABLE generated_type_repro MODIFY COLUMN z BIGINT AS (x * 10) STORED",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "SELECT id, z FROM generated_type_repro",
+				Expected: []sql.Row{{1, int64(20)}},
+			},
+		},
+	},
+	{
+		Name: "modify stored generated enum adds label",
+		SetUpScript: []string{
+			"CREATE TABLE generated_enum_repro (id INT PRIMARY KEY, z ENUM('a','b') AS ('a') STORED, INDEX iz(z))",
+			"INSERT INTO generated_enum_repro(id) VALUES (1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "ALTER TABLE generated_enum_repro MODIFY COLUMN z ENUM('a','b','c') AS ('c') STORED",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "INSERT INTO generated_enum_repro(id) VALUES (2)",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "SELECT id, z FROM generated_enum_repro ORDER BY id",
+				Expected: []sql.Row{{1, "c"}, {2, "c"}},
+			},
+			{
+				Query:           "SELECT id FROM generated_enum_repro WHERE z = 'c' ORDER BY id",
+				Expected:        []sql.Row{{1}, {2}},
+				ExpectedIndexes: []string{"iz"},
+			},
+		},
+	},
+	{
+		Name: "rename multiple stored generated columns preserves indexes",
+		SetUpScript: []string{
+			"CREATE TABLE rename_repro (id INT PRIMARY KEY, a INT AS (id + 1) STORED, b INT AS (id + 2) STORED, INDEX ia(a), INDEX ib(b), INDEX iab(a,b))",
+			"INSERT INTO rename_repro(id) VALUES (1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "ALTER TABLE rename_repro CHANGE a aa INT AS (id + 10) STORED, CHANGE b bb INT AS (id + 20) STORED",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "SELECT id, aa, bb FROM rename_repro",
+				Expected: []sql.Row{{1, 11, 21}},
+			},
+			{
+				Dialect: "mysql",
+				Query:   "SHOW CREATE TABLE rename_repro",
+				Expected: []sql.Row{{"rename_repro", "CREATE TABLE `rename_repro` (\n" +
+					"  `id` int NOT NULL,\n" +
+					"  `aa` int GENERATED ALWAYS AS ((`id` + 10)) STORED,\n" +
+					"  `bb` int GENERATED ALWAYS AS ((`id` + 20)) STORED,\n" +
+					"  PRIMARY KEY (`id`),\n" +
+					"  KEY `ia` (`aa`),\n" +
+					"  KEY `iab` (`aa`,`bb`),\n" +
+					"  KEY `ib` (`bb`)\n" +
+					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "SELECT index_name, seq_in_index, column_name FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'rename_repro' ORDER BY index_name, seq_in_index",
+				Expected: []sql.Row{{"ia", 1, "aa"}, {"iab", 1, "aa"}, {"iab", 2, "bb"}, {"ib", 1, "bb"}, {"PRIMARY", 1, "id"}},
+			},
+			{
+				Query:           "SELECT id FROM rename_repro FORCE INDEX (ia) WHERE aa = 11",
+				Expected:        []sql.Row{{1}},
+				ExpectedIndexes: []string{"ia"},
+			},
+			{
+				Query:           "SELECT id FROM rename_repro FORCE INDEX (ib) WHERE bb = 21",
+				Expected:        []sql.Row{{1}},
+				ExpectedIndexes: []string{"ib"},
+			},
+			{
+				Query:           "SELECT id FROM rename_repro FORCE INDEX (iab) WHERE aa = 11 AND bb = 21",
+				Expected:        []sql.Row{{1}},
+				ExpectedIndexes: []string{"iab"},
+			},
+		},
+	},
+	{
 		Name: "creating index on stored generated column",
 		SetUpScript: []string{
 			"create table t1 (a int primary key, b int as (a + 1) stored)",

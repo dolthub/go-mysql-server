@@ -609,7 +609,9 @@ func (i *modifyColumnIter) Close(context *sql.Context) error {
 
 // rewriteTable rewrites the table given if required or requested, and returns whether it was rewritten
 func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) (bool, error) {
-	targetSchema := resolveGeneratedColumns(ctx, i.overrides, i.m.Db.Name(), rwt.Name(), i.m.TargetSchema())
+	// Earlier clauses in a multi-column ALTER may already have rewritten the table.
+	// Start from its current schema so their renamed columns and expressions survive.
+	targetSchema := resolveGeneratedColumns(ctx, i.overrides, i.m.Db.Name(), rwt.Name(), rwt.Schema(ctx))
 	oldColName := i.m.Column()
 	oldColIdx := targetSchema.IndexOfColName(oldColName)
 	if oldColIdx == -1 {
@@ -702,7 +704,7 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 			}
 		}
 
-		newRow, err := projectRowWithTypes(ctx, targetSchema, newSch, projections, r)
+		newRow, err := projectRowWithTypes(ctx, newSch, projections, r)
 		if err != nil {
 			_ = inserter.DiscardChanges(ctx, err)
 			_ = inserter.Close(ctx)
@@ -1068,14 +1070,16 @@ func (i *loggingKeyValueIter) Close(ctx *sql.Context) error {
 
 // projectRowWithTypes projects the row given with the projections given and additionally converts them to the
 // corresponding types found in the schema given, using the standard type conversion logic.
-func projectRowWithTypes(ctx *sql.Context, oldSchema, newSchema sql.Schema, projections []sql.Expression, r sql.Row) (sql.Row, error) {
+func projectRowWithTypes(ctx *sql.Context, newSchema sql.Schema, projections []sql.Expression, r sql.Row) (sql.Row, error) {
 	newRow, err := ProjectRow(ctx, projections, r)
 	if err != nil {
 		return nil, err
 	}
 
 	for i := range newRow {
-		converted, inRange, err := types.TypeAwareConversion(ctx, newRow[i], oldSchema[i].Type, newSchema[i].Type)
+		// Generated projections already produce values in the new type; ordinary
+		// field projections retain their source type, even when columns move.
+		converted, inRange, err := types.TypeAwareConversion(ctx, newRow[i], projections[i].Type(ctx), newSchema[i].Type)
 		if err != nil {
 			if sql.ErrNotMatchingSRID.Is(err) {
 				err = sql.ErrNotMatchingSRIDWithColName.New(newSchema[i].Name, err)

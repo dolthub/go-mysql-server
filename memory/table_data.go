@@ -210,7 +210,9 @@ func rewriteIndex(ctx *sql.Context, idx *Index, schema sql.PrimaryKeySchema, ren
 				if newIdx < 0 {
 					return nil, transform.SameTree, nil
 				}
-				return gf.WithIndex(newIdx), transform.NewTree, nil
+
+				col := schema.Schema[newIdx]
+				return expression.NewGetFieldWithTable(newIdx, int(gf.TableId()), col.Type, gf.Database(), gf.Table(), col.Name, col.Nullable), transform.NewTree, nil
 			}
 
 			return e, transform.SameTree, nil
