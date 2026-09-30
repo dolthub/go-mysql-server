@@ -111,6 +111,7 @@ func ParseDateWithFormat(date, format string) (interface{}, error) {
 			if hours < 1 || hours > 12 {
 				return nil, fmt.Errorf("hour %d is not in the range 1..12 required by a 12-hour specifier", hours)
 			}
+
 			hours = hours % 12
 			if dt.am != nil && !*dt.am {
 				hours += 12
