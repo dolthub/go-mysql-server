@@ -15330,6 +15330,24 @@ select * from t1 except (
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/11516
+		Name: "UPDATE rejects windowed subquery over the target table",
+		SetUpScript: []string{
+			"CREATE TABLE t (i INT PRIMARY KEY, j INT, k INT);",
+			"INSERT INTO t VALUES (1,2,3),(2,3,4);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "UPDATE t SET k = 30 WHERE i IN (SELECT FIRST_VALUE(i) OVER () FROM t WHERE j = 2);",
+				ExpectedErr: sql.ErrUpdateTableInSubquery,
+			},
+			{
+				Query:    "SELECT i, j, k FROM t ORDER BY i;",
+				Expected: []sql.Row{{1, 2, 3}, {2, 3, 4}},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/10600
 		Name: "self-referential NOT IN subquery",
 		SetUpScript: []string{

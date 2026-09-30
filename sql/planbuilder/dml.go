@@ -620,6 +620,7 @@ func (b *Builder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
 	update := plan.NewUpdate(b.ctx, outScope.node, ignore, updateExprs)
 
 	update.IsJoin = foundJoin
+	b.checkErrUpdateTableInSubquery(update)
 	update.HasSingleRel = !outScope.refsSubquery
 	update.IsProcNested = b.ProcCtx().DbName != ""
 
@@ -855,4 +856,45 @@ func (b *Builder) buildCheckConstraint(inScope *scope, check *sql.CheckDefinitio
 		Enforced:   check.Enforced,
 		IsNotValid: check.IsNotValid,
 	}
+}
+
+// checkErrUpdateTableInSubquery returns MySQL error 1093 if subquery in UPDATE
+// contains window expr that reads one of UPDATE targets.
+func (b *Builder) checkErrUpdateTableInSubquery(update *plan.Update) {
+	targets := b.resolvedTablesByKey(update.Child)
+	if len(targets) == 0 {
+		return // shouldn't happen, though
+	}
+	transform.InspectExpressions(b.ctx, update, func(ctx *sql.Context, e sql.Expression) bool {
+		sq, ok := e.(*plan.Subquery)
+		if !ok {
+			return true
+		}
+		transform.InspectWithOpaque(ctx, sq.Query, func(ctx *sql.Context, n sql.Node) bool {
+			_, ok := n.(*plan.Window)
+			if !ok {
+				return true
+			}
+			for key, rt := range b.resolvedTablesByKey(n) {
+				_, ok := targets[key]
+				if ok {
+					b.handleErr(sql.ErrUpdateTableInSubquery.New(rt.Name()))
+				}
+			}
+			return false
+		})
+		return true
+	})
+}
+
+func (b *Builder) resolvedTablesByKey(n sql.Node) map[string]*plan.ResolvedTable {
+	tables := make(map[string]*plan.ResolvedTable)
+	transform.InspectWithOpaque(b.ctx, n, func(ctx *sql.Context, n sql.Node) bool {
+		rt, ok := n.(*plan.ResolvedTable)
+		if ok {
+			tables[strings.ToLower(rt.SqlDatabase.Name()+"."+rt.Name())] = rt
+		}
+		return true
+	})
+	return tables
 }
