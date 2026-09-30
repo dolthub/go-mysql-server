@@ -19,6 +19,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/testutils"
 )
 
 // WindowFunctionsScriptTests tests window function queries such as rank, dense_rank, percent_rank,
@@ -856,6 +857,32 @@ ORDER BY id;`,
 		},
 		Query:    "SELECT id, wf FROM out_w",
 		Expected: []sql.Row{{1, nil}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11941
+		Name:    "customer reproduction: CTAS materializes untyped NULL",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t(id INT PRIMARY KEY, g INT)",
+			"INSERT INTO t VALUES (1,1),(2,2)",
+			`CREATE TABLE out_t AS
+				SELECT id,
+				       FIRST_VALUE(NULL) OVER (
+				         PARTITION BY g
+				         RANGE BETWEEN CURRENT ROW AND CURRENT ROW
+				       ) AS wf
+				FROM t`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT id, wf FROM out_t ORDER BY id",
+				Expected: []sql.Row{{1, nil}, {2, nil}},
+			},
+			{
+				Query:    "SHOW CREATE TABLE out_t",
+				Expected: []sql.Row{{"out_t", "CREATE TABLE `out_t` (\n  `id` int NOT NULL,\n  `wf` varbinary(0)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/11468
@@ -2038,6 +2065,39 @@ ORDER BY id;`,
 					{int32(1)},
 					{int32(2)},
 				},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11418
+		Name: "repeated window expression in ORDER BY",
+		SetUpScript: []string{
+			`CREATE TABLE t(id INT PRIMARY KEY, g INT, v INT NOT NULL);`,
+			`INSERT INTO t VALUES (1, 0, 10), (2, 0, -2);`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT id, g,
+       SUM(v) OVER (
+         PARTITION BY g ORDER BY id ASC
+         ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+       ) AS wf
+FROM t
+ORDER BY SUM(v) OVER (
+           PARTITION BY g ORDER BY id ASC
+           ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+         ), id;`,
+				Expected: []sql.Row{
+					{2, int64(0), float64(8)},
+					{1, int64(0), float64(10)},
+				},
+			},
+			{
+				// test for non-deterministic function
+				Query: `SELECT id, FIRST_VALUE(UUID()) OVER (ORDER BY id) AS f
+FROM t
+ORDER BY FIRST_VALUE(UUID()) OVER (ORDER BY id), id;`,
+				Expected: []sql.Row{{1, testutils.UUIDStringValidator{}}, {2, testutils.UUIDStringValidator{}}},
 			},
 		},
 	},

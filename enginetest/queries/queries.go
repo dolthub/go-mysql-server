@@ -1682,6 +1682,55 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Query:    `SELECT DISTINCT val FROM (values row(null), row(1.00), row('2'), row(2)) a (val);`,
 		Expected: []sql.Row{{nil}, {"1.00"}, {"2"}},
 	},
+	// https://github.com/dolthub/dolt/issues/11942
+	{
+		Query:    `SELECT * FROM (VALUES ROW(CAST(NULL AS DECIMAL(20,6)))) AS t(x);`,
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    `SELECT * FROM (VALUES ROW(CAST(NULL AS DECIMAL(20,6))), ROW(1.23)) AS t(x);`,
+		Expected: []sql.Row{{nil}, {"1.230000"}},
+	},
+	{
+		Query:    `SELECT * FROM (VALUES ROW(1.23), ROW(CAST(NULL AS DECIMAL(20,6)))) AS t(x);`,
+		Expected: []sql.Row{{"1.230000"}, {nil}},
+	},
+	{
+		Query:    `SELECT * FROM (VALUES ROW(NULL), ROW(CAST(NULL AS DECIMAL(20,6)))) AS t(x);`,
+		Expected: []sql.Row{{nil}, {nil}},
+	},
+	{
+		Query:    `SELECT * FROM (VALUES ROW(1.23), ROW(NULL)) AS t(x);`,
+		Expected: []sql.Row{{"1.23"}, {nil}},
+	},
+	{
+		Query:    `SELECT * FROM (VALUES ROW(1), ROW(CAST(NULL AS DECIMAL(20,6)))) AS t(x);`,
+		Expected: []sql.Row{{"1.000000"}, {nil}},
+	},
+	{
+		Query:    `SELECT * FROM (VALUES ROW(CAST(NULL AS DECIMAL(10,2)), 1), ROW(3.1415, CAST(NULL AS DECIMAL(20,6)))) AS t(a, b);`,
+		Expected: []sql.Row{{nil, "1.000000"}, {"3.1415", nil}},
+	},
+	{
+		Query:    `SELECT * FROM (VALUES ROW(CAST(NULL AS DECIMAL(10,2)) + 1.5)) AS t(x);`,
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    `SELECT * FROM (VALUES ROW(CASE WHEN 1=0 THEN 1.0 ELSE NULL END)) AS t(x);`,
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    `SELECT * FROM (VALUES ROW(COALESCE(NULL, CAST(NULL AS DECIMAL(10,2))))) AS t(x);`,
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    `SELECT * FROM (VALUES ROW(CAST(1234.5 AS DECIMAL(8,2))), ROW(CAST(NULL AS DECIMAL(8,4)))) AS t(x);`,
+		Expected: []sql.Row{{"1234.5000"}, {nil}},
+	},
+	{
+		Query:    `SELECT * FROM (VALUES ROW(CAST(NULL AS DECIMAL(8,4))), ROW(CAST(1234.5 AS DECIMAL(8,2)))) AS t(x);`,
+		Expected: []sql.Row{{nil}, {"1234.5000"}},
+	},
 	{
 		Query:    `SELECT column_0 FROM (values row(1+1.5,2+2), row(floor(1.5),concat("a","b"))) a order by 1;`,
 		Expected: []sql.Row{{"1.0"}, {"2.5"}},
@@ -6812,6 +6861,14 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{nil}},
 	},
 	{
+		Query:    `SELECT DISTINCT 37, 40 * - + CASE - - CAST( + COUNT( 59 ) AS DECIMAL ) WHEN - - 96 * - 48 / - 89 * + 32 THEN - ( 32 ) WHEN + 92 / + 93 THEN + ( 7 ) ELSE 8 * - ( - CAST( NULL AS SIGNED ) * 89 ) - ( + 28 ) END AS col1`,
+		Expected: []sql.Row{{37, nil}},
+	},
+	{
+		Query:    "select cast(1 as decimal) = 0.9892, cast(1 as decimal) = 92/93, 92/93 = cast(1 as decimal), cast(1 as decimal) = 0.9892e0, cast(1 as decimal) > 0.9892, cast(1 as decimal) = 1.0",
+		Expected: []sql.Row{{false, false, false, false, true, true}},
+	},
+	{
 		Query: "select cast(X'9876543210' as char(10))",
 		Expected: []sql.Row{
 			{nil},
@@ -10627,16 +10684,16 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrColumnNotFound,
 	},
 	{
-		Query:          "CREATE TABLE invalid_decimal (number DECIMAL(65,31));",
-		ExpectedErrStr: "Too big scale 31 specified. Maximum is 30.",
+		Query:       "CREATE TABLE invalid_decimal (number DECIMAL(65,31));",
+		ExpectedErr: sql.ErrTooBigScale,
 	},
 	{
-		Query:          "CREATE TABLE invalid_decimal (number DECIMAL(66,30));",
-		ExpectedErrStr: "Too big precision 66 specified. Maximum is 65.",
+		Query:       "CREATE TABLE invalid_decimal (number DECIMAL(66,30));",
+		ExpectedErr: sql.ErrTooBigPrecision,
 	},
 	{
-		Query:          "CREATE TABLE invalid_decimal (number DECIMAL(66,31));",
-		ExpectedErrStr: "Too big scale 31 specified. Maximum is 30.",
+		Query:       "CREATE TABLE invalid_decimal (number DECIMAL(66,31));",
+		ExpectedErr: sql.ErrTooBigScale,
 	},
 	{
 		Query:       "select 18446744073709551615 div 0.1;",
