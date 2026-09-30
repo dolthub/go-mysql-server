@@ -646,6 +646,7 @@ func (s *scope) appendColumnsFromScope(src *scope) {
 	for _, c := range src.cols {
 		s.colset.Add(sql.ColumnId(c.id))
 	}
+
 	if len(src.exprs) > 0 && s.exprs == nil {
 		s.exprs = make(map[string]columnId)
 	}
