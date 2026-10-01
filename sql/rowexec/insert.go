@@ -60,7 +60,7 @@ type insertIter struct {
 
 	ctx                 *sql.Context
 	duplicateKeyHandler DuplicateKeyHandler
-	onDupKeyUpdateExprs *plan.UpdateExprs
+	onDup               *plan.OnDuplicateKeyUpdateSource
 	onDupWhere          sql.Expression
 	unlocker            func()
 
@@ -78,6 +78,86 @@ type insertIter struct {
 	ignoreMode                  sql.InsertIgnoreMode
 	ignoreTarget                []string
 	hasAfterTrigger             bool
+}
+
+func (b *BaseBuilder) newInsertIter(
+	ctx *sql.Context,
+	ii *plan.InsertInto,
+	rowSource sql.RowIter,
+	inserter sql.RowInserter,
+	replacer sql.RowReplacer,
+	updater sql.RowUpdater,
+	unlocker func(),
+) (*insertIter, error) {
+	i := &insertIter{
+		schema:                      ii.Destination.Schema(ctx),
+		inserter:                    inserter,
+		replacer:                    replacer,
+		updater:                     updater,
+		rowSource:                   rowSource,
+		unlocker:                    unlocker,
+		onDup:                       plan.GetOnDuplicateKeyUpdateSource(ii.OnDup),
+		onDupWhere:                  ii.OnDupWhere,
+		insertExprs:                 getInsertExpressions(ctx, ii.Source),
+		checks:                      ii.Checks(),
+		ctx:                         ctx,
+		ignore:                      ii.Ignore,
+		ignoreMode:                  ii.IgnoreMode,
+		ignoreTarget:                ii.IgnoreTarget,
+		firstGeneratedAutoIncRowIdx: ii.FirstGeneratedAutoIncRowIdx,
+		returnExprs:                 ii.Returning,
+		returnSchema:                ii.Schema(ctx),
+		deferredDefaults:            ii.DeferredDefaults,
+		hasAfterTrigger:             ii.HasAfterTrigger,
+	}
+
+	if ii.OnDup != nil {
+		i.duplicateKeyHandler = &directDuplicateKeyHandler{insertIter: i}
+
+		// Trigger nodes wrap the duplicate update source and must execute the full update path.
+		if _, direct := ii.OnDup.(*plan.OnDuplicateKeyUpdateSource); !direct {
+			handler, err := b.newUpdateTriggerDuplicateKeyHandler(ctx, ii.OnDup, i)
+			if err != nil {
+				return nil, err
+			}
+
+			i.duplicateKeyHandler = handler
+		}
+	}
+
+	return i, nil
+}
+
+func (b *BaseBuilder) newUpdateTriggerDuplicateKeyHandler(
+	ctx *sql.Context,
+	onDup sql.Node,
+	insertIter *insertIter,
+) (DuplicateKeyHandler, error) {
+	planSource := insertIter.onDup
+	source := &duplicateKeyUpdateIter{
+		schema:      planSource.Child.Schema(ctx),
+		updateExprs: planSource.UpdateExprs,
+		ignore:      planSource.Ignore,
+	}
+	// The source iterator is private to this execution. The analyzed plan is shared
+	// by prepared statements and remains unchanged while building the update path.
+	updateBuilder := *b
+	updateBuilder.PriorityBuilder = &duplicateKeyUpdateBuilder{
+		source:   planSource,
+		iter:     source,
+		fallback: b.PriorityBuilder,
+	}
+	updateIter, err := updateBuilder.buildNodeExec(ctx, onDup, nil)
+	if err != nil {
+		_ = insertIter.Close(ctx)
+		return nil, err
+	}
+
+	return &updateTriggerDuplicateKeyHandler{
+		updateIter: updateIter,
+		source:     source,
+		insertIter: insertIter,
+	}, nil
 }
 
 func getInsertExpressions(ctx *sql.Context, values sql.Node) []sql.Expression {
@@ -264,7 +344,7 @@ func (i *insertIter) next(ctx *sql.Context) (returnRow sql.Row, skipped bool, re
 		}
 		if err := i.inserter.Insert(ctx, row); err != nil {
 			if (sql.ErrPrimaryKeyViolation.Is(err) || sql.ErrUniqueKeyViolation.Is(err)) &&
-				i.onDupKeyUpdateExprs.HasUpdates() {
+				i.onDup != nil && i.onDup.UpdateExprs.HasUpdates() {
 				// TODO: For multitables, UniqueKeyError.Existing might not be the correct row if the error is coming
 				//  from a secondary table. https://github.com/dolthub/dolt/issues/10882#issuecomment-4255176383
 				if uniqueKeyError, ok := err.(*errors.Error).Cause().(sql.UniqueKeyError); ok {
@@ -331,17 +411,17 @@ func applyInsertUpdates(ctx *sql.Context, schema sql.Schema, ignore bool, update
 // TODO: This can probably be combined with mysqlUpdateExpressionApplier.ApplyRowUpdate
 func (h *directDuplicateKeyHandler) update(ctx *sql.Context, oldRow, newRow sql.Row) (sql.Row, error) {
 	i := h.insertIter
-	updateAcc, err := applyInsertUpdates(ctx, i.schema, i.ignore, i.onDupKeyUpdateExprs.ExplicitUpdateExprs(), append(oldRow, newRow...), newRow)
+	updateAcc, err := applyInsertUpdates(ctx, i.schema, i.ignore, i.onDup.UpdateExprs.ExplicitUpdateExprs(), append(oldRow, newRow...), newRow)
 	if err != nil {
 		return nil, err
 	}
 
 	evalRow := updateAcc[:len(oldRow)]
-	if i.onDupKeyUpdateExprs.HasDerivedUpdates() {
+	if i.onDup.UpdateExprs.HasDerivedUpdates() {
 		if same, err := oldRow.Equals(ctx, evalRow, i.schema); err != nil {
 			return nil, err
 		} else if !same {
-			updateAcc, err = applyInsertUpdates(ctx, i.schema, i.ignore, i.onDupKeyUpdateExprs.DerivedUpdateExprs(), updateAcc, newRow)
+			updateAcc, err = applyInsertUpdates(ctx, i.schema, i.ignore, i.onDup.UpdateExprs.DerivedUpdateExprs(), updateAcc, newRow)
 			if err != nil {
 				return nil, err
 			}

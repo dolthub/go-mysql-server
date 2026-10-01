@@ -28,8 +28,6 @@ import (
 )
 
 func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row sql.Row) (sql.RowIter, error) {
-	dstSchema := ii.Destination.Schema(ctx)
-
 	insertable, err := plan.GetInsertable(ii.Destination)
 	if err != nil {
 		return nil, err
@@ -55,7 +53,6 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 	}
 
 	var unlocker func()
-	insertExpressions := getInsertExpressions(ctx, ii.Source)
 	if ii.FirstGeneratedAutoIncRowIdx >= 0 {
 		_, i, _ := sql.SystemVariables.GetGlobal("innodb_autoinc_lock_mode")
 		lockMode, ok := i.(int64)
@@ -77,47 +74,10 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 		}
 	}
 
-	var onDupExprs *plan.UpdateExprs
-	if source := plan.GetOnDuplicateKeyUpdateSource(ii.OnDup); source != nil {
-		onDupExprs = source.UpdateExprs
+	insertIter, err := b.newInsertIter(ctx, ii, rowIter, inserter, replacer, updater, unlocker)
+	if err != nil {
+		return nil, err
 	}
-
-	insertIter := &insertIter{
-		schema:                      dstSchema,
-		inserter:                    inserter,
-		replacer:                    replacer,
-		updater:                     updater,
-		rowSource:                   rowIter,
-		unlocker:                    unlocker,
-		onDupKeyUpdateExprs:         onDupExprs,
-		onDupWhere:                  ii.OnDupWhere,
-		insertExprs:                 insertExpressions,
-		checks:                      ii.Checks(),
-		ctx:                         ctx,
-		ignore:                      ii.Ignore,
-		ignoreMode:                  ii.IgnoreMode,
-		ignoreTarget:                ii.IgnoreTarget,
-		firstGeneratedAutoIncRowIdx: ii.FirstGeneratedAutoIncRowIdx,
-		returnExprs:                 ii.Returning,
-		returnSchema:                ii.Schema(ctx),
-		deferredDefaults:            ii.DeferredDefaults,
-		hasAfterTrigger:             ii.HasAfterTrigger,
-	}
-
-	var duplicateKeyHandler DuplicateKeyHandler
-	if ii.OnDup != nil {
-		duplicateKeyHandler = &directDuplicateKeyHandler{insertIter: insertIter}
-
-		// Duplicate key update sources can be wrapped by trigger nodes, in which case we need to do something different
-		if _, direct := ii.OnDup.(*plan.OnDuplicateKeyUpdateSource); !direct {
-			duplicateKeyHandler, err = b.newUpdateTriggerDuplicateKeyHandler(ctx, ii, insertIter)
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
-
-	insertIter.duplicateKeyHandler = duplicateKeyHandler
 
 	var ed sql.EditOpenerCloser
 	if replacer != nil {
@@ -138,38 +98,6 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 		}
 		return plan.NewTableEditorIter(insertIter, eds...), nil
 	}
-}
-
-func (b *BaseBuilder) newUpdateTriggerDuplicateKeyHandler(
-	ctx *sql.Context,
-	ii *plan.InsertInto,
-	insertIter *insertIter,
-) (DuplicateKeyHandler, error) {
-	planSource := plan.GetOnDuplicateKeyUpdateSource(ii.OnDup)
-	source := &duplicateKeyUpdateIter{
-		schema:      planSource.Child.Schema(ctx),
-		updateExprs: planSource.UpdateExprs,
-		ignore:      planSource.Ignore,
-	}
-	// The source iterator is private to this execution. The analyzed plan is shared
-	// by prepared statements and remains unchanged while building the update path.
-	updateBuilder := *b
-	updateBuilder.PriorityBuilder = &duplicateKeyUpdateBuilder{
-		source:   planSource,
-		iter:     source,
-		fallback: b.PriorityBuilder,
-	}
-	updateIter, err := updateBuilder.buildNodeExec(ctx, ii.OnDup, nil)
-	if err != nil {
-		_ = insertIter.Close(ctx)
-		return nil, err
-	}
-
-	return &updateTriggerDuplicateKeyHandler{
-		updateIter: updateIter,
-		source:     source,
-		insertIter: insertIter,
-	}, nil
 }
 
 func (b *BaseBuilder) buildDeleteFrom(ctx *sql.Context, n *plan.DeleteFrom, row sql.Row) (sql.RowIter, error) {
