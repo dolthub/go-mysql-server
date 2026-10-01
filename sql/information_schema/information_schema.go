@@ -875,10 +875,7 @@ func collationsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 func columnStatisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
 	privSet, privSetCount := ctx.GetPrivilegeSet()
-	if privSetCount == 0 {
-		return nil, nil
-	}
-	if privSet == nil {
+	if privSetCount == 0 || privSet == nil {
 		return RowsToRowIter(rows...), nil
 	}
 

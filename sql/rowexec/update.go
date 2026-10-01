@@ -239,6 +239,8 @@ func (u *updateJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 		tableToOldRowMap := plan.SplitRowIntoTableRowMap(oldJoinRow, u.joinSchema)
 		tableToNewRowMap := plan.SplitRowIntoTableRowMap(newJoinRow, u.joinSchema)
+		// RETURNING needs the first match for each target, even if its values do not change.
+		returnUnchangedRow := false
 
 		for tableName, _ := range u.updaters {
 			tableName = strings.ToLower(tableName)
@@ -268,6 +270,10 @@ func (u *updateJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 			_, err = cache.Get(hash)
 			if errors.Is(err, sql.ErrKeyNotFound) {
 				cache.Put(hash, struct{}{})
+				// No accumulator means RETURNING needs row data instead of an affected-row count.
+				if u.accumulator == nil {
+					returnUnchangedRow = true
+				}
 
 				// updateJoin counts matched rows from join output, unless a RETURNING clause
 				// is in use, in which case there will not be an accumulator assigned, since we
@@ -291,9 +297,10 @@ func (u *updateJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 		if err != nil {
 			return nil, err
 		}
-		if !equals {
-			return append(oldJoinRow, newJoinRow...), nil
+		if equals && !returnUnchangedRow {
+			continue
 		}
+		return append(oldJoinRow, newJoinRow...), nil
 	}
 }
 

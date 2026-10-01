@@ -34,15 +34,18 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	sql.IncrementStatusVariable(b.ctx, "Com_insert", 1)
 	b.qFlags.Set(sql.QFlagInsert)
 
-	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, i.Auth); err != nil && b.authEnabled {
-		b.handleErr(err)
-	}
-	// An upsert requires UPDATE even when none of its candidate rows conflict.
-	if len(i.OnDup) > 0 {
-		updateAuth := i.Auth
-		updateAuth.AuthType = ast.AuthType_UPDATE
-		if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, updateAuth); err != nil && b.authEnabled {
+	resolvedAuth, checksResolvedTables := b.cat.AuthorizationHandler().(sql.ResolvedTableAuthorizationHandler)
+	updateAuth := i.Auth
+	updateAuth.AuthType = ast.AuthType_UPDATE
+	if b.authEnabled && !checksResolvedTables {
+		if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, i.Auth); err != nil {
 			b.handleErr(err)
+		}
+		// An upsert requires UPDATE even when none of its candidate rows conflict.
+		if len(i.OnDup) > 0 {
+			if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, updateAuth); err != nil {
+				b.handleErr(err)
+			}
 		}
 	}
 	if i.With != nil {
@@ -52,6 +55,16 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	destScope, ok := b.buildResolvedTableForTablename(inScope, i.Table, nil)
 	if !ok {
 		b.handleErr(sql.ErrTableNotFound.New(i.Table.Name.String()))
+	}
+	if b.authEnabled && checksResolvedTables {
+		if err := resolvedAuth.HandleResolvedTableAuth(b.ctx, b.authQueryState, i.Auth, destScope.node); err != nil {
+			b.handleErr(err)
+		}
+		if len(i.OnDup) > 0 {
+			if err := resolvedAuth.HandleResolvedTableAuth(b.ctx, b.authQueryState, updateAuth, destScope.node); err != nil {
+				b.handleErr(err)
+			}
+		}
 	}
 	var db sql.Database
 	var rt *plan.ResolvedTable
@@ -189,7 +202,6 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	ins := plan.NewInsertInto(db, plan.NewInsertDestination(sch, dest), srcScope.node, isReplace, columns, onDupUpdateExprs, ignore)
 	ins.OnDupValuesAlias = i.OnDupValuesAlias
 	ins.OnDupWhere = onDupWhere
-	ins.CountOnDuplicateUpdateAsOneRow = i.CountOnDuplicateUpdateAsOneRow
 	ins.IgnoreMode = b.overrides.InsertIgnoreMode
 	if len(i.ConflictTarget) > 0 {
 		ins.IgnoreTarget = make([]string, len(i.ConflictTarget))

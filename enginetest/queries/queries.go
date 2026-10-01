@@ -3803,6 +3803,10 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Query:    `select STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') % 12345;`,
 		Expected: []sql.Row{{"10487"}},
 	},
+	{
+		Query:    `select STR_TO_DATE(UNHEX('30312c352c323031332030393a33303a3137'), '%d,%m,%Y %h:%i:%s');`,
+		Expected: []sql.Row{{time.Date(2013, time.May, 1, 9, 30, 17, 0, time.UTC)}},
+	},
 
 	{
 		Query:    "select 0.0015 / 0.0026;",
@@ -5189,6 +5193,47 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{
 			{true},
 		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11903
+		Query:    `select length('a\_b'), 'a\_b'`,
+		Expected: []sql.Row{{int32(4), "a\\_b"}},
+	},
+	{
+		Query:    `select 'a_b' like 'a\_b'`,
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    `select 'axb' like 'a\_b'`,
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    `select 'a%b' like 'a\%b'`,
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    `select 'axyb' like 'a\%b'`,
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    `select 'a\_b'`,
+		Expected: []sql.Row{{"a\\_b"}},
+	},
+	{
+		Query:    `select 'a\%b'`,
+		Expected: []sql.Row{{"a\\%b"}},
+	},
+	{
+		Query:    `select 'abc\\' like 'abc\\'`,
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    `select 'abc' like 'abc\\'`,
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    `select '\\' like '\\'`,
+		Expected: []sql.Row{{true}},
 	},
 	{
 		Query: `SELECT * FROM foo.othertable`,
@@ -9616,6 +9661,31 @@ from typestable`,
 		Query:    "select pk, (select max(pk) from one_pk where pk < opk.pk) as x from one_pk opk",
 		Expected: []sql.Row{{0, nil}, {1, 0}, {2, 1}, {3, 2}},
 	},
+	// Correlated columns in subqueries are included in select dependencies when the outer query joins
+	{
+		Query:    "select mt.s, (select count(*) from othertable where i2 <= mt.i) as x from mytable mt left join othertable ot on mt.i = ot.i2 where mt.i = 2 group by mt.i, mt.s",
+		Expected: []sql.Row{{"second row", 2}},
+	},
+	{
+		Query:    "select mt.s, count(ot.s2), (select count(*) from othertable where i2 <= mt.i) as x from mytable mt join othertable ot on mt.i = ot.i2 where mt.i = 2 group by mt.i, mt.s",
+		Expected: []sql.Row{{"second row", 1, 2}},
+	},
+	{
+		Query:    "select mt.s, count(distinct ot.s2), (select count(*) from othertable where i2 <= mt.i) as x from mytable mt left join othertable ot on mt.i = ot.i2 where mt.i = 2",
+		Expected: []sql.Row{{"second row", 1, 2}},
+	},
+	{
+		Query:    "select mt.i, (select count(*) from othertable where i2 <= mt.i) as x from mytable mt join othertable ot on mt.i = ot.i2 group by mt.i order by mt.i",
+		Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}},
+	},
+	{
+		Query:    "select mt.s, (select count(*) from othertable where i2 <= mt.i) as x from mytable mt left join othertable ot on mt.i = ot.i2 group by mt.i, mt.s order by mt.i",
+		Expected: []sql.Row{{"first row", 1}, {"second row", 2}, {"third row", 3}},
+	},
+	{
+		Query:    "select mt.s, (select count(*) from mytable inner_mt where inner_mt.i <= ot.i2) as x from mytable mt left join othertable ot on mt.i = ot.i2 and ot.i2 = 2 group by mt.i, mt.s, ot.i2 order by mt.i",
+		Expected: []sql.Row{{"first row", 0}, {"second row", 2}, {"third row", 0}},
+	},
 	{
 		// https://github.com/dolthub/dolt/issues/9963
 		Query:    "select max(i) as max_i from mytable having max(i) < 3",
@@ -10231,6 +10301,68 @@ var DateParseQueries = []QueryTest{
 		Expected: []sql.Row{{nil}},
 	},
 	{
+		Query:                 "SELECT STR_TO_DATE('23:02:03.123 PM', '%H:%i:%s.%f %p')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       1411,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "SELECT STR_TO_DATE('23 PM', '%k %p')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       1411,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "SELECT STR_TO_DATE('23:02:03 PM', '%k:%i:%s %p')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       1411,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "SELECT STR_TO_DATE('23:02:03 PM', '%T %p')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       1411,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "SELECT STR_TO_DATE('01:02:03 AM', '%T %p')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       1411,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "SELECT STR_TO_DATE('PM 23:02:03', '%p %T')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       1411,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		// The PM marker used to be parsed and then dropped, so this came back as 01:02.
+		Query:    "SELECT STR_TO_DATE('01:02 PM','%h:%i %p')",
+		Expected: []sql.Row{{time.Date(-1, time.November, 30, 13, 2, 0, 0, time.UTC)}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('12:02 PM','%h:%i %p')",
+		Expected: []sql.Row{{time.Date(-1, time.November, 30, 12, 2, 0, 0, time.UTC)}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('12:02 AM','%h:%i %p')",
+		Expected: []sql.Row{{time.Date(-1, time.November, 30, 0, 2, 0, 0, time.UTC)}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('01:02 AM','%h:%i %p')",
+		Expected: []sql.Row{{time.Date(-1, time.November, 30, 1, 2, 0, 0, time.UTC)}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('12:14:12 AM','%r')",
+		Expected: []sql.Row{{time.Date(-1, time.November, 30, 0, 14, 12, 0, time.UTC)}},
+	},
+	{
+		// %h is a 1..12 specifier, so an hour outside that range is not a time.
+		Query:    "SELECT STR_TO_DATE('13:02 PM','%h:%i %p')",
+		Expected: []sql.Row{{nil}},
+	},
+	{
 		Query:    "SELECT STR_TO_DATE('abc','abc')",
 		Expected: []sql.Row{{nil}},
 	},
@@ -10825,6 +10957,19 @@ var ErrorQueries = []QueryErrorTest{
 	{
 		Query:       `select s from mytable group by s order by i`,
 		ExpectedErr: analyzererrors.ErrValidationGroupByOrderBy,
+	}, {
+		Query:       "SELECT CAST('2020-01-01 10:00:00' AS DATETIME(7))",
+		ExpectedErr: sql.ErrTooBigPrecision,
+	},
+	{
+		Query:       "SELECT CAST('10:00:00' AS TIME(7))",
+		ExpectedErr: sql.ErrTooBigPrecision,
+	},
+	{
+		// A grouping key that fails while more rows are waiting to be grouped than the grouping buffers must return
+		// the error rather than hang. The key is slow to compute so that the rows pile up before it fails.
+		Query:       "select count(*) from mytable a, mytable b, mytable c, mytable d, mytable e, mytable f group by json_extract(concat('[', length(repeat(a.i, 10000000))), '$')",
+		ExpectedErr: sql.ErrInvalidJSONText,
 	},
 }
 

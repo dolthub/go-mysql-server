@@ -17,6 +17,7 @@ package function
 import (
 	"encoding/binary"
 	"fmt"
+	"math"
 	"net"
 	"reflect"
 	"strings"
@@ -245,9 +246,11 @@ func (i *InetNtoa) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	// Convert val into an unsigned int. IPv4 addresses use the full 32-bit
-	// range, so signed conversion corrupts addresses above 127.255.255.255.
-	ipv4int, _, err := types.Uint32.Convert(ctx, val)
+	// Convert val into int. This has to be a signed 64-bit conversion: the
+	// whole IPv4 space is 0 - 4294967295, so converting to int32 clamped every
+	// address above 127.255.255.255 down to 127.255.255.255, including
+	// anything INET_ATON produced for a normal public address.
+	ipv4int, _, err := types.Int64.Convert(ctx, val)
 	if ipv4int != nil && err != nil && !sql.ErrTruncatedIncorrect.Is(err) {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(val).String())
 	}
@@ -259,9 +262,17 @@ func (i *InetNtoa) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return ipv4.String(), nil
 	}
 
+	// Values outside the unsigned 32-bit range are not addresses; MySQL
+	// returns NULL for them rather than wrapping or clamping.
+	addr := ipv4int.(int64)
+	if addr < 0 || addr > math.MaxUint32 {
+		ctx.Warn(1411, "Incorrect integer value: '%v' for function inet_ntoa", val)
+		return nil, nil
+	}
+
 	// Create new IPv4, and fill with val
 	ipv4 := make(net.IP, 4)
-	binary.BigEndian.PutUint32(ipv4, ipv4int.(uint32))
+	binary.BigEndian.PutUint32(ipv4, uint32(addr))
 
 	return ipv4.String(), nil
 }

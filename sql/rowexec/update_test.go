@@ -158,3 +158,29 @@ func TestUpdateExpressionApplierOverride(t *testing.T) {
 		})
 	}
 }
+
+// TestUpdateJoinReturnsUnchangedFirstMatch checks RETURNING without a row-count accumulator.
+func TestUpdateJoinReturnsUnchangedFirstMatch(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	iter := &updateJoinIter{
+		updateSourceIter: sql.RowsToRowIter(
+			sql.Row{int64(1), int64(8), int64(1), int64(8)},
+			sql.Row{int64(1), int64(9), int64(1), int64(9)},
+			sql.Row{int64(2), int64(10), int64(2), int64(10)},
+		),
+		joinSchema: sql.Schema{
+			{Name: "id", Source: "t", Type: types.Int64},
+			{Name: "id", Source: "u", Type: types.Int64},
+		},
+		updaters:  map[string]sql.RowUpdater{"t": nil},
+		caches:    make(map[string]sql.KeyValueCache),
+		disposals: make(map[string]sql.DisposeFunc),
+	}
+
+	rows, err := sql.RowIterToRows(ctx, iter)
+	require.NoError(t, err)
+	require.Equal(t, []sql.Row{
+		{int64(1), int64(8), int64(1), int64(8)},
+		{int64(2), int64(10), int64(2), int64(10)},
+	}, rows)
+}
