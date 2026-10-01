@@ -14964,6 +14964,7 @@ select * from t1 except (
 			"INSERT INTO t (id, k) VALUES (1, 10), (2, 99)",
 			"CREATE TABLE u (k INT PRIMARY KEY)",
 			"INSERT INTO u VALUES (10)",
+			"CREATE TABLE e (y INT)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -14973,6 +14974,30 @@ select * from t1 except (
 			{
 				Query:    "SELECT id FROM t WHERE NOT EXISTS(SELECT COUNT(*) FROM u WHERE u.k = t.k) ORDER BY id",
 				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT id FROM t WHERE EXISTS (SELECT SUM(u.k) FROM u WHERE u.k = t.k) ORDER BY id",
+				Expected: []sql.Row{{1}, {2}},
+			},
+			{
+				Query:    "SELECT id FROM t WHERE NOT EXISTS (SELECT SUM(u.k) FROM u WHERE u.k = t.k) ORDER BY id",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT id FROM t WHERE EXISTS (SELECT SUM(u.k) FROM u WHERE u.k = t.k GROUP BY u.k) ORDER BY id",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT id FROM t WHERE EXISTS (SELECT SUM(u.k) FROM u WHERE u.k = 999) ORDER BY id",
+				Expected: []sql.Row{{1}, {2}},
+			},
+			{
+				Query:    "SELECT id FROM t WHERE NOT EXISTS (SELECT SUM(u.k) FROM u WHERE u.k = 999) ORDER BY id",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT id FROM t WHERE EXISTS (SELECT SUM(e.y) FROM e) ORDER BY id",
+				Expected: []sql.Row{{1}, {2}},
 			},
 			{
 				Query:    "SELECT id FROM t WHERE EXISTS(SELECT COUNT(*) FROM u WHERE u.k = t.k HAVING COUNT(*) > 0) ORDER BY id",
