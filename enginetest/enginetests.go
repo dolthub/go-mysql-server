@@ -1805,6 +1805,21 @@ func TestScripts(t *testing.T, harness Harness) {
 	}
 }
 
+func TestJoinsAndSubqueriesScripts(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData)
+	for _, script := range queries.JoinsAndSubqueriesScriptTests {
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(script.Name) {
+				t.Run(script.Name, func(t *testing.T) {
+					t.Skip(script.Name)
+				})
+				continue
+			}
+		}
+		TestScript(t, harness, script)
+	}
+}
+
 func TestIndexesScripts(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
 	for _, script := range queries.IndexesScriptTests {

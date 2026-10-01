@@ -611,6 +611,10 @@ func TestScripts(t *testing.T) {
 	enginetest.TestScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
+func TestJoinsAndSubqueriesScripts(t *testing.T) {
+	enginetest.TestJoinsAndSubqueriesScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
 func TestIndexesScripts(t *testing.T) {
 	enginetest.TestIndexesScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
