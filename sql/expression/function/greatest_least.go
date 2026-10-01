@@ -44,39 +44,45 @@ func compEval(
 	}
 
 	if dt, ok := returnType.(sql.DecimalType); ok {
-		// exact values compared exactly: going through floats here would
-		// corrupt digits a decimal can hold but a float cannot
+		// Compare exact values without losing digits through float64.
 		greatest := cmp(float64(1), float64(0))
 		var selected *apd.Decimal
-		for i, arg := range args {
+		scale := int64(dt.Scale())
+		for _, arg := range args {
 			val, err := arg.Eval(ctx, row)
 			if err != nil {
 				return nil, err
 			}
+
 			if val == nil {
 				return nil, nil
 			}
-			conv, _, err := types.InternalDecimalType.Convert(ctx, val)
+
+			d, err := types.InternalDecimalType.ConvertToDecimal(val)
 			if err != nil {
 				return nil, err
 			}
-			d := conv.(*apd.Decimal)
-			if i == 0 || (greatest && d.Cmp(selected) > 0) || (!greatest && d.Cmp(selected) < 0) {
+
+			scale = max(scale, -int64(d.Exponent))
+			if selected == nil || (greatest && d.Cmp(selected) > 0) || (!greatest && d.Cmp(selected) < 0) {
 				selected = d
 			}
 		}
-		// MySQL presents the picked value at the unified scale
-		digits := selected.NumDigits() + int64(dt.Scale())
-		if digits < 1 {
-			digits = 1
-		}
+
+		// The declared precision is capped at 65, but expression values can
+		// exceed that precision. Do not apply column range checks here.
+		integerDigits := max(selected.NumDigits()+int64(selected.Exponent), 0)
+		// MySQL pads to the common scale within its nine base-10^9 words.
+		// Keep existing fractional digits even when no padding fits.
+		paddingScale := max((9-(integerDigits+8)/9)*9, 0)
+		scale = max(min(scale, paddingScale), -int64(selected.Exponent))
 		quantized := new(apd.Decimal)
-		qCtx := sql.DecimalCtx.WithPrecision(uint32(digits))
-		if _, err := qCtx.Quantize(quantized, selected, -int32(dt.Scale())); err != nil {
+		qCtx := sql.DecimalCtx.WithPrecision(uint32(max(integerDigits+scale, 1)))
+		if _, err := qCtx.Quantize(quantized, selected, -int32(scale)); err != nil {
 			return nil, err
 		}
-		ret, _, err := dt.Convert(ctx, quantized)
-		return ret, err
+
+		return quantized, nil
 	}
 
 	var selectedNum float64
@@ -216,12 +222,15 @@ func compRetType(ctx *sql.Context, args ...sql.Expression) (sql.Type, error) {
 			if !types.IsInteger(argType) {
 				allInt = false
 			}
+
 			if types.IsDecimal(argType) {
 				anyDecimal = true
 			}
+
 			if types.IsFloat(argType) {
 				anyFloat = true
 			}
+
 			argTypes = append(argTypes, argType)
 		} else if types.IsText(argType) {
 			allInt = false
@@ -248,13 +257,46 @@ func compRetType(ctx *sql.Context, args ...sql.Expression) (sql.Type, error) {
 	} else if anyDecimal && !anyFloat && len(argTypes) == len(args) {
 		// only numeric arguments, at least one an exact decimal: the result
 		// keeps the widest integer part and the widest scale among them
-		if unified, ok := types.UnifiedDecimalType(argTypes...); ok {
-			return unified, nil
-		}
-		return types.Float64, nil
+		return compDecimalType(argTypes), nil
 	} else {
 		return types.Float64, nil
 	}
+}
+
+// compDecimalType combines exact numeric arguments using the largest integer
+// part and scale. The cap describes result metadata, not an evaluation bound.
+func compDecimalType(argTypes []sql.Type) sql.Type {
+	var integerDigits, scale uint8
+	for _, t := range argTypes {
+		var p, s uint8
+		if dt, ok := t.(sql.DecimalType); ok {
+			p, s = dt.Precision(), dt.Scale()
+		} else {
+			switch t {
+			case types.Int8, types.Uint8, types.Boolean:
+				p = 3
+			case types.Int16, types.Uint16:
+				p = 5
+			case types.Int24, types.Uint24:
+				p = 8
+			case types.Int32, types.Uint32:
+				p = 10
+			case types.Int64:
+				p = 19
+			case types.Uint64:
+				p = 20
+			default:
+				return types.Float64
+			}
+		}
+
+		integerDigits = max(integerDigits, p-s)
+		scale = max(scale, s)
+	}
+
+	scale = min(scale, types.DecimalTypeMaxScale)
+	precision := min(uint16(integerDigits)+uint16(scale), types.DecimalTypeMaxPrecision)
+	return types.MustCreateDecimalType(uint8(precision), scale)
 }
 
 // Greatest returns the argument with the greatest numerical or string value. It allows for
