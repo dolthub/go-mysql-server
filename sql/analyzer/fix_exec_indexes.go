@@ -526,12 +526,12 @@ func (s *idxScope) visitSelf(ctx *sql.Context, n sql.Node) error {
 		rightScope.addSchema(rightSchema)
 		dstScope := s.childScopes[0]
 
-		var duplicateExpressions []sql.Expression
+		var onDupExprs []sql.Expression
 		if source := plan.GetOnDuplicateKeyUpdateSource(n.OnDup); source != nil {
-			duplicateExpressions = source.Expressions()
+			onDupExprs = source.Expressions()
 		}
 
-		for _, e := range duplicateExpressions {
+		for _, e := range onDupExprs {
 			set, ok := e.(*expression.SetField)
 			if !ok {
 				return fmt.Errorf("on duplicate update expressions should be *expression.SetField; found %T", e)
@@ -629,6 +629,28 @@ func (s *idxScope) visitSelf(ctx *sql.Context, n sql.Node) error {
 	return nil
 }
 
+// finalizeOnDuplicateKeyUpdateSource binds the update path to the finalized destination and assignments.
+func finalizeOnDuplicateKeyUpdateSource(ctx *sql.Context, onDup, destination sql.Node, exprs []sql.Expression) (sql.Node, error) {
+	n, _, err := transform.NodeWithCtx(ctx, onDup, func(ctx *sql.Context, c transform.Context) bool {
+		_, trigger := c.Parent.(*plan.TriggerExecutor)
+		return !trigger || c.ChildNum != 1
+	}, func(ctx *sql.Context, c transform.Context) (sql.Node, transform.TreeIdentity, error) {
+		if source, ok := c.Node.(*plan.OnDuplicateKeyUpdateSource); ok {
+			// Use the finalized destination, including its foreign-key editor.
+			rebound, err := source.WithChildren(ctx, destination)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+
+			node, err := rebound.(sql.Expressioner).WithExpressions(ctx, exprs...)
+			return node, transform.NewTree, err
+		}
+
+		return c.Node, transform.SameTree, nil
+	})
+	return n, err
+}
+
 // finalizeSelf builds the output node and fixes the return scope
 func (s *idxScope) finalizeSelf(ctx *sql.Context, n sql.Node) (sql.Node, error) {
 	var err error
@@ -644,23 +666,7 @@ func (s *idxScope) finalizeSelf(ctx *sql.Context, n sql.Node) (sql.Node, error) 
 		onDupExprsLen := 0
 		if source := plan.GetOnDuplicateKeyUpdateSource(nn.OnDup); source != nil {
 			onDupExprsLen = len(source.Expressions())
-			nn.OnDup, _, err = transform.NodeWithCtx(ctx, nn.OnDup, func(ctx *sql.Context, c transform.Context) bool {
-				_, trigger := c.Parent.(*plan.TriggerExecutor)
-				return !trigger || c.ChildNum != 1
-			}, func(ctx *sql.Context, c transform.Context) (sql.Node, transform.TreeIdentity, error) {
-				if source, ok := c.Node.(*plan.OnDuplicateKeyUpdateSource); ok {
-					// Use the finalized destination, including its foreign-key editor.
-					rebound, err := source.WithChildren(ctx, nn.Destination)
-					if err != nil {
-						return nil, transform.SameTree, err
-					}
-
-					node, err := rebound.(sql.Expressioner).WithExpressions(ctx, s.expressions[:onDupExprsLen]...)
-					return node, transform.NewTree, err
-				}
-
-				return c.Node, transform.SameTree, nil
-			})
+			nn.OnDup, err = finalizeOnDuplicateKeyUpdateSource(ctx, nn.OnDup, nn.Destination, s.expressions[:onDupExprsLen])
 			if err != nil {
 				return nil, err
 			}

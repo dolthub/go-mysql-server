@@ -114,7 +114,7 @@ func NewInsertInto(db sql.Database, dst, src sql.Node, isReplace bool, cols []st
 	}
 
 	if onDupExprs.HasUpdates() {
-		insert.OnDup = NewOnDuplicateKeyUpdateSource(dst, onDupExprs, ignore)
+		insert.OnDup = NewOnDuplicateKeyUpdateSource(dst, onDupExprs).WithIgnore(ignore)
 	}
 
 	return insert

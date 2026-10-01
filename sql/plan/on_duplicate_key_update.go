@@ -29,12 +29,18 @@ type OnDuplicateKeyUpdateSource struct {
 	Ignore      bool
 }
 
-func NewOnDuplicateKeyUpdateSource(destination sql.Node, exprs *UpdateExprs, ignore bool) *OnDuplicateKeyUpdateSource {
+func NewOnDuplicateKeyUpdateSource(destination sql.Node, exprs *UpdateExprs) *OnDuplicateKeyUpdateSource {
 	return &OnDuplicateKeyUpdateSource{
 		UnaryNode:   UnaryNode{Child: destination},
 		UpdateExprs: exprs,
-		Ignore:      ignore,
 	}
+}
+
+// WithIgnore returns a copy with the duplicate-update error handling mode set.
+func (n *OnDuplicateKeyUpdateSource) WithIgnore(ignore bool) *OnDuplicateKeyUpdateSource {
+	nn := *n
+	nn.Ignore = ignore
+	return &nn
 }
 
 // Schema implements sql.Node.
