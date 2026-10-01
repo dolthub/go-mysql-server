@@ -30,13 +30,20 @@ import (
 var ErrUintOverflow = errors.NewKind(
 	"Unsigned integer too big to fit on signed integer")
 
-// compEval is used to implement Greatest/Least Eval() using a comparison function
+type comparisonDirection uint8
+
+const (
+	compareGreater comparisonDirection = iota
+	compareLess
+)
+
+// compEval is used to implement Greatest/Least Eval() using an explicit comparison direction
 func compEval(
 	returnType sql.Type,
 	args []sql.Expression,
 	ctx *sql.Context,
 	row sql.Row,
-	cmp compareFn,
+	direction comparisonDirection,
 ) (interface{}, error) {
 
 	if returnType == types.Null {
@@ -45,7 +52,6 @@ func compEval(
 
 	if dt, ok := returnType.(sql.DecimalType); ok {
 		// Compare exact values without losing digits through float64.
-		greatest := cmp(float64(1), float64(0))
 		var selected *apd.Decimal
 		scale := int64(dt.Scale())
 		for _, arg := range args {
@@ -64,7 +70,7 @@ func compEval(
 			}
 
 			scale = max(scale, -int64(d.Exponent))
-			if selected == nil || (greatest && d.Cmp(selected) > 0) || (!greatest && d.Cmp(selected) < 0) {
+			if selected == nil || (direction == compareGreater && d.Cmp(selected) > 0) || (direction == compareLess && d.Cmp(selected) < 0) {
 				selected = d
 			}
 		}
@@ -83,6 +89,11 @@ func compEval(
 		}
 
 		return quantized, nil
+	}
+
+	cmp := lessThan
+	if direction == compareGreater {
+		cmp = greaterThan
 	}
 
 	var selectedNum float64
@@ -377,8 +388,6 @@ func (f *Greatest) Resolved() bool {
 // Children implements the Expression interface.
 func (f *Greatest) Children() []sql.Expression { return f.Args }
 
-type compareFn func(interface{}, interface{}) bool
-
 func greaterThan(a, b interface{}) bool {
 	switch i := a.(type) {
 	case int64:
@@ -409,7 +418,7 @@ func lessThan(a, b interface{}) bool {
 
 // Eval implements the Expression interface.
 func (f *Greatest) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return compEval(f.returnType, f.Args, ctx, row, greaterThan)
+	return compEval(f.returnType, f.Args, ctx, row, compareGreater)
 }
 
 // Least returns the argument with the least numerical or string value. It allows for
@@ -489,5 +498,5 @@ func (f *Least) Children() []sql.Expression { return f.Args }
 
 // Eval implements the Expression interface.
 func (f *Least) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return compEval(f.returnType, f.Args, ctx, row, lessThan)
+	return compEval(f.returnType, f.Args, ctx, row, compareLess)
 }
