@@ -120,13 +120,7 @@ func (m *Memo) getTableId(table string) (GroupId, bool) {
 
 func (m *Memo) MemoizeLeftJoin(ctx *sql.Context, grp, left, right *ExprGroup, op plan.JoinType, filter []sql.Expression) *ExprGroup {
 	newJoin := &LeftJoin{
-		JoinBase: &JoinBase{
-			relBase: &relBase{},
-			Left:    left,
-			Right:   right,
-			Op:      op,
-			Filter:  filter,
-		},
+		JoinBase: newJoinBase(ctx, left, right, op, filter),
 	}
 	// todo intern relExprs? add to appropriate group?
 	if grp == nil {
@@ -139,13 +133,7 @@ func (m *Memo) MemoizeLeftJoin(ctx *sql.Context, grp, left, right *ExprGroup, op
 
 func (m *Memo) MemoizeInnerJoin(ctx *sql.Context, grp, left, right *ExprGroup, op plan.JoinType, filter []sql.Expression) *ExprGroup {
 	newJoin := &InnerJoin{
-		JoinBase: &JoinBase{
-			relBase: &relBase{},
-			Left:    left,
-			Right:   right,
-			Op:      op,
-			Filter:  filter,
-		},
+		JoinBase: newJoinBase(ctx, left, right, op, filter),
 	}
 	// todo intern relExprs? add to appropriate group?
 	if grp == nil {
@@ -163,14 +151,8 @@ func (m *Memo) MemoizeLookupJoin(ctx *sql.Context, grp, left, right *ExprGroup, 
 		return grp
 	}
 	newJoin := &LookupJoin{
-		JoinBase: &JoinBase{
-			relBase: &relBase{},
-			Left:    left,
-			Right:   right,
-			Op:      op.AsLookup(),
-			Filter:  filter,
-		},
-		Lookup: lookup,
+		JoinBase: newJoinBase(ctx, left, right, op.AsLookup(), filter),
+		Lookup:   lookup,
 	}
 
 	if grp == nil {
@@ -212,14 +194,8 @@ func (m *Memo) MemoizeHashJoin(ctx *sql.Context, grp *ExprGroup, join *JoinBase,
 // If a LOOKUP_JOIN simulates x = v1, a concat lookup performs x in (v1, v2, v3, ...)
 func (m *Memo) MemoizeConcatLookupJoin(ctx *sql.Context, grp, left, right *ExprGroup, op plan.JoinType, filter []sql.Expression, lookups []*IndexScan) *ExprGroup {
 	newJoin := &ConcatJoin{
-		JoinBase: &JoinBase{
-			relBase: &relBase{},
-			Left:    left,
-			Right:   right,
-			Op:      op.AsLookup(),
-			Filter:  filter,
-		},
-		Concat: lookups,
+		JoinBase: newJoinBase(ctx, left, right, op.AsLookup(), filter),
+		Concat:   lookups,
 	}
 
 	if grp == nil {
@@ -232,13 +208,7 @@ func (m *Memo) MemoizeConcatLookupJoin(ctx *sql.Context, grp, left, right *ExprG
 
 func (m *Memo) MemoizeRangeHeapJoin(ctx *sql.Context, grp, left, right *ExprGroup, op plan.JoinType, filter []sql.Expression, rangeHeap *RangeHeap) *ExprGroup {
 	newJoin := &RangeHeapJoin{
-		JoinBase: &JoinBase{
-			relBase: &relBase{},
-			Left:    left,
-			Right:   right,
-			Op:      op,
-			Filter:  filter,
-		},
+		JoinBase:  newJoinBase(ctx, left, right, op, filter),
 		RangeHeap: rangeHeap,
 	}
 	newJoin.RangeHeap.Parent = newJoin.JoinBase
@@ -253,13 +223,7 @@ func (m *Memo) MemoizeRangeHeapJoin(ctx *sql.Context, grp, left, right *ExprGrou
 
 func (m *Memo) MemoizeMergeJoin(ctx *sql.Context, grp, left, right *ExprGroup, lIdx, rIdx *IndexScan, op plan.JoinType, filter []sql.Expression, swapCmp bool) *ExprGroup {
 	rel := &MergeJoin{
-		JoinBase: &JoinBase{
-			relBase: &relBase{},
-			Op:      op,
-			Filter:  filter,
-			Left:    left,
-			Right:   right,
-		},
+		JoinBase:  newJoinBase(ctx, left, right, op, filter),
 		InnerScan: lIdx,
 		OuterScan: rIdx,
 		SwapCmp:   swapCmp,
@@ -934,6 +898,45 @@ type JoinBase struct {
 	Right  *ExprGroup
 	Filter []sql.Expression
 	Op     plan.JoinType
+	// DropsNullRejection is computed once for this join's operator and filter.
+	// Lookup and merge alternatives must not discard null-rejecting comparisons.
+	DropsNullRejection bool
+}
+
+func newJoinBase(ctx *sql.Context, left, right *ExprGroup, op plan.JoinType, filter []sql.Expression) *JoinBase {
+	return &JoinBase{
+		relBase:            &relBase{},
+		Left:               left,
+		Right:              right,
+		Filter:             filter,
+		Op:                 op,
+		DropsNullRejection: dropsNullRejection(ctx, op, filter),
+	}
+}
+
+// dropsNullRejection reports whether executing op as a lookup or merge join
+// would silently drop its null-rejecting semantics. Those joins only compare
+// rows whose join keys are equal, so a filter evaluating to NULL is never
+// observed, and a join that has to reject those rows cannot be executed that
+// way. Hash and nested loop joins evaluate the filter against every candidate
+// row, so they are unaffected. A filter can only evaluate to NULL if one of
+// its columns is nullable, which keeps index joins available for the common
+// case of a join over non-nullable columns.
+func dropsNullRejection(ctx *sql.Context, op plan.JoinType, filter []sql.Expression) bool {
+	if op != plan.JoinTypeLeftOuterExcludeNulls {
+		return false
+	}
+
+	for _, f := range filter {
+		if transform.InspectExpr(ctx, f, func(ctx *sql.Context, e sql.Expression) bool {
+			gf, ok := e.(*expression.GetField)
+			return ok && gf.IsNullable(ctx)
+		}) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (r *JoinBase) Children() []*ExprGroup {
@@ -954,10 +957,11 @@ func (r *JoinBase) Copy() *JoinBase {
 			n: r.n,
 			c: r.c,
 		},
-		Op:     r.Op,
-		Filter: r.Filter,
-		Left:   r.Left,
-		Right:  r.Right,
+		DropsNullRejection: r.DropsNullRejection,
+		Op:                 r.Op,
+		Filter:             r.Filter,
+		Left:               r.Left,
+		Right:              r.Right,
 	}
 }
 

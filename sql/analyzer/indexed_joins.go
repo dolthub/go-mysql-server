@@ -259,31 +259,6 @@ func mergeJoinsDisabled(hints []memo.Hint) bool {
 	return false
 }
 
-// dropsNullRejection reports whether executing op as a lookup or merge join
-// would silently drop its null-rejecting semantics. Those joins only compare
-// rows whose join keys are equal, so a filter evaluating to NULL is never
-// observed, and a join that has to reject those rows cannot be executed that
-// way. Hash and nested loop joins evaluate the filter against every candidate
-// row, so they are unaffected. A filter can only evaluate to NULL if one of
-// its columns is nullable, which keeps index joins available for the common
-// case of a join over non-nullable columns.
-func dropsNullRejection(ctx *sql.Context, op plan.JoinType, filter []sql.Expression) bool {
-	if op != plan.JoinTypeLeftOuterExcludeNulls {
-		return false
-	}
-
-	for _, f := range filter {
-		if transform.InspectExpr(ctx, f, func(ctx *sql.Context, e sql.Expression) bool {
-			gf, ok := e.(*expression.GetField)
-			return ok && gf.IsNullable(ctx)
-		}) {
-			return true
-		}
-	}
-
-	return false
-}
-
 // addLookupJoins prefixes memo join group expressions with indexed join
 // alternatives to join plans added by joinOrderBuilder. We can assume that a
 // join with a non-nil join filter is not degenerate, and we can apply indexed
@@ -328,7 +303,7 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo, cat sql.Catalog) error {
 		// Same reason the ANTI_JOIN above is not a valid lookup acceptor: a
 		// null-rejecting join has to observe the comparisons that evaluate to
 		// NULL, and a lookup only returns rows whose key matches.
-		if dropsNullRejection(ctx, join.Op, join.Filter) {
+		if join.DropsNullRejection {
 			m.Tracer.Log("Skipping lookup join for %T - join rejects null comparisons", e)
 			return nil
 		}
@@ -1220,7 +1195,7 @@ func addMergeJoins(ctx *sql.Context, m *memo.Memo) error {
 
 		// A merge join only compares rows whose keys are equal, so it never
 		// observes a comparison that evaluates to NULL.
-		if dropsNullRejection(ctx, join.Op, join.Filter) {
+		if join.DropsNullRejection {
 			m.Tracer.Log("Skipping merge join for %T - join rejects null comparisons", e)
 			return nil
 		}
