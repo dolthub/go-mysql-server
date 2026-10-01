@@ -611,6 +611,10 @@ func TestScripts(t *testing.T) {
 	enginetest.TestScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
+func TestIndexesScripts(t *testing.T) {
+	enginetest.TestIndexesScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
 func TestStringsScripts(t *testing.T) {
 	enginetest.TestStringsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
