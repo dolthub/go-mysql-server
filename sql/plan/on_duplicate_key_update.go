@@ -83,10 +83,10 @@ func (n *OnDuplicateKeyUpdateSource) WithExpressions(ctx *sql.Context, expressio
 	return &nn, nil
 }
 
-// GetOnDuplicateKeyUpdateSource finds the source of a duplicate update branch,
+// GetOnDuplicateKeyUpdateSource finds the source of a duplicate update path,
 // following the write operation rather than any surrounding trigger bodies.
-func GetOnDuplicateKeyUpdateSource(branch sql.Node) *OnDuplicateKeyUpdateSource {
-	for node := branch; node != nil; {
+func GetOnDuplicateKeyUpdateSource(path sql.Node) *OnDuplicateKeyUpdateSource {
+	for node := path; node != nil; {
 		if source, ok := node.(*OnDuplicateKeyUpdateSource); ok {
 			return source
 		}

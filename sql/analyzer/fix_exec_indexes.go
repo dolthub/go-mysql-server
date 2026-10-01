@@ -649,7 +649,13 @@ func (s *idxScope) finalizeSelf(ctx *sql.Context, n sql.Node) (sql.Node, error) 
 				return !trigger || c.ChildNum != 1
 			}, func(ctx *sql.Context, c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 				if source, ok := c.Node.(*plan.OnDuplicateKeyUpdateSource); ok {
-					node, err := source.WithExpressions(ctx, s.expressions[:onDupExprsLen]...)
+					// Use the finalized destination, including its foreign-key editor.
+					rebound, err := source.WithChildren(ctx, nn.Destination)
+					if err != nil {
+						return nil, transform.SameTree, err
+					}
+
+					node, err := rebound.(sql.Expressioner).WithExpressions(ctx, s.expressions[:onDupExprsLen]...)
 					return node, transform.NewTree, err
 				}
 

@@ -63,7 +63,7 @@ type InsertInto struct {
 	db          sql.Database
 	Destination sql.Node
 	Source      sql.Node
-	// OnDup owns the duplicate assignments and optional update trigger branch.
+	// OnDup owns the duplicate assignments and optional update trigger path.
 	// It receives the existing row followed by the proposed insert row when a
 	// duplicate key is found.
 	OnDup sql.Node

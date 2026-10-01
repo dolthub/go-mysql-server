@@ -41,7 +41,7 @@ type directDuplicateKeyHandler struct {
 	insertIter *insertIter
 }
 
-// updateTriggerDuplicateKeyHandler executes the update branch and its trigger executors.
+// updateTriggerDuplicateKeyHandler executes the update path and its trigger executors.
 type updateTriggerDuplicateKeyHandler struct {
 	updateIter sql.RowIter
 	source     *duplicateKeyUpdateIter
@@ -379,7 +379,7 @@ func (h *updateTriggerDuplicateKeyHandler) update(ctx *sql.Context, oldRow, prop
 	return result, err
 }
 
-// Close implements sql.Closer. The update branch is shared by all duplicate rows
+// Close implements sql.Closer. The update path is shared by all duplicate rows
 // and must remain open until the enclosing insert is closed.
 func (h *updateTriggerDuplicateKeyHandler) Close(ctx *sql.Context) error {
 	return h.updateIter.Close(ctx)
@@ -645,22 +645,31 @@ func toInt64(x interface{}) int64 {
 	}
 }
 
-// duplicateKeyUpdateSourceNode binds the planned source to this execution's row
-// slot. It is created only while building an insert, never stored in a cached plan.
-type duplicateKeyUpdateSourceNode struct {
-	*plan.OnDuplicateKeyUpdateSource
-	iter *duplicateKeyUpdateIter
+// duplicateKeyUpdateBuilder supplies the iterator for one execution's duplicate
+// source without adding execution state to the analyzed plan.
+type duplicateKeyUpdateBuilder struct {
+	source   *plan.OnDuplicateKeyUpdateSource
+	iter     *duplicateKeyUpdateIter
+	fallback sql.NodeExecBuilder
 }
 
-var _ sql.ExecSourceRel = (*duplicateKeyUpdateSourceNode)(nil)
+var _ sql.NodeExecBuilder = (*duplicateKeyUpdateBuilder)(nil)
 
-// RowIter implements sql.ExecSourceRel.
-func (n *duplicateKeyUpdateSourceNode) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return n.iter, nil
+// Build implements sql.NodeExecBuilder.
+func (b *duplicateKeyUpdateBuilder) Build(ctx *sql.Context, node sql.Node, row sql.Row) (sql.RowIter, error) {
+	if source, ok := node.(*plan.OnDuplicateKeyUpdateSource); ok && source == b.source {
+		return b.iter, nil
+	}
+
+	if b.fallback != nil {
+		return b.fallback.Build(ctx, node, row)
+	}
+
+	return nil, nil
 }
 
 // duplicateKeyUpdateIter evaluates one supplied duplicate row at a time. The
-// handler supplies the next pair before advancing the shared update branch.
+// handler supplies the next pair before advancing the shared update path.
 type duplicateKeyUpdateIter struct {
 	schema      sql.Schema
 	updateExprs *plan.UpdateExprs

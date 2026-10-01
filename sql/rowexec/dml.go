@@ -111,7 +111,7 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 
 		// Duplicate key update sources can be wrapped by trigger nodes, in which case we need to do something different
 		if _, direct := ii.OnDup.(*plan.OnDuplicateKeyUpdateSource); !direct {
-			duplicateKeyHandler, err = b.newUpdateTriggerDuplicateKeyHandler(ctx, ii, dstSchema, onDupExprs, insertIter)
+			duplicateKeyHandler, err = b.newUpdateTriggerDuplicateKeyHandler(ctx, ii, insertIter)
 			if err != nil {
 				return nil, err
 			}
@@ -144,38 +144,23 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 func (b *BaseBuilder) newUpdateTriggerDuplicateKeyHandler(
 	ctx *sql.Context,
 	ii *plan.InsertInto,
-	dstSchema sql.Schema,
-	onDupExprs *plan.UpdateExprs,
 	insertIter *insertIter,
 ) (DuplicateKeyHandler, error) {
-	source := &duplicateKeyUpdateIter{schema: dstSchema, updateExprs: onDupExprs, ignore: ii.Ignore}
-	updatePlan, _, err := transform.NodeWithCtx(ctx, ii.OnDup, func(ctx *sql.Context, c transform.Context) bool {
-		_, trigger := c.Parent.(*plan.TriggerExecutor)
-		return !trigger || c.ChildNum != 1
-	}, func(ctx *sql.Context, c transform.Context) (sql.Node, transform.TreeIdentity, error) {
-		node := c.Node
-		switch n := node.(type) {
-		case *plan.OnDuplicateKeyUpdateSource:
-			rebound, err := n.WithChildren(ctx, ii.Destination)
-			if err != nil {
-				return nil, transform.SameTree, err
-			}
-
-			return &duplicateKeyUpdateSourceNode{
-				OnDuplicateKeyUpdateSource: rebound.(*plan.OnDuplicateKeyUpdateSource),
-				iter:                       source,
-			}, transform.NewTree, nil
-		case *plan.Update:
-			return n.WithChecks(ii.Checks()), transform.NewTree, nil
-		default:
-			return node, transform.SameTree, nil
-		}
-	})
-	if err != nil {
-		return nil, err
+	planSource := plan.GetOnDuplicateKeyUpdateSource(ii.OnDup)
+	source := &duplicateKeyUpdateIter{
+		schema:      planSource.Child.Schema(ctx),
+		updateExprs: planSource.UpdateExprs,
+		ignore:      planSource.Ignore,
 	}
-
-	updateIter, err := b.buildNodeExec(ctx, updatePlan, nil)
+	// The source iterator is private to this execution. The analyzed plan is shared
+	// by prepared statements and remains unchanged while building the update path.
+	updateBuilder := *b
+	updateBuilder.PriorityBuilder = &duplicateKeyUpdateBuilder{
+		source:   planSource,
+		iter:     source,
+		fallback: b.PriorityBuilder,
+	}
+	updateIter, err := updateBuilder.buildNodeExec(ctx, ii.OnDup, nil)
 	if err != nil {
 		_ = insertIter.Close(ctx)
 		return nil, err
