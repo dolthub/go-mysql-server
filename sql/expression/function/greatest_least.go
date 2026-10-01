@@ -24,6 +24,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -268,7 +269,7 @@ func compRetType(ctx *sql.Context, args ...sql.Expression) (sql.Type, error) {
 	} else if anyDecimal && !anyFloat && len(argTypes) == len(args) {
 		// only numeric arguments, at least one an exact decimal: the result
 		// keeps the widest integer part and the widest scale among them
-		return compDecimalType(argTypes), nil
+		return compDecimalType(args, argTypes), nil
 	} else {
 		return types.Float64, nil
 	}
@@ -276,9 +277,9 @@ func compRetType(ctx *sql.Context, args ...sql.Expression) (sql.Type, error) {
 
 // compDecimalType combines exact numeric arguments using the largest integer
 // part and scale. The cap describes result metadata, not an evaluation bound.
-func compDecimalType(argTypes []sql.Type) sql.Type {
+func compDecimalType(args []sql.Expression, argTypes []sql.Type) sql.Type {
 	var integerDigits, scale uint8
-	for _, t := range argTypes {
+	for i, t := range argTypes {
 		var p, s uint8
 		if dt, ok := t.(sql.DecimalType); ok {
 			p, s = dt.Precision(), dt.Scale()
@@ -301,6 +302,10 @@ func compDecimalType(argTypes []sql.Type) sql.Type {
 			}
 		}
 
+		if types.IsInteger(t) {
+			p = compIntegerPrecision(args[i], t, p)
+		}
+
 		integerDigits = max(integerDigits, p-s)
 		scale = max(scale, s)
 	}
@@ -308,6 +313,29 @@ func compDecimalType(argTypes []sql.Type) sql.Type {
 	scale = min(scale, types.DecimalTypeMaxScale)
 	precision := min(uint16(integerDigits)+uint16(scale), types.DecimalTypeMaxPrecision)
 	return types.MustCreateDecimalType(uint8(precision), scale)
+}
+
+// compIntegerPrecision distinguishes literal widths and CAST metadata from
+// integer column widths, which cannot be inferred from the SQL type alone.
+func compIntegerPrecision(arg sql.Expression, typ sql.Type, columnPrecision uint8) uint8 {
+	switch arg := arg.(type) {
+	case *expression.Literal:
+		if _, ok := arg.Value().(bool); ok {
+			return 1
+		}
+
+		return uint8(len(strings.TrimPrefix(fmt.Sprint(arg.Value()), "-")))
+	case *expression.UnaryMinus:
+		return compIntegerPrecision(arg.Child, typ, columnPrecision)
+	case *expression.Convert:
+		if types.IsUnsigned(typ) {
+			return 21
+		}
+
+		return 20
+	default:
+		return columnPrecision
+	}
 }
 
 // Greatest returns the argument with the greatest numerical or string value. It allows for

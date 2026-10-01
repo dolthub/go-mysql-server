@@ -429,7 +429,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 			}
 		}
 		expr := b.buildScalar(inScope, v.Expr)
-		ret, err := b.f.buildConvert(b.ctx, expr, v.Type.Type, typeLength, typeScale)
+		ret, err := b.f.buildConvert(b.ctx, expr, v.Type.Type, typeLength, typeScale, true)
 		if err != nil {
 			b.handleErr(err)
 		}
