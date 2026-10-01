@@ -880,8 +880,6 @@ func TestIndexedExpressions(t *testing.T) {
 func TestVectorIndexes(t *testing.T) {
 	enginetest.TestVectorIndexes(t, enginetest.NewDefaultMemoryHarness())
 
-	// Memory tables can contain invalid JSON vectors; storage engines may reject them on write.
-	// JSON null is not SQL NULL, so searches must report conversion errors instead of skipping it.
 	harness := enginetest.NewDefaultMemoryHarness()
 	harness.Setup(setup.MydbData)
 	enginetest.TestScript(t, harness, queries.ScriptTest{
@@ -893,15 +891,17 @@ func TestVectorIndexes(t *testing.T) {
 		},
 		Assertions: []queries.ScriptTestAssertion{
 			{
+				// Memory tables permit invalid vectors such as JSON null; storage engines may reject them on write.
 				Query:    "insert into vectors values (2, '[3.0,4.0]'), (3, 'null')",
 				Expected: []sql.Row{{types.NewOkResult(2)}},
 			},
 			{
-				// Both indexed and full-scan searches must report the invalid value, not silently omit it.
+				// JSON null is not SQL NULL, so an indexed search must report a conversion error.
 				Query:          "select id from vectors order by VEC_DISTANCE('[0.0,0.0]', v) limit 2",
 				ExpectedErrStr: "can't convert JSON to vector; expected array, got <nil>",
 			},
 			{
+				// A full-scan search must also report the invalid vector.
 				Query:          "select id from vectors order by VEC_DISTANCE('[0.0,0.0]', v)",
 				ExpectedErrStr: "unable to sort: can't convert JSON to vector; expected array, got <nil>",
 			},
