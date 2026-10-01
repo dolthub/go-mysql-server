@@ -15,9 +15,10 @@
 package queries
 
 import (
+	"github.com/dolthub/vitess/go/mysql"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"github.com/dolthub/vitess/go/mysql"
 )
 
 // StringsScriptTests contains self-contained script tests for strings.
