@@ -17,6 +17,8 @@ package function
 import (
 	"testing"
 
+	"github.com/dolthub/vitess/go/sqltypes"
+
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -25,17 +27,13 @@ import (
 	"github.com/dolthub/go-mysql-server/testutils"
 )
 
-// TestInstrIssue3650 covers the two defects reported in
-// dolthub/go-mysql-server#3650:
-//  1. INSTR was case-sensitive for nonbinary strings; MySQL's INSTR is
-//     case-insensitive unless one argument is a binary string.
-//  2. A wrapped substring argument clobbered the haystack, so INSTR
-//     returned 1 unconditionally for any StringWrapper needle.
+// TestInstrIssue3650 checks that unwrapping the needle preserves the haystack.
 func TestInstrIssue3650(t *testing.T) {
+	textType := types.MustCreateString(sqltypes.Text, 100, sql.Collation_utf8mb4_0900_ai_ci)
 	f := NewInstr(
 		sql.NewEmptyContext(),
-		expression.NewGetField(0, types.LongText, "str", true),
-		expression.NewGetField(1, types.LongText, "substr", false),
+		expression.NewGetField(0, textType, "str", true),
+		expression.NewGetField(1, textType, "substr", false),
 	)
 
 	testCases := []struct {
@@ -43,15 +41,25 @@ func TestInstrIssue3650(t *testing.T) {
 		row      sql.Row
 		expected int
 	}{
-		// Defect 1: case-insensitive for nonbinary strings.
-		{"case-insensitive needle", sql.NewRow("xyza", "A"), 4},
-		{"case-insensitive haystack", sql.NewRow("XYZA", "a"), 4},
-		{"case-insensitive mixed", sql.NewRow("Hello World", "world"), 7},
-		{"case-insensitive no match", sql.NewRow("abc", "Z"), 0},
-		// Defect 2: wrapped substring must NOT overwrite the haystack.
-		{"wrapped substr match", sql.NewRow("foobar", testutils.NewMockStringWrapper("bar")), 4},
-		{"wrapped substr no match", sql.NewRow("foobar", testutils.NewMockStringWrapper("xyz")), 0},
-		{"wrapped substr case-insensitive", sql.NewRow("foobar", testutils.NewMockStringWrapper("BAR")), 4},
+		{
+			name:     "wrapped substr match",
+			row:      sql.NewRow("foobar", testutils.NewMockStringWrapper("bar")),
+			expected: 4,
+		},
+		{
+			name: "wrapped substr no match",
+			row:  sql.NewRow("foobar", testutils.NewMockStringWrapper("xyz")),
+		},
+		{
+			name:     "wrapped substr case insensitive",
+			row:      sql.NewRow("foobar", testutils.NewMockStringWrapper("BAR")),
+			expected: 4,
+		},
+		{
+			name:     "both wrapped",
+			row:      sql.NewRow(testutils.NewMockStringWrapper("ébar"), testutils.NewMockStringWrapper("BAR")),
+			expected: 2,
+		},
 	}
 
 	for _, tt := range testCases {

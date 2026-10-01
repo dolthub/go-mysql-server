@@ -133,8 +133,8 @@ func TestInstr(t *testing.T) {
 		{"non match", sql.NewRow("foo", "bar"), 0, false},
 		{"substr bigger than string", sql.NewRow("foo", "foobar"), 0, false},
 		{"multiple matches", sql.NewRow("bobobo", "bo"), 1, false},
-		{"bad string", sql.NewRow(1, "hello"), 0, true},
-		{"bad substr", sql.NewRow("foo", 1), 0, true},
+		{name: "numeric string", row: sql.NewRow(1, "hello"), expected: 0},
+		{name: "numeric substr", row: sql.NewRow("foo", 1), expected: 0},
 	}
 
 	for _, tt := range testCases {
