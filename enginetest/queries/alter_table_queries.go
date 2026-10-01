@@ -2293,6 +2293,43 @@ var ModifyColumnScripts = []ScriptTest{
 		},
 	},
 	{
+		Name: "modify column preserves other column defaults",
+		SetUpScript: []string{
+			"CREATE TABLE defaults_rewrite (pk INT PRIMARY KEY, dt DATETIME NOT NULL DEFAULT '2020-04-01 16:16:16', ts TIMESTAMP NULL DEFAULT '2008-04-22 16:16:16', s VARCHAR(4) DEFAULT 'ln', n INT DEFAULT (1 + 2), v INT)",
+			"ALTER TABLE defaults_rewrite MODIFY v BIGINT",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT column_name, column_default FROM information_schema.columns WHERE table_name = 'defaults_rewrite' ORDER BY ordinal_position",
+				Expected: []sql.Row{
+					{"pk", nil}, {"dt", "2020-04-01 16:16:16"}, {"ts", "2008-04-22 16:16:16"},
+					{"s", "ln"}, {"n", "(1 + 2)"}, {"v", nil},
+				},
+			},
+			{
+				Dialect: "mysql",
+				Query:   "SHOW CREATE TABLE defaults_rewrite",
+				Expected: []sql.Row{{"defaults_rewrite", "CREATE TABLE `defaults_rewrite` (\n" +
+					"  `pk` int NOT NULL,\n" +
+					"  `dt` datetime NOT NULL DEFAULT '2020-04-01 16:16:16',\n" +
+					"  `ts` timestamp DEFAULT '2008-04-22 16:16:16',\n" +
+					"  `s` varchar(4) DEFAULT 'ln',\n" +
+					"  `n` int DEFAULT ((1 + 2)),\n" +
+					"  `v` bigint,\n" +
+					"  PRIMARY KEY (`pk`)\n" +
+					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "INSERT INTO defaults_rewrite (pk) VALUES (1)",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "SELECT CAST(dt AS CHAR), CAST(ts AS CHAR), s, n, v FROM defaults_rewrite",
+				Expected: []sql.Row{{"2020-04-01 16:16:16", "2008-04-22 16:16:16", "ln", 3, nil}},
+			},
+		},
+	},
+	{
 		Name:        "auto increment attribute",
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{

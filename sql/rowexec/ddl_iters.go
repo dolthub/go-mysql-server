@@ -611,7 +611,9 @@ func (i *modifyColumnIter) Close(context *sql.Context) error {
 func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) (bool, error) {
 	// Earlier clauses in a multi-column ALTER may already have rewritten the table.
 	// Start from its current schema so their renamed columns and expressions survive.
-	targetSchema := resolveGeneratedColumns(ctx, i.overrides, i.m.Db.Name(), rwt.Name(), rwt.Schema(ctx))
+	// Persisted defaults also need resolving to preserve their literal classification.
+	b := planbuilder.NewBuilderForColumnDefaultResolution(ctx, i.overrides)
+	targetSchema := b.ResolveSchemaDefaults(i.m.Db.Name(), rwt.Name(), rwt.Schema(ctx))
 	oldColName := i.m.Column()
 	oldColIdx := targetSchema.IndexOfColName(oldColName)
 	if oldColIdx == -1 {
