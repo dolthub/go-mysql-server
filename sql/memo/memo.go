@@ -898,7 +898,6 @@ type JoinBase struct {
 	Right  *ExprGroup
 	Filter []sql.Expression
 	Op     plan.JoinType
-	// DropsNullRejection is computed once for this join's operator and filter.
 	// Lookup and merge alternatives must not discard null-rejecting comparisons.
 	DropsNullRejection bool
 }
