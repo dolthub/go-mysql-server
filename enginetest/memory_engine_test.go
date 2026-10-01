@@ -655,6 +655,10 @@ func TestConversionsScripts(t *testing.T) {
 	enginetest.TestConversionsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
+func TestSetOperationsScripts(t *testing.T) {
+	enginetest.TestSetOperationsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
 func TestOrderingScripts(t *testing.T) {
 	enginetest.TestOrderingScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
