@@ -16279,6 +16279,41 @@ AND id NOT IN (SELECT item_id FROM tags WHERE tag = 'x')`,
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/11910
+		Name:    "LIKE default backslash escape and explicit ESCAPE clause",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t (id INT PRIMARY KEY, s VARCHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin);",
+			"INSERT INTO t VALUES (1, '100%'), (2, '100_'), (3, '100\\\\'), (4, '100x'), (5, '100xx');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT id FROM t WHERE s LIKE '100\\\\%' ORDER BY id;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT id FROM t WHERE s LIKE '100#%' ESCAPE '#' ORDER BY id;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT id FROM t WHERE s LIKE '100\\\\_' ORDER BY id;",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "SELECT id FROM t WHERE s LIKE '100#_' ESCAPE '#' ORDER BY id;",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "SELECT id FROM t WHERE s LIKE '100\\\\\\\\' ORDER BY id;",
+				Expected: []sql.Row{{3}},
+			},
+			{
+				Query:    "SELECT id FROM t WHERE s LIKE '100#\\\\' ESCAPE '#' ORDER BY id;",
+				Expected: []sql.Row{{3}},
+			},
+		},
+	},
 }
 
 var BrokenScriptTests = []ScriptTest{
