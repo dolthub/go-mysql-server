@@ -74,6 +74,23 @@ func (b *Builder) buildSetOp(inScope *scope, u *ast.SetOp) (outScope *scope) {
 
 	// mysql errors for order by right projection
 	orderByScope := b.analyzeOrderBy(leftScope, leftScope, u.OrderBy)
+	// An ORDER BY term naming a projected column sorts the set operation's output, so it reads that output column,
+	// with the column's merged type, rather than re-evaluating the left branch's expression. An unaliased projection
+	// such as a literal would otherwise sort by a constant.
+	for i, c := range orderByScope.cols {
+		if _, isColumn := c.scalar.(*expression.GetField); isColumn {
+			continue
+		}
+		for j, lc := range leftScope.cols {
+			if lc.id != c.id || j >= len(rightScope.cols) {
+				continue
+			}
+			orderByScope.cols[i].scalar = nil
+			orderByScope.cols[i].typ = types.GeneralizeTypes(lc.typ, rightScope.cols[j].typ)
+			orderByScope.cols[i].nullable = lc.nullable || rightScope.cols[j].nullable
+			break
+		}
+	}
 	sortConditions := b.buildSortConditions(orderByScope, transform.NewTree)
 
 	limit := b.buildLimit(inScope, u.Limit)

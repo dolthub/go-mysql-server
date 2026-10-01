@@ -148,6 +148,84 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/11714
+		Name: "set operation ORDER BY sorts unaliased projections",
+		SetUpScript: []string{
+			"create table t (a int primary key)",
+			"insert into t values (5), (3)",
+			"create table u (b int primary key)",
+			"insert into u values (4), (1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select 1000 union select 1 order by 1",
+				Expected: []sql.Row{{1}, {1000}},
+			},
+			{
+				Query:    "select 2 union all select 1000 order by 1 desc",
+				Expected: []sql.Row{{1000}, {2}},
+			},
+			{
+				Query:    "select 'b' union select 'a' order by 1",
+				Expected: []sql.Row{{"a"}, {"b"}},
+			},
+			{
+				Query:    "select 1000 union select 1 order by `1000`",
+				Expected: []sql.Row{{1}, {1000}},
+			},
+			{
+				Query:    "select abs(-1000) union select 1 order by 1",
+				Expected: []sql.Row{{1}, {1000}},
+			},
+			{
+				Query:    "select 2, 'b' union select 1, 'a' order by 2",
+				Expected: []sql.Row{{1, "a"}, {2, "b"}},
+			},
+			{
+				Query:    "select 2, 'a' union select 1, 'b' order by 2 desc, 1",
+				Expected: []sql.Row{{1, "b"}, {2, "a"}},
+			},
+			{
+				Query:    "select 1000 union (select 1 union select 500) order by 1",
+				Expected: []sql.Row{{1}, {500}, {1000}},
+			},
+			{
+				// The merged column is a string, so the rows sort as strings.
+				Query:    "select 10 union select '9' order by 1",
+				Expected: []sql.Row{{"10"}, {"9"}},
+			},
+			{
+				Query:    "select null union select 1 order by 1",
+				Expected: []sql.Row{{nil}, {1}},
+			},
+			{
+				Query:    "(select 1000) union (select 1) order by 1",
+				Expected: []sql.Row{{1}, {1000}},
+			},
+			{
+				Query:    "select 1000 union select 1 order by 1 limit 1",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "select 1000 as x union select 1 order by x",
+				Expected: []sql.Row{{1}, {1000}},
+			},
+			{
+				Query:    "select a from t union select b from u order by 1",
+				Expected: []sql.Row{{1}, {3}, {4}, {5}},
+			},
+			{
+				// A constant ORDER BY expression does not reorder the rows.
+				Query:    "select 2 union select 1 order by 1+0",
+				Expected: []sql.Row{{2}, {1}},
+			},
+			{
+				Query:    "select 1000 union (select 1 order by 1)",
+				Expected: []sql.Row{{1000}, {1}},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/10113
 		Name: "DELETE with NOT EXISTS subquery",
 		SetUpScript: []string{
