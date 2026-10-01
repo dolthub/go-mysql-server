@@ -45,33 +45,12 @@ func (i *groupByIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, io.EOF
 	}
 
-	// special case for any_value
 	var err error
-	onlyAnyValue := true
 	for j, a := range i.selectedExprs {
 		i.buf[j], err = newAggregationBuffer(ctx, a)
 		if err != nil {
 			return nil, err
 		}
-		if agg, ok := a.(sql.Aggregation); ok {
-			if _, ok = agg.(*aggregation.AnyValue); !ok {
-				onlyAnyValue = false
-			}
-		}
-	}
-
-	// if no aggregate functions other than any_value, it's just a normal select
-	if onlyAnyValue {
-		row, err := i.child.Next(ctx)
-		if err != nil {
-			i.done = true
-			return nil, err
-		}
-
-		if err := updateBuffers(ctx, i.buf, row); err != nil {
-			return nil, err
-		}
-		return evalBuffers(ctx, i.buf)
 	}
 	i.done = true
 

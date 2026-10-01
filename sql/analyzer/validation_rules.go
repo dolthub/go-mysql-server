@@ -268,9 +268,11 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 				}
 			}
 		case *plan.GroupBy:
-			noGroupBy := len(n.GroupByExprs) == 0
-			if noGroupBy && !hasAggregations(ctx, n.SelectDeps) {
-				return true
+			var noGroupBy bool
+			// Allow the parser use the GroupBy node to eval the aggregation functions for sql statements that don't
+			// make use of the GROUP BY expression.
+			if len(n.GroupByExprs) == 0 {
+				noGroupBy = true
 			}
 
 			primaryKeys := make(map[string]bool)
@@ -371,27 +373,6 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 	return n, transform.SameTree, err
 }
 
-// hasAggregations reports whether |exprs| contains an aggregate other
-// than ANY_VALUE.
-func hasAggregations(ctx *sql.Context, exprs []sql.Expression) bool {
-	var hasAgg bool
-	for _, e := range exprs {
-		sql.Inspect(ctx, e, func(ctx *sql.Context, e sql.Expression) bool {
-			if agg, ok := e.(sql.Aggregation); ok {
-				if _, isAnyVal := agg.(*aggregation.AnyValue); !isAnyVal {
-					hasAgg = true
-					return false
-				}
-			}
-			return !hasAgg
-		})
-		if hasAgg {
-			return true
-		}
-	}
-	return false
-}
-
 // getEqualsDependencies looks for Equals expressions and gets any non-literal arguments
 func getEqualsDependencies(ctx *sql.Context, expr sql.Expression) []sql.Expression {
 	exprs := make([]sql.Expression, 0)
@@ -423,7 +404,6 @@ func getSelectAndOrderByExprs(ctx *sql.Context, project *plan.Project, orderBy *
 		for _, dep := range selectDeps {
 			sd[strings.ToLower(dep.String())] = dep
 		}
-
 		selectExprs := make([]sql.Expression, 0)
 		orderByExprs := make([]sql.Expression, 0)
 
@@ -455,6 +435,10 @@ func resolveExpr(ctx *sql.Context, expr sql.Expression, selectDeps map[string]sq
 		}
 		switch e := expr.(type) {
 		case *expression.Alias:
+			if anyVal, ok := e.Child.(*function.AnyValue); ok {
+				selectDeps[strings.ToLower(e.Name())] = anyVal
+				return anyVal, transform.NewTree, nil
+			}
 			childKey := strings.ToLower(e.Child.String())
 			if dep, ok := selectDeps[childKey]; ok {
 				visited[key] = true
@@ -484,7 +468,7 @@ func expressionReferencesOnlyGroupBys(ctx *sql.Context, groupBys map[string]bool
 	valid := true
 	sql.Inspect(ctx, expr, func(ctx *sql.Context, expr sql.Expression) bool {
 		switch expr := expr.(type) {
-		case nil, sql.Aggregation, *expression.Literal:
+		case nil, sql.Aggregation, *expression.Literal, *function.AnyValue:
 			return false
 		default:
 			if groupBys[strings.ToLower(expr.String())] {
@@ -507,7 +491,7 @@ func expressionReferencesOnlyGroupBys(ctx *sql.Context, groupBys map[string]bool
 					if !ungrouped.Empty() {
 						valid = false
 						firstId, _ := ungrouped.Next(1)
-						col = subqueryColumnName(ctx, expr, firstId)
+						col = correlatedColumnName(ctx, expr, firstId)
 					}
 					return false
 				case sql.WindowAdaptableExpression:
@@ -536,7 +520,7 @@ func expressionReferencesOnlyGroupBys(ctx *sql.Context, groupBys map[string]bool
 	return valid, col
 }
 
-func subqueryColumnName(ctx *sql.Context, sq *plan.Subquery, id sql.ColumnId) string {
+func correlatedColumnName(ctx *sql.Context, sq *plan.Subquery, id sql.ColumnId) string {
 	var name string
 	transform.InspectExpressions(ctx, sq.Query, func(ctx *sql.Context, e sql.Expression) bool {
 		switch e := e.(type) {
@@ -546,7 +530,7 @@ func subqueryColumnName(ctx *sql.Context, sq *plan.Subquery, id sql.ColumnId) st
 				return false
 			}
 		case *plan.Subquery:
-			name = subqueryColumnName(ctx, e, id)
+			name = correlatedColumnName(ctx, e, id)
 			if name != "" {
 				return false
 			}

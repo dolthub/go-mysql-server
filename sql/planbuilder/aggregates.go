@@ -298,7 +298,7 @@ func IsMySQLAggregateFuncName(ctx *sql.Context, name string) (bool, error) {
 		"group_concat", "json_arrayagg", "json_objectagg",
 		"max", "min", "std", "stddev_pop", "stddev_samp",
 		"stddev", "sum", "var_pop", "var_samp", "variance",
-		"first", "last", "any_value":
+		"first", "last":
 		return true, nil
 	default:
 		return false, nil
@@ -311,9 +311,6 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 	inScope.initGroupBy()
 	gb := inScope.groupBy
 
-	if name == "any_value" {
-		return b.buildAnyValue(inScope, name, e, gb)
-	}
 	if b.inAgg {
 		// Window functions evaluate after aggregation, so
 		// aggregates inside window functions are allowed,
@@ -337,35 +334,6 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 
 	args := b.buildAggFunctionArgs(inScope, e, gb)
 	agg := b.newAggregation(e, name, args)
-	return b.addAggregate(agg, gb)
-}
-
-// buildAnyValue builds an [aggregation.AnyValue] function expression.
-//
-// If ANY_VALUE wraps or is wrapped by an aggregate or window function,
-// it unwraps and returns the inner expression.
-//
-// Otherwise, it records column scan dependencies for |expr| on |gb| via
-// [groupBy.addAggInCol], sets [sql.QFlagAnyAgg], and registers an
-// [aggregation.AnyValue] on |gb| via [Builder.addAggregate].
-func (b *Builder) buildAnyValue(inScope *scope, name string, e *ast.FuncExpr, gb *groupBy) sql.Expression {
-	if len(e.Exprs) != 1 {
-		err := sql.ErrInvalidArgumentNumber.New(name, 1, len(e.Exprs))
-		b.handleErr(err)
-	}
-	if b.inAgg || b.inWindow {
-		return b.selectExprToExpression(inScope, e.Exprs[0])
-	}
-
-	startAggs, startWins := inScope.aggCount(), inScope.windowFuncCount()
-	expr := b.selectExprToExpression(inScope, e.Exprs[0])
-	if inScope.aggCount() > startAggs || inScope.windowFuncCount() > startWins {
-		return expr
-	}
-
-	gb.addAggInCol(b, expr)
-	b.qFlags.Set(sql.QFlagAnyAgg)
-	agg := b.newAggregation(e, name, []sql.Expression{expr})
 	return b.addAggregate(agg, gb)
 }
 
@@ -562,7 +530,7 @@ var IsWindowFunc = IsMySQLWindowFuncName
 
 func IsMySQLWindowFuncName(ctx *sql.Context, name string) (bool, error) {
 	switch name {
-	case "first", "last", "count", "sum", "any_value", "bit_and", "bit_or", "bit_xor",
+	case "first", "last", "count", "sum", "bit_and", "bit_or", "bit_xor",
 		"avg", "max", "min", "count_distinct", "json_arrayagg",
 		"row_number", "percent_rank", "lead", "lag",
 		"first_value", "last_value",
