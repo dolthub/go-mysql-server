@@ -87,10 +87,10 @@ func CreateColumnDecimalType(precision uint8, scale uint8) (sql.DecimalType, err
 func createDecimalType(precision uint8, scale uint8, definesColumn bool) (sql.DecimalType, error) {
 	// check for limits for column defined types only
 	if scale > DecimalTypeMaxScale {
-		return nil, fmt.Errorf("Too big scale %v specified. Maximum is %v.", scale, DecimalTypeMaxScale)
+		return nil, sql.ErrTooBigScale.New(scale, DecimalTypeMaxScale)
 	}
 	if precision > DecimalTypeMaxPrecision {
-		return nil, fmt.Errorf("Too big precision %v specified. Maximum is %v.", precision, DecimalTypeMaxPrecision)
+		return nil, sql.ErrTooBigPrecision.New(precision, DecimalTypeMaxPrecision)
 	}
 	if scale > precision {
 		return nil, fmt.Errorf("Scale %v cannot be larger than the precision %v", scale, precision)

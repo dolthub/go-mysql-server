@@ -62,9 +62,7 @@ type insertIter struct {
 	duplicateKeyHandler DuplicateKeyHandler
 	onDupKeyUpdateExprs *plan.UpdateExprs
 	onDupWhere          sql.Expression
-	// countOnDuplicateUpdateAsOneRow applies single-row affected-count semantics to duplicate updates.
-	countOnDuplicateUpdateAsOneRow bool
-	unlocker                       func()
+	unlocker            func()
 
 	deferredDefaults sets.FastIntSet
 	checks           sql.CheckConstraints

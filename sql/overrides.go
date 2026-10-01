@@ -30,6 +30,9 @@ type ExpressionOverriding interface {
 // various engine phases (such as the analysis, node execution, etc.). The empty struct is valid, which will not
 // override any functionality (uses the default MySQL functionality for all applicable situations).
 type EngineOverrides struct {
+	// CountMatchedRowsOnUpdate includes unchanged matched rows in UPDATE counts, including
+	// rows handled by the UPDATE arm of INSERT ... ON DUPLICATE KEY UPDATE.
+	CountMatchedRowsOnUpdate bool
 	// Builder contains functions and variables that can replace, supplement, or override functionality within the builder.
 	Builder BuilderOverrides
 	// SchemaFormatter is the formatter for schema string creation. If nil, this will format in MySQL's style.

@@ -100,16 +100,16 @@ func TestGreatest(t *testing.T) {
 		{
 			"nulls of a non-null type, char",
 			[]sql.Expression{
-				expression.NewConvert(expression.NewLiteral("aaa", types.LongText), expression.ConvertToChar),
-				expression.NewConvert(expression.NewLiteral(nil, types.Null), expression.ConvertToChar),
+				expression.NewConvert(expression.NewLiteral("aaa", types.LongText), types.LongText, expression.ConvertToChar),
+				expression.NewConvert(expression.NewLiteral(nil, types.Null), types.LongText, expression.ConvertToChar),
 			},
 			nil,
 		},
 		{
 			"nulls of a non-null type, signed",
 			[]sql.Expression{
-				expression.NewConvert(expression.NewLiteral(3.14159265359, types.Float64), expression.ConvertToSigned),
-				expression.NewConvert(expression.NewLiteral(nil, types.Null), expression.ConvertToSigned),
+				expression.NewConvert(expression.NewLiteral(3.14159265359, types.Float64), types.Int64, expression.ConvertToSigned),
+				expression.NewConvert(expression.NewLiteral(nil, types.Null), types.Int64, expression.ConvertToSigned),
 			},
 			nil,
 		},

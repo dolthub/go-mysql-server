@@ -440,13 +440,26 @@ func (b *bitXorBuffer) Dispose(ctx *sql.Context) {
 }
 
 type countDistinctBuffer struct {
-	seen  map[uint64]struct{}
-	exprs []sql.Expression
-	sch   sql.Schema
+	seen    sql.KeyValueCache
+	dispose sql.DisposeFunc
+	exprs   []sql.Expression
+	sch     sql.Schema
 }
 
 func NewCountDistinctBuffer(children []sql.Expression) *countDistinctBuffer {
-	return &countDistinctBuffer{seen: make(map[uint64]struct{}), exprs: children}
+	return &countDistinctBuffer{exprs: children}
+}
+
+func (c *countDistinctBuffer) add(ctx *sql.Context, h uint64) error {
+	if c.seen == nil {
+		c.seen, c.dispose = ctx.Memory.NewHistoryCache(ctx)
+	}
+
+	if _, err := c.seen.Get(h); err == nil {
+		return nil
+	}
+
+	return c.seen.Put(h, struct{}{})
 }
 
 // Update implements the AggregationBuffer interface.
@@ -454,18 +467,20 @@ func (c *countDistinctBuffer) Update(ctx *sql.Context, row sql.Row) error {
 	if len(c.exprs) == 0 {
 		return fmt.Errorf("no expressions")
 	}
+
 	if _, ok := c.exprs[0].(*expression.Star); ok {
 		for _, val := range row {
 			if val == nil {
 				return nil
 			}
 		}
+
 		h, err := hash.HashOf(ctx, nil, row)
 		if err != nil {
 			return err
 		}
-		c.seen[h] = struct{}{}
-		return nil
+
+		return c.add(ctx, h)
 	}
 
 	if c.sch == nil {
@@ -478,10 +493,12 @@ func (c *countDistinctBuffer) Update(ctx *sql.Context, row sql.Row) error {
 		if err != nil {
 			return err
 		}
+
 		// skip nil values
 		if v == nil {
 			return nil
 		}
+
 		if extendedType, ok := expr.Type(ctx).(sql.ExtendedType); ok {
 			serializedVal, err := extendedType.SerializeValue(ctx, v)
 			if err != nil {
@@ -489,6 +506,7 @@ func (c *countDistinctBuffer) Update(ctx *sql.Context, row sql.Row) error {
 			}
 			v = string(serializedVal)
 		}
+
 		val[i] = v
 	}
 
@@ -496,17 +514,26 @@ func (c *countDistinctBuffer) Update(ctx *sql.Context, row sql.Row) error {
 	if err != nil {
 		return err
 	}
-	c.seen[h] = struct{}{}
 
-	return nil
+	return c.add(ctx, h)
 }
 
 // Eval implements the AggregationBuffer interface.
 func (c *countDistinctBuffer) Eval(ctx *sql.Context) (interface{}, error) {
-	return int64(len(c.seen)), nil
+	if c.seen == nil {
+		return int64(0), nil
+	}
+
+	return int64(c.seen.Size()), nil
 }
 
 func (c *countDistinctBuffer) Dispose(ctx *sql.Context) {
+	if c.dispose != nil {
+		c.dispose()
+		c.dispose = nil
+		c.seen = nil
+	}
+
 	for _, e := range c.exprs {
 		expression.Dispose(ctx, e)
 	}

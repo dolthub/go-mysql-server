@@ -54,6 +54,24 @@ func TestConvert(t *testing.T) {
 			expectedErr: false,
 		},
 		{
+			name:       "convert max uint64 to signed",
+			expression: NewLiteral(uint64(math.MaxUint64), types.Uint64),
+			castTo:     ConvertToSigned,
+			expected:   int64(-1),
+		},
+		{
+			name:       "convert uint64 above max int64 to signed",
+			expression: NewLiteral(uint64(9223372036854775808), types.Uint64),
+			castTo:     ConvertToSigned,
+			expected:   int64(math.MinInt64),
+		},
+		{
+			name:       "convert max int64 as uint64 to signed",
+			expression: NewLiteral(uint64(math.MaxInt64), types.Uint64),
+			castTo:     ConvertToSigned,
+			expected:   int64(math.MaxInt64),
+		},
+		{
 			name:        "convert int32 to float",
 			row:         nil,
 			expression:  NewLiteral(int32(-5), types.Int32),
@@ -265,7 +283,7 @@ func TestConvert(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			require := require.New(t)
-			convert := NewConvertWithLengthAndScale(test.expression, test.castTo, test.typeLength, test.typeScale)
+			convert := NewConvertWithLengthAndScale(test.expression, nil, test.castTo, test.typeLength, test.typeScale)
 			val, err := convert.Eval(sql.NewEmptyContext(), test.row)
 			if test.expectedErr {
 				require.Error(err)
@@ -279,6 +297,48 @@ func TestConvert(t *testing.T) {
 			}
 
 			require.Equal(test.expected, val)
+		})
+	}
+}
+
+func TestConvertToSignedStringOverflow(t *testing.T) {
+	tests := []struct {
+		input        string
+		expected     int64
+		warningCodes []int
+	}{
+		{input: "9223372036854775807", expected: math.MaxInt64},
+		{input: "9223372036854775808", expected: math.MinInt64, warningCodes: []int{1105}},
+		{input: "18446744073709551615", expected: -1, warningCodes: []int{1105}},
+		{input: "+18446744073709551615", expected: -1, warningCodes: []int{1105}},
+		{input: "  18446744073709551615  ", expected: -1, warningCodes: []int{1105}},
+		{input: "18446744073709551616", expected: -1, warningCodes: []int{1292}},
+		{input: "18446744073709551615xyz", expected: -1, warningCodes: []int{1292, 1105}},
+		{input: "18446744073709551615.9", expected: -1, warningCodes: []int{1292, 1105}},
+		{input: "18446744073709551615e2", expected: -1, warningCodes: []int{1292, 1105}},
+		{input: "-9223372036854775808", expected: math.MinInt64},
+		{input: "123abc", expected: 123, warningCodes: []int{1292}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			ctx := sql.NewEmptyContext()
+			converted := NewConvert(NewLiteral(tt.input, types.LongText), nil, ConvertToSigned)
+			actual, err := converted.Eval(ctx, nil)
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, actual)
+			warnings := ctx.Warnings()
+			require.Len(t, warnings, len(tt.warningCodes))
+			for i, code := range tt.warningCodes {
+				// Session warnings are returned in reverse order.
+				warning := warnings[len(warnings)-1-i]
+				require.Equal(t, code, warning.Code)
+				if code == 1105 {
+					require.Equal(t, "Cast to signed converted positive out-of-range integer to its negative complement", warning.Message)
+				} else {
+					require.Contains(t, warning.Message, "Truncated incorrect")
+					require.Contains(t, warning.Message, "'"+tt.input+"'")
+				}
+			}
 		})
 	}
 }

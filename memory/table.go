@@ -164,25 +164,10 @@ func NewPartitionedTableWithCollation(ctx *sql.Context, db *BaseDatabase, name s
 		}
 	}
 
-	newSchema := make(sql.Schema, len(schema.Schema))
-	for i, c := range schema.Schema {
-		cCopy := c.Copy()
-		if cCopy.Default != nil {
-			newDef, _, _ := transform.Expr(ctx, cCopy.Default, stripTblNames)
-			defStr := newDef.String()
-			unrDef := sql.NewUnresolvedColumnDefaultValue(defStr)
-			cCopy.Default = unrDef
-		}
-		if cCopy.Generated != nil {
-			newDef, _, _ := transform.Expr(ctx, cCopy.Generated, stripTblNames)
-			defStr := newDef.String()
-			unrDef := sql.NewUnresolvedColumnDefaultValue(defStr)
-			cCopy.Generated = unrDef
-		}
-		newSchema[i] = cCopy
+	schema.Schema = schema.Schema.Copy()
+	for _, col := range schema.Schema {
+		unresolveColumnExpressions(ctx, col)
 	}
-
-	schema.Schema = newSchema
 
 	// The dual table has a nil database
 	dbName := ""
@@ -582,10 +567,10 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 			if err != nil {
 				return nil, err
 			}
-			return iters.NewTopRowsIter(sc, limit, vectorPartition.CalcFoundRows, sql.RowsToRowIter(rows...)), nil
+			return &projectedRowIter{RowIter: iters.NewTopRowsIter(sc, limit, vectorPartition.CalcFoundRows, sql.RowsToRowIter(rows...)), columns: t.columns}, nil
 		}
 
-		return iters.NewSortIter(sc, sql.RowsToRowIter(rows...)), nil
+		return &projectedRowIter{RowIter: iters.NewSortIter(sc, sql.RowsToRowIter(rows...)), columns: t.columns}, nil
 	}
 
 	rows, ok := data.partitions[string(partition.Key())]
@@ -727,6 +712,21 @@ func (i *tableIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 	}
 
+	return projectRow(i.columns, row), nil
+}
+
+// projectedRowIter applies the requested columns after vector distance sorting,
+// which must evaluate its expressions against the full stored row.
+type projectedRowIter struct {
+	sql.RowIter
+	columns []int
+}
+
+func (i *projectedRowIter) Next(ctx *sql.Context) (sql.Row, error) {
+	row, err := i.RowIter.Next(ctx)
+	if err != nil {
+		return nil, err
+	}
 	return projectRow(i.columns, row), nil
 }
 
@@ -939,8 +939,8 @@ func (t *Table) getTableEditor(ctx *sql.Context) sql.TableEditor {
 	return editor
 }
 
-func (t *Table) getRewriteTableEditor(ctx *sql.Context, oldSchema, newSchema sql.PrimaryKeySchema) sql.TableEditor {
-	editor, err := t.tableEditorForRewrite(ctx, oldSchema, newSchema)
+func (t *Table) getRewriteTableEditor(ctx *sql.Context, oldSchema, newSchema sql.PrimaryKeySchema, renames ...sql.ColumnRename) sql.TableEditor {
+	editor, err := t.tableEditorForRewrite(ctx, oldSchema, newSchema, renames...)
 	if err != nil {
 		panic(err)
 	}
@@ -1036,14 +1036,14 @@ func (t *Table) newTableEditor(ctx *sql.Context) (sql.TableEditor, error) {
 	return editor, nil
 }
 
-func (t *Table) tableEditorForRewrite(ctx *sql.Context, oldSchema, newSchema sql.PrimaryKeySchema) (sql.TableEditor, error) {
+func (t *Table) tableEditorForRewrite(ctx *sql.Context, oldSchema, newSchema sql.PrimaryKeySchema, renames ...sql.ColumnRename) (sql.TableEditor, error) {
 	// Make a copy of the table under edit with the new schema and no data
 	tableUnderEdit := t.copy()
 	// Use session indexes so that indexes created in this session are preserved during rewrite
 	if !t.ignoreSessionData {
 		tableUnderEdit.data.indexes = t.sessionTableData(ctx).indexes
 	}
-	tableData := tableUnderEdit.data.truncate(ctx, normalizeSchemaForRewrite(newSchema))
+	tableData := tableUnderEdit.data.truncate(ctx, normalizeSchemaForRewrite(ctx, newSchema), renames...)
 	tableUnderEdit.data = tableData
 
 	// TODO: |editedTableAnd| and |ea| should have the same tableData reference
@@ -1234,6 +1234,9 @@ func (t *Table) AddColumn(ctx *sql.Context, column *sql.Column, order *sql.Colum
 
 // addColumnToSchema adds the given column to the schema and returns the new index
 func addColumnToSchema(ctx *sql.Context, data *TableData, newCol *sql.Column, order *sql.ColumnOrder) (int, *TableData, error) {
+	newCol = newCol.Copy()
+	unresolveColumnExpressions(ctx, newCol)
+
 	// TODO: might have wrong case
 	newCol.Source = data.tableName
 	newSch := make(sql.Schema, len(data.schema.Schema)+1)
@@ -2361,15 +2364,40 @@ func (t *Table) replaceData(src *TableData) {
 // normalizeSchemaForRewrite returns a copy of the schema provided suitable for rewriting. This is necessary because
 // the engine doesn't currently enforce that primary key columns are not nullable, rather taking the definition
 // directly from the user.
-func normalizeSchemaForRewrite(newSch sql.PrimaryKeySchema) sql.PrimaryKeySchema {
+func normalizeSchemaForRewrite(ctx *sql.Context, newSch sql.PrimaryKeySchema) sql.PrimaryKeySchema {
 	schema := newSch.Schema.Copy()
 	for _, col := range schema {
 		if col.PrimaryKey {
 			col.Nullable = false
 		}
+
+		unresolveColumnExpressions(ctx, col)
 	}
 
 	return sql.NewPrimaryKeySchema(schema, newSch.PkOrdinals...)
+}
+
+// unresolveColumnExpressions stores schema expressions as text, as CREATE TABLE
+// does, so later statements bind column references in their own scope.
+func unresolveColumnExpressions(ctx *sql.Context, col *sql.Column) {
+	// ON UPDATE only permits timestamp functions, which have no column bindings.
+	// Keep its resolved form so metadata preserves CURRENT_TIMESTAMP formatting.
+	for _, value := range []**sql.ColumnDefaultValue{&col.Default, &col.Generated} {
+		if *value == nil {
+			continue
+		}
+
+		if _, unresolved := (*value).Expr.(*sql.UnresolvedColumnDefault); unresolved {
+			continue
+		}
+
+		expr, _, err := transform.Expr(ctx, *value, stripTblNames)
+		if err != nil {
+			panic(err)
+		}
+
+		*value = sql.NewUnresolvedColumnDefaultValue(expr.String())
+	}
 }
 
 // DropPrimaryKey implements the PrimaryKeyAlterableTable
@@ -2448,7 +2476,7 @@ func isColumnDrop(oldSchema sql.PrimaryKeySchema, newSchema sql.PrimaryKeySchema
 	return len(oldSchema.Schema) > len(newSchema.Schema)
 }
 
-func (t *Table) RewriteInserter(ctx *sql.Context, oldSchema, newSchema sql.PrimaryKeySchema, _, _ *sql.Column, idxCols []sql.IndexColumn) (sql.RowInserter, error) {
+func (t *Table) RewriteInserter(ctx *sql.Context, oldSchema, newSchema sql.PrimaryKeySchema, oldColumn, newColumn *sql.Column, idxCols []sql.IndexColumn) (sql.RowInserter, error) {
 	// TODO: this is insufficient: we need prevent dropping any index that is used by a primary key (or the engine does)
 	if isPrimaryKeyDrop(oldSchema, newSchema) {
 		err := sql.ValidatePrimaryKeyDrop(ctx, t, oldSchema)
@@ -2464,7 +2492,12 @@ func (t *Table) RewriteInserter(ctx *sql.Context, oldSchema, newSchema sql.Prima
 		}
 	}
 
-	return t.getRewriteTableEditor(ctx, oldSchema, newSchema), nil
+	var renames []sql.ColumnRename
+	if oldColumn != nil && newColumn != nil && oldColumn.Name != newColumn.Name {
+		renames = []sql.ColumnRename{{Before: oldColumn.Name, After: newColumn.Name}}
+	}
+
+	return t.getRewriteTableEditor(ctx, oldSchema, newSchema, renames...), nil
 }
 
 func validatePrimaryKeyChange(ctx *sql.Context, oldSchema sql.PrimaryKeySchema, newSchema sql.PrimaryKeySchema, idxCols []sql.IndexColumn) error {

@@ -51,10 +51,10 @@ func (b *BaseBuilder) Build(ctx *sql.Context, n sql.Node, r sql.Row) (sql.RowIte
 }
 
 // FinalizeIters applies the final transformations on sql.RowIter before execution.
-func FinalizeIters(ctx *sql.Context, analyzed sql.Node, qFlags *sql.QueryFlags, iter sql.RowIter) (sql.RowIter, sql.Schema, error) {
+func FinalizeIters(ctx *sql.Context, analyzed sql.Node, qFlags *sql.QueryFlags, iter sql.RowIter, countMatchedRowsOnUpdate bool) (sql.RowIter, sql.Schema, error) {
 	var sch sql.Schema
 	var err error
-	iter, sch = AddAccumulatorIter(ctx, iter)
+	iter, sch = AddAccumulatorIter(ctx, iter, countMatchedRowsOnUpdate)
 	iter = AddTriggerRollbackIter(ctx, qFlags, iter)
 	iter, err = AddTransactionCommittingIter(ctx, qFlags, iter)
 	if err != nil {

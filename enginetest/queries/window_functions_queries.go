@@ -19,6 +19,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/testutils"
 )
 
 // WindowFunctionsScriptTests tests window function queries such as rank, dense_rank, percent_rank,
@@ -45,6 +46,47 @@ var WindowFunctionsScriptTests = []ScriptTest{
 			{
 				Query:    "SELECT COUNT(DISTINCT a), COUNT(DISTINCT b), MIN(a <> b) FROM (SELECT LAST_VALUE(UUID()) OVER (ORDER BY id ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS a, LAST_VALUE(UUID()) OVER (ORDER BY id ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS b FROM nondeterministic_windows) q",
 				Expected: []sql.Row{{int64(1), int64(1), true}},
+			},
+		},
+	},
+	{
+		Name: "regexp functions inside window aggregates are evaluated in every partition",
+		SetUpScript: []string{
+			"CREATE TABLE regexp_windows (g int primary key, v int not null, s varchar(8) not null)",
+			"INSERT INTO regexp_windows VALUES (0, 10, 'a'), (1, 50, 'a'), (2, 7, 'b')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT g, SUM(CASE WHEN REGEXP_LIKE(s, 'a') THEN v ELSE 0 END) OVER (PARTITION BY g) AS total FROM regexp_windows ORDER BY g",
+				Expected: []sql.Row{
+					{0, float64(10)},
+					{1, float64(50)},
+					{2, float64(0)},
+				},
+			},
+			{
+				Query: "SELECT g, SUM(REGEXP_INSTR(s, 'a')) OVER (PARTITION BY g) AS pos FROM regexp_windows ORDER BY g",
+				Expected: []sql.Row{
+					{0, float64(1)},
+					{1, float64(1)},
+					{2, float64(0)},
+				},
+			},
+			{
+				Query: "SELECT g, MAX(REGEXP_SUBSTR(s, 'a')) OVER (PARTITION BY g) AS m FROM regexp_windows ORDER BY g",
+				Expected: []sql.Row{
+					{0, "a"},
+					{1, "a"},
+					{2, nil},
+				},
+			},
+			{
+				Query: "SELECT g, MAX(REGEXP_REPLACE(s, 'a', 'x')) OVER (PARTITION BY g) AS m FROM regexp_windows ORDER BY g",
+				Expected: []sql.Row{
+					{0, "x"},
+					{1, "x"},
+					{2, "b"},
+				},
 			},
 		},
 	},
@@ -2064,6 +2106,39 @@ ORDER BY id;`,
 					{int32(1)},
 					{int32(2)},
 				},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11418
+		Name: "repeated window expression in ORDER BY",
+		SetUpScript: []string{
+			`CREATE TABLE t(id INT PRIMARY KEY, g INT, v INT NOT NULL);`,
+			`INSERT INTO t VALUES (1, 0, 10), (2, 0, -2);`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT id, g,
+       SUM(v) OVER (
+         PARTITION BY g ORDER BY id ASC
+         ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+       ) AS wf
+FROM t
+ORDER BY SUM(v) OVER (
+           PARTITION BY g ORDER BY id ASC
+           ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+         ), id;`,
+				Expected: []sql.Row{
+					{2, int64(0), float64(8)},
+					{1, int64(0), float64(10)},
+				},
+			},
+			{
+				// test for non-deterministic function
+				Query: `SELECT id, FIRST_VALUE(UUID()) OVER (ORDER BY id) AS f
+FROM t
+ORDER BY FIRST_VALUE(UUID()) OVER (ORDER BY id), id;`,
+				Expected: []sql.Row{{1, testutils.UUIDStringValidator{}}, {2, testutils.UUIDStringValidator{}}},
 			},
 		},
 	},

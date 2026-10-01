@@ -60,6 +60,15 @@ type AuthorizationHandler interface {
 	CheckTable(ctx *Context, state AuthorizationQueryState, dbName string, schemaName string, tableName string) error
 }
 
+// ResolvedTableAuthorizationHandler is an AuthorizationHandler that checks a named table's authorization after the name
+// is resolved, rather than before.
+type ResolvedTableAuthorizationHandler interface {
+	AuthorizationHandler
+	// HandleResolvedTableAuth checks the authentication information against the node that the table name resolved to,
+	// which is usually a table or a view.
+	HandleResolvedTableAuth(ctx *Context, state AuthorizationQueryState, auth ast.AuthInformation, node Node) error
+}
+
 // AuthorizationCheckerNode is a node that implements its own authorization checking.
 type AuthorizationCheckerNode interface {
 	Node

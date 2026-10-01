@@ -3056,6 +3056,19 @@ var ServerAuthTests = []ServerAuthenticationTest{
 // are as quick to write as possible.
 var QuickPrivTests = []QuickPrivilegeTest{
 	{
+		Queries:      []string{"GRANT SELECT, INSERT ON mydb.test TO tester@localhost", "INSERT INTO mydb.test VALUES (0, 9) ON DUPLICATE KEY UPDATE v1 = 9"},
+		ExpectingErr: true,
+	},
+	{
+		// Authorization checks are unconditional: UPDATE is required even when key 99 has no duplicate.
+		Queries:      []string{"GRANT SELECT, INSERT ON mydb.test TO tester@localhost", "INSERT INTO mydb.test VALUES (99, 9) ON DUPLICATE KEY UPDATE v1 = 9"},
+		ExpectingErr: true,
+	},
+	{
+		Queries:  []string{"GRANT SELECT, INSERT, UPDATE ON mydb.test TO tester@localhost", "INSERT INTO mydb.test VALUES (0, 9) ON DUPLICATE KEY UPDATE v1 = 9"},
+		Expected: []sql.Row{{types.NewOkResult(2)}},
+	},
+	{
 		Queries: []string{
 			"GRANT SELECT ON *.* TO tester@localhost",
 			"SELECT * FROM mydb.test",
@@ -3700,5 +3713,84 @@ var QuickPrivTests = []QuickPrivilegeTest{
 			"GRANT RELOAD ON *.* TO tester@localhost",
 			"FLUSH PRIVILEGES;",
 		},
+	},
+	{
+		Queries: []string{
+			"GRANT SELECT ON mydb.test TO tester@localhost",
+			"WITH cte AS (SELECT * FROM mydb.test) SELECT * FROM cte",
+		},
+		Expected: []sql.Row{{0, 0}, {1, 1}},
+	},
+	{
+		Queries: []string{
+			"GRANT SELECT ON mydb.test TO tester@localhost",
+			"WITH RECURSIVE cte (n) AS (SELECT MIN(pk) FROM mydb.test UNION ALL SELECT n + 1 FROM cte WHERE n < 2) SELECT * FROM cte",
+		},
+		Expected: []sql.Row{{0}, {1}, {2}},
+	},
+	{
+		Queries: []string{
+			"GRANT SELECT ON mydb.test TO tester@localhost",
+			"WITH cte AS (SELECT * FROM mydb.test2) SELECT * FROM cte",
+		},
+		ExpectingErr: true,
+	},
+	{
+		Queries: []string{
+			"GRANT SELECT ON mydb.test TO tester@localhost",
+			"WITH test2 AS (SELECT * FROM mydb.test) SELECT * FROM test2",
+		},
+		Expected: []sql.Row{{0, 0}, {1, 1}},
+	},
+	{
+		Queries: []string{
+			"GRANT SELECT ON mydb.test TO tester@localhost",
+			"GRANT INSERT ON mydb.test2 TO tester@localhost",
+			"WITH mydb AS (SELECT * FROM mydb.test) SELECT * FROM mydb.test2",
+		},
+		ExpectedErr: sql.ErrPrivilegeCheckFailed,
+	},
+	{
+		Queries: []string{
+			"GRANT SELECT ON mydb.test TO tester@localhost",
+			"GRANT SELECT ON mydb.test2 TO tester@localhost",
+			"WITH test2 AS (SELECT * FROM mydb.test) INSERT INTO mydb.test2 VALUES (5, 5)",
+		},
+		ExpectedErr: sql.ErrPrivilegeCheckFailed,
+	},
+	{
+		Queries: []string{
+			"GRANT SELECT ON mydb.test TO tester@localhost",
+			"GRANT INSERT ON mydb.test2 TO tester@localhost",
+			"INSERT INTO mydb.test2 WITH cte AS (SELECT pk + 10, v1 FROM mydb.test) SELECT * FROM cte",
+		},
+	},
+	{
+		Queries: []string{
+			"GRANT SELECT ON mydb.test TO tester@localhost",
+			"GRANT SELECT, UPDATE ON mydb.test2 TO tester@localhost",
+			"WITH cte AS (SELECT pk FROM mydb.test) UPDATE mydb.test2 SET v1 = 0 WHERE pk IN (SELECT pk FROM cte)",
+		},
+	},
+	{
+		Queries: []string{
+			"GRANT SELECT ON mydb.test TO tester@localhost",
+			"GRANT SELECT, DELETE ON mydb.test2 TO tester@localhost",
+			"WITH cte AS (SELECT pk FROM mydb.test) DELETE FROM mydb.test2 WHERE pk IN (SELECT pk FROM cte)",
+		},
+	}, {
+		Queries: []string{
+			"GRANT SELECT ON mydb.test TO tester@localhost",
+			"GRANT SELECT ON mydb.test2 TO tester@localhost",
+			"INSERT INTO mydb.test2 WITH test2 AS (SELECT pk + 10, v1 FROM mydb.test) SELECT * FROM test2",
+		},
+		ExpectedErr: sql.ErrPrivilegeCheckFailed,
+	},
+	{
+		Queries: []string{
+			"GRANT SELECT ON mydb.test TO tester@localhost",
+			"WITH a AS (SELECT pk FROM mydb.test), b AS (SELECT * FROM a) SELECT COUNT(*) FROM b",
+		},
+		Expected: []sql.Row{{2}},
 	},
 }
