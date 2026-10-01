@@ -190,6 +190,20 @@ var IntegersScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name:    "bits don't work on server",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t (b bit(1));",
+			"insert into t values (1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from t;",
+				Expected: []sql.Row{{uint64(1)}},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/11411
 		Name: "integer arithmetic rejects signed and unsigned BIGINT overflow",
 		// MySQL-only: PostgreSQL does not support unsigned integer types.
@@ -329,297 +343,28 @@ var IntegersScriptTests = []ScriptTest{
 			},
 		},
 	},
-
-	// Bit Tests
 	{
-		Name:        "bit with auto_increment",
-		Dialect:     "mysql",
-		SetUpScript: []string{},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:          "create table bad (b bit(1) primary key auto_increment);",
-				ExpectedErrStr: "Incorrect column specifier for column 'b'",
-			},
-			{
-				Query:          "create table bad (b bit(64) primary key auto_increment);",
-				ExpectedErrStr: "Incorrect column specifier for column 'b'",
-			},
-		},
-	},
-
-	// Bool Tests
-	{
-		Name:    "bool with auto_increment",
+		Name:    "bit default value",
 		Dialect: "mysql",
 		SetUpScript: []string{
-			"create table bool_tbl (b bool primary key auto_increment);",
+			"create table t (i int primary key, b bit(2) default 2);",
+			"insert into t(i) values (1);",
+			"create table tt (b bit(2) default 2 primary key);",
+			"insert into tt values ();",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "show create table bool_tbl;",
+				Skip:  true, // this fails on server engine, even when skipped
+				Query: "select * from t;",
 				Expected: []sql.Row{
-					{"bool_tbl", "CREATE TABLE `bool_tbl` (\n" +
-						"  `b` tinyint(1) NOT NULL AUTO_INCREMENT,\n" +
-						"  PRIMARY KEY (`b`)\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-				},
-			},
-		},
-	},
-
-	// Int Tests
-	{
-		// https://github.com/dolthub/dolt/issues/9530
-		Name:    "int with auto_increment",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"create table tinyint_tbl (i tinyint primary key auto_increment);",
-			"create table smallint_tbl (i smallint primary key auto_increment);",
-			"create table mediumint_tbl (i mediumint primary key auto_increment);",
-			"create table int_tbl (i int primary key auto_increment);",
-			"create table bigint_tbl (i bigint primary key auto_increment);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:       "insert into tinyint_tbl values (999)",
-				ExpectedErr: sql.ErrValueOutOfRange,
-			},
-			{
-				Query: "insert into tinyint_tbl values (127)",
-				Expected: []sql.Row{
-					{types.OkResult{
-						RowsAffected: 1,
-						InsertID:     127,
-					}},
+					{1, uint8(2)},
 				},
 			},
 			{
-				Query: "show create table tinyint_tbl;",
+				Skip:  true, // this fails on server engine, even when skipped
+				Query: "select * from tt;",
 				Expected: []sql.Row{
-					{"tinyint_tbl", "CREATE TABLE `tinyint_tbl` (\n" +
-						"  `i` tinyint NOT NULL AUTO_INCREMENT,\n" +
-						"  PRIMARY KEY (`i`)\n" +
-						") ENGINE=InnoDB AUTO_INCREMENT=127 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-				},
-			},
-
-			{
-				Query:       "insert into smallint_tbl values (99999);",
-				ExpectedErr: sql.ErrValueOutOfRange,
-			},
-			{
-				Query: "insert into smallint_tbl values (32767);",
-				Expected: []sql.Row{
-					{types.OkResult{
-						RowsAffected: 1,
-						InsertID:     32767,
-					}},
-				},
-			},
-			{
-				Query: "show create table smallint_tbl;",
-				Expected: []sql.Row{
-					{"smallint_tbl", "CREATE TABLE `smallint_tbl` (\n" +
-						"  `i` smallint NOT NULL AUTO_INCREMENT,\n" +
-						"  PRIMARY KEY (`i`)\n" +
-						") ENGINE=InnoDB AUTO_INCREMENT=32767 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-				},
-			},
-
-			{
-				Query:       "insert into mediumint_tbl values (99999999);",
-				ExpectedErr: sql.ErrValueOutOfRange,
-			},
-			{
-				Query: "insert into mediumint_tbl values (8388607);",
-				Expected: []sql.Row{
-					{types.OkResult{
-						RowsAffected: 1,
-						InsertID:     8388607,
-					}},
-				},
-			},
-			{
-				Query: "show create table mediumint_tbl;",
-				Expected: []sql.Row{
-					{"mediumint_tbl", "CREATE TABLE `mediumint_tbl` (\n" +
-						"  `i` mediumint NOT NULL AUTO_INCREMENT,\n" +
-						"  PRIMARY KEY (`i`)\n" +
-						") ENGINE=InnoDB AUTO_INCREMENT=8388607 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-				},
-			},
-
-			{
-				Query:       "insert into int_tbl values (99999999999)",
-				ExpectedErr: sql.ErrValueOutOfRange,
-			},
-			{
-				Query: "insert into int_tbl values (2147483647)",
-				Expected: []sql.Row{
-					{types.OkResult{
-						RowsAffected: 1,
-						InsertID:     2147483647,
-					}},
-				},
-			},
-			{
-				Query: "show create table int_tbl;",
-				Expected: []sql.Row{
-					{"int_tbl", "CREATE TABLE `int_tbl` (\n" +
-						"  `i` int NOT NULL AUTO_INCREMENT,\n" +
-						"  PRIMARY KEY (`i`)\n" +
-						") ENGINE=InnoDB AUTO_INCREMENT=2147483647 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-				},
-			},
-
-			{
-				Query:       "insert into bigint_tbl values (99999999999999999999);",
-				ExpectedErr: sql.ErrValueOutOfRange,
-			},
-			{
-				Query: "insert into bigint_tbl values (9223372036854775807);",
-				Expected: []sql.Row{
-					{types.OkResult{
-						RowsAffected: 1,
-						InsertID:     9223372036854775807,
-					}},
-				},
-			},
-			{
-				Query: "show create table bigint_tbl;",
-				Expected: []sql.Row{
-					{"bigint_tbl", "CREATE TABLE `bigint_tbl` (\n" +
-						"  `i` bigint NOT NULL AUTO_INCREMENT,\n" +
-						"  PRIMARY KEY (`i`)\n" +
-						") ENGINE=InnoDB AUTO_INCREMENT=9223372036854775807 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-				},
-			},
-		},
-	},
-	{
-		// https://github.com/dolthub/dolt/issues/9530
-		Name:    "unsigned int with auto_increment",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"create table tinyint_tbl (i tinyint unsigned primary key auto_increment);",
-			"create table smallint_tbl (i smallint unsigned primary key auto_increment);",
-			"create table mediumint_tbl (i mediumint unsigned primary key auto_increment);",
-			"create table int_tbl (i int unsigned primary key auto_increment);",
-			"create table bigint_tbl (i bigint unsigned primary key auto_increment);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:       "insert into tinyint_tbl values (999)",
-				ExpectedErr: sql.ErrValueOutOfRange,
-			},
-			{
-				Query: "insert into tinyint_tbl values (255)",
-				Expected: []sql.Row{
-					{types.OkResult{
-						RowsAffected: 1,
-						InsertID:     255,
-					}},
-				},
-			},
-			{
-				Query: "show create table tinyint_tbl;",
-				Expected: []sql.Row{
-					{"tinyint_tbl", "CREATE TABLE `tinyint_tbl` (\n" +
-						"  `i` tinyint unsigned NOT NULL AUTO_INCREMENT,\n" +
-						"  PRIMARY KEY (`i`)\n" +
-						") ENGINE=InnoDB AUTO_INCREMENT=255 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-				},
-			},
-
-			{
-				Query:       "insert into smallint_tbl values (99999);",
-				ExpectedErr: sql.ErrValueOutOfRange,
-			},
-			{
-				Query: "insert into smallint_tbl values (65535);",
-				Expected: []sql.Row{
-					{types.OkResult{
-						RowsAffected: 1,
-						InsertID:     65535,
-					}},
-				},
-			},
-			{
-				Query: "show create table smallint_tbl;",
-				Expected: []sql.Row{
-					{"smallint_tbl", "CREATE TABLE `smallint_tbl` (\n" +
-						"  `i` smallint unsigned NOT NULL AUTO_INCREMENT,\n" +
-						"  PRIMARY KEY (`i`)\n" +
-						") ENGINE=InnoDB AUTO_INCREMENT=65535 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-				},
-			},
-
-			{
-				Query:       "insert into mediumint_tbl values (999999999);",
-				ExpectedErr: sql.ErrValueOutOfRange,
-			},
-			{
-				Query: "insert into mediumint_tbl values (16777215);",
-				Expected: []sql.Row{
-					{types.OkResult{
-						RowsAffected: 1,
-						InsertID:     16777215,
-					}},
-				},
-			},
-			{
-				Query: "show create table mediumint_tbl;",
-				Expected: []sql.Row{
-					{"mediumint_tbl", "CREATE TABLE `mediumint_tbl` (\n" +
-						"  `i` mediumint unsigned NOT NULL AUTO_INCREMENT,\n" +
-						"  PRIMARY KEY (`i`)\n" +
-						") ENGINE=InnoDB AUTO_INCREMENT=16777215 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-				},
-			},
-
-			{
-				Query:       "insert into int_tbl values (99999999999)",
-				ExpectedErr: sql.ErrValueOutOfRange,
-			},
-			{
-				Query: "insert into int_tbl values (4294967295)",
-				Expected: []sql.Row{
-					{types.OkResult{
-						RowsAffected: 1,
-						InsertID:     4294967295,
-					}},
-				},
-			},
-			{
-				Query: "show create table int_tbl;",
-				Expected: []sql.Row{
-					{"int_tbl", "CREATE TABLE `int_tbl` (\n" +
-						"  `i` int unsigned NOT NULL AUTO_INCREMENT,\n" +
-						"  PRIMARY KEY (`i`)\n" +
-						") ENGINE=InnoDB AUTO_INCREMENT=4294967295 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-				},
-			},
-
-			{
-				Query:       "insert into bigint_tbl values (999999999999999999999);",
-				ExpectedErr: sql.ErrValueOutOfRange,
-			},
-			{
-				Query: "insert into bigint_tbl values (18446744073709551615);",
-				Expected: []sql.Row{
-					{types.OkResult{
-						RowsAffected: 1,
-						InsertID:     18446744073709551615,
-					}},
-				},
-			},
-			{
-				Query: "show create table bigint_tbl;",
-				Expected: []sql.Row{
-					{"bigint_tbl", "CREATE TABLE `bigint_tbl` (\n" +
-						"  `i` bigint unsigned NOT NULL AUTO_INCREMENT,\n" +
-						"  PRIMARY KEY (`i`)\n" +
-						") ENGINE=InnoDB AUTO_INCREMENT=18446744073709551615 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+					{uint8(2)},
 				},
 			},
 		},

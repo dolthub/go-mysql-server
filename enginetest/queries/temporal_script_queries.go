@@ -18,31 +18,11 @@ import (
 	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // TemporalScriptTests contains self-contained script tests for date and time values, precision, conversion, and time zones.
 var TemporalScriptTests = []ScriptTest{
-
-	{
-		// https://github.com/dolthub/dolt/issues/9794
-		Name: "UPDATE with TRIM function on TEXT column",
-		SetUpScript: []string{
-			"create table my_table (txt text);",
-			"insert into my_table values('foobar');",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:            "update my_table set txt = trim(txt);",
-				SkipResultsCheck: true,
-			},
-			{
-				Query:    "select txt from my_table;",
-				Expected: []sql.Row{{"foobar"}},
-			},
-		},
-	},
 	{
 		Name:    "unix_timestamp function usage",
 		Dialect: "mysql",
@@ -146,6 +126,47 @@ var TemporalScriptTests = []ScriptTest{
 				Expected: []sql.Row{
 					{"86400", "57600"},
 				},
+			},
+		},
+	},
+	{
+		Name:    "failed conversion shows warning",
+		Dialect: "mysql",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:                           "SELECT CONVERT('10000-12-31 23:59:59', DATETIME)",
+				ExpectedWarning:                 1292,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "Incorrect datetime value: '10000-12-31 23:59:59'",
+				SkipResultsCheck:                true,
+			},
+			{
+				Query:                           "SELECT CONVERT('this is not a datetime', DATETIME)",
+				ExpectedWarning:                 1292,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "Incorrect datetime value: 'this is not a datetime'",
+				SkipResultsCheck:                true,
+			},
+			{
+				Query:                           "SELECT CAST('this is not a datetime' as DATETIME)",
+				ExpectedWarning:                 1292,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "Incorrect datetime value: 'this is not a datetime'",
+				SkipResultsCheck:                true,
+			},
+			{
+				Query:                           "SELECT CONVERT('this is not a date', DATE)",
+				ExpectedWarning:                 1292,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "Incorrect date value: 'this is not a date'",
+				SkipResultsCheck:                true,
+			},
+			{
+				Query:                           "SELECT CAST('this is not a date' as DATE)",
+				ExpectedWarning:                 1292,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "Incorrect date value: 'this is not a date'",
+				SkipResultsCheck:                true,
 			},
 		},
 	},
@@ -459,83 +480,6 @@ var TemporalScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "update with left join with some missing rows",
-		SetUpScript: []string{
-			`create table joinparent (
-				id int not null auto_increment,
-				name varchar(128) not null,
-				archived int default 0 not null,
-				archived_at datetime null,
-				primary key (id)
-			);`,
-			`insert into joinparent (name) values
-				('first'),
-				('second'),
-				('third'),
-				('fourth'),
-				('fifth');`,
-			`create index joinparent_archived on joinparent (archived, archived_at);`,
-			`create table joinchild (
-				id int not null auto_increment,
-				name varchar(128) not null,
-				parent_id int not null,
-				archived int default 0 not null,
-				archived_at datetime null,
-				primary key (id),
-				constraint joinchild_parent unique (parent_id, id, archived));`,
-			`insert into joinchild (name, parent_id) values
-				('first', 4),
-				('second', 3),
-				('third', 2);`,
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				// TODO: this query isn't valid SQL, why
-				Query: `update joinparent as jp 
-							left join joinchild as jc on jc.parent_id = jp.id
-								set jp.archived = jp.id, jp.archived_at = now(), 
-									jc.archived = jc.id, jc.archived_at = now()
-						where jp.id > 0 and jp.name != "never"
-						limit 100`,
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 8, Info: plan.UpdateInfo{Matched: 8, Updated: 8}}}},
-			},
-			// do without limit to use `plan.Sort` instead of `plan.TopN`
-			{
-				Query: `update joinparent as jp 
-							left join joinchild as jc on jc.parent_id = jp.id
-								set jp.archived = 0, jp.archived_at = null, 
-									jc.archived = 0, jc.archived_at = null
-						where jp.id > 0 and jp.name != "never"`,
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 8, Info: plan.UpdateInfo{Matched: 8, Updated: 8}}}},
-			},
-		},
-	},
-	{
-		Name: "preserve now()",
-		SetUpScript: []string{
-			"create table t1 (i int default (cast(now() as signed)));",
-			"create table t2 (i int default (cast(current_timestamp(6) as signed)));",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "show create table t1",
-				Expected: []sql.Row{
-					{"t1", "CREATE TABLE `t1` (\n" +
-						"  `i` int DEFAULT (convert(NOW(), signed))\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-				},
-			},
-			{
-				Query: "show create table t2",
-				Expected: []sql.Row{
-					{"t2", "CREATE TABLE `t2` (\n" +
-						"  `i` int DEFAULT (convert(NOW(6), signed))\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-				},
-			},
-		},
-	},
-	{
 		Name:    "unix_timestamp script tests",
 		Dialect: "mysql",
 		SetUpScript: []string{
@@ -563,86 +507,6 @@ var TemporalScriptTests = []ScriptTest{
 					{5, "946730096.123450"},
 					{6, "946730096.123456"},
 				},
-			},
-		},
-	},
-	{
-		// This is a script test here because every table in the harness setup data is in all lowercase
-		Name:    "case insensitive update with insubqueries and update joins",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"create table MiXeDcAsE (i int primary key, j int)",
-			"insert into mixedcase values (1, 1);",
-			"insert into mixedcase values (2, 2);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "update mixedcase set j = 999 where i in (select 1)",
-				Expected: []sql.Row{
-					{types.OkResult{
-						RowsAffected: 1,
-						Info: plan.UpdateInfo{
-							Matched: 1,
-							Updated: 1,
-						},
-					}},
-				},
-			},
-			{
-				Query: "select * from mixedcase;",
-				Expected: []sql.Row{
-					{1, 999},
-					{2, 2},
-				},
-			},
-			{
-				Query: " with cte(x) as (select 2) update mixedcase set j = 999 where i in (select x from cte)",
-				Expected: []sql.Row{
-					{types.OkResult{
-						RowsAffected: 1,
-						Info: plan.UpdateInfo{
-							Matched: 1,
-							Updated: 1,
-						},
-					}},
-				},
-			},
-			{
-				Query: "select * from mixedcase;",
-				Expected: []sql.Row{
-					{1, 999},
-					{2, 999},
-				},
-			},
-		},
-	},
-
-	// Date Tests
-	{
-		Name:        "date with auto_increment",
-		Dialect:     "mysql",
-		SetUpScript: []string{},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:          "create table bad (d date primary key auto_increment);",
-				ExpectedErrStr: "Incorrect column specifier for column 'd'",
-			},
-		},
-	},
-
-	// Datetime Tests
-	{
-		Name:        "datetime with auto_increment",
-		Dialect:     "mysql",
-		SetUpScript: []string{},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:          "create table bad (dt datetime primary key auto_increment);",
-				ExpectedErrStr: "Incorrect column specifier for column 'dt'",
-			},
-			{
-				Query:          "create table bad (dt datetime(6) primary key auto_increment);",
-				ExpectedErrStr: "Incorrect column specifier for column 'dt'",
 			},
 		},
 	},
@@ -794,23 +658,6 @@ var TemporalScriptTests = []ScriptTest{
 			},
 		},
 	},
-
-	// Timestamp Tests
-	{
-		Name:        "timestamp with auto_increment",
-		Dialect:     "mysql",
-		SetUpScript: []string{},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:          "create table bad (ts timestamp primary key auto_increment);",
-				ExpectedErrStr: "Incorrect column specifier for column 'ts'",
-			},
-			{
-				Query:          "create table bad (ts timestamp(6) primary key auto_increment);",
-				ExpectedErrStr: "Incorrect column specifier for column 'ts'",
-			},
-		},
-	},
 	{
 		// https://github.com/dolthub/dolt/issues/9544
 		Name:    "timestamps with foreign keys",
@@ -891,33 +738,6 @@ var TemporalScriptTests = []ScriptTest{
 			},
 		},
 	},
-	{
-		// TODO: every aggregation function needs to use types.TypeAwareConversion
-		// Tracking issue: https://github.com/dolthub/dolt/issues/10278
-		Skip:    true,
-		Name:    "aggregations with date types",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"create table t (i int primary key, d date, dt datetime, dt6 datetime(6), ts timestamp, ts6 timestamp(6));",
-			"insert into t values (1, '2001-02-03', '2001-02-03 12:34:56', '2001-02-03 12:34:56.123456', '2001-02-03 12:34:56', '2001-02-03 12:34:56.123456');",
-			"insert into t values (2, '2010-03-30', '2010-02-03 22:22:22', '2010-02-03 11:11:11.111111', '2010-03-30 22:22:22', '2010-03-30 11:11:11.111111');",
-			"insert into t values (3, '2100-02-03', '2100-02-03 23:23:23', '2100-02-03 23:23:23.654321', '2001-02-03 23:23:23', '2001-02-03 23:23:23.654321');",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "select sum(d), sum(dt), sum(dt6), sum(ts), sum(ts6) from t;",
-				Expected: []sql.Row{
-					{float64(61110736), float64(61110609578001), float64(61110609466890.888888), float64(60120736578001), float64(60120736466890.888888)},
-				},
-			},
-			{
-				Query: "select var_pop(d), var_pop(dt), var_pop(dt6), var_pop(ts), var_pop(ts6) from t;",
-				Expected: []sql.Row{
-					{float64(199777143584.22263), float64(1.998000279462624e23), float64(1.998000479464689e23), float64(1.8050853600269382e21), float64(1.8050809093046277e21)},
-				},
-			},
-		},
-	},
 
 	// Time Tests
 	{
@@ -958,21 +778,6 @@ var TemporalScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name:        "time with auto_increment",
-		Dialect:     "mysql",
-		SetUpScript: []string{},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:          "create table bad (t time primary key auto_increment);",
-				ExpectedErrStr: "Incorrect column specifier for column 't'",
-			},
-			{
-				Query:          "create table bad (t time(6) primary key auto_increment);",
-				ExpectedErrStr: "Incorrect column specifier for column 't'",
-			},
-		},
-	},
-	{
 		// https://github.com/dolthub/dolt/issues/9544
 		Name:    "time with foreign keys",
 		Dialect: "mysql",
@@ -1005,19 +810,6 @@ var TemporalScriptTests = []ScriptTest{
 				Query:       "insert into child_time6 values ('12:34:56');",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
 				Skip:        true, // TODO: Fix TIME precision handling in foreign key constraints (https://github.com/dolthub/dolt/issues/9544)
-			},
-		},
-	},
-
-	// Year Tests
-	{
-		Name:        "year with auto_increment",
-		Dialect:     "mysql",
-		SetUpScript: []string{},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:          "create table bad (y year primary key auto_increment);",
-				ExpectedErrStr: "Incorrect column specifier for column 'y'",
 			},
 		},
 	},

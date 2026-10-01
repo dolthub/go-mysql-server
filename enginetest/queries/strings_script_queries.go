@@ -107,6 +107,25 @@ var StringsScriptTests = []ScriptTest{
 			},
 		},
 	},
+
+	{
+		// https://github.com/dolthub/dolt/issues/9794
+		Name: "UPDATE with TRIM function on TEXT column",
+		SetUpScript: []string{
+			"create table my_table (txt text);",
+			"insert into my_table values('foobar');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:            "update my_table set txt = trim(txt);",
+				SkipResultsCheck: true,
+			},
+			{
+				Query:    "select txt from my_table;",
+				Expected: []sql.Row{{"foobar"}},
+			},
+		},
+	},
 	{
 		// https://github.com/dolthub/dolt/issues/9794
 		Name:    "String functions with TextStorage (comprehensive test)",
@@ -255,6 +274,20 @@ var StringsScriptTests = []ScriptTest{
 			{
 				Query:    "SELECT SOUNDEX(content) FROM test_strings WHERE id = 2;",
 				Expected: []sql.Row{{"T2323652"}},
+			},
+		},
+	},
+	{
+		Name:    "CONVERT USING still converts between incompatible character sets",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 VARCHAR(200)) COLLATE=utf8mb4_0900_ai_ci;",
+			"INSERT INTO test VALUES (1, '63273াম'), (2, 'GHD30r'), (3, '8জ্রিয277'), (4, NULL);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT pk, v1, CONVERT(CONVERT(v1 USING latin1) USING utf8mb4) AS round_trip FROM test WHERE v1 <> CONVERT(CONVERT(v1 USING latin1) USING utf8mb4);",
+				Expected: []sql.Row{{int64(1), "63273াম", "63273??"}, {int64(3), "8জ্রিয277", "8?????277"}},
 			},
 		},
 	},

@@ -929,20 +929,6 @@ var ConversionsScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name:    "CONVERT USING still converts between incompatible character sets",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 VARCHAR(200)) COLLATE=utf8mb4_0900_ai_ci;",
-			"INSERT INTO test VALUES (1, '63273াম'), (2, 'GHD30r'), (3, '8জ্রিয277'), (4, NULL);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "SELECT pk, v1, CONVERT(CONVERT(v1 USING latin1) USING utf8mb4) AS round_trip FROM test WHERE v1 <> CONVERT(CONVERT(v1 USING latin1) USING utf8mb4);",
-				Expected: []sql.Row{{int64(1), "63273াম", "63273??"}, {int64(3), "8জ্রিয277", "8?????277"}},
-			},
-		},
-	},
-	{
 		Name: "Handle hex number to binary conversion",
 		SetUpScript: []string{
 			"CREATE TABLE hex_nums1 (pk BIGINT PRIMARY KEY, v1 INT, v2 BIGINT UNSIGNED, v3 DOUBLE, v4 BINARY(32));",
@@ -962,93 +948,6 @@ var ConversionsScriptTests = []ScriptTest{
 			{
 				Query:    "SELECT hex(v1), hex(v2) FROM hex_nums2;",
 				Expected: []sql.Row{{"765A8CE4CE74B187", "148AA875C3CDB9AF8919493926A3D7C6862FEC7F330152F400C0AECB4467508A"}},
-			},
-		},
-	},
-	{
-		Name:    "failed conversion shows warning",
-		Dialect: "mysql",
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:                           "SELECT CONVERT('10000-12-31 23:59:59', DATETIME)",
-				ExpectedWarning:                 1292,
-				ExpectedWarningsCount:           1,
-				ExpectedWarningMessageSubstring: "Incorrect datetime value: '10000-12-31 23:59:59'",
-				SkipResultsCheck:                true,
-			},
-			{
-				Query:                           "SELECT CONVERT('this is not a datetime', DATETIME)",
-				ExpectedWarning:                 1292,
-				ExpectedWarningsCount:           1,
-				ExpectedWarningMessageSubstring: "Incorrect datetime value: 'this is not a datetime'",
-				SkipResultsCheck:                true,
-			},
-			{
-				Query:                           "SELECT CAST('this is not a datetime' as DATETIME)",
-				ExpectedWarning:                 1292,
-				ExpectedWarningsCount:           1,
-				ExpectedWarningMessageSubstring: "Incorrect datetime value: 'this is not a datetime'",
-				SkipResultsCheck:                true,
-			},
-			{
-				Query:                           "SELECT CONVERT('this is not a date', DATE)",
-				ExpectedWarning:                 1292,
-				ExpectedWarningsCount:           1,
-				ExpectedWarningMessageSubstring: "Incorrect date value: 'this is not a date'",
-				SkipResultsCheck:                true,
-			},
-			{
-				Query:                           "SELECT CAST('this is not a date' as DATE)",
-				ExpectedWarning:                 1292,
-				ExpectedWarningsCount:           1,
-				ExpectedWarningMessageSubstring: "Incorrect date value: 'this is not a date'",
-				SkipResultsCheck:                true,
-			},
-		},
-	},
-	{
-		Name: "sum() and avg() on DECIMAL type column returns the DECIMAL type result",
-		SetUpScript: []string{
-			"create table decimal_table (id int, val decimal(18,16));",
-			"insert into decimal_table values (1,-2.5633000000000384);",
-			"insert into decimal_table values (2,2.5633000000000370);",
-			"insert into decimal_table values (3,0.0000000000000004);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "SELECT val FROM decimal_table;",
-				Expected: []sql.Row{{"-2.5633000000000384"}, {"2.5633000000000370"}, {"0.0000000000000004"}},
-			},
-			{
-				Query:    "SELECT sum(val) FROM decimal_table;",
-				Expected: []sql.Row{{"-0.0000000000000010"}},
-			},
-			{
-				Query:    "SELECT avg(val) FROM decimal_table;",
-				Expected: []sql.Row{{"-0.00000000000000033333"}},
-			},
-		},
-	},
-	{
-		Name: "sum() and avg() on non-DECIMAL type column returns the DOUBLE type result",
-		SetUpScript: []string{
-			"create table float_table (id int primary key, val1 double, val2 float);",
-			"insert into float_table values (1,-2.5633000000000384, 2.3);",
-			"insert into float_table values (2,2.5633000000000370, 2.4);",
-			"insert into float_table values (3,0.0000000000000004, 5.3);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "SELECT sum(id), sum(val1), sum(val2) FROM float_table ORDER BY id;",
-				Expected: []sql.Row{{float64(6), -9.322676295501879e-16, 10.000000238418579}},
-			},
-			{
-				Query:    "SELECT sum(id), sum(val1), sum(val2) FROM float_table ORDER BY id;",
-				Expected: []sql.Row{{float64(6), -9.322676295501879e-16, 10.000000238418579}},
-			},
-			{
-				Query:    "SELECT avg(id), avg(val1), avg(val2) FROM float_table ORDER BY id;",
-				Expected: []sql.Row{{float64(2), -3.107558765167293e-16, 3.333333412806193}},
 			},
 		},
 	},
@@ -1128,6 +1027,69 @@ var ConversionsScriptTests = []ScriptTest{
 				Query: "select * from t_idx where (b in (false/'1'));",
 				Expected: []sql.Row{
 					{0},
+				},
+			},
+		},
+	},
+	{
+		Name:    "hash in tuple picks correct type and skips mixed types",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t (v varchar(10));",
+			"insert into t values ('abc'), ('def'), ('ghi');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from t where (v in ('xyz')) order by v;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from t where (v in (0, 'xyz')) order by v;",
+				Expected: []sql.Row{
+					{"abc"},
+					{"def"},
+					{"ghi"},
+				},
+			},
+			{
+				Query:    "select * from t where (v in (1, 'xyz')) order by v;",
+				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		Name:    "strings in tuple are properly hashed",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t (v varchar(100));",
+			"insert into t values (false);",
+			"create table t_idx (v varchar(100));",
+			"create index idx on t_idx(v);",
+			"insert into t_idx values (false);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from t where (v in (-''));",
+				Expected: []sql.Row{
+					{"0"},
+				},
+			},
+			{
+				Query: "select * from t where (v in (false/'1'));",
+				Expected: []sql.Row{
+					{"0"},
+				},
+			},
+			{
+				Query: "select * from t_idx where (v in (-''));",
+				Expected: []sql.Row{
+					{"0"},
+				},
+			},
+			{
+				Query: "select * from t_idx where (v in (false/'1'));",
+				Expected: []sql.Row{
+					{"0"},
 				},
 			},
 		},
@@ -1252,27 +1214,6 @@ var ConversionsScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "count distinct decimals",
-		SetUpScript: []string{
-			"create table t (i int, j int)",
-			"insert into t values (1, 11), (11, 1)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "select count(distinct i, j) from t;",
-				Expected: []sql.Row{
-					{2},
-				},
-			},
-			{
-				Query: "select count(distinct cast(i as decimal), cast(j as decimal)) from t;",
-				Expected: []sql.Row{
-					{2},
-				},
-			},
-		},
-	},
-	{
 		Name:    "range query convert int to string zero value",
 		Dialect: "mysql",
 		SetUpScript: []string{
@@ -1306,49 +1247,6 @@ var ConversionsScriptTests = []ScriptTest{
 					{1, "1"},
 					{2, "2abc"},
 				},
-			},
-		},
-	},
-
-	// Float Tests
-	{
-		Name:        "float with auto_increment",
-		Dialect:     "mysql",
-		SetUpScript: []string{},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:          "create table float_tbl (f float primary key auto_increment);",
-				ExpectedErrStr: "Incorrect column specifier for column 'f'",
-			},
-		},
-	},
-
-	// Decimal Tests
-	{
-		Name:        "decimal with auto_increment",
-		Dialect:     "mysql",
-		SetUpScript: []string{},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:          "create table bad (d decimal primary key auto_increment);",
-				ExpectedErrStr: "Incorrect column specifier for column 'd'",
-			},
-			{
-				Query:          "create table bad (d decimal(65,30) primary key auto_increment);",
-				ExpectedErrStr: "Incorrect column specifier for column 'd'",
-			},
-		},
-	},
-	{
-		Name: "decimal unique key",
-		SetUpScript: []string{
-			"create table t (i int primary key, d decimal(10, 2) unique)",
-			"insert into t values (1, 1)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:       "insert into t values (2, 1)",
-				ExpectedErr: sql.ErrUniqueKeyViolation,
 			},
 		},
 	},

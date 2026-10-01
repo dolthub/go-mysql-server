@@ -22,86 +22,237 @@ import (
 // ExpressionsScriptTests contains self-contained script tests for scalar functions, predicates, and name resolution.
 var ExpressionsScriptTests = []ScriptTest{
 	{
-		Name:    "bits don't work on server",
+		// https://github.com/dolthub/go-mysql-server/issues/3259
 		Dialect: "mysql",
+		Name:    "Missing column with same name as system variable",
 		SetUpScript: []string{
-			"create table t (b bit(1));",
-			"insert into t values (1)",
+			"CREATE DATABASE IF NOT EXISTS test_db",
+			"USE test_db",
+			"CREATE TABLE A (id INT)",
+			"CREATE TABLE B (id INT)",
+			"INSERT INTO A VALUES (1)",
+			"INSERT INTO B VALUES (2)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "select * from t;",
-				Expected: []sql.Row{{uint64(1)}},
+				Query:       "SELECT UNIX_TIMESTAMP(A.timestamp) FROM A LIMIT 1",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query:       "SELECT A.timestamp FROM A",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query:       "SELECT A.version FROM A",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query:       "SELECT A.max_connections FROM A",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query:       "SELECT UPPER(A.sql_mode) FROM A",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query:            "SELECT @@timestamp",
+				Expected:         []sql.Row{{float64(0)}},
+				SkipResultsCheck: true, // dynamic var
+			},
+			{
+				Query:            "SELECT @@version",
+				Expected:         []sql.Row{{""}},
+				SkipResultsCheck: true, // dynamic var
+			},
+			{
+				Query:       "SELECT test_db.A.timestamp FROM A",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query:       "SELECT test_db.A.version FROM test_db.A",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query:       "SELECT a1.timestamp FROM A a1 JOIN B b1 ON a1.id = b1.id",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query:       "SELECT b1.max_connections FROM A a1 JOIN B b1 ON a1.id = b1.id",
+				ExpectedErr: sql.ErrTableColumnNotFound,
 			},
 		},
 	},
 	{
-		Name: "histogram bucket merging error for implementor buckets",
+		// https://github.com/dolthub/dolt/issues/9857
+		Name:        "UUID_SHORT() function returns 64-bit unsigned integers with proper construction",
+		Dialect:     "mysql",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT UUID_SHORT() > 0",
+				Expected: []sql.Row{
+					{true}, // Should return positive values
+				},
+			},
+			{
+				Query: "SELECT UUID_SHORT() != UUID_SHORT()",
+				Expected: []sql.Row{
+					{true}, // Should return different values on each call
+				},
+			},
+			{
+				Query: "SELECT UUID_SHORT() + 0 > 0",
+				Expected: []sql.Row{
+					{true}, // Should work in arithmetic expressions
+				},
+			},
+			{
+				Query: "SELECT CAST(UUID_SHORT() AS CHAR) != ''",
+				Expected: []sql.Row{
+					{true}, // Should cast to non-empty string
+				},
+			},
+			{
+				Query: "SELECT UUID_SHORT() BETWEEN 1 AND 18446744073709551615",
+				Expected: []sql.Row{
+					{true}, // Should be within uint64 range
+				},
+			},
+			{
+				Query: "SELECT (UUID_SHORT() & 0xFF00000000000000) >> 56 BETWEEN 0 AND 255",
+				Expected: []sql.Row{
+					{true}, // Server ID should be 0-255
+				},
+			},
+			{
+				Query: "SET @@global.server_id = 253",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "SELECT (UUID_SHORT() & 0xFF00000000000000) >> 56 BETWEEN 0 AND 255",
+				Expected: []sql.Row{
+					{true}, // server time won't let us pin this down further
+				},
+			},
+			{
+				Query: "SET @@global.server_id = 1",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+		},
+	},
+	{
+		Name:    "UUIDs used in the wild.",
+		Dialect: "mysql",
 		SetUpScript: []string{
-			"CREATE TABLE xy (x int primary key, y varchar(10), key(y));",
-			"insert into xy select x, 'x' from (with recursive inputs(x) as (select 1 union select x+1 from inputs where x < 5000) select * from inputs) dt",
-			"analyze table xy",
+			"SET @uuid = '6ccd780c-baba-1026-9564-5b8c656024db'",
+			"SET @binuuid = '0011223344556677'",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "select (select count(*) from information_schema.statistics) > 0",
+				Query:    `SELECT IS_UUID(UUID())`,
 				Expected: []sql.Row{{true}},
 			},
 			{
-				Query:    "select a.y from xy a join xy b on a.y = b.y limit 1",
-				Expected: []sql.Row{{"x"}},
+				Query:    `SELECT IS_UUID(@uuid)`,
+				Expected: []sql.Row{{true}},
 			},
 			{
-				Query:    "select y from xy where y = 'x' limit 1",
-				Expected: []sql.Row{{"x"}},
+				Query:    `SELECT BIN_TO_UUID(UUID_TO_BIN(@uuid))`,
+				Expected: []sql.Row{{"6ccd780c-baba-1026-9564-5b8c656024db"}},
+			},
+			{
+				Query:    `SELECT BIN_TO_UUID(UUID_TO_BIN(@uuid, 1), 1)`,
+				Expected: []sql.Row{{"6ccd780c-baba-1026-9564-5b8c656024db"}},
+			},
+			{
+				// https://github.com/dolthub/dolt/issues/11457
+				Query:    `SELECT BIN_TO_UUID(UUID_TO_BIN(@uuid), null)`,
+				Expected: []sql.Row{{"6ccd780c-baba-1026-9564-5b8c656024db"}},
+			},
+			{
+				Query:    `SELECT BIN_TO_UUID(UUID_TO_BIN(@uuid), 3000)`,
+				Expected: []sql.Row{{"baba1026-780c-6ccd-9564-5b8c656024db"}},
+			},
+			{
+				Query:    `SELECT BIN_TO_UUID(UUID_TO_BIN(@uuid), -10)`,
+				Expected: []sql.Row{{"baba1026-780c-6ccd-9564-5b8c656024db"}},
+			},
+			{
+				Query:    `SELECT UUID_TO_BIN(NULL)`,
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:    `SELECT HEX(UUID_TO_BIN(@uuid))`,
+				Expected: []sql.Row{{"6CCD780CBABA102695645B8C656024DB"}},
+			},
+			{
+				Query:       `SELECT UUID_TO_BIN(123)`,
+				ExpectedErr: sql.ErrUuidUnableToParse,
+			},
+			{
+				Query:       `SELECT BIN_TO_UUID(123)`,
+				ExpectedErr: sql.ErrUuidUnableToParse,
+			},
+			{
+				Query:    `SELECT BIN_TO_UUID(X'00112233445566778899aabbccddeeff')`,
+				Expected: []sql.Row{{"00112233-4455-6677-8899-aabbccddeeff"}},
+			},
+			{
+				Query:    `SELECT BIN_TO_UUID('0011223344556677')`,
+				Expected: []sql.Row{{"30303131-3232-3333-3434-353536363737"}},
+			},
+			{
+				Query:    `SELECT BIN_TO_UUID(@binuuid)`,
+				Expected: []sql.Row{{"30303131-3232-3333-3434-353536363737"}},
 			},
 		},
 	},
 	{
-		Name: "sqllogictest evidence/slt_lang_aggfunc.test",
+		Name: "CrossDB Queries",
 		SetUpScript: []string{
-			"CREATE TABLE t1( x INTEGER, y VARCHAR(8) )",
-			"INSERT INTO t1 VALUES(1,'true')",
-			"INSERT INTO t1 VALUES(0,'false')",
-			"INSERT INTO t1 VALUES(NULL,'NULL')",
-		},
-		Query: "SELECT count(DISTINCT x) FROM t1",
-		Expected: []sql.Row{
-			{2},
-		},
-	},
-	{
-		Name: "same alias names for result column name and alias table column name",
-		SetUpScript: []string{
-			"CREATE TABLE tab0(col0 INTEGER, col1 INTEGER, col2 INTEGER)",
-			"INSERT INTO tab0 VALUES(83,0,38)",
-			"INSERT INTO tab0 VALUES(26,0,79)",
-			"INSERT INTO tab0 VALUES(43,81,24)",
+			"CREATE DATABASE test",
+			"CREATE TABLE test.x (pk int primary key)",
+			"insert into test.x values (1),(2),(3)",
+			"DELETE FROM test.x WHERE pk=2",
+			"UPDATE test.x set pk=300 where pk=3",
+			"create table a (xa int primary key, ya int, za int)",
+			"insert into a values (1,2,3)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "SELECT + 13 AS col0 FROM tab0 GROUP BY tab0.col0",
-				Expected: []sql.Row{{13}, {13}, {13}},
+				Query:    "SELECT pk from test.x",
+				Expected: []sql.Row{{1}, {300}},
 			},
 			{
-				Query:    "SELECT 82 col1 FROM tab0 AS cor0 GROUP BY cor0.col1",
-				Expected: []sql.Row{{82}, {82}},
+				Query:    "SELECT * from a",
+				Expected: []sql.Row{{1, 2, 3}},
+			},
+		},
+	},
+	{
+		Name:    "basic test on tables dual and `dual`",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE `dual` (id int)",
+			"INSERT INTO `dual` VALUES (2)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * from `dual`;",
+				Expected: []sql.Row{{2}},
 			},
 			{
-				Query:    "SELECT - cor0.col2 * - col2 AS col1 FROM tab0 AS cor0 GROUP BY col2, cor0.col1",
-				Expected: []sql.Row{{1444}, {6241}, {576}},
+				Query:    "SELECT 3 from dual;",
+				Expected: []sql.Row{{3}},
 			},
 			{
-				Query:    "SELECT ALL + 40 col1 FROM tab0 AS cor0 GROUP BY cor0.col1",
-				Expected: []sql.Row{{40}, {40}},
-			},
-			{
-				Query:    "SELECT DISTINCT - cor0.col1 col1 FROM tab0 AS cor0 GROUP BY cor0.col1, cor0.col2",
-				Expected: []sql.Row{{-81}, {0}},
-			},
-			{
-				Query:    "SELECT DISTINCT ( cor0.col0 ) - col0 AS col2 FROM tab0 AS cor0 GROUP BY cor0.col2, cor0.col0, cor0.col0",
-				Expected: []sql.Row{{0}},
+				Dialect:     "mysql",
+				Query:       "SELECT * from dual;",
+				ExpectedErr: sql.ErrNoTablesUsed,
 			},
 		},
 	},
@@ -148,64 +299,112 @@ var ExpressionsScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name:    "hash in tuple picks correct type and skips mixed types",
-		Dialect: "mysql",
+		Name: "Multi-db Aliasing",
 		SetUpScript: []string{
-			"create table t (v varchar(10));",
-			"insert into t values ('abc'), ('def'), ('ghi');",
+			"create database db1;",
+			"create table db1.t1 (i int primary key);",
+			"create table db1.t2 (j int primary key);",
+			"insert into db1.t1 values (1);",
+			"insert into db1.t2 values (2);",
+
+			"create database db2;",
+			"create table db2.t1 (i int primary key);",
+			"create table db2.t2 (j int primary key);",
+			"insert into db2.t1 values (10);",
+			"insert into db2.t2 values (20);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "select * from t where (v in ('xyz')) order by v;",
-				Expected: []sql.Row{},
-			},
-			{
-				Query: "select * from t where (v in (0, 'xyz')) order by v;",
+				// surprisingly, this works
+				Query: "select db1.t1.i from db1.t1 where db1.``.i > 0",
 				Expected: []sql.Row{
-					{"abc"},
-					{"def"},
-					{"ghi"},
+					{1},
 				},
 			},
 			{
-				Query:    "select * from t where (v in (1, 'xyz')) order by v;",
-				Expected: []sql.Row{},
-			},
-		},
-	},
-	{
-		Name:    "strings in tuple are properly hashed",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"create table t (v varchar(100));",
-			"insert into t values (false);",
-			"create table t_idx (v varchar(100));",
-			"create index idx on t_idx(v);",
-			"insert into t_idx values (false);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "select * from t where (v in (-''));",
+				Query: "select db1.t1.i from db1.t1 where db1.t1.i > 0",
 				Expected: []sql.Row{
-					{"0"},
+					{1},
 				},
 			},
 			{
-				Query: "select * from t where (v in (false/'1'));",
+				Query: "select db1.t1.i from db1.t1 order by db1.t1.i",
 				Expected: []sql.Row{
-					{"0"},
+					{1},
 				},
 			},
 			{
-				Query: "select * from t_idx where (v in (-''));",
+				Query: "select db1.t1.i from db1.t1 group by db1.t1.i",
 				Expected: []sql.Row{
-					{"0"},
+					{1},
 				},
 			},
 			{
-				Query: "select * from t_idx where (v in (false/'1'));",
+				Query: "select db1.t1.i from db1.t1 having db1.t1.i > 0",
 				Expected: []sql.Row{
-					{"0"},
+					{1},
+				},
+			},
+			{
+				Query: "select (select db1.t1.i from db1.t1 order by db1.t1.i)",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "select i from (select db1.t1.i from db1.t1 order by db1.t1.i) as t",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "with cte as (select db1.t1.i from db1.t1 order by db1.t1.i) select * from cte",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "select i, j from db1.t1 inner join db2.t2 on 20 * i = j",
+				Expected: []sql.Row{
+					{1, 20},
+				},
+			},
+			{
+				Query: "select db1.t1.i, db2.t2.j from db1.t1 inner join db2.t2 on 20 * db1.t1.i = db2.t2.j",
+				Expected: []sql.Row{
+					{1, 20},
+				},
+			},
+			{
+				Query: "select i, j from db1.t1 join db2.t2 order by i, j",
+				Expected: []sql.Row{
+					{1, 20},
+				},
+			},
+			{
+				Query: "select i, j from db1.t1 join db2.t2 group by i order by j",
+				Expected: []sql.Row{
+					{1, 20},
+				},
+			},
+			{
+				Query: "select db1.t1.i, db2.t2.j from db1.t1 join db2.t2 group by db1.t1.i order by db2.t2.j",
+				Expected: []sql.Row{
+					{1, 20},
+				},
+			},
+			{
+				Skip:  true, // incorrectly throws Not unique table/alias: t1
+				Query: "select db1.t1.i, db2.t1.i from db1.t1 join db2.t1 order by db1.t1, db2.t1.i",
+				Expected: []sql.Row{
+					{1, 10},
+				},
+			},
+			{
+				// Aliasing solves it
+				Query: "select a.i, b.i from db1.t1 a join db2.t1 b order by a.i, b.i",
+				Expected: []sql.Row{
+					{1, 10},
 				},
 			},
 		},
@@ -508,6 +707,49 @@ var ExpressionsScriptTests = []ScriptTest{
 			{
 				Query:    "select x from test where (x between x and x) order by x",
 				Expected: []sql.Row{{1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11453
+		Name:    "DEFAULT(col) expression",
+		Dialect: "mysql", // DEFAULT(col) function is not valid Postgres syntax
+		SetUpScript: []string{
+			"create table t(pk int primary key, i int default 7, j int, k int generated always as (i + 10), l int not null, m int default null);",
+			"insert into t(pk, i, l) values (1, 1, 1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "SELECT DEFAULT(pk) FROM t;",
+				ExpectedErr: sql.ErrFieldNoDefaultValue,
+			},
+			{
+				Query:    "SELECT DEFAULT(i) FROM t;",
+				Expected: []sql.Row{{7}},
+			},
+			{
+				Query:    "SELECT DEFAULT(i) AS d FROM t;",
+				Expected: []sql.Row{{7}},
+			},
+			{
+				Query:    "SELECT DEFAULT(j) FROM t;",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:       "SELECT DEFAULT(k) FROM t;",
+				ExpectedErr: sql.ErrFieldNoDefaultValue,
+			},
+			{
+				Query:       "SELECT DEFAULT(l) FROM t;",
+				ExpectedErr: sql.ErrFieldNoDefaultValue,
+			},
+			{
+				Query:    "SELECT DEFAULT(m) FROM t;",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:       "SELECT DEFAULT(asdfadf) FROM t;",
+				ExpectedErr: sql.ErrColumnNotFound,
 			},
 		},
 	},

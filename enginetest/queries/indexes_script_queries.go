@@ -79,6 +79,28 @@ var IndexesScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "histogram bucket merging error for implementor buckets",
+		SetUpScript: []string{
+			"CREATE TABLE xy (x int primary key, y varchar(10), key(y));",
+			"insert into xy select x, 'x' from (with recursive inputs(x) as (select 1 union select x+1 from inputs where x < 5000) select * from inputs) dt",
+			"analyze table xy",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select (select count(*) from information_schema.statistics) > 0",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    "select a.y from xy a join xy b on a.y = b.y limit 1",
+				Expected: []sql.Row{{"x"}},
+			},
+			{
+				Query:    "select y from xy where y = 'x' limit 1",
+				Expected: []sql.Row{{"x"}},
+			},
+		},
+	},
+	{
 		Name: "index match only exact string, no prefix",
 		SetUpScript: []string{
 			"CREATE TABLE pk (x varchar(10) primary key)",
@@ -326,29 +348,6 @@ CREATE TABLE tab3 (
 			{
 				Query:          "create index `primary` on t(i)",
 				ExpectedErrStr: "invalid index name 'primary'",
-			},
-		},
-	},
-	{
-		Name: "delete from table with misordered pks",
-		SetUpScript: []string{
-			"create table a (x int, y int, z int, primary key (z,x))",
-			"insert into a values (0,1,2), (3,4,5)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "SELECT count(*) FROM a where x = 0",
-				Expected: []sql.Row{
-					{1},
-				},
-			},
-			{
-				Query:    "delete from a where x = 0",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
-			},
-			{
-				Query:    "SELECT * FROM a where x = 0",
-				Expected: []sql.Row{},
 			},
 		},
 	},
@@ -1634,6 +1633,19 @@ WHERE
 					{1},
 					{1},
 				},
+			},
+		},
+	},
+	{
+		Name: "decimal unique key",
+		SetUpScript: []string{
+			"create table t (i int primary key, d decimal(10, 2) unique)",
+			"insert into t values (1, 1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "insert into t values (2, 1)",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
 			},
 		},
 	},

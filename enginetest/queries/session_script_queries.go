@@ -15,6 +15,9 @@
 package queries
 
 import (
+	"fmt"
+	"math"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -22,67 +25,6 @@ import (
 
 // SessionScriptTests contains self-contained script tests for session state, system variables, statement locking, and procedural execution.
 var SessionScriptTests = []ScriptTest{
-	{
-		// https://github.com/dolthub/go-mysql-server/issues/3259
-		Dialect: "mysql",
-		Name:    "Missing column with same name as system variable",
-		SetUpScript: []string{
-			"CREATE DATABASE IF NOT EXISTS test_db",
-			"USE test_db",
-			"CREATE TABLE A (id INT)",
-			"CREATE TABLE B (id INT)",
-			"INSERT INTO A VALUES (1)",
-			"INSERT INTO B VALUES (2)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:       "SELECT UNIX_TIMESTAMP(A.timestamp) FROM A LIMIT 1",
-				ExpectedErr: sql.ErrTableColumnNotFound,
-			},
-			{
-				Query:       "SELECT A.timestamp FROM A",
-				ExpectedErr: sql.ErrTableColumnNotFound,
-			},
-			{
-				Query:       "SELECT A.version FROM A",
-				ExpectedErr: sql.ErrTableColumnNotFound,
-			},
-			{
-				Query:       "SELECT A.max_connections FROM A",
-				ExpectedErr: sql.ErrTableColumnNotFound,
-			},
-			{
-				Query:       "SELECT UPPER(A.sql_mode) FROM A",
-				ExpectedErr: sql.ErrTableColumnNotFound,
-			},
-			{
-				Query:            "SELECT @@timestamp",
-				Expected:         []sql.Row{{float64(0)}},
-				SkipResultsCheck: true, // dynamic var
-			},
-			{
-				Query:            "SELECT @@version",
-				Expected:         []sql.Row{{""}},
-				SkipResultsCheck: true, // dynamic var
-			},
-			{
-				Query:       "SELECT test_db.A.timestamp FROM A",
-				ExpectedErr: sql.ErrTableColumnNotFound,
-			},
-			{
-				Query:       "SELECT test_db.A.version FROM test_db.A",
-				ExpectedErr: sql.ErrTableColumnNotFound,
-			},
-			{
-				Query:       "SELECT a1.timestamp FROM A a1 JOIN B b1 ON a1.id = b1.id",
-				ExpectedErr: sql.ErrTableColumnNotFound,
-			},
-			{
-				Query:       "SELECT b1.max_connections FROM A a1 JOIN B b1 ON a1.id = b1.id",
-				ExpectedErr: sql.ErrTableColumnNotFound,
-			},
-		},
-	},
 	{
 		// https://github.com/dolthub/dolt/issues/9865
 		Name:    "Stored procedure containing a transaction does not return EOF",
@@ -115,131 +57,67 @@ END`,
 		},
 	},
 	{
-		// https://github.com/dolthub/dolt/issues/9857
-		Name:        "UUID_SHORT() function returns 64-bit unsigned integers with proper construction",
-		Dialect:     "mysql",
-		SetUpScript: []string{},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "SELECT UUID_SHORT() > 0",
-				Expected: []sql.Row{
-					{true}, // Should return positive values
-				},
-			},
-			{
-				Query: "SELECT UUID_SHORT() != UUID_SHORT()",
-				Expected: []sql.Row{
-					{true}, // Should return different values on each call
-				},
-			},
-			{
-				Query: "SELECT UUID_SHORT() + 0 > 0",
-				Expected: []sql.Row{
-					{true}, // Should work in arithmetic expressions
-				},
-			},
-			{
-				Query: "SELECT CAST(UUID_SHORT() AS CHAR) != ''",
-				Expected: []sql.Row{
-					{true}, // Should cast to non-empty string
-				},
-			},
-			{
-				Query: "SELECT UUID_SHORT() BETWEEN 1 AND 18446744073709551615",
-				Expected: []sql.Row{
-					{true}, // Should be within uint64 range
-				},
-			},
-			{
-				Query: "SELECT (UUID_SHORT() & 0xFF00000000000000) >> 56 BETWEEN 0 AND 255",
-				Expected: []sql.Row{
-					{true}, // Server ID should be 0-255
-				},
-			},
-			{
-				Query: "SET @@global.server_id = 253",
-				Expected: []sql.Row{
-					{types.NewOkResult(0)},
-				},
-			},
-			{
-				Query: "SELECT (UUID_SHORT() & 0xFF00000000000000) >> 56 BETWEEN 0 AND 255",
-				Expected: []sql.Row{
-					{true}, // server time won't let us pin this down further
-				},
-			},
-			{
-				Query: "SET @@global.server_id = 1",
-				Expected: []sql.Row{
-					{types.NewOkResult(0)},
-				},
-			},
-		},
-	},
-	{
-		Name:    "UUIDs used in the wild.",
+		// https://github.com/dolthub/dolt/issues/9873
+		// TODO: `FOR UPDATE OF` (`FOR UPDATE` in general) is currently a no-op: https://www.dolthub.com/blog/2023-10-23-hold-my-beer/
+		Name:    "FOR UPDATE OF syntax support tests",
 		Dialect: "mysql",
 		SetUpScript: []string{
-			"SET @uuid = '6ccd780c-baba-1026-9564-5b8c656024db'",
-			"SET @binuuid = '0011223344556677'",
+			"CREATE TABLE task_instance (id INT PRIMARY KEY, task_id VARCHAR(255), dag_id VARCHAR(255), run_id VARCHAR(255), state VARCHAR(50), queued_by_job_id INT)",
+			"CREATE TABLE job (id INT PRIMARY KEY, state VARCHAR(50))",
+			"CREATE TABLE dag_run (dag_id VARCHAR(255), run_id VARCHAR(255), state VARCHAR(50))",
+			"CREATE TABLE t (id INT PRIMARY KEY, name VARCHAR(50))",
+			"INSERT INTO task_instance VALUES (1, 'task1', 'dag1', 'run1', 'running', 1)",
+			"INSERT INTO job VALUES (1, 'running')",
+			"INSERT INTO dag_run VALUES ('dag1', 'run1', 'running')",
+			"INSERT INTO t VALUES (1, 'test')",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    `SELECT IS_UUID(UUID())`,
-				Expected: []sql.Row{{true}},
+				Query: `SELECT task_instance.id, task_instance.task_id, task_instance.dag_id, task_instance.run_id
+FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INNER JOIN dag_run ON dag_run.dag_id = task_instance.dag_id AND dag_run.run_id = task_instance.run_id
+ WHERE task_instance.state IN ('running', 'queued', 'scheduled') AND NOT (job.state <=> 'running') AND dag_run.state = 'running' FOR UPDATE OF task_instance SKIP LOCKED`,
+				Expected: []sql.Row{},
 			},
 			{
-				Query:    `SELECT IS_UUID(@uuid)`,
-				Expected: []sql.Row{{true}},
+				Query:    "SELECT * FROM t FOR UPDATE",
+				Expected: []sql.Row{{1, "test"}},
 			},
 			{
-				Query:    `SELECT BIN_TO_UUID(UUID_TO_BIN(@uuid))`,
-				Expected: []sql.Row{{"6ccd780c-baba-1026-9564-5b8c656024db"}},
+				Query:    "SELECT * FROM t FOR UPDATE OF t",
+				Expected: []sql.Row{{1, "test"}},
 			},
 			{
-				Query:    `SELECT BIN_TO_UUID(UUID_TO_BIN(@uuid, 1), 1)`,
-				Expected: []sql.Row{{"6ccd780c-baba-1026-9564-5b8c656024db"}},
+				Query:    "SELECT * FROM t FOR UPDATE OF t SKIP LOCKED",
+				Expected: []sql.Row{{1, "test"}},
 			},
 			{
-				// https://github.com/dolthub/dolt/issues/11457
-				Query:    `SELECT BIN_TO_UUID(UUID_TO_BIN(@uuid), null)`,
-				Expected: []sql.Row{{"6ccd780c-baba-1026-9564-5b8c656024db"}},
+				Query:    "SELECT * FROM t FOR UPDATE OF t NOWAIT",
+				Expected: []sql.Row{{1, "test"}},
 			},
 			{
-				Query:    `SELECT BIN_TO_UUID(UUID_TO_BIN(@uuid), 3000)`,
-				Expected: []sql.Row{{"baba1026-780c-6ccd-9564-5b8c656024db"}},
+				Query:    "SELECT * FROM task_instance t1, job t2 FOR UPDATE OF t1, t2",
+				Expected: []sql.Row{{1, "task1", "dag1", "run1", "running", 1, 1, "running"}},
 			},
 			{
-				Query:    `SELECT BIN_TO_UUID(UUID_TO_BIN(@uuid), -10)`,
-				Expected: []sql.Row{{"baba1026-780c-6ccd-9564-5b8c656024db"}},
+				Query:       "SELECT * FROM t FOR UPDATE OF nonexistent_table",
+				ExpectedErr: sql.ErrUnresolvedTableLock,
 			},
 			{
-				Query:    `SELECT UUID_TO_BIN(NULL)`,
-				Expected: []sql.Row{{nil}},
+				Query:          "SELECT * FROM t FOR UPDATE OF t, nonexistent_table",
+				ExpectedErr:    sql.ErrUnresolvedTableLock,
+				ExpectedErrStr: fmt.Sprintf(sql.ErrUnresolvedTableLock.Message, "nonexistent_table"),
 			},
 			{
-				Query:    `SELECT HEX(UUID_TO_BIN(@uuid))`,
-				Expected: []sql.Row{{"6CCD780CBABA102695645B8C656024DB"}},
+				Query:       "SELECT * FROM t FOR UPDATE OF",
+				ExpectedErr: sql.ErrSyntaxError,
 			},
 			{
-				Query:       `SELECT UUID_TO_BIN(123)`,
-				ExpectedErr: sql.ErrUuidUnableToParse,
+				Query:       "SELECT * FROM t FOR UPDATE test",
+				ExpectedErr: sql.ErrSyntaxError,
 			},
 			{
-				Query:       `SELECT BIN_TO_UUID(123)`,
-				ExpectedErr: sql.ErrUuidUnableToParse,
-			},
-			{
-				Query:    `SELECT BIN_TO_UUID(X'00112233445566778899aabbccddeeff')`,
-				Expected: []sql.Row{{"00112233-4455-6677-8899-aabbccddeeff"}},
-			},
-			{
-				Query:    `SELECT BIN_TO_UUID('0011223344556677')`,
-				Expected: []sql.Row{{"30303131-3232-3333-3434-353536363737"}},
-			},
-			{
-				Query:    `SELECT BIN_TO_UUID(@binuuid)`,
-				Expected: []sql.Row{{"30303131-3232-3333-3434-353536363737"}},
+				Query:    "SELECT * FROM t FOR UPDATE",
+				Expected: []sql.Row{{1, "test"}},
 			},
 		},
 	},
@@ -304,28 +182,6 @@ END`,
 		},
 	},
 	{
-		Name: "CrossDB Queries",
-		SetUpScript: []string{
-			"CREATE DATABASE test",
-			"CREATE TABLE test.x (pk int primary key)",
-			"insert into test.x values (1),(2),(3)",
-			"DELETE FROM test.x WHERE pk=2",
-			"UPDATE test.x set pk=300 where pk=3",
-			"create table a (xa int primary key, ya int, za int)",
-			"insert into a values (1,2,3)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "SELECT pk from test.x",
-				Expected: []sql.Row{{1}, {300}},
-			},
-			{
-				Query:    "SELECT * from a",
-				Expected: []sql.Row{{1, 2, 3}},
-			},
-		},
-	},
-	{
 		// All DECLARE statements are only allowed under BEGIN/END blocks
 		Name: "Top-level DECLARE statements",
 		Assertions: []ScriptTestAssertion{
@@ -348,6 +204,604 @@ END`,
 			{
 				Query:       "DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = TRUE",
 				ExpectedErr: sql.ErrSyntaxError,
+			},
+		},
+	},
+	{
+		Name:    "last_insert_uuid() behavior",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table varchar36 (pk varchar(36) primary key default (UUID()), i int);",
+			"create table char36 (pk char(36) primary key default (UUID()), i int);",
+			"create table varbinary16 (pk varbinary(16) primary key default (UUID_to_bin(UUID())), i int);",
+			"create table binary16 (pk binary(16) primary key default (UUID_to_bin(UUID())), i int);",
+			"create table binary16swap (pk binary(16) primary key default (UUID_to_bin(UUID(), true)), i int);",
+			"create table invalid (pk int primary key, c1 varchar(36) default (UUID()));",
+			"create table prepared (uuid char(36) default (UUID()), ai int auto_increment, c1 varchar(100), primary key (uuid, ai));",
+		},
+		Assertions: []ScriptTestAssertion{
+			// The initial value of last_insert_uuid() is an empty string
+			{
+				Query:    "select last_insert_uuid()",
+				Expected: []sql.Row{{""}},
+			},
+
+			// invalid table – UUID default is not a primary key, so last_insert_uuid() doesn't get udpated
+			{
+				Query:    "insert into invalid values (1, DEFAULT);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "select last_insert_uuid()",
+				Expected: []sql.Row{{""}},
+			},
+			{
+				Query:    "insert into invalid values (2, UUID());",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "select last_insert_uuid()",
+				Expected: []sql.Row{{""}},
+			},
+
+			// varchar(36) test cases...
+			{
+				Query:    "insert into varchar36 values (DEFAULT, 1);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select pk from varchar36 where i=1);",
+				Expected: []sql.Row{{true, true}},
+			},
+			{
+				Query:    "insert into varchar36 values (UUID(), 2), (UUID(), 3);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
+			},
+			{
+				// last_insert_uuid() reports the first UUID() generated in the last insert statement
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select pk from varchar36 where i=2);",
+				Expected: []sql.Row{{true, true}},
+			},
+			{
+				Query:    "insert into varchar36 values ('notta-uuid', 4);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				// The previous insert didn't generate a UUID, so last_insert_uuid() doesn't get updated
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select pk from varchar36 where i=2);",
+				Expected: []sql.Row{{true, true}},
+			},
+
+			// char(36) test cases...
+			{
+				Query:    "insert into char36 values (DEFAULT, 1);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select pk from char36 where i=1);",
+				Expected: []sql.Row{{true, true}},
+			},
+			{
+				Query:    "insert into char36 values (UUID(), 2), (UUID(), 3);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
+			},
+			{
+				// last_insert_uuid() reports the first UUID() generated in the last insert statement
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select pk from char36 where i=2);",
+				Expected: []sql.Row{{true, true}},
+			},
+			{
+				Query:    "insert into char36 values ('notta-uuid', 4);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				// The previous insert didn't generate a UUID, so last_insert_uuid() doesn't get updated
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select pk from char36 where i=2);",
+				Expected: []sql.Row{{true, true}},
+			},
+			{
+				Query:    "insert into char36 (i) values (5);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select pk from char36 where i=5);",
+				Expected: []sql.Row{{true, true}},
+			},
+
+			// varbinary(16) test cases...
+			{
+				Query:    "insert into varbinary16 values (DEFAULT, 1);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk) from varbinary16 where i=1);",
+				Expected: []sql.Row{{true, true}},
+			},
+			{
+				Query:    "insert into varbinary16 values (UUID_to_bin(UUID()), 2), (UUID_to_bin(UUID()), 3);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
+			},
+			{
+				// last_insert_uuid() reports the first UUID() generated in the last insert statement
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk) from varbinary16 where i=2);",
+				Expected: []sql.Row{{true, true}},
+			},
+			{
+				Query:    "insert into varbinary16 values ('notta-uuid', 4);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				// The previous insert didn't generate a UUID, so last_insert_uuid() doesn't get updated
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk) from varbinary16 where i=2);",
+				Expected: []sql.Row{{true, true}},
+			},
+
+			// binary(16) test cases...
+			{
+				Query:    "insert into binary16 values (DEFAULT, 1);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk) from binary16 where i=1);",
+				Expected: []sql.Row{{true, true}},
+			},
+			{
+				Query:    "insert into binary16 values (UUID_to_bin(UUID()), 2), (UUID_to_bin(UUID()), 3);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
+			},
+			{
+				// last_insert_uuid() reports the first UUID() generated in the last insert statement
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk) from binary16 where i=2);",
+				Expected: []sql.Row{{true, true}},
+			},
+			{
+				Query:    "insert into binary16 values ('notta-uuid', 4);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				// The previous insert didn't generate a UUID, so last_insert_uuid() doesn't get updated
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk) from binary16 where i=2);",
+				Expected: []sql.Row{{true, true}},
+			},
+			{
+				Query:    "insert into binary16 (i) values (5);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk) from binary16 where i=5);",
+				Expected: []sql.Row{{true, true}},
+			},
+
+			// binary(16) with UUID_to_bin swap test cases...
+			{
+				Query:    "insert into binary16swap values (DEFAULT, 1);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk, true) from binary16swap where i=1);",
+				Expected: []sql.Row{{true, true}},
+			},
+			{
+				Query:    "insert into binary16swap values (UUID_to_bin(UUID(), true), 2), (UUID_to_bin(UUID(), true), 3);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
+			},
+			{
+				// last_insert_uuid() reports the first UUID() generated in the last insert statement
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk, true) from binary16swap where i=2);",
+				Expected: []sql.Row{{true, true}},
+			},
+			{
+				Query:    "insert into binary16swap values ('notta-uuid', 4);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				// The previous insert didn't generate a UUID, so last_insert_uuid() doesn't get updated
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk, true) from binary16swap where i=2);",
+				Expected: []sql.Row{{true, true}},
+			},
+			{
+				Query:    "insert into binary16swap (i) values (5);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk, true) from binary16swap where i=5);",
+				Expected: []sql.Row{{true, true}},
+			},
+
+			// INSERT INTO ... SELECT ... Tests
+			{
+				// If we populate the UUID column (pk) with its implicit default, then it updates last_insert_uuid()
+				Query:    "insert into varchar36 (i) select 42 from dual;",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select pk from varchar36 where i=42);",
+				Expected: []sql.Row{{true, true}},
+			},
+			{
+				// If all values come from another table, the auto_uuid value shouldn't be generated, so last_insert_uuid() doesn't change
+				Query:    "insert into varchar36 (pk, i) (select 'one', 101 from dual union all select 'two', 202);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
+			},
+			{
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select pk from varchar36 where i=42);",
+				Expected: []sql.Row{{true, true}},
+			},
+
+			// Prepared statements
+			{
+				// Test with an insert statement that implicit uses the UUID column default
+				Query:    `prepare stmt1 from "insert into prepared (c1) values ('odd'), ('even')";`,
+				Expected: []sql.Row{{types.OkResult{Info: plan.PrepareInfo{}}}},
+			},
+			{
+				Query:                         "execute stmt1;",
+				Expected:                      []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 1}}},
+				SkipResultCheckOnServerEngine: true, // Server engine returns []sql.Row{}
+			},
+			{
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select uuid from prepared where ai=1), last_insert_id();",
+				Expected: []sql.Row{{true, true, uint64(1)}},
+			},
+			{
+				// Executing the prepared statement a second time should refresh last_insert_uuid()
+				Query:                         "execute stmt1;",
+				Expected:                      []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 3}}},
+				SkipResultCheckOnServerEngine: true, // Server engine returns []sql.Row{}
+			},
+			{
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select uuid from prepared where ai=3), last_insert_id();",
+				Expected: []sql.Row{{true, true, uint64(3)}},
+			},
+
+			{
+				// Test with an insert statement that explicitly uses the UUID column default
+				Query:    `prepare stmt2 from "insert into prepared (uuid, c1) values (DEFAULT, 'more'), (DEFAULT, 'less')";`,
+				Expected: []sql.Row{{types.OkResult{Info: plan.PrepareInfo{}}}},
+			},
+			{
+				Query:                         "execute stmt2;",
+				Expected:                      []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 5}}},
+				SkipResultCheckOnServerEngine: true, // Server engine returns []sql.Row{}
+			},
+			{
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select uuid from prepared where ai=5), last_insert_id();",
+				Expected: []sql.Row{{true, true, uint64(5)}},
+			},
+			{
+				// Executing the prepared statement a second time should refresh last_insert_uuid()
+				Query:                         "execute stmt2;",
+				Expected:                      []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 7}}},
+				SkipResultCheckOnServerEngine: true, // Server engine returns []sql.Row{}
+			},
+			{
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select uuid from prepared where ai=7), last_insert_id();",
+				Expected: []sql.Row{{true, true, uint64(7)}},
+			},
+		},
+	},
+	{
+		Name:    "last_insert_id() behavior",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table a (x int primary key auto_increment, y int)",
+			"create table b (x int primary key)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select last_insert_id()",
+				Expected: []sql.Row{{uint64(0)}},
+			},
+			{
+				Query:    "insert into a (x,y) values (1,1)",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
+			},
+			{
+				Query:    "select last_insert_id()",
+				Expected: []sql.Row{{uint64(0)}},
+			},
+			{
+				Query:    "insert into a (y) values (1)",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 2}}},
+			},
+			{
+				Query:    "select last_insert_id()",
+				Expected: []sql.Row{{uint64(2)}},
+			},
+			{
+				Query:    "insert into a (y) values (2), (3)",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 3}}},
+			},
+			{
+				// last_insert_id() should return the insert id of the *first* value inserted in the last statement
+				Query:    "select last_insert_id()",
+				Expected: []sql.Row{{uint64(3)}},
+			},
+			{
+				Query:    "insert into b (x) values (1), (2)",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 0}}},
+			},
+			{
+				// The above query doesn't have an auto increment column, so last_insert_id is unchanged
+				Query:    "select last_insert_id()",
+				Expected: []sql.Row{{uint64(3)}},
+			},
+			{
+				Query: "insert into a (x, y) values (-100, 10)",
+				Expected: []sql.Row{{types.OkResult{
+					RowsAffected: 1,
+					InsertID:     math.MaxUint64 - 100 + 1,
+				}}},
+			},
+			{
+				// last_insert_id() should not update for manually inserted values
+				Query:    "select last_insert_id()",
+				Expected: []sql.Row{{uint64(3)}},
+			},
+			{
+				Query: "insert into a (x, y) values (100, 10)",
+				Expected: []sql.Row{{types.OkResult{
+					RowsAffected: 1,
+					InsertID:     100,
+				}}},
+			},
+			{
+				// last_insert_id() should not update for manually inserted values
+				Query:    "select last_insert_id()",
+				Expected: []sql.Row{{uint64(3)}},
+			},
+		},
+	},
+	{
+		Name:    "last_insert_id(expr) behavior",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table a (x int primary key auto_increment, y int)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "insert into a (y) values (1)",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
+			},
+			{
+				Query:    "select last_insert_id()",
+				Expected: []sql.Row{{uint64(1)}},
+			},
+			{
+				Query:    "insert into a (x, y) values (1, 1) on duplicate key update y = 2, x=last_insert_id(x)",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 1}}},
+			},
+			{
+				Query:    "select * from a order by x",
+				Expected: []sql.Row{{1, 2}},
+			},
+			{
+				Query:    "select last_insert_id()",
+				Expected: []sql.Row{{uint64(1)}},
+			},
+			{
+				Query:    "insert into a (y) values (100)",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 2}}},
+			},
+			{
+				Query:    "select last_insert_id()",
+				Expected: []sql.Row{{uint64(2)}},
+			},
+		},
+	},
+	{
+		Name:    "last_insert_id(default) behavior",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t (pk int primary key auto_increment, i int default 0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "insert into t(pk) values (default);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
+			},
+			{
+				Query: "select last_insert_id()",
+				Expected: []sql.Row{
+					{uint64(1)},
+				},
+			},
+			{
+				Query: "select * from t",
+				Expected: []sql.Row{
+					{1, 0},
+				},
+			},
+
+			{
+				Query:    "insert into t(pk) values (default), (default), (default), (default), (default);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 5, InsertID: 2}}},
+			},
+			{
+				Query: "select last_insert_id()",
+				Expected: []sql.Row{
+					{uint64(2)},
+				},
+			},
+			{
+				Query: "select * from t",
+				Expected: []sql.Row{
+					{1, 0},
+					{2, 0},
+					{3, 0},
+					{4, 0},
+					{5, 0},
+					{6, 0},
+				},
+			},
+
+			{
+				Query:    "insert into t(pk) values (10), (default);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 10}}},
+			},
+			{
+				Query: "select last_insert_id()",
+				Expected: []sql.Row{
+					{uint64(11)},
+				},
+			},
+			{
+				Query: "select * from t",
+				Expected: []sql.Row{
+					{1, 0},
+					{2, 0},
+					{3, 0},
+					{4, 0},
+					{5, 0},
+					{6, 0},
+					{10, 0},
+					{11, 0},
+				},
+			},
+
+			{
+				Query:    "insert into t(pk) values (20), (default), (default);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 3, InsertID: 20}}},
+			},
+			{
+				Query: "select last_insert_id()",
+				Expected: []sql.Row{
+					{uint64(21)},
+				},
+			},
+			{
+				Query: "select * from t",
+				Expected: []sql.Row{
+					{1, 0},
+					{2, 0},
+					{3, 0},
+					{4, 0},
+					{5, 0},
+					{6, 0},
+					{10, 0},
+					{11, 0},
+					{20, 0},
+					{21, 0},
+					{22, 0},
+				},
+			},
+
+			{
+				Query:    "insert into t(i) values (100);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 23}}},
+			},
+			{
+				Query: "select last_insert_id()",
+				Expected: []sql.Row{
+					{uint64(23)},
+				},
+			},
+			{
+				Query: "select * from t",
+				Expected: []sql.Row{
+					{1, 0},
+					{2, 0},
+					{3, 0},
+					{4, 0},
+					{5, 0},
+					{6, 0},
+					{10, 0},
+					{11, 0},
+					{20, 0},
+					{21, 0},
+					{22, 0},
+					{23, 100},
+				},
+			},
+
+			{
+				Query:    "insert into t(i, pk) values (200, default);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 24}}},
+			},
+			{
+				Query: "select last_insert_id()",
+				Expected: []sql.Row{
+					{uint64(24)},
+				},
+			},
+			{
+				Query: "select * from t",
+				Expected: []sql.Row{
+					{1, 0},
+					{2, 0},
+					{3, 0},
+					{4, 0},
+					{5, 0},
+					{6, 0},
+					{10, 0},
+					{11, 0},
+					{20, 0},
+					{21, 0},
+					{22, 0},
+					{23, 100},
+					{24, 200},
+				},
+			},
+
+			{
+				Query:    "insert into t(pk) values (null);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 25}}},
+			},
+			{
+				Query: "select last_insert_id()",
+				Expected: []sql.Row{
+					{uint64(25)},
+				},
+			},
+			{
+				Query: "select * from t",
+				Expected: []sql.Row{
+					{1, 0},
+					{2, 0},
+					{3, 0},
+					{4, 0},
+					{5, 0},
+					{6, 0},
+					{10, 0},
+					{11, 0},
+					{20, 0},
+					{21, 0},
+					{22, 0},
+					{23, 100},
+					{24, 200},
+					{25, 0},
+				},
+			},
+
+			{
+				Query:    "insert into t values ();",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 26}}},
+			},
+			{
+				Query: "select last_insert_id()",
+				Expected: []sql.Row{
+					{uint64(26)},
+				},
+			},
+			{
+				Query: "select * from t",
+				Expected: []sql.Row{
+					{1, 0},
+					{2, 0},
+					{3, 0},
+					{4, 0},
+					{5, 0},
+					{6, 0},
+					{10, 0},
+					{11, 0},
+					{20, 0},
+					{21, 0},
+					{22, 0},
+					{23, 100},
+					{24, 200},
+					{25, 0},
+					{26, 0},
+				},
 			},
 		},
 	},
@@ -530,117 +984,6 @@ END`,
 		},
 	},
 	{
-		Name: "Multi-db Aliasing",
-		SetUpScript: []string{
-			"create database db1;",
-			"create table db1.t1 (i int primary key);",
-			"create table db1.t2 (j int primary key);",
-			"insert into db1.t1 values (1);",
-			"insert into db1.t2 values (2);",
-
-			"create database db2;",
-			"create table db2.t1 (i int primary key);",
-			"create table db2.t2 (j int primary key);",
-			"insert into db2.t1 values (10);",
-			"insert into db2.t2 values (20);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				// surprisingly, this works
-				Query: "select db1.t1.i from db1.t1 where db1.``.i > 0",
-				Expected: []sql.Row{
-					{1},
-				},
-			},
-			{
-				Query: "select db1.t1.i from db1.t1 where db1.t1.i > 0",
-				Expected: []sql.Row{
-					{1},
-				},
-			},
-			{
-				Query: "select db1.t1.i from db1.t1 order by db1.t1.i",
-				Expected: []sql.Row{
-					{1},
-				},
-			},
-			{
-				Query: "select db1.t1.i from db1.t1 group by db1.t1.i",
-				Expected: []sql.Row{
-					{1},
-				},
-			},
-			{
-				Query: "select db1.t1.i from db1.t1 having db1.t1.i > 0",
-				Expected: []sql.Row{
-					{1},
-				},
-			},
-			{
-				Query: "select (select db1.t1.i from db1.t1 order by db1.t1.i)",
-				Expected: []sql.Row{
-					{1},
-				},
-			},
-			{
-				Query: "select i from (select db1.t1.i from db1.t1 order by db1.t1.i) as t",
-				Expected: []sql.Row{
-					{1},
-				},
-			},
-			{
-				Query: "with cte as (select db1.t1.i from db1.t1 order by db1.t1.i) select * from cte",
-				Expected: []sql.Row{
-					{1},
-				},
-			},
-			{
-				Query: "select i, j from db1.t1 inner join db2.t2 on 20 * i = j",
-				Expected: []sql.Row{
-					{1, 20},
-				},
-			},
-			{
-				Query: "select db1.t1.i, db2.t2.j from db1.t1 inner join db2.t2 on 20 * db1.t1.i = db2.t2.j",
-				Expected: []sql.Row{
-					{1, 20},
-				},
-			},
-			{
-				Query: "select i, j from db1.t1 join db2.t2 order by i, j",
-				Expected: []sql.Row{
-					{1, 20},
-				},
-			},
-			{
-				Query: "select i, j from db1.t1 join db2.t2 group by i order by j",
-				Expected: []sql.Row{
-					{1, 20},
-				},
-			},
-			{
-				Query: "select db1.t1.i, db2.t2.j from db1.t1 join db2.t2 group by db1.t1.i order by db2.t2.j",
-				Expected: []sql.Row{
-					{1, 20},
-				},
-			},
-			{
-				Skip:  true, // incorrectly throws Not unique table/alias: t1
-				Query: "select db1.t1.i, db2.t1.i from db1.t1 join db2.t1 order by db1.t1, db2.t1.i",
-				Expected: []sql.Row{
-					{1, 10},
-				},
-			},
-			{
-				// Aliasing solves it
-				Query: "select a.i, b.i from db1.t1 a join db2.t1 b order by a.i, b.i",
-				Expected: []sql.Row{
-					{1, 10},
-				},
-			},
-		},
-	},
-	{
 		Name: "validate_password_strength and validate_password.length",
 		SetUpScript: []string{
 			"set @orig = @@global.validate_password.length",
@@ -787,6 +1130,95 @@ END`,
 			{
 				SkipResultsCheck: true,
 				Query:            "set @@global.validate_password.special_char_count = @orig",
+			},
+		},
+	},
+	{
+		Name:        "MySQL default and strict SQL_MODE behavior",
+		Dialect:     "mysql",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				// Disabling `NO_ZERO_IN_DATE` throws additional warning
+				Query: "set @@sql_mode = '" +
+					"STRICT_TRANS_TABLES," +
+					"NO_ZERO_DATE," +
+					"ERROR_FOR_DIVISION_BY_ZERO'",
+				Expected: []sql.Row{
+					{types.OkResult{}},
+				},
+				ExpectedWarningsCount:           2,
+				ExpectedWarning:                 3135,
+				ExpectedWarningMessageSubstring: "Removing NO_ZERO_IN_DATE mode is not supported",
+			},
+			{
+				Query: "select @@sql_mode",
+				Expected: []sql.Row{
+					{"STRICT_TRANS_TABLES,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO"},
+				},
+			},
+			{
+				// Disabling `STRICT_TRANS_TABLES` throws strict mode warning
+				Query: "set @@sql_mode = '" +
+					"NO_ZERO_IN_DATE," +
+					"NO_ZERO_DATE," +
+					"ERROR_FOR_DIVISION_BY_ZERO'",
+				Expected: []sql.Row{
+					{types.OkResult{}},
+				},
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       3135,
+				ExpectedWarningMessageSubstring: "'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' " +
+					"sql modes should be used with strict mode. " +
+					"They will be merged with strict mode in a future release",
+			},
+			{
+				Query: "select @@sql_mode",
+				Expected: []sql.Row{
+					{"NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO"},
+				},
+			},
+			{
+				// Disabling `NO_ZERO_DATE` throws strict mode warning
+				Query: "set @@sql_mode = '" +
+					"STRICT_TRANS_TABLES," +
+					"NO_ZERO_IN_DATE," +
+					"ERROR_FOR_DIVISION_BY_ZERO'",
+				Expected: []sql.Row{
+					{types.OkResult{}},
+				},
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       3135,
+				ExpectedWarningMessageSubstring: "'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' " +
+					"sql modes should be used with strict mode. " +
+					"They will be merged with strict mode in a future release",
+			},
+			{
+				Query: "select @@sql_mode",
+				Expected: []sql.Row{
+					{"STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO"},
+				},
+			},
+			{
+				// Disabling `ERROR_FOR_DIVISION_BY_ZERO` throws strict mode warning
+				Query: "set @@sql_mode = '" +
+					"STRICT_TRANS_TABLES," +
+					"NO_ZERO_IN_DATE," +
+					"NO_ZERO_DATE'",
+				Expected: []sql.Row{
+					{types.OkResult{}},
+				},
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       3135,
+				ExpectedWarningMessageSubstring: "'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' " +
+					"sql modes should be used with strict mode. " +
+					"They will be merged with strict mode in a future release",
+			},
+			{
+				Query: "select @@sql_mode",
+				Expected: []sql.Row{
+					{"STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE"},
+				},
 			},
 		},
 	},

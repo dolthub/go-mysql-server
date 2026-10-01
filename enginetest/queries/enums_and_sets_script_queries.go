@@ -415,35 +415,6 @@ var EnumsAndSetsScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name:    "enums with auto increment",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"CREATE TABLE t (e enum('a', 'b', 'c') PRIMARY KEY)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:          "CREATE TABLE t2 (e enum('a', 'b', 'c') PRIMARY KEY AUTO_INCREMENT)",
-				ExpectedErrStr: "Incorrect column specifier for column 'e'",
-			},
-			{
-				Query:          "ALTER TABLE t MODIFY e enum('a', 'b', 'c') AUTO_INCREMENT",
-				ExpectedErrStr: "Incorrect column specifier for column 'e'",
-			},
-			{
-				Query:          "ALTER TABLE t MODIFY COLUMN e enum('a', 'b', 'c') AUTO_INCREMENT",
-				ExpectedErrStr: "Incorrect column specifier for column 'e'",
-			},
-			{
-				Query:          "ALTER TABLE t CHANGE e e enum('a', 'b', 'c') AUTO_INCREMENT",
-				ExpectedErrStr: "Incorrect column specifier for column 'e'",
-			},
-			{
-				Query:          "ALTER TABLE t CHANGE COLUMN e e enum('a', 'b', 'c') AUTO_INCREMENT",
-				ExpectedErrStr: "Incorrect column specifier for column 'e'",
-			},
-		},
-	},
-	{
 		// This is with STRICT_TRANS_TABLES or STRICT_ALL_TABLES in sql_mode
 		Name:    "enums with zero",
 		Dialect: "mysql",
@@ -1608,35 +1579,6 @@ var EnumsAndSetsScriptTests = []ScriptTest{
 					{0, ""},
 					{1, "abc"},
 				},
-			},
-		},
-	},
-	{
-		Name:    "set with auto increment",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"create table t (s set('a', 'b', 'c') primary key);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:          "create table t2 (s set('a', 'b', 'c') primary key auto_increment)",
-				ExpectedErrStr: "Incorrect column specifier for column 's'",
-			},
-			{
-				Query:          "alter table t modify s set('a', 'b', 'c') auto_increment;",
-				ExpectedErrStr: "Incorrect column specifier for column 's'",
-			},
-			{
-				Query:          "alter table t modify column s set('a', 'b', 'c') auto_increment;",
-				ExpectedErrStr: "Incorrect column specifier for column 's'",
-			},
-			{
-				Query:          "alter table t change s s set('a', 'b', 'c') auto_increment;",
-				ExpectedErrStr: "Incorrect column specifier for column 's'",
-			},
-			{
-				Query:          "alter table t change column s s set('a', 'b', 'c') auto_increment;",
-				ExpectedErrStr: "Incorrect column specifier for column 's'",
 			},
 		},
 	},

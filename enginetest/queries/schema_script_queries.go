@@ -468,29 +468,6 @@ var SchemaScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name:    "basic test on tables dual and `dual`",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"CREATE TABLE `dual` (id int)",
-			"INSERT INTO `dual` VALUES (2)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "SELECT * from `dual`;",
-				Expected: []sql.Row{{2}},
-			},
-			{
-				Query:    "SELECT 3 from dual;",
-				Expected: []sql.Row{{3}},
-			},
-			{
-				Dialect:     "mysql",
-				Query:       "SELECT * from dual;",
-				ExpectedErr: sql.ErrNoTablesUsed,
-			},
-		},
-	},
-	{
 		Name: "can't create view with same name as existing table",
 		SetUpScript: []string{
 			"create table t (i int);",
@@ -511,6 +488,19 @@ var SchemaScriptTests = []ScriptTest{
 			{
 				Query:       "create table t (i int);",
 				ExpectedErr: sql.ErrTableAlreadyExists,
+			},
+		},
+	},
+	{
+		Name:    "drop table if exists on unknown table shows warning",
+		Dialect: "mysql",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:                           "DROP TABLE IF EXISTS non_existent_table;",
+				ExpectedWarning:                 1051,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "Unknown table 'non_existent_table'",
+				SkipResultsCheck:                true,
 			},
 		},
 	},
@@ -615,6 +605,31 @@ var SchemaScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "preserve now()",
+		SetUpScript: []string{
+			"create table t1 (i int default (cast(now() as signed)));",
+			"create table t2 (i int default (cast(current_timestamp(6) as signed)));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table t1",
+				Expected: []sql.Row{
+					{"t1", "CREATE TABLE `t1` (\n" +
+						"  `i` int DEFAULT (convert(NOW(), signed))\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "show create table t2",
+				Expected: []sql.Row{
+					{"t2", "CREATE TABLE `t2` (\n" +
+						"  `i` int DEFAULT (convert(NOW(6), signed))\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+		},
+	},
+	{
 		Name:    "test show create database",
 		Dialect: "mysql",
 		SetUpScript: []string{
@@ -675,77 +690,6 @@ var SchemaScriptTests = []ScriptTest{
 				Query: "show create database latin1_db",
 				Expected: []sql.Row{
 					{"latin1_db", "CREATE DATABASE `latin1_db` /*!40100 DEFAULT CHARACTER SET latin1 COLLATE latin1_swedish_ci */"},
-				},
-			},
-		},
-	},
-	{
-		Name:    "test parenthesized tables",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"create table t1 (i int);",
-			"insert into t1 values (1), (2), (3);",
-			"create table t2 (j int);",
-			"insert into t2 values (1), (3);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "select * from (t1)",
-				Expected: []sql.Row{
-					{1},
-					{2},
-					{3},
-				},
-			},
-			{
-				Query: "select * from (((((t1)))))",
-				Expected: []sql.Row{
-					{1},
-					{2},
-					{3},
-				},
-			},
-			{
-				Query: "select * from (((((t1 as t11)))))",
-				Expected: []sql.Row{
-					{1},
-					{2},
-					{3},
-				},
-			},
-			{
-				Query: "select * from (t1) join t2 where t1.i = t2.j",
-				Expected: []sql.Row{
-					{1, 1},
-					{3, 3},
-				},
-			},
-			{
-				Query: "select * from t1 join (t2) where t1.i = t2.j",
-				Expected: []sql.Row{
-					{1, 1},
-					{3, 3},
-				},
-			},
-			{
-				Query: "select * from (t1) join (t2) where t1.i = t2.j",
-				Expected: []sql.Row{
-					{1, 1},
-					{3, 3},
-				},
-			},
-			{
-				Query: "select * from ((((t1)))) join ((((t2)))) where t1.i = t2.j",
-				Expected: []sql.Row{
-					{1, 1},
-					{3, 3},
-				},
-			},
-			{
-				Query: "select * from (t1 as t11) join (t2 as t22) where t11.i = t22.j",
-				Expected: []sql.Row{
-					{1, 1},
-					{3, 3},
 				},
 			},
 		},

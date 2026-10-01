@@ -350,18 +350,6 @@ SET entity_test.value = joined.value;`,
 		},
 	},
 	{
-		Name: "delete with in clause",
-		SetUpScript: []string{
-			"create table a (x int primary key)",
-			"insert into a values (1), (3), (5)",
-			"delete from a where x in (1, 3)",
-		},
-		Query: "select x from a order by 1",
-		Expected: []sql.Row{
-			{5},
-		},
-	},
-	{
 		Name: "3 tables, linear join",
 		SetUpScript: []string{
 			"create table a (xa int primary key, ya int, za int)",
@@ -646,164 +634,6 @@ SET entity_test.value = joined.value;`,
 		},
 	},
 	{
-		Name:    "Group Concat with Subquery in ORDER BY",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"CREATE TABLE test_data (id INT PRIMARY KEY, name VARCHAR(50), age INT, category VARCHAR(10))",
-			`INSERT INTO test_data VALUES  
-(1, 'Alice', 25, 'A'),
-(2, 'Bob', 30, 'B'), 
-(3, 'Charlie', 22, 'A'), 
-(4, 'Diana', 28, 'C'), 
-(5, 'Eve', 35, 'B'), 
-(6, 'Frank', 26, 'A')`,
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "SELECT category, group_concat(name ORDER BY (SELECT COUNT(*) FROM test_data t2 WHERE t2.category = test_data.category AND t2.age < test_data.age)) FROM test_data GROUP BY category ORDER BY category",
-				Expected: []sql.Row{{"A", "Charlie,Alice,Frank"}, {"B", "Bob,Eve"}, {"C", "Diana"}},
-			},
-			{
-				Query:    "SELECT group_concat(name ORDER BY (SELECT AVG(age) FROM test_data t2 WHERE t2.category = test_data.category), id) FROM test_data;",
-				Expected: []sql.Row{{"Alice,Charlie,Frank,Diana,Bob,Eve"}},
-			},
-			{
-				Query:    "SELECT category, group_concat(name ORDER BY (SELECT MAX(age) FROM test_data t2 WHERE t2.id <= test_data.id)) FROM test_data GROUP BY category ORDER BY category",
-				Expected: []sql.Row{{"A", "Alice,Charlie,Frank"}, {"B", "Bob,Eve"}, {"C", "Diana"}},
-			},
-		},
-	},
-	{
-		Name:    "Group Concat with Subquery in ORDER BY - Additional Edge Cases",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"CREATE TABLE products (id INT PRIMARY KEY, name VARCHAR(50), price DECIMAL(10,2), category_id INT, supplier_id INT)",
-			"CREATE TABLE categories (id INT PRIMARY KEY, name VARCHAR(50), priority INT)",
-			"CREATE TABLE suppliers (id INT PRIMARY KEY, name VARCHAR(50), rating INT)",
-			"INSERT INTO products VALUES (1, 'Laptop', 999.99, 1, 1), (2, 'Mouse', 25.50, 1, 2), (3, 'Keyboard', 75.00, 1, 1)",
-			"INSERT INTO products VALUES (4, 'Chair', 150.00, 2, 3), (5, 'Desk', 300.00, 2, 3), (6, 'Monitor', 250.00, 1, 2)",
-			"INSERT INTO categories VALUES (1, 'Electronics', 1), (2, 'Furniture', 2)",
-			"INSERT INTO suppliers VALUES (1, 'TechCorp', 5), (2, 'GadgetInc', 4), (3, 'OfficeSupply', 3)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "SELECT category_id, GROUP_CONCAT(name ORDER BY (SELECT rating FROM suppliers WHERE suppliers.id = products.supplier_id) DESC, id ASC) FROM products GROUP BY category_id ORDER BY category_id",
-				Expected: []sql.Row{{1, "Laptop,Keyboard,Mouse,Monitor"}, {2, "Chair,Desk"}},
-			},
-			{
-				Query:    "SELECT GROUP_CONCAT(name ORDER BY (SELECT COUNT(*) FROM products p2 WHERE p2.price < products.price), id) FROM products",
-				Expected: []sql.Row{{"Mouse,Keyboard,Chair,Monitor,Desk,Laptop"}},
-			},
-			{
-				Query:    "SELECT category_id, GROUP_CONCAT(DISTINCT supplier_id ORDER BY (SELECT rating FROM suppliers WHERE suppliers.id = products.supplier_id)) FROM products GROUP BY category_id",
-				Expected: []sql.Row{{1, "2,1"}, {2, "3"}},
-			},
-			{
-				Query:    "SELECT GROUP_CONCAT(name ORDER BY (SELECT priority FROM categories WHERE categories.id = products.category_id), price) FROM products",
-				Expected: []sql.Row{{"Mouse,Keyboard,Monitor,Laptop,Chair,Desk"}},
-			},
-			{
-				Query:    "SELECT category_id, GROUP_CONCAT(name ORDER BY (SELECT AVG(price) FROM products p2 WHERE p2.category_id = products.category_id) DESC, name) FROM products GROUP BY category_id ORDER BY category_id",
-				Expected: []sql.Row{{1, "Keyboard,Laptop,Monitor,Mouse"}, {2, "Chair,Desk"}},
-			},
-		},
-	},
-	{
-		Name:    "Group Concat Subquery ORDER BY Error Cases",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"CREATE TABLE test_table (id INT PRIMARY KEY, name VARCHAR(50), value INT)",
-			"INSERT INTO test_table VALUES (1, 'A', 10), (2, 'B', 20), (3, 'C', 30)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:       "SELECT GROUP_CONCAT(name ORDER BY (SELECT name, value FROM test_table t2 WHERE t2.id = test_table.id)) FROM test_table",
-				ExpectedErr: sql.ErrInvalidOperandColumns,
-			},
-			{
-				Query:       "SELECT GROUP_CONCAT(name ORDER BY (SELECT value FROM test_table)) FROM test_table",
-				ExpectedErr: sql.ErrExpectedSingleRow,
-			},
-		},
-	},
-	{
-		Name:    "Group Concat Subquery ORDER BY Additional Edge Cases",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"CREATE TABLE complex_test (id INT PRIMARY KEY, name VARCHAR(50), value INT, category VARCHAR(10), created_at DATE)",
-			"INSERT INTO complex_test VALUES (1, 'Alpha', 100, 'X', '2023-01-01')",
-			"INSERT INTO complex_test VALUES (2, 'Beta', 50, 'Y', '2023-01-15')",
-			"INSERT INTO complex_test VALUES (3, 'Gamma', 75, 'X', '2023-02-01')",
-			"INSERT INTO complex_test VALUES (4, 'Delta', 25, 'Z', '2023-02-15')",
-			"INSERT INTO complex_test VALUES (5, 'Epsilon', 90, 'Y', '2023-03-01')",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				// Test with subquery returning NULL values
-				Query: "SELECT category, GROUP_CONCAT(name ORDER BY (SELECT CASE WHEN complex_test.value > 80 THEN NULL ELSE complex_test.value END), name) FROM complex_test GROUP BY category ORDER BY category",
-				Expected: []sql.Row{
-					{"X", "Alpha,Gamma"},
-					{"Y", "Epsilon,Beta"},
-					{"Z", "Delta"},
-				},
-			},
-			{
-				// Test with correlated subquery using multiple tables
-				Query:    "SELECT GROUP_CONCAT(name ORDER BY (SELECT COUNT(*) FROM complex_test c2 WHERE c2.category = complex_test.category AND c2.value > complex_test.value), name) FROM complex_test",
-				Expected: []sql.Row{{"Alpha,Delta,Epsilon,Beta,Gamma"}},
-			},
-			{
-				// Test with subquery using multiple columns errors
-				Query:       "SELECT category, GROUP_CONCAT(name ORDER BY (SELECT value, name FROM complex_test c2 WHERE c2.id <= complex_test.id) DESC) FROM complex_test GROUP BY category ORDER BY category",
-				ExpectedErr: sql.ErrInvalidOperandColumns,
-			},
-			{
-				// Test with subquery using aggregate functions with HAVING
-				Query: "SELECT category, GROUP_CONCAT(name ORDER BY (SELECT AVG(value) FROM complex_test c2 WHERE c2.id <= complex_test.id HAVING AVG(value) > 50) DESC) FROM complex_test GROUP BY category ORDER BY category",
-				Expected: []sql.Row{
-					{"X", "Alpha,Gamma"},
-					{"Y", "Beta,Epsilon"},
-					{"Z", "Delta"},
-				},
-			},
-			{
-				// Test with DISTINCT and complex subquery
-				Query:    "SELECT GROUP_CONCAT(DISTINCT category ORDER BY (SELECT SUM(value) FROM complex_test c2 WHERE c2.category = complex_test.category) DESC SEPARATOR '|') FROM complex_test",
-				Expected: []sql.Row{{"X|Y|Z"}},
-			},
-			{
-				// Test with nested subqueries
-				Query:    "SELECT GROUP_CONCAT(name ORDER BY (SELECT SUM(value) FROM complex_test c2 WHERE c2.value != (SELECT MIN(value) FROM complex_test c3 where c3.id = complex_test.id))) FROM complex_test;",
-				Expected: []sql.Row{{"Alpha,Epsilon,Gamma,Beta,Delta"}},
-			},
-		},
-	},
-	{
-		Name:    "Group Concat Subquery ORDER BY Performance and Boundary Cases",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"CREATE TABLE perf_test (id INT PRIMARY KEY, data VARCHAR(10), weight DECIMAL(5,2))",
-			"INSERT INTO perf_test VALUES (1, 'A', 1.5), (2, 'B', 2.5), (3, 'C', 0.5), (4, 'D', 3.5), (5, 'E', 2.0)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				// Test with subquery returning same value for multiple rows (stability)
-				Query:    "SELECT GROUP_CONCAT(data ORDER BY (SELECT 42), id) FROM perf_test",
-				Expected: []sql.Row{{"A,B,C,D,E"}},
-			},
-			{
-				// Test with subquery using LIMIT
-				Query:    "SELECT GROUP_CONCAT(data ORDER BY (SELECT weight FROM perf_test p2 WHERE p2.id = perf_test.id LIMIT 1)) FROM perf_test",
-				Expected: []sql.Row{{"C,A,E,B,D"}},
-			},
-			{
-				// Test with very small decimal differences in ORDER BY subquery
-				Query:    "SELECT GROUP_CONCAT(data ORDER BY (SELECT weight + 0.001 * perf_test.id FROM perf_test p2 WHERE p2.id = perf_test.id)) FROM perf_test",
-				Expected: []sql.Row{{"C,A,E,B,D"}},
-			},
-		},
-	},
-	{
 		Name: "Nested Subquery projections (NTC)",
 		SetUpScript: []string{
 			`CREATE TABLE dcim_site (id char(32) NOT NULL,created date,last_updated datetime,_custom_field_data json NOT NULL,name varchar(100) NOT NULL,_name varchar(100) NOT NULL,slug varchar(100) NOT NULL,facility varchar(50) NOT NULL,asn bigint,time_zone varchar(63) NOT NULL,description varchar(200) NOT NULL,physical_address varchar(200) NOT NULL,shipping_address varchar(200) NOT NULL,latitude decimal(8,6),longitude decimal(9,6),contact_name varchar(50) NOT NULL,contact_phone varchar(20) NOT NULL,contact_email varchar(254) NOT NULL,comments longtext NOT NULL,region_id char(32),status_id char(32),tenant_id char(32),PRIMARY KEY (id),KEY dcim_site_region_id_45210932 (region_id),KEY dcim_site_status_id_e6a50f56 (status_id),KEY dcim_site_tenant_id_15e7df63 (tenant_id),UNIQUE KEY name (name),UNIQUE KEY slug (slug)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
@@ -1006,51 +836,6 @@ SET entity_test.value = joined.value;`,
 		},
 	},
 	{
-		Name: "using having and group by clauses in subquery ",
-		SetUpScript: []string{
-			"CREATE TABLE t (i int, t varchar(2));",
-			"insert into t values (1, 'a'), (1, 'a2'), (2, 'b'), (3, 'c'), (3, 'c2'), (4, 'd'), (5, 'e'), (5, 'e2');", // , (6, 'f'), (7, 'g'), (7, 'g2')
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "select i from t group by i having count(1) = 1 order by i asc",
-				Expected: []sql.Row{{2}, {4}},
-			},
-			{
-				Query:    "select i from t group by i having count(1) != 1 order by i asc",
-				Expected: []sql.Row{{1}, {3}, {5}},
-			},
-			{
-				Query:    "select * from t where i in (select i from t group by i having count(1) = 1) order by i, t asc;",
-				Expected: []sql.Row{{2, "b"}, {4, "d"}},
-			},
-			{
-				Query:    "select * from t where i in (select i from t group by i having count(1) != 1) order by i, t asc;",
-				Expected: []sql.Row{{1, "a"}, {1, "a2"}, {3, "c"}, {3, "c2"}, {5, "e"}, {5, "e2"}},
-			},
-			{
-				Query:    "select * from t where i in (select i from t where i = 2 group by i having count(1) = 1) order by i, t asc;",
-				Expected: []sql.Row{{2, "b"}},
-			},
-			{
-				Query:    "select * from t where i in (select i from t where i = 3 group by i having count(1) != 1) order by i, t asc;",
-				Expected: []sql.Row{{3, "c"}, {3, "c2"}},
-			},
-			{
-				Query:    "select * from t where i in (select i from t where i > 2 group by i having count(1) != 1) order by i, t asc;",
-				Expected: []sql.Row{{3, "c"}, {3, "c2"}, {5, "e"}, {5, "e2"}},
-			},
-			{
-				Query:    "select * from t where i in (select i from t where i > 2 group by i having count(1) != 1 order by i desc) order by i, t asc;",
-				Expected: []sql.Row{{3, "c"}, {3, "c2"}, {5, "e"}, {5, "e2"}},
-			},
-			{
-				Query:    "select * from t where i in (select i from t where i > 2 group by i having count(1) != 1) order by i desc, t asc;",
-				Expected: []sql.Row{{5, "e"}, {5, "e2"}, {3, "c"}, {3, "c2"}},
-			},
-		},
-	},
-	{
 		Name:    "hash lookup for joins works with binary",
 		Dialect: "mysql",
 		SetUpScript: []string{
@@ -1067,19 +852,6 @@ SET entity_test.value = joined.value;`,
 					{1},
 					{2},
 				},
-			},
-		},
-	},
-	{
-		Name:    "drop table if exists on unknown table shows warning",
-		Dialect: "mysql",
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:                           "DROP TABLE IF EXISTS non_existent_table;",
-				ExpectedWarning:                 1051,
-				ExpectedWarningsCount:           1,
-				ExpectedWarningMessageSubstring: "Unknown table 'non_existent_table'",
-				SkipResultsCheck:                true,
 			},
 		},
 	},
@@ -1133,6 +905,58 @@ SET entity_test.value = joined.value;`,
 				Expected: []sql.Row{
 					{1, 2},
 				},
+			},
+		},
+	},
+	{
+		Name: "update with left join with some missing rows",
+		SetUpScript: []string{
+			`create table joinparent (
+				id int not null auto_increment,
+				name varchar(128) not null,
+				archived int default 0 not null,
+				archived_at datetime null,
+				primary key (id)
+			);`,
+			`insert into joinparent (name) values
+				('first'),
+				('second'),
+				('third'),
+				('fourth'),
+				('fifth');`,
+			`create index joinparent_archived on joinparent (archived, archived_at);`,
+			`create table joinchild (
+				id int not null auto_increment,
+				name varchar(128) not null,
+				parent_id int not null,
+				archived int default 0 not null,
+				archived_at datetime null,
+				primary key (id),
+				constraint joinchild_parent unique (parent_id, id, archived));`,
+			`insert into joinchild (name, parent_id) values
+				('first', 4),
+				('second', 3),
+				('third', 2);`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// TODO: this query isn't valid SQL, why
+				Query: `update joinparent as jp 
+							left join joinchild as jc on jc.parent_id = jp.id
+								set jp.archived = jp.id, jp.archived_at = now(), 
+									jc.archived = jc.id, jc.archived_at = now()
+						where jp.id > 0 and jp.name != "never"
+						limit 100`,
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 8, Info: plan.UpdateInfo{Matched: 8, Updated: 8}}}},
+			},
+			// do without limit to use `plan.Sort` instead of `plan.TopN`
+			{
+				Query: `update joinparent as jp 
+							left join joinchild as jc on jc.parent_id = jp.id
+								set jp.archived = 0, jp.archived_at = null, 
+									jc.archived = 0, jc.archived_at = null
+						where jp.id > 0 and jp.name != "never"`,
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 8, Info: plan.UpdateInfo{Matched: 8, Updated: 8}}}},
 			},
 		},
 	},
@@ -1212,6 +1036,127 @@ where
 `,
 				Expected: []sql.Row{
 					{1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+				},
+			},
+		},
+	},
+	{
+		Name:    "test parenthesized tables",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t1 (i int);",
+			"insert into t1 values (1), (2), (3);",
+			"create table t2 (j int);",
+			"insert into t2 values (1), (3);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from (t1)",
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+			{
+				Query: "select * from (((((t1)))))",
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+			{
+				Query: "select * from (((((t1 as t11)))))",
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+			{
+				Query: "select * from (t1) join t2 where t1.i = t2.j",
+				Expected: []sql.Row{
+					{1, 1},
+					{3, 3},
+				},
+			},
+			{
+				Query: "select * from t1 join (t2) where t1.i = t2.j",
+				Expected: []sql.Row{
+					{1, 1},
+					{3, 3},
+				},
+			},
+			{
+				Query: "select * from (t1) join (t2) where t1.i = t2.j",
+				Expected: []sql.Row{
+					{1, 1},
+					{3, 3},
+				},
+			},
+			{
+				Query: "select * from ((((t1)))) join ((((t2)))) where t1.i = t2.j",
+				Expected: []sql.Row{
+					{1, 1},
+					{3, 3},
+				},
+			},
+			{
+				Query: "select * from (t1 as t11) join (t2 as t22) where t11.i = t22.j",
+				Expected: []sql.Row{
+					{1, 1},
+					{3, 3},
+				},
+			},
+		},
+	},
+	{
+		// This is a script test here because every table in the harness setup data is in all lowercase
+		Name:    "case insensitive update with insubqueries and update joins",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table MiXeDcAsE (i int primary key, j int)",
+			"insert into mixedcase values (1, 1);",
+			"insert into mixedcase values (2, 2);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "update mixedcase set j = 999 where i in (select 1)",
+				Expected: []sql.Row{
+					{types.OkResult{
+						RowsAffected: 1,
+						Info: plan.UpdateInfo{
+							Matched: 1,
+							Updated: 1,
+						},
+					}},
+				},
+			},
+			{
+				Query: "select * from mixedcase;",
+				Expected: []sql.Row{
+					{1, 999},
+					{2, 2},
+				},
+			},
+			{
+				Query: " with cte(x) as (select 2) update mixedcase set j = 999 where i in (select x from cte)",
+				Expected: []sql.Row{
+					{types.OkResult{
+						RowsAffected: 1,
+						Info: plan.UpdateInfo{
+							Matched: 1,
+							Updated: 1,
+						},
+					}},
+				},
+			},
+			{
+				Query: "select * from mixedcase;",
+				Expected: []sql.Row{
+					{1, 999},
+					{2, 999},
 				},
 			},
 		},
