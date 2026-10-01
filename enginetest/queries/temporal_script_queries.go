@@ -22,7 +22,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// TemporalScriptTests contains self-contained script tests for temporal.
+// TemporalScriptTests contains self-contained script tests for date and time values, precision, conversion, and time zones.
 var TemporalScriptTests = []ScriptTest{
 
 	{

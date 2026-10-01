@@ -24,7 +24,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// WritesScriptTests contains self-contained script tests for writes.
+// WritesScriptTests contains self-contained script tests for row mutations, default assignments, and AUTO_INCREMENT.
 var WritesScriptTests = []ScriptTest{
 	{
 		// https://github.com/dolthub/dolt/issues/9873
@@ -148,21 +148,6 @@ CREATE TABLE table2 (
 			{
 				Query:    "INSERT INTO table1 (name) VALUES ('tbl1 row 2');",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 2}}},
-			},
-		},
-	},
-	{
-		Name: "update exponential parsing",
-		SetUpScript: []string{
-			"create table a (a int primary key, b double);",
-			"insert into a values (0, 0.0),(1, 1.0)",
-			"update a set b = 5.0E-5 where a = 0",
-			"update a set b = 5.0e-5 where a = 1",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "select * from a",
-				Expected: []sql.Row{{0, .00005}, {1, .00005}},
 			},
 		},
 	},

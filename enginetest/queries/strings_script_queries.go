@@ -21,7 +21,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// StringsScriptTests contains self-contained script tests for strings.
+// StringsScriptTests contains self-contained script tests for text values, string functions, character sets, and collations.
 var StringsScriptTests = []ScriptTest{
 	{
 		// https://github.com/dolthub/dolt/issues/9872

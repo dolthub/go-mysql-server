@@ -20,7 +20,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// IndexesScriptTests contains self-contained script tests for indexes.
+// IndexesScriptTests contains self-contained script tests for index definitions, statistics, key constraints, and lookup ranges.
 var IndexesScriptTests = []ScriptTest{
 	{
 		// https://github.com/dolthub/dolt/issues/9936
@@ -508,22 +508,6 @@ CREATE TABLE tab3 (
 					{"v4", "int", "YES", "MUL", nil, ""},
 					{"v5", "int", "YES", "MUL", nil, ""},
 				},
-			},
-		},
-	},
-	{
-		Name: "Keyless Table with Unique Index",
-		SetUpScript: []string{
-			"create table a (x int, val int unique)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "INSERT INTO a VALUES (1, 1)",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
-			},
-			{
-				Query:       "INSERT INTO a VALUES (1, 1)",
-				ExpectedErr: sql.ErrUniqueKeyViolation,
 			},
 		},
 	},
@@ -2312,6 +2296,22 @@ where
 			{
 				Query:    "SELECT pk FROM ty WHERE bt = 9223372036854775807",
 				Expected: []sql.Row{{2}},
+			},
+		},
+	},
+	{
+		Name: "Keyless Table with Unique Index",
+		SetUpScript: []string{
+			"create table a (x int, val int unique)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO a VALUES (1, 1)",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:       "INSERT INTO a VALUES (1, 1)",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
 			},
 		},
 	},

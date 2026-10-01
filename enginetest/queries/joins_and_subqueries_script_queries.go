@@ -22,7 +22,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// JoinsAndSubqueriesScriptTests contains self-contained script tests for joins and subqueries.
+// JoinsAndSubqueriesScriptTests contains self-contained script tests for joins, derived tables, CTEs, and correlated subqueries.
 var JoinsAndSubqueriesScriptTests = []ScriptTest{
 	{
 		// https://github.com/dolthub/dolt/issues/10113

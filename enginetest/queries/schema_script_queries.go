@@ -21,7 +21,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// SchemaScriptTests contains self-contained script tests for schema.
+// SchemaScriptTests contains self-contained script tests for table and database DDL, metadata, defaults, and views.
 var SchemaScriptTests = []ScriptTest{
 	{
 		Name: "create table casing",

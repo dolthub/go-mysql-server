@@ -19,6 +19,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
+// BrokenScriptTests contains self-contained script tests for known broken script tests kept outside the active suites.
 var BrokenScriptTests = []ScriptTest{
 	{
 		Name: "ALTER TABLE RENAME on a column when another column has a default dependency on it",

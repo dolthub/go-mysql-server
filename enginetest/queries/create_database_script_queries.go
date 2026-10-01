@@ -19,6 +19,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
+// CreateDatabaseScripts contains self-contained script tests for CREATE DATABASE and CREATE SCHEMA.
 var CreateDatabaseScripts = []ScriptTest{
 	{
 		// https://github.com/dolthub/dolt/pull/9830

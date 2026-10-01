@@ -21,7 +21,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// AggregationScriptTests contains self-contained script tests for aggregation.
+// AggregationScriptTests contains self-contained script tests for aggregate functions, GROUP BY, and HAVING.
 var AggregationScriptTests = []ScriptTest{
 	{
 		// https://github.com/dolthub/dolt/issues/9987

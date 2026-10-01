@@ -20,7 +20,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// EnumsAndSetsScriptTests contains self-contained script tests for enums and sets.
+// EnumsAndSetsScriptTests contains self-contained script tests for ENUM and SET member definitions, values, and type compatibility.
 var EnumsAndSetsScriptTests = []ScriptTest{
 
 	// Enum tests

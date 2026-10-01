@@ -20,7 +20,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// SessionScriptTests contains self-contained script tests for session.
+// SessionScriptTests contains self-contained script tests for session state, system variables, statement locking, and procedural execution.
 var SessionScriptTests = []ScriptTest{
 	{
 		// https://github.com/dolthub/go-mysql-server/issues/3259
