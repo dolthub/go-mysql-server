@@ -74,14 +74,17 @@ func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	lType := in.Left().Type(ctx)
-	lColCount := types.NumColumns(lType)
-	lLit := NewLiteral(lVal, lType)
-
 	right, isTuple := in.Right().(Tuple)
 	if !isTuple {
 		return nil, ErrUnsupportedInOperand.New(right)
 	}
+
+	// Each value is compared as a literal, and a literal is only coercible, so a column's collation would lose to
+	// the list's. The collation the operands resolve to is set on both sides instead.
+	collation := inCollation(ctx, in.Left(), right)
+	lType := in.Left().Type(ctx)
+	lColCount := types.NumColumns(lType)
+	lLit := NewLiteral(lVal, withCollation(lType, collation))
 
 	var rHasNull bool
 	for _, el := range right {
@@ -106,7 +109,7 @@ func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			continue
 		}
 
-		cmpExpr := newComparison(lLit, NewLiteral(rVal, rType))
+		cmpExpr := newComparison(lLit, NewLiteral(rVal, withCollation(rType, collation)))
 		res, cErr := cmpExpr.Compare(ctx, nil)
 		if cErr != nil {
 			// If res != 0, then the comparison is false even if the input contained a NULL.
@@ -183,7 +186,7 @@ func NewHashInTuple(ctx *sql.Context, left, right sql.Expression) (*HashInTuple,
 		return nil, ErrUnsupportedInOperand.New(right)
 	}
 
-	cmp, cmpType, hasNull, hasTupleNull, err := newInMap(ctx, left.Type(ctx), rightTup)
+	cmp, cmpType, hasNull, hasTupleNull, err := newInMap(ctx, left, rightTup)
 	if err != nil {
 		return nil, err
 	}
@@ -204,7 +207,8 @@ func NewHashInTuple(ctx *sql.Context, left, right sql.Expression) (*HashInTuple,
 //   - bool indicating if there are scalar NULL elements
 //   - bool indicating if there are tuple elements containing NULL
 //   - error
-func newInMap(ctx *sql.Context, lType sql.Type, right Tuple) (map[uint64]struct{}, sql.Type, bool, bool, error) {
+func newInMap(ctx *sql.Context, left sql.Expression, right Tuple) (map[uint64]struct{}, sql.Type, bool, bool, error) {
+	lType := left.Type(ctx)
 	if lType == types.Null {
 		return nil, nil, true, false, nil
 	}
@@ -248,6 +252,9 @@ func newInMap(ctx *sql.Context, lType sql.Type, right Tuple) (map[uint64]struct{
 		// If we've made it this far, we are guaranteed that the right Tuple has a consistent set of types
 		// (all numeric, string, or time), so it is enough to just compare against the first element of the right Tuple
 		cmpType = types.GetCompareType(lType, right[0].Type(ctx))
+		// GetCompareType knows type classes but not collations, so strings hash under the collation the operands
+		// resolve to, which is the one = compares them under.
+		cmpType = withCollation(cmpType, inCollation(ctx, left, right))
 	}
 	elements := map[uint64]struct{}{}
 	for _, rVal := range rVals {
@@ -291,6 +298,26 @@ func (hit *HashInTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		return nil, nil
 	}
 	return false, nil
+}
+
+// inCollation returns the collation an IN compares strings under. As in MySQL, it is aggregated by coercibility over
+// the left operand and every element of the list, so a column's collation outranks a literal's and an explicit
+// COLLATE outranks both.
+func inCollation(ctx *sql.Context, left sql.Expression, right Tuple) sql.CollationID {
+	operands := make([]sql.Expression, 0, len(right)+1)
+	operands = append(operands, left)
+	operands = append(operands, right...)
+	collation, _ := sql.ResolveCoercibilityExpressions(ctx, operands...)
+	return collation
+}
+
+// withCollation returns a text type with the given collation, and any other type unchanged.
+func withCollation(typ sql.Type, collation sql.CollationID) sql.Type {
+	st, ok := typ.(sql.StringType)
+	if !ok || !types.IsTextOnly(typ) || st.Collation() == collation {
+		return typ
+	}
+	return types.MustCreateString(st.Type(), st.Length(), collation)
 }
 
 // containsNull reports whether a scalar or nested tuple value contains NULL.
