@@ -105,49 +105,20 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 		hasAfterTrigger:                ii.HasAfterTrigger,
 	}
 
+	var duplicateKeyHandler DuplicateKeyHandler
 	if ii.OnDup != nil {
-		insertIter.duplicateKeyHandler = &directDuplicateKeyHandler{insertIter: insertIter}
-	}
-	if _, direct := ii.OnDup.(*plan.OnDuplicateKeyUpdateSource); ii.OnDup != nil && !direct {
-		source := &duplicateKeyUpdateIter{schema: dstSchema, updateExprs: onDupExprs, ignore: ii.Ignore}
-		// Bind the update branch to the final destination, including foreign-key
-		// wrappers, while retaining the assignments owned by its source node.
-		updatePlan, _, err := transform.NodeWithCtx(ctx, ii.OnDup, func(ctx *sql.Context, c transform.Context) bool {
-			_, trigger := c.Parent.(*plan.TriggerExecutor)
-			return !trigger || c.ChildNum != 1
-		}, func(ctx *sql.Context, c transform.Context) (sql.Node, transform.TreeIdentity, error) {
-			node := c.Node
-			switch n := node.(type) {
-			case *plan.OnDuplicateKeyUpdateSource:
-				rebound, err := n.WithChildren(ctx, ii.Destination)
-				if err != nil {
-					return nil, transform.SameTree, err
-				}
+		duplicateKeyHandler = &directDuplicateKeyHandler{insertIter: insertIter}
 
-				return &duplicateKeyUpdateSourceNode{
-					OnDuplicateKeyUpdateSource: rebound.(*plan.OnDuplicateKeyUpdateSource),
-					iter:                       source,
-				}, transform.NewTree, nil
-			case *plan.Update:
-				return n.WithChecks(ii.Checks()), transform.NewTree, nil
-			default:
-				return node, transform.SameTree, nil
+		// Duplicate key update sources can be wrapped by trigger nodes, in which case we need to do something different
+		if _, direct := ii.OnDup.(*plan.OnDuplicateKeyUpdateSource); !direct {
+			duplicateKeyHandler, err = b.newUpdateTriggerDuplicateKeyHandler(ctx, ii, dstSchema, onDupExprs, insertIter)
+			if err != nil {
+				return nil, err
 			}
-		})
-		if err != nil {
-			return nil, err
-		}
-		updateIter, err := b.buildNodeExec(ctx, updatePlan, nil)
-		if err != nil {
-			_ = insertIter.Close(ctx)
-			return nil, err
-		}
-		insertIter.duplicateKeyHandler = &updateTriggerDuplicateKeyHandler{
-			updateIter: updateIter,
-			source:     source,
-			insertIter: insertIter,
 		}
 	}
+
+	insertIter.duplicateKeyHandler = duplicateKeyHandler
 
 	var ed sql.EditOpenerCloser
 	if replacer != nil {
@@ -168,6 +139,53 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 		}
 		return plan.NewTableEditorIter(insertIter, eds...), nil
 	}
+}
+
+func (b *BaseBuilder) newUpdateTriggerDuplicateKeyHandler(
+	ctx *sql.Context,
+	ii *plan.InsertInto,
+	dstSchema sql.Schema,
+	onDupExprs *plan.UpdateExprs,
+	insertIter *insertIter,
+) (DuplicateKeyHandler, error) {
+	source := &duplicateKeyUpdateIter{schema: dstSchema, updateExprs: onDupExprs, ignore: ii.Ignore}
+	updatePlan, _, err := transform.NodeWithCtx(ctx, ii.OnDup, func(ctx *sql.Context, c transform.Context) bool {
+		_, trigger := c.Parent.(*plan.TriggerExecutor)
+		return !trigger || c.ChildNum != 1
+	}, func(ctx *sql.Context, c transform.Context) (sql.Node, transform.TreeIdentity, error) {
+		node := c.Node
+		switch n := node.(type) {
+		case *plan.OnDuplicateKeyUpdateSource:
+			rebound, err := n.WithChildren(ctx, ii.Destination)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+
+			return &duplicateKeyUpdateSourceNode{
+				OnDuplicateKeyUpdateSource: rebound.(*plan.OnDuplicateKeyUpdateSource),
+				iter:                       source,
+			}, transform.NewTree, nil
+		case *plan.Update:
+			return n.WithChecks(ii.Checks()), transform.NewTree, nil
+		default:
+			return node, transform.SameTree, nil
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	updateIter, err := b.buildNodeExec(ctx, updatePlan, nil)
+	if err != nil {
+		_ = insertIter.Close(ctx)
+		return nil, err
+	}
+
+	return &updateTriggerDuplicateKeyHandler{
+		updateIter: updateIter,
+		source:     source,
+		insertIter: insertIter,
+	}, nil
 }
 
 func (b *BaseBuilder) buildDeleteFrom(ctx *sql.Context, n *plan.DeleteFrom, row sql.Row) (sql.RowIter, error) {
@@ -320,7 +338,7 @@ func (b *BaseBuilder) buildDropTable(ctx *sql.Context, n *plan.DropTable, _ sql.
 			tblNames, _ := n.TableNames()
 			return nil, fmt.Errorf(`tables %v are referenced in triggers %v, but database does not support triggers`, tblNames, n.TriggerNames)
 		}
-		//TODO: if dropping any triggers fail, then we'll be left in a state where triggers exist for a table that was dropped
+		// TODO: if dropping any triggers fail, then we'll be left in a state where triggers exist for a table that was dropped
 		for _, trigger := range n.TriggerNames {
 			err = triggerDb.DropTrigger(ctx, trigger)
 			if err != nil {
@@ -440,8 +458,8 @@ func (b *BaseBuilder) buildTruncate(ctx *sql.Context, n *plan.Truncate, row sql.
 	if err != nil {
 		return nil, err
 	}
-	//TODO: when performance schema summary tables are added, reset the columns to 0/NULL rather than remove rows
-	//TODO: close all handlers that were opened with "HANDLER OPEN"
+	// TODO: when performance schema summary tables are added, reset the columns to 0/NULL rather than remove rows
+	// TODO: close all handlers that were opened with "HANDLER OPEN"
 
 	removed, err := truncatable.Truncate(ctx)
 	if err != nil {
