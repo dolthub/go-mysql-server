@@ -116,6 +116,7 @@ type ScriptTestAssertion struct {
 // Unlike other engine tests, ScriptTests must be self-contained. No other tables are created outside the definition of
 // the tests.
 var ScriptTests = []ScriptTest{
+	// Preserve the original order for prepared tests and other consumers of the combined suite.
 	JoinsAndSubqueriesScriptTests[0],
 	AggregationScriptTests[0],
 	JoinsAndSubqueriesScriptTests[1],

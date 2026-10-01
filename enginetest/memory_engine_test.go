@@ -607,10 +607,6 @@ func TestConvert(t *testing.T) {
 	enginetest.TestConvert(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
-func TestScripts(t *testing.T) {
-	enginetest.TestScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
-}
-
 func TestExpressionsScripts(t *testing.T) {
 	enginetest.TestExpressionsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
