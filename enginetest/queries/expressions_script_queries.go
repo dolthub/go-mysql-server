@@ -105,41 +105,6 @@ var ExpressionsScriptTests = []ScriptTest{
 			},
 		},
 	},
-	{
-		Name:    "Issue #499", // https://github.com/dolthub/go-mysql-server/issues/499
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"SET @@SESSION.time_zone = 'UTC';",
-			"CREATE TABLE test (time TIMESTAMP, value DOUBLE);",
-			`INSERT INTO test VALUES 
-			("2021-07-04 10:00:00", 1.0),
-			("2021-07-03 10:00:00", 2.0),
-			("2021-07-02 10:00:00", 3.0),
-			("2021-07-01 10:00:00", 4.0);`,
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				// In the original, reported issue, the order by clause did not qualify the table name
-				// for `test.time`. When there is ambiguity between a column name and an expression
-				// alias name in the order by clause, MySQL choose the alias; however, if the reference
-				// is used in a function call, MySQL instead seems to resolve to the column name.
-				// Until we determine the exact rule for this behavior, we've qualified the reference
-				// in the order by clause to ensure it selects the table column and not the alias.
-				// TODO: Waiting to hear back from MySQL on whether this is intended behavior or not:
-				//       https://bugs.mysql.com/bug.php?id=109020
-				Query: `SELECT UNIX_TIMESTAMP(time) DIV 60 * 60 AS "time", avg(value) AS "value"
-				FROM test GROUP BY 1 ORDER BY UNIX_TIMESTAMP(test.time) DIV 60 * 60`,
-				Expected: []sql.Row{
-					{int64(1625133600), 4.0},
-					{int64(1625220000), 3.0},
-					{int64(1625306400), 2.0},
-					{int64(1625392800), 1.0},
-				},
-			},
-		},
-		// todo(max): fix arithmatic on bindvar typing
-		SkipPrepared: true,
-	},
 
 	{
 		Name:    "coalesce tests",

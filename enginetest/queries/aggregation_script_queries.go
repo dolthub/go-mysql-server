@@ -102,21 +102,6 @@ var AggregationScriptTests = []ScriptTest{
 		},
 	},
 	{
-		// https://github.com/dolthub/dolt/issues/9836
-		Skip: true,
-		Name: "Ordering by pk does not change the order of results",
-		SetUpScript: []string{
-			"CREATE TABLE test(pk VARCHAR(50) PRIMARY KEY)",
-			"INSERT INTO test VALUES ('  3 12 4'), ('3. 12 4'), ('3.2 12 4'), ('-3.1234'), ('-3.1a'), ('-5+8'), ('+3.1234')",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "SELECT pk FROM test ORDER BY pk",
-				Expected: []sql.Row{{"  3 12 4"}, {"-3.1234"}, {"-3.1a"}, {"-5+8"}, {"+3.1234"}, {"3. 12 4"}, {"3.2 12 4"}},
-			},
-		},
-	},
-	{
 		// Regression test for https://github.com/dolthub/dolt/issues/9641
 		Name: "bit union max1err dolt#9641",
 		SetUpScript: []string{
@@ -740,39 +725,6 @@ var AggregationScriptTests = []ScriptTest{
 			{
 				Query:       "with recursive cte (x,y) as (select 1, 1 union select 1, 1 intersect select x + 1, y + 2 from cte where x < 5) select * from cte;",
 				ExpectedErr: sql.ErrRecursiveCTENotUnion,
-			},
-		},
-	},
-	{
-		Name: "topN stable output",
-		SetUpScript: []string{
-			"create table xy (x int primary key, y int)",
-			"insert into xy values (1,0),(2,0),(3,0),(4,0)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "select * from xy order by y asc limit 1",
-				Expected: []sql.Row{{1, 0}},
-			},
-			{
-				Query:    "select * from xy order by y asc limit 1 offset 1",
-				Expected: []sql.Row{{2, 0}},
-			},
-			{
-				Query:    "select * from xy order by y asc limit 1 offset 2",
-				Expected: []sql.Row{{3, 0}},
-			},
-			{
-				Query:    "select * from xy order by y asc limit 1 offset 3",
-				Expected: []sql.Row{{4, 0}},
-			},
-			{
-				Query:    "(select * from xy order by y asc limit 1 offset 1) union (select * from xy order by y asc limit 1 offset 2)",
-				Expected: []sql.Row{{2, 0}, {3, 0}},
-			},
-			{
-				Query:    "with recursive cte as ((select * from xy order by y asc limit 1 offset 1) union (select * from xy order by y asc limit 1 offset 2)) select * from cte",
-				Expected: []sql.Row{{2, 0}, {3, 0}},
 			},
 		},
 	},
@@ -1525,48 +1477,6 @@ var AggregationScriptTests = []ScriptTest{
 					{2, "-2"},
 					{1, "-1"},
 					{2, "-2"},
-				},
-			},
-		},
-	},
-	{
-		Name: "TopN with huge limit",
-		SetUpScript: []string{
-			"create table t (i int);",
-			"insert into t values (1), (2), (3)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Dialect: "mysql", // Postgres does not allow a limit of this size
-				Query:   "select * from t order by i limit 18446744073709551615",
-				Expected: []sql.Row{
-					{1},
-					{2},
-					{3},
-				},
-			},
-			{
-				Query: "select * from t order by i limit 9223372036854775807",
-				Expected: []sql.Row{
-					{1},
-					{2},
-					{3},
-				},
-			},
-			{
-				Query: "select * from t order by i limit 4294967295",
-				Expected: []sql.Row{
-					{1},
-					{2},
-					{3},
-				},
-			},
-			{
-				Query: "select * from t order by i limit 2147483647",
-				Expected: []sql.Row{
-					{1},
-					{2},
-					{3},
 				},
 			},
 		},
