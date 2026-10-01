@@ -519,6 +519,14 @@ func (b *Builder) buildTableFunc(inScope *scope, t *ast.TableFuncExpr) (outScope
 		switch e := expr.(type) {
 		case *ast.AliasedExpr:
 			scalarExpr := b.buildScalar(inScope, e.Expr)
+			evaluator, isEvaluator := b.cat.(SubqueryEvaluator)
+			if sq, ok := scalarExpr.(*plan.Subquery); ok && sq.CanCacheResults() && isEvaluator {
+				val, err := evaluator.EvalSubquery(b.ctx, sq, &sql.QueryFlags{Flags: b.qFlags.Flags.Copy()})
+				if err != nil {
+					b.handleErr(err)
+				}
+				scalarExpr = expression.NewLiteral(val, sq.Type(b.ctx))
+			}
 			args = append(args, scalarExpr)
 		default:
 			b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(e)))

@@ -26,6 +26,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 )
 
 type Catalog struct {
@@ -46,6 +48,7 @@ type Catalog struct {
 	MySQLDb          *mysql_db.MySQLDb
 	builtInFunctions function.Registry
 	overrides        sql.EngineOverrides
+	analyzer         *Analyzer
 
 	locks sessionLocks
 	mu    sync.RWMutex
@@ -55,6 +58,7 @@ var _ sql.Catalog = (*Catalog)(nil)
 var _ binlogreplication.BinlogConsumerProvider = (*Catalog)(nil)
 var _ binlogreplication.BinlogReplicaProvider = (*Catalog)(nil)
 var _ binlogreplication.BinlogPrimaryProvider = (*Catalog)(nil)
+var _ planbuilder.SubqueryEvaluator = (*Catalog)(nil)
 
 type tableLocks map[string]struct{}
 
@@ -75,6 +79,15 @@ func NewCatalog(provider sql.DatabaseProvider, overrides sql.EngineOverrides) *C
 	}
 	c.AuthHandler = sql.GetAuthorizationHandlerFactory().CreateHandler(c)
 	return c
+}
+
+// EvalSubquery implements the interface planbuilder.SubqueryEvaluator.
+func (c *Catalog) EvalSubquery(ctx *sql.Context, sq *plan.Subquery, qFlags *sql.QueryFlags) (interface{}, error) {
+	analyzed, err := c.analyzer.Analyze(ctx, sq.Query, nil, qFlags)
+	if err != nil {
+		return nil, err
+	}
+	return sq.WithQuery(analyzed).WithExecBuilder(c.analyzer.ExecBuilder).Eval(ctx, nil)
 }
 
 func (c *Catalog) HasBinlogConsumer() bool {
