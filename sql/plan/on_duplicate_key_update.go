@@ -14,7 +14,10 @@
 
 package plan
 
-import "github.com/dolthub/go-mysql-server/sql"
+import (
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/transform"
+)
 
 // OnDuplicateKeyUpdateSource evaluates the duplicate-key assignments against a
 // single existing/proposed row pair supplied by InsertInto. Its output is the
@@ -85,19 +88,24 @@ func (n *OnDuplicateKeyUpdateSource) WithExpressions(ctx *sql.Context, expressio
 
 // GetOnDuplicateKeyUpdateSource finds the source of a duplicate update path,
 // following the write operation rather than any surrounding trigger bodies.
-func GetOnDuplicateKeyUpdateSource(path sql.Node) *OnDuplicateKeyUpdateSource {
-	for node := path; node != nil; {
-		if source, ok := node.(*OnDuplicateKeyUpdateSource); ok {
-			return source
+func GetOnDuplicateKeyUpdateSource(n sql.Node) *OnDuplicateKeyUpdateSource {
+	var source *OnDuplicateKeyUpdateSource
+	transform.Inspect(n, func(n sql.Node) bool {
+		if n == nil || source != nil {
+			return false
 		}
 
-		children := node.Children()
-		if len(children) == 0 {
-			break
+		switch n := n.(type) {
+		case *OnDuplicateKeyUpdateSource:
+			source = n
+			return false
+		case *TriggerExecutor:
+			source = GetOnDuplicateKeyUpdateSource(n.Left())
+			return false
+		default:
+			return true
 		}
+	})
 
-		node = children[0]
-	}
-
-	return nil
+	return source
 }
