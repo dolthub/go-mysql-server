@@ -15,9 +15,10 @@
 package queries
 
 import (
+	"math"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"math"
 )
 
 // IntegersScriptTests contains self-contained script tests for integers.
