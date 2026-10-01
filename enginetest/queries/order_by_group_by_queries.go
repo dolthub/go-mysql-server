@@ -511,6 +511,35 @@ var OrderByGroupByScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name:    "grouped correlated references depend on the outer primary key",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"SET SESSION sql_mode='ONLY_FULL_GROUP_BY'",
+			"CREATE TABLE teams (id INT PRIMARY KEY, name VARCHAR(50), region VARCHAR(50))",
+			"CREATE TABLE members (id INT PRIMARY KEY, team_id INT, name VARCHAR(50), FOREIGN KEY (team_id) REFERENCES teams(id))",
+			"INSERT INTO teams VALUES (1,'Alpha','East'),(2,'Beta','West')",
+			"INSERT INTO members VALUES (101,1,'A'),(102,1,'B'),(201,2,'C')",
+			"CREATE TABLE teams_no_key (id INT, name VARCHAR(50), region VARCHAR(50))",
+			"INSERT INTO teams_no_key SELECT * FROM teams",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT t.id, t.name, COUNT(m.id), (SELECT COUNT(*) FROM members m2 WHERE m2.team_id = t.id) FROM teams t LEFT JOIN members m ON m.team_id = t.id GROUP BY t.id, t.name ORDER BY t.id",
+				Expected: []sql.Row{{1, "Alpha", 2, 2}, {2, "Beta", 1, 1}},
+			},
+			{
+				// Grouping by the primary key also determines the correlated region.
+				Query:    "SELECT t.id, COUNT(m.id), (SELECT COUNT(*) FROM members m2 WHERE m2.team_id = t.id AND t.region = 'East') FROM teams t LEFT JOIN members m ON m.team_id = t.id GROUP BY t.id ORDER BY t.id",
+				Expected: []sql.Row{{1, 2, 2}, {2, 1, 0}},
+			},
+			{
+				// Without the key, region must be grouped explicitly.
+				Query:       "SELECT t.id, COUNT(m.id), (SELECT COUNT(*) FROM members m2 WHERE m2.team_id = t.id AND t.region = 'East') FROM teams_no_key t LEFT JOIN members m ON m.team_id = t.id GROUP BY t.id ORDER BY t.id",
+				ExpectedErr: analyzererrors.ErrValidationGroupBy,
+			},
+		},
+	},
+	{
 		Name: "functional dependence without a primary key",
 		SetUpScript: []string{
 			"create table teams (id varchar(8) not null, name varchar(16));",
