@@ -130,6 +130,47 @@ func TestGreatest(t *testing.T) {
 	}
 }
 
+func TestGreatestLeastExactDecimalDirection(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	dt := types.MustCreateDecimalType(20, 19)
+	low, err := types.InternalDecimalType.ConvertToDecimal("2.0000000000000000001")
+	require.NoError(t, err)
+	high, err := types.InternalDecimalType.ConvertToDecimal("2.0000000000000000002")
+	require.NoError(t, err)
+
+	for _, test := range []struct {
+		name        string
+		constructor func(*sql.Context, ...sql.Expression) (sql.Expression, error)
+		expected    string
+	}{
+		{
+			name:        "greatest",
+			constructor: NewGreatest,
+			expected:    high.String(),
+		},
+		{
+			name:        "least",
+			constructor: NewLeast,
+			expected:    low.String(),
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			args := []sql.Expression{expression.NewLiteral(low, dt), expression.NewLiteral(high, dt)}
+			for range 2 {
+				f, err := test.constructor(ctx, args...)
+				require.NoError(t, err)
+				value, err := f.Eval(ctx, nil)
+				require.NoError(t, err)
+				decimal, err := types.InternalDecimalType.ConvertToDecimal(value)
+				require.NoError(t, err)
+				require.Equal(t, test.expected, decimal.String())
+
+				args[0], args[1] = args[1], args[0]
+			}
+		})
+	}
+}
+
 func TestGreatestUnsignedOverflow(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
