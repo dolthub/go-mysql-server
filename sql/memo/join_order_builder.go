@@ -769,17 +769,18 @@ func (j *joinOrderBuilder) addJoin(ctx *sql.Context, op plan.JoinType, s1, s2 ve
 			group = j.memoize(ctx, op, left, right, joinFilter)
 			j.plans[union] = group
 		} else {
-			j.addJoinToGroup(op, left, right, joinFilter, selFilters, group)
+			j.addJoinToGroup(ctx, op, left, right, joinFilter, selFilters, group)
 		}
 	}
 
 	if commute(op) {
-		j.addJoinToGroup(op, right, left, joinFilter, selFilters, group)
+		j.addJoinToGroup(ctx, op, right, left, joinFilter, selFilters, group)
 	}
 }
 
 // addJoinToGroup adds a new plan to existing groups
 func (j *joinOrderBuilder) addJoinToGroup(
+	ctx *sql.Context,
 	op plan.JoinType,
 	left *ExprGroup,
 	right *ExprGroup,
@@ -803,7 +804,7 @@ func (j *joinOrderBuilder) addJoinToGroup(
 			j.m.HandleErr(fmt.Errorf("failed to reorder join, unexpected intermediate expression: %T", e))
 		}
 	}
-	rel := j.constructJoin(op, left, right, joinFilter, group)
+	rel := j.constructJoin(ctx, op, left, right, joinFilter, group)
 	group.Prepend(rel)
 	return
 }
@@ -816,11 +817,12 @@ func (j *joinOrderBuilder) memoize(
 	right *ExprGroup,
 	joinFilter []sql.Expression,
 ) *ExprGroup {
-	rel := j.constructJoin(op, left, right, joinFilter, nil)
+	rel := j.constructJoin(ctx, op, left, right, joinFilter, nil)
 	return j.m.NewExprGroup(ctx, rel)
 }
 
 func (j *joinOrderBuilder) constructJoin(
+	ctx *sql.Context,
 	op plan.JoinType,
 	left *ExprGroup,
 	right *ExprGroup,
@@ -828,13 +830,9 @@ func (j *joinOrderBuilder) constructJoin(
 	group *ExprGroup,
 ) RelExpr {
 	var rel RelExpr
-	b := &JoinBase{
-		Op:      op,
-		relBase: &relBase{g: group},
-		Left:    left,
-		Right:   right,
-		Filter:  joinFilter,
-	}
+	b := newJoinBase(ctx, left, right, op, joinFilter)
+	b.g = group
+
 	switch op {
 	case plan.JoinTypeCross:
 		rel = &CrossJoin{b}
