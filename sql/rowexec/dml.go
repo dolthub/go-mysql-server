@@ -28,8 +28,6 @@ import (
 )
 
 func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row sql.Row) (sql.RowIter, error) {
-	dstSchema := ii.Destination.Schema(ctx)
-
 	insertable, err := plan.GetInsertable(ii.Destination)
 	if err != nil {
 		return nil, err
@@ -44,7 +42,7 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 		replacer = insertable.(sql.ReplaceableTable).Replacer(ctx)
 	} else {
 		inserter = insertable.Inserter(ctx)
-		if ii.OnDupExprs.HasUpdates() {
+		if ii.OnDup != nil {
 			updater = insertable.(sql.UpdatableTable).Updater(ctx)
 		}
 	}
@@ -55,7 +53,6 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 	}
 
 	var unlocker func()
-	insertExpressions := getInsertExpressions(ctx, ii.Source)
 	if ii.FirstGeneratedAutoIncRowIdx >= 0 {
 		_, i, _ := sql.SystemVariables.GetGlobal("innodb_autoinc_lock_mode")
 		lockMode, ok := i.(int64)
@@ -76,26 +73,10 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 			}
 		}
 	}
-	insertIter := &insertIter{
-		schema:                      dstSchema,
-		inserter:                    inserter,
-		replacer:                    replacer,
-		updater:                     updater,
-		rowSource:                   rowIter,
-		unlocker:                    unlocker,
-		onDupKeyUpdateExprs:         ii.OnDupExprs,
-		onDupWhere:                  ii.OnDupWhere,
-		insertExprs:                 insertExpressions,
-		checks:                      ii.Checks(),
-		ctx:                         ctx,
-		ignore:                      ii.Ignore,
-		ignoreMode:                  ii.IgnoreMode,
-		ignoreTarget:                ii.IgnoreTarget,
-		firstGeneratedAutoIncRowIdx: ii.FirstGeneratedAutoIncRowIdx,
-		returnExprs:                 ii.Returning,
-		returnSchema:                ii.Schema(ctx),
-		deferredDefaults:            ii.DeferredDefaults,
-		hasAfterTrigger:             ii.HasAfterTrigger,
+
+	insertIter, err := b.newInsertIter(ctx, ii, rowIter, inserter, replacer, updater, unlocker)
+	if err != nil {
+		return nil, err
 	}
 
 	var ed sql.EditOpenerCloser
@@ -269,7 +250,7 @@ func (b *BaseBuilder) buildDropTable(ctx *sql.Context, n *plan.DropTable, _ sql.
 			tblNames, _ := n.TableNames()
 			return nil, fmt.Errorf(`tables %v are referenced in triggers %v, but database does not support triggers`, tblNames, n.TriggerNames)
 		}
-		//TODO: if dropping any triggers fail, then we'll be left in a state where triggers exist for a table that was dropped
+		// TODO: if dropping any triggers fail, then we'll be left in a state where triggers exist for a table that was dropped
 		for _, trigger := range n.TriggerNames {
 			err = triggerDb.DropTrigger(ctx, trigger)
 			if err != nil {
@@ -358,8 +339,21 @@ func (b *BaseBuilder) buildTriggerExecutor(ctx *sql.Context, n *plan.TriggerExec
 		return nil, err
 	}
 
+	var onDupRowSize int
+	if n.TriggerEvent == plan.InsertTrigger && n.TriggerTime == plan.AfterTrigger {
+		transform.Inspect(n.Left(), func(node sql.Node) bool {
+			if insert, ok := node.(*plan.InsertInto); ok {
+				if insert.OnDup != nil {
+					onDupRowSize = len(insert.Destination.Schema(ctx))
+				}
+				return false
+			}
+			return onDupRowSize == 0
+		})
+	}
 	return &triggerIter{
 		child:          childIter,
+		onDupRowSize:   onDupRowSize,
 		triggerTime:    n.TriggerTime,
 		triggerEvent:   n.TriggerEvent,
 		executionLogic: n.Right(),
@@ -376,8 +370,8 @@ func (b *BaseBuilder) buildTruncate(ctx *sql.Context, n *plan.Truncate, row sql.
 	if err != nil {
 		return nil, err
 	}
-	//TODO: when performance schema summary tables are added, reset the columns to 0/NULL rather than remove rows
-	//TODO: close all handlers that were opened with "HANDLER OPEN"
+	// TODO: when performance schema summary tables are added, reset the columns to 0/NULL rather than remove rows
+	// TODO: close all handlers that were opened with "HANDLER OPEN"
 
 	removed, err := truncatable.Truncate(ctx)
 	if err != nil {
@@ -494,4 +488,8 @@ func (b *BaseBuilder) buildRenameForeignKey(ctx *sql.Context, n *plan.RenameFore
 		return nil, err
 	}
 	return rowIterWithOkResultWithZeroRowsAffected(), nil
+}
+
+func (b *BaseBuilder) buildOnDupUpdateSource(ctx *sql.Context, n *plan.OnDuplicateKeyUpdateSource, row sql.Row) (sql.RowIter, error) {
+	return &duplicateKeyUpdateIter{schema: n.Child.Schema(ctx), updateExprs: n.UpdateExprs, ignore: n.Ignore, row: row}, nil
 }
