@@ -245,9 +245,15 @@ func newInMap(ctx *sql.Context, lType sql.Type, right Tuple) (map[uint64]struct{
 	if types.IsEnum(lType) || types.IsSet(lType) {
 		cmpType = lType
 	} else {
-		// If we've made it this far, we are guaranteed that the right Tuple has a consistent set of types
-		// (all numeric, string, or time), so it is enough to just compare against the first element of the right Tuple
-		cmpType = types.GetCompareType(lType, right[0].Type(ctx))
+		// The right Tuple may mix types (e.g. 9 and 0.49), so the comparison type must account for every element.
+		cmpType = lType
+		for _, el := range right {
+			rType := el.Type(ctx)
+			if rType == types.Null {
+				continue
+			}
+			cmpType = types.GetCompareType(cmpType, rType)
+		}
 	}
 	elements := map[uint64]struct{}{}
 	for _, rVal := range rVals {
