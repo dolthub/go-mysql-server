@@ -6238,3 +6238,11 @@ func TestColumnDefaultsScripts(t *testing.T, harness Harness) {
 func TestColumnDefaultsScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.ColumnDefaultsScriptTests, true)
 }
+
+func TestDatabaseDefinitionsScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.DatabaseDefinitionsScriptTests, false)
+}
+
+func TestDatabaseDefinitionsScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.DatabaseDefinitionsScriptTests, true)
+}
