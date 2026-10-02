@@ -404,7 +404,6 @@ func getSelectAndOrderByExprs(ctx *sql.Context, project *plan.Project, orderBy *
 		for _, dep := range selectDeps {
 			sd[strings.ToLower(dep.String())] = dep
 		}
-
 		selectExprs := make([]sql.Expression, 0)
 		orderByExprs := make([]sql.Expression, 0)
 
@@ -436,6 +435,10 @@ func resolveExpr(ctx *sql.Context, expr sql.Expression, selectDeps map[string]sq
 		}
 		switch e := expr.(type) {
 		case *expression.Alias:
+			if anyVal, ok := e.Child.(*function.AnyValue); ok {
+				selectDeps[strings.ToLower(e.Name())] = anyVal
+				return anyVal, transform.NewTree, nil
+			}
 			childKey := strings.ToLower(e.Child.String())
 			if dep, ok := selectDeps[childKey]; ok {
 				visited[key] = true
@@ -465,7 +468,7 @@ func expressionReferencesOnlyGroupBys(ctx *sql.Context, groupBys map[string]bool
 	valid := true
 	sql.Inspect(ctx, expr, func(ctx *sql.Context, expr sql.Expression) bool {
 		switch expr := expr.(type) {
-		case nil, sql.Aggregation, *expression.Literal:
+		case nil, sql.Aggregation, *expression.Literal, *function.AnyValue:
 			return false
 		default:
 			if groupBys[strings.ToLower(expr.String())] {
@@ -481,12 +484,16 @@ func expressionReferencesOnlyGroupBys(ctx *sql.Context, groupBys map[string]bool
 			if len(expr.Children()) == 0 {
 				switch expr := expr.(type) {
 				case *plan.Subquery:
-					// Allow non-matching subqueries when no explicit group by clause. If the subquery returns more
-					// than one row for an aggregated query, we will error out later on. A correlated subquery whose
-					// outer references are all grouped columns has one value per group.
-					if noGroupBy || (!expr.Correlated().Empty() && expr.Correlated().SubsetOf(groupByCols)) {
-						return false
+					ungrouped := expr.Correlated()
+					if !noGroupBy {
+						ungrouped = ungrouped.Difference(groupByCols)
 					}
+					if !ungrouped.Empty() {
+						valid = false
+						firstId, _ := ungrouped.Next(1)
+						col = correlatedColumnName(ctx, expr, firstId)
+					}
+					return false
 				case sql.WindowAdaptableExpression:
 					// A window function with no arguments and an empty OVER clause (e.g. ROW_NUMBER() OVER ())
 					// has no column dependencies to validate, so it's trivially valid under an explicit GROUP BY.
@@ -511,6 +518,26 @@ func expressionReferencesOnlyGroupBys(ctx *sql.Context, groupBys map[string]bool
 	})
 
 	return valid, col
+}
+
+func correlatedColumnName(ctx *sql.Context, sq *plan.Subquery, id sql.ColumnId) string {
+	var name string
+	transform.InspectExpressions(ctx, sq.Query, func(ctx *sql.Context, e sql.Expression) bool {
+		switch e := e.(type) {
+		case *expression.GetField:
+			if sql.ColumnId(e.Id()) == id {
+				name = e.String()
+				return false
+			}
+		case *plan.Subquery:
+			name = correlatedColumnName(ctx, e, id)
+			if name != "" {
+				return false
+			}
+		}
+		return name == ""
+	})
+	return name
 }
 
 func validateSchemaSource(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
