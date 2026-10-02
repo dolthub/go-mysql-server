@@ -6214,3 +6214,11 @@ func TestAlterTableScripts(t *testing.T, harness Harness) {
 func TestAlterTableScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.AlterTableScriptTests, true)
 }
+
+func TestAutoIncrementScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.AutoIncrementScriptTests, false)
+}
+
+func TestAutoIncrementScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.AutoIncrementScriptTests, true)
+}
