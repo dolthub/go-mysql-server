@@ -6302,3 +6302,11 @@ func TestIndexKeyTypesScripts(t *testing.T, harness Harness) {
 func TestIndexKeyTypesScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.IndexKeyTypesScriptTests, true)
 }
+
+func TestIndexLookupsScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.IndexLookupsScriptTests, false)
+}
+
+func TestIndexLookupsScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.IndexLookupsScriptTests, true)
+}
