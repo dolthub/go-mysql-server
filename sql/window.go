@@ -38,7 +38,6 @@ type WindowDefinition struct {
 	Name        string
 	PartitionBy []Expression
 	OrderBy     SortConditions
-	id          uint64
 }
 
 func (w *WindowDefinition) ExpressionsLen() int {
@@ -142,31 +141,9 @@ func (w *WindowDefinition) PartitionId() (uint64, error) {
 	if w == nil {
 		return 0, nil
 	}
-	if w.id != uint64(0) {
-		return w.id, nil
-	}
-	sb := strings.Builder{}
-	sb.WriteString("PARTITION:")
-	if len(w.PartitionBy) > 0 {
-		for _, expression := range w.PartitionBy {
-			sb.WriteString(expression.String())
-			sb.WriteByte(0)
-		}
-	}
-	sb.WriteString("ORDER:")
-	if len(w.OrderBy) > 0 {
-		for _, ob := range w.OrderBy {
-			sb.WriteString(ob.String())
-			sb.WriteByte(0)
-		}
-	}
 	hash := xxhash.New()
-	_, err := hash.Write([]byte(sb.String()))
-	if err != nil {
-		return 0, err
-	}
-	w.id = hash.Sum64()
-	return w.id, nil
+	writeWindowIdentity(hash, w, false)
+	return hash.Sum64(), nil
 }
 
 func (w *WindowDefinition) DebugString(ctx *Context) string {
@@ -174,4 +151,50 @@ func (w *WindowDefinition) DebugString(ctx *Context) string {
 		return ""
 	}
 	return w.String()
+}
+
+// WindowExpressionId returns a semantic hash of a resolved window expression.
+func WindowExpressionId(expr WindowAdaptableExpression) uint64 {
+	hash := xxhash.New()
+	writeExpressionIdentity(hash, expr, false)
+	writeWindowIdentity(hash, expr.Window(), true)
+	return hash.Sum64()
+}
+
+// writeExpressionIdentity adds an expression's structure and resolved column identities to hash.
+func writeExpressionIdentity(hash *xxhash.Digest, expr Expression, includeRootId bool) {
+	root := true
+	Inspect(nil, expr, func(_ *Context, child Expression) bool {
+		_, _ = fmt.Fprintf(hash, "%T%c%s%c%d%c", child, 0, child.String(), 0, len(child.Children()), 0)
+		if identified, ok := child.(IdExpression); ok && (includeRootId || !root) {
+			_, _ = fmt.Fprintf(hash, "ID:%d%c", identified.Id(), 0)
+		}
+		root = false
+		return true
+	})
+}
+
+// writeWindowIdentity adds a window definition's semantic properties to hash.
+func writeWindowIdentity(hash *xxhash.Digest, window *WindowDefinition, includeFrame bool) {
+	if window == nil {
+		_, _ = hash.WriteString("WINDOW:nil")
+		return
+	}
+	_, _ = hash.WriteString("PARTITION:")
+	for _, expression := range window.PartitionBy {
+		writeExpressionIdentity(hash, expression, true)
+	}
+	_, _ = hash.WriteString("ORDER:")
+	for _, condition := range window.OrderBy {
+		writeExpressionIdentity(hash, condition.Expr, true)
+		_, _ = fmt.Fprintf(hash, "ORDER:%d%cNULLS:%d%c", condition.Order, 0, condition.NullOrdering, 0)
+	}
+	if includeFrame {
+		_, _ = hash.WriteString("FRAME:")
+		if window.Frame == nil {
+			_, _ = hash.WriteString("nil")
+		} else {
+			_, _ = hash.WriteString(window.Frame.String())
+		}
+	}
 }
