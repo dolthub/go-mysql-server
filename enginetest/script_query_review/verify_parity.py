@@ -321,10 +321,12 @@ def verify():
             new_bytes[new_complex["start"]:new_complex["end"]]
         ), "ComplexIndexQueries declaration changed"
         regex = (baseline / "regex_queries.go").read_bytes()
-        regex = regex[regex.index(b"type RegexTest"):].strip()
-        assert regex in (current / "string_matching_script_queries.go").read_bytes(), (
-            "Moved regexp cases, type, or helper changed"
+        assert regex == (current / "regex_queries.go").read_bytes(), (
+            "Original regexp declarations or !race constraint changed"
         )
+        assert b"type RegexTest" not in (
+            current / "string_matching_script_queries.go"
+        ).read_bytes(), "Duplicate regexp type declaration"
         files = {c["file"] for c in after}
         lengths = {f: len((current / f).read_bytes().splitlines()) for f in files
                    if f in {c["file"] for c in destinations}
