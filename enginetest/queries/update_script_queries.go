@@ -20,8 +20,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// UpdateScriptTests contains self-contained update script tests.
-var UpdateScriptTests = []ScriptTest{
+// UpdateRegressionScriptTests contains self-contained update script tests.
+var UpdateRegressionScriptTests = []ScriptTest{
 	{
 		Name: "empty table update",
 		SetUpScript: []string{

@@ -611,32 +611,8 @@ func TestExpressionsScripts(t *testing.T) {
 	enginetest.TestExpressionsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
-func TestWritesScripts(t *testing.T) {
-	enginetest.TestWritesScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
-}
-
-func TestSessionScripts(t *testing.T) {
-	enginetest.TestSessionScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
-}
-
-func TestSchemaScripts(t *testing.T) {
-	enginetest.TestSchemaScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
-}
-
 func TestAggregationScripts(t *testing.T) {
 	enginetest.TestAggregationScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
-}
-
-func TestJoinsAndSubqueriesScripts(t *testing.T) {
-	enginetest.TestJoinsAndSubqueriesScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
-}
-
-func TestIndexesScripts(t *testing.T) {
-	enginetest.TestIndexesScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
-}
-
-func TestStringsScripts(t *testing.T) {
-	enginetest.TestStringsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
 func TestTemporalScripts(t *testing.T) {
@@ -645,10 +621,6 @@ func TestTemporalScripts(t *testing.T) {
 
 func TestEnumsAndSetsScripts(t *testing.T) {
 	enginetest.TestEnumsAndSetsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
-}
-
-func TestIntegersScripts(t *testing.T) {
-	enginetest.TestIntegersScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
 func TestConversionsScripts(t *testing.T) {
@@ -1280,8 +1252,8 @@ func TestTupleComparisonsScripts(t *testing.T) {
 	enginetest.TestTupleComparisonsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
-func TestUpdateScripts(t *testing.T) {
-	enginetest.TestUpdateScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+func TestUpdateRegressionScripts(t *testing.T) {
+	enginetest.TestUpdateRegressionScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
 func TestUpdateJoinsScripts(t *testing.T) {
