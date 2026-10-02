@@ -165,29 +165,6 @@ var IndexesScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "keyless unique index bug",
-		SetUpScript: []string{
-			"CREATE TABLE mytable (pk int UNIQUE)",
-			"INSERT INTO mytable values (1),(2),(3),(4)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "SELECT * FROM mytable order by pk",
-				Expected: []sql.Row{{1}, {2}, {3}, {4}},
-			},
-			{
-				Query:       "INSERT INTO mytable VALUES (1)",
-				ExpectedErr: sql.ErrUniqueKeyViolation,
-			},
-			{
-				Query: "INSERT INTO mytable VALUES (500000), (5000001)",
-			},
-			{
-				Query: "SELECT count(*) FROM mytable where pk in (500000,5000001)",
-			},
-		},
-	},
-	{
 		Name: "missing indexes",
 		SetUpScript: []string{
 			`
@@ -328,29 +305,6 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "show create table with duplicate primary key",
-		SetUpScript: []string{
-			"create table t (i int primary key)",
-			"create index notpk on t(i)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "show create table t",
-				Expected: []sql.Row{
-					{"t", "CREATE TABLE `t` (\n" +
-						"  `i` int NOT NULL,\n" +
-						"  PRIMARY KEY (`i`),\n" +
-						"  KEY `notpk` (`i`)\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-				},
-			},
-			{
-				Query:          "create index `primary` on t(i)",
-				ExpectedErrStr: "invalid index name 'primary'",
-			},
-		},
-	},
-	{
 		Name: "recreate primary key rebuilds secondary indexes",
 		SetUpScript: []string{
 			"create table a (x int, y int, z int, primary key (x,y,z), index idx1 (y))",
@@ -425,85 +379,6 @@ CREATE TABLE tab3 (
 			{
 				Query:    "SELECT pk FROM tab2 WHERE ((((((col0 IN (SELECT col3 FROM tab2 WHERE ((col1 = 672.71)) AND col4 IN (SELECT col1 FROM tab2 WHERE ((col4 > 169.88 OR col0 > 939 AND ((col3 > 578))))) AND col0 >= 377) AND col4 >= 817.87 AND (col4 > 597.59)) OR col4 >= 434.59 AND ((col4 < 158.43)))))) AND col0 < 303) OR ((col0 > 549)) AND (col4 BETWEEN 816.92 AND 983.96) OR (col3 BETWEEN 421 AND 96);",
 				Expected: []sql.Row{},
-			},
-		},
-	},
-	{
-		Name:    "case insensitive index handling",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"create table table_One (Id int primary key, Val1 int);",
-			"create table TableTwo (iD int primary key, VAL2 int, vAL3 int);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "create index idx_one on TABLE_ONE (vAL1);",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query: "show create table TABLE_one;",
-				Expected: []sql.Row{{"table_One",
-					"CREATE TABLE `table_One` (\n" +
-						"  `Id` int NOT NULL,\n" +
-						"  `Val1` int,\n" +
-						"  PRIMARY KEY (`Id`),\n" +
-						"  KEY `idx_one` (`Val1`)\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-			},
-			{
-				Query: "show index from TABLE_one;",
-				Expected: []sql.Row{
-					{"table_One", 0, "PRIMARY", 1, "Id", "A", 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-					{"table_One", 1, "idx_one", 1, "Val1", "A", 0, nil, nil, "YES", "BTREE", "", "", "YES", nil},
-				},
-			},
-			{
-				Query:    "create index idx_one on TABLEtwo (VAL2, VAL3);",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query: "show create table TABLETWO;",
-				Expected: []sql.Row{{"TableTwo", "CREATE TABLE `TableTwo` (\n" +
-					"  `iD` int NOT NULL,\n" +
-					"  `VAL2` int,\n" +
-					"  `vAL3` int,\n" +
-					"  PRIMARY KEY (`iD`),\n" +
-					"  KEY `idx_one` (`VAL2`,`vAL3`)\n" +
-					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-			},
-			{
-				Query: "show index from tABLEtwo;",
-				Expected: []sql.Row{
-					{"TableTwo", 0, "PRIMARY", 1, "iD", "A", 0, nil, nil, "", "BTREE", "", "", "YES", nil},
-					{"TableTwo", 1, "idx_one", 1, "VAL2", "A", 0, nil, nil, "YES", "BTREE", "", "", "YES", nil},
-					{"TableTwo", 1, "idx_one", 2, "vAL3", "A", 0, nil, nil, "YES", "BTREE", "", "", "YES", nil},
-				},
-			},
-			{
-				Query:    "drop index IDX_ONE on TABLE_one;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query:    "drop index IDX_ONE on TABLEtwo;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query: "show create table TABLE_one;",
-				Expected: []sql.Row{{"table_One",
-					"CREATE TABLE `table_One` (\n" +
-						"  `Id` int NOT NULL,\n" +
-						"  `Val1` int,\n" +
-						"  PRIMARY KEY (`Id`)\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-			},
-			{
-				Query: "show create table TABLETWO;",
-				Expected: []sql.Row{{"TableTwo", "CREATE TABLE `TableTwo` (\n" +
-					"  `iD` int NOT NULL,\n" +
-					"  `VAL2` int,\n" +
-					"  `vAL3` int,\n" +
-					"  PRIMARY KEY (`iD`)\n" +
-					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 		},
 	},
@@ -1459,49 +1334,6 @@ WHERE
 		},
 	},
 	{
-		Name:    "test index naming",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"create table t (i int);",
-			"alter table t add index (i);",
-			"alter table t add index (i);",
-			"alter table t add index (i);",
-
-			"create table tt (i int);",
-			"alter table tt add index i_3(i);",
-			"alter table tt add index (i);",
-			"alter table tt add index (i);",
-			"alter table tt add index (i);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "show create table t",
-				Expected: []sql.Row{
-					{"t", "CREATE TABLE `t` (\n" +
-						"  `i` int,\n" +
-						"  KEY `i` (`i`),\n" +
-						"  KEY `i_2` (`i`),\n" +
-						"  KEY `i_3` (`i`)\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-				},
-			},
-			{
-				// MySQL preserves the other that indexes are created
-				// We store them in a map, so we have to sort to have some consistency
-				Query: "show create table tt",
-				Expected: []sql.Row{
-					{"tt", "CREATE TABLE `tt` (\n" +
-						"  `i` int,\n" +
-						"  KEY `i` (`i`),\n" +
-						"  KEY `i_2` (`i`),\n" +
-						"  KEY `i_3` (`i`),\n" +
-						"  KEY `i_4` (`i`)\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-				},
-			},
-		},
-	},
-	{
 		Name: "not null not unique index works on server engine",
 		SetUpScript: []string{
 			"create table t (i int not null, index (i));",
@@ -1519,19 +1351,6 @@ WHERE
 		},
 	},
 	{
-		Name: "decimal unique key",
-		SetUpScript: []string{
-			"create table t (i int primary key, d decimal(10, 2) unique)",
-			"insert into t values (1, 1)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:       "insert into t values (2, 1)",
-				ExpectedErr: sql.ErrUniqueKeyViolation,
-			},
-		},
-	},
-	{
 		// https://github.com/dolthub/dolt/issues/10246
 		Dialect: "mysql",
 		Name:    "boolean keys are not used for string column lookups",
@@ -1543,22 +1362,6 @@ WHERE
 			{
 				Query:    "select 1 from t1 where false=t1.c0",
 				Expected: []sql.Row{{1}},
-			},
-		},
-	},
-	{
-		Name: "Keyless Table with Unique Index",
-		SetUpScript: []string{
-			"create table a (x int, val int unique)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "INSERT INTO a VALUES (1, 1)",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
-			},
-			{
-				Query:       "INSERT INTO a VALUES (1, 1)",
-				ExpectedErr: sql.ErrUniqueKeyViolation,
 			},
 		},
 	},

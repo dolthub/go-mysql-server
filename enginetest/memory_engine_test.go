@@ -1211,3 +1211,7 @@ func TestForeignKeyResolutionScripts(t *testing.T) {
 func TestForeignKeyTypesScripts(t *testing.T) {
 	enginetest.TestForeignKeyTypesScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
+
+func TestIndexDefinitionsScripts(t *testing.T) {
+	enginetest.TestIndexDefinitionsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
