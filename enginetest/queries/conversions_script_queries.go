@@ -21,7 +21,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// ConversionsScriptTests contains self-contained script tests for explicit casts and implicit coercion between SQL types.
+// ConversionsScriptTests contains self-contained conversions script tests.
 var ConversionsScriptTests = []ScriptTest{
 	{
 		Dialect: "mysql",

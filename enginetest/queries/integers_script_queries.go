@@ -21,7 +21,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// IntegersScriptTests contains self-contained script tests for integer and BIT values, arithmetic, and type bounds.
+// IntegersScriptTests contains self-contained integers script tests.
 var IntegersScriptTests = []ScriptTest{
 	{
 		// https://github.com/dolthub/dolt/issues/11906

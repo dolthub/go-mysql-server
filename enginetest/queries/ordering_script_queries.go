@@ -18,7 +18,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// OrderingScriptTests contains self-contained script tests for ORDER BY, sort expressions, TopN, LIMIT, and OFFSET.
+// OrderingScriptTests contains self-contained ordering script tests.
 var OrderingScriptTests = []ScriptTest{
 	{
 		// https://github.com/dolthub/dolt/issues/9836

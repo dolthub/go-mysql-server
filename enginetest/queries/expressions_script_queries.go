@@ -19,7 +19,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// ExpressionsScriptTests contains self-contained script tests for scalar functions, predicates, and name resolution.
+// ExpressionsScriptTests contains self-contained expressions script tests.
 var ExpressionsScriptTests = []ScriptTest{
 	{
 		// https://github.com/dolthub/go-mysql-server/issues/3259

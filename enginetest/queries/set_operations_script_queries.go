@@ -20,7 +20,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// SetOperationsScriptTests contains self-contained script tests for UNION, INTERSECT, EXCEPT, and their output schemas.
+// SetOperationsScriptTests contains self-contained set operations script tests.
 var SetOperationsScriptTests = []ScriptTest{
 	{
 		// https://github.com/dolthub/go-mysql-server/issues/3216

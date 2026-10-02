@@ -22,7 +22,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// WritesScriptTests contains self-contained script tests for row mutations, default assignments, and AUTO_INCREMENT.
+// WritesScriptTests contains self-contained writes script tests.
 var WritesScriptTests = []ScriptTest{
 	{
 		// https://github.com/dolthub/go-mysql-server/issues/2369

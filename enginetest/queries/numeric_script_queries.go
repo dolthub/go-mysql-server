@@ -19,7 +19,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// NumericScriptTests contains self-contained script tests for decimal and floating-point values, literals, arithmetic, and precision.
+// NumericScriptTests contains self-contained numeric script tests.
 var NumericScriptTests = []ScriptTest{
 	{
 		Name: "update exponential parsing",

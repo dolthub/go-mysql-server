@@ -1955,6 +1955,23 @@ func TestIntegersScripts(t *testing.T, harness Harness) {
 	}
 }
 
+func testScriptTests(t *testing.T, harness Harness, scripts []queries.ScriptTest, prepared bool) {
+	t.Helper()
+	harness.Setup(setup.MydbData)
+	for _, script := range scripts {
+		if sh, ok := harness.(SkippingHarness); ok && sh.SkipQueryTest(script.Name) {
+			t.Run(script.Name, func(t *testing.T) { t.Skip(script.Name) })
+			continue
+		}
+
+		if prepared {
+			TestScriptPrepared(t, harness, script)
+		} else {
+			TestScript(t, harness, script)
+		}
+	}
+}
+
 func TestConversionsScripts(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
 	for _, script := range queries.ConversionsScriptTests {
@@ -6188,4 +6205,12 @@ func DrainIteratorIgnoreErrors(ctx *sql.Context, iter sql.RowIter) {
 			return
 		}
 	}
+}
+
+func TestAlterTableScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.AlterTableScriptTests, false)
+}
+
+func TestAlterTableScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.AlterTableScriptTests, true)
 }

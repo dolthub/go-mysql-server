@@ -1171,3 +1171,7 @@ func TestSQLLogicTestFiles(t *testing.T) {
 func TestTimeQueries(t *testing.T) {
 	enginetest.TestTimeQueries(t, enginetest.NewDefaultMemoryHarness())
 }
+
+func TestAlterTableScripts(t *testing.T) {
+	enginetest.TestAlterTableScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}

@@ -20,7 +20,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// IndexesScriptTests contains self-contained script tests for index definitions, statistics, key constraints, and lookup ranges.
+// IndexesScriptTests contains self-contained indexes script tests.
 var IndexesScriptTests = []ScriptTest{
 	{
 		// https://github.com/dolthub/dolt/issues/9936
@@ -407,105 +407,6 @@ CREATE TABLE tab3 (
 					{"pk", "int", "NO", "", nil, ""},
 					{"v1", "int", "YES", "", nil, ""},
 					{"v2", "int", "NO", "PRI", nil, ""},
-				},
-			},
-		},
-	},
-	{
-		Name:    "Multialter DDL with ADD/DROP INDEX",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"CREATE TABLE t(pk int primary key, v1 int)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:       "ALTER TABLE t DROP COLUMN v1, ADD INDEX myidx (v1)",
-				ExpectedErr: sql.ErrKeyColumnDoesNotExist,
-			},
-			{
-				Query: "DESCRIBE t",
-				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", nil, ""},
-					{"v1", "int", "YES", "", nil, ""}, // should not be dropped
-				},
-			},
-			{
-				Query:    "ALTER TABLE t ADD COLUMN (v2 int), ADD INDEX myidx (v2)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query: "DESCRIBE t",
-				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", nil, ""},
-					{"v1", "int", "YES", "", nil, ""},
-					{"v2", "int", "YES", "MUL", nil, ""},
-				},
-			},
-			{
-				Query:       "ALTER TABLE t ADD COLUMN (v3 int), DROP INDEX notanindex",
-				ExpectedErr: sql.ErrCantDropFieldOrKey,
-			},
-			{
-				Query: "DESCRIBE t",
-				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", nil, ""},
-					{"v1", "int", "YES", "", nil, ""},
-					{"v2", "int", "YES", "MUL", nil, ""},
-				},
-			},
-			{
-				Query:       "ALTER TABLE t ADD COLUMN (v4 int), ADD INDEX myidx (notacolumn)",
-				ExpectedErr: sql.ErrKeyColumnDoesNotExist,
-			},
-			{
-				Query: "DESCRIBE t",
-				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", nil, ""},
-					{"v1", "int", "YES", "", nil, ""},
-					{"v2", "int", "YES", "MUL", nil, ""},
-				},
-			},
-			{
-				Query:       "ALTER TABLE t ADD COLUMN (v4 int), ADD INDEX myidx2 (v4), DROP INDEX notanindex;",
-				ExpectedErr: sql.ErrCantDropFieldOrKey,
-			},
-			{
-				Query: "DESCRIBE t",
-				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", nil, ""},
-					{"v1", "int", "YES", "", nil, ""},
-					{"v2", "int", "YES", "MUL", nil, ""},
-				},
-			},
-			{
-				Query:    "ALTER TABLE t ADD COLUMN (v4 int), ADD INDEX myidx2 (v4)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query: "DESCRIBE t",
-				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", nil, ""},
-					{"v1", "int", "YES", "", nil, ""},
-					{"v2", "int", "YES", "MUL", nil, ""},
-					{"v4", "int", "YES", "MUL", nil, ""},
-				},
-			},
-			{
-				Query:    "ALTER TABLE t ADD COLUMN (v5 int), RENAME INDEX myidx2 TO myidx3",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query:    "ALTER TABLE t DROP INDEX myidx, ADD INDEX v5idx (v5)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query: "DESCRIBE t",
-				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", nil, ""},
-					{"v1", "int", "YES", "", nil, ""},
-					{"v2", "int", "YES", "", nil, ""},
-					{"v4", "int", "YES", "MUL", nil, ""},
-					{"v5", "int", "YES", "MUL", nil, ""},
 				},
 			},
 		},

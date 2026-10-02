@@ -21,7 +21,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// TemporalScriptTests contains self-contained script tests for date and time values, precision, conversion, and time zones.
+// TemporalScriptTests contains self-contained temporal script tests.
 var TemporalScriptTests = []ScriptTest{
 	{
 		Name:    "unix_timestamp function usage",
