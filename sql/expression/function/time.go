@@ -16,6 +16,7 @@ package function
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/dolthub/vitess/go/mysql"
@@ -55,7 +56,60 @@ func (t *Time) String() string {
 
 // Type implements the Expression interface.
 func (t *Time) Type(ctx *sql.Context) sql.Type {
+	if t.Child == nil {
+		return types.TimeMaxPrecision
+	}
+	childType := t.Child.Type(ctx)
+	if tt, ok := childType.(types.TimeType); ok {
+		return types.MustCreateTimespanType(tt.Precision())
+	}
+	if dt, ok := childType.(sql.DatetimeType); ok {
+		if types.IsDateType(childType) {
+			return types.Time
+		}
+		return types.MustCreateTimespanType(dt.Precision())
+	}
+	if dec, ok := childType.(sql.DecimalType); ok {
+		scale := int(dec.Scale())
+		if scale < 0 {
+			scale = 0
+		} else if scale > types.MaxDatetimePrecision {
+			scale = types.MaxDatetimePrecision
+		}
+		return types.MustCreateTimespanType(scale)
+	}
+	if types.IsInteger(childType) {
+		return types.Time
+	}
+	if lit, ok := t.Child.(*expression.Literal); ok {
+		if s, ok := lit.Val.(string); ok {
+			return types.MustCreateTimespanType(inferTimePrecisionFromString(s))
+		}
+		if b, ok := lit.Val.([]byte); ok {
+			return types.MustCreateTimespanType(inferTimePrecisionFromString(string(b)))
+		}
+	}
 	return types.TimeMaxPrecision
+}
+
+func inferTimePrecisionFromString(s string) int {
+	lastDot := strings.LastIndex(s, ".")
+	if lastDot == -1 {
+		return 0
+	}
+	frac := s[lastDot+1:]
+	digits := 0
+	for i := 0; i < len(frac); i++ {
+		if frac[i] >= '0' && frac[i] <= '9' {
+			digits++
+		} else {
+			break
+		}
+	}
+	if digits > types.MaxDatetimePrecision {
+		return types.MaxDatetimePrecision
+	}
+	return digits
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
