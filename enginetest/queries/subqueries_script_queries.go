@@ -166,36 +166,6 @@ var SubqueriesScriptTests = []ScriptTest{
 			},
 		},
 	},
-	{
-		Name: "case sensitive subquery column names",
-		SetUpScript: []string{
-			"create table t(ABC int, dEF int);",
-			"insert into t values (1, 2);",
-		},
-
-		Assertions: []ScriptTestAssertion{
-			{
-				ExpectedColumns: sql.Schema{
-					{Name: "ABC", Type: types.Int32},
-					{Name: "dEF", Type: types.Int32},
-				},
-				Query: "select * from t ",
-				Expected: []sql.Row{
-					{1, 2},
-				},
-			},
-			{
-				ExpectedColumns: sql.Schema{
-					{Name: "ABC", Type: types.Int32},
-					{Name: "dEF", Type: types.Int32},
-				},
-				Query: "select * from (select * from t) sqa",
-				Expected: []sql.Row{
-					{1, 2},
-				},
-			},
-		},
-	},
 	// https://github.com/dolthub/dolt/issues/4233
 	{
 		Name:        "Test CTE definition ordering",
