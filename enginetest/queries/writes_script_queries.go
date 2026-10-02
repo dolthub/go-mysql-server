@@ -14,33 +14,5 @@
 
 package queries
 
-import (
-	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/types"
-)
-
 // WritesScriptTests contains self-contained writes script tests.
-var WritesScriptTests = []ScriptTest{
-	{
-		Name: "empty table update",
-		SetUpScript: []string{
-			"create table t (i int primary key)",
-			"insert into t values (1), (2), (3)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "update t set i = 0 where false",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 0, InsertID: 0, Info: plan.UpdateInfo{Matched: 0}}}},
-			},
-			{
-				Query: "select * from t",
-				Expected: []sql.Row{
-					{1},
-					{2},
-					{3},
-				},
-			},
-		},
-	},
-}
+var WritesScriptTests = []ScriptTest{}

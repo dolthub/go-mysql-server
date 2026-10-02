@@ -6422,3 +6422,11 @@ func TestTupleComparisonsScripts(t *testing.T, harness Harness) {
 func TestTupleComparisonsScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.TupleComparisonsScriptTests, true)
 }
+
+func TestUpdateScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.UpdateScriptTests, false)
+}
+
+func TestUpdateScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.UpdateScriptTests, true)
+}
