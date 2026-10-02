@@ -26,37 +26,6 @@ import (
 // SessionScriptTests contains self-contained session script tests.
 var SessionScriptTests = []ScriptTest{
 	{
-		// https://github.com/dolthub/dolt/issues/9865
-		Name:    "Stored procedure containing a transaction does not return EOF",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"CREATE TABLE test_table (id INT PRIMARY KEY, name TEXT)",
-			`CREATE PROCEDURE my_proc()
-BEGIN
-    START TRANSACTION;
-    INSERT INTO test_table VALUES (1, 'test');
-    COMMIT;
-END`,
-			`CREATE PROCEDURE empty_procedure()
-BEGIN
-END`,
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "CALL my_proc()",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 0, InsertID: 0, Info: nil}}},
-			},
-			{
-				Query:    "SELECT * FROM test_table",
-				Expected: []sql.Row{{1, "test"}},
-			},
-			{
-				Query:    "CALL empty_procedure()",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 0, InsertID: 0, Info: nil}}},
-			},
-		},
-	},
-	{
 		// https://github.com/dolthub/dolt/issues/9873
 		// TODO: `FOR UPDATE OF` (`FOR UPDATE` in general) is currently a no-op: https://www.dolthub.com/blog/2023-10-23-hold-my-beer/
 		Name:    "FOR UPDATE OF syntax support tests",
@@ -178,32 +147,6 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 			{
 				Query:          `SELECT id FROM tab1 WHERE id > 3 UNION select s INTO @mustSingleVar FROM tab2 WHERE s < 'f' ORDER BY s DESC`,
 				ExpectedErrStr: "INTO clause is not allowed at position 98 near 'ORDER'",
-			},
-		},
-	},
-	{
-		// All DECLARE statements are only allowed under BEGIN/END blocks
-		Name: "Top-level DECLARE statements",
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:       "DECLARE no_such_table CONDITION FOR SQLSTATE '42S02'",
-				ExpectedErr: sql.ErrSyntaxError,
-			},
-			{
-				Query:       "DECLARE no_such_table CONDITION FOR 1051",
-				ExpectedErr: sql.ErrSyntaxError,
-			},
-			{
-				Query:       "DECLARE a CHAR(16)",
-				ExpectedErr: sql.ErrSyntaxError,
-			},
-			{
-				Query:       "DECLARE cur2 CURSOR FOR SELECT i FROM test.t2",
-				ExpectedErr: sql.ErrSyntaxError,
-			},
-			{
-				Query:       "DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = TRUE",
-				ExpectedErr: sql.ErrSyntaxError,
 			},
 		},
 	},

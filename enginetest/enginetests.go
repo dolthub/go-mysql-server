@@ -6350,3 +6350,11 @@ func TestPrimaryKeysScripts(t *testing.T, harness Harness) {
 func TestPrimaryKeysScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.PrimaryKeysScriptTests, true)
 }
+
+func TestProceduresScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.ProceduresScriptTests, false)
+}
+
+func TestProceduresScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.ProceduresScriptTests, true)
+}
