@@ -201,6 +201,10 @@ func (m *MemoryHarness) NewEngine(t *testing.T) (QueryEngine, error) {
 	return engine, nil
 }
 
+func (m *MemoryHarness) SupportsValueRow() bool {
+	return false
+}
+
 func (m *MemoryHarness) NewTableAsOf(db sql.VersionedDatabase, name string, schema sql.PrimaryKeySchema, asOf interface{}) sql.Table {
 	var fkColl *memory.ForeignKeyCollection
 	var baseDb *memory.BaseDatabase

@@ -79,6 +79,8 @@ type QueryTest struct {
 	// or replace wrapped values with their hash as determined by sql.AnyWrapped.Hash.
 	// Set this to WrapBehvior_Hash to test the exact encodings being returned by the query.
 	WrapBehavior WrapBehavior
+	// UsesValueRowIter indicates whether to assert that the generated row iter can be used as a ValueRowIter.
+	UsesValueRowIter bool
 }
 
 type QueryPlanTest struct {

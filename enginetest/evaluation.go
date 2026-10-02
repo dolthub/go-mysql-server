@@ -438,6 +438,17 @@ func TestQueryWithEngine(t *testing.T, harness Harness, e QueryEngine, tt querie
 		} else {
 			TestQueryWithContext(t, ctx, e, harness, tt.Query, tt.Expected, tt.ExpectedColumns, tt.Bindings, nil)
 		}
+		if tt.UsesValueRowIter && harness.SupportsValueRow() {
+			var underlyingEngine QueryEngine
+			if sqe, ok := e.(*ServerQueryEngine); ok {
+				underlyingEngine = sqe.engine
+			} else {
+				underlyingEngine = e
+			}
+			_, iter := runQuery(t, ctx, underlyingEngine, tt.Query, tt.Bindings, nil)
+			valueRowIter, ok := iter.(sql.ValueRowIter)
+			require.True(t, ok && valueRowIter.IsValueRowIter(ctx))
+		}
 	})
 }
 
@@ -467,16 +478,8 @@ func testQueryWithContext(
 	qFlags *sql.QueryFlags,
 	wrapBehavior queries.WrapBehavior,
 ) {
-	ctx = ctx.WithQuery(q)
 	require := require.New(t)
-	if len(bindings) > 0 {
-		_, err := e.PrepareQuery(ctx, q)
-		require.NoError(err)
-	}
-
-	sch, iter, _, err := e.QueryWithBindings(ctx, q, nil, bindings, qFlags)
-	require.NoError(err, "Unexpected error for query %s: %s", q, err)
-
+	sch, iter := runQuery(t, ctx, e, q, bindings, qFlags)
 	rows, err := sql.RowIterToRows(ctx, iter)
 	require.NoError(err, "Unexpected error for query %s: %s", q, err)
 
@@ -487,6 +490,20 @@ func testQueryWithContext(
 	require.Equal(
 		0, ctx.Memory.NumCaches())
 	validateEngine(t, ctx, harness, e)
+}
+
+func runQuery(t *testing.T, ctx *sql.Context, e QueryEngine, q string, bindings map[string]sqlparser.Expr,
+	qFlags *sql.QueryFlags,
+) (sql.Schema, sql.RowIter) {
+	ctx = ctx.WithQuery(q)
+	if len(bindings) > 0 {
+		_, err := e.PrepareQuery(ctx, q)
+		require.NoError(t, err)
+	}
+
+	sch, iter, _, err := e.QueryWithBindings(ctx, q, nil, bindings, qFlags)
+	require.NoError(t, err, "Unexpected error for query %s: %s", q, err)
+	return sch, iter
 }
 
 func GetFilterIndex(ctx *sql.Context, n sql.Node) sql.IndexLookup {

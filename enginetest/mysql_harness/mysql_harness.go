@@ -379,6 +379,10 @@ func widenExpected(val interface{}) interface{} {
 	}
 }
 
+func (m *MySQLHarness) SupportsValueRow() bool {
+	return false
+}
+
 // Close closes the connection. This will drop all databases created and accessed during the tests.
 func (m *MySQLHarness) Close() {
 	m.shim.Close()
