@@ -3258,7 +3258,7 @@ func TestCreateDatabase(t *testing.T, harness Harness) {
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 
-	for _, tt := range queries.CreateDatabaseScripts {
+	for _, tt := range queries.CreateDatabaseScriptTests {
 		TestScriptWithEngine(t, e, harness, tt)
 	}
 }
@@ -3435,7 +3435,7 @@ func TestPkOrdinalsDML(t *testing.T, harness Harness) {
 
 func TestDropDatabase(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
-	for _, tt := range queries.DropDatabaseScripts {
+	for _, tt := range queries.DropDatabaseScriptTests {
 		TestScript(t, harness, tt)
 	}
 }

@@ -19,8 +19,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// CreateDatabaseScripts contains self-contained script tests for CREATE DATABASE and CREATE SCHEMA.
-var CreateDatabaseScripts = []ScriptTest{
+// CreateDatabaseScriptTests contains self-contained script tests for CREATE DATABASE and CREATE SCHEMA.
+var CreateDatabaseScriptTests = []ScriptTest{
 	{
 		// https://github.com/dolthub/dolt/pull/9830
 		Name: "CREATE SCHEMA without database selection falls back to CREATE DATABASE",

@@ -19,8 +19,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// DropDatabaseScripts contains self-contained script tests for DROP DATABASE and DROP SCHEMA.
-var DropDatabaseScripts = []ScriptTest{
+// DropDatabaseScriptTests contains self-contained script tests for DROP DATABASE and DROP SCHEMA.
+var DropDatabaseScriptTests = []ScriptTest{
 	{
 		Name: "DROP DATABASE correctly works",
 		Assertions: []ScriptTestAssertion{
