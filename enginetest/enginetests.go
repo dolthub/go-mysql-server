@@ -6382,3 +6382,11 @@ func TestStringFunctionsScripts(t *testing.T, harness Harness) {
 func TestStringFunctionsScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.StringFunctionsScriptTests, true)
 }
+
+func TestStringMatchingScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.StringMatchingScriptTests, false)
+}
+
+func TestStringMatchingScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.StringMatchingScriptTests, true)
+}
