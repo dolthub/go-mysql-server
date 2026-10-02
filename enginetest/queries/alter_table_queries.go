@@ -2387,4 +2387,19 @@ var BrokenAlterTableScriptTests = []ScriptTest{
 			},
 		},
 	},
+
+	{
+		Name: "non-existent procedure in trigger body",
+		SetUpScript: []string{
+			"create table tbl_I (i int primary key);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "alter table tbl_i add column j int, add check (j < 10);",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+		},
+	},
 }
