@@ -6222,3 +6222,11 @@ func TestAutoIncrementScripts(t *testing.T, harness Harness) {
 func TestAutoIncrementScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.AutoIncrementScriptTests, true)
 }
+
+func TestCharsetCollationScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.CharsetCollationScriptTests, false)
+}
+
+func TestCharsetCollationScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.CharsetCollationScriptTests, true)
+}
