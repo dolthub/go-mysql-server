@@ -1239,3 +1239,7 @@ func TestJSONFunctionsScripts(t *testing.T) {
 func TestNameResolutionScripts(t *testing.T) {
 	enginetest.TestNameResolutionScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
+
+func TestPrimaryKeysScripts(t *testing.T) {
+	enginetest.TestPrimaryKeysScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
