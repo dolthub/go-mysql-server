@@ -6326,3 +6326,11 @@ func TestJoinsScripts(t *testing.T, harness Harness) {
 func TestJoinsScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.JoinsScriptTests, true)
 }
+
+func TestJSONFunctionsScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.JSONFunctionsScriptTests, false)
+}
+
+func TestJSONFunctionsScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.JSONFunctionsScriptTests, true)
+}
