@@ -1203,3 +1203,7 @@ func TestDescendingIndexesScripts(t *testing.T) {
 func TestDropTableScripts(t *testing.T) {
 	enginetest.TestDropTableScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
+
+func TestForeignKeyResolutionScripts(t *testing.T) {
+	enginetest.TestForeignKeyResolutionScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}

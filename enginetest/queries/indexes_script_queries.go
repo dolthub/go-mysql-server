@@ -16,7 +16,6 @@ package queries
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -1097,24 +1096,6 @@ CREATE TABLE tab3 (
 					{-1},
 					{0},
 					{1},
-				},
-			},
-		},
-	},
-	{
-		Name:    "resolve foreign key on indexed update",
-		Dialect: "mysql", // no way to disable foreign keys in doltgres yet
-		SetUpScript: []string{
-			"set foreign_key_checks=0;",
-			"create table parent (i int primary key);",
-			"create table child (i int primary key, foreign key (i) references parent(i));",
-			"set foreign_key_checks=1;",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "update child set i = 1 where i = 1;",
-				Expected: []sql.Row{
-					{types.OkResult{RowsAffected: 0, Info: plan.UpdateInfo{Matched: 0, Updated: 0}}},
 				},
 			},
 		},

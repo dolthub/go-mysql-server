@@ -6270,3 +6270,11 @@ func TestDropTableScripts(t *testing.T, harness Harness) {
 func TestDropTableScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.DropTableScriptTests, true)
 }
+
+func TestForeignKeyResolutionScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.ForeignKeyResolutionScriptTests, false)
+}
+
+func TestForeignKeyResolutionScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.ForeignKeyResolutionScriptTests, true)
+}
