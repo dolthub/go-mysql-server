@@ -202,6 +202,7 @@ func (m *MemoryHarness) NewEngine(t *testing.T) (QueryEngine, error) {
 }
 
 func (m *MemoryHarness) SupportsValueRow() bool {
+	// MemoryTables store rows in memory without serializing them, so there's not much point in implementing ValueRowIter for them.
 	return false
 }
 
