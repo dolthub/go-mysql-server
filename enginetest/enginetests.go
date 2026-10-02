@@ -6334,3 +6334,11 @@ func TestJSONFunctionsScripts(t *testing.T, harness Harness) {
 func TestJSONFunctionsScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.JSONFunctionsScriptTests, true)
 }
+
+func TestNameResolutionScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.NameResolutionScriptTests, false)
+}
+
+func TestNameResolutionScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.NameResolutionScriptTests, true)
+}
