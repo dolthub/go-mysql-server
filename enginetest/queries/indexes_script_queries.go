@@ -14,32 +14,5 @@
 
 package queries
 
-import (
-	"github.com/dolthub/go-mysql-server/sql"
-)
-
 // IndexesScriptTests contains self-contained indexes script tests.
-var IndexesScriptTests = []ScriptTest{
-	{
-		Name: "histogram bucket merging error for implementor buckets",
-		SetUpScript: []string{
-			"CREATE TABLE xy (x int primary key, y varchar(10), key(y));",
-			"insert into xy select x, 'x' from (with recursive inputs(x) as (select 1 union select x+1 from inputs where x < 5000) select * from inputs) dt",
-			"analyze table xy",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "select (select count(*) from information_schema.statistics) > 0",
-				Expected: []sql.Row{{true}},
-			},
-			{
-				Query:    "select a.y from xy a join xy b on a.y = b.y limit 1",
-				Expected: []sql.Row{{"x"}},
-			},
-			{
-				Query:    "select y from xy where y = 'x' limit 1",
-				Expected: []sql.Row{{"x"}},
-			},
-		},
-	},
-}
+var IndexesScriptTests = []ScriptTest{}
