@@ -6430,3 +6430,11 @@ func TestUpdateScripts(t *testing.T, harness Harness) {
 func TestUpdateScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.UpdateScriptTests, true)
 }
+
+func TestUpdateJoinsScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.UpdateJoinsScriptTests, false)
+}
+
+func TestUpdateJoinsScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.UpdateJoinsScriptTests, true)
+}
