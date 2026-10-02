@@ -6278,3 +6278,11 @@ func TestForeignKeyResolutionScripts(t *testing.T, harness Harness) {
 func TestForeignKeyResolutionScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.ForeignKeyResolutionScriptTests, true)
 }
+
+func TestForeignKeyTypesScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.ForeignKeyTypesScriptTests, false)
+}
+
+func TestForeignKeyTypesScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.ForeignKeyTypesScriptTests, true)
+}
