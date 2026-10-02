@@ -1184,20 +1184,20 @@ func TestForeignKeyTypesScripts(t *testing.T) {
 	enginetest.TestForeignKeyTypesScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
-func TestIndexDefinitionsScripts(t *testing.T) {
-	enginetest.TestIndexDefinitionsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+func TestIndexRegressionScripts(t *testing.T) {
+	enginetest.TestIndexRegressionScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
 func TestIndexKeyTypesScripts(t *testing.T) {
 	enginetest.TestIndexKeyTypesScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
-func TestIndexLookupsScripts(t *testing.T) {
-	enginetest.TestIndexLookupsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
-}
-
 func TestInsertRegressionScripts(t *testing.T) {
 	enginetest.TestInsertRegressionScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestInsertIgnoreRegressionScripts(t *testing.T) {
+	enginetest.TestInsertIgnoreRegressionScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
 func TestJoinsScripts(t *testing.T) {

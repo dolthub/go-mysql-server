@@ -806,7 +806,11 @@ func TestQueryPlanScripts(t *testing.T, harness Harness) {
 }
 
 func TestOrderByGroupBy(t *testing.T, harness Harness) {
-	for _, tt := range queries.OrderByGroupByScriptTests {
+	for _, tt := range queries.GroupByScriptTests {
+		TestScript(t, harness, tt)
+	}
+
+	for _, tt := range queries.OrderByScriptTests {
 		TestScript(t, harness, tt)
 	}
 
@@ -976,6 +980,10 @@ func TestInsertInto(t *testing.T, harness Harness) {
 		for _, script := range queries.InsertScripts {
 			TestScript(t, harness, script)
 		}
+
+		for _, script := range queries.InsertAutoIncrementScripts {
+			TestScript(t, harness, script)
+		}
 	})
 }
 
@@ -1024,10 +1032,19 @@ func TestInsertIntoErrors(t *testing.T, harness Harness) {
 	for _, script := range queries.InsertErrorScripts {
 		TestScript(t, harness, script)
 	}
+
+	for _, script := range queries.InsertAutoIncrementErrorScripts {
+		TestScript(t, harness, script)
+	}
 }
 
 func TestBrokenInsertScripts(t *testing.T, harness Harness) {
 	for _, script := range queries.InsertBrokenScripts {
+		t.Skip()
+		TestScript(t, harness, script)
+	}
+
+	for _, script := range queries.BrokenAutoIncrementScripts {
 		t.Skip()
 		TestScript(t, harness, script)
 	}
@@ -1361,6 +1378,10 @@ func TestUpdate(t *testing.T, harness Harness) {
 	for _, tt := range queries.UpdateScriptTests {
 		TestScript(t, harness, tt)
 	}
+
+	for _, tt := range queries.UpdateJoinScriptTests {
+		TestScript(t, harness, tt)
+	}
 }
 
 func TestUpdateIgnore(t *testing.T, harness Harness) {
@@ -1431,6 +1452,10 @@ func TestUpdateQueriesPrepared(t *testing.T, harness Harness) {
 		runWriteQueryTestPrepared(t, harness, tt)
 	}
 	for _, tt := range queries.UpdateScriptTests {
+		TestScriptPrepared(t, harness, tt)
+	}
+
+	for _, tt := range queries.UpdateJoinScriptTests {
 		TestScriptPrepared(t, harness, tt)
 	}
 }
@@ -1940,6 +1965,10 @@ func TestInsertScriptsPrepared(t *testing.T, harness Harness) {
 	for _, script := range queries.InsertScripts {
 		TestScriptPrepared(t, harness, script)
 	}
+
+	for _, script := range queries.InsertAutoIncrementScripts {
+		TestScriptPrepared(t, harness, script)
+	}
 }
 
 func TestGeneratedColumns(t *testing.T, harness Harness) {
@@ -2011,6 +2040,10 @@ func TestInsertIgnoreScriptsPrepared(t *testing.T, harness Harness) {
 func TestInsertErrorScriptsPrepared(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
 	for _, script := range queries.InsertErrorScripts {
+		TestScriptPrepared(t, harness, script)
+	}
+
+	for _, script := range queries.InsertAutoIncrementErrorScripts {
 		TestScriptPrepared(t, harness, script)
 	}
 }
@@ -3412,6 +3445,10 @@ func TestCreateForeignKeys(t *testing.T, harness Harness) {
 	for _, tt := range queries.CreateForeignKeyTests {
 		TestScript(t, harness, tt)
 	}
+
+	for _, tt := range queries.CreateForeignKeyTypeTests {
+		TestScript(t, harness, tt)
+	}
 }
 
 func TestDropForeignKeys(t *testing.T, harness Harness) {
@@ -3424,6 +3461,14 @@ func TestDropForeignKeys(t *testing.T, harness Harness) {
 func TestForeignKeys(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.Parent_childData)
 	for _, script := range queries.ForeignKeyTests {
+		TestScript(t, harness, script)
+	}
+
+	for _, script := range queries.ForeignKeyTypeTests {
+		TestScript(t, harness, script)
+	}
+
+	for _, script := range queries.ForeignKeyResolutionTests {
 		TestScript(t, harness, script)
 	}
 }
@@ -5901,12 +5946,12 @@ func TestForeignKeyTypesScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.ForeignKeyTypesScriptTests, true)
 }
 
-func TestIndexDefinitionsScripts(t *testing.T, harness Harness) {
-	testScriptTests(t, harness, queries.IndexDefinitionsScriptTests, false)
+func TestIndexRegressionScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.IndexRegressionScriptTests, false)
 }
 
-func TestIndexDefinitionsScriptsPrepared(t *testing.T, harness Harness) {
-	testScriptTests(t, harness, queries.IndexDefinitionsScriptTests, true)
+func TestIndexRegressionScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.IndexRegressionScriptTests, true)
 }
 
 func TestIndexKeyTypesScripts(t *testing.T, harness Harness) {
@@ -5917,20 +5962,20 @@ func TestIndexKeyTypesScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.IndexKeyTypesScriptTests, true)
 }
 
-func TestIndexLookupsScripts(t *testing.T, harness Harness) {
-	testScriptTests(t, harness, queries.IndexLookupsScriptTests, false)
-}
-
-func TestIndexLookupsScriptsPrepared(t *testing.T, harness Harness) {
-	testScriptTests(t, harness, queries.IndexLookupsScriptTests, true)
-}
-
 func TestInsertRegressionScripts(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.InsertRegressionScriptTests, false)
 }
 
+func TestInsertIgnoreRegressionScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.InsertIgnoreRegressionScriptTests, false)
+}
+
 func TestInsertRegressionScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.InsertRegressionScriptTests, true)
+}
+
+func TestInsertIgnoreRegressionScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.InsertIgnoreRegressionScriptTests, true)
 }
 
 func TestJoinsScripts(t *testing.T, harness Harness) {

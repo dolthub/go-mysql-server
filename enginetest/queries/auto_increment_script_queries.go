@@ -670,3 +670,846 @@ CREATE TABLE table2 (
 		},
 	},
 }
+
+var AlterTableAddAutoIncrementScripts = []ScriptTest{
+	{
+		Name: "Add primary key column with auto increment",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (i int, j int);",
+			"insert into t1 values (1,1), (2,2), (3,3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "alter table t1 add column pk int primary key auto_increment;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "show create table t1",
+				Expected: []sql.Row{{"t1",
+					"CREATE TABLE `t1` (\n" +
+						"  `i` int,\n" +
+						"  `j` int,\n" +
+						"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
+						"  PRIMARY KEY (`pk`)\n" +
+						") ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: "select pk from t1 order by pk",
+				Expected: []sql.Row{
+					{1}, {2}, {3},
+				},
+			},
+		},
+	},
+	{
+		Name: "Add primary key column with auto increment, first",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (i int, j int);",
+			"insert into t1 values (1,1), (2,2), (3,3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "alter table t1 add column pk int primary key",
+				ExpectedErr: sql.ErrPrimaryKeyViolation,
+			},
+			{
+				Query:    "alter table t1 add column pk int primary key auto_increment first",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "show create table t1",
+				Expected: []sql.Row{{"t1",
+					"CREATE TABLE `t1` (\n" +
+						"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
+						"  `i` int,\n" +
+						"  `j` int,\n" +
+						"  PRIMARY KEY (`pk`)\n" +
+						") ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: "select pk from t1 order by pk",
+				Expected: []sql.Row{
+					{1}, {2}, {3},
+				},
+			},
+		},
+	},
+	{
+		Name: "add column auto_increment, non primary key",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (i bigint primary key, s varchar(20))",
+			"INSERT INTO t1 VALUES (1, 'a'), (2, 'b'), (3, 'c')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "alter table t1 add column j int auto_increment unique",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "show create table t1",
+				Expected: []sql.Row{{"t1",
+					"CREATE TABLE `t1` (\n" +
+						"  `i` bigint NOT NULL,\n" +
+						"  `s` varchar(20),\n" +
+						"  `j` int NOT NULL AUTO_INCREMENT,\n" +
+						"  PRIMARY KEY (`i`),\n" +
+						"  UNIQUE KEY `j` (`j`)\n" +
+						") ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: "select * from t1 order by i",
+				Expected: []sql.Row{
+					{1, "a", 1},
+					{2, "b", 2},
+					{3, "c", 3},
+				},
+			},
+		},
+	},
+	{
+		Name: "add column auto_increment, non key",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (i bigint primary key, s varchar(20))",
+			"INSERT INTO t1 VALUES (1, 'a'), (2, 'b'), (3, 'c')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "alter table t1 add column j int auto_increment",
+				ExpectedErr: sql.ErrInvalidAutoIncCols,
+			},
+		},
+	},
+	{
+		Name: "ALTER AUTO INCREMENT TABLE ADD column",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk int primary key, uk int UNIQUE KEY auto_increment);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "alter table test add column j int;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+		},
+	},
+	{
+		Name:    "ALTER TABLE MODIFY column with compound UNIQUE KEYS",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE table test (pk int primary key, uk1 int, uk2 int, unique(uk1, uk2))",
+			"ALTER TABLE `test` MODIFY column uk1 int auto_increment",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "describe test",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"uk1", "int", "NO", "MUL", nil, "auto_increment"},
+					{"uk2", "int", "YES", "", nil, ""},
+				},
+			},
+		},
+	},
+	{
+		Name:    "ALTER TABLE MODIFY column with compound KEYS",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE table test (pk int primary key, mk1 int, mk2 int, index(mk1, mk2))",
+			"ALTER TABLE `test` MODIFY column mk1 int auto_increment",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "describe test",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"mk1", "int", "NO", "MUL", nil, "auto_increment"},
+					{"mk2", "int", "YES", "", nil, ""},
+				},
+			},
+		},
+	},
+}
+
+var CreateTableAutoIncrementTests = []ScriptTest{
+	{
+		Name:        "create table with non primary auto_increment column",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "create table t1 (a int auto_increment unique, b int, primary key(b))",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "insert into t1 (b) values (1), (2)",
+				Expected: []sql.Row{
+					{
+						types.OkResult{
+							RowsAffected: 2,
+							InsertID:     1,
+						},
+					},
+				},
+			},
+			{
+				Query: "show create table t1",
+				Expected: []sql.Row{{"t1",
+					"CREATE TABLE `t1` (\n" +
+						"  `a` int NOT NULL AUTO_INCREMENT,\n" +
+						"  `b` int NOT NULL,\n" +
+						"  PRIMARY KEY (`b`),\n" +
+						"  UNIQUE KEY `a` (`a`)\n" +
+						") ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "select * from t1 order by b",
+				Expected: []sql.Row{{1, 1}, {2, 2}},
+			},
+		},
+	},
+	{
+		Name:        "create table with non primary auto_increment column, separate unique key",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "create table t1 (a int auto_increment, b int, primary key(b), unique key(a))",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "insert into t1 (b) values (1), (2)",
+				Expected: []sql.Row{
+					{
+						types.OkResult{
+							RowsAffected: 2,
+							InsertID:     1,
+						},
+					},
+				},
+			},
+			{
+				Query: "show create table t1",
+				Expected: []sql.Row{{"t1",
+					"CREATE TABLE `t1` (\n" +
+						"  `a` int NOT NULL AUTO_INCREMENT,\n" +
+						"  `b` int NOT NULL,\n" +
+						"  PRIMARY KEY (`b`),\n" +
+						"  UNIQUE KEY `a` (`a`)\n" +
+						") ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "select * from t1 order by b",
+				Expected: []sql.Row{{1, 1}, {2, 2}},
+			},
+		},
+	},
+	{
+		Name:        "create table with non primary auto_increment column, missing unique key",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "create table t1 (a int auto_increment, b int, primary key(b))",
+				ExpectedErr: sql.ErrInvalidAutoIncCols,
+			},
+		},
+	},
+	{
+		Name:        "table with auto_increment table option",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				// this just ignores the auto_increment argument
+				Query:    "create table t1 (i int) auto_increment=10;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "show create table t1",
+				Expected: []sql.Row{
+					{"t1", "CREATE TABLE `t1` (\n" +
+						"  `i` int\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+
+			{
+				Query:    "create table t2 (i int auto_increment primary key) auto_increment=10;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "show create table t2",
+				Expected: []sql.Row{
+					{"t2", "CREATE TABLE `t2` (\n" +
+						"  `i` int NOT NULL AUTO_INCREMENT,\n" +
+						"  PRIMARY KEY (`i`)\n" +
+						") ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query:    "insert into t2 values (null), (null), (null)",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 3, InsertID: 10}}},
+			},
+			{
+				Query: "select * from t2",
+				Expected: []sql.Row{
+					{10},
+					{11},
+					{12},
+				},
+			},
+		},
+	},
+}
+
+var InsertAutoIncrementScripts = []ScriptTest{
+	{
+		Name:    "insert into sparse auto_increment table",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table auto (pk int primary key auto_increment)",
+			"insert into auto values (10), (20), (30)",
+			"insert into auto values (NULL)",
+			"insert into auto values (40)",
+			"insert into auto values (0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from auto order by 1",
+				Expected: []sql.Row{
+					{10}, {20}, {30}, {31}, {40}, {41},
+				},
+			},
+		},
+	},
+	{
+		Name:    "insert negative values into auto_increment values",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table auto (pk int primary key auto_increment)",
+			"insert into auto values (10), (20), (30)",
+			"insert into auto values (-1), (-2), (-3)",
+			"insert into auto () values ()",
+			"insert into auto values (0), (0), (0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from auto order by 1",
+				Expected: []sql.Row{
+					{-3}, {-2}, {-1}, {10}, {20}, {30}, {31}, {32}, {33}, {34},
+				},
+			},
+		},
+	},
+	{
+		Name: "insert into auto_increment unique key column",
+		SetUpScript: []string{
+			"create table auto (pk int primary key, npk int unique auto_increment)",
+			"insert into auto (pk) values (10), (20), (30)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from auto order by 1",
+				Expected: []sql.Row{
+					{10, 1}, {20, 2}, {30, 3},
+				},
+			},
+		},
+	},
+	{
+		Name: "insert into auto_increment with multiple unique key columns",
+		SetUpScript: []string{
+			"create table auto (pk int primary key, npk1 int auto_increment, npk2 int, unique(npk1, npk2))",
+			"insert into auto (pk) values (10), (20), (30)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from auto order by 1",
+				Expected: []sql.Row{
+					{10, 1, nil}, {20, 2, nil}, {30, 3, nil},
+				},
+			},
+		},
+	},
+	{
+		Name:    "insert into auto_increment key/index column",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table auto_no_primary (i int auto_increment, index(i))",
+			"insert into auto_no_primary (i) values (0), (0), (0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from auto_no_primary order by 1",
+				Expected: []sql.Row{
+					{1}, {2}, {3},
+				},
+			},
+		},
+	},
+	{
+		Name:    "insert into auto_increment with multiple key/index columns",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table auto_no_primary (i int auto_increment, j int, index(i))",
+			"insert into auto_no_primary (i) values (0), (0), (0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from auto_no_primary order by 1",
+				Expected: []sql.Row{
+					{1, nil}, {2, nil}, {3, nil},
+				},
+			},
+		},
+	},
+	{
+		Name:    "auto increment table handles deletes",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table auto (pk int primary key auto_increment)",
+			"insert into auto values (10)",
+			"delete from auto where pk = 10",
+			"insert into auto values (NULL)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from auto order by 1",
+				Expected: []sql.Row{
+					{11},
+				},
+			},
+		},
+	},
+	{
+		Name:    "create auto_increment table with out-of-line primary key def",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			`create table auto (
+				pk int auto_increment,
+				c0 int,
+				primary key(pk)
+			);`,
+			"insert into auto values (NULL,10), (NULL,20), (NULL,30)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from auto order by 1",
+				Expected: []sql.Row{
+					{1, 10}, {2, 20}, {3, 30},
+				},
+			},
+		},
+	},
+	{
+		Name:    "alter auto_increment value",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			`create table auto (
+				pk int auto_increment,
+				c0 int,
+				primary key(pk)
+			);`,
+			"insert into auto values (NULL,10), (NULL,20), (NULL,30)",
+			"alter table auto auto_increment 9;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT AUTO_INCREMENT FROM information_schema.tables WHERE table_name = 'auto' AND table_schema = DATABASE()",
+				Expected: []sql.Row{{uint64(9)}},
+			},
+			{
+				Query: "insert into auto values (NULL,90)",
+				Expected: []sql.Row{{types.OkResult{
+					RowsAffected: 1,
+					InsertID:     9,
+				}}},
+			},
+			{
+				Query: "select * from auto order by 1",
+				Expected: []sql.Row{
+					{1, 10}, {2, 20}, {3, 30}, {9, 90},
+				},
+			},
+		},
+	},
+	{
+		Name:    "alter auto_increment value to float",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			`create table auto (
+				pk int auto_increment,
+				c0 int,
+				primary key(pk)
+			);`,
+			"insert into auto values (NULL,10), (NULL,20), (NULL,30)",
+			"alter table auto auto_increment = 19.9;",
+			"insert into auto values (NULL,190)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from auto order by 1",
+				Expected: []sql.Row{
+					{1, 10}, {2, 20}, {3, 30}, {19, 190},
+				},
+			},
+		},
+	},
+	{
+		Name:    "auto increment on tinyint",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table auto (pk tinyint primary key auto_increment)",
+			"insert into auto values (NULL),(10),(0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from auto order by 1",
+				Expected: []sql.Row{
+					{1}, {10}, {11},
+				},
+			},
+		},
+	},
+	{
+		Name:    "auto increment on smallint",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table auto (pk smallint primary key auto_increment)",
+			"insert into auto values (NULL),(10),(0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from auto order by 1",
+				Expected: []sql.Row{
+					{1}, {10}, {11},
+				},
+			},
+		},
+	},
+	{
+		Name:    "auto increment on mediumint",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table auto (pk mediumint primary key auto_increment)",
+			"insert into auto values (NULL),(10),(0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from auto order by 1",
+				Expected: []sql.Row{
+					{1}, {10}, {11},
+				},
+			},
+		},
+	},
+	{
+		Name:    "auto increment on int",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table auto (pk int primary key auto_increment)",
+			"insert into auto values (NULL),(10),(0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from auto order by 1",
+				Expected: []sql.Row{
+					{1}, {10}, {11},
+				},
+			},
+		},
+	},
+	{
+		Name:    "auto increment on bigint",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table auto (pk bigint primary key auto_increment)",
+			"insert into auto values (NULL),(10),(0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from auto order by 1",
+				Expected: []sql.Row{
+					{1}, {10}, {11},
+				},
+			},
+		},
+	},
+	{
+		Name:    "auto increment on tinyint unsigned",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table auto (pk tinyint unsigned primary key auto_increment)",
+			"insert into auto values (NULL),(10),(0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from auto order by 1",
+				Expected: []sql.Row{
+					{uint64(1)}, {uint64(10)}, {uint64(11)},
+				},
+			},
+		},
+	},
+	{
+		Name:    "auto increment on smallint unsigned",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table auto (pk smallint unsigned primary key auto_increment)",
+			"insert into auto values (NULL),(10),(0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from auto order by 1",
+				Expected: []sql.Row{
+					{uint64(1)}, {uint64(10)}, {uint64(11)},
+				},
+			},
+		},
+	},
+	{
+		Name:    "auto increment on mediumint unsigned",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table auto (pk mediumint unsigned primary key auto_increment)",
+			"insert into auto values (NULL),(10),(0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from auto order by 1",
+				Expected: []sql.Row{
+					{uint64(1)}, {uint64(10)}, {uint64(11)},
+				},
+			},
+		},
+	},
+	{
+		Name:    "auto increment on int unsigned",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table auto (pk int unsigned primary key auto_increment)",
+			"insert into auto values (NULL),(10),(0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from auto order by 1",
+				Expected: []sql.Row{
+					{uint64(1)}, {uint64(10)}, {uint64(11)},
+				},
+			},
+		},
+	},
+	{
+		Name:    "auto increment on bigint unsigned",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table auto (pk bigint unsigned primary key auto_increment)",
+			"insert into auto values (NULL),(10),(0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from auto order by 1",
+				Expected: []sql.Row{
+					{uint64(1)}, {uint64(10)}, {uint64(11)},
+				},
+			},
+		},
+	},
+	{
+		Name:    "sql_mode=NO_auto_value_ON_ZERO",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"set @old_sql_mode=@@sql_mode;",
+			"set @@sql_mode='NO_auto_value_ON_ZERO';",
+			"create table auto (i int auto_increment, index (i));",
+			"create table auto_pk (i int auto_increment primary key);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select auto_increment from information_schema.tables where table_name='auto' and table_schema=database()",
+				Expected: []sql.Row{
+					{nil},
+				},
+			},
+			{
+				Query: "insert into auto values (0), (0), (1-1)",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 3, InsertID: 0}},
+				},
+			},
+			{
+				Query: "select * from auto order by i",
+				Expected: []sql.Row{
+					{0},
+					{0},
+					{0},
+				},
+			},
+			{
+				Query: "select auto_increment from information_schema.tables where table_name='auto' and table_schema=database()",
+				Expected: []sql.Row{
+					{nil},
+				},
+			},
+			{
+				Query: "insert into auto values (1)",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1, InsertID: 1}},
+				},
+			},
+			{
+				Query: "select auto_increment from information_schema.tables where table_name='auto' and table_schema=database()",
+				Expected: []sql.Row{
+					{uint64(2)},
+				},
+			},
+
+			{
+				Query: "select auto_increment from information_schema.tables where table_name='auto_pk' and table_schema=database()",
+				Expected: []sql.Row{
+					{nil},
+				},
+			},
+			{
+				Query:       "insert into auto_pk values (0), (1), (NULL), ()",
+				ExpectedErr: sql.ErrInsertIntoMismatchValueCount,
+			},
+			{
+				Query:    "select * from auto_pk",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select auto_increment from information_schema.tables where table_name='auto_pk' and table_schema=database()",
+				Expected: []sql.Row{
+					{nil},
+				},
+			},
+
+			{
+				// restore old sql_mode just in case
+				SkipResultsCheck: true,
+				Query:            "set @@sql_mode=@old_sql_mode",
+			},
+		},
+	},
+}
+
+var InsertAutoIncrementErrorScripts = []ScriptTest{
+	{
+		Name:        "create table with non-pk auto_increment column",
+		Query:       "create table bad (pk int primary key, c0 int auto_increment);",
+		ExpectedErr: sql.ErrInvalidAutoIncCols,
+	},
+	{
+		Name:        "create multiple auto_increment columns",
+		Query:       "create table bad (pk1 int auto_increment, pk2 int auto_increment, primary key (pk1,pk2));",
+		ExpectedErr: sql.ErrInvalidAutoIncCols,
+	},
+	{
+		Name:        "create auto_increment column with default",
+		Query:       "create table bad (pk1 int auto_increment default 10, c0 int);",
+		ExpectedErr: sql.ErrInvalidAutoIncCols,
+	},
+}
+
+var BrokenAutoIncrementScripts = []ScriptTest{
+	{
+		// https://github.com/dolthub/dolt/issues/3157
+		Name: "auto increment does not increment on error",
+		SetUpScript: []string{
+			"create table auto1 (pk int primary key auto_increment);",
+			"insert into auto1 values (null);",
+			"create table auto2 (pk int primary key auto_increment, c int not null);",
+			"insert into auto2 values (null, 1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table auto1;",
+				Expected: []sql.Row{
+					{"auto1", "CREATE TABLE `auto1` (\n" +
+						"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
+						"  PRIMARY KEY (`pk`)\n" +
+						") ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query:       "insert into auto1 values (1);",
+				ExpectedErr: sql.ErrPrimaryKeyViolation,
+			},
+			{
+				Query: "show create table auto1;",
+				Expected: []sql.Row{
+					{"auto1", "CREATE TABLE `auto1` (\n" +
+						"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
+						"  PRIMARY KEY (`pk`)\n" +
+						") ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "insert into auto1 values (null);",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1, InsertID: 2}},
+				},
+			},
+			{
+				Query: "show create table auto1;",
+				Expected: []sql.Row{
+					{"auto1", "CREATE TABLE `auto1` (\n" +
+						"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
+						"  PRIMARY KEY (`pk`)\n" +
+						") ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "select * from auto1;",
+				Expected: []sql.Row{
+					{1},
+					{2},
+				},
+			},
+
+			{
+				Query: "show create table auto2;",
+				Expected: []sql.Row{
+					{"auto2", "CREATE TABLE `auto2` (\n" +
+						"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
+						"  `c` int NOT NULL,\n" +
+						"  PRIMARY KEY (`pk`)\n" +
+						") ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query:       "insert into auto2 values (null, null);",
+				ExpectedErr: sql.ErrInsertIntoNonNullableProvidedNull,
+			},
+			{
+				Query: "show create table auto2;",
+				Expected: []sql.Row{
+					{"auto2", "CREATE TABLE `auto2` (\n" +
+						"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
+						"  `c` int NOT NULL,\n" +
+						"  PRIMARY KEY (`pk`)\n" +
+						") ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "insert into auto2 values (null, 2);",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1, InsertID: 2}},
+				},
+			},
+			{
+				Query: "show create table auto2;",
+				Expected: []sql.Row{
+					{"auto2", "CREATE TABLE `auto2` (\n" +
+						"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
+						"  `c` int NOT NULL,\n" +
+						"  PRIMARY KEY (`pk`)\n" +
+						") ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "select * from auto2;",
+				Expected: []sql.Row{
+					{1, 1},
+					{2, 2},
+				},
+			},
+		},
+	},
+}

@@ -2776,3 +2776,100 @@ var NoDbProcedureTests = []ScriptTestAssertion{
 		ExpectedErr: sql.ErrNoDatabaseSelected,
 	},
 }
+
+// ProceduresScriptTests contains self-contained procedures script tests.
+var ProceduresScriptTests = []ScriptTest{
+	{
+		// https://github.com/dolthub/dolt/issues/9865
+		Name:    "Stored procedure containing a transaction does not return EOF",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE test_table (id INT PRIMARY KEY, name TEXT)",
+			`CREATE PROCEDURE my_proc()
+BEGIN
+    START TRANSACTION;
+    INSERT INTO test_table VALUES (1, 'test');
+    COMMIT;
+END`,
+			`CREATE PROCEDURE empty_procedure()
+BEGIN
+END`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CALL my_proc()",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0, InsertID: 0, Info: nil}}},
+			},
+			{
+				Query:    "SELECT * FROM test_table",
+				Expected: []sql.Row{{1, "test"}},
+			},
+			{
+				Query:    "CALL empty_procedure()",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0, InsertID: 0, Info: nil}}},
+			},
+		},
+	},
+	{
+		// All DECLARE statements are only allowed under BEGIN/END blocks
+		Name: "Top-level DECLARE statements",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "DECLARE no_such_table CONDITION FOR SQLSTATE '42S02'",
+				ExpectedErr: sql.ErrSyntaxError,
+			},
+			{
+				Query:       "DECLARE no_such_table CONDITION FOR 1051",
+				ExpectedErr: sql.ErrSyntaxError,
+			},
+			{
+				Query:       "DECLARE a CHAR(16)",
+				ExpectedErr: sql.ErrSyntaxError,
+			},
+			{
+				Query:       "DECLARE cur2 CURSOR FOR SELECT i FROM test.t2",
+				ExpectedErr: sql.ErrSyntaxError,
+			},
+			{
+				Query:       "DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = TRUE",
+				ExpectedErr: sql.ErrSyntaxError,
+			},
+		},
+	},
+}
+
+var BrokenProcedureScriptTests = []ScriptTest{
+	{
+		Name: "non-existent procedure in trigger body",
+		SetUpScript: []string{
+			"CREATE TABLE XA(YW VARCHAR(24) NOT NULL, XB VARCHAR(100), XC VARCHAR(2500),\n  XD VARCHAR(2500), XE VARCHAR(100), XF VARCHAR(100), XG VARCHAR(100),\n  XI VARCHAR(100), XJ VARCHAR(100), XK VARCHAR(100), XL VARCHAR(100),\n  XM VARCHAR(1000), XN TEXT, XO TEXT, PRIMARY KEY (YW));",
+			"CREATE TABLE XP(YW VARCHAR(24) NOT NULL, XQ VARCHAR(100) NOT NULL,\n  XR VARCHAR(1000), PRIMARY KEY (YW));",
+			"CREATE TABLE XS(YW VARCHAR(24) NOT NULL, XT VARCHAR(24) NOT NULL,\n  XU VARCHAR(24), XV VARCHAR(100) NOT NULL, XW DOUBLE NOT NULL,\n  XX DOUBLE NOT NULL, XY VARCHAR(100), XC VARCHAR(100), XZ VARCHAR(100) NOT NULL,\n  YA DOUBLE, YB VARCHAR(24) NOT NULL, YC VARCHAR(1000), XO VARCHAR(1000),\n  YD DOUBLE NOT NULL, YE DOUBLE NOT NULL, PRIMARY KEY (YW));",
+			"CREATE TABLE YF(YW VARCHAR(24) NOT NULL, XB VARCHAR(100) NOT NULL, YG VARCHAR(100),\n  YH VARCHAR(100), XO TEXT, PRIMARY KEY (YW));",
+			"CREATE TABLE yp(YW VARCHAR(24) NOT NULL, XJ VARCHAR(100) NOT NULL, XL VARCHAR(100),\n  XT VARCHAR(24) NOT NULL, YI INT NOT NULL, XO VARCHAR(1000), PRIMARY KEY (YW),\n  FOREIGN KEY (XT) REFERENCES XP (YW));",
+			"INSERT INTO XS VALUES ('', '', NULL, 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC', 0, 0,\n  NULL, NULL, '', NULL, '', NULL, NULL, 0, 0);",
+			"INSERT INTO YF VALUES ('', '', NULL, NULL, NULL);",
+			"INSERT INTO XA VALUES ('', '', '', '', '', 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC',\n  '', '', '', '', '', '', '', '');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT DISTINCT YM.YW AS YW,\n  (SELECT YW FROM YF WHERE YF.XB = YM.XB) AS YF_YW,\n  (\n    SELECT YW\n    FROM yp\n    WHERE\n      yp.XJ = YM.XJ AND\n      (yp.XL = YM.XL OR (yp.XL IS NULL AND YM.XL IS NULL)) AND\n      yp.XT = nd.XT\n    ) AS YJ,\n  XE AS XE,\n  XI AS YO,\n  XK AS XK,\n  XM AS XM,\n  CASE\n    WHEN YM.XO <> 'Z'\n  THEN YM.XO\n  ELSE NULL\n  END AS XO\n  FROM (\n    SELECT YW, XB, XC, XE, XF, XI, XJ, XK,\n      CASE WHEN XL = 'Z' OR XL = 'Z' THEN NULL ELSE XL END AS XL,\n      XM, XO\n    FROM XA\n  ) YM\n  INNER JOIN XS nd\n    ON nd.XV = XF\n  WHERE\n    XB IN (SELECT XB FROM YF) AND\n    (XF IS NOT NULL AND XF <> 'Z')\n  UNION\n  SELECT DISTINCT YL.YW AS YW,\n    (\n      SELECT YW\n      FROM YF\n      WHERE YF.XB = YL.XB\n    ) AS YF_YW,\n    (\n      SELECT YW FROM yp\n      WHERE\n        yp.XJ = YL.XJ AND\n        (yp.XL = YL.XL OR (yp.XL IS NULL AND YL.XL IS NULL)) AND\n        yp.XT = YN.XT\n    ) AS YJ,\n    XE AS XE,\n    XI AS YO,\n    XK AS XK,\n    XM AS XM,\n    CASE WHEN YL.XO <> 'Z' THEN YL.XO ELSE NULL END AS XO\n  FROM (\n    SELECT YW, XB, XC, XE, XF, XI, XJ, XK,\n      CASE WHEN XL = 'Z' OR XL = 'Z' THEN NULL ELSE XL END AS XL,\n      XM, XO\n      FROM XA\n  ) YL\n  INNER JOIN XS YN\n    ON YN.XC = YL.XC\n  WHERE\n    XB IN (SELECT XB FROM YF) AND \n    (XF IS NULL OR XF = 'Z');",
+				Expected: []sql.Row{{"", "", "", "", "", "", "", ""}},
+			},
+		},
+	},
+	{
+		Name: "non-existent procedure in trigger body",
+		SetUpScript: []string{
+			"create table tbl_I (i int primary key);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "alter table tbl_i add column j int, add check (j < 10);",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+		},
+	},
+}

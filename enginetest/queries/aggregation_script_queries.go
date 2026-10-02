@@ -1150,3 +1150,540 @@ var AggregationScriptTests = []ScriptTest{
 		},
 	},
 }
+
+var GroupByScriptTests = []ScriptTest{
+	{
+		Name: "Basic order by/group by cases",
+		SetUpScript: []string{
+			"use mydb;",
+			"create table members (id bigint primary key, team text);",
+			"insert into members values (3,'red'), (4,'red'),(5,'orange'),(6,'orange'),(7,'orange'),(8,'purple');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select team as f from members order by id, f",
+				Expected: []sql.Row{{"red"}, {"red"}, {"orange"}, {"orange"}, {"orange"}, {"purple"}},
+			},
+			{
+				Query: "SELECT team, COUNT(*) FROM members GROUP BY team ORDER BY 2",
+				Expected: []sql.Row{
+					{"purple", int64(1)},
+					{"red", int64(2)},
+					{"orange", int64(3)},
+				},
+			},
+			{
+				Query: "SELECT team, COUNT(*) FROM members GROUP BY 1 ORDER BY 2",
+				Expected: []sql.Row{
+					{"purple", int64(1)},
+					{"red", int64(2)},
+					{"orange", int64(3)},
+				},
+			},
+			{
+				Query:       "SELECT team, COUNT(*) FROM members GROUP BY team ORDER BY columndoesnotexist",
+				ExpectedErr: sql.ErrColumnNotFound,
+			},
+			{
+				Query:    "SELECT DISTINCT BINARY t1.id as id FROM members AS t1 JOIN members AS t2 ON t1.id = t2.id WHERE t1.id > 0 ORDER BY BINARY t1.id",
+				Expected: []sql.Row{{[]uint8{0x33}}, {[]uint8{0x34}}, {[]uint8{0x35}}, {[]uint8{0x36}}, {[]uint8{0x37}}, {[]uint8{0x38}}},
+			},
+			{
+				Query:    "SELECT DISTINCT BINARY t1.id as id FROM members AS t1 JOIN members AS t2 ON t1.id = t2.id WHERE t1.id > 0 ORDER BY t1.id",
+				Expected: []sql.Row{{[]uint8{0x33}}, {[]uint8{0x34}}, {[]uint8{0x35}}, {[]uint8{0x36}}, {[]uint8{0x37}}, {[]uint8{0x38}}},
+			},
+			{
+				Query:    "SELECT DISTINCT t1.id as id FROM members AS t1 JOIN members AS t2 ON t1.id = t2.id WHERE t2.id > 0 ORDER BY t1.id",
+				Expected: []sql.Row{{3}, {4}, {5}, {6}, {7}, {8}},
+			},
+			{
+				// aliases from outer scopes can be used in a subquery's having clause.
+				// https://github.com/dolthub/dolt/issues/4723
+				Query:    "SELECT id as alias1, (SELECT alias1+1 group by alias1 having alias1 > 0) FROM members where id < 6;",
+				Expected: []sql.Row{{3, 4}, {4, 5}, {5, 6}},
+			},
+			{
+				// columns from outer scopes can be used in a subquery's having clause.
+				// https://github.com/dolthub/dolt/issues/4723
+				Query:    "SELECT id, (SELECT UPPER(team) having id > 3) as upper_team FROM members where id < 6;",
+				Expected: []sql.Row{{3, nil}, {4, "RED"}, {5, "ORANGE"}},
+			},
+			{
+				// When there is ambiguity between a reference in an outer scope and a reference in the current
+				// scope, the reference in the innermost scope will be used.
+				// https://github.com/dolthub/dolt/issues/4723
+				Query:    "SELECT id, (SELECT -1 as id having id < 10) as upper_team FROM members where id < 6;",
+				Expected: []sql.Row{{3, -1}, {4, -1}, {5, -1}},
+			},
+		},
+	},
+	{
+		Name: "Group by BINARY: https://github.com/dolthub/dolt/issues/6179",
+		SetUpScript: []string{
+			"create table t (s varchar(100));",
+			"insert into t values ('abc'), ('def');",
+			"create table t1 (b binary(3));",
+			"insert into t1 values ('abc'), ('abc'), ('def'), ('abc'), ('def');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select binary s from t group by binary s order by binary s",
+				Expected: []sql.Row{
+					{[]uint8("abc")},
+					{[]uint8("def")},
+				},
+			},
+			{
+				Query: "select count(b), b from t1 group by b order by b",
+				Expected: []sql.Row{
+					{3, []uint8("abc")},
+					{2, []uint8("def")},
+				},
+			},
+			{
+				Query:       "select binary s from t group by binary s order by s",
+				ExpectedErr: analyzererrors.ErrValidationGroupByOrderBy,
+			},
+		},
+	},
+	{
+		Name: "https://github.com/dolthub/dolt/issues/3016",
+		SetUpScript: []string{
+			"CREATE TABLE `users` (`id` int NOT NULL AUTO_INCREMENT,  `username` varchar(255) NOT NULL,  PRIMARY KEY (`id`));",
+			"INSERT INTO `users` (`id`,`username`) VALUES (1,'u2');",
+			"INSERT INTO `users` (`id`,`username`) VALUES (2,'u3');",
+			"INSERT INTO `users` (`id`,`username`) VALUES (3,'u4');",
+			"CREATE TABLE `tweet` (`id` int NOT NULL AUTO_INCREMENT,  `user_id` int NOT NULL,  `content` text NOT NULL,  `timestamp` bigint NOT NULL,  PRIMARY KEY (`id`),  KEY `tweet_user_id` (`user_id`));",
+			"INSERT INTO `tweet` (`id`,`user_id`,`content`,`timestamp`) VALUES (1,1,'meow',1647463727);",
+			"INSERT INTO `tweet` (`id`,`user_id`,`content`,`timestamp`) VALUES (2,1,'purr',1647463727);",
+			"INSERT INTO `tweet` (`id`,`user_id`,`content`,`timestamp`) VALUES (3,2,'hiss',1647463727);",
+			"INSERT INTO `tweet` (`id`,`user_id`,`content`,`timestamp`) VALUES (4,3,'woof',1647463727);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT t1.username, COUNT(t1.id) FROM ((SELECT t2.id, t2.content, t3.username FROM tweet AS t2 INNER JOIN users AS t3 ON (-t2.user_id = -t3.id) WHERE (t3.username = 'u3')) UNION (SELECT t4.id, t4.content, `t5`.`username` FROM `tweet` AS t4 INNER JOIN users AS t5 ON (-t4.user_id = -t5.id) WHERE (t5.username IN ('u2', 'u4')))) AS t1 GROUP BY `t1`.`username` ORDER BY 1,2 DESC;",
+				Expected: []sql.Row{{"u2", 2}, {"u3", 1}, {"u4", 1}},
+			},
+			{
+				Query:    "SELECT t1.username, COUNT(t1.id) AS ct FROM ((SELECT t2.id, t2.content, t3.username FROM tweet AS t2 INNER JOIN users AS t3 ON (-t2.user_id = -t3.id) WHERE (t3.username = 'u3')) UNION (SELECT t4.id, t4.content, `t5`.`username` FROM `tweet` AS t4 INNER JOIN users AS t5 ON (-t4.user_id = -t5.id) WHERE (t5.username IN ('u2', 'u4')))) AS t1 GROUP BY `t1`.`username` ORDER BY 1,2 DESC;",
+				Expected: []sql.Row{{"u2", 2}, {"u3", 1}, {"u4", 1}},
+			},
+			{
+				Query:    "SELECT COUNT(id) as ct, user_id as uid FROM tweet GROUP BY tweet.user_id ORDER BY COUNT(id), user_id;",
+				Expected: []sql.Row{{1, 2}, {1, 3}, {2, 1}},
+			},
+			{
+				Query:    "SELECT COUNT(tweet.id) as ct, user_id as uid FROM tweet GROUP BY tweet.user_id ORDER BY COUNT(id), user_id;",
+				Expected: []sql.Row{{1, 2}, {1, 3}, {2, 1}},
+			},
+			{
+				Query:    "SELECT COUNT(id) as ct, user_id as uid FROM tweet GROUP BY tweet.user_id ORDER BY COUNT(tweet.id), user_id;",
+				Expected: []sql.Row{{1, 2}, {1, 3}, {2, 1}},
+			},
+			{
+				Query:    "SELECT COUNT(id) as ct, user_id as uid FROM tweet GROUP BY tweet.user_id HAVING COUNT(tweet.id) > 0 ORDER BY COUNT(tweet.id), user_id;",
+				Expected: []sql.Row{{1, 2}, {1, 3}, {2, 1}},
+			},
+			{
+				Query:    "SELECT COUNT(id) as ct, user_id as uid FROM tweet WHERE tweet.id is NOT NULL GROUP BY tweet.user_id ORDER BY COUNT(tweet.id), user_id;",
+				Expected: []sql.Row{{1, 2}, {1, 3}, {2, 1}},
+			},
+			{
+				Query:    "SELECT COUNT(id) as ct, user_id as uid FROM tweet WHERE tweet.id is NOT NULL GROUP BY tweet.user_id HAVING COUNT(tweet.id) > 0 ORDER BY COUNT(tweet.id), user_id;",
+				Expected: []sql.Row{{1, 2}, {1, 3}, {2, 1}},
+			},
+			{
+				Query:    "SELECT COUNT(id) as ct, user_id as uid FROM tweet WHERE tweet.id is NOT NULL GROUP BY tweet.user_id HAVING COUNT(tweet.id) > 0 ORDER BY COUNT(tweet.id), user_id LIMIT 1;",
+				Expected: []sql.Row{{1, 2}},
+			},
+		},
+	},
+	{
+		Name: "Group by with decimal columns",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT column_0, sum(column_1) FROM (values row(1.00,1), row(1.00,3), row(2,2), row(2,5), row(3,9)) a group by 1 order by 1;",
+				Expected: []sql.Row{{"1.00", float64(4)}, {"2.00", float64(7)}, {"3.00", float64(9)}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/4739
+		Name: "Validation for use of non-aggregated columns with implicit grouping of all rows",
+		SetUpScript: []string{
+			"CREATE TABLE t (num INTEGER, val DOUBLE);",
+			"INSERT INTO t VALUES (1, 0.01), (2,0.5);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "SELECT AVG(val), LAST_VALUE(val) OVER w FROM t WINDOW w AS (ORDER BY num RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING);",
+				ExpectedErr: sql.ErrNonAggregatedColumnWithoutGroupBy,
+			},
+			{
+				Query:       "SELECT 1 + AVG(val) + 1, LAST_VALUE(val) OVER w FROM t WINDOW w AS (ORDER BY num RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING);",
+				ExpectedErr: sql.ErrNonAggregatedColumnWithoutGroupBy,
+			},
+			{
+				Query:       "SELECT AVG(1), 1 + LAST_VALUE(val) OVER w FROM t WINDOW w AS (ORDER BY num RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING);",
+				ExpectedErr: sql.ErrNonAggregatedColumnWithoutGroupBy,
+			},
+			{
+				Query:       "select AVG(val), val from t;",
+				ExpectedErr: sql.ErrNonAggregatedColumnWithoutGroupBy,
+			},
+			{
+				// Test validation for a derived table opaque node
+				Query:       "select * from (SELECT AVG(val), LAST_VALUE(val) OVER w FROM t WINDOW w AS (ORDER BY num RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)) as dt;",
+				ExpectedErr: sql.ErrNonAggregatedColumnWithoutGroupBy,
+			},
+			{
+				// Test validation for a union opaque node
+				Query:       "select 1, 1 union SELECT AVG(val), LAST_VALUE(val) OVER w FROM t WINDOW w AS (ORDER BY num RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING);",
+				ExpectedErr: sql.ErrNonAggregatedColumnWithoutGroupBy,
+			},
+			{
+				// Test validation for a recursive CTE opaque node
+				Query:       "select * from (with recursive a as (select 1 as c1, 1 as c2 union SELECT AVG(t.val), LAST_VALUE(t.val) OVER w FROM t WINDOW w AS (ORDER BY num RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)) select * from a union select * from a limit 1) as dt;",
+				ExpectedErr: sql.ErrNonAggregatedColumnWithoutGroupBy,
+			},
+		},
+	},
+	{
+		Name: "group by with any_value()",
+		SetUpScript: []string{
+			"use mydb;",
+			"create table members (id bigint primary key, team text);",
+			"insert into members values (3,'red'), (4,'red'),(5,'orange'),(6,'orange'),(7,'orange'),(8,'purple');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select @@global.sql_mode",
+				Expected: []sql.Row{
+					{"ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION"},
+				},
+			},
+			{
+				Query: "select @@session.sql_mode",
+				Expected: []sql.Row{
+					{"ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION"},
+				},
+			},
+			{
+				Query: "select any_value(id), any_value(team) from members order by id",
+				Expected: []sql.Row{
+					{3, "red"},
+					{4, "red"},
+					{5, "orange"},
+					{6, "orange"},
+					{7, "orange"},
+					{8, "purple"},
+				},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11912
+		Name: "any_value() inside an aggregate function",
+		SetUpScript: []string{
+			"use mydb;",
+			"create table members (id bigint primary key, team text);",
+			"insert into members values (3,'red'), (4,'red'),(5,'orange'),(6,'orange'),(7,'orange'),(8,'purple');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select max(any_value(team)) from members",
+				Expected: []sql.Row{{"red"}},
+			},
+			{
+				Query:    "select any_value(max(team)) from members",
+				Expected: []sql.Row{{"red"}},
+			},
+			{
+				Query:    "select any_value(max(id) + 1) from members",
+				Expected: []sql.Row{{int64(9)}},
+			},
+			{
+				Query:    "select any_value(max(id) + min(id)) from members",
+				Expected: []sql.Row{{int64(11)}},
+			},
+			{
+				Query:    "select any_value(case when 1=1 then max(id) else 0 end) from members",
+				Expected: []sql.Row{{int64(8)}},
+			},
+			{
+				Query: "select any_value(group_concat(team order by id)) from members",
+				// group_concat is a MySQL-specific aggregation function.
+				Dialect:  "mysql",
+				Expected: []sql.Row{{"red,red,orange,orange,orange,purple"}},
+			},
+			{
+				Query:    "select max(any_value(any_value(id))) from members",
+				Expected: []sql.Row{{8}},
+			},
+			{
+				Query:    "select sum(any_value(id)) from members",
+				Expected: []sql.Row{{float64(33)}},
+			},
+			{
+				Query:    "select count(distinct any_value(team)) from members",
+				Expected: []sql.Row{{3}},
+			},
+			{
+				Query: "select group_concat(any_value(team) order by id) from members",
+				// group_concat is a MySQL-specific aggregation function.
+				Dialect:  "mysql",
+				Expected: []sql.Row{{"red,red,orange,orange,orange,purple"}},
+			},
+			{
+				Query:    "select any_value((select team from members where id = 3)) from members limit 1",
+				Expected: []sql.Row{{"red"}},
+			},
+			{
+				Query:       "select id, max(any_value(team)) from members",
+				ExpectedErr: sql.ErrNonAggregatedColumnWithoutGroupBy,
+			},
+			{
+				Query:       "select any_value() from members",
+				ExpectedErr: sql.ErrInvalidArgumentNumber,
+			},
+			{
+				Query:       "select any_value(id, team) from members",
+				ExpectedErr: sql.ErrInvalidArgumentNumber,
+			},
+			{
+				Query:       "select max(any_value()) from members",
+				ExpectedErr: sql.ErrInvalidArgumentNumber,
+			},
+			{
+				Query:       "select max(any_value(id, team)) from members",
+				ExpectedErr: sql.ErrInvalidArgumentNumber,
+			},
+			{
+				Query:       "select any_value(max(sum(id))) from members",
+				ExpectedErr: sql.ErrInvalidGroupFuncUse,
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11912
+		Name: "invalid nested aggregate functions",
+		SetUpScript: []string{
+			"use mydb;",
+			"create table members (id bigint primary key, team text);",
+			"insert into members values (3,'red'), (4,'red'),(5,'orange'),(6,'orange'),(7,'orange'),(8,'purple');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "select max(sum(id)) from members",
+				ExpectedErr: sql.ErrInvalidGroupFuncUse,
+			},
+			{
+				Query: "select max(group_concat(team)) from members",
+				// group_concat is a MySQL-specific aggregation function.
+				Dialect:     "mysql",
+				ExpectedErr: sql.ErrInvalidGroupFuncUse,
+			},
+			{
+				Query:       "select max(sum(count(id))) from members",
+				ExpectedErr: sql.ErrInvalidGroupFuncUse,
+			},
+		},
+	},
+	{
+		Name: "group by with strict errors",
+		SetUpScript: []string{
+			"use mydb;",
+			"create table members (id bigint primary key, team text);",
+			"insert into members values (3,'red'), (4,'red'),(5,'orange'),(6,'orange'),(7,'orange'),(8,'purple');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select @@global.sql_mode",
+				Expected: []sql.Row{
+					{"ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION"},
+				},
+			},
+			{
+				Query: "select @@session.sql_mode",
+				Expected: []sql.Row{
+					{"ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION"},
+				},
+			},
+			{
+				Query:       "select id, team from members group by team",
+				ExpectedErr: analyzererrors.ErrValidationGroupBy,
+			},
+		},
+	},
+	{
+		Name: "Group by null handling",
+		// https://github.com/dolthub/go-mysql-server/issues/1503
+		SetUpScript: []string{
+			"create table t (pk int primary key, c1 varchar(10));",
+			"insert into t values (1, 'foo'), (2, 'foo'), (3, NULL);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select c1, count(pk) from t group by c1;",
+				Expected: []sql.Row{
+					{"foo", 2},
+					{nil, 1},
+				},
+			},
+			{
+				Query: "select c1, count(c1) from t group by c1;",
+				Expected: []sql.Row{
+					{"foo", 2},
+					{nil, 0},
+				},
+			},
+		},
+	},
+	{
+		Name: "Group by true and 1",
+		// https://github.com/dolthub/dolt/issues/9320
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t0(c0 int)",
+			"insert into t0(c0) values(1),(123)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select if(t0.c0 = 123, TRUE, t0.c0) AS ref0, min(t0.c0) as ref1 from t0 group by ref0",
+				Expected: []sql.Row{{1, 1}},
+			},
+		},
+	},
+	{
+		Name: "Group by null = 1",
+		// https://github.com/dolthub/dolt/issues/9035
+		SetUpScript: []string{
+			"create table t0(c0 int, c1 int)",
+			"insert into t0(c0, c1) values(NULL,1),(1,NULL)",
+			"create table t1(id int primary key, c0 int, c1 int)",
+			"insert into t1(id, c0, c1) values(1,NULL,NULL),(2,1,1),(3,1,NULL),(4,2,1),(5,NULL,1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select t0.c0 = t0.c1 as ref0, sum(1) as ref1 from t0 group by ref0",
+				Expected: []sql.Row{
+					{nil, float64(2)},
+				},
+			},
+			{
+				Query: "select t1.c0 = t1.c1 as ref0, sum(1) as ref1 from t1 group by ref0",
+				Expected: []sql.Row{
+					{nil, float64(3)},
+					{true, float64(1)},
+					{false, float64(1)},
+				},
+			},
+		},
+	},
+	{
+		Name: "valid group by order by queries",
+		SetUpScript: []string{
+			"create table t0(c0 int primary key, c1 int, c2 int, c3 int)",
+			"insert into t0 values (3, 1, 3, 1), (4, 1, 7, 2), (5, 2, 9, 3),(6,2, 1, 3), (7,2, 2, 2),(8,3,2, 5)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// group by primary key
+				Query:    "select c1 from t0 group by c0 order by c2",
+				Expected: []sql.Row{{2}, {2}, {3}, {1}, {1}, {2}},
+			},
+			{
+				// order by aggregate
+				Query:    "select c1 from t0 group by c1 order by min(c2)",
+				Expected: []sql.Row{{2}, {3}, {1}},
+			},
+			{
+				// order by alias for column in group by clause
+				Query:    "select c1 as col from t0 group by c1 order by col",
+				Expected: []sql.Row{{1}, {2}, {3}},
+			},
+			{
+				// order by alias for aggregate column
+				Query:    "select min(c0) as min, c1 from t0 group by c1 order by min",
+				Expected: []sql.Row{{3, 1}, {5, 2}, {8, 3}},
+			},
+			{
+				// order by multiple columns
+				Query:    "select c1 from t0 group by c1, c2, c3 order by c2, c3",
+				Expected: []sql.Row{{2}, {2}, {3}, {1}, {1}, {2}},
+			},
+			{
+				// order by functionally dependent column
+				Dialect:  "mysql",
+				Query:    "select c1 from t0 where c2 = 3 group by c1 order by c2",
+				Expected: []sql.Row{{1}},
+			},
+		},
+	},
+	{
+		Name:    "grouped correlated references depend on the outer primary key",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"SET SESSION sql_mode='ONLY_FULL_GROUP_BY'",
+			"CREATE TABLE teams (id INT PRIMARY KEY, name VARCHAR(50), region VARCHAR(50))",
+			"CREATE TABLE members (id INT PRIMARY KEY, team_id INT, name VARCHAR(50), FOREIGN KEY (team_id) REFERENCES teams(id))",
+			"INSERT INTO teams VALUES (1,'Alpha','East'),(2,'Beta','West')",
+			"INSERT INTO members VALUES (101,1,'A'),(102,1,'B'),(201,2,'C')",
+			"CREATE TABLE teams_no_key (id INT, name VARCHAR(50), region VARCHAR(50))",
+			"INSERT INTO teams_no_key SELECT * FROM teams",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT t.id, t.name, COUNT(m.id), (SELECT COUNT(*) FROM members m2 WHERE m2.team_id = t.id) FROM teams t LEFT JOIN members m ON m.team_id = t.id GROUP BY t.id, t.name ORDER BY t.id",
+				Expected: []sql.Row{{1, "Alpha", 2, 2}, {2, "Beta", 1, 1}},
+			},
+			{
+				// Grouping by the primary key also determines the correlated region.
+				Query:    "SELECT t.id, COUNT(m.id), (SELECT COUNT(*) FROM members m2 WHERE m2.team_id = t.id AND t.region = 'East') FROM teams t LEFT JOIN members m ON m.team_id = t.id GROUP BY t.id ORDER BY t.id",
+				Expected: []sql.Row{{1, 2, 2}, {2, 1, 0}},
+			},
+			{
+				// Without the key, region must be grouped explicitly.
+				Query:       "SELECT t.id, COUNT(m.id), (SELECT COUNT(*) FROM members m2 WHERE m2.team_id = t.id AND t.region = 'East') FROM teams_no_key t LEFT JOIN members m ON m.team_id = t.id GROUP BY t.id ORDER BY t.id",
+				ExpectedErr: analyzererrors.ErrValidationGroupBy,
+			},
+		},
+	},
+	{
+		Name: "functional dependence without a primary key",
+		SetUpScript: []string{
+			"create table teams (id varchar(8) not null, name varchar(16));",
+			"create table members (team_id varchar(8), role varchar(8));",
+			"insert into teams values ('a', 'alpha'), ('b', 'bravo');",
+			"insert into members values ('a', 'x'), ('a', 'y'), ('a', 'z'), ('b', 'x');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// an expression without column references has one value per group
+				Query:    "select curdate() is not null, count(*) from members",
+				Expected: []sql.Row{{true, 4}},
+			},
+			{
+				Query:    "select now() is not null, team_id, count(*) from members group by team_id order by team_id",
+				Expected: []sql.Row{{true, "a", 3}, {true, "b", 1}},
+			},
+			{
+				// a correlated subquery whose outer references are all grouped columns has one value per group
+				Query:    "select t.name, count(*), (select count(*) from members where team_id = t.id) from teams t group by t.id, t.name order by t.name",
+				Expected: []sql.Row{{"alpha", 1, 3}, {"bravo", 1, 1}},
+			},
+			{
+				Query:       "select team_id, role, count(*) from members group by team_id",
+				ExpectedErr: analyzererrors.ErrValidationGroupBy,
+			},
+			{
+				Query:       "select role, count(*) from members",
+				ExpectedErr: sql.ErrNonAggregatedColumnWithoutGroupBy,
+			},
+			{
+				Query:       "select t.name, count(*), (select count(*) from members where team_id = t.id) from teams t group by t.name",
+				ExpectedErr: analyzererrors.ErrValidationGroupBy,
+			},
+		},
+	},
+}
