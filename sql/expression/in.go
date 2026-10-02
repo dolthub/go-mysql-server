@@ -76,7 +76,6 @@ func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	lType := in.Left().Type(ctx)
 	lColCount := types.NumColumns(lType)
-	lLit := NewLiteral(lVal, lType)
 
 	right, isTuple := in.Right().(Tuple)
 	if !isTuple {
@@ -106,8 +105,8 @@ func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			continue
 		}
 
-		cmpExpr := newComparison(lLit, NewLiteral(rVal, rType))
-		res, cErr := cmpExpr.Compare(ctx, nil)
+		cmpExpr := newComparison(in.Left(), el)
+		res, cErr := cmpExpr.compareValues(ctx, lVal, rVal)
 		if cErr != nil {
 			// If res != 0, then the comparison is false even if the input contained a NULL.
 			if res == 0 && ErrNilOperand.Is(cErr) {
@@ -183,7 +182,8 @@ func NewHashInTuple(ctx *sql.Context, left, right sql.Expression) (*HashInTuple,
 		return nil, ErrUnsupportedInOperand.New(right)
 	}
 
-	cmp, cmpType, hasNull, hasTupleNull, err := newInMap(ctx, left.Type(ctx), rightTup)
+	collation, _ := sql.ResolveCoercibilityExpressions(ctx, append(Tuple{left}, rightTup...)...)
+	cmp, cmpType, hasNull, hasTupleNull, err := newInMap(ctx, left.Type(ctx), collation, rightTup)
 	if err != nil {
 		return nil, err
 	}
@@ -204,7 +204,7 @@ func NewHashInTuple(ctx *sql.Context, left, right sql.Expression) (*HashInTuple,
 //   - bool indicating if there are scalar NULL elements
 //   - bool indicating if there are tuple elements containing NULL
 //   - error
-func newInMap(ctx *sql.Context, lType sql.Type, right Tuple) (map[uint64]struct{}, sql.Type, bool, bool, error) {
+func newInMap(ctx *sql.Context, lType sql.Type, collation sql.CollationID, right Tuple) (map[uint64]struct{}, sql.Type, bool, bool, error) {
 	if lType == types.Null {
 		return nil, nil, true, false, nil
 	}
@@ -253,6 +253,9 @@ func newInMap(ctx *sql.Context, lType sql.Type, right Tuple) (map[uint64]struct{
 				continue
 			}
 			cmpType = types.GetCompareType(cmpType, rType)
+		}
+		if stringType, ok := cmpType.(sql.StringType); ok && types.IsTextOnly(stringType) {
+			cmpType = types.MustCreateString(stringType.Type(), stringType.Length(), collation)
 		}
 	}
 	elements := map[uint64]struct{}{}
