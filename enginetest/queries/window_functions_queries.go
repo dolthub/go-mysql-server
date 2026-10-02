@@ -2213,6 +2213,23 @@ WHERE total <> fourcount + twosum;`,
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/11558
+		Name:    "default backslash escaping in LIKE expression inside window child",
+		Dialect: "mysql",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT FIRST_VALUE('a_%' LIKE 'a\\_\\%') OVER () AS default_x1, " +
+					"FIRST_VALUE('aX%' LIKE 'a\\_\\%') OVER () AS default_x2, " +
+					"FIRST_VALUE('a_%' LIKE 'a!_!%' ESCAPE '!') OVER () AS explicit_x1, " +
+					"FIRST_VALUE('aX%' LIKE 'a!_!%' ESCAPE '!') OVER () AS explicit_x2 " +
+					"FROM (SELECT 1 AS z) q;",
+				Expected: []sql.Row{
+					{true, false, true, false},
+				},
+			},
+		},
+	},
 }
 
 // WindowRowFramesScriptTests tests window functions using ROWS frame specifications.
