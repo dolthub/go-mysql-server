@@ -6406,3 +6406,11 @@ func TestTableDefinitionsScripts(t *testing.T, harness Harness) {
 func TestTableDefinitionsScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.TableDefinitionsScriptTests, true)
 }
+
+func TestTransactionsScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.TransactionsScriptTests, false)
+}
+
+func TestTransactionsScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.TransactionsScriptTests, true)
+}

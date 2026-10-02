@@ -1271,3 +1271,7 @@ func TestSubqueriesScripts(t *testing.T) {
 func TestTableDefinitionsScripts(t *testing.T) {
 	enginetest.TestTableDefinitionsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
+
+func TestTransactionsScripts(t *testing.T) {
+	enginetest.TestTransactionsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}

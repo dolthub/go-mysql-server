@@ -23,68 +23,6 @@ import (
 // WritesScriptTests contains self-contained writes script tests.
 var WritesScriptTests = []ScriptTest{
 	{
-		Name: "failed statements data validation for INSERT, UPDATE",
-		SetUpScript: []string{
-			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 BIGINT, INDEX (v1));",
-			"INSERT INTO test VALUES (1,1), (4,4), (5,5);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:          "INSERT INTO test VALUES (2,2), (3,3), (1,1);",
-				ExpectedErrStr: "duplicate primary key given: [1]",
-			},
-			{
-				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{1, 1}, {4, 4}, {5, 5}},
-			},
-			{
-				Query:          "UPDATE test SET pk = pk + 1 ORDER BY pk;",
-				ExpectedErrStr: "duplicate primary key given: [5]",
-			},
-			{
-				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{1, 1}, {4, 4}, {5, 5}},
-			},
-		},
-	},
-	{
-		Name: "failed statements data validation for DELETE, REPLACE",
-		SetUpScript: []string{
-			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 BIGINT, INDEX (v1));",
-			"INSERT INTO test VALUES (1,1), (4,4), (5,5);",
-			"CREATE TABLE test2 (pk BIGINT PRIMARY KEY, CONSTRAINT fk_test FOREIGN KEY (pk) REFERENCES test (v1));",
-			"INSERT INTO test2 VALUES (4);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:       "DELETE FROM test WHERE pk > 0;",
-				ExpectedErr: sql.ErrForeignKeyParentViolation,
-			},
-			{
-				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{1, 1}, {4, 4}, {5, 5}},
-			},
-			{
-				Query:    "SELECT * FROM test2;",
-				Expected: []sql.Row{{4}},
-			},
-			{
-				Query:       "REPLACE INTO test VALUES (1,7), (4,8), (5,9);",
-				Dialect:     "mysql",
-				ExpectedErr: sql.ErrForeignKeyParentViolation,
-			},
-			{
-				Query:    "SELECT * FROM test;",
-				Dialect:  "mysql",
-				Expected: []sql.Row{{1, 1}, {4, 4}, {5, 5}},
-			},
-			{
-				Query:    "SELECT * FROM test2;",
-				Expected: []sql.Row{{4}},
-			},
-		},
-	},
-	{
 		Name: "empty table update",
 		SetUpScript: []string{
 			"create table t (i int primary key)",
