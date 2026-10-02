@@ -59,78 +59,6 @@ var SchemaScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name:    "ALTER TABLE, ALTER COLUMN SET, DROP DEFAULT",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 BIGINT NOT NULL DEFAULT 88);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "INSERT INTO test (pk) VALUES (1);",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
-			},
-			{
-				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{1, 88}},
-			},
-			{
-				Query:    "ALTER TABLE test ALTER v1 SET DEFAULT (CONVERT('42', SIGNED));",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query:    "INSERT INTO test (pk) VALUES (2);",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
-			},
-			{
-				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{1, 88}, {2, 42}},
-			},
-			{
-				Query:       "ALTER TABLE test ALTER v2 SET DEFAULT 1;",
-				ExpectedErr: sql.ErrTableColumnNotFound,
-			},
-			{
-				Query:    "ALTER TABLE test ALTER v1 DROP DEFAULT;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query:       "INSERT INTO test (pk) VALUES (3);",
-				ExpectedErr: sql.ErrFieldNoDefaultValue,
-			},
-			{
-				Query:       "ALTER TABLE test ALTER v2 DROP DEFAULT;",
-				ExpectedErr: sql.ErrTableColumnNotFound,
-			},
-			{ // Just confirms that the last INSERT didn't do anything
-				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{1, 88}, {2, 42}},
-			},
-			{
-				Query:    "ALTER TABLE test ALTER v1 SET DEFAULT 100, alter v1 DROP DEFAULT",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query:       "INSERT INTO test (pk) VALUES (2);",
-				ExpectedErr: sql.ErrFieldNoDefaultValue,
-			},
-			{
-				Query:    "ALTER TABLE test ALTER v1 SET DEFAULT 100, alter v1 SET DEFAULT 200",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query:       "ALTER TABLE test DROP COLUMN v1, alter v1 SET DEFAULT 5000",
-				ExpectedErr: sql.ErrTableColumnNotFound,
-			},
-			{
-				Query: "DESCRIBE test",
-				Expected: []sql.Row{
-					{"pk", "bigint", "NO", "PRI", nil, ""},
-					{"v1", "bigint", "NO", "", "200", ""},
-				},
-			},
-		},
-	},
-	{
 		Name: "CREATE TABLE SELECT Queries",
 		SetUpScript: []string{
 			`CREATE TABLE t1 (pk int PRIMARY KEY, v1 varchar(10))`,
@@ -223,25 +151,6 @@ var SchemaScriptTests = []ScriptTest{
 						"  `a` int DEFAULT (floor(1)),\n" +
 						"  `b` int DEFAULT (coalesce(`a`,10))\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-				},
-			},
-		},
-	},
-	{
-		Name: "alter json column default; from scorewarrior: https://github.com/dolthub/dolt/issues/4543",
-		SetUpScript: []string{
-			"CREATE TABLE test (i int default 999, j json);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "alter table test alter column j set default ('[]');",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query:   "show create table test",
-				Dialect: "mysql",
-				Expected: []sql.Row{
-					{"test", "CREATE TABLE `test` (\n  `i` int DEFAULT '999',\n  `j` json DEFAULT ('[]')\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 		},
@@ -490,31 +399,6 @@ var SchemaScriptTests = []ScriptTest{
 			{
 				Query:       "SELECT * FROM f;",
 				ExpectedErr: sql.ErrInvalidRefInView,
-			},
-		},
-	},
-	{
-		Name: "preserve now()",
-		SetUpScript: []string{
-			"create table t1 (i int default (cast(now() as signed)));",
-			"create table t2 (i int default (cast(current_timestamp(6) as signed)));",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "show create table t1",
-				Expected: []sql.Row{
-					{"t1", "CREATE TABLE `t1` (\n" +
-						"  `i` int DEFAULT (convert(NOW(), signed))\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-				},
-			},
-			{
-				Query: "show create table t2",
-				Expected: []sql.Row{
-					{"t2", "CREATE TABLE `t2` (\n" +
-						"  `i` int DEFAULT (convert(NOW(6), signed))\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-				},
 			},
 		},
 	},

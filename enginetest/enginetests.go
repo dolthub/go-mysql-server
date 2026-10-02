@@ -6230,3 +6230,11 @@ func TestCharsetCollationScripts(t *testing.T, harness Harness) {
 func TestCharsetCollationScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.CharsetCollationScriptTests, true)
 }
+
+func TestColumnDefaultsScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.ColumnDefaultsScriptTests, false)
+}
+
+func TestColumnDefaultsScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.ColumnDefaultsScriptTests, true)
+}

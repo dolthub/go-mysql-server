@@ -710,47 +710,4 @@ var ExpressionsScriptTests = []ScriptTest{
 			},
 		},
 	},
-	{
-		// https://github.com/dolthub/dolt/issues/11453
-		Name:    "DEFAULT(col) expression",
-		Dialect: "mysql", // DEFAULT(col) function is not valid Postgres syntax
-		SetUpScript: []string{
-			"create table t(pk int primary key, i int default 7, j int, k int generated always as (i + 10), l int not null, m int default null);",
-			"insert into t(pk, i, l) values (1, 1, 1);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:       "SELECT DEFAULT(pk) FROM t;",
-				ExpectedErr: sql.ErrFieldNoDefaultValue,
-			},
-			{
-				Query:    "SELECT DEFAULT(i) FROM t;",
-				Expected: []sql.Row{{7}},
-			},
-			{
-				Query:    "SELECT DEFAULT(i) AS d FROM t;",
-				Expected: []sql.Row{{7}},
-			},
-			{
-				Query:    "SELECT DEFAULT(j) FROM t;",
-				Expected: []sql.Row{{nil}},
-			},
-			{
-				Query:       "SELECT DEFAULT(k) FROM t;",
-				ExpectedErr: sql.ErrFieldNoDefaultValue,
-			},
-			{
-				Query:       "SELECT DEFAULT(l) FROM t;",
-				ExpectedErr: sql.ErrFieldNoDefaultValue,
-			},
-			{
-				Query:    "SELECT DEFAULT(m) FROM t;",
-				Expected: []sql.Row{{nil}},
-			},
-			{
-				Query:       "SELECT DEFAULT(asdfadf) FROM t;",
-				ExpectedErr: sql.ErrColumnNotFound,
-			},
-		},
-	},
 }
