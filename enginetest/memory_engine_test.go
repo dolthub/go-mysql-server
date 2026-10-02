@@ -607,8 +607,36 @@ func TestConvert(t *testing.T) {
 	enginetest.TestConvert(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
-func TestScripts(t *testing.T) {
-	enginetest.TestScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+func TestExpressionsScripts(t *testing.T) {
+	enginetest.TestExpressionsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestAggregationScripts(t *testing.T) {
+	enginetest.TestAggregationScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestTemporalScripts(t *testing.T) {
+	enginetest.TestTemporalScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestEnumsAndSetsScripts(t *testing.T) {
+	enginetest.TestEnumsAndSetsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestConversionsScripts(t *testing.T) {
+	enginetest.TestConversionsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestSetOperationsScripts(t *testing.T) {
+	enginetest.TestSetOperationsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestOrderingScripts(t *testing.T) {
+	enginetest.TestOrderingScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestNumericScripts(t *testing.T) {
+	enginetest.TestNumericScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
 func TestSpatialScripts(t *testing.T) {
@@ -1114,4 +1142,132 @@ func TestSQLLogicTestFiles(t *testing.T) {
 
 func TestTimeQueries(t *testing.T) {
 	enginetest.TestTimeQueries(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestAlterTableScripts(t *testing.T) {
+	enginetest.TestAlterTableScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestAutoIncrementScripts(t *testing.T) {
+	enginetest.TestAutoIncrementScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestCharsetCollationScripts(t *testing.T) {
+	enginetest.TestCharsetCollationScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestColumnDefaultsScripts(t *testing.T) {
+	enginetest.TestColumnDefaultsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestDatabaseDefinitionsScripts(t *testing.T) {
+	enginetest.TestDatabaseDefinitionsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestDeleteScripts(t *testing.T) {
+	enginetest.TestDeleteScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestDescendingIndexesScripts(t *testing.T) {
+	enginetest.TestDescendingIndexesScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestDropTableScripts(t *testing.T) {
+	enginetest.TestDropTableScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestForeignKeyResolutionScripts(t *testing.T) {
+	enginetest.TestForeignKeyResolutionScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestForeignKeyTypesScripts(t *testing.T) {
+	enginetest.TestForeignKeyTypesScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestIndexRegressionScripts(t *testing.T) {
+	enginetest.TestIndexRegressionScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestIndexKeyTypesScripts(t *testing.T) {
+	enginetest.TestIndexKeyTypesScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestInsertRegressionScripts(t *testing.T) {
+	enginetest.TestInsertRegressionScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestInsertIgnoreRegressionScripts(t *testing.T) {
+	enginetest.TestInsertIgnoreRegressionScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestJoinsScripts(t *testing.T) {
+	enginetest.TestJoinsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestJSONFunctionsScripts(t *testing.T) {
+	enginetest.TestJSONFunctionsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestNameResolutionScripts(t *testing.T) {
+	enginetest.TestNameResolutionScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestPrimaryKeysScripts(t *testing.T) {
+	enginetest.TestPrimaryKeysScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestProceduresScripts(t *testing.T) {
+	enginetest.TestProceduresScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestSessionResultsScripts(t *testing.T) {
+	enginetest.TestSessionResultsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestStatisticsScripts(t *testing.T) {
+	enginetest.TestStatisticsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestStringFunctionsScripts(t *testing.T) {
+	enginetest.TestStringFunctionsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestStringMatchingScripts(t *testing.T) {
+	enginetest.TestStringMatchingScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestSubqueriesScripts(t *testing.T) {
+	enginetest.TestSubqueriesScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestTableDefinitionsScripts(t *testing.T) {
+	enginetest.TestTableDefinitionsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestTransactionsScripts(t *testing.T) {
+	enginetest.TestTransactionsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestTupleComparisonsScripts(t *testing.T) {
+	enginetest.TestTupleComparisonsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestUpdateRegressionScripts(t *testing.T) {
+	enginetest.TestUpdateRegressionScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestUpdateJoinsScripts(t *testing.T) {
+	enginetest.TestUpdateJoinsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestUUIDScripts(t *testing.T) {
+	enginetest.TestUUIDScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestVariablesScripts(t *testing.T) {
+	enginetest.TestVariablesScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestViewsScripts(t *testing.T) {
+	enginetest.TestViewsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
