@@ -6310,3 +6310,11 @@ func TestIndexLookupsScripts(t *testing.T, harness Harness) {
 func TestIndexLookupsScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.IndexLookupsScriptTests, true)
 }
+
+func TestInsertRegressionScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.InsertRegressionScriptTests, false)
+}
+
+func TestInsertRegressionScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.InsertRegressionScriptTests, true)
+}

@@ -1223,3 +1223,7 @@ func TestIndexKeyTypesScripts(t *testing.T) {
 func TestIndexLookupsScripts(t *testing.T) {
 	enginetest.TestIndexLookupsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
+
+func TestInsertRegressionScripts(t *testing.T) {
+	enginetest.TestInsertRegressionScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}

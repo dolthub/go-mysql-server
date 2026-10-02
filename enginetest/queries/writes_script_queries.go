@@ -15,8 +15,6 @@
 package queries
 
 import (
-	"time"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -83,94 +81,6 @@ var WritesScriptTests = []ScriptTest{
 			{
 				Query:    "SELECT * FROM test2;",
 				Expected: []sql.Row{{4}},
-			},
-		},
-	},
-	{
-		Name: "table with defaults, insert with on duplicate key update",
-		SetUpScript: []string{
-			"create table t (a int primary key, b int default 100);",
-			"insert into t values (1, 1), (2, 2)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "insert into t values (1, 10) on duplicate key update b = 10",
-				Expected: []sql.Row{{types.NewOkResult(2)}},
-			},
-		},
-	},
-	{
-		Name:    "INSERT IGNORE correctly truncates column data",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			`CREATE TABLE t (
-				pk int primary key,
-				col1 boolean,
-				col2 integer,
-				col3 tinyint,
-				col4 smallint,
-				col5 mediumint,
-				col6 int,
-				col7 bigint,
-				col8 decimal,
-				col9 float,
-				col10 double,
-				col11 date,
-				col12 time,
-				col13 datetime,
-				col14 timestamp,
-				col15 year,
-				col16 ENUM('first', 'second'),
-				col17 SET('a', 'b')
-			);`,
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: `
-					INSERT IGNORE INTO t VALUES (
-						1, 'val1', 'val2', 'val3', 'val4', 'val5', 'val6', 'val7', 'val8', 'val9', 'val10',
-						'val11', 'val12', 'val13', 'val14', 'val15', 'val16', 'val17'
-					);
-				`,
-				Expected: []sql.Row{{types.NewOkResult(1)}},
-			},
-			{
-				SkipResultCheckOnServerEngine: true, // the datetime returned is not non-zero
-				Query:                         "SELECT * from t",
-				Expected: []sql.Row{
-					{
-						1,
-						0,
-						0,
-						0,
-						0,
-						0,
-						0,
-						0,
-						"0",
-						float64(0),
-						float64(0),
-						time.Date(0, 0, 0, 0, 0, 0, 0, time.UTC),
-						types.Timespan(0),
-						time.Date(0, 0, 0, 0, 0, 0, 0, time.UTC),
-						time.Date(0, 0, 0, 0, 0, 0, 0, time.UTC),
-						0,
-						"",
-						"",
-					},
-				},
-			},
-		},
-	},
-	{
-		Name: "INSERT IGNORE throws an error when json is badly formatted",
-		SetUpScript: []string{
-			"CREATE TABLE t (pk int primary key, col1 json);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:       "INSERT IGNORE into t VALUES (1, 'val1');",
-				ExpectedErr: sql.ErrInvalidJson,
 			},
 		},
 	},
