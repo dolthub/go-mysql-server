@@ -6374,3 +6374,11 @@ func TestStatisticsScripts(t *testing.T, harness Harness) {
 func TestStatisticsScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.StatisticsScriptTests, true)
 }
+
+func TestStringFunctionsScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.StringFunctionsScriptTests, false)
+}
+
+func TestStringFunctionsScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.StringFunctionsScriptTests, true)
+}
