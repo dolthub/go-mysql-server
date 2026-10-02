@@ -6438,3 +6438,11 @@ func TestUpdateJoinsScripts(t *testing.T, harness Harness) {
 func TestUpdateJoinsScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.UpdateJoinsScriptTests, true)
 }
+
+func TestUUIDScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.UUIDScriptTests, false)
+}
+
+func TestUUIDScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.UUIDScriptTests, true)
+}
