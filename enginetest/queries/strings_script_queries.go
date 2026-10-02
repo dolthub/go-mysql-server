@@ -14,35 +14,5 @@
 
 package queries
 
-import (
-	"github.com/dolthub/go-mysql-server/sql"
-)
-
 // StringsScriptTests contains self-contained strings script tests.
-var StringsScriptTests = []ScriptTest{
-	{
-		Name: "mismatched collation using hash in tuples",
-		SetUpScript: []string{
-			"create table t (t1 text collate utf8mb4_0900_bin, t2 text collate utf8mb4_0900_ai_ci)",
-			"insert into t values ('ABC', 'DEF')",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "select * from t where (t1, t2) in (('ABC', 'DEF'));",
-				Expected: []sql.Row{
-					{"ABC", "DEF"},
-				},
-			},
-			{
-				Query: "select * from t where (t1, t2) in (('ABC', 'def'));",
-				Expected: []sql.Row{
-					{"ABC", "DEF"},
-				},
-			},
-			{
-				Query:    "select * from t where (t1, t2) in (('abc', 'DEF'));",
-				Expected: []sql.Row{},
-			},
-		},
-	},
-}
+var StringsScriptTests = []ScriptTest{}
