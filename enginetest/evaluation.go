@@ -59,7 +59,7 @@ func RunQueryWithContext(t *testing.T, e QueryEngine, harness Harness, ctx *sql.
 
 // TestScript runs the test script given, making any assertions given
 func TestScript(t *testing.T, harness Harness, script queries.ScriptTest) {
-	e := mustNewEngine(t, harness)
+	e := MustNewEngine(t, harness)
 	defer e.Close()
 	TestScriptWithEngine(t, e, harness, script)
 }
@@ -206,7 +206,7 @@ func skipAssertion(harness Harness, assertion queries.ScriptTestAssertion) bool 
 // and makes any assertions given
 func TestScriptPrepared(t *testing.T, harness Harness, script queries.ScriptTest) bool {
 	return t.Run(script.Name, func(t *testing.T) {
-		e := mustNewEngine(t, harness)
+		e := MustNewEngine(t, harness)
 		defer e.Close()
 		TestScriptWithEnginePrepared(t, e, harness, script)
 	})
@@ -286,7 +286,7 @@ func TestTransactionScript(t *testing.T, harness Harness, script queries.Transac
 	// todo(max): these use dolt_commit, need harness reset to reset back to original commit
 	return t.Run(script.Name, func(t *testing.T) {
 		harness.Setup(setup.MydbData)
-		e := mustNewEngine(t, harness)
+		e := MustNewEngine(t, harness)
 		defer e.Close()
 		TestTransactionScriptWithEngine(t, e, harness, script, false)
 	})
@@ -296,7 +296,7 @@ func TestTransactionScript(t *testing.T, harness Harness, script queries.Transac
 func TestTransactionScriptPrepared(t *testing.T, harness Harness, script queries.TransactionTest) bool {
 	return t.Run(script.Name, func(t *testing.T) {
 		harness.Setup(setup.MydbData)
-		e := mustNewEngine(t, harness)
+		e := MustNewEngine(t, harness)
 		defer e.Close()
 		TestTransactionScriptWithEngine(t, e, harness, script, true)
 	})
@@ -378,11 +378,11 @@ func TestTransactionScriptWithEngine(t *testing.T, e QueryEngine, harness Harnes
 
 // TestQuery runs a query on the engine given and asserts that results are as expected.
 // TODO: this should take an engine https://github.com/dolthub/go-mysql-server/issues/3588
-func TestQuery(t *testing.T, harness Harness, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]sqlparser.Expr) {
-	testQuery(t, harness, q, expected, expectedCols, bindings, queries.WrapBehavior_Unwrap)
+func TestQuery(t *testing.T, harness Harness, e QueryEngine, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]sqlparser.Expr) {
+	testQuery(t, harness, e, q, expected, expectedCols, bindings, queries.WrapBehavior_Unwrap)
 }
 
-func testQuery(t *testing.T, harness Harness, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]sqlparser.Expr, wrapBehavior queries.WrapBehavior) {
+func testQuery(t *testing.T, harness Harness, e QueryEngine, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]sqlparser.Expr, wrapBehavior queries.WrapBehavior) {
 	t.Run(q, func(t *testing.T) {
 		if sh, ok := harness.(SkippingHarness); ok {
 			if sh.SkipQueryTest(q) {
@@ -390,25 +390,8 @@ func testQuery(t *testing.T, harness Harness, q string, expected []sql.Row, expe
 			}
 		}
 
-		e := mustNewEngine(t, harness)
-		defer e.Close()
 		ctx := NewContext(harness)
 		testQueryWithContext(t, ctx, e, harness, q, expected, expectedCols, bindings, nil, wrapBehavior)
-	})
-}
-
-// TestQuery runs a query on the engine given and asserts that results are as expected.
-// TODO: combine with TestQuery https://github.com/dolthub/go-mysql-server/issues/3588
-func TestQuery2(t *testing.T, harness Harness, e QueryEngine, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]sqlparser.Expr) {
-	t.Run(q, func(t *testing.T) {
-		if sh, ok := harness.(SkippingHarness); ok {
-			if sh.SkipQueryTest(q) {
-				t.Skipf("Skipping query %s", q)
-			}
-		}
-
-		ctx := NewContext(harness)
-		TestQueryWithContext(t, ctx, e, harness, q, expected, expectedCols, bindings, nil)
 	})
 }
 
@@ -555,7 +538,7 @@ func TestPreparedQuery(t *testing.T, harness Harness, q string, expected []sql.R
 				t.Skipf("Skipping query %s", q)
 			}
 		}
-		e := mustNewEngine(t, harness)
+		e := MustNewEngine(t, harness)
 		defer e.Close()
 		ctx := NewContext(harness)
 		TestPreparedQueryWithContext(t, ctx, e, harness, q, expected, expectedCols, nil, false)
@@ -1290,7 +1273,7 @@ func RunWriteQueryTest(t *testing.T, harness Harness, tt queries.WriteQueryTest)
 			t.Skip()
 			return
 		}
-		e := mustNewEngine(t, harness)
+		e := MustNewEngine(t, harness)
 		defer e.Close()
 		RunWriteQueryTestWithEngine(t, harness, e, tt)
 	})
@@ -1351,7 +1334,7 @@ func runWriteQueryTestPrepared(t *testing.T, harness Harness, tt queries.WriteQu
 				return
 			}
 		}
-		e := mustNewEngine(t, harness)
+		e := MustNewEngine(t, harness)
 		defer e.Close()
 		ctx := NewContext(harness)
 		TestPreparedQueryWithContext(t, ctx, e, harness, tt.WriteQuery, tt.ExpectedWriteResult, nil, tt.Bindings, false)
@@ -1366,7 +1349,7 @@ func runGenericErrorTest(t *testing.T, h Harness, tt queries.GenericErrorQueryTe
 				t.Skipf("skipping query %s", tt.Query)
 			}
 		}
-		e := mustNewEngine(t, h)
+		e := MustNewEngine(t, h)
 		defer e.Close()
 		AssertErr(t, e, h, tt.Query, nil, nil)
 	})
@@ -1379,7 +1362,7 @@ func runQueryErrorTest(t *testing.T, h Harness, tt queries.QueryErrorTest) {
 				t.Skipf("skipping query %s", tt.Query)
 			}
 		}
-		e := mustNewEngine(t, h)
+		e := MustNewEngine(t, h)
 		tfp, ok := e.EngineAnalyzer().Catalog.DbProvider.(sql.TableFunctionProvider)
 		if !ok {
 			return

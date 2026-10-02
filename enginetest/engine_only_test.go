@@ -569,8 +569,10 @@ func TestShowCharset(t *testing.T) {
 	}
 
 	harness := enginetest.NewMemoryHarness("", 1, nil)
+	e := enginetest.MustNewEngine(t, harness)
+	defer e.Close()
 	for _, test := range tests {
-		enginetest.TestQuery(t, harness, test.Query, test.RowGen(t), nil, nil)
+		enginetest.TestQuery(t, harness, e, test.Query, test.RowGen(t), nil, nil)
 	}
 }
 
