@@ -15,6 +15,7 @@
 package types
 
 import (
+	"cloud.google.com/go/monitoring/dashboard/apiv1/dashboardpb"
 	"context"
 	"fmt"
 	"math"
@@ -22,6 +23,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -399,6 +401,95 @@ func (TimespanType_) CollationCoercibility(ctx *sql.Context) (collation sql.Coll
 func int64Abs(v int64) int64 {
 	shift := v >> 63
 	return (v ^ shift) - shift
+}
+
+// isMySQLPunct checks if the character is a valid punctuation character according to MySQL standards.
+// This exists because MySQL's rules differ from unicode.IsPunct and regex punctuation
+func isMySQLPunct(char rune) bool {
+	// TODO: write a unit test for this
+	return unicode.IsPunct(char) || char == '-' || char == ':' || char == '.'
+}
+
+func (t TimespanType_) parseTime(str string) (any, error) {
+	// TODO: leading and trailing whitespace(s) should throw warning
+	// Tracking issue: https://github.com/dolthub/dolt/issues/11750
+
+	// Trim leading whitespaces
+	for i, c := range str {
+		if c == ' ' || c == '\t' || c == '\n' || c == '\r' {
+			continue
+		}
+		str = str[i:]
+		break
+	}
+
+	var isNeg bool
+	if str[0] == '-' {
+		isNeg = true
+		str = str[1:]
+	}
+
+	// Trim leading whitespaces
+	for i, c := range str {
+		if c == ' ' || c == '\t' || c == '\n' || c == '\r' {
+			continue
+		}
+		str = str[i:]
+		break
+	}
+
+	// read hour part
+	var hourStr string
+	var idx int
+	var char rune
+	for idx, char = range str {
+		if unicode.IsDigit(char) {
+			continue
+		}
+		// TODO: watch out for empty strings here
+		hourStr = str[:idx]
+		str = str[idx:]
+		break
+	}
+	if idx == 0 {
+		// TODO: not necessarily a problem, because ":34:56" is a valid time
+	}
+	if !isMySQLPunct(char) {
+		// TODO: break accordingly
+	}
+	if idx > 3 {
+		// TODO: interpret this string as a numeric time string rather than delimited
+	}
+
+	// read any number of valid delimiters
+	for idx, char = range str {
+		if isMySQLPunct(char) {
+			continue
+		}
+		str = str[idx:]
+		break
+	}
+
+	// the last char is not a digit and not a valid MySQL punctuation character
+	if !unicode.IsDigit(char) {
+		return nil, sql.ErrTruncatedIncorrect.New(t.String(), str)
+	}
+
+	// read the minute part
+	var minStr string
+	for idx, char = range str {
+		if unicode.IsDigit(char) {
+			continue
+		}
+		minStr = str[:idx]
+		str = str[idx:]
+		break
+	}
+
+	if idx == 0 {
+		return nil, sql.ErrTruncatedIncorrect.New(t.String(), str)
+	}
+
 }
 
 func (t TimespanType_) stringToTimespan(s string) (Timespan, error) {
