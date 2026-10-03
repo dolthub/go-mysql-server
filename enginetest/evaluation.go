@@ -401,7 +401,7 @@ func TestQuery(t *testing.T, harness Harness, e QueryEngine, tt queries.QueryTes
 				false,
 			)
 		} else {
-			TestQueryWithContext(t, ctx, e, harness, tt.Query, tt.Expected, tt.ExpectedColumns, tt.Bindings, nil)
+			testQueryWithContext(t, ctx, e, harness, tt.Query, tt.Expected, tt.ExpectedColumns, tt.Bindings, nil, tt.WrapBehavior)
 		}
 	})
 }
