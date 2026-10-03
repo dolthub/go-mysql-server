@@ -510,6 +510,146 @@ var OrderByGroupByScriptTests = []ScriptTest{
 			},
 		},
 	},
+	// https://github.com/dolthub/dolt/issues/11911
+	// https://github.com/dolthub/go-mysql-server/issues/3944
+	{
+		Name: "ANY_VALUE scalar function under ONLY_FULL_GROUP_BY",
+		SetUpScript: []string{
+			"CREATE TABLE t (a INT, b INT);",
+			"INSERT INTO t VALUES (1, 10), (2, 20), (3, 30);",
+			"CREATE TABLE t1 (id INT PRIMARY KEY, active INT, status INT);",
+			"INSERT INTO t1 VALUES (1, 1, 10), (2, 0, 20), (3, 1, 30);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT ANY_VALUE(a) FROM t;",
+				Expected: []sql.Row{{1}, {2}, {3}},
+			},
+			{
+				Query:    "SELECT ANY_VALUE(a), COUNT(*) FROM t;",
+				Expected: []sql.Row{{1, 3}},
+			},
+			{
+				Query:    "SELECT a, ANY_VALUE(b) FROM t GROUP BY a;",
+				Expected: []sql.Row{{1, 10}, {2, 20}, {3, 30}},
+			},
+			{
+				Query:       "SELECT ANY_VALUE(a) FROM t HAVING ANY_VALUE(a) > 1;",
+				ExpectedErr: sql.ErrColumnNotFound,
+			},
+			{
+				Query:       "SELECT ANY_VALUE(a) OVER () FROM t;",
+				ExpectedErr: sql.ErrSyntaxError,
+				Dialect:     "mysql",
+			},
+			{
+				Query:    "SELECT ANY_VALUE(active), COUNT(*) FROM t1 GROUP BY active;",
+				Expected: []sql.Row{{1, 2}, {0, 1}},
+			},
+			{
+				Query:    "SELECT ANY_VALUE(status) AS s FROM t1 GROUP BY active HAVING s > 15 ORDER BY s;",
+				Expected: []sql.Row{{20}},
+			},
+			{
+				Query:       "SELECT active, status AS s FROM t1 GROUP BY active ORDER BY s;",
+				ExpectedErr: analyzererrors.ErrValidationGroupBy,
+			},
+		},
+	},
+	{
+		Name: "Scalar subqueries in grouped SELECT list with ONLY_FULL_GROUP_BY",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (id INT PRIMARY KEY, active INT, status INT);",
+			"INSERT INTO t1 VALUES (1, 1, 10), (2, 0, 20), (3, 1, 30);",
+			"CREATE TABLE l(id INT, k INT);",
+			"CREATE TABLE r(id INT, k INT);",
+			"INSERT INTO l VALUES (1, 10), (2, 20);",
+			"INSERT INTO r VALUES (1, 10), (3, 20);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT (SELECT 1 FROM t1 LIMIT 1) AS s FROM t1 GROUP BY active;",
+				Expected: []sql.Row{{int8(1)}, {int8(1)}},
+			},
+			{
+				Query:    "SELECT (SELECT MAX(t9.id) FROM t1 AS t9 WHERE t9.active = t8.active) AS s FROM t1 AS t8 GROUP BY t8.active;",
+				Expected: []sql.Row{{3}, {2}},
+			},
+			{
+				Query:       "SELECT (SELECT MAX(t9.id) FROM t1 AS t9 WHERE t9.status = t8.status) AS s FROM t1 AS t8 GROUP BY t8.active;",
+				ExpectedErr: analyzererrors.ErrValidationGroupBy,
+			},
+			{
+				Query:    "SELECT COALESCE((SELECT 1 FROM t1 LIMIT 1), 0) AS s FROM t1 GROUP BY active;",
+				Expected: []sql.Row{{int8(1)}, {int8(1)}},
+			},
+			{
+				Query:    "SELECT active FROM t1 GROUP BY active ORDER BY (SELECT 1 FROM t1 LIMIT 1), active;",
+				Expected: []sql.Row{{0}, {1}},
+			},
+			{
+				Query:    "SELECT active FROM t1 GROUP BY active ORDER BY (SELECT MAX(t9.id) FROM t1 AS t9 WHERE t9.active = t1.active);",
+				Expected: []sql.Row{{0}, {1}},
+			},
+			{
+				Query:       "SELECT active FROM t1 GROUP BY active ORDER BY (SELECT MAX(t9.id) FROM t1 AS t9 WHERE t9.status = t1.status);",
+				ExpectedErr: analyzererrors.ErrValidationGroupByOrderBy,
+			},
+			{
+				Query:    "SELECT COUNT(*), (SELECT 1 FROM t1 LIMIT 1) FROM t1;",
+				Expected: []sql.Row{{3, int8(1)}},
+			},
+			{
+				Query:       "SELECT COUNT(*), (SELECT MAX(t9.id) FROM t1 AS t9 WHERE t9.active = t1.active) FROM t1;",
+				ExpectedErr: sql.ErrNonAggregatedColumnWithoutGroupBy,
+			},
+			{
+				Query:    "SELECT ANY_VALUE(active), (SELECT MAX(t9.id) FROM t1 AS t9 WHERE t9.active = t1.active) FROM t1;",
+				Expected: []sql.Row{{1, 3}, {0, 2}, {1, 3}},
+			},
+			{
+				Query:       "SELECT COUNT(*), ANY_VALUE(active), (SELECT MAX(t9.id) FROM t1 AS t9 WHERE t9.active = t1.active) FROM t1;",
+				ExpectedErr: sql.ErrNonAggregatedColumnWithoutGroupBy,
+			},
+			{
+				Query:    "SELECT l.k, (SELECT MAX(r2.id) FROM r AS r2 WHERE r2.id = l.id) FROM l JOIN r ON l.k = r.k GROUP BY l.k, l.id;",
+				Expected: []sql.Row{{10, 1}, {20, nil}},
+			},
+			{
+				Query:       "SELECT l.k, (SELECT MAX(r2.id) FROM r AS r2 WHERE r2.id = r.id) FROM l JOIN r ON l.k = r.k GROUP BY l.k, l.id;",
+				ExpectedErr: analyzererrors.ErrValidationGroupBy,
+			},
+		},
+	},
+	{
+		Name:    "grouped correlated references depend on the outer primary key",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"SET SESSION sql_mode='ONLY_FULL_GROUP_BY'",
+			"CREATE TABLE teams (id INT PRIMARY KEY, name VARCHAR(50), region VARCHAR(50))",
+			"CREATE TABLE members (id INT PRIMARY KEY, team_id INT, name VARCHAR(50), FOREIGN KEY (team_id) REFERENCES teams(id))",
+			"INSERT INTO teams VALUES (1,'Alpha','East'),(2,'Beta','West')",
+			"INSERT INTO members VALUES (101,1,'A'),(102,1,'B'),(201,2,'C')",
+			"CREATE TABLE teams_no_key (id INT, name VARCHAR(50), region VARCHAR(50))",
+			"INSERT INTO teams_no_key SELECT * FROM teams",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT t.id, t.name, COUNT(m.id), (SELECT COUNT(*) FROM members m2 WHERE m2.team_id = t.id) FROM teams t LEFT JOIN members m ON m.team_id = t.id GROUP BY t.id, t.name ORDER BY t.id",
+				Expected: []sql.Row{{1, "Alpha", 2, 2}, {2, "Beta", 1, 1}},
+			},
+			{
+				// Grouping by the primary key also determines the correlated region.
+				Query:    "SELECT t.id, COUNT(m.id), (SELECT COUNT(*) FROM members m2 WHERE m2.team_id = t.id AND t.region = 'East') FROM teams t LEFT JOIN members m ON m.team_id = t.id GROUP BY t.id ORDER BY t.id",
+				Expected: []sql.Row{{1, 2, 2}, {2, 1, 0}},
+			},
+			{
+				// Without the key, region must be grouped explicitly.
+				Query:       "SELECT t.id, COUNT(m.id), (SELECT COUNT(*) FROM members m2 WHERE m2.team_id = t.id AND t.region = 'East') FROM teams_no_key t LEFT JOIN members m ON m.team_id = t.id GROUP BY t.id ORDER BY t.id",
+				ExpectedErr: analyzererrors.ErrValidationGroupBy,
+			},
+		},
+	},
 	{
 		Name: "functional dependence without a primary key",
 		SetUpScript: []string{

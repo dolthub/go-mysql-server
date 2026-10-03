@@ -875,6 +875,44 @@ func TestIndexedExpressions(t *testing.T) {
 
 func TestVectorIndexes(t *testing.T) {
 	enginetest.TestVectorIndexes(t, enginetest.NewDefaultMemoryHarness())
+
+	harness := enginetest.NewDefaultMemoryHarness()
+	harness.Setup(setup.MydbData)
+	enginetest.TestScript(t, harness, queries.ScriptTest{
+		Name: "JSON null in a memory vector index",
+		SetUpScript: []string{
+			"create table vectors (id int primary key, v json not null)",
+			"create vector index v_idx on vectors(v)",
+			"insert into vectors values (1, '[1.0,2.0]')",
+		},
+		Assertions: []queries.ScriptTestAssertion{
+			{
+				// Memory tables permit invalid vectors such as JSON null; storage engines may reject them on write.
+				Query:    "insert into vectors values (2, '[3.0,4.0]'), (3, 'null')",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				// JSON null is not SQL NULL, so an indexed search must report a conversion error.
+				Query:          "select id from vectors order by VEC_DISTANCE('[0.0,0.0]', v) limit 2",
+				ExpectedErrStr: "can't convert JSON to vector; expected array, got <nil>",
+			},
+			{
+				// A full-scan search must also report the invalid vector.
+				Query:          "select id from vectors order by VEC_DISTANCE('[0.0,0.0]', v)",
+				ExpectedErrStr: "unable to sort: can't convert JSON to vector; expected array, got <nil>",
+			},
+			{
+				Query:    "delete from vectors where id = 3",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				// Removing the invalid value restores the nearest-neighbor search.
+				Query:           "select id from vectors order by VEC_DISTANCE('[0.0,0.0]', v) limit 2",
+				Expected:        []sql.Row{{1}, {2}},
+				ExpectedIndexes: []string{"v_idx"},
+			},
+		},
+	})
 }
 
 func TestVectorFunctions(t *testing.T) {

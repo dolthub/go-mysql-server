@@ -2150,11 +2150,29 @@ ORDER BY FIRST_VALUE(UUID()) OVER (ORDER BY id), id;`,
 			`CREATE TABLE u(x INT);`,
 			`INSERT INTO t VALUES (1,1),(2,2),(3,3);`,
 			`INSERT INTO u VALUES (1),(1),(2);`,
+			`CREATE TABLE u2(x INT, y INT);`,
+			`INSERT INTO u2 VALUES (1,10),(1,20),(2,30);`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    `SELECT id FROM t WHERE EXISTS (SELECT ROW_NUMBER() OVER () FROM u WHERE u.x = t.a) ORDER BY id;`,
 				Expected: []sql.Row{{1}, {2}},
+			},
+			{
+				Query:    "SELECT id FROM t WHERE NOT EXISTS (SELECT ROW_NUMBER() OVER () FROM u WHERE u.x = t.a) ORDER BY id",
+				Expected: []sql.Row{{3}},
+			},
+			{
+				Query:    "SELECT id FROM t WHERE EXISTS (SELECT ROW_NUMBER() OVER (PARTITION BY u2.y), RANK() OVER (ORDER BY u2.y) FROM u2 WHERE u2.x = t.a) ORDER BY id",
+				Expected: []sql.Row{{1}, {2}},
+			},
+			{
+				Query:    "SELECT id FROM t WHERE NOT EXISTS (SELECT ROW_NUMBER() OVER (PARTITION BY u2.y), RANK() OVER (ORDER BY u2.y) FROM u2 WHERE u2.x = t.a) ORDER BY id",
+				Expected: []sql.Row{{3}},
+			},
+			{
+				Query:    "SELECT id FROM t WHERE NOT EXISTS (SELECT ROW_NUMBER() OVER () FROM u) ORDER BY id",
+				Expected: []sql.Row{},
 			},
 		},
 	},
@@ -2192,6 +2210,23 @@ ORDER BY FIRST_VALUE(UUID()) OVER (ORDER BY id), id;`,
 ) sub
 WHERE total <> fourcount + twosum;`,
 				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11558
+		Name:    "default backslash escaping in LIKE expression inside window child",
+		Dialect: "mysql",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT FIRST_VALUE('a_%' LIKE 'a\\_\\%') OVER () AS default_x1, " +
+					"FIRST_VALUE('aX%' LIKE 'a\\_\\%') OVER () AS default_x2, " +
+					"FIRST_VALUE('a_%' LIKE 'a!_!%' ESCAPE '!') OVER () AS explicit_x1, " +
+					"FIRST_VALUE('aX%' LIKE 'a!_!%' ESCAPE '!') OVER () AS explicit_x2 " +
+					"FROM (SELECT 1 AS z) q;",
+				Expected: []sql.Row{
+					{true, false, true, false},
+				},
 			},
 		},
 	},

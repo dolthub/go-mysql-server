@@ -199,8 +199,8 @@ func (b *Builder) mergeSetOpSchemas(u *plan.SetOp) sql.Node {
 		convertTo := expression.GetConvertToType(ls[i].Type, rs[i].Type)
 
 		// TODO: Principled type coercion...
-		les[i], err = b.f.buildConvert(b.ctx, les[i], convertTo, 0, 0)
-		res[i], err = b.f.buildConvert(b.ctx, res[i], convertTo, 0, 0)
+		les[i], err = b.f.buildConvert(b.ctx, les[i], convertTo, 0, 0, false)
+		res[i], err = b.f.buildConvert(b.ctx, res[i], convertTo, 0, 0, false)
 
 		// Preserve schema names across the conversion.
 		les[i] = expression.NewAlias(b.ctx, ls[i].Name, les[i])

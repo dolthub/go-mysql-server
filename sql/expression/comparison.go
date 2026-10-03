@@ -149,7 +149,11 @@ func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (cmp int, err error)
 	if err != nil {
 		return 0, err
 	}
+	return c.compareValues(ctx, left, right)
+}
 
+// compareValues compares the already evaluated |left| and |right|.
+func (c *comparison) compareValues(ctx *sql.Context, left, right any) (cmp int, err error) {
 	if left == nil || right == nil {
 		return 0, ErrNilOperand.New()
 	}

@@ -272,6 +272,9 @@ func TestInsertOnDuplicateReturning(t *testing.T) {
 		plan.NewValues([][]sql.Expression{{
 			expression.NewLiteral(int64(1), types.Int64),
 			expression.NewLiteral(int64(2), types.Int64),
+		}, {
+			expression.NewLiteral(int64(1), types.Int64),
+			expression.NewLiteral(int64(3), types.Int64),
 		}}),
 		false,
 		[]string{"c1", "c2"},
@@ -283,7 +286,7 @@ func TestInsertOnDuplicateReturning(t *testing.T) {
 	require.NoError(t, err)
 	rows, err := sql.RowIterToRows(ctx, iter)
 	require.NoError(t, err)
-	require.Equal(t, []sql.Row{{int64(2)}}, rows)
+	require.Equal(t, []sql.Row{{int64(2)}, {int64(3)}}, rows)
 }
 
 // TestOnDuplicateUpdateAffectedRows verifies MySQL and PostgreSQL duplicate-update counting policies.
