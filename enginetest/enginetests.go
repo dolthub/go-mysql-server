@@ -64,7 +64,7 @@ func TestQueries(t *testing.T, harness Harness) {
 			if IsServerEngine(e) && tt.SkipServerEngine {
 				t.Skip("skipping for server engine")
 			}
-			TestQueryWithEngine(t, harness, e, tt)
+			TestQuery(t, harness, e, tt)
 		})
 	}
 
@@ -78,14 +78,14 @@ func TestQueries(t *testing.T, harness Harness) {
 			if IsServerEngine(e) && tt.SkipServerEngine {
 				t.Skip("skipping for server engine")
 			}
-			TestQueryWithEngine(t, harness, e, tt)
+			TestQuery(t, harness, e, tt)
 		})
 	}
 
 	// TODO: move this into its own test method
 	if keyless, ok := harness.(KeylessTableHarness); ok && keyless.SupportsKeylessTables() {
 		for _, tt := range queries.KeylessQueries {
-			TestQuery(t, harness, e, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
+			TestQuery(t, harness, e, tt)
 		}
 	}
 }
@@ -117,7 +117,7 @@ func TestSpatialQueries(t *testing.T, harness Harness) {
 	e := MustNewEngine(t, harness)
 	defer e.Close()
 	for _, tt := range queries.SpatialQueryTests {
-		TestQueryWithEngine(t, harness, e, tt)
+		TestQuery(t, harness, e, tt)
 	}
 }
 
@@ -149,7 +149,7 @@ func TestJoinQueries(t *testing.T, harness Harness) {
 	require.NoError(t, err)
 
 	for _, tt := range queries.JoinQueryTests {
-		TestQuery(t, harness, e, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
+		TestQuery(t, harness, e, tt)
 	}
 	for _, ts := range queries.JoinScriptTests {
 		TestScript(t, harness, ts)
@@ -168,7 +168,7 @@ func TestJSONTableQueries(t *testing.T, harness Harness) {
 	require.NoError(t, err)
 
 	for _, tt := range queries.JSONTableQueryTests {
-		TestQuery(t, harness, e, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
+		TestQuery(t, harness, e, tt)
 	}
 }
 
@@ -286,7 +286,7 @@ func RunQueryTests(t *testing.T, harness Harness, queries []queries.QueryTest) {
 	e := MustNewEngine(t, harness)
 	defer e.Close()
 	for _, tt := range queries {
-		testQuery(t, harness, e, tt.Query, tt.Expected, tt.ExpectedColumns, nil, tt.WrapBehavior)
+		TestQuery(t, harness, e, tt)
 	}
 }
 
@@ -296,7 +296,7 @@ func TestInfoSchema(t *testing.T, h Harness) {
 	e := MustNewEngine(t, h)
 	defer e.Close()
 	for _, tt := range queries.InfoSchemaQueries {
-		TestQuery(t, h, e, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
+		TestQuery(t, h, e, tt)
 	}
 
 	for _, script := range queries.InfoSchemaScripts {
@@ -464,7 +464,7 @@ func TestInfoSchema(t *testing.T, h Harness) {
 	for _, tt := range queries.SkippedInfoSchemaQueries {
 		t.Run(tt.Query, func(t *testing.T) {
 			t.Skip()
-			TestQuery(t, h, e, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
+			TestQuery(t, h, e, tt)
 		})
 	}
 
@@ -505,7 +505,7 @@ func TestReadOnlyDatabases(t *testing.T, harness ReadOnlyDatabaseHarness) {
 		queries.KeylessQueries,
 	} {
 		for _, tt := range querySet {
-			TestQueryWithEngine(t, harness, engine, tt)
+			TestQuery(t, harness, engine, tt)
 		}
 	}
 
@@ -544,7 +544,7 @@ func TestReadOnlyVersionedQueries(t *testing.T, harness Harness) {
 	defer engine.Close()
 
 	for _, tt := range queries.VersionedQueries {
-		TestQueryWithEngine(t, harness, engine, tt)
+		TestQuery(t, harness, engine, tt)
 	}
 
 	for _, tt := range queries.VersionedScripts {
@@ -657,7 +657,7 @@ func TestVersionedQueries(t *testing.T, harness VersionedDBHarness) {
 	defer engine.Close()
 
 	for _, tt := range queries.VersionedQueries {
-		TestQueryWithEngine(t, harness, engine, tt)
+		TestQuery(t, harness, engine, tt)
 	}
 
 	for _, tt := range queries.VersionedScripts {
@@ -1050,7 +1050,7 @@ func TestLoadData(t *testing.T, harness Harness) {
 	defer e.Close()
 
 	require.NoError(t, setSecureFilePriv())
-	TestQueryWithEngine(t, harness, e, queries.QueryTest{
+	TestQuery(t, harness, e, queries.QueryTest{
 		Query:    "select @@global.secure_file_priv != '';",
 		Expected: []sql.Row{{true}},
 	})
@@ -1065,7 +1065,7 @@ func TestLoadDataErrors(t *testing.T, harness Harness) {
 	defer e.Close()
 
 	require.NoError(t, setSecureFilePriv())
-	TestQueryWithEngine(t, harness, e, queries.QueryTest{
+	TestQuery(t, harness, e, queries.QueryTest{
 		Query:    "select @@global.secure_file_priv != '';",
 		Expected: []sql.Row{{true}},
 	})
@@ -1081,7 +1081,7 @@ func TestLoadDataFailing(t *testing.T, harness Harness) {
 	defer e.Close()
 
 	require.NoError(t, setSecureFilePriv())
-	TestQueryWithEngine(t, harness, e, queries.QueryTest{
+	TestQuery(t, harness, e, queries.QueryTest{
 		Query:    "select @@global.secure_file_priv != '';",
 		Expected: []sql.Row{{true}},
 	})
@@ -1101,7 +1101,7 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 	require.NoError(t, err, nil)
 
 	require.NoError(t, setSecureFilePriv())
-	TestQueryWithEngine(t, harness, e, queries.QueryTest{
+	TestQuery(t, harness, e, queries.QueryTest{
 		Query:    "select @@global.secure_file_priv != '';",
 		Expected: []sql.Row{{true}},
 	})
@@ -1754,7 +1754,10 @@ func TestConvert(t *testing.T, harness Harness) {
 	for _, tt := range queries.ConvertTests {
 		query := fmt.Sprintf("select count(*) from typestable where %s %s %s", tt.Field, tt.Op, tt.Operand)
 		t.Run(query, func(t *testing.T) {
-			TestQuery(t, harness, e, query, []sql.Row{{tt.ExpCnt}}, nil, nil)
+			TestQuery(t, harness, e, queries.QueryTest{
+				Query:    query,
+				Expected: []sql.Row{{tt.ExpCnt}},
+			})
 		})
 	}
 
@@ -2219,7 +2222,7 @@ func TestComplexIndexQueries(t *testing.T, harness Harness) {
 	e := MustNewEngine(t, harness)
 	defer e.Close()
 	for _, tt := range queries.ComplexIndexQueries {
-		TestQueryWithEngine(t, harness, e, tt)
+		TestQuery(t, harness, e, tt)
 	}
 }
 
@@ -3180,7 +3183,7 @@ func TestPkOrdinalsDDL(t *testing.T, harness Harness) {
 	e := MustNewEngine(t, harness)
 	defer e.Close()
 	for _, tt := range queries.OrdinalDDLQueries {
-		TestQuery(t, harness, e, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
+		TestQuery(t, harness, e, tt)
 	}
 
 	for _, tt := range queries.OrdinalDDLWriteQueries {
@@ -3493,29 +3496,14 @@ func TestNaturalJoin(t *testing.T, harness Harness) {
 	e := MustNewEngine(t, harness)
 	defer e.Close()
 
-	TestQuery(t, harness, e, `SELECT * FROM t1 NATURAL JOIN t2`, []sql.Row{
-		{"a_1", "b_1", "c_1", "d_1"},
-		{"a_2", "b_2", "c_2", "d_2"},
-		{"a_3", "b_3", "c_3", "d_3"},
-	}, nil, nil)
-}
-
-func TestNaturalJoinEqual(t *testing.T, harness Harness) {
-	harness.Setup([]setup.SetupScript{{
-		"create database mydb",
-		"use mydb",
-		"create table t1 (a varchar(20) primary key, b text, c text)",
-		"create table t2 (a varchar(20) primary key, b text, c text)",
-		"insert into t1 values ('a_1', 'b_1', 'c_1'), ('a_2', 'b_2', 'c_2'), ('a_3', 'b_3', 'c_3')",
-		"insert into t2 values ('a_1', 'b_1', 'c_1'), ('a_2', 'b_2', 'c_2'), ('a_3', 'b_3', 'c_3')",
-	}})
-	e := MustNewEngine(t, harness)
-	defer e.Close()
-	TestQuery(t, harness, e, `SELECT * FROM t1 NATURAL JOIN t2`, []sql.Row{
-		{"a_1", "b_1", "c_1"},
-		{"a_2", "b_2", "c_2"},
-		{"a_3", "b_3", "c_3"},
-	}, nil, nil)
+	TestQuery(t, harness, e, queries.QueryTest{
+		Query: `SELECT * FROM t1 NATURAL JOIN t2`,
+		Expected: []sql.Row{
+			{"a_1", "b_1", "c_1", "d_1"},
+			{"a_2", "b_2", "c_2", "d_2"},
+			{"a_3", "b_3", "c_3", "d_3"},
+		},
+	})
 }
 
 func TestNaturalJoinDisjoint(t *testing.T, harness Harness) {
@@ -3529,17 +3517,20 @@ func TestNaturalJoinDisjoint(t *testing.T, harness Harness) {
 	}})
 	e := MustNewEngine(t, harness)
 	defer e.Close()
-	TestQuery(t, harness, e, `SELECT * FROM t1 NATURAL JOIN t2`, []sql.Row{
-		{"a1", "b1"},
-		{"a1", "b2"},
-		{"a1", "b3"},
-		{"a2", "b1"},
-		{"a2", "b2"},
-		{"a2", "b3"},
-		{"a3", "b1"},
-		{"a3", "b2"},
-		{"a3", "b3"},
-	}, nil, nil)
+	TestQuery(t, harness, e, queries.QueryTest{
+		Query: `SELECT * FROM t1 NATURAL JOIN t2`,
+		Expected: []sql.Row{
+			{"a1", "b1"},
+			{"a1", "b2"},
+			{"a1", "b3"},
+			{"a2", "b1"},
+			{"a2", "b2"},
+			{"a2", "b3"},
+			{"a3", "b1"},
+			{"a3", "b2"},
+			{"a3", "b3"},
+		},
+	})
 }
 
 func TestInnerNestedInNaturalJoins(t *testing.T, harness Harness) {
@@ -3556,10 +3547,13 @@ func TestInnerNestedInNaturalJoins(t *testing.T, harness Harness) {
 	e := MustNewEngine(t, harness)
 	defer e.Close()
 
-	TestQuery(t, harness, e, `SELECT table1.i, t, i2, t2, t3 FROM table1 INNER JOIN table2 ON table1.i = table2.i2 NATURAL JOIN table3`, []sql.Row{
-		{int32(1), "table1", int32(1), "table2", "table3"},
-		{int32(1), "table1", int32(1), "table2", "table3"},
-	}, nil, nil)
+	TestQuery(t, harness, e, queries.QueryTest{
+		Query: `SELECT table1.i, t, i2, t2, t3 FROM table1 INNER JOIN table2 ON table1.i = table2.i2 NATURAL JOIN table3`,
+		Expected: []sql.Row{
+			{int32(1), "table1", int32(1), "table2", "table3"},
+			{int32(1), "table1", int32(1), "table2", "table3"},
+		},
+	})
 }
 
 func TestVariables(t *testing.T, harness Harness) {
@@ -4077,7 +4071,7 @@ func TestShowTableStatus(t *testing.T, harness Harness) {
 	e := MustNewEngine(t, harness)
 	defer e.Close()
 	for _, tt := range queries.ShowTableStatusQueries {
-		TestQuery(t, harness, e, tt.Query, tt.Expected, nil, nil)
+		TestQuery(t, harness, e, tt)
 	}
 	for _, script := range queries.ShowTableStatusScripts {
 		TestScript(t, harness, script)
@@ -4089,7 +4083,7 @@ func TestDateParse(t *testing.T, harness Harness) {
 	e := MustNewEngine(t, harness)
 	defer e.Close()
 	for _, tt := range queries.DateParseQueries {
-		TestQuery(t, harness, e, tt.Query, tt.Expected, nil, nil)
+		TestQuery(t, harness, e, tt)
 	}
 }
 
@@ -4660,7 +4654,7 @@ func TestCurrentTimestamp(t *testing.T, harness Harness) {
 		sql.RunWithNowFunc(func() time.Time {
 			return date
 		}, func() error {
-			TestQuery(t, harness, e, tt.Query, tt.Expected, tt.ExpectedColumns, tt.Bindings)
+			TestQuery(t, harness, e, tt)
 			return nil
 		})
 	}
@@ -4752,7 +4746,7 @@ func TestNullRanges(t *testing.T, harness Harness) {
 	e := MustNewEngine(t, harness)
 	defer e.Close()
 	for _, tt := range queries.NullRangeTests {
-		TestQuery(t, harness, e, tt.Query, tt.Expected, nil, nil)
+		TestQuery(t, harness, e, tt)
 	}
 }
 
@@ -5624,7 +5618,7 @@ func TestBlobs(t *testing.T, h Harness) {
 	e := MustNewEngine(t, h)
 	defer e.Close()
 	for _, tt := range queries.BlobQueries {
-		TestQueryWithEngine(t, h, e, tt)
+		TestQuery(t, h, e, tt)
 	}
 
 	for _, tt := range queries.BlobWriteQueries {

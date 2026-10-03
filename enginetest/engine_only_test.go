@@ -572,7 +572,10 @@ func TestShowCharset(t *testing.T) {
 	e := enginetest.MustNewEngine(t, harness)
 	defer e.Close()
 	for _, test := range tests {
-		enginetest.TestQuery(t, harness, e, test.Query, test.RowGen(t), nil, nil)
+		enginetest.TestQuery(t, harness, e, queries.QueryTest{
+			Query:    test.Query,
+			Expected: test.RowGen(t),
+		})
 	}
 }
 
