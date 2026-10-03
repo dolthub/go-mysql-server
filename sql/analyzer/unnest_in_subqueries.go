@@ -72,6 +72,12 @@ func unnestInSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 				return n, transform.SameTree, nil
 			}
 
+			var lookupRequired bool
+			switch child.(type) {
+			case sql.TableNode, *plan.TableAlias:
+				_, lookupRequired = getTable(ctx, child).(sql.IndexRequired)
+			}
+
 			var matches []applyJoin
 			var newFilters []sql.Expression
 
@@ -112,7 +118,7 @@ func unnestInSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 					max1 = true
 				default:
 				}
-				if sq != nil && sq.CanCacheResults() {
+				if sq != nil && sq.CanCacheResults() && !(max1 && lookupRequired) {
 					matches = append(matches, applyJoin{l: l, r: sq, op: op, filter: joinF, max1: max1, original: e})
 				} else {
 					newFilters = append(newFilters, e)
