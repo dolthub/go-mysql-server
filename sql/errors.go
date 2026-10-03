@@ -1049,6 +1049,9 @@ var (
 	// ErrTooBigScale is returned when a type receives a scale that is too large.
 	ErrTooBigScale = newMySQLKind("Too big scale %v specified. Maximum is %v.", 1425, mysql.SSClientError)
 
+	// ErrTooManyTables is returned when a join has more tables than can be planned.
+	ErrTooManyTables = newMySQLKind("Too many tables; can only use %d tables in a join", mysql.ERTooManyTables, mysql.SSUnknownSQLState)
+
 	// ErrTooBigPrecision is returned when a type receives a precision that is too large.
 	ErrTooBigPrecision = newMySQLKind("Too big precision %v specified. Maximum is %v.", 1426, mysql.SSClientError)
 )
