@@ -591,7 +591,7 @@ var _ sql.CollationCoercible = Instr{}
 
 // NewInstr creates a new instr UDF.
 func NewInstr(ctx *sql.Context, str, substr sql.Expression) sql.Expression {
-	return Instr{str, substr}
+	return Instr{str: str, substr: substr}
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -612,79 +612,91 @@ func (i Instr) Children() []sql.Expression {
 // Eval implements the Expression interface.
 func (i Instr) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	str, err := i.str.Eval(ctx, row)
-	if err != nil {
+	if err != nil || str == nil {
 		return nil, err
-	}
-
-	var text []rune
-	switch str := str.(type) {
-	case string:
-		text = []rune(str)
-	case sql.StringWrapper:
-		s, err := str.Unwrap(ctx)
-		if err != nil {
-			return nil, err
-		}
-		text = []rune(s)
-	case []byte:
-		text = []rune(string(str))
-	case sql.BytesWrapper:
-		s, err := str.Unwrap(ctx)
-		if err != nil {
-			return nil, err
-		}
-		text = []rune(string(s))
-	case nil:
-		return nil, nil
-	default:
-		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str).String())
 	}
 
 	substr, err := i.substr.Eval(ctx, row)
+	if err != nil || substr == nil {
+		return nil, err
+	}
+
+	text, _, err := types.ConvertToCollatedString(ctx, str, i.str.Type(ctx))
 	if err != nil {
 		return nil, err
 	}
 
-	var subtext []rune
-	switch substr := substr.(type) {
-	case string:
-		subtext = []rune(substr)
-	case sql.StringWrapper:
-		s, err := substr.Unwrap(ctx)
-		if err != nil {
-			return nil, err
-		}
-		text = []rune(s)
-	case []byte:
-		subtext = []rune(string(substr))
-	case sql.BytesWrapper:
-		s, err := substr.Unwrap(ctx)
-		if err != nil {
-			return nil, err
-		}
-		subtext = []rune(string(s))
-	case nil:
-		return nil, nil
-	default:
-		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str).String())
+	subtext, _, err := types.ConvertToCollatedString(ctx, substr, i.substr.Type(ctx))
+	if err != nil {
+		return nil, err
 	}
 
-	return findSubsequence(text, subtext) + 1, nil
+	// MySQL uses the haystack's collation, even when the needle has an
+	// explicit COLLATE clause. Binary haystacks return byte positions.
+	collation, _ := sql.GetCoercibility(ctx, i.str)
+	if collation == sql.Collation_binary {
+		return int64(strings.Index(text, subtext) + 1), nil
+	}
+
+	return instrCollated(text, subtext, collation)
 }
 
-func findSubsequence(text []rune, subtext []rune) int64 {
-	for i := 0; i <= len(text)-len(subtext); i++ {
-		var j int
-		for j = 0; j < len(subtext); j++ {
-			if text[i+j] != subtext[j] {
+func instrCollated(text, subtext string, collation sql.CollationID) (int64, error) {
+	if len(subtext) == 0 {
+		return 1, nil
+	}
+
+	sorter := collation.Sorter()
+	if sorter == nil {
+		return 0, sql.ErrCollationNotYetImplementedTemp.New(collation.Name())
+	}
+
+	// MySQL compares windows with the same encoded byte length as the
+	// needle, starting only at character boundaries. This matters when
+	// a collation equates characters with different encoded lengths.
+	encoder := collation.CharacterSet().Encoder()
+	encodedNeedle, ok := encoder.Encode([]byte(subtext))
+	if !ok {
+		return 0, sql.ErrCollationMalformedString.New("converting INSTR substring")
+	}
+
+	// Like other collation comparisons, these per-rune weights do not yet
+	// support UCA expansions (for example, sharp s matching two s characters).
+	needle := []rune(subtext)
+	textRunes := []rune(text)
+	if len(needle) > len(textRunes) {
+		return 0, nil
+	}
+
+	byteOffsets := make([]int, len(textRunes)+1)
+	for j, r := range textRunes {
+		encoded, ok := encoder.Encode([]byte(string(r)))
+		if !ok {
+			return 0, sql.ErrCollationMalformedString.New("converting INSTR string")
+		}
+
+		byteOffsets[j+1] = byteOffsets[j] + len(encoded)
+	}
+
+	for start := 0; start+len(needle) <= len(textRunes); start++ {
+		if byteOffsets[start+len(needle)]-byteOffsets[start] != len(encodedNeedle) {
+			continue
+		}
+
+		matched := true
+		for j, r := range needle {
+			if sorter(textRunes[start+j]) != sorter(r) {
+				matched = false
 				break
 			}
 		}
-		if j == len(subtext) {
-			return int64(i)
+
+		if matched {
+			return int64(start + 1), nil
 		}
 	}
-	return -1
+
+	return 0, nil
 }
 
 // IsNullable implements the Expression interface.

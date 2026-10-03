@@ -17,11 +17,13 @@ package function
 import (
 	"testing"
 
+	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/testutils"
 )
 
 func TestSubstring(t *testing.T) {
@@ -133,8 +135,8 @@ func TestInstr(t *testing.T) {
 		{"non match", sql.NewRow("foo", "bar"), 0, false},
 		{"substr bigger than string", sql.NewRow("foo", "foobar"), 0, false},
 		{"multiple matches", sql.NewRow("bobobo", "bo"), 1, false},
-		{"bad string", sql.NewRow(1, "hello"), 0, true},
-		{"bad substr", sql.NewRow("foo", 1), 0, true},
+		{name: "numeric string", row: sql.NewRow(1, "hello"), expected: 0},
+		{name: "numeric substr", row: sql.NewRow("foo", 1), expected: 0},
 	}
 
 	for _, tt := range testCases {
@@ -153,6 +155,52 @@ func TestInstr(t *testing.T) {
 				}
 				require.Equal(expected, v)
 			}
+		})
+	}
+}
+
+// TestCollatedInstr checks that unwrapping the needle preserves the haystack.
+func TestCollatedInstr(t *testing.T) {
+	textType := types.MustCreateString(sqltypes.Text, 100, sql.Collation_utf8mb4_0900_ai_ci)
+	f := NewInstr(
+		sql.NewEmptyContext(),
+		expression.NewGetField(0, textType, "str", true),
+		expression.NewGetField(1, textType, "substr", false),
+	)
+
+	testCases := []struct {
+		name     string
+		row      sql.Row
+		expected int
+	}{
+		{
+			name:     "wrapped substr match",
+			row:      sql.NewRow("foobar", testutils.NewMockStringWrapper("bar")),
+			expected: 4,
+		},
+		{
+			name: "wrapped substr no match",
+			row:  sql.NewRow("foobar", testutils.NewMockStringWrapper("xyz")),
+		},
+		{
+			name:     "wrapped substr case insensitive",
+			row:      sql.NewRow("foobar", testutils.NewMockStringWrapper("BAR")),
+			expected: 4,
+		},
+		{
+			name:     "both wrapped",
+			row:      sql.NewRow(testutils.NewMockStringWrapper("ébar"), testutils.NewMockStringWrapper("BAR")),
+			expected: 2,
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			require := require.New(t)
+			ctx := sql.NewEmptyContext()
+			v, err := f.Eval(ctx, tt.row)
+			require.NoError(err)
+			require.Equal(int64(tt.expected), v)
 		})
 	}
 }
