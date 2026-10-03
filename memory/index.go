@@ -130,6 +130,10 @@ func (idx *Index) IsVector() bool {
 	return idx.SupportedVectorFunction != nil
 }
 
+func (idx *Index) IsPrimary() bool {
+	return idx.ID() == "PRIMARY"
+}
+
 func (idx *Index) CanSupportOrderBy(expr sql.Expression) bool {
 	if idx.SupportedVectorFunction == nil {
 		return false
