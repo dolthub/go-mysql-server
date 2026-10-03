@@ -20,6 +20,10 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
+func newTableAliasFromSubqueryAlias(sqa *plan.SubqueryAlias, table *plan.ResolvedTable) sql.Node {
+	return plan.NewTableAlias(sqa.Name(), table.WithColumns(sqa.Columns())).WithId(sqa.Id())
+}
+
 // replaceSubqueries replaces subquery nodes that resolve to a whole table. For example, the subquery 'SELECT * from
 // table' with no filters can be replaced with the table itself. If the replaced subquery is aliased, then it is
 // replaced with an aliased table with the same alias name.
@@ -33,19 +37,19 @@ func replaceSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 		return n, transform.SameTree, nil
 	}
 
-	return transform.NodeWithOpaque(ctx, n, func(ctx *sql.Context, node sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	n, identity, err := transform.NodeWithOpaque(ctx, n, func(ctx *sql.Context, node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if sqa, ok := node.(*plan.SubqueryAlias); ok {
 			switch child := sqa.Child.(type) {
 			case *plan.Project:
 				if len(sqa.ColumnNames) == 0 {
 					if table, ok := child.Child.(*plan.ResolvedTable); ok && child.Schema(ctx).Equals(table.Schema(ctx)) {
-						return plan.NewTableAlias(sqa.Name(), table).WithId(sqa.Id()), transform.NewTree, nil
+						return newTableAliasFromSubqueryAlias(sqa, table), transform.NewTree, nil
 
 					}
 				}
 			case *plan.TableAlias:
 				if len(sqa.ColumnNames) == 0 {
-					return plan.NewTableAlias(sqa.Name(), getResolvedTable(ctx, child)).WithId(sqa.Id()), transform.NewTree, nil
+					return newTableAliasFromSubqueryAlias(sqa, getResolvedTable(ctx, child)), transform.NewTree, nil
 				}
 			case *plan.SubqueryAlias:
 				if sqa.Columns().Len() == child.Columns().Len() {
@@ -72,4 +76,8 @@ func replaceSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 		//  transform an Expression into a Node
 		return node, transform.SameTree, nil
 	})
+	if identity == transform.SameTree || err != nil {
+		return n, identity, err
+	}
+	return n, transform.NewTree, nil
 }
