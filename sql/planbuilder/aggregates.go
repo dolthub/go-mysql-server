@@ -94,45 +94,30 @@ func (g *groupBy) addInputs(ctx *sql.Context, args []sql.Expression) {
 	}
 }
 
-// aggregateColumns returns column IDs referenced outside nested subqueries.
-func aggregateColumns(ctx *sql.Context, exprs []sql.Expression) (columns sql.ColSet) {
-	for _, expr := range exprs {
-		sql.Inspect(ctx, expr, func(ctx *sql.Context, expr sql.Expression) bool {
-			if _, ok := expr.(*plan.Subquery); ok {
-				return false
-			}
-			if gf, ok := expr.(*expression.GetField); ok {
-				columns.Add(gf.Id())
-				return false
-			}
-			return true
-		})
-	}
-	return columns
-}
-
 // aggregateOwner returns the closest query source referenced by an aggregate's columns.
 func (s *scope) aggregateOwner(columns sql.ColSet) *scope {
-	source := s.aggregateSource()
+	source := s.querySourceOrSelf()
 	if s.queryBlock == nil || columns.Empty() {
 		return source
 	}
 	// The first query source that supplies any argument column owns the aggregate.
 	// Columns supplied by farther-out queries remain correlations of that aggregate.
-	for query := s.queryBlock; query != nil; query = query.outer {
-		candidate := query.source
+	for queryBlock := s.queryBlock; queryBlock != nil; queryBlock = queryBlock.parent {
+		candidate := queryBlock.source
 		for _, col := range candidate.cols {
 			if columns.Contains(sql.ColumnId(col.id)) {
 				return candidate
 			}
 		}
 	}
-	// Keep incomplete expressions in their syntactic query so normal validation can reject them.
+	// If no query source supplies a referenced column,
+	// assign the aggregate to the current query.
 	return source
 }
 
-// aggregateSource returns the current query's source, or this scope outside a SELECT.
-func (s *scope) aggregateSource() *scope {
+// querySourceOrSelf returns this query block's source (i.e. its FROM scope),
+// or returns the current scope when no query block is attached.
+func (s *scope) querySourceOrSelf() *scope {
 	if s.queryBlock == nil {
 		return s
 	}
@@ -141,7 +126,7 @@ func (s *scope) aggregateSource() *scope {
 
 // isCorrelatedColumn reports whether the column is supplied by an outer query to the active subquery.
 func (s *scope) isCorrelatedColumn(id sql.ColumnId) bool {
-	for query := s.queryBlock; query != nil; query = query.outer {
+	for query := s.queryBlock; query != nil; query = query.parent {
 		candidate := query.source
 		if _, found := candidate.findColumn(id); found {
 			return candidate != s.queryBlock.source
@@ -400,14 +385,14 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 		}
 	}
 
-	argScope := inScope.aggregateSource()
-	correlations := inScope.aggregateCorrelationSnapshot()
+	argScope := inScope.querySourceOrSelf()
+	correlationsBeforeBinding := inScope.correlatedColumnIDs()
 	args := b.buildAggFunctionArgs(argScope, e)
-	columns := aggregateColumns(b.ctx, args)
+	columns := referencedColumnIDs(b.ctx, args)
 	owner := inScope.aggregateOwner(columns)
 	owner.initGroupBy()
 	gb := owner.groupBy
-	owner.projectOuterAggregateInputs(columns)
+	owner.addOuterColumnProjections(columns)
 	gb.addInputs(b.ctx, args)
 	agg := b.newAggregation(e, name, args)
 
@@ -415,7 +400,7 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 		b.qFlags.Set(sql.QFlagCount)
 	}
 	gf := gb.registerAggregate(b.ctx, plan.AliasSubqueryString(b.ctx, agg), agg)
-	inScope.replaceArgumentCorrelations(owner, correlations, gf.Id())
+	inScope.replaceOuterAggregateDependencies(owner, correlationsBeforeBinding, gf.Id())
 	return gf
 }
 
@@ -457,7 +442,10 @@ func (b *Builder) newAggregation(e *ast.FuncExpr, name string, args []sql.Expres
 	return agg
 }
 
-// buildAggFunctionArgs builds aggregate arguments using the existing outer-query chain.
+// buildAggFunctionArgs builds aggregate argument expressions,
+// resolving column references against the query blocks in the original query,
+// and not the finer-grained internal scopes in the query plan. It rejects
+// invalid star and window-function arguments.
 func (b *Builder) buildAggFunctionArgs(inScope *scope, e *ast.FuncExpr) []sql.Expression {
 	b.inAgg = true
 	defer func() { b.inAgg = false }()
@@ -501,13 +489,14 @@ func (b *Builder) buildAggFunctionArgs(inScope *scope, e *ast.FuncExpr) []sql.Ex
 	return args
 }
 
-// projectOuterAggregateInputs preserves correlated columns needed to evaluate this scope's aggregates.
-func (s *scope) projectOuterAggregateInputs(columns sql.ColSet) {
+// addOuterColumnProjections adds |columns| found in enclosing query blocks
+// to those blocks' source scopes' extra projections.
+func (s *scope) addOuterColumnProjections(columns sql.ColSet) {
 	if s.queryBlock == nil {
 		return
 	}
 	columns.ForEach(func(id sql.ColumnId) {
-		for outer := s.queryBlock.outer; outer != nil; outer = outer.outer {
+		for outer := s.queryBlock.parent; outer != nil; outer = outer.parent {
 			col, found := outer.source.findColumn(id)
 			if found {
 				col.scalar = col.scalarGf()
@@ -518,21 +507,33 @@ func (s *scope) projectOuterAggregateInputs(columns sql.ColSet) {
 	})
 }
 
-// aggregateCorrelationSnapshot preserves correlations established before resolving an aggregate's arguments.
-func (s *scope) aggregateCorrelationSnapshot() sql.ColSet {
+// correlatedColumnIDs returns a copy of this query block's
+// correlated column IDs, or an empty set when none are tracked.
+func (s *scope) correlatedColumnIDs() sql.ColSet {
 	if s.queryBlock == nil || s.queryBlock.correlations == nil {
 		return sql.ColSet{}
 	}
 	return s.queryBlock.correlations.correlated.Copy()
 }
 
-// replaceArgumentCorrelations replaces an outer aggregate's argument correlations with its result column.
-func (s *scope) replaceArgumentCorrelations(owner *scope, before sql.ColSet, aggId sql.ColumnId) {
+// replaceOuterAggregateDependencies records that this subquery reads an outer
+// aggregate's result, rather than the individual columns used to compute it.
+// For example, if SUM(a.val) belongs to an enclosing query, this subquery reads
+// the SUM result; it does not read a.val directly.
+//
+// Binding the arguments initially records their outer columns as correlations.
+// Once the aggregate's owner is known, this method removes those newly recorded
+// input correlations by restoring correlationsBeforeBinding, then adds
+// aggregateResultID.
+// Earlier direct column references remain dependencies. This keeps grouping
+// validation from treating an aggregate input as an ungrouped direct reference.
+// It does nothing for a locally owned aggregate or when correlations are not tracked.
+func (s *scope) replaceOuterAggregateDependencies(owner *scope, correlationsBeforeBinding sql.ColSet, aggregateResultID sql.ColumnId) {
 	if s.queryBlock == nil || s.queryBlock.source == owner || s.queryBlock.correlations == nil {
 		return
 	}
-	s.queryBlock.correlations.correlated = before
-	s.queryBlock.correlations.correlated.Add(aggId)
+	s.queryBlock.correlations.correlated = correlationsBeforeBinding
+	s.queryBlock.correlations.correlated.Add(aggregateResultID)
 }
 
 // buildJsonArrayStarAggregate builds a JSON_ARRAY(*) aggregate function
@@ -566,8 +567,8 @@ func (b *Builder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.E
 	b.inAgg = true
 	defer func() { b.inAgg = false }()
 
-	argScope := inScope.aggregateSource()
-	correlations := inScope.aggregateCorrelationSnapshot()
+	argScope := inScope.querySourceOrSelf()
+	correlationsBeforeBinding := inScope.correlatedColumnIDs()
 
 	args, sortConditions := b.buildGroupConcatArgs(argScope, e)
 
@@ -577,11 +578,11 @@ func (b *Builder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.E
 	}
 
 	deps := append(sortConditions.ToExpressions(), args...)
-	columns := aggregateColumns(b.ctx, deps)
+	columns := referencedColumnIDs(b.ctx, deps)
 	owner := inScope.aggregateOwner(columns)
 	owner.initGroupBy()
 	gb := owner.groupBy
-	owner.projectOuterAggregateInputs(columns)
+	owner.addOuterColumnProjections(columns)
 	gb.addInputs(b.ctx, deps)
 
 	// TODO: this should be acquired at runtime, not at parse time, so fix this
@@ -593,11 +594,13 @@ func (b *Builder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.E
 
 	agg := aggregation.NewGroupConcat(e.Distinct, sortConditions, separatorS, args, int(groupConcatMaxLen))
 	gf := gb.registerAggregate(b.ctx, plan.AliasSubqueryString(b.ctx, agg), agg)
-	inScope.replaceArgumentCorrelations(owner, correlations, gf.Id())
+	inScope.replaceOuterAggregateDependencies(owner, correlationsBeforeBinding, gf.Id())
 	return gf
 }
 
-// buildGroupConcatArgs builds GROUP_CONCAT arguments and ordering using the existing outer-query chain.
+// buildGroupConcatArgs builds GROUP_CONCAT argument and ORDER BY expressions,
+// resolving column references against the query blocks in the original query,
+// and not the finer-grained internal scopes in the query plan.
 func (b *Builder) buildGroupConcatArgs(inScope *scope, e *ast.GroupConcatExpr) ([]sql.Expression, sql.SortConditions) {
 	restoreArgumentResolution := b.beginAggregateArgumentResolution(inScope)
 	defer restoreArgumentResolution()
@@ -999,7 +1002,8 @@ func (b *Builder) mergeWindowDefs(def, ref *sql.WindowDefinition) *sql.WindowDef
 	return sql.NewWindowDefinition(partitionBy, orderBy, frame, "", def.Name)
 }
 
-// addHavingDeps preserves source columns needed by HAVING expressions and their aggregates.
+// addHavingDeps adds source columns referenced by HAVING to fromScope's
+// extra projections, including input columns of referenced aggregates.
 func (b *Builder) addHavingDeps(fromScope *scope, having sql.Expression) {
 	addField := func(gf *expression.GetField) {
 		col, found := fromScope.findColumn(gf.Id())
@@ -1158,4 +1162,22 @@ func exprReturnsRowIter(ctx *sql.Context, e sql.Expression) bool {
 		rie, ok := e.(sql.RowIterExpression)
 		return ok && rie.ReturnsRowIter()
 	})
+}
+
+// referencedColumnIDs finds and returns a ColSet of the columns referenced by |exprs|.
+// Expressions inside nested subqueries are excluded.
+func referencedColumnIDs(ctx *sql.Context, exprs []sql.Expression) (columns sql.ColSet) {
+	for _, expr := range exprs {
+		sql.Inspect(ctx, expr, func(ctx *sql.Context, expr sql.Expression) bool {
+			if _, ok := expr.(*plan.Subquery); ok {
+				return false
+			}
+			if gf, ok := expr.(*expression.GetField); ok {
+				columns.Add(gf.Id())
+				return false
+			}
+			return true
+		})
+	}
+	return columns
 }

@@ -606,8 +606,9 @@ func subqueryReferencesOnlyGroupByDeps(ctx *sql.Context, subquery *plan.Subquery
 	// from farther-out queries belong to those queries' grouping checks. Grouped
 	// columns and aggregate results are already valid here, so only the remaining
 	// references can violate this GROUP BY.
-	// For example, correlated {grp, val, enclosingID}, outputs {grp, val},
-	// and allowed {grp} leave only val to check.
+	// For example, if a subquery references a.grp, a.val, and enclosing.id, then
+	// this query supplies a.grp and a.val, so it validates those references.
+	// The enclosing query validates enclosing.id separately.
 	uncheckedOuterColumns := subquery.Correlated().Intersection(groupByOutputIDs).Difference(allowedDependencyIDs)
 	var col string
 	var inspect func(*sql.Context, sql.Expression) bool

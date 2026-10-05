@@ -32,14 +32,15 @@ import (
 // x > 0. All three belong to the same queryBlock, though their scope parents
 // differ. In SELECT t.x FROM t WHERE EXISTS (SELECT 1 FROM u WHERE u.y = t.x),
 // the outer and nested SELECT each have their own queryBlock and builder scopes.
-// Tracking the scope parent chain and queryBlock outer chain separately is
-// required to analyze name lookup, correlated references, and expression
+// Tracking the scope parent chain and the enclosing query block chain separately
+// is required to analyze name lookup, correlated references, and expression
 // ownership correctly.
 type queryBlock struct {
 	// source is the FROM scope that owns this query block.
 	source *scope
-	// outer is the enclosing query block visible to correlated references.
-	outer *queryBlock
+	// parent is the parent query block that encloses this query block. The projections from the
+	// parent query block are visible and may be correlated references in this query block.
+	parent *queryBlock
 	// correlations records columns resolved outside this query block. It is nil
 	// for a top-level query.
 	correlations *subquery
@@ -257,19 +258,24 @@ func (s *scope) getTable(table string) sql.TableId {
 // projection and HAVING namespaces, since those are not valid for aggregation
 // argument resolution.
 // When lookup finds a column across that boundary, the caller adds its ID to
-// the returned subquery's correlated dependencies. At the outermost query,
-// lookup retains the normal parent fallback.
+// the returned subquery's correlated dependencies.
+// A query without correlation tracking retains normal parent lookup.
+// A subquery with no visible parent query block terminates lookup.
 func (s *scope) parentForColumnResolution() (nextScope *scope, correlatedSubquery *subquery) {
 	if s.b == nil || s.queryBlock == nil || !s.b.isAggregateArgumentQuerySource(s) {
 		return s.parent, nil
 	}
-	if s.queryBlock.outer != nil {
-		return s.queryBlock.outer.source, s.queryBlock.correlations
+	if s.queryBlock.parent != nil {
+		return s.queryBlock.parent.source, s.queryBlock.correlations
 	}
-	if s.queryBlock.correlations == nil {
+	if s.queryBlock.correlations != nil {
+		// If the query has no visible parent query block, we can stop lookup here
+		return nil, nil
+	} else {
+		// Otherwise, return the scope's parent to retain access to enclosing
+		// builder namespaces (e.g. to provide NEW/OLD refs for triggers).
 		return s.parent, nil
 	}
-	return nil, nil
 }
 
 // triggerCol is used to hallucinate a new column during trigger DDL

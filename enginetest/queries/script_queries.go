@@ -6299,13 +6299,13 @@ CREATE TABLE tab3 (
 			},
 			{
 				// An outer-only aggregate remains owned by the outer query and is valid without grouping by a.val.
-				Query:    "SELECT a.grp FROM correlated_aggregate_scope a GROUP BY a.grp HAVING EXISTS (SELECT 1 FROM correlated_aggregate_pair b GROUP BY b.grp HAVING EXISTS (SELECT 1 WHERE SUM(a.val) > 0)) ORDER BY grp;",
-				Expected: []sql.Row{{1}, {2}},
+				Query:    "SELECT a.grp FROM correlated_aggregate_scope a GROUP BY a.grp HAVING EXISTS (SELECT 1 FROM correlated_aggregate_pair b GROUP BY b.grp HAVING EXISTS (SELECT 1 WHERE SUM(a.val) > 1)) ORDER BY grp;",
+				Expected: []sql.Row{{1}},
 			},
 			{
 				// A local aggregate does not add a dependency to the outer query.
-				Query:    "SELECT a.grp FROM correlated_aggregate_scope a GROUP BY a.grp HAVING EXISTS (SELECT 1 FROM correlated_aggregate_pair b GROUP BY b.grp HAVING EXISTS (SELECT 1 WHERE SUM(b.val) > 0)) ORDER BY grp;",
-				Expected: []sql.Row{{1}, {2}},
+				Query:    "SELECT a.grp FROM correlated_aggregate_scope a GROUP BY a.grp HAVING EXISTS (SELECT 1 FROM correlated_aggregate_pair b GROUP BY b.grp HAVING EXISTS (SELECT 1 WHERE SUM(b.val) > 1)) ORDER BY grp;",
+				Expected: []sql.Row{},
 			},
 			{
 				// The mixed aggregate belongs to b's query, leaving a.val as an ungrouped outer dependency.

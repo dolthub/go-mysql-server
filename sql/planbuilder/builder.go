@@ -65,9 +65,10 @@ type Builder struct {
 	// inWindow tracks whether we are inside window function arguments.
 	inWindow bool
 
-	// aggregateArgumentRoot is non-nil while aggregate arguments are being bound.
-	// It makes column lookup cross semantic query blocks instead of treating
-	// builder scopes as query boundaries.
+	// aggregateArgumentRoot points to the source scope where the current
+	// aggregate's arguments are being bound. Its query block and enclosing
+	// query blocks identify the source scopes where column lookup skips
+	// projection and HAVING aliases. It is nil outside argument binding.
 	aggregateArgumentRoot *scope
 
 	authEnabled  bool
@@ -217,8 +218,13 @@ func (b *Builder) withWindowState(clause string, isColRef bool) func() {
 	return func() { b.windowClause, b.windowClauseColRef = outerClause, outerColRef }
 }
 
-// beginAggregateArgumentResolution makes column lookup follow the query-block
-// chain rooted at source. The returned function restores the previous state.
+// beginAggregateArgumentResolution temporarily sets aggregateArgumentRoot to
+// |source| so that argument lookup will use query block sources and skip
+// projection/HAVING aliases. The lookup mode lives on Builder and enables
+// correct aggregate argument resolution, based on the query block structure
+// from the original query, not the more fine-grained scopes from the query plan.
+// The caller must defer the returned function to restore the previous lookup mode;
+// correlations and expressions created during argument binding remain.
 func (b *Builder) beginAggregateArgumentResolution(source *scope) (restore func()) {
 	previousRoot := b.aggregateArgumentRoot
 	b.aggregateArgumentRoot = source
@@ -230,7 +236,7 @@ func (b *Builder) isAggregateArgumentQuerySource(target *scope) bool {
 	if b.aggregateArgumentRoot == nil {
 		return false
 	}
-	for query := b.aggregateArgumentRoot.queryBlock; query != nil; query = query.outer {
+	for query := b.aggregateArgumentRoot.queryBlock; query != nil; query = query.parent {
 		if query.source == target {
 			return true
 		}

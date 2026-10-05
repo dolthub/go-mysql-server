@@ -75,11 +75,11 @@ func (b *Builder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
 	// 5) Build top-level scopes, replacing aggregation and aliases with
 	//    projections from (4).
 	// 6) Finish with final target projections.
-	outerQueryBlock := inScope.queryBlock
+	parentQueryBlock := inScope.queryBlock
 	fromScope := b.buildFrom(inScope, s.From)
 	fromScope.queryBlock = &queryBlock{
 		source:       fromScope,
-		outer:        outerQueryBlock,
+		parent:       parentQueryBlock,
 		correlations: inScope.nearestSubquery(),
 	}
 	if cn, ok := fromScope.node.(sql.CommentedNode); ok && len(s.Comments) > 0 {
