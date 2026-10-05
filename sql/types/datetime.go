@@ -609,13 +609,23 @@ func parseTime(str string, timeRegex *regexp.Regexp) (hourStr, minStr, secStr st
 // Only up to MaxDateTimePrecision + 1 digits are preserved to properly round the resulting value.
 // Additionally, parseMicros will return the next index.
 // Any invalid strings will result in empty string and 0 value for pos.
-func parseMicros(str string) (micros string, pos int) {
-	matchIdxs := MicrosRegex.FindStringIndex(str)
-	if len(matchIdxs) == 0 {
-		return micros, pos
+func parseMicros(str string) (microStr string, idx int) {
+	var char rune
+	for idx, char = range str {
+		// the very first character must be a '.'
+		if idx == 0 {
+			if char == '.' {
+				continue
+			}
+			return microStr, 0
+		}
+		if unicode.IsDigit(char) {
+			continue
+		}
+		break
 	}
-	micros = str[matchIdxs[0]:min(matchIdxs[1], MaxDatetimePrecision+2)] // +1 for digit and +1 for '.'
-	return micros, matchIdxs[1]
+	microStr = str[:min(idx, MaxDatetimePrecision+2)]
+	return microStr, idx
 }
 
 // parseDatetime parses a Datetime according to MySQL rules.

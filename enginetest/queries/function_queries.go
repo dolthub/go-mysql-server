@@ -2574,6 +2574,67 @@ var FunctionQueryTests = []QueryTest{
 			{types.Timespan(45296123456)},
 		},
 	},
+
+	{
+		Query: "select convert('0', TIME);",
+		Expected: []sql.Row{
+			{types.Timespan(0)},
+		},
+	},
+	{
+		Query: "select convert('1', TIME);",
+		Expected: []sql.Row{
+			{types.Timespan(1_000000)},
+		},
+	},
+	{
+		Query: "select convert('12', TIME);",
+		Expected: []sql.Row{
+			{types.Timespan(12_000000)},
+		},
+	},
+	{
+		Query: "select convert('12:', TIME);",
+		Expected: []sql.Row{
+			{types.Timespan(12_000000)},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select convert('12:34', TIME);",
+		Expected: []sql.Row{
+			{types.Timespan(754_000000)},
+		},
+	},
+	{
+		Query: "select convert('12:34:', TIME);",
+		Expected: []sql.Row{
+			{types.Timespan(754_000000)},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select convert('12:34:56', TIME);",
+		Expected: []sql.Row{
+			{types.Timespan(754_000000)},
+		},
+	},
+	{
+		Query: "select convert('12:34:56.', TIME);",
+		Expected: []sql.Row{
+			{types.Timespan(754_000000)},
+		},
+	},
+	{
+		Query: "select convert('12:34:56:', TIME);",
+		Expected: []sql.Row{
+			{types.Timespan(754_000000)},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
 	{
 		Query: "select convert('12:34:56.999999', TIME);",
 		Expected: []sql.Row{
@@ -2621,6 +2682,105 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{
 			{types.Timespan(45296_123456)},
 		},
+	},
+	{
+		Query: "select cast('-' as TIME);",
+		Expected: []sql.Row{
+			{nil},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast(' -' as TIME);",
+		Expected: []sql.Row{
+			{nil},
+		},
+		// TODO: should have second delimiter warning
+		//  https://github.com/dolthub/dolt/issues/11750
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('- ' as TIME);",
+		Expected: []sql.Row{
+			// TODO: this should be negative zero
+			{types.Timespan(0)},
+		},
+		// TODO: https://github.com/dolthub/dolt/issues/11750
+		SkipWarnings:          true,
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast(' - ' as TIME);",
+		Expected: []sql.Row{
+			// TODO: this should be negative zero
+			{types.Timespan(0)},
+		},
+		// TODO: https://github.com/dolthub/dolt/issues/11750
+		SkipWarnings:          true,
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast(' - a' as TIME);",
+		Expected: []sql.Row{
+			// TODO: this should be negative zero
+			{types.Timespan(0)},
+		},
+		// TODO: https://github.com/dolthub/dolt/issues/11750
+		SkipWarnings:          true,
+		ExpectedWarningsCount: 2,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast(' - 12:34:56 ' as TIME);",
+		Expected: []sql.Row{
+			{types.Timespan(-754_000000)},
+		},
+		// TODO: https://github.com/dolthub/dolt/issues/11
+		SkipWarnings:          true,
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('12.123456' as TIME(6));",
+		Expected: []sql.Row{
+			{types.Timespan(12_123456)},
+		},
+	},
+	{
+		Query: "select cast('12:.123456' as TIME(6));",
+		Expected: []sql.Row{
+			{types.Timespan(12_000000)},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast(':34.123456' as TIME(6));",
+		Expected: []sql.Row{
+			{types.Timespan(12_000000)},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast(':34:.123456' as TIME(6));",
+		Expected: []sql.Row{
+			{types.Timespan(12_000000)},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast(':34:56.123456' as TIME(6));",
+		Expected: []sql.Row{
+			{types.Timespan(12_000000)},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 	},
 
 	// Additional JSON Function Tests

@@ -15,7 +15,6 @@
 package types
 
 import (
-	"cloud.google.com/go/monitoring/dashboard/apiv1/dashboardpb"
 	"context"
 	"fmt"
 	"math"
@@ -410,86 +409,211 @@ func isMySQLPunct(char rune) bool {
 	return unicode.IsPunct(char) || char == '-' || char == ':' || char == '.'
 }
 
-func (t TimespanType_) parseTime(str string) (any, error) {
+// TODO: have this replace numeric cut set
+var mysqlWhitespaces = [4]rune{' ', '\n', '\t', '\r'}
+
+func isMySQLWhitespace(char rune) bool {
+	for _, ws := range mysqlWhitespaces {
+		if ws == char {
+			return true
+		}
+	}
+	return false
+}
+
+// TODO: refactor into a state machine? would that even be more readable? gotos are a bad idea i think
+func (t TimespanType_) parseTime(origStr string) (any, error) {
+	var idx int
+	var char rune
+	var str = origStr
+	if len(str) == 0 {
+		return nil, sql.ErrTruncatedIncorrect.New(t.String(), str)
+	}
+
+	// trim whitespaces
+	idx = strings.IndexFunc(str, func(r rune) bool {
+		return !isMySQLWhitespace(r)
+	})
+	if idx == -1 {
+		return nil, sql.ErrTruncatedIncorrect.New(t.String(), str)
+	}
 	// TODO: leading and trailing whitespace(s) should throw warning
 	// Tracking issue: https://github.com/dolthub/dolt/issues/11750
-
-	// Trim leading whitespaces
-	for i, c := range str {
-		if c == ' ' || c == '\t' || c == '\n' || c == '\r' {
-			continue
-		}
-		str = str[i:]
-		break
+	str = str[idx:]
+	if len(str) == 0 {
+		return nil, sql.ErrTruncatedIncorrect.New(t.String(), str)
 	}
 
 	var isNeg bool
 	if str[0] == '-' {
 		isNeg = true
 		str = str[1:]
+		if len(str) == 0 {
+			return nil, sql.ErrTruncatedIncorrect.New(t.String(), str)
+		}
 	}
 
-	// Trim leading whitespaces
-	for i, c := range str {
-		if c == ' ' || c == '\t' || c == '\n' || c == '\r' {
-			continue
+	// trim whitespaces
+	idx = strings.IndexFunc(str, func(r rune) bool {
+		return !isMySQLWhitespace(r)
+	})
+	if idx == -1 {
+		// special case for '-' followed by any number of whitespaces
+		if isNeg {
+			// TODO: should be negative zero time
+			return Timespan(0), sql.ErrTruncatedIncorrect.New(t.String(), str)
 		}
-		str = str[i:]
-		break
+		return nil, sql.ErrTruncatedIncorrect.New(t.String(), str)
 	}
+	// TODO: leading and trailing whitespace(s) should throw warning
+	// Tracking issue: https://github.com/dolthub/dolt/issues/11750
+	str = str[idx:]
 
-	// read hour part
-	var hourStr string
-	var idx int
-	var char rune
-	for idx, char = range str {
-		if unicode.IsDigit(char) {
-			continue
-		}
-		// TODO: watch out for empty strings here
+	// read the hours part
+	var hourStr, minStr, secStr, microStr string
+	idx = strings.IndexFunc(str, func(r rune) bool {
+		return !unicode.IsDigit(r)
+	})
+	if idx == -1 {
+		// TODO: parse this as numeric time
+		hourStr = str
+		str = ""
+	} else {
 		hourStr = str[:idx]
-		str = str[idx:]
-		break
-	}
-	if idx == 0 {
-		// TODO: not necessarily a problem, because ":34:56" is a valid time
-	}
-	if !isMySQLPunct(char) {
-		// TODO: break accordingly
-	}
-	if idx > 3 {
-		// TODO: interpret this string as a numeric time string rather than delimited
-	}
-
-	// read any number of valid delimiters
-	for idx, char = range str {
-		if isMySQLPunct(char) {
-			continue
+		char = rune(str[idx])
+		switch char {
+		case ':':
+			str = str[idx+1:] // TODO: if we see ':', but nothing after, throw warning
+		case '.':
+			microStr, idx = parseMicros(str)
+			str = str[idx:]
+		default:
+			return nil, sql.ErrTruncatedIncorrect.New(t.String(), str)
 		}
-		str = str[idx:]
-		break
 	}
-
-	// the last char is not a digit and not a valid MySQL punctuation character
-	if !unicode.IsDigit(char) {
-		return nil, sql.ErrTruncatedIncorrect.New(t.String(), str)
-	}
-
-	// read the minute part
-	var minStr string
-	for idx, char = range str {
-		if unicode.IsDigit(char) {
-			continue
+	if len(str) == 0 || len(microStr) > 0 {
+		hours, mins, secs, micros, ok := t.parseTimeParts(hourStr, minStr, secStr, microStr)
+		if !ok {
+			return nil, sql.ErrTruncatedIncorrect.New(t.String(), str)
 		}
+		res, ok := t.makeTime(isNeg, hours, mins, secs, micros*nanosPerMicro)
+		if !ok {
+			return nil, sql.ErrTruncatedIncorrect.New(t.String(), str)
+		}
+		return res, nil
+	}
+
+	// read the minutes part
+	idx = strings.IndexFunc(str, func(r rune) bool {
+		return !unicode.IsDigit(r)
+	})
+	if idx == -1 {
+		minStr = str
+		str = ""
+	} else {
 		minStr = str[:idx]
-		str = str[idx:]
-		break
+		char = rune(str[idx])
+		switch char {
+		case ':':
+			str = str[idx+1:] // TODO: if we see ':', but nothing after, throw warning
+		case '.':
+			microStr, idx = parseMicros(str)
+			str = str[idx:]
+		default:
+			return nil, sql.ErrTruncatedIncorrect.New(t.String(), str)
+		}
+	}
+	if len(str) == 0 || len(microStr) > 0 {
+		hours, mins, secs, micros, ok := t.parseTimeParts(hourStr, minStr, secStr, microStr)
+		if !ok {
+			return nil, sql.ErrTruncatedIncorrect.New(t.String(), str)
+		}
+		res, ok := t.makeTime(isNeg, hours, mins, secs, micros)
+		if !ok {
+			return nil, sql.ErrTruncatedIncorrect.New(t.String(), str)
+		}
+		return res, nil
 	}
 
-	if idx == 0 {
+	// read the seconds part
+	idx = strings.IndexFunc(str, func(r rune) bool {
+		return !unicode.IsDigit(r)
+	})
+	if idx == -1 {
+		secStr = str
+		str = ""
+	} else {
+		secStr = str[:idx]
+		char = rune(str[idx])
+		switch char {
+		case '.':
+			microStr, idx = parseMicros(str)
+			str = str[idx:]
+		default:
+			return nil, sql.ErrTruncatedIncorrect.New(t.String(), str)
+		}
+	}
+	if len(str) == 0 || len(microStr) > 0 {
+		hours, mins, secs, micros, ok := t.parseTimeParts(hourStr, minStr, secStr, microStr)
+		if !ok {
+			return nil, sql.ErrTruncatedIncorrect.New(t.String(), str)
+		}
+		res, ok := t.makeTime(isNeg, hours, mins, secs, micros)
+		if !ok {
+			return nil, sql.ErrTruncatedIncorrect.New(t.String(), str)
+		}
+		return res, nil
+	}
+
+	// microseconds have already been read, so remaining characters should be truncated
+	var err error
+	if len(str) > 1 {
+		// TODO: if there's at least one white space followed by non-whitespace characters and there has been no microseconds, then we parse as datetime?
+		if isMySQLWhitespace(rune(str[0])) && isMySQLWhitespace(rune(str[1])) {
+			return nil, sql.ErrTruncatedIncorrect.New(t.String(), str)
+		}
+		err = sql.ErrTruncatedIncorrect.New(t.String(), str)
+	}
+	hours, mins, secs, micros, ok := t.parseTimeParts(hourStr, minStr, secStr, microStr)
+	if !ok {
 		return nil, sql.ErrTruncatedIncorrect.New(t.String(), str)
 	}
+	res, ok := t.makeTime(isNeg, hours, mins, secs, micros)
+	if !ok {
+		return nil, sql.ErrTruncatedIncorrect.New(t.String(), str)
+	}
+	return res, err
+}
 
+func (t TimespanType_) parseTimeParts(hourStr, minStr, secStr, microStr string) (hours, mins, secs, micros int64, ok bool) {
+	var err error
+	if len(hourStr) > 0 {
+		hours, err = strconv.ParseInt(hourStr, 10, 64)
+		if err != nil {
+			return 0, 0, 0, 0, false
+		}
+	}
+	if len(minStr) > 0 {
+		mins, err = strconv.ParseInt(minStr, 10, 64)
+		if err != nil {
+			return 0, 0, 0, 0, false
+		}
+	}
+	if len(secStr) > 0 {
+		secs, err = strconv.ParseInt(secStr, 10, 64)
+		if err != nil {
+			return 0, 0, 0, 0, false
+		}
+	}
+	if len(microStr) > 1 { // the first character is expected to be '.'
+		var microsf64 float64
+		microsf64, err = strconv.ParseFloat(microStr, 64)
+		if err != nil {
+			return 0, 0, 0, 0, false
+		}
+		micros = int64(math.Round(microsf64 * float64(microsPerSec)))
+	}
+	return hours, secs, mins, micros, true
 }
 
 func (t TimespanType_) stringToTimespan(s string) (Timespan, error) {
