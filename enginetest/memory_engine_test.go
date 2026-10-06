@@ -1206,3 +1206,7 @@ func TestInsertRegressionScripts(t *testing.T) {
 func TestJoinsScripts(t *testing.T) {
 	enginetest.TestJoinsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
+
+func TestJSONFunctionsScripts(t *testing.T) {
+	enginetest.TestJSONFunctionsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
