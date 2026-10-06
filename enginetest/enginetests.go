@@ -3198,7 +3198,7 @@ func TestCreateDatabase(t *testing.T, harness Harness) {
 	e := MustNewEngine(t, harness)
 	defer e.Close()
 
-	for _, tt := range queries.CreateDatabaseScripts {
+	for _, tt := range queries.CreateDatabaseScriptTests {
 		TestScriptWithEngine(t, e, harness, tt)
 	}
 }
@@ -5864,4 +5864,12 @@ func TestConversionsScripts(t *testing.T, harness Harness) {
 
 func TestConversionsScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.ConversionsScriptTests, true)
+}
+
+func TestDatabaseDefinitionsScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.DatabaseDefinitionsScriptTests, false)
+}
+
+func TestDatabaseDefinitionsScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.DatabaseDefinitionsScriptTests, true)
 }
