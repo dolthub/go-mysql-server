@@ -5881,3 +5881,11 @@ func TestTableDefinitionsScripts(t *testing.T, harness Harness) {
 func TestTableDefinitionsScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.TableDefinitionsScriptTests, true)
 }
+
+func TestDeleteScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.DeleteScriptTests, false)
+}
+
+func TestDeleteScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.DeleteScriptTests, true)
+}
