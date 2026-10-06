@@ -799,7 +799,8 @@ func TestQueryPlanScripts(t *testing.T, harness Harness) {
 }
 
 func TestOrderByGroupBy(t *testing.T, harness Harness) {
-	for _, tt := range queries.OrderByGroupByScriptTests {
+
+	for _, tt := range queries.OrderByScriptTests {
 		TestScript(t, harness, tt)
 	}
 
@@ -6012,4 +6013,12 @@ func TestNumericScripts(t *testing.T, harness Harness) {
 
 func TestNumericScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.NumericScriptTests, true)
+}
+
+func TestOrderingScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.OrderingScriptTests, false)
+}
+
+func TestOrderingScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.OrderingScriptTests, true)
 }

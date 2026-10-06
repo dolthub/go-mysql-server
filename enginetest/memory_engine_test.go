@@ -1218,3 +1218,7 @@ func TestNameResolutionScripts(t *testing.T) {
 func TestNumericScripts(t *testing.T) {
 	enginetest.TestNumericScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
+
+func TestOrderingScripts(t *testing.T) {
+	enginetest.TestOrderingScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
