@@ -6005,3 +6005,11 @@ func TestNameResolutionScripts(t *testing.T, harness Harness) {
 func TestNameResolutionScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.NameResolutionScriptTests, true)
 }
+
+func TestNumericScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.NumericScriptTests, false)
+}
+
+func TestNumericScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.NumericScriptTests, true)
+}
