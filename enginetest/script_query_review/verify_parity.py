@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Review-only parity checks. Requires Python 3, Go, and the original Git commit.
+"""Review-only parity checks. Requires Python 3, Go, and the original and merged main Git commits.
 
 Run from any directory:
     python3 enginetest/script_query_review/verify_parity.py
 
-The restored script_queries.go is checked against the original commit, then
+The restored script_queries.go is checked against the merged main commit, then
 excluded from destination counts so its retained copies cannot mask omissions.
 The report identifies every original script's exact destination. Temporary Go
 AST tooling and baseline sources are created and deleted automatically.
@@ -20,7 +20,14 @@ import subprocess
 import tarfile
 import tempfile
 
-BASELINE = "54c14acb7"
+BASELINE = "b51fc8f49"
+ORIGINAL_BASELINE = "54c14acb7"
+UPSTREAM_SCRIPTS = {
+    "IN with mixed integer and fractional list compares without truncation":
+        ("tuple_queries.go", "TupleComparisonsScriptTests"),
+    "correlated subquery references outer aggregate":
+        ("aggregation_script_queries.go", "AggregationScriptTests"),
+}
 ROOT = Path(__file__).resolve().parents[2]
 REPORT = Path(__file__).with_name("report.html")
 
@@ -266,7 +273,17 @@ def verify():
         assert body_lines(before, baseline) == body_lines(after, current), (
             "Script body lines or comments changed"
         )
-        originals = [c for c in before if c["file"] == "script_queries.go"]
+        historical = temporary / "historical"
+        historical.mkdir()
+        (historical / "script_queries.go").write_bytes(run(
+            "git", "show", ORIGINAL_BASELINE + ":enginetest/queries/script_queries.go"
+        ))
+        originals = inventory(historical)
+        upstream_originals = [c for c in before if c["file"] == "script_queries.go"]
+        upstream_additions = literal_counts(upstream_originals) - literal_counts(originals)
+        assert not (literal_counts(originals) - literal_counts(upstream_originals)), (
+            "Historical scripts changed upstream; review mappings need updating"
+        )
         expected = collections.defaultdict(collections.Counter)
         original_ids = set()
         for c in originals:
@@ -277,6 +294,14 @@ def verify():
                 assert name == entry["name"], (original_id, "report name changed")
                 expected[(filename, variable)][entry["text"]] += 1
         assert original_ids == parsed.destinations.keys(), "Report entries differ"
+        upstream_names = set()
+        for c in upstream_originals:
+            for entry in c["entries"]:
+                if upstream_additions[entry["text"]]:
+                    upstream_names.add(entry["name"])
+                    destination = UPSTREAM_SCRIPTS[entry["name"]]
+                    expected[destination][entry["text"]] += 1
+        assert upstream_names == UPSTREAM_SCRIPTS.keys(), "Upstream mappings differ"
         destinations = []
         for (filename, variable), literals in expected.items():
             matches = [c for c in after if c["file"] == filename and c["name"] == variable]
@@ -286,7 +311,7 @@ def verify():
                 filename, variable, "original script missing, duplicated, or changed"
             )
             destinations.append(c)
-        assert body_lines(originals, baseline) == body_lines(destinations, current), (
+        assert body_lines(upstream_originals, baseline) == body_lines(destinations, current), (
             "Original script or prefix-comment lines changed"
         )
         # Self-contained original suites must still have ordinary and prepared runners.
@@ -333,7 +358,8 @@ def verify():
                    or f in ("complex_index_script_queries.go", "index_prefix_script_queries.go",
                             "procedure_ddl_script_queries.go")}
         assert all(n <= 3000 for n in lengths.values()), lengths
-        print(f"PASS: {sum(literal_counts(originals).values())} original scripts in "
+        print(f"PASS: {sum(literal_counts(originals).values())} original scripts plus "
+              f"{sum(upstream_additions.values())} upstream additions in "
               f"{len({c['file'] for c in destinations})} feature files; "
               f"{sum(literal_counts(before).values())} total ScriptTest literals.")
         print("Exact names, literals, body/comment lines, and duplicate multiplicities match.")

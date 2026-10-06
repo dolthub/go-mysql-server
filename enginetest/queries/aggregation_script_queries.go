@@ -547,6 +547,153 @@ var AggregationScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "correlated subquery references outer aggregate",
+		SetUpScript: []string{
+			"CREATE TABLE correlated_aggregate_scope (id INT PRIMARY KEY, grp INT, val INT);",
+			"INSERT INTO correlated_aggregate_scope VALUES (1, 1, 1), (2, 1, 2), (3, 2, 1);",
+			"CREATE TABLE correlated_aggregate_probe (probe INT);",
+			"INSERT INTO correlated_aggregate_probe VALUES (1);",
+			"CREATE TABLE correlated_aggregate_pair (grp INT, val INT);",
+			"INSERT INTO correlated_aggregate_pair VALUES (1, 1);",
+			"CREATE TABLE concat_scope (grp INT, val TEXT);",
+			"INSERT INTO concat_scope VALUES (1, 'a'), (1, 'b'), (2, 'c');",
+			"CREATE TABLE concat_probe (id INT);",
+			"INSERT INTO concat_probe VALUES (1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// The primary key determines val, so HAVING may use it without grouping by val.
+				Query:    "SELECT id, val FROM correlated_aggregate_scope GROUP BY id HAVING val > 1 ORDER BY id;",
+				Expected: []sql.Row{{2, 2}},
+			},
+			{
+				Dialect:  "mysql",
+				Query:    "SELECT grp, (SELECT GROUP_CONCAT(a.val ORDER BY a.val SEPARATOR '|') FROM concat_probe p) FROM concat_scope a GROUP BY grp HAVING (SELECT GROUP_CONCAT(a.val ORDER BY a.val SEPARATOR '|') FROM concat_probe p) IS NOT NULL ORDER BY grp;",
+				Expected: []sql.Row{{1, "a|b"}, {2, "c"}},
+			},
+			{
+				Query:       "SELECT grp, (SELECT a.val FROM concat_probe p LIMIT 1) FROM concat_scope a GROUP BY grp ORDER BY grp;",
+				ExpectedErr: analyzererrors.ErrValidationGroupBy,
+			},
+			{
+				// A direct use of a.val remains invalid even when the same subquery aggregates a.val.
+				Dialect:     "mysql",
+				Query:       "SELECT grp, (SELECT GROUP_CONCAT(a.val ORDER BY a.val) FROM concat_probe p WHERE p.id = LENGTH(a.val)) FROM concat_scope a GROUP BY grp ORDER BY grp;",
+				ExpectedErr: analyzererrors.ErrValidationGroupBy,
+			},
+			{
+				Dialect:  "mysql",
+				Query:    "SELECT grp FROM concat_scope a GROUP BY grp HAVING (SELECT GROUP_CONCAT(a.val) FROM concat_probe p) = 'c' ORDER BY grp;",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Dialect:  "mysql",
+				Query:    "SELECT grp FROM concat_scope a GROUP BY grp HAVING (SELECT GROUP_CONCAT(a.val ORDER BY a.val) FROM concat_probe p) = 'c' ORDER BY grp;",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Dialect:  "mysql",
+				Query:    "SELECT grp FROM concat_scope a GROUP BY grp HAVING (SELECT GROUP_CONCAT(a.val ORDER BY a.val) FROM concat_scope a) = 'a,b,c' ORDER BY grp;",
+				Expected: []sql.Row{{1}, {2}},
+			},
+			{
+				Query:    "SELECT grp, SUM(DISTINCT val) FROM correlated_aggregate_scope a GROUP BY grp HAVING EXISTS (SELECT 1 FROM correlated_aggregate_scope b WHERE SUM(DISTINCT a.val) = b.val) ORDER BY grp;",
+				Expected: []sql.Row{{2, float64(1)}},
+			},
+			{
+				Query:    "SELECT grp FROM correlated_aggregate_scope a GROUP BY grp HAVING EXISTS (SELECT 1 FROM correlated_aggregate_scope b WHERE SUM(DISTINCT a.val) = b.val) ORDER BY grp;",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "SELECT grp FROM correlated_aggregate_scope a GROUP BY grp HAVING EXISTS (SELECT 1 WHERE COALESCE(SUM(a.val), 0) = 1) ORDER BY grp;",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "SELECT grp FROM correlated_aggregate_scope a GROUP BY grp HAVING EXISTS (SELECT 1 WHERE SUM(val) = 1) ORDER BY grp;",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				// The aggregate crosses two subqueries but still belongs to the scope that provides a.val.
+				Query:    "SELECT grp FROM correlated_aggregate_scope a GROUP BY grp HAVING EXISTS (SELECT 1 FROM correlated_aggregate_probe b WHERE EXISTS (SELECT 1 WHERE SUM(a.val) = b.probe)) ORDER BY grp;",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				// Parenthesized selects preserve the outer aggregate's owning query scope.
+				Query:    "SELECT grp FROM correlated_aggregate_scope a GROUP BY grp HAVING EXISTS ((SELECT 1 WHERE SUM(a.val) = 1)) ORDER BY grp;",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				// Set operation arms bind outer aggregates through normal semantic resolution.
+				Query:    "SELECT grp FROM correlated_aggregate_scope a GROUP BY grp HAVING EXISTS (SELECT 1 WHERE SUM(a.val) = 1 UNION ALL SELECT 1 WHERE FALSE) ORDER BY grp;",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				// Aggregate arguments retain CTEs declared by their nested query.
+				Query:    "SELECT grp FROM correlated_aggregate_scope a GROUP BY grp HAVING EXISTS (WITH q AS (SELECT 1 AS x) SELECT 1 HAVING SUM((SELECT x FROM q)) = 1) ORDER BY grp;",
+				Expected: []sql.Row{{1}, {2}},
+			},
+			{
+				// The middle a alias shadows outer a, so the deepest aggregate must belong to the middle query.
+				Query:    "SELECT grp FROM correlated_aggregate_scope a GROUP BY grp HAVING EXISTS (SELECT 1 FROM correlated_aggregate_scope a HAVING EXISTS (SELECT 1 WHERE SUM(a.val) = 4)) ORDER BY grp;",
+				Expected: []sql.Row{{1}, {2}},
+			},
+			{
+				// The inner table has no val column, so normal name resolution should fall back to outer a.val.
+				Query:    "SELECT grp FROM correlated_aggregate_scope a GROUP BY grp HAVING EXISTS (SELECT 1 FROM correlated_aggregate_probe b WHERE SUM(val) = b.probe) ORDER BY grp;",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				// An unqualified local val shadows the outer column, so this aggregate stays in the subquery.
+				Query:    "SELECT grp FROM correlated_aggregate_scope a GROUP BY grp HAVING EXISTS (SELECT 1 FROM correlated_aggregate_scope b HAVING SUM(val) = 4) ORDER BY grp;",
+				Expected: []sql.Row{{1}, {2}},
+			},
+			{
+				// Joins do not change ownership when every aggregate argument comes from the outer scope.
+				Query:    "SELECT grp FROM correlated_aggregate_scope a GROUP BY grp HAVING EXISTS (SELECT 1 FROM correlated_aggregate_probe b JOIN correlated_aggregate_probe c ON b.probe = c.probe WHERE SUM(a.val) = b.probe) ORDER BY grp;",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				// A local join argument makes the aggregate local even when another argument is correlated.
+				Query:    "SELECT grp FROM correlated_aggregate_scope a GROUP BY grp, a.val HAVING EXISTS (SELECT 1 FROM correlated_aggregate_probe b JOIN correlated_aggregate_probe c ON b.probe = c.probe HAVING SUM(a.val + b.probe) > 0) ORDER BY grp;",
+				Expected: []sql.Row{{1}, {1}, {2}},
+			},
+			{
+				Query:    "SELECT grp FROM correlated_aggregate_scope a GROUP BY grp HAVING EXISTS (SELECT SUM(a.val) FROM correlated_aggregate_scope a HAVING SUM(a.val) = 4) ORDER BY grp;",
+				Expected: []sql.Row{{1}, {2}},
+			},
+			{
+				// Mixing outer a.val with inner b.val makes the aggregate belong to the inner query.
+				Query:    "SELECT grp FROM correlated_aggregate_scope a GROUP BY grp, a.val HAVING EXISTS (SELECT SUM(a.val + b.val) FROM correlated_aggregate_scope b HAVING SUM(a.val + b.val) > 0) ORDER BY grp;",
+				Expected: []sql.Row{{1}, {1}, {2}},
+			},
+			{
+				// The deepest aggregate mixes top-level a.val and middle-level b.probe, so it belongs to the middle query.
+				Query:    "SELECT grp FROM correlated_aggregate_scope a GROUP BY grp, a.val HAVING EXISTS (SELECT 1 FROM correlated_aggregate_probe b HAVING EXISTS (SELECT 1 WHERE SUM(a.val + b.probe) > 0)) ORDER BY grp;",
+				Expected: []sql.Row{{1}, {1}, {2}},
+			},
+			{
+				// An outer-only aggregate remains owned by the outer query and is valid without grouping by a.val.
+				Query:    "SELECT a.grp FROM correlated_aggregate_scope a GROUP BY a.grp HAVING EXISTS (SELECT 1 FROM correlated_aggregate_pair b GROUP BY b.grp HAVING EXISTS (SELECT 1 WHERE SUM(a.val) > 1)) ORDER BY grp;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				// A local aggregate does not add a dependency to the outer query.
+				Query:    "SELECT a.grp FROM correlated_aggregate_scope a GROUP BY a.grp HAVING EXISTS (SELECT 1 FROM correlated_aggregate_pair b GROUP BY b.grp HAVING EXISTS (SELECT 1 WHERE SUM(b.val) > 1)) ORDER BY grp;",
+				Expected: []sql.Row{},
+			},
+			{
+				// The mixed aggregate belongs to b's query, leaving a.val as an ungrouped outer dependency.
+				Query:       "SELECT a.grp FROM correlated_aggregate_scope a GROUP BY a.grp HAVING EXISTS (SELECT 1 FROM correlated_aggregate_pair b GROUP BY b.grp HAVING EXISTS (SELECT 1 WHERE SUM(a.val + b.val) > 0)) ORDER BY grp;",
+				ExpectedErr: analyzererrors.ErrValidationGroupByHaving,
+			},
+			{
+				// Grouping the outer dependency makes the mixed aggregate valid.
+				Query:    "SELECT a.grp FROM correlated_aggregate_scope a GROUP BY a.grp, a.val HAVING EXISTS (SELECT 1 FROM correlated_aggregate_pair b GROUP BY b.grp HAVING EXISTS (SELECT 1 WHERE SUM(a.val + b.val) > 0)) ORDER BY grp;",
+				Expected: []sql.Row{{1}, {1}, {2}},
+			},
+		},
+	},
+	{
 		Name: "having clause without groupby clause, all rows implicitly form a single aggregate group",
 		SetUpScript: []string{
 			"create table numbers (val int);",
@@ -1454,6 +1601,117 @@ var GroupByScriptTests = []ScriptTest{
 				Dialect:  "mysql",
 				Query:    "select c1 from t0 where c2 = 3 group by c1 order by c2",
 				Expected: []sql.Row{{1}},
+			},
+		},
+	},
+	// https://github.com/dolthub/dolt/issues/11911
+	// https://github.com/dolthub/go-mysql-server/issues/3944
+	{
+		Name: "ANY_VALUE scalar function under ONLY_FULL_GROUP_BY",
+		SetUpScript: []string{
+			"CREATE TABLE t (a INT, b INT);",
+			"INSERT INTO t VALUES (1, 10), (2, 20), (3, 30);",
+			"CREATE TABLE t1 (id INT PRIMARY KEY, active INT, status INT);",
+			"INSERT INTO t1 VALUES (1, 1, 10), (2, 0, 20), (3, 1, 30);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT ANY_VALUE(a) FROM t;",
+				Expected: []sql.Row{{1}, {2}, {3}},
+			},
+			{
+				Query:    "SELECT ANY_VALUE(a), COUNT(*) FROM t;",
+				Expected: []sql.Row{{1, 3}},
+			},
+			{
+				Query:    "SELECT a, ANY_VALUE(b) FROM t GROUP BY a;",
+				Expected: []sql.Row{{1, 10}, {2, 20}, {3, 30}},
+			},
+			{
+				Query:       "SELECT ANY_VALUE(a) FROM t HAVING ANY_VALUE(a) > 1;",
+				ExpectedErr: sql.ErrColumnNotFound,
+			},
+			{
+				Query:       "SELECT ANY_VALUE(a) OVER () FROM t;",
+				ExpectedErr: sql.ErrSyntaxError,
+				Dialect:     "mysql",
+			},
+			{
+				Query:    "SELECT ANY_VALUE(active), COUNT(*) FROM t1 GROUP BY active;",
+				Expected: []sql.Row{{1, 2}, {0, 1}},
+			},
+			{
+				Query:    "SELECT ANY_VALUE(status) AS s FROM t1 GROUP BY active HAVING s > 15 ORDER BY s;",
+				Expected: []sql.Row{{20}},
+			},
+			{
+				Query:       "SELECT active, status AS s FROM t1 GROUP BY active ORDER BY s;",
+				ExpectedErr: analyzererrors.ErrValidationGroupBy,
+			},
+		},
+	},
+	{
+		Name: "Scalar subqueries in grouped SELECT list with ONLY_FULL_GROUP_BY",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (id INT PRIMARY KEY, active INT, status INT);",
+			"INSERT INTO t1 VALUES (1, 1, 10), (2, 0, 20), (3, 1, 30);",
+			"CREATE TABLE l(id INT, k INT);",
+			"CREATE TABLE r(id INT, k INT);",
+			"INSERT INTO l VALUES (1, 10), (2, 20);",
+			"INSERT INTO r VALUES (1, 10), (3, 20);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT (SELECT 1 FROM t1 LIMIT 1) AS s FROM t1 GROUP BY active;",
+				Expected: []sql.Row{{int8(1)}, {int8(1)}},
+			},
+			{
+				Query:    "SELECT (SELECT MAX(t9.id) FROM t1 AS t9 WHERE t9.active = t8.active) AS s FROM t1 AS t8 GROUP BY t8.active;",
+				Expected: []sql.Row{{3}, {2}},
+			},
+			{
+				Query:       "SELECT (SELECT MAX(t9.id) FROM t1 AS t9 WHERE t9.status = t8.status) AS s FROM t1 AS t8 GROUP BY t8.active;",
+				ExpectedErr: analyzererrors.ErrValidationGroupBy,
+			},
+			{
+				Query:    "SELECT COALESCE((SELECT 1 FROM t1 LIMIT 1), 0) AS s FROM t1 GROUP BY active;",
+				Expected: []sql.Row{{int8(1)}, {int8(1)}},
+			},
+			{
+				Query:    "SELECT active FROM t1 GROUP BY active ORDER BY (SELECT 1 FROM t1 LIMIT 1), active;",
+				Expected: []sql.Row{{0}, {1}},
+			},
+			{
+				Query:    "SELECT active FROM t1 GROUP BY active ORDER BY (SELECT MAX(t9.id) FROM t1 AS t9 WHERE t9.active = t1.active);",
+				Expected: []sql.Row{{0}, {1}},
+			},
+			{
+				Query:       "SELECT active FROM t1 GROUP BY active ORDER BY (SELECT MAX(t9.id) FROM t1 AS t9 WHERE t9.status = t1.status);",
+				ExpectedErr: analyzererrors.ErrValidationGroupByOrderBy,
+			},
+			{
+				Query:    "SELECT COUNT(*), (SELECT 1 FROM t1 LIMIT 1) FROM t1;",
+				Expected: []sql.Row{{3, int8(1)}},
+			},
+			{
+				Query:       "SELECT COUNT(*), (SELECT MAX(t9.id) FROM t1 AS t9 WHERE t9.active = t1.active) FROM t1;",
+				ExpectedErr: sql.ErrNonAggregatedColumnWithoutGroupBy,
+			},
+			{
+				Query:    "SELECT ANY_VALUE(active), (SELECT MAX(t9.id) FROM t1 AS t9 WHERE t9.active = t1.active) FROM t1;",
+				Expected: []sql.Row{{1, 3}, {0, 2}, {1, 3}},
+			},
+			{
+				Query:       "SELECT COUNT(*), ANY_VALUE(active), (SELECT MAX(t9.id) FROM t1 AS t9 WHERE t9.active = t1.active) FROM t1;",
+				ExpectedErr: sql.ErrNonAggregatedColumnWithoutGroupBy,
+			},
+			{
+				Query:    "SELECT l.k, (SELECT MAX(r2.id) FROM r AS r2 WHERE r2.id = l.id) FROM l JOIN r ON l.k = r.k GROUP BY l.k, l.id;",
+				Expected: []sql.Row{{10, 1}, {20, nil}},
+			},
+			{
+				Query:       "SELECT l.k, (SELECT MAX(r2.id) FROM r AS r2 WHERE r2.id = r.id) FROM l JOIN r ON l.k = r.k GROUP BY l.k, l.id;",
+				ExpectedErr: analyzererrors.ErrValidationGroupBy,
 			},
 		},
 	},

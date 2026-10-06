@@ -53,9 +53,9 @@ func TestAliasString(t *testing.T) {
 }
 
 func TestAnyValueString(t *testing.T) {
-	expr := aggregation.NewAnyValue(expression.NewGetField(0, types.Int64, "value", false))
+	expr := function.NewAnyValue(sql.NewEmptyContext(), expression.NewGetField(0, types.Int64, "value", false))
 	require.Equal(t, "ANY_VALUE(value)", expr.String())
-	assertFunctionRoundTripAs(t, expr, "ANY_VALUE")
+	assertFunctionRoundTripAs(t, expr.(sql.FunctionExpression), "ANY_VALUE")
 }
 
 func TestAsWKTString(t *testing.T) {

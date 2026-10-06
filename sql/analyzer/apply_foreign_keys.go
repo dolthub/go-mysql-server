@@ -96,7 +96,7 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 			return n, transform.SameTree, nil
 		}
 		var fkEditor *plan.ForeignKeyEditor
-		if n.IsReplace || n.OnDupExprs.HasUpdates() {
+		if n.IsReplace || n.OnDup != nil {
 			fkEditor, err = getForeignKeyEditor(ctx, a.Catalog, tbl, cache, fkChain, true)
 			if err != nil {
 				return nil, transform.SameTree, err
@@ -110,13 +110,15 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 		if fkEditor == nil {
 			return n, transform.SameTree, nil
 		}
+		// Detect duplicate keys before checking the proposed insert references so
+		// BEFORE UPDATE triggers can repair the row in the duplicate update path.
 		nn, err := n.WithChildren(ctx, &plan.ForeignKeyHandler{
 			Table:                      tbl,
 			Sch:                        insertableDest.Schema(ctx),
 			OriginalNode:               n.Destination,
 			Editor:                     fkEditor,
 			AllUpdaters:                fkChain.GetUpdaters(),
-			CheckReferencesAfterInsert: n.Ignore && n.IgnoreMode == sql.InsertIgnoreModeDuplicateKeysOnly,
+			CheckReferencesAfterInsert: n.OnDup != nil || (n.Ignore && n.IgnoreMode == sql.InsertIgnoreModeDuplicateKeysOnly),
 		})
 		return nn, transform.NewTree, err
 	case *plan.Update:

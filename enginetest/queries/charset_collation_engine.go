@@ -1440,6 +1440,69 @@ T.TABLE_SCHEMA AS 'database', T.TABLE_CATALOG AS 'catalog',
 			},
 		},
 	},
+
+	// https://github.com/dolthub/dolt/issues/11907
+	{
+		Name: "IN predicate with accent-insensitive collation",
+		SetUpScript: []string{
+			"CREATE TABLE t (id INT PRIMARY KEY, label VARCHAR(96) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL);",
+			"INSERT INTO t VALUES (1, CONVERT(X'636166C3A9' USING utf8mb4)), (2, 'cafe'), (3, ' Cafe '), (4, 'other'), (5, 'CAFÉ'), (6, 'cafë');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT id FROM t WHERE LOWER(TRIM(label)) = 'cafe' ORDER BY id;",
+				Expected: []sql.Row{{1}, {2}, {3}, {5}, {6}},
+			},
+			{
+				Query:    "SELECT id FROM t WHERE LOWER(TRIM(label)) IN ('cafe') ORDER BY id;",
+				Expected: []sql.Row{{1}, {2}, {3}, {5}, {6}},
+			},
+			{
+				Query:    "SELECT id FROM t WHERE label = 'cafe' ORDER BY id;",
+				Expected: []sql.Row{{1}, {2}, {5}, {6}},
+			},
+			{
+				Query:    "SELECT id FROM t WHERE label IN ('cafe') ORDER BY id;",
+				Expected: []sql.Row{{1}, {2}, {5}, {6}},
+			},
+			{
+				Query:    "SELECT id FROM t WHERE label IN ('cafe', 'other') ORDER BY id;",
+				Expected: []sql.Row{{1}, {2}, {4}, {5}, {6}},
+			},
+			{
+				Query:    "SELECT id FROM t WHERE label NOT IN ('cafe', 'other') ORDER BY id;",
+				Expected: []sql.Row{{3}},
+			},
+			{
+				Query:    "SELECT id FROM t WHERE (id, label) IN ((1, 'cafe'), (2, 'cafe'), (4, 'other')) ORDER BY id;",
+				Expected: []sql.Row{{1}, {2}, {4}},
+			},
+			{
+				Query:    "SELECT id FROM t WHERE label IN ('cafe' COLLATE utf8mb4_bin, 'other') ORDER BY id;",
+				Expected: []sql.Row{{2}, {4}},
+			},
+			{
+				Query:    "SELECT id, (label IN ('cafe')) FROM t ORDER BY id;",
+				Expected: []sql.Row{{1, true}, {2, true}, {3, false}, {4, false}, {5, true}, {6, true}},
+			},
+		},
+	},
+	{
+		Name: "CHECK constraint with IN predicate and collation",
+		SetUpScript: []string{
+			"CREATE TABLE c (id INT PRIMARY KEY, a VARCHAR(10) COLLATE utf8mb4_0900_ai_ci, b VARCHAR(10) COLLATE utf8mb4_0900_ai_ci, CHECK (a IN (b)));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO c VALUES (1, 'A', 'a');",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "SELECT * FROM c;",
+				Expected: []sql.Row{{1, "A", "a"}},
+			},
+		},
+	},
 }
 
 // CharsetCollationScriptTests contains self-contained charset collation script tests.

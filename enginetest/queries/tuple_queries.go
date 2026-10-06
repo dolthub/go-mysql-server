@@ -217,6 +217,28 @@ func MakeTupleQueryTests(cb func(test QueryTest)) {
 // TupleComparisonsScriptTests contains self-contained tuple comparisons script tests.
 var TupleComparisonsScriptTests = []ScriptTest{
 	{
+		// https://github.com/dolthub/dolt/issues/11968
+		Name: "IN with mixed integer and fractional list compares without truncation",
+		SetUpScript: []string{
+			"CREATE TABLE t (v INT)",
+			"INSERT INTO t VALUES (0), (9)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT v, v IN (9, 0.49) AS in_result FROM t ORDER BY v",
+				Expected: []sql.Row{{0, false}, {9, true}},
+			},
+			{
+				Query:    "SELECT v FROM t WHERE v IN (9, 0.49) ORDER BY v",
+				Expected: []sql.Row{{9}},
+			},
+			{
+				Query:    "SELECT v FROM t WHERE v NOT IN (9, 0.49) ORDER BY v",
+				Expected: []sql.Row{{0}},
+			},
+		},
+	},
+	{
 		Name: "decimal and float in tuple",
 		SetUpScript: []string{
 			"create table t (d decimal(10, 3), f float);",

@@ -354,7 +354,7 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 func TestSpatialIndexPlans(t *testing.T, harness Harness) {
 	for _, tt := range SpatialIndexTests {
 		t.Run(tt.name, func(t *testing.T) {
-			e := mustNewEngine(t, harness)
+			e := MustNewEngine(t, harness)
 			defer e.Close()
 			for _, statement := range tt.setup {
 				if sh, ok := harness.(SkippingHarness); ok {

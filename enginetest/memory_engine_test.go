@@ -158,7 +158,7 @@ func TestSingleQuery(t *testing.T) {
 	engine.EngineAnalyzer().Debug = true
 	engine.EngineAnalyzer().Verbose = true
 
-	enginetest.TestQueryWithEngine(t, harness, engine, test)
+	enginetest.TestQuery(t, harness, engine, test)
 }
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
@@ -639,6 +639,17 @@ func TestNumericScripts(t *testing.T) {
 	enginetest.TestNumericScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
+// TestCorrelatedAggregateScopePrepared verifies correlated aggregate ownership with prepared execution.
+func TestCorrelatedAggregateScopePrepared(t *testing.T) {
+	for _, script := range queries.ScriptTests {
+		if script.Name == "correlated subquery references outer aggregate" {
+			enginetest.TestScriptPrepared(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver), script)
+			return
+		}
+	}
+	t.Fatal("correlated aggregate scope script not found")
+}
+
 func TestSpatialScripts(t *testing.T) {
 	enginetest.TestSpatialScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
@@ -840,10 +851,6 @@ func TestWindowRangeFrames(t *testing.T) {
 
 func TestNamedWindows(t *testing.T) {
 	enginetest.TestNamedWindows(t, enginetest.NewDefaultMemoryHarness())
-}
-
-func TestNaturalJoinEqual(t *testing.T) {
-	enginetest.TestNaturalJoinEqual(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestNaturalJoinDisjoint(t *testing.T) {
