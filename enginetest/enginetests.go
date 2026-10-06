@@ -6070,3 +6070,11 @@ func TestStringMatchingScripts(t *testing.T, harness Harness) {
 func TestStringMatchingScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.StringMatchingScriptTests, true)
 }
+
+func TestSubqueriesScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.SubqueriesScriptTests, false)
+}
+
+func TestSubqueriesScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.SubqueriesScriptTests, true)
+}
