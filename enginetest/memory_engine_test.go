@@ -1270,3 +1270,7 @@ func TestUpdateJoinsScripts(t *testing.T) {
 func TestUpdateRegressionScripts(t *testing.T) {
 	enginetest.TestUpdateRegressionScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
+
+func TestUUIDScripts(t *testing.T) {
+	enginetest.TestUUIDScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}

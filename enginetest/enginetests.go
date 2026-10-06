@@ -6126,3 +6126,11 @@ func TestUpdateRegressionScripts(t *testing.T, harness Harness) {
 func TestUpdateRegressionScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.UpdateRegressionScriptTests, true)
 }
+
+func TestUUIDScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.UUIDScriptTests, false)
+}
+
+func TestUUIDScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.UUIDScriptTests, true)
+}
