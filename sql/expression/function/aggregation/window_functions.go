@@ -55,6 +55,22 @@ func newBaseWindowFunction(e sql.Expression) baseWindowFunction {
 	}
 }
 
+// configureWindow applies an explicit frame or retains the ordering for the default frame.
+func (b *baseWindowFunction) configureWindow(w *sql.WindowDefinition) error {
+	if w.Frame != nil {
+		framer, err := w.Frame.NewFramer(w)
+		if err != nil {
+			return err
+		}
+		b.framer = framer
+		return nil
+	}
+	if w.OrderBy != nil {
+		b.orderBy = w.OrderBy.ToExpressions()
+	}
+	return nil
+}
+
 func (b *baseWindowFunction) DefaultFramer() sql.WindowFramer {
 	if b.framer != nil {
 		return b.framer
@@ -259,16 +275,8 @@ func NewBitAndAgg(e sql.Expression) *BitAndAgg {
 
 func (b *BitAndAgg) WithWindow(ctx *sql.Context, w *sql.WindowDefinition) (sql.WindowFunction, error) {
 	na := *b
-	if w.Frame != nil {
-		framer, err := w.Frame.NewFramer(w)
-		if err != nil {
-			return nil, err
-		}
-		na.framer = framer
-		return &na, nil
-	}
-	if w.OrderBy != nil {
-		na.orderBy = w.OrderBy.ToExpressions()
+	if err := na.configureWindow(w); err != nil {
+		return nil, err
 	}
 	return &na, nil
 }
@@ -321,16 +329,8 @@ func NewBitOrAgg(e sql.Expression) *BitOrAgg {
 
 func (b *BitOrAgg) WithWindow(ctx *sql.Context, w *sql.WindowDefinition) (sql.WindowFunction, error) {
 	na := *b
-	if w.Frame != nil {
-		framer, err := w.Frame.NewFramer(w)
-		if err != nil {
-			return nil, err
-		}
-		na.framer = framer
-		return &na, nil
-	}
-	if w.OrderBy != nil {
-		na.orderBy = w.OrderBy.ToExpressions()
+	if err := na.configureWindow(w); err != nil {
+		return nil, err
 	}
 	return &na, nil
 }
@@ -383,16 +383,8 @@ func NewBitXorAgg(e sql.Expression) *BitXorAgg {
 
 func (b *BitXorAgg) WithWindow(ctx *sql.Context, w *sql.WindowDefinition) (sql.WindowFunction, error) {
 	na := *b
-	if w.Frame != nil {
-		framer, err := w.Frame.NewFramer(w)
-		if err != nil {
-			return nil, err
-		}
-		na.framer = framer
-		return &na, nil
-	}
-	if w.OrderBy != nil {
-		na.orderBy = w.OrderBy.ToExpressions()
+	if err := na.configureWindow(w); err != nil {
+		return nil, err
 	}
 	return &na, nil
 }
@@ -602,7 +594,7 @@ func (a *LastAgg) Dispose(ctx *sql.Context) {
 	expression.Dispose(ctx, a.expr)
 }
 
-// DefaultFramer returns a frame spanning from the partition start through the current row.
+// DefaultFramer returns the configured frame or a cumulative ROWS frame for non-window projections.
 func (a *LastAgg) DefaultFramer() sql.WindowFramer {
 	if a.framer != nil {
 		return a.framer
