@@ -3401,6 +3401,10 @@ func TestForeignKeys(t *testing.T, harness Harness) {
 	for _, script := range queries.ForeignKeyTests {
 		TestScript(t, harness, script)
 	}
+
+	for _, script := range queries.ForeignKeyResolutionTests {
+		TestScript(t, harness, script)
+	}
 }
 
 func TestFulltextIndexes(t *testing.T, harness Harness) {
@@ -5920,4 +5924,12 @@ func TestExpressionsScripts(t *testing.T, harness Harness) {
 
 func TestExpressionsScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.ExpressionsScriptTests, true)
+}
+
+func TestForeignKeyResolutionScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.ForeignKeyResolutionScriptTests, false)
+}
+
+func TestForeignKeyResolutionScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.ForeignKeyResolutionScriptTests, true)
 }
