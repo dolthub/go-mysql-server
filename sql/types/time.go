@@ -536,7 +536,6 @@ func (t TimespanType_) parseNumericTime(isNeg bool, trimmedStr string) (any, err
 	return res, nil
 }
 
-// TODO: refactor into a state machine? would that even be more readable? gotos are a bad idea i think
 func (t TimespanType_) parseTime(origStr string) (any, error) {
 	var idx int
 	var char rune
