@@ -1957,6 +1957,103 @@ ORDER BY id;`,
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/11856
+		Name: "ordered windows use the implicit RANGE peer frame",
+		SetUpScript: []string{
+			"CREATE TABLE t(id INT PRIMARY KEY, x INT, y INT, v INT, band INT, bor INT, bxor INT);",
+			"INSERT INTO t VALUES (1,1,1,10,15,1,1),(2,1,2,20,11,3,3),(3,2,1,30,6,6,6);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT id, x, v, LAST_VALUE(v) OVER (ORDER BY x), LAST_VALUE(v) OVER (ORDER BY x RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW), LAST_VALUE(v) OVER (ORDER BY x, id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) FROM t ORDER BY id;",
+				Expected: []sql.Row{
+					{1, 1, 10, 20, 20, 10},
+					{2, 1, 20, 20, 20, 20},
+					{3, 2, 30, 30, 30, 30},
+				},
+			},
+			{
+				Query: "SELECT id, LAST_VALUE(v) OVER (ORDER BY x DESC), LAST_VALUE(v) OVER (ORDER BY x DESC RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) FROM t ORDER BY id;",
+				Expected: []sql.Row{
+					{1, 20, 20},
+					{2, 20, 20},
+					{3, 30, 30},
+				},
+			},
+			{
+				Query: "SELECT id, LAST_VALUE(v) OVER (ORDER BY x, y), LAST_VALUE(v) OVER (ORDER BY x, y RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) FROM t ORDER BY id;",
+				Expected: []sql.Row{
+					{1, 10, 10},
+					{2, 20, 20},
+					{3, 30, 30},
+				},
+			},
+			{
+				Query: "SELECT id, BIT_AND(band) OVER (ORDER BY x, y), BIT_AND(band) OVER (ORDER BY x, y RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW), BIT_OR(bor) OVER (ORDER BY x, y), BIT_OR(bor) OVER (ORDER BY x, y RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW), BIT_XOR(bxor) OVER (ORDER BY x, y), BIT_XOR(bxor) OVER (ORDER BY x, y RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) FROM t ORDER BY id;",
+				Expected: []sql.Row{
+					{1, uint64(15), uint64(15), uint64(1), uint64(1), uint64(1), uint64(1)},
+					{2, uint64(11), uint64(11), uint64(3), uint64(3), uint64(2), uint64(2)},
+					{3, uint64(2), uint64(2), uint64(7), uint64(7), uint64(4), uint64(4)},
+				},
+			},
+			{
+				Query: "SELECT id, BIT_AND(band) OVER (ORDER BY x), BIT_AND(band) OVER (ORDER BY x RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW), BIT_OR(bor) OVER (ORDER BY x), BIT_OR(bor) OVER (ORDER BY x RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW), BIT_XOR(bxor) OVER (ORDER BY x), BIT_XOR(bxor) OVER (ORDER BY x RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) FROM t ORDER BY id;",
+				Expected: []sql.Row{
+					{1, uint64(11), uint64(11), uint64(3), uint64(3), uint64(2), uint64(2)},
+					{2, uint64(11), uint64(11), uint64(3), uint64(3), uint64(2), uint64(2)},
+					{3, uint64(2), uint64(2), uint64(7), uint64(7), uint64(4), uint64(4)},
+				},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11857
+		Name: "ordered BIT_OR uses the implicit running RANGE frame",
+		SetUpScript: []string{
+			"CREATE TABLE t(x INT PRIMARY KEY, bor INT);",
+			"INSERT INTO t VALUES (1,1),(2,2),(3,4);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT x, BIT_OR(bor) OVER (ORDER BY x), BIT_OR(bor) OVER (ORDER BY x RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) FROM t ORDER BY x;",
+				Expected: []sql.Row{
+					{1, uint64(1), uint64(1)},
+					{2, uint64(3), uint64(3)},
+					{3, uint64(7), uint64(7)},
+				},
+			},
+		},
+	},
+	{
+		Name: "ordered RANGE peer frames handle NULLs and partition resets",
+		SetUpScript: []string{
+			"CREATE TABLE t(p INT, id INT PRIMARY KEY, x INT, v INT, bor INT);",
+			"INSERT INTO t VALUES (1,1,NULL,10,1),(1,2,NULL,20,2),(1,3,1,30,4),(2,4,NULL,40,8),(2,5,2,50,16);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT id, LAST_VALUE(v) OVER (PARTITION BY p ORDER BY x IS NOT NULL, x), LAST_VALUE(v) OVER (PARTITION BY p ORDER BY x IS NOT NULL, x RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW), BIT_OR(bor) OVER (PARTITION BY p ORDER BY x IS NOT NULL, x), BIT_OR(bor) OVER (PARTITION BY p ORDER BY x IS NOT NULL, x RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) FROM t ORDER BY id;",
+				Expected: []sql.Row{
+					{1, 20, 20, uint64(3), uint64(3)},
+					{2, 20, 20, uint64(3), uint64(3)},
+					{3, 30, 30, uint64(7), uint64(7)},
+					{4, 40, 40, uint64(8), uint64(8)},
+					{5, 50, 50, uint64(24), uint64(24)},
+				},
+			},
+			{
+				Query: "SELECT id, LAST_VALUE(v) OVER (PARTITION BY p ORDER BY x IS NULL, x DESC), LAST_VALUE(v) OVER (PARTITION BY p ORDER BY x IS NULL, x DESC RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW), BIT_OR(bor) OVER (PARTITION BY p ORDER BY x IS NULL, x DESC), BIT_OR(bor) OVER (PARTITION BY p ORDER BY x IS NULL, x DESC RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) FROM t ORDER BY id;",
+				Expected: []sql.Row{
+					{1, 20, 20, uint64(7), uint64(7)},
+					{2, 20, 20, uint64(7), uint64(7)},
+					{3, 30, 30, uint64(4), uint64(4)},
+					{4, 40, 40, uint64(24), uint64(24)},
+					{5, 50, 50, uint64(16), uint64(16)},
+				},
+			},
+		},
+	},
+	{
 		Name: "format with window function",
 		SetUpScript: []string{
 			"CREATE TABLE t(locale TINYINT);",
