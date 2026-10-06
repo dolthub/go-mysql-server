@@ -1222,3 +1222,7 @@ func TestNumericScripts(t *testing.T) {
 func TestOrderingScripts(t *testing.T) {
 	enginetest.TestOrderingScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
+
+func TestPrimaryKeysScripts(t *testing.T) {
+	enginetest.TestPrimaryKeysScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}

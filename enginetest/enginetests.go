@@ -6022,3 +6022,11 @@ func TestOrderingScripts(t *testing.T, harness Harness) {
 func TestOrderingScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.OrderingScriptTests, true)
 }
+
+func TestPrimaryKeysScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.PrimaryKeysScriptTests, false)
+}
+
+func TestPrimaryKeysScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.PrimaryKeysScriptTests, true)
+}
