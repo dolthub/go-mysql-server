@@ -69,6 +69,7 @@ func (t *Time) Type(ctx *sql.Context) sql.Type {
 		precision = ct.Precision()
 	case sql.DecimalType:
 		precision = int(ct.Scale())
+	case sql.NumberType:
 	default:
 		if lit, ok := t.Child.(*expression.Literal); ok {
 			switch val := lit.Val.(type) {
@@ -78,6 +79,8 @@ func (t *Time) Type(ctx *sql.Context) sql.Type {
 				precision = inferTimePrecisionFromString(string(val))
 			default:
 			}
+		} else {
+			precision = types.MaxDatetimePrecision
 		}
 	}
 	precision = min(precision, types.MaxDatetimePrecision)
