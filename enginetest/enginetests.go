@@ -803,6 +803,10 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 		TestScript(t, harness, tt)
 	}
 
+	for _, tt := range queries.GroupByScriptTests {
+		TestScript(t, harness, tt)
+	}
+
 	t.Run("non-deterministic group by", func(t *testing.T) {
 		e := MustNewEngine(t, harness)
 		defer e.Close()
@@ -5766,4 +5770,29 @@ func DrainIteratorIgnoreErrors(ctx *sql.Context, iter sql.RowIter) {
 			return
 		}
 	}
+}
+
+func testScriptTests(t *testing.T, harness Harness, scripts []queries.ScriptTest, prepared bool) {
+	t.Helper()
+	harness.Setup(setup.MydbData)
+	for _, script := range scripts {
+		if sh, ok := harness.(SkippingHarness); ok && sh.SkipQueryTest(script.Name) {
+			t.Run(script.Name, func(t *testing.T) { t.Skip(script.Name) })
+			continue
+		}
+
+		if prepared {
+			TestScriptPrepared(t, harness, script)
+		} else {
+			TestScript(t, harness, script)
+		}
+	}
+}
+
+func TestAggregationScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.AggregationScriptTests, false)
+}
+
+func TestAggregationScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.AggregationScriptTests, true)
 }
