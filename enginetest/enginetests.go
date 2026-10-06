@@ -3377,7 +3377,7 @@ func TestPkOrdinalsDML(t *testing.T, harness Harness) {
 
 func TestDropDatabase(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
-	for _, tt := range queries.DropDatabaseScripts {
+	for _, tt := range queries.DropDatabaseScriptTests {
 		TestScript(t, harness, tt)
 	}
 }
