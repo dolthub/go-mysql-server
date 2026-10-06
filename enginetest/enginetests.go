@@ -5897,3 +5897,11 @@ func TestDescendingIndexesScripts(t *testing.T, harness Harness) {
 func TestDescendingIndexesScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.DescendingIndexesScriptTests, true)
 }
+
+func TestDropTableScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.DropTableScriptTests, false)
+}
+
+func TestDropTableScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.DropTableScriptTests, true)
+}
