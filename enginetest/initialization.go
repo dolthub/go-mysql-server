@@ -151,7 +151,7 @@ func MustQuery(ctx *sql.Context, e QueryEngine, q string) (sql.Schema, []sql.Row
 	return sch, rows
 }
 
-func mustNewEngine(t *testing.T, h Harness) QueryEngine {
+func MustNewEngine(t *testing.T, h Harness) QueryEngine {
 	e, err := h.NewEngine(t)
 	if err != nil {
 		require.NoError(t, err)

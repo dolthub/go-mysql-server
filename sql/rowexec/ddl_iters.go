@@ -609,7 +609,11 @@ func (i *modifyColumnIter) Close(context *sql.Context) error {
 
 // rewriteTable rewrites the table given if required or requested, and returns whether it was rewritten
 func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) (bool, error) {
-	targetSchema := resolveGeneratedColumns(ctx, i.overrides, i.m.Db.Name(), rwt.Name(), i.m.TargetSchema())
+	// Earlier clauses in a multi-column ALTER may already have rewritten the table.
+	// Start from its current schema so their renamed columns and expressions survive.
+	// Persisted defaults also need resolving to preserve their literal classification.
+	b := planbuilder.NewBuilderForColumnDefaultResolution(ctx, i.overrides)
+	targetSchema := b.ResolveSchemaDefaults(i.m.Db.Name(), rwt.Name(), rwt.Schema(ctx))
 	oldColName := i.m.Column()
 	oldColIdx := targetSchema.IndexOfColName(oldColName)
 	if oldColIdx == -1 {
@@ -645,7 +649,11 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 	oldPkSchema := sql.SchemaToPrimaryKeySchema(ctx, rwt, rwt.Schema(ctx))
 	newPkSchema := sql.SchemaToPrimaryKeySchema(ctx, rwt, newSch, renames...)
 
-	rewriteRequired := false
+	// Modifying a stored generated column can change its expression without changing
+	// its type. Recompute its values and rebuild indexes even if the storage engine
+	// would otherwise consider this a schema-only change.
+	recomputeGenerated := oldCol.Generated != nil && !oldCol.Virtual && newCol.Generated != nil && !newCol.Virtual
+	rewriteRequired := recomputeGenerated
 	if oldCol.Nullable && !newCol.Nullable {
 		rewriteRequired = true
 	}
@@ -685,7 +693,7 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 		}
 
 		// remap old enum values to new enum values
-		if isOldEnum && isNewEnum && r[oldColIdx] != nil {
+		if isOldEnum && isNewEnum && !recomputeGenerated && r[oldColIdx] != nil {
 			oldIdx := int(r[oldColIdx].(uint16))
 			// 0 values in enums are error values. They are preserved during remapping.
 			if oldIdx != 0 {
@@ -698,7 +706,7 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 			}
 		}
 
-		newRow, err := projectRowWithTypes(ctx, targetSchema, newSch, projections, r)
+		newRow, err := projectRowWithTypes(ctx, newSch, projections, r)
 		if err != nil {
 			_ = inserter.DiscardChanges(ctx, err)
 			_ = inserter.Close(ctx)
@@ -738,6 +746,7 @@ func modifyColumnInSchema(ctx *sql.Context, schema sql.Schema, name string, colu
 		// Should be checked in the analyzer already
 		return nil, nil, sql.ErrTableColumnNotFound.New(column.Source, name)
 	}
+	recomputeGenerated := schema[currIdx].Generated != nil && !schema[currIdx].Virtual && column.Generated != nil && !column.Virtual
 
 	// Primary key-ness isn't included in the column description as part of the ALTER statement, preserve it
 	if schema[currIdx].PrimaryKey {
@@ -809,7 +818,13 @@ func modifyColumnInSchema(ctx *sql.Context, schema sql.Schema, name string, colu
 		if newSchemaIdx == -1 {
 			return nil, transform.SameTree, sql.ErrColumnNotFound.New(colName)
 		}
-		return expression.NewGetFieldWithTable(newSchemaIdx, int(gf.TableId()), gf.Type(ctx), gf.Database(), gf.Table(), colName, gf.IsNullable(ctx)), transform.NewTree, nil
+		fieldType, nullable := gf.Type(ctx), gf.IsNullable(ctx)
+		if recomputeGenerated {
+			// Regenerated values have the new type, including any new ENUM ordinals.
+			fieldType, nullable = newSch[newSchemaIdx].Type, newSch[newSchemaIdx].Nullable
+		}
+
+		return expression.NewGetFieldWithTable(newSchemaIdx, int(gf.TableId()), fieldType, gf.Database(), gf.Table(), colName, nullable), transform.NewTree, nil
 	}
 	for i := range newSch {
 		newCol := newSch[oldToNewIdxMapping[i]]
@@ -838,6 +853,10 @@ func modifyColumnInSchema(ctx *sql.Context, schema sql.Schema, name string, colu
 			}
 
 			newCol.Generated = newGenerated.(*sql.ColumnDefaultValue)
+			if recomputeGenerated {
+				// Dependent generated columns must use the newly computed values too.
+				projections[oldToNewIdxMapping[i]] = newCol.Generated
+			}
 		}
 	}
 
@@ -1053,14 +1072,16 @@ func (i *loggingKeyValueIter) Close(ctx *sql.Context) error {
 
 // projectRowWithTypes projects the row given with the projections given and additionally converts them to the
 // corresponding types found in the schema given, using the standard type conversion logic.
-func projectRowWithTypes(ctx *sql.Context, oldSchema, newSchema sql.Schema, projections []sql.Expression, r sql.Row) (sql.Row, error) {
+func projectRowWithTypes(ctx *sql.Context, newSchema sql.Schema, projections []sql.Expression, r sql.Row) (sql.Row, error) {
 	newRow, err := ProjectRow(ctx, projections, r)
 	if err != nil {
 		return nil, err
 	}
 
 	for i := range newRow {
-		converted, inRange, err := types.TypeAwareConversion(ctx, newRow[i], oldSchema[i].Type, newSchema[i].Type)
+		// Generated projections already produce values in the new type; ordinary
+		// field projections retain their source type, even when columns move.
+		converted, inRange, err := types.TypeAwareConversion(ctx, newRow[i], projections[i].Type(ctx), newSchema[i].Type)
 		if err != nil {
 			if sql.ErrNotMatchingSRID.Is(err) {
 				err = sql.ErrNotMatchingSRIDWithColName.New(newSchema[i].Name, err)
@@ -1709,13 +1730,13 @@ func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) 
 }
 
 // resolveGeneratedColumns resolves any not-yet-resolved generated column expressions for
-// virtual columns in |schema|, so that a table rewrite (see getColumnExpression) can evaluate
-// them. A virtual column's expression may still be an *sql.UnresolvedColumnDefault placeholder
+// columns in |schema|, so that a table rewrite can evaluate them. A generated
+// column's expression may still be an *sql.UnresolvedColumnDefault placeholder
 // (parsed from persisted metadata rather than a bound expression tree) at this point. Returns
 // |schema| unmodified if nothing needs resolving.
 func resolveGeneratedColumns(ctx *sql.Context, overrides sql.EngineOverrides, dbName, tableName string, schema sql.Schema) sql.Schema {
 	for _, col := range schema {
-		if col.Virtual && col.Generated != nil && !col.Generated.Resolved() {
+		if col.Generated != nil && !col.Generated.Resolved() {
 			b := planbuilder.NewBuilderForColumnDefaultResolution(ctx, overrides)
 			return b.ResolveSchemaDefaults(dbName, tableName, schema)
 		}
@@ -2351,7 +2372,7 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 			}
 
 			if shouldRebuild || indexCreateRequiresBuild(n) {
-				return buildIndex(ctx, n, ibt, indexDef)
+				return buildIndex(ctx, b.EngineOverrides, n, ibt, indexDef)
 			}
 		}
 
@@ -2636,7 +2657,7 @@ func warnOnDuplicateSecondaryIndex(ctx *sql.Context, newIndexName string, idxAlt
 }
 
 // buildIndex builds an index on a table, as a less expensive alternative to doing a complete table rewrite.
-func buildIndex(ctx *sql.Context, n *plan.AlterIndex, ibt sql.IndexBuildingTable, indexDef sql.IndexDef) error {
+func buildIndex(ctx *sql.Context, overrides sql.EngineOverrides, n *plan.AlterIndex, ibt sql.IndexBuildingTable, indexDef sql.IndexDef) error {
 	inserter, err := ibt.BuildIndex(ctx, indexDef)
 	if err != nil {
 		return err
@@ -2657,7 +2678,8 @@ func buildIndex(ctx *sql.Context, n *plan.AlterIndex, ibt sql.IndexBuildingTable
 	isVirtual := n.TargetSchema().HasVirtualColumns()
 	var projections []sql.Expression
 	if isVirtual {
-		projections = virtualTableProjections(ctx, n.TargetSchema(), ibt.Name())
+		targetSchema := resolveGeneratedColumns(ctx, overrides, n.Db.Name(), ibt.Name(), n.TargetSchema())
+		projections = virtualTableProjections(ctx, targetSchema, ibt.Name())
 	}
 
 	for {

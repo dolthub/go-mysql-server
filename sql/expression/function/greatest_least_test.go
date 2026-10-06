@@ -100,16 +100,16 @@ func TestGreatest(t *testing.T) {
 		{
 			"nulls of a non-null type, char",
 			[]sql.Expression{
-				expression.NewConvert(expression.NewLiteral("aaa", types.LongText), expression.ConvertToChar),
-				expression.NewConvert(expression.NewLiteral(nil, types.Null), expression.ConvertToChar),
+				expression.NewConvert(expression.NewLiteral("aaa", types.LongText), types.LongText, expression.ConvertToChar),
+				expression.NewConvert(expression.NewLiteral(nil, types.Null), types.LongText, expression.ConvertToChar),
 			},
 			nil,
 		},
 		{
 			"nulls of a non-null type, signed",
 			[]sql.Expression{
-				expression.NewConvert(expression.NewLiteral(3.14159265359, types.Float64), expression.ConvertToSigned),
-				expression.NewConvert(expression.NewLiteral(nil, types.Null), expression.ConvertToSigned),
+				expression.NewConvert(expression.NewLiteral(3.14159265359, types.Float64), types.Int64, expression.ConvertToSigned),
+				expression.NewConvert(expression.NewLiteral(nil, types.Null), types.Int64, expression.ConvertToSigned),
 			},
 			nil,
 		},
@@ -126,6 +126,47 @@ func TestGreatest(t *testing.T) {
 			output, err := f.Eval(ctx, nil)
 			require.NoError(err)
 			require.Equal(tt.expected, output)
+		})
+	}
+}
+
+func TestGreatestLeastExactDecimalDirection(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	dt := types.MustCreateDecimalType(20, 19)
+	low, err := types.InternalDecimalType.ConvertToDecimal("2.0000000000000000001")
+	require.NoError(t, err)
+	high, err := types.InternalDecimalType.ConvertToDecimal("2.0000000000000000002")
+	require.NoError(t, err)
+
+	for _, test := range []struct {
+		name        string
+		constructor func(*sql.Context, ...sql.Expression) (sql.Expression, error)
+		expected    string
+	}{
+		{
+			name:        "greatest",
+			constructor: NewGreatest,
+			expected:    high.String(),
+		},
+		{
+			name:        "least",
+			constructor: NewLeast,
+			expected:    low.String(),
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			args := []sql.Expression{expression.NewLiteral(low, dt), expression.NewLiteral(high, dt)}
+			for range 2 {
+				f, err := test.constructor(ctx, args...)
+				require.NoError(t, err)
+				value, err := f.Eval(ctx, nil)
+				require.NoError(t, err)
+				decimal, err := types.InternalDecimalType.ConvertToDecimal(value)
+				require.NoError(t, err)
+				require.Equal(t, test.expected, decimal.String())
+
+				args[0], args[1] = args[1], args[0]
+			}
 		})
 	}
 }

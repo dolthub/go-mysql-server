@@ -21,6 +21,7 @@ func TestSQLErrorCast(t *testing.T) {
 	}{
 		{ErrTableNotFound.New("table not found err"), mysql.ERNoSuchTable, ""},
 		{integerRangeErr, mysql.ERDataOutOfRange, mysql.SSDataOutOfRange},
+		{ErrPrivilegeCheckFailed.New("'attacker'@'%'"), 1142, "42000"},
 		{ErrInvalidType.New("unhandled mysql error"), mysql.ERUnknownError, ""},
 		{fmt.Errorf("generic error"), mysql.ERUnknownError, ""},
 		{nil, mysql.ERUnknownError, ""},

@@ -43,7 +43,7 @@ func (b *Builder) validateInsert(ins *plan.InsertInto) {
 		}
 	}
 
-	if ins.OnDupExprs.HasUpdates() {
+	if ins.OnDup != nil {
 		var ok bool
 		_, ok = insertable.(sql.UpdatableTable)
 		if !ok {

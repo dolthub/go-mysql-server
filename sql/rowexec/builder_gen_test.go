@@ -28,6 +28,7 @@ import (
 func TestGenBuilder(t *testing.T) {
 	t.Skip()
 	nodes := map[string]string{
+		"OnDupUpdateSource":         "*plan.OnDuplicateKeyUpdateSource",
 		"Releaser":                  "*plan.Releaser",
 		"dummyNode":                 "plan.dummyNode",
 		"UnresolvedTableFunction":   "*plan.UnresolvedTableFunction",

@@ -142,10 +142,13 @@ func (b *Builder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy)
 				//  get fields outside of aggs need to be in extra cols
 				switch e := e.(type) {
 				case *expression.GetField:
-					c, ok := fromScope.resolveColumn("", strings.ToLower(e.Table()), strings.ToLower(e.Name()), true, false)
+					c, ok := fromScope.getCol(e.Id())
 					if !ok {
-						err := sql.ErrColumnNotFound.New(e.Name)
-						b.handleErr(err)
+						c, ok = fromScope.resolveColumn("", strings.ToLower(e.Table()), strings.ToLower(e.Name()), true, false)
+						if !ok {
+							err := sql.ErrColumnNotFound.New(e.Name())
+							b.handleErr(err)
+						}
 					}
 					fromScope.addExtraColumn(c)
 				case sql.WindowAdaptableExpression:
@@ -298,17 +301,7 @@ func (b *Builder) buildOrderedInjectedExpr(inScope *scope, e *ast.OrderedInjecte
 		b.handleErr(fmt.Errorf("expected sql.Aggregation, got %T", expr))
 	}
 
-	aggName := strings.ToLower(plan.AliasSubqueryString(b.ctx, agg))
-	col := scopeColumn{col: aggName, scalar: agg, typ: agg.Type(b.ctx), nullable: agg.IsNullable(b.ctx)}
-	id := gb.outScope.newColumn(col)
-
-	agg = agg.WithId(sql.ColumnId(id)).(sql.Aggregation)
-	gb.outScope.cols[len(gb.outScope.cols)-1].scalar = agg
-	col.scalar = agg
-
-	gb.addAggStr(col)
-	col.id = id
-	return col.scalarGf()
+	return gb.registerAggregate(b.ctx, plan.AliasSubqueryString(b.ctx, agg), agg)
 }
 
 // unwrapExpression unwraps expressions wrapped in ParenExpr (parenthesis)

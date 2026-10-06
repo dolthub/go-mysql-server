@@ -39,12 +39,12 @@ func TestInsertExpressionsDoesNotMutatePlan(t *testing.T) {
 	analyzedExpressions := []sql.Expression{update, predicate, returning}
 
 	insert := &InsertInto{
-		OnDupExprs: NewUpdateExprs(analyzedExpressions[:1], 1),
+		OnDup:      NewOnDuplicateKeyUpdateSource(nil, NewUpdateExprs(analyzedExpressions[:1], 1)),
 		checks:     sql.CheckConstraints{{Expr: check}},
 		OnDupWhere: analyzedExpressions[1],
 		Returning:  analyzedExpressions[2:],
 	}
 
-	require.Equal(t, []sql.Expression{update, check, predicate, returning}, insert.Expressions())
+	require.Equal(t, []sql.Expression{check, predicate, returning}, insert.Expressions())
 	require.Same(t, returning, insert.Returning[0])
 }

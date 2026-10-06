@@ -63,19 +63,20 @@ type InsertInto struct {
 	db          sql.Database
 	Destination sql.Node
 	Source      sql.Node
+	// OnDup owns the duplicate assignments and optional update trigger path.
+	// It receives the existing row followed by the proposed insert row when a
+	// duplicate key is found.
+	OnDup sql.Node
 	// DeferredDefaults marks which columns in the destination schema are expected to have default values.
 	DeferredDefaults sets.FastIntSet
 
 	ColumnNames []string
 
-	checks     sql.CheckConstraints
-	OnDupExprs *UpdateExprs
+	checks sql.CheckConstraints
 	// OnDupValuesAlias names the proposed row exposed to duplicate-key expressions.
 	OnDupValuesAlias string
 	// OnDupWhere limits duplicate-key updates to rows that satisfy the expression.
 	OnDupWhere sql.Expression
-	// CountOnDuplicateUpdateAsOneRow uses single-row affected-count semantics for duplicate updates.
-	CountOnDuplicateUpdateAsOneRow bool
 	// Returning is a list of expressions to return after the insert operation. This feature is not supported
 	// in MySQL's syntax, but is exposed through PostgreSQL's and MariaDB's syntax.
 	Returning []sql.Expression
@@ -103,15 +104,20 @@ var _ DisjointedChildrenNode = (*InsertInto)(nil)
 
 // NewInsertInto creates an InsertInto node.
 func NewInsertInto(db sql.Database, dst, src sql.Node, isReplace bool, cols []string, onDupExprs *UpdateExprs, ignore bool) *InsertInto {
-	return &InsertInto{
+	insert := &InsertInto{
 		db:          db,
 		Destination: dst,
 		Source:      src,
 		ColumnNames: cols,
 		IsReplace:   isReplace,
-		OnDupExprs:  onDupExprs,
 		Ignore:      ignore,
 	}
+
+	if onDupExprs.HasUpdates() {
+		insert.OnDup = NewOnDuplicateKeyUpdateSource(dst, onDupExprs).WithIgnore(ignore)
+	}
+
+	return insert
 }
 
 var _ sql.CheckConstraintNode = (*RenameColumn)(nil)
@@ -131,6 +137,9 @@ func (ii *InsertInto) WithChecks(checks sql.CheckConstraints) sql.Node {
 // Dispose implements the sql.Disposable interface.
 func (ii *InsertInto) Dispose(ctx *sql.Context) {
 	disposeNode(ctx, ii.Source)
+	if ii.OnDup != nil {
+		disposeNode(ctx, ii.OnDup)
+	}
 }
 
 // Schema implements the sql.Node interface.
@@ -203,20 +212,28 @@ func (*InsertInto) CollationCoercibility(ctx *sql.Context) (collation sql.Collat
 
 // DisjointedChildren implements the interface DisjointedChildrenNode.
 func (ii *InsertInto) DisjointedChildren() [][]sql.Node {
-	return [][]sql.Node{
-		{ii.Destination},
-		{ii.Source},
+	children := [][]sql.Node{{ii.Destination}, {ii.Source}}
+	if ii.OnDup != nil {
+		children = append(children, []sql.Node{ii.OnDup})
 	}
+	return children
 }
 
 // WithDisjointedChildren implements the interface DisjointedChildrenNode.
 func (ii *InsertInto) WithDisjointedChildren(children [][]sql.Node) (sql.Node, error) {
-	if len(children) != 2 || len(children[0]) != 1 || len(children[1]) != 1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(ii, len(children), 2)
+	expected := len(ii.DisjointedChildren())
+	if len(children) != expected || len(children[0]) != 1 || len(children[1]) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(ii, len(children), expected)
 	}
 	np := *ii
 	np.Destination = children[0][0]
 	np.Source = children[1][0]
+	if len(children) == 3 {
+		if len(children[2]) != 1 {
+			return nil, sql.ErrInvalidChildrenNumber.New(ii, len(children[2]), 1)
+		}
+		np.OnDup = children[2][0]
+	}
 	return &np, nil
 }
 
@@ -251,7 +268,11 @@ func (ii *InsertInto) String() string {
 	} else {
 		_ = pr.WriteNode("Insert(%s)", strings.Join(ii.ColumnNames, ", "))
 	}
-	_ = pr.WriteChildren(ii.Destination.String(), ii.Source.String())
+	children := []string{ii.Destination.String(), ii.Source.String()}
+	if ii.OnDup != nil {
+		children = append(children, ii.OnDup.String())
+	}
+	_ = pr.WriteChildren(children...)
 	return pr.String()
 }
 
@@ -263,14 +284,17 @@ func (ii *InsertInto) DebugString(ctx *sql.Context) string {
 	} else {
 		_ = pr.WriteNode("Insert(%s)", strings.Join(ii.ColumnNames, ", "))
 	}
-	_ = pr.WriteChildren(sql.DebugString(ctx, ii.Destination), sql.DebugString(ctx, ii.Source))
+	children := []string{sql.DebugString(ctx, ii.Destination), sql.DebugString(ctx, ii.Source)}
+	if ii.OnDup != nil {
+		children = append(children, sql.DebugString(ctx, ii.OnDup))
+	}
+	_ = pr.WriteChildren(children...)
 	return pr.String()
 }
 
 // Expressions implements the sql.Expressioner interface.
 func (ii *InsertInto) Expressions() []sql.Expression {
-	exprs := make([]sql.Expression, 0, ii.OnDupExprs.Length()+len(ii.checks)+1+len(ii.Returning))
-	exprs = append(exprs, ii.OnDupExprs.AllExpressions()...)
+	exprs := make([]sql.Expression, 0, len(ii.checks)+1+len(ii.Returning))
 	exprs = append(exprs, ii.checks.ToExpressions()...)
 	if ii.OnDupWhere != nil {
 		exprs = append(exprs, ii.OnDupWhere)
@@ -280,24 +304,17 @@ func (ii *InsertInto) Expressions() []sql.Expression {
 
 // WithExpressions implements the sql.Expressioner interface.
 func (ii *InsertInto) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
-	numOnDupExprs := len(ii.OnDupExprs.AllExpressions())
 	numOnDupWhereExprs := 0
 	if ii.OnDupWhere != nil {
 		numOnDupWhereExprs = 1
 	}
-	expectedLen := numOnDupExprs + len(ii.checks) + numOnDupWhereExprs + len(ii.Returning)
+	expectedLen := len(ii.checks) + numOnDupWhereExprs + len(ii.Returning)
 	if len(exprs) != expectedLen {
 		return nil, sql.ErrInvalidExpressionNumber.New(ii, len(exprs), expectedLen)
 	}
 
 	nii := *ii
 	var err error
-	nii.OnDupExprs, err = ii.OnDupExprs.WithExpressions(exprs[:numOnDupExprs])
-	if err != nil {
-		return nil, err
-	}
-	exprs = exprs[numOnDupExprs:]
-
 	nii.checks, err = nii.checks.FromExpressions(exprs[:len(nii.checks)])
 	if err != nil {
 		return nil, err
@@ -316,8 +333,8 @@ func (ii *InsertInto) WithExpressions(ctx *sql.Context, exprs ...sql.Expression)
 // Resolved implements the Resolvable interface.
 func (ii *InsertInto) Resolved() bool {
 	return ii.Destination.Resolved() && ii.Source.Resolved() &&
+		(ii.OnDup == nil || ii.OnDup.Resolved()) &&
 		expression.ExpressionsResolved(ii.checks.ToExpressions()...) &&
-		ii.OnDupExprs.Resolved() &&
 		(ii.OnDupWhere == nil || ii.OnDupWhere.Resolved()) &&
 		expression.ExpressionsResolved(ii.Returning...)
 }

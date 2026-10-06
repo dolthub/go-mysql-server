@@ -23,6 +23,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -144,7 +145,7 @@ func CreateDatetimeType(baseType query.Type, precision int) (sql.DatetimeType, e
 	switch baseType {
 	case sqltypes.Date, sqltypes.Datetime, sqltypes.Timestamp:
 		if precision < 0 || precision > MaxDatetimePrecision {
-			return nil, fmt.Errorf("precision must be between 0 and 6, got %d", precision)
+			return nil, sql.ErrTooBigPrecision.New(precision, MaxDatetimePrecision)
 		}
 		return datetimeType{
 			baseType:  baseType,
@@ -223,6 +224,7 @@ func splitDecimal(d *apd.Decimal) (int64, int64, bool) {
 		return 0, 0, false
 	}
 	fracDec.Exponent += 9
+	fracDec.Modf(&fracDec, nil)
 	frac, err := fracDec.Int64()
 	if err != nil {
 		return 0, 0, false
@@ -424,30 +426,76 @@ func GetLastDay(year, month int) (res int, ok bool) {
 	return int(DaysPerMonth[month-1]), true
 }
 
-// DatetimeRegex will match MySQL's DateTime format.
-// The date portion (YYYY-MM-DD) is required all parts of the time portion (HH:MM:SS.MICROS) is optional.
-// The standard datetime format is YYYY-MM-DD HH:MM:SS.MICROS, but MySQL supports a "relaxed" format where
-// any punctuation (of various lengths) can be used between the date and time parts.
-// Some exceptions:
-//   - Whitespace characters are allowed in delimiter between Day and Hour
-//   - The only valid delimiter between Seconds and Microseconds is a single decimal point (.)
-//
-// MySQL Reference: https://dev.mysql.com/doc/refman/8.4/en/datetime.html
-//
-//		Match 1: The entire datetime string
-//		Group 1: Year
-//		Group 2: Month
-//		Group 3: Day
-//		Group 4: Hour (optional)
-//		Group 5: Minutes (optional)
-//		Group 6: Seconds (optional)
-//		Group 7: Microseconds (optional)
-//	 Group 8: any trailing characters to be Truncated
-var DatetimeRegex = regexp.MustCompile(`^(\d+)\p{P}+(\d+)\p{P}+(\d+)[\s\p{P}]*(\d*)?\p{P}*(\d*)?\p{P}*(\d*)?\p{P}*(\d*)?(.*)$`)
+var (
+	// DelimitedDateRegex matches strings in Date format with delimiters and groups them into their date portions.
+	// MySQL Reference: https://dev.mysql.com/doc/refman/8.4/en/datetime.html
+	// The output from regexp.FindStringSubmatchIndex is:
+	//	Match 1: The entire date string
+	//	Group 1: Year
+	//	Group 2: Month
+	//	Group 3: Day
+	DelimitedDateRegex = regexp.MustCompile(`^(\d+)\p{P}+(\d+)\p{P}+(\d+)`)
 
-// NumericDatetimeRegex matches strings that represent numeric Datetime formats.
-// The rules here are slightly different from the numbers themselves.
-var NumericDatetimeRegex = regexp.MustCompile(`^\d+\.?\d*$`)
+	// TwoDigitYearDateRegex matches strings in Date format without delimiters using abbreviated years and groups them
+	// into their date potions.
+	// MySQL Reference: https://dev.mysql.com/doc/refman/8.4/en/datetime.html
+	// The output from regexp.FindStringSubmatchIndex is:
+	//	Match 1: The entire date string
+	//	Group 1: Year
+	//	Group 2: Month
+	//	Group 3: Day
+	TwoDigitYearDateRegex = regexp.MustCompile(`^(\d{2})(\d{2})(\d{1,2})`)
+
+	// FourDigitYearDateRegex matches strings in Date format without delimiters and groups them into their date potions.
+	// MySQL Reference: https://dev.mysql.com/doc/refman/8.4/en/datetime.html
+	// The output from regexp.FindStringSubmatchIndex is:
+	//	Match 1: The entire date string
+	//	Group 1: Year
+	//	Group 2: Month
+	//	Group 3: Day
+	FourDigitYearDateRegex = regexp.MustCompile(`^(\d{4})(\d{2})(\d{1,2})`)
+
+	// TimeRegex matches strings in Time format and groups them into their time potions.
+	// MySQL Reference: https://dev.mysql.com/doc/refman/8.4/en/datetime.html
+	// The output from regexp.FindStringSubmatchIndex is:
+	//	Match 1: The entire time string
+	//	Group 1: Hours
+	//	Group 2: Minutes (optional)
+	//	Group 3: Seconds (optional)
+	TimeRegex = regexp.MustCompile(`^(\d{1,2})\p{P}*(\d\d?)?\p{P}*(\d\d?)?`)
+
+	// DelimitedTimeRegex matches strings in Time format that follow a delimited date and groups them into their time
+	// portions. Unlike TimeRegex, each portion consumes all of its digits, so that out of range values (e.g. an hour
+	// of 123) are rejected instead of being split across multiple portions. A trailing delimiter with no digits after
+	// it (e.g. '12:') is consumed so that it is not treated as truncated input.
+	// TODO: MySQL allows any ASCII punctuation character as a delimiter, but \p{P} does not match ASCII symbols such
+	//  as '+', '^', '~', '$', and '|' (these are \p{S}), so values like '2012-12-12 12+12+12' are truncated after the
+	//  hour. The same applies to DelimitedDateRegex and the delimiter checks in parseDate and parseDatetime.
+	//  https://github.com/dolthub/dolt/issues/11939
+	// MySQL Reference: https://dev.mysql.com/doc/refman/8.4/en/datetime.html
+	// The output from regexp.FindStringSubmatchIndex is:
+	//	Match 1: The entire time string
+	//	Group 1: Hours
+	//	Group 2: Minutes (optional)
+	//	Group 3: Seconds (optional)
+	DelimitedTimeRegex = regexp.MustCompile(`^(\d+)\p{P}*(\d+)?\p{P}*(\d+)?`)
+
+	// MicrosRegex matches strings representing microseconds.
+	// MySQL Reference: https://dev.mysql.com/doc/refman/8.4/en/datetime.html
+	MicrosRegex = regexp.MustCompile(`^(\.\d*)`)
+)
+
+const (
+	// MinDatetimeStringLength represents the length of the shortest possible datetime string
+	// Example: 'Y-M-D' or 'YYMMD'
+	MinDatetimeStringLength = 5
+	// MaxNumericDatetimeLength represents the maximum length for a datetime without superfluous delimiters
+	// Example: YYYY-MM-DD HH:MM:SS.MICROS
+	MaxNumericDatetimeLength = 14
+	// FourDigitNumericDatetimeLength represents the length of a datetime without delimiters
+	// Example: YYMMDDHHMMSS
+	FourDigitNumericDatetimeLength = 8
+)
 
 // makeDatetime validates the date/time parameters and returns a time.Time object.
 func makeDatetime(year, month, day, hour, min, sec, nsec int) (time.Time, bool) {
@@ -482,51 +530,127 @@ func (t datetimeType) parseDatetimeExtraLayouts(str string) (any, error) {
 	return res, err
 }
 
+// matchNumericDate will parse the input string according to the length of the string.
+func matchNumericDate(str string, pos int) (matchIdxs []int) {
+	if pos != FourDigitNumericDatetimeLength && pos < MaxNumericDatetimeLength {
+		matchIdxs = TwoDigitYearDateRegex.FindStringSubmatchIndex(str)
+	} else {
+		matchIdxs = FourDigitYearDateRegex.FindStringSubmatchIndex(str)
+	}
+	return
+}
+
+// parseDate converts a string into the year, month, and day according to MySQL's rules.
+// The input string is expected to be at least MinDatetimeStringLength.
+// All date portions (year, month, and day) must be present for this function to be successful.
+// Additionally, parseDate returns the next index and which timeRegex.
+func parseDate(str string) (yearStr, monthStr, dayStr string, pos int, timeRegex *regexp.Regexp, ok bool) {
+	// string inputs are expected to be at least length 5
+	// extract portion (find first non-digit)
+	pos = strings.IndexFunc(str, func(r rune) bool {
+		return !unicode.IsDigit(r)
+	})
+	timeRegex = TimeRegex
+	var matchIdxs []int
+	if pos == -1 {
+		// The entire string is digits, so treat it as a numeric date
+		matchIdxs = matchNumericDate(str, len(str))
+	} else if delim := rune(str[pos]); delim == '.' && pos >= 5 {
+		// The decimal point is a special delimiter
+		// Depending on the length, it can be interpreted as a numeric date or delimited date
+		matchIdxs = matchNumericDate(str, pos)
+	} else if unicode.IsPunct(delim) || unicode.IsSpace(delim) {
+		matchIdxs = DelimitedDateRegex.FindStringSubmatchIndex(str)
+		timeRegex = DelimitedTimeRegex
+	} else {
+		// contains invalid characters, should error
+		return yearStr, monthStr, dayStr, 0, nil, false
+	}
+	if len(matchIdxs) == 0 {
+		return yearStr, monthStr, dayStr, 0, nil, false
+	}
+	yearStr = str[matchIdxs[2]:matchIdxs[3]]
+	monthStr = str[matchIdxs[4]:matchIdxs[5]]
+	dayStr = str[matchIdxs[6]:matchIdxs[7]]
+	pos = matchIdxs[1] // set to end of date
+	return yearStr, monthStr, dayStr, pos, timeRegex, true
+}
+
+// parseTime takes in a string and parses it into hours, minutes, and seconds according to MySQL's rules.
+// Additionally, parseTime will return the next index.
+// Any invalid strings will result in empty strings and 0 value for pos.
+func parseTime(str string, timeRegex *regexp.Regexp) (hourStr, minStr, secStr string, pos int) {
+	if len(str) == 0 {
+		return hourStr, minStr, secStr, pos
+	}
+	matchIdxs := timeRegex.FindStringSubmatchIndex(str)
+	if len(matchIdxs) == 0 {
+		return hourStr, minStr, secStr, pos
+	}
+	// The time parts are optional, so we much check indexes
+	// These are the possible cases for match index pairs.
+	// We only care about the case where the start and end indexes are not equal.
+	// Case 1: matchIdx[i] = -1 and matchIdx[i+1] = -1 => empty string
+	// Case 2: matchIdx[i] == matchIdx[i+1] => empty string
+	// Case 3: matchIdx[i] = x and matchIdx[i+1] = y where y > x => [x:y]
+	if matchIdxs[2] != matchIdxs[3] {
+		hourStr = str[matchIdxs[2]:matchIdxs[3]]
+	}
+	if matchIdxs[4] != matchIdxs[5] {
+		minStr = str[matchIdxs[4]:matchIdxs[5]]
+	}
+	if matchIdxs[6] != matchIdxs[7] {
+		secStr = str[matchIdxs[6]:matchIdxs[7]]
+	}
+	return hourStr, minStr, secStr, matchIdxs[1]
+}
+
+// parseMicros takes in a string and parses it as microseconds according to MySQL's rules.
+// Only up to MaxDateTimePrecision + 1 digits are preserved to properly round the resulting value.
+// Additionally, parseMicros will return the next index.
+// Any invalid strings will result in empty string and 0 value for pos.
+func parseMicros(str string) (micros string, pos int) {
+	matchIdxs := MicrosRegex.FindStringIndex(str)
+	if len(matchIdxs) == 0 {
+		return micros, pos
+	}
+	micros = str[matchIdxs[0]:min(matchIdxs[1], MaxDatetimePrecision+2)] // +1 for digit and +1 for '.'
+	return micros, matchIdxs[1]
+}
+
 // parseDatetime parses a Datetime according to MySQL rules.
+// The date portion (YYYY-MM-DD) is required while all parts of the time portion (HH:MM:SS.MICROS) is optional.
+// The standard datetime format is YYYY-MM-DD HH:MM:SS.MICROS, but MySQL supports a "relaxed" format where
+// any punctuation (of various lengths) can be used between the date and time parts.
+// Some exceptions:
+//   - Whitespace characters are allowed in delimiter between Day and Hour
+//   - The only valid delimiter between Seconds and Microseconds is a single decimal point (.)
+//
+// MySQL Reference: https://dev.mysql.com/doc/refman/8.4/en/datetime.html
 func (t datetimeType) parseDatetime(str string) (any, bool, error) {
 	var delimWarn bool
 
 	// TODO: leading and trailing whitespace(s) should throw warning
 	// Tracking issue: https://github.com/dolthub/dolt/issues/11750
 	value := strings.Trim(str, NumericCutSet)
-	if matched := NumericDatetimeRegex.MatchString(value); matched {
-		dtNum, err := strconv.ParseFloat(value, 64)
-		if err != nil {
-			return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), value)
-		}
-		datetime, nsec, ok := splitFloat(dtNum)
-		if !ok {
-			return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), value)
-		}
-		res, ok := t.convertNumber(datetime, nsec)
-		if !ok {
-			return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), value)
-		}
-		return res, delimWarn, nil
-	}
-
-	res, err := t.parseDatetimeExtraLayouts(value)
-	if err == nil {
-		return res, delimWarn, nil
-	}
-
-	matchIdxs := DatetimeRegex.FindStringSubmatchIndex(value)
-	if len(matchIdxs) == 0 {
-		return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), value)
+	if len(str) < MinDatetimeStringLength {
+		return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), str)
 	}
 
 	// TODO: Handle delimiter warnings. These do not stop parsing unlike ErrTruncatedIncorrect warnings.
 	// Tracking issue: https://github.com/dolthub/dolt/issues/10278
+	if res, err := t.parseDatetimeExtraLayouts(value); err == nil {
+		return res, delimWarn, nil
+	}
 
-	// Date portion required for valid DateTime parsing, so no need to check for -1 indexes
-	yearStr := value[matchIdxs[2]:matchIdxs[3]]
-	monthStr := value[matchIdxs[4]:matchIdxs[5]]
-	dayStr := value[matchIdxs[6]:matchIdxs[7]]
-
+	yearStr, monthStr, dayStr, pos, timeRegex, ok := parseDate(value)
+	if !ok {
+		return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), str)
+	}
 	// Negative numbers should be impossible, so we don't check for them
 	year, err := strconv.Atoi(yearStr)
 	if err != nil {
-		return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), value)
+		return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), str)
 	}
 	// MySQL special case for abbreviated ('00) date formats
 	// TODO: there's a special special case for 00-00-00
@@ -535,68 +659,77 @@ func (t datetimeType) parseDatetime(str string) (any, bool, error) {
 	}
 	month, err := strconv.Atoi(monthStr)
 	if err != nil {
-		return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), value)
+		return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), str)
 	}
 	day, err := strconv.Atoi(dayStr)
 	if err != nil {
-		return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), value)
+		return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), str)
 	}
 
-	// The remaining match index pairs are optional
-	// Case 1: matchIdx[i] = -1 and matchIdx[i+1] = -1 => empty string
-	// Case 2: matchIdx[i] == matchIdx[i+1] => empty string
-	// Case 3: matchIdx[i] = x and matchIdx[i+1] = y where y > x => [x:y]
-	var hour, mins, sec, usec int
-	if matchIdxs[8] != matchIdxs[9] {
-		hourStr := value[matchIdxs[8]:matchIdxs[9]]
+	// trim date portion
+	value = value[pos:]
+
+	// skip over any number of spaces and punctuation
+	if newPos := strings.IndexFunc(value, func(r rune) bool {
+		return !unicode.IsPunct(r) && !unicode.IsSpace(r)
+	}); newPos != -1 {
+		value = value[newPos:]
+	}
+
+	hourStr, minStr, secStr, pos := parseTime(value, timeRegex)
+	var hour, mins, sec int
+	if len(hourStr) != 0 {
 		hour, err = strconv.Atoi(hourStr)
 		if err != nil {
 			return nil, delimWarn, sql.ErrTruncatedIncorrect.New(value)
 		}
 	}
-	if matchIdxs[10] != matchIdxs[11] {
-		minStr := value[matchIdxs[10]:matchIdxs[11]]
+	if len(minStr) != 0 {
 		mins, err = strconv.Atoi(minStr)
 		if err != nil {
 			return nil, delimWarn, sql.ErrTruncatedIncorrect.New(value)
 		}
 	}
-	if matchIdxs[12] != matchIdxs[13] {
-		secStr := value[matchIdxs[12]:matchIdxs[13]]
+	if len(secStr) != 0 {
 		sec, err = strconv.Atoi(secStr)
 		if err != nil {
 			return nil, delimWarn, sql.ErrTruncatedIncorrect.New(value)
 		}
 	}
-	if matchIdxs[14] != matchIdxs[15] {
-		// microseconds can only be delimited by '.'; everything else causes this to be ignored
-		// this check should be safe because of the outer if statement
-		if matchIdxs[14]-matchIdxs[13] == 1 && value[matchIdxs[13]] == '.' {
-			// Extract usec part
-			// [0] = '.'
-			// [1-6] = microseconds
-			// [7] = additional digit for rounding
-			usecStr := value[matchIdxs[13]:matchIdxs[15]]
-			if len(usecStr) >= 8 {
-				usecStr = usecStr[:8]
+
+	// trim time portion
+	if len(value) > 0 {
+		value = value[pos:]
+	}
+
+	var micros int
+	if len(value) > 0 {
+		// time and microsecond delimiter MUST be decimal point
+		if value[0] == '.' {
+			var microsStr string
+			microsStr, pos = parseMicros(value)
+			if len(microsStr) > 1 { // a single decimal point is 0
+				var microsf64 float64
+				microsf64, err = strconv.ParseFloat(microsStr, 64)
+				if err != nil {
+					return nil, delimWarn, sql.ErrTruncatedIncorrect.New(value)
+				}
+				micros = int(math.Round(microsf64 * 1_000_000))
 			}
-			var usecf64 float64
-			usecf64, err = strconv.ParseFloat(usecStr, 64)
-			if err != nil {
-				return nil, delimWarn, sql.ErrTruncatedIncorrect.New(value)
-			}
-			usec = int(math.Round(usecf64 * 1_000_000))
+			value = value[pos:] // trim microseconds
 		}
 	}
-	// Trailing invalid characters
-	if matchIdxs[17] != matchIdxs[16] {
+
+	resTime, ok := makeDatetime(year, month, day, hour, mins, sec, micros*1000)
+	if !ok {
+		return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), str)
+	}
+
+	// detect trailing characters
+	if len(value) > 0 {
 		err = sql.ErrTruncatedIncorrect.New(value)
 	}
 
-	resTime, ok := makeDatetime(year, month, day, hour, mins, sec, usec*1000)
-	if !ok {
-		return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), value)
-	}
 	return resTime, delimWarn, err
 }
 

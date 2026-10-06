@@ -15,6 +15,8 @@
 package queries
 
 import (
+	"github.com/dolthub/vitess/go/mysql"
+
 	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -870,6 +872,47 @@ var CharsetCollationEngineTests = []ScriptTest{
 		},
 	},
 	{
+		// See https://github.com/dolthub/go-mysql-server/issues/3837
+		Name: "CONVERT() USING with malformed multi-byte strings",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:                           "SELECT CONVERT(0x61FF62 USING utf8mb4);",
+				Expected:                        []sql.Row{{nil}},
+				ExpectedWarning:                 mysql.ERInvalidCharacterString,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "invalid string for character set",
+			},
+			{
+				Query:                           "SELECT CHAR_LENGTH(CONVERT(0x61FF62 USING utf8mb4));",
+				Expected:                        []sql.Row{{nil}},
+				ExpectedWarning:                 mysql.ERInvalidCharacterString,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "invalid string for character set",
+			},
+			{
+				Query:                           "SELECT HEX(LPAD(CONVERT(0x61FF62 USING utf8mb4), 5, 'x'));",
+				Expected:                        []sql.Row{{nil}},
+				ExpectedWarning:                 mysql.ERInvalidCharacterString,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "invalid string for character set",
+			},
+			{
+				// Valid multi-byte sequences are still converted and padded.
+				Query:    "SELECT HEX(CONVERT(0x61C3A962 USING utf8mb4));",
+				Expected: []sql.Row{{"61C3A962"}},
+			},
+			{
+				// A binary target accepts any byte sequence.
+				Query:    "SELECT HEX(CONVERT(0x61FF62 USING binary));",
+				Expected: []sql.Row{{"61FF62"}},
+			},
+			{
+				Query:    "SELECT HEX(LPAD(CONVERT(0x61C3A962 USING utf8mb4), 5, 'x'));",
+				Expected: []sql.Row{{"787861C3A962"}},
+			},
+		},
+	},
+	{
 		Name: "UPPER() function",
 		Assertions: []ScriptTestAssertion{
 			{
@@ -1395,6 +1438,69 @@ T.TABLE_SCHEMA AS 'database', T.TABLE_CATALOG AS 'catalog',
 					"         └─ Table\n" +
 					"             ├─ name: pad\n" +
 					"             └─ columns: [id txt]\n",
+			},
+		},
+	},
+
+	// https://github.com/dolthub/dolt/issues/11907
+	{
+		Name: "IN predicate with accent-insensitive collation",
+		SetUpScript: []string{
+			"CREATE TABLE t (id INT PRIMARY KEY, label VARCHAR(96) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL);",
+			"INSERT INTO t VALUES (1, CONVERT(X'636166C3A9' USING utf8mb4)), (2, 'cafe'), (3, ' Cafe '), (4, 'other'), (5, 'CAFÉ'), (6, 'cafë');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT id FROM t WHERE LOWER(TRIM(label)) = 'cafe' ORDER BY id;",
+				Expected: []sql.Row{{1}, {2}, {3}, {5}, {6}},
+			},
+			{
+				Query:    "SELECT id FROM t WHERE LOWER(TRIM(label)) IN ('cafe') ORDER BY id;",
+				Expected: []sql.Row{{1}, {2}, {3}, {5}, {6}},
+			},
+			{
+				Query:    "SELECT id FROM t WHERE label = 'cafe' ORDER BY id;",
+				Expected: []sql.Row{{1}, {2}, {5}, {6}},
+			},
+			{
+				Query:    "SELECT id FROM t WHERE label IN ('cafe') ORDER BY id;",
+				Expected: []sql.Row{{1}, {2}, {5}, {6}},
+			},
+			{
+				Query:    "SELECT id FROM t WHERE label IN ('cafe', 'other') ORDER BY id;",
+				Expected: []sql.Row{{1}, {2}, {4}, {5}, {6}},
+			},
+			{
+				Query:    "SELECT id FROM t WHERE label NOT IN ('cafe', 'other') ORDER BY id;",
+				Expected: []sql.Row{{3}},
+			},
+			{
+				Query:    "SELECT id FROM t WHERE (id, label) IN ((1, 'cafe'), (2, 'cafe'), (4, 'other')) ORDER BY id;",
+				Expected: []sql.Row{{1}, {2}, {4}},
+			},
+			{
+				Query:    "SELECT id FROM t WHERE label IN ('cafe' COLLATE utf8mb4_bin, 'other') ORDER BY id;",
+				Expected: []sql.Row{{2}, {4}},
+			},
+			{
+				Query:    "SELECT id, (label IN ('cafe')) FROM t ORDER BY id;",
+				Expected: []sql.Row{{1, true}, {2, true}, {3, false}, {4, false}, {5, true}, {6, true}},
+			},
+		},
+	},
+	{
+		Name: "CHECK constraint with IN predicate and collation",
+		SetUpScript: []string{
+			"CREATE TABLE c (id INT PRIMARY KEY, a VARCHAR(10) COLLATE utf8mb4_0900_ai_ci, b VARCHAR(10) COLLATE utf8mb4_0900_ai_ci, CHECK (a IN (b)));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO c VALUES (1, 'A', 'a');",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "SELECT * FROM c;",
+				Expected: []sql.Row{{1, "A", "a"}},
 			},
 		},
 	},

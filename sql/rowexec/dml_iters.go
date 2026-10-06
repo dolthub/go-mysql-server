@@ -178,6 +178,7 @@ func (i *triggerBlockIter) Close(*sql.Context) error {
 }
 
 type triggerIter struct {
+	onDupRowSize   int
 	child          sql.RowIter
 	executionLogic sql.Node
 	b              *BaseBuilder
@@ -248,6 +249,11 @@ func (t *triggerIter) Next(ctx *sql.Context) (row sql.Row, returnErr error) {
 	childRow, err := t.child.Next(ctx)
 	if err != nil {
 		return nil, err
+	}
+
+	// A duplicate returns OLD+NEW and must not also fire AFTER INSERT.
+	if t.onDupRowSize > 0 && len(childRow) == 2*t.onDupRowSize {
+		return childRow, nil
 	}
 
 	// Wrap the execution logic with the current child row before executing it.
@@ -419,10 +425,9 @@ func (r *replaceRowHandler) okResult() types.OkResult {
 }
 
 type onDuplicateUpdateHandler struct {
-	schema                    sql.Schema
-	rowsAffected              int
-	clientFoundRowsCapability bool
-	countUpdateAsOneRow       bool
+	schema       sql.Schema
+	rowsAffected int
+	countMode    updateRowCountMode
 }
 
 func (o *onDuplicateUpdateHandler) handleRowUpdate(ctx *sql.Context, row sql.Row) error {
@@ -433,22 +438,20 @@ func (o *onDuplicateUpdateHandler) handleRowUpdate(ctx *sql.Context, row sql.Row
 		return nil
 	}
 
-	// If countUpdateAsOneRow is true, then we use an alternate, simpler way of counting affected rows.
-	// This matches the behavior in PostgreSQL.
-	if o.countUpdateAsOneRow {
+	// PostgreSQL counts each inserted or updated row once.
+	if o.countMode == countMatchedRowsOnce {
 		o.rowsAffected++
 		return nil
 	}
 
-	// TODO: This check is already being done in insertIter.handleOnDuplicateKeyUpdate to check if derived updates need
-	//  to be applied
-	// Otherwise (a row was updated), increment by 2 if the row changed, 0 if not
+	// MySQL counts a changed duplicate update as two rows. CLIENT_FOUND_ROWS
+	// changes the unchanged case from zero to one.
+
 	oldRow := row[:len(row)/2]
 	newRow := row[len(row)/2:]
 	if equals, err := oldRow.Equals(ctx, newRow, o.schema); err == nil {
 		if equals {
-			// Ig the CLIENT_FOUND_ROWS capabilities flag is set, increment by 1 if a row stays the same.
-			if o.clientFoundRowsCapability {
+			if o.countMode == countMatchedRowsWithChangedDuplicatesTwice {
 				o.rowsAffected++
 			}
 		} else {
@@ -466,10 +469,10 @@ func (o *onDuplicateUpdateHandler) okResult() types.OkResult {
 }
 
 type updateRowHandler struct {
-	schema                    sql.Schema
-	rowsMatched               int
-	rowsAffected              int
-	clientFoundRowsCapability bool
+	schema                   sql.Schema
+	rowsMatched              int
+	rowsAffected             int
+	countMatchedRowsOnUpdate bool
 }
 
 func (u *updateRowHandler) handleRowUpdate(ctx *sql.Context, row sql.Row) error {
@@ -500,7 +503,7 @@ func (u *updateRowHandler) handleRowUpdateWithIgnore(ctx *sql.Context, row sql.R
 
 func (u *updateRowHandler) okResult() types.OkResult {
 	affected := u.rowsAffected
-	if u.clientFoundRowsCapability {
+	if u.countMatchedRowsOnUpdate {
 		affected = u.rowsMatched
 	}
 	return types.OkResult{
@@ -519,11 +522,12 @@ func (u *updateRowHandler) RowsMatched() int64 {
 
 // updateJoinRowHandler handles row update count for all UPDATEs that use a JOIN.
 type updateJoinRowHandler struct {
-	tableMap     map[string]sql.Schema
-	updaterMap   map[string]sql.RowUpdater
-	joinSchema   sql.Schema
-	rowsMatched  int
-	rowsAffected int
+	tableMap                 map[string]sql.Schema
+	updaterMap               map[string]sql.RowUpdater
+	joinSchema               sql.Schema
+	rowsMatched              int
+	rowsAffected             int
+	countMatchedRowsOnUpdate bool
 }
 
 // handleRowMatched is called when an update join's source returns a row
@@ -553,8 +557,12 @@ func (u *updateJoinRowHandler) handleRowUpdate(ctx *sql.Context, row sql.Row) er
 }
 
 func (u *updateJoinRowHandler) okResult() types.OkResult {
+	affected := u.rowsAffected
+	if u.countMatchedRowsOnUpdate {
+		affected = u.rowsMatched
+	}
 	return types.OkResult{
-		RowsAffected: uint64(u.rowsAffected),
+		RowsAffected: uint64(affected),
 		Info: plan.UpdateInfo{
 			Matched:  u.rowsMatched,
 			Updated:  u.rowsAffected,
@@ -586,21 +594,21 @@ type accumulatorIter struct {
 	once             sync.Once
 }
 
-func getRowHandler(clientFoundRowsToggled bool, iter sql.RowIter) accumulatorRowHandler {
+func getRowHandler(countMode updateRowCountMode, iter sql.RowIter) accumulatorRowHandler {
 	switch i := iter.(type) {
 	case *plan.TableEditorIter:
-		return getRowHandler(clientFoundRowsToggled, i.InnerIter())
+		return getRowHandler(countMode, i.InnerIter())
 	case *plan.CheckpointingTableEditorIter:
-		return getRowHandler(clientFoundRowsToggled, i.InnerIter())
+		return getRowHandler(countMode, i.InnerIter())
 	case *ProjectIter:
-		return getRowHandler(clientFoundRowsToggled, i.childIter)
+		return getRowHandler(countMode, i.childIter)
 	case *triggerIter:
-		return getRowHandler(clientFoundRowsToggled, i.child)
+		return getRowHandler(countMode, i.child)
 	case *blockIter:
-		return getRowHandler(clientFoundRowsToggled, i.repIter)
+		return getRowHandler(countMode, i.repIter)
 	case *updateIter:
 		// it's possible that there's an updateJoinIter that's not the immediate child of updateIter
-		rowHandler := getRowHandler(clientFoundRowsToggled, i.childIter)
+		rowHandler := getRowHandler(countMode, i.childIter)
 		if rowHandler != nil {
 			return rowHandler
 		}
@@ -609,12 +617,13 @@ func getRowHandler(clientFoundRowsToggled bool, iter sql.RowIter) accumulatorRow
 		if fkHandler, isFk := i.updater.(*plan.ForeignKeyHandler); isFk {
 			sch = fkHandler.Sch
 		}
-		return &updateRowHandler{schema: sch, clientFoundRowsCapability: clientFoundRowsToggled}
+		return &updateRowHandler{schema: sch, countMatchedRowsOnUpdate: countMode != countChangedRows}
 	case *updateJoinIter:
 		rowHandler := &updateJoinRowHandler{
-			joinSchema: i.joinSchema,
-			tableMap:   plan.RecreateTableSchemaFromJoinSchema(i.joinSchema),
-			updaterMap: i.updaters,
+			joinSchema:               i.joinSchema,
+			tableMap:                 plan.RecreateTableSchemaFromJoinSchema(i.joinSchema),
+			updaterMap:               i.updaters,
+			countMatchedRowsOnUpdate: countMode != countChangedRows,
 		}
 		i.accumulator = rowHandler
 		return rowHandler
@@ -623,11 +632,7 @@ func getRowHandler(clientFoundRowsToggled bool, iter sql.RowIter) accumulatorRow
 			return &replaceRowHandler{}
 		}
 		if i.updater != nil {
-			return &onDuplicateUpdateHandler{
-				schema:                    i.schema,
-				clientFoundRowsCapability: clientFoundRowsToggled,
-				countUpdateAsOneRow:       i.countOnDuplicateUpdateAsOneRow,
-			}
+			return &onDuplicateUpdateHandler{schema: i.schema, countMode: countMode}
 		}
 		return &insertRowHandler{
 			lastInsertIdGetter: i.getAutoIncVal,
@@ -639,11 +644,11 @@ func getRowHandler(clientFoundRowsToggled bool, iter sql.RowIter) accumulatorRow
 	}
 }
 
-func AddAccumulatorIter(ctx *sql.Context, iter sql.RowIter) (sql.RowIter, sql.Schema) {
+func AddAccumulatorIter(ctx *sql.Context, iter sql.RowIter, countMatchedRowsOnUpdate bool) (sql.RowIter, sql.Schema) {
 	switch i := iter.(type) {
 	case sql.MutableRowIter:
 		childIter := i.GetChildIter()
-		childIter, sch := AddAccumulatorIter(ctx, childIter)
+		childIter, sch := AddAccumulatorIter(ctx, childIter, countMatchedRowsOnUpdate)
 		return i.WithChildIter(childIter), sch
 	case *plan.TableEditorIter:
 		// If the TableEditorIter has RETURNING expressions, then we do NOT actually add the accumulatorIter
@@ -679,7 +684,7 @@ func AddAccumulatorIter(ctx *sql.Context, iter sql.RowIter) (sql.RowIter, sql.Sc
 			}
 		}
 	}
-	return defaultAccumulatorIter(ctx, iter)
+	return defaultAccumulatorIter(ctx, iter, countMatchedRowsOnUpdate)
 }
 
 func withSafepointPeriodicallyIter(child sql.RowIter) *safepointPeriodicallyIter {
@@ -720,9 +725,8 @@ func (i *safepointPeriodicallyIter) Close(ctx *sql.Context) error {
 }
 
 // defaultAccumulatorIter returns the default accumulator iter for a DML node
-func defaultAccumulatorIter(ctx *sql.Context, iter sql.RowIter) (sql.RowIter, sql.Schema) {
-	clientFoundRowsToggled := (ctx.Client().Capabilities & mysql.CapabilityClientFoundRows) > 0
-	rowHandler := getRowHandler(clientFoundRowsToggled, iter)
+func defaultAccumulatorIter(ctx *sql.Context, iter sql.RowIter, countMatchedRowsOnUpdate bool) (sql.RowIter, sql.Schema) {
+	rowHandler := getRowHandler(currentUpdateCountMode(ctx, countMatchedRowsOnUpdate), iter)
 	if rowHandler == nil {
 		return iter, nil
 	}
@@ -730,6 +734,39 @@ func defaultAccumulatorIter(ctx *sql.Context, iter sql.RowIter) (sql.RowIter, sq
 		iter:             withSafepointPeriodicallyIter(iter),
 		updateRowHandler: rowHandler,
 	}, types.OkResultSchema
+}
+
+// updateRowCountMode controls UPDATE and duplicate-key UPDATE affected-row semantics.
+// The matched-row modes agree on ordinary UPDATE counts but differ when a
+// duplicate-key UPDATE changes a row. All three of these modes are necessary to support:
+// default MySQL behavior, MySQL behavior when CLIENT_FOUND_ROWS is set, and default
+// Postgres behavior.
+type updateRowCountMode uint8
+
+const (
+	// countChangedRows counts changed UPDATE rows; INSERT ON DUPLICATE UPDATE counts
+	// as two when changed and zero when unchanged. This is MySQL's default.
+	countChangedRows updateRowCountMode = iota
+
+	// countMatchedRowsWithChangedDuplicatesTwice counts matched UPDATE rows;
+	// duplicate updates count two when changed and one when unchanged. MySQL
+	// selects this mode when CLIENT_FOUND_ROWS is set.
+	countMatchedRowsWithChangedDuplicatesTwice
+
+	// countMatchedRowsOnce counts each matched UPDATE or conflict-updated row
+	// once, whether its values changed or not. PostgreSQL uses this mode.
+	countMatchedRowsOnce
+)
+
+// currentUpdateCountMode returns the update row couunt mode that should be used for the active query.
+func currentUpdateCountMode(ctx *sql.Context, countMatchedRowsOnUpdate bool) updateRowCountMode {
+	if countMatchedRowsOnUpdate {
+		return countMatchedRowsOnce
+	}
+	if ctx.Client().Capabilities&mysql.CapabilityClientFoundRows != 0 {
+		return countMatchedRowsWithChangedDuplicatesTwice
+	}
+	return countChangedRows
 }
 
 func (a *accumulatorIter) Next(ctx *sql.Context) (r sql.Row, err error) {

@@ -111,11 +111,17 @@ func aliasTrackAndReplace(ctx *sql.Context, adj map[sql.ColumnId]sql.Expression,
 	return newE, nil
 }
 
-func (f *factory) buildConvert(ctx *sql.Context, expr sql.Expression, castToType string, typeLength, typeScale int) (sql.Expression, error) {
-	n := expression.NewConvertWithLengthAndScale(expr, castToType, typeLength, typeScale)
+func (f *factory) buildConvert(ctx *sql.Context, expr sql.Expression, castToType string, typeLength, typeScale int, explicit bool) (sql.Expression, error) {
+	convType, err := expression.CreateConvertType(castToType, typeLength, typeScale)
+	if err != nil {
+		return nil, err
+	}
+
+	n := expression.NewConvertWithLengthAndScale(expr, convType, castToType, typeLength, typeScale)
 	{
-		// deduplicate redundant convert
-		if expr.Type(ctx).Equals(n.Type(ctx)) {
+		// Explicit integer casts carry different decimal precision metadata from their
+		// operands, even when the SQL types are equal.
+		if expr.Type(ctx).Equals(n.Type(ctx)) && (!explicit || !types.IsInteger(n.Type(ctx))) {
 			f.log(ctx, "eliminated convert")
 			return expr, nil
 		}

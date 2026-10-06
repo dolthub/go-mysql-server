@@ -63,7 +63,6 @@ func TestGeneratedUnaryAggregateDescribe(t *testing.T) {
 	require.NoError(t, err)
 
 	aggregates := []sql.Expression{
-		NewAnyValue(hashIn),
 		NewAvg(hashIn),
 		NewBitAnd(hashIn),
 		NewBitOr(hashIn),

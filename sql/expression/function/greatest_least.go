@@ -24,23 +24,77 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var ErrUintOverflow = errors.NewKind(
 	"Unsigned integer too big to fit on signed integer")
 
-// compEval is used to implement Greatest/Least Eval() using a comparison function
+type comparisonDirection uint8
+
+const (
+	compareGreater comparisonDirection = iota
+	compareLess
+)
+
+// compEval is used to implement Greatest/Least Eval() using an explicit comparison direction
 func compEval(
 	returnType sql.Type,
 	args []sql.Expression,
 	ctx *sql.Context,
 	row sql.Row,
-	cmp compareFn,
+	direction comparisonDirection,
 ) (interface{}, error) {
 
 	if returnType == types.Null {
 		return nil, nil
+	}
+
+	if dt, ok := returnType.(sql.DecimalType); ok {
+		// Compare exact values without losing digits through float64.
+		var selected *apd.Decimal
+		scale := int64(dt.Scale())
+		for _, arg := range args {
+			val, err := arg.Eval(ctx, row)
+			if err != nil {
+				return nil, err
+			}
+
+			if val == nil {
+				return nil, nil
+			}
+
+			d, err := types.InternalDecimalType.ConvertToDecimal(val)
+			if err != nil {
+				return nil, err
+			}
+
+			scale = max(scale, -int64(d.Exponent))
+			if selected == nil || (direction == compareGreater && d.Cmp(selected) > 0) || (direction == compareLess && d.Cmp(selected) < 0) {
+				selected = d
+			}
+		}
+
+		// The declared precision is capped at 65, but expression values can
+		// exceed that precision. Do not apply column range checks here.
+		integerDigits := max(selected.NumDigits()+int64(selected.Exponent), 0)
+		// MySQL pads to the common scale within its nine base-10^9 words.
+		// Keep existing fractional digits even when no padding fits.
+		paddingScale := max((9-(integerDigits+8)/9)*9, 0)
+		scale = max(min(scale, paddingScale), -int64(selected.Exponent))
+		quantized := new(apd.Decimal)
+		qCtx := sql.DecimalCtx.WithPrecision(uint32(max(integerDigits+scale, 1)))
+		if _, err := qCtx.Quantize(quantized, selected, -int32(scale)); err != nil {
+			return nil, err
+		}
+
+		return quantized, nil
+	}
+
+	cmp := lessThan
+	if direction == compareGreater {
+		cmp = greaterThan
 	}
 
 	var selectedNum float64
@@ -158,6 +212,9 @@ func compRetType(ctx *sql.Context, args ...sql.Expression) (sql.Type, error) {
 	allString := true
 	allInt := true
 	allDatetime := true
+	anyDecimal := false
+	anyFloat := false
+	var argTypes []sql.Type
 
 	for _, arg := range args {
 		if !arg.Resolved() {
@@ -177,6 +234,16 @@ func compRetType(ctx *sql.Context, args ...sql.Expression) (sql.Type, error) {
 			if !types.IsInteger(argType) {
 				allInt = false
 			}
+
+			if types.IsDecimal(argType) {
+				anyDecimal = true
+			}
+
+			if types.IsFloat(argType) {
+				anyFloat = true
+			}
+
+			argTypes = append(argTypes, argType)
 		} else if types.IsText(argType) {
 			allInt = false
 			allDatetime = false
@@ -193,15 +260,81 @@ func compRetType(ctx *sql.Context, args ...sql.Expression) (sql.Type, error) {
 		}
 	}
 
-	// TODO: return Decimal type if all Decimals. Account for Decimals of different scales and precisions
 	if allString {
 		return types.LongText, nil
 	} else if allInt {
 		return types.Int64, nil
 	} else if allDatetime {
 		return types.DatetimeMaxPrecision, nil
+	} else if anyDecimal && !anyFloat && len(argTypes) == len(args) {
+		// only numeric arguments, at least one an exact decimal: the result
+		// keeps the widest integer part and the widest scale among them
+		return compDecimalType(args, argTypes), nil
 	} else {
 		return types.Float64, nil
+	}
+}
+
+// compDecimalType combines exact numeric arguments using the largest integer
+// part and scale. The cap describes result metadata, not an evaluation bound.
+func compDecimalType(args []sql.Expression, argTypes []sql.Type) sql.Type {
+	var integerDigits, scale uint8
+	for i, t := range argTypes {
+		var p, s uint8
+		if dt, ok := t.(sql.DecimalType); ok {
+			p, s = dt.Precision(), dt.Scale()
+		} else {
+			switch t {
+			case types.Int8, types.Uint8, types.Boolean:
+				p = 3
+			case types.Int16, types.Uint16:
+				p = 5
+			case types.Int24, types.Uint24:
+				p = 8
+			case types.Int32, types.Uint32:
+				p = 10
+			case types.Int64:
+				p = 19
+			case types.Uint64:
+				p = 20
+			default:
+				return types.Float64
+			}
+		}
+
+		if types.IsInteger(t) {
+			p = compIntegerPrecision(args[i], t, p)
+		}
+
+		integerDigits = max(integerDigits, p-s)
+		scale = max(scale, s)
+	}
+
+	scale = min(scale, types.DecimalTypeMaxScale)
+	precision := min(uint16(integerDigits)+uint16(scale), types.DecimalTypeMaxPrecision)
+	return types.MustCreateDecimalType(uint8(precision), scale)
+}
+
+// compIntegerPrecision distinguishes literal widths and CAST metadata from
+// integer column widths, which cannot be inferred from the SQL type alone.
+func compIntegerPrecision(arg sql.Expression, typ sql.Type, columnPrecision uint8) uint8 {
+	switch arg := arg.(type) {
+	case *expression.Literal:
+		if _, ok := arg.Value().(bool); ok {
+			return 1
+		}
+
+		return uint8(len(strings.TrimPrefix(fmt.Sprint(arg.Value()), "-")))
+	case *expression.UnaryMinus:
+		return compIntegerPrecision(arg.Child, typ, columnPrecision)
+	case *expression.Convert:
+		if types.IsUnsigned(typ) {
+			return 21
+		}
+
+		return 20
+	default:
+		return columnPrecision
 	}
 }
 
@@ -283,8 +416,6 @@ func (f *Greatest) Resolved() bool {
 // Children implements the Expression interface.
 func (f *Greatest) Children() []sql.Expression { return f.Args }
 
-type compareFn func(interface{}, interface{}) bool
-
 func greaterThan(a, b interface{}) bool {
 	switch i := a.(type) {
 	case int64:
@@ -315,7 +446,7 @@ func lessThan(a, b interface{}) bool {
 
 // Eval implements the Expression interface.
 func (f *Greatest) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return compEval(f.returnType, f.Args, ctx, row, greaterThan)
+	return compEval(f.returnType, f.Args, ctx, row, compareGreater)
 }
 
 // Least returns the argument with the least numerical or string value. It allows for
@@ -395,5 +526,5 @@ func (f *Least) Children() []sql.Expression { return f.Args }
 
 // Eval implements the Expression interface.
 func (f *Least) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return compEval(f.returnType, f.Args, ctx, row, lessThan)
+	return compEval(f.returnType, f.Args, ctx, row, compareLess)
 }

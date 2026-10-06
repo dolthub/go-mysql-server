@@ -660,6 +660,7 @@ func TestHashInTuple(t *testing.T) {
 			name: "left has a convert (type cast)",
 			left: expression.NewConvert(
 				expression.NewGetField(0, types.Int64, "foo", false),
+				types.LongText,
 				"char",
 			),
 			right: expression.NewTuple(
@@ -736,4 +737,24 @@ func TestHashInTuple(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestInTupleCollation(t *testing.T) {
+	// https://github.com/dolthub/dolt/issues/11907
+	ctx := sql.NewEmptyContext()
+	typ := types.MustCreateString(sqltypes.VarChar, 96, sql.Collation_utf8mb4_unicode_ci)
+
+	in := expression.NewInTuple(
+		expression.NewLiteral("café", typ),
+		expression.Tuple{expression.NewLiteral("cafe", typ)},
+	)
+	res, err := in.Eval(ctx, nil)
+	require.NoError(t, err)
+	require.Equal(t, true, res)
+
+	hashIn, err := expression.NewHashInTuple(ctx, expression.NewLiteral("café", typ), expression.Tuple{expression.NewLiteral("cafe", typ)})
+	require.NoError(t, err)
+	hRes, err := hashIn.Eval(ctx, nil)
+	require.NoError(t, err)
+	require.Equal(t, true, hRes)
 }

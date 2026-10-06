@@ -1016,6 +1016,43 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{float64(1), 1}, {float64(2), 2}, {float64(3), 3}},
 	},
 	{
+		Query: `SELECT * FROM three_pk WHERE pk1=1 ORDER BY pk2`,
+		Expected: []sql.Row{
+			{1, 0, 10, 40, 21, 22, 23, 24},
+			{1, 1, 0, 60, 31, 32, 33, 34},
+		},
+	},
+	{
+		Query: `SELECT * FROM three_pk WHERE pk1=1 ORDER BY pk3`,
+		Expected: []sql.Row{
+			{1, 1, 0, 60, 31, 32, 33, 34},
+			{1, 0, 10, 40, 21, 22, 23, 24},
+		},
+	},
+	{
+		Query: `SELECT MIN(pk2) FROM three_pk WHERE pk2=1`,
+		Expected: []sql.Row{
+			{1},
+		},
+	},
+	{
+		Query:    `SELECT MIN(pk2) FROM three_pk WHERE pk2=2`,
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query: `SELECT MIN(pk3) FROM three_pk WHERE pk1=1`,
+		Expected: []sql.Row{
+			{0},
+		},
+	},
+	{
+		Query: `SELECT MIN(pk1) FROM three_pk WHERE pk3=10`,
+		Expected: []sql.Row{
+			{0},
+		},
+	},
+
+	{
 		Query:    "select count(1)",
 		Expected: []sql.Row{{1}},
 	},
@@ -1658,6 +1695,55 @@ SELECT * FROM cte WHERE  d = 2;`,
 	{
 		Query:    `SELECT DISTINCT val FROM (values row(null), row(1.00), row('2'), row(2)) a (val);`,
 		Expected: []sql.Row{{nil}, {"1.00"}, {"2"}},
+	},
+	// https://github.com/dolthub/dolt/issues/11942
+	{
+		Query:    `SELECT * FROM (VALUES ROW(CAST(NULL AS DECIMAL(20,6)))) AS t(x);`,
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    `SELECT * FROM (VALUES ROW(CAST(NULL AS DECIMAL(20,6))), ROW(1.23)) AS t(x);`,
+		Expected: []sql.Row{{nil}, {"1.230000"}},
+	},
+	{
+		Query:    `SELECT * FROM (VALUES ROW(1.23), ROW(CAST(NULL AS DECIMAL(20,6)))) AS t(x);`,
+		Expected: []sql.Row{{"1.230000"}, {nil}},
+	},
+	{
+		Query:    `SELECT * FROM (VALUES ROW(NULL), ROW(CAST(NULL AS DECIMAL(20,6)))) AS t(x);`,
+		Expected: []sql.Row{{nil}, {nil}},
+	},
+	{
+		Query:    `SELECT * FROM (VALUES ROW(1.23), ROW(NULL)) AS t(x);`,
+		Expected: []sql.Row{{"1.23"}, {nil}},
+	},
+	{
+		Query:    `SELECT * FROM (VALUES ROW(1), ROW(CAST(NULL AS DECIMAL(20,6)))) AS t(x);`,
+		Expected: []sql.Row{{"1.000000"}, {nil}},
+	},
+	{
+		Query:    `SELECT * FROM (VALUES ROW(CAST(NULL AS DECIMAL(10,2)), 1), ROW(3.1415, CAST(NULL AS DECIMAL(20,6)))) AS t(a, b);`,
+		Expected: []sql.Row{{nil, "1.000000"}, {"3.1415", nil}},
+	},
+	{
+		Query:    `SELECT * FROM (VALUES ROW(CAST(NULL AS DECIMAL(10,2)) + 1.5)) AS t(x);`,
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    `SELECT * FROM (VALUES ROW(CASE WHEN 1=0 THEN 1.0 ELSE NULL END)) AS t(x);`,
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    `SELECT * FROM (VALUES ROW(COALESCE(NULL, CAST(NULL AS DECIMAL(10,2))))) AS t(x);`,
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    `SELECT * FROM (VALUES ROW(CAST(1234.5 AS DECIMAL(8,2))), ROW(CAST(NULL AS DECIMAL(8,4)))) AS t(x);`,
+		Expected: []sql.Row{{"1234.5000"}, {nil}},
+	},
+	{
+		Query:    `SELECT * FROM (VALUES ROW(CAST(NULL AS DECIMAL(8,4))), ROW(CAST(1234.5 AS DECIMAL(8,2)))) AS t(x);`,
+		Expected: []sql.Row{{nil}, {"1234.5000"}},
 	},
 	{
 		Query:    `SELECT column_0 FROM (values row(1+1.5,2+2), row(floor(1.5),concat("a","b"))) a order by 1;`,
@@ -3746,6 +3832,10 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Query:    `select STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') % 12345;`,
 		Expected: []sql.Row{{"10487"}},
 	},
+	{
+		Query:    `select STR_TO_DATE(UNHEX('30312c352c323031332030393a33303a3137'), '%d,%m,%Y %h:%i:%s');`,
+		Expected: []sql.Row{{time.Date(2013, time.May, 1, 9, 30, 17, 0, time.UTC)}},
+	},
 
 	{
 		Query:    "select 0.0015 / 0.0026;",
@@ -5132,6 +5222,47 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{
 			{true},
 		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11903
+		Query:    `select length('a\_b'), 'a\_b'`,
+		Expected: []sql.Row{{int32(4), "a\\_b"}},
+	},
+	{
+		Query:    `select 'a_b' like 'a\_b'`,
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    `select 'axb' like 'a\_b'`,
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    `select 'a%b' like 'a\%b'`,
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    `select 'axyb' like 'a\%b'`,
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    `select 'a\_b'`,
+		Expected: []sql.Row{{"a\\_b"}},
+	},
+	{
+		Query:    `select 'a\%b'`,
+		Expected: []sql.Row{{"a\\%b"}},
+	},
+	{
+		Query:    `select 'abc\\' like 'abc\\'`,
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    `select 'abc' like 'abc\\'`,
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    `select '\\' like '\\'`,
+		Expected: []sql.Row{{true}},
 	},
 	{
 		Query: `SELECT * FROM foo.othertable`,
@@ -6808,6 +6939,14 @@ SELECT * FROM cte WHERE  d = 2;`,
 	{
 		Query:    `SELECT ALL - - 20 * - CASE + AVG ( ALL + + 89 ) WHEN - 66 THEN NULL WHEN - 15 THEN 38 * COUNT( * ) * MIN( DISTINCT - + 88 ) - MIN( ALL + 0 ) - - COUNT( * ) + - 0 + - 14 * + ( 98 ) * + 70 * 14 * + 57 * 48 - 53 + + 7 END * + 78 + - 11 * + 29 + + + 46 + + 10 + + ( - 83 ) * - - 74 / - 8 + 18`,
 		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    `SELECT DISTINCT 37, 40 * - + CASE - - CAST( + COUNT( 59 ) AS DECIMAL ) WHEN - - 96 * - 48 / - 89 * + 32 THEN - ( 32 ) WHEN + 92 / + 93 THEN + ( 7 ) ELSE 8 * - ( - CAST( NULL AS SIGNED ) * 89 ) - ( + 28 ) END AS col1`,
+		Expected: []sql.Row{{37, nil}},
+	},
+	{
+		Query:    "select cast(1 as decimal) = 0.9892, cast(1 as decimal) = 92/93, 92/93 = cast(1 as decimal), cast(1 as decimal) = 0.9892e0, cast(1 as decimal) > 0.9892, cast(1 as decimal) = 1.0",
+		Expected: []sql.Row{{false, false, false, false, true, true}},
 	},
 	{
 		Query: "select cast(X'9876543210' as char(10))",
@@ -8641,6 +8780,13 @@ from typestable`,
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/11918
+		Query:                 "SELECT COUNT( * ) FROM (SELECT 25 AS age UNION ALL SELECT 30) t WHERE ROUND( HEX( age ) );",
+		Expected:              []sql.Row{{2}},
+		ExpectedWarning:       1292,
+		ExpectedWarningsCount: 1,
+	},
+	{
 		Query: "select 1 in (null, 0.8)",
 		Expected: []sql.Row{
 			{nil},
@@ -9568,6 +9714,31 @@ from typestable`,
 		Query:    "select pk, (select max(pk) from one_pk where pk < opk.pk) as x from one_pk opk",
 		Expected: []sql.Row{{0, nil}, {1, 0}, {2, 1}, {3, 2}},
 	},
+	// Correlated columns in subqueries are included in select dependencies when the outer query joins
+	{
+		Query:    "select mt.s, (select count(*) from othertable where i2 <= mt.i) as x from mytable mt left join othertable ot on mt.i = ot.i2 where mt.i = 2 group by mt.i, mt.s",
+		Expected: []sql.Row{{"second row", 2}},
+	},
+	{
+		Query:    "select mt.s, count(ot.s2), (select count(*) from othertable where i2 <= mt.i) as x from mytable mt join othertable ot on mt.i = ot.i2 where mt.i = 2 group by mt.i, mt.s",
+		Expected: []sql.Row{{"second row", 1, 2}},
+	},
+	{
+		Query:    "select mt.s, count(distinct ot.s2), (select count(*) from othertable where i2 <= mt.i) as x from mytable mt left join othertable ot on mt.i = ot.i2 where mt.i = 2",
+		Expected: []sql.Row{{"second row", 1, 2}},
+	},
+	{
+		Query:    "select mt.i, (select count(*) from othertable where i2 <= mt.i) as x from mytable mt join othertable ot on mt.i = ot.i2 group by mt.i order by mt.i",
+		Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}},
+	},
+	{
+		Query:    "select mt.s, (select count(*) from othertable where i2 <= mt.i) as x from mytable mt left join othertable ot on mt.i = ot.i2 group by mt.i, mt.s order by mt.i",
+		Expected: []sql.Row{{"first row", 1}, {"second row", 2}, {"third row", 3}},
+	},
+	{
+		Query:    "select mt.s, (select count(*) from mytable inner_mt where inner_mt.i <= ot.i2) as x from mytable mt left join othertable ot on mt.i = ot.i2 and ot.i2 = 2 group by mt.i, mt.s, ot.i2 order by mt.i",
+		Expected: []sql.Row{{"first row", 0}, {"second row", 2}, {"third row", 0}},
+	},
 	{
 		// https://github.com/dolthub/dolt/issues/9963
 		Query:    "select max(i) as max_i from mytable having max(i) < 3",
@@ -9751,7 +9922,6 @@ var KeylessQueries = []QueryTest{
 			{1, 1},
 			{2, 2},
 		},
-		UsesValueRowIter: true,
 	},
 	{
 		Query: "SELECT * FROM keyless ORDER BY c1 DESC",
@@ -9761,7 +9931,6 @@ var KeylessQueries = []QueryTest{
 			{1, 1},
 			{0, 0},
 		},
-		UsesValueRowIter: true,
 	},
 	{
 		Query: "SELECT * FROM keyless JOIN myTable where c0 = i",
@@ -9770,7 +9939,6 @@ var KeylessQueries = []QueryTest{
 			{1, 1, 1, "first row"},
 			{2, 2, 2, "second row"},
 		},
-		UsesValueRowIter: true,
 	},
 	{
 		Query: "SELECT * FROM myTable JOIN keyless WHERE i = c0 ORDER BY i",
@@ -9779,7 +9947,6 @@ var KeylessQueries = []QueryTest{
 			{1, "first row", 1, 1},
 			{2, "second row", 2, 2},
 		},
-		UsesValueRowIter: true,
 	},
 	{
 		Query: "DESCRIBE keyless",
@@ -9787,7 +9954,6 @@ var KeylessQueries = []QueryTest{
 			{"c0", "bigint", "YES", "", nil, ""},
 			{"c1", "bigint", "YES", "", nil, ""},
 		},
-		UsesValueRowIter: true,
 	},
 	{
 		Query: "SHOW COLUMNS FROM keyless",
@@ -9795,7 +9961,6 @@ var KeylessQueries = []QueryTest{
 			{"c0", "bigint", "YES", "", nil, ""},
 			{"c1", "bigint", "YES", "", nil, ""},
 		},
-		UsesValueRowIter: true,
 	},
 	{
 		Query: "SHOW FULL COLUMNS FROM keyless",
@@ -9803,14 +9968,12 @@ var KeylessQueries = []QueryTest{
 			{"c0", "bigint", nil, "YES", "", nil, "", "", ""},
 			{"c1", "bigint", nil, "YES", "", nil, "", "", ""},
 		},
-		UsesValueRowIter: true,
 	},
 	{
 		Query: "SHOW CREATE TABLE keyless",
 		Expected: []sql.Row{
 			{"keyless", "CREATE TABLE `keyless` (\n  `c0` bigint,\n  `c1` bigint\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 		},
-		UsesValueRowIter: true,
 	},
 }
 
@@ -10188,6 +10351,68 @@ var DateParseQueries = []QueryTest{
 	},
 	{
 		Query:    "SELECT STR_TO_DATE('May 3, 10:23:00 PM 2000', '%b %e, %H:%i:%s %p %Y')", // cannot use 24 hour time (%H) with AM/PM (%p)
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:                 "SELECT STR_TO_DATE('23:02:03.123 PM', '%H:%i:%s.%f %p')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       1411,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "SELECT STR_TO_DATE('23 PM', '%k %p')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       1411,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "SELECT STR_TO_DATE('23:02:03 PM', '%k:%i:%s %p')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       1411,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "SELECT STR_TO_DATE('23:02:03 PM', '%T %p')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       1411,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "SELECT STR_TO_DATE('01:02:03 AM', '%T %p')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       1411,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "SELECT STR_TO_DATE('PM 23:02:03', '%p %T')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       1411,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		// The PM marker used to be parsed and then dropped, so this came back as 01:02.
+		Query:    "SELECT STR_TO_DATE('01:02 PM','%h:%i %p')",
+		Expected: []sql.Row{{time.Date(-1, time.November, 30, 13, 2, 0, 0, time.UTC)}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('12:02 PM','%h:%i %p')",
+		Expected: []sql.Row{{time.Date(-1, time.November, 30, 12, 2, 0, 0, time.UTC)}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('12:02 AM','%h:%i %p')",
+		Expected: []sql.Row{{time.Date(-1, time.November, 30, 0, 2, 0, 0, time.UTC)}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('01:02 AM','%h:%i %p')",
+		Expected: []sql.Row{{time.Date(-1, time.November, 30, 1, 2, 0, 0, time.UTC)}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('12:14:12 AM','%r')",
+		Expected: []sql.Row{{time.Date(-1, time.November, 30, 0, 14, 12, 0, time.UTC)}},
+	},
+	{
+		// %h is a 1..12 specifier, so an hour outside that range is not a time.
+		Query:    "SELECT STR_TO_DATE('13:02 PM','%h:%i %p')",
 		Expected: []sql.Row{{nil}},
 	},
 	{
@@ -10627,16 +10852,16 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrColumnNotFound,
 	},
 	{
-		Query:          "CREATE TABLE invalid_decimal (number DECIMAL(65,31));",
-		ExpectedErrStr: "Too big scale 31 specified. Maximum is 30.",
+		Query:       "CREATE TABLE invalid_decimal (number DECIMAL(65,31));",
+		ExpectedErr: sql.ErrTooBigScale,
 	},
 	{
-		Query:          "CREATE TABLE invalid_decimal (number DECIMAL(66,30));",
-		ExpectedErrStr: "Too big precision 66 specified. Maximum is 65.",
+		Query:       "CREATE TABLE invalid_decimal (number DECIMAL(66,30));",
+		ExpectedErr: sql.ErrTooBigPrecision,
 	},
 	{
-		Query:          "CREATE TABLE invalid_decimal (number DECIMAL(66,31));",
-		ExpectedErrStr: "Too big scale 31 specified. Maximum is 30.",
+		Query:       "CREATE TABLE invalid_decimal (number DECIMAL(66,31));",
+		ExpectedErr: sql.ErrTooBigScale,
 	},
 	{
 		Query:       "select 18446744073709551615 div 0.1;",
@@ -10785,6 +11010,19 @@ var ErrorQueries = []QueryErrorTest{
 	{
 		Query:       `select s from mytable group by s order by i`,
 		ExpectedErr: analyzererrors.ErrValidationGroupByOrderBy,
+	}, {
+		Query:       "SELECT CAST('2020-01-01 10:00:00' AS DATETIME(7))",
+		ExpectedErr: sql.ErrTooBigPrecision,
+	},
+	{
+		Query:       "SELECT CAST('10:00:00' AS TIME(7))",
+		ExpectedErr: sql.ErrTooBigPrecision,
+	},
+	{
+		// A grouping key that fails while more rows are waiting to be grouped than the grouping buffers must return
+		// the error rather than hang. The key is slow to compute so that the rows pile up before it fails.
+		Query:       "select count(*) from mytable a, mytable b, mytable c, mytable d, mytable e, mytable f group by json_extract(concat('[', length(repeat(a.i, 10000000))), '$')",
+		ExpectedErr: sql.ErrInvalidJSONText,
 	},
 }
 

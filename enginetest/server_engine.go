@@ -234,9 +234,7 @@ func (s *ServerQueryEngine) exec(ctx *sql.Context, stmt *gosql.Stmt, query strin
 // queryOrExec function use `query()` or `exec()` method of go-sql-driver depending on the sql parser plan.
 // If |stmt| is nil, then we use the connection db to query/exec the given query statement because some queries cannot
 // be run as prepared.
-// TODO: for `EXECUTE` and `CALL` statements, it can be either query or exec depending on the statement that prepared or stored procedure holds.
-//
-//	for now, we use `query` to get the row results for these statements. For statements that needs `exec`, the result is OkResult.
+// EXECUTE preserves affected-row results for prepared DML; CALL may return rows or an OK result.
 func (s *ServerQueryEngine) queryOrExec(ctx *sql.Context, stmt *gosql.Stmt, parsed sqlparser.Statement, query string, args []any) (sql.Schema, sql.RowIter, *sql.QueryFlags, error) {
 	// TODO: added `FLUSH` stmt here (should be `exec`) because we don't support `FLUSH BINARY LOGS` or `FLUSH ENGINE LOGS`, so nil schema is returned.
 	var shouldQuery bool
@@ -246,9 +244,26 @@ func (s *ServerQueryEngine) queryOrExec(ctx *sql.Context, stmt *gosql.Stmt, pars
 		if p.Returning != nil {
 			shouldQuery = true
 		}
+	case *sqlparser.Execute:
+		// Each ServerQueryEngine has its own server and a single client session.
+		var prepared sqlparser.Statement
+		err := s.server.SessionManager().Iter(func(session sql.Session) (bool, error) {
+			prepared, _ = session.GetPreparedQuery(p.Name)
+			return prepared != nil, nil
+		})
+		if err != nil {
+			return nil, nil, nil, err
+		}
+
+		switch prepared.(type) {
+		case *sqlparser.Insert, *sqlparser.Update, *sqlparser.Delete:
+			return s.queryOrExec(ctx, stmt, prepared, query, args)
+		}
+
+		shouldQuery = true
 	case *sqlparser.Select, *sqlparser.SetOp, *sqlparser.Show,
 		*sqlparser.Call, *sqlparser.Begin,
-		*sqlparser.Use, *sqlparser.Load, *sqlparser.Execute,
+		*sqlparser.Use, *sqlparser.Load,
 		*sqlparser.Analyze, *sqlparser.Flush, *sqlparser.Explain:
 		shouldQuery = true
 	default:
@@ -406,7 +421,7 @@ func convertValue(ctx *sql.Context, sch sql.Schema, row sql.Row) sql.Row {
 			}
 		case query.Type_TIME:
 			if row[i] != nil {
-				r, _, err := types.TimespanType_{}.Convert(ctx, string(row[i].([]byte)))
+				r, _, err := col.Type.Convert(ctx, string(row[i].([]byte)))
 				if err != nil {
 					//t.Skip(fmt.Sprintf("received error converting returned timespan result"))
 				} else {
@@ -663,7 +678,15 @@ func convertGoSqlType(columnType *gosql.ColumnType) (sql.Type, error) {
 	case "timestamp":
 		return types.Timestamp, nil
 	case "time":
-		return types.Time, nil
+		precision, _, ok := columnType.DecimalSize()
+		if !ok {
+			return nil, fmt.Errorf("could not get precision size for column %s", columnType.Name())
+		}
+		timeType, err := types.CreateTimespanType(int(precision))
+		if err != nil {
+			return nil, err
+		}
+		return timeType, nil
 	case "year":
 		return types.Year, nil
 	case "char", "varchar":

@@ -116,6 +116,62 @@ var VectorIndexQueries = []ScriptTest{
 			},
 		},
 	},
+	// https://github.com/dolthub/dolt/issues/8657
+	{
+		Name: "Test non-covering vector lookups",
+		SetUpScript: []string{
+			"CREATE TABLE noncovering(pk INT PRIMARY KEY,c0 INT,embedding JSON NOT NULL)",
+			"CREATE VECTOR INDEX vidx ON noncovering(embedding)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:           "SELECT c0 FROM noncovering ORDER BY VEC_DISTANCE('[0.0]',embedding)",
+				Expected:        []sql.Row{},
+				ExpectedIndexes: []string{},
+			},
+			{
+				// Distance order differs from both primary-key and insertion order, with no ties.
+				Query:    "INSERT INTO noncovering VALUES(3,30,'[-4.0]'),(1,10,'[1.0]'),(5,50,'[8.0]'),(2,20,'[2.0]'),(4,40,'[0.0]')",
+				Expected: []sql.Row{{types.NewOkResult(5)}},
+			},
+			{
+				Query:           "SELECT c0 FROM noncovering ORDER BY VEC_DISTANCE('[0.0]',embedding) LIMIT 1",
+				Expected:        []sql.Row{{int32(40)}},
+				ExpectedIndexes: []string{"vidx"},
+			},
+			{
+				Query:           "SELECT c0 FROM noncovering ORDER BY VEC_DISTANCE('[0.0]',embedding) LIMIT 3",
+				Expected:        []sql.Row{{int32(40)}, {int32(10)}, {int32(20)}},
+				ExpectedIndexes: []string{"vidx"},
+			},
+			{
+				// Project non-index columns in a different order from the stored row.
+				Query:           "SELECT c0, pk FROM noncovering ORDER BY VEC_DISTANCE('[0.0]',embedding) LIMIT 3",
+				Expected:        []sql.Row{{int32(40), int32(4)}, {int32(10), int32(1)}, {int32(20), int32(2)}},
+				ExpectedIndexes: []string{"vidx"},
+			},
+			{
+				Query:           "SELECT c0 FROM noncovering ORDER BY VEC_DISTANCE('[0.0]',embedding) LIMIT 10",
+				Expected:        []sql.Row{{int32(40)}, {int32(10)}, {int32(20)}, {int32(30)}, {int32(50)}},
+				ExpectedIndexes: []string{"vidx"},
+			},
+			{
+				Query:           "SELECT c0 FROM noncovering ORDER BY VEC_DISTANCE('[3.0]',embedding) LIMIT 3",
+				Expected:        []sql.Row{{int32(20)}, {int32(10)}, {int32(40)}},
+				ExpectedIndexes: []string{"vidx"},
+			},
+			{
+				Query:           "SELECT c0 FROM noncovering ORDER BY VEC_DISTANCE('[-4.0]',embedding) LIMIT 3",
+				Expected:        []sql.Row{{int32(30)}, {int32(40)}, {int32(10)}},
+				ExpectedIndexes: []string{"vidx"},
+			},
+			{
+				Query:           "SELECT c0 FROM noncovering ORDER BY VEC_DISTANCE('[0.0]',embedding)",
+				Expected:        []sql.Row{{int32(40)}, {int32(10)}, {int32(20)}, {int32(30)}, {int32(50)}},
+				ExpectedIndexes: []string{},
+			},
+		},
+	},
 	{
 		Name: "basic VECTOR vector index",
 		SetUpScript: []string{
@@ -212,6 +268,40 @@ var VectorIndexQueries = []ScriptTest{
 			},
 		},
 	},
+	// https://github.com/dolthub/dolt/issues/8961
+	{
+		Name: "Test index preservation when adding generated columns",
+		SetUpScript: []string{
+			"CREATE TABLE generated_vector(pk INT PRIMARY KEY,embedding JSON NOT NULL,metadata JSON,category INT,INDEX category_idx(category))",
+			"CREATE VECTOR INDEX vidx ON generated_vector(embedding)",
+			"INSERT INTO generated_vector VALUES(1,'[1.0]','{\"name\":\"first\"}',7)",
+			"ALTER TABLE generated_vector ADD COLUMN name VARCHAR(255) AS(metadata->>'$.name')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{Query: "SHOW CREATE TABLE generated_vector", Expected: []sql.Row{{"generated_vector", "CREATE TABLE `generated_vector` (\n  `pk` int NOT NULL,\n  `embedding` json NOT NULL,\n  `metadata` json,\n  `category` int,\n  `name` varchar(255) GENERATED ALWAYS AS (json_unquote(json_extract(`metadata`, '$.name'))),\n  PRIMARY KEY (`pk`),\n  KEY `category_idx` (`category`),\n  VECTOR KEY `vidx` (`embedding`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}}},
+			{Query: "SELECT name FROM generated_vector ORDER BY VEC_DISTANCE('[0.0]',embedding) LIMIT 1", Expected: []sql.Row{{"first"}}},
+		},
+	},
+	{
+		Name: "vector index projects stored and virtual columns",
+		SetUpScript: []string{
+			"CREATE TABLE projected_vectors(pk INT PRIMARY KEY, label VARCHAR(20) AS(CONCAT('row-', pk)), embedding JSON NOT NULL, payload VARCHAR(20))",
+			"INSERT INTO projected_vectors(pk, embedding, payload) VALUES(1, '[4.0]', 'far'), (2, '[1.0]', 'near')",
+			"CREATE VECTOR INDEX vidx ON projected_vectors(embedding)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:           "SELECT payload FROM projected_vectors ORDER BY VEC_DISTANCE('[0.0]', embedding) LIMIT 2",
+				Expected:        []sql.Row{{"near"}, {"far"}},
+				ExpectedIndexes: []string{"vidx"},
+			},
+			{
+				Query:           "SELECT label, payload, pk FROM projected_vectors ORDER BY VEC_DISTANCE('[0.0]', embedding) LIMIT 2",
+				Expected:        []sql.Row{{"row-2", "near", int32(2)}, {"row-1", "far", int32(1)}},
+				ExpectedIndexes: []string{"vidx"},
+			},
+		},
+	},
 	{
 		Name: "vector index order by fallbacks and other metrics",
 		SetUpScript: []string{
@@ -301,7 +391,7 @@ var VectorIndexQueries = []ScriptTest{
 		},
 	},
 	{
-		Name: "vector index with null query vector",
+		Name: "vector index with SQL NULL and JSON null",
 		SetUpScript: []string{
 			"create table vectors (id int primary key, v json not null);",
 			`insert into vectors values (1, '[1.0,2.0]');`,
@@ -315,6 +405,15 @@ var VectorIndexQueries = []ScriptTest{
 					{1, types.MustJSON(`[1.0, 2.0]`)},
 				},
 				ExpectedIndexes: []string{},
+			},
+			{
+				Query:    "select VEC_DISTANCE(NULL, v) from vectors",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				// JSON null is a JSON value, not SQL NULL, and cannot be converted to a vector.
+				Query:          "select VEC_DISTANCE('[0.0,0.0]', CAST('null' AS JSON))",
+				ExpectedErrStr: "can't convert JSON to vector; expected array, got <nil>",
 			},
 		},
 	},

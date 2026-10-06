@@ -485,6 +485,31 @@ func TestNumberSQL_NumberFromString(t *testing.T) {
 	assert.Equal(t, "0", val.ToString())
 }
 
+func TestNumberSQLUnsignedClamp(t *testing.T) {
+	tests := []struct {
+		typ sql.Type
+		val interface{}
+		exp string
+	}{
+		{typ: Uint8, val: uint64(math.MaxUint8), exp: "255"},
+		{typ: Uint8, val: uint64(math.MaxUint8 + 1), exp: "255"},
+		{typ: Uint16, val: uint64(math.MaxUint16 + 1), exp: "65535"},
+		{typ: Uint24, val: uint64(1<<24 - 1), exp: "16777215"},
+		{typ: Uint24, val: uint64(1 << 24), exp: "16777215"},
+		{typ: Uint24, val: uint64(99999999), exp: "16777215"},
+		{typ: Uint32, val: uint64(math.MaxUint32 + 1), exp: "4294967295"},
+		{typ: Int24, val: int64(1 << 23), exp: "8388607"},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%s %v", test.typ.String(), test.val), func(t *testing.T) {
+			val, err := test.typ.SQL(sql.NewEmptyContext(), nil, test.val)
+			require.NoError(t, err)
+			assert.Equal(t, test.exp, val.ToString())
+		})
+	}
+}
+
 func TestNumberString(t *testing.T) {
 	tests := []struct {
 		typ         sql.Type
@@ -703,11 +728,47 @@ func TestTruncateStringToDouble(t *testing.T) {
 			exp:      ".0e123",
 			expTrunc: false,
 		},
+		{
+			// https://github.com/dolthub/dolt/issues/11918
+			input:    "1E",
+			exp:      "1",
+			expTrunc: true,
+		},
+		{
+			input:    "1e+",
+			exp:      "1",
+			expTrunc: true,
+		},
+		{
+			input:    "-1.5e-",
+			exp:      "-1.5",
+			expTrunc: true,
+		},
+		{
+			input:    "1.e",
+			exp:      "1.",
+			expTrunc: true,
+		},
+		{
+			input:    "1ee2",
+			exp:      "1",
+			expTrunc: true,
+		},
+		{
+			input:    "1e2.5",
+			exp:      "1e2",
+			expTrunc: true,
+		},
+		{
+			input:    "1e.5",
+			exp:      "1",
+			expTrunc: true,
+		},
 	}
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v", test.input), func(t *testing.T) {
-			truncStr, didTrunc := TruncateStringToDouble(test.input)
+			truncStr, didTrunc := TruncateStringToDouble(test.input, true)
 			assert.Equal(t, test.exp, truncStr)
 			assert.Equal(t, test.expTrunc, didTrunc)
 		})

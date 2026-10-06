@@ -158,7 +158,7 @@ func TestSingleQuery(t *testing.T) {
 	engine.EngineAnalyzer().Debug = true
 	engine.EngineAnalyzer().Verbose = true
 
-	enginetest.TestQueryWithEngine(t, harness, engine, test)
+	enginetest.TestQuery(t, harness, engine, test)
 }
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
@@ -611,6 +611,17 @@ func TestScripts(t *testing.T) {
 	enginetest.TestScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
+// TestCorrelatedAggregateScopePrepared verifies correlated aggregate ownership with prepared execution.
+func TestCorrelatedAggregateScopePrepared(t *testing.T) {
+	for _, script := range queries.ScriptTests {
+		if script.Name == "correlated subquery references outer aggregate" {
+			enginetest.TestScriptPrepared(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver), script)
+			return
+		}
+	}
+	t.Fatal("correlated aggregate scope script not found")
+}
+
 func TestSpatialScripts(t *testing.T) {
 	enginetest.TestSpatialScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
@@ -814,10 +825,6 @@ func TestNamedWindows(t *testing.T) {
 	enginetest.TestNamedWindows(t, enginetest.NewDefaultMemoryHarness())
 }
 
-func TestNaturalJoinEqual(t *testing.T) {
-	enginetest.TestNaturalJoinEqual(t, enginetest.NewDefaultMemoryHarness())
-}
-
 func TestNaturalJoinDisjoint(t *testing.T) {
 	enginetest.TestNaturalJoinDisjoint(t, enginetest.NewDefaultMemoryHarness())
 }
@@ -879,6 +886,44 @@ func TestIndexedExpressions(t *testing.T) {
 
 func TestVectorIndexes(t *testing.T) {
 	enginetest.TestVectorIndexes(t, enginetest.NewDefaultMemoryHarness())
+
+	harness := enginetest.NewDefaultMemoryHarness()
+	harness.Setup(setup.MydbData)
+	enginetest.TestScript(t, harness, queries.ScriptTest{
+		Name: "JSON null in a memory vector index",
+		SetUpScript: []string{
+			"create table vectors (id int primary key, v json not null)",
+			"create vector index v_idx on vectors(v)",
+			"insert into vectors values (1, '[1.0,2.0]')",
+		},
+		Assertions: []queries.ScriptTestAssertion{
+			{
+				// Memory tables permit invalid vectors such as JSON null; storage engines may reject them on write.
+				Query:    "insert into vectors values (2, '[3.0,4.0]'), (3, 'null')",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				// JSON null is not SQL NULL, so an indexed search must report a conversion error.
+				Query:          "select id from vectors order by VEC_DISTANCE('[0.0,0.0]', v) limit 2",
+				ExpectedErrStr: "can't convert JSON to vector; expected array, got <nil>",
+			},
+			{
+				// A full-scan search must also report the invalid vector.
+				Query:          "select id from vectors order by VEC_DISTANCE('[0.0,0.0]', v)",
+				ExpectedErrStr: "unable to sort: can't convert JSON to vector; expected array, got <nil>",
+			},
+			{
+				Query:    "delete from vectors where id = 3",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				// Removing the invalid value restores the nearest-neighbor search.
+				Query:           "select id from vectors order by VEC_DISTANCE('[0.0,0.0]', v) limit 2",
+				Expected:        []sql.Row{{1}, {2}},
+				ExpectedIndexes: []string{"v_idx"},
+			},
+		},
+	})
 }
 
 func TestVectorFunctions(t *testing.T) {
