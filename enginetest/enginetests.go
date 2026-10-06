@@ -5905,3 +5905,11 @@ func TestDropTableScripts(t *testing.T, harness Harness) {
 func TestDropTableScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.DropTableScriptTests, true)
 }
+
+func TestEnumsAndSetsScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.EnumsAndSetsScriptTests, false)
+}
+
+func TestEnumsAndSetsScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.EnumsAndSetsScriptTests, true)
+}
