@@ -3387,6 +3387,10 @@ func TestCreateForeignKeys(t *testing.T, harness Harness) {
 	for _, tt := range queries.CreateForeignKeyTests {
 		TestScript(t, harness, tt)
 	}
+
+	for _, tt := range queries.CreateForeignKeyTypeTests {
+		TestScript(t, harness, tt)
+	}
 }
 
 func TestDropForeignKeys(t *testing.T, harness Harness) {
@@ -3399,6 +3403,10 @@ func TestDropForeignKeys(t *testing.T, harness Harness) {
 func TestForeignKeys(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.Parent_childData)
 	for _, script := range queries.ForeignKeyTests {
+		TestScript(t, harness, script)
+	}
+
+	for _, script := range queries.ForeignKeyTypeTests {
 		TestScript(t, harness, script)
 	}
 
@@ -5932,4 +5940,12 @@ func TestForeignKeyResolutionScripts(t *testing.T, harness Harness) {
 
 func TestForeignKeyResolutionScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.ForeignKeyResolutionScriptTests, true)
+}
+
+func TestForeignKeyTypesScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.ForeignKeyTypesScriptTests, false)
+}
+
+func TestForeignKeyTypesScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.ForeignKeyTypesScriptTests, true)
 }
