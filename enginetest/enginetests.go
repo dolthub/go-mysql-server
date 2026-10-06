@@ -5981,3 +5981,11 @@ func TestInsertRegressionScripts(t *testing.T, harness Harness) {
 func TestInsertRegressionScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.InsertRegressionScriptTests, true)
 }
+
+func TestJoinsScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.JoinsScriptTests, false)
+}
+
+func TestJoinsScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.JoinsScriptTests, true)
+}
