@@ -1162,3 +1162,7 @@ func TestTableDefinitionsScripts(t *testing.T) {
 func TestDeleteScripts(t *testing.T) {
 	enginetest.TestDeleteScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
+
+func TestDescendingIndexesScripts(t *testing.T) {
+	enginetest.TestDescendingIndexesScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}

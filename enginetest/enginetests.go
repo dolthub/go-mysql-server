@@ -5889,3 +5889,11 @@ func TestDeleteScripts(t *testing.T, harness Harness) {
 func TestDeleteScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.DeleteScriptTests, true)
 }
+
+func TestDescendingIndexesScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.DescendingIndexesScriptTests, false)
+}
+
+func TestDescendingIndexesScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.DescendingIndexesScriptTests, true)
+}
