@@ -6134,3 +6134,11 @@ func TestUUIDScripts(t *testing.T, harness Harness) {
 func TestUUIDScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.UUIDScriptTests, true)
 }
+
+func TestVariablesScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.VariablesScriptTests, false)
+}
+
+func TestVariablesScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.VariablesScriptTests, true)
+}

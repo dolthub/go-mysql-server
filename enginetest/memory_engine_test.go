@@ -1274,3 +1274,7 @@ func TestUpdateRegressionScripts(t *testing.T) {
 func TestUUIDScripts(t *testing.T) {
 	enginetest.TestUUIDScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
+
+func TestVariablesScripts(t *testing.T) {
+	enginetest.TestVariablesScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
