@@ -5857,3 +5857,11 @@ func TestColumnDefaultsScripts(t *testing.T, harness Harness) {
 func TestColumnDefaultsScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.ColumnDefaultsScriptTests, true)
 }
+
+func TestConversionsScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.ConversionsScriptTests, false)
+}
+
+func TestConversionsScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.ConversionsScriptTests, true)
+}

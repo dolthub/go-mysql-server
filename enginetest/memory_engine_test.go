@@ -1146,3 +1146,7 @@ func TestCharsetCollationScripts(t *testing.T) {
 func TestColumnDefaultsScripts(t *testing.T) {
 	enginetest.TestColumnDefaultsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
+
+func TestConversionsScripts(t *testing.T) {
+	enginetest.TestConversionsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
