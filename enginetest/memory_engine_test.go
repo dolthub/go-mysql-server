@@ -1278,3 +1278,7 @@ func TestUUIDScripts(t *testing.T) {
 func TestVariablesScripts(t *testing.T) {
 	enginetest.TestVariablesScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
+
+func TestViewsScripts(t *testing.T) {
+	enginetest.TestViewsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
