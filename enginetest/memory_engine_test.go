@@ -1138,3 +1138,7 @@ func TestAlterTableScripts(t *testing.T) {
 func TestAutoIncrementScripts(t *testing.T) {
 	enginetest.TestAutoIncrementScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
+
+func TestCharsetCollationScripts(t *testing.T) {
+	enginetest.TestCharsetCollationScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
