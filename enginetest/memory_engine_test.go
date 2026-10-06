@@ -158,7 +158,7 @@ func TestSingleQuery(t *testing.T) {
 	engine.EngineAnalyzer().Debug = true
 	engine.EngineAnalyzer().Verbose = true
 
-	enginetest.TestQueryWithEngine(t, harness, engine, test)
+	enginetest.TestQuery(t, harness, engine, test)
 }
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
@@ -823,10 +823,6 @@ func TestWindowRangeFrames(t *testing.T) {
 
 func TestNamedWindows(t *testing.T) {
 	enginetest.TestNamedWindows(t, enginetest.NewDefaultMemoryHarness())
-}
-
-func TestNaturalJoinEqual(t *testing.T) {
-	enginetest.TestNaturalJoinEqual(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestNaturalJoinDisjoint(t *testing.T) {

@@ -44,7 +44,7 @@ var biasedCosters = map[string]memo.Coster{
 func TestJoinOps(t *testing.T, harness Harness, tests []joinOpTest) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			e := mustNewEngine(t, harness)
+			e := MustNewEngine(t, harness)
 			defer e.Close()
 
 			for _, setup := range tt.setup {

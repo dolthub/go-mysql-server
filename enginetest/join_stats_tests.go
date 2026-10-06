@@ -17,7 +17,7 @@ func TestJoinStats(t *testing.T, harness Harness) {
 	for _, tt := range JoinStatTests {
 		t.Run(tt.name, func(t *testing.T) {
 			harness.Setup([]setup.SetupScript{setup.MydbData[0]})
-			e := mustNewEngine(t, harness)
+			e := MustNewEngine(t, harness)
 			defer e.Close()
 
 			tfp, ok := e.EngineAnalyzer().Catalog.DbProvider.(sql.TableFunctionProvider)

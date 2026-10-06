@@ -1858,7 +1858,7 @@ func runJoinPlanningTests(t *testing.T, harness Harness, tests []joinPlanScript)
 				}
 			}
 			harness.Setup([]setup.SetupScript{setup.MydbData[0], tt.setup})
-			e := mustNewEngine(t, harness)
+			e := MustNewEngine(t, harness)
 			defer e.Close()
 			for _, tt := range tt.tests {
 				if tt.types != nil {
