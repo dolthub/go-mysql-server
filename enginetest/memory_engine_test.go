@@ -1262,3 +1262,7 @@ func TestTransactionsScripts(t *testing.T) {
 func TestTupleComparisonsScripts(t *testing.T) {
 	enginetest.TestTupleComparisonsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
+
+func TestUpdateJoinsScripts(t *testing.T) {
+	enginetest.TestUpdateJoinsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}

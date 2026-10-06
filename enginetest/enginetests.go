@@ -1372,6 +1372,10 @@ func TestUpdate(t *testing.T, harness Harness) {
 	for _, tt := range queries.UpdateScriptTests {
 		TestScript(t, harness, tt)
 	}
+
+	for _, tt := range queries.UpdateJoinScriptTests {
+		TestScript(t, harness, tt)
+	}
 }
 
 func TestUpdateIgnore(t *testing.T, harness Harness) {
@@ -1442,6 +1446,10 @@ func TestUpdateQueriesPrepared(t *testing.T, harness Harness) {
 		runWriteQueryTestPrepared(t, harness, tt)
 	}
 	for _, tt := range queries.UpdateScriptTests {
+		TestScriptPrepared(t, harness, tt)
+	}
+
+	for _, tt := range queries.UpdateJoinScriptTests {
 		TestScriptPrepared(t, harness, tt)
 	}
 }
@@ -6101,4 +6109,12 @@ func TestTupleComparisonsScripts(t *testing.T, harness Harness) {
 
 func TestTupleComparisonsScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.TupleComparisonsScriptTests, true)
+}
+
+func TestUpdateJoinsScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.UpdateJoinsScriptTests, false)
+}
+
+func TestUpdateJoinsScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.UpdateJoinsScriptTests, true)
 }
