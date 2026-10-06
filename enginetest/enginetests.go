@@ -6086,3 +6086,11 @@ func TestTemporalScripts(t *testing.T, harness Harness) {
 func TestTemporalScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.TemporalScriptTests, true)
 }
+
+func TestTransactionsScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.TransactionsScriptTests, false)
+}
+
+func TestTransactionsScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.TransactionsScriptTests, true)
+}
