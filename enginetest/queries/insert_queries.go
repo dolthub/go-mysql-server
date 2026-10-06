@@ -2555,3 +2555,20 @@ var InsertBrokenScripts = []ScriptTest{
 		},
 	},
 }
+
+// InsertRegressionScriptTests contains self-contained insert script tests.
+var InsertRegressionScriptTests = []ScriptTest{
+	{
+		Name: "table with defaults, insert with on duplicate key update",
+		SetUpScript: []string{
+			"create table t (a int primary key, b int default 100);",
+			"insert into t values (1, 1), (2, 2)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "insert into t values (1, 10) on duplicate key update b = 10",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+		},
+	},
+}

@@ -5973,3 +5973,11 @@ func TestInsertIgnoreRegressionScripts(t *testing.T, harness Harness) {
 func TestInsertIgnoreRegressionScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.InsertIgnoreRegressionScriptTests, true)
 }
+
+func TestInsertRegressionScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.InsertRegressionScriptTests, false)
+}
+
+func TestInsertRegressionScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.InsertRegressionScriptTests, true)
+}
