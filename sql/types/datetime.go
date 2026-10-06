@@ -610,19 +610,18 @@ func parseTime(str string, timeRegex *regexp.Regexp) (hourStr, minStr, secStr st
 // Additionally, parseMicros will return the next index.
 // Any invalid strings will result in empty string and 0 value for pos.
 func parseMicros(str string) (microStr string, idx int) {
-	var char rune
-	for idx, char = range str {
-		// the very first character must be a '.'
-		if idx == 0 {
-			if char == '.' {
-				continue
-			}
-			return microStr, 0
-		}
-		if unicode.IsDigit(char) {
-			continue
-		}
-		break
+	// the very first character must be a '.'
+	if str[0] != '.' {
+		return microStr, -1
+	}
+	// indexes here are offset by 1
+	idx = strings.IndexFunc(str[1:], func(r rune) bool {
+		return !unicode.IsDigit(r)
+	})
+	if idx == -1 {
+		idx = len(str)
+	} else {
+		idx += 1
 	}
 	microStr = str[:min(idx, MaxDatetimePrecision+2)]
 	return microStr, idx

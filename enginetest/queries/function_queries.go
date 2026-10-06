@@ -2759,6 +2759,20 @@ var FunctionQueryTests = []QueryTest{
 		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 	},
 	{
+		Query: "select cast('12:34.123456' as TIME(6));",
+		Expected: []sql.Row{
+			{types.Timespan(12_123456)},
+		},
+	},
+	{
+		Query: "select cast('12:34:.123456' as TIME(6));",
+		Expected: []sql.Row{
+			{types.Timespan(12_000000)},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
 		Query: "select cast(':34.123456' as TIME(6));",
 		Expected: []sql.Row{
 			{types.Timespan(12_000000)},

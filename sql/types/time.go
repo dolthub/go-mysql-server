@@ -114,21 +114,31 @@ func (t TimespanType_) MaxTextResponseByteLength(*sql.Context) uint32 {
 }
 
 // Compare implements Type interface.
-func (t TimespanType_) Compare(s context.Context, a interface{}, b interface{}) (int, error) {
+func (t TimespanType_) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
 
-	as, err := t.ConvertToTimespan(a)
-	if err != nil {
+	var ok bool
+	var at, bt Timespan
+	if av, _, err := t.Convert(ctx, a); err != nil {
 		return 0, err
+	} else if at, ok = av.(Timespan); !ok {
+		return 1, nil
 	}
-	bs, err := t.ConvertToTimespan(b)
-	if err != nil {
+	if bv, _, err := t.Convert(ctx, b); err != nil {
 		return 0, err
+	} else if bt, ok = bv.(Timespan); !ok {
+		return 1, nil
 	}
 
-	return as.Compare(bs), nil
+	if at < bt {
+		return -1, nil
+	}
+	if at > bt {
+		return 1, nil
+	}
+	return 0, nil
 }
 
 // CompareValue implements the ValueType interface
@@ -144,11 +154,82 @@ func (t TimespanType_) Convert(ctx context.Context, v any) (any, sql.ConvertInRa
 	if err != nil {
 		return nil, sql.InRange, err
 	}
-	ret, err := t.ConvertToTimespan(v)
-	if err != nil {
-		return nil, sql.InRange, err
+	var res any
+	var ok bool = true
+	switch value := v.(type) {
+	case Timespan:
+		// We only create a Timespan if it's valid, so we can skip this check if we receive a Timespan.
+		// Timespan values are not intended to be modified by an integrator, therefore it is on the integrator if they
+		// corrupt a Timespan.
+		return value, sql.InRange, nil
+	case bool:
+		if !value {
+			return Timespan(0), sql.InRange, nil
+		}
+		return Timespan(microsPerSec), sql.InRange, nil
+	case int:
+		res, ok = t.convertNumber(int64(value), 0)
+	case int8:
+		res, ok = t.convertNumber(int64(value), 0)
+	case int16:
+		res, ok = t.convertNumber(int64(value), 0)
+	case int32:
+		res, ok = t.convertNumber(int64(value), 0)
+	case int64:
+		res, ok = t.convertNumber(value, 0)
+	case uint:
+		if value > math.MaxInt64 {
+			return Timespan(0), sql.Overflow, sql.ErrTruncatedIncorrect.New(t.String(), value)
+		}
+		res, ok = t.convertNumber(int64(value), 0)
+	case uint8:
+		res, ok = t.convertNumber(int64(value), 0)
+	case uint16:
+		res, ok = t.convertNumber(int64(value), 0)
+	case uint32:
+		res, ok = t.convertNumber(int64(value), 0)
+	case uint64:
+		if value > math.MaxInt64 {
+			return Timespan(0), sql.Overflow, sql.ErrTruncatedIncorrect.New(t.String(), value)
+		}
+		res, ok = t.convertNumber(int64(value), 0)
+	case float32:
+		var clock, nanos int64
+		if clock, nanos, ok = splitFloat(float64(value)); ok {
+			res, ok = t.convertNumber(clock, nanos)
+		}
+	case float64:
+		var clock, nanos int64
+		if clock, nanos, ok = splitFloat(value); ok {
+			res, ok = t.convertNumber(clock, nanos)
+		}
+	case *apd.Decimal:
+		var clock, nanos int64
+		if clock, nanos, ok = splitDecimal(value); ok {
+			res, ok = t.convertNumber(clock, nanos)
+		}
+	case time.Duration:
+		micros := value.Nanoseconds() / nanosPerMicro
+		return t.MicrosecondsToTimespan(micros), sql.InRange, nil
+	case time.Time:
+		hours, mins, secs := value.Clock()
+		micros := int64(value.Nanosecond()) / nanosPerMicro
+		res, ok = t.makeTime(false, int64(hours), int64(mins), int64(secs), micros)
+	case []byte:
+		return t.Convert(ctx, string(value))
+	case string:
+		res, err = t.parseTime(value)
+		if err != nil {
+			return res, sql.InRange, err
+		}
+	default:
+		return nil, sql.InRange, sql.ErrConvertToSQL.New(value, t)
 	}
-	return ret, sql.InRange, err
+	if !ok {
+		return Timespan(0), sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
+	}
+
+	return res, sql.InRange, nil
 }
 
 // ConvertToTimespan converts the given interface value to a Timespan. This follows the conversion rules of MySQL, which
@@ -316,7 +397,7 @@ func (t TimespanType_) makeTime(isNeg bool, hours, mins, secs, nanos int64) (Tim
 }
 
 // ConvertToTimeDuration implements the TimeType interface.
-func (t TimespanType_) ConvertToTimeDuration(v interface{}) (time.Duration, error) {
+func (t TimespanType_) ConvertToTimeDuration(v any) (time.Duration, error) {
 	val, err := t.ConvertToTimespan(v)
 	if err != nil {
 		return time.Duration(0), err
@@ -421,86 +502,115 @@ func isMySQLWhitespace(char rune) bool {
 	return false
 }
 
+func (t TimespanType_) parseNumericTime(isNeg bool, trimmedStr string) (any, error) {
+	str := trimmedStr
+	idx := strings.IndexFunc(str, func(r rune) bool {
+		return !unicode.IsDigit(r)
+	})
+	if idx == -1 {
+		idx = len(str)
+	}
+
+	clockStr := str[:idx]
+	secStr := safeSubstr(clockStr, idx-2, idx)
+	minStr := safeSubstr(clockStr, idx-4, idx-2)
+	hourStr := safeSubstr(clockStr, idx-7, idx-4)
+
+	microStr, idx := parseMicros(str[idx:])
+	if idx == -1 {
+		// TODO: make with what we have
+		return nil, sql.ErrTruncatedIncorrect.New(t.String(), str)
+	}
+
+	hour, mins, secs, micros, ok := t.parseTimeParts(hourStr, minStr, secStr, microStr)
+	if !ok {
+		return nil, sql.ErrTruncatedIncorrect.New(t.String(), trimmedStr)
+	}
+	res, ok := t.makeTime(isNeg, hour, mins, secs, micros)
+	if !ok {
+		if isNeg {
+			return MinTimespan, sql.ErrTruncatedIncorrect.New(t.String(), trimmedStr)
+		}
+		return MaxTimespan, sql.ErrTruncatedIncorrect.New(t.String(), trimmedStr)
+	}
+	return res, nil
+}
+
 // TODO: refactor into a state machine? would that even be more readable? gotos are a bad idea i think
 func (t TimespanType_) parseTime(origStr string) (any, error) {
 	var idx int
 	var char rune
-	var str = origStr
-	if len(str) == 0 {
-		return nil, sql.ErrTruncatedIncorrect.New(t.String(), str)
+	var err error
+	var str string
+	var trimmedStr = origStr
+	if len(trimmedStr) == 0 {
+		return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
 	}
 
 	// trim whitespaces
-	idx = strings.IndexFunc(str, func(r rune) bool {
+	idx = strings.IndexFunc(trimmedStr, func(r rune) bool {
 		return !isMySQLWhitespace(r)
 	})
 	if idx == -1 {
-		return nil, sql.ErrTruncatedIncorrect.New(t.String(), str)
+		return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
 	}
-	// TODO: leading and trailing whitespace(s) should throw warning
-	// Tracking issue: https://github.com/dolthub/dolt/issues/11750
-	str = str[idx:]
-	if len(str) == 0 {
-		return nil, sql.ErrTruncatedIncorrect.New(t.String(), str)
+	if idx > 0 {
+		err = sql.ErrTruncatedIncorrect.New(t.String(), trimmedStr[:idx])
+		trimmedStr = trimmedStr[idx:]
 	}
 
 	var isNeg bool
-	if str[0] == '-' {
+	if trimmedStr[0] == '-' {
 		isNeg = true
-		str = str[1:]
-		if len(str) == 0 {
-			return nil, sql.ErrTruncatedIncorrect.New(t.String(), str)
+		trimmedStr = trimmedStr[1:]
+		if len(trimmedStr) == 0 {
+			return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
 		}
 	}
 
 	// trim whitespaces
-	idx = strings.IndexFunc(str, func(r rune) bool {
+	idx = strings.IndexFunc(trimmedStr, func(r rune) bool {
 		return !isMySQLWhitespace(r)
 	})
 	if idx == -1 {
 		// special case for '-' followed by any number of whitespaces
 		if isNeg {
 			// TODO: should be negative zero time
-			return Timespan(0), sql.ErrTruncatedIncorrect.New(t.String(), str)
+			return Timespan(0), sql.ErrTruncatedIncorrect.New(t.String(), origStr)
 		}
-		return nil, sql.ErrTruncatedIncorrect.New(t.String(), str)
+		return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
 	}
-	// TODO: leading and trailing whitespace(s) should throw warning
-	// Tracking issue: https://github.com/dolthub/dolt/issues/11750
-	str = str[idx:]
+	if idx > 0 {
+		err = sql.ErrTruncatedIncorrect.New(t.String(), origStr)
+		trimmedStr = trimmedStr[idx:]
+	}
 
 	// read the hours part
+	str = trimmedStr
 	var hourStr, minStr, secStr, microStr string
 	idx = strings.IndexFunc(str, func(r rune) bool {
 		return !unicode.IsDigit(r)
 	})
 	if idx == -1 {
-		// TODO: parse this as numeric time
-		hourStr = str
-		str = ""
-	} else {
-		hourStr = str[:idx]
-		char = rune(str[idx])
-		switch char {
-		case ':':
-			str = str[idx+1:] // TODO: if we see ':', but nothing after, throw warning
-		case '.':
-			microStr, idx = parseMicros(str)
-			str = str[idx:]
-		default:
-			return nil, sql.ErrTruncatedIncorrect.New(t.String(), str)
-		}
+		return t.parseNumericTime(isNeg, trimmedStr)
 	}
-	if len(str) == 0 || len(microStr) > 0 {
-		hours, mins, secs, micros, ok := t.parseTimeParts(hourStr, minStr, secStr, microStr)
-		if !ok {
-			return nil, sql.ErrTruncatedIncorrect.New(t.String(), str)
+	hourStr = str[:idx]
+	str = str[idx:]
+	char = rune(str[0])
+	switch char {
+	case ':':
+		str = str[1:]
+	case '.':
+		return t.parseNumericTime(isNeg, trimmedStr)
+	default:
+		if isNeg {
+			// TODO: should be negative zero
+			return Timespan(0), sql.ErrTruncatedIncorrect.New(t.String(), origStr)
 		}
-		res, ok := t.makeTime(isNeg, hours, mins, secs, micros*nanosPerMicro)
-		if !ok {
-			return nil, sql.ErrTruncatedIncorrect.New(t.String(), str)
-		}
-		return res, nil
+		return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
+	}
+	if len(str) == 0 {
+		return t.parseNumericTime(isNeg, trimmedStr)
 	}
 
 	// read the minutes part
@@ -508,31 +618,33 @@ func (t TimespanType_) parseTime(origStr string) (any, error) {
 		return !unicode.IsDigit(r)
 	})
 	if idx == -1 {
+		// TODO: make time
 		minStr = str
 		str = ""
 	} else {
 		minStr = str[:idx]
-		char = rune(str[idx])
+		str = str[idx:]
+		char = rune(str[0])
 		switch char {
 		case ':':
-			str = str[idx+1:] // TODO: if we see ':', but nothing after, throw warning
+			str = str[1:]
+			err = sql.ErrTruncatedIncorrect.New(t.String(), str)
 		case '.':
-			microStr, idx = parseMicros(str)
-			str = str[idx:]
 		default:
-			return nil, sql.ErrTruncatedIncorrect.New(t.String(), str)
+			// TODO: make time with what we have
+			return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
 		}
 	}
-	if len(str) == 0 || len(microStr) > 0 {
+	if len(str) == 0 {
 		hours, mins, secs, micros, ok := t.parseTimeParts(hourStr, minStr, secStr, microStr)
 		if !ok {
-			return nil, sql.ErrTruncatedIncorrect.New(t.String(), str)
+			return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
 		}
 		res, ok := t.makeTime(isNeg, hours, mins, secs, micros)
 		if !ok {
-			return nil, sql.ErrTruncatedIncorrect.New(t.String(), str)
+			return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
 		}
-		return res, nil
+		return res, err
 	}
 
 	// read the seconds part
@@ -544,45 +656,54 @@ func (t TimespanType_) parseTime(origStr string) (any, error) {
 		str = ""
 	} else {
 		secStr = str[:idx]
-		char = rune(str[idx])
+		str = str[idx:]
+		char = rune(str[0])
 		switch char {
 		case '.':
-			microStr, idx = parseMicros(str)
-			str = str[idx:]
 		default:
-			return nil, sql.ErrTruncatedIncorrect.New(t.String(), str)
+			// TODO: make time with what we have
+			return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
 		}
 	}
-	if len(str) == 0 || len(microStr) > 0 {
+	if len(str) == 0 {
 		hours, mins, secs, micros, ok := t.parseTimeParts(hourStr, minStr, secStr, microStr)
 		if !ok {
-			return nil, sql.ErrTruncatedIncorrect.New(t.String(), str)
+			return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
 		}
 		res, ok := t.makeTime(isNeg, hours, mins, secs, micros)
 		if !ok {
-			return nil, sql.ErrTruncatedIncorrect.New(t.String(), str)
+			return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
 		}
 		return res, nil
 	}
 
-	// microseconds have already been read, so remaining characters should be truncated
-	var err error
-	if len(str) > 1 {
+	// read microseconds
+	microStr, idx = parseMicros(str)
+	if idx == -1 {
+		err = sql.ErrTruncatedIncorrect.New(t.String(), str)
+	}
+	if idx > 0 {
+		str = str[idx:]
+	}
+	if len(str) > 0 {
 		// TODO: if there's at least one white space followed by non-whitespace characters and there has been no microseconds, then we parse as datetime?
 		if isMySQLWhitespace(rune(str[0])) && isMySQLWhitespace(rune(str[1])) {
-			return nil, sql.ErrTruncatedIncorrect.New(t.String(), str)
+			return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
 		}
 		err = sql.ErrTruncatedIncorrect.New(t.String(), str)
 	}
 	hours, mins, secs, micros, ok := t.parseTimeParts(hourStr, minStr, secStr, microStr)
 	if !ok {
-		return nil, sql.ErrTruncatedIncorrect.New(t.String(), str)
+		return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
 	}
-	res, ok := t.makeTime(isNeg, hours, mins, secs, micros)
+	res, ok := t.makeTime(isNeg, hours, mins, secs, micros*nanosPerMicro)
 	if !ok {
-		return nil, sql.ErrTruncatedIncorrect.New(t.String(), str)
+		return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
 	}
-	return res, err
+	if err != nil && (len(minStr) == 0 || len(secStr) == 0) {
+		return res, err
+	}
+	return res, nil
 }
 
 func (t TimespanType_) parseTimeParts(hourStr, minStr, secStr, microStr string) (hours, mins, secs, micros int64, ok bool) {
@@ -613,7 +734,7 @@ func (t TimespanType_) parseTimeParts(hourStr, minStr, secStr, microStr string) 
 		}
 		micros = int64(math.Round(microsf64 * float64(microsPerSec)))
 	}
-	return hours, secs, mins, micros, true
+	return hours, mins, secs, micros, true
 }
 
 func (t TimespanType_) stringToTimespan(s string) (Timespan, error) {
