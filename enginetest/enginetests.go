@@ -6094,3 +6094,11 @@ func TestTransactionsScripts(t *testing.T, harness Harness) {
 func TestTransactionsScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.TransactionsScriptTests, true)
 }
+
+func TestTupleComparisonsScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.TupleComparisonsScriptTests, false)
+}
+
+func TestTupleComparisonsScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.TupleComparisonsScriptTests, true)
+}
