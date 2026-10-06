@@ -1154,3 +1154,7 @@ func TestConversionsScripts(t *testing.T) {
 func TestDatabaseDefinitionsScripts(t *testing.T) {
 	enginetest.TestDatabaseDefinitionsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
+
+func TestTableDefinitionsScripts(t *testing.T) {
+	enginetest.TestTableDefinitionsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
