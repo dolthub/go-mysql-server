@@ -89,10 +89,12 @@ func (g *FramerGen) genNewFramer(def frameDef) {
 
 	if def.unit == rang {
 		fmt.Fprintf(g.w, "  var orderBy sql.Expression\n")
-		fmt.Fprintf(g.w, "  var nullsLast bool\n")
+		fmt.Fprintf(g.w, "  nullOrdering := sql.NullsFirst\n")
 		fmt.Fprintf(g.w, "  if len(window.OrderBy) > 0 {\n")
 		fmt.Fprintf(g.w, "    orderBy = window.OrderBy.ToExpressions()[0]\n")
-		fmt.Fprintf(g.w, "    nullsLast = (window.OrderBy[0].NullOrdering == sql.NullsLast) != (window.OrderBy[0].Order == sql.Descending)\n")
+		fmt.Fprintf(g.w, "    if (window.OrderBy[0].NullOrdering == sql.NullsLast) != (window.OrderBy[0].Order == sql.Descending) {\n")
+		fmt.Fprintf(g.w, "      nullOrdering = sql.NullsLast\n")
+		fmt.Fprintf(g.w, "    }\n")
 		fmt.Fprintf(g.w, "  }\n")
 	}
 
@@ -103,7 +105,7 @@ func (g *FramerGen) genNewFramer(def frameDef) {
 	case rang:
 		fmt.Fprintf(g.w, "    rangeFramerBase{\n")
 		fmt.Fprintf(g.w, "      orderBy: orderBy,\n")
-		fmt.Fprintf(g.w, "      nullsLast: nullsLast,\n")
+		fmt.Fprintf(g.w, "      nullOrdering: nullOrdering,\n")
 	}
 
 	for _, a := range def.Args() {
