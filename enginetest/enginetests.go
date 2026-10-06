@@ -6078,3 +6078,11 @@ func TestSubqueriesScripts(t *testing.T, harness Harness) {
 func TestSubqueriesScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.SubqueriesScriptTests, true)
 }
+
+func TestTemporalScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.TemporalScriptTests, false)
+}
+
+func TestTemporalScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.TemporalScriptTests, true)
+}

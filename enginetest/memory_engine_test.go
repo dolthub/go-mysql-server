@@ -1250,3 +1250,7 @@ func TestStringMatchingScripts(t *testing.T) {
 func TestSubqueriesScripts(t *testing.T) {
 	enginetest.TestSubqueriesScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
+
+func TestTemporalScripts(t *testing.T) {
+	enginetest.TestTemporalScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
