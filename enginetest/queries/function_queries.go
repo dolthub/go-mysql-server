@@ -1013,6 +1013,105 @@ var FunctionQueryTests = []QueryTest{
 		Query:    "SELECT TIMESTAMPDIFF(SECOND, null, '2007-12-31 00:00:00');",
 		Expected: []sql.Row{{nil}},
 	},
+	{
+		// https://github.com/dolthub/go-mysql-server/pull/3986
+		Query: "select cast(time(123456) as char);",
+		Expected: []sql.Row{
+			{"12:34:56"},
+		},
+	},
+	{
+		// https://github.com/dolthub/go-mysql-server/pull/3986
+		Query: "select cast(time(time('12:34:56.123')) as char);",
+		Expected: []sql.Row{
+			{"12:34:56.123"},
+		},
+	},
+	{
+		// https://github.com/dolthub/go-mysql-server/pull/3986
+		Query: "select cast(time(cast('2001-02-03 12:34:56.1234' as datetime(4))) as char);",
+		Expected: []sql.Row{
+			{"12:34:56.1234"},
+		},
+	},
+	{
+		// https://github.com/dolthub/go-mysql-server/pull/3986
+		Query: "select cast(time('12:34:56') as char);",
+		Expected: []sql.Row{
+			{"12:34:56"},
+		},
+	},
+	{
+		// https://github.com/dolthub/go-mysql-server/pull/3986
+		Query: "select cast(time('12:34:56.') as char);",
+		Expected: []sql.Row{
+			{"12:34:56"},
+		},
+	},
+	{
+		// https://github.com/dolthub/go-mysql-server/pull/3986
+		Query: "select cast(time('12:34:56.1') as char);",
+		Expected: []sql.Row{
+			{"12:34:56.1"},
+		},
+	},
+	{
+		// https://github.com/dolthub/go-mysql-server/pull/3986
+		Query: "select cast(time('12:34:56.12') as char);",
+		Expected: []sql.Row{
+			{"12:34:56.12"},
+		},
+	},
+	{
+		// https://github.com/dolthub/go-mysql-server/pull/3986
+		Query: "select cast(time('12:34:56.123') as char);",
+		Expected: []sql.Row{
+			{"12:34:56.123"},
+		},
+	},
+	{
+		// https://github.com/dolthub/go-mysql-server/pull/3986
+		Query: "select cast(time('12:34:56.1234') as char);",
+		Expected: []sql.Row{
+			{"12:34:56.1234"},
+		},
+	},
+	{
+		// https://github.com/dolthub/go-mysql-server/pull/3986
+		Query: "select cast(time('12:34:56.12345') as char);",
+		Expected: []sql.Row{
+			{"12:34:56.12345"},
+		},
+	},
+	{
+		// https://github.com/dolthub/go-mysql-server/pull/3986
+		Query: "select cast(time('12:34:56.123456') as char);",
+		Expected: []sql.Row{
+			{"12:34:56.123456"},
+		},
+	},
+	{
+		// https://github.com/dolthub/go-mysql-server/pull/3986
+		Query: "select cast(time('12:34:56.123456') as char);",
+		Expected: []sql.Row{
+			{"12:34:56.123456"},
+		},
+	},
+	{
+		// https://github.com/dolthub/go-mysql-server/pull/3986
+		Query: "select cast(time('12:34:56.123456') as char);",
+		Expected: []sql.Row{
+			{"12:34:56.123456"},
+		},
+	},
+	{
+		// https://github.com/dolthub/go-mysql-server/pull/3986
+		Query: "select cast(time(cast('123456.123' as decimal(20, 6))) as char);",
+		Expected: []sql.Row{
+			{"12:34:56.123000"},
+		},
+	},
+
 	// TIMESTAMPDIFF YEAR tests https://github.com/dolthub/dolt/issues/10393
 	{
 		Query:    "SELECT TIMESTAMPDIFF(YEAR, DATE '2011-07-05', DATE '2026-07-04')",
