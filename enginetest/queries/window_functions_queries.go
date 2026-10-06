@@ -1960,16 +1960,16 @@ ORDER BY id;`,
 		// https://github.com/dolthub/dolt/issues/11856
 		Name: "ordered windows use the implicit RANGE peer frame",
 		SetUpScript: []string{
-			"CREATE TABLE t(id INT PRIMARY KEY, x INT, y INT, running_x INT, v INT, band INT, bor INT, bxor INT);",
-			"INSERT INTO t VALUES (1,1,1,1,10,7,1,1),(2,1,2,2,20,3,2,2),(3,2,1,3,30,1,4,4);",
+			"CREATE TABLE t(id INT PRIMARY KEY, x INT, y INT, v INT, band INT, bor INT, bxor INT);",
+			"INSERT INTO t VALUES (1,1,1,10,15,1,1),(2,1,2,20,11,3,3),(3,2,1,30,6,6,6);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "SELECT id, x, v, LAST_VALUE(v) OVER (ORDER BY x), LAST_VALUE(v) OVER (ORDER BY x RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) FROM t ORDER BY id;",
+				Query: "SELECT id, x, v, LAST_VALUE(v) OVER (ORDER BY x), LAST_VALUE(v) OVER (ORDER BY x RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW), LAST_VALUE(v) OVER (ORDER BY x, id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) FROM t ORDER BY id;",
 				Expected: []sql.Row{
-					{1, 1, 10, 20, 20},
-					{2, 1, 20, 20, 20},
-					{3, 2, 30, 30, 30},
+					{1, 1, 10, 20, 20, 10},
+					{2, 1, 20, 20, 20, 20},
+					{3, 2, 30, 30, 30, 30},
 				},
 			},
 			{
@@ -1991,22 +1991,31 @@ ORDER BY id;`,
 			{
 				Query: "SELECT id, BIT_AND(band) OVER (ORDER BY x, y), BIT_AND(band) OVER (ORDER BY x, y RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW), BIT_OR(bor) OVER (ORDER BY x, y), BIT_OR(bor) OVER (ORDER BY x, y RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW), BIT_XOR(bxor) OVER (ORDER BY x, y), BIT_XOR(bxor) OVER (ORDER BY x, y RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) FROM t ORDER BY id;",
 				Expected: []sql.Row{
-					{1, uint64(7), uint64(7), uint64(1), uint64(1), uint64(1), uint64(1)},
-					{2, uint64(3), uint64(3), uint64(3), uint64(3), uint64(3), uint64(3)},
-					{3, uint64(1), uint64(1), uint64(7), uint64(7), uint64(7), uint64(7)},
+					{1, uint64(15), uint64(15), uint64(1), uint64(1), uint64(1), uint64(1)},
+					{2, uint64(11), uint64(11), uint64(3), uint64(3), uint64(2), uint64(2)},
+					{3, uint64(2), uint64(2), uint64(7), uint64(7), uint64(4), uint64(4)},
 				},
 			},
 			{
 				Query: "SELECT id, BIT_AND(band) OVER (ORDER BY x), BIT_AND(band) OVER (ORDER BY x RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW), BIT_OR(bor) OVER (ORDER BY x), BIT_OR(bor) OVER (ORDER BY x RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW), BIT_XOR(bxor) OVER (ORDER BY x), BIT_XOR(bxor) OVER (ORDER BY x RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) FROM t ORDER BY id;",
 				Expected: []sql.Row{
-					{1, uint64(3), uint64(3), uint64(3), uint64(3), uint64(3), uint64(3)},
-					{2, uint64(3), uint64(3), uint64(3), uint64(3), uint64(3), uint64(3)},
-					{3, uint64(1), uint64(1), uint64(7), uint64(7), uint64(7), uint64(7)},
+					{1, uint64(11), uint64(11), uint64(3), uint64(3), uint64(2), uint64(2)},
+					{2, uint64(11), uint64(11), uint64(3), uint64(3), uint64(2), uint64(2)},
+					{3, uint64(2), uint64(2), uint64(7), uint64(7), uint64(4), uint64(4)},
 				},
 			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11857
+		Name: "ordered BIT_OR uses the implicit running RANGE frame",
+		SetUpScript: []string{
+			"CREATE TABLE t(x INT PRIMARY KEY, bor INT);",
+			"INSERT INTO t VALUES (1,1),(2,2),(3,4);",
+		},
+		Assertions: []ScriptTestAssertion{
 			{
-				// https://github.com/dolthub/dolt/issues/11857
-				Query: "SELECT id, BIT_OR(bor) OVER (ORDER BY running_x), BIT_OR(bor) OVER (ORDER BY running_x RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) FROM t ORDER BY id;",
+				Query: "SELECT x, BIT_OR(bor) OVER (ORDER BY x), BIT_OR(bor) OVER (ORDER BY x RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) FROM t ORDER BY x;",
 				Expected: []sql.Row{
 					{1, uint64(1), uint64(1)},
 					{2, uint64(3), uint64(3)},
