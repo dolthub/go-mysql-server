@@ -1126,3 +1126,7 @@ func TestTimeQueries(t *testing.T) {
 func TestAggregationScripts(t *testing.T) {
 	enginetest.TestAggregationScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
+
+func TestSetOperationsScripts(t *testing.T) {
+	enginetest.TestSetOperationsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}

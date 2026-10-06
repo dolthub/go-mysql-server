@@ -5796,3 +5796,11 @@ func TestAggregationScripts(t *testing.T, harness Harness) {
 func TestAggregationScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.AggregationScriptTests, true)
 }
+
+func TestSetOperationsScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.SetOperationsScriptTests, false)
+}
+
+func TestSetOperationsScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.SetOperationsScriptTests, true)
+}
