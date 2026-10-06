@@ -161,11 +161,14 @@ func WindowExpressionId(expr WindowAdaptableExpression) uint64 {
 	return hash.Sum64()
 }
 
-// writeExpressionIdentity adds an expression's structure and resolved column identities to hash.
+// writeExpressionIdentity adds an expression's text, structure, and resolved column identities to hash.
 func writeExpressionIdentity(hash *xxhash.Digest, expr Expression, includeRootId bool) {
+	// Render once to avoid repeatedly rendering overlapping subtrees during inspection.
+	_, _ = hash.WriteString(expr.String())
+	_, _ = hash.WriteString("\x00")
 	root := true
 	Inspect(nil, expr, func(_ *Context, child Expression) bool {
-		_, _ = fmt.Fprintf(hash, "%T%c%s%c%d%c", child, 0, child.String(), 0, len(child.Children()), 0)
+		_, _ = fmt.Fprintf(hash, "%T%c%d%c", child, 0, len(child.Children()), 0)
 		if identified, ok := child.(IdExpression); ok && (includeRootId || !root) {
 			_, _ = fmt.Fprintf(hash, "ID:%d%c", identified.Id(), 0)
 		}

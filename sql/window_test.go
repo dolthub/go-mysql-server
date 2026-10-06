@@ -37,6 +37,16 @@ func TestWindowExpressionId(t *testing.T) {
 	require.Equal(t, sql.WindowExpressionId(first), sql.WindowExpressionId(identical))
 	require.NotEqual(t, sql.WindowExpressionId(first), sql.WindowExpressionId(colliding))
 
+	one := expression.NewLiteral(int64(1), types.Int64)
+	nested := aggregation.NewSum(expression.NewPlus(tCol, one)).WithWindow(nil, window)
+	nestedColliding := aggregation.NewSum(expression.NewPlus(tDotACol, one)).WithWindow(nil, window)
+	require.Equal(t, nested.String(), nestedColliding.String())
+	require.NotEqual(t, sql.WindowExpressionId(nested), sql.WindowExpressionId(nestedColliding))
+	differentOperator := aggregation.NewSum(expression.NewMinus(tCol, one)).WithWindow(nil, window)
+	require.NotEqual(t, sql.WindowExpressionId(nested), sql.WindowExpressionId(differentOperator))
+	differentLiteral := aggregation.NewSum(expression.NewPlus(tCol, expression.NewLiteral(int64(2), types.Int64))).WithWindow(nil, window)
+	require.NotEqual(t, sql.WindowExpressionId(nested), sql.WindowExpressionId(differentLiteral))
+
 	partitionedFirst := aggregation.NewSum(tCol).WithWindow(nil,
 		sql.NewWindowDefinition([]sql.Expression{tCol}, nil, nil, "", ""))
 	partitionedColliding := aggregation.NewSum(tCol).WithWindow(nil,
