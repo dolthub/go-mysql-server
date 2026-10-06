@@ -5804,3 +5804,11 @@ func TestSetOperationsScripts(t *testing.T, harness Harness) {
 func TestSetOperationsScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.SetOperationsScriptTests, true)
 }
+
+func TestAlterTableScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.AlterTableScriptTests, false)
+}
+
+func TestAlterTableScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.AlterTableScriptTests, true)
+}
