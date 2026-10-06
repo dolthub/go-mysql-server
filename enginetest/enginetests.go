@@ -973,6 +973,10 @@ func TestInsertInto(t *testing.T, harness Harness) {
 		for _, script := range queries.InsertScripts {
 			TestScript(t, harness, script)
 		}
+
+		for _, script := range queries.InsertAutoIncrementScripts {
+			TestScript(t, harness, script)
+		}
 	})
 }
 
@@ -1021,10 +1025,19 @@ func TestInsertIntoErrors(t *testing.T, harness Harness) {
 	for _, script := range queries.InsertErrorScripts {
 		TestScript(t, harness, script)
 	}
+
+	for _, script := range queries.InsertAutoIncrementErrorScripts {
+		TestScript(t, harness, script)
+	}
 }
 
 func TestBrokenInsertScripts(t *testing.T, harness Harness) {
 	for _, script := range queries.InsertBrokenScripts {
+		t.Skip()
+		TestScript(t, harness, script)
+	}
+
+	for _, script := range queries.BrokenAutoIncrementScripts {
 		t.Skip()
 		TestScript(t, harness, script)
 	}
@@ -1891,6 +1904,10 @@ func TestInsertScriptsPrepared(t *testing.T, harness Harness) {
 	for _, script := range queries.InsertScripts {
 		TestScriptPrepared(t, harness, script)
 	}
+
+	for _, script := range queries.InsertAutoIncrementScripts {
+		TestScriptPrepared(t, harness, script)
+	}
 }
 
 func TestGeneratedColumns(t *testing.T, harness Harness) {
@@ -1962,6 +1979,10 @@ func TestInsertIgnoreScriptsPrepared(t *testing.T, harness Harness) {
 func TestInsertErrorScriptsPrepared(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
 	for _, script := range queries.InsertErrorScripts {
+		TestScriptPrepared(t, harness, script)
+	}
+
+	for _, script := range queries.InsertAutoIncrementErrorScripts {
 		TestScriptPrepared(t, harness, script)
 	}
 }
@@ -5811,4 +5832,12 @@ func TestAlterTableScripts(t *testing.T, harness Harness) {
 
 func TestAlterTableScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.AlterTableScriptTests, true)
+}
+
+func TestAutoIncrementScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.AutoIncrementScriptTests, false)
+}
+
+func TestAutoIncrementScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.AutoIncrementScriptTests, true)
 }

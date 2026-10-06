@@ -1134,3 +1134,7 @@ func TestSetOperationsScripts(t *testing.T) {
 func TestAlterTableScripts(t *testing.T) {
 	enginetest.TestAlterTableScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
+
+func TestAutoIncrementScripts(t *testing.T) {
+	enginetest.TestAutoIncrementScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
