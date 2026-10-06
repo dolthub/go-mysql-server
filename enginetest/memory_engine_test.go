@@ -1238,3 +1238,7 @@ func TestSessionResultsScripts(t *testing.T) {
 func TestStatisticsScripts(t *testing.T) {
 	enginetest.TestStatisticsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
+
+func TestStringFunctionsScripts(t *testing.T) {
+	enginetest.TestStringFunctionsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
