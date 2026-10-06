@@ -1194,3 +1194,7 @@ func TestIndexKeyTypesScripts(t *testing.T) {
 func TestIndexRegressionScripts(t *testing.T) {
 	enginetest.TestIndexRegressionScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
+
+func TestInsertIgnoreRegressionScripts(t *testing.T) {
+	enginetest.TestInsertIgnoreRegressionScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
