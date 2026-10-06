@@ -5913,3 +5913,11 @@ func TestEnumsAndSetsScripts(t *testing.T, harness Harness) {
 func TestEnumsAndSetsScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.EnumsAndSetsScriptTests, true)
 }
+
+func TestExpressionsScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.ExpressionsScriptTests, false)
+}
+
+func TestExpressionsScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.ExpressionsScriptTests, true)
+}
