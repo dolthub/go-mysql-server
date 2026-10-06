@@ -5949,3 +5949,11 @@ func TestForeignKeyTypesScripts(t *testing.T, harness Harness) {
 func TestForeignKeyTypesScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.ForeignKeyTypesScriptTests, true)
 }
+
+func TestIndexKeyTypesScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.IndexKeyTypesScriptTests, false)
+}
+
+func TestIndexKeyTypesScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.IndexKeyTypesScriptTests, true)
+}
