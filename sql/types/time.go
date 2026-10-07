@@ -685,6 +685,14 @@ func (t TimespanType_) parseTimeParts(hourStr, minStr, secStr, microStr string) 
 		}
 	}
 	if len(microStr) > 1 { // the first character is expected to be '.'
+		// MySQL's weird special case for strings with microseconds
+		if t.precision < MaxDatetimePrecision ||
+			t.precision == MaxDatetimePrecision &&
+				len(microStr) > MaxDatetimePrecision+1 &&
+				microStr[len(microStr)-1] < '5' {
+			microStr = microStr[:MaxDatetimePrecision+1]
+		}
+
 		var microsf64 float64
 		microsf64, err = strconv.ParseFloat(microStr, 64)
 		if err != nil {

@@ -2747,6 +2747,60 @@ var FunctionQueryTests = []QueryTest{
 		ExpectedWarningsCount: 1,
 		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 	},
+	{
+		Query: "select cast(595959.8999999991 as time(6));",
+		Expected: []sql.Row{
+			{types.Timespan(215999_900000)},
+		},
+	},
+	{
+		Query: "select cast('595959.8999999991' as time(6));",
+		Expected: []sql.Row{
+			{types.Timespan(215999_899999)},
+		},
+	},
+	{
+		Query: "select cast('59:59:59.8999999991' as time(6));",
+		Expected: []sql.Row{
+			{types.Timespan(215999_899999)},
+		},
+	},
+	{
+		Query: "select cast(595959.9999999991 as time(6));",
+		Expected: []sql.Row{
+			{types.Timespan(216000_000000)},
+		},
+	},
+	{
+		Query: "select cast('595959.9999999991' as time(6));",
+		Expected: []sql.Row{
+			{types.Timespan(215999_999999)},
+		},
+	},
+	{
+		Query: "select cast('59:59:59.9999999991' as time(6));",
+		Expected: []sql.Row{
+			{types.Timespan(215999_999999)},
+		},
+	},
+	{
+		Query: "select cast(595959.9999999999 as time(6));",
+		Expected: []sql.Row{
+			{types.Timespan(216000_000000)},
+		},
+	},
+	{
+		Query: "select cast('595959.9999999999' as time(6));",
+		Expected: []sql.Row{
+			{types.Timespan(216000_000000)},
+		},
+	},
+	{
+		Query: "select cast('59:59:59.9999999999' as time(6));",
+		Expected: []sql.Row{
+			{types.Timespan(216000_000000)},
+		},
+	},
 
 	{
 		Query: "select convert('0', TIME);",
