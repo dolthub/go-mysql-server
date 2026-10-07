@@ -2341,6 +2341,22 @@ var FunctionQueryTests = []QueryTest{
 		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 	},
 	{
+		Query: "select cast(8386000 as time);",
+		Expected: []sql.Row{
+			{nil},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast(8385960 as time);",
+		Expected: []sql.Row{
+			{nil},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
 		Query: "select cast(129900 as time);",
 		Expected: []sql.Row{
 			{nil},
@@ -2668,6 +2684,68 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{
 			{types.Timespan(361230_000000)},
 		},
+	},
+	{
+		Query: "select cast(8500000 as time(6));",
+		Expected: []sql.Row{
+			{nil},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('8500000' as time(6));",
+		Expected: []sql.Row{
+			{types.MaxTimespan},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('850:00:00' as time(6));",
+		Expected: []sql.Row{
+			{types.MaxTimespan},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('-850:00:00' as time(6));",
+		Expected: []sql.Row{
+			{types.MinTimespan},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast(8385959.1 as time(6));",
+		Expected: []sql.Row{
+			{types.Timespan(3020399_100000)},
+		},
+	},
+	{
+		Query: "select cast('8385959.1' as time(6));",
+		Expected: []sql.Row{
+			{types.MaxTimespan},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('838:59:59.1' as time(6));",
+		Expected: []sql.Row{
+			{types.MaxTimespan},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('-838:59:59.1' as time(6));",
+		Expected: []sql.Row{
+			{types.MinTimespan},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 	},
 
 	{

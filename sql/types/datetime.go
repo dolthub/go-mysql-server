@@ -41,6 +41,7 @@ const (
 	MaxHour   = 23
 	MaxMinute = 59
 	MaxSecond = 59
+	MaxMicros = 999999
 
 	// MaxDateWholeScale is the maximum number of digits needed to represent the whole portion of a date
 	MaxDateWholeScale = 8
@@ -610,10 +611,10 @@ func parseTime(str string, timeRegex *regexp.Regexp) (hourStr, minStr, secStr st
 // The resulting valid microsecond string will preserve at most MaxDatetimePrecision + 1 digits.
 // Additional trailing digits will be dropped.
 func parseMicros(str string) (string, string) {
-	var idx int
 	if len(str) == 0 || str[0] != '.' {
 		return "", str
 	}
+	var idx int
 	for idx = 1; idx < len(str); idx++ {
 		if !unicode.IsDigit(rune(str[idx])) {
 			break
