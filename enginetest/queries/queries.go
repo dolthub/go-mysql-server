@@ -9554,7 +9554,7 @@ from typestable`,
 		Query: "explain plan select count(*) from mytable",
 		Expected: []sql.Row{
 			{"Project"},
-			{" ├─ columns: [count(1)]"},
+			{" ├─ columns: [count(1) as `count(*)`]"},
 			{" └─ Project"},
 			{"     ├─ columns: [mytable.COUNT(1) as `COUNT(1)`]"},
 			{"     └─ table_count(mytable) as COUNT(1)"},
