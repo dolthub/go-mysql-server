@@ -200,9 +200,24 @@ func TestSingleScript(t *testing.T) {
 			SetUpScript: []string{},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "select cast('12:34:56.123456' as TIME(6));",
+					Skip:  true,
+					Query: "select cast('a' as TIME(6));",
 					Expected: []sql.Row{
-						{types.Timespan(45296_123456)},
+						{nil},
+					},
+				},
+				{
+					Skip:  true,
+					Query: "select cast('-a' as TIME(6));",
+					Expected: []sql.Row{
+						{nil},
+					},
+				},
+				{
+					//Skip:  true,
+					Query: "select cast('- a' as TIME(6));",
+					Expected: []sql.Row{
+						{types.Timespan(0)},
 					},
 				},
 			},

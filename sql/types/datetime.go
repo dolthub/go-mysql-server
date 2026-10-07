@@ -605,26 +605,21 @@ func parseTime(str string, timeRegex *regexp.Regexp) (hourStr, minStr, secStr st
 	return hourStr, minStr, secStr, matchIdxs[1]
 }
 
-// parseMicros takes in a string and parses it as microseconds according to MySQL's rules.
-// Only up to MaxDateTimePrecision + 1 digits are preserved to properly round the resulting value.
-// Additionally, parseMicros will return the next index.
-// Any invalid strings will result in empty string and 0 value for pos.
-func parseMicros(str string) (microStr string, idx int) {
-	// the very first character must be a '.'
-	if str[0] != '.' {
-		return microStr, -1
+// parseMicros takes in a string and splits it into a valid microsecond and the remaining string according to
+// MySQL's rules.
+// The resulting valid microsecond string will preserve at most MaxDatetimePrecision + 1 digits.
+// Additional trailing digits will be dropped.
+func parseMicros(str string) (string, string) {
+	var idx int
+	if len(str) == 0 || str[0] != '.' {
+		return "", str
 	}
-	// indexes here are offset by 1
-	idx = strings.IndexFunc(str[1:], func(r rune) bool {
-		return !unicode.IsDigit(r)
-	})
-	if idx == -1 {
-		idx = len(str)
-	} else {
-		idx += 1
+	for idx = 1; idx < len(str); idx++ {
+		if !unicode.IsDigit(rune(str[idx])) {
+			break
+		}
 	}
-	microStr = str[:min(idx, MaxDatetimePrecision+2)]
-	return microStr, idx
+	return str[:min(idx, MaxDatetimePrecision+2)], str[idx:]
 }
 
 // parseDatetime parses a Datetime according to MySQL rules.
@@ -712,21 +707,14 @@ func (t datetimeType) parseDatetime(str string) (any, bool, error) {
 	}
 
 	var micros int
-	if len(value) > 0 {
-		// time and microsecond delimiter MUST be decimal point
-		if value[0] == '.' {
-			var microsStr string
-			microsStr, pos = parseMicros(value)
-			if len(microsStr) > 1 { // a single decimal point is 0
-				var microsf64 float64
-				microsf64, err = strconv.ParseFloat(microsStr, 64)
-				if err != nil {
-					return nil, delimWarn, sql.ErrTruncatedIncorrect.New(value)
-				}
-				micros = int(math.Round(microsf64 * 1_000_000))
-			}
-			value = value[pos:] // trim microseconds
+	microStr, value := parseMicros(value)
+	if len(microStr) > 1 { // a single decimal point is 0
+		var microf64 float64
+		microf64, err = strconv.ParseFloat(microStr, 64)
+		if err != nil {
+			return nil, delimWarn, sql.ErrTruncatedIncorrect.New(value)
 		}
+		micros = int(math.Round(microf64 * float64(microsPerSec)))
 	}
 
 	resTime, ok := makeDatetime(year, month, day, hour, mins, sec, micros*1000)

@@ -226,17 +226,17 @@ func (t TimespanType_) Convert(ctx context.Context, v any) (any, sql.ConvertInRa
 		return nil, sql.InRange, sql.ErrConvertToSQL.New(value, t)
 	}
 	if !ok {
-		return Timespan(0), sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
+		err = sql.ErrTruncatedIncorrect.New(t.String(), v)
 	}
 
-	return res, sql.InRange, nil
+	return res, sql.InRange, err
 }
 
 // ConvertToTimespan converts the given interface value to a Timespan. This follows the conversion rules of MySQL, which
 // are based on the base-10 visual representation of numbers (for example, Time.Convert() will interpret the value
 // `1234` as 12 minutes and 34 seconds). Returns an error on a nil value.
 func (t TimespanType_) ConvertToTimespan(v any) (Timespan, error) {
-	var res Timespan
+	var res any
 	var ok bool = true
 	switch value := v.(type) {
 	case Timespan:
@@ -323,8 +323,10 @@ func (t TimespanType_) ConvertToTimespan(v any) (Timespan, error) {
 	if !ok {
 		return Timespan(0), sql.ErrTruncatedIncorrect.New(t.String(), v)
 	}
-
-	return res, nil
+	if v, ok := res.(Timespan); ok {
+		return v, nil
+	}
+	return Timespan(0), nil
 }
 
 const (
@@ -334,19 +336,19 @@ const (
 	MinNumericDatetimeCutoff int64 = 01_01_01_00_00_00 // 2001-01-01 00:00:00.000000
 )
 
-func (t TimespanType_) convertNumber(clock int64, nanos int64) (Timespan, bool) {
+func (t TimespanType_) convertNumber(clock int64, nanos int64) (any, bool) {
 	// Some values are treated as Datetime types, and the time portion is extracted.
 	// This only applies in the positive direction.
 	if clock >= MinNumericDatetimeCutoff {
 		timeVal, ok := datetimeType{}.convertNumber(clock, 0)
 		if !ok {
-			return 0, false
+			return nil, false
 		}
 		hours, mins, secs := timeVal.Clock()
 		return t.makeTime(false, int64(hours), int64(mins), int64(secs), nanos)
 	}
 	if clock < MinNumericTime || clock > MaxNumericTime {
-		return 0, false
+		return nil, false
 	}
 
 	var isNeg bool
@@ -362,19 +364,23 @@ func (t TimespanType_) convertNumber(clock int64, nanos int64) (Timespan, bool) 
 
 // makeTime creates a Timespan with the given parameters.
 // nanos will be rounded according to TimespanType precision.
-func (t TimespanType_) makeTime(isNeg bool, hours, mins, secs, nanos int64) (Timespan, bool) {
+func (t TimespanType_) makeTime(isNeg bool, hours, mins, secs, nanos int64) (any, bool) {
 	var neg int64 = 1
 	if isNeg {
 		neg = -1
 	}
 	if secs > MaxSecond {
-		return 0, false
+		return nil, false
 	}
 	if mins > MaxMinute {
-		return 0, false
+		return nil, false
 	}
 	if hours > MaxTimeHour {
-		return 0, false
+		if isNeg {
+			return MinTimespan, false
+		} else {
+			return MaxTimespan, false
+		}
 	}
 
 	precConv := precisionConversion[MaxDatetimePrecision-t.precision]
@@ -490,7 +496,6 @@ func isMySQLPunct(char rune) bool {
 	return unicode.IsPunct(char) || char == '-' || char == ':' || char == '.'
 }
 
-// TODO: have this replace numeric cut set
 var mysqlWhitespaces = [4]rune{' ', '\n', '\t', '\r'}
 
 func isMySQLWhitespace(char rune) bool {
@@ -502,194 +507,128 @@ func isMySQLWhitespace(char rune) bool {
 	return false
 }
 
-func (t TimespanType_) parseNumericTime(isNeg bool, trimmedStr string) (any, error) {
-	str := trimmedStr
+func (t TimespanType_) parseNumericTime(isNeg bool, str string) (any, bool) {
+	var clockStr string
 	idx := strings.IndexFunc(str, func(r rune) bool {
 		return !unicode.IsDigit(r)
 	})
 	if idx == -1 {
-		idx = len(str)
+		clockStr = str
+		str = ""
+	} else {
+		clockStr = str[:idx]
+		str = str[idx:]
 	}
-
-	clockStr := str[:idx]
-	secStr := safeSubstr(clockStr, idx-2, idx)
-	minStr := safeSubstr(clockStr, idx-4, idx-2)
-	hourStr := safeSubstr(clockStr, idx-7, idx-4)
-
-	microStr, idx := parseMicros(str[idx:])
-	if idx == -1 {
-		// TODO: make with what we have
-		return nil, sql.ErrTruncatedIncorrect.New(t.String(), str)
+	if len(clockStr) == 0 {
+		return nil, false
 	}
+	if len(clockStr) >= 12 {
+		res, ok, err := datetimeType{}.parseDatetime(str)
+		return res, ok && err == nil
+	}
+	// format is HHHHHHHMMSS.MICROS
+	cLen := len(clockStr)
+	hourStr := safeSubstr(clockStr, 0, cLen-4)
+	minStr := safeSubstr(clockStr, cLen-4, cLen-2)
+	secStr := safeSubstr(clockStr, cLen-2, cLen)
 
-	hour, mins, secs, micros, ok := t.parseTimeParts(hourStr, minStr, secStr, microStr)
+	microStr, str := parseMicros(str)
+	hour, mins, sec, micros, ok := t.parseTimeParts(hourStr, minStr, secStr, microStr)
 	if !ok {
-		return nil, sql.ErrTruncatedIncorrect.New(t.String(), trimmedStr)
+		return nil, false
 	}
-	res, ok := t.makeTime(isNeg, hour, mins, secs, micros)
+	res, ok := t.makeTime(isNeg, hour, mins, sec, micros*nanosPerMicro)
 	if !ok {
-		if isNeg {
-			return MinTimespan, sql.ErrTruncatedIncorrect.New(t.String(), trimmedStr)
+		return res, false
+	}
+	return res, len(str) == 0
+}
+
+// parseTimePart will split |str| into the valid time part and the remaining string.
+// A valid time portion is a ':' followed by at least one digit.
+func parseTimePart(str string) (string, string) {
+	if len(str) <= 1 || str[0] != ':' {
+		return "", str
+	}
+	var idx int
+	for idx = 1; idx < len(str); idx++ {
+		if !unicode.IsDigit(rune(str[idx])) {
+			if idx == 1 {
+				return "", str
+			}
+			break
 		}
-		return MaxTimespan, sql.ErrTruncatedIncorrect.New(t.String(), trimmedStr)
 	}
-	return res, nil
+	return str[1:idx], str[idx:]
+}
+
+func trimWhitespaces(str string) (string, bool) {
+	for idx, char := range str {
+		if !isMySQLWhitespace(char) {
+			return str[idx:], idx > 0
+		}
+	}
+	return "", true
 }
 
 func (t TimespanType_) parseTime(origStr string) (any, error) {
-	var idx int
-	var char rune
-	var err error
-	var str string
-	var trimmedStr = origStr
-	if len(trimmedStr) == 0 {
+	if len(origStr) == 0 {
 		return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
 	}
 
-	// trim whitespaces
-	idx = strings.IndexFunc(trimmedStr, func(r rune) bool {
-		return !isMySQLWhitespace(r)
-	})
-	if idx == -1 {
-		return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
-	}
-	if idx > 0 {
-		err = sql.ErrTruncatedIncorrect.New(t.String(), trimmedStr[:idx])
-		trimmedStr = trimmedStr[idx:]
+	var err error
+	var str = origStr
+	str, didTrim := trimWhitespaces(str)
+	if didTrim {
+		err = sql.ErrTruncatedIncorrect.New(t.String(), origStr)
 	}
 
 	var isNeg bool
-	if trimmedStr[0] == '-' {
+	if len(str) > 0 && str[0] == '-' {
 		isNeg = true
-		trimmedStr = trimmedStr[1:]
-		if len(trimmedStr) == 0 {
+		str = str[1:]
+		if len(str) == 0 {
 			return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
 		}
 	}
 
-	// trim whitespaces
-	idx = strings.IndexFunc(trimmedStr, func(r rune) bool {
-		return !isMySQLWhitespace(r)
-	})
-	if idx == -1 {
-		// special case for '-' followed by any number of whitespaces
-		if isNeg {
-			// TODO: should be negative zero time
-			return Timespan(0), sql.ErrTruncatedIncorrect.New(t.String(), origStr)
-		}
-		return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
-	}
-	if idx > 0 {
+	str, didTrim = trimWhitespaces(str)
+	if didTrim {
 		err = sql.ErrTruncatedIncorrect.New(t.String(), origStr)
-		trimmedStr = trimmedStr[idx:]
+		if len(str) == 0 {
+			if isNeg {
+				return Timespan(0), err
+			}
+		}
 	}
 
 	// read the hours part
-	str = trimmedStr
 	var hourStr, minStr, secStr, microStr string
-	idx = strings.IndexFunc(str, func(r rune) bool {
+	idx := strings.IndexFunc(str, func(r rune) bool {
 		return !unicode.IsDigit(r)
 	})
-	if idx == -1 {
-		return t.parseNumericTime(isNeg, trimmedStr)
-	}
-	hourStr = str[:idx]
-	str = str[idx:]
-	char = rune(str[0])
-	switch char {
-	case ':':
-		str = str[1:]
-	case '.':
-		return t.parseNumericTime(isNeg, trimmedStr)
-	default:
-		if isNeg {
-			// TODO: should be negative zero
-			return Timespan(0), sql.ErrTruncatedIncorrect.New(t.String(), origStr)
-		}
-		return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
-	}
-	if len(str) == 0 {
-		return t.parseNumericTime(isNeg, trimmedStr)
-	}
-
-	// read the minutes part
-	idx = strings.IndexFunc(str, func(r rune) bool {
-		return !unicode.IsDigit(r)
-	})
-	if idx == -1 {
-		// TODO: make time
-		minStr = str
-		str = ""
-	} else {
-		minStr = str[:idx]
-		str = str[idx:]
-		char = rune(str[0])
-		switch char {
-		case ':':
-			str = str[1:]
-			err = sql.ErrTruncatedIncorrect.New(t.String(), str)
-		case '.':
-		default:
-			// TODO: make time with what we have
-			return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
-		}
-	}
-	if len(str) == 0 {
-		hours, mins, secs, micros, ok := t.parseTimeParts(hourStr, minStr, secStr, microStr)
+	if idx == -1 || rune(str[idx]) != ':' || len(str) == idx+1 {
+		res, ok := t.parseNumericTime(isNeg, str)
 		if !ok {
-			return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
+			err = sql.ErrTruncatedIncorrect.New(t.String(), origStr)
 		}
-		res, ok := t.makeTime(isNeg, hours, mins, secs, micros)
-		if !ok {
-			return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
+		// mysql special case I guess
+		if res == nil && didTrim {
+			res = Timespan(0)
 		}
 		return res, err
 	}
-
-	// read the seconds part
-	idx = strings.IndexFunc(str, func(r rune) bool {
-		return !unicode.IsDigit(r)
-	})
-	if idx == -1 {
-		secStr = str
-		str = ""
-	} else {
-		secStr = str[:idx]
-		str = str[idx:]
-		char = rune(str[0])
-		switch char {
-		case '.':
-		default:
-			// TODO: make time with what we have
-			return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
+	hourStr = str[:idx]
+	str = str[idx:]
+	minStr, str = parseTimePart(str)
+	secStr, str = parseTimePart(str)
+	microStr, str = parseMicros(str)
+	if len(minStr) == 0 && len(secStr) == 0 && len(microStr) == 0 {
+		res, ok := t.parseNumericTime(isNeg, hourStr)
+		if !ok || len(str) > 0 {
+			err = sql.ErrTruncatedIncorrect.New(t.String(), origStr)
 		}
-	}
-	if len(str) == 0 {
-		hours, mins, secs, micros, ok := t.parseTimeParts(hourStr, minStr, secStr, microStr)
-		if !ok {
-			return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
-		}
-		res, ok := t.makeTime(isNeg, hours, mins, secs, micros)
-		if !ok {
-			return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
-		}
-		return res, nil
-	}
-
-	// read microseconds
-	microStr, idx = parseMicros(str)
-	if idx == -1 {
-		err = sql.ErrTruncatedIncorrect.New(t.String(), str)
-	}
-	if idx > 0 {
-		str = str[idx:]
-	}
-	if len(str) > 0 {
-		// TODO: if there's at least one white space followed by non-whitespace characters and there has been no microseconds, then we parse as datetime?
-		if isMySQLWhitespace(rune(str[0])) && isMySQLWhitespace(rune(str[1])) {
-			return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
-		}
-		err = sql.ErrTruncatedIncorrect.New(t.String(), str)
+		return res, err
 	}
 	hours, mins, secs, micros, ok := t.parseTimeParts(hourStr, minStr, secStr, microStr)
 	if !ok {
@@ -699,10 +638,10 @@ func (t TimespanType_) parseTime(origStr string) (any, error) {
 	if !ok {
 		return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
 	}
-	if err != nil && (len(minStr) == 0 || len(secStr) == 0) {
-		return res, err
+	if len(str) > 0 {
+		err = sql.ErrTruncatedIncorrect.New(t.String(), origStr)
 	}
-	return res, nil
+	return res, err
 }
 
 func (t TimespanType_) parseTimeParts(hourStr, minStr, secStr, microStr string) (hours, mins, secs, micros int64, ok bool) {
@@ -848,22 +787,17 @@ func (t TimespanType_) stringToTimespan(s string) (Timespan, error) {
 	if !ok {
 		return Timespan(0), sql.ErrTruncatedIncorrect.New(t.String(), s)
 	}
-	return res, nil
+	if v, ok := res.(Timespan); ok {
+		return v, nil
+	}
+	return Timespan(0), nil
 }
 
 func safeSubstr(s string, start int, end int) string {
-	if start < 0 {
-		start = 0
-	}
-	if end < 0 {
-		end = 0
-	}
-	if start > len(s) {
-		start = len(s)
-		end = len(s)
-	} else if end > len(s) {
-		end = len(s)
-	}
+	start = max(start, 0)
+	start = min(start, len(s))
+	end = max(max(end, 0), start)
+	end = min(end, len(s))
 	return s[start:end]
 }
 
