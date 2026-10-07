@@ -112,6 +112,15 @@ func (bv *BindvarContext) UnusedBindings() []string {
 type ViewContext struct {
 	AsOf   interface{}
 	DbName string
+	// resolving holds the views being resolved, from the outermost to the innermost.
+	resolving []viewID
+}
+
+// viewID identifies a view by its database, schema, and name.
+type viewID struct {
+	db     string
+	schema string
+	name   string
 }
 
 type TriggerContext struct {
