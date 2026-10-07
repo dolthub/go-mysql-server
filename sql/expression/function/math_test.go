@@ -290,8 +290,15 @@ func TestSignFunc(t *testing.T) {
 	tf.AddSucceeding(int8(1), "0.1a,1,1")
 	tf.AddSucceeding(int8(0), "-0,1,1")
 	tf.AddSucceeding(int8(0), "-.z1,1,1")
-
 	tf.Test(t, nil, nil)
+}
+
+func TestSign_TypedNilDecimal(t *testing.T) {
+	// https://github.com/dolthub/go-mysql-server/issues/3988
+	s := NewSign(sql.NewEmptyContext(), expression.NewLiteral((*apd.Decimal)(nil), types.MustCreateDecimalType(10, 2)))
+	val, err := s.Eval(sql.NewEmptyContext(), nil)
+	require.NoError(t, err)
+	require.Nil(t, val)
 }
 
 func TestMod(t *testing.T) {

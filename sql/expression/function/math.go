@@ -15,11 +15,11 @@
 package function
 
 import (
+	"errors"
 	"fmt"
 	"hash/crc32"
 	"math"
 	"math/rand"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -824,9 +824,6 @@ func NewSign(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &Sign{NewUnaryFunc(arg, "SIGN", types.Int8)}
 }
 
-var negativeSignRegex = regexp.MustCompile(`^-[0-9]*\.?[0-9]*[1-9]`)
-var positiveSignRegex = regexp.MustCompile(`^+?[0-9]*\.?[0-9]*[1-9]`)
-
 // Description implements sql.FunctionExpression
 func (s *Sign) Description() string {
 	return "returns the sign of the argument."
@@ -849,21 +846,27 @@ func (s *Sign) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	switch typedVal := arg.(type) {
-	case int8, int16, int32, int64, float64, float32, int, *apd.Decimal:
+	case int8, int16, int32, int64, int:
 		val, _, err := types.Int64.Convert(ctx, arg)
-
 		if err != nil {
 			return nil, err
 		}
+		return signVal(val.(int64))
 
-		n := val.(int64)
-		if n == 0 {
-			return int8(0), nil
-		} else if n < 0 {
-			return int8(-1), nil
+	case float32:
+		return signVal(typedVal)
+
+	case float64:
+		return signVal(typedVal)
+
+	case *apd.Decimal:
+		if typedVal == nil {
+			return nil, nil
 		}
+		return int8(typedVal.Sign()), nil
 
-		return int8(1), nil
+	case types.Timespan:
+		return signVal(typedVal)
 
 	case uint8, uint16, uint32, uint64, uint:
 		val, _, err := types.Uint64.Convert(ctx, arg)
@@ -889,14 +892,22 @@ func (s *Sign) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case time.Time:
 		return int8(1), nil
 
-	case string:
-		if negativeSignRegex.MatchString(typedVal) {
-			return int8(-1), nil
-		} else if positiveSignRegex.MatchString(typedVal) {
-			return int8(1), nil
+	case string, []byte:
+		var s string
+		if str, ok := typedVal.(string); ok {
+			s = str
+		} else {
+			s = string(typedVal.([]byte))
 		}
-
-		return int8(0), nil
+		prefix, didTrunc := types.TruncateStringToDouble(s, true)
+		if didTrunc {
+			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrTruncatedIncorrect.New(types.Float64, s).Error())
+		}
+		f, err := strconv.ParseFloat(prefix, 64)
+		if err != nil && !errors.Is(err, strconv.ErrRange) {
+			return int8(0), nil
+		}
+		return signVal(f)
 	}
 
 	return int8(0), nil
@@ -908,6 +919,21 @@ func (s *Sign) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.E
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 1)
 	}
 	return NewSign(ctx, children[0]), nil
+}
+
+type signedNumeric interface {
+	~int | ~int8 | ~int16 | ~int32 | ~int64 | ~float32 | ~float64
+}
+
+// signVal returns 1, -1, or 0 based on whether v is positive, negative,
+// or zero.
+func signVal[T signedNumeric](v T) (interface{}, error) {
+	if v > 0 {
+		return int8(1), nil
+	} else if v < 0 {
+		return int8(-1), nil
+	}
+	return int8(0), nil
 }
 
 // NewMod returns a new MOD function expression
