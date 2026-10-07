@@ -1309,6 +1309,40 @@ T.TABLE_SCHEMA AS 'database', T.TABLE_CATALOG AS 'catalog',
 		},
 	},
 	{
+		// See https://github.com/dolthub/go-mysql-server/issues/3943
+		Name: "LIKE patterns containing only percent wildcards",
+		SetUpScript: []string{
+			"CREATE TABLE percent_wildcard (id INT PRIMARY KEY, s VARCHAR(20));",
+			"INSERT INTO percent_wildcard VALUES (1, 'abc'), (2, ''), (3, NULL);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT id FROM percent_wildcard WHERE s LIKE '%' ORDER BY id;",
+				Expected: []sql.Row{{1}, {2}},
+			},
+			{
+				Query:    "SELECT id FROM percent_wildcard WHERE s LIKE '%%%' ORDER BY id;",
+				Expected: []sql.Row{{1}, {2}},
+			},
+			{
+				Query:    "SELECT id FROM percent_wildcard WHERE NOT (s LIKE '%') ORDER BY id;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT id FROM percent_wildcard WHERE (s LIKE '%') IS NULL ORDER BY id;",
+				Expected: []sql.Row{{3}},
+			},
+			{
+				Query: "SELECT id, s LIKE '%', s IS NOT NULL FROM percent_wildcard ORDER BY id;",
+				Expected: []sql.Row{
+					{1, true, true},
+					{2, true, true},
+					{3, nil, false},
+				},
+			},
+		},
+	},
+	{
 		// See https://github.com/dolthub/dolt/issues/11182
 		Name: "LIKE with a constant prefix keeps rows that sort after the prefix across collations, NOT LIKE, and joins",
 		SetUpScript: []string{

@@ -154,7 +154,7 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 // simplifyExpressions replaces expressions that can be evaluated statically with their Literal value and removes
 // redundant parts of AND and OR expressions.
 func simplifyExpression(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-	return transform.Expr(ctx, e, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+	result, same, err := transform.Expr(ctx, e, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		switch e := e.(type) {
 		// TODO: if the left and right children of Equals are the same expression, simplify to NullIf(IsNotNull(left), false)
 		case *plan.Subquery:
@@ -285,7 +285,6 @@ func simplifyExpression(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sel Ru
 				return expression.NewEquals(e.LeftChild, expression.NewLiteral(prefix, rightType)), transform.NewTree, nil
 			}
 			if len(prefix) == 0 {
-				// TODO(#3943): a pattern of only '%' could be simplified to IS NOT NULL.
 				return e, transform.SameTree, nil
 			}
 			lowerBound := expression.NewGreaterThanOrEqual(e.LeftChild, expression.NewLiteral(prefix, rightType))
@@ -332,6 +331,22 @@ func simplifyExpression(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sel Ru
 			return expression.NewLiteral(val, e.Type(ctx)), transform.NewTree, nil
 		}
 	})
+	if err != nil {
+		return result, same, err
+	}
+
+	// LIKE '%' and IS NOT NULL differ for NULL-valued scalar expressions. The replacement is safe only when
+	// the LIKE is the complete filter predicate, where NULL and false both reject the row. Check the transformed
+	// root so constant-folded patterns are included, and do this outside the charset-specific prefix-range logic.
+	like, ok := result.(*expression.Like)
+	if !ok || !sql.IsStringType(like.LeftChild.Type(ctx)) {
+		return result, same, nil
+	}
+	prefix, complete, ok := like.LiteralPrefix(ctx)
+	if ok && !complete && len(prefix) == 0 {
+		return expression.DefaultExpressionFactory.NewIsNotNull(like.LeftChild), transform.NewTree, nil
+	}
+	return result, same, nil
 }
 
 // incrementLastRune returns |prefix| with its last rune replaced by the next higher rune. The

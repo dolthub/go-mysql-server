@@ -143,3 +143,44 @@ func TestLike(t *testing.T) {
 		})
 	}
 }
+
+func TestLikeLiteralPrefix(t *testing.T) {
+	tests := []struct {
+		name           string
+		pattern        string
+		escape         string
+		expectedPrefix string
+		complete       bool
+		ok             bool
+	}{
+		{name: "literal", pattern: "abc", expectedPrefix: "abc", complete: true, ok: true},
+		{name: "single wildcard", pattern: "%", expectedPrefix: "", complete: false, ok: true},
+		{name: "repeated wildcards", pattern: "%%%", expectedPrefix: "", complete: false, ok: true},
+		{name: "escaped wildcard", pattern: `\%`, expectedPrefix: "%", complete: true, ok: true},
+		{name: "escaped wildcard with trailing wildcard", pattern: `\%%`, expectedPrefix: "%", complete: false, ok: true},
+		{name: "wildcard before literal", pattern: "%abc"},
+		{name: "wildcards around literal", pattern: "%a%"},
+		{name: "single character wildcard", pattern: "_"},
+		{name: "mixed wildcards", pattern: "%_"},
+		{name: "explicit escape", pattern: "%%%", escape: "$"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var escape sql.Expression
+			if tt.escape != "" {
+				escape = NewLiteral(tt.escape, types.LongText)
+			}
+			like := NewLike(
+				NewGetField(0, types.Text, "s", true),
+				NewLiteral(tt.pattern, types.LongText),
+				escape,
+			).(*Like)
+
+			prefix, complete, ok := like.LiteralPrefix(sql.NewEmptyContext())
+			require.Equal(t, tt.expectedPrefix, prefix)
+			require.Equal(t, tt.complete, complete)
+			require.Equal(t, tt.ok, ok)
+		})
+	}
+}

@@ -213,8 +213,8 @@ func (l *Like) String() string {
 // the entire pattern without any wildcards.
 //
 // The |ok| result is false when the pattern is not a string literal,
-// when it contains wildcards before the end, or when an ESCAPE clause
-// is present.
+// when it contains wildcards before the end (except for patterns consisting
+// only of '%' wildcards), or when an ESCAPE clause is present.
 func (l *Like) LiteralPrefix(
 	ctx *sql.Context,
 ) (prefix string, complete bool, ok bool) {
@@ -253,7 +253,17 @@ func (l *Like) LiteralPrefix(
 		case r == likeWildcardOne:
 			return "", false, false
 		case r == likeWildcardMany:
-			if i == len(pattern) && b.Len() > 0 {
+			if b.Len() == 0 {
+				for i < len(pattern) {
+					r, size = utf8.DecodeRuneInString(pattern[i:])
+					if r != likeWildcardMany {
+						return "", false, false
+					}
+					i += size
+				}
+				return "", false, true
+			}
+			if i == len(pattern) {
 				return b.String(), false, true
 			}
 			return "", false, false

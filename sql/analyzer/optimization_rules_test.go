@@ -165,6 +165,60 @@ func TestEvalFilter(t *testing.T) {
 	}
 }
 
+func TestSimplifyLikeWildcardOnlyFilter(t *testing.T) {
+	db := memory.NewDatabase("db")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+	table := memory.NewTable(ctx, db, "foo", sql.PrimaryKeySchema{}, nil)
+	child := plan.NewResolvedTable(table, nil, nil)
+	rule := getRule(simplifyFiltersId)
+
+	stringField := expression.NewGetFieldWithTable(0, 0, types.Text, "", "foo", "s", true)
+	latin1StringField := expression.NewGetFieldWithTable(0, 0, types.CreateText(sql.Collation_latin1_swedish_ci), "", "foo", "s", true)
+	integerField := expression.NewGetFieldWithTable(0, 0, types.Int64, "", "foo", "i", true)
+	like := func(left sql.Expression, pattern string, escape sql.Expression) sql.Expression {
+		return expression.NewLike(left, expression.NewLiteral(pattern, types.LongText), escape)
+	}
+	constantPattern, err := function.NewConcat(ctx,
+		expression.NewLiteral("%", types.LongText),
+		expression.NewLiteral("%", types.LongText),
+	)
+	require.NoError(t, err)
+
+	singleWildcard := like(stringField, "%", nil)
+	tripleWildcard := like(stringField, "%%%", nil)
+	latin1Wildcard := like(latin1StringField, "%", nil)
+	constantFoldedWildcard := expression.NewLike(stringField, constantPattern, nil)
+	nonStringWildcard := like(integerField, "%", nil)
+	explicitEscape := like(stringField, "%%%", expression.NewLiteral("$", types.LongText))
+	negatedWildcard := expression.NewNot(like(stringField, "%", nil))
+	wildcardIsNull := expression.NewIsNull(like(stringField, "%", nil))
+
+	tests := []struct {
+		name     string
+		filter   sql.Expression
+		expected sql.Expression
+	}{
+		{name: "single wildcard", filter: singleWildcard, expected: expression.DefaultExpressionFactory.NewIsNotNull(stringField)},
+		{name: "triple wildcard", filter: tripleWildcard, expected: expression.DefaultExpressionFactory.NewIsNotNull(stringField)},
+		{name: "non-utf8 string", filter: latin1Wildcard, expected: expression.DefaultExpressionFactory.NewIsNotNull(latin1StringField)},
+		{name: "constant-folded wildcard pattern", filter: constantFoldedWildcard, expected: expression.DefaultExpressionFactory.NewIsNotNull(stringField)},
+		{name: "non-string operand", filter: nonStringWildcard, expected: nonStringWildcard},
+		{name: "explicit escape", filter: explicitEscape, expected: explicitEscape},
+		{name: "negated wildcard", filter: negatedWildcard, expected: negatedWildcard},
+		{name: "wildcard is null", filter: wildcardIsNull, expected: wildcardIsNull},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			node := plan.NewFilter(ctx, tt.filter, child)
+			result, _, err := rule.Apply(ctx, NewDefault(pro), node, nil, DefaultRuleSelector, nil)
+			require.NoError(t, err)
+			require.Equal(t, plan.NewFilter(ctx, tt.expected, child), result)
+		})
+	}
+}
+
 func TestPushNotFilters(t *testing.T) {
 	tests := []struct {
 		in  string
