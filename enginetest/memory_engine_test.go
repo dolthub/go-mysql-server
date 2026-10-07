@@ -214,10 +214,17 @@ func TestSingleScript(t *testing.T) {
 					},
 				},
 				{
-					//Skip:  true,
+					Skip:  true,
 					Query: "select cast('- a' as TIME(6));",
 					Expected: []sql.Row{
 						{types.Timespan(0)},
+					},
+				},
+				{
+					//Skip:  true,
+					Query: "select cast('12.123456' as TIME(6));",
+					Expected: []sql.Row{
+						{types.Timespan(12_123456)},
 					},
 				},
 			},

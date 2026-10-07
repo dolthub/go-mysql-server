@@ -603,33 +603,31 @@ func (t TimespanType_) parseTime(origStr string) (any, error) {
 	}
 
 	// read the hours part
+	var trimStr = str
 	var hourStr, minStr, secStr, microStr string
 	idx := strings.IndexFunc(str, func(r rune) bool {
 		return !unicode.IsDigit(r)
 	})
-	if idx == -1 || rune(str[idx]) != ':' || len(str) == idx+1 {
-		res, ok := t.parseNumericTime(isNeg, str)
-		if !ok {
-			err = sql.ErrTruncatedIncorrect.New(t.String(), origStr)
-		}
-		// mysql special case I guess
-		if res == nil && didTrim {
-			res = Timespan(0)
-		}
-		return res, err
+	if idx == -1 {
+		idx = len(str)
 	}
 	hourStr = str[:idx]
 	str = str[idx:]
 	minStr, str = parseTimePart(str)
 	secStr, str = parseTimePart(str)
-	microStr, str = parseMicros(str)
-	if len(minStr) == 0 && len(secStr) == 0 && len(microStr) == 0 {
-		res, ok := t.parseNumericTime(isNeg, hourStr)
-		if !ok || len(str) > 0 {
+	if len(minStr) == 0 && len(secStr) == 0 {
+		res, ok := t.parseNumericTime(isNeg, trimStr)
+		if !ok {
 			err = sql.ErrTruncatedIncorrect.New(t.String(), origStr)
+		}
+		// mysql special case
+		if res == nil && didTrim {
+			res = Timespan(0)
 		}
 		return res, err
 	}
+
+	microStr, str = parseMicros(str)
 	hours, mins, secs, micros, ok := t.parseTimeParts(hourStr, minStr, secStr, microStr)
 	if !ok {
 		return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
