@@ -5977,12 +5977,14 @@ func TestJoinsScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.JoinsScriptTests, true)
 }
 
+// Deprecated: use TestJsonScripts.
 func TestJSONFunctionsScripts(t *testing.T, harness Harness) {
-	testScriptTests(t, harness, queries.JSONFunctionsScriptTests, false)
+	TestJsonScripts(t, harness, nil)
 }
 
+// Deprecated: use TestJsonScriptsPrepared.
 func TestJSONFunctionsScriptsPrepared(t *testing.T, harness Harness) {
-	testScriptTests(t, harness, queries.JSONFunctionsScriptTests, true)
+	TestJsonScriptsPrepared(t, harness, nil)
 }
 
 func TestNameResolutionScripts(t *testing.T, harness Harness) {
