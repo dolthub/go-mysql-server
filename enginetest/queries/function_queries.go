@@ -4412,4 +4412,62 @@ var FunctionQueryTests = []QueryTest{
 		Query:       "SELECT UNIX_TIMESTAMP((SELECT 1 UNION ALL SELECT 2));",
 		ExpectedErr: sql.ErrExpectedSingleRow,
 	},
+	// https://github.com/dolthub/go-mysql-server/issues/3988
+	{
+		Query:    "SELECT SIGN(0.3), SIGN(-0.3), SIGN(0.49), SIGN(-0.49), SIGN(0.0001), SIGN(-0.0001)",
+		Expected: []sql.Row{{int8(1), int8(-1), int8(1), int8(-1), int8(1), int8(-1)}},
+	},
+	{
+		Query:    "SELECT SIGN(0.3e0), SIGN(-0.3e0), SIGN(1e-5), SIGN(-1e-5)",
+		Expected: []sql.Row{{int8(1), int8(-1), int8(1), int8(-1)}},
+	},
+	{
+		Query:    "SELECT SIGN(' 0.3'), SIGN('  -0.3')",
+		Expected: []sql.Row{{int8(1), int8(-1)}},
+	},
+	{
+		Dialect:  "mysql",
+		Query:    "SELECT SIGN('\\t+0.3'), SIGN('\\n-0.3'), SIGN('\\r+0.3'), SIGN(CONCAT(CHAR(11), '-0.3')), SIGN(CONCAT(CHAR(12), '+0.3'))",
+		Expected: []sql.Row{{int8(1), int8(-1), int8(1), int8(-1), int8(1)}},
+	},
+	{
+		Query:    "SELECT SIGN('+0.3'), SIGN('+.5'), SIGN('-.5'), SIGN('+1'), SIGN('-1'), SIGN('5 ')",
+		Expected: []sql.Row{{int8(1), int8(1), int8(-1), int8(1), int8(-1), int8(1)}},
+	},
+	{
+		Dialect:               "mysql",
+		Query:                 "SELECT SIGN('0.3abc'), SIGN('-0.3xyz'), SIGN('+1z1Xaoebu')",
+		Expected:              []sql.Row{{int8(1), int8(-1), int8(1)}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 3,
+	},
+	{
+		Query:    "SELECT SIGN(0), SIGN(0.0), SIGN(-0.0), SIGN(0e0), SIGN(CAST(0 AS DECIMAL)), SIGN('0'), SIGN(' 0'), SIGN('-0.0'), SIGN('+0'), SIGN('+0.0')",
+		Expected: []sql.Row{{int8(0), int8(0), int8(0), int8(0), int8(0), int8(0), int8(0), int8(0), int8(0), int8(0)}},
+	},
+	{
+		Dialect:  "mysql",
+		Query:    "SELECT SIGN(''), SIGN('   ')",
+		Expected: []sql.Row{{int8(0), int8(0)}},
+	},
+	{
+		Dialect:               "mysql",
+		Query:                 "SELECT SIGN('abc'), SIGN('- 0.3'), SIGN('+ 0.3'), SIGN(' - 5'), SIGN('+-1')",
+		Expected:              []sql.Row{{int8(0), int8(0), int8(0), int8(0), int8(0)}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 5,
+	},
+	{
+		Query:    "SELECT SIGN(NULL)",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Dialect:  "mysql",
+		Query:    "SELECT SIGN(_binary'0.3'), SIGN(_binary'-0.3'), SIGN(_binary'0'), SIGN(TIME '01:00:00'), SIGN(TIME '-01:00:00'), SIGN(TIME '00:00:00')",
+		Expected: []sql.Row{{int8(1), int8(-1), int8(0), int8(1), int8(-1), int8(0)}},
+	},
+	{
+		Query:    "SELECT id, SIGN(f), SIGN(d) FROM (SELECT 1 AS id, 0.3e0 AS f, CAST(0.3 AS DECIMAL(10, 4)) AS d UNION ALL SELECT 2, -0.3e0, CAST(-0.3 AS DECIMAL(10, 4)) UNION ALL SELECT 3, 0.0001e0, CAST(0.0001 AS DECIMAL(10, 4)) UNION ALL SELECT 4, -0.0001e0, CAST(-0.0001 AS DECIMAL(10, 4))) t ORDER BY id",
+		Expected: []sql.Row{{1, int8(1), int8(1)}, {2, int8(-1), int8(-1)}, {3, int8(1), int8(1)}, {4, int8(-1), int8(-1)}},
+	},
 }

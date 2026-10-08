@@ -290,6 +290,7 @@ func TestSignFunc(t *testing.T) {
 	tf.AddSucceeding(int8(1), "0.1a,1,1")
 	tf.AddSucceeding(int8(0), "-0,1,1")
 	tf.AddSucceeding(int8(0), "-.z1,1,1")
+
 	tf.Test(t, nil, nil)
 }
 

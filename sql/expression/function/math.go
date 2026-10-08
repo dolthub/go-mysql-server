@@ -846,52 +846,44 @@ func (s *Sign) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	switch typedVal := arg.(type) {
-	case int8, int16, int32, int64, int:
-		val, _, err := types.Int64.Convert(ctx, arg)
-		if err != nil {
-			return nil, err
-		}
-		return signVal(val.(int64))
-
+	case int:
+		return signOfVal(typedVal), nil
+	case int8:
+		return signOfVal(typedVal), nil
+	case int16:
+		return signOfVal(typedVal), nil
+	case int32:
+		return signOfVal(typedVal), nil
+	case int64:
+		return signOfVal(typedVal), nil
+	case uint:
+		return signOfVal(typedVal), nil
+	case uint8:
+		return signOfVal(typedVal), nil
+	case uint16:
+		return signOfVal(typedVal), nil
+	case uint32:
+		return signOfVal(typedVal), nil
+	case uint64:
+		return signOfVal(typedVal), nil
 	case float32:
-		return signVal(typedVal)
-
+		return signOfVal(typedVal), nil
 	case float64:
-		return signVal(typedVal)
-
+		return signOfVal(typedVal), nil
+	case types.Timespan:
+		return signOfVal(typedVal), nil
 	case *apd.Decimal:
 		if typedVal == nil {
 			return nil, nil
 		}
 		return int8(typedVal.Sign()), nil
-
-	case types.Timespan:
-		return signVal(typedVal)
-
-	case uint8, uint16, uint32, uint64, uint:
-		val, _, err := types.Uint64.Convert(ctx, arg)
-
-		if err != nil {
-			return nil, err
-		}
-
-		n := val.(uint64)
-		if n == 0 {
-			return int8(0), nil
-		}
-
-		return int8(1), nil
-
 	case bool:
 		if typedVal {
 			return int8(1), nil
 		}
-
 		return int8(0), nil
-
 	case time.Time:
 		return int8(1), nil
-
 	case string, []byte:
 		var s string
 		if str, ok := typedVal.(string); ok {
@@ -907,7 +899,7 @@ func (s *Sign) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		if err != nil && !errors.Is(err, strconv.ErrRange) {
 			return int8(0), nil
 		}
-		return signVal(f)
+		return signOfVal(f), nil
 	}
 
 	return int8(0), nil
@@ -921,19 +913,21 @@ func (s *Sign) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.E
 	return NewSign(ctx, children[0]), nil
 }
 
-type signedNumeric interface {
-	~int | ~int8 | ~int16 | ~int32 | ~int64 | ~float32 | ~float64
+type realNumeric interface {
+	~int | ~int8 | ~int16 | ~int32 | ~int64 |
+		~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 |
+		~float32 | ~float64
 }
 
-// signVal returns 1, -1, or 0 based on whether v is positive, negative,
+// signOfVal returns 1, -1, or 0 based on whether v is positive, negative,
 // or zero.
-func signVal[T signedNumeric](v T) (interface{}, error) {
+func signOfVal[T realNumeric](v T) int8 {
 	if v > 0 {
-		return int8(1), nil
+		return 1
 	} else if v < 0 {
-		return int8(-1), nil
+		return -1
 	}
-	return int8(0), nil
+	return 0
 }
 
 // NewMod returns a new MOD function expression
