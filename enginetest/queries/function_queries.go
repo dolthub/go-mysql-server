@@ -2935,6 +2935,7 @@ var FunctionQueryTests = []QueryTest{
 		Query: "select cast('- ' as TIME);",
 		Expected: []sql.Row{
 			// TODO: this should be negative zero
+			// https://github.com/dolthub/dolt/issues/12046
 			{types.Timespan(0)},
 		},
 		ExpectedWarningsCount: 1,
@@ -2944,6 +2945,7 @@ var FunctionQueryTests = []QueryTest{
 		Query: "select cast(' - ' as TIME);",
 		Expected: []sql.Row{
 			// TODO: this should be negative zero
+			// https://github.com/dolthub/dolt/issues/12046
 			{types.Timespan(0)},
 		},
 		ExpectedWarningsCount: 1,
@@ -2969,6 +2971,7 @@ var FunctionQueryTests = []QueryTest{
 		Query: "select cast(' - a' as TIME);",
 		Expected: []sql.Row{
 			// TODO: this should be negative zero
+			// https://github.com/dolthub/dolt/issues/12046
 			{types.Timespan(0)},
 		},
 		// TODO: https://github.com/dolthub/dolt/issues/11750
