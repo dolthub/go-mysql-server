@@ -1217,4 +1217,3 @@ var JsonScripts = []ScriptTest{
 		},
 	},
 }
-

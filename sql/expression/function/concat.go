@@ -138,4 +138,3 @@ func (c *Concat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 	return res, nil
 }
-
