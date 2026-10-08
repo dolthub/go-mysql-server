@@ -1254,4 +1254,3 @@ func TestUpdateJoinsScripts(t *testing.T) {
 func TestVariablesScripts(t *testing.T) {
 	enginetest.TestVariablesScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
-

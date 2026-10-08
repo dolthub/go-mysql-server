@@ -6083,4 +6083,3 @@ func TestVariablesScripts(t *testing.T, harness Harness) {
 func TestVariablesScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.VariablesScriptTests, true)
 }
-
