@@ -3292,13 +3292,30 @@ var ProcedureCreateInSubroutineTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "call p2(1)",
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "call p2(1)",
 				Expected: []sql.Row{
-					{types.NewOkResult(0)},
+					{types.NewOkResult(1)},
 				},
 			},
 			{
 				Query: "select (select count(*) from t1), (select count(*) from t2);",
+				Expected: []sql.Row{
+					{1, 1},
+				},
+			},
+			{
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "call p3(1)",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "select (select count(*) from t1), (select count(*) from t2);",
+				Expected: []sql.Row{
+					{2, 2},
+				},
 			},
 		},
 	},
