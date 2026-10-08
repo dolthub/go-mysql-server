@@ -608,8 +608,6 @@ func parseTime(str string, timeRegex *regexp.Regexp) (hourStr, minStr, secStr st
 
 // parseMicros takes in a string and splits it into a valid microsecond and the remaining string according to
 // MySQL's rules.
-// The resulting valid microsecond string will preserve at most MaxDatetimePrecision + 1 digits.
-// Additional trailing digits will be dropped.
 func parseMicros(str string) (string, string) {
 	if len(str) == 0 || str[0] != '.' {
 		return "", str

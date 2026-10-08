@@ -376,7 +376,7 @@ func (t TimespanType_) convertNumber(clock int64, nanos int64) (any, bool) {
 		return nil, false
 	}
 	res := t.makeTime(isNeg, hours, mins, secs, nanos)
-	if res > MaxTimespan+MaxMicros {
+	if res > MaxNumericTimespan {
 		return MaxTimespan, true
 	}
 	if res < MinNumericTimespan {
@@ -542,11 +542,9 @@ func (t TimespanType_) parseTimeNoDelim(isNeg bool, str string) (any, bool) {
 		}
 	}
 	res := t.makeTime(isNeg, hours, mins, secs, micros*nanosPerMicro)
-	if res > MaxTimespan {
-		return MaxTimespan, false
-	}
-	if res < MinTimespan {
-		return MinTimespan, false
+	res, didClip := clipTimespan(res)
+	if didClip {
+		return res, false
 	}
 	return res, len(str) == 0
 }
@@ -576,6 +574,16 @@ func trimWhitespaces(str string) (string, bool) {
 		}
 	}
 	return "", true
+}
+
+func clipTimespan(val Timespan) (Timespan, bool) {
+	if val > MaxTimespan {
+		return MaxTimespan, true
+	}
+	if val < MinTimespan {
+		return MinTimespan, true
+	}
+	return val, false
 }
 
 func (t TimespanType_) parseTimeDatetime(str string) (any, error) {
@@ -695,11 +703,9 @@ func (t TimespanType_) parseTime(origStr string) (any, error) {
 		}
 	}
 	res := t.makeTime(isNeg, hours, mins, secs, micros*nanosPerMicro)
-	if res > MaxTimespan {
-		return MaxTimespan, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
-	}
-	if res < MinTimespan {
-		return MinTimespan, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
+	res, didClip := clipTimespan(res)
+	if didClip {
+		err = sql.ErrTruncatedIncorrect.New(t.String(), origStr)
 	}
 	if len(str) > 0 {
 		err = sql.ErrTruncatedIncorrect.New(t.String(), origStr)
