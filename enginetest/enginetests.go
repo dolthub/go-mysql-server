@@ -2770,6 +2770,11 @@ func TestViewsPrepared(t *testing.T, harness Harness) {
 	}
 	harness.Setup(setup.MydbData)
 	for _, script := range queries.ViewScripts {
+		// SHOW INDEX WHERE does not support substituted bind variables.
+		if script.Name == "show view" {
+			script.SkipPrepared = true
+		}
+
 		TestScriptPrepared(t, harness, script)
 	}
 }
