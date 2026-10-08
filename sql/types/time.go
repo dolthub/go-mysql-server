@@ -492,10 +492,10 @@ func int64Abs(v int64) int64 {
 	return (v ^ shift) - shift
 }
 
-var mysqlWhitespaces = [4]rune{' ', '\n', '\t', '\r'}
+var mysqlTimeWhitespaces = [4]rune{' ', '\n', '\t', '\r'}
 
-func isMySQLWhitespace(char rune) bool {
-	for _, ws := range mysqlWhitespaces {
+func isMySQLTimeWhitespace(char rune) bool {
+	for _, ws := range mysqlTimeWhitespaces {
 		if ws == char {
 			return true
 		}
@@ -569,7 +569,7 @@ func parseTimePart(str string) (string, string) {
 
 func trimWhitespaces(str string) (string, bool) {
 	for idx, char := range str {
-		if !isMySQLWhitespace(char) {
+		if !isMySQLTimeWhitespace(char) {
 			return str[idx:], idx > 0
 		}
 	}
@@ -674,7 +674,7 @@ func (t TimespanType_) parseTime(origStr string) (any, error) {
 	// MySQL Special Case
 	// If everything so far is a valid delimited TIME without microseconds followed by a MySQL Whitespace AND the
 	// trimmed string is greater than or equal to 12 in length, parse as a datetime string.
-	if len(str) > 0 && isMySQLWhitespace(rune(str[0])) &&
+	if len(str) > 0 && isMySQLTimeWhitespace(rune(str[0])) &&
 		len(hourStr) > 0 &&
 		len(minStr) > 0 &&
 		len(secStr) > 0 &&
