@@ -294,6 +294,14 @@ func TestSignFunc(t *testing.T) {
 	tf.Test(t, nil, nil)
 }
 
+func TestSign_TypedNilDecimal(t *testing.T) {
+	// https://github.com/dolthub/go-mysql-server/issues/3988
+	s := NewSign(sql.NewEmptyContext(), expression.NewLiteral((*apd.Decimal)(nil), types.MustCreateDecimalType(10, 2)))
+	val, err := s.Eval(sql.NewEmptyContext(), nil)
+	require.NoError(t, err)
+	require.Nil(t, val)
+}
+
 func TestMod(t *testing.T) {
 	tests := []struct {
 		name     string
