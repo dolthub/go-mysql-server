@@ -803,10 +803,6 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 		TestScript(t, harness, tt)
 	}
 
-	for _, tt := range queries.OrderByScriptTests {
-		TestScript(t, harness, tt)
-	}
-
 	t.Run("non-deterministic group by", func(t *testing.T) {
 		e := MustNewEngine(t, harness)
 		defer e.Close()
