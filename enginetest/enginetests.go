@@ -6075,12 +6075,14 @@ func TestTupleComparisonsScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.TupleComparisonsScriptTests, true)
 }
 
+// Deprecated: use TestUpdate.
 func TestUpdateRegressionScripts(t *testing.T, harness Harness) {
-	testScriptTests(t, harness, queries.UpdateRegressionScriptTests, false)
+	TestUpdate(t, harness)
 }
 
+// Deprecated: use TestUpdateQueriesPrepared.
 func TestUpdateRegressionScriptsPrepared(t *testing.T, harness Harness) {
-	testScriptTests(t, harness, queries.UpdateRegressionScriptTests, true)
+	TestUpdateQueriesPrepared(t, harness)
 }
 
 func TestUpdateJoinsScripts(t *testing.T, harness Harness) {

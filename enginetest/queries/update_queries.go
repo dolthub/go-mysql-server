@@ -473,6 +473,27 @@ var UpdateWriteQueryTests = []WriteQueryTest{
 
 var UpdateScriptTests = []ScriptTest{
 	{
+		Name: "empty table update",
+		SetUpScript: []string{
+			"create table t (i int primary key)",
+			"insert into t values (1), (2), (3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "update t set i = 0 where false",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0, InsertID: 0, Info: plan.UpdateInfo{Matched: 0}}}},
+			},
+			{
+				Query: "select * from t",
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/9334
 		Name: "UPDATE with subquery in keyless tables",
 		SetUpScript: []string{
@@ -484,6 +505,56 @@ var UpdateScriptTests = []ScriptTest{
 			{
 				Query:    "select * from t",
 				Expected: []sql.Row{{10}},
+			},
+		},
+	},
+	{
+		// This is a script test here because every table in the harness setup data is in all lowercase
+		Name:    "case insensitive update with insubqueries and update joins",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table MiXeDcAsE (i int primary key, j int)",
+			"insert into mixedcase values (1, 1);",
+			"insert into mixedcase values (2, 2);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "update mixedcase set j = 999 where i in (select 1)",
+				Expected: []sql.Row{
+					{types.OkResult{
+						RowsAffected: 1,
+						Info: plan.UpdateInfo{
+							Matched: 1,
+							Updated: 1,
+						},
+					}},
+				},
+			},
+			{
+				Query: "select * from mixedcase;",
+				Expected: []sql.Row{
+					{1, 999},
+					{2, 2},
+				},
+			},
+			{
+				Query: " with cte(x) as (select 2) update mixedcase set j = 999 where i in (select x from cte)",
+				Expected: []sql.Row{
+					{types.OkResult{
+						RowsAffected: 1,
+						Info: plan.UpdateInfo{
+							Matched: 1,
+							Updated: 1,
+						},
+					}},
+				},
+			},
+			{
+				Query: "select * from mixedcase;",
+				Expected: []sql.Row{
+					{1, 999},
+					{2, 999},
+				},
 			},
 		},
 	},
@@ -2093,81 +2164,6 @@ var OnUpdateExprScripts = []ScriptTest{
 			{
 				Query:    "select * from t2",
 				Expected: []sql.Row{{"a", 2, Dec15_1_30}},
-			},
-		},
-	},
-}
-
-// UpdateRegressionScriptTests contains self-contained update script tests.
-var UpdateRegressionScriptTests = []ScriptTest{
-	{
-		Name: "empty table update",
-		SetUpScript: []string{
-			"create table t (i int primary key)",
-			"insert into t values (1), (2), (3)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "update t set i = 0 where false",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 0, InsertID: 0, Info: plan.UpdateInfo{Matched: 0}}}},
-			},
-			{
-				Query: "select * from t",
-				Expected: []sql.Row{
-					{1},
-					{2},
-					{3},
-				},
-			},
-		},
-	},
-	{
-		// This is a script test here because every table in the harness setup data is in all lowercase
-		Name:    "case insensitive update with insubqueries and update joins",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"create table MiXeDcAsE (i int primary key, j int)",
-			"insert into mixedcase values (1, 1);",
-			"insert into mixedcase values (2, 2);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "update mixedcase set j = 999 where i in (select 1)",
-				Expected: []sql.Row{
-					{types.OkResult{
-						RowsAffected: 1,
-						Info: plan.UpdateInfo{
-							Matched: 1,
-							Updated: 1,
-						},
-					}},
-				},
-			},
-			{
-				Query: "select * from mixedcase;",
-				Expected: []sql.Row{
-					{1, 999},
-					{2, 2},
-				},
-			},
-			{
-				Query: " with cte(x) as (select 2) update mixedcase set j = 999 where i in (select x from cte)",
-				Expected: []sql.Row{
-					{types.OkResult{
-						RowsAffected: 1,
-						Info: plan.UpdateInfo{
-							Matched: 1,
-							Updated: 1,
-						},
-					}},
-				},
-			},
-			{
-				Query: "select * from mixedcase;",
-				Expected: []sql.Row{
-					{1, 999},
-					{2, 999},
-				},
 			},
 		},
 	},
