@@ -2838,7 +2838,6 @@ END`,
 	},
 }
 
-
 var CallAsofScripts = []ScriptTest{
 	{
 		Name: "AS OF propagates to nested CALLs",
