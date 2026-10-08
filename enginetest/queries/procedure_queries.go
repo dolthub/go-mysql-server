@@ -3280,6 +3280,28 @@ var ProcedureCreateInSubroutineTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/11950
+		Name: "nested procedure inserts",
+		SetUpScript: []string{
+			"create table t1 (i int);",
+			"create table t2 (j int);",
+			"create procedure p1(in x int) begin insert into t1 values (1); end;",
+			"create procedure p2(in y int) begin insert into t2 values (1); call p1(y); end;",
+			"create procedure p3(in y int) begin call p1(y); insert into t2 values (1); end;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:                         "call p2(1)",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "select (select count(*) from t1), (select count(*) from t2);"
+			},
+		},
+	},
 }
 
 var NoDbProcedureTests = []ScriptTestAssertion{
