@@ -2768,6 +2768,10 @@ func TestViewsPrepared(t *testing.T, harness Harness) {
 	for _, testCase := range queries.ViewTests {
 		TestPreparedQueryWithEngine(t, harness, e, testCase)
 	}
+	harness.Setup(setup.MydbData)
+	for _, script := range queries.ViewScripts {
+		TestScriptPrepared(t, harness, script)
+	}
 }
 
 // initializeViewsForVersionedViewsTests creates the test views used by the TestVersionedViews and
@@ -6073,10 +6077,6 @@ func TestVariablesScripts(t *testing.T, harness Harness) {
 
 func TestVariablesScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.VariablesScriptTests, true)
-}
-
-func TestViewsScripts(t *testing.T, harness Harness) {
-	testScriptTests(t, harness, queries.ViewsScriptTests, false)
 }
 
 func TestViewsScriptsPrepared(t *testing.T, harness Harness) {

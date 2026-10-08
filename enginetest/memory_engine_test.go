@@ -833,6 +833,10 @@ func TestReadOnly(t *testing.T) {
 	enginetest.TestReadOnly(t, enginetest.NewDefaultMemoryHarness(), true /* testStoredProcedures */)
 }
 
+func TestViewsPrepared(t *testing.T) {
+	enginetest.TestViewsPrepared(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestViews(t *testing.T) {
 	enginetest.TestViews(t, enginetest.NewDefaultMemoryHarness())
 }
