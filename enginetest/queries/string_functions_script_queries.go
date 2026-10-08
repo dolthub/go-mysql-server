@@ -411,10 +411,6 @@ var StringFunctionsScriptTests = []ScriptTest{
 			},
 		},
 	},
-}
-
-// StringMatchingScriptTests contains self-contained string matching script tests.
-var StringMatchingScriptTests = []ScriptTest{
 	{
 		Name:    "LIKE expression with ESCAPE clause",
 		Dialect: "mysql",

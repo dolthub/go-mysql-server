@@ -6033,12 +6033,14 @@ func TestStringFunctionsScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.StringFunctionsScriptTests, true)
 }
 
+// Deprecated: use TestStringFunctionsScripts.
 func TestStringMatchingScripts(t *testing.T, harness Harness) {
-	testScriptTests(t, harness, queries.StringMatchingScriptTests, false)
+	TestStringFunctionsScripts(t, harness)
 }
 
+// Deprecated: use TestStringFunctionsScriptsPrepared.
 func TestStringMatchingScriptsPrepared(t *testing.T, harness Harness) {
-	testScriptTests(t, harness, queries.StringMatchingScriptTests, true)
+	TestStringFunctionsScriptsPrepared(t, harness)
 }
 
 func TestSubqueriesScripts(t *testing.T, harness Harness) {

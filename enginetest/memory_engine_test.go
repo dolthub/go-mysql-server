@@ -1227,10 +1227,6 @@ func TestStringFunctionsScripts(t *testing.T) {
 	enginetest.TestStringFunctionsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
-func TestStringMatchingScripts(t *testing.T) {
-	enginetest.TestStringMatchingScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
-}
-
 func TestSubqueriesScripts(t *testing.T) {
 	enginetest.TestSubqueriesScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
