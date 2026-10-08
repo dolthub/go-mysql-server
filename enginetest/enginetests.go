@@ -5960,16 +5960,20 @@ func TestIndexKeyTypesScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.IndexKeyTypesScriptTests, true)
 }
 
+// TestInsertRegressionScripts is retained for compatibility with downstream harnesses.
+// Deprecated: use TestInsertInto.
 func TestInsertRegressionScripts(t *testing.T, harness Harness) {
-	testScriptTests(t, harness, queries.InsertRegressionScriptTests, false)
+	TestInsertInto(t, harness)
 }
 
 func TestInsertIgnoreRegressionScripts(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.InsertIgnoreRegressionScriptTests, false)
 }
 
+// TestInsertRegressionScriptsPrepared is retained for compatibility with downstream harnesses.
+// Deprecated: use TestInsertScriptsPrepared.
 func TestInsertRegressionScriptsPrepared(t *testing.T, harness Harness) {
-	testScriptTests(t, harness, queries.InsertRegressionScriptTests, true)
+	TestInsertScriptsPrepared(t, harness)
 }
 
 func TestInsertIgnoreRegressionScriptsPrepared(t *testing.T, harness Harness) {
