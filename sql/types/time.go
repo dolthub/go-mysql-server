@@ -50,6 +50,8 @@ const (
 	// MinNumericTimespan represents the smallest valid TIME value -838:59:59.999999 during number conversion
 	MinNumericTimespan = -MaxNumericTimespan
 
+	// MinTimeDatetimeStringLength is the minimum string length for a TIME value to be interpreted as a DATETIME
+	MinTimeDatetimeStringLength = 12
 	// MaxTimespanStringLength is the longest string representation of a valid TIME value (len(+111:22:33.123456))
 	MaxTimespanStringLength = 17
 )
@@ -490,13 +492,6 @@ func int64Abs(v int64) int64 {
 	return (v ^ shift) - shift
 }
 
-// isMySQLPunct checks if the character is a valid punctuation character according to MySQL standards.
-// This exists because MySQL's rules differ from unicode.IsPunct and regex punctuation
-func isMySQLPunct(char rune) bool {
-	// TODO: write a unit test for this
-	return unicode.IsPunct(char) || char == '-' || char == ':' || char == '.'
-}
-
 var mysqlWhitespaces = [4]rune{' ', '\n', '\t', '\r'}
 
 func isMySQLWhitespace(char rune) bool {
@@ -524,7 +519,7 @@ func (t TimespanType_) parseTimeNoDelim(isNeg bool, str string) (any, bool) {
 	if len(clockStr) == 0 {
 		return nil, false
 	}
-	if len(clockStr) >= 12 {
+	if len(clockStr) >= MinTimeDatetimeStringLength {
 		res, ok, err := datetimeType{}.parseDatetime(str)
 		return res, ok && err == nil
 	}
@@ -645,7 +640,7 @@ func (t TimespanType_) parseTime(origStr string) (any, error) {
 	secStr, str = parseTimePart(str)
 	microStr, str = parseMicros(str)
 	if len(minStr) == 0 && len(secStr) == 0 {
-		if len(microStr) == 0 && len(dtStr) >= 12 {
+		if len(microStr) == 0 && len(dtStr) >= MinTimeDatetimeStringLength {
 			var res any
 			res, err = t.parseTimeDatetime(dtStr)
 			if err == nil {
@@ -676,7 +671,7 @@ func (t TimespanType_) parseTime(origStr string) (any, error) {
 		len(minStr) > 0 &&
 		len(secStr) > 0 &&
 		len(microStr) <= 1 &&
-		len(dtStr) >= 12 {
+		len(dtStr) >= MinTimeDatetimeStringLength {
 		var res any
 		res, err = t.parseTimeDatetime(dtStr)
 		if err != nil {
