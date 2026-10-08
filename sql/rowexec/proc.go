@@ -230,7 +230,7 @@ func (b *BaseBuilder) buildCall(ctx *sql.Context, n *plan.Call, row sql.Row) (sq
 		}
 	}
 
-	// Preserve existing transaction
+	// Preserve existing transaction // TODO: unless you are in
 	oldTx := ctx.GetTransaction()
 	defer ctx.SetTransaction(oldTx)
 	ctx.SetTransaction(nil)

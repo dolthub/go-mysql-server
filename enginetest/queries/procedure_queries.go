@@ -3292,13 +3292,13 @@ var ProcedureCreateInSubroutineTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:                         "call p2(1)",
+				Query: "call p2(1)",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
-				Query: "select (select count(*) from t1), (select count(*) from t2);"
+				Query: "select (select count(*) from t1), (select count(*) from t2);",
 			},
 		},
 	},
