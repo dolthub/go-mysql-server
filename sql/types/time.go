@@ -567,7 +567,7 @@ func parseTimePart(str string) (string, string) {
 	return str[1:idx], str[idx:]
 }
 
-func trimWhitespaces(str string) (string, bool) {
+func trimMySQLTimeWhitespaces(str string) (string, bool) {
 	for idx, char := range str {
 		if !isMySQLTimeWhitespace(char) {
 			return str[idx:], idx > 0
@@ -608,7 +608,7 @@ func (t TimespanType_) parseTime(origStr string) (any, error) {
 
 	var err error
 	var str = origStr
-	str, didTrim := trimWhitespaces(str)
+	str, didTrim := trimMySQLTimeWhitespaces(str)
 	if didTrim {
 		err = sql.ErrTruncatedIncorrect.New(t.String(), origStr)
 	}
@@ -623,7 +623,7 @@ func (t TimespanType_) parseTime(origStr string) (any, error) {
 	}
 
 	var dtStr = str
-	str, didTrim = trimWhitespaces(str)
+	str, didTrim = trimMySQLTimeWhitespaces(str)
 	if didTrim {
 		err = sql.ErrTruncatedIncorrect.New(t.String(), origStr)
 		if len(str) == 0 {
