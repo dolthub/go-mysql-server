@@ -737,6 +737,10 @@ func TestRowLimit(t *testing.T) {
 	enginetest.TestRowLimit(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestDropTablePrepared(t *testing.T) {
+	enginetest.TestDropTablePrepared(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestDropTable(t *testing.T) {
 	enginetest.TestDropTable(t, enginetest.NewDefaultMemoryHarness())
 }
@@ -1177,10 +1181,6 @@ func TestDeleteScripts(t *testing.T) {
 
 func TestDescendingIndexesScripts(t *testing.T) {
 	enginetest.TestDescendingIndexesScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
-}
-
-func TestDropTableScripts(t *testing.T) {
-	enginetest.TestDropTableScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
 func TestForeignKeyResolutionScripts(t *testing.T) {

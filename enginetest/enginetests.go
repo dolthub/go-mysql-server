@@ -2947,7 +2947,36 @@ func TestCreateTable(t *testing.T, harness Harness) {
 }
 
 func TestDropTable(t *testing.T, harness Harness) {
+	testDropTable(t, harness, false)
+}
+
+func TestDropTablePrepared(t *testing.T, harness Harness) {
+	testDropTable(t, harness, true)
+}
+
+func testDropTable(t *testing.T, harness Harness, prepared bool) {
 	require := require.New(t)
+
+	// Keep the shared script literal beside the existing DROP TABLE cases.
+	type ScriptTestAssertion = queries.ScriptTestAssertion
+	script := queries.ScriptTest{
+		Name:    "drop table if exists on unknown table shows warning",
+		Dialect: "mysql",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:                           "DROP TABLE IF EXISTS non_existent_table;",
+				ExpectedWarning:                 1051,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "Unknown table 'non_existent_table'",
+				SkipResultsCheck:                true,
+			},
+		},
+	}
+	if prepared {
+		TestScriptPrepared(t, harness, script)
+	} else {
+		TestScript(t, harness, script)
+	}
 
 	harness.Setup(setup.MydbData, setup.MytableData, setup.OthertableData, setup.TabletestData, setup.Pk_tablesData)
 
@@ -5905,14 +5934,6 @@ func TestDescendingIndexesScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.DescendingIndexesScriptTests, true)
 }
 
-func TestDropTableScripts(t *testing.T, harness Harness) {
-	testScriptTests(t, harness, queries.DropTableScriptTests, false)
-}
-
-func TestDropTableScriptsPrepared(t *testing.T, harness Harness) {
-	testScriptTests(t, harness, queries.DropTableScriptTests, true)
-}
-
 func TestForeignKeyResolutionScripts(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.ForeignKeyResolutionScriptTests, false)
 }
@@ -5945,20 +5966,8 @@ func TestIndexKeyTypesScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.IndexKeyTypesScriptTests, true)
 }
 
-// TestInsertRegressionScripts is retained for compatibility with downstream harnesses.
-// Deprecated: use TestInsertInto.
-func TestInsertRegressionScripts(t *testing.T, harness Harness) {
-	TestInsertInto(t, harness)
-}
-
 func TestInsertIgnoreRegressionScripts(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.InsertIgnoreRegressionScriptTests, false)
-}
-
-// TestInsertRegressionScriptsPrepared is retained for compatibility with downstream harnesses.
-// Deprecated: use TestInsertScriptsPrepared.
-func TestInsertRegressionScriptsPrepared(t *testing.T, harness Harness) {
-	TestInsertScriptsPrepared(t, harness)
 }
 
 func TestInsertIgnoreRegressionScriptsPrepared(t *testing.T, harness Harness) {
@@ -5971,16 +5980,6 @@ func TestJoinsScripts(t *testing.T, harness Harness) {
 
 func TestJoinsScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.JoinsScriptTests, true)
-}
-
-// Deprecated: use TestJsonScripts.
-func TestJSONFunctionsScripts(t *testing.T, harness Harness) {
-	TestJsonScripts(t, harness, nil)
-}
-
-// Deprecated: use TestJsonScriptsPrepared.
-func TestJSONFunctionsScriptsPrepared(t *testing.T, harness Harness) {
-	TestJsonScriptsPrepared(t, harness, nil)
 }
 
 func TestNameResolutionScripts(t *testing.T, harness Harness) {
@@ -5999,12 +5998,7 @@ func TestPrimaryKeysScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.PrimaryKeysScriptTests, true)
 }
 
-// Deprecated: use TestStoredProcedures.
-func TestProceduresScripts(t *testing.T, harness Harness) {
-	TestStoredProcedures(t, harness)
-}
-
-func TestProceduresScriptsPrepared(t *testing.T, harness Harness) {
+func TestStoredProceduresPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.ProcedureLogicTests, true)
 	testScriptTests(t, harness, queries.ProcedureCallTests, true)
 }
@@ -6031,16 +6025,6 @@ func TestStringFunctionsScripts(t *testing.T, harness Harness) {
 
 func TestStringFunctionsScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.StringFunctionsScriptTests, true)
-}
-
-// Deprecated: use TestStringFunctionsScripts.
-func TestStringMatchingScripts(t *testing.T, harness Harness) {
-	TestStringFunctionsScripts(t, harness)
-}
-
-// Deprecated: use TestStringFunctionsScriptsPrepared.
-func TestStringMatchingScriptsPrepared(t *testing.T, harness Harness) {
-	TestStringFunctionsScriptsPrepared(t, harness)
 }
 
 func TestSubqueriesScripts(t *testing.T, harness Harness) {
@@ -6075,34 +6059,12 @@ func TestTupleComparisonsScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.TupleComparisonsScriptTests, true)
 }
 
-// Deprecated: use TestUpdate.
-func TestUpdateRegressionScripts(t *testing.T, harness Harness) {
-	TestUpdate(t, harness)
-}
-
-// Deprecated: use TestUpdateQueriesPrepared.
-func TestUpdateRegressionScriptsPrepared(t *testing.T, harness Harness) {
-	TestUpdateQueriesPrepared(t, harness)
-}
-
 func TestUpdateJoinsScripts(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.UpdateJoinsScriptTests, false)
 }
 
 func TestUpdateJoinsScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.UpdateJoinsScriptTests, true)
-}
-
-// Deprecated: use TestNumericScripts and TestStringFunctionsScripts.
-func TestUUIDScripts(t *testing.T, harness Harness) {
-	TestNumericScripts(t, harness)
-	TestStringFunctionsScripts(t, harness)
-}
-
-// Deprecated: use TestNumericScriptsPrepared and TestStringFunctionsScriptsPrepared.
-func TestUUIDScriptsPrepared(t *testing.T, harness Harness) {
-	TestNumericScriptsPrepared(t, harness)
-	TestStringFunctionsScriptsPrepared(t, harness)
 }
 
 func TestVariablesScripts(t *testing.T, harness Harness) {
