@@ -17,6 +17,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import shutil
 import tarfile
 import tempfile
 
@@ -30,7 +31,7 @@ UPSTREAM_SCRIPTS = {
 }
 ROOT = Path(__file__).resolve().parents[2]
 REPORT = Path(__file__).with_name("report.html")
-REFERENCE_HASHES = {'enginetest/enginetests.go': '1cd137e2d3cd209ebeda0810e860ee0feea85114869b8c8fc16e9183307f8c68', 'enginetest/memory_engine_test.go': '4a86df668b1fcf6a54812882f610467e99ef35fea872577ea194a428f77974d5', 'enginetest/queries/aggregation_script_queries.go': '19e3ad4823b3a344f4b8213cd2c6491aa78c07c47a5f2b397c172ae3a09db137', 'enginetest/queries/alter_table_queries.go': 'ac0c10dceb2a07518e09f200d98d7518aea9ef64970ea36a90ab8c01d40070d6', 'enginetest/queries/auto_increment_script_queries.go': 'bb4a14f7c6e49cb223b9593c49c06042e8b22a30fffa630892fa106b8ecfc4d7', 'enginetest/queries/charset_collation_engine.go': '9b20b8d48d3335b37a5878272157c60c3ff14c024c0a34a4f9469f9bcbeca286', 'enginetest/queries/column_alias_queries.go': None, 'enginetest/queries/column_default_queries.go': '9d44176f01cfef28e679739884bf8447ca6d341a1d59dbb24d93af56dc5ccc06', 'enginetest/queries/complex_index_script_queries.go': 'afdeb1582fd0de2db6e5eb2f215ad5b18e10d5360e73e0cc1ccae81949f2ffbf', 'enginetest/queries/conversions_script_queries.go': '37a9588abdf67fe055b5f5be1b9b340b521d729180caca27673cb52238b78dfb', 'enginetest/queries/create_database_script_queries.go': '10812187f356142e3eaf34d76b23f92947002e6ae66e5a717606c1fe42d919e5', 'enginetest/queries/create_table_queries.go': '68912f442f8ac7133977c732754c09aaf79dd200c550e83ccc9ebcf55f776368', 'enginetest/queries/delete_queries.go': '529960fb6bbe69bcbf89a713b2d8ec2f39602966e3d591fca80a3744355d145e', 'enginetest/queries/descending_indexes_script_queries.go': '0154abcd7f713d45d07e2d4266a01eb6f5c5e865929db039c9c9b8fef95473c0', 'enginetest/queries/drop_database_script_queries.go': None, 'enginetest/queries/drop_table_script_queries.go': None, 'enginetest/queries/enums_and_sets_script_queries.go': '4276b19800691f9c7921f79047604b0c3eb287914ae6eac5e889e526cae2c85b', 'enginetest/queries/expressions_script_queries.go': 'c147c7ef9d7db932b335e98bee77066090594943f5fc018043c0a7bf89b9e574', 'enginetest/queries/foreign_key_queries.go': '811d8a9f2f7bf353e82451da22b897037cb4d975908f3a13cda13a641a1cedba', 'enginetest/queries/foreign_key_resolution_script_queries.go': '4b05a6c3fb9b51a148899492339acb11818c7efaa65cb7cd0e63a41b1d914c92', 'enginetest/queries/foreign_key_types_script_queries.go': '46d99b5e28db84a26aded4b65787708dfca5bb2afb464648900161e47f0696ac', 'enginetest/queries/index_key_types_script_queries.go': '9b34c3dbb32a3b3e5b45b60895422fb8ec245cdd6028e1ef52603cf54e0184f2', 'enginetest/queries/index_prefix_script_queries.go': '83ba20a6554d316fdb1e4487287fab0981b0a3f3c5fc6e7f63ca028eb8cc497b', 'enginetest/queries/index_queries.go': '602e96a9f4a3d153c5c4cd592b02d746a876b60214ed6e9750a424fb06b5f955', 'enginetest/queries/insert_ignore_script_queries.go': '852658acc8a9dc3a87d1a60defa5bc1000ba119f79dd34edd6b73fb851dbbceb', 'enginetest/queries/insert_queries.go': '23f51c435dff678b03d76d836003461bec736335276ee451af555ef7602fa3d4', 'enginetest/queries/join_queries.go': 'd542531faad25fdde1c3af6427ee15352931cd29af162bf5c994f61d55982ad8', 'enginetest/queries/json_scripts.go': 'ddd9fda8b7ef3db3228c111a2d78b8721a005ada392bd593913d62048f043f81', 'enginetest/queries/logic_test_scripts.go': None, 'enginetest/queries/name_resolution_script_queries.go': '2617a20b0936591c7935d50b6abefec0dff30be1318bcd84615d60f488b360de', 'enginetest/queries/numeric_script_queries.go': '4659b59cdf389e4cb12f1cf3deddf1401aa997bc02fe960873813d6eabb1370c', 'enginetest/queries/order_by_group_by_queries.go': None, 'enginetest/queries/ordering_script_queries.go': '63bcee3b817f4ae01e0d66019356303ba3ceef7faa6586e1e2f3ba747b8d9d33', 'enginetest/queries/primary_keys_script_queries.go': 'fa87c4180e67d0d30b36ff1701a15b9fc27f85d88423c861a680b4be382488a7', 'enginetest/queries/procedure_ddl_script_queries.go': 'ba348e1be7d15fbbd5c7cea583cf6d427a69ccefb543266dafe0ffe6dd5f158c', 'enginetest/queries/procedure_queries.go': 'd059e384325b65091c8a4a2fddbe64a13d7a5e39a60283c86ed210cb7a81040e', 'enginetest/queries/script_queries_pruned.go': '4a13851f718e0eb375e2043fdbad910961aeb2ad926e84d273f6239c4798f66f', 'enginetest/queries/session_results_script_queries.go': '2ca585a2e526ccce45a6c3b48354b0d5bc661200675d84f2a1833dd3b3e347b2', 'enginetest/queries/set_operations_script_queries.go': 'c4ee75a4eaf058054cad85bd3e5b29613e21100025d4fc65683edbe38562cb11', 'enginetest/queries/stats_queries.go': 'b5d1f4065720357434514fafc462171321b2ca10c3d6263307315334696392a6', 'enginetest/queries/string_functions_script_queries.go': '2d1be4a104bebbea948e6f238ee18f364c88bd4079c6bff4259cd2a1845d5b57', 'enginetest/queries/string_matching_script_queries.go': None, 'enginetest/queries/subqueries_script_queries.go': 'e34dfb3708c5c00e744e4fd2f941ecb6c301ec6b6a7211be3484955e372f8151', 'enginetest/queries/time_queries.go': '79ef888a609cce82bb5fa6dd6986d12bf61c2f36e2240915d828ca672ce06756', 'enginetest/queries/transactions_script_queries.go': '5d08fce2042291134f818a8c183d3c7ef8753cd755508815fdd963667af49595', 'enginetest/queries/tuple_queries.go': 'a573562a2260ded85d37dea816807e1bfb58c7e8e63bf4522749b35aa8b0ea8b', 'enginetest/queries/update_joins_script_queries.go': 'eb0636743a14dffc3436efdd75884abe7bc10541e191df73adc6885af875d7c6', 'enginetest/queries/update_queries.go': 'f9b5fc7ea7f6e9d06a8e7f33552ee41065e564025bcbac1502af785fb9580d1a', 'enginetest/queries/uuid_script_queries.go': None, 'enginetest/queries/variable_queries.go': '53e0db5315642b0f39bfbccb2fe44f6eec6538d725a2ff306c882239f2445dee', 'enginetest/queries/view_queries.go': '4df08e4e1d46da5cb28b0d2f23ccde0d80ec2648e004851f06138e071cda8aa2', 'enginetest/queries/numeric_error_queries.go': None, 'enginetest/queries/call_asof_queries.go': None, 'enginetest/queries/drop_script_queries.go': 'ddb6089a831b8ca6c71880f1a997c7f2579c59e2ab13306e3a361dbd6a2f1a02'}
+REFERENCE_HASHES = {'enginetest/enginetests.go': '0f39af82df6e12ee00a4350e4aebcb7a0945d154b0cec9f202afc792c2c92486', 'enginetest/memory_engine_test.go': 'de838a9c773c3cf7e405429914799dc134ac335d4235bf59383d0a329551775d', 'enginetest/queries/aggregation_script_queries.go': '19e3ad4823b3a344f4b8213cd2c6491aa78c07c47a5f2b397c172ae3a09db137', 'enginetest/queries/alter_table_queries.go': 'ac0c10dceb2a07518e09f200d98d7518aea9ef64970ea36a90ab8c01d40070d6', 'enginetest/queries/auto_increment_script_queries.go': 'bb4a14f7c6e49cb223b9593c49c06042e8b22a30fffa630892fa106b8ecfc4d7', 'enginetest/queries/charset_collation_engine.go': '9b20b8d48d3335b37a5878272157c60c3ff14c024c0a34a4f9469f9bcbeca286', 'enginetest/queries/column_alias_queries.go': None, 'enginetest/queries/column_default_queries.go': '9d44176f01cfef28e679739884bf8447ca6d341a1d59dbb24d93af56dc5ccc06', 'enginetest/queries/complex_index_script_queries.go': 'afdeb1582fd0de2db6e5eb2f215ad5b18e10d5360e73e0cc1ccae81949f2ffbf', 'enginetest/queries/conversions_script_queries.go': '37a9588abdf67fe055b5f5be1b9b340b521d729180caca27673cb52238b78dfb', 'enginetest/queries/create_database_script_queries.go': '10812187f356142e3eaf34d76b23f92947002e6ae66e5a717606c1fe42d919e5', 'enginetest/queries/create_table_queries.go': '68912f442f8ac7133977c732754c09aaf79dd200c550e83ccc9ebcf55f776368', 'enginetest/queries/delete_queries.go': '529960fb6bbe69bcbf89a713b2d8ec2f39602966e3d591fca80a3744355d145e', 'enginetest/queries/descending_indexes_script_queries.go': '0154abcd7f713d45d07e2d4266a01eb6f5c5e865929db039c9c9b8fef95473c0', 'enginetest/queries/drop_database_script_queries.go': None, 'enginetest/queries/drop_table_script_queries.go': None, 'enginetest/queries/enums_and_sets_script_queries.go': '4276b19800691f9c7921f79047604b0c3eb287914ae6eac5e889e526cae2c85b', 'enginetest/queries/expressions_script_queries.go': 'c147c7ef9d7db932b335e98bee77066090594943f5fc018043c0a7bf89b9e574', 'enginetest/queries/foreign_key_queries.go': '811d8a9f2f7bf353e82451da22b897037cb4d975908f3a13cda13a641a1cedba', 'enginetest/queries/foreign_key_resolution_script_queries.go': '4b05a6c3fb9b51a148899492339acb11818c7efaa65cb7cd0e63a41b1d914c92', 'enginetest/queries/foreign_key_types_script_queries.go': '46d99b5e28db84a26aded4b65787708dfca5bb2afb464648900161e47f0696ac', 'enginetest/queries/index_key_types_script_queries.go': '9b34c3dbb32a3b3e5b45b60895422fb8ec245cdd6028e1ef52603cf54e0184f2', 'enginetest/queries/index_prefix_script_queries.go': '83ba20a6554d316fdb1e4487287fab0981b0a3f3c5fc6e7f63ca028eb8cc497b', 'enginetest/queries/index_queries.go': '602e96a9f4a3d153c5c4cd592b02d746a876b60214ed6e9750a424fb06b5f955', 'enginetest/queries/insert_ignore_script_queries.go': '852658acc8a9dc3a87d1a60defa5bc1000ba119f79dd34edd6b73fb851dbbceb', 'enginetest/queries/insert_queries.go': '23f51c435dff678b03d76d836003461bec736335276ee451af555ef7602fa3d4', 'enginetest/queries/join_queries.go': 'd542531faad25fdde1c3af6427ee15352931cd29af162bf5c994f61d55982ad8', 'enginetest/queries/json_scripts.go': 'ddd9fda8b7ef3db3228c111a2d78b8721a005ada392bd593913d62048f043f81', 'enginetest/queries/logic_test_scripts.go': None, 'enginetest/queries/name_resolution_script_queries.go': '2617a20b0936591c7935d50b6abefec0dff30be1318bcd84615d60f488b360de', 'enginetest/queries/numeric_script_queries.go': '4659b59cdf389e4cb12f1cf3deddf1401aa997bc02fe960873813d6eabb1370c', 'enginetest/queries/order_by_group_by_queries.go': None, 'enginetest/queries/ordering_script_queries.go': '63bcee3b817f4ae01e0d66019356303ba3ceef7faa6586e1e2f3ba747b8d9d33', 'enginetest/queries/primary_keys_script_queries.go': 'fa87c4180e67d0d30b36ff1701a15b9fc27f85d88423c861a680b4be382488a7', 'enginetest/queries/procedure_ddl_script_queries.go': 'ba348e1be7d15fbbd5c7cea583cf6d427a69ccefb543266dafe0ffe6dd5f158c', 'enginetest/queries/procedure_queries.go': 'd059e384325b65091c8a4a2fddbe64a13d7a5e39a60283c86ed210cb7a81040e', 'enginetest/queries/script_queries_pruned.go': '4a13851f718e0eb375e2043fdbad910961aeb2ad926e84d273f6239c4798f66f', 'enginetest/queries/session_results_script_queries.go': '2ca585a2e526ccce45a6c3b48354b0d5bc661200675d84f2a1833dd3b3e347b2', 'enginetest/queries/set_operations_script_queries.go': 'c4ee75a4eaf058054cad85bd3e5b29613e21100025d4fc65683edbe38562cb11', 'enginetest/queries/stats_queries.go': 'b5d1f4065720357434514fafc462171321b2ca10c3d6263307315334696392a6', 'enginetest/queries/string_functions_script_queries.go': '2d1be4a104bebbea948e6f238ee18f364c88bd4079c6bff4259cd2a1845d5b57', 'enginetest/queries/string_matching_script_queries.go': None, 'enginetest/queries/subqueries_script_queries.go': 'e34dfb3708c5c00e744e4fd2f941ecb6c301ec6b6a7211be3484955e372f8151', 'enginetest/queries/time_queries.go': '79ef888a609cce82bb5fa6dd6986d12bf61c2f36e2240915d828ca672ce06756', 'enginetest/queries/transactions_script_queries.go': '5d08fce2042291134f818a8c183d3c7ef8753cd755508815fdd963667af49595', 'enginetest/queries/tuple_queries.go': 'a573562a2260ded85d37dea816807e1bfb58c7e8e63bf4522749b35aa8b0ea8b', 'enginetest/queries/update_joins_script_queries.go': 'eb0636743a14dffc3436efdd75884abe7bc10541e191df73adc6885af875d7c6', 'enginetest/queries/update_queries.go': 'f9b5fc7ea7f6e9d06a8e7f33552ee41065e564025bcbac1502af785fb9580d1a', 'enginetest/queries/uuid_script_queries.go': None, 'enginetest/queries/variable_queries.go': '53e0db5315642b0f39bfbccb2fe44f6eec6538d725a2ff306c882239f2445dee', 'enginetest/queries/view_queries.go': '4df08e4e1d46da5cb28b0d2f23ccde0d80ec2648e004851f06138e071cda8aa2', 'enginetest/queries/numeric_error_queries.go': None, 'enginetest/queries/call_asof_queries.go': None, 'enginetest/queries/drop_script_queries.go': '6ceb12c9106b45ef240f5e0c06537808dc8c465a8a3a22328b48bd727ed65be7'}
 
 # Go's parser preserves byte offsets, including UTF-8 and raw-string whitespace.
 GO_INVENTORY = r'''
@@ -152,6 +153,36 @@ func main() {
 				results = append(results, c)
 			}
 		}
+
+		// One original script now lives directly beside TestDropTable's cases.
+		for _, declaration := range file.Decls {
+			fn, ok := declaration.(*ast.FuncDecl)
+			if !ok || fn.Name.Name != "testDropTable" {
+				continue
+			}
+			ast.Inspect(fn.Body, func(node ast.Node) bool {
+				literal, ok := node.(*ast.CompositeLit)
+				if !ok { return true }
+				kind, ok := literal.Type.(*ast.SelectorExpr)
+				if !ok || kind.Sel.Name != "ScriptTest" { return true }
+				entry := Entry{Text: string(data[offset(literal.Lbrace):offset(literal.End())])}
+				for _, element := range literal.Elts {
+					field, ok := element.(*ast.KeyValueExpr)
+					if !ok { continue }
+					key, ok := field.Key.(*ast.Ident)
+					if !ok || key.Name != "Name" { continue }
+					entry.Name, err = strconv.Unquote(field.Value.(*ast.BasicLit).Value)
+					if err != nil { panic(err) }
+				}
+				results = append(results, Collection{
+					File: rel, Name: fn.Name.Name, Kind: "ScriptTest",
+					Start: offset(literal.Lbrace), End: offset(literal.End()),
+					Open: offset(literal.Lbrace), Close: offset(literal.Rbrace),
+					Entries: []Entry{entry},
+				})
+				return false
+			})
+		}
 		return nil
 	})
 	if err != nil {
@@ -255,7 +286,9 @@ def verify():
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_bytes(files.extractfile(member).read())
         baseline = baseline / "enginetest/queries"
-        current = ROOT / "enginetest/queries"
+        current = temporary / "current"
+        shutil.copytree(ROOT / "enginetest/queries", current)
+        shutil.copyfile(ROOT / "enginetest/enginetests.go", current / "enginetests.go")
         assert (current / "script_queries.go").read_bytes() == (
             baseline / "script_queries.go"
         ).read_bytes(), "The restored original file changed"
@@ -439,7 +472,7 @@ def verify():
                 continue
             if variable in ("ProcedureLogicTests", "ProcedureCallTests"):
                 ordinary = engine.split("func TestStoredProcedures(", 1)[1].split("\nfunc ", 1)[0]
-                prepared = engine.split("func TestProceduresScriptsPrepared(", 1)[1].split("\nfunc ", 1)[0]
+                prepared = engine.split("func TestStoredProceduresPrepared(", 1)[1].split("\nfunc ", 1)[0]
                 assert "range queries." + variable in ordinary
                 assert "testScriptTests(t, harness, queries." + variable + ", true)" in prepared
                 assert "func TestStoredProcedures(t *testing.T)" in memory
@@ -453,12 +486,25 @@ def verify():
                 assert "func TestUpdate(t *testing.T)" in memory
                 assert "UpdateRegressionScriptTests" not in engine
                 continue
+            if variable == "testDropTable":
+                for name, mode in (("TestDropTable", "false"), ("TestDropTablePrepared", "true")):
+                    method = engine.split("func " + name + "(", 1)[1].split("\nfunc ", 1)[0]
+                    assert "testDropTable(t, harness, " + mode + ")" in method
+                    assert "func " + name + "(t *testing.T)" in memory
+                method = engine.split("func testDropTable(", 1)[1].split("\nfunc ", 1)[0]
+                assert "TestScript(t, harness, script)" in method
+                assert "TestScriptPrepared(t, harness, script)" in method
+                assert "DropTableScriptTests" not in engine
+                continue
             for prepared in ("false", "true"):
                 matches = [name for name, var, mode in wrappers
                            if var == variable and mode == prepared]
                 assert len(matches) == 1, (variable, prepared, "runner missing")
                 if prepared == "false":
                     assert memory.count("func " + matches[0] + "(") == 1, matches[0]
+        obsolete_methods = ['TestInsertRegressionScripts', 'TestInsertRegressionScriptsPrepared', 'TestJSONFunctionsScripts', 'TestJSONFunctionsScriptsPrepared', 'TestProceduresScripts', 'TestProceduresScriptsPrepared', 'TestStringMatchingScripts', 'TestStringMatchingScriptsPrepared', 'TestUpdateRegressionScripts', 'TestUpdateRegressionScriptsPrepared', 'TestUUIDScripts', 'TestUUIDScriptsPrepared', 'TestDropTableScripts', 'TestDropTableScriptsPrepared']
+        for name in obsolete_methods:
+            assert "func " + name + "(" not in engine, (name, "redundant runner retained")
         assert "queries.ScriptTests" not in engine, "Restored aggregate must stay unused"
         for original_id, (_, _, variable) in parsed.destinations.items():
             if original_id.startswith("BrokenScriptTests["):
@@ -481,7 +527,7 @@ def verify():
         ).read_bytes(), "Duplicate regexp type declaration"
         files = {c["file"] for c in after}
         lengths = {f: len((current / f).read_bytes().splitlines()) for f in files
-                   if f in {c["file"] for c in destinations}
+                   if (f != "enginetests.go" and f in {c["file"] for c in destinations})
                    or f in ("complex_index_script_queries.go", "index_prefix_script_queries.go",
                             "procedure_ddl_script_queries.go")}
         assert all(n <= 3000 for n in lengths.values()), lengths
