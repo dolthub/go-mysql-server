@@ -2718,7 +2718,10 @@ var FunctionQueryTests = []QueryTest{
 		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 	},
 	{
-		Query: "select cast(8385959.1 as time(6));",
+		// The server engine test harness round-trips this type as a string, and MySQL's rules are inconsistent
+		// regarding what is a valid TIME depending on if the original type is a number or string.
+		SkipServerEngine: true,
+		Query:            "select cast(8385959.1 as time(6));",
 		Expected: []sql.Row{
 			{types.Timespan(3020399_100000)},
 		},
