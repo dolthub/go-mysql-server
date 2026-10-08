@@ -241,7 +241,7 @@ func (r *Replace) Type(ctx *sql.Context) sql.Type {
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (r *Replace) CollationCoercibility(ctx *sql.Context) (sql.CollationID, byte) {
-	return sql.ResolveCoercibilityExpressions(ctx, r.str, r.fromStr, r.toStr)
+	return sql.ResolveCoercibilityExpressions(ctx, 0, r.str, r.fromStr, r.toStr)
 }
 
 // WithChildren implements the Expression interface.

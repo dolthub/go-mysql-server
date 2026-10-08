@@ -102,12 +102,10 @@ func ResolveCoercibility(leftCollation CollationID, leftCoercibility byte, right
 		// TODO(#3827): Implement full charset superset conversion
 		// (MY_COLL_ALLOW_SUPERSET_CONV). The current MaxLength check
 		// is a heuristic.
-		if leftCoercibility == rightCoercibility {
-			if leftCharset.MaxLength() > 1 && rightCharset.MaxLength() == 1 {
-				return leftCollation, leftCoercibility
-			} else if rightCharset.MaxLength() > 1 && leftCharset.MaxLength() == 1 {
-				return rightCollation, rightCoercibility
-			}
+		if leftCoercibility <= rightCoercibility && leftCharset.MaxLength() > rightCharset.MaxLength() {
+			return leftCollation, leftCoercibility
+		} else if rightCoercibility <= leftCoercibility && rightCharset.MaxLength() > leftCharset.MaxLength() {
+			return rightCollation, rightCoercibility
 		}
 
 		// TODO(#3826): Incompatible character sets should error
@@ -176,24 +174,42 @@ func GetCoercibility(ctx *Context, nodeOrExpr interface{}) (collation CollationI
 	return collation, coercibility
 }
 
-// ResolveCoercibilityExpressions returns the combined collation and
-// coercibility across a slice of expressions.
-//
-// It evaluates each expression in order and reduces them using
-// ResolveCoercibility. Empty slices return Collation_binary with
-// CoercibilityIgnorable.
-func ResolveCoercibilityExpressions(ctx *Context, exprs ...Expression) (CollationID, byte) {
+// CoercibilityFlags configures coercibility resolution.
+type CoercibilityFlags uint8
+
+const (
+	// CoercibilityAllowNumericConv coerces CoercibilityNumeric operands to the
+	// connection collation when all operands are numeric.
+	CoercibilityAllowNumericConv CoercibilityFlags = 1 << iota
+)
+
+// Has reports whether |flag| is set in |f|.
+func (f CoercibilityFlags) Has(flag CoercibilityFlags) bool {
+	return f&flag != 0
+}
+
+// ResolveCoercibilityExpressions reduces |exprs| to a single collation and
+// coercibility, applying any |flags|. Empty slices return Collation_binary
+// with CoercibilityIgnorable.
+func ResolveCoercibilityExpressions(ctx *Context, flags CoercibilityFlags, exprs ...Expression) (CollationID, byte) {
 	if len(exprs) == 0 {
 		return Collation_binary, CoercibilityIgnorable
 	}
-	// TODO(#3829): Support MY_COLL_ALLOW_NUMERIC_CONV in string
-	// functions when all arguments are numeric.
+
 	collation, coercibility := GetCoercibility(ctx, exprs[0])
 	for i := 1; i < len(exprs); i++ {
 		nextCollation, nextCoercibility := GetCoercibility(ctx, exprs[i])
 		collation, coercibility = ResolveCoercibility(
 			collation, coercibility, nextCollation, nextCoercibility,
 		)
+	}
+	if flags.Has(CoercibilityAllowNumericConv) && coercibility == CoercibilityNumeric {
+		if ctx != nil && ctx.Session != nil {
+			collation = ctx.GetCollation()
+		} else {
+			collation = Collation_Default
+		}
+		coercibility = CoercibilityCoercible
 	}
 	return collation, coercibility
 }

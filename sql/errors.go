@@ -900,6 +900,10 @@ var (
 	// ErrInvalidJson is returned when a JSON string doesn't represent valid JSON.
 	ErrInvalidJson = errors.NewKind("Invalid JSON text: %s")
 
+	// ErrInvalidJsonCharset is returned when creating a JSON value from a
+	// string with an invalid character set.
+	ErrInvalidJsonCharset = newMySQLKind("Cannot create a JSON value from a string with CHARACTER SET '%s'.", mysql.ERInvalidJSONCharset, "22032")
+
 	// ErrNoAutoIncrementCol is returned when there is no auto increment column defined on a table.
 	ErrNoAutoIncrementCol = fmt.Errorf("this table has no AUTO_INCREMENT columns")
 
