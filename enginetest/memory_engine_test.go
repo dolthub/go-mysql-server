@@ -193,30 +193,30 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "nested procedure inserts",
+			Name: "Parse table name as column",
 			SetUpScript: []string{
-				"create table t1 (i int);",
-				"create table t2 (j int);",
-				"create procedure p1(in x int) begin insert into t1 values (1); end;",
-				"create procedure p2(in y int) begin insert into t2 values (1); call p1(y); end;",
-				"create procedure p3(in z int) begin call p1(z); insert into t2 values (1); end;",
-				"set autocommit = 0;",
+				`CREATE TABLE test (pk INT PRIMARY KEY, v1 VARCHAR(255));`,
+				`INSERT INTO test VALUES (1, 'a'), (2, 'b');`,
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "call p2(1);",
-					Expected: []sql.Row{
-						{types.NewOkResult(1)},
-					},
+					Query:    "SELECT temporarytesting(t) FROM test AS t;",
+					Expected: []sql.Row{},
 				},
 				{
-					Query: "select (select count(*) from t1), (select count(*) from t2);",
-					Expected: []sql.Row{
-						{1, 1},
-					},
+					Query:    "SELECT temporarytesting(test) FROM test;",
+					Expected: []sql.Row{},
+				},
+				{
+					Query:    "SELECT temporarytesting(pk, test) FROM test;",
+					Expected: []sql.Row{},
+				},
+				{
+					Query:    "SELECT temporarytesting(v1, test, pk) FROM test;",
+					Expected: []sql.Row{},
 				},
 			},
 		},
