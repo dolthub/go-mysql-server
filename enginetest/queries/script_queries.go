@@ -10611,6 +10611,28 @@ where
 		},
 	},
 	{
+		Name: "INSTR with text columns and collations",
+		SetUpScript: []string{
+			`CREATE TABLE instr_text (
+				id INT PRIMARY KEY,
+				hay LONGTEXT COLLATE utf8mb4_0900_ai_ci,
+				needle LONGTEXT COLLATE utf8mb4_bin,
+				cs_hay LONGTEXT COLLATE utf8mb4_0900_as_cs)`,
+			`INSERT INTO instr_text VALUES
+				(1, 'foobar', 'BAR', 'foobar'),
+				(2, 'foobar', 'xyz', 'foobar'),
+				(3, 'ébar', 'bar', 'ébar'),
+				(4, REPEAT('a', 20000), CONCAT(REPEAT('a', 19999), 'b'), REPEAT('a', 20000))`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT id, INSTR(hay, needle), INSTR(cs_hay, needle)
+					FROM instr_text ORDER BY id`,
+				Expected: []sql.Row{{1, 4, 0}, {2, 0, 0}, {3, 2, 2}, {4, 0, 0}},
+			},
+		},
+	},
+	{
 		Name: "tinyint column does not restrict IF or IFNULL output",
 		// https://github.com/dolthub/dolt/issues/9321
 		SetUpScript: []string{
