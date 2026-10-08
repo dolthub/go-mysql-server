@@ -3158,12 +3158,30 @@ var FunctionQueryTests = []QueryTest{
 		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 	},
 	{
-		// TODO: what the fuck
-		Skip:  true,
+		Query: "select cast('2001-02-03 10:20:30' as time);",
+		Expected: []sql.Row{
+			{types.Timespan(37230_000000)},
+		},
+	},
+	{
 		Query: "select cast('01-02-03 10:20:30' as time);",
 		Expected: []sql.Row{
 			{types.Timespan(37230_000000)},
 		},
+	},
+	{
+		Query: "select cast('01!02!03 10:20:30' as time);",
+		Expected: []sql.Row{
+			{types.Timespan(37230_000000)},
+		},
+	},
+	{
+		Query: "select cast('01a02-03 10:20:30' as time);",
+		Expected: []sql.Row{
+			{types.Timespan(1_000000)},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 	},
 
 	// Additional JSON Function Tests

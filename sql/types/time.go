@@ -644,6 +644,18 @@ func (t TimespanType_) parseTime(origStr string) (any, error) {
 	minStr, str = parseTimePart(str)
 	secStr, str = parseTimePart(str)
 	if len(minStr) == 0 && len(secStr) == 0 {
+		if len(dtStr) >= 12 {
+			var res any
+			res, err = t.parseTimeDatetime(dtStr)
+			if err == nil {
+				if didTrim {
+					err = sql.ErrTruncatedIncorrect.New(t.String(), origStr)
+				}
+				return res, err
+			}
+			err = nil
+		}
+
 		res, ok := t.parseTimeNoDelim(isNeg, trimStr)
 		if !ok {
 			err = sql.ErrTruncatedIncorrect.New(t.String(), origStr)
