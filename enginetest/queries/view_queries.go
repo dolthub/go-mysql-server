@@ -681,6 +681,35 @@ CREATE TABLE tab1 (
 			},
 		},
 	},
+	{
+		Name:    "views that reference each other",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE bt (a BIGINT);",
+			"CREATE VIEW va AS SELECT * FROM bt;",
+			"CREATE VIEW vc AS SELECT * FROM va;",
+			"DROP TABLE bt;",
+			"RENAME TABLE vc TO bt;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "SELECT * FROM va;",
+				ExpectedErrStr: "`mydb`.`va` contains view recursion",
+			},
+			{
+				Query:          "SELECT * FROM bt;",
+				ExpectedErrStr: "`mydb`.`bt` contains view recursion",
+			},
+			{
+				Query:       "SELECT * FROM (SELECT * FROM va) s;",
+				ExpectedErr: sql.ErrViewRecursion,
+			},
+			{
+				Query:       "CREATE VIEW vz AS SELECT * FROM va;",
+				ExpectedErr: sql.ErrViewRecursion,
+			},
+		},
+	},
 }
 
 var ViewCreateInSubroutineTests = []ScriptTest{

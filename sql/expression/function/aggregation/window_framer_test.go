@@ -17,12 +17,14 @@ package aggregation
 import (
 	"errors"
 	"io"
+	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/sorters"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -294,6 +296,87 @@ func TestWindowRangeFramers(t *testing.T) {
 				}
 			}
 			require.Equal(t, tt.Expected, res)
+		})
+	}
+}
+
+// TestRangeFramerNullOrdering checks that CURRENT ROW frames include exactly the current row's peers.
+func TestRangeFramerNullOrdering(t *testing.T) {
+	// NullOrdering sets NULL's comparison rank; descending order reverses its placement.
+	tests := []struct {
+		name           string
+		order          sql.SortOrder
+		nullOrdering   sql.NullOrdering
+		expectedRows   sql.WindowBuffer
+		expectedFrames []sql.WindowInterval
+	}{
+		{
+			name:         "ascending with NULL ranked first",
+			order:        sql.Ascending,
+			nullOrdering: sql.NullsFirst,
+			expectedRows: sql.WindowBuffer{{nil}, {nil}, {int64(1)}},
+			expectedFrames: []sql.WindowInterval{
+				{Start: 0, End: 2},
+				{Start: 0, End: 2},
+				{Start: 2, End: 3},
+			},
+		},
+		{
+			name:         "ascending with NULL ranked last",
+			order:        sql.Ascending,
+			nullOrdering: sql.NullsLast,
+			expectedRows: sql.WindowBuffer{{int64(1)}, {nil}, {nil}},
+			expectedFrames: []sql.WindowInterval{
+				{Start: 0, End: 1},
+				{Start: 1, End: 3},
+				{Start: 1, End: 3},
+			},
+		},
+		{
+			name:         "descending with NULL ranked first",
+			order:        sql.Descending,
+			nullOrdering: sql.NullsFirst,
+			expectedRows: sql.WindowBuffer{{int64(1)}, {nil}, {nil}},
+			expectedFrames: []sql.WindowInterval{
+				{Start: 0, End: 1},
+				{Start: 1, End: 3},
+				{Start: 1, End: 3},
+			},
+		},
+		{
+			name:         "descending with NULL ranked last",
+			order:        sql.Descending,
+			nullOrdering: sql.NullsLast,
+			expectedRows: sql.WindowBuffer{{nil}, {nil}, {int64(1)}},
+			expectedFrames: []sql.WindowInterval{
+				{Start: 0, End: 2},
+				{Start: 0, End: 2},
+				{Start: 2, End: 3},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := sql.NewEmptyContext()
+			expr := expression.NewGetField(0, types.Int64, "k", true)
+			window := &sql.WindowDefinition{OrderBy: sql.SortConditions{{Expr: expr, Order: tt.order, NullOrdering: tt.nullOrdering}}}
+			buffer := sql.WindowBuffer{{nil}, {int64(1)}, {nil}}
+			sorter := sorters.NewRowSorterWithRows(ctx, window.OrderBy, buffer)
+			sort.Stable(sorter)
+			require.NoError(t, sorter.GetError())
+			require.Equal(t, tt.expectedRows, buffer)
+
+			framer, err := NewRangeCurrentRowToCurrentRowFramer(dummyFrame{}, window)
+			require.NoError(t, err)
+			framer, err = framer.NewFramer(sql.WindowInterval{Start: 0, End: len(buffer)})
+			require.NoError(t, err)
+			// Each frame is [Start, End): NULL rows include both NULL peers; 1 includes only itself.
+			for row, want := range tt.expectedFrames {
+				got, err := framer.Next(ctx, buffer)
+				require.NoError(t, err)
+				require.Equal(t, want, got, "frame for row %d", row)
+			}
 		})
 	}
 }

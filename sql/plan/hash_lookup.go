@@ -144,7 +144,7 @@ func (n *HashLookup) GetHashKey(ctx *sql.Context, e sql.Expression, row sql.Row)
 		return nil, sql.InRange, err
 	}
 	if et, ok := e.Type(ctx).(sql.ExtendedType); ok {
-		key, _, err = et.ConvertToType(ctx, n.CompareType.(sql.ExtendedType), key, 'i')
+		key, _, err = n.CompareType.(sql.ExtendedType).ConvertToType(ctx, et, key, 'i')
 	} else {
 		key, _, err = n.CompareType.Convert(ctx, key)
 	}
