@@ -1035,6 +1035,21 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
+		Name: "values and rows",
+		SetUpScript: []string{
+			"CREATE TABLE xy (x INT PRIMARY KEY, y INT)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// Syntax error
+				Query: "INSERT INTO xy (VALUES ROW(1, 1))",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/7322
 		Name: "issue 7322: values expression is subquery",
 		SetUpScript: []string{

@@ -1944,21 +1944,6 @@ var SQLLogicJoinTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "values and rows",
-		SetUpScript: []string{
-			"CREATE TABLE xy (x INT PRIMARY KEY, y INT)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				// Syntax error
-				Query: "INSERT INTO xy (VALUES ROW(1, 1))",
-				Expected: []sql.Row{
-					{types.NewOkResult(1)},
-				},
-			},
-		},
-	},
-	{
 		Name: "using join",
 		SetUpScript: []string{
 			"CREATE TABLE abcd (a INT, b INT, c INT, d INT);",
