@@ -6093,12 +6093,16 @@ func TestUpdateJoinsScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.UpdateJoinsScriptTests, true)
 }
 
+// Deprecated: use TestNumericScripts and TestStringFunctionsScripts.
 func TestUUIDScripts(t *testing.T, harness Harness) {
-	testScriptTests(t, harness, queries.UUIDScriptTests, false)
+	TestNumericScripts(t, harness)
+	TestStringFunctionsScripts(t, harness)
 }
 
+// Deprecated: use TestNumericScriptsPrepared and TestStringFunctionsScriptsPrepared.
 func TestUUIDScriptsPrepared(t *testing.T, harness Harness) {
-	testScriptTests(t, harness, queries.UUIDScriptTests, true)
+	TestNumericScriptsPrepared(t, harness)
+	TestStringFunctionsScriptsPrepared(t, harness)
 }
 
 func TestVariablesScripts(t *testing.T, harness Harness) {
