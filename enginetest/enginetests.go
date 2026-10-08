@@ -5999,12 +5999,14 @@ func TestPrimaryKeysScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.PrimaryKeysScriptTests, true)
 }
 
+// Deprecated: use TestStoredProcedures.
 func TestProceduresScripts(t *testing.T, harness Harness) {
-	testScriptTests(t, harness, queries.ProceduresScriptTests, false)
+	TestStoredProcedures(t, harness)
 }
 
 func TestProceduresScriptsPrepared(t *testing.T, harness Harness) {
-	testScriptTests(t, harness, queries.ProceduresScriptTests, true)
+	testScriptTests(t, harness, queries.ProcedureLogicTests, true)
+	testScriptTests(t, harness, queries.ProcedureCallTests, true)
 }
 
 func TestSessionResultsScripts(t *testing.T, harness Harness) {
