@@ -621,7 +621,6 @@ func parseMicros(str string) (string, string) {
 		}
 	}
 	return str[:idx], str[idx:]
-	//return str[:min(idx, MaxDatetimePrecision+2)], str[idx:]
 }
 
 // parseDatetime parses a Datetime according to MySQL rules.

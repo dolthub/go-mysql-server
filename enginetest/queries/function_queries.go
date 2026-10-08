@@ -2934,8 +2934,6 @@ var FunctionQueryTests = []QueryTest{
 			// TODO: this should be negative zero
 			{types.Timespan(0)},
 		},
-		// TODO: https://github.com/dolthub/dolt/issues/11750
-		SkipWarnings:          true,
 		ExpectedWarningsCount: 1,
 		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 	},
@@ -2945,8 +2943,6 @@ var FunctionQueryTests = []QueryTest{
 			// TODO: this should be negative zero
 			{types.Timespan(0)},
 		},
-		// TODO: https://github.com/dolthub/dolt/issues/11750
-		SkipWarnings:          true,
 		ExpectedWarningsCount: 1,
 		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 	},
@@ -2990,8 +2986,6 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{
 			{types.Timespan(-45296_000000)},
 		},
-		// TODO: https://github.com/dolthub/dolt/issues/11
-		SkipWarnings:          true,
 		ExpectedWarningsCount: 1,
 		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 	},
@@ -3050,6 +3044,126 @@ var FunctionQueryTests = []QueryTest{
 		},
 		ExpectedWarningsCount: 1,
 		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/10000
+		Query: "select cast('12:23 a' as time);",
+		Expected: []sql.Row{
+			{types.Timespan(44580_000000)},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/10000
+		Query: "select cast('12:23:18 a' as time);",
+		Expected: []sql.Row{
+			{types.Timespan(44598_000000)},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/10000
+		Query: "select cast('12:23:12abc' as time);",
+		Expected: []sql.Row{
+			{types.Timespan(44592_000000)},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/10000
+		Query: "select cast('12:23:12 abc' as time);",
+		Expected: []sql.Row{
+			{nil},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/10000
+		Query: "select cast('12:34:21:asdf' as time);",
+		Expected: []sql.Row{
+			{types.Timespan(45261_000000)},
+		},
+		// TODO: https://github.com/dolthub/dolt/issues/11750
+		SkipWarnings:          true,
+		ExpectedWarningsCount: 2,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/10000
+		Query: "select cast('12:34:21 :asdf' as time);",
+		Expected: []sql.Row{
+			{nil},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('1:2:3 abcdef' as time);",
+		Expected: []sql.Row{
+			{types.Timespan(0)},
+		},
+		// TODO: https://github.com/dolthub/dolt/issues/11750
+		SkipWarnings:          true,
+		ExpectedWarningsCount: 2,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('1:2:3      f' as time);",
+		Expected: []sql.Row{
+			{types.Timespan(0)},
+		},
+		// TODO: https://github.com/dolthub/dolt/issues/11750
+		SkipWarnings:          true,
+		ExpectedWarningsCount: 2,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('               1:2:3 ' as time);",
+		Expected: []sql.Row{
+			{types.Timespan(3723_000000)},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('        -       1:2:3 ' as time);",
+		Expected: []sql.Row{
+			{types.Timespan(0)},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('1:2:3. abcde' as time);",
+		Expected: []sql.Row{
+			{types.Timespan(0)},
+		},
+		// TODO: https://github.com/dolthub/dolt/issues/11750
+		SkipWarnings:          true,
+		ExpectedWarningsCount: 2,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('1:2:3.0 abcd' as time);",
+		Expected: []sql.Row{
+			{types.Timespan(3723_000000)},
+		},
+		// TODO: https://github.com/dolthub/dolt/issues/11750
+		SkipWarnings:          true,
+		ExpectedWarningsCount: 2,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		// TODO: what the fuck
+		Skip:  true,
+		Query: "select cast('01-02-03 10:20:30' as time);",
+		Expected: []sql.Row{
+			{types.Timespan(37230_000000)},
+		},
 	},
 
 	// Additional JSON Function Tests

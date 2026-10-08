@@ -583,6 +583,21 @@ func trimWhitespaces(str string) (string, bool) {
 	return "", true
 }
 
+func (t TimespanType_) parseTimeDatetime(str string) (any, error) {
+	dtType := datetimeType{
+		baseType:  query.Type_DATETIME,
+		precision: t.precision,
+	}
+	val, _, err := dtType.parseDatetime(str)
+	dt, isDt := val.(time.Time)
+	if !isDt {
+		return nil, err
+	}
+	hours, mins, secs := dt.Clock()
+	nanos := int64(dt.Nanosecond())
+	return t.makeTime(false, int64(hours), int64(mins), int64(secs), nanos), err
+}
+
 func (t TimespanType_) parseTime(origStr string) (any, error) {
 	if len(origStr) == 0 {
 		return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
@@ -604,6 +619,7 @@ func (t TimespanType_) parseTime(origStr string) (any, error) {
 		}
 	}
 
+	var dtStr = str
 	str, didTrim = trimWhitespaces(str)
 	if didTrim {
 		err = sql.ErrTruncatedIncorrect.New(t.String(), origStr)
@@ -640,6 +656,27 @@ func (t TimespanType_) parseTime(origStr string) (any, error) {
 	}
 
 	microStr, str = parseMicros(str)
+
+	// MySQL Special Case
+	// If everything so far is a valid delimited TIME without microseconds followed by a MySQL Whitespace AND the
+	// trimmed string is greater than or equal to 12 in length, parse as a datetime string.
+	if len(str) > 0 && isMySQLWhitespace(rune(str[0])) &&
+		len(hourStr) > 0 &&
+		len(minStr) > 0 &&
+		len(secStr) > 0 &&
+		len(microStr) <= 1 &&
+		len(dtStr) >= 12 {
+		var res any
+		res, err = t.parseTimeDatetime(dtStr)
+		if err != nil {
+			return res, err
+		}
+		if didTrim {
+			err = sql.ErrTruncatedIncorrect.New(t.String(), origStr)
+		}
+		return res, err
+	}
+
 	hours, mins, secs, micros, ok := t.parseTimeParts(hourStr, minStr, secStr, microStr)
 	if !ok || mins > MaxMinute || secs > MaxSecond {
 		return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
@@ -690,7 +727,7 @@ func (t TimespanType_) parseTimeParts(hourStr, minStr, secStr, microStr string) 
 			t.precision == MaxDatetimePrecision &&
 				len(microStr) > MaxDatetimePrecision+1 &&
 				microStr[len(microStr)-1] < '5' {
-			microStr = microStr[:MaxDatetimePrecision+1]
+			microStr = microStr[:min(len(microStr), MaxDatetimePrecision+1)]
 		}
 
 		var microsf64 float64
