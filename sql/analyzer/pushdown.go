@@ -310,13 +310,13 @@ func pushdownFiltersUnderSubqueryAlias(ctx *sql.Context, a *Analyzer, sa *plan.S
 	if len(handled) == 0 {
 		return sa, transform.SameTree, nil
 	}
-	filters.markFiltersHandled(handled...)
 	// |handled| is in terms of the parent schema, and in particular the
 	// |Source| is the alias name. Rewrite it to refer to the |sa.Child|
 	// schema instead.
-	expressionsForChild := make([]sql.Expression, len(handled))
-	var err error
-	for i, h := range handled {
+	expressionsForChild := make([]sql.Expression, 0, len(handled))
+	pushedFilters := make([]sql.Expression, 0, len(handled))
+	for _, h := range handled {
+		var correlated sql.ColSet
 		var tf transform.ExprFunc
 		tf = func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			// If a filter contains a reference to a projection alias, pushing the filter will move it below the
@@ -331,22 +331,39 @@ func pushdownFiltersUnderSubqueryAlias(ctx *sql.Context, a *Analyzer, sa *plan.S
 				gf, ok := sa.ScopeMapping[gt.Id()]
 				if !ok {
 					// The GetField must be referencing an outer or lateral scope.
-					// We need to add this to the subquery alias's list of correlated columns
-					sa.Correlated.Add(gt.Id())
-					// There now may be a reference to a lateral scope, so we mark the alias as lateral just in case.
-					// This shouldn't break anything, but it might inhibit optimizations that check this.
-					sa.IsLateral = true
+					// Record its correlation only if this predicate is pushed.
+					correlated.Add(gt.Id())
 					return e, transform.NewTree, nil
 				}
 				return gf, transform.NewTree, nil
 			}
 			return e, transform.SameTree, nil
 		}
-		expressionsForChild[i], _, err = transform.Expr(ctx, h, tf)
+		childExpression, _, err := transform.Expr(ctx, h, tf)
 		if err != nil {
 			return sa, transform.SameTree, err
 		}
+		// A predicate on an SRF output must consume the rows expanded by the projection.
+		// Substituting the SRF would instead evaluate its iterator as a scalar value. Check
+		// expressions directly: IncludesNestedIters may not be set yet at this analyzer stage.
+		if transform.InspectExpr(ctx, childExpression, func(ctx *sql.Context, e sql.Expression) bool {
+			rowIter, ok := e.(sql.RowIterExpression)
+			return ok && rowIter.ReturnsRowIter()
+		}) {
+			continue
+		}
+		if !correlated.Empty() {
+			sa.Correlated.UnionWith(correlated)
+			// A pushed predicate may now reference a lateral scope.
+			sa.IsLateral = true
+		}
+		expressionsForChild = append(expressionsForChild, childExpression)
+		pushedFilters = append(pushedFilters, h)
 	}
+	if len(pushedFilters) == 0 {
+		return sa, transform.SameTree, nil
+	}
+	filters.markFiltersHandled(pushedFilters...)
 
 	n, err := sa.WithChildren(ctx, plan.NewFilter(ctx, expression.JoinAnd(expressionsForChild...), sa.Child))
 	if err != nil {
