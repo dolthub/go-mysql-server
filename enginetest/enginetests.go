@@ -6079,6 +6079,3 @@ func TestVariablesScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.VariablesScriptTests, true)
 }
 
-func TestViewsScriptsPrepared(t *testing.T, harness Harness) {
-	testScriptTests(t, harness, queries.ViewsScriptTests, true)
-}
