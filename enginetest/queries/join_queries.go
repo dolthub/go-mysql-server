@@ -20,6 +20,10 @@ import (
 
 var JoinQueryTests = []QueryTest{
 	{
+		Query:    "SELECT COUNT(*) FROM " + selfJoin("mytable", 64),
+		Expected: []sql.Row{{3}},
+	},
+	{
 		Query: "select ab.* from ab join pq on a = p where b = (select y from xy where y in (select v from uv where v = b)) order by a;",
 		Expected: []sql.Row{
 			{0, 2},
