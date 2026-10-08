@@ -16,6 +16,7 @@ package planbuilder
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
@@ -905,13 +906,23 @@ func (b *Builder) resolveView(name string, database sql.Database, asOf interface
 			b.parserOpts = oldOpts
 		}()
 		if vdok {
+			id := viewID{db: database.Name(), name: name}
+			if ds, ok := database.(sql.DatabaseSchema); ok {
+				id.schema = ds.SchemaName()
+			}
+			if slices.Contains(b.ViewCtx().resolving, id) {
+				b.handleErr(sql.ErrViewRecursion.New(database.Name(), name))
+			}
 			outerAsOf := b.ViewCtx().AsOf
 			outerDb := b.ViewCtx().DbName
+			outerResolving := b.ViewCtx().resolving
 			b.ViewCtx().AsOf = asOf
 			b.ViewCtx().DbName = database.Name()
+			b.ViewCtx().resolving = append(outerResolving, id)
 			defer func() {
 				b.ViewCtx().AsOf = outerAsOf
 				b.ViewCtx().DbName = outerDb
+				b.ViewCtx().resolving = outerResolving
 			}()
 			b.parserOpts = sql.NewSqlModeFromString(viewDef.SqlMode).ParserOptions()
 			stmt, _, _, err := b.parser.ParseWithOptions(b.ctx, viewDef.CreateViewStatement, ';', false, b.parserOpts)
