@@ -1204,6 +1204,144 @@ var JoinScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "using join",
+		SetUpScript: []string{
+			"CREATE TABLE abcd (a INT, b INT, c INT, d INT);",
+			"INSERT INTO abcd VALUES (1, 1, 1, 1), (2, 2, 2, 2);",
+			"CREATE TABLE dxby (d INT, x INT, b INT, y INT);",
+			"INSERT INTO dxby VALUES (2, 2, 2, 2), (3, 3, 3, 3);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT abcd.*, dxby.* FROM abcd INNER JOIN dxby USING (d, b);",
+				Expected: []sql.Row{
+					{2, 2, 2, 2, 2, 2, 2, 2},
+				},
+			},
+		},
+	},
+	{
+		Name: "joining on different types panics",
+		SetUpScript: []string{
+			"CREATE TABLE foo (a INT, b INT, c FLOAT, d FLOAT);",
+			"INSERT INTO foo VALUES  (1, 1, 1, 1), (2, 2, 2, 2), (3, 3, 3, 3);",
+			"CREATE TABLE bar (a INT, b FLOAT, c FLOAT, d INT);",
+			"INSERT INTO bar VALUES (1, 1, 1, 1), (2, 2, 2, 2), (3, 3, 3, 3);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// get field index error
+				Skip:           true,
+				Query:          "SELECT * FROM foo JOIN bar ON max(foo.c) < 2",
+				ExpectedErrStr: "invalid use of group function",
+			},
+			{
+				// SQLLogicTests incorrectly reports this as an error
+				Query: "SELECT * FROM foo NATURAL JOIN bar",
+				Expected: []sql.Row{
+					{1, 1, 1.0, 1.0},
+					{2, 2, 2.0, 2.0},
+					{3, 3, 3.0, 3.0},
+				},
+			},
+			{
+				Query: "SELECT * FROM foo JOIN bar USING (b);",
+				Expected: []sql.Row{
+					{1, 1, 1.0, 1.0, 1, 1.0, 1},
+					{2, 2, 2.0, 2.0, 2, 2.0, 2},
+					{3, 3, 3.0, 3.0, 3, 3.0, 3},
+				},
+			},
+			{
+				Query: "SELECT * FROM foo JOIN bar USING (a, b);",
+				Expected: []sql.Row{
+					{1, 1, 1.0, 1.0, 1.0, 1},
+					{2, 2, 2.0, 2.0, 2.0, 2},
+					{3, 3, 3.0, 3.0, 3.0, 3},
+				},
+			},
+			{
+				Query: "SELECT * FROM foo JOIN bar USING (a, b, c);",
+				Expected: []sql.Row{
+					{1, 1, 1.0, 1.0, 1},
+					{2, 2, 2.0, 2.0, 2},
+					{3, 3, 3.0, 3.0, 3},
+				},
+			},
+			{
+				Query: "SELECT * FROM foo JOIN bar ON foo.b = bar.b;",
+				Expected: []sql.Row{
+					{1, 1, 1.0, 1.0, 1, 1.0, 1.0, 1},
+					{2, 2, 2.0, 2.0, 2, 2.0, 2.0, 2},
+					{3, 3, 3.0, 3.0, 3, 3.0, 3.0, 3},
+				},
+			},
+			{
+				Query: "SELECT * FROM foo JOIN bar ON foo.a = bar.a AND foo.b = bar.b;",
+				Expected: []sql.Row{
+					{1, 1, 1.0, 1.0, 1, 1.0, 1.0, 1},
+					{2, 2, 2.0, 2.0, 2, 2.0, 2.0, 2},
+					{3, 3, 3.0, 3.0, 3, 3.0, 3.0, 3},
+				},
+			},
+			{
+				Query: "SELECT * FROM foo, bar WHERE foo.b = bar.b;",
+				Expected: []sql.Row{
+					{1, 1, 1.0, 1.0, 1, 1.0, 1.0, 1},
+					{2, 2, 2.0, 2.0, 2, 2.0, 2.0, 2},
+					{3, 3, 3.0, 3.0, 3, 3.0, 3.0, 3},
+				},
+			},
+			{
+				Query: "SELECT * FROM foo, bar WHERE foo.a = bar.a AND foo.b = bar.b;",
+				Expected: []sql.Row{
+					{1, 1, 1.0, 1.0, 1, 1.0, 1.0, 1},
+					{2, 2, 2.0, 2.0, 2, 2.0, 2.0, 2},
+					{3, 3, 3.0, 3.0, 3, 3.0, 3.0, 3},
+				},
+			},
+		},
+	},
+	{
+		Name: "case insensitive join with using clause",
+		SetUpScript: []string{
+			"CREATE TABLE str1 (a INT PRIMARY KEY, s TEXT COLLATE utf8mb4_0900_ai_ci);",
+			"INSERT INTO str1 VALUES (1, 'a' COLLATE utf8mb4_0900_ai_ci), (2, 'A' COLLATE utf8mb4_0900_ai_ci), (3, 'c' COLLATE utf8mb4_0900_ai_ci), (4, 'D' COLLATE utf8mb4_0900_ai_ci);",
+			"CREATE TABLE str2 (a INT PRIMARY KEY, s TEXT COLLATE utf8mb4_0900_ai_ci);",
+			"INSERT INTO str2 VALUES (1, 'A' COLLATE utf8mb4_0900_ai_ci), (2, 'B' COLLATE utf8mb4_0900_ai_ci), (3, 'C' COLLATE utf8mb4_0900_ai_ci), (4, 'E' COLLATE utf8mb4_0900_ai_ci);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Skip:  true,
+				Query: "SELECT s, str1.s, str2.s FROM str1 INNER JOIN str2 USING(s);",
+				Expected: []sql.Row{
+					{"A", "A", "A"},
+					{"a", "a", "A"},
+					{"c", "c", "C"},
+				},
+			},
+			{
+				Query: "SELECT s, str1.s, str2.s FROM str1 LEFT OUTER JOIN str2 USING(s)",
+				Expected: []sql.Row{
+					{"a", "a", "A"},
+					{"A", "A", "A"},
+					{"c", "c", "C"},
+					{"D", "D", nil},
+				},
+			},
+			{
+				Query: "SELECT s, str1.s, str2.s FROM str1 RIGHT OUTER JOIN str2 USING(s)",
+				Expected: []sql.Row{
+					{"A", "A", "A"},
+					{"A", "a", "A"},
+					{"B", nil, "B"},
+					{"C", "c", "C"},
+					{"E", nil, "E"},
+				},
+			},
+		},
+	},
+	{
 		Name: "Join with truthy condition",
 		SetUpScript: []string{
 			"CREATE TABLE `a` (aa int);",
@@ -1814,148 +1952,6 @@ from three_pk outer_table join lateral (
 					{0, 1}, {0, 2},
 					{1, 0}, {1, 2},
 					{2, 0}, {2, 1},
-				},
-			},
-		},
-	},
-}
-
-// SQLLogicJoinTests is a list of all the logic tests that are run against the sql engine.
-var SQLLogicJoinTests = []ScriptTest{
-	{
-		Name: "joining on different types panics",
-		SetUpScript: []string{
-			"CREATE TABLE foo (a INT, b INT, c FLOAT, d FLOAT);",
-			"INSERT INTO foo VALUES  (1, 1, 1, 1), (2, 2, 2, 2), (3, 3, 3, 3);",
-			"CREATE TABLE bar (a INT, b FLOAT, c FLOAT, d INT);",
-			"INSERT INTO bar VALUES (1, 1, 1, 1), (2, 2, 2, 2), (3, 3, 3, 3);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				// get field index error
-				Skip:           true,
-				Query:          "SELECT * FROM foo JOIN bar ON max(foo.c) < 2",
-				ExpectedErrStr: "invalid use of group function",
-			},
-			{
-				// SQLLogicTests incorrectly reports this as an error
-				Query: "SELECT * FROM foo NATURAL JOIN bar",
-				Expected: []sql.Row{
-					{1, 1, 1.0, 1.0},
-					{2, 2, 2.0, 2.0},
-					{3, 3, 3.0, 3.0},
-				},
-			},
-			{
-				Query: "SELECT * FROM foo JOIN bar USING (b);",
-				Expected: []sql.Row{
-					{1, 1, 1.0, 1.0, 1, 1.0, 1},
-					{2, 2, 2.0, 2.0, 2, 2.0, 2},
-					{3, 3, 3.0, 3.0, 3, 3.0, 3},
-				},
-			},
-			{
-				Query: "SELECT * FROM foo JOIN bar USING (a, b);",
-				Expected: []sql.Row{
-					{1, 1, 1.0, 1.0, 1.0, 1},
-					{2, 2, 2.0, 2.0, 2.0, 2},
-					{3, 3, 3.0, 3.0, 3.0, 3},
-				},
-			},
-			{
-				Query: "SELECT * FROM foo JOIN bar USING (a, b, c);",
-				Expected: []sql.Row{
-					{1, 1, 1.0, 1.0, 1},
-					{2, 2, 2.0, 2.0, 2},
-					{3, 3, 3.0, 3.0, 3},
-				},
-			},
-			{
-				Query: "SELECT * FROM foo JOIN bar ON foo.b = bar.b;",
-				Expected: []sql.Row{
-					{1, 1, 1.0, 1.0, 1, 1.0, 1.0, 1},
-					{2, 2, 2.0, 2.0, 2, 2.0, 2.0, 2},
-					{3, 3, 3.0, 3.0, 3, 3.0, 3.0, 3},
-				},
-			},
-			{
-				Query: "SELECT * FROM foo JOIN bar ON foo.a = bar.a AND foo.b = bar.b;",
-				Expected: []sql.Row{
-					{1, 1, 1.0, 1.0, 1, 1.0, 1.0, 1},
-					{2, 2, 2.0, 2.0, 2, 2.0, 2.0, 2},
-					{3, 3, 3.0, 3.0, 3, 3.0, 3.0, 3},
-				},
-			},
-			{
-				Query: "SELECT * FROM foo, bar WHERE foo.b = bar.b;",
-				Expected: []sql.Row{
-					{1, 1, 1.0, 1.0, 1, 1.0, 1.0, 1},
-					{2, 2, 2.0, 2.0, 2, 2.0, 2.0, 2},
-					{3, 3, 3.0, 3.0, 3, 3.0, 3.0, 3},
-				},
-			},
-			{
-				Query: "SELECT * FROM foo, bar WHERE foo.a = bar.a AND foo.b = bar.b;",
-				Expected: []sql.Row{
-					{1, 1, 1.0, 1.0, 1, 1.0, 1.0, 1},
-					{2, 2, 2.0, 2.0, 2, 2.0, 2.0, 2},
-					{3, 3, 3.0, 3.0, 3, 3.0, 3.0, 3},
-				},
-			},
-		},
-	},
-	{
-		Name: "case insensitive join with using clause",
-		SetUpScript: []string{
-			"CREATE TABLE str1 (a INT PRIMARY KEY, s TEXT COLLATE utf8mb4_0900_ai_ci);",
-			"INSERT INTO str1 VALUES (1, 'a' COLLATE utf8mb4_0900_ai_ci), (2, 'A' COLLATE utf8mb4_0900_ai_ci), (3, 'c' COLLATE utf8mb4_0900_ai_ci), (4, 'D' COLLATE utf8mb4_0900_ai_ci);",
-			"CREATE TABLE str2 (a INT PRIMARY KEY, s TEXT COLLATE utf8mb4_0900_ai_ci);",
-			"INSERT INTO str2 VALUES (1, 'A' COLLATE utf8mb4_0900_ai_ci), (2, 'B' COLLATE utf8mb4_0900_ai_ci), (3, 'C' COLLATE utf8mb4_0900_ai_ci), (4, 'E' COLLATE utf8mb4_0900_ai_ci);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Skip:  true,
-				Query: "SELECT s, str1.s, str2.s FROM str1 INNER JOIN str2 USING(s);",
-				Expected: []sql.Row{
-					{"A", "A", "A"},
-					{"a", "a", "A"},
-					{"c", "c", "C"},
-				},
-			},
-			{
-				Query: "SELECT s, str1.s, str2.s FROM str1 LEFT OUTER JOIN str2 USING(s)",
-				Expected: []sql.Row{
-					{"a", "a", "A"},
-					{"A", "A", "A"},
-					{"c", "c", "C"},
-					{"D", "D", nil},
-				},
-			},
-			{
-				Query: "SELECT s, str1.s, str2.s FROM str1 RIGHT OUTER JOIN str2 USING(s)",
-				Expected: []sql.Row{
-					{"A", "A", "A"},
-					{"A", "a", "A"},
-					{"B", nil, "B"},
-					{"C", "c", "C"},
-					{"E", nil, "E"},
-				},
-			},
-		},
-	},
-	{
-		Name: "using join",
-		SetUpScript: []string{
-			"CREATE TABLE abcd (a INT, b INT, c INT, d INT);",
-			"INSERT INTO abcd VALUES (1, 1, 1, 1), (2, 2, 2, 2);",
-			"CREATE TABLE dxby (d INT, x INT, b INT, y INT);",
-			"INSERT INTO dxby VALUES (2, 2, 2, 2), (3, 3, 3, 3);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "SELECT abcd.*, dxby.* FROM abcd INNER JOIN dxby USING (d, b);",
-				Expected: []sql.Row{
-					{2, 2, 2, 2, 2, 2, 2, 2},
 				},
 			},
 		},
