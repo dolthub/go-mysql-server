@@ -3189,6 +3189,18 @@ var FunctionQueryTests = []QueryTest{
 		ExpectedWarningsCount: 1,
 		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 	},
+	{
+		Query: "select cast(20010203102030.123456 as time(6));",
+		Expected: []sql.Row{
+			{types.Timespan(37230_123456)},
+		},
+	},
+	{
+		Query: "select cast('20010203102030.123456' as time(6));",
+		Expected: []sql.Row{
+			{types.Timespan(37230_123456)},
+		},
+	},
 
 	// Additional JSON Function Tests
 	{

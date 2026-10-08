@@ -346,7 +346,11 @@ func (t TimespanType_) convertNumber(clock int64, nanos int64) (any, bool) {
 	// Some values are treated as Datetime types, and the time portion is extracted.
 	// This only applies in the positive direction.
 	if clock >= MinNumericDatetimeCutoff {
-		timeVal, ok := datetimeType{}.convertNumber(clock, 0)
+		dtType := datetimeType{
+			baseType:  query.Type_DATETIME,
+			precision: t.precision,
+		}
+		timeVal, ok := dtType.convertNumber(clock, 0)
 		if !ok {
 			return nil, false
 		}
@@ -506,6 +510,7 @@ func isMySQLTimeWhitespace(char rune) bool {
 // parseTimeNoDelim converts the string, but with no delimiters
 func (t TimespanType_) parseTimeNoDelim(isNeg bool, str string) (any, bool) {
 	var clockStr string
+	var dtStr = str
 	idx := strings.IndexFunc(str, func(r rune) bool {
 		return !unicode.IsDigit(r)
 	})
@@ -520,8 +525,8 @@ func (t TimespanType_) parseTimeNoDelim(isNeg bool, str string) (any, bool) {
 		return nil, false
 	}
 	if len(clockStr) >= MinTimeDatetimeStringLength {
-		res, ok, err := datetimeType{}.parseDatetime(str)
-		return res, ok && err == nil
+		res, err := t.parseTimeDatetime(dtStr)
+		return res, err == nil
 	}
 	// format is HHHHHHHMMSS.MICROS
 	cLen := len(clockStr)
