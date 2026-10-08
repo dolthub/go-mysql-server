@@ -2838,11 +2838,6 @@ END`,
 	},
 }
 
-// limitations under the License.
-
-package queries
-
-import "github.com/dolthub/go-mysql-server/sql"
 
 var CallAsofScripts = []ScriptTest{
 	{
