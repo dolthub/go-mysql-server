@@ -1177,4 +1177,43 @@ var JsonScripts = []ScriptTest{
 			},
 		},
 	},
+	// https://github.com/dolthub/dolt/issues/11216
+	{
+		Name: "JSON column rejects binary-charset strings",
+		SetUpScript: []string{
+			"CREATE TABLE t (j JSON)",
+			"CREATE TABLE src (id INT PRIMARY KEY, i INT, s VARCHAR(10))",
+			"INSERT INTO src VALUES (1, 10, 'abc')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "INSERT INTO t VALUES (CONCAT('\"', CHAR(65), '\"'))",
+				ExpectedErr: sql.ErrInvalidJsonCharset,
+			},
+			{
+				Query:       "INSERT INTO t VALUES (CONCAT(CONCAT('\"', CHAR(65)), '\"'))",
+				ExpectedErr: sql.ErrInvalidJsonCharset,
+			},
+			{
+				Query:       "INSERT INTO t VALUES (CONCAT('\"', CHAR(233), '\"'))",
+				ExpectedErr: sql.ErrInvalidJsonCharset,
+			},
+			{
+				Query:    "INSERT INTO t VALUES (CONCAT('\"', CHAR(65 USING utf8mb4), '\"'))",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "SELECT j FROM t",
+				Expected: []sql.Row{{types.JSONDocument{Val: "A"}}},
+			},
+			{
+				Query:    "INSERT INTO t (j) SELECT CONCAT('\"', i, '\"') FROM src WHERE id = 1",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "INSERT INTO t (j) SELECT CONCAT('\"', s, '\"') FROM src WHERE id = 1",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+		},
+	},
 }

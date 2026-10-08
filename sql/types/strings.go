@@ -856,7 +856,7 @@ func (t StringType) Zero() interface{} {
 
 // CollationCoercibility implements sql.CollationCoercible interface.
 func (t StringType) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
-	return t.collation, 4
+	return t.collation, sql.CoercibilityImplicit
 }
 
 func (t StringType) CharacterSet() sql.CharacterSetID {

@@ -34,14 +34,14 @@ func TestResolveCoercibility(t *testing.T) {
 	ctx := NewEmptyContext()
 
 	t.Run("empty expressions", func(t *testing.T) {
-		col, coer := ResolveCoercibilityExpressions(ctx)
+		col, coer := ResolveCoercibilityExpressions(ctx, 0)
 		require.Equal(t, Collation_binary, col)
 		require.Equal(t, CoercibilityIgnorable, coer)
 	})
 
 	t.Run("single expression", func(t *testing.T) {
 		e := dummyCoercibleExpr{collation: Collation_latin1_swedish_ci, coercibility: CoercibilityCoercible}
-		col, coer := ResolveCoercibilityExpressions(ctx, e)
+		col, coer := ResolveCoercibilityExpressions(ctx, 0, e)
 		require.Equal(t, Collation_latin1_swedish_ci, col)
 		require.Equal(t, CoercibilityCoercible, coer)
 	})
@@ -49,7 +49,7 @@ func TestResolveCoercibility(t *testing.T) {
 	t.Run("multiple expressions", func(t *testing.T) {
 		e1 := dummyCoercibleExpr{collation: Collation_latin1_swedish_ci, coercibility: CoercibilityCoercible}
 		e2 := dummyCoercibleExpr{collation: Collation_utf8mb4_0900_ai_ci, coercibility: CoercibilityNumeric}
-		col, coer := ResolveCoercibilityExpressions(ctx, e1, e2)
+		col, coer := ResolveCoercibilityExpressions(ctx, 0, e1, e2)
 		require.Equal(t, Collation_latin1_swedish_ci, col)
 		require.Equal(t, CoercibilityCoercible, coer)
 	})
@@ -109,5 +109,48 @@ func TestResolveCoercibility(t *testing.T) {
 		require.True(t, Collation_latin1_bin.IsBinary())
 		require.False(t, Collation_utf8mb4_0900_ai_ci.IsBinary())
 		require.False(t, Collation_latin1_swedish_ci.IsBinary())
+	})
+
+	t.Run("all numeric expressions convert to connection collation", func(t *testing.T) {
+		e1 := dummyCoercibleExpr{collation: Collation_binary, coercibility: CoercibilityNumeric}
+		e2 := dummyCoercibleExpr{collation: Collation_binary, coercibility: CoercibilityNumeric}
+		col, coer := ResolveCoercibilityExpressions(ctx, CoercibilityAllowNumericConv, e1, e2)
+		require.Equal(t, Collation_Default, col)
+		require.Equal(t, CoercibilityCoercible, coer)
+	})
+
+	t.Run("single numeric expression converts to connection collation", func(t *testing.T) {
+		e1 := dummyCoercibleExpr{collation: Collation_binary, coercibility: CoercibilityNumeric}
+		col, coer := ResolveCoercibilityExpressions(ctx, CoercibilityAllowNumericConv, e1)
+		require.Equal(t, Collation_Default, col)
+		require.Equal(t, CoercibilityCoercible, coer)
+	})
+
+	t.Run("mixed numeric and string expression retains string collation", func(t *testing.T) {
+		eNum := dummyCoercibleExpr{collation: Collation_binary, coercibility: CoercibilityNumeric}
+		eStr := dummyCoercibleExpr{collation: Collation_utf8mb4_0900_ai_ci, coercibility: CoercibilityCoercible}
+		col, coer := ResolveCoercibilityExpressions(ctx, CoercibilityAllowNumericConv, eNum, eStr)
+		require.Equal(t, Collation_utf8mb4_0900_ai_ci, col)
+		require.Equal(t, CoercibilityCoercible, coer)
+	})
+
+	t.Run("charset superset conversion", func(t *testing.T) {
+		col, coer := ResolveCoercibility(Collation_utf8mb4_0900_bin, CoercibilityImplicit, Collation_utf8mb3_general_ci, CoercibilitySysConst)
+		require.Equal(t, Collation_utf8mb4_0900_bin, col)
+		require.Equal(t, CoercibilityImplicit, coer)
+
+		col, coer = ResolveCoercibility(Collation_utf8mb3_general_ci, CoercibilityImplicit, Collation_utf8mb4_0900_ai_ci, CoercibilityImplicit)
+		require.Equal(t, Collation_utf8mb4_0900_ai_ci, col)
+		require.Equal(t, CoercibilityImplicit, coer)
+
+		col, coer = ResolveCoercibility(Collation_utf8mb4_0900_ai_ci, CoercibilityImplicit, Collation_latin1_swedish_ci, CoercibilityImplicit)
+		require.Equal(t, Collation_utf8mb4_0900_ai_ci, col)
+		require.Equal(t, CoercibilityImplicit, coer)
+	})
+
+	t.Run("CoercibilityFlags Has", func(t *testing.T) {
+		flags := CoercibilityAllowNumericConv
+		require.True(t, flags.Has(CoercibilityAllowNumericConv))
+		require.False(t, CoercibilityFlags(0).Has(CoercibilityAllowNumericConv))
 	})
 }

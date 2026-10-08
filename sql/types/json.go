@@ -59,7 +59,9 @@ func convertJSONValue(v interface{}) (interface{}, sql.ConvertInRange, error) {
 	var charsetMaxLength int64 = 1
 	switch x := v.(type) {
 	case []byte:
-		data = x
+		return nil, sql.InRange, sql.ErrInvalidJsonCharset.New(sql.CharacterSet_binary.Name())
+	case sql.BytesWrapper:
+		return nil, sql.InRange, sql.ErrInvalidJsonCharset.New(sql.CharacterSet_binary.Name())
 	case string:
 		data = []byte(x)
 		charsetMaxLength = sql.Collation_Default.CharacterSet().MaxLength()
@@ -91,7 +93,9 @@ func (t JsonType) Convert(c context.Context, v interface{}) (interface{}, sql.Co
 	case sql.JSONWrapper:
 		return v, sql.InRange, nil
 	case []byte:
-		return convertJSONValue(v)
+		return nil, sql.InRange, sql.ErrInvalidJsonCharset.New(sql.CharacterSet_binary.Name())
+	case sql.BytesWrapper:
+		return nil, sql.InRange, sql.ErrInvalidJsonCharset.New(sql.CharacterSet_binary.Name())
 	case string:
 		return convertJSONValue(v)
 	// Text values may be stored in wrappers (e.g. Dolt's TextStorage), so unwrap to the raw string before decoding.

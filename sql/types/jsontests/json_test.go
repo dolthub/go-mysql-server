@@ -54,7 +54,7 @@ func TestJsonConvert(t *testing.T) {
 		{`""`, types.MustJSON(`""`), false},
 		{[]int{1, 2}, types.MustJSON(`[1, 2]`), false},
 		{`{"a": true, "b": 3}`, types.MustJSON(`{"a":true,"b":3}`), false},
-		{[]byte(`{"a": true, "b": 3}`), types.MustJSON(`{"a":true,"b":3}`), false},
+		{[]byte(`{"a": true, "b": 3}`), nil, true},
 		{testStruct{Field: "test"}, types.MustJSON(`{"field":"test"}`), false},
 		{types.MustJSON(`{"field":"test"}`), types.MustJSON(`{"field":"test"}`), false},
 		{[]string{}, types.MustJSON(`[]`), false},
