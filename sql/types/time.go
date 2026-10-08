@@ -643,8 +643,9 @@ func (t TimespanType_) parseTime(origStr string) (any, error) {
 	str = str[idx:]
 	minStr, str = parseTimePart(str)
 	secStr, str = parseTimePart(str)
+	microStr, str = parseMicros(str)
 	if len(minStr) == 0 && len(secStr) == 0 {
-		if len(dtStr) >= 12 {
+		if len(microStr) == 0 && len(dtStr) >= 12 {
 			var res any
 			res, err = t.parseTimeDatetime(dtStr)
 			if err == nil {
@@ -666,8 +667,6 @@ func (t TimespanType_) parseTime(origStr string) (any, error) {
 		}
 		return res, err
 	}
-
-	microStr, str = parseMicros(str)
 
 	// MySQL Special Case
 	// If everything so far is a valid delimited TIME without microseconds followed by a MySQL Whitespace AND the
