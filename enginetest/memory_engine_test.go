@@ -641,7 +641,7 @@ func TestNumericScripts(t *testing.T) {
 
 // TestCorrelatedAggregateScopePrepared verifies correlated aggregate ownership with prepared execution.
 func TestCorrelatedAggregateScopePrepared(t *testing.T) {
-	for _, script := range queries.ScriptTests {
+	for _, script := range queries.AggregationScriptTests {
 		if script.Name == "correlated subquery references outer aggregate" {
 			enginetest.TestScriptPrepared(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver), script)
 			return
