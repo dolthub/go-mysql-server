@@ -520,6 +520,21 @@ func TestHavingAggregateInputs(t *testing.T) {
 			},
 		},
 		{
+			Name: "having BETWEEN with aggregate and grouping-column bounds",
+			SetUpScript: []string{
+				"CREATE TABLE tab0 (col0 INT, col1 INT, col2 INT);",
+				"INSERT INTO tab0 VALUES(83,0,38);",
+				"INSERT INTO tab0 VALUES(26,0,79);",
+				"INSERT INTO tab0 VALUES(43,81,24);",
+			},
+			Assertions: []queries.ScriptTestAssertion{
+				{
+					Query:    "SELECT + - SUM( + col1 ) + 78 - + col2 FROM tab0 cor0 GROUP BY col2, col1 HAVING col1 BETWEEN COUNT( * ) AND ( col2 );",
+					Expected: []sql.Row{},
+				},
+			},
+		},
+		{
 			Name: "having references multiple aggregate input columns",
 			SetUpScript: []string{
 				"create table tab0 (col0 int, col1 int, col2 int);",
