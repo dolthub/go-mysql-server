@@ -6369,6 +6369,50 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
+		Name: "parenthesized grouping columns in HAVING",
+		SetUpScript: []string{
+			"CREATE TABLE tab0 (col0 INT, col1 INT, col2 INT)",
+			"INSERT INTO tab0 VALUES (1, 0, 10)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT COUNT(*) FROM tab0 GROUP BY (col1), col2 HAVING col1 >= COUNT(*)",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM tab0 GROUP BY ((tab0.col1)), ((tab0.col2)) HAVING tab0.col1 >= COUNT(*)",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM tab0 GROUP BY col1, col2 HAVING col1 >= COUNT(*)",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "INSERT INTO tab0 VALUES (2, 2, 20), (3, 2, 20), (4, 3, 30), (5, NULL, 40)",
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM tab0 GROUP BY (col1), (col2) HAVING col1 >= COUNT(*) ORDER BY COUNT(*)",
+				Expected: []sql.Row{{int64(1)}, {int64(2)}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM tab0 GROUP BY ((col1)), col2 HAVING col1 IS NULL",
+				Expected: []sql.Row{{int64(1)}},
+			},
+			{
+				Query:    "SELECT col1 AS grouping_key, COUNT(*) FROM tab0 GROUP BY ((grouping_key)), col2 HAVING grouping_key >= COUNT(*) ORDER BY grouping_key",
+				Expected: []sql.Row{{int32(2), int64(2)}, {int32(3), int64(1)}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM tab0 GROUP BY ('constant')",
+				Expected: []sql.Row{{int64(5)}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM tab0 GROUP BY ((1.5))",
+				Expected: []sql.Row{{int64(5)}},
+			},
+		},
+	},
+	{
 		Name: "using having and group by clauses in subquery ",
 		SetUpScript: []string{
 			"CREATE TABLE t (i int, t varchar(2));",
