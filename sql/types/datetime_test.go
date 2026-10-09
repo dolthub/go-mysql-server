@@ -580,3 +580,20 @@ func TestDatetimeOverflowUnderflow(t *testing.T) {
 		})
 	}
 }
+
+func TestMySQLPunct(t *testing.T) {
+	validPunct := []rune("!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~")
+	for _, punct := range validPunct {
+		t.Run(fmt.Sprintf("%c is valid MySQL Punctuation", punct), func(t *testing.T) {
+			res := isMySQLPunct(punct)
+			require.True(t, res)
+		})
+	}
+	invalidPunct := []rune(" \n\t\r\f\v±£")
+	for _, punct := range invalidPunct {
+		t.Run(fmt.Sprintf("%c is NOT valid MySQL Punctuation", punct), func(t *testing.T) {
+			res := isMySQLPunct(punct)
+			require.False(t, res)
+		})
+	}
+}
