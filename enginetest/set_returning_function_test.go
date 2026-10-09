@@ -99,6 +99,65 @@ func TestSetReturningFunctionQueries(t *testing.T) {
 				Query:    "SELECT id AS source_id, srf_seq(n) AS elem FROM srf_t WHERE id = 7;",
 				Expected: []sql.Row{{7, 1}, {7, 2}, {7, 3}},
 			},
+			{
+				// A table-dependent SRF lets pushFilters associate the outer predicate with srf_t.
+				// Through the full analyzer pipeline, the predicate must still consume expanded values
+				// instead of substituting the SRF and evaluating it as a scalar below the projection.
+				Query:    "SELECT elem FROM (SELECT srf_seq(n) AS elem FROM srf_t) AS expanded WHERE elem = 2;",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				// Preserve both predicates while still using the independent scalar predicate for an index lookup.
+				Query:           "SELECT id, elem FROM (SELECT id, srf_seq(n) AS elem FROM srf_t) AS expanded WHERE id = 7 AND elem = 1;",
+				Expected:        []sql.Row{{7, 1}},
+				ExpectedIndexes: []string{"primary"},
+			},
+			{
+				// A scalar-only filter on the derived table must still preserve SRF expansion.
+				Query:           "SELECT id, elem FROM (SELECT id, srf_seq(n) AS elem FROM srf_t) AS expanded WHERE id = 8;",
+				Expected:        []sql.Row{{8, 1}},
+				ExpectedIndexes: []string{"primary"},
+			},
+			{
+				// The SRF may be nested inside an arithmetic expression defining the derived column.
+				Query:    "SELECT elem FROM (SELECT srf_seq(n) + 10 AS elem FROM srf_t) AS expanded WHERE elem = 12;",
+				Expected: []sql.Row{{12}},
+			},
+			{
+				Query:    "SELECT elem FROM (SELECT srf_seq(n) AS elem FROM srf_t) AS expanded WHERE elem > 1 ORDER BY elem;",
+				Expected: []sql.Row{{2}, {3}},
+			},
+			{
+				Query:    "WITH expanded AS (SELECT srf_seq(n) AS elem FROM srf_t) SELECT elem FROM expanded WHERE elem = 2;",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "SELECT elem FROM (SELECT srf_seq(n) AS elem FROM srf_t) AS expanded WHERE elem = 2 OR elem = 3 ORDER BY elem;",
+				Expected: []sql.Row{{2}, {3}},
+			},
+			{
+				// Scalar projections must still support filters through a derived table.
+				Query:    "SELECT elem FROM (SELECT 2 AS elem) AS expanded WHERE elem = 2;",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "SELECT elem FROM (SELECT srf_seq(3) AS elem) AS expanded WHERE elem = 2;",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "SELECT elem FROM (SELECT srf_seq(3) + 10 AS elem) AS expanded WHERE elem = 12;",
+				Expected: []sql.Row{{12}},
+			},
+			{
+				// Correlated predicates must retain access to each outer row after scalar filter pushdown.
+				Query:    "SELECT t.id, (SELECT value FROM (SELECT n AS value FROM srf_t) AS projected WHERE value = t.n) FROM srf_t AS t ORDER BY t.id;",
+				Expected: []sql.Row{{7, 3}, {8, 1}},
+			},
+			{
+				// Correlation must also survive when the predicate consumes expanded SRF values.
+				Query:    "SELECT t.id, (SELECT elem FROM (SELECT srf_seq(3) AS elem) AS expanded WHERE elem = t.n) FROM srf_t AS t ORDER BY t.id;",
+				Expected: []sql.Row{{7, 3}, {8, 1}},
+			},
 		},
 	}
 
