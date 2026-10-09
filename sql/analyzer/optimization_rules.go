@@ -154,7 +154,7 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 // simplifyExpressions replaces expressions that can be evaluated statically with their Literal value and removes
 // redundant parts of AND and OR expressions.
 func simplifyExpression(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-	return transform.Expr(ctx, e, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+	result, same, err := transform.Expr(ctx, e, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		switch e := e.(type) {
 		// TODO: if the left and right children of Equals are the same expression, simplify to NullIf(IsNotNull(left), false)
 		case *plan.Subquery:
@@ -276,18 +276,15 @@ func simplifyExpression(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sel Ru
 			if charset != sql.CharacterSet_utf8mb4 {
 				return e, transform.SameTree, nil
 			}
-			prefix, complete, ok := e.LiteralPrefix(ctx)
-			if !ok {
+			prefix, kind := e.LiteralPrefix(ctx)
+			switch kind {
+			case expression.LikeLiteral:
+				return expression.NewEquals(e.LeftChild, expression.NewLiteral(prefix, e.RightChild.Type(ctx))), transform.NewTree, nil
+			case expression.LikePrefix:
+			default:
 				return e, transform.SameTree, nil
 			}
 			rightType := e.RightChild.Type(ctx)
-			if complete {
-				return expression.NewEquals(e.LeftChild, expression.NewLiteral(prefix, rightType)), transform.NewTree, nil
-			}
-			if len(prefix) == 0 {
-				// TODO(#3943): a pattern of only '%' could be simplified to IS NOT NULL.
-				return e, transform.SameTree, nil
-			}
 			lowerBound := expression.NewGreaterThanOrEqual(e.LeftChild, expression.NewLiteral(prefix, rightType))
 			// For a code-point ordered collation every match lies between |prefix| and the next
 			// string above it, so the LIKE becomes a range with an upper bound. When |prefix| has
@@ -332,6 +329,21 @@ func simplifyExpression(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sel Ru
 			return expression.NewLiteral(val, e.Type(ctx)), transform.NewTree, nil
 		}
 	})
+	if err != nil {
+		return result, same, err
+	}
+
+	// LIKE '%' returns NULL for NULL input, whereas IS NOT NULL returns false.
+	// They are equivalent only as a complete filter or join predicate.
+	like, ok := result.(*expression.Like)
+	if !ok || !sql.IsStringType(like.LeftChild.Type(ctx)) {
+		return result, same, nil
+	}
+	_, kind := like.LiteralPrefix(ctx)
+	if kind == expression.LikeAny {
+		return expression.DefaultExpressionFactory.NewIsNotNull(like.LeftChild), transform.NewTree, nil
+	}
+	return result, same, nil
 }
 
 // incrementLastRune returns |prefix| with its last rune replaced by the next higher rune. The
