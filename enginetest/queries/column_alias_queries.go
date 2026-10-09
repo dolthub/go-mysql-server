@@ -24,6 +24,22 @@ import (
 
 var ColumnAliasQueries = []ScriptTest{
 	{
+		Name: "references to aliases after expression rewrites",
+		Assertions: []ScriptTestAssertion{
+			{
+				// Folding the cast changes the alias's child; references from the outer query
+				// must still identify the same projected column.
+				Query:    "SELECT elem, elem + 1 FROM (SELECT CAST(1 AS SIGNED) AS elem) AS expanded WHERE elem = 1;",
+				Expected: []sql.Row{{int64(1), int64(2)}},
+			},
+			{
+				Query: "SELECT val FROM (SELECT elem AS val FROM " +
+					"(SELECT CAST(i AS SIGNED) AS elem FROM mytable) AS expanded) AS nested WHERE val = 2;",
+				Expected: []sql.Row{{int64(2)}},
+			},
+		},
+	},
+	{
 		Name: "column aliases in a single scope",
 		SetUpScript: []string{
 			"create table xy (x int primary key, y int);",
