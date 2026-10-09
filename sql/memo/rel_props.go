@@ -353,6 +353,10 @@ func (m *Memo) statsForRel(ctx *sql.Context, rel RelExpr) sql.Statistic {
 			m := math.Max(float64(left.RowCount()), float64(right.RowCount()))
 			distinct = m * .80
 		}
+		// Two sides estimated at no rows leave no distinct values either; one
+		// keeps the selectivity finite, so the cardinality is 0 rather than
+		// 0 * +Inf, a NaN that converts to a different uint64 per architecture.
+		distinct = math.Max(1, distinct)
 
 		// Assume that the smaller set is surjective onto the larger set, and at least one of the sets is uniformly distributed.
 		// If so, then the odds that a random element of each set matches can be computed as:
