@@ -1421,8 +1421,8 @@ var BrokenCreateTableQueries = []WriteQueryTest{
 	},
 }
 
-// TableDefinitionsScriptTests contains self-contained table definitions script tests.
-var TableDefinitionsScriptTests = []ScriptTest{
+// CreateTableScripts contains self-contained table definitions script tests.
+var CreateTableScripts = []ScriptTest{
 	{
 		// https://github.com/dolthub/dolt/issues/9872
 		Name:        "TEXT(m) syntax support",

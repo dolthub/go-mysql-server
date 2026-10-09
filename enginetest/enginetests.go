@@ -6052,11 +6052,11 @@ func TestSubqueriesScriptsPrepared(t *testing.T, harness Harness) {
 }
 
 func TestTableDefinitionsScripts(t *testing.T, harness Harness) {
-	testScriptTests(t, harness, queries.TableDefinitionsScriptTests, false)
+	testScriptTests(t, harness, queries.CreateTableScripts, false)
 }
 
 func TestTableDefinitionsScriptsPrepared(t *testing.T, harness Harness) {
-	testScriptTests(t, harness, queries.TableDefinitionsScriptTests, true)
+	testScriptTests(t, harness, queries.CreateTableScripts, true)
 }
 
 func TestTransactionsScripts(t *testing.T, harness Harness) {
