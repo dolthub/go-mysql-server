@@ -873,8 +873,16 @@ func TestColumnDefaults(t *testing.T) {
 	enginetest.TestColumnDefaults(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestColumnDefaultsPrepared(t *testing.T) {
+	enginetest.TestColumnDefaultsPrepared(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestAlterTable(t *testing.T) {
 	enginetest.TestAlterTable(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestAlterTablePrepared(t *testing.T) {
+	enginetest.TestAlterTablePrepared(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestDateParse(t *testing.T) {
@@ -1159,20 +1167,12 @@ func TestTimeQueries(t *testing.T) {
 	enginetest.TestTimeQueries(t, enginetest.NewDefaultMemoryHarness())
 }
 
-func TestAlterTableScripts(t *testing.T) {
-	enginetest.TestAlterTableScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
-}
-
 func TestAutoIncrementScripts(t *testing.T) {
 	enginetest.TestAutoIncrementScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
 func TestCharsetCollationScripts(t *testing.T) {
 	enginetest.TestCharsetCollationScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
-}
-
-func TestColumnDefaultsScripts(t *testing.T) {
-	enginetest.TestColumnDefaultsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
 func TestDatabaseDefinitionsScripts(t *testing.T) {

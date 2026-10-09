@@ -4913,6 +4913,13 @@ func TestAlterTable(t *testing.T, harness Harness) {
 	}
 }
 
+func TestAlterTablePrepared(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData, setup.Pk_tablesData)
+	for _, script := range queries.AlterTableScripts {
+		TestScriptPrepared(t, harness, script)
+	}
+}
+
 func NewColumnDefaultValue(expr sql.Expression, outType sql.Type, representsLiteral, isParenthesized, mayReturnNil bool) *sql.ColumnDefaultValue {
 	cdv, err := sql.NewColumnDefaultValue(expr, outType, representsLiteral, isParenthesized, mayReturnNil)
 	if err != nil {
@@ -4993,6 +5000,13 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		require.Equal(t, "v1", sch[1].Name)
 		require.NotContains(t, sch[1].Default.String(), "t28")
 	})
+}
+
+func TestColumnDefaultsPrepared(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData)
+	for _, script := range queries.ColumnDefaultTests {
+		TestScriptPrepared(t, harness, script)
+	}
 }
 
 func TestPersist(t *testing.T, harness Harness, newPersistableSess func(ctx *sql.Context) sql.PersistableSession) {
@@ -5896,14 +5910,6 @@ func DrainIteratorIgnoreErrors(ctx *sql.Context, iter sql.RowIter) {
 	}
 }
 
-func TestAlterTableScripts(t *testing.T, harness Harness) {
-	testScriptTests(t, harness, queries.AlterTableScriptTests, false)
-}
-
-func TestAlterTableScriptsPrepared(t *testing.T, harness Harness) {
-	testScriptTests(t, harness, queries.AlterTableScriptTests, true)
-}
-
 func TestAutoIncrementScripts(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.AutoIncrementScriptTests, false)
 }
@@ -5918,14 +5924,6 @@ func TestCharsetCollationScripts(t *testing.T, harness Harness) {
 
 func TestCharsetCollationScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.CharsetCollationScriptTests, true)
-}
-
-func TestColumnDefaultsScripts(t *testing.T, harness Harness) {
-	testScriptTests(t, harness, queries.ColumnDefaultsScriptTests, false)
-}
-
-func TestColumnDefaultsScriptsPrepared(t *testing.T, harness Harness) {
-	testScriptTests(t, harness, queries.ColumnDefaultsScriptTests, true)
 }
 
 func TestDatabaseDefinitionsScripts(t *testing.T, harness Harness) {

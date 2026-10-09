@@ -1067,10 +1067,7 @@ var ColumnDefaultTests = []ScriptTest{
 			},
 		},
 	},
-}
 
-// ColumnDefaultsScriptTests contains self-contained column defaults script tests.
-var ColumnDefaultsScriptTests = []ScriptTest{
 	{
 		Name:    "ALTER TABLE, ALTER COLUMN SET, DROP DEFAULT",
 		Dialect: "mysql",
