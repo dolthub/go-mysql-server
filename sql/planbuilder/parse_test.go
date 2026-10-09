@@ -1640,7 +1640,7 @@ Project
  ├─ columns: [xy.x:1!null, count(xy.x):4!null->cnt:5]
  └─ Having
      ├─ GreaterThan
-     │   ├─ xy.x:0!null
+     │   ├─ xy.x:1!null
      │   └─ 1 (bigint)
      └─ Project
          ├─ columns: [count(xy.x):4!null, xy.x:1!null, count(xy.x):4!null->cnt:5]
