@@ -135,6 +135,29 @@ func TestSetReturningFunctionQueries(t *testing.T) {
 				Query:    "SELECT elem FROM (SELECT srf_seq(n) AS elem FROM srf_t) AS expanded WHERE elem = 2 OR elem = 3 ORDER BY elem;",
 				Expected: []sql.Row{{2}, {3}},
 			},
+			{
+				// Scalar projections must still support filters through a derived table.
+				Query:    "SELECT elem FROM (SELECT 2 AS elem) AS expanded WHERE elem = 2;",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "SELECT elem FROM (SELECT srf_seq(3) AS elem) AS expanded WHERE elem = 2;",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "SELECT elem FROM (SELECT srf_seq(3) + 10 AS elem) AS expanded WHERE elem = 12;",
+				Expected: []sql.Row{{12}},
+			},
+			{
+				// Correlated predicates must retain access to each outer row after scalar filter pushdown.
+				Query:    "SELECT t.id, (SELECT value FROM (SELECT n AS value FROM srf_t) AS projected WHERE value = t.n) FROM srf_t AS t ORDER BY t.id;",
+				Expected: []sql.Row{{7, 3}, {8, 1}},
+			},
+			{
+				// Correlation must also survive when the predicate consumes expanded SRF values.
+				Query:    "SELECT t.id, (SELECT elem FROM (SELECT srf_seq(3) AS elem) AS expanded WHERE elem = t.n) FROM srf_t AS t ORDER BY t.id;",
+				Expected: []sql.Row{{7, 3}, {8, 1}},
+			},
 		},
 	}
 
