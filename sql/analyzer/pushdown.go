@@ -261,11 +261,12 @@ func filteredTableNode(
 	// Move any remaining filters for the table directly above the table itself
 	var pushedDownFilterExpression sql.Expression
 	if tableFilters := filters.availableFiltersForTable(tableNode.Id()); len(tableFilters) > 0 {
-		filters.markFiltersHandled(tableFilters...)
-		for i, filter := range tableFilters {
+		pushedFilters := make([]sql.Expression, 0, len(tableFilters))
+		expressionsForTable := make([]sql.Expression, 0, len(tableFilters))
+		for _, filter := range tableFilters {
 			// If a filter contains a reference to a projection alias, pushing the filter will move it below the
 			// Project node. We need to replace the reference with the underlying expression.
-			tableFilters[i], _, _ = transform.Expr(ctx, filter, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+			tableExpression, _, err := transform.Expr(ctx, filter, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				if gt, ok := e.(*expression.GetField); ok {
 					if aliasedExpression, ok := filters.projectionExpressions[gt.Id()]; ok {
 						return aliasedExpression, transform.NewTree, nil
@@ -273,14 +274,31 @@ func filteredTableNode(
 				}
 				return e, transform.SameTree, nil
 			})
+			if err != nil {
+				return tableNode, transform.SameTree, err
+			}
+			// An SRF output must be filtered after the projection expands it into rows.
+			// Substitution may expose an SRF even when subquery-alias pushdown only saw a GetField.
+			if transform.InspectExpr(ctx, tableExpression, func(ctx *sql.Context, e sql.Expression) bool {
+				rowIter, ok := e.(sql.RowIterExpression)
+				return ok && rowIter.ReturnsRowIter()
+			}) {
+				continue
+			}
+			pushedFilters = append(pushedFilters, filter)
+			expressionsForTable = append(expressionsForTable, tableExpression)
 		}
-		pushedDownFilterExpression = expression.JoinAnd(tableFilters...)
+		if len(pushedFilters) == 0 {
+			return tableNode, transform.SameTree, nil
+		}
+		filters.markFiltersHandled(pushedFilters...)
+		pushedDownFilterExpression = expression.JoinAnd(expressionsForTable...)
 
 		a.Log(
 			"pushed down filters %s above table %q, %d filters handled of %d",
-			tableFilters,
+			expressionsForTable,
 			tableNode.Name(),
-			len(tableFilters),
+			len(pushedFilters),
 			len(tableFilters),
 		)
 	}
