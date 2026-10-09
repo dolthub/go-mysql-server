@@ -1032,11 +1032,6 @@ func TestBrokenInsertScripts(t *testing.T, harness Harness) {
 		t.Skip()
 		TestScript(t, harness, script)
 	}
-
-	for _, script := range queries.BrokenAutoIncrementScripts {
-		t.Skip()
-		TestScript(t, harness, script)
-	}
 }
 
 func TestSpatialInsertInto(t *testing.T, harness Harness) {

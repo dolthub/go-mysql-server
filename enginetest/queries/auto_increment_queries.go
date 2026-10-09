@@ -96,6 +96,111 @@ CREATE TABLE table2 (
 			{3, 3},
 		},
 	},
+	{
+		Skip: true,
+		// https://github.com/dolthub/dolt/issues/3157
+		Name: "auto increment does not increment on error",
+		SetUpScript: []string{
+			"create table auto1 (pk int primary key auto_increment);",
+			"insert into auto1 values (null);",
+			"create table auto2 (pk int primary key auto_increment, c int not null);",
+			"insert into auto2 values (null, 1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table auto1;",
+				Expected: []sql.Row{
+					{"auto1", "CREATE TABLE `auto1` (\n" +
+						"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
+						"  PRIMARY KEY (`pk`)\n" +
+						") ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query:       "insert into auto1 values (1);",
+				ExpectedErr: sql.ErrPrimaryKeyViolation,
+			},
+			{
+				Query: "show create table auto1;",
+				Expected: []sql.Row{
+					{"auto1", "CREATE TABLE `auto1` (\n" +
+						"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
+						"  PRIMARY KEY (`pk`)\n" +
+						") ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "insert into auto1 values (null);",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1, InsertID: 2}},
+				},
+			},
+			{
+				Query: "show create table auto1;",
+				Expected: []sql.Row{
+					{"auto1", "CREATE TABLE `auto1` (\n" +
+						"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
+						"  PRIMARY KEY (`pk`)\n" +
+						") ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "select * from auto1;",
+				Expected: []sql.Row{
+					{1},
+					{2},
+				},
+			},
+
+			{
+				Query: "show create table auto2;",
+				Expected: []sql.Row{
+					{"auto2", "CREATE TABLE `auto2` (\n" +
+						"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
+						"  `c` int NOT NULL,\n" +
+						"  PRIMARY KEY (`pk`)\n" +
+						") ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query:       "insert into auto2 values (null, null);",
+				ExpectedErr: sql.ErrInsertIntoNonNullableProvidedNull,
+			},
+			{
+				Query: "show create table auto2;",
+				Expected: []sql.Row{
+					{"auto2", "CREATE TABLE `auto2` (\n" +
+						"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
+						"  `c` int NOT NULL,\n" +
+						"  PRIMARY KEY (`pk`)\n" +
+						") ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "insert into auto2 values (null, 2);",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1, InsertID: 2}},
+				},
+			},
+			{
+				Query: "show create table auto2;",
+				Expected: []sql.Row{
+					{"auto2", "CREATE TABLE `auto2` (\n" +
+						"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
+						"  `c` int NOT NULL,\n" +
+						"  PRIMARY KEY (`pk`)\n" +
+						") ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "select * from auto2;",
+				Expected: []sql.Row{
+					{1, 1},
+					{2, 2},
+				},
+			},
+		},
+	},
 
 	// Char tests
 	{
@@ -1404,112 +1509,5 @@ var InsertAutoIncrementErrorScripts = []ScriptTest{
 		Name:        "create auto_increment column with default",
 		Query:       "create table bad (pk1 int auto_increment default 10, c0 int);",
 		ExpectedErr: sql.ErrInvalidAutoIncCols,
-	},
-}
-
-var BrokenAutoIncrementScripts = []ScriptTest{
-	{
-		// https://github.com/dolthub/dolt/issues/3157
-		Name: "auto increment does not increment on error",
-		SetUpScript: []string{
-			"create table auto1 (pk int primary key auto_increment);",
-			"insert into auto1 values (null);",
-			"create table auto2 (pk int primary key auto_increment, c int not null);",
-			"insert into auto2 values (null, 1);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "show create table auto1;",
-				Expected: []sql.Row{
-					{"auto1", "CREATE TABLE `auto1` (\n" +
-						"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
-						"  PRIMARY KEY (`pk`)\n" +
-						") ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-				},
-			},
-			{
-				Query:       "insert into auto1 values (1);",
-				ExpectedErr: sql.ErrPrimaryKeyViolation,
-			},
-			{
-				Query: "show create table auto1;",
-				Expected: []sql.Row{
-					{"auto1", "CREATE TABLE `auto1` (\n" +
-						"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
-						"  PRIMARY KEY (`pk`)\n" +
-						") ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-				},
-			},
-			{
-				Query: "insert into auto1 values (null);",
-				Expected: []sql.Row{
-					{types.OkResult{RowsAffected: 1, InsertID: 2}},
-				},
-			},
-			{
-				Query: "show create table auto1;",
-				Expected: []sql.Row{
-					{"auto1", "CREATE TABLE `auto1` (\n" +
-						"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
-						"  PRIMARY KEY (`pk`)\n" +
-						") ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-				},
-			},
-			{
-				Query: "select * from auto1;",
-				Expected: []sql.Row{
-					{1},
-					{2},
-				},
-			},
-
-			{
-				Query: "show create table auto2;",
-				Expected: []sql.Row{
-					{"auto2", "CREATE TABLE `auto2` (\n" +
-						"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
-						"  `c` int NOT NULL,\n" +
-						"  PRIMARY KEY (`pk`)\n" +
-						") ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-				},
-			},
-			{
-				Query:       "insert into auto2 values (null, null);",
-				ExpectedErr: sql.ErrInsertIntoNonNullableProvidedNull,
-			},
-			{
-				Query: "show create table auto2;",
-				Expected: []sql.Row{
-					{"auto2", "CREATE TABLE `auto2` (\n" +
-						"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
-						"  `c` int NOT NULL,\n" +
-						"  PRIMARY KEY (`pk`)\n" +
-						") ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-				},
-			},
-			{
-				Query: "insert into auto2 values (null, 2);",
-				Expected: []sql.Row{
-					{types.OkResult{RowsAffected: 1, InsertID: 2}},
-				},
-			},
-			{
-				Query: "show create table auto2;",
-				Expected: []sql.Row{
-					{"auto2", "CREATE TABLE `auto2` (\n" +
-						"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
-						"  `c` int NOT NULL,\n" +
-						"  PRIMARY KEY (`pk`)\n" +
-						") ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-				},
-			},
-			{
-				Query: "select * from auto2;",
-				Expected: []sql.Row{
-					{1, 1},
-					{2, 2},
-				},
-			},
-		},
 	},
 }

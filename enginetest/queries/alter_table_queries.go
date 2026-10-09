@@ -206,6 +206,19 @@ var AlterTableScripts = []ScriptTest{
 		},
 	},
 	{
+		Skip: true,
+		Name: "ALTER TABLE RENAME on a column when another column has a default dependency on it",
+		SetUpScript: []string{
+			"CREATE TABLE `test` (`pk` bigint NOT NULL,`v2` int NOT NULL DEFAULT '100',`v3` int DEFAULT ((`v2` + 1)),PRIMARY KEY (`pk`));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "alter table test rename column v2 to mycol",
+				ExpectedErr: sql.ErrAlterTableNotSupported, // Not the correct error. The point is that this query needs to fail.
+			},
+		},
+	},
+	{
 		Name: "drop column drops check constraint",
 		SetUpScript: []string{
 			"create table t34 (i bigint primary key, s varchar(20))",
@@ -540,6 +553,21 @@ var AlterTableScripts = []ScriptTest{
 			{
 				Query:          "insert into t values (1, 9);",
 				ExpectedErrStr: `Check constraint "chk_c" violated`,
+			},
+		},
+	},
+	{
+		Skip: true,
+		Name: "non-existent procedure in trigger body",
+		SetUpScript: []string{
+			"create table tbl_I (i int primary key);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "alter table tbl_i add column j int, add check (j < 10);",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
 			},
 		},
 	},
@@ -2365,36 +2393,6 @@ var DropColumnKeylessTablesScripts = []ScriptTest{
 				Expected: []sql.Row{
 					{1, 2},
 					{4, 5},
-				},
-			},
-		},
-	},
-}
-
-var BrokenAlterTableScriptTests = []ScriptTest{
-	{
-		Name: "ALTER TABLE RENAME on a column when another column has a default dependency on it",
-		SetUpScript: []string{
-			"CREATE TABLE `test` (`pk` bigint NOT NULL,`v2` int NOT NULL DEFAULT '100',`v3` int DEFAULT ((`v2` + 1)),PRIMARY KEY (`pk`));",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:       "alter table test rename column v2 to mycol",
-				ExpectedErr: sql.ErrAlterTableNotSupported, // Not the correct error. The point is that this query needs to fail.
-			},
-		},
-	},
-
-	{
-		Name: "non-existent procedure in trigger body",
-		SetUpScript: []string{
-			"create table tbl_I (i int primary key);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "alter table tbl_i add column j int, add check (j < 10);",
-				Expected: []sql.Row{
-					{types.NewOkResult(0)},
 				},
 			},
 		},
