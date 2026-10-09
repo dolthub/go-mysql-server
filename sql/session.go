@@ -113,9 +113,9 @@ type Session interface {
 	GetStoredProcParam(name string) *StoredProcParam
 	// SetStoredProcParam sets the Stored Procedure Parameter of the given name to the given val.
 	SetStoredProcParam(name string, val any) error
-	// IsInCall returns if the current Session is within a Stored Procedure
+	// IsInCall returns if the current Session is within a Stored Procedure call
 	IsInCall() bool
-	// SetInCall marks a Session is in a Stored Procedure
+	// SetInCall marks whether a Session is within a Stored Procedure call
 	SetInCall(bool)
 	// GetCurrentDatabase gets the current database for this session
 	GetCurrentDatabase() string
