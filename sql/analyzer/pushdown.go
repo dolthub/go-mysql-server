@@ -277,7 +277,7 @@ func filteredTableNode(
 			if err != nil {
 				return tableNode, transform.SameTree, err
 			}
-			// An SRF output must be filtered after the projection expands it into rows.
+			// A set-returning function's output must be filtered after the projection expands it into rows.
 			// Substitution may expose an SRF even when subquery-alias pushdown only saw a GetField.
 			if transform.InspectExpr(ctx, tableExpression, func(ctx *sql.Context, e sql.Expression) bool {
 				rowIter, ok := e.(sql.RowIterExpression)
@@ -361,7 +361,7 @@ func pushdownFiltersUnderSubqueryAlias(ctx *sql.Context, a *Analyzer, sa *plan.S
 		if err != nil {
 			return sa, transform.SameTree, err
 		}
-		// A predicate on an SRF output must consume the rows expanded by the projection.
+		// A predicate on a set-returning function's output must consume the rows expanded by the projection.
 		// Substituting the SRF would instead evaluate its iterator as a scalar value. Check
 		// expressions directly: IncludesNestedIters may not be set yet at this analyzer stage.
 		if transform.InspectExpr(ctx, childExpression, func(ctx *sql.Context, e sql.Expression) bool {
