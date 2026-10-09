@@ -1313,10 +1313,6 @@ func TestDescendingIndexesScripts(t *testing.T) {
 	enginetest.TestDescendingIndexesScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
-func TestIndexRegressionScripts(t *testing.T) {
-	enginetest.TestIndexRegressionScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
-}
-
 func TestIndexKeyTypesScripts(t *testing.T) {
 	enginetest.TestIndexKeyTypesScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }

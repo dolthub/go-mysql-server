@@ -382,30 +382,6 @@ var IndexQueries = []ScriptTest{
 			{Query: "SELECT * FROM django_session WHERE session_key='01234'", Expected: []sql.Row{{"01234"}}},
 		},
 	},
-}
-
-var BrokenIndexScriptTests = []ScriptTest{
-	// TODO: We should implement unique indexes with GMS
-	{
-		Name: "Keyless Table with Unique Index",
-		SetUpScript: []string{
-			"create table a (x int, val int unique)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "INSERT INTO a VALUES (1, 1)",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
-			},
-			{
-				Query:       "INSERT INTO a VALUES (1, 1)",
-				ExpectedErr: sql.ErrUniqueKeyViolation,
-			},
-		},
-	},
-}
-
-// IndexRegressionScriptTests contains self-contained index definition and lookup tests.
-var IndexRegressionScriptTests = []ScriptTest{
 	{
 		Name: "keyless unique index bug",
 		SetUpScript: []string{
@@ -885,6 +861,24 @@ WHERE
 					{1},
 					{1},
 				},
+			},
+		},
+	},
+	// TODO: We should implement unique indexes with GMS
+	{
+		Skip: true,
+		Name: "Keyless Table with Unique Index",
+		SetUpScript: []string{
+			"create table a (x int, val int unique)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO a VALUES (1, 1)",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:       "INSERT INTO a VALUES (1, 1)",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
 			},
 		},
 	},

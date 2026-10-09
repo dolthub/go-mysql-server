@@ -5776,9 +5776,11 @@ func TestBlobs(t *testing.T, h Harness) {
 }
 
 func TestIndexes(t *testing.T, h Harness) {
-	for _, tt := range queries.IndexQueries {
-		TestScript(t, h, tt)
-	}
+	testScriptTests(t, h, queries.IndexQueries, false)
+}
+
+func TestIndexesPrepared(t *testing.T, h Harness) {
+	testScriptTests(t, h, queries.IndexQueries, true)
 }
 
 func TestIndexedExpressions(t *testing.T, h Harness) {
@@ -5944,14 +5946,6 @@ func TestForeignKeyResolutionPrepared(t *testing.T, harness Harness) {
 
 func TestForeignKeyTypesPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.ForeignKeyTypeTests, true)
-}
-
-func TestIndexRegressionScripts(t *testing.T, harness Harness) {
-	testScriptTests(t, harness, queries.IndexRegressionScriptTests, false)
-}
-
-func TestIndexRegressionScriptsPrepared(t *testing.T, harness Harness) {
-	testScriptTests(t, harness, queries.IndexRegressionScriptTests, true)
 }
 
 func TestIndexKeyTypesScripts(t *testing.T, harness Harness) {
