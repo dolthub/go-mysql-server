@@ -1310,7 +1310,7 @@ T.TABLE_SCHEMA AS 'database', T.TABLE_CATALOG AS 'catalog',
 	},
 	{
 		// See https://github.com/dolthub/go-mysql-server/issues/3943
-		Name: "LIKE patterns containing only percent wildcards",
+		Name: "LIKE patterns of only % wildcards",
 		SetUpScript: []string{
 			"CREATE TABLE percent_wildcard (id INT PRIMARY KEY, s VARCHAR(20));",
 			"INSERT INTO percent_wildcard VALUES (1, 'abc'), (2, ''), (3, NULL);",
@@ -1333,12 +1333,8 @@ T.TABLE_SCHEMA AS 'database', T.TABLE_CATALOG AS 'catalog',
 				Expected: []sql.Row{{3}},
 			},
 			{
-				Query: "SELECT id, s LIKE '%', s IS NOT NULL FROM percent_wildcard ORDER BY id;",
-				Expected: []sql.Row{
-					{1, true, true},
-					{2, true, true},
-					{3, nil, false},
-				},
+				Query:    "SELECT id, s LIKE '%', s IS NOT NULL FROM percent_wildcard ORDER BY id;",
+				Expected: []sql.Row{{1, true, true}, {2, true, true}, {3, nil, false}},
 			},
 		},
 	},

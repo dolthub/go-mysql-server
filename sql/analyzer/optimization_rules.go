@@ -276,17 +276,15 @@ func simplifyExpression(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sel Ru
 			if charset != sql.CharacterSet_utf8mb4 {
 				return e, transform.SameTree, nil
 			}
-			prefix, complete, ok := e.LiteralPrefix(ctx)
-			if !ok {
+			prefix, kind := e.LiteralPrefix(ctx)
+			switch kind {
+			case expression.LikeLiteral:
+				return expression.NewEquals(e.LeftChild, expression.NewLiteral(prefix, e.RightChild.Type(ctx))), transform.NewTree, nil
+			case expression.LikePrefix:
+			default:
 				return e, transform.SameTree, nil
 			}
 			rightType := e.RightChild.Type(ctx)
-			if complete {
-				return expression.NewEquals(e.LeftChild, expression.NewLiteral(prefix, rightType)), transform.NewTree, nil
-			}
-			if len(prefix) == 0 {
-				return e, transform.SameTree, nil
-			}
 			lowerBound := expression.NewGreaterThanOrEqual(e.LeftChild, expression.NewLiteral(prefix, rightType))
 			// For a code-point ordered collation every match lies between |prefix| and the next
 			// string above it, so the LIKE becomes a range with an upper bound. When |prefix| has
@@ -335,15 +333,14 @@ func simplifyExpression(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sel Ru
 		return result, same, err
 	}
 
-	// LIKE '%' and IS NOT NULL differ for NULL-valued scalar expressions. The replacement is safe only when
-	// the LIKE is the complete filter predicate, where NULL and false both reject the row. Check the transformed
-	// root so constant-folded patterns are included, and do this outside the charset-specific prefix-range logic.
+	// LIKE '%' returns NULL for NULL input, whereas IS NOT NULL returns false.
+	// They are equivalent only as a complete filter or join predicate.
 	like, ok := result.(*expression.Like)
 	if !ok || !sql.IsStringType(like.LeftChild.Type(ctx)) {
 		return result, same, nil
 	}
-	prefix, complete, ok := like.LiteralPrefix(ctx)
-	if ok && !complete && len(prefix) == 0 {
+	_, kind := like.LiteralPrefix(ctx)
+	if kind == expression.LikeAny {
 		return expression.DefaultExpressionFactory.NewIsNotNull(like.LeftChild), transform.NewTree, nil
 	}
 	return result, same, nil

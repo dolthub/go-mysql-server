@@ -166,6 +166,7 @@ func TestEvalFilter(t *testing.T) {
 }
 
 func TestSimplifyLikeWildcardOnlyFilter(t *testing.T) {
+	// See https://github.com/dolthub/go-mysql-server/issues/3943
 	db := memory.NewDatabase("db")
 	pro := memory.NewDBProvider(db)
 	ctx := newContext(pro)
@@ -173,48 +174,38 @@ func TestSimplifyLikeWildcardOnlyFilter(t *testing.T) {
 	child := plan.NewResolvedTable(table, nil, nil)
 	rule := getRule(simplifyFiltersId)
 
-	stringField := expression.NewGetFieldWithTable(0, 0, types.Text, "", "foo", "s", true)
-	latin1StringField := expression.NewGetFieldWithTable(0, 0, types.CreateText(sql.Collation_latin1_swedish_ci), "", "foo", "s", true)
-	integerField := expression.NewGetFieldWithTable(0, 0, types.Int64, "", "foo", "i", true)
-	like := func(left sql.Expression, pattern string, escape sql.Expression) sql.Expression {
-		return expression.NewLike(left, expression.NewLiteral(pattern, types.LongText), escape)
-	}
-	constantPattern, err := function.NewConcat(ctx,
-		expression.NewLiteral("%", types.LongText),
-		expression.NewLiteral("%", types.LongText),
-	)
+	s := expression.NewGetFieldWithTable(0, 0, types.Text, "", "foo", "s", true)
+	latin1 := expression.NewGetFieldWithTable(0, 0, types.CreateText(sql.Collation_latin1_swedish_ci), "", "foo", "s", true)
+	i := expression.NewGetFieldWithTable(0, 0, types.Int64, "", "foo", "i", true)
+	pat := func(p string) sql.Expression { return expression.NewLiteral(p, types.LongText) }
+	concat, err := function.NewConcat(ctx, pat("%"), pat("%"))
 	require.NoError(t, err)
 
-	singleWildcard := like(stringField, "%", nil)
-	tripleWildcard := like(stringField, "%%%", nil)
-	latin1Wildcard := like(latin1StringField, "%", nil)
-	constantFoldedWildcard := expression.NewLike(stringField, constantPattern, nil)
-	nonStringWildcard := like(integerField, "%", nil)
-	explicitEscape := like(stringField, "%%%", expression.NewLiteral("$", types.LongText))
-	negatedWildcard := expression.NewNot(like(stringField, "%", nil))
-	wildcardIsNull := expression.NewIsNull(like(stringField, "%", nil))
-
 	tests := []struct {
-		name     string
-		filter   sql.Expression
-		expected sql.Expression
+		name    string
+		filter  sql.Expression
+		notNull sql.Expression
 	}{
-		{name: "single wildcard", filter: singleWildcard, expected: expression.DefaultExpressionFactory.NewIsNotNull(stringField)},
-		{name: "triple wildcard", filter: tripleWildcard, expected: expression.DefaultExpressionFactory.NewIsNotNull(stringField)},
-		{name: "non-utf8 string", filter: latin1Wildcard, expected: expression.DefaultExpressionFactory.NewIsNotNull(latin1StringField)},
-		{name: "constant-folded wildcard pattern", filter: constantFoldedWildcard, expected: expression.DefaultExpressionFactory.NewIsNotNull(stringField)},
-		{name: "non-string operand", filter: nonStringWildcard, expected: nonStringWildcard},
-		{name: "explicit escape", filter: explicitEscape, expected: explicitEscape},
-		{name: "negated wildcard", filter: negatedWildcard, expected: negatedWildcard},
-		{name: "wildcard is null", filter: wildcardIsNull, expected: wildcardIsNull},
+		{name: "single wildcard", filter: expression.NewLike(s, pat("%"), nil), notNull: s},
+		{name: "triple wildcard", filter: expression.NewLike(s, pat("%%%"), nil), notNull: s},
+		{name: "non-utf8 string", filter: expression.NewLike(latin1, pat("%"), nil), notNull: latin1},
+		{name: "constant-folded wildcard pattern", filter: expression.NewLike(s, concat, nil), notNull: s},
+		{name: "non-string operand", filter: expression.NewLike(i, pat("%"), nil)},
+		{name: "explicit escape", filter: expression.NewLike(s, pat("%%%"), pat("$"))},
+		{name: "negated wildcard", filter: expression.NewNot(expression.NewLike(s, pat("%"), nil))},
+		{name: "wildcard is null", filter: expression.NewIsNull(expression.NewLike(s, pat("%"), nil))},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			expected := tt.filter
+			if tt.notNull != nil {
+				expected = expression.DefaultExpressionFactory.NewIsNotNull(tt.notNull)
+			}
 			node := plan.NewFilter(ctx, tt.filter, child)
 			result, _, err := rule.Apply(ctx, NewDefault(pro), node, nil, DefaultRuleSelector, nil)
 			require.NoError(t, err)
-			require.Equal(t, plan.NewFilter(ctx, tt.expected, child), result)
+			require.Equal(t, plan.NewFilter(ctx, expected, child), result)
 		})
 	}
 }
