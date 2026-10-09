@@ -2966,9 +2966,9 @@ func TestDropTablePrepared(t *testing.T, harness Harness) {
 	testDropTable(t, harness, true)
 }
 
-func testDropTable(t *testing.T, harness Harness, prepared bool) {
-	require := require.New(t)
-
+// TestDropTableWarnings runs the self-contained DROP TABLE warning script without
+// the rest of the DROP TABLE suite, allowing integrators to retain its dialect skip.
+func TestDropTableWarnings(t *testing.T, harness Harness, prepared bool) {
 	// Keep the shared script literal beside the existing DROP TABLE cases.
 	type ScriptTestAssertion = queries.ScriptTestAssertion
 	script := queries.ScriptTest{
@@ -2989,6 +2989,12 @@ func testDropTable(t *testing.T, harness Harness, prepared bool) {
 	} else {
 		TestScript(t, harness, script)
 	}
+}
+
+func testDropTable(t *testing.T, harness Harness, prepared bool) {
+	require := require.New(t)
+
+	TestDropTableWarnings(t, harness, prepared)
 
 	harness.Setup(setup.MydbData, setup.MytableData, setup.OthertableData, setup.TabletestData, setup.Pk_tablesData)
 
