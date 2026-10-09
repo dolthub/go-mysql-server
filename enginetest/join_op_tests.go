@@ -120,6 +120,26 @@ var EngineOnlyJoinOpTests = []joinOpTest{
 				Query:    "select t.* from required_lookup_table('s', 2) as t where t.s = (select y from xy where x = 1)",
 				Expected: []sql.Row{{0}},
 			},
+			{
+				Query:    "select * from required_lookup_table('s', 2) where s = 1 and (select y from xy where x = 2) in (1)",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "select t.s from required_lookup_table('s', 3) as t where t.s = 2 and (select x from xy where y = 3) in (3)",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "select * from required_lookup_table('s', 4) where s = 2 and (select x from xy where y = s) in (0)",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "select * from required_lookup_table('s', 4) where s = 3 and (select max(u) from uv where v = 1) in (1)",
+				Expected: []sql.Row{{3}},
+			},
+			{
+				Query:    "select * from required_lookup_table('s', 3) where s = 1 and s + (select y from xy where x = 2) = 2",
+				Expected: []sql.Row{{1}},
+			},
 		},
 	},
 }
