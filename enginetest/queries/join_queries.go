@@ -16,6 +16,7 @@ package queries
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var JoinQueryTests = []QueryTest{
@@ -1476,6 +1477,53 @@ var JoinScriptTests = []ScriptTest{
 			{
 				Query:    "select d.id, d.type from r join deps_sep d on d.type = 'keep' and (d.col_a = r.id or d.col_b = r.id) order by d.id;",
 				Expected: []sql.Row{{1, "keep"}, {3, "keep"}},
+			},
+		},
+	},
+	{
+		Name: "semi and anti joins on an alias of a pruned table",
+		SetUpScript: []string{
+			"create table pruned_t1 (a int primary key, b int, c int);",
+			"create table pruned_t2 (x int primary key);",
+			"insert into pruned_t1 values (1, 10, 100), (2, 20, 200);",
+			"insert into pruned_t2 values (10), (100);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from (select s0.b from (select b from pruned_t1) s0 where s0.b in (select x from pruned_t2)) o;",
+				Expected: []sql.Row{{10}},
+			},
+			{
+				Query:    "with o as (select s0.b from (select b from pruned_t1) s0 where s0.b in (select x from pruned_t2)) select * from o;",
+				Expected: []sql.Row{{10}},
+			},
+			{
+				Query:    "select (select s0.b from (select b from pruned_t1) s0 where s0.b in (select x from pruned_t2) limit 1);",
+				Expected: []sql.Row{{10}},
+			},
+			{
+				Query:    "select * from (select s0.c from (select c from pruned_t1) s0 where exists (select 1 from pruned_t2 where x = s0.c)) o;",
+				Expected: []sql.Row{{100}},
+			},
+			{
+				Query:    "select * from (select s0.c, s0.b from (select b, c from pruned_t1) s0 where s0.b in (select x from pruned_t2)) o;",
+				Expected: []sql.Row{{100, 10}},
+			},
+			{
+				Query:    "select * from (select s0.c from (select c from pruned_t1) s0 where s0.c not in (select x from pruned_t2)) o;",
+				Expected: []sql.Row{{200}},
+			},
+			{
+				Query:    "select * from (select s0.c from (select c from pruned_t1) s0 where not exists (select 1 from pruned_t2 where x = s0.c)) o;",
+				Expected: []sql.Row{{200}},
+			},
+			{
+				Query:    "create view pruned_v as select s0.b from (select b from pruned_t1) s0 where s0.b in (select x from pruned_t2);",
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query:    "select * from pruned_v;",
+				Expected: []sql.Row{{10}},
 			},
 		},
 	},

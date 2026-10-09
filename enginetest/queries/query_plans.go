@@ -6162,7 +6162,7 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [a.i:0!null]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [mytable.i:0!null, mytable.s:1!null]\n" +
+			"     ├─ columns: [a.i:0!null, a.s:1!null]\n" +
 			"     └─ Filter\n" +
 			"         ├─ b.i:2!null IS NULL\n" +
 			"         └─ LeftOuterMergeJoin\n" +
@@ -6191,7 +6191,7 @@ inner join pq on true
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.i]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [mytable.i, mytable.s]\n" +
+			"     ├─ columns: [a.i, a.s]\n" +
 			"     └─ Filter\n" +
 			"         ├─ b.i IS NULL\n" +
 			"         └─ LeftOuterMergeJoin (estimated cost=6.090 rows=3)\n" +
@@ -6209,7 +6209,7 @@ inner join pq on true
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.i]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [mytable.i, mytable.s]\n" +
+			"     ├─ columns: [a.i, a.s]\n" +
 			"     └─ Filter\n" +
 			"         ├─ b.i IS NULL\n" +
 			"         └─ LeftOuterMergeJoin (estimated cost=6.090 rows=3) (actual rows=3 loops=1)\n" +
