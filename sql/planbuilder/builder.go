@@ -27,6 +27,12 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
+// SubqueryEvaluator is a catalog that can run a subquery on its own, before the query containing it has been built.
+type SubqueryEvaluator interface {
+	// EvalSubquery runs `sq` and returns its value. `sq` must not use any columns from the query containing it.
+	EvalSubquery(ctx *sql.Context, sq *plan.Subquery, qFlags *sql.QueryFlags) (interface{}, error)
+}
+
 type Builder struct {
 	overrides sql.BuilderOverrides
 	// EventScheduler is used to communicate with the event scheduler

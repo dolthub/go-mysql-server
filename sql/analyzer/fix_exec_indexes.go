@@ -747,7 +747,11 @@ func columnIdsForNode(ctx *sql.Context, n sql.Node) []sql.ColumnId {
 		// table function. We currently do not update table columns in response
 		// to table pruning, so we need to manually distinguish these cases.
 		// todo: prune columns should update column ids and table alias ids
-		switch n.Child.(type) {
+		child := n.Child
+		if ita, ok := child.(*plan.IndexedTableAccess); ok {
+			child = ita.TableNode
+		}
+		switch child.(type) {
 		case sql.TableFunction:
 			// todo: table functions that implement sql.Projector are not going
 			// to work. Need to fix prune.

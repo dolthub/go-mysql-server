@@ -594,6 +594,7 @@ func TestTableFunctions(t *testing.T) {
 		memory.IntSequenceTable{},
 		memory.LookupSequenceTable{},
 		memory.PointLookupTable{},
+		memory.RequiredLookupTable{},
 		memory.TableFunc{},
 		memory.ExponentialDistTable{},
 		memory.NormalDistTable{})
