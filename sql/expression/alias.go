@@ -164,7 +164,10 @@ func (e *Alias) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(e, len(children), 1)
 	}
-	return NewAlias(ctx, e.name, children[0]), nil
+	ret := *e
+	ret.Child = children[0]
+	ret.ctx = ctx
+	return &ret, nil
 }
 
 // Name implements the Nameable interface.

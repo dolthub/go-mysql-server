@@ -137,7 +137,8 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 		colName := strings.ToLower(v.Name.String())
 		c, ok := inScope.resolveColumn(dbName, tblName, colName, true, false)
 		if !ok {
-			if aliasedExpr, ok := inScope.selectAliases[colName]; ok {
+			wholeRowReference := tblName == "" && b.overrides.ParseTableAsColumn != nil && inScope.hasTable(colName)
+			if aliasedExpr, ok := inScope.selectAliases[colName]; ok && !wholeRowReference {
 				switch {
 				case b.windowClause == "":
 					return aliasedExpr
