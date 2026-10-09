@@ -595,21 +595,7 @@ func convertSemiToInnerJoin(ctx *sql.Context, m *memo.Memo) error {
 				break
 			}
 
-			sch := srcNode.Schema(ctx)
-			var table sql.Table
-			if tw, ok := srcNode.(sql.TableNode); ok {
-				table = tw.UnderlyingTable()
-			}
-			if pkt, ok := table.(sql.PrimaryKeyTable); ok {
-				sch = pkt.PrimaryKeySchema(ctx).Schema
-			}
-
-			firstCol, _ := srcNode.Columns().Next(1)
-			idx := int(colId - firstCol)
-			col := sch[idx]
-
-			projections = append(projections, expression.NewGetFieldWithTable(int(colId), int(srcNode.Id()), col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable))
-
+			projections = append(projections, getFieldForSourceColumn(ctx, srcNode, colId))
 		}
 
 		if len(projections) == 0 {
@@ -621,6 +607,29 @@ func convertSemiToInnerJoin(ctx *sql.Context, m *memo.Memo) error {
 
 		return nil
 	})
+}
+
+// getFieldForSourceColumn returns a GetField for the column |colId| of |srcNode|.
+func getFieldForSourceColumn(ctx *sql.Context, srcNode plan.TableIdNode, colId sql.ColumnId) sql.Expression {
+	sch := srcNode.Schema(ctx)
+	var table sql.Table
+	var node sql.Node = srcNode
+	if ta, ok := node.(*plan.TableAlias); ok {
+		node = ta.Child
+	}
+	if tw, ok := node.(sql.TableNode); ok {
+		table = tw.UnderlyingTable()
+	}
+	// Using the PrimaryKeySchema ensures that the schema matches the ColumnIds even if the table has been pruned.
+	if pkt, ok := table.(sql.PrimaryKeyTable); ok {
+		sch = pkt.PrimaryKeySchema(ctx).Schema
+	}
+
+	firstCol, _ := srcNode.Columns().Next(1)
+	col := sch[int(colId-firstCol)]
+	// The new GetField must use the table name of |srcNode|, not the underlying table, so that references to table aliases
+	// resolve correctly.
+	return expression.NewGetFieldWithTable(int(colId), int(srcNode.Id()), col.Type, col.DatabaseSource, srcNode.Name(), col.Name, col.Nullable)
 }
 
 // convertAntiToLeftJoin adds left join alternatives for anti join
@@ -705,24 +714,7 @@ func convertAntiToLeftJoin(ctx *sql.Context, m *memo.Memo) error {
 				break
 			}
 
-			sch := srcNode.Schema(ctx)
-			var table sql.Table
-			var node sql.Node = srcNode
-			if ta, ok := node.(*plan.TableAlias); ok {
-				node = ta.Child
-			}
-			if tw, ok := node.(sql.TableNode); ok {
-				table = tw.UnderlyingTable()
-			}
-			if pkt, ok := table.(sql.PrimaryKeyTable); ok {
-				sch = pkt.PrimaryKeySchema(ctx).Schema
-			}
-
-			firstCol, _ := srcNode.Columns().Next(1)
-			idx := int(colId - firstCol)
-			col := sch[idx]
-
-			projections = append(projections, expression.NewGetFieldWithTable(int(colId), int(srcNode.Id()), col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable))
+			projections = append(projections, getFieldForSourceColumn(ctx, srcNode, colId))
 		}
 
 		if len(projections) == 0 {
