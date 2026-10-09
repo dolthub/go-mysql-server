@@ -20,28 +20,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// ForeignKeyResolutionScriptTests contains self-contained foreign key resolution script tests.
-var ForeignKeyResolutionScriptTests = []ScriptTest{
-	{
-		Name:    "resolve foreign key on indexed update",
-		Dialect: "mysql", // no way to disable foreign keys in doltgres yet
-		SetUpScript: []string{
-			"set foreign_key_checks=0;",
-			"create table parent (i int primary key);",
-			"create table child (i int primary key, foreign key (i) references parent(i));",
-			"set foreign_key_checks=1;",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "update child set i = 1 where i = 1;",
-				Expected: []sql.Row{
-					{types.OkResult{RowsAffected: 0, Info: plan.UpdateInfo{Matched: 0, Updated: 0}}},
-				},
-			},
-		},
-	},
-}
-
 var ForeignKeyResolutionTests = []ScriptTest{
 	{
 		Name: "Delayed foreign key resolution: update",
@@ -228,6 +206,10 @@ var ForeignKeyResolutionTests = []ScriptTest{
 	{
 		Name: "DROP TABLE with FOREIGN_KEY_CHECKS=0",
 		SetUpScript: []string{
+			"CREATE TABLE parent (id INT PRIMARY KEY, v1 INT, v2 INT)",
+			"create index v1 on parent (v1)",
+			"create index v2 on parent (v2)",
+			"CREATE TABLE child (id INT PRIMARY KEY, v1 INT, v2 INT)",
 			"ALTER TABLE child ADD CONSTRAINT fk_dropped FOREIGN KEY (v1) REFERENCES parent(v1);",
 		},
 		Assertions: []ScriptTestAssertion{
@@ -278,6 +260,24 @@ var ForeignKeyResolutionTests = []ScriptTest{
 			{
 				Query:    "SELECT * FROM child;",
 				Expected: []sql.Row{{4, 5, 6}},
+			},
+		},
+	},
+	{
+		Name:    "resolve foreign key on indexed update",
+		Dialect: "mysql", // no way to disable foreign keys in doltgres yet
+		SetUpScript: []string{
+			"set foreign_key_checks=0;",
+			"create table parent (i int primary key);",
+			"create table child (i int primary key, foreign key (i) references parent(i));",
+			"set foreign_key_checks=1;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "update child set i = 1 where i = 1;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 0, Info: plan.UpdateInfo{Matched: 0, Updated: 0}}},
+				},
 			},
 		},
 	},

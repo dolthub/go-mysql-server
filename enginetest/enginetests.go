@@ -3486,10 +3486,6 @@ func TestCreateForeignKeys(t *testing.T, harness Harness) {
 	for _, tt := range queries.CreateForeignKeyTests {
 		TestScript(t, harness, tt)
 	}
-
-	for _, tt := range queries.CreateForeignKeyTypeTests {
-		TestScript(t, harness, tt)
-	}
 }
 
 func TestDropForeignKeys(t *testing.T, harness Harness) {
@@ -3505,10 +3501,12 @@ func TestForeignKeys(t *testing.T, harness Harness) {
 		TestScript(t, harness, script)
 	}
 
+	harness.Setup(setup.MydbData)
 	for _, script := range queries.ForeignKeyTypeTests {
 		TestScript(t, harness, script)
 	}
 
+	harness.Setup(setup.MydbData)
 	for _, script := range queries.ForeignKeyResolutionTests {
 		TestScript(t, harness, script)
 	}
@@ -5940,20 +5938,12 @@ func TestDescendingIndexesScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.DescendingIndexesScriptTests, true)
 }
 
-func TestForeignKeyResolutionScripts(t *testing.T, harness Harness) {
-	testScriptTests(t, harness, queries.ForeignKeyResolutionScriptTests, false)
+func TestForeignKeyResolutionPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.ForeignKeyResolutionTests, true)
 }
 
-func TestForeignKeyResolutionScriptsPrepared(t *testing.T, harness Harness) {
-	testScriptTests(t, harness, queries.ForeignKeyResolutionScriptTests, true)
-}
-
-func TestForeignKeyTypesScripts(t *testing.T, harness Harness) {
-	testScriptTests(t, harness, queries.ForeignKeyTypesScriptTests, false)
-}
-
-func TestForeignKeyTypesScriptsPrepared(t *testing.T, harness Harness) {
-	testScriptTests(t, harness, queries.ForeignKeyTypesScriptTests, true)
+func TestForeignKeyTypesPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.ForeignKeyTypeTests, true)
 }
 
 func TestIndexRegressionScripts(t *testing.T, harness Harness) {
