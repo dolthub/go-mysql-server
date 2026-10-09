@@ -122,7 +122,11 @@ func (s *scope) resolveColumn(db, table, col string, checkParent, chooseFirst bo
 	var foundCand bool
 	// In window clauses (PARTITION BY, ORDER BY), column names must match
 	// table columns, not same-level SELECT aliases with the same name.
-	hideAliases := s.selectAliasScope && s.b.windowClause != ""
+	// A whole-row reference to a FROM relation takes precedence over a same-level
+	// SELECT alias when the caller supports parsing tables as column expressions.
+	wholeRowReference := table == "" && s.b.overrides.ParseTableAsColumn != nil &&
+		s.queryBlock != nil && s.queryBlock.source.hasTable(col)
+	hideAliases := s.selectAliasScope && (s.b.windowClause != "" || wholeRowReference)
 	for _, c := range s.cols {
 		if hideAliases {
 			break
