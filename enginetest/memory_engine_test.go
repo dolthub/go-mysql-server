@@ -489,6 +489,75 @@ func TestOrderByGroupBy(t *testing.T) {
 	enginetest.TestOrderByGroupBy(t, enginetest.NewDefaultMemoryHarness())
 }
 
+// TestHavingAggregateInputs verifies HAVING references to grouping columns used as aggregate inputs.
+func TestHavingAggregateInputs(t *testing.T) {
+	// TODO: Move these fixtures to queries.AggregationScriptTests in enginetest/queries/aggregation_script_queries.go
+	// after https://github.com/dolthub/go-mysql-server/pull/3990 lands.
+	scripts := []queries.ScriptTest{
+		{
+			Name: "having references aggregate input columns",
+			SetUpScript: []string{
+				"create table tab0 (col0 int, col1 int, col2 int);",
+				"insert into tab0 values (1, 0, 10);",
+			},
+			Assertions: []queries.ScriptTestAssertion{
+				{
+					Query:    "select sum(col1) from tab0 group by col1, col2 having col1 >= count(*);",
+					Expected: []sql.Row{},
+				},
+				{
+					Query:    "select sum(t.col1) from tab0 t group by t.col1, t.col2 having t.col1 >= count(*);",
+					Expected: []sql.Row{},
+				},
+				{
+					Query:    "select sum(col1) from tab0 group by col1 having col1 >= count(*);",
+					Expected: []sql.Row{},
+				},
+				{
+					Query:    "select sum(col1) from tab0 group by col1, col2 having col1 < count(*);",
+					Expected: []sql.Row{{float64(0)}},
+				},
+			},
+		},
+		{
+			Name: "having references multiple aggregate input columns",
+			SetUpScript: []string{
+				"create table tab0 (col0 int, col1 int, col2 int);",
+				"insert into tab0 values (1, 0, 10), (2, 2, 20), (3, 2, 20), (4, 3, 30), (5, null, 40);",
+			},
+			Assertions: []queries.ScriptTestAssertion{
+				{
+					Query:    "select sum(col1), sum(col2) from tab0 group by col1, col2 having col1 >= count(*) order by col1, col2;",
+					Expected: []sql.Row{{float64(4), float64(40)}, {float64(3), float64(30)}},
+				},
+				{
+					Query:    "select sum(col1), sum(col2) from tab0 group by col1, col2 having col1 < count(*) order by col1, col2;",
+					Expected: []sql.Row{{float64(0), float64(10)}},
+				},
+				{
+					Query:    "select sum(col1), sum(col2) from tab0 group by col1, col2 having col1 is null;",
+					Expected: []sql.Row{{nil, float64(40)}},
+				},
+			},
+		},
+	}
+
+	t.Run("ordinary", func(t *testing.T) {
+		for _, script := range scripts {
+			enginetest.TestScript(t, enginetest.NewDefaultMemoryHarness(), script)
+		}
+	})
+	t.Run("prepared", func(t *testing.T) {
+		harness := enginetest.NewDefaultMemoryHarness()
+		if harness.IsUsingServer() {
+			t.Skip("Prepared aggregate input tests require a native engine")
+		}
+		for _, script := range scripts {
+			enginetest.TestScriptPrepared(t, harness, script)
+		}
+	})
+}
+
 func TestAmbiguousColumnResolution(t *testing.T) {
 	enginetest.TestAmbiguousColumnResolution(t, enginetest.NewDefaultMemoryHarness())
 }
