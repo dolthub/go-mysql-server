@@ -84,7 +84,7 @@ func (g *groupBy) addInputs(ctx *sql.Context, args []sql.Expression) {
 		var col scopeColumn
 		switch arg := arg.(type) {
 		case *expression.GetField:
-			col = scopeColumn{tableId: arg.TableID(), db: arg.Database(), table: arg.Table(), col: arg.Name(), scalar: arg, typ: arg.Type(ctx), nullable: arg.IsNullable(ctx)}
+			col = scopeColumn{id: columnId(arg.Id()), tableId: arg.TableID(), db: arg.Database(), table: arg.Table(), col: arg.Name(), scalar: arg, typ: arg.Type(ctx), nullable: arg.IsNullable(ctx)}
 		case *plan.Subquery:
 			col = scopeColumn{col: arg.QueryString, scalar: arg, typ: arg.Type(ctx)}
 		default:
