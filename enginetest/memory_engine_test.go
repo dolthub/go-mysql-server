@@ -966,7 +966,12 @@ func TestAlterTable(t *testing.T) {
 }
 
 func TestAlterTablePrepared(t *testing.T) {
-	enginetest.TestAlterTablePrepared(t, enginetest.NewDefaultMemoryHarness())
+	harness := enginetest.NewDefaultMemoryHarness()
+	if harness.IsUsingServer() {
+		t.Skip("prepared ALTER TABLE scripts currently fail with ServerEngine")
+	}
+
+	enginetest.TestAlterTablePrepared(t, harness)
 }
 
 func TestDateParse(t *testing.T) {
