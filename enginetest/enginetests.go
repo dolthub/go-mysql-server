@@ -1817,7 +1817,8 @@ func TestTemporalScripts(t *testing.T, harness Harness) {
 }
 
 func TestEnumsAndSetsScripts(t *testing.T, harness Harness) {
-	testScriptTests(t, harness, queries.EnumsAndSetsScriptTests, false)
+	testScriptTests(t, harness, queries.EnumsScriptTests, false)
+	testScriptTests(t, harness, queries.SetsScriptTests, false)
 }
 
 func testScriptTests(t *testing.T, harness Harness, scripts []queries.ScriptTest, prepared bool) {
@@ -1938,7 +1939,8 @@ func TestNumericScriptsPrepared(t *testing.T, harness Harness) {
 }
 
 func TestEnumsAndSetsScriptsPrepared(t *testing.T, harness Harness) {
-	testScriptTests(t, harness, queries.EnumsAndSetsScriptTests, true)
+	testScriptTests(t, harness, queries.EnumsScriptTests, true)
+	testScriptTests(t, harness, queries.SetsScriptTests, true)
 }
 
 func TestExpressionsScriptsPrepared(t *testing.T, harness Harness) {
@@ -5366,10 +5368,11 @@ func TestDatabaseCollationWire(t *testing.T, h Harness, sessionBuilder server.Se
 }
 
 func TestCharsetCollationEngine(t *testing.T, harness Harness) {
-	harness.Setup(setup.MydbData)
-	for _, script := range queries.CharsetCollationEngineTests {
-		TestScript(t, harness, script)
-	}
+	testScriptTests(t, harness, queries.CharsetCollationEngineTests, false)
+}
+
+func TestCharsetCollationEnginePrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.CharsetCollationEngineTests, true)
 }
 
 func TestCharsetCollationWire(t *testing.T, h Harness, sessionBuilder server.SessionBuilder) {
@@ -5911,14 +5914,6 @@ func TestAutoIncrementScripts(t *testing.T, harness Harness) {
 
 func TestAutoIncrementScriptsPrepared(t *testing.T, harness Harness) {
 	testScriptTests(t, harness, queries.AutoIncrementScriptTests, true)
-}
-
-func TestCharsetCollationScripts(t *testing.T, harness Harness) {
-	testScriptTests(t, harness, queries.CharsetCollationScriptTests, false)
-}
-
-func TestCharsetCollationScriptsPrepared(t *testing.T, harness Harness) {
-	testScriptTests(t, harness, queries.CharsetCollationScriptTests, true)
 }
 
 func TestDatabaseDefinitionsScripts(t *testing.T, harness Harness) {

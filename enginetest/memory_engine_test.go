@@ -1126,9 +1126,50 @@ func TestPreparedStatements(t *testing.T) {
 func TestCharsetCollationEngine(t *testing.T) {
 	harness := enginetest.NewDefaultMemoryHarness()
 	if harness.IsUsingServer() {
-		// Note: charset introducer needs to be handled with the SQLVal when preparing
-		//  e.g. what we do currently for `_utf16'hi'` is `_utf16 :v1` with v1 = "hi", instead of `:v1` with v1 = "_utf16'hi'".
-		t.Skip("way we prepare the queries with injectBindVarsAndPrepare() method does not work for ServerEngine test")
+		// Charset introducers cannot yet be prepared correctly by ServerEngine.
+		harness.QueriesToSkip(
+			"Uppercase and lowercase collations",
+			"Insert multiple character sets",
+			"Sorting differences",
+			"Character set introducer with invalid collate",
+			"Properly block using not-yet-implemented character sets/collations",
+			"Order by behaves differently according to case-sensitivity",
+			"Proper index access",
+			"Table collation is respected",
+			"SET NAMES does not interfere with column charset",
+			"SET validates character set and collation variables",
+			"setting charset/collation sets the other",
+			"ENUM collation handling",
+			"SET collation handling",
+			"LIKE respects table collations",
+			"LIKE respects connection collation",
+			"STRCMP() function",
+			"LENGTH() function",
+			"CHAR_LENGTH() function",
+			"CONVERT() USING with malformed multi-byte strings",
+			"UPPER() function",
+			"LOWER() function",
+			"RPAD() function",
+			"LPAD() function",
+			"HEX() function",
+			"UNHEX() function",
+			"SUBSTRING() function",
+			"TO_BASE64() function",
+			"FROM_BASE64() function",
+			"TRIM() function",
+			"RTRIM() function",
+			"LTRIM() function",
+			"BINARY() function",
+			"CAST(... AS BINARY) function",
+			"Issue #5482",
+			"LIKE with a space terminated prefix matches rows with a multibyte character after the prefix",
+			"LIKE with a constant prefix keeps rows that sort after the prefix across collations, NOT LIKE, and joins",
+			"LIKE with a binary-collation prefix ending at a code-point boundary excludes non-matching rows",
+			"LIKE with a constant prefix on an indexed column uses an index range scan",
+			"LIKE with a constant prefix drops the LIKE only for a binary collation",
+			"IN predicate with accent-insensitive collation",
+			"CHECK constraint with IN predicate and collation",
+		)
 	}
 	enginetest.TestCharsetCollationEngine(t, harness)
 }
@@ -1258,10 +1299,6 @@ func TestTimeQueries(t *testing.T) {
 
 func TestAutoIncrementScripts(t *testing.T) {
 	enginetest.TestAutoIncrementScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
-}
-
-func TestCharsetCollationScripts(t *testing.T) {
-	enginetest.TestCharsetCollationScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
 func TestDatabaseDefinitionsScripts(t *testing.T) {

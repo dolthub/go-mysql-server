@@ -1503,10 +1503,6 @@ T.TABLE_SCHEMA AS 'database', T.TABLE_CATALOG AS 'catalog',
 			},
 		},
 	},
-}
-
-// CharsetCollationScriptTests contains self-contained charset collation script tests.
-var CharsetCollationScriptTests = []ScriptTest{
 	{
 		Name:    "CONVERT USING still converts between incompatible character sets",
 		Dialect: "mysql",
