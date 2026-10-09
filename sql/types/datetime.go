@@ -541,6 +541,15 @@ func matchNumericDate(str string, pos int) (matchIdxs []int) {
 	return
 }
 
+// isMySQLPunct checks if |char| is considered a punctuation character under MySQL's rules.
+// This set of characters is equivalent to the standard ASCII punctuation set minus the SPACE character (0x20).
+func isMySQLPunct(char rune) bool {
+	return (char >= 0x21 && char <= 0x2F) ||
+		(char >= 0x3A && char <= 0x40) ||
+		(char >= 0x5B && char <= 0x60) ||
+		(char >= 0x7B && char <= 0x7E)
+}
+
 // parseDate converts a string into the year, month, and day according to MySQL's rules.
 // The input string is expected to be at least MinDatetimeStringLength.
 // All date portions (year, month, and day) must be present for this function to be successful.
