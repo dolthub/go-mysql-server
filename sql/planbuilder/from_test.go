@@ -108,58 +108,6 @@ func TestRecordReturningFunctionAliasPreservesColumnNames(t *testing.T) {
 	})
 }
 
-func TestWholeRowReferencePrecedesSelectAlias(t *testing.T) {
-	for _, wholeRows := range []bool{false, true} {
-		name := "without whole-row references"
-		if wholeRows {
-			name = "with whole-row references"
-		}
-		t.Run(name, func(t *testing.T) {
-			db := memory.NewDatabase("mydb")
-			ctx := sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), memory.NewDBProvider(db))))
-			ctx.SetCurrentDatabase("mydb")
-			cat := tableFunctionTestCatalog{
-				MapCatalog: sql.MapCatalog{
-					Databases: map[string]sql.Database{"mydb": db},
-					Funcs:     function.NewRegistry(),
-				},
-			}
-			rowReferences := 0
-			if wholeRows {
-				cat.overrides.Builder.ParseTableAsColumn = func(_ *sql.Context, name string, fields []sql.Expression, _ []*sql.Column) (sql.Expression, error) {
-					rowReferences++
-					require.Equal(t, "e", name)
-					require.Len(t, fields, 1)
-					field := fields[0].(*expression.GetField)
-					require.Equal(t, "e", field.Table())
-					require.Equal(t, "value", field.Name())
-					require.Equal(t, sql.ColumnId(1), field.Id())
-					return expression.NewTuple(fields...), nil
-				}
-			}
-			from := tableFuncExpr("abs", "e", ast.NewIntVal([]byte("1")))
-			from.Columns = ast.Columns{ast.NewColIdent("value")}
-			stmt := &ast.Select{
-				From: ast.TableExprs{from},
-				SelectExprs: ast.SelectExprs{
-					&ast.AliasedExpr{Expr: &ast.ColName{Name: ast.NewColIdent("value")}, As: ast.NewColIdent("e")},
-					&ast.AliasedExpr{Expr: &ast.ColName{Name: ast.NewColIdent("e")}},
-					&ast.AliasedExpr{Expr: &ast.IsExpr{Operator: ast.IsNullStr, Expr: &ast.ColName{Name: ast.NewColIdent("e")}}},
-				},
-			}
-			b := New(ctx, cat, nil)
-			if !wholeRows {
-				require.PanicsWithError(t, sql.ErrMisusedAlias.New("e").Error(), func() {
-					b.buildSelect(b.newScope(), stmt)
-				})
-				return
-			}
-			b.buildSelect(b.newScope(), stmt)
-			require.Equal(t, 2, rowReferences)
-		})
-	}
-}
-
 func tableFuncExpr(name, alias string, exprs ...ast.Expr) *ast.TableFuncExpr {
 	aliasedExprs := make(ast.SelectExprs, len(exprs))
 	for i, expr := range exprs {

@@ -27,15 +27,19 @@ var ColumnAliasQueries = []ScriptTest{
 		Name: "references to aliases after expression rewrites",
 		Assertions: []ScriptTestAssertion{
 			{
-				// Folding the cast changes the alias's child; references from the outer query
-				// must still identify the same projected column.
-				Query:    "SELECT elem, elem + 1 FROM (SELECT CAST(1 AS SIGNED) AS elem) AS expanded WHERE elem = 1;",
-				Expected: []sql.Row{{int64(1), int64(2)}},
+				// Rewriting BETWEEN must preserve the projected alias's column ID so
+				// the outer IN predicate still compares against its boolean result.
+				Query:    "SELECT i FROM mytable WHERE i IN (SELECT i BETWEEN 1 AND 2 AS elem FROM mytable) ORDER BY i;",
+				Expected: []sql.Row{{int64(1)}},
 			},
 			{
-				Query: "SELECT val FROM (SELECT elem AS val FROM " +
-					"(SELECT CAST(i AS SIGNED) AS elem FROM mytable) AS expanded) AS nested WHERE val = 2;",
-				Expected: []sql.Row{{int64(2)}},
+				Query:    "SELECT i FROM mytable WHERE i NOT IN (SELECT i BETWEEN 1 AND 2 AS elem FROM mytable) ORDER BY i;",
+				Expected: []sql.Row{{int64(2)}, {int64(3)}},
+			},
+			{
+				// Converting an IN tuple to a hash lookup also rewrites the alias's child.
+				Query:    "SELECT i FROM mytable WHERE i IN (SELECT i IN (1, 2) AS elem FROM mytable) ORDER BY i;",
+				Expected: []sql.Row{{int64(1)}},
 			},
 		},
 	},
