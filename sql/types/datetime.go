@@ -248,7 +248,7 @@ func (t datetimeType) Convert(ctx context.Context, v any) (any, sql.ConvertInRan
 	case []byte:
 		return t.Convert(ctx, string(value))
 	case string:
-		res, _, err = t.parseDatetime(value)
+		res, err = t.parseDatetime(value)
 	case Timespan:
 		// when receiving TIME, MySQL fills in date with today
 		nowTimeStr := sql.Now().Format("2006-01-02")
@@ -550,6 +550,183 @@ func isMySQLPunct(char rune) bool {
 		(char >= 0x7B && char <= 0x7E)
 }
 
+func trimFunc(str string, f func(rune) bool) (string, int) {
+	for idx, char := range str {
+		if !f(char) {
+			return str[idx:], idx
+		}
+	}
+	return str, len(str)
+}
+
+func readDigits(str string) (string, string) {
+	for idx, char := range str {
+		if !unicode.IsDigit(char) {
+			return str[:idx], str[idx:]
+		}
+	}
+	return str, ""
+}
+
+func parseDateParts(yearStr, monthStr, dayStr string) (year, month, day int, ok bool) {
+	var err error
+	year, err = strconv.Atoi(yearStr)
+	if err != nil {
+		return 0, 0, 0, false
+	}
+	month, err = strconv.Atoi(monthStr)
+	if err != nil {
+		return 0, 0, 0, false
+	}
+	day, err = strconv.Atoi(dayStr)
+	if err != nil {
+		return 0, 0, 0, false
+	}
+	// MySQL special case for abbreviated ('00) date formats
+	// TODO: there's a special special case for 00-00-00
+	if len(yearStr) == 2 {
+		year = TwoDigitYear(year)
+	}
+	return year, month, day, true
+}
+
+// TODO: this is similar to TimespanType_.parseTimeParts
+func parseTimeParts(hourStr, monthStr, dayStr string) (hour, min, sec int, ok bool) {
+	var err error
+	if len(hourStr) > 0 {
+		hour, err = strconv.Atoi(hourStr)
+		if err != nil {
+			return 0, 0, 0, false
+		}
+	}
+	if len(monthStr) > 0 {
+		min, err = strconv.Atoi(monthStr)
+		if err != nil {
+			return 0, 0, 0, false
+		}
+	}
+	if len(dayStr) > 0 {
+		sec, err = strconv.Atoi(dayStr)
+		if err != nil {
+			return 0, 0, 0, false
+		}
+	}
+	return hour, min, sec, true
+}
+
+func parseMicros(microStr string) (micros int, ok bool) {
+	if len(microStr) < 1 {
+		return 0, true
+	}
+	end := min(len(microStr), MaxDatetimePrecision+2)
+	microsf64, err := strconv.ParseFloat(microStr[:end], 64)
+	if err != nil {
+		return 0, false
+	}
+	micros = int(math.Round(microsf64 * float64(microsPerSec)))
+	return micros, true
+}
+
+func (t datetimeType) parseDatetime(origStr string) (any, error) {
+	if len(origStr) == 0 {
+		return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
+	}
+
+	// Trim whitespaces
+	var err error
+	str, trimCnt := trimFunc(origStr, isMySQLDatetimeWhitespace)
+	if len(str) == 0 { // TODO: necessary?
+		return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
+	}
+	if trimCnt > 0 {
+		err = sql.ErrDeprecatedDelimiter.New(origStr[0], t.String(), origStr)
+	}
+
+	// Read Year
+	yearStr, str := readDigits(str)
+	if len(yearStr) >= MinDatetimeStringLength {
+		// TODO:
+		// if yearStr is too long AND the delimiter is '.' parse yearStr as non-delimited date or datetime
+		// if yearStr is just a date, parse the remaining as either delimited or non-delimited time
+		// if yearStr is datetime, parse the remaining as microseconds
+	}
+	if len(str) == 0 {
+		return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
+	}
+	// TODO: only this delimiter matters??
+	delim := rune(str[0])
+	if delim == '.' {
+		// TODO: fill in characters for MONTH and DAY
+		// move on to next portion if we see delimiter
+		// up to 2 digits for month, day, hour, min, sec,...
+	}
+	// remainder of datetime must be delimited strictly
+	if delim != '-' {
+		err = sql.ErrDeprecatedDelimiter.New(delim, t.String(), origStr)
+	}
+	str, trimCnt = trimFunc(str, isMySQLPunct)
+	if trimCnt > 1 {
+		err = sql.ErrDeprecatedDelimiter.New(delim, t.String(), origStr)
+	}
+
+	monthStr, str := readDigits(str)
+	str, trimCnt = trimFunc(str, isMySQLPunct)
+	if trimCnt > 1 {
+		err = sql.ErrDeprecatedDelimiter.New(delim, t.String(), origStr)
+	}
+
+	dayStr, str := readDigits(str)
+	str, trimCnt = trimFunc(str, func(r rune) bool {
+		return isMySQLPunct(r) || isMySQLDatetimeWhitespace(r)
+	})
+	if trimCnt > 1 {
+		err = sql.ErrDeprecatedDelimiter.New(delim, t.String(), origStr)
+	}
+
+	hourStr, str := readDigits(str)
+	str, trimCnt = trimFunc(str, isMySQLPunct)
+	if trimCnt > 1 {
+		err = sql.ErrTruncatedIncorrect.New(t.String(), origStr)
+	}
+
+	// Whitespaces at this point result in NULL
+	str, trimCnt = trimFunc(str, isMySQLDatetimeWhitespace)
+	if trimCnt > 0 {
+		return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
+	}
+
+	minStr, str := readDigits(str)
+	str, trimCnt = trimFunc(str, isMySQLPunct)
+	if trimCnt > 1 {
+		err = sql.ErrTruncatedIncorrect.New(t.String(), origStr)
+	}
+	secStr, str := readDigits(str)
+	microStr, str := readMicros(str)
+
+	year, month, day, ok := parseDateParts(yearStr, monthStr, dayStr)
+	if !ok {
+		return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
+	}
+	hours, mins, secs, ok := parseTimeParts(hourStr, minStr, secStr)
+	if !ok {
+		return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
+	}
+	micros, ok := parseMicros(microStr)
+	if !ok {
+		return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
+	}
+
+	res, ok := makeDatetime(year, month, day, hours, mins, secs, micros*int(nanosPerMicro))
+	if !ok {
+		return nil, err
+	}
+
+	if len(str) > 0 {
+		err = sql.ErrTruncatedIncorrect.New(t.String(), origStr)
+	}
+	return res, err
+}
+
 // parseDate converts a string into the year, month, and day according to MySQL's rules.
 // The input string is expected to be at least MinDatetimeStringLength.
 // All date portions (year, month, and day) must be present for this function to be successful.
@@ -615,9 +792,9 @@ func parseTime(str string, timeRegex *regexp.Regexp) (hourStr, minStr, secStr st
 	return hourStr, minStr, secStr, matchIdxs[1]
 }
 
-// parseMicros takes in a string and splits it into a valid microsecond and the remaining string according to
+// readMicros takes in a string and splits it into a valid microsecond and the remaining string according to
 // MySQL's rules.
-func parseMicros(str string) (string, string) {
+func readMicros(str string) (string, string) {
 	if len(str) == 0 || str[0] != '.' {
 		return "", str
 	}
@@ -639,7 +816,7 @@ func parseMicros(str string) (string, string) {
 //   - The only valid delimiter between Seconds and Microseconds is a single decimal point (.)
 //
 // MySQL Reference: https://dev.mysql.com/doc/refman/8.4/en/datetime.html
-func (t datetimeType) parseDatetime(str string) (any, bool, error) {
+func (t datetimeType) parseDatetimeOld(str string) (any, bool, error) {
 	var delimWarn bool
 
 	// TODO: leading and trailing whitespace(s) should throw warning
@@ -715,7 +892,7 @@ func (t datetimeType) parseDatetime(str string) (any, bool, error) {
 	}
 
 	var micros int
-	microStr, value := parseMicros(value)
+	microStr, value := readMicros(value)
 	if len(microStr) > 1 { // a single decimal point is 0
 		var microf64 float64
 		microf64, err = strconv.ParseFloat(microStr, 64)

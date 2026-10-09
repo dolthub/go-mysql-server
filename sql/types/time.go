@@ -496,10 +496,9 @@ func int64Abs(v int64) int64 {
 	return (v ^ shift) - shift
 }
 
-var mysqlTimeWhitespaces = [4]rune{' ', '\n', '\t', '\r'}
-
-func isMySQLTimeWhitespace(char rune) bool {
-	for _, ws := range mysqlTimeWhitespaces {
+func isMySQLDatetimeWhitespace(char rune) bool {
+	// TODO: we have a sql.NumericCutSet and a types.NumericCutSet and they are different?
+	for _, ws := range sql.NumericCutSet {
 		if ws == char {
 			return true
 		}
@@ -534,7 +533,7 @@ func (t TimespanType_) parseTimeNoDelim(isNeg bool, str string) (any, bool) {
 	minStr := safeSubstr(clockStr, cLen-4, cLen-2)
 	secStr := safeSubstr(clockStr, cLen-2, cLen)
 
-	microStr, str := parseMicros(str)
+	microStr, str := readMicros(str)
 	hours, mins, secs, micros, ok := t.parseTimeParts(hourStr, minStr, secStr, microStr)
 	if !ok || mins > MaxMinute || secs > MaxSecond {
 		return nil, false
@@ -572,9 +571,9 @@ func parseTimePart(str string) (string, string) {
 	return str[1:idx], str[idx:]
 }
 
-func trimMySQLTimeWhitespaces(str string) (string, bool) {
+func trimMySQLDatetimeWhitespaces(str string) (string, bool) {
 	for idx, char := range str {
-		if !isMySQLTimeWhitespace(char) {
+		if !isMySQLDatetimeWhitespace(char) {
 			return str[idx:], idx > 0
 		}
 	}
@@ -596,7 +595,7 @@ func (t TimespanType_) parseTimeDatetime(str string) (any, error) {
 		baseType:  query.Type_DATETIME,
 		precision: t.precision,
 	}
-	val, _, err := dtType.parseDatetime(str)
+	val, err := dtType.parseDatetime(str)
 	dt, isDt := val.(time.Time)
 	if !isDt {
 		return nil, err
@@ -613,7 +612,7 @@ func (t TimespanType_) parseTime(origStr string) (any, error) {
 
 	var err error
 	var str = origStr
-	str, didTrim := trimMySQLTimeWhitespaces(str)
+	str, didTrim := trimMySQLDatetimeWhitespaces(str)
 	if didTrim {
 		err = sql.ErrTruncatedIncorrect.New(t.String(), origStr)
 	}
@@ -628,7 +627,7 @@ func (t TimespanType_) parseTime(origStr string) (any, error) {
 	}
 
 	var dtStr = str
-	str, didTrim = trimMySQLTimeWhitespaces(str)
+	str, didTrim = trimMySQLDatetimeWhitespaces(str)
 	if didTrim {
 		err = sql.ErrTruncatedIncorrect.New(t.String(), origStr)
 		if len(str) == 0 {
@@ -651,7 +650,7 @@ func (t TimespanType_) parseTime(origStr string) (any, error) {
 	str = str[idx:]
 	minStr, str = parseTimePart(str)
 	secStr, str = parseTimePart(str)
-	microStr, str = parseMicros(str)
+	microStr, str = readMicros(str)
 	if len(minStr) == 0 && len(secStr) == 0 {
 		if len(microStr) == 0 && len(dtStr) >= MinTimeDatetimeStringLength {
 			var res any
@@ -679,7 +678,7 @@ func (t TimespanType_) parseTime(origStr string) (any, error) {
 	// MySQL Special Case
 	// If everything so far is a valid delimited TIME without microseconds followed by a MySQL Whitespace AND the
 	// trimmed string is greater than or equal to 12 in length, parse as a datetime string.
-	if len(str) > 0 && isMySQLTimeWhitespace(rune(str[0])) &&
+	if len(str) > 0 && isMySQLDatetimeWhitespace(rune(str[0])) &&
 		len(hourStr) > 0 &&
 		len(minStr) > 0 &&
 		len(secStr) > 0 &&
