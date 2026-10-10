@@ -594,6 +594,11 @@ func injectBindVarsAndPrepare(
 	}
 
 	switch p := parsed.(type) {
+	case *sqlparser.DDL:
+		// View definitions persist beyond this statement and cannot retain bind variables.
+		if p.ViewSpec != nil {
+			return q, nil, nil
+		}
 	case *sqlparser.Load, *sqlparser.Prepare, *sqlparser.Execute:
 		// LOAD DATA, PREPARE, and EXECUTE queries cannot be used as prepared statements
 		return q, nil, nil

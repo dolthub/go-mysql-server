@@ -799,7 +799,7 @@ func TestQueryPlanScripts(t *testing.T, harness Harness) {
 }
 
 func TestOrderByGroupBy(t *testing.T, harness Harness) {
-	for _, tt := range queries.OrderByGroupByScriptTests {
+	for _, tt := range queries.GroupByScriptTests {
 		TestScript(t, harness, tt)
 	}
 
@@ -969,6 +969,10 @@ func TestInsertInto(t *testing.T, harness Harness) {
 		for _, script := range queries.InsertScripts {
 			TestScript(t, harness, script)
 		}
+
+		for _, script := range queries.InsertAutoIncrementScripts {
+			TestScript(t, harness, script)
+		}
 	})
 }
 
@@ -1015,6 +1019,10 @@ func TestInsertIntoErrors(t *testing.T, harness Harness) {
 
 	harness.Setup(setup.MydbData)
 	for _, script := range queries.InsertErrorScripts {
+		TestScript(t, harness, script)
+	}
+
+	for _, script := range queries.InsertAutoIncrementErrorScripts {
 		TestScript(t, harness, script)
 	}
 }
@@ -1354,6 +1362,10 @@ func TestUpdate(t *testing.T, harness Harness) {
 	for _, tt := range queries.UpdateScriptTests {
 		TestScript(t, harness, tt)
 	}
+
+	for _, tt := range queries.UpdateJoinScriptTests {
+		TestScript(t, harness, tt)
+	}
 }
 
 func TestUpdateIgnore(t *testing.T, harness Harness) {
@@ -1424,6 +1436,10 @@ func TestUpdateQueriesPrepared(t *testing.T, harness Harness) {
 		runWriteQueryTestPrepared(t, harness, tt)
 	}
 	for _, tt := range queries.UpdateScriptTests {
+		TestScriptPrepared(t, harness, tt)
+	}
+
+	for _, tt := range queries.UpdateJoinScriptTests {
 		TestScriptPrepared(t, harness, tt)
 	}
 }
@@ -1788,19 +1804,54 @@ func TestRowLimit(t *testing.T, harness Harness) {
 	}
 }
 
-func TestScripts(t *testing.T, harness Harness) {
+func TestExpressionsScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.ExpressionsScriptTests, false)
+}
+
+func TestAggregationScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.AggregationScriptTests, false)
+}
+
+func TestTemporalScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.TemporalScriptTests, false)
+}
+
+func TestEnumsAndSetsScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.EnumsScriptTests, false)
+	testScriptTests(t, harness, queries.SetsScriptTests, false)
+}
+
+func testScriptTests(t *testing.T, harness Harness, scripts []queries.ScriptTest, prepared bool) {
+	t.Helper()
 	harness.Setup(setup.MydbData)
-	for _, script := range queries.ScriptTests {
-		if sh, ok := harness.(SkippingHarness); ok {
-			if sh.SkipQueryTest(script.Name) {
-				t.Run(script.Name, func(t *testing.T) {
-					t.Skip(script.Name)
-				})
-				continue
-			}
+	for _, script := range scripts {
+		if sh, ok := harness.(SkippingHarness); ok && sh.SkipQueryTest(script.Name) {
+			t.Run(script.Name, func(t *testing.T) { t.Skip(script.Name) })
+			continue
 		}
-		TestScript(t, harness, script)
+
+		if prepared {
+			TestScriptPrepared(t, harness, script)
+		} else {
+			TestScript(t, harness, script)
+		}
 	}
+}
+
+func TestConversionsScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.ConversionsScriptTests, false)
+}
+
+func TestSetOperationsScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.SetOperationsScriptTests, false)
+}
+
+func TestOrderingScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.OrderingScriptTests, false)
+}
+
+func TestNumericScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.NumericScriptTests, false)
 }
 
 func TestNumericErrorScripts(t *testing.T, harness Harness) {
@@ -1867,24 +1918,46 @@ func TestLoadDataPrepared(t *testing.T, harness Harness) {
 	}
 }
 
-func TestScriptsPrepared(t *testing.T, harness Harness) {
-	harness.Setup(setup.MydbData)
-	for _, script := range queries.ScriptTests {
-		if sh, ok := harness.(SkippingHarness); ok {
-			if sh.SkipQueryTest(script.Name) {
-				t.Run(script.Name, func(t *testing.T) {
-					t.Skip(script.Name)
-				})
-				continue
-			}
-		}
-		TestScriptPrepared(t, harness, script)
-	}
+func TestAggregationScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.AggregationScriptTests, true)
+}
+
+func TestConversionsScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.ConversionsScriptTests, true)
+}
+
+func TestSetOperationsScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.SetOperationsScriptTests, true)
+}
+
+func TestOrderingScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.OrderingScriptTests, true)
+}
+
+func TestNumericScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.NumericScriptTests, true)
+}
+
+func TestEnumsAndSetsScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.EnumsScriptTests, true)
+	testScriptTests(t, harness, queries.SetsScriptTests, true)
+}
+
+func TestExpressionsScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.ExpressionsScriptTests, true)
+}
+
+func TestTemporalScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.TemporalScriptTests, true)
 }
 
 func TestInsertScriptsPrepared(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
 	for _, script := range queries.InsertScripts {
+		TestScriptPrepared(t, harness, script)
+	}
+
+	for _, script := range queries.InsertAutoIncrementScripts {
 		TestScriptPrepared(t, harness, script)
 	}
 }
@@ -1932,12 +2005,15 @@ func TestComplexIndexQueriesPrepared(t *testing.T, harness Harness) {
 func TestJsonScriptsPrepared(t *testing.T, harness Harness, skippedTests []string) {
 	harness.Setup(setup.MydbData, setup.BlobData)
 	for _, script := range queries.JsonScripts {
-		for _, skippedTest := range skippedTests {
-			if strings.Contains(script.Name, skippedTest) {
-				t.Skip()
+		t.Run(script.Name, func(t *testing.T) {
+			for _, skippedTest := range skippedTests {
+				if strings.Contains(script.Name, skippedTest) {
+					t.Skip()
+				}
 			}
-		}
-		TestScriptPrepared(t, harness, script)
+
+			TestScriptPrepared(t, harness, script)
+		})
 	}
 }
 
@@ -1958,6 +2034,10 @@ func TestInsertIgnoreScriptsPrepared(t *testing.T, harness Harness) {
 func TestInsertErrorScriptsPrepared(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
 	for _, script := range queries.InsertErrorScripts {
+		TestScriptPrepared(t, harness, script)
+	}
+
+	for _, script := range queries.InsertAutoIncrementErrorScripts {
 		TestScriptPrepared(t, harness, script)
 	}
 }
@@ -2688,6 +2768,15 @@ func TestViewsPrepared(t *testing.T, harness Harness) {
 	for _, testCase := range queries.ViewTests {
 		TestPreparedQueryWithEngine(t, harness, e, testCase)
 	}
+	harness.Setup(setup.MydbData)
+	for _, script := range queries.ViewScripts {
+		// SHOW INDEX WHERE does not support substituted bind variables.
+		if script.Name == "show view" {
+			script.SkipPrepared = true
+		}
+
+		TestScriptPrepared(t, harness, script)
+	}
 }
 
 // initializeViewsForVersionedViewsTests creates the test views used by the TestVersionedViews and
@@ -2867,7 +2956,42 @@ func TestCreateTable(t *testing.T, harness Harness) {
 }
 
 func TestDropTable(t *testing.T, harness Harness) {
+	testDropTable(t, harness, false)
+}
+
+func TestDropTablePrepared(t *testing.T, harness Harness) {
+	testDropTable(t, harness, true)
+}
+
+// TestDropTableWarnings runs the self-contained DROP TABLE warning script without
+// the rest of the DROP TABLE suite, allowing integrators to retain its dialect skip.
+func TestDropTableWarnings(t *testing.T, harness Harness, prepared bool) {
+	// Keep the shared script literal beside the existing DROP TABLE cases.
+	type ScriptTestAssertion = queries.ScriptTestAssertion
+	script := queries.ScriptTest{
+		Name:    "drop table if exists on unknown table shows warning",
+		Dialect: "mysql",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:                           "DROP TABLE IF EXISTS non_existent_table;",
+				ExpectedWarning:                 1051,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "Unknown table 'non_existent_table'",
+				SkipResultsCheck:                true,
+			},
+		},
+	}
+	if prepared {
+		TestScriptPrepared(t, harness, script)
+	} else {
+		TestScript(t, harness, script)
+	}
+}
+
+func testDropTable(t *testing.T, harness Harness, prepared bool) {
 	require := require.New(t)
+
+	TestDropTableWarnings(t, harness, prepared)
 
 	harness.Setup(setup.MydbData, setup.MytableData, setup.OthertableData, setup.TabletestData, setup.Pk_tablesData)
 
@@ -3173,7 +3297,7 @@ func TestCreateDatabase(t *testing.T, harness Harness) {
 	e := MustNewEngine(t, harness)
 	defer e.Close()
 
-	for _, tt := range queries.CreateDatabaseScripts {
+	for _, tt := range queries.CreateDatabaseScriptTests {
 		TestScriptWithEngine(t, e, harness, tt)
 	}
 }
@@ -3352,7 +3476,7 @@ func TestPkOrdinalsDML(t *testing.T, harness Harness) {
 
 func TestDropDatabase(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
-	for _, tt := range queries.DropDatabaseScripts {
+	for _, tt := range queries.DropDatabaseScriptTests {
 		TestScript(t, harness, tt)
 	}
 }
@@ -3374,6 +3498,16 @@ func TestDropForeignKeys(t *testing.T, harness Harness) {
 func TestForeignKeys(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.Parent_childData)
 	for _, script := range queries.ForeignKeyTests {
+		TestScript(t, harness, script)
+	}
+
+	harness.Setup(setup.MydbData)
+	for _, script := range queries.ForeignKeyTypeTests {
+		TestScript(t, harness, script)
+	}
+
+	harness.Setup(setup.MydbData)
+	for _, script := range queries.ForeignKeyResolutionTests {
 		TestScript(t, harness, script)
 	}
 }
@@ -4774,6 +4908,13 @@ func TestAlterTable(t *testing.T, harness Harness) {
 	}
 }
 
+func TestAlterTablePrepared(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData, setup.Pk_tablesData)
+	for _, script := range queries.AlterTableScripts {
+		TestScriptPrepared(t, harness, script)
+	}
+}
+
 func NewColumnDefaultValue(expr sql.Expression, outType sql.Type, representsLiteral, isParenthesized, mayReturnNil bool) *sql.ColumnDefaultValue {
 	cdv, err := sql.NewColumnDefaultValue(expr, outType, representsLiteral, isParenthesized, mayReturnNil)
 	if err != nil {
@@ -4854,6 +4995,13 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		require.Equal(t, "v1", sch[1].Name)
 		require.NotContains(t, sch[1].Default.String(), "t28")
 	})
+}
+
+func TestColumnDefaultsPrepared(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData)
+	for _, script := range queries.ColumnDefaultTests {
+		TestScriptPrepared(t, harness, script)
+	}
 }
 
 func TestPersist(t *testing.T, harness Harness, newPersistableSess func(ctx *sql.Context) sql.PersistableSession) {
@@ -5218,10 +5366,11 @@ func TestDatabaseCollationWire(t *testing.T, h Harness, sessionBuilder server.Se
 }
 
 func TestCharsetCollationEngine(t *testing.T, harness Harness) {
-	harness.Setup(setup.MydbData)
-	for _, script := range queries.CharsetCollationEngineTests {
-		TestScript(t, harness, script)
-	}
+	testScriptTests(t, harness, queries.CharsetCollationEngineTests, false)
+}
+
+func TestCharsetCollationEnginePrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.CharsetCollationEngineTests, true)
 }
 
 func TestCharsetCollationWire(t *testing.T, h Harness, sessionBuilder server.SessionBuilder) {
@@ -5627,9 +5776,11 @@ func TestBlobs(t *testing.T, h Harness) {
 }
 
 func TestIndexes(t *testing.T, h Harness) {
-	for _, tt := range queries.IndexQueries {
-		TestScript(t, h, tt)
-	}
+	testScriptTests(t, h, queries.IndexQueries, false)
+}
+
+func TestIndexesPrepared(t *testing.T, h Harness) {
+	testScriptTests(t, h, queries.IndexQueries, true)
 }
 
 func TestIndexedExpressions(t *testing.T, h Harness) {
@@ -5682,17 +5833,6 @@ func TestTupleQueries(t *testing.T, harness Harness) {
 
 func TestSQLLogicTests(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
-	for _, script := range queries.SQLLogicJoinTests {
-		if sh, ok := harness.(SkippingHarness); ok {
-			if sh.SkipQueryTest(script.Name) {
-				t.Run(script.Name, func(t *testing.T) {
-					t.Skip(script.Name)
-				})
-				continue
-			}
-		}
-		TestScript(t, harness, script)
-	}
 	for _, script := range queries.SQLLogicSubqueryTests {
 		if sh, ok := harness.(SkippingHarness); ok {
 			if sh.SkipQueryTest(script.Name) {
@@ -5766,4 +5906,161 @@ func DrainIteratorIgnoreErrors(ctx *sql.Context, iter sql.RowIter) {
 			return
 		}
 	}
+}
+
+func TestAutoIncrementScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.AutoIncrementScriptTests, false)
+}
+
+func TestAutoIncrementScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.AutoIncrementScriptTests, true)
+}
+
+func TestDatabaseDefinitionsScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.DatabaseDefinitionsScriptTests, false)
+}
+
+func TestDatabaseDefinitionsScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.DatabaseDefinitionsScriptTests, true)
+}
+
+func TestDeleteScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.DeleteScriptTests, false)
+}
+
+func TestDeleteScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.DeleteScriptTests, true)
+}
+
+func TestDescendingIndexesScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.DescendingIndexesScriptTests, false)
+}
+
+func TestDescendingIndexesScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.DescendingIndexesScriptTests, true)
+}
+
+func TestForeignKeyResolutionPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.ForeignKeyResolutionTests, true)
+}
+
+func TestForeignKeyTypesPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.ForeignKeyTypeTests, true)
+}
+
+func TestIndexKeyTypesScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.IndexKeyTypesScriptTests, false)
+}
+
+func TestIndexKeyTypesScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.IndexKeyTypesScriptTests, true)
+}
+
+func TestInsertIgnoreRegressionScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.InsertIgnoreRegressionScriptTests, false)
+}
+
+func TestInsertIgnoreRegressionScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.InsertIgnoreRegressionScriptTests, true)
+}
+
+func TestJoinsScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.JoinsScriptTests, false)
+}
+
+func TestJoinsScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.JoinsScriptTests, true)
+}
+
+func TestNameResolutionScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.NameResolutionScriptTests, false)
+}
+
+func TestNameResolutionScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.NameResolutionScriptTests, true)
+}
+
+func TestPrimaryKeysScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.PrimaryKeysScriptTests, false)
+}
+
+func TestPrimaryKeysScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.PrimaryKeysScriptTests, true)
+}
+
+func TestStoredProceduresPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.ProcedureLogicTests, true)
+	testScriptTests(t, harness, queries.ProcedureCallTests, true)
+}
+
+func TestSessionResultsScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.SessionResultsScriptTests, false)
+}
+
+func TestSessionResultsScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.SessionResultsScriptTests, true)
+}
+
+func TestStatisticsScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.StatisticsScriptTests, false)
+}
+
+func TestStatisticsScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.StatisticsScriptTests, true)
+}
+
+func TestStringFunctionsScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.StringFunctionsScriptTests, false)
+}
+
+func TestStringFunctionsScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.StringFunctionsScriptTests, true)
+}
+
+func TestSubqueriesScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.SubqueriesScriptTests, false)
+}
+
+func TestSubqueriesScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.SubqueriesScriptTests, true)
+}
+
+func TestTableDefinitionsScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.CreateTableScripts, false)
+}
+
+func TestTableDefinitionsScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.CreateTableScripts, true)
+}
+
+func TestTransactionsScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.TransactionsScriptTests, false)
+}
+
+func TestTransactionsScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.TransactionsScriptTests, true)
+}
+
+func TestTupleComparisonsScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.TupleComparisonsScriptTests, false)
+}
+
+func TestTupleComparisonsScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.TupleComparisonsScriptTests, true)
+}
+
+func TestUpdateJoinsScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.UpdateJoinsScriptTests, false)
+}
+
+func TestUpdateJoinsScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.UpdateJoinsScriptTests, true)
+}
+
+func TestVariablesScripts(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.VariablesScriptTests, false)
+}
+
+func TestVariablesScriptsPrepared(t *testing.T, harness Harness) {
+	testScriptTests(t, harness, queries.VariablesScriptTests, true)
 }
