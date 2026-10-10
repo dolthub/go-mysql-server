@@ -29,7 +29,6 @@ import (
 	"github.com/pmezard/go-difflib/difflib"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/otel/trace"
 	"gopkg.in/src-d/go-errors.v1"
 
 	sqle "github.com/dolthub/go-mysql-server"
@@ -154,44 +153,6 @@ func TestLocks(t *testing.T) {
 	require.Equal(0, t2.readLocks)
 	require.Equal(1, t2.writeLocks)
 	require.Equal(1, t2.unlocks)
-}
-
-type mockSpan struct {
-	trace.Span
-	finished bool
-}
-
-func (m *mockSpan) End(options ...trace.SpanEndOption) {
-	m.finished = true
-	m.Span.End(options...)
-}
-
-func newMockSpan(ctx context.Context) (context.Context, *mockSpan) {
-	ctx, span := trace.NewNoopTracerProvider().Tracer("").Start(ctx, "")
-	return ctx, &mockSpan{span, false}
-}
-
-func TestRootSpanFinish(t *testing.T) {
-	harness := enginetest.NewDefaultMemoryHarness()
-	if harness.IsUsingServer() {
-		t.Skip("this test depends on Context, which ServerEngine does not depend on or update the current context")
-	}
-	e, err := harness.NewEngine(t)
-	if err != nil {
-		panic(err)
-	}
-	sqlCtx := harness.NewContext()
-	ctx, fakeSpan := newMockSpan(sqlCtx)
-	sql.WithRootSpan(fakeSpan)(sqlCtx)
-	sqlCtx = sqlCtx.WithContext(ctx)
-
-	_, iter, _, err := e.Query(sqlCtx, "SELECT 1")
-	require.NoError(t, err)
-
-	_, err = sql.RowIterToRows(sqlCtx, iter)
-	require.NoError(t, err)
-
-	require.True(t, fakeSpan.finished)
 }
 
 type lockableTable struct {

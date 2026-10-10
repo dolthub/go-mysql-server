@@ -423,6 +423,10 @@ func (h *Handler) doQuery(
 	ctx, cancelQuery := context.WithCancelCause(ctx)
 	defer cancelQuery(nil)
 
+	// The root span for the query covers everything until doQuery returns.
+	ctx, span := h.sm.tracer.Start(ctx, "query")
+	defer span.End()
+
 	var sqlCtx *sql.Context
 	var watch *connState
 	sqlCtx, watch, err = h.sm.newContextAndWatch(ctx, c, query)

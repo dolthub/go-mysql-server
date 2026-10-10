@@ -298,7 +298,6 @@ type Context struct {
 	ProcessList ProcessList
 	services    Services
 	tracer      trace.Tracer
-	rootSpan    trace.Span
 	Memory      *MemoryManager
 	query       string
 	pid         uint64
@@ -357,11 +356,11 @@ func WithMemoryManager(m *MemoryManager) ContextOption {
 	}
 }
 
-// WithRootSpan sets the root span of the context.
-func WithRootSpan(s trace.Span) ContextOption {
-	return func(ctx *Context) {
-		ctx.rootSpan = s
-	}
+// WithRootSpan does nothing.
+//
+// Deprecated: a Context no longer carries a root span. Whoever starts a span is responsible for ending it.
+func WithRootSpan(trace.Span) ContextOption {
+	return func(*Context) {}
 }
 
 func WithProcessList(p ProcessList) ContextOption {
@@ -664,14 +663,6 @@ func (c *Context) WithClient(client Client) *Context {
 	nc.Session.SetClient(client)
 	nc.Session.SetPrivilegeSet(nil, 0)
 	return &nc
-}
-
-// RootSpan returns the root span, if any.
-func (c *Context) RootSpan() trace.Span {
-	if c == nil {
-		return noopSpan
-	}
-	return c.rootSpan
 }
 
 // Error adds an error as warning to the session.
