@@ -32,6 +32,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/trace"
 
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/memory"
@@ -652,6 +653,104 @@ func (tl *TestListener) QueryCompleted(success bool, duration time.Duration) {
 	} else {
 		tl.Failures++
 	}
+}
+
+// recordingTracer wraps a no-op tracer and records whether each span it starts is ended.
+type recordingTracer struct {
+	trace.Tracer
+	mu    sync.Mutex
+	spans []*recordingSpan
+}
+
+type recordingSpan struct {
+	trace.Span
+	name  string
+	ended bool
+}
+
+func (t *recordingTracer) Start(ctx context.Context, spanName string, opts ...trace.SpanStartOption) (context.Context, trace.Span) {
+	ctx, span := t.Tracer.Start(ctx, spanName, opts...)
+	rs := &recordingSpan{Span: span, name: spanName}
+	t.mu.Lock()
+	t.spans = append(t.spans, rs)
+	t.mu.Unlock()
+	return ctx, rs
+}
+
+func (s *recordingSpan) End(options ...trace.SpanEndOption) {
+	s.ended = true
+	s.Span.End(options...)
+}
+
+// querySpans returns the number of "query" spans started and how many of them were not ended. This includes both
+// the root span and the span from observeQuery.
+func (t *recordingTracer) querySpans() (started, unended int) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	for _, s := range t.spans {
+		if s.name == "query" {
+			started++
+			if !s.ended {
+				unended++
+			}
+		}
+	}
+	return started, unended
+}
+
+// TestHandlerEndsRootSpan asserts that doQuery, which starts the root span for a query, ends it, including when the
+// query fails before an iterator is ever built, and that other handler entry points do not leak "query" spans.
+func TestHandlerEndsRootSpan(t *testing.T) {
+	e, pro := setupMemDB(require.New(t))
+	tracer := &recordingTracer{Tracer: sql.NoopTracer}
+	handler := &Handler{
+		e: e,
+		sm: NewSessionManager(
+			sql.NewContext,
+			testSessionBuilder(pro),
+			tracer,
+			pro.Database,
+			e.MemoryManager,
+			e.ProcessList,
+			"foo",
+		),
+	}
+	cb := func(res *sqltypes.Result, more bool) error {
+		return nil
+	}
+
+	conn := newConn(1)
+	handler.NewConnection(conn)
+	require.NoError(t, handler.sm.SetDB(context.Background(), conn, "test"))
+
+	for _, query := range []string{
+		"SELECT 1",
+		"SELECT * FROM test",
+		"INSERT INTO test VALUES (100)",
+	} {
+		tracer.spans = nil
+		require.NoError(t, handler.ComQuery(context.Background(), conn, query, cb), query)
+		started, unended := tracer.querySpans()
+		require.Equal(t, 2, started, query)
+		require.Equal(t, 0, unended, query)
+	}
+
+	for _, query := range []string{
+		"select bad_col from bad_table with illegal syntax",
+		"SELECT * FROM no_such_table",
+	} {
+		tracer.spans = nil
+		require.Error(t, handler.ComQuery(context.Background(), conn, query, cb), query)
+		started, unended := tracer.querySpans()
+		require.Equal(t, 2, started, query)
+		require.Equal(t, 0, unended, query)
+	}
+
+	tracer.spans = nil
+	_, err := handler.ComPrepare(context.Background(), conn, "SELECT * FROM test WHERE c1 = ?", &mysql.PrepareData{ParamsCount: 1})
+	require.NoError(t, err)
+	_, unended := tracer.querySpans()
+	require.Equal(t, 0, unended)
 }
 
 func TestServerEventListener(t *testing.T) {

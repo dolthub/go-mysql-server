@@ -265,9 +265,6 @@ func shouldSetFoundRows(ctx *sql.Context, node sql.Node) bool {
 func AddTrackedRowIter(ctx *sql.Context, node sql.Node, iter sql.RowIter) sql.RowIter {
 	trackedIter := NewTrackedRowIter(node, iter, nil, func() {
 		ctx.ProcessList.EndQuery(ctx)
-		if span := ctx.RootSpan(); span != nil {
-			span.End()
-		}
 	})
 	trackedIter.QueryType = GetQueryType(ctx, node)
 	trackedIter.ShouldSetFoundRows = trackedIter.QueryType == QueryTypeSelect && shouldSetFoundRows(ctx, node)
