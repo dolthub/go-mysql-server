@@ -4548,6 +4548,7 @@ func TestTransactionScripts(t *testing.T, harness Harness) {
 
 func TestConcurrentProcessList(t *testing.T, harness Harness) {
 	require := require.New(t)
+	variables.InitStatusVariables()
 	pl := sqle.NewProcessList()
 	numSessions := 2
 
