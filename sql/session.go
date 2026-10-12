@@ -751,6 +751,7 @@ func NewSpanIter(span trace.Span, iter RowIter) RowIter {
 	// In the default, non traced case, we should not bother with
 	// collecting the timings below.
 	if !span.IsRecording() {
+		span.End()
 		return iter
 	} else {
 		return &spanIter{
