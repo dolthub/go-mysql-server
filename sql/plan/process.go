@@ -262,9 +262,10 @@ func shouldSetFoundRows(ctx *sql.Context, node sql.Node) bool {
 	return result
 }
 
+// AddTrackedRowIter wraps |iter| so that closing it updates query-related session variables and disposes of |node|.
+// It does not end the query in the process list; that is owned by whoever called BeginQuery.
 func AddTrackedRowIter(ctx *sql.Context, node sql.Node, iter sql.RowIter) sql.RowIter {
 	trackedIter := NewTrackedRowIter(node, iter, nil, func() {
-		ctx.ProcessList.EndQuery(ctx)
 		if span := ctx.RootSpan(); span != nil {
 			span.End()
 		}
