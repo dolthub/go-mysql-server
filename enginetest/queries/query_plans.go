@@ -80,7 +80,7 @@ offset 1;`,
 			" │               └─ Table\n" +
 			" │                   ├─ name: xy\n" +
 			" │                   ├─ columns: [x]\n" +
-			" │                   ├─ colSet: (1,2)\n" +
+			" │                   ├─ colSet: (1)\n" +
 			" │                   └─ tableId: 1\n" +
 			" │  ->xy:0]\n" +
 			" └─ TableAlias(cte)\n" +
@@ -140,7 +140,7 @@ offset 1;`,
 			"     │               ├─ Table\n" +
 			"     │               │   ├─ name: xy\n" +
 			"     │               │   ├─ columns: [x]\n" +
-			"     │               │   ├─ colSet: (3,4)\n" +
+			"     │               │   ├─ colSet: (3)\n" +
 			"     │               │   └─ tableId: 2\n" +
 			"     │               └─ HashLookup\n" +
 			"     │                   ├─ left-key: TUPLE()\n" +
@@ -465,7 +465,7 @@ From xy;`,
 			" │                       └─ IndexedTableAccess(uv)\n" +
 			" │                           ├─ index: [uv.u]\n" +
 			" │                           ├─ static: [{[NULL, ∞)}]\n" +
-			" │                           ├─ colSet: (5,6)\n" +
+			" │                           ├─ colSet: (5)\n" +
 			" │                           ├─ tableId: 3\n" +
 			" │                           └─ Table\n" +
 			" │                               ├─ name: uv\n" +
@@ -498,7 +498,7 @@ From xy;`,
 			"     │                       └─ IndexedTableAccess(uv)\n" +
 			"     │                           ├─ index: [uv.u]\n" +
 			"     │                           ├─ static: [{[NULL, ∞)}]\n" +
-			"     │                           ├─ colSet: (5,6)\n" +
+			"     │                           ├─ colSet: (5)\n" +
 			"     │                           ├─ tableId: 3\n" +
 			"     │                           └─ Table\n" +
 			"     │                               ├─ name: uv\n" +
@@ -1132,7 +1132,7 @@ WHERE
 			"         ├─ IndexedTableAccess(order_line1)\n" +
 			"         │   ├─ index: [order_line1.ol_w_id,order_line1.ol_d_id,order_line1.ol_o_id,order_line1.ol_number]\n" +
 			"         │   ├─ static: [{[5, 5], [2, 2], [2981, 3001), [NULL, ∞)}]\n" +
-			"         │   ├─ colSet: (1-10)\n" +
+			"         │   ├─ colSet: (1-3,5)\n" +
 			"         │   ├─ tableId: 1\n" +
 			"         │   └─ Table\n" +
 			"         │       ├─ name: order_line1\n" +
@@ -1147,7 +1147,7 @@ WHERE
 			"                 └─ IndexedTableAccess(stock1)\n" +
 			"                     ├─ index: [stock1.s_w_id,stock1.s_i_id]\n" +
 			"                     ├─ static: [{[5, 5], [NULL, ∞)}]\n" +
-			"                     ├─ colSet: (11-27)\n" +
+			"                     ├─ colSet: (11-13)\n" +
 			"                     ├─ tableId: 2\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: stock1\n" +
@@ -1212,7 +1212,7 @@ WHERE
 			"     ├─ IndexedTableAccess(warehouse1)\n" +
 			"     │   ├─ index: [warehouse1.w_id]\n" +
 			"     │   ├─ static: [{[1, 1]}]\n" +
-			"     │   ├─ colSet: (22-30)\n" +
+			"     │   ├─ colSet: (22,29)\n" +
 			"     │   ├─ tableId: 2\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: warehouse1\n" +
@@ -1228,7 +1228,7 @@ WHERE
 			"         └─ IndexedTableAccess(customer1)\n" +
 			"             ├─ index: [customer1.c_w_id,customer1.c_d_id,customer1.c_id]\n" +
 			"             ├─ keys: [warehouse1.w_id:0!null 2 (tinyint) 2327 (int)]\n" +
-			"             ├─ colSet: (1-21)\n" +
+			"             ├─ colSet: (1-3,6,14,16)\n" +
 			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: customer1\n" +
@@ -1342,7 +1342,7 @@ where
 			"     │   │   └─ IndexedTableAccess(asset)\n" +
 			"     │   │       ├─ index: [asset.orgId,asset.name,asset.val]\n" +
 			"     │   │       ├─ static: [{[org1, org1], [style, style], [curve, curve]}]\n" +
-			"     │   │       ├─ colSet: (1-5)\n" +
+			"     │   │       ├─ colSet: (2-5)\n" +
 			"     │   │       ├─ tableId: 1\n" +
 			"     │   │       └─ Table\n" +
 			"     │   │           ├─ name: asset\n" +
@@ -1363,7 +1363,7 @@ where
 			"     │           └─ IndexedTableAccess(asset)\n" +
 			"     │               ├─ index: [asset.orgId,asset.name,asset.assetId]\n" +
 			"     │               ├─ keys: [org1 (longtext) dimension (longtext) style.assetId:1]\n" +
-			"     │               ├─ colSet: (6-10)\n" +
+			"     │               ├─ colSet: (7-10)\n" +
 			"     │               ├─ tableId: 2\n" +
 			"     │               └─ Table\n" +
 			"     │                   ├─ name: asset\n" +
@@ -1384,7 +1384,7 @@ where
 			"             └─ IndexedTableAccess(asset)\n" +
 			"                 ├─ index: [asset.orgId,asset.name,asset.assetId]\n" +
 			"                 ├─ keys: [org1 (longtext) color (longtext) style.assetId:1]\n" +
-			"                 ├─ colSet: (11-15)\n" +
+			"                 ├─ colSet: (12-15)\n" +
 			"                 ├─ tableId: 3\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: asset\n" +
@@ -1804,7 +1804,7 @@ Select * from (
 			"     │                       └─ IndexedTableAccess(xy)\n" +
 			"     │                           ├─ index: [xy.x]\n" +
 			"     │                           ├─ keys: [cte.s:0!null]\n" +
-			"     │                           ├─ colSet: (3,4)\n" +
+			"     │                           ├─ colSet: (3)\n" +
 			"     │                           ├─ tableId: 3\n" +
 			"     │                           └─ Table\n" +
 			"     │                               ├─ name: xy\n" +
@@ -1852,7 +1852,7 @@ Select * from (
 			"                                         └─ IndexedTableAccess(xy)\n" +
 			"                                             ├─ index: [xy.x]\n" +
 			"                                             ├─ keys: [cte.s:0!null]\n" +
-			"                                             ├─ colSet: (3,4)\n" +
+			"                                             ├─ colSet: (3)\n" +
 			"                                             ├─ tableId: 3\n" +
 			"                                             └─ Table\n" +
 			"                                                 ├─ name: xy\n" +
@@ -2022,7 +2022,7 @@ Select * from (
 			"     │                       └─ IndexedTableAccess(xy)\n" +
 			"     │                           ├─ index: [xy.x]\n" +
 			"     │                           ├─ keys: [cte.s:0!null]\n" +
-			"     │                           ├─ colSet: (3,4)\n" +
+			"     │                           ├─ colSet: (3)\n" +
 			"     │                           ├─ tableId: 3\n" +
 			"     │                           └─ Table\n" +
 			"     │                               ├─ name: xy\n" +
@@ -2062,7 +2062,7 @@ Select * from (
 			"                 │                       └─ IndexedTableAccess(xy)\n" +
 			"                 │                           ├─ index: [xy.x]\n" +
 			"                 │                           ├─ keys: [cte.s:0!null]\n" +
-			"                 │                           ├─ colSet: (3,4)\n" +
+			"                 │                           ├─ colSet: (3)\n" +
 			"                 │                           ├─ tableId: 3\n" +
 			"                 │                           └─ Table\n" +
 			"                 │                               ├─ name: xy\n" +
@@ -2258,7 +2258,7 @@ Select * from (
 			"     │           ├─ IndexedTableAccess(ab)\n" +
 			"     │           │   ├─ index: [ab.a]\n" +
 			"     │           │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │           │   ├─ colSet: (3,4)\n" +
+			"     │           │   ├─ colSet: (3)\n" +
 			"     │           │   ├─ tableId: 2\n" +
 			"     │           │   └─ Table\n" +
 			"     │           │       ├─ name: ab\n" +
@@ -2266,7 +2266,7 @@ Select * from (
 			"     │           └─ IndexedTableAccess(uv)\n" +
 			"     │               ├─ index: [uv.u]\n" +
 			"     │               ├─ static: [{[NULL, ∞)}]\n" +
-			"     │               ├─ colSet: (5,6)\n" +
+			"     │               ├─ colSet: (5)\n" +
 			"     │               ├─ tableId: 3\n" +
 			"     │               └─ Table\n" +
 			"     │                   ├─ name: uv\n" +
@@ -2387,7 +2387,7 @@ Select * from (
 			"     │           │       └─ IndexedTableAccess(uv)\n" +
 			"     │           │           ├─ index: [uv.u]\n" +
 			"     │           │           ├─ keys: [sq.p:2!null]\n" +
-			"     │           │           ├─ colSet: (6,7)\n" +
+			"     │           │           ├─ colSet: (6)\n" +
 			"     │           │           ├─ tableId: 4\n" +
 			"     │           │           └─ Table\n" +
 			"     │           │               ├─ name: uv\n" +
@@ -2397,7 +2397,7 @@ Select * from (
 			"     │               └─ Table\n" +
 			"     │                   ├─ name: pq\n" +
 			"     │                   ├─ columns: [p]\n" +
-			"     │                   ├─ colSet: (3,4)\n" +
+			"     │                   ├─ colSet: (3)\n" +
 			"     │                   └─ tableId: 2\n" +
 			"     └─ ProcessTable\n" +
 			"         └─ Table\n" +
@@ -2954,7 +2954,7 @@ Select * from (
 			" │               │           └─ IndexedTableAccess(uv)\n" +
 			" │               │               ├─ index: [uv.u]\n" +
 			" │               │               ├─ keys: [ab.a:0!null]\n" +
-			" │               │               ├─ colSet: (5,6)\n" +
+			" │               │               ├─ colSet: (5)\n" +
 			" │               │               ├─ tableId: 3\n" +
 			" │               │               └─ Table\n" +
 			" │               │                   ├─ name: uv\n" +
@@ -3039,7 +3039,7 @@ Select * from (
 			" │               │           └─ Table\n" +
 			" │               │               ├─ name: uv\n" +
 			" │               │               ├─ columns: [v]\n" +
-			" │               │               ├─ colSet: (5,6)\n" +
+			" │               │               ├─ colSet: (6)\n" +
 			" │               │               └─ tableId: 3\n" +
 			" │               └─ Table\n" +
 			" │                   ├─ name: xy\n" +
@@ -3119,7 +3119,7 @@ Select * from (
 			" │               │           └─ Table\n" +
 			" │               │               ├─ name: uv\n" +
 			" │               │               ├─ columns: [v]\n" +
-			" │               │               ├─ colSet: (5,6)\n" +
+			" │               │               ├─ colSet: (6)\n" +
 			" │               │               └─ tableId: 3\n" +
 			" │               └─ Table\n" +
 			" │                   ├─ name: xy\n" +
@@ -3202,7 +3202,7 @@ Select * from (
 			"         │               │           └─ Table\n" +
 			"         │               │               ├─ name: uv\n" +
 			"         │               │               ├─ columns: [v]\n" +
-			"         │               │               ├─ colSet: (7,8)\n" +
+			"         │               │               ├─ colSet: (8)\n" +
 			"         │               │               └─ tableId: 4\n" +
 			"         │               └─ Table\n" +
 			"         │                   ├─ name: xy\n" +
@@ -3299,7 +3299,7 @@ Select * from (
 			" │           └─ IndexedTableAccess(uv)\n" +
 			" │               ├─ index: [uv.u]\n" +
 			" │               ├─ keys: [xy.x:0!null]\n" +
-			" │               ├─ colSet: (5,6)\n" +
+			" │               ├─ colSet: (5)\n" +
 			" │               ├─ tableId: 3\n" +
 			" │               └─ Table\n" +
 			" │                   ├─ name: uv\n" +
@@ -3322,7 +3322,7 @@ Select * from (
 			"     │           └─ IndexedTableAccess(uv)\n" +
 			"     │               ├─ index: [uv.u]\n" +
 			"     │               ├─ keys: [xy.x:2!null]\n" +
-			"     │               ├─ colSet: (5,6)\n" +
+			"     │               ├─ colSet: (5)\n" +
 			"     │               ├─ tableId: 3\n" +
 			"     │               └─ Table\n" +
 			"     │                   ├─ name: uv\n" +
@@ -3758,7 +3758,7 @@ Select * from (
 			"             │   └─ IndexedTableAccess(bus_routes)\n" +
 			"             │       ├─ index: [bus_routes.origin,bus_routes.dst]\n" +
 			"             │       ├─ static: [{[New York, New York], [NULL, ∞)}]\n" +
-			"             │       ├─ colSet: (1,2)\n" +
+			"             │       ├─ colSet: (1)\n" +
 			"             │       ├─ tableId: 1\n" +
 			"             │       └─ Table\n" +
 			"             │           ├─ name: bus_routes\n" +
@@ -3864,7 +3864,7 @@ Select * from (
 			"                                     ├─ Table\n" +
 			"                                     │   ├─ name: ab\n" +
 			"                                     │   ├─ columns: [b]\n" +
-			"                                     │   ├─ colSet: (9,10)\n" +
+			"                                     │   ├─ colSet: (10)\n" +
 			"                                     │   └─ tableId: 5\n" +
 			"                                     └─ HashLookup\n" +
 			"                                         ├─ left-key: TUPLE(ab.b:0)\n" +
@@ -3886,7 +3886,7 @@ Select * from (
 			"                                                         ├─ Table\n" +
 			"                                                         │   ├─ name: ab\n" +
 			"                                                         │   ├─ columns: [b]\n" +
-			"                                                         │   ├─ colSet: (3,4)\n" +
+			"                                                         │   ├─ colSet: (4)\n" +
 			"                                                         │   └─ tableId: 2\n" +
 			"                                                         └─ IndexedTableAccess(uv)\n" +
 			"                                                             ├─ index: [uv.u]\n" +
@@ -4148,7 +4148,7 @@ Select * from (
 			" │           └─ IndexedTableAccess(ab)\n" +
 			" │               ├─ index: [ab.a]\n" +
 			" │               ├─ keys: [uv.u:0!null]\n" +
-			" │               ├─ colSet: (1,2)\n" +
+			" │               ├─ colSet: (1)\n" +
 			" │               ├─ tableId: 1\n" +
 			" │               └─ Table\n" +
 			" │                   ├─ name: ab\n" +
@@ -4175,7 +4175,7 @@ Select * from (
 			"                     └─ IndexedTableAccess(xy)\n" +
 			"                         ├─ index: [xy.x]\n" +
 			"                         ├─ keys: [pq.p:0!null]\n" +
-			"                         ├─ colSet: (7,8)\n" +
+			"                         ├─ colSet: (7)\n" +
 			"                         ├─ tableId: 4\n" +
 			"                         └─ Table\n" +
 			"                             ├─ name: xy\n" +
@@ -4369,7 +4369,7 @@ Select * from (
 			"         ├─ IndexedTableAccess(xy)\n" +
 			"         │   ├─ index: [xy.x]\n" +
 			"         │   ├─ keys: [(ab.a:0!null + 3 (tinyint))]\n" +
-			"         │   ├─ colSet: (1,2)\n" +
+			"         │   ├─ colSet: (1)\n" +
 			"         │   ├─ tableId: 1\n" +
 			"         │   └─ Table\n" +
 			"         │       ├─ name: xy\n" +
@@ -4378,7 +4378,7 @@ Select * from (
 			"             ├─ IndexedTableAccess(xy)\n" +
 			"             │   ├─ index: [xy.x]\n" +
 			"             │   ├─ keys: [(ab.a:0!null + 2 (tinyint))]\n" +
-			"             │   ├─ colSet: (1,2)\n" +
+			"             │   ├─ colSet: (1)\n" +
 			"             │   ├─ tableId: 1\n" +
 			"             │   └─ Table\n" +
 			"             │       ├─ name: xy\n" +
@@ -4386,7 +4386,7 @@ Select * from (
 			"             └─ IndexedTableAccess(xy)\n" +
 			"                 ├─ index: [xy.x]\n" +
 			"                 ├─ keys: [(ab.a:0!null + 1 (tinyint))]\n" +
-			"                 ├─ colSet: (1,2)\n" +
+			"                 ├─ colSet: (1)\n" +
 			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: xy\n" +
@@ -4851,7 +4851,7 @@ Select * from (
 			" └─ IndexedTableAccess(ab)\n" +
 			"     ├─ index: [ab.a]\n" +
 			"     ├─ keys: [uv.u:0!null]\n" +
-			"     ├─ colSet: (3,4)\n" +
+			"     ├─ colSet: (3)\n" +
 			"     ├─ tableId: 2\n" +
 			"     └─ Table\n" +
 			"         ├─ name: ab\n" +
@@ -5259,7 +5259,7 @@ Select * from (
 			" │       └─ IndexedTableAccess(mytable)\n" +
 			" │           ├─ index: [mytable.i]\n" +
 			" │           ├─ static: [{[1, 1]}]\n" +
-			" │           ├─ colSet: (2,3)\n" +
+			" │           ├─ colSet: (2)\n" +
 			" │           ├─ tableId: 1\n" +
 			" │           └─ Table\n" +
 			" │               ├─ name: mytable\n" +
@@ -6129,7 +6129,7 @@ inner join pq on true
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
 			"             ├─ columns: [i]\n" +
-			"             ├─ colSet: (3,4)\n" +
+			"             ├─ colSet: (3)\n" +
 			"             └─ tableId: 2\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
@@ -6182,7 +6182,7 @@ inner join pq on true
 			"                 └─ IndexedTableAccess(mytable)\n" +
 			"                     ├─ index: [mytable.i]\n" +
 			"                     ├─ static: [{[NULL, ∞)}]\n" +
-			"                     ├─ colSet: (3,4)\n" +
+			"                     ├─ colSet: (3)\n" +
 			"                     ├─ tableId: 2\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: mytable\n" +
@@ -6281,7 +6281,7 @@ inner join pq on true
 			"         │   ├─ IndexedTableAccess(mytable)\n" +
 			"         │   │   ├─ index: [mytable.i,mytable.s]\n" +
 			"         │   │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"         │   │   ├─ colSet: (1,2)\n" +
+			"         │   │   ├─ colSet: (1)\n" +
 			"         │   │   ├─ tableId: 1\n" +
 			"         │   │   └─ Table\n" +
 			"         │   │       ├─ name: mytable\n" +
@@ -6289,7 +6289,7 @@ inner join pq on true
 			"         │   └─ IndexedTableAccess(othertable)\n" +
 			"         │       ├─ index: [othertable.i2]\n" +
 			"         │       ├─ static: [{[NULL, ∞)}]\n" +
-			"         │       ├─ colSet: (3,4)\n" +
+			"         │       ├─ colSet: (4)\n" +
 			"         │       ├─ tableId: 2\n" +
 			"         │       └─ Table\n" +
 			"         │           ├─ name: othertable\n" +
@@ -6414,7 +6414,7 @@ inner join pq on true
 			" └─ IndexedTableAccess(two_pk)\n" +
 			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     ├─ colSet: (1-7)\n" +
+			"     ├─ colSet: (1,2)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: two_pk\n" +
@@ -6481,7 +6481,7 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(mytable)\n" +
 			"     │       ├─ index: [mytable.i]\n" +
 			"     │       ├─ static: [{[1, 1]}]\n" +
-			"     │       ├─ colSet: (3,4)\n" +
+			"     │       ├─ colSet: (3)\n" +
 			"     │       ├─ tableId: 2\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: mytable\n" +
@@ -6490,7 +6490,7 @@ inner join pq on true
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
 			"             ├─ static: [{[2, 2]}]\n" +
-			"             ├─ colSet: (1,2)\n" +
+			"             ├─ colSet: (1)\n" +
 			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
@@ -6528,7 +6528,6 @@ inner join pq on true
 			"",
 	},
 	{
-		// Window result references use SQL names; argument debug details remain on the Window node.
 		Query: `SELECT SUM(i) OVER (PARTITION BY s ORDER BY i) AS total FROM mytable`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [sum(mytable.i) over ( partition by mytable.s order by mytable.i asc):0!null->total:0]\n" +
@@ -6539,7 +6538,22 @@ inner join pq on true
 			"     └─ ProcessTable\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
-			"             └─ columns: [i s]\n",
+			"             └─ columns: [i s]\n" +
+			"",
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [sum(mytable.i) over ( partition by mytable.s order by mytable.i asc) as total]\n" +
+			" └─ Window(SUM(mytable.i) over ( partition by mytable.s order by mytable.i ASC))\n" +
+			"     └─ Table\n" +
+			"         ├─ name: mytable\n" +
+			"         └─ columns: [i s]\n" +
+			"",
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [sum(mytable.i) over ( partition by mytable.s order by mytable.i asc) as total]\n" +
+			" └─ Window(SUM(mytable.i) over ( partition by mytable.s order by mytable.i ASC))\n" +
+			"     └─ Table\n" +
+			"         ├─ name: mytable\n" +
+			"         └─ columns: [i s]\n" +
+			"",
 	},
 	{
 		Query: `select row_number() over (order by i desc), mytable.i as i2
@@ -6557,7 +6571,7 @@ inner join pq on true
 			"             ├─ IndexedTableAccess(mytable)\n" +
 			"             │   ├─ index: [mytable.i,mytable.s]\n" +
 			"             │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │   ├─ colSet: (1,2)\n" +
+			"             │   ├─ colSet: (1)\n" +
 			"             │   ├─ tableId: 1\n" +
 			"             │   └─ Table\n" +
 			"             │       ├─ name: mytable\n" +
@@ -6565,7 +6579,7 @@ inner join pq on true
 			"             └─ IndexedTableAccess(othertable)\n" +
 			"                 ├─ index: [othertable.i2]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 ├─ colSet: (3,4)\n" +
+			"                 ├─ colSet: (4)\n" +
 			"                 ├─ tableId: 2\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: othertable\n" +
@@ -6712,7 +6726,7 @@ inner join pq on true
 			"             ├─ IndexedTableAccess(mytable)\n" +
 			"             │   ├─ index: [mytable.i]\n" +
 			"             │   ├─ static: [{[2, 2]}]\n" +
-			"             │   ├─ colSet: (1,2)\n" +
+			"             │   ├─ colSet: (1)\n" +
 			"             │   ├─ tableId: 1\n" +
 			"             │   └─ Table\n" +
 			"             │       ├─ name: mytable\n" +
@@ -6720,7 +6734,7 @@ inner join pq on true
 			"             └─ IndexedTableAccess(othertable)\n" +
 			"                 ├─ index: [othertable.i2]\n" +
 			"                 ├─ keys: [mytable.i:0!null]\n" +
-			"                 ├─ colSet: (3,4)\n" +
+			"                 ├─ colSet: (4)\n" +
 			"                 ├─ tableId: 2\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: othertable\n" +
@@ -6775,7 +6789,7 @@ inner join pq on true
 			"             │   └─ IndexedTableAccess(mytable)\n" +
 			"             │       ├─ index: [mytable.i]\n" +
 			"             │       ├─ static: [{[1, 1]}]\n" +
-			"             │       ├─ colSet: (5,6)\n" +
+			"             │       ├─ colSet: (5)\n" +
 			"             │       ├─ tableId: 3\n" +
 			"             │       └─ Table\n" +
 			"             │           ├─ name: mytable\n" +
@@ -6784,7 +6798,7 @@ inner join pq on true
 			"                 └─ IndexedTableAccess(mytable)\n" +
 			"                     ├─ index: [mytable.i]\n" +
 			"                     ├─ static: [{[2, 2]}]\n" +
-			"                     ├─ colSet: (3,4)\n" +
+			"                     ├─ colSet: (3)\n" +
 			"                     ├─ tableId: 2\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: mytable\n" +
@@ -6803,7 +6817,7 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(mytable)\n" +
 			"     │       ├─ index: [mytable.i]\n" +
 			"     │       ├─ static: [{[2, 2]}]\n" +
-			"     │       ├─ colSet: (1,2)\n" +
+			"     │       ├─ colSet: (1)\n" +
 			"     │       ├─ tableId: 1\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: mytable\n" +
@@ -6812,7 +6826,7 @@ inner join pq on true
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
 			"             ├─ static: [{[1, 1]}]\n" +
-			"             ├─ colSet: (3,4)\n" +
+			"             ├─ colSet: (3)\n" +
 			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
@@ -6861,7 +6875,7 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(mytable)\n" +
 			"     │       ├─ index: [mytable.i]\n" +
 			"     │       ├─ static: [{[1, 1]}]\n" +
-			"     │       ├─ colSet: (3,4)\n" +
+			"     │       ├─ colSet: (3)\n" +
 			"     │       ├─ tableId: 2\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: mytable\n" +
@@ -6870,7 +6884,7 @@ inner join pq on true
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
 			"             ├─ static: [{[2, 2]}]\n" +
-			"             ├─ colSet: (1,2)\n" +
+			"             ├─ colSet: (1)\n" +
 			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
@@ -6919,7 +6933,7 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(mytable)\n" +
 			"     │       ├─ index: [mytable.i]\n" +
 			"     │       ├─ static: [{[2, 2]}]\n" +
-			"     │       ├─ colSet: (1,2)\n" +
+			"     │       ├─ colSet: (1)\n" +
 			"     │       ├─ tableId: 1\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: mytable\n" +
@@ -6928,7 +6942,7 @@ inner join pq on true
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
 			"             ├─ static: [{[1, 1]}]\n" +
-			"             ├─ colSet: (3,4)\n" +
+			"             ├─ colSet: (3)\n" +
 			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
@@ -6977,7 +6991,7 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(mytable)\n" +
 			"     │       ├─ index: [mytable.i]\n" +
 			"     │       ├─ static: [{[1, 1]}]\n" +
-			"     │       ├─ colSet: (3,4)\n" +
+			"     │       ├─ colSet: (3)\n" +
 			"     │       ├─ tableId: 2\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: mytable\n" +
@@ -6986,7 +7000,7 @@ inner join pq on true
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
 			"             ├─ static: [{[2, 2]}]\n" +
-			"             ├─ colSet: (1,2)\n" +
+			"             ├─ colSet: (1)\n" +
 			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
@@ -7034,7 +7048,7 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(mytable)\n" +
 			"     │   ├─ index: [mytable.i,mytable.s]\n" +
 			"     │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │   ├─ colSet: (1,2)\n" +
+			"     │   ├─ colSet: (1)\n" +
 			"     │   ├─ tableId: 1\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: mytable\n" +
@@ -7395,7 +7409,7 @@ inner join pq on true
 			" │       ├─ IndexedTableAccess(mytable)\n" +
 			" │       │   ├─ index: [mytable.i,mytable.s]\n" +
 			" │       │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			" │       │   ├─ colSet: (1,2)\n" +
+			" │       │   ├─ colSet: (1)\n" +
 			" │       │   ├─ tableId: 1\n" +
 			" │       │   └─ Table\n" +
 			" │       │       ├─ name: mytable\n" +
@@ -7417,7 +7431,7 @@ inner join pq on true
 			"         ├─ IndexedTableAccess(mytable)\n" +
 			"         │   ├─ index: [mytable.i,mytable.s]\n" +
 			"         │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"         │   ├─ colSet: (5,6)\n" +
+			"         │   ├─ colSet: (5)\n" +
 			"         │   ├─ tableId: 3\n" +
 			"         │   └─ Table\n" +
 			"         │       ├─ name: mytable\n" +
@@ -7508,7 +7522,7 @@ inner join pq on true
 			"     │           ├─ IndexedTableAccess(mytable)\n" +
 			"     │           │   ├─ index: [mytable.i,mytable.s]\n" +
 			"     │           │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │           │   ├─ colSet: (1,2)\n" +
+			"     │           │   ├─ colSet: (1)\n" +
 			"     │           │   ├─ tableId: 1\n" +
 			"     │           │   └─ Table\n" +
 			"     │           │       ├─ name: mytable\n" +
@@ -7617,7 +7631,7 @@ inner join pq on true
 			"     │           ├─ IndexedTableAccess(mytable)\n" +
 			"     │           │   ├─ index: [mytable.i,mytable.s]\n" +
 			"     │           │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │           │   ├─ colSet: (3,4)\n" +
+			"     │           │   ├─ colSet: (3)\n" +
 			"     │           │   ├─ tableId: 2\n" +
 			"     │           │   └─ Table\n" +
 			"     │           │       ├─ name: mytable\n" +
@@ -7736,7 +7750,7 @@ inner join pq on true
 			"                     ├─ IndexedTableAccess(mytable)\n" +
 			"                     │   ├─ index: [mytable.i,mytable.s]\n" +
 			"                     │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                     │   ├─ colSet: (3,4)\n" +
+			"                     │   ├─ colSet: (3)\n" +
 			"                     │   ├─ tableId: 2\n" +
 			"                     │   └─ Table\n" +
 			"                     │       ├─ name: mytable\n" +
@@ -7861,7 +7875,7 @@ inner join pq on true
 			"             └─ Table\n" +
 			"                 ├─ name: one_pk\n" +
 			"                 ├─ columns: [pk]\n" +
-			"                 ├─ colSet: (13-18)\n" +
+			"                 ├─ colSet: (13)\n" +
 			"                 └─ tableId: 3\n" +
 			"",
 		ExpectedEstimates: "HashJoin (estimated cost=305.040 rows=100)\n" +
@@ -7968,7 +7982,7 @@ inner join pq on true
 			"             └─ Table\n" +
 			"                 ├─ name: one_pk\n" +
 			"                 ├─ columns: [pk]\n" +
-			"                 ├─ colSet: (13-18)\n" +
+			"                 ├─ colSet: (13)\n" +
 			"                 └─ tableId: 3\n" +
 			"",
 		ExpectedEstimates: "HashJoin (estimated cost=305.040 rows=100)\n" +
@@ -8064,7 +8078,7 @@ inner join pq on true
 			"             │           ├─ IndexedTableAccess(mytable)\n" +
 			"             │           │   ├─ index: [mytable.i,mytable.s]\n" +
 			"             │           │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │           │   ├─ colSet: (5,6)\n" +
+			"             │           │   ├─ colSet: (5)\n" +
 			"             │           │   ├─ tableId: 3\n" +
 			"             │           │   └─ Table\n" +
 			"             │           │       ├─ name: mytable\n" +
@@ -8161,7 +8175,7 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(mytable)\n" +
 			"     │   ├─ index: [mytable.i,mytable.s]\n" +
 			"     │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │   ├─ colSet: (1,2)\n" +
+			"     │   ├─ colSet: (1)\n" +
 			"     │   ├─ tableId: 1\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: mytable\n" +
@@ -8221,7 +8235,7 @@ inner join pq on true
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i,mytable.s]\n" +
 			"         ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"         ├─ colSet: (3,4)\n" +
+			"         ├─ colSet: (3)\n" +
 			"         ├─ tableId: 2\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
@@ -8271,7 +8285,7 @@ inner join pq on true
 			" └─ IndexedTableAccess(mytable)\n" +
 			"     ├─ index: [mytable.i,mytable.s]\n" +
 			"     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     ├─ colSet: (3,4)\n" +
+			"     ├─ colSet: (3)\n" +
 			"     ├─ tableId: 2\n" +
 			"     └─ Table\n" +
 			"         ├─ name: mytable\n" +
@@ -8317,7 +8331,7 @@ inner join pq on true
 			" └─ IndexedTableAccess(mytable)\n" +
 			"     ├─ index: [mytable.i,mytable.s]\n" +
 			"     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     ├─ colSet: (3,4)\n" +
+			"     ├─ colSet: (3)\n" +
 			"     ├─ tableId: 2\n" +
 			"     └─ Table\n" +
 			"         ├─ name: mytable\n" +
@@ -8364,7 +8378,7 @@ inner join pq on true
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i,mytable.s]\n" +
 			"         ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"         ├─ colSet: (3,4)\n" +
+			"         ├─ colSet: (3)\n" +
 			"         ├─ tableId: 2\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
@@ -8406,7 +8420,7 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(mytable)\n" +
 			"     │   ├─ index: [mytable.i,mytable.s]\n" +
 			"     │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │   ├─ colSet: (1,2)\n" +
+			"     │   ├─ colSet: (1)\n" +
 			"     │   ├─ tableId: 1\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: mytable\n" +
@@ -8458,7 +8472,7 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(mytable)\n" +
 			"     │   ├─ index: [mytable.i,mytable.s]\n" +
 			"     │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │   ├─ colSet: (1,2)\n" +
+			"     │   ├─ colSet: (1)\n" +
 			"     │   ├─ tableId: 1\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: mytable\n" +
@@ -9572,7 +9586,7 @@ inner join pq on true
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             ├─ colSet: (3,4)\n" +
+			"             ├─ colSet: (3)\n" +
 			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
@@ -9908,7 +9922,7 @@ inner join pq on true
 			"     │   │   │   └─ IndexedTableAccess(mytable)\n" +
 			"     │   │   │       ├─ index: [mytable.i]\n" +
 			"     │   │   │       ├─ static: [{[2, 2]}]\n" +
-			"     │   │   │       ├─ colSet: (5,6)\n" +
+			"     │   │   │       ├─ colSet: (5)\n" +
 			"     │   │   │       ├─ tableId: 3\n" +
 			"     │   │   │       └─ Table\n" +
 			"     │   │   │           ├─ name: mytable\n" +
@@ -9917,7 +9931,7 @@ inner join pq on true
 			"     │   │       └─ IndexedTableAccess(mytable)\n" +
 			"     │   │           ├─ index: [mytable.i]\n" +
 			"     │   │           ├─ keys: [c.i:0!null]\n" +
-			"     │   │           ├─ colSet: (3,4)\n" +
+			"     │   │           ├─ colSet: (3)\n" +
 			"     │   │           ├─ tableId: 2\n" +
 			"     │   │           └─ Table\n" +
 			"     │   │               ├─ name: mytable\n" +
@@ -9935,7 +9949,7 @@ inner join pq on true
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
 			"             ├─ keys: [c.i:0!null]\n" +
-			"             ├─ colSet: (7,8)\n" +
+			"             ├─ colSet: (7)\n" +
 			"             ├─ tableId: 4\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
@@ -10027,7 +10041,7 @@ inner join pq on true
 			"     │           │   └─ IndexedTableAccess(mytable)\n" +
 			"     │           │       ├─ index: [mytable.i]\n" +
 			"     │           │       ├─ keys: [2 (bigint)]\n" +
-			"     │           │       ├─ colSet: (5,6)\n" +
+			"     │           │       ├─ colSet: (5)\n" +
 			"     │           │       ├─ tableId: 3\n" +
 			"     │           │       └─ Table\n" +
 			"     │           │           ├─ name: mytable\n" +
@@ -10036,7 +10050,7 @@ inner join pq on true
 			"     │               └─ IndexedTableAccess(mytable)\n" +
 			"     │                   ├─ index: [mytable.i]\n" +
 			"     │                   ├─ keys: [d.s:0!null]\n" +
-			"     │                   ├─ colSet: (5,6)\n" +
+			"     │                   ├─ colSet: (5)\n" +
 			"     │                   ├─ tableId: 3\n" +
 			"     │                   └─ Table\n" +
 			"     │                       ├─ name: mytable\n" +
@@ -10058,7 +10072,7 @@ inner join pq on true
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 ├─ colSet: (3,4)\n" +
+			"                 ├─ colSet: (3)\n" +
 			"                 ├─ tableId: 2\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: mytable\n" +
@@ -10163,7 +10177,7 @@ inner join pq on true
 			"         │       └─ IndexedTableAccess(mytable)\n" +
 			"         │           ├─ index: [mytable.i]\n" +
 			"         │           ├─ static: [{[NULL, ∞)}]\n" +
-			"         │           ├─ colSet: (3,4)\n" +
+			"         │           ├─ colSet: (3)\n" +
 			"         │           ├─ tableId: 2\n" +
 			"         │           └─ Table\n" +
 			"         │               ├─ name: mytable\n" +
@@ -10172,7 +10186,7 @@ inner join pq on true
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
 			"                 ├─ keys: [b.i:2!null]\n" +
-			"                 ├─ colSet: (5,6)\n" +
+			"                 ├─ colSet: (5)\n" +
 			"                 ├─ tableId: 3\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: mytable\n" +
@@ -10252,7 +10266,7 @@ inner join pq on true
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             ├─ colSet: (3,4)\n" +
+			"             ├─ colSet: (3)\n" +
 			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
@@ -10577,7 +10591,7 @@ inner join pq on true
 			"     │   │   │   └─ IndexedTableAccess(mytable)\n" +
 			"     │   │   │       ├─ index: [mytable.i]\n" +
 			"     │   │   │       ├─ static: [{[2, 2]}]\n" +
-			"     │   │   │       ├─ colSet: (5,6)\n" +
+			"     │   │   │       ├─ colSet: (5)\n" +
 			"     │   │   │       ├─ tableId: 3\n" +
 			"     │   │   │       └─ Table\n" +
 			"     │   │   │           ├─ name: mytable\n" +
@@ -10586,7 +10600,7 @@ inner join pq on true
 			"     │   │       └─ IndexedTableAccess(mytable)\n" +
 			"     │   │           ├─ index: [mytable.i]\n" +
 			"     │   │           ├─ keys: [c.i:0!null]\n" +
-			"     │   │           ├─ colSet: (3,4)\n" +
+			"     │   │           ├─ colSet: (3)\n" +
 			"     │   │           ├─ tableId: 2\n" +
 			"     │   │           └─ Table\n" +
 			"     │   │               ├─ name: mytable\n" +
@@ -10604,7 +10618,7 @@ inner join pq on true
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
 			"             ├─ keys: [c.i:0!null]\n" +
-			"             ├─ colSet: (7,8)\n" +
+			"             ├─ colSet: (7)\n" +
 			"             ├─ tableId: 4\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
@@ -10696,7 +10710,7 @@ inner join pq on true
 			"     │           │   └─ IndexedTableAccess(mytable)\n" +
 			"     │           │       ├─ index: [mytable.i]\n" +
 			"     │           │       ├─ keys: [2 (bigint)]\n" +
-			"     │           │       ├─ colSet: (5,6)\n" +
+			"     │           │       ├─ colSet: (5)\n" +
 			"     │           │       ├─ tableId: 3\n" +
 			"     │           │       └─ Table\n" +
 			"     │           │           ├─ name: mytable\n" +
@@ -10705,7 +10719,7 @@ inner join pq on true
 			"     │               └─ IndexedTableAccess(mytable)\n" +
 			"     │                   ├─ index: [mytable.i]\n" +
 			"     │                   ├─ keys: [d.s:0!null]\n" +
-			"     │                   ├─ colSet: (5,6)\n" +
+			"     │                   ├─ colSet: (5)\n" +
 			"     │                   ├─ tableId: 3\n" +
 			"     │                   └─ Table\n" +
 			"     │                       ├─ name: mytable\n" +
@@ -10727,7 +10741,7 @@ inner join pq on true
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 ├─ colSet: (3,4)\n" +
+			"                 ├─ colSet: (3)\n" +
 			"                 ├─ tableId: 2\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: mytable\n" +
@@ -10841,7 +10855,7 @@ inner join pq on true
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.s]\n" +
 			"                 ├─ keys: [b.s:3!null]\n" +
-			"                 ├─ colSet: (5,6)\n" +
+			"                 ├─ colSet: (6)\n" +
 			"                 ├─ tableId: 3\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: mytable\n" +
@@ -11064,7 +11078,7 @@ inner join pq on true
 			" └─ IndexedTableAccess(mytable)\n" +
 			"     ├─ index: [mytable.i]\n" +
 			"     ├─ keys: [othertable.i2:1!null]\n" +
-			"     ├─ colSet: (1,2)\n" +
+			"     ├─ colSet: (1)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: mytable\n" +
@@ -11156,7 +11170,7 @@ inner join pq on true
 			" └─ IndexedTableAccess(mytable)\n" +
 			"     ├─ index: [mytable.i]\n" +
 			"     ├─ keys: [othertable.i2:1!null]\n" +
-			"     ├─ colSet: (1,2)\n" +
+			"     ├─ colSet: (1)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: mytable\n" +
@@ -11275,7 +11289,7 @@ inner join pq on true
 			" │           └─ IndexedTableAccess(othertable)\n" +
 			" │               ├─ index: [othertable.i2]\n" +
 			" │               ├─ keys: [mytable.i:0!null]\n" +
-			" │               ├─ colSet: (3,4)\n" +
+			" │               ├─ colSet: (4)\n" +
 			" │               ├─ tableId: 2\n" +
 			" │               └─ Table\n" +
 			" │                   ├─ name: othertable\n" +
@@ -11546,7 +11560,7 @@ inner join pq on true
 			"         └─ Table\n" +
 			"             ├─ name: reservedWordsTable\n" +
 			"             ├─ columns: [timestamp]\n" +
-			"             ├─ colSet: (1-4)\n" +
+			"             ├─ colSet: (1)\n" +
 			"             └─ tableId: 1\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
@@ -11588,7 +11602,7 @@ inner join pq on true
 			" ├─ IndexedTableAccess(one_pk)\n" +
 			" │   ├─ index: [one_pk.pk]\n" +
 			" │   ├─ static: [{[NULL, ∞)}]\n" +
-			" │   ├─ colSet: (1-6)\n" +
+			" │   ├─ colSet: (1)\n" +
 			" │   ├─ tableId: 1\n" +
 			" │   └─ Table\n" +
 			" │       ├─ name: one_pk\n" +
@@ -11596,7 +11610,7 @@ inner join pq on true
 			" └─ IndexedTableAccess(two_pk)\n" +
 			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     ├─ colSet: (7-13)\n" +
+			"     ├─ colSet: (7,8)\n" +
 			"     ├─ tableId: 2\n" +
 			"     └─ Table\n" +
 			"         ├─ name: two_pk\n" +
@@ -11688,7 +11702,7 @@ inner join pq on true
 			" │   └─ IndexedTableAccess(one_pk)\n" +
 			" │       ├─ index: [one_pk.pk]\n" +
 			" │       ├─ static: [{[NULL, ∞)}]\n" +
-			" │       ├─ colSet: (1-6)\n" +
+			" │       ├─ colSet: (1)\n" +
 			" │       ├─ tableId: 1\n" +
 			" │       └─ Table\n" +
 			" │           ├─ name: one_pk\n" +
@@ -11697,7 +11711,7 @@ inner join pq on true
 			"     └─ IndexedTableAccess(two_pk)\n" +
 			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"         ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"         ├─ colSet: (7-13)\n" +
+			"         ├─ colSet: (7,8)\n" +
 			"         ├─ tableId: 2\n" +
 			"         └─ Table\n" +
 			"             ├─ name: two_pk\n" +
@@ -11744,7 +11758,7 @@ inner join pq on true
 			" ├─ IndexedTableAccess(one_pk)\n" +
 			" │   ├─ index: [one_pk.pk]\n" +
 			" │   ├─ static: [{[NULL, ∞)}]\n" +
-			" │   ├─ colSet: (1-6)\n" +
+			" │   ├─ colSet: (1)\n" +
 			" │   ├─ tableId: 1\n" +
 			" │   └─ Table\n" +
 			" │       ├─ name: one_pk\n" +
@@ -11752,7 +11766,7 @@ inner join pq on true
 			" └─ IndexedTableAccess(two_pk)\n" +
 			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     ├─ colSet: (7-13)\n" +
+			"     ├─ colSet: (7,8)\n" +
 			"     ├─ tableId: 2\n" +
 			"     └─ Table\n" +
 			"         ├─ name: two_pk\n" +
@@ -11795,7 +11809,7 @@ inner join pq on true
 			"     └─ IndexedTableAccess(two_pk)\n" +
 			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"         ├─ keys: [one_pk.pk:0!null one_pk.pk:0!null]\n" +
-			"         ├─ colSet: (7-13)\n" +
+			"         ├─ colSet: (7,8)\n" +
 			"         ├─ tableId: 2\n" +
 			"         └─ Table\n" +
 			"             ├─ name: two_pk\n" +
@@ -11836,7 +11850,7 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(one_pk)\n" +
 			"     │   ├─ index: [one_pk.pk]\n" +
 			"     │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   ├─ colSet: (1-6)\n" +
+			"     │   ├─ colSet: (1)\n" +
 			"     │   ├─ tableId: 1\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: one_pk\n" +
@@ -11844,7 +11858,7 @@ inner join pq on true
 			"     └─ IndexedTableAccess(two_pk)\n" +
 			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"         ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"         ├─ colSet: (7-13)\n" +
+			"         ├─ colSet: (7,8)\n" +
 			"         ├─ tableId: 2\n" +
 			"         └─ Table\n" +
 			"             ├─ name: two_pk\n" +
@@ -11891,7 +11905,7 @@ inner join pq on true
 			"     └─ IndexedTableAccess(two_pk)\n" +
 			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"         ├─ keys: [one_pk.pk:0!null one_pk.pk:0!null]\n" +
-			"         ├─ colSet: (7-13)\n" +
+			"         ├─ colSet: (7,8)\n" +
 			"         ├─ tableId: 2\n" +
 			"         └─ Table\n" +
 			"             ├─ name: two_pk\n" +
@@ -11934,7 +11948,7 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(two_pk)\n" +
 			"     │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │   ├─ colSet: (7-13)\n" +
+			"     │   ├─ colSet: (7,8)\n" +
 			"     │   ├─ tableId: 2\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: two_pk\n" +
@@ -11942,7 +11956,7 @@ inner join pq on true
 			"     └─ IndexedTableAccess(one_pk)\n" +
 			"         ├─ index: [one_pk.pk]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         ├─ colSet: (1-6)\n" +
+			"         ├─ colSet: (1)\n" +
 			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: one_pk\n" +
@@ -12472,7 +12486,7 @@ inner join pq on true
 			"             └─ Table\n" +
 			"                 ├─ name: datetime_table\n" +
 			"                 ├─ columns: [i date_col]\n" +
-			"                 ├─ colSet: (1-5)\n" +
+			"                 ├─ colSet: (1,2)\n" +
 			"                 └─ tableId: 1\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
@@ -12525,7 +12539,7 @@ inner join pq on true
 			"                 └─ Table\n" +
 			"                     ├─ name: datetime_table\n" +
 			"                     ├─ columns: [i date_col]\n" +
-			"                     ├─ colSet: (1-5)\n" +
+			"                     ├─ colSet: (1,2)\n" +
 			"                     └─ tableId: 1\n" +
 			"",
 		ExpectedEstimates: "Limit(3)\n" +
@@ -12580,7 +12594,7 @@ inner join pq on true
 			"                 └─ Table\n" +
 			"                     ├─ name: datetime_table\n" +
 			"                     ├─ columns: [i date_col]\n" +
-			"                     ├─ colSet: (1-5)\n" +
+			"                     ├─ colSet: (1,2)\n" +
 			"                     └─ tableId: 1\n" +
 			"",
 		ExpectedEstimates: "Limit(3)\n" +
@@ -12631,7 +12645,7 @@ inner join pq on true
 			"     │   ├─ IndexedTableAccess(one_pk)\n" +
 			"     │   │   ├─ index: [one_pk.pk]\n" +
 			"     │   │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │   ├─ colSet: (1-6)\n" +
+			"     │   │   ├─ colSet: (1)\n" +
 			"     │   │   ├─ tableId: 1\n" +
 			"     │   │   └─ Table\n" +
 			"     │   │       ├─ name: one_pk\n" +
@@ -12640,7 +12654,7 @@ inner join pq on true
 			"     │       └─ IndexedTableAccess(two_pk)\n" +
 			"     │           ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     │           ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │           ├─ colSet: (7-13)\n" +
+			"     │           ├─ colSet: (7,8)\n" +
 			"     │           ├─ tableId: 2\n" +
 			"     │           └─ Table\n" +
 			"     │               ├─ name: two_pk\n" +
@@ -12649,7 +12663,7 @@ inner join pq on true
 			"         └─ IndexedTableAccess(two_pk)\n" +
 			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             ├─ keys: [tpk.pk2:2!null tpk.pk1:1!null]\n" +
-			"             ├─ colSet: (14-20)\n" +
+			"             ├─ colSet: (14,15)\n" +
 			"             ├─ tableId: 3\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: two_pk\n" +
@@ -12716,7 +12730,7 @@ inner join pq on true
 			"     │   ├─ IndexedTableAccess(one_pk)\n" +
 			"     │   │   ├─ index: [one_pk.pk]\n" +
 			"     │   │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │   ├─ colSet: (1-6)\n" +
+			"     │   │   ├─ colSet: (1)\n" +
 			"     │   │   ├─ tableId: 1\n" +
 			"     │   │   └─ Table\n" +
 			"     │   │       ├─ name: one_pk\n" +
@@ -12725,7 +12739,7 @@ inner join pq on true
 			"     │       └─ IndexedTableAccess(two_pk)\n" +
 			"     │           ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     │           ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │           ├─ colSet: (7-13)\n" +
+			"     │           ├─ colSet: (7,8)\n" +
 			"     │           ├─ tableId: 2\n" +
 			"     │           └─ Table\n" +
 			"     │               ├─ name: two_pk\n" +
@@ -12734,7 +12748,7 @@ inner join pq on true
 			"         └─ IndexedTableAccess(two_pk)\n" +
 			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             ├─ keys: [tpk.pk2:2!null tpk.pk1:1!null]\n" +
-			"             ├─ colSet: (14-20)\n" +
+			"             ├─ colSet: (14,15)\n" +
 			"             ├─ tableId: 3\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: two_pk\n" +
@@ -12801,7 +12815,7 @@ inner join pq on true
 			"     │   ├─ IndexedTableAccess(one_pk)\n" +
 			"     │   │   ├─ index: [one_pk.pk]\n" +
 			"     │   │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │   ├─ colSet: (1-6)\n" +
+			"     │   │   ├─ colSet: (1)\n" +
 			"     │   │   ├─ tableId: 1\n" +
 			"     │   │   └─ Table\n" +
 			"     │   │       ├─ name: one_pk\n" +
@@ -12810,7 +12824,7 @@ inner join pq on true
 			"     │       └─ IndexedTableAccess(two_pk)\n" +
 			"     │           ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     │           ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │           ├─ colSet: (7-13)\n" +
+			"     │           ├─ colSet: (7,8)\n" +
 			"     │           ├─ tableId: 2\n" +
 			"     │           └─ Table\n" +
 			"     │               ├─ name: two_pk\n" +
@@ -12819,7 +12833,7 @@ inner join pq on true
 			"         └─ IndexedTableAccess(two_pk)\n" +
 			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             ├─ keys: [tpk.pk2:2!null tpk.pk1:1!null]\n" +
-			"             ├─ colSet: (14-20)\n" +
+			"             ├─ colSet: (14,15)\n" +
 			"             ├─ tableId: 3\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: two_pk\n" +
@@ -12894,7 +12908,7 @@ inner join pq on true
 			"         │   ├─ IndexedTableAccess(one_pk)\n" +
 			"         │   │   ├─ index: [one_pk.pk]\n" +
 			"         │   │   ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   ├─ colSet: (1-6)\n" +
+			"         │   │   ├─ colSet: (1)\n" +
 			"         │   │   ├─ tableId: 1\n" +
 			"         │   │   └─ Table\n" +
 			"         │   │       ├─ name: one_pk\n" +
@@ -12903,7 +12917,7 @@ inner join pq on true
 			"         │       └─ IndexedTableAccess(two_pk)\n" +
 			"         │           ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"         │           ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"         │           ├─ colSet: (7-13)\n" +
+			"         │           ├─ colSet: (7,8)\n" +
 			"         │           ├─ tableId: 2\n" +
 			"         │           └─ Table\n" +
 			"         │               ├─ name: two_pk\n" +
@@ -12985,7 +12999,7 @@ inner join pq on true
 			"     │   ├─ IndexedTableAccess(one_pk)\n" +
 			"     │   │   ├─ index: [one_pk.pk]\n" +
 			"     │   │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │   ├─ colSet: (1-6)\n" +
+			"     │   │   ├─ colSet: (1)\n" +
 			"     │   │   ├─ tableId: 1\n" +
 			"     │   │   └─ Table\n" +
 			"     │   │       ├─ name: one_pk\n" +
@@ -12994,7 +13008,7 @@ inner join pq on true
 			"     │       └─ IndexedTableAccess(two_pk)\n" +
 			"     │           ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     │           ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │           ├─ colSet: (7-13)\n" +
+			"     │           ├─ colSet: (7,8)\n" +
 			"     │           ├─ tableId: 2\n" +
 			"     │           └─ Table\n" +
 			"     │               ├─ name: two_pk\n" +
@@ -13003,7 +13017,7 @@ inner join pq on true
 			"         └─ IndexedTableAccess(two_pk)\n" +
 			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             ├─ keys: [tpk.pk2:2!null tpk.pk1:1!null]\n" +
-			"             ├─ colSet: (14-20)\n" +
+			"             ├─ colSet: (14,15)\n" +
 			"             ├─ tableId: 3\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: two_pk\n" +
@@ -13069,7 +13083,7 @@ inner join pq on true
 			"     │   ├─ IndexedTableAccess(one_pk)\n" +
 			"     │   │   ├─ index: [one_pk.pk]\n" +
 			"     │   │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │   ├─ colSet: (1-6)\n" +
+			"     │   │   ├─ colSet: (1)\n" +
 			"     │   │   ├─ tableId: 1\n" +
 			"     │   │   └─ Table\n" +
 			"     │   │       ├─ name: one_pk\n" +
@@ -13078,7 +13092,7 @@ inner join pq on true
 			"     │       └─ IndexedTableAccess(two_pk)\n" +
 			"     │           ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     │           ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │           ├─ colSet: (7-13)\n" +
+			"     │           ├─ colSet: (7,8)\n" +
 			"     │           ├─ tableId: 2\n" +
 			"     │           └─ Table\n" +
 			"     │               ├─ name: two_pk\n" +
@@ -13087,7 +13101,7 @@ inner join pq on true
 			"         └─ IndexedTableAccess(two_pk)\n" +
 			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             ├─ keys: [tpk.pk2:2!null tpk.pk1:1!null]\n" +
-			"             ├─ colSet: (14-20)\n" +
+			"             ├─ colSet: (14,15)\n" +
 			"             ├─ tableId: 3\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: two_pk\n" +
@@ -13153,7 +13167,7 @@ inner join pq on true
 			"     │   ├─ IndexedTableAccess(one_pk)\n" +
 			"     │   │   ├─ index: [one_pk.pk]\n" +
 			"     │   │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │   ├─ colSet: (1-6)\n" +
+			"     │   │   ├─ colSet: (1)\n" +
 			"     │   │   ├─ tableId: 1\n" +
 			"     │   │   └─ Table\n" +
 			"     │   │       ├─ name: one_pk\n" +
@@ -13162,7 +13176,7 @@ inner join pq on true
 			"     │       └─ IndexedTableAccess(two_pk)\n" +
 			"     │           ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     │           ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │           ├─ colSet: (7-13)\n" +
+			"     │           ├─ colSet: (7,8)\n" +
 			"     │           ├─ tableId: 2\n" +
 			"     │           └─ Table\n" +
 			"     │               ├─ name: two_pk\n" +
@@ -13171,7 +13185,7 @@ inner join pq on true
 			"         └─ IndexedTableAccess(two_pk)\n" +
 			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             ├─ keys: [tpk.pk2:2!null tpk.pk1:1!null]\n" +
-			"             ├─ colSet: (14-20)\n" +
+			"             ├─ colSet: (14,15)\n" +
 			"             ├─ tableId: 3\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: two_pk\n" +
@@ -13250,7 +13264,7 @@ inner join pq on true
 			"         │   └─ IndexedTableAccess(two_pk)\n" +
 			"         │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"         │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"         │       ├─ colSet: (7-13)\n" +
+			"         │       ├─ colSet: (7,8)\n" +
 			"         │       ├─ tableId: 2\n" +
 			"         │       └─ Table\n" +
 			"         │           ├─ name: two_pk\n" +
@@ -13258,7 +13272,7 @@ inner join pq on true
 			"         └─ IndexedTableAccess(one_pk)\n" +
 			"             ├─ index: [one_pk.pk]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             ├─ colSet: (1-6)\n" +
+			"             ├─ colSet: (1)\n" +
 			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: one_pk\n" +
@@ -13371,7 +13385,7 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(one_pk)\n" +
 			"     │   ├─ index: [one_pk.pk]\n" +
 			"     │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   ├─ colSet: (1-6)\n" +
+			"     │   ├─ colSet: (1)\n" +
 			"     │   ├─ tableId: 1\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: one_pk\n" +
@@ -13379,7 +13393,7 @@ inner join pq on true
 			"     └─ IndexedTableAccess(two_pk)\n" +
 			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"         ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"         ├─ colSet: (7-13)\n" +
+			"         ├─ colSet: (7,8)\n" +
 			"         ├─ tableId: 2\n" +
 			"         └─ Table\n" +
 			"             ├─ name: two_pk\n" +
@@ -13423,7 +13437,7 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(one_pk)\n" +
 			"     │   ├─ index: [one_pk.pk]\n" +
 			"     │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   ├─ colSet: (1-6)\n" +
+			"     │   ├─ colSet: (1)\n" +
 			"     │   ├─ tableId: 1\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: one_pk\n" +
@@ -13431,7 +13445,7 @@ inner join pq on true
 			"     └─ IndexedTableAccess(niltable)\n" +
 			"         ├─ index: [niltable.i]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         ├─ colSet: (7-10)\n" +
+			"         ├─ colSet: (7,10)\n" +
 			"         ├─ tableId: 2\n" +
 			"         └─ Table\n" +
 			"             ├─ name: niltable\n" +
@@ -13475,7 +13489,7 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(niltable)\n" +
 			"     │   ├─ index: [niltable.i]\n" +
 			"     │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   ├─ colSet: (7-10)\n" +
+			"     │   ├─ colSet: (7,10)\n" +
 			"     │   ├─ tableId: 2\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: niltable\n" +
@@ -13483,7 +13497,7 @@ inner join pq on true
 			"     └─ IndexedTableAccess(one_pk)\n" +
 			"         ├─ index: [one_pk.pk]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         ├─ colSet: (1-6)\n" +
+			"         ├─ colSet: (1)\n" +
 			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: one_pk\n" +
@@ -13542,7 +13556,7 @@ inner join pq on true
 			"             │   └─ IndexedTableAccess(niltable)\n" +
 			"             │       ├─ index: [niltable.i]\n" +
 			"             │       ├─ static: [{[NULL, ∞)}]\n" +
-			"             │       ├─ colSet: (7-10)\n" +
+			"             │       ├─ colSet: (7)\n" +
 			"             │       ├─ tableId: 2\n" +
 			"             │       └─ Table\n" +
 			"             │           ├─ name: niltable\n" +
@@ -13550,7 +13564,7 @@ inner join pq on true
 			"             └─ IndexedTableAccess(one_pk)\n" +
 			"                 ├─ index: [one_pk.pk]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 ├─ colSet: (1-6)\n" +
+			"                 ├─ colSet: (1)\n" +
 			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: one_pk\n" +
@@ -13616,7 +13630,7 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(one_pk)\n" +
 			"     │   ├─ index: [one_pk.pk]\n" +
 			"     │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   ├─ colSet: (1-6)\n" +
+			"     │   ├─ colSet: (1)\n" +
 			"     │   ├─ tableId: 1\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: one_pk\n" +
@@ -13624,7 +13638,7 @@ inner join pq on true
 			"     └─ IndexedTableAccess(niltable)\n" +
 			"         ├─ index: [niltable.i]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         ├─ colSet: (7-10)\n" +
+			"         ├─ colSet: (7,10)\n" +
 			"         ├─ tableId: 2\n" +
 			"         └─ Table\n" +
 			"             ├─ name: niltable\n" +
@@ -13673,7 +13687,7 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(niltable)\n" +
 			"     │   ├─ index: [niltable.i]\n" +
 			"     │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   ├─ colSet: (7-10)\n" +
+			"     │   ├─ colSet: (7,10)\n" +
 			"     │   ├─ tableId: 2\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: niltable\n" +
@@ -13681,7 +13695,7 @@ inner join pq on true
 			"     └─ IndexedTableAccess(one_pk)\n" +
 			"         ├─ index: [one_pk.pk]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         ├─ colSet: (1-6)\n" +
+			"         ├─ colSet: (1)\n" +
 			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: one_pk\n" +
@@ -13730,7 +13744,7 @@ inner join pq on true
 			"         ├─ IndexedTableAccess(one_pk)\n" +
 			"         │   ├─ index: [one_pk.pk]\n" +
 			"         │   ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   ├─ colSet: (1-6)\n" +
+			"         │   ├─ colSet: (1)\n" +
 			"         │   ├─ tableId: 1\n" +
 			"         │   └─ Table\n" +
 			"         │       ├─ name: one_pk\n" +
@@ -13738,7 +13752,7 @@ inner join pq on true
 			"         └─ IndexedTableAccess(niltable)\n" +
 			"             ├─ index: [niltable.i]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             ├─ colSet: (7-10)\n" +
+			"             ├─ colSet: (7,10)\n" +
 			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: niltable\n" +
@@ -13790,7 +13804,7 @@ inner join pq on true
 			"         ├─ IndexedTableAccess(one_pk)\n" +
 			"         │   ├─ index: [one_pk.pk]\n" +
 			"         │   ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   ├─ colSet: (1-6)\n" +
+			"         │   ├─ colSet: (1)\n" +
 			"         │   ├─ tableId: 1\n" +
 			"         │   └─ Table\n" +
 			"         │       ├─ name: one_pk\n" +
@@ -13798,7 +13812,7 @@ inner join pq on true
 			"         └─ IndexedTableAccess(niltable)\n" +
 			"             ├─ index: [niltable.i]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             ├─ colSet: (7-10)\n" +
+			"             ├─ colSet: (7,8,10)\n" +
 			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: niltable\n" +
@@ -13850,7 +13864,7 @@ inner join pq on true
 			"         ├─ IndexedTableAccess(one_pk)\n" +
 			"         │   ├─ index: [one_pk.pk]\n" +
 			"         │   ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   ├─ colSet: (1-6)\n" +
+			"         │   ├─ colSet: (1)\n" +
 			"         │   ├─ tableId: 1\n" +
 			"         │   └─ Table\n" +
 			"         │       ├─ name: one_pk\n" +
@@ -13858,7 +13872,7 @@ inner join pq on true
 			"         └─ IndexedTableAccess(niltable)\n" +
 			"             ├─ index: [niltable.i]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             ├─ colSet: (7-10)\n" +
+			"             ├─ colSet: (7,10)\n" +
 			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: niltable\n" +
@@ -13910,7 +13924,7 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(one_pk)\n" +
 			"     │       ├─ index: [one_pk.pk]\n" +
 			"     │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       ├─ colSet: (1-6)\n" +
+			"     │       ├─ colSet: (1,2)\n" +
 			"     │       ├─ tableId: 1\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: one_pk\n" +
@@ -13918,7 +13932,7 @@ inner join pq on true
 			"     └─ IndexedTableAccess(niltable)\n" +
 			"         ├─ index: [niltable.i]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         ├─ colSet: (7-10)\n" +
+			"         ├─ colSet: (7,10)\n" +
 			"         ├─ tableId: 2\n" +
 			"         └─ Table\n" +
 			"             ├─ name: niltable\n" +
@@ -13969,7 +13983,7 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(niltable)\n" +
 			"     │       ├─ index: [niltable.i]\n" +
 			"     │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       ├─ colSet: (7-10)\n" +
+			"     │       ├─ colSet: (7,10)\n" +
 			"     │       ├─ tableId: 2\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: niltable\n" +
@@ -13977,7 +13991,7 @@ inner join pq on true
 			"     └─ IndexedTableAccess(one_pk)\n" +
 			"         ├─ index: [one_pk.pk]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         ├─ colSet: (1-6)\n" +
+			"         ├─ colSet: (1)\n" +
 			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: one_pk\n" +
@@ -14022,7 +14036,7 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(one_pk)\n" +
 			"     │   ├─ index: [one_pk.pk]\n" +
 			"     │   ├─ static: [{(1, ∞)}]\n" +
-			"     │   ├─ colSet: (1-6)\n" +
+			"     │   ├─ colSet: (1)\n" +
 			"     │   ├─ tableId: 1\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: one_pk\n" +
@@ -14030,7 +14044,7 @@ inner join pq on true
 			"     └─ IndexedTableAccess(niltable)\n" +
 			"         ├─ index: [niltable.i]\n" +
 			"         ├─ keys: [one_pk.pk:0!null]\n" +
-			"         ├─ colSet: (7-10)\n" +
+			"         ├─ colSet: (7,10)\n" +
 			"         ├─ tableId: 2\n" +
 			"         └─ Table\n" +
 			"             ├─ name: niltable\n" +
@@ -14077,7 +14091,7 @@ inner join pq on true
 			"             └─ Table\n" +
 			"                 ├─ name: niltable\n" +
 			"                 ├─ columns: [i i2]\n" +
-			"                 ├─ colSet: (1-4)\n" +
+			"                 ├─ colSet: (1,2)\n" +
 			"                 └─ tableId: 1\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
@@ -14124,7 +14138,7 @@ inner join pq on true
 			"         ├─ IndexedTableAccess(niltable)\n" +
 			"         │   ├─ index: [niltable.i]\n" +
 			"         │   ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   ├─ colSet: (7-10)\n" +
+			"         │   ├─ colSet: (7,10)\n" +
 			"         │   ├─ tableId: 2\n" +
 			"         │   └─ Table\n" +
 			"         │       ├─ name: niltable\n" +
@@ -14132,7 +14146,7 @@ inner join pq on true
 			"         └─ IndexedTableAccess(one_pk)\n" +
 			"             ├─ index: [one_pk.pk]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             ├─ colSet: (1-6)\n" +
+			"             ├─ colSet: (1)\n" +
 			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: one_pk\n" +
@@ -14178,7 +14192,7 @@ inner join pq on true
 			" ├─ IndexedTableAccess(one_pk)\n" +
 			" │   ├─ index: [one_pk.pk]\n" +
 			" │   ├─ static: [{[NULL, ∞)}]\n" +
-			" │   ├─ colSet: (1-6)\n" +
+			" │   ├─ colSet: (1)\n" +
 			" │   ├─ tableId: 1\n" +
 			" │   └─ Table\n" +
 			" │       ├─ name: one_pk\n" +
@@ -14186,7 +14200,7 @@ inner join pq on true
 			" └─ IndexedTableAccess(two_pk)\n" +
 			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     ├─ colSet: (7-13)\n" +
+			"     ├─ colSet: (7,8)\n" +
 			"     ├─ tableId: 2\n" +
 			"     └─ Table\n" +
 			"         ├─ name: two_pk\n" +
@@ -14226,7 +14240,7 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(two_pk)\n" +
 			"     │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │   ├─ colSet: (7-13)\n" +
+			"     │   ├─ colSet: (7,8)\n" +
 			"     │   ├─ tableId: 2\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: two_pk\n" +
@@ -14234,7 +14248,7 @@ inner join pq on true
 			"     └─ IndexedTableAccess(one_pk)\n" +
 			"         ├─ index: [one_pk.pk]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         ├─ colSet: (1-6)\n" +
+			"         ├─ colSet: (1)\n" +
 			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: one_pk\n" +
@@ -14278,7 +14292,7 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(two_pk)\n" +
 			"     │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │       ├─ colSet: (1-7)\n" +
+			"     │       ├─ colSet: (1,2)\n" +
 			"     │       ├─ tableId: 1\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: two_pk\n" +
@@ -14287,7 +14301,7 @@ inner join pq on true
 			"         └─ IndexedTableAccess(two_pk)\n" +
 			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             ├─ colSet: (8-14)\n" +
+			"             ├─ colSet: (8,9)\n" +
 			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: two_pk\n" +
@@ -14335,7 +14349,7 @@ inner join pq on true
 			"         └─ IndexedTableAccess(two_pk)\n" +
 			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             ├─ keys: [a.pk2:1!null a.pk1:0!null]\n" +
-			"             ├─ colSet: (8-14)\n" +
+			"             ├─ colSet: (8,9)\n" +
 			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: two_pk\n" +
@@ -14377,7 +14391,7 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(two_pk)\n" +
 			"     │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │       ├─ colSet: (1-7)\n" +
+			"     │       ├─ colSet: (1,2)\n" +
 			"     │       ├─ tableId: 1\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: two_pk\n" +
@@ -14386,7 +14400,7 @@ inner join pq on true
 			"         └─ IndexedTableAccess(two_pk)\n" +
 			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             ├─ colSet: (8-14)\n" +
+			"             ├─ colSet: (8,9)\n" +
 			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: two_pk\n" +
@@ -14432,7 +14446,7 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(two_pk)\n" +
 			"     │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │       ├─ colSet: (1-7)\n" +
+			"     │       ├─ colSet: (1,2)\n" +
 			"     │       ├─ tableId: 1\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: two_pk\n" +
@@ -14441,7 +14455,7 @@ inner join pq on true
 			"         └─ IndexedTableAccess(two_pk)\n" +
 			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             ├─ colSet: (8-14)\n" +
+			"             ├─ colSet: (8,9)\n" +
 			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: two_pk\n" +
@@ -14487,7 +14501,7 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(two_pk)\n" +
 			"     │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │       ├─ colSet: (1-7)\n" +
+			"     │       ├─ colSet: (1,2)\n" +
 			"     │       ├─ tableId: 1\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: two_pk\n" +
@@ -14496,7 +14510,7 @@ inner join pq on true
 			"         └─ IndexedTableAccess(two_pk)\n" +
 			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             ├─ colSet: (8-14)\n" +
+			"             ├─ colSet: (8,9)\n" +
 			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: two_pk\n" +
@@ -14544,7 +14558,7 @@ inner join pq on true
 			"         └─ IndexedTableAccess(two_pk)\n" +
 			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             ├─ keys: [a.pk2:1!null a.pk1:0!null]\n" +
-			"             ├─ colSet: (8-14)\n" +
+			"             ├─ colSet: (8,9)\n" +
 			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: two_pk\n" +
@@ -14587,7 +14601,7 @@ inner join pq on true
 			"         ├─ IndexedTableAccess(one_pk)\n" +
 			"         │   ├─ index: [one_pk.pk]\n" +
 			"         │   ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   ├─ colSet: (1-6)\n" +
+			"         │   ├─ colSet: (1,6)\n" +
 			"         │   ├─ tableId: 1\n" +
 			"         │   └─ Table\n" +
 			"         │       ├─ name: one_pk\n" +
@@ -14595,7 +14609,7 @@ inner join pq on true
 			"         └─ IndexedTableAccess(two_pk)\n" +
 			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             ├─ colSet: (7-13)\n" +
+			"             ├─ colSet: (7,8)\n" +
 			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: two_pk\n" +
@@ -14643,7 +14657,7 @@ inner join pq on true
 			"         │   └─ IndexedTableAccess(one_pk)\n" +
 			"         │       ├─ index: [one_pk.pk]\n" +
 			"         │       ├─ static: [{[NULL, ∞)}]\n" +
-			"         │       ├─ colSet: (1-6)\n" +
+			"         │       ├─ colSet: (1,6)\n" +
 			"         │       ├─ tableId: 1\n" +
 			"         │       └─ Table\n" +
 			"         │           ├─ name: one_pk\n" +
@@ -14652,7 +14666,7 @@ inner join pq on true
 			"             └─ IndexedTableAccess(two_pk)\n" +
 			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"                 ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                 ├─ colSet: (7-13)\n" +
+			"                 ├─ colSet: (7,8)\n" +
 			"                 ├─ tableId: 2\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: two_pk\n" +
@@ -14704,7 +14718,7 @@ inner join pq on true
 			"         │   └─ IndexedTableAccess(one_pk)\n" +
 			"         │       ├─ index: [one_pk.pk]\n" +
 			"         │       ├─ static: [{[NULL, ∞)}]\n" +
-			"         │       ├─ colSet: (1-6)\n" +
+			"         │       ├─ colSet: (1,6)\n" +
 			"         │       ├─ tableId: 1\n" +
 			"         │       └─ Table\n" +
 			"         │           ├─ name: one_pk\n" +
@@ -14713,7 +14727,7 @@ inner join pq on true
 			"             └─ IndexedTableAccess(two_pk)\n" +
 			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"                 ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                 ├─ colSet: (7-13)\n" +
+			"                 ├─ colSet: (7,8)\n" +
 			"                 ├─ tableId: 2\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: two_pk\n" +
@@ -14765,7 +14779,7 @@ inner join pq on true
 			"         │   └─ IndexedTableAccess(one_pk)\n" +
 			"         │       ├─ index: [one_pk.pk]\n" +
 			"         │       ├─ static: [{[NULL, ∞)}]\n" +
-			"         │       ├─ colSet: (1-6)\n" +
+			"         │       ├─ colSet: (1,6)\n" +
 			"         │       ├─ tableId: 1\n" +
 			"         │       └─ Table\n" +
 			"         │           ├─ name: one_pk\n" +
@@ -14774,7 +14788,7 @@ inner join pq on true
 			"             └─ IndexedTableAccess(two_pk)\n" +
 			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"                 ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                 ├─ colSet: (7-13)\n" +
+			"                 ├─ colSet: (7,8)\n" +
 			"                 ├─ tableId: 2\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: two_pk\n" +
@@ -14825,7 +14839,7 @@ inner join pq on true
 			"         ├─ IndexedTableAccess(one_pk)\n" +
 			"         │   ├─ index: [one_pk.pk]\n" +
 			"         │   ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   ├─ colSet: (1-6)\n" +
+			"         │   ├─ colSet: (1,6)\n" +
 			"         │   ├─ tableId: 1\n" +
 			"         │   └─ Table\n" +
 			"         │       ├─ name: one_pk\n" +
@@ -14833,7 +14847,7 @@ inner join pq on true
 			"         └─ IndexedTableAccess(two_pk)\n" +
 			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             ├─ colSet: (7-13)\n" +
+			"             ├─ colSet: (7,8)\n" +
 			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: two_pk\n" +
@@ -14998,7 +15012,7 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(one_pk)\n" +
 			"     │   ├─ index: [one_pk.pk]\n" +
 			"     │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   ├─ colSet: (1-6)\n" +
+			"     │   ├─ colSet: (1)\n" +
 			"     │   ├─ tableId: 1\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: one_pk\n" +
@@ -15006,7 +15020,7 @@ inner join pq on true
 			"     └─ IndexedTableAccess(niltable)\n" +
 			"         ├─ index: [niltable.i]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         ├─ colSet: (7-10)\n" +
+			"         ├─ colSet: (7,10)\n" +
 			"         ├─ tableId: 2\n" +
 			"         └─ Table\n" +
 			"             ├─ name: niltable\n" +
@@ -15053,7 +15067,7 @@ inner join pq on true
 			"         ├─ IndexedTableAccess(one_pk)\n" +
 			"         │   ├─ index: [one_pk.pk]\n" +
 			"         │   ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   ├─ colSet: (1-6)\n" +
+			"         │   ├─ colSet: (1)\n" +
 			"         │   ├─ tableId: 1\n" +
 			"         │   └─ Table\n" +
 			"         │       ├─ name: one_pk\n" +
@@ -15061,7 +15075,7 @@ inner join pq on true
 			"         └─ IndexedTableAccess(niltable)\n" +
 			"             ├─ index: [niltable.i]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             ├─ colSet: (7-10)\n" +
+			"             ├─ colSet: (7,10)\n" +
 			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: niltable\n" +
@@ -15107,7 +15121,7 @@ inner join pq on true
 			"         ├─ IndexedTableAccess(one_pk)\n" +
 			"         │   ├─ index: [one_pk.pk]\n" +
 			"         │   ├─ static: [{(1, ∞)}]\n" +
-			"         │   ├─ colSet: (1-6)\n" +
+			"         │   ├─ colSet: (1)\n" +
 			"         │   ├─ tableId: 1\n" +
 			"         │   └─ Table\n" +
 			"         │       ├─ name: one_pk\n" +
@@ -15115,7 +15129,7 @@ inner join pq on true
 			"         └─ IndexedTableAccess(niltable)\n" +
 			"             ├─ index: [niltable.i]\n" +
 			"             ├─ keys: [one_pk.pk:0!null]\n" +
-			"             ├─ colSet: (7-10)\n" +
+			"             ├─ colSet: (7,10)\n" +
 			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: niltable\n" +
@@ -15160,7 +15174,7 @@ inner join pq on true
 			"         ├─ IndexedTableAccess(niltable)\n" +
 			"         │   ├─ index: [niltable.i]\n" +
 			"         │   ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   ├─ colSet: (7-10)\n" +
+			"         │   ├─ colSet: (7,10)\n" +
 			"         │   ├─ tableId: 2\n" +
 			"         │   └─ Table\n" +
 			"         │       ├─ name: niltable\n" +
@@ -15168,7 +15182,7 @@ inner join pq on true
 			"         └─ IndexedTableAccess(one_pk)\n" +
 			"             ├─ index: [one_pk.pk]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             ├─ colSet: (1-6)\n" +
+			"             ├─ colSet: (1)\n" +
 			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: one_pk\n" +
@@ -15218,7 +15232,7 @@ inner join pq on true
 			"         │   └─ IndexedTableAccess(niltable)\n" +
 			"         │       ├─ index: [niltable.i]\n" +
 			"         │       ├─ static: [{[NULL, ∞)}]\n" +
-			"         │       ├─ colSet: (7-10)\n" +
+			"         │       ├─ colSet: (7,10)\n" +
 			"         │       ├─ tableId: 2\n" +
 			"         │       └─ Table\n" +
 			"         │           ├─ name: niltable\n" +
@@ -15226,7 +15240,7 @@ inner join pq on true
 			"         └─ IndexedTableAccess(one_pk)\n" +
 			"             ├─ index: [one_pk.pk]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             ├─ colSet: (1-6)\n" +
+			"             ├─ colSet: (1)\n" +
 			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: one_pk\n" +
@@ -15281,7 +15295,7 @@ inner join pq on true
 			"             ├─ IndexedTableAccess(niltable)\n" +
 			"             │   ├─ index: [niltable.i]\n" +
 			"             │   ├─ static: [{[NULL, ∞)}]\n" +
-			"             │   ├─ colSet: (7-10)\n" +
+			"             │   ├─ colSet: (7,10)\n" +
 			"             │   ├─ tableId: 2\n" +
 			"             │   └─ Table\n" +
 			"             │       ├─ name: niltable\n" +
@@ -15289,7 +15303,7 @@ inner join pq on true
 			"             └─ IndexedTableAccess(one_pk)\n" +
 			"                 ├─ index: [one_pk.pk]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 ├─ colSet: (1-6)\n" +
+			"                 ├─ colSet: (1)\n" +
 			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: one_pk\n" +
@@ -15343,7 +15357,7 @@ inner join pq on true
 			"         ├─ IndexedTableAccess(niltable)\n" +
 			"         │   ├─ index: [niltable.i]\n" +
 			"         │   ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   ├─ colSet: (7-10)\n" +
+			"         │   ├─ colSet: (7,10)\n" +
 			"         │   ├─ tableId: 2\n" +
 			"         │   └─ Table\n" +
 			"         │       ├─ name: niltable\n" +
@@ -15351,7 +15365,7 @@ inner join pq on true
 			"         └─ IndexedTableAccess(one_pk)\n" +
 			"             ├─ index: [one_pk.pk]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             ├─ colSet: (1-6)\n" +
+			"             ├─ colSet: (1)\n" +
 			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: one_pk\n" +
@@ -15401,7 +15415,7 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(one_pk)\n" +
 			"     │   ├─ index: [one_pk.pk]\n" +
 			"     │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   ├─ colSet: (1-6)\n" +
+			"     │   ├─ colSet: (1)\n" +
 			"     │   ├─ tableId: 1\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: one_pk\n" +
@@ -15409,7 +15423,7 @@ inner join pq on true
 			"     └─ IndexedTableAccess(two_pk)\n" +
 			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"         ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"         ├─ colSet: (7-13)\n" +
+			"         ├─ colSet: (7,8)\n" +
 			"         ├─ tableId: 2\n" +
 			"         └─ Table\n" +
 			"             ├─ name: two_pk\n" +
@@ -15543,7 +15557,7 @@ inner join pq on true
 			"         ├─ IndexedTableAccess(one_pk)\n" +
 			"         │   ├─ index: [one_pk.pk]\n" +
 			"         │   ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   ├─ colSet: (1-6)\n" +
+			"         │   ├─ colSet: (1)\n" +
 			"         │   ├─ tableId: 1\n" +
 			"         │   └─ Table\n" +
 			"         │       ├─ name: one_pk\n" +
@@ -15551,7 +15565,7 @@ inner join pq on true
 			"         └─ IndexedTableAccess(two_pk)\n" +
 			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             ├─ colSet: (7-13)\n" +
+			"             ├─ colSet: (7,8)\n" +
 			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: two_pk\n" +
@@ -15600,7 +15614,7 @@ inner join pq on true
 			"         ├─ IndexedTableAccess(one_pk)\n" +
 			"         │   ├─ index: [one_pk.pk]\n" +
 			"         │   ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   ├─ colSet: (1-6)\n" +
+			"         │   ├─ colSet: (1)\n" +
 			"         │   ├─ tableId: 1\n" +
 			"         │   └─ Table\n" +
 			"         │       ├─ name: one_pk\n" +
@@ -15608,7 +15622,7 @@ inner join pq on true
 			"         └─ IndexedTableAccess(two_pk)\n" +
 			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             ├─ colSet: (7-13)\n" +
+			"             ├─ colSet: (7,8)\n" +
 			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: two_pk\n" +
@@ -15658,7 +15672,7 @@ inner join pq on true
 			"         ├─ IndexedTableAccess(two_pk)\n" +
 			"         │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"         │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"         │   ├─ colSet: (7-13)\n" +
+			"         │   ├─ colSet: (7,8)\n" +
 			"         │   ├─ tableId: 2\n" +
 			"         │   └─ Table\n" +
 			"         │       ├─ name: two_pk\n" +
@@ -15666,7 +15680,7 @@ inner join pq on true
 			"         └─ IndexedTableAccess(one_pk)\n" +
 			"             ├─ index: [one_pk.pk]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             ├─ colSet: (1-6)\n" +
+			"             ├─ colSet: (1)\n" +
 			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: one_pk\n" +
@@ -15717,7 +15731,7 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(one_pk)\n" +
 			"     │       ├─ index: [one_pk.pk]\n" +
 			"     │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       ├─ colSet: (1-6)\n" +
+			"     │       ├─ colSet: (1)\n" +
 			"     │       ├─ tableId: 1\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: one_pk\n" +
@@ -15726,7 +15740,7 @@ inner join pq on true
 			"         └─ IndexedTableAccess(two_pk)\n" +
 			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             ├─ colSet: (7-13)\n" +
+			"             ├─ colSet: (7,8)\n" +
 			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: two_pk\n" +
@@ -15777,7 +15791,7 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(one_pk)\n" +
 			"     │       ├─ index: [one_pk.pk]\n" +
 			"     │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       ├─ colSet: (1-6)\n" +
+			"     │       ├─ colSet: (1)\n" +
 			"     │       ├─ tableId: 1\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: one_pk\n" +
@@ -15786,7 +15800,7 @@ inner join pq on true
 			"         └─ IndexedTableAccess(two_pk)\n" +
 			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             ├─ colSet: (7-13)\n" +
+			"             ├─ colSet: (7,8)\n" +
 			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: two_pk\n" +
@@ -16003,7 +16017,7 @@ inner join pq on true
 			"             └─ IndexedTableAccess(one_pk)\n" +
 			"                 ├─ index: [one_pk.pk]\n" +
 			"                 ├─ static: [{[1, 1]}]\n" +
-			"                 ├─ colSet: (1-6)\n" +
+			"                 ├─ colSet: (1)\n" +
 			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: one_pk\n" +
@@ -16052,7 +16066,7 @@ inner join pq on true
 			"         │   └─ IndexedTableAccess(two_pk)\n" +
 			"         │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"         │       ├─ static: [{[1, 1], [1, 1]}]\n" +
-			"         │       ├─ colSet: (7-13)\n" +
+			"         │       ├─ colSet: (7,8)\n" +
 			"         │       ├─ tableId: 2\n" +
 			"         │       └─ Table\n" +
 			"         │           ├─ name: two_pk\n" +
@@ -16061,7 +16075,7 @@ inner join pq on true
 			"             └─ IndexedTableAccess(one_pk)\n" +
 			"                 ├─ index: [one_pk.pk]\n" +
 			"                 ├─ static: [{[1, 1]}]\n" +
-			"                 ├─ colSet: (1-6)\n" +
+			"                 ├─ colSet: (1)\n" +
 			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: one_pk\n" +
@@ -16117,7 +16131,7 @@ inner join pq on true
 			"     │   │           └─ IndexedTableAccess(mytable)\n" +
 			"     │   │               ├─ index: [mytable.i]\n" +
 			"     │   │               ├─ static: [{(2, ∞)}]\n" +
-			"     │   │               ├─ colSet: (3,4)\n" +
+			"     │   │               ├─ colSet: (3)\n" +
 			"     │   │               ├─ tableId: 2\n" +
 			"     │   │               └─ Table\n" +
 			"     │   │                   ├─ name: mytable\n" +
@@ -16134,7 +16148,7 @@ inner join pq on true
 			"     │               └─ IndexedTableAccess(othertable)\n" +
 			"     │                   ├─ index: [othertable.i2]\n" +
 			"     │                   ├─ keys: [mt.i:0!null]\n" +
-			"     │                   ├─ colSet: (5,6)\n" +
+			"     │                   ├─ colSet: (6)\n" +
 			"     │                   ├─ tableId: 3\n" +
 			"     │                   └─ Table\n" +
 			"     │                       ├─ name: othertable\n" +
@@ -16214,7 +16228,7 @@ inner join pq on true
 			"     │   │           └─ IndexedTableAccess(mytable)\n" +
 			"     │   │               ├─ index: [mytable.i]\n" +
 			"     │   │               ├─ keys: [mt.i:0!null]\n" +
-			"     │   │               ├─ colSet: (3,4)\n" +
+			"     │   │               ├─ colSet: (3)\n" +
 			"     │   │               ├─ tableId: 2\n" +
 			"     │   │               └─ Table\n" +
 			"     │   │                   ├─ name: mytable\n" +
@@ -16235,7 +16249,7 @@ inner join pq on true
 			"     │               └─ IndexedTableAccess(othertable)\n" +
 			"     │                   ├─ index: [othertable.i2]\n" +
 			"     │                   ├─ keys: [mt.i:0!null]\n" +
-			"     │                   ├─ colSet: (5,6)\n" +
+			"     │                   ├─ colSet: (6)\n" +
 			"     │                   ├─ tableId: 3\n" +
 			"     │                   └─ Table\n" +
 			"     │                       ├─ name: othertable\n" +
@@ -16306,7 +16320,7 @@ inner join pq on true
 			" │       └─ IndexedTableAccess(one_pk)\n" +
 			" │           ├─ index: [one_pk.pk]\n" +
 			" │           ├─ static: [{[1, 1]}]\n" +
-			" │           ├─ colSet: (14-19)\n" +
+			" │           ├─ colSet: (14)\n" +
 			" │           ├─ tableId: 3\n" +
 			" │           └─ Table\n" +
 			" │               ├─ name: one_pk\n" +
@@ -16977,7 +16991,7 @@ inner join pq on true
 			"         └─ IndexedTableAccess(one_pk)\n" +
 			"             ├─ index: [one_pk.pk]\n" +
 			"             ├─ keys: [c.pk:0!null]\n" +
-			"             ├─ colSet: (13-18)\n" +
+			"             ├─ colSet: (13)\n" +
 			"             ├─ tableId: 3\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: one_pk\n" +
@@ -17047,7 +17061,7 @@ inner join pq on true
 			"             │   └─ Table\n" +
 			"             │       ├─ name: one_pk\n" +
 			"             │       ├─ columns: [pk]\n" +
-			"             │       ├─ colSet: (7-12)\n" +
+			"             │       ├─ colSet: (7)\n" +
 			"             │       └─ tableId: 2\n" +
 			"             └─ TableAlias(a)\n" +
 			"                 └─ Table\n" +
@@ -17115,7 +17129,7 @@ inner join pq on true
 			"     │   │   └─ IndexedTableAccess(one_pk)\n" +
 			"     │   │       ├─ index: [one_pk.pk]\n" +
 			"     │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │       ├─ colSet: (7-12)\n" +
+			"     │   │       ├─ colSet: (7)\n" +
 			"     │   │       ├─ tableId: 2\n" +
 			"     │   │       └─ Table\n" +
 			"     │   │           ├─ name: one_pk\n" +
@@ -17124,7 +17138,7 @@ inner join pq on true
 			"     │       └─ IndexedTableAccess(one_pk)\n" +
 			"     │           ├─ index: [one_pk.pk]\n" +
 			"     │           ├─ static: [{[NULL, ∞)}]\n" +
-			"     │           ├─ colSet: (13-18)\n" +
+			"     │           ├─ colSet: (13)\n" +
 			"     │           ├─ tableId: 3\n" +
 			"     │           └─ Table\n" +
 			"     │               ├─ name: one_pk\n" +
@@ -17198,7 +17212,7 @@ inner join pq on true
 			"     │   │   │   └─ IndexedTableAccess(one_pk)\n" +
 			"     │   │   │       ├─ index: [one_pk.pk]\n" +
 			"     │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │   │       ├─ colSet: (7-12)\n" +
+			"     │   │   │       ├─ colSet: (7)\n" +
 			"     │   │   │       ├─ tableId: 2\n" +
 			"     │   │   │       └─ Table\n" +
 			"     │   │   │           ├─ name: one_pk\n" +
@@ -17207,7 +17221,7 @@ inner join pq on true
 			"     │   │       └─ IndexedTableAccess(one_pk)\n" +
 			"     │   │           ├─ index: [one_pk.pk]\n" +
 			"     │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │           ├─ colSet: (13-18)\n" +
+			"     │   │           ├─ colSet: (13)\n" +
 			"     │   │           ├─ tableId: 3\n" +
 			"     │   │           └─ Table\n" +
 			"     │   │               ├─ name: one_pk\n" +
@@ -17221,7 +17235,7 @@ inner join pq on true
 			"         └─ IndexedTableAccess(one_pk)\n" +
 			"             ├─ index: [one_pk.pk]\n" +
 			"             ├─ keys: [c.pk:1!null]\n" +
-			"             ├─ colSet: (19-24)\n" +
+			"             ├─ colSet: (19)\n" +
 			"             ├─ tableId: 4\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: one_pk\n" +
@@ -17295,7 +17309,7 @@ inner join pq on true
 			"     │       └─ IndexedTableAccess(one_pk)\n" +
 			"     │           ├─ index: [one_pk.pk]\n" +
 			"     │           ├─ keys: [b.pk:0!null]\n" +
-			"     │           ├─ colSet: (7-12)\n" +
+			"     │           ├─ colSet: (7)\n" +
 			"     │           ├─ tableId: 2\n" +
 			"     │           └─ Table\n" +
 			"     │               ├─ name: one_pk\n" +
@@ -17436,13 +17450,13 @@ inner join pq on true
 			"                 │   └─ Table\n" +
 			"                 │       ├─ name: one_pk_three_idx\n" +
 			"                 │       ├─ columns: [pk]\n" +
-			"                 │       ├─ colSet: (5-8)\n" +
+			"                 │       ├─ colSet: (5)\n" +
 			"                 │       └─ tableId: 2\n" +
 			"                 └─ TableAlias(a)\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: one_pk_three_idx\n" +
 			"                         ├─ columns: [pk]\n" +
-			"                         ├─ colSet: (1-4)\n" +
+			"                         ├─ colSet: (1)\n" +
 			"                         └─ tableId: 1\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
@@ -17509,7 +17523,7 @@ inner join pq on true
 			"     │   │   └─ IndexedTableAccess(one_pk_three_idx)\n" +
 			"     │   │       ├─ index: [one_pk_three_idx.pk]\n" +
 			"     │   │       ├─ static: [{[0, 0]}]\n" +
-			"     │   │       ├─ colSet: (5-8)\n" +
+			"     │   │       ├─ colSet: (5)\n" +
 			"     │   │       ├─ tableId: 2\n" +
 			"     │   │       └─ Table\n" +
 			"     │   │           ├─ name: one_pk_three_idx\n" +
@@ -17530,7 +17544,7 @@ inner join pq on true
 			"             └─ Table\n" +
 			"                 ├─ name: one_pk_three_idx\n" +
 			"                 ├─ columns: [v1 v2]\n" +
-			"                 ├─ colSet: (9-12)\n" +
+			"                 ├─ colSet: (10,11)\n" +
 			"                 └─ tableId: 3\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
@@ -17608,7 +17622,7 @@ inner join pq on true
 			"                 │   └─ Table\n" +
 			"                 │       ├─ name: mytable\n" +
 			"                 │       ├─ columns: []\n" +
-			"                 │       ├─ colSet: (3,4)\n" +
+			"                 │       ├─ colSet: ()\n" +
 			"                 │       └─ tableId: 2\n" +
 			"                 └─ TableAlias(a)\n" +
 			"                     └─ Table\n" +
@@ -17691,7 +17705,7 @@ inner join pq on true
 			"         │   │   └─ IndexedTableAccess(mytable)\n" +
 			"         │   │       ├─ index: [mytable.i,mytable.s]\n" +
 			"         │   │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"         │   │       ├─ colSet: (3,4)\n" +
+			"         │   │       ├─ colSet: (3)\n" +
 			"         │   │       ├─ tableId: 2\n" +
 			"         │   │       └─ Table\n" +
 			"         │   │           ├─ name: mytable\n" +
@@ -17709,7 +17723,7 @@ inner join pq on true
 			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
 			"                 ├─ columns: [i]\n" +
-			"                 ├─ colSet: (5,6)\n" +
+			"                 ├─ colSet: (5)\n" +
 			"                 └─ tableId: 3\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
@@ -17979,7 +17993,7 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(one_pk_two_idx)\n" +
 			"     │       ├─ index: [one_pk_two_idx.v1,one_pk_two_idx.v2]\n" +
 			"     │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │       ├─ colSet: (1-3)\n" +
+			"     │       ├─ colSet: (1,2)\n" +
 			"     │       ├─ tableId: 1\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: one_pk_two_idx\n" +
@@ -17988,7 +18002,7 @@ inner join pq on true
 			"         └─ IndexedTableAccess(one_pk_three_idx)\n" +
 			"             ├─ index: [one_pk_three_idx.pk]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             ├─ colSet: (4-7)\n" +
+			"             ├─ colSet: (4,7)\n" +
 			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: one_pk_three_idx\n" +
@@ -18041,7 +18055,7 @@ inner join pq on true
 			"     │   │   └─ IndexedTableAccess(one_pk_two_idx)\n" +
 			"     │   │       ├─ index: [one_pk_two_idx.v1,one_pk_two_idx.v2]\n" +
 			"     │   │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │   │       ├─ colSet: (1-3)\n" +
+			"     │   │       ├─ colSet: (1,2)\n" +
 			"     │   │       ├─ tableId: 1\n" +
 			"     │   │       └─ Table\n" +
 			"     │   │           ├─ name: one_pk_two_idx\n" +
@@ -18050,7 +18064,7 @@ inner join pq on true
 			"     │       └─ IndexedTableAccess(one_pk_three_idx)\n" +
 			"     │           ├─ index: [one_pk_three_idx.pk]\n" +
 			"     │           ├─ static: [{[NULL, ∞)}]\n" +
-			"     │           ├─ colSet: (4-7)\n" +
+			"     │           ├─ colSet: (4,7)\n" +
 			"     │           ├─ tableId: 2\n" +
 			"     │           └─ Table\n" +
 			"     │               ├─ name: one_pk_three_idx\n" +
@@ -18125,7 +18139,7 @@ inner join pq on true
 			"     │   └─ IndexedTableAccess(one_pk_two_idx)\n" +
 			"     │       ├─ index: [one_pk_two_idx.v1,one_pk_two_idx.v2]\n" +
 			"     │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │       ├─ colSet: (1-3)\n" +
+			"     │       ├─ colSet: (1,2)\n" +
 			"     │       ├─ tableId: 1\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: one_pk_two_idx\n" +
@@ -18134,7 +18148,7 @@ inner join pq on true
 			"         └─ IndexedTableAccess(one_pk_three_idx)\n" +
 			"             ├─ index: [one_pk_three_idx.pk]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             ├─ colSet: (4-7)\n" +
+			"             ├─ colSet: (4,7)\n" +
 			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: one_pk_three_idx\n" +
@@ -18187,7 +18201,7 @@ inner join pq on true
 			"     │   │   └─ IndexedTableAccess(one_pk_two_idx)\n" +
 			"     │   │       ├─ index: [one_pk_two_idx.v1,one_pk_two_idx.v2]\n" +
 			"     │   │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │   │       ├─ colSet: (1-3)\n" +
+			"     │   │       ├─ colSet: (1,2)\n" +
 			"     │   │       ├─ tableId: 1\n" +
 			"     │   │       └─ Table\n" +
 			"     │   │           ├─ name: one_pk_two_idx\n" +
@@ -18196,7 +18210,7 @@ inner join pq on true
 			"     │       └─ IndexedTableAccess(one_pk_three_idx)\n" +
 			"     │           ├─ index: [one_pk_three_idx.pk]\n" +
 			"     │           ├─ static: [{[NULL, ∞)}]\n" +
-			"     │           ├─ colSet: (4-7)\n" +
+			"     │           ├─ colSet: (4,7)\n" +
 			"     │           ├─ tableId: 2\n" +
 			"     │           └─ Table\n" +
 			"     │               ├─ name: one_pk_three_idx\n" +
@@ -18275,7 +18289,7 @@ inner join pq on true
 			"     │   │   └─ IndexedTableAccess(one_pk_two_idx)\n" +
 			"     │   │       ├─ index: [one_pk_two_idx.v1,one_pk_two_idx.v2]\n" +
 			"     │   │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │   │       ├─ colSet: (1-3)\n" +
+			"     │   │       ├─ colSet: (1,2)\n" +
 			"     │   │       ├─ tableId: 1\n" +
 			"     │   │       └─ Table\n" +
 			"     │   │           ├─ name: one_pk_two_idx\n" +
@@ -18284,7 +18298,7 @@ inner join pq on true
 			"     │       └─ IndexedTableAccess(one_pk_three_idx)\n" +
 			"     │           ├─ index: [one_pk_three_idx.pk]\n" +
 			"     │           ├─ static: [{[NULL, ∞)}]\n" +
-			"     │           ├─ colSet: (4-7)\n" +
+			"     │           ├─ colSet: (4,7)\n" +
 			"     │           ├─ tableId: 2\n" +
 			"     │           └─ Table\n" +
 			"     │               ├─ name: one_pk_three_idx\n" +
@@ -18364,7 +18378,7 @@ inner join pq on true
 			"     │   │   │   └─ IndexedTableAccess(one_pk_two_idx)\n" +
 			"     │   │   │       ├─ index: [one_pk_two_idx.v1,one_pk_two_idx.v2]\n" +
 			"     │   │   │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │   │   │       ├─ colSet: (4-6)\n" +
+			"     │   │   │       ├─ colSet: (5)\n" +
 			"     │   │   │       ├─ tableId: 2\n" +
 			"     │   │   │       └─ Table\n" +
 			"     │   │   │           ├─ name: one_pk_two_idx\n" +
@@ -18373,7 +18387,7 @@ inner join pq on true
 			"     │   │       └─ IndexedTableAccess(one_pk_three_idx)\n" +
 			"     │   │           ├─ index: [one_pk_three_idx.pk]\n" +
 			"     │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │           ├─ colSet: (7-10)\n" +
+			"     │   │           ├─ colSet: (7)\n" +
 			"     │   │           ├─ tableId: 3\n" +
 			"     │   │           └─ Table\n" +
 			"     │   │               ├─ name: one_pk_three_idx\n" +
@@ -18398,7 +18412,7 @@ inner join pq on true
 			"             │   └─ IndexedTableAccess(one_pk_two_idx)\n" +
 			"             │       ├─ index: [one_pk_two_idx.v1,one_pk_two_idx.v2]\n" +
 			"             │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │       ├─ colSet: (11-13)\n" +
+			"             │       ├─ colSet: (12)\n" +
 			"             │       ├─ tableId: 4\n" +
 			"             │       └─ Table\n" +
 			"             │           ├─ name: one_pk_two_idx\n" +
@@ -18407,7 +18421,7 @@ inner join pq on true
 			"                 └─ IndexedTableAccess(one_pk_three_idx)\n" +
 			"                     ├─ index: [one_pk_three_idx.pk]\n" +
 			"                     ├─ static: [{[NULL, ∞)}]\n" +
-			"                     ├─ colSet: (14-17)\n" +
+			"                     ├─ colSet: (14,16)\n" +
 			"                     ├─ tableId: 5\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: one_pk_three_idx\n" +
@@ -18536,13 +18550,13 @@ inner join pq on true
 			"                     │   └─ Table\n" +
 			"                     │       ├─ name: one_pk_three_idx\n" +
 			"                     │       ├─ columns: [v3]\n" +
-			"                     │       ├─ colSet: (7-10)\n" +
+			"                     │       ├─ colSet: (10)\n" +
 			"                     │       └─ tableId: 3\n" +
 			"                     └─ TableAlias(i)\n" +
 			"                         └─ IndexedTableAccess(one_pk_two_idx)\n" +
 			"                             ├─ index: [one_pk_two_idx.pk]\n" +
 			"                             ├─ keys: [j.v3:6]\n" +
-			"                             ├─ colSet: (4-6)\n" +
+			"                             ├─ colSet: (4)\n" +
 			"                             ├─ tableId: 2\n" +
 			"                             └─ Table\n" +
 			"                                 ├─ name: one_pk_two_idx\n" +
@@ -18647,7 +18661,7 @@ inner join pq on true
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
 			"             ├─ keys: [a.i:0!null]\n" +
-			"             ├─ colSet: (3,4)\n" +
+			"             ├─ colSet: (3)\n" +
 			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
@@ -18703,7 +18717,7 @@ inner join pq on true
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             ├─ colSet: (3,4)\n" +
+			"             ├─ colSet: (3)\n" +
 			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
@@ -19247,7 +19261,7 @@ inner join pq on true
 			"         │   └─ IndexedTableAccess(two_pk)\n" +
 			"         │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"         │       ├─ static: [{[1, 1], [1, 1]}]\n" +
-			"         │       ├─ colSet: (7-13)\n" +
+			"         │       ├─ colSet: (7,8)\n" +
 			"         │       ├─ tableId: 2\n" +
 			"         │       └─ Table\n" +
 			"         │           ├─ name: two_pk\n" +
@@ -19256,7 +19270,7 @@ inner join pq on true
 			"             └─ IndexedTableAccess(one_pk)\n" +
 			"                 ├─ index: [one_pk.pk]\n" +
 			"                 ├─ static: [{[1, 1]}]\n" +
-			"                 ├─ colSet: (1-6)\n" +
+			"                 ├─ colSet: (1)\n" +
 			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: one_pk\n" +
@@ -21690,7 +21704,7 @@ With c as (
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
 			"             ├─ columns: [i]\n" +
-			"             ├─ colSet: (1,2)\n" +
+			"             ├─ colSet: (1)\n" +
 			"             └─ tableId: 1\n" +
 			"",
 		ExpectedEstimates: "SubqueryAlias\n" +
@@ -21739,7 +21753,7 @@ With c as (
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
 			"             ├─ columns: [i]\n" +
-			"             ├─ colSet: (1,2)\n" +
+			"             ├─ colSet: (1)\n" +
 			"             └─ tableId: 1\n" +
 			"",
 		ExpectedEstimates: "SubqueryAlias\n" +
@@ -21789,7 +21803,7 @@ With c as (
 			"             ├─ index: [mytable.i]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
 			"             ├─ reverse: true\n" +
-			"             ├─ colSet: (1,2)\n" +
+			"             ├─ colSet: (1)\n" +
 			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
@@ -21846,7 +21860,7 @@ With c as (
 			"             ├─ index: [mytable.i]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
 			"             ├─ reverse: true\n" +
-			"             ├─ colSet: (1,2)\n" +
+			"             ├─ colSet: (1)\n" +
 			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
@@ -21898,7 +21912,7 @@ With c as (
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i]\n" +
 			"         ├─ static: [{(1, ∞)}]\n" +
-			"         ├─ colSet: (1,2)\n" +
+			"         ├─ colSet: (1)\n" +
 			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
@@ -21940,7 +21954,7 @@ With c as (
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i]\n" +
 			"         ├─ static: [{(1, ∞)}]\n" +
-			"         ├─ colSet: (1,2)\n" +
+			"         ├─ colSet: (1)\n" +
 			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
@@ -21989,7 +22003,7 @@ With c as (
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
 			"             ├─ static: [{(1, ∞)}]\n" +
-			"             ├─ colSet: (1,2)\n" +
+			"             ├─ colSet: (1)\n" +
 			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
@@ -22053,7 +22067,7 @@ With c as (
 			"                 └─ Table\n" +
 			"                     ├─ name: mytable\n" +
 			"                     ├─ columns: [i]\n" +
-			"                     ├─ colSet: (1,2)\n" +
+			"                     ├─ colSet: (1)\n" +
 			"                     └─ tableId: 1\n" +
 			"",
 		ExpectedEstimates: "Limit(10)\n" +
@@ -22116,13 +22130,13 @@ With c as (
 			"                     │   └─ Table\n" +
 			"                     │       ├─ name: mytable\n" +
 			"                     │       ├─ columns: [i]\n" +
-			"                     │       ├─ colSet: (7,8)\n" +
+			"                     │       ├─ colSet: (7)\n" +
 			"                     │       └─ tableId: 2\n" +
 			"                     └─ TableAlias(a)\n" +
 			"                         └─ Table\n" +
 			"                             ├─ name: one_pk\n" +
 			"                             ├─ columns: [pk]\n" +
-			"                             ├─ colSet: (1-6)\n" +
+			"                             ├─ colSet: (1)\n" +
 			"                             └─ tableId: 1\n" +
 			"",
 		ExpectedEstimates: "SubqueryAlias\n" +
@@ -22195,13 +22209,13 @@ With c as (
 			"                     │   └─ Table\n" +
 			"                     │       ├─ name: mytable\n" +
 			"                     │       ├─ columns: [i]\n" +
-			"                     │       ├─ colSet: (7,8)\n" +
+			"                     │       ├─ colSet: (7)\n" +
 			"                     │       └─ tableId: 2\n" +
 			"                     └─ TableAlias(a)\n" +
 			"                         └─ Table\n" +
 			"                             ├─ name: one_pk\n" +
 			"                             ├─ columns: [pk]\n" +
-			"                             ├─ colSet: (1-6)\n" +
+			"                             ├─ colSet: (1)\n" +
 			"                             └─ tableId: 1\n" +
 			"",
 		ExpectedEstimates: "SubqueryAlias\n" +
@@ -22269,7 +22283,7 @@ With c as (
 			" │           └─ IndexedTableAccess(one_pk)\n" +
 			" │               ├─ index: [one_pk.pk]\n" +
 			" │               ├─ static: [{(NULL, 2)}]\n" +
-			" │               ├─ colSet: (1-6)\n" +
+			" │               ├─ colSet: (1)\n" +
 			" │               ├─ tableId: 1\n" +
 			" │               └─ Table\n" +
 			" │                   ├─ name: one_pk\n" +
@@ -22289,7 +22303,7 @@ With c as (
 			"                 └─ IndexedTableAccess(mytable)\n" +
 			"                     ├─ index: [mytable.i]\n" +
 			"                     ├─ static: [{(1, ∞)}]\n" +
-			"                     ├─ colSet: (8,9)\n" +
+			"                     ├─ colSet: (8)\n" +
 			"                     ├─ tableId: 3\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: mytable\n" +
@@ -22436,7 +22450,7 @@ WHERE keyless.c0 IN (
 			"         │                           └─ Table\n" +
 			"         │                               ├─ name: keyless\n" +
 			"         │                               ├─ columns: [c0]\n" +
-			"         │                               ├─ colSet: (14,15)\n" +
+			"         │                               ├─ colSet: (14)\n" +
 			"         │                               └─ tableId: 7\n" +
 			"         └─ ProcessTable\n" +
 			"             └─ Table\n" +
@@ -22526,7 +22540,7 @@ WHERE keyless.c0 IN (
 			"         │                           └─ Table\n" +
 			"         │                               ├─ name: keyless\n" +
 			"         │                               ├─ columns: [c0]\n" +
-			"         │                               ├─ colSet: (17,18)\n" +
+			"         │                               ├─ colSet: (17)\n" +
 			"         │                               └─ tableId: 7\n" +
 			"         └─ ProcessTable\n" +
 			"             └─ Table\n" +
@@ -22603,7 +22617,7 @@ WHERE keyless.c0 IN (
 		ExpectedPlan: "IndexedTableAccess(two_pk)\n" +
 			" ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			" ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			" ├─ colSet: (1-7)\n" +
+			" ├─ colSet: (1,2)\n" +
 			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
 			"     ├─ name: two_pk\n" +
@@ -22645,7 +22659,7 @@ WHERE keyless.c0 IN (
 			" ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			" ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			" ├─ reverse: true\n" +
-			" ├─ colSet: (1-7)\n" +
+			" ├─ colSet: (1,2)\n" +
 			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
 			"     ├─ name: two_pk\n" +
@@ -22944,7 +22958,7 @@ WHERE keyless.c0 IN (
 		ExpectedPlan: "IndexedTableAccess(xy)\n" +
 			" ├─ index: [xy.x]\n" +
 			" ├─ static: [{(0, 2]}]\n" +
-			" ├─ colSet: (1,2)\n" +
+			" ├─ colSet: (1)\n" +
 			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
 			"     ├─ name: xy\n" +
@@ -23329,7 +23343,7 @@ WHERE keyless.c0 IN (
 			"         ├─ index: [xy.x]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
 			"         ├─ reverse: true\n" +
-			"         ├─ colSet: (1,2)\n" +
+			"         ├─ colSet: (1)\n" +
 			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: xy\n" +
@@ -23362,7 +23376,7 @@ WHERE keyless.c0 IN (
 			"     └─ IndexedTableAccess(xy)\n" +
 			"         ├─ index: [xy.x]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         ├─ colSet: (1,2)\n" +
+			"         ├─ colSet: (1)\n" +
 			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: xy\n" +
@@ -23425,7 +23439,7 @@ WHERE keyless.c0 IN (
 			"         ├─ index: [xy.x]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
 			"         ├─ reverse: true\n" +
-			"         ├─ colSet: (1,2)\n" +
+			"         ├─ colSet: (1)\n" +
 			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: xy\n" +
@@ -23459,7 +23473,7 @@ WHERE keyless.c0 IN (
 			"         ├─ index: [xy.x]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
 			"         ├─ reverse: true\n" +
-			"         ├─ colSet: (1,2)\n" +
+			"         ├─ colSet: (1)\n" +
 			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: xy\n" +
@@ -23493,7 +23507,7 @@ WHERE keyless.c0 IN (
 			"         ├─ index: [xy.x]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
 			"         ├─ reverse: true\n" +
-			"         ├─ colSet: (1,2)\n" +
+			"         ├─ colSet: (1)\n" +
 			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: xy\n" +
@@ -23526,7 +23540,7 @@ WHERE keyless.c0 IN (
 			"     └─ IndexedTableAccess(xy)\n" +
 			"         ├─ index: [xy.x]\n" +
 			"         ├─ static: [{(0, ∞)}]\n" +
-			"         ├─ colSet: (1,2)\n" +
+			"         ├─ colSet: (1)\n" +
 			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: xy\n" +
@@ -23558,7 +23572,7 @@ WHERE keyless.c0 IN (
 			"         ├─ index: [xy.x]\n" +
 			"         ├─ static: [{(NULL, 3)}]\n" +
 			"         ├─ reverse: true\n" +
-			"         ├─ colSet: (1,2)\n" +
+			"         ├─ colSet: (1)\n" +
 			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: xy\n" +
@@ -23673,7 +23687,7 @@ WHERE keyless.c0 IN (
 			"             ├─ index: [xy.x]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
 			"             ├─ reverse: true\n" +
-			"             ├─ colSet: (1,2)\n" +
+			"             ├─ colSet: (1)\n" +
 			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: xy\n" +
@@ -23730,7 +23744,7 @@ WHERE keyless.c0 IN (
 			"                 ├─ index: [xy.x]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
 			"                 ├─ reverse: true\n" +
-			"                 ├─ colSet: (1,2)\n" +
+			"                 ├─ colSet: (1)\n" +
 			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: xy\n" +
@@ -23790,7 +23804,7 @@ WHERE keyless.c0 IN (
 			"         └─ Table\n" +
 			"             ├─ name: xy\n" +
 			"             ├─ columns: [x]\n" +
-			"             ├─ colSet: (1,2)\n" +
+			"             ├─ colSet: (1)\n" +
 			"             └─ tableId: 1\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
@@ -23872,7 +23886,7 @@ WHERE keyless.c0 IN (
 			"         └─ IndexedTableAccess(xy)\n" +
 			"             ├─ index: [xy.x]\n" +
 			"             ├─ keys: [uv.u:0!null]\n" +
-			"             ├─ colSet: (1,2)\n" +
+			"             ├─ colSet: (1)\n" +
 			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: xy\n" +
@@ -23946,7 +23960,7 @@ order by i;`,
 			"                         ├─ Table\n" +
 			"                         │   ├─ name: xy\n" +
 			"                         │   ├─ columns: [y]\n" +
-			"                         │   ├─ colSet: (3,4)\n" +
+			"                         │   ├─ colSet: (4)\n" +
 			"                         │   └─ tableId: 2\n" +
 			"                         └─ Project\n" +
 			"                             ├─ columns: [xy.x:3!null]\n" +
@@ -23955,7 +23969,7 @@ order by i;`,
 			"                                 └─ IndexedTableAccess(xy)\n" +
 			"                                     ├─ index: [xy.x]\n" +
 			"                                     ├─ keys: [cte.a:2]\n" +
-			"                                     ├─ colSet: (7,8)\n" +
+			"                                     ├─ colSet: (7)\n" +
 			"                                     ├─ tableId: 5\n" +
 			"                                     └─ Table\n" +
 			"                                         ├─ name: xy\n" +
@@ -24059,7 +24073,7 @@ order by i;`,
 			"                         ├─ Table\n" +
 			"                         │   ├─ name: xy\n" +
 			"                         │   ├─ columns: [y]\n" +
-			"                         │   ├─ colSet: (3,4)\n" +
+			"                         │   ├─ colSet: (4)\n" +
 			"                         │   └─ tableId: 2\n" +
 			"                         └─ Project\n" +
 			"                             ├─ columns: [sqa1.x:2!null]\n" +
@@ -24284,7 +24298,7 @@ where exists (
 			" │                   └─ Table\n" +
 			" │                       ├─ name: uv\n" +
 			" │                       ├─ columns: [v]\n" +
-			" │                       ├─ colSet: (5,6)\n" +
+			" │                       ├─ colSet: (6)\n" +
 			" │                       └─ tableId: 3\n" +
 			" ├─ TableAlias(ab2)\n" +
 			" │   └─ ProcessTable\n" +
@@ -24376,7 +24390,7 @@ order by x, y;
 			"     │                   └─ Table\n" +
 			"     │                       ├─ name: uv\n" +
 			"     │                       ├─ columns: [v]\n" +
-			"     │                       ├─ colSet: (5,6)\n" +
+			"     │                       ├─ colSet: (6)\n" +
 			"     │                       └─ tableId: 3\n" +
 			"     ├─ TableAlias(xy2)\n" +
 			"     │   └─ ProcessTable\n" +
@@ -24736,7 +24750,7 @@ order by x, y;
 			"         │       └─ Table\n" +
 			"         │           ├─ name: mytable\n" +
 			"         │           ├─ columns: [s]\n" +
-			"         │           ├─ colSet: (3,4)\n" +
+			"         │           ├─ colSet: (4)\n" +
 			"         │           └─ tableId: 2\n" +
 			"         └─ HashLookup\n" +
 			"             ├─ left-key: TUPLE(l.s:2!null)\n" +
@@ -24845,7 +24859,7 @@ order by x, y;
 			" └─ IndexedTableAccess(two_pk)\n" +
 			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     ├─ colSet: (1-7)\n" +
+			"     ├─ colSet: (1)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: two_pk\n" +
@@ -24922,7 +24936,7 @@ order by x, y;
 			"     └─ IndexedTableAccess(two_pk)\n" +
 			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"         ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"         ├─ colSet: (1-7)\n" +
+			"         ├─ colSet: (1,2)\n" +
 			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: two_pk\n" +
@@ -24951,7 +24965,7 @@ order by x, y;
 			" └─ IndexedTableAccess(two_pk)\n" +
 			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     ├─ colSet: (1-7)\n" +
+			"     ├─ colSet: (1,2)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: two_pk\n" +
@@ -24998,7 +25012,7 @@ order by x, y;
 			" └─ IndexedTableAccess(two_pk)\n" +
 			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     ├─ colSet: (1-7)\n" +
+			"     ├─ colSet: (1,2)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: two_pk\n" +
@@ -25047,7 +25061,7 @@ order by x, y;
 			"     └─ IndexedTableAccess(two_pk)\n" +
 			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"         ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"         ├─ colSet: (1-7)\n" +
+			"         ├─ colSet: (1,2)\n" +
 			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: two_pk\n" +
@@ -25349,7 +25363,7 @@ order by x, y;
 			"         └─ Table\n" +
 			"             ├─ name: one_pk_three_idx\n" +
 			"             ├─ columns: [v1 v2]\n" +
-			"             ├─ colSet: (5-8)\n" +
+			"             ├─ colSet: (6,7)\n" +
 			"             └─ tableId: 2\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
@@ -26252,7 +26266,7 @@ order by x, y;
 			" └─ IndexedTableAccess(two_pk)\n" +
 			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     ├─ static: [{[1, 1], [NULL, ∞)}]\n" +
-			"     ├─ colSet: (1-7)\n" +
+			"     ├─ colSet: (1,2)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: two_pk\n" +
@@ -26281,7 +26295,7 @@ order by x, y;
 			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     ├─ static: [{[1, 1], [NULL, ∞)}]\n" +
 			"     ├─ reverse: true\n" +
-			"     ├─ colSet: (1-7)\n" +
+			"     ├─ colSet: (1,2)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: two_pk\n" +
@@ -26312,7 +26326,7 @@ order by x, y;
 			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     ├─ static: [{[1, 1], [NULL, ∞)}]\n" +
 			"     ├─ reverse: true\n" +
-			"     ├─ colSet: (1-7)\n" +
+			"     ├─ colSet: (1,2)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: two_pk\n" +
@@ -26342,7 +26356,7 @@ order by x, y;
 			" └─ IndexedTableAccess(three_pk)\n" +
 			"     ├─ index: [three_pk.pk1,three_pk.pk2,three_pk.pk3]\n" +
 			"     ├─ static: [{[0, 0], [1, 1], [NULL, ∞)}]\n" +
-			"     ├─ colSet: (1-8)\n" +
+			"     ├─ colSet: (1-3)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: three_pk\n" +
@@ -26365,11 +26379,11 @@ order by x, y;
 	},
 	{
 		Query: `SELECT pk2 FROM three_pk WHERE pk1=0 AND c5=0 ORDER BY pk2, c5`,
-		Skip:  true, // TODO: Remove sort nodes when ordered by a constant column, even if that column isn't in the index.
+		Skip:  true,
 	},
 	{
 		Query: `SELECT pk2 FROM three_pk WHERE pk1=0 AND c5=0 ORDER BY c5, pk2`,
-		Skip:  true, // TODO: Remove sort nodes when ordered by a constant column, even if that column isn't in the index.
+		Skip:  true,
 	},
 	{
 		Query: `SELECT pk2 FROM two_pk WHERE pk1=0 ORDER BY pk2, pk1`,
@@ -26378,7 +26392,7 @@ order by x, y;
 			" └─ IndexedTableAccess(two_pk)\n" +
 			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"     ├─ static: [{[0, 0], [NULL, ∞)}]\n" +
-			"     ├─ colSet: (1-7)\n" +
+			"     ├─ colSet: (1,2)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: two_pk\n" +
@@ -26401,32 +26415,7 @@ order by x, y;
 	},
 	{
 		Query: `SELECT pk2 FROM two_pk WHERE pk1=0 ORDER BY pk2, pk2, pk2`,
-		Skip:  true, // TODO: Remove duplicate ORDER BY expressions
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [two_pk.pk2:1!null]\n" +
-			" └─ IndexedTableAccess(two_pk)\n" +
-			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"     ├─ static: [{[0, 0], [NULL, ∞)}]\n" +
-			"     ├─ colSet: (1-7)\n" +
-			"     ├─ tableId: 1\n" +
-			"     └─ Table\n" +
-			"         ├─ name: two_pk\n" +
-			"         └─ columns: [pk1 pk2]\n" +
-			"",
-		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [two_pk.pk2]\n" +
-			" └─ IndexedTableAccess(two_pk)\n" +
-			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"     ├─ filters: [{[0, 0], [NULL, ∞)}]\n" +
-			"     └─ columns: [pk1 pk2]\n" +
-			"",
-		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [two_pk.pk2]\n" +
-			" └─ IndexedTableAccess(two_pk)\n" +
-			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"     ├─ filters: [{[0, 0], [NULL, ∞)}]\n" +
-			"     └─ columns: [pk1 pk2]\n" +
-			"",
+		Skip:  true,
 	},
 	{
 		Query: `SELECT MIN(pk2) FROM two_pk WHERE pk1=1`,
@@ -26436,7 +26425,7 @@ order by x, y;
 			"     └─ IndexedTableAccess(two_pk)\n" +
 			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"         ├─ static: [{[1, 1], [NULL, ∞)}]\n" +
-			"         ├─ colSet: (1-7)\n" +
+			"         ├─ colSet: (1,2)\n" +
 			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: two_pk\n" +
@@ -26468,7 +26457,7 @@ order by x, y;
 			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"         ├─ static: [{[1, 1], [NULL, ∞)}]\n" +
 			"         ├─ reverse: true\n" +
-			"         ├─ colSet: (1-7)\n" +
+			"         ├─ colSet: (1,2)\n" +
 			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: two_pk\n" +
@@ -26501,7 +26490,7 @@ order by x, y;
 			"     └─ IndexedTableAccess(two_pk)\n" +
 			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"         ├─ static: [{[1, 1], [NULL, ∞)}]\n" +
-			"         ├─ colSet: (1-7)\n" +
+			"         ├─ colSet: (1,2)\n" +
 			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: two_pk\n" +
@@ -26533,7 +26522,7 @@ order by x, y;
 			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"         ├─ static: [{[1, 1], [NULL, ∞)}]\n" +
 			"         ├─ reverse: true\n" +
-			"         ├─ colSet: (1-7)\n" +
+			"         ├─ colSet: (1,2)\n" +
 			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: two_pk\n" +

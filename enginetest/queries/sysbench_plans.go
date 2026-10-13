@@ -30,7 +30,7 @@ var SysbenchPlanTests = []QueryPlanTest{
 			"         │   └─ IndexedTableAccess(sbtest1)\n" +
 			"         │       ├─ index: [sbtest1.id]\n" +
 			"         │       ├─ static: [{[NULL, ∞)}]\n" +
-			"         │       ├─ colSet: (1-24)\n" +
+			"         │       ├─ colSet: (1,4)\n" +
 			"         │       ├─ tableId: 1\n" +
 			"         │       └─ Table\n" +
 			"         │           ├─ name: sbtest1\n" +
@@ -39,7 +39,7 @@ var SysbenchPlanTests = []QueryPlanTest{
 			"             └─ IndexedTableAccess(sbtest1)\n" +
 			"                 ├─ index: [sbtest1.id]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 ├─ colSet: (25-48)\n" +
+			"                 ├─ colSet: (25)\n" +
 			"                 ├─ tableId: 2\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: sbtest1\n" +
@@ -93,7 +93,7 @@ var SysbenchPlanTests = []QueryPlanTest{
 			"             └─ IndexedTableAccess(sbtest1)\n" +
 			"                 ├─ index: [sbtest1.id]\n" +
 			"                 ├─ keys: [b.int_col:1!null]\n" +
-			"                 ├─ colSet: (1-24)\n" +
+			"                 ├─ colSet: (1,4)\n" +
 			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: sbtest1\n" +
@@ -139,7 +139,7 @@ var SysbenchPlanTests = []QueryPlanTest{
 			"         └─ IndexedTableAccess(sbtest1)\n" +
 			"             ├─ index: [sbtest1.big_int_col]\n" +
 			"             ├─ static: [{(0, ∞)}]\n" +
-			"             ├─ colSet: (1-24)\n" +
+			"             ├─ colSet: (1,4,10,24)\n" +
 			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: sbtest1\n" +
@@ -178,7 +178,7 @@ var SysbenchPlanTests = []QueryPlanTest{
 			"     └─ IndexedTableAccess(sbtest1)\n" +
 			"         ├─ index: [sbtest1.big_int_col]\n" +
 			"         ├─ static: [{(0, ∞)}]\n" +
-			"         ├─ colSet: (1-24)\n" +
+			"         ├─ colSet: (1,10)\n" +
 			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: sbtest1\n" +
