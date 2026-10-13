@@ -45,6 +45,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/rowexec"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 // This file is for tests of the engine that we are very sure do not rely on a particular database implementation. They
@@ -199,6 +200,7 @@ type analyzerTestCase struct {
 
 func TestShowProcessList(t *testing.T) {
 	require := require.New(t)
+	variables.InitStatusVariables()
 
 	addr1 := "127.0.0.1:34567"
 	addr2 := "127.0.0.1:34568"

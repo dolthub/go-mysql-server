@@ -9,6 +9,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/stats"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -267,3 +268,29 @@ func (dummyIndex) PrefixLengths() []uint16 {
 }
 
 var _ sql.Index = dummyIndex{}
+
+// TestJoinOfTwoEmptyEstimatesIsEmpty pins the cardinality of a join whose
+// sides are both estimated at no rows, as a filtered read of a table without
+// statistics is. A zero distinct count used to make the selectivity +Inf and
+// the cardinality NaN, which converts to 0 on arm64 but to 1<<63 on amd64, so
+// the join was priced as enormous on one architecture only.
+func TestJoinOfTwoEmptyEstimatesIsEmpty(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	m := NewMemo(ctx, nil, nil, nil, nil)
+	empty := func() *ExprGroup {
+		return &ExprGroup{RelProps: &relProps{stat: &stats.Statistic{RowCnt: 0}}}
+	}
+	for _, op := range []plan.JoinType{plan.JoinTypeInner, plan.JoinTypeLeftOuter, plan.JoinTypeFullOuter} {
+		jb := &JoinBase{relBase: &relBase{}, Left: empty(), Right: empty(), Op: op}
+		var rel RelExpr
+		switch {
+		case op.IsLeftOuter():
+			rel = &LeftJoin{JoinBase: jb}
+		case op.IsFullOuter():
+			rel = &FullOuterJoin{JoinBase: jb}
+		default:
+			rel = &InnerJoin{JoinBase: jb}
+		}
+		require.Equal(t, uint64(0), m.statsForRel(ctx, rel).RowCount(), op.String())
+	}
+}
