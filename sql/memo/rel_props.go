@@ -219,12 +219,13 @@ func (p *relProps) populateFds(ctx *sql.Context) {
 		default:
 		}
 
-		firstCol, _ := all.Next(1)
+		ids := all.Ordered()
 
 		var strictKeys []sql.ColSet
 		var laxKeys []sql.ColSet
 		var indexesNorm []*Index
 		for _, idx := range indexes {
+			valid := true
 			// strict if primary key or all nonNull and unique
 			columns := idxExprsColumns(idx)
 			strict := true
@@ -233,21 +234,20 @@ func (p *relProps) populateFds(ctx *sql.Context) {
 				normIdx.order = oidx.Order(ctx)
 			}
 			for i, c := range columns {
-				// TODO: This doesn't account for when the column is not found and ord is -1
 				ord := sch.IndexOfColName(strings.ToLower(c))
-				idOffset := firstCol + sql.ColumnId(ord)
-				colId, _ := all.Next(idOffset)
-				if colId == 0 {
-					err := fmt.Errorf("colset invalid for join leaf: %s missing %d", all.String(), firstCol+sql.ColumnId(ord))
-					p.grp.m.HandleErr(err)
+				if ord == -1 {
+					valid = false
+					break
 				}
+
+				colId := ids[ord]
 				normIdx.set.Add(colId)
 				normIdx.cols[i] = colId
 				if !notNull.Contains(colId) {
 					strict = false
 				}
 			}
-			if !idx.IsUnique() {
+			if !idx.IsUnique() || !valid {
 				// not an FD
 			} else if strict {
 				strictKeys = append(strictKeys, normIdx.set)
@@ -599,44 +599,7 @@ func isSimpleEquality(ctx *sql.Context, expr sql.Expression) bool {
 // allTableCols returns the full schema of a table ignoring
 // declared projections.
 func allTableCols(ctx *sql.Context, rel SourceRel) sql.Schema {
-	var table sql.Table
-	switch rel := rel.(type) {
-	case *TableAlias:
-		rt, ok := rel.Table.Child.(*plan.ResolvedTable)
-		if !ok {
-			break
-		}
-		table = rt.UnderlyingTable()
-	case *IndexScan:
-		table = rel.Table.TableNode.UnderlyingTable()
-	case *TableScan:
-		table = rel.Table.(sql.TableNode).UnderlyingTable()
-	default:
-		return rel.OutputCols(ctx)
-	}
-	projTab, ok := table.(sql.PrimaryKeyTable)
-	if !ok {
-		return rel.OutputCols(ctx)
-	}
-
-	sch := projTab.PrimaryKeySchema(ctx).Schema
-	ret := make(sql.Schema, len(sch))
-	for i, c := range sch {
-		// TODO: generation_expression
-		ret[i] = &sql.Column{
-			Name:           c.Name,
-			Type:           c.Type,
-			Default:        c.Default,
-			AutoIncrement:  c.AutoIncrement,
-			Nullable:       c.Nullable && !c.AutoIncrement,
-			Source:         rel.Name(),
-			DatabaseSource: c.DatabaseSource,
-			PrimaryKey:     c.PrimaryKey,
-			Comment:        c.Comment,
-		}
-	}
-	return ret
-
+	return rel.OutputCols(ctx)
 }
 
 // getEquivs collects column equivalencies in the format sql.EquivSet expects.

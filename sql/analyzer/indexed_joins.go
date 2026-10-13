@@ -612,21 +612,12 @@ func convertSemiToInnerJoin(ctx *sql.Context, m *memo.Memo) error {
 // getFieldForSourceColumn returns a GetField for the column |colId| of |srcNode|.
 func getFieldForSourceColumn(ctx *sql.Context, srcNode plan.TableIdNode, colId sql.ColumnId) sql.Expression {
 	sch := srcNode.Schema(ctx)
-	var table sql.Table
 	var node sql.Node = srcNode
 	if ta, ok := node.(*plan.TableAlias); ok {
 		node = ta.Child
 	}
-	if tw, ok := node.(sql.TableNode); ok {
-		table = tw.UnderlyingTable()
-	}
-	// Using the PrimaryKeySchema ensures that the schema matches the ColumnIds even if the table has been pruned.
-	if pkt, ok := table.(sql.PrimaryKeyTable); ok {
-		sch = pkt.PrimaryKeySchema(ctx).Schema
-	}
-
-	firstCol, _ := srcNode.Columns().Next(1)
-	col := sch[int(colId-firstCol)]
+	offset, _ := srcNode.Columns().Ordinal(colId)
+	col := sch[offset]
 	// The new GetField must use the table name of |srcNode|, not the underlying table, so that references to table aliases
 	// resolve correctly.
 	return expression.NewGetFieldWithTable(int(colId), int(srcNode.Id()), col.Type, col.DatabaseSource, srcNode.Name(), col.Name, col.Nullable)
