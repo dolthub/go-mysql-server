@@ -2152,6 +2152,110 @@ var FunctionQueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "select cast('2010.1210101010.123456' as datetime(6));",
+		Expected: []sql.Row{
+			{time.Date(2010, time.December, 10, 10, 10, 10, 123456000, time.UTC)},
+		},
+	},
+	{
+		Query: "select cast('2010.1210.101010.123456' as datetime(6));",
+		Expected: []sql.Row{
+			{time.Date(2010, time.December, 10, 10, 10, 10, 123456000, time.UTC)},
+		},
+	},
+	{
+		Query: "select cast('2010.1.2.1.2.3.123456' as datetime(6));",
+		Expected: []sql.Row{
+			{time.Date(2010, time.January, 2, 1, 2, 3, 123456000, time.UTC)},
+		},
+	},
+	{
+		Query: "select cast('2001-02-03 12' as datetime(6));",
+		Expected: []sql.Row{
+			{time.Date(2001, time.February, 3, 12, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select cast('2001-02-03 12:' as datetime(6));",
+		Expected: []sql.Row{
+			{time.Date(2001, time.February, 3, 12, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select cast('2001-02-03 12 ' as datetime(6));",
+		Expected: []sql.Row{
+			{nil},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('2001-02-03 12: ' as datetime(6));",
+		Expected: []sql.Row{
+			{nil},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('2001-02-03 12:34' as datetime(6));",
+		Expected: []sql.Row{
+			{time.Date(2001, time.February, 3, 12, 34, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select cast('2001-02-03 12:34:' as datetime(6));",
+		Expected: []sql.Row{
+			{time.Date(2001, time.February, 3, 12, 34, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select cast('2001-02-03 12:34 ' as datetime(6));",
+		Expected: []sql.Row{
+			{nil},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('2001-02-03 12:34: ' as datetime(6));",
+		Expected: []sql.Row{
+			{nil},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('2001-02-03 12:34:56' as datetime(6));",
+		Expected: []sql.Row{
+			{time.Date(2001, time.February, 3, 12, 34, 56, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select cast('2001-02-03 12:34:56.' as datetime(6));",
+		Expected: []sql.Row{
+			{time.Date(2001, time.February, 3, 12, 34, 56, 0, time.UTC)},
+		},
+	},
+
+	{
+		Query: "select cast('2001-02-03 12:34:56 ' as datetime(6));",
+		Expected: []sql.Row{
+			{time.Date(2001, time.February, 3, 12, 34, 56, 0, time.UTC)},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('2001-02-03 12:34:56. ' as datetime(6));",
+		Expected: []sql.Row{
+			{time.Date(2001, time.February, 3, 12, 34, 56, 0, time.UTC)},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+
+	{
 		Query: "select cast('12:12:12.123' as datetime(3));",
 		Expected: []sql.Row{
 			{nil},

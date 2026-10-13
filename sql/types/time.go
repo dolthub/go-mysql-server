@@ -655,7 +655,7 @@ func (t TimespanType_) parseTime(origStr string) (any, error) {
 		if len(microStr) == 0 && len(dtStr) >= MinTimeDatetimeStringLength {
 			var res any
 			res, err = t.parseTimeDatetime(dtStr)
-			if err == nil {
+			if err == nil || sql.IsConvertWarning(err) {
 				if didTrim {
 					err = sql.ErrTruncatedIncorrect.New(t.String(), origStr)
 				}

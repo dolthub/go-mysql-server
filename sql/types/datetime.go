@@ -305,7 +305,7 @@ func (t datetimeType) Convert(ctx context.Context, v any) (any, sql.ConvertInRan
 	if !numericConvertible {
 		return nil, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
 	}
-	if err != nil && !sql.ErrTruncatedIncorrect.Is(err) {
+	if err != nil && !sql.IsConvertWarning(err) {
 		return nil, sql.InRange, err
 	}
 	resTime, ok := res.(time.Time)
@@ -490,12 +490,12 @@ const (
 	// MinDatetimeStringLength represents the length of the shortest possible datetime string
 	// Example: 'Y-M-D' or 'YYMMD'
 	MinDatetimeStringLength = 5
-	// MaxNumericDatetimeLength represents the maximum length for a datetime without superfluous delimiters
-	// Example: YYYY-MM-DD HH:MM:SS.MICROS
-	MaxNumericDatetimeLength = 14
-	// FourDigitNumericDatetimeLength represents the length of a datetime without delimiters
+	// MaxNoDelimDatetimeLength represents the maximum length for a datetime without superfluous delimiters
+	// Example: YYYYMMDDHHMMSS
+	MaxNoDelimDatetimeLength = 14
+	// FourDigitNoDelimDatetimeLength represents the length of a datetime without delimiters
 	// Example: YYMMDDHHMMSS
-	FourDigitNumericDatetimeLength = 8
+	FourDigitNoDelimDatetimeLength = 8
 )
 
 // makeDatetime validates the date/time parameters and returns a time.Time object.
@@ -533,7 +533,7 @@ func (t datetimeType) parseDatetimeExtraLayouts(str string) (any, error) {
 
 // matchNumericDate will parse the input string according to the length of the string.
 func matchNumericDate(str string, pos int) (matchIdxs []int) {
-	if pos != FourDigitNumericDatetimeLength && pos < MaxNumericDatetimeLength {
+	if pos != FourDigitNoDelimDatetimeLength && pos < MaxNoDelimDatetimeLength {
 		matchIdxs = TwoDigitYearDateRegex.FindStringSubmatchIndex(str)
 	} else {
 		matchIdxs = FourDigitYearDateRegex.FindStringSubmatchIndex(str)
@@ -550,7 +550,7 @@ func isMySQLPunct(char rune) bool {
 		(char >= 0x7B && char <= 0x7E)
 }
 
-func trimFunc(str string, f func(rune) bool) (string, int) {
+func trimLeftFunc(str string, f func(rune) bool) (string, int) {
 	for idx, char := range str {
 		if !f(char) {
 			return str[idx:], idx
@@ -559,13 +559,20 @@ func trimFunc(str string, f func(rune) bool) (string, int) {
 	return str, len(str)
 }
 
-func readDigits(str string) (string, string) {
-	for idx, char := range str {
-		if !unicode.IsDigit(char) {
-			return str[:idx], str[idx:]
+// readDigits will read at most |numDigits| digits from |str|, where -1 means unlimited number of digits.
+// The return values are a string of digits read and the remainder of the string.
+func readDigits(str string, numDigits int) (string, string) {
+	readLen := len(str)
+	if numDigits > 0 {
+		readLen = min(readLen, numDigits)
+	}
+	var idx int
+	for idx = 0; idx < readLen; idx++ {
+		if !unicode.IsDigit(rune(str[idx])) {
+			break
 		}
 	}
-	return str, ""
+	return str[:idx], str[idx:]
 }
 
 func parseDateParts(yearStr, monthStr, dayStr string) (year, month, day int, ok bool) {
@@ -591,7 +598,7 @@ func parseDateParts(yearStr, monthStr, dayStr string) (year, month, day int, ok 
 }
 
 // TODO: this is similar to TimespanType_.parseTimeParts
-func parseTimeParts(hourStr, monthStr, dayStr string) (hour, min, sec int, ok bool) {
+func parseTimeParts(hourStr, minStr, secStr string) (hour, min, sec int, ok bool) {
 	var err error
 	if len(hourStr) > 0 {
 		hour, err = strconv.Atoi(hourStr)
@@ -599,14 +606,14 @@ func parseTimeParts(hourStr, monthStr, dayStr string) (hour, min, sec int, ok bo
 			return 0, 0, 0, false
 		}
 	}
-	if len(monthStr) > 0 {
-		min, err = strconv.Atoi(monthStr)
+	if len(minStr) > 0 {
+		min, err = strconv.Atoi(minStr)
 		if err != nil {
 			return 0, 0, 0, false
 		}
 	}
-	if len(dayStr) > 0 {
-		sec, err = strconv.Atoi(dayStr)
+	if len(secStr) > 0 {
+		sec, err = strconv.Atoi(secStr)
 		if err != nil {
 			return 0, 0, 0, false
 		}
@@ -615,7 +622,7 @@ func parseTimeParts(hourStr, monthStr, dayStr string) (hour, min, sec int, ok bo
 }
 
 func parseMicros(microStr string) (micros int, ok bool) {
-	if len(microStr) < 1 {
+	if len(microStr) <= 1 {
 		return 0, true
 	}
 	end := min(len(microStr), MaxDatetimePrecision+2)
@@ -627,85 +634,172 @@ func parseMicros(microStr string) (micros int, ok bool) {
 	return micros, true
 }
 
+// TODO: str is expected to be unbroken string of digits with length >= MinDatetimeStringLength
+func readNoDelimDate(str string) (yearStr, monthStr, dayStr, hourStr, minStr, secStr, remain string) {
+	// depending on the length of str, we will interpret the date as having a two-digit year or four-digit year
+	strLen := len(str)
+	if strLen == FourDigitNoDelimDatetimeLength || strLen >= MaxNoDelimDatetimeLength {
+		yearStr, str = str[:4], str[4:]
+	} else {
+		yearStr, str = str[:2], str[2:]
+	}
+	monthStr, str = str[:2], str[2:] // guaranteed not to panic
+	if len(str) == 1 {
+		dayStr, str = str[:1], str[1:]
+	} else {
+		dayStr, str = str[:2], str[2:]
+	}
+	hourStr = safeSubstr(str, 0, 2)
+	minStr = safeSubstr(str, 2, 4)
+	secStr = safeSubstr(str, 4, 6)
+	remain = str[len(hourStr)+len(minStr)+len(secStr):]
+	return
+}
+
+func readTime(str string) (hourStr, minStr, secStr, remain string) {
+	hourStr, str = readDigits(str, 2)
+	str, _ = trimLeftFunc(str, isMySQLPunct)
+	minStr, str = readDigits(str, 2)
+	str, _ = trimLeftFunc(str, isMySQLPunct)
+	secStr, str = readDigits(str, 2)
+	remain = str
+	return
+}
+
 func (t datetimeType) parseDatetime(origStr string) (any, error) {
 	if len(origStr) == 0 {
-		return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
+		return nil, sql.ErrIncorrectValue.New(t.String(), origStr)
+	}
+
+	// TODO: Handle delimiter warnings. These do not stop parsing unlike ErrTruncatedIncorrect warnings.
+	// Tracking issue: https://github.com/dolthub/dolt/issues/10278
+
+	if res, err := t.parseDatetimeExtraLayouts(origStr); err == nil {
+		return res, nil
 	}
 
 	// Trim whitespaces
 	var err error
-	str, trimCnt := trimFunc(origStr, isMySQLDatetimeWhitespace)
+	str, trimCnt := trimLeftFunc(origStr, isMySQLDatetimeWhitespace)
 	if len(str) == 0 { // TODO: necessary?
-		return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
+		return nil, sql.ErrIncorrectValue.New(t.String(), origStr)
 	}
 	if trimCnt > 0 {
 		err = sql.ErrDeprecatedDelimiter.New(origStr[0], t.String(), origStr)
 	}
 
-	// Read Year
-	yearStr, str := readDigits(str)
-	if len(yearStr) >= MinDatetimeStringLength {
+	var yearStr, monthStr, dayStr, hourStr, minStr, secStr, microStr string
+	yearStr, str = readDigits(str, -1)
+	if len(yearStr) >= MinDatetimeStringLength { // TODO: this only applies if the delimiter is '.'
 		// TODO:
 		// if yearStr is too long AND the delimiter is '.' parse yearStr as non-delimited date or datetime
 		// if yearStr is just a date, parse the remaining as either delimited or non-delimited time
 		// if yearStr is datetime, parse the remaining as microseconds
+		var remain string
+		yearStr, monthStr, dayStr, hourStr, minStr, secStr, remain = readNoDelimDate(yearStr)
+		if len(remain) != 0 {
+			// trailing digits, ignore the remainder of str
+			err = sql.ErrTruncatedIncorrect.New(t.String(), origStr)
+		} else if len(str) > 0 {
+			// any other delimiter results in a NULL
+			delim := rune(str[0])
+			if delim != '.' {
+				return nil, sql.ErrIncorrectValue.New(t.String(), origStr)
+			}
+			// If there was no time read from |readNoDelimDate()|, start reading the rest of |str| as TIME.
+			// The len(minStr) == 0 and len(secStr) == 0 check is unnecessary because TIME parts are always filled
+			// left to right from hours to secs.
+			if len(hourStr) == 0 {
+				str = str[1:]
+				hourStr, minStr, secStr, str = readTime(str)
+			}
+			microStr, str = readMicros(str)
+		}
+		// TODO: this is similar to later code in this function, try to combine cases
+		year, month, day, ok := parseDateParts(yearStr, monthStr, dayStr)
+		if !ok {
+			return nil, sql.ErrIncorrectValue.New(t.String(), origStr)
+		}
+		hours, mins, secs, ok := parseTimeParts(hourStr, minStr, secStr)
+		if !ok {
+			return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
+		}
+		micros, ok := parseMicros(microStr)
+		if !ok {
+			return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
+		}
+		res, ok := makeDatetime(year, month, day, hours, mins, secs, micros*int(nanosPerMicro))
+		if !ok {
+			return nil, sql.ErrIncorrectValue.New(t.String(), origStr)
+		}
+		if len(str) > 0 {
+			err = sql.ErrTruncatedIncorrect.New(t.String(), origStr)
+		}
+		return res, err
 	}
 	if len(str) == 0 {
-		return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
+		return nil, sql.ErrIncorrectValue.New(t.String(), origStr)
 	}
 	// TODO: only this delimiter matters??
 	delim := rune(str[0])
+	str, trimCnt = trimLeftFunc(str, isMySQLPunct)
+	if trimCnt > 1 || delim != '-' {
+		err = sql.ErrDeprecatedDelimiter.New(delim, t.String(), origStr)
+	}
+	// TODO: might be able to combine the two
 	if delim == '.' {
-		// TODO: fill in characters for MONTH and DAY
-		// move on to next portion if we see delimiter
-		// up to 2 digits for month, day, hour, min, sec,...
-	}
-	// remainder of datetime must be delimited strictly
-	if delim != '-' {
-		err = sql.ErrDeprecatedDelimiter.New(delim, t.String(), origStr)
-	}
-	str, trimCnt = trimFunc(str, isMySQLPunct)
-	if trimCnt > 1 {
-		err = sql.ErrDeprecatedDelimiter.New(delim, t.String(), origStr)
+		// relaxed datetime format
+		monthStr, str = readDigits(str, 2)
+		str, _ = trimLeftFunc(str, isMySQLPunct)
+		dayStr, str = readDigits(str, 2)
+		str, _ = trimLeftFunc(str, isMySQLPunct)
+		hourStr, str = readDigits(str, 2)
+		str, _ = trimLeftFunc(str, isMySQLPunct)
+		minStr, str = readDigits(str, 2)
+		str, _ = trimLeftFunc(str, isMySQLPunct)
+		secStr, str = readDigits(str, 2)
+	} else {
+		// strict datetime format
+		monthStr, str = readDigits(str, -1)
+		str, trimCnt = trimLeftFunc(str, isMySQLPunct)
+		if trimCnt > 1 {
+			err = sql.ErrDeprecatedDelimiter.New(delim, t.String(), origStr)
+		}
+		dayStr, str = readDigits(str, -1)
+		str, trimCnt = trimLeftFunc(str, func(r rune) bool {
+			return isMySQLPunct(r) || isMySQLDatetimeWhitespace(r)
+		})
+		if trimCnt > 1 {
+			err = sql.ErrDeprecatedDelimiter.New(delim, t.String(), origStr)
+		}
+		hourStr, str = readDigits(str, -1)
+		str, trimCnt = trimLeftFunc(str, isMySQLPunct)
+		if trimCnt > 1 {
+			err = sql.ErrTruncatedIncorrect.New(t.String(), origStr)
+		}
+		// trailing space(s) after hour results in NULL
+		str, trimCnt = trimLeftFunc(str, isMySQLDatetimeWhitespace)
+		if len(hourStr) > 0 && trimCnt > 0 {
+			return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
+		}
+		minStr, str = readDigits(str, -1)
+		str, trimCnt = trimLeftFunc(str, isMySQLPunct)
+		if trimCnt > 1 {
+			err = sql.ErrTruncatedIncorrect.New(t.String(), origStr)
+		}
+		// trailing space(s) after min results in NULL
+		str, trimCnt = trimLeftFunc(str, isMySQLDatetimeWhitespace)
+		if len(minStr) > 0 && trimCnt > 0 {
+			return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
+		}
+		secStr, str = readDigits(str, -1)
 	}
 
-	monthStr, str := readDigits(str)
-	str, trimCnt = trimFunc(str, isMySQLPunct)
-	if trimCnt > 1 {
-		err = sql.ErrDeprecatedDelimiter.New(delim, t.String(), origStr)
-	}
-
-	dayStr, str := readDigits(str)
-	str, trimCnt = trimFunc(str, func(r rune) bool {
-		return isMySQLPunct(r) || isMySQLDatetimeWhitespace(r)
-	})
-	if trimCnt > 1 {
-		err = sql.ErrDeprecatedDelimiter.New(delim, t.String(), origStr)
-	}
-
-	hourStr, str := readDigits(str)
-	str, trimCnt = trimFunc(str, isMySQLPunct)
-	if trimCnt > 1 {
-		err = sql.ErrTruncatedIncorrect.New(t.String(), origStr)
-	}
-
-	// Whitespaces at this point result in NULL
-	str, trimCnt = trimFunc(str, isMySQLDatetimeWhitespace)
-	if trimCnt > 0 {
-		return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
-	}
-
-	minStr, str := readDigits(str)
-	str, trimCnt = trimFunc(str, isMySQLPunct)
-	if trimCnt > 1 {
-		err = sql.ErrTruncatedIncorrect.New(t.String(), origStr)
-	}
-	secStr, str := readDigits(str)
-	microStr, str := readMicros(str)
+	microStr, str = readMicros(str)
 
 	year, month, day, ok := parseDateParts(yearStr, monthStr, dayStr)
 	if !ok {
-		return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
+		return nil, sql.ErrIncorrectValue.New(t.String(), origStr)
 	}
 	hours, mins, secs, ok := parseTimeParts(hourStr, minStr, secStr)
 	if !ok {
@@ -718,7 +812,7 @@ func (t datetimeType) parseDatetime(origStr string) (any, error) {
 
 	res, ok := makeDatetime(year, month, day, hours, mins, secs, micros*int(nanosPerMicro))
 	if !ok {
-		return nil, err
+		return nil, sql.ErrIncorrectValue.New(t.String(), origStr)
 	}
 
 	if len(str) > 0 {
@@ -902,7 +996,7 @@ func (t datetimeType) parseDatetimeOld(str string) (any, bool, error) {
 		micros = int(math.Round(microf64 * float64(microsPerSec)))
 	}
 
-	resTime, ok := makeDatetime(year, month, day, hour, mins, sec, micros*1000)
+	resTime, ok := makeDatetime(year, month, day, hour, mins, sec, micros*int(nanosPerMicro))
 	if !ok {
 		return nil, delimWarn, sql.ErrIncorrectValue.New(t.String(), str)
 	}

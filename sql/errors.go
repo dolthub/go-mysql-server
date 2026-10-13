@@ -1274,3 +1274,8 @@ func NewWrappedTypeConversionError(offendingVal interface{}, idx int, err error)
 func (w WrappedTypeConversionError) Error() string {
 	return w.Err.Error()
 }
+
+// IsConvertWarning checks if this error is one that should be a warning from a Conversion function
+func IsConvertWarning(err error) bool {
+	return ErrTruncatedIncorrect.Is(err) || ErrDeprecatedDelimiter.Is(err)
+}

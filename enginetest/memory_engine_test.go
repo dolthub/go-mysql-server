@@ -200,7 +200,7 @@ func TestSingleScript(t *testing.T) {
 			SetUpScript: []string{},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "select cast('2001-02-03' as datetime)",
+					Query:    "select cast('002001-00012-00023' as datetime(6));",
 					Expected: []sql.Row{},
 				},
 			},

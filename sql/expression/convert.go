@@ -342,7 +342,7 @@ func convertValue(ctx *sql.Context, val any, castTo string, origType sql.Type, t
 	case ConvertToDate:
 		val, _, err = types.Date.Convert(ctx, val)
 		if err != nil {
-			if !sql.ErrTruncatedIncorrect.Is(err) {
+			if !sql.IsConvertWarning(err) {
 				return nil, err
 			}
 			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
@@ -356,7 +356,7 @@ func convertValue(ctx *sql.Context, val any, castTo string, origType sql.Type, t
 		}
 		val, _, err = dtType.Convert(ctx, val)
 		if err != nil {
-			if !sql.ErrTruncatedIncorrect.Is(err) {
+			if !sql.IsConvertWarning(err) {
 				return nil, err
 			}
 			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
@@ -370,7 +370,7 @@ func convertValue(ctx *sql.Context, val any, castTo string, origType sql.Type, t
 		}
 		val, _, err = timeType.Convert(ctx, val)
 		if err != nil {
-			if !sql.ErrTruncatedIncorrect.Is(err) {
+			if !sql.IsConvertWarning(err) {
 				return nil, err
 			}
 			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
