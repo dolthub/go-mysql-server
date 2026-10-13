@@ -879,6 +879,7 @@ func (b *Builder) checkErrUpdateTableInSubquery(update *plan.Update) {
 				_, ok := targets[key]
 				if ok {
 					b.handleErr(sql.ErrUpdateTableInSubquery.New(rt.Name()))
+					return false
 				}
 			}
 			return false

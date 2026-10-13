@@ -594,7 +594,8 @@ var (
 	// such as the argument of an aggregate function.
 	ErrWindowInvalidWindowFuncUse = newMySQLKind("You cannot use the window function '%s' in this context.'", 3593, "HY000")
 
-	// ErrUpdateTableInSubquery is thrown when an UPDATE subquery reads the target table.
+	// ErrUpdateTableInSubquery is thrown for UPDATE subqueries that read the target table in the
+	// currently checked window-function case.
 	ErrUpdateTableInSubquery = newMySQLKind("You can't specify target table '%s' for update in FROM clause", mysql.ERUpdateTableUsed, "HY000")
 
 	// ErrInvalidArgumentNumber is returned when the number of arguments to call a
