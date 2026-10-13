@@ -201,6 +201,11 @@ func (m *MemoryHarness) NewEngine(t *testing.T) (QueryEngine, error) {
 	return engine, nil
 }
 
+func (m *MemoryHarness) SupportsValueRow() bool {
+	// MemoryTables store rows in memory without serializing them, so there's not much point in implementing ValueRowIter for them.
+	return false
+}
+
 func (m *MemoryHarness) NewTableAsOf(db sql.VersionedDatabase, name string, schema sql.PrimaryKeySchema, asOf interface{}) sql.Table {
 	var fkColl *memory.ForeignKeyCollection
 	var baseDb *memory.BaseDatabase
