@@ -113,6 +113,10 @@ type Session interface {
 	GetStoredProcParam(name string) *StoredProcParam
 	// SetStoredProcParam sets the Stored Procedure Parameter of the given name to the given val.
 	SetStoredProcParam(name string, val any) error
+	// IsInCall returns if the current Session is within a Stored Procedure call
+	IsInCall() bool
+	// SetInCall marks whether a Session is within a Stored Procedure call
+	SetInCall(bool)
 	// GetCurrentDatabase gets the current database for this session
 	GetCurrentDatabase() string
 	// SetCurrentDatabase sets the current database for this session
@@ -294,7 +298,6 @@ type Context struct {
 	ProcessList ProcessList
 	services    Services
 	tracer      trace.Tracer
-	rootSpan    trace.Span
 	Memory      *MemoryManager
 	query       string
 	pid         uint64
@@ -353,11 +356,11 @@ func WithMemoryManager(m *MemoryManager) ContextOption {
 	}
 }
 
-// WithRootSpan sets the root span of the context.
-func WithRootSpan(s trace.Span) ContextOption {
-	return func(ctx *Context) {
-		ctx.rootSpan = s
-	}
+// WithRootSpan does nothing.
+//
+// Deprecated: a Context no longer carries a root span. Whoever starts a span is responsible for ending it.
+func WithRootSpan(trace.Span) ContextOption {
+	return func(*Context) {}
 }
 
 func WithProcessList(p ProcessList) ContextOption {
@@ -662,14 +665,6 @@ func (c *Context) WithClient(client Client) *Context {
 	return &nc
 }
 
-// RootSpan returns the root span, if any.
-func (c *Context) RootSpan() trace.Span {
-	if c == nil {
-		return noopSpan
-	}
-	return c.rootSpan
-}
-
 // Error adds an error as warning to the session.
 func (c *Context) Error(code int, msg string, args ...interface{}) {
 	if c == nil || c.Session == nil {
@@ -747,6 +742,7 @@ func NewSpanIter(span trace.Span, iter RowIter) RowIter {
 	// In the default, non traced case, we should not bother with
 	// collecting the timings below.
 	if !span.IsRecording() {
+		span.End()
 		return iter
 	} else {
 		return &spanIter{

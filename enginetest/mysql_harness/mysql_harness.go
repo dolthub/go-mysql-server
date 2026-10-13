@@ -379,6 +379,11 @@ func widenExpected(val interface{}) interface{} {
 	}
 }
 
+func (m *MySQLHarness) SupportsValueRow() bool {
+	// Engines created by MySQLHarness wrap an existing MySQL connection, so we can't inspect the iterator used.
+	return false
+}
+
 // Close closes the connection. This will drop all databases created and accessed during the tests.
 func (m *MySQLHarness) Close() {
 	m.shim.Close()

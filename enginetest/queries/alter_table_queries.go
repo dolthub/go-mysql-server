@@ -206,6 +206,19 @@ var AlterTableScripts = []ScriptTest{
 		},
 	},
 	{
+		Skip: true,
+		Name: "ALTER TABLE RENAME on a column when another column has a default dependency on it",
+		SetUpScript: []string{
+			"CREATE TABLE `test` (`pk` bigint NOT NULL,`v2` int NOT NULL DEFAULT '100',`v3` int DEFAULT ((`v2` + 1)),PRIMARY KEY (`pk`));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "alter table test rename column v2 to mycol",
+				ExpectedErr: sql.ErrAlterTableNotSupported, // Not the correct error. The point is that this query needs to fail.
+			},
+		},
+	},
+	{
 		Name: "drop column drops check constraint",
 		SetUpScript: []string{
 			"create table t34 (i bigint primary key, s varchar(20))",
@@ -540,6 +553,21 @@ var AlterTableScripts = []ScriptTest{
 			{
 				Query:          "insert into t values (1, 9);",
 				ExpectedErrStr: `Check constraint "chk_c" violated`,
+			},
+		},
+	},
+	{
+		Skip: true,
+		Name: "non-existent procedure in trigger body",
+		SetUpScript: []string{
+			"create table tbl_I (i int primary key);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "alter table tbl_i add column j int, add check (j < 10);",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
 			},
 		},
 	},
@@ -1348,6 +1376,217 @@ var AlterTableScripts = []ScriptTest{
 			},
 		},
 	},
+
+	{
+		Name:    "alter table out of range value error of column type change",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t (i int primary key, i2 int, key(i2));",
+			"insert into t values (0,-1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       `alter table t modify column i2 int unsigned`,
+				ExpectedErr: sql.ErrValueOutOfRange,
+			},
+		},
+	},
+	{
+		Name:    "Multialter DDL with ADD/DROP INDEX",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t(pk int primary key, v1 int)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "ALTER TABLE t DROP COLUMN v1, ADD INDEX myidx (v1)",
+				ExpectedErr: sql.ErrKeyColumnDoesNotExist,
+			},
+			{
+				Query: "DESCRIBE t",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"v1", "int", "YES", "", nil, ""}, // should not be dropped
+				},
+			},
+			{
+				Query:    "ALTER TABLE t ADD COLUMN (v2 int), ADD INDEX myidx (v2)",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "DESCRIBE t",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"v1", "int", "YES", "", nil, ""},
+					{"v2", "int", "YES", "MUL", nil, ""},
+				},
+			},
+			{
+				Query:       "ALTER TABLE t ADD COLUMN (v3 int), DROP INDEX notanindex",
+				ExpectedErr: sql.ErrCantDropFieldOrKey,
+			},
+			{
+				Query: "DESCRIBE t",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"v1", "int", "YES", "", nil, ""},
+					{"v2", "int", "YES", "MUL", nil, ""},
+				},
+			},
+			{
+				Query:       "ALTER TABLE t ADD COLUMN (v4 int), ADD INDEX myidx (notacolumn)",
+				ExpectedErr: sql.ErrKeyColumnDoesNotExist,
+			},
+			{
+				Query: "DESCRIBE t",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"v1", "int", "YES", "", nil, ""},
+					{"v2", "int", "YES", "MUL", nil, ""},
+				},
+			},
+			{
+				Query:       "ALTER TABLE t ADD COLUMN (v4 int), ADD INDEX myidx2 (v4), DROP INDEX notanindex;",
+				ExpectedErr: sql.ErrCantDropFieldOrKey,
+			},
+			{
+				Query: "DESCRIBE t",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"v1", "int", "YES", "", nil, ""},
+					{"v2", "int", "YES", "MUL", nil, ""},
+				},
+			},
+			{
+				Query:    "ALTER TABLE t ADD COLUMN (v4 int), ADD INDEX myidx2 (v4)",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "DESCRIBE t",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"v1", "int", "YES", "", nil, ""},
+					{"v2", "int", "YES", "MUL", nil, ""},
+					{"v4", "int", "YES", "MUL", nil, ""},
+				},
+			},
+			{
+				Query:    "ALTER TABLE t ADD COLUMN (v5 int), RENAME INDEX myidx2 TO myidx3",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "ALTER TABLE t DROP INDEX myidx, ADD INDEX v5idx (v5)",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "DESCRIBE t",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"v1", "int", "YES", "", nil, ""},
+					{"v2", "int", "YES", "", nil, ""},
+					{"v4", "int", "YES", "MUL", nil, ""},
+					{"v5", "int", "YES", "MUL", nil, ""},
+				},
+			},
+		},
+	},
+	{
+		Name:    "ALTER TABLE MULTI ADD/DROP COLUMN",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 BIGINT NOT NULL DEFAULT 88);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO test (pk) VALUES (1);",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "ALTER TABLE test DROP COLUMN v1, ADD COLUMN v2 INT NOT NULL DEFAULT 100",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "describe test",
+				Expected: []sql.Row{
+					{"pk", "bigint", "NO", "PRI", nil, ""},
+					{"v2", "int", "NO", "", "100", ""},
+				},
+			},
+			{
+				Query:    "ALTER TABLE TEST MODIFY COLUMN pk BIGINT AUTO_INCREMENT, AUTO_INCREMENT = 100",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "INSERT INTO test (v2) values (11)",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 100}}},
+			},
+			{
+				Query:    "SELECT * from test where pk = 100",
+				Expected: []sql.Row{{100, 11}},
+			},
+			{
+				Query:       "ALTER TABLE test DROP COLUMN v2, ADD COLUMN v3 int NOT NULL after v2",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query: "describe test",
+				Expected: []sql.Row{
+					{"pk", "bigint", "NO", "PRI", nil, "auto_increment"},
+					{"v2", "int", "NO", "", "100", ""},
+				},
+			},
+			{
+				Query:       "ALTER TABLE test DROP COLUMN v2, RENAME COLUMN v2 to v3",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query: "describe test",
+				Expected: []sql.Row{
+					{"pk", "bigint", "NO", "PRI", nil, "auto_increment"},
+					{"v2", "int", "NO", "", "100", ""},
+				},
+			},
+			{
+				Query:       "ALTER TABLE test RENAME COLUMN v2 to v3, DROP COLUMN v2",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query: "describe test",
+				Expected: []sql.Row{
+					{"pk", "bigint", "NO", "PRI", nil, "auto_increment"},
+					{"v2", "int", "NO", "", "100", ""},
+				},
+			},
+			{
+				Query:    "ALTER TABLE test ADD COLUMN (v3 int NOT NULL), add column (v4 int), drop column v2, add column (v5 int NOT NULL)",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "DESCRIBE test",
+				Expected: []sql.Row{
+					{"pk", "bigint", "NO", "PRI", nil, "auto_increment"},
+					{"v3", "int", "NO", "", nil, ""},
+					{"v4", "int", "YES", "", nil, ""},
+					{"v5", "int", "NO", "", nil, ""},
+				},
+			},
+			{
+				Query:    "ALTER TABLE test ADD COLUMN (v6 int not null), RENAME COLUMN v5 TO mycol, DROP COLUMN v4, ADD COLUMN (v7 int);",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "describe test",
+				Expected: []sql.Row{
+					{"pk", "bigint", "NO", "PRI", nil, "auto_increment"},
+					{"v3", "int", "NO", "", nil, ""},
+					{"mycol", "int", "NO", "", nil, ""},
+					{"v6", "int", "NO", "", nil, ""},
+					{"v7", "int", "YES", "", nil, ""},
+				},
+			},
+			// TODO: Does not include tests with column renames and defaults.
+		},
+	},
 }
 
 var RenameTableScripts = []ScriptTest{
@@ -1403,560 +1642,6 @@ var RenameTableScripts = []ScriptTest{
 			{
 				Query:       "ALTER TABLE emptytable RENAME niltable",
 				ExpectedErr: sql.ErrTableAlreadyExists,
-			},
-		},
-	},
-}
-
-var AlterTableAddAutoIncrementScripts = []ScriptTest{
-	{
-		Name: "Add primary key column with auto increment",
-		SetUpScript: []string{
-			"CREATE TABLE t1 (i int, j int);",
-			"insert into t1 values (1,1), (2,2), (3,3)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "alter table t1 add column pk int primary key auto_increment;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query: "show create table t1",
-				Expected: []sql.Row{{"t1",
-					"CREATE TABLE `t1` (\n" +
-						"  `i` int,\n" +
-						"  `j` int,\n" +
-						"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
-						"  PRIMARY KEY (`pk`)\n" +
-						") ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-			},
-			{
-				Query: "select pk from t1 order by pk",
-				Expected: []sql.Row{
-					{1}, {2}, {3},
-				},
-			},
-		},
-	},
-	{
-		Name: "Add primary key column with auto increment, first",
-		SetUpScript: []string{
-			"CREATE TABLE t1 (i int, j int);",
-			"insert into t1 values (1,1), (2,2), (3,3)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:       "alter table t1 add column pk int primary key",
-				ExpectedErr: sql.ErrPrimaryKeyViolation,
-			},
-			{
-				Query:    "alter table t1 add column pk int primary key auto_increment first",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query: "show create table t1",
-				Expected: []sql.Row{{"t1",
-					"CREATE TABLE `t1` (\n" +
-						"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
-						"  `i` int,\n" +
-						"  `j` int,\n" +
-						"  PRIMARY KEY (`pk`)\n" +
-						") ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-			},
-			{
-				Query: "select pk from t1 order by pk",
-				Expected: []sql.Row{
-					{1}, {2}, {3},
-				},
-			},
-		},
-	},
-	{
-		Name: "add column auto_increment, non primary key",
-		SetUpScript: []string{
-			"CREATE TABLE t1 (i bigint primary key, s varchar(20))",
-			"INSERT INTO t1 VALUES (1, 'a'), (2, 'b'), (3, 'c')",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "alter table t1 add column j int auto_increment unique",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query: "show create table t1",
-				Expected: []sql.Row{{"t1",
-					"CREATE TABLE `t1` (\n" +
-						"  `i` bigint NOT NULL,\n" +
-						"  `s` varchar(20),\n" +
-						"  `j` int NOT NULL AUTO_INCREMENT,\n" +
-						"  PRIMARY KEY (`i`),\n" +
-						"  UNIQUE KEY `j` (`j`)\n" +
-						") ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-			},
-			{
-				Query: "select * from t1 order by i",
-				Expected: []sql.Row{
-					{1, "a", 1},
-					{2, "b", 2},
-					{3, "c", 3},
-				},
-			},
-		},
-	},
-	{
-		Name: "add column auto_increment, non key",
-		SetUpScript: []string{
-			"CREATE TABLE t1 (i bigint primary key, s varchar(20))",
-			"INSERT INTO t1 VALUES (1, 'a'), (2, 'b'), (3, 'c')",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:       "alter table t1 add column j int auto_increment",
-				ExpectedErr: sql.ErrInvalidAutoIncCols,
-			},
-		},
-	},
-	{
-		Name: "ALTER AUTO INCREMENT TABLE ADD column",
-		SetUpScript: []string{
-			"CREATE TABLE test (pk int primary key, uk int UNIQUE KEY auto_increment);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "alter table test add column j int;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-		},
-	},
-	{
-		Name:    "ALTER TABLE MODIFY column with compound UNIQUE KEYS",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"CREATE table test (pk int primary key, uk1 int, uk2 int, unique(uk1, uk2))",
-			"ALTER TABLE `test` MODIFY column uk1 int auto_increment",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "describe test",
-				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", nil, ""},
-					{"uk1", "int", "NO", "MUL", nil, "auto_increment"},
-					{"uk2", "int", "YES", "", nil, ""},
-				},
-			},
-		},
-	},
-	{
-		Name:    "ALTER TABLE MODIFY column with compound KEYS",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"CREATE table test (pk int primary key, mk1 int, mk2 int, index(mk1, mk2))",
-			"ALTER TABLE `test` MODIFY column mk1 int auto_increment",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "describe test",
-				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", nil, ""},
-					{"mk1", "int", "NO", "MUL", nil, "auto_increment"},
-					{"mk2", "int", "YES", "", nil, ""},
-				},
-			},
-		},
-	},
-}
-
-var AddDropPrimaryKeyScripts = []ScriptTest{
-	{
-		Name: "Add primary key",
-		SetUpScript: []string{
-			"create table t1 (i int, j int)",
-			"insert into t1 values (1,1), (1,2), (1,3)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:       "alter table t1 add primary key (i)",
-				ExpectedErr: sql.ErrPrimaryKeyViolation,
-			},
-			{
-				Query: "show create table t1",
-				Expected: []sql.Row{{"t1",
-					"CREATE TABLE `t1` (\n" +
-						"  `i` int,\n" +
-						"  `j` int\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-			},
-			{
-				Query:    "alter table t1 add primary key (i, j)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query: "show create table t1",
-				Expected: []sql.Row{{"t1",
-					"CREATE TABLE `t1` (\n" +
-						"  `i` int NOT NULL,\n" +
-						"  `j` int NOT NULL,\n" +
-						"  PRIMARY KEY (`i`,`j`)\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-			},
-		},
-	},
-	{
-		Name: "Drop primary key for table with multiple primary key columns",
-		SetUpScript: []string{
-			"create table t1 (pk varchar(20), v varchar(20) default (concat(pk, '-foo')), primary key (pk, v))",
-			"insert into t1 values ('a1', 'a2'), ('a2', 'a3'), ('a3', 'a4')",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "select * from t1 order by pk",
-				Expected: []sql.Row{
-					{"a1", "a2"},
-					{"a2", "a3"},
-					{"a3", "a4"},
-				},
-			},
-			{
-				Query:    "alter table t1 drop primary key",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query: "select * from t1 order by pk",
-				Expected: []sql.Row{
-					{"a1", "a2"},
-					{"a2", "a3"},
-					{"a3", "a4"},
-				},
-			},
-			{
-				Query:    "insert into t1 values ('a1', 'a2')",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
-			},
-			{
-				Query: "select * from t1 order by pk",
-				Expected: []sql.Row{
-					{"a1", "a2"},
-					{"a1", "a2"},
-					{"a2", "a3"},
-					{"a3", "a4"},
-				},
-			},
-			{
-				Query:       "alter table t1 add primary key (pk, v)",
-				ExpectedErr: sql.ErrPrimaryKeyViolation,
-			},
-			{
-				Query:    "delete from t1 where pk = 'a1' limit 1",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
-			},
-			{
-				Query:    "alter table t1 add primary key (pk, v)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query: "show create table t1",
-				Expected: []sql.Row{{"t1",
-					"CREATE TABLE `t1` (\n" +
-						"  `pk` varchar(20) NOT NULL,\n" +
-						"  `v` varchar(20) NOT NULL DEFAULT (concat(`pk`,'-foo')),\n" +
-						"  PRIMARY KEY (`pk`,`v`)\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-			},
-			{
-				Query:    "alter table t1 drop primary key",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query:    "alter table t1 add index myidx (v)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query:    "alter table t1 add primary key (pk)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query:    "insert into t1 values ('a4', 'a3')",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
-			},
-			{
-				Query: "show create table t1",
-				Expected: []sql.Row{{"t1",
-					"CREATE TABLE `t1` (\n" +
-						"  `pk` varchar(20) NOT NULL,\n" +
-						"  `v` varchar(20) NOT NULL DEFAULT (concat(`pk`,'-foo')),\n" +
-						"  PRIMARY KEY (`pk`),\n" +
-						"  KEY `myidx` (`v`)\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-			},
-			{
-				Query: "select * from t1 where v = 'a3' order by pk",
-				Expected: []sql.Row{
-					{"a2", "a3"},
-					{"a4", "a3"},
-				},
-			},
-			{
-				Query:    "alter table t1 drop primary key",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query:    "truncate t1",
-				Expected: []sql.Row{{types.NewOkResult(4)}},
-			},
-			{
-				Query:    "alter table t1 drop index myidx",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query:    "alter table t1 add primary key (pk, v)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query:    "insert into t1 values ('a1', 'a2'), ('a2', 'a3'), ('a3', 'a4')",
-				Expected: []sql.Row{{types.NewOkResult(3)}},
-			},
-		},
-	},
-	{
-		Name: "Drop primary key for table with multiple primary key columns, add smaller primary key in same statement",
-		SetUpScript: []string{
-			"create table t1 (pk varchar(20), v varchar(20) default (concat(pk, '-foo')), primary key (pk, v))",
-			"insert into t1 values ('a1', 'a2'), ('a2', 'a3'), ('a3', 'a4')",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "ALTER TABLE t1 DROP PRIMARY KEY, ADD PRIMARY KEY (v)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query:       "INSERT INTO t1 (pk, v) values ('a100', 'a3')",
-				ExpectedErr: sql.ErrPrimaryKeyViolation,
-			},
-			{
-				Query:    "alter table t1 drop primary key",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query:    "ALTER TABLE t1 ADD PRIMARY KEY (pk, v), DROP PRIMARY KEY",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query: "show create table t1",
-				Expected: []sql.Row{{"t1",
-					"CREATE TABLE `t1` (\n" +
-						"  `pk` varchar(20) NOT NULL,\n" +
-						"  `v` varchar(20) NOT NULL DEFAULT (concat(`pk`,'-foo'))\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-			},
-		},
-	},
-	{
-		Name: "No database selected",
-		SetUpScript: []string{
-			"create database newdb",
-			"create table newdb.tab1 (pk int, c1 int)",
-			"ALTER TABLE newdb.tab1 ADD PRIMARY KEY (pk)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "SHOW CREATE TABLE newdb.tab1",
-				Expected: []sql.Row{{"tab1",
-					"CREATE TABLE `tab1` (\n" +
-						"  `pk` int NOT NULL,\n" +
-						"  `c1` int,\n" +
-						"  PRIMARY KEY (`pk`)\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-			},
-			{
-				Query:    "alter table newdb.tab1 drop primary key",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query: "SHOW CREATE TABLE newdb.tab1",
-				Expected: []sql.Row{{"tab1",
-					"CREATE TABLE `tab1` (\n" +
-						"  `pk` int NOT NULL,\n" +
-						"  `c1` int\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-			},
-		},
-	},
-	{
-		Name: "Drop primary key auto increment",
-		SetUpScript: []string{
-			"CREATE TABLE test(pk int AUTO_INCREMENT PRIMARY KEY, val int)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:       "ALTER TABLE test DROP PRIMARY KEY",
-				ExpectedErr: sql.ErrWrongAutoKey,
-			},
-			{
-				Query:    "ALTER TABLE test modify pk int",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query: "SHOW CREATE TABLE test",
-				Expected: []sql.Row{{"test",
-					"CREATE TABLE `test` (\n" +
-						"  `pk` int NOT NULL,\n" +
-						"  `val` int,\n" +
-						"  PRIMARY KEY (`pk`)\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-			},
-			{
-				Query:    "ALTER TABLE test drop primary key",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query: "SHOW CREATE TABLE test",
-				Expected: []sql.Row{{"test",
-					"CREATE TABLE `test` (\n" +
-						"  `pk` int NOT NULL,\n" +
-						"  `val` int\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-			},
-			{
-				Query:       "INSERT INTO test VALUES (1, 1), (NULL, 1)",
-				ExpectedErr: sql.ErrInsertIntoNonNullableProvidedNull,
-			},
-			{
-				Query:    "INSERT INTO test VALUES (2, 2), (3, 3)",
-				Expected: []sql.Row{{types.NewOkResult(2)}},
-			},
-			{
-				Query: "SELECT * FROM test ORDER BY pk",
-				Expected: []sql.Row{
-					{2, 2},
-					{3, 3},
-				},
-			},
-		},
-	},
-	{
-		Name: "Drop auto-increment primary key with supporting unique index",
-		SetUpScript: []string{
-			"create table t (id int primary key AUTO_INCREMENT, c1 varchar(255));",
-			"insert into t (c1) values ('one');",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				// Without a supporting index, we can't drop the PK because of the auto_increment property
-				Query:       "ALTER TABLE t DROP PRIMARY KEY;",
-				ExpectedErr: sql.ErrWrongAutoKey,
-			},
-			{
-				// Adding a unique index on the pk column allows us to drop the PK
-				Query:    "ALTER TABLE t ADD UNIQUE KEY id (id);",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query:    "ALTER TABLE t DROP PRIMARY KEY;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query: "show create table t;",
-				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n" +
-					"  `id` int NOT NULL AUTO_INCREMENT,\n" +
-					"  `c1` varchar(255),\n" +
-					"  UNIQUE KEY `id` (`id`)\n" +
-					") ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-			},
-			{
-				Query:    "insert into t (c1) values('two');",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 2}}},
-			},
-			{
-				Query:    "select * from t;",
-				Expected: []sql.Row{{1, "one"}, {2, "two"}},
-			},
-		},
-	},
-	{
-		Name: "Drop auto-increment primary key with supporting non-unique index",
-		SetUpScript: []string{
-			"create table t (id int primary key AUTO_INCREMENT, c1 varchar(255));",
-			"insert into t (c1) values ('one');",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				// Without a supporting index, we cannot drop the PK
-				Query:       "ALTER TABLE t DROP PRIMARY KEY;",
-				ExpectedErr: sql.ErrWrongAutoKey,
-			},
-			{
-				// Adding an index on the PK columns allows us to drop the PK
-				Query:    "ALTER TABLE t ADD KEY id (id);",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query:    "ALTER TABLE t DROP PRIMARY KEY;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query: "show create table t;",
-				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n" +
-					"  `id` int NOT NULL AUTO_INCREMENT,\n" +
-					"  `c1` varchar(255),\n" +
-					"  KEY `id` (`id`)\n" +
-					") ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-			},
-			{
-				Query:    "insert into t (c1) values('two');",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 2}}},
-			},
-			{
-				Query:    "select * from t;",
-				Expected: []sql.Row{{1, "one"}, {2, "two"}},
-			},
-		},
-	},
-	{
-		Name: "Drop multi-column, auto-increment primary key with supporting non-unique index",
-		SetUpScript: []string{
-			"create table t (id1 int AUTO_INCREMENT, id2 int not null, c1 varchar(255), primary key (id1, id2));",
-			"insert into t (id2, c1) values (-1, 'one');",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:       "ALTER TABLE t DROP PRIMARY KEY;",
-				ExpectedErr: sql.ErrWrongAutoKey,
-			},
-			{
-				// Adding an index that doesn't start with the auto_increment column doesn't allow us to drop the PK
-				Query:    "ALTER TABLE t ADD KEY c1id1 (c1, id1);",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query:       "ALTER TABLE t DROP PRIMARY KEY;",
-				ExpectedErr: sql.ErrWrongAutoKey,
-			},
-			{
-				// Adding a supporting key (i.e the first column is the auto_increment column) allows us to drop the PK
-				Query:    "ALTER TABLE t ADD KEY id1c1 (id1, c1);",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query:    "ALTER TABLE t DROP PRIMARY KEY;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query:    "insert into t (id2, c1) values(-2, 'two');",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 2}}},
-			},
-			{
-				Query:    "select * from t;",
-				Expected: []sql.Row{{1, -1, "one"}, {2, -2, "two"}},
-			},
-			{
-				Query: "show create table t;",
-				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n" +
-					"  `id1` int NOT NULL AUTO_INCREMENT,\n" +
-					"  `id2` int NOT NULL,\n" +
-					"  `c1` varchar(255),\n" +
-					"  KEY `c1id1` (`c1`,`id1`),\n" +
-					"  KEY `id1c1` (`id1`,`c1`)\n" +
-					") ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 		},
 	},

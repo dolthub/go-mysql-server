@@ -54,6 +54,7 @@ type BaseSession struct {
 	charset          CharacterSetID
 	warningLock      bool
 	ignoreAutocommit bool
+	inCall           bool
 }
 
 func (s *BaseSession) GetLogger() *logrus.Entry {
@@ -370,6 +371,16 @@ func (s *BaseSession) SetStoredProcParam(name string, val any) error {
 	return nil
 }
 
+// IsInCall implements the Session interface.
+func (s *BaseSession) IsInCall() bool {
+	return s.inCall
+}
+
+// SetInCall implements the Session interface.
+func (s *BaseSession) SetInCall(inCall bool) {
+	s.inCall = inCall
+}
+
 // GetCharacterSet returns the character set for this session (defined by the system variable `character_set_connection`).
 func (s *BaseSession) GetCharacterSet() CharacterSetID {
 	sysVar, _ := s.systemVars[characterSetConnectionSysVarName]
@@ -630,6 +641,7 @@ func NewBaseSessionWithClientServer(server string, client Client, id uint32) *Ba
 		systemVars:       systemVars,
 		statusVars:       statusVars,
 		userVars:         NewUserVars(),
+		inCall:           false,
 		storedProcParams: make(map[string]*StoredProcParam),
 		preparedQueries:  make(map[string]sqlparser.Statement),
 		cachedQueries:    make(map[string]sqlparser.Statement),
