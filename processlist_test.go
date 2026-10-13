@@ -146,6 +146,8 @@ func sortById(slice []sql.Process) {
 }
 
 func TestKillConnection(t *testing.T) {
+	variables.InitStatusVariables()
+
 	pl := NewProcessList()
 
 	pl.AddConnection(1, "")
@@ -184,6 +186,7 @@ func TestKillConnection(t *testing.T) {
 }
 
 func TestBeginEndOperation(t *testing.T) {
+	variables.InitStatusVariables()
 	knownSession := sql.NewBaseSessionWithClientServer("", sql.Client{}, 1)
 	unknownSession := sql.NewBaseSessionWithClientServer("", sql.Client{}, 2)
 
@@ -239,6 +242,7 @@ func TestBeginEndOperation(t *testing.T) {
 // TestSlowQueryTracking tests that processes that take longer than @@long_query_time increment the
 // Slow_queries status variable.
 func TestSlowQueryTracking(t *testing.T) {
+	variables.InitStatusVariables()
 	_, value, ok := sql.StatusVariables.GetGlobal("Slow_queries")
 	require.True(t, ok)
 	require.Equal(t, uint64(0), value)

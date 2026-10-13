@@ -113,6 +113,10 @@ type Session interface {
 	GetStoredProcParam(name string) *StoredProcParam
 	// SetStoredProcParam sets the Stored Procedure Parameter of the given name to the given val.
 	SetStoredProcParam(name string, val any) error
+	// IsInCall returns if the current Session is within a Stored Procedure call
+	IsInCall() bool
+	// SetInCall marks whether a Session is within a Stored Procedure call
+	SetInCall(bool)
 	// GetCurrentDatabase gets the current database for this session
 	GetCurrentDatabase() string
 	// SetCurrentDatabase sets the current database for this session
@@ -747,6 +751,7 @@ func NewSpanIter(span trace.Span, iter RowIter) RowIter {
 	// In the default, non traced case, we should not bother with
 	// collecting the timings below.
 	if !span.IsRecording() {
+		span.End()
 		return iter
 	} else {
 		return &spanIter{

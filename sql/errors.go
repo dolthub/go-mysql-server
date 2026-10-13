@@ -63,6 +63,9 @@ var (
 	// Creating new view or updating existing view to reference non-existent table/view do not apply here.
 	ErrInvalidRefInView = errors.NewKind("View '%s.%s' references invalid table(s) or column(s) or function(s) or definer/invoker of view lack rights to use them")
 
+	// ErrViewRecursion is returned when a view references itself, either directly or through other views.
+	ErrViewRecursion = newMySQLKind("`%s`.`%s` contains view recursion", 1462, mysql.SSUnknownSQLState)
+
 	// ErrUnknownTable is returned when the non-table name is used for table actions.
 	ErrUnknownTable = errors.NewKind("Unknown table '%s'")
 

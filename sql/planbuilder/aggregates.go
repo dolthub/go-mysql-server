@@ -84,7 +84,7 @@ func (g *groupBy) addInputs(ctx *sql.Context, args []sql.Expression) {
 		var col scopeColumn
 		switch arg := arg.(type) {
 		case *expression.GetField:
-			col = scopeColumn{tableId: arg.TableID(), db: arg.Database(), table: arg.Table(), col: arg.Name(), scalar: arg, typ: arg.Type(ctx), nullable: arg.IsNullable(ctx)}
+			col = scopeColumn{id: columnId(arg.Id()), tableId: arg.TableID(), db: arg.Database(), table: arg.Table(), col: arg.Name(), scalar: arg, typ: arg.Type(ctx), nullable: arg.IsNullable(ctx)}
 		case *plan.Subquery:
 			col = scopeColumn{col: arg.QueryString, scalar: arg, typ: arg.Type(ctx)}
 		default:
@@ -729,20 +729,20 @@ func (b *Builder) buildWindow(fromScope, projScope *scope) *scope {
 	var selectExprs []sql.Expression
 	var selectGfs []sql.Expression
 	selectStr := make(map[string]bool)
-	windowStr := make(map[string]bool)
+	windowIds := make(map[uint64]bool)
 	for _, col := range fromScope.windowFuncs {
 		e := col.scalar
-		if !windowStr[e.String()] || expressionIsNonDeterministic(b.ctx, e) {
-			switch e.(type) {
-			case sql.WindowAdaptableExpression:
-				windowStr[e.String()] = true
-				selectStr[strings.ToLower(e.String())] = true
-				selectExprs = append(selectExprs, e)
-				selectGfs = append(selectGfs, col.scalarGf())
-			default:
-				err := fmt.Errorf("expected window function to be sql.WindowAggregation")
-				b.handleErr(err)
-			}
+		windowExpr, ok := e.(sql.WindowAdaptableExpression)
+		if !ok {
+			b.handleErr(fmt.Errorf("expected window function to be sql.WindowAggregation"))
+			continue
+		}
+		windowId := sql.WindowExpressionId(windowExpr)
+		if !windowIds[windowId] || expressionIsNonDeterministic(b.ctx, e) {
+			windowIds[windowId] = true
+			selectStr[strings.ToLower(e.String())] = true
+			selectExprs = append(selectExprs, e)
+			selectGfs = append(selectGfs, col.scalarGf())
 		}
 	}
 	var aliases []sql.Expression
