@@ -2327,6 +2327,14 @@ var FunctionQueryTests = []QueryTest{
 	},
 
 	{
+		Query: "select cast('2001-02-03 ' as datetime(6));",
+		Expected: []sql.Row{
+			{time.Date(2001, time.February, 3, 0, 0, 0, 0, time.UTC)},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
 		Query: "select cast('2001-02-03 12' as datetime(6));",
 		Expected: []sql.Row{
 			{time.Date(2001, time.February, 3, 12, 0, 0, 0, time.UTC)},

@@ -61,7 +61,7 @@ func getDatePart(ctx *sql.Context,
 	}
 
 	date, err := getDate(ctx, val)
-	if err != nil {
+	if err != nil && !sql.IsConvertWarning(err) {
 		return nil, err
 	}
 	if date == nil {

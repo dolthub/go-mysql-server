@@ -629,70 +629,84 @@ func (t datetimeType) parseDatetime(origStr string) (any, error) {
 	}
 
 	var yearStr, monthStr, dayStr, hourStr, minStr, secStr, microStr string
-	var delimWarn, ok bool
 	dtStr := str
+
+	// if |yearStr| exceeds MinDatetimeStringLength AND is the end of the string OR is delimited by '.', then
+	// we treat |yearStr| as a non-delimited date string with the remainder of the string
 	yearStr, str = readFuncN(str, -1, unicode.IsDigit)
 	if len(yearStr) >= MinDatetimeStringLength && (len(str) == 0 || str[0] == '.') {
-		// if |yearStr| exceeds MinDatetimeStringLength AND is the end of the string OR is delimited by '.', then
-		// we treat |yearStr| as a non-delimited date string with the remainder of the string
-
 		// depending on the length of yearStr, we will interpret the date as having a two-digit year or four-digit year
 		yearLen := 2
 		if len(yearStr) == FourDigitNoDelimDatetimeLength || len(yearStr) >= MaxNoDelimDatetimeLength {
 			yearLen = 4
 		}
-		yearStr, dtStr = readFuncN(dtStr, yearLen, unicode.IsDigit)
-		monthStr, dtStr = readFuncN(dtStr, 2, unicode.IsDigit)
-		dayStr, dtStr = readFuncN(dtStr, 2, unicode.IsDigit)
-		trimStr, dtStr = readFuncN(dtStr, -1, isMySQLPunct)
-		hourStr, minStr, secStr, str, _, ok = readTime(dtStr, 2)
-		if !ok {
-			return nil, sql.ErrIncorrectValue.New(t.String(), origStr)
-		}
-		microStr, str = readMicros(str)
-	} else if len(str) > 0 {
-		delim := rune(str[0])
-		trimStr, str = readFuncN(str, -1, isMySQLPunct)
-		if len(trimStr) > 1 || delim != '-' {
-			err = sql.ErrDeprecatedDelimiter.New(delim, t.String(), origStr)
-		}
+		// restart parsing from beginning of yearStr
+		yearStr, str = readFuncN(dtStr, yearLen, unicode.IsDigit)
+	}
 
-		// if this particular delimiter is '.', we can use a "relaxed" datetime parsing format
-		// in the "strict" format, date/time parts consist of any number of digits that must be delimited
-		// in the "relaxed" format, date/time parts consist of up to 2 digits with optional delimiters
-		numDigits := -1
-		if delim == '.' {
-			numDigits = 2
-		}
-
-		monthStr, str = readFuncN(str, numDigits, unicode.IsDigit)
-		trimStr, str = readFuncN(str, -1, isMySQLPunct)
-		if len(trimStr) > 1 {
-			err = sql.ErrDeprecatedDelimiter.New(delim, t.String(), origStr)
-		}
-
-		dayStr, str = readFuncN(str, numDigits, unicode.IsDigit)
-		trimStr, str = readFuncN(str, -1, func(r rune) bool {
-			return isMySQLPunct(r) || isMySQLDatetimeWhitespace(r)
-		})
-		if len(trimStr) > 1 {
-			err = sql.ErrDeprecatedDelimiter.New(delim, t.String(), origStr)
-		}
-		if len(str) == 0 && len(trimStr) > 0 {
-			err = sql.ErrTruncatedIncorrect.New(t.String(), origStr)
-		}
-
-		hourStr, minStr, secStr, str, delimWarn, ok = readTime(str, numDigits)
-		if !ok {
-			return nil, sql.ErrIncorrectValue.New(t.String(), origStr)
-		}
-		if delimWarn {
-			err = sql.ErrDeprecatedDelimiter.New(delim, t.String(), origStr)
-		}
-		microStr, str = readMicros(str)
-	} else {
+	if len(str) == 0 {
 		return nil, sql.ErrIncorrectValue.New(t.String(), origStr)
 	}
+
+	delim := rune(str[0])
+	trimStr, str = readFuncN(str, -1, isMySQLPunct)
+	if len(trimStr) > 1 || (isMySQLPunct(delim) && delim != '-') {
+		err = sql.ErrDeprecatedDelimiter.New(delim, t.String(), origStr)
+	}
+
+	// If this particular delimiter is MySQL punctuation but not '.', we use a "strict" datetime parsing format.
+	// Otherwise, we use a "relaxed" datetime parsing format. Invalid characters are ignored and dealt with later.
+	// In the "strict" format, date/time parts consist of any number of digits that must be delimited.
+	// In the "relaxed" format, date/time parts consist of up to 2 digits with optional delimiters.
+	numDigits := 2
+	if isMySQLPunct(delim) && delim != '.' {
+		numDigits = -1
+	}
+
+	monthStr, str = readFuncN(str, numDigits, unicode.IsDigit)
+	trimStr, str = readFuncN(str, -1, isMySQLPunct)
+	if len(trimStr) > 1 {
+		err = sql.ErrDeprecatedDelimiter.New(delim, t.String(), origStr)
+	}
+
+	dayStr, str = readFuncN(str, numDigits, unicode.IsDigit)
+	trimStr, str = readFuncN(str, -1, func(r rune) bool {
+		return isMySQLPunct(r) || isMySQLDatetimeWhitespace(r)
+	})
+	if len(trimStr) > 1 {
+		err = sql.ErrDeprecatedDelimiter.New(delim, t.String(), origStr)
+	}
+	// trailing punctuation/whitespaces after day results in a truncation error
+	if len(str) == 0 && len(trimStr) > 0 {
+		err = sql.ErrTruncatedIncorrect.New(t.String(), origStr)
+	}
+
+	hourStr, str = readFuncN(str, numDigits, unicode.IsDigit)
+	trimStr, str = readFuncN(str, -1, isMySQLPunct)
+	if len(trimStr) > 1 {
+		err = sql.ErrDeprecatedDelimiter.New(delim, t.String(), origStr)
+	}
+
+	// trailing space(s) after hour results in NULL
+	trimStr, str = readFuncN(str, -1, isMySQLDatetimeWhitespace)
+	if len(hourStr) > 0 && len(trimStr) > 0 {
+		return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
+	}
+
+	minStr, str = readFuncN(str, numDigits, unicode.IsDigit)
+	trimStr, str = readFuncN(str, -1, isMySQLPunct)
+	if len(trimStr) > 1 {
+		err = sql.ErrDeprecatedDelimiter.New(delim, t.String(), origStr)
+	}
+
+	// trailing space(s) after minute results in NULL
+	trimStr, str = readFuncN(str, -1, isMySQLDatetimeWhitespace)
+	if len(minStr) > 0 && len(trimStr) > 0 {
+		return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
+	}
+
+	secStr, str = readFuncN(str, numDigits, unicode.IsDigit)
+	microStr, str = readMicros(str)
 
 	year, month, day, ok := parseDateParts(yearStr, monthStr, dayStr)
 	if !ok {
@@ -712,6 +726,7 @@ func (t datetimeType) parseDatetime(origStr string) (any, error) {
 		return nil, sql.ErrIncorrectValue.New(t.String(), origStr)
 	}
 
+	// any trailing characters result in a truncation error
 	if len(str) > 0 {
 		err = sql.ErrTruncatedIncorrect.New(t.String(), origStr)
 	}
