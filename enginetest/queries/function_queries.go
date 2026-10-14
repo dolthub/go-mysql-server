@@ -1219,6 +1219,24 @@ var FunctionQueryTests = []QueryTest{
 		Query:    "select timestampdiff(week, '0000-03-01', '9999-12-31 23:59:59.999999');",
 		Expected: []sql.Row{{521766}},
 	},
+	{
+		Query:                 "select timestampdiff(DAY, 'invalid', '2020-01-01');",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query:                 "select timestampdiff(DAY, '2020-01-01', 'invalid');",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query:                 "select timestampdiff(DAY, 'invalid', 'also bad');",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
 	// TRIM Function Tests
 	{
 		Query:    `SELECT TRIM(mytable.s) AS s FROM mytable`,

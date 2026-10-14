@@ -649,11 +649,13 @@ func (t *TimestampDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	expr1, _, err = types.DatetimeMaxPrecision.Convert(ctx, expr1)
 	if err != nil && !sql.HandleConvertWarning(ctx, err) {
 		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
+		return nil, nil
 	}
 
 	expr2, _, err = types.DatetimeMaxPrecision.Convert(ctx, expr2)
 	if err != nil && !sql.HandleConvertWarning(ctx, err) {
 		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
+		return nil, nil
 	}
 
 	unit, err := t.unit.Eval(ctx, row)
