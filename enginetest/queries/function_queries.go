@@ -2480,6 +2480,14 @@ var FunctionQueryTests = []QueryTest{
 		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 	},
 	{
+		Query: "SELECT CAST('2020.0101T123456' AS DATETIME);",
+		Expected: []sql.Row{
+			{time.Date(2020, 1, 1, 12, 34, 56, 0, time.UTC)},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       4096,
+	},
+	{
 		Query: "select cast('20101-' as datetime(6));",
 		Expected: []sql.Row{
 			{nil},
