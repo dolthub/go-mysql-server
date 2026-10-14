@@ -553,52 +553,19 @@ func parseMicros(microStr string) (micros int, ok bool) {
 	return micros, true
 }
 
-// readNoDelimDatetime will read
-// TODO: str is expected to be unbroken string of digits with length >= MinDatetimeStringLength
-func readNoDelimDatetime(str string) (yearStr, monthStr, dayStr, hourStr, minStr, secStr, remain string) {
-	// depending on the length of str, we will interpret the date as having a two-digit year or four-digit year
-	yearLen := 2
-	if len(str) == FourDigitNoDelimDatetimeLength || len(str) >= MaxNoDelimDatetimeLength {
-		yearLen = 4
+// readMicros takes in a string and splits it into a valid microsecond and the remaining string according to
+// MySQL's rules.
+func readMicros(str string) (string, string) {
+	if len(str) == 0 || str[0] != '.' {
+		return "", str
 	}
-	yearStr, str = readFuncN(str, yearLen, unicode.IsDigit)
-	monthStr, str = readFuncN(str, 2, unicode.IsDigit)
-	dayStr, str = readFuncN(str, 2, unicode.IsDigit)
-	hourStr, str = readFuncN(str, 2, unicode.IsDigit)
-	minStr, str = readFuncN(str, 2, unicode.IsDigit)
-	secStr, remain = readFuncN(str, 2, unicode.IsDigit)
-	return
-}
-
-func readTime(str string, numDigits int) (hourStr, minStr, secStr, remain string, delimWarn, ok bool) {
-	var trimStr string
-	hourStr, remain = readFuncN(str, numDigits, unicode.IsDigit)
-	trimStr, remain = readFuncN(remain, -1, isMySQLPunct)
-	if len(trimStr) > 1 {
-		delimWarn = true
+	var idx int
+	for idx = 1; idx < len(str); idx++ {
+		if !unicode.IsDigit(rune(str[idx])) {
+			break
+		}
 	}
-
-	// trailing space(s) after hour results in NULL
-	trimStr, remain = readFuncN(remain, -1, isMySQLDatetimeWhitespace)
-	if len(hourStr) > 0 && len(trimStr) > 0 {
-		return
-	}
-
-	minStr, remain = readFuncN(remain, numDigits, unicode.IsDigit)
-	trimStr, remain = readFuncN(remain, -1, isMySQLPunct)
-	if len(trimStr) > 1 {
-		delimWarn = true
-	}
-
-	// trailing space(s) after minute results in NULL
-	trimStr, remain = readFuncN(remain, -1, isMySQLDatetimeWhitespace)
-	if len(hourStr) > 0 && len(trimStr) > 0 {
-		return
-	}
-
-	secStr, remain = readFuncN(remain, numDigits, unicode.IsDigit)
-	ok = true
-	return
+	return str[:idx], str[idx:]
 }
 
 // parseDatetime parses a Datetime according to MySQL rules.
@@ -631,16 +598,16 @@ func (t datetimeType) parseDatetime(origStr string) (any, error) {
 	var yearStr, monthStr, dayStr, hourStr, minStr, secStr, microStr string
 	dtStr := str
 
-	// if |yearStr| exceeds MinDatetimeStringLength AND is the end of the string OR is delimited by '.', then
-	// we treat |yearStr| as a non-delimited date string with the remainder of the string
+	// If |yearStr| exceeds MinDatetimeStringLength AND is the end of the string OR is delimited by '.', then
+	// |yearStr| is treated as a non-delimited date string with the remainder of the string
 	yearStr, str = readFuncN(str, -1, unicode.IsDigit)
 	if len(yearStr) >= MinDatetimeStringLength && (len(str) == 0 || str[0] == '.') {
-		// depending on the length of yearStr, we will interpret the date as having a two-digit year or four-digit year
+		// Depending on the length of yearStr, the date is interpreted as having a two-digit year or four-digit year
 		yearLen := 2
 		if len(yearStr) == FourDigitNoDelimDatetimeLength || len(yearStr) >= MaxNoDelimDatetimeLength {
 			yearLen = 4
 		}
-		// restart parsing from beginning of yearStr
+		// Restart parsing from beginning of |yearStr|
 		yearStr, str = readFuncN(dtStr, yearLen, unicode.IsDigit)
 	}
 
@@ -676,7 +643,7 @@ func (t datetimeType) parseDatetime(origStr string) (any, error) {
 	if len(trimStr) > 1 {
 		err = sql.ErrDeprecatedDelimiter.New(delim, t.String(), origStr)
 	}
-	// trailing punctuation/whitespaces after day results in a truncation error
+	// Trailing punctuation/whitespace(s) after day results in a truncation error
 	if len(str) == 0 && len(trimStr) > 0 {
 		err = sql.ErrTruncatedIncorrect.New(t.String(), origStr)
 	}
@@ -687,7 +654,7 @@ func (t datetimeType) parseDatetime(origStr string) (any, error) {
 		err = sql.ErrDeprecatedDelimiter.New(delim, t.String(), origStr)
 	}
 
-	// trailing space(s) after hour results in NULL
+	// Trailing whitespace(s) after hour results in NULL
 	trimStr, str = readFuncN(str, -1, isMySQLDatetimeWhitespace)
 	if len(hourStr) > 0 && len(trimStr) > 0 {
 		return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
@@ -699,7 +666,7 @@ func (t datetimeType) parseDatetime(origStr string) (any, error) {
 		err = sql.ErrDeprecatedDelimiter.New(delim, t.String(), origStr)
 	}
 
-	// trailing space(s) after minute results in NULL
+	// Trailing whitespace(s) after minute results in NULL
 	trimStr, str = readFuncN(str, -1, isMySQLDatetimeWhitespace)
 	if len(minStr) > 0 && len(trimStr) > 0 {
 		return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
@@ -726,26 +693,11 @@ func (t datetimeType) parseDatetime(origStr string) (any, error) {
 		return nil, sql.ErrIncorrectValue.New(t.String(), origStr)
 	}
 
-	// any trailing characters result in a truncation error
+	// Any trailing character(s) result in a truncation error
 	if len(str) > 0 {
 		err = sql.ErrTruncatedIncorrect.New(t.String(), origStr)
 	}
 	return res, err
-}
-
-// readMicros takes in a string and splits it into a valid microsecond and the remaining string according to
-// MySQL's rules.
-func readMicros(str string) (string, string) {
-	if len(str) == 0 || str[0] != '.' {
-		return "", str
-	}
-	var idx int
-	for idx = 1; idx < len(str); idx++ {
-		if !unicode.IsDigit(rune(str[idx])) {
-			break
-		}
-	}
-	return str[:idx], str[idx:]
 }
 
 const (
