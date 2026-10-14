@@ -161,8 +161,7 @@ func TestDatetimeConvert(t *testing.T) {
 	}
 	tests := []testcase{
 		{Date, nil, nil, false},
-		{Date, time.Date(2012, 12, 12, 12, 12, 12, 12, time.UTC),
-			time.Date(2012, 12, 12, 0, 0, 0, 0, time.UTC), false},
+		{Date, time.Date(2012, 12, 12, 12, 12, 12, 12, time.UTC), time.Date(2012, 12, 12, 0, 0, 0, 0, time.UTC), false},
 		{Date, "2010-06-03", time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
 		{Date, "2010-6-3", time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
 		{Date, "2010-6-03", time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
@@ -173,10 +172,10 @@ func TestDatetimeConvert(t *testing.T) {
 		{Date, "2010-06-03T12:12:12.000012Z", time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
 		{Date, "20100603", time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
 		{Date, "20100603121212", time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
-		{Date, " 2010-06-03", time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
-		{Date, "2010-06-03 ", time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
-		{Date, " 2010-06-03 ", time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
-		{Date, "\t2010-06-03\n", time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
+		{Date, " 2010-06-03", time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), true},
+		{Date, "2010-06-03 ", time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), true},
+		{Date, " 2010-06-03 ", time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), true},
+		{Date, "\t2010-06-03\n", time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), true},
 
 		{DatetimeMaxPrecision, nil, nil, false},
 		{DatetimeMaxPrecision, time.Date(2012, 12, 12, 12, 12, 12, 12, time.UTC),
@@ -289,7 +288,7 @@ func TestDatetimeConvert(t *testing.T) {
 		{Date, uint64(0), ZeroTime, false},
 		{Date, float32(0), ZeroTime, false},
 		{Date, float64(0), ZeroTime, false},
-		{Date, "00-00-00", ZeroTime, true},
+		{Date, "00-00-00", ZeroTime, false},
 		{Date, "0000-00-00", ZeroTime, false},
 		{Date, "0000-00-00 00:00:00.000000", ZeroTime, false},
 		{Date, "0000-00-00 00:00:00", ZeroTime, false},
@@ -312,7 +311,7 @@ func TestDatetimeConvert(t *testing.T) {
 		{DatetimeMaxPrecision, uint64(0), ZeroTime, false},
 		{DatetimeMaxPrecision, float32(0), ZeroTime, false},
 		{DatetimeMaxPrecision, float64(0), ZeroTime, false},
-		{DatetimeMaxPrecision, "00-00-00", ZeroTime, true},
+		{DatetimeMaxPrecision, "00-00-00", ZeroTime, false},
 		{DatetimeMaxPrecision, "0000-00-00", ZeroTime, false},
 		{DatetimeMaxPrecision, "0000-00-00 00:00:00.000000", ZeroTime, false},
 		{DatetimeMaxPrecision, "0000-00-00 00:00:00", ZeroTime, false},
@@ -336,7 +335,7 @@ func TestDatetimeConvert(t *testing.T) {
 		{TimestampMaxPrecision, uint64(0), ZeroTime, false},
 		{TimestampMaxPrecision, float32(0), ZeroTime, false},
 		{TimestampMaxPrecision, float64(0), ZeroTime, false},
-		{TimestampMaxPrecision, "00-00-00", nil, true},
+		{TimestampMaxPrecision, "00-00-00", ZeroTime, false},
 		{TimestampMaxPrecision, "0000-00-00", ZeroTime, false},
 		{TimestampMaxPrecision, "0000-00-00 00:00:00.000000", ZeroTime, false},
 		{TimestampMaxPrecision, "0000-00-00 00:00:00", ZeroTime, false},
@@ -388,11 +387,6 @@ func TestDatetimeConvert(t *testing.T) {
 			val, _, err := test.typ.Convert(ctx, test.val)
 			if test.expectedErr {
 				assert.Error(t, err)
-				return
-			}
-			// We throw ErrTruncatedIncorrect for ZeroTime, but still want to check that it returned it
-			if !sql.ErrTruncatedIncorrect.Is(err) {
-				require.NoError(t, err)
 			}
 			assert.Equal(t, test.expectedVal, val)
 			if val != nil {

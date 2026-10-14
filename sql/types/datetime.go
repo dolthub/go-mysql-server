@@ -508,8 +508,7 @@ func parseDateParts(yearStr, monthStr, dayStr string) (year, month, day int, ok 
 		return 0, 0, 0, false
 	}
 	// MySQL special case for abbreviated ('00) date formats
-	// TODO: there's a special special case for 00-00-00
-	if len(yearStr) == 2 {
+	if (year != 0 || month != 0 || day != 0) && len(yearStr) == 2 {
 		year = TwoDigitYear(year)
 	}
 	return year, month, day, true
@@ -685,6 +684,9 @@ func (t datetimeType) parseDatetime(origStr string) (any, error) {
 		})
 		if len(trimStr) > 1 {
 			err = sql.ErrDeprecatedDelimiter.New(delim, t.String(), origStr)
+		}
+		if len(str) == 0 && len(trimStr) > 0 {
+			err = sql.ErrTruncatedIncorrect.New(t.String(), origStr)
 		}
 
 		hourStr, minStr, secStr, str, delimWarn, ok = readTime(str, numDigits)
