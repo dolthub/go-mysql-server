@@ -26,6 +26,8 @@ github.com/dolthub/vitess v0.0.0-20260930232419-a6b7b0c65d17 h1:ybmsrwM4mBagCff/
 github.com/dolthub/vitess v0.0.0-20260930232419-a6b7b0c65d17/go.mod h1:5SVEJgAhw5nnQUFnGgKI1Svqes1Mw+zKUsalyxmOuG0=
 github.com/dolthub/vitess v0.0.0-20261007222241-441dd42e89d4 h1:efbmEXWDMh/89YUB3M8B+HVEJJB2aSOzIxZQTsjdS3I=
 github.com/dolthub/vitess v0.0.0-20261007222241-441dd42e89d4/go.mod h1:5SVEJgAhw5nnQUFnGgKI1Svqes1Mw+zKUsalyxmOuG0=
+github.com/dolthub/vitess v0.0.0-20261014211039-3e903c0f05d3 h1:zdOYpSgRh+CSpUutZQ/OerM9HD+srjQHfItDFT5S2hk=
+github.com/dolthub/vitess v0.0.0-20261014211039-3e903c0f05d3/go.mod h1:5SVEJgAhw5nnQUFnGgKI1Svqes1Mw+zKUsalyxmOuG0=
 github.com/go-sql-driver/mysql v1.4.1/go.mod h1:zAC/RDZ24gD3HViQzih4MyKcchzm+sOG5ZlKdlhCg5w=
 github.com/go-sql-driver/mysql v1.5.0/go.mod h1:DCzpHaOWr8IXmIStZouvnhqoel9Qv2LBy8hT2VhHyBg=
 github.com/go-sql-driver/mysql v1.6.0/go.mod h1:DCzpHaOWr8IXmIStZouvnhqoel9Qv2LBy8hT2VhHyBg=
