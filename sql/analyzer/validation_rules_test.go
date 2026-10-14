@@ -15,6 +15,7 @@
 package analyzer
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -797,4 +798,41 @@ func (dummyNode) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 
 func getValidationRule(id RuleId) *Rule {
 	return getRuleFrom(DefaultValidationRules, id)
+}
+
+func TestResolveDropColumnIfExists(t *testing.T) {
+	db := memory.NewDatabase("db")
+	ctx := newContext(memory.NewDBProvider(db))
+	sch := sql.Schema{{Name: "id", Source: "t", Type: types.Int64}, {Name: "c", Source: "t", Type: types.Text}}
+	table := plan.NewResolvedTable(memory.NewTable(ctx, db, "t", sql.NewPrimaryKeySchema(sch), nil), db, nil)
+	for _, tc := range []struct {
+		name      string
+		ifExists  bool
+		wantError bool
+		wantNoop  bool
+	}{
+		{"missing", true, false, true},
+		{"missing", false, true, false},
+		{"c", true, false, false},
+	} {
+		t.Run(tc.name+fmt.Sprint(tc.ifExists), func(t *testing.T) {
+			drop := plan.NewDropColumnResolved(table, tc.name)
+			drop.IfExists = tc.ifExists
+			node, err := drop.WithTargetSchema(sch)
+			require.NoError(t, err)
+			flags := &sql.QueryFlags{}
+			flags.Set(sql.QFlagAlterTable)
+			result, _, err := resolveAlterColumn(ctx, nil, node, nil, DefaultRuleSelector, flags)
+			if tc.wantError {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			if tc.wantNoop {
+				require.Equal(t, plan.NothingImpl, result)
+			} else {
+				require.IsType(t, &plan.DropColumn{}, result)
+			}
+		})
+	}
 }
