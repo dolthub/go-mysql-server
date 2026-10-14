@@ -2448,6 +2448,38 @@ var FunctionQueryTests = []QueryTest{
 		ExpectedWarning:       4096,
 	},
 	{
+		Query: "SELECT CAST('   2020-01-01T12:34:56   ' AS DATETIME);",
+		Expected: []sql.Row{
+			{time.Date(2020, 1, 1, 12, 34, 56, 0, time.UTC)},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       4096,
+	},
+	{
+		Query: "SELECT CAST('   2020-01-01t12:34:56   ' AS DATETIME);",
+		Expected: []sql.Row{
+			{time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "SELECT CAST('   2020-01-01TTT12:34:56   ' AS DATETIME);",
+		Expected: []sql.Row{
+			{time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "SELECT CAST('   2020-01-01 T 12:34:56   ' AS DATETIME);",
+		Expected: []sql.Row{
+			{time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
 		Query: "select cast('20101-' as datetime(6));",
 		Expected: []sql.Row{
 			{nil},
