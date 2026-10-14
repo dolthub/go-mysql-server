@@ -438,3 +438,33 @@ func TestStringString(t *testing.T) {
 		})
 	}
 }
+
+
+// TestConvertToBytesCharLengthCharset verifies that the maximum byte length of a
+// CHAR/VARCHAR column is computed from the column's character set, not by counting
+// runes. A 4-byte character (U+1D11E, MUSICAL SYMBOL G CLEF) must be rejected by a
+// CHAR(1) CHARACTER SET utf8mb3 column, since utf8mb3 allows at most 3 bytes per char.
+// See dolthub/go-mysql-server#3846.
+func TestConvertToBytesCharLengthCharset(t *testing.T) {
+	ctx := context.Background()
+	// U+1D11E is 4 bytes in UTF-8: F0 9D 84 9E
+	fourByteChar := "\U0001D11E"
+	assert.Equal(t, 4, len(fourByteChar))
+
+	// utf8mb3 CHAR(1): max 3 bytes -> a 4-byte character must be rejected.
+	tUtf8mb3 := MustCreateString(sqltypes.Char, 1, sql.Collation_utf8mb3_general_ci)
+	_, err := ConvertToBytes(ctx, fourByteChar, tUtf8mb3, nil)
+	assert.Error(t, err, "4-byte character must not fit in CHAR(1) CHARACTER SET utf8mb3")
+
+	// utf8mb4 CHAR(1): max 4 bytes -> a 4-byte character must be accepted.
+	tUtf8mb4 := MustCreateString(sqltypes.Char, 1, sql.Collation_utf8mb4_0900_ai_ci)
+	val, err := ConvertToBytes(ctx, fourByteChar, tUtf8mb4, nil)
+	assert.NoError(t, err, "4-byte character must fit in CHAR(1) CHARACTER SET utf8mb4")
+	assert.Equal(t, []byte(fourByteChar), val)
+
+	// utf8mb3 CHAR(2): max 6 bytes -> the same 4-byte character must be accepted.
+	tUtf8mb3Two := MustCreateString(sqltypes.Char, 2, sql.Collation_utf8mb3_general_ci)
+	val, err = ConvertToBytes(ctx, fourByteChar, tUtf8mb3Two, nil)
+	assert.NoError(t, err, "4-byte character must fit in CHAR(2) CHARACTER SET utf8mb3")
+	assert.Equal(t, []byte(fourByteChar), val)
+}
