@@ -829,7 +829,7 @@ func TestResolveDropColumnIfExists(t *testing.T) {
 			}
 			require.NoError(t, err)
 			if tc.wantNoop {
-				require.IsType(t, &plan.Block{}, result)
+				require.IsType(t, plan.NoopDDL{}, result)
 				require.Empty(t, result.Children())
 			} else {
 				require.IsType(t, &plan.DropColumn{}, result)

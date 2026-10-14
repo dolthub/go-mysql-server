@@ -277,7 +277,7 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 			return n, transform.NewTree, nil
 		case *plan.DropColumn:
 			if nn.IfExists && !sch.Contains(nn.Column, nn.Table.(sql.Nameable).Name()) {
-				return plan.NewBlock(nil), transform.NewTree, nil
+				return plan.NoopDDL{}, transform.NewTree, nil
 			}
 			n, err := nn.WithTargetSchema(sch.Copy())
 			if err != nil {
