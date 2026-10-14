@@ -1282,7 +1282,7 @@ func IsConvertWarning(err error) bool {
 
 func HandleConvertWarning(ctx *Context, err error) bool {
 	switch {
-	case ErrTruncatedIncorrect.Is(err) || ErrIncorrectValue.Is(err):
+	case ErrTruncatedIncorrect.Is(err):
 		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	case ErrDeprecatedDelimiter.Is(err):
 		ctx.Warn(4096, "%s", err.Error()) // TODO: update vitess with warning code
