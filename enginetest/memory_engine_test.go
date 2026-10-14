@@ -200,7 +200,7 @@ func TestSingleScript(t *testing.T) {
 			SetUpScript: []string{},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "select cast('2001-02-03.123456' as datetime(6));",
+					Query:    "SELECT CAST(DATE_ADD(TIMEDIFF('12:13:14', '0:0:0'), INTERVAL 1 HOUR) as char);",
 					Expected: []sql.Row{},
 				},
 			},

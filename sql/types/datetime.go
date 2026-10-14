@@ -550,29 +550,16 @@ func isMySQLPunct(char rune) bool {
 		(char >= 0x7B && char <= 0x7E)
 }
 
-func trimLeftFunc(str string, f func(rune) bool) (string, int) {
+// readFuncN will return a slice of the string |s| where all runes satisfy |f|.
+// The count |n| indicates the maximum number of runes to match, where n < 0 indicates any number of matches.
+func readFuncN(str string, n int, f func(rune) bool) (string, string) {
 	for idx, char := range str {
-		if !f(char) {
-			return str[idx:], idx
+		if !f(char) || n == 0 {
+			return str[:idx], str[idx:]
 		}
+		n -= 1
 	}
-	return str, len(str)
-}
-
-// readDigits will read at most |numDigits| digits from |str|, where -1 means unlimited number of digits.
-// The return values are a string of digits read and the remainder of the string.
-func readDigits(str string, numDigits int) (string, string) {
-	readLen := len(str)
-	if numDigits > 0 {
-		readLen = min(readLen, numDigits)
-	}
-	var idx int
-	for idx = 0; idx < readLen; idx++ {
-		if !unicode.IsDigit(rune(str[idx])) {
-			break
-		}
-	}
-	return str[:idx], str[idx:]
+	return str, ""
 }
 
 func parseDateParts(yearStr, monthStr, dayStr string) (year, month, day int, ok bool) {
@@ -637,50 +624,46 @@ func parseMicros(microStr string) (micros int, ok bool) {
 // TODO: str is expected to be unbroken string of digits with length >= MinDatetimeStringLength
 func readNoDelimDatetime(str string) (yearStr, monthStr, dayStr, hourStr, minStr, secStr, remain string) {
 	// depending on the length of str, we will interpret the date as having a two-digit year or four-digit year
-	strLen := len(str)
-	if strLen == FourDigitNoDelimDatetimeLength || strLen >= MaxNoDelimDatetimeLength {
-		yearStr, str = str[:4], str[4:]
-	} else {
-		yearStr, str = str[:2], str[2:]
+	yearLen := 2
+	if len(str) == FourDigitNoDelimDatetimeLength || len(str) >= MaxNoDelimDatetimeLength {
+		yearLen = 4
 	}
-	monthStr, str = str[:2], str[2:] // guaranteed not to panic
-	if len(str) == 1 {
-		dayStr, str = str[:1], str[1:]
-	} else {
-		dayStr, str = str[:2], str[2:]
-	}
-	hourStr = safeSubstr(str, 0, 2)
-	minStr = safeSubstr(str, 2, 4)
-	secStr = safeSubstr(str, 4, 6)
-	remain = str[len(hourStr)+len(minStr)+len(secStr):]
+	yearStr, str = readFuncN(str, yearLen, unicode.IsDigit)
+	monthStr, str = readFuncN(str, 2, unicode.IsDigit)
+	dayStr, str = readFuncN(str, 2, unicode.IsDigit)
+	hourStr, str = readFuncN(str, 2, unicode.IsDigit)
+	minStr, str = readFuncN(str, 2, unicode.IsDigit)
+	secStr, remain = readFuncN(str, 2, unicode.IsDigit)
 	return
 }
 
 func readTime(str string, numDigits int) (hourStr, minStr, secStr, remain string, delimWarn, ok bool) {
-	var trimCnt int
-	hourStr, remain = readDigits(str, numDigits)
-	remain, trimCnt = trimLeftFunc(remain, isMySQLPunct)
-	if trimCnt > 1 {
+	var trimStr string
+	hourStr, remain = readFuncN(str, numDigits, unicode.IsDigit)
+	trimStr, remain = readFuncN(remain, -1, isMySQLPunct)
+	if len(trimStr) > 1 {
 		delimWarn = true
 	}
+
 	// trailing space(s) after hour results in NULL
-	remain, trimCnt = trimLeftFunc(remain, isMySQLDatetimeWhitespace)
-	if len(hourStr) > 0 && trimCnt > 0 {
+	trimStr, remain = readFuncN(remain, -1, isMySQLDatetimeWhitespace)
+	if len(hourStr) > 0 && len(trimStr) > 0 {
 		return
 	}
 
-	minStr, remain = readDigits(remain, numDigits)
-	remain, trimCnt = trimLeftFunc(remain, isMySQLPunct)
-	if trimCnt > 1 {
+	minStr, remain = readFuncN(remain, numDigits, unicode.IsDigit)
+	trimStr, remain = readFuncN(remain, -1, isMySQLPunct)
+	if len(trimStr) > 1 {
 		delimWarn = true
 	}
+
 	// trailing space(s) after minute results in NULL
-	remain, trimCnt = trimLeftFunc(remain, isMySQLDatetimeWhitespace)
-	if len(hourStr) > 0 && trimCnt > 0 {
+	trimStr, remain = readFuncN(remain, -1, isMySQLDatetimeWhitespace)
+	if len(hourStr) > 0 && len(trimStr) > 0 {
 		return
 	}
 
-	secStr, remain = readDigits(remain, numDigits)
+	secStr, remain = readFuncN(remain, numDigits, unicode.IsDigit)
 	ok = true
 	return
 }
@@ -695,17 +678,17 @@ func (t datetimeType) parseDatetime(origStr string) (any, error) {
 
 	// Trim whitespaces
 	var err error
-	str, trimCnt := trimLeftFunc(origStr, isMySQLDatetimeWhitespace)
-	if len(str) == 0 { // TODO: necessary?
+	trimStr, str := readFuncN(origStr, -1, isMySQLDatetimeWhitespace)
+	if len(str) == 0 {
 		return nil, sql.ErrIncorrectValue.New(t.String(), origStr)
 	}
-	if trimCnt > 0 {
+	if len(trimStr) > 0 {
 		err = sql.ErrDeprecatedDelimiter.New(origStr[0], t.String(), origStr)
 	}
 
 	var yearStr, monthStr, dayStr, hourStr, minStr, secStr, microStr string
 	var delimWarn, ok bool
-	yearStr, str = readDigits(str, -1)
+	yearStr, str = readFuncN(str, -1, unicode.IsDigit)
 	if len(yearStr) >= MinDatetimeStringLength && (len(str) == 0 || str[0] == '.') {
 		var remain string
 		yearStr, monthStr, dayStr, hourStr, minStr, secStr, remain = readNoDelimDatetime(yearStr)
@@ -735,8 +718,8 @@ func (t datetimeType) parseDatetime(origStr string) (any, error) {
 		}
 	} else if len(str) > 0 {
 		delim := rune(str[0])
-		str, trimCnt = trimLeftFunc(str, isMySQLPunct)
-		if trimCnt > 1 || delim != '-' {
+		trimStr, str = readFuncN(str, -1, isMySQLPunct)
+		if len(trimStr) > 1 || delim != '-' {
 			err = sql.ErrDeprecatedDelimiter.New(delim, t.String(), origStr)
 		}
 
@@ -748,16 +731,17 @@ func (t datetimeType) parseDatetime(origStr string) (any, error) {
 			numDigits = 2
 		}
 
-		monthStr, str = readDigits(str, numDigits)
-		str, trimCnt = trimLeftFunc(str, isMySQLPunct)
-		if trimCnt > 1 {
+		monthStr, str = readFuncN(str, numDigits, unicode.IsDigit)
+		trimStr, str = readFuncN(str, -1, isMySQLPunct)
+		if len(trimStr) > 1 {
 			err = sql.ErrDeprecatedDelimiter.New(delim, t.String(), origStr)
 		}
-		dayStr, str = readDigits(str, numDigits)
-		str, trimCnt = trimLeftFunc(str, func(r rune) bool {
+
+		dayStr, str = readFuncN(str, numDigits, unicode.IsDigit)
+		trimStr, str = readFuncN(str, -1, func(r rune) bool {
 			return isMySQLPunct(r) || isMySQLDatetimeWhitespace(r)
 		})
-		if trimCnt > 1 {
+		if len(trimStr) > 1 {
 			err = sql.ErrDeprecatedDelimiter.New(delim, t.String(), origStr)
 		}
 
