@@ -204,6 +204,10 @@ func (testIndex) IsVector() bool {
 	return false
 }
 
+func (testIndex) IsPrimary() bool {
+	return false
+}
+
 func (testIndex) Comment() string {
 	return ""
 }

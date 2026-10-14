@@ -58,37 +58,39 @@ func _() {
 	_ = x[replaceIdxSortId-47]
 	_ = x[insertTopNId-48]
 	_ = x[replaceIdxOrderByDistanceId-49]
-	_ = x[applyHashInId-50]
-	_ = x[resolveInsertRowsId-51]
-	_ = x[applyTriggersId-52]
-	_ = x[applyProceduresId-53]
-	_ = x[assignRoutinesId-54]
-	_ = x[modifyUpdateExprsForJoinId-55]
-	_ = x[applyForeignKeysId-56]
-	_ = x[interpreterId-57]
-	_ = x[validateResolvedId-58]
-	_ = x[validateOrderById-59]
-	_ = x[validateSchemaSourceId-60]
-	_ = x[validateIndexCreationId-61]
-	_ = x[ValidateOperandsId-62]
-	_ = x[validateIntervalUsageId-63]
-	_ = x[validateSubqueryColumnsId-64]
-	_ = x[validateUnionSchemasMatchId-65]
-	_ = x[validateAggregationsId-66]
-	_ = x[validateDeleteFromId-67]
-	_ = x[cacheSubqueryAliasesInJoinsId-68]
-	_ = x[QuoteDefaultColumnValueNamesId-69]
-	_ = x[TrackProcessId-70]
-	_ = x[engineOverridesId-71]
+	_ = x[replaceIdxOrderByRandId-50]
+	_ = x[applyHashInId-51]
+	_ = x[resolveInsertRowsId-52]
+	_ = x[applyTriggersId-53]
+	_ = x[applyProceduresId-54]
+	_ = x[assignRoutinesId-55]
+	_ = x[modifyUpdateExprsForJoinId-56]
+	_ = x[applyForeignKeysId-57]
+	_ = x[interpreterId-58]
+	_ = x[validateResolvedId-59]
+	_ = x[validateOrderById-60]
+	_ = x[validateSchemaSourceId-61]
+	_ = x[validateIndexCreationId-62]
+	_ = x[ValidateOperandsId-63]
+	_ = x[validateIntervalUsageId-64]
+	_ = x[validateSubqueryColumnsId-65]
+	_ = x[validateUnionSchemasMatchId-66]
+	_ = x[validateAggregationsId-67]
+	_ = x[validateDeleteFromId-68]
+	_ = x[cacheSubqueryAliasesInJoinsId-69]
+	_ = x[QuoteDefaultColumnValueNamesId-70]
+	_ = x[TrackProcessId-71]
+	_ = x[engineOverridesId-72]
 }
 
-const _RuleId_name = "applyDefaultSelectLimitvalidateOffsetAndLimitvalidateStarExpressionsvalidateCreateTablevalidateAlterTablevalidateExprSemloadStoredProceduresvalidateDropTablesresolveDropConstraintvalidateDropConstraintresolveCreateSelectresolveSubqueriesresolveUnionsvalidateColumnDefaultsvalidateCreateTriggervalidateReadOnlyDatabasevalidateReadOnlyTransactionvalidateDatabaseSetvalidatePrivilegesvalidateGroupByflattenTableAliasespushdownSubqueryAliasFiltersreplaceSubqueriesvalidateCheckConstraintsreplaceCountStarreplaceCrossJoinssimplifyFilterspushNotFiltersvalidateNoHiddenSystemColumnshoistOutOfScopeFiltersunnestInSubqueriesunnestExistsSubqueriesfinalizeSubqueriesfinalizeUnionsloadTriggersprocessTruncateResolveAlterColumnstripTableNamesFromColumnDefaultsoptimizeJoinspushFiltersapplyIndexesFromOuterScopepruneTablesassignExecIndexesinlineSubqueryAliasRefseraseProjectionflattenDistinctreplaceAggreplaceIdxSortinsertTopNNodesreplaceIdxOrderByDistanceapplyHashInresolveInsertRowsapplyTriggersapplyProceduresassignRoutinesmodifyUpdateExprsForJoinapplyForeignKeysinterpretervalidateResolvedvalidateOrderByvalidateSchemaSourcevalidateIndexCreationvalidateOperandsvalidateIntervalUsagevalidateSubqueryColumnsvalidateUnionSchemasMatchvalidateAggregationsvalidateDeleteFromcacheSubqueryAliasesInJoinsquoteDefaultColumnValueNamestrackProcessengineOverrides"
+const _RuleId_name = "applyDefaultSelectLimitvalidateOffsetAndLimitvalidateStarExpressionsvalidateCreateTablevalidateAlterTablevalidateExprSemloadStoredProceduresvalidateDropTablesresolveDropConstraintvalidateDropConstraintresolveCreateSelectresolveSubqueriesresolveUnionsvalidateColumnDefaultsvalidateCreateTriggervalidateReadOnlyDatabasevalidateReadOnlyTransactionvalidateDatabaseSetvalidatePrivilegesvalidateGroupByflattenTableAliasespushdownSubqueryAliasFiltersreplaceSubqueriesvalidateCheckConstraintsreplaceCountStarreplaceCrossJoinssimplifyFilterspushNotFiltersvalidateNoHiddenSystemColumnshoistOutOfScopeFiltersunnestInSubqueriesunnestExistsSubqueriesfinalizeSubqueriesfinalizeUnionsloadTriggersprocessTruncateResolveAlterColumnstripTableNamesFromColumnDefaultsoptimizeJoinspushFiltersapplyIndexesFromOuterScopepruneTablesassignExecIndexesinlineSubqueryAliasRefseraseProjectionflattenDistinctreplaceAggreplaceIdxSortinsertTopNNodesreplaceIdxOrderByDistancereplaceIdxOrderByRandapplyHashInresolveInsertRowsapplyTriggersapplyProceduresassignRoutinesmodifyUpdateExprsForJoinapplyForeignKeysinterpretervalidateResolvedvalidateOrderByvalidateSchemaSourcevalidateIndexCreationvalidateOperandsvalidateIntervalUsagevalidateSubqueryColumnsvalidateUnionSchemasMatchvalidateAggregationsvalidateDeleteFromcacheSubqueryAliasesInJoinsquoteDefaultColumnValueNamestrackProcessengineOverrides"
 
-var _RuleId_index = [...]uint16{0, 23, 45, 68, 87, 105, 120, 140, 158, 179, 201, 220, 237, 250, 272, 293, 317, 344, 363, 381, 396, 415, 443, 460, 484, 500, 517, 532, 546, 575, 597, 615, 637, 655, 669, 681, 696, 714, 747, 760, 771, 797, 808, 825, 848, 863, 878, 888, 902, 917, 942, 953, 970, 983, 998, 1012, 1036, 1052, 1063, 1079, 1094, 1114, 1135, 1151, 1172, 1195, 1220, 1240, 1258, 1285, 1313, 1325, 1340}
+var _RuleId_index = [...]uint16{0, 23, 45, 68, 87, 105, 120, 140, 158, 179, 201, 220, 237, 250, 272, 293, 317, 344, 363, 381, 396, 415, 443, 460, 484, 500, 517, 532, 546, 575, 597, 615, 637, 655, 669, 681, 696, 714, 747, 760, 771, 797, 808, 825, 848, 863, 878, 888, 902, 917, 942, 963, 974, 991, 1004, 1019, 1033, 1057, 1073, 1084, 1100, 1115, 1135, 1156, 1172, 1193, 1216, 1241, 1261, 1279, 1306, 1334, 1346, 1361}
 
 func (i RuleId) String() string {
-	if i < 0 || i >= RuleId(len(_RuleId_index)-1) {
+	idx := int(i) - 0
+	if i < 0 || idx >= len(_RuleId_index)-1 {
 		return "RuleId(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
-	return _RuleId_name[_RuleId_index[i]:_RuleId_index[i+1]]
+	return _RuleId_name[_RuleId_index[idx]:_RuleId_index[idx+1]]
 }
