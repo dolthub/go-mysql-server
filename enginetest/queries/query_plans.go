@@ -23322,67 +23322,85 @@ WHERE keyless.c0 IN (
 	},
 	{
 		Query: `select max(x) from xy`,
-		ExpectedPlan: "Limit(1)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [xy.x:0!null->max(x):0]\n" +
-			"     └─ IndexedTableAccess(xy)\n" +
-			"         ├─ index: [xy.x]\n" +
-			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         ├─ reverse: true\n" +
-			"         ├─ colSet: (1,2)\n" +
-			"         ├─ tableId: 1\n" +
-			"         └─ Table\n" +
-			"             ├─ name: xy\n" +
-			"             └─ columns: [x]\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [max(xy.x):0!null->max(x):0]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: MAX(xy.x:0!null)\n" +
+			"     ├─ group: \n" +
+			"     └─ Limit(1)\n" +
+			"         └─ IndexedTableAccess(xy)\n" +
+			"             ├─ index: [xy.x]\n" +
+			"             ├─ static: [{[NULL, ∞)}]\n" +
+			"             ├─ reverse: true\n" +
+			"             ├─ colSet: (1,2)\n" +
+			"             ├─ tableId: 1\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: xy\n" +
+			"                 └─ columns: [x]\n" +
 			"",
-		ExpectedEstimates: "Limit(1)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [xy.x as `max(x)`]\n" +
-			"     └─ IndexedTableAccess(xy)\n" +
-			"         ├─ index: [xy.x]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
-			"         ├─ columns: [x]\n" +
-			"         └─ reverse: true\n" +
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [max(xy.x) as `max(x)`]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: MAX(xy.x)\n" +
+			"     ├─ group: \n" +
+			"     └─ Limit(1)\n" +
+			"         └─ IndexedTableAccess(xy)\n" +
+			"             ├─ index: [xy.x]\n" +
+			"             ├─ filters: [{[NULL, ∞)}]\n" +
+			"             ├─ columns: [x]\n" +
+			"             └─ reverse: true\n" +
 			"",
-		ExpectedAnalysis: "Limit(1)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [xy.x as `max(x)`]\n" +
-			"     └─ IndexedTableAccess(xy)\n" +
-			"         ├─ index: [xy.x]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
-			"         ├─ columns: [x]\n" +
-			"         └─ reverse: true\n" +
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [max(xy.x) as `max(x)`]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: MAX(xy.x)\n" +
+			"     ├─ group: \n" +
+			"     └─ Limit(1)\n" +
+			"         └─ IndexedTableAccess(xy)\n" +
+			"             ├─ index: [xy.x]\n" +
+			"             ├─ filters: [{[NULL, ∞)}]\n" +
+			"             ├─ columns: [x]\n" +
+			"             └─ reverse: true\n" +
 			"",
 	},
 	{
 		Query: `select min(x) from xy`,
-		ExpectedPlan: "Limit(1)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [xy.x:0!null->min(x):0]\n" +
-			"     └─ IndexedTableAccess(xy)\n" +
-			"         ├─ index: [xy.x]\n" +
-			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         ├─ colSet: (1,2)\n" +
-			"         ├─ tableId: 1\n" +
-			"         └─ Table\n" +
-			"             ├─ name: xy\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [min(xy.x):0!null->min(x):0]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: MIN(xy.x:0!null)\n" +
+			"     ├─ group: \n" +
+			"     └─ Limit(1)\n" +
+			"         └─ IndexedTableAccess(xy)\n" +
+			"             ├─ index: [xy.x]\n" +
+			"             ├─ static: [{[NULL, ∞)}]\n" +
+			"             ├─ colSet: (1,2)\n" +
+			"             ├─ tableId: 1\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: xy\n" +
+			"                 └─ columns: [x]\n" +
+			"",
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [min(xy.x) as `min(x)`]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: MIN(xy.x)\n" +
+			"     ├─ group: \n" +
+			"     └─ Limit(1)\n" +
+			"         └─ IndexedTableAccess(xy)\n" +
+			"             ├─ index: [xy.x]\n" +
+			"             ├─ filters: [{[NULL, ∞)}]\n" +
 			"             └─ columns: [x]\n" +
 			"",
-		ExpectedEstimates: "Limit(1)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [xy.x as `min(x)`]\n" +
-			"     └─ IndexedTableAccess(xy)\n" +
-			"         ├─ index: [xy.x]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [x]\n" +
-			"",
-		ExpectedAnalysis: "Limit(1)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [xy.x as `min(x)`]\n" +
-			"     └─ IndexedTableAccess(xy)\n" +
-			"         ├─ index: [xy.x]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [x]\n" +
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [min(xy.x) as `min(x)`]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: MIN(xy.x)\n" +
+			"     ├─ group: \n" +
+			"     └─ Limit(1)\n" +
+			"         └─ IndexedTableAccess(xy)\n" +
+			"             ├─ index: [xy.x]\n" +
+			"             ├─ filters: [{[NULL, ∞)}]\n" +
+			"             └─ columns: [x]\n" +
 			"",
 	},
 	{
@@ -23418,169 +23436,214 @@ WHERE keyless.c0 IN (
 	},
 	{
 		Query: `select max(x)+100 from xy`,
-		ExpectedPlan: "Limit(1)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [(xy.x:0!null + 100 (tinyint))->max(x)+100:0]\n" +
-			"     └─ IndexedTableAccess(xy)\n" +
-			"         ├─ index: [xy.x]\n" +
-			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         ├─ reverse: true\n" +
-			"         ├─ colSet: (1,2)\n" +
-			"         ├─ tableId: 1\n" +
-			"         └─ Table\n" +
-			"             ├─ name: xy\n" +
-			"             └─ columns: [x]\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [(max(xy.x):0!null + 100 (tinyint))->max(x)+100:0]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: MAX(xy.x:0!null)\n" +
+			"     ├─ group: \n" +
+			"     └─ Limit(1)\n" +
+			"         └─ IndexedTableAccess(xy)\n" +
+			"             ├─ index: [xy.x]\n" +
+			"             ├─ static: [{[NULL, ∞)}]\n" +
+			"             ├─ reverse: true\n" +
+			"             ├─ colSet: (1,2)\n" +
+			"             ├─ tableId: 1\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: xy\n" +
+			"                 └─ columns: [x]\n" +
 			"",
-		ExpectedEstimates: "Limit(1)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [(xy.x + 100) as `max(x)+100`]\n" +
-			"     └─ IndexedTableAccess(xy)\n" +
-			"         ├─ index: [xy.x]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
-			"         ├─ columns: [x]\n" +
-			"         └─ reverse: true\n" +
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [(max(xy.x) + 100) as `max(x)+100`]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: MAX(xy.x)\n" +
+			"     ├─ group: \n" +
+			"     └─ Limit(1)\n" +
+			"         └─ IndexedTableAccess(xy)\n" +
+			"             ├─ index: [xy.x]\n" +
+			"             ├─ filters: [{[NULL, ∞)}]\n" +
+			"             ├─ columns: [x]\n" +
+			"             └─ reverse: true\n" +
 			"",
-		ExpectedAnalysis: "Limit(1)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [(xy.x + 100) as `max(x)+100`]\n" +
-			"     └─ IndexedTableAccess(xy)\n" +
-			"         ├─ index: [xy.x]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
-			"         ├─ columns: [x]\n" +
-			"         └─ reverse: true\n" +
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [(max(xy.x) + 100) as `max(x)+100`]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: MAX(xy.x)\n" +
+			"     ├─ group: \n" +
+			"     └─ Limit(1)\n" +
+			"         └─ IndexedTableAccess(xy)\n" +
+			"             ├─ index: [xy.x]\n" +
+			"             ├─ filters: [{[NULL, ∞)}]\n" +
+			"             ├─ columns: [x]\n" +
+			"             └─ reverse: true\n" +
 			"",
 	},
 	{
 		Query: `select max(x) as xx from xy`,
-		ExpectedPlan: "Limit(1)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [xy.x:0!null->xx:0]\n" +
-			"     └─ IndexedTableAccess(xy)\n" +
-			"         ├─ index: [xy.x]\n" +
-			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         ├─ reverse: true\n" +
-			"         ├─ colSet: (1,2)\n" +
-			"         ├─ tableId: 1\n" +
-			"         └─ Table\n" +
-			"             ├─ name: xy\n" +
-			"             └─ columns: [x]\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [max(xy.x):0!null->xx:0]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: MAX(xy.x:0!null)\n" +
+			"     ├─ group: \n" +
+			"     └─ Limit(1)\n" +
+			"         └─ IndexedTableAccess(xy)\n" +
+			"             ├─ index: [xy.x]\n" +
+			"             ├─ static: [{[NULL, ∞)}]\n" +
+			"             ├─ reverse: true\n" +
+			"             ├─ colSet: (1,2)\n" +
+			"             ├─ tableId: 1\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: xy\n" +
+			"                 └─ columns: [x]\n" +
 			"",
-		ExpectedEstimates: "Limit(1)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [xy.x as xx]\n" +
-			"     └─ IndexedTableAccess(xy)\n" +
-			"         ├─ index: [xy.x]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
-			"         ├─ columns: [x]\n" +
-			"         └─ reverse: true\n" +
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [max(xy.x) as xx]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: MAX(xy.x)\n" +
+			"     ├─ group: \n" +
+			"     └─ Limit(1)\n" +
+			"         └─ IndexedTableAccess(xy)\n" +
+			"             ├─ index: [xy.x]\n" +
+			"             ├─ filters: [{[NULL, ∞)}]\n" +
+			"             ├─ columns: [x]\n" +
+			"             └─ reverse: true\n" +
 			"",
-		ExpectedAnalysis: "Limit(1)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [xy.x as xx]\n" +
-			"     └─ IndexedTableAccess(xy)\n" +
-			"         ├─ index: [xy.x]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
-			"         ├─ columns: [x]\n" +
-			"         └─ reverse: true\n" +
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [max(xy.x) as xx]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: MAX(xy.x)\n" +
+			"     ├─ group: \n" +
+			"     └─ Limit(1)\n" +
+			"         └─ IndexedTableAccess(xy)\n" +
+			"             ├─ index: [xy.x]\n" +
+			"             ├─ filters: [{[NULL, ∞)}]\n" +
+			"             ├─ columns: [x]\n" +
+			"             └─ reverse: true\n" +
 			"",
 	},
 	{
 		Query: `select 1, 2.0, '3', max(x) from xy`,
-		ExpectedPlan: "Limit(1)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [1 (tinyint), 2.0 (decimal(2,1)), 3 (longtext), xy.x:0!null->max(x):0]\n" +
-			"     └─ IndexedTableAccess(xy)\n" +
-			"         ├─ index: [xy.x]\n" +
-			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         ├─ reverse: true\n" +
-			"         ├─ colSet: (1,2)\n" +
-			"         ├─ tableId: 1\n" +
-			"         └─ Table\n" +
-			"             ├─ name: xy\n" +
-			"             └─ columns: [x]\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [1 (tinyint), 2.0 (decimal(2,1)), 3 (longtext), max(xy.x):0!null->max(x):0]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: MAX(xy.x:0!null)\n" +
+			"     ├─ group: \n" +
+			"     └─ Limit(1)\n" +
+			"         └─ IndexedTableAccess(xy)\n" +
+			"             ├─ index: [xy.x]\n" +
+			"             ├─ static: [{[NULL, ∞)}]\n" +
+			"             ├─ reverse: true\n" +
+			"             ├─ colSet: (1,2)\n" +
+			"             ├─ tableId: 1\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: xy\n" +
+			"                 └─ columns: [x]\n" +
 			"",
-		ExpectedEstimates: "Limit(1)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [1, 2.0, '3', xy.x as `max(x)`]\n" +
-			"     └─ IndexedTableAccess(xy)\n" +
-			"         ├─ index: [xy.x]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
-			"         ├─ columns: [x]\n" +
-			"         └─ reverse: true\n" +
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [1, 2.0, '3', max(xy.x) as `max(x)`]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: MAX(xy.x)\n" +
+			"     ├─ group: \n" +
+			"     └─ Limit(1)\n" +
+			"         └─ IndexedTableAccess(xy)\n" +
+			"             ├─ index: [xy.x]\n" +
+			"             ├─ filters: [{[NULL, ∞)}]\n" +
+			"             ├─ columns: [x]\n" +
+			"             └─ reverse: true\n" +
 			"",
-		ExpectedAnalysis: "Limit(1)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [1, 2.0, '3', xy.x as `max(x)`]\n" +
-			"     └─ IndexedTableAccess(xy)\n" +
-			"         ├─ index: [xy.x]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
-			"         ├─ columns: [x]\n" +
-			"         └─ reverse: true\n" +
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [1, 2.0, '3', max(xy.x) as `max(x)`]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: MAX(xy.x)\n" +
+			"     ├─ group: \n" +
+			"     └─ Limit(1)\n" +
+			"         └─ IndexedTableAccess(xy)\n" +
+			"             ├─ index: [xy.x]\n" +
+			"             ├─ filters: [{[NULL, ∞)}]\n" +
+			"             ├─ columns: [x]\n" +
+			"             └─ reverse: true\n" +
 			"",
 	},
 	{
 		Query: `select min(x) from xy where x > 0`,
-		ExpectedPlan: "Limit(1)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [xy.x:0!null->min(x):0]\n" +
-			"     └─ IndexedTableAccess(xy)\n" +
-			"         ├─ index: [xy.x]\n" +
-			"         ├─ static: [{(0, ∞)}]\n" +
-			"         ├─ colSet: (1,2)\n" +
-			"         ├─ tableId: 1\n" +
-			"         └─ Table\n" +
-			"             ├─ name: xy\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [min(xy.x):0!null->min(x):0]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: MIN(xy.x:0!null)\n" +
+			"     ├─ group: \n" +
+			"     └─ Limit(1)\n" +
+			"         └─ IndexedTableAccess(xy)\n" +
+			"             ├─ index: [xy.x]\n" +
+			"             ├─ static: [{(0, ∞)}]\n" +
+			"             ├─ colSet: (1,2)\n" +
+			"             ├─ tableId: 1\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: xy\n" +
+			"                 └─ columns: [x]\n" +
+			"",
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [min(xy.x) as `min(x)`]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: MIN(xy.x)\n" +
+			"     ├─ group: \n" +
+			"     └─ Limit(1)\n" +
+			"         └─ IndexedTableAccess(xy)\n" +
+			"             ├─ index: [xy.x]\n" +
+			"             ├─ filters: [{(0, ∞)}]\n" +
 			"             └─ columns: [x]\n" +
 			"",
-		ExpectedEstimates: "Limit(1)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [xy.x as `min(x)`]\n" +
-			"     └─ IndexedTableAccess(xy)\n" +
-			"         ├─ index: [xy.x]\n" +
-			"         ├─ filters: [{(0, ∞)}]\n" +
-			"         └─ columns: [x]\n" +
-			"",
-		ExpectedAnalysis: "Limit(1)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [xy.x as `min(x)`]\n" +
-			"     └─ IndexedTableAccess(xy)\n" +
-			"         ├─ index: [xy.x]\n" +
-			"         ├─ filters: [{(0, ∞)}]\n" +
-			"         └─ columns: [x]\n" +
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [min(xy.x) as `min(x)`]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: MIN(xy.x)\n" +
+			"     ├─ group: \n" +
+			"     └─ Limit(1)\n" +
+			"         └─ IndexedTableAccess(xy)\n" +
+			"             ├─ index: [xy.x]\n" +
+			"             ├─ filters: [{(0, ∞)}]\n" +
+			"             └─ columns: [x]\n" +
 			"",
 	},
 	{
 		Query: `select max(x) from xy where x < 3`,
-		ExpectedPlan: "Limit(1)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [xy.x:0!null->max(x):0]\n" +
-			"     └─ IndexedTableAccess(xy)\n" +
-			"         ├─ index: [xy.x]\n" +
-			"         ├─ static: [{(NULL, 3)}]\n" +
-			"         ├─ reverse: true\n" +
-			"         ├─ colSet: (1,2)\n" +
-			"         ├─ tableId: 1\n" +
-			"         └─ Table\n" +
-			"             ├─ name: xy\n" +
-			"             └─ columns: [x]\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [max(xy.x):0!null->max(x):0]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: MAX(xy.x:0!null)\n" +
+			"     ├─ group: \n" +
+			"     └─ Limit(1)\n" +
+			"         └─ IndexedTableAccess(xy)\n" +
+			"             ├─ index: [xy.x]\n" +
+			"             ├─ static: [{(NULL, 3)}]\n" +
+			"             ├─ reverse: true\n" +
+			"             ├─ colSet: (1,2)\n" +
+			"             ├─ tableId: 1\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: xy\n" +
+			"                 └─ columns: [x]\n" +
 			"",
-		ExpectedEstimates: "Limit(1)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [xy.x as `max(x)`]\n" +
-			"     └─ IndexedTableAccess(xy)\n" +
-			"         ├─ index: [xy.x]\n" +
-			"         ├─ filters: [{(NULL, 3)}]\n" +
-			"         ├─ columns: [x]\n" +
-			"         └─ reverse: true\n" +
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [max(xy.x) as `max(x)`]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: MAX(xy.x)\n" +
+			"     ├─ group: \n" +
+			"     └─ Limit(1)\n" +
+			"         └─ IndexedTableAccess(xy)\n" +
+			"             ├─ index: [xy.x]\n" +
+			"             ├─ filters: [{(NULL, 3)}]\n" +
+			"             ├─ columns: [x]\n" +
+			"             └─ reverse: true\n" +
 			"",
-		ExpectedAnalysis: "Limit(1)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [xy.x as `max(x)`]\n" +
-			"     └─ IndexedTableAccess(xy)\n" +
-			"         ├─ index: [xy.x]\n" +
-			"         ├─ filters: [{(NULL, 3)}]\n" +
-			"         ├─ columns: [x]\n" +
-			"         └─ reverse: true\n" +
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [max(xy.x) as `max(x)`]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: MAX(xy.x)\n" +
+			"     ├─ group: \n" +
+			"     └─ Limit(1)\n" +
+			"         └─ IndexedTableAccess(xy)\n" +
+			"             ├─ index: [xy.x]\n" +
+			"             ├─ filters: [{(NULL, 3)}]\n" +
+			"             ├─ columns: [x]\n" +
+			"             └─ reverse: true\n" +
 			"",
 	},
 	{
@@ -23666,18 +23729,21 @@ WHERE keyless.c0 IN (
 			" ├─ cacheable: true\n" +
 			" ├─ colSet: (4)\n" +
 			" ├─ tableId: 2\n" +
-			" └─ Limit(1)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [xy.x:0!null->max(x):0]\n" +
-			"         └─ IndexedTableAccess(xy)\n" +
-			"             ├─ index: [xy.x]\n" +
-			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             ├─ reverse: true\n" +
-			"             ├─ colSet: (1,2)\n" +
-			"             ├─ tableId: 1\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: xy\n" +
-			"                 └─ columns: [x]\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [max(xy.x):0!null->max(x):0]\n" +
+			"     └─ GroupBy\n" +
+			"         ├─ select: MAX(xy.x:0!null)\n" +
+			"         ├─ group: \n" +
+			"         └─ Limit(1)\n" +
+			"             └─ IndexedTableAccess(xy)\n" +
+			"                 ├─ index: [xy.x]\n" +
+			"                 ├─ static: [{[NULL, ∞)}]\n" +
+			"                 ├─ reverse: true\n" +
+			"                 ├─ colSet: (1,2)\n" +
+			"                 ├─ tableId: 1\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: xy\n" +
+			"                     └─ columns: [x]\n" +
 			"",
 		ExpectedEstimates: "SubqueryAlias\n" +
 			" ├─ name: sq\n" +
@@ -23686,14 +23752,17 @@ WHERE keyless.c0 IN (
 			" ├─ cacheable: true\n" +
 			" ├─ colSet: (4)\n" +
 			" ├─ tableId: 2\n" +
-			" └─ Limit(1)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [xy.x as `max(x)`]\n" +
-			"         └─ IndexedTableAccess(xy)\n" +
-			"             ├─ index: [xy.x]\n" +
-			"             ├─ filters: [{[NULL, ∞)}]\n" +
-			"             ├─ columns: [x]\n" +
-			"             └─ reverse: true\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [max(xy.x) as `max(x)`]\n" +
+			"     └─ GroupBy\n" +
+			"         ├─ select: MAX(xy.x)\n" +
+			"         ├─ group: \n" +
+			"         └─ Limit(1)\n" +
+			"             └─ IndexedTableAccess(xy)\n" +
+			"                 ├─ index: [xy.x]\n" +
+			"                 ├─ filters: [{[NULL, ∞)}]\n" +
+			"                 ├─ columns: [x]\n" +
+			"                 └─ reverse: true\n" +
 			"",
 		ExpectedAnalysis: "SubqueryAlias\n" +
 			" ├─ name: sq\n" +
@@ -23702,14 +23771,17 @@ WHERE keyless.c0 IN (
 			" ├─ cacheable: true\n" +
 			" ├─ colSet: (4)\n" +
 			" ├─ tableId: 2\n" +
-			" └─ Limit(1)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [xy.x as `max(x)`]\n" +
-			"         └─ IndexedTableAccess(xy)\n" +
-			"             ├─ index: [xy.x]\n" +
-			"             ├─ filters: [{[NULL, ∞)}]\n" +
-			"             ├─ columns: [x]\n" +
-			"             └─ reverse: true\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [max(xy.x) as `max(x)`]\n" +
+			"     └─ GroupBy\n" +
+			"         ├─ select: MAX(xy.x)\n" +
+			"         ├─ group: \n" +
+			"         └─ Limit(1)\n" +
+			"             └─ IndexedTableAccess(xy)\n" +
+			"                 ├─ index: [xy.x]\n" +
+			"                 ├─ filters: [{[NULL, ∞)}]\n" +
+			"                 ├─ columns: [x]\n" +
+			"                 └─ reverse: true\n" +
 			"",
 	},
 	{
@@ -23723,18 +23795,21 @@ WHERE keyless.c0 IN (
 			"     ├─ cacheable: true\n" +
 			"     ├─ colSet: (5)\n" +
 			"     ├─ tableId: 3\n" +
-			"     └─ Limit(1)\n" +
-			"         └─ Project\n" +
-			"             ├─ columns: [xy.x:0!null->max(x):0]\n" +
-			"             └─ IndexedTableAccess(xy)\n" +
-			"                 ├─ index: [xy.x]\n" +
-			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 ├─ reverse: true\n" +
-			"                 ├─ colSet: (1,2)\n" +
-			"                 ├─ tableId: 1\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: xy\n" +
-			"                     └─ columns: [x]\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [max(xy.x):0!null->max(x):0]\n" +
+			"         └─ GroupBy\n" +
+			"             ├─ select: MAX(xy.x:0!null)\n" +
+			"             ├─ group: \n" +
+			"             └─ Limit(1)\n" +
+			"                 └─ IndexedTableAccess(xy)\n" +
+			"                     ├─ index: [xy.x]\n" +
+			"                     ├─ static: [{[NULL, ∞)}]\n" +
+			"                     ├─ reverse: true\n" +
+			"                     ├─ colSet: (1,2)\n" +
+			"                     ├─ tableId: 1\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: xy\n" +
+			"                         └─ columns: [x]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [(cte.i + 100) as `i + 100`]\n" +
@@ -23745,14 +23820,17 @@ WHERE keyless.c0 IN (
 			"     ├─ cacheable: true\n" +
 			"     ├─ colSet: (5)\n" +
 			"     ├─ tableId: 3\n" +
-			"     └─ Limit(1)\n" +
-			"         └─ Project\n" +
-			"             ├─ columns: [xy.x as `max(x)`]\n" +
-			"             └─ IndexedTableAccess(xy)\n" +
-			"                 ├─ index: [xy.x]\n" +
-			"                 ├─ filters: [{[NULL, ∞)}]\n" +
-			"                 ├─ columns: [x]\n" +
-			"                 └─ reverse: true\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [max(xy.x) as `max(x)`]\n" +
+			"         └─ GroupBy\n" +
+			"             ├─ select: MAX(xy.x)\n" +
+			"             ├─ group: \n" +
+			"             └─ Limit(1)\n" +
+			"                 └─ IndexedTableAccess(xy)\n" +
+			"                     ├─ index: [xy.x]\n" +
+			"                     ├─ filters: [{[NULL, ∞)}]\n" +
+			"                     ├─ columns: [x]\n" +
+			"                     └─ reverse: true\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [(cte.i + 100) as `i + 100`]\n" +
@@ -23763,14 +23841,17 @@ WHERE keyless.c0 IN (
 			"     ├─ cacheable: true\n" +
 			"     ├─ colSet: (5)\n" +
 			"     ├─ tableId: 3\n" +
-			"     └─ Limit(1)\n" +
-			"         └─ Project\n" +
-			"             ├─ columns: [xy.x as `max(x)`]\n" +
-			"             └─ IndexedTableAccess(xy)\n" +
-			"                 ├─ index: [xy.x]\n" +
-			"                 ├─ filters: [{[NULL, ∞)}]\n" +
-			"                 ├─ columns: [x]\n" +
-			"                 └─ reverse: true\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [max(xy.x) as `max(x)`]\n" +
+			"         └─ GroupBy\n" +
+			"             ├─ select: MAX(xy.x)\n" +
+			"             ├─ group: \n" +
+			"             └─ Limit(1)\n" +
+			"                 └─ IndexedTableAccess(xy)\n" +
+			"                     ├─ index: [xy.x]\n" +
+			"                     ├─ filters: [{[NULL, ∞)}]\n" +
+			"                     ├─ columns: [x]\n" +
+			"                     └─ reverse: true\n" +
 			"",
 	},
 	{
@@ -26430,132 +26511,168 @@ order by x, y;
 	},
 	{
 		Query: `SELECT MIN(pk2) FROM two_pk WHERE pk1=1`,
-		ExpectedPlan: "Limit(1)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [two_pk.pk2:1!null->MIN(pk2):0]\n" +
-			"     └─ IndexedTableAccess(two_pk)\n" +
-			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"         ├─ static: [{[1, 1], [NULL, ∞)}]\n" +
-			"         ├─ colSet: (1-7)\n" +
-			"         ├─ tableId: 1\n" +
-			"         └─ Table\n" +
-			"             ├─ name: two_pk\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [min(two_pk.pk2):0!null->MIN(pk2):0]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: MIN(two_pk.pk2:1!null)\n" +
+			"     ├─ group: \n" +
+			"     └─ Limit(1)\n" +
+			"         └─ IndexedTableAccess(two_pk)\n" +
+			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"             ├─ static: [{[1, 1], [NULL, ∞)}]\n" +
+			"             ├─ colSet: (1-7)\n" +
+			"             ├─ tableId: 1\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: two_pk\n" +
+			"                 └─ columns: [pk1 pk2]\n" +
+			"",
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [min(two_pk.pk2) as `MIN(pk2)`]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: MIN(two_pk.pk2)\n" +
+			"     ├─ group: \n" +
+			"     └─ Limit(1)\n" +
+			"         └─ IndexedTableAccess(two_pk)\n" +
+			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"             ├─ filters: [{[1, 1], [NULL, ∞)}]\n" +
 			"             └─ columns: [pk1 pk2]\n" +
 			"",
-		ExpectedEstimates: "Limit(1)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [two_pk.pk2 as `MIN(pk2)`]\n" +
-			"     └─ IndexedTableAccess(two_pk)\n" +
-			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"         ├─ filters: [{[1, 1], [NULL, ∞)}]\n" +
-			"         └─ columns: [pk1 pk2]\n" +
-			"",
-		ExpectedAnalysis: "Limit(1)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [two_pk.pk2 as `MIN(pk2)`]\n" +
-			"     └─ IndexedTableAccess(two_pk)\n" +
-			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"         ├─ filters: [{[1, 1], [NULL, ∞)}]\n" +
-			"         └─ columns: [pk1 pk2]\n" +
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [min(two_pk.pk2) as `MIN(pk2)`]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: MIN(two_pk.pk2)\n" +
+			"     ├─ group: \n" +
+			"     └─ Limit(1)\n" +
+			"         └─ IndexedTableAccess(two_pk)\n" +
+			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"             ├─ filters: [{[1, 1], [NULL, ∞)}]\n" +
+			"             └─ columns: [pk1 pk2]\n" +
 			"",
 	},
 	{
 		Query: `SELECT MAX(pk2) FROM two_pk WHERE pk1=1`,
-		ExpectedPlan: "Limit(1)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [two_pk.pk2:1!null->MAX(pk2):0]\n" +
-			"     └─ IndexedTableAccess(two_pk)\n" +
-			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"         ├─ static: [{[1, 1], [NULL, ∞)}]\n" +
-			"         ├─ reverse: true\n" +
-			"         ├─ colSet: (1-7)\n" +
-			"         ├─ tableId: 1\n" +
-			"         └─ Table\n" +
-			"             ├─ name: two_pk\n" +
-			"             └─ columns: [pk1 pk2]\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [max(two_pk.pk2):0!null->MAX(pk2):0]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: MAX(two_pk.pk2:1!null)\n" +
+			"     ├─ group: \n" +
+			"     └─ Limit(1)\n" +
+			"         └─ IndexedTableAccess(two_pk)\n" +
+			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"             ├─ static: [{[1, 1], [NULL, ∞)}]\n" +
+			"             ├─ reverse: true\n" +
+			"             ├─ colSet: (1-7)\n" +
+			"             ├─ tableId: 1\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: two_pk\n" +
+			"                 └─ columns: [pk1 pk2]\n" +
 			"",
-		ExpectedEstimates: "Limit(1)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [two_pk.pk2 as `MAX(pk2)`]\n" +
-			"     └─ IndexedTableAccess(two_pk)\n" +
-			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"         ├─ filters: [{[1, 1], [NULL, ∞)}]\n" +
-			"         ├─ columns: [pk1 pk2]\n" +
-			"         └─ reverse: true\n" +
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [max(two_pk.pk2) as `MAX(pk2)`]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: MAX(two_pk.pk2)\n" +
+			"     ├─ group: \n" +
+			"     └─ Limit(1)\n" +
+			"         └─ IndexedTableAccess(two_pk)\n" +
+			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"             ├─ filters: [{[1, 1], [NULL, ∞)}]\n" +
+			"             ├─ columns: [pk1 pk2]\n" +
+			"             └─ reverse: true\n" +
 			"",
-		ExpectedAnalysis: "Limit(1)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [two_pk.pk2 as `MAX(pk2)`]\n" +
-			"     └─ IndexedTableAccess(two_pk)\n" +
-			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"         ├─ filters: [{[1, 1], [NULL, ∞)}]\n" +
-			"         ├─ columns: [pk1 pk2]\n" +
-			"         └─ reverse: true\n" +
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [max(two_pk.pk2) as `MAX(pk2)`]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: MAX(two_pk.pk2)\n" +
+			"     ├─ group: \n" +
+			"     └─ Limit(1)\n" +
+			"         └─ IndexedTableAccess(two_pk)\n" +
+			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"             ├─ filters: [{[1, 1], [NULL, ∞)}]\n" +
+			"             ├─ columns: [pk1 pk2]\n" +
+			"             └─ reverse: true\n" +
 			"",
 	},
 	{
 		Query: `SELECT MIN(pk2) FROM two_pk WHERE pk1=1 GROUP BY pk1`,
-		ExpectedPlan: "Limit(1)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [two_pk.pk2:1!null->MIN(pk2):0]\n" +
-			"     └─ IndexedTableAccess(two_pk)\n" +
-			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"         ├─ static: [{[1, 1], [NULL, ∞)}]\n" +
-			"         ├─ colSet: (1-7)\n" +
-			"         ├─ tableId: 1\n" +
-			"         └─ Table\n" +
-			"             ├─ name: two_pk\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [min(two_pk.pk2):0!null->MIN(pk2):0]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: MIN(two_pk.pk2:1!null)\n" +
+			"     ├─ group: two_pk.pk1:0!null\n" +
+			"     └─ Limit(1)\n" +
+			"         └─ IndexedTableAccess(two_pk)\n" +
+			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"             ├─ static: [{[1, 1], [NULL, ∞)}]\n" +
+			"             ├─ colSet: (1-7)\n" +
+			"             ├─ tableId: 1\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: two_pk\n" +
+			"                 └─ columns: [pk1 pk2]\n" +
+			"",
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [min(two_pk.pk2) as `MIN(pk2)`]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: MIN(two_pk.pk2)\n" +
+			"     ├─ group: two_pk.pk1\n" +
+			"     └─ Limit(1)\n" +
+			"         └─ IndexedTableAccess(two_pk)\n" +
+			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"             ├─ filters: [{[1, 1], [NULL, ∞)}]\n" +
 			"             └─ columns: [pk1 pk2]\n" +
 			"",
-		ExpectedEstimates: "Limit(1)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [two_pk.pk2 as `MIN(pk2)`]\n" +
-			"     └─ IndexedTableAccess(two_pk)\n" +
-			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"         ├─ filters: [{[1, 1], [NULL, ∞)}]\n" +
-			"         └─ columns: [pk1 pk2]\n" +
-			"",
-		ExpectedAnalysis: "Limit(1)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [two_pk.pk2 as `MIN(pk2)`]\n" +
-			"     └─ IndexedTableAccess(two_pk)\n" +
-			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"         ├─ filters: [{[1, 1], [NULL, ∞)}]\n" +
-			"         └─ columns: [pk1 pk2]\n" +
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [min(two_pk.pk2) as `MIN(pk2)`]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: MIN(two_pk.pk2)\n" +
+			"     ├─ group: two_pk.pk1\n" +
+			"     └─ Limit(1)\n" +
+			"         └─ IndexedTableAccess(two_pk)\n" +
+			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"             ├─ filters: [{[1, 1], [NULL, ∞)}]\n" +
+			"             └─ columns: [pk1 pk2]\n" +
 			"",
 	},
 	{
 		Query: `SELECT MAX(pk2) FROM two_pk WHERE pk1=1 GROUP BY pk1`,
-		ExpectedPlan: "Limit(1)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [two_pk.pk2:1!null->MAX(pk2):0]\n" +
-			"     └─ IndexedTableAccess(two_pk)\n" +
-			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"         ├─ static: [{[1, 1], [NULL, ∞)}]\n" +
-			"         ├─ reverse: true\n" +
-			"         ├─ colSet: (1-7)\n" +
-			"         ├─ tableId: 1\n" +
-			"         └─ Table\n" +
-			"             ├─ name: two_pk\n" +
-			"             └─ columns: [pk1 pk2]\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [max(two_pk.pk2):0!null->MAX(pk2):0]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: MAX(two_pk.pk2:1!null)\n" +
+			"     ├─ group: two_pk.pk1:0!null\n" +
+			"     └─ Limit(1)\n" +
+			"         └─ IndexedTableAccess(two_pk)\n" +
+			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"             ├─ static: [{[1, 1], [NULL, ∞)}]\n" +
+			"             ├─ reverse: true\n" +
+			"             ├─ colSet: (1-7)\n" +
+			"             ├─ tableId: 1\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: two_pk\n" +
+			"                 └─ columns: [pk1 pk2]\n" +
 			"",
-		ExpectedEstimates: "Limit(1)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [two_pk.pk2 as `MAX(pk2)`]\n" +
-			"     └─ IndexedTableAccess(two_pk)\n" +
-			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"         ├─ filters: [{[1, 1], [NULL, ∞)}]\n" +
-			"         ├─ columns: [pk1 pk2]\n" +
-			"         └─ reverse: true\n" +
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [max(two_pk.pk2) as `MAX(pk2)`]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: MAX(two_pk.pk2)\n" +
+			"     ├─ group: two_pk.pk1\n" +
+			"     └─ Limit(1)\n" +
+			"         └─ IndexedTableAccess(two_pk)\n" +
+			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"             ├─ filters: [{[1, 1], [NULL, ∞)}]\n" +
+			"             ├─ columns: [pk1 pk2]\n" +
+			"             └─ reverse: true\n" +
 			"",
-		ExpectedAnalysis: "Limit(1)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [two_pk.pk2 as `MAX(pk2)`]\n" +
-			"     └─ IndexedTableAccess(two_pk)\n" +
-			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"         ├─ filters: [{[1, 1], [NULL, ∞)}]\n" +
-			"         ├─ columns: [pk1 pk2]\n" +
-			"         └─ reverse: true\n" +
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [max(two_pk.pk2) as `MAX(pk2)`]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: MAX(two_pk.pk2)\n" +
+			"     ├─ group: two_pk.pk1\n" +
+			"     └─ Limit(1)\n" +
+			"         └─ IndexedTableAccess(two_pk)\n" +
+			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"             ├─ filters: [{[1, 1], [NULL, ∞)}]\n" +
+			"             ├─ columns: [pk1 pk2]\n" +
+			"             └─ reverse: true\n" +
 			"",
 	},
 }

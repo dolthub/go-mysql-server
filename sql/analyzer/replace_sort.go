@@ -337,7 +337,7 @@ func buildReverseIndexedTable(ctx *sql.Context, node sql.Node) (sql.Node, transf
 	})
 }
 
-// replaceAgg converts aggregate functions to order by + limit 1 when possible
+// replaceAgg feeds a MAX or MIN aggregate an order by + limit 1 over its input when possible
 func replaceAgg(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	if !FlagIsSet(qFlags, sql.QFlagAggregation) {
 		return node, transform.SameTree, nil
@@ -451,24 +451,23 @@ func replaceAgg(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope,
 				return n, transform.SameTree, nil
 			}
 		}
-		// replace all aggs in proj.Projections with GetField
-		name := gb.SelectDeps[0].String()
-		newProjs, _, err := transform.Exprs(ctx, proj.Projections, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-			if strings.EqualFold(e.String(), name) {
-				return sortBy.Expr, transform.NewTree, nil
-			}
-			return e, transform.SameTree, nil
-		})
+		// The GroupBy stays: without GROUP BY it must return one row (NULL) even when its input is empty. Beneath it goes a
+		// Limit 1 over a Sort on the aggregated column, which reads a single row when the index provides that order.
+		// replaceIdxSort doesn't descend into a GroupBy, so turn the Sort into an index scan here.
+		limit := plan.NewLimit(expression.NewLiteral(1, types.Int64), plan.NewSort(sql.SortConditions{sortBy}, gb.Child))
+		newChild, _, err := replaceIdxSortHelper(ctx, scope, limit, nil)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
-
-		// TODO: The analyzer rule insertTopNNodes replaces Limit nodes wrapping a Sort into TopN nodes. This rule
-		//  wouldn't be applied here since it's a Limit wrapping a Project wrapping a Sort, but this node could likely
-		//  be rewritten here to instead be a TopN node.
-		newProj := plan.NewProject(ctx, newProjs, plan.NewSort(sql.SortConditions{sortBy}, gb.Child))
-		limit := plan.NewLimit(expression.NewLiteral(1, types.Int64), newProj)
-		return limit, transform.NewTree, nil
+		newGb, err := gb.WithChildren(ctx, newChild)
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+		newProj, err := proj.WithChildren(ctx, newGb)
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+		return newProj, transform.NewTree, nil
 	})
 }
 
