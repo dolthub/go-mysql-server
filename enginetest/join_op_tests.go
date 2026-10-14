@@ -100,6 +100,26 @@ var EngineOnlyJoinOpTests = []joinOpTest{
 				Query:    "select * from xy left join required_lookup_table('s', 2) on x = s",
 				Expected: []sql.Row{{0, 2, 0}, {1, 0, 1}, {2, 1, nil}, {3, 3, nil}},
 			},
+			{
+				Query:    "select * from required_lookup_table('s', 2) where s = (select x from xy where y = 0 union select 1)",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "select * from required_lookup_table('s', 2) where s = (select y from xy where x = 5)",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select * from required_lookup_table('s', 4) where (select y from xy where x = 5) = s",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select * from required_lookup_table('s', 2) where s = (select y from xy where x = 1)",
+				Expected: []sql.Row{{0}},
+			},
+			{
+				Query:    "select t.* from required_lookup_table('s', 2) as t where t.s = (select y from xy where x = 1)",
+				Expected: []sql.Row{{0}},
+			},
 		},
 	},
 }
