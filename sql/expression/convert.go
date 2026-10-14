@@ -341,10 +341,8 @@ func convertValue(ctx *sql.Context, val any, castTo string, origType sql.Type, t
 		return val, nil
 	case ConvertToDate:
 		val, _, err = types.Date.Convert(ctx, val)
-		if err != nil {
-			if !sql.HandleConvertWarning(ctx, err) {
-				return nil, err
-			}
+		if err != nil && !sql.HandleConvertWarning(ctx, err) {
+			return nil, err
 		}
 		return val, nil
 	case ConvertToDatetime:
@@ -354,10 +352,8 @@ func convertValue(ctx *sql.Context, val any, castTo string, origType sql.Type, t
 			return nil, err
 		}
 		val, _, err = dtType.Convert(ctx, val)
-		if err != nil {
-			if !sql.HandleConvertWarning(ctx, err) {
-				return nil, err
-			}
+		if err != nil && !sql.HandleConvertWarning(ctx, err) {
+			return nil, err
 		}
 		return val, nil
 	case ConvertToTime:
@@ -367,11 +363,8 @@ func convertValue(ctx *sql.Context, val any, castTo string, origType sql.Type, t
 			return nil, err
 		}
 		val, _, err = timeType.Convert(ctx, val)
-		if err != nil {
-			if !sql.IsConvertWarning(err) {
-				return nil, err
-			}
-			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
+		if err != nil && !sql.HandleConvertWarning(ctx, err) {
+			return nil, err
 		}
 		return val, nil
 	case ConvertToDecimal:

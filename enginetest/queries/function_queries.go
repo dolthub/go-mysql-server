@@ -3437,7 +3437,7 @@ var FunctionQueryTests = []QueryTest{
 			{types.Timespan(0)},
 		},
 		ExpectedWarningsCount: 1,
-		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarning:       4096,
 	},
 	{
 		Query: "select cast('1:2:3. abcde' as time);",
