@@ -93,8 +93,7 @@ func (d *DateDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 	expr1, _, err := types.Date.Convert(ctx, val1)
-	if err != nil {
-		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrTruncatedIncorrect.New("datetime", val1).Error())
+	if err != nil && !sql.HandleConvertWarning(ctx, err) {
 		return nil, nil
 	}
 	var date1 time.Time
@@ -114,8 +113,7 @@ func (d *DateDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 	expr2, _, err := types.Date.Convert(ctx, val2)
-	if err != nil {
-		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", sql.ErrTruncatedIncorrect.New("datetime", val2).Error())
+	if err != nil && !sql.HandleConvertWarning(ctx, err) {
 		return nil, nil
 	}
 	var date2 time.Time
@@ -649,13 +647,13 @@ func (t *TimestampDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	}
 
 	expr1, _, err = types.DatetimeMaxPrecision.Convert(ctx, expr1)
-	if err != nil {
-		return nil, err
+	if err != nil && !sql.HandleConvertWarning(ctx, err) {
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 
 	expr2, _, err = types.DatetimeMaxPrecision.Convert(ctx, expr2)
-	if err != nil {
-		return nil, err
+	if err != nil && !sql.HandleConvertWarning(ctx, err) {
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 
 	unit, err := t.unit.Eval(ctx, row)
