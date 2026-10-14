@@ -72,7 +72,7 @@ func (d *Date) Eval(ctx *sql.Context, row sql.Row) (any, error) {
 	}
 
 	date, _, err := types.Date.Convert(ctx, val)
-	if sql.IsConvertWarning(err) || sql.ErrIncorrectValue.Is(err) {
+	if err != nil && !sql.HandleConvertWarning(ctx, err) {
 		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 

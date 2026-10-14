@@ -2269,7 +2269,7 @@ var FunctionQueryTests = []QueryTest{
 			{time.Date(2001, time.February, 3, 12, 34, 0, 0, time.UTC)},
 		},
 		ExpectedWarningsCount: 1,
-		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarning:       4096,
 	},
 	{
 		Query: "select cast('2001.02031234 ' as datetime(6));",
@@ -2293,7 +2293,7 @@ var FunctionQueryTests = []QueryTest{
 			{time.Date(2001, time.February, 3, 12, 34, 56, 0, time.UTC)},
 		},
 		ExpectedWarningsCount: 1,
-		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarning:       4096,
 	},
 	{
 		Query: "select cast('2001.0203123456 ' as datetime(6));",
@@ -2301,7 +2301,7 @@ var FunctionQueryTests = []QueryTest{
 			{time.Date(2001, time.February, 3, 12, 34, 56, 0, time.UTC)},
 		},
 		ExpectedWarningsCount: 1,
-		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarning:       4096,
 	},
 	{
 		Query: "select cast('2001.0203123456. ' as datetime(6));",
@@ -2309,7 +2309,7 @@ var FunctionQueryTests = []QueryTest{
 			{time.Date(2001, time.February, 3, 12, 34, 56, 0, time.UTC)},
 		},
 		ExpectedWarningsCount: 1,
-		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarning:       4096,
 	},
 	{
 		Query: "select cast('2001.0203 123456' as datetime(6));",
@@ -2317,7 +2317,7 @@ var FunctionQueryTests = []QueryTest{
 			{time.Date(2001, time.February, 3, 12, 34, 56, 0, time.UTC)},
 		},
 		ExpectedWarningsCount: 1,
-		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarning:       4096,
 	},
 	{
 		Query: "select cast('2001.02 03 123456' as datetime(6));",
@@ -2334,7 +2334,7 @@ var FunctionQueryTests = []QueryTest{
 			{time.Date(2001, time.February, 3, 0, 0, 0, 0, time.UTC)},
 		},
 		ExpectedWarningsCount: 1,
-		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarning:       4096,
 	},
 	{
 		Query: "select cast('2001-02-03 12' as datetime(6));",
@@ -2404,6 +2404,14 @@ var FunctionQueryTests = []QueryTest{
 			{time.Date(2001, time.February, 3, 12, 34, 56, 0, time.UTC)},
 		},
 	},
+	{
+		Query: "select cast('2001-02-03 12:34:56-' as datetime(6));",
+		Expected: []sql.Row{
+			{nil},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
 
 	{
 		Query: "select cast('2001-02-03 12:34:56 ' as datetime(6));",
@@ -2411,7 +2419,7 @@ var FunctionQueryTests = []QueryTest{
 			{time.Date(2001, time.February, 3, 12, 34, 56, 0, time.UTC)},
 		},
 		ExpectedWarningsCount: 1,
-		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarning:       4096,
 	},
 	{
 		Query: "select cast('2001-02-03 12:34:56. ' as datetime(6));",
@@ -2419,7 +2427,7 @@ var FunctionQueryTests = []QueryTest{
 			{time.Date(2001, time.February, 3, 12, 34, 56, 0, time.UTC)},
 		},
 		ExpectedWarningsCount: 1,
-		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarning:       4096,
 	},
 	{
 		Query: "select cast('20101-' as datetime(6));",
@@ -2525,14 +2533,15 @@ var FunctionQueryTests = []QueryTest{
 		},
 	},
 	{
-		// TODO: When the date portion is delimited by '.', MySQL parses a following run of digits as HHMMSS.
+		// When the date portion is delimited by '.', MySQL parses a following run of digits as HHMMSS.
 		//  MySQL also returns a 4095 warning for the deprecated '.' delimiter.
 		//  https://github.com/dolthub/dolt/issues/11939
-		Skip:  true,
 		Query: "select cast('2001.02.03.123456' as datetime);",
 		Expected: []sql.Row{
 			{time.Date(2001, time.February, 3, 12, 34, 56, 0, time.UTC)},
 		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       4096,
 	},
 	{
 		Query:    "select cast('20200101123456.75' as datetime(6))",

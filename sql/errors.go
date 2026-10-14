@@ -1279,3 +1279,15 @@ func (w WrappedTypeConversionError) Error() string {
 func IsConvertWarning(err error) bool {
 	return ErrTruncatedIncorrect.Is(err) || ErrDeprecatedDelimiter.Is(err)
 }
+
+func HandleConvertWarning(ctx *Context, err error) bool {
+	switch {
+	case ErrTruncatedIncorrect.Is(err) || ErrIncorrectValue.Is(err):
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
+	case ErrDeprecatedDelimiter.Is(err):
+		ctx.Warn(4096, "%s", err.Error()) // TODO: update vitess with warning code
+	default:
+		return false
+	}
+	return true
+}

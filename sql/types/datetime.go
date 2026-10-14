@@ -640,12 +640,9 @@ func (t datetimeType) parseDatetime(origStr string) (any, error) {
 	trimStr, str = readFuncN(str, -1, func(r rune) bool {
 		return isMySQLPunct(r) || isMySQLDatetimeWhitespace(r)
 	})
-	if len(trimStr) > 1 {
+	// Trailing punctuation/whitespace(s) after day results in a delimiter error
+	if len(trimStr) > 1 || len(str) == 0 && len(trimStr) > 0 {
 		err = sql.ErrDeprecatedDelimiter.New(delim, t.String(), origStr)
-	}
-	// Trailing punctuation/whitespace(s) after day results in a truncation error
-	if len(str) == 0 && len(trimStr) > 0 {
-		err = sql.ErrTruncatedIncorrect.New(t.String(), origStr)
 	}
 
 	hourStr, str = readFuncN(str, numDigits, unicode.IsDigit)
@@ -675,6 +672,21 @@ func (t datetimeType) parseDatetime(origStr string) (any, error) {
 	secStr, str = readFuncN(str, numDigits, unicode.IsDigit)
 	microStr, str = readMicros(str)
 
+	if len(str) > 0 {
+		// Trailing '-' after everything results in NULL
+		if str[0] == '-' {
+			return nil, sql.ErrTruncatedIncorrect.New(t.String(), origStr)
+		}
+
+		// Trailing whitespace are considered a delimiter error, everything else is a truncation error
+		trimStr, str = readFuncN(str, -1, isMySQLDatetimeWhitespace)
+		if len(trimStr) > 0 {
+			err = sql.ErrDeprecatedDelimiter.New(delim, t.String(), origStr)
+		} else {
+			err = sql.ErrTruncatedIncorrect.New(t.String(), origStr)
+		}
+	}
+
 	year, month, day, ok := parseDateParts(yearStr, monthStr, dayStr)
 	if !ok {
 		return nil, sql.ErrIncorrectValue.New(t.String(), origStr)
@@ -693,10 +705,6 @@ func (t datetimeType) parseDatetime(origStr string) (any, error) {
 		return nil, sql.ErrIncorrectValue.New(t.String(), origStr)
 	}
 
-	// Any trailing character(s) result in a truncation error
-	if len(str) > 0 {
-		err = sql.ErrTruncatedIncorrect.New(t.String(), origStr)
-	}
 	return res, err
 }
 
