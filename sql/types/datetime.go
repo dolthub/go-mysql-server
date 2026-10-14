@@ -553,6 +553,7 @@ func parseMicros(microStr string) (micros int, ok bool) {
 	return micros, true
 }
 
+// readNoDelimDatetime will read
 // TODO: str is expected to be unbroken string of digits with length >= MinDatetimeStringLength
 func readNoDelimDatetime(str string) (yearStr, monthStr, dayStr, hourStr, minStr, secStr, remain string) {
 	// depending on the length of str, we will interpret the date as having a two-digit year or four-digit year
@@ -629,34 +630,26 @@ func (t datetimeType) parseDatetime(origStr string) (any, error) {
 
 	var yearStr, monthStr, dayStr, hourStr, minStr, secStr, microStr string
 	var delimWarn, ok bool
+	dtStr := str
 	yearStr, str = readFuncN(str, -1, unicode.IsDigit)
 	if len(yearStr) >= MinDatetimeStringLength && (len(str) == 0 || str[0] == '.') {
-		var remain string
-		yearStr, monthStr, dayStr, hourStr, minStr, secStr, remain = readNoDelimDatetime(yearStr)
-		if len(remain) != 0 {
-			// trailing digits, ignore the remainder of str
-			err = sql.ErrTruncatedIncorrect.New(t.String(), origStr)
-		} else if len(str) > 0 {
-			// any other delimiter results in a NULL
-			delim := rune(str[0])
-			if delim != '.' {
-				return nil, sql.ErrIncorrectValue.New(t.String(), origStr)
-			}
-			// If there was no time read from |readNoDelimDatetime()|, start reading the rest of |str| as TIME.
-			// The len(minStr) == 0 and len(secStr) == 0 check is unnecessary because TIME parts are always filled
-			// left to right from hours to secs.
-			if len(hourStr) == 0 {
-				str = str[1:]
-				hourStr, minStr, secStr, str, delimWarn, ok = readTime(str, 2)
-				if !ok {
-					return nil, sql.ErrIncorrectValue.New(t.String(), origStr)
-				}
-				if delimWarn {
-					err = sql.ErrDeprecatedDelimiter.New(delim, t.String(), origStr)
-				}
-			}
-			microStr, str = readMicros(str)
+		// if |yearStr| exceeds MinDatetimeStringLength AND is the end of the string OR is delimited by '.', then
+		// we treat |yearStr| as a non-delimited date string with the remainder of the string
+
+		// depending on the length of yearStr, we will interpret the date as having a two-digit year or four-digit year
+		yearLen := 2
+		if len(yearStr) == FourDigitNoDelimDatetimeLength || len(yearStr) >= MaxNoDelimDatetimeLength {
+			yearLen = 4
 		}
+		yearStr, dtStr = readFuncN(dtStr, yearLen, unicode.IsDigit)
+		monthStr, dtStr = readFuncN(dtStr, 2, unicode.IsDigit)
+		dayStr, dtStr = readFuncN(dtStr, 2, unicode.IsDigit)
+		trimStr, dtStr = readFuncN(dtStr, -1, isMySQLPunct)
+		hourStr, minStr, secStr, str, _, ok = readTime(dtStr, 2)
+		if !ok {
+			return nil, sql.ErrIncorrectValue.New(t.String(), origStr)
+		}
+		microStr, str = readMicros(str)
 	} else if len(str) > 0 {
 		delim := rune(str[0])
 		trimStr, str = readFuncN(str, -1, isMySQLPunct)

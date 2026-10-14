@@ -2104,6 +2104,76 @@ var FunctionQueryTests = []QueryTest{
 		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 	},
 	{
+		Query: "select cast('20101.123456' as datetime(6));",
+		Expected: []sql.Row{
+			{time.Date(2020, time.October, 1, 12, 34, 56, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select cast('201012.123456' as datetime(6));",
+		Expected: []sql.Row{
+			{time.Date(2020, time.October, 12, 12, 34, 56, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select cast('2010121.123456' as datetime(6));",
+		Expected: []sql.Row{
+			{time.Date(2020, time.October, 12, 1, 12, 34, 0, time.UTC)},
+		},
+		SkipWarnings:          true,
+		ExpectedWarningsCount: 2,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('20101210.123456' as datetime(6));",
+		Expected: []sql.Row{
+			{time.Date(2010, time.December, 10, 12, 34, 56, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select cast('201012101.123456' as datetime(6));",
+		Expected: []sql.Row{
+			{time.Date(2020, time.October, 12, 10, 1, 12, 0, time.UTC)},
+		},
+		SkipWarnings:          true,
+		ExpectedWarningsCount: 2,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('20101210101.123456' as datetime(6));",
+		Expected: []sql.Row{
+			{time.Date(2020, time.October, 12, 10, 10, 1, 123456000, time.UTC)},
+		},
+	},
+	{
+		Query: "select cast('201012101010.123456' as datetime(6));",
+		Expected: []sql.Row{
+			{time.Date(2020, time.October, 12, 10, 10, 10, 123456000, time.UTC)},
+		},
+	},
+	{
+		Query: "select cast('2010121010101.123456' as datetime(6));",
+		Expected: []sql.Row{
+			{time.Date(2020, time.October, 12, 10, 10, 10, 0, time.UTC)},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('20101210101010.123456' as datetime(6));",
+		Expected: []sql.Row{
+			{time.Date(2010, time.December, 10, 10, 10, 10, 123456000, time.UTC)},
+		},
+	},
+	{
+		Query: "select cast('201012101010101.123456' as datetime(6));",
+		Expected: []sql.Row{
+			{time.Date(2010, time.December, 10, 10, 10, 10, 0, time.UTC)},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
 		Query: "select cast('20101210101010.123456' as datetime(6));",
 		Expected: []sql.Row{
 			{time.Date(2010, time.December, 10, 10, 10, 10, 123456000, time.UTC)},
@@ -2337,6 +2407,22 @@ var FunctionQueryTests = []QueryTest{
 		Query: "select cast('2001-02-03 12:34:56. ' as datetime(6));",
 		Expected: []sql.Row{
 			{time.Date(2001, time.February, 3, 12, 34, 56, 0, time.UTC)},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('20101-' as datetime(6));",
+		Expected: []sql.Row{
+			{nil},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('20101-123456' as datetime(6));",
+		Expected: []sql.Row{
+			{nil},
 		},
 		ExpectedWarningsCount: 1,
 		ExpectedWarning:       mysql.ERTruncatedWrongValue,
