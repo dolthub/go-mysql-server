@@ -2480,6 +2480,17 @@ var FunctionQueryTests = []QueryTest{
 		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 	},
 	{
+		Query: "select cast('2024-04-03 13:23:44.506434 +0300 EEST m=+4.349756251' as DATETIME);",
+		Expected: []sql.Row{
+			{time.Date(2024, 4, 3, 13, 23, 45, 0, time.UTC)},
+		},
+		// TODO: https://github.com/dolthub/dolt/issues/12095
+		SkipWarnings:          true,
+		ExpectedWarningsCount: 2,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+
+	{
 		Query: "SELECT CAST('2020.0101T123456' AS DATETIME);",
 		Expected: []sql.Row{
 			{time.Date(2020, 1, 1, 12, 34, 56, 0, time.UTC)},
