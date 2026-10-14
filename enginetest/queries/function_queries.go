@@ -2120,6 +2120,7 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{
 			{time.Date(2020, time.October, 12, 1, 12, 34, 0, time.UTC)},
 		},
+		// TODO: https://github.com/dolthub/dolt/issues/12095
 		SkipWarnings:          true,
 		ExpectedWarningsCount: 2,
 		ExpectedWarning:       mysql.ERTruncatedWrongValue,
@@ -2135,6 +2136,7 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{
 			{time.Date(2020, time.October, 12, 10, 1, 12, 0, time.UTC)},
 		},
+		// TODO: https://github.com/dolthub/dolt/issues/12095
 		SkipWarnings:          true,
 		ExpectedWarningsCount: 2,
 		ExpectedWarning:       mysql.ERTruncatedWrongValue,
@@ -3259,7 +3261,7 @@ var FunctionQueryTests = []QueryTest{
 			// https://github.com/dolthub/dolt/issues/12046
 			{types.Timespan(0)},
 		},
-		// TODO: https://github.com/dolthub/dolt/issues/11750
+		// TODO: https://github.com/dolthub/dolt/issues/12095
 		SkipWarnings:          true,
 		ExpectedWarningsCount: 2,
 		ExpectedWarning:       mysql.ERTruncatedWrongValue,
@@ -3378,7 +3380,7 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{
 			{types.Timespan(45261_000000)},
 		},
-		// TODO: https://github.com/dolthub/dolt/issues/11750
+		// TODO: https://github.com/dolthub/dolt/issues/12095
 		SkipWarnings:          true,
 		ExpectedWarningsCount: 2,
 		ExpectedWarning:       mysql.ERTruncatedWrongValue,
@@ -3397,7 +3399,7 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{
 			{types.Timespan(0)},
 		},
-		// TODO: https://github.com/dolthub/dolt/issues/11750
+		// TODO: https://github.com/dolthub/dolt/issues/12095
 		SkipWarnings:          true,
 		ExpectedWarningsCount: 2,
 		ExpectedWarning:       mysql.ERTruncatedWrongValue,
@@ -3407,7 +3409,7 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{
 			{types.Timespan(0)},
 		},
-		// TODO: https://github.com/dolthub/dolt/issues/11750
+		// TODO: https://github.com/dolthub/dolt/issues/12095
 		SkipWarnings:          true,
 		ExpectedWarningsCount: 2,
 		ExpectedWarning:       mysql.ERTruncatedWrongValue,
@@ -3433,7 +3435,7 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{
 			{types.Timespan(0)},
 		},
-		// TODO: https://github.com/dolthub/dolt/issues/11750
+		// TODO: https://github.com/dolthub/dolt/issues/12095
 		SkipWarnings:          true,
 		ExpectedWarningsCount: 2,
 		ExpectedWarning:       mysql.ERTruncatedWrongValue,
@@ -3443,7 +3445,7 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{
 			{types.Timespan(3723_000000)},
 		},
-		// TODO: https://github.com/dolthub/dolt/issues/11750
+		// TODO: https://github.com/dolthub/dolt/issues/12095
 		SkipWarnings:          true,
 		ExpectedWarningsCount: 2,
 		ExpectedWarning:       mysql.ERTruncatedWrongValue,
@@ -4588,7 +4590,6 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{
 			{time.Date(2001, 12, 23, 0, 0, 0, 0, time.UTC)},
 		},
-		SkipWarnings:          true,
 		ExpectedWarningsCount: 1,
 		ExpectedWarning:       4096,
 	},
@@ -4676,7 +4677,6 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{
 			{time.Date(2001, 2, 3, 0, 0, 0, 0, time.UTC)},
 		},
-		SkipWarnings:          true,
 		ExpectedWarningsCount: 1,
 		ExpectedWarning:       4096,
 	},
