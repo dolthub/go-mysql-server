@@ -3937,11 +3937,7 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{{0}},
 	},
 	{
-		Query:    "select locate('a', '', 2);",
-		Expected: []sql.Row{{0}},
-	},
-	{
-		Query:    "select locate('a', '', 1);",
+		Query:    "select locate('', '', 0);",
 		Expected: []sql.Row{{0}},
 	},
 	{
@@ -3953,7 +3949,35 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{{0}},
 	},
 	{
+		Query:    "select locate('a', '', 0);",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select locate('a', '', 1);",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select locate('a', '', 2);",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select locate('', 'a', 0);",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select locate('', 'a', 1);",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "select locate('', 'a', 2);",
+		Expected: []sql.Row{{0}},
+	},
+	{
 		Query:    "select locate('a', 'abc', 4);",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select locate('abc', 'a', 4);",
 		Expected: []sql.Row{{0}},
 	},
 	{
