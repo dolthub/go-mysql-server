@@ -5414,7 +5414,11 @@ func testCharsetCollationWire(t *testing.T, h Harness, sessionBuilder server.Ses
 			defer engine.Close()
 			engine.EngineAnalyzer().Catalog.MySQLDb.AddRootAccount()
 
-			s, err := server.NewServer(serverConfig, engine, sql.NewContext, sessionBuilder, nil)
+			builder := sessionBuilder
+			if serverHarness, ok := harness.(ServerHarness); ok {
+				builder = SessionBuilderForEngine(serverHarness, engine)
+			}
+			s, err := server.NewServer(serverConfig, engine, sql.ContextFactoryWithVariables(engine.Variables()), builder, nil)
 			require.NoError(t, err)
 			go func() {
 				err := s.Start()
