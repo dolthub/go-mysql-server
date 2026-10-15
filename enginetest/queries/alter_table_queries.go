@@ -25,6 +25,22 @@ import (
 
 var AlterTableScripts = []ScriptTest{
 	{
+		Name: "drop column if exists",
+		SetUpScript: []string{
+			"CREATE TABLE conditional_drop (id int PRIMARY KEY, c int, d int)",
+			"INSERT INTO conditional_drop VALUES (1, 2, 3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{Query: "ALTER TABLE conditional_drop DROP COLUMN IF EXISTS c", Expected: []sql.Row{{types.NewOkResult(0)}}},
+			{Query: "ALTER TABLE conditional_drop DROP COLUMN IF EXISTS c", Expected: []sql.Row{{types.NewOkResult(0)}}},
+			{Query: "SELECT * FROM conditional_drop", Expected: []sql.Row{{1, 3}}},
+			{Query: "ALTER TABLE conditional_drop DROP COLUMN IF EXISTS missing, DROP COLUMN IF EXISTS d, DROP COLUMN IF EXISTS d", Expected: []sql.Row{{types.NewOkResult(0)}}},
+			{Query: "SELECT * FROM conditional_drop", Expected: []sql.Row{{1}}},
+			{Query: "ALTER TABLE conditional_drop DROP COLUMN c", ExpectedErr: sql.ErrTableColumnNotFound},
+			{Query: "ALTER TABLE missing_table DROP COLUMN IF EXISTS c", ExpectedErr: sql.ErrTableNotFound},
+		},
+	},
+	{
 		// https://github.com/dolthub/doltgresql/pull/2359
 		Name: "alter table drop unique constraint",
 		SetUpScript: []string{

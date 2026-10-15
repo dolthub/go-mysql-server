@@ -18,6 +18,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"gopkg.in/src-d/go-errors.v1"
@@ -1051,7 +1052,45 @@ var QueryTests = []QueryTest{
 			{0},
 		},
 	},
-
+	{
+		Query:    `SELECT MAX(pk3) FROM three_pk WHERE pk1=1 AND pk2=0`,
+		Expected: []sql.Row{{10}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12093
+		// An aggregate without an explicit GROUP BY returns one NULL row when no rows match.
+		Query:    `SELECT MAX(pk3) FROM three_pk WHERE pk1=2 AND pk2=0`,
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12093
+		// An aggregate without an explicit GROUP BY returns one NULL row when no rows match.
+		Query:    `SELECT MIN(pk3) FROM three_pk WHERE pk1=2 AND pk2=0`,
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12093
+		// An aggregate without an explicit GROUP BY returns one NULL row when no rows match.
+		Query:    `SELECT MAX(pk1) FROM three_pk WHERE pk1=2`,
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		// An aggregate _with_ an explicit GROUP BY returns no rows when no rows match.
+		Query:    `SELECT MAX(pk3) FROM three_pk WHERE pk1=2 AND pk2=0 GROUP BY pk1, pk2`,
+		Expected: []sql.Row{},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12093
+		// An aggregate without an explicit GROUP BY returns one NULL row when no rows match.
+		Query:    `SELECT MAX(i) FROM emptytable`,
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12093
+		// An aggregate without an explicit GROUP BY returns one NULL row when no rows match.
+		Query:    `SELECT MIN(i) FROM emptytable`,
+		Expected: []sql.Row{{nil}},
+	},
 	{
 		Query:    "select count(1)",
 		Expected: []sql.Row{{1}},
@@ -4351,98 +4390,104 @@ SELECT * FROM cte WHERE  d = 2;`,
 	// https://github.com/dolthub/dolt/issues/9917
 	{
 		Query:                 "select cast('2020-01-01 a' as datetime)",
-		ExpectedWarning:       1292,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 		ExpectedWarningsCount: 1,
 		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 0, 0, 0, 0, time.UTC)}},
 	},
 	{
 		Query:                 "select cast('2020-01-01 abc123' as datetime)",
-		ExpectedWarning:       1292,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 		ExpectedWarningsCount: 1,
 		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 0, 0, 0, 0, time.UTC)}},
 	},
 	{
 		Query:                 "select cast('2020-01-01 12:30asdf123' as datetime)",
-		ExpectedWarning:       1292,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 		ExpectedWarningsCount: 1,
 		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 12, 30, 0, 0, time.UTC)}},
 	},
 	{
 		Query:                 "select cast('2020-01-01 12:34:56abc' as datetime);",
-		ExpectedWarning:       1292,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 		ExpectedWarningsCount: 1,
 		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 0, time.UTC)}},
 	},
 	{
+		// MySQL has 2 warnings, but we don't have a warning for deprecated delimiter
+		// TODO: https://github.com/dolthub/dolt/issues/12095
 		Query:                 "select cast('2020-01-01 12:34:56 abc' as datetime);",
-		ExpectedWarning:       1292,
-		ExpectedWarningsCount: 1, // MySQL has 2 warnings, but we don't have a warning for deprecated delimiter
+		SkipWarnings:          true,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 2,
 		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 0, time.UTC)}},
 	},
 	{
-		Query:                 "select cast('2020-01-01 12:34:56.1 abc' as datetime);",
-		ExpectedWarning:       1292,
-		ExpectedWarningsCount: 1, // MySQL has 2 warnings, but we don't have a warning for deprecated delimiter
+		// MySQL has 2 warnings, but we don't have a warning for deprecated delimiter
+		// TODO: https://github.com/dolthub/dolt/issues/12095
+		Query: "select cast('2020-01-01 12:34:56.1 abc' as datetime);",
+
+		SkipWarnings:          true,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 2,
 		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 0, time.UTC)}},
 	},
 	{
 		Query:                 "select cast('2020-01-01 12:34:56:123456 abc' as datetime);",
-		ExpectedWarning:       1292,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 		ExpectedWarningsCount: 1,
 		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 0, time.UTC)}},
 	},
 	{
 		Query:                 "select cast('2020-01-01 12:34:56...123456 abc' as datetime);",
-		ExpectedWarning:       1292,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 		ExpectedWarningsCount: 1,
 		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 0, time.UTC)}},
 	},
 	{
 		Query:                 "select cast('2020-01-01 12:34:56-123456 abc' as datetime);",
-		ExpectedWarning:       1292,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 		ExpectedWarningsCount: 1,
-		// MySQL returns null, but we are able to truncate and convert
-		Expected: []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 0, time.UTC)}},
+		Expected:              []sql.Row{{nil}},
 	},
 	{
 		Query:                 "select cast('2020-01-01 12:34:56.123456abc' as datetime(0));",
-		ExpectedWarning:       1292,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 		ExpectedWarningsCount: 1,
 		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 0, time.UTC)}},
 	},
 	{
 		Query:                 "select cast('2020-01-01 12:34:56.123456abc' as datetime(1));",
-		ExpectedWarning:       1292,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 		ExpectedWarningsCount: 1,
 		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 100000000, time.UTC)}},
 	},
 	{
 		Query:                 "select cast('2020-01-01 12:34:56.123456abc' as datetime(2));",
-		ExpectedWarning:       1292,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 		ExpectedWarningsCount: 1,
 		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 120000000, time.UTC)}},
 	},
 	{
 		Query:                 "select cast('2020-01-01 12:34:56.123456abc' as datetime(3));",
-		ExpectedWarning:       1292,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 		ExpectedWarningsCount: 1,
 		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 123000000, time.UTC)}},
 	},
 	{
 		Query:                 "select cast('2020-01-01 12:34:56.123456abc' as datetime(4));",
-		ExpectedWarning:       1292,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 		ExpectedWarningsCount: 1,
 		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 123500000, time.UTC)}},
 	},
 	{
 		Query:                 "select cast('2020-01-01 12:34:56.123456abc' as datetime(5));",
-		ExpectedWarning:       1292,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 		ExpectedWarningsCount: 1,
 		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 123460000, time.UTC)}},
 	},
 	{
 		Query:                 "select cast('2020-01-01 12:34:56.123456abc' as datetime(6));",
-		ExpectedWarning:       1292,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 		ExpectedWarningsCount: 1,
 		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 123456000, time.UTC)}},
 	},
@@ -4452,13 +4497,13 @@ SELECT * FROM cte WHERE  d = 2;`,
 	},
 	{
 		Query:                 "select cast('2020-01-01 a' as date)",
-		ExpectedWarning:       1292,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 		ExpectedWarningsCount: 1,
 		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 0, 0, 0, 0, time.UTC)}},
 	},
 	{
 		Query:                 "select cast('2020-01-01abc123' as date)",
-		ExpectedWarning:       1292,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 		ExpectedWarningsCount: 1,
 		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 0, 0, 0, 0, time.UTC)}},
 	},
@@ -8783,7 +8828,7 @@ from typestable`,
 		// https://github.com/dolthub/dolt/issues/11918
 		Query:                 "SELECT COUNT( * ) FROM (SELECT 25 AS age UNION ALL SELECT 30) t WHERE ROUND( HEX( age ) );",
 		Expected:              []sql.Row{{2}},
-		ExpectedWarning:       1292,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 		ExpectedWarningsCount: 1,
 	},
 	{

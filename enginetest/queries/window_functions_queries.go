@@ -2360,6 +2360,23 @@ WHERE total <> fourcount + twosum;`,
 			},
 		},
 	},
+	{
+		Name:    "window over datetime columns that are converted to number",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t (i int primary key, d date, dt datetime(3));",
+			"insert into t values (1, '2024-01-01', '2024-01-01 12:34:56.123'), (2, '2024-01-02', '2024-01-02 21:43:55.444');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select i, first_value(d) over (order by i) + 0, first_value(dt) over (order by i) + 0 from t order by i;",
+				Expected: []sql.Row{
+					{1, 20240101, "20240101123456.123"},
+					{2, 20240101, "20240101123456.123"},
+				},
+			},
+		},
+	},
 }
 
 // WindowRowFramesScriptTests tests window functions using ROWS frame specifications.
