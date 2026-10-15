@@ -159,10 +159,10 @@ func updateSystemVariables(cfg mysql.ListenerConfig, vars *sql.EngineVariables) 
 	}
 
 	// TODO: add the rest of the config variables
-	registry := sql.SystemVariables
-	if vars != nil {
-		registry = vars.System
+	if vars == nil {
+		return fmt.Errorf("server variable ownership: engine variables are required")
 	}
+	registry := vars.System
 	if aware, ok := registry.(sql.ContextAwareSystemVariableRegistry); ok {
 		return aware.AssignValuesWithContext(sql.NewContextWithVariables(context.Background(), vars), sysVars)
 	}
@@ -261,10 +261,7 @@ func (s *Server) Start() error {
 }
 
 func (s *Server) WarnIfLoadFileInsecure() {
-	registry := sql.SystemVariables
-	if s.Engine.IsolatedVariables() {
-		registry = s.Engine.Variables().System
-	}
+	registry := s.Engine.Variables().System
 	_, v, ok := registry.GetGlobal("secure_file_priv")
 	if ok {
 		if v == "" {

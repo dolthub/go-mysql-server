@@ -23,6 +23,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 // ProcessList is a structure that keeps track of all the processes and their
@@ -39,6 +40,7 @@ func NewProcessList() *ProcessList {
 	return &ProcessList{
 		procs:      make(map[uint32]*sql.Process),
 		byQueryPid: make(map[uint64]uint32),
+		variables:  variables.NewEngineVariables(),
 	}
 }
 
@@ -47,25 +49,21 @@ func NewProcessListWithVariables(vars *sql.EngineVariables) *ProcessList {
 	if vars == nil {
 		panic("NewProcessListWithVariables requires engine variables")
 	}
-	pl := NewProcessList()
-	pl.variables = vars
-	return pl
+	return &ProcessList{
+		procs:      make(map[uint32]*sql.Process),
+		byQueryPid: make(map[uint64]uint32),
+		variables:  vars,
+	}
 }
 
 func (pl *ProcessList) EngineVariables() *sql.EngineVariables { return pl.variables }
 
 func (pl *ProcessList) statusVariables() sql.StatusVariableRegistry {
-	if pl.variables != nil {
-		return pl.variables.Status
-	}
-	return sql.StatusVariables
+	return pl.variables.Status
 }
 
 func (pl *ProcessList) systemVariables() sql.SystemVariableRegistry {
-	if pl.variables != nil {
-		return pl.variables.System
-	}
-	return sql.SystemVariables
+	return pl.variables.System
 }
 
 // Processes returns the list of current running processes.
@@ -403,12 +401,7 @@ func (pl *ProcessList) Kill(connID uint32) {
 	}
 }
 
-// getLongQueryTime returns the value of the long_query_time system variable. If any errors are encountered loading
-// the value, then an error is logged and 0 is returned.
-func getLongQueryTime() float64 {
-	return getLongQueryTimeFrom(sql.SystemVariables)
-}
-
+// getLongQueryTimeFrom returns the value of long_query_time in the supplied registry.
 func getLongQueryTimeFrom(registry sql.SystemVariableRegistry) float64 {
 	_, longQueryTimeValue, ok := registry.GetGlobal("long_query_time")
 	if !ok {

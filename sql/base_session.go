@@ -87,14 +87,14 @@ func (s *BaseSession) GetIgnoreAutoCommit() bool {
 var _ Session = (*BaseSession)(nil)
 
 // EngineVariables returns the bundle used when this session was constructed.
-// Legacy sessions return nil.
+// Unbound sessions return nil.
 func (s *BaseSession) EngineVariables() *EngineVariables { return s.engineVariables }
 
 func (s *BaseSession) systemRegistry() SystemVariableRegistry {
 	if s.engineVariables != nil {
 		return s.engineVariables.System
 	}
-	return SystemVariables
+	panic("session system variables require an engine variable owner")
 }
 
 func (s *BaseSession) SetTransactionDatabase(dbName string) {
@@ -267,11 +267,9 @@ func (s *BaseSession) GetSessionVariable(ctx *Context, sysVarName string) (inter
 		sysVar, ok = s.systemVars[sysVarName]
 	}
 	if !ok {
-		if registry := s.systemRegistry(); registry != nil {
-			definition, value, exists := registry.GetGlobal(sysVarName)
-			if exists && definition != nil && definition.IsGlobalOnly() {
-				return value, nil
-			}
+		definition, value, exists := s.systemRegistry().GetGlobal(sysVarName)
+		if exists && definition != nil && definition.IsGlobalOnly() {
+			return value, nil
 		}
 		return nil, ErrUnknownSystemVariable.New(sysVarName)
 	}
@@ -329,11 +327,9 @@ func (s *BaseSession) GetSessionVariableDefault(ctx *Context, sysVarName string)
 	sysVarName = strings.ToLower(sysVarName)
 	sysVar, ok := s.systemVars[sysVarName]
 	if !ok {
-		if registry := s.systemRegistry(); registry != nil {
-			definition, _, exists := registry.GetGlobal(sysVarName)
-			if exists && definition != nil && definition.IsGlobalOnly() {
-				return nil, ErrSystemVariableGlobalOnly.New(sysVarName)
-			}
+		definition, _, exists := s.systemRegistry().GetGlobal(sysVarName)
+		if exists && definition != nil && definition.IsGlobalOnly() {
+			return nil, ErrSystemVariableGlobalOnly.New(sysVarName)
 		}
 		return nil, ErrUnknownSystemVariable.New(sysVarName)
 	}
@@ -690,9 +686,12 @@ func NewBaseSessionWithClientServer(server string, client Client, id uint32) *Ba
 // session-scoped system variables.
 func NewBaseSessionWithClientServerWithVariables(server string, client Client, id uint32, vars *EngineVariables) *BaseSession {
 	// TODO: if system variable "activate_all_roles_on_login" if set, activate all roles
+	if vars == nil {
+		vars = newStandaloneEngineVariables()
+	}
 	var systemVars map[string]SystemVarValue
-	registry := SystemVariables
-	statusRegistry := StatusVariables
+	var registry SystemVariableRegistry
+	var statusRegistry StatusVariableRegistry
 	if vars != nil {
 		registry = vars.System
 		statusRegistry = vars.Status

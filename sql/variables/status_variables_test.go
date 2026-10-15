@@ -23,12 +23,11 @@ import (
 )
 
 func TestStatusVariables(t *testing.T) {
-	InitStatusVariables()
-	defer InitStatusVariables()
+	vars := NewEngineVariables()
 
 	require := require.New(t)
-	ctx := sql.NewEmptyContext()
-	sess := sql.NewBaseSessionWithClientServer("foo", sql.Client{Address: "baz", User: "bar"}, 1)
+	ctx := sql.NewContextWithVariables(t.Context(), vars)
+	sess := sql.NewBaseSessionWithClientServerWithVariables("foo", sql.Client{Address: "baz", User: "bar"}, 1, vars)
 
 	// Can't get global-only variable from session
 	_, err := sess.GetStatusVariable(ctx, "Aborted_clients")
@@ -53,24 +52,24 @@ func TestStatusVariables(t *testing.T) {
 	require.Equal(uint64(10), sessVal)
 
 	// Can't get session-only variable from global
-	_, _, ok := sql.StatusVariables.GetGlobal("Compression")
+	_, _, ok := vars.Status.GetGlobal("Compression")
 	require.False(ok)
 
 	// Can't set session-only variable from global
-	err = sql.StatusVariables.SetGlobal("Compression", uint(999))
+	err = vars.Status.SetGlobal("Compression", uint(999))
 	require.Error(err)
 
 	// Can get global-only variable from global
-	_, globalVal, ok := sql.StatusVariables.GetGlobal("Aborted_clients")
+	_, globalVal, ok := vars.Status.GetGlobal("Aborted_clients")
 	require.True(ok)
 	require.Equal(uint64(0), globalVal)
 
 	// Can set global-only variable from global
-	err = sql.StatusVariables.SetGlobal("Aborted_clients", uint64(100))
+	err = vars.Status.SetGlobal("Aborted_clients", uint64(100))
 	require.NoError(err)
 
 	// Global value persists
-	_, globalVal, ok = sql.StatusVariables.GetGlobal("Aborted_clients")
+	_, globalVal, ok = vars.Status.GetGlobal("Aborted_clients")
 	require.True(ok)
 	require.Equal(uint64(100), globalVal)
 
@@ -80,7 +79,7 @@ func TestStatusVariables(t *testing.T) {
 	require.Equal(uint64(0), sessVal)
 
 	// Can get variable with Both scope from global
-	_, globalVal, ok = sql.StatusVariables.GetGlobal("Bytes_received")
+	_, globalVal, ok = vars.Status.GetGlobal("Bytes_received")
 	require.True(ok)
 	require.Equal(uint64(0), globalVal)
 
@@ -89,7 +88,7 @@ func TestStatusVariables(t *testing.T) {
 	require.NoError(err)
 
 	// Can set variable with Both scope from global
-	err = sql.StatusVariables.SetGlobal("Bytes_received", uint64(200))
+	err = vars.Status.SetGlobal("Bytes_received", uint64(200))
 	require.True(ok)
 
 	// Can get variable with Both scope from session
@@ -98,12 +97,12 @@ func TestStatusVariables(t *testing.T) {
 	require.Equal(uint64(100), sessVal)
 
 	// Can get variable with Both scope from global
-	_, globalVal, ok = sql.StatusVariables.GetGlobal("Bytes_received")
+	_, globalVal, ok = vars.Status.GetGlobal("Bytes_received")
 	require.True(ok)
 	require.Equal(uint64(200), globalVal)
 
 	// New Session does not preserve values with Both scope
-	newSess := sql.NewBaseSessionWithClientServer("foo", sql.Client{Address: "baz2", User: "bar2"}, 2)
+	newSess := sql.NewBaseSessionWithClientServerWithVariables("foo", sql.Client{Address: "baz2", User: "bar2"}, 2, vars)
 	sessVal, err = newSess.GetStatusVariable(ctx, "Bytes_received")
 	require.NoError(err)
 	require.Equal(uint64(0), sessVal)

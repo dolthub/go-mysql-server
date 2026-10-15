@@ -31,30 +31,23 @@ type nonComparableSystemRegistry struct {
 }
 
 // TestFactoriesReturnIndependentVars checks that each registry factory builds its own variable definitions, rather
-// than sharing them with another registry or with the package-level definitions used by the legacy singletons.
+// than sharing them with another registry.
 func TestFactoriesReturnIndependentVars(t *testing.T) {
 	t.Run("system", func(t *testing.T) {
 		a := NewSystemVariableRegistry().(*globalSystemVariables)
 		b := NewSystemVariableRegistry().(*globalSystemVariables)
-		require.Len(t, a.definitions, len(systemVars)+len(mariadbSystemVars))
+		require.Len(t, a.definitions, len(newSystemVars(time.Now()))+len(newMariadbSystemVars()))
 		for name, def := range a.definitions {
 			require.NotSame(t, def, b.definitions[name], name)
-			if legacy, ok := systemVars[name]; ok {
-				require.NotSame(t, def, legacy, name)
-			}
-			if legacy, ok := mariadbSystemVars[name]; ok {
-				require.NotSame(t, def, legacy, name)
-			}
 		}
 	})
 	t.Run("status", func(t *testing.T) {
 		a := NewStatusVariableRegistry().(*globalStatusVariables)
 		b := NewStatusVariableRegistry().(*globalStatusVariables)
-		require.Len(t, a.varVals, len(statusVars))
+		require.Len(t, a.varVals, len(newStatusVars()))
 		for name, val := range a.varVals {
 			require.NotSame(t, val, b.varVals[name], name)
 			require.NotSame(t, val.Variable(), b.varVals[name].Variable(), name)
-			require.NotSame(t, val.Variable(), statusVars[name], name)
 		}
 	})
 }

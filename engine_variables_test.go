@@ -110,19 +110,6 @@ func TestDefaultEngineVariablesAreIndependent(t *testing.T) {
 	require.ErrorContains(t, err, "engine variable ownership")
 }
 
-func TestNewDoesNotResetLegacyStatusVariables(t *testing.T) {
-	_, original, ok := sql.StatusVariables.GetGlobal("Threads_connected")
-	require.True(t, ok)
-	require.NoError(t, sql.StatusVariables.SetGlobal("Threads_connected", uint64(23)))
-	t.Cleanup(func() {
-		require.NoError(t, sql.StatusVariables.SetGlobal("Threads_connected", original))
-	})
-	_ = NewDefault(memory.NewDBProvider())
-	_, got, ok := sql.StatusVariables.GetGlobal("Threads_connected")
-	require.True(t, ok)
-	require.Equal(t, uint64(23), got)
-}
-
 func TestEventSchedulerRejectsForeignContextGetter(t *testing.T) {
 	aVars, bVars := variables.NewEngineVariables(), variables.NewEngineVariables()
 	e := New(analyzer.NewDefault(memory.NewDBProvider()), &Config{EngineVariables: aVars})

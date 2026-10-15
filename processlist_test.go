@@ -28,7 +28,6 @@ import (
 
 func TestProcessList(t *testing.T) {
 	require := require.New(t)
-	variables.InitStatusVariables()
 
 	clientHostOne := "127.0.0.1:34567"
 	clientHostTwo := "127.0.0.1:34568"
@@ -181,7 +180,6 @@ func sortById(slice []sql.Process) {
 }
 
 func TestKillConnection(t *testing.T) {
-	variables.InitStatusVariables()
 
 	pl := NewProcessList()
 
@@ -221,7 +219,7 @@ func TestKillConnection(t *testing.T) {
 }
 
 func TestBeginEndOperation(t *testing.T) {
-	variables.InitStatusVariables()
+
 	knownSession := sql.NewBaseSessionWithClientServer("", sql.Client{}, 1)
 	unknownSession := sql.NewBaseSessionWithClientServer("", sql.Client{}, 2)
 
@@ -277,30 +275,29 @@ func TestBeginEndOperation(t *testing.T) {
 // TestSlowQueryTracking tests that processes that take longer than @@long_query_time increment the
 // Slow_queries status variable.
 func TestSlowQueryTracking(t *testing.T) {
-	variables.InitStatusVariables()
-	_, value, ok := sql.StatusVariables.GetGlobal("Slow_queries")
+	p := NewProcessList()
+	_, value, ok := p.EngineVariables().Status.GetGlobal("Slow_queries")
 	require.True(t, ok)
 	require.Equal(t, uint64(0), value)
 
-	p := NewProcessList()
 	p.AddConnection(1, "127.0.0.1:34567")
-	sess := sql.NewBaseSessionWithClientServer("0.0.0.0:3306",
-		sql.Client{Address: "127.0.0.1:34567", User: "foo"}, 1)
+	sess := sql.NewBaseSessionWithClientServerWithVariables("0.0.0.0:3306",
+		sql.Client{Address: "127.0.0.1:34567", User: "foo"}, 1, p.EngineVariables())
 	sess.SetCurrentDatabase("test_db")
 	p.ConnectionReady(sess)
-	ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithSession(sess))
+	ctx := sql.NewContextWithVariables(context.Background(), p.EngineVariables(), sql.WithPid(1), sql.WithSession(sess))
 	ctx, err := p.BeginQuery(ctx, "SELECT foo")
 	require.NoError(t, err)
 
 	// Change @@long_query_time so we don't have to wait for 10 seconds
-	require.NoError(t, sql.SystemVariables.SetGlobal(ctx, "long_query_time", 1))
+	require.NoError(t, p.EngineVariables().System.SetGlobal(ctx, "long_query_time", 1))
 	time.Sleep(1_500 * time.Millisecond)
 	p.EndQuery(ctx)
 
 	// Status variables are updated asynchronously, so try a few times to find the updated value
 	found := false
 	for range 10 {
-		_, value, ok = sql.StatusVariables.GetGlobal("Slow_queries")
+		_, value, ok = p.EngineVariables().Status.GetGlobal("Slow_queries")
 		require.True(t, ok)
 		if value == uint64(1) {
 			found = true
