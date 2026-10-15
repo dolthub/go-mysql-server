@@ -1057,27 +1057,37 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{10}},
 	},
 	{
-		// An aggregate without GROUP BY returns one row even when no rows match.
+		// https://github.com/dolthub/dolt/issues/12093
+		// An aggregate without an explicit GROUP BY returns one NULL row when no rows match.
 		Query:    `SELECT MAX(pk3) FROM three_pk WHERE pk1=2 AND pk2=0`,
 		Expected: []sql.Row{{nil}},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/12093
+		// An aggregate without an explicit GROUP BY returns one NULL row when no rows match.
 		Query:    `SELECT MIN(pk3) FROM three_pk WHERE pk1=2 AND pk2=0`,
 		Expected: []sql.Row{{nil}},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/12093
+		// An aggregate without an explicit GROUP BY returns one NULL row when no rows match.
 		Query:    `SELECT MAX(pk1) FROM three_pk WHERE pk1=2`,
 		Expected: []sql.Row{{nil}},
 	},
 	{
+		// An aggregate _with_ an explicit GROUP BY returns no rows when no rows match.
 		Query:    `SELECT MAX(pk3) FROM three_pk WHERE pk1=2 AND pk2=0 GROUP BY pk1, pk2`,
 		Expected: []sql.Row{},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/12093
+		// An aggregate without an explicit GROUP BY returns one NULL row when no rows match.
 		Query:    `SELECT MAX(i) FROM emptytable`,
 		Expected: []sql.Row{{nil}},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/12093
+		// An aggregate without an explicit GROUP BY returns one NULL row when no rows match.
 		Query:    `SELECT MIN(i) FROM emptytable`,
 		Expected: []sql.Row{{nil}},
 	},
