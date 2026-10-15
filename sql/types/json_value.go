@@ -525,17 +525,19 @@ func (doc JSONDocument) Value() (driver.Value, error) {
 }
 
 func ConcatenateJSONValues(ctx *sql.Context, vals ...sql.JSONWrapper) (sql.JSONWrapper, error) {
-	vals = slices.DeleteFunc(vals, func(v sql.JSONWrapper) bool { return v == nil })
-	if len(vals) == 0 {
-		return nil, nil
-	}
-	var err error
-	arr := make(JsonArray, len(vals))
-	for i, v := range vals {
-		arr[i], err = v.ToInterface(ctx)
+	arr := make(JsonArray, 0, len(vals))
+	for _, v := range vals {
+		if v == nil {
+			continue
+		}
+		elem, err := v.ToInterface(ctx)
 		if err != nil {
 			return nil, err
 		}
+		arr = append(arr, elem)
+	}
+	if len(arr) == 0 {
+		return nil, nil
 	}
 	return JSONDocument{Val: arr}, nil
 }
