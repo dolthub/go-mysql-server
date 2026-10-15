@@ -47,7 +47,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"github.com/dolthub/go-mysql-server/sql/variables"
 	"github.com/dolthub/go-mysql-server/testutils"
 )
 
@@ -4534,7 +4533,7 @@ func TestTransactionScripts(t *testing.T, harness Harness) {
 
 func TestConcurrentProcessList(t *testing.T, harness Harness) {
 	require := require.New(t)
-	variables.InitStatusVariables()
+
 	pl := sqle.NewProcessList()
 	numSessions := 2
 
@@ -5760,17 +5759,14 @@ func findRole(toUser string, roles []*mysql_db.RoleEdge) *mysql_db.RoleEdge {
 }
 
 func TestBlobs(t *testing.T, h Harness) {
-	ctx := sql.NewEmptyContext()
 	h.Setup(setup.MydbData, setup.BlobData, setup.MytableData)
 
 	// By default, strict_mysql_compatibility is disabled, but these tests require it to be enabled.
-	err := sql.SystemVariables.SetGlobal(ctx, "strict_mysql_compatibility", int8(1))
-	require.NoError(t, err)
 	for _, tt := range queries.BlobErrors {
-		runQueryErrorTest(t, h, tt)
+		runQueryErrorTest(t, h, tt, func(ctx *sql.Context) error {
+			return ctx.SystemVariables().SetGlobal(ctx, "strict_mysql_compatibility", int8(1))
+		})
 	}
-	err = sql.SystemVariables.SetGlobal(ctx, "strict_mysql_compatibility", int8(0))
-	require.NoError(t, err)
 
 	e := MustNewEngine(t, h)
 	defer e.Close()

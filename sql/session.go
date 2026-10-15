@@ -79,10 +79,10 @@ type Session interface {
 	// SetUserVariable sets the given user variable to the value given for this session, or creates it for this session.
 	SetUserVariable(ctx *Context, varName string, value interface{}, typ Type) error
 	// GetSessionVariable returns this session's value of the system variable with the given name.
-	// To access global scope, use sql.SystemVariables.GetGlobal instead.
+	// To access global scope, use ctx.SystemVariables().GetGlobal instead.
 	GetSessionVariable(ctx *Context, sysVarName string) (interface{}, error)
 	// GetSessionVariableDefault returns this session's default value of the system variable with the given name.
-	// To access global scope, use sql.SystemVariables.GetGlobal instead.
+	// To access global scope, use ctx.SystemVariables().GetGlobal instead.
 	GetSessionVariableDefault(ctx *Context, sysVarName string) (interface{}, error)
 	// GetUserVariable returns this session's value of the user variable with the given name, along with its most
 	// appropriate type.
@@ -97,13 +97,13 @@ type Session interface {
 	// value of every variable overridden
 	ClearTransactionLocalVariables(ctx *Context) error
 	// GetStatusVariable returns the value of the status variable with session scope with the given name.
-	// To access global scope, use sql.StatusVariables instead.
+	// To access global scope, use ctx.StatusVariables() instead.
 	GetStatusVariable(ctx *Context, statVarName string) (interface{}, error)
 	// SetStatusVariable sets the value of the status variable with session scope with the given name.
-	// To access global scope, use sql.StatusVariables.GetGlobal instead.
+	// To access global scope, use ctx.StatusVariables().GetGlobal instead.
 	SetStatusVariable(ctx *Context, statVarName string, val interface{}) error
 	// GetAllStatusVariables returns a map of all status variables with session scope and their values.
-	// To access global scope, use sql.StatusVariables instead.
+	// To access global scope, use ctx.StatusVariables() instead.
 	GetAllStatusVariables(ctx *Context) map[string]StatusVarValue
 	// IncrementStatusVariable increments the value of the status variable by the integer value
 	IncrementStatusVariable(ctx *Context, statVarName string, val int)
@@ -348,13 +348,12 @@ func (c *Context) EngineVariables() *EngineVariables {
 	return nil
 }
 
-// SystemVariables returns the active system registry. Unbound legacy contexts
-// continue to use the package registry during the compatibility rollout.
+// SystemVariables returns the active system registry, if the context has an owner.
 func (c *Context) SystemVariables() SystemVariableRegistry {
 	if vars := c.EngineVariables(); vars != nil {
 		return vars.System
 	}
-	return SystemVariables
+	panic("system variables require an engine variable owner")
 }
 
 // StatusVariables returns the active status registry.
@@ -362,7 +361,7 @@ func (c *Context) StatusVariables() StatusVariableRegistry {
 	if vars := c.EngineVariables(); vars != nil {
 		return vars.Status
 	}
-	return StatusVariables
+	panic("status variables require an engine variable owner")
 }
 
 // NewContextWithVariables constructs a context and, unless a session is

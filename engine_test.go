@@ -29,7 +29,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/rowexec"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 func TestBindingsToExprs(t *testing.T) {
@@ -177,7 +176,7 @@ func getRuleFrom(rules []analyzer.Rule, id analyzer.RuleId) *analyzer.Rule {
 // TODO: this was an analyzer test, but we don't have a mock process list for it to use, so it has to be here
 func TestTrackProcess(t *testing.T) {
 	require := require.New(t)
-	variables.InitStatusVariables()
+
 	db := memory.NewDatabase("db")
 	provider := memory.NewDBProvider(db)
 	a := analyzer.NewDefault(provider)
