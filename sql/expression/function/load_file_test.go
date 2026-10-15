@@ -12,6 +12,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 // createTempDirAndFile returns the temporary directory, as well creates a new file (var filename) that lives in it.
@@ -27,6 +28,7 @@ func createTempDirAndFile(fileName string) (string, *os.File, error) {
 }
 
 func TestLoadFileNoSecurePriv(t *testing.T) {
+	ctx := sql.NewContextWithVariables(t.Context(), variables.NewEngineVariables())
 	// Create a valid temp file and temp directory
 	_, file, err := createTempDirAndFile("myfile.txt")
 	assert.NoError(t, err)
@@ -38,15 +40,16 @@ func TestLoadFileNoSecurePriv(t *testing.T) {
 	assert.NoError(t, err)
 
 	fileName := expression.NewLiteral(file.Name(), types.Text)
-	fn := NewLoadFile(sql.NewEmptyContext(), fileName)
+	fn := NewLoadFile(ctx, fileName)
 
 	// Assert that Load File returns the regardless since secure_file_priv is set to an empty directory
-	res, err := fn.Eval(sql.NewEmptyContext(), sql.Row{})
+	res, err := fn.Eval(ctx, sql.Row{})
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("my data"), res)
 }
 
 func TestLoadFileBadDir(t *testing.T) {
+	ctx := sql.NewContextWithVariables(t.Context(), variables.NewEngineVariables())
 	// Create a valid temp file and temp directory
 	_, file, err := createTempDirAndFile("myfile.txt")
 	assert.NoError(t, err)
@@ -57,17 +60,18 @@ func TestLoadFileBadDir(t *testing.T) {
 	// Set the secure_file_priv var but make it different than the file directory
 	vars := make(map[string]interface{})
 	vars["secure_file_priv"] = "/not/a/real/directory"
-	err = sql.SystemVariables.AssignValues(vars)
+	err = ctx.SystemVariables().(sql.ContextAwareSystemVariableRegistry).AssignValuesWithContext(ctx, vars)
 	assert.NoError(t, err)
+	ctx = sql.NewContextWithVariables(t.Context(), ctx.EngineVariables())
 
 	_, err = file.Write([]byte("my data"))
 	assert.NoError(t, err)
 
 	fileName := expression.NewLiteral(file.Name(), types.Text)
-	fn := NewLoadFile(sql.NewEmptyContext(), fileName)
+	fn := NewLoadFile(ctx, fileName)
 
 	// Assert that Load File returns nil since the file is not in secure_file_priv directory
-	res, err := fn.Eval(sql.NewEmptyContext(), sql.Row{})
+	res, err := fn.Eval(ctx, sql.Row{})
 	assert.NoError(t, err)
 	assert.Equal(t, nil, res)
 }
@@ -79,6 +83,7 @@ type loadFileTestCase struct {
 }
 
 func TestLoadFile(t *testing.T) {
+	ctx := sql.NewContextWithVariables(t.Context(), variables.NewEngineVariables())
 	testCases := []loadFileTestCase{
 		{
 			"simple example",
@@ -98,22 +103,18 @@ func TestLoadFile(t *testing.T) {
 	// Set the secure_file_priv var
 	vars := make(map[string]interface{})
 	vars["secure_file_priv"] = dir
-	err := sql.SystemVariables.AssignValues(vars)
+	err := ctx.SystemVariables().(sql.ContextAwareSystemVariableRegistry).AssignValuesWithContext(ctx, vars)
 	assert.NoError(t, err)
+	ctx = sql.NewContextWithVariables(t.Context(), ctx.EngineVariables())
 
 	for _, tt := range testCases {
-		runLoadFileTest(t, tt, dir)
+		runLoadFileTest(t, ctx, tt, dir)
 	}
 
 	t.Run("releases file and directory handles", func(t *testing.T) {
 		// Cleanup must not depend on finalizers closing leaked handles.
 		gcPercent := debug.SetGCPercent(-1)
 		t.Cleanup(func() { debug.SetGCPercent(gcPercent) })
-		_, oldSecureFilePriv, ok := sql.SystemVariables.GetGlobal("secure_file_priv")
-		require.True(t, ok)
-		t.Cleanup(func() {
-			require.NoError(t, sql.SystemVariables.AssignValues(map[string]interface{}{"secure_file_priv": oldSecureFilePriv}))
-		})
 		for _, mode := range []string{"allowed", "different directory", "missing directory"} {
 			t.Run(mode, func(t *testing.T) {
 				dir := t.TempDir()
@@ -126,10 +127,10 @@ func TestLoadFile(t *testing.T) {
 				} else if mode == "missing directory" {
 					path = filepath.Join(other, "missing", "data")
 				}
-				require.NoError(t, sql.SystemVariables.AssignValues(map[string]interface{}{"secure_file_priv": dir}))
-				ctx := sql.NewEmptyContext()
-				fn := NewLoadFile(ctx, expression.NewLiteral(path, types.Text))
-				res, err := fn.Eval(ctx, nil)
+				require.NoError(t, ctx.SystemVariables().(sql.ContextAwareSystemVariableRegistry).AssignValuesWithContext(ctx, map[string]interface{}{"secure_file_priv": dir}))
+				evalCtx := sql.NewContextWithVariables(t.Context(), ctx.EngineVariables())
+				fn := NewLoadFile(evalCtx, expression.NewLiteral(path, types.Text))
+				res, err := fn.Eval(evalCtx, nil)
 				require.NoError(t, err)
 				if mode == "allowed" {
 					assert.Equal(t, []byte("data"), res)
@@ -147,7 +148,7 @@ func TestLoadFile(t *testing.T) {
 
 // runLoadFileTest takes in a loadFileTestCase and its relevant directory and validates whether LOAD_FILE is reading
 // the file accordingly.
-func runLoadFileTest(t *testing.T, tt loadFileTestCase, dir string) {
+func runLoadFileTest(t *testing.T, ctx *sql.Context, tt loadFileTestCase, dir string) {
 	file, err := os.CreateTemp(dir, tt.fileName)
 	assert.NoError(t, err)
 
@@ -160,10 +161,10 @@ func runLoadFileTest(t *testing.T, tt loadFileTestCase, dir string) {
 
 	// Setup the file data
 	fileName := expression.NewLiteral(file.Name(), types.Text)
-	fn := NewLoadFile(sql.NewEmptyContext(), fileName)
+	fn := NewLoadFile(ctx, fileName)
 
 	// Load the file in
-	res, err := fn.Eval(sql.NewEmptyContext(), sql.Row{})
+	res, err := fn.Eval(ctx, sql.Row{})
 	assert.NoError(t, err)
 	assert.Equal(t, tt.fileData, res)
 }

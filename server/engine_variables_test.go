@@ -39,6 +39,8 @@ func (l variableTestListener) Close()         {}
 
 type variableNetListener struct{ addr net.Addr }
 
+type legacyOnlyVariableRegistry struct{ sql.SystemVariableRegistry }
+
 func (l variableNetListener) Accept() (net.Conn, error) { return nil, net.ErrClosed }
 func (l variableNetListener) Close() error              { return nil }
 func (l variableNetListener) Addr() net.Addr            { return l.addr }
@@ -113,6 +115,14 @@ func TestIndependentServerLifecycleVariables(t *testing.T) {
 		_, bMax, _ := b.Status.GetGlobal("Max_used_connections")
 		return aMax == uint64(2) && bMax == uint64(1)
 	}, time.Second, time.Millisecond)
+}
+
+func TestServerVariableInitializationRejectsLegacyOnlyRegistry(t *testing.T) {
+	vars := variables.NewEngineVariables()
+	vars.System = legacyOnlyVariableRegistry{vars.System}
+	cfg := mysql.ListenerConfig{Listener: variableNetListener{addr: &net.TCPAddr{IP: net.ParseIP("127.0.0.1"), Port: 33061}}}
+	err := updateSystemVariables(cfg, vars)
+	require.ErrorContains(t, err, "does not support context-aware assignment")
 }
 
 func TestReplicationCallbacksUseEngineContext(t *testing.T) {

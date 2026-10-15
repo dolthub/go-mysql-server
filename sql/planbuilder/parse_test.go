@@ -31,7 +31,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	_ "github.com/dolthub/go-mysql-server/sql/variables"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 type planTest struct {
@@ -2624,9 +2624,10 @@ Project
 	db := memory.NewDatabase("mydb")
 	cat := newTestCatalog(db)
 	pro := memory.NewDBProvider(db)
-	sess := memory.NewSession(sql.NewBaseSession(), pro)
+	vars := variables.NewEngineVariables()
+	sess := memory.NewSession(sql.NewBaseSessionWithVariables(vars), pro)
 
-	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
+	ctx := sql.NewContextWithVariables(context.Background(), vars, sql.WithSession(sess))
 	ctx.SetCurrentDatabase("mydb")
 	b := New(ctx, cat, nil)
 
@@ -3035,9 +3036,10 @@ func TestPlanBuilderErr(t *testing.T) {
 	db := memory.NewDatabase("mydb")
 	cat := newTestCatalog(db)
 	pro := memory.NewDBProvider(db)
-	sess := memory.NewSession(sql.NewBaseSession(), pro)
+	vars := variables.NewEngineVariables()
+	sess := memory.NewSession(sql.NewBaseSessionWithVariables(vars), pro)
 
-	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
+	ctx := sql.NewContextWithVariables(context.Background(), vars, sql.WithSession(sess))
 	ctx.SetCurrentDatabase("mydb")
 	b := New(ctx, cat, nil)
 

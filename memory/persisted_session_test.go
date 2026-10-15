@@ -30,12 +30,12 @@ import (
 func newPersistedSqlContext() *sql.Context {
 	ctx := context.Background()
 	pro := NewDBProvider()
-	sess := sql.NewBaseSession()
+	vars := variables.NewEngineVariables()
+	sess := sql.NewBaseSessionWithVariables(vars)
 
 	persistedGlobals := GlobalsMap{"max_connections": 1000, "net_read_timeout": 1000, "auto_increment_increment": 123}
 	persistedSess := NewSession(sess, pro).SetGlobals(persistedGlobals)
-	sqlCtx := sql.NewContext(ctx)
-	sqlCtx.Session = persistedSess
+	sqlCtx := sql.NewContextWithVariables(ctx, vars, sql.WithSession(persistedSess))
 	return sqlCtx
 }
 

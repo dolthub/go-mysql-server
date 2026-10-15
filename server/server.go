@@ -166,7 +166,7 @@ func updateSystemVariables(cfg mysql.ListenerConfig, vars *sql.EngineVariables) 
 	if aware, ok := registry.(sql.ContextAwareSystemVariableRegistry); ok {
 		return aware.AssignValuesWithContext(sql.NewContextWithVariables(context.Background(), vars), sysVars)
 	}
-	return registry.AssignValues(sysVars)
+	return fmt.Errorf("server variable initialization: system registry does not support context-aware assignment")
 }
 
 func newServerFromHandler(cfg Config, e *sqle.Engine, sm *SessionManager, handler mysql.Handler, sel ServerEventListener) (*Server, error) {

@@ -1047,9 +1047,15 @@ func setSecureFilePriv() error {
 	if err != nil {
 		wd = "./"
 	}
-	return sql.SystemVariables.AssignValues(map[string]interface{}{
+	ctx := NewContext(harness)
+	registry := ctx.SystemVariables()
+	values := map[string]interface{}{
 		"secure_file_priv": wd,
-	})
+	}
+	if aware, ok := registry.(sql.ContextAwareSystemVariableRegistry); ok {
+		return aware.AssignValuesWithContext(ctx, values)
+	}
+	return fmt.Errorf("secure_file_priv initialization: system registry does not support context-aware assignment")
 }
 
 func TestLoadData(t *testing.T, harness Harness) {

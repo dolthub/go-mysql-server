@@ -97,16 +97,32 @@ func (sv *globalSystemVariables) AddSystemVariables(sysVars []sql.SystemVariable
 	}
 }
 
-// AssignValues sets all of the values in the given map to their respective variables. If a variable cannot be found, or
-// the value is invalid, then an error is returned. If the values contain any custom system variables, then make sure
-// that they've been added using AddSystemVariables first.
+// AssignValues initializes values using a standalone context. Callers with an
+// owning context should use AssignValuesWithContext so callbacks see that owner.
 func (sv *globalSystemVariables) AssignValues(vals map[string]interface{}) error {
-	return sv.AssignValuesWithContext(sql.NewEmptyContext(), vals)
+	return sv.assignValues(sql.NewEmptyContext(), vals)
 }
 
-// AssignValuesWithContext initializes values with the supplied engine context.
-// Callers should bind the context to this registry before invoking callbacks.
+// AssignValuesWithContext initializes values with the supplied owning context.
+// It rejects mismatched context, registry, and session ownership before changing
+// any value or invoking a callback.
 func (sv *globalSystemVariables) AssignValuesWithContext(ctx *sql.Context, vals map[string]interface{}) error {
+	if ctx == nil || ctx.EngineVariables() == nil {
+		return fmt.Errorf("system variable assignment requires an owning context")
+	}
+	owner := ctx.EngineVariables()
+	registry, ok := owner.System.(*globalSystemVariables)
+	if !ok || registry != sv {
+		return fmt.Errorf("system variable assignment context belongs to another registry")
+	}
+	sessionOwner, ok := ctx.Session.(sql.EngineVariablesProvider)
+	if !ok || sessionOwner.EngineVariables() != owner {
+		return fmt.Errorf("system variable assignment context and session have different owners")
+	}
+	return sv.assignValues(ctx, vals)
+}
+
+func (sv *globalSystemVariables) assignValues(ctx *sql.Context, vals map[string]interface{}) error {
 	sv.writeMutex.Lock()
 	defer sv.writeMutex.Unlock()
 	for varName, val := range vals {
@@ -178,7 +194,7 @@ func (sv *globalSystemVariables) GetGlobal(name string) (sql.SystemVariable, int
 // then an error is returned. Additionally, if the value is invalid for the variable's type then an error is returned.
 // Only global dynamic variables may be set through this function, as it is intended for use through the SET GLOBAL
 // statement. To set session system variables, use the appropriate function on the session context. To set values
-// directly (such as when loading persisted values), use AssignValues. Case-insensitive.
+// directly (such as when loading persisted values), use AssignValuesWithContext. Case-insensitive.
 func (sv *globalSystemVariables) SetGlobal(ctx *sql.Context, name string, val interface{}) error {
 	sv.writeMutex.Lock()
 	defer sv.writeMutex.Unlock()

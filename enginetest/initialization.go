@@ -28,6 +28,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 func NewContext(harness Harness) *sql.Context {
@@ -136,7 +137,7 @@ func validateEngineContext(e *sqle.Engine, ctx *sql.Context) *sql.Context {
 // NewBaseSession returns a new BaseSession compatible with these tests. Most tests will work with any session
 // implementation, but for full compatibility use a session based on this one.
 func NewBaseSession() *sql.BaseSession {
-	return sql.NewBaseSessionWithClientServer("address", sql.Client{Address: "localhost", User: "root"}, 1)
+	return sql.NewBaseSessionWithClientServerWithVariables("address", sql.Client{Address: "localhost", User: "root"}, 1, variables.NewEngineVariables())
 }
 
 func NewBaseSessionForEngine(e *sqle.Engine) *sql.BaseSession {
