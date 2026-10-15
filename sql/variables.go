@@ -22,10 +22,27 @@ import (
 
 var SystemVariables SystemVariableRegistry
 
+// EngineVariables groups the variable registries owned by one engine. Callers
+// creating independent engines must give each engine a distinct bundle.
+type EngineVariables struct {
+	System SystemVariableRegistry
+	Status StatusVariableRegistry
+}
+
+// ContextAwareSystemVariableRegistry is an optional extension for initializing
+// values with a context that belongs to the same engine as the registry.
+// AssignValues remains available for callers using the legacy initialization path.
+type ContextAwareSystemVariableRegistry interface {
+	SystemVariableRegistry
+	AssignValuesWithContext(ctx *Context, vals map[string]interface{}) error
+}
+
 // SystemVariableRegistry is a registry of system variables. Each session gets its own copy of all values via the
 // SessionMap() method.
 type SystemVariableRegistry interface {
-	// AddSystemVariables adds the given system variables to this registry
+	// AddSystemVariables adds the given system variables to this registry.
+	// The registry retains each definition; callers must provide a fresh
+	// definition (and any mutable scope or type it contains) for each registry.
 	AddSystemVariables(sysVars []SystemVariable)
 	// AssignValues assigns the given values to the system variables in this registry
 	AssignValues(vals map[string]interface{}) error
