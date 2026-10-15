@@ -1000,6 +1000,67 @@ var JsonScripts = []ScriptTest{
 				Query:    "select pk from t where json_extract(col1, '$.items') <> null;",
 				Expected: []sql.Row{},
 			},
+			// A path that matches nothing is left out of a multi-path result.
+			{
+				Query:    `select json_extract('{"a": 1}', '$.a', '$.nope');`,
+				Expected: []sql.Row{{types.MustJSON("[1]")}},
+			},
+			{
+				Query:    `select json_extract('{"a": 1}', '$.nope', '$.a');`,
+				Expected: []sql.Row{{types.MustJSON("[1]")}},
+			},
+			{
+				Query:    `select json_extract('{"a": null}', '$.a', '$.nope');`,
+				Expected: []sql.Row{{types.MustJSON("[null]")}},
+			},
+			{
+				Query:    `select json_extract('{"a": null}', '$.nope', '$.a');`,
+				Expected: []sql.Row{{types.MustJSON("[null]")}},
+			},
+			{
+				Query:    `select json_extract('{"a": 1}', '$.nope', '$.nope2');`,
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:    `select json_extract('{"a": 1}', '$.nope');`,
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:    `select json_extract('{"a": 1}', '$.nope', '$.nope');`,
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:    `select json_extract('{"a": 1}', '$.a', '$.a');`,
+				Expected: []sql.Row{{types.MustJSON("[1, 1]")}},
+			},
+			{
+				Query:    `select json_extract('{"a": []}', '$.nope', '$.a');`,
+				Expected: []sql.Row{{types.MustJSON("[[]]")}},
+			},
+			{
+				Query:    `select json_extract('{"a": {"b": 2}}', '$.nope', '$.a');`,
+				Expected: []sql.Row{{types.MustJSON(`[{"b": 2}]`)}},
+			},
+			{
+				Query:    `select json_extract('{"a": 1}', null, '$.a');`,
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:    `select json_extract('{"a": 1}', '$.a', null);`,
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:    `select json_extract('5', '$', '$.a');`,
+				Expected: []sql.Row{{types.MustJSON("[5]")}},
+			},
+			{
+				Query:    `select json_extract('null', '$', '$.a');`,
+				Expected: []sql.Row{{types.MustJSON("[null]")}},
+			},
+			{
+				Query:    `select json_extract('null', '$.a', '$');`,
+				Expected: []sql.Row{{types.MustJSON("[null]")}},
+			},
 		},
 	},
 	{
