@@ -307,10 +307,10 @@ func TestInfoSchema(t *testing.T, h Harness) {
 		if IsServerEngine(e) {
 			t.Skip("skipping for server engine as the processlist returned from server differs")
 		}
-		p := sqle.NewProcessList()
+		p := sqle.NewProcessListWithVariables(e.(*sqle.Engine).Variables())
 		p.AddConnection(1, "localhost")
 
-		ctx := NewContext(h)
+		ctx := NewContextForEngine(h, e.(*sqle.Engine))
 		ctx.Session.SetClient(sql.Client{Address: "localhost", User: "root"})
 		ctx.Session.SetConnectionId(1)
 		ctx.ProcessList = p
@@ -322,10 +322,10 @@ func TestInfoSchema(t *testing.T, h Harness) {
 		require.NoError(t, err)
 
 		p.AddConnection(2, "otherhost")
-		sess2 := sql.NewBaseSessionWithClientServer("localhost", sql.Client{Address: "otherhost", User: "root"}, 2)
+		sess2 := sql.NewBaseSessionWithClientServerWithVariables("localhost", sql.Client{Address: "otherhost", User: "root"}, 2, e.(*sqle.Engine).Variables())
 		sess2.SetCurrentDatabase("otherdb")
 		p.ConnectionReady(sess2)
-		ctx2 := sql.NewContext(context.Background(), sql.WithPid(2), sql.WithSession(sess2))
+		ctx2 := sql.NewContextWithVariables(context.Background(), e.(*sqle.Engine).Variables(), sql.WithPid(2), sql.WithSession(sess2))
 		ctx2, err = p.BeginQuery(ctx2, "SELECT bar")
 		require.NoError(t, err)
 		p.EndQuery(ctx2)
@@ -340,10 +340,10 @@ func TestInfoSchema(t *testing.T, h Harness) {
 		if IsServerEngine(e) {
 			t.Skip("skipping for server engine as the processlist returned from server differs")
 		}
-		p := sqle.NewProcessList()
+		p := sqle.NewProcessListWithVariables(e.(*sqle.Engine).Variables())
 		p.AddConnection(1, "localhost")
 
-		ctx := NewContext(h)
+		ctx := NewContextForEngine(h, e.(*sqle.Engine))
 		ctx.Session.SetClient(sql.Client{Address: "localhost", User: "root"})
 		ctx.Session.SetConnectionId(1)
 		ctx.ProcessList = p
@@ -355,10 +355,10 @@ func TestInfoSchema(t *testing.T, h Harness) {
 		require.NoError(t, err)
 
 		p.AddConnection(2, "otherhost")
-		sess2 := sql.NewBaseSessionWithClientServer("localhost", sql.Client{Address: "otherhost", User: "root"}, 2)
+		sess2 := sql.NewBaseSessionWithClientServerWithVariables("localhost", sql.Client{Address: "otherhost", User: "root"}, 2, e.(*sqle.Engine).Variables())
 		sess2.SetCurrentDatabase("otherdb")
 		p.ConnectionReady(sess2)
-		ctx2 := sql.NewContext(context.Background(), sql.WithPid(2), sql.WithSession(sess2))
+		ctx2 := sql.NewContextWithVariables(context.Background(), e.(*sqle.Engine).Variables(), sql.WithPid(2), sql.WithSession(sess2))
 		ctx2, err = p.BeginQuery(ctx2, "SELECT bar")
 		require.NoError(t, err)
 		p.EndQuery(ctx2)
@@ -382,10 +382,10 @@ func TestInfoSchema(t *testing.T, h Harness) {
 		if IsServerEngine(e) {
 			t.Skip("skipping for server engine as the processlist returned from server differs")
 		}
-		p := sqle.NewProcessList()
+		p := sqle.NewProcessListWithVariables(e.(*sqle.Engine).Variables())
 		p.AddConnection(1, "localhost")
 
-		ctx := NewContext(h)
+		ctx := NewContextForEngine(h, e.(*sqle.Engine))
 		ctx.Session.SetClient(sql.Client{Address: "localhost", User: "root"})
 		ctx.Session.SetConnectionId(1)
 		ctx.ProcessList = p
@@ -397,10 +397,10 @@ func TestInfoSchema(t *testing.T, h Harness) {
 		require.NoError(t, err)
 
 		p.AddConnection(2, "otherhost")
-		sess2 := sql.NewBaseSessionWithClientServer("localhost", sql.Client{Address: "otherhost", User: "root"}, 2)
+		sess2 := sql.NewBaseSessionWithClientServerWithVariables("localhost", sql.Client{Address: "otherhost", User: "root"}, 2, e.(*sqle.Engine).Variables())
 		sess2.SetCurrentDatabase("otherdb")
 		p.ConnectionReady(sess2)
-		ctx2 := sql.NewContext(context.Background(), sql.WithPid(2), sql.WithSession(sess2))
+		ctx2 := sql.NewContextWithVariables(context.Background(), e.(*sqle.Engine).Variables(), sql.WithPid(2), sql.WithSession(sess2))
 		ctx2, err = p.BeginQuery(ctx2, "SELECT bar")
 		require.NoError(t, err)
 		p.EndQuery(ctx2)
@@ -424,10 +424,10 @@ func TestInfoSchema(t *testing.T, h Harness) {
 		if IsServerEngine(e) {
 			t.Skip("skipping for server engine as the processlist returned from server differs")
 		}
-		p := sqle.NewProcessList()
+		p := sqle.NewProcessListWithVariables(e.(*sqle.Engine).Variables())
 		p.AddConnection(1, "localhost")
 
-		ctx := NewContext(h)
+		ctx := NewContextForEngine(h, e.(*sqle.Engine))
 		ctx.Session.SetClient(sql.Client{Address: "localhost", User: "root"})
 		ctx.Session.SetConnectionId(1)
 		ctx.ProcessList = p
@@ -439,10 +439,10 @@ func TestInfoSchema(t *testing.T, h Harness) {
 		require.NoError(t, err)
 
 		p.AddConnection(2, "otherhost")
-		sess2 := sql.NewBaseSessionWithClientServer("localhost", sql.Client{Address: "otherhost", User: "root"}, 2)
+		sess2 := sql.NewBaseSessionWithClientServerWithVariables("localhost", sql.Client{Address: "otherhost", User: "root"}, 2, e.(*sqle.Engine).Variables())
 		sess2.SetCurrentDatabase("otherdb")
 		p.ConnectionReady(sess2)
-		ctx2 := sql.NewContext(context.Background(), sql.WithPid(2), sql.WithSession(sess2))
+		ctx2 := sql.NewContextWithVariables(context.Background(), e.(*sqle.Engine).Variables(), sql.WithPid(2), sql.WithSession(sess2))
 		ctx2, err = p.BeginQuery(ctx2, "SELECT bar")
 		require.NoError(t, err)
 		p.EndQuery(ctx2)
@@ -1042,14 +1042,20 @@ func TestSpatialInsertInto(t *testing.T, harness Harness) {
 }
 
 // setSecureFilePriv sets the secure_file_priv system variable to the current working directory.
-func setSecureFilePriv() error {
+func setSecureFilePriv(harness Harness) error {
 	wd, err := os.Getwd()
 	if err != nil {
 		wd = "./"
 	}
-	return sql.SystemVariables.AssignValues(map[string]interface{}{
+	ctx := NewContext(harness)
+	registry := ctx.SystemVariables()
+	values := map[string]interface{}{
 		"secure_file_priv": wd,
-	})
+	}
+	if aware, ok := registry.(sql.ContextAwareSystemVariableRegistry); ok {
+		return aware.AssignValuesWithContext(ctx, values)
+	}
+	return registry.AssignValues(values)
 }
 
 func TestLoadData(t *testing.T, harness Harness) {
@@ -1057,7 +1063,7 @@ func TestLoadData(t *testing.T, harness Harness) {
 	e := MustNewEngine(t, harness)
 	defer e.Close()
 
-	require.NoError(t, setSecureFilePriv())
+	require.NoError(t, setSecureFilePriv(harness))
 	TestQuery(t, harness, e, queries.QueryTest{
 		Query:    "select @@global.secure_file_priv != '';",
 		Expected: []sql.Row{{true}},
@@ -1072,7 +1078,7 @@ func TestLoadDataErrors(t *testing.T, harness Harness) {
 	e := MustNewEngine(t, harness)
 	defer e.Close()
 
-	require.NoError(t, setSecureFilePriv())
+	require.NoError(t, setSecureFilePriv(harness))
 	TestQuery(t, harness, e, queries.QueryTest{
 		Query:    "select @@global.secure_file_priv != '';",
 		Expected: []sql.Row{{true}},
@@ -1088,7 +1094,7 @@ func TestLoadDataFailing(t *testing.T, harness Harness) {
 	e := MustNewEngine(t, harness)
 	defer e.Close()
 
-	require.NoError(t, setSecureFilePriv())
+	require.NoError(t, setSecureFilePriv(harness))
 	TestQuery(t, harness, e, queries.QueryTest{
 		Query:    "select @@global.secure_file_priv != '';",
 		Expected: []sql.Row{{true}},
@@ -1108,7 +1114,7 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 	err := CreateNewConnectionForServerEngine(ctx, e)
 	require.NoError(t, err, nil)
 
-	require.NoError(t, setSecureFilePriv())
+	require.NoError(t, setSecureFilePriv(harness))
 	TestQuery(t, harness, e, queries.QueryTest{
 		Query:    "select @@global.secure_file_priv != '';",
 		Expected: []sql.Row{{true}},
@@ -2204,11 +2210,6 @@ func TestUserAuthentication(t *testing.T, h Harness) {
 	require.NoError(t, err)
 	for _, script := range queries.ServerAuthTests {
 		t.Run(script.Name, func(t *testing.T) {
-			ctx := NewContextWithClient(clientHarness, sql.Client{
-				User:    "root",
-				Address: "localhost",
-			})
-
 			tlsCert, err := tls.LoadX509KeyPair("./testdata/selfsigned_cert.pem", "./testdata/selfsigned_key.pem")
 			require.NoError(t, err)
 			tlsConfig := tls.Config{
@@ -2228,6 +2229,10 @@ func TestUserAuthentication(t *testing.T, h Harness) {
 			if !ok {
 				t.Skip("Need a *sqle.Engine for TestUserAuthentication")
 			}
+			ctx := NewContextWithClientForEngine(clientHarness, engine, sql.Client{
+				User:    "root",
+				Address: "localhost",
+			})
 
 			defer engine.Close()
 			engine.EngineAnalyzer().Catalog.MySQLDb.AddRootAccount()
@@ -2250,7 +2255,7 @@ func TestUserAuthentication(t *testing.T, h Harness) {
 				require.FailNow(t, "harness must implement ServerHarness")
 			}
 
-			s, err := server.NewServer(serverConfig, engine, sql.NewContext, serverHarness.SessionBuilder(), nil)
+			s, err := server.NewServer(serverConfig, engine, sql.ContextFactoryWithVariables(engine.Variables()), SessionBuilderForEngine(serverHarness, engine), nil)
 			require.NoError(t, err)
 			go func() {
 				err := s.Start()
@@ -3703,7 +3708,7 @@ func TestVariables(t *testing.T, harness Harness) {
 	// no permissions established.
 	engine.EngineAnalyzer().Catalog.MySQLDb = mysql_db.CreateEmptyMySQLDb()
 
-	ctx1 := sql.NewEmptyContext()
+	ctx1 := NewContext(harness)
 	err = CreateNewConnectionForServerEngine(ctx1, engine)
 	require.NoError(t, err)
 	for _, assertion := range []queries.ScriptTestAssertion{
@@ -3771,7 +3776,7 @@ func TestVariables(t *testing.T, harness Harness) {
 		})
 	}
 
-	ctx2 := sql.NewEmptyContext()
+	ctx2 := NewSession(harness)
 	err = CreateNewConnectionForServerEngine(ctx2, engine)
 	require.NoError(t, err)
 	for _, assertion := range []queries.ScriptTestAssertion{
@@ -5037,14 +5042,14 @@ func TestPersist(t *testing.T, harness Harness, newPersistableSess func(ctx *sql
 
 	for _, tt := range q {
 		t.Run(tt.Name, func(t *testing.T) {
-			variables.InitSystemVariables()
 			ctx := NewContext(harness)
+			require.NoError(t, ctx.SystemVariables().SetGlobal(ctx, "max_connections", int64(151)))
 			ctx.Session = newPersistableSess(ctx)
 
 			TestQueryWithContext(t, ctx, e, harness, tt.Query, tt.Expected, nil, nil, nil)
 
 			if tt.ExpectedGlobal != nil {
-				_, res, _ := sql.SystemVariables.GetGlobal("max_connections")
+				_, res, _ := ctx.SystemVariables().GetGlobal("max_connections")
 				require.Equal(t, tt.ExpectedGlobal, res)
 
 				showGlobalVarsQuery := "SHOW GLOBAL VARIABLES LIKE 'max_connections'"
@@ -5505,7 +5510,7 @@ func TestTypesOverWire(t *testing.T, harness ClientHarness, sessionBuilder serve
 			}
 			defer engine.Close()
 
-			ctx := NewContextWithClient(harness, sql.Client{
+			ctx := NewContextWithClientForEngine(harness, engine, sql.Client{
 				User:    "root",
 				Address: "localhost",
 			})
@@ -5525,7 +5530,11 @@ func TestTypesOverWire(t *testing.T, harness ClientHarness, sessionBuilder serve
 				Address:        fmt.Sprintf("localhost:%d", port),
 				MaxConnections: 1000,
 			}
-			s, err := server.NewServer(serverConfig, engine, sql.NewContext, sessionBuilder, nil)
+			builder := sessionBuilder
+			if serverHarness, ok := harness.(ServerHarness); ok {
+				builder = SessionBuilderForEngine(serverHarness, engine)
+			}
+			s, err := server.NewServer(serverConfig, engine, sql.ContextFactoryWithVariables(engine.Variables()), builder, nil)
 			require.NoError(t, err)
 			go func() {
 				err := s.Start()

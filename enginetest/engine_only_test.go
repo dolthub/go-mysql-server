@@ -132,6 +132,9 @@ func TestLocks(t *testing.T) {
 
 	analyzer := analyzer.NewDefault(harness.Provider())
 	engine := sqle.New(analyzer, new(sqle.Config))
+	harness.BindEngine(engine)
+	ctx = enginetest.NewContextForEngine(harness, engine)
+	ctx.SetCurrentDatabase("db")
 
 	ctx.SetCurrentDatabase("db")
 	_, iter, _, err := engine.Query(ctx, "LOCK TABLES t1 READ, t2 WRITE, t3 READ")
@@ -140,7 +143,7 @@ func TestLocks(t *testing.T) {
 	_, err = sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 
-	ctx = enginetest.NewContext(harness)
+	ctx = enginetest.NewContextForEngine(harness, engine)
 	ctx.SetCurrentDatabase("db")
 	_, iter, _, err = engine.Query(ctx, "UNLOCK TABLES")
 	require.NoError(err)
@@ -985,8 +988,8 @@ func TestCountDistinctMemoryLimit(t *testing.T) {
 	pro := memory.NewDBProvider(db)
 	e := sqle.NewDefault(pro)
 	newCtx := func(opts ...sql.ContextOption) *sql.Context {
-		opts = append(opts, sql.WithSession(memory.NewSession(sql.NewBaseSession(), pro)))
-		ctx := sql.NewContext(context.Background(), opts...)
+		opts = append(opts, sql.WithSession(memory.NewSession(sql.NewBaseSessionWithVariables(e.Variables()), pro)))
+		ctx := e.NewContext(context.Background(), opts...)
 		ctx.SetCurrentDatabase("mydb")
 		return ctx
 	}
@@ -1038,7 +1041,7 @@ func TestTemporalCastPrecision(t *testing.T) {
 	db := memory.NewDatabase("mydb")
 	pro := memory.NewDBProvider(db)
 	e := sqle.NewDefault(pro)
-	ctx := sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), pro)))
+	ctx := e.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSessionWithVariables(e.Variables()), pro)))
 
 	for _, query := range []string{
 		"SELECT CAST('2020-01-01' AS DATETIME(7))",
@@ -1087,7 +1090,7 @@ func TestColumnStatisticsWithoutPrivileges(t *testing.T) {
 	db := memory.NewDatabase("mydb")
 	pro := memory.NewDBProvider(db)
 	e := sqle.NewDefault(pro)
-	ctx := sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), pro)))
+	ctx := e.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSessionWithVariables(e.Variables()), pro)))
 
 	_, iter, _, err := e.Query(ctx, "SELECT * FROM information_schema.column_statistics")
 	require.NoError(t, err)
@@ -1175,11 +1178,12 @@ func newDatabase() (*sql2.DB, func()) {
 	engine := sqle.New(analyzer.NewDefault(pro), &sqle.Config{
 		IncludeRootAccount: true,
 	})
+	harness.BindEngine(engine)
 	cfg := server.Config{
 		Protocol: "tcp",
 		Address:  fmt.Sprintf("localhost:%d", port),
 	}
-	srv, err := server.NewServer(cfg, engine, sql.NewContext, harness.SessionBuilder(), nil)
+	srv, err := server.NewServer(cfg, engine, sql.ContextFactoryWithVariables(engine.Variables()), harness.SessionBuilder(), nil)
 	if err != nil {
 		panic(err)
 	}

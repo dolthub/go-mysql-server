@@ -44,6 +44,7 @@ type MemoryHarness struct {
 	driver                    sql.IndexDriver
 	skippedQueries            map[string]struct{}
 	session                   sql.Session
+	engine                    *sqle.Engine
 	retainSession             bool
 	retainSessionAfterSetup   bool
 	setupData                 []setup.SetupScript
@@ -101,7 +102,16 @@ func (m MemoryHarness) RetainSessionAfterSetup() *MemoryHarness {
 }
 
 func (m *MemoryHarness) SessionBuilder() server.SessionBuilder {
+	if m.engine != nil {
+		return m.sessionBuilderWithVariables(m.engine.Variables())
+	}
 	return m.sessionBuilderWithVariables(nil)
+}
+
+// BindEngine makes the ordinary harness helpers use the engine created for a test.
+func (m *MemoryHarness) BindEngine(e *sqle.Engine) {
+	m.engine = e
+	m.session = nil
 }
 
 func (m *MemoryHarness) SessionBuilderForEngine(e *sqle.Engine) server.SessionBuilder {
@@ -140,6 +150,9 @@ func (m *MemoryHarness) InitializeIndexDriver(dbs []sql.Database) {
 }
 
 func (m *MemoryHarness) NewSession() *sql.Context {
+	if m.engine != nil {
+		return m.NewSessionForEngine(m.engine)
+	}
 	m.session = m.newSession()
 	return m.NewContext()
 }
@@ -256,6 +269,9 @@ func (m *MemoryHarness) SupportsKeylessTables() bool {
 }
 
 func (m *MemoryHarness) NewContext() *sql.Context {
+	if m.engine != nil {
+		return m.NewContextForEngine(m.engine)
+	}
 	if m.session == nil {
 		m.session = m.newSession()
 	}
@@ -304,6 +320,9 @@ func (m *MemoryHarness) NewContextWithClientForEngine(e *sqle.Engine, client sql
 }
 
 func (m *MemoryHarness) NewContextWithClient(client sql.Client) *sql.Context {
+	if m.engine != nil {
+		return m.NewContextWithClientForEngine(m.engine, client)
+	}
 	baseSession := sql.NewBaseSessionWithClientServer("address", client, 1)
 
 	return sql.NewContext(
@@ -366,6 +385,7 @@ func (m *MemoryHarness) NewDatabases(names ...string) []sql.Database {
 }
 
 func (m *MemoryHarness) NewReadOnlyEngine(provider sql.DatabaseProvider) (QueryEngine, error) {
+	sessionProvider := m.provider
 	dbs := make([]sql.Database, 0)
 	for _, db := range provider.AllDatabases(m.NewContext()) {
 		dbs = append(dbs, memory.ReadOnlyDatabase{HistoryDatabase: db.(*memory.HistoryDatabase)})
@@ -374,7 +394,12 @@ func (m *MemoryHarness) NewReadOnlyEngine(provider sql.DatabaseProvider) (QueryE
 	readOnlyProvider := memory.NewDBProviderWithOpts(memory.WithDbsOption(dbs))
 	m.provider = readOnlyProvider.(*memory.DbProvider)
 
-	return NewEngineWithProvider(nil, m, readOnlyProvider), nil
+	engine := NewEngineWithProvider(nil, m, readOnlyProvider)
+	// The read-only provider is for planning. Memory sessions still commit their
+	// read snapshots through the writable provider used during setup.
+	m.provider = sessionProvider
+	m.session = nil
+	return engine, nil
 }
 
 func (m *MemoryHarness) ValidateEngine(ctx *sql.Context, e *sqle.Engine) error {

@@ -181,13 +181,11 @@ func newEngineWithProvider(harness Harness, provider sql.DatabaseProvider, vars 
 	analyzer.Catalog.InfoSchema = information_schema.NewInformationSchemaDatabase()
 
 	engine := sqle.New(analyzer, &sqle.Config{EngineVariables: vars})
+	if aware, ok := harness.(interface{ BindEngine(*sqle.Engine) }); ok {
+		aware.BindEngine(engine)
+	}
 	if idh, ok := harness.(IndexDriverHarness); ok {
-		var ctx *sql.Context
-		if vars != nil {
-			ctx = NewContextForEngine(harness, engine)
-		} else {
-			ctx = NewContext(harness)
-		}
+		ctx := NewContextForEngine(harness, engine)
 		idh.InitializeIndexDriver(engine.Analyzer.Catalog.AllDatabases(ctx))
 	}
 	analyzer.Runner = engine
@@ -215,7 +213,7 @@ func NewEngineWithVariables(t *testing.T, harness Harness, dbProvider sql.Databa
 func NewEngine(t *testing.T, harness Harness, dbProvider sql.DatabaseProvider, setupData []setup.SetupScript, statsProvider sql.StatsProvider) (*sqle.Engine, error) {
 	e := NewEngineWithProvider(t, harness, dbProvider)
 	e.Analyzer.Catalog.StatsProvider = statsProvider
-	ctx := NewContext(harness)
+	ctx := NewContextForEngine(harness, e)
 
 	var supportsIndexes bool
 	if ih, ok := harness.(IndexHarness); ok && ih.SupportsNativeIndexCreation() {

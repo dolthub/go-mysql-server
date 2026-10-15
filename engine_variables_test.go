@@ -89,6 +89,57 @@ func TestEngineVariableOwnership(t *testing.T) {
 	}
 }
 
+func TestDefaultEngineVariablesAreIndependent(t *testing.T) {
+	a := New(analyzer.NewDefault(memory.NewDBProvider()), nil)
+	b := NewDefault(memory.NewDBProvider())
+	c := New(analyzer.NewDefault(memory.NewDBProvider()), &Config{})
+	require.NotNil(t, a.Variables())
+	require.NotNil(t, b.Variables())
+	require.NotSame(t, a.Variables(), c.Variables())
+	require.NotSame(t, b.Variables(), c.Variables())
+	require.NotSame(t, a.Variables(), b.Variables())
+	require.NotSame(t, a.Variables().System, b.Variables().System)
+	require.NotSame(t, a.Variables().Status, b.Variables().Status)
+	aUUID, _, ok := a.Variables().System.GetGlobal("server_uuid")
+	require.True(t, ok)
+	bUUID, _, ok := b.Variables().System.GetGlobal("server_uuid")
+	require.True(t, ok)
+	require.NotEqual(t, aUUID.GetDefault(), bUUID.GetDefault())
+	require.Same(t, a.Variables(), a.ProcessList.(sql.EngineVariablesProvider).EngineVariables())
+
+	aCtx, bCtx := a.NewContext(context.Background()), b.NewContext(context.Background())
+	queryEngineVariables(t, a, aCtx, "SET GLOBAL max_connections = 71")
+	require.Equal(t, int64(71), queryEngineVariables(t, a, aCtx, "SELECT @@global.max_connections")[0][0])
+	require.NotEqual(t, int64(71), queryEngineVariables(t, b, bCtx, "SELECT @@global.max_connections")[0][0])
+
+	a.Variables().Status.IncrementGlobal("Threads_connected", 3)
+	_ = NewDefault(memory.NewDBProvider())
+	_, count, ok := a.Variables().Status.GetGlobal("Threads_connected")
+	require.True(t, ok)
+	require.Equal(t, uint64(3), count)
+	_, count, ok = b.Variables().Status.GetGlobal("Threads_connected")
+	require.True(t, ok)
+	require.Zero(t, count)
+
+	_, _, _, err := a.Query(bCtx, "SELECT 1")
+	require.ErrorContains(t, err, "engine variable ownership")
+	_, _, _, err = a.Query(sql.NewContext(context.Background()), "SELECT 1")
+	require.ErrorContains(t, err, "engine variable ownership")
+}
+
+func TestNewDoesNotResetLegacyStatusVariables(t *testing.T) {
+	_, original, ok := sql.StatusVariables.GetGlobal("Threads_connected")
+	require.True(t, ok)
+	require.NoError(t, sql.StatusVariables.SetGlobal("Threads_connected", uint64(23)))
+	t.Cleanup(func() {
+		require.NoError(t, sql.StatusVariables.SetGlobal("Threads_connected", original))
+	})
+	_ = NewDefault(memory.NewDBProvider())
+	_, got, ok := sql.StatusVariables.GetGlobal("Threads_connected")
+	require.True(t, ok)
+	require.Equal(t, uint64(23), got)
+}
+
 func TestEventSchedulerRejectsForeignContextGetter(t *testing.T) {
 	aVars, bVars := variables.NewEngineVariables(), variables.NewEngineVariables()
 	e := New(analyzer.NewDefault(memory.NewDBProvider()), &Config{EngineVariables: aVars})
