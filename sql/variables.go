@@ -70,14 +70,15 @@ type ContextAwareSystemVariableRegistry interface {
 	AssignValuesWithContext(ctx *Context, vals map[string]interface{}) error
 }
 
-// SystemVariableRegistry is a registry of system variables. Each session gets its own copy of all values via the
-// SessionMap() method.
+// SystemVariableRegistry is a registry of system variables. Each session gets
+// a snapshot of variables with session scope via NewSessionMap; global-only
+// variables remain live in the registry.
 type SystemVariableRegistry interface {
 	// AddSystemVariables adds the given system variables to this registry.
 	// The registry retains each definition; callers must provide a fresh
 	// definition (and any mutable scope or type it contains) for each registry.
 	AddSystemVariables(sysVars []SystemVariable)
-	// NewSessionMap returns a map of system variables values that can be used by a session
+	// NewSessionMap returns values for variables with session scope.
 	NewSessionMap() map[string]SystemVarValue
 	// GetGlobal returns the current global value of the system variable with the given name
 	GetGlobal(name string) (SystemVariable, interface{}, bool)

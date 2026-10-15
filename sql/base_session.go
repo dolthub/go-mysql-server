@@ -141,6 +141,18 @@ func (s *BaseSession) GetAllSessionVariables() map[string]interface{} {
 	for k, v := range s.systemVars {
 		addVar(k, v)
 	}
+	if s.engineVariables != nil {
+		registry := s.systemRegistry()
+		for name := range registry.GetAllGlobalVariables() {
+			if _, snapshotted := s.systemVars[name]; snapshotted {
+				continue
+			}
+			definition, value, ok := registry.GetGlobal(name)
+			if ok && definition != nil && definition.IsGlobalOnly() {
+				m[name] = value
+			}
+		}
+	}
 	// Values set with transaction-local scope override the session values
 	for k, v := range s.localSysVars {
 		addVar(k, v)
@@ -182,6 +194,9 @@ func (s *BaseSession) InitSessionVariable(ctx *Context, sysVarName string, value
 	if !ok {
 		return ErrUnknownSystemVariable.New(sysVarName)
 	}
+	if sysVar.IsGlobalOnly() {
+		return ErrSystemVariableGlobalOnly.New(sysVarName)
+	}
 
 	sysVarName = strings.ToLower(sysVarName)
 	val, ok := s.systemVars[sysVarName]
@@ -204,6 +219,9 @@ func (s *BaseSession) InitSessionVariableDefault(ctx *Context, sysVarName string
 	sysVar, _, ok := s.systemRegistry().GetGlobal(sysVarName)
 	if !ok {
 		return ErrUnknownSystemVariable.New(sysVarName)
+	}
+	if sysVar.IsGlobalOnly() {
+		return ErrSystemVariableGlobalOnly.New(sysVarName)
 	}
 
 	svv, err := sysVar.InitValue(ctx, value, false)
@@ -262,6 +280,10 @@ func (s *BaseSession) GetSessionVariable(ctx *Context, sysVarName string) (inter
 		sysVar, ok = s.systemVars[sysVarName]
 	}
 	if !ok {
+		definition, value, exists := s.systemRegistry().GetGlobal(sysVarName)
+		if exists && definition != nil && definition.IsGlobalOnly() {
+			return value, nil
+		}
 		return nil, ErrUnknownSystemVariable.New(sysVarName)
 	}
 	// TODO: this is duplicated from within variables.globalSystemVariables, suggesting the need for an interface
@@ -321,6 +343,10 @@ func (s *BaseSession) GetSessionVariableDefault(ctx *Context, sysVarName string)
 	sysVarName = strings.ToLower(sysVarName)
 	sysVar, ok := s.systemVars[sysVarName]
 	if !ok {
+		definition, _, exists := s.systemRegistry().GetGlobal(sysVarName)
+		if exists && definition != nil && definition.IsGlobalOnly() {
+			return nil, ErrSystemVariableGlobalOnly.New(sysVarName)
+		}
 		return nil, ErrUnknownSystemVariable.New(sysVarName)
 	}
 	// TODO: this is duplicated from within variables.globalSystemVariables, suggesting the need for an interface
@@ -691,7 +717,8 @@ func NewBaseSessionWithClientServer(server string, client Client, id uint32) *Ba
 	return newBaseSession(server, client, id, nil)
 }
 
-// NewBaseSessionWithClientServerWithVariables snapshots a complete bundle.
+// NewBaseSessionWithClientServerWithVariables binds a complete bundle and
+// snapshots its session-scoped system variables.
 // A nil or incomplete bundle causes a panic.
 func NewBaseSessionWithClientServerWithVariables(server string, client Client, id uint32, vars *EngineVariables) *BaseSession {
 	requireEngineVariables(vars)
@@ -744,7 +771,8 @@ func NewBaseSession() *BaseSession {
 	return NewBaseSessionWithClientServer("", Client{}, atomic.AddUint32(&autoSessionIDs, 1))
 }
 
-// NewBaseSessionWithVariables snapshots a complete engine bundle.
+// NewBaseSessionWithVariables binds a complete engine bundle and snapshots
+// its session-scoped system variables.
 // A nil or incomplete bundle causes a panic.
 func NewBaseSessionWithVariables(vars *EngineVariables) *BaseSession {
 	requireEngineVariables(vars)
