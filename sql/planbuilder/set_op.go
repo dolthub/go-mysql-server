@@ -74,6 +74,16 @@ func (b *Builder) buildSetOp(inScope *scope, u *ast.SetOp) (outScope *scope) {
 
 	// mysql errors for order by right projection
 	orderByScope := b.analyzeOrderBy(leftScope, leftScope, u.OrderBy)
+
+	b.tabId++
+	tabId := b.tabId
+	mergedCols := b.mergeSetOpScopeColumns(leftScope.cols, rightScope.cols, tabId)
+	mergedById := make(map[columnId]scopeColumn, len(mergedCols))
+	for _, c := range mergedCols {
+		if _, ok := mergedById[c.id]; !ok {
+			mergedById[c.id] = c
+		}
+	}
 	// An ORDER BY term naming a projected column sorts the set operation's output, so it reads that output column,
 	// with the column's merged type, rather than re-evaluating the left branch's expression. An unaliased projection
 	// such as a literal would otherwise sort by a constant.
@@ -81,14 +91,10 @@ func (b *Builder) buildSetOp(inScope *scope, u *ast.SetOp) (outScope *scope) {
 		if _, isColumn := c.scalar.(*expression.GetField); isColumn {
 			continue
 		}
-		for j, lc := range leftScope.cols {
-			if lc.id != c.id || j >= len(rightScope.cols) {
-				continue
-			}
+		if merged, ok := mergedById[c.id]; ok {
 			orderByScope.cols[i].scalar = nil
-			orderByScope.cols[i].typ = types.GeneralizeTypes(lc.typ, rightScope.cols[j].typ)
-			orderByScope.cols[i].nullable = lc.nullable || rightScope.cols[j].nullable
-			break
+			orderByScope.cols[i].typ = merged.typ
+			orderByScope.cols[i].nullable = merged.nullable
 		}
 	}
 	sortConditions := b.buildSortConditions(orderByScope, transform.NewTree)
@@ -125,12 +131,10 @@ func (b *Builder) buildSetOp(inScope *scope, u *ast.SetOp) (outScope *scope) {
 	for _, c := range leftScope.cols {
 		cols.Add(sql.ColumnId(c.id))
 	}
-	b.tabId++
-	tabId := b.tabId
 	ret := plan.NewSetOp(setOpType, leftScope.node, rightScope.node, distinct, limit, offset, sortConditions).WithId(tabId).WithColumns(cols)
 	outScope = leftScope
 	outScope.node = b.mergeSetOpSchemas(ret.(*plan.SetOp))
-	outScope.cols = b.mergeSetOpScopeColumns(leftScope.cols, rightScope.cols, tabId)
+	outScope.cols = mergedCols
 	return
 }
 
