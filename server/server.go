@@ -15,9 +15,11 @@
 package server
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
+	"reflect"
 	"strconv"
 	"time"
 
@@ -90,7 +92,12 @@ func NewServerWithHandler(
 		tracer = sql.NoopTracer
 	}
 
-	sm := NewSessionManager(ctxFactory, sb, tracer, e.Analyzer.Catalog.Database, e.MemoryManager, e.ProcessList, cfg.Address)
+	var vars *sql.EngineVariables
+	if e.IsolatedVariables() {
+		vars = e.Variables()
+	}
+	sm := NewSessionManagerWithVariables(ctxFactory, sb, tracer, e.Analyzer.Catalog.Database, e.MemoryManager, e.ProcessList, cfg.Address, vars)
+	sm.engine = e
 	sm.connWatcher = newConnWatcher(connWatchStartDelay, connWatchTick, cfg.DisableConnectionWatcher)
 	h := &Handler{
 		e:                 e,
@@ -136,7 +143,7 @@ func getPort(cfg mysql.ListenerConfig) (int64, error) {
 	return portInt, nil
 }
 
-func updateSystemVariables(cfg mysql.ListenerConfig) error {
+func updateSystemVariables(cfg mysql.ListenerConfig, vars *sql.EngineVariables) error {
 	sysVars := make(map[string]interface{})
 
 	if port, err := getPort(cfg); err == nil {
@@ -152,16 +159,34 @@ func updateSystemVariables(cfg mysql.ListenerConfig) error {
 	}
 
 	// TODO: add the rest of the config variables
-	err := sql.SystemVariables.AssignValues(sysVars)
-	if err != nil {
-		return err
+	registry := sql.SystemVariables
+	if vars != nil {
+		registry = vars.System
 	}
-	return nil
+	if aware, ok := registry.(sql.ContextAwareSystemVariableRegistry); ok {
+		return aware.AssignValuesWithContext(sql.NewContextWithVariables(context.Background(), vars), sysVars)
+	}
+	return registry.AssignValues(sysVars)
 }
 
 func newServerFromHandler(cfg Config, e *sqle.Engine, sm *SessionManager, handler mysql.Handler, sel ServerEventListener) (*Server, error) {
 	for _, opt := range cfg.Options {
 		e, sm, handler = opt(e, sm, handler)
+	}
+	if e == nil || sm == nil || handler == nil {
+		return nil, fmt.Errorf("server options returned a nil engine, session manager, or handler")
+	}
+	if e.IsolatedVariables() && (e.Variables() != sm.variables || sm.engine != e) {
+		return nil, fmt.Errorf("server variable ownership: engine and session manager do not match")
+	}
+	if e.IsolatedVariables() && (e.ProcessList == nil || !reflect.ValueOf(e.ProcessList).Comparable() || e.ProcessList != sm.processlist) {
+		return nil, fmt.Errorf("server variable ownership: process list and session manager do not match")
+	}
+	if owned, ok := e.ProcessList.(sql.EngineVariablesProvider); ok && owned.EngineVariables() != sm.variables {
+		return nil, fmt.Errorf("server variable ownership: process list does not match engine")
+	}
+	if h, ok := handler.(*Handler); ok && (h.e != e || h.sm != sm) {
+		return nil, fmt.Errorf("server variable ownership: handler does not match engine or session manager")
 	}
 
 	l := cfg.Listener
@@ -203,7 +228,7 @@ func newServerFromHandler(cfg Config, e *sqle.Engine, sm *SessionManager, handle
 		return nil, err
 	}
 
-	err = updateSystemVariables(listenerCfg)
+	err = updateSystemVariables(listenerCfg, sm.variables)
 	if err != nil {
 		return nil, err
 	}
@@ -225,7 +250,11 @@ func (s *Server) Start() error {
 }
 
 func (s *Server) WarnIfLoadFileInsecure() {
-	_, v, ok := sql.SystemVariables.GetGlobal("secure_file_priv")
+	registry := sql.SystemVariables
+	if s.Engine.IsolatedVariables() {
+		registry = s.Engine.Variables().System
+	}
+	_, v, ok := registry.GetGlobal("secure_file_priv")
 	if ok {
 		if v == "" {
 			logrus.Warn("secure_file_priv is set to \"\", which is insecure.")

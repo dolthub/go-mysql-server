@@ -15,11 +15,14 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -89,4 +92,29 @@ func TestConfigWithDefaults(t *testing.T) {
 			assert.Equal(t, test.ExpectedCmp, res)
 		})
 	}
+}
+
+func TestConfigWithEngineVariablesPrecedence(t *testing.T) {
+	_, err := (Config{}).NewConfigWithVariables(nil)
+	require.ErrorContains(t, err, "requires engine variables")
+	a, b := variables.NewEngineVariables(), variables.NewEngineVariables()
+	ctxA := sql.NewContextWithVariables(context.Background(), a)
+	ctxB := sql.NewContextWithVariables(context.Background(), b)
+	require.NoError(t, a.System.SetGlobal(ctxA, "max_connections", int64(123)))
+	require.NoError(t, b.System.SetGlobal(ctxB, "max_connections", int64(456)))
+	require.NoError(t, a.System.SetGlobal(ctxA, "net_read_timeout", int64(17)))
+	require.NoError(t, b.System.SetGlobal(ctxB, "net_read_timeout", int64(29)))
+	ca, err := (Config{}).NewConfigWithVariables(a)
+	require.NoError(t, err)
+	cb, err := (Config{}).NewConfigWithVariables(b)
+	require.NoError(t, err)
+	require.Equal(t, uint64(123), ca.MaxConnections)
+	require.Equal(t, uint64(456), cb.MaxConnections)
+	require.Equal(t, 17*time.Second, ca.ConnReadTimeout)
+	require.Equal(t, 29*time.Second, cb.ConnReadTimeout)
+
+	explicit, err := (Config{MaxConnections: 77, ConnReadTimeout: 8 * time.Second}).NewConfigWithVariables(a)
+	require.NoError(t, err)
+	require.Equal(t, uint64(77), explicit.MaxConnections)
+	require.Equal(t, 8*time.Second, explicit.ConnReadTimeout)
 }

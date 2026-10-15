@@ -133,12 +133,16 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 
 	a.Catalog.RegisterFunction(emptyCtx, function.GetLockingFuncs(emptyCtx, ls)...)
 
+	processList := NewProcessList()
+	if cfg.EngineVariables != nil {
+		processList = NewProcessListWithVariables(engineVars)
+	}
 	ret := &Engine{
 		variables:         engineVars,
 		isolatedVariables: cfg.EngineVariables != nil,
 		Analyzer:          a,
 		MemoryManager:     sql.NewMemoryManager(sql.ProcessMemory),
-		ProcessList:       NewProcessList(),
+		ProcessList:       processList,
 		LS:                ls,
 		BackgroundThreads: sql.NewBackgroundThreads(),
 		IsServerLocked:    cfg.IsServerLocked,
@@ -154,6 +158,9 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 
 // Variables returns the variable registries used by this engine.
 func (e *Engine) Variables() *sql.EngineVariables { return e.variables }
+
+// IsolatedVariables reports whether this engine was configured with its own bundle.
+func (e *Engine) IsolatedVariables() bool { return e.isolatedVariables }
 
 // NewContext creates a context and session from this engine's variable state.
 func (e *Engine) NewContext(ctx context.Context, opts ...sql.ContextOption) *sql.Context {
@@ -780,6 +787,19 @@ func (e *Engine) EngineEventScheduler() sql.EventScheduler {
 // to check for events to execute. If |period| is less than 1, then it is ignored and the default period
 // (30s currently) is used. This function also initializes the EventScheduler of the analyzer of this engine.
 func (e *Engine) InitializeEventScheduler(ctxGetterFunc func() (*sql.Context, error), status eventscheduler.SchedulerStatus, period int) error {
+	if e.isolatedVariables {
+		getter := ctxGetterFunc
+		ctxGetterFunc = func() (*sql.Context, error) {
+			ctx, err := getter()
+			if err != nil {
+				return nil, err
+			}
+			if err := e.checkVariableOwnership(ctx); err != nil {
+				return nil, err
+			}
+			return ctx, nil
+		}
+	}
 	var err error
 	e.EventScheduler, err = eventscheduler.InitEventScheduler(e.Analyzer, e.BackgroundThreads, ctxGetterFunc, status, e.executeEvent, period)
 	if err != nil {
