@@ -84,6 +84,38 @@ func TestIndependentEngineSQLVariables(t *testing.T) {
 	require.Equal(t, bSelectBefore, bSelectAfter)
 }
 
+func TestGlobalOnlyVariablesStayLiveInExistingSessions(t *testing.T) {
+	vars := variables.NewEngineVariables()
+	require.NotContains(t, vars.System.NewSessionMap(), "max_connections")
+	require.NotContains(t, vars.System.NewSessionMap(), "secure_file_priv")
+	require.Contains(t, vars.System.NewSessionMap(), "auto_increment_increment")
+
+	engine := New(analyzer.NewDefault(memory.NewDBProvider()), &Config{EngineVariables: vars})
+	a, b := engine.NewContext(context.Background()), engine.NewContext(context.Background())
+	queryEngineVariables(t, engine, a, "SET GLOBAL max_connections = 321")
+	for _, ctx := range []*sql.Context{a, b} {
+		require.Equal(t, int64(321), queryEngineVariables(t, engine, ctx, "SELECT @@max_connections")[0][0])
+		require.Equal(t, int64(321), queryEngineVariables(t, engine, ctx, "SHOW SESSION VARIABLES LIKE 'max_connections'")[0][1])
+		require.Equal(t, int64(321), ctx.GetAllSessionVariables()["max_connections"])
+		value, err := ctx.GetSessionVariable(ctx, "max_connections")
+		require.NoError(t, err)
+		require.Equal(t, int64(321), value)
+		_, err = ctx.GetSessionVariableDefault(ctx, "max_connections")
+		require.True(t, sql.ErrSystemVariableGlobalOnly.Is(err))
+		require.True(t, sql.ErrSystemVariableGlobalOnly.Is(ctx.InitSessionVariableDefault(ctx, "max_connections", int64(111))))
+	}
+	_, _, _, err := engine.Query(a, "SELECT @@session.max_connections")
+	require.True(t, sql.ErrSystemVariableGlobalOnly.Is(err))
+
+	bootstrap, ok := vars.System.(sql.ContextAwareSystemVariableRegistry)
+	require.True(t, ok)
+	require.NoError(t, bootstrap.AssignValuesWithContext(a, map[string]interface{}{"secure_file_priv": "/tmp/allowed"}))
+	value, err := b.GetSessionVariable(b, "secure_file_priv")
+	require.NoError(t, err)
+	require.Equal(t, "/tmp/allowed", value)
+	require.Equal(t, "/tmp/allowed", queryEngineVariables(t, engine, b, "SHOW SESSION VARIABLES LIKE 'secure_file_priv'")[0][1])
+}
+
 type recordingPersistSession struct {
 	*sql.BaseSession
 	values map[string]interface{}

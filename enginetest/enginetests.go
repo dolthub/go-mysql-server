@@ -1042,7 +1042,7 @@ func TestSpatialInsertInto(t *testing.T, harness Harness) {
 }
 
 // setSecureFilePriv sets the secure_file_priv system variable to the current working directory.
-func setSecureFilePriv() error {
+func setSecureFilePriv(harness Harness) error {
 	wd, err := os.Getwd()
 	if err != nil {
 		wd = "./"
@@ -1063,7 +1063,7 @@ func TestLoadData(t *testing.T, harness Harness) {
 	e := MustNewEngine(t, harness)
 	defer e.Close()
 
-	require.NoError(t, setSecureFilePriv())
+	require.NoError(t, setSecureFilePriv(harness))
 	TestQuery(t, harness, e, queries.QueryTest{
 		Query:    "select @@global.secure_file_priv != '';",
 		Expected: []sql.Row{{true}},
@@ -1078,7 +1078,7 @@ func TestLoadDataErrors(t *testing.T, harness Harness) {
 	e := MustNewEngine(t, harness)
 	defer e.Close()
 
-	require.NoError(t, setSecureFilePriv())
+	require.NoError(t, setSecureFilePriv(harness))
 	TestQuery(t, harness, e, queries.QueryTest{
 		Query:    "select @@global.secure_file_priv != '';",
 		Expected: []sql.Row{{true}},
@@ -1094,7 +1094,7 @@ func TestLoadDataFailing(t *testing.T, harness Harness) {
 	e := MustNewEngine(t, harness)
 	defer e.Close()
 
-	require.NoError(t, setSecureFilePriv())
+	require.NoError(t, setSecureFilePriv(harness))
 	TestQuery(t, harness, e, queries.QueryTest{
 		Query:    "select @@global.secure_file_priv != '';",
 		Expected: []sql.Row{{true}},
@@ -1114,7 +1114,7 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 	err := CreateNewConnectionForServerEngine(ctx, e)
 	require.NoError(t, err, nil)
 
-	require.NoError(t, setSecureFilePriv())
+	require.NoError(t, setSecureFilePriv(harness))
 	TestQuery(t, harness, e, queries.QueryTest{
 		Query:    "select @@global.secure_file_priv != '';",
 		Expected: []sql.Row{{true}},

@@ -228,7 +228,7 @@ func newServerFromHandler(cfg Config, e *sqle.Engine, sm *SessionManager, handle
 		return nil, err
 	}
 
-	err = updateSystemVariables(listenerCfg, sm.variables)
+	err = updateSystemVariables(listenerCfg, e.Variables())
 	if err != nil {
 		return nil, err
 	}

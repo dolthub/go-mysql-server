@@ -144,13 +144,16 @@ func (sv *globalSystemVariables) assignValues(ctx *sql.Context, vals map[string]
 	return nil
 }
 
-// NewSessionMap returns a new map of system variable values for sessions.
+// NewSessionMap returns a new map of values with session scope. Global-only
+// values stay in the registry so existing sessions observe their current value.
 func (sv *globalSystemVariables) NewSessionMap() map[string]sql.SystemVarValue {
 	sv.mutex.RLock()
 	defer sv.mutex.RUnlock()
 	sessionVals := make(map[string]sql.SystemVarValue, len(sv.sysVarVals))
 	for key, val := range sv.sysVarVals {
-		sessionVals[key] = val
+		if !val.Var.IsGlobalOnly() {
+			sessionVals[key] = val
+		}
 	}
 	return sessionVals
 }
