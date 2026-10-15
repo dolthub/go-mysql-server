@@ -114,6 +114,12 @@ func InitStatusVariables() {
 	}
 }
 
+// Initialize the deprecated singleton for callers that still use it.
+// Engine construction never resets this registry.
+func init() {
+	InitStatusVariables()
+}
+
 // statusVars is a map of status variables that are available in the MySQL server.
 var statusVars = newStatusVars()
 

@@ -236,6 +236,9 @@ func (c *Connector) Server() string { return c.serverName }
 // DSN returns the original DSN passed by the client.
 func (c *Connector) DSN() string { return c.dsn }
 
+// EngineVariables returns the state shared by connections to this engine.
+func (c *Connector) EngineVariables() *sql.EngineVariables { return c.dbConn.engine.Variables() }
+
 // Connect returns a connection to the database.
 func (c *Connector) Connect(ctx context.Context) (driver.Conn, error) {
 	id := c.dbConn.nextConnectionID()

@@ -1021,10 +1021,6 @@ func setSecureFilePriv(harness Harness) error {
 	values := map[string]interface{}{
 		"secure_file_priv": wd,
 	}
-	if ctx.EngineVariables() == nil {
-		// Legacy harness contexts use the package registry directly.
-		return registry.AssignValues(values)
-	}
 	if aware, ok := registry.(sql.ContextAwareSystemVariableRegistry); ok {
 		return aware.AssignValuesWithContext(ctx, values)
 	}
@@ -2180,11 +2176,6 @@ func TestUserAuthentication(t *testing.T, h Harness) {
 	require.NoError(t, err)
 	for _, script := range queries.ServerAuthTests {
 		t.Run(script.Name, func(t *testing.T) {
-			ctx := NewContextWithClient(clientHarness, sql.Client{
-				User:    "root",
-				Address: "localhost",
-			})
-
 			tlsCert, err := tls.LoadX509KeyPair("./testdata/selfsigned_cert.pem", "./testdata/selfsigned_key.pem")
 			require.NoError(t, err)
 			tlsConfig := tls.Config{
@@ -2204,6 +2195,10 @@ func TestUserAuthentication(t *testing.T, h Harness) {
 			if !ok {
 				t.Skip("Need a *sqle.Engine for TestUserAuthentication")
 			}
+			ctx := NewContextWithClient(clientHarness, sql.Client{
+				User:    "root",
+				Address: "localhost",
+			})
 
 			defer engine.Close()
 			engine.EngineAnalyzer().Catalog.MySQLDb.AddRootAccount()
@@ -2226,7 +2221,7 @@ func TestUserAuthentication(t *testing.T, h Harness) {
 				require.FailNow(t, "harness must implement ServerHarness")
 			}
 
-			s, err := server.NewServer(serverConfig, engine, sql.NewContext, serverHarness.SessionBuilder(), nil)
+			s, err := server.NewServer(serverConfig, engine, sql.ContextFactoryWithVariables(engine.Variables()), serverHarness.SessionBuilder(), nil)
 			require.NoError(t, err)
 			go func() {
 				err := s.Start()
@@ -5537,7 +5532,7 @@ func TestTypesOverWire(t *testing.T, harness ClientHarness, sessionBuilder serve
 				Address:        fmt.Sprintf("localhost:%d", port),
 				MaxConnections: 1000,
 			}
-			s, err := server.NewServer(serverConfig, engine, sql.NewContext, sessionBuilder, nil)
+			s, err := server.NewServer(serverConfig, engine, sql.ContextFactoryWithVariables(engine.Variables()), sessionBuilder, nil)
 			require.NoError(t, err)
 			go func() {
 				err := s.Start()
