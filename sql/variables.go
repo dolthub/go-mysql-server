@@ -239,7 +239,7 @@ func GetMysqlScope(t MysqlSVScopeType) *MysqlScope {
 func (m *MysqlScope) SetValue(ctx *Context, name string, val any) error {
 	switch m.Type {
 	case SystemVariableScope_Global:
-		err := SystemVariables.SetGlobal(ctx, name, val)
+		err := ctx.SystemVariables().SetGlobal(ctx, name, val)
 		if err != nil {
 			return err
 		}
@@ -257,7 +257,7 @@ func (m *MysqlScope) SetValue(ctx *Context, name string, val any) error {
 		if err != nil {
 			return err
 		}
-		err = SystemVariables.SetGlobal(ctx, name, val)
+		err = ctx.SystemVariables().SetGlobal(ctx, name, val)
 		if err != nil {
 			return err
 		}
@@ -295,7 +295,7 @@ func (m *MysqlScope) SetValue(ctx *Context, name string, val any) error {
 func (m *MysqlScope) GetValue(ctx *Context, name string, collation CollationID) (any, error) {
 	switch m.Type {
 	case SystemVariableScope_Global:
-		_, val, ok := SystemVariables.GetGlobal(name)
+		_, val, ok := ctx.SystemVariables().GetGlobal(name)
 		if !ok {
 			return nil, ErrUnknownSystemVariable.New(name)
 		}
@@ -510,6 +510,6 @@ func (s *ImmutableStatusVarValue) Value() interface{} {
 // IncrementStatusVariable increments the value of the status variable by integer val.
 // |name| is case-sensitive.
 func IncrementStatusVariable(ctx *Context, name string, val int) {
-	StatusVariables.IncrementGlobal(name, val)
+	ctx.StatusVariables().IncrementGlobal(name, val)
 	ctx.Session.IncrementStatusVariable(ctx, name, val)
 }

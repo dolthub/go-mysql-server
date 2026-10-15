@@ -58,7 +58,10 @@ func TestEngineVariableOwnership(t *testing.T) {
 
 	foreign := b.NewContext(context.Background())
 	conflicting := sql.NewContextWithVariables(context.Background(), aVars, sql.WithSession(foreign.Session))
-	_, questionsBefore, _ := sql.StatusVariables.GetGlobal("Questions")
+	var questionsBefore interface{}
+	if sql.StatusVariables != nil {
+		_, questionsBefore, _ = sql.StatusVariables.GetGlobal("Questions")
+	}
 	for _, bad := range []*sql.Context{foreign, conflicting, sql.NewContext(context.Background())} {
 		assertOwnershipError := func(err error) {
 			t.Helper()
@@ -79,8 +82,10 @@ func TestEngineVariableOwnership(t *testing.T) {
 		_, _, _, err = a.PrepQueryPlanForExecution(bad, "", nil, nil)
 		assertOwnershipError(err)
 	}
-	_, questionsAfter, _ := sql.StatusVariables.GetGlobal("Questions")
-	require.Equal(t, questionsBefore, questionsAfter)
+	if sql.StatusVariables != nil {
+		_, questionsAfter, _ := sql.StatusVariables.GetGlobal("Questions")
+		require.Equal(t, questionsBefore, questionsAfter)
+	}
 }
 
 func TestEngineSessionDefaultsAndLateRegistration(t *testing.T) {

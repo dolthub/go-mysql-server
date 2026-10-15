@@ -15,6 +15,7 @@
 package variables
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -114,6 +115,26 @@ func TestAssignValuesWithContext(t *testing.T) {
 	_, value, found := registry.GetGlobal("callback_variable")
 	require.True(t, found)
 	require.Equal(t, int64(2), value)
+}
+
+func TestAssignValuesCallbackReadsOwningRegistry(t *testing.T) {
+	vars := NewEngineVariables()
+	ctx := sql.NewContextWithVariables(context.Background(), vars)
+	called := false
+	vars.System.AddSystemVariables([]sql.SystemVariable{&sql.MysqlSystemVariable{
+		Name: "callback_registry_read", Scope: sql.GetMysqlScope(sql.SystemVariableScope_Global),
+		Dynamic: true, Type: types.NewSystemIntType("callback_registry_read", 0, 100, false), Default: int64(1),
+		NotifyChanged: func(ctx *sql.Context, _ sql.SystemVariableScope, _ sql.SystemVarValue) error {
+			require.Same(t, vars, ctx.EngineVariables())
+			_, _, found := ctx.SystemVariables().GetGlobal("max_connections")
+			require.True(t, found)
+			called = true
+			return nil
+		},
+	}})
+	aware := vars.System.(sql.ContextAwareSystemVariableRegistry)
+	require.NoError(t, aware.AssignValuesWithContext(ctx, map[string]interface{}{"callback_registry_read": int64(2)}))
+	require.True(t, called)
 }
 
 func TestUptimeUsesRegistryStartTime(t *testing.T) {
