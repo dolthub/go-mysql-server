@@ -867,7 +867,7 @@ from
 			"         │                   └─ IndexedTableAccess(orders2)\n" +
 			"         │                       ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_id]\n" +
 			"         │                       ├─ static: [{[1, 1], [NULL, ∞), (2100, 11153)}]\n" +
-			"         │                       ├─ colSet: (9-16)\n" +
+			"         │                       ├─ colSet: (9-12)\n" +
 			"         │                       ├─ tableId: 2\n" +
 			"         │                       └─ Table\n" +
 			"         │                           ├─ name: orders2\n" +
