@@ -60,7 +60,7 @@ func TestLoadFileBadDir(t *testing.T) {
 	// Set the secure_file_priv var but make it different than the file directory
 	vars := make(map[string]interface{})
 	vars["secure_file_priv"] = "/not/a/real/directory"
-	err = ctx.SystemVariables().AssignValues(vars)
+	err = ctx.SystemVariables().(sql.ContextAwareSystemVariableRegistry).AssignValuesWithContext(ctx, vars)
 	assert.NoError(t, err)
 	ctx = sql.NewContextWithVariables(t.Context(), ctx.EngineVariables())
 
@@ -103,7 +103,7 @@ func TestLoadFile(t *testing.T) {
 	// Set the secure_file_priv var
 	vars := make(map[string]interface{})
 	vars["secure_file_priv"] = dir
-	err := ctx.SystemVariables().AssignValues(vars)
+	err := ctx.SystemVariables().(sql.ContextAwareSystemVariableRegistry).AssignValuesWithContext(ctx, vars)
 	assert.NoError(t, err)
 	ctx = sql.NewContextWithVariables(t.Context(), ctx.EngineVariables())
 
@@ -127,7 +127,7 @@ func TestLoadFile(t *testing.T) {
 				} else if mode == "missing directory" {
 					path = filepath.Join(other, "missing", "data")
 				}
-				require.NoError(t, ctx.SystemVariables().AssignValues(map[string]interface{}{"secure_file_priv": dir}))
+				require.NoError(t, ctx.SystemVariables().(sql.ContextAwareSystemVariableRegistry).AssignValuesWithContext(ctx, map[string]interface{}{"secure_file_priv": dir}))
 				evalCtx := sql.NewContextWithVariables(t.Context(), ctx.EngineVariables())
 				fn := NewLoadFile(evalCtx, expression.NewLiteral(path, types.Text))
 				res, err := fn.Eval(evalCtx, nil)

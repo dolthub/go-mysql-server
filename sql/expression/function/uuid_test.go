@@ -15,6 +15,7 @@
 package function
 
 import (
+	"context"
 	"regexp"
 	"testing"
 
@@ -228,7 +229,7 @@ func TestBinToUUIDFailing(t *testing.T) {
 }
 
 func TestUUIDShort(t *testing.T) {
-	ctx := sql.NewEmptyContext()
+	ctx := sql.NewContextWithVariables(context.Background(), variables.NewEngineVariables())
 	uuidShortE := NewUUIDShortFunc(ctx)
 
 	// Test that UUID_SHORT returns sequential values
@@ -255,7 +256,7 @@ func TestUUIDShort(t *testing.T) {
 }
 
 func TestUUIDShortMultipleInstances(t *testing.T) {
-	ctx := sql.NewEmptyContext()
+	ctx := sql.NewContextWithVariables(context.Background(), variables.NewEngineVariables())
 
 	uuidShort1 := NewUUIDShortFunc(ctx)
 	uuidShort2 := NewUUIDShortFunc(ctx)
@@ -277,7 +278,7 @@ func TestUUIDShortMultipleInstances(t *testing.T) {
 }
 
 func TestUUIDShortWithChildren(t *testing.T) {
-	ctx := sql.NewEmptyContext()
+	ctx := sql.NewContextWithVariables(context.Background(), variables.NewEngineVariables())
 	uuidShortE := NewUUIDShortFunc(ctx)
 
 	newExpr, err := uuidShortE.WithChildren(ctx)
@@ -290,7 +291,7 @@ func TestUUIDShortWithChildren(t *testing.T) {
 }
 
 func TestUUIDShortProperties(t *testing.T) {
-	ctx := sql.NewEmptyContext()
+	ctx := sql.NewContextWithVariables(context.Background(), variables.NewEngineVariables())
 	uuidShortE := NewUUIDShortFunc(ctx).(*UUIDShortFunc)
 
 	require.Equal(t, "UUID_SHORT", uuidShortE.FunctionName())

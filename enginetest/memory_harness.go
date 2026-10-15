@@ -29,6 +29,7 @@ import (
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 const testNumPartitions = 5
@@ -105,7 +106,7 @@ func (m *MemoryHarness) SessionBuilder() server.SessionBuilder {
 	if m.engine != nil {
 		return m.sessionBuilderWithVariables(m.engine.Variables())
 	}
-	return m.sessionBuilderWithVariables(nil)
+	return m.sessionBuilderWithVariables(variables.NewEngineVariables())
 }
 
 // BindEngine makes the ordinary harness helpers use the engine created for a test.
@@ -304,6 +305,9 @@ func (m *MemoryHarness) newSession() *memory.Session {
 }
 
 func (m *MemoryHarness) newSessionWithVariables(vars *sql.EngineVariables) *memory.Session {
+	if vars == nil {
+		vars = variables.NewEngineVariables()
+	}
 	baseSession := sql.NewBaseSessionWithClientServerWithVariables("address", sql.Client{Address: "localhost", User: "root"}, 1, vars)
 	session := memory.NewSession(baseSession, m.getProvider())
 	if m.driver != nil {
@@ -326,7 +330,7 @@ func (m *MemoryHarness) NewContextWithClient(client sql.Client) *sql.Context {
 	if m.engine != nil {
 		return m.NewContextWithClientForEngine(m.engine, client)
 	}
-	baseSession := sql.NewBaseSessionWithClientServer("address", client, 1)
+	baseSession := sql.NewBaseSessionWithClientServerWithVariables("address", client, 1, variables.NewEngineVariables())
 
 	return sql.NewContext(
 		context.Background(),
