@@ -295,14 +295,15 @@ type Context struct {
 	queryTime time.Time
 	context.Context
 	Session
-	ProcessList ProcessList
-	services    Services
-	tracer      trace.Tracer
-	Memory      *MemoryManager
-	query       string
-	pid         uint64
-	interpreted bool
-	Version     AnalyzerVersion
+	engineVariables *EngineVariables
+	ProcessList     ProcessList
+	services        Services
+	tracer          trace.Tracer
+	Memory          *MemoryManager
+	query           string
+	pid             uint64
+	interpreted     bool
+	Version         AnalyzerVersion
 	// traceRedactionEnabled, when true, opts the context into SQL
 	// trace redaction. The zero value (false) means redaction is
 	// disabled — opt-in to preserve backward compatibility with
@@ -320,6 +321,64 @@ type Context struct {
 
 // ContextOption is a function to configure the context.
 type ContextOption func(*Context)
+
+// EngineVariablesProvider is an optional extension for sessions that retain
+// the variable state of their engine. Embedding BaseSession provides it.
+type EngineVariablesProvider interface {
+	EngineVariables() *EngineVariables
+}
+
+// WithEngineVariables binds a context to an engine's variable state. A session
+// supplied separately must belong to the same bundle.
+func WithEngineVariables(vars *EngineVariables) ContextOption {
+	return func(ctx *Context) { ctx.engineVariables = vars }
+}
+
+// EngineVariables returns the context's explicit owner, or its session's owner.
+func (c *Context) EngineVariables() *EngineVariables {
+	if c == nil {
+		return nil
+	}
+	if c.engineVariables != nil {
+		return c.engineVariables
+	}
+	if owner, ok := c.Session.(EngineVariablesProvider); ok {
+		return owner.EngineVariables()
+	}
+	return nil
+}
+
+// SystemVariables returns the active system registry. Unbound legacy contexts
+// continue to use the package registry during the compatibility rollout.
+func (c *Context) SystemVariables() SystemVariableRegistry {
+	if vars := c.EngineVariables(); vars != nil {
+		return vars.System
+	}
+	return SystemVariables
+}
+
+// StatusVariables returns the active status registry.
+func (c *Context) StatusVariables() StatusVariableRegistry {
+	if vars := c.EngineVariables(); vars != nil {
+		return vars.Status
+	}
+	return StatusVariables
+}
+
+// NewContextWithVariables constructs a context and, unless a session is
+// supplied, snapshots a session from vars before returning it.
+func NewContextWithVariables(ctx context.Context, vars *EngineVariables, opts ...ContextOption) *Context {
+	opts = append([]ContextOption{WithEngineVariables(vars)}, opts...)
+	return NewContext(ctx, opts...)
+}
+
+// ContextFactoryWithVariables returns a factory suitable for an engine-owned
+// server or background worker.
+func ContextFactoryWithVariables(vars *EngineVariables) ContextFactory {
+	return func(ctx context.Context, opts ...ContextOption) *Context {
+		return NewContextWithVariables(ctx, vars, opts...)
+	}
+}
 
 // WithSession adds the given session to the context.
 func WithSession(s Session) ContextOption {
@@ -535,7 +594,11 @@ func NewContext(
 		c.ProcessList = EmptyProcessList{}
 	}
 	if c.Session == nil {
-		c.Session = NewBaseSession()
+		if c.engineVariables != nil {
+			c.Session = NewBaseSessionWithVariables(c.engineVariables)
+		} else {
+			c.Session = NewBaseSession()
+		}
 	}
 	// Eager-allocate the redaction mapping so concurrent callers
 	// (parallel rowexec spans firing while RedactQueryForTrace is
