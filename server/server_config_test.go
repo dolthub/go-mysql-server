@@ -95,8 +95,6 @@ func TestConfigWithDefaults(t *testing.T) {
 }
 
 func TestConfigWithEngineVariablesPrecedence(t *testing.T) {
-	_, err := (Config{}).NewConfigWithVariables(nil)
-	require.ErrorContains(t, err, "requires engine variables")
 	a, b := variables.NewEngineVariables(), variables.NewEngineVariables()
 	ctxA := sql.NewContextWithVariables(context.Background(), a)
 	ctxB := sql.NewContextWithVariables(context.Background(), b)

@@ -84,12 +84,28 @@ func NewSessionManager(
 	processlist sql.ProcessList,
 	addr string,
 ) *SessionManager {
-	return NewSessionManagerWithVariables(ctxFactory, builder, tracer, getDbFunc, memory, processlist, addr, nil)
+	return newSessionManager(ctxFactory, builder, tracer, getDbFunc, memory, processlist, addr, nil)
 }
 
 // NewSessionManagerWithVariables retains the bundle used by connection
 // sessions and their contexts. The legacy constructor remains unbound.
 func NewSessionManagerWithVariables(
+	ctxFactory sql.ContextFactory,
+	builder SessionBuilder,
+	tracer trace.Tracer,
+	getDbFunc func(ctx *sql.Context, db string) (sql.Database, error),
+	memory *sql.MemoryManager,
+	processlist sql.ProcessList,
+	addr string,
+	vars *sql.EngineVariables,
+) *SessionManager {
+	if err := sql.ValidateEngineVariables(vars); err != nil {
+		panic(err)
+	}
+	return newSessionManager(ctxFactory, builder, tracer, getDbFunc, memory, processlist, addr, vars)
+}
+
+func newSessionManager(
 	ctxFactory sql.ContextFactory,
 	builder SessionBuilder,
 	tracer trace.Tracer,

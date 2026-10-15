@@ -16,10 +16,6 @@ package variables
 
 import "github.com/dolthub/go-mysql-server/sql"
 
-func init() {
-	sql.RegisterEngineVariablesFactory(NewEngineVariables)
-}
-
 // NewEngineVariables creates independent system and status registries for one
 // engine. A bundle can be shared by sessions belonging to that engine.
 func NewEngineVariables() *sql.EngineVariables {

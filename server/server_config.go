@@ -16,7 +16,6 @@ package server
 
 import (
 	"crypto/tls"
-	"fmt"
 	"net"
 	"time"
 
@@ -115,8 +114,8 @@ type Config struct {
 // NewConfigWithVariables applies defaults from an engine's registry. Explicit
 // nonzero config values take precedence over registry values.
 func (c Config) NewConfigWithVariables(vars *sql.EngineVariables) (Config, error) {
-	if vars == nil {
-		return Config{}, fmt.Errorf("NewConfigWithVariables requires engine variables")
+	if err := sql.ValidateEngineVariables(vars); err != nil {
+		return Config{}, err
 	}
 	return c.newConfigFromRegistry(vars.System)
 }

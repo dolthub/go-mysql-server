@@ -46,8 +46,8 @@ func NewProcessList() *ProcessList {
 
 // NewProcessListWithVariables retains the registries used by an engine.
 func NewProcessListWithVariables(vars *sql.EngineVariables) *ProcessList {
-	if vars == nil {
-		panic("NewProcessListWithVariables requires engine variables")
+	if err := sql.ValidateEngineVariables(vars); err != nil {
+		panic(err)
 	}
 	return &ProcessList{
 		procs:      make(map[uint32]*sql.Process),

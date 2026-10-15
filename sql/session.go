@@ -328,9 +328,11 @@ type EngineVariablesProvider interface {
 	EngineVariables() *EngineVariables
 }
 
-// WithEngineVariables binds a context to an engine's variable state. A session
-// supplied separately must belong to the same bundle.
+// WithEngineVariables binds a context to a complete engine variable bundle.
+// A session supplied separately must belong to the same bundle before engine
+// execution. A nil or incomplete bundle causes a panic.
 func WithEngineVariables(vars *EngineVariables) ContextOption {
+	requireEngineVariables(vars)
 	return func(ctx *Context) { ctx.engineVariables = vars }
 }
 
@@ -364,8 +366,8 @@ func (c *Context) StatusVariables() StatusVariableRegistry {
 	panic("status variables require an engine variable owner")
 }
 
-// NewContextWithVariables constructs a context and, unless a session is
-// supplied, snapshots a session from vars before returning it.
+// NewContextWithVariables requires a complete bundle and, unless a session is
+// supplied, snapshots a session from it before returning the context.
 func NewContextWithVariables(ctx context.Context, vars *EngineVariables, opts ...ContextOption) *Context {
 	opts = append([]ContextOption{WithEngineVariables(vars)}, opts...)
 	return NewContext(ctx, opts...)
@@ -374,6 +376,7 @@ func NewContextWithVariables(ctx context.Context, vars *EngineVariables, opts ..
 // ContextFactoryWithVariables returns a factory suitable for an engine-owned
 // server or background worker.
 func ContextFactoryWithVariables(vars *EngineVariables) ContextFactory {
+	requireEngineVariables(vars)
 	return func(ctx context.Context, opts ...ContextOption) *Context {
 		return NewContextWithVariables(ctx, vars, opts...)
 	}
@@ -567,11 +570,9 @@ func Now() time.Time {
 
 type ContextFactory func(context.Context, ...ContextOption) *Context
 
-// NewContext creates a new query context. Options can be passed to configure
-// the context. If some aspect of the context is not configure, the default
-// value will be used.
-// By default, the context will have an empty base session, a noop tracer and
-// a memory manager using the process reporter.
+// NewContext creates a new query context. Without a bound session or variable
+// bundle, it creates an unbound base session. The default tracer is a noop and
+// the memory manager uses the process reporter.
 func NewContext(
 	ctx context.Context,
 	opts ...ContextOption,
@@ -618,8 +619,8 @@ func (c *Context) ApplyOpts(opts ...ContextOption) {
 	}
 }
 
-// NewEmptyContext returns a default context with default values. When an existing context is available, it is preferred
-// to call ctx.NewContext to ensure that integrator-specific overrides are retained in the new context.
+// NewEmptyContext returns an unbound context. When an existing context is
+// available, prefer ctx.NewContext to retain its owner and other overrides.
 func NewEmptyContext() *Context {
 	return NewContext(context.TODO())
 }
