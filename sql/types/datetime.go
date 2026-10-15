@@ -581,9 +581,6 @@ func (t datetimeType) parseDatetime(origStr string) (any, error) {
 	if len(origStr) == 0 {
 		return nil, sql.ErrIncorrectValue.New(t.String(), origStr)
 	}
-	if res, err := t.parseDatetimeExtraLayouts(origStr); err == nil {
-		return res, nil
-	}
 
 	// Trim whitespaces
 	var err error
@@ -593,6 +590,10 @@ func (t datetimeType) parseDatetime(origStr string) (any, error) {
 	}
 	if len(trimStr) > 0 {
 		err = sql.ErrDeprecatedDelimiter.New(origStr[0], t.String(), origStr)
+	}
+
+	if res, pErr := t.parseDatetimeExtraLayouts(str); pErr == nil {
+		return res, err
 	}
 
 	var yearStr, monthStr, dayStr, hourStr, minStr, secStr, microStr string
@@ -637,12 +638,18 @@ func (t datetimeType) parseDatetime(origStr string) (any, error) {
 	}
 
 	dayStr, str = readFuncN(str, numDigits, unicode.IsDigit)
-	trimStr, str = readFuncN(str, -1, func(r rune) bool {
-		return isMySQLPunct(r) || isMySQLDatetimeWhitespace(r)
-	})
-	// Trailing punctuation/whitespace(s) after day results in a delimiter error
-	if len(trimStr) > 1 || len(str) == 0 && len(trimStr) > 0 {
-		err = sql.ErrDeprecatedDelimiter.New(delim, t.String(), origStr)
+	// A single capital 'T' is also allowed here
+	if len(str) > 0 && str[0] == 'T' {
+		str = str[1:]
+	} else {
+		trimStr, str = readFuncN(str, -1, func(r rune) bool {
+			return isMySQLPunct(r) || isMySQLDatetimeWhitespace(r)
+		})
+		// Multiple valid punctuations/whitespaces or trailing punctuation/whitespace(s) after day results in a
+		// delimiter error
+		if len(trimStr) > 1 || len(str) == 0 && len(trimStr) > 0 {
+			err = sql.ErrDeprecatedDelimiter.New(delim, t.String(), origStr)
+		}
 	}
 
 	hourStr, str = readFuncN(str, numDigits, unicode.IsDigit)

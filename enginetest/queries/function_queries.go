@@ -1219,6 +1219,24 @@ var FunctionQueryTests = []QueryTest{
 		Query:    "select timestampdiff(week, '0000-03-01', '9999-12-31 23:59:59.999999');",
 		Expected: []sql.Row{{521766}},
 	},
+	{
+		Query:                 "select timestampdiff(DAY, 'invalid', '2020-01-01');",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query:                 "select timestampdiff(DAY, '2020-01-01', 'invalid');",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query:                 "select timestampdiff(DAY, 'invalid', 'also bad');",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
 	// TRIM Function Tests
 	{
 		Query:    `SELECT TRIM(mytable.s) AS s FROM mytable`,
@@ -2425,6 +2443,57 @@ var FunctionQueryTests = []QueryTest{
 		Query: "select cast('2001-02-03 12:34:56. ' as datetime(6));",
 		Expected: []sql.Row{
 			{time.Date(2001, time.February, 3, 12, 34, 56, 0, time.UTC)},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       4096,
+	},
+	{
+		Query: "SELECT CAST('   2020-01-01T12:34:56   ' AS DATETIME);",
+		Expected: []sql.Row{
+			{time.Date(2020, 1, 1, 12, 34, 56, 0, time.UTC)},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       4096,
+	},
+	{
+		Query: "SELECT CAST('   2020-01-01t12:34:56   ' AS DATETIME);",
+		Expected: []sql.Row{
+			{time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "SELECT CAST('   2020-01-01TTT12:34:56   ' AS DATETIME);",
+		Expected: []sql.Row{
+			{time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "SELECT CAST('   2020-01-01 T 12:34:56   ' AS DATETIME);",
+		Expected: []sql.Row{
+			{time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select cast('2024-04-03 13:23:44.506434 +0300 EEST m=+4.349756251' as DATETIME);",
+		Expected: []sql.Row{
+			{time.Date(2024, 4, 3, 13, 23, 45, 0, time.UTC)},
+		},
+		// TODO: https://github.com/dolthub/dolt/issues/12095
+		SkipWarnings:          true,
+		ExpectedWarningsCount: 2,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+
+	{
+		Query: "SELECT CAST('2020.0101T123456' AS DATETIME);",
+		Expected: []sql.Row{
+			{time.Date(2020, 1, 1, 12, 34, 56, 0, time.UTC)},
 		},
 		ExpectedWarningsCount: 1,
 		ExpectedWarning:       4096,
