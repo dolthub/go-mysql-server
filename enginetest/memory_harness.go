@@ -29,6 +29,7 @@ import (
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 const testNumPartitions = 5
@@ -83,6 +84,7 @@ func NewMemoryHarness(name string, numTablePartitions int, driverInitializer Ind
 		externalProcedureRegistry: externalProcedureRegistry,
 		mu:                        &sync.Mutex{},
 		server:                    useServer,
+		variables:                 variables.NewEngineVariables(),
 	}
 }
 

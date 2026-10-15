@@ -53,7 +53,7 @@ func init() {
 // Config for the Engine.
 type Config struct {
 	// EngineVariables supplies independent variable state for this engine.
-	// A nil value preserves the legacy package registries during migration.
+	// A nil value creates a fresh bundle for this engine.
 	EngineVariables *sql.EngineVariables
 	// VersionPostfix to display with the `VERSION()` UDF.
 	VersionPostfix string
@@ -114,12 +114,9 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 
 	ls := sql.NewLockSubsystem()
 
-	if cfg.EngineVariables == nil {
-		variables.InitStatusVariables()
-	}
 	engineVars := cfg.EngineVariables
 	if engineVars == nil {
-		engineVars = &sql.EngineVariables{System: sql.SystemVariables, Status: sql.StatusVariables}
+		engineVars = variables.NewEngineVariables()
 	}
 
 	emptyCtx := sql.NewContextWithVariables(context.Background(), engineVars)
@@ -133,13 +130,10 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 
 	a.Catalog.RegisterFunction(emptyCtx, function.GetLockingFuncs(emptyCtx, ls)...)
 
-	processList := NewProcessList()
-	if cfg.EngineVariables != nil {
-		processList = NewProcessListWithVariables(engineVars)
-	}
+	processList := NewProcessListWithVariables(engineVars)
 	ret := &Engine{
 		variables:         engineVars,
-		isolatedVariables: cfg.EngineVariables != nil,
+		isolatedVariables: true,
 		Analyzer:          a,
 		MemoryManager:     sql.NewMemoryManager(sql.ProcessMemory),
 		ProcessList:       processList,
@@ -159,7 +153,7 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 // Variables returns the variable registries used by this engine.
 func (e *Engine) Variables() *sql.EngineVariables { return e.variables }
 
-// IsolatedVariables reports whether this engine was configured with its own bundle.
+// IsolatedVariables reports whether this engine owns a variable bundle.
 func (e *Engine) IsolatedVariables() bool { return e.isolatedVariables }
 
 // NewContext creates a context and session from this engine's variable state.
@@ -177,12 +171,8 @@ func (e *Engine) checkVariableOwnership(ctx *sql.Context) error {
 	if hasOwner && owner.EngineVariables() != nil && ctx.EngineVariables() != owner.EngineVariables() {
 		return fmt.Errorf("engine variable ownership: context and session belong to different engines")
 	}
-	if e.isolatedVariables {
-		if ctx.EngineVariables() != e.variables || !hasOwner || owner.EngineVariables() != e.variables {
-			return fmt.Errorf("engine variable ownership: context or session belongs to another engine")
-		}
-	} else if ctx.EngineVariables() != nil && ctx.EngineVariables() != e.variables {
-		return fmt.Errorf("engine variable ownership: context belongs to another engine")
+	if ctx.EngineVariables() != e.variables || !hasOwner || owner.EngineVariables() != e.variables {
+		return fmt.Errorf("engine variable ownership: context or session belongs to another engine")
 	}
 	return nil
 }
