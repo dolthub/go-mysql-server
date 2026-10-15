@@ -608,9 +608,12 @@ func nullSafeCompare(ctx *sql.Context, lTyp, rTyp sql.Type, left, right any) (in
 
 	if types.IsTuple(lTyp) && types.IsTuple(rTyp) {
 		lTupleType, rTupleType := lTyp.(types.TupleType), rTyp.(types.TupleType)
-		leftTuple, lOk := left.([]interface{})
-		rightTuple, rOk := right.([]interface{})
-		if lOk && rOk && len(leftTuple) == len(rightTuple) && len(lTupleType) == len(leftTuple) && len(rTupleType) == len(rightTuple) {
+		leftTuple, lOk := left.([]any)
+		rightTuple, rOk := right.([]any)
+		if lOk && rOk &&
+			len(leftTuple) == len(rightTuple) &&
+			len(lTupleType) == len(leftTuple) &&
+			len(rTupleType) == len(rightTuple) {
 			for i := range leftTuple {
 				cmp, err := nullSafeCompare(ctx, lTupleType[i], rTupleType[i], leftTuple[i], rightTuple[i])
 				if err != nil {
