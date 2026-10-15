@@ -16,6 +16,7 @@ package types
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"database/sql/driver"
 	"encoding/json"
@@ -64,7 +65,7 @@ func MarshallJsonValue(value interface{}) ([]byte, error) {
 	encoder := json.NewEncoder(buffer)
 	// Prevents special characters like <, >, or & from being escaped.
 	encoder.SetEscapeHTML(false)
-	err := encoder.Encode(value)
+	err := encoder.Encode(jsonMarshalValue(value))
 	if err != nil {
 		return nil, err
 	}
@@ -72,6 +73,32 @@ func MarshallJsonValue(value interface{}) ([]byte, error) {
 	// SELECT cast('6\n' as JSON) returns only 6 in MySQL.
 	out := bytes.TrimRight(buffer.Bytes(), "\n")
 	return out, err
+}
+
+// jsonMarshalValue converts arbitrary-precision decimals to json.Number before using the
+// standard JSON encoder. apd.Decimal implements encoding.TextMarshaler, which would otherwise
+// encode a decimal as a quoted JSON string.
+func jsonMarshalValue(value interface{}) interface{} {
+	switch value := value.(type) {
+	case *apd.Decimal:
+		return json.Number(value.String())
+	case apd.Decimal:
+		return json.Number(value.String())
+	case map[string]interface{}:
+		result := make(map[string]interface{}, len(value))
+		for key, item := range value {
+			result[key] = jsonMarshalValue(item)
+		}
+		return result
+	case []interface{}:
+		result := make([]interface{}, len(value))
+		for i, item := range value {
+			result[i] = jsonMarshalValue(item)
+		}
+		return result
+	default:
+		return value
+	}
 }
 
 // JSONBytes returns or generates a byte array for the JSON representation of the underlying sql.JSONWrapper
@@ -550,7 +577,7 @@ func ContainsJSON(a, b interface{}) (bool, error) {
 		return containsJSONBool(a, b)
 	case string:
 		return containsJSONString(a, b)
-	case float64, int64, uint64:
+	case float64, int64, uint64, *apd.Decimal, apd.Decimal:
 		return containsJSONNumber(a, b)
 	default:
 		return false, sql.ErrInvalidType.New(a)
@@ -752,8 +779,9 @@ func CompareJSON(ctx context.Context, a, b interface{}) (int, error) {
 	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64:
 		return compareJSONNumber(a, b)
 	case *apd.Decimal:
-		af, _ := a.Float64()
-		return compareJSONNumber(af, b)
+		return compareJSONNumber(a, b)
+	case apd.Decimal:
+		return compareJSONNumber(a, b)
 	case sql.JSONWrapper:
 		if jw, ok := b.(sql.JSONWrapper); ok {
 			b, err = jw.ToInterface(ctx)
@@ -767,7 +795,7 @@ func CompareJSON(ctx context.Context, a, b interface{}) (int, error) {
 		}
 		return CompareJSON(ctx, aVal, b)
 	default:
-		return 0, sql.ErrInvalidType.New(a)
+		return 0, sql.ErrInvalidType.New(fmt.Sprintf("%T (%v)", a, a))
 	}
 }
 
@@ -899,14 +927,103 @@ func compareJSONNumber(a, b interface{}) (int, error) {
 		// a is lower precedence
 		return -1, nil
 	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64:
+		switch a.(type) {
+		case *apd.Decimal, apd.Decimal:
+			return compareJSONNumbersExact(a, v)
+		}
 		return compareNumbers(a, v), nil
 	case *apd.Decimal:
-		f, _ := v.Float64()
-		return compareNumbers(a, f), nil
+		return compareJSONNumbersExact(a, v)
+	case apd.Decimal:
+		return compareJSONNumbersExact(a, v)
 	default:
 		// a is higher precedence
 		return 1, nil
 	}
+}
+
+// compareJSONNumbersExact compares supported JSON numbers without losing precision.
+func compareJSONNumbersExact(a, b interface{}) (int, error) {
+	aInfinity, aIsInfinity := jsonNumberInfinity(a)
+	bInfinity, bIsInfinity := jsonNumberInfinity(b)
+	if aIsInfinity || bIsInfinity {
+		switch {
+		case aIsInfinity && bIsInfinity:
+			return cmp.Compare(aInfinity, bInfinity), nil
+		case aIsInfinity:
+			return aInfinity, nil
+		default:
+			return -bInfinity, nil
+		}
+	}
+	aDecimal, err := jsonNumberDecimal(a)
+	if err != nil {
+		return 0, err
+	}
+	bDecimal, err := jsonNumberDecimal(b)
+	if err != nil {
+		return 0, err
+	}
+	return aDecimal.Cmp(bDecimal), nil
+}
+
+// jsonNumberInfinity returns the sign when value is a floating-point infinity.
+func jsonNumberInfinity(value interface{}) (int, bool) {
+	var floatValue float64
+	switch value := value.(type) {
+	case float32:
+		floatValue = float64(value)
+	case float64:
+		floatValue = value
+	default:
+		return 0, false
+	}
+	if math.IsInf(floatValue, 1) {
+		return 1, true
+	}
+	if math.IsInf(floatValue, -1) {
+		return -1, true
+	}
+	return 0, false
+}
+
+// jsonNumberDecimal converts a finite supported JSON number to an exact decimal.
+func jsonNumberDecimal(value interface{}) (*apd.Decimal, error) {
+	var text string
+	switch value := value.(type) {
+	case *apd.Decimal:
+		return value, nil
+	case apd.Decimal:
+		return &value, nil
+	case int:
+		text = strconv.FormatInt(int64(value), 10)
+	case int8:
+		text = strconv.FormatInt(int64(value), 10)
+	case int16:
+		text = strconv.FormatInt(int64(value), 10)
+	case int32:
+		text = strconv.FormatInt(int64(value), 10)
+	case int64:
+		text = strconv.FormatInt(value, 10)
+	case uint:
+		text = strconv.FormatUint(uint64(value), 10)
+	case uint8:
+		text = strconv.FormatUint(uint64(value), 10)
+	case uint16:
+		text = strconv.FormatUint(uint64(value), 10)
+	case uint32:
+		text = strconv.FormatUint(uint64(value), 10)
+	case uint64:
+		text = strconv.FormatUint(value, 10)
+	case float32:
+		text = strconv.FormatFloat(float64(value), 'g', -1, 32)
+	case float64:
+		text = strconv.FormatFloat(value, 'g', -1, 64)
+	default:
+		return nil, fmt.Errorf("unexpected JSON number %T", value)
+	}
+	decimal, _, err := apd.NewFromString(text)
+	return decimal, err
 }
 
 func (doc JSONDocument) Insert(ctx context.Context, path string, val sql.JSONWrapper) (MutableJSON, bool, error) {

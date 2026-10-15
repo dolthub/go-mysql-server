@@ -330,7 +330,21 @@ func writeMarshalledValue(writer io.Writer, val interface{}) error {
 		writer.Write([]byte{'"'})
 		return nil
 	case *apd.Decimal:
+		if val.IsZero() {
+			writer.Write([]byte{'0'})
+			return nil
+		}
 		writer.Write([]byte(val.Text('f')))
+		return nil
+	case apd.Decimal:
+		if val.IsZero() {
+			writer.Write([]byte{'0'})
+			return nil
+		}
+		writer.Write([]byte(val.Text('f')))
+		return nil
+	case json.Number:
+		writer.Write([]byte(val.String()))
 		return nil
 	case json.Marshaler:
 		bytes, err := val.MarshalJSON()
