@@ -19,7 +19,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// globalStatusVariables is the underlying type of sql.StatusVariables.
+// globalStatusVariables is the concrete status variable registry.
 type globalStatusVariables struct {
 	varVals map[string]sql.StatusVarValue
 }
@@ -101,27 +101,6 @@ func (g *globalStatusVariables) IncrementGlobal(name string, val int) {
 	g.varVals[name].Increment(uint64(val))
 	return
 }
-
-// InitStatusVariables initializes the global status variables in sql.StatusVariables. If they have already
-// been initialized, this function will reset their values back to their defaults, which is useful for testing.
-func InitStatusVariables() {
-	if sql.StatusVariables == nil {
-		sql.StatusVariables = newStatusVariableRegistry(statusVars)
-		return
-	}
-	for _, sysVar := range statusVars {
-		sql.StatusVariables.SetGlobal(sysVar.GetName(), sysVar.GetDefault())
-	}
-}
-
-// Initialize the deprecated singleton for callers that still use it.
-// Engine construction never resets this registry.
-func init() {
-	InitStatusVariables()
-}
-
-// statusVars is a map of status variables that are available in the MySQL server.
-var statusVars = newStatusVars()
 
 func newStatusVars() map[string]sql.StatusVariable {
 	return map[string]sql.StatusVariable{

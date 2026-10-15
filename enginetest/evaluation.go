@@ -1373,7 +1373,7 @@ func runGenericErrorTest(t *testing.T, h Harness, tt queries.GenericErrorQueryTe
 	})
 }
 
-func runQueryErrorTest(t *testing.T, h Harness, tt queries.QueryErrorTest) {
+func runQueryErrorTest(t *testing.T, h Harness, tt queries.QueryErrorTest, setup ...func(*sql.Context) error) {
 	t.Run(tt.Query, func(t *testing.T) {
 		if sh, ok := h.(SkippingHarness); ok {
 			if sh.SkipQueryTest(tt.Query) {
@@ -1382,6 +1382,9 @@ func runQueryErrorTest(t *testing.T, h Harness, tt queries.QueryErrorTest) {
 		}
 		e := MustNewEngine(t, h)
 		defer e.Close()
+		if len(setup) != 0 {
+			require.NoError(t, setup[0](NewContext(h)))
+		}
 		tfp, ok := e.EngineAnalyzer().Catalog.DbProvider.(sql.TableFunctionProvider)
 		if !ok {
 			t.Skip("database provider does not implement sql.TableFunctionProvider")

@@ -34,33 +34,27 @@ import (
 // There's also this page, which shows that a TON of variables are still missing ):
 // https://dev.mysql.com/doc/refman/8.0/en/server-system-variable-reference.html
 
-// ServerStartUpTime is needed by uptime status variable
-var ServerStartUpTime = time.Now()
-
-// globalSystemVariables is the underlying type of SystemVariables.
+// globalSystemVariables is the concrete system variable registry.
 type globalSystemVariables struct {
 	writeMutex  sync.Mutex
 	mutex       sync.RWMutex
 	definitions map[string]sql.SystemVariable
 	sysVarVals  map[string]sql.SystemVarValue
-	legacy      bool
 }
 
 var _ sql.SystemVariableRegistry = (*globalSystemVariables)(nil)
 var _ sql.ContextAwareSystemVariableRegistry = (*globalSystemVariables)(nil)
 
 // NewSystemVariableRegistry returns a registry with fresh built-in definitions
-// and values. It does not inherit registrations or defaults from the legacy
-// sql.SystemVariables singleton.
+// and values.
 func NewSystemVariableRegistry() sql.SystemVariableRegistry {
-	return newSystemVariableRegistry(newSystemVars(time.Now()), newMariadbSystemVars(), false)
+	return newSystemVariableRegistry(newSystemVars(time.Now()), newMariadbSystemVars())
 }
 
-func newSystemVariableRegistry(mysql, mariadb map[string]sql.SystemVariable, legacy bool) *globalSystemVariables {
+func newSystemVariableRegistry(mysql, mariadb map[string]sql.SystemVariable) *globalSystemVariables {
 	out := &globalSystemVariables{
 		definitions: make(map[string]sql.SystemVariable, len(mysql)+len(mariadb)),
 		sysVarVals:  make(map[string]sql.SystemVarValue, len(mysql)+len(mariadb)),
-		legacy:      legacy,
 	}
 	for _, catalog := range []map[string]sql.SystemVariable{mariadb, mysql} {
 		for name, variable := range catalog {
@@ -87,9 +81,6 @@ func (sv *globalSystemVariables) AddSystemVariables(sysVars []sql.SystemVariable
 		// Custom definitions are owned by the caller until registration, then by
 		// this registry. Supply a new definition for each independent registry.
 		sv.definitions[lowerName] = sysVar
-		if sv.legacy {
-			systemVars[lowerName] = sysVar
-		}
 		sv.sysVarVals[lowerName] = sql.SystemVarValue{
 			Var: sysVar,
 			Val: sysVar.GetDefault(),
@@ -231,28 +222,15 @@ func (sv *globalSystemVariables) GetAllGlobalVariables() map[string]interface{} 
 	return m
 }
 
-// InitSystemVariables resets the global systemVars singleton in the sql package
-func InitSystemVariables() {
-	sql.SystemVariables = newSystemVariableRegistry(systemVars, mariadbSystemVars, true)
-}
-
-// init initializes SystemVariables as it functions as a global variable.
-// TODO: get rid of me, make this construction the responsibility of the engine
-func init() {
-	InitSystemVariables()
-}
-
 func getHostname() string {
 	hostname, _ := os.Hostname()
 	return hostname
 }
 
-// systemVars is the internal collection of all MySQL system variables according to the following pages:
+// newSystemVars constructs the MySQL system variables according to the following pages:
 // https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html
 // https://dev.mysql.com/doc/refman/8.0/en/replication-options-gtids.html
 // https://dev.mysql.com/doc/refman/8.0/en/replication-options-source.html
-var systemVars = newSystemVars(ServerStartUpTime)
-
 func newSystemVars(startTime time.Time) map[string]sql.SystemVariable {
 	return map[string]sql.SystemVariable{
 		"activate_all_roles_on_login": &sql.MysqlSystemVariable{
@@ -3151,9 +3129,7 @@ func newSystemVars(startTime time.Time) map[string]sql.SystemVariable {
 
 }
 
-// mariadbSystemVars contains MariaDB-specific system variables that are not part of MySQL.
-// These variables are merged into systemVars during initialization.
-var mariadbSystemVars = newMariadbSystemVars()
+// newMariadbSystemVars constructs MariaDB-specific system variables.
 
 func newMariadbSystemVars() map[string]sql.SystemVariable {
 	return map[string]sql.SystemVariable{
