@@ -3937,6 +3937,26 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{{0}},
 	},
 	{
+		Query:    "select locate('a', '', 2);",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select locate('a', '', 1);",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select locate('', '', 1);",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "select locate('', '', 2);",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select locate('a', 'abc', 4);",
+		Expected: []sql.Row{{0}},
+	},
+	{
 		Query: "select find_in_set('second row', s) from mytable;",
 		Expected: []sql.Row{
 			{0},
