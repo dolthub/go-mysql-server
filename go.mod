@@ -5,7 +5,7 @@ require (
 	github.com/cockroachdb/apd/v3 v3.2.3
 	github.com/dolthub/flatbuffers/v23 v23.3.3-dh.2
 	github.com/dolthub/go-icu-regex v0.0.0-20260610153742-72563bc7ca83
-	github.com/dolthub/jsonpath v0.0.2-0.20260807003725-336cd89c1c76
+	github.com/dolthub/jsonpath v0.0.2-0.20261015200256-aaef3c48e26c
 	github.com/dolthub/sqllogictest/go v0.0.0-20240618184124-ca47f9354216
 	github.com/dolthub/vitess v0.0.0-20261014211039-3e903c0f05d3
 	github.com/go-sql-driver/mysql v1.9.3

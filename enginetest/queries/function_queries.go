@@ -3613,6 +3613,22 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{{false}},
 	},
 	{
+		Query:    `SELECT JSON_EXTRACT('{"xid":null}', '$.xid[0]')`,
+		Expected: []sql.Row{{"null"}},
+	},
+	{
+		Query:    `SELECT JSON_EXTRACT('{"xid":[null]}', '$.xid[0]')`,
+		Expected: []sql.Row{{"null"}},
+	},
+	{
+		Query:    `SELECT JSON_EXTRACT('{"xid":null}', '$.xid[0][0]')`,
+		Expected: []sql.Row{{"null"}},
+	},
+	{
+		Query:    `SELECT JSON_EXTRACT('{"xid":[null]}', '$.xid[0][0]')`,
+		Expected: []sql.Row{{"null"}},
+	},
+	{
 		Query:    `SELECT JSON_UNQUOTE(JSON_EXTRACT('{"xid":null}', '$.xid'))`,
 		Expected: []sql.Row{{"null"}},
 	},
