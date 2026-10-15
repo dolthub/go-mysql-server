@@ -203,6 +203,7 @@ func (p *relProps) populateFds(ctx *sql.Context) {
 			for i, c := range columns {
 				ord := sch.IndexOfColName(strings.ToLower(c))
 				if ord == -1 {
+					normIdx.cols = normIdx.cols[:i]
 					valid = false
 					break
 				}

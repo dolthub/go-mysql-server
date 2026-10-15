@@ -1557,9 +1557,9 @@ func makeIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, tab plan.Table
 	}
 	var i int
 	idxCols := idx.Cols()
-	rang := make(sql.MySQLRange, len(idxCols))
-	// Create MySQL Range prefix for this index
 	idxColExprTypes := idx.SqlIdx().ColumnExpressionTypes(ctx)
+	rang := make(sql.MySQLRange, len(idxColExprTypes))
+	// Create MySQL Range prefix for this index
 	for i = 0; i < len(idxCols); {
 		// TODO: It seems like it's possible for no filter to be found for a column before |matchedIdx|, but it is
 		//  ignored. Appears to be impossible to reproduce due to functional dependency logic beforehand.
@@ -1577,7 +1577,7 @@ func makeIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, tab plan.Table
 	}
 
 	// Fill remaining ranges with AllRange
-	for ; i < len(idxCols); i++ {
+	for ; i < len(idxColExprTypes); i++ {
 		// all range bound Compare() is type insensitive
 		rang[i] = sql.AllRangeColumnExpr(types.Null)
 	}
@@ -1586,7 +1586,8 @@ func makeIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, tab plan.Table
 		return nil, false, nil
 	}
 
-	for i, typ := range idxColExprTypes {
+	for i := range idxCols {
+		typ := idxColExprTypes[i]
 		if !types.Null.Equals(rang[i].Typ) && !typ.Type.Equals(rang[i].Typ) {
 			return nil, false, nil
 		}

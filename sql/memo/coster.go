@@ -250,7 +250,7 @@ func lookupJoinSelectivity(ctx *sql.Context, l *IndexScan, joinBase *JoinBase) f
 // isInjectiveLookup returns whether every lookup with the given key expressions is guarenteed to return
 // at most one row.
 func isInjectiveLookup(ctx *sql.Context, idx *Index, joinBase *JoinBase, keyExprs []sql.Expression, nullMask []bool) bool {
-	if !idx.SqlIdx().IsUnique() {
+	if !idx.IsUnique() {
 		return false
 	}
 
