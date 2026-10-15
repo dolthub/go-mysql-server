@@ -9891,11 +9891,43 @@ from typestable`,
 		Expected: []sql.Row{{false}},
 	},
 	{
+		Query:    "SELECT (1, CAST(NULL AS DATETIME)) <=> (1, 0);",
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    "SELECT (1, 5) <=> (1, CAST(NULL AS DATETIME));",
+		Expected: []sql.Row{{false}},
+	},
+	{
 		Query:    "SELECT (CAST(NULL AS DATETIME), 5) <=> (NULL, 5);",
 		Expected: []sql.Row{{true}},
 	},
 	{
 		Query:    "SELECT ((CAST(NULL AS DATETIME), 5), 6) <=> ((1, 5), 6);",
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    "SELECT (CAST(NULL AS TIME), 5) <=> (1, 5);",
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    "SELECT (1, 5) <=> (CAST(NULL AS TIME), 5);",
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    "SELECT (1, CAST(NULL AS TIME)) <=> (1, 0);",
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    "SELECT (1, 5) <=> (1, CAST(NULL AS TIME));",
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    "SELECT (CAST(NULL AS TIME), 5) <=> (NULL, 5);",
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    "SELECT ((CAST(NULL AS TIME), 5), 6) <=> ((1, 5), 6);",
 		Expected: []sql.Row{{false}},
 	},
 	{
