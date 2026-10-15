@@ -862,11 +862,22 @@ select * from t1 except (
 			"insert into t values (5), (3)",
 			"create table u (b int primary key)",
 			"insert into u values (4), (1)",
+			"create table v (s varchar(10) primary key)",
+			"insert into v values ('10')",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select a from t union select b from u order by 1",
 				Expected: []sql.Row{{1}, {3}, {4}, {5}},
+			},
+			{
+				// The merged column is a string, so ordering by a column reference also sorts as strings.
+				Query:    "select a from t union select s from v order by a",
+				Expected: []sql.Row{{"10"}, {"3"}, {"5"}},
+			},
+			{
+				Query:    "select a from t union select s from v order by 1",
+				Expected: []sql.Row{{"10"}, {"3"}, {"5"}},
 			},
 		},
 	},

@@ -88,9 +88,6 @@ func (b *Builder) buildSetOp(inScope *scope, u *ast.SetOp) (outScope *scope) {
 	// with the column's merged type, rather than re-evaluating the left branch's expression. An unaliased projection
 	// such as a literal would otherwise sort by a constant.
 	for i, c := range orderByScope.cols {
-		if _, isColumn := c.scalar.(*expression.GetField); isColumn {
-			continue
-		}
 		if merged, ok := mergedById[c.id]; ok {
 			orderByScope.cols[i].scalar = nil
 			orderByScope.cols[i].typ = merged.typ
