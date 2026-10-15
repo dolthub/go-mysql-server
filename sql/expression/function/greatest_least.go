@@ -19,8 +19,10 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/cockroachdb/apd/v3"
+	"github.com/dolthub/vitess/go/sqltypes"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -41,6 +43,7 @@ const (
 // compEval is used to implement Greatest/Least Eval() using an explicit comparison direction
 func compEval(
 	returnType sql.Type,
+	temporalType sql.DatetimeType,
 	args []sql.Expression,
 	ctx *sql.Context,
 	row sql.Row,
@@ -49,6 +52,10 @@ func compEval(
 
 	if returnType == types.Null {
 		return nil, nil
+	}
+
+	if temporalType != nil {
+		return compEvalTemporal(temporalType, args, ctx, row, direction)
 	}
 
 	if dt, ok := returnType.(sql.DecimalType); ok {
@@ -202,23 +209,128 @@ func compEval(
 	return float64(selectedNum), nil
 }
 
+// compEvalTemporal compares string arguments mixed with temporal ones as temporal values, and returns the selected
+// value formatted as a string, as MySQL does.
+func compEvalTemporal(
+	temporalType sql.DatetimeType,
+	args []sql.Expression,
+	ctx *sql.Context,
+	row sql.Row,
+	direction comparisonDirection,
+) (interface{}, error) {
+	var selected time.Time
+	found := false
+	for _, arg := range args {
+		val, err := arg.Eval(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+
+		if val == nil {
+			return nil, nil
+		}
+
+		converted, _, err := temporalType.Convert(ctx, val)
+		if err != nil {
+			// MySQL ignores arguments that are not valid temporal values
+			continue
+		}
+
+		t, ok := converted.(time.Time)
+		if !ok {
+			continue
+		}
+
+		if !found || (direction == compareGreater && t.After(selected)) || (direction == compareLess && t.Before(selected)) {
+			selected = t
+			found = true
+		}
+	}
+
+	if !found {
+		return nil, nil
+	}
+
+	formatted, err := temporalType.SQL(ctx, nil, selected)
+	if err != nil {
+		return nil, err
+	}
+	return formatted.ToString(), nil
+}
+
+// compTemporalTypes returns the result type and comparison type for string arguments mixed with temporal ones. The
+// result is a VARCHAR as wide as the widest argument, and the comparison uses the widest temporal type and precision.
+func compTemporalTypes(ctx *sql.Context, args []sql.Expression) (sql.Type, sql.DatetimeType) {
+	baseType := sqltypes.Date
+	precision := 0
+	var length int64
+
+	for _, arg := range args {
+		argType := arg.Type(ctx)
+		if svt, ok := argType.(sql.SystemVariableType); ok {
+			argType = svt.UnderlyingType()
+		}
+
+		if dt, ok := argType.(sql.DatetimeType); ok && types.IsTime(argType) {
+			if !types.IsDateType(argType) {
+				baseType = sqltypes.Datetime
+			}
+			precision = max(precision, dt.Precision())
+			continue
+		}
+
+		if lit, ok := arg.(*expression.Literal); ok {
+			if s, ok := lit.Value().(string); ok {
+				length = max(length, int64(utf8.RuneCountInString(s)))
+				if i := strings.LastIndexByte(s, '.'); i >= 0 && strings.Contains(s, ":") {
+					precision = max(precision, len(s)-i-1)
+				}
+				continue
+			}
+		}
+
+		if st, ok := argType.(sql.StringType); ok {
+			length = max(length, st.MaxCharacterLength())
+		}
+	}
+
+	precision = min(precision, types.MaxDatetimePrecision)
+	temporalType := types.MustCreateDatetimeType(baseType, precision)
+
+	width := int64(10)
+	if baseType == sqltypes.Datetime {
+		width = 19
+		if precision > 0 {
+			width += int64(precision) + 1
+		}
+	}
+
+	retType, err := types.CreateString(sqltypes.VarChar, max(length, width), ctx.GetCollation())
+	if err != nil {
+		return types.CreateLongText(ctx.GetCollation()), temporalType
+	}
+	return retType, temporalType
+}
+
 // compRetType is used to determine the type from args based on the rules described for
-// Greatest/Least
-func compRetType(ctx *sql.Context, args ...sql.Expression) (sql.Type, error) {
+// Greatest/Least. The second return value is non-nil when the arguments must be compared as temporal values.
+func compRetType(ctx *sql.Context, args ...sql.Expression) (sql.Type, sql.DatetimeType, error) {
 	if len(args) == 0 {
-		return nil, sql.ErrInvalidArgumentNumber.New("LEAST", "1 or more", 0)
+		return nil, nil, sql.ErrInvalidArgumentNumber.New("LEAST", "1 or more", 0)
 	}
 
 	allString := true
 	allInt := true
 	allDatetime := true
+	anyDatetime := false
+	anyNumber := false
 	anyDecimal := false
 	anyFloat := false
 	var argTypes []sql.Type
 
 	for _, arg := range args {
 		if !arg.Resolved() {
-			return nil, nil
+			return nil, nil, nil
 		}
 		argType := arg.Type(ctx)
 
@@ -227,8 +339,9 @@ func compRetType(ctx *sql.Context, args ...sql.Expression) (sql.Type, error) {
 		}
 
 		if types.IsTuple(argType) {
-			return nil, sql.ErrInvalidType.New("tuple")
+			return nil, nil, sql.ErrInvalidType.New("tuple")
 		} else if types.IsNumber(argType) {
+			anyNumber = true
 			allString = false
 			allDatetime = false
 			if !types.IsInteger(argType) {
@@ -250,28 +363,32 @@ func compRetType(ctx *sql.Context, args ...sql.Expression) (sql.Type, error) {
 		} else if types.IsTime(argType) {
 			allString = false
 			allInt = false
+			anyDatetime = true
 		} else if types.IsDeferredType(argType) {
-			return argType, nil
+			return argType, nil, nil
 		} else if argType == types.Null {
 			// When a Null is present the return will always be Null
-			return types.Null, nil
+			return types.Null, nil, nil
 		} else {
-			return nil, ErrUnsupportedType.New(argType)
+			return nil, nil, ErrUnsupportedType.New(argType)
 		}
 	}
 
 	if allString {
-		return types.LongText, nil
+		return types.LongText, nil, nil
 	} else if allInt {
-		return types.Int64, nil
+		return types.Int64, nil, nil
 	} else if allDatetime {
-		return types.DatetimeMaxPrecision, nil
+		return types.DatetimeMaxPrecision, nil, nil
+	} else if anyDatetime && !anyNumber {
+		retType, temporalType := compTemporalTypes(ctx, args)
+		return retType, temporalType, nil
 	} else if anyDecimal && !anyFloat && len(argTypes) == len(args) {
 		// only numeric arguments, at least one an exact decimal: the result
 		// keeps the widest integer part and the widest scale among them
-		return compDecimalType(args, argTypes), nil
+		return compDecimalType(args, argTypes), nil, nil
 	} else {
-		return types.Float64, nil
+		return types.Float64, nil, nil
 	}
 }
 
@@ -344,8 +461,9 @@ func compIntegerPrecision(arg sql.Expression, typ sql.Type, columnPrecision uint
 // convertible strings or integers mixed with floats. When ints or floats
 // are mixed with non numerically convertible strings, those are ignored.
 type Greatest struct {
-	returnType sql.Type
-	Args       []sql.Expression
+	returnType   sql.Type
+	temporalType sql.DatetimeType
+	Args         []sql.Expression
 }
 
 var _ sql.FunctionExpression = (*Greatest)(nil)
@@ -355,11 +473,11 @@ var ErrUnsupportedType = errors.NewKind("unsupported type for greatest/least arg
 
 // NewGreatest creates a new Greatest UDF
 func NewGreatest(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
-	retType, err := compRetType(ctx, args...)
+	retType, temporalType, err := compRetType(ctx, args...)
 	if err != nil {
 		return nil, err
 	}
-	return &Greatest{Args: args, returnType: retType}, nil
+	return &Greatest{Args: args, returnType: retType, temporalType: temporalType}, nil
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -446,7 +564,7 @@ func lessThan(a, b interface{}) bool {
 
 // Eval implements the Expression interface.
 func (f *Greatest) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return compEval(f.returnType, f.Args, ctx, row, compareGreater)
+	return compEval(f.returnType, f.temporalType, f.Args, ctx, row, compareGreater)
 }
 
 // Least returns the argument with the least numerical or string value. It allows for
@@ -455,19 +573,20 @@ func (f *Greatest) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 // convertible strings or integers mixed with floats. When ints or floats
 // are mixed with non numerically convertible strings, those are ignored.
 type Least struct {
-	returnType sql.Type
-	Args       []sql.Expression
+	returnType   sql.Type
+	temporalType sql.DatetimeType
+	Args         []sql.Expression
 }
 
 var _ sql.FunctionExpression = (*Least)(nil)
 
 // NewLeast creates a new Least UDF
 func NewLeast(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
-	retType, err := compRetType(ctx, args...)
+	retType, temporalType, err := compRetType(ctx, args...)
 	if err != nil {
 		return nil, err
 	}
-	return &Least{Args: args, returnType: retType}, nil
+	return &Least{Args: args, returnType: retType, temporalType: temporalType}, nil
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -526,5 +645,5 @@ func (f *Least) Children() []sql.Expression { return f.Args }
 
 // Eval implements the Expression interface.
 func (f *Least) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return compEval(f.returnType, f.Args, ctx, row, compareLess)
+	return compEval(f.returnType, f.temporalType, f.Args, ctx, row, compareLess)
 }
