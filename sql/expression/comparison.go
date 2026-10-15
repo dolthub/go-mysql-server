@@ -591,8 +591,6 @@ func (e *NullSafeEquals) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 }
 
 // nullSafeCompare compares |left| and |right|, where two NULLs compare equal and a NULL never equals a non-NULL value.
-// Tuples are compared element by element, checking for NULLs before each element is cast to a common type, since
-// casting can turn a non-NULL value into NULL (e.g. 1 cast to DATETIME).
 func nullSafeCompare(ctx *sql.Context, lTyp, rTyp sql.Type, left, right any) (int, error) {
 	if left == nil && right == nil {
 		return 0, nil
@@ -606,6 +604,8 @@ func nullSafeCompare(ctx *sql.Context, lTyp, rTyp sql.Type, left, right any) (in
 		return lTyp.Compare(ctx, left, right)
 	}
 
+	// For tuples, check for NULLs before each element is cast to a common type, since
+	// casting can turn a non-NULL value into NULL (e.g. 1 cast to DATETIME).
 	if types.IsTuple(lTyp) && types.IsTuple(rTyp) {
 		lTupleType, rTupleType := lTyp.(types.TupleType), rTyp.(types.TupleType)
 		leftTuple, lOk := left.([]any)
