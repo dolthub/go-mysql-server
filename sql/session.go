@@ -925,8 +925,8 @@ func GetTmpdirSessionVar() string {
 func HasDefaultValue(ctx *Context, s Session, key string) (bool, interface{}) {
 	val, err := s.GetSessionVariable(ctx, key)
 	if err == nil {
-		sysVar, _, ok := SystemVariables.GetGlobal(key)
-		if ok {
+		sysVar, _, ok := ctx.SystemVariables().GetGlobal(key)
+		if ok && sysVar != nil {
 			v := sysVar.GetDefault()
 			return v == val, val
 		}

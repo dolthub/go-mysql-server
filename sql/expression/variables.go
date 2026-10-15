@@ -30,6 +30,8 @@ type SystemVar struct {
 	Name           string
 	SpecifiedScope string
 	Collation      sql.CollationID
+	displayString  string
+	boundDisplay   bool
 }
 
 var _ sql.Expression = (*SystemVar)(nil)
@@ -44,6 +46,17 @@ func NewSystemVar(name string, scope sql.SystemVariableScope, specifiedScope str
 	return &SystemVar{Scope: scope, Name: name, SpecifiedScope: specifiedScope}
 }
 
+// NewSystemVarWithContext captures the owning registry's display name at plan
+// construction. Evaluation and type resolution use the execution context.
+func NewSystemVarWithContext(ctx *sql.Context, name string, scope sql.SystemVariableScope, specifiedScope string) *SystemVar {
+	v := NewSystemVar(name, scope, specifiedScope)
+	v.boundDisplay = true
+	if sysVar, _, ok := ctx.SystemVariables().GetGlobal(name); ok && sysVar != nil {
+		v.displayString = sysVar.DisplayString(specifiedScope)
+	}
+	return v
+}
+
 // Children implements the sql.Expression interface.
 func (v *SystemVar) Children() []sql.Expression { return nil }
 
@@ -55,8 +68,14 @@ func (v *SystemVar) Eval(ctx *sql.Context, _ sql.Row) (interface{}, error) {
 
 // Type implements the sql.Expression interface.
 func (v *SystemVar) Type(ctx *sql.Context) sql.Type {
-	if sysVar, _, ok := sql.SystemVariables.GetGlobal(v.Name); ok {
-		return sysVar.GetType()
+	if ctx != nil {
+		if sysVar, _, ok := ctx.SystemVariables().GetGlobal(v.Name); ok && sysVar != nil {
+			return sysVar.GetType()
+		}
+	} else if !v.boundDisplay && sql.SystemVariables != nil {
+		if sysVar, _, ok := sql.SystemVariables.GetGlobal(v.Name); ok && sysVar != nil {
+			return sysVar.GetType()
+		}
 	}
 	return types.Null
 }
@@ -81,8 +100,13 @@ func (v *SystemVar) Resolved() bool { return true }
 
 // String implements the sql.Expression interface.
 func (v *SystemVar) String() string {
-	if sysVar, _, ok := sql.SystemVariables.GetGlobal(v.Name); ok {
-		return sysVar.DisplayString(v.SpecifiedScope)
+	if v.displayString != "" {
+		return v.displayString
+	}
+	if !v.boundDisplay && sql.SystemVariables != nil {
+		if sysVar, _, ok := sql.SystemVariables.GetGlobal(v.Name); ok && sysVar != nil {
+			return sysVar.DisplayString(v.SpecifiedScope)
+		}
 	}
 	if v.SpecifiedScope == "" {
 		return "@@" + v.Name
