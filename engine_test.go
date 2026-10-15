@@ -29,6 +29,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/rowexec"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 func TestBindingsToExprs(t *testing.T) {
@@ -180,10 +181,11 @@ func TestTrackProcess(t *testing.T) {
 	db := memory.NewDatabase("db")
 	provider := memory.NewDBProvider(db)
 	a := analyzer.NewDefault(provider)
-	sess := memory.NewSession(sql.NewBaseSession(), provider)
+	vars := variables.NewEngineVariables()
+	sess := memory.NewSession(sql.NewBaseSessionWithVariables(vars), provider)
 
-	pl := NewProcessList()
-	ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithProcessList(pl), sql.WithSession(sess))
+	pl := NewProcessListWithVariables(vars)
+	ctx := sql.NewContextWithVariables(context.Background(), vars, sql.WithPid(1), sql.WithProcessList(pl), sql.WithSession(sess))
 
 	node := plan.NewInnerJoin(
 		ctx,

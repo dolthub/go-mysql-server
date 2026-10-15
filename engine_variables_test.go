@@ -200,7 +200,7 @@ func TestEngineSessionDefaultsAndLateRegistration(t *testing.T) {
 	require.Error(t, bSession.SetSessionVariable(bCtx, late.Name, int64(4)))
 
 	standalone := sql.NewBaseSession()
-	require.NotNil(t, standalone.EngineVariables())
+	require.Nil(t, standalone.EngineVariables())
 	a := New(analyzer.NewDefault(memory.NewDBProvider()), &Config{EngineVariables: aVars})
 	require.ErrorContains(t, a.checkVariableOwnership(sql.NewContext(context.Background(), sql.WithSession(standalone))), "ownership")
 }

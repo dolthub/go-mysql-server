@@ -30,7 +30,7 @@ import (
 // BenchmarkRegexpSubstr-14    	     100	  95661410 ns/op
 // BenchmarkRegexpSubstr-14    	   10000	    999559 ns/op
 func BenchmarkRegexpSubstr(b *testing.B) {
-	ctx := sql.NewEmptyContext()
+	ctx := newRegexpTestContext()
 	data := make([]sql.Row, 100)
 	for i := range data {
 		data[i] = sql.Row{fmt.Sprintf("test%d", i)}

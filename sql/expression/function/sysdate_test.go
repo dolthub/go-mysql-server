@@ -23,6 +23,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 // TestSysdate tests the SYSDATE() function, which should generally behave identically to NOW(), but unlike NOW(),
@@ -66,7 +67,7 @@ func TestSysdate(t *testing.T) {
 			sql.RunWithNowFunc(func() time.Time {
 				return date
 			}, func() error {
-				ctx := sql.NewEmptyContext()
+				ctx := sql.NewContextWithVariables(t.Context(), variables.NewEngineVariables())
 				require := require.New(t)
 				val, err := f.Eval(ctx, tt.row)
 				if tt.err {
