@@ -84,6 +84,7 @@ func NewMemoryHarness(name string, numTablePartitions int, driverInitializer Ind
 		externalProcedureRegistry: externalProcedureRegistry,
 		mu:                        &sync.Mutex{},
 		server:                    useServer,
+		variables:                 variables.NewEngineVariables(),
 	}
 }
 

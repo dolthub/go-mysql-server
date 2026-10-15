@@ -134,7 +134,8 @@ func (s *BaseSession) GetAllSessionVariables() map[string]interface{} {
 	for k, v := range s.systemVars {
 		addVar(k, v)
 	}
-	if registry := s.systemRegistry(); registry != nil {
+	if s.engineVariables != nil {
+		registry := s.systemRegistry()
 		for name := range registry.GetAllGlobalVariables() {
 			if _, snapshotted := s.systemVars[name]; snapshotted {
 				continue

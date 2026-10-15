@@ -74,8 +74,8 @@ func setupWrapperTests(t *testing.T) (*sql.Context, *memory.Database, *MemoryHar
 	db := memory.NewDatabase("mydb")
 	pro := memory.NewDBProvider(db)
 	harness := NewDefaultMemoryHarness().WithProvider(pro)
+	e := NewEngineWithProviderAndVariables(t, harness, pro, harness.EngineVariables())
 	ctx := NewContext(harness)
-	e := NewEngineWithProvider(t, harness, pro)
 	return ctx, db, harness, e
 }
 
