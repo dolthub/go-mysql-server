@@ -59,10 +59,7 @@ func TestEngineVariableOwnership(t *testing.T) {
 
 	foreign := b.NewContext(context.Background())
 	conflicting := sql.NewContextWithVariables(context.Background(), aVars, sql.WithSession(foreign.Session))
-	var questionsBefore interface{}
-	if sql.StatusVariables != nil {
-		_, questionsBefore, _ = sql.StatusVariables.GetGlobal("Questions")
-	}
+	_, questionsBefore, _ := aVars.Status.GetGlobal("Questions")
 	for _, bad := range []*sql.Context{foreign, conflicting, sql.NewContext(context.Background())} {
 		assertOwnershipError := func(err error) {
 			t.Helper()
@@ -83,10 +80,8 @@ func TestEngineVariableOwnership(t *testing.T) {
 		_, _, _, err = a.PrepQueryPlanForExecution(bad, "", nil, nil)
 		assertOwnershipError(err)
 	}
-	if sql.StatusVariables != nil {
-		_, questionsAfter, _ := sql.StatusVariables.GetGlobal("Questions")
-		require.Equal(t, questionsBefore, questionsAfter)
-	}
+	_, questionsAfter, _ := aVars.Status.GetGlobal("Questions")
+	require.Equal(t, questionsBefore, questionsAfter)
 }
 
 func TestDefaultEngineVariablesAreIndependent(t *testing.T) {
@@ -125,19 +120,6 @@ func TestDefaultEngineVariablesAreIndependent(t *testing.T) {
 	require.ErrorContains(t, err, "engine variable ownership")
 	_, _, _, err = a.Query(sql.NewContext(context.Background()), "SELECT 1")
 	require.ErrorContains(t, err, "engine variable ownership")
-}
-
-func TestNewDoesNotResetLegacyStatusVariables(t *testing.T) {
-	_, original, ok := sql.StatusVariables.GetGlobal("Threads_connected")
-	require.True(t, ok)
-	require.NoError(t, sql.StatusVariables.SetGlobal("Threads_connected", uint64(23)))
-	t.Cleanup(func() {
-		require.NoError(t, sql.StatusVariables.SetGlobal("Threads_connected", original))
-	})
-	_ = NewDefault(memory.NewDBProvider())
-	_, got, ok := sql.StatusVariables.GetGlobal("Threads_connected")
-	require.True(t, ok)
-	require.Equal(t, uint64(23), got)
 }
 
 func TestEventSchedulerRejectsForeignContextGetter(t *testing.T) {
@@ -217,10 +199,10 @@ func TestEngineSessionDefaultsAndLateRegistration(t *testing.T) {
 	require.Equal(t, int64(1), got)
 	require.Error(t, bSession.SetSessionVariable(bCtx, late.Name, int64(4)))
 
-	legacy := sql.NewBaseSession()
-	require.Nil(t, legacy.EngineVariables())
+	standalone := sql.NewBaseSession()
+	require.NotNil(t, standalone.EngineVariables())
 	a := New(analyzer.NewDefault(memory.NewDBProvider()), &Config{EngineVariables: aVars})
-	require.ErrorContains(t, a.checkVariableOwnership(sql.NewContext(context.Background(), sql.WithSession(legacy))), "ownership")
+	require.ErrorContains(t, a.checkVariableOwnership(sql.NewContext(context.Background(), sql.WithSession(standalone))), "ownership")
 }
 
 func TestConnectionSessionBuilderUsesEngineVariables(t *testing.T) {

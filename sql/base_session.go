@@ -87,14 +87,14 @@ func (s *BaseSession) GetIgnoreAutoCommit() bool {
 var _ Session = (*BaseSession)(nil)
 
 // EngineVariables returns the bundle used when this session was constructed.
-// Legacy sessions return nil.
+// Unbound sessions return nil.
 func (s *BaseSession) EngineVariables() *EngineVariables { return s.engineVariables }
 
 func (s *BaseSession) systemRegistry() SystemVariableRegistry {
 	if s.engineVariables != nil {
 		return s.engineVariables.System
 	}
-	return SystemVariables
+	panic("session system variables require an engine variable owner")
 }
 
 func (s *BaseSession) SetTransactionDatabase(dbName string) {
@@ -657,9 +657,12 @@ func NewBaseSessionWithClientServer(server string, client Client, id uint32) *Ba
 // NewBaseSessionWithClientServerWithVariables snapshots the supplied bundle.
 func NewBaseSessionWithClientServerWithVariables(server string, client Client, id uint32, vars *EngineVariables) *BaseSession {
 	// TODO: if system variable "activate_all_roles_on_login" if set, activate all roles
+	if vars == nil {
+		vars = newStandaloneEngineVariables()
+	}
 	var systemVars map[string]SystemVarValue
-	registry := SystemVariables
-	statusRegistry := StatusVariables
+	var registry SystemVariableRegistry
+	var statusRegistry StatusVariableRegistry
 	if vars != nil {
 		registry = vars.System
 		statusRegistry = vars.Status

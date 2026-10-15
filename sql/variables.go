@@ -20,8 +20,6 @@ import (
 	"sync/atomic"
 )
 
-var SystemVariables SystemVariableRegistry
-
 // EngineVariables groups the variable registries owned by one engine. Callers
 // creating independent engines must give each engine a distinct bundle.
 type EngineVariables struct {
@@ -29,9 +27,28 @@ type EngineVariables struct {
 	Status StatusVariableRegistry
 }
 
+// engineVariablesFactory lets standalone sessions allocate independent built-in
+// registries without making sql import the variables package.
+var engineVariablesFactory atomic.Pointer[func() *EngineVariables]
+
+// RegisterEngineVariablesFactory installs the built-in registry constructor.
+// Registration is process initialization, not an engine variable registry.
+func RegisterEngineVariablesFactory(factory func() *EngineVariables) {
+	if factory == nil || !engineVariablesFactory.CompareAndSwap(nil, &factory) {
+		panic("engine variable factory already registered or nil")
+	}
+}
+
+func newStandaloneEngineVariables() *EngineVariables {
+	if factory := engineVariablesFactory.Load(); factory != nil {
+		return (*factory)()
+	}
+	return nil
+}
+
 // ContextAwareSystemVariableRegistry is an optional extension for initializing
 // values with a context that belongs to the same engine as the registry.
-// AssignValues remains available for callers using the legacy initialization path.
+// AssignValuesWithContext passes the owning context to initialization callbacks.
 type ContextAwareSystemVariableRegistry interface {
 	SystemVariableRegistry
 	AssignValuesWithContext(ctx *Context, vals map[string]interface{}) error
@@ -376,8 +393,6 @@ type SystemVarValue struct {
 	Var SystemVariable
 	Val interface{}
 }
-
-var StatusVariables StatusVariableRegistry
 
 // StatusVariableRegistry is a registry of status variables.
 type StatusVariableRegistry interface {

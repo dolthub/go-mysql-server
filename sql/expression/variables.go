@@ -72,10 +72,6 @@ func (v *SystemVar) Type(ctx *sql.Context) sql.Type {
 		if sysVar, _, ok := ctx.SystemVariables().GetGlobal(v.Name); ok && sysVar != nil {
 			return sysVar.GetType()
 		}
-	} else if !v.boundDisplay && sql.SystemVariables != nil {
-		if sysVar, _, ok := sql.SystemVariables.GetGlobal(v.Name); ok && sysVar != nil {
-			return sysVar.GetType()
-		}
 	}
 	return types.Null
 }
@@ -102,11 +98,6 @@ func (v *SystemVar) Resolved() bool { return true }
 func (v *SystemVar) String() string {
 	if v.displayString != "" {
 		return v.displayString
-	}
-	if !v.boundDisplay && sql.SystemVariables != nil {
-		if sysVar, _, ok := sql.SystemVariables.GetGlobal(v.Name); ok && sysVar != nil {
-			return sysVar.DisplayString(v.SpecifiedScope)
-		}
 	}
 	if v.SpecifiedScope == "" {
 		return "@@" + v.Name

@@ -27,8 +27,7 @@ import (
 
 func TestShowStatus(t *testing.T) {
 	require := require.New(t)
-	ctx := sql.NewEmptyContext()
-	variables.InitStatusVariables()
+	ctx := sql.NewContextWithVariables(t.Context(), variables.NewEngineVariables())
 
 	var res sql.Row
 	var err error

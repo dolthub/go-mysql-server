@@ -237,7 +237,7 @@ func (s *Session) systemVariables() sql.SystemVariableRegistry {
 	if vars := s.EngineVariables(); vars != nil {
 		return vars.System
 	}
-	return sql.SystemVariables
+	return nil
 }
 
 // RemoveAllPersistedGlobals implements sql.PersistableSession

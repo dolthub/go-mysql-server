@@ -81,8 +81,6 @@ func TestIndependentEngineVariables(t *testing.T) {
 	require.True(t, ok)
 	_, _, ok = b.System.GetGlobal("only_a")
 	require.False(t, ok)
-	_, _, ok = sql.SystemVariables.GetGlobal("only_a")
-	require.False(t, ok)
 
 	a.Status.IncrementGlobal("Threads_connected", 3)
 	_, aCount, ok := a.Status.GetGlobal("Threads_connected")
