@@ -930,6 +930,7 @@ var JsonScripts = []ScriptTest{
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/12107
 		Name: "json_extract returns missing keys as sql null and handles json null literals correctly",
 		SetUpScript: []string{
 			"create table t (pk int primary key, col1 json);",
@@ -1000,7 +1001,6 @@ var JsonScripts = []ScriptTest{
 				Query:    "select pk from t where json_extract(col1, '$.items') <> null;",
 				Expected: []sql.Row{},
 			},
-			// A path that matches nothing is left out of a multi-path result.
 			{
 				Query:    `select json_extract('{"a": 1}', '$.a', '$.nope');`,
 				Expected: []sql.Row{{types.MustJSON("[1]")}},
