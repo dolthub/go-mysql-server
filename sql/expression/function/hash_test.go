@@ -15,7 +15,11 @@
 package function
 
 import (
+	"bytes"
+	"compress/zlib"
+	"encoding/binary"
 	"fmt"
+	"io"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -296,11 +300,11 @@ func TestCompress(t *testing.T) {
 		},
 		{
 			val: expression.NewLiteral(int64(1), types.Int64),
-			exp: "0100000078DA3204040000FFFF00320032",
+			exp: "1",
 		},
 		{
 			val: expression.NewLiteral("1", types.Text),
-			exp: "0100000078DA3204040000FFFF00320032",
+			exp: "1",
 		},
 		{
 			val: expression.NewLiteral("", types.Text),
@@ -308,11 +312,11 @@ func TestCompress(t *testing.T) {
 		},
 		{
 			val: expression.NewLiteral("abc", types.Text),
-			exp: "0300000078DA4A4C4A06040000FFFF024D0127",
+			exp: "abc",
 		},
 		{
 			val: expression.NewLiteral("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", types.Text),
-			exp: "2A00000078DA72241A00020000FFFFE5710AAB",
+			exp: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
 		},
 	}
 
@@ -325,8 +329,20 @@ func TestCompress(t *testing.T) {
 				require.Nil(t, res)
 				return
 			}
-			resStr := fmt.Sprintf("%X", res)
-			require.Equal(t, test.exp, resStr)
+			want := test.exp.(string)
+			encoded := res.([]byte)
+			if want == "" {
+				require.Empty(t, encoded)
+				return
+			}
+			require.Greater(t, len(encoded), 4)
+			require.Equal(t, uint32(len(want)), binary.LittleEndian.Uint32(encoded[:4]))
+			reader, err := zlib.NewReader(bytes.NewReader(encoded[4:]))
+			require.NoError(t, err)
+			defer reader.Close()
+			decoded, err := io.ReadAll(reader)
+			require.NoError(t, err)
+			require.Equal(t, want, string(decoded))
 		})
 	}
 }
