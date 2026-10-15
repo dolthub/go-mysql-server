@@ -489,6 +489,90 @@ func TestOrderByGroupBy(t *testing.T) {
 	enginetest.TestOrderByGroupBy(t, enginetest.NewDefaultMemoryHarness())
 }
 
+// TestHavingAggregateInputs verifies HAVING references to grouping columns used as aggregate inputs.
+func TestHavingAggregateInputs(t *testing.T) {
+	// TODO: Move these fixtures to queries.AggregationScriptTests in enginetest/queries/aggregation_script_queries.go
+	// after https://github.com/dolthub/go-mysql-server/pull/3990 lands.
+	scripts := []queries.ScriptTest{
+		{
+			Name: "having references aggregate input columns",
+			SetUpScript: []string{
+				"create table tab0 (col0 int, col1 int, col2 int);",
+				"insert into tab0 values (1, 0, 10);",
+			},
+			Assertions: []queries.ScriptTestAssertion{
+				{
+					Query:    "select sum(col1) from tab0 group by col1, col2 having col1 >= count(*);",
+					Expected: []sql.Row{},
+				},
+				{
+					Query:    "select sum(t.col1) from tab0 t group by t.col1, t.col2 having t.col1 >= count(*);",
+					Expected: []sql.Row{},
+				},
+				{
+					Query:    "select sum(col1) from tab0 group by col1 having col1 >= count(*);",
+					Expected: []sql.Row{},
+				},
+				{
+					Query:    "select sum(col1) from tab0 group by col1, col2 having col1 < count(*);",
+					Expected: []sql.Row{{float64(0)}},
+				},
+			},
+		},
+		{
+			Name: "having BETWEEN with aggregate and grouping-column bounds",
+			SetUpScript: []string{
+				"CREATE TABLE tab0 (col0 INT, col1 INT, col2 INT);",
+				"INSERT INTO tab0 VALUES(83,0,38);",
+				"INSERT INTO tab0 VALUES(26,0,79);",
+				"INSERT INTO tab0 VALUES(43,81,24);",
+			},
+			Assertions: []queries.ScriptTestAssertion{
+				{
+					Query:    "SELECT + - SUM( + col1 ) + 78 - + col2 FROM tab0 cor0 GROUP BY col2, col1 HAVING col1 BETWEEN COUNT( * ) AND ( col2 );",
+					Expected: []sql.Row{},
+				},
+			},
+		},
+		{
+			Name: "having references multiple aggregate input columns",
+			SetUpScript: []string{
+				"create table tab0 (col0 int, col1 int, col2 int);",
+				"insert into tab0 values (1, 0, 10), (2, 2, 20), (3, 2, 20), (4, 3, 30), (5, null, 40);",
+			},
+			Assertions: []queries.ScriptTestAssertion{
+				{
+					Query:    "select sum(col1), sum(col2) from tab0 group by col1, col2 having col1 >= count(*) order by col1, col2;",
+					Expected: []sql.Row{{float64(4), float64(40)}, {float64(3), float64(30)}},
+				},
+				{
+					Query:    "select sum(col1), sum(col2) from tab0 group by col1, col2 having col1 < count(*) order by col1, col2;",
+					Expected: []sql.Row{{float64(0), float64(10)}},
+				},
+				{
+					Query:    "select sum(col1), sum(col2) from tab0 group by col1, col2 having col1 is null;",
+					Expected: []sql.Row{{nil, float64(40)}},
+				},
+			},
+		},
+	}
+
+	t.Run("ordinary", func(t *testing.T) {
+		for _, script := range scripts {
+			enginetest.TestScript(t, enginetest.NewDefaultMemoryHarness(), script)
+		}
+	})
+	t.Run("prepared", func(t *testing.T) {
+		harness := enginetest.NewDefaultMemoryHarness()
+		if harness.IsUsingServer() {
+			t.Skip("Prepared aggregate input tests require a native engine")
+		}
+		for _, script := range scripts {
+			enginetest.TestScriptPrepared(t, harness, script)
+		}
+	})
+}
+
 func TestAmbiguousColumnResolution(t *testing.T) {
 	enginetest.TestAmbiguousColumnResolution(t, enginetest.NewDefaultMemoryHarness())
 }
@@ -607,13 +691,41 @@ func TestConvert(t *testing.T) {
 	enginetest.TestConvert(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
-func TestScripts(t *testing.T) {
-	enginetest.TestScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+func TestExpressionsScripts(t *testing.T) {
+	enginetest.TestExpressionsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestAggregationScripts(t *testing.T) {
+	enginetest.TestAggregationScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestTemporalScripts(t *testing.T) {
+	enginetest.TestTemporalScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestEnumsAndSetsScripts(t *testing.T) {
+	enginetest.TestEnumsAndSetsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestConversionsScripts(t *testing.T) {
+	enginetest.TestConversionsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestSetOperationsScripts(t *testing.T) {
+	enginetest.TestSetOperationsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestOrderingScripts(t *testing.T) {
+	enginetest.TestOrderingScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestNumericScripts(t *testing.T) {
+	enginetest.TestNumericScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
 // TestCorrelatedAggregateScopePrepared verifies correlated aggregate ownership with prepared execution.
 func TestCorrelatedAggregateScopePrepared(t *testing.T) {
-	for _, script := range queries.ScriptTests {
+	for _, script := range queries.AggregationScriptTests {
 		if script.Name == "correlated subquery references outer aggregate" {
 			enginetest.TestScriptPrepared(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver), script)
 			return
@@ -709,6 +821,10 @@ func TestRowLimit(t *testing.T) {
 	enginetest.TestRowLimit(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestDropTablePrepared(t *testing.T) {
+	enginetest.TestDropTablePrepared(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestDropTable(t *testing.T) {
 	enginetest.TestDropTable(t, enginetest.NewDefaultMemoryHarness())
 }
@@ -801,6 +917,10 @@ func TestReadOnly(t *testing.T) {
 	enginetest.TestReadOnly(t, enginetest.NewDefaultMemoryHarness(), true /* testStoredProcedures */)
 }
 
+func TestViewsPrepared(t *testing.T) {
+	enginetest.TestViewsPrepared(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestViews(t *testing.T) {
 	enginetest.TestViews(t, enginetest.NewDefaultMemoryHarness())
 }
@@ -837,8 +957,21 @@ func TestColumnDefaults(t *testing.T) {
 	enginetest.TestColumnDefaults(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestColumnDefaultsPrepared(t *testing.T) {
+	enginetest.TestColumnDefaultsPrepared(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestAlterTable(t *testing.T) {
 	enginetest.TestAlterTable(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestAlterTablePrepared(t *testing.T) {
+	harness := enginetest.NewDefaultMemoryHarness()
+	if harness.IsUsingServer() {
+		t.Skip("prepared ALTER TABLE scripts currently fail with ServerEngine")
+	}
+
+	enginetest.TestAlterTablePrepared(t, harness)
 }
 
 func TestDateParse(t *testing.T) {
@@ -993,9 +1126,50 @@ func TestPreparedStatements(t *testing.T) {
 func TestCharsetCollationEngine(t *testing.T) {
 	harness := enginetest.NewDefaultMemoryHarness()
 	if harness.IsUsingServer() {
-		// Note: charset introducer needs to be handled with the SQLVal when preparing
-		//  e.g. what we do currently for `_utf16'hi'` is `_utf16 :v1` with v1 = "hi", instead of `:v1` with v1 = "_utf16'hi'".
-		t.Skip("way we prepare the queries with injectBindVarsAndPrepare() method does not work for ServerEngine test")
+		// Charset introducers cannot yet be prepared correctly by ServerEngine.
+		harness.QueriesToSkip(
+			"Uppercase and lowercase collations",
+			"Insert multiple character sets",
+			"Sorting differences",
+			"Character set introducer with invalid collate",
+			"Properly block using not-yet-implemented character sets/collations",
+			"Order by behaves differently according to case-sensitivity",
+			"Proper index access",
+			"Table collation is respected",
+			"SET NAMES does not interfere with column charset",
+			"SET validates character set and collation variables",
+			"setting charset/collation sets the other",
+			"ENUM collation handling",
+			"SET collation handling",
+			"LIKE respects table collations",
+			"LIKE respects connection collation",
+			"STRCMP() function",
+			"LENGTH() function",
+			"CHAR_LENGTH() function",
+			"CONVERT() USING with malformed multi-byte strings",
+			"UPPER() function",
+			"LOWER() function",
+			"RPAD() function",
+			"LPAD() function",
+			"HEX() function",
+			"UNHEX() function",
+			"SUBSTRING() function",
+			"TO_BASE64() function",
+			"FROM_BASE64() function",
+			"TRIM() function",
+			"RTRIM() function",
+			"LTRIM() function",
+			"BINARY() function",
+			"CAST(... AS BINARY) function",
+			"Issue #5482",
+			"LIKE with a space terminated prefix matches rows with a multibyte character after the prefix",
+			"LIKE with a constant prefix keeps rows that sort after the prefix across collations, NOT LIKE, and joins",
+			"LIKE with a binary-collation prefix ending at a code-point boundary excludes non-matching rows",
+			"LIKE with a constant prefix on an indexed column uses an index range scan",
+			"LIKE with a constant prefix drops the LIKE only for a binary collation",
+			"IN predicate with accent-insensitive collation",
+			"CHECK constraint with IN predicate and collation",
+		)
 	}
 	enginetest.TestCharsetCollationEngine(t, harness)
 }
@@ -1121,4 +1295,76 @@ func TestSQLLogicTestFiles(t *testing.T) {
 
 func TestTimeQueries(t *testing.T) {
 	enginetest.TestTimeQueries(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestAutoIncrementScripts(t *testing.T) {
+	enginetest.TestAutoIncrementScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestDatabaseDefinitionsScripts(t *testing.T) {
+	enginetest.TestDatabaseDefinitionsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestDeleteScripts(t *testing.T) {
+	enginetest.TestDeleteScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestDescendingIndexesScripts(t *testing.T) {
+	enginetest.TestDescendingIndexesScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestIndexKeyTypesScripts(t *testing.T) {
+	enginetest.TestIndexKeyTypesScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestInsertIgnoreRegressionScripts(t *testing.T) {
+	enginetest.TestInsertIgnoreRegressionScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestJoinsScripts(t *testing.T) {
+	enginetest.TestJoinsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestNameResolutionScripts(t *testing.T) {
+	enginetest.TestNameResolutionScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestPrimaryKeysScripts(t *testing.T) {
+	enginetest.TestPrimaryKeysScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestSessionResultsScripts(t *testing.T) {
+	enginetest.TestSessionResultsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestStatisticsScripts(t *testing.T) {
+	enginetest.TestStatisticsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestStringFunctionsScripts(t *testing.T) {
+	enginetest.TestStringFunctionsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestSubqueriesScripts(t *testing.T) {
+	enginetest.TestSubqueriesScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestTableDefinitionsScripts(t *testing.T) {
+	enginetest.TestTableDefinitionsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestTransactionsScripts(t *testing.T) {
+	enginetest.TestTransactionsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestTupleComparisonsScripts(t *testing.T) {
+	enginetest.TestTupleComparisonsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestUpdateJoinsScripts(t *testing.T) {
+	enginetest.TestUpdateJoinsScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
+func TestVariablesScripts(t *testing.T) {
+	enginetest.TestVariablesScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }

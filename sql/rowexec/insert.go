@@ -259,6 +259,10 @@ func (i *insertIter) next(ctx *sql.Context) (returnRow sql.Row, skipped bool, re
 			if sql.ErrTruncatedIncorrect.Is(cErr) {
 				cErr = sql.ErrInvalidValue.New(val, col.Type)
 			}
+			if sql.ErrDeprecatedDelimiter.Is(cErr) {
+				ctx.Warn(4096, "%s", cErr.Error())
+				cErr = nil
+			}
 			if cErr != nil {
 				// Ignore individual column errors when INSERT IGNORE, UPDATE IGNORE, etc. is specified.
 				// For JSON column types, always throw an error. MySQL throws the following error even when

@@ -239,6 +239,13 @@ func TestTrackProcess(t *testing.T) {
 	_, err = sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 
+	// Closing the iterator does not end the query; that is the responsibility of whoever called BeginQuery.
+	processes = ctx.ProcessList.Processes()
+	require.Len(processes, 1)
+	require.Equal(sql.ProcessCommandQuery, processes[0].Command)
+	require.NoError(ctx.Err())
+
+	ctx.ProcessList.EndQuery(ctx)
 	processes = ctx.ProcessList.Processes()
 	require.Len(processes, 1)
 	require.Equal(sql.ProcessCommandSleep, processes[0].Command)

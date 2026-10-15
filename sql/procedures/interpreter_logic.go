@@ -906,6 +906,17 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 
 // Call runs the contained operations on the given runner.
 func Call(ctx *sql.Context, iNode InterpreterNode) (sql.RowIter, *InterpreterStack, error) {
+	// Preserve existing transaction before initial Call, but nested calls reuse Transactions
+	if !ctx.Session.IsInCall() {
+		ctx.Session.SetInCall(true)
+		oldTx := ctx.GetTransaction()
+		ctx.SetTransaction(nil)
+		defer func() {
+			ctx.Session.SetInCall(false)
+			ctx.SetTransaction(oldTx)
+		}()
+	}
+
 	// Set up the initial state of the function
 	counter := -1 // We increment before accessing, so start at -1
 	stack := NewInterpreterStack()

@@ -351,15 +351,10 @@ func (c *Catalog) RegisterFunction(ctx *sql.Context, fns ...sql.Function) {
 	}
 }
 
-// ExternalFunctionProvider is a function provider that may be set by an integrator for cases that the DatabaseProvider
-// does not implement the necessary function provider logic (and we need more than the built-in functions). This is used
-// by Catalog to check for functions if it is non-nil.
-var ExternalFunctionProvider sql.FunctionProvider
-
 // Function returns the function with the name given, or false if it doesn't exist.
 func (c *Catalog) Function(ctx *sql.Context, schema, name string) (sql.Function, bool) {
-	if ExternalFunctionProvider != nil {
-		f, ok := ExternalFunctionProvider.Function(ctx, schema, name)
+	if c.overrides.Builder.FunctionProvider != nil {
+		f, ok := c.overrides.Builder.FunctionProvider.Function(ctx, schema, name)
 		if ok {
 			return f, true
 		}

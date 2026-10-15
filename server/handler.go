@@ -423,6 +423,10 @@ func (h *Handler) doQuery(
 	ctx, cancelQuery := context.WithCancelCause(ctx)
 	defer cancelQuery(nil)
 
+	// The root span for the query covers everything until doQuery returns.
+	ctx, span := h.sm.tracer.Start(ctx, "query")
+	defer span.End()
+
 	var sqlCtx *sql.Context
 	var watch *connState
 	sqlCtx, watch, err = h.sm.newContextAndWatch(ctx, c, query)
@@ -439,8 +443,8 @@ func (h *Handler) doQuery(
 	// QueryStarted here keeps the slot from leaking on any early return below.
 	watch.QueryStarted(cancelQuery)
 	defer watch.QueryEnded()
-	// TODO: it would be nice to put this logic in the engine, not the handler, but we don't want the process to be
-	//  marked done until we're done spooling rows over the wire
+	// The process is not marked done, and its context is not canceled, until doQuery returns, after all rows have
+	// been spooled over the wire.
 	sqlCtx, err = sqlCtx.ProcessList.BeginQuery(sqlCtx, query)
 	if err != nil {
 		return remainder, err
@@ -784,8 +788,7 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 		}
 	})
 
-	// Close() kills this PID in the process list,
-	// wait until all rows have be sent over the wire
+	// Wait until all rows have been sent over the wire before closing the iterator.
 	errguard.Go(eg, func() error {
 		wg.Wait()
 		return iter.Close(ctx)
@@ -933,8 +936,7 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema 
 		}
 	})
 
-	// Close() kills this PID in the process list,
-	// wait until all rows have be sent over the wire
+	// Wait until all rows have been sent over the wire before closing the iterator.
 	errguard.Go(eg, func() error {
 		wg.Wait()
 		return iter.Close(ctx)

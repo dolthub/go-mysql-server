@@ -334,8 +334,6 @@ func (s *SessionManager) newContextAndWatch(ctx context.Context, conn *mysql.Con
 		return nil, nil, err
 	}
 
-	ctx, span := s.tracer.Start(ctx, "query")
-
 	createdCtx := s.ctxFactory(
 		ctx,
 		sql.WithSession(ci.session),
@@ -344,7 +342,6 @@ func (s *SessionManager) newContextAndWatch(ctx context.Context, conn *mysql.Con
 		sql.WithQuery(query),
 		sql.WithMemoryManager(s.memory),
 		sql.WithProcessList(s.processlist),
-		sql.WithRootSpan(span),
 		sql.WithServices(sql.Services{
 			KillConnection: s.KillConnection,
 			LoadInfile:     conn.LoadInfile,
