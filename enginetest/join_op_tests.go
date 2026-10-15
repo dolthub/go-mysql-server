@@ -106,6 +106,52 @@ var EngineOnlyJoinOpTests = []joinOpTest{
 
 var DefaultJoinOpTests = []joinOpTest{
 	{
+		// Regression test for dolthub/dolt#12106: a NULL literal join key.
+		name: "NULL literal in a join key",
+		setup: [][]string{
+			{
+				"CREATE TABLE t0 (c0 INT PRIMARY KEY);",
+				"INSERT INTO t0 VALUES (1);",
+				"CREATE TABLE t1 (c0 INT);",
+				"INSERT INTO t1 VALUES (1);",
+				"CREATE TABLE s4 (id INT PRIMARY KEY, x INT, y INT);",
+				"INSERT INTO s4 VALUES (1, 1, 104), (2, 1, NULL), (3, NULL, 104);",
+				"CREATE TABLE t4 (a INT NOT NULL, b INT NOT NULL, PRIMARY KEY (a, b));",
+				"INSERT INTO t4 VALUES (1, 104), (1, 1), (2, 104);",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query: "SELECT * FROM t1 LEFT JOIN t0 ON t0.c0 = NULL;",
+				Expected: []sql.Row{
+					{1, nil},
+				},
+			},
+			{
+				Query:    "SELECT * FROM t1 JOIN t0 ON t0.c0 = NULL;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "SELECT * FROM t1 LEFT JOIN t0 ON t0.c0 <=> NULL;",
+				Expected: []sql.Row{
+					{1, nil},
+				},
+			},
+			{
+				Query: "SELECT s4.id, t4.a, t4.b FROM s4 LEFT JOIN t4 ON t4.a <=> NULL AND t4.b = s4.y ORDER BY s4.id;",
+				Expected: []sql.Row{
+					{1, nil, nil},
+					{2, nil, nil},
+					{3, nil, nil},
+				},
+			},
+			{
+				Query:    "SELECT s4.id, t4.a, t4.b FROM s4 JOIN t4 ON t4.a <=> NULL AND t4.b = s4.y;",
+				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/9807
 		name: "FULL OUTER JOIN fails with empty subquery",
 		setup: [][]string{
