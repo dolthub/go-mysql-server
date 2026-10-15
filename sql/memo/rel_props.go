@@ -62,64 +62,31 @@ func newRelProps(ctx *sql.Context, rel RelExpr) *relProps {
 	case *SetOp:
 	case SourceRel:
 		n := r.TableIdNode()
-		if len(n.Schema(ctx)) == n.Columns().Len() {
-			p.outputCols = r.TableIdNode().Columns()
 
-			firstCol, _ := n.Columns().Next(1)
+		p.outputCols = n.Columns()
 
-			var table sql.Table
-			switch n := n.(type) {
-			case *plan.TableAlias:
-				if tn, ok := n.Child.(sql.TableNode); ok {
-					table = tn.UnderlyingTable()
-				}
-			case sql.TableNode:
-				table = n.UnderlyingTable()
-			}
-			var requiredIndexCols sql.ColSet
-			if table != nil {
-				if irt, ok := table.(sql.IndexRequired); ok {
-					cols := irt.RequiredPredicates()
-					for _, c := range cols {
-						i := n.Schema(ctx).IndexOfColName(c)
-						requiredIndexCols.Add(firstCol + sql.ColumnId(i))
-					}
-				}
-			}
-			p.reqIdxCols = requiredIndexCols
-		} else {
-			// if the table is projected, capture subset of column ids
-			var tw sql.TableNode
-			var ok bool
-			for tw, ok = n.(sql.TableNode); !ok; tw, ok = n.Children()[0].(sql.TableNode) {
-			}
+		columnIds := n.Columns().Ordered()
 
-			var sch sql.Schema
-			switch n := tw.UnderlyingTable().(type) {
-			case sql.PrimaryKeyTable:
-				sch = n.PrimaryKeySchema(ctx).Schema
-			default:
-				sch = n.Schema(ctx)
+		var table sql.Table
+		switch n := n.(type) {
+		case *plan.TableAlias:
+			if tn, ok := n.Child.(sql.TableNode); ok {
+				table = tn.UnderlyingTable()
 			}
-			firstCol, _ := n.Columns().Next(1)
-
-			var colset sql.ColSet
-			for _, c := range n.Schema(ctx) {
-				i := sch.IndexOfColName(c.Name)
-				colset.Add(firstCol + sql.ColumnId(i))
-			}
-			p.outputCols = colset
-
-			var requiredIndexCols sql.ColSet
-			if irt, ok := n.(sql.IndexRequired); ok {
+		case sql.TableNode:
+			table = n.UnderlyingTable()
+		}
+		var requiredIndexCols sql.ColSet
+		if table != nil {
+			if irt, ok := table.(sql.IndexRequired); ok {
 				cols := irt.RequiredPredicates()
 				for _, c := range cols {
-					i := sch.IndexOfColName(c)
-					requiredIndexCols.Add(firstCol + sql.ColumnId(i))
+					i := n.Schema(ctx).IndexOfColName(c)
+					requiredIndexCols.Add(columnIds[i])
 				}
 			}
-			p.reqIdxCols = requiredIndexCols
 		}
+		p.reqIdxCols = requiredIndexCols
 	default:
 	}
 
@@ -728,6 +695,8 @@ func (p *relProps) outputColsForRel(ctx *sql.Context, r RelExpr) sql.ColSet {
 		return r.outputCols(ctx)
 	case *IndexScan:
 		return p.outputColsForRel(ctx, r.Next())
+	case *TableScan:
+		return r.TableIdNode().Columns()
 	default:
 		err := fmt.Errorf("unknown type for rel output cols: %T", r)
 		p.grp.m.HandleErr(err)
