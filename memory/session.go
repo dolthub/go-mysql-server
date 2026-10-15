@@ -46,6 +46,7 @@ func NewSession(baseSession *sql.BaseSession, provider sql.DatabaseProvider) *Se
 		dbProvider:       provider,
 		tables:           make(map[tableKey]*TableData),
 		editAccumulators: make(map[tableKey]tableEditAccumulator),
+		persistedGlobals: make(GlobalsMap),
 	}
 }
 
@@ -198,7 +199,10 @@ func (s *Session) ReleaseSavepoint(ctx *sql.Context, transaction sql.Transaction
 
 // PersistGlobal implements sql.PersistableSession
 func (s *Session) PersistGlobal(ctx *sql.Context, sysVarName string, value interface{}) error {
-	sysVar, _, ok := sql.SystemVariables.GetGlobal(sysVarName)
+	if vars := s.EngineVariables(); vars != nil && (ctx == nil || ctx.EngineVariables() != vars) {
+		return fmt.Errorf("memory session variable ownership: context belongs to another engine")
+	}
+	sysVar, _, ok := s.systemVariables().GetGlobal(sysVarName)
 	if !ok {
 		return sql.ErrUnknownSystemVariable.New(sysVarName)
 	}
@@ -222,11 +226,18 @@ func (s *Session) SetValidationCallback(validationCallback func()) *Session {
 
 // RemovePersistedGlobal implements sql.PersistableSession
 func (s *Session) RemovePersistedGlobal(sysVarName string) error {
-	if _, _, ok := sql.SystemVariables.GetGlobal(sysVarName); !ok {
+	if _, _, ok := s.systemVariables().GetGlobal(sysVarName); !ok {
 		return sql.ErrUnknownSystemVariable.New(sysVarName)
 	}
 	delete(s.persistedGlobals, sysVarName)
 	return nil
+}
+
+func (s *Session) systemVariables() sql.SystemVariableRegistry {
+	if vars := s.EngineVariables(); vars != nil {
+		return vars.System
+	}
+	return sql.SystemVariables
 }
 
 // RemoveAllPersistedGlobals implements sql.PersistableSession

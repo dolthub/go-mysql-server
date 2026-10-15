@@ -15,6 +15,7 @@
 package enginetest
 
 import (
+	"context"
 	gosql "database/sql"
 	"encoding/json"
 	"errors"
@@ -56,6 +57,9 @@ var address = "localhost"
 
 func NewServerQueryEngine(t *testing.T, engine *sqle.Engine, builder server.SessionBuilder) (*ServerQueryEngine, error) {
 	ctx := sql.NewEmptyContext()
+	if engine.IsolatedVariables() {
+		ctx = engine.NewContext(context.Background())
+	}
 
 	if err := enableUserAccounts(ctx, engine); err != nil {
 		panic(err)
@@ -70,7 +74,11 @@ func NewServerQueryEngine(t *testing.T, engine *sqle.Engine, builder server.Sess
 		Protocol: "tcp",
 		Address:  fmt.Sprintf("%s:%d", address, p),
 	}
-	s, err := server.NewServer(config, engine, sql.NewContext, builder, nil)
+	ctxFactory := sql.ContextFactory(sql.NewContext)
+	if engine.IsolatedVariables() {
+		ctxFactory = sql.ContextFactoryWithVariables(engine.Variables())
+	}
+	s, err := server.NewServer(config, engine, ctxFactory, builder, nil)
 	if err != nil {
 		return nil, err
 	}

@@ -20,6 +20,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/dolthub/go-mysql-server/eventscheduler"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
@@ -69,6 +70,26 @@ func TestEngineVariableOwnership(t *testing.T) {
 			require.Equal(t, questionsBefore, questionsAfter)
 		})
 	}
+}
+
+func TestEventSchedulerRejectsForeignContextGetter(t *testing.T) {
+	aVars, bVars := variables.NewEngineVariables(), variables.NewEngineVariables()
+	e := New(analyzer.NewDefault(memory.NewDBProvider()), &Config{EngineVariables: aVars})
+	foreign := New(analyzer.NewDefault(memory.NewDBProvider()), &Config{EngineVariables: bVars})
+	err := e.InitializeEventScheduler(func() (*sql.Context, error) {
+		return foreign.NewContext(context.Background()), nil
+	}, eventscheduler.SchedulerOn, 1)
+	require.ErrorContains(t, err, "engine variable ownership")
+}
+
+func TestEventSchedulerAcceptsEngineContextGetter(t *testing.T) {
+	vars := variables.NewEngineVariables()
+	e := New(analyzer.NewDefault(memory.NewDBProvider()), &Config{EngineVariables: vars})
+	err := e.InitializeEventScheduler(func() (*sql.Context, error) {
+		return e.NewContext(context.Background()), nil
+	}, eventscheduler.SchedulerOn, 1)
+	require.NoError(t, err)
+	t.Cleanup(func() { e.EventScheduler.Close() })
 }
 
 // TestEngineSessionDefaultsAndLateRegistration checks that sessions read definitions, defaults and global values
