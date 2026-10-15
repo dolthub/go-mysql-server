@@ -84,9 +84,7 @@ func (b *Builder) buildSetOp(inScope *scope, u *ast.SetOp) (outScope *scope) {
 			mergedById[c.id] = c
 		}
 	}
-	// An ORDER BY term naming a projected column sorts the set operation's output, so it reads that output column,
-	// with the column's merged type, rather than re-evaluating the left branch's expression. An unaliased projection
-	// such as a literal would otherwise sort by a constant.
+	// ORDER BY columns should use the type and nullability of the corresponding merged column
 	for i, c := range orderByScope.cols {
 		if merged, ok := mergedById[c.id]; ok {
 			orderByScope.cols[i].scalar = nil

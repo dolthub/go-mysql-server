@@ -858,25 +858,31 @@ select * from t1 except (
 		// https://github.com/dolthub/dolt/issues/11714
 		Name: "set operation ORDER BY sorts by the output column",
 		SetUpScript: []string{
-			"create table t (a int primary key)",
-			"insert into t values (5), (3)",
-			"create table u (b int primary key)",
-			"insert into u values (4), (1)",
-			"create table v (s varchar(10) primary key)",
-			"insert into v values ('10')",
+			"create table t (a int);",
+			"insert into t values (5), (3);",
+			"create table u (b int);",
+			"insert into u values (4), (1);",
+			"create table v (s varchar(10));",
+			"insert into v values ('10');",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "select a from t union select b from u order by 1",
+				Query:    "select a from t union select b from u order by 1;",
 				Expected: []sql.Row{{1}, {3}, {4}, {5}},
 			},
 			{
 				// The merged column is a string, so ordering by a column reference also sorts as strings.
-				Query:    "select a from t union select s from v order by a",
+				Query:    "select a from t union select s from v order by a;",
 				Expected: []sql.Row{{"10"}, {"3"}, {"5"}},
 			},
 			{
-				Query:    "select a from t union select s from v order by 1",
+				// ORDER BY for a set op can only use left scope column names
+				Query: "select a from t union select s from v order by b;",
+				// TODO: This should be ErrUnknownColumn https://github.com/dolthub/dolt/issues/12116
+				ExpectedErr: sql.ErrColumnNotFound,
+			},
+			{
+				Query:    "select a from t union select s from v order by 1;",
 				Expected: []sql.Row{{"10"}, {"3"}, {"5"}},
 			},
 		},

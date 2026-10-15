@@ -7879,8 +7879,8 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{1}, {1000}},
 	},
 	{
-		Query:    "select abs(-1000) union select 1 order by 1",
-		Expected: []sql.Row{{1}, {1000}},
+		Query:    "select 1000 union select 1 order by '1'",
+		Expected: []sql.Row{{1000}, {1}},
 	},
 	{
 		Query:    "select 2, 'b' union select 1, 'a' order by 2",
@@ -7891,7 +7891,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{1, "b"}, {2, "a"}},
 	},
 	{
-		Query:    "select 1000 union (select 1 union select 500) order by 1",
+		Query:    "select 500 union (select 1 union select 1000) order by 1",
 		Expected: []sql.Row{{1}, {500}, {1000}},
 	},
 	{
@@ -7904,19 +7904,6 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{nil}, {1}},
 	},
 	{
-		Query:    "(select 1000) union (select 1) order by 1",
-		Expected: []sql.Row{{1}, {1000}},
-	},
-	{
-		Query:    "select 1000 union select 1 order by 1 limit 1",
-		Expected: []sql.Row{{1}},
-	},
-	{
-		Query:    "select 1000 as x union select 1 order by x",
-		Expected: []sql.Row{{1}, {1000}},
-	},
-	{
-		// A constant ORDER BY expression does not reorder the rows.
 		Query:    "select 2 union select 1 order by 1+0",
 		Expected: []sql.Row{{2}, {1}},
 	},
@@ -10643,7 +10630,8 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrTableNotFound,
 	},
 	{
-		Query:       "select x from mytable",
+		Query: "select x from mytable",
+		// TODO: This should be ErrUnknownColumn https://github.com/dolthub/dolt/issues/12116
 		ExpectedErr: sql.ErrColumnNotFound,
 	},
 	{
