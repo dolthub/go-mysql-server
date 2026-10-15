@@ -337,8 +337,8 @@ func buildReverseIndexedTable(ctx *sql.Context, node sql.Node) (sql.Node, transf
 	})
 }
 
-// replaceAgg feeds a MAX or MIN aggregate an order by + limit 1 over its input when possible
-func replaceAgg(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
+// replaceSortedMinMax replaces a MIN or MAX aggregate over a sorted index with a LIMIT 1 over an IndexedTableAccess
+func replaceSortedMinMax(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	if !FlagIsSet(qFlags, sql.QFlagAggregation) {
 		return node, transform.SameTree, nil
 	}
@@ -451,15 +451,15 @@ func replaceAgg(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope,
 				return n, transform.SameTree, nil
 			}
 		}
-		// The GroupBy stays: without GROUP BY it must return one row (NULL) even when its input is empty. Beneath it goes a
-		// Limit 1 over a Sort on the aggregated column, which reads a single row when the index provides that order.
-		// replaceIdxSort doesn't descend into a GroupBy, so turn the Sort into an index scan here.
-		limit := plan.NewLimit(expression.NewLiteral(1, types.Int64), plan.NewSort(sql.SortConditions{sortBy}, gb.Child))
-		newChild, _, err := replaceIdxSortHelper(ctx, scope, limit, nil)
+
+		// The replaceIdxSort rule does not work for GroupBy nodes due to how it can be nested and/or nest around a Sort
+		// node so replaceIdxSortHelper must be called now to transform a LIMIT 1 ORDER BY into a LIMIT 1 over an
+		// IndexedTableAccess
+		idxSort, _, err := replaceIdxSortHelper(ctx, scope, plan.NewLimit(expression.NewLiteral(1, types.Int64), plan.NewSort(sql.SortConditions{sortBy}, gb.Child)), nil)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
-		newGb, err := gb.WithChildren(ctx, newChild)
+		newGb, err := gb.WithChildren(ctx, idxSort)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}

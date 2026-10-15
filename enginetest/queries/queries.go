@@ -1091,7 +1091,6 @@ var QueryTests = []QueryTest{
 		Query:    `SELECT MIN(i) FROM emptytable`,
 		Expected: []sql.Row{{nil}},
 	},
-
 	{
 		Query:    "select count(1)",
 		Expected: []sql.Row{{1}},
