@@ -88,12 +88,6 @@ func (sv *globalSystemVariables) AddSystemVariables(sysVars []sql.SystemVariable
 	}
 }
 
-// AssignValues initializes values using a standalone context. Callers with an
-// owning context should use AssignValuesWithContext so callbacks see that owner.
-func (sv *globalSystemVariables) AssignValues(vals map[string]interface{}) error {
-	return sv.assignValues(sql.NewEmptyContext(), vals)
-}
-
 // AssignValuesWithContext initializes values with the supplied owning context.
 // It rejects mismatched context, registry, and session ownership before changing
 // any value or invoking a callback.

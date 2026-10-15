@@ -16,6 +16,7 @@ package sql
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 	"sync/atomic"
 )
@@ -27,23 +28,38 @@ type EngineVariables struct {
 	Status StatusVariableRegistry
 }
 
-// engineVariablesFactory lets standalone sessions allocate independent built-in
-// registries without making sql import the variables package.
-var engineVariablesFactory atomic.Pointer[func() *EngineVariables]
+// ValidateEngineVariables reports whether a bundle can be used by an explicit
+// engine, session, or context constructor.
+func ValidateEngineVariables(vars *EngineVariables) error {
+	if vars == nil {
+		return fmt.Errorf("engine variables: bundle is nil")
+	}
+	if nilRegistry(vars.System) {
+		return fmt.Errorf("engine variables: system registry is nil")
+	}
+	if nilRegistry(vars.Status) {
+		return fmt.Errorf("engine variables: status registry is nil")
+	}
+	return nil
+}
 
-// RegisterEngineVariablesFactory installs the built-in registry constructor.
-// Registration is process initialization, not an engine variable registry.
-func RegisterEngineVariablesFactory(factory func() *EngineVariables) {
-	if factory == nil || !engineVariablesFactory.CompareAndSwap(nil, &factory) {
-		panic("engine variable factory already registered or nil")
+func nilRegistry(registry any) bool {
+	if registry == nil {
+		return true
+	}
+	v := reflect.ValueOf(registry)
+	switch v.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
+		return v.IsNil()
+	default:
+		return false
 	}
 }
 
-func newStandaloneEngineVariables() *EngineVariables {
-	if factory := engineVariablesFactory.Load(); factory != nil {
-		return (*factory)()
+func requireEngineVariables(vars *EngineVariables) {
+	if err := ValidateEngineVariables(vars); err != nil {
+		panic(err)
 	}
-	return nil
 }
 
 // ContextAwareSystemVariableRegistry is an optional extension for initializing
@@ -62,8 +78,6 @@ type SystemVariableRegistry interface {
 	// The registry retains each definition; callers must provide a fresh
 	// definition (and any mutable scope or type it contains) for each registry.
 	AddSystemVariables(sysVars []SystemVariable)
-	// AssignValues assigns the given values to the system variables in this registry
-	AssignValues(vals map[string]interface{}) error
 	// NewSessionMap returns values for variables with session scope.
 	NewSessionMap() map[string]SystemVarValue
 	// GetGlobal returns the current global value of the system variable with the given name

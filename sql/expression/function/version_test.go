@@ -20,6 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 const versionPostfix = "test"
@@ -27,7 +28,7 @@ const versionPostfix = "test"
 func TestNewVersion(t *testing.T) {
 	require := require.New(t)
 
-	ctx := sql.NewEmptyContext()
+	ctx := sql.NewContextWithVariables(t.Context(), variables.NewEngineVariables())
 	f, _ := NewVersion(versionPostfix)(ctx)
 
 	val, err := f.Eval(ctx, nil)

@@ -97,6 +97,13 @@ func (s *BaseSession) systemRegistry() SystemVariableRegistry {
 	panic("session system variables require an engine variable owner")
 }
 
+func (s *BaseSession) requireVariableOwner() error {
+	if s.engineVariables == nil {
+		return fmt.Errorf("session variables require an engine variable owner")
+	}
+	return nil
+}
+
 func (s *BaseSession) SetTransactionDatabase(dbName string) {
 	s.transactionDb = dbName
 }
@@ -155,6 +162,9 @@ func (s *BaseSession) GetAllSessionVariables() map[string]interface{} {
 
 // SetSessionVariable implements the Session interface.
 func (s *BaseSession) SetSessionVariable(ctx *Context, sysVarName string, value interface{}) error {
+	if err := s.requireVariableOwner(); err != nil {
+		return err
+	}
 	sysVarName = strings.ToLower(sysVarName)
 	sysVar, ok := s.systemVars[sysVarName]
 
@@ -163,11 +173,7 @@ func (s *BaseSession) SetSessionVariable(ctx *Context, sysVarName string, value 
 	// TODO: fix this with proper session lifecycle management
 	sv := sysVar.Var
 	if !ok {
-		registry := s.systemRegistry()
-		if registry == nil {
-			return ErrUnknownSystemVariable.New(sysVarName)
-		}
-		sv, _, ok = registry.GetGlobal(sysVarName)
+		sv, _, ok = s.systemRegistry().GetGlobal(sysVarName)
 		if !ok {
 			return ErrUnknownSystemVariable.New(sysVarName)
 		}
@@ -183,6 +189,9 @@ func (s *BaseSession) SetSessionVariable(ctx *Context, sysVarName string, value 
 
 // InitSessionVariable implements the Session interface and is used to initialize variables (Including read-only variables)
 func (s *BaseSession) InitSessionVariable(ctx *Context, sysVarName string, value interface{}) error {
+	if err := s.requireVariableOwner(); err != nil {
+		return err
+	}
 	sysVar, _, ok := s.systemRegistry().GetGlobal(sysVarName)
 	if !ok {
 		return ErrUnknownSystemVariable.New(sysVarName)
@@ -206,6 +215,9 @@ func (s *BaseSession) InitSessionVariable(ctx *Context, sysVarName string, value
 
 // InitSessionVariableDefault implements the Session interface and is used to initialize variables (Including read-only variables)
 func (s *BaseSession) InitSessionVariableDefault(ctx *Context, sysVarName string, value interface{}) error {
+	if err := s.requireVariableOwner(); err != nil {
+		return err
+	}
 	sysVar, _, ok := s.systemRegistry().GetGlobal(sysVarName)
 	if !ok {
 		return ErrUnknownSystemVariable.New(sysVarName)
@@ -260,6 +272,9 @@ func (s *BaseSession) SetUserVariable(ctx *Context, varName string, value interf
 
 // GetSessionVariable implements the Session interface
 func (s *BaseSession) GetSessionVariable(ctx *Context, sysVarName string) (interface{}, error) {
+	if err := s.requireVariableOwner(); err != nil {
+		return nil, err
+	}
 	sysVarName = strings.ToLower(sysVarName)
 	// If the variable has been set with transaction-local scope, the transaction-local value is returned.
 	sysVar, ok := s.localSysVars[sysVarName]
@@ -284,6 +299,9 @@ func (s *BaseSession) GetSessionVariable(ctx *Context, sysVarName string) (inter
 
 // SetTransactionLocalVariable implements the Session interface.
 func (s *BaseSession) SetTransactionLocalVariable(ctx *Context, sysVarName string, value interface{}) error {
+	if err := s.requireVariableOwner(); err != nil {
+		return err
+	}
 	sysVarName = strings.ToLower(sysVarName)
 	sysVar, ok := s.systemVars[sysVarName]
 	var sv SystemVariable
@@ -291,9 +309,6 @@ func (s *BaseSession) SetTransactionLocalVariable(ctx *Context, sysVarName strin
 		sv = sysVar.Var
 	} else {
 		// See the comment in SetSessionVariable: variables added after session start must be looked up dynamically
-		if s.systemRegistry() == nil {
-			return ErrUnknownSystemVariable.New(sysVarName)
-		}
 		sv, _, ok = s.systemRegistry().GetGlobal(sysVarName)
 		if !ok {
 			return ErrUnknownSystemVariable.New(sysVarName)
@@ -324,6 +339,9 @@ func (s *BaseSession) ClearTransactionLocalVariables(ctx *Context) error {
 
 // GetSessionVariableDefault implements the Session interface.
 func (s *BaseSession) GetSessionVariableDefault(ctx *Context, sysVarName string) (interface{}, error) {
+	if err := s.requireVariableOwner(); err != nil {
+		return nil, err
+	}
 	sysVarName = strings.ToLower(sysVarName)
 	sysVar, ok := s.systemVars[sysVarName]
 	if !ok {
@@ -353,6 +371,9 @@ func (s *BaseSession) GetUserVariable(ctx *Context, varName string) (Type, inter
 
 // GetStatusVariable implements the Session interface.
 func (s *BaseSession) GetStatusVariable(_ *Context, statVarName string) (interface{}, error) {
+	if err := s.requireVariableOwner(); err != nil {
+		return nil, err
+	}
 	statVar, ok := s.statusVars[statVarName]
 	if !ok {
 		return nil, ErrUnknownSystemVariable.New(statVarName)
@@ -362,6 +383,9 @@ func (s *BaseSession) GetStatusVariable(_ *Context, statVarName string) (interfa
 
 // SetStatusVariable implements the Session interface.
 func (s *BaseSession) SetStatusVariable(_ *Context, statVarName string, val interface{}) error {
+	if err := s.requireVariableOwner(); err != nil {
+		return err
+	}
 	statVar, ok := s.statusVars[statVarName]
 	if !ok {
 		return ErrUnknownSystemVariable.New(statVarName)
@@ -382,6 +406,9 @@ func (s *BaseSession) GetAllStatusVariables(_ *Context) map[string]StatusVarValu
 
 // IncrementStatusVariable implements the Session interface.
 func (s *BaseSession) IncrementStatusVariable(ctx *Context, statVarName string, val int) {
+	if err := s.requireVariableOwner(); err != nil {
+		panic(err)
+	}
 	if _, ok := s.statusVars[statVarName]; !ok {
 		return
 	}
@@ -658,14 +685,24 @@ func (s *BaseSession) GetCachedQuery(query string) (sqlparser.Statement, bool) {
 	return stmt, ok
 }
 
-// BaseSessionFromConnection is a SessionBuilder that returns a base session for the given connection and remote address
+// BaseSessionFromConnection returns an unbound base session for a connection.
 func BaseSessionFromConnection(ctx context.Context, c *mysql.Conn, addr string) (*BaseSession, error) {
-	return BaseSessionFromConnectionWithVariables(ctx, c, addr, nil)
+	host := ""
+	user := ""
+	if mysqlConnectionUser, ok := c.UserData.(MysqlConnectionUser); ok {
+		host = mysqlConnectionUser.Host
+		user = mysqlConnectionUser.User
+	}
+	client := Client{Address: host, User: user, Capabilities: c.Capabilities}
+	return NewBaseSessionWithClientServer(addr, client, c.ConnectionID), nil
 }
 
 // BaseSessionFromConnectionWithVariables constructs a connection session from
 // the supplied engine bundle before any session initialization takes place.
 func BaseSessionFromConnectionWithVariables(ctx context.Context, c *mysql.Conn, addr string, vars *EngineVariables) (*BaseSession, error) {
+	if err := ValidateEngineVariables(vars); err != nil {
+		return nil, err
+	}
 	host := ""
 	user := ""
 	mysqlConnectionUser, ok := c.UserData.(MysqlConnectionUser)
@@ -677,18 +714,21 @@ func BaseSessionFromConnectionWithVariables(ctx context.Context, c *mysql.Conn, 
 	return NewBaseSessionWithClientServerWithVariables(addr, client, c.ConnectionID, vars), nil
 }
 
-// NewBaseSessionWithClientServer creates a new session with data.
+// NewBaseSessionWithClientServer creates an unbound session with client data.
 func NewBaseSessionWithClientServer(server string, client Client, id uint32) *BaseSession {
-	return NewBaseSessionWithClientServerWithVariables(server, client, id, nil)
+	return newBaseSession(server, client, id, nil)
 }
 
-// NewBaseSessionWithClientServerWithVariables snapshots the supplied bundle's
-// session-scoped system variables.
+// NewBaseSessionWithClientServerWithVariables binds a complete bundle and
+// snapshots its session-scoped system variables.
+// A nil or incomplete bundle causes a panic.
 func NewBaseSessionWithClientServerWithVariables(server string, client Client, id uint32, vars *EngineVariables) *BaseSession {
+	requireEngineVariables(vars)
+	return newBaseSession(server, client, id, vars)
+}
+
+func newBaseSession(server string, client Client, id uint32, vars *EngineVariables) *BaseSession {
 	// TODO: if system variable "activate_all_roles_on_login" if set, activate all roles
-	if vars == nil {
-		vars = newStandaloneEngineVariables()
-	}
 	var systemVars map[string]SystemVarValue
 	var registry SystemVariableRegistry
 	var statusRegistry StatusVariableRegistry
@@ -728,14 +768,17 @@ func NewBaseSessionWithClientServerWithVariables(server string, client Client, i
 	}
 }
 
-// NewBaseSession creates a new empty session.
+// NewBaseSession creates an unbound session with empty system and status maps.
 func NewBaseSession() *BaseSession {
-	return NewBaseSessionWithVariables(nil)
+	return NewBaseSessionWithClientServer("", Client{}, atomic.AddUint32(&autoSessionIDs, 1))
 }
 
-// NewBaseSessionWithVariables creates a session using the supplied engine bundle.
+// NewBaseSessionWithVariables binds a complete engine bundle and snapshots
+// its session-scoped system variables.
+// A nil or incomplete bundle causes a panic.
 func NewBaseSessionWithVariables(vars *EngineVariables) *BaseSession {
-	return NewBaseSessionWithClientServerWithVariables("", Client{}, atomic.AddUint32(&autoSessionIDs, 1), vars)
+	requireEngineVariables(vars)
+	return newBaseSession("", Client{}, atomic.AddUint32(&autoSessionIDs, 1), vars)
 }
 
 func sessionVariableDefaults(values map[string]SystemVarValue) map[string]interface{} {
