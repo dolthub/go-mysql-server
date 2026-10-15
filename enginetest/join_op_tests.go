@@ -105,8 +105,8 @@ var EngineOnlyJoinOpTests = []joinOpTest{
 }
 
 var DefaultJoinOpTests = []joinOpTest{
-	// https://github.com/dolthub/dolt/issues/12106
 	{
+		// https://github.com/dolthub/dolt/issues/12106
 		name: "NULL literal in a join key",
 		setup: [][]string{
 			{
