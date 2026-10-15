@@ -79,12 +79,14 @@ func (b *Builder) buildSetOp(inScope *scope, u *ast.SetOp) (outScope *scope) {
 	tabId := b.tabId
 	mergedCols := b.mergeSetOpScopeColumns(leftScope.cols, rightScope.cols, tabId)
 	mergedById := make(map[columnId]scopeColumn, len(mergedCols))
+	var colSet sql.ColSet
 	for _, c := range mergedCols {
+		colSet.Add(sql.ColumnId(c.id))
 		if _, ok := mergedById[c.id]; !ok {
 			mergedById[c.id] = c
 		}
 	}
-	// ORDER BY columns should use the type and nullability of the corresponding merged column
+	// ORDER BY should use the type and nullability of the corresponding merged column
 	for i, c := range orderByScope.cols {
 		if merged, ok := mergedById[c.id]; ok {
 			orderByScope.cols[i].scalar = nil
@@ -122,11 +124,7 @@ func (b *Builder) buildSetOp(inScope *scope, u *ast.SetOp) (outScope *scope) {
 		leftScope.node = plan.NewSetOp(n.SetOpType, n.Left(), n.Right(), n.Distinct, nil, nil, nil).WithColumns(n.Columns()).WithId(n.Id())
 	}
 
-	var cols sql.ColSet
-	for _, c := range leftScope.cols {
-		cols.Add(sql.ColumnId(c.id))
-	}
-	ret := plan.NewSetOp(setOpType, leftScope.node, rightScope.node, distinct, limit, offset, sortConditions).WithId(tabId).WithColumns(cols)
+	ret := plan.NewSetOp(setOpType, leftScope.node, rightScope.node, distinct, limit, offset, sortConditions).WithId(tabId).WithColumns(colSet)
 	outScope = leftScope
 	outScope.node = b.mergeSetOpSchemas(ret.(*plan.SetOp))
 	outScope.cols = mergedCols
