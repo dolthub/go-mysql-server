@@ -57,6 +57,12 @@ func SessionFromContext(ctx *sql.Context) *Session {
 // This can't be defined as server.SessionBuilder because importing it would create a circular dependency,
 // but it's the same signature.
 func NewSessionBuilder(pro *DbProvider) func(ctx context.Context, conn *mysql.Conn, addr string) (sql.Session, error) {
+	return NewSessionBuilderWithVariables(pro, nil)
+}
+
+// NewSessionBuilderWithVariables builds connection sessions from the supplied
+// engine bundle before the server creates their query contexts.
+func NewSessionBuilderWithVariables(pro *DbProvider, vars *sql.EngineVariables) func(ctx context.Context, conn *mysql.Conn, addr string) (sql.Session, error) {
 	return func(ctx context.Context, conn *mysql.Conn, addr string) (sql.Session, error) {
 		host := ""
 		user := ""
@@ -67,7 +73,7 @@ func NewSessionBuilder(pro *DbProvider) func(ctx context.Context, conn *mysql.Co
 		}
 
 		client := sql.Client{Address: host, User: user, Capabilities: conn.Capabilities}
-		baseSession := sql.NewBaseSessionWithClientServer(addr, client, conn.ConnectionID)
+		baseSession := sql.NewBaseSessionWithClientServerWithVariables(addr, client, conn.ConnectionID, vars)
 		return NewSession(baseSession, pro), nil
 	}
 }

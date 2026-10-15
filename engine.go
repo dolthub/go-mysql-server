@@ -15,6 +15,7 @@
 package sqle
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strconv"
@@ -51,6 +52,9 @@ func init() {
 
 // Config for the Engine.
 type Config struct {
+	// EngineVariables supplies independent variable state for this engine.
+	// A nil value preserves the legacy package registries during migration.
+	EngineVariables *sql.EngineVariables
 	// VersionPostfix to display with the `VERSION()` UDF.
 	VersionPostfix string
 	// TemporaryUsers adds any users that should be included when the engine is created. By default, authentication is
@@ -74,6 +78,8 @@ type TemporaryUser struct {
 
 // Engine is a SQL engine.
 type Engine struct {
+	variables         *sql.EngineVariables
+	isolatedVariables bool
 	Parser            sql.Parser
 	ProcessList       sql.ProcessList
 	Analyzer          *analyzer.Analyzer
@@ -108,9 +114,15 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 
 	ls := sql.NewLockSubsystem()
 
-	variables.InitStatusVariables()
+	if cfg.EngineVariables == nil {
+		variables.InitStatusVariables()
+	}
+	engineVars := cfg.EngineVariables
+	if engineVars == nil {
+		engineVars = &sql.EngineVariables{System: sql.SystemVariables, Status: sql.StatusVariables}
+	}
 
-	emptyCtx := sql.NewEmptyContext()
+	emptyCtx := sql.NewContextWithVariables(context.Background(), engineVars)
 
 	if _, ok := a.Catalog.Function(emptyCtx, "", "version"); !ok {
 		a.Catalog.RegisterFunction(emptyCtx, sql.FunctionN{
@@ -122,6 +134,8 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 	a.Catalog.RegisterFunction(emptyCtx, function.GetLockingFuncs(emptyCtx, ls)...)
 
 	ret := &Engine{
+		variables:         engineVars,
+		isolatedVariables: cfg.EngineVariables != nil,
 		Analyzer:          a,
 		MemoryManager:     sql.NewMemoryManager(sql.ProcessMemory),
 		ProcessList:       NewProcessList(),
@@ -138,6 +152,34 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 	return ret
 }
 
+// Variables returns the variable registries used by this engine.
+func (e *Engine) Variables() *sql.EngineVariables { return e.variables }
+
+// NewContext creates a context and session from this engine's variable state.
+func (e *Engine) NewContext(ctx context.Context, opts ...sql.ContextOption) *sql.Context {
+	return sql.NewContextWithVariables(ctx, e.variables, opts...)
+}
+
+// checkVariableOwnership rejects conflicting context and session ownership
+// before an entrypoint can read SQL mode, increment counters, or start a transaction.
+func (e *Engine) checkVariableOwnership(ctx *sql.Context) error {
+	if ctx == nil || ctx.Session == nil {
+		return fmt.Errorf("engine variable ownership: context and session are required")
+	}
+	owner, hasOwner := ctx.Session.(sql.EngineVariablesProvider)
+	if hasOwner && owner.EngineVariables() != nil && ctx.EngineVariables() != owner.EngineVariables() {
+		return fmt.Errorf("engine variable ownership: context and session belong to different engines")
+	}
+	if e.isolatedVariables {
+		if ctx.EngineVariables() != e.variables || !hasOwner || owner.EngineVariables() != e.variables {
+			return fmt.Errorf("engine variable ownership: context or session belongs to another engine")
+		}
+	} else if ctx.EngineVariables() != nil && ctx.EngineVariables() != e.variables {
+		return fmt.Errorf("engine variable ownership: context belongs to another engine")
+	}
+	return nil
+}
+
 // NewDefault creates a new default Engine.
 func NewDefault(pro sql.DatabaseProvider) *Engine {
 	return New(analyzer.NewDefault(pro), nil)
@@ -148,6 +190,9 @@ func (e *Engine) AnalyzeQuery(
 	ctx *sql.Context,
 	query string,
 ) (sql.Node, error) {
+	if err := e.checkVariableOwnership(ctx); err != nil {
+		return nil, err
+	}
 	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.EventScheduler)
 	parsed, _, _, qFlags, err := binder.Parse(query, nil, false)
 	if err != nil {
@@ -161,6 +206,9 @@ func (e *Engine) PrepareQuery(
 	ctx *sql.Context,
 	query string,
 ) (sql.Node, error) {
+	if err := e.checkVariableOwnership(ctx); err != nil {
+		return nil, err
+	}
 	query = sql.RemoveSpaceAndDelimiter(query, ';')
 	stmt, _, err := e.Parser.ParseOneWithOptions(ctx, query, sql.LoadSqlMode(ctx).ParserOptions())
 	if err != nil {
@@ -176,6 +224,9 @@ func (e *Engine) PrepareParsedQuery(
 	statementKey, query string,
 	stmt sqlparser.Statement,
 ) (sql.Node, error) {
+	if err := e.checkVariableOwnership(ctx); err != nil {
+		return nil, err
+	}
 	// Make sure there is an active transaction if one hasn't been started yet
 	e.beginTransaction(ctx)
 
@@ -328,6 +379,9 @@ func bindingsToExprs(ctx *sql.Context, bindings map[string]*querypb.BindVariable
 // QueryWithBindings executes the query given with the bindings provided.
 // If parsed is non-nil, it will be used instead of parsing the query from text.
 func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]sqlparser.Expr, qFlags *sql.QueryFlags) (sch sql.Schema, iter sql.RowIter, retFlags *sql.QueryFlags, err error) {
+	if err = e.checkVariableOwnership(ctx); err != nil {
+		return nil, nil, nil, err
+	}
 	defer clearAutocommitOnError(ctx, &err)
 
 	sql.IncrementStatusVariable(ctx, "Questions", 1)
@@ -404,6 +458,9 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 // PrepQueryPlanForExecution prepares a query plan for execution and returns the result schema with a row iterator to
 // begin spooling results
 func (e *Engine) PrepQueryPlanForExecution(ctx *sql.Context, _ string, plan sql.Node, qFlags *sql.QueryFlags) (sch sql.Schema, iter sql.RowIter, retFlags *sql.QueryFlags, err error) {
+	if err = e.checkVariableOwnership(ctx); err != nil {
+		return nil, nil, nil, err
+	}
 	defer clearAutocommitOnError(ctx, &err)
 
 	// Give the integrator a chance to reject the session before proceeding
@@ -442,6 +499,9 @@ func (e *Engine) PrepQueryPlanForExecution(ctx *sql.Context, _ string, plan sql.
 
 // BoundQueryPlan returns query plan for the given statement with the given bindings applied
 func (e *Engine) BoundQueryPlan(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]sqlparser.Expr) (node sql.Node, err error) {
+	if err = e.checkVariableOwnership(ctx); err != nil {
+		return nil, err
+	}
 	defer clearAutocommitOnError(ctx, &err)
 
 	if parsed == nil {
