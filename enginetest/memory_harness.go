@@ -119,6 +119,9 @@ func (m *MemoryHarness) SessionBuilderForEngine(e *sqle.Engine) server.SessionBu
 }
 
 func (m *MemoryHarness) sessionBuilderWithVariables(vars *sql.EngineVariables) server.SessionBuilder {
+	// A server can finish closing connections while the harness builds its next
+	// engine. Keep this builder's provider fixed to the engine it was given.
+	provider := m.getProvider()
 	return func(ctx context.Context, c *mysql.Conn, addr string) (sql.Session, error) {
 		host := ""
 		user := ""
@@ -129,7 +132,7 @@ func (m *MemoryHarness) sessionBuilderWithVariables(vars *sql.EngineVariables) s
 		}
 		client := sql.Client{Address: host, User: user, Capabilities: c.Capabilities}
 		baseSession := sql.NewBaseSessionWithClientServerWithVariables(addr, client, c.ConnectionID, vars)
-		return memory.NewSession(baseSession, m.getProvider()), nil
+		return memory.NewSession(baseSession, provider), nil
 	}
 }
 
