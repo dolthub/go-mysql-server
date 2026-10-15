@@ -182,7 +182,7 @@ func NewHashInTuple(ctx *sql.Context, left, right sql.Expression) (*HashInTuple,
 		return nil, ErrUnsupportedInOperand.New(right)
 	}
 
-	collation, _ := sql.ResolveCoercibilityExpressions(ctx, append(Tuple{left}, rightTup...)...)
+	collation, _ := sql.ResolveCoercibilityExpressions(ctx, 0, append(Tuple{left}, rightTup...)...)
 	cmp, cmpType, hasNull, hasTupleNull, err := newInMap(ctx, left.Type(ctx), collation, rightTup)
 	if err != nil {
 		return nil, err

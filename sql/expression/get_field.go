@@ -219,8 +219,7 @@ func (p *GetField) IsQuotedIdentifier() bool {
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (p *GetField) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
-	collation, _ = p.fieldType.CollationCoercibility(ctx)
-	return collation, 2
+	return p.fieldType.CollationCoercibility(ctx)
 }
 
 // IsSameField checks if another *GetField refers to the same field

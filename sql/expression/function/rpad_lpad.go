@@ -143,7 +143,7 @@ func (p *pad) Type(ctx *sql.Context) sql.Type {
 // returns the collation and coercibility of the string expression,
 // deriving them solely from the first argument.
 func (p *pad) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
-	return sql.ResolveCoercibilityExpressions(ctx, p.str)
+	return sql.ResolveCoercibilityExpressions(ctx, 0, p.str)
 }
 
 func (p *pad) eval(ctx *sql.Context, row sql.Row, isLeft bool) (interface{}, error) {

@@ -85,7 +85,7 @@ func (c *Char) Description() string {
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (c *Char) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
-	return sql.Collation_binary, 5
+	return sql.GetCoercibility(ctx, c.Type(ctx))
 }
 
 // encodeUint32 converts uint32 `num` into a []byte using the fewest number of bytes in big endian (no leading 0s)
