@@ -2689,6 +2689,60 @@ ORDER BY id;`,
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/11459
+		Name: "RANGE offsets follow DESC ordering",
+		SetUpScript: []string{
+			"CREATE TABLE t (id INT PRIMARY KEY, k INT, v INT)",
+			"INSERT INTO t VALUES (1, 1, 10), (2, 2, 20), (3, 3, 30)",
+			"CREATE TABLE tn (id INT PRIMARY KEY, k INT, v INT)",
+			"INSERT INTO tn VALUES (1, 1, 10), (2, 2, 20), (3, 3, 30), (4, NULL, 40), (5, NULL, 50)",
+			"CREATE TABLE td (id INT PRIMARY KEY, dt DATE, v INT)",
+			"INSERT INTO td VALUES (1, '2024-01-01', 10), (2, '2024-01-02', 20), (3, '2024-01-04', 30)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT id, SUM(v) OVER (ORDER BY dt DESC RANGE BETWEEN INTERVAL 1 DAY PRECEDING AND CURRENT ROW) AS x FROM td ORDER BY id",
+				Expected: []sql.Row{{1, float64(30)}, {2, float64(20)}, {3, float64(30)}},
+			},
+			{
+				Query:    "SELECT id, SUM(v) OVER (ORDER BY dt DESC RANGE BETWEEN CURRENT ROW AND INTERVAL 2 DAY FOLLOWING) AS x FROM td ORDER BY id",
+				Expected: []sql.Row{{1, float64(10)}, {2, float64(30)}, {3, float64(50)}},
+			},
+			{
+				Query:    "SELECT id, SUM(v) OVER (ORDER BY k DESC RANGE BETWEEN 1 PRECEDING AND CURRENT ROW) AS x FROM t ORDER BY id",
+				Expected: []sql.Row{{1, float64(30)}, {2, float64(50)}, {3, float64(30)}},
+			},
+			{
+				Query:    "SELECT id, SUM(v) OVER (ORDER BY k DESC RANGE BETWEEN CURRENT ROW AND 1 FOLLOWING) AS x FROM t ORDER BY id",
+				Expected: []sql.Row{{1, float64(10)}, {2, float64(30)}, {3, float64(50)}},
+			},
+			{
+				Query:    "SELECT id, SUM(v) OVER (ORDER BY k DESC RANGE BETWEEN 1 PRECEDING AND 1 FOLLOWING) AS x FROM t ORDER BY id",
+				Expected: []sql.Row{{1, float64(30)}, {2, float64(60)}, {3, float64(50)}},
+			},
+			{
+				Query:    "SELECT id, SUM(v) OVER (ORDER BY k DESC RANGE BETWEEN 2 PRECEDING AND 1 PRECEDING) AS x FROM t ORDER BY id",
+				Expected: []sql.Row{{1, float64(50)}, {2, float64(30)}, {3, nil}},
+			},
+			{
+				Query:    "SELECT id, SUM(v) OVER (ORDER BY k DESC RANGE BETWEEN 1 FOLLOWING AND 2 FOLLOWING) AS x FROM t ORDER BY id",
+				Expected: []sql.Row{{1, nil}, {2, float64(10)}, {3, float64(30)}},
+			},
+			{
+				Query:    "SELECT id, SUM(v) OVER (ORDER BY k DESC RANGE BETWEEN 1 PRECEDING AND CURRENT ROW) AS x FROM tn ORDER BY id",
+				Expected: []sql.Row{{1, float64(30)}, {2, float64(50)}, {3, float64(30)}, {4, float64(90)}, {5, float64(90)}},
+			},
+			{
+				Query:    "SELECT id, SUM(v) OVER (ORDER BY k DESC RANGE BETWEEN CURRENT ROW AND 1 FOLLOWING) AS x FROM tn ORDER BY id",
+				Expected: []sql.Row{{1, float64(10)}, {2, float64(30)}, {3, float64(50)}, {4, float64(90)}, {5, float64(90)}},
+			},
+			{
+				Query:    "SELECT id, SUM(v) OVER (ORDER BY k DESC RANGE BETWEEN 1 FOLLOWING AND 2 FOLLOWING) AS x FROM tn ORDER BY id",
+				Expected: []sql.Row{{1, nil}, {2, float64(10)}, {3, float64(30)}, {4, float64(90)}, {5, float64(90)}},
+			},
+		},
+	},
+	{
 		Name: "windows without ORDER BY should be treated as RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING",
 		SetUpScript: []string{
 			"CREATE TABLE t(a INT, b INT);",
