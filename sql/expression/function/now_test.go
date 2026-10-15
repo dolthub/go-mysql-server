@@ -23,6 +23,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 func TestNow(t *testing.T) {
@@ -63,7 +64,7 @@ func TestNow(t *testing.T) {
 			sql.RunWithNowFunc(func() time.Time {
 				return date
 			}, func() error {
-				ctx := sql.NewEmptyContext()
+				ctx := sql.NewContextWithVariables(t.Context(), variables.NewEngineVariables())
 				require := require.New(t)
 				val, err := f.Eval(ctx, tt.row)
 				if tt.err {

@@ -54,16 +54,24 @@ func SessionFromContext(ctx *sql.Context) *Session {
 	return ctx.Session.(*Session)
 }
 
-// NewSessionBuilder returns a session for the given in-memory database provider suitable to use in a test server
+// NewSessionBuilder returns unbound sessions for the given in-memory provider.
+// Use NewSessionBuilderWithVariables for an engine-backed server.
 // This can't be defined as server.SessionBuilder because importing it would create a circular dependency,
 // but it's the same signature.
 func NewSessionBuilder(pro *DbProvider) func(ctx context.Context, conn *mysql.Conn, addr string) (sql.Session, error) {
-	return NewSessionBuilderWithVariables(pro, nil)
+	return newSessionBuilder(pro, nil)
 }
 
 // NewSessionBuilderWithVariables builds connection sessions from the supplied
 // engine bundle before the server creates their query contexts.
 func NewSessionBuilderWithVariables(pro *DbProvider, vars *sql.EngineVariables) func(ctx context.Context, conn *mysql.Conn, addr string) (sql.Session, error) {
+	if err := sql.ValidateEngineVariables(vars); err != nil {
+		panic(err)
+	}
+	return newSessionBuilder(pro, vars)
+}
+
+func newSessionBuilder(pro *DbProvider, vars *sql.EngineVariables) func(ctx context.Context, conn *mysql.Conn, addr string) (sql.Session, error) {
 	return func(ctx context.Context, conn *mysql.Conn, addr string) (sql.Session, error) {
 		host := ""
 		user := ""
@@ -74,7 +82,12 @@ func NewSessionBuilderWithVariables(pro *DbProvider, vars *sql.EngineVariables) 
 		}
 
 		client := sql.Client{Address: host, User: user, Capabilities: conn.Capabilities}
-		baseSession := sql.NewBaseSessionWithClientServerWithVariables(addr, client, conn.ConnectionID, vars)
+		var baseSession *sql.BaseSession
+		if vars == nil {
+			baseSession = sql.NewBaseSessionWithClientServer(addr, client, conn.ConnectionID)
+		} else {
+			baseSession = sql.NewBaseSessionWithClientServerWithVariables(addr, client, conn.ConnectionID, vars)
+		}
 		return NewSession(baseSession, pro), nil
 	}
 }
