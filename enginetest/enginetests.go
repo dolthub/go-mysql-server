@@ -1052,6 +1052,10 @@ func setSecureFilePriv(harness Harness) error {
 	values := map[string]interface{}{
 		"secure_file_priv": wd,
 	}
+	if ctx.EngineVariables() == nil {
+		// Legacy harness contexts use the package registry directly.
+		return registry.AssignValues(values)
+	}
 	if aware, ok := registry.(sql.ContextAwareSystemVariableRegistry); ok {
 		return aware.AssignValuesWithContext(ctx, values)
 	}

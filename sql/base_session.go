@@ -134,8 +134,7 @@ func (s *BaseSession) GetAllSessionVariables() map[string]interface{} {
 	for k, v := range s.systemVars {
 		addVar(k, v)
 	}
-	if s.engineVariables != nil {
-		registry := s.systemRegistry()
+	if registry := s.systemRegistry(); registry != nil {
 		for name := range registry.GetAllGlobalVariables() {
 			if _, snapshotted := s.systemVars[name]; snapshotted {
 				continue
@@ -161,22 +160,24 @@ func (s *BaseSession) SetSessionVariable(ctx *Context, sysVarName string, value 
 	// Since we initialized the system variables in this session at session start time, any variables that were added since that time
 	// will need to be added dynamically here.
 	// TODO: fix this with proper session lifecycle management
+	sv := sysVar.Var
 	if !ok {
-		if registry := s.systemRegistry(); registry != nil {
-			sv, _, ok := registry.GetGlobal(sysVarName)
-			if !ok {
-				return ErrUnknownSystemVariable.New(sysVarName)
-			}
-			return s.setSessVar(ctx, sv, value, false)
-		} else {
+		registry := s.systemRegistry()
+		if registry == nil {
+			return ErrUnknownSystemVariable.New(sysVarName)
+		}
+		sv, _, ok = registry.GetGlobal(sysVarName)
+		if !ok {
 			return ErrUnknownSystemVariable.New(sysVarName)
 		}
 	}
 
-	if sysVar.Var.IsReadOnly() {
+	// Global-only variables are not snapshotted into the session, so check
+	// read-only status here for both paths, matching MySQL's error precedence.
+	if sv.IsReadOnly() {
 		return ErrSystemVariableReadOnly.New(sysVarName)
 	}
-	return s.setSessVar(ctx, sysVar.Var, value, false)
+	return s.setSessVar(ctx, sv, value, false)
 }
 
 // InitSessionVariable implements the Session interface and is used to initialize variables (Including read-only variables)
@@ -265,9 +266,11 @@ func (s *BaseSession) GetSessionVariable(ctx *Context, sysVarName string) (inter
 		sysVar, ok = s.systemVars[sysVarName]
 	}
 	if !ok {
-		definition, value, exists := s.systemRegistry().GetGlobal(sysVarName)
-		if exists && definition != nil && definition.IsGlobalOnly() {
-			return value, nil
+		if registry := s.systemRegistry(); registry != nil {
+			definition, value, exists := registry.GetGlobal(sysVarName)
+			if exists && definition != nil && definition.IsGlobalOnly() {
+				return value, nil
+			}
 		}
 		return nil, ErrUnknownSystemVariable.New(sysVarName)
 	}
@@ -325,9 +328,11 @@ func (s *BaseSession) GetSessionVariableDefault(ctx *Context, sysVarName string)
 	sysVarName = strings.ToLower(sysVarName)
 	sysVar, ok := s.systemVars[sysVarName]
 	if !ok {
-		definition, _, exists := s.systemRegistry().GetGlobal(sysVarName)
-		if exists && definition != nil && definition.IsGlobalOnly() {
-			return nil, ErrSystemVariableGlobalOnly.New(sysVarName)
+		if registry := s.systemRegistry(); registry != nil {
+			definition, _, exists := registry.GetGlobal(sysVarName)
+			if exists && definition != nil && definition.IsGlobalOnly() {
+				return nil, ErrSystemVariableGlobalOnly.New(sysVarName)
+			}
 		}
 		return nil, ErrUnknownSystemVariable.New(sysVarName)
 	}
