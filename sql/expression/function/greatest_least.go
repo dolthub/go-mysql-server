@@ -306,11 +306,7 @@ func compDecimalType(args []sql.Expression, argTypes []sql.Type) sql.Type {
 		}
 
 		if types.IsInteger(t) {
-			var arg sql.Expression
-			if i < len(args) {
-				arg = args[i]
-			}
-			p = compIntegerPrecision(arg, t, p)
+			p = compIntegerPrecision(args[i], t, p)
 		}
 
 		integerDigits = max(integerDigits, p-s)
@@ -330,8 +326,12 @@ func compIntegerPrecision(arg sql.Expression, typ sql.Type, columnPrecision uint
 		if _, ok := arg.Value().(bool); ok {
 			return 1
 		}
-
-		return uint8(len(strings.TrimPrefix(fmt.Sprint(arg.Value()), "-")))
+		var buf [types.DecimalTypeMaxPrecision]byte
+		b := fmt.Append(buf[:0], arg.Value())
+		if len(b) > 0 && b[0] == '-' {
+			b = b[1:]
+		}
+		return uint8(len(b))
 	case *expression.UnaryMinus:
 		return compIntegerPrecision(arg.Child, typ, columnPrecision)
 	case *expression.Convert:

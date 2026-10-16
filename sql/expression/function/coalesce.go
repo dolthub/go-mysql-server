@@ -63,18 +63,15 @@ func (c *Coalesce) Type(ctx *sql.Context) sql.Type {
 	retType = types.Null
 	var hasDecimal bool
 	for i, arg := range c.args {
-		if arg == nil {
+		argType := c.argType(ctx, arg)
+		if argType == nil {
 			continue
-		}
-		argType := arg.Type(ctx)
-		if sysVarType, ok := argType.(sql.SystemVariableType); ok {
-			argType = sysVarType.UnderlyingType()
 		}
 		if i == 0 {
 			retType = argType
 			continue
 		}
-		if argType == nil || argType == types.Null {
+		if argType == types.Null {
 			continue
 		}
 		if retType.Equals(argType) {
@@ -128,18 +125,10 @@ func (c *Coalesce) Type(ctx *sql.Context) sql.Type {
 		}
 	}
 
-	// Decimal arguments widen the precision to fit integer inputs.
 	if hasDecimal && !types.IsFloat(retType) {
 		decTypes := make([]sql.Type, len(c.args))
 		for i, arg := range c.args {
-			if arg == nil {
-				continue
-			}
-			argType := arg.Type(ctx)
-			if sysVarType, ok := argType.(sql.SystemVariableType); ok {
-				argType = sysVarType.UnderlyingType()
-			}
-			decTypes[i] = argType
+			decTypes[i] = c.argType(ctx, arg)
 		}
 		if dt, ok := compDecimalType(c.args, decTypes).(sql.DecimalType); ok {
 			retType = types.MustCreateColumnDecimalType(dt.Precision(), dt.Scale())
@@ -148,6 +137,18 @@ func (c *Coalesce) Type(ctx *sql.Context) sql.Type {
 
 	c.typ = retType
 	return retType
+}
+
+// argType returns the type of |arg|, unwrapping any system variable.
+func (c *Coalesce) argType(ctx *sql.Context, arg sql.Expression) sql.Type {
+	if arg == nil {
+		return nil
+	}
+	t := arg.Type(ctx)
+	if sysVarType, ok := t.(sql.SystemVariableType); ok {
+		return sysVarType.UnderlyingType()
+	}
+	return t
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
