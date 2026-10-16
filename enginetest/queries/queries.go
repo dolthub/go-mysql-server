@@ -7862,6 +7862,60 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{1}},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/11714
+		Query:    "select 1000 union select 1 order by 1",
+		Expected: []sql.Row{{1}, {1000}},
+	},
+	{
+		Query:    "select 2 union all select 1000 order by 1 desc",
+		Expected: []sql.Row{{1000}, {2}},
+	},
+	{
+		Query:    "select 'b' union select 'a' order by 1",
+		Expected: []sql.Row{{"a"}, {"b"}},
+	},
+	{
+		Query:    "select 1000 union select 1 order by `1000`",
+		Expected: []sql.Row{{1}, {1000}},
+	},
+	{
+		Query:    "select 1000 union select 1 order by '1'",
+		Expected: []sql.Row{{1000}, {1}},
+	},
+	{
+		Query:    "select 2, 'b' union select 1, 'a' order by 2",
+		Expected: []sql.Row{{1, "a"}, {2, "b"}},
+	},
+	{
+		Query:    "select 2, 'a' union select 1, 'b' order by 2 desc, 1",
+		Expected: []sql.Row{{1, "b"}, {2, "a"}},
+	},
+	{
+		Query:    "select 500 union (select 1 union select 1000) order by 1",
+		Expected: []sql.Row{{1}, {500}, {1000}},
+	},
+	{
+		// The merged column is a string, so the rows sort as strings.
+		Query:    "select 10 union select '9' order by 1",
+		Expected: []sql.Row{{"10"}, {"9"}},
+	},
+	{
+		Query:    "select null union select 1 order by 1",
+		Expected: []sql.Row{{nil}, {1}},
+	},
+	{
+		Query:    "select 2 union select 1 order by 1+0",
+		Expected: []sql.Row{{2}, {1}},
+	},
+	{
+		Query:    "select 1000 union (select 1 order by 1)",
+		Expected: []sql.Row{{1000}, {1}},
+	},
+	{
+		Query:    "select 10, 20 as a union select 3, 4 as a order by `10`, a;",
+		Expected: []sql.Row{{3, 4}, {10, 20}},
+	},
+	{
 		Query: `
 With c as (
   select * from (
@@ -10640,7 +10694,8 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrTableNotFound,
 	},
 	{
-		Query:       "select x from mytable",
+		Query: "select x from mytable",
+		// TODO: This should be ErrUnknownColumn https://github.com/dolthub/dolt/issues/12116
 		ExpectedErr: sql.ErrColumnNotFound,
 	},
 	{
