@@ -410,9 +410,13 @@ type StatusVariable interface {
 	GetScope() StatusVariableScope
 	GetType() Type
 	GetDefault() interface{}
+	// NewValue returns a new StatusVarValue for this variable, set to its default value.
+	// StatusVarValues are mutable. Each call returns independent storage.
+	NewValue() StatusVarValue
 }
 
-// MySQLStatusVariable represents a mysql status variable.
+// MySQLStatusVariable represents a mysql status variable whose value can be set, but not incremented.
+// Counters should use MySQLStatusCounter instead.
 type MySQLStatusVariable struct {
 	Type    Type
 	Default interface{}
@@ -440,6 +444,46 @@ func (m *MySQLStatusVariable) GetType() Type {
 // GetDefault implements StatusVariable.
 func (m *MySQLStatusVariable) GetDefault() interface{} {
 	return m.Default
+}
+
+// NewValue implements StatusVariable.
+func (m *MySQLStatusVariable) NewValue() StatusVarValue {
+	return &ImmutableStatusVarValue{Var: m, Val: m.Default}
+}
+
+// MySQLStatusCounter represents a mysql status variable which holds a uint64 counter that can be
+// safely incremented concurrently. Its default value is always 0.
+type MySQLStatusCounter struct {
+	Type  Type
+	Name  string
+	Scope StatusVariableScope
+}
+
+var _ StatusVariable = (*MySQLStatusCounter)(nil)
+
+// GetName implements StatusVariable.
+func (m *MySQLStatusCounter) GetName() string {
+	return m.Name
+}
+
+// GetScope implements StatusVariable.
+func (m *MySQLStatusCounter) GetScope() StatusVariableScope {
+	return m.Scope
+}
+
+// GetType implements StatusVariable.
+func (m *MySQLStatusCounter) GetType() Type {
+	return m.Type
+}
+
+// GetDefault implements StatusVariable.
+func (m *MySQLStatusCounter) GetDefault() interface{} {
+	return uint64(0)
+}
+
+// NewValue implements StatusVariable.
+func (m *MySQLStatusCounter) NewValue() StatusVarValue {
+	return &MutableStatusVarValue{Var: m, Val: &atomic.Uint64{}}
 }
 
 type StatusVarValue interface {
