@@ -95,6 +95,25 @@ func pushdownFiltersAboveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 				return node, transform.SameTree, err
 			}
 
+			// Conditions on a derived table are rewritten through the alias
+			// before reaching the underlying table, where a MATCH needs the
+			// parent table's full schema. Only the join's own condition is
+			// considered. Inherited filters keep their existing path.
+			joinFilters := newEmptyFilterSet(filters.projectionExpressions).newChildFilterSet(ctx, filterExpressions, scope)
+			if sa, ok := leftChild.(*plan.SubqueryAlias); ok && joinOp.IsPreservedTable(0) {
+				leftChild, leftSame, err = pushdownFiltersUnderSubqueryAlias(ctx, a, sa, joinFilters)
+				if err != nil {
+					return node, transform.SameTree, err
+				}
+			}
+			if sa, ok := rightChild.(*plan.SubqueryAlias); ok && joinOp.IsPreservedTable(1) {
+				rightChild, rightSame, err = pushdownFiltersUnderSubqueryAlias(ctx, a, sa, joinFilters)
+				if err != nil {
+					return node, transform.SameTree, err
+				}
+			}
+			filters.markFiltersHandled(joinFilters.handledFilters...)
+
 			parentFilters.markFiltersHandled(filters.handledFilters...)
 			unhandled := subtractExprSet(filterExpressions, filters.handledFilters)
 			joinCondition = expression.JoinAnd(unhandled...)
