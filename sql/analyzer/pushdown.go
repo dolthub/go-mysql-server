@@ -247,28 +247,23 @@ func transformPushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.
 			}
 			filterExpressions := expression.SplitConjunction(ctx, n.Filter)
 			joinFilters := newEmptyFilterSet(projectionExpressions).newChildFilterSet(ctx, filterExpressions, scope)
-			leftChild := n.Left()
-			rightChild := n.Right()
-			var leftSame, rightSame transform.TreeIdentity = transform.SameTree, transform.SameTree
-			var err error
-			if sa, ok := leftChild.(*plan.SubqueryAlias); ok && n.JoinType().IsPreservedTable(0) {
-				leftChild, leftSame, err = pushdownFiltersUnderSubqueryAlias(ctx, a, sa, joinFilters)
-				if err != nil {
-					return n, transform.SameTree, err
+			children := n.Children()
+			for i, c := range children {
+				if sa, ok := c.(*plan.SubqueryAlias); ok && n.JoinType().IsPreservedTable(i) {
+					child, same, err := pushdownFiltersUnderSubqueryAlias(ctx, a, sa, joinFilters)
+					if err != nil {
+						return n, transform.SameTree, err
+					}
+					if !same {
+						children[i] = child
+					}
 				}
 			}
-			if sa, ok := rightChild.(*plan.SubqueryAlias); ok && n.JoinType().IsPreservedTable(1) {
-				rightChild, rightSame, err = pushdownFiltersUnderSubqueryAlias(ctx, a, sa, joinFilters)
-				if err != nil {
-					return n, transform.SameTree, err
-				}
-			}
-			if leftSame && rightSame {
+			if len(joinFilters.handledFilters) == 0 {
 				return n, transform.SameTree, nil
 			}
 			unhandled := subtractExprSet(filterExpressions, joinFilters.handledFilters)
-			joinCondition := expression.JoinAnd(unhandled...)
-			return plan.NewJoin(ctx, leftChild, rightChild, n.JoinType(), joinCondition).WithComment(n.Comment()), transform.NewTree, nil
+			return plan.NewJoin(ctx, children[0], children[1], n.JoinType(), expression.JoinAnd(unhandled...)).WithComment(n.Comment()), transform.NewTree, nil
 		default:
 			return n, transform.SameTree, nil
 		}

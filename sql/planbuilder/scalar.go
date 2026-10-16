@@ -1245,21 +1245,11 @@ func (b *Builder) buildMatchAgainst(inScope *scope, v *ast.MatchExpr) *expressio
 		// index by the underlying column it selects.
 		indexCol := gf
 		if sqa := derivedAliases[matchTable]; sqa != nil {
-			if mapped, ok := sqa.ScopeMapping[gf.Id()].(*expression.GetField); ok {
-				if proj, ok := sqa.Child.(*plan.Project); ok {
-					for _, projection := range proj.Projections {
-						inner, name := projection, ""
-						if alias, ok := projection.(*expression.Alias); ok {
-							name, inner = alias.Name(), alias.Child
-						} else if named, ok := projection.(sql.Nameable); ok {
-							name = named.Name()
-						}
-						if !strings.EqualFold(name, mapped.Name()) {
-							continue
-						}
-						if underlying, ok := inner.(*expression.GetField); ok {
-							indexCol = underlying
-							break
+			if proj, ok := sqa.Child.(*plan.Project); ok {
+				for _, p := range proj.Projections {
+					if a, ok := p.(*expression.Alias); ok && strings.EqualFold(a.Name(), gf.Name()) {
+						if u := expression.ExtractGetField(b.ctx, a); u != nil {
+							indexCol = u
 						}
 					}
 				}
