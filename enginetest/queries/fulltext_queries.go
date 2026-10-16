@@ -1276,4 +1276,19 @@ var FulltextTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "MATCH AGAINST in a JOIN ON clause over renamed derived table columns",
+		SetUpScript: []string{
+			"CREATE TABLE t0(c0 INT PRIMARY KEY, c1 TEXT, c2 TEXT, FULLTEXT ft0(c1, c2))",
+			"INSERT INTO t0 VALUES (1, 'abc', 'one'), (2, 'def', 'two')",
+			"CREATE TABLE t1(x INT)",
+			"INSERT INTO t1 VALUES (1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT d.body, d.second_text, t1.x FROM (SELECT c1 AS body, c2 AS second_text FROM t0) d JOIN t1 ON MATCH(d.body, d.second_text) AGAINST ('abc')",
+				Expected: []sql.Row{{"abc", "one", 1}},
+			},
+		},
+	},
 }

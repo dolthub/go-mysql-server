@@ -95,23 +95,6 @@ func pushdownFiltersAboveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 				return node, transform.SameTree, err
 			}
 
-			// Push the join's own ON condition into a derived table so a
-			// full-text MATCH sees the full row of the table it searches.
-			joinFilters := newEmptyFilterSet(filters.projectionExpressions).newChildFilterSet(ctx, filterExpressions, scope)
-			if sa, ok := leftChild.(*plan.SubqueryAlias); ok && joinOp.IsPreservedTable(0) {
-				leftChild, leftSame, err = pushdownFiltersUnderSubqueryAlias(ctx, a, sa, joinFilters)
-				if err != nil {
-					return node, transform.SameTree, err
-				}
-			}
-			if sa, ok := rightChild.(*plan.SubqueryAlias); ok && joinOp.IsPreservedTable(1) {
-				rightChild, rightSame, err = pushdownFiltersUnderSubqueryAlias(ctx, a, sa, joinFilters)
-				if err != nil {
-					return node, transform.SameTree, err
-				}
-			}
-			filters.markFiltersHandled(joinFilters.handledFilters...)
-
 			parentFilters.markFiltersHandled(filters.handledFilters...)
 			unhandled := subtractExprSet(filterExpressions, filters.handledFilters)
 			joinCondition = expression.JoinAnd(unhandled...)
@@ -257,6 +240,35 @@ func transformPushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.
 			// First step is to find all col exprs and group them by the table they mention.
 			filters = newFilterSet(ctx, n, scope, projectionExpressions)
 			return transformFilterNode(n)
+		case *plan.JoinNode:
+			// Push the join's own ON condition into a derived table.
+			if n.JoinType().IsPhysical() || n.Filter == nil {
+				return n, transform.SameTree, nil
+			}
+			filterExpressions := expression.SplitConjunction(ctx, n.Filter)
+			joinFilters := newEmptyFilterSet(projectionExpressions).newChildFilterSet(ctx, filterExpressions, scope)
+			leftChild := n.Left()
+			rightChild := n.Right()
+			var leftSame, rightSame transform.TreeIdentity = transform.SameTree, transform.SameTree
+			var err error
+			if sa, ok := leftChild.(*plan.SubqueryAlias); ok && n.JoinType().IsPreservedTable(0) {
+				leftChild, leftSame, err = pushdownFiltersUnderSubqueryAlias(ctx, a, sa, joinFilters)
+				if err != nil {
+					return n, transform.SameTree, err
+				}
+			}
+			if sa, ok := rightChild.(*plan.SubqueryAlias); ok && n.JoinType().IsPreservedTable(1) {
+				rightChild, rightSame, err = pushdownFiltersUnderSubqueryAlias(ctx, a, sa, joinFilters)
+				if err != nil {
+					return n, transform.SameTree, err
+				}
+			}
+			if leftSame && rightSame {
+				return n, transform.SameTree, nil
+			}
+			unhandled := subtractExprSet(filterExpressions, joinFilters.handledFilters)
+			joinCondition := expression.JoinAnd(unhandled...)
+			return plan.NewJoin(ctx, leftChild, rightChild, n.JoinType(), joinCondition).WithComment(n.Comment()), transform.NewTree, nil
 		default:
 			return n, transform.SameTree, nil
 		}

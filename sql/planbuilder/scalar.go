@@ -1206,14 +1206,15 @@ func (b *Builder) ConvertVal(v *ast.SQLVal) sql.Expression {
 // one can assume that the expression has been fully resolved and is valid.
 func (b *Builder) buildMatchAgainst(inScope *scope, v *ast.MatchExpr) *expression.MatchAgainst {
 	rts := getResolvedTablesByName(b.ctx, inScope.node)
-	// A MATCH ... AGAINST (full-text search) may name a column through a
-	// derived table (a subquery used as a table in FROM). The full-text
-	// index belongs to the underlying table that the derived table reads
-	// from, so record the derived table's name against that table in |rts|.
+	// MATCH ... AGAINST may name a column through a derived table, but the
+	// full-text index belongs to the table that derived table reads from.
+	derivedAliases := make(map[string]*plan.SubqueryAlias)
 	transform.InspectWithOpaque(b.ctx, inScope.node, func(ctx *sql.Context, n sql.Node) bool {
 		if sqa, ok := n.(*plan.SubqueryAlias); ok {
 			if rt := getResolvedTable(ctx, sqa); rt != nil {
-				rts[strings.ToLower(sqa.Name())] = rt
+				name := strings.ToLower(sqa.Name())
+				rts[name] = rt
+				derivedAliases[name] = sqa
 			}
 		}
 		return true
@@ -1221,6 +1222,7 @@ func (b *Builder) buildMatchAgainst(inScope *scope, v *ast.MatchExpr) *expressio
 	var rt *plan.ResolvedTable
 	var matchTable string
 	cols := make([]*expression.GetField, len(v.Columns))
+	indexCols := make([]*expression.GetField, len(v.Columns))
 	for i, selectExpr := range v.Columns {
 		expr := b.selectExprToExpression(inScope, selectExpr)
 		gf, ok := expr.(*expression.GetField)
@@ -1239,7 +1241,32 @@ func (b *Builder) buildMatchAgainst(inScope *scope, v *ast.MatchExpr) *expressio
 			err := sql.ErrFullTextMatchAgainstSameTable.New()
 			b.handleErr(err)
 		}
+		// A derived table can rename the columns it exposes, so look up the
+		// index by the underlying column it selects.
+		indexCol := gf
+		if sqa := derivedAliases[matchTable]; sqa != nil {
+			if mapped, ok := sqa.ScopeMapping[gf.Id()].(*expression.GetField); ok {
+				if proj, ok := sqa.Child.(*plan.Project); ok {
+					for _, projection := range proj.Projections {
+						inner, name := projection, ""
+						if alias, ok := projection.(*expression.Alias); ok {
+							name, inner = alias.Name(), alias.Child
+						} else if named, ok := projection.(sql.Nameable); ok {
+							name = named.Name()
+						}
+						if !strings.EqualFold(name, mapped.Name()) {
+							continue
+						}
+						if underlying, ok := inner.(*expression.GetField); ok {
+							indexCol = underlying
+							break
+						}
+					}
+				}
+			}
+		}
 		cols[i] = gf
+		indexCols[i] = indexCol
 	}
 	matchExpr := b.buildScalar(inScope, v.Expr)
 	var searchModifier fulltext.SearchModifier
@@ -1274,7 +1301,7 @@ func (b *Builder) buildMatchAgainst(inScope *scope, v *ast.MatchExpr) *expressio
 	if err != nil {
 		b.handleErr(err)
 	}
-	ftIndex := findMatchAgainstIndex(cols, indexes, indexedTbl.Name())
+	ftIndex := findMatchAgainstIndex(indexCols, indexes, indexedTbl.Name())
 	if ftIndex == nil {
 		err := sql.ErrNoFullTextIndexFound.New(indexedTbl.Name())
 		b.handleErr(err)
