@@ -307,7 +307,7 @@ func TestInfoSchema(t *testing.T, h Harness) {
 		if IsServerEngine(e) {
 			t.Skip("skipping for server engine as the processlist returned from server differs")
 		}
-		p := sqle.NewProcessList()
+		p := sqle.NewProcessListWithVariables(e.(*sqle.Engine).Variables())
 		p.AddConnection(1, "localhost")
 
 		ctx := NewContext(h)
@@ -322,10 +322,10 @@ func TestInfoSchema(t *testing.T, h Harness) {
 		require.NoError(t, err)
 
 		p.AddConnection(2, "otherhost")
-		sess2 := sql.NewBaseSessionWithClientServer("localhost", sql.Client{Address: "otherhost", User: "root"}, 2)
+		sess2 := sql.NewBaseSessionWithClientServerWithVariables("localhost", sql.Client{Address: "otherhost", User: "root"}, 2, e.(*sqle.Engine).Variables())
 		sess2.SetCurrentDatabase("otherdb")
 		p.ConnectionReady(sess2)
-		ctx2 := sql.NewContext(context.Background(), sql.WithPid(2), sql.WithSession(sess2))
+		ctx2 := sql.NewContextWithVariables(context.Background(), e.(*sqle.Engine).Variables(), sql.WithPid(2), sql.WithSession(sess2))
 		ctx2, err = p.BeginQuery(ctx2, "SELECT bar")
 		require.NoError(t, err)
 		p.EndQuery(ctx2)
@@ -340,7 +340,7 @@ func TestInfoSchema(t *testing.T, h Harness) {
 		if IsServerEngine(e) {
 			t.Skip("skipping for server engine as the processlist returned from server differs")
 		}
-		p := sqle.NewProcessList()
+		p := sqle.NewProcessListWithVariables(e.(*sqle.Engine).Variables())
 		p.AddConnection(1, "localhost")
 
 		ctx := NewContext(h)
@@ -355,10 +355,10 @@ func TestInfoSchema(t *testing.T, h Harness) {
 		require.NoError(t, err)
 
 		p.AddConnection(2, "otherhost")
-		sess2 := sql.NewBaseSessionWithClientServer("localhost", sql.Client{Address: "otherhost", User: "root"}, 2)
+		sess2 := sql.NewBaseSessionWithClientServerWithVariables("localhost", sql.Client{Address: "otherhost", User: "root"}, 2, e.(*sqle.Engine).Variables())
 		sess2.SetCurrentDatabase("otherdb")
 		p.ConnectionReady(sess2)
-		ctx2 := sql.NewContext(context.Background(), sql.WithPid(2), sql.WithSession(sess2))
+		ctx2 := sql.NewContextWithVariables(context.Background(), e.(*sqle.Engine).Variables(), sql.WithPid(2), sql.WithSession(sess2))
 		ctx2, err = p.BeginQuery(ctx2, "SELECT bar")
 		require.NoError(t, err)
 		p.EndQuery(ctx2)
@@ -382,7 +382,7 @@ func TestInfoSchema(t *testing.T, h Harness) {
 		if IsServerEngine(e) {
 			t.Skip("skipping for server engine as the processlist returned from server differs")
 		}
-		p := sqle.NewProcessList()
+		p := sqle.NewProcessListWithVariables(e.(*sqle.Engine).Variables())
 		p.AddConnection(1, "localhost")
 
 		ctx := NewContext(h)
@@ -397,10 +397,10 @@ func TestInfoSchema(t *testing.T, h Harness) {
 		require.NoError(t, err)
 
 		p.AddConnection(2, "otherhost")
-		sess2 := sql.NewBaseSessionWithClientServer("localhost", sql.Client{Address: "otherhost", User: "root"}, 2)
+		sess2 := sql.NewBaseSessionWithClientServerWithVariables("localhost", sql.Client{Address: "otherhost", User: "root"}, 2, e.(*sqle.Engine).Variables())
 		sess2.SetCurrentDatabase("otherdb")
 		p.ConnectionReady(sess2)
-		ctx2 := sql.NewContext(context.Background(), sql.WithPid(2), sql.WithSession(sess2))
+		ctx2 := sql.NewContextWithVariables(context.Background(), e.(*sqle.Engine).Variables(), sql.WithPid(2), sql.WithSession(sess2))
 		ctx2, err = p.BeginQuery(ctx2, "SELECT bar")
 		require.NoError(t, err)
 		p.EndQuery(ctx2)
@@ -424,7 +424,7 @@ func TestInfoSchema(t *testing.T, h Harness) {
 		if IsServerEngine(e) {
 			t.Skip("skipping for server engine as the processlist returned from server differs")
 		}
-		p := sqle.NewProcessList()
+		p := sqle.NewProcessListWithVariables(e.(*sqle.Engine).Variables())
 		p.AddConnection(1, "localhost")
 
 		ctx := NewContext(h)
@@ -439,10 +439,10 @@ func TestInfoSchema(t *testing.T, h Harness) {
 		require.NoError(t, err)
 
 		p.AddConnection(2, "otherhost")
-		sess2 := sql.NewBaseSessionWithClientServer("localhost", sql.Client{Address: "otherhost", User: "root"}, 2)
+		sess2 := sql.NewBaseSessionWithClientServerWithVariables("localhost", sql.Client{Address: "otherhost", User: "root"}, 2, e.(*sqle.Engine).Variables())
 		sess2.SetCurrentDatabase("otherdb")
 		p.ConnectionReady(sess2)
-		ctx2 := sql.NewContext(context.Background(), sql.WithPid(2), sql.WithSession(sess2))
+		ctx2 := sql.NewContextWithVariables(context.Background(), e.(*sqle.Engine).Variables(), sql.WithPid(2), sql.WithSession(sess2))
 		ctx2, err = p.BeginQuery(ctx2, "SELECT bar")
 		require.NoError(t, err)
 		p.EndQuery(ctx2)
@@ -3713,7 +3713,7 @@ func TestVariables(t *testing.T, harness Harness) {
 	// no permissions established.
 	engine.EngineAnalyzer().Catalog.MySQLDb = mysql_db.CreateEmptyMySQLDb()
 
-	ctx1 := sql.NewEmptyContext()
+	ctx1 := NewContext(harness)
 	err = CreateNewConnectionForServerEngine(ctx1, engine)
 	require.NoError(t, err)
 	for _, assertion := range []queries.ScriptTestAssertion{
@@ -3781,7 +3781,7 @@ func TestVariables(t *testing.T, harness Harness) {
 		})
 	}
 
-	ctx2 := sql.NewEmptyContext()
+	ctx2 := NewSession(harness)
 	err = CreateNewConnectionForServerEngine(ctx2, engine)
 	require.NoError(t, err)
 	for _, assertion := range []queries.ScriptTestAssertion{
@@ -5047,14 +5047,14 @@ func TestPersist(t *testing.T, harness Harness, newPersistableSess func(ctx *sql
 
 	for _, tt := range q {
 		t.Run(tt.Name, func(t *testing.T) {
-			variables.InitSystemVariables()
 			ctx := NewContext(harness)
+			require.NoError(t, ctx.SystemVariables().SetGlobal(ctx, "max_connections", int64(151)))
 			ctx.Session = newPersistableSess(ctx)
 
 			TestQueryWithContext(t, ctx, e, harness, tt.Query, tt.Expected, nil, nil, nil)
 
 			if tt.ExpectedGlobal != nil {
-				_, res, _ := sql.SystemVariables.GetGlobal("max_connections")
+				_, res, _ := ctx.SystemVariables().GetGlobal("max_connections")
 				require.Equal(t, tt.ExpectedGlobal, res)
 
 				showGlobalVarsQuery := "SHOW GLOBAL VARIABLES LIKE 'max_connections'"
