@@ -1206,8 +1206,10 @@ func (b *Builder) ConvertVal(v *ast.SQLVal) sql.Expression {
 // one can assume that the expression has been fully resolved and is valid.
 func (b *Builder) buildMatchAgainst(inScope *scope, v *ast.MatchExpr) *expression.MatchAgainst {
 	rts := getResolvedTablesByName(b.ctx, inScope.node)
-	// A MATCH column may be qualified by a derived table's name, which resolves
-	// to the table below it.
+	// A MATCH ... AGAINST (full-text search) may name a column through a
+	// derived table (a subquery used as a table in FROM). The full-text
+	// index belongs to the underlying table that the derived table reads
+	// from, so record the derived table's name against that table in |rts|.
 	transform.InspectWithOpaque(b.ctx, inScope.node, func(ctx *sql.Context, n sql.Node) bool {
 		if sqa, ok := n.(*plan.SubqueryAlias); ok {
 			if rt := getResolvedTable(ctx, sqa); rt != nil {

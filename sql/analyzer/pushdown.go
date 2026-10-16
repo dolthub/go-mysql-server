@@ -95,10 +95,24 @@ func pushdownFiltersAboveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 				return node, transform.SameTree, err
 			}
 
-			// Conditions on a derived table are rewritten through the alias
-			// before reaching the underlying table, where a MATCH needs the
-			// parent table's full schema. Only the join's own condition is
-			// considered. Inherited filters keep their existing path.
+			// A derived table (a subquery used as a table in FROM) may
+			// select only part of the columns of the table it reads from,
+			// while MATCH ... AGAINST (full-text search) evaluates every
+			// column of that table. Pushing the join's own ON condition
+			// (|filterExpressions|) below the derived table lets such a
+			// MATCH run against the full row of the table it searches,
+			// instead of the joined row, which can be missing columns and
+			// lose matching rows.
+			//
+			// Filters that came from above the join (|parentFilters|) keep
+			// their existing pushdown path: they may reference columns from
+			// outside the join, and moving them can change the plans of
+			// queries that do not contain this MATCH at all.
+			//
+			// The condition is pushed only into a preserved side of the
+			// join (|IsPreservedTable|). On the other side of an outer join
+			// it also decides whether rows without a match appear, so
+			// moving it would change which rows the join returns.
 			joinFilters := newEmptyFilterSet(filters.projectionExpressions).newChildFilterSet(ctx, filterExpressions, scope)
 			if sa, ok := leftChild.(*plan.SubqueryAlias); ok && joinOp.IsPreservedTable(0) {
 				leftChild, leftSame, err = pushdownFiltersUnderSubqueryAlias(ctx, a, sa, joinFilters)
