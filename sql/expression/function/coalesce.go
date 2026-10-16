@@ -63,6 +63,7 @@ func (c *Coalesce) Type(ctx *sql.Context) sql.Type {
 	retType = types.Null
 	var decArgs []sql.Expression
 	var decTypes []sql.Type
+	var hasDecimal bool
 	for i, arg := range c.args {
 		if arg == nil {
 			continue
@@ -105,10 +106,11 @@ func (c *Coalesce) Type(ctx *sql.Context) sql.Type {
 		case expression.ConvertToDecimal:
 			if types.IsFloat(retType) || types.IsFloat(argType) {
 				retType = types.Float64
-			} else if dt, ok := compDecimalType(decArgs, decTypes).(sql.DecimalType); ok {
-				retType = types.MustCreateColumnDecimalType(dt.Precision(), dt.Scale())
-			} else if types.IsDecimal(argType) {
-				retType = argType
+			} else {
+				hasDecimal = true
+				if types.IsDecimal(argType) {
+					retType = argType
+				}
 			}
 		case expression.ConvertToUnsigned:
 			if retType == types.Uint64 || argType == types.Uint64 {
@@ -129,6 +131,13 @@ func (c *Coalesce) Type(ctx *sql.Context) sql.Type {
 				retType = types.Float32
 			}
 		default:
+		}
+	}
+
+	// Decimal arguments widen the precision to fit integer inputs.
+	if hasDecimal && !types.IsFloat(retType) {
+		if dt, ok := compDecimalType(decArgs, decTypes).(sql.DecimalType); ok {
+			retType = types.MustCreateColumnDecimalType(dt.Precision(), dt.Scale())
 		}
 	}
 
