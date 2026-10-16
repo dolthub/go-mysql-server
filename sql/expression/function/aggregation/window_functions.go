@@ -892,14 +892,12 @@ func (a *GroupConcatAgg) filterToDistinct(ctx *sql.Context, buf sql.WindowBuffer
 	rows := make([]sql.Row, 0)
 	distinct := make(map[string]struct{}, 0)
 	for _, row := range buf {
-		evalRow, retType, err := evalExprs(ctx, a.gc.selectExprs, row)
+		evalRow, _, err := evalExprs(ctx, a.gc.selectExprs, row)
 		if err != nil {
 			return nil, nil, err
 		}
 
-		a.gc.returnType = retType
-
-		vs, isNull, err := groupConcatValue(ctx, a.gc.selectExprs, evalRow, retType)
+		vs, isNull, err := a.gc.formatRow(ctx, evalRow)
 		if err != nil {
 			return nil, nil, err
 		}

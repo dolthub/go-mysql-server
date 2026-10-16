@@ -197,6 +197,46 @@ var AggregationScriptTests = []ScriptTest{
 			},
 		},
 	},
+	// https://github.com/dolthub/dolt/issues/11422
+	{
+		Name:    "Group Concat over BIT values",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE group_concat_bits (id INT PRIMARY KEY, v BIT(8))",
+			"INSERT INTO group_concat_bits VALUES (1, b'00000011'), (2, b'10101010'), (3, b'00000101'), (4, NULL)",
+			"CREATE TABLE group_concat_bits_bin AS SELECT GROUP_CONCAT(v SEPARATOR '') AS grouped FROM group_concat_bits",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT HEX(GROUP_CONCAT(v)) AS grouped FROM group_concat_bits",
+				Expected: []sql.Row{{"032CAA2C05"}},
+			},
+			{
+				Query:    "SELECT HEX(GROUP_CONCAT(v SEPARATOR '')) AS grouped FROM group_concat_bits",
+				Expected: []sql.Row{{"03AA05"}},
+			},
+			{
+				Query:    "SELECT HEX(GROUP_CONCAT(v ORDER BY id SEPARATOR '')) AS grouped FROM group_concat_bits",
+				Expected: []sql.Row{{"3331373035"}},
+			},
+			{
+				Query:    "SELECT HEX(GROUP_CONCAT(DISTINCT v ORDER BY v SEPARATOR '')) AS grouped FROM group_concat_bits",
+				Expected: []sql.Row{{"3335313730"}},
+			},
+			{
+				Query:    "SELECT GROUP_CONCAT(v + 0 ORDER BY id) AS grouped FROM group_concat_bits",
+				Expected: []sql.Row{{"3,170,5"}},
+			},
+			{
+				Query:    "SELECT CHARSET(GROUP_CONCAT(v)) AS cs FROM group_concat_bits",
+				Expected: []sql.Row{{"binary"}},
+			},
+			{
+				Query:    "SELECT HEX(grouped) FROM group_concat_bits_bin",
+				Expected: []sql.Row{{"03AA05"}},
+			},
+		},
+	},
 	{
 		Name:    "Group Concat with Subquery in ORDER BY",
 		Dialect: "mysql",
