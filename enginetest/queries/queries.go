@@ -875,7 +875,7 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    "select coalesce(1, 0.0);",
-		Expected: []sql.Row{{"1"}},
+		Expected: []sql.Row{{"1.0"}},
 	},
 	{
 		Query:    "select coalesce(1, '0');",

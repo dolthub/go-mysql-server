@@ -2285,6 +2285,28 @@ ORDER BY ordinal_position`,
 			},
 		},
 	},
+	// https://github.com/dolthub/dolt/issues/12118
+	{
+		Name: "coalesce of an integer column with a decimal literal keeps the integer value",
+		SetUpScript: []string{
+			"CREATE TABLE t0 (a INT, b BIGINT);",
+			"INSERT INTO t0 VALUES (123456, 9223372036854775807), (2, NULL), (NULL, 10);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT a, COALESCE(a, 1.5), COALESCE(1.5, a), COALESCE(a, NULL, 1.5) FROM t0 ORDER BY a;",
+				Expected: []sql.Row{{nil, "1.5", "1.5", "1.5"}, {2, "2.0", "1.5", "2.0"}, {123456, "123456.0", "1.5", "123456.0"}},
+			},
+			{
+				Query:    "SELECT a FROM t0 WHERE COALESCE(a, 1.5) > 1 ORDER BY a;",
+				Expected: []sql.Row{{nil}, {2}, {123456}},
+			},
+			{
+				Query:    "SELECT a, b, COALESCE(a, 1.5, b), COALESCE(b, 1.5, a) FROM t0 ORDER BY a;",
+				Expected: []sql.Row{{nil, int64(10), "1.5", "10.0"}, {2, nil, "2.0", "1.5"}, {123456, int64(9223372036854775807), "123456.0", "9223372036854775807.0"}},
+			},
+		},
+	},
 }
 
 var NumericErrorQueries = []ScriptTest{
