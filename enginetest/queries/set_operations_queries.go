@@ -859,21 +859,29 @@ select * from t1 except (
 		Name: "set operation ORDER BY sorts by the output column",
 		SetUpScript: []string{
 			"create table t (a int);",
-			"insert into t values (5), (3);",
+			"insert into t values (5), (3), (2);",
 			"create table u (b int);",
-			"insert into u values (4), (1);",
+			"insert into u values (4), (1), (2), (3);",
 			"create table v (s varchar(10));",
 			"insert into v values ('10');",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select a from t union select b from u order by 1;",
-				Expected: []sql.Row{{1}, {3}, {4}, {5}},
+				Expected: []sql.Row{{1}, {2}, {3}, {4}, {5}},
+			},
+			{
+				Query:    "select a from t union distinct select b from u order by 1;",
+				Expected: []sql.Row{{1}, {2}, {3}, {4}, {5}},
+			},
+			{
+				Query:    "select a from t union all select b from u order by 1 desc;",
+				Expected: []sql.Row{{5}, {4}, {3}, {3}, {2}, {2}, {1}},
 			},
 			{
 				// The merged column is a string, so ordering by a column reference also sorts as strings.
 				Query:    "select a from t union select s from v order by a;",
-				Expected: []sql.Row{{"10"}, {"3"}, {"5"}},
+				Expected: []sql.Row{{"10"}, {"2"}, {"3"}, {"5"}},
 			},
 			{
 				// ORDER BY for a set op can only use left scope column names
@@ -882,8 +890,16 @@ select * from t1 except (
 				ExpectedErr: sql.ErrColumnNotFound,
 			},
 			{
-				Query:    "select a from t union select s from v order by 1;",
-				Expected: []sql.Row{{"10"}, {"3"}, {"5"}},
+				Query:    "select a from t union select s from v order by 1 desc;",
+				Expected: []sql.Row{{"5"}, {"3"}, {"2"}, {"10"}},
+			},
+			{
+				Query:    "select a from t intersect select b from u order by `a`;",
+				Expected: []sql.Row{{2}, {3}},
+			},
+			{
+				Query:    "select b as c from u except select a from t order by c;",
+				Expected: []sql.Row{{1}, {4}},
 			},
 		},
 	},

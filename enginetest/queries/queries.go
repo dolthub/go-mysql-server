@@ -7912,6 +7912,10 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{1000}, {1}},
 	},
 	{
+		Query:    "select 10, 20 as a union select 3, 4 as a order by `10`, a;",
+		Expected: []sql.Row{{3, 4}, {10, 20}},
+	},
+	{
 		Query: `
 With c as (
   select * from (
