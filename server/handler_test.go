@@ -1160,11 +1160,9 @@ func TestSchemaToFields(t *testing.T) {
 // metadata for TEXT types, including honoring the character_set_results session variable. This is tested
 // here, instead of in string type unit tests, because of the dependency on system variables being loaded.
 func TestHandlerMaxTextResponseBytes(t *testing.T) {
-	session := sql.NewBaseSession()
-	ctx := sql.NewContext(
-		context.Background(),
-		sql.WithSession(session),
-	)
+	vars := variables.NewEngineVariables()
+	session := sql.NewBaseSessionWithVariables(vars)
+	ctx := sql.NewContextWithVariables(context.Background(), vars, sql.WithSession(session))
 
 	tinyTextUtf8mb4 := types.MustCreateString(sqltypes.Text, types.TinyTextBlobMax, sql.Collation_Default)
 	textUtf8mb4 := types.MustCreateString(sqltypes.Text, types.TextBlobMax, sql.Collation_Default)
