@@ -9769,7 +9769,7 @@ from typestable`,
 	{
 		Query: "select mod(pk2, 2) from two_pk group by pk1 + 1, mod(pk2, 2)",
 		Expected: []sql.Row{
-			// mod is a Decimal type, which we convert to a string in our enginetests
+			// TODO: These should be integer types if the inputs are integers https://github.com/dolthub/dolt/issues/12126
 			{"0"}, {"1"}, {"0"}, {"1"},
 		},
 	},
