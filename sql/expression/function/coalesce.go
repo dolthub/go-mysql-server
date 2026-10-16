@@ -140,6 +140,13 @@ func (c *Coalesce) Type(ctx *sql.Context) sql.Type {
 		}
 	}
 
+	// When all arguments are exact numbers (integers and decimals) with at
+	// least one decimal, MySQL gives the result enough precision (total digits)
+	// for the widest integer argument plus the widest scale (digits after the
+	// decimal point), such as decimal(11,1) for COALESCE(int_col, 1.5). Without
+	// this, integer values exceeding the decimal literal's precision fail with
+	// an out-of-range error. A column decimal type pads results to that scale,
+	// returning 2 as 2.0.
 	if allExactNumeric && anyDecimal {
 		if dt, ok := compDecimalType(decArgs, decTypes).(sql.DecimalType); ok {
 			retType = types.MustCreateColumnDecimalType(dt.Precision(), dt.Scale())
