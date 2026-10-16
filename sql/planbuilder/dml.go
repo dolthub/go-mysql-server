@@ -707,11 +707,6 @@ func getResolvedTablesByName(ctx *sql.Context, node sql.Node) map[string]*plan.R
 			if rt != nil {
 				ret[strings.ToLower(n.Name())] = rt
 			}
-		case *plan.SubqueryAlias:
-			rt := getResolvedTable(ctx, n)
-			if rt != nil {
-				ret[strings.ToLower(n.Name())] = rt
-			}
 		default:
 		}
 		return true
