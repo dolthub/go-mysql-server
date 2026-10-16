@@ -2701,11 +2701,11 @@ ORDER BY id;`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "SELECT id, SUM(v) OVER (ORDER BY dt DESC RANGE BETWEEN INTERVAL 1 DAY PRECEDING AND CURRENT ROW) AS x FROM td ORDER BY id",
+				Query:    "SELECT id, SUM(v) OVER (ORDER BY dt DESC RANGE BETWEEN INTERVAL '1' DAY PRECEDING AND CURRENT ROW) AS x FROM td ORDER BY id",
 				Expected: []sql.Row{{1, float64(30)}, {2, float64(20)}, {3, float64(30)}},
 			},
 			{
-				Query:    "SELECT id, SUM(v) OVER (ORDER BY dt DESC RANGE BETWEEN CURRENT ROW AND INTERVAL 2 DAY FOLLOWING) AS x FROM td ORDER BY id",
+				Query:    "SELECT id, SUM(v) OVER (ORDER BY dt DESC RANGE BETWEEN CURRENT ROW AND INTERVAL '2' DAY FOLLOWING) AS x FROM td ORDER BY id",
 				Expected: []sql.Row{{1, float64(10)}, {2, float64(30)}, {3, float64(50)}},
 			},
 			{
