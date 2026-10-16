@@ -129,11 +129,8 @@ func (b *Builder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *sc
 		return
 	}
 
-	// The ON condition is built before the join node exists, but
-	// MATCH ... AGAINST (full-text search) in the condition resolves its
-	// table through the scope's node, which panics while that node is nil.
-	// Give the scope a node for both inputs first, and replace this cross
-	// join with the real join once the condition has been built.
+	// A full-text MATCH in the ON condition resolves through the scope's
+	// node, which is nil until the join is built.
 	outScope.node = plan.NewCrossJoin(b.ctx, leftScope.node, rightScope.node)
 
 	var filter sql.Expression
