@@ -31,7 +31,6 @@ type SystemVar struct {
 	SpecifiedScope string
 	Collation      sql.CollationID
 	displayString  string
-	boundDisplay   bool
 }
 
 var _ sql.Expression = (*SystemVar)(nil)
@@ -41,16 +40,10 @@ var _ sql.CollationCoercible = (*SystemVar)(nil)
 // The |specifiedScope| parameter indicates the exact scope that was specified in the original reference to this
 // system variable, and is used to ensure we output a column name in a result set that exactly matches how the
 // system variable was originally referenced. If the |specifiedScope| parameter is empty, then the scope was not
-// originally specified and any scope has been inferred.
-func NewSystemVar(name string, scope sql.SystemVariableScope, specifiedScope string) *SystemVar {
-	return &SystemVar{Scope: scope, Name: name, SpecifiedScope: specifiedScope}
-}
-
-// NewSystemVarWithContext captures the owning registry's display name at plan
-// construction. Evaluation and type resolution use the execution context.
-func NewSystemVarWithContext(ctx *sql.Context, name string, scope sql.SystemVariableScope, specifiedScope string) *SystemVar {
-	v := NewSystemVar(name, scope, specifiedScope)
-	v.boundDisplay = true
+// originally specified and any scope has been inferred. The display string is bound at construction time from the
+// variable registry associated with |ctx|.
+func NewSystemVar(ctx *sql.Context, name string, scope sql.SystemVariableScope, specifiedScope string) *SystemVar {
+	v := &SystemVar{Scope: scope, Name: name, SpecifiedScope: specifiedScope}
 	if sysVar, _, ok := ctx.SystemVariables().GetGlobal(name); ok && sysVar != nil {
 		v.displayString = sysVar.DisplayString(specifiedScope)
 	}
@@ -68,14 +61,8 @@ func (v *SystemVar) Eval(ctx *sql.Context, _ sql.Row) (interface{}, error) {
 
 // Type implements the sql.Expression interface.
 func (v *SystemVar) Type(ctx *sql.Context) sql.Type {
-	if ctx != nil {
-		if sysVar, _, ok := ctx.SystemVariables().GetGlobal(v.Name); ok && sysVar != nil {
-			return sysVar.GetType()
-		}
-	} else if !v.boundDisplay && sql.SystemVariables != nil {
-		if sysVar, _, ok := sql.SystemVariables.GetGlobal(v.Name); ok && sysVar != nil {
-			return sysVar.GetType()
-		}
+	if sysVar, _, ok := ctx.SystemVariables().GetGlobal(v.Name); ok && sysVar != nil {
+		return sysVar.GetType()
 	}
 	return types.Null
 }
@@ -102,11 +89,6 @@ func (v *SystemVar) Resolved() bool { return true }
 func (v *SystemVar) String() string {
 	if v.displayString != "" {
 		return v.displayString
-	}
-	if !v.boundDisplay && sql.SystemVariables != nil {
-		if sysVar, _, ok := sql.SystemVariables.GetGlobal(v.Name); ok && sysVar != nil {
-			return sysVar.DisplayString(v.SpecifiedScope)
-		}
 	}
 	if v.SpecifiedScope == "" {
 		return "@@" + v.Name
