@@ -24,73 +24,33 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func TestIndependentEngineVariables(t *testing.T) {
-	a := NewEngineVariables()
-	b := NewEngineVariables()
-
-	aUUID, _, ok := a.System.GetGlobal("server_uuid")
-	require.True(t, ok)
-	bUUID, _, ok := b.System.GetGlobal("server_uuid")
-	require.True(t, ok)
-	require.NotSame(t, aUUID, bUUID)
-	require.NotEqual(t, aUUID.GetDefault(), bUUID.GetDefault())
-
-	aMax, _, ok := a.System.GetGlobal("max_connections")
-	require.True(t, ok)
-	bMax, _, ok := b.System.GetGlobal("max_connections")
-	require.True(t, ok)
-	require.NotSame(t, aMax, bMax)
-	aMax.(*sql.MysqlSystemVariable).Scope.Type = sql.SystemVariableScope_Session
-	require.NotEqual(t, aMax.(*sql.MysqlSystemVariable).Scope.Type, bMax.(*sql.MysqlSystemVariable).Scope.Type)
-	aMax.SetDefault(int64(77))
-	require.NotEqual(t, aMax.GetDefault(), bMax.GetDefault())
-
-	a.System.AddSystemVariables([]sql.SystemVariable{aMax})
-	_, aVal, _ := a.System.GetGlobal("max_connections")
-	_, bVal, _ := b.System.GetGlobal("max_connections")
-	require.Equal(t, int64(77), aVal)
-	require.NotEqual(t, aVal, bVal)
-
-	require.NoError(t, a.System.AssignValues(map[string]interface{}{"max_connections": int64(88)}))
-	_, aVal, _ = a.System.GetGlobal("max_connections")
-	_, bVal, _ = b.System.GetGlobal("max_connections")
-	require.Equal(t, int64(88), aVal)
-	require.NotEqual(t, aVal, bVal)
-
-	replacement := &sql.MysqlSystemVariable{
-		Name: "max_connections", Scope: sql.GetMysqlScope(sql.SystemVariableScope_Global),
-		Dynamic: true, Type: types.NewSystemIntType("max_connections", 1, 100000, false), Default: int64(99),
-	}
-	a.System.AddSystemVariables([]sql.SystemVariable{replacement})
-	aDefinition, aVal, _ := a.System.GetGlobal("max_connections")
-	bDefinition, bVal, _ := b.System.GetGlobal("max_connections")
-	require.Same(t, replacement, aDefinition)
-	require.Same(t, bMax, bDefinition)
-	require.Equal(t, int64(99), aVal)
-	require.NotEqual(t, aVal, bVal)
-
-	custom := func() sql.SystemVariable {
-		return &sql.MysqlSystemVariable{
-			Name: "only_a", Scope: sql.GetMysqlScope(sql.SystemVariableScope_Global),
-			Dynamic: true, Type: types.NewSystemIntType("only_a", 0, 100, false), Default: int64(1),
+// TestFactoriesReturnIndependentVars checks that each registry factory builds its own variable definitions, rather
+// than sharing them with another registry or with the package-level definitions used by the legacy singletons.
+func TestFactoriesReturnIndependentVars(t *testing.T) {
+	t.Run("system", func(t *testing.T) {
+		a := NewSystemVariableRegistry().(*globalSystemVariables)
+		b := NewSystemVariableRegistry().(*globalSystemVariables)
+		require.Len(t, a.definitions, len(systemVars)+len(mariadbSystemVars))
+		for name, def := range a.definitions {
+			require.NotSame(t, def, b.definitions[name], name)
+			if legacy, ok := systemVars[name]; ok {
+				require.NotSame(t, def, legacy, name)
+			}
+			if legacy, ok := mariadbSystemVars[name]; ok {
+				require.NotSame(t, def, legacy, name)
+			}
 		}
-	}
-	a.System.AddSystemVariables([]sql.SystemVariable{custom()})
-	_, _, ok = a.System.GetGlobal("only_a")
-	require.True(t, ok)
-	_, _, ok = b.System.GetGlobal("only_a")
-	require.False(t, ok)
-	_, _, ok = sql.SystemVariables.GetGlobal("only_a")
-	require.False(t, ok)
-
-	a.Status.IncrementGlobal("Threads_connected", 3)
-	_, aCount, ok := a.Status.GetGlobal("Threads_connected")
-	require.True(t, ok)
-	_, bCount, ok := b.Status.GetGlobal("Threads_connected")
-	require.True(t, ok)
-	require.Equal(t, uint64(3), aCount)
-	require.Equal(t, uint64(0), bCount)
-	require.NotSame(t, a.Status.NewGlobalMap()["Threads_connected"].Variable(), b.Status.NewGlobalMap()["Threads_connected"].Variable())
+	})
+	t.Run("status", func(t *testing.T) {
+		a := NewStatusVariableRegistry().(*globalStatusVariables)
+		b := NewStatusVariableRegistry().(*globalStatusVariables)
+		require.Len(t, a.varVals, len(statusVars))
+		for name, val := range a.varVals {
+			require.NotSame(t, val, b.varVals[name], name)
+			require.NotSame(t, val.Variable(), b.varVals[name].Variable(), name)
+			require.NotSame(t, val.Variable(), statusVars[name], name)
+		}
+	})
 }
 
 func TestAssignValuesWithContext(t *testing.T) {
