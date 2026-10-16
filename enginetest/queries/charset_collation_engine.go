@@ -2018,27 +2018,28 @@ T.TABLE_SCHEMA AS 'database', T.TABLE_CATALOG AS 'catalog',
 	},
 	// https://github.com/dolthub/go-mysql-server/issues/3846
 	{
-		Name:    "char length validation uses the column's character set",
-		Dialect: "mysql",
+		Name: "char length validation uses the column's character set",
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "CREATE TABLE charlen (one CHAR(1) CHARACTER SET utf8mb3, two CHAR(2) CHARACTER SET utf8mb3, four CHAR(1) CHARACTER SET utf8mb4);",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query:          "INSERT INTO charlen (one) VALUES (UNHEX('F09D849E'));",
-				ExpectedErrStr: "string '[240 157 132 158]' is too large for column 'one'",
+				Dialect:        "mysql",
+				Query:          "INSERT INTO charlen (one) VALUES ('𝄞');",
+				ExpectedErrStr: "string '𝄞' is too large for column 'one'",
 			},
 			{
-				Query:          "INSERT INTO charlen (one) VALUES (UNHEX('E282ACE282AC'));",
-				ExpectedErrStr: "string '[226 130 172 226 130 172]' is too large for column 'one'",
+				Dialect:        "mysql",
+				Query:          "INSERT INTO charlen (one) VALUES ('€€');",
+				ExpectedErrStr: "string '€€' is too large for column 'one'",
 			},
 			{
-				Query:    "INSERT INTO charlen (two) VALUES (UNHEX('E282ACE282AC'));",
+				Query:    "INSERT INTO charlen (two) VALUES ('€€');",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
-				Query:    "INSERT INTO charlen (four) VALUES (UNHEX('F09D849E'));",
+				Query:    "INSERT INTO charlen (four) VALUES ('𝄞');",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
