@@ -169,24 +169,35 @@ func updateSystemVariables(cfg mysql.ListenerConfig, vars *sql.EngineVariables) 
 	return fmt.Errorf("server variable initialization: system registry does not support context-aware assignment")
 }
 
+// validateServerComponents checks that the engine, session manager, process list and handler share the same engine
+// variables. It runs after Config.Options are applied, since any option may replace any of these components.
+func validateServerComponents(e *sqle.Engine, sm *SessionManager, handler mysql.Handler) error {
+	if e == nil || sm == nil || handler == nil {
+		return fmt.Errorf("server options returned a nil engine, session manager, or handler")
+	}
+	if e.IsolatedVariables() && (e.Variables() != sm.variables || sm.engine != e) {
+		return fmt.Errorf("server variable ownership: engine and session manager do not match")
+	}
+	// Comparing interfaces whose dynamic type is not comparable panics, so such a process list is rejected up front.
+	if e.IsolatedVariables() && (e.ProcessList == nil || !reflect.ValueOf(e.ProcessList).Comparable() || e.ProcessList != sm.processlist) {
+		return fmt.Errorf("server variable ownership: process list and session manager do not match")
+	}
+	if owned, ok := e.ProcessList.(sql.EngineVariablesProvider); ok && owned.EngineVariables() != sm.variables {
+		return fmt.Errorf("server variable ownership: process list does not match engine")
+	}
+	// A handler replaced by a HandlerWrapper or an Option is not a *Handler, and its wiring is not checked here.
+	if h, ok := handler.(*Handler); ok && (h.e != e || h.sm != sm) {
+		return fmt.Errorf("server variable ownership: handler does not match engine or session manager")
+	}
+	return nil
+}
+
 func newServerFromHandler(cfg Config, e *sqle.Engine, sm *SessionManager, handler mysql.Handler, sel ServerEventListener) (*Server, error) {
 	for _, opt := range cfg.Options {
 		e, sm, handler = opt(e, sm, handler)
 	}
-	if e == nil || sm == nil || handler == nil {
-		return nil, fmt.Errorf("server options returned a nil engine, session manager, or handler")
-	}
-	if e.IsolatedVariables() && (e.Variables() != sm.variables || sm.engine != e) {
-		return nil, fmt.Errorf("server variable ownership: engine and session manager do not match")
-	}
-	if e.IsolatedVariables() && (e.ProcessList == nil || !reflect.ValueOf(e.ProcessList).Comparable() || e.ProcessList != sm.processlist) {
-		return nil, fmt.Errorf("server variable ownership: process list and session manager do not match")
-	}
-	if owned, ok := e.ProcessList.(sql.EngineVariablesProvider); ok && owned.EngineVariables() != sm.variables {
-		return nil, fmt.Errorf("server variable ownership: process list does not match engine")
-	}
-	if h, ok := handler.(*Handler); ok && (h.e != e || h.sm != sm) {
-		return nil, fmt.Errorf("server variable ownership: handler does not match engine or session manager")
+	if err := validateServerComponents(e, sm, handler); err != nil {
+		return nil, err
 	}
 
 	l := cfg.Listener

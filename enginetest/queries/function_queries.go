@@ -4021,9 +4021,9 @@ var FunctionQueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: "select length(compress(repeat('a', 1000))) > 4",
+		Query: "select length(compress(repeat('a', 1000)))",
 		Expected: []sql.Row{
-			{true},
+			{24}, // 21 in MySQL because of library implementation differences
 		},
 	},
 	{

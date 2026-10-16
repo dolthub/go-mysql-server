@@ -3704,6 +3704,17 @@ func TestVariables(t *testing.T, harness Harness) {
 	for _, query := range queries.VariableQueries {
 		TestScript(t, harness, query)
 	}
+	for _, script := range queries.VariableScopeTests {
+		t.Run(script.Name, func(t *testing.T) {
+			harness.Setup(setup.MydbData)
+			e := MustNewEngine(t, harness)
+			defer e.Close()
+			if IsServerEngine(e) {
+				t.Skip("the server engine runs every client over one connection")
+			}
+			TestTransactionScriptWithEngine(t, e, harness, script, false)
+		})
+	}
 
 	// Test session pulling from global
 	engine, err := harness.NewEngine(t)

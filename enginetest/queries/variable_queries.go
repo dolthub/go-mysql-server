@@ -641,6 +641,98 @@ var VariableQueries = []ScriptTest{
 	//},
 }
 
+// VariableScopeTests check how SET GLOBAL is observed by sessions that already exist. A session takes a snapshot of
+// variables with session scope when it starts, but global-only variables have no session value, so every session
+// reads the current global value.
+var VariableScopeTests = []TransactionTest{
+	{
+		Name: "SET GLOBAL does not change existing session values",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "/* client a */ SELECT @@select_into_buffer_size",
+				Expected: []sql.Row{{131072}},
+			},
+			{
+				Query:    "/* client b */ SELECT @@select_into_buffer_size",
+				Expected: []sql.Row{{131072}},
+			},
+			{
+				Query:    "/* client a */ SET GLOBAL select_into_buffer_size = 9001",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "/* client a */ SELECT @@select_into_buffer_size, @@global.select_into_buffer_size",
+				Expected: []sql.Row{{131072, 9001}},
+			},
+			{
+				Query:    "/* client b */ SELECT @@select_into_buffer_size, @@global.select_into_buffer_size",
+				Expected: []sql.Row{{131072, 9001}},
+			},
+			{
+				Query:    "/* client c */ SELECT @@select_into_buffer_size, @@global.select_into_buffer_size",
+				Expected: []sql.Row{{9001, 9001}},
+			},
+			{
+				Query:    "/* client a */ SET SESSION select_into_buffer_size = 9002",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "/* client a */ SELECT @@select_into_buffer_size, @@global.select_into_buffer_size",
+				Expected: []sql.Row{{9002, 9001}},
+			},
+			{
+				Query:    "/* client b */ SELECT @@select_into_buffer_size, @@global.select_into_buffer_size",
+				Expected: []sql.Row{{131072, 9001}},
+			},
+			{
+				Query:    "/* client a */ SET GLOBAL select_into_buffer_size = 131072",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+		},
+	},
+	{
+		Name: "SET GLOBAL of a global-only variable is visible to existing sessions",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "/* client a */ SELECT @@max_connections",
+				Expected: []sql.Row{{151}},
+			},
+			{
+				Query:    "/* client b */ SELECT @@max_connections",
+				Expected: []sql.Row{{151}},
+			},
+			{
+				Query:    "/* client a */ SET GLOBAL max_connections = 321",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "/* client a */ SELECT @@max_connections, @@global.max_connections",
+				Expected: []sql.Row{{321, 321}},
+			},
+			{
+				Query:    "/* client b */ SELECT @@max_connections, @@global.max_connections",
+				Expected: []sql.Row{{321, 321}},
+			},
+			{
+				Query:    "/* client b */ SHOW SESSION VARIABLES LIKE 'max_connections'",
+				Expected: []sql.Row{{"max_connections", 321}},
+			},
+			{
+				Query:       "/* client b */ SELECT @@session.max_connections",
+				ExpectedErr: sql.ErrSystemVariableGlobalOnly,
+			},
+			{
+				Query:       "/* client b */ SET SESSION max_connections = 5",
+				ExpectedErr: sql.ErrSystemVariableGlobalOnly,
+			},
+			{
+				Query:    "/* client a */ SET GLOBAL max_connections = 151",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+		},
+	},
+}
+
 var VariableErrorTests = []QueryErrorTest{
 	{
 		Query:       "select @@GLOBAL.unknown",
