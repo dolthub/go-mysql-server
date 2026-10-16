@@ -129,6 +129,10 @@ func (b *Builder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *sc
 		return
 	}
 
+	// The ON condition is built before the join node, so expose both inputs in
+	// the scope first for expressions that resolve tables from it.
+	outScope.node = plan.NewCrossJoin(b.ctx, leftScope.node, rightScope.node)
+
 	var filter sql.Expression
 	if te.Condition.On != nil {
 		filter = b.buildScalar(outScope, te.Condition.On)
