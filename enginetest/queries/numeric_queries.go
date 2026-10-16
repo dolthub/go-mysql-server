@@ -2287,7 +2287,8 @@ ORDER BY ordinal_position`,
 	},
 	// https://github.com/dolthub/dolt/issues/12118
 	{
-		Name: "coalesce of an integer column with a decimal literal keeps the integer value",
+		Name:    "coalesce of an integer column with a decimal literal keeps the integer value",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE t0 (a INT, b BIGINT);",
 			"INSERT INTO t0 VALUES (123456, 9223372036854775807), (2, NULL), (NULL, 10);",
