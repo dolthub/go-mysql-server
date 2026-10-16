@@ -15,32 +15,41 @@
 package setup
 
 import (
-	"io"
+	"io/fs"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
 
 func TestFileSourceScanner(t *testing.T) {
-	s, err := NewFileSetup("scripts/mydb")
-	if err != nil {
-		t.Fatal(err)
-	}
-	out := make([]string, 0)
-	for {
-		ok, err := s.Next()
-		if err == io.EOF || !ok {
-			break
-		}
-		if err != nil {
-			t.Fatal(err)
-		}
-		out = append(out, s.data.Sql)
-	}
+	out, err := load("mydb")
+	require.NoError(t, err)
 
-	exp := []string{
+	exp := SetupScript{
 		"create database if not exists mydb",
 		"use mydb",
 	}
 	require.Equal(t, exp, out)
+}
+
+// TestEveryScriptIsLoaded checks that every embedded script file is loaded by
+// an exported variable in scripts.go. Go cannot enumerate package-level
+// variables via reflection, so mustLoad records each script it loads instead.
+func TestEveryScriptIsLoaded(t *testing.T) {
+	entries, err := fs.ReadDir(scriptsFS, scriptsDir)
+	require.NoError(t, err)
+	require.NotEmpty(t, entries)
+	for _, e := range entries {
+		require.False(t, e.IsDir(), "unexpected directory %s/%s", scriptsDir, e.Name())
+		_, ok := loadedScripts[e.Name()]
+		require.True(t, ok, "%s/%s has no variable in scripts.go; add `%sData = mustLoad(%q)`",
+			scriptsDir, e.Name(), exportedName(e.Name()), e.Name())
+	}
+}
+
+func exportedName(name string) string {
+	if name == "" {
+		return name
+	}
+	return string(name[0]-'a'+'A') + name[1:]
 }
