@@ -61,6 +61,8 @@ func (c *Coalesce) Type(ctx *sql.Context) sql.Type {
 
 	var retType sql.Type
 	retType = types.Null
+	var decArgs []sql.Expression
+	var decTypes []sql.Type
 	for i, arg := range c.args {
 		if arg == nil {
 			continue
@@ -68,6 +70,10 @@ func (c *Coalesce) Type(ctx *sql.Context) sql.Type {
 		argType := arg.Type(ctx)
 		if sysVarType, ok := argType.(sql.SystemVariableType); ok {
 			argType = sysVarType.UnderlyingType()
+		}
+		if argType != nil && argType != types.Null {
+			decArgs = append(decArgs, arg)
+			decTypes = append(decTypes, argType)
 		}
 		if i == 0 {
 			retType = argType
@@ -97,34 +103,11 @@ func (c *Coalesce) Type(ctx *sql.Context) sql.Type {
 			// Can't get any larger than this
 			return types.LongText
 		case expression.ConvertToDecimal:
-			if retType == types.Float64 || argType == types.Float64 {
+			if types.IsFloat(retType) || types.IsFloat(argType) {
 				retType = types.Float64
 			} else {
-				// When integers and decimals meet, give the decimal result
-				// enough precision for the widest integer argument plus the
-				// widest scale, so integer values exceeding the decimal
-				// literal's precision do not fail with an out-of-range error.
-				var decArgs []sql.Expression
-				var decTypes []sql.Type
-				for _, a := range c.args[:i+1] {
-					if a == nil {
-						continue
-					}
-					t := a.Type(ctx)
-					if svt, ok := t.(sql.SystemVariableType); ok {
-						t = svt.UnderlyingType()
-					}
-					if t != nil && t != types.Null {
-						decArgs = append(decArgs, a)
-						decTypes = append(decTypes, t)
-					}
-				}
-				decType := compDecimalType(decArgs, decTypes)
-				if dt, ok := decType.(sql.DecimalType); ok {
-					retType = types.MustCreateColumnDecimalType(dt.Precision(), dt.Scale())
-				} else {
-					retType = decType
-				}
+				dt := compDecimalType(decArgs, decTypes).(sql.DecimalType)
+				retType = types.MustCreateColumnDecimalType(dt.Precision(), dt.Scale())
 			}
 		case expression.ConvertToUnsigned:
 			if retType == types.Uint64 || argType == types.Uint64 {
