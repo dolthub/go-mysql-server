@@ -59,10 +59,6 @@ func (c *Coalesce) Type(ctx *sql.Context) sql.Type {
 		return c.typ
 	}
 
-	var anyDecimal bool
-	allExactNumeric := true
-	var decArgs []sql.Expression
-	var decTypes []sql.Type
 	var retType sql.Type
 	retType = types.Null
 	for i, arg := range c.args {
@@ -72,16 +68,6 @@ func (c *Coalesce) Type(ctx *sql.Context) sql.Type {
 		argType := arg.Type(ctx)
 		if sysVarType, ok := argType.(sql.SystemVariableType); ok {
 			argType = sysVarType.UnderlyingType()
-		}
-		if types.IsDecimal(argType) {
-			anyDecimal = true
-			decArgs = append(decArgs, arg)
-			decTypes = append(decTypes, argType)
-		} else if types.IsInteger(argType) {
-			decArgs = append(decArgs, arg)
-			decTypes = append(decTypes, argType)
-		} else if argType != nil && argType != types.Null {
-			allExactNumeric = false
 		}
 		if i == 0 {
 			retType = argType
@@ -113,10 +99,32 @@ func (c *Coalesce) Type(ctx *sql.Context) sql.Type {
 		case expression.ConvertToDecimal:
 			if retType == types.Float64 || argType == types.Float64 {
 				retType = types.Float64
-			} else if types.IsDecimal(argType) {
-				retType = argType
-			} else if !types.IsDecimal(retType) {
-				retType = types.MustCreateDecimalType(10, 0)
+			} else {
+				// When integers and decimals meet, give the decimal result
+				// enough precision for the widest integer argument plus the
+				// widest scale, so integer values exceeding the decimal
+				// literal's precision do not fail with an out-of-range error.
+				var decArgs []sql.Expression
+				var decTypes []sql.Type
+				for _, a := range c.args[:i+1] {
+					if a == nil {
+						continue
+					}
+					t := a.Type(ctx)
+					if svt, ok := t.(sql.SystemVariableType); ok {
+						t = svt.UnderlyingType()
+					}
+					if t != nil && t != types.Null {
+						decArgs = append(decArgs, a)
+						decTypes = append(decTypes, t)
+					}
+				}
+				decType := compDecimalType(decArgs, decTypes)
+				if dt, ok := decType.(sql.DecimalType); ok {
+					retType = types.MustCreateColumnDecimalType(dt.Precision(), dt.Scale())
+				} else {
+					retType = decType
+				}
 			}
 		case expression.ConvertToUnsigned:
 			if retType == types.Uint64 || argType == types.Uint64 {
@@ -137,19 +145,6 @@ func (c *Coalesce) Type(ctx *sql.Context) sql.Type {
 				retType = types.Float32
 			}
 		default:
-		}
-	}
-
-	// When all arguments are exact numbers (integers and decimals) with at
-	// least one decimal, MySQL gives the result enough precision (total digits)
-	// for the widest integer argument plus the widest scale (digits after the
-	// decimal point), such as decimal(11,1) for COALESCE(int_col, 1.5). Without
-	// this, integer values exceeding the decimal literal's precision fail with
-	// an out-of-range error. A column decimal type pads results to that scale,
-	// returning 2 as 2.0.
-	if allExactNumeric && anyDecimal {
-		if dt, ok := compDecimalType(decArgs, decTypes).(sql.DecimalType); ok {
-			retType = types.MustCreateColumnDecimalType(dt.Precision(), dt.Scale())
 		}
 	}
 

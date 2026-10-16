@@ -877,6 +877,23 @@ var QueryTests = []QueryTest{
 		Query:    "select coalesce(1, 0.0);",
 		Expected: []sql.Row{{"1.0"}},
 	},
+	// https://github.com/dolthub/dolt/issues/12118
+	{
+		Query:    "select coalesce(1000, 1.5);",
+		Expected: []sql.Row{{"1000.0"}},
+	},
+	{
+		Query:    "select coalesce(null, 123456, 1.5);",
+		Expected: []sql.Row{{"123456.0"}},
+	},
+	{
+		Query:    "select coalesce(9223372036854775807, 1.5);",
+		Expected: []sql.Row{{"9223372036854775807.0"}},
+	},
+	{
+		Query:    "select coalesce(i * 1000, 1.5) from mytable where i = 1;",
+		Expected: []sql.Row{{"1000.0"}},
+	},
 	{
 		Query:    "select coalesce(1, '0');",
 		Expected: []sql.Row{{"1"}},
