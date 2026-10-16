@@ -21,15 +21,15 @@ import (
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/stretchr/testify/require"
 
+	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
-	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 func TestMemoryHarnessEngineAwareContexts(t *testing.T) {
-	h := NewDefaultMemoryHarness()
 	vars := variables.NewEngineVariables()
+	h := NewDefaultMemoryHarness().WithEngineVariables(vars)
 	e := NewEngineWithProviderAndVariables(t, h, h.getProvider(), vars)
 	require.Same(t, vars, NewContextForEngine(h, e).EngineVariables())
 	require.Same(t, vars, NewContextWithClientForEngine(h, e, sql.Client{User: "test"}).EngineVariables())
@@ -41,13 +41,40 @@ func TestMemoryHarnessEngineAwareContexts(t *testing.T) {
 }
 
 func TestMemoryHarnessIsolatedSetup(t *testing.T) {
-	h := NewDefaultMemoryHarness()
 	vars := variables.NewEngineVariables()
-	e, err := NewEngineWithVariables(t, h, h.getProvider(), []setup.SetupScript{{"CREATE DATABASE mydb"}}, memory.NewStatsProv(), vars)
+	h := NewDefaultMemoryHarness().WithEngineVariables(vars)
+	h.server = false
+	h.Setup(setup.MydbData)
+	qe, err := h.NewEngine(t)
 	require.NoError(t, err)
-	ctx := NewContextForEngine(h, e)
+	e := qe.(*sqle.Engine)
+	require.Same(t, vars, e.Variables())
+	ctx := NewContext(h)
 	require.Same(t, vars, ctx.EngineVariables())
 	_, iter, _, err := e.Query(ctx, "SELECT @@global.max_connections")
 	require.NoError(t, err)
 	require.NoError(t, iter.Close(ctx))
+}
+
+func TestMemoryHarnessesAreIsolated(t *testing.T) {
+	h1 := NewDefaultMemoryHarness().WithEngineVariables(variables.NewEngineVariables())
+	h2 := NewDefaultMemoryHarness().WithEngineVariables(variables.NewEngineVariables())
+	h1.server, h2.server = false, false
+	h1.Setup(setup.MydbData)
+	h2.Setup(setup.MydbData)
+	qe1, err := h1.NewEngine(t)
+	require.NoError(t, err)
+	qe2, err := h2.NewEngine(t)
+	require.NoError(t, err)
+	e1, e2 := qe1.(*sqle.Engine), qe2.(*sqle.Engine)
+
+	ctx1 := NewContext(h1)
+	RunQueryWithContext(t, e1, h1, ctx1, "SET GLOBAL max_connections = 7")
+	TestQueryWithContext(t, ctx1, e1, h1, "SELECT @@global.max_connections", []sql.Row{{int64(7)}}, nil, nil, nil)
+	ctx2 := NewContext(h2)
+	TestQueryWithContext(t, ctx2, e2, h2, "SELECT @@global.max_connections", []sql.Row{{int64(151)}}, nil, nil, nil)
+
+	_, _, _, err = e2.Query(NewContext(h1), "SELECT 1")
+	require.Error(t, err)
+	require.Panics(t, func() { NewContextForEngine(h1, e2) })
 }

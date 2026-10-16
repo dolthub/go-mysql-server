@@ -44,7 +44,7 @@ type MemoryHarness struct {
 	driver                    sql.IndexDriver
 	skippedQueries            map[string]struct{}
 	session                   sql.Session
-	engine                    *sqle.Engine
+	variables                 *sql.EngineVariables
 	retainSession             bool
 	retainSessionAfterSetup   bool
 	setupData                 []setup.SetupScript
@@ -101,26 +101,38 @@ func (m MemoryHarness) RetainSessionAfterSetup() *MemoryHarness {
 	return &m
 }
 
-func (m *MemoryHarness) SessionBuilder() server.SessionBuilder {
-	if m.engine != nil {
-		return m.SessionBuilderForEngine(m.engine)
-	}
-	// Legacy callers may build one session builder and reuse it across the
-	// engines (and providers) the harness creates, so resolve it per session.
-	return m.sessionBuilderWithVariables(nil, m.getProvider)
+// WithEngineVariables makes the engines, sessions and contexts this harness
+// creates own |vars|. A nil bundle uses the process-wide registries.
+func (m *MemoryHarness) WithEngineVariables(vars *sql.EngineVariables) *MemoryHarness {
+	m.variables = vars
+	m.session = nil
+	return m
 }
 
-// BindEngine makes the ordinary harness helpers use the engine created for a test.
-func (m *MemoryHarness) BindEngine(e *sqle.Engine) {
-	m.engine = e
-	m.session = nil
+// EngineVariables returns the bundle this harness gives its engines and sessions.
+func (m *MemoryHarness) EngineVariables() *sql.EngineVariables {
+	return m.variables
+}
+
+func (m *MemoryHarness) SessionBuilder() server.SessionBuilder {
+	// Callers may build one session builder and reuse it across the engines
+	// (and providers) the harness creates, so resolve the provider per session.
+	return m.sessionBuilderWithVariables(m.variables, m.getProvider)
 }
 
 func (m *MemoryHarness) SessionBuilderForEngine(e *sqle.Engine) server.SessionBuilder {
+	m.checkEngine(e)
 	// A server can finish closing connections while the harness builds its next
 	// engine. Keep this builder's provider fixed to the engine it was given.
 	provider := m.getProvider()
-	return m.sessionBuilderWithVariables(e.Variables(), func() sql.DatabaseProvider { return provider })
+	return m.sessionBuilderWithVariables(m.variables, func() sql.DatabaseProvider { return provider })
+}
+
+// checkEngine panics if |e| owns a bundle other than this harness's.
+func (m *MemoryHarness) checkEngine(e *sqle.Engine) {
+	if e.IsolatedVariables() && e.Variables() != m.variables {
+		panic("memory harness variable ownership does not match engine")
+	}
 }
 
 func (m *MemoryHarness) sessionBuilderWithVariables(vars *sql.EngineVariables, provider func() sql.DatabaseProvider) server.SessionBuilder {
@@ -207,7 +219,13 @@ func (m *MemoryHarness) NewEngine(t *testing.T) (QueryEngine, error) {
 		m.session = nil
 		m.provider = nil
 	}
-	engine, err := NewEngine(t, m, m.getProvider(), m.setupData, memory.NewStatsProv())
+	var engine *sqle.Engine
+	var err error
+	if m.variables != nil {
+		engine, err = NewEngineWithVariables(t, m, m.getProvider(), m.setupData, memory.NewStatsProv(), m.variables)
+	} else {
+		engine, err = NewEngine(t, m, m.getProvider(), m.setupData, memory.NewStatsProv())
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -275,32 +293,20 @@ func (m *MemoryHarness) NewContext() *sql.Context {
 		m.session = m.newSession()
 	}
 
-	return sql.NewContext(
+	return sql.NewContextWithVariables(
 		context.Background(),
+		m.variables,
 		sql.WithSession(m.session),
 	)
 }
 
 func (m *MemoryHarness) NewContextForEngine(e *sqle.Engine) *sql.Context {
-	if m.session == nil || sessionVariables(m.session) != e.Variables() {
-		m.session = m.newSessionWithVariables(e.Variables())
-	}
-	return e.NewContext(context.Background(), sql.WithSession(m.session))
-}
-
-func sessionVariables(s sql.Session) *sql.EngineVariables {
-	if owner, ok := s.(sql.EngineVariablesProvider); ok {
-		return owner.EngineVariables()
-	}
-	return nil
+	m.checkEngine(e)
+	return m.NewContext()
 }
 
 func (m *MemoryHarness) newSession() *memory.Session {
-	return m.newSessionWithVariables(nil)
-}
-
-func (m *MemoryHarness) newSessionWithVariables(vars *sql.EngineVariables) *memory.Session {
-	baseSession := sql.NewBaseSessionWithClientServerWithVariables("address", sql.Client{Address: "localhost", User: "root"}, 1, vars)
+	baseSession := sql.NewBaseSessionWithClientServerWithVariables("address", sql.Client{Address: "localhost", User: "root"}, 1, m.variables)
 	session := memory.NewSession(baseSession, m.getProvider())
 	if m.driver != nil {
 		session.GetIndexRegistry().RegisterIndexDriver(m.driver)
@@ -309,23 +315,21 @@ func (m *MemoryHarness) newSessionWithVariables(vars *sql.EngineVariables) *memo
 }
 
 func (m *MemoryHarness) NewSessionForEngine(e *sqle.Engine) *sql.Context {
-	m.session = m.newSessionWithVariables(e.Variables())
-	return m.NewContextForEngine(e)
+	m.checkEngine(e)
+	return m.NewSession()
 }
 
 func (m *MemoryHarness) NewContextWithClientForEngine(e *sqle.Engine, client sql.Client) *sql.Context {
-	baseSession := sql.NewBaseSessionWithClientServerWithVariables("address", client, 1, e.Variables())
-	return e.NewContext(context.Background(), sql.WithSession(memory.NewSession(baseSession, m.getProvider())))
+	m.checkEngine(e)
+	return m.NewContextWithClient(client)
 }
 
 func (m *MemoryHarness) NewContextWithClient(client sql.Client) *sql.Context {
-	if m.engine != nil {
-		return m.NewContextWithClientForEngine(m.engine, client)
-	}
-	baseSession := sql.NewBaseSessionWithClientServer("address", client, 1)
+	baseSession := sql.NewBaseSessionWithClientServerWithVariables("address", client, 1, m.variables)
 
-	return sql.NewContext(
+	return sql.NewContextWithVariables(
 		context.Background(),
+		m.variables,
 		sql.WithSession(memory.NewSession(baseSession, m.getProvider())),
 	)
 }
@@ -392,6 +396,9 @@ func (m *MemoryHarness) NewReadOnlyEngine(provider sql.DatabaseProvider) (QueryE
 	readOnlyProvider := memory.NewDBProviderWithOpts(memory.WithDbsOption(dbs))
 	m.provider = readOnlyProvider.(*memory.DbProvider)
 
+	if m.variables != nil {
+		return NewEngineWithProviderAndVariables(nil, m, readOnlyProvider, m.variables), nil
+	}
 	return NewEngineWithProvider(nil, m, readOnlyProvider), nil
 }
 
