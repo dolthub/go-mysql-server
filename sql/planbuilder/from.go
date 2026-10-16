@@ -129,6 +129,10 @@ func (b *Builder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *sc
 		return
 	}
 
+	// A full-text MATCH in the ON condition resolves through the scope's
+	// node, which is nil until the join is built.
+	outScope.node = plan.NewCrossJoin(b.ctx, leftScope.node, rightScope.node)
+
 	var filter sql.Expression
 	if te.Condition.On != nil {
 		filter = b.buildScalar(outScope, te.Condition.On)

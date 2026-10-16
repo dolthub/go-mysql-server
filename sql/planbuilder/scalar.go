@@ -1206,9 +1206,23 @@ func (b *Builder) ConvertVal(v *ast.SQLVal) sql.Expression {
 // one can assume that the expression has been fully resolved and is valid.
 func (b *Builder) buildMatchAgainst(inScope *scope, v *ast.MatchExpr) *expression.MatchAgainst {
 	rts := getResolvedTablesByName(b.ctx, inScope.node)
+	// MATCH ... AGAINST may name a column through a derived table, but the
+	// full-text index belongs to the table that derived table reads from.
+	derivedAliases := make(map[string]*plan.SubqueryAlias)
+	transform.InspectWithOpaque(b.ctx, inScope.node, func(ctx *sql.Context, n sql.Node) bool {
+		if sqa, ok := n.(*plan.SubqueryAlias); ok {
+			if rt := getResolvedTable(ctx, sqa); rt != nil {
+				name := strings.ToLower(sqa.Name())
+				rts[name] = rt
+				derivedAliases[name] = sqa
+			}
+		}
+		return true
+	})
 	var rt *plan.ResolvedTable
 	var matchTable string
 	cols := make([]*expression.GetField, len(v.Columns))
+	indexCols := make([]*expression.GetField, len(v.Columns))
 	for i, selectExpr := range v.Columns {
 		expr := b.selectExprToExpression(inScope, selectExpr)
 		gf, ok := expr.(*expression.GetField)
@@ -1227,7 +1241,22 @@ func (b *Builder) buildMatchAgainst(inScope *scope, v *ast.MatchExpr) *expressio
 			err := sql.ErrFullTextMatchAgainstSameTable.New()
 			b.handleErr(err)
 		}
+		// A derived table can rename the columns it exposes, so look up the
+		// index by the underlying column it selects.
+		indexCol := gf
+		if sqa := derivedAliases[matchTable]; sqa != nil {
+			if proj, ok := sqa.Child.(*plan.Project); ok {
+				for _, p := range proj.Projections {
+					if a, ok := p.(*expression.Alias); ok && strings.EqualFold(a.Name(), gf.Name()) {
+						if u := expression.ExtractGetField(b.ctx, a); u != nil {
+							indexCol = u
+						}
+					}
+				}
+			}
+		}
 		cols[i] = gf
+		indexCols[i] = indexCol
 	}
 	matchExpr := b.buildScalar(inScope, v.Expr)
 	var searchModifier fulltext.SearchModifier
@@ -1262,7 +1291,7 @@ func (b *Builder) buildMatchAgainst(inScope *scope, v *ast.MatchExpr) *expressio
 	if err != nil {
 		b.handleErr(err)
 	}
-	ftIndex := findMatchAgainstIndex(cols, indexes, indexedTbl.Name())
+	ftIndex := findMatchAgainstIndex(indexCols, indexes, indexedTbl.Name())
 	if ftIndex == nil {
 		err := sql.ErrNoFullTextIndexFound.New(indexedTbl.Name())
 		b.handleErr(err)
