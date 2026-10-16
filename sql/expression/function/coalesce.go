@@ -61,8 +61,6 @@ func (c *Coalesce) Type(ctx *sql.Context) sql.Type {
 
 	var retType sql.Type
 	retType = types.Null
-	var decArgs []sql.Expression
-	var decTypes []sql.Type
 	var hasDecimal bool
 	for i, arg := range c.args {
 		if arg == nil {
@@ -71,10 +69,6 @@ func (c *Coalesce) Type(ctx *sql.Context) sql.Type {
 		argType := arg.Type(ctx)
 		if sysVarType, ok := argType.(sql.SystemVariableType); ok {
 			argType = sysVarType.UnderlyingType()
-		}
-		if argType != nil && argType != types.Null {
-			decArgs = append(decArgs, arg)
-			decTypes = append(decTypes, argType)
 		}
 		if i == 0 {
 			retType = argType
@@ -136,7 +130,18 @@ func (c *Coalesce) Type(ctx *sql.Context) sql.Type {
 
 	// Decimal arguments widen the precision to fit integer inputs.
 	if hasDecimal && !types.IsFloat(retType) {
-		if dt, ok := compDecimalType(decArgs, decTypes).(sql.DecimalType); ok {
+		decTypes := make([]sql.Type, len(c.args))
+		for i, arg := range c.args {
+			if arg == nil {
+				continue
+			}
+			argType := arg.Type(ctx)
+			if sysVarType, ok := argType.(sql.SystemVariableType); ok {
+				argType = sysVarType.UnderlyingType()
+			}
+			decTypes[i] = argType
+		}
+		if dt, ok := compDecimalType(c.args, decTypes).(sql.DecimalType); ok {
 			retType = types.MustCreateColumnDecimalType(dt.Precision(), dt.Scale())
 		}
 	}
