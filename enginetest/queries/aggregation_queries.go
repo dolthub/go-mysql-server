@@ -1133,6 +1133,34 @@ var AggregationScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/go-mysql-server/issues/4037
+		Name: "ungrouped min/max aggregations on non-pk columns",
+		SetUpScript: []string{
+			"CREATE TABLE t (id int PRIMARY KEY, v int);",
+			"INSERT INTO t VALUES (1, 10);",
+			"CREATE TABLE c (a int, b int, v int, PRIMARY KEY (a, b));",
+			"INSERT INTO c VALUES (1, 2, 20);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT MAX(v) FROM t WHERE id = 1;",
+				Expected: []sql.Row{{10}},
+			},
+			{
+				Query:    "SELECT MIN(v) FROM t WHERE id = 1;",
+				Expected: []sql.Row{{10}},
+			},
+			{
+				Query:    "SELECT MAX(v) FROM t WHERE id IN (1);",
+				Expected: []sql.Row{{10}},
+			},
+			{
+				Query:    "SELECT MAX(v) FROM c WHERE a = 1 AND b = 2; ",
+				Expected: []sql.Row{{20}},
+			},
+		},
+	},
 }
 
 var GroupByScriptTests = []ScriptTest{
