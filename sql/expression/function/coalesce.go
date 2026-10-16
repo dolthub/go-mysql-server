@@ -105,9 +105,10 @@ func (c *Coalesce) Type(ctx *sql.Context) sql.Type {
 		case expression.ConvertToDecimal:
 			if types.IsFloat(retType) || types.IsFloat(argType) {
 				retType = types.Float64
-			} else {
-				dt := compDecimalType(decArgs, decTypes).(sql.DecimalType)
+			} else if dt, ok := compDecimalType(decArgs, decTypes).(sql.DecimalType); ok {
 				retType = types.MustCreateColumnDecimalType(dt.Precision(), dt.Scale())
+			} else if types.IsDecimal(argType) {
+				retType = argType
 			}
 		case expression.ConvertToUnsigned:
 			if retType == types.Uint64 || argType == types.Uint64 {

@@ -2290,13 +2290,17 @@ ORDER BY ordinal_position`,
 		Name:    "coalesce of an integer column with a decimal literal keeps the integer value",
 		Dialect: "mysql",
 		SetUpScript: []string{
-			"CREATE TABLE t0 (a INT, b BIGINT);",
-			"INSERT INTO t0 VALUES (123456, 9223372036854775807), (2, NULL), (NULL, 10);",
+			"CREATE TABLE t0 (a INT, b BIGINT, y YEAR);",
+			"INSERT INTO t0 VALUES (123456, 9223372036854775807, 2021), (2, NULL, NULL), (NULL, 10, NULL);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT a, b, COALESCE(a, 1.5, b) FROM t0 ORDER BY a;",
 				Expected: []sql.Row{{nil, int64(10), "1.5"}, {2, nil, "2.0"}, {123456, int64(9223372036854775807), "123456.0"}},
+			},
+			{
+				Query:    "SELECT COALESCE(y, 1.5), COALESCE(1.5, y) FROM t0 WHERE a IS NULL;",
+				Expected: []sql.Row{{"1.5", "1.5"}},
 			},
 		},
 	},
