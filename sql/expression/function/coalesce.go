@@ -18,10 +18,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cockroachdb/apd/v3"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -61,35 +60,9 @@ func (c *Coalesce) Type(ctx *sql.Context) sql.Type {
 	}
 
 	var anyDecimal bool
-	var allExactNumeric = true
+	allExactNumeric := true
 	var decArgs []sql.Expression
 	var decTypes []sql.Type
-	for _, arg := range c.args {
-		if arg == nil {
-			continue
-		}
-		argType := arg.Type(ctx)
-		if sysVarType, ok := argType.(sql.SystemVariableType); ok {
-			argType = sysVarType.UnderlyingType()
-		}
-		if argType == nil || argType == types.Null {
-			continue
-		}
-		if types.IsDecimal(argType) {
-			anyDecimal = true
-		} else if !types.IsSigned(argType) && !types.IsUnsigned(argType) {
-			allExactNumeric = false
-			break
-		}
-		decArgs = append(decArgs, arg)
-		decTypes = append(decTypes, argType)
-	}
-
-	if allExactNumeric && anyDecimal && len(decArgs) > 0 {
-		c.typ = compDecimalType(decArgs, decTypes)
-		return c.typ
-	}
-
 	var retType sql.Type
 	retType = types.Null
 	for i, arg := range c.args {
@@ -99,6 +72,16 @@ func (c *Coalesce) Type(ctx *sql.Context) sql.Type {
 		argType := arg.Type(ctx)
 		if sysVarType, ok := argType.(sql.SystemVariableType); ok {
 			argType = sysVarType.UnderlyingType()
+		}
+		if types.IsDecimal(argType) {
+			anyDecimal = true
+			decArgs = append(decArgs, arg)
+			decTypes = append(decTypes, argType)
+		} else if types.IsInteger(argType) {
+			decArgs = append(decArgs, arg)
+			decTypes = append(decTypes, argType)
+		} else if argType != nil && argType != types.Null {
+			allExactNumeric = false
 		}
 		if i == 0 {
 			retType = argType
@@ -154,6 +137,12 @@ func (c *Coalesce) Type(ctx *sql.Context) sql.Type {
 				retType = types.Float32
 			}
 		default:
+		}
+	}
+
+	if allExactNumeric && anyDecimal {
+		if dt, ok := compDecimalType(decArgs, decTypes).(sql.DecimalType); ok {
+			retType = types.MustCreateColumnDecimalType(dt.Precision(), dt.Scale())
 		}
 	}
 
@@ -245,14 +234,6 @@ func (c *Coalesce) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			val, _, err = c.Type(ctx).Convert(ctx, val)
 			if err != nil {
 				return nil, err
-			}
-			if dt, ok := c.Type(ctx).(sql.DecimalType); ok {
-				if dec, ok := val.(*apd.Decimal); ok {
-					val, err = sql.DecimalRound(dec, int32(dt.Scale()))
-					if err != nil {
-						return nil, err
-					}
-				}
 			}
 		}
 		return val, nil
