@@ -23,19 +23,18 @@ import (
 
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
+	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
-func TestMemoryHarnessEngineAwareContexts(t *testing.T) {
+func TestMemoryHarnessOwnsVariables(t *testing.T) {
 	vars := variables.NewEngineVariables()
 	h := NewDefaultMemoryHarness().WithEngineVariables(vars)
-	e := NewEngineWithProviderAndVariables(t, h, h.getProvider(), vars)
-	require.Same(t, vars, NewContextForEngine(h, e).EngineVariables())
-	require.Same(t, vars, NewContextWithClientForEngine(h, e, sql.Client{User: "test"}).EngineVariables())
-	require.Same(t, vars, NewSessionForEngine(h, e).Session.(sql.EngineVariablesProvider).EngineVariables())
-	build := SessionBuilderForEngine(h, e)
-	sess, err := build(context.Background(), &mysql.Conn{ConnectionID: 42}, "localhost")
+	require.Same(t, vars, NewContext(h).EngineVariables())
+	require.Same(t, vars, NewContextWithClient(h, sql.Client{User: "test"}).EngineVariables())
+	require.Same(t, vars, NewSession(h).Session.(sql.EngineVariablesProvider).EngineVariables())
+	sess, err := h.SessionBuilder()(context.Background(), &mysql.Conn{ConnectionID: 42}, "localhost")
 	require.NoError(t, err)
 	require.Same(t, vars, sess.(sql.EngineVariablesProvider).EngineVariables())
 }
@@ -76,5 +75,7 @@ func TestMemoryHarnessesAreIsolated(t *testing.T) {
 
 	_, _, _, err = e2.Query(NewContext(h1), "SELECT 1")
 	require.Error(t, err)
-	require.Panics(t, func() { NewContextForEngine(h1, e2) })
+	require.Panics(t, func() {
+		NewEngineWithVariables(t, h1, h1.getProvider(), nil, memory.NewStatsProv(), h2.EngineVariables())
+	})
 }

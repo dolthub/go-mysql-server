@@ -24,7 +24,6 @@ import (
 
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
-	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
@@ -34,41 +33,8 @@ func NewContext(harness Harness) *sql.Context {
 	return newContextSetup(harness.NewContext())
 }
 
-// EngineContextHarness is an optional extension for harnesses that can make
-// sessions for a particular engine without using process-wide registries.
-type EngineContextHarness interface {
-	NewContextForEngine(*sqle.Engine) *sql.Context
-}
-
-// NewContextForEngine creates a setup context belonging to e when supported by
-// the harness. Legacy harnesses retain their existing context behavior.
-func NewContextForEngine(harness Harness, e *sqle.Engine) *sql.Context {
-	if aware, ok := harness.(EngineContextHarness); ok {
-		return newContextSetup(validateEngineContext(e, aware.NewContextForEngine(e)))
-	}
-	if e.IsolatedVariables() {
-		panic("isolated engine requires an EngineContextHarness")
-	}
-	return NewContext(harness)
-}
-
 func NewContextWithClient(harness ClientHarness, client sql.Client) *sql.Context {
 	return newContextSetup(harness.NewContextWithClient(client))
-}
-
-// EngineClientContextHarness is an optional client-context extension.
-type EngineClientContextHarness interface {
-	NewContextWithClientForEngine(*sqle.Engine, sql.Client) *sql.Context
-}
-
-func NewContextWithClientForEngine(harness ClientHarness, e *sqle.Engine, client sql.Client) *sql.Context {
-	if aware, ok := harness.(EngineClientContextHarness); ok {
-		return newContextSetup(validateEngineContext(e, aware.NewContextWithClientForEngine(e, client)))
-	}
-	if e.IsolatedVariables() {
-		panic("isolated engine requires an EngineClientContextHarness")
-	}
-	return NewContextWithClient(harness, client)
 }
 
 var pid uint64
@@ -105,19 +71,10 @@ func NewSession(harness Harness) *sql.Context {
 	return ctx
 }
 
-// EngineSessionHarness is an optional transaction-session extension.
-type EngineSessionHarness interface {
-	NewSessionForEngine(*sqle.Engine) *sql.Context
-}
-
-func NewSessionForEngine(harness Harness, e *sqle.Engine) *sql.Context {
-	if aware, ok := harness.(EngineSessionHarness); ok {
-		return newContextSetup(validateEngineContext(e, aware.NewSessionForEngine(e)))
-	}
-	if e.IsolatedVariables() {
-		panic("isolated engine requires an EngineSessionHarness")
-	}
-	return NewSession(harness)
+// newEngineContext returns a setup context from |harness|. When |e| owns its
+// variables, the harness must hand out contexts that belong to |e|.
+func newEngineContext(harness Harness, e *sqle.Engine) *sql.Context {
+	return validateEngineContext(e, NewContext(harness))
 }
 
 func validateEngineContext(e *sqle.Engine, ctx *sql.Context) *sql.Context {
@@ -137,25 +94,6 @@ func validateEngineContext(e *sqle.Engine, ctx *sql.Context) *sql.Context {
 // implementation, but for full compatibility use a session based on this one.
 func NewBaseSession() *sql.BaseSession {
 	return sql.NewBaseSessionWithClientServer("address", sql.Client{Address: "localhost", User: "root"}, 1)
-}
-
-func NewBaseSessionForEngine(e *sqle.Engine) *sql.BaseSession {
-	return sql.NewBaseSessionWithClientServerWithVariables("address", sql.Client{Address: "localhost", User: "root"}, 1, e.Variables())
-}
-
-// EngineServerHarness is an optional extension for connection sessions.
-type EngineServerHarness interface {
-	SessionBuilderForEngine(*sqle.Engine) server.SessionBuilder
-}
-
-func SessionBuilderForEngine(harness ServerHarness, e *sqle.Engine) server.SessionBuilder {
-	if aware, ok := harness.(EngineServerHarness); ok {
-		return aware.SessionBuilderForEngine(e)
-	}
-	if e.IsolatedVariables() {
-		panic("isolated engine requires an EngineServerHarness")
-	}
-	return harness.SessionBuilder()
 }
 
 // NewEngineWithProvider returns a new engine with the specified provider
@@ -182,12 +120,7 @@ func newEngineWithProvider(harness Harness, provider sql.DatabaseProvider, vars 
 
 	engine := sqle.New(analyzer, &sqle.Config{EngineVariables: vars})
 	if idh, ok := harness.(IndexDriverHarness); ok {
-		var ctx *sql.Context
-		if vars != nil {
-			ctx = NewContextForEngine(harness, engine)
-		} else {
-			ctx = NewContext(harness)
-		}
+		ctx := newEngineContext(harness, engine)
 		idh.InitializeIndexDriver(engine.Analyzer.Catalog.AllDatabases(ctx))
 	}
 	analyzer.Runner = engine
@@ -200,7 +133,7 @@ func newEngineWithProvider(harness Harness, provider sql.DatabaseProvider, vars 
 func NewEngineWithVariables(t *testing.T, harness Harness, dbProvider sql.DatabaseProvider, setupData []setup.SetupScript, statsProvider sql.StatsProvider, vars *sql.EngineVariables) (*sqle.Engine, error) {
 	e := NewEngineWithProviderAndVariables(t, harness, dbProvider, vars)
 	e.Analyzer.Catalog.StatsProvider = statsProvider
-	ctx := NewContextForEngine(harness, e)
+	ctx := newEngineContext(harness, e)
 	if len(setupData) == 0 {
 		setupData = setup.MydbData
 	}

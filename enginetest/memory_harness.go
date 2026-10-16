@@ -117,25 +117,6 @@ func (m *MemoryHarness) EngineVariables() *sql.EngineVariables {
 func (m *MemoryHarness) SessionBuilder() server.SessionBuilder {
 	// Callers may build one session builder and reuse it across the engines
 	// (and providers) the harness creates, so resolve the provider per session.
-	return m.sessionBuilderWithVariables(m.variables, m.getProvider)
-}
-
-func (m *MemoryHarness) SessionBuilderForEngine(e *sqle.Engine) server.SessionBuilder {
-	m.checkEngine(e)
-	// A server can finish closing connections while the harness builds its next
-	// engine. Keep this builder's provider fixed to the engine it was given.
-	provider := m.getProvider()
-	return m.sessionBuilderWithVariables(m.variables, func() sql.DatabaseProvider { return provider })
-}
-
-// checkEngine panics if |e| owns a bundle other than this harness's.
-func (m *MemoryHarness) checkEngine(e *sqle.Engine) {
-	if e.IsolatedVariables() && e.Variables() != m.variables {
-		panic("memory harness variable ownership does not match engine")
-	}
-}
-
-func (m *MemoryHarness) sessionBuilderWithVariables(vars *sql.EngineVariables, provider func() sql.DatabaseProvider) server.SessionBuilder {
 	return func(ctx context.Context, c *mysql.Conn, addr string) (sql.Session, error) {
 		host := ""
 		user := ""
@@ -145,8 +126,8 @@ func (m *MemoryHarness) sessionBuilderWithVariables(vars *sql.EngineVariables, p
 			user = mysqlConnectionUser.User
 		}
 		client := sql.Client{Address: host, User: user, Capabilities: c.Capabilities}
-		baseSession := sql.NewBaseSessionWithClientServerWithVariables(addr, client, c.ConnectionID, vars)
-		return memory.NewSession(baseSession, provider()), nil
+		baseSession := sql.NewBaseSessionWithClientServerWithVariables(addr, client, c.ConnectionID, m.variables)
+		return memory.NewSession(baseSession, m.getProvider()), nil
 	}
 }
 
@@ -300,11 +281,6 @@ func (m *MemoryHarness) NewContext() *sql.Context {
 	)
 }
 
-func (m *MemoryHarness) NewContextForEngine(e *sqle.Engine) *sql.Context {
-	m.checkEngine(e)
-	return m.NewContext()
-}
-
 func (m *MemoryHarness) newSession() *memory.Session {
 	baseSession := sql.NewBaseSessionWithClientServerWithVariables("address", sql.Client{Address: "localhost", User: "root"}, 1, m.variables)
 	session := memory.NewSession(baseSession, m.getProvider())
@@ -312,16 +288,6 @@ func (m *MemoryHarness) newSession() *memory.Session {
 		session.GetIndexRegistry().RegisterIndexDriver(m.driver)
 	}
 	return session
-}
-
-func (m *MemoryHarness) NewSessionForEngine(e *sqle.Engine) *sql.Context {
-	m.checkEngine(e)
-	return m.NewSession()
-}
-
-func (m *MemoryHarness) NewContextWithClientForEngine(e *sqle.Engine, client sql.Client) *sql.Context {
-	m.checkEngine(e)
-	return m.NewContextWithClient(client)
 }
 
 func (m *MemoryHarness) NewContextWithClient(client sql.Client) *sql.Context {
