@@ -3301,11 +3301,11 @@ var FunctionQueryTests = []QueryTest{
 	// Comparison Function Tests
 	{
 		Query:    `SELECT GREATEST(1, 2, "3", 4)`,
-		Expected: []sql.Row{{float64(4)}},
+		Expected: []sql.Row{{"4"}},
 	},
 	{
 		Query:    `SELECT GREATEST(1, 2, "9", "foo999")`,
-		Expected: []sql.Row{{float64(9)}},
+		Expected: []sql.Row{{"foo999"}},
 	},
 	{
 		Query:    `SELECT GREATEST("aaa", "bbb", "ccc")`,
@@ -3325,19 +3325,23 @@ var FunctionQueryTests = []QueryTest{
 	},
 	{
 		Query:    `SELECT LEAST(1, 2, "3", 4)`,
-		Expected: []sql.Row{{float64(1)}},
+		Expected: []sql.Row{{"1"}},
 	},
 	{
 		Query:    `SELECT LEAST(1, 2, "9", "foo999")`,
-		Expected: []sql.Row{{float64(1)}},
+		Expected: []sql.Row{{"1"}},
 	},
 	{
 		Query:    `SELECT LEAST("aaa", "bbb", "ccc")`,
 		Expected: []sql.Row{{"aaa"}},
 	},
 	{
-		Query:    `SELECT LEAST(i, s) FROM mytable`,
-		Expected: []sql.Row{{float64(1)}, {float64(2)}, {float64(3)}},
+		Query: `SELECT LEAST(i, s) FROM mytable`,
+		Expected: []sql.Row{
+			{"1"},
+			{"2"},
+			{"3"},
+		},
 	},
 	{
 		Query:    `SELECT LEAST(CAST("1920-02-03 07:41:11" AS DATETIME), CAST("1980-06-22 14:32:56" AS DATETIME))`,
