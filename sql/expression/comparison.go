@@ -587,6 +587,11 @@ func (e *NullSafeEquals) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 		return 0, err
 	}
 
+	return nullSafeCompare(ctx, e.Left().Type(ctx), e.Right().Type(ctx), left, right)
+}
+
+// nullSafeCompare compares |left| and |right|, where two NULLs compare equal and a NULL never equals a non-NULL value.
+func nullSafeCompare(ctx *sql.Context, lTyp, rTyp sql.Type, left, right any) (int, error) {
 	if left == nil && right == nil {
 		return 0, nil
 	} else if left == nil {
@@ -595,13 +600,34 @@ func (e *NullSafeEquals) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 		return -1, nil
 	}
 
-	lTyp, rTyp := e.Left().Type(ctx), e.Right().Type(ctx)
 	if types.TypesEqual(lTyp, rTyp) {
 		return lTyp.Compare(ctx, left, right)
 	}
 
-	var compareType sql.Type
-	left, right, compareType, err = e.castLeftAndRight(ctx, left, right)
+	// For tuples, check for NULLs before each element is cast to a common type, since
+	// casting can turn a non-NULL value into NULL (e.g. 1 cast to DATETIME).
+	if types.IsTuple(lTyp) && types.IsTuple(rTyp) {
+		lTupleType, rTupleType := lTyp.(types.TupleType), rTyp.(types.TupleType)
+		leftTuple, lOk := left.([]any)
+		rightTuple, rOk := right.([]any)
+		if lOk && rOk &&
+			len(leftTuple) == len(rightTuple) &&
+			len(lTupleType) == len(leftTuple) &&
+			len(rTupleType) == len(rightTuple) {
+			for i := range leftTuple {
+				cmp, err := nullSafeCompare(ctx, lTupleType[i], rTupleType[i], leftTuple[i], rightTuple[i])
+				if err != nil {
+					return 0, err
+				}
+				if cmp != 0 {
+					return cmp, nil
+				}
+			}
+			return 0, nil
+		}
+	}
+
+	left, right, compareType, err := castLeftAndRight(ctx, lTyp, rTyp, left, right)
 	if err != nil {
 		return 0, err
 	}
