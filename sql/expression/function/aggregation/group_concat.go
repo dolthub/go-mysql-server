@@ -28,7 +28,6 @@ import (
 )
 
 type GroupConcat struct {
-	returnType     sql.Type
 	window         *sql.WindowDefinition
 	distinct       string
 	separator      string
@@ -206,7 +205,7 @@ func (g *GroupConcat) DebugString(ctx *sql.Context) string {
 // cc: https://dev.mysql.com/doc/refman/8.0/en/aggregate-functions.html#function_group-concat for explanations
 // on return type.
 func (g *GroupConcat) Type(ctx *sql.Context) sql.Type {
-	if g.returnType == types.Blob {
+	if g.isBinary(ctx) {
 		if g.maxLen <= 512 {
 			return types.MustCreateString(query.Type_VARBINARY, 512, sql.Collation_binary)
 		} else {
@@ -262,14 +261,12 @@ type groupConcatBuffer struct {
 
 // Update implements the AggregationBuffer interface.
 func (g *groupConcatBuffer) Update(ctx *sql.Context, originalRow sql.Row) error {
-	evalRow, retType, err := evalExprs(ctx, g.gc.selectExprs, originalRow)
+	evalRow, _, err := evalExprs(ctx, g.gc.selectExprs, originalRow)
 	if err != nil {
 		return err
 	}
 
-	g.gc.returnType = retType
-
-	vs, isNull, err := groupConcatValue(ctx, g.gc.selectExprs, evalRow, retType)
+	vs, isNull, err := g.gc.formatRow(ctx, evalRow)
 	if err != nil {
 		return err
 	}
@@ -347,35 +344,48 @@ func (g *groupConcatBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 func (g *groupConcatBuffer) Dispose(ctx *sql.Context) {
 }
 
+// isBinary reports whether every select expression has a binary type or
+// is a BIT type.
+func (g *GroupConcat) isBinary(ctx *sql.Context) bool {
+	for _, expr := range g.selectExprs {
+		if t := expr.Type(ctx); t != types.Blob && !types.IsBit(t) {
+			return false
+		}
+	}
+	return len(g.selectExprs) > 0
+}
+
 func evalExprs(ctx *sql.Context, exprs []sql.Expression, row sql.Row) (sql.Row, sql.Type, error) {
 	result := make(sql.Row, len(exprs))
-	retType := types.Blob
 	for i, expr := range exprs {
 		var err error
 		result[i], err = expr.Eval(ctx, row)
 		if err != nil {
 			return nil, nil, err
 		}
-
-		// If every expression returns Blob type return Blob otherwise return Text.
-		if expr.Type(ctx) != types.Blob {
-			retType = types.Text
-		}
 	}
 
-	return result, retType, nil
+	return result, nil, nil
 }
 
-// groupConcatValue returns the concatenated value of the evaluated expressions, a boolean that is true when any
-// expression evaluates to NULL, and any conversion error encountered.
-func groupConcatValue(ctx *sql.Context, exprs []sql.Expression, values sql.Row, retType sql.Type) (string, bool, error) {
+// formatRow returns the concatenation of |values|, whether a value is NULL,
+// and any conversion error.
+func (g *GroupConcat) formatRow(ctx *sql.Context, values sql.Row) (string, bool, error) {
 	var sb strings.Builder
+	binary := g.isBinary(ctx)
+	bitAsBytes := binary && g.distinct == "" && len(g.sortConditions) == 0
 	for i, value := range values {
 		if value == nil {
 			return "", true, nil
 		}
 
-		if types.IsBlobType(retType) {
+		if bitAsBytes && types.IsBit(g.selectExprs[i].Type(ctx)) {
+			converted, err := g.selectExprs[i].Type(ctx).SQL(ctx, nil, value)
+			if err != nil {
+				return "", false, err
+			}
+			sb.Write(converted.Raw())
+		} else if binary {
 			converted, _, err := types.Blob.Convert(ctx, value)
 			if err != nil {
 				return "", false, err
@@ -386,7 +396,7 @@ func groupConcatValue(ctx *sql.Context, exprs []sql.Expression, values sql.Row, 
 			}
 			sb.Write(bytes)
 		} else {
-			converted, _, err := types.ConvertToCollatedString(ctx, value, exprs[i].Type(ctx))
+			converted, _, err := types.ConvertToCollatedString(ctx, value, g.selectExprs[i].Type(ctx))
 			if err != nil {
 				return "", false, err
 			}

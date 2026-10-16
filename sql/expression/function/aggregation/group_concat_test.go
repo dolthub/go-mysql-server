@@ -80,6 +80,7 @@ func TestGroupConcat_ReturnType(t *testing.T) {
 		{[]sql.Expression{expression.NewGetField(0, types.Text, "text", true)}, 1020, types.Text, sql.Row{int64(1)}},
 		{[]sql.Expression{expression.NewGetField(0, types.Blob, "myblob", true)}, 200, types.MustCreateString(query.Type_VARBINARY, 512, sql.Collation_binary), sql.Row{"hi"}},
 		{[]sql.Expression{expression.NewGetField(0, types.Blob, "myblob", true)}, 1020, types.Blob, sql.Row{"hi"}},
+		{[]sql.Expression{expression.NewGetField(0, types.MustCreateBitType(8), "v", true)}, 1020, types.Blob, sql.Row{uint64(3)}},
 	}
 
 	for _, tt := range testCases {
