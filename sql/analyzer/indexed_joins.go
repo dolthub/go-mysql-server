@@ -1560,6 +1560,7 @@ func makeIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, tab plan.Table
 	idxColExprTypes := idx.SqlIdx().ColumnExpressionTypes(ctx)
 	rang := make(sql.MySQLRange, len(idxColExprTypes))
 	// Create MySQL Range prefix for this index
+	// In the event that the index contained pruned columns, then len(idxCols) <  len(idxColExprTypes)
 	for i = 0; i < len(idxCols); {
 		// TODO: It seems like it's possible for no filter to be found for a column before |matchedIdx|, but it is
 		//  ignored. Appears to be impossible to reproduce due to functional dependency logic beforehand.

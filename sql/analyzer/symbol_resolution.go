@@ -247,22 +247,19 @@ func pruneTableCols(
 		}
 		if parentCols[c] > 0 {
 			cols = append(cols, c.col)
-			if i < len(ids) {
-				newCols.Add(ids[i])
-			}
+			newCols.Add(ids[i])
 		}
 	}
 	resTable, err := ptab.WithProjections(ctx, cols)
 	if err != nil {
 		return n, transform.SameTree, nil
 	}
-	ret, err := n.WithTable(ctx, resTable)
+	var ret sql.Node
+	ret, err = n.WithTable(ctx, resTable)
 	if err != nil {
 		return n, transform.SameTree, nil
 	}
-	if updated, ok := ret.(plan.TableIdNode).WithColumns(newCols).(sql.MutableTableNode); ok {
-		ret = updated
-	}
+	ret = ret.(plan.TableIdNode).WithColumns(newCols)
 
 	return ret, transform.NewTree, nil
 }
