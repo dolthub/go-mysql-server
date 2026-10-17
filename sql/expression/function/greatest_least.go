@@ -280,6 +280,9 @@ func compRetType(ctx *sql.Context, args ...sql.Expression) (sql.Type, error) {
 func compDecimalType(args []sql.Expression, argTypes []sql.Type) sql.Type {
 	var integerDigits, scale uint8
 	for i, t := range argTypes {
+		if t == nil || t == types.Null {
+			continue
+		}
 		var p, s uint8
 		if dt, ok := t.(sql.DecimalType); ok {
 			p, s = dt.Precision(), dt.Scale()
@@ -323,8 +326,12 @@ func compIntegerPrecision(arg sql.Expression, typ sql.Type, columnPrecision uint
 		if _, ok := arg.Value().(bool); ok {
 			return 1
 		}
-
-		return uint8(len(strings.TrimPrefix(fmt.Sprint(arg.Value()), "-")))
+		var buf [types.DecimalTypeMaxPrecision]byte
+		b := fmt.Append(buf[:0], arg.Value())
+		if len(b) > 0 && b[0] == '-' {
+			b = b[1:]
+		}
+		return uint8(len(b))
 	case *expression.UnaryMinus:
 		return compIntegerPrecision(arg.Child, typ, columnPrecision)
 	case *expression.Convert:
