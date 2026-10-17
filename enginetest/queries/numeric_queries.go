@@ -2287,8 +2287,7 @@ ORDER BY ordinal_position`,
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/12118
-		Name:    "coalesce of an integer column with a decimal literal keeps the integer value",
-		Dialect: "mysql",
+		Name: "coalesce of an integer column with a decimal literal keeps the integer value",
 		SetUpScript: []string{
 			"CREATE TABLE t0 (a INT);",
 			"INSERT INTO t0 VALUES (1000), (2), (NULL);",
@@ -2297,16 +2296,31 @@ ORDER BY ordinal_position`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
+				Dialect:  "mysql",
 				Query:    "SELECT * FROM t0 WHERE COALESCE(1.5, a) > 1 ORDER BY a;",
 				Expected: []sql.Row{{nil}, {2}, {1000}},
 			},
 			{
+				Dialect:  "mysql",
 				Query:    "SELECT * FROM t0 WHERE COALESCE(a, 1.5) > 1 ORDER BY a;",
 				Expected: []sql.Row{{nil}, {2}, {1000}},
 			},
 			{
+				Dialect:  "mysql",
 				Query:    "SELECT a, COALESCE(a, 1.5) FROM t0 ORDER BY a;",
 				Expected: []sql.Row{{nil, "1.5"}, {2, "2.0"}, {1000, "1000.0"}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM t0 WHERE COALESCE(a, 1.5) > 1;",
+				Expected: []sql.Row{{3}},
+			},
+			{
+				Query:    "SELECT SUM(COALESCE(a, 1.5)) FROM t0;",
+				Expected: []sql.Row{{"1003.5"}},
+			},
+			{
+				Query:    "SELECT a FROM t0 WHERE a IS NOT NULL AND COALESCE(a, 1.5) > 1 ORDER BY a;",
+				Expected: []sql.Row{{2}, {1000}},
 			},
 			{
 				Query:    "SELECT a, b, COALESCE(a, 1.5, b) FROM t0, t1 WHERE a = 1000;",
