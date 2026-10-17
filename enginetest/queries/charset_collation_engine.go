@@ -2016,4 +2016,44 @@ T.TABLE_SCHEMA AS 'database', T.TABLE_CATALOG AS 'catalog',
 			},
 		},
 	},
+	// https://github.com/dolthub/go-mysql-server/issues/3846
+	{
+		Name: "char length validation uses the column's character set",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CREATE TABLE charlen (one CHAR(1) CHARACTER SET utf8mb3, two CHAR(2) CHARACTER SET utf8mb3, four CHAR(1) CHARACTER SET utf8mb4);",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Dialect:        "mysql",
+				Query:          "INSERT INTO charlen (one) VALUES ('𝄞');",
+				ExpectedErrStr: "string '𝄞' is too large for column 'one'",
+			},
+			{
+				Dialect:        "mysql",
+				Query:          "INSERT INTO charlen (one) VALUES ('€€');",
+				ExpectedErrStr: "string '€€' is too large for column 'one'",
+			},
+			{
+				Query:    "INSERT INTO charlen (two) VALUES ('€€');",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "INSERT INTO charlen (four) VALUES ('𝄞');",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "SELECT CHAR_LENGTH(two) FROM charlen WHERE two IS NOT NULL;",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "SELECT CHAR_LENGTH(four) FROM charlen WHERE four IS NOT NULL;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM charlen;",
+				Expected: []sql.Row{{2}},
+			},
+		},
+	},
 }
