@@ -252,22 +252,7 @@ func colIdsForRel(ctx *sql.Context, n sql.Node) []sql.ColumnId {
 		// SetOp nodes need to preserve original schema order to avoid column scrambling in nested UNIONs
 		return colIdsForRel(ctx, n.Left())
 	case plan.TableIdNode:
-		cols := n.Columns()
-		if tn, ok := n.(sql.TableNode); ok {
-			if pkt, ok := tn.UnderlyingTable().(sql.PrimaryKeyTable); ok && len(pkt.PrimaryKeySchema(ctx).Schema) != len(n.Schema(ctx)) {
-				firstcol, _ := cols.Next(1)
-				for _, c := range n.Schema(ctx) {
-					ord := pkt.PrimaryKeySchema(ctx).IndexOfColName(c.Name)
-					colId := firstcol + sql.ColumnId(ord)
-					ids = append(ids, colId)
-				}
-				return ids
-			}
-		}
-		cols.ForEach(func(col sql.ColumnId) {
-			ids = append(ids, col)
-		})
-		return ids
+		return n.Columns().Ordered()
 	default:
 		return colIdsForRel(ctx, n.Children()[0])
 	}

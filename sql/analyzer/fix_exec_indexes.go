@@ -770,17 +770,6 @@ func columnIdsForNode(ctx *sql.Context, n sql.Node) []sql.ColumnId {
 		}
 
 		cols := n.(plan.TableIdNode).Columns()
-		if tn, ok := n.(sql.TableNode); ok {
-			if pkt, ok := tn.UnderlyingTable().(sql.PrimaryKeyTable); ok && len(pkt.PrimaryKeySchema(ctx).Schema) != len(n.Schema(ctx)) {
-				firstcol, _ := cols.Next(1)
-				for _, c := range n.Schema(ctx) {
-					ord := pkt.PrimaryKeySchema(ctx).IndexOfColName(c.Name)
-					colId := firstcol + sql.ColumnId(ord)
-					ret = append(ret, colId)
-				}
-				break
-			}
-		}
 		// TODO: columns are appended in increasing order by ColumnId instead of how they are actually ordered. likely
 		// needs to be fixed
 		cols.ForEach(func(col sql.ColumnId) {

@@ -62,64 +62,31 @@ func newRelProps(ctx *sql.Context, rel RelExpr) *relProps {
 	case *SetOp:
 	case SourceRel:
 		n := r.TableIdNode()
-		if len(n.Schema(ctx)) == n.Columns().Len() {
-			p.outputCols = r.TableIdNode().Columns()
 
-			firstCol, _ := n.Columns().Next(1)
+		p.outputCols = n.Columns()
 
-			var table sql.Table
-			switch n := n.(type) {
-			case *plan.TableAlias:
-				if tn, ok := n.Child.(sql.TableNode); ok {
-					table = tn.UnderlyingTable()
-				}
-			case sql.TableNode:
-				table = n.UnderlyingTable()
-			}
-			var requiredIndexCols sql.ColSet
-			if table != nil {
-				if irt, ok := table.(sql.IndexRequired); ok {
-					cols := irt.RequiredPredicates()
-					for _, c := range cols {
-						i := n.Schema(ctx).IndexOfColName(c)
-						requiredIndexCols.Add(firstCol + sql.ColumnId(i))
-					}
-				}
-			}
-			p.reqIdxCols = requiredIndexCols
-		} else {
-			// if the table is projected, capture subset of column ids
-			var tw sql.TableNode
-			var ok bool
-			for tw, ok = n.(sql.TableNode); !ok; tw, ok = n.Children()[0].(sql.TableNode) {
-			}
+		columnIds := n.Columns().Ordered()
 
-			var sch sql.Schema
-			switch n := tw.UnderlyingTable().(type) {
-			case sql.PrimaryKeyTable:
-				sch = n.PrimaryKeySchema(ctx).Schema
-			default:
-				sch = n.Schema(ctx)
+		var table sql.Table
+		switch n := n.(type) {
+		case *plan.TableAlias:
+			if tn, ok := n.Child.(sql.TableNode); ok {
+				table = tn.UnderlyingTable()
 			}
-			firstCol, _ := n.Columns().Next(1)
-
-			var colset sql.ColSet
-			for _, c := range n.Schema(ctx) {
-				i := sch.IndexOfColName(c.Name)
-				colset.Add(firstCol + sql.ColumnId(i))
-			}
-			p.outputCols = colset
-
-			var requiredIndexCols sql.ColSet
-			if irt, ok := n.(sql.IndexRequired); ok {
+		case sql.TableNode:
+			table = n.UnderlyingTable()
+		}
+		var requiredIndexCols sql.ColSet
+		if table != nil {
+			if irt, ok := table.(sql.IndexRequired); ok {
 				cols := irt.RequiredPredicates()
 				for _, c := range cols {
-					i := sch.IndexOfColName(c)
-					requiredIndexCols.Add(firstCol + sql.ColumnId(i))
+					i := n.Schema(ctx).IndexOfColName(c)
+					requiredIndexCols.Add(columnIds[i])
 				}
 			}
-			p.reqIdxCols = requiredIndexCols
 		}
+		p.reqIdxCols = requiredIndexCols
 	default:
 	}
 
@@ -219,12 +186,13 @@ func (p *relProps) populateFds(ctx *sql.Context) {
 		default:
 		}
 
-		firstCol, _ := all.Next(1)
+		ids := all.Ordered()
 
 		var strictKeys []sql.ColSet
 		var laxKeys []sql.ColSet
 		var indexesNorm []*Index
 		for _, idx := range indexes {
+			valid := true
 			// strict if primary key or all nonNull and unique
 			columns := idxExprsColumns(idx)
 			strict := true
@@ -233,21 +201,21 @@ func (p *relProps) populateFds(ctx *sql.Context) {
 				normIdx.order = oidx.Order(ctx)
 			}
 			for i, c := range columns {
-				// TODO: This doesn't account for when the column is not found and ord is -1
 				ord := sch.IndexOfColName(strings.ToLower(c))
-				idOffset := firstCol + sql.ColumnId(ord)
-				colId, _ := all.Next(idOffset)
-				if colId == 0 {
-					err := fmt.Errorf("colset invalid for join leaf: %s missing %d", all.String(), firstCol+sql.ColumnId(ord))
-					p.grp.m.HandleErr(err)
+				if ord == -1 {
+					normIdx.cols = normIdx.cols[:i]
+					valid = false
+					break
 				}
+
+				colId := ids[ord]
 				normIdx.set.Add(colId)
 				normIdx.cols[i] = colId
 				if !notNull.Contains(colId) {
 					strict = false
 				}
 			}
-			if !idx.IsUnique() {
+			if !idx.IsUnique() || !valid {
 				// not an FD
 			} else if strict {
 				strictKeys = append(strictKeys, normIdx.set)
@@ -599,44 +567,7 @@ func isSimpleEquality(ctx *sql.Context, expr sql.Expression) bool {
 // allTableCols returns the full schema of a table ignoring
 // declared projections.
 func allTableCols(ctx *sql.Context, rel SourceRel) sql.Schema {
-	var table sql.Table
-	switch rel := rel.(type) {
-	case *TableAlias:
-		rt, ok := rel.Table.Child.(*plan.ResolvedTable)
-		if !ok {
-			break
-		}
-		table = rt.UnderlyingTable()
-	case *IndexScan:
-		table = rel.Table.TableNode.UnderlyingTable()
-	case *TableScan:
-		table = rel.Table.(sql.TableNode).UnderlyingTable()
-	default:
-		return rel.OutputCols(ctx)
-	}
-	projTab, ok := table.(sql.PrimaryKeyTable)
-	if !ok {
-		return rel.OutputCols(ctx)
-	}
-
-	sch := projTab.PrimaryKeySchema(ctx).Schema
-	ret := make(sql.Schema, len(sch))
-	for i, c := range sch {
-		// TODO: generation_expression
-		ret[i] = &sql.Column{
-			Name:           c.Name,
-			Type:           c.Type,
-			Default:        c.Default,
-			AutoIncrement:  c.AutoIncrement,
-			Nullable:       c.Nullable && !c.AutoIncrement,
-			Source:         rel.Name(),
-			DatabaseSource: c.DatabaseSource,
-			PrimaryKey:     c.PrimaryKey,
-			Comment:        c.Comment,
-		}
-	}
-	return ret
-
+	return rel.OutputCols(ctx)
 }
 
 // getEquivs collects column equivalencies in the format sql.EquivSet expects.
@@ -765,6 +696,8 @@ func (p *relProps) outputColsForRel(ctx *sql.Context, r RelExpr) sql.ColSet {
 		return r.outputCols(ctx)
 	case *IndexScan:
 		return p.outputColsForRel(ctx, r.Next())
+	case *TableScan:
+		return r.TableIdNode().Columns()
 	default:
 		err := fmt.Errorf("unknown type for rel output cols: %T", r)
 		p.grp.m.HandleErr(err)

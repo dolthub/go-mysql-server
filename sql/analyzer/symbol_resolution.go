@@ -145,6 +145,12 @@ func pruneTables(ctx *sql.Context, a *Analyzer, n sql.Node, s *plan.Scope, sel R
 		if len(newChildren) == 0 {
 			return n, transform.SameTree, nil
 		}
+		if tableAlias, ok := n.(*plan.TableAlias); ok {
+			child := newChildren[0]
+			if childTableIdNode, ok := child.(plan.TableIdNode); ok {
+				n = tableAlias.WithColumns(childTableIdNode.Columns())
+			}
+		}
 		ret, _ := n.WithChildren(ctx, newChildren...)
 		return ret, transform.NewTree, nil
 	}
@@ -230,25 +236,30 @@ func pruneTableCols(
 		return n, transform.SameTree, nil
 	}
 
+	ids := n.Columns().Ordered()
 	cols := make([]string, 0)
+	var newCols sql.ColSet
 	source := strings.ToLower(table.Name())
-	for _, col := range table.Schema(ctx) {
+	for i, col := range table.Schema(ctx) {
 		c := tableCol{
 			table: source,
 			col:   strings.ToLower(col.Name),
 		}
 		if parentCols[c] > 0 {
 			cols = append(cols, c.col)
+			newCols.Add(ids[i])
 		}
 	}
 	resTable, err := ptab.WithProjections(ctx, cols)
 	if err != nil {
 		return n, transform.SameTree, nil
 	}
-	ret, err := n.WithTable(ctx, resTable)
+	var ret sql.Node
+	ret, err = n.WithTable(ctx, resTable)
 	if err != nil {
 		return n, transform.SameTree, nil
 	}
+	ret = ret.(plan.TableIdNode).WithColumns(newCols)
 
 	return ret, transform.NewTree, nil
 }
