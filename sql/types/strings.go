@@ -480,12 +480,13 @@ func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest [
 				return nil, ErrLengthBeyondLimit.New(val, t.String())
 			}
 		} else {
-			// TODO(#3846): this should count the string's length properly according to the character set
-			// convert 'val' string to rune to count the character length, not byte length
-			if int64(len(val)) > t.MaxCharacterLength() {
-				if int64(len([]rune(string(val)))) > t.MaxCharacterLength() {
-					return nil, ErrLengthBeyondLimit.New(val, t.String())
-				}
+			// Reject values whose encoding is invalid for the column's character set, e.g. a 4-byte
+			// character in a utf8mb3 column, then count characters as MySQL does.
+			if int64(len(val)) > t.MaxCharacterLength()*t.CharacterSet().MaxLength() {
+				return nil, ErrLengthBeyondLimit.New(val, t.String())
+			}
+			if int64(len([]rune(string(val)))) > t.MaxCharacterLength() {
+				return nil, ErrLengthBeyondLimit.New(val, t.String())
 			}
 		}
 	}
