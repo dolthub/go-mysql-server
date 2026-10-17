@@ -33,17 +33,17 @@ func TestFileSourceScanner(t *testing.T) {
 }
 
 // TestEveryScriptIsLoaded checks that every embedded script file is loaded by
-// an exported variable in scripts.go. Go cannot enumerate package-level
+// an exported variable in load.go. Go cannot enumerate package-level
 // variables via reflection, so mustLoad records each script it loads instead.
 func TestEveryScriptIsLoaded(t *testing.T) {
-	entries, err := fs.ReadDir(scriptsFS, scriptsDir)
+	entries, err := fs.ReadDir(dataFS, dataDir)
 	require.NoError(t, err)
 	require.NotEmpty(t, entries)
 	for _, e := range entries {
-		require.False(t, e.IsDir(), "unexpected directory %s/%s", scriptsDir, e.Name())
+		require.False(t, e.IsDir(), "unexpected directory %s/%s", dataDir, e.Name())
 		_, ok := loadedScripts[e.Name()]
-		require.True(t, ok, "%s/%s has no variable in scripts.go; add `%sData = mustLoad(%q)`",
-			scriptsDir, e.Name(), exportedName(e.Name()), e.Name())
+		require.True(t, ok, "%s/%s has no variable in load.go; add `%sData = mustLoad(%q)`",
+			dataDir, e.Name(), exportedName(e.Name()), e.Name())
 	}
 }
 

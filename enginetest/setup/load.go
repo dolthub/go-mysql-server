@@ -22,10 +22,10 @@ import (
 	"path"
 )
 
-//go:embed scripts
-var scriptsFS embed.FS
+//go:embed data
+var dataFS embed.FS
 
-const scriptsDir = "scripts"
+const dataDir = "data"
 
 // loadedScripts records every script loaded by mustLoad, so tests can check
 // that each embedded script file has a corresponding exported variable.
@@ -43,8 +43,8 @@ func mustLoad(name string) []SetupScript {
 }
 
 func load(name string) (SetupScript, error) {
-	p := path.Join(scriptsDir, name)
-	f, err := scriptsFS.Open(p)
+	p := path.Join(dataDir, name)
+	f, err := dataFS.Open(p)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +62,7 @@ func load(name string) (SetupScript, error) {
 	}
 }
 
-// Each file in scripts/ must have a variable here; TestEveryScriptIsLoaded
+// Each file in data/ must have a variable here; TestEveryScriptIsLoaded
 // enforces this.
 var (
 	AutoincrementData           = mustLoad("autoincrement")
