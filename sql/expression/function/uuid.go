@@ -588,7 +588,7 @@ func (u *UUIDShortFunc) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	uuidShortCounter++
 
 	serverID := uint64(1) // Default fallback
-	if _, val, ok := sql.SystemVariables.GetGlobal("server_id"); ok {
+	if _, val, ok := ctx.SystemVariables().GetGlobal("server_id"); ok {
 		if serverIDVal, ok := val.(uint32); ok {
 			serverID = uint64(serverIDVal)
 		}

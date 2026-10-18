@@ -79,6 +79,13 @@ var _ mysql.Handler = (*Handler)(nil)
 var _ mysql.ExtendedHandler = (*Handler)(nil)
 var _ mysql.BinlogReplicaHandler = (*Handler)(nil)
 
+func (h *Handler) statusVariables() sql.StatusVariableRegistry {
+	if h.e.IsolatedVariables() {
+		return h.e.Variables().Status
+	}
+	return sql.StatusVariables
+}
+
 // NewConnection reports that a new connection has been established.
 func (h *Handler) NewConnection(c *mysql.Conn) {
 	if h.sel != nil {
@@ -86,15 +93,16 @@ func (h *Handler) NewConnection(c *mysql.Conn) {
 	}
 
 	h.sm.AddConn(c)
-	updateMaxUsedConnectionsStatusVariable()
-	sql.StatusVariables.IncrementGlobal("Connections", 1)
+	status := h.statusVariables()
+	updateMaxUsedConnectionsStatusVariable(status)
+	status.IncrementGlobal("Connections", 1)
 
 	c.DisableClientMultiStatements = h.disableMultiStmts
 	logrus.WithField(sql.ConnectionIdLogField, c.ConnectionID).WithField("DisableClientMultiStatements", c.DisableClientMultiStatements).Infof("NewConnection")
 }
 
 func (h *Handler) ConnectionAborted(_ *mysql.Conn, _ string) error {
-	sql.StatusVariables.IncrementGlobal("Aborted_connects", 1)
+	h.statusVariables().IncrementGlobal("Aborted_connects", 1)
 	return nil
 }
 
@@ -381,7 +389,10 @@ func (h *Handler) ComRegisterReplica(c *mysql.Conn, replicaHost string, replicaP
 		return nil
 	}
 
-	newCtx := sql.NewEmptyContext()
+	newCtx, err := h.sm.NewContextWithQuery(context.Background(), c, "")
+	if err != nil {
+		return err
+	}
 	primaryController := h.e.Analyzer.Catalog.GetBinlogPrimaryController()
 	return primaryController.RegisterReplica(newCtx, c, replicaHost, replicaPort)
 }
@@ -397,7 +408,10 @@ func (h *Handler) ComBinlogDumpGTID(c *mysql.Conn, logFile string, logPos uint64
 		Debug("Handling COM_BINLOG_DUMP_GTID")
 
 	// TODO: is logfile and logpos ever actually needed for COM_BINLOG_DUMP_GTID?
-	newCtx := sql.NewEmptyContext()
+	newCtx, err := h.sm.NewContextWithQuery(context.Background(), c, "")
+	if err != nil {
+		return err
+	}
 	primaryController := h.e.Analyzer.Catalog.GetBinlogPrimaryController()
 	return primaryController.BinlogDumpGtid(newCtx, c, gtidSet)
 }
@@ -1066,8 +1080,8 @@ func (h *Handler) WarningCount(c *mysql.Conn) uint16 {
 // getMaxUsedConnections returns the maximum number of connections that have been established at the same time for
 // this sql-server, as tracked by the Max_used_connections status variable. If any error is encountered, it will be
 // logged and 0 will be returned.
-func getMaxUsedConnections() uint64 {
-	_, maxUsedConnectionsValue, ok := sql.StatusVariables.GetGlobal("Max_used_connections")
+func getMaxUsedConnections(registry sql.StatusVariableRegistry) uint64 {
+	_, maxUsedConnectionsValue, ok := registry.GetGlobal("Max_used_connections")
 	if !ok {
 		logrus.Errorf("unable to find Max_used_connections status variable")
 		return 0
@@ -1082,8 +1096,8 @@ func getMaxUsedConnections() uint64 {
 
 // getThreadsConnected returns the current number of connected threads, as tracked by the Threads_connected status
 // variable. If any error is encountered, it will be logged and 0 will be returned.
-func getThreadsConnected() uint64 {
-	_, threadsConnectedValue, ok := sql.StatusVariables.GetGlobal("Threads_connected")
+func getThreadsConnected(registry sql.StatusVariableRegistry) uint64 {
+	_, threadsConnectedValue, ok := registry.GetGlobal("Threads_connected")
 	if !ok {
 		logrus.Errorf("unable to find Threads_connected status variable")
 		return 0
@@ -1099,13 +1113,13 @@ func getThreadsConnected() uint64 {
 // updateMaxUsedConnectionsStatusVariable updates the Max_used_connections status
 // variables if the current number of connected threads is greater than the current
 // value of Max_used_connections.
-func updateMaxUsedConnectionsStatusVariable() {
+func updateMaxUsedConnectionsStatusVariable(registry sql.StatusVariableRegistry) {
 	go func() {
 		defer errguard.RecoverAndLog("Max_used_connections status variable update")
-		maxUsedConnections := getMaxUsedConnections()
-		threadsConnected := getThreadsConnected()
+		maxUsedConnections := getMaxUsedConnections(registry)
+		threadsConnected := getThreadsConnected(registry)
 		if threadsConnected > maxUsedConnections {
-			sql.StatusVariables.SetGlobal("Max_used_connections", threadsConnected)
+			registry.SetGlobal("Max_used_connections", threadsConnected)
 			// TODO: When Max_used_connections is updated, we should also update
 			//       Max_used_connections_time with the current time, but our status
 			//       variables support currently only supports Uint values.

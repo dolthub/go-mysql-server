@@ -21290,7 +21290,7 @@ inner join pq on true
 	{
 		Query: `with a(j) as (select 1), b(i) as (select 2) (select j from a union select i from b order by 1 limit 1) union select j from a;`,
 		ExpectedPlan: "Union distinct\n" +
-			" ├─ sortFields: a.j:0!null\n" +
+			" ├─ sortFields: j:0!null\n" +
 			" ├─ limit: 1\n" +
 			" ├─ Union distinct\n" +
 			" │   ├─ SubqueryAlias\n" +
@@ -21337,7 +21337,7 @@ inner join pq on true
 			"             └─ tableId: 0\n" +
 			"",
 		ExpectedEstimates: "Union distinct\n" +
-			" ├─ sortFields: [a.j]\n" +
+			" ├─ sortFields: [j]\n" +
 			" ├─ limit: 1\n" +
 			" ├─ Union distinct\n" +
 			" │   ├─ SubqueryAlias\n" +
@@ -21369,7 +21369,7 @@ inner join pq on true
 			"             └─ name: \n" +
 			"",
 		ExpectedAnalysis: "Union distinct\n" +
-			" ├─ sortFields: [a.j]\n" +
+			" ├─ sortFields: [j]\n" +
 			" ├─ limit: 1\n" +
 			" ├─ Union distinct\n" +
 			" │   ├─ SubqueryAlias\n" +

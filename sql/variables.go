@@ -22,14 +22,32 @@ import (
 
 var SystemVariables SystemVariableRegistry
 
-// SystemVariableRegistry is a registry of system variables. Each session gets its own copy of all values via the
-// SessionMap() method.
+// EngineVariables groups the variable registries owned by one engine. Callers
+// creating independent engines must give each engine a distinct bundle.
+type EngineVariables struct {
+	System SystemVariableRegistry
+	Status StatusVariableRegistry
+}
+
+// ContextAwareSystemVariableRegistry is an optional extension for initializing
+// values with a context that belongs to the same engine as the registry.
+// AssignValues remains available for callers using the legacy initialization path.
+type ContextAwareSystemVariableRegistry interface {
+	SystemVariableRegistry
+	AssignValuesWithContext(ctx *Context, vals map[string]interface{}) error
+}
+
+// SystemVariableRegistry is a registry of system variables. Each session gets
+// a snapshot of variables with session scope via NewSessionMap; global-only
+// variables remain live in the registry.
 type SystemVariableRegistry interface {
-	// AddSystemVariables adds the given system variables to this registry
+	// AddSystemVariables adds the given system variables to this registry.
+	// The registry retains each definition; callers must provide a fresh
+	// definition (and any mutable scope or type it contains) for each registry.
 	AddSystemVariables(sysVars []SystemVariable)
 	// AssignValues assigns the given values to the system variables in this registry
 	AssignValues(vals map[string]interface{}) error
-	// NewSessionMap returns a map of system variables values that can be used by a session
+	// NewSessionMap returns values for variables with session scope.
 	NewSessionMap() map[string]SystemVarValue
 	// GetGlobal returns the current global value of the system variable with the given name
 	GetGlobal(name string) (SystemVariable, interface{}, bool)
@@ -222,7 +240,7 @@ func GetMysqlScope(t MysqlSVScopeType) *MysqlScope {
 func (m *MysqlScope) SetValue(ctx *Context, name string, val any) error {
 	switch m.Type {
 	case SystemVariableScope_Global:
-		err := SystemVariables.SetGlobal(ctx, name, val)
+		err := ctx.SystemVariables().SetGlobal(ctx, name, val)
 		if err != nil {
 			return err
 		}
@@ -240,7 +258,7 @@ func (m *MysqlScope) SetValue(ctx *Context, name string, val any) error {
 		if err != nil {
 			return err
 		}
-		err = SystemVariables.SetGlobal(ctx, name, val)
+		err = ctx.SystemVariables().SetGlobal(ctx, name, val)
 		if err != nil {
 			return err
 		}
@@ -278,7 +296,7 @@ func (m *MysqlScope) SetValue(ctx *Context, name string, val any) error {
 func (m *MysqlScope) GetValue(ctx *Context, name string, collation CollationID) (any, error) {
 	switch m.Type {
 	case SystemVariableScope_Global:
-		_, val, ok := SystemVariables.GetGlobal(name)
+		_, val, ok := ctx.SystemVariables().GetGlobal(name)
 		if !ok {
 			return nil, ErrUnknownSystemVariable.New(name)
 		}
@@ -393,9 +411,13 @@ type StatusVariable interface {
 	GetScope() StatusVariableScope
 	GetType() Type
 	GetDefault() interface{}
+	// NewValue returns a new StatusVarValue for this variable, set to its default value.
+	// StatusVarValues are mutable. Each call returns independent storage.
+	NewValue() StatusVarValue
 }
 
-// MySQLStatusVariable represents a mysql status variable.
+// MySQLStatusVariable represents a mysql status variable whose value can be set, but not incremented.
+// Counters should use MySQLStatusCounter instead.
 type MySQLStatusVariable struct {
 	Type    Type
 	Default interface{}
@@ -423,6 +445,46 @@ func (m *MySQLStatusVariable) GetType() Type {
 // GetDefault implements StatusVariable.
 func (m *MySQLStatusVariable) GetDefault() interface{} {
 	return m.Default
+}
+
+// NewValue implements StatusVariable.
+func (m *MySQLStatusVariable) NewValue() StatusVarValue {
+	return &ImmutableStatusVarValue{Var: m, Val: m.Default}
+}
+
+// MySQLStatusCounter represents a mysql status variable which holds a uint64 counter that can be
+// safely incremented concurrently. Its default value is always 0.
+type MySQLStatusCounter struct {
+	Type  Type
+	Name  string
+	Scope StatusVariableScope
+}
+
+var _ StatusVariable = (*MySQLStatusCounter)(nil)
+
+// GetName implements StatusVariable.
+func (m *MySQLStatusCounter) GetName() string {
+	return m.Name
+}
+
+// GetScope implements StatusVariable.
+func (m *MySQLStatusCounter) GetScope() StatusVariableScope {
+	return m.Scope
+}
+
+// GetType implements StatusVariable.
+func (m *MySQLStatusCounter) GetType() Type {
+	return m.Type
+}
+
+// GetDefault implements StatusVariable.
+func (m *MySQLStatusCounter) GetDefault() interface{} {
+	return uint64(0)
+}
+
+// NewValue implements StatusVariable.
+func (m *MySQLStatusCounter) NewValue() StatusVarValue {
+	return &MutableStatusVarValue{Var: m, Val: &atomic.Uint64{}}
 }
 
 type StatusVarValue interface {
@@ -493,6 +555,6 @@ func (s *ImmutableStatusVarValue) Value() interface{} {
 // IncrementStatusVariable increments the value of the status variable by integer val.
 // |name| is case-sensitive.
 func IncrementStatusVariable(ctx *Context, name string, val int) {
-	StatusVariables.IncrementGlobal(name, val)
+	ctx.StatusVariables().IncrementGlobal(name, val)
 	ctx.Session.IncrementStatusVariable(ctx, name, val)
 }
