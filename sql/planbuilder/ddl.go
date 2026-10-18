@@ -735,6 +735,7 @@ func (b *Builder) buildAlterTableColumnAction(inScope *scope, ddl *ast.DDL, tabl
 	case ast.DropStr:
 		drop := plan.NewDropColumnResolved(table, ddl.Column.String())
 		drop.Cascade = ddl.Cascade
+		drop.IfExists = ddl.ColumnIfExists
 		checks := b.loadChecksFromTable(outScope, table.Table)
 		outScope.node = drop.WithChecks(checks)
 	case ast.RenameStr:

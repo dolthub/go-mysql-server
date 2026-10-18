@@ -261,6 +261,7 @@ var InsertQueries = []WriteQueryTest{
 			"", sql.False, types.MustJSON(`""`), []byte(""), "v1", "v2",
 		}},
 	},
+
 	{
 		WriteQuery:          `INSERT INTO mytable (i,s) VALUES (10, 'NULL')`,
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
@@ -2144,6 +2145,48 @@ var InsertScripts = []ScriptTest{
 			{
 				Query:    "select * from t2",
 				Expected: []sql.Row{{types.ZeroTime}},
+			},
+		},
+	},
+	{
+		Name:    "inserting DATETIMEs with warnings",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t (dt datetime(6))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "insert into t values ('baddatetime');",
+				ExpectedErr: sql.ErrIncorrectValue,
+			},
+			{
+				Query:       "insert into t values ('2001-02-03abc');",
+				ExpectedErr: sql.ErrInvalidValue,
+			},
+			{
+				Query: "insert into t values ('2001-02-03 ');",
+				Expected: []sql.Row{
+					{types.OkResult{
+						RowsAffected: 1,
+					}}},
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       4096,
+			},
+			{
+				Query: "insert ignore into t values ('   2002-03-04     ')",
+				Expected: []sql.Row{
+					{types.OkResult{
+						RowsAffected: 1,
+					}}},
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       4096,
+			},
+			{
+				Query: "select cast(dt as char) from t order by dt",
+				Expected: []sql.Row{
+					{"2001-02-03 00:00:00.000000"},
+					{"2002-03-04 00:00:00.000000"},
+				},
 			},
 		},
 	},

@@ -1054,6 +1054,10 @@ var (
 
 	// ErrTooBigPrecision is returned when a type receives a precision that is too large.
 	ErrTooBigPrecision = newMySQLKind("Too big precision %v specified. Maximum is %v.", 1426, mysql.SSClientError)
+
+	// ErrDeprecatedDelimiter is returned when a type receives a precision that is too large.
+	// TODO: this error should include position and row number
+	ErrDeprecatedDelimiter = newMySQLKind("Delimiter '%c' in %s value '%s' is superfluous and deprecated. Prefer the standard '-'.", 4095, mysql.SSClientError)
 )
 
 // CastSQLError returns a *mysql.SQLError with the error code and in some cases, also a SQL state, populated for the
@@ -1269,4 +1273,21 @@ func NewWrappedTypeConversionError(offendingVal interface{}, idx int, err error)
 
 func (w WrappedTypeConversionError) Error() string {
 	return w.Err.Error()
+}
+
+// IsConvertWarning checks if this error is one that should be a warning from a Conversion function
+func IsConvertWarning(err error) bool {
+	return ErrTruncatedIncorrect.Is(err) || ErrDeprecatedDelimiter.Is(err)
+}
+
+func HandleConvertWarning(ctx *Context, err error) bool {
+	switch {
+	case ErrTruncatedIncorrect.Is(err):
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
+	case ErrDeprecatedDelimiter.Is(err):
+		ctx.Warn(4096, "%s", err.Error()) // TODO: update vitess with warning code
+	default:
+		return false
+	}
+	return true
 }

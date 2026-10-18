@@ -139,6 +139,41 @@ func TestProcessList(t *testing.T) {
 	require.Equal(sql.ProcessCommandSleep, proc.Command)
 }
 
+func TestProcessListWithVariables(t *testing.T) {
+	a, b := variables.NewEngineVariables(), variables.NewEngineVariables()
+	pa, pb := NewProcessListWithVariables(a), NewProcessListWithVariables(b)
+	pa.AddConnection(1, "a")
+	pb.AddConnection(2, "b")
+	pa.AddConnection(3, "a")
+	_, connected, _ := a.Status.GetGlobal("Threads_connected")
+	require.Equal(t, uint64(2), connected)
+	_, connected, _ = b.Status.GetGlobal("Threads_connected")
+	require.Equal(t, uint64(1), connected)
+	session := sql.NewBaseSessionWithClientServerWithVariables("server-a", sql.Client{Address: "a"}, 3, a)
+	pa.ConnectionReady(session)
+	ctx := sql.NewContextWithVariables(context.Background(), a, sql.WithSession(session), sql.WithPid(300))
+	ctx, err := pa.BeginQuery(ctx, "SELECT 1")
+	require.NoError(t, err)
+	_, running, _ := a.Status.GetGlobal("Threads_running")
+	require.Equal(t, uint64(1), running)
+	_, running, _ = b.Status.GetGlobal("Threads_running")
+	require.Equal(t, uint64(0), running)
+	pa.EndQuery(ctx)
+	_, running, _ = a.Status.GetGlobal("Threads_running")
+	require.Equal(t, uint64(0), running)
+
+	require.NoError(t, a.System.SetGlobal(sql.NewContextWithVariables(context.Background(), a), "long_query_time", float64(12)))
+	require.NoError(t, b.System.SetGlobal(sql.NewContextWithVariables(context.Background(), b), "long_query_time", float64(34)))
+	require.Equal(t, float64(12), getLongQueryTimeFrom(pa.systemVariables()))
+	require.Equal(t, float64(34), getLongQueryTimeFrom(pb.systemVariables()))
+
+	pa.RemoveConnection(1)
+	_, connected, _ = a.Status.GetGlobal("Threads_connected")
+	require.Equal(t, uint64(1), connected)
+	_, connected, _ = b.Status.GetGlobal("Threads_connected")
+	require.Equal(t, uint64(1), connected)
+}
+
 func sortById(slice []sql.Process) {
 	sort.Slice(slice, func(i, j int) bool {
 		return slice[i].Connection < slice[j].Connection
