@@ -78,7 +78,7 @@ Project
  │                       ├─ columns: [x y z]
  │                       ├─ colSet: (1-3)
  │                       └─ tableId: 1
- │  ->xy:14]
+ │  ->xy:15]
  └─ Project
      ├─ columns: [cte.x:7!null, cte.y:8!null, cte.z:9!null, Subquery
      │   ├─ cacheable: true
@@ -102,7 +102,7 @@ Project
      │                       ├─ columns: [x y z]
      │                       ├─ colSet: (1-3)
      │                       └─ tableId: 1
-     │  ->xy:14]
+     │  ->xy:15]
      └─ SubqueryAlias
          ├─ name: cte
          ├─ outerVisibility: false
@@ -658,7 +658,7 @@ SubqueryAlias
 			ExpectedPlan: `
 Project
  ├─ columns: [xy.x:1!null, sum(xy.y):4!null->sum(y)]
- └─ Sort((xy.x:1!null - count(xy.y):5!null) ASC nullsFirst)
+ └─ Sort((xy.x:1!null - count(xy.y):6!null) ASC nullsFirst)
      └─ GroupBy
          ├─ select: COUNT(xy.y:2!null), SUM(xy.y:2!null), xy.x:1!null
          ├─ group: xy.x:1!null
@@ -795,7 +795,7 @@ Project
 			Query: "select count(*) from (select count(*) from xy) dt",
 			ExpectedPlan: `
 Project
- ├─ columns: [count(1):6!null->count(*)]
+ ├─ columns: [count(1):7!null->count(*)]
  └─ GroupBy
      ├─ select: COUNT(1 (bigint))
      ├─ group: 
@@ -804,7 +804,7 @@ Project
          ├─ outerVisibility: false
          ├─ isLateral: false
          ├─ cacheable: true
-         ├─ colSet: (5)
+         ├─ colSet: (6)
          ├─ tableId: 2
          └─ Project
              ├─ columns: [count(1):4!null->count(*)]
@@ -844,7 +844,7 @@ SubqueryAlias
 			Query: "SELECT count(*), x+y AS r FROM xy GROUP BY x, y",
 			ExpectedPlan: `
 Project
- ├─ columns: [count(1):4!null->count(*), (xy.x:1!null + xy.y:2!null)->r:5]
+ ├─ columns: [count(1):4!null->count(*), (xy.x:1!null + xy.y:2!null)->r:6]
  └─ GroupBy
      ├─ select: COUNT(1 (bigint)), xy.x:1!null, xy.y:2!null
      ├─ group: xy.x:1!null, xy.y:2!null
@@ -859,7 +859,7 @@ Project
 			Query: "SELECT count(*), x+y AS r FROM xy GROUP BY x+y",
 			ExpectedPlan: `
 Project
- ├─ columns: [count(1):4!null->count(*), (xy.x:1!null + xy.y:2!null)->r:5]
+ ├─ columns: [count(1):4!null->count(*), (xy.x:1!null + xy.y:2!null)->r:6]
  └─ GroupBy
      ├─ select: COUNT(1 (bigint)), xy.x:1!null, xy.y:2!null
      ├─ group: (xy.x:1!null + xy.y:2!null)
@@ -923,7 +923,7 @@ Project
  └─ Sort(xy.x:1!null ASC nullsFirst)
      └─ Having
          ├─ GreaterThan
-         │   ├─ avg(xy.x):5
+         │   ├─ avg(xy.x):6
          │   └─ 1 (tinyint)
          └─ GroupBy
              ├─ select: AVG(xy.x:1!null), SUM(xy.x:1!null), xy.x:1!null
@@ -956,7 +956,7 @@ Project
 			ExpectedPlan: `
 Project
  ├─ columns: [xy.y:2!null, sum(xy.x):4!null->SUM(x)]
- └─ Sort(count(1):5!null ASC nullsFirst)
+ └─ Sort(count(1):6!null ASC nullsFirst)
      └─ GroupBy
          ├─ select: COUNT(1 (bigint)), SUM(xy.x:1!null), xy.y:2!null
          ├─ group: xy.y:2!null
@@ -972,7 +972,7 @@ Project
 			ExpectedPlan: `
 Project
  ├─ columns: [xy.y:2!null, sum(xy.x):4!null->SUM(x)]
- └─ Sort((sum(xy.x):4!null % 2 (tinyint)) ASC nullsFirst, sum(xy.x):4!null ASC nullsFirst, avg(xy.x):7 ASC nullsFirst)
+ └─ Sort((sum(xy.x):4!null % 2 (tinyint)) ASC nullsFirst, sum(xy.x):4!null ASC nullsFirst, avg(xy.x):8 ASC nullsFirst)
      └─ GroupBy
          ├─ select: AVG(xy.x:1!null), SUM(xy.x:1!null), xy.y:2!null
          ├─ group: xy.y:2!null
@@ -988,7 +988,7 @@ Project
 			ExpectedPlan: `
 Project
  ├─ columns: [xy.y:2!null, sum(xy.x):4!null->SUM(x)]
- └─ Sort(avg(xy.x):5 ASC nullsFirst)
+ └─ Sort(avg(xy.x):6 ASC nullsFirst)
      └─ GroupBy
          ├─ select: AVG(xy.x:1!null), SUM(xy.x:1!null), xy.y:2!null
          ├─ group: xy.y:2!null
@@ -1007,7 +1007,7 @@ Project
  └─ Sort(sum(xy.x):4!null->sum(x) ASC nullsFirst)
      └─ Having
          ├─ GreaterThan
-         │   ├─ avg(xy.x):5
+         │   ├─ avg(xy.x):6
          │   └─ 1 (tinyint)
          └─ GroupBy
              ├─ select: AVG(xy.x:1!null), SUM(xy.x:1!null), xy.x:1!null
@@ -1063,15 +1063,15 @@ Project
      │   ├─ cacheable: false
      │   ├─ alias-string: select u from uv where x = u
      │   └─ Project
-     │       ├─ columns: [uv.u:7!null]
+     │       ├─ columns: [uv.u:8!null]
      │       └─ Filter
      │           ├─ Eq
      │           │   ├─ xy.x:1!null
-     │           │   └─ uv.u:7!null
+     │           │   └─ uv.u:8!null
      │           └─ Table
      │               ├─ name: uv
      │               ├─ columns: [u v w]
-     │               ├─ colSet: (7-9)
+     │               ├─ colSet: (8-10)
      │               └─ tableId: 3
      │  , xy.x:1!null
      └─ Table
@@ -1369,7 +1369,7 @@ Project
 			from xy`,
 			ExpectedPlan: `
 Project
- ├─ columns: [xy.x:1!null, (xy.x:1!null * xy.y:2!null)->x*y, row_number() over ( partition by xy.x rows between unbounded preceding and unbounded following):4!null->row_num1:5, sum(xy.x) over ( partition by xy.y order by xy.x asc):6!null->sum:7]
+ ├─ columns: [xy.x:1!null, (xy.x:1!null * xy.y:2!null)->x*y, row_number() over ( partition by xy.x rows between unbounded preceding and unbounded following):5!null->row_num1:6, sum(xy.x) over ( partition by xy.y order by xy.x asc):7!null->sum:8]
  └─ Window
      ├─ row_number() over ( partition by xy.x ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
      ├─ SUM
@@ -1473,7 +1473,7 @@ Project
 			ExpectedPlan: `
 Project
  ├─ columns: [xy.x:1!null, avg(xy.x):4->avg(x)]
- └─ Sort(sum(xy.x):5!null ASC nullsFirst)
+ └─ Sort(sum(xy.x):6!null ASC nullsFirst)
      └─ GroupBy
          ├─ select: AVG(xy.x:1!null), SUM(xy.x:1!null), xy.x:1!null
          ├─ group: xy.x:1!null
@@ -1505,7 +1505,7 @@ Project
 			ExpectedPlan: `
 Project
  ├─ columns: [xy.x:1!null, avg(xy.x):4->avg(x)]
- └─ Sort(avg(xy.y):5 ASC nullsFirst)
+ └─ Sort(avg(xy.y):6 ASC nullsFirst)
      └─ GroupBy
          ├─ select: AVG(xy.x:1!null), AVG(xy.y:2!null), xy.x:1!null
          ├─ group: xy.x:1!null
@@ -1521,7 +1521,7 @@ Project
 			ExpectedPlan: `
 Project
  ├─ columns: [xy.x:1!null, avg(xy.x):4->avg(x)]
- └─ Sort((avg(xy.y):5 + xy.y:2!null) ASC nullsFirst)
+ └─ Sort((avg(xy.y):6 + xy.y:2!null) ASC nullsFirst)
      └─ GroupBy
          ├─ select: AVG(xy.x:1!null), AVG(xy.y:2!null), xy.x:1!null, xy.y:2!null
          ├─ group: xy.x:1!null
@@ -2012,74 +2012,74 @@ Project
  │   ├─ cacheable: false
  │   ├─ alias-string: select max(dt.a) from (select x as a) as dt (a)
  │   └─ Project
- │       ├─ columns: [max(dt.a):7!null]
+ │       ├─ columns: [max(dt.a):8!null]
  │       └─ GroupBy
- │           ├─ select: MAX(dt.a:6!null)
+ │           ├─ select: MAX(dt.a:7!null)
  │           ├─ group: 
  │           └─ SubqueryAlias
  │               ├─ name: dt
  │               ├─ outerVisibility: false
  │               ├─ isLateral: false
  │               ├─ cacheable: false
- │               ├─ colSet: (6)
+ │               ├─ colSet: (7)
  │               ├─ tableId: 2
  │               └─ Project
- │                   ├─ columns: [xy.x:1!null->a:5]
+ │                   ├─ columns: [xy.x:1!null->a:6]
  │                   └─ Table
  │                       ├─ name: 
  │                       ├─ columns: []
  │                       ├─ colSet: ()
  │                       └─ tableId: 0
- │  ->a1:8]
+ │  ->a1:9]
  └─ Project
      ├─ columns: [max(xy.x):4!null, xy.x:1!null, Subquery
      │   ├─ cacheable: false
      │   ├─ alias-string: select max(dt.a) from (select x as a) as dt (a)
      │   └─ Project
-     │       ├─ columns: [max(dt.a):7!null]
+     │       ├─ columns: [max(dt.a):8!null]
      │       └─ GroupBy
-     │           ├─ select: MAX(dt.a:6!null)
+     │           ├─ select: MAX(dt.a:7!null)
      │           ├─ group: 
      │           └─ SubqueryAlias
      │               ├─ name: dt
      │               ├─ outerVisibility: false
      │               ├─ isLateral: false
      │               ├─ cacheable: false
-     │               ├─ colSet: (6)
+     │               ├─ colSet: (7)
      │               ├─ tableId: 2
      │               └─ Project
-     │                   ├─ columns: [xy.x:1!null->a:5]
+     │                   ├─ columns: [xy.x:1!null->a:6]
      │                   └─ Table
      │                       ├─ name: 
      │                       ├─ columns: []
      │                       ├─ colSet: ()
      │                       └─ tableId: 0
-     │  ->a1:8]
+     │  ->a1:9]
      └─ GroupBy
          ├─ select: MAX(xy.x:1!null), xy.x:1!null
          ├─ group: Subquery
          │   ├─ cacheable: false
          │   ├─ alias-string: select max(dt.a) from (select x as a) as dt (a)
          │   └─ Project
-         │       ├─ columns: [max(dt.a):7!null]
+         │       ├─ columns: [max(dt.a):8!null]
          │       └─ GroupBy
-         │           ├─ select: MAX(dt.a:6!null)
+         │           ├─ select: MAX(dt.a:7!null)
          │           ├─ group: 
          │           └─ SubqueryAlias
          │               ├─ name: dt
          │               ├─ outerVisibility: false
          │               ├─ isLateral: false
          │               ├─ cacheable: false
-         │               ├─ colSet: (6)
+         │               ├─ colSet: (7)
          │               ├─ tableId: 2
          │               └─ Project
-         │                   ├─ columns: [xy.x:1!null->a:5]
+         │                   ├─ columns: [xy.x:1!null->a:6]
          │                   └─ Table
          │                       ├─ name: 
          │                       ├─ columns: []
          │                       ├─ colSet: ()
          │                       └─ tableId: 0
-         │  ->a1:8
+         │  ->a1:9
          └─ Table
              ├─ name: xy
              ├─ columns: [x y z]
