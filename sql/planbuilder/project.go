@@ -166,7 +166,6 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 			id := outScope.newColumn(col)
 			e = e.WithId(sql.ColumnId(id)).(*expression.Alias)
 			outScope.cols[len(outScope.cols)-1].scalar = e
-
 			if !e.Unreferencable() {
 				col.id = id
 				col.scalar = e
@@ -176,7 +175,6 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 			if inScope.selectAliases == nil {
 				inScope.selectAliases = make(map[string]*expression.Alias)
 			}
-
 			inScope.selectAliases[strings.ToLower(e.Name())] = e
 			exprs = append(exprs, e)
 		case *expression.Literal:
