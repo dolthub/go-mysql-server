@@ -140,7 +140,7 @@ WHERE
 			"     │   └─ IndexedTableAccess(E2I7U)\n" +
 			"     │       ├─ index: [E2I7U.ZH72S]\n" +
 			"     │       ├─ static: [{(NULL, ∞)}]\n" +
-			"     │       ├─ colSet: (45-61)\n" +
+			"     │       ├─ colSet: (46-62)\n" +
 			"     │       ├─ tableId: 5\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: E2I7U\n" +
@@ -154,7 +154,7 @@ WHERE
 			"                 ├─ outerVisibility: false\n" +
 			"                 ├─ isLateral: false\n" +
 			"                 ├─ cacheable: true\n" +
-			"                 ├─ colSet: (41-44)\n" +
+			"                 ├─ colSet: (42-45)\n" +
 			"                 ├─ tableId: 4\n" +
 			"                 └─ Filter\n" +
 			"                     ├─ AND\n" +
@@ -180,7 +180,7 @@ WHERE
 			"                                         ├─ outerVisibility: false\n" +
 			"                                         ├─ isLateral: false\n" +
 			"                                         ├─ cacheable: true\n" +
-			"                                         ├─ colSet: (31-33)\n" +
+			"                                         ├─ colSet: (32-34)\n" +
 			"                                         ├─ tableId: 3\n" +
 			"                                         └─ Project\n" +
 			"                                             ├─ columns: [nd.id:0!null->id:0, nd.ZH72S:7->ZH72S:0, Subquery\n" +
@@ -269,7 +269,7 @@ WHERE
 			"                                         ├─ outerVisibility: false\n" +
 			"                                         ├─ isLateral: false\n" +
 			"                                         ├─ cacheable: true\n" +
-			"                                         ├─ colSet: (31-33)\n" +
+			"                                         ├─ colSet: (32-34)\n" +
 			"                                         ├─ tableId: 3\n" +
 			"                                         └─ Project\n" +
 			"                                             ├─ columns: [nd.id as id, nd.ZH72S as ZH72S, Subquery\n" +
@@ -339,7 +339,7 @@ WHERE
 			"                                         ├─ outerVisibility: false\n" +
 			"                                         ├─ isLateral: false\n" +
 			"                                         ├─ cacheable: true\n" +
-			"                                         ├─ colSet: (31-33)\n" +
+			"                                         ├─ colSet: (32-34)\n" +
 			"                                         ├─ tableId: 3\n" +
 			"                                         └─ Project\n" +
 			"                                             ├─ columns: [nd.id as id, nd.ZH72S as ZH72S, Subquery\n" +
@@ -1267,7 +1267,7 @@ WHERE
 			"     │   └─ IndexedTableAccess(E2I7U)\n" +
 			"     │       ├─ index: [E2I7U.ZH72S]\n" +
 			"     │       ├─ static: [{(NULL, ∞)}]\n" +
-			"     │       ├─ colSet: (48-64)\n" +
+			"     │       ├─ colSet: (49-65)\n" +
 			"     │       ├─ tableId: 5\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: E2I7U\n" +
@@ -1281,7 +1281,7 @@ WHERE
 			"                 ├─ outerVisibility: false\n" +
 			"                 ├─ isLateral: false\n" +
 			"                 ├─ cacheable: true\n" +
-			"                 ├─ colSet: (44-47)\n" +
+			"                 ├─ colSet: (45-48)\n" +
 			"                 ├─ tableId: 4\n" +
 			"                 └─ Filter\n" +
 			"                     ├─ AND\n" +
@@ -1307,7 +1307,7 @@ WHERE
 			"                                         ├─ outerVisibility: false\n" +
 			"                                         ├─ isLateral: false\n" +
 			"                                         ├─ cacheable: true\n" +
-			"                                         ├─ colSet: (34-36)\n" +
+			"                                         ├─ colSet: (35-37)\n" +
 			"                                         ├─ tableId: 3\n" +
 			"                                         └─ Project\n" +
 			"                                             ├─ columns: [nd.id:0!null->id:0, nd.ZH72S:7->ZH72S:0, Subquery\n" +
@@ -1396,7 +1396,7 @@ WHERE
 			"                                         ├─ outerVisibility: false\n" +
 			"                                         ├─ isLateral: false\n" +
 			"                                         ├─ cacheable: true\n" +
-			"                                         ├─ colSet: (34-36)\n" +
+			"                                         ├─ colSet: (35-37)\n" +
 			"                                         ├─ tableId: 3\n" +
 			"                                         └─ Project\n" +
 			"                                             ├─ columns: [nd.id as id, nd.ZH72S as ZH72S, Subquery\n" +
@@ -1466,7 +1466,7 @@ WHERE
 			"                                         ├─ outerVisibility: false\n" +
 			"                                         ├─ isLateral: false\n" +
 			"                                         ├─ cacheable: true\n" +
-			"                                         ├─ colSet: (34-36)\n" +
+			"                                         ├─ colSet: (35-37)\n" +
 			"                                         ├─ tableId: 3\n" +
 			"                                         └─ Project\n" +
 			"                                             ├─ columns: [nd.id as id, nd.ZH72S as ZH72S, Subquery\n" +
@@ -3266,7 +3266,7 @@ WHERE
 			"     │   └─ IndexedTableAccess(E2I7U)\n" +
 			"     │       ├─ index: [E2I7U.ZH72S]\n" +
 			"     │       ├─ static: [{(NULL, ∞)}]\n" +
-			"     │       ├─ colSet: (44-60)\n" +
+			"     │       ├─ colSet: (45-61)\n" +
 			"     │       ├─ tableId: 5\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: E2I7U\n" +
@@ -3280,7 +3280,7 @@ WHERE
 			"                 ├─ outerVisibility: false\n" +
 			"                 ├─ isLateral: false\n" +
 			"                 ├─ cacheable: true\n" +
-			"                 ├─ colSet: (40-43)\n" +
+			"                 ├─ colSet: (41-44)\n" +
 			"                 ├─ tableId: 4\n" +
 			"                 └─ Filter\n" +
 			"                     ├─ AND\n" +
@@ -3306,7 +3306,7 @@ WHERE
 			"                                         ├─ outerVisibility: false\n" +
 			"                                         ├─ isLateral: false\n" +
 			"                                         ├─ cacheable: true\n" +
-			"                                         ├─ colSet: (30-32)\n" +
+			"                                         ├─ colSet: (31-33)\n" +
 			"                                         ├─ tableId: 3\n" +
 			"                                         └─ Project\n" +
 			"                                             ├─ columns: [nd.id:0!null->id:0, nd.ZH72S:7->ZH72S:0, Subquery\n" +
@@ -3395,7 +3395,7 @@ WHERE
 			"                                         ├─ outerVisibility: false\n" +
 			"                                         ├─ isLateral: false\n" +
 			"                                         ├─ cacheable: true\n" +
-			"                                         ├─ colSet: (30-32)\n" +
+			"                                         ├─ colSet: (31-33)\n" +
 			"                                         ├─ tableId: 3\n" +
 			"                                         └─ Project\n" +
 			"                                             ├─ columns: [nd.id as id, nd.ZH72S as ZH72S, Subquery\n" +
@@ -3465,7 +3465,7 @@ WHERE
 			"                                         ├─ outerVisibility: false\n" +
 			"                                         ├─ isLateral: false\n" +
 			"                                         ├─ cacheable: true\n" +
-			"                                         ├─ colSet: (30-32)\n" +
+			"                                         ├─ colSet: (31-33)\n" +
 			"                                         ├─ tableId: 3\n" +
 			"                                         └─ Project\n" +
 			"                                             ├─ columns: [nd.id as id, nd.ZH72S as ZH72S, Subquery\n" +
@@ -21503,7 +21503,7 @@ WHERE
 			"     ├─ Project\n" +
 			"     │   ├─ columns: [id:0!null, FZ2R5:1!null, LUEVY:2!null, M22QN:3!null, OVE3E:4!null, NRURT:5, OCA7E:6, XMM6Q:7, V5DPX:8!null, S3Q3Y:9!null, ZRV3B:10!null, FHCYT:11]\n" +
 			"     │   └─ Project\n" +
-			"     │       ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0')->id:120, pqsxb.FZ2R5:0->FZ2R5:0, nd.id:12!null->LUEVY:0, Subquery\n" +
+			"     │       ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0')->id:121, pqsxb.FZ2R5:0->FZ2R5:0, nd.id:12!null->LUEVY:0, Subquery\n" +
 			"     │       │   ├─ cacheable: false\n" +
 			"     │       │   ├─ alias-string: select aac.id from TPXBU as aac where aac.BTXC5 = PQSXB.BTXC5\n" +
 			"     │       │   └─ Project\n" +
@@ -21516,14 +21516,14 @@ WHERE
 			"     │       │               └─ IndexedTableAccess(TPXBU)\n" +
 			"     │       │                   ├─ index: [TPXBU.BTXC5]\n" +
 			"     │       │                   ├─ keys: [pqsxb.BTXC5:10]\n" +
-			"     │       │                   ├─ colSet: (123-125)\n" +
+			"     │       │                   ├─ colSet: (124-126)\n" +
 			"     │       │                   ├─ tableId: 10\n" +
 			"     │       │                   └─ Table\n" +
 			"     │       │                       ├─ name: TPXBU\n" +
 			"     │       │                       └─ columns: [id btxc5]\n" +
 			"     │       │  ->M22QN:0, pqsxb.OVE3E:1->OVE3E:0, pqsxb.NRURT:2!null->NRURT:0, pqsxb.OCA7E:3!null->OCA7E:0, pqsxb.XMM6Q:4->XMM6Q:0, pqsxb.V5DPX:5->V5DPX:0, pqsxb.S3Q3Y:6->S3Q3Y:0, pqsxb.ZRV3B:7->ZRV3B:0, pqsxb.FHCYT:8->FHCYT:0]\n" +
 			"     │       └─ Project\n" +
-			"     │           ├─ columns: [pqsxb.FZ2R5:0, pqsxb.OVE3E:1, pqsxb.NRURT:2!null, pqsxb.OCA7E:3!null, pqsxb.XMM6Q:4, pqsxb.V5DPX:5, pqsxb.S3Q3Y:6, pqsxb.ZRV3B:7, pqsxb.FHCYT:8, pqsxb.K3B6V:9, pqsxb.BTXC5:10, pqsxb.H4DMT:11!null, nd.id:12!null, nd.DKCAJ:13!null, nd.KNG7T:14, nd.TW55N:15!null, nd.QRQXW:16!null, nd.ECXAJ:17!null, nd.FGG57:18, nd.ZH72S:19, nd.FSK67:20!null, nd.XQDYT:21!null, nd.TCE7A:22, nd.IWV2H:23, nd.HPCMS:24!null, nd.N5CC2:25, nd.FHCYT:26, nd.ETAQ7:27, nd.A75X7:28, lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0')->id:120, pqsxb.FZ2R5:0->FZ2R5:0, nd.id:12!null->LUEVY:0, Subquery\n" +
+			"     │           ├─ columns: [pqsxb.FZ2R5:0, pqsxb.OVE3E:1, pqsxb.NRURT:2!null, pqsxb.OCA7E:3!null, pqsxb.XMM6Q:4, pqsxb.V5DPX:5, pqsxb.S3Q3Y:6, pqsxb.ZRV3B:7, pqsxb.FHCYT:8, pqsxb.K3B6V:9, pqsxb.BTXC5:10, pqsxb.H4DMT:11!null, nd.id:12!null, nd.DKCAJ:13!null, nd.KNG7T:14, nd.TW55N:15!null, nd.QRQXW:16!null, nd.ECXAJ:17!null, nd.FGG57:18, nd.ZH72S:19, nd.FSK67:20!null, nd.XQDYT:21!null, nd.TCE7A:22, nd.IWV2H:23, nd.HPCMS:24!null, nd.N5CC2:25, nd.FHCYT:26, nd.ETAQ7:27, nd.A75X7:28, lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0')->id:121, pqsxb.FZ2R5:0->FZ2R5:0, nd.id:12!null->LUEVY:0, Subquery\n" +
 			"     │           │   ├─ cacheable: false\n" +
 			"     │           │   ├─ alias-string: select aac.id from TPXBU as aac where aac.BTXC5 = PQSXB.BTXC5\n" +
 			"     │           │   └─ Project\n" +
@@ -21536,7 +21536,7 @@ WHERE
 			"     │           │               └─ IndexedTableAccess(TPXBU)\n" +
 			"     │           │                   ├─ index: [TPXBU.BTXC5]\n" +
 			"     │           │                   ├─ keys: [pqsxb.BTXC5:10]\n" +
-			"     │           │                   ├─ colSet: (123-125)\n" +
+			"     │           │                   ├─ colSet: (124-126)\n" +
 			"     │           │                   ├─ tableId: 10\n" +
 			"     │           │                   └─ Table\n" +
 			"     │           │                       ├─ name: TPXBU\n" +
@@ -21560,7 +21560,7 @@ WHERE
 			"     │               │   ├─ outerVisibility: false\n" +
 			"     │               │   ├─ isLateral: false\n" +
 			"     │               │   ├─ cacheable: true\n" +
-			"     │               │   ├─ colSet: (91-102)\n" +
+			"     │               │   ├─ colSet: (92-103)\n" +
 			"     │               │   ├─ tableId: 8\n" +
 			"     │               │   └─ Filter\n" +
 			"     │               │       ├─ NOT\n" +
@@ -21673,7 +21673,7 @@ WHERE
 			"     │               │           │               └─ Table\n" +
 			"     │               │           │                   ├─ name: SFEGG\n" +
 			"     │               │           │                   └─ columns: [id no52d vyo5e dkcaj adurz fhcyt]\n" +
-			"     │               │           │  ->OVE3E:0, uct.id:0!null->NRURT:0, i7hcr.id:13!null->OCA7E:0, NULL (null)->XMM6Q:83, uct.V5DPX:4->V5DPX:0, (uct.IDPK7:6 + 0.0 (decimal(2,1)))->S3Q3Y:0, uct.ZRV3B:8->ZRV3B:0, CASE  WHEN NOT\n" +
+			"     │               │           │  ->OVE3E:0, uct.id:0!null->NRURT:0, i7hcr.id:13!null->OCA7E:0, NULL (null)->XMM6Q:84, uct.V5DPX:4->V5DPX:0, (uct.IDPK7:6 + 0.0 (decimal(2,1)))->S3Q3Y:0, uct.ZRV3B:8->ZRV3B:0, CASE  WHEN NOT\n" +
 			"     │               │           │   └─ Eq\n" +
 			"     │               │           │       ├─ uct.FHCYT:11\n" +
 			"     │               │           │       └─ N/A (longtext)\n" +
@@ -21786,7 +21786,7 @@ WHERE
 			"     │               │               │               └─ Table\n" +
 			"     │               │               │                   ├─ name: SFEGG\n" +
 			"     │               │               │                   └─ columns: [id no52d vyo5e dkcaj adurz fhcyt]\n" +
-			"     │               │               │  ->OVE3E:0, uct.id:0!null->NRURT:0, i7hcr.id:13!null->OCA7E:0, NULL (null)->XMM6Q:83, uct.V5DPX:4->V5DPX:0, (uct.IDPK7:6 + 0.0 (decimal(2,1)))->S3Q3Y:0, uct.ZRV3B:8->ZRV3B:0, CASE  WHEN NOT\n" +
+			"     │               │               │  ->OVE3E:0, uct.id:0!null->NRURT:0, i7hcr.id:13!null->OCA7E:0, NULL (null)->XMM6Q:84, uct.V5DPX:4->V5DPX:0, (uct.IDPK7:6 + 0.0 (decimal(2,1)))->S3Q3Y:0, uct.ZRV3B:8->ZRV3B:0, CASE  WHEN NOT\n" +
 			"     │               │               │   └─ Eq\n" +
 			"     │               │               │       ├─ uct.FHCYT:11\n" +
 			"     │               │               │       └─ N/A (longtext)\n" +
@@ -21828,7 +21828,7 @@ WHERE
 			"     │                       │   └─ IndexedTableAccess(E2I7U)\n" +
 			"     │                       │       ├─ index: [E2I7U.ZH72S]\n" +
 			"     │                       │       ├─ keys: [pqsxb.K3B6V:9]\n" +
-			"     │                       │       ├─ colSet: (103-119)\n" +
+			"     │                       │       ├─ colSet: (104-120)\n" +
 			"     │                       │       ├─ tableId: 9\n" +
 			"     │                       │       └─ Table\n" +
 			"     │                       │           ├─ name: E2I7U\n" +
@@ -21837,7 +21837,7 @@ WHERE
 			"     │                           └─ IndexedTableAccess(E2I7U)\n" +
 			"     │                               ├─ index: [E2I7U.TW55N]\n" +
 			"     │                               ├─ keys: [pqsxb.H4DMT:11!null]\n" +
-			"     │                               ├─ colSet: (103-119)\n" +
+			"     │                               ├─ colSet: (104-120)\n" +
 			"     │                               ├─ tableId: 9\n" +
 			"     │                               └─ Table\n" +
 			"     │                                   ├─ name: E2I7U\n" +

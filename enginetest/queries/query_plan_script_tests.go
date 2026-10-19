@@ -1318,7 +1318,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					"         ├─ outerVisibility: true\n" +
 					"         ├─ isLateral: false\n" +
 					"         ├─ cacheable: true\n" +
-					"         ├─ colSet: (20,21)\n" +
+					"         ├─ colSet: (21,22)\n" +
 					"         ├─ tableId: 7\n" +
 					"         └─ RecursiveCTE\n" +
 					"             └─ Union all\n" +

@@ -938,7 +938,7 @@ From xy;`,
 			" ├─ outerVisibility: false\n" +
 			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
-			" ├─ colSet: (4)\n" +
+			" ├─ colSet: (5)\n" +
 			" ├─ tableId: 2\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [count(1):0!null->count(*):0]\n" +
@@ -951,7 +951,7 @@ From xy;`,
 			" ├─ outerVisibility: false\n" +
 			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
-			" ├─ colSet: (4)\n" +
+			" ├─ colSet: (5)\n" +
 			" ├─ tableId: 2\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [count(1) as `count(*)`]\n" +
@@ -964,7 +964,7 @@ From xy;`,
 			" ├─ outerVisibility: false\n" +
 			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
-			" ├─ colSet: (4)\n" +
+			" ├─ colSet: (5)\n" +
 			" ├─ tableId: 2\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [count(1) as `count(*)`]\n" +
@@ -1481,7 +1481,7 @@ where
 			"     ├─ outerVisibility: false\n" +
 			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
-			"     ├─ colSet: (1)\n" +
+			"     ├─ colSet: (2)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [json_object('key1',1,'key2','abc')->JSON_OBJECT('key1', 1, 'key2', 'abc')]\n" +
@@ -1498,7 +1498,7 @@ where
 			"     ├─ outerVisibility: false\n" +
 			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
-			"     ├─ colSet: (1)\n" +
+			"     ├─ colSet: (2)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [json_object('key1',1,'key2','abc') as `JSON_OBJECT('key1', 1, 'key2', 'abc')`]\n" +
@@ -1512,7 +1512,7 @@ where
 			"     ├─ outerVisibility: false\n" +
 			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
-			"     ├─ colSet: (1)\n" +
+			"     ├─ colSet: (2)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [json_object('key1',1,'key2','abc') as `JSON_OBJECT('key1', 1, 'key2', 'abc')`]\n" +
@@ -1529,7 +1529,7 @@ where
 			"     ├─ outerVisibility: false\n" +
 			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
-			"     ├─ colSet: (1)\n" +
+			"     ├─ colSet: (2)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [json_object('key1',1,'key2','abc')->JSON_OBJECT('key1', 1, 'key2', 'abc')]\n" +
@@ -1546,7 +1546,7 @@ where
 			"     ├─ outerVisibility: false\n" +
 			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
-			"     ├─ colSet: (1)\n" +
+			"     ├─ colSet: (2)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [json_object('key1',1,'key2','abc') as `JSON_OBJECT('key1', 1, 'key2', 'abc')`]\n" +
@@ -1560,7 +1560,7 @@ where
 			"     ├─ outerVisibility: false\n" +
 			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
-			"     ├─ colSet: (1)\n" +
+			"     ├─ colSet: (2)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [json_object('key1',1,'key2','abc') as `JSON_OBJECT('key1', 1, 'key2', 'abc')`]\n" +
@@ -5259,7 +5259,7 @@ Select * from (
 			" │       └─ IndexedTableAccess(mytable)\n" +
 			" │           ├─ index: [mytable.i]\n" +
 			" │           ├─ static: [{[1, 1]}]\n" +
-			" │           ├─ colSet: (2,3)\n" +
+			" │           ├─ colSet: (3,4)\n" +
 			" │           ├─ tableId: 1\n" +
 			" │           └─ Table\n" +
 			" │               ├─ name: mytable\n" +
@@ -6528,7 +6528,6 @@ inner join pq on true
 			"",
 	},
 	{
-		// Window result references use SQL names; argument debug details remain on the Window node.
 		Query: `SELECT SUM(i) OVER (PARTITION BY s ORDER BY i) AS total FROM mytable`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [sum(mytable.i) over ( partition by mytable.s order by mytable.i asc):0!null->total:0]\n" +
@@ -6539,7 +6538,22 @@ inner join pq on true
 			"     └─ ProcessTable\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
-			"             └─ columns: [i s]\n",
+			"             └─ columns: [i s]\n" +
+			"",
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [sum(mytable.i) over ( partition by mytable.s order by mytable.i asc) as total]\n" +
+			" └─ Window(SUM(mytable.i) over ( partition by mytable.s order by mytable.i ASC))\n" +
+			"     └─ Table\n" +
+			"         ├─ name: mytable\n" +
+			"         └─ columns: [i s]\n" +
+			"",
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [sum(mytable.i) over ( partition by mytable.s order by mytable.i asc) as total]\n" +
+			" └─ Window(SUM(mytable.i) over ( partition by mytable.s order by mytable.i ASC))\n" +
+			"     └─ Table\n" +
+			"         ├─ name: mytable\n" +
+			"         └─ columns: [i s]\n" +
+			"",
 	},
 	{
 		Query: `select row_number() over (order by i desc), mytable.i as i2
@@ -19893,7 +19907,7 @@ inner join pq on true
 			"         ├─ outerVisibility: false\n" +
 			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
-			"         ├─ colSet: (4)\n" +
+			"         ├─ colSet: (5)\n" +
 			"         ├─ tableId: 3\n" +
 			"         └─ RecursiveCTE\n" +
 			"             └─ Union all\n" +
@@ -19923,7 +19937,7 @@ inner join pq on true
 			"         ├─ outerVisibility: false\n" +
 			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
-			"         ├─ colSet: (4)\n" +
+			"         ├─ colSet: (5)\n" +
 			"         ├─ tableId: 3\n" +
 			"         └─ RecursiveCTE\n" +
 			"             └─ Union all\n" +
@@ -19948,7 +19962,7 @@ inner join pq on true
 			"         ├─ outerVisibility: false\n" +
 			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
-			"         ├─ colSet: (4)\n" +
+			"         ├─ colSet: (5)\n" +
 			"         ├─ tableId: 3\n" +
 			"         └─ RecursiveCTE\n" +
 			"             └─ Union all\n" +
@@ -19976,7 +19990,7 @@ inner join pq on true
 			"         ├─ outerVisibility: false\n" +
 			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
-			"         ├─ colSet: (4)\n" +
+			"         ├─ colSet: (5)\n" +
 			"         ├─ tableId: 3\n" +
 			"         └─ RecursiveCTE\n" +
 			"             └─ Union all\n" +
@@ -20008,7 +20022,7 @@ inner join pq on true
 			"         ├─ outerVisibility: false\n" +
 			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
-			"         ├─ colSet: (4)\n" +
+			"         ├─ colSet: (5)\n" +
 			"         ├─ tableId: 3\n" +
 			"         └─ RecursiveCTE\n" +
 			"             └─ Union all\n" +
@@ -20034,7 +20048,7 @@ inner join pq on true
 			"         ├─ outerVisibility: false\n" +
 			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
-			"         ├─ colSet: (4)\n" +
+			"         ├─ colSet: (5)\n" +
 			"         ├─ tableId: 3\n" +
 			"         └─ RecursiveCTE\n" +
 			"             └─ Union all\n" +
@@ -20063,7 +20077,7 @@ inner join pq on true
 			"         ├─ outerVisibility: false\n" +
 			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
-			"         ├─ colSet: (4)\n" +
+			"         ├─ colSet: (5)\n" +
 			"         ├─ tableId: 3\n" +
 			"         └─ RecursiveCTE\n" +
 			"             └─ Union all\n" +
@@ -20093,7 +20107,7 @@ inner join pq on true
 			"         ├─ outerVisibility: false\n" +
 			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
-			"         ├─ colSet: (4)\n" +
+			"         ├─ colSet: (5)\n" +
 			"         ├─ tableId: 3\n" +
 			"         └─ RecursiveCTE\n" +
 			"             └─ Union all\n" +
@@ -20118,7 +20132,7 @@ inner join pq on true
 			"         ├─ outerVisibility: false\n" +
 			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
-			"         ├─ colSet: (4)\n" +
+			"         ├─ colSet: (5)\n" +
 			"         ├─ tableId: 3\n" +
 			"         └─ RecursiveCTE\n" +
 			"             └─ Union all\n" +
@@ -20431,7 +20445,7 @@ inner join pq on true
 			"         ├─ outerVisibility: false\n" +
 			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
-			"         ├─ colSet: (8)\n" +
+			"         ├─ colSet: (9)\n" +
 			"         ├─ tableId: 7\n" +
 			"         └─ RecursiveCTE\n" +
 			"             └─ Union distinct\n" +
@@ -20491,7 +20505,7 @@ inner join pq on true
 			"         ├─ outerVisibility: false\n" +
 			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
-			"         ├─ colSet: (8)\n" +
+			"         ├─ colSet: (9)\n" +
 			"         ├─ tableId: 7\n" +
 			"         └─ RecursiveCTE\n" +
 			"             └─ Union distinct\n" +
@@ -20535,7 +20549,7 @@ inner join pq on true
 			"         ├─ outerVisibility: false\n" +
 			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
-			"         ├─ colSet: (8)\n" +
+			"         ├─ colSet: (9)\n" +
 			"         ├─ tableId: 7\n" +
 			"         └─ RecursiveCTE\n" +
 			"             └─ Union distinct\n" +
@@ -22400,7 +22414,7 @@ WHERE keyless.c0 IN (
 			"         │                   │   ├─ outerVisibility: true\n" +
 			"         │                   │   ├─ isLateral: false\n" +
 			"         │                   │   ├─ cacheable: true\n" +
-			"         │                   │   ├─ colSet: (16-18)\n" +
+			"         │                   │   ├─ colSet: (18-20)\n" +
 			"         │                   │   ├─ tableId: 5\n" +
 			"         │                   │   └─ RecursiveCTE\n" +
 			"         │                   │       └─ Union all\n" +
@@ -22436,7 +22450,7 @@ WHERE keyless.c0 IN (
 			"         │                           └─ Table\n" +
 			"         │                               ├─ name: keyless\n" +
 			"         │                               ├─ columns: [c0]\n" +
-			"         │                               ├─ colSet: (14,15)\n" +
+			"         │                               ├─ colSet: (16,17)\n" +
 			"         │                               └─ tableId: 7\n" +
 			"         └─ ProcessTable\n" +
 			"             └─ Table\n" +
@@ -22490,7 +22504,7 @@ WHERE keyless.c0 IN (
 			"         │                   │   ├─ outerVisibility: true\n" +
 			"         │                   │   ├─ isLateral: false\n" +
 			"         │                   │   ├─ cacheable: true\n" +
-			"         │                   │   ├─ colSet: (14-16)\n" +
+			"         │                   │   ├─ colSet: (16-18)\n" +
 			"         │                   │   ├─ tableId: 5\n" +
 			"         │                   │   └─ RecursiveCTE\n" +
 			"         │                   │       └─ Union all\n" +
@@ -22526,7 +22540,7 @@ WHERE keyless.c0 IN (
 			"         │                           └─ Table\n" +
 			"         │                               ├─ name: keyless\n" +
 			"         │                               ├─ columns: [c0]\n" +
-			"         │                               ├─ colSet: (17,18)\n" +
+			"         │                               ├─ colSet: (19,20)\n" +
 			"         │                               └─ tableId: 7\n" +
 			"         └─ ProcessTable\n" +
 			"             └─ Table\n" +
@@ -23727,7 +23741,7 @@ WHERE keyless.c0 IN (
 			" ├─ outerVisibility: false\n" +
 			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
-			" ├─ colSet: (4)\n" +
+			" ├─ colSet: (5)\n" +
 			" ├─ tableId: 2\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [max(xy.x):0!null->max(x):0]\n" +
@@ -23750,7 +23764,7 @@ WHERE keyless.c0 IN (
 			" ├─ outerVisibility: false\n" +
 			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
-			" ├─ colSet: (4)\n" +
+			" ├─ colSet: (5)\n" +
 			" ├─ tableId: 2\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [max(xy.x) as `max(x)`]\n" +
@@ -23769,7 +23783,7 @@ WHERE keyless.c0 IN (
 			" ├─ outerVisibility: false\n" +
 			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
-			" ├─ colSet: (4)\n" +
+			" ├─ colSet: (5)\n" +
 			" ├─ tableId: 2\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [max(xy.x) as `max(x)`]\n" +
@@ -23793,7 +23807,7 @@ WHERE keyless.c0 IN (
 			"     ├─ outerVisibility: false\n" +
 			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
-			"     ├─ colSet: (5)\n" +
+			"     ├─ colSet: (6)\n" +
 			"     ├─ tableId: 3\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [max(xy.x):0!null->max(x):0]\n" +
@@ -23818,7 +23832,7 @@ WHERE keyless.c0 IN (
 			"     ├─ outerVisibility: false\n" +
 			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
-			"     ├─ colSet: (5)\n" +
+			"     ├─ colSet: (6)\n" +
 			"     ├─ tableId: 3\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [max(xy.x) as `max(x)`]\n" +
@@ -23839,7 +23853,7 @@ WHERE keyless.c0 IN (
 			"     ├─ outerVisibility: false\n" +
 			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
-			"     ├─ colSet: (5)\n" +
+			"     ├─ colSet: (6)\n" +
 			"     ├─ tableId: 3\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [max(xy.x) as `max(x)`]\n" +
@@ -26446,11 +26460,11 @@ order by x, y;
 	},
 	{
 		Query: `SELECT pk2 FROM three_pk WHERE pk1=0 AND c5=0 ORDER BY pk2, c5`,
-		Skip:  true, // TODO: Remove sort nodes when ordered by a constant column, even if that column isn't in the index.
+		Skip:  true,
 	},
 	{
 		Query: `SELECT pk2 FROM three_pk WHERE pk1=0 AND c5=0 ORDER BY c5, pk2`,
-		Skip:  true, // TODO: Remove sort nodes when ordered by a constant column, even if that column isn't in the index.
+		Skip:  true,
 	},
 	{
 		Query: `SELECT pk2 FROM two_pk WHERE pk1=0 ORDER BY pk2, pk1`,
@@ -26482,32 +26496,7 @@ order by x, y;
 	},
 	{
 		Query: `SELECT pk2 FROM two_pk WHERE pk1=0 ORDER BY pk2, pk2, pk2`,
-		Skip:  true, // TODO: Remove duplicate ORDER BY expressions
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [two_pk.pk2:1!null]\n" +
-			" └─ IndexedTableAccess(two_pk)\n" +
-			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"     ├─ static: [{[0, 0], [NULL, ∞)}]\n" +
-			"     ├─ colSet: (1-7)\n" +
-			"     ├─ tableId: 1\n" +
-			"     └─ Table\n" +
-			"         ├─ name: two_pk\n" +
-			"         └─ columns: [pk1 pk2]\n" +
-			"",
-		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [two_pk.pk2]\n" +
-			" └─ IndexedTableAccess(two_pk)\n" +
-			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"     ├─ filters: [{[0, 0], [NULL, ∞)}]\n" +
-			"     └─ columns: [pk1 pk2]\n" +
-			"",
-		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [two_pk.pk2]\n" +
-			" └─ IndexedTableAccess(two_pk)\n" +
-			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"     ├─ filters: [{[0, 0], [NULL, ∞)}]\n" +
-			"     └─ columns: [pk1 pk2]\n" +
-			"",
+		Skip:  true,
 	},
 	{
 		Query: `SELECT MIN(pk2) FROM two_pk WHERE pk1=1`,
