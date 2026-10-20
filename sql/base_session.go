@@ -715,6 +715,7 @@ func BaseSessionFromConnectionWithVariables(ctx context.Context, c *mysql.Conn, 
 }
 
 // NewBaseSessionWithClientServer creates an unbound session with client data.
+// Like NewBaseSession, it has no engine variables.
 func NewBaseSessionWithClientServer(server string, client Client, id uint32) *BaseSession {
 	return newBaseSession(server, client, id, nil)
 }
@@ -768,7 +769,10 @@ func newBaseSession(server string, client Client, id uint32, vars *EngineVariabl
 	}
 }
 
-// NewBaseSession creates an unbound session with empty system and status maps.
+// NewBaseSession creates an unbound session with empty system and status maps,
+// for evaluating expressions without an engine. It has no engine variables, so
+// SystemVariables() panics on a context that uses it. Use
+// NewBaseSessionWithVariables for a session that runs queries.
 func NewBaseSession() *BaseSession {
 	return NewBaseSessionWithClientServer("", Client{}, atomic.AddUint32(&autoSessionIDs, 1))
 }
