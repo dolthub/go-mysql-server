@@ -47,6 +47,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 	"github.com/dolthub/go-mysql-server/testutils"
 )
 
@@ -4526,7 +4527,7 @@ func TestTransactionScripts(t *testing.T, harness Harness) {
 func TestConcurrentProcessList(t *testing.T, harness Harness) {
 	require := require.New(t)
 
-	pl := sqle.NewProcessList()
+	pl := sqle.NewProcessListWithVariables(variables.NewEngineVariables())
 	numSessions := 2
 
 	for i := 0; i < numSessions; i++ {
