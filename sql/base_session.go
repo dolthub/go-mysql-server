@@ -685,18 +685,6 @@ func (s *BaseSession) GetCachedQuery(query string) (sqlparser.Statement, bool) {
 	return stmt, ok
 }
 
-// BaseSessionFromConnection returns an unbound base session for a connection.
-func BaseSessionFromConnection(ctx context.Context, c *mysql.Conn, addr string) (*BaseSession, error) {
-	host := ""
-	user := ""
-	if mysqlConnectionUser, ok := c.UserData.(MysqlConnectionUser); ok {
-		host = mysqlConnectionUser.Host
-		user = mysqlConnectionUser.User
-	}
-	client := Client{Address: host, User: user, Capabilities: c.Capabilities}
-	return NewBaseSessionWithClientServer(addr, client, c.ConnectionID), nil
-}
-
 // BaseSessionFromConnectionWithVariables constructs a connection session from
 // the supplied engine bundle before any session initialization takes place.
 func BaseSessionFromConnectionWithVariables(ctx context.Context, c *mysql.Conn, addr string, vars *EngineVariables) (*BaseSession, error) {
