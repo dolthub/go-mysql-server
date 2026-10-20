@@ -34,16 +34,16 @@ type nonComparableSystemRegistry struct {
 // than sharing them with another registry.
 func TestFactoriesReturnIndependentVars(t *testing.T) {
 	t.Run("system", func(t *testing.T) {
-		a := NewSystemVariableRegistry().(*globalSystemVariables)
-		b := NewSystemVariableRegistry().(*globalSystemVariables)
+		a := NewSystemVariableRegistry().(*systemVariableRegistry)
+		b := NewSystemVariableRegistry().(*systemVariableRegistry)
 		require.Len(t, a.definitions, len(newSystemVars(time.Now()))+len(newMariadbSystemVars()))
 		for name, def := range a.definitions {
 			require.NotSame(t, def, b.definitions[name], name)
 		}
 	})
 	t.Run("status", func(t *testing.T) {
-		a := NewStatusVariableRegistry().(*globalStatusVariables)
-		b := NewStatusVariableRegistry().(*globalStatusVariables)
+		a := NewStatusVariableRegistry().(*statusVariableRegistry)
+		b := NewStatusVariableRegistry().(*statusVariableRegistry)
 		require.Len(t, a.varVals, len(newStatusVars()))
 		for name, val := range a.varVals {
 			require.NotSame(t, val, b.varVals[name], name)

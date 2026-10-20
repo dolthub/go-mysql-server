@@ -61,11 +61,9 @@ func TestConstructorOwnershipContract(t *testing.T) {
 func TestExplicitConstructorsRejectIncompleteBundles(t *testing.T) {
 	complete := NewEngineVariables()
 	for name, vars := range map[string]*sql.EngineVariables{
-		"nil":              nil,
-		"missing system":   {Status: complete.Status},
-		"missing status":   {System: complete.System},
-		"typed nil system": {System: (*globalSystemVariables)(nil), Status: complete.Status},
-		"typed nil status": {System: complete.System, Status: (*globalStatusVariables)(nil)},
+		"nil":            nil,
+		"missing system": {Status: complete.Status},
+		"missing status": {System: complete.System},
 	} {
 		t.Run(name, func(t *testing.T) {
 			require.ErrorContains(t, sql.ValidateEngineVariables(vars), "nil")

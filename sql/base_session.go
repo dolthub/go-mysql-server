@@ -288,7 +288,7 @@ func (s *BaseSession) GetSessionVariable(ctx *Context, sysVarName string) (inter
 		}
 		return nil, ErrUnknownSystemVariable.New(sysVarName)
 	}
-	// TODO: this is duplicated from within variables.globalSystemVariables, suggesting the need for an interface
+	// TODO: this is duplicated from within variables.systemVariableRegistry, suggesting the need for an interface
 	if sysType, ok := sysVar.Var.GetType().(SetType); ok {
 		if sv, ok := sysVar.Val.(uint64); ok {
 			return sysType.BitsToString(sv)
@@ -351,7 +351,7 @@ func (s *BaseSession) GetSessionVariableDefault(ctx *Context, sysVarName string)
 		}
 		return nil, ErrUnknownSystemVariable.New(sysVarName)
 	}
-	// TODO: this is duplicated from within variables.globalSystemVariables, suggesting the need for an interface
+	// TODO: this is duplicated from within variables.systemVariableRegistry, suggesting the need for an interface
 	defaultValue, ok := s.sessionDefaults[sysVarName]
 	if !ok {
 		defaultValue = sysVar.Var.GetDefault()
