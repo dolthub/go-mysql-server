@@ -34,15 +34,15 @@ import (
 // There's also this page, which shows that a TON of variables are still missing ):
 // https://dev.mysql.com/doc/refman/8.0/en/server-system-variable-reference.html
 
-// globalSystemVariables is the concrete system variable registry.
-type globalSystemVariables struct {
+// systemVariableRegistry is the concrete system variable registry.
+type systemVariableRegistry struct {
 	writeMutex  sync.Mutex
 	mutex       sync.RWMutex
 	definitions map[string]sql.SystemVariable
 	sysVarVals  map[string]sql.SystemVarValue
 }
 
-var _ sql.SystemVariableRegistry = (*globalSystemVariables)(nil)
+var _ sql.SystemVariableRegistry = (*systemVariableRegistry)(nil)
 
 // NewSystemVariableRegistry returns a registry with fresh built-in definitions
 // and values.
@@ -50,8 +50,8 @@ func NewSystemVariableRegistry() sql.SystemVariableRegistry {
 	return newSystemVariableRegistry(newSystemVars(time.Now()), newMariadbSystemVars())
 }
 
-func newSystemVariableRegistry(mysql, mariadb map[string]sql.SystemVariable) *globalSystemVariables {
-	out := &globalSystemVariables{
+func newSystemVariableRegistry(mysql, mariadb map[string]sql.SystemVariable) *systemVariableRegistry {
+	out := &systemVariableRegistry{
 		definitions: make(map[string]sql.SystemVariable, len(mysql)+len(mariadb)),
 		sysVarVals:  make(map[string]sql.SystemVarValue, len(mysql)+len(mariadb)),
 	}
@@ -66,7 +66,7 @@ func newSystemVariableRegistry(mysql, mariadb map[string]sql.SystemVariable) *gl
 
 // AddSystemVariables adds the given system variables to the collection. If a name is already used by an existing
 // variable, then it is overwritten with the new one.
-func (sv *globalSystemVariables) AddSystemVariables(sysVars []sql.SystemVariable) {
+func (sv *systemVariableRegistry) AddSystemVariables(sysVars []sql.SystemVariable) {
 	sv.writeMutex.Lock()
 	defer sv.writeMutex.Unlock()
 	sv.mutex.Lock()
@@ -90,12 +90,12 @@ func (sv *globalSystemVariables) AddSystemVariables(sysVars []sql.SystemVariable
 // AssignValues implements sql.SystemVariableRegistry. It rejects mismatched
 // context, registry, and session ownership before changing any value or
 // invoking a callback.
-func (sv *globalSystemVariables) AssignValues(ctx *sql.Context, vals map[string]interface{}) error {
+func (sv *systemVariableRegistry) AssignValues(ctx *sql.Context, vals map[string]interface{}) error {
 	if ctx == nil || ctx.EngineVariables() == nil {
 		return fmt.Errorf("system variable assignment requires an owning context")
 	}
 	owner := ctx.EngineVariables()
-	registry, ok := owner.System.(*globalSystemVariables)
+	registry, ok := owner.System.(*systemVariableRegistry)
 	if !ok || registry != sv {
 		return fmt.Errorf("system variable assignment context belongs to another registry")
 	}
@@ -108,11 +108,11 @@ func (sv *globalSystemVariables) AssignValues(ctx *sql.Context, vals map[string]
 // AssignValuesWithContext implements sql.SystemVariableRegistry.
 //
 // Deprecated: use AssignValues.
-func (sv *globalSystemVariables) AssignValuesWithContext(ctx *sql.Context, vals map[string]interface{}) error {
+func (sv *systemVariableRegistry) AssignValuesWithContext(ctx *sql.Context, vals map[string]interface{}) error {
 	return sv.AssignValues(ctx, vals)
 }
 
-func (sv *globalSystemVariables) assignValues(ctx *sql.Context, vals map[string]interface{}) error {
+func (sv *systemVariableRegistry) assignValues(ctx *sql.Context, vals map[string]interface{}) error {
 	sv.writeMutex.Lock()
 	defer sv.writeMutex.Unlock()
 	for varName, val := range vals {
@@ -136,7 +136,7 @@ func (sv *globalSystemVariables) assignValues(ctx *sql.Context, vals map[string]
 
 // NewSessionMap returns a new map of values with session scope. Global-only
 // values stay in the registry so existing sessions observe their current value.
-func (sv *globalSystemVariables) NewSessionMap() map[string]sql.SystemVarValue {
+func (sv *systemVariableRegistry) NewSessionMap() map[string]sql.SystemVarValue {
 	sv.mutex.RLock()
 	defer sv.mutex.RUnlock()
 	sessionVals := make(map[string]sql.SystemVarValue, len(sv.sysVarVals))
@@ -150,7 +150,7 @@ func (sv *globalSystemVariables) NewSessionMap() map[string]sql.SystemVarValue {
 
 // GetGlobal returns the system variable definition and value for the given name. If the variable does not exist, returns
 // false. Case-insensitive.
-func (sv *globalSystemVariables) GetGlobal(name string) (sql.SystemVariable, interface{}, bool) {
+func (sv *systemVariableRegistry) GetGlobal(name string) (sql.SystemVariable, interface{}, bool) {
 	sv.mutex.RLock()
 	name = strings.ToLower(name)
 	v, ok := sv.definitions[name]
@@ -188,7 +188,7 @@ func (sv *globalSystemVariables) GetGlobal(name string) (sql.SystemVariable, int
 // Only global dynamic variables may be set through this function, as it is intended for use through the SET GLOBAL
 // statement. To set session system variables, use the appropriate function on the session context. To set values
 // directly (such as when loading persisted values), use AssignValues. Case-insensitive.
-func (sv *globalSystemVariables) SetGlobal(ctx *sql.Context, name string, val interface{}) error {
+func (sv *systemVariableRegistry) SetGlobal(ctx *sql.Context, name string, val interface{}) error {
 	sv.writeMutex.Lock()
 	defer sv.writeMutex.Unlock()
 	name = strings.ToLower(name)
@@ -209,7 +209,7 @@ func (sv *globalSystemVariables) SetGlobal(ctx *sql.Context, name string, val in
 }
 
 // GetAllGlobalVariables returns map of global system variables with their values.
-func (sv *globalSystemVariables) GetAllGlobalVariables() map[string]interface{} {
+func (sv *systemVariableRegistry) GetAllGlobalVariables() map[string]interface{} {
 	sv.mutex.RLock()
 	defer sv.mutex.RUnlock()
 

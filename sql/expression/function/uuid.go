@@ -29,8 +29,9 @@ import (
 
 // Global state for UUID_SHORT function
 var (
-	uuidShortMu        sync.Mutex
-	uuidShortCounter   uint64
+	uuidShortMu      sync.Mutex
+	uuidShortCounter uint64
+	// uuidShortStartTime is the process start time, not an engine's start time.
 	uuidShortStartTime = time.Now()
 )
 

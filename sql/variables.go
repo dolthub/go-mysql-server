@@ -16,7 +16,6 @@ package sql
 
 import (
 	"fmt"
-	"reflect"
 	"strings"
 	"sync/atomic"
 )
@@ -34,26 +33,13 @@ func ValidateEngineVariables(vars *EngineVariables) error {
 	if vars == nil {
 		return fmt.Errorf("engine variables: bundle is nil")
 	}
-	if nilRegistry(vars.System) {
+	if vars.System == nil {
 		return fmt.Errorf("engine variables: system registry is nil")
 	}
-	if nilRegistry(vars.Status) {
+	if vars.Status == nil {
 		return fmt.Errorf("engine variables: status registry is nil")
 	}
 	return nil
-}
-
-func nilRegistry(registry any) bool {
-	if registry == nil {
-		return true
-	}
-	v := reflect.ValueOf(registry)
-	switch v.Kind() {
-	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
-		return v.IsNil()
-	default:
-		return false
-	}
 }
 
 func requireEngineVariables(vars *EngineVariables) {
