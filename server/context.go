@@ -74,21 +74,8 @@ type SessionManager struct {
 	lastPid uint64
 }
 
-// NewSessionManager creates a SessionManager with the given SessionBuilder.
-func NewSessionManager(
-	ctxFactory sql.ContextFactory,
-	builder SessionBuilder,
-	tracer trace.Tracer,
-	getDbFunc func(ctx *sql.Context, db string) (sql.Database, error),
-	memory *sql.MemoryManager,
-	processlist sql.ProcessList,
-	addr string,
-) *SessionManager {
-	return newSessionManager(ctxFactory, builder, tracer, getDbFunc, memory, processlist, addr, nil)
-}
-
-// NewSessionManagerWithVariables retains the bundle used by connection
-// sessions and their contexts. The legacy constructor remains unbound.
+// NewSessionManagerWithVariables creates a SessionManager whose connection
+// sessions and contexts must belong to |vars|.
 func NewSessionManagerWithVariables(
 	ctxFactory sql.ContextFactory,
 	builder SessionBuilder,
@@ -102,19 +89,6 @@ func NewSessionManagerWithVariables(
 	if err := sql.ValidateEngineVariables(vars); err != nil {
 		panic(err)
 	}
-	return newSessionManager(ctxFactory, builder, tracer, getDbFunc, memory, processlist, addr, vars)
-}
-
-func newSessionManager(
-	ctxFactory sql.ContextFactory,
-	builder SessionBuilder,
-	tracer trace.Tracer,
-	getDbFunc func(ctx *sql.Context, db string) (sql.Database, error),
-	memory *sql.MemoryManager,
-	processlist sql.ProcessList,
-	addr string,
-	vars *sql.EngineVariables,
-) *SessionManager {
 	return &SessionManager{
 		variables:   vars,
 		addr:        addr,
@@ -131,17 +105,13 @@ func newSessionManager(
 }
 
 func (s *SessionManager) context(ctx context.Context, opts ...sql.ContextOption) (*sql.Context, error) {
-	if s.variables != nil {
-		opts = append([]sql.ContextOption{sql.WithEngineVariables(s.variables)}, opts...)
-	}
+	opts = append([]sql.ContextOption{sql.WithEngineVariables(s.variables)}, opts...)
 	result := s.ctxFactory(ctx, opts...)
-	if s.variables != nil {
-		if result == nil || result.EngineVariables() != s.variables {
-			return nil, fmt.Errorf("server variable ownership: context factory returned a context for another engine")
-		}
-		if result.Session == nil || result.Session.EngineVariables() != s.variables {
-			return nil, fmt.Errorf("server variable ownership: context session belongs to another engine")
-		}
+	if result == nil || result.EngineVariables() != s.variables {
+		return nil, fmt.Errorf("server variable ownership: context factory returned a context for another engine")
+	}
+	if result.Session == nil || result.Session.EngineVariables() != s.variables {
+		return nil, fmt.Errorf("server variable ownership: context session belongs to another engine")
 	}
 	return result, nil
 }
@@ -201,10 +171,8 @@ func (s *SessionManager) NewSession(ctx context.Context, conn *mysql.Conn) error
 	if err != nil {
 		return err
 	}
-	if s.variables != nil {
-		if session == nil || session.EngineVariables() != s.variables {
-			return fmt.Errorf("server variable ownership: session builder returned a session for another engine")
-		}
+	if session == nil || session.EngineVariables() != s.variables {
+		return fmt.Errorf("server variable ownership: session builder returned a session for another engine")
 	}
 
 	session.SetConnectionId(conn.ConnectionID)

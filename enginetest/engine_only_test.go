@@ -45,6 +45,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/rowexec"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 // This file is for tests of the engine that we are very sure do not rely on a particular database implementation. They
@@ -204,7 +205,7 @@ func TestShowProcessList(t *testing.T) {
 	addr2 := "127.0.0.1:34568"
 	username := "foo"
 
-	p := sqle.NewProcessList()
+	p := sqle.NewProcessListWithVariables(variables.NewEngineVariables())
 	p.AddConnection(1, addr1)
 	p.AddConnection(2, addr2)
 	sess := sql.NewBaseSessionWithClientServer("0.0.0.0:3306", sql.Client{Address: addr1, User: username}, 1)
