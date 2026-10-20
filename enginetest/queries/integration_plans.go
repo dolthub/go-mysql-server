@@ -140,7 +140,7 @@ WHERE
 			"     │   └─ IndexedTableAccess(E2I7U)\n" +
 			"     │       ├─ index: [E2I7U.ZH72S]\n" +
 			"     │       ├─ static: [{(NULL, ∞)}]\n" +
-			"     │       ├─ colSet: (46-62)\n" +
+			"     │       ├─ colSet: (46,49,53)\n" +
 			"     │       ├─ tableId: 5\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: E2I7U\n" +
@@ -198,7 +198,7 @@ WHERE
 			"                                             │               └─ IndexedTableAccess(HDDVB)\n" +
 			"                                             │                   ├─ index: [HDDVB.UJ6XY]\n" +
 			"                                             │                   ├─ keys: [nd.id:0!null]\n" +
-			"                                             │                   ├─ colSet: (20-28)\n" +
+			"                                             │                   ├─ colSet: (22)\n" +
 			"                                             │                   ├─ tableId: 2\n" +
 			"                                             │                   └─ Table\n" +
 			"                                             │                       ├─ name: HDDVB\n" +
@@ -220,7 +220,7 @@ WHERE
 			"                                                 │               └─ IndexedTableAccess(HDDVB)\n" +
 			"                                                 │                   ├─ index: [HDDVB.UJ6XY]\n" +
 			"                                                 │                   ├─ keys: [nd.id:0!null]\n" +
-			"                                                 │                   ├─ colSet: (20-28)\n" +
+			"                                                 │                   ├─ colSet: (22)\n" +
 			"                                                 │                   ├─ tableId: 2\n" +
 			"                                                 │                   └─ Table\n" +
 			"                                                 │                       ├─ name: HDDVB\n" +
@@ -458,7 +458,7 @@ WHERE
 			" │   │       │   │               └─ IndexedTableAccess(WGSDC)\n" +
 			" │   │       │   │                   ├─ index: [WGSDC.id]\n" +
 			" │   │       │   │                   ├─ keys: [ism.PRUV2:6]\n" +
-			" │   │       │   │                   ├─ colSet: (10-19)\n" +
+			" │   │       │   │                   ├─ colSet: (10,17)\n" +
 			" │   │       │   │                   ├─ tableId: 2\n" +
 			" │   │       │   │                   └─ Table\n" +
 			" │   │       │   │                       ├─ name: WGSDC\n" +
@@ -491,7 +491,7 @@ WHERE
 			" │   │           │           │           │                   └─ IndexedTableAccess(WGSDC)\n" +
 			" │   │           │           │           │                       ├─ index: [WGSDC.id]\n" +
 			" │   │           │           │           │                       ├─ keys: [ism.PRUV2:6]\n" +
-			" │   │           │           │           │                       ├─ colSet: (37-46)\n" +
+			" │   │           │           │           │                       ├─ colSet: (37,42)\n" +
 			" │   │           │           │           │                       ├─ tableId: 4\n" +
 			" │   │           │           │           │                       └─ Table\n" +
 			" │   │           │           │           │                           ├─ name: WGSDC\n" +
@@ -529,7 +529,7 @@ WHERE
 			" │   │                       │           │                   └─ IndexedTableAccess(WGSDC)\n" +
 			" │   │                       │           │                       ├─ index: [WGSDC.id]\n" +
 			" │   │                       │           │                       ├─ keys: [ism.PRUV2:6]\n" +
-			" │   │                       │           │                       ├─ colSet: (64-73)\n" +
+			" │   │                       │           │                       ├─ colSet: (64,70)\n" +
 			" │   │                       │           │                       ├─ tableId: 6\n" +
 			" │   │                       │           │                       └─ Table\n" +
 			" │   │                       │           │                           ├─ name: WGSDC\n" +
@@ -598,7 +598,7 @@ WHERE
 			" │                                       └─ IndexedTableAccess(HDDVB)\n" +
 			" │                                           ├─ index: [HDDVB.PRUV2]\n" +
 			" │                                           ├─ static: [{(NULL, ∞)}]\n" +
-			" │                                           ├─ colSet: (94-102)\n" +
+			" │                                           ├─ colSet: (100)\n" +
 			" │                                           ├─ tableId: 9\n" +
 			" │                                           └─ Table\n" +
 			" │                                               ├─ name: HDDVB\n" +
@@ -1267,7 +1267,7 @@ WHERE
 			"     │   └─ IndexedTableAccess(E2I7U)\n" +
 			"     │       ├─ index: [E2I7U.ZH72S]\n" +
 			"     │       ├─ static: [{(NULL, ∞)}]\n" +
-			"     │       ├─ colSet: (49-65)\n" +
+			"     │       ├─ colSet: (49,52,56)\n" +
 			"     │       ├─ tableId: 5\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: E2I7U\n" +
@@ -1325,7 +1325,7 @@ WHERE
 			"                                             │               └─ IndexedTableAccess(FLQLP)\n" +
 			"                                             │                   ├─ index: [FLQLP.LUEVY]\n" +
 			"                                             │                   ├─ keys: [nd.id:0!null]\n" +
-			"                                             │                   ├─ colSet: (20-31)\n" +
+			"                                             │                   ├─ colSet: (22)\n" +
 			"                                             │                   ├─ tableId: 2\n" +
 			"                                             │                   └─ Table\n" +
 			"                                             │                       ├─ name: FLQLP\n" +
@@ -1347,7 +1347,7 @@ WHERE
 			"                                                 │               └─ IndexedTableAccess(FLQLP)\n" +
 			"                                                 │                   ├─ index: [FLQLP.LUEVY]\n" +
 			"                                                 │                   ├─ keys: [nd.id:0!null]\n" +
-			"                                                 │                   ├─ colSet: (20-31)\n" +
+			"                                                 │                   ├─ colSet: (22)\n" +
 			"                                                 │                   ├─ tableId: 2\n" +
 			"                                                 │                   └─ Table\n" +
 			"                                                 │                       ├─ name: FLQLP\n" +
@@ -1588,7 +1588,7 @@ WHERE
 			"     │   │       │   │               └─ IndexedTableAccess(EPZU6)\n" +
 			"     │   │       │   │                   ├─ index: [EPZU6.id]\n" +
 			"     │   │       │   │                   ├─ keys: [ct.OCA7E:6]\n" +
-			"     │   │       │   │                   ├─ colSet: (38-45)\n" +
+			"     │   │       │   │                   ├─ colSet: (38,43)\n" +
 			"     │   │       │   │                   ├─ tableId: 5\n" +
 			"     │   │       │   │                   └─ Table\n" +
 			"     │   │       │   │                       ├─ name: EPZU6\n" +
@@ -1617,7 +1617,7 @@ WHERE
 			"     │   │               │           │                   └─ IndexedTableAccess(EPZU6)\n" +
 			"     │   │               │           │                       ├─ index: [EPZU6.id]\n" +
 			"     │   │               │           │                       ├─ keys: [ct.OCA7E:6]\n" +
-			"     │   │               │           │                       ├─ colSet: (63-70)\n" +
+			"     │   │               │           │                       ├─ colSet: (63,67)\n" +
 			"     │   │               │           │                       ├─ tableId: 7\n" +
 			"     │   │               │           │                       └─ Table\n" +
 			"     │   │               │           │                           ├─ name: EPZU6\n" +
@@ -1682,7 +1682,7 @@ WHERE
 			"     │                                       └─ IndexedTableAccess(FLQLP)\n" +
 			"     │                                           ├─ index: [FLQLP.OCA7E]\n" +
 			"     │                                           ├─ static: [{(NULL, ∞)}]\n" +
-			"     │                                           ├─ colSet: (92-103)\n" +
+			"     │                                           ├─ colSet: (98)\n" +
 			"     │                                           ├─ tableId: 10\n" +
 			"     │                                           └─ Table\n" +
 			"     │                                               ├─ name: FLQLP\n" +
@@ -1978,7 +1978,7 @@ WHERE
 			"     │               │   │           │   │   └─ Table\n" +
 			"     │               │   │           │   │       ├─ name: E2I7U\n" +
 			"     │               │   │           │   │       ├─ columns: [zh72s]\n" +
-			"     │               │   │           │   │       ├─ colSet: (19-35)\n" +
+			"     │               │   │           │   │       ├─ colSet: (26)\n" +
 			"     │               │   │           │   │       └─ tableId: 3\n" +
 			"     │               │   │           │   └─ Filter\n" +
 			"     │               │   │           │       ├─ NOT\n" +
@@ -1987,7 +1987,7 @@ WHERE
 			"     │               │   │           │           └─ IndexedTableAccess(OUBDL)\n" +
 			"     │               │   │           │               ├─ index: [OUBDL.ZH72S]\n" +
 			"     │               │   │           │               ├─ keys: [nd.ZH72S:0]\n" +
-			"     │               │   │           │               ├─ colSet: (1-13)\n" +
+			"     │               │   │           │               ├─ colSet: (1-3,6)\n" +
 			"     │               │   │           │               ├─ tableId: 1\n" +
 			"     │               │   │           │               └─ Table\n" +
 			"     │               │   │           │                   ├─ name: OUBDL\n" +
@@ -2000,7 +2000,7 @@ WHERE
 			"     │               │   │                   └─ IndexedTableAccess(FLQLP)\n" +
 			"     │               │   │                       ├─ index: [FLQLP.NRURT]\n" +
 			"     │               │   │                       ├─ static: [{(NULL, ∞)}]\n" +
-			"     │               │   │                       ├─ colSet: (39-50)\n" +
+			"     │               │   │                       ├─ colSet: (44)\n" +
 			"     │               │   │                       ├─ tableId: 5\n" +
 			"     │               │   │                       └─ Table\n" +
 			"     │               │   │                           ├─ name: FLQLP\n" +
@@ -2009,7 +2009,7 @@ WHERE
 			"     │               │       └─ IndexedTableAccess(TPXBU)\n" +
 			"     │               │           ├─ index: [TPXBU.BTXC5]\n" +
 			"     │               │           ├─ keys: [ylksy.LJLUM:3]\n" +
-			"     │               │           ├─ colSet: (36-38)\n" +
+			"     │               │           ├─ colSet: (37)\n" +
 			"     │               │           ├─ tableId: 4\n" +
 			"     │               │           └─ Table\n" +
 			"     │               │               ├─ name: TPXBU\n" +
@@ -2021,7 +2021,7 @@ WHERE
 			"     │                       └─ Table\n" +
 			"     │                           ├─ name: JDLNA\n" +
 			"     │                           ├─ columns: [ftqlq]\n" +
-			"     │                           ├─ colSet: (14-18)\n" +
+			"     │                           ├─ colSet: (15)\n" +
 			"     │                           └─ tableId: 2\n" +
 			"     └─ TableAlias(uct)\n" +
 			"         └─ IndexedTableAccess(OUBDL)\n" +
@@ -2206,7 +2206,7 @@ WHERE
 			"     │   │   │   │   └─ IndexedTableAccess(FLQLP)\n" +
 			"     │   │   │   │       ├─ index: [FLQLP.LUEVY]\n" +
 			"     │   │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │   │   │       ├─ colSet: (1-12)\n" +
+			"     │   │   │   │       ├─ colSet: (1-4,8-11)\n" +
 			"     │   │   │   │       ├─ tableId: 1\n" +
 			"     │   │   │   │       └─ Table\n" +
 			"     │   │   │   │           ├─ name: FLQLP\n" +
@@ -2215,7 +2215,7 @@ WHERE
 			"     │   │   │       └─ IndexedTableAccess(E2I7U)\n" +
 			"     │   │   │           ├─ index: [E2I7U.id]\n" +
 			"     │   │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │   │           ├─ colSet: (31-47)\n" +
+			"     │   │   │           ├─ colSet: (31,34)\n" +
 			"     │   │   │           ├─ tableId: 4\n" +
 			"     │   │   │           └─ Table\n" +
 			"     │   │   │               ├─ name: E2I7U\n" +
@@ -2224,7 +2224,7 @@ WHERE
 			"     │   │       └─ IndexedTableAccess(TPXBU)\n" +
 			"     │   │           ├─ index: [TPXBU.id]\n" +
 			"     │   │           ├─ keys: [ct.M22QN:3!null]\n" +
-			"     │   │           ├─ colSet: (48-50)\n" +
+			"     │   │           ├─ colSet: (48,49)\n" +
 			"     │   │           ├─ tableId: 5\n" +
 			"     │   │           └─ Table\n" +
 			"     │   │               ├─ name: TPXBU\n" +
@@ -2504,7 +2504,7 @@ WHERE
 			"         │           │   │   └─ IndexedTableAccess(NOXN3)\n" +
 			"         │           │   │       ├─ index: [NOXN3.FFTBJ]\n" +
 			"         │           │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"         │           │   │       ├─ colSet: (17-26)\n" +
+			"         │           │   │       ├─ colSet: (17-19)\n" +
 			"         │           │   │       ├─ tableId: 3\n" +
 			"         │           │   │       └─ Table\n" +
 			"         │           │   │           ├─ name: NOXN3\n" +
@@ -2513,7 +2513,7 @@ WHERE
 			"         │           │       └─ IndexedTableAccess(E2I7U)\n" +
 			"         │           │           ├─ index: [E2I7U.id]\n" +
 			"         │           │           ├─ static: [{[NULL, ∞)}]\n" +
-			"         │           │           ├─ colSet: (78-94)\n" +
+			"         │           │           ├─ colSet: (78,81)\n" +
 			"         │           │           ├─ tableId: 7\n" +
 			"         │           │           └─ Table\n" +
 			"         │           │               ├─ name: E2I7U\n" +
@@ -2541,7 +2541,7 @@ WHERE
 			"                 │   │   └─ IndexedTableAccess(NOXN3)\n" +
 			"                 │   │       ├─ index: [NOXN3.FFTBJ]\n" +
 			"                 │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"                 │   │       ├─ colSet: (7-16)\n" +
+			"                 │   │       ├─ colSet: (7-9,13)\n" +
 			"                 │   │       ├─ tableId: 2\n" +
 			"                 │   │       └─ Table\n" +
 			"                 │   │           ├─ name: NOXN3\n" +
@@ -2550,7 +2550,7 @@ WHERE
 			"                 │       └─ IndexedTableAccess(E2I7U)\n" +
 			"                 │           ├─ index: [E2I7U.id]\n" +
 			"                 │           ├─ static: [{[NULL, ∞)}]\n" +
-			"                 │           ├─ colSet: (44-60)\n" +
+			"                 │           ├─ colSet: (44,47)\n" +
 			"                 │           ├─ tableId: 5\n" +
 			"                 │           └─ Table\n" +
 			"                 │               ├─ name: E2I7U\n" +
@@ -2562,7 +2562,7 @@ WHERE
 			"                         └─ Table\n" +
 			"                             ├─ name: E2I7U\n" +
 			"                             ├─ columns: [id tw55n]\n" +
-			"                             ├─ colSet: (27-43)\n" +
+			"                             ├─ colSet: (27,30)\n" +
 			"                             └─ tableId: 4\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
@@ -2759,7 +2759,7 @@ WHERE
 			"         │   │   │   └─ IndexedTableAccess(NOXN3)\n" +
 			"         │   │   │       ├─ index: [NOXN3.FFTBJ]\n" +
 			"         │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │       ├─ colSet: (11-20)\n" +
+			"         │   │   │       ├─ colSet: (11-13)\n" +
 			"         │   │   │       ├─ tableId: 2\n" +
 			"         │   │   │       └─ Table\n" +
 			"         │   │   │           ├─ name: NOXN3\n" +
@@ -2768,7 +2768,7 @@ WHERE
 			"         │   │       └─ IndexedTableAccess(E2I7U)\n" +
 			"         │   │           ├─ index: [E2I7U.id]\n" +
 			"         │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │           ├─ colSet: (78-94)\n" +
+			"         │   │           ├─ colSet: (78,81)\n" +
 			"         │   │           ├─ tableId: 7\n" +
 			"         │   │           └─ Table\n" +
 			"         │   │               ├─ name: E2I7U\n" +
@@ -2796,7 +2796,7 @@ WHERE
 			"         │           │   │       └─ IndexedTableAccess(NOXN3)\n" +
 			"         │           │   │           ├─ index: [NOXN3.BRQP2]\n" +
 			"         │           │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"         │           │   │           ├─ colSet: (1-10)\n" +
+			"         │           │   │           ├─ colSet: (1-3,7)\n" +
 			"         │           │   │           ├─ tableId: 1\n" +
 			"         │           │   │           └─ Table\n" +
 			"         │           │   │               ├─ name: NOXN3\n" +
@@ -2805,7 +2805,7 @@ WHERE
 			"         │           │       └─ IndexedTableAccess(E2I7U)\n" +
 			"         │           │           ├─ index: [E2I7U.id]\n" +
 			"         │           │           ├─ static: [{[NULL, ∞)}]\n" +
-			"         │           │           ├─ colSet: (27-43)\n" +
+			"         │           │           ├─ colSet: (27,30)\n" +
 			"         │           │           ├─ tableId: 4\n" +
 			"         │           │           └─ Table\n" +
 			"         │           │               ├─ name: E2I7U\n" +
@@ -2821,7 +2821,7 @@ WHERE
 			"         │                   │   └─ IndexedTableAccess(E2I7U)\n" +
 			"         │                   │       ├─ index: [E2I7U.id]\n" +
 			"         │                   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"         │                   │       ├─ colSet: (44-60)\n" +
+			"         │                   │       ├─ colSet: (44,47)\n" +
 			"         │                   │       ├─ tableId: 5\n" +
 			"         │                   │       └─ Table\n" +
 			"         │                   │           ├─ name: E2I7U\n" +
@@ -2830,7 +2830,7 @@ WHERE
 			"         │                       └─ IndexedTableAccess(E2I7U)\n" +
 			"         │                           ├─ index: [E2I7U.id]\n" +
 			"         │                           ├─ static: [{[NULL, ∞)}]\n" +
-			"         │                           ├─ colSet: (61-77)\n" +
+			"         │                           ├─ colSet: (61,64)\n" +
 			"         │                           ├─ tableId: 6\n" +
 			"         │                           └─ Table\n" +
 			"         │                               ├─ name: E2I7U\n" +
@@ -2839,7 +2839,7 @@ WHERE
 			"             └─ IndexedTableAccess(QYWQD)\n" +
 			"                 ├─ index: [QYWQD.WNUNU]\n" +
 			"                 ├─ keys: [sn.id:5!null]\n" +
-			"                 ├─ colSet: (21-26)\n" +
+			"                 ├─ colSet: (22,23)\n" +
 			"                 ├─ tableId: 3\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: QYWQD\n" +
@@ -3013,7 +3013,7 @@ WHERE
 			"     │           │                   └─ IndexedTableAccess(TDRVG)\n" +
 			"     │           │                       ├─ index: [TDRVG.SSHPJ]\n" +
 			"     │           │                       ├─ keys: [s7byt.SSHPJ:5!null]\n" +
-			"     │           │                       ├─ colSet: (36-40)\n" +
+			"     │           │                       ├─ colSet: (36,38)\n" +
 			"     │           │                       ├─ tableId: 6\n" +
 			"     │           │                       └─ Table\n" +
 			"     │           │                           ├─ name: TDRVG\n" +
@@ -3034,7 +3034,7 @@ WHERE
 			"     │               │                   └─ IndexedTableAccess(TDRVG)\n" +
 			"     │               │                       ├─ index: [TDRVG.SSHPJ]\n" +
 			"     │               │                       ├─ keys: [s7byt.SSHPJ:5!null]\n" +
-			"     │               │                       ├─ colSet: (36-40)\n" +
+			"     │               │                       ├─ colSet: (36,38)\n" +
 			"     │               │                       ├─ tableId: 6\n" +
 			"     │               │                       └─ Table\n" +
 			"     │               │                           ├─ name: TDRVG\n" +
@@ -3060,13 +3060,13 @@ WHERE
 			"     │                           │               │   └─ Table\n" +
 			"     │                           │               │       ├─ name: E2I7U\n" +
 			"     │                           │               │       ├─ columns: [fgg57]\n" +
-			"     │                           │               │       ├─ colSet: (11-27)\n" +
+			"     │                           │               │       ├─ colSet: (17)\n" +
 			"     │                           │               │       └─ tableId: 3\n" +
 			"     │                           │               └─ TableAlias(s5kbm)\n" +
 			"     │                           │                   └─ IndexedTableAccess(TDRVG)\n" +
 			"     │                           │                       ├─ index: [TDRVG.FGG57]\n" +
 			"     │                           │                       ├─ keys: [nd.FGG57:5]\n" +
-			"     │                           │                       ├─ colSet: (6-10)\n" +
+			"     │                           │                       ├─ colSet: (7-9)\n" +
 			"     │                           │                       ├─ tableId: 2\n" +
 			"     │                           │                       └─ Table\n" +
 			"     │                           │                           ├─ name: TDRVG\n" +
@@ -3074,7 +3074,7 @@ WHERE
 			"     │                           └─ IndexedTableAccess(WE72E)\n" +
 			"     │                               ├─ index: [WE72E.SSHPJ]\n" +
 			"     │                               ├─ keys: [s7byt.SSHPJ:5!null]\n" +
-			"     │                               ├─ colSet: (32-35)\n" +
+			"     │                               ├─ colSet: (34)\n" +
 			"     │                               ├─ tableId: 5\n" +
 			"     │                               └─ Table\n" +
 			"     │                                   ├─ name: WE72E\n" +
@@ -3266,7 +3266,7 @@ WHERE
 			"     │   └─ IndexedTableAccess(E2I7U)\n" +
 			"     │       ├─ index: [E2I7U.ZH72S]\n" +
 			"     │       ├─ static: [{(NULL, ∞)}]\n" +
-			"     │       ├─ colSet: (45-61)\n" +
+			"     │       ├─ colSet: (45,48,52)\n" +
 			"     │       ├─ tableId: 5\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: E2I7U\n" +
@@ -3324,7 +3324,7 @@ WHERE
 			"                                             │               └─ IndexedTableAccess(AMYXQ)\n" +
 			"                                             │                   ├─ index: [AMYXQ.LUEVY]\n" +
 			"                                             │                   ├─ keys: [nd.id:0!null]\n" +
-			"                                             │                   ├─ colSet: (20-27)\n" +
+			"                                             │                   ├─ colSet: (22)\n" +
 			"                                             │                   ├─ tableId: 2\n" +
 			"                                             │                   └─ Table\n" +
 			"                                             │                       ├─ name: AMYXQ\n" +
@@ -3346,7 +3346,7 @@ WHERE
 			"                                                 │               └─ IndexedTableAccess(AMYXQ)\n" +
 			"                                                 │                   ├─ index: [AMYXQ.LUEVY]\n" +
 			"                                                 │                   ├─ keys: [nd.id:0!null]\n" +
-			"                                                 │                   ├─ colSet: (20-27)\n" +
+			"                                                 │                   ├─ colSet: (22)\n" +
 			"                                                 │                   ├─ tableId: 2\n" +
 			"                                                 │                   └─ Table\n" +
 			"                                                 │                       ├─ name: AMYXQ\n" +
@@ -4000,7 +4000,7 @@ WHERE
 			"     │   │       │   │               └─ IndexedTableAccess(SZW6V)\n" +
 			"     │   │       │   │                   ├─ index: [SZW6V.id]\n" +
 			"     │   │       │   │                   ├─ keys: [mf.QQV4M:15]\n" +
-			"     │   │       │   │                   ├─ colSet: (72-79)\n" +
+			"     │   │       │   │                   ├─ colSet: (72,77)\n" +
 			"     │   │       │   │                   ├─ tableId: 6\n" +
 			"     │   │       │   │                   └─ Table\n" +
 			"     │   │       │   │                       ├─ name: SZW6V\n" +
@@ -4029,7 +4029,7 @@ WHERE
 			"     │   │               │           │                   └─ IndexedTableAccess(SZW6V)\n" +
 			"     │   │               │           │                       ├─ index: [SZW6V.id]\n" +
 			"     │   │               │           │                       ├─ keys: [mf.QQV4M:15]\n" +
-			"     │   │               │           │                       ├─ colSet: (97-104)\n" +
+			"     │   │               │           │                       ├─ colSet: (97,101)\n" +
 			"     │   │               │           │                       ├─ tableId: 8\n" +
 			"     │   │               │           │                       └─ Table\n" +
 			"     │   │               │           │                           ├─ name: SZW6V\n" +
@@ -4076,7 +4076,7 @@ WHERE
 			"     │                       │   └─ IndexedTableAccess(HGMQ6)\n" +
 			"     │                       │       ├─ index: [HGMQ6.QQV4M]\n" +
 			"     │                       │       ├─ static: [{(NULL, ∞)}]\n" +
-			"     │                       │       ├─ colSet: (138-154)\n" +
+			"     │                       │       ├─ colSet: (153)\n" +
 			"     │                       │       ├─ tableId: 11\n" +
 			"     │                       │       └─ Table\n" +
 			"     │                       │           ├─ name: HGMQ6\n" +
@@ -4512,7 +4512,7 @@ WHERE
 			" └─ IndexedTableAccess(QYWQD)\n" +
 			"     ├─ index: [QYWQD.id]\n" +
 			"     ├─ static: [{[NULL, ∞)}]\n" +
-			"     ├─ colSet: (1-6)\n" +
+			"     ├─ colSet: (1,4)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: QYWQD\n" +
@@ -4653,7 +4653,7 @@ WHERE
 			" │       │               └─ IndexedTableAccess(TPXBU)\n" +
 			" │       │                   ├─ index: [TPXBU.id]\n" +
 			" │       │                   ├─ keys: [sl3s5.M22QN:63!null]\n" +
-			" │       │                   ├─ colSet: (134-136)\n" +
+			" │       │                   ├─ colSet: (134,135)\n" +
 			" │       │                   ├─ tableId: 12\n" +
 			" │       │                   └─ Table\n" +
 			" │       │                       ├─ name: TPXBU\n" +
@@ -4673,7 +4673,7 @@ WHERE
 			" │           │               └─ IndexedTableAccess(TPXBU)\n" +
 			" │           │                   ├─ index: [TPXBU.id]\n" +
 			" │           │                   ├─ keys: [sl3s5.M22QN:2!null]\n" +
-			" │           │                   ├─ colSet: (134-136)\n" +
+			" │           │                   ├─ colSet: (134,135)\n" +
 			" │           │                   ├─ tableId: 12\n" +
 			" │           │                   └─ Table\n" +
 			" │           │                       ├─ name: TPXBU\n" +
@@ -4703,7 +4703,7 @@ WHERE
 			" │               │   │   │   │           │   └─ IndexedTableAccess(JDLNA)\n" +
 			" │               │   │   │   │           │       ├─ index: [JDLNA.FTQLQ]\n" +
 			" │               │   │   │   │           │       ├─ static: [{[SQ1, SQ1]}]\n" +
-			" │               │   │   │   │           │       ├─ colSet: (107-111)\n" +
+			" │               │   │   │   │           │       ├─ colSet: (107,108)\n" +
 			" │               │   │   │   │           │       ├─ tableId: 9\n" +
 			" │               │   │   │   │           │       └─ Table\n" +
 			" │               │   │   │   │           │           ├─ name: JDLNA\n" +
@@ -4731,7 +4731,7 @@ WHERE
 			" │               │   │   │   │                   │   │       └─ IndexedTableAccess(FLQLP)\n" +
 			" │               │   │   │   │                   │   │           ├─ index: [FLQLP.OVE3E]\n" +
 			" │               │   │   │   │                   │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			" │               │   │   │   │                   │   │           ├─ colSet: (95-106)\n" +
+			" │               │   │   │   │                   │   │           ├─ colSet: (96-99,104,105)\n" +
 			" │               │   │   │   │                   │   │           ├─ tableId: 8\n" +
 			" │               │   │   │   │                   │   │           └─ Table\n" +
 			" │               │   │   │   │                   │   │               ├─ name: FLQLP\n" +
@@ -4740,7 +4740,7 @@ WHERE
 			" │               │   │   │   │                   │       └─ IndexedTableAccess(SFEGG)\n" +
 			" │               │   │   │   │                   │           ├─ index: [SFEGG.id]\n" +
 			" │               │   │   │   │                   │           ├─ static: [{[NULL, ∞)}]\n" +
-			" │               │   │   │   │                   │           ├─ colSet: (112-117)\n" +
+			" │               │   │   │   │                   │           ├─ colSet: (112,113,116)\n" +
 			" │               │   │   │   │                   │           ├─ tableId: 10\n" +
 			" │               │   │   │   │                   │           └─ Table\n" +
 			" │               │   │   │   │                   │               ├─ name: SFEGG\n" +
@@ -4764,13 +4764,13 @@ WHERE
 			" │               │   │   │   │                                           │   └─ Table\n" +
 			" │               │   │   │   │                                           │       ├─ name: NOXN3\n" +
 			" │               │   │   │   │                                           │       ├─ columns: [id brqp2]\n" +
-			" │               │   │   │   │                                           │       ├─ colSet: (79-88)\n" +
+			" │               │   │   │   │                                           │       ├─ colSet: (79,80)\n" +
 			" │               │   │   │   │                                           │       └─ tableId: 6\n" +
 			" │               │   │   │   │                                           └─ TableAlias(mf)\n" +
 			" │               │   │   │   │                                               └─ IndexedTableAccess(HGMQ6)\n" +
 			" │               │   │   │   │                                                   ├─ index: [HGMQ6.LUEVY]\n" +
 			" │               │   │   │   │                                                   ├─ keys: [sn.BRQP2:1!null]\n" +
-			" │               │   │   │   │                                                   ├─ colSet: (62-78)\n" +
+			" │               │   │   │   │                                                   ├─ colSet: (64,65)\n" +
 			" │               │   │   │   │                                                   ├─ tableId: 5\n" +
 			" │               │   │   │   │                                                   └─ Table\n" +
 			" │               │   │   │   │                                                       ├─ name: HGMQ6\n" +
@@ -4841,7 +4841,7 @@ WHERE
 			"             │       │               └─ IndexedTableAccess(TPXBU)\n" +
 			"             │       │                   ├─ index: [TPXBU.id]\n" +
 			"             │       │                   ├─ keys: [sl3s5.M22QN:12!null]\n" +
-			"             │       │                   ├─ colSet: (201-203)\n" +
+			"             │       │                   ├─ colSet: (201,202)\n" +
 			"             │       │                   ├─ tableId: 20\n" +
 			"             │       │                   └─ Table\n" +
 			"             │       │                       ├─ name: TPXBU\n" +
@@ -4861,7 +4861,7 @@ WHERE
 			"             │           │               └─ IndexedTableAccess(TPXBU)\n" +
 			"             │           │                   ├─ index: [TPXBU.id]\n" +
 			"             │           │                   ├─ keys: [sl3s5.M22QN:2!null]\n" +
-			"             │           │                   ├─ colSet: (201-203)\n" +
+			"             │           │                   ├─ colSet: (201,202)\n" +
 			"             │           │                   ├─ tableId: 20\n" +
 			"             │           │                   └─ Table\n" +
 			"             │           │                       ├─ name: TPXBU\n" +
@@ -4900,7 +4900,7 @@ WHERE
 			"             │               │           │   │   │               └─ IndexedTableAccess(TPXBU)\n" +
 			"             │               │           │   │   │                   ├─ index: [TPXBU.BTXC5]\n" +
 			"             │               │           │   │   │                   ├─ static: [{[WT, WT]}]\n" +
-			"             │               │           │   │   │                   ├─ colSet: (172-174)\n" +
+			"             │               │           │   │   │                   ├─ colSet: (172,173)\n" +
 			"             │               │           │   │   │                   ├─ tableId: 16\n" +
 			"             │               │           │   │   │                   └─ Table\n" +
 			"             │               │           │   │   │                       ├─ name: TPXBU\n" +
@@ -4934,7 +4934,7 @@ WHERE
 			"             │               │           │           └─ IndexedTableAccess(JDLNA)\n" +
 			"             │               │           │               ├─ index: [JDLNA.FTQLQ]\n" +
 			"             │               │           │               ├─ static: [{[SQ1, SQ1]}]\n" +
-			"             │               │           │               ├─ colSet: (175-179)\n" +
+			"             │               │           │               ├─ colSet: (175,176)\n" +
 			"             │               │           │               ├─ tableId: 17\n" +
 			"             │               │           │               └─ Table\n" +
 			"             │               │           │                   ├─ name: JDLNA\n" +
@@ -4946,7 +4946,7 @@ WHERE
 			"             │               │                   └─ Table\n" +
 			"             │               │                       ├─ name: SFEGG\n" +
 			"             │               │                       ├─ columns: [id no52d adurz]\n" +
-			"             │               │                       ├─ colSet: (180-185)\n" +
+			"             │               │                       ├─ colSet: (180,181,184)\n" +
 			"             │               │                       └─ tableId: 18\n" +
 			"             │               └─ TableAlias(sn)\n" +
 			"             │                   └─ IndexedTableAccess(NOXN3)\n" +
@@ -5553,7 +5553,7 @@ WHERE
 			" │       │               └─ IndexedTableAccess(TPXBU)\n" +
 			" │       │                   ├─ index: [TPXBU.id]\n" +
 			" │       │                   ├─ keys: [sl3s5.M22QN:63!null]\n" +
-			" │       │                   ├─ colSet: (134-136)\n" +
+			" │       │                   ├─ colSet: (134,135)\n" +
 			" │       │                   ├─ tableId: 12\n" +
 			" │       │                   └─ Table\n" +
 			" │       │                       ├─ name: TPXBU\n" +
@@ -5573,7 +5573,7 @@ WHERE
 			" │           │               └─ IndexedTableAccess(TPXBU)\n" +
 			" │           │                   ├─ index: [TPXBU.id]\n" +
 			" │           │                   ├─ keys: [sl3s5.M22QN:2!null]\n" +
-			" │           │                   ├─ colSet: (134-136)\n" +
+			" │           │                   ├─ colSet: (134,135)\n" +
 			" │           │                   ├─ tableId: 12\n" +
 			" │           │                   └─ Table\n" +
 			" │           │                       ├─ name: TPXBU\n" +
@@ -5616,13 +5616,13 @@ WHERE
 			" │               │   │   │   │           │   │   │               │   └─ Table\n" +
 			" │               │   │   │   │           │   │   │               │       ├─ name: NOXN3\n" +
 			" │               │   │   │   │           │   │   │               │       ├─ columns: [id brqp2]\n" +
-			" │               │   │   │   │           │   │   │               │       ├─ colSet: (79-88)\n" +
+			" │               │   │   │   │           │   │   │               │       ├─ colSet: (79,80)\n" +
 			" │               │   │   │   │           │   │   │               │       └─ tableId: 6\n" +
 			" │               │   │   │   │           │   │   │               └─ TableAlias(mf)\n" +
 			" │               │   │   │   │           │   │   │                   └─ IndexedTableAccess(HGMQ6)\n" +
 			" │               │   │   │   │           │   │   │                       ├─ index: [HGMQ6.LUEVY]\n" +
 			" │               │   │   │   │           │   │   │                       ├─ keys: [sn.BRQP2:1!null]\n" +
-			" │               │   │   │   │           │   │   │                       ├─ colSet: (62-78)\n" +
+			" │               │   │   │   │           │   │   │                       ├─ colSet: (64,65)\n" +
 			" │               │   │   │   │           │   │   │                       ├─ tableId: 5\n" +
 			" │               │   │   │   │           │   │   │                       └─ Table\n" +
 			" │               │   │   │   │           │   │   │                           ├─ name: HGMQ6\n" +
@@ -5635,7 +5635,7 @@ WHERE
 			" │               │   │   │   │           │   │           └─ IndexedTableAccess(FLQLP)\n" +
 			" │               │   │   │   │           │   │               ├─ index: [FLQLP.M22QN]\n" +
 			" │               │   │   │   │           │   │               ├─ keys: [khjjo.M22QN:0!null]\n" +
-			" │               │   │   │   │           │   │               ├─ colSet: (95-106)\n" +
+			" │               │   │   │   │           │   │               ├─ colSet: (96-99,104,105)\n" +
 			" │               │   │   │   │           │   │               ├─ tableId: 8\n" +
 			" │               │   │   │   │           │   │               └─ Table\n" +
 			" │               │   │   │   │           │   │                   ├─ name: FLQLP\n" +
@@ -5648,7 +5648,7 @@ WHERE
 			" │               │   │   │   │           │           └─ IndexedTableAccess(JDLNA)\n" +
 			" │               │   │   │   │           │               ├─ index: [JDLNA.id]\n" +
 			" │               │   │   │   │           │               ├─ keys: [ct.FZ2R5:3!null]\n" +
-			" │               │   │   │   │           │               ├─ colSet: (107-111)\n" +
+			" │               │   │   │   │           │               ├─ colSet: (107,108)\n" +
 			" │               │   │   │   │           │               ├─ tableId: 9\n" +
 			" │               │   │   │   │           │               └─ Table\n" +
 			" │               │   │   │   │           │                   ├─ name: JDLNA\n" +
@@ -5657,7 +5657,7 @@ WHERE
 			" │               │   │   │   │               └─ IndexedTableAccess(SFEGG)\n" +
 			" │               │   │   │   │                   ├─ index: [SFEGG.id]\n" +
 			" │               │   │   │   │                   ├─ keys: [ct.OVE3E:6!null]\n" +
-			" │               │   │   │   │                   ├─ colSet: (112-117)\n" +
+			" │               │   │   │   │                   ├─ colSet: (112,113,116)\n" +
 			" │               │   │   │   │                   ├─ tableId: 10\n" +
 			" │               │   │   │   │                   └─ Table\n" +
 			" │               │   │   │   │                       ├─ name: SFEGG\n" +
@@ -5728,7 +5728,7 @@ WHERE
 			"             │       │               └─ IndexedTableAccess(TPXBU)\n" +
 			"             │       │                   ├─ index: [TPXBU.id]\n" +
 			"             │       │                   ├─ keys: [sl3s5.M22QN:12!null]\n" +
-			"             │       │                   ├─ colSet: (201-203)\n" +
+			"             │       │                   ├─ colSet: (201,202)\n" +
 			"             │       │                   ├─ tableId: 20\n" +
 			"             │       │                   └─ Table\n" +
 			"             │       │                       ├─ name: TPXBU\n" +
@@ -5748,7 +5748,7 @@ WHERE
 			"             │           │               └─ IndexedTableAccess(TPXBU)\n" +
 			"             │           │                   ├─ index: [TPXBU.id]\n" +
 			"             │           │                   ├─ keys: [sl3s5.M22QN:2!null]\n" +
-			"             │           │                   ├─ colSet: (201-203)\n" +
+			"             │           │                   ├─ colSet: (201,202)\n" +
 			"             │           │                   ├─ tableId: 20\n" +
 			"             │           │                   └─ Table\n" +
 			"             │           │                       ├─ name: TPXBU\n" +
@@ -5787,7 +5787,7 @@ WHERE
 			"             │               │           │   │   │               └─ IndexedTableAccess(TPXBU)\n" +
 			"             │               │           │   │   │                   ├─ index: [TPXBU.BTXC5]\n" +
 			"             │               │           │   │   │                   ├─ static: [{[WT, WT]}]\n" +
-			"             │               │           │   │   │                   ├─ colSet: (172-174)\n" +
+			"             │               │           │   │   │                   ├─ colSet: (172,173)\n" +
 			"             │               │           │   │   │                   ├─ tableId: 16\n" +
 			"             │               │           │   │   │                   └─ Table\n" +
 			"             │               │           │   │   │                       ├─ name: TPXBU\n" +
@@ -5821,7 +5821,7 @@ WHERE
 			"             │               │           │           └─ IndexedTableAccess(JDLNA)\n" +
 			"             │               │           │               ├─ index: [JDLNA.FTQLQ]\n" +
 			"             │               │           │               ├─ static: [{[SQ1, SQ1]}]\n" +
-			"             │               │           │               ├─ colSet: (175-179)\n" +
+			"             │               │           │               ├─ colSet: (175,176)\n" +
 			"             │               │           │               ├─ tableId: 17\n" +
 			"             │               │           │               └─ Table\n" +
 			"             │               │           │                   ├─ name: JDLNA\n" +
@@ -5833,7 +5833,7 @@ WHERE
 			"             │               │                   └─ Table\n" +
 			"             │               │                       ├─ name: SFEGG\n" +
 			"             │               │                       ├─ columns: [id no52d adurz]\n" +
-			"             │               │                       ├─ colSet: (180-185)\n" +
+			"             │               │                       ├─ colSet: (180,181,184)\n" +
 			"             │               │                       └─ tableId: 18\n" +
 			"             │               └─ TableAlias(sn)\n" +
 			"             │                   └─ IndexedTableAccess(NOXN3)\n" +
@@ -6387,7 +6387,7 @@ WHERE
 			"             │   │               └─ Table\n" +
 			"             │   │                   ├─ name: NOXN3\n" +
 			"             │   │                   ├─ columns: [id brqp2 fftbj numk2 letoe]\n" +
-			"             │   │                   ├─ colSet: (1-10)\n" +
+			"             │   │                   ├─ colSet: (1-3,7,8)\n" +
 			"             │   │                   └─ tableId: 1\n" +
 			"             │   └─ TableAlias(s7egw)\n" +
 			"             │       └─ IndexedTableAccess(E2I7U)\n" +
@@ -6520,7 +6520,7 @@ WHERE
 			"             │               └─ Table\n" +
 			"             │                   ├─ name: NOXN3\n" +
 			"             │                   ├─ columns: [id brqp2 fftbj numk2 letoe]\n" +
-			"             │                   ├─ colSet: (1-10)\n" +
+			"             │                   ├─ colSet: (1-3,7,8)\n" +
 			"             │                   └─ tableId: 1\n" +
 			"             └─ TableAlias(nd)\n" +
 			"                 └─ IndexedTableAccess(E2I7U)\n" +
@@ -6625,7 +6625,7 @@ WHERE
 			"                 │   │   └─ IndexedTableAccess(NOXN3)\n" +
 			"                 │   │       ├─ index: [NOXN3.BRQP2]\n" +
 			"                 │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"                 │   │       ├─ colSet: (1-10)\n" +
+			"                 │   │       ├─ colSet: (1-3,7,8)\n" +
 			"                 │   │       ├─ tableId: 1\n" +
 			"                 │   │       └─ Table\n" +
 			"                 │   │           ├─ name: NOXN3\n" +
@@ -6634,7 +6634,7 @@ WHERE
 			"                 │       └─ IndexedTableAccess(E2I7U)\n" +
 			"                 │           ├─ index: [E2I7U.id]\n" +
 			"                 │           ├─ static: [{[NULL, ∞)}]\n" +
-			"                 │           ├─ colSet: (11-27)\n" +
+			"                 │           ├─ colSet: (11,14)\n" +
 			"                 │           ├─ tableId: 2\n" +
 			"                 │           └─ Table\n" +
 			"                 │               ├─ name: E2I7U\n" +
@@ -6769,7 +6769,7 @@ WHERE
 			"         │       └─ IndexedTableAccess(E2I7U)\n" +
 			"         │           ├─ index: [E2I7U.id]\n" +
 			"         │           ├─ keys: [il.LUEVY:0!null]\n" +
-			"         │           ├─ colSet: (9-25)\n" +
+			"         │           ├─ colSet: (9,10,12)\n" +
 			"         │           ├─ tableId: 2\n" +
 			"         │           └─ Table\n" +
 			"         │               ├─ name: E2I7U\n" +
@@ -6781,7 +6781,7 @@ WHERE
 			"                 └─ IndexedTableAccess(F35MI)\n" +
 			"                     ├─ index: [F35MI.DZLIM]\n" +
 			"                     ├─ static: [{(NULL, SUZTA)}, {(SUZTA, ∞)}]\n" +
-			"                     ├─ colSet: (26-28)\n" +
+			"                     ├─ colSet: (26,27)\n" +
 			"                     ├─ tableId: 3\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: F35MI\n" +
@@ -6845,7 +6845,7 @@ WHERE
 		ExpectedPlan: "IndexedTableAccess(YK2GW)\n" +
 			" ├─ index: [YK2GW.FTQLQ]\n" +
 			" ├─ static: [{[SQ1, SQ1]}]\n" +
-			" ├─ colSet: (1-30)\n" +
+			" ├─ colSet: (2,6)\n" +
 			" ├─ tableId: 1\n" +
 			" └─ Table\n" +
 			"     ├─ name: YK2GW\n" +
@@ -6946,7 +6946,7 @@ WHERE
 			"         │       │               └─ IndexedTableAccess(F35MI)\n" +
 			"         │       │                   ├─ index: [F35MI.id]\n" +
 			"         │       │                   ├─ keys: [nd.DKCAJ:3!null]\n" +
-			"         │       │                   ├─ colSet: (59-61)\n" +
+			"         │       │                   ├─ colSet: (59,60)\n" +
 			"         │       │                   ├─ tableId: 5\n" +
 			"         │       │                   └─ Table\n" +
 			"         │       │                       ├─ name: F35MI\n" +
@@ -6966,7 +6966,7 @@ WHERE
 			"         │           │               └─ IndexedTableAccess(F35MI)\n" +
 			"         │           │                   ├─ index: [F35MI.id]\n" +
 			"         │           │                   ├─ keys: [nd.DKCAJ:1!null]\n" +
-			"         │           │                   ├─ colSet: (59-61)\n" +
+			"         │           │                   ├─ colSet: (59,60)\n" +
 			"         │           │                   ├─ tableId: 5\n" +
 			"         │           │                   └─ Table\n" +
 			"         │           │                       ├─ name: F35MI\n" +
@@ -7004,7 +7004,7 @@ WHERE
 			"         │                                   │       └─ IndexedTableAccess(YK2GW)\n" +
 			"         │                                   │           ├─ index: [YK2GW.id]\n" +
 			"         │                                   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"         │                                   │           ├─ colSet: (1-30)\n" +
+			"         │                                   │           ├─ colSet: (1,2)\n" +
 			"         │                                   │           ├─ tableId: 1\n" +
 			"         │                                   │           └─ Table\n" +
 			"         │                                   │               ├─ name: YK2GW\n" +
@@ -7013,7 +7013,7 @@ WHERE
 			"         │                                       └─ IndexedTableAccess(THNTS)\n" +
 			"         │                                           ├─ index: [THNTS.IXUXU]\n" +
 			"         │                                           ├─ static: [{[NULL, ∞)}]\n" +
-			"         │                                           ├─ colSet: (31-34)\n" +
+			"         │                                           ├─ colSet: (31,33)\n" +
 			"         │                                           ├─ tableId: 2\n" +
 			"         │                                           └─ Table\n" +
 			"         │                                               ├─ name: THNTS\n" +
@@ -7022,7 +7022,7 @@ WHERE
 			"             └─ IndexedTableAccess(AMYXQ)\n" +
 			"                 ├─ index: [AMYXQ.GXLUB,AMYXQ.LUEVY]\n" +
 			"                 ├─ keys: [athcu.B2TX3:0!null athcu.YYKXN:2!null]\n" +
-			"                 ├─ colSet: (69-76)\n" +
+			"                 ├─ colSet: (70,71,74)\n" +
 			"                 ├─ tableId: 7\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: AMYXQ\n" +
@@ -7366,7 +7366,7 @@ WHERE
 			"                                             │   │   │   │           ├─ IndexedTableAccess(THNTS)\n" +
 			"                                             │   │   │   │           │   ├─ index: [THNTS.IXUXU]\n" +
 			"                                             │   │   │   │           │   ├─ static: [{[NULL, ∞)}]\n" +
-			"                                             │   │   │   │           │   ├─ colSet: (39-42)\n" +
+			"                                             │   │   │   │           │   ├─ colSet: (39,41)\n" +
 			"                                             │   │   │   │           │   ├─ tableId: 7\n" +
 			"                                             │   │   │   │           │   └─ Table\n" +
 			"                                             │   │   │   │           │       ├─ name: THNTS\n" +
@@ -7378,7 +7378,7 @@ WHERE
 			"                                             │   │   │   │               └─ IndexedTableAccess(YK2GW)\n" +
 			"                                             │   │   │   │                   ├─ index: [YK2GW.id]\n" +
 			"                                             │   │   │   │                   ├─ static: [{[NULL, ∞)}]\n" +
-			"                                             │   │   │   │                   ├─ colSet: (43-72)\n" +
+			"                                             │   │   │   │                   ├─ colSet: (43,44)\n" +
 			"                                             │   │   │   │                   ├─ tableId: 8\n" +
 			"                                             │   │   │   │                   └─ Table\n" +
 			"                                             │   │   │   │                       ├─ name: YK2GW\n" +
@@ -7398,7 +7398,7 @@ WHERE
 			"                                             │   │   │           │   │   └─ IndexedTableAccess(FEIOE)\n" +
 			"                                             │   │   │           │   │       ├─ index: [FEIOE.LUEVY]\n" +
 			"                                             │   │   │           │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"                                             │   │   │           │   │       ├─ colSet: (16-21)\n" +
+			"                                             │   │   │           │   │       ├─ colSet: (17,18)\n" +
 			"                                             │   │   │           │   │       ├─ tableId: 5\n" +
 			"                                             │   │   │           │   │       └─ Table\n" +
 			"                                             │   │   │           │   │           ├─ name: FEIOE\n" +
@@ -7407,7 +7407,7 @@ WHERE
 			"                                             │   │   │           │       └─ IndexedTableAccess(E2I7U)\n" +
 			"                                             │   │   │           │           ├─ index: [E2I7U.id]\n" +
 			"                                             │   │   │           │           ├─ static: [{[NULL, ∞)}]\n" +
-			"                                             │   │   │           │           ├─ colSet: (22-38)\n" +
+			"                                             │   │   │           │           ├─ colSet: (22,25,34)\n" +
 			"                                             │   │   │           │           ├─ tableId: 6\n" +
 			"                                             │   │   │           │           └─ Table\n" +
 			"                                             │   │   │           │               ├─ name: E2I7U\n" +
@@ -7431,7 +7431,7 @@ WHERE
 			"                                             │   │   │                   │   │   │   └─ IndexedTableAccess(SZQWJ)\n" +
 			"                                             │   │   │                   │   │   │       ├─ index: [SZQWJ.CH3FR]\n" +
 			"                                             │   │   │                   │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"                                             │   │   │                   │   │   │       ├─ colSet: (1-5)\n" +
+			"                                             │   │   │                   │   │   │       ├─ colSet: (2-4)\n" +
 			"                                             │   │   │                   │   │   │       ├─ tableId: 1\n" +
 			"                                             │   │   │                   │   │   │       └─ Table\n" +
 			"                                             │   │   │                   │   │   │           ├─ name: SZQWJ\n" +
@@ -7440,7 +7440,7 @@ WHERE
 			"                                             │   │   │                   │   │       └─ IndexedTableAccess(XOAOP)\n" +
 			"                                             │   │   │                   │   │           ├─ index: [XOAOP.id]\n" +
 			"                                             │   │   │                   │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"                                             │   │   │                   │   │           ├─ colSet: (6-8)\n" +
+			"                                             │   │   │                   │   │           ├─ colSet: (6,7)\n" +
 			"                                             │   │   │                   │   │           ├─ tableId: 2\n" +
 			"                                             │   │   │                   │   │           └─ Table\n" +
 			"                                             │   │   │                   │   │               ├─ name: XOAOP\n" +
@@ -7461,13 +7461,13 @@ WHERE
 			"                                             │   │   │                           └─ Table\n" +
 			"                                             │   │   │                               ├─ name: PG27A\n" +
 			"                                             │   │   │                               ├─ columns: [id dzlim]\n" +
-			"                                             │   │   │                               ├─ colSet: (13-15)\n" +
+			"                                             │   │   │                               ├─ colSet: (13,14)\n" +
 			"                                             │   │   │                               └─ tableId: 4\n" +
 			"                                             │   │   └─ TableAlias(fc)\n" +
 			"                                             │   │       └─ IndexedTableAccess(AMYXQ)\n" +
 			"                                             │   │           ├─ index: [AMYXQ.GXLUB,AMYXQ.LUEVY]\n" +
 			"                                             │   │           ├─ keys: [bs.id:0!null nd.id:4!null]\n" +
-			"                                             │   │           ├─ colSet: (76-83)\n" +
+			"                                             │   │           ├─ colSet: (77,78,81)\n" +
 			"                                             │   │           ├─ tableId: 10\n" +
 			"                                             │   │           └─ Table\n" +
 			"                                             │   │               ├─ name: AMYXQ\n" +
@@ -7584,7 +7584,7 @@ WHERE
 			"                                             │                       │   │           │   │       └─ IndexedTableAccess(YK2GW)\n" +
 			"                                             │                       │   │           │   │           ├─ index: [YK2GW.id]\n" +
 			"                                             │                       │   │           │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"                                             │                       │   │           │   │           ├─ colSet: (105-134)\n" +
+			"                                             │                       │   │           │   │           ├─ colSet: (105,106)\n" +
 			"                                             │                       │   │           │   │           ├─ tableId: 13\n" +
 			"                                             │                       │   │           │   │           └─ Table\n" +
 			"                                             │                       │   │           │   │               ├─ name: YK2GW\n" +
@@ -7593,7 +7593,7 @@ WHERE
 			"                                             │                       │   │           │       └─ IndexedTableAccess(THNTS)\n" +
 			"                                             │                       │   │           │           ├─ index: [THNTS.IXUXU]\n" +
 			"                                             │                       │   │           │           ├─ static: [{[NULL, ∞)}]\n" +
-			"                                             │                       │   │           │           ├─ colSet: (101-104)\n" +
+			"                                             │                       │   │           │           ├─ colSet: (101,103)\n" +
 			"                                             │                       │   │           │           ├─ tableId: 12\n" +
 			"                                             │                       │   │           │           └─ Table\n" +
 			"                                             │                       │   │           │               ├─ name: THNTS\n" +
@@ -7613,7 +7613,7 @@ WHERE
 			"                                             │                       │   │                   │   └─ Table\n" +
 			"                                             │                       │   │                   │       ├─ name: HGMQ6\n" +
 			"                                             │                       │   │                   │       ├─ columns: [id gxlub luevy fsdy2]\n" +
-			"                                             │                       │   │                   │       ├─ colSet: (84-100)\n" +
+			"                                             │                       │   │                   │       ├─ colSet: (84-86,94)\n" +
 			"                                             │                       │   │                   │       └─ tableId: 11\n" +
 			"                                             │                       │   │                   └─ HashLookup\n" +
 			"                                             │                       │   │                       ├─ left-key: TUPLE(mf.LUEVY:6!null, mf.LUEVY:6!null)\n" +
@@ -7627,7 +7627,7 @@ WHERE
 			"                                             │                       │   │                           │   │   └─ IndexedTableAccess(E2I7U)\n" +
 			"                                             │                       │   │                           │   │       ├─ index: [E2I7U.HPCMS]\n" +
 			"                                             │                       │   │                           │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"                                             │                       │   │                           │   │       ├─ colSet: (135-151)\n" +
+			"                                             │                       │   │                           │   │       ├─ colSet: (135,147)\n" +
 			"                                             │                       │   │                           │   │       ├─ tableId: 14\n" +
 			"                                             │                       │   │                           │   │       └─ Table\n" +
 			"                                             │                       │   │                           │   │           ├─ name: E2I7U\n" +
@@ -7636,7 +7636,7 @@ WHERE
 			"                                             │                       │   │                           │       └─ IndexedTableAccess(TNMXI)\n" +
 			"                                             │                       │   │                           │           ├─ index: [TNMXI.id]\n" +
 			"                                             │                       │   │                           │           ├─ static: [{[NULL, ∞)}]\n" +
-			"                                             │                       │   │                           │           ├─ colSet: (152-154)\n" +
+			"                                             │                       │   │                           │           ├─ colSet: (152,153)\n" +
 			"                                             │                       │   │                           │           ├─ tableId: 15\n" +
 			"                                             │                       │   │                           │           └─ Table\n" +
 			"                                             │                       │   │                           │               ├─ name: TNMXI\n" +
@@ -7645,7 +7645,7 @@ WHERE
 			"                                             │                       │   │                               └─ IndexedTableAccess(NOXN3)\n" +
 			"                                             │                       │   │                                   ├─ index: [NOXN3.BRQP2]\n" +
 			"                                             │                       │   │                                   ├─ keys: [nd.id:8!null]\n" +
-			"                                             │                       │   │                                   ├─ colSet: (155-164)\n" +
+			"                                             │                       │   │                                   ├─ colSet: (156)\n" +
 			"                                             │                       │   │                                   ├─ tableId: 16\n" +
 			"                                             │                       │   │                                   └─ Table\n" +
 			"                                             │                       │   │                                       ├─ name: NOXN3\n" +
@@ -7654,7 +7654,7 @@ WHERE
 			"                                             │                       │       └─ IndexedTableAccess(SEQS3)\n" +
 			"                                             │                       │           ├─ index: [SEQS3.Z7CP5]\n" +
 			"                                             │                       │           ├─ keys: [iq.Z7CP5:2!null]\n" +
-			"                                             │                       │           ├─ colSet: (173-175)\n" +
+			"                                             │                       │           ├─ colSet: (174,175)\n" +
 			"                                             │                       │           ├─ tableId: 18\n" +
 			"                                             │                       │           └─ Table\n" +
 			"                                             │                       │               ├─ name: SEQS3\n" +
@@ -7666,7 +7666,7 @@ WHERE
 			"                                             │                               └─ Table\n" +
 			"                                             │                                   ├─ name: D34QP\n" +
 			"                                             │                                   ├─ columns: [id znp4p]\n" +
-			"                                             │                                   ├─ colSet: (176-181)\n" +
+			"                                             │                                   ├─ colSet: (176,181)\n" +
 			"                                             │                                   └─ tableId: 19\n" +
 			"                                             └─ HashLookup\n" +
 			"                                                 ├─ left-key: TUPLE(nd.HPCMS:6!null)\n" +
@@ -7675,7 +7675,7 @@ WHERE
 			"                                                     └─ Table\n" +
 			"                                                         ├─ name: TNMXI\n" +
 			"                                                         ├─ columns: [id]\n" +
-			"                                                         ├─ colSet: (187-189)\n" +
+			"                                                         ├─ colSet: (187)\n" +
 			"                                                         └─ tableId: 21\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
@@ -8292,7 +8292,7 @@ WHERE
 			"                                             │   │   │   │           ├─ IndexedTableAccess(THNTS)\n" +
 			"                                             │   │   │   │           │   ├─ index: [THNTS.IXUXU]\n" +
 			"                                             │   │   │   │           │   ├─ static: [{[NULL, ∞)}]\n" +
-			"                                             │   │   │   │           │   ├─ colSet: (39-42)\n" +
+			"                                             │   │   │   │           │   ├─ colSet: (39,41)\n" +
 			"                                             │   │   │   │           │   ├─ tableId: 7\n" +
 			"                                             │   │   │   │           │   └─ Table\n" +
 			"                                             │   │   │   │           │       ├─ name: THNTS\n" +
@@ -8304,7 +8304,7 @@ WHERE
 			"                                             │   │   │   │               └─ IndexedTableAccess(YK2GW)\n" +
 			"                                             │   │   │   │                   ├─ index: [YK2GW.id]\n" +
 			"                                             │   │   │   │                   ├─ static: [{[NULL, ∞)}]\n" +
-			"                                             │   │   │   │                   ├─ colSet: (43-72)\n" +
+			"                                             │   │   │   │                   ├─ colSet: (43,44)\n" +
 			"                                             │   │   │   │                   ├─ tableId: 8\n" +
 			"                                             │   │   │   │                   └─ Table\n" +
 			"                                             │   │   │   │                       ├─ name: YK2GW\n" +
@@ -8324,7 +8324,7 @@ WHERE
 			"                                             │   │   │           │   │   └─ IndexedTableAccess(FEIOE)\n" +
 			"                                             │   │   │           │   │       ├─ index: [FEIOE.LUEVY]\n" +
 			"                                             │   │   │           │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"                                             │   │   │           │   │       ├─ colSet: (16-21)\n" +
+			"                                             │   │   │           │   │       ├─ colSet: (17,18)\n" +
 			"                                             │   │   │           │   │       ├─ tableId: 5\n" +
 			"                                             │   │   │           │   │       └─ Table\n" +
 			"                                             │   │   │           │   │           ├─ name: FEIOE\n" +
@@ -8333,7 +8333,7 @@ WHERE
 			"                                             │   │   │           │       └─ IndexedTableAccess(E2I7U)\n" +
 			"                                             │   │   │           │           ├─ index: [E2I7U.id]\n" +
 			"                                             │   │   │           │           ├─ static: [{[NULL, ∞)}]\n" +
-			"                                             │   │   │           │           ├─ colSet: (22-38)\n" +
+			"                                             │   │   │           │           ├─ colSet: (22,25,34)\n" +
 			"                                             │   │   │           │           ├─ tableId: 6\n" +
 			"                                             │   │   │           │           └─ Table\n" +
 			"                                             │   │   │           │               ├─ name: E2I7U\n" +
@@ -8357,7 +8357,7 @@ WHERE
 			"                                             │   │   │                   │   │   │   └─ IndexedTableAccess(SZQWJ)\n" +
 			"                                             │   │   │                   │   │   │       ├─ index: [SZQWJ.CH3FR]\n" +
 			"                                             │   │   │                   │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"                                             │   │   │                   │   │   │       ├─ colSet: (1-5)\n" +
+			"                                             │   │   │                   │   │   │       ├─ colSet: (2-4)\n" +
 			"                                             │   │   │                   │   │   │       ├─ tableId: 1\n" +
 			"                                             │   │   │                   │   │   │       └─ Table\n" +
 			"                                             │   │   │                   │   │   │           ├─ name: SZQWJ\n" +
@@ -8366,7 +8366,7 @@ WHERE
 			"                                             │   │   │                   │   │       └─ IndexedTableAccess(XOAOP)\n" +
 			"                                             │   │   │                   │   │           ├─ index: [XOAOP.id]\n" +
 			"                                             │   │   │                   │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"                                             │   │   │                   │   │           ├─ colSet: (6-8)\n" +
+			"                                             │   │   │                   │   │           ├─ colSet: (6,7)\n" +
 			"                                             │   │   │                   │   │           ├─ tableId: 2\n" +
 			"                                             │   │   │                   │   │           └─ Table\n" +
 			"                                             │   │   │                   │   │               ├─ name: XOAOP\n" +
@@ -8387,13 +8387,13 @@ WHERE
 			"                                             │   │   │                           └─ Table\n" +
 			"                                             │   │   │                               ├─ name: PG27A\n" +
 			"                                             │   │   │                               ├─ columns: [id dzlim]\n" +
-			"                                             │   │   │                               ├─ colSet: (13-15)\n" +
+			"                                             │   │   │                               ├─ colSet: (13,14)\n" +
 			"                                             │   │   │                               └─ tableId: 4\n" +
 			"                                             │   │   └─ TableAlias(fc)\n" +
 			"                                             │   │       └─ IndexedTableAccess(AMYXQ)\n" +
 			"                                             │   │           ├─ index: [AMYXQ.GXLUB,AMYXQ.LUEVY]\n" +
 			"                                             │   │           ├─ keys: [bs.id:0!null nd.id:4!null]\n" +
-			"                                             │   │           ├─ colSet: (76-83)\n" +
+			"                                             │   │           ├─ colSet: (77,78,81)\n" +
 			"                                             │   │           ├─ tableId: 10\n" +
 			"                                             │   │           └─ Table\n" +
 			"                                             │   │               ├─ name: AMYXQ\n" +
@@ -8510,7 +8510,7 @@ WHERE
 			"                                             │                       │   │           │   │   │   └─ Table\n" +
 			"                                             │                       │   │           │   │   │       ├─ name: NOXN3\n" +
 			"                                             │                       │   │           │   │   │       ├─ columns: [brqp2]\n" +
-			"                                             │                       │   │           │   │   │       ├─ colSet: (155-164)\n" +
+			"                                             │                       │   │           │   │   │       ├─ colSet: (156)\n" +
 			"                                             │                       │   │           │   │   │       └─ tableId: 16\n" +
 			"                                             │                       │   │           │   │   └─ HashLookup\n" +
 			"                                             │                       │   │           │   │       ├─ left-key: TUPLE(sn.BRQP2:0!null)\n" +
@@ -8523,7 +8523,7 @@ WHERE
 			"                                             │                       │   │           │   │           │   └─ IndexedTableAccess(E2I7U)\n" +
 			"                                             │                       │   │           │   │           │       ├─ index: [E2I7U.HPCMS]\n" +
 			"                                             │                       │   │           │   │           │       ├─ static: [{[NULL, ∞)}]\n" +
-			"                                             │                       │   │           │   │           │       ├─ colSet: (135-151)\n" +
+			"                                             │                       │   │           │   │           │       ├─ colSet: (135,147)\n" +
 			"                                             │                       │   │           │   │           │       ├─ tableId: 14\n" +
 			"                                             │                       │   │           │   │           │       └─ Table\n" +
 			"                                             │                       │   │           │   │           │           ├─ name: E2I7U\n" +
@@ -8532,7 +8532,7 @@ WHERE
 			"                                             │                       │   │           │   │               └─ IndexedTableAccess(TNMXI)\n" +
 			"                                             │                       │   │           │   │                   ├─ index: [TNMXI.id]\n" +
 			"                                             │                       │   │           │   │                   ├─ static: [{[NULL, ∞)}]\n" +
-			"                                             │                       │   │           │   │                   ├─ colSet: (152-154)\n" +
+			"                                             │                       │   │           │   │                   ├─ colSet: (152,153)\n" +
 			"                                             │                       │   │           │   │                   ├─ tableId: 15\n" +
 			"                                             │                       │   │           │   │                   └─ Table\n" +
 			"                                             │                       │   │           │   │                       ├─ name: TNMXI\n" +
@@ -8541,7 +8541,7 @@ WHERE
 			"                                             │                       │   │           │       └─ IndexedTableAccess(HGMQ6)\n" +
 			"                                             │                       │   │           │           ├─ index: [HGMQ6.LUEVY]\n" +
 			"                                             │                       │   │           │           ├─ keys: [nd.id:1!null]\n" +
-			"                                             │                       │   │           │           ├─ colSet: (84-100)\n" +
+			"                                             │                       │   │           │           ├─ colSet: (84-86,94)\n" +
 			"                                             │                       │   │           │           ├─ tableId: 11\n" +
 			"                                             │                       │   │           │           └─ Table\n" +
 			"                                             │                       │   │           │               ├─ name: HGMQ6\n" +
@@ -8557,7 +8557,7 @@ WHERE
 			"                                             │                       │   │                   │   └─ IndexedTableAccess(THNTS)\n" +
 			"                                             │                       │   │                   │       ├─ index: [THNTS.IXUXU]\n" +
 			"                                             │                       │   │                   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"                                             │                       │   │                   │       ├─ colSet: (101-104)\n" +
+			"                                             │                       │   │                   │       ├─ colSet: (101,103)\n" +
 			"                                             │                       │   │                   │       ├─ tableId: 12\n" +
 			"                                             │                       │   │                   │       └─ Table\n" +
 			"                                             │                       │   │                   │           ├─ name: THNTS\n" +
@@ -8570,7 +8570,7 @@ WHERE
 			"                                             │                       │   │                           └─ IndexedTableAccess(YK2GW)\n" +
 			"                                             │                       │   │                               ├─ index: [YK2GW.id]\n" +
 			"                                             │                       │   │                               ├─ static: [{[NULL, ∞)}]\n" +
-			"                                             │                       │   │                               ├─ colSet: (105-134)\n" +
+			"                                             │                       │   │                               ├─ colSet: (105,106)\n" +
 			"                                             │                       │   │                               ├─ tableId: 13\n" +
 			"                                             │                       │   │                               └─ Table\n" +
 			"                                             │                       │   │                                   ├─ name: YK2GW\n" +
@@ -8579,7 +8579,7 @@ WHERE
 			"                                             │                       │       └─ IndexedTableAccess(SEQS3)\n" +
 			"                                             │                       │           ├─ index: [SEQS3.Z7CP5]\n" +
 			"                                             │                       │           ├─ keys: [iq.Z7CP5:2!null]\n" +
-			"                                             │                       │           ├─ colSet: (173-175)\n" +
+			"                                             │                       │           ├─ colSet: (174,175)\n" +
 			"                                             │                       │           ├─ tableId: 18\n" +
 			"                                             │                       │           └─ Table\n" +
 			"                                             │                       │               ├─ name: SEQS3\n" +
@@ -8591,7 +8591,7 @@ WHERE
 			"                                             │                               └─ Table\n" +
 			"                                             │                                   ├─ name: D34QP\n" +
 			"                                             │                                   ├─ columns: [id znp4p]\n" +
-			"                                             │                                   ├─ colSet: (176-181)\n" +
+			"                                             │                                   ├─ colSet: (176,181)\n" +
 			"                                             │                                   └─ tableId: 19\n" +
 			"                                             └─ HashLookup\n" +
 			"                                                 ├─ left-key: TUPLE(nd.HPCMS:6!null)\n" +
@@ -8600,7 +8600,7 @@ WHERE
 			"                                                     └─ Table\n" +
 			"                                                         ├─ name: TNMXI\n" +
 			"                                                         ├─ columns: [id]\n" +
-			"                                                         ├─ colSet: (187-189)\n" +
+			"                                                         ├─ colSet: (187)\n" +
 			"                                                         └─ tableId: 21\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
@@ -9065,7 +9065,7 @@ WHERE
 			"         │       └─ Table\n" +
 			"         │           ├─ name: QYWQD\n" +
 			"         │           ├─ columns: [id wnunu hvhrz]\n" +
-			"         │           ├─ colSet: (1-6)\n" +
+			"         │           ├─ colSet: (1,2,4)\n" +
 			"         │           └─ tableId: 1\n" +
 			"         └─ HashLookup\n" +
 			"             ├─ left-key: TUPLE(xj2rd.WNUNU:1!null)\n" +
@@ -9086,7 +9086,7 @@ WHERE
 			"                             └─ Table\n" +
 			"                                 ├─ name: NOXN3\n" +
 			"                                 ├─ columns: [id]\n" +
-			"                                 ├─ colSet: (13-22)\n" +
+			"                                 ├─ colSet: (13)\n" +
 			"                                 └─ tableId: 3\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
@@ -9168,7 +9168,7 @@ WHERE
 			" └─ IndexedTableAccess(E2I7U)\n" +
 			"     ├─ index: [E2I7U.id]\n" +
 			"     ├─ static: [{[NULL, ∞)}]\n" +
-			"     ├─ colSet: (1-17)\n" +
+			"     ├─ colSet: (1,6)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: E2I7U\n" +
@@ -9243,7 +9243,7 @@ WHERE
 			"                 │       └─ Table\n" +
 			"                 │           ├─ name: E2I7U\n" +
 			"                 │           ├─ columns: [id]\n" +
-			"                 │           ├─ colSet: (1-17)\n" +
+			"                 │           ├─ colSet: (1)\n" +
 			"                 │           └─ tableId: 1\n" +
 			"                 └─ HashLookup\n" +
 			"                     ├─ left-key: TUPLE(nd.T722E:0!null)\n" +
@@ -9264,7 +9264,7 @@ WHERE
 			"                                     └─ Table\n" +
 			"                                         ├─ name: AMYXQ\n" +
 			"                                         ├─ columns: [luevy z35gy]\n" +
-			"                                         ├─ colSet: (20-27)\n" +
+			"                                         ├─ colSet: (22,26)\n" +
 			"                                         └─ tableId: 3\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
@@ -9397,7 +9397,7 @@ WHERE
 			" │                       └─ IndexedTableAccess(AMYXQ)\n" +
 			" │                           ├─ index: [AMYXQ.LUEVY]\n" +
 			" │                           ├─ keys: [e2i7u.id:18!null]\n" +
-			" │                           ├─ colSet: (35-42)\n" +
+			" │                           ├─ colSet: (37)\n" +
 			" │                           ├─ tableId: 3\n" +
 			" │                           └─ Table\n" +
 			" │                               ├─ name: AMYXQ\n" +
@@ -9430,7 +9430,7 @@ WHERE
 			"     │                       └─ IndexedTableAccess(AMYXQ)\n" +
 			"     │                           ├─ index: [AMYXQ.LUEVY]\n" +
 			"     │                           ├─ keys: [e2i7u.id:17!null]\n" +
-			"     │                           ├─ colSet: (35-42)\n" +
+			"     │                           ├─ colSet: (37)\n" +
 			"     │                           ├─ tableId: 3\n" +
 			"     │                           └─ Table\n" +
 			"     │                               ├─ name: AMYXQ\n" +
@@ -9650,7 +9650,7 @@ WHERE
 			"             │   │           │   │   │       └─ IndexedTableAccess(YK2GW)\n" +
 			"             │   │           │   │   │           ├─ index: [YK2GW.id]\n" +
 			"             │   │           │   │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"             │   │           │   │   │           ├─ colSet: (1-30)\n" +
+			"             │   │           │   │   │           ├─ colSet: (1,2)\n" +
 			"             │   │           │   │   │           ├─ tableId: 1\n" +
 			"             │   │           │   │   │           └─ Table\n" +
 			"             │   │           │   │   │               ├─ name: YK2GW\n" +
@@ -9659,7 +9659,7 @@ WHERE
 			"             │   │           │   │       └─ IndexedTableAccess(THNTS)\n" +
 			"             │   │           │   │           ├─ index: [THNTS.IXUXU]\n" +
 			"             │   │           │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"             │   │           │   │           ├─ colSet: (31-34)\n" +
+			"             │   │           │   │           ├─ colSet: (31,33)\n" +
 			"             │   │           │   │           ├─ tableId: 2\n" +
 			"             │   │           │   │           └─ Table\n" +
 			"             │   │           │   │               ├─ name: THNTS\n" +
@@ -9681,7 +9681,7 @@ WHERE
 			"             │   │           │           │   │   │       └─ IndexedTableAccess(HGMQ6)\n" +
 			"             │   │           │           │   │   │           ├─ index: [HGMQ6.LUEVY]\n" +
 			"             │   │           │           │   │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"             │   │           │           │   │   │           ├─ colSet: (35-51)\n" +
+			"             │   │           │           │   │   │           ├─ colSet: (35-38,45-48)\n" +
 			"             │   │           │           │   │   │           ├─ tableId: 3\n" +
 			"             │   │           │           │   │   │           └─ Table\n" +
 			"             │   │           │           │   │   │               ├─ name: HGMQ6\n" +
@@ -9690,7 +9690,7 @@ WHERE
 			"             │   │           │           │   │       └─ IndexedTableAccess(NOXN3)\n" +
 			"             │   │           │           │   │           ├─ index: [NOXN3.BRQP2]\n" +
 			"             │   │           │           │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"             │   │           │           │   │           ├─ colSet: (52-61)\n" +
+			"             │   │           │           │   │           ├─ colSet: (52,53)\n" +
 			"             │   │           │           │   │           ├─ tableId: 4\n" +
 			"             │   │           │           │   │           └─ Table\n" +
 			"             │   │           │           │   │               ├─ name: NOXN3\n" +
@@ -9699,7 +9699,7 @@ WHERE
 			"             │   │           │           │       └─ IndexedTableAccess(TPXBU)\n" +
 			"             │   │           │           │           ├─ index: [TPXBU.id]\n" +
 			"             │   │           │           │           ├─ keys: [mf.M22QN:7!null]\n" +
-			"             │   │           │           │           ├─ colSet: (62-64)\n" +
+			"             │   │           │           │           ├─ colSet: (62,63)\n" +
 			"             │   │           │           │           ├─ tableId: 5\n" +
 			"             │   │           │           │           └─ Table\n" +
 			"             │   │           │           │               ├─ name: TPXBU\n" +
@@ -9708,7 +9708,7 @@ WHERE
 			"             │   │           │               └─ IndexedTableAccess(SEQS3)\n" +
 			"             │   │           │                   ├─ index: [SEQS3.Z7CP5]\n" +
 			"             │   │           │                   ├─ keys: [mf.id:4!null]\n" +
-			"             │   │           │                   ├─ colSet: (65-67)\n" +
+			"             │   │           │                   ├─ colSet: (66,67)\n" +
 			"             │   │           │                   ├─ tableId: 6\n" +
 			"             │   │           │                   └─ Table\n" +
 			"             │   │           │                       ├─ name: SEQS3\n" +
@@ -9720,7 +9720,7 @@ WHERE
 			"             │   │                   └─ Table\n" +
 			"             │   │                       ├─ name: D34QP\n" +
 			"             │   │                       ├─ columns: [id znp4p]\n" +
-			"             │   │                       ├─ colSet: (68-73)\n" +
+			"             │   │                       ├─ colSet: (68,73)\n" +
 			"             │   │                       └─ tableId: 7\n" +
 			"             │   └─ HashLookup\n" +
 			"             │       ├─ left-key: TUPLE(oxxei.BDNYB:1!null)\n" +
@@ -9756,7 +9756,7 @@ WHERE
 			"             │                               │   │   └─ IndexedTableAccess(NOXN3)\n" +
 			"             │                               │   │       ├─ index: [NOXN3.BRQP2]\n" +
 			"             │                               │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"             │                               │   │       ├─ colSet: (88-97)\n" +
+			"             │                               │   │       ├─ colSet: (88,89)\n" +
 			"             │                               │   │       ├─ tableId: 10\n" +
 			"             │                               │   │       └─ Table\n" +
 			"             │                               │   │           ├─ name: NOXN3\n" +
@@ -9765,7 +9765,7 @@ WHERE
 			"             │                               │       └─ IndexedTableAccess(E2I7U)\n" +
 			"             │                               │           ├─ index: [E2I7U.id]\n" +
 			"             │                               │           ├─ static: [{[NULL, ∞)}]\n" +
-			"             │                               │           ├─ colSet: (98-114)\n" +
+			"             │                               │           ├─ colSet: (98,101,108,110)\n" +
 			"             │                               │           ├─ tableId: 11\n" +
 			"             │                               │           └─ Table\n" +
 			"             │                               │               ├─ name: E2I7U\n" +
@@ -9777,7 +9777,7 @@ WHERE
 			"             │                                       └─ Table\n" +
 			"             │                                           ├─ name: TNMXI\n" +
 			"             │                                           ├─ columns: [id dzlim]\n" +
-			"             │                                           ├─ colSet: (115-117)\n" +
+			"             │                                           ├─ colSet: (115,116)\n" +
 			"             │                                           └─ tableId: 12\n" +
 			"             └─ HashLookup\n" +
 			"                 ├─ left-key: TUPLE(oxxei.BDNYB:1!null)\n" +
@@ -9798,7 +9798,7 @@ WHERE
 			"                                 └─ Table\n" +
 			"                                     ├─ name: NOXN3\n" +
 			"                                     ├─ columns: [id]\n" +
-			"                                     ├─ colSet: (137-146)\n" +
+			"                                     ├─ colSet: (137)\n" +
 			"                                     └─ tableId: 17\n" +
 			"",
 		ExpectedEstimates: "Sort(ckele.M6T2N ASC)\n" +
@@ -10155,7 +10155,7 @@ WHERE
 			"             │   │           │   │   │   │   │   └─ Table\n" +
 			"             │   │           │   │   │   │   │       ├─ name: NOXN3\n" +
 			"             │   │           │   │   │   │   │       ├─ columns: [id brqp2]\n" +
-			"             │   │           │   │   │   │   │       ├─ colSet: (52-61)\n" +
+			"             │   │           │   │   │   │   │       ├─ colSet: (52,53)\n" +
 			"             │   │           │   │   │   │   │       └─ tableId: 4\n" +
 			"             │   │           │   │   │   │   └─ Filter\n" +
 			"             │   │           │   │   │   │       ├─ HashIn\n" +
@@ -10165,7 +10165,7 @@ WHERE
 			"             │   │           │   │   │   │           └─ IndexedTableAccess(HGMQ6)\n" +
 			"             │   │           │   │   │   │               ├─ index: [HGMQ6.LUEVY]\n" +
 			"             │   │           │   │   │   │               ├─ keys: [sn.BRQP2:1!null]\n" +
-			"             │   │           │   │   │   │               ├─ colSet: (35-51)\n" +
+			"             │   │           │   │   │   │               ├─ colSet: (35-38,45-48)\n" +
 			"             │   │           │   │   │   │               ├─ tableId: 3\n" +
 			"             │   │           │   │   │   │               └─ Table\n" +
 			"             │   │           │   │   │   │                   ├─ name: HGMQ6\n" +
@@ -10174,7 +10174,7 @@ WHERE
 			"             │   │           │   │   │       └─ IndexedTableAccess(SEQS3)\n" +
 			"             │   │           │   │   │           ├─ index: [SEQS3.Z7CP5]\n" +
 			"             │   │           │   │   │           ├─ keys: [mf.id:2!null]\n" +
-			"             │   │           │   │   │           ├─ colSet: (65-67)\n" +
+			"             │   │           │   │   │           ├─ colSet: (66,67)\n" +
 			"             │   │           │   │   │           ├─ tableId: 6\n" +
 			"             │   │           │   │   │           └─ Table\n" +
 			"             │   │           │   │   │               ├─ name: SEQS3\n" +
@@ -10183,7 +10183,7 @@ WHERE
 			"             │   │           │   │       └─ IndexedTableAccess(TPXBU)\n" +
 			"             │   │           │   │           ├─ index: [TPXBU.id]\n" +
 			"             │   │           │   │           ├─ keys: [mf.M22QN:5!null]\n" +
-			"             │   │           │   │           ├─ colSet: (62-64)\n" +
+			"             │   │           │   │           ├─ colSet: (62,63)\n" +
 			"             │   │           │   │           ├─ tableId: 5\n" +
 			"             │   │           │   │           └─ Table\n" +
 			"             │   │           │   │               ├─ name: TPXBU\n" +
@@ -10203,7 +10203,7 @@ WHERE
 			"             │   │           │           │       └─ IndexedTableAccess(YK2GW)\n" +
 			"             │   │           │           │           ├─ index: [YK2GW.id]\n" +
 			"             │   │           │           │           ├─ static: [{[NULL, ∞)}]\n" +
-			"             │   │           │           │           ├─ colSet: (1-30)\n" +
+			"             │   │           │           │           ├─ colSet: (1,2)\n" +
 			"             │   │           │           │           ├─ tableId: 1\n" +
 			"             │   │           │           │           └─ Table\n" +
 			"             │   │           │           │               ├─ name: YK2GW\n" +
@@ -10212,7 +10212,7 @@ WHERE
 			"             │   │           │               └─ IndexedTableAccess(THNTS)\n" +
 			"             │   │           │                   ├─ index: [THNTS.IXUXU]\n" +
 			"             │   │           │                   ├─ static: [{[NULL, ∞)}]\n" +
-			"             │   │           │                   ├─ colSet: (31-34)\n" +
+			"             │   │           │                   ├─ colSet: (31,33)\n" +
 			"             │   │           │                   ├─ tableId: 2\n" +
 			"             │   │           │                   └─ Table\n" +
 			"             │   │           │                       ├─ name: THNTS\n" +
@@ -10224,7 +10224,7 @@ WHERE
 			"             │   │                   └─ Table\n" +
 			"             │   │                       ├─ name: D34QP\n" +
 			"             │   │                       ├─ columns: [id znp4p]\n" +
-			"             │   │                       ├─ colSet: (68-73)\n" +
+			"             │   │                       ├─ colSet: (68,73)\n" +
 			"             │   │                       └─ tableId: 7\n" +
 			"             │   └─ HashLookup\n" +
 			"             │       ├─ left-key: TUPLE(oxxei.BDNYB:1!null)\n" +
@@ -10260,7 +10260,7 @@ WHERE
 			"             │                               │   │   └─ IndexedTableAccess(NOXN3)\n" +
 			"             │                               │   │       ├─ index: [NOXN3.BRQP2]\n" +
 			"             │                               │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"             │                               │   │       ├─ colSet: (88-97)\n" +
+			"             │                               │   │       ├─ colSet: (88,89)\n" +
 			"             │                               │   │       ├─ tableId: 10\n" +
 			"             │                               │   │       └─ Table\n" +
 			"             │                               │   │           ├─ name: NOXN3\n" +
@@ -10269,7 +10269,7 @@ WHERE
 			"             │                               │       └─ IndexedTableAccess(E2I7U)\n" +
 			"             │                               │           ├─ index: [E2I7U.id]\n" +
 			"             │                               │           ├─ static: [{[NULL, ∞)}]\n" +
-			"             │                               │           ├─ colSet: (98-114)\n" +
+			"             │                               │           ├─ colSet: (98,101,108,110)\n" +
 			"             │                               │           ├─ tableId: 11\n" +
 			"             │                               │           └─ Table\n" +
 			"             │                               │               ├─ name: E2I7U\n" +
@@ -10281,7 +10281,7 @@ WHERE
 			"             │                                       └─ Table\n" +
 			"             │                                           ├─ name: TNMXI\n" +
 			"             │                                           ├─ columns: [id dzlim]\n" +
-			"             │                                           ├─ colSet: (115-117)\n" +
+			"             │                                           ├─ colSet: (115,116)\n" +
 			"             │                                           └─ tableId: 12\n" +
 			"             └─ HashLookup\n" +
 			"                 ├─ left-key: TUPLE(oxxei.BDNYB:1!null)\n" +
@@ -10302,7 +10302,7 @@ WHERE
 			"                                 └─ Table\n" +
 			"                                     ├─ name: NOXN3\n" +
 			"                                     ├─ columns: [id]\n" +
-			"                                     ├─ colSet: (137-146)\n" +
+			"                                     ├─ colSet: (137)\n" +
 			"                                     └─ tableId: 17\n" +
 			"",
 		ExpectedEstimates: "Sort(ckele.M6T2N ASC)\n" +
@@ -10743,7 +10743,7 @@ WHERE
 			" │                       └─ IndexedTableAccess(NOXN3)\n" +
 			" │                           ├─ index: [NOXN3.id]\n" +
 			" │                           ├─ keys: [mjr3d.QNI57:9]\n" +
-			" │                           ├─ colSet: (1-10)\n" +
+			" │                           ├─ colSet: (1)\n" +
 			" │                           ├─ tableId: 1\n" +
 			" │                           └─ Table\n" +
 			" │                               ├─ name: NOXN3\n" +
@@ -10774,7 +10774,7 @@ WHERE
 			" │                       └─ IndexedTableAccess(NOXN3)\n" +
 			" │                           ├─ index: [NOXN3.id]\n" +
 			" │                           ├─ keys: [mjr3d.TDEIU:10]\n" +
-			" │                           ├─ colSet: (1-10)\n" +
+			" │                           ├─ colSet: (1)\n" +
 			" │                           ├─ tableId: 1\n" +
 			" │                           └─ Table\n" +
 			" │                               ├─ name: NOXN3\n" +
@@ -10807,7 +10807,7 @@ WHERE
 			"     │                       └─ IndexedTableAccess(NOXN3)\n" +
 			"     │                           ├─ index: [NOXN3.id]\n" +
 			"     │                           ├─ keys: [mjr3d.QNI57:12]\n" +
-			"     │                           ├─ colSet: (1-10)\n" +
+			"     │                           ├─ colSet: (1)\n" +
 			"     │                           ├─ tableId: 1\n" +
 			"     │                           └─ Table\n" +
 			"     │                               ├─ name: NOXN3\n" +
@@ -10838,7 +10838,7 @@ WHERE
 			"     │                       └─ IndexedTableAccess(NOXN3)\n" +
 			"     │                           ├─ index: [NOXN3.id]\n" +
 			"     │                           ├─ keys: [mjr3d.TDEIU:13]\n" +
-			"     │                           ├─ colSet: (1-10)\n" +
+			"     │                           ├─ colSet: (1)\n" +
 			"     │                           ├─ tableId: 1\n" +
 			"     │                           └─ Table\n" +
 			"     │                               ├─ name: NOXN3\n" +
@@ -10897,7 +10897,7 @@ WHERE
 			"                 │   │   │   │                           └─ IndexedTableAccess(NOXN3)\n" +
 			"                 │   │   │   │                               ├─ index: [NOXN3.BRQP2]\n" +
 			"                 │   │   │   │                               ├─ keys: [mjr3d.BJUF2:4!null]\n" +
-			"                 │   │   │   │                               ├─ colSet: (165-174)\n" +
+			"                 │   │   │   │                               ├─ colSet: (165,166)\n" +
 			"                 │   │   │   │                               ├─ tableId: 18\n" +
 			"                 │   │   │   │                               └─ Table\n" +
 			"                 │   │   │   │                                   ├─ name: NOXN3\n" +
@@ -10922,7 +10922,7 @@ WHERE
 			"                 │   │   │                           └─ IndexedTableAccess(NOXN3)\n" +
 			"                 │   │   │                               ├─ index: [NOXN3.BRQP2]\n" +
 			"                 │   │   │                               ├─ keys: [mjr3d.FJDP5:3!null]\n" +
-			"                 │   │   │                               ├─ colSet: (175-184)\n" +
+			"                 │   │   │                               ├─ colSet: (175,176)\n" +
 			"                 │   │   │                               ├─ tableId: 19\n" +
 			"                 │   │   │                               └─ Table\n" +
 			"                 │   │   │                                   ├─ name: NOXN3\n" +
@@ -10948,7 +10948,7 @@ WHERE
 			"                 │   │                           └─ IndexedTableAccess(NOXN3)\n" +
 			"                 │   │                               ├─ index: [NOXN3.BRQP2]\n" +
 			"                 │   │                               ├─ keys: [mjr3d.BJUF2:4!null]\n" +
-			"                 │   │                               ├─ colSet: (185-194)\n" +
+			"                 │   │                               ├─ colSet: (185,186)\n" +
 			"                 │   │                               ├─ tableId: 20\n" +
 			"                 │   │                               └─ Table\n" +
 			"                 │   │                                   ├─ name: NOXN3\n" +
@@ -11035,7 +11035,7 @@ WHERE
 			"                 │   │           │       │                       │   │   │   │   │   └─ IndexedTableAccess(HDDVB)\n" +
 			"                 │   │           │       │                       │   │   │   │   │       ├─ index: [HDDVB.NZ4MQ]\n" +
 			"                 │   │           │       │                       │   │   │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"                 │   │           │       │                       │   │   │   │   │       ├─ colSet: (15-23)\n" +
+			"                 │   │           │       │                       │   │   │   │   │       ├─ colSet: (16-19,21)\n" +
 			"                 │   │           │       │                       │   │   │   │   │       ├─ tableId: 4\n" +
 			"                 │   │           │       │                       │   │   │   │   │       └─ Table\n" +
 			"                 │   │           │       │                       │   │   │   │   │           ├─ name: HDDVB\n" +
@@ -11044,7 +11044,7 @@ WHERE
 			"                 │   │           │       │                       │   │   │   │       └─ IndexedTableAccess(YYBCX)\n" +
 			"                 │   │           │       │                       │   │   │   │           ├─ index: [YYBCX.id]\n" +
 			"                 │   │           │       │                       │   │   │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"                 │   │           │       │                       │   │   │   │           ├─ colSet: (24-31)\n" +
+			"                 │   │           │       │                       │   │   │   │           ├─ colSet: (24-28)\n" +
 			"                 │   │           │       │                       │   │   │   │           ├─ tableId: 5\n" +
 			"                 │   │           │       │                       │   │   │   │           └─ Table\n" +
 			"                 │   │           │       │                       │   │   │   │               ├─ name: YYBCX\n" +
@@ -11056,13 +11056,13 @@ WHERE
 			"                 │   │           │       │                       │   │   │           └─ Table\n" +
 			"                 │   │           │       │                       │   │   │               ├─ name: WGSDC\n" +
 			"                 │   │           │       │                       │   │   │               ├─ columns: [id nohhr]\n" +
-			"                 │   │           │       │                       │   │   │               ├─ colSet: (32-41)\n" +
+			"                 │   │           │       │                       │   │   │               ├─ colSet: (32,33)\n" +
 			"                 │   │           │       │                       │   │   │               └─ tableId: 6\n" +
 			"                 │   │           │       │                       │   │   └─ TableAlias(cpmfe)\n" +
 			"                 │   │           │       │                       │   │       └─ IndexedTableAccess(E2I7U)\n" +
 			"                 │   │           │       │                       │   │           ├─ index: [E2I7U.ZH72S]\n" +
 			"                 │   │           │       │                       │   │           ├─ keys: [nhmxw.NOHHR:11!null]\n" +
-			"                 │   │           │       │                       │   │           ├─ colSet: (42-58)\n" +
+			"                 │   │           │       │                       │   │           ├─ colSet: (42,45,49)\n" +
 			"                 │   │           │       │                       │   │           ├─ tableId: 7\n" +
 			"                 │   │           │       │                       │   │           └─ Table\n" +
 			"                 │   │           │       │                       │   │               ├─ name: E2I7U\n" +
@@ -11071,7 +11071,7 @@ WHERE
 			"                 │   │           │       │                       │       └─ IndexedTableAccess(NOXN3)\n" +
 			"                 │   │           │       │                       │           ├─ index: [NOXN3.FFTBJ]\n" +
 			"                 │   │           │       │                       │           ├─ keys: [ism.UJ6XY:1!null]\n" +
-			"                 │   │           │       │                       │           ├─ colSet: (59-68)\n" +
+			"                 │   │           │       │                       │           ├─ colSet: (59-61)\n" +
 			"                 │   │           │       │                       │           ├─ tableId: 8\n" +
 			"                 │   │           │       │                       │           └─ Table\n" +
 			"                 │   │           │       │                       │               ├─ name: NOXN3\n" +
@@ -11080,7 +11080,7 @@ WHERE
 			"                 │   │           │       │                           └─ IndexedTableAccess(NOXN3)\n" +
 			"                 │   │           │       │                               ├─ index: [NOXN3.FFTBJ]\n" +
 			"                 │   │           │       │                               ├─ keys: [ism.FV24E:0!null]\n" +
-			"                 │   │           │       │                               ├─ colSet: (69-78)\n" +
+			"                 │   │           │       │                               ├─ colSet: (69-71)\n" +
 			"                 │   │           │       │                               ├─ tableId: 9\n" +
 			"                 │   │           │       │                               └─ Table\n" +
 			"                 │   │           │       │                                   ├─ name: NOXN3\n" +
@@ -11150,7 +11150,7 @@ WHERE
 			"                 │   │           │                                   │   │   │   │   │   └─ IndexedTableAccess(HDDVB)\n" +
 			"                 │   │           │                                   │   │   │   │   │       ├─ index: [HDDVB.NZ4MQ]\n" +
 			"                 │   │           │                                   │   │   │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"                 │   │           │                                   │   │   │   │   │       ├─ colSet: (15-23)\n" +
+			"                 │   │           │                                   │   │   │   │   │       ├─ colSet: (16-19,21)\n" +
 			"                 │   │           │                                   │   │   │   │   │       ├─ tableId: 4\n" +
 			"                 │   │           │                                   │   │   │   │   │       └─ Table\n" +
 			"                 │   │           │                                   │   │   │   │   │           ├─ name: HDDVB\n" +
@@ -11159,7 +11159,7 @@ WHERE
 			"                 │   │           │                                   │   │   │   │       └─ IndexedTableAccess(YYBCX)\n" +
 			"                 │   │           │                                   │   │   │   │           ├─ index: [YYBCX.id]\n" +
 			"                 │   │           │                                   │   │   │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"                 │   │           │                                   │   │   │   │           ├─ colSet: (24-31)\n" +
+			"                 │   │           │                                   │   │   │   │           ├─ colSet: (24-28)\n" +
 			"                 │   │           │                                   │   │   │   │           ├─ tableId: 5\n" +
 			"                 │   │           │                                   │   │   │   │           └─ Table\n" +
 			"                 │   │           │                                   │   │   │   │               ├─ name: YYBCX\n" +
@@ -11171,13 +11171,13 @@ WHERE
 			"                 │   │           │                                   │   │   │           └─ Table\n" +
 			"                 │   │           │                                   │   │   │               ├─ name: WGSDC\n" +
 			"                 │   │           │                                   │   │   │               ├─ columns: [id nohhr]\n" +
-			"                 │   │           │                                   │   │   │               ├─ colSet: (32-41)\n" +
+			"                 │   │           │                                   │   │   │               ├─ colSet: (32,33)\n" +
 			"                 │   │           │                                   │   │   │               └─ tableId: 6\n" +
 			"                 │   │           │                                   │   │   └─ TableAlias(cpmfe)\n" +
 			"                 │   │           │                                   │   │       └─ IndexedTableAccess(E2I7U)\n" +
 			"                 │   │           │                                   │   │           ├─ index: [E2I7U.ZH72S]\n" +
 			"                 │   │           │                                   │   │           ├─ keys: [nhmxw.NOHHR:11!null]\n" +
-			"                 │   │           │                                   │   │           ├─ colSet: (42-58)\n" +
+			"                 │   │           │                                   │   │           ├─ colSet: (42,45,49)\n" +
 			"                 │   │           │                                   │   │           ├─ tableId: 7\n" +
 			"                 │   │           │                                   │   │           └─ Table\n" +
 			"                 │   │           │                                   │   │               ├─ name: E2I7U\n" +
@@ -11186,7 +11186,7 @@ WHERE
 			"                 │   │           │                                   │       └─ IndexedTableAccess(NOXN3)\n" +
 			"                 │   │           │                                   │           ├─ index: [NOXN3.FFTBJ]\n" +
 			"                 │   │           │                                   │           ├─ keys: [ism.UJ6XY:1!null]\n" +
-			"                 │   │           │                                   │           ├─ colSet: (59-68)\n" +
+			"                 │   │           │                                   │           ├─ colSet: (59-61)\n" +
 			"                 │   │           │                                   │           ├─ tableId: 8\n" +
 			"                 │   │           │                                   │           └─ Table\n" +
 			"                 │   │           │                                   │               ├─ name: NOXN3\n" +
@@ -11195,7 +11195,7 @@ WHERE
 			"                 │   │           │                                       └─ IndexedTableAccess(NOXN3)\n" +
 			"                 │   │           │                                           ├─ index: [NOXN3.FFTBJ]\n" +
 			"                 │   │           │                                           ├─ keys: [ism.FV24E:0!null]\n" +
-			"                 │   │           │                                           ├─ colSet: (69-78)\n" +
+			"                 │   │           │                                           ├─ colSet: (69-71)\n" +
 			"                 │   │           │                                           ├─ tableId: 9\n" +
 			"                 │   │           │                                           └─ Table\n" +
 			"                 │   │           │                                               ├─ name: NOXN3\n" +
@@ -11268,7 +11268,7 @@ WHERE
 			"                 │   │                                       │   │   │   │   │   └─ IndexedTableAccess(HDDVB)\n" +
 			"                 │   │                                       │   │   │   │   │       ├─ index: [HDDVB.NZ4MQ]\n" +
 			"                 │   │                                       │   │   │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"                 │   │                                       │   │   │   │   │       ├─ colSet: (15-23)\n" +
+			"                 │   │                                       │   │   │   │   │       ├─ colSet: (16-19,21)\n" +
 			"                 │   │                                       │   │   │   │   │       ├─ tableId: 4\n" +
 			"                 │   │                                       │   │   │   │   │       └─ Table\n" +
 			"                 │   │                                       │   │   │   │   │           ├─ name: HDDVB\n" +
@@ -11277,7 +11277,7 @@ WHERE
 			"                 │   │                                       │   │   │   │       └─ IndexedTableAccess(YYBCX)\n" +
 			"                 │   │                                       │   │   │   │           ├─ index: [YYBCX.id]\n" +
 			"                 │   │                                       │   │   │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"                 │   │                                       │   │   │   │           ├─ colSet: (24-31)\n" +
+			"                 │   │                                       │   │   │   │           ├─ colSet: (24-28)\n" +
 			"                 │   │                                       │   │   │   │           ├─ tableId: 5\n" +
 			"                 │   │                                       │   │   │   │           └─ Table\n" +
 			"                 │   │                                       │   │   │   │               ├─ name: YYBCX\n" +
@@ -11289,13 +11289,13 @@ WHERE
 			"                 │   │                                       │   │   │           └─ Table\n" +
 			"                 │   │                                       │   │   │               ├─ name: WGSDC\n" +
 			"                 │   │                                       │   │   │               ├─ columns: [id nohhr]\n" +
-			"                 │   │                                       │   │   │               ├─ colSet: (32-41)\n" +
+			"                 │   │                                       │   │   │               ├─ colSet: (32,33)\n" +
 			"                 │   │                                       │   │   │               └─ tableId: 6\n" +
 			"                 │   │                                       │   │   └─ TableAlias(cpmfe)\n" +
 			"                 │   │                                       │   │       └─ IndexedTableAccess(E2I7U)\n" +
 			"                 │   │                                       │   │           ├─ index: [E2I7U.ZH72S]\n" +
 			"                 │   │                                       │   │           ├─ keys: [nhmxw.NOHHR:11!null]\n" +
-			"                 │   │                                       │   │           ├─ colSet: (42-58)\n" +
+			"                 │   │                                       │   │           ├─ colSet: (42,45,49)\n" +
 			"                 │   │                                       │   │           ├─ tableId: 7\n" +
 			"                 │   │                                       │   │           └─ Table\n" +
 			"                 │   │                                       │   │               ├─ name: E2I7U\n" +
@@ -11304,7 +11304,7 @@ WHERE
 			"                 │   │                                       │       └─ IndexedTableAccess(NOXN3)\n" +
 			"                 │   │                                       │           ├─ index: [NOXN3.FFTBJ]\n" +
 			"                 │   │                                       │           ├─ keys: [ism.UJ6XY:1!null]\n" +
-			"                 │   │                                       │           ├─ colSet: (59-68)\n" +
+			"                 │   │                                       │           ├─ colSet: (59-61)\n" +
 			"                 │   │                                       │           ├─ tableId: 8\n" +
 			"                 │   │                                       │           └─ Table\n" +
 			"                 │   │                                       │               ├─ name: NOXN3\n" +
@@ -11313,7 +11313,7 @@ WHERE
 			"                 │   │                                           └─ IndexedTableAccess(NOXN3)\n" +
 			"                 │   │                                               ├─ index: [NOXN3.FFTBJ]\n" +
 			"                 │   │                                               ├─ keys: [ism.FV24E:0!null]\n" +
-			"                 │   │                                               ├─ colSet: (69-78)\n" +
+			"                 │   │                                               ├─ colSet: (69-71)\n" +
 			"                 │   │                                               ├─ tableId: 9\n" +
 			"                 │   │                                               └─ Table\n" +
 			"                 │   │                                                   ├─ name: NOXN3\n" +
@@ -11344,7 +11344,7 @@ WHERE
 			"                                     │   └─ Table\n" +
 			"                                     │       ├─ name: HGMQ6\n" +
 			"                                     │       ├─ columns: [gxlub luevy m22qn]\n" +
-			"                                     │       ├─ colSet: (229-245)\n" +
+			"                                     │       ├─ colSet: (230-232)\n" +
 			"                                     │       └─ tableId: 23\n" +
 			"                                     └─ HashLookup\n" +
 			"                                         ├─ left-key: TUPLE(mf.GXLUB:0!null)\n" +
@@ -11361,7 +11361,7 @@ WHERE
 			"                                             │       └─ IndexedTableAccess(YK2GW)\n" +
 			"                                             │           ├─ index: [YK2GW.id]\n" +
 			"                                             │           ├─ static: [{[NULL, ∞)}]\n" +
-			"                                             │           ├─ colSet: (195-224)\n" +
+			"                                             │           ├─ colSet: (195,196)\n" +
 			"                                             │           ├─ tableId: 21\n" +
 			"                                             │           └─ Table\n" +
 			"                                             │               ├─ name: YK2GW\n" +
@@ -11370,7 +11370,7 @@ WHERE
 			"                                                 └─ IndexedTableAccess(THNTS)\n" +
 			"                                                     ├─ index: [THNTS.IXUXU]\n" +
 			"                                                     ├─ static: [{[NULL, ∞)}]\n" +
-			"                                                     ├─ colSet: (225-228)\n" +
+			"                                                     ├─ colSet: (225,227)\n" +
 			"                                                     ├─ tableId: 22\n" +
 			"                                                     └─ Table\n" +
 			"                                                         ├─ name: THNTS\n" +
@@ -12310,7 +12310,7 @@ WHERE
 			"             │           │                   │                       └─ IndexedTableAccess(NOXN3)\n" +
 			"             │           │                   │                           ├─ index: [NOXN3.id]\n" +
 			"             │           │                   │                           ├─ keys: [mjr3d.QNI57:5!null]\n" +
-			"             │           │                   │                           ├─ colSet: (1-10)\n" +
+			"             │           │                   │                           ├─ colSet: (1)\n" +
 			"             │           │                   │                           ├─ tableId: 1\n" +
 			"             │           │                   │                           └─ Table\n" +
 			"             │           │                   │                               ├─ name: NOXN3\n" +
@@ -12341,7 +12341,7 @@ WHERE
 			"             │           │                   │                       └─ IndexedTableAccess(NOXN3)\n" +
 			"             │           │                   │                           ├─ index: [NOXN3.id]\n" +
 			"             │           │                   │                           ├─ keys: [mjr3d.TDEIU:6!null]\n" +
-			"             │           │                   │                           ├─ colSet: (1-10)\n" +
+			"             │           │                   │                           ├─ colSet: (1)\n" +
 			"             │           │                   │                           ├─ tableId: 1\n" +
 			"             │           │                   │                           └─ Table\n" +
 			"             │           │                   │                               ├─ name: NOXN3\n" +
@@ -12374,7 +12374,7 @@ WHERE
 			"             │           │                       │                       └─ IndexedTableAccess(NOXN3)\n" +
 			"             │           │                       │                           ├─ index: [NOXN3.id]\n" +
 			"             │           │                       │                           ├─ keys: [mjr3d.QNI57:5!null]\n" +
-			"             │           │                       │                           ├─ colSet: (1-10)\n" +
+			"             │           │                       │                           ├─ colSet: (1)\n" +
 			"             │           │                       │                           ├─ tableId: 1\n" +
 			"             │           │                       │                           └─ Table\n" +
 			"             │           │                       │                               ├─ name: NOXN3\n" +
@@ -12405,7 +12405,7 @@ WHERE
 			"             │           │                       │                       └─ IndexedTableAccess(NOXN3)\n" +
 			"             │           │                       │                           ├─ index: [NOXN3.id]\n" +
 			"             │           │                       │                           ├─ keys: [mjr3d.TDEIU:6!null]\n" +
-			"             │           │                       │                           ├─ colSet: (1-10)\n" +
+			"             │           │                       │                           ├─ colSet: (1)\n" +
 			"             │           │                       │                           ├─ tableId: 1\n" +
 			"             │           │                       │                           └─ Table\n" +
 			"             │           │                       │                               ├─ name: NOXN3\n" +
@@ -12442,7 +12442,7 @@ WHERE
 			"             │           │                           │   │   │       │                       └─ IndexedTableAccess(NOXN3)\n" +
 			"             │           │                           │   │   │       │                           ├─ index: [NOXN3.BRQP2]\n" +
 			"             │           │                           │   │   │       │                           ├─ keys: [mjr3d.BJUF2:1!null]\n" +
-			"             │           │                           │   │   │       │                           ├─ colSet: (180-189)\n" +
+			"             │           │                           │   │   │       │                           ├─ colSet: (180,181)\n" +
 			"             │           │                           │   │   │       │                           ├─ tableId: 21\n" +
 			"             │           │                           │   │   │       │                           └─ Table\n" +
 			"             │           │                           │   │   │       │                               ├─ name: NOXN3\n" +
@@ -12468,7 +12468,7 @@ WHERE
 			"             │           │                           │   │       │                       └─ IndexedTableAccess(NOXN3)\n" +
 			"             │           │                           │   │       │                           ├─ index: [NOXN3.BRQP2]\n" +
 			"             │           │                           │   │       │                           ├─ keys: [mjr3d.FJDP5:0!null]\n" +
-			"             │           │                           │   │       │                           ├─ colSet: (190-199)\n" +
+			"             │           │                           │   │       │                           ├─ colSet: (190,191)\n" +
 			"             │           │                           │   │       │                           ├─ tableId: 22\n" +
 			"             │           │                           │   │       │                           └─ Table\n" +
 			"             │           │                           │   │       │                               ├─ name: NOXN3\n" +
@@ -12493,7 +12493,7 @@ WHERE
 			"             │           │                           │       │                       └─ IndexedTableAccess(NOXN3)\n" +
 			"             │           │                           │       │                           ├─ index: [NOXN3.BRQP2]\n" +
 			"             │           │                           │       │                           ├─ keys: [mjr3d.BJUF2:1!null]\n" +
-			"             │           │                           │       │                           ├─ colSet: (200-209)\n" +
+			"             │           │                           │       │                           ├─ colSet: (200,201)\n" +
 			"             │           │                           │       │                           ├─ tableId: 23\n" +
 			"             │           │                           │       │                           └─ Table\n" +
 			"             │           │                           │       │                               ├─ name: NOXN3\n" +
@@ -12542,7 +12542,7 @@ WHERE
 			"             │           │                           │   │                   │   │   │   │   │   └─ IndexedTableAccess(HDDVB)\n" +
 			"             │           │                           │   │                   │   │   │   │   │       ├─ index: [HDDVB.NZ4MQ]\n" +
 			"             │           │                           │   │                   │   │   │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"             │           │                           │   │                   │   │   │   │   │       ├─ colSet: (15-23)\n" +
+			"             │           │                           │   │                   │   │   │   │   │       ├─ colSet: (16-19,21)\n" +
 			"             │           │                           │   │                   │   │   │   │   │       ├─ tableId: 4\n" +
 			"             │           │                           │   │                   │   │   │   │   │       └─ Table\n" +
 			"             │           │                           │   │                   │   │   │   │   │           ├─ name: HDDVB\n" +
@@ -12554,7 +12554,7 @@ WHERE
 			"             │           │                           │   │                   │   │   │   │           └─ IndexedTableAccess(YYBCX)\n" +
 			"             │           │                           │   │                   │   │   │   │               ├─ index: [YYBCX.id]\n" +
 			"             │           │                           │   │                   │   │   │   │               ├─ static: [{[NULL, ∞)}]\n" +
-			"             │           │                           │   │                   │   │   │   │               ├─ colSet: (24-31)\n" +
+			"             │           │                           │   │                   │   │   │   │               ├─ colSet: (24,25,29)\n" +
 			"             │           │                           │   │                   │   │   │   │               ├─ tableId: 5\n" +
 			"             │           │                           │   │                   │   │   │   │               └─ Table\n" +
 			"             │           │                           │   │                   │   │   │   │                   ├─ name: YYBCX\n" +
@@ -12566,13 +12566,13 @@ WHERE
 			"             │           │                           │   │                   │   │   │           └─ Table\n" +
 			"             │           │                           │   │                   │   │   │               ├─ name: WGSDC\n" +
 			"             │           │                           │   │                   │   │   │               ├─ columns: [id nohhr]\n" +
-			"             │           │                           │   │                   │   │   │               ├─ colSet: (32-41)\n" +
+			"             │           │                           │   │                   │   │   │               ├─ colSet: (32,33)\n" +
 			"             │           │                           │   │                   │   │   │               └─ tableId: 6\n" +
 			"             │           │                           │   │                   │   │   └─ TableAlias(cpmfe)\n" +
 			"             │           │                           │   │                   │   │       └─ IndexedTableAccess(E2I7U)\n" +
 			"             │           │                           │   │                   │   │           ├─ index: [E2I7U.ZH72S]\n" +
 			"             │           │                           │   │                   │   │           ├─ keys: [nhmxw.NOHHR:9!null]\n" +
-			"             │           │                           │   │                   │   │           ├─ colSet: (42-58)\n" +
+			"             │           │                           │   │                   │   │           ├─ colSet: (42,49)\n" +
 			"             │           │                           │   │                   │   │           ├─ tableId: 7\n" +
 			"             │           │                           │   │                   │   │           └─ Table\n" +
 			"             │           │                           │   │                   │   │               ├─ name: E2I7U\n" +
@@ -12581,7 +12581,7 @@ WHERE
 			"             │           │                           │   │                   │       └─ IndexedTableAccess(NOXN3)\n" +
 			"             │           │                           │   │                   │           ├─ index: [NOXN3.FFTBJ]\n" +
 			"             │           │                           │   │                   │           ├─ keys: [ism.UJ6XY:1!null]\n" +
-			"             │           │                           │   │                   │           ├─ colSet: (59-68)\n" +
+			"             │           │                           │   │                   │           ├─ colSet: (59-61)\n" +
 			"             │           │                           │   │                   │           ├─ tableId: 8\n" +
 			"             │           │                           │   │                   │           └─ Table\n" +
 			"             │           │                           │   │                   │               ├─ name: NOXN3\n" +
@@ -12590,7 +12590,7 @@ WHERE
 			"             │           │                           │   │                       └─ IndexedTableAccess(NOXN3)\n" +
 			"             │           │                           │   │                           ├─ index: [NOXN3.FFTBJ]\n" +
 			"             │           │                           │   │                           ├─ keys: [ism.FV24E:0!null]\n" +
-			"             │           │                           │   │                           ├─ colSet: (69-78)\n" +
+			"             │           │                           │   │                           ├─ colSet: (69-71)\n" +
 			"             │           │                           │   │                           ├─ tableId: 9\n" +
 			"             │           │                           │   │                           └─ Table\n" +
 			"             │           │                           │   │                               ├─ name: NOXN3\n" +
@@ -12649,7 +12649,7 @@ WHERE
 			"             │                                           │   │       └─ IndexedTableAccess(YK2GW)\n" +
 			"             │                                           │   │           ├─ index: [YK2GW.id]\n" +
 			"             │                                           │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"             │                                           │   │           ├─ colSet: (114-143)\n" +
+			"             │                                           │   │           ├─ colSet: (114,115)\n" +
 			"             │                                           │   │           ├─ tableId: 14\n" +
 			"             │                                           │   │           └─ Table\n" +
 			"             │                                           │   │               ├─ name: YK2GW\n" +
@@ -12658,7 +12658,7 @@ WHERE
 			"             │                                           │       └─ IndexedTableAccess(THNTS)\n" +
 			"             │                                           │           ├─ index: [THNTS.IXUXU]\n" +
 			"             │                                           │           ├─ static: [{[NULL, ∞)}]\n" +
-			"             │                                           │           ├─ colSet: (110-113)\n" +
+			"             │                                           │           ├─ colSet: (110,112)\n" +
 			"             │                                           │           ├─ tableId: 13\n" +
 			"             │                                           │           └─ Table\n" +
 			"             │                                           │               ├─ name: THNTS\n" +
@@ -12674,7 +12674,7 @@ WHERE
 			"             │                                                   │   └─ IndexedTableAccess(HGMQ6)\n" +
 			"             │                                                   │       ├─ index: [HGMQ6.LUEVY]\n" +
 			"             │                                                   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"             │                                                   │       ├─ colSet: (93-109)\n" +
+			"             │                                                   │       ├─ colSet: (94-96)\n" +
 			"             │                                                   │       ├─ tableId: 12\n" +
 			"             │                                                   │       └─ Table\n" +
 			"             │                                                   │           ├─ name: HGMQ6\n" +
@@ -12683,7 +12683,7 @@ WHERE
 			"             │                                                       └─ IndexedTableAccess(NOXN3)\n" +
 			"             │                                                           ├─ index: [NOXN3.BRQP2]\n" +
 			"             │                                                           ├─ static: [{[NULL, ∞)}]\n" +
-			"             │                                                           ├─ colSet: (144-153)\n" +
+			"             │                                                           ├─ colSet: (144,145)\n" +
 			"             │                                                           ├─ tableId: 15\n" +
 			"             │                                                           └─ Table\n" +
 			"             │                                                               ├─ name: NOXN3\n" +
@@ -12738,7 +12738,7 @@ WHERE
 			"                                         │           │   │       └─ IndexedTableAccess(YK2GW)\n" +
 			"                                         │           │   │           ├─ index: [YK2GW.id]\n" +
 			"                                         │           │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"                                         │           │   │           ├─ colSet: (114-143)\n" +
+			"                                         │           │   │           ├─ colSet: (114,115)\n" +
 			"                                         │           │   │           ├─ tableId: 14\n" +
 			"                                         │           │   │           └─ Table\n" +
 			"                                         │           │   │               ├─ name: YK2GW\n" +
@@ -12747,7 +12747,7 @@ WHERE
 			"                                         │           │       └─ IndexedTableAccess(THNTS)\n" +
 			"                                         │           │           ├─ index: [THNTS.IXUXU]\n" +
 			"                                         │           │           ├─ static: [{[NULL, ∞)}]\n" +
-			"                                         │           │           ├─ colSet: (110-113)\n" +
+			"                                         │           │           ├─ colSet: (110,112)\n" +
 			"                                         │           │           ├─ tableId: 13\n" +
 			"                                         │           │           └─ Table\n" +
 			"                                         │           │               ├─ name: THNTS\n" +
@@ -12763,7 +12763,7 @@ WHERE
 			"                                         │                   │   └─ IndexedTableAccess(HGMQ6)\n" +
 			"                                         │                   │       ├─ index: [HGMQ6.LUEVY]\n" +
 			"                                         │                   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"                                         │                   │       ├─ colSet: (93-109)\n" +
+			"                                         │                   │       ├─ colSet: (94-96)\n" +
 			"                                         │                   │       ├─ tableId: 12\n" +
 			"                                         │                   │       └─ Table\n" +
 			"                                         │                   │           ├─ name: HGMQ6\n" +
@@ -12772,7 +12772,7 @@ WHERE
 			"                                         │                       └─ IndexedTableAccess(NOXN3)\n" +
 			"                                         │                           ├─ index: [NOXN3.BRQP2]\n" +
 			"                                         │                           ├─ static: [{[NULL, ∞)}]\n" +
-			"                                         │                           ├─ colSet: (144-153)\n" +
+			"                                         │                           ├─ colSet: (144,145)\n" +
 			"                                         │                           ├─ tableId: 15\n" +
 			"                                         │                           └─ Table\n" +
 			"                                         │                               ├─ name: NOXN3\n" +
@@ -12815,7 +12815,7 @@ WHERE
 			"                                                         │                       └─ IndexedTableAccess(NOXN3)\n" +
 			"                                                         │                           ├─ index: [NOXN3.id]\n" +
 			"                                                         │                           ├─ keys: [mjr3d.QNI57:5!null]\n" +
-			"                                                         │                           ├─ colSet: (1-10)\n" +
+			"                                                         │                           ├─ colSet: (1)\n" +
 			"                                                         │                           ├─ tableId: 1\n" +
 			"                                                         │                           └─ Table\n" +
 			"                                                         │                               ├─ name: NOXN3\n" +
@@ -12846,7 +12846,7 @@ WHERE
 			"                                                         │                       └─ IndexedTableAccess(NOXN3)\n" +
 			"                                                         │                           ├─ index: [NOXN3.id]\n" +
 			"                                                         │                           ├─ keys: [mjr3d.TDEIU:6!null]\n" +
-			"                                                         │                           ├─ colSet: (1-10)\n" +
+			"                                                         │                           ├─ colSet: (1)\n" +
 			"                                                         │                           ├─ tableId: 1\n" +
 			"                                                         │                           └─ Table\n" +
 			"                                                         │                               ├─ name: NOXN3\n" +
@@ -12879,7 +12879,7 @@ WHERE
 			"                                                             │                       └─ IndexedTableAccess(NOXN3)\n" +
 			"                                                             │                           ├─ index: [NOXN3.id]\n" +
 			"                                                             │                           ├─ keys: [mjr3d.QNI57:5!null]\n" +
-			"                                                             │                           ├─ colSet: (1-10)\n" +
+			"                                                             │                           ├─ colSet: (1)\n" +
 			"                                                             │                           ├─ tableId: 1\n" +
 			"                                                             │                           └─ Table\n" +
 			"                                                             │                               ├─ name: NOXN3\n" +
@@ -12910,7 +12910,7 @@ WHERE
 			"                                                             │                       └─ IndexedTableAccess(NOXN3)\n" +
 			"                                                             │                           ├─ index: [NOXN3.id]\n" +
 			"                                                             │                           ├─ keys: [mjr3d.TDEIU:6!null]\n" +
-			"                                                             │                           ├─ colSet: (1-10)\n" +
+			"                                                             │                           ├─ colSet: (1)\n" +
 			"                                                             │                           ├─ tableId: 1\n" +
 			"                                                             │                           └─ Table\n" +
 			"                                                             │                               ├─ name: NOXN3\n" +
@@ -12947,7 +12947,7 @@ WHERE
 			"                                                                 │   │   │       │                       └─ IndexedTableAccess(NOXN3)\n" +
 			"                                                                 │   │   │       │                           ├─ index: [NOXN3.BRQP2]\n" +
 			"                                                                 │   │   │       │                           ├─ keys: [mjr3d.BJUF2:1!null]\n" +
-			"                                                                 │   │   │       │                           ├─ colSet: (180-189)\n" +
+			"                                                                 │   │   │       │                           ├─ colSet: (180,181)\n" +
 			"                                                                 │   │   │       │                           ├─ tableId: 21\n" +
 			"                                                                 │   │   │       │                           └─ Table\n" +
 			"                                                                 │   │   │       │                               ├─ name: NOXN3\n" +
@@ -12973,7 +12973,7 @@ WHERE
 			"                                                                 │   │       │                       └─ IndexedTableAccess(NOXN3)\n" +
 			"                                                                 │   │       │                           ├─ index: [NOXN3.BRQP2]\n" +
 			"                                                                 │   │       │                           ├─ keys: [mjr3d.FJDP5:0!null]\n" +
-			"                                                                 │   │       │                           ├─ colSet: (190-199)\n" +
+			"                                                                 │   │       │                           ├─ colSet: (190,191)\n" +
 			"                                                                 │   │       │                           ├─ tableId: 22\n" +
 			"                                                                 │   │       │                           └─ Table\n" +
 			"                                                                 │   │       │                               ├─ name: NOXN3\n" +
@@ -12998,7 +12998,7 @@ WHERE
 			"                                                                 │       │                       └─ IndexedTableAccess(NOXN3)\n" +
 			"                                                                 │       │                           ├─ index: [NOXN3.BRQP2]\n" +
 			"                                                                 │       │                           ├─ keys: [mjr3d.BJUF2:1!null]\n" +
-			"                                                                 │       │                           ├─ colSet: (200-209)\n" +
+			"                                                                 │       │                           ├─ colSet: (200,201)\n" +
 			"                                                                 │       │                           ├─ tableId: 23\n" +
 			"                                                                 │       │                           └─ Table\n" +
 			"                                                                 │       │                               ├─ name: NOXN3\n" +
@@ -13047,7 +13047,7 @@ WHERE
 			"                                                                 │   │                   │   │   │   │   │   └─ IndexedTableAccess(HDDVB)\n" +
 			"                                                                 │   │                   │   │   │   │   │       ├─ index: [HDDVB.NZ4MQ]\n" +
 			"                                                                 │   │                   │   │   │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"                                                                 │   │                   │   │   │   │   │       ├─ colSet: (15-23)\n" +
+			"                                                                 │   │                   │   │   │   │   │       ├─ colSet: (16-19,21)\n" +
 			"                                                                 │   │                   │   │   │   │   │       ├─ tableId: 4\n" +
 			"                                                                 │   │                   │   │   │   │   │       └─ Table\n" +
 			"                                                                 │   │                   │   │   │   │   │           ├─ name: HDDVB\n" +
@@ -13059,7 +13059,7 @@ WHERE
 			"                                                                 │   │                   │   │   │   │           └─ IndexedTableAccess(YYBCX)\n" +
 			"                                                                 │   │                   │   │   │   │               ├─ index: [YYBCX.id]\n" +
 			"                                                                 │   │                   │   │   │   │               ├─ static: [{[NULL, ∞)}]\n" +
-			"                                                                 │   │                   │   │   │   │               ├─ colSet: (24-31)\n" +
+			"                                                                 │   │                   │   │   │   │               ├─ colSet: (24,25,29)\n" +
 			"                                                                 │   │                   │   │   │   │               ├─ tableId: 5\n" +
 			"                                                                 │   │                   │   │   │   │               └─ Table\n" +
 			"                                                                 │   │                   │   │   │   │                   ├─ name: YYBCX\n" +
@@ -13071,13 +13071,13 @@ WHERE
 			"                                                                 │   │                   │   │   │           └─ Table\n" +
 			"                                                                 │   │                   │   │   │               ├─ name: WGSDC\n" +
 			"                                                                 │   │                   │   │   │               ├─ columns: [id nohhr]\n" +
-			"                                                                 │   │                   │   │   │               ├─ colSet: (32-41)\n" +
+			"                                                                 │   │                   │   │   │               ├─ colSet: (32,33)\n" +
 			"                                                                 │   │                   │   │   │               └─ tableId: 6\n" +
 			"                                                                 │   │                   │   │   └─ TableAlias(cpmfe)\n" +
 			"                                                                 │   │                   │   │       └─ IndexedTableAccess(E2I7U)\n" +
 			"                                                                 │   │                   │   │           ├─ index: [E2I7U.ZH72S]\n" +
 			"                                                                 │   │                   │   │           ├─ keys: [nhmxw.NOHHR:9!null]\n" +
-			"                                                                 │   │                   │   │           ├─ colSet: (42-58)\n" +
+			"                                                                 │   │                   │   │           ├─ colSet: (42,49)\n" +
 			"                                                                 │   │                   │   │           ├─ tableId: 7\n" +
 			"                                                                 │   │                   │   │           └─ Table\n" +
 			"                                                                 │   │                   │   │               ├─ name: E2I7U\n" +
@@ -13086,7 +13086,7 @@ WHERE
 			"                                                                 │   │                   │       └─ IndexedTableAccess(NOXN3)\n" +
 			"                                                                 │   │                   │           ├─ index: [NOXN3.FFTBJ]\n" +
 			"                                                                 │   │                   │           ├─ keys: [ism.UJ6XY:1!null]\n" +
-			"                                                                 │   │                   │           ├─ colSet: (59-68)\n" +
+			"                                                                 │   │                   │           ├─ colSet: (59-61)\n" +
 			"                                                                 │   │                   │           ├─ tableId: 8\n" +
 			"                                                                 │   │                   │           └─ Table\n" +
 			"                                                                 │   │                   │               ├─ name: NOXN3\n" +
@@ -13095,7 +13095,7 @@ WHERE
 			"                                                                 │   │                       └─ IndexedTableAccess(NOXN3)\n" +
 			"                                                                 │   │                           ├─ index: [NOXN3.FFTBJ]\n" +
 			"                                                                 │   │                           ├─ keys: [ism.FV24E:0!null]\n" +
-			"                                                                 │   │                           ├─ colSet: (69-78)\n" +
+			"                                                                 │   │                           ├─ colSet: (69-71)\n" +
 			"                                                                 │   │                           ├─ tableId: 9\n" +
 			"                                                                 │   │                           └─ Table\n" +
 			"                                                                 │   │                               ├─ name: NOXN3\n" +
@@ -14397,7 +14397,7 @@ WHERE
 			"             │           │                   │                       └─ IndexedTableAccess(NOXN3)\n" +
 			"             │           │                   │                           ├─ index: [NOXN3.id]\n" +
 			"             │           │                   │                           ├─ keys: [mjr3d.QNI57:5!null]\n" +
-			"             │           │                   │                           ├─ colSet: (1-10)\n" +
+			"             │           │                   │                           ├─ colSet: (1)\n" +
 			"             │           │                   │                           ├─ tableId: 1\n" +
 			"             │           │                   │                           └─ Table\n" +
 			"             │           │                   │                               ├─ name: NOXN3\n" +
@@ -14428,7 +14428,7 @@ WHERE
 			"             │           │                   │                       └─ IndexedTableAccess(NOXN3)\n" +
 			"             │           │                   │                           ├─ index: [NOXN3.id]\n" +
 			"             │           │                   │                           ├─ keys: [mjr3d.TDEIU:6!null]\n" +
-			"             │           │                   │                           ├─ colSet: (1-10)\n" +
+			"             │           │                   │                           ├─ colSet: (1)\n" +
 			"             │           │                   │                           ├─ tableId: 1\n" +
 			"             │           │                   │                           └─ Table\n" +
 			"             │           │                   │                               ├─ name: NOXN3\n" +
@@ -14461,7 +14461,7 @@ WHERE
 			"             │           │                       │                       └─ IndexedTableAccess(NOXN3)\n" +
 			"             │           │                       │                           ├─ index: [NOXN3.id]\n" +
 			"             │           │                       │                           ├─ keys: [mjr3d.QNI57:5!null]\n" +
-			"             │           │                       │                           ├─ colSet: (1-10)\n" +
+			"             │           │                       │                           ├─ colSet: (1)\n" +
 			"             │           │                       │                           ├─ tableId: 1\n" +
 			"             │           │                       │                           └─ Table\n" +
 			"             │           │                       │                               ├─ name: NOXN3\n" +
@@ -14492,7 +14492,7 @@ WHERE
 			"             │           │                       │                       └─ IndexedTableAccess(NOXN3)\n" +
 			"             │           │                       │                           ├─ index: [NOXN3.id]\n" +
 			"             │           │                       │                           ├─ keys: [mjr3d.TDEIU:6!null]\n" +
-			"             │           │                       │                           ├─ colSet: (1-10)\n" +
+			"             │           │                       │                           ├─ colSet: (1)\n" +
 			"             │           │                       │                           ├─ tableId: 1\n" +
 			"             │           │                       │                           └─ Table\n" +
 			"             │           │                       │                               ├─ name: NOXN3\n" +
@@ -14529,7 +14529,7 @@ WHERE
 			"             │           │                           │   │   │       │                       └─ IndexedTableAccess(NOXN3)\n" +
 			"             │           │                           │   │   │       │                           ├─ index: [NOXN3.BRQP2]\n" +
 			"             │           │                           │   │   │       │                           ├─ keys: [mjr3d.BJUF2:1!null]\n" +
-			"             │           │                           │   │   │       │                           ├─ colSet: (180-189)\n" +
+			"             │           │                           │   │   │       │                           ├─ colSet: (180,181)\n" +
 			"             │           │                           │   │   │       │                           ├─ tableId: 21\n" +
 			"             │           │                           │   │   │       │                           └─ Table\n" +
 			"             │           │                           │   │   │       │                               ├─ name: NOXN3\n" +
@@ -14555,7 +14555,7 @@ WHERE
 			"             │           │                           │   │       │                       └─ IndexedTableAccess(NOXN3)\n" +
 			"             │           │                           │   │       │                           ├─ index: [NOXN3.BRQP2]\n" +
 			"             │           │                           │   │       │                           ├─ keys: [mjr3d.FJDP5:0!null]\n" +
-			"             │           │                           │   │       │                           ├─ colSet: (190-199)\n" +
+			"             │           │                           │   │       │                           ├─ colSet: (190,191)\n" +
 			"             │           │                           │   │       │                           ├─ tableId: 22\n" +
 			"             │           │                           │   │       │                           └─ Table\n" +
 			"             │           │                           │   │       │                               ├─ name: NOXN3\n" +
@@ -14580,7 +14580,7 @@ WHERE
 			"             │           │                           │       │                       └─ IndexedTableAccess(NOXN3)\n" +
 			"             │           │                           │       │                           ├─ index: [NOXN3.BRQP2]\n" +
 			"             │           │                           │       │                           ├─ keys: [mjr3d.BJUF2:1!null]\n" +
-			"             │           │                           │       │                           ├─ colSet: (200-209)\n" +
+			"             │           │                           │       │                           ├─ colSet: (200,201)\n" +
 			"             │           │                           │       │                           ├─ tableId: 23\n" +
 			"             │           │                           │       │                           └─ Table\n" +
 			"             │           │                           │       │                               ├─ name: NOXN3\n" +
@@ -14629,7 +14629,7 @@ WHERE
 			"             │           │                           │   │                   │   │   │   │   │   └─ IndexedTableAccess(HDDVB)\n" +
 			"             │           │                           │   │                   │   │   │   │   │       ├─ index: [HDDVB.NZ4MQ]\n" +
 			"             │           │                           │   │                   │   │   │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"             │           │                           │   │                   │   │   │   │   │       ├─ colSet: (15-23)\n" +
+			"             │           │                           │   │                   │   │   │   │   │       ├─ colSet: (16-19,21)\n" +
 			"             │           │                           │   │                   │   │   │   │   │       ├─ tableId: 4\n" +
 			"             │           │                           │   │                   │   │   │   │   │       └─ Table\n" +
 			"             │           │                           │   │                   │   │   │   │   │           ├─ name: HDDVB\n" +
@@ -14641,7 +14641,7 @@ WHERE
 			"             │           │                           │   │                   │   │   │   │           └─ IndexedTableAccess(YYBCX)\n" +
 			"             │           │                           │   │                   │   │   │   │               ├─ index: [YYBCX.id]\n" +
 			"             │           │                           │   │                   │   │   │   │               ├─ static: [{[NULL, ∞)}]\n" +
-			"             │           │                           │   │                   │   │   │   │               ├─ colSet: (24-31)\n" +
+			"             │           │                           │   │                   │   │   │   │               ├─ colSet: (24,25,29)\n" +
 			"             │           │                           │   │                   │   │   │   │               ├─ tableId: 5\n" +
 			"             │           │                           │   │                   │   │   │   │               └─ Table\n" +
 			"             │           │                           │   │                   │   │   │   │                   ├─ name: YYBCX\n" +
@@ -14653,13 +14653,13 @@ WHERE
 			"             │           │                           │   │                   │   │   │           └─ Table\n" +
 			"             │           │                           │   │                   │   │   │               ├─ name: WGSDC\n" +
 			"             │           │                           │   │                   │   │   │               ├─ columns: [id nohhr]\n" +
-			"             │           │                           │   │                   │   │   │               ├─ colSet: (32-41)\n" +
+			"             │           │                           │   │                   │   │   │               ├─ colSet: (32,33)\n" +
 			"             │           │                           │   │                   │   │   │               └─ tableId: 6\n" +
 			"             │           │                           │   │                   │   │   └─ TableAlias(cpmfe)\n" +
 			"             │           │                           │   │                   │   │       └─ IndexedTableAccess(E2I7U)\n" +
 			"             │           │                           │   │                   │   │           ├─ index: [E2I7U.ZH72S]\n" +
 			"             │           │                           │   │                   │   │           ├─ keys: [nhmxw.NOHHR:9!null]\n" +
-			"             │           │                           │   │                   │   │           ├─ colSet: (42-58)\n" +
+			"             │           │                           │   │                   │   │           ├─ colSet: (42,49)\n" +
 			"             │           │                           │   │                   │   │           ├─ tableId: 7\n" +
 			"             │           │                           │   │                   │   │           └─ Table\n" +
 			"             │           │                           │   │                   │   │               ├─ name: E2I7U\n" +
@@ -14668,7 +14668,7 @@ WHERE
 			"             │           │                           │   │                   │       └─ IndexedTableAccess(NOXN3)\n" +
 			"             │           │                           │   │                   │           ├─ index: [NOXN3.FFTBJ]\n" +
 			"             │           │                           │   │                   │           ├─ keys: [ism.UJ6XY:1!null]\n" +
-			"             │           │                           │   │                   │           ├─ colSet: (59-68)\n" +
+			"             │           │                           │   │                   │           ├─ colSet: (59-61)\n" +
 			"             │           │                           │   │                   │           ├─ tableId: 8\n" +
 			"             │           │                           │   │                   │           └─ Table\n" +
 			"             │           │                           │   │                   │               ├─ name: NOXN3\n" +
@@ -14677,7 +14677,7 @@ WHERE
 			"             │           │                           │   │                       └─ IndexedTableAccess(NOXN3)\n" +
 			"             │           │                           │   │                           ├─ index: [NOXN3.FFTBJ]\n" +
 			"             │           │                           │   │                           ├─ keys: [ism.FV24E:0!null]\n" +
-			"             │           │                           │   │                           ├─ colSet: (69-78)\n" +
+			"             │           │                           │   │                           ├─ colSet: (69-71)\n" +
 			"             │           │                           │   │                           ├─ tableId: 9\n" +
 			"             │           │                           │   │                           └─ Table\n" +
 			"             │           │                           │   │                               ├─ name: NOXN3\n" +
@@ -14729,13 +14729,13 @@ WHERE
 			"             │                                           │   │   └─ Table\n" +
 			"             │                                           │   │       ├─ name: NOXN3\n" +
 			"             │                                           │   │       ├─ columns: [id brqp2]\n" +
-			"             │                                           │   │       ├─ colSet: (144-153)\n" +
+			"             │                                           │   │       ├─ colSet: (144,145)\n" +
 			"             │                                           │   │       └─ tableId: 15\n" +
 			"             │                                           │   └─ TableAlias(mf)\n" +
 			"             │                                           │       └─ IndexedTableAccess(HGMQ6)\n" +
 			"             │                                           │           ├─ index: [HGMQ6.LUEVY]\n" +
 			"             │                                           │           ├─ keys: [sn.BRQP2:1!null]\n" +
-			"             │                                           │           ├─ colSet: (93-109)\n" +
+			"             │                                           │           ├─ colSet: (94-96)\n" +
 			"             │                                           │           ├─ tableId: 12\n" +
 			"             │                                           │           └─ Table\n" +
 			"             │                                           │               ├─ name: HGMQ6\n" +
@@ -14751,7 +14751,7 @@ WHERE
 			"             │                                                   │   └─ IndexedTableAccess(THNTS)\n" +
 			"             │                                                   │       ├─ index: [THNTS.IXUXU]\n" +
 			"             │                                                   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"             │                                                   │       ├─ colSet: (110-113)\n" +
+			"             │                                                   │       ├─ colSet: (110,112)\n" +
 			"             │                                                   │       ├─ tableId: 13\n" +
 			"             │                                                   │       └─ Table\n" +
 			"             │                                                   │           ├─ name: THNTS\n" +
@@ -14764,7 +14764,7 @@ WHERE
 			"             │                                                           └─ IndexedTableAccess(YK2GW)\n" +
 			"             │                                                               ├─ index: [YK2GW.id]\n" +
 			"             │                                                               ├─ static: [{[NULL, ∞)}]\n" +
-			"             │                                                               ├─ colSet: (114-143)\n" +
+			"             │                                                               ├─ colSet: (114,115)\n" +
 			"             │                                                               ├─ tableId: 14\n" +
 			"             │                                                               └─ Table\n" +
 			"             │                                                                   ├─ name: YK2GW\n" +
@@ -14812,13 +14812,13 @@ WHERE
 			"                                         │           │   │   └─ Table\n" +
 			"                                         │           │   │       ├─ name: NOXN3\n" +
 			"                                         │           │   │       ├─ columns: [id brqp2]\n" +
-			"                                         │           │   │       ├─ colSet: (144-153)\n" +
+			"                                         │           │   │       ├─ colSet: (144,145)\n" +
 			"                                         │           │   │       └─ tableId: 15\n" +
 			"                                         │           │   └─ TableAlias(mf)\n" +
 			"                                         │           │       └─ IndexedTableAccess(HGMQ6)\n" +
 			"                                         │           │           ├─ index: [HGMQ6.LUEVY]\n" +
 			"                                         │           │           ├─ keys: [sn.BRQP2:1!null]\n" +
-			"                                         │           │           ├─ colSet: (93-109)\n" +
+			"                                         │           │           ├─ colSet: (94-96)\n" +
 			"                                         │           │           ├─ tableId: 12\n" +
 			"                                         │           │           └─ Table\n" +
 			"                                         │           │               ├─ name: HGMQ6\n" +
@@ -14834,7 +14834,7 @@ WHERE
 			"                                         │                   │   └─ IndexedTableAccess(THNTS)\n" +
 			"                                         │                   │       ├─ index: [THNTS.IXUXU]\n" +
 			"                                         │                   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"                                         │                   │       ├─ colSet: (110-113)\n" +
+			"                                         │                   │       ├─ colSet: (110,112)\n" +
 			"                                         │                   │       ├─ tableId: 13\n" +
 			"                                         │                   │       └─ Table\n" +
 			"                                         │                   │           ├─ name: THNTS\n" +
@@ -14847,7 +14847,7 @@ WHERE
 			"                                         │                           └─ IndexedTableAccess(YK2GW)\n" +
 			"                                         │                               ├─ index: [YK2GW.id]\n" +
 			"                                         │                               ├─ static: [{[NULL, ∞)}]\n" +
-			"                                         │                               ├─ colSet: (114-143)\n" +
+			"                                         │                               ├─ colSet: (114,115)\n" +
 			"                                         │                               ├─ tableId: 14\n" +
 			"                                         │                               └─ Table\n" +
 			"                                         │                                   ├─ name: YK2GW\n" +
@@ -14890,7 +14890,7 @@ WHERE
 			"                                                         │                       └─ IndexedTableAccess(NOXN3)\n" +
 			"                                                         │                           ├─ index: [NOXN3.id]\n" +
 			"                                                         │                           ├─ keys: [mjr3d.QNI57:5!null]\n" +
-			"                                                         │                           ├─ colSet: (1-10)\n" +
+			"                                                         │                           ├─ colSet: (1)\n" +
 			"                                                         │                           ├─ tableId: 1\n" +
 			"                                                         │                           └─ Table\n" +
 			"                                                         │                               ├─ name: NOXN3\n" +
@@ -14921,7 +14921,7 @@ WHERE
 			"                                                         │                       └─ IndexedTableAccess(NOXN3)\n" +
 			"                                                         │                           ├─ index: [NOXN3.id]\n" +
 			"                                                         │                           ├─ keys: [mjr3d.TDEIU:6!null]\n" +
-			"                                                         │                           ├─ colSet: (1-10)\n" +
+			"                                                         │                           ├─ colSet: (1)\n" +
 			"                                                         │                           ├─ tableId: 1\n" +
 			"                                                         │                           └─ Table\n" +
 			"                                                         │                               ├─ name: NOXN3\n" +
@@ -14954,7 +14954,7 @@ WHERE
 			"                                                             │                       └─ IndexedTableAccess(NOXN3)\n" +
 			"                                                             │                           ├─ index: [NOXN3.id]\n" +
 			"                                                             │                           ├─ keys: [mjr3d.QNI57:5!null]\n" +
-			"                                                             │                           ├─ colSet: (1-10)\n" +
+			"                                                             │                           ├─ colSet: (1)\n" +
 			"                                                             │                           ├─ tableId: 1\n" +
 			"                                                             │                           └─ Table\n" +
 			"                                                             │                               ├─ name: NOXN3\n" +
@@ -14985,7 +14985,7 @@ WHERE
 			"                                                             │                       └─ IndexedTableAccess(NOXN3)\n" +
 			"                                                             │                           ├─ index: [NOXN3.id]\n" +
 			"                                                             │                           ├─ keys: [mjr3d.TDEIU:6!null]\n" +
-			"                                                             │                           ├─ colSet: (1-10)\n" +
+			"                                                             │                           ├─ colSet: (1)\n" +
 			"                                                             │                           ├─ tableId: 1\n" +
 			"                                                             │                           └─ Table\n" +
 			"                                                             │                               ├─ name: NOXN3\n" +
@@ -15022,7 +15022,7 @@ WHERE
 			"                                                                 │   │   │       │                       └─ IndexedTableAccess(NOXN3)\n" +
 			"                                                                 │   │   │       │                           ├─ index: [NOXN3.BRQP2]\n" +
 			"                                                                 │   │   │       │                           ├─ keys: [mjr3d.BJUF2:1!null]\n" +
-			"                                                                 │   │   │       │                           ├─ colSet: (180-189)\n" +
+			"                                                                 │   │   │       │                           ├─ colSet: (180,181)\n" +
 			"                                                                 │   │   │       │                           ├─ tableId: 21\n" +
 			"                                                                 │   │   │       │                           └─ Table\n" +
 			"                                                                 │   │   │       │                               ├─ name: NOXN3\n" +
@@ -15048,7 +15048,7 @@ WHERE
 			"                                                                 │   │       │                       └─ IndexedTableAccess(NOXN3)\n" +
 			"                                                                 │   │       │                           ├─ index: [NOXN3.BRQP2]\n" +
 			"                                                                 │   │       │                           ├─ keys: [mjr3d.FJDP5:0!null]\n" +
-			"                                                                 │   │       │                           ├─ colSet: (190-199)\n" +
+			"                                                                 │   │       │                           ├─ colSet: (190,191)\n" +
 			"                                                                 │   │       │                           ├─ tableId: 22\n" +
 			"                                                                 │   │       │                           └─ Table\n" +
 			"                                                                 │   │       │                               ├─ name: NOXN3\n" +
@@ -15073,7 +15073,7 @@ WHERE
 			"                                                                 │       │                       └─ IndexedTableAccess(NOXN3)\n" +
 			"                                                                 │       │                           ├─ index: [NOXN3.BRQP2]\n" +
 			"                                                                 │       │                           ├─ keys: [mjr3d.BJUF2:1!null]\n" +
-			"                                                                 │       │                           ├─ colSet: (200-209)\n" +
+			"                                                                 │       │                           ├─ colSet: (200,201)\n" +
 			"                                                                 │       │                           ├─ tableId: 23\n" +
 			"                                                                 │       │                           └─ Table\n" +
 			"                                                                 │       │                               ├─ name: NOXN3\n" +
@@ -15122,7 +15122,7 @@ WHERE
 			"                                                                 │   │                   │   │   │   │   │   └─ IndexedTableAccess(HDDVB)\n" +
 			"                                                                 │   │                   │   │   │   │   │       ├─ index: [HDDVB.NZ4MQ]\n" +
 			"                                                                 │   │                   │   │   │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"                                                                 │   │                   │   │   │   │   │       ├─ colSet: (15-23)\n" +
+			"                                                                 │   │                   │   │   │   │   │       ├─ colSet: (16-19,21)\n" +
 			"                                                                 │   │                   │   │   │   │   │       ├─ tableId: 4\n" +
 			"                                                                 │   │                   │   │   │   │   │       └─ Table\n" +
 			"                                                                 │   │                   │   │   │   │   │           ├─ name: HDDVB\n" +
@@ -15134,7 +15134,7 @@ WHERE
 			"                                                                 │   │                   │   │   │   │           └─ IndexedTableAccess(YYBCX)\n" +
 			"                                                                 │   │                   │   │   │   │               ├─ index: [YYBCX.id]\n" +
 			"                                                                 │   │                   │   │   │   │               ├─ static: [{[NULL, ∞)}]\n" +
-			"                                                                 │   │                   │   │   │   │               ├─ colSet: (24-31)\n" +
+			"                                                                 │   │                   │   │   │   │               ├─ colSet: (24,25,29)\n" +
 			"                                                                 │   │                   │   │   │   │               ├─ tableId: 5\n" +
 			"                                                                 │   │                   │   │   │   │               └─ Table\n" +
 			"                                                                 │   │                   │   │   │   │                   ├─ name: YYBCX\n" +
@@ -15146,13 +15146,13 @@ WHERE
 			"                                                                 │   │                   │   │   │           └─ Table\n" +
 			"                                                                 │   │                   │   │   │               ├─ name: WGSDC\n" +
 			"                                                                 │   │                   │   │   │               ├─ columns: [id nohhr]\n" +
-			"                                                                 │   │                   │   │   │               ├─ colSet: (32-41)\n" +
+			"                                                                 │   │                   │   │   │               ├─ colSet: (32,33)\n" +
 			"                                                                 │   │                   │   │   │               └─ tableId: 6\n" +
 			"                                                                 │   │                   │   │   └─ TableAlias(cpmfe)\n" +
 			"                                                                 │   │                   │   │       └─ IndexedTableAccess(E2I7U)\n" +
 			"                                                                 │   │                   │   │           ├─ index: [E2I7U.ZH72S]\n" +
 			"                                                                 │   │                   │   │           ├─ keys: [nhmxw.NOHHR:9!null]\n" +
-			"                                                                 │   │                   │   │           ├─ colSet: (42-58)\n" +
+			"                                                                 │   │                   │   │           ├─ colSet: (42,49)\n" +
 			"                                                                 │   │                   │   │           ├─ tableId: 7\n" +
 			"                                                                 │   │                   │   │           └─ Table\n" +
 			"                                                                 │   │                   │   │               ├─ name: E2I7U\n" +
@@ -15161,7 +15161,7 @@ WHERE
 			"                                                                 │   │                   │       └─ IndexedTableAccess(NOXN3)\n" +
 			"                                                                 │   │                   │           ├─ index: [NOXN3.FFTBJ]\n" +
 			"                                                                 │   │                   │           ├─ keys: [ism.UJ6XY:1!null]\n" +
-			"                                                                 │   │                   │           ├─ colSet: (59-68)\n" +
+			"                                                                 │   │                   │           ├─ colSet: (59-61)\n" +
 			"                                                                 │   │                   │           ├─ tableId: 8\n" +
 			"                                                                 │   │                   │           └─ Table\n" +
 			"                                                                 │   │                   │               ├─ name: NOXN3\n" +
@@ -15170,7 +15170,7 @@ WHERE
 			"                                                                 │   │                       └─ IndexedTableAccess(NOXN3)\n" +
 			"                                                                 │   │                           ├─ index: [NOXN3.FFTBJ]\n" +
 			"                                                                 │   │                           ├─ keys: [ism.FV24E:0!null]\n" +
-			"                                                                 │   │                           ├─ colSet: (69-78)\n" +
+			"                                                                 │   │                           ├─ colSet: (69-71)\n" +
 			"                                                                 │   │                           ├─ tableId: 9\n" +
 			"                                                                 │   │                           └─ Table\n" +
 			"                                                                 │   │                               ├─ name: NOXN3\n" +
@@ -16258,7 +16258,7 @@ ORDER BY id ASC`,
 			" └─ IndexedTableAccess(E2I7U)\n" +
 			"     ├─ index: [E2I7U.id]\n" +
 			"     ├─ static: [{[NULL, ∞)}]\n" +
-			"     ├─ colSet: (1-17)\n" +
+			"     ├─ colSet: (1,4)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: E2I7U\n" +
@@ -16291,7 +16291,7 @@ ORDER BY id ASC`,
 			" └─ IndexedTableAccess(E2I7U)\n" +
 			"     ├─ index: [E2I7U.id]\n" +
 			"     ├─ static: [{[NULL, ∞)}]\n" +
-			"     ├─ colSet: (1-17)\n" +
+			"     ├─ colSet: (1,4,7)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: E2I7U\n" +
@@ -16405,7 +16405,7 @@ ORDER BY Y46B2 ASC`,
 			"         │       └─ Table\n" +
 			"         │           ├─ name: QYWQD\n" +
 			"         │           ├─ columns: [id hhvlx hvhrz]\n" +
-			"         │           ├─ colSet: (1-6)\n" +
+			"         │           ├─ colSet: (1,3,4)\n" +
 			"         │           └─ tableId: 1\n" +
 			"         └─ HashLookup\n" +
 			"             ├─ left-key: TUPLE(xj2rd.HHVLX:1!null)\n" +
@@ -16426,7 +16426,7 @@ ORDER BY Y46B2 ASC`,
 			"                             └─ Table\n" +
 			"                                 ├─ name: NOXN3\n" +
 			"                                 ├─ columns: [id]\n" +
-			"                                 ├─ colSet: (13-22)\n" +
+			"                                 ├─ colSet: (13)\n" +
 			"                                 └─ tableId: 3\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
@@ -16548,7 +16548,7 @@ ORDER BY sn.XLFIA ASC`,
 			"         │       └─ IndexedTableAccess(NOXN3)\n" +
 			"         │           ├─ index: [NOXN3.id]\n" +
 			"         │           ├─ static: [{[NULL, ∞)}]\n" +
-			"         │           ├─ colSet: (1-10)\n" +
+			"         │           ├─ colSet: (1,2)\n" +
 			"         │           ├─ tableId: 1\n" +
 			"         │           └─ Table\n" +
 			"         │               ├─ name: NOXN3\n" +
@@ -16585,7 +16585,7 @@ ORDER BY sn.XLFIA ASC`,
 			"                             │       └─ Table\n" +
 			"                             │           ├─ name: E2I7U\n" +
 			"                             │           ├─ columns: [id hpcms]\n" +
-			"                             │           ├─ colSet: (14-30)\n" +
+			"                             │           ├─ colSet: (14,26)\n" +
 			"                             │           └─ tableId: 3\n" +
 			"                             └─ HashLookup\n" +
 			"                                 ├─ left-key: TUPLE(nd.HPCMS:1!null)\n" +
@@ -16603,7 +16603,7 @@ ORDER BY sn.XLFIA ASC`,
 			"                                             └─ Table\n" +
 			"                                                 ├─ name: TNMXI\n" +
 			"                                                 ├─ columns: [id dzlim]\n" +
-			"                                                 ├─ colSet: (35-37)\n" +
+			"                                                 ├─ colSet: (35,36)\n" +
 			"                                                 └─ tableId: 5\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
@@ -16760,7 +16760,7 @@ ORDER BY GRRB6.XLFIA ASC`,
 			"         │       └─ Table\n" +
 			"         │           ├─ name: NOXN3\n" +
 			"         │           ├─ columns: [id brqp2]\n" +
-			"         │           ├─ colSet: (1-10)\n" +
+			"         │           ├─ colSet: (1,2)\n" +
 			"         │           └─ tableId: 1\n" +
 			"         └─ HashLookup\n" +
 			"             ├─ left-key: TUPLE(grrb6.AHMDT:1!null)\n" +
@@ -16781,7 +16781,7 @@ ORDER BY GRRB6.XLFIA ASC`,
 			"                             └─ Table\n" +
 			"                                 ├─ name: E2I7U\n" +
 			"                                 ├─ columns: [id]\n" +
-			"                                 ├─ colSet: (15-31)\n" +
+			"                                 ├─ colSet: (15)\n" +
 			"                                 └─ tableId: 3\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
@@ -17016,7 +17016,7 @@ ORDER BY cla.FTQLQ ASC`,
 			"                     │   └─ IndexedTableAccess(THNTS)\n" +
 			"                     │       ├─ index: [THNTS.IXUXU]\n" +
 			"                     │       ├─ static: [{[NULL, ∞)}]\n" +
-			"                     │       ├─ colSet: (18-21)\n" +
+			"                     │       ├─ colSet: (18,20)\n" +
 			"                     │       ├─ tableId: 2\n" +
 			"                     │       └─ Table\n" +
 			"                     │           ├─ name: THNTS\n" +
@@ -17025,7 +17025,7 @@ ORDER BY cla.FTQLQ ASC`,
 			"                         └─ IndexedTableAccess(YK2GW)\n" +
 			"                             ├─ index: [YK2GW.id]\n" +
 			"                             ├─ static: [{[NULL, ∞)}]\n" +
-			"                             ├─ colSet: (22-51)\n" +
+			"                             ├─ colSet: (22,23)\n" +
 			"                             ├─ tableId: 3\n" +
 			"                             └─ Table\n" +
 			"                                 ├─ name: YK2GW\n" +
@@ -17206,7 +17206,7 @@ ORDER BY ci.FTQLQ`,
 			"             │   └─ IndexedTableAccess(FLQLP)\n" +
 			"             │       ├─ index: [FLQLP.FZ2R5]\n" +
 			"             │       ├─ static: [{[NULL, ∞)}]\n" +
-			"             │       ├─ colSet: (1-12)\n" +
+			"             │       ├─ colSet: (2)\n" +
 			"             │       ├─ tableId: 1\n" +
 			"             │       └─ Table\n" +
 			"             │           ├─ name: FLQLP\n" +
@@ -17215,7 +17215,7 @@ ORDER BY ci.FTQLQ`,
 			"                 └─ IndexedTableAccess(JDLNA)\n" +
 			"                     ├─ index: [JDLNA.id]\n" +
 			"                     ├─ static: [{[NULL, ∞)}]\n" +
-			"                     ├─ colSet: (13-17)\n" +
+			"                     ├─ colSet: (13,14)\n" +
 			"                     ├─ tableId: 2\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: JDLNA\n" +
@@ -17366,7 +17366,7 @@ ORDER BY LUEVY`,
 			"             │       │               └─ IndexedTableAccess(AMYXQ)\n" +
 			"             │       │                   ├─ index: [AMYXQ.LUEVY]\n" +
 			"             │       │                   ├─ keys: [nd.id:0!null]\n" +
-			"             │       │                   ├─ colSet: (29-36)\n" +
+			"             │       │                   ├─ colSet: (31,32)\n" +
 			"             │       │                   ├─ tableId: 3\n" +
 			"             │       │                   └─ Table\n" +
 			"             │       │                       ├─ name: AMYXQ\n" +
@@ -17386,7 +17386,7 @@ ORDER BY LUEVY`,
 			"             │           │               └─ IndexedTableAccess(AMYXQ)\n" +
 			"             │           │                   ├─ index: [AMYXQ.LUEVY]\n" +
 			"             │           │                   ├─ keys: [nd.id:0!null]\n" +
-			"             │           │                   ├─ colSet: (29-36)\n" +
+			"             │           │                   ├─ colSet: (31,32)\n" +
 			"             │           │                   ├─ tableId: 3\n" +
 			"             │           │                   └─ Table\n" +
 			"             │           │                       ├─ name: AMYXQ\n" +
@@ -17647,7 +17647,7 @@ ORDER BY sn.id ASC`,
 			"         │   │       └─ IndexedTableAccess(E2I7U)\n" +
 			"         │   │           ├─ index: [E2I7U.id]\n" +
 			"         │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │           ├─ colSet: (11-27)\n" +
+			"         │   │           ├─ colSet: (11,14)\n" +
 			"         │   │           ├─ tableId: 2\n" +
 			"         │   │           └─ Table\n" +
 			"         │   │               ├─ name: E2I7U\n" +
@@ -17750,7 +17750,7 @@ ORDER BY id ASC`,
 			" └─ IndexedTableAccess(NOXN3)\n" +
 			"     ├─ index: [NOXN3.id]\n" +
 			"     ├─ static: [{[NULL, ∞)}]\n" +
-			"     ├─ colSet: (1-10)\n" +
+			"     ├─ colSet: (1,5)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: NOXN3\n" +
@@ -17854,7 +17854,7 @@ ORDER BY rn.id ASC`,
 			"         │   │   │   │       └─ IndexedTableAccess(NOXN3)\n" +
 			"         │   │   │   │           ├─ index: [NOXN3.id]\n" +
 			"         │   │   │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │   │   │           ├─ colSet: (7-16)\n" +
+			"         │   │   │   │           ├─ colSet: (7-9,14)\n" +
 			"         │   │   │   │           ├─ tableId: 2\n" +
 			"         │   │   │   │           └─ Table\n" +
 			"         │   │   │   │               ├─ name: NOXN3\n" +
@@ -17882,7 +17882,7 @@ ORDER BY rn.id ASC`,
 			"         │           └─ Table\n" +
 			"         │               ├─ name: E2I7U\n" +
 			"         │               ├─ columns: [id tw55n]\n" +
-			"         │               ├─ colSet: (44-60)\n" +
+			"         │               ├─ colSet: (44,47)\n" +
 			"         │               └─ tableId: 5\n" +
 			"         └─ HashLookup\n" +
 			"             ├─ left-key: TUPLE(ayfcd.FFTBJ:11!null)\n" +
@@ -17891,7 +17891,7 @@ ORDER BY rn.id ASC`,
 			"                 └─ Table\n" +
 			"                     ├─ name: E2I7U\n" +
 			"                     ├─ columns: [id tw55n]\n" +
-			"                     ├─ colSet: (61-77)\n" +
+			"                     ├─ colSet: (61,64)\n" +
 			"                     └─ tableId: 6\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
@@ -18011,7 +18011,7 @@ ORDER BY id ASC`,
 			" └─ IndexedTableAccess(E2I7U)\n" +
 			"     ├─ index: [E2I7U.id]\n" +
 			"     ├─ static: [{[NULL, ∞)}]\n" +
-			"     ├─ colSet: (1-17)\n" +
+			"     ├─ colSet: (1,5)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: E2I7U\n" +
@@ -18071,7 +18071,7 @@ ORDER BY id ASC`,
 			"                     └─ Table\n" +
 			"                         ├─ name: NOXN3\n" +
 			"                         ├─ columns: [id ecdkm numk2]\n" +
-			"                         ├─ colSet: (1-10)\n" +
+			"                         ├─ colSet: (1,6,7)\n" +
 			"                         └─ tableId: 1\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
@@ -18123,7 +18123,7 @@ ORDER BY id ASC`,
 			" └─ IndexedTableAccess(NOXN3)\n" +
 			"     ├─ index: [NOXN3.id]\n" +
 			"     ├─ static: [{[NULL, ∞)}]\n" +
-			"     ├─ colSet: (1-10)\n" +
+			"     ├─ colSet: (1,6,7)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: NOXN3\n" +
@@ -18161,7 +18161,7 @@ SELECT
 			" └─ IndexedTableAccess(NOXN3)\n" +
 			"     ├─ index: [NOXN3.id]\n" +
 			"     ├─ static: [{[NULL, ∞)}]\n" +
-			"     ├─ colSet: (1-10)\n" +
+			"     ├─ colSet: (1,6,7)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: NOXN3\n" +
@@ -18205,7 +18205,7 @@ INNER JOIN XOAOP pa
 			"     │       └─ IndexedTableAccess(E2I7U)\n" +
 			"     │           ├─ index: [E2I7U.id]\n" +
 			"     │           ├─ keys: [qnrbh.LUEVY:1!null]\n" +
-			"     │           ├─ colSet: (4-20)\n" +
+			"     │           ├─ colSet: (4,7)\n" +
 			"     │           ├─ tableId: 2\n" +
 			"     │           └─ Table\n" +
 			"     │               ├─ name: E2I7U\n" +
@@ -18214,7 +18214,7 @@ INNER JOIN XOAOP pa
 			"         └─ IndexedTableAccess(XOAOP)\n" +
 			"             ├─ index: [XOAOP.id]\n" +
 			"             ├─ keys: [qnrbh.CH3FR:0!null]\n" +
-			"             ├─ colSet: (21-23)\n" +
+			"             ├─ colSet: (21,22)\n" +
 			"             ├─ tableId: 3\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: XOAOP\n" +
@@ -18453,7 +18453,7 @@ WHERE nd.FGG57 IS NOT NULL AND nd.KNG7T IS NULL`,
 			"     │           │   └─ Table\n" +
 			"     │           │       ├─ name: WE72E\n" +
 			"     │           │       ├─ columns: [id sshpj]\n" +
-			"     │           │       ├─ colSet: (18-21)\n" +
+			"     │           │       ├─ colSet: (18,20)\n" +
 			"     │           │       └─ tableId: 2\n" +
 			"     │           └─ Filter\n" +
 			"     │               ├─ Eq\n" +
@@ -18463,7 +18463,7 @@ WHERE nd.FGG57 IS NOT NULL AND nd.KNG7T IS NULL`,
 			"     │                   └─ IndexedTableAccess(TDRVG)\n" +
 			"     │                       ├─ index: [TDRVG.FGG57]\n" +
 			"     │                       ├─ keys: [nd.FGG57:6]\n" +
-			"     │                       ├─ colSet: (22-26)\n" +
+			"     │                       ├─ colSet: (23,24)\n" +
 			"     │                       ├─ tableId: 3\n" +
 			"     │                       └─ Table\n" +
 			"     │                           ├─ name: TDRVG\n" +
@@ -18493,7 +18493,7 @@ WHERE nd.FGG57 IS NOT NULL AND nd.KNG7T IS NULL`,
 			"         │       │   │       └─ Table\n" +
 			"         │       │   │           ├─ name: TPXHZ\n" +
 			"         │       │   │           ├─ columns: [svaz4]\n" +
-			"         │       │   │           ├─ colSet: (52,53)\n" +
+			"         │       │   │           ├─ colSet: (53)\n" +
 			"         │       │   │           └─ tableId: 4\n" +
 			"         │       │   └─ AND\n" +
 			"         │       │       ├─ NOT\n" +
@@ -18506,7 +18506,7 @@ WHERE nd.FGG57 IS NOT NULL AND nd.KNG7T IS NULL`,
 			"         │       │               └─ Table\n" +
 			"         │       │                   ├─ name: TPXHZ\n" +
 			"         │       │                   ├─ columns: [svaz4]\n" +
-			"         │       │                   ├─ colSet: (54,55)\n" +
+			"         │       │                   ├─ colSet: (55)\n" +
 			"         │       │                   └─ tableId: 5\n" +
 			"         │       └─ AND\n" +
 			"         │           ├─ NOT\n" +
@@ -18519,7 +18519,7 @@ WHERE nd.FGG57 IS NOT NULL AND nd.KNG7T IS NULL`,
 			"         │                   └─ Table\n" +
 			"         │                       ├─ name: TPXHZ\n" +
 			"         │                       ├─ columns: [svaz4]\n" +
-			"         │                       ├─ colSet: (56,57)\n" +
+			"         │                       ├─ colSet: (57)\n" +
 			"         │                       └─ tableId: 6\n" +
 			"         │      )\n" +
 			"         │       └─ BLOCK\n" +
@@ -18547,7 +18547,7 @@ WHERE nd.FGG57 IS NOT NULL AND nd.KNG7T IS NULL`,
 			"         │                       └─ IndexedTableAccess(F35MI)\n" +
 			"         │                           ├─ index: [F35MI.DZLIM]\n" +
 			"         │                           ├─ static: [{[micro_rna, micro_rna]}, {[protein, protein]}]\n" +
-			"         │                           ├─ colSet: (58-60)\n" +
+			"         │                           ├─ colSet: (58,59)\n" +
 			"         │                           ├─ tableId: 7\n" +
 			"         │                           └─ Table\n" +
 			"         │                               ├─ name: F35MI\n" +
@@ -18570,7 +18570,7 @@ WHERE nd.FGG57 IS NOT NULL AND nd.KNG7T IS NULL`,
 			"         │                       └─ IndexedTableAccess(F35MI)\n" +
 			"         │                           ├─ index: [F35MI.DZLIM]\n" +
 			"         │                           ├─ static: [{[protein, protein]}]\n" +
-			"         │                           ├─ colSet: (61-63)\n" +
+			"         │                           ├─ colSet: (61,62)\n" +
 			"         │                           ├─ tableId: 8\n" +
 			"         │                           └─ Table\n" +
 			"         │                               ├─ name: F35MI\n" +
@@ -18673,7 +18673,7 @@ WHERE
 			"     │       │       └─ IndexedTableAccess(JMRQL)\n" +
 			"     │       │           ├─ index: [JMRQL.DZLIM]\n" +
 			"     │       │           ├─ static: [{[T4IBQ, T4IBQ]}]\n" +
-			"     │       │           ├─ colSet: (36-38)\n" +
+			"     │       │           ├─ colSet: (36,37)\n" +
 			"     │       │           ├─ tableId: 3\n" +
 			"     │       │           └─ Table\n" +
 			"     │       │               ├─ name: JMRQL\n" +
@@ -18688,7 +18688,7 @@ WHERE
 			"     │           │       └─ IndexedTableAccess(JMRQL)\n" +
 			"     │           │           ├─ index: [JMRQL.DZLIM]\n" +
 			"     │           │           ├─ static: [{[T4IBQ, T4IBQ]}]\n" +
-			"     │           │           ├─ colSet: (36-38)\n" +
+			"     │           │           ├─ colSet: (36,37)\n" +
 			"     │           │           ├─ tableId: 3\n" +
 			"     │           │           └─ Table\n" +
 			"     │           │               ├─ name: JMRQL\n" +
@@ -18793,7 +18793,7 @@ FROM
 			"     │                       │   │       └─ IndexedTableAccess(NOXN3)\n" +
 			"     │                       │   │           ├─ index: [NOXN3.FFTBJ]\n" +
 			"     │                       │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"     │                       │   │           ├─ colSet: (7-16)\n" +
+			"     │                       │   │           ├─ colSet: (7,9,12,13)\n" +
 			"     │                       │   │           ├─ tableId: 2\n" +
 			"     │                       │   │           └─ Table\n" +
 			"     │                       │   │               ├─ name: NOXN3\n" +
@@ -18802,7 +18802,7 @@ FROM
 			"     │                       │       └─ IndexedTableAccess(NOXN3)\n" +
 			"     │                       │           ├─ index: [NOXN3.BRQP2]\n" +
 			"     │                       │           ├─ static: [{[NULL, ∞)}]\n" +
-			"     │                       │           ├─ colSet: (17-26)\n" +
+			"     │                       │           ├─ colSet: (17,18)\n" +
 			"     │                       │           ├─ tableId: 3\n" +
 			"     │                       │           └─ Table\n" +
 			"     │                       │               ├─ name: NOXN3\n" +
@@ -18811,7 +18811,7 @@ FROM
 			"     │                           └─ IndexedTableAccess(QYWQD)\n" +
 			"     │                               ├─ index: [QYWQD.WNUNU]\n" +
 			"     │                               ├─ keys: [sn.id:0!null]\n" +
-			"     │                               ├─ colSet: (27-32)\n" +
+			"     │                               ├─ colSet: (28,29)\n" +
 			"     │                               ├─ tableId: 4\n" +
 			"     │                               └─ Table\n" +
 			"     │                                   ├─ name: QYWQD\n" +
@@ -18832,7 +18832,7 @@ FROM
 			"                     │           └─ IndexedTableAccess(NOXN3)\n" +
 			"                     │               ├─ index: [NOXN3.id]\n" +
 			"                     │               ├─ keys: [new.WNUNU:1!null]\n" +
-			"                     │               ├─ colSet: (13-22)\n" +
+			"                     │               ├─ colSet: (13,15)\n" +
 			"                     │               ├─ tableId: 3\n" +
 			"                     │               └─ Table\n" +
 			"                     │                   ├─ name: NOXN3\n" +
@@ -18849,7 +18849,7 @@ FROM
 			"                                 └─ IndexedTableAccess(NOXN3)\n" +
 			"                                     ├─ index: [NOXN3.id]\n" +
 			"                                     ├─ keys: [new.HHVLX:2!null]\n" +
-			"                                     ├─ colSet: (23-32)\n" +
+			"                                     ├─ colSet: (23,24)\n" +
 			"                                     ├─ tableId: 4\n" +
 			"                                     └─ Table\n" +
 			"                                         ├─ name: NOXN3\n" +
@@ -18898,7 +18898,7 @@ WHERE
 			"     │       └─ IndexedTableAccess(TDRVG)\n" +
 			"     │           ├─ index: [TDRVG.id]\n" +
 			"     │           ├─ static: [{[1, 1]}, {[2, 2]}, {[3, 3]}]\n" +
-			"     │           ├─ colSet: (5-9)\n" +
+			"     │           ├─ colSet: (5,7,8)\n" +
 			"     │           ├─ tableId: 2\n" +
 			"     │           └─ Table\n" +
 			"     │               ├─ name: TDRVG\n" +
@@ -18914,7 +18914,7 @@ WHERE
 			"                 │       └─ Table\n" +
 			"                 │           ├─ name: TPXHZ\n" +
 			"                 │           ├─ columns: [svaz4]\n" +
-			"                 │           ├─ colSet: (9,10)\n" +
+			"                 │           ├─ colSet: (10)\n" +
 			"                 │           └─ tableId: 3\n" +
 			"                 └─ InSubquery\n" +
 			"                     ├─ left: new.SSHPJ:2!null\n" +
@@ -18924,7 +18924,7 @@ WHERE
 			"                         └─ Table\n" +
 			"                             ├─ name: TPXHZ\n" +
 			"                             ├─ columns: [svaz4]\n" +
-			"                             ├─ colSet: (11,12)\n" +
+			"                             ├─ colSet: (12)\n" +
 			"                             └─ tableId: 4\n" +
 			"                )\n" +
 			"                 └─ BLOCK\n" +
@@ -19017,7 +19017,7 @@ WHERE
 			"     │       │           │       └─ IndexedTableAccess(YK2GW)\n" +
 			"     │       │           │           ├─ index: [YK2GW.id]\n" +
 			"     │       │           │           ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       │           │           ├─ colSet: (45-74)\n" +
+			"     │       │           │           ├─ colSet: (45,46)\n" +
 			"     │       │           │           ├─ tableId: 6\n" +
 			"     │       │           │           └─ Table\n" +
 			"     │       │           │               ├─ name: YK2GW\n" +
@@ -19026,7 +19026,7 @@ WHERE
 			"     │       │               └─ IndexedTableAccess(THNTS)\n" +
 			"     │       │                   ├─ index: [THNTS.IXUXU]\n" +
 			"     │       │                   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       │                   ├─ colSet: (41-44)\n" +
+			"     │       │                   ├─ colSet: (41,43)\n" +
 			"     │       │                   ├─ tableId: 5\n" +
 			"     │       │                   └─ Table\n" +
 			"     │       │                       ├─ name: THNTS\n" +
@@ -19065,7 +19065,7 @@ WHERE
 			"     │           │           │       └─ IndexedTableAccess(YK2GW)\n" +
 			"     │           │           │           ├─ index: [YK2GW.id]\n" +
 			"     │           │           │           ├─ static: [{[NULL, ∞)}]\n" +
-			"     │           │           │           ├─ colSet: (45-74)\n" +
+			"     │           │           │           ├─ colSet: (45,46)\n" +
 			"     │           │           │           ├─ tableId: 6\n" +
 			"     │           │           │           └─ Table\n" +
 			"     │           │           │               ├─ name: YK2GW\n" +
@@ -19074,7 +19074,7 @@ WHERE
 			"     │           │               └─ IndexedTableAccess(THNTS)\n" +
 			"     │           │                   ├─ index: [THNTS.IXUXU]\n" +
 			"     │           │                   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │           │                   ├─ colSet: (41-44)\n" +
+			"     │           │                   ├─ colSet: (41,43)\n" +
 			"     │           │                   ├─ tableId: 5\n" +
 			"     │           │                   └─ Table\n" +
 			"     │           │                       ├─ name: THNTS\n" +
@@ -19144,7 +19144,7 @@ WHERE
 			"         │               └─ IndexedTableAccess(E2I7U)\n" +
 			"         │                   ├─ index: [E2I7U.id]\n" +
 			"         │                   ├─ keys: [new.LUEVY:2!null]\n" +
-			"         │                   ├─ colSet: (17-33)\n" +
+			"         │                   ├─ colSet: (17,23)\n" +
 			"         │                   ├─ tableId: 3\n" +
 			"         │                   └─ Table\n" +
 			"         │                       ├─ name: E2I7U\n" +
@@ -19227,7 +19227,7 @@ WHERE
 			"     │       │           │   └─ IndexedTableAccess(THNTS)\n" +
 			"     │       │           │       ├─ index: [THNTS.IXUXU]\n" +
 			"     │       │           │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       │           │       ├─ colSet: (14-17)\n" +
+			"     │       │           │       ├─ colSet: (14,16)\n" +
 			"     │       │           │       ├─ tableId: 3\n" +
 			"     │       │           │       └─ Table\n" +
 			"     │       │           │           ├─ name: THNTS\n" +
@@ -19240,7 +19240,7 @@ WHERE
 			"     │       │                   └─ IndexedTableAccess(YK2GW)\n" +
 			"     │       │                       ├─ index: [YK2GW.id]\n" +
 			"     │       │                       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       │                       ├─ colSet: (18-47)\n" +
+			"     │       │                       ├─ colSet: (18,19)\n" +
 			"     │       │                       ├─ tableId: 4\n" +
 			"     │       │                       └─ Table\n" +
 			"     │       │                           ├─ name: YK2GW\n" +
@@ -19253,7 +19253,7 @@ WHERE
 			"     │       │       └─ IndexedTableAccess(XOAOP)\n" +
 			"     │       │           ├─ index: [XOAOP.DZLIM]\n" +
 			"     │       │           ├─ static: [{[NER, NER]}]\n" +
-			"     │       │           ├─ colSet: (49-51)\n" +
+			"     │       │           ├─ colSet: (49,50)\n" +
 			"     │       │           ├─ tableId: 5\n" +
 			"     │       │           └─ Table\n" +
 			"     │       │               ├─ name: XOAOP\n" +
@@ -19279,7 +19279,7 @@ WHERE
 			"     │           │           │   └─ IndexedTableAccess(THNTS)\n" +
 			"     │           │           │       ├─ index: [THNTS.IXUXU]\n" +
 			"     │           │           │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │           │           │       ├─ colSet: (14-17)\n" +
+			"     │           │           │       ├─ colSet: (14,16)\n" +
 			"     │           │           │       ├─ tableId: 3\n" +
 			"     │           │           │       └─ Table\n" +
 			"     │           │           │           ├─ name: THNTS\n" +
@@ -19292,7 +19292,7 @@ WHERE
 			"     │           │                   └─ IndexedTableAccess(YK2GW)\n" +
 			"     │           │                       ├─ index: [YK2GW.id]\n" +
 			"     │           │                       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │           │                       ├─ colSet: (18-47)\n" +
+			"     │           │                       ├─ colSet: (18,19)\n" +
 			"     │           │                       ├─ tableId: 4\n" +
 			"     │           │                       └─ Table\n" +
 			"     │           │                           ├─ name: YK2GW\n" +
@@ -19305,7 +19305,7 @@ WHERE
 			"     │           │       └─ IndexedTableAccess(XOAOP)\n" +
 			"     │           │           ├─ index: [XOAOP.DZLIM]\n" +
 			"     │           │           ├─ static: [{[NER, NER]}]\n" +
-			"     │           │           ├─ colSet: (49-51)\n" +
+			"     │           │           ├─ colSet: (49,50)\n" +
 			"     │           │           ├─ tableId: 5\n" +
 			"     │           │           └─ Table\n" +
 			"     │           │               ├─ name: XOAOP\n" +
@@ -19342,7 +19342,7 @@ WHERE
 			"         │           │           └─ IndexedTableAccess(XOAOP)\n" +
 			"         │           │               ├─ index: [XOAOP.id]\n" +
 			"         │           │               ├─ keys: [new.CH3FR:2!null]\n" +
-			"         │           │               ├─ colSet: (11-13)\n" +
+			"         │           │               ├─ colSet: (11,12)\n" +
 			"         │           │               ├─ tableId: 3\n" +
 			"         │           │               └─ Table\n" +
 			"         │           │                   ├─ name: XOAOP\n" +
@@ -19419,7 +19419,7 @@ WHERE
 			"     │       │           │   └─ IndexedTableAccess(THNTS)\n" +
 			"     │       │           │       ├─ index: [THNTS.IXUXU]\n" +
 			"     │       │           │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       │           │       ├─ colSet: (14-17)\n" +
+			"     │       │           │       ├─ colSet: (14,16)\n" +
 			"     │       │           │       ├─ tableId: 3\n" +
 			"     │       │           │       └─ Table\n" +
 			"     │       │           │           ├─ name: THNTS\n" +
@@ -19432,7 +19432,7 @@ WHERE
 			"     │       │                   └─ IndexedTableAccess(YK2GW)\n" +
 			"     │       │                       ├─ index: [YK2GW.id]\n" +
 			"     │       │                       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       │                       ├─ colSet: (18-47)\n" +
+			"     │       │                       ├─ colSet: (18,19)\n" +
 			"     │       │                       ├─ tableId: 4\n" +
 			"     │       │                       └─ Table\n" +
 			"     │       │                           ├─ name: YK2GW\n" +
@@ -19445,7 +19445,7 @@ WHERE
 			"     │       │       └─ IndexedTableAccess(XOAOP)\n" +
 			"     │       │           ├─ index: [XOAOP.DZLIM]\n" +
 			"     │       │           ├─ static: [{[BER, BER]}]\n" +
-			"     │       │           ├─ colSet: (49-51)\n" +
+			"     │       │           ├─ colSet: (49,50)\n" +
 			"     │       │           ├─ tableId: 5\n" +
 			"     │       │           └─ Table\n" +
 			"     │       │               ├─ name: XOAOP\n" +
@@ -19471,7 +19471,7 @@ WHERE
 			"     │           │           │   └─ IndexedTableAccess(THNTS)\n" +
 			"     │           │           │       ├─ index: [THNTS.IXUXU]\n" +
 			"     │           │           │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │           │           │       ├─ colSet: (14-17)\n" +
+			"     │           │           │       ├─ colSet: (14,16)\n" +
 			"     │           │           │       ├─ tableId: 3\n" +
 			"     │           │           │       └─ Table\n" +
 			"     │           │           │           ├─ name: THNTS\n" +
@@ -19484,7 +19484,7 @@ WHERE
 			"     │           │                   └─ IndexedTableAccess(YK2GW)\n" +
 			"     │           │                       ├─ index: [YK2GW.id]\n" +
 			"     │           │                       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │           │                       ├─ colSet: (18-47)\n" +
+			"     │           │                       ├─ colSet: (18,19)\n" +
 			"     │           │                       ├─ tableId: 4\n" +
 			"     │           │                       └─ Table\n" +
 			"     │           │                           ├─ name: YK2GW\n" +
@@ -19497,7 +19497,7 @@ WHERE
 			"     │           │       └─ IndexedTableAccess(XOAOP)\n" +
 			"     │           │           ├─ index: [XOAOP.DZLIM]\n" +
 			"     │           │           ├─ static: [{[BER, BER]}]\n" +
-			"     │           │           ├─ colSet: (49-51)\n" +
+			"     │           │           ├─ colSet: (49,50)\n" +
 			"     │           │           ├─ tableId: 5\n" +
 			"     │           │           └─ Table\n" +
 			"     │           │               ├─ name: XOAOP\n" +
@@ -19534,7 +19534,7 @@ WHERE
 			"         │           │           └─ IndexedTableAccess(XOAOP)\n" +
 			"         │           │               ├─ index: [XOAOP.id]\n" +
 			"         │           │               ├─ keys: [new.CH3FR:2!null]\n" +
-			"         │           │               ├─ colSet: (11-13)\n" +
+			"         │           │               ├─ colSet: (11,12)\n" +
 			"         │           │               ├─ tableId: 3\n" +
 			"         │           │               └─ Table\n" +
 			"         │           │                   ├─ name: XOAOP\n" +
@@ -19611,7 +19611,7 @@ WHERE
 			"     │       │           │   └─ IndexedTableAccess(THNTS)\n" +
 			"     │       │           │       ├─ index: [THNTS.IXUXU]\n" +
 			"     │       │           │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       │           │       ├─ colSet: (14-17)\n" +
+			"     │       │           │       ├─ colSet: (14,16)\n" +
 			"     │       │           │       ├─ tableId: 3\n" +
 			"     │       │           │       └─ Table\n" +
 			"     │       │           │           ├─ name: THNTS\n" +
@@ -19624,7 +19624,7 @@ WHERE
 			"     │       │                   └─ IndexedTableAccess(YK2GW)\n" +
 			"     │       │                       ├─ index: [YK2GW.id]\n" +
 			"     │       │                       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       │                       ├─ colSet: (18-47)\n" +
+			"     │       │                       ├─ colSet: (18,19)\n" +
 			"     │       │                       ├─ tableId: 4\n" +
 			"     │       │                       └─ Table\n" +
 			"     │       │                           ├─ name: YK2GW\n" +
@@ -19637,7 +19637,7 @@ WHERE
 			"     │       │       └─ IndexedTableAccess(XOAOP)\n" +
 			"     │       │           ├─ index: [XOAOP.DZLIM]\n" +
 			"     │       │           ├─ static: [{[HR, HR]}]\n" +
-			"     │       │           ├─ colSet: (49-51)\n" +
+			"     │       │           ├─ colSet: (49,50)\n" +
 			"     │       │           ├─ tableId: 5\n" +
 			"     │       │           └─ Table\n" +
 			"     │       │               ├─ name: XOAOP\n" +
@@ -19663,7 +19663,7 @@ WHERE
 			"     │           │           │   └─ IndexedTableAccess(THNTS)\n" +
 			"     │           │           │       ├─ index: [THNTS.IXUXU]\n" +
 			"     │           │           │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │           │           │       ├─ colSet: (14-17)\n" +
+			"     │           │           │       ├─ colSet: (14,16)\n" +
 			"     │           │           │       ├─ tableId: 3\n" +
 			"     │           │           │       └─ Table\n" +
 			"     │           │           │           ├─ name: THNTS\n" +
@@ -19676,7 +19676,7 @@ WHERE
 			"     │           │                   └─ IndexedTableAccess(YK2GW)\n" +
 			"     │           │                       ├─ index: [YK2GW.id]\n" +
 			"     │           │                       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │           │                       ├─ colSet: (18-47)\n" +
+			"     │           │                       ├─ colSet: (18,19)\n" +
 			"     │           │                       ├─ tableId: 4\n" +
 			"     │           │                       └─ Table\n" +
 			"     │           │                           ├─ name: YK2GW\n" +
@@ -19689,7 +19689,7 @@ WHERE
 			"     │           │       └─ IndexedTableAccess(XOAOP)\n" +
 			"     │           │           ├─ index: [XOAOP.DZLIM]\n" +
 			"     │           │           ├─ static: [{[HR, HR]}]\n" +
-			"     │           │           ├─ colSet: (49-51)\n" +
+			"     │           │           ├─ colSet: (49,50)\n" +
 			"     │           │           ├─ tableId: 5\n" +
 			"     │           │           └─ Table\n" +
 			"     │           │               ├─ name: XOAOP\n" +
@@ -19726,7 +19726,7 @@ WHERE
 			"         │           │           └─ IndexedTableAccess(XOAOP)\n" +
 			"         │           │               ├─ index: [XOAOP.id]\n" +
 			"         │           │               ├─ keys: [new.CH3FR:2!null]\n" +
-			"         │           │               ├─ colSet: (11-13)\n" +
+			"         │           │               ├─ colSet: (11,12)\n" +
 			"         │           │               ├─ tableId: 3\n" +
 			"         │           │               └─ Table\n" +
 			"         │           │                   ├─ name: XOAOP\n" +
@@ -19803,7 +19803,7 @@ WHERE
 			"     │       │           │   └─ IndexedTableAccess(THNTS)\n" +
 			"     │       │           │       ├─ index: [THNTS.IXUXU]\n" +
 			"     │       │           │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       │           │       ├─ colSet: (14-17)\n" +
+			"     │       │           │       ├─ colSet: (14,16)\n" +
 			"     │       │           │       ├─ tableId: 3\n" +
 			"     │       │           │       └─ Table\n" +
 			"     │       │           │           ├─ name: THNTS\n" +
@@ -19816,7 +19816,7 @@ WHERE
 			"     │       │                   └─ IndexedTableAccess(YK2GW)\n" +
 			"     │       │                       ├─ index: [YK2GW.id]\n" +
 			"     │       │                       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       │                       ├─ colSet: (18-47)\n" +
+			"     │       │                       ├─ colSet: (18,19)\n" +
 			"     │       │                       ├─ tableId: 4\n" +
 			"     │       │                       └─ Table\n" +
 			"     │       │                           ├─ name: YK2GW\n" +
@@ -19829,7 +19829,7 @@ WHERE
 			"     │       │       └─ IndexedTableAccess(XOAOP)\n" +
 			"     │       │           ├─ index: [XOAOP.DZLIM]\n" +
 			"     │       │           ├─ static: [{[MMR, MMR]}]\n" +
-			"     │       │           ├─ colSet: (49-51)\n" +
+			"     │       │           ├─ colSet: (49,50)\n" +
 			"     │       │           ├─ tableId: 5\n" +
 			"     │       │           └─ Table\n" +
 			"     │       │               ├─ name: XOAOP\n" +
@@ -19855,7 +19855,7 @@ WHERE
 			"     │           │           │   └─ IndexedTableAccess(THNTS)\n" +
 			"     │           │           │       ├─ index: [THNTS.IXUXU]\n" +
 			"     │           │           │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │           │           │       ├─ colSet: (14-17)\n" +
+			"     │           │           │       ├─ colSet: (14,16)\n" +
 			"     │           │           │       ├─ tableId: 3\n" +
 			"     │           │           │       └─ Table\n" +
 			"     │           │           │           ├─ name: THNTS\n" +
@@ -19868,7 +19868,7 @@ WHERE
 			"     │           │                   └─ IndexedTableAccess(YK2GW)\n" +
 			"     │           │                       ├─ index: [YK2GW.id]\n" +
 			"     │           │                       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │           │                       ├─ colSet: (18-47)\n" +
+			"     │           │                       ├─ colSet: (18,19)\n" +
 			"     │           │                       ├─ tableId: 4\n" +
 			"     │           │                       └─ Table\n" +
 			"     │           │                           ├─ name: YK2GW\n" +
@@ -19881,7 +19881,7 @@ WHERE
 			"     │           │       └─ IndexedTableAccess(XOAOP)\n" +
 			"     │           │           ├─ index: [XOAOP.DZLIM]\n" +
 			"     │           │           ├─ static: [{[MMR, MMR]}]\n" +
-			"     │           │           ├─ colSet: (49-51)\n" +
+			"     │           │           ├─ colSet: (49,50)\n" +
 			"     │           │           ├─ tableId: 5\n" +
 			"     │           │           └─ Table\n" +
 			"     │           │               ├─ name: XOAOP\n" +
@@ -19918,7 +19918,7 @@ WHERE
 			"         │           │           └─ IndexedTableAccess(XOAOP)\n" +
 			"         │           │               ├─ index: [XOAOP.id]\n" +
 			"         │           │               ├─ keys: [new.CH3FR:2!null]\n" +
-			"         │           │               ├─ colSet: (11-13)\n" +
+			"         │           │               ├─ colSet: (11,12)\n" +
 			"         │           │               ├─ tableId: 3\n" +
 			"         │           │               └─ Table\n" +
 			"         │           │                   ├─ name: XOAOP\n" +
@@ -20003,7 +20003,7 @@ WHERE
 			"     │                       │   │   │           └─ IndexedTableAccess(TPXBU)\n" +
 			"     │                       │   │   │               ├─ index: [TPXBU.BTXC5]\n" +
 			"     │                       │   │   │               ├─ static: [{(NULL, ∞)}]\n" +
-			"     │                       │   │   │               ├─ colSet: (29-31)\n" +
+			"     │                       │   │   │               ├─ colSet: (30)\n" +
 			"     │                       │   │   │               ├─ tableId: 3\n" +
 			"     │                       │   │   │               └─ Table\n" +
 			"     │                       │   │   │                   ├─ name: TPXBU\n" +
@@ -20033,7 +20033,7 @@ WHERE
 			"                     └─ Table\n" +
 			"                         ├─ name: TPXHZ\n" +
 			"                         ├─ columns: [svaz4]\n" +
-			"                         ├─ colSet: (7,8)\n" +
+			"                         ├─ colSet: (8)\n" +
 			"                         └─ tableId: 3\n" +
 			"                )\n" +
 			"                 └─ BLOCK\n" +
@@ -20171,7 +20171,7 @@ INNER JOIN THNTS bs ON cla.id = bs.IXUXU`,
 			"     │       │               └─ IndexedTableAccess(E2I7U)\n" +
 			"     │       │                   ├─ index: [E2I7U.TW55N]\n" +
 			"     │       │                   ├─ keys: [tj5d2.H4DMT:29!null]\n" +
-			"     │       │                   ├─ colSet: (159-175)\n" +
+			"     │       │                   ├─ colSet: (159,162)\n" +
 			"     │       │                   ├─ tableId: 9\n" +
 			"     │       │                   └─ Table\n" +
 			"     │       │                       ├─ name: E2I7U\n" +
@@ -20189,7 +20189,7 @@ INNER JOIN THNTS bs ON cla.id = bs.IXUXU`,
 			"     │       │               └─ IndexedTableAccess(E2I7U)\n" +
 			"     │       │                   ├─ index: [E2I7U.FGG57]\n" +
 			"     │       │                   ├─ static: [{(NULL, ∞)}]\n" +
-			"     │       │                   ├─ colSet: (176-192)\n" +
+			"     │       │                   ├─ colSet: (176,182)\n" +
 			"     │       │                   ├─ tableId: 10\n" +
 			"     │       │                   └─ Table\n" +
 			"     │       │                       ├─ name: E2I7U\n" +
@@ -20205,7 +20205,7 @@ INNER JOIN THNTS bs ON cla.id = bs.IXUXU`,
 			"     │       │       └─ IndexedTableAccess(TPXBU)\n" +
 			"     │       │           ├─ index: [TPXBU.BTXC5]\n" +
 			"     │       │           ├─ static: [{[NULL, NULL]}]\n" +
-			"     │       │           ├─ colSet: (194-196)\n" +
+			"     │       │           ├─ colSet: (194,195)\n" +
 			"     │       │           ├─ tableId: 11\n" +
 			"     │       │           └─ Table\n" +
 			"     │       │               ├─ name: TPXBU\n" +
@@ -20223,7 +20223,7 @@ INNER JOIN THNTS bs ON cla.id = bs.IXUXU`,
 			"     │       │               └─ IndexedTableAccess(TPXBU)\n" +
 			"     │       │                   ├─ index: [TPXBU.BTXC5]\n" +
 			"     │       │                   ├─ keys: [umf.SYPKF:8]\n" +
-			"     │       │                   ├─ colSet: (197-199)\n" +
+			"     │       │                   ├─ colSet: (197,198)\n" +
 			"     │       │                   ├─ tableId: 12\n" +
 			"     │       │                   └─ Table\n" +
 			"     │       │                       ├─ name: TPXBU\n" +
@@ -20269,7 +20269,7 @@ INNER JOIN THNTS bs ON cla.id = bs.IXUXU`,
 			"     │           │               └─ IndexedTableAccess(E2I7U)\n" +
 			"     │           │                   ├─ index: [E2I7U.TW55N]\n" +
 			"     │           │                   ├─ keys: [tj5d2.H4DMT:29!null]\n" +
-			"     │           │                   ├─ colSet: (159-175)\n" +
+			"     │           │                   ├─ colSet: (159,162)\n" +
 			"     │           │                   ├─ tableId: 9\n" +
 			"     │           │                   └─ Table\n" +
 			"     │           │                       ├─ name: E2I7U\n" +
@@ -20287,7 +20287,7 @@ INNER JOIN THNTS bs ON cla.id = bs.IXUXU`,
 			"     │           │               └─ IndexedTableAccess(E2I7U)\n" +
 			"     │           │                   ├─ index: [E2I7U.FGG57]\n" +
 			"     │           │                   ├─ static: [{(NULL, ∞)}]\n" +
-			"     │           │                   ├─ colSet: (176-192)\n" +
+			"     │           │                   ├─ colSet: (176,182)\n" +
 			"     │           │                   ├─ tableId: 10\n" +
 			"     │           │                   └─ Table\n" +
 			"     │           │                       ├─ name: E2I7U\n" +
@@ -20303,7 +20303,7 @@ INNER JOIN THNTS bs ON cla.id = bs.IXUXU`,
 			"     │           │       └─ IndexedTableAccess(TPXBU)\n" +
 			"     │           │           ├─ index: [TPXBU.BTXC5]\n" +
 			"     │           │           ├─ static: [{[NULL, NULL]}]\n" +
-			"     │           │           ├─ colSet: (194-196)\n" +
+			"     │           │           ├─ colSet: (194,195)\n" +
 			"     │           │           ├─ tableId: 11\n" +
 			"     │           │           └─ Table\n" +
 			"     │           │               ├─ name: TPXBU\n" +
@@ -20321,7 +20321,7 @@ INNER JOIN THNTS bs ON cla.id = bs.IXUXU`,
 			"     │           │               └─ IndexedTableAccess(TPXBU)\n" +
 			"     │           │                   ├─ index: [TPXBU.BTXC5]\n" +
 			"     │           │                   ├─ keys: [umf.SYPKF:8]\n" +
-			"     │           │                   ├─ colSet: (197-199)\n" +
+			"     │           │                   ├─ colSet: (197,198)\n" +
 			"     │           │                   ├─ tableId: 12\n" +
 			"     │           │                   └─ Table\n" +
 			"     │           │                       ├─ name: TPXBU\n" +
@@ -20387,7 +20387,7 @@ INNER JOIN THNTS bs ON cla.id = bs.IXUXU`,
 			"     │               │   │   │       │   │   │       └─ Table\n" +
 			"     │               │   │   │       │   │   │           ├─ name: YK2GW\n" +
 			"     │               │   │   │       │   │   │           ├─ columns: [ftqlq]\n" +
-			"     │               │   │   │       │   │   │           ├─ colSet: (43-72)\n" +
+			"     │               │   │   │       │   │   │           ├─ colSet: (44)\n" +
 			"     │               │   │   │       │   │   │           └─ tableId: 3\n" +
 			"     │               │   │   │       │   │   └─ InSubquery\n" +
 			"     │               │   │   │       │   │       ├─ left: nzkpm.FGG57:2\n" +
@@ -20397,7 +20397,7 @@ INNER JOIN THNTS bs ON cla.id = bs.IXUXU`,
 			"     │               │   │   │       │   │           └─ IndexedTableAccess(E2I7U)\n" +
 			"     │               │   │   │       │   │               ├─ index: [E2I7U.FGG57]\n" +
 			"     │               │   │   │       │   │               ├─ static: [{(NULL, ∞)}]\n" +
-			"     │               │   │   │       │   │               ├─ colSet: (73-89)\n" +
+			"     │               │   │   │       │   │               ├─ colSet: (79)\n" +
 			"     │               │   │   │       │   │               ├─ tableId: 4\n" +
 			"     │               │   │   │       │   │               └─ Table\n" +
 			"     │               │   │   │       │   │                   ├─ name: E2I7U\n" +
@@ -20451,7 +20451,7 @@ INNER JOIN THNTS bs ON cla.id = bs.IXUXU`,
 			"         │       │   │   │   │       └─ Table\n" +
 			"         │       │   │   │   │           ├─ name: TPXHZ\n" +
 			"         │       │   │   │   │           ├─ columns: [svaz4]\n" +
-			"         │       │   │   │   │           ├─ colSet: (35,36)\n" +
+			"         │       │   │   │   │           ├─ colSet: (36)\n" +
 			"         │       │   │   │   │           └─ tableId: 3\n" +
 			"         │       │   │   │   └─ InSubquery\n" +
 			"         │       │   │   │       ├─ left: new.ARN5P:5!null\n" +
@@ -20461,7 +20461,7 @@ INNER JOIN THNTS bs ON cla.id = bs.IXUXU`,
 			"         │       │   │   │           └─ Table\n" +
 			"         │       │   │   │               ├─ name: TPXHZ\n" +
 			"         │       │   │   │               ├─ columns: [svaz4]\n" +
-			"         │       │   │   │               ├─ colSet: (37,38)\n" +
+			"         │       │   │   │               ├─ colSet: (38)\n" +
 			"         │       │   │   │               └─ tableId: 4\n" +
 			"         │       │   │   └─ InSubquery\n" +
 			"         │       │   │       ├─ left: new.XOSD4:6!null\n" +
@@ -20471,7 +20471,7 @@ INNER JOIN THNTS bs ON cla.id = bs.IXUXU`,
 			"         │       │   │           └─ Table\n" +
 			"         │       │   │               ├─ name: TPXHZ\n" +
 			"         │       │   │               ├─ columns: [svaz4]\n" +
-			"         │       │   │               ├─ colSet: (39,40)\n" +
+			"         │       │   │               ├─ colSet: (40)\n" +
 			"         │       │   │               └─ tableId: 5\n" +
 			"         │       │   └─ InSubquery\n" +
 			"         │       │       ├─ left: new.IDE43:7\n" +
@@ -20481,7 +20481,7 @@ INNER JOIN THNTS bs ON cla.id = bs.IXUXU`,
 			"         │       │           └─ Table\n" +
 			"         │       │               ├─ name: TPXHZ\n" +
 			"         │       │               ├─ columns: [svaz4]\n" +
-			"         │       │               ├─ colSet: (41,42)\n" +
+			"         │       │               ├─ colSet: (42)\n" +
 			"         │       │               └─ tableId: 6\n" +
 			"         │       └─ InSubquery\n" +
 			"         │           ├─ left: new.HMW4H:8\n" +
@@ -20491,7 +20491,7 @@ INNER JOIN THNTS bs ON cla.id = bs.IXUXU`,
 			"         │               └─ Table\n" +
 			"         │                   ├─ name: TPXHZ\n" +
 			"         │                   ├─ columns: [svaz4]\n" +
-			"         │                   ├─ colSet: (43,44)\n" +
+			"         │                   ├─ colSet: (44)\n" +
 			"         │                   └─ tableId: 7\n" +
 			"         │      )\n" +
 			"         │       └─ BLOCK\n" +
@@ -20581,7 +20581,7 @@ INNER JOIN D34QP vc ON C6PUD.AZ6SP LIKE CONCAT(CONCAT('%', vc.TWMSR), '%')`,
 			"                             │   └─ IndexedTableAccess(NZKPM)\n" +
 			"                             │       ├─ index: [NZKPM.id]\n" +
 			"                             │       ├─ static: [{[1, 1]}, {[2, 2]}, {[3, 3]}]\n" +
-			"                             │       ├─ colSet: (21-45)\n" +
+			"                             │       ├─ colSet: (21,32)\n" +
 			"                             │       ├─ tableId: 3\n" +
 			"                             │       └─ Table\n" +
 			"                             │           ├─ name: NZKPM\n" +
@@ -20590,7 +20590,7 @@ INNER JOIN D34QP vc ON C6PUD.AZ6SP LIKE CONCAT(CONCAT('%', vc.TWMSR), '%')`,
 			"                                 └─ Table\n" +
 			"                                     ├─ name: HGMQ6\n" +
 			"                                     ├─ columns: [id teuja]\n" +
-			"                                     ├─ colSet: (4-20)\n" +
+			"                                     ├─ colSet: (4,18)\n" +
 			"                                     └─ tableId: 2\n" +
 			"",
 	},
@@ -20739,7 +20739,7 @@ FROM
 			"         │                   │               └─ Table\n" +
 			"         │                   │                   ├─ name: YYBCX\n" +
 			"         │                   │                   ├─ columns: [id esfvy sl76b]\n" +
-			"         │                   │                   ├─ colSet: (88-95)\n" +
+			"         │                   │                   ├─ colSet: (88-90)\n" +
 			"         │                   │                   └─ tableId: 8\n" +
 			"         │                   │  ->NZ4MQ:0, NULL (null)->FHCYT:97, NULL (null)->YKSSU:98]\n" +
 			"         │                   └─ Project\n" +
@@ -20756,7 +20756,7 @@ FROM
 			"         │                       │               └─ Table\n" +
 			"         │                       │                   ├─ name: YYBCX\n" +
 			"         │                       │                   ├─ columns: [id esfvy sl76b]\n" +
-			"         │                       │                   ├─ colSet: (88-95)\n" +
+			"         │                       │                   ├─ colSet: (88-90)\n" +
 			"         │                       │                   └─ tableId: 8\n" +
 			"         │                       │  ->NZ4MQ:0, NULL (null)->FHCYT:97, NULL (null)->YKSSU:98]\n" +
 			"         │                       └─ Filter\n" +
@@ -20859,7 +20859,7 @@ FROM
 			"                 │               └─ IndexedTableAccess(TPXBU)\n" +
 			"                 │                   ├─ index: [TPXBU.BTXC5]\n" +
 			"                 │                   ├─ keys: [bpnw2.SYPKF:3]\n" +
-			"                 │                   ├─ colSet: (230-232)\n" +
+			"                 │                   ├─ colSet: (230,231)\n" +
 			"                 │                   ├─ tableId: 18\n" +
 			"                 │                   └─ Table\n" +
 			"                 │                       ├─ name: TPXBU\n" +
@@ -20879,7 +20879,7 @@ FROM
 			"                     │               └─ IndexedTableAccess(TPXBU)\n" +
 			"                     │                   ├─ index: [TPXBU.BTXC5]\n" +
 			"                     │                   ├─ keys: [bpnw2.SYPKF:3]\n" +
-			"                     │                   ├─ colSet: (230-232)\n" +
+			"                     │                   ├─ colSet: (230,231)\n" +
 			"                     │                   ├─ tableId: 18\n" +
 			"                     │                   └─ Table\n" +
 			"                     │                       ├─ name: TPXBU\n" +
@@ -20909,7 +20909,7 @@ FROM
 			"                                 │               └─ IndexedTableAccess(E2I7U)\n" +
 			"                                 │                   ├─ index: [E2I7U.TW55N]\n" +
 			"                                 │                   ├─ keys: [nhmxw.FZXV5:15]\n" +
-			"                                 │                   ├─ colSet: (170-186)\n" +
+			"                                 │                   ├─ colSet: (170,173)\n" +
 			"                                 │                   ├─ tableId: 14\n" +
 			"                                 │                   └─ Table\n" +
 			"                                 │                       ├─ name: E2I7U\n" +
@@ -20929,7 +20929,7 @@ FROM
 			"                                 │               └─ IndexedTableAccess(E2I7U)\n" +
 			"                                 │                   ├─ index: [E2I7U.TW55N]\n" +
 			"                                 │                   ├─ keys: [nhmxw.DQYGV:16]\n" +
-			"                                 │                   ├─ colSet: (188-204)\n" +
+			"                                 │                   ├─ colSet: (188,191)\n" +
 			"                                 │                   ├─ tableId: 15\n" +
 			"                                 │                   └─ Table\n" +
 			"                                 │                       ├─ name: E2I7U\n" +
@@ -20947,7 +20947,7 @@ FROM
 			"                                 │               └─ Table\n" +
 			"                                 │                   ├─ name: YYBCX\n" +
 			"                                 │                   ├─ columns: [id esfvy sl76b]\n" +
-			"                                 │                   ├─ colSet: (207-214)\n" +
+			"                                 │                   ├─ colSet: (207-209)\n" +
 			"                                 │                   └─ tableId: 16\n" +
 			"                                 │  ->NZ4MQ:0, NULL (null)->FHCYT:216, NULL (null)->YKSSU:217, nhmxw.id:10!null->I4NDZ:0]\n" +
 			"                                 └─ Project\n" +
@@ -20966,7 +20966,7 @@ FROM
 			"                                     │               └─ IndexedTableAccess(E2I7U)\n" +
 			"                                     │                   ├─ index: [E2I7U.TW55N]\n" +
 			"                                     │                   ├─ keys: [nhmxw.FZXV5:15]\n" +
-			"                                     │                   ├─ colSet: (170-186)\n" +
+			"                                     │                   ├─ colSet: (170,173)\n" +
 			"                                     │                   ├─ tableId: 14\n" +
 			"                                     │                   └─ Table\n" +
 			"                                     │                       ├─ name: E2I7U\n" +
@@ -20986,7 +20986,7 @@ FROM
 			"                                     │               └─ IndexedTableAccess(E2I7U)\n" +
 			"                                     │                   ├─ index: [E2I7U.TW55N]\n" +
 			"                                     │                   ├─ keys: [nhmxw.DQYGV:16]\n" +
-			"                                     │                   ├─ colSet: (188-204)\n" +
+			"                                     │                   ├─ colSet: (188,191)\n" +
 			"                                     │                   ├─ tableId: 15\n" +
 			"                                     │                   └─ Table\n" +
 			"                                     │                       ├─ name: E2I7U\n" +
@@ -21004,7 +21004,7 @@ FROM
 			"                                     │               └─ Table\n" +
 			"                                     │                   ├─ name: YYBCX\n" +
 			"                                     │                   ├─ columns: [id esfvy sl76b]\n" +
-			"                                     │                   ├─ colSet: (207-214)\n" +
+			"                                     │                   ├─ colSet: (207-209)\n" +
 			"                                     │                   └─ tableId: 16\n" +
 			"                                     │  ->NZ4MQ:0, NULL (null)->FHCYT:216, NULL (null)->YKSSU:217, nhmxw.id:10!null->I4NDZ:0]\n" +
 			"                                     └─ Filter\n" +
@@ -21237,7 +21237,7 @@ WHERE
 			"     │           │   │                       └─ Table\n" +
 			"     │           │   │                           ├─ name: SFEGG\n" +
 			"     │           │   │                           ├─ columns: [no52d vyo5e dkcaj]\n" +
-			"     │           │   │                           ├─ colSet: (60-65)\n" +
+			"     │           │   │                           ├─ colSet: (61-63)\n" +
 			"     │           │   │                           └─ tableId: 8\n" +
 			"     │           │   └─ AND\n" +
 			"     │           │       ├─ rs.VYO5E:1 IS NULL\n" +
@@ -21255,7 +21255,7 @@ WHERE
 			"     │           │                               └─ Table\n" +
 			"     │           │                                   ├─ name: SFEGG\n" +
 			"     │           │                                   ├─ columns: [no52d vyo5e dkcaj]\n" +
-			"     │           │                                   ├─ colSet: (66-71)\n" +
+			"     │           │                                   ├─ colSet: (67-69)\n" +
 			"     │           │                                   └─ tableId: 9\n" +
 			"     │           └─ SubqueryAlias\n" +
 			"     │               ├─ name: rs\n" +
@@ -21317,7 +21317,7 @@ WHERE
 			"     │                           │   │               │   └─ IndexedTableAccess(OUBDL)\n" +
 			"     │                           │   │               │       ├─ index: [OUBDL.id]\n" +
 			"     │                           │   │               │       ├─ static: [{[1, 1]}, {[2, 2]}, {[3, 3]}]\n" +
-			"     │                           │   │               │       ├─ colSet: (7-19)\n" +
+			"     │                           │   │               │       ├─ colSet: (7-9,12,14,16)\n" +
 			"     │                           │   │               │       ├─ tableId: 2\n" +
 			"     │                           │   │               │       └─ Table\n" +
 			"     │                           │   │               │           ├─ name: OUBDL\n" +
@@ -21326,7 +21326,7 @@ WHERE
 			"     │                           │   │                   └─ Table\n" +
 			"     │                           │   │                       ├─ name: EPZU6\n" +
 			"     │                           │   │                       ├─ columns: [tofpn sjyn2 btxc5 fvucx swcqv]\n" +
-			"     │                           │   │                       ├─ colSet: (20-27)\n" +
+			"     │                           │   │                       ├─ colSet: (21-25)\n" +
 			"     │                           │   │                       └─ tableId: 3\n" +
 			"     │                           │   └─ TableAlias(nd)\n" +
 			"     │                           │       └─ Concat\n" +
@@ -21334,7 +21334,7 @@ WHERE
 			"     │                           │           │   └─ IndexedTableAccess(E2I7U)\n" +
 			"     │                           │           │       ├─ index: [E2I7U.TW55N]\n" +
 			"     │                           │           │       ├─ keys: [nk7fp.FVUCX:3!null]\n" +
-			"     │                           │           │       ├─ colSet: (32-48)\n" +
+			"     │                           │           │       ├─ colSet: (33,35,39)\n" +
 			"     │                           │           │       ├─ tableId: 5\n" +
 			"     │                           │           │       └─ Table\n" +
 			"     │                           │           │           ├─ name: E2I7U\n" +
@@ -21343,7 +21343,7 @@ WHERE
 			"     │                           │               └─ IndexedTableAccess(E2I7U)\n" +
 			"     │                           │                   ├─ index: [E2I7U.ZH72S]\n" +
 			"     │                           │                   ├─ keys: [nk7fp.ZH72S:2]\n" +
-			"     │                           │                   ├─ colSet: (32-48)\n" +
+			"     │                           │                   ├─ colSet: (33,35,39)\n" +
 			"     │                           │                   ├─ tableId: 5\n" +
 			"     │                           │                   └─ Table\n" +
 			"     │                           │                       ├─ name: E2I7U\n" +
@@ -21355,7 +21355,7 @@ WHERE
 			"     │                                   └─ Table\n" +
 			"     │                                       ├─ name: F35MI\n" +
 			"     │                                       ├─ columns: [id dzlim]\n" +
-			"     │                                       ├─ colSet: (49-51)\n" +
+			"     │                                       ├─ colSet: (49,50)\n" +
 			"     │                                       └─ tableId: 6\n" +
 			"     └─ BEGIN .. END\n" +
 			"         ├─ IF BLOCK\n" +
@@ -21368,7 +21368,7 @@ WHERE
 			"         │       │       └─ Table\n" +
 			"         │       │           ├─ name: TPXHZ\n" +
 			"         │       │           ├─ columns: [svaz4]\n" +
-			"         │       │           ├─ colSet: (13,14)\n" +
+			"         │       │           ├─ colSet: (14)\n" +
 			"         │       │           └─ tableId: 3\n" +
 			"         │       └─ InSubquery\n" +
 			"         │           ├─ left: new.VYO5E:2\n" +
@@ -21378,7 +21378,7 @@ WHERE
 			"         │               └─ Table\n" +
 			"         │                   ├─ name: TPXHZ\n" +
 			"         │                   ├─ columns: [svaz4]\n" +
-			"         │                   ├─ colSet: (15,16)\n" +
+			"         │                   ├─ colSet: (16)\n" +
 			"         │                   └─ tableId: 4\n" +
 			"         │      )\n" +
 			"         │       └─ BLOCK\n" +
@@ -21516,7 +21516,7 @@ WHERE
 			"     │       │               └─ IndexedTableAccess(TPXBU)\n" +
 			"     │       │                   ├─ index: [TPXBU.BTXC5]\n" +
 			"     │       │                   ├─ keys: [pqsxb.BTXC5:10]\n" +
-			"     │       │                   ├─ colSet: (124-126)\n" +
+			"     │       │                   ├─ colSet: (124,125)\n" +
 			"     │       │                   ├─ tableId: 10\n" +
 			"     │       │                   └─ Table\n" +
 			"     │       │                       ├─ name: TPXBU\n" +
@@ -21536,7 +21536,7 @@ WHERE
 			"     │           │               └─ IndexedTableAccess(TPXBU)\n" +
 			"     │           │                   ├─ index: [TPXBU.BTXC5]\n" +
 			"     │           │                   ├─ keys: [pqsxb.BTXC5:10]\n" +
-			"     │           │                   ├─ colSet: (124-126)\n" +
+			"     │           │                   ├─ colSet: (124,125)\n" +
 			"     │           │                   ├─ tableId: 10\n" +
 			"     │           │                   └─ Table\n" +
 			"     │           │                       ├─ name: TPXBU\n" +
@@ -21578,7 +21578,7 @@ WHERE
 			"     │               │           │           └─ IndexedTableAccess(JDLNA)\n" +
 			"     │               │           │               ├─ index: [JDLNA.FTQLQ]\n" +
 			"     │               │           │               ├─ keys: [uct.FTQLQ:1]\n" +
-			"     │               │           │               ├─ colSet: (34-38)\n" +
+			"     │               │           │               ├─ colSet: (34,35)\n" +
 			"     │               │           │               ├─ tableId: 4\n" +
 			"     │               │           │               └─ Table\n" +
 			"     │               │           │                   ├─ name: JDLNA\n" +
@@ -21610,7 +21610,7 @@ WHERE
 			"     │               │           │           │   │           │                   └─ IndexedTableAccess(E2I7U)\n" +
 			"     │               │           │           │   │           │                       ├─ index: [E2I7U.ZH72S]\n" +
 			"     │               │           │           │   │           │                       ├─ keys: [uct.ZH72S:2]\n" +
-			"     │               │           │           │   │           │                       ├─ colSet: (46-62)\n" +
+			"     │               │           │           │   │           │                       ├─ colSet: (47,53)\n" +
 			"     │               │           │           │   │           │                       ├─ tableId: 6\n" +
 			"     │               │           │           │   │           │                       └─ Table\n" +
 			"     │               │           │           │   │           │                           ├─ name: E2I7U\n" +
@@ -21628,7 +21628,7 @@ WHERE
 			"     │               │           │           │   │           │               └─ IndexedTableAccess(E2I7U)\n" +
 			"     │               │           │           │   │           │                   ├─ index: [E2I7U.TW55N]\n" +
 			"     │               │           │           │   │           │                   ├─ keys: [i7hcr.FVUCX:17!null]\n" +
-			"     │               │           │           │   │           │                   ├─ colSet: (63-79)\n" +
+			"     │               │           │           │   │           │                   ├─ colSet: (64,66)\n" +
 			"     │               │           │           │   │           │                   ├─ tableId: 7\n" +
 			"     │               │           │           │   │           │                   └─ Table\n" +
 			"     │               │           │           │   │           │                       ├─ name: E2I7U\n" +
@@ -21691,7 +21691,7 @@ WHERE
 			"     │               │               │           └─ IndexedTableAccess(JDLNA)\n" +
 			"     │               │               │               ├─ index: [JDLNA.FTQLQ]\n" +
 			"     │               │               │               ├─ keys: [uct.FTQLQ:1]\n" +
-			"     │               │               │               ├─ colSet: (34-38)\n" +
+			"     │               │               │               ├─ colSet: (34,35)\n" +
 			"     │               │               │               ├─ tableId: 4\n" +
 			"     │               │               │               └─ Table\n" +
 			"     │               │               │                   ├─ name: JDLNA\n" +
@@ -21723,7 +21723,7 @@ WHERE
 			"     │               │               │           │   │           │                   └─ IndexedTableAccess(E2I7U)\n" +
 			"     │               │               │           │   │           │                       ├─ index: [E2I7U.ZH72S]\n" +
 			"     │               │               │           │   │           │                       ├─ keys: [uct.ZH72S:2]\n" +
-			"     │               │               │           │   │           │                       ├─ colSet: (46-62)\n" +
+			"     │               │               │           │   │           │                       ├─ colSet: (47,53)\n" +
 			"     │               │               │           │   │           │                       ├─ tableId: 6\n" +
 			"     │               │               │           │   │           │                       └─ Table\n" +
 			"     │               │               │           │   │           │                           ├─ name: E2I7U\n" +
@@ -21741,7 +21741,7 @@ WHERE
 			"     │               │               │           │   │           │               └─ IndexedTableAccess(E2I7U)\n" +
 			"     │               │               │           │   │           │                   ├─ index: [E2I7U.TW55N]\n" +
 			"     │               │               │           │   │           │                   ├─ keys: [i7hcr.FVUCX:17!null]\n" +
-			"     │               │               │           │   │           │                   ├─ colSet: (63-79)\n" +
+			"     │               │               │           │   │           │                   ├─ colSet: (64,66)\n" +
 			"     │               │               │           │   │           │                   ├─ tableId: 7\n" +
 			"     │               │               │           │   │           │                   └─ Table\n" +
 			"     │               │               │           │   │           │                       ├─ name: E2I7U\n" +
@@ -21852,7 +21852,7 @@ WHERE
 			"         │           └─ Table\n" +
 			"         │               ├─ name: TPXHZ\n" +
 			"         │               ├─ columns: [svaz4]\n" +
-			"         │               ├─ colSet: (25,26)\n" +
+			"         │               ├─ colSet: (26)\n" +
 			"         │               └─ tableId: 3\n" +
 			"         │      )\n" +
 			"         │       └─ BLOCK\n" +
@@ -22004,7 +22004,7 @@ WHERE
 			"     │           │   │                       └─ Table\n" +
 			"     │           │   │                           ├─ name: SFEGG\n" +
 			"     │           │   │                           ├─ columns: [no52d vyo5e dkcaj]\n" +
-			"     │           │   │                           ├─ colSet: (48-53)\n" +
+			"     │           │   │                           ├─ colSet: (49-51)\n" +
 			"     │           │   │                           └─ tableId: 6\n" +
 			"     │           │   └─ AND\n" +
 			"     │           │       ├─ rs.VYO5E:1 IS NULL\n" +
@@ -22022,7 +22022,7 @@ WHERE
 			"     │           │                               └─ Table\n" +
 			"     │           │                                   ├─ name: SFEGG\n" +
 			"     │           │                                   ├─ columns: [no52d vyo5e dkcaj]\n" +
-			"     │           │                                   ├─ colSet: (54-59)\n" +
+			"     │           │                                   ├─ colSet: (55-57)\n" +
 			"     │           │                                   └─ tableId: 7\n" +
 			"     │           └─ SubqueryAlias\n" +
 			"     │               ├─ name: rs\n" +
@@ -22040,7 +22040,7 @@ WHERE
 			"     │                           │   │   └─ IndexedTableAccess(HU5A5)\n" +
 			"     │                           │   │       ├─ index: [HU5A5.id]\n" +
 			"     │                           │   │       ├─ static: [{[1, 1]}, {[2, 2]}, {[3, 3]}]\n" +
-			"     │                           │   │       ├─ colSet: (7-19)\n" +
+			"     │                           │   │       ├─ colSet: (7,9,14,16)\n" +
 			"     │                           │   │       ├─ tableId: 2\n" +
 			"     │                           │   │       └─ Table\n" +
 			"     │                           │   │           ├─ name: HU5A5\n" +
@@ -22049,7 +22049,7 @@ WHERE
 			"     │                           │       └─ IndexedTableAccess(E2I7U)\n" +
 			"     │                           │           ├─ index: [E2I7U.TW55N]\n" +
 			"     │                           │           ├─ keys: [tvtjs.I3VTA:1!null]\n" +
-			"     │                           │           ├─ colSet: (20-36)\n" +
+			"     │                           │           ├─ colSet: (21,23)\n" +
 			"     │                           │           ├─ tableId: 3\n" +
 			"     │                           │           └─ Table\n" +
 			"     │                           │               ├─ name: E2I7U\n" +
@@ -22058,7 +22058,7 @@ WHERE
 			"     │                               └─ IndexedTableAccess(F35MI)\n" +
 			"     │                                   ├─ index: [F35MI.id]\n" +
 			"     │                                   ├─ keys: [nd.DKCAJ:4!null]\n" +
-			"     │                                   ├─ colSet: (37-39)\n" +
+			"     │                                   ├─ colSet: (37,38)\n" +
 			"     │                                   ├─ tableId: 4\n" +
 			"     │                                   └─ Table\n" +
 			"     │                                       ├─ name: F35MI\n" +
@@ -22074,7 +22074,7 @@ WHERE
 			"         │       │       └─ Table\n" +
 			"         │       │           ├─ name: TPXHZ\n" +
 			"         │       │           ├─ columns: [svaz4]\n" +
-			"         │       │           ├─ colSet: (13,14)\n" +
+			"         │       │           ├─ colSet: (14)\n" +
 			"         │       │           └─ tableId: 3\n" +
 			"         │       └─ InSubquery\n" +
 			"         │           ├─ left: new.VYO5E:2\n" +
@@ -22084,7 +22084,7 @@ WHERE
 			"         │               └─ Table\n" +
 			"         │                   ├─ name: TPXHZ\n" +
 			"         │                   ├─ columns: [svaz4]\n" +
-			"         │                   ├─ colSet: (15,16)\n" +
+			"         │                   ├─ colSet: (16)\n" +
 			"         │                   └─ tableId: 4\n" +
 			"         │      )\n" +
 			"         │       └─ BLOCK\n" +
@@ -22167,7 +22167,7 @@ WHERE
 			"     │       │           └─ IndexedTableAccess(JDLNA)\n" +
 			"     │       │               ├─ index: [JDLNA.FTQLQ]\n" +
 			"     │       │               ├─ keys: [tvtjs.TOFPN:1!null]\n" +
-			"     │       │               ├─ colSet: (27-31)\n" +
+			"     │       │               ├─ colSet: (27,28)\n" +
 			"     │       │               ├─ tableId: 3\n" +
 			"     │       │               └─ Table\n" +
 			"     │       │                   ├─ name: JDLNA\n" +
@@ -22184,7 +22184,7 @@ WHERE
 			"     │       │           └─ IndexedTableAccess(E2I7U)\n" +
 			"     │       │               ├─ index: [E2I7U.TW55N]\n" +
 			"     │       │               ├─ keys: [tvtjs.I3VTA:2!null]\n" +
-			"     │       │               ├─ colSet: (33-49)\n" +
+			"     │       │               ├─ colSet: (33,36)\n" +
 			"     │       │               ├─ tableId: 4\n" +
 			"     │       │               └─ Table\n" +
 			"     │       │                   ├─ name: E2I7U\n" +
@@ -22201,7 +22201,7 @@ WHERE
 			"     │       │           └─ IndexedTableAccess(TPXBU)\n" +
 			"     │       │               ├─ index: [TPXBU.BTXC5]\n" +
 			"     │       │               ├─ keys: [tvtjs.LJLUM:5!null]\n" +
-			"     │       │               ├─ colSet: (51-53)\n" +
+			"     │       │               ├─ colSet: (51,52)\n" +
 			"     │       │               ├─ tableId: 5\n" +
 			"     │       │               └─ Table\n" +
 			"     │       │                   ├─ name: TPXBU\n" +
@@ -22228,7 +22228,7 @@ WHERE
 			"     │       │           │   │                   └─ IndexedTableAccess(E2I7U)\n" +
 			"     │       │           │   │                       ├─ index: [E2I7U.TW55N]\n" +
 			"     │       │           │   │                       ├─ keys: [tvtjs.I3VTA:2!null]\n" +
-			"     │       │           │   │                       ├─ colSet: (61-77)\n" +
+			"     │       │           │   │                       ├─ colSet: (62,64)\n" +
 			"     │       │           │   │                       ├─ tableId: 7\n" +
 			"     │       │           │   │                       └─ Table\n" +
 			"     │       │           │   │                           ├─ name: E2I7U\n" +
@@ -22274,7 +22274,7 @@ WHERE
 			"     │           │           └─ IndexedTableAccess(JDLNA)\n" +
 			"     │           │               ├─ index: [JDLNA.FTQLQ]\n" +
 			"     │           │               ├─ keys: [tvtjs.TOFPN:1!null]\n" +
-			"     │           │               ├─ colSet: (27-31)\n" +
+			"     │           │               ├─ colSet: (27,28)\n" +
 			"     │           │               ├─ tableId: 3\n" +
 			"     │           │               └─ Table\n" +
 			"     │           │                   ├─ name: JDLNA\n" +
@@ -22291,7 +22291,7 @@ WHERE
 			"     │           │           └─ IndexedTableAccess(E2I7U)\n" +
 			"     │           │               ├─ index: [E2I7U.TW55N]\n" +
 			"     │           │               ├─ keys: [tvtjs.I3VTA:2!null]\n" +
-			"     │           │               ├─ colSet: (33-49)\n" +
+			"     │           │               ├─ colSet: (33,36)\n" +
 			"     │           │               ├─ tableId: 4\n" +
 			"     │           │               └─ Table\n" +
 			"     │           │                   ├─ name: E2I7U\n" +
@@ -22308,7 +22308,7 @@ WHERE
 			"     │           │           └─ IndexedTableAccess(TPXBU)\n" +
 			"     │           │               ├─ index: [TPXBU.BTXC5]\n" +
 			"     │           │               ├─ keys: [tvtjs.LJLUM:5!null]\n" +
-			"     │           │               ├─ colSet: (51-53)\n" +
+			"     │           │               ├─ colSet: (51,52)\n" +
 			"     │           │               ├─ tableId: 5\n" +
 			"     │           │               └─ Table\n" +
 			"     │           │                   ├─ name: TPXBU\n" +
@@ -22335,7 +22335,7 @@ WHERE
 			"     │           │           │   │                   └─ IndexedTableAccess(E2I7U)\n" +
 			"     │           │           │   │                       ├─ index: [E2I7U.TW55N]\n" +
 			"     │           │           │   │                       ├─ keys: [tvtjs.I3VTA:2!null]\n" +
-			"     │           │           │   │                       ├─ colSet: (61-77)\n" +
+			"     │           │           │   │                       ├─ colSet: (62,64)\n" +
 			"     │           │           │   │                       ├─ tableId: 7\n" +
 			"     │           │           │   │                       └─ Table\n" +
 			"     │           │           │   │                           ├─ name: E2I7U\n" +
@@ -22387,7 +22387,7 @@ WHERE
 			"         │           └─ Table\n" +
 			"         │               ├─ name: TPXHZ\n" +
 			"         │               ├─ columns: [svaz4]\n" +
-			"         │               ├─ colSet: (25,26)\n" +
+			"         │               ├─ colSet: (26)\n" +
 			"         │               └─ tableId: 3\n" +
 			"         │      )\n" +
 			"         │       └─ BLOCK\n" +

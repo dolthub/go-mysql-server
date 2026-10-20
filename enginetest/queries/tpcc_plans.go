@@ -27,7 +27,7 @@ SELECT c_discount, c_last, c_credit, w_tax FROM customer2, warehouse2 WHERE w_id
 			"     ├─ IndexedTableAccess(warehouse2)\n" +
 			"     │   ├─ index: [warehouse2.w_id]\n" +
 			"     │   ├─ static: [{[1, 1]}]\n" +
-			"     │   ├─ colSet: (22-30)\n" +
+			"     │   ├─ colSet: (22,29)\n" +
 			"     │   ├─ tableId: 2\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: warehouse2\n" +
@@ -43,7 +43,7 @@ SELECT c_discount, c_last, c_credit, w_tax FROM customer2, warehouse2 WHERE w_id
 			"         └─ IndexedTableAccess(customer2)\n" +
 			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_id]\n" +
 			"             ├─ keys: [warehouse2.w_id:0!null 9 (tinyint) 2151 (int)]\n" +
-			"             ├─ colSet: (1-21)\n" +
+			"             ├─ colSet: (1-3,6,14,16)\n" +
 			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: customer2\n" +
@@ -85,7 +85,7 @@ SELECT c_discount, c_last, c_credit, w_tax FROM customer2, warehouse2 WHERE w_id
 			" └─ IndexedTableAccess(district2)\n" +
 			"     ├─ index: [district2.d_w_id,district2.d_id]\n" +
 			"     ├─ static: [{[1, 1], [9, 9]}]\n" +
-			"     ├─ colSet: (1-11)\n" +
+			"     ├─ colSet: (1,2,9,11)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: district2\n" +
@@ -153,7 +153,7 @@ SELECT c_discount, c_last, c_credit, w_tax FROM customer2, warehouse2 WHERE w_id
 			" └─ IndexedTableAccess(item2)\n" +
 			"     ├─ index: [item2.i_id]\n" +
 			"     ├─ static: [{[2532, 2532]}]\n" +
-			"     ├─ colSet: (1-5)\n" +
+			"     ├─ colSet: (1,3-5)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: item2\n" +
@@ -181,7 +181,7 @@ SELECT c_discount, c_last, c_credit, w_tax FROM customer2, warehouse2 WHERE w_id
 			" └─ IndexedTableAccess(stock2)\n" +
 			"     ├─ index: [stock2.s_w_id,stock2.s_i_id]\n" +
 			"     ├─ static: [{[1, 1], [2532, 2532]}]\n" +
-			"     ├─ colSet: (1-17)\n" +
+			"     ├─ colSet: (1-3,12,17)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: stock2\n" +
@@ -239,7 +239,7 @@ SELECT i_price, i_name, i_data FROM item2 WHERE i_id = 2532`,
 			" └─ IndexedTableAccess(item2)\n" +
 			"     ├─ index: [item2.i_id]\n" +
 			"     ├─ static: [{[2532, 2532]}]\n" +
-			"     ├─ colSet: (1-5)\n" +
+			"     ├─ colSet: (1,3-5)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: item2\n" +
@@ -267,7 +267,7 @@ SELECT i_price, i_name, i_data FROM item2 WHERE i_id = 2532`,
 			" └─ IndexedTableAccess(stock2)\n" +
 			"     ├─ index: [stock2.s_w_id,stock2.s_i_id]\n" +
 			"     ├─ static: [{[1, 1], [2532, 2532]}]\n" +
-			"     ├─ colSet: (1-17)\n" +
+			"     ├─ colSet: (1-3,12,17)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: stock2\n" +
@@ -339,7 +339,7 @@ UPDATE warehouse2 SET w_ytd = w_ytd + 1767 WHERE w_id = 1`,
 			" └─ IndexedTableAccess(warehouse2)\n" +
 			"     ├─ index: [warehouse2.w_id]\n" +
 			"     ├─ static: [{[1, 1]}]\n" +
-			"     ├─ colSet: (1-9)\n" +
+			"     ├─ colSet: (1-7)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: warehouse2\n" +
@@ -381,7 +381,7 @@ UPDATE warehouse2 SET w_ytd = w_ytd + 1767 WHERE w_id = 1`,
 			" └─ IndexedTableAccess(district2)\n" +
 			"     ├─ index: [district2.d_w_id,district2.d_id]\n" +
 			"     ├─ static: [{[1, 1], [8, 8]}]\n" +
-			"     ├─ colSet: (1-11)\n" +
+			"     ├─ colSet: (1-8)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: district2\n" +
@@ -412,7 +412,7 @@ UPDATE warehouse2 SET w_ytd = w_ytd + 1767 WHERE w_id = 1`,
 			"     └─ IndexedTableAccess(customer2)\n" +
 			"         ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
 			"         ├─ static: [{[1, 1], [5, 5], [ESEEINGABLE, ESEEINGABLE], [NULL, ∞)}]\n" +
-			"         ├─ colSet: (1-21)\n" +
+			"         ├─ colSet: (1-3,6)\n" +
 			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: customer2\n" +
@@ -446,7 +446,7 @@ UPDATE warehouse2 SET w_ytd = w_ytd + 1767 WHERE w_id = 1`,
 			" └─ IndexedTableAccess(customer2)\n" +
 			"     ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
 			"     ├─ static: [{[1, 1], [5, 5], [ESEEINGABLE, ESEEINGABLE], [NULL, ∞)}]\n" +
-			"     ├─ colSet: (1-21)\n" +
+			"     ├─ colSet: (1-4,6)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: customer2\n" +
@@ -474,7 +474,7 @@ UPDATE warehouse2 SET w_ytd = w_ytd + 1767 WHERE w_id = 1`,
 			" └─ IndexedTableAccess(customer2)\n" +
 			"     ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_id]\n" +
 			"     ├─ static: [{[1, 1], [5, 5], [1838, 1838]}]\n" +
-			"     ├─ colSet: (1-21)\n" +
+			"     ├─ colSet: (1-18)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: customer2\n" +
@@ -534,7 +534,7 @@ SELECT count(c_id) namecnt FROM customer2 WHERE c_w_id = 1 AND c_d_id= 1 AND c_l
 			"     └─ IndexedTableAccess(customer2)\n" +
 			"         ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
 			"         ├─ static: [{[1, 1], [1, 1], [PRIESEPRES, PRIESEPRES], [NULL, ∞)}]\n" +
-			"         ├─ colSet: (1-21)\n" +
+			"         ├─ colSet: (1-3,6)\n" +
 			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: customer2\n" +
@@ -568,7 +568,7 @@ SELECT count(c_id) namecnt FROM customer2 WHERE c_w_id = 1 AND c_d_id= 1 AND c_l
 			" └─ IndexedTableAccess(customer2)\n" +
 			"     ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
 			"     ├─ static: [{[1, 1], [1, 1], [PRIESEPRES, PRIESEPRES], [NULL, ∞)}]\n" +
-			"     ├─ colSet: (1-21)\n" +
+			"     ├─ colSet: (1-6,17)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: customer2\n" +
@@ -597,7 +597,7 @@ SELECT count(c_id) namecnt FROM customer2 WHERE c_w_id = 1 AND c_d_id= 1 AND c_l
 			"     ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_c_id,orders2.o_id]\n" +
 			"     ├─ static: [{[1, 1], [1, 1], [355, 355], [NULL, ∞)}]\n" +
 			"     ├─ reverse: true\n" +
-			"     ├─ colSet: (1-8)\n" +
+			"     ├─ colSet: (1-6)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: orders2\n" +
@@ -627,7 +627,7 @@ SELECT count(c_id) namecnt FROM customer2 WHERE c_w_id = 1 AND c_d_id= 1 AND c_l
 			" └─ IndexedTableAccess(order_line2)\n" +
 			"     ├─ index: [order_line2.ol_w_id,order_line2.ol_d_id,order_line2.ol_o_id,order_line2.ol_number]\n" +
 			"     ├─ static: [{[1, 1], [1, 1], [1, 1], [NULL, ∞)}]\n" +
-			"     ├─ colSet: (1-10)\n" +
+			"     ├─ colSet: (1-3,5-9)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: order_line2\n" +
@@ -657,7 +657,7 @@ SELECT d_next_o_id FROM district2 WHERE d_id = 5 AND d_w_id= 1`,
 			" └─ IndexedTableAccess(district2)\n" +
 			"     ├─ index: [district2.d_w_id,district2.d_id]\n" +
 			"     ├─ static: [{[1, 1], [5, 5]}]\n" +
-			"     ├─ colSet: (1-11)\n" +
+			"     ├─ colSet: (1,2,11)\n" +
 			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: district2\n" +
@@ -689,7 +689,7 @@ SELECT d_next_o_id FROM district2 WHERE d_id = 5 AND d_w_id= 1`,
 			"         ├─ IndexedTableAccess(order_line2)\n" +
 			"         │   ├─ index: [order_line2.ol_w_id,order_line2.ol_d_id,order_line2.ol_o_id,order_line2.ol_number]\n" +
 			"         │   ├─ static: [{[1, 1], [5, 5], [2983, 3003), [NULL, ∞)}]\n" +
-			"         │   ├─ colSet: (1-10)\n" +
+			"         │   ├─ colSet: (1-3,5)\n" +
 			"         │   ├─ tableId: 1\n" +
 			"         │   └─ Table\n" +
 			"         │       ├─ name: order_line2\n" +
@@ -705,7 +705,7 @@ SELECT d_next_o_id FROM district2 WHERE d_id = 5 AND d_w_id= 1`,
 			"             └─ IndexedTableAccess(stock2)\n" +
 			"                 ├─ index: [stock2.s_w_id,stock2.s_i_id]\n" +
 			"                 ├─ keys: [1 (smallint) order_line2.ol_i_id:3]\n" +
-			"                 ├─ colSet: (11-27)\n" +
+			"                 ├─ colSet: (11-13)\n" +
 			"                 ├─ tableId: 2\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: stock2\n" +
@@ -772,7 +772,7 @@ WHERE
 			"     │               └─ IndexedTableAccess(orders2)\n" +
 			"     │                   ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_c_id,orders2.o_id]\n" +
 			"     │                   ├─ static: [{[1, 1], [3, 3], [20001, 20001], [NULL, ∞)}]\n" +
-			"     │                   ├─ colSet: (9-16)\n" +
+			"     │                   ├─ colSet: (9-12)\n" +
 			"     │                   ├─ tableId: 2\n" +
 			"     │                   └─ Table\n" +
 			"     │                       ├─ name: orders2\n" +
@@ -867,7 +867,7 @@ from
 			"         │                   └─ IndexedTableAccess(orders2)\n" +
 			"         │                       ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_id]\n" +
 			"         │                       ├─ static: [{[1, 1], [NULL, ∞), (2100, 11153)}]\n" +
-			"         │                       ├─ colSet: (9-16)\n" +
+			"         │                       ├─ colSet: (9-12)\n" +
 			"         │                       ├─ tableId: 2\n" +
 			"         │                       └─ Table\n" +
 			"         │                           ├─ name: orders2\n" +
@@ -876,7 +876,7 @@ from
 			"             └─ IndexedTableAccess(orders2)\n" +
 			"                 ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_c_id,orders2.o_id]\n" +
 			"                 ├─ keys: [t.o_w_id:1!null t.o_d_id:2!null t.o_c_id:0]\n" +
-			"                 ├─ colSet: (1-8)\n" +
+			"                 ├─ colSet: (1-4)\n" +
 			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: orders2\n" +
