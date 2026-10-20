@@ -15,9 +15,10 @@
 package function
 
 import (
+	"testing"
+
 	"github.com/cockroachdb/apd/v3"
 	"github.com/stretchr/testify/require"
-	"testing"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
