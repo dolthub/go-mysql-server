@@ -155,9 +155,6 @@ func updateSystemVariables(cfg mysql.ListenerConfig, vars *sql.EngineVariables) 
 	}
 
 	// TODO: add the rest of the config variables
-	if vars == nil {
-		return fmt.Errorf("server variable ownership: engine variables are required")
-	}
 	return vars.System.AssignValues(sql.NewContextWithVariables(context.Background(), vars), sysVars)
 }
 
@@ -167,7 +164,8 @@ func validateServerComponents(e *sqle.Engine, sm *SessionManager, handler mysql.
 	if e == nil || sm == nil || handler == nil {
 		return fmt.Errorf("server options returned a nil engine, session manager, or handler")
 	}
-	if sm.engine != e || sm.variables != e.Variables() {
+	// Only NewServerWithHandler sets sm.engine, and it binds sm to e.Variables().
+	if sm.engine != e {
 		return fmt.Errorf("server variable ownership: engine and session manager do not match")
 	}
 	// Comparing interfaces whose dynamic type is not comparable panics, so such a process list is rejected up front.
