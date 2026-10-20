@@ -52,7 +52,7 @@ func TestFactoriesReturnIndependentVars(t *testing.T) {
 	})
 }
 
-func TestAssignValuesWithContext(t *testing.T) {
+func TestAssignValues(t *testing.T) {
 	vars := NewEngineVariables()
 	registry := vars.System
 	called := false
@@ -68,8 +68,7 @@ func TestAssignValuesWithContext(t *testing.T) {
 		},
 	}})
 
-	aware := registry.(sql.ContextAwareSystemVariableRegistry)
-	require.NoError(t, aware.AssignValuesWithContext(sql.NewContextWithVariables(context.Background(), vars), map[string]interface{}{"callback_variable": int64(2)}))
+	require.NoError(t, registry.AssignValues(sql.NewContextWithVariables(context.Background(), vars), map[string]interface{}{"callback_variable": int64(2)}))
 	require.True(t, called)
 	_, value, found := registry.GetGlobal("callback_variable")
 	require.True(t, found)
@@ -79,8 +78,7 @@ func TestAssignValuesWithContext(t *testing.T) {
 func TestAssignValuesCallbackReadsOwningRegistry(t *testing.T) {
 	vars := NewEngineVariables()
 	ctx := sql.NewContextWithVariables(context.Background(), vars)
-	aware := vars.System.(sql.ContextAwareSystemVariableRegistry)
-	require.NoError(t, aware.AssignValuesWithContext(ctx, map[string]interface{}{"max_connections": int64(321)}))
+	require.NoError(t, vars.System.AssignValues(ctx, map[string]interface{}{"max_connections": int64(321)}))
 	called := false
 	vars.System.AddSystemVariables([]sql.SystemVariable{&sql.MysqlSystemVariable{
 		Name: "callback_registry_read", Scope: sql.GetMysqlScope(sql.SystemVariableScope_Global),
@@ -94,11 +92,11 @@ func TestAssignValuesCallbackReadsOwningRegistry(t *testing.T) {
 			return nil
 		},
 	}})
-	require.NoError(t, aware.AssignValuesWithContext(ctx, map[string]interface{}{"callback_registry_read": int64(2)}))
+	require.NoError(t, vars.System.AssignValues(ctx, map[string]interface{}{"callback_registry_read": int64(2)}))
 	require.True(t, called)
 }
 
-func TestAssignValuesWithContextRejectsInvalidOwnership(t *testing.T) {
+func TestAssignValuesRejectsInvalidOwnership(t *testing.T) {
 	vars := NewEngineVariables()
 	other := NewEngineVariables()
 	called := false
@@ -110,7 +108,6 @@ func TestAssignValuesWithContextRejectsInvalidOwnership(t *testing.T) {
 			return nil
 		},
 	}})
-	aware := vars.System.(sql.ContextAwareSystemVariableRegistry)
 	values := map[string]interface{}{"ownership_callback": int64(2)}
 	for name, ctx := range map[string]*sql.Context{
 		"nil":               nil,
@@ -120,7 +117,7 @@ func TestAssignValuesWithContextRejectsInvalidOwnership(t *testing.T) {
 		"unbound session":   sql.NewContextWithVariables(context.Background(), vars, sql.WithSession(&sql.BaseSession{})),
 	} {
 		t.Run(name, func(t *testing.T) {
-			require.Error(t, aware.AssignValuesWithContext(ctx, values))
+			require.Error(t, vars.System.AssignValues(ctx, values))
 			require.False(t, called)
 			_, value, found := vars.System.GetGlobal("ownership_callback")
 			require.True(t, found)
@@ -129,12 +126,12 @@ func TestAssignValuesWithContextRejectsInvalidOwnership(t *testing.T) {
 	}
 }
 
-func TestAssignValuesWithContextRejectsNonComparableRegistryWrapper(t *testing.T) {
+func TestAssignValuesRejectsNonComparableRegistryWrapper(t *testing.T) {
 	vars := NewEngineVariables()
-	registry := vars.System.(sql.ContextAwareSystemVariableRegistry)
+	registry := vars.System
 	vars.System = nonComparableSystemRegistry{SystemVariableRegistry: vars.System, marker: []byte{1}}
 	ctx := sql.NewContextWithVariables(context.Background(), vars)
-	require.ErrorContains(t, registry.AssignValuesWithContext(ctx, map[string]interface{}{"max_connections": int64(321)}), "another registry")
+	require.ErrorContains(t, registry.AssignValues(ctx, map[string]interface{}{"max_connections": int64(321)}), "another registry")
 	_, value, found := vars.System.GetGlobal("max_connections")
 	require.True(t, found)
 	require.Equal(t, int64(151), value)

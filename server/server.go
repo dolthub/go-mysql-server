@@ -158,11 +158,7 @@ func updateSystemVariables(cfg mysql.ListenerConfig, vars *sql.EngineVariables) 
 	if vars == nil {
 		return fmt.Errorf("server variable ownership: engine variables are required")
 	}
-	registry := vars.System
-	if aware, ok := registry.(sql.ContextAwareSystemVariableRegistry); ok {
-		return aware.AssignValuesWithContext(sql.NewContextWithVariables(context.Background(), vars), sysVars)
-	}
-	return fmt.Errorf("server variable initialization: system registry does not support context-aware assignment")
+	return vars.System.AssignValues(sql.NewContextWithVariables(context.Background(), vars), sysVars)
 }
 
 // validateServerComponents checks that the engine, session manager, process list and handler share the same engine
