@@ -6131,7 +6131,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Query:    `SELECT LEAST('2020-01-01 00:00:00', CAST('2021-01-01 00:00:00' AS DATETIME)) AS v`,
 		Expected: []sql.Row{{"2020-01-01 00:00:00"}},
 		ExpectedColumns: sql.Schema{
-			{Name: "v", Type: types.MustCreateString(sqltypes.VarChar, 19, sql.Collation_Default)},
+			{Name: "v", Type: types.MustCreateString(sqltypes.Text, 19, sql.Collation_Default)},
 		},
 	},
 	{
@@ -6154,7 +6154,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Query:    `SELECT LEAST('2020-01-01', CAST('2021-01-01 00:00:00.123' AS DATETIME(3))) AS v`,
 		Expected: []sql.Row{{"2020-01-01 00:00:00.000"}},
 		ExpectedColumns: sql.Schema{
-			{Name: "v", Type: types.MustCreateString(sqltypes.VarChar, 23, sql.Collation_Default)},
+			{Name: "v", Type: types.MustCreateString(sqltypes.Text, 23, sql.Collation_Default)},
 		},
 	},
 	{

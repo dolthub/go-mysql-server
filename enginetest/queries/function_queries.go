@@ -3705,8 +3705,12 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{{"ccc"}},
 	},
 	{
-		Query:    `SELECT GREATEST(i, s) FROM mytable`,
-		Expected: []sql.Row{{float64(1)}, {float64(2)}, {float64(3)}},
+		Query: `SELECT GREATEST(i, s) FROM mytable`,
+		Expected: []sql.Row{
+			{"first row"},
+			{"second row"},
+			{"third row"},
+		},
 	},
 	{
 		Query:    `SELECT GREATEST(1, 2, 3, 4)`,
