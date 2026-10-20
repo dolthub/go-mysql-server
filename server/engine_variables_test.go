@@ -133,7 +133,7 @@ func TestReplicationCallbacksUseEngineContext(t *testing.T) {
 	require.Same(t, b, rb.dumped.EngineVariables())
 }
 
-func TestIsolatedServerRejectsWrongSessionAndOptionPairing(t *testing.T) {
+func TestServerRejectsWrongSessionAndOptionPairing(t *testing.T) {
 	a, b := variables.NewEngineVariables(), variables.NewEngineVariables()
 	provider := memory.NewDBProvider()
 	e := sqle.New(analyzer.NewDefault(provider), &sqle.Config{EngineVariables: a})
