@@ -2096,7 +2096,7 @@ order by
 			"                 ├─ outerVisibility: false\n" +
 			"                 ├─ isLateral: false\n" +
 			"                 ├─ cacheable: true\n" +
-			"                 ├─ colSet: (19,20)\n" +
+			"                 ├─ colSet: (20,21)\n" +
 			"                 ├─ tableId: 3\n" +
 			"                 └─ Project\n" +
 			"                     ├─ columns: [customer.c_custkey:1!null, count(orders.o_orderkey):0!null->count(o_orderkey):0]\n" +
@@ -2134,7 +2134,7 @@ order by
 			"                 ├─ outerVisibility: false\n" +
 			"                 ├─ isLateral: false\n" +
 			"                 ├─ cacheable: true\n" +
-			"                 ├─ colSet: (19,20)\n" +
+			"                 ├─ colSet: (20,21)\n" +
 			"                 ├─ tableId: 3\n" +
 			"                 └─ Project\n" +
 			"                     ├─ columns: [customer.c_custkey, count(orders.o_orderkey) as `count(o_orderkey)`]\n" +
@@ -2163,7 +2163,7 @@ order by
 			"                 ├─ outerVisibility: false\n" +
 			"                 ├─ isLateral: false\n" +
 			"                 ├─ cacheable: true\n" +
-			"                 ├─ colSet: (19,20)\n" +
+			"                 ├─ colSet: (20,21)\n" +
 			"                 ├─ tableId: 3\n" +
 			"                 └─ Project\n" +
 			"                     ├─ columns: [customer.c_custkey, count(orders.o_orderkey) as `count(o_orderkey)`]\n" +
@@ -2308,7 +2308,7 @@ order by
 			"         │                   ├─ outerVisibility: true\n" +
 			"         │                   ├─ isLateral: false\n" +
 			"         │                   ├─ cacheable: true\n" +
-			"         │                   ├─ colSet: (29,30)\n" +
+			"         │                   ├─ colSet: (30,31)\n" +
 			"         │                   ├─ tableId: 4\n" +
 			"         │                   └─ Project\n" +
 			"         │                       ├─ columns: [lineitem.l_suppkey:10!null, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):9!null->sum(l_extendedprice * (1 - l_discount)):0]\n" +
@@ -2334,7 +2334,7 @@ order by
 			"             │   ├─ outerVisibility: false\n" +
 			"             │   ├─ isLateral: false\n" +
 			"             │   ├─ cacheable: true\n" +
-			"             │   ├─ colSet: (27,28)\n" +
+			"             │   ├─ colSet: (28,29)\n" +
 			"             │   ├─ tableId: 3\n" +
 			"             │   └─ Project\n" +
 			"             │       ├─ columns: [lineitem.l_suppkey:1!null, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):0!null->sum(l_extendedprice * (1 - l_discount)):0]\n" +
@@ -2357,7 +2357,7 @@ order by
 			"             └─ IndexedTableAccess(supplier)\n" +
 			"                 ├─ index: [supplier.S_SUPPKEY]\n" +
 			"                 ├─ keys: [revenue0.supplier_no:0!null]\n" +
-			"                 ├─ colSet: (20-26)\n" +
+			"                 ├─ colSet: (21-27)\n" +
 			"                 ├─ tableId: 4\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: supplier\n" +
@@ -2379,7 +2379,7 @@ order by
 			"         │               ├─ outerVisibility: true\n" +
 			"         │               ├─ isLateral: false\n" +
 			"         │               ├─ cacheable: true\n" +
-			"         │               ├─ colSet: (29,30)\n" +
+			"         │               ├─ colSet: (30,31)\n" +
 			"         │               ├─ tableId: 4\n" +
 			"         │               └─ Project\n" +
 			"         │                   ├─ columns: [lineitem.l_suppkey, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as `sum(l_extendedprice * (1 - l_discount))`]\n" +
@@ -2398,7 +2398,7 @@ order by
 			"             │   ├─ outerVisibility: false\n" +
 			"             │   ├─ isLateral: false\n" +
 			"             │   ├─ cacheable: true\n" +
-			"             │   ├─ colSet: (27,28)\n" +
+			"             │   ├─ colSet: (28,29)\n" +
 			"             │   ├─ tableId: 3\n" +
 			"             │   └─ Project\n" +
 			"             │       ├─ columns: [lineitem.l_suppkey, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as `sum(l_extendedprice * (1 - l_discount))`]\n" +
@@ -2430,7 +2430,7 @@ order by
 			"         │               ├─ outerVisibility: true\n" +
 			"         │               ├─ isLateral: false\n" +
 			"         │               ├─ cacheable: true\n" +
-			"         │               ├─ colSet: (29,30)\n" +
+			"         │               ├─ colSet: (30,31)\n" +
 			"         │               ├─ tableId: 4\n" +
 			"         │               └─ Project\n" +
 			"         │                   ├─ columns: [lineitem.l_suppkey, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as `sum(l_extendedprice * (1 - l_discount))`]\n" +
@@ -2449,7 +2449,7 @@ order by
 			"             │   ├─ outerVisibility: false\n" +
 			"             │   ├─ isLateral: false\n" +
 			"             │   ├─ cacheable: true\n" +
-			"             │   ├─ colSet: (27,28)\n" +
+			"             │   ├─ colSet: (28,29)\n" +
 			"             │   ├─ tableId: 3\n" +
 			"             │   └─ Project\n" +
 			"             │       ├─ columns: [lineitem.l_suppkey, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as `sum(l_extendedprice * (1 - l_discount))`]\n" +
@@ -3632,7 +3632,7 @@ order by
 			"             ├─ outerVisibility: false\n" +
 			"             ├─ isLateral: false\n" +
 			"             ├─ cacheable: true\n" +
-			"             ├─ colSet: (28,29)\n" +
+			"             ├─ colSet: (29,30)\n" +
 			"             ├─ tableId: 4\n" +
 			"             └─ Project\n" +
 			"                 ├─ columns: [SUBSTRING(customer.c_phone, 1, 2)->cntrycode:0, customer.c_acctbal:5!null]\n" +
@@ -3685,7 +3685,7 @@ order by
 			"                                         └─ Table\n" +
 			"                                             ├─ name: orders\n" +
 			"                                             ├─ columns: [o_orderkey o_custkey o_orderstatus o_totalprice o_orderdate o_orderpriority o_clerk o_shippriority o_comment]\n" +
-			"                                             ├─ colSet: (18-26)\n" +
+			"                                             ├─ colSet: (19-27)\n" +
 			"                                             └─ tableId: 3\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
@@ -3699,7 +3699,7 @@ order by
 			"             ├─ outerVisibility: false\n" +
 			"             ├─ isLateral: false\n" +
 			"             ├─ cacheable: true\n" +
-			"             ├─ colSet: (28,29)\n" +
+			"             ├─ colSet: (29,30)\n" +
 			"             ├─ tableId: 4\n" +
 			"             └─ Project\n" +
 			"                 ├─ columns: [SUBSTRING(customer.c_phone, 1, 2) as cntrycode, customer.c_acctbal]\n" +
@@ -3747,7 +3747,7 @@ order by
 			"             ├─ outerVisibility: false\n" +
 			"             ├─ isLateral: false\n" +
 			"             ├─ cacheable: true\n" +
-			"             ├─ colSet: (28,29)\n" +
+			"             ├─ colSet: (29,30)\n" +
 			"             ├─ tableId: 4\n" +
 			"             └─ Project\n" +
 			"                 ├─ columns: [SUBSTRING(customer.c_phone, 1, 2) as cntrycode, customer.c_acctbal]\n" +

@@ -162,16 +162,16 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 			} else {
 				col = scopeColumn{col: e.Name(), scalar: e, typ: e.Type(b.ctx), nullable: e.IsNullable(b.ctx)}
 			}
-			if e.Unreferencable() {
-				outScope.addColumn(col)
-			} else {
-				id := outScope.newColumn(col)
+
+			id := outScope.newColumn(col)
+			e = e.WithId(sql.ColumnId(id)).(*expression.Alias)
+			outScope.cols[len(outScope.cols)-1].scalar = e
+			if !e.Unreferencable() {
 				col.id = id
-				e = e.WithId(sql.ColumnId(id)).(*expression.Alias)
-				outScope.cols[len(outScope.cols)-1].scalar = e
 				col.scalar = e
 				tempScope.addColumn(col)
 			}
+
 			if inScope.selectAliases == nil {
 				inScope.selectAliases = make(map[string]*expression.Alias)
 			}
