@@ -72,21 +72,18 @@ func NewSession(harness Harness) *sql.Context {
 	return ctx
 }
 
-// newEngineContext returns a setup context from |harness|. When |e| owns its
-// variables, the harness must hand out contexts that belong to |e|.
+// newEngineContext returns a setup context from |harness|, which must hand out
+// contexts that belong to |e|.
 func newEngineContext(harness Harness, e *sqle.Engine) *sql.Context {
 	return validateEngineContext(e, NewContext(harness))
 }
 
 func validateEngineContext(e *sqle.Engine, ctx *sql.Context) *sql.Context {
-	if e.IsolatedVariables() {
-		if ctx == nil || ctx.EngineVariables() != e.Variables() {
-			panic("isolated harness context belongs to another engine")
-		}
-		owner, ok := ctx.Session.(sql.EngineVariablesProvider)
-		if !ok || owner.EngineVariables() != e.Variables() {
-			panic("isolated harness session belongs to another engine")
-		}
+	if ctx == nil || ctx.EngineVariables() != e.Variables() {
+		panic("harness context belongs to another engine")
+	}
+	if owner, ok := ctx.Session.(sql.EngineVariablesProvider); !ok || owner.EngineVariables() != e.Variables() {
+		panic("harness session belongs to another engine")
 	}
 	return ctx
 }
@@ -102,7 +99,7 @@ func NewEngineWithProvider(_ *testing.T, harness Harness, provider sql.DatabaseP
 	return newEngineWithProvider(harness, provider, nil)
 }
 
-// NewEngineWithProviderAndVariables opts a harness into isolated variable state.
+// NewEngineWithProviderAndVariables returns a new engine that owns |vars|.
 func NewEngineWithProviderAndVariables(_ *testing.T, harness Harness, provider sql.DatabaseProvider, vars *sql.EngineVariables) *sqle.Engine {
 	if vars == nil {
 		panic("NewEngineWithProviderAndVariables requires engine variables")

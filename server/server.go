@@ -92,11 +92,7 @@ func NewServerWithHandler(
 		tracer = sql.NoopTracer
 	}
 
-	var vars *sql.EngineVariables
-	if e.IsolatedVariables() {
-		vars = e.Variables()
-	}
-	sm := NewSessionManagerWithVariables(ctxFactory, sb, tracer, e.Analyzer.Catalog.Database, e.MemoryManager, e.ProcessList, cfg.Address, vars)
+	sm := NewSessionManagerWithVariables(ctxFactory, sb, tracer, e.Analyzer.Catalog.Database, e.MemoryManager, e.ProcessList, cfg.Address, e.Variables())
 	sm.engine = e
 	sm.connWatcher = newConnWatcher(connWatchStartDelay, connWatchTick, cfg.DisableConnectionWatcher)
 	h := &Handler{
@@ -175,11 +171,11 @@ func validateServerComponents(e *sqle.Engine, sm *SessionManager, handler mysql.
 	if e == nil || sm == nil || handler == nil {
 		return fmt.Errorf("server options returned a nil engine, session manager, or handler")
 	}
-	if e.IsolatedVariables() && (e.Variables() != sm.variables || sm.engine != e) {
+	if sm.engine != e || sm.variables != e.Variables() {
 		return fmt.Errorf("server variable ownership: engine and session manager do not match")
 	}
 	// Comparing interfaces whose dynamic type is not comparable panics, so such a process list is rejected up front.
-	if e.IsolatedVariables() && (e.ProcessList == nil || !reflect.ValueOf(e.ProcessList).Comparable() || e.ProcessList != sm.processlist) {
+	if e.ProcessList == nil || !reflect.ValueOf(e.ProcessList).Comparable() || e.ProcessList != sm.processlist {
 		return fmt.Errorf("server variable ownership: process list and session manager do not match")
 	}
 	if owned, ok := e.ProcessList.(sql.EngineVariablesProvider); ok && owned.EngineVariables() != sm.variables {
