@@ -63,6 +63,8 @@ type Client struct {
 
 // Session holds the session data.
 type Session interface {
+	// EngineVariablesProvider returns the bundle of the engine that owns this session, or nil for an unbound session.
+	EngineVariablesProvider
 	// Address of the server.
 	Address() string
 	// Client returns the user of the session.
@@ -322,8 +324,8 @@ type Context struct {
 // ContextOption is a function to configure the context.
 type ContextOption func(*Context)
 
-// EngineVariablesProvider is an optional extension for sessions that retain
-// the variable state of their engine. Embedding BaseSession provides it.
+// EngineVariablesProvider is implemented by sessions and process lists that
+// retain the variable bundle of their engine.
 type EngineVariablesProvider interface {
 	EngineVariables() *EngineVariables
 }
@@ -344,8 +346,8 @@ func (c *Context) EngineVariables() *EngineVariables {
 	if c.engineVariables != nil {
 		return c.engineVariables
 	}
-	if owner, ok := c.Session.(EngineVariablesProvider); ok {
-		return owner.EngineVariables()
+	if c.Session != nil {
+		return c.Session.EngineVariables()
 	}
 	return nil
 }

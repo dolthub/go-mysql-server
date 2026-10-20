@@ -33,10 +33,10 @@ func TestMemoryHarnessOwnsVariables(t *testing.T) {
 	h := NewDefaultMemoryHarness().WithEngineVariables(vars)
 	require.Same(t, vars, NewContext(h).EngineVariables())
 	require.Same(t, vars, NewContextWithClient(h, sql.Client{User: "test"}).EngineVariables())
-	require.Same(t, vars, NewSession(h).Session.(sql.EngineVariablesProvider).EngineVariables())
+	require.Same(t, vars, NewSession(h).Session.EngineVariables())
 	sess, err := h.SessionBuilder()(context.Background(), &mysql.Conn{ConnectionID: 42}, "localhost")
 	require.NoError(t, err)
-	require.Same(t, vars, sess.(sql.EngineVariablesProvider).EngineVariables())
+	require.Same(t, vars, sess.EngineVariables())
 }
 
 func TestMemoryHarnessIsolatedSetup(t *testing.T) {

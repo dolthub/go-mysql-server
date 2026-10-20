@@ -82,7 +82,7 @@ func validateEngineContext(e *sqle.Engine, ctx *sql.Context) *sql.Context {
 	if ctx == nil || ctx.EngineVariables() != e.Variables() {
 		panic("harness context belongs to another engine")
 	}
-	if owner, ok := ctx.Session.(sql.EngineVariablesProvider); !ok || owner.EngineVariables() != e.Variables() {
+	if ctx.Session.EngineVariables() != e.Variables() {
 		panic("harness session belongs to another engine")
 	}
 	return ctx

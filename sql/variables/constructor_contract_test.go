@@ -40,7 +40,7 @@ func TestConstructorOwnershipContract(t *testing.T) {
 	require.Equal(t, uint32(42), connection.ID())
 	empty := sql.NewEmptyContext()
 	require.Nil(t, empty.EngineVariables())
-	require.Nil(t, empty.Session.(sql.EngineVariablesProvider).EngineVariables())
+	require.Nil(t, empty.Session.EngineVariables())
 	require.Empty(t, empty.GetAllSessionVariables())
 	require.Empty(t, empty.GetAllStatusVariables(nil))
 	require.NotPanics(t, func() { empty.WithQuery("select 1") })
