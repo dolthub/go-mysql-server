@@ -105,13 +105,6 @@ func (sv *systemVariableRegistry) AssignValues(ctx *sql.Context, vals map[string
 	return sv.assignValues(ctx, vals)
 }
 
-// AssignValuesWithContext implements sql.SystemVariableRegistry.
-//
-// Deprecated: use AssignValues.
-func (sv *systemVariableRegistry) AssignValuesWithContext(ctx *sql.Context, vals map[string]interface{}) error {
-	return sv.AssignValues(ctx, vals)
-}
-
 func (sv *systemVariableRegistry) assignValues(ctx *sql.Context, vals map[string]interface{}) error {
 	sv.writeMutex.Lock()
 	defer sv.writeMutex.Unlock()
