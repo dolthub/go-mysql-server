@@ -621,8 +621,10 @@ func (c *Context) ApplyOpts(opts ...ContextOption) {
 	}
 }
 
-// NewEmptyContext returns an unbound context. When an existing context is
-// available, prefer ctx.NewContext to retain its owner and other overrides.
+// NewEmptyContext returns an unbound context for evaluating expressions
+// without an engine. It has no engine variables, so SystemVariables() panics.
+// When an existing context is available, prefer ctx.NewContext to retain its
+// owner and other overrides.
 func NewEmptyContext() *Context {
 	return NewContext(context.TODO())
 }
