@@ -31,7 +31,7 @@ func TestProcessList(t *testing.T) {
 
 	clientHostOne := "127.0.0.1:34567"
 	clientHostTwo := "127.0.0.1:34568"
-	p := NewProcessList()
+	p := NewProcessListWithVariables(variables.NewEngineVariables())
 	p.AddConnection(1, clientHostOne)
 	sess := sql.NewBaseSessionWithClientServer("0.0.0.0:3306", sql.Client{Address: clientHostOne, User: "foo"}, 1)
 	sess.SetCurrentDatabase("test_db")
@@ -181,7 +181,7 @@ func sortById(slice []sql.Process) {
 
 func TestKillConnection(t *testing.T) {
 
-	pl := NewProcessList()
+	pl := NewProcessListWithVariables(variables.NewEngineVariables())
 
 	pl.AddConnection(1, "")
 	pl.AddConnection(2, "")
@@ -223,7 +223,7 @@ func TestBeginEndOperation(t *testing.T) {
 	knownSession := sql.NewBaseSessionWithClientServer("", sql.Client{}, 1)
 	unknownSession := sql.NewBaseSessionWithClientServer("", sql.Client{}, 2)
 
-	pl := NewProcessList()
+	pl := NewProcessListWithVariables(variables.NewEngineVariables())
 	pl.AddConnection(1, "")
 
 	// Begining an operation with an unknown connection returns an error.
@@ -275,7 +275,7 @@ func TestBeginEndOperation(t *testing.T) {
 // TestSlowQueryTracking tests that processes that take longer than @@long_query_time increment the
 // Slow_queries status variable.
 func TestSlowQueryTracking(t *testing.T) {
-	p := NewProcessList()
+	p := NewProcessListWithVariables(variables.NewEngineVariables())
 	_, value, ok := p.EngineVariables().Status.GetGlobal("Slow_queries")
 	require.True(t, ok)
 	require.Equal(t, uint64(0), value)

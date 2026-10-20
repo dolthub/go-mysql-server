@@ -60,7 +60,6 @@ func TestHandlerOutput(t *testing.T) {
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
-			sqle.NewProcessList(),
 			"foo",
 		),
 		readTimeout: time.Second,
@@ -231,7 +230,6 @@ func TestHandlerErrors(t *testing.T) {
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
-			sqle.NewProcessList(),
 			"foo",
 		),
 		readTimeout: time.Second,
@@ -310,7 +308,6 @@ func TestHandlerComResetConnection(t *testing.T) {
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
-			sqle.NewProcessList(),
 			"foo",
 		),
 	}
@@ -374,7 +371,6 @@ func TestHandlerComPrepare(t *testing.T) {
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
-			sqle.NewProcessList(),
 			"foo",
 		),
 	}
@@ -447,7 +443,6 @@ func TestHandlerComPrepareExecute(t *testing.T) {
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
-			sqle.NewProcessList(),
 			"foo",
 		),
 	}
@@ -524,7 +519,6 @@ func TestHandlerComPrepareExecuteWithPreparedDisabled(t *testing.T) {
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
-			sqle.NewProcessList(),
 			"foo",
 		),
 	}
@@ -711,7 +705,6 @@ func TestHandlerEndsRootSpan(t *testing.T) {
 			tracer,
 			pro.Database,
 			e.MemoryManager,
-			e.ProcessList,
 			"foo",
 		),
 	}
@@ -769,7 +762,6 @@ func TestServerEventListener(t *testing.T) {
 			sql.NoopTracer,
 			dbFunc,
 			e.MemoryManager,
-			e.ProcessList,
 			"foo",
 		),
 		sel: listener,
@@ -853,7 +845,6 @@ func TestHandlerKill(t *testing.T) {
 			sql.NoopTracer,
 			dbFunc,
 			e.MemoryManager,
-			e.ProcessList,
 			"foo",
 		),
 	}
@@ -913,7 +904,6 @@ func TestHandlerKillQuery(t *testing.T) {
 			sql.NoopTracer,
 			dbFunc,
 			e.MemoryManager,
-			e.ProcessList,
 			"foo",
 		),
 	}
@@ -1136,7 +1126,6 @@ func TestSchemaToFields(t *testing.T) {
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
-			sqle.NewProcessList(),
 			"foo",
 		),
 		readTimeout: time.Second,
@@ -1216,7 +1205,6 @@ func TestHandlerTimeout(t *testing.T) {
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
-			sqle.NewProcessList(),
 			"foo"),
 		readTimeout: 1 * time.Second,
 	}
@@ -1229,7 +1217,6 @@ func TestHandlerTimeout(t *testing.T) {
 			sql.NoopTracer,
 			dbFunc2,
 			sql.NewMemoryManager(nil),
-			sqle.NewProcessList(),
 			"foo"),
 	}
 	require.Equal(1*time.Second, timeOutHandler.readTimeout)
@@ -1284,7 +1271,6 @@ func TestOkClosedConnection(t *testing.T) {
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
-			sqle.NewProcessList(),
 			"foo",
 		),
 	}
@@ -1320,7 +1306,6 @@ func TestHandlerFoundRowsCapabilities(t *testing.T) {
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
-			sqle.NewProcessList(),
 			"foo",
 		),
 	}
@@ -1416,7 +1401,7 @@ func TestHandlerCountMatchedRowsOnUpdate(t *testing.T) {
 			handler := &Handler{
 				e: e,
 				sm: newTestSessionManager(e, sql.NewContext, testSessionBuilder(e, pro), sql.NoopTracer, pro.Database,
-					sql.NewMemoryManager(nil), sqle.NewProcessList(), "foo"),
+					sql.NewMemoryManager(nil), "foo"),
 			}
 			handler.NewConnection(conn)
 			handler.ComInitDB(conn, "test")
@@ -1529,7 +1514,7 @@ func testSessionBuilder(e *sqle.Engine, pro *memory.DbProvider) func(ctx context
 	}
 }
 
-func newTestSessionManager(e *sqle.Engine, factory sql.ContextFactory, builder SessionBuilder, tracer trace.Tracer, getDB func(*sql.Context, string) (sql.Database, error), memory *sql.MemoryManager, _ sql.ProcessList, addr string) *SessionManager {
+func newTestSessionManager(e *sqle.Engine, factory sql.ContextFactory, builder SessionBuilder, tracer trace.Tracer, getDB func(*sql.Context, string) (sql.Database, error), memory *sql.MemoryManager, addr string) *SessionManager {
 	sm := NewSessionManagerWithVariables(factory, builder, tracer, getDB, memory, e.ProcessList, addr, e.Variables())
 	sm.engine = e
 	return sm
@@ -1613,7 +1598,6 @@ func TestStatusVariableQuestions(t *testing.T) {
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
-			sqle.NewProcessList(),
 			"foo",
 		),
 		readTimeout: time.Second,
@@ -1723,7 +1707,6 @@ func TestStatusVariableAbortedConnects(t *testing.T) {
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
-			sqle.NewProcessList(),
 			"foo",
 		),
 		readTimeout: time.Second,
@@ -1749,7 +1732,6 @@ func TestStatusVariableMaxUsedConnections(t *testing.T) {
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
-			sqle.NewProcessList(),
 			"foo",
 		),
 		readTimeout: time.Second,
@@ -1799,7 +1781,6 @@ func TestStatusVariableThreadsConnected(t *testing.T) {
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
-			sqle.NewProcessList(),
 			"foo",
 		),
 		readTimeout: time.Second,
@@ -1853,7 +1834,6 @@ func TestStatusVariableThreadsRunning(t *testing.T) {
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
-			sqle.NewProcessList(),
 			"foo",
 		),
 		readTimeout: time.Second,
@@ -1916,7 +1896,6 @@ func TestStatusVariableComSelect(t *testing.T) {
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
-			sqle.NewProcessList(),
 			"foo",
 		),
 		readTimeout: time.Second,
@@ -1965,7 +1944,6 @@ func TestStatusVariableComDelete(t *testing.T) {
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
-			sqle.NewProcessList(),
 			"foo",
 		),
 		readTimeout: time.Second,
@@ -2014,7 +1992,6 @@ func TestStatusVariableComInsert(t *testing.T) {
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
-			sqle.NewProcessList(),
 			"foo",
 		),
 		readTimeout: time.Second,
@@ -2063,7 +2040,6 @@ func TestStatusVariableComUpdate(t *testing.T) {
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
-			sqle.NewProcessList(),
 			"foo",
 		),
 		readTimeout: time.Second,
@@ -2113,7 +2089,6 @@ func TestLoggerFieldsSetup(t *testing.T) {
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
-			sqle.NewProcessList(),
 			"foo",
 		),
 		readTimeout: time.Second,
@@ -2188,7 +2163,6 @@ func TestHandlerNewConnectionProcessListInteractions(t *testing.T) {
 			sql.NoopTracer,
 			dbFunc,
 			sql.NewMemoryManager(nil),
-			sqle.NewProcessList(),
 			"foo",
 		),
 		readTimeout: time.Second,

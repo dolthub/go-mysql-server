@@ -23,7 +23,6 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 // ProcessList is a structure that keeps track of all the processes and their
@@ -33,15 +32,6 @@ type ProcessList struct {
 	byQueryPid map[uint64]uint32
 	mu         sync.RWMutex
 	variables  *sql.EngineVariables
-}
-
-// NewProcessList creates a new process list.
-func NewProcessList() *ProcessList {
-	return &ProcessList{
-		procs:      make(map[uint32]*sql.Process),
-		byQueryPid: make(map[uint64]uint32),
-		variables:  variables.NewEngineVariables(),
-	}
 }
 
 // NewProcessListWithVariables retains the registries used by an engine.
