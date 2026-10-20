@@ -100,8 +100,7 @@ func (sv *globalSystemVariables) AssignValuesWithContext(ctx *sql.Context, vals 
 	if !ok || registry != sv {
 		return fmt.Errorf("system variable assignment context belongs to another registry")
 	}
-	sessionOwner, ok := ctx.Session.(sql.EngineVariablesProvider)
-	if !ok || sessionOwner.EngineVariables() != owner {
+	if ctx.Session == nil || ctx.Session.EngineVariables() != owner {
 		return fmt.Errorf("system variable assignment context and session have different owners")
 	}
 	return sv.assignValues(ctx, vals)

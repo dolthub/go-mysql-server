@@ -162,11 +162,11 @@ func (e *Engine) checkVariableOwnership(ctx *sql.Context) error {
 	if ctx == nil || ctx.Session == nil {
 		return fmt.Errorf("engine variable ownership: context and session are required")
 	}
-	owner, hasOwner := ctx.Session.(sql.EngineVariablesProvider)
-	if hasOwner && owner.EngineVariables() != nil && ctx.EngineVariables() != owner.EngineVariables() {
+	sessionVars := ctx.Session.EngineVariables()
+	if sessionVars != nil && ctx.EngineVariables() != sessionVars {
 		return fmt.Errorf("engine variable ownership: context and session belong to different engines")
 	}
-	if ctx.EngineVariables() != e.variables || !hasOwner || owner.EngineVariables() != e.variables {
+	if ctx.EngineVariables() != e.variables || sessionVars != e.variables {
 		return fmt.Errorf("engine variable ownership: context or session belongs to another engine")
 	}
 	return nil
