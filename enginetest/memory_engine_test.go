@@ -278,9 +278,7 @@ func TestQueryPlanTODOs(t *testing.T) {
 		log.Fatal(err)
 	}
 	for _, tt := range queries.QueryPlanTODOs {
-		t.Run(tt.Query, func(t *testing.T) {
-			enginetest.TestQueryPlan(t, harness, e, tt)
-		})
+		enginetest.TestQueryPlan(t, harness, e, tt)
 	}
 }
 

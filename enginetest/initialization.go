@@ -166,10 +166,8 @@ func NewEngine(t *testing.T, harness Harness, dbProvider sql.DatabaseProvider, s
 func RunSetupScripts(ctx *sql.Context, e *sqle.Engine, scripts []setup.SetupScript, createIndexes bool) (*sqle.Engine, error) {
 	for i := range scripts {
 		for _, s := range scripts[i] {
-			if !createIndexes {
-				if strings.Contains("create index", s) {
-					continue
-				}
+			if !createIndexes && isCreateIndex(s) {
+				continue
 			}
 			// ctx.GetLogger().Warnf("running query %s\n", s)
 			ctx := ctx.WithQuery(s)
@@ -184,6 +182,21 @@ func RunSetupScripts(ctx *sql.Context, e *sqle.Engine, scripts []setup.SetupScri
 		}
 	}
 	return e, nil
+}
+
+// isCreateIndex returns whether |stmt| is a CREATE [UNIQUE | FULLTEXT | SPATIAL | VECTOR] INDEX statement.
+func isCreateIndex(stmt string) bool {
+	fields := strings.Fields(strings.ToLower(stmt))
+	if len(fields) < 2 || fields[0] != "create" {
+		return false
+	}
+	switch fields[1] {
+	case "index":
+		return true
+	case "unique", "fulltext", "spatial", "vector":
+		return len(fields) > 2 && fields[2] == "index"
+	}
+	return false
 }
 
 func MustQuery(ctx *sql.Context, e QueryEngine, q string) (sql.Schema, []sql.Row) {
