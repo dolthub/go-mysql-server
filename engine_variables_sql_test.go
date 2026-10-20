@@ -107,9 +107,7 @@ func TestGlobalOnlyVariablesStayLiveInExistingSessions(t *testing.T) {
 	_, _, _, err := engine.Query(a, "SELECT @@session.max_connections")
 	require.True(t, sql.ErrSystemVariableGlobalOnly.Is(err))
 
-	bootstrap, ok := vars.System.(sql.ContextAwareSystemVariableRegistry)
-	require.True(t, ok)
-	require.NoError(t, bootstrap.AssignValuesWithContext(a, map[string]interface{}{"secure_file_priv": "/tmp/allowed"}))
+	require.NoError(t, vars.System.AssignValues(a, map[string]interface{}{"secure_file_priv": "/tmp/allowed"}))
 	value, err := b.GetSessionVariable(b, "secure_file_priv")
 	require.NoError(t, err)
 	require.Equal(t, "/tmp/allowed", value)

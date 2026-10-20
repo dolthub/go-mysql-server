@@ -62,13 +62,10 @@ func requireEngineVariables(vars *EngineVariables) {
 	}
 }
 
-// ContextAwareSystemVariableRegistry is an optional extension for initializing
-// values with a context that belongs to the same engine as the registry.
-// AssignValuesWithContext passes the owning context to initialization callbacks.
-type ContextAwareSystemVariableRegistry interface {
-	SystemVariableRegistry
-	AssignValuesWithContext(ctx *Context, vals map[string]interface{}) error
-}
+// ContextAwareSystemVariableRegistry is the former name of SystemVariableRegistry.
+//
+// Deprecated: use SystemVariableRegistry.
+type ContextAwareSystemVariableRegistry = SystemVariableRegistry
 
 // SystemVariableRegistry is a registry of system variables. Each session gets
 // a snapshot of variables with session scope via NewSessionMap; global-only
@@ -86,6 +83,13 @@ type SystemVariableRegistry interface {
 	SetGlobal(ctx *Context, name string, val interface{}) error
 	// GetAllGlobalVariables returns a copy of all global variable values.
 	GetAllGlobalVariables() map[string]interface{}
+	// AssignValues initializes global values without SetGlobal's dynamic and scope checks, such as when loading
+	// persisted values. |ctx| must belong to this registry's engine and is passed to initialization callbacks.
+	AssignValues(ctx *Context, vals map[string]interface{}) error
+	// AssignValuesWithContext is the former name of AssignValues.
+	//
+	// Deprecated: use AssignValues.
+	AssignValuesWithContext(ctx *Context, vals map[string]interface{}) error
 }
 
 // SystemVariable is used to system variables.

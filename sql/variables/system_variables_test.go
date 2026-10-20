@@ -80,8 +80,8 @@ func TestInitSystemVars(t *testing.T) {
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("set %v = %v", test.varName, test.varVal), func(t *testing.T) {
 			vars := NewEngineVariables()
-			registry := vars.System.(sql.ContextAwareSystemVariableRegistry)
-			err := registry.AssignValuesWithContext(sql.NewContextWithVariables(context.Background(), vars), map[string]interface{}{test.varName: test.varVal})
+			registry := vars.System
+			err := registry.AssignValues(sql.NewContextWithVariables(context.Background(), vars), map[string]interface{}{test.varName: test.varVal})
 			if test.err != nil {
 				require.Error(t, err)
 				require.True(t, test.err.Is(err))
