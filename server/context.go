@@ -139,8 +139,7 @@ func (s *SessionManager) context(ctx context.Context, opts ...sql.ContextOption)
 		if result == nil || result.EngineVariables() != s.variables {
 			return nil, fmt.Errorf("server variable ownership: context factory returned a context for another engine")
 		}
-		owner, ok := result.Session.(sql.EngineVariablesProvider)
-		if !ok || owner.EngineVariables() != s.variables {
+		if result.Session == nil || result.Session.EngineVariables() != s.variables {
 			return nil, fmt.Errorf("server variable ownership: context session belongs to another engine")
 		}
 	}
@@ -203,8 +202,7 @@ func (s *SessionManager) NewSession(ctx context.Context, conn *mysql.Conn) error
 		return err
 	}
 	if s.variables != nil {
-		owner, ok := session.(sql.EngineVariablesProvider)
-		if !ok || owner.EngineVariables() != s.variables {
+		if session == nil || session.EngineVariables() != s.variables {
 			return fmt.Errorf("server variable ownership: session builder returned a session for another engine")
 		}
 	}
