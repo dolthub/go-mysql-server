@@ -16,18 +16,12 @@ package function
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"gopkg.in/src-d/go-errors.v1"
 	"strings"
-	"time"
-
-	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/types"
 )
-
-var ErrUintOverflow = errors.NewKind(
-	"Unsigned integer too big to fit on signed integer")
 
 type cmpDir uint8
 
@@ -85,11 +79,6 @@ func compEval(
 	}
 	return res, nil
 }
-
-const (
-	SIGNED_INT_DECIMAL_PRECISION   = 19
-	UNSIGNED_INT_DECIMAL_PRECISION = 20
-)
 
 // cmpRetType is used to determine the comparison and return type from args based on the rules described for
 // Greatest/Least.
@@ -254,67 +243,6 @@ func cmpRetType(ctx *sql.Context, args ...sql.Expression) (sql.Type, sql.Type, e
 	return types.LongText, cmpType, nil
 }
 
-// compDecimalType combines exact numeric arguments using the largest integer
-// part and scale. The cap describes result metadata, not an evaluation bound.
-func compDecimalType(args []sql.Expression, argTypes []sql.Type) sql.Type {
-	var integerDigits, scale uint8
-	for i, t := range argTypes {
-		var p, s uint8
-		if dt, ok := t.(sql.DecimalType); ok {
-			p, s = dt.Precision(), dt.Scale()
-		} else {
-			switch t {
-			case types.Int8, types.Uint8, types.Boolean:
-				p = 3
-			case types.Int16, types.Uint16:
-				p = 5
-			case types.Int24, types.Uint24:
-				p = 8
-			case types.Int32, types.Uint32:
-				p = 10
-			case types.Int64:
-				p = 19
-			case types.Uint64:
-				p = 20
-			default:
-				return types.Float64
-			}
-		}
-
-		if types.IsInteger(t) {
-			p = compIntegerPrecision(args[i], t, p)
-		}
-
-		integerDigits = max(integerDigits, p-s)
-		scale = max(scale, s)
-	}
-
-	scale = min(scale, types.DecimalTypeMaxScale)
-	precision := min(uint16(integerDigits)+uint16(scale), types.DecimalTypeMaxPrecision)
-	return types.MustCreateDecimalType(uint8(precision), scale)
-}
-
-// compIntegerPrecision distinguishes literal widths and CAST metadata from
-// integer column widths, which cannot be inferred from the SQL type alone.
-func compIntegerPrecision(arg sql.Expression, typ sql.Type, columnPrecision uint8) uint8 {
-	switch arg := arg.(type) {
-	case *expression.Literal:
-		if _, ok := arg.Value().(bool); ok {
-			return 1
-		}
-		return uint8(len(strings.TrimPrefix(fmt.Sprint(arg.Value()), "-")))
-	case *expression.UnaryMinus:
-		return compIntegerPrecision(arg.Child, typ, columnPrecision)
-	case *expression.Convert:
-		if types.IsUnsigned(typ) {
-			return 21
-		}
-		return 20
-	default:
-		return columnPrecision
-	}
-}
-
 // Greatest returns the argument with the greatest value as determined by cmpType.
 type Greatest struct {
 	Args             []sql.Expression
@@ -395,34 +323,6 @@ func (f *Greatest) Resolved() bool {
 
 // Children implements the Expression interface.
 func (f *Greatest) Children() []sql.Expression { return f.Args }
-
-func greaterThan(a, b interface{}) bool {
-	switch i := a.(type) {
-	case int64:
-		return i > b.(int64)
-	case float64:
-		return i > b.(float64)
-	case string:
-		return i > b.(string)
-	case time.Time:
-		return i.After(b.(time.Time))
-	}
-	panic("Implementation error on greaterThan")
-}
-
-func lessThan(a, b interface{}) bool {
-	switch i := a.(type) {
-	case int64:
-		return i < b.(int64)
-	case float64:
-		return i < b.(float64)
-	case string:
-		return i < b.(string)
-	case time.Time:
-		return i.Before(b.(time.Time))
-	}
-	panic("Implementation error on lessThan")
-}
 
 // Eval implements the Expression interface.
 func (f *Greatest) Eval(ctx *sql.Context, row sql.Row) (any, error) {
