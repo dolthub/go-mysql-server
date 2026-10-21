@@ -3734,6 +3734,18 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{{"2022-06-01 00:00:00"}},
 	},
 	{
+		Query: "select greatest('invalid date', cast('2002-01-01' as date));",
+		Expected: []sql.Row{
+			{"2002-01-01"},
+		},
+	},
+	{
+		Query: "select greatest('invalid date', cast('2002-01-01' as datetime));",
+		Expected: []sql.Row{
+			{"2022-06-01 00:00:00"},
+		},
+	},
+	{
 		Query:    `SELECT LEAST(1, 2, 3, 4)`,
 		Expected: []sql.Row{{int64(1)}},
 	},
