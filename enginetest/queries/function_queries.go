@@ -3742,7 +3742,7 @@ var FunctionQueryTests = []QueryTest{
 	{
 		Query: "select greatest('invalid date', cast('2002-01-01' as datetime));",
 		Expected: []sql.Row{
-			{"2022-06-01 00:00:00"},
+			{"2002-01-01 00:00:00"},
 		},
 	},
 	{

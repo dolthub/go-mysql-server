@@ -16,13 +16,13 @@ package function
 
 import (
 	"fmt"
+	"gopkg.in/src-d/go-errors.v1"
 	"strings"
 
-	"github.com/dolthub/vitess/go/sqltypes"
-	"gopkg.in/src-d/go-errors.v1"
-
+	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/vitess/go/sqltypes"
 )
 
 type cmpDir uint8
@@ -58,6 +58,7 @@ func compEval(
 
 		v, _, err := cmpType.Convert(ctx, val)
 		if err != nil {
+			// TODO: invalid dates increase dtPrec to max?
 			// TODO: warn
 		}
 		if res == nil {
@@ -74,6 +75,13 @@ func compEval(
 		if cmp > 0 {
 			res = v
 		}
+	}
+	if dtType, ok := retType.(sql.DecimalType); ok {
+		// TODO: need to rescale decimals
+		qCtx := sql.DecimalCtx.WithPrecision(uint32(dtType.Precision()))
+		resDec := new(apd.Decimal)
+		qCtx.Quantize(resDec, res.(*apd.Decimal), -int32(dtType.Scale()))
+		return resDec, nil
 	}
 	res, _, err := types.TypeAwareConversion(ctx, res, cmpType, retType)
 	if err != nil {
