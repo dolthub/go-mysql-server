@@ -413,7 +413,9 @@ func (i *modifyColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 		tblSch := i.m.TargetSchema()
 		if usedInFk {
-			if !i.m.TargetSchema()[idx].Type.Equals(i.m.NewColumn().Type) {
+			widening, supportsWidening := tblSch[idx].Type.(sql.ForeignKeyTypeWidening)
+			safeWidening := supportsWidening && widening.CanWidenForeignKeyTypeTo(i.m.NewColumn().Type)
+			if !tblSch[idx].Type.Equals(i.m.NewColumn().Type) && !safeWidening {
 				// There seems to be a special case where you can lengthen a CHAR/VARCHAR/BINARY/VARBINARY.
 				// Have not tested every type nor combination, but this seems specific to those 4 types.
 				if tblSch[idx].Type.Type() == i.m.NewColumn().Type.Type() {
