@@ -16,10 +16,10 @@ package queries
 
 import (
 	"fmt"
-	"github.com/dolthub/vitess/go/sqltypes"
 	"time"
 
 	"github.com/dolthub/vitess/go/mysql"
+	"github.com/dolthub/vitess/go/sqltypes"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
