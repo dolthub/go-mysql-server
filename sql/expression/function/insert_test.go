@@ -59,6 +59,12 @@ func TestInsert(t *testing.T) {
 		{"negative length from beginning", sql.NewRow("hello", 1, -5, "xyz"), "xyz", false},
 		{"large positive length", sql.NewRow("hello", 2, 100, "xyz"), "hxyz", false},
 		{"length exactly matches remaining", sql.NewRow("hello", 3, 3, "xyz"), "hexyz", false},
+		// https://github.com/dolthub/go-mysql-server/issues/4050
+		{"multibyte replace", sql.NewRow("héllo", 2, 1, "X"), "hXllo", false},
+		{"multibyte position after multibyte char", sql.NewRow("héllo", 5, 1, "X"), "héllX", false},
+		{"multibyte negative length", sql.NewRow("héllo", 3, -1, "ö"), "héö", false},
+		{"multibyte cjk", sql.NewRow("日本語テキスト", 3, 2, "ab"), "日本abキスト", false},
+		{"multibyte position beyond character length", sql.NewRow("héllo", 7, 1, "X"), "héllo", false},
 	}
 
 	for _, tt := range testCases {

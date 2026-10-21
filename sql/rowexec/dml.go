@@ -54,7 +54,7 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 
 	var unlocker func()
 	if ii.FirstGeneratedAutoIncRowIdx >= 0 {
-		_, i, _ := sql.SystemVariables.GetGlobal("innodb_autoinc_lock_mode")
+		_, i, _ := ctx.SystemVariables().GetGlobal("innodb_autoinc_lock_mode")
 		lockMode, ok := i.(int64)
 		if !ok {
 			return nil, errors.New(fmt.Sprintf("unexpected type for innodb_autoinc_lock_mode, expected int64, got %T", i))

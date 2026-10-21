@@ -15,6 +15,7 @@
 package aggregation
 
 import (
+	"context"
 	"testing"
 
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -23,12 +24,13 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 // Validates that the return length of GROUP_CONCAT is bounded by group_concat_max_len (default 1024)
 func TestGroupConcat_PastMaxLen(t *testing.T) {
 	var rows []sql.Row
-	ctx := sql.NewEmptyContext()
+	ctx := sql.NewContextWithVariables(context.Background(), variables.NewEngineVariables())
 
 	for i := 0; i < 2000; i++ {
 		rows = append(rows, sql.Row{int64(i)})

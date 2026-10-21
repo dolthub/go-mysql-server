@@ -833,6 +833,41 @@ CREATE TABLE tab1 (
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/12141
+		Name: "filtering view by column",
+		SetUpScript: []string{
+			"CREATE TABLE t0(c0 INT, c1 INT, c2 INT);",
+			"INSERT INTO t0 VALUES (10, 20, 30);",
+			"CREATE VIEW v0(c0, c1, c2) AS SELECT c0 + 1, c1 + 1, c2 + 1 FROM t0;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    `SELECT * FROM v0 WHERE c0 = 11;`,
+				Expected: []sql.Row{{11, 21, 31}},
+			},
+			{
+				Query:    `SELECT * FROM v0 WHERE c0 = 31;`,
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    `SELECT * FROM v0 WHERE c1 = 21;`,
+				Expected: []sql.Row{{11, 21, 31}},
+			},
+			{
+				Query:    `SELECT * FROM v0 WHERE c1 = 31;`,
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    `SELECT * FROM v0 WHERE c2 = 31;`,
+				Expected: []sql.Row{{11, 21, 31}},
+			},
+			{
+				Query:    `SELECT * FROM v0 WHERE c2 = 11;`,
+				Expected: []sql.Row{},
+			},
+		},
+	},
 }
 
 var ViewCreateInSubroutineTests = []ScriptTest{

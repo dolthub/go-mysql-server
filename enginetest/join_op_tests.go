@@ -16,11 +16,12 @@ package enginetest
 
 import (
 	"fmt"
+	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
+	"github.com/dolthub/go-mysql-server/enginetest/setup"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/memo"
@@ -39,6 +40,17 @@ var biasedCosters = map[string]memo.Coster{
 	"merge":     memo.NewMergeBiasedCoster(),
 	"partial":   memo.NewPartialBiasedCoster(),
 	"rangeHeap": memo.NewRangeHeapBiasedCoster(),
+}
+
+// biasedCosterNames returns the keys of |biasedCosters| in sorted order, so that tests iterating over the costers run
+// their subtests in the same order every time.
+func biasedCosterNames() []string {
+	names := make([]string, 0, len(biasedCosters))
+	for name := range biasedCosters {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
 }
 
 func TestJoinOps(t *testing.T, harness Harness, tests []joinOpTest) {
@@ -65,8 +77,8 @@ func TestJoinOps(t *testing.T, harness Harness, tests []joinOpTest) {
 				e.EngineAnalyzer().Catalog.DbProvider = newProv.(sql.DatabaseProvider)
 			}
 
-			for k, c := range biasedCosters {
-				e.EngineAnalyzer().Coster = c
+			for _, k := range biasedCosterNames() {
+				e.EngineAnalyzer().Coster = biasedCosters[k]
 				for _, tt := range tt.tests {
 					evalJoinCorrectness(t, harness, e, fmt.Sprintf("%s join: %s", k, tt.Query), tt.Query, tt.Expected, tt.Skip)
 				}

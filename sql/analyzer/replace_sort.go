@@ -442,7 +442,7 @@ func replaceSortedMinMax(ctx *sql.Context, a *Analyzer, node sql.Node, scope *pl
 
 		// find the aggregated column
 		var colIdx int
-		for colIdx = 0; colIdx <= len(pkCols); colIdx++ {
+		for colIdx = 0; colIdx < len(pkCols); colIdx++ {
 			if strings.EqualFold(pkCols[colIdx], sortBy.Expr.String()) {
 				break
 			}

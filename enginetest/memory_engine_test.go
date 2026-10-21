@@ -25,7 +25,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/enginetest"
 	"github.com/dolthub/go-mysql-server/enginetest/queries"
-	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
+	"github.com/dolthub/go-mysql-server/enginetest/setup"
 	memharness "github.com/dolthub/go-mysql-server/enginetest/sqllogictest/harness"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
@@ -278,9 +278,7 @@ func TestQueryPlanTODOs(t *testing.T) {
 		log.Fatal(err)
 	}
 	for _, tt := range queries.QueryPlanTODOs {
-		t.Run(tt.Query, func(t *testing.T) {
-			enginetest.TestQueryPlan(t, harness, e, tt)
-		})
+		enginetest.TestQueryPlan(t, harness, e, tt)
 	}
 }
 

@@ -32,7 +32,7 @@ import (
 
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/enginetest/queries"
-	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
+	"github.com/dolthub/go-mysql-server/enginetest/setup"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -168,18 +168,24 @@ func TestScriptWithEngine(t *testing.T, e QueryEngine, harness Harness, script q
 					TestQueryWithContext(t, ctx, e, harness, assertion.Query, expected, assertion.ExpectedColumns, assertion.Bindings, nil)
 				}
 
-				if assertion.ExpectedIndexes != nil && !IsServerEngine(e) {
-					evalIndexTest(t, harness, e, assertion.Query, assertion.ExpectedIndexes, assertion.Skip)
+				// Plan inspection is not supported for server engines. These checks are still registered as
+				// (skipped) subtests so that the set of test names does not depend on the engine.
+				if assertion.ExpectedIndexes != nil {
+					evalIndexTest(t, harness, e, assertion.Query, assertion.ExpectedIndexes, assertion.Skip || IsServerEngine(e))
 				}
-				if assertion.JoinTypes != nil && !IsServerEngine(e) {
-					evalJoinTypeTest(t, harness, e, assertion.Query, assertion.JoinTypes, assertion.Skip)
+				if assertion.JoinTypes != nil {
+					evalJoinTypeTest(t, harness, e, assertion.Query, assertion.JoinTypes, assertion.Skip || IsServerEngine(e))
 				}
 
-				if assertion.ExpectedPlan != "" && !IsServerEngine(e) {
+				if assertion.ExpectedPlan != "" {
 					options := sql.DescribeOptions{
 						Debug: true,
 					}
-					TestQueryPlanWithName(t, options.String(), harness, e, assertion.Query, assertion.ExpectedPlan, options)
+					if IsServerEngine(e) {
+						skipSubtest(t, options.String(), "plan inspection is not supported for server engines")
+					} else {
+						TestQueryPlanWithName(t, options.String(), harness, e, assertion.Query, assertion.ExpectedPlan, options)
+					}
 				}
 			})
 		}
@@ -192,6 +198,15 @@ func skipScript(harness Harness, script queries.ScriptTest, prepared bool) bool 
 	}
 
 	return script.Skip || !supportedDialect(harness, script.Dialect) || (prepared && script.SkipPrepared)
+}
+
+// skipSubtest registers a subtest named |name| which is immediately skipped with |args| as the reason. Use this instead
+// of `continue` or an early return when a test case will not run, so that it still shows up in test output under the
+// same name it would have if it had run.
+func skipSubtest(t *testing.T, name string, args ...any) {
+	t.Run(name, func(t *testing.T) {
+		t.Skip(args...)
+	})
 }
 
 func skipAssertion(harness Harness, assertion queries.ScriptTestAssertion) bool {
@@ -545,6 +560,9 @@ func TestPreparedQuery(t *testing.T, harness Harness, q string, expected []sql.R
 
 func TestPreparedQueryWithEngine(t *testing.T, harness Harness, e QueryEngine, tt queries.QueryTest) {
 	t.Run(tt.Query, func(t *testing.T) {
+		if tt.Skip || tt.SkipPrepared {
+			t.Skipf("Skipping query %s", tt.Query)
+		}
 		if sh, ok := harness.(SkippingHarness); ok {
 			if sh.SkipQueryTest(tt.Query) {
 				t.Skipf("Skipping query %s", tt.Query)
@@ -1325,16 +1343,13 @@ func runWriteQueryTestPrepared(t *testing.T, harness Harness, tt queries.WriteQu
 	t.Run(tt.WriteQuery, func(t *testing.T) {
 		if tt.Skip {
 			t.Skip()
-			return
 		}
 		if sh, ok := harness.(SkippingHarness); ok {
 			if sh.SkipQueryTest(tt.WriteQuery) {
-				t.Logf("Skipping query %s", tt.WriteQuery)
-				return
+				t.Skipf("Skipping query %s", tt.WriteQuery)
 			}
 			if sh.SkipQueryTest(tt.SelectQuery) {
-				t.Logf("Skipping query %s", tt.SelectQuery)
-				return
+				t.Skipf("Skipping query %s", tt.SelectQuery)
 			}
 		}
 		e := MustNewEngine(t, harness)
@@ -1366,14 +1381,14 @@ func runQueryErrorTest(t *testing.T, h Harness, tt queries.QueryErrorTest) {
 			}
 		}
 		e := MustNewEngine(t, h)
+		defer e.Close()
 		tfp, ok := e.EngineAnalyzer().Catalog.DbProvider.(sql.TableFunctionProvider)
 		if !ok {
-			return
+			t.Skip("database provider does not implement sql.TableFunctionProvider")
 		}
 		newPro, err := tfp.WithTableFunctions(memory.NormalDistTable{})
 		require.NoError(t, err)
 		e.EngineAnalyzer().Catalog.DbProvider = newPro.(sql.DatabaseProvider)
-		defer e.Close()
 		if tt.ExpectedErrStr == "" {
 			AssertErr(t, e, h, tt.Query, nil, tt.ExpectedErr)
 		} else {

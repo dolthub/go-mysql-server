@@ -612,21 +612,12 @@ func convertSemiToInnerJoin(ctx *sql.Context, m *memo.Memo) error {
 // getFieldForSourceColumn returns a GetField for the column |colId| of |srcNode|.
 func getFieldForSourceColumn(ctx *sql.Context, srcNode plan.TableIdNode, colId sql.ColumnId) sql.Expression {
 	sch := srcNode.Schema(ctx)
-	var table sql.Table
 	var node sql.Node = srcNode
 	if ta, ok := node.(*plan.TableAlias); ok {
 		node = ta.Child
 	}
-	if tw, ok := node.(sql.TableNode); ok {
-		table = tw.UnderlyingTable()
-	}
-	// Using the PrimaryKeySchema ensures that the schema matches the ColumnIds even if the table has been pruned.
-	if pkt, ok := table.(sql.PrimaryKeyTable); ok {
-		sch = pkt.PrimaryKeySchema(ctx).Schema
-	}
-
-	firstCol, _ := srcNode.Columns().Next(1)
-	col := sch[int(colId-firstCol)]
+	offset, _ := srcNode.Columns().Ordinal(colId)
+	col := sch[offset]
 	// The new GetField must use the table name of |srcNode|, not the underlying table, so that references to table aliases
 	// resolve correctly.
 	return expression.NewGetFieldWithTable(int(colId), int(srcNode.Id()), col.Type, col.DatabaseSource, srcNode.Name(), col.Name, col.Nullable)
@@ -1566,9 +1557,10 @@ func makeIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, tab plan.Table
 	}
 	var i int
 	idxCols := idx.Cols()
-	rang := make(sql.MySQLRange, len(idxCols))
-	// Create MySQL Range prefix for this index
 	idxColExprTypes := idx.SqlIdx().ColumnExpressionTypes(ctx)
+	rang := make(sql.MySQLRange, len(idxColExprTypes))
+	// Create MySQL Range prefix for this index
+	// In the event that the index contained pruned columns, then len(idxCols) <  len(idxColExprTypes)
 	for i = 0; i < len(idxCols); {
 		// TODO: It seems like it's possible for no filter to be found for a column before |matchedIdx|, but it is
 		//  ignored. Appears to be impossible to reproduce due to functional dependency logic beforehand.
@@ -1586,7 +1578,7 @@ func makeIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, tab plan.Table
 	}
 
 	// Fill remaining ranges with AllRange
-	for ; i < len(idxCols); i++ {
+	for ; i < len(idxColExprTypes); i++ {
 		// all range bound Compare() is type insensitive
 		rang[i] = sql.AllRangeColumnExpr(types.Null)
 	}
@@ -1595,7 +1587,8 @@ func makeIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, tab plan.Table
 		return nil, false, nil
 	}
 
-	for i, typ := range idxColExprTypes {
+	for i := range idxCols {
+		typ := idxColExprTypes[i]
 		if !types.Null.Equals(rang[i].Typ) && !typ.Type.Equals(rang[i].Typ) {
 			return nil, false, nil
 		}

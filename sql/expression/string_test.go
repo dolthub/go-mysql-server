@@ -647,7 +647,7 @@ func TestSystemVarString(t *testing.T) {
 		{"session", "@@session.unregistered_system_variable"},
 	}
 	for _, tt := range tests {
-		expr := expression.NewSystemVar("unregistered_system_variable", sql.GetMysqlScope(sql.SystemVariableScope_Session), tt.scope)
+		expr := expression.NewSystemVar(sql.NewEmptyContext(), "unregistered_system_variable", sql.GetMysqlScope(sql.SystemVariableScope_Session), tt.scope)
 		require.Equal(t, tt.expected, expr.String())
 		parsed := requireColumn(t, parseExpression(t, expr))
 		parts := strings.Split(strings.TrimPrefix(parsed.Name.String(), "@@"), ".")

@@ -90,8 +90,7 @@ func (m *Mod) Type(ctx *sql.Context) sql.Type {
 		return types.Float64
 	}
 
-	// for division operation, it's either float or *apd.Decimal type
-	// except invalid value will result it either 0 or nil
+	// TODO: This is not correct when both inputs are ints https://github.com/dolthub/dolt/issues/12126
 	return getFloatOrMaxDecimalType(ctx, m, false)
 }
 

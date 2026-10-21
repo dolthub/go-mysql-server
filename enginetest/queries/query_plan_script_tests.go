@@ -1318,7 +1318,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					"         ├─ outerVisibility: true\n" +
 					"         ├─ isLateral: false\n" +
 					"         ├─ cacheable: true\n" +
-					"         ├─ colSet: (20,21)\n" +
+					"         ├─ colSet: (21,22)\n" +
 					"         ├─ tableId: 7\n" +
 					"         └─ RecursiveCTE\n" +
 					"             └─ Union all\n" +
@@ -1353,7 +1353,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					"                 │                           └─ IndexedTableAccess(issues)\n" +
 					"                 │                               ├─ index: [issues.id]\n" +
 					"                 │                               ├─ keys: [d.depends_on_id:1]\n" +
-					"                 │                               ├─ colSet: (4-6)\n" +
+					"                 │                               ├─ colSet: (4,6)\n" +
 					"                 │                               ├─ tableId: 2\n" +
 					"                 │                               └─ Table\n" +
 					"                 │                                   ├─ name: issues\n" +

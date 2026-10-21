@@ -37,7 +37,7 @@ import (
 
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/enginetest/queries"
-	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
+	"github.com/dolthub/go-mysql-server/enginetest/setup"
 	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
@@ -57,35 +57,21 @@ func TestQueries(t *testing.T, harness Harness) {
 	e := MustNewEngine(t, harness)
 	defer e.Close()
 	for _, tt := range queries.QueryTests {
-		t.Run(tt.Query, func(t *testing.T) {
-			if sh, ok := harness.(SkippingHarness); tt.Skip || (ok && sh.SkipQueryTest(tt.Query)) {
-				t.Skipf("Skipping query test for %s", tt.Query)
-			}
-			if IsServerEngine(e) && tt.SkipServerEngine {
-				t.Skip("skipping for server engine")
-			}
-			TestQuery(t, harness, e, tt)
-		})
+		TestQuery(t, harness, e, tt)
 	}
 
 	for _, tt := range queries.FunctionQueryTests {
-		t.Run(tt.Query, func(t *testing.T) {
-			if sh, ok := harness.(SkippingHarness); ok {
-				if sh.SkipQueryTest(tt.Query) {
-					t.Skipf("Skipping query plan for %s", tt.Query)
-				}
-			}
-			if IsServerEngine(e) && tt.SkipServerEngine {
-				t.Skip("skipping for server engine")
-			}
-			TestQuery(t, harness, e, tt)
-		})
+		TestQuery(t, harness, e, tt)
 	}
 
 	// TODO: move this into its own test method
-	if keyless, ok := harness.(KeylessTableHarness); ok && keyless.SupportsKeylessTables() {
-		for _, tt := range queries.KeylessQueries {
+	keyless, ok := harness.(KeylessTableHarness)
+	supportsKeyless := ok && keyless.SupportsKeylessTables()
+	for _, tt := range queries.KeylessQueries {
+		if supportsKeyless {
 			TestQuery(t, harness, e, tt)
+		} else {
+			skipSubtest(t, tt.Query, "harness does not support keyless tables")
 		}
 	}
 }
@@ -218,41 +204,27 @@ func TestQueriesPrepared(t *testing.T, harness Harness) {
 	defer e.Close()
 	t.Run("query prepared tests", func(t *testing.T) {
 		for _, tt := range queries.QueryTests {
-			if tt.Skip || tt.SkipPrepared {
-				continue
-			}
-			t.Run(tt.Query, func(t *testing.T) {
-				TestPreparedQueryWithEngine(t, harness, e, tt)
-			})
+			TestPreparedQueryWithEngine(t, harness, e, tt)
 		}
 	})
 
 	t.Run("function query prepared tests", func(t *testing.T) {
 		for _, tt := range queries.FunctionQueryTests {
-			if tt.Skip || tt.SkipPrepared {
-				continue
-			}
-			t.Run(tt.Query, func(t *testing.T) {
-				TestPreparedQueryWithEngine(t, harness, e, tt)
-			})
+			TestPreparedQueryWithEngine(t, harness, e, tt)
 		}
 	})
 
 	t.Run("keyless prepared tests", func(t *testing.T) {
 		harness.Setup(setup.MydbData, setup.KeylessData, setup.Keyless_idxData, setup.MytableData)
 		for _, tt := range queries.KeylessQueries {
-			t.Run(tt.Query, func(t *testing.T) {
-				TestPreparedQueryWithEngine(t, harness, e, tt)
-			})
+			TestPreparedQueryWithEngine(t, harness, e, tt)
 		}
 	})
 
 	t.Run("date parse prepared tests", func(t *testing.T) {
 		harness.Setup(setup.MydbData)
 		for _, tt := range queries.DateParseQueries {
-			t.Run(tt.Query, func(t *testing.T) {
-				TestPreparedQueryWithEngine(t, harness, e, tt)
-			})
+			TestPreparedQueryWithEngine(t, harness, e, tt)
 		}
 	})
 }
@@ -263,14 +235,13 @@ func TestJoinQueriesPrepared(t *testing.T, harness Harness) {
 		setup.XyData, setup.FooData, setup.Comp_index_tablesData, setup.EmptytableData)
 	for _, tt := range queries.JoinQueryTests {
 		if tt.Skip || tt.SkipPrepared {
+			skipSubtest(t, tt.Query)
 			continue
 		}
 		TestPreparedQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns)
 	}
 	for _, ts := range queries.JoinScriptTests {
-		if ts.SkipPrepared {
-			continue
-		}
+		// TestScriptPrepared skips scripts marked SkipPrepared
 		TestScriptPrepared(t, harness, ts)
 	}
 }
@@ -307,7 +278,7 @@ func TestInfoSchema(t *testing.T, h Harness) {
 		if IsServerEngine(e) {
 			t.Skip("skipping for server engine as the processlist returned from server differs")
 		}
-		p := sqle.NewProcessList()
+		p := sqle.NewProcessListWithVariables(e.(*sqle.Engine).Variables())
 		p.AddConnection(1, "localhost")
 
 		ctx := NewContext(h)
@@ -322,10 +293,10 @@ func TestInfoSchema(t *testing.T, h Harness) {
 		require.NoError(t, err)
 
 		p.AddConnection(2, "otherhost")
-		sess2 := sql.NewBaseSessionWithClientServer("localhost", sql.Client{Address: "otherhost", User: "root"}, 2)
+		sess2 := sql.NewBaseSessionWithClientServerWithVariables("localhost", sql.Client{Address: "otherhost", User: "root"}, 2, e.(*sqle.Engine).Variables())
 		sess2.SetCurrentDatabase("otherdb")
 		p.ConnectionReady(sess2)
-		ctx2 := sql.NewContext(context.Background(), sql.WithPid(2), sql.WithSession(sess2))
+		ctx2 := sql.NewContextWithVariables(context.Background(), e.(*sqle.Engine).Variables(), sql.WithPid(2), sql.WithSession(sess2))
 		ctx2, err = p.BeginQuery(ctx2, "SELECT bar")
 		require.NoError(t, err)
 		p.EndQuery(ctx2)
@@ -340,7 +311,7 @@ func TestInfoSchema(t *testing.T, h Harness) {
 		if IsServerEngine(e) {
 			t.Skip("skipping for server engine as the processlist returned from server differs")
 		}
-		p := sqle.NewProcessList()
+		p := sqle.NewProcessListWithVariables(e.(*sqle.Engine).Variables())
 		p.AddConnection(1, "localhost")
 
 		ctx := NewContext(h)
@@ -355,10 +326,10 @@ func TestInfoSchema(t *testing.T, h Harness) {
 		require.NoError(t, err)
 
 		p.AddConnection(2, "otherhost")
-		sess2 := sql.NewBaseSessionWithClientServer("localhost", sql.Client{Address: "otherhost", User: "root"}, 2)
+		sess2 := sql.NewBaseSessionWithClientServerWithVariables("localhost", sql.Client{Address: "otherhost", User: "root"}, 2, e.(*sqle.Engine).Variables())
 		sess2.SetCurrentDatabase("otherdb")
 		p.ConnectionReady(sess2)
-		ctx2 := sql.NewContext(context.Background(), sql.WithPid(2), sql.WithSession(sess2))
+		ctx2 := sql.NewContextWithVariables(context.Background(), e.(*sqle.Engine).Variables(), sql.WithPid(2), sql.WithSession(sess2))
 		ctx2, err = p.BeginQuery(ctx2, "SELECT bar")
 		require.NoError(t, err)
 		p.EndQuery(ctx2)
@@ -382,7 +353,7 @@ func TestInfoSchema(t *testing.T, h Harness) {
 		if IsServerEngine(e) {
 			t.Skip("skipping for server engine as the processlist returned from server differs")
 		}
-		p := sqle.NewProcessList()
+		p := sqle.NewProcessListWithVariables(e.(*sqle.Engine).Variables())
 		p.AddConnection(1, "localhost")
 
 		ctx := NewContext(h)
@@ -397,10 +368,10 @@ func TestInfoSchema(t *testing.T, h Harness) {
 		require.NoError(t, err)
 
 		p.AddConnection(2, "otherhost")
-		sess2 := sql.NewBaseSessionWithClientServer("localhost", sql.Client{Address: "otherhost", User: "root"}, 2)
+		sess2 := sql.NewBaseSessionWithClientServerWithVariables("localhost", sql.Client{Address: "otherhost", User: "root"}, 2, e.(*sqle.Engine).Variables())
 		sess2.SetCurrentDatabase("otherdb")
 		p.ConnectionReady(sess2)
-		ctx2 := sql.NewContext(context.Background(), sql.WithPid(2), sql.WithSession(sess2))
+		ctx2 := sql.NewContextWithVariables(context.Background(), e.(*sqle.Engine).Variables(), sql.WithPid(2), sql.WithSession(sess2))
 		ctx2, err = p.BeginQuery(ctx2, "SELECT bar")
 		require.NoError(t, err)
 		p.EndQuery(ctx2)
@@ -424,7 +395,7 @@ func TestInfoSchema(t *testing.T, h Harness) {
 		if IsServerEngine(e) {
 			t.Skip("skipping for server engine as the processlist returned from server differs")
 		}
-		p := sqle.NewProcessList()
+		p := sqle.NewProcessListWithVariables(e.(*sqle.Engine).Variables())
 		p.AddConnection(1, "localhost")
 
 		ctx := NewContext(h)
@@ -439,10 +410,10 @@ func TestInfoSchema(t *testing.T, h Harness) {
 		require.NoError(t, err)
 
 		p.AddConnection(2, "otherhost")
-		sess2 := sql.NewBaseSessionWithClientServer("localhost", sql.Client{Address: "otherhost", User: "root"}, 2)
+		sess2 := sql.NewBaseSessionWithClientServerWithVariables("localhost", sql.Client{Address: "otherhost", User: "root"}, 2, e.(*sqle.Engine).Variables())
 		sess2.SetCurrentDatabase("otherdb")
 		p.ConnectionReady(sess2)
-		ctx2 := sql.NewContext(context.Background(), sql.WithPid(2), sql.WithSession(sess2))
+		ctx2 := sql.NewContextWithVariables(context.Background(), e.(*sqle.Engine).Variables(), sql.WithPid(2), sql.WithSession(sess2))
 		ctx2, err = p.BeginQuery(ctx2, "SELECT bar")
 		require.NoError(t, err)
 		p.EndQuery(ctx2)
@@ -696,9 +667,8 @@ func TestVersionedQueriesPrepared(t *testing.T, harness VersionedDBHarness) {
 		TestPreparedQueryWithEngine(t, harness, e, tt)
 	}
 
-	t.Skip("skipping tests that version using UserVars instead of BindVars")
 	for _, tt := range queries.VersionedScripts {
-		TestScriptPrepared(t, harness, tt)
+		skipSubtest(t, tt.Name, "skipping tests that version using UserVars instead of BindVars")
 	}
 }
 
@@ -731,6 +701,12 @@ func TestQueryPlan(t *testing.T, harness Harness, e QueryEngine, tt queries.Quer
 
 func TestQueryPlanWithName(t *testing.T, name string, harness Harness, e QueryEngine, query, expectedPlan string, options sql.DescribeOptions) {
 	t.Run(name, func(t *testing.T) {
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(query) {
+				t.Skipf("Skipping query plan for %s", query)
+			}
+		}
+
 		ctx := NewContext(harness)
 		builder := planbuilder.New(ctx, e.EngineAnalyzer().Catalog, nil)
 		parsed, _, _, qFlags, err := builder.Parse(query, nil, false)
@@ -738,12 +714,6 @@ func TestQueryPlanWithName(t *testing.T, name string, harness Harness, e QueryEn
 
 		node, err := e.EngineAnalyzer().Analyze(ctx, parsed, nil, qFlags)
 		require.NoError(t, err)
-
-		if sh, ok := harness.(SkippingHarness); ok {
-			if sh.SkipQueryTest(query) {
-				t.Skipf("Skipping query plan for %s", query)
-			}
-		}
 
 		// If iterating over the node won't have side effects,
 		// do it in order to populate actual stats data.
@@ -759,6 +729,12 @@ func TestQueryPlanWithName(t *testing.T, name string, harness Harness, e QueryEn
 
 func TestQueryPlanWithEngine(t *testing.T, harness Harness, e QueryEngine, tt queries.QueryPlanTest, verbose bool) {
 	t.Run(tt.Query, func(t *testing.T) {
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(tt.Query) {
+				t.Skipf("Skipping query plan for %s", tt.Query)
+			}
+		}
+
 		ctx := NewContext(harness)
 		builder := planbuilder.New(ctx, e.EngineAnalyzer().Catalog, nil)
 		parsed, _, _, qFlags, err := builder.Parse(tt.Query, nil, false)
@@ -766,12 +742,6 @@ func TestQueryPlanWithEngine(t *testing.T, harness Harness, e QueryEngine, tt qu
 
 		node, err := e.EngineAnalyzer().Analyze(ctx, parsed, nil, qFlags)
 		require.NoError(t, err)
-
-		if sh, ok := harness.(SkippingHarness); ok {
-			if sh.SkipQueryTest(tt.Query) {
-				t.Skipf("Skipping query plan for %s", tt.Query)
-			}
-		}
 
 		var cmp string
 		if verbose {
@@ -1029,8 +999,7 @@ func TestInsertIntoErrors(t *testing.T, harness Harness) {
 
 func TestBrokenInsertScripts(t *testing.T, harness Harness) {
 	for _, script := range queries.InsertBrokenScripts {
-		t.Skip()
-		TestScript(t, harness, script)
+		skipSubtest(t, script.Name)
 	}
 }
 
@@ -1042,14 +1011,24 @@ func TestSpatialInsertInto(t *testing.T, harness Harness) {
 }
 
 // setSecureFilePriv sets the secure_file_priv system variable to the current working directory.
-func setSecureFilePriv() error {
+func setSecureFilePriv(harness Harness) error {
 	wd, err := os.Getwd()
 	if err != nil {
 		wd = "./"
 	}
-	return sql.SystemVariables.AssignValues(map[string]interface{}{
+	ctx := NewContext(harness)
+	registry := ctx.SystemVariables()
+	values := map[string]interface{}{
 		"secure_file_priv": wd,
-	})
+	}
+	if ctx.EngineVariables() == nil {
+		// Legacy harness contexts use the package registry directly.
+		return registry.AssignValues(values)
+	}
+	if aware, ok := registry.(sql.ContextAwareSystemVariableRegistry); ok {
+		return aware.AssignValuesWithContext(ctx, values)
+	}
+	return fmt.Errorf("secure_file_priv initialization: system registry does not support context-aware assignment")
 }
 
 func TestLoadData(t *testing.T, harness Harness) {
@@ -1057,7 +1036,7 @@ func TestLoadData(t *testing.T, harness Harness) {
 	e := MustNewEngine(t, harness)
 	defer e.Close()
 
-	require.NoError(t, setSecureFilePriv())
+	require.NoError(t, setSecureFilePriv(harness))
 	TestQuery(t, harness, e, queries.QueryTest{
 		Query:    "select @@global.secure_file_priv != '';",
 		Expected: []sql.Row{{true}},
@@ -1072,7 +1051,7 @@ func TestLoadDataErrors(t *testing.T, harness Harness) {
 	e := MustNewEngine(t, harness)
 	defer e.Close()
 
-	require.NoError(t, setSecureFilePriv())
+	require.NoError(t, setSecureFilePriv(harness))
 	TestQuery(t, harness, e, queries.QueryTest{
 		Query:    "select @@global.secure_file_priv != '';",
 		Expected: []sql.Row{{true}},
@@ -1088,7 +1067,7 @@ func TestLoadDataFailing(t *testing.T, harness Harness) {
 	e := MustNewEngine(t, harness)
 	defer e.Close()
 
-	require.NoError(t, setSecureFilePriv())
+	require.NoError(t, setSecureFilePriv(harness))
 	TestQuery(t, harness, e, queries.QueryTest{
 		Query:    "select @@global.secure_file_priv != '';",
 		Expected: []sql.Row{{true}},
@@ -1108,7 +1087,7 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 	err := CreateNewConnectionForServerEngine(ctx, e)
 	require.NoError(t, err, nil)
 
-	require.NoError(t, setSecureFilePriv())
+	require.NoError(t, setSecureFilePriv(harness))
 	TestQuery(t, harness, e, queries.QueryTest{
 		Query:    "select @@global.secure_file_priv != '';",
 		Expected: []sql.Row{{true}},
@@ -1411,7 +1390,8 @@ func TestDelete(t *testing.T, harness Harness) {
 	})
 	t.Run("Delete from join", func(t *testing.T) {
 		// Run tests with each biased coster to get coverage over join types
-		for name, coster := range biasedCosters {
+		for _, name := range biasedCosterNames() {
+			coster := biasedCosters[name]
 			t.Run(name+" join", func(t *testing.T) {
 				for _, tt := range queries.DeleteJoinTests {
 					t.Run(tt.WriteQuery, func(t *testing.T) {
@@ -1769,23 +1749,18 @@ func TestConvert(t *testing.T, harness Harness) {
 	defer e.Close()
 	for _, tt := range queries.ConvertTests {
 		query := fmt.Sprintf("select count(*) from typestable where %s %s %s", tt.Field, tt.Op, tt.Operand)
-		t.Run(query, func(t *testing.T) {
-			TestQuery(t, harness, e, queries.QueryTest{
-				Query:    query,
-				Expected: []sql.Row{{tt.ExpCnt}},
-			})
+		TestQuery(t, harness, e, queries.QueryTest{
+			Query:    query,
+			Expected: []sql.Row{{tt.ExpCnt}},
 		})
 	}
-
 }
 
 func TestConvertPrepared(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.TypestableData)
 	for _, tt := range queries.ConvertTests {
 		query := fmt.Sprintf("select count(*) from typestable where %s %s %s", tt.Field, tt.Op, tt.Operand)
-		t.Run(query, func(t *testing.T) {
-			TestPreparedQuery(t, harness, query, []sql.Row{{tt.ExpCnt}}, nil)
-		})
+		TestPreparedQuery(t, harness, query, []sql.Row{{tt.ExpCnt}}, nil)
 	}
 }
 
@@ -2005,16 +1980,22 @@ func TestComplexIndexQueriesPrepared(t *testing.T, harness Harness) {
 func TestJsonScriptsPrepared(t *testing.T, harness Harness, skippedTests []string) {
 	harness.Setup(setup.MydbData, setup.BlobData)
 	for _, script := range queries.JsonScripts {
-		t.Run(script.Name, func(t *testing.T) {
-			for _, skippedTest := range skippedTests {
-				if strings.Contains(script.Name, skippedTest) {
-					t.Skip()
-				}
-			}
-
-			TestScriptPrepared(t, harness, script)
-		})
+		if isSkippedJsonScript(script, skippedTests) {
+			skipSubtest(t, script.Name)
+			continue
+		}
+		TestScriptPrepared(t, harness, script)
 	}
+}
+
+// isSkippedJsonScript returns whether |script|'s name contains any of |skippedTests|.
+func isSkippedJsonScript(script queries.ScriptTest, skippedTests []string) bool {
+	for _, skippedTest := range skippedTests {
+		if strings.Contains(script.Name, skippedTest) {
+			return true
+		}
+	}
+	return false
 }
 
 func TestCreateCheckConstraintsScriptsPrepared(t *testing.T, harness Harness) {
@@ -2066,38 +2047,34 @@ func TestUserPrivileges(t *testing.T, harness ClientHarness) {
 				RunQueryWithContext(t, engine, harness, ctx, statement)
 			}
 			for _, assertion := range script.Assertions {
-				if sh, ok := harness.(SkippingHarness); ok {
-					if sh.SkipQueryTest(assertion.Query) {
-						t.Skipf("Skipping query %s", assertion.Query)
+				t.Run(assertion.Query, func(t *testing.T) {
+					if sh, ok := harness.(SkippingHarness); ok {
+						if sh.SkipQueryTest(assertion.Query) {
+							t.Skipf("Skipping query %s", assertion.Query)
+						}
 					}
-				}
 
-				user := assertion.User
-				host := assertion.Host
-				if user == "" {
-					user = "root"
-				}
-				if host == "" {
-					host = "localhost"
-				}
-				ctx := NewContextWithClient(harness, sql.Client{
-					User:    user,
-					Address: host,
-				})
+					user := assertion.User
+					host := assertion.Host
+					if user == "" {
+						user = "root"
+					}
+					if host == "" {
+						host = "localhost"
+					}
+					ctx := NewContextWithClient(harness, sql.Client{
+						User:    user,
+						Address: host,
+					})
 
-				if assertion.ExpectedErr != nil {
-					t.Run(assertion.Query, func(t *testing.T) {
+					if assertion.ExpectedErr != nil {
 						AssertErrWithCtx(t, engine, harness, ctx, assertion.Query, nil, assertion.ExpectedErr)
-					})
-				} else if assertion.ExpectedErrStr != "" {
-					t.Run(assertion.Query, func(t *testing.T) {
+					} else if assertion.ExpectedErrStr != "" {
 						AssertErrWithCtx(t, engine, harness, ctx, assertion.Query, nil, nil, assertion.ExpectedErrStr)
-					})
-				} else {
-					t.Run(assertion.Query, func(t *testing.T) {
+					} else {
 						TestQueryWithContext(t, ctx, engine, harness, assertion.Query, assertion.Expected, nil, nil, nil)
-					})
-				}
+					}
+				})
 			}
 		})
 	}
@@ -2144,22 +2121,20 @@ func TestUserPrivileges(t *testing.T, harness ClientHarness) {
 				RunQueryWithContext(t, engine, harness, rootCtx, script.Queries[i])
 			}
 			lastQuery := script.Queries[len(script.Queries)-1]
-			if sh, ok := harness.(SkippingHarness); ok {
-				if sh.SkipQueryTest(lastQuery) {
-					t.Skipf("Skipping query %s", lastQuery)
-				}
-			}
 			ctx := rootCtx.WithClient(sql.Client{
 				User:    "tester",
 				Address: "localhost",
 			})
 			ctx.SetCurrentDatabase(rootCtx.GetCurrentDatabase())
-			if script.ExpectedErr != nil {
-				t.Run(lastQuery, func(t *testing.T) {
+			t.Run(lastQuery, func(t *testing.T) {
+				if sh, ok := harness.(SkippingHarness); ok {
+					if sh.SkipQueryTest(lastQuery) {
+						t.Skipf("Skipping query %s", lastQuery)
+					}
+				}
+				if script.ExpectedErr != nil {
 					AssertErrWithCtx(t, engine, harness, ctx, lastQuery, nil, script.ExpectedErr)
-				})
-			} else if script.ExpectingErr {
-				t.Run(lastQuery, func(t *testing.T) {
+				} else if script.ExpectingErr {
 					_, iter, _, err := engine.Query(ctx, lastQuery)
 					if err == nil {
 						_, err = sql.RowIterToRows(ctx, iter)
@@ -2175,9 +2150,7 @@ func TestUserPrivileges(t *testing.T, harness ClientHarness) {
 						}
 					}
 					t.Fatalf("Not a standard privilege-check error: %s", err.Error())
-				})
-			} else {
-				t.Run(lastQuery, func(t *testing.T) {
+				} else {
 					sch, iter, _, err := engine.Query(ctx, lastQuery)
 					require.NoError(t, err)
 					rows, err := sql.RowIterToRows(ctx, iter)
@@ -2187,8 +2160,8 @@ func TestUserPrivileges(t *testing.T, harness ClientHarness) {
 					if script.Expected != nil && (rows != nil || len(script.Expected) != 0) {
 						CheckResults(ctx, t, harness, script.Expected, nil, sch, rows, lastQuery, engine)
 					}
-				})
-			}
+				}
+			})
 		})
 	}
 }
@@ -2845,9 +2818,7 @@ func TestVersionedViewsPrepared(t *testing.T, harness VersionedDBHarness) {
 func TestCreateTable(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData, setup.FooData)
 	for _, tt := range queries.CreateTableQueries {
-		t.Run(tt.WriteQuery, func(t *testing.T) {
-			RunWriteQueryTest(t, harness, tt)
-		})
+		RunWriteQueryTest(t, harness, tt)
 	}
 
 	for _, script := range queries.CreateTableScriptTests {
@@ -2950,8 +2921,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 	})
 
 	for _, tt := range queries.BrokenCreateTableQueries {
-		t.Skip("primary key lengths are not stored properly")
-		RunWriteQueryTest(t, harness, tt)
+		skipSubtest(t, tt.WriteQuery, "primary key lengths are not stored properly")
 	}
 }
 
@@ -3159,8 +3129,15 @@ func TestRenameTable(t *testing.T, harness Harness) {
 			se.NewConnection(ctx)
 		}
 		TestQueryWithContext(t, ctx, e, harness, "select database()", []sql.Row{{nil}}, nil, nil, nil)
+	})
 
+	t.Run("no database selected rename", func(t *testing.T) {
 		t.Skip("broken")
+		ctx := NewContext(harness)
+		ctx.SetCurrentDatabase("")
+		if se, ok := e.(*ServerQueryEngine); ok {
+			se.NewConnection(ctx)
+		}
 		TestQueryWithContext(t, ctx, e, harness, "RENAME TABLE mydb.emptytable TO mydb.emptytable2", []sql.Row{{types.NewOkResult(0)}}, nil, nil, nil)
 		AssertErrWithCtx(t, e, harness, ctx, "SELECT COUNT(*) FROM mydb.emptytable", nil, sql.ErrTableNotFound)
 		TestQueryWithContext(t, ctx, e, harness, "SELECT COUNT(*) FROM mydb.emptytable2", []sql.Row{{types.NewOkResult(0)}}, nil, nil, nil)
@@ -3694,6 +3671,17 @@ func TestVariables(t *testing.T, harness Harness) {
 	for _, query := range queries.VariableQueries {
 		TestScript(t, harness, query)
 	}
+	for _, script := range queries.VariableScopeTests {
+		t.Run(script.Name, func(t *testing.T) {
+			harness.Setup(setup.MydbData)
+			e := MustNewEngine(t, harness)
+			defer e.Close()
+			if IsServerEngine(e) {
+				t.Skip("the server engine runs every client over one connection")
+			}
+			TestTransactionScriptWithEngine(t, e, harness, script, false)
+		})
+	}
 
 	// Test session pulling from global
 	engine, err := harness.NewEngine(t)
@@ -3703,7 +3691,7 @@ func TestVariables(t *testing.T, harness Harness) {
 	// no permissions established.
 	engine.EngineAnalyzer().Catalog.MySQLDb = mysql_db.CreateEmptyMySQLDb()
 
-	ctx1 := sql.NewEmptyContext()
+	ctx1 := NewContext(harness)
 	err = CreateNewConnectionForServerEngine(ctx1, engine)
 	require.NoError(t, err)
 	for _, assertion := range []queries.ScriptTestAssertion{
@@ -3771,7 +3759,7 @@ func TestVariables(t *testing.T, harness Harness) {
 		})
 	}
 
-	ctx2 := sql.NewEmptyContext()
+	ctx2 := NewSession(harness)
 	err = CreateNewConnectionForServerEngine(ctx2, engine)
 	require.NoError(t, err)
 	for _, assertion := range []queries.ScriptTestAssertion{
@@ -4841,9 +4829,9 @@ func TestOnUpdateExprScripts(t *testing.T, harness Harness) {
 				}
 			}
 
-			for _, assertion := range script.Assertions {
+			for _, assertion := range assertions {
 				t.Run(assertion.Query, func(t *testing.T) {
-					if assertion.Skip {
+					if skipAssertion(harness, assertion) {
 						t.Skip()
 					}
 					sql.RunWithNowFunc(func() time.Time { return queries.Dec15_1_30 }, func() error {
@@ -4888,14 +4876,11 @@ func TestNullRanges(t *testing.T, harness Harness) {
 func TestJsonScripts(t *testing.T, harness Harness, skippedTests []string) {
 	harness.Setup(setup.MydbData, setup.BlobData)
 	for _, script := range queries.JsonScripts {
-		t.Run(script.Name, func(t *testing.T) {
-			for _, skippedTest := range skippedTests {
-				if strings.Contains(script.Name, skippedTest) {
-					t.Skip()
-				}
-			}
-			TestScript(t, harness, script)
-		})
+		if isSkippedJsonScript(script, skippedTests) {
+			skipSubtest(t, script.Name)
+			continue
+		}
+		TestScript(t, harness, script)
 	}
 }
 
@@ -5037,14 +5022,14 @@ func TestPersist(t *testing.T, harness Harness, newPersistableSess func(ctx *sql
 
 	for _, tt := range q {
 		t.Run(tt.Name, func(t *testing.T) {
-			variables.InitSystemVariables()
 			ctx := NewContext(harness)
+			require.NoError(t, ctx.SystemVariables().SetGlobal(ctx, "max_connections", int64(151)))
 			ctx.Session = newPersistableSess(ctx)
 
 			TestQueryWithContext(t, ctx, e, harness, tt.Query, tt.Expected, nil, nil, nil)
 
 			if tt.ExpectedGlobal != nil {
-				_, res, _ := sql.SystemVariables.GetGlobal("max_connections")
+				_, res, _ := ctx.SystemVariables().GetGlobal("max_connections")
 				require.Equal(t, tt.ExpectedGlobal, res)
 
 				showGlobalVarsQuery := "SHOW GLOBAL VARIABLES LIKE 'max_connections'"
@@ -5408,7 +5393,7 @@ func testCharsetCollationWire(t *testing.T, h Harness, sessionBuilder server.Ses
 			defer engine.Close()
 			engine.EngineAnalyzer().Catalog.MySQLDb.AddRootAccount()
 
-			s, err := server.NewServer(serverConfig, engine, sql.NewContext, sessionBuilder, nil)
+			s, err := server.NewServer(serverConfig, engine, sql.ContextFactoryWithVariables(engine.Variables()), sessionBuilder, nil)
 			require.NoError(t, err)
 			go func() {
 				err := s.Start()

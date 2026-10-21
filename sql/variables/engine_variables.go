@@ -1,4 +1,4 @@
-// Copyright 2022 Dolthub, Inc.
+// Copyright 2026 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,35 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package setup
+package variables
 
-import (
-	"io"
-	"testing"
+import "github.com/dolthub/go-mysql-server/sql"
 
-	"github.com/stretchr/testify/require"
-)
-
-func TestFileSourceScanner(t *testing.T) {
-	s, err := NewFileSetup("scripts/mydb")
-	if err != nil {
-		t.Fatal(err)
+// NewEngineVariables creates independent system and status registries for one
+// engine. A bundle can be shared by sessions belonging to that engine.
+func NewEngineVariables() *sql.EngineVariables {
+	return &sql.EngineVariables{
+		System: NewSystemVariableRegistry(),
+		Status: NewStatusVariableRegistry(),
 	}
-	out := make([]string, 0)
-	for {
-		ok, err := s.Next()
-		if err == io.EOF || !ok {
-			break
-		}
-		if err != nil {
-			t.Fatal(err)
-		}
-		out = append(out, s.data.Sql)
-	}
-
-	exp := []string{
-		"create database if not exists mydb",
-		"use mydb",
-	}
-	require.Equal(t, exp, out)
 }
