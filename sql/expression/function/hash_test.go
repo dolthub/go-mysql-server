@@ -296,11 +296,11 @@ func TestCompress(t *testing.T) {
 		},
 		{
 			val: expression.NewLiteral(int64(1), types.Int64),
-			exp: "0100000078DA3204040000FFFF00320032",
+			exp: "0100000078DA32040C0000320032",
 		},
 		{
 			val: expression.NewLiteral("1", types.Text),
-			exp: "0100000078DA3204040000FFFF00320032",
+			exp: "0100000078DA32040C0000320032",
 		},
 		{
 			val: expression.NewLiteral("", types.Text),
@@ -308,11 +308,11 @@ func TestCompress(t *testing.T) {
 		},
 		{
 			val: expression.NewLiteral("abc", types.Text),
-			exp: "0300000078DA4A4C4A06040000FFFF024D0127",
+			exp: "0300000078DA4A4C4A060C00024D0127",
 		},
 		{
 			val: expression.NewLiteral("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", types.Text),
-			exp: "2A00000078DA72241A00020000FFFFE5710AAB",
+			exp: "2A00000078DA72241A000600E5710AAB",
 		},
 	}
 
