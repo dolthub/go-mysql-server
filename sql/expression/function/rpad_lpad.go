@@ -131,12 +131,7 @@ func (p *pad) IsNullable(ctx *sql.Context) bool {
 
 // Type implements [sql.Expression].
 func (p *pad) Type(ctx *sql.Context) sql.Type {
-	if strType := p.str.Type(ctx); types.IsText(strType) {
-		if tc, ok := strType.(sql.TypeWithCollation); ok {
-			return types.CreateLongText(tc.Collation())
-		}
-	}
-	return types.LongText
+	return types.LongTextForType(p.str.Type(ctx))
 }
 
 // CollationCoercibility implements [sql.CollationCoercible]. It

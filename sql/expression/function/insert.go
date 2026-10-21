@@ -64,14 +64,12 @@ func (i *Insert) IsNullable(ctx *sql.Context) bool {
 
 // Type implements the Expression interface
 func (i *Insert) Type(ctx *sql.Context) sql.Type {
-	return types.LongText
+	return types.LongTextForType(i.str.Type(ctx))
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible
 func (i *Insert) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
-	collation, coercibility = sql.GetCoercibility(ctx, i.str)
-	otherCollation, otherCoercibility := sql.GetCoercibility(ctx, i.newStr)
-	return sql.ResolveCoercibility(collation, coercibility, otherCollation, otherCoercibility)
+	return sql.ResolveCoercibilityExpressions(ctx, i.str)
 }
 
 // String implements the Expression interface
@@ -89,103 +87,56 @@ func (i *Insert) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql
 
 // Eval implements the Expression interface
 func (i *Insert) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	str, err := i.str.Eval(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-	if str == nil {
-		return nil, nil
-	}
+	collation, _ := i.CollationCoercibility(ctx)
 
-	pos, err := i.pos.Eval(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-	if pos == nil {
-		return nil, nil
-	}
-
-	length, err := i.length.Eval(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-	if length == nil {
-		return nil, nil
-	}
-
-	newStr, err := i.newStr.Eval(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-	if newStr == nil {
-		return nil, nil
-	}
-
-	// Convert all arguments to their expected types
-	strVal, _, err := types.LongText.Convert(ctx, str)
-	if err != nil {
+	s, ok, err := evalString(ctx, i.str, row, collation)
+	if err != nil || !ok {
 		return nil, err
 	}
 
-	// Handle Dolt's TextStorage wrapper that doesn't convert to plain string
-	strVal, err = sql.UnwrapAny(ctx, strVal)
-	if err != nil {
+	p, ok, err := evalInt64(ctx, i.pos, row)
+	if err != nil || !ok {
 		return nil, err
 	}
 
-	posVal, _, err := types.Int64.Convert(ctx, pos)
-	if err != nil {
+	l, ok, err := evalInt64(ctx, i.length, row)
+	if err != nil || !ok {
 		return nil, err
 	}
 
-	lengthVal, _, err := types.Int64.Convert(ctx, length)
-	if err != nil {
+	n, ok, err := evalString(ctx, i.newStr, row, collation)
+	if err != nil || !ok {
 		return nil, err
 	}
 
-	newStrVal, _, err := types.LongText.Convert(ctx, newStr)
-	if err != nil {
-		return nil, err
-	}
-
-	// Handle Dolt's TextStorage wrapper that doesn't convert to plain string
-	newStrVal, err = sql.UnwrapAny(ctx, newStrVal)
-	if err != nil {
-		return nil, err
-	}
-
-	s := strVal.(string)
-	p := posVal.(int64)
-	l := lengthVal.(int64)
-	n := newStrVal.(string)
-
-	// MySQL uses 1-based indexing for position
-	// Handle negative position - return original string
 	if p < 1 {
 		return s, nil
 	}
 
-	// Convert to 0-based indexing
-	startIdx := p - 1
+	handler := sql.NewCharSetHandler(collation)
+	numChars, err := handler.NumChars(s)
+	if err != nil {
+		return nil, err
+	}
 
-	// Handle case where position is beyond string length
-	if startIdx >= int64(len(s)) {
+	startIdx := p - 1
+	if startIdx >= int64(numChars) {
 		return s, nil
 	}
 
-	// Calculate end index
-	// For negative length, replace from position to end of string
-	var endIdx int64
-	if l < 0 {
-		endIdx = int64(len(s))
-	} else {
+	endIdx := int64(numChars)
+	if l >= 0 && startIdx+l < endIdx {
 		endIdx = startIdx + l
-		if endIdx > int64(len(s)) {
-			endIdx = int64(len(s))
-		}
 	}
 
-	// Build the result string
-	result := s[:startIdx] + n + s[endIdx:]
-	return result, nil
+	startByte, err := handler.CharPos(s, int(startIdx))
+	if err != nil {
+		return nil, err
+	}
+	endByte, err := handler.CharPos(s, int(endIdx))
+	if err != nil {
+		return nil, err
+	}
+
+	return s[:startByte] + n + s[endByte:], nil
 }

@@ -5484,4 +5484,42 @@ var FunctionQueryTests = []QueryTest{
 		Query:    "SELECT id, SIGN(f), SIGN(d) FROM (SELECT 1 AS id, 0.3e0 AS f, CAST(0.3 AS DECIMAL(10, 4)) AS d UNION ALL SELECT 2, -0.3e0, CAST(-0.3 AS DECIMAL(10, 4)) UNION ALL SELECT 3, 0.0001e0, CAST(0.0001 AS DECIMAL(10, 4)) UNION ALL SELECT 4, -0.0001e0, CAST(-0.0001 AS DECIMAL(10, 4))) t ORDER BY id",
 		Expected: []sql.Row{{1, int8(1), int8(1)}, {2, int8(-1), int8(-1)}, {3, int8(1), int8(1)}, {4, int8(-1), int8(-1)}},
 	},
+	// https://github.com/dolthub/go-mysql-server/issues/4050
+	{
+		Query:    `SELECT INSERT('héllo', 2, 1, 'X')`,
+		Expected: []sql.Row{{"hXllo"}},
+	},
+	{
+		Query:    `SELECT INSERT('日本語テキスト', 3, 2, 'ab')`,
+		Expected: []sql.Row{{"日本abキスト"}},
+	},
+	{
+		Dialect:  "mysql",
+		Query:    `SELECT INSERT(_binary 'héllo', 2, 1, 'X')`,
+		Expected: []sql.Row{{string([]byte{'h', 'X', 0xa9, 'l', 'l', 'o'})}},
+	},
+	{
+		Dialect:  "mysql",
+		Query:    `SELECT INSERT(_binary 'héllo', 2, 2, 'X')`,
+		Expected: []sql.Row{{"hXllo"}},
+	},
+	{
+		Dialect:  "mysql",
+		Query:    `SELECT COLLATION(INSERT(_latin1'a', 1, 1, _latin1'a')), COERCIBILITY(INSERT(_latin1'a', 1, 1, _latin1'a'))`,
+		Expected: []sql.Row{{"latin1_swedish_ci", uint64(4)}},
+	},
+	{
+		Dialect:  "mysql",
+		Query:    `SELECT COLLATION(INSERT(_latin1'b', 1, 1, _binary'x')), COERCIBILITY(INSERT(_latin1'b', 1, 1, _binary'x'))`,
+		Expected: []sql.Row{{"latin1_swedish_ci", uint64(4)}},
+	},
+	{
+		Dialect:  "mysql",
+		Query:    `SELECT COLLATION(INSERT(_binary'b', 1, 1, 'x')), COERCIBILITY(INSERT(_binary'b', 1, 1, 'x'))`,
+		Expected: []sql.Row{{"binary", uint64(4)}},
+	},
+	{
+		Query:    `SELECT INSERT('a🔥b', 2, 1, 'X')`,
+		Expected: []sql.Row{{"aXb"}},
+	},
 }
