@@ -345,6 +345,18 @@ var FunctionQueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: `SELECT INSERT("héllo", 2, 1, "X")`,
+		Expected: []sql.Row{
+			{string("hXllo")},
+		},
+	},
+	{
+		Query: `SELECT INSERT("日本語テキスト", 3, 2, "ab")`,
+		Expected: []sql.Row{
+			{string("日本abキスト")},
+		},
+	},
+	{
 		Query: `SELECT INSERT("hello", 10, 2, "xyz")`,
 		Expected: []sql.Row{
 			{string("hello")},

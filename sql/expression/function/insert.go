@@ -165,11 +165,14 @@ func (i *Insert) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return s, nil
 	}
 
+	// Position and length count characters, not bytes
+	r := []rune(s)
+
 	// Convert to 0-based indexing
 	startIdx := p - 1
 
 	// Handle case where position is beyond string length
-	if startIdx >= int64(len(s)) {
+	if startIdx >= int64(len(r)) {
 		return s, nil
 	}
 
@@ -177,15 +180,15 @@ func (i *Insert) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// For negative length, replace from position to end of string
 	var endIdx int64
 	if l < 0 {
-		endIdx = int64(len(s))
+		endIdx = int64(len(r))
 	} else {
 		endIdx = startIdx + l
-		if endIdx > int64(len(s)) {
-			endIdx = int64(len(s))
+		if endIdx > int64(len(r)) {
+			endIdx = int64(len(r))
 		}
 	}
 
 	// Build the result string
-	result := s[:startIdx] + n + s[endIdx:]
+	result := string(r[:startIdx]) + n + string(r[endIdx:])
 	return result, nil
 }
