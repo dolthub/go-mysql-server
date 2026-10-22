@@ -99,7 +99,6 @@ func cmpEval(
 		return nil, nil
 	}
 
-	// TODO: what if cmp type is DATE/DATETIME
 	// Compare exact values without losing digits through float64.
 	if dt, ok := retType.(sql.DecimalType); ok {
 		return cmpDec(ctx, args, row, cmpType, dt, direction)
@@ -143,7 +142,11 @@ func cmpEval(
 	}
 	res, _, err := types.TypeAwareConversion(ctx, res, cmpType, retType)
 	if err != nil {
-		// TODO: warn
+		if sql.ErrIncorrectValue.Is(err) {
+			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
+		} else if !sql.HandleConvertWarning(ctx, err) {
+			return nil, err
+		}
 	}
 	return res, nil
 }
@@ -269,6 +272,8 @@ func cmpRetType(ctx *sql.Context, args ...sql.Expression) (sql.Type, sql.Type, e
 
 	// If ANY argument is a string, the resulting type will be TEXT
 	if hasString {
+		// TODO: Get min required VARCHAR length rather than always using LongText
+		// Tracking Issue: https://github.com/dolthub/dolt/issues/12181
 		return types.LongText, cmpType, nil
 	}
 

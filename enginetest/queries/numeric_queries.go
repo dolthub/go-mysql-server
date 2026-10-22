@@ -2175,24 +2175,21 @@ ORDER BY ordinal_position`,
 		Name:    "Greatest and least with decimals and integer types",
 		Dialect: "mysql",
 		SetUpScript: []string{
-			`
-CREATE TABLE mixed_values (
+			`CREATE TABLE mixed_values (
     id INT PRIMARY KEY,
     i BIGINT,
     u BIGINT UNSIGNED,
     d DECIMAL(2, 1),
     f DOUBLE
 )`,
-			`
-INSERT INTO mixed_values VALUES
+			`INSERT INTO mixed_values VALUES
     (1, -9223372036854775808, 18446744073709551615, 0.1, 1.25),
     (2, 9007199254740993, 9007199254740994, 0.1, 1.25),
     (3, 1, 2, NULL, 1.25)`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: `
-SELECT
+				Query: `SELECT
     id,
     GREATEST(i, u, d),
     LEAST(i, u, d),
@@ -2221,8 +2218,7 @@ ORDER BY id`,
 				},
 			},
 			{
-				Query: `
-CREATE TABLE mixed_metadata AS
+				Query: `CREATE TABLE mixed_metadata AS
 SELECT
     GREATEST(i, d) AS signed_decimal,
     LEAST(u, d) AS unsigned_decimal,

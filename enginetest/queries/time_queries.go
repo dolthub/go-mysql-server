@@ -104,7 +104,8 @@ var TimeQueryTests = []ScriptTest{
 // TemporalScriptTests contains self-contained temporal script tests.
 var TemporalScriptTests = []ScriptTest{
 	{
-		Name: "greatest and least with temporal and string arguments",
+		Dialect: "mysql",
+		Name:    "greatest and least with temporal and string arguments",
 		SetUpScript: []string{
 			"CREATE TABLE t (id INT PRIMARY KEY, ts TIMESTAMP, dt DATETIME);",
 			"INSERT INTO t VALUES (1, '2021-01-01 00:00:00', '2021-01-01 00:00:00');",
@@ -128,6 +129,7 @@ var TemporalScriptTests = []ScriptTest{
 			},
 			{
 				// TODO: MySQL is able to infer required minimum required length for varchar, we just use LongText
+				// Tracking Issue: https://github.com/dolthub/dolt/issues/12181
 				Skip:  true,
 				Query: "SHOW CREATE TABLE x;",
 				Expected: []sql.Row{{"x", "CREATE TABLE `x` (\n" +
