@@ -910,7 +910,15 @@ func (b *BaseBuilder) buildSubqueryAlias(ctx *sql.Context, n *plan.SubqueryAlias
 		return nil, err
 	}
 
-	return sql.NewSpanIter(span, iter), nil
+	iter = sql.NewSpanIter(span, iter)
+
+	if valueRowWriter, ok := iter.(sql.ValueRowWriter); ok && valueRowWriter.IsValueRowWriter(ctx) {
+		return plan.NewSubqueryAliasIter(n.Columns(), valueRowWriter)
+	} else if valueRowIter, ok := iter.(sql.ValueRowIter); ok && valueRowIter.IsValueRowIter(ctx) {
+		return sql.NewValueRowWriter(n.Columns(), valueRowIter), nil
+	}
+
+	return iter, nil
 }
 
 func (b *BaseBuilder) buildSort(ctx *sql.Context, n *plan.Sort, row sql.Row) (sql.RowIter, error) {

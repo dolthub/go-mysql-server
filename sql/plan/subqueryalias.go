@@ -212,3 +212,48 @@ func (sq *SubqueryAlias) WithColumnNames(columns []string) *SubqueryAlias {
 	ret.ColumnNames = columns
 	return &ret
 }
+
+// SubqueryAliasIter is an implementation of ValueRowWriter that maps child ColumnIds onto parent ColumnIds
+// as it iterates. All RowIter methods are implicitly passed through to the underlying writer.
+type SubqueryAliasIter struct {
+	DestColumns sql.ColSet
+	sql.ValueRowWriter
+}
+
+func NewSubqueryAliasIter(destColumns sql.ColSet, child sql.ValueRowWriter) (SubqueryAliasIter, error) {
+	if destColumns.Len() != child.Columns().Len() {
+		return SubqueryAliasIter{}, fmt.Errorf("SubqueryAliasIter column count mismatch: %d != %d", destColumns.Len(), child.Columns().Len())
+	}
+	return SubqueryAliasIter{destColumns, child}, nil
+}
+
+var _ sql.ValueRowWriter = SubqueryAliasIter{}
+
+func (m SubqueryAliasIter) IsValueRowWriter(ctx *sql.Context) bool {
+	return m.ValueRowWriter.IsValueRowWriter(ctx)
+}
+
+func (m SubqueryAliasIter) WriteNextValueRow(ctx *sql.Context, row sql.ValueRow) error {
+	// It is necessary to write to a new row because the subquery could be a common
+	// table expression that is referenced multiple times, in which case each reference
+	// will use the same ColumnIds.
+	// TODO: We can prevent this by pushing ColumnIds from the SQA into the subquery.
+	childRow := make(sql.ValueRow, m.ValueRowWriter.Columns().Max()+1)
+	err := m.ValueRowWriter.WriteNextValueRow(ctx, childRow)
+	if err != nil {
+		return err
+	}
+	sourceColumns := m.ValueRowWriter.Columns()
+	nextSourceColumn, ok := sourceColumns.Next(1)
+	nextDestColumn, _ := m.DestColumns.Next(1)
+	for ok {
+		row[nextDestColumn] = childRow[nextSourceColumn]
+		nextSourceColumn, ok = sourceColumns.Next(nextSourceColumn + 1)
+		nextDestColumn, _ = m.DestColumns.Next(nextDestColumn + 1)
+	}
+	return nil
+}
+
+func (m SubqueryAliasIter) Columns() sql.ColSet {
+	return m.DestColumns
+}
