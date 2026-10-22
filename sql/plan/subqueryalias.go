@@ -20,12 +20,14 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
+type ScopeMapping = map[sql.ColumnId]sql.Expression
+
 // SubqueryAlias is a node that gives a subquery a name.
 type SubqueryAlias struct {
 	UnaryNode
 	Correlated   sql.ColSet
 	cols         sql.ColSet
-	ScopeMapping map[sql.ColumnId]sql.Expression
+	ScopeMapping ScopeMapping
 
 	name           string
 	TextDefinition string
@@ -151,7 +153,7 @@ func (sq *SubqueryAlias) WithVolatile(v bool) *SubqueryAlias {
 	return &ret
 }
 
-func (sq *SubqueryAlias) WithScopeMapping(cols map[sql.ColumnId]sql.Expression) *SubqueryAlias {
+func (sq *SubqueryAlias) WithScopeMapping(cols ScopeMapping) *SubqueryAlias {
 	ret := *sq
 	ret.ScopeMapping = cols
 	return &ret
