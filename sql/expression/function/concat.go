@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/encodings"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -36,7 +37,7 @@ func NewConcat(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error)
 		return nil, sql.ErrInvalidArgumentNumber.New("CONCAT", "1 or more", 0)
 	}
 
-	return &Concat{args}, nil
+	return &Concat{args: args}, nil
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -50,11 +51,17 @@ func (c *Concat) Description() string {
 }
 
 // Type implements the Expression interface.
-func (c *Concat) Type(ctx *sql.Context) sql.Type { return types.LongText }
+func (c *Concat) Type(ctx *sql.Context) sql.Type {
+	coll, _ := c.CollationCoercibility(ctx)
+	if coll.CharacterSet() == sql.CharacterSet_binary {
+		return types.LongBlob
+	}
+	return types.LongText
+}
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (c *Concat) CollationCoercibility(ctx *sql.Context) (sql.CollationID, byte) {
-	return sql.ResolveCoercibilityExpressions(ctx, c.args...)
+	return sql.ResolveCoercibilityExpressions(ctx, sql.CoercibilityAllowNumericConv, c.args...)
 }
 
 // IsNullable implements the Expression interface.
@@ -124,5 +131,10 @@ func (c *Concat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		parts = append(parts, content)
 	}
 
-	return strings.Join(parts, ""), nil
+	res := strings.Join(parts, "")
+	coll, _ := c.CollationCoercibility(ctx)
+	if coll.CharacterSet() == sql.CharacterSet_binary {
+		return encodings.StringToBytes(res), nil
+	}
+	return res, nil
 }
