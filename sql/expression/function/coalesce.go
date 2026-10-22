@@ -61,19 +61,17 @@ func (c *Coalesce) Type(ctx *sql.Context) sql.Type {
 
 	var retType sql.Type
 	retType = types.Null
+	var hasDecimal bool
 	for i, arg := range c.args {
-		if arg == nil {
+		argType := c.argType(ctx, arg)
+		if argType == nil {
 			continue
-		}
-		argType := arg.Type(ctx)
-		if sysVarType, ok := argType.(sql.SystemVariableType); ok {
-			argType = sysVarType.UnderlyingType()
 		}
 		if i == 0 {
 			retType = argType
 			continue
 		}
-		if argType == nil || argType == types.Null {
+		if argType == types.Null {
 			continue
 		}
 		if retType.Equals(argType) {
@@ -97,12 +95,13 @@ func (c *Coalesce) Type(ctx *sql.Context) sql.Type {
 			// Can't get any larger than this
 			return types.LongText
 		case expression.ConvertToDecimal:
-			if retType == types.Float64 || argType == types.Float64 {
+			if types.IsFloat(retType) || types.IsFloat(argType) {
 				retType = types.Float64
-			} else if types.IsDecimal(argType) {
-				retType = argType
-			} else if !types.IsDecimal(retType) {
-				retType = types.MustCreateDecimalType(10, 0)
+			} else {
+				hasDecimal = true
+				if types.IsDecimal(argType) {
+					retType = argType
+				}
 			}
 		case expression.ConvertToUnsigned:
 			if retType == types.Uint64 || argType == types.Uint64 {
@@ -126,8 +125,30 @@ func (c *Coalesce) Type(ctx *sql.Context) sql.Type {
 		}
 	}
 
+	if hasDecimal && !types.IsFloat(retType) {
+		decTypes := make([]sql.Type, len(c.args))
+		for i, arg := range c.args {
+			decTypes[i] = c.argType(ctx, arg)
+		}
+		if dt, ok := compDecimalType(c.args, decTypes).(sql.DecimalType); ok {
+			retType = types.MustCreateColumnDecimalType(dt.Precision(), dt.Scale())
+		}
+	}
+
 	c.typ = retType
 	return retType
+}
+
+// argType returns the type of |arg|, unwrapping any system variable.
+func (c *Coalesce) argType(ctx *sql.Context, arg sql.Expression) sql.Type {
+	if arg == nil {
+		return nil
+	}
+	t := arg.Type(ctx)
+	if sysVarType, ok := t.(sql.SystemVariableType); ok {
+		return sysVarType.UnderlyingType()
+	}
+	return t
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
