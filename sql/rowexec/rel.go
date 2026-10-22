@@ -804,7 +804,7 @@ func (b *BaseBuilder) buildIndexedTableAccess(ctx *sql.Context, n *plan.IndexedT
 	}
 
 	var tableIter sql.RowIter
-	tableIter = sql.NewTableRowIter(ctx, n.Table, partIter)
+	tableIter = sql.NewTableValueRowIter(ctx, n.Table, n.Columns(), partIter)
 
 	if vct, ok := plan.FindVirtualColumnTable(n.Table); ok {
 		tableIter, err = b.buildVirtualColumnTable(ctx, vct, tableIter, row)
@@ -937,7 +937,7 @@ func (b *BaseBuilder) buildResolvedTable(ctx *sql.Context, n *plan.ResolvedTable
 	}
 
 	var iter sql.RowIter
-	iter = sql.NewTableRowIter(ctx, n.Table, partitions)
+	iter = sql.NewTableValueRowIter(ctx, n.Table, n.Columns(), partitions)
 
 	if vct, ok := plan.FindVirtualColumnTable(n.Table); ok {
 		iter, err = b.buildVirtualColumnTable(ctx, vct, iter, row)
