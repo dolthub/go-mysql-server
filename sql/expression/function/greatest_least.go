@@ -251,6 +251,8 @@ func cmpRetType(ctx *sql.Context, args ...sql.Expression) (sql.Type, sql.Type, e
 			dtPrec = max(dtPrec, argType.(sql.DatetimeType).Precision())
 		case types.IsText(argType):
 			hasString = true
+		case types.IsDeferredType(argType):
+			return argType, nil, nil
 		case types.IsTuple(argType):
 			return nil, nil, sql.ErrInvalidType.New("tuple")
 		default:
