@@ -16,10 +16,10 @@ package function
 
 import (
 	"fmt"
+	"github.com/cockroachdb/apd/v3"
 	"gopkg.in/src-d/go-errors.v1"
 	"strings"
 
-	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -32,6 +32,58 @@ const (
 	cmpLess
 )
 
+func cmpDec(
+	ctx *sql.Context,
+	args []sql.Expression,
+	row sql.Row,
+	cmpType sql.Type,
+	decTyoe sql.DecimalType,
+	direction cmpDir) (any, error) {
+	var res *apd.Decimal
+	scale := int64(decTyoe.Scale())
+	for _, arg := range args {
+		val, err := arg.Eval(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+		if val == nil {
+			return nil, nil
+		}
+		d, err := types.InternalDecimalType.ConvertToDecimal(val)
+		if err != nil {
+			return nil, err
+		}
+		scale = max(scale, -int64(-d.Exponent))
+
+		if res == nil {
+			res = d
+			continue
+		}
+
+		cmp := d.Cmp(res)
+		if direction == cmpLess {
+			cmp = -cmp
+		}
+		if cmp > 0 {
+			res = d
+		}
+	}
+
+	// The declared precision is capped at 65, but expression values can
+	// exceed that precision. Do not apply column range checks here.
+	intDigits := max(res.NumDigits()+int64(res.Exponent), 0)
+	// MySQL pads to the common scale within its nine base-10^9 words.
+	// Keep existing fractional digits even when no padding fits.
+	paddingScale := max((9-(intDigits+8)/9)*9, 0)
+	scale = max(min(scale, paddingScale), -int64(res.Exponent))
+	resDec := new(apd.Decimal)
+	qCtx := sql.DecimalCtx.WithPrecision(uint32(max(intDigits+scale, 1)))
+	if _, err := qCtx.Quantize(resDec, res, -int32(scale)); err != nil {
+		return nil, err
+	}
+	return resDec, nil
+}
+
 // compEval is used to implement Greatest/Least Eval() using an explicit comparison direction
 func compEval(
 	ctx *sql.Context,
@@ -43,6 +95,13 @@ func compEval(
 	if retType == types.Null {
 		return nil, nil
 	}
+
+	// TODO: what if cmp type is DATE/DATETIME
+	// Compare exact values without losing digits through float64.
+	if dt, ok := retType.(sql.DecimalType); ok {
+		return cmpDec(ctx, args, row, cmpType, dt, direction)
+	}
+
 	if cmpType == nil {
 		cmpType = retType
 	}
@@ -75,13 +134,6 @@ func compEval(
 		if cmp > 0 {
 			res = v
 		}
-	}
-	if dtType, ok := retType.(sql.DecimalType); ok {
-		// TODO: need to rescale decimals
-		qCtx := sql.DecimalCtx.WithPrecision(uint32(dtType.Precision()))
-		resDec := new(apd.Decimal)
-		qCtx.Quantize(resDec, res.(*apd.Decimal), -int32(dtType.Scale()))
-		return resDec, nil
 	}
 	res, _, err := types.TypeAwareConversion(ctx, res, cmpType, retType)
 	if err != nil {

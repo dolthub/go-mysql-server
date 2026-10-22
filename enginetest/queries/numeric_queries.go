@@ -2096,16 +2096,15 @@ ORDER BY ordinal_position`,
 		Name:    "Greatest and least at the decimal precision limit",
 		Dialect: "mysql",
 		SetUpScript: []string{
-			`CREATE TABLE wide_values (
-    id INT PRIMARY KEY,
-    a DECIMAL(65, 0),
-    b DECIMAL(2, 1),
-    c DECIMAL(31, 30)
-)`,
-			`INSERT INTO wide_values VALUES
-    (1, '99999999999999999999999999999999999999999999999999999999999999999', 0.1, 0.1),
-    (2, '-99999999999999999999999999999999999999999999999999999999999999999', -0.1, -0.1),
-    (3, 1, 0.1, 0.1)`,
+			"CREATE TABLE wide_values (" +
+				"id INT PRIMARY KEY," +
+				"a DECIMAL(65, 0)," +
+				"b DECIMAL(2, 1)," +
+				"c DECIMAL(31, 30));",
+			"INSERT INTO wide_values VALUES " +
+				"(1, '99999999999999999999999999999999999999999999999999999999999999999', 0.1, 0.1)," +
+				"(2, '-99999999999999999999999999999999999999999999999999999999999999999', -0.1, -0.1)," +
+				"(3, 1, 0.1, 0.1);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
