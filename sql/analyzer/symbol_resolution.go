@@ -245,6 +245,8 @@ func pruneTableCols(
 			table: source,
 			col:   strings.ToLower(col.Name),
 		}
+		// Primary key columns are never pruned, so that join planning can still use the table's key in its
+		// functional dependencies.
 		if parentCols[c] > 0 {
 			cols = append(cols, c.col)
 			newCols.Add(ids[i])
