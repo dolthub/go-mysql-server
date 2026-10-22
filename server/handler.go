@@ -541,7 +541,7 @@ func (h *Handler) doQuery(
 	} else if vr, ok := rowIter.(sql.ValueRowIter); ok && vr.IsValueRowIter(sqlCtx) {
 		r, processedAtLeastOneBatch, err = h.resultForValueRowIter(sqlCtx, c, schema, vr, resultFields, buf, callback, more)
 	} else if vr, ok := rowIter.(sql.ValueRowWriter); ok && vr.IsValueRowWriter(sqlCtx) {
-		iter := sql.WrapValueRowWriter(vr)
+		iter := sql.ProjectValueRowWriter(vr)
 		r, processedAtLeastOneBatch, err = h.resultForValueRowIter(sqlCtx, c, schema, iter, resultFields, buf, callback, more)
 	} else {
 		r, processedAtLeastOneBatch, err = h.resultForDefaultIter(sqlCtx, c, schema, rowIter, callback, resultFields, more, buf)

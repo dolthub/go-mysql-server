@@ -106,7 +106,7 @@ type RowIter interface {
 }
 
 // ValueRowIter is an iterator that produces sql.ValueRows.
-// In general, implement ValueRowWriter instead, and then obtain a ValueRowIter via WrapValueRowWriter.
+// In general, implement ValueRowWriter instead, and then obtain a ValueRowIter via ProjectValueRowWriter.
 // TODO: Remove the remaining implementations of this interface by having them implement ValueRowWriter instead.
 type ValueRowIter interface {
 	RowIter
@@ -132,15 +132,17 @@ type ValueRowWriter interface {
 	Closer
 }
 
-// WrapValueRowWriter produces a ValueRowIter for a ValueRowWriter.
+// ProjectValueRowWriter produces a ValueRowIter for a ValueRowWriter.
 // This is useful for retrieving result rows from the top node of
 // an iterator tree or from a subquery.
-func WrapValueRowWriter(valueRowWriter ValueRowWriter) ValueRowIter {
-	return wrappedValueRowWriter{valueRowWriter}
+func ProjectValueRowWriter(valueRowWriter ValueRowWriter) ValueRowIter {
+	childRow := make(ValueRow, valueRowWriter.Columns().Max()+1)
+	return wrappedValueRowWriter{valueRowWriter, childRow}
 }
 
 type wrappedValueRowWriter struct {
 	ValueRowWriter
+	childRow ValueRow
 }
 
 var _ ValueRowWriter = wrappedValueRowWriter{}
@@ -148,16 +150,15 @@ var _ ValueRowIter = wrappedValueRowWriter{}
 
 func (v wrappedValueRowWriter) NextValueRow(ctx *Context) (ValueRow, error) {
 	colSet := v.Columns()
-	childRow := make(ValueRow, colSet.Max()+1)
-	err := v.ValueRowWriter.WriteNextValueRow(ctx, childRow)
+	err := v.ValueRowWriter.WriteNextValueRow(ctx, v.childRow)
 	if err != nil {
 		return nil, err
 	}
-	result := make(ValueRow, colSet.Len())
+	projectedRow := make(ValueRow, colSet.Len())
 	for i, colId := range colSet.Iter() {
-		result[i] = childRow[colId]
+		projectedRow[i] = v.childRow[colId]
 	}
-	return result, nil
+	return projectedRow, nil
 }
 
 func (v wrappedValueRowWriter) IsValueRowIter(ctx *Context) bool {

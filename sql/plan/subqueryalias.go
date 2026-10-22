@@ -216,15 +216,17 @@ func (sq *SubqueryAlias) WithColumnNames(columns []string) *SubqueryAlias {
 // SubqueryAliasIter is an implementation of ValueRowWriter that maps child ColumnIds onto parent ColumnIds
 // as it iterates. All RowIter methods are implicitly passed through to the underlying writer.
 type SubqueryAliasIter struct {
-	DestColumns sql.ColSet
 	sql.ValueRowWriter
+	destColumns sql.ColSet
+	childRow    sql.ValueRow
 }
 
 func NewSubqueryAliasIter(destColumns sql.ColSet, child sql.ValueRowWriter) (SubqueryAliasIter, error) {
 	if destColumns.Len() != child.Columns().Len() {
 		return SubqueryAliasIter{}, fmt.Errorf("SubqueryAliasIter column count mismatch: %d != %d", destColumns.Len(), child.Columns().Len())
 	}
-	return SubqueryAliasIter{destColumns, child}, nil
+	childRow := make(sql.ValueRow, child.Columns().Max()+1)
+	return SubqueryAliasIter{child, destColumns, childRow}, nil
 }
 
 var _ sql.ValueRowWriter = SubqueryAliasIter{}
@@ -238,22 +240,22 @@ func (m SubqueryAliasIter) WriteNextValueRow(ctx *sql.Context, row sql.ValueRow)
 	// table expression that is referenced multiple times, in which case each reference
 	// will use the same ColumnIds.
 	// TODO: We can prevent this by pushing ColumnIds from the SQA into the subquery.
-	childRow := make(sql.ValueRow, m.ValueRowWriter.Columns().Max()+1)
-	err := m.ValueRowWriter.WriteNextValueRow(ctx, childRow)
+
+	err := m.ValueRowWriter.WriteNextValueRow(ctx, m.childRow)
 	if err != nil {
 		return err
 	}
 	sourceColumns := m.ValueRowWriter.Columns()
 	nextSourceColumn, ok := sourceColumns.Next(1)
-	nextDestColumn, _ := m.DestColumns.Next(1)
+	nextDestColumn, _ := m.destColumns.Next(1)
 	for ok {
-		row[nextDestColumn] = childRow[nextSourceColumn]
+		row[nextDestColumn] = m.childRow[nextSourceColumn]
 		nextSourceColumn, ok = sourceColumns.Next(nextSourceColumn + 1)
-		nextDestColumn, _ = m.DestColumns.Next(nextDestColumn + 1)
+		nextDestColumn, _ = m.destColumns.Next(nextDestColumn + 1)
 	}
 	return nil
 }
 
 func (m SubqueryAliasIter) Columns() sql.ColSet {
-	return m.DestColumns
+	return m.destColumns
 }
