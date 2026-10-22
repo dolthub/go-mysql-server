@@ -16,6 +16,7 @@ package function
 
 import (
 	"fmt"
+	"github.com/dolthub/vitess/go/mysql"
 	"strings"
 
 	"github.com/cockroachdb/apd/v3"
@@ -86,8 +87,8 @@ func cmpDec(
 	return resDec, nil
 }
 
-// compEval is used to implement Greatest/Least Eval() using an explicit comparison direction
-func compEval(
+// cmpEval is used to implement Greatest/Least Eval() using an explicit comparison direction
+func cmpEval(
 	ctx *sql.Context,
 	args []sql.Expression,
 	row sql.Row,
@@ -119,8 +120,11 @@ func compEval(
 
 		v, _, err := cmpType.Convert(ctx, val)
 		if err != nil {
-			// TODO: invalid dates increase dtPrec to max?
-			// TODO: warn
+			if sql.ErrIncorrectValue.Is(err) {
+				ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
+			} else if !sql.HandleConvertWarning(ctx, err) {
+				return nil, err
+			}
 		}
 		if res == nil {
 			res = v
@@ -311,6 +315,7 @@ func cmpRetType(ctx *sql.Context, args ...sql.Expression) (sql.Type, sql.Type, e
 	}
 
 	// If there is DATETIME or a combination of DATE and TIME, the result is DATETIME
+	dtPrec = min(dtPrec, types.MaxDatetimePrecision)
 	if hasDatetime || (hasDate && hasTime) {
 		return types.MustCreateDatetimeType(sqltypes.Datetime, dtPrec), cmpType, nil
 	}
@@ -410,7 +415,7 @@ func (f *Greatest) Children() []sql.Expression { return f.Args }
 
 // Eval implements the Expression interface.
 func (f *Greatest) Eval(ctx *sql.Context, row sql.Row) (any, error) {
-	return compEval(ctx, f.Args, row, f.cmpType, f.retType, cmpGreater)
+	return cmpEval(ctx, f.Args, row, f.cmpType, f.retType, cmpGreater)
 }
 
 // Least returns the argument with the greatest value as determined by retType.
@@ -493,5 +498,5 @@ func (f *Least) Children() []sql.Expression { return f.Args }
 
 // Eval implements the Expression interface.
 func (f *Least) Eval(ctx *sql.Context, row sql.Row) (any, error) {
-	return compEval(ctx, f.Args, row, f.cmpType, f.retType, cmpLess)
+	return cmpEval(ctx, f.Args, row, f.cmpType, f.retType, cmpLess)
 }
