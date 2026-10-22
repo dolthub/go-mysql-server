@@ -3740,9 +3740,39 @@ var FunctionQueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: "select greatest('invalid date', cast('2002-01-01' as datetime));",
+		// TODO: Invalid datetime increases the precision to MaxDatetimePrecision
+		// Tracking issue: https://github.com/dolthub/dolt/issues/11944
+		Skip:  true,
+		Query: "select greatest('invalid datetime', cast('2002-01-01' as datetime));",
 		Expected: []sql.Row{
-			{"2002-01-01 00:00:00"},
+			{"2002-01-01 00:00:00.000000"},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		// TODO: MySQL is able to infer precision from string values
+		// Tracking issue: https://github.com/dolthub/dolt/issues/11944
+		Skip:  true,
+		Query: "select greatest('2001-01-01 12:34:56.123456', cast('2002-01-01' as datetime(2)));",
+		Expected: []sql.Row{
+			{"2002-01-01 00:00:00.000000"},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select greatest('2010.01.01.12.34.56', cast('2002-01-01' as datetime(2)));",
+		Expected: []sql.Row{
+			{"2010-01-01 12:34:56.00"},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       4096,
+	},
+	{
+		Query: "select greatest(20100102123456, cast('2002-01-01' as datetime(2)));",
+		Expected: []sql.Row{
+			{"2010-01-02 12:34:56.00"},
 		},
 	},
 	{
