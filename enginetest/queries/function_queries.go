@@ -3740,6 +3740,12 @@ var FunctionQueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "SELECT GREATEST(CAST('12:00:00.123456' AS TIME(6)),CAST('12:00:00.123455' AS TIME(6)));",
+		Expected: []sql.Row{
+			{"2002-01-01"},
+		},
+	},
+	{
 		// TODO: Invalid datetime increases the precision to MaxDatetimePrecision
 		// Tracking issue: https://github.com/dolthub/dolt/issues/11944
 		Skip:  true,

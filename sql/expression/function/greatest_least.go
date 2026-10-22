@@ -267,6 +267,7 @@ func cmpRetType(ctx *sql.Context, args ...sql.Expression) (sql.Type, sql.Type, e
 	// type, then converted to the result type (determined in remaining logic).
 	var cmpType sql.Type
 	if hasDatetime || (hasDate && hasTime) {
+		dtPrec = min(dtPrec, types.MaxDatetimePrecision)
 		cmpType = types.MustCreateDatetimeType(sqltypes.Datetime, dtPrec)
 	} else if hasDate {
 		cmpType = types.Date
