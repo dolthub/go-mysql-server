@@ -17,6 +17,7 @@ package function
 import (
 	"fmt"
 	"github.com/cockroachdb/apd/v3"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"gopkg.in/src-d/go-errors.v1"
 	"strings"
 
@@ -142,6 +143,41 @@ func compEval(
 	return res, nil
 }
 
+// cmpIntPrec distinguishes literal widths and CAST metadata from
+// integer column widths, which cannot be inferred from the SQL type alone.
+func cmpIntPrec(arg sql.Expression, typ sql.Type) uint8 {
+	switch arg := arg.(type) {
+	case *expression.Literal:
+		if _, ok := arg.Value().(bool); ok {
+			return 1
+		}
+		return uint8(len(strings.TrimPrefix(fmt.Sprint(arg.Value()), "-")))
+	case *expression.UnaryMinus:
+		return cmpIntPrec(arg.Child, typ)
+	case *expression.Convert:
+		if types.IsUnsigned(typ) {
+			return 21
+		}
+		return 20
+	}
+	switch typ {
+	case types.Int8, types.Uint8, types.Boolean:
+		return 3
+	case types.Int16, types.Uint16:
+		return 5
+	case types.Int24, types.Uint24:
+		return 8
+	case types.Int32, types.Uint32:
+		return 10
+	case types.Int64:
+		return 19
+	case types.Uint64:
+		return 20
+	default:
+		return 0
+	}
+}
+
 // cmpRetType is used to determine the comparison and return type from args based on the rules described for
 // Greatest/Least.
 func cmpRetType(ctx *sql.Context, args ...sql.Expression) (sql.Type, sql.Type, error) {
@@ -172,36 +208,21 @@ func cmpRetType(ctx *sql.Context, args ...sql.Expression) (sql.Type, sql.Type, e
 		// If ANY argument is NULL, the resulting type will be NULL
 		case argType == types.Null:
 			return types.Null, nil, nil
-		case argType == types.Int8 || argType == types.Boolean:
-			hasInt = true
-			decIntDigits = max(decIntDigits, 3)
-		case argType == types.Int16:
-			hasInt = true
-			decIntDigits = max(decIntDigits, 5)
-		case argType == types.Int24:
-			hasInt = true
-			decIntDigits = max(decIntDigits, 8)
-		case argType == types.Int32:
-			hasInt = true
-			decIntDigits = max(decIntDigits, 10)
-		case argType == types.Int64:
-			hasInt64 = true
-			decIntDigits = max(decIntDigits, 19)
-		case argType == types.Uint8:
-			hasUint = true
-			decIntDigits = max(decIntDigits, 3)
-		case argType == types.Uint16:
-			hasUint = true
-			decIntDigits = max(decIntDigits, 5)
-		case argType == types.Uint24:
-			hasUint = true
-			decIntDigits = max(decIntDigits, 8)
-		case argType == types.Uint32:
-			hasUint32 = true
-			decIntDigits = max(decIntDigits, 10)
-		case argType == types.Uint64:
-			hasUint64 = true
-			decIntDigits = max(decIntDigits, 20)
+		case types.IsInteger(argType):
+			switch argType {
+			case types.Boolean, types.Int8, types.Int16, types.Int24, types.Int32:
+				hasInt = true
+			case types.Int64:
+				hasInt64 = true
+			case types.Uint8, types.Uint16, types.Uint24:
+				hasUint = true
+			case types.Uint32:
+				hasUint32 = true
+			case types.Uint64:
+				hasUint64 = true
+			}
+			prec := cmpIntPrec(arg, argType)
+			decIntDigits = max(decIntDigits, prec)
 		case argType == types.Float32:
 			hasFloat = true
 		case argType == types.Float64:
