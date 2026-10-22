@@ -102,7 +102,7 @@ func TestGreatest(t *testing.T) {
 				expression.NewLiteral(apd.New(456, 0), types.MustCreateDecimalType(10, 2)),
 				expression.NewLiteral(apd.New(789, 0), types.MustCreateDecimalType(10, 3)),
 			},
-			exp: apd.New(789, 0),
+			exp: apd.New(789000, -3),
 		},
 		{
 			"all strings",
@@ -146,7 +146,7 @@ func TestGreatest(t *testing.T) {
 				expression.NewLiteral(int64(1), types.Int64),
 				expression.NewLiteral(int64(2), types.MustCreateDecimalType(10, 2)),
 			},
-			exp: apd.New(2, 0),
+			exp: apd.New(200, -2),
 		},
 		{
 			name: "signed int and string",
@@ -179,7 +179,7 @@ func TestGreatest(t *testing.T) {
 				expression.NewLiteral(int64(1), types.Uint64),
 				expression.NewLiteral(int64(2), types.MustCreateDecimalType(10, 2)),
 			},
-			exp: apd.New(2, 0),
+			exp: apd.New(200, -2),
 		},
 		{
 			name: "unsigned int and string",
