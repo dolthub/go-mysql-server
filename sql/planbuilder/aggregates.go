@@ -156,6 +156,9 @@ func (b *Builder) buildGroupingCols(fromScope, projScope *scope, groupby ast.Gro
 	g := fromScope.groupBy
 	for _, e := range groupby {
 		var col scopeColumn
+		if colName, ok := unwrapExpression(e).(*ast.ColName); ok {
+			e = colName
+		}
 		switch e := e.(type) {
 		case *ast.ColName:
 			var ok bool
