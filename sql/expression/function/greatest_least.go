@@ -53,7 +53,7 @@ func cmpDec(
 		if err != nil {
 			return nil, err
 		}
-		scale = max(scale, -int64(-d.Exponent))
+		scale = max(scale, -int64(d.Exponent))
 
 		if res == nil {
 			res = d
