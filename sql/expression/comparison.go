@@ -399,8 +399,8 @@ func castLeftAndRight(ctx *sql.Context, lTyp, rTyp sql.Type, left, right any) (a
 				intDigits = max(intDigits, rDec.Precision()-rDec.Scale())
 				scale = max(scale, rDec.Scale())
 			}
-			prec := max(intDigits+scale, types.DecimalTypeMaxPrecision)
-			scale = max(scale, types.DecimalTypeMaxScale)
+			prec := min(intDigits+scale, types.DecimalTypeMaxPrecision)
+			scale = min(scale, types.DecimalTypeMaxScale)
 			retDec, err := types.CreateDecimalType(prec, scale)
 			if err != nil {
 				return nil, nil, nil, err
