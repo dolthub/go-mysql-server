@@ -390,11 +390,22 @@ func castLeftAndRight(ctx *sql.Context, lTyp, rTyp sql.Type, left, right any) (a
 			if err != nil {
 				return nil, nil, nil, err
 			}
-			if types.IsDecimal(lTyp) {
-				return l, r, lTyp, nil
-			} else {
-				return l, r, rTyp, nil
+			var intDigits, scale uint8
+			if lDec, ok := lTyp.(sql.DecimalType); ok {
+				intDigits = max(intDigits, lDec.Precision()-lDec.Scale())
+				scale = max(scale, lDec.Scale())
 			}
+			if rDec, ok := rTyp.(sql.DecimalType); ok {
+				intDigits = max(intDigits, rDec.Precision()-rDec.Scale())
+				scale = max(scale, rDec.Scale())
+			}
+			prec := max(intDigits+scale, types.DecimalTypeMaxPrecision)
+			scale = max(scale, types.DecimalTypeMaxScale)
+			retDec, err := types.CreateDecimalType(prec, scale)
+			if err != nil {
+				return nil, nil, nil, err
+			}
+			return l, r, retDec, nil
 		}
 
 		if types.IsFloat(lTyp) || types.IsFloat(rTyp) {

@@ -736,16 +736,27 @@ func (b *Builder) typeExpandComparisonLiteral(left, right sql.Expression) (sql.E
 	}
 
 	if leftGf != nil && rightLit != nil {
-		if types.IsSigned(left.Type(b.ctx)) && types.IsSigned(right.Type(b.ctx)) ||
-			types.IsUnsigned(left.Type(b.ctx)) && types.IsUnsigned(right.Type(b.ctx)) ||
-			types.IsFloat(left.Type(b.ctx)) && types.IsFloat(right.Type(b.ctx)) ||
-			types.IsDecimal(left.Type(b.ctx)) && types.IsDecimal(right.Type(b.ctx)) ||
-			types.IsText(left.Type(b.ctx)) && types.IsText(right.Type(b.ctx)) {
-			if left.Type(b.ctx).MaxTextResponseByteLength(b.ctx) >= right.Type(b.ctx).MaxTextResponseByteLength(b.ctx) {
+		lType := left.Type(b.ctx)
+		rType := right.Type(b.ctx)
+		if types.IsSigned(lType) && types.IsSigned(rType) ||
+			types.IsUnsigned(lType) && types.IsUnsigned(rType) ||
+			types.IsFloat(lType) && types.IsFloat(rType) ||
+			types.IsText(lType) && types.IsText(rType) {
+			if lType.MaxTextResponseByteLength(b.ctx) >= rType.MaxTextResponseByteLength(b.ctx) {
 				// The types are congruent and the literal does not lose
 				// information casting to the column type. The conditions
 				// should preclude out of range, casting errors, or
 				// correctness missteps.
+				val, _, err := leftGf.Type(b.ctx).Convert(b.ctx, rightLit.Value())
+				if err != nil && !expression.ErrNilOperand.Is(err) {
+					b.handleErr(err)
+				}
+				right = expression.NewLiteral(val, leftGf.Type(b.ctx))
+			}
+		} else if types.IsDecimal(lType) && types.IsDecimal(rType) {
+			lDecType := lType.(sql.DecimalType)
+			rDecType := rType.(sql.DecimalType)
+			if lDecType.Precision() >= rDecType.Precision() && lDecType.Scale() >= rDecType.Scale() {
 				val, _, err := leftGf.Type(b.ctx).Convert(b.ctx, rightLit.Value())
 				if err != nil && !expression.ErrNilOperand.Is(err) {
 					b.handleErr(err)
