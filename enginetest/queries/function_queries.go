@@ -3742,7 +3742,7 @@ var FunctionQueryTests = []QueryTest{
 	{
 		Query: "SELECT GREATEST(CAST('12:00:00.123456' AS TIME(6)),CAST('12:00:00.123455' AS TIME(6)));",
 		Expected: []sql.Row{
-			{"2002-01-01"},
+			{types.Timespan(43200123456)},
 		},
 	},
 	{

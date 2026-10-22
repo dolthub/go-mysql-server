@@ -329,7 +329,7 @@ func cmpRetType(ctx *sql.Context, args ...sql.Expression) (sql.Type, sql.Type, e
 	}
 	// If all arguments are TIME, the result is TIME
 	if hasTime {
-		return types.MustCreateDatetimeType(sqltypes.Time, dtPrec), cmpType, nil
+		return types.MustCreateTimespanType(dtPrec), cmpType, nil
 	}
 	// If all arguments are DATE, the result is DATE
 	if hasDate {
