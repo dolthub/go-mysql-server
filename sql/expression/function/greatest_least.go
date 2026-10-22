@@ -16,10 +16,10 @@ package function
 
 import (
 	"fmt"
-	"github.com/dolthub/vitess/go/mysql"
 	"strings"
 
 	"github.com/cockroachdb/apd/v3"
+	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"gopkg.in/src-d/go-errors.v1"
 
