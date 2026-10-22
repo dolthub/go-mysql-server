@@ -106,13 +106,98 @@ type RowIter interface {
 }
 
 // ValueRowIter is an iterator that produces sql.ValueRows.
+// In general, implement ValueRowWriter instead, and then obtain a ValueRowIter via WrapValueRowWriter.
+// TODO: Remove the remaining implementations of this interface by having them implement ValueRowWriter instead.
 type ValueRowIter interface {
+	RowIter
 	// NextValueRow retrieves the next ValueRow. It will return io.EOF if it's the last ValueRow.
 	// After retrieving the last ValueRow, Close will be automatically called.
 	NextValueRow(ctx *Context) (ValueRow, error)
 	// IsValueRowIter checks whether this implementor and all its children support ValueRowIter.
 	IsValueRowIter(ctx *Context) bool
 	Closer
+}
+
+// ValueRowWriter is an iterator that writes into existing sql.ValueRows.
+type ValueRowWriter interface {
+	RowIter
+	// WriteNextValueRow produces the next row by writing its values into the provided ValueRow.
+	// It will return io.EOF if it's the last ValueRow.
+	// After retrieving the last ValueRow, Close will be automatically called.
+	WriteNextValueRow(ctx *Context, rows ValueRow) error
+	// IsValueRowWriter checks whether this implementor and all its children support ValueRowWriter.
+	IsValueRowWriter(ctx *Context) bool
+	// Columns is the set of ColumnIds represented by this
+	Columns() ColSet
+	Closer
+}
+
+// WrapValueRowWriter produces a ValueRowIter for a ValueRowWriter.
+// This is useful for retrieving result rows from the top node of
+// an iterator tree or from a subquery.
+func WrapValueRowWriter(valueRowWriter ValueRowWriter) ValueRowIter {
+	return wrappedValueRowWriter{valueRowWriter}
+}
+
+type wrappedValueRowWriter struct {
+	ValueRowWriter
+}
+
+var _ ValueRowWriter = wrappedValueRowWriter{}
+var _ ValueRowIter = wrappedValueRowWriter{}
+
+func (v wrappedValueRowWriter) NextValueRow(ctx *Context) (ValueRow, error) {
+	colSet := v.Columns()
+	childRow := make(ValueRow, colSet.Max()+1)
+	err := v.ValueRowWriter.WriteNextValueRow(ctx, childRow)
+	if err != nil {
+		return nil, err
+	}
+	result := make(ValueRow, colSet.Len())
+	for i, colId := range colSet.Iter() {
+		result[i] = childRow[colId]
+	}
+	return result, nil
+}
+
+func (v wrappedValueRowWriter) IsValueRowIter(ctx *Context) bool {
+	return v.IsValueRowWriter(ctx)
+}
+
+// NewValueRowWriter is a convenience method for constructing a ValueRowWriter from a ValueRowIter
+// If the input iter is a proper ValueRowIter ( IsValueRowIter() is true),
+// then the return value is a proper ValueRowWriter ( IsValueRowWriter() is true)
+// This is useful for when wrapping a node that only implements ValueRowIter, such as storage nodes
+// that don't know their own ColSet.
+func NewValueRowWriter(colSet ColSet, valueRowIter ValueRowIter) ValueRowWriter {
+	return valueRowWriterWrappingIter{colSet, valueRowIter}
+}
+
+type valueRowWriterWrappingIter struct {
+	colSet ColSet
+	ValueRowIter
+}
+
+var _ ValueRowWriter = valueRowWriterWrappingIter{}
+var _ ValueRowIter = valueRowWriterWrappingIter{}
+
+func (v valueRowWriterWrappingIter) WriteNextValueRow(ctx *Context, rows ValueRow) error {
+	childRow, err := v.NextValueRow(ctx)
+	if err != nil {
+		return err
+	}
+	for i, colId := range v.colSet.Iter() {
+		rows[colId] = childRow[i]
+	}
+	return nil
+}
+
+func (v valueRowWriterWrappingIter) IsValueRowWriter(ctx *Context) bool {
+	return v.IsValueRowIter(ctx)
+}
+
+func (v valueRowWriterWrappingIter) Columns() ColSet {
+	return v.colSet
 }
 
 // RowIterToRows converts a row iterator to a slice of rows.
