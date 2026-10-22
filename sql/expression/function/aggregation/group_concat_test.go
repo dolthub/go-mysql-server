@@ -68,6 +68,22 @@ func TestGroupConcat_EmptyStrings(t *testing.T) {
 	require.Equal(t, "|a|", result)
 }
 
+// BIT values concatenate as their raw bytes, matching MySQL, not as the decimal text of their value.
+func TestGroupConcat_BitConcatsRawBytes(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	gc := NewGroupConcat("", nil, "", []sql.Expression{expression.NewGetField(0, types.MustCreateBitType(4), "v", true)}, 1024)
+	buf, err := gc.NewBuffer(ctx)
+	require.NoError(t, err)
+
+	for _, row := range []sql.Row{{uint64(3)}, {uint64(5)}} {
+		require.NoError(t, buf.Update(ctx, row))
+	}
+
+	result, err := buf.Eval(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "\x03\x05", result)
+}
+
 // Validate that group_concat returns the correct return type
 func TestGroupConcat_ReturnType(t *testing.T) {
 	ctx := sql.NewEmptyContext()
