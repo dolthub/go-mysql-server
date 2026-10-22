@@ -16,14 +16,15 @@ package function
 
 import (
 	"fmt"
-	"github.com/cockroachdb/apd/v3"
-	"github.com/dolthub/go-mysql-server/sql/expression"
-	"gopkg.in/src-d/go-errors.v1"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/cockroachdb/apd/v3"
 	"github.com/dolthub/vitess/go/sqltypes"
+	"gopkg.in/src-d/go-errors.v1"
+
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type cmpDir uint8
