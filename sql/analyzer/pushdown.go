@@ -240,6 +240,30 @@ func transformPushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.
 			// First step is to find all col exprs and group them by the table they mention.
 			filters = newFilterSet(ctx, n, scope, projectionExpressions)
 			return transformFilterNode(n)
+		case *plan.JoinNode:
+			// Push the join's own ON condition into a derived table.
+			if n.JoinType().IsPhysical() || n.Filter == nil {
+				return n, transform.SameTree, nil
+			}
+			filterExpressions := expression.SplitConjunction(ctx, n.Filter)
+			joinFilters := newEmptyFilterSet(projectionExpressions).newChildFilterSet(ctx, filterExpressions, scope)
+			children := n.Children()
+			for i, c := range children {
+				if sa, ok := c.(*plan.SubqueryAlias); ok && n.JoinType().IsPreservedTable(i) {
+					child, same, err := pushdownFiltersUnderSubqueryAlias(ctx, a, sa, joinFilters)
+					if err != nil {
+						return n, transform.SameTree, err
+					}
+					if !same {
+						children[i] = child
+					}
+				}
+			}
+			if len(joinFilters.handledFilters) == 0 {
+				return n, transform.SameTree, nil
+			}
+			unhandled := subtractExprSet(filterExpressions, joinFilters.handledFilters)
+			return plan.NewJoin(ctx, children[0], children[1], n.JoinType(), expression.JoinAnd(unhandled...)).WithComment(n.Comment()), transform.NewTree, nil
 		default:
 			return n, transform.SameTree, nil
 		}
