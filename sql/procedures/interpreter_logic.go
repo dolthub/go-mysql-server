@@ -417,6 +417,7 @@ func handleError(ctx *sql.Context, runner sql.StatementRunner, stack *Interprete
 	// TODO: While this does execute the handler queries, results are all discarded, because we currently only support
 	//  returning one result schema. However, the effects of the queries should still apply, meaning
 	//  SET/INSERT/UPDATE/etc queries still have an effect.
+	// Tracking Issue: https://github.com/dolthub/dolt/issues/12199
 	for _, op := range handlerOps {
 		_, _, _, rowIter, hErr := execOp(ctx, runner, stack, op, handlerOps, nil, -1)
 		if hErr != nil {
