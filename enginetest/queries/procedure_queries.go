@@ -1807,6 +1807,78 @@ END`,
 			},
 		},
 	},
+
+	{
+		Dialect: "mysql",
+		Name:    "EXIT HANDLER FOR SQLEXCEPTION with multiple queries",
+		SetUpScript: []string{
+			`CREATE TABLE t1 (pk BIGINT PRIMARY KEY);`,
+			`CREATE PROCEDURE p1()
+BEGIN
+	DECLARE EXIT HANDLER FOR SQLEXCEPTION
+	BEGIN
+		SET @var1 = 1;
+		SET @var2 = 2;
+		SET @var3 = 3;
+	END;
+	INSERT INTO TABLE_THAT_DOES_NOT_EXIST VALUES(1);
+	SELECT 'IMPOSSIBLE' AS RESULT;
+END;`,
+			`CREATE PROCEDURE p2()
+BEGIN
+	DECLARE EXIT HANDLER FOR SQLEXCEPTION
+	BEGIN
+		INSERT INTO t1 VALUES(1);
+		INSERT INTO t1 VALUES(2);
+		INSERT INTO t1 VALUES(3);
+	END;
+	INSERT INTO TABLE_THAT_DOES_NOT_EXIST VALUES(1);
+	SELECT 'IMPOSSIBLE' AS RESULT;
+END;`,
+			`CREATE PROCEDURE p3()
+BEGIN
+	DECLARE EXIT HANDLER FOR SQLEXCEPTION
+	BEGIN
+		INSERT INTO TABLE_THAT_DOES_NOT_EXIST VALUES(1);
+	END;
+	INSERT INTO TABLE_THAT_DOES_NOT_EXIST VALUES(1);
+	SELECT 'IMPOSSIBLE' AS RESULT;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CALL p1();",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "SELECT @var1, @var2, @var3;",
+				Expected: []sql.Row{
+					{1, 2, 3},
+				},
+			},
+			{
+				Query: "CALL p2();",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)}, // TODO: should be 1 Row Affected
+				},
+			},
+			{
+				Query: "SELECT * FROM t1;",
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+			{
+				Query:       "CALL p3()",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+		},
+	},
+
 	{
 		Name:        "Duplicate parameter names",
 		Query:       "CREATE PROCEDURE p1(abc DATETIME, abc DOUBLE) SELECT abc",
