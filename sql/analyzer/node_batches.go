@@ -161,6 +161,10 @@ func getBatchesForNode(scope *plan.Scope, node sql.Node, qFlags *sql.QueryFlags)
 					Iterations: 1,
 					Rules: []Rule{
 						{
+							Id:    applyDefaultSelectLimitId,
+							Apply: applyDefaultSelectLimit,
+						},
+						{
 							Id:    simplifyFiltersId,
 							Apply: simplifyFilters,
 						},
