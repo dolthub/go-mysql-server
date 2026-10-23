@@ -1665,6 +1665,50 @@ var JoinScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		// Join reordering must not build a join that drops a filter whose edge connects both inputs but is not
+		// applicable to them. Derived from sqllogictest select5.test.
+		Name: "join reordering does not drop filters of large cross join",
+		SetUpScript: []string{
+			"create table t10 (a10 int primary key, b10 int, x10 varchar(40));",
+			"insert into t10 values (1,8,'table t10 row 1'), (2,10,'table t10 row 2'), (3,7,'table t10 row 3'), (4,1,'table t10 row 4'), (5,5,'table t10 row 5'), (6,4,'table t10 row 6'), (7,3,'table t10 row 7'), (8,9,'table t10 row 8'), (9,6,'table t10 row 9'), (10,2,'table t10 row 10');",
+			"create table t23 (a23 int primary key, b23 int, x23 varchar(40));",
+			"insert into t23 values (1,9,'table t23 row 1'), (2,4,'table t23 row 2'), (3,2,'table t23 row 3'), (4,8,'table t23 row 4'), (5,3,'table t23 row 5'), (6,6,'table t23 row 6'), (7,7,'table t23 row 7'), (8,5,'table t23 row 8'), (9,10,'table t23 row 9'), (10,1,'table t23 row 10');",
+			"create table t24 (a24 int primary key, b24 int, x24 varchar(40));",
+			"insert into t24 values (1,10,'table t24 row 1'), (2,3,'table t24 row 2'), (3,8,'table t24 row 3'), (4,2,'table t24 row 4'), (5,5,'table t24 row 5'), (6,4,'table t24 row 6'), (7,6,'table t24 row 7'), (8,9,'table t24 row 8'), (9,1,'table t24 row 9'), (10,7,'table t24 row 10');",
+			"create table t29 (a29 int primary key, b29 int, x29 varchar(40));",
+			"insert into t29 values (1,4,'table t29 row 1'), (2,2,'table t29 row 2'), (3,9,'table t29 row 3'), (4,8,'table t29 row 4'), (5,10,'table t29 row 5'), (6,3,'table t29 row 6'), (7,7,'table t29 row 7'), (8,6,'table t29 row 8'), (9,5,'table t29 row 9'), (10,1,'table t29 row 10');",
+			"create table t30 (a30 int primary key, b30 int, x30 varchar(40));",
+			"insert into t30 values (1,5,'table t30 row 1'), (2,6,'table t30 row 2'), (3,10,'table t30 row 3'), (4,3,'table t30 row 4'), (5,7,'table t30 row 5'), (6,4,'table t30 row 6'), (7,9,'table t30 row 7'), (8,8,'table t30 row 8'), (9,2,'table t30 row 9'), (10,1,'table t30 row 10');",
+			"create table t38 (a38 int primary key, b38 int, x38 varchar(40));",
+			"insert into t38 values (1,2,'table t38 row 1'), (2,10,'table t38 row 2'), (3,5,'table t38 row 3'), (4,6,'table t38 row 4'), (5,4,'table t38 row 5'), (6,1,'table t38 row 6'), (7,7,'table t38 row 7'), (8,8,'table t38 row 8'), (9,9,'table t38 row 9'), (10,3,'table t38 row 10');",
+			"create table t43 (a43 int primary key, b43 int, x43 varchar(40));",
+			"insert into t43 values (1,2,'table t43 row 1'), (2,3,'table t43 row 2'), (3,8,'table t43 row 3'), (4,5,'table t43 row 4'), (5,10,'table t43 row 5'), (6,6,'table t43 row 6'), (7,4,'table t43 row 7'), (8,1,'table t43 row 8'), (9,9,'table t43 row 9'), (10,7,'table t43 row 10');",
+			"create table t46 (a46 int primary key, b46 int, x46 varchar(40));",
+			"insert into t46 values (1,1,'table t46 row 1'), (2,8,'table t46 row 2'), (3,7,'table t46 row 3'), (4,5,'table t46 row 4'), (5,9,'table t46 row 5'), (6,4,'table t46 row 6'), (7,2,'table t46 row 7'), (8,10,'table t46 row 8'), (9,6,'table t46 row 9'), (10,3,'table t46 row 10');",
+			"create table t50 (a50 int primary key, b50 int, x50 varchar(40));",
+			"insert into t50 values (1,8,'table t50 row 1'), (2,4,'table t50 row 2'), (3,6,'table t50 row 3'), (4,9,'table t50 row 4'), (5,2,'table t50 row 5'), (6,7,'table t50 row 6'), (7,1,'table t50 row 7'), (8,3,'table t50 row 8'), (9,5,'table t50 row 9'), (10,10,'table t50 row 10');",
+			"create table t61 (a61 int primary key, b61 int, x61 varchar(40));",
+			"insert into t61 values (1,9,'table t61 row 1'), (2,1,'table t61 row 2'), (3,7,'table t61 row 3'), (4,4,'table t61 row 4'), (5,2,'table t61 row 5'), (6,5,'table t61 row 6'), (7,8,'table t61 row 7'), (8,10,'table t61 row 8'), (9,3,'table t61 row 9'), (10,6,'table t61 row 10');",
+			"create table k10 (a10 int, b10 int, x10 varchar(40));",
+			"insert into k10 select * from t10;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT x24,x30,x38,x29,x46,x23,x50,x43,x61,x10 FROM t23,t43,t10,t38,t50,t61,t46,t29,t24,t30 WHERE a29=b50 AND b29=a61 AND a24=b38 AND a30=b43 AND b61=a43 AND a46=b30 AND b46=a38 AND a23=7 AND b10=a50 AND a23=b24;",
+				Expected: []sql.Row{{"table t24 row 10", "table t30 row 5", "table t38 row 2", "table t29 row 1", "table t46 row 7", "table t23 row 7", "table t50 row 7", "table t43 row 4", "table t61 row 4", "table t10 row 3"}},
+			},
+			{
+				Query:    "SELECT count(*) FROM t23,t43,t10,t38,t50,t61,t46,t29,t24,t30 WHERE a29=b50 AND b29=a61 AND a24=b38 AND a30=b43 AND b61=a43 AND a46=b30 AND b46=a38 AND a23=7 AND b10=a50 AND a23=b24;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				// k10 has no primary key, so the join's functional dependencies have no usable key.
+				Query:    "SELECT count(*) FROM t23,t43,k10,t38,t50,t61,t46,t29,t24,t30 WHERE a29=b50 AND b29=a61 AND a24=b38 AND a30=b43 AND b61=a43 AND a46=b30 AND b46=a38 AND a23=7 AND b10=a50 AND a23=b24;",
+				Expected: []sql.Row{{1}},
+			},
+		},
+	},
 }
 
 var LateralJoinScriptTests = []ScriptTest{
