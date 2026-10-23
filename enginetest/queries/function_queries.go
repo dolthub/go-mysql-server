@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/dolthub/vitess/go/mysql"
+	"github.com/dolthub/vitess/go/sqltypes"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
@@ -3694,23 +3695,91 @@ var FunctionQueryTests = []QueryTest{
 	// Comparison Function Tests
 	{
 		Query:    `SELECT GREATEST(1, 2, "3", 4)`,
-		Expected: []sql.Row{{float64(4)}},
+		Expected: []sql.Row{{"4"}},
 	},
 	{
 		Query:    `SELECT GREATEST(1, 2, "9", "foo999")`,
-		Expected: []sql.Row{{float64(9)}},
+		Expected: []sql.Row{{"foo999"}},
 	},
 	{
 		Query:    `SELECT GREATEST("aaa", "bbb", "ccc")`,
 		Expected: []sql.Row{{"ccc"}},
 	},
 	{
-		Query:    `SELECT GREATEST(i, s) FROM mytable`,
-		Expected: []sql.Row{{float64(1)}, {float64(2)}, {float64(3)}},
+		Query: `SELECT GREATEST(i, s) FROM mytable`,
+		Expected: []sql.Row{
+			{"first row"},
+			{"second row"},
+			{"third row"},
+		},
 	},
 	{
 		Query:    `SELECT GREATEST(1, 2, 3, 4)`,
 		Expected: []sql.Row{{int64(4)}},
+	},
+	{
+		Query:    `SELECT GREATEST(CAST("1920-02-03 07:41:11" AS DATETIME), CAST("1980-06-22 14:32:56" AS DATETIME))`,
+		Expected: []sql.Row{{time.Date(1980, 6, 22, 14, 32, 56, 0, time.UTC)}},
+	},
+	{
+		Query:    `SELECT GREATEST('2020-01-01 00:00:00', CAST('2021-01-01 00:00:00' AS DATETIME))`,
+		Expected: []sql.Row{{"2021-01-01 00:00:00"}},
+	},
+	{
+		Query:    `SELECT GREATEST(CAST('2021-01-01 00:00:00' AS DATETIME), '2020-01-01 00:00:00')`,
+		Expected: []sql.Row{{"2021-01-01 00:00:00"}},
+	},
+	{
+		Query:    `SELECT GREATEST('2020-01-01 00:00:00', CAST('2021-01-01 00:00:00' AS DATETIME), '2022-06-01')`,
+		Expected: []sql.Row{{"2022-06-01 00:00:00"}},
+	},
+	{
+		Query: "select greatest('invalid date', cast('2002-01-01' as date));",
+		Expected: []sql.Row{
+			{"2002-01-01"},
+		},
+	},
+	{
+		Query: "SELECT GREATEST(CAST('12:00:00.123456' AS TIME(6)),CAST('12:00:00.123455' AS TIME(6)));",
+		Expected: []sql.Row{
+			{types.Timespan(43200123456)},
+		},
+	},
+	{
+		// TODO: Invalid datetime increases the precision to MaxDatetimePrecision
+		// Tracking issue: https://github.com/dolthub/dolt/issues/11944
+		Skip:  true,
+		Query: "select greatest('invalid datetime', cast('2002-01-01' as datetime));",
+		Expected: []sql.Row{
+			{"2002-01-01 00:00:00.000000"},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		// TODO: MySQL is able to infer precision from string values
+		// Tracking issue: https://github.com/dolthub/dolt/issues/11944
+		Skip:  true,
+		Query: "select greatest('2001-01-01 12:34:56.123456', cast('2002-01-01' as datetime(2)));",
+		Expected: []sql.Row{
+			{"2002-01-01 00:00:00.000000"},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+	},
+	{
+		Query: "select greatest('2010.01.01.12.34.56', cast('2002-01-01' as datetime(2)));",
+		Expected: []sql.Row{
+			{"2010-01-01 12:34:56.00"},
+		},
+		ExpectedWarningsCount: 1,
+		ExpectedWarning:       4096,
+	},
+	{
+		Query: "select greatest(20100102123456, cast('2002-01-01' as datetime(2)));",
+		Expected: []sql.Row{
+			{"2010-01-02 12:34:56.00"},
+		},
 	},
 	{
 		Query:    `SELECT LEAST(1, 2, 3, 4)`,
@@ -3718,23 +3787,81 @@ var FunctionQueryTests = []QueryTest{
 	},
 	{
 		Query:    `SELECT LEAST(1, 2, "3", 4)`,
-		Expected: []sql.Row{{float64(1)}},
+		Expected: []sql.Row{{"1"}},
 	},
 	{
 		Query:    `SELECT LEAST(1, 2, "9", "foo999")`,
-		Expected: []sql.Row{{float64(1)}},
+		Expected: []sql.Row{{"1"}},
 	},
 	{
 		Query:    `SELECT LEAST("aaa", "bbb", "ccc")`,
 		Expected: []sql.Row{{"aaa"}},
 	},
 	{
-		Query:    `SELECT LEAST(i, s) FROM mytable`,
-		Expected: []sql.Row{{float64(1)}, {float64(2)}, {float64(3)}},
+		Query: `SELECT LEAST(i, s) FROM mytable`,
+		Expected: []sql.Row{
+			{"1"},
+			{"2"},
+			{"3"},
+		},
 	},
 	{
 		Query:    `SELECT LEAST(CAST("1920-02-03 07:41:11" AS DATETIME), CAST("1980-06-22 14:32:56" AS DATETIME))`,
 		Expected: []sql.Row{{time.Date(1920, 2, 3, 7, 41, 11, 0, time.UTC)}},
+	},
+	{
+		Query:    `SELECT LEAST('2020-01-01 00:00:00', CAST('2021-01-01 00:00:00' AS DATETIME)) AS v`,
+		Expected: []sql.Row{{"2020-01-01 00:00:00"}},
+		ExpectedColumns: sql.Schema{
+			{Name: "v", Type: types.MustCreateString(sqltypes.Text, 19, sql.Collation_Default)},
+		},
+	},
+	{
+		Query:    `SELECT LEAST(CAST('2021-01-01 00:00:00' AS DATETIME), '2020-01-01 00:00:00')`,
+		Expected: []sql.Row{{"2020-01-01 00:00:00"}},
+	},
+	{
+		Query:    `SELECT LEAST('2020-01-01', CAST('2021-01-01 00:00:00.123' AS DATETIME(3))) AS v`,
+		Expected: []sql.Row{{"2020-01-01 00:00:00.000"}},
+		ExpectedColumns: sql.Schema{
+			{Name: "v", Type: types.MustCreateString(sqltypes.Text, 23, sql.Collation_Default)},
+		},
+	},
+	{
+		Query:    `SELECT LEAST('abc', CAST('2021-01-01 00:00:00' AS DATETIME)), GREATEST(CAST('2021-01-01 00:00:00' AS DATETIME), 'abc')`,
+		Expected: []sql.Row{{"2021-01-01 00:00:00", "2021-01-01 00:00:00"}},
+	},
+	{
+		Query:    `SELECT LEAST('2020-01-01 00:00:00', CAST('2021-01-01 00:00:00' AS DATETIME), NULL)`,
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query: `SELECT i, LEAST('2020-01-04 00:00:00', timestamp_col), GREATEST(timestamp_col, '2020-01-04 00:00:00') FROM datetime_table ORDER BY i`,
+		Expected: []sql.Row{
+			{1, "2020-01-02 12:00:00", "2020-01-04 00:00:00"},
+			{2, "2020-01-04 00:00:00", "2020-01-05 12:00:00"},
+			{3, "2020-01-04 00:00:00", "2020-01-07 12:00:01"},
+		},
+	},
+	{
+		Query: `SELECT i, LEAST(datetime_col, '2020-01-04 00:00:00'), GREATEST('2020-01-04 00:00:00', datetime_col) FROM datetime_table ORDER BY i`,
+		Expected: []sql.Row{
+			{1, "2020-01-01 12:00:00", "2020-01-04 00:00:00"},
+			{2, "2020-01-04 00:00:00", "2020-01-04 12:00:00"},
+			{3, "2020-01-04 00:00:00", "2020-01-07 12:00:00"},
+		},
+	},
+	{
+		Query: `SELECT i, LEAST('2020-01-04', date_col), GREATEST(date_col, '2020-01-04 10:00:00') FROM datetime_table ORDER BY i`,
+		Expected: []sql.Row{
+			{1, "2019-12-31", "2020-01-04"},
+			{2, "2020-01-03", "2020-01-04"},
+			{3, "2020-01-04", "2020-01-07"},
+		},
+	},
+	{
+		Query:    `SELECT LEAST(@@back_log,@@auto_increment_offset)`,
+		Expected: []sql.Row{{-1}},
 	},
 
 	// Additional Math Function Tests

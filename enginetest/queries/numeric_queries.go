@@ -1811,14 +1811,18 @@ WHERE FALSE`,
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query: `SELECT
+				Query: `
+SELECT
     column_name,
     column_type
 FROM information_schema.columns
 WHERE table_schema = DATABASE()
   AND table_name = 'decimal_metadata'
 ORDER BY ordinal_position`,
-				Expected: []sql.Row{{"g", "decimal(9,5)"}, {"l", "decimal(9,5)"}},
+				Expected: []sql.Row{
+					{"g", "decimal(9,5)"},
+					{"l", "decimal(9,5)"},
+				},
 			},
 		},
 	},
@@ -1826,78 +1830,87 @@ ORDER BY ordinal_position`,
 		Name:    "Greatest and least preserve exact decimal digits",
 		Dialect: "mysql",
 		SetUpScript: []string{
-			`CREATE TABLE exact_values (
-    id INT PRIMARY KEY,
-    a DECIMAL(31, 30),
-    b DECIMAL(31, 30)
-)`,
-			`INSERT INTO exact_values VALUES
-    (1, '1.000000000000000000000000000002', '1.000000000000000000000000000001'),
-    (2, '-1.000000000000000000000000000002', '-1.000000000000000000000000000001'),
-    (3, NULL, '1.000000000000000000000000000001'),
-    (4, '1.000000000000000000000000000002', NULL)`,
+			"CREATE TABLE exact_values (" +
+				"id INT PRIMARY KEY," +
+				"a DECIMAL(31, 30)," +
+				"b DECIMAL(31, 30));",
+			"INSERT INTO exact_values VALUES" +
+				"(1, ' 1.000000000000000000000000000002', ' 1.000000000000000000000000000001')," +
+				"(2, '-1.000000000000000000000000000002', '-1.000000000000000000000000000001')," +
+				"(3,  NULL,                               ' 1.000000000000000000000000000001')," +
+				"(4, '1.000000000000000000000000000002',   NULL);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: `SELECT
-    id,
-    GREATEST(a, b),
-    LEAST(a, b),
-    GREATEST(b, a),
-    LEAST(b, a)
-FROM exact_values
-ORDER BY id`,
+				Query: "SELECT id, GREATEST(a, b) FROM exact_values ORDER BY id;",
 				Expected: []sql.Row{
-					{
-						1,
-						"1.000000000000000000000000000002",
-						"1.000000000000000000000000000001",
-						"1.000000000000000000000000000002",
-						"1.000000000000000000000000000001",
-					},
-					{
-						2,
-						"-1.000000000000000000000000000001",
-						"-1.000000000000000000000000000002",
-						"-1.000000000000000000000000000001",
-						"-1.000000000000000000000000000002",
-					},
-					{3, nil, nil, nil, nil},
-					{4, nil, nil, nil, nil},
+					{1, "1.000000000000000000000000000002"},
+					{2, "-1.000000000000000000000000000001"},
+					{3, nil},
+					{4, nil},
 				},
 			},
 			{
-				Query: `SELECT
-    GREATEST(CAST(1.25 AS DECIMAL(3, 2)), NULL),
-    LEAST(NULL, CAST(1.25 AS DECIMAL(3, 2)))`,
-				Expected: []sql.Row{{nil, nil}},
-			},
-			{
-				Query: `SELECT
-    GREATEST(
-        1.0000000000000000000000000000000000000002,
-        1.0000000000000000000000000000000000000001
-    ),
-    LEAST(
-        1.0000000000000000000000000000000000000002,
-        1.0000000000000000000000000000000000000001
-    )`,
+				Query: "SELECT id, GREATEST(b, a) FROM exact_values ORDER BY id;",
 				Expected: []sql.Row{
-					{
-						"1.0000000000000000000000000000000000000002",
-						"1.0000000000000000000000000000000000000001",
-					},
+					{1, "1.000000000000000000000000000002"},
+					{2, "-1.000000000000000000000000000001"},
+					{3, nil},
+					{4, nil},
 				},
 			},
 			{
-				Query: `SELECT
-    GREATEST(1.0, 1.0000000000000000000000000000000000000000),
-    LEAST(1.0, 1.0000000000000000000000000000000000000000)`,
+				Query: "SELECT id, LEAST(a, b) FROM exact_values ORDER BY id;",
 				Expected: []sql.Row{
-					{
-						"1.0000000000000000000000000000000000000000",
-						"1.0000000000000000000000000000000000000000",
-					},
+					{1, "1.000000000000000000000000000001"},
+					{2, "-1.000000000000000000000000000002"},
+					{3, nil},
+					{4, nil},
+				},
+			},
+			{
+				Query: "SELECT id, LEAST(b, a) FROM exact_values ORDER BY id;",
+				Expected: []sql.Row{
+					{1, "1.000000000000000000000000000001"},
+					{2, "-1.000000000000000000000000000002"},
+					{3, nil},
+					{4, nil},
+				},
+			},
+			{
+				Query:    `SELECT GREATEST(CAST(1.25 AS DECIMAL(3, 2)), NULL);`,
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:    `SELECT LEAST(NULL, CAST(1.25 AS DECIMAL(3, 2)));`,
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query: "SELECT GREATEST(" +
+					"1.0000000000000000000000000000000000000002," +
+					"1.0000000000000000000000000000000000000001);",
+				Expected: []sql.Row{
+					{"1.0000000000000000000000000000000000000002"},
+				},
+			},
+			{
+				Query: "SELECT LEAST(" +
+					"1.0000000000000000000000000000000000000002," +
+					"1.0000000000000000000000000000000000000001);",
+				Expected: []sql.Row{
+					{"1.0000000000000000000000000000000000000001"},
+				},
+			},
+			{
+				Query: `SELECT GREATEST(1.0, 1.0000000000000000000000000000000000000000);`,
+				Expected: []sql.Row{
+					{"1.0000000000000000000000000000000000000000"},
+				},
+			},
+			{
+				Query: `SELECT LEAST(1.0, 1.0000000000000000000000000000000000000000);`,
+				Expected: []sql.Row{
+					{"1.0000000000000000000000000000000000000000"},
 				},
 			},
 		},
@@ -2083,16 +2096,15 @@ ORDER BY ordinal_position`,
 		Name:    "Greatest and least at the decimal precision limit",
 		Dialect: "mysql",
 		SetUpScript: []string{
-			`CREATE TABLE wide_values (
-    id INT PRIMARY KEY,
-    a DECIMAL(65, 0),
-    b DECIMAL(2, 1),
-    c DECIMAL(31, 30)
-)`,
-			`INSERT INTO wide_values VALUES
-    (1, '99999999999999999999999999999999999999999999999999999999999999999', 0.1, 0.1),
-    (2, '-99999999999999999999999999999999999999999999999999999999999999999', -0.1, -0.1),
-    (3, 1, 0.1, 0.1)`,
+			"CREATE TABLE wide_values (" +
+				"id INT PRIMARY KEY," +
+				"a DECIMAL(65, 0)," +
+				"b DECIMAL(2, 1)," +
+				"c DECIMAL(31, 30));",
+			"INSERT INTO wide_values VALUES " +
+				"(1, '99999999999999999999999999999999999999999999999999999999999999999', 0.1, 0.1)," +
+				"(2, '-99999999999999999999999999999999999999999999999999999999999999999', -0.1, -0.1)," +
+				"(3, 1, 0.1, 0.1);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -2198,8 +2210,12 @@ ORDER BY id`,
 				},
 			},
 			{
-				Query:    "SELECT id, GREATEST(d,f), LEAST(d,f) FROM mixed_values ORDER BY id",
-				Expected: []sql.Row{{1, float64(1.25), float64(0.1)}, {2, float64(1.25), float64(0.1)}, {3, nil, nil}},
+				Query: "SELECT id, GREATEST(d,f), LEAST(d,f) FROM mixed_values ORDER BY id",
+				Expected: []sql.Row{
+					{1, float64(1.25), float64(0.1)},
+					{2, float64(1.25), float64(0.1)},
+					{3, nil, nil},
+				},
 			},
 			{
 				Query: `CREATE TABLE mixed_metadata AS
@@ -2212,7 +2228,8 @@ WHERE FALSE`,
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query: `SELECT
+				Query: `
+SELECT
     column_name,
     column_type
 FROM information_schema.columns
@@ -2247,7 +2264,8 @@ ORDER BY ordinal_position`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: `CREATE TABLE integer_metadata AS
+				Query: `
+CREATE TABLE integer_metadata AS
 SELECT
     GREATEST(i8, d) AS i8,
     GREATEST(u8, d) AS u8,
@@ -2263,7 +2281,8 @@ FROM integer_values`,
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query: `SELECT
+				Query: `
+SELECT
     column_name,
     column_type
 FROM information_schema.columns
@@ -2281,6 +2300,76 @@ ORDER BY ordinal_position`,
 					{"u32", "decimal(11,1)"},
 					{"i64", "decimal(20,1)"},
 					{"u64", "decimal(21,1)"},
+				},
+			},
+			{
+				Query: `
+CREATE TABLE same_int_metadata AS
+SELECT
+    GREATEST(i8, i8) AS i8,
+    GREATEST(i16, i16) AS i16,
+    GREATEST(i24, i24) AS i24,
+    GREATEST(i32, i32) AS i32,
+    GREATEST(i64, i64) AS i64,
+	GREATEST(u8, u8) AS u8,
+    GREATEST(u16, u16) AS u16,
+    GREATEST(u24, u24) AS u24,
+    GREATEST(u32, u32) AS u32,
+    GREATEST(u64, u64) AS u64
+FROM integer_values;`,
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: `
+SELECT
+    column_name,
+    column_type
+FROM information_schema.columns
+WHERE table_schema = DATABASE()
+  AND table_name = 'same_int_metadata'
+ORDER BY ordinal_position;`,
+				Expected: []sql.Row{
+					{"i8", "int"},
+					{"i16", "int"},
+					{"i24", "int"},
+					{"i32", "int"},
+					{"i64", "bigint"},
+					{"u8", "int unsigned"},
+					{"u16", "int unsigned"},
+					{"u24", "int unsigned"},
+					{"u32", "int unsigned"},
+					{"u64", "bigint unsigned"},
+				},
+			},
+			{
+				Query: `
+CREATE TABLE int_uint_metadata AS
+SELECT
+    GREATEST(i8, u8) AS i8u8,
+    GREATEST(i16, u16) AS i16u16,
+    GREATEST(i24, u24) AS i24u24,
+    GREATEST(i32, u32) AS i32u32,
+    GREATEST(i64, u64) AS i64u64,
+    GREATEST(i8, u64) AS i8u64
+FROM integer_values;`,
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: `
+SELECT
+    column_name,
+    column_type
+FROM information_schema.columns
+WHERE table_schema = DATABASE()
+  AND table_name = 'int_uint_metadata'
+ORDER BY ordinal_position;`,
+				Expected: []sql.Row{
+					{"i8u8", "int"},
+					{"i16u16", "int"},
+					{"i24u24", "int"},
+					{"i32u32", "bigint"}, // MySQL returns "int" here, but that's their problem
+					{"i64u64", "decimal(20,0)"},
+					{"i8u64", "decimal(20,0)"},
 				},
 			},
 		},
