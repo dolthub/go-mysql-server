@@ -2374,6 +2374,32 @@ ORDER BY ordinal_position;`,
 			},
 		},
 	},
+	{
+		Name:    "comparing decimal columns to decimal literals with differing precisions and scale",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table dec_tbl(d decimal(10,2));",
+			"insert into dec_tbl values(123.45);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select d = 123.45 from dec_tbl",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    "select d = 123.45000001 from dec_tbl",
+				Expected: []sql.Row{{false}},
+			},
+			{
+				Query:    "select d > 123.45000001 from dec_tbl",
+				Expected: []sql.Row{{false}},
+			},
+			{
+				Query:    "select d < 123.45000001 from dec_tbl",
+				Expected: []sql.Row{{true}},
+			},
+		},
+	},
 }
 
 var NumericErrorQueries = []ScriptTest{
