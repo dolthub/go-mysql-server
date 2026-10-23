@@ -414,15 +414,23 @@ func handleError(ctx *sql.Context, runner sql.StatementRunner, stack *Interprete
 		return -1, err
 	}
 
-	_, _, _, rowIter, err := execOp(ctx, runner, stack, handlerOps[0], handlerOps, nil, -1)
-	if err != nil {
-		return -1, err
-	}
-	if rowIter != nil {
-		for {
-			_, err = rowIter.Next(ctx)
-			if err != nil {
-				return -1, err
+	// TODO: While this does execute the handler queries, results are all discarded, because we currently only support
+	//  returning one result schema. However, the effects of the queries should still apply, meaning
+	//  SET/INSERT/UPDATE/etc queries still have an effect.
+	for _, op := range handlerOps {
+		_, _, _, rowIter, hErr := execOp(ctx, runner, stack, op, handlerOps, nil, -1)
+		if hErr != nil {
+			return -1, hErr
+		}
+		if rowIter != nil {
+			for {
+				_, err = rowIter.Next(ctx)
+				if err == io.EOF {
+					break
+				}
+				if err != nil {
+					return -1, err
+				}
 			}
 		}
 	}
@@ -999,5 +1007,6 @@ func Call(ctx *sql.Context, iNode InterpreterNode) (sql.RowIter, *InterpreterSta
 		rowIters = []sql.RowIter{sql.RowsToRowIter(sql.Row{types.NewOkResult(0)})}
 	}
 
+	// TODO: return all rowIters
 	return rowIters[len(rowIters)-1], stack, nil
 }
