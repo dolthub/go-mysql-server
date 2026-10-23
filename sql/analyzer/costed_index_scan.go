@@ -1345,6 +1345,7 @@ func (b *indexScanRangeBuilder) rangeBuildDefaultLeaf(bb *sql.MySQLIndexBuilder,
 			bb.Equals(b.ctx, name, f.litType, f.litValue)
 		}
 	default:
+		// TODO: replace panic with error
 		panic(fmt.Sprintf("unknown IndexScanOp: %d", f.Op()))
 	}
 }
@@ -1519,6 +1520,7 @@ func formatIndexFilterRec(b *strings.Builder, nesting int, f indexFilter) {
 		}
 
 	default:
+		// TODO: replace panic with error
 		panic(fmt.Sprintf("unknown indexFilter type :%T", f))
 	}
 }
