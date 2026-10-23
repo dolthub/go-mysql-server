@@ -108,8 +108,11 @@ func costedIndexScans(
 
 			exprs := expression.SplitConjunction(ctx, filter.Expression)
 			idxedTbl, stats, filters, err := getCostedIndexScan(ctx, a.Catalog, a.Catalog, tblNode, idxs, exprs, qFlags, planReturnsRowIter)
-			if err != nil || idxedTbl == nil {
+			if err != nil {
 				return n, transform.SameTree, err
+			}
+			if idxedTbl == nil {
+				return subqueryKeyLookup(ctx, filter, tblNode, idxs, exprs)
 			}
 			var ret sql.Node = idxedTbl
 			if alias != "" {
@@ -212,6 +215,71 @@ func canUsePartialIndex(idx sql.Index, filters []sql.Expression) bool {
 		}
 	}
 	return false
+}
+
+// subqueryKeyLookup reads a table that can only be read through an index, by finding the values that `filters` set the
+// index's first columns equal to. At least one value must be a subquery, and the subqueries run when the query runs.
+func subqueryKeyLookup(ctx *sql.Context, filter *plan.Filter, tblNode sql.TableNode, indexes []sql.Index, filters []sql.Expression) (sql.Node, transform.TreeIdentity, error) {
+	if _, ok := tblNode.UnderlyingTable().(sql.IndexRequired); !ok {
+		return filter, transform.SameTree, nil
+	}
+	tablePrefix := tblNode.Name() + "."
+	for _, idx := range indexes {
+		if idx.IsVector() || idx.IsSpatial() || idx.IsFullText() || !canUsePartialIndex(idx, filters) {
+			continue
+		}
+		var keyExprs []sql.Expression
+		var hasSubquery bool
+		for _, idxExpr := range idx.Expressions() {
+			key := lookupKeyForColumn(ctx, strings.TrimPrefix(idxExpr, tablePrefix), filters)
+			if key == nil {
+				break
+			}
+			_, isSubquery := key.(*plan.Subquery)
+			hasSubquery = hasSubquery || isSubquery
+			keyExprs = append(keyExprs, key)
+		}
+		if !hasSubquery {
+			continue
+		}
+		idxedTbl, err := plan.NewIndexedAccessForTableNode(ctx, tblNode, plan.NewLookupBuilder(ctx, idx, keyExprs, make([]bool, len(keyExprs))))
+		if err != nil {
+			return filter, transform.SameTree, err
+		}
+		var ret sql.Node = idxedTbl
+		if tableAlias, ok := filter.Child.(*plan.TableAlias); ok {
+			ret, err = tableAlias.WithChildren(ctx, idxedTbl)
+			if err != nil {
+				return filter, transform.SameTree, err
+			}
+		}
+		return plan.NewFilter(ctx, filter.Expression, ret), transform.NewTree, nil
+	}
+	return filter, transform.SameTree, nil
+}
+
+// lookupKeyForColumn returns the value that `filters` require the column `colName` to equal. The value must be a
+// constant, or a subquery that does not use any columns from the outer query, otherwise this returns nil.
+func lookupKeyForColumn(ctx *sql.Context, colName string, filters []sql.Expression) sql.Expression {
+	for _, f := range filters {
+		op, left, right, ok := IndexLeafChildren(f)
+		if !ok || op != sql.IndexScanOpEq {
+			continue
+		}
+		if _, ok = right.(*expression.GetField); ok {
+			left, right = right, left
+		}
+		if gf, ok := left.(*expression.GetField); !ok || !strings.EqualFold(gf.Name(), colName) {
+			continue
+		}
+		if sq, ok := right.(*plan.Subquery); ok && sq.CanCacheResults() {
+			return sq
+		}
+		if isEvaluable(ctx, right) {
+			return right
+		}
+	}
+	return nil
 }
 
 // getCostedIndexScan tries to build the lowest cost index scan for the filter expressions provided. Returns a nil

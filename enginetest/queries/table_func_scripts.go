@@ -250,4 +250,16 @@ end;
 			{2},
 		},
 	},
+	{
+		Query: "select x from sequence_table((select 'x' from xy where y = 1), 3)",
+		Expected: []sql.Row{
+			{0},
+			{1},
+			{2},
+		},
+	},
+	{
+		Query:       "select * from required_lookup_table('x', 5) where x = (select y from xy)",
+		ExpectedErr: sql.ErrExpectedSingleRow,
+	},
 }
