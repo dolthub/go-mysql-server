@@ -71,7 +71,6 @@ func costedIndexScans(
 		}
 
 		var tblNode sql.TableNode
-		var alias string
 		switch child := filter.Child.(type) {
 		case *plan.ResolvedTable:
 			tblNode = child
@@ -80,7 +79,6 @@ func costedIndexScans(
 			if !ok {
 				return n, transform.SameTree, nil
 			}
-			alias = child.Name()
 		default:
 			return n, transform.SameTree, nil
 		}
@@ -115,8 +113,11 @@ func costedIndexScans(
 				return subqueryKeyLookup(ctx, filter, tblNode, idxs, exprs)
 			}
 			var ret sql.Node = idxedTbl
-			if alias != "" {
-				ret = plan.NewTableAlias(alias, ret)
+			if tableAlias, ok := filter.Child.(*plan.TableAlias); ok {
+				ret, err = tableAlias.WithChildren(ctx, idxedTbl)
+				if err != nil {
+					return n, transform.SameTree, err
+				}
 			}
 			// excluded from tree + not included in index scan => filter above scan
 			if len(filters) > 0 {
