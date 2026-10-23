@@ -1809,7 +1809,8 @@ END`,
 	},
 
 	{
-		Name: "EXIT HANDLE FOR SQLEXCEPTION with multiple queries",
+		Dialect: "mysql",
+		Name:    "EXIT HANDLER FOR SQLEXCEPTION with multiple queries",
 		SetUpScript: []string{
 			`CREATE TABLE t1 (pk BIGINT PRIMARY KEY);`,
 			`CREATE PROCEDURE p1()
