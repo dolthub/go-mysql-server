@@ -345,18 +345,28 @@ type rangeFramerBase struct {
 	unboundedFollowing bool // optional
 	unboundedPreceding bool // optional
 	nullOrdering       sql.NullOrdering
-	partitionSet       bool
+	// descending is true when [orderBy] sorts in descending order. N PRECEDING
+	// then refers to larger values and N FOLLOWING to smaller ones.
+	descending   bool
+	partitionSet bool
 }
 
 func (f *rangeFramerBase) NewFramer(interval sql.WindowInterval) (sql.WindowFramer, error) {
+	// PRECEDING moves toward the start of the sorted partition, which holds
+	// smaller values for ASC and larger values for DESC.
+	precedingOp, followingOp := ast.MinusStr, ast.PlusStr
+	if f.descending {
+		precedingOp, followingOp = ast.PlusStr, ast.MinusStr
+	}
+
 	var startInclusion sql.Expression
 	switch {
 	case f.startCurrentRow:
 		startInclusion = f.orderBy
 	case f.startNPreceding != nil:
-		startInclusion = expression.NewArithmetic(f.orderBy, f.startNPreceding, ast.MinusStr)
+		startInclusion = expression.NewArithmetic(f.orderBy, f.startNPreceding, precedingOp)
 	case f.startNFollowing != nil:
-		startInclusion = expression.NewArithmetic(f.orderBy, f.startNFollowing, ast.PlusStr)
+		startInclusion = expression.NewArithmetic(f.orderBy, f.startNFollowing, followingOp)
 	}
 
 	// TODO: how to validate datetime, interval pair when they aren't type comparable
@@ -369,9 +379,9 @@ func (f *rangeFramerBase) NewFramer(interval sql.WindowInterval) (sql.WindowFram
 	case f.endCurrentRow:
 		endInclusion = f.orderBy
 	case f.endNPreceding != nil:
-		endInclusion = expression.NewArithmetic(f.orderBy, f.endNPreceding, ast.MinusStr)
+		endInclusion = expression.NewArithmetic(f.orderBy, f.endNPreceding, precedingOp)
 	case f.endNFollowing != nil:
-		endInclusion = expression.NewArithmetic(f.orderBy, f.endNFollowing, ast.PlusStr)
+		endInclusion = expression.NewArithmetic(f.orderBy, f.endNFollowing, followingOp)
 	}
 
 	// TODO: how to validate datetime, interval pair when they aren't type comparable
@@ -398,6 +408,7 @@ func (f *rangeFramerBase) NewFramer(interval sql.WindowInterval) (sql.WindowFram
 		// range specific
 		orderBy:        f.orderBy,
 		nullOrdering:   f.nullOrdering,
+		descending:     f.descending,
 		startInclusion: startInclusion,
 		endInclusion:   endInclusion,
 	}, nil
@@ -418,7 +429,7 @@ func (f *rangeFramerBase) Next(ctx *sql.Context, buf sql.WindowBuffer) (sql.Wind
 		// specified.
 		newStart = f.partitionStart
 	default:
-		newStart, err = findInclusionBoundary(ctx, f.idx, newStart, f.partitionEnd, f.startInclusion, f.orderBy, buf, greaterThanOrEqual, f.nullOrdering)
+		newStart, err = findInclusionBoundary(ctx, f.idx, newStart, f.partitionEnd, f.startInclusion, f.orderBy, buf, greaterThanOrEqual, f.nullOrdering, f.descending)
 		if err != nil {
 			return sql.WindowInterval{}, err
 		}
@@ -432,7 +443,7 @@ func (f *rangeFramerBase) Next(ctx *sql.Context, buf sql.WindowBuffer) (sql.Wind
 	case newEnd > f.partitionEnd, f.unboundedFollowing, f.endCurrentRow && f.orderBy == nil:
 		newEnd = f.partitionEnd
 	default:
-		newEnd, err = findInclusionBoundary(ctx, f.idx, newEnd, f.partitionEnd, f.endInclusion, f.orderBy, buf, greaterThan, f.nullOrdering)
+		newEnd, err = findInclusionBoundary(ctx, f.idx, newEnd, f.partitionEnd, f.endInclusion, f.orderBy, buf, greaterThan, f.nullOrdering, f.descending)
 		if err != nil {
 			return sql.WindowInterval{}, err
 		}
@@ -456,7 +467,8 @@ const (
 // the comparison: [inclusion] [stopCond] [expr]. For example, (x+2) > (x).
 // [expr] is evaluated at the current row, [inclusion] is evaluated on the boundary
 // candidate. This is used as a sliding window algorithm for value ranges.
-func findInclusionBoundary(ctx *sql.Context, pos, searchStart, partitionEnd int, inclusion, expr sql.Expression, buf sql.WindowBuffer, stopCond stopCond, nullOrdering sql.NullOrdering) (int, error) {
+// Comparisons are made in buffer order, so [descending] reverses non-NULL results.
+func findInclusionBoundary(ctx *sql.Context, pos, searchStart, partitionEnd int, inclusion, expr sql.Expression, buf sql.WindowBuffer, stopCond stopCond, nullOrdering sql.NullOrdering, descending bool) (int, error) {
 	cur, err := inclusion.Eval(ctx, buf[pos])
 	if err != nil {
 		return 0, err
@@ -493,6 +505,9 @@ func findInclusionBoundary(ctx *sql.Context, pos, searchStart, partitionEnd int,
 			cmp, err = compareType.Compare(ctx, res, cur)
 			if err != nil {
 				return 0, err
+			}
+			if descending {
+				cmp = -cmp
 			}
 		}
 	}
