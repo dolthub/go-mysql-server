@@ -354,7 +354,7 @@ var NumericScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select c1 % 2, c2 % 2, c3 % 2 from a;",
-				Expected: []sql.Row{{"1", 1.111, "1.111"}, {"0", 0.11100000000000021, "0.111"}},
+				Expected: []sql.Row{{1, 1.111, "1.111"}, {0, 0.11100000000000021, "0.111"}},
 			},
 			{
 				Query:    "select c1 % 0.5, c2 % 0.5, c3 % 0.5 from a;",
@@ -362,7 +362,26 @@ var NumericScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "select 20 % c1, 20 % c2, 20 % c3 from a;",
-				Expected: []sql.Row{{"0", 0.002000000000000224, "0.002"}, {"0", 1.0009999999999981, "1.001"}},
+				Expected: []sql.Row{{0, 0.002000000000000224, "0.002"}, {0, 1.0009999999999981, "1.001"}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12126
+		Name:    "'%' mod operation on integers returns an integer with the sign of the dividend",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table ints (a int unsigned, b bigint unsigned, c tinyint, d bigint);",
+			"insert into ints values (7, 18446744073709551615, -7, -9223372036854775808);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select a % -2, b % 10, c % a, c % 2, d % -1, d % 3, d % b from ints;",
+				Expected: []sql.Row{{uint64(1), uint64(5), int64(0), int64(-1), int64(0), int64(-2), int64(math.MinInt64)}},
+			},
+			{
+				Query:    "select mod(c, 0) from ints;",
+				Expected: []sql.Row{{nil}},
 			},
 		},
 	},

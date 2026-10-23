@@ -309,8 +309,8 @@ func TestMod(t *testing.T) {
 		right    interface{}
 		expected interface{}
 	}{
-		{"MOD(5,2)", 5, 2, "1"},
-		{"MOD(2,5)", 2, 5, "2"},
+		{"MOD(5,2)", 5, 2, int64(1)},
+		{"MOD(2,5)", 2, 5, int64(2)},
 		{"MOD(1,0.240)", 1, "0.240", "0.040"},
 		{"MOD(NULL,2)", nil, 2, nil},
 		{"MOD(5,NULL)", 5, nil, nil},
@@ -321,7 +321,11 @@ func TestMod(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			mod, err := f.Fn(sql.NewEmptyContext(), expression.NewLiteral(test.left, types.Int32), expression.NewLiteral(test.right, types.Int32))
+			rightType := sql.Type(types.Int32)
+			if _, ok := test.right.(string); ok {
+				rightType = types.MustCreateDecimalType(4, 3)
+			}
+			mod, err := f.Fn(sql.NewEmptyContext(), expression.NewLiteral(test.left, types.Int32), expression.NewLiteral(test.right, rightType))
 			res, err := mod.Eval(nil, nil)
 			assert.NoError(t, err)
 			if r, ok := res.(*apd.Decimal); ok {

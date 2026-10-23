@@ -90,7 +90,14 @@ func (m *Mod) Type(ctx *sql.Context) sql.Type {
 		return types.Float64
 	}
 
-	// TODO: This is not correct when both inputs are ints https://github.com/dolthub/dolt/issues/12126
+	// The remainder of two integers is an integer, and has the sign of the dividend
+	if types.IsInteger(lTyp) && types.IsInteger(rTyp) {
+		if types.IsUnsigned(lTyp) {
+			return types.Uint64
+		}
+		return types.Int64
+	}
+
 	return getFloatOrMaxDecimalType(ctx, m, false)
 }
 
@@ -118,9 +125,35 @@ func (m *Mod) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
+	if typ := m.Type(ctx); types.IsInteger(typ) {
+		return m.evalInteger(ctx, typ, lval, rval)
+	}
+
 	lval, rval = m.convertLeftRight(ctx, lval, rval)
 
 	return mod(ctx, lval, rval)
+}
+
+// evalInteger returns the remainder of two integer operands. The result has the sign of the dividend.
+func (m *Mod) evalInteger(ctx *sql.Context, typ sql.Type, lval, rval any) (any, error) {
+	left := integerMagnitudeFromValue(ctx, m.LeftChild.Type(ctx), lval)
+	right := integerMagnitudeFromValue(ctx, m.RightChild.Type(ctx), rval)
+	if right.magnitude == 0 {
+		arithmeticWarning(ctx, ERDivisionByZero, "Division by 0")
+		return nil, nil
+	}
+
+	result := left.magnitude % right.magnitude
+	if types.IsUnsigned(typ) {
+		return result, nil
+	}
+	if left.negative {
+		if result == uint64(math.MaxInt64)+1 {
+			return int64(math.MinInt64), nil
+		}
+		return -int64(result), nil
+	}
+	return int64(result), nil
 }
 
 func (m *Mod) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, interface{}, error) {

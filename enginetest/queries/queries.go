@@ -913,7 +913,7 @@ var QueryTests = []QueryTest{
 	// Miscellaneous type conversion queries
 	{
 		Query:    "SELECT 1 % true",
-		Expected: []sql.Row{{"0"}},
+		Expected: []sql.Row{{0}},
 	},
 	{
 		Query: `SELECT "1" + '1'`,
@@ -9761,8 +9761,7 @@ from typestable`,
 	{
 		Query: "select mod(pk2, 2) from two_pk group by pk1 + 1, mod(pk2, 2)",
 		Expected: []sql.Row{
-			// TODO: These should be integer types if the inputs are integers https://github.com/dolthub/dolt/issues/12126
-			{"0"}, {"1"}, {"0"}, {"1"},
+			{0}, {1}, {0}, {1},
 		},
 	},
 	// https://github.com/dolthub/dolt/issues/7095

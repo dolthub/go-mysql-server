@@ -528,21 +528,23 @@ func TestMod(t *testing.T) {
 	var testCases = []struct {
 		name        string
 		left, right int64
-		expected    string
+		expected    int64
 		null        bool
 	}{
-		{"1 % 1", 1, 1, "0", false},
-		{"8 % 3", 8, 3, "2", false},
-		{"1 % 3", 1, 3, "1", false},
-		{"0 % -1024", 0, -1024, "0", false},
-		{"-1 % 2", -1, 2, "-1", false},
-		{"1 % -2", 1, -2, "1", false},
-		{"-1 % -2", -1, -2, "-1", false},
-		{"1 % 0", 1, 0, "0", true},
-		{"0 % 0", 0, 0, "0", true},
-		{"0.5 % 0.24", 0, 0, "0.02", true},
-		{"12385865823658963784136.5 % 24852.24", 0, 0, "24264.50", true},
-		{"24852.5 % 12385865823658963784136.24", 0, 0, "24852.5", true},
+		{"1 % 1", 1, 1, 0, false},
+		{"8 % 3", 8, 3, 2, false},
+		{"1 % 3", 1, 3, 1, false},
+		{"0 % -1024", 0, -1024, 0, false},
+		{"-1 % 2", -1, 2, -1, false},
+		{"1 % -2", 1, -2, 1, false},
+		{"-1 % -2", -1, -2, -1, false},
+		{"-9223372036854775808 % -1", math.MinInt64, -1, 0, false},
+		{"-9223372036854775808 % 3", math.MinInt64, 3, -2, false},
+		{"1 % 0", 1, 0, 0, true},
+		{"0 % 0", 0, 0, 0, true},
+		{"0.5 % 0.24", 0, 0, 0, true},
+		{"12385865823658963784136.5 % 24852.24", 0, 0, 0, true},
+		{"24852.5 % 12385865823658963784136.24", 0, 0, 0, true},
 	}
 
 	for _, tt := range testCases {
@@ -556,9 +558,7 @@ func TestMod(t *testing.T) {
 			if tt.null {
 				require.Nil(result)
 			} else {
-				r, ok := result.(*apd.Decimal)
-				require.True(ok)
-				require.Equal(tt.expected, r.Text('f'))
+				require.Equal(tt.expected, result)
 			}
 		})
 	}
