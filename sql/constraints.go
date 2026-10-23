@@ -188,3 +188,10 @@ type CheckConstraintNode interface {
 	Checks() CheckConstraints
 	WithChecks(CheckConstraints) Node
 }
+
+// ForeignKeyTypeWidening lets an integrator identify lossless type changes that
+// preserve foreign-key equality and index lookup semantics. Types without this
+// interface retain the engine's standard foreign-key type-change restrictions.
+type ForeignKeyTypeWidening interface {
+	CanWidenForeignKeyTypeTo(Type) bool
+}
