@@ -23,6 +23,28 @@ import (
 // SubqueriesScriptTests contains self-contained subqueries script tests.
 var SubqueriesScriptTests = []ScriptTest{
 	{
+		// https://github.com/dolthub/dolt/issues/11552
+		Name: "lateral derived table with a filter on the outer row",
+		SetUpScript: []string{
+			"CREATE TABLE t (id INT PRIMARY KEY);",
+			"INSERT INTO t VALUES (1), (2);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT o.id, q.tag FROM t AS o LEFT JOIN LATERAL (SELECT o.id + 1 AS tag WHERE o.id = 1) AS q ON TRUE ORDER BY o.id;",
+				Expected: []sql.Row{{1, 2}, {2, nil}},
+			},
+			{
+				Query:    "SELECT o.id, q.tag FROM t AS o JOIN LATERAL (SELECT o.id + 1 AS tag WHERE o.id = 1) AS q ON TRUE ORDER BY o.id;",
+				Expected: []sql.Row{{1, 2}},
+			},
+			{
+				Query:    "SELECT o.id, q.tag FROM t AS o LEFT JOIN LATERAL (SELECT i.id * 10 AS tag FROM t AS i WHERE i.id = o.id AND o.id = 2) AS q ON TRUE ORDER BY o.id;",
+				Expected: []sql.Row{{1, nil}, {2, 20}},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/10113
 		Name: "DELETE with NOT EXISTS subquery",
 		SetUpScript: []string{
