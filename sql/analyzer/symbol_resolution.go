@@ -245,7 +245,7 @@ func pruneTableCols(
 			table: source,
 			col:   strings.ToLower(col.Name),
 		}
-		if parentCols[c] > 0 {
+		if parentCols[c] > 0 || col.PrimaryKey {
 			cols = append(cols, c.col)
 			newCols.Add(ids[i])
 		}
