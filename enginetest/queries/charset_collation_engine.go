@@ -2018,28 +2018,38 @@ T.TABLE_SCHEMA AS 'database', T.TABLE_CATALOG AS 'catalog',
 	},
 	{
 		// https://github.com/dolthub/go-mysql-server/issues/3846
-		Name: "char length validation uses the column's character set",
+		Name: "CHAR length validation accounts for the column character set's maximum byte length",
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "CREATE TABLE charlen (one CHAR(1) CHARACTER SET utf8mb3, two CHAR(2) CHARACTER SET utf8mb3, four CHAR(1) CHARACTER SET utf8mb4);",
+				Query:    "CREATE TABLE charlen (one CHAR(1), two CHAR(2), four CHAR(1));",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				// U+1D11E is a valid 4-byte UTF-8 character, but utf8mb3 allows at most 3 bytes per character.
-				Query:          "INSERT INTO charlen (one) VALUES (UNHEX('F09D849E'));",
-				ExpectedErrStr: "string '[240 157 132 158]' is too large for column 'one'",
+				Dialect:  "mysql",
+				Query:    "ALTER TABLE charlen MODIFY COLUMN one CHAR(1) CHARACTER SET utf8mb3, MODIFY COLUMN two CHAR(2) CHARACTER SET utf8mb3, MODIFY COLUMN four CHAR(1) CHARACTER SET utf8mb4;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query:    "INSERT INTO charlen (two) VALUES (UNHEX('F09D849E'));",
+				Dialect:     "mysql",
+				Query:       "INSERT INTO charlen (one) VALUES (UNHEX('F09D849E'));",
+				ExpectedErr: types.ErrLengthBeyondLimit,
+			},
+			{
+				Dialect:     "mysql",
+				Query:       "INSERT INTO charlen (one) VALUES ('€€');",
+				ExpectedErr: types.ErrLengthBeyondLimit,
+			},
+			{
+				Query:    "INSERT INTO charlen (two) VALUES ('€€');",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
-				Query:    "INSERT INTO charlen (four) VALUES (UNHEX('F09D849E'));",
+				Query:    "INSERT INTO charlen (four) VALUES ('𝄞');",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
 				Query:    "SELECT CHAR_LENGTH(two) FROM charlen WHERE two IS NOT NULL;",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.Row{{2}},
 			},
 			{
 				Query:    "SELECT CHAR_LENGTH(four) FROM charlen WHERE four IS NOT NULL;",
