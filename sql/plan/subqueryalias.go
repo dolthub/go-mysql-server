@@ -20,12 +20,14 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
+type ScopeMapping = map[sql.ColumnId]sql.Expression
+
 // SubqueryAlias is a node that gives a subquery a name.
 type SubqueryAlias struct {
 	UnaryNode
 	Correlated   sql.ColSet
 	cols         sql.ColSet
-	ScopeMapping map[sql.ColumnId]sql.Expression
+	ScopeMapping ScopeMapping
 
 	name           string
 	TextDefinition string
@@ -151,7 +153,7 @@ func (sq *SubqueryAlias) WithVolatile(v bool) *SubqueryAlias {
 	return &ret
 }
 
-func (sq *SubqueryAlias) WithScopeMapping(cols map[sql.ColumnId]sql.Expression) *SubqueryAlias {
+func (sq *SubqueryAlias) WithScopeMapping(cols ScopeMapping) *SubqueryAlias {
 	ret := *sq
 	ret.ScopeMapping = cols
 	return &ret
@@ -209,4 +211,51 @@ func (sq *SubqueryAlias) WithColumnNames(columns []string) *SubqueryAlias {
 	ret := *sq
 	ret.ColumnNames = columns
 	return &ret
+}
+
+// SubqueryAliasIter is an implementation of ValueRowWriter that maps child ColumnIds onto parent ColumnIds
+// as it iterates. All RowIter methods are implicitly passed through to the underlying writer.
+type SubqueryAliasIter struct {
+	sql.ValueRowWriter
+	destColumns sql.ColSet
+	childRow    sql.ValueRow
+}
+
+func NewSubqueryAliasIter(destColumns sql.ColSet, child sql.ValueRowWriter) (SubqueryAliasIter, error) {
+	if destColumns.Len() != child.Columns().Len() {
+		return SubqueryAliasIter{}, fmt.Errorf("SubqueryAliasIter column count mismatch: %d != %d", destColumns.Len(), child.Columns().Len())
+	}
+	childRow := make(sql.ValueRow, child.Columns().Max()+1)
+	return SubqueryAliasIter{child, destColumns, childRow}, nil
+}
+
+var _ sql.ValueRowWriter = SubqueryAliasIter{}
+
+func (m SubqueryAliasIter) IsValueRowWriter(ctx *sql.Context) bool {
+	return m.ValueRowWriter.IsValueRowWriter(ctx)
+}
+
+func (m SubqueryAliasIter) WriteNextValueRow(ctx *sql.Context, row sql.ValueRow) error {
+	// It is necessary to write to a new row because the subquery could be a common
+	// table expression that is referenced multiple times, in which case each reference
+	// will use the same ColumnIds.
+	// TODO: We can prevent this by pushing ColumnIds from the SQA into the subquery.
+
+	err := m.ValueRowWriter.WriteNextValueRow(ctx, m.childRow)
+	if err != nil {
+		return err
+	}
+	sourceColumns := m.ValueRowWriter.Columns()
+	nextSourceColumn, ok := sourceColumns.Next(1)
+	nextDestColumn, _ := m.destColumns.Next(1)
+	for ok {
+		row[nextDestColumn] = m.childRow[nextSourceColumn]
+		nextSourceColumn, ok = sourceColumns.Next(nextSourceColumn + 1)
+		nextDestColumn, _ = m.destColumns.Next(nextDestColumn + 1)
+	}
+	return nil
+}
+
+func (m SubqueryAliasIter) Columns() sql.ColSet {
+	return m.destColumns
 }

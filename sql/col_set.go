@@ -3,6 +3,7 @@ package sql
 import (
 	"bytes"
 	"fmt"
+	"iter"
 
 	"github.com/dolthub/go-mysql-server/sql/sets"
 )
@@ -76,8 +77,32 @@ func (s ColSet) Next(startVal ColumnId) (ColumnId, bool) {
 	return retVal(c), ok
 }
 
+func (s ColSet) Max() (maxId ColumnId) {
+	// TODO: There's gotta be an O(1) implementation
+	next, ok := s.Next(1)
+	for ok {
+		maxId = next
+		next, ok = s.Next(maxId + 1)
+	}
+	return maxId
+}
+
 // ForEach calls a function for each column in the set (in increasing order).
 func (s ColSet) ForEach(f func(col ColumnId)) { s.set.ForEach(func(i int) { f(retVal(i)) }) }
+
+func (s ColSet) Iter() iter.Seq2[int, ColumnId] {
+	return func(yield func(int, ColumnId) bool) {
+		i := 0
+		columnId, ok := s.Next(1)
+		for ok {
+			if !yield(i, columnId) {
+				return
+			}
+			columnId, ok = s.Next(columnId + 1)
+			i++
+		}
+	}
+}
 
 // Copy returns a copy of s which can be modified independently.
 func (s ColSet) Copy() ColSet { return ColSet{set: s.set.Copy()} }
