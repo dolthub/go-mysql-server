@@ -138,7 +138,7 @@ func HashOf(ctx *sql.Context, sch sql.Schema, row sql.Row) (uint64, error) {
 			}
 			_, err = hash.WriteString(str)
 		case *apd.Decimal:
-			_, err = hash.WriteString(v.Text('f'))
+			_, err = hash.WriteString(decimalHashString(v))
 		case string:
 			_, err = hash.WriteString(v)
 		case []byte:
@@ -250,14 +250,7 @@ func HashOfSimple(ctx *sql.Context, i any, t sql.Type) (uint64, sql.ConvertInRan
 			str = "0"
 		}
 	case *apd.Decimal:
-		str = v.Text('f')
-		if strings.IndexByte(str, '.') != -1 {
-			// remove trailing 0s after '.'
-			str = strings.TrimRightFunc(str, func(r rune) bool {
-				return r == '0'
-			})
-			str = strings.TrimRight(str, ".")
-		}
+		str = decimalHashString(v)
 	default:
 		str = fmt.Sprintf("%v", v) // TODO: avoid Sprintf for performance
 	}
@@ -267,4 +260,21 @@ func HashOfSimple(ctx *sql.Context, i any, t sql.Type) (uint64, sql.ConvertInRan
 		return 0, sql.InRange, err
 	}
 	return hash.Sum64(), inRange, nil
+}
+
+// decimalHashString returns the string that a decimal is hashed as. Trailing zeros after the decimal point are removed,
+// so equal decimals with a different scale, like 1.0 and 1.00, hash to the same value, and so do 0 and -0.
+func decimalHashString(v *apd.Decimal) string {
+	str := v.Text('f')
+	if strings.IndexByte(str, '.') != -1 {
+		// remove trailing 0s after '.'
+		str = strings.TrimRightFunc(str, func(r rune) bool {
+			return r == '0'
+		})
+		str = strings.TrimRight(str, ".")
+	}
+	if str == "-0" {
+		str = "0"
+	}
+	return str
 }

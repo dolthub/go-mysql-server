@@ -17,6 +17,9 @@ package hash
 import (
 	"testing"
 
+	"github.com/cockroachdb/apd/v3"
+	"github.com/stretchr/testify/require"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -50,4 +53,39 @@ func BenchmarkParallelHashOf(b *testing.B) {
 			}
 		}
 	})
+}
+
+func TestHashOfDecimals(t *testing.T) {
+	tests := []struct {
+		left  string
+		right string
+		equal bool
+	}{
+		{"1", "1.0", true},
+		{"1.0", "1.00", true},
+		{"2.50", "2.5", true},
+		{"10", "10.000", true},
+		{"0", "-0.0", true},
+		{"0.00", "0", true},
+		{"-1.50", "-1.5", true},
+		{"10", "1", false},
+		{"1.01", "1.1", false},
+		{"100", "1.00", false},
+	}
+
+	ctx := sql.NewEmptyContext()
+	for _, test := range tests {
+		t.Run(test.left+" "+test.right, func(t *testing.T) {
+			left, _, err := apd.NewFromString(test.left)
+			require.NoError(t, err)
+			right, _, err := apd.NewFromString(test.right)
+			require.NoError(t, err)
+
+			leftHash, err := HashOf(ctx, nil, sql.NewRow(left))
+			require.NoError(t, err)
+			rightHash, err := HashOf(ctx, nil, sql.NewRow(right))
+			require.NoError(t, err)
+			require.Equal(t, test.equal, leftHash == rightHash)
+		})
+	}
 }
