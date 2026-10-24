@@ -377,7 +377,7 @@ var NumericScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select a % -2, b % 10, c % a, c % 2, d % -1, d % 3, d % b from ints;",
-				Expected: []sql.Row{{uint64(1), uint64(5), int64(0), int64(-1), int64(0), int64(-2), int64(math.MinInt64)}},
+				Expected: []sql.Row{{uint64(1), uint64(5), int64(0), int64(-1), int64(0), int64(-2), int64(-9223372036854775808)}},
 			},
 			{
 				Query:    "select mod(c, 0) from ints;",

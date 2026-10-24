@@ -86,7 +86,7 @@ func (m *Mod) Type(ctx *sql.Context) sql.Type {
 		return lTyp
 	}
 
-	if types.IsText(lTyp) || types.IsText(rTyp) {
+	if types.IsText(lTyp) || types.IsText(rTyp) || types.IsFloat(lTyp) || types.IsFloat(rTyp) {
 		return types.Float64
 	}
 

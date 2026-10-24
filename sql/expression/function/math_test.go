@@ -304,29 +304,33 @@ func TestSign_TypedNilDecimal(t *testing.T) {
 
 func TestMod(t *testing.T) {
 	tests := []struct {
-		name     string
-		left     interface{}
-		right    interface{}
-		expected interface{}
+		name         string
+		left         interface{}
+		leftType     sql.Type
+		right        interface{}
+		rightType    sql.Type
+		expected     interface{}
+		expectedType sql.Type
 	}{
-		{"MOD(5,2)", 5, 2, int64(1)},
-		{"MOD(2,5)", 2, 5, int64(2)},
-		{"MOD(1,0.240)", 1, "0.240", "0.040"},
-		{"MOD(NULL,2)", nil, 2, nil},
-		{"MOD(5,NULL)", 5, nil, nil},
-		{"MOD(NULL,NULL)", nil, nil, nil},
+		{"MOD(5,2)", int32(5), types.Int32, int32(2), types.Int32, int64(1), types.Int64},
+		{"MOD(2,5)", int32(2), types.Int32, int32(5), types.Int32, int64(2), types.Int64},
+		{"MOD(1,0.240)", int32(1), types.Int32, apd.New(240, -3), types.MustCreateDecimalType(4, 3), "0.040", types.MustCreateDecimalType(4, 3)},
+		{"MOD(NULL,2)", nil, types.Null, int32(2), types.Int32, nil, nil},
+		{"MOD(5,NULL)", int32(5), types.Int32, nil, types.Null, nil, nil},
+		{"MOD(NULL,NULL)", nil, types.Null, nil, types.Null, nil, nil},
 	}
 
 	f := sql.FunctionN{Name: "mod", Fn: NewMod}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			rightType := sql.Type(types.Int32)
-			if _, ok := test.right.(string); ok {
-				rightType = types.MustCreateDecimalType(4, 3)
+			ctx := sql.NewEmptyContext()
+			mod, err := f.Fn(ctx, expression.NewLiteral(test.left, test.leftType), expression.NewLiteral(test.right, test.rightType))
+			require.NoError(t, err)
+			if test.expectedType != nil {
+				assert.Equal(t, test.expectedType, mod.Type(ctx))
 			}
-			mod, err := f.Fn(sql.NewEmptyContext(), expression.NewLiteral(test.left, types.Int32), expression.NewLiteral(test.right, rightType))
-			res, err := mod.Eval(nil, nil)
+			res, err := mod.Eval(ctx, nil)
 			assert.NoError(t, err)
 			if r, ok := res.(*apd.Decimal); ok {
 				assert.Equal(t, test.expected, r.Text('f'))
