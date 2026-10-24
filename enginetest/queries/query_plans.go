@@ -17198,24 +17198,21 @@ inner join pq on true
 	{
 		Query: `SELECT a.* FROM one_pk a CROSS JOIN one_pk c INNER JOIN one_pk b ON b.pk = c.pk and b.pk = a.pk`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [a.pk:2!null, a.c1:3, a.c2:4, a.c3:5, a.c4:6, a.c5:7]\n" +
+			" ├─ columns: [a.pk:0!null, a.c1:1, a.c2:2, a.c3:3, a.c4:4, a.c5:5]\n" +
 			" └─ LookupJoin\n" +
-			"     ├─ Eq\n" +
-			"     │   ├─ a.pk:2!null\n" +
-			"     │   └─ c.pk:0!null\n" +
 			"     ├─ MergeJoin\n" +
 			"     │   ├─ cmp: Eq\n" +
-			"     │   │   ├─ c.pk:0!null\n" +
-			"     │   │   └─ b.pk:1!null\n" +
-			"     │   ├─ TableAlias(c)\n" +
+			"     │   │   ├─ a.pk:0!null\n" +
+			"     │   │   └─ b.pk:6!null\n" +
+			"     │   ├─ TableAlias(a)\n" +
 			"     │   │   └─ IndexedTableAccess(one_pk)\n" +
 			"     │   │       ├─ index: [one_pk.pk]\n" +
 			"     │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │       ├─ colSet: (7)\n" +
-			"     │   │       ├─ tableId: 2\n" +
+			"     │   │       ├─ colSet: (1-6)\n" +
+			"     │   │       ├─ tableId: 1\n" +
 			"     │   │       └─ Table\n" +
 			"     │   │           ├─ name: one_pk\n" +
-			"     │   │           └─ columns: [pk]\n" +
+			"     │   │           └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"     │   └─ TableAlias(b)\n" +
 			"     │       └─ IndexedTableAccess(one_pk)\n" +
 			"     │           ├─ index: [one_pk.pk]\n" +
@@ -17225,58 +17222,56 @@ inner join pq on true
 			"     │           └─ Table\n" +
 			"     │               ├─ name: one_pk\n" +
 			"     │               └─ columns: [pk]\n" +
-			"     └─ TableAlias(a)\n" +
+			"     └─ TableAlias(c)\n" +
 			"         └─ IndexedTableAccess(one_pk)\n" +
 			"             ├─ index: [one_pk.pk]\n" +
-			"             ├─ keys: [b.pk:1!null]\n" +
-			"             ├─ colSet: (1-6)\n" +
-			"             ├─ tableId: 1\n" +
+			"             ├─ keys: [b.pk:6!null]\n" +
+			"             ├─ colSet: (7)\n" +
+			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: one_pk\n" +
-			"                 └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"                 └─ columns: [pk]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.pk, a.c1, a.c2, a.c3, a.c4, a.c5]\n" +
 			" └─ LookupJoin (estimated cost=13.228 rows=4)\n" +
-			"     ├─ (a.pk = c.pk)\n" +
 			"     ├─ MergeJoin (estimated cost=8.120 rows=4)\n" +
-			"     │   ├─ cmp: (c.pk = b.pk)\n" +
-			"     │   ├─ TableAlias(c)\n" +
+			"     │   ├─ cmp: (a.pk = b.pk)\n" +
+			"     │   ├─ TableAlias(a)\n" +
 			"     │   │   └─ IndexedTableAccess(one_pk)\n" +
 			"     │   │       ├─ index: [one_pk.pk]\n" +
 			"     │   │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   │       └─ columns: [pk]\n" +
+			"     │   │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"     │   └─ TableAlias(b)\n" +
 			"     │       └─ IndexedTableAccess(one_pk)\n" +
 			"     │           ├─ index: [one_pk.pk]\n" +
 			"     │           ├─ filters: [{[NULL, ∞)}]\n" +
 			"     │           └─ columns: [pk]\n" +
-			"     └─ TableAlias(a)\n" +
+			"     └─ TableAlias(c)\n" +
 			"         └─ IndexedTableAccess(one_pk)\n" +
 			"             ├─ index: [one_pk.pk]\n" +
-			"             ├─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"             ├─ columns: [pk]\n" +
 			"             └─ keys: b.pk\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.pk, a.c1, a.c2, a.c3, a.c4, a.c5]\n" +
 			" └─ LookupJoin (estimated cost=13.228 rows=4) (actual rows=4 loops=1)\n" +
-			"     ├─ (a.pk = c.pk)\n" +
 			"     ├─ MergeJoin (estimated cost=8.120 rows=4) (actual rows=4 loops=1)\n" +
-			"     │   ├─ cmp: (c.pk = b.pk)\n" +
-			"     │   ├─ TableAlias(c)\n" +
+			"     │   ├─ cmp: (a.pk = b.pk)\n" +
+			"     │   ├─ TableAlias(a)\n" +
 			"     │   │   └─ IndexedTableAccess(one_pk)\n" +
 			"     │   │       ├─ index: [one_pk.pk]\n" +
 			"     │   │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   │       └─ columns: [pk]\n" +
+			"     │   │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"     │   └─ TableAlias(b)\n" +
 			"     │       └─ IndexedTableAccess(one_pk)\n" +
 			"     │           ├─ index: [one_pk.pk]\n" +
 			"     │           ├─ filters: [{[NULL, ∞)}]\n" +
 			"     │           └─ columns: [pk]\n" +
-			"     └─ TableAlias(a)\n" +
+			"     └─ TableAlias(c)\n" +
 			"         └─ IndexedTableAccess(one_pk)\n" +
 			"             ├─ index: [one_pk.pk]\n" +
-			"             ├─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"             ├─ columns: [pk]\n" +
 			"             └─ keys: b.pk\n" +
 			"",
 	},

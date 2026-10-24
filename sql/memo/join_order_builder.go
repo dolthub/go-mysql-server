@@ -246,32 +246,26 @@ func (j *joinOrderBuilder) populateSubgraph(ctx *sql.Context, n sql.Node) (verte
 // buildSingleLookupPlan attempts to build a plan consisting only of lookup joins.
 func (j *joinOrderBuilder) buildSingleLookupPlan(ctx *sql.Context) bool {
 	fds := j.m.root.RelProps.FuncDeps(ctx)
-	fdKey, hasKey := fds.StrictKey()
-	// fdKey is a set of columns which constrain all other columns in the join.
-	// If a chain of lookups exists, then the columns in fdKey must be in the innermost join.
-	if !hasKey {
-		return false
-	}
-	// We need to include every fdKey columns in the innermost join.
-	// For now, we just handle the case where the key is exactly one column.
-	if fdKey.Len() != 1 {
-		return false
-	}
+
 	for _, edge := range j.edges {
 		if !edge.op.joinType.IsInner() {
 			// This optimization currently only supports inner joins.
 			return false
 		}
 	}
-	keyColumn, _ := fdKey.Next(1)
+
+	// The first table in the chain must be a table whose columns determine every other column in the join.
 	var currentlyJoinedTables sets.FastIntSet
 	var currentlyJoinedVertexes vertexSet
 	for i, n := range j.m.Root().RelProps.TableIdNodes() {
-		if n.Columns().Contains(keyColumn) {
+		if fds.ColsAreStrictKey(n.Columns()) {
 			currentlyJoinedTables.Add(int(n.Id()))
 			currentlyJoinedVertexes = currentlyJoinedVertexes.Add(uint64(i))
 			break
 		}
+	}
+	if currentlyJoinedTables.Empty() {
+		return false
 	}
 
 	// removedEdges contains the edges that have already been incorporated into the new plan, so we don't repeat them.
