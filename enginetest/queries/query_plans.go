@@ -3998,7 +3998,7 @@ Select * from (
 		Query: `select i+0.0/(lag(i) over (order by s)) from mytable order by 1;`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [(mytable.i:1!null + (0.0 (decimal(2,1)) / lag(mytable.i, 1) over ( order by mytable.s asc):0))->i+0.0/(lag(i) over (order by s)):0]\n" +
-			" └─ Sort((mytable.i:1!null + (0.0 (decimal(2,1)) / lag(mytable.i, 1) over ( order by mytable.s asc):0))->i+0.0/(lag(i) over (order by s)):0 ASC nullsFirst)\n" +
+			" └─ Sort((mytable.i:1!null + (0.0 (decimal(2,1)) / lag(mytable.i, 1) over ( order by mytable.s asc):0)) ASC nullsFirst)\n" +
 			"     └─ Window\n" +
 			"         ├─ lag(mytable.i, 1) over ( order by mytable.s ASC)\n" +
 			"         ├─ mytable.i:0!null\n" +
@@ -4009,7 +4009,7 @@ Select * from (
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [(mytable.i + (0.0 / lag(mytable.i, 1) over ( order by mytable.s asc))) as `i+0.0/(lag(i) over (order by s))`]\n" +
-			" └─ Sort((mytable.i + (0.0 / lag(mytable.i, 1) over ( order by mytable.s asc))) as `i+0.0/(lag(i) over (order by s))` ASC)\n" +
+			" └─ Sort((mytable.i + (0.0 / lag(mytable.i, 1) over ( order by mytable.s asc))) ASC)\n" +
 			"     └─ Window(lag(mytable.i, 1) over ( order by mytable.s ASC), mytable.i)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
@@ -4017,7 +4017,7 @@ Select * from (
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [(mytable.i + (0.0 / lag(mytable.i, 1) over ( order by mytable.s asc))) as `i+0.0/(lag(i) over (order by s))`]\n" +
-			" └─ Sort((mytable.i + (0.0 / lag(mytable.i, 1) over ( order by mytable.s asc))) as `i+0.0/(lag(i) over (order by s))` ASC)\n" +
+			" └─ Sort((mytable.i + (0.0 / lag(mytable.i, 1) over ( order by mytable.s asc))) ASC)\n" +
 			"     └─ Window(lag(mytable.i, 1) over ( order by mytable.s ASC), mytable.i)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
@@ -4028,7 +4028,7 @@ Select * from (
 		Query: `select f64/f32, f32/(lag(i) over (order by f64)) from floattable order by 1,2;`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [(floattable.f64:1!null / floattable.f32:2!null)->f64/f32:0, (floattable.f32:2!null / lag(floattable.i, 1) over ( order by floattable.f64 asc):0)->f32/(lag(i) over (order by f64)):0]\n" +
-			" └─ Sort((floattable.f64:1!null / floattable.f32:2!null)->f64/f32:0 ASC nullsFirst, (floattable.f32:2!null / lag(floattable.i, 1) over ( order by floattable.f64 asc):0)->f32/(lag(i) over (order by f64)):0 ASC nullsFirst)\n" +
+			" └─ Sort((floattable.f64:1!null / floattable.f32:2!null) ASC nullsFirst, (floattable.f32:2!null / lag(floattable.i, 1) over ( order by floattable.f64 asc):0) ASC nullsFirst)\n" +
 			"     └─ Window\n" +
 			"         ├─ lag(floattable.i, 1) over ( order by floattable.f64 ASC)\n" +
 			"         ├─ floattable.f64:2!null\n" +
@@ -4040,7 +4040,7 @@ Select * from (
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [(floattable.f64 / floattable.f32) as `f64/f32`, (floattable.f32 / lag(floattable.i, 1) over ( order by floattable.f64 asc)) as `f32/(lag(i) over (order by f64))`]\n" +
-			" └─ Sort((floattable.f64 / floattable.f32) as `f64/f32` ASC, (floattable.f32 / lag(floattable.i, 1) over ( order by floattable.f64 asc)) as `f32/(lag(i) over (order by f64))` ASC)\n" +
+			" └─ Sort((floattable.f64 / floattable.f32) ASC, (floattable.f32 / lag(floattable.i, 1) over ( order by floattable.f64 asc)) ASC)\n" +
 			"     └─ Window(lag(floattable.i, 1) over ( order by floattable.f64 ASC), floattable.f64, floattable.f32)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: floattable\n" +
@@ -4048,7 +4048,7 @@ Select * from (
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [(floattable.f64 / floattable.f32) as `f64/f32`, (floattable.f32 / lag(floattable.i, 1) over ( order by floattable.f64 asc)) as `f32/(lag(i) over (order by f64))`]\n" +
-			" └─ Sort((floattable.f64 / floattable.f32) as `f64/f32` ASC, (floattable.f32 / lag(floattable.i, 1) over ( order by floattable.f64 asc)) as `f32/(lag(i) over (order by f64))` ASC)\n" +
+			" └─ Sort((floattable.f64 / floattable.f32) ASC, (floattable.f32 / lag(floattable.i, 1) over ( order by floattable.f64 asc)) ASC)\n" +
 			"     └─ Window(lag(floattable.i, 1) over ( order by floattable.f64 ASC), floattable.f64, floattable.f32)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: floattable\n" +
@@ -6560,7 +6560,7 @@ inner join pq on true
 				from mytable join othertable on i = i2 order by 1`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [row_number() over ( order by mytable.i desc):0!null->row_number() over (order by i desc):0, mytable.i:1!null->i2:0]\n" +
-			" └─ Sort(row_number() over ( order by mytable.i desc):0!null->row_number() over (order by i desc):0 ASC nullsFirst)\n" +
+			" └─ Sort(row_number() over ( order by mytable.i desc):0!null ASC nullsFirst)\n" +
 			"     └─ Window\n" +
 			"         ├─ row_number() over ( order by mytable.i DESC)\n" +
 			"         ├─ mytable.i:0!null\n" +
@@ -6587,7 +6587,7 @@ inner join pq on true
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [row_number() over ( order by mytable.i desc) as `row_number() over (order by i desc)`, mytable.i as i2]\n" +
-			" └─ Sort(row_number() over ( order by mytable.i desc) as `row_number() over (order by i desc)` ASC)\n" +
+			" └─ Sort(row_number() over ( order by mytable.i desc) ASC)\n" +
 			"     └─ Window(row_number() over ( order by mytable.i DESC), mytable.i)\n" +
 			"         └─ MergeJoin\n" +
 			"             ├─ cmp: (mytable.i = othertable.i2)\n" +
@@ -6602,7 +6602,7 @@ inner join pq on true
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [row_number() over ( order by mytable.i desc) as `row_number() over (order by i desc)`, mytable.i as i2]\n" +
-			" └─ Sort(row_number() over ( order by mytable.i desc) as `row_number() over (order by i desc)` ASC)\n" +
+			" └─ Sort(row_number() over ( order by mytable.i desc) ASC)\n" +
 			"     └─ Window(row_number() over ( order by mytable.i DESC), mytable.i)\n" +
 			"         └─ MergeJoin\n" +
 			"             ├─ cmp: (mytable.i = othertable.i2)\n" +
@@ -6718,7 +6718,7 @@ inner join pq on true
 				order by 1`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [row_number() over ( order by mytable.i desc):0!null->row_number() over (order by i desc):0, mytable.i:1!null->i2:0]\n" +
-			" └─ Sort(row_number() over ( order by mytable.i desc):0!null->row_number() over (order by i desc):0 ASC nullsFirst)\n" +
+			" └─ Sort(row_number() over ( order by mytable.i desc):0!null ASC nullsFirst)\n" +
 			"     └─ Window\n" +
 			"         ├─ row_number() over ( order by mytable.i DESC)\n" +
 			"         ├─ mytable.i:0!null\n" +
@@ -6742,7 +6742,7 @@ inner join pq on true
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [row_number() over ( order by mytable.i desc) as `row_number() over (order by i desc)`, mytable.i as i2]\n" +
-			" └─ Sort(row_number() over ( order by mytable.i desc) as `row_number() over (order by i desc)` ASC)\n" +
+			" └─ Sort(row_number() over ( order by mytable.i desc) ASC)\n" +
 			"     └─ Window(row_number() over ( order by mytable.i DESC), mytable.i)\n" +
 			"         └─ LookupJoin\n" +
 			"             ├─ IndexedTableAccess(mytable)\n" +
@@ -6756,7 +6756,7 @@ inner join pq on true
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [row_number() over ( order by mytable.i desc) as `row_number() over (order by i desc)`, mytable.i as i2]\n" +
-			" └─ Sort(row_number() over ( order by mytable.i desc) as `row_number() over (order by i desc)` ASC)\n" +
+			" └─ Sort(row_number() over ( order by mytable.i desc) ASC)\n" +
 			"     └─ Window(row_number() over ( order by mytable.i DESC), mytable.i)\n" +
 			"         └─ LookupJoin\n" +
 			"             ├─ IndexedTableAccess(mytable)\n" +
