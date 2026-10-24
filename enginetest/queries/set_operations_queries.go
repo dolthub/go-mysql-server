@@ -903,4 +903,37 @@ select * from t1 except (
 			},
 		},
 	},
+	{
+		Name: "set operations compare integers, decimals and doubles by value",
+		SetUpScript: []string{
+			"CREATE TABLE setop_nums (id INT PRIMARY KEY, d DECIMAL(6,2), e DOUBLE);",
+			"INSERT INTO setop_nums VALUES (1, 1.00, 1), (2, 2.50, 2.5), (5, 5.00, 5);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT id FROM setop_nums INTERSECT SELECT d FROM setop_nums ORDER BY 1;",
+				Expected: []sql.Row{{"1.00"}, {"5.00"}},
+			},
+			{
+				Query:    "SELECT id FROM setop_nums EXCEPT SELECT d FROM setop_nums;",
+				Expected: []sql.Row{{"2.00"}},
+			},
+			{
+				Query:    "SELECT id FROM setop_nums EXCEPT ALL SELECT d FROM setop_nums;",
+				Expected: []sql.Row{{"2.00"}},
+			},
+			{
+				Query:    "SELECT id FROM setop_nums UNION SELECT d FROM setop_nums ORDER BY 1;",
+				Expected: []sql.Row{{"1.00"}, {"2.00"}, {"2.50"}, {"5.00"}},
+			},
+			{
+				Query:    "SELECT id FROM setop_nums INTERSECT SELECT e FROM setop_nums ORDER BY 1;",
+				Expected: []sql.Row{{1.0}, {5.0}},
+			},
+			{
+				Query:    "SELECT 5 UNION SELECT 5.0;",
+				Expected: []sql.Row{{"5.0"}},
+			},
+		},
+	},
 }
