@@ -77,29 +77,24 @@ func (s ColSet) Next(startVal ColumnId) (ColumnId, bool) {
 	return retVal(c), ok
 }
 
+// Min returns the smallest ColumnId in the set. Requires that the set is nonempty.
+func (s ColSet) Min() (maxId ColumnId) {
+	return retVal(s.set.Min())
+}
+
+// Max returns the largest ColumnId in the set. Requires that the set is nonempty.
 func (s ColSet) Max() (maxId ColumnId) {
-	// TODO: There's gotta be an O(1) implementation
-	next, ok := s.Next(1)
-	for ok {
-		maxId = next
-		next, ok = s.Next(maxId + 1)
-	}
-	return maxId
+	return retVal(s.set.Max())
 }
 
 // ForEach calls a function for each column in the set (in increasing order).
 func (s ColSet) ForEach(f func(col ColumnId)) { s.set.ForEach(func(i int) { f(retVal(i)) }) }
 
+// Iter returns an iterator over the columnIds in the set, in increasing order.
 func (s ColSet) Iter() iter.Seq2[int, ColumnId] {
 	return func(yield func(int, ColumnId) bool) {
-		i := 0
-		columnId, ok := s.Next(1)
-		for ok {
-			if !yield(i, columnId) {
-				return
-			}
-			columnId, ok = s.Next(columnId + 1)
-			i++
+		for i, id := range s.set.Iter() {
+			yield(i, retVal(id))
 		}
 	}
 }

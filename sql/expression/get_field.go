@@ -144,7 +144,7 @@ func (p *GetField) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 // EvalValue implements the ValueExpression interface.
 func (p *GetField) EvalValue(ctx *sql.Context, row sql.ValueRow) (sql.Value, error) {
-	if p.fieldIndex < 0 || p.fieldIndex >= len(row) {
+	if p.exprId < 0 || int(p.exprId) >= len(row) {
 		return sql.Value{}, ErrIndexOutOfBounds.New(p.fieldIndex, len(row))
 	}
 	return row[p.exprId], nil
