@@ -61,6 +61,7 @@ func TestHashOfDecimals(t *testing.T) {
 		right string
 		equal bool
 	}{
+		{"-0", "0", true},
 		{"1", "1.0", true},
 		{"1.0", "1.00", true},
 		{"2.50", "2.5", true},
