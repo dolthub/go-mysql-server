@@ -1205,6 +1205,39 @@ var AggregationScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "COUNT(1) and COUNT(*) in the same select",
+		SetUpScript: []string{
+			"CREATE TABLE count_t (id INT PRIMARY KEY, c VARCHAR(10));",
+			"INSERT INTO count_t VALUES (1, 'a'), (2, 'b'), (3, 'a');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT COUNT(1), COUNT(*) FROM count_t;",
+				Expected: []sql.Row{{3, 3}},
+			},
+			{
+				Query:    "SELECT COUNT(*), COUNT(*) FROM count_t;",
+				Expected: []sql.Row{{3, 3}},
+			},
+			{
+				Query:    "SELECT COUNT(1), COUNT(1) FROM count_t;",
+				Expected: []sql.Row{{3, 3}},
+			},
+			{
+				Query:    "SELECT c, COUNT(1), COUNT(*) FROM count_t GROUP BY c ORDER BY c;",
+				Expected: []sql.Row{{"a", 2, 2}, {"b", 1, 1}},
+			},
+			{
+				Query:    "SELECT COUNT(1) AS n, COUNT(*) FROM count_t WHERE id > 1;",
+				Expected: []sql.Row{{2, 2}},
+			},
+			{
+				Query:       "SELECT id AS x, x AS y FROM count_t;",
+				ExpectedErr: sql.ErrMisusedAlias,
+			},
+		},
+	},
 }
 
 var GroupByScriptTests = []ScriptTest{
