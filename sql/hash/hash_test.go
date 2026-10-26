@@ -15,6 +15,7 @@
 package hash
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/cockroachdb/apd/v3"
@@ -89,4 +90,14 @@ func TestHashOfDecimals(t *testing.T) {
 			require.Equal(t, test.equal, leftHash == rightHash)
 		})
 	}
+}
+
+func TestHashOfNegativeZero(t *testing.T) {
+	dec, _, _ := apd.NewFromString("0.000")
+	dec.Negative = true
+	require.Equal(t, dec.Text('f'), "-0.000")
+	fmt.Printf("%s\n", dec.Text('f'))
+	res := new(apd.Decimal)
+	res, _ = res.Reduce(dec)
+	require.Equal(t, res.Text('f'), "0")
 }

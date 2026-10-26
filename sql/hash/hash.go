@@ -265,6 +265,7 @@ func HashOfSimple(ctx *sql.Context, i any, t sql.Type) (uint64, sql.ConvertInRan
 // decimalHashString returns a normalized decimal string used for hashing.
 // Trailing 0s and trailing decimal points are removed. Negative 0 is normalized to positive 0.
 func decimalHashString(v *apd.Decimal) string {
-	v, _ = v.Reduce(v)
-	return v.Text('f')
+	res := new(apd.Decimal)
+	res, _ = res.Reduce(v)
+	return res.Text('f')
 }
