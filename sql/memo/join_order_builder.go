@@ -706,6 +706,7 @@ func (j *joinOrderBuilder) addPlans(ctx *sql.Context, s1, s2 vertexSet) {
 	// TODO relational nodes track functional dependencies
 
 	var innerJoinFilters []sql.Expression
+	var unappliedFilters []sql.Expression
 	var addInnerJoin bool
 	var isRedundant bool
 	for i, ok := j.innerEdges.Next(0); ok; i, ok = j.innerEdges.Next(i + 1) {
@@ -718,7 +719,15 @@ func (j *joinOrderBuilder) addPlans(ctx *sql.Context, s1, s2 vertexSet) {
 			isRedundant = isRedundant || e.joinIsRedundant(s1, s2)
 			addInnerJoin = true
 			j.m.Tracer.Log("Found applicable inner edge %d with filters: %v", i, e.filters)
+		} else if e.mustApplyBetween(s1, s2) {
+			// This join is the only place this edge's filters could be applied.
+			unappliedFilters = append(unappliedFilters, e.filters...)
 		}
+	}
+
+	if len(unappliedFilters) > 0 && !j.filtersAreImplied(ctx, s1, s2, innerJoinFilters, unappliedFilters) {
+		j.m.Tracer.Log("Skipping join - it would drop inner join filters: %v", unappliedFilters)
+		return
 	}
 
 	// Because transitive closure can accidentally replace nonInner op with inner op,
@@ -753,6 +762,24 @@ func (j *joinOrderBuilder) addPlans(ctx *sql.Context, s1, s2 vertexSet) {
 	} else {
 		j.m.Tracer.Log("No applicable edges found for join")
 	}
+}
+
+// filtersAreImplied returns true if every filter in |unapplied| is an equality between columns that are already
+// equivalent in a join between |s1| and |s2| that applies |applied|.
+func (j *joinOrderBuilder) filtersAreImplied(ctx *sql.Context, s1, s2 vertexSet, applied, unapplied []sql.Expression) bool {
+	fds := &sql.FuncDepSet{}
+	fds.AddEquivSets(j.plans[s1].RelProps.FuncDeps(ctx))
+	fds.AddEquivSets(j.plans[s2].RelProps.FuncDeps(ctx))
+	for _, eq := range getEquivs(applied) {
+		fds.AddEquiv(eq[0], eq[1])
+	}
+	for _, f := range unapplied {
+		eqs := getEquivs([]sql.Expression{f})
+		if len(eqs) != 1 || !fds.EquivalenceClosure(sql.NewColSet(eqs[0][0])).Contains(eqs[0][1]) {
+			return false
+		}
+	}
+	return true
 }
 
 func (j *joinOrderBuilder) addJoin(ctx *sql.Context, op plan.JoinType, s1, s2 vertexSet, joinFilter, selFilters []sql.Expression, isRedundant bool) {
@@ -1127,6 +1154,12 @@ func (e *edge) addRule(rule conflictRule) {
 		return
 	}
 	e.rules = append(e.rules, rule)
+}
+
+// mustApplyBetween returns true if the edge's filters reference relations in both |s1| and |s2| and no relations
+// outside of them. A join between |s1| and |s2| is then the only place these filters can be applied.
+func (e *edge) mustApplyBetween(s1, s2 vertexSet) bool {
+	return e.ses.IsSubsetOf(s1.Union(s2)) && e.ses.Intersects(s1) && e.ses.Intersects(s2)
 }
 
 func (e *edge) applicable(s1, s2 vertexSet) bool {

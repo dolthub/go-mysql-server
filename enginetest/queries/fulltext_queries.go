@@ -1232,4 +1232,22 @@ var FulltextTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/12175
+		Name: "null fulltext index",
+		SetUpScript: []string{
+			"CREATE TABLE t (a VARCHAR(100), b INT, FULLTEXT INDEX fa(a), INDEX ib(b));",
+			"INSERT INTO t VALUES ('alpha',1),('alpha',1),(NULL,2),('',3),('bravo',4),('alpha bravo',5);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT COUNT(*) FROM t WHERE a IS NULL;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT a FROM t WHERE a='alpha';",
+				Expected: []sql.Row{{"alpha"}, {"alpha"}},
+			},
+		},
+	},
 }

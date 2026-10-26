@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -102,6 +103,42 @@ var TimeQueryTests = []ScriptTest{
 
 // TemporalScriptTests contains self-contained temporal script tests.
 var TemporalScriptTests = []ScriptTest{
+	{
+		Dialect: "mysql",
+		Name:    "greatest and least with temporal and string arguments",
+		SetUpScript: []string{
+			"CREATE TABLE t (id INT PRIMARY KEY, ts TIMESTAMP, dt DATETIME);",
+			"INSERT INTO t VALUES (1, '2021-01-01 00:00:00', '2021-01-01 00:00:00');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "UPDATE t SET ts = LEAST('2020-01-01 00:00:00', ts), dt = GREATEST(dt, '2022-01-01 00:00:00');",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+			},
+			{
+				Query: "SELECT * FROM t;",
+				Expected: []sql.Row{{
+					1,
+					time.Date(2020, time.January, 1, 0, 0, 0, 0, time.UTC),
+					time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC),
+				}},
+			},
+			{
+				Query:    "CREATE TABLE x AS SELECT LEAST('2020-01-01', ts) AS a, GREATEST(dt, '2020-01-01 00:00:00') AS b FROM t;",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				// TODO: MySQL is able to infer required minimum required length for varchar, we just use LongText
+				// Tracking Issue: https://github.com/dolthub/dolt/issues/12181
+				Skip:  true,
+				Query: "SHOW CREATE TABLE x;",
+				Expected: []sql.Row{{"x", "CREATE TABLE `x` (\n" +
+					"  `a` varchar(19),\n" +
+					"  `b` varchar(19)\n" +
+					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
 	{
 		Name:    "unix_timestamp function usage",
 		Dialect: "mysql",

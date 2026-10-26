@@ -16,11 +16,11 @@ package function
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
-	"time"
 
 	"github.com/cockroachdb/apd/v3"
+	"github.com/dolthub/vitess/go/mysql"
+	"github.com/dolthub/vitess/go/sqltypes"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -28,324 +28,322 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-var ErrUintOverflow = errors.NewKind(
-	"Unsigned integer too big to fit on signed integer")
-
-type comparisonDirection uint8
+type cmpDir uint8
 
 const (
-	compareGreater comparisonDirection = iota
-	compareLess
+	cmpGreater cmpDir = iota
+	cmpLess
 )
 
-// compEval is used to implement Greatest/Least Eval() using an explicit comparison direction
-func compEval(
-	returnType sql.Type,
-	args []sql.Expression,
+func cmpDec(
 	ctx *sql.Context,
+	args []sql.Expression,
 	row sql.Row,
-	direction comparisonDirection,
-) (interface{}, error) {
-
-	if returnType == types.Null {
-		return nil, nil
-	}
-
-	if dt, ok := returnType.(sql.DecimalType); ok {
-		// Compare exact values without losing digits through float64.
-		var selected *apd.Decimal
-		scale := int64(dt.Scale())
-		for _, arg := range args {
-			val, err := arg.Eval(ctx, row)
-			if err != nil {
-				return nil, err
-			}
-
-			if val == nil {
-				return nil, nil
-			}
-
-			d, err := types.InternalDecimalType.ConvertToDecimal(val)
-			if err != nil {
-				return nil, err
-			}
-
-			scale = max(scale, -int64(d.Exponent))
-			if selected == nil || (direction == compareGreater && d.Cmp(selected) > 0) || (direction == compareLess && d.Cmp(selected) < 0) {
-				selected = d
-			}
-		}
-
-		// The declared precision is capped at 65, but expression values can
-		// exceed that precision. Do not apply column range checks here.
-		integerDigits := max(selected.NumDigits()+int64(selected.Exponent), 0)
-		// MySQL pads to the common scale within its nine base-10^9 words.
-		// Keep existing fractional digits even when no padding fits.
-		paddingScale := max((9-(integerDigits+8)/9)*9, 0)
-		scale = max(min(scale, paddingScale), -int64(selected.Exponent))
-		quantized := new(apd.Decimal)
-		qCtx := sql.DecimalCtx.WithPrecision(uint32(max(integerDigits+scale, 1)))
-		if _, err := qCtx.Quantize(quantized, selected, -int32(scale)); err != nil {
-			return nil, err
-		}
-
-		return quantized, nil
-	}
-
-	cmp := lessThan
-	if direction == compareGreater {
-		cmp = greaterThan
-	}
-
-	var selectedNum float64
-	var selectedString string
-	var selectedTime time.Time
-
-	for i, arg := range args {
+	cmpType sql.Type,
+	decTyoe sql.DecimalType,
+	direction cmpDir) (any, error) {
+	var res *apd.Decimal
+	scale := int64(decTyoe.Scale())
+	for _, arg := range args {
 		val, err := arg.Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}
-
-		// TODO: this switch statement can be cleaned up a lot. A lot of these type conversions and conversions are
-		//  also unnecessary because they get converted during compare
-		switch t := val.(type) {
-		case int, int8, int16, int32, int64, uint,
-			uint8, uint16, uint32, uint64:
-			switch x := t.(type) {
-			case int:
-				t = int64(x)
-			case int8:
-				t = int64(x)
-			case int16:
-				t = int64(x)
-			case int32:
-				t = int64(x)
-			case uint:
-				i := int64(x)
-				if i < 0 {
-					return nil, ErrUintOverflow.New()
-				}
-				t = i
-			case uint64:
-				i := int64(x)
-				if i < 0 {
-					return nil, ErrUintOverflow.New()
-				}
-				t = i
-			case uint8:
-				t = int64(x)
-			case uint16:
-				t = int64(x)
-			case uint32:
-				t = int64(x)
-			}
-			ival := t.(int64)
-			if i == 0 || cmp(ival, int64(selectedNum)) {
-				selectedNum = float64(ival)
-			}
-		case float32, float64:
-			if x, ok := t.(float32); ok {
-				t = float64(x)
-			}
-
-			fval := t.(float64)
-			if i == 0 || cmp(fval, float64(selectedNum)) {
-				selectedNum = fval
-			}
-
-		case string:
-			if types.IsTextOnly(returnType) && (i == 0 || cmp(t, selectedString)) {
-				selectedString = t
-			}
-
-			fval, err := strconv.ParseFloat(t, 64)
-			if err != nil {
-				// MySQL just ignores non numerically convertible string arguments
-				// when mixed with numeric ones
-				continue
-			}
-
-			if i == 0 || cmp(fval, selectedNum) {
-				selectedNum = fval
-			}
-		case time.Time:
-			// Since we deviate from MySQL with int -> time handling, we only set the selectedTime variable
-			if i == 0 || cmp(t, selectedTime) {
-				selectedTime = t
-			}
-		case *apd.Decimal:
-			fval, _ := t.Float64()
-			if i == 0 || cmp(fval, selectedNum) {
-				selectedNum = fval
-			}
-		case nil:
+		if val == nil {
 			return nil, nil
-		default:
-			return nil, ErrUnsupportedType.New(t)
+		}
+		d, err := types.InternalDecimalType.ConvertToDecimal(val)
+		if err != nil {
+			return nil, err
+		}
+		scale = max(scale, -int64(d.Exponent))
+
+		if res == nil {
+			res = d
+			continue
 		}
 
+		cmp := d.Cmp(res)
+		if direction == cmpLess {
+			cmp = -cmp
+		}
+		if cmp > 0 {
+			res = d
+		}
 	}
 
-	if types.IsDatetimeType(returnType) {
-		return selectedTime, nil
+	// The declared precision is capped at 65, but expression values can
+	// exceed that precision. Do not apply column range checks here.
+	intDigits := max(res.NumDigits()+int64(res.Exponent), 0)
+	// MySQL pads to the common scale within its nine base-10^9 words.
+	// Keep existing fractional digits even when no padding fits.
+	paddingScale := max((9-(intDigits+8)/9)*9, 0)
+	scale = max(min(scale, paddingScale), -int64(res.Exponent))
+	resDec := new(apd.Decimal)
+	qCtx := sql.DecimalCtx.WithPrecision(uint32(max(intDigits+scale, 1)))
+	if _, err := qCtx.Quantize(resDec, res, -int32(scale)); err != nil {
+		return nil, err
 	}
-
-	switch returnType {
-	case types.Int64:
-		return int64(selectedNum), nil
-	case types.LongText:
-		return selectedString, nil
-	}
-
-	// sql.Float64
-	return float64(selectedNum), nil
+	return resDec, nil
 }
 
-// compRetType is used to determine the type from args based on the rules described for
-// Greatest/Least
-func compRetType(ctx *sql.Context, args ...sql.Expression) (sql.Type, error) {
-	if len(args) == 0 {
-		return nil, sql.ErrInvalidArgumentNumber.New("LEAST", "1 or more", 0)
+// cmpEval is used to implement Greatest/Least Eval() using an explicit comparison direction
+func cmpEval(
+	ctx *sql.Context,
+	args []sql.Expression,
+	row sql.Row,
+	cmpType, retType sql.Type,
+	direction cmpDir,
+) (any, error) {
+	if retType == types.Null {
+		return nil, nil
 	}
 
-	allString := true
-	allInt := true
-	allDatetime := true
-	anyDecimal := false
-	anyFloat := false
-	var argTypes []sql.Type
+	// Compare exact values without losing digits through float64.
+	if dt, ok := retType.(sql.DecimalType); ok {
+		return cmpDec(ctx, args, row, cmpType, dt, direction)
+	}
 
+	if cmpType == nil {
+		cmpType = retType
+	}
+	var res any
 	for _, arg := range args {
-		if !arg.Resolved() {
+		val, err := arg.Eval(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+		if val == nil {
 			return nil, nil
 		}
-		argType := arg.Type(ctx)
 
-		if svt, ok := argType.(sql.SystemVariableType); ok {
-			argType = svt.UnderlyingType()
+		v, _, err := cmpType.Convert(ctx, val)
+		if err != nil {
+			if sql.ErrIncorrectValue.Is(err) {
+				ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
+			} else if !sql.HandleConvertWarning(ctx, err) {
+				return nil, err
+			}
 		}
-
-		if types.IsTuple(argType) {
-			return nil, sql.ErrInvalidType.New("tuple")
-		} else if types.IsNumber(argType) {
-			allString = false
-			allDatetime = false
-			if !types.IsInteger(argType) {
-				allInt = false
-			}
-
-			if types.IsDecimal(argType) {
-				anyDecimal = true
-			}
-
-			if types.IsFloat(argType) {
-				anyFloat = true
-			}
-
-			argTypes = append(argTypes, argType)
-		} else if types.IsText(argType) {
-			allInt = false
-			allDatetime = false
-		} else if types.IsTime(argType) {
-			allString = false
-			allInt = false
-		} else if types.IsDeferredType(argType) {
-			return argType, nil
-		} else if argType == types.Null {
-			// When a Null is present the return will always be Null
-			return types.Null, nil
-		} else {
-			return nil, ErrUnsupportedType.New(argType)
+		if res == nil {
+			res = v
+			continue
+		}
+		if v == nil {
+			continue
+		}
+		cmp, err := cmpType.Compare(ctx, v, res)
+		if direction == cmpLess {
+			cmp = -cmp
+		}
+		if cmp > 0 {
+			res = v
 		}
 	}
-
-	if allString {
-		return types.LongText, nil
-	} else if allInt {
-		return types.Int64, nil
-	} else if allDatetime {
-		return types.DatetimeMaxPrecision, nil
-	} else if anyDecimal && !anyFloat && len(argTypes) == len(args) {
-		// only numeric arguments, at least one an exact decimal: the result
-		// keeps the widest integer part and the widest scale among them
-		return compDecimalType(args, argTypes), nil
-	} else {
-		return types.Float64, nil
+	res, _, err := types.TypeAwareConversion(ctx, res, cmpType, retType)
+	if err != nil {
+		if sql.ErrIncorrectValue.Is(err) {
+			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
+		} else if !sql.HandleConvertWarning(ctx, err) {
+			return nil, err
+		}
 	}
+	return res, nil
 }
 
-// compDecimalType combines exact numeric arguments using the largest integer
-// part and scale. The cap describes result metadata, not an evaluation bound.
-func compDecimalType(args []sql.Expression, argTypes []sql.Type) sql.Type {
-	var integerDigits, scale uint8
-	for i, t := range argTypes {
-		var p, s uint8
-		if dt, ok := t.(sql.DecimalType); ok {
-			p, s = dt.Precision(), dt.Scale()
-		} else {
-			switch t {
-			case types.Int8, types.Uint8, types.Boolean:
-				p = 3
-			case types.Int16, types.Uint16:
-				p = 5
-			case types.Int24, types.Uint24:
-				p = 8
-			case types.Int32, types.Uint32:
-				p = 10
-			case types.Int64:
-				p = 19
-			case types.Uint64:
-				p = 20
-			default:
-				return types.Float64
-			}
-		}
-
-		if types.IsInteger(t) {
-			p = compIntegerPrecision(args[i], t, p)
-		}
-
-		integerDigits = max(integerDigits, p-s)
-		scale = max(scale, s)
-	}
-
-	scale = min(scale, types.DecimalTypeMaxScale)
-	precision := min(uint16(integerDigits)+uint16(scale), types.DecimalTypeMaxPrecision)
-	return types.MustCreateDecimalType(uint8(precision), scale)
-}
-
-// compIntegerPrecision distinguishes literal widths and CAST metadata from
+// cmpIntPrec distinguishes literal widths and CAST metadata from
 // integer column widths, which cannot be inferred from the SQL type alone.
-func compIntegerPrecision(arg sql.Expression, typ sql.Type, columnPrecision uint8) uint8 {
+func cmpIntPrec(arg sql.Expression, typ sql.Type) uint8 {
 	switch arg := arg.(type) {
 	case *expression.Literal:
 		if _, ok := arg.Value().(bool); ok {
 			return 1
 		}
-
 		return uint8(len(strings.TrimPrefix(fmt.Sprint(arg.Value()), "-")))
 	case *expression.UnaryMinus:
-		return compIntegerPrecision(arg.Child, typ, columnPrecision)
+		return cmpIntPrec(arg.Child, typ)
 	case *expression.Convert:
 		if types.IsUnsigned(typ) {
 			return 21
 		}
-
+		return 20
+	}
+	switch typ {
+	case types.Int8, types.Uint8, types.Boolean:
+		return 3
+	case types.Int16, types.Uint16:
+		return 5
+	case types.Int24, types.Uint24:
+		return 8
+	case types.Int32, types.Uint32:
+		return 10
+	case types.Int64:
+		return 19
+	case types.Uint64:
 		return 20
 	default:
-		return columnPrecision
+		return 0
 	}
 }
 
-// Greatest returns the argument with the greatest numerical or string value. It allows for
-// numeric (ints and floats) and string arguments and will return the used type
-// when all arguments are of the same type or floats if there are numerically
-// convertible strings or integers mixed with floats. When ints or floats
-// are mixed with non numerically convertible strings, those are ignored.
+// cmpRetType is used to determine the comparison and return type from args based on the rules described for
+// Greatest/Least.
+func cmpRetType(ctx *sql.Context, args ...sql.Expression) (sql.Type, sql.Type, error) {
+	var hasString bool
+	var hasFloat bool
+	var hasDouble bool
+	var hasDecimal bool
+	var hasInt bool
+	var hasUint bool
+	var hasUint32 bool
+	var hasInt64 bool
+	var hasUint64 bool
+	var hasDate bool
+	var hasTime bool
+	var hasDatetime bool // same as timestamp
+	var decIntDigits, decScale uint8
+	var dtPrec int
+	for _, arg := range args {
+		if !arg.Resolved() {
+			return nil, nil, nil
+		}
+		argType := arg.Type(ctx)
+		if svt, ok := argType.(sql.SystemVariableType); ok {
+			argType = svt.UnderlyingType()
+		}
+
+		switch {
+		// If ANY argument is NULL, the resulting type will be NULL
+		case argType == types.Null:
+			return types.Null, nil, nil
+		case types.IsInteger(argType):
+			switch argType {
+			case types.Boolean, types.Int8, types.Int16, types.Int24, types.Int32:
+				hasInt = true
+			case types.Int64:
+				hasInt64 = true
+			case types.Uint8, types.Uint16, types.Uint24:
+				hasUint = true
+			case types.Uint32:
+				hasUint32 = true
+			case types.Uint64:
+				hasUint64 = true
+			}
+			prec := cmpIntPrec(arg, argType)
+			decIntDigits = max(decIntDigits, prec)
+		case argType == types.Float32:
+			hasFloat = true
+		case argType == types.Float64:
+			hasDouble = true
+		case types.IsDecimal(argType):
+			hasDecimal = true
+			decType := argType.(sql.DecimalType)
+			prec, scale := decType.Precision(), decType.Scale()
+			decIntDigits = max(decIntDigits, prec-scale)
+			decScale = max(decScale, scale)
+		case types.IsDateType(argType):
+			hasDate = true
+		case types.IsTimespan(argType):
+			hasTime = true
+			dtPrec = max(dtPrec, argType.(types.TimespanType_).Precision())
+		case types.IsDatetimeType(argType) || types.IsTimestampType(argType):
+			hasDatetime = true
+			dtPrec = max(dtPrec, argType.(sql.DatetimeType).Precision())
+		case types.IsText(argType):
+			hasString = true
+		case types.IsDeferredType(argType):
+			return argType, nil, nil
+		case types.IsTuple(argType):
+			return nil, nil, sql.ErrInvalidType.New("tuple")
+		default:
+			return nil, nil, ErrUnsupportedType.New(argType)
+		}
+	}
+
+	// Special case for DATE/DATETIME types. Does not apply to TIMESTAMP type.
+	// If there is DATETIME type or a combination of DATE and TIME types, the comparison type is DATETIME.
+	// If there is a DATE type, the comparison type is DATE.
+	// Regardless of the presence of other types, all arguments are converted to and compared as the corresponding
+	// type, then converted to the result type (determined in remaining logic).
+	var cmpType sql.Type
+	if hasDatetime || (hasDate && hasTime) {
+		dtPrec = min(dtPrec, types.MaxDatetimePrecision)
+		cmpType = types.MustCreateDatetimeType(sqltypes.Datetime, dtPrec)
+	} else if hasDate {
+		cmpType = types.Date
+	}
+
+	// If ANY argument is a string, the resulting type will be TEXT
+	if hasString {
+		// TODO: Get min required VARCHAR length rather than always using LongText
+		// Tracking Issue: https://github.com/dolthub/dolt/issues/12181
+		return types.LongText, cmpType, nil
+	}
+
+	// If there is a mix of NUMERIC and TEMPORAL types, the result is TEXT
+	hasSigned := hasInt || hasInt64
+	hasUnsigned := hasUint || hasUint32 || hasUint64
+	hasNumeric := hasSigned || hasUnsigned || hasFloat || hasDouble || hasDecimal
+	hasTemporal := hasDate || hasTime || hasDatetime
+	if hasNumeric && hasTemporal {
+		return types.LongText, cmpType, nil
+	}
+	// If any argument is DOUBLE or a combination of FLOAT and DECIMAL, the result is DOUBLE
+	if hasDouble || (hasFloat && hasDecimal) {
+		return types.Float64, cmpType, nil
+	}
+	// If any argument is FLOAT, the result is FLOAT
+	if hasFloat {
+		return types.Float32, cmpType, nil
+	}
+	// If any argument is DECIMAL or a combination of SIGNED INTEGER and UNSIGNED BIG INTEGER, the result is DECIMAL
+	if hasDecimal || (hasSigned && hasUint64) {
+		decPrec := min(decIntDigits+decScale, types.DecimalTypeMaxPrecision)
+		decScale = min(decScale, types.DecimalTypeMaxScale)
+		return types.MustCreateDecimalType(decPrec, decScale), cmpType, nil
+	}
+	// If any argument is UNSIGNED BIG INTEGER, the result is UNSIGNED BIG INTEGER
+	if hasUint64 {
+		return types.Uint64, cmpType, nil
+	}
+	// TODO: For uint32 + signed int, MySQL returns int32 type, which can result in out of range errors.
+	//  This is a bug on MySQL's part.
+	// If any argument is BIG INTEGER or a combination of SIGNED AND UNSIGNED INTEGER,
+	// the result is SIGNED BIG INTEGER
+	if hasInt64 || (hasSigned && hasUint32) {
+		return types.Int64, cmpType, nil
+	}
+	// If all arguments are UNSIGNED INTEGER, the result is UNSIGNED INTEGER
+	if hasUnsigned && !hasSigned {
+		return types.Uint32, cmpType, nil
+	}
+	// If all arguments are UNSIGNED or SIGNED INTEGER, the result is SIGNED INTEGER
+	if hasSigned {
+		return types.Int32, cmpType, nil
+	}
+
+	// If there is DATETIME or a combination of DATE and TIME, the result is DATETIME
+	dtPrec = min(dtPrec, types.MaxDatetimePrecision)
+	if hasDatetime || (hasDate && hasTime) {
+		return types.MustCreateDatetimeType(sqltypes.Datetime, dtPrec), cmpType, nil
+	}
+	// If all arguments are TIME, the result is TIME
+	if hasTime {
+		return types.MustCreateTimespanType(dtPrec), cmpType, nil
+	}
+	// If all arguments are DATE, the result is DATE
+	if hasDate {
+		return types.Date, cmpType, nil
+	}
+
+	// Should not be possible, but just in case the fallback comparison type is TEXT
+	return types.LongText, cmpType, nil
+}
+
+// Greatest returns the argument with the greatest value as determined by cmpType.
 type Greatest struct {
-	returnType sql.Type
-	Args       []sql.Expression
+	Args             []sql.Expression
+	retType, cmpType sql.Type
 }
 
 var _ sql.FunctionExpression = (*Greatest)(nil)
@@ -355,11 +353,18 @@ var ErrUnsupportedType = errors.NewKind("unsupported type for greatest/least arg
 
 // NewGreatest creates a new Greatest UDF
 func NewGreatest(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
-	retType, err := compRetType(ctx, args...)
+	if len(args) <= 1 {
+		return nil, sql.ErrInvalidArgumentNumber.New("GREATEST", "2 or more", len(args))
+	}
+	retType, cmpType, err := cmpRetType(ctx, args...)
 	if err != nil {
 		return nil, err
 	}
-	return &Greatest{Args: args, returnType: retType}, nil
+	return &Greatest{
+		Args:    args,
+		retType: retType,
+		cmpType: cmpType,
+	}, nil
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -374,8 +379,8 @@ func (f *Greatest) Description() string {
 
 // Type implements the Expression interface.
 func (f *Greatest) Type(ctx *sql.Context) sql.Type {
-	if f.returnType != nil {
-		return f.returnType
+	if f.retType != nil {
+		return f.retType
 	}
 	return f.Args[0].Type(ctx)
 }
@@ -410,64 +415,39 @@ func (f *Greatest) Resolved() bool {
 			return false
 		}
 	}
-	return f.returnType != nil
+	return f.retType != nil
 }
 
 // Children implements the Expression interface.
 func (f *Greatest) Children() []sql.Expression { return f.Args }
 
-func greaterThan(a, b interface{}) bool {
-	switch i := a.(type) {
-	case int64:
-		return i > b.(int64)
-	case float64:
-		return i > b.(float64)
-	case string:
-		return i > b.(string)
-	case time.Time:
-		return i.After(b.(time.Time))
-	}
-	panic("Implementation error on greaterThan")
-}
-
-func lessThan(a, b interface{}) bool {
-	switch i := a.(type) {
-	case int64:
-		return i < b.(int64)
-	case float64:
-		return i < b.(float64)
-	case string:
-		return i < b.(string)
-	case time.Time:
-		return i.Before(b.(time.Time))
-	}
-	panic("Implementation error on lessThan")
-}
-
 // Eval implements the Expression interface.
-func (f *Greatest) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return compEval(f.returnType, f.Args, ctx, row, compareGreater)
+func (f *Greatest) Eval(ctx *sql.Context, row sql.Row) (any, error) {
+	return cmpEval(ctx, f.Args, row, f.cmpType, f.retType, cmpGreater)
 }
 
-// Least returns the argument with the least numerical or string value. It allows for
-// numeric (ints anf floats) and string arguments and will return the used type
-// when all arguments are of the same type or floats if there are numerically
-// convertible strings or integers mixed with floats. When ints or floats
-// are mixed with non numerically convertible strings, those are ignored.
+// Least returns the argument with the greatest value as determined by retType.
 type Least struct {
-	returnType sql.Type
-	Args       []sql.Expression
+	Args             []sql.Expression
+	retType, cmpType sql.Type
 }
 
 var _ sql.FunctionExpression = (*Least)(nil)
 
 // NewLeast creates a new Least UDF
 func NewLeast(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
-	retType, err := compRetType(ctx, args...)
+	if len(args) <= 1 {
+		return nil, sql.ErrInvalidArgumentNumber.New("LEAST", "2 or more", len(args))
+	}
+	retType, cmpType, err := cmpRetType(ctx, args...)
 	if err != nil {
 		return nil, err
 	}
-	return &Least{Args: args, returnType: retType}, nil
+	return &Least{
+		Args:    args,
+		retType: retType,
+		cmpType: cmpType,
+	}, nil
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -482,8 +462,8 @@ func (f *Least) Description() string {
 
 // Type implements the Expression interface.
 func (f *Least) Type(ctx *sql.Context) sql.Type {
-	if f.returnType != nil {
-		return f.returnType
+	if f.retType != nil {
+		return f.retType
 	}
 	return f.Args[0].Type(ctx)
 }
@@ -518,13 +498,13 @@ func (f *Least) Resolved() bool {
 			return false
 		}
 	}
-	return f.returnType != nil
+	return f.retType != nil
 }
 
 // Children implements the Expression interface.
 func (f *Least) Children() []sql.Expression { return f.Args }
 
 // Eval implements the Expression interface.
-func (f *Least) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return compEval(f.returnType, f.Args, ctx, row, compareLess)
+func (f *Least) Eval(ctx *sql.Context, row sql.Row) (any, error) {
+	return cmpEval(ctx, f.Args, row, f.cmpType, f.retType, cmpLess)
 }

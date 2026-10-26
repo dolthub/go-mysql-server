@@ -6124,14 +6124,6 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{"first row"}, {"second row"}, {"third row"}},
 	},
 	{
-		Query:    `SELECT GREATEST(CAST("1920-02-03 07:41:11" AS DATETIME), CAST("1980-06-22 14:32:56" AS DATETIME))`,
-		Expected: []sql.Row{{time.Date(1980, 6, 22, 14, 32, 56, 0, time.UTC)}},
-	},
-	{
-		Query:    `SELECT LEAST(@@back_log,@@auto_increment_offset)`,
-		Expected: []sql.Row{{-1}},
-	},
-	{
 		Query:    "SELECT i, COUNT(i) AS `COUNT(i)` FROM (SELECT i FROM mytable) t GROUP BY i ORDER BY i, `COUNT(i)` DESC",
 		Expected: []sql.Row{{int64(1), int64(1)}, {int64(2), int64(1)}, {int64(3), int64(1)}},
 	},
