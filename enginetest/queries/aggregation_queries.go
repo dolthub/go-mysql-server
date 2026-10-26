@@ -1206,6 +1206,23 @@ var AggregationScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "DISTINCT treats decimals with a different scale as equal",
+		SetUpScript: []string{
+			"CREATE TABLE t (id INT PRIMARY KEY, a DECIMAL(5,1), b DECIMAL(5,2));",
+			"INSERT INTO t VALUES (1, 1.0, 1.00), (2, 2.5, 2.50), (3, 1.0, 1.00), (4, NULL, -0.00);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT COUNT(*) FROM (SELECT DISTINCT CASE WHEN id = 1 THEN a ELSE b END AS x FROM t) s;",
+				Expected: []sql.Row{{3}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM (SELECT DISTINCT CASE WHEN id = 4 THEN -0.0 ELSE 0.00 END AS x FROM t) s;",
+				Expected: []sql.Row{{1}},
+			},
+		},
+	},
+	{
 		Name: "COUNT(1) and COUNT(*) in the same select",
 		SetUpScript: []string{
 			"CREATE TABLE count_t (id INT PRIMARY KEY, c VARCHAR(10));",
