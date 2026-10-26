@@ -1217,6 +1217,14 @@ var AggregationScriptTests = []ScriptTest{
 				Expected: []sql.Row{{3, 3}},
 			},
 			{
+				Query:    "SELECT COUNT(*), COUNT(*) FROM count_t;",
+				Expected: []sql.Row{{3, 3}},
+			},
+			{
+				Query:    "SELECT COUNT(1), COUNT(1) FROM count_t;",
+				Expected: []sql.Row{{3, 3}},
+			},
+			{
 				Query:    "SELECT c, COUNT(1), COUNT(*) FROM count_t GROUP BY c ORDER BY c;",
 				Expected: []sql.Row{{"a", 2, 2}, {"b", 1, 1}},
 			},
