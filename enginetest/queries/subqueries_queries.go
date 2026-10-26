@@ -23,6 +23,28 @@ import (
 // SubqueriesScriptTests contains self-contained subqueries script tests.
 var SubqueriesScriptTests = []ScriptTest{
 	{
+		// https://github.com/dolthub/dolt/issues/11552
+		Name: "lateral derived table with a filter on the outer row",
+		SetUpScript: []string{
+			"CREATE TABLE t (id INT PRIMARY KEY);",
+			"INSERT INTO t VALUES (1), (2);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT o.id, q.tag FROM t AS o LEFT JOIN LATERAL (SELECT o.id + 1 AS tag WHERE o.id = 1) AS q ON TRUE ORDER BY o.id;",
+				Expected: []sql.Row{{1, 2}, {2, nil}},
+			},
+			{
+				Query:    "SELECT o.id, q.tag FROM t AS o JOIN LATERAL (SELECT o.id + 1 AS tag WHERE o.id = 1) AS q ON TRUE ORDER BY o.id;",
+				Expected: []sql.Row{{1, 2}},
+			},
+			{
+				Query:    "SELECT o.id, q.tag FROM t AS o LEFT JOIN LATERAL (SELECT i.id * 10 AS tag FROM t AS i WHERE i.id = o.id AND o.id = 2) AS q ON TRUE ORDER BY o.id;",
+				Expected: []sql.Row{{1, nil}, {2, 20}},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/10113
 		Name: "DELETE with NOT EXISTS subquery",
 		SetUpScript: []string{
@@ -723,6 +745,32 @@ AND id NOT IN (SELECT item_id FROM tags WHERE tag = 'x')`,
 			{
 				Query:    "SELECT id FROM items WHERE id IN (SELECT item_id FROM links UNION SELECT other_id FROM links) AND id NOT IN (SELECT item_id FROM tags WHERE tag = 'x') ORDER BY id",
 				Expected: []sql.Row{{"leaf"}, {"root"}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/11548
+		Name: "correlated subquery over a derived table with a window or limit",
+		SetUpScript: []string{
+			"CREATE TABLE t (id INT PRIMARY KEY, k INT);",
+			"INSERT INTO t VALUES (1, 10), (2, 20);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT o.id FROM t AS o WHERE NOT EXISTS (SELECT 1 FROM (SELECT id, ROW_NUMBER() OVER (ORDER BY k, id) AS rn FROM t) AS w WHERE w.id = o.id AND w.rn <= 1) ORDER BY o.id;",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "SELECT o.id FROM t AS o WHERE EXISTS (SELECT 1 FROM (SELECT id, ROW_NUMBER() OVER (ORDER BY k, id) AS rn FROM t) AS w WHERE w.id = o.id AND w.rn <= 1) ORDER BY o.id;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT o.id FROM t AS o WHERE EXISTS (SELECT 1 FROM (SELECT id FROM t ORDER BY id LIMIT 1) AS w WHERE w.id = o.id) ORDER BY o.id;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT o.id FROM t AS o WHERE EXISTS (SELECT 1 FROM (SELECT id FROM t ORDER BY id LIMIT 1 OFFSET 1) AS w WHERE w.id = o.id) ORDER BY o.id;",
+				Expected: []sql.Row{{2}},
 			},
 		},
 	},

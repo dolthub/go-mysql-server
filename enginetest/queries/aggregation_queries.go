@@ -743,6 +743,50 @@ var AggregationScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "parenthesized grouping columns in HAVING",
+		SetUpScript: []string{
+			"CREATE TABLE tab0 (col0 INT, col1 INT, col2 INT)",
+			"INSERT INTO tab0 VALUES (1, 0, 10)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT COUNT(*) FROM tab0 GROUP BY (col1), col2 HAVING col1 >= COUNT(*)",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM tab0 GROUP BY ((tab0.col1)), ((tab0.col2)) HAVING tab0.col1 >= COUNT(*)",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM tab0 GROUP BY col1, col2 HAVING col1 >= COUNT(*)",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "INSERT INTO tab0 VALUES (2, 2, 20), (3, 2, 20), (4, 3, 30), (5, NULL, 40)",
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM tab0 GROUP BY (col1), (col2) HAVING col1 >= COUNT(*) ORDER BY COUNT(*)",
+				Expected: []sql.Row{{int64(1)}, {int64(2)}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM tab0 GROUP BY ((col1)), col2 HAVING col1 IS NULL",
+				Expected: []sql.Row{{int64(1)}},
+			},
+			{
+				Query:    "SELECT col1 AS grouping_key, COUNT(*) FROM tab0 GROUP BY ((grouping_key)), col2 HAVING grouping_key >= COUNT(*) ORDER BY grouping_key",
+				Expected: []sql.Row{{int32(2), int64(2)}, {int32(3), int64(1)}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM tab0 GROUP BY ('constant')",
+				Expected: []sql.Row{{int64(5)}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM tab0 GROUP BY ((1.5))",
+				Expected: []sql.Row{{int64(5)}},
+			},
+		},
+	},
+	{
 		Name: "using having and group by clauses in subquery ",
 		SetUpScript: []string{
 			"CREATE TABLE t (i int, t varchar(2));",
@@ -1158,6 +1202,56 @@ var AggregationScriptTests = []ScriptTest{
 			{
 				Query:    "SELECT MAX(v) FROM c WHERE a = 1 AND b = 2; ",
 				Expected: []sql.Row{{20}},
+			},
+		},
+	},
+	{
+		Name: "DISTINCT treats decimals with a different scale as equal",
+		SetUpScript: []string{
+			"CREATE TABLE t (id INT PRIMARY KEY, a DECIMAL(5,1), b DECIMAL(5,2));",
+			"INSERT INTO t VALUES (1, 1.0, 1.00), (2, 2.5, 2.50), (3, 1.0, 1.00), (4, NULL, -0.00);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT COUNT(*) FROM (SELECT DISTINCT CASE WHEN id = 1 THEN a ELSE b END AS x FROM t) s;",
+				Expected: []sql.Row{{3}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM (SELECT DISTINCT CASE WHEN id = 4 THEN -0.0 ELSE 0.00 END AS x FROM t) s;",
+				Expected: []sql.Row{{1}},
+			},
+		},
+	},
+	{
+		Name: "COUNT(1) and COUNT(*) in the same select",
+		SetUpScript: []string{
+			"CREATE TABLE count_t (id INT PRIMARY KEY, c VARCHAR(10));",
+			"INSERT INTO count_t VALUES (1, 'a'), (2, 'b'), (3, 'a');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT COUNT(1), COUNT(*) FROM count_t;",
+				Expected: []sql.Row{{3, 3}},
+			},
+			{
+				Query:    "SELECT COUNT(*), COUNT(*) FROM count_t;",
+				Expected: []sql.Row{{3, 3}},
+			},
+			{
+				Query:    "SELECT COUNT(1), COUNT(1) FROM count_t;",
+				Expected: []sql.Row{{3, 3}},
+			},
+			{
+				Query:    "SELECT c, COUNT(1), COUNT(*) FROM count_t GROUP BY c ORDER BY c;",
+				Expected: []sql.Row{{"a", 2, 2}, {"b", 1, 1}},
+			},
+			{
+				Query:    "SELECT COUNT(1) AS n, COUNT(*) FROM count_t WHERE id > 1;",
+				Expected: []sql.Row{{2, 2}},
+			},
+			{
+				Query:       "SELECT id AS x, x AS y FROM count_t;",
+				ExpectedErr: sql.ErrMisusedAlias,
 			},
 		},
 	},

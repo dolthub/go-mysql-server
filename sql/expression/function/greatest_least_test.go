@@ -16,8 +16,8 @@ package function
 
 import (
 	"testing"
-	"unsafe"
 
+	"github.com/cockroachdb/apd/v3"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -27,9 +27,9 @@ import (
 
 func TestGreatest(t *testing.T) {
 	testCases := []struct {
-		name     string
-		args     []sql.Expression
-		expected interface{}
+		name string
+		args []sql.Expression
+		exp  any
 	}{
 		{
 			"null",
@@ -41,41 +41,68 @@ func TestGreatest(t *testing.T) {
 			nil,
 		},
 		{
-			"negative and all ints",
-			[]sql.Expression{
-				expression.NewLiteral(int64(-1), types.Int64),
-				expression.NewLiteral(int64(5), types.Int64),
-				expression.NewLiteral(int64(1), types.Int64),
+			name: "all signed ints",
+			args: []sql.Expression{
+				expression.NewLiteral(int64(1), types.Int8),
+				expression.NewLiteral(int64(2), types.Int16),
+				expression.NewLiteral(int64(3), types.Int32),
+				expression.NewLiteral(int64(4), types.Int64),
 			},
-			int64(5),
+			exp: int64(4),
 		},
 		{
-			"string mixed",
-			[]sql.Expression{
-				expression.NewLiteral(string("9"), types.LongText),
-				expression.NewLiteral(int64(5), types.Int64),
-				expression.NewLiteral(int64(1), types.Int64),
+			name: "all unsigned ints",
+			args: []sql.Expression{
+				expression.NewLiteral(int64(1), types.Uint8),
+				expression.NewLiteral(int64(2), types.Uint16),
+				expression.NewLiteral(int64(3), types.Uint32),
+				expression.NewLiteral(int64(4), types.Uint64),
 			},
-			float64(9),
+			exp: uint64(4),
 		},
 		{
-			"unconvertible string mixed ignored",
-			[]sql.Expression{
-				expression.NewLiteral(string("10.5"), types.LongText),
-				expression.NewLiteral(string("foobar"), types.Int64),
-				expression.NewLiteral(int64(5), types.Int64),
+			name: "int64 limit",
+			args: []sql.Expression{
 				expression.NewLiteral(int64(1), types.Int64),
+				expression.NewLiteral(int64(9223372036854775807), types.Int64),
 			},
-			float64(10.5),
+			exp: int64(9223372036854775807),
 		},
 		{
-			"float mixed",
-			[]sql.Expression{
-				expression.NewLiteral(float64(10.0), types.Float64),
-				expression.NewLiteral(int(5), types.Int64),
-				expression.NewLiteral(int(1), types.Int64),
+			name: "uint64 limit",
+			args: []sql.Expression{
+				expression.NewLiteral(uint64(1), types.Uint64),
+				expression.NewLiteral(uint64(9223372036854775807), types.Uint64),
+				expression.NewLiteral(uint64(18446744073709551615), types.Uint64),
 			},
-			float64(10.0),
+			exp: uint64(18446744073709551615),
+		},
+		{
+			name: "all floats",
+			args: []sql.Expression{
+				expression.NewLiteral(float32(1.23), types.Float32),
+				expression.NewLiteral(float32(34.5), types.Float32),
+				expression.NewLiteral(float32(678), types.Float32),
+			},
+			exp: float32(678),
+		},
+		{
+			name: "all doubles",
+			args: []sql.Expression{
+				expression.NewLiteral(float64(1.23), types.Float64),
+				expression.NewLiteral(float64(34.5), types.Float64),
+				expression.NewLiteral(float64(678), types.Float64),
+			},
+			exp: float64(678),
+		},
+		{
+			name: "all decimals",
+			args: []sql.Expression{
+				expression.NewLiteral(apd.New(123, 0), types.MustCreateDecimalType(10, 1)),
+				expression.NewLiteral(apd.New(456, 0), types.MustCreateDecimalType(10, 2)),
+				expression.NewLiteral(apd.New(789, 0), types.MustCreateDecimalType(10, 3)),
+			},
+			exp: apd.New(789000, -3),
 		},
 		{
 			"all strings",
@@ -88,30 +115,163 @@ func TestGreatest(t *testing.T) {
 			"bbb",
 		},
 		{
-			"all strings and empty",
-			[]sql.Expression{
-				expression.NewLiteral("aaa", types.LongText),
-				expression.NewLiteral("bbb", types.LongText),
-				expression.NewLiteral("9999", types.LongText),
-				expression.NewLiteral("", types.LongText),
+			name: "mix of ints",
+			args: []sql.Expression{
+				expression.NewLiteral(int64(1), types.Int8),
+				expression.NewLiteral(int64(12), types.Uint16),
+				expression.NewLiteral(int64(123), types.Int32),
+				expression.NewLiteral(int64(1234), types.Uint64),
 			},
-			"bbb",
+			exp: apd.New(1234, 0),
 		},
 		{
-			"nulls of a non-null type, char",
+			name: "signed int and float",
+			args: []sql.Expression{
+				expression.NewLiteral(int64(1), types.Int64),
+				expression.NewLiteral(float32(2), types.Float32),
+			},
+			exp: float32(2),
+		},
+		{
+			name: "signed int and double",
+			args: []sql.Expression{
+				expression.NewLiteral(int64(1), types.Int64),
+				expression.NewLiteral(float64(2), types.Float64),
+			},
+			exp: float64(2),
+		},
+		{
+			name: "signed int and decimal",
+			args: []sql.Expression{
+				expression.NewLiteral(int64(1), types.Int64),
+				expression.NewLiteral(int64(2), types.MustCreateDecimalType(10, 2)),
+			},
+			exp: apd.New(200, -2),
+		},
+		{
+			name: "signed int and string",
+			args: []sql.Expression{
+				expression.NewLiteral(int64(1), types.Int64),
+				expression.NewLiteral("999", types.Text),
+			},
+			exp: "999",
+		},
+
+		{
+			name: "unsigned int and float",
+			args: []sql.Expression{
+				expression.NewLiteral(int64(1), types.Uint64),
+				expression.NewLiteral(float32(2), types.Float32),
+			},
+			exp: float32(2),
+		},
+		{
+			name: "unsigned int and double",
+			args: []sql.Expression{
+				expression.NewLiteral(int64(1), types.Uint64),
+				expression.NewLiteral(int64(2), types.Float64),
+			},
+			exp: float64(2),
+		},
+		{
+			name: "unsigned int and decimal",
+			args: []sql.Expression{
+				expression.NewLiteral(int64(1), types.Uint64),
+				expression.NewLiteral(int64(2), types.MustCreateDecimalType(10, 2)),
+			},
+			exp: apd.New(200, -2),
+		},
+		{
+			name: "unsigned int and string",
+			args: []sql.Expression{
+				expression.NewLiteral(uint64(1), types.Uint64),
+				expression.NewLiteral("999", types.Text),
+			},
+			exp: "999",
+		},
+		{
+			name: "float and double",
+			args: []sql.Expression{
+				expression.NewLiteral(float32(1), types.Float32),
+				expression.NewLiteral(float64(2), types.Float64),
+			},
+			exp: float64(2),
+		},
+		{
+			name: "float and decimal",
+			args: []sql.Expression{
+				expression.NewLiteral(float32(1), types.Float32),
+				expression.NewLiteral(apd.New(2, 0), types.MustCreateDecimalType(10, 2)),
+			},
+			exp: float64(2),
+		},
+		{
+			name: "float and string",
+			args: []sql.Expression{
+				expression.NewLiteral(float32(999), types.Float32),
+				expression.NewLiteral("123", types.LongText),
+			},
+			exp: "999",
+		},
+		{
+			name: "double and decimal",
+			args: []sql.Expression{
+				expression.NewLiteral(float64(1), types.Float64),
+				expression.NewLiteral(apd.New(2, 0), types.MustCreateDecimalType(10, 2)),
+			},
+			exp: float64(2),
+		},
+		{
+			name: "double and string",
+			args: []sql.Expression{
+				expression.NewLiteral(float64(999), types.Float64),
+				expression.NewLiteral("123", types.LongText),
+			},
+			exp: "999",
+		},
+		{
+			name: "decimal and string",
+			args: []sql.Expression{
+				expression.NewLiteral(apd.New(999, 0), types.MustCreateDecimalType(10, 2)),
+				expression.NewLiteral("123", types.LongText),
+			},
+			exp: "999",
+		},
+
+		{
+			"string mixed",
 			[]sql.Expression{
+				expression.NewLiteral("9", types.LongText),
+				expression.NewLiteral(int64(5), types.Int64),
+				expression.NewLiteral(int64(1), types.Int64),
+			},
+			"9",
+		},
+		{
+			name: "unconvertible strings and signed int mixed",
+			args: []sql.Expression{
+				expression.NewLiteral("10.5", types.LongText),
+				expression.NewLiteral("foobar", types.Int64),
+				expression.NewLiteral(int64(5), types.Int64),
+				expression.NewLiteral(int64(1), types.Int64),
+			},
+			exp: "foobar",
+		},
+		{
+			name: "nulls of a non-null type, char",
+			args: []sql.Expression{
 				expression.NewConvert(expression.NewLiteral("aaa", types.LongText), types.LongText, expression.ConvertToChar),
 				expression.NewConvert(expression.NewLiteral(nil, types.Null), types.LongText, expression.ConvertToChar),
 			},
-			nil,
+			exp: nil,
 		},
 		{
-			"nulls of a non-null type, signed",
-			[]sql.Expression{
+			name: "nulls of a non-null type, signed",
+			args: []sql.Expression{
 				expression.NewConvert(expression.NewLiteral(3.14159265359, types.Float64), types.Int64, expression.ConvertToSigned),
 				expression.NewConvert(expression.NewLiteral(nil, types.Null), types.Int64, expression.ConvertToSigned),
 			},
-			nil,
+			exp: nil,
 		},
 	}
 
@@ -123,9 +283,9 @@ func TestGreatest(t *testing.T) {
 			f, err := NewGreatest(sql.NewEmptyContext(), tt.args...)
 			require.NoError(err)
 
-			output, err := f.Eval(ctx, nil)
+			res, err := f.Eval(ctx, nil)
 			require.NoError(err)
-			require.Equal(tt.expected, output)
+			require.Equal(tt.exp, res)
 		})
 	}
 }
@@ -171,34 +331,6 @@ func TestGreatestLeastExactDecimalDirection(t *testing.T) {
 	}
 }
 
-func TestGreatestUnsignedOverflow(t *testing.T) {
-	require := require.New(t)
-	ctx := sql.NewEmptyContext()
-
-	var x int
-	var gr sql.Expression
-	var err error
-
-	switch unsafe.Sizeof(x) {
-	case 4:
-		gr, err = NewGreatest(ctx, expression.NewLiteral(int32(1), types.Int32),
-			expression.NewLiteral(uint32(4294967295), types.Uint32),
-		)
-		require.NoError(err)
-	case 8:
-		gr, err = NewGreatest(ctx, expression.NewLiteral(int64(1), types.Int64),
-			expression.NewLiteral(uint64(18446744073709551615), types.Uint64),
-		)
-		require.NoError(err)
-	default:
-		// non 32/64 bits??
-		return
-	}
-
-	_, err = gr.Eval(ctx, nil)
-	require.EqualError(err, "Unsigned integer too big to fit on signed integer")
-}
-
 func TestLeast(t *testing.T) {
 	testCases := []struct {
 		name     string
@@ -230,7 +362,7 @@ func TestLeast(t *testing.T) {
 				expression.NewLiteral(int64(5), types.Int64),
 				expression.NewLiteral(int64(1), types.Int64),
 			},
-			float64(1),
+			"1",
 		},
 		{
 			"unconvertible string mixed ignored",
@@ -240,7 +372,7 @@ func TestLeast(t *testing.T) {
 				expression.NewLiteral(int64(5), types.Int64),
 				expression.NewLiteral(int64(1), types.Int64),
 			},
-			float64(1),
+			"1",
 		},
 		{
 			"float mixed",

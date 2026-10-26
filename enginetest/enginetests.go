@@ -4647,6 +4647,30 @@ func TestSessionSelectLimit(t *testing.T, harness Harness) {
 			Query:    "select y from a where x < 1 union select y from a where x > 1",
 			Expected: []sql.Row{{1}, {2}},
 		},
+		{
+			Query:    "select x from a",
+			Expected: []sql.Row{{0}, {1}},
+		},
+		{
+			Query:    "select x from a where y > 1",
+			Expected: []sql.Row{{2}, {3}},
+		},
+		{
+			Query:    "select * from a where x > 2",
+			Expected: []sql.Row{{3, 2}, {4, 2}},
+		},
+		{
+			Query:    "select distinct y from a order by y",
+			Expected: []sql.Row{{1}, {2}},
+		},
+		{
+			Query:    "select distinct row_number() over (order by x) as rn from a order by rn",
+			Expected: []sql.Row{{1}, {2}},
+		},
+		{
+			Query:    "select distinct row_number() over (order by x) as rn from a order by rn limit 3",
+			Expected: []sql.Row{{1}, {2}, {3}},
+		},
 	}
 
 	customSetup := []setup.SetupScript{{
