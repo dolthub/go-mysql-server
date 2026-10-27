@@ -2591,8 +2591,8 @@ FROM ((SELECT 1 as found FROM information_schema.tables WHERE table_schema = 'te
 			},
 		},
 	},
-	// https://github.com/dolthub/dolt/issues/12207
 	{
+		// https://github.com/dolthub/dolt/issues/12207
 		Name: "SET GLOBAL, PERSIST, and PERSIST_ONLY require the SUPER privilege",
 		SetUpScript: []string{
 			"CREATE USER tester@localhost;",
@@ -2662,6 +2662,7 @@ FROM ((SELECT 1 as found FROM information_schema.tables WHERE table_schema = 'te
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/12207
 		Name: "SET SESSION and user-defined variables do not require privileges",
 		SetUpScript: []string{
 			"CREATE USER tester@localhost;",
