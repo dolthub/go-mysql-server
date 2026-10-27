@@ -181,7 +181,7 @@ func (s FastIntSet) Max() int {
 func (s FastIntSet) Iter() iter.Seq2[int, int] {
 	return func(yield func(int, int) bool) {
 		i := 0
-		columnId, ok := s.Next(1)
+		columnId, ok := s.Next(0)
 		for ok {
 			if !yield(i, columnId) {
 				return
