@@ -59,6 +59,15 @@ type ClientHarness interface {
 	NewContextWithClient(client sql.Client) *sql.Context
 }
 
+// EngineVariablesHarness defines setup and teardown functionality for
+// [sql.EngineVariables].
+type EngineVariablesHarness interface {
+	// ResetEngineVariables sets [sql.EngineVariables] to their default values
+	// for hermetic testing. Because other tests may rely on shared state, this
+	// is kept as an opt-in configuration.
+	ResetEngineVariables()
+}
+
 type ServerHarness interface {
 	Harness
 

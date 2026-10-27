@@ -760,6 +760,10 @@ var (
 	// ErrPrivilegeCheckFailed is returned when a user does not have the correct privileges to perform an operation.
 	ErrPrivilegeCheckFailed = newMySQLKind("command denied to user %s", 1142, "42000")
 
+	// ErrSpecificAccessDenied is returned when a user lacks a privilege that a
+	// statement requires.
+	ErrSpecificAccessDenied = newMySQLKind("Access denied; you need (at least one of) the %s privilege(s) for this operation", mysql.ERSpecifiedAccessDenied, mysql.SSClientError)
+
 	// ErrGrantUserDoesNotExist is returned when a user does not exist when attempting to grant them privileges.
 	ErrGrantUserDoesNotExist = errors.NewKind("You are not allowed to create a user with GRANT")
 
