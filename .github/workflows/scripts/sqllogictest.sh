@@ -15,21 +15,27 @@ export LC_ALL=C
 
 SLOWDOWN_FACTOR=${SLOWDOWN_FACTOR:-2}
 SLOWDOWN_MIN_MS=${SLOWDOWN_MIN_MS:-10000}
+SKIP_FILE="$(dirname "$0")/sqllogictest-skip.txt"
 
 # results prints "<file>:<line> <result>" for every result entry in the log |$1|. Panic stack traces and other output
-# are ignored.
+# are ignored. Records listed in SKIP_FILE are reported as skipped.
 results() {
   awk '
+    FILENAME == ARGV[1] {
+      if ($1 != "" && $1 !~ /^#/) { skip[$1] = 1 }
+      next
+    }
     $3 ~ /^[^ ]+:[0-9]+:$/ {
       key = substr($3, 1, length($3) - 1)
-      if (index($0, " not ok: ") > 0) { res = "not_ok" }
+      if (key in skip) { res = "skipped" }
+      else if (index($0, " not ok: ") > 0) { res = "not_ok" }
       else if ($0 ~ / did not run$/) { res = "did_not_run" }
       else if ($0 ~ / timeout$/) { res = "timeout" }
       else if ($0 ~ / skipped$/) { res = "skipped" }
       else if ($0 ~ / ok$/) { res = "ok" }
       else { next }
       print key, res
-    }' "$1" | sort -u -k1,1
+    }' "$SKIP_FILE" "$1" | sort -u -k1,1
 }
 
 # file_times prints "<file> <milliseconds>" for every test file in the log |$1|, summing the durations of its records.
