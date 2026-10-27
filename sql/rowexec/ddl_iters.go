@@ -1990,7 +1990,15 @@ func (i *dropColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 // rewriteTable rewrites the table given if required or requested, and returns whether it was rewritten
 func (i *dropColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) (bool, error) {
-	targetSchema := resolveGeneratedColumns(ctx, i.overrides, i.d.Db.Name(), i.alterable.Name(), i.d.TargetSchema())
+	// The dropped column's generated expression is never evaluated, so don't resolve it. It may not be resolvable, e.g.
+	// a functional index expression stored before subqueries were rejected, and dropping it is how such a table is
+	// repaired.
+	targetSchema := i.d.TargetSchema()
+	if idx := targetSchema.IndexOfColName(i.d.Column); idx >= 0 && targetSchema[idx].Generated != nil {
+		targetSchema = targetSchema.Copy()
+		targetSchema[idx].Generated = nil
+	}
+	targetSchema = resolveGeneratedColumns(ctx, i.overrides, i.d.Db.Name(), i.alterable.Name(), targetSchema)
 	newSch, projections, err := dropColumnFromSchema(ctx, targetSchema, i.d.Column, i.alterable.Name())
 	if err != nil {
 		return false, err

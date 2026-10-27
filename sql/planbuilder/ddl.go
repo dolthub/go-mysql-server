@@ -234,6 +234,7 @@ func (b *Builder) buildDropView(inScope *scope, c *ast.DDL) (outScope *scope) {
 }
 
 func (b *Builder) buildDropTable(inScope *scope, c *ast.DDL) (outScope *scope) {
+	defer b.disableVirtualColumnScans()()
 	outScope = inScope.push()
 	var dropTables []sql.Node
 	dbName := c.FromTables[0].DbQualifier.String()
@@ -603,6 +604,10 @@ func (b *Builder) buildAlterTableClause(inScope *scope, ddl *ast.DDL) []*scope {
 	if ddl.Action == ast.RenameStr {
 		outScopes = append(outScopes, b.buildRenameTable(inScope, ddl))
 	} else {
+		if isDropColumnOrIndexClause(ddl) {
+			defer b.disableVirtualColumnScans()()
+		}
+
 		// PostgreSQL-style DROP INDEX idx_name omits the table name. Search all tables in the current
 		// database to find which one owns the index, then use that name when resolving below.
 		tableName := ddl.Table
@@ -724,6 +729,17 @@ func (b *Builder) buildAlterTableClause(inScope *scope, ddl *ast.DDL) []*scope {
 		}
 	}
 	return outScopes
+}
+
+// isDropColumnOrIndexClause returns whether the ALTER TABLE clause |ddl| does nothing but drop a column or an index.
+func isDropColumnOrIndexClause(ddl *ast.DDL) bool {
+	if ddl.ConstraintAction != "" || ddl.AutoIncSpec != nil || ddl.DefaultSpec != nil || ddl.AlterCollationSpec != nil ||
+		ddl.AlterCommentSpec != nil || ddl.NotNullSpec != nil || ddl.ColumnTypeSpec != nil {
+		return false
+	}
+	columnOk := ddl.ColumnAction == "" || strings.ToLower(ddl.ColumnAction) == ast.DropStr
+	indexOk := ddl.IndexSpec == nil || strings.ToLower(ddl.IndexSpec.Action) == ast.DropStr
+	return columnOk && indexOk && (ddl.ColumnAction != "" || ddl.IndexSpec != nil)
 }
 
 func (b *Builder) buildAlterTableColumnAction(inScope *scope, ddl *ast.DDL, table *plan.ResolvedTable) (outScope *scope) {

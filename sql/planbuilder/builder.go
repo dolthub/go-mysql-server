@@ -75,6 +75,10 @@ type Builder struct {
 	// inWindow tracks whether we are inside window function arguments.
 	inWindow bool
 
+	// skipVirtualColumnScans disables wrapping resolved tables that have virtual columns in a VirtualColumnTable. See
+	// disableVirtualColumnScans.
+	skipVirtualColumnScans bool
+
 	authEnabled  bool
 	multiDDL     bool
 	insertActive bool
@@ -270,6 +274,7 @@ func (b *Builder) Reset() {
 	b.viewCtx = nil
 	b.nesting = 0
 	b.virtualTables = nil
+	b.skipVirtualColumnScans = false
 	b.qFlags = &sql.QueryFlags{}
 	b.authQueryState = b.cat.AuthorizationHandler().NewQueryState(b.ctx)
 }
@@ -482,6 +487,21 @@ func (b *Builder) buildSubquery(inScope *scope, stmt ast.Statement, subQuery str
 		outScope.node = binlogNode
 	}
 	return
+}
+
+// disableVirtualColumnScans stops resolved tables from being wrapped in a VirtualColumnTable until the returned
+// function is called, and is meant to be deferred: `defer b.disableVirtualColumnScans()()`. This is for statements
+// that never read a table's rows, such as DROP and SHOW statements, and so never evaluate its virtual columns.
+// Wrapping a table resolves its generated column expressions, which fails for expressions that can't be resolved,
+// including those that reference their own table (see buildVirtualTableScan). Skipping it lets these statements
+// inspect and repair such tables. The setting applies to every table resolved while it is in effect, including tables
+// referenced by generated expressions that are resolved for display.
+func (b *Builder) disableVirtualColumnScans() (restore func()) {
+	prev := b.skipVirtualColumnScans
+	b.skipVirtualColumnScans = true
+	return func() {
+		b.skipVirtualColumnScans = prev
+	}
 }
 
 // buildVirtualTableScan returns a VirtualColumnTable for a table with virtual columns.
