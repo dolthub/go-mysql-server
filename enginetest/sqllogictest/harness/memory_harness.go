@@ -28,7 +28,6 @@ import (
 	"github.com/dolthub/go-mysql-server/enginetest"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type memoryHarness struct {
@@ -145,9 +144,9 @@ func toSqlString(val interface{}) string {
 		// exactly 3 decimal points for floats
 		return fmt.Sprintf("%.3f", v)
 	case *apd.Decimal:
-		// exactly 3 decimal points for floats
-		d := types.DecimalTruncate(v, 3)
-		return d.Text('f')
+		// exactly 3 decimal points for floats, rounded the same way as Dolt's harness
+		f, _ := v.Float64()
+		return fmt.Sprintf("%.3f", f)
 	case int:
 		return strconv.Itoa(v)
 	case uint:
