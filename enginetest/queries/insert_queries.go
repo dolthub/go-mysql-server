@@ -2454,6 +2454,136 @@ var InsertDuplicateKeyKeyless = []ScriptTest{
 			},
 		},
 	},
+	{
+		// REPLACE is MySQL-only.
+		Dialect: "mysql",
+		Name:    "replace conflicting secondary unique key",
+		SetUpScript: []string{
+			"CREATE TABLE r6 (a INT, b INT, c INT, UNIQUE(a), UNIQUE(b))",
+			"INSERT INTO r6 VALUES (1,1,1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{Query: "REPLACE INTO r6 VALUES (2,1,1)", Expected: []sql.Row{{types.NewOkResult(2)}}},
+			{Query: "SELECT * FROM r6", Expected: []sql.Row{{2, 1, 1}}},
+			{Query: "SELECT * FROM r6 FORCE INDEX(a) WHERE a = 2", Expected: []sql.Row{{2, 1, 1}}},
+			{Query: "SELECT * FROM r6 FORCE INDEX(a) WHERE a = 1", Expected: []sql.Row{}},
+			{Query: "SELECT * FROM r6 FORCE INDEX(b) WHERE b = 1", Expected: []sql.Row{{2, 1, 1}}},
+			{Query: "REPLACE INTO r6 VALUES (2,1,1)", Expected: []sql.Row{{types.NewOkResult(2)}}},
+			{Query: "SELECT * FROM r6", Expected: []sql.Row{{2, 1, 1}}},
+		},
+	},
+	{
+		// MySQL REPLACE can delete multiple conflicting rows.
+		Dialect: "mysql",
+		Name:    "replace conflicts with different rows",
+		SetUpScript: []string{
+			"CREATE TABLE t (a INT, b INT, c INT, UNIQUE(a), UNIQUE(b))",
+			"INSERT INTO t VALUES (1,1,1),(2,2,2)",
+		},
+		Assertions: []ScriptTestAssertion{
+			// TODO: The affected-row count for multiple conflicts is a separate MySQL compatibility issue
+			{Query: "REPLACE INTO t VALUES (1,2,3)", SkipResultsCheck: true},
+			{Query: "SELECT * FROM t", Expected: []sql.Row{{1, 2, 3}}},
+			{Query: "SELECT * FROM t FORCE INDEX(a) WHERE a IN (1,2)", Expected: []sql.Row{{1, 2, 3}}},
+			{Query: "SELECT * FROM t FORCE INDEX(b) WHERE b IN (1,2)", Expected: []sql.Row{{1, 2, 3}}},
+		},
+	},
+	{
+		// REPLACE and DELETE LIMIT are MySQL-only.
+		Dialect: "mysql",
+		Name:    "nullable unique keys and nonunique cardinality",
+		SetUpScript: []string{
+			"CREATE TABLE t (a INT, b INT, c INT, UNIQUE(a), UNIQUE(b), KEY c_idx(c))",
+			"INSERT INTO t VALUES (NULL,1,1),(NULL,NULL,1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{Query: "REPLACE INTO t VALUES (2,1,1),(NULL,NULL,1),(NULL,NULL,1)", Expected: []sql.Row{{types.NewOkResult(4)}}},
+			{Query: "SELECT * FROM t ORDER BY a,b,c", Expected: []sql.Row{{nil, nil, 1}, {nil, nil, 1}, {nil, nil, 1}, {2, 1, 1}}},
+			{Query: "SELECT * FROM t FORCE INDEX(c_idx) WHERE c = 1 ORDER BY a,b,c", Expected: []sql.Row{{nil, nil, 1}, {nil, nil, 1}, {nil, nil, 1}, {2, 1, 1}}},
+			{Query: "DELETE FROM t WHERE a IS NULL LIMIT 1", Expected: []sql.Row{{types.NewOkResult(1)}}},
+			{Query: "SELECT * FROM t FORCE INDEX(c_idx) WHERE c = 1 ORDER BY a,b,c", Expected: []sql.Row{{nil, nil, 1}, {nil, nil, 1}, {2, 1, 1}}},
+		},
+	},
+	{
+		// ON DUPLICATE KEY UPDATE is MySQL-only.
+		Dialect: "mysql",
+		Name:    "on duplicate key update does not publish rejected index entries",
+		SetUpScript: []string{
+			"CREATE TABLE t (a INT, b INT, c INT, UNIQUE(a), UNIQUE(b))",
+			"INSERT INTO t VALUES (1,1,1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{Query: "INSERT INTO t VALUES (2,1,2) ON DUPLICATE KEY UPDATE c = c + 1", SkipResultsCheck: true},
+			{Query: "INSERT INTO t VALUES (2,2,3)", Expected: []sql.Row{{types.NewOkResult(1)}}},
+			{Query: "SELECT * FROM t ORDER BY a", Expected: []sql.Row{{1, 1, 2}, {2, 2, 3}}},
+			{Query: "SELECT * FROM t FORCE INDEX(a) WHERE a = 2", Expected: []sql.Row{{2, 2, 3}}},
+			{Query: "SELECT * FROM t FORCE INDEX(b) WHERE b = 1", Expected: []sql.Row{{1, 1, 2}}},
+		},
+	},
+	{
+		Name: "update retains unique key checks",
+		SetUpScript: []string{
+			"CREATE TABLE t (a INT, b INT, c INT, UNIQUE(a), UNIQUE(b))",
+			"INSERT INTO t VALUES (1,1,1),(2,2,2)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{Query: "UPDATE t SET a = 3, b = 1 WHERE a = 2", ExpectedErr: sql.ErrUniqueKeyViolation},
+			{Query: "SELECT * FROM t ORDER BY a", Expected: []sql.Row{{1, 1, 1}, {2, 2, 2}}},
+			{Query: "UPDATE t SET a = 3, b = 3 WHERE a = 2", SkipResultsCheck: true},
+			{Query: "SELECT * FROM t ORDER BY a", Expected: []sql.Row{{1, 1, 1}, {3, 3, 2}}},
+			{Dialect: "mysql", Query: "SELECT * FROM t FORCE INDEX(a) WHERE a = 3", Expected: []sql.Row{{3, 3, 2}}},
+			{Dialect: "mysql", Query: "SELECT * FROM t FORCE INDEX(b) WHERE b = 3", Expected: []sql.Row{{3, 3, 2}}},
+		},
+	},
+	{
+		Name: "multirow duplicate rolls back every index",
+		SetUpScript: []string{
+			"CREATE TABLE t (a INT, b INT, c INT, UNIQUE(a), UNIQUE(b))",
+			"INSERT INTO t VALUES (1,1,1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{Query: "INSERT INTO t VALUES (2,2,2),(3,1,3)", ExpectedErr: sql.ErrUniqueKeyViolation},
+			{Query: "SELECT * FROM t", Expected: []sql.Row{{1, 1, 1}}},
+			{Query: "INSERT INTO t VALUES (2,2,2)", Expected: []sql.Row{{types.NewOkResult(1)}}},
+			{Query: "SELECT * FROM t ORDER BY a", Expected: []sql.Row{{1, 1, 1}, {2, 2, 2}}},
+			{Dialect: "mysql", Query: "SELECT * FROM t FORCE INDEX(a) WHERE a >= 1 ORDER BY a", Expected: []sql.Row{{1, 1, 1}, {2, 2, 2}}},
+			{Dialect: "mysql", Query: "SELECT * FROM t FORCE INDEX(b) WHERE b >= 1 ORDER BY b", Expected: []sql.Row{{1, 1, 1}, {2, 2, 2}}},
+		},
+	},
+	{
+		// REPLACE and prefix-index syntax are MySQL-only.
+		Dialect: "mysql",
+		Name:    "replace composite and prefix unique keys",
+		SetUpScript: []string{
+			"CREATE TABLE t (a INT, b INT, c VARCHAR(10), UNIQUE ab(a,b), UNIQUE c_prefix(c(2)))",
+			"INSERT INTO t VALUES (1,1,'aaaa')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{Query: "REPLACE INTO t VALUES (2,2,'aabb')", Expected: []sql.Row{{types.NewOkResult(2)}}},
+			{Query: "SELECT * FROM t", Expected: []sql.Row{{2, 2, "aabb"}}},
+			{Query: "SELECT * FROM t FORCE INDEX(ab) WHERE a = 2 AND b = 2", Expected: []sql.Row{{2, 2, "aabb"}}},
+			{Query: "SELECT * FROM t FORCE INDEX(c_prefix) WHERE c LIKE 'aa%'", Expected: []sql.Row{{2, 2, "aabb"}}},
+		},
+	},
+	{
+		// PostgreSQL does not support REPLACE or indexes on virtual generated columns.
+		Dialect: "mysql",
+		Name:    "replace and ignore reuse virtual unique keys",
+		SetUpScript: []string{
+			"CREATE TABLE t (a INT, b INT, v INT AS (b + 100) VIRTUAL, UNIQUE(a), UNIQUE(v))",
+			"INSERT INTO t (a,b) VALUES (1,1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{Query: "REPLACE INTO t (a,b) VALUES (2,1)", Expected: []sql.Row{{types.NewOkResult(2)}}},
+			{Query: "SELECT * FROM t", Expected: []sql.Row{{2, 1, 101}}},
+			{Query: "SELECT * FROM t FORCE INDEX(a) WHERE a = 2", Expected: []sql.Row{{2, 1, 101}}},
+			{Query: "SELECT * FROM t FORCE INDEX(v) WHERE v = 101", Expected: []sql.Row{{2, 1, 101}}},
+			{Query: "INSERT IGNORE INTO t (a,b) VALUES (3,1),(3,3)", SkipResultsCheck: true},
+			{Query: "SELECT * FROM t ORDER BY a", Expected: []sql.Row{{2, 1, 101}, {3, 3, 103}}},
+			{Query: "UPDATE t SET b = 2 WHERE a = 3", SkipResultsCheck: true},
+			{Query: "SELECT * FROM t FORCE INDEX(v) WHERE v >= 100 ORDER BY a", Expected: []sql.Row{{2, 1, 101}, {3, 2, 102}}},
+		},
+	},
 }
 
 var InsertErrorTests = []GenericErrorQueryTest{

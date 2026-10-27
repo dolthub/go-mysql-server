@@ -345,6 +345,19 @@ var IgnoreWithDuplicateUniqueKeyKeylessScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "insert ignore does not publish rejected index entries",
+		SetUpScript: []string{
+			"CREATE TABLE t (a INT, b INT, c INT, UNIQUE(a), UNIQUE(b))",
+			"INSERT INTO t VALUES (1,1,1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{Query: "INSERT IGNORE INTO t VALUES (2,1,2),(2,2,2)", SkipResultsCheck: true},
+			{Query: "SELECT * FROM t ORDER BY a", Expected: []sql.Row{{1, 1, 1}, {2, 2, 2}}},
+			{Dialect: "mysql", Query: "SELECT * FROM t FORCE INDEX(a) WHERE a = 2", Expected: []sql.Row{{2, 2, 2}}},
+			{Dialect: "mysql", Query: "SELECT * FROM t FORCE INDEX(b) WHERE b = 2", Expected: []sql.Row{{2, 2, 2}}},
+		},
+	},
 }
 
 var InsertIgnoreRegressionScriptTests = []ScriptTest{
