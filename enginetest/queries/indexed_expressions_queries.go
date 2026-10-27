@@ -766,20 +766,28 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 				ExpectedErr: sql.ErrFunctionalIndexFunctionNotAllowed,
 			},
 			{
+				// ALTER TABLE ... ADD INDEX is MySQL syntax.
 				Query:       "ALTER TABLE test ADD INDEX idx1 (((SELECT 1 FROM test sq)));",
 				ExpectedErr: sql.ErrFunctionalIndexFunctionNotAllowed,
+				Dialect:     "mysql",
 			},
 			{
+				// ALTER TABLE ... ADD INDEX is MySQL syntax.
 				Query:       "ALTER TABLE test ADD INDEX idx1 (c1, ((SELECT 1)));",
 				ExpectedErr: sql.ErrFunctionalIndexFunctionNotAllowed,
+				Dialect:     "mysql",
 			},
 			{
+				// Postgres has no user variables.
 				Query:       "CREATE INDEX idx1 ON test ((@x + c1));",
 				ExpectedErr: sql.ErrFunctionalIndexFunctionNotAllowed,
+				Dialect:     "mysql",
 			},
 			{
+				// Postgres has no @@ system variable syntax.
 				Query:       "CREATE INDEX idx1 ON test ((@@max_connections + c1));",
 				ExpectedErr: sql.ErrFunctionalIndexFunctionNotAllowed,
+				Dialect:     "mysql",
 			},
 			{
 				Query:       "CREATE INDEX idx1 ON test ((rand() + c1));",
@@ -794,8 +802,10 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 				ExpectedErr: sql.ErrFunctionalIndexFunctionNotAllowed,
 			},
 			{
+				// Index definitions inside CREATE TABLE are MySQL syntax.
 				Query:       "CREATE TABLE test2 (pk INT PRIMARY KEY, c1 INT, INDEX idx1 ((rand())));",
 				ExpectedErr: sql.ErrFunctionalIndexFunctionNotAllowed,
+				Dialect:     "mysql",
 			},
 			{
 				// Rejected statements must not leave behind an index or hidden column.
