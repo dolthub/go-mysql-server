@@ -66,6 +66,10 @@ var (
 	// ErrViewRecursion is returned when a view references itself, either directly or through other views.
 	ErrViewRecursion = newMySQLKind("`%s`.`%s` contains view recursion", 1462, mysql.SSUnknownSQLState)
 
+	// ErrGeneratedColumnRecursion is returned when resolving a table's generated column expressions requires resolving
+	// the same table's generated columns again, e.g. through a subquery stored in a functional index expression.
+	ErrGeneratedColumnRecursion = errors.NewKind("generated column expressions on table `%s`.`%s` reference the table recursively")
+
 	// ErrUnknownTable is returned when the non-table name is used for table actions.
 	ErrUnknownTable = errors.NewKind("Unknown table '%s'")
 

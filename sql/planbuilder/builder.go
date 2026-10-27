@@ -51,6 +51,10 @@ type Builder struct {
 
 	nesting int
 
+	// virtualTables tracks the tables whose generated columns are currently being resolved by buildVirtualTableScan,
+	// so that a generated column expression that references its own table errors instead of recursing forever.
+	virtualTables map[string]struct{}
+
 	tabId      sql.TableId
 	colId      columnId
 	parserOpts ast.ParserOptions
@@ -265,6 +269,7 @@ func (b *Builder) Reset() {
 	b.triggerCtx = nil
 	b.viewCtx = nil
 	b.nesting = 0
+	b.virtualTables = nil
 	b.qFlags = &sql.QueryFlags{}
 	b.authQueryState = b.cat.AuthorizationHandler().NewQueryState(b.ctx)
 }
@@ -481,6 +486,21 @@ func (b *Builder) buildSubquery(inScope *scope, stmt ast.Statement, subQuery str
 
 // buildVirtualTableScan returns a VirtualColumnTable for a table with virtual columns.
 func (b *Builder) buildVirtualTableScan(db string, tab sql.Table) *plan.VirtualColumnTable {
+	// Generated column expressions may not contain subqueries, but schemas created before that was enforced, or
+	// arriving from elsewhere (e.g. a merge), still might. A subquery that reads this table would resolve this table's
+	// generated columns again, recursing until the goroutine stack overflows and the process dies. Detect the cycle
+	// and fail the query instead.
+	schemaName := sql.TableSchemaName(tab)
+	key := strings.ToLower(db) + "." + strings.ToLower(schemaName) + "." + strings.ToLower(tab.Name())
+	if _, ok := b.virtualTables[key]; ok {
+		b.handleErr(sql.ErrGeneratedColumnRecursion.New(db, tab.Name()))
+	}
+	if b.virtualTables == nil {
+		b.virtualTables = make(map[string]struct{})
+	}
+	b.virtualTables[key] = struct{}{}
+	defer delete(b.virtualTables, key)
+
 	tableScope := b.newScope()
 	schema := tab.Schema(b.ctx)
 	for _, c := range schema {
