@@ -740,6 +740,89 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "DDL: functional index expressions may not contain subqueries, variables, or non-deterministic functions",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT);",
+			"CREATE TABLE other (pk INT PRIMARY KEY);",
+			"INSERT INTO test VALUES (1, 10), (2, 20);",
+			"SET @x = 1;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// A subquery reading the indexed table would recurse without bound when resolving the hidden column.
+				Query:          "CREATE INDEX idx1 ON test (((SELECT 1 FROM test sq)));",
+				ExpectedErrStr: "Expression of functional index 'idx1' contains a disallowed function.",
+			},
+			{
+				Query:       "CREATE INDEX idx1 ON test (((SELECT 1 FROM other)));",
+				ExpectedErr: sql.ErrFunctionalIndexFunctionNotAllowed,
+			},
+			{
+				Query:       "CREATE INDEX idx1 ON test (((SELECT 1)));",
+				ExpectedErr: sql.ErrFunctionalIndexFunctionNotAllowed,
+			},
+			{
+				Query:       "CREATE INDEX idx1 ON test ((abs((SELECT 1)) + c1));",
+				ExpectedErr: sql.ErrFunctionalIndexFunctionNotAllowed,
+			},
+			{
+				Query:       "ALTER TABLE test ADD INDEX idx1 (((SELECT 1 FROM test sq)));",
+				ExpectedErr: sql.ErrFunctionalIndexFunctionNotAllowed,
+				// ALTER TABLE ... ADD INDEX is MySQL syntax.
+				Dialect: "mysql",
+			},
+			{
+				Query:       "ALTER TABLE test ADD INDEX idx1 (c1, ((SELECT 1)));",
+				ExpectedErr: sql.ErrFunctionalIndexFunctionNotAllowed,
+				// ALTER TABLE ... ADD INDEX is MySQL syntax.
+				Dialect: "mysql",
+			},
+			{
+				Query:       "CREATE INDEX idx1 ON test ((@x + c1));",
+				ExpectedErr: sql.ErrFunctionalIndexFunctionNotAllowed,
+				// Postgres has no user variables.
+				Dialect: "mysql",
+			},
+			{
+				Query:       "CREATE INDEX idx1 ON test ((@@max_connections + c1));",
+				ExpectedErr: sql.ErrFunctionalIndexFunctionNotAllowed,
+				// Postgres has no @@ system variable syntax.
+				Dialect: "mysql",
+			},
+			{
+				Query:       "CREATE INDEX idx1 ON test ((rand() + c1));",
+				ExpectedErr: sql.ErrFunctionalIndexFunctionNotAllowed,
+			},
+			{
+				Query:       "CREATE INDEX idx1 ON test ((uuid()));",
+				ExpectedErr: sql.ErrFunctionalIndexFunctionNotAllowed,
+			},
+			{
+				Query:       "CREATE INDEX idx1 ON test ((get_lock('l', 0)));",
+				ExpectedErr: sql.ErrFunctionalIndexFunctionNotAllowed,
+			},
+			{
+				Query:       "CREATE TABLE test2 (pk INT PRIMARY KEY, c1 INT, INDEX idx1 ((rand())));",
+				ExpectedErr: sql.ErrFunctionalIndexFunctionNotAllowed,
+				// Index definitions inside CREATE TABLE are MySQL syntax.
+				Dialect: "mysql",
+			},
+			{
+				// Rejected statements must not leave behind an index or hidden column.
+				Query:    "SHOW EXTENDED COLUMNS FROM test;",
+				Expected: []sql.Row{{"pk", "int", "NO", "PRI", nil, ""}, {"c1", "int", "YES", "", nil, ""}},
+			},
+			{
+				Query:    "SELECT * FROM test ORDER BY pk;",
+				Expected: []sql.Row{{1, 10}, {2, 20}},
+			},
+			{
+				Query:    "CREATE INDEX idx1 ON test ((abs(c1) + 1));",
+				Expected: []sql.Row{{gmstypes.NewOkResult(0)}},
+			},
+		},
+	},
+	{
 		Name: "system hidden columns: not accessible via any SQL operation",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT);",
