@@ -1054,6 +1054,97 @@ var UpdateIgnoreScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/12218
+		Name:    "UPDATE IGNORE truncates VARCHAR by character count for string, datetime, integer and binary values",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE v (b VARCHAR(4))",
+			"INSERT INTO v VALUES ('abcd')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:                 "UPDATE IGNORE v SET b = 'éééééé'",
+				Expected:              []sql.Row{{NewUpdateResult(1, 1)}},
+				ExpectedWarning:       mysql.ERWarnDataTruncated,
+				ExpectedWarningsCount: 1,
+			},
+			{
+				Query:    "SELECT b, CHAR_LENGTH(b) FROM v",
+				Expected: []sql.Row{{"éééé", 4}},
+			},
+			{
+				Query:                 "UPDATE IGNORE v SET b = CAST('2020-01-01' AS DATETIME)",
+				Expected:              []sql.Row{{NewUpdateResult(1, 1)}},
+				ExpectedWarning:       mysql.ERWarnDataTruncated,
+				ExpectedWarningsCount: 1,
+			},
+			{
+				Query:    "SELECT b FROM v",
+				Expected: []sql.Row{{"2020"}},
+			},
+			{
+				Query:                 "UPDATE IGNORE v SET b = 123456",
+				Expected:              []sql.Row{{NewUpdateResult(1, 1)}},
+				ExpectedWarning:       mysql.ERWarnDataTruncated,
+				ExpectedWarningsCount: 1,
+			},
+			{
+				Query:    "SELECT b FROM v",
+				Expected: []sql.Row{{"1234"}},
+			},
+			{
+				Query:                 "UPDATE IGNORE v SET b = X'616263646566'",
+				Expected:              []sql.Row{{NewUpdateResult(1, 1)}},
+				ExpectedWarning:       mysql.ERWarnDataTruncated,
+				ExpectedWarningsCount: 1,
+			},
+			{
+				Query:    "SELECT b FROM v",
+				Expected: []sql.Row{{"abcd"}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12218
+		Name:    "UPDATE IGNORE reports each truncated column",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE u (a VARCHAR(2), b VARCHAR(2))",
+			"INSERT INTO u VALUES ('x', 'y')",
+			"CREATE TABLE m (id INT PRIMARY KEY, b VARCHAR(2))",
+			"INSERT INTO m VALUES (1, 'a'), (2, 'b'), (3, 'c')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:                 "UPDATE IGNORE u SET a = 'aaa', b = 'bbb'",
+				Expected:              []sql.Row{{NewUpdateResult(1, 1)}},
+				ExpectedWarning:       mysql.ERWarnDataTruncated,
+				ExpectedWarningsCount: 2,
+			},
+			{
+				Query:    "SELECT a, b FROM u",
+				Expected: []sql.Row{{"aa", "bb"}},
+			},
+			{
+				Query:                           "UPDATE IGNORE m SET b = 'xyz' WHERE id = 2",
+				Expected:                        []sql.Row{{NewUpdateResult(1, 1)}},
+				ExpectedWarning:                 mysql.ERWarnDataTruncated,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "Data truncated for column 'b'",
+			},
+			{
+				Query:                 "UPDATE IGNORE m SET b = 'xyz'",
+				Expected:              []sql.Row{{NewUpdateResult(3, 2)}},
+				ExpectedWarning:       mysql.ERWarnDataTruncated,
+				ExpectedWarningsCount: 3,
+			},
+			{
+				Query:    "SELECT id, b FROM m ORDER BY id",
+				Expected: []sql.Row{{1, "xy"}, {2, "xy"}, {3, "xy"}},
+			},
+		},
+	},
 }
 
 var UpdateErrorTests = []QueryErrorTest{

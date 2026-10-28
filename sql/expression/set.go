@@ -74,14 +74,18 @@ func (s *SetField) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if val != nil {
 		convertedVal, _, err := getField.fieldType.Convert(ctx, val)
 		if err != nil {
+			offendingVal := val
+			if convertedVal != nil {
+				offendingVal = convertedVal
+			}
 			// Fill in error with information
 			if types.ErrLengthBeyondLimit.Is(err) {
-				return nil, sql.NewWrappedTypeConversionError(val, getField.fieldIndex, types.ErrLengthBeyondLimit.New(val, getField.Name()))
+				return nil, sql.NewWrappedTypeConversionError(offendingVal, getField.fieldIndex, types.ErrLengthBeyondLimit.New(val, getField.Name()))
 			}
 			if sql.ErrTruncatedIncorrect.Is(err) {
 				err = sql.ErrInvalidValue.New(val, getField.fieldType)
 			}
-			return nil, sql.NewWrappedTypeConversionError(val, getField.fieldIndex, err)
+			return nil, sql.NewWrappedTypeConversionError(offendingVal, getField.fieldIndex, err)
 		}
 		val = convertedVal
 	}

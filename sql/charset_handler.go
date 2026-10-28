@@ -30,6 +30,9 @@ type CharSetHandler interface {
 	// If n is greater than or equal to the number of characters, it
 	// returns len(str).
 	CharPos(str string, n int) (int, error)
+	// WellFormedLen returns the byte length of the longest prefix of |str|
+	// that fits within |maxBytes| with well-formed characters.
+	WellFormedLen(str string, maxBytes int) (int, error)
 }
 
 // NewCharSetHandler returns a CharSetHandler for the
@@ -62,6 +65,10 @@ func (binaryCharSetHandler) CharPos(str string, n int) (int, error) {
 		return len(str), nil
 	}
 	return n, nil
+}
+
+func (binaryCharSetHandler) WellFormedLen(str string, maxBytes int) (int, error) {
+	return max(0, min(len(str), maxBytes)), nil
 }
 
 // runeCharSetHandler measures strings by code point.
@@ -99,6 +106,23 @@ func (h runeCharSetHandler) CharPos(str string, n int) (int, error) {
 		// warning or advance by 1 byte instead of failing.
 		if cr == utf8.RuneError && cRead <= 1 {
 			return 0, ErrCollationMalformedString.New("charpos")
+		}
+		content = content[cRead:]
+		byteOffset += cRead
+	}
+	return byteOffset, nil
+}
+
+func (h runeCharSetHandler) WellFormedLen(str string, maxBytes int) (int, error) {
+	content := str
+	byteOffset := 0
+	for len(content) > 0 {
+		cr, cRead := h.encoder.NextRune(content)
+		if cr == utf8.RuneError && cRead <= 1 {
+			return 0, ErrCollationMalformedString.New("well formed length")
+		}
+		if byteOffset+cRead > maxBytes {
+			break
 		}
 		content = content[cRead:]
 		byteOffset += cRead

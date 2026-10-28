@@ -277,14 +277,9 @@ func (i *insertIter) next(ctx *sql.Context) (returnRow sql.Row, skipped bool, re
 							converted = i.schema[idx].Type.Zero()
 						}
 						row[idx] = converted
-						// Add a warning instead
-						ctx.Session.Warn(&sql.Warning{
-							Level:   "Note",
-							Code:    sql.CastSQLError(cErr).Num,
-							Message: cErr.Error(),
-						})
+						ctx.Warn(sql.CastSQLError(cErr).Num, "%s", cErr.Error())
 					} else {
-						row = convertDataAndWarn(ctx, i.schema, row, idx, cErr)
+						row = convertDataAndWarn(ctx, i.schema, row, idx, converted, cErr)
 					}
 					continue
 				} else {
@@ -391,20 +386,22 @@ func (i *insertIter) getReturningRow(ctx *sql.Context, row sql.Row) (sql.Row, er
 	return retExprRow, nil
 }
 
-func applyInsertUpdates(ctx *sql.Context, schema sql.Schema, ignore bool, updateExprs []sql.Expression, updateAccumulator sql.Row, newRow sql.Row) (sql.Row, error) {
+// applyInsertUpdates returns |updateAccumulator|, the row an INSERT collided
+// with on a unique key followed by the proposed row, after the ON DUPLICATE
+// KEY UPDATE assignments update the collided row's columns.
+//
+// With |ignore|, a value that doesn't fit its column is replaced by the
+// closest value the column accepts, with a warning.
+func applyInsertUpdates(ctx *sql.Context, schema sql.Schema, ignore bool, updateExprs []sql.Expression, updateAccumulator sql.Row) (sql.Row, error) {
 	// TODO(max): this SET <val> indexes into LHS, but the <expr> can reference the new row on RHS
 	for _, updateExpr := range updateExprs {
 		val, err := updateExpr.Eval(ctx, updateAccumulator)
 		if err != nil {
-			if ignore {
-				idx, ok := getFieldIndexFromUpdateExpr(updateExpr)
-				if !ok {
-					return nil, err
-				}
-				val = convertDataAndWarn(ctx, schema, newRow, idx, err)
-			} else {
+			wtce, ok := err.(sql.WrappedTypeConversionError)
+			if !ignore || !ok {
 				return nil, err
 			}
+			val = convertDataAndWarn(ctx, schema, updateAccumulator.Copy(), wtce.OffendingIdx, wtce.OffendingVal, wtce.Err)
 		}
 		updateAccumulator = val.(sql.Row)
 	}
@@ -415,7 +412,7 @@ func applyInsertUpdates(ctx *sql.Context, schema sql.Schema, ignore bool, update
 // TODO: This can probably be combined with mysqlUpdateExpressionApplier.ApplyRowUpdate
 func (h *directDuplicateKeyHandler) update(ctx *sql.Context, oldRow, newRow sql.Row) (sql.Row, error) {
 	i := h.insertIter
-	updateAcc, err := applyInsertUpdates(ctx, i.schema, i.ignore, i.onDup.UpdateExprs.ExplicitUpdateExprs(), append(oldRow, newRow...), newRow)
+	updateAcc, err := applyInsertUpdates(ctx, i.schema, i.ignore, i.onDup.UpdateExprs.ExplicitUpdateExprs(), append(oldRow, newRow...))
 	if err != nil {
 		return nil, err
 	}
@@ -425,7 +422,7 @@ func (h *directDuplicateKeyHandler) update(ctx *sql.Context, oldRow, newRow sql.
 		if same, err := oldRow.Equals(ctx, evalRow, i.schema); err != nil {
 			return nil, err
 		} else if !same {
-			updateAcc, err = applyInsertUpdates(ctx, i.schema, i.ignore, i.onDup.UpdateExprs.DerivedUpdateExprs(), updateAcc, newRow)
+			updateAcc, err = applyInsertUpdates(ctx, i.schema, i.ignore, i.onDup.UpdateExprs.DerivedUpdateExprs(), updateAcc)
 			if err != nil {
 				return nil, err
 			}
@@ -465,20 +462,6 @@ func (h *updateTriggerDuplicateKeyHandler) update(ctx *sql.Context, oldRow, prop
 // and must remain open until the enclosing insert is closed.
 func (h *updateTriggerDuplicateKeyHandler) Close(ctx *sql.Context) error {
 	return h.updateIter.Close(ctx)
-}
-
-func getFieldIndexFromUpdateExpr(updateExpr sql.Expression) (int, bool) {
-	setField, ok := updateExpr.(*expression.SetField)
-	if !ok {
-		return 0, false
-	}
-
-	getField, ok := setField.LeftChild.(*expression.GetField)
-	if !ok {
-		return 0, false
-	}
-
-	return getField.Index(), true
 }
 
 func (i *insertIter) Close(ctx *sql.Context) error {
@@ -598,36 +581,17 @@ func (i *insertIter) rowsMatchTarget(ctx *sql.Context, row, existing sql.Row) bo
 // convertDataAndWarn modifies a row with data conversion issues in INSERT/UPDATE IGNORE calls
 // Per MySQL docs "Rows set to values that would cause data conversion errors are set to the closest valid values instead"
 // cc. https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html#sql-mode-strict
-func convertDataAndWarn(ctx *sql.Context, tableSchema sql.Schema, row sql.Row, columnIdx int, err error) sql.Row {
-	if types.ErrLengthBeyondLimit.Is(err) {
-		maxLength := tableSchema[columnIdx].Type.(sql.StringType).MaxCharacterLength()
-		row[columnIdx] = row[columnIdx].(string)[:maxLength] // truncate string
-	} else if types.ErrBadCharsetString.Is(err) {
-		switch v := row[columnIdx].(type) {
-		case string:
-			row[columnIdx] = string(types.TruncateInvalidUTF8([]byte(v)))
-		case []byte:
-			row[columnIdx] = string(types.TruncateInvalidUTF8(v))
-		default:
-			row[columnIdx] = tableSchema[columnIdx].Type.Zero()
-		}
+func convertDataAndWarn(ctx *sql.Context, tableSchema sql.Schema, row sql.Row, columnIdx int, converted any, err error) sql.Row {
+	row[columnIdx] = converted
+	switch {
+	case types.ErrLengthBeyondLimit.Is(err):
+		ctx.Warn(mysql.ERWarnDataTruncated, "Data truncated for column '%s'", tableSchema[columnIdx].Name)
+	case types.ErrBadCharsetString.Is(err):
 		ctx.Warn(mysql.ERTruncatedWrongValueForField, "%s", err.Error())
-		return row
-	} else {
+	default:
 		row[columnIdx] = tableSchema[columnIdx].Type.Zero()
+		ctx.Warn(sql.CastSQLError(err).Num, "%s", err.Error())
 	}
-
-	sqlerr := sql.CastSQLError(err)
-
-	// Add a warning instead
-	if ctx != nil && ctx.Session != nil {
-		ctx.Session.Warn(&sql.Warning{
-			Level:   "Note",
-			Code:    sqlerr.Num,
-			Message: err.Error(),
-		})
-	}
-
 	return row
 }
 
@@ -771,7 +735,7 @@ func (i *duplicateKeyUpdateIter) Next(ctx *sql.Context) (sql.Row, error) {
 	schema := i.schema
 	width := len(schema)
 	oldRow, proposedRow := row[:width], row[width:]
-	updateAcc, err := applyInsertUpdates(ctx, schema, i.ignore, i.updateExprs.ExplicitUpdateExprs(), append(oldRow, proposedRow...), proposedRow)
+	updateAcc, err := applyInsertUpdates(ctx, schema, i.ignore, i.updateExprs.ExplicitUpdateExprs(), append(oldRow, proposedRow...))
 	if err != nil {
 		return nil, err
 	}
@@ -781,7 +745,7 @@ func (i *duplicateKeyUpdateIter) Next(ctx *sql.Context) (sql.Row, error) {
 		if same, err := oldRow.Equals(ctx, evalRow, schema); err != nil {
 			return nil, err
 		} else if !same {
-			updateAcc, err = applyInsertUpdates(ctx, schema, i.ignore, i.updateExprs.DerivedUpdateExprs(), updateAcc, proposedRow)
+			updateAcc, err = applyInsertUpdates(ctx, schema, i.ignore, i.updateExprs.DerivedUpdateExprs(), updateAcc)
 			if err != nil {
 				return nil, err
 			}

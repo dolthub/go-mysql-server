@@ -35,6 +35,10 @@ func TestCharSetHandler(t *testing.T) {
 		posEnd, err := h.CharPos("é", 5)
 		require.NoError(t, err)
 		require.Equal(t, 2, posEnd)
+
+		wellFormed, err := h.WellFormedLen("éé", 3)
+		require.NoError(t, err)
+		require.Equal(t, 3, wellFormed)
 	})
 
 	t.Run("utf8mb4 charset handler", func(t *testing.T) {
@@ -59,5 +63,17 @@ func TestCharSetHandler(t *testing.T) {
 		posEnd, err := h.CharPos("hé👍", 10)
 		require.NoError(t, err)
 		require.Equal(t, len("hé👍"), posEnd)
+
+		wellFormed, err := h.WellFormedLen("éé", 3)
+		require.NoError(t, err)
+		require.Equal(t, len("é"), wellFormed)
+
+		wellFormedEmoji, err := h.WellFormedLen("hé👍", 6)
+		require.NoError(t, err)
+		require.Equal(t, len("hé"), wellFormedEmoji)
+
+		wellFormedEnd, err := h.WellFormedLen("hé👍", 10)
+		require.NoError(t, err)
+		require.Equal(t, len("hé👍"), wellFormedEnd)
 	})
 }

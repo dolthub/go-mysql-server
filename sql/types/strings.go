@@ -373,18 +373,24 @@ func (t StringType) Convert(ctx context.Context, v interface{}) (interface{}, sq
 		}
 	}
 	val, err := ConvertToBytes(ctx, v, t, nil)
+	convStatus := sql.InRange
 	if err != nil {
-		return nil, sql.Overflow, err
+		convStatus = sql.Overflow
+		// Without a usable value, downstream callers (e.g. the IGNORE
+		// modifier) cannot downgrade this error, so bail early.
+		if val == nil {
+			return nil, convStatus, err
+		}
 	}
 
 	if IsBinaryType(t) {
 		// Avoid returning nil
 		if len(val) == 0 {
-			return []byte{}, sql.InRange, nil
+			return []byte{}, convStatus, err
 		}
-		return val, sql.InRange, nil
+		return val, convStatus, err
 	}
-	return string(val), sql.InRange, nil
+	return string(val), convStatus, err
 
 }
 
@@ -393,6 +399,7 @@ func ConvertToString(ctx context.Context, v interface{}, t sql.StringType, dest 
 	return string(ret), err
 }
 
+// ConvertToBytes returns |v| as bytes of type |t|, appended to |dest|.
 func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest []byte) ([]byte, error) {
 	var val []byte
 	start := len(dest)
@@ -479,30 +486,33 @@ func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest [
 		trimmed := bytes.TrimRight(val[start:], " ")
 		val = val[:start+len(trimmed)]
 	}
+	handler := sql.NewCharSetHandler(t.Collation())
+	limit := int(t.MaxCharacterLength())
+	findCutoff := handler.CharPos
 	if t.Type() == sqltypes.Text {
-		// for TEXT types, we use the byte length instead of the character length
-		if int64(len(val)) > t.MaxByteLength() {
-			return nil, ErrLengthBeyondLimit.New(val, t.String())
+		limit = int(t.MaxByteLength())
+		findCutoff = handler.WellFormedLen
+	}
+	converted := val[start:]
+	end := len(converted)
+	// chars <= bytes so checking the byte offset works with char limit too.
+	if end > limit {
+		// A malformed byte occurs before the limit here, so it's not a length
+		// problem. Let later charset validation cut the value at that byte and
+		// report a bad charset error in strict mode.
+		if pos, err := findCutoff(string(converted), limit); err == nil {
+			end = pos
 		}
-	} else {
-		if t.CharacterSet().MaxLength() == 1 {
-			// if the character set only has a max size of 1, we can just count the bytes
-			if int64(len(val)) > t.MaxCharacterLength() {
-				return nil, ErrLengthBeyondLimit.New(val, t.String())
-			}
-		} else {
-			// TODO(#3846): this should count the string's length properly according to the character set
-			// convert 'val' string to rune to count the character length, not byte length
-			if int64(len(val)) > t.MaxCharacterLength() {
-				if int64(len([]rune(string(val)))) > t.MaxCharacterLength() {
-					return nil, ErrLengthBeyondLimit.New(val, t.String())
-				}
-			}
-		}
+	}
+	fits := end == len(converted)
+	var lengthErr error
+	if !fits {
+		lengthErr = ErrLengthBeyondLimit.New(val, t.String())
+		val = val[:start+end]
 	}
 
 	if t.Type() == sqltypes.Binary {
-		if b, ok := v.([]byte); ok {
+		if b, ok := v.([]byte); ok && fits {
 			// Make a copy now to avoid overwriting the original allocation.
 			val = append(dest, b...)
 			start = len(dest)
@@ -521,6 +531,7 @@ func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest [
 	// strings are valid for all character sets, and that all invalid UTF8 strings have not yet been converted.
 	// This isn't correct, but it's a better approximation than the old logic.
 	bytesVal := val
+	// TODO(#3846): reject characters the column's character set cannot hold.
 	if !IsBinaryType(t) && !utf8.Valid(bytesVal) {
 		charset := t.CharacterSet()
 		if charset == sql.CharacterSet_utf8mb4 {
@@ -528,7 +539,7 @@ func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest [
 				// Strict mode: reject invalid UTF8
 				invalidByte := FormatInvalidByteForError(bytesVal)
 				colName, rowNum := getColumnContext(ctx)
-				return nil, ErrBadCharsetString.New(invalidByte, colName, rowNum)
+				return TruncateInvalidUTF8(bytesVal), ErrBadCharsetString.New(invalidByte, colName, rowNum)
 			} else {
 				// Non-strict mode: truncate invalid bytes (MySQL behavior)
 				bytesVal = TruncateInvalidUTF8(bytesVal)
@@ -538,12 +549,12 @@ func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest [
 			if bytesVal, ok = t.CharacterSet().Encoder().Decode(bytesVal); !ok {
 				invalidByte := FormatInvalidByteForError(bytesVal)
 				colName, rowNum := getColumnContext(ctx)
-				return nil, ErrBadCharsetString.New(invalidByte, colName, rowNum)
+				return TruncateInvalidUTF8(val), ErrBadCharsetString.New(invalidByte, colName, rowNum)
 			}
 		}
 	}
 
-	return bytesVal, nil
+	return bytesVal, lengthErr
 }
 
 // getColumnContext extracts column name and row number from context.
