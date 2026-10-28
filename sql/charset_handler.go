@@ -30,9 +30,9 @@ type CharSetHandler interface {
 	// If n is greater than or equal to the number of characters, it
 	// returns len(str).
 	CharPos(str string, n int) (int, error)
-	// WellFormedLen returns the byte length of the longest prefix of |str|
+	// ValidByteLength returns the byte length of the longest prefix of |str|
 	// that fits within |maxBytes| with well-formed characters.
-	WellFormedLen(str string, maxBytes int) (int, error)
+	ValidByteLength(str string, maxBytes int) (int, error)
 }
 
 // NewCharSetHandler returns a CharSetHandler for the
@@ -67,7 +67,7 @@ func (binaryCharSetHandler) CharPos(str string, n int) (int, error) {
 	return n, nil
 }
 
-func (binaryCharSetHandler) WellFormedLen(str string, maxBytes int) (int, error) {
+func (binaryCharSetHandler) ValidByteLength(str string, maxBytes int) (int, error) {
 	return max(0, min(len(str), maxBytes)), nil
 }
 
@@ -113,7 +113,7 @@ func (h runeCharSetHandler) CharPos(str string, n int) (int, error) {
 	return byteOffset, nil
 }
 
-func (h runeCharSetHandler) WellFormedLen(str string, maxBytes int) (int, error) {
+func (h runeCharSetHandler) ValidByteLength(str string, maxBytes int) (int, error) {
 	content := str
 	byteOffset := 0
 	for len(content) > 0 {

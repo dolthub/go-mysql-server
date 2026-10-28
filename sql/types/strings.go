@@ -372,15 +372,11 @@ func (t StringType) Convert(ctx context.Context, v interface{}) (interface{}, sq
 			return v, sql.InRange, nil
 		}
 	}
-	val, err := ConvertToBytes(ctx, v, t, nil)
-	convStatus := sql.InRange
-	if err != nil {
-		convStatus = sql.Overflow
-		// Without a usable value, downstream callers (e.g. the IGNORE
-		// modifier) cannot downgrade this error, so bail early.
-		if val == nil {
-			return nil, convStatus, err
-		}
+	val, convStatus, err := ConvertToBytes(ctx, v, t, nil)
+	// Without a usable value, downstream callers (e.g. the IGNORE modifier)
+	// cannot downgrade this error, so bail early.
+	if val == nil && err != nil {
+		return nil, convStatus, err
 	}
 
 	if IsBinaryType(t) {
@@ -394,13 +390,13 @@ func (t StringType) Convert(ctx context.Context, v interface{}) (interface{}, sq
 
 }
 
-func ConvertToString(ctx context.Context, v interface{}, t sql.StringType, dest []byte) (string, error) {
-	ret, err := ConvertToBytes(ctx, v, t, dest)
-	return string(ret), err
+func ConvertToString(ctx context.Context, v interface{}, t sql.StringType, dest []byte) (string, sql.ConvertInRange, error) {
+	ret, convStatus, err := ConvertToBytes(ctx, v, t, dest)
+	return string(ret), convStatus, err
 }
 
 // ConvertToBytes returns |v| as bytes of type |t|, appended to |dest|.
-func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest []byte) ([]byte, error) {
+func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest []byte) ([]byte, sql.ConvertInRange, error) {
 	var val []byte
 	start := len(dest)
 	// Based on the type of the input, convert it into a byte array, writing it into |dest| to avoid an allocation.
@@ -458,28 +454,28 @@ func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest [
 		var err error
 		val, err = JsonToMySqlBytes(ctx, s)
 		if err != nil {
-			return nil, err
+			return nil, sql.Overflow, err
 		}
 		start = 0
 	case sql.Wrapper[string]:
 		unwrapped, err := s.Unwrap(ctx)
 		if err != nil {
-			return nil, err
+			return nil, sql.Overflow, err
 		}
 		val = append(val, unwrapped...)
 	case sql.Wrapper[[]byte]:
 		var err error
 		val, err = s.Unwrap(ctx)
 		if err != nil {
-			return nil, err
+			return nil, sql.Overflow, err
 		}
 		start = 0
 	case GeometryValue:
-		return s.Serialize(), nil
+		return s.Serialize(), sql.InRange, nil
 	case Timespan:
 		val = s.AppendBytes(dest)
 	default:
-		return nil, sql.ErrConvertToSQL.New(s, t)
+		return nil, sql.Overflow, sql.ErrConvertToSQL.New(s, t)
 	}
 
 	if IsChar(t) {
@@ -491,7 +487,7 @@ func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest [
 	findCutoff := handler.CharPos
 	if t.Type() == sqltypes.Text {
 		limit = int(t.MaxByteLength())
-		findCutoff = handler.WellFormedLen
+		findCutoff = handler.ValidByteLength
 	}
 	converted := val[start:]
 	end := len(converted)
@@ -505,8 +501,10 @@ func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest [
 		}
 	}
 	fits := end == len(converted)
+	convStatus := sql.InRange
 	var lengthErr error
 	if !fits {
+		convStatus = sql.Overflow
 		lengthErr = ErrLengthBeyondLimit.New(val, t.String())
 		val = val[:start+end]
 	}
@@ -539,7 +537,7 @@ func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest [
 				// Strict mode: reject invalid UTF8
 				invalidByte := FormatInvalidByteForError(bytesVal)
 				colName, rowNum := getColumnContext(ctx)
-				return TruncateInvalidUTF8(bytesVal), ErrBadCharsetString.New(invalidByte, colName, rowNum)
+				return TruncateInvalidUTF8(bytesVal), sql.Overflow, ErrBadCharsetString.New(invalidByte, colName, rowNum)
 			} else {
 				// Non-strict mode: truncate invalid bytes (MySQL behavior)
 				bytesVal = TruncateInvalidUTF8(bytesVal)
@@ -549,12 +547,12 @@ func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest [
 			if bytesVal, ok = t.CharacterSet().Encoder().Decode(bytesVal); !ok {
 				invalidByte := FormatInvalidByteForError(bytesVal)
 				colName, rowNum := getColumnContext(ctx)
-				return TruncateInvalidUTF8(val), ErrBadCharsetString.New(invalidByte, colName, rowNum)
+				return TruncateInvalidUTF8(val), sql.Overflow, ErrBadCharsetString.New(invalidByte, colName, rowNum)
 			}
 		}
 	}
 
-	return bytesVal, lengthErr
+	return bytesVal, convStatus, lengthErr
 }
 
 // getColumnContext extracts column name and row number from context.
@@ -743,7 +741,7 @@ func (t StringType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.
 	start := len(dest)
 	var val []byte
 	if IsBinaryType(t) {
-		val, err = ConvertToBytes(ctx, v, t, dest)
+		val, _, err = ConvertToBytes(ctx, v, t, dest)
 		if err != nil {
 			return sqltypes.Value{}, err
 		}
@@ -790,7 +788,7 @@ func (t StringType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.
 				valueBytes = valueBytes[start+1:]
 			}
 		default:
-			valueBytes, err = ConvertToBytes(ctx, v, t, dest)
+			valueBytes, _, err = ConvertToBytes(ctx, v, t, dest)
 			if err != nil {
 				return sqltypes.Value{}, err
 			}

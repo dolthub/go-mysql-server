@@ -36,7 +36,7 @@ func TestCharSetHandler(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 2, posEnd)
 
-		wellFormed, err := h.WellFormedLen("éé", 3)
+		wellFormed, err := h.ValidByteLength("éé", 3)
 		require.NoError(t, err)
 		require.Equal(t, 3, wellFormed)
 	})
@@ -64,15 +64,15 @@ func TestCharSetHandler(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, len("hé👍"), posEnd)
 
-		wellFormed, err := h.WellFormedLen("éé", 3)
+		wellFormed, err := h.ValidByteLength("éé", 3)
 		require.NoError(t, err)
 		require.Equal(t, len("é"), wellFormed)
 
-		wellFormedEmoji, err := h.WellFormedLen("hé👍", 6)
+		wellFormedEmoji, err := h.ValidByteLength("hé👍", 6)
 		require.NoError(t, err)
 		require.Equal(t, len("hé"), wellFormedEmoji)
 
-		wellFormedEnd, err := h.WellFormedLen("hé👍", 10)
+		wellFormedEnd, err := h.ValidByteLength("hé👍", 10)
 		require.NoError(t, err)
 		require.Equal(t, len("hé👍"), wellFormedEnd)
 	})
