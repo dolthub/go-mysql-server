@@ -95,6 +95,7 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 			insertable,
 			insert.Destination.Schema(ctx),
 			columnNames,
+			insert.Ignore && insert.IgnoreMode == sql.InsertIgnoreModeMySQL,
 		)
 		if err != nil {
 			return nil, transform.SameTree, err
@@ -135,7 +136,7 @@ func findColIdx(colName string, colNames []string) int {
 // wrapRowSource returns a projection that wraps the original row source so that its schema matches the full schema of
 // the underlying table in the same order. Also, returns an integer value that indicates when this row source will
 // result in an automatically generated value for an auto_increment column.
-func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, schema sql.Schema, columnNames []string) (sql.Node, int, sets.FastIntSet, error) {
+func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, schema sql.Schema, columnNames []string, ignore bool) (sql.Node, int, sets.FastIntSet, error) {
 	projExprs := make([]sql.Expression, len(schema))
 	deferredDefaults := sets.NewFastIntSet()
 	firstGeneratedAutoIncRowIdx := -1
@@ -173,6 +174,11 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 				return nil, -1, sets.FastIntSet{}, err
 			}
 			projExprs[i] = def
+			if ignore && deferredDefaults.Contains(i) {
+				// Generated columns must see the effective implicit default, not a
+				// NULL that insertIter would only repair after this projection.
+				projExprs[i] = &ignoredImplicitDefault{Literal: expression.NewLiteral(col.Type.Zero(), col.Type), column: col.Name}
+			}
 		} else {
 			projExprs[i] = expression.NewGetField(colIdx, col.Type, col.Name, col.Nullable)
 		}
@@ -242,6 +248,27 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 	}
 
 	return plan.NewProject(ctx, projExprs, insertSource), firstGeneratedAutoIncRowIdx, deferredDefaults, nil
+}
+
+// ignoredImplicitDefault emits the missing-default warning during execution,
+// including prepared executions, before dependent generated expressions run.
+type ignoredImplicitDefault struct {
+	*expression.Literal
+	column string
+}
+
+func (e *ignoredImplicitDefault) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	ctx.Warn(1364, "%s", sql.ErrFieldNoDefaultValue.New(e.column).Error())
+	return e.Literal.Eval(ctx, row)
+}
+
+func (e *ignoredImplicitDefault) IsNonDeterministic() bool { return true }
+
+func (e *ignoredImplicitDefault) WithChildren(_ *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(e, len(children), 0)
+	}
+	return e, nil
 }
 
 // isZero returns true if the specified literal value |lit| has a value equal to 0.
