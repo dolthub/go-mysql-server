@@ -259,3 +259,8 @@ func (m SubqueryAliasIter) WriteNextValueRow(ctx *sql.Context, row sql.ValueRow)
 func (m SubqueryAliasIter) Columns() sql.ColSet {
 	return m.destColumns
 }
+
+func (m SubqueryAliasIter) WithColumns(cols sql.ColSet) sql.ValueRowWriter {
+	m.destColumns = cols
+	return m
+}

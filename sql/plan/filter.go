@@ -172,6 +172,12 @@ func (i *FilterIter) Columns() sql.ColSet {
 	return i.childIter.(sql.ValueRowWriter).Columns()
 }
 
+func (i *FilterIter) WithColumns(cols sql.ColSet) sql.ValueRowWriter {
+	result := *i
+	result.childIter = i.childIter.(sql.ValueRowWriter).WithColumns(cols)
+	return &result
+}
+
 // Close implements the RowIter interface.
 func (i *FilterIter) Close(ctx *sql.Context) error {
 	return i.childIter.Close(ctx)

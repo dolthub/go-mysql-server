@@ -129,6 +129,7 @@ type ValueRowWriter interface {
 	IsValueRowWriter(ctx *Context) bool
 	// Columns is the set of ColumnIds represented by this
 	Columns() ColSet
+	WithColumns(ColSet) ValueRowWriter
 	Closer
 }
 
@@ -199,6 +200,12 @@ func (v valueRowWriterWrappingIter) IsValueRowWriter(ctx *Context) bool {
 
 func (v valueRowWriterWrappingIter) Columns() ColSet {
 	return v.colSet
+}
+
+func (v valueRowWriterWrappingIter) WithColumns(cols ColSet) ValueRowWriter {
+	result := v
+	result.colSet = cols
+	return &result
 }
 
 // RowIterToRows converts a row iterator to a slice of rows.

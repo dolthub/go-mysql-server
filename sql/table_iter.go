@@ -145,11 +145,11 @@ func (i *TableRowIter) IsValueRowWriter(ctx *Context) bool {
 			return false
 		}
 		i.rows = rows
-		valRowIter, ok := rows.(ValueRowIter)
-		if !ok || !valRowIter.IsValueRowIter(ctx) {
+		valueRowWriter, ok := rows.(ValueRowWriter)
+		if !ok || !valueRowWriter.IsValueRowWriter(ctx) {
 			return false
 		}
-		i.valueRows = NewValueRowWriter(i.colSet, valRowIter)
+		i.valueRows = valueRowWriter.WithColumns(i.colSet)
 	}
 	return true
 }
@@ -157,6 +157,12 @@ func (i *TableRowIter) IsValueRowWriter(ctx *Context) bool {
 // Columns implements the ValueRowWriter interface
 func (i *TableRowIter) Columns() ColSet {
 	return i.colSet
+}
+
+func (i *TableRowIter) WithColumns(cols ColSet) ValueRowWriter {
+	result := *i
+	result.colSet = cols
+	return &result
 }
 
 func (i *TableRowIter) Close(ctx *Context) error {
