@@ -95,6 +95,11 @@ func (t YearType_) Convert(ctx context.Context, v interface{}) (interface{}, sql
 	}
 
 	switch value := v.(type) {
+	case bool:
+		if value {
+			return t.Convert(ctx, int64(1))
+		}
+		return t.Convert(ctx, int64(0))
 	case int:
 		return t.Convert(ctx, int64(value))
 	case uint:

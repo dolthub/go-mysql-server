@@ -169,6 +169,11 @@ func (t SetType) Convert(ctx context.Context, v interface{}) (interface{}, sql.C
 	}
 
 	switch value := v.(type) {
+	case bool:
+		if value {
+			return t.Convert(ctx, uint64(1))
+		}
+		return t.Convert(ctx, uint64(0))
 	case int:
 		return t.Convert(ctx, uint64(value))
 	case uint:
