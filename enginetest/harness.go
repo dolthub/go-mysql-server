@@ -63,8 +63,8 @@ type ClientHarness interface {
 // [sql.EngineVariables].
 type EngineVariablesHarness interface {
 	// ResetEngineVariables sets [sql.EngineVariables] to their default values
-	// for hermetic testing. Because other tests may rely on shared state, this
-	// is kept as an opt-in configuration.
+	// for hermetic testing. This is a stopgap helper while test pollution
+	// issues are being resolved.
 	ResetEngineVariables()
 }
 
