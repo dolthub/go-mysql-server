@@ -24,7 +24,8 @@ type TableRowIter struct {
 	partitions PartitionIter
 	partition  Partition
 	rows       RowIter
-	valueRows  ValueRowIter
+	valueRows  ValueRowWriter
+	colSet     ColSet
 }
 
 var _ RowIter = (*TableRowIter)(nil)
@@ -32,6 +33,12 @@ var _ RowIter = (*TableRowIter)(nil)
 // NewTableRowIter returns a new iterator over the rows in the partitions of the table given.
 func NewTableRowIter(ctx *Context, table Table, partitions PartitionIter) *TableRowIter {
 	return &TableRowIter{table: table, partitions: partitions}
+}
+
+// NewTableValueRowIter returns a new iterator over the rows in the partitions of the table given,
+// when the table has specific ColumnIds in a plan.
+func NewTableValueRowIter(ctx *Context, table Table, cols ColSet, partitions PartitionIter) RowIter {
+	return &TableRowIter{table: table, partitions: partitions, colSet: cols}
 }
 
 func (i *TableRowIter) Next(ctx *Context) (Row, error) {
@@ -65,7 +72,7 @@ func (i *TableRowIter) Next(ctx *Context) (Row, error) {
 	}
 
 	row, err := i.rows.Next(ctx)
-	if err != nil && err == io.EOF {
+	if err == io.EOF {
 		if err = i.rows.Close(ctx); err != nil {
 			return nil, err
 		}
@@ -77,11 +84,11 @@ func (i *TableRowIter) Next(ctx *Context) (Row, error) {
 	return row, err
 }
 
-// NextValueRow implements the sql.ValueRowIter interface
-func (i *TableRowIter) NextValueRow(ctx *Context) (ValueRow, error) {
+// WriteNextValueRow implements the ValueRowWriter interface
+func (i *TableRowIter) WriteNextValueRow(ctx *Context, row ValueRow) error {
 	select {
 	case <-ctx.Done():
-		return nil, ctx.Err()
+		return ctx.Err()
 	default:
 	}
 
@@ -90,10 +97,10 @@ func (i *TableRowIter) NextValueRow(ctx *Context) (ValueRow, error) {
 		if err != nil {
 			if err == io.EOF {
 				if e := i.partitions.Close(ctx); e != nil {
-					return nil, e
+					return e
 				}
 			}
-			return nil, err
+			return err
 		}
 		i.partition = partition
 	}
@@ -101,25 +108,30 @@ func (i *TableRowIter) NextValueRow(ctx *Context) (ValueRow, error) {
 	if i.valueRows == nil {
 		rows, err := i.table.PartitionRows(ctx, i.partition)
 		if err != nil {
-			return nil, err
+			return err
 		}
-		i.valueRows = rows.(ValueRowIter)
+		i.valueRows = NewValueRowWriter(i.colSet, rows.(ValueRowIter))
 	}
 
-	row, err := i.valueRows.NextValueRow(ctx)
-	if err != nil && err == io.EOF {
+	err := i.valueRows.WriteNextValueRow(ctx, row)
+
+	if err == io.EOF {
 		if err = i.valueRows.Close(ctx); err != nil {
-			return nil, err
+			return err
 		}
 		i.partition = nil
 		i.valueRows = nil
-		row, err = i.NextValueRow(ctx)
+		return i.WriteNextValueRow(ctx, row)
 	}
-	return row, err
+
+	return err
 }
 
-// IsValueRowIter implements the sql.ValueRowIter interface.
-func (i *TableRowIter) IsValueRowIter(ctx *Context) bool {
+// IsValueRowWriter implements the ValueRowWriter interface.
+func (i *TableRowIter) IsValueRowWriter(ctx *Context) bool {
+	if i.colSet.Empty() {
+		return false
+	}
 	if i.partition == nil {
 		partition, err := i.partitions.Next(ctx)
 		if err != nil {
@@ -132,13 +144,19 @@ func (i *TableRowIter) IsValueRowIter(ctx *Context) bool {
 		if err != nil {
 			return false
 		}
+		i.rows = rows
 		valRowIter, ok := rows.(ValueRowIter)
-		if !ok {
+		if !ok || !valRowIter.IsValueRowIter(ctx) {
 			return false
 		}
-		i.valueRows = valRowIter
+		i.valueRows = NewValueRowWriter(i.colSet, valRowIter)
 	}
-	return i.valueRows.IsValueRowIter(ctx)
+	return true
+}
+
+// Columns implements the ValueRowWriter interface
+func (i *TableRowIter) Columns() ColSet {
+	return i.colSet
 }
 
 func (i *TableRowIter) Close(ctx *Context) error {

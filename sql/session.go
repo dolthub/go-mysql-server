@@ -825,7 +825,31 @@ type spanIter struct {
 	done  bool
 }
 
+func (i *spanIter) WriteNextValueRow(ctx *Context, rows ValueRow) error {
+	return i.iter.(ValueRowWriter).WriteNextValueRow(ctx, rows)
+}
+
+func (i *spanIter) IsValueRowWriter(ctx *Context) bool {
+	childValueRowWriter, ok := i.iter.(ValueRowWriter)
+	return ok && childValueRowWriter.IsValueRowWriter(ctx)
+}
+
+func (i *spanIter) Columns() ColSet {
+	return i.iter.(ValueRowWriter).Columns()
+}
+
+func (i *spanIter) NextValueRow(ctx *Context) (ValueRow, error) {
+	return i.iter.(ValueRowIter).NextValueRow(ctx)
+}
+
+func (i *spanIter) IsValueRowIter(ctx *Context) bool {
+	childValueRowIter, ok := i.iter.(ValueRowIter)
+	return ok && childValueRowIter.IsValueRowIter(ctx)
+}
+
 var _ RowIter = (*spanIter)(nil)
+var _ ValueRowIter = (*spanIter)(nil)
+var _ ValueRowWriter = (*spanIter)(nil)
 
 func (i *spanIter) updateTimings(start time.Time) {
 	elapsed := time.Since(start)

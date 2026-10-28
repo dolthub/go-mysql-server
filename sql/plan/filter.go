@@ -109,7 +109,7 @@ type FilterIter struct {
 }
 
 var _ sql.RowIter = (*FilterIter)(nil)
-var _ sql.ValueRowIter = (*FilterIter)(nil)
+var _ sql.ValueRowWriter = (*FilterIter)(nil)
 
 // NewFilterIter creates a new FilterIter.
 func NewFilterIter(
@@ -138,34 +138,38 @@ func (i *FilterIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 }
 
-// NextValueRow implements the sql.ValueRowIter interface.
-func (i *FilterIter) NextValueRow(ctx *sql.Context) (sql.ValueRow, error) {
+// WriteNextValueRow implements the sql.ValueRowWriter interface.
+func (i *FilterIter) WriteNextValueRow(ctx *sql.Context, row sql.ValueRow) error {
 	for {
-		row, err := i.childIter.(sql.ValueRowIter).NextValueRow(ctx)
+		err := i.childIter.(sql.ValueRowWriter).WriteNextValueRow(ctx, row)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		b, err := sql.EvaluateConditionValue(ctx, i.cond.(sql.ValueExpression), row)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		if b {
-			return row, nil
+			return nil
 		}
 	}
 }
 
-// IsValueRowIter implements the sql.ValueRowIter interface.
-func (i *FilterIter) IsValueRowIter(ctx *sql.Context) bool {
+// IsValueRowWriter implements the sql.ValueRowWriter interface.
+func (i *FilterIter) IsValueRowWriter(ctx *sql.Context) bool {
 	cond, ok := i.cond.(sql.ValueExpression)
 	if !ok || !cond.IsValueExpression(ctx) {
 		return false
 	}
-	childIter, ok := i.childIter.(sql.ValueRowIter)
-	if !ok || !childIter.IsValueRowIter(ctx) {
+	childIter, ok := i.childIter.(sql.ValueRowWriter)
+	if !ok || !childIter.IsValueRowWriter(ctx) {
 		return false
 	}
 	return true
+}
+
+func (i *FilterIter) Columns() sql.ColSet {
+	return i.childIter.(sql.ValueRowWriter).Columns()
 }
 
 // Close implements the RowIter interface.

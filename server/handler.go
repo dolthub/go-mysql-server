@@ -540,6 +540,9 @@ func (h *Handler) doQuery(
 		r, err = resultForMax1RowIter(sqlCtx, schema, rowIter, resultFields, buf)
 	} else if vr, ok := rowIter.(sql.ValueRowIter); ok && vr.IsValueRowIter(sqlCtx) {
 		r, processedAtLeastOneBatch, err = h.resultForValueRowIter(sqlCtx, c, schema, vr, resultFields, buf, callback, more)
+	} else if vr, ok := rowIter.(sql.ValueRowWriter); ok && vr.IsValueRowWriter(sqlCtx) {
+		iter := sql.ProjectValueRowWriter(vr)
+		r, processedAtLeastOneBatch, err = h.resultForValueRowIter(sqlCtx, c, schema, iter, resultFields, buf, callback, more)
 	} else {
 		r, processedAtLeastOneBatch, err = h.resultForDefaultIter(sqlCtx, c, schema, rowIter, callback, resultFields, more, buf)
 	}

@@ -333,6 +333,29 @@ func (i *TrackedRowIter) IsValueRowIter(ctx *sql.Context) bool {
 	return ok && iter.IsValueRowIter(ctx)
 }
 
+// WriteNextValueRow implements the sql.ValueRowWriter interface.
+func (i *TrackedRowIter) WriteNextValueRow(ctx *sql.Context, row sql.ValueRow) error {
+	err := i.iter.(sql.ValueRowWriter).WriteNextValueRow(ctx, row)
+	if err != nil {
+		return err
+	}
+	i.numRows++
+	if i.onNext != nil {
+		i.onNext()
+	}
+	return nil
+}
+
+// IsValueRowWriter implements the sql.ValueRowWriter interface.
+func (i *TrackedRowIter) IsValueRowWriter(ctx *sql.Context) bool {
+	iter, ok := i.iter.(sql.ValueRowWriter)
+	return ok && iter.IsValueRowWriter(ctx)
+}
+
+func (i *TrackedRowIter) Columns() sql.ColSet {
+	return i.iter.(sql.ValueRowWriter).Columns()
+}
+
 func (i *TrackedRowIter) Close(ctx *sql.Context) error {
 	err := i.iter.Close(ctx)
 

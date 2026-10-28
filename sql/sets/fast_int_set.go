@@ -39,6 +39,7 @@ package sets
 import (
 	"bytes"
 	"fmt"
+	"iter"
 	"math/bits"
 
 	"golang.org/x/tools/container/intsets"
@@ -159,6 +160,36 @@ func (s FastIntSet) Len() int {
 		return bits.OnesCount64(s.small)
 	}
 	return s.large.Len()
+}
+
+func (s FastIntSet) Min() int {
+	if s.large == nil {
+		return smallCutoff - bits.TrailingZeros64(s.small) - 1
+	}
+	return s.large.Min()
+}
+
+// Max returns the largest int in the set.
+func (s FastIntSet) Max() int {
+	if s.large == nil {
+		return smallCutoff - bits.LeadingZeros64(s.small) - 1
+	}
+	return s.large.Max()
+}
+
+// Iter returns an iterator over the ints in the set, in increasing order.
+func (s FastIntSet) Iter() iter.Seq2[int, int] {
+	return func(yield func(int, int) bool) {
+		i := 0
+		columnId, ok := s.Next(0)
+		for ok {
+			if !yield(i, columnId) {
+				return
+			}
+			columnId, ok = s.Next(columnId + 1)
+			i++
+		}
+	}
 }
 
 // Next returns the first value in the set which is >= startVal. If there is no
