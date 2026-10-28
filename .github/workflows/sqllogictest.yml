@@ -13,9 +13,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1, 2, 3]
+        shard: [0, 1, 2, 3, 4, 5, 6, 7]
     env:
-      SHARD_COUNT: 4
+      SHARD_COUNT: 8
     steps:
       - name: Checkout go-mysql-server
         uses: actions/checkout@v6
@@ -41,13 +41,16 @@ jobs:
           git worktree add "$RUNNER_TEMP/gms-main" origin/main
           (cd "$RUNNER_TEMP/gms-main" && go build -o "$RUNNER_TEMP/logictest-main" ./enginetest/sqllogictest)
 
-      # main and the PR run concurrently, since a few long-running test files (e.g. select5.test) dominate the run time
+      # main and the PR run concurrently, since a few long-running test files (e.g. select5.test) dominate the run time.
+      # Each gets half the CPUs so the runner isn't oversubscribed, which slows down queries and skews the timing
+      # comparison.
       - name: Run sqllogictest against main and PR
         if: steps.setup_gms.outputs.skip == 'false'
         run: |
+          parallelism=$(( $(nproc) / 2 > 1 ? $(nproc) / 2 : 1 ))
           for v in main pr; do
             .github/workflows/scripts/sqllogictest.sh run "$RUNNER_TEMP/logictest-$v" sqllogictest/test \
-              ${{ matrix.shard }} $SHARD_COUNT "$RUNNER_TEMP/$v.log" &
+              ${{ matrix.shard }} $SHARD_COUNT "$RUNNER_TEMP/$v.log" $parallelism &
             pids+=($!)
           done
           for pid in "${pids[@]}"; do wait "$pid"; done

@@ -93,9 +93,9 @@ func (h *memoryHarness) ExecuteQueryContext(_ context.Context, statement string)
 }
 
 // queryTimeout is the number of seconds a single query may run before it's logged as a timeout and the rest of the
-// test file is skipped. The slowest queries in the suite take ~25s, so this is well below the logictest default of 20
-// minutes in order to catch performance regressions that would cause timeouts in Dolt, which is slower.
-const queryTimeout = 120
+// test file is skipped. This is below the logictest default of 20 minutes so that runaway queries fail quickly, but
+// leaves plenty of headroom since queries can run 20x slower on CI runners than on a local machine.
+const queryTimeout = 600
 
 func (h *memoryHarness) GetTimeout() int64 {
 	return queryTimeout

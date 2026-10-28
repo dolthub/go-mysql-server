@@ -3,8 +3,9 @@
 # Helpers for running the sqllogictest suite (github.com/dolthub/sqllogictest) against the memory engine in CI.
 #
 # Usage:
-#   sqllogictest.sh run <logictest binary> <test dir> <shard index> <shard count> <out file>
-#     Runs every <shard count>th test file (balanced by file size) under <test dir> and writes the results log.
+#   sqllogictest.sh run <logictest binary> <test dir> <shard index> <shard count> <out file> [parallelism]
+#     Runs every <shard count>th test file (balanced by file size) under <test dir> and writes the results log. Runs
+#     [parallelism] test files at a time, defaulting to the number of CPUs.
 #   sqllogictest.sh compare <base results> <pr results>
 #     Prints a summary of both result logs and exits non-zero if any test that passes in <base results> does not
 #     pass in <pr results>, or if any test file is more than SLOWDOWN_FACTOR times slower in <pr results> (and slower
@@ -58,12 +59,12 @@ summarize() {
 
 case "$1" in
   run)
-    bin="$2"; dir="$3"; shard="$4"; count="$5"; out="$6"
+    bin="$2"; dir="$3"; shard="$4"; count="$5"; out="$6"; parallelism="${7:-$(getconf _NPROCESSORS_ONLN)}"
     files=$(find "$dir" -name '*.test' -print0 | xargs -0 ls -S | awk -v s="$shard" -v c="$count" '(NR - 1) % c == s')
     echo "Running $(echo "$files" | wc -l | tr -d ' ') test files"
     tmp=$(mktemp -d)
     # Each file runs in its own process since the logictest runner keeps global state.
-    echo "$files" | xargs -P "$(getconf _NPROCESSORS_ONLN)" -I {} sh -c '"$1" run "$2" > "$3/$(echo "$2" | tr / _).log" 2>&1 || true' _ "$bin" {} "$tmp"
+    echo "$files" | xargs -P "$parallelism" -I {} sh -c '"$1" run "$2" > "$3/$(echo "$2" | tr / _).log" 2>&1 || true' _ "$bin" {} "$tmp"
     cat "$tmp"/*.log > "$out"
     ;;
   compare)
@@ -91,6 +92,15 @@ case "$1" in
     awk '{ s += $2 } END { printf "Total time: main %.1fs, ", s / 1000 }' "$tmp/base_times"
     awk '{ s += $2 } END { printf "PR %.1fs\n", s / 1000 }' "$tmp/pr_times"
 
+    echo
+    echo "Slowest queries:"
+    for v in base pr; do
+      [ "$v" = base ] && { name="main"; log="$base"; } || { name="PR"; log="$pr"; }
+      echo "  $name"
+      awk '$3 ~ /^[^ ]+:[0-9]+:$/ && $2 ~ /^[0-9]+$/ { print $2, substr($3, 1, length($3) - 1) }' "$log" \
+        | sort -rn | awk 'NR <= 10' | awk '{ printf "    %8.1fs  %s\n", $1 / 1000, $2 }'
+    done
+
     failed=0
     echo
     echo "Regressions: $(wc -l < "$tmp/regressions" | tr -d ' ')"
@@ -98,7 +108,7 @@ case "$1" in
       while read -r key _ res; do
         echo "  $key ($res)"
         # Show the PR's result line, which includes the query and failure message
-        { grep -F " $key: " "$pr" || true; } | head -n 1 | cut -c 1-1000 | sed 's/^/    /'
+        { grep -F " $key: " "$pr" || true; } | awk 'NR <= 1' | cut -c 1-1000 | sed 's/^/    /'
       done < <(head -n 200 "$tmp/regressions")
       failed=1
     fi
@@ -111,7 +121,7 @@ case "$1" in
         # Show the queries with the largest slowdown in this file
         join <(awk -v f="$file:" 'index($3, f) == 1 && $2 ~ /^[0-9]+$/ { print substr($3, 1, length($3) - 1), $2 }' "$base" | sort -k1,1) \
              <(awk -v f="$file:" 'index($3, f) == 1 && $2 ~ /^[0-9]+$/ { print substr($3, 1, length($3) - 1), $2 }' "$pr" | sort -k1,1) \
-          | awk '{ print $3 - $2, $0 }' | sort -rn | head -n 3 \
+          | awk '{ print $3 - $2, $0 }' | sort -rn | awk 'NR <= 3' \
           | awk '{ printf "    %s: main %dms, PR %dms\n", $2, $3, $4 }'
       done < "$tmp/slow"
       failed=1
