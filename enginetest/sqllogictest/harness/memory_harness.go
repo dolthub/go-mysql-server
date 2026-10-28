@@ -28,7 +28,6 @@ import (
 	"github.com/dolthub/go-mysql-server/enginetest"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type memoryHarness struct {
@@ -93,8 +92,13 @@ func (h *memoryHarness) ExecuteQueryContext(_ context.Context, statement string)
 	return h.ExecuteQuery(statement)
 }
 
+// queryTimeout is the number of seconds a single query may run before it's logged as a timeout and the rest of the
+// test file is skipped. This is below the logictest default of 20 minutes so that runaway queries fail quickly, but
+// leaves plenty of headroom since queries can run 20x slower on CI runners than on a local machine.
+const queryTimeout = 600
+
 func (h *memoryHarness) GetTimeout() int64 {
-	return 0
+	return queryTimeout
 }
 
 func (h *memoryHarness) ExecuteQuery(statement string) (schema string, results []string, err error) {
@@ -140,9 +144,9 @@ func toSqlString(val interface{}) string {
 		// exactly 3 decimal points for floats
 		return fmt.Sprintf("%.3f", v)
 	case *apd.Decimal:
-		// exactly 3 decimal points for floats
-		d := types.DecimalTruncate(v, 3)
-		return d.Text('f')
+		// exactly 3 decimal points for floats, rounded the same way as Dolt's harness
+		f, _ := v.Float64()
+		return fmt.Sprintf("%.3f", f)
 	case int:
 		return strconv.Itoa(v)
 	case uint:
