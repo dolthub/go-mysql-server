@@ -34,6 +34,9 @@ func TestGeneratedColumnRecursion(t *testing.T) {
 		harness := enginetest.NewDefaultMemoryHarness()
 		e, err := harness.NewEngine(t)
 		require.NoError(t, err)
+		if enginetest.IsServerEngine(e) {
+			t.Skip("skipping for server engine as these tests modify the stored schema directly through the catalog")
+		}
 		engine := e.(*sqle.Engine)
 		ctx := enginetest.NewContext(harness)
 		for _, q := range setup {
