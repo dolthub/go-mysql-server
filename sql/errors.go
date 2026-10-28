@@ -837,6 +837,10 @@ var (
 	// This matches MySQL ERROR 3837 (HY000).
 	ErrColumnFunctionalIndexDependency = newMySQLKind("Column '%s' has a functional index dependency and cannot be dropped or renamed.", 3837, "HY000")
 
+	// ErrFunctionalIndexFunctionNotAllowed is returned when a functional index expression contains a subquery, a
+	// variable, or a non-deterministic function. This matches MySQL ERROR 3758 (HY000).
+	ErrFunctionalIndexFunctionNotAllowed = newMySQLKind("Expression of functional index '%s' contains a disallowed function.", 3758, "HY000")
+
 	// ErrInvalidIndexPrefix is returned when a prefix index is not valid for the column type,
 	// or the prefix length exceeds the column's character length.
 	ErrInvalidIndexPrefix = newMySQLKind("incorrect prefix key '%s'; the used key part isn't a string, the used length is longer than the key part, or the storage engine doesn't support unique prefix keys", mysql.ERWrongSubKey)

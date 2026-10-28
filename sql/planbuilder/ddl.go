@@ -935,7 +935,7 @@ func (b *Builder) buildIndexDefs(inScope *scope, spec *ast.TableSpec) (idxDefs s
 			constraint = sql.IndexConstraint_Vector
 		}
 
-		columns := b.gatherIndexColumns(inScope, idxDef.Fields)
+		columns := b.gatherIndexColumns(inScope, idxDef.Info.Name.String(), idxDef.Fields)
 
 		var comment string
 		var vectorProps sql.VectorProperties
@@ -1091,7 +1091,7 @@ func (b *Builder) buildAlterIndex(inScope *scope, ddl *ast.DDL, table *plan.Reso
 			constraint = sql.IndexConstraint_None
 		}
 
-		columns := b.gatherIndexColumns(inScope, ddl.IndexSpec.Fields)
+		columns := b.gatherIndexColumns(inScope, ddl.IndexSpec.ToName.String(), ddl.IndexSpec.Fields)
 
 		var comment string
 		var vectorProps sql.VectorProperties
@@ -1191,7 +1191,7 @@ func (b *Builder) buildVectorDistanceType(name string) sql.DistanceType {
 // scalar expression using inScope for name resolution. Plain column references
 // carry only a name and an optional length; expression columns carry only the
 // built sql.Expression.
-func (b *Builder) gatherIndexColumns(inScope *scope, idxFields []*ast.IndexField) []sql.IndexColumn {
+func (b *Builder) gatherIndexColumns(inScope *scope, indexName string, idxFields []*ast.IndexField) []sql.IndexColumn {
 	out := make([]sql.IndexColumn, len(idxFields))
 	for i, col := range idxFields {
 		var length int64
@@ -1210,6 +1210,7 @@ func (b *Builder) gatherIndexColumns(inScope *scope, idxFields []*ast.IndexField
 		var expr sql.Expression
 		if col.Expression != nil {
 			expr = b.buildScalar(inScope, col.Expression)
+			b.validateFunctionalIndexExpression(indexName, expr)
 		}
 
 		var order *sql.IndexColumnOrder
@@ -1229,6 +1230,27 @@ func (b *Builder) gatherIndexColumns(inScope *scope, idxFields []*ast.IndexField
 		}
 	}
 	return out
+}
+
+// validateFunctionalIndexExpression rejects functional index expressions that MySQL disallows: subqueries, user and
+// system variables, and non-deterministic functions. Besides matching MySQL, this is required for correctness: a
+// functional index is stored as a hidden generated column, and a subquery in it that reads the indexed table would
+// recurse without bound every time the table's virtual columns are resolved.
+func (b *Builder) validateFunctionalIndexExpression(indexName string, expr sql.Expression) {
+	disallowed := false
+	sql.Inspect(b.ctx, expr, func(ctx *sql.Context, e sql.Expression) bool {
+		switch e := e.(type) {
+		case *plan.Subquery, *expression.UserVar, *expression.SystemVar,
+			*function.GetLock, *function.IsUsedLock, *function.IsFreeLock, function.ReleaseAllLocks, *function.ReleaseLock:
+			disallowed = true
+		case sql.NonDeterministicExpression:
+			disallowed = e.IsNonDeterministic()
+		}
+		return !disallowed
+	})
+	if disallowed {
+		b.handleErr(sql.ErrFunctionalIndexFunctionNotAllowed.New(indexName))
+	}
 }
 
 func (b *Builder) buildAlterAutoIncrement(inScope *scope, ddl *ast.DDL, table *plan.ResolvedTable) (outScope *scope) {

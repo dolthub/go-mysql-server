@@ -138,7 +138,7 @@ func HashOf(ctx *sql.Context, sch sql.Schema, row sql.Row) (uint64, error) {
 			}
 			_, err = hash.WriteString(str)
 		case *apd.Decimal:
-			_, err = hash.WriteString(v.Text('f'))
+			_, err = hash.WriteString(decimalHashString(v))
 		case string:
 			_, err = hash.WriteString(v)
 		case []byte:
@@ -250,14 +250,7 @@ func HashOfSimple(ctx *sql.Context, i any, t sql.Type) (uint64, sql.ConvertInRan
 			str = "0"
 		}
 	case *apd.Decimal:
-		str = v.Text('f')
-		if strings.IndexByte(str, '.') != -1 {
-			// remove trailing 0s after '.'
-			str = strings.TrimRightFunc(str, func(r rune) bool {
-				return r == '0'
-			})
-			str = strings.TrimRight(str, ".")
-		}
+		str = decimalHashString(v)
 	default:
 		str = fmt.Sprintf("%v", v) // TODO: avoid Sprintf for performance
 	}
@@ -267,4 +260,12 @@ func HashOfSimple(ctx *sql.Context, i any, t sql.Type) (uint64, sql.ConvertInRan
 		return 0, sql.InRange, err
 	}
 	return hash.Sum64(), inRange, nil
+}
+
+// decimalHashString returns a normalized decimal string used for hashing.
+// Trailing 0s and trailing decimal points are removed. Negative 0 is normalized to positive 0.
+func decimalHashString(v *apd.Decimal) string {
+	res := new(apd.Decimal)
+	res, _ = res.Reduce(v)
+	return res.Text('f')
 }
