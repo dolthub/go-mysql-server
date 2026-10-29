@@ -16,6 +16,8 @@ package vector
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -139,5 +141,10 @@ func (v *VectorToString) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 	if err != nil {
 		return nil, err
 	}
-	return types.JSONDocument{Val: vectorVal}.JSONString()
+	// Vector text has its own display format; whole components do not need a .0 suffix.
+	components := make([]string, len(vectorVal))
+	for i, value := range vectorVal {
+		components[i] = strconv.FormatFloat(float64(value), 'f', -1, 32)
+	}
+	return "[" + strings.Join(components, ", ") + "]", nil
 }

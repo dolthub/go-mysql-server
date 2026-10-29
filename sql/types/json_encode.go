@@ -255,24 +255,12 @@ func writeMarshalledValue(writer io.Writer, val interface{}) error {
 		writer.Write([]byte{'"'})
 		return nil
 
-	case float64:
-		// JSON doesn't distinguish between integers and floats, so we need to check if the float is an integer
-		if val == float64(int64(val)) {
-			_, err := writer.Write([]byte(strconv.FormatInt(int64(val), 10)))
+	case float64, float32:
+		encoded, err := (jsonFloat{val}).MarshalJSON()
+		if err != nil {
 			return err
 		}
-
-		_, err := writer.Write([]byte(strconv.FormatFloat(val, 'f', -1, 64)))
-		return err
-
-	case float32:
-		// JSON doesn't distinguish between integers and floats, so we need to check if the float is an integer
-		if val == float32(int32(val)) {
-			_, err := writer.Write([]byte(strconv.FormatInt(int64(val), 10)))
-			return err
-		}
-
-		_, err := writer.Write([]byte(strconv.FormatFloat(float64(val), 'f', -1, 32)))
+		_, err = writer.Write(encoded)
 		return err
 
 	case int64:
