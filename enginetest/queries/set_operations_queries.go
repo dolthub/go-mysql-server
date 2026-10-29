@@ -905,6 +905,8 @@ select * from t1 except (
 	},
 	{
 		Name: "set operations compare integers, decimals and doubles by value",
+		// the expected types and formatting are mysql's
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE setop_nums (id INT PRIMARY KEY, d DECIMAL(6,2), e DOUBLE);",
 			"INSERT INTO setop_nums VALUES (1, 1.00, 1), (2, 2.50, 2.5), (5, 5.00, 5);",
