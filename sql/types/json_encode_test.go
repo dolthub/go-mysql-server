@@ -59,7 +59,7 @@ func TestMarshalToMySqlString(t *testing.T) {
 					"bool":    true,
 				},
 			},
-			expected: `[{"foo": "bar"}, {"baz": "qux"}, {"int": -1, "str": "str", "bool": true, "int8": -1, "int16": -1, "int32": -1, "int64": -1, "uint8": 1, "uint16": 1, "uint32": 1, "uint64": 1, "float32": 1, "float64": 1}]`,
+			expected: `[{"foo": "bar"}, {"baz": "qux"}, {"int": -1, "str": "str", "bool": true, "int8": -1, "int16": -1, "int32": -1, "int64": -1, "uint8": 1, "uint16": 1, "uint32": 1, "uint64": 1, "float32": 1.0, "float64": 1.0}]`,
 		},
 		{
 			name: "map of strings",
