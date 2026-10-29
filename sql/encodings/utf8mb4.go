@@ -77,6 +77,11 @@ func (utf8mb4Encoder) NextRune(str string) (rune, int) {
 	return utf8.DecodeRuneInString(str)
 }
 
+// RuneLen implements the Encoder interface.
+func (utf8mb4Encoder) RuneLength(r rune) int {
+	return utf8.RuneLen(r)
+}
+
 // IsReturnSafe implements the Encoder interface. Since the encoding and decoding functions return their input, they are
 // not safe to freely modify, and must be copied to preserve the original slice.
 func (utf8mb4Encoder) IsReturnSafe() bool {

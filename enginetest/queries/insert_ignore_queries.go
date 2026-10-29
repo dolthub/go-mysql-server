@@ -342,6 +342,26 @@ var InsertIgnoreScripts = []ScriptTest{
 				Expected: []sql.Row{{"éé", "E9E9", 2, 2}},
 			},
 			{
+				Query:       "INSERT INTO l VALUES (UNHEX('E9E9E9'))",
+				ExpectedErr: types.ErrLengthBeyondLimit,
+			},
+			{
+				Query:                 "INSERT IGNORE INTO l VALUES (UNHEX('E9E9E9'))",
+				Expected:              []sql.Row{{types.NewOkResult(1)}},
+				ExpectedWarning:       mysql.ERWarnDataTruncated,
+				ExpectedWarningsCount: 1,
+			},
+			{
+				Query:                 "UPDATE IGNORE l SET b = UNHEX('F1F1F1')",
+				Expected:              []sql.Row{{NewUpdateResult(2, 2)}},
+				ExpectedWarning:       mysql.ERWarnDataTruncated,
+				ExpectedWarningsCount: 2,
+			},
+			{
+				Query:    "SELECT HEX(b) FROM l",
+				Expected: []sql.Row{{"F1F1"}, {"F1F1"}},
+			},
+			{
 				Query:                 "INSERT IGNORE INTO u16 VALUES ('abcd'), ('éééé')",
 				Expected:              []sql.Row{{types.NewOkResult(2)}},
 				ExpectedWarning:       mysql.ERWarnDataTruncated,
@@ -370,6 +390,53 @@ var InsertIgnoreScripts = []ScriptTest{
 			{
 				Query:    "SELECT b, CHAR_LENGTH(b) FROM m3",
 				Expected: []sql.Row{{"ééé", 3}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12218
+		Name:    "INSERT IGNORE truncates TINYTEXT by bytes of the column character set",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE l (b TINYTEXT CHARACTER SET latin1)",
+			"CREATE TABLE u16 (b TINYTEXT CHARACTER SET utf16)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO l VALUES (REPEAT('é', 255))",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:       "INSERT INTO l VALUES (REPEAT('é', 256))",
+				ExpectedErr: types.ErrLengthBeyondLimit,
+			},
+			{
+				Query:                 "INSERT IGNORE INTO l VALUES (REPEAT('é', 256))",
+				Expected:              []sql.Row{{types.NewOkResult(1)}},
+				ExpectedWarning:       mysql.ERWarnDataTruncated,
+				ExpectedWarningsCount: 1,
+			},
+			{
+				Query:    "SELECT CHAR_LENGTH(b) FROM l",
+				Expected: []sql.Row{{255}, {255}},
+			},
+			{
+				Query:    "INSERT INTO u16 VALUES (REPEAT('a', 127))",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:       "INSERT INTO u16 VALUES (REPEAT('a', 128))",
+				ExpectedErr: types.ErrLengthBeyondLimit,
+			},
+			{
+				Query:                 "INSERT IGNORE INTO u16 VALUES (REPEAT('a', 200))",
+				Expected:              []sql.Row{{types.NewOkResult(1)}},
+				ExpectedWarning:       mysql.ERWarnDataTruncated,
+				ExpectedWarningsCount: 1,
+			},
+			{
+				Query:    "SELECT CHAR_LENGTH(b) FROM u16",
+				Expected: []sql.Row{{127}, {127}},
 			},
 		},
 	},
@@ -412,6 +479,78 @@ var InsertIgnoreScripts = []ScriptTest{
 			{
 				Query:    "SELECT HEX(b), CHAR_LENGTH(b) FROM bad_past",
 				Expected: []sql.Row{{"C3A9C3A9C3A9", 3}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12218
+		Name:    "INSERT IGNORE truncates ascii VARCHAR at the character limit or the first invalid byte",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE a (b VARCHAR(3) CHARACTER SET ascii)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// abcd, bad byte
+				Query:       "INSERT INTO a VALUES (UNHEX('61626364FF'))",
+				ExpectedErr: types.ErrLengthBeyondLimit,
+			},
+			{
+				// a, bad byte, bcd
+				Query:       "INSERT INTO a VALUES (UNHEX('61FF626364'))",
+				ExpectedErr: types.ErrBadCharsetString,
+			},
+			{
+				Query:                 "INSERT IGNORE INTO a VALUES (UNHEX('61626364FF'))",
+				Expected:              []sql.Row{{types.NewOkResult(1)}},
+				ExpectedWarning:       mysql.ERWarnDataTruncated,
+				ExpectedWarningsCount: 1,
+			},
+			{
+				Query:                 "INSERT IGNORE INTO a VALUES (UNHEX('61FF626364'))",
+				Expected:              []sql.Row{{types.NewOkResult(1)}},
+				ExpectedWarning:       mysql.ERTruncatedWrongValueForField,
+				ExpectedWarningsCount: 1,
+			},
+			{
+				Query:    "SELECT HEX(b) FROM a ORDER BY 1",
+				Expected: []sql.Row{{"61"}, {"616263"}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12218
+		Name:    "INSERT IGNORE truncates utf16 VARCHAR at the character limit or the first unpaired surrogate",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE u (b VARCHAR(2) CHARACTER SET utf16)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// abcd, unpaired surrogate
+				Query:       "INSERT INTO u VALUES (UNHEX('006100620063D800'))",
+				ExpectedErr: types.ErrLengthBeyondLimit,
+			},
+			{
+				// a, unpaired surrogate, b
+				Query:       "INSERT INTO u VALUES (UNHEX('0061D8000062'))",
+				ExpectedErr: types.ErrBadCharsetString,
+			},
+			{
+				Query:                 "INSERT IGNORE INTO u VALUES (UNHEX('006100620063D800'))",
+				Expected:              []sql.Row{{types.NewOkResult(1)}},
+				ExpectedWarning:       mysql.ERWarnDataTruncated,
+				ExpectedWarningsCount: 1,
+			},
+			{
+				Query:                 "INSERT IGNORE INTO u VALUES (UNHEX('0061D8000062'))",
+				Expected:              []sql.Row{{types.NewOkResult(1)}},
+				ExpectedWarning:       mysql.ERTruncatedWrongValueForField,
+				ExpectedWarningsCount: 1,
+			},
+			{
+				Query:    "SELECT HEX(b) FROM u ORDER BY 1",
+				Expected: []sql.Row{{"0061"}, {"00610062"}},
 			},
 		},
 	},

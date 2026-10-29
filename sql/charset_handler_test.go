@@ -15,6 +15,7 @@
 package sql
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -71,5 +72,44 @@ func TestCharSetHandler(t *testing.T) {
 		fullMaxByteLen, err := h.MaxByteLength("hé👍", 10)
 		require.NoError(t, err)
 		require.Equal(t, len("hé👍"), fullMaxByteLen)
+
+		pastLimitMaxByteLen, err := h.MaxByteLength("ab\xff", 2)
+		require.NoError(t, err)
+		require.Equal(t, 2, pastLimitMaxByteLen)
+
+		_, err = h.MaxByteLength("a\xffb", 2)
+		require.True(t, ErrCollationMalformedString.Is(err))
+	})
+
+	t.Run("latin1 charset handler", func(t *testing.T) {
+		h := NewCharSetHandler(Collation_latin1_swedish_ci)
+
+		fullMaxByteLen, err := h.MaxByteLength(strings.Repeat("é", 255), 255)
+		require.NoError(t, err)
+		require.Equal(t, len(strings.Repeat("é", 255)), fullMaxByteLen)
+
+		cutMaxByteLen, err := h.MaxByteLength(strings.Repeat("é", 256), 255)
+		require.NoError(t, err)
+		require.Equal(t, len(strings.Repeat("é", 255)), cutMaxByteLen)
+	})
+
+	t.Run("utf16 charset handler", func(t *testing.T) {
+		h := NewCharSetHandler(Collation_utf16_general_ci)
+
+		cutMaxByteLen, err := h.MaxByteLength(strings.Repeat("a", 200), 255)
+		require.NoError(t, err)
+		require.Equal(t, 127, cutMaxByteLen)
+
+		cutEmojiMaxByteLen, err := h.MaxByteLength("aé👍", 7)
+		require.NoError(t, err)
+		require.Equal(t, len("aé"), cutEmojiMaxByteLen)
+	})
+
+	t.Run("utf32 charset handler", func(t *testing.T) {
+		h := NewCharSetHandler(Collation_utf32_general_ci)
+
+		cutMaxByteLen, err := h.MaxByteLength(strings.Repeat("a", 64), 255)
+		require.NoError(t, err)
+		require.Equal(t, 63, cutMaxByteLen)
 	})
 }

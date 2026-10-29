@@ -67,6 +67,7 @@ func (binaryCharSetHandler) CharPos(str string, n int) (int, error) {
 	return n, nil
 }
 
+// MaxByteLength implements the CharSetHandler interface.
 func (binaryCharSetHandler) MaxByteLength(str string, maxBytes int) (int, error) {
 	return max(0, min(len(str), maxBytes)), nil
 }
@@ -113,19 +114,29 @@ func (h runeCharSetHandler) CharPos(str string, n int) (int, error) {
 	return byteOffset, nil
 }
 
+// MaxByteLength implements the CharSetHandler interface.
 func (h runeCharSetHandler) MaxByteLength(str string, maxBytes int) (int, error) {
-	content := str
-	byteOffset := 0
-	for len(content) > 0 {
-		cr, cRead := h.encoder.NextRune(content)
-		if cr == utf8.RuneError && cRead <= 1 {
-			return 0, ErrCollationMalformedString.New("well formed length")
+	byteOffset, charsetBytes := 0, 0
+	for byteOffset < len(str) {
+		cRune, utf8Bytes := h.encoder.NextRune(str[byteOffset:])
+		if cRune == utf8.RuneError && utf8Bytes <= 1 {
+			// A malformed byte past the limit is just cut off with the rest.
+			if charsetBytes >= maxBytes {
+				break
+			}
+			return 0, ErrCollationMalformedString.New("max byte length")
 		}
-		if byteOffset+cRead > maxBytes {
+		charsetCharWidth := h.encoder.RuneLength(cRune)
+		// TODO(#3846): reject characters the character set cannot encode.
+		if charsetCharWidth < 0 {
+			charsetCharWidth = utf8Bytes
+		}
+		charsetBytes += charsetCharWidth
+		// Break before byteOffset update so we only return the chars that fit.
+		if charsetBytes > maxBytes {
 			break
 		}
-		content = content[cRead:]
-		byteOffset += cRead
+		byteOffset += utf8Bytes
 	}
 	return byteOffset, nil
 }
