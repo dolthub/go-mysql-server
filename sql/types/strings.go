@@ -372,27 +372,27 @@ func (t StringType) Convert(ctx context.Context, v interface{}) (interface{}, sq
 			return v, sql.InRange, nil
 		}
 	}
-	val, convStatus, err := ConvertToBytes(ctx, v, t, nil)
+	val, inRange, err := ConvertToBytes(ctx, v, t, nil)
 	// Without a usable value, downstream callers (e.g. the IGNORE modifier)
 	// cannot downgrade this error, so bail early.
 	if val == nil && err != nil {
-		return nil, convStatus, err
+		return nil, inRange, err
 	}
 
 	if IsBinaryType(t) {
 		// Avoid returning nil
 		if len(val) == 0 {
-			return []byte{}, convStatus, err
+			return []byte{}, inRange, err
 		}
-		return val, convStatus, err
+		return val, inRange, err
 	}
-	return string(val), convStatus, err
+	return string(val), inRange, err
 
 }
 
 func ConvertToString(ctx context.Context, v interface{}, t sql.StringType, dest []byte) (string, sql.ConvertInRange, error) {
-	ret, convStatus, err := ConvertToBytes(ctx, v, t, dest)
-	return string(ret), convStatus, err
+	ret, inRange, err := ConvertToBytes(ctx, v, t, dest)
+	return string(ret), inRange, err
 }
 
 // ConvertToBytes returns |v| as bytes of type |t|, appended to |dest|.
@@ -484,33 +484,28 @@ func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest [
 	}
 	handler := sql.NewCharSetHandler(t.Collation())
 	limit := int(t.MaxCharacterLength())
-	findCutoff := handler.CharPos
+	endPos := handler.CharPos
 	if t.Type() == sqltypes.Text {
 		limit = int(t.MaxByteLength())
-		findCutoff = handler.ValidByteLength
+		endPos = handler.MaxByteLength
 	}
 	converted := val[start:]
 	end := len(converted)
 	// chars <= bytes so checking the byte offset works with char limit too.
 	if end > limit {
-		// A malformed byte occurs before the limit here, so it's not a length
-		// problem. Let later charset validation cut the value at that byte and
-		// report a bad charset error in strict mode.
-		if pos, err := findCutoff(string(converted), limit); err == nil {
+		// If a malformed byte error occurs, it'll be at < limit, so it's not a
+		// length error. Instead, let charset validation after this cut the
+		// value at the byte and report a bad charset error in strict mode.
+		if pos, err := endPos(string(converted), limit); err == nil {
 			end = pos
 		}
 	}
-	fits := end == len(converted)
-	convStatus := sql.InRange
-	var lengthErr error
-	if !fits {
-		convStatus = sql.Overflow
-		lengthErr = ErrLengthBeyondLimit.New(val, t.String())
-		val = val[:start+end]
+	if end != len(converted) {
+		return converted[:end], sql.Overflow, ErrLengthBeyondLimit.New(val, t.String())
 	}
 
 	if t.Type() == sqltypes.Binary {
-		if b, ok := v.([]byte); ok && fits {
+		if b, ok := v.([]byte); ok {
 			// Make a copy now to avoid overwriting the original allocation.
 			val = append(dest, b...)
 			start = len(dest)
@@ -552,7 +547,7 @@ func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest [
 		}
 	}
 
-	return bytesVal, convStatus, lengthErr
+	return bytesVal, sql.InRange, nil
 }
 
 // getColumnContext extracts column name and row number from context.

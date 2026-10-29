@@ -36,9 +36,9 @@ func TestCharSetHandler(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 2, posEnd)
 
-		wellFormed, err := h.ValidByteLength("éé", 3)
+		maxByteLen, err := h.MaxByteLength("éé", 3)
 		require.NoError(t, err)
-		require.Equal(t, 3, wellFormed)
+		require.Equal(t, 3, maxByteLen)
 	})
 
 	t.Run("utf8mb4 charset handler", func(t *testing.T) {
@@ -64,16 +64,12 @@ func TestCharSetHandler(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, len("hé👍"), posEnd)
 
-		wellFormed, err := h.ValidByteLength("éé", 3)
+		cutMaxByteLen, err := h.MaxByteLength("hé👍", 6)
 		require.NoError(t, err)
-		require.Equal(t, len("é"), wellFormed)
+		require.Equal(t, len("hé"), cutMaxByteLen)
 
-		wellFormedEmoji, err := h.ValidByteLength("hé👍", 6)
+		fullMaxByteLen, err := h.MaxByteLength("hé👍", 10)
 		require.NoError(t, err)
-		require.Equal(t, len("hé"), wellFormedEmoji)
-
-		wellFormedEnd, err := h.ValidByteLength("hé👍", 10)
-		require.NoError(t, err)
-		require.Equal(t, len("hé👍"), wellFormedEnd)
+		require.Equal(t, len("hé👍"), fullMaxByteLen)
 	})
 }
