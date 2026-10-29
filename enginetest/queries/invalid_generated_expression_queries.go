@@ -16,6 +16,7 @@ package queries
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // InvalidGeneratedExpressionScripts test tables whose stored generated column or functional index expressions could not
@@ -85,6 +86,193 @@ var InvalidGeneratedExpressionScripts = []ScriptTest{
 			{
 				Query:    "SELECT pk, b, (SELECT max(b) FROM t2) FROM t2 ORDER BY pk;",
 				Expected: []sql.Row{{1, 11, 21}, {2, 21, 21}},
+			},
+		},
+	},
+	{
+		Name: "SHOW and information_schema do not resolve generated expressions",
+		SetUpScript: []string{
+			"CREATE TABLE t (pk INT PRIMARY KEY, a INT, b INT AS (a + 1) VIRTUAL);",
+			"INSERT INTO t (pk, a) VALUES (1, 1), (2, 2);",
+			"CREATE INDEX idx ON t ((a + 10));",
+			"CALL memory_set_generated_expression('t', 'b', '(select 1 from t sq)');",
+			"CALL memory_set_generated_expression('t', '!hidden!idx!0!0', '(select 1 from t sq)');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SHOW CREATE TABLE t;",
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n" +
+					"  `pk` int NOT NULL,\n" +
+					"  `a` int,\n" +
+					"  `b` int GENERATED ALWAYS AS (select 1 from t as sq),\n" +
+					"  PRIMARY KEY (`pk`),\n" +
+					"  KEY `idx` ((select 1 from t sq))\n" +
+					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: "SHOW COLUMNS FROM t;",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"a", "int", "YES", "", nil, ""},
+					{"b", "int", "YES", "", nil, "VIRTUAL GENERATED"},
+				},
+			},
+			{
+				Query: "SHOW FULL COLUMNS FROM t;",
+				Expected: []sql.Row{
+					{"pk", "int", nil, "NO", "PRI", nil, "", "", ""},
+					{"a", "int", nil, "YES", "", nil, "", "", ""},
+					{"b", "int", nil, "YES", "", nil, "VIRTUAL GENERATED", "", ""},
+				},
+			},
+			{
+				Query: "SHOW EXTENDED COLUMNS FROM t;",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"a", "int", "YES", "", nil, ""},
+					{"b", "int", "YES", "", nil, "VIRTUAL GENERATED"},
+					{"!hidden!idx!0!0", "bigint", "YES", "MUL", nil, "VIRTUAL GENERATED"},
+				},
+			},
+			{
+				Query:    "SHOW COLUMNS FROM t LIKE 'b';",
+				Expected: []sql.Row{{"b", "int", "YES", "", nil, "VIRTUAL GENERATED"}},
+			},
+			{
+				Query:    "SHOW COLUMNS FROM t WHERE Field = 'b';",
+				Expected: []sql.Row{{"b", "int", "YES", "", nil, "VIRTUAL GENERATED"}},
+			},
+			{
+				Query: "DESCRIBE t;",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"a", "int", "YES", "", nil, ""},
+					{"b", "int", "YES", "", nil, "VIRTUAL GENERATED"},
+				},
+			},
+			{
+				Query: "SHOW INDEXES FROM t;",
+				Expected: []sql.Row{
+					{"t", 0, "PRIMARY", 1, "pk", "A", 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+					{"t", 1, "idx", 1, nil, "A", 0, nil, nil, "YES", "BTREE", "", "", "YES", "(select 1 from t sq)"},
+				},
+			},
+			{
+				// TODO: generation_expression should be "(select 1 from t sq)".
+				Query:    "SELECT column_name, generation_expression FROM information_schema.columns WHERE table_name = 't' ORDER BY ordinal_position;",
+				Expected: []sql.Row{{"pk", ""}, {"a", ""}, {"b", ""}},
+			},
+		},
+	},
+	{
+		Name: "SHOW COLUMNS filters still resolve generated expressions",
+		SetUpScript: []string{
+			"CREATE TABLE t (pk INT PRIMARY KEY, a INT, b INT AS (a + 1) VIRTUAL);",
+			"INSERT INTO t (pk, a) VALUES (1, 1), (2, 2);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SHOW COLUMNS FROM t WHERE Field IN (SELECT 'b' FROM t WHERE b = 3);",
+				Expected: []sql.Row{{"b", "int", "YES", "", nil, "VIRTUAL GENERATED"}},
+			},
+		},
+	},
+	{
+		Name: "DROP INDEX removes a functional index that reads its own table",
+		SetUpScript: []string{
+			"CREATE TABLE t (pk INT PRIMARY KEY, a INT, b INT AS (a + 1) VIRTUAL);",
+			"INSERT INTO t (pk, a) VALUES (1, 1), (2, 2);",
+			"CREATE INDEX idx ON t ((a + 10));",
+			"CALL memory_set_generated_expression('t', '!hidden!idx!0!0', '(select 1 from t sq)');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{Query: "SELECT * FROM t;", ExpectedErr: sql.ErrGeneratedColumnRecursion},
+			{
+				Query:    "DROP INDEX idx ON t;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "SELECT * FROM t ORDER BY pk;",
+				Expected: []sql.Row{{1, 1, 2}, {2, 2, 3}},
+			},
+		},
+	},
+	{
+		Name: "ALTER TABLE DROP INDEX removes a functional index that reads its own table",
+		SetUpScript: []string{
+			"CREATE TABLE t (pk INT PRIMARY KEY, a INT, b INT AS (a + 1) VIRTUAL);",
+			"INSERT INTO t (pk, a) VALUES (1, 1), (2, 2);",
+			"CREATE INDEX idx ON t ((a + 10));",
+			"CALL memory_set_generated_expression('t', '!hidden!idx!0!0', '(select 1 from t sq)');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "ALTER TABLE t DROP INDEX idx;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "SELECT * FROM t ORDER BY pk;",
+				Expected: []sql.Row{{1, 1, 2}, {2, 2, 3}},
+			},
+		},
+	},
+	{
+		Name: "ALTER TABLE DROP COLUMN removes a generated column that reads its own table",
+		SetUpScript: []string{
+			"CREATE TABLE t (pk INT PRIMARY KEY, a INT, b INT AS (a + 1) VIRTUAL);",
+			"INSERT INTO t (pk, a) VALUES (1, 1), (2, 2);",
+			"CREATE INDEX idx ON t ((a + 10));",
+			"CALL memory_set_generated_expression('t', 'b', '(select 1 from t sq)');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{Query: "SELECT * FROM t;", ExpectedErr: sql.ErrGeneratedColumnRecursion},
+			{
+				Query:    "ALTER TABLE t DROP COLUMN b;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "SELECT * FROM t ORDER BY pk;",
+				Expected: []sql.Row{{1, 1}, {2, 2}},
+			},
+		},
+	},
+	{
+		Name: "dropping one of several invalid generated expressions fails without crashing",
+		SetUpScript: []string{
+			"CREATE TABLE t (pk INT PRIMARY KEY, a INT, b INT AS (a + 1) VIRTUAL);",
+			"INSERT INTO t (pk, a) VALUES (1, 1), (2, 2);",
+			"CREATE INDEX idx ON t ((a + 10));",
+			"CALL memory_set_generated_expression('t', 'b', '(select 1 from t sq)');",
+			"CALL memory_set_generated_expression('t', '!hidden!idx!0!0', '(select 1 from t sq)');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// Rewriting the table must evaluate the remaining generated expression, which can't be resolved.
+				Query:       "DROP INDEX idx ON t;",
+				ExpectedErr: sql.ErrDatabaseNotFound,
+			},
+			{
+				Query:       "ALTER TABLE t DROP COLUMN b;",
+				ExpectedErr: sql.ErrColumnDefaultSubquery,
+			},
+		},
+	},
+	{
+		Name: "DROP TABLE removes a table whose generated expressions read it",
+		SetUpScript: []string{
+			"CREATE TABLE t (pk INT PRIMARY KEY, a INT, b INT AS (a + 1) VIRTUAL);",
+			"CREATE INDEX idx ON t ((a + 10));",
+			"CALL memory_set_generated_expression('t', 'b', '(select 1 from t sq)');",
+			"CALL memory_set_generated_expression('t', '!hidden!idx!0!0', '(select 1 from t sq)');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "DROP TABLE t;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "SHOW TABLES LIKE 't';",
+				Expected: []sql.Row{},
 			},
 		},
 	},

@@ -1827,9 +1827,21 @@ func (b *Builder) modifySchemaTarget(inScope *scope, n sql.SchemaTarget, sch sql
 }
 
 // ResolveSchemaDefaults resolves any column default value expressions for the specified |schema|, for the table
-// named |tableName| and returns the schema with the default value expressions resolved. Note that any GetField
-// expressions in the column default value expressions have not had their indexes corrected yet.
-func (b *Builder) ResolveSchemaDefaults(db string, tableName string, schema sql.Schema) sql.Schema {
+// named |tableName| and returns the schema with the default value expressions resolved, or an error if any of them
+// can't be resolved. Note that any GetField expressions in the column default value expressions have not had their
+// indexes corrected yet.
+func (b *Builder) ResolveSchemaDefaults(db string, tableName string, schema sql.Schema) (ret sql.Schema, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			switch r := r.(type) {
+			case parseErr:
+				err = r.err
+			default:
+				panic(r)
+			}
+		}
+	}()
+
 	tableScope := b.newScope()
 	for _, c := range schema {
 		tableScope.newColumn(scopeColumn{
@@ -1842,7 +1854,7 @@ func (b *Builder) ResolveSchemaDefaults(db string, tableName string, schema sql.
 		})
 	}
 
-	return b.resolveSchemaDefaults(tableScope, schema)
+	return b.resolveSchemaDefaults(tableScope, schema), nil
 }
 
 // validateOnUpdateOnDeleteRefActions validates that the specified |constraint| is using referential actions
