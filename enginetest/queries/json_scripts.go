@@ -24,6 +24,59 @@ import (
 
 var JsonScripts = []ScriptTest{
 	{
+		Name: "JSON number kinds survive storage and updates",
+		SetUpScript: []string{
+			"CREATE TABLE json_numbers (id INT PRIMARY KEY, doc JSON)",
+			`INSERT INTO json_numbers VALUES (1, '{"v":42}'), (2, '{"v":42.0}'), (3, '{"v":4.2e1}'), (4, '{"v":1.25}'), (5, '{"v":18446744073709551615}')`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT id, JSON_TYPE(doc->'$.v'), JSON_UNQUOTE(doc->'$.v') FROM json_numbers ORDER BY id",
+				Expected: []sql.Row{{1, "INTEGER", "42"}, {2, "DOUBLE", "42.0"}, {3, "DOUBLE", "42.0"}, {4, "DOUBLE", "1.25"}, {5, "UNSIGNED INTEGER", "18446744073709551615"}},
+			},
+			{
+				Query:    `UPDATE json_numbers SET doc = '{"v":42.0}' WHERE id = 1`,
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+			},
+			{
+				Query:    "SELECT JSON_TYPE(doc->'$.v'), doc->'$.v' = CAST('42' AS JSON) FROM json_numbers WHERE id = 1",
+				Expected: []sql.Row{{"DOUBLE", true}},
+			},
+			{
+				Query:    "UPDATE json_numbers SET doc = JSON_SET(doc, '$.v', CAST('42' AS JSON)) WHERE id = 1",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+			},
+			{
+				Query:    "SELECT JSON_TYPE(doc->'$.v') FROM json_numbers WHERE id = 1",
+				Expected: []sql.Row{{"INTEGER"}},
+			},
+			{
+				Query:    "UPDATE json_numbers SET doc = JSON_SET(doc, '$.v', CAST('42' AS JSON)) WHERE id = 1",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 0}}}},
+			},
+			{
+				Query:    `INSERT INTO json_numbers VALUES (1, '{"v":42.0}') ON DUPLICATE KEY UPDATE doc = VALUES(doc)`,
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
+			},
+			{
+				Query:    "SELECT JSON_TYPE(doc->'$.v') FROM json_numbers WHERE id = 1",
+				Expected: []sql.Row{{"DOUBLE"}},
+			},
+			{
+				Query:    `INSERT INTO json_numbers VALUES (6, JSON_OBJECT('v', 42e0)), (7, JSON_ARRAY(42, 42e0)), (8, JSON_MERGE_PRESERVE('[42]', '[42.0]'))`,
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 3}}},
+			},
+			{
+				Query:    "SELECT JSON_TYPE(doc->'$.v') FROM json_numbers WHERE id = 6",
+				Expected: []sql.Row{{"DOUBLE"}},
+			},
+			{
+				Query:    "SELECT JSON_TYPE(doc->'$[0]'), JSON_TYPE(doc->'$[1]') FROM json_numbers WHERE id IN (7, 8) ORDER BY id",
+				Expected: []sql.Row{{"INTEGER", "DOUBLE"}, {"INTEGER", "DOUBLE"}},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/10050
 		Name: "TextStorage converts to JSON when using dolt wrapper",
 		SetUpScript: []string{

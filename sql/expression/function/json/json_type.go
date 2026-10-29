@@ -16,7 +16,6 @@ package json
 
 import (
 	"fmt"
-	"math"
 
 	"github.com/cockroachdb/apd/v3"
 
@@ -118,22 +117,16 @@ func (j JSONType) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 func TypeOfJsonValue(val interface{}) string {
-	switch v := val.(type) {
+	switch val.(type) {
 	case nil:
 		return "NULL"
 	case bool:
 		return "BOOLEAN"
-	case int64:
+	case int, int8, int16, int32, int64:
 		return "INTEGER"
-	case uint64:
+	case uint, uint8, uint16, uint32, uint64:
 		return "UNSIGNED INTEGER"
-	case float64:
-		if math.Floor(v) == v {
-			if v >= (math.MaxInt32+1)*2 {
-				return "UNSIGNED INTEGER"
-			}
-			return "INTEGER"
-		}
+	case float32, float64:
 		return "DOUBLE"
 	case string:
 		return "STRING"

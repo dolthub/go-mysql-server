@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"math"
 	"reflect"
 	"strconv"
 	"strings"
@@ -277,12 +276,14 @@ func convertJsonNumbers(v interface{}) interface{} {
 		if strings.ContainsAny(s, ".eE") {
 			return f
 		}
-		// If the number can be represented as a float without losing precision, do so.
-		if math.Abs(f) < (1 << 53) {
-			return f
-		}
-		// Try int64 first
+		// Preserve integer tokens even when they could be represented exactly as a double.
+		// MySQL distinguishes INTEGER and DOUBLE values in JSON documents and binlogs.
 		if i, err := val.Int64(); err == nil {
+			// MySQL's JSON parser uses unsigned 64-bit values for positive tokens
+			// larger than a uint32, and signed values for smaller integer tokens.
+			if i >= 1<<32 {
+				return uint64(i)
+			}
 			return i
 		}
 		// Then try uint64
