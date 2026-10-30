@@ -1909,4 +1909,28 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		// ADD COLUMN places the new stored column after the index's hidden virtual column, so the stored column's
+		// output ordinal is greater than the number of stored columns.
+		Name: "keyless table: column added after an expression index",
+		SetUpScript: []string{
+			"CREATE TABLE t (a INT);",
+			"CREATE INDEX ix ON t ((a + 0));",
+			"INSERT INTO t VALUES (1), (1), (2);",
+			"ALTER TABLE t ADD COLUMN n INT;",
+			"UPDATE t SET n = a * 10;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:           "SELECT * FROM t WHERE a + 0 = 1;",
+				Expected:        []sql.Row{{1, 10}, {1, 10}},
+				ExpectedIndexes: []string{"ix"},
+			},
+			{
+				Query:           "SELECT n FROM t WHERE a + 0 = 2;",
+				Expected:        []sql.Row{{20}},
+				ExpectedIndexes: []string{"ix"},
+			},
+		},
+	},
 }
