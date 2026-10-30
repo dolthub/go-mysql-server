@@ -25,7 +25,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-func (b *Builder) buildChangeReplicationSource(inScope *scope, n *ast.ChangeReplicationSource) (outScope *scope) {
+func (b *panicBuilder) buildChangeReplicationSource(inScope *scope, n *ast.ChangeReplicationSource) (outScope *scope) {
 	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, n.Auth); err != nil && b.authEnabled {
 		b.handleErr(err)
 	}
@@ -43,7 +43,7 @@ func (b *Builder) buildChangeReplicationSource(inScope *scope, n *ast.ChangeRepl
 	return outScope
 }
 
-func (b *Builder) buildReplicationOption(inScope *scope, option *ast.ReplicationOption) *binlogreplication.ReplicationOption {
+func (b *panicBuilder) buildReplicationOption(inScope *scope, option *ast.ReplicationOption) *binlogreplication.ReplicationOption {
 	if option.Value == nil {
 		err := fmt.Errorf("nil replication option specified for option %q", option.Name)
 		b.handleErr(err)
@@ -74,7 +74,7 @@ func (b *Builder) buildReplicationOption(inScope *scope, option *ast.Replication
 	return nil
 }
 
-func (b *Builder) buildChangeReplicationFilter(inScope *scope, n *ast.ChangeReplicationFilter) (outScope *scope) {
+func (b *panicBuilder) buildChangeReplicationFilter(inScope *scope, n *ast.ChangeReplicationFilter) (outScope *scope) {
 	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, n.Auth); err != nil && b.authEnabled {
 		b.handleErr(err)
 	}

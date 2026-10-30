@@ -31,7 +31,7 @@ import (
 )
 
 // TODO outScope will be populated with a source node and column sets
-func (b *Builder) buildFrom(inScope *scope, te ast.TableExprs) (outScope *scope) {
+func (b *panicBuilder) buildFrom(inScope *scope, te ast.TableExprs) (outScope *scope) {
 	if len(te) == 0 {
 		outScope = inScope.push()
 		outScope.ast = te
@@ -61,7 +61,7 @@ func (b *Builder) buildFrom(inScope *scope, te ast.TableExprs) (outScope *scope)
 	return b.buildDataSource(inScope, te[0])
 }
 
-func (b *Builder) isLateral(te ast.TableExpr) bool {
+func (b *panicBuilder) isLateral(te ast.TableExpr) bool {
 	switch t := te.(type) {
 	case *ast.JSONTableExpr:
 		return true
@@ -72,7 +72,7 @@ func (b *Builder) isLateral(te ast.TableExpr) bool {
 	}
 }
 
-func (b *Builder) isUsingJoin(te *ast.JoinTableExpr) bool {
+func (b *panicBuilder) isUsingJoin(te *ast.JoinTableExpr) bool {
 	return te.Condition.Using != nil ||
 		strings.EqualFold(te.Join, ast.NaturalJoinStr) ||
 		strings.EqualFold(te.Join, ast.NaturalLeftJoinStr) ||
@@ -80,7 +80,7 @@ func (b *Builder) isUsingJoin(te *ast.JoinTableExpr) bool {
 		strings.EqualFold(te.Join, ast.NaturalFullJoinStr)
 }
 
-func (b *Builder) canConvertToCrossJoin(te *ast.JoinTableExpr) bool {
+func (b *panicBuilder) canConvertToCrossJoin(te *ast.JoinTableExpr) bool {
 	switch te.Join {
 	case ast.LeftJoinStr, ast.RightJoinStr, ast.FullOuterJoinStr:
 		return false
@@ -90,7 +90,7 @@ func (b *Builder) canConvertToCrossJoin(te *ast.JoinTableExpr) bool {
 	}
 }
 
-func (b *Builder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *scope) {
+func (b *panicBuilder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *scope) {
 	b.qFlags.Set(sql.QFlagInnerJoin)
 
 	//TODO build individual table expressions
@@ -185,7 +185,7 @@ func (b *Builder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *sc
 // USING_JOIN(t1, t2)         => PROJ(t1.a1, ...,t1.aN) -> INNER_JOIN(t1, t2, [t1.a1=t2.a1,..., t1.aN=t2.aN])
 // USING_LEFT_JOIN(t1, t2)    => PROJ(t1.a1, ...,t1.aN) -> LEFT_JOIN (t1, t2, [t1.a1=t2.a1,..., t1.aN=t2.aN])
 // USING_RIGHT_JOIN(t1, t2)   => PROJ(t1.a1, ...,t1.aN) -> RIGHT_JOIN(t1, t2, [t1.a1=t2.a1,..., t1.aN=t2.aN])
-func (b *Builder) buildUsingJoin(inScope, leftScope, rightScope *scope, te *ast.JoinTableExpr) (outScope *scope) {
+func (b *panicBuilder) buildUsingJoin(inScope, leftScope, rightScope *scope, te *ast.JoinTableExpr) (outScope *scope) {
 	outScope = inScope.push()
 
 	// Fill in USING columns for NATURAL JOINs
@@ -279,7 +279,7 @@ func (b *Builder) buildUsingJoin(inScope, leftScope, rightScope *scope, te *ast.
 	return outScope
 }
 
-func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *scope) {
+func (b *panicBuilder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *scope) {
 	outScope = inScope.push()
 	outScope.ast = te
 
@@ -488,7 +488,7 @@ func columnsToStrings(cols ast.Columns) []string {
 	return res
 }
 
-func (b *Builder) resolveTable(tab, db string, asOf interface{}) *plan.ResolvedTable {
+func (b *panicBuilder) resolveTable(tab, db string, asOf interface{}) *plan.ResolvedTable {
 	var table sql.Table
 	var database sql.Database
 	var err error
@@ -513,7 +513,7 @@ func (b *Builder) resolveTable(tab, db string, asOf interface{}) *plan.ResolvedT
 	return plan.NewResolvedTable(table, database, asOf)
 }
 
-func (b *Builder) buildTableFunc(inScope *scope, t *ast.TableFuncExpr) (outScope *scope) {
+func (b *panicBuilder) buildTableFunc(inScope *scope, t *ast.TableFuncExpr) (outScope *scope) {
 	//TODO what are valid mysql table arguments
 	args := make([]sql.Expression, 0, len(t.Exprs))
 	for _, expr := range t.Exprs {
@@ -628,7 +628,7 @@ func (b *Builder) buildTableFunc(inScope *scope, t *ast.TableFuncExpr) (outScope
 	return
 }
 
-func (b *Builder) buildJSONTableCols(inScope *scope, jtSpec *ast.JSONTableSpec) []plan.JSONTableCol {
+func (b *panicBuilder) buildJSONTableCols(inScope *scope, jtSpec *ast.JSONTableSpec) []plan.JSONTableCol {
 	var cols []plan.JSONTableCol
 	for _, jtColDef := range jtSpec.Columns {
 		// nested col defs need to be flattened into multiple colOpts with all paths appended
@@ -678,7 +678,7 @@ func (b *Builder) buildJSONTableCols(inScope *scope, jtSpec *ast.JSONTableSpec) 
 	return cols
 }
 
-func (b *Builder) buildJSONTable(inScope *scope, t *ast.JSONTableExpr) (outScope *scope) {
+func (b *panicBuilder) buildJSONTable(inScope *scope, t *ast.JSONTableExpr) (outScope *scope) {
 	data := b.buildScalar(inScope, t.Data)
 	if _, ok := data.(*plan.Subquery); ok {
 		b.handleErr(sql.ErrInvalidArgument.New("JSON_TABLE"))
@@ -719,15 +719,15 @@ func (b *Builder) buildJSONTable(inScope *scope, t *ast.JSONTableExpr) (outScope
 	return outScope
 }
 
-func (b *Builder) buildTablescan(inScope *scope, tableName ast.TableName, asof *ast.AsOf) (outScope *scope, ok bool) {
+func (b *panicBuilder) buildTablescan(inScope *scope, tableName ast.TableName, asof *ast.AsOf) (outScope *scope, ok bool) {
 	return b.buildResolvedTableForTablename(inScope, tableName, asof)
 }
 
-func (b *Builder) buildResolvedTableForTablename(inScope *scope, tableName ast.TableName, asof *ast.AsOf) (outScope *scope, ok bool) {
+func (b *panicBuilder) buildResolvedTableForTablename(inScope *scope, tableName ast.TableName, asof *ast.AsOf) (outScope *scope, ok bool) {
 	return b.buildResolvedTable(inScope, tableName.DbQualifier.String(), tableName.SchemaQualifier.String(), tableName.Name.String(), asof)
 }
 
-func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, asof *ast.AsOf) (outScope *scope, ok bool) {
+func (b *panicBuilder) buildResolvedTable(inScope *scope, db, schema, name string, asof *ast.AsOf) (outScope *scope, ok bool) {
 	outScope = inScope.push()
 
 	if db == "" {
@@ -895,7 +895,7 @@ func resolvedViewScope(ctx *sql.Context, outScope *scope, view sql.Node, db stri
 	return outScope, true
 }
 
-func (b *Builder) resolveView(name string, database sql.Database, asOf interface{}, outScope *scope) sql.Node {
+func (b *panicBuilder) resolveView(name string, database sql.Database, asOf interface{}, outScope *scope) sql.Node {
 	var view *sql.View
 
 	if vdb, vok := database.(sql.ViewDatabase); vok {
@@ -988,7 +988,7 @@ func (b *Builder) resolveView(name string, database sql.Database, asOf interface
 
 // bindOnlyWithDatabase sets the current database to given database before binding and sets it back to the original
 // database after binding. This function is used for binding a subquery using the same database as the original query.
-func (b *Builder) bindOnlyWithDatabase(db sql.Database, stmt ast.Statement, s string) (*scope, *sql.QueryFlags, error) {
+func (b *panicBuilder) bindOnlyWithDatabase(db sql.Database, stmt ast.Statement, s string) (*scope, *sql.QueryFlags, error) {
 	curDb := b.currentDb()
 	defer func() {
 		b.currentDatabase = curDb

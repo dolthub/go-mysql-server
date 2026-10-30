@@ -25,7 +25,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-func (b *Builder) buildWith(inScope *scope, with *ast.With) (outScope *scope) {
+func (b *panicBuilder) buildWith(inScope *scope, with *ast.With) (outScope *scope) {
 	// resolveCommonTableExpressions operates on With nodes. It replaces any matching UnresolvedTable references in the
 	// tree with the subqueries defined in the CTEs.
 
@@ -74,7 +74,7 @@ func (b *Builder) buildWith(inScope *scope, with *ast.With) (outScope *scope) {
 	return
 }
 
-func (b *Builder) buildCte(inScope *scope, e ast.TableExpr, name string, columns []string) *scope {
+func (b *panicBuilder) buildCte(inScope *scope, e ast.TableExpr, name string, columns []string) *scope {
 	cteScope := b.buildDataSource(inScope, e)
 	b.renameSource(cteScope, name, columns)
 	switch n := cteScope.node.(type) {
@@ -84,7 +84,7 @@ func (b *Builder) buildCte(inScope *scope, e ast.TableExpr, name string, columns
 	return cteScope
 }
 
-func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.SetOp, name string, columns []string) *scope {
+func (b *panicBuilder) buildRecursiveCte(inScope *scope, union *ast.SetOp, name string, columns []string) *scope {
 	l, r := splitRecursiveCteUnion(name, union)
 	scopeMapping := make(map[sql.ColumnId]sql.Expression)
 	if r == nil {

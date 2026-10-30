@@ -27,7 +27,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-type Builder struct {
+type panicBuilder struct {
 	overrides sql.BuilderOverrides
 	// EventScheduler is used to communicate with the event scheduler
 	// for any EVENT related statements. It can be nil if EventScheduler is not defined.
@@ -160,7 +160,7 @@ func New(ctx *sql.Context, cat sql.Catalog, es sql.EventScheduler) *Builder {
 			p = overrides.Parser
 		}
 	}
-	return &Builder{
+	return &Builder{inner: panicBuilder{
 		ctx:            ctx,
 		cat:            cat,
 		scheduler:      es,
@@ -171,65 +171,54 @@ func New(ctx *sql.Context, cat sql.Catalog, es sql.EventScheduler) *Builder {
 		authEnabled:    true,
 		authQueryState: state,
 		overrides:      overrides,
-	}
+	}}
 }
 
-func (b *Builder) SetDebug(val bool) {
+func (b *panicBuilder) SetDebug(val bool) {
 	b.f.debug = val
 }
 
-func (b *Builder) SetBindings(bindings map[string]ast.Expr) {
-	bindingExprs := make(map[string]sql.Expression)
-	for i, bv := range bindings {
-		bindingExprs[i] = b.buildScalar(&scope{}, bv)
-	}
-	b.bindCtx = &BindvarContext{
-		Bindings: bindingExprs,
-		used:     make(map[string]struct{}),
-	}
-}
-
-func (b *Builder) SetBindingsWithExpr(bindings map[string]sql.Expression) {
+func (b *panicBuilder) SetBindingsWithExpr(bindings map[string]sql.Expression) {
 	b.bindCtx = &BindvarContext{
 		Bindings: bindings,
 		used:     make(map[string]struct{}),
 	}
 }
 
-func (b *Builder) SetParserOptions(opts ast.ParserOptions) {
+func (b *panicBuilder) SetParserOptions(opts ast.ParserOptions) {
 	b.parserOpts = opts
 }
 
-func (b *Builder) BindCtx() *BindvarContext {
+func (b *panicBuilder) BindCtx() *BindvarContext {
 	return b.bindCtx
 }
 
-func (b *Builder) ViewCtx() *ViewContext {
+func (b *panicBuilder) ViewCtx() *ViewContext {
 	if b.viewCtx == nil {
 		b.viewCtx = &ViewContext{}
 	}
 	return b.viewCtx
 }
 
-func (b *Builder) ProcCtx() *ProcContext {
+func (b *panicBuilder) ProcCtx() *ProcContext {
 	if b.procCtx == nil {
 		b.procCtx = &ProcContext{}
 	}
 	return b.procCtx
 }
 
-func (b *Builder) TriggerCtx() *TriggerContext {
+func (b *panicBuilder) TriggerCtx() *TriggerContext {
 	if b.triggerCtx == nil {
 		b.triggerCtx = &TriggerContext{}
 	}
 	return b.triggerCtx
 }
 
-func (b *Builder) newScope() *scope {
+func (b *panicBuilder) newScope() *scope {
 	return &scope{b: b}
 }
 
-func (b *Builder) withWindowState(clause string, isColRef bool) func() {
+func (b *panicBuilder) withWindowState(clause string, isColRef bool) func() {
 	outerClause, outerColRef := b.windowClause, b.windowClauseColRef
 	b.windowClause, b.windowClauseColRef = clause, isColRef
 	return func() { b.windowClause, b.windowClauseColRef = outerClause, outerColRef }
@@ -242,14 +231,14 @@ func (b *Builder) withWindowState(clause string, isColRef bool) func() {
 // from the original query, not the more fine-grained scopes from the query plan.
 // The caller must defer the returned function to restore the previous lookup mode;
 // correlations and expressions created during argument binding remain.
-func (b *Builder) beginAggregateArgumentResolution(source *scope) (restore func()) {
+func (b *panicBuilder) beginAggregateArgumentResolution(source *scope) (restore func()) {
 	previousRoot := b.aggregateArgumentRoot
 	b.aggregateArgumentRoot = source
 	return func() { b.aggregateArgumentRoot = previousRoot }
 }
 
 // isAggregateArgumentQuerySource reports whether target is on the active aggregate argument's query-block chain.
-func (b *Builder) isAggregateArgumentQuerySource(target *scope) bool {
+func (b *panicBuilder) isAggregateArgumentQuerySource(target *scope) bool {
 	if b.aggregateArgumentRoot == nil {
 		return false
 	}
@@ -261,7 +250,7 @@ func (b *Builder) isAggregateArgumentQuerySource(target *scope) bool {
 	return false
 }
 
-func (b *Builder) Reset() {
+func (b *panicBuilder) Reset() {
 	b.colId = 0
 	b.tabId = 0
 	b.aggregateArgumentRoot = nil
@@ -287,15 +276,27 @@ func (p parseErr) Error() string {
 	return p.err.Error()
 }
 
-func (b *Builder) handleErr(err error) {
+func (b *panicBuilder) handleErr(err error) {
 	panic(parseErr{err})
 }
 
-func (b *Builder) build(inScope *scope, stmt ast.Statement, query string) (outScope *scope) {
+// recoverParseErr turns a panic raised by handleErr into an error. It must be deferred directly. Any other panic is
+// re-raised.
+func recoverParseErr(err *error) {
+	if r := recover(); r != nil {
+		pe, ok := r.(parseErr)
+		if !ok {
+			panic(r)
+		}
+		*err = pe.err
+	}
+}
+
+func (b *panicBuilder) build(inScope *scope, stmt ast.Statement, query string) (outScope *scope) {
 	return b.buildSubquery(inScope, stmt, query, query)
 }
 
-func (b *Builder) buildSubquery(inScope *scope, stmt ast.Statement, subQuery string, fullQuery string) (outScope *scope) {
+func (b *panicBuilder) buildSubquery(inScope *scope, stmt ast.Statement, subQuery string, fullQuery string) (outScope *scope) {
 	if inScope == nil {
 		inScope = b.newScope()
 	}
@@ -496,7 +497,7 @@ func (b *Builder) buildSubquery(inScope *scope, stmt ast.Statement, subQuery str
 // including those that reference their own table (see buildVirtualTableScan). Skipping it lets these statements
 // inspect and repair such tables. The setting applies to every table resolved while it is in effect, including tables
 // referenced by generated expressions that are resolved for display.
-func (b *Builder) disableVirtualColumnScans() (restore func()) {
+func (b *panicBuilder) disableVirtualColumnScans() (restore func()) {
 	prev := b.skipVirtualColumnScans
 	b.skipVirtualColumnScans = true
 	return func() {
@@ -505,7 +506,7 @@ func (b *Builder) disableVirtualColumnScans() (restore func()) {
 }
 
 // buildVirtualTableScan returns a VirtualColumnTable for a table with virtual columns.
-func (b *Builder) buildVirtualTableScan(db string, tab sql.Table) *plan.VirtualColumnTable {
+func (b *panicBuilder) buildVirtualTableScan(db string, tab sql.Table) *plan.VirtualColumnTable {
 	// Generated column expressions may not contain subqueries, but schemas created before that was enforced, or
 	// arriving from elsewhere (e.g. a merge), still might. A subquery that reads this table would resolve this table's
 	// generated columns again, recursing until the goroutine stack overflows and the process dies. Detect the cycle
@@ -554,7 +555,7 @@ func (b *Builder) buildVirtualTableScan(db string, tab sql.Table) *plan.VirtualC
 }
 
 // buildInjectedStatement returns the sql.Node encapsulated by the injected statement.
-func (b *Builder) buildInjectedStatement(inScope *scope, n ast.InjectedStatement) (outScope *scope) {
+func (b *panicBuilder) buildInjectedStatement(inScope *scope, n ast.InjectedStatement) (outScope *scope) {
 	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, n.Auth); err != nil && b.authEnabled {
 		b.handleErr(err)
 	}
@@ -594,9 +595,7 @@ func assignColumnIndexes(ctx *sql.Context, e sql.Expression, schema sql.Schema) 
 	return e
 }
 
-// Below methods are used in Doltgres. TODO: maybe find way to not expose these methods
-
-func (b *Builder) BuildScalarWithTable(expr ast.Expr, tableExpr ast.TableExpr) sql.Expression {
+func (b *panicBuilder) buildScalarWithTable(expr ast.Expr, tableExpr ast.TableExpr) sql.Expression {
 	outscope := b.newScope()
 	if tableExpr != nil {
 		outscope = b.buildDataSource(outscope, tableExpr)
@@ -604,7 +603,7 @@ func (b *Builder) BuildScalarWithTable(expr ast.Expr, tableExpr ast.TableExpr) s
 	return b.buildScalar(outscope, expr)
 }
 
-func (b *Builder) BuildColumnDefaultValueWithTable(defExpr ast.Expr, tableExpr ast.TableExpr, typ sql.Type, nullable bool) *sql.ColumnDefaultValue {
+func (b *panicBuilder) buildColumnDefaultValueWithTable(defExpr ast.Expr, tableExpr ast.TableExpr, typ sql.Type, nullable bool) *sql.ColumnDefaultValue {
 	outscope := b.newScope()
 	if tableExpr != nil {
 		outscope = b.buildDataSource(outscope, tableExpr)
@@ -613,12 +612,12 @@ func (b *Builder) BuildColumnDefaultValueWithTable(defExpr ast.Expr, tableExpr a
 }
 
 // DisableAuth disables all authorization checks.
-func (b *Builder) DisableAuth() {
+func (b *panicBuilder) DisableAuth() {
 	b.authEnabled = false
 }
 
 // EnableAuth enables all authorization checks. Auth is enabled by default, so this only needs to be called when it was
 // previously disabled using DisableAuth.
-func (b *Builder) EnableAuth() {
+func (b *panicBuilder) EnableAuth() {
 	b.authEnabled = true
 }

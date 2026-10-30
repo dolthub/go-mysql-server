@@ -30,7 +30,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func (b *Builder) buildShow(inScope *scope, s *ast.Show) (outScope *scope) {
+func (b *panicBuilder) buildShow(inScope *scope, s *ast.Show) (outScope *scope) {
 	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, s.Auth); err != nil && b.authEnabled {
 		b.handleErr(err)
 	}
@@ -121,7 +121,7 @@ func (b *Builder) buildShow(inScope *scope, s *ast.Show) (outScope *scope) {
 }
 
 // showTargetInfo extracts the database name, table name, and AS OF info from |s|.
-func (b *Builder) showTargetInfo(inScope *scope, s *ast.Show) (db, tableName string, asOf *ast.AsOf, asOfExpr sql.Expression) {
+func (b *panicBuilder) showTargetInfo(inScope *scope, s *ast.Show) (db, tableName string, asOf *ast.AsOf, asOfExpr sql.Expression) {
 	if s.ShowTablesOpt != nil && s.ShowTablesOpt.AsOf != nil {
 		asOfExpr = b.buildAsOfExpr(inScope, s.ShowTablesOpt.AsOf)
 		asOf = &ast.AsOf{Time: s.ShowTablesOpt.AsOf}
@@ -137,7 +137,7 @@ func (b *Builder) showTargetInfo(inScope *scope, s *ast.Show) (db, tableName str
 	return
 }
 
-func (b *Builder) buildShowTable(inScope *scope, s *ast.Show) (outScope *scope) {
+func (b *panicBuilder) buildShowTable(inScope *scope, s *ast.Show) (outScope *scope) {
 	defer b.disableVirtualColumnScans()()
 	outScope = inScope.push()
 	_, tableName, asOf, asOfExpr := b.showTargetInfo(inScope, s)
@@ -177,7 +177,7 @@ func (b *Builder) buildShowTable(inScope *scope, s *ast.Show) (outScope *scope) 
 	return
 }
 
-func (b *Builder) buildShowCreateView(inScope *scope, s *ast.Show) (outScope *scope) {
+func (b *panicBuilder) buildShowCreateView(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
 	db, tableName, _, asOfExpr := b.showTargetInfo(inScope, s)
 	node, err := b.newShowCreateViewNode(db, tableName, asOfExpr)
@@ -190,7 +190,7 @@ func (b *Builder) buildShowCreateView(inScope *scope, s *ast.Show) (outScope *sc
 
 // newShowCreateViewNode returns a ShowCreateTable node for view |tableName| in |db|, reading
 // the stored definition directly without resolving the body.
-func (b *Builder) newShowCreateViewNode(db, tableName string, asOfExpr sql.Expression) (sql.Node, error) {
+func (b *panicBuilder) newShowCreateViewNode(db, tableName string, asOfExpr sql.Expression) (sql.Node, error) {
 	database, err := b.cat.Database(b.ctx, db)
 	if err != nil {
 		return nil, err
@@ -219,7 +219,7 @@ func (b *Builder) newShowCreateViewNode(db, tableName string, asOfExpr sql.Expre
 
 // viewSelectBody parses the CREATE VIEW statement in |viewDef| and returns the SELECT body text,
 // or an empty string if the statement cannot be parsed.
-func (b *Builder) viewSelectBody(viewDef sql.ViewDefinition) string {
+func (b *panicBuilder) viewSelectBody(viewDef sql.ViewDefinition) string {
 	oldOpts := b.parserOpts
 	defer func() { b.parserOpts = oldOpts }()
 	b.parserOpts = sql.NewSqlModeFromString(viewDef.SqlMode).ParserOptions()
@@ -234,7 +234,7 @@ func (b *Builder) viewSelectBody(viewDef sql.ViewDefinition) string {
 	return viewDef.CreateViewStatement[ddl.SubStatementPositionStart:ddl.SubStatementPositionEnd]
 }
 
-func (b *Builder) buildShowDatabase(inScope *scope, s *ast.Show) (outScope *scope) {
+func (b *panicBuilder) buildShowDatabase(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
 	dbName := s.Database
 	if dbName == "" {
@@ -248,7 +248,7 @@ func (b *Builder) buildShowDatabase(inScope *scope, s *ast.Show) (outScope *scop
 	return
 }
 
-func (b *Builder) buildShowTrigger(inScope *scope, s *ast.Show) (outScope *scope) {
+func (b *panicBuilder) buildShowTrigger(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
 	dbName := s.Table.DbQualifier.String()
 	if dbName == "" {
@@ -262,7 +262,7 @@ func (b *Builder) buildShowTrigger(inScope *scope, s *ast.Show) (outScope *scope
 	return
 }
 
-func (b *Builder) buildShowAllTriggers(inScope *scope, s *ast.Show) (outScope *scope) {
+func (b *panicBuilder) buildShowAllTriggers(inScope *scope, s *ast.Show) (outScope *scope) {
 	dbName := s.Table.DbQualifier.String()
 	if dbName == "" {
 		dbName = b.ctx.GetCurrentDatabase()
@@ -309,7 +309,7 @@ func (b *Builder) buildShowAllTriggers(inScope *scope, s *ast.Show) (outScope *s
 	return
 }
 
-func (b *Builder) buildShowEvent(inScope *scope, s *ast.Show) (outScope *scope) {
+func (b *panicBuilder) buildShowEvent(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
 	dbName := strings.ToLower(s.Table.DbQualifier.String())
 	if dbName == "" {
@@ -338,7 +338,7 @@ func (b *Builder) buildShowEvent(inScope *scope, s *ast.Show) (outScope *scope) 
 	return
 }
 
-func (b *Builder) buildShowAllEvents(inScope *scope, s *ast.Show) (outScope *scope) {
+func (b *panicBuilder) buildShowAllEvents(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
 	var dbName string
 
@@ -379,7 +379,7 @@ func (b *Builder) buildShowAllEvents(inScope *scope, s *ast.Show) (outScope *sco
 	return
 }
 
-func (b *Builder) loadAllEventDefinitions(db sql.Database) []sql.EventDefinition {
+func (b *panicBuilder) loadAllEventDefinitions(db sql.Database) []sql.EventDefinition {
 	if eventDb, ok := db.(sql.EventDatabase); ok {
 		events, _, err := eventDb.GetEvents(b.ctx)
 		if err != nil {
@@ -390,7 +390,7 @@ func (b *Builder) loadAllEventDefinitions(db sql.Database) []sql.EventDefinition
 	return nil
 }
 
-func (b *Builder) buildShowProcedure(inScope *scope, s *ast.Show) (outScope *scope) {
+func (b *panicBuilder) buildShowProcedure(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
 	var db sql.Database
 	dbName := s.Table.DbQualifier.String()
@@ -403,10 +403,10 @@ func (b *Builder) buildShowProcedure(inScope *scope, s *ast.Show) (outScope *sco
 	return
 }
 
-func (b *Builder) buildShowProcedureStatus(inScope *scope, s *ast.Show) (outScope *scope) {
+func (b *panicBuilder) buildShowProcedureStatus(inScope *scope, s *ast.Show) (outScope *scope) {
 	var filter sql.Expression
 
-	node, _, _, _, err := b.Parse("select routine_schema as `Db`, routine_name as `Name`, routine_type as `Type`,"+
+	node, _, _, _, err := b.parse("select routine_schema as `Db`, routine_name as `Name`, routine_type as `Type`,"+
 		"definer as `Definer`, last_altered as `Modified`, created as `Created`, security_type as `Security_type`,"+
 		"routine_comment as `Comment`, CHARACTER_SET_CLIENT as `character_set_client`, COLLATION_CONNECTION as `collation_connection`,"+
 		"database_collation as `Database Collation` from information_schema.routines where routine_type = 'PROCEDURE'", nil, false)
@@ -440,9 +440,9 @@ func (b *Builder) buildShowProcedureStatus(inScope *scope, s *ast.Show) (outScop
 	return
 }
 
-func (b *Builder) buildShowFunctionStatus(inScope *scope, s *ast.Show) (outScope *scope) {
+func (b *panicBuilder) buildShowFunctionStatus(inScope *scope, s *ast.Show) (outScope *scope) {
 	var filter sql.Expression
-	node, _, _, _, err := b.Parse("select routine_schema as `Db`, routine_name as `Name`, routine_type as `Type`,"+
+	node, _, _, _, err := b.parse("select routine_schema as `Db`, routine_name as `Name`, routine_type as `Type`,"+
 		"definer as `Definer`, last_altered as `Modified`, created as `Created`, security_type as `Security_type`,"+
 		"routine_comment as `Comment`, character_set_client, collation_connection,"+
 		"database_collation as `Database Collation` from information_schema.routines where routine_type = 'FUNCTION'", nil, false)
@@ -477,7 +477,7 @@ func (b *Builder) buildShowFunctionStatus(inScope *scope, s *ast.Show) (outScope
 	return
 }
 
-func (b *Builder) buildShowTableStatus(inScope *scope, s *ast.Show) (outScope *scope) {
+func (b *panicBuilder) buildShowTableStatus(inScope *scope, s *ast.Show) (outScope *scope) {
 	dbName := b.ctx.GetCurrentDatabase()
 	if s.Database != "" {
 		dbName = s.Database
@@ -524,7 +524,7 @@ func (b *Builder) buildShowTableStatus(inScope *scope, s *ast.Show) (outScope *s
 	return
 }
 
-func (b *Builder) buildShowIndex(inScope *scope, s *ast.Show) (outScope *scope) {
+func (b *panicBuilder) buildShowIndex(inScope *scope, s *ast.Show) (outScope *scope) {
 	defer b.disableVirtualColumnScans()()
 	outScope = inScope.push()
 
@@ -555,7 +555,7 @@ func (b *Builder) buildShowIndex(inScope *scope, s *ast.Show) (outScope *scope) 
 	return
 }
 
-func (b *Builder) getInfoSchemaIndexes(rt *plan.ResolvedTable) []sql.Index {
+func (b *panicBuilder) getInfoSchemaIndexes(rt *plan.ResolvedTable) []sql.Index {
 	table := rt.Table
 	if tw, ok := table.(sql.TableWrapper); ok {
 		table = tw.Underlying()
@@ -592,7 +592,7 @@ func (b *Builder) getInfoSchemaIndexes(rt *plan.ResolvedTable) []sql.Index {
 	return indexes
 }
 
-func (b *Builder) buildShowVariables(inScope *scope, s *ast.Show) (outScope *scope) {
+func (b *panicBuilder) buildShowVariables(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
 	node := &plan.ShowVariables{}
 	for _, c := range node.Schema(b.ctx) {
@@ -625,7 +625,7 @@ func (b *Builder) buildShowVariables(inScope *scope, s *ast.Show) (outScope *sco
 	return
 }
 
-func (b *Builder) buildAsOfLit(inScope *scope, t ast.Expr) interface{} {
+func (b *panicBuilder) buildAsOfLit(inScope *scope, t ast.Expr) interface{} {
 	expr := b.buildAsOfExpr(inScope, t)
 	if expr == nil {
 		// buildAsOfExpr returns nil for a bind variable with no value to substitute.
@@ -649,7 +649,7 @@ func (b *Builder) buildAsOfLit(inScope *scope, t ast.Expr) interface{} {
 	return nil
 }
 
-func (b *Builder) buildAsOfExpr(inScope *scope, time ast.Expr) sql.Expression {
+func (b *panicBuilder) buildAsOfExpr(inScope *scope, time ast.Expr) sql.Expression {
 	switch v := time.(type) {
 	case *ast.SQLVal:
 		if v.Type == ast.ValArg && (b.bindCtx == nil || b.bindCtx.resolveOnly) {
@@ -697,7 +697,7 @@ func (b *Builder) buildAsOfExpr(inScope *scope, time ast.Expr) sql.Expression {
 	return b.buildScalar(b.newScope(), time)
 }
 
-func (b *Builder) buildShowAllTables(inScope *scope, s *ast.Show) (outScope *scope) {
+func (b *panicBuilder) buildShowAllTables(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
 
 	var dbName string
@@ -766,7 +766,7 @@ func (b *Builder) buildShowAllTables(inScope *scope, s *ast.Show) (outScope *sco
 	return
 }
 
-func (b *Builder) buildShowAllDatabases(inScope *scope, s *ast.Show) (outScope *scope) {
+func (b *panicBuilder) buildShowAllDatabases(inScope *scope, s *ast.Show) (outScope *scope) {
 	showDbs := plan.NewShowDatabases()
 	showDbs.Catalog = b.cat
 	outScope = inScope.push()
@@ -795,7 +795,7 @@ func (b *Builder) buildShowAllDatabases(inScope *scope, s *ast.Show) (outScope *
 	return
 }
 
-func (b *Builder) buildShowAllColumns(inScope *scope, s *ast.Show) (outScope *scope) {
+func (b *panicBuilder) buildShowAllColumns(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
 	full := s.Full
 	var table sql.Node
@@ -879,7 +879,7 @@ func (b *Builder) buildShowAllColumns(inScope *scope, s *ast.Show) (outScope *sc
 	return
 }
 
-func (b *Builder) buildShowWarnings(inScope *scope, s *ast.Show) (outScope *scope) {
+func (b *panicBuilder) buildShowWarnings(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
 	if s.CountStar {
 		unsupportedShow := "SHOW COUNT(*) WARNINGS"
@@ -901,12 +901,12 @@ func (b *Builder) buildShowWarnings(inScope *scope, s *ast.Show) (outScope *scop
 	return
 }
 
-func (b *Builder) buildShowCollation(inScope *scope, s *ast.Show) (outScope *scope) {
+func (b *panicBuilder) buildShowCollation(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
 	// show collation statements are functionally identical to selecting from the collations table in
 	// information_schema, with slightly different syntax and with some columns aliased.
 	// TODO: install information_schema automatically for all catalogs
-	node, _, _, _, err := b.Parse("select collation_name as `collation`, character_set_name as charset, id,"+
+	node, _, _, _, err := b.parse("select collation_name as `collation`, character_set_name as charset, id,"+
 		"is_default as `default`, is_compiled as compiled, sortlen, pad_attribute from information_schema.collations order by collation_name", nil, false)
 	if err != nil {
 		b.handleErr(err)
@@ -941,9 +941,9 @@ func (b *Builder) buildShowCollation(inScope *scope, s *ast.Show) (outScope *sco
 	return
 }
 
-func (b *Builder) buildShowEngines(inScope *scope, s *ast.Show) (outScope *scope) {
+func (b *panicBuilder) buildShowEngines(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
-	infoSchemaSelect, _, _, _, err := b.Parse(`
+	infoSchemaSelect, _, _, _, err := b.parse(`
 select
     ENGINE as Engine,
     SUPPORT as Support,
@@ -961,9 +961,9 @@ from information_schema.engines
 	return
 }
 
-func (b *Builder) buildShowPlugins(inScope *scope, s *ast.Show) (outScope *scope) {
+func (b *panicBuilder) buildShowPlugins(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
-	infoSchemaSelect, _, _, _, err := b.Parse("select * from information_schema.plugins", nil, false)
+	infoSchemaSelect, _, _, _, err := b.parse("select * from information_schema.plugins", nil, false)
 	if err != nil {
 		b.handleErr(err)
 	}
@@ -972,7 +972,7 @@ func (b *Builder) buildShowPlugins(inScope *scope, s *ast.Show) (outScope *scope
 	return
 }
 
-func (b *Builder) buildShowStatus(inScope *scope, s *ast.Show) (outScope *scope) {
+func (b *panicBuilder) buildShowStatus(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
 	var node sql.Node = plan.NewShowStatus(s.Scope == ast.GlobalStr)
 	for _, c := range node.Schema(b.ctx) {
@@ -1007,7 +1007,7 @@ func (b *Builder) buildShowStatus(inScope *scope, s *ast.Show) (outScope *scope)
 	return
 }
 
-func (b *Builder) buildShowCharset(inScope *scope, s *ast.Show) (outScope *scope) {
+func (b *panicBuilder) buildShowCharset(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
 
 	showCharset := plan.NewShowCharset()

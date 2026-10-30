@@ -14,13 +14,13 @@ import (
 func TestWindowFrameGetters(t *testing.T) {
 	exprTests := []struct {
 		Name     string
-		Fn       func(*Builder, *scope, *ast.Frame) sql.Expression
+		Fn       func(*panicBuilder, *scope, *ast.Frame) sql.Expression
 		Frame    *ast.Frame
 		Expected sql.Expression
 	}{
 		{
 			Name: "start preceding int",
-			Fn:   (*Builder).getFrameStartNPreceding,
+			Fn:   (*panicBuilder).getFrameStartNPreceding,
 			Frame: &ast.Frame{
 				Extent: &ast.FrameExtent{
 					Start: &ast.FrameBound{
@@ -33,7 +33,7 @@ func TestWindowFrameGetters(t *testing.T) {
 		},
 		{
 			Name: "start preceding nil",
-			Fn:   (*Builder).getFrameStartNPreceding,
+			Fn:   (*panicBuilder).getFrameStartNPreceding,
 			Frame: &ast.Frame{
 				Extent: &ast.FrameExtent{
 					Start: &ast.FrameBound{},
@@ -43,7 +43,7 @@ func TestWindowFrameGetters(t *testing.T) {
 		},
 		{
 			Name: "end preceding int",
-			Fn:   (*Builder).getFrameEndNPreceding,
+			Fn:   (*panicBuilder).getFrameEndNPreceding,
 			Frame: &ast.Frame{
 				Extent: &ast.FrameExtent{
 					End: &ast.FrameBound{
@@ -56,7 +56,7 @@ func TestWindowFrameGetters(t *testing.T) {
 		},
 		{
 			Name: "end preceding nil",
-			Fn:   (*Builder).getFrameEndNPreceding,
+			Fn:   (*panicBuilder).getFrameEndNPreceding,
 			Frame: &ast.Frame{
 				Extent: &ast.FrameExtent{
 					End: &ast.FrameBound{},
@@ -66,7 +66,7 @@ func TestWindowFrameGetters(t *testing.T) {
 		},
 		{
 			Name: "start following int",
-			Fn:   (*Builder).getFrameStartNFollowing,
+			Fn:   (*panicBuilder).getFrameStartNFollowing,
 			Frame: &ast.Frame{
 				Extent: &ast.FrameExtent{
 					Start: &ast.FrameBound{
@@ -79,7 +79,7 @@ func TestWindowFrameGetters(t *testing.T) {
 		},
 		{
 			Name: "start following nil",
-			Fn:   (*Builder).getFrameStartNFollowing,
+			Fn:   (*panicBuilder).getFrameStartNFollowing,
 			Frame: &ast.Frame{
 				Extent: &ast.FrameExtent{
 					Start: &ast.FrameBound{},
@@ -89,7 +89,7 @@ func TestWindowFrameGetters(t *testing.T) {
 		},
 		{
 			Name: "end following int",
-			Fn:   (*Builder).getFrameEndNFollowing,
+			Fn:   (*panicBuilder).getFrameEndNFollowing,
 			Frame: &ast.Frame{
 				Extent: &ast.FrameExtent{
 					End: &ast.FrameBound{
@@ -102,7 +102,7 @@ func TestWindowFrameGetters(t *testing.T) {
 		},
 		{
 			Name: "end following nil",
-			Fn:   (*Builder).getFrameEndNFollowing,
+			Fn:   (*panicBuilder).getFrameEndNFollowing,
 			Frame: &ast.Frame{
 				Extent: &ast.FrameExtent{
 					End: &ast.FrameBound{},
@@ -114,13 +114,13 @@ func TestWindowFrameGetters(t *testing.T) {
 
 	boolTests := []struct {
 		Name     string
-		Fn       func(*Builder, *scope, *ast.Frame) bool
+		Fn       func(*panicBuilder, *scope, *ast.Frame) bool
 		Frame    *ast.Frame
 		Expected bool
 	}{
 		{
 			Name: "start current row is set",
-			Fn:   (*Builder).getFrameStartCurrentRow,
+			Fn:   (*panicBuilder).getFrameStartCurrentRow,
 			Frame: &ast.Frame{
 				Extent: &ast.FrameExtent{
 					Start: &ast.FrameBound{
@@ -132,7 +132,7 @@ func TestWindowFrameGetters(t *testing.T) {
 		},
 		{
 			Name: "start current row is not set",
-			Fn:   (*Builder).getFrameStartCurrentRow,
+			Fn:   (*panicBuilder).getFrameStartCurrentRow,
 			Frame: &ast.Frame{
 				Extent: &ast.FrameExtent{
 					Start: &ast.FrameBound{
@@ -144,7 +144,7 @@ func TestWindowFrameGetters(t *testing.T) {
 		},
 		{
 			Name: "end current row is set",
-			Fn:   (*Builder).getFrameEndCurrentRow,
+			Fn:   (*panicBuilder).getFrameEndCurrentRow,
 			Frame: &ast.Frame{
 				Extent: &ast.FrameExtent{
 					End: &ast.FrameBound{
@@ -156,7 +156,7 @@ func TestWindowFrameGetters(t *testing.T) {
 		},
 		{
 			Name: "end current row is not set",
-			Fn:   (*Builder).getFrameEndCurrentRow,
+			Fn:   (*panicBuilder).getFrameEndCurrentRow,
 			Frame: &ast.Frame{
 				Extent: &ast.FrameExtent{
 					End: &ast.FrameBound{
@@ -168,7 +168,7 @@ func TestWindowFrameGetters(t *testing.T) {
 		},
 		{
 			Name: "unbounded preceding is set",
-			Fn:   (*Builder).getFrameUnboundedPreceding,
+			Fn:   (*panicBuilder).getFrameUnboundedPreceding,
 			Frame: &ast.Frame{
 				Extent: &ast.FrameExtent{
 					Start: &ast.FrameBound{
@@ -180,7 +180,7 @@ func TestWindowFrameGetters(t *testing.T) {
 		},
 		{
 			Name: "unbounded preceding is not set",
-			Fn:   (*Builder).getFrameUnboundedPreceding,
+			Fn:   (*panicBuilder).getFrameUnboundedPreceding,
 			Frame: &ast.Frame{
 				Extent: &ast.FrameExtent{
 					Start: &ast.FrameBound{},
@@ -190,7 +190,7 @@ func TestWindowFrameGetters(t *testing.T) {
 		},
 		{
 			Name: "unbounded following is set",
-			Fn:   (*Builder).getFrameUnboundedFollowing,
+			Fn:   (*panicBuilder).getFrameUnboundedFollowing,
 			Frame: &ast.Frame{
 				Extent: &ast.FrameExtent{
 					End: &ast.FrameBound{
@@ -202,7 +202,7 @@ func TestWindowFrameGetters(t *testing.T) {
 		},
 		{
 			Name: "unbounded following is not set",
-			Fn:   (*Builder).getFrameUnboundedFollowing,
+			Fn:   (*panicBuilder).getFrameUnboundedFollowing,
 			Frame: &ast.Frame{
 				Extent: &ast.FrameExtent{
 					End: &ast.FrameBound{},
@@ -214,7 +214,7 @@ func TestWindowFrameGetters(t *testing.T) {
 
 	for _, tt := range exprTests {
 		t.Run(tt.Name, func(t *testing.T) {
-			b := &Builder{}
+			b := &panicBuilder{}
 			res := tt.Fn(b, &scope{b: b}, tt.Frame)
 			require.Equal(t, tt.Expected, res)
 		})
@@ -222,7 +222,7 @@ func TestWindowFrameGetters(t *testing.T) {
 
 	for _, tt := range boolTests {
 		t.Run(tt.Name, func(t *testing.T) {
-			b := &Builder{}
+			b := &panicBuilder{}
 			res := tt.Fn(b, &scope{b: b}, tt.Frame)
 			require.Equal(t, tt.Expected, res)
 		})

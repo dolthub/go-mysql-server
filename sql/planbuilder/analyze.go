@@ -28,7 +28,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/stats"
 )
 
-func (b *Builder) buildAnalyze(inScope *scope, n *ast.Analyze, query string) (outScope *scope) {
+func (b *panicBuilder) buildAnalyze(inScope *scope, n *ast.Analyze, query string) (outScope *scope) {
 	defaultDb := b.ctx.GetCurrentDatabase()
 
 	if n.Action == "" {
@@ -90,7 +90,7 @@ func (b *Builder) buildAnalyze(inScope *scope, n *ast.Analyze, query string) (ou
 	return
 }
 
-func (b *Builder) buildAnalyzeTables(inScope *scope, n *ast.Analyze, query string) (outScope *scope) {
+func (b *panicBuilder) buildAnalyzeTables(inScope *scope, n *ast.Analyze, query string) (outScope *scope) {
 	outScope = inScope.push()
 	currentDb := b.ctx.GetCurrentDatabase()
 	tables := make([]sql.Table, len(n.Tables))
@@ -118,7 +118,7 @@ func (b *Builder) buildAnalyzeTables(inScope *scope, n *ast.Analyze, query strin
 	return
 }
 
-func (b *Builder) buildAnalyzeUpdate(inScope *scope, n *ast.Analyze, dbName, schemaName, tableName string, sch sql.Schema, columns []string, types []sql.Type) (outScope *scope) {
+func (b *panicBuilder) buildAnalyzeUpdate(inScope *scope, n *ast.Analyze, dbName, schemaName, tableName string, sch sql.Schema, columns []string, types []sql.Type) (outScope *scope) {
 	if dbName == "" {
 		dbName = b.ctx.GetCurrentDatabase()
 	}

@@ -27,7 +27,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func (b *Builder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy) (outScope *scope) {
+func (b *panicBuilder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy) (outScope *scope) {
 	// Order by resolves to
 	// 1) alias in projScope
 	// 2) column name in fromScope
@@ -177,7 +177,7 @@ func (b *Builder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy)
 	return
 }
 
-func (b *Builder) normalizeValArg(e *ast.SQLVal) (sql.Expression, bool) {
+func (b *panicBuilder) normalizeValArg(e *ast.SQLVal) (sql.Expression, bool) {
 	if e.Type != ast.ValArg || b.bindCtx == nil {
 		return nil, false
 	}
@@ -194,7 +194,7 @@ func (b *Builder) normalizeValArg(e *ast.SQLVal) (sql.Expression, bool) {
 	return bv, true
 }
 
-func (b *Builder) normalizeIntVal(e *ast.SQLVal) (any, bool) {
+func (b *panicBuilder) normalizeIntVal(e *ast.SQLVal) (any, bool) {
 	if e.Type == ast.IntVal {
 		lit := b.convertInt(e.Val, 10)
 		return lit.Value(), true
@@ -206,7 +206,7 @@ func (b *Builder) normalizeIntVal(e *ast.SQLVal) (any, bool) {
 	return nil, false
 }
 
-func (b *Builder) buildOrderBy(inScope, orderByScope *scope) {
+func (b *panicBuilder) buildOrderBy(inScope, orderByScope *scope) {
 	if len(orderByScope.cols) == 0 {
 		return
 	}
@@ -220,7 +220,7 @@ func (b *Builder) buildOrderBy(inScope, orderByScope *scope) {
 }
 
 // buildSortConditions builds a sql.SortConditions based on an ORDER BY scope and also returns dependencies
-func (b *Builder) buildSortConditions(orderByScope *scope, sameAlias transform.TreeIdentity) sql.SortConditions {
+func (b *panicBuilder) buildSortConditions(orderByScope *scope, sameAlias transform.TreeIdentity) sql.SortConditions {
 	sortConditions := make(sql.SortConditions, len(orderByScope.cols))
 	for i, c := range orderByScope.cols {
 		so := sql.Ascending
@@ -273,7 +273,7 @@ func nullOrdering(nullsLast bool) sql.NullOrdering {
 }
 
 // buildOrderedInjectedExpr builds an InjectedExpr with an ORDER BY dependency
-func (b *Builder) buildOrderedInjectedExpr(inScope *scope, e *ast.OrderedInjectedExpr) sql.Expression {
+func (b *panicBuilder) buildOrderedInjectedExpr(inScope *scope, e *ast.OrderedInjectedExpr) sql.Expression {
 	inScope.initGroupBy()
 	gb := inScope.groupBy
 

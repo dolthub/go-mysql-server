@@ -32,7 +32,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func (b *Builder) resolveDb(name string) sql.Database {
+func (b *panicBuilder) resolveDb(name string) sql.Database {
 	if name == "" {
 		err := sql.ErrNoDatabaseSelected.New()
 		b.handleErr(err)
@@ -52,7 +52,7 @@ func (b *Builder) resolveDb(name string) sql.Database {
 // resolveDbForTable attempts to resolve the database and schema name qualifiers
 // for a table. If the database is not specified, the current database is used.
 // If the specified schema is not found, `ok` will be false.
-func (b *Builder) resolveDbForTable(table ast.TableName) (sql.Database, bool) {
+func (b *panicBuilder) resolveDbForTable(table ast.TableName) (sql.Database, bool) {
 	dbName := table.DbQualifier.String()
 	if dbName == "" {
 		dbName = b.ctx.GetCurrentDatabase()
@@ -92,7 +92,7 @@ func (b *Builder) resolveDbForTable(table ast.TableName) (sql.Database, bool) {
 // analyzer happily produces a plan that adds an index and then drops that column. We do this in part for simplicity,
 // and also because we construct more than one node per clause in some cases and really want them executed in a
 // particular order in that case.
-func (b *Builder) buildAlterTable(inScope *scope, query string, c *ast.AlterTable) (outScope *scope) {
+func (b *panicBuilder) buildAlterTable(inScope *scope, query string, c *ast.AlterTable) (outScope *scope) {
 	b.multiDDL = true
 	defer func() {
 		b.multiDDL = false
@@ -121,7 +121,7 @@ func (b *Builder) buildAlterTable(inScope *scope, query string, c *ast.AlterTabl
 	return
 }
 
-func (b *Builder) buildDDL(inScope *scope, subQuery string, fullQuery string, c *ast.DDL) (outScope *scope) {
+func (b *panicBuilder) buildDDL(inScope *scope, subQuery string, fullQuery string, c *ast.DDL) (outScope *scope) {
 	_, checksResolvedTables := b.cat.AuthorizationHandler().(sql.ResolvedTableAuthorizationHandler)
 	if b.authEnabled && (c.Action != ast.TruncateStr || !checksResolvedTables) {
 		if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, c.Auth); err != nil {
@@ -198,7 +198,7 @@ func (b *Builder) buildDDL(inScope *scope, subQuery string, fullQuery string, c 
 	return
 }
 
-func (b *Builder) buildDropView(inScope *scope, c *ast.DDL) (outScope *scope) {
+func (b *panicBuilder) buildDropView(inScope *scope, c *ast.DDL) (outScope *scope) {
 	outScope = inScope.push()
 	var dropViews []sql.Node
 	dbName := c.FromViews[0].DbQualifier.String()
@@ -233,7 +233,7 @@ func (b *Builder) buildDropView(inScope *scope, c *ast.DDL) (outScope *scope) {
 	return
 }
 
-func (b *Builder) buildDropTable(inScope *scope, c *ast.DDL) (outScope *scope) {
+func (b *panicBuilder) buildDropTable(inScope *scope, c *ast.DDL) (outScope *scope) {
 	defer b.disableVirtualColumnScans()()
 	outScope = inScope.push()
 	var dropTables []sql.Node
@@ -297,7 +297,7 @@ func getTempTable(t sql.Table) sql.TemporaryTable {
 	}
 }
 
-func (b *Builder) buildTruncateTable(inScope *scope, c *ast.DDL) (outScope *scope) {
+func (b *panicBuilder) buildTruncateTable(inScope *scope, c *ast.DDL) (outScope *scope) {
 	outScope = inScope.push()
 	tableScope, ok := b.buildResolvedTableForTablename(inScope, c.Table, nil)
 	if !ok {
@@ -315,7 +315,7 @@ func (b *Builder) buildTruncateTable(inScope *scope, c *ast.DDL) (outScope *scop
 	return
 }
 
-func (b *Builder) buildCreateTable(inScope *scope, c *ast.DDL) (outScope *scope) {
+func (b *panicBuilder) buildCreateTable(inScope *scope, c *ast.DDL) (outScope *scope) {
 	outScope = inScope.push()
 	if c.OptLike != nil {
 		return b.buildCreateTableLike(inScope, c)
@@ -404,7 +404,7 @@ func assignColumnIndexesInSchema(ctx *sql.Context, schema sql.Schema) sql.Schema
 	return newSch
 }
 
-func (b *Builder) getIndexDefs(table sql.Table) sql.IndexDefs {
+func (b *panicBuilder) getIndexDefs(table sql.Table) sql.IndexDefs {
 	idxTbl, isIdxTbl := table.(sql.IndexAddressableTable)
 	if !isIdxTbl {
 		return nil
@@ -448,7 +448,7 @@ func (b *Builder) getIndexDefs(table sql.Table) sql.IndexDefs {
 	return idxDefs
 }
 
-func (b *Builder) buildCreateTableLike(inScope *scope, ct *ast.DDL) *scope {
+func (b *panicBuilder) buildCreateTableLike(inScope *scope, ct *ast.DDL) *scope {
 	database, ok := b.resolveDbForTable(ct.Table)
 	if !ok {
 		b.handleErr(sql.ErrDatabaseSchemaNotFound.New(ct.Table.SchemaQualifier.String()))
@@ -563,7 +563,7 @@ func (b *Builder) buildCreateTableLike(inScope *scope, ct *ast.DDL) *scope {
 	return outScope
 }
 
-func (b *Builder) buildRenameTable(inScope *scope, ddl *ast.DDL) (outScope *scope) {
+func (b *panicBuilder) buildRenameTable(inScope *scope, ddl *ast.DDL) (outScope *scope) {
 	outScope = inScope
 	if len(ddl.FromTables) != len(ddl.ToTables) {
 		panic("Expected from tables and to tables of equal length")
@@ -581,7 +581,7 @@ func (b *Builder) buildRenameTable(inScope *scope, ddl *ast.DDL) (outScope *scop
 	return
 }
 
-func (b *Builder) isUniqueColumn(tableSpec *ast.TableSpec, columnName string) bool {
+func (b *panicBuilder) isUniqueColumn(tableSpec *ast.TableSpec, columnName string) bool {
 	for _, column := range tableSpec.Columns {
 		if column.Name.String() == columnName {
 			return column.Type.KeyOpt == colKeyUnique ||
@@ -594,7 +594,7 @@ func (b *Builder) isUniqueColumn(tableSpec *ast.TableSpec, columnName string) bo
 
 }
 
-func (b *Builder) buildAlterTableClause(inScope *scope, ddl *ast.DDL) []*scope {
+func (b *panicBuilder) buildAlterTableClause(inScope *scope, ddl *ast.DDL) []*scope {
 	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, ddl.Auth); err != nil && b.authEnabled {
 		b.handleErr(err)
 	}
@@ -742,7 +742,7 @@ func isDropColumnOrIndexClause(ddl *ast.DDL) bool {
 	return columnOk && indexOk && (ddl.ColumnAction != "" || ddl.IndexSpec != nil)
 }
 
-func (b *Builder) buildAlterTableColumnAction(inScope *scope, ddl *ast.DDL, table *plan.ResolvedTable) (outScope *scope) {
+func (b *panicBuilder) buildAlterTableColumnAction(inScope *scope, ddl *ast.DDL, table *plan.ResolvedTable) (outScope *scope) {
 	outScope = inScope
 	switch strings.ToLower(ddl.ColumnAction) {
 	case ast.AddStr:
@@ -773,7 +773,7 @@ func (b *Builder) buildAlterTableColumnAction(inScope *scope, ddl *ast.DDL, tabl
 	return outScope
 }
 
-func (b *Builder) buildAlterConstraint(inScope *scope, ddl *ast.DDL, table *plan.ResolvedTable) (outScope *scope) {
+func (b *panicBuilder) buildAlterConstraint(inScope *scope, ddl *ast.DDL, table *plan.ResolvedTable) (outScope *scope) {
 	outScope = inScope
 	parsedConstraint := b.convertConstraintDefinition(inScope, ddl.TableSpec.Constraints[0])
 	switch strings.ToLower(ddl.ConstraintAction) {
@@ -841,7 +841,7 @@ func (b *Builder) buildAlterConstraint(inScope *scope, ddl *ast.DDL, table *plan
 	return
 }
 
-func (b *Builder) buildConstraintsDefs(inScope *scope, tname ast.TableName, spec *ast.TableSpec) (fks []*sql.ForeignKeyConstraint, checks []*sql.CheckConstraint) {
+func (b *panicBuilder) buildConstraintsDefs(inScope *scope, tname ast.TableName, spec *ast.TableSpec) (fks []*sql.ForeignKeyConstraint, checks []*sql.CheckConstraint) {
 	for _, unknownConstraint := range spec.Constraints {
 		parsedConstraint := b.convertConstraintDefinition(inScope, unknownConstraint)
 		switch constraint := parsedConstraint.(type) {
@@ -875,7 +875,7 @@ func (b *Builder) buildConstraintsDefs(inScope *scope, tname ast.TableName, spec
 // |name| is the constraint name. Pass an empty string to let the engine generate one.
 // |columns| are the child table columns that participate in the constraint.
 // Database and Table are not set. Call bindForeignKey to fill them in.
-func (b *Builder) fkConstraintFromDef(fkDef *ast.ForeignKeyDefinition, name string, columns []string) *sql.ForeignKeyConstraint {
+func (b *panicBuilder) fkConstraintFromDef(fkDef *ast.ForeignKeyDefinition, name string, columns []string) *sql.ForeignKeyConstraint {
 	parentCols := make([]string, len(fkDef.ReferencedColumns))
 	// TODO: if ReferencedColumns is empty, load all columns from parent table
 	for i, col := range fkDef.ReferencedColumns {
@@ -901,7 +901,7 @@ func (b *Builder) fkConstraintFromDef(fkDef *ast.ForeignKeyDefinition, name stri
 }
 
 // bindForeignKey sets the Database and Table fields on |fk| using |tname| and validates its referential actions.
-func (b *Builder) bindForeignKey(fk *sql.ForeignKeyConstraint, tname ast.TableName) {
+func (b *panicBuilder) bindForeignKey(fk *sql.ForeignKeyConstraint, tname ast.TableName) {
 	fk.Database = tname.DbQualifier.String()
 	fk.Table = tname.Name.String()
 	if fk.Database == "" {
@@ -913,7 +913,7 @@ func (b *Builder) bindForeignKey(fk *sql.ForeignKeyConstraint, tname ast.TableNa
 }
 
 // bindForeignKeyFromTable sets the Database, Table, and SchemaName fields on |fk| using |table| and validates its referential actions.
-func (b *Builder) bindForeignKeyFromTable(fk *sql.ForeignKeyConstraint, table *plan.ResolvedTable) {
+func (b *panicBuilder) bindForeignKeyFromTable(fk *sql.ForeignKeyConstraint, table *plan.ResolvedTable) {
 	fk.Database = table.SqlDatabase.Name()
 	fk.Table = table.Name()
 	if ds, ok := table.SqlDatabase.(sql.DatabaseSchema); ok {
@@ -935,7 +935,7 @@ func columnOrderToColumnOrder(order *ast.ColumnOrder) *sql.ColumnOrder {
 	}
 }
 
-func (b *Builder) buildIndexDefs(inScope *scope, spec *ast.TableSpec) (idxDefs sql.IndexDefs) {
+func (b *panicBuilder) buildIndexDefs(inScope *scope, spec *ast.TableSpec) (idxDefs sql.IndexDefs) {
 	for _, idxDef := range spec.Indexes {
 		constraint := sql.IndexConstraint_None
 		if idxDef.Info.Primary {
@@ -1008,7 +1008,7 @@ type namedConstraint struct {
 	name string
 }
 
-func (b *Builder) convertConstraintDefinition(inScope *scope, cd *ast.ConstraintDefinition) interface{} {
+func (b *panicBuilder) convertConstraintDefinition(inScope *scope, cd *ast.ConstraintDefinition) interface{} {
 	if fkConstraint, ok := cd.Details.(*ast.ForeignKeyDefinition); ok {
 		columns := make([]string, len(fkConstraint.Source))
 		for i, col := range fkConstraint.Source {
@@ -1037,7 +1037,7 @@ func (b *Builder) convertConstraintDefinition(inScope *scope, cd *ast.Constraint
 
 // findTableForIndex searches all tables in the current database for one that owns an index with the
 // given name (case-insensitive). Returns the table name, or an empty string if not found.
-func (b *Builder) findTableForIndex(indexName string) (string, error) {
+func (b *panicBuilder) findTableForIndex(indexName string) (string, error) {
 	indexName = strings.ToLower(indexName)
 	var found string
 	err := sql.DBTableIter(b.ctx, b.currentDb(), func(tbl sql.Table) (bool, error) {
@@ -1060,7 +1060,7 @@ func (b *Builder) findTableForIndex(indexName string) (string, error) {
 	return found, err
 }
 
-func (b *Builder) buildReferentialAction(action ast.ReferenceAction) sql.ForeignKeyReferentialAction {
+func (b *panicBuilder) buildReferentialAction(action ast.ReferenceAction) sql.ForeignKeyReferentialAction {
 	switch action {
 	case ast.Restrict:
 		return sql.ForeignKeyReferentialAction_Restrict
@@ -1077,7 +1077,7 @@ func (b *Builder) buildReferentialAction(action ast.ReferenceAction) sql.Foreign
 	}
 }
 
-func (b *Builder) buildAlterIndex(inScope *scope, ddl *ast.DDL, table *plan.ResolvedTable) (outScope *scope) {
+func (b *panicBuilder) buildAlterIndex(inScope *scope, ddl *ast.DDL, table *plan.ResolvedTable) (outScope *scope) {
 	outScope = inScope
 	switch strings.ToLower(ddl.IndexSpec.Action) {
 	case ast.CreateStr:
@@ -1185,7 +1185,7 @@ func (b *Builder) buildAlterIndex(inScope *scope, ddl *ast.DDL, table *plan.Reso
 
 // buildVectorDistanceType resolves the value of the "vector_distance_type" index option into a vector distance metric,
 // erroring on unknown names.
-func (b *Builder) buildVectorDistanceType(name string) sql.DistanceType {
+func (b *panicBuilder) buildVectorDistanceType(name string) sql.DistanceType {
 	for _, distanceType := range []sql.DistanceType{
 		vector.DistanceL2Squared{},
 		vector.DistanceEuclidean{},
@@ -1207,7 +1207,7 @@ func (b *Builder) buildVectorDistanceType(name string) sql.DistanceType {
 // scalar expression using inScope for name resolution. Plain column references
 // carry only a name and an optional length; expression columns carry only the
 // built sql.Expression.
-func (b *Builder) gatherIndexColumns(inScope *scope, indexName string, idxFields []*ast.IndexField) []sql.IndexColumn {
+func (b *panicBuilder) gatherIndexColumns(inScope *scope, indexName string, idxFields []*ast.IndexField) []sql.IndexColumn {
 	out := make([]sql.IndexColumn, len(idxFields))
 	for i, col := range idxFields {
 		var length int64
@@ -1252,7 +1252,7 @@ func (b *Builder) gatherIndexColumns(inScope *scope, indexName string, idxFields
 // system variables, and non-deterministic functions. Besides matching MySQL, this is required for correctness: a
 // functional index is stored as a hidden generated column, and a subquery in it that reads the indexed table would
 // recurse without bound every time the table's virtual columns are resolved.
-func (b *Builder) validateFunctionalIndexExpression(indexName string, expr sql.Expression) {
+func (b *panicBuilder) validateFunctionalIndexExpression(indexName string, expr sql.Expression) {
 	disallowed := false
 	sql.Inspect(b.ctx, expr, func(ctx *sql.Context, e sql.Expression) bool {
 		switch e := e.(type) {
@@ -1269,7 +1269,7 @@ func (b *Builder) validateFunctionalIndexExpression(indexName string, expr sql.E
 	}
 }
 
-func (b *Builder) buildAlterAutoIncrement(inScope *scope, ddl *ast.DDL, table *plan.ResolvedTable) (outScope *scope) {
+func (b *panicBuilder) buildAlterAutoIncrement(inScope *scope, ddl *ast.DDL, table *plan.ResolvedTable) (outScope *scope) {
 	outScope = inScope
 	val, ok := ddl.AutoIncSpec.Value.(*ast.SQLVal)
 	if !ok {
@@ -1299,7 +1299,7 @@ func (b *Builder) buildAlterAutoIncrement(inScope *scope, ddl *ast.DDL, table *p
 	return
 }
 
-func (b *Builder) buildAlterNotNull(inScope *scope, ddl *ast.DDL, table *plan.ResolvedTable) (outScope *scope) {
+func (b *panicBuilder) buildAlterNotNull(inScope *scope, ddl *ast.DDL, table *plan.ResolvedTable) (outScope *scope) {
 	outScope = inScope
 	spec := ddl.NotNullSpec
 
@@ -1331,7 +1331,7 @@ func (b *Builder) buildAlterNotNull(inScope *scope, ddl *ast.DDL, table *plan.Re
 	return
 }
 
-func (b *Builder) buildAlterChangeColumnType(inScope *scope, ddl *ast.DDL, table *plan.ResolvedTable) (outScope *scope) {
+func (b *panicBuilder) buildAlterChangeColumnType(inScope *scope, ddl *ast.DDL, table *plan.ResolvedTable) (outScope *scope) {
 	outScope = inScope
 	spec := ddl.ColumnTypeSpec
 
@@ -1357,7 +1357,7 @@ func (b *Builder) buildAlterChangeColumnType(inScope *scope, ddl *ast.DDL, table
 	return
 }
 
-func (b *Builder) buildAlterDefault(inScope *scope, ddl *ast.DDL, table *plan.ResolvedTable) (outScope *scope) {
+func (b *panicBuilder) buildAlterDefault(inScope *scope, ddl *ast.DDL, table *plan.ResolvedTable) (outScope *scope) {
 	outScope = inScope
 	switch strings.ToLower(ddl.DefaultSpec.Action) {
 	case ast.SetStr:
@@ -1382,7 +1382,7 @@ func (b *Builder) buildAlterDefault(inScope *scope, ddl *ast.DDL, table *plan.Re
 	return
 }
 
-func (b *Builder) buildAlterCollationSpec(inScope *scope, ddl *ast.DDL, table *plan.ResolvedTable) (outScope *scope) {
+func (b *panicBuilder) buildAlterCollationSpec(inScope *scope, ddl *ast.DDL, table *plan.ResolvedTable) (outScope *scope) {
 	outScope = inScope
 	collation, err := sql.ParseCollation(ddl.AlterCollationSpec.CharacterSet, ddl.AlterCollationSpec.Collation, false)
 	if err != nil {
@@ -1392,13 +1392,13 @@ func (b *Builder) buildAlterCollationSpec(inScope *scope, ddl *ast.DDL, table *p
 	return
 }
 
-func (b *Builder) buildAlterCommentSpec(inScope *scope, ddl *ast.DDL, table *plan.ResolvedTable) (outScope *scope) {
+func (b *panicBuilder) buildAlterCommentSpec(inScope *scope, ddl *ast.DDL, table *plan.ResolvedTable) (outScope *scope) {
 	outScope = inScope
 	outScope.node = plan.NewAlterTableComment(table, ddl.AlterCommentSpec.Comment)
 	return
 }
 
-func (b *Builder) buildDefaultExpression(inScope *scope, defaultExpr ast.Expr) *sql.ColumnDefaultValue {
+func (b *panicBuilder) buildDefaultExpression(inScope *scope, defaultExpr ast.Expr) *sql.ColumnDefaultValue {
 	if defaultExpr == nil {
 		return nil
 	}
@@ -1443,7 +1443,7 @@ func ExpressionToColumnDefaultValue(inputExpr sql.Expression, isLiteral, isParen
 	}
 }
 
-func (b *Builder) buildExternalCreateIndex(inScope *scope, ddl *ast.DDL) (outScope *scope) {
+func (b *panicBuilder) buildExternalCreateIndex(inScope *scope, ddl *ast.DDL) (outScope *scope) {
 	config := make(map[string]string)
 	for _, option := range ddl.IndexSpec.Options {
 		if option.Using != "" {
@@ -1556,7 +1556,7 @@ func validateOnUpdateExprs(col *sql.Column) error {
 }
 
 // TableSpecToSchema creates a sql.Schema from a parsed TableSpec and returns the parsed primary key schema, collation ID, and table comment.
-func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, tableName string, tableSpec *ast.TableSpec, forceInvalidCollation bool) (sql.PrimaryKeySchema, sql.CollationID, map[string]interface{}) {
+func (b *panicBuilder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, tableName string, tableSpec *ast.TableSpec, forceInvalidCollation bool) (sql.PrimaryKeySchema, sql.CollationID, map[string]interface{}) {
 	// TODO: helper method?
 	tblOpts := make(map[string]interface{})
 	for _, tblOpt := range tableSpec.TableOpts {
@@ -1690,7 +1690,7 @@ func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, t
 }
 
 // jsonTableSpecToSchemaHelper creates a sql.Schema from a parsed TableSpec
-func (b *Builder) jsonTableSpecToSchemaHelper(jsonTableSpec *ast.JSONTableSpec, sch sql.Schema) {
+func (b *panicBuilder) jsonTableSpecToSchemaHelper(jsonTableSpec *ast.JSONTableSpec, sch sql.Schema) {
 	for _, cd := range jsonTableSpec.Columns {
 		if cd.Spec != nil {
 			b.jsonTableSpecToSchemaHelper(cd.Spec, sch)
@@ -1711,7 +1711,7 @@ func (b *Builder) jsonTableSpecToSchemaHelper(jsonTableSpec *ast.JSONTableSpec, 
 }
 
 // jsonTableSpecToSchema creates a sql.Schema from a parsed TableSpec
-func (b *Builder) jsonTableSpecToSchema(tableSpec *ast.JSONTableSpec) sql.Schema {
+func (b *panicBuilder) jsonTableSpecToSchema(tableSpec *ast.JSONTableSpec) sql.Schema {
 	var sch sql.Schema
 	b.jsonTableSpecToSchemaHelper(tableSpec, sch)
 	return sch
@@ -1758,7 +1758,7 @@ func getPkOrdinals(ts *ast.TableSpec) []int {
 
 // columnDefinitionToColumn returns the sql.Column for the column definition given, as part of a create table
 // statement. Defaults and generated expressions must be handled separately.
-func (b *Builder) columnDefinitionToColumn(inScope *scope, cd *ast.ColumnDefinition, indexes []*ast.IndexDefinition) *sql.Column {
+func (b *panicBuilder) columnDefinitionToColumn(inScope *scope, cd *ast.ColumnDefinition, indexes []*ast.IndexDefinition) *sql.Column {
 	internalTyp, err := types.ColumnTypeToType(&cd.Type)
 	if err != nil {
 		b.handleErr(err)
@@ -1817,7 +1817,7 @@ func (b *Builder) columnDefinitionToColumn(inScope *scope, cd *ast.ColumnDefinit
 }
 
 // modifySchemaTarget resolves the schema defaults and sets the target schema for the node.
-func (b *Builder) modifySchemaTarget(inScope *scope, n sql.SchemaTarget, sch sql.Schema) sql.Node {
+func (b *panicBuilder) modifySchemaTarget(inScope *scope, n sql.SchemaTarget, sch sql.Schema) sql.Node {
 	targSchema := b.resolveSchemaDefaults(inScope, sch)
 	ret, err := n.WithTargetSchema(targSchema)
 	if err != nil {
@@ -1830,18 +1830,7 @@ func (b *Builder) modifySchemaTarget(inScope *scope, n sql.SchemaTarget, sch sql
 // named |tableName| and returns the schema with the default value expressions resolved, or an error if any of them
 // can't be resolved. Note that any GetField expressions in the column default value expressions have not had their
 // indexes corrected yet.
-func (b *Builder) ResolveSchemaDefaults(db string, tableName string, schema sql.Schema) (ret sql.Schema, err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			switch r := r.(type) {
-			case parseErr:
-				err = r.err
-			default:
-				panic(r)
-			}
-		}
-	}()
-
+func (b *panicBuilder) resolveSchemaDefaultsForTable(db string, tableName string, schema sql.Schema) sql.Schema {
 	tableScope := b.newScope()
 	for _, c := range schema {
 		tableScope.newColumn(scopeColumn{
@@ -1854,14 +1843,14 @@ func (b *Builder) ResolveSchemaDefaults(db string, tableName string, schema sql.
 		})
 	}
 
-	return b.resolveSchemaDefaults(tableScope, schema), nil
+	return b.resolveSchemaDefaults(tableScope, schema)
 }
 
 // validateOnUpdateOnDeleteRefActions validates that the specified |constraint| is using referential actions
 // supported by the current dialect. For example, MySQL parses the syntax for the SET DEFAULT referential action,
 // but doesn't actually support it, so if the MySQL parser is in use, this method will return an error stating
 // that SET DEFAULT is not supported.
-func (b *Builder) validateOnUpdateOnDeleteRefActions(constraint *sql.ForeignKeyConstraint) error {
+func (b *panicBuilder) validateOnUpdateOnDeleteRefActions(constraint *sql.ForeignKeyConstraint) error {
 	if _, ok := b.parser.(*sql.MysqlParser); ok {
 		if constraint.OnUpdate == sql.ForeignKeyReferentialAction_SetDefault ||
 			constraint.OnDelete == sql.ForeignKeyReferentialAction_SetDefault {
@@ -1872,7 +1861,7 @@ func (b *Builder) validateOnUpdateOnDeleteRefActions(constraint *sql.ForeignKeyC
 	return nil
 }
 
-func (b *Builder) resolveSchemaDefaults(inScope *scope, schema sql.Schema) sql.Schema {
+func (b *panicBuilder) resolveSchemaDefaults(inScope *scope, schema sql.Schema) sql.Schema {
 	if len(schema) == 0 {
 		return nil
 	}
@@ -1940,7 +1929,7 @@ func partitionTableColumns(sch sql.Schema) [][2]int {
 }
 
 // TODO: This needs a better name because it's not always the default value. It can also be a generated or ON UPDATE value
-func (b *Builder) resolveColumnDefaultExpression(inScope *scope, columnDef *sql.Column, colDefault *sql.ColumnDefaultValue) *sql.ColumnDefaultValue {
+func (b *panicBuilder) resolveColumnDefaultExpression(inScope *scope, columnDef *sql.Column, colDefault *sql.ColumnDefaultValue) *sql.ColumnDefaultValue {
 	if colDefault == nil || colDefault.Expr == nil {
 		return colDefault
 	}
@@ -1995,7 +1984,7 @@ func (b *Builder) resolveColumnDefaultExpression(inScope *scope, columnDef *sql.
 	return b.convertDefaultExpression(inScope, ae.Expr, columnDef.Type, columnDef.Nullable)
 }
 
-func (b *Builder) convertDefaultExpression(inScope *scope, defaultExpr ast.Expr, typ sql.Type, nullable bool) *sql.ColumnDefaultValue {
+func (b *panicBuilder) convertDefaultExpression(inScope *scope, defaultExpr ast.Expr, typ sql.Type, nullable bool) *sql.ColumnDefaultValue {
 	if defaultExpr == nil {
 		return nil
 	}
@@ -2049,7 +2038,7 @@ func (b *Builder) convertDefaultExpression(inScope *scope, defaultExpr ast.Expr,
 	}
 }
 
-func (b *Builder) buildDBDDL(inScope *scope, c *ast.DBDDL) (outScope *scope) {
+func (b *panicBuilder) buildDBDDL(inScope *scope, c *ast.DBDDL) (outScope *scope) {
 	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, c.Auth); err != nil && b.authEnabled {
 		b.handleErr(err)
 	}

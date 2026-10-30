@@ -38,7 +38,7 @@ func hasRecursiveCte(ctx *sql.Context, node sql.Node) bool {
 	return hasRCTE
 }
 
-func (b *Builder) buildSetOp(inScope *scope, u *ast.SetOp) (outScope *scope) {
+func (b *panicBuilder) buildSetOp(inScope *scope, u *ast.SetOp) (outScope *scope) {
 	leftScope := b.buildSelectStmt(inScope, u.Left)
 	rightScope := b.buildSelectStmt(inScope, u.Right)
 
@@ -132,7 +132,7 @@ func (b *Builder) buildSetOp(inScope *scope, u *ast.SetOp) (outScope *scope) {
 }
 
 // validateSetOpOrderBy checks the ORDER BY clause in a set op for any possible errors
-func (b *Builder) validateSetOpOrderBy(order ast.OrderBy) {
+func (b *panicBuilder) validateSetOpOrderBy(order ast.OrderBy) {
 	for i, o := range order {
 		expr := unwrapExpression(o.Expr)
 		switch e := expr.(type) {
@@ -164,7 +164,7 @@ func (b *Builder) validateSetOpOrderBy(order ast.OrderBy) {
 	}
 }
 
-func (b *Builder) mergeSetOpScopeColumns(left, right []scopeColumn, tabId sql.TableId) []scopeColumn {
+func (b *panicBuilder) mergeSetOpScopeColumns(left, right []scopeColumn, tabId sql.TableId) []scopeColumn {
 	lLen, rLen := len(left), len(right)
 	if lLen != rLen {
 		err := ErrSelectsDifferentLength.New(lLen, rLen)
@@ -187,7 +187,7 @@ func (b *Builder) mergeSetOpScopeColumns(left, right []scopeColumn, tabId sql.Ta
 	return merged
 }
 
-func (b *Builder) mergeSetOpSchemas(u *plan.SetOp) sql.Node {
+func (b *panicBuilder) mergeSetOpSchemas(u *plan.SetOp) sql.Node {
 	ls, rs := u.Left().Schema(b.ctx), u.Right().Schema(b.ctx)
 	if len(ls) != len(rs) {
 		err := ErrSelectsDifferentLength.New(len(ls), len(rs))

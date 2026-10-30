@@ -32,7 +32,7 @@ import (
 // it exists for integrators that construct the AST themselves.
 const SetScope_TransactionLocal ast.SetScope = "transaction_local"
 
-func (b *Builder) buildSet(inScope *scope, n *ast.Set) (outScope *scope) {
+func (b *panicBuilder) buildSet(inScope *scope, n *ast.Set) (outScope *scope) {
 	var setVarExprs []*ast.SetVarExpr
 	for _, setExpr := range n.Exprs {
 		switch strings.ToLower(setExpr.Name.String()) {
@@ -126,7 +126,7 @@ func getSetVarExprsFromSetCharsetExpr(expr *ast.SetVarExpr, csd []byte) []*ast.S
 	}
 }
 
-func (b *Builder) setExprsToExpressions(inScope *scope, e ast.SetVarExprs) []sql.Expression {
+func (b *panicBuilder) setExprsToExpressions(inScope *scope, e ast.SetVarExprs) []sql.Expression {
 	res := make([]sql.Expression, len(e))
 	for i, setExpr := range e {
 		if expr, ok := setExpr.Expr.(*ast.SQLVal); ok && strings.ToLower(setExpr.Name.String()) == "transaction" &&
@@ -221,7 +221,7 @@ func (b *Builder) setExprsToExpressions(inScope *scope, e ast.SetVarExprs) []sql
 	return res
 }
 
-func (b *Builder) buildSysVar(colName *ast.ColName, scopeHint ast.SetScope) (sql.Expression, ast.SetScope, bool) {
+func (b *panicBuilder) buildSysVar(colName *ast.ColName, scopeHint ast.SetScope) (sql.Expression, ast.SetScope, bool) {
 	// convert to system or user var, validate system var
 	table := colName.Qualifier.String()
 	col := colName.Name.String()
@@ -303,7 +303,7 @@ func (b *Builder) buildSysVar(colName *ast.ColName, scopeHint ast.SetScope) (sql
 	return nil, scope, false
 }
 
-func (b *Builder) simplifySetExpr(name *ast.ColName, varScope ast.SetScope, val ast.Expr, sysVarType sql.Type) (sql.Expression, bool) {
+func (b *panicBuilder) simplifySetExpr(name *ast.ColName, varScope ast.SetScope, val ast.Expr, sysVarType sql.Type) (sql.Expression, bool) {
 	// can |val| be nested?
 	switch val := val.(type) {
 	case *ast.SQLVal:

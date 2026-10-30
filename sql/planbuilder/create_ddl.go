@@ -28,7 +28,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func (b *Builder) buildCreateTrigger(inScope *scope, subQuery string, fullQuery string, c *ast.DDL) (outScope *scope) {
+func (b *panicBuilder) buildCreateTrigger(inScope *scope, subQuery string, fullQuery string, c *ast.DDL) (outScope *scope) {
 	b.qFlags.Set(sql.QFlagCreateTrigger)
 	defer func() {
 		b.qFlags.Unset(sql.QFlagCreateTrigger)
@@ -140,7 +140,7 @@ func getCurrentUserForDefiner(ctx *sql.Context, definer string) string {
 	return definer
 }
 
-func (b *Builder) buildProcedureParams(procParams []ast.ProcedureParam) []plan.ProcedureParam {
+func (b *panicBuilder) buildProcedureParams(procParams []ast.ProcedureParam) []plan.ProcedureParam {
 	var params []plan.ProcedureParam
 	for _, param := range procParams {
 		var direction plan.ProcedureParamDirection
@@ -169,7 +169,7 @@ func (b *Builder) buildProcedureParams(procParams []ast.ProcedureParam) []plan.P
 	return params
 }
 
-func (b *Builder) buildProcedureCharacteristics(procCharacteristics []ast.Characteristic) ([]plan.Characteristic, plan.ProcedureSecurityContext, string) {
+func (b *panicBuilder) buildProcedureCharacteristics(procCharacteristics []ast.Characteristic) ([]plan.Characteristic, plan.ProcedureSecurityContext, string) {
 	var characteristics []plan.Characteristic
 	securityType := plan.ProcedureSecurityContext_Definer // Default Security Context
 	comment := ""
@@ -203,7 +203,7 @@ func (b *Builder) buildProcedureCharacteristics(procCharacteristics []ast.Charac
 	return characteristics, securityType, comment
 }
 
-func (b *Builder) buildCreateProcedure(inScope *scope, subQuery string, fullQuery string, c *ast.DDL) (outScope *scope) {
+func (b *panicBuilder) buildCreateProcedure(inScope *scope, subQuery string, fullQuery string, c *ast.DDL) (outScope *scope) {
 	b.qFlags.Set(sql.QFlagCreateProcedure)
 	defer func() {
 		b.qFlags.Unset(sql.QFlagCreateProcedure)
@@ -237,7 +237,7 @@ func (b *Builder) buildCreateProcedure(inScope *scope, subQuery string, fullQuer
 	return outScope
 }
 
-func (b *Builder) validateBlock(inScope *scope, stmts ast.Statements) {
+func (b *panicBuilder) validateBlock(inScope *scope, stmts ast.Statements) {
 	for _, s := range stmts {
 		switch s.(type) {
 		case *ast.Declare:
@@ -250,7 +250,7 @@ func (b *Builder) validateBlock(inScope *scope, stmts ast.Statements) {
 	}
 }
 
-func (b *Builder) validateStatement(inScope *scope, stmt ast.Statement) {
+func (b *panicBuilder) validateStatement(inScope *scope, stmt ast.Statement) {
 	// TODO: a ton of this code is repeated from their build counterparts, consider refactoring into helper methods
 	switch s := stmt.(type) {
 	case *ast.DDL:
@@ -385,7 +385,7 @@ func (b *Builder) validateStatement(inScope *scope, stmt ast.Statement) {
 	}
 }
 
-func (b *Builder) validateCreateProcedure(inScope *scope, createStmt string) {
+func (b *panicBuilder) validateCreateProcedure(inScope *scope, createStmt string) {
 	stmt, _, _, _ := b.parser.ParseWithOptions(b.ctx, createStmt, ';', false, b.parserOpts)
 	procStmt := stmt.(*ast.DDL)
 
@@ -411,7 +411,7 @@ func (b *Builder) validateCreateProcedure(inScope *scope, createStmt string) {
 	// TODO: check for limit clauses that are not integers
 }
 
-func (b *Builder) buildCreateEvent(inScope *scope, subQuery string, fullQuery string, c *ast.DDL) (outScope *scope) {
+func (b *panicBuilder) buildCreateEvent(inScope *scope, subQuery string, fullQuery string, c *ast.DDL) (outScope *scope) {
 	b.qFlags.Set(sql.QFlagCreateEvent)
 	defer func() {
 		b.qFlags.Unset(sql.QFlagCreateEvent)
@@ -484,7 +484,7 @@ func (b *Builder) buildCreateEvent(inScope *scope, subQuery string, fullQuery st
 	return outScope
 }
 
-func (b *Builder) buildEventScheduleTimeSpec(inScope *scope, spec *ast.EventScheduleTimeSpec) (sql.Expression, []sql.Expression) {
+func (b *panicBuilder) buildEventScheduleTimeSpec(inScope *scope, spec *ast.EventScheduleTimeSpec) (sql.Expression, []sql.Expression) {
 	ts := b.buildScalar(inScope, spec.EventTimestamp)
 	if len(spec.EventIntervals) == 0 {
 		return ts, nil
@@ -497,7 +497,7 @@ func (b *Builder) buildEventScheduleTimeSpec(inScope *scope, spec *ast.EventSche
 	return ts, intervals
 }
 
-func (b *Builder) buildAlterUser(inScope *scope, _ string, c *ast.DDL) (outScope *scope) {
+func (b *panicBuilder) buildAlterUser(inScope *scope, _ string, c *ast.DDL) (outScope *scope) {
 	database := b.resolveDb("mysql")
 	accountWithAuth := ast.AccountWithAuth{AccountName: c.User, Auth1: c.Authentication}
 	user := b.buildAuthenticatedUser(accountWithAuth)
@@ -516,7 +516,7 @@ func (b *Builder) buildAlterUser(inScope *scope, _ string, c *ast.DDL) (outScope
 	return outScope
 }
 
-func (b *Builder) buildAlterEvent(inScope *scope, subQuery string, fullQuery string, c *ast.DDL) (outScope *scope) {
+func (b *panicBuilder) buildAlterEvent(inScope *scope, subQuery string, fullQuery string, c *ast.DDL) (outScope *scope) {
 	eventSpec := c.EventSpec
 
 	var database sql.Database
@@ -632,7 +632,7 @@ func (b *Builder) buildAlterEvent(inScope *scope, subQuery string, fullQuery str
 	return
 }
 
-func (b *Builder) buildCreateView(inScope *scope, subQuery string, fullQuery string, c *ast.DDL) (outScope *scope) {
+func (b *panicBuilder) buildCreateView(inScope *scope, subQuery string, fullQuery string, c *ast.DDL) (outScope *scope) {
 	dbName := c.Table.DbQualifier.String()
 	if dbName == "" {
 		dbName = b.ctx.GetCurrentDatabase()

@@ -36,7 +36,7 @@ import (
 
 var icuVersion = "73.1"
 
-func (b *Builder) buildWhere(inScope *scope, where *ast.Where) {
+func (b *panicBuilder) buildWhere(inScope *scope, where *ast.Where) {
 	if where == nil {
 		return
 	}
@@ -45,7 +45,7 @@ func (b *Builder) buildWhere(inScope *scope, where *ast.Where) {
 	inScope.node = filterNode
 }
 
-func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
+func (b *panicBuilder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 	defer func() {
 		if !(b.bindCtx == nil || b.bindCtx.resolveOnly) {
 			return
@@ -515,7 +515,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 	return nil
 }
 
-func (b *Builder) buildColumnExpr(inScope *scope, colName, tableName, dbName string) sql.Expression {
+func (b *panicBuilder) buildColumnExpr(inScope *scope, colName, tableName, dbName string) sql.Expression {
 	return b.buildScalar(inScope, &ast.ColName{
 		Name: ast.NewColIdent(colName),
 		Qualifier: ast.TableName{
@@ -525,7 +525,7 @@ func (b *Builder) buildColumnExpr(inScope *scope, colName, tableName, dbName str
 	})
 }
 
-func (b *Builder) buildInjectedExpr(inScope *scope, v ast.InjectedExpr) sql.Expression {
+func (b *panicBuilder) buildInjectedExpr(inScope *scope, v ast.InjectedExpr) sql.Expression {
 	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, v.Auth); err != nil && b.authEnabled {
 		b.handleErr(err)
 	}
@@ -545,7 +545,7 @@ func (b *Builder) buildInjectedExpr(inScope *scope, v ast.InjectedExpr) sql.Expr
 	return b.buildInjectedExpressionFromResolvedChildren(v, resolvedChildren)
 }
 
-func (b *Builder) buildInjectedExpressionFromResolvedChildren(v ast.InjectedExpr, resolvedChildren []any) sql.Expression {
+func (b *panicBuilder) buildInjectedExpressionFromResolvedChildren(v ast.InjectedExpr, resolvedChildren []any) sql.Expression {
 	expr, err := v.Expression.WithResolvedChildren(b.ctx, resolvedChildren)
 	if err != nil {
 		b.handleErr(err)
@@ -558,7 +558,7 @@ func (b *Builder) buildInjectedExpressionFromResolvedChildren(v ast.InjectedExpr
 	return nil
 }
 
-func (b *Builder) getOrigTblName(node sql.Node, alias string) string {
+func (b *panicBuilder) getOrigTblName(node sql.Node, alias string) string {
 	if node == nil {
 		return ""
 	}
@@ -582,7 +582,7 @@ func (b *Builder) getOrigTblName(node sql.Node, alias string) string {
 
 // getJsonValueTypeLiteral converts a type coercion string into a literal
 // expression with the zero type of the coercion (see json_value function).
-func (b *Builder) getJsonValueTypeLiteral(e sql.Expression) sql.Expression {
+func (b *panicBuilder) getJsonValueTypeLiteral(e sql.Expression) sql.Expression {
 	typLit, ok := e.(*expression.Literal)
 	if !ok {
 		err := fmt.Errorf("invalid json_value coercion type: %s", e)
@@ -622,7 +622,7 @@ func (b *Builder) getJsonValueTypeLiteral(e sql.Expression) sql.Expression {
 	return expression.NewLiteral(typ.Zero(), typ)
 }
 
-func (b *Builder) buildUnaryScalar(inScope *scope, e *ast.UnaryExpr) sql.Expression {
+func (b *panicBuilder) buildUnaryScalar(inScope *scope, e *ast.UnaryExpr) sql.Expression {
 	switch strings.ToLower(e.Operator) {
 	case ast.MinusStr:
 		expr := b.buildScalar(inScope, e.Expr)
@@ -701,7 +701,7 @@ func (b *Builder) buildUnaryScalar(inScope *scope, e *ast.UnaryExpr) sql.Express
 	return nil
 }
 
-func (b *Builder) buildBinaryScalar(inScope *scope, be *ast.BinaryExpr) sql.Expression {
+func (b *panicBuilder) buildBinaryScalar(inScope *scope, be *ast.BinaryExpr) sql.Expression {
 	expr, err := b.binaryExprToExpression(inScope, be)
 	if err != nil {
 		b.handleErr(err)
@@ -711,7 +711,7 @@ func (b *Builder) buildBinaryScalar(inScope *scope, be *ast.BinaryExpr) sql.Expr
 
 // typeExpandComparisonLiteral expands comparison literals to column types
 // to simplify comparison execution when the conversion is safe.
-func (b *Builder) typeExpandComparisonLiteral(left, right sql.Expression) (sql.Expression, sql.Expression) {
+func (b *panicBuilder) typeExpandComparisonLiteral(left, right sql.Expression) (sql.Expression, sql.Expression) {
 	var leftLit, rightLit *expression.Literal
 	var leftGf, rightGf *expression.GetField
 	switch l := left.(type) {
@@ -772,7 +772,7 @@ func (b *Builder) typeExpandComparisonLiteral(left, right sql.Expression) (sql.E
 	return left, right
 }
 
-func (b *Builder) buildComparison(inScope *scope, c *ast.ComparisonExpr) sql.Expression {
+func (b *panicBuilder) buildComparison(inScope *scope, c *ast.ComparisonExpr) sql.Expression {
 	left := b.buildScalar(inScope, c.Left)
 	right := b.buildScalar(inScope, c.Right)
 
@@ -861,7 +861,7 @@ func hasColumnType(ctx *sql.Context, e sql.Expression) (sql.Type, bool) {
 	return typ, true
 }
 
-func (b *Builder) buildCaseExpr(inScope *scope, e *ast.CaseExpr) sql.Expression {
+func (b *panicBuilder) buildCaseExpr(inScope *scope, e *ast.CaseExpr) sql.Expression {
 	expr, err := b.caseExprToExpression(inScope, e)
 	if err != nil {
 		b.handleErr(err)
@@ -869,7 +869,7 @@ func (b *Builder) buildCaseExpr(inScope *scope, e *ast.CaseExpr) sql.Expression 
 	return expr
 }
 
-func (b *Builder) buildIsExprToExpression(inScope *scope, c *ast.IsExpr) sql.Expression {
+func (b *panicBuilder) buildIsExprToExpression(inScope *scope, c *ast.IsExpr) sql.Expression {
 	e := b.buildScalar(inScope, c.Expr)
 	switch strings.ToLower(c.Operator) {
 	case ast.IsNullStr:
@@ -894,7 +894,7 @@ func (b *Builder) buildIsExprToExpression(inScope *scope, c *ast.IsExpr) sql.Exp
 	return nil
 }
 
-func (b *Builder) binaryExprToExpression(inScope *scope, be *ast.BinaryExpr) (sql.Expression, error) {
+func (b *panicBuilder) binaryExprToExpression(inScope *scope, be *ast.BinaryExpr) (sql.Expression, error) {
 	l := b.buildScalar(inScope, be.Left)
 	r := b.buildScalar(inScope, be.Right)
 
@@ -958,7 +958,7 @@ func (b *Builder) binaryExprToExpression(inScope *scope, be *ast.BinaryExpr) (sq
 	}
 }
 
-func (b *Builder) caseExprToExpression(inScope *scope, e *ast.CaseExpr) (sql.Expression, error) {
+func (b *panicBuilder) caseExprToExpression(inScope *scope, e *ast.CaseExpr) (sql.Expression, error) {
 	var expr sql.Expression
 
 	if e.Expr != nil {
@@ -1000,7 +1000,7 @@ func (b *Builder) caseExprToExpression(inScope *scope, e *ast.CaseExpr) (sql.Exp
 	return newCase, nil
 }
 
-func (b *Builder) intervalExprToExpression(inScope *scope, e *ast.IntervalExpr) *expression.Interval {
+func (b *panicBuilder) intervalExprToExpression(inScope *scope, e *ast.IntervalExpr) *expression.Interval {
 	expr := b.buildScalar(inScope, e.Expr)
 	b.qFlags.Set(sql.QFlagInterval)
 	return expression.NewInterval(expr, e.Unit)
@@ -1009,7 +1009,7 @@ func (b *Builder) intervalExprToExpression(inScope *scope, e *ast.IntervalExpr) 
 // Convert an integer, represented by the specified string in the specified
 // base, to its smallest representation possible, out of:
 // int8, uint8, int16, uint16, int32, uint32, int64 and uint64
-func (b *Builder) convertInt(value []byte, base int) *expression.Literal {
+func (b *panicBuilder) convertInt(value []byte, base int) *expression.Literal {
 	// For performance reasons, this smallest int representation possible for value.
 	// If zero-ing out (subtracting) the largest representation of the respective integer type results in values
 	// left over, then the value must not fit within that integer type.
@@ -1069,7 +1069,7 @@ func (b *Builder) convertInt(value []byte, base int) *expression.Literal {
 	return nil
 }
 
-func (b *Builder) ConvertVal(v *ast.SQLVal) sql.Expression {
+func (b *panicBuilder) ConvertVal(v *ast.SQLVal) sql.Expression {
 	switch v.Type {
 	case ast.StrVal:
 		return expression.NewLiteral(string(v.Val), types.CreateLongText(b.ctx.GetCollation()))
@@ -1163,7 +1163,7 @@ func (b *Builder) ConvertVal(v *ast.SQLVal) sql.Expression {
 // A fully resolved MatchAgainst expression is also used by the index
 // filter, since we only need to load the tables once. All steps after this
 // one can assume that the expression has been fully resolved and is valid.
-func (b *Builder) buildMatchAgainst(inScope *scope, v *ast.MatchExpr) *expression.MatchAgainst {
+func (b *panicBuilder) buildMatchAgainst(inScope *scope, v *ast.MatchExpr) *expression.MatchAgainst {
 	rts := getResolvedTablesByName(b.ctx, inScope.node)
 	var rt *plan.ResolvedTable
 	var matchTable string
@@ -1310,7 +1310,7 @@ func findMatchAgainstIndex(cols []*expression.GetField, indexes []sql.Index, tab
 
 // buildFunctionArgs builds the arguments of a call to a regular function, replacing a table's star with an expression
 // of the table's columns when the integrator allows tables as columns.
-func (b *Builder) buildFunctionArgs(inScope *scope, v *ast.FuncExpr) []sql.Expression {
+func (b *panicBuilder) buildFunctionArgs(inScope *scope, v *ast.FuncExpr) []sql.Expression {
 	args := make([]sql.Expression, len(v.Exprs))
 	for i, e := range v.Exprs {
 		expr := b.selectExprToExpression(inScope, e)
@@ -1375,7 +1375,7 @@ func (b *Builder) buildFunctionArgs(inScope *scope, v *ast.FuncExpr) []sql.Expre
 
 // callsAggregate returns whether a call to the name of an aggregate calls the aggregate, which the overriding function
 // provider decides when it implements sql.AggregateCallResolver.
-func (b *Builder) callsAggregate(schemaName string, name string, args func() []sql.Expression) bool {
+func (b *panicBuilder) callsAggregate(schemaName string, name string, args func() []sql.Expression) bool {
 	resolver, ok := b.overrides.FunctionProvider.(sql.AggregateCallResolver)
 	if !ok {
 		return true
