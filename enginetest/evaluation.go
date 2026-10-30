@@ -673,7 +673,9 @@ func injectBindVarsAndPrepare(
 			if sqlVal.Type == sqlparser.HexNum || sqlVal.Type == sqlparser.HexVal {
 				return false, nil
 			}
-			if _, ok := b.ConvertVal(sqlVal).(*expression.Literal); !ok {
+			converted, err := b.ConvertVal(sqlVal)
+			require.NoError(t, err)
+			if _, ok := converted.(*expression.Literal); !ok {
 				// If not Literal, then |val| is nil
 				skipTypeConv = true
 				return false, nil

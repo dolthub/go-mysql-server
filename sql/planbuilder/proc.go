@@ -173,7 +173,7 @@ func (p *procCtx) GetCondition(name string) *plan.DeclareCondition {
 	return cond
 }
 
-func (b *Builder) buildBeginEndBlock(inScope *scope, n *ast.BeginEndBlock, fullQuery string) (outScope *scope) {
+func (b *panicBuilder) buildBeginEndBlock(inScope *scope, n *ast.BeginEndBlock, fullQuery string) (outScope *scope) {
 	outScope = inScope.push()
 	outScope.initProc()
 	outScope.proc.AddLabel(n.Label, false)
@@ -182,7 +182,7 @@ func (b *Builder) buildBeginEndBlock(inScope *scope, n *ast.BeginEndBlock, fullQ
 	return outScope
 }
 
-func (b *Builder) buildIfBlock(inScope *scope, n *ast.IfStatement, fullQuery string) (outScope *scope) {
+func (b *panicBuilder) buildIfBlock(inScope *scope, n *ast.IfStatement, fullQuery string) (outScope *scope) {
 	outScope = inScope.push()
 	ifConditionals := make([]*plan.IfConditional, len(n.Conditions))
 	for i, ic := range n.Conditions {
@@ -194,7 +194,7 @@ func (b *Builder) buildIfBlock(inScope *scope, n *ast.IfStatement, fullQuery str
 	return outScope
 }
 
-func (b *Builder) buildCaseStatement(inScope *scope, n *ast.CaseStatement, fullQuery string) (outScope *scope) {
+func (b *panicBuilder) buildCaseStatement(inScope *scope, n *ast.CaseStatement, fullQuery string) (outScope *scope) {
 	outScope = inScope.push()
 	ifConditionals := make([]*plan.IfConditional, len(n.Cases))
 	for i, c := range n.Cases {
@@ -218,7 +218,7 @@ func (b *Builder) buildCaseStatement(inScope *scope, n *ast.CaseStatement, fullQ
 	}
 }
 
-func (b *Builder) buildIfConditional(inScope *scope, n ast.IfStatementCondition, fullQuery string) (outScope *scope) {
+func (b *panicBuilder) buildIfConditional(inScope *scope, n ast.IfStatementCondition, fullQuery string) (outScope *scope) {
 	outScope = inScope.push()
 	block := b.buildBlock(inScope, n.Statements, fullQuery)
 	condition := b.buildScalar(inScope, n.Expr)
@@ -228,17 +228,14 @@ func (b *Builder) buildIfConditional(inScope *scope, n ast.IfStatementCondition,
 
 func BuildProcedureHelper(ctx *sql.Context, cat sql.Catalog, isCreateProc bool, inScope *scope, db sql.Database, asOf sql.Expression, procDetails sql.StoredProcedureDetails) (proc *plan.Procedure, qFlags *sql.QueryFlags, err error) {
 	// TODO: new builder necessary?
-	defer func() {
-		if r := recover(); r != nil {
-			switch r := r.(type) {
-			case parseErr:
-				err = r.err
-			default:
-				panic(r)
-			}
-		}
-	}()
-	b := New(ctx, cat, nil)
+	err = New(ctx, cat, nil).run(func(b *panicBuilder) error {
+		proc = b.buildProcedure(isCreateProc, db, asOf, procDetails)
+		return nil
+	})
+	return proc, qFlags, err
+}
+
+func (b *panicBuilder) buildProcedure(isCreateProc bool, db sql.Database, asOf sql.Expression, procDetails sql.StoredProcedureDetails) *plan.Procedure {
 	b.DisableAuth()
 	b.SetParserOptions(sql.NewSqlModeFromString(procDetails.SqlMode).ParserOptions())
 	if asOf != nil {
@@ -253,7 +250,10 @@ func BuildProcedureHelper(ctx *sql.Context, cat sql.Catalog, isCreateProc bool, 
 		// TODO: we want to skip certain validations for CREATE PROCEDURE
 		b.qFlags.Set(sql.QFlagCreateProcedure)
 	}
-	stmt, _, _, _ := b.parser.ParseWithOptions(b.ctx, procDetails.CreateStatement, ';', false, b.parserOpts)
+	stmt, _, _, err := b.parser.ParseWithOptions(b.ctx, procDetails.CreateStatement, ';', false, b.parserOpts)
+	if err != nil {
+		b.handleErr(sql.ErrSyntaxError.New(err.Error()))
+	}
 	procStmt := stmt.(*ast.DDL)
 
 	ops, err := procedures.Parse(procStmt.ProcedureSpec.Body)
@@ -264,7 +264,7 @@ func BuildProcedureHelper(ctx *sql.Context, cat sql.Catalog, isCreateProc bool, 
 	procParams := b.buildProcedureParams(procStmt.ProcedureSpec.Params)
 	characteristics, securityType, comment := b.buildProcedureCharacteristics(procStmt.ProcedureSpec.Characteristics)
 
-	proc = plan.NewProcedure(
+	return plan.NewProcedure(
 		procDetails.Name,
 		procStmt.ProcedureSpec.Definer,
 		procParams,
@@ -276,11 +276,9 @@ func BuildProcedureHelper(ctx *sql.Context, cat sql.Catalog, isCreateProc bool, 
 		procDetails.ModifiedAt,
 		ops,
 	)
-
-	return proc, qFlags, nil
 }
 
-func (b *Builder) buildCall(inScope *scope, c *ast.Call) (outScope *scope) {
+func (b *panicBuilder) buildCall(inScope *scope, c *ast.Call) (outScope *scope) {
 	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, c.Auth); err != nil && b.authEnabled {
 		b.handleErr(err)
 	}
@@ -375,7 +373,7 @@ func (b *Builder) buildCall(inScope *scope, c *ast.Call) (outScope *scope) {
 	return outScope
 }
 
-func (b *Builder) buildDeclare(inScope *scope, d *ast.Declare, query string) (outScope *scope) {
+func (b *panicBuilder) buildDeclare(inScope *scope, d *ast.Declare, query string) (outScope *scope) {
 	outScope = inScope.push()
 	// TODO check and record most recent declare
 	if d.Condition != nil {
@@ -392,7 +390,7 @@ func (b *Builder) buildDeclare(inScope *scope, d *ast.Declare, query string) (ou
 	return
 }
 
-func (b *Builder) buildDeclareCondition(inScope *scope, d *ast.Declare) (outScope *scope) {
+func (b *panicBuilder) buildDeclareCondition(inScope *scope, d *ast.Declare) (outScope *scope) {
 	outScope = inScope.push()
 	dc := d.Condition
 	if dc.SqlStateValue != "" {
@@ -422,7 +420,7 @@ func (b *Builder) buildDeclareCondition(inScope *scope, d *ast.Declare) (outScop
 	return outScope
 }
 
-func (b *Builder) buildDeclareVariables(inScope *scope, d *ast.Declare) (outScope *scope) {
+func (b *panicBuilder) buildDeclareVariables(inScope *scope, d *ast.Declare) (outScope *scope) {
 	outScope = inScope.push()
 	dVars := d.Variables
 	names := make([]string, len(dVars.Names))
@@ -444,7 +442,7 @@ func (b *Builder) buildDeclareVariables(inScope *scope, d *ast.Declare) (outScop
 	return outScope
 }
 
-func (b *Builder) buildDeclareCursor(inScope *scope, d *ast.Declare) (outScope *scope) {
+func (b *panicBuilder) buildDeclareCursor(inScope *scope, d *ast.Declare) (outScope *scope) {
 	outScope = inScope.push()
 	dCursor := d.Cursor
 	selectScope := b.buildSelectStmt(inScope, dCursor.SelectStmt)
@@ -454,7 +452,7 @@ func (b *Builder) buildDeclareCursor(inScope *scope, d *ast.Declare) (outScope *
 	return outScope
 }
 
-func (b *Builder) buildDeclareHandler(inScope *scope, d *ast.Declare, query string) (outScope *scope) {
+func (b *panicBuilder) buildDeclareHandler(inScope *scope, d *ast.Declare, query string) (outScope *scope) {
 	outScope = inScope.push()
 	dHandler := d.Handler
 	if len(dHandler.ConditionValues) != 1 {
@@ -501,7 +499,7 @@ func (b *Builder) buildDeclareHandler(inScope *scope, d *ast.Declare, query stri
 	return outScope
 }
 
-func (b *Builder) buildBlock(inScope *scope, parserStatements ast.Statements, fullQuery string) *plan.Block {
+func (b *panicBuilder) buildBlock(inScope *scope, parserStatements ast.Statements, fullQuery string) *plan.Block {
 	var statements []sql.Node
 	for _, s := range parserStatements {
 		switch s.(type) {
@@ -518,7 +516,7 @@ func (b *Builder) buildBlock(inScope *scope, parserStatements ast.Statements, fu
 	return plan.NewBlock(statements)
 }
 
-func (b *Builder) buildFetchCursor(inScope *scope, fetchCursor *ast.FetchCursor) (outScope *scope) {
+func (b *panicBuilder) buildFetchCursor(inScope *scope, fetchCursor *ast.FetchCursor) (outScope *scope) {
 	if !inScope.proc.HasCursor(fetchCursor.Name) {
 		err := sql.ErrCursorNotFound.New(fetchCursor.Name)
 		b.handleErr(err)
@@ -539,7 +537,7 @@ func (b *Builder) buildFetchCursor(inScope *scope, fetchCursor *ast.FetchCursor)
 	return outScope
 }
 
-func (b *Builder) buildOpenCursor(inScope *scope, openCursor *ast.OpenCursor) (outScope *scope) {
+func (b *panicBuilder) buildOpenCursor(inScope *scope, openCursor *ast.OpenCursor) (outScope *scope) {
 	if !inScope.proc.HasCursor(openCursor.Name) {
 		err := sql.ErrCursorNotFound.New(openCursor.Name)
 		b.handleErr(err)
@@ -549,7 +547,7 @@ func (b *Builder) buildOpenCursor(inScope *scope, openCursor *ast.OpenCursor) (o
 	return outScope
 }
 
-func (b *Builder) buildCloseCursor(inScope *scope, closeCursor *ast.CloseCursor) (outScope *scope) {
+func (b *panicBuilder) buildCloseCursor(inScope *scope, closeCursor *ast.CloseCursor) (outScope *scope) {
 	if !inScope.proc.HasCursor(closeCursor.Name) {
 		err := sql.ErrCursorNotFound.New(closeCursor.Name)
 		b.handleErr(err)
@@ -560,7 +558,7 @@ func (b *Builder) buildCloseCursor(inScope *scope, closeCursor *ast.CloseCursor)
 	return outScope
 }
 
-func (b *Builder) buildLoop(inScope *scope, loop *ast.Loop, fullQuery string) (outScope *scope) {
+func (b *panicBuilder) buildLoop(inScope *scope, loop *ast.Loop, fullQuery string) (outScope *scope) {
 	outScope = inScope.push()
 	outScope.initProc()
 	outScope.proc.AddLabel(loop.Label, true)
@@ -569,7 +567,7 @@ func (b *Builder) buildLoop(inScope *scope, loop *ast.Loop, fullQuery string) (o
 	return outScope
 }
 
-func (b *Builder) buildRepeat(inScope *scope, repeat *ast.Repeat, fullQuery string) (outScope *scope) {
+func (b *panicBuilder) buildRepeat(inScope *scope, repeat *ast.Repeat, fullQuery string) (outScope *scope) {
 	outScope = inScope.push()
 	outScope.initProc()
 	outScope.proc.AddLabel(repeat.Label, true)
@@ -579,7 +577,7 @@ func (b *Builder) buildRepeat(inScope *scope, repeat *ast.Repeat, fullQuery stri
 	return outScope
 }
 
-func (b *Builder) buildWhile(inScope *scope, while *ast.While, fullQuery string) (outScope *scope) {
+func (b *panicBuilder) buildWhile(inScope *scope, while *ast.While, fullQuery string) (outScope *scope) {
 	outScope = inScope.push()
 	outScope.initProc()
 	outScope.proc.AddLabel(while.Label, true)
@@ -589,7 +587,7 @@ func (b *Builder) buildWhile(inScope *scope, while *ast.While, fullQuery string)
 	return outScope
 }
 
-func (b *Builder) buildLeave(inScope *scope, leave *ast.Leave) (outScope *scope) {
+func (b *panicBuilder) buildLeave(inScope *scope, leave *ast.Leave) (outScope *scope) {
 	if exists, _ := inScope.proc.HasLabel(leave.Label); !exists {
 		err := sql.ErrLoopLabelNotFound.New("LEAVE", leave.Label)
 		b.handleErr(err)
@@ -600,7 +598,7 @@ func (b *Builder) buildLeave(inScope *scope, leave *ast.Leave) (outScope *scope)
 	return outScope
 }
 
-func (b *Builder) buildIterate(inScope *scope, iterate *ast.Iterate) (outScope *scope) {
+func (b *panicBuilder) buildIterate(inScope *scope, iterate *ast.Iterate) (outScope *scope) {
 	if exists, isLoop := inScope.proc.HasLabel(iterate.Label); !exists || !isLoop {
 		err := sql.ErrLoopLabelNotFound.New("ITERATE", iterate.Label)
 		b.handleErr(err)
@@ -611,7 +609,7 @@ func (b *Builder) buildIterate(inScope *scope, iterate *ast.Iterate) (outScope *
 	return outScope
 }
 
-func (b *Builder) buildSignal(inScope *scope, s *ast.Signal) (outScope *scope) {
+func (b *panicBuilder) buildSignal(inScope *scope, s *ast.Signal) (outScope *scope) {
 	outScope = inScope.push()
 	// https://dev.mysql.com/doc/refman/8.0/en/signal.html#signal-condition-information-items
 	signalInfo := make(map[plan.SignalConditionItemName]plan.SignalInfo)
@@ -712,7 +710,7 @@ func (b *Builder) buildSignal(inScope *scope, s *ast.Signal) (outScope *scope) {
 	return outScope
 }
 
-func (b *Builder) buildSignalConditionItemName(name ast.SignalConditionItemName) plan.SignalConditionItemName {
+func (b *panicBuilder) buildSignalConditionItemName(name ast.SignalConditionItemName) plan.SignalConditionItemName {
 	// We convert to our own plan equivalents to keep a separation between the parser and implementation
 	switch name {
 	case ast.SignalConditionItemName_ClassOrigin:

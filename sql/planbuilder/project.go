@@ -25,11 +25,11 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-func (b *Builder) analyzeProjectionList(inScope, outScope *scope, selectExprs ast.SelectExprs) {
+func (b *panicBuilder) analyzeProjectionList(inScope, outScope *scope, selectExprs ast.SelectExprs) {
 	b.analyzeSelectList(inScope, outScope, selectExprs)
 }
 
-func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.SelectExprs) (expressions []sql.Expression) {
+func (b *panicBuilder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.SelectExprs) (expressions []sql.Expression) {
 	// TODO: ideally we would not create new expressions here.
 	// we want to in-place identify aggregations, expand stars.
 	// use inScope to construct projections for projScope
@@ -202,7 +202,7 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 // selectExprToExpression binds dependencies in a scalar expression in a SELECT clause.
 // We differentiate inScope from localScope in cases where we want to differentiate
 // leading aliases in the same SELECT clause from inner-scope columns of the same name.
-func (b *Builder) selectExprToExpression(inScope *scope, se ast.SelectExpr) sql.Expression {
+func (b *panicBuilder) selectExprToExpression(inScope *scope, se ast.SelectExpr) sql.Expression {
 	switch e := se.(type) {
 	case *ast.StarExpr:
 		b.qFlags.Set(sql.QFlagStar)
@@ -234,7 +234,7 @@ func (b *Builder) selectExprToExpression(inScope *scope, se ast.SelectExpr) sql.
 	return nil
 }
 
-func (b *Builder) markDeferProjection(proj sql.Node, inScope, outScope *scope) {
+func (b *panicBuilder) markDeferProjection(proj sql.Node, inScope, outScope *scope) {
 	if !b.qFlags.IsSet(sql.QFlagDeferProjections) || b.qFlags.IsSet(sql.QFlagUndeferrableExprs) {
 		return
 	}
@@ -247,7 +247,7 @@ func (b *Builder) markDeferProjection(proj sql.Node, inScope, outScope *scope) {
 	proj.(*plan.Project).CanDefer = true
 }
 
-func (b *Builder) buildProjection(inScope, outScope *scope) {
+func (b *panicBuilder) buildProjection(inScope, outScope *scope) {
 	projections := make([]sql.Expression, len(outScope.cols))
 	for i, sc := range outScope.cols {
 		projections[i] = sc.scalar

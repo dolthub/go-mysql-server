@@ -53,7 +53,7 @@ func TestScalarFunctionTableAliasColumnName(t *testing.T) {
 				},
 				overrides: sql.EngineOverrides{Builder: sql.BuilderOverrides{ScalarFunctionAliasAsColumn: tt.postgresAliasing}},
 			}
-			b := New(ctx, cat, nil)
+			b := &New(ctx, cat, nil).inner
 			outScope := b.buildTableFunc(b.newScope(), tableFuncExpr("abs", "k", ast.NewIntVal([]byte("1"))))
 
 			require.Equal(t, "k", outScope.node.(sql.Nameable).Name())
@@ -75,7 +75,7 @@ func TestNativeTableFunctionAliasPreservesColumnName(t *testing.T) {
 		tableFunctions: map[string]sql.TableFunction{"table_func": memory.TableFunc{}},
 		overrides:      sql.EngineOverrides{Builder: sql.BuilderOverrides{ScalarFunctionAliasAsColumn: true}},
 	}
-	b := New(ctx, cat, nil)
+	b := &New(ctx, cat, nil).inner
 	outScope := b.buildTableFunc(b.newScope(), tableFuncExpr(
 		"table_func", "k", ast.NewStrVal([]byte("named_column")), ast.NewIntVal([]byte("1"))))
 
@@ -102,7 +102,7 @@ func TestRecordReturningFunctionAliasPreservesColumnNames(t *testing.T) {
 		},
 		overrides: sql.EngineOverrides{Builder: sql.BuilderOverrides{ScalarFunctionAliasAsColumn: true}},
 	}
-	b := New(ctx, cat, nil)
+	b := &New(ctx, cat, nil).inner
 	outScope := b.buildTableFunc(b.newScope(), tableFuncExpr("record_func", "r", ast.NewIntVal([]byte("1"))))
 
 	require.Equal(t, "r", outScope.node.(sql.Nameable).Name())

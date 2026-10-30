@@ -59,7 +59,7 @@ func TestCallsAggregate(t *testing.T) {
 					callsAggregate:   tt.callsAggregate,
 				}
 			}
-			b := New(ctx, cat, nil)
+			b := &New(ctx, cat, nil).inner
 			inScope := b.newScope()
 			b.buildScalar(inScope, call)
 			require.Equal(t, tt.isAggregate, inScope.groupBy != nil)

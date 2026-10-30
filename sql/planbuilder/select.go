@@ -26,7 +26,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func (b *Builder) buildSelectStmt(inScope *scope, s ast.SelectStatement) (outScope *scope) {
+func (b *panicBuilder) buildSelectStmt(inScope *scope, s ast.SelectStatement) (outScope *scope) {
 	// A nested SELECT has its own context, so the defer restores the
 	// outer query's aggregate and window settings when done.
 	defer func(inAgg, inWin bool) {
@@ -64,7 +64,7 @@ func (b *Builder) buildSelectStmt(inScope *scope, s ast.SelectStatement) (outSco
 	return
 }
 
-func (b *Builder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
+func (b *panicBuilder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
 	// General order of binding:
 	// 1) Get definitions in FROM.
 	// 2) Build WHERE, which can only reference FROM columns.
@@ -149,7 +149,7 @@ func (b *Builder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
 	return
 }
 
-func (b *Builder) buildLimitAndOffset(inScope, outScope *scope, limit *ast.Limit, calcFoundRows bool) {
+func (b *panicBuilder) buildLimitAndOffset(inScope, outScope *scope, limit *ast.Limit, calcFoundRows bool) {
 	if limit == nil {
 		return
 	}
@@ -165,14 +165,14 @@ func (b *Builder) buildLimitAndOffset(inScope, outScope *scope, limit *ast.Limit
 	}
 }
 
-func (b *Builder) buildLimit(inScope *scope, limit *ast.Limit) sql.Expression {
+func (b *panicBuilder) buildLimit(inScope *scope, limit *ast.Limit) sql.Expression {
 	if limit != nil && limit.Rowcount != nil {
 		return b.buildLimitVal(inScope, limit.Rowcount)
 	}
 	return nil
 }
 
-func (b *Builder) buildOffset(inScope *scope, limit *ast.Limit) sql.Expression {
+func (b *panicBuilder) buildOffset(inScope *scope, limit *ast.Limit) sql.Expression {
 	if limit != nil && limit.Offset != nil {
 		e := b.buildLimitVal(inScope, limit.Offset)
 		if lit, ok := e.(*expression.Literal); ok {
@@ -191,7 +191,7 @@ func (b *Builder) buildOffset(inScope *scope, limit *ast.Limit) sql.Expression {
 
 // buildLimitVal resolves a literal numeric type or a numeric
 // procedure parameter
-func (b *Builder) buildLimitVal(inScope *scope, e ast.Expr) sql.Expression {
+func (b *panicBuilder) buildLimitVal(inScope *scope, e ast.Expr) sql.Expression {
 	switch e := e.(type) {
 	case *ast.ColName:
 		if e.StoredProcVal != nil {
@@ -218,7 +218,7 @@ func (b *Builder) buildLimitVal(inScope *scope, e ast.Expr) sql.Expression {
 	return nil
 }
 
-func (b *Builder) typeCoerceLiteral(e sql.Expression) sql.Expression {
+func (b *panicBuilder) typeCoerceLiteral(e sql.Expression) sql.Expression {
 	// todo this should be in a module that can generically coerce to a type or type class
 	switch e := e.(type) {
 	case *expression.Literal:
@@ -238,7 +238,7 @@ func (b *Builder) typeCoerceLiteral(e sql.Expression) sql.Expression {
 
 // buildDistinct creates a new plan.Distinct node if the query has a DISTINCT option.
 // If the query has both DISTINCT and ALL, an error is returned.
-func (b *Builder) buildDistinct(inScope *scope, distinct bool, distinctOn ast.Exprs) error {
+func (b *panicBuilder) buildDistinct(inScope *scope, distinct bool, distinctOn ast.Exprs) error {
 	if !distinct {
 		return nil
 	}
@@ -251,7 +251,7 @@ func (b *Builder) buildDistinct(inScope *scope, distinct bool, distinctOn ast.Ex
 	return err
 }
 
-func (b *Builder) currentDb() sql.Database {
+func (b *panicBuilder) currentDb() sql.Database {
 	if b.currentDatabase == nil {
 		if b.ctx.GetCurrentDatabase() == "" {
 			err := sql.ErrNoDatabaseSelected.New()
@@ -272,7 +272,7 @@ func (b *Builder) currentDb() sql.Database {
 // isSchemaDb return true if the current database is sql.SchemaDatabase,
 // which means it is Doltgres database supports schemas. If there is no
 // database found, it returns false.
-func (b *Builder) isSchemaDb() bool {
+func (b *panicBuilder) isSchemaDb() bool {
 	if b.currentDatabase == nil {
 		currentDbName := b.ctx.GetCurrentDatabase()
 		if currentDbName == "" {
@@ -291,7 +291,7 @@ func (b *Builder) isSchemaDb() bool {
 	return isSchDb
 }
 
-func (b *Builder) renameSource(scope *scope, table string, cols []string) {
+func (b *panicBuilder) renameSource(scope *scope, table string, cols []string) {
 	if table != "" {
 		scope.setTableAlias(table)
 	}
@@ -308,7 +308,7 @@ func (b *Builder) renameSource(scope *scope, table string, cols []string) {
 // present in the clause. `FOR UPDATE` in general is a no-op, so `FOR UPDATE OF` is
 // also a no-op: https://www.dolthub.com/blog/2023-10-23-hold-my-beer/
 // TODO: implement actual row-level locking for `FOR UPDATE` clauses in general.
-func (b *Builder) buildForUpdateOf(lock *ast.Lock, fromScope *scope) {
+func (b *panicBuilder) buildForUpdateOf(lock *ast.Lock, fromScope *scope) {
 	if lock == nil {
 		return
 	}

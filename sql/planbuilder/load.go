@@ -26,7 +26,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func (b *Builder) buildLoad(inScope *scope, d *ast.Load) (outScope *scope) {
+func (b *panicBuilder) buildLoad(inScope *scope, d *ast.Load) (outScope *scope) {
 	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, d.Auth); err != nil && b.authEnabled {
 		b.handleErr(err)
 	}

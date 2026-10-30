@@ -25,7 +25,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func (b *Builder) buildUse(inScope *scope, n *ast.Use) (outScope *scope) {
+func (b *panicBuilder) buildUse(inScope *scope, n *ast.Use) (outScope *scope) {
 	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, n.Auth); err != nil && b.authEnabled {
 		b.handleErr(err)
 	}
@@ -37,7 +37,7 @@ func (b *Builder) buildUse(inScope *scope, n *ast.Use) (outScope *scope) {
 	return
 }
 
-func (b *Builder) buildPrepare(inScope *scope, n *ast.Prepare) (outScope *scope) {
+func (b *panicBuilder) buildPrepare(inScope *scope, n *ast.Prepare) (outScope *scope) {
 	outScope = inScope.push()
 	expr := n.Expr
 	if strings.HasPrefix(n.Expr, "@") {
@@ -87,7 +87,7 @@ func (b *Builder) buildPrepare(inScope *scope, n *ast.Prepare) (outScope *scope)
 	return outScope
 }
 
-func (b *Builder) buildExecute(inScope *scope, n *ast.Execute) (outScope *scope) {
+func (b *panicBuilder) buildExecute(inScope *scope, n *ast.Execute) (outScope *scope) {
 	outScope = inScope.push()
 	exprs := make([]sql.Expression, len(n.VarList))
 	for i, e := range n.VarList {
@@ -101,13 +101,13 @@ func (b *Builder) buildExecute(inScope *scope, n *ast.Execute) (outScope *scope)
 	return outScope
 }
 
-func (b *Builder) buildDeallocate(inScope *scope, n *ast.Deallocate) (outScope *scope) {
+func (b *panicBuilder) buildDeallocate(inScope *scope, n *ast.Deallocate) (outScope *scope) {
 	outScope = inScope.push()
 	outScope.node = plan.NewDeallocateQuery(n.Name)
 	return outScope
 }
 
-func (b *Builder) buildLockTables(inScope *scope, s *ast.LockTables) (outScope *scope) {
+func (b *panicBuilder) buildLockTables(inScope *scope, s *ast.LockTables) (outScope *scope) {
 	outScope = inScope.push()
 	tables := make([]*plan.TableLock, len(s.Tables))
 
@@ -125,7 +125,7 @@ func (b *Builder) buildLockTables(inScope *scope, s *ast.LockTables) (outScope *
 	return outScope
 }
 
-func (b *Builder) buildUnlockTables(inScope *scope, s *ast.UnlockTables) (outScope *scope) {
+func (b *panicBuilder) buildUnlockTables(inScope *scope, s *ast.UnlockTables) (outScope *scope) {
 	outScope = inScope.push()
 	unlockTables := plan.NewUnlockTables()
 	unlockTables.Catalog = b.cat

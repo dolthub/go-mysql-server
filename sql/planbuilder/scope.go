@@ -71,7 +71,7 @@ type scope struct {
 	// TODO: these should be case-sensitive
 	ctes map[string]*scope
 
-	b              *Builder
+	b              *panicBuilder
 	proc           *procCtx
 	parent         *scope
 	activeSubquery *subquery

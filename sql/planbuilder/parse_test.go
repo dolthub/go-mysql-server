@@ -2649,7 +2649,7 @@ Project
 			stmt, err := sqlparser.Parse(tt.Query)
 			require.NoError(t, err)
 
-			outScope := b.build(nil, stmt, tt.Query)
+			outScope := b.inner.build(nil, stmt, tt.Query)
 			defer b.Reset()
 			plan := sql.DebugString(ctx, outScope.node)
 

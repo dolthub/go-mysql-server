@@ -28,7 +28,7 @@ import (
 
 const OnDupValuesPrefix = "__new_ins"
 
-func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
+func (b *panicBuilder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	// TODO: this shouldn't be called during ComPrepare or `PREPARE ... FROM ...` statements, but currently it is.
 	//   The end result is that the ComDelete counter is incremented during prepare statements, which is incorrect.
 	sql.IncrementStatusVariable(b.ctx, "Com_insert", 1)
@@ -183,12 +183,7 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 				combinedScope.newColumn(incomingCol)
 			}
 		}
-		b.insertActive = true
-		onDupUpdateExprs = b.assignmentExprsToUpdateExprs(combinedScope, destScope, sch, ast.AssignmentExprs(i.OnDup))
-		if i.OnDupWhere != nil {
-			onDupWhere = b.buildScalar(combinedScope, i.OnDupWhere)
-		}
-		b.insertActive = false
+		onDupUpdateExprs, onDupWhere = b.buildOnDup(combinedScope, destScope, sch, i)
 	}
 
 	ignore := false
@@ -233,7 +228,7 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 }
 
 // validateInsertIgnoreTarget verifies that the requested columns identify a non-partial unique key.
-func (b *Builder) validateInsertIgnoreTarget(rt *plan.ResolvedTable, target []string) {
+func (b *panicBuilder) validateInsertIgnoreTarget(rt *plan.ResolvedTable, target []string) {
 	schema := rt.Schema(b.ctx)
 	for _, column := range target {
 		if schema.IndexOfColName(column) < 0 {
@@ -286,7 +281,7 @@ func conflictTargetMatches(target, expressions []string) bool {
 	return true
 }
 
-func (b *Builder) insertRowsToNode(inScope *scope, ir ast.InsertRows, columnNames []string, tableName string, destSchema sql.Schema) (outScope *scope, literalOnly bool) {
+func (b *panicBuilder) insertRowsToNode(inScope *scope, ir ast.InsertRows, columnNames []string, tableName string, destSchema sql.Schema) (outScope *scope, literalOnly bool) {
 	switch v := ir.(type) {
 	case ast.SelectStatement:
 		outScope = b.buildSelectStmt(inScope, v)
@@ -299,7 +294,19 @@ func (b *Builder) insertRowsToNode(inScope *scope, ir ast.InsertRows, columnName
 	return
 }
 
-func (b *Builder) buildInsertValues(inScope *scope, v *ast.AliasedValues, columnNames []string, tableName string, destSchema sql.Schema) (outScope *scope, literalOnly bool) {
+// buildOnDup builds the ON DUPLICATE KEY UPDATE assignments and filter of |i|. VALUES() only resolves against the
+// inserted row while insertActive is set.
+func (b *panicBuilder) buildOnDup(inScope, destScope *scope, tableSch sql.Schema, i *ast.Insert) (*plan.UpdateExprs, sql.Expression) {
+	b.insertActive = true
+	defer func() { b.insertActive = false }()
+	updateExprs := b.assignmentExprsToUpdateExprs(inScope, destScope, tableSch, ast.AssignmentExprs(i.OnDup))
+	if i.OnDupWhere != nil {
+		return updateExprs, b.buildScalar(inScope, i.OnDupWhere)
+	}
+	return updateExprs, nil
+}
+
+func (b *panicBuilder) buildInsertValues(inScope *scope, v *ast.AliasedValues, columnNames []string, tableName string, destSchema sql.Schema) (outScope *scope, literalOnly bool) {
 	columnDefaultValues := make([]*sql.ColumnDefaultValue, len(columnNames))
 
 	for i, columnName := range columnNames {
@@ -384,7 +391,7 @@ func (b *Builder) buildInsertValues(inScope *scope, v *ast.AliasedValues, column
 	return
 }
 
-func (b *Builder) shouldAssignBindvarType(e *ast.SQLVal) bool {
+func (b *panicBuilder) shouldAssignBindvarType(e *ast.SQLVal) bool {
 	return e.Type == ast.ValArg && (b.bindCtx == nil || b.bindCtx.resolveOnly)
 }
 
@@ -397,7 +404,7 @@ func reorderSchema(names []string, schema sql.Schema) sql.Schema {
 	return newSch
 }
 
-func (b *Builder) assignmentExprsToUpdateExprs(inScope, destScope *scope, tableSch sql.Schema, e ast.AssignmentExprs) *plan.UpdateExprs {
+func (b *panicBuilder) assignmentExprsToUpdateExprs(inScope, destScope *scope, tableSch sql.Schema, e ast.AssignmentExprs) *plan.UpdateExprs {
 	// Make sure the assignment expressions don't reference hidden system columns
 	for _, expr := range e {
 		if sql.IsHiddenSystemColumn(expr.Name.Name.String()) {
@@ -485,7 +492,7 @@ func (b *Builder) assignmentExprsToUpdateExprs(inScope, destScope *scope, tableS
 
 // addDependentUpdateExprs adds update expressions for any generated columns and ON UPDATE expressions since their
 // values still need to be updated despite not being part of an explicit update expression
-func (b *Builder) addDependentUpdateExprs(inScope *scope, schema sql.Schema, updateExprs []sql.Expression) []sql.Expression {
+func (b *panicBuilder) addDependentUpdateExprs(inScope *scope, schema sql.Schema, updateExprs []sql.Expression) []sql.Expression {
 	if len(schema) > 0 {
 		for _, col := range schema {
 			var generated *sql.ColumnDefaultValue
@@ -523,7 +530,7 @@ func isColumnUpdated(col *sql.Column, updateExprs []sql.Expression) bool {
 	return false
 }
 
-func (b *Builder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scope) {
+func (b *panicBuilder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scope) {
 	// TODO: this shouldn't be called during ComPrepare or `PREPARE ... FROM ...` statements, but currently it is.
 	//   The end result is that the ComDelete counter is incremented during prepare statements, which is incorrect.
 	sql.IncrementStatusVariable(b.ctx, "Com_delete", 1)
@@ -589,7 +596,7 @@ func (b *Builder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scope) {
 // don't create the UpdateJoin node here, because some query plans, such as IN SUBQUERY nodes, require
 // analyzer processing that converts the subquery into a join, and then requires the same logic to
 // create an UpdateJoin node under the original Update node.
-func (b *Builder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
+func (b *panicBuilder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
 	// TODO: this shouldn't be called during ComPrepare or `PREPARE ... FROM ...` statements, but currently it is.
 	//   The end result is that the ComDelete counter is incremented during prepare statements, which is incorrect.
 	sql.IncrementStatusVariable(b.ctx, "Com_update", 1)
@@ -743,7 +750,7 @@ func getResolvedTable(ctx *sql.Context, node sql.Node) *plan.ResolvedTable {
 	return table
 }
 
-func (b *Builder) buildInto(inScope *scope, into *ast.Into) {
+func (b *panicBuilder) buildInto(inScope *scope, into *ast.Into) {
 	if into.Dumpfile != "" {
 		inScope.node = plan.NewInto(inScope.node, nil, "", into.Dumpfile)
 		return
@@ -812,7 +819,7 @@ func (b *Builder) buildInto(inScope *scope, into *ast.Into) {
 	inScope.node = plan.NewInto(inScope.node, vars, "", "")
 }
 
-func (b *Builder) loadChecksFromTable(inScope *scope, table sql.Table) []*sql.CheckConstraint {
+func (b *panicBuilder) loadChecksFromTable(inScope *scope, table sql.Table) []*sql.CheckConstraint {
 	var loadedChecks []*sql.CheckConstraint
 	if checkTable, ok := sql.GetUnderlyingTable(table).(sql.CheckTable); ok {
 		checks, err := checkTable.GetChecks(b.ctx)
@@ -827,7 +834,7 @@ func (b *Builder) loadChecksFromTable(inScope *scope, table sql.Table) []*sql.Ch
 	return loadedChecks
 }
 
-func (b *Builder) buildCheckConstraint(inScope *scope, check *sql.CheckDefinition) *sql.CheckConstraint {
+func (b *panicBuilder) buildCheckConstraint(inScope *scope, check *sql.CheckDefinition) *sql.CheckConstraint {
 	parsed, err := b.parser.ParseSimple(fmt.Sprintf("select %s", check.CheckExpression))
 	if err != nil {
 		b.handleErr(err)

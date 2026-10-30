@@ -23,7 +23,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-func (b *Builder) buildExplain(inScope *scope, n *sqlparser.Explain) (outScope *scope) {
+func (b *panicBuilder) buildExplain(inScope *scope, n *sqlparser.Explain) (outScope *scope) {
 	outScope = inScope.push()
 	childScope := b.build(inScope, n.Statement, "")
 

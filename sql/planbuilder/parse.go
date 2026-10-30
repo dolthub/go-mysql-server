@@ -32,23 +32,13 @@ const maxAnalysisIterations = 8
 // ErrMaxAnalysisIters is thrown when the analysis iterations are exceeded
 var ErrMaxAnalysisIters = errors.NewKind("exceeded max analysis iterations (%d)")
 
-func (b *Builder) Parse(query string, qFlags *sql.QueryFlags, multi bool) (ret sql.Node, parsed, remainder string, qProps *sql.QueryFlags, err error) {
+func (b *panicBuilder) parse(query string, qFlags *sql.QueryFlags, multi bool) (ret sql.Node, parsed, remainder string, qProps *sql.QueryFlags, err error) {
 	defer trace.StartRegion(b.ctx, "ParseOnly").End()
 	b.nesting++
 	if b.nesting > maxAnalysisIterations {
 		return nil, "", "", nil, ErrMaxAnalysisIters.New(maxAnalysisIterations)
 	}
-	defer func() {
-		b.nesting--
-		if r := recover(); r != nil {
-			switch r := r.(type) {
-			case parseErr:
-				err = r.err
-			default:
-				panic(r)
-			}
-		}
-	}()
+	defer func() { b.nesting-- }()
 	span, ctx := b.ctx.Span("parse",
 		otel.WithAttributes(attribute.String("query", b.ctx.RedactQueryForTrace(query))))
 	defer span.End()
@@ -89,26 +79,10 @@ func (b *Builder) Parse(query string, qFlags *sql.QueryFlags, multi bool) (ret s
 	return outScope.node, parsed, remainder, b.qFlags, err
 }
 
-func (b *Builder) BindOnly(stmt ast.Statement, s string, queryFlags *sql.QueryFlags) (sql.Node, *sql.QueryFlags, error) {
-	outScope, err := b.bindOnly(stmt, s, queryFlags)
-	if err != nil {
-		return nil, b.qFlags, err
-	}
-	return outScope.node, b.qFlags, err
-}
-
-func (b *Builder) bindOnly(stmt ast.Statement, s string, queryFlags *sql.QueryFlags) (_ *scope, err error) {
+func (b *panicBuilder) bindOnly(stmt ast.Statement, s string, queryFlags *sql.QueryFlags) (_ *scope, err error) {
 	defer trace.StartRegion(b.ctx, "BindOnly").End()
-	defer func() {
-		if r := recover(); r != nil {
-			switch r := r.(type) {
-			case parseErr:
-				err = r.err
-			default:
-				panic(r)
-			}
-		}
-	}()
+	// View resolution rewrites this error, so bindOnly recovers even when nested under another panicBuilder call.
+	defer recoverParseErr(&err)
 	if b.authQueryState != nil {
 		if err = b.authQueryState.Error(); err != nil {
 			b.handleErr(err)

@@ -740,7 +740,10 @@ func prepareBindingArgs(ctx *sql.Context, bindings map[string]sqlparser.Expr) ([
 		if !ok {
 			return nil, fmt.Errorf("cannot get binding value")
 		}
-		v := binder.ConvertVal(sqlVal)
+		v, err := binder.ConvertVal(sqlVal)
+		if err != nil {
+			return nil, err
+		}
 		lit, ok := v.(*expression.Literal)
 		if !ok {
 			return nil, fmt.Errorf("cannot get binding value")

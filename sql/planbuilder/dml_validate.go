@@ -23,7 +23,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-func (b *Builder) validateInsert(ins *plan.InsertInto) {
+func (b *panicBuilder) validateInsert(ins *plan.InsertInto) {
 	table := getResolvedTable(b.ctx, ins.Destination)
 	if table == nil {
 		return

@@ -11,7 +11,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-func (b *Builder) NewFrame(inScope *scope, f *ast.Frame) sql.WindowFrame {
+func (b *panicBuilder) NewFrame(inScope *scope, f *ast.Frame) sql.WindowFrame {
 	if f == nil {
 		return nil
 	}

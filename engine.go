@@ -518,7 +518,9 @@ func (e *Engine) BoundQueryPlan(ctx *sql.Context, query string, parsed sqlparser
 	query = sql.RemoveSpaceAndDelimiter(query, ';')
 
 	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.EventScheduler)
-	binder.SetBindings(bindings)
+	if err = binder.SetBindings(bindings); err != nil {
+		return nil, err
+	}
 
 	// Begin a transaction if necessary (no-op if one is in flight)
 	err = e.beginTransaction(ctx)
@@ -564,7 +566,9 @@ func (e *Engine) preparedStatement(ctx *sql.Context, query string, parsed sqlpar
 	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.EventScheduler)
 	if preparedDataFound {
 		parsed = preparedAst
-		binder.SetBindings(bindings)
+		if err := binder.SetBindings(bindings); err != nil {
+			return nil, nil, err
+		}
 	}
 
 	return parsed, binder, nil
@@ -668,7 +672,9 @@ func (e *Engine) bindExecuteQueryNode(ctx *sql.Context, query string, eq *plan.E
 	}
 
 	if len(tempBindings) == 0 {
-		binder.SetBindings(bindings)
+		if err := binder.SetBindings(bindings); err != nil {
+			return nil, err
+		}
 	} else {
 		binder.SetBindingsWithExpr(tempBindings)
 	}

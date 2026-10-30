@@ -23,7 +23,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func (b *Builder) buildKill(inScope *scope, kill *ast.Kill) (outScope *scope) {
+func (b *panicBuilder) buildKill(inScope *scope, kill *ast.Kill) (outScope *scope) {
 	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, kill.Auth); err != nil && b.authEnabled {
 		b.handleErr(err)
 	}
@@ -44,7 +44,7 @@ func (b *Builder) buildKill(inScope *scope, kill *ast.Kill) (outScope *scope) {
 
 // getInt64Value returns the int64 literal value in the expression given, or an error with the errStr given if it
 // cannot.
-func (b *Builder) getInt64Value(inScope *scope, expr ast.Expr, errStr string) int64 {
+func (b *panicBuilder) getInt64Value(inScope *scope, expr ast.Expr, errStr string) int64 {
 	ie := b.getInt64Literal(inScope, expr, errStr)
 
 	i, err := ie.Eval(b.ctx, nil)
@@ -57,7 +57,7 @@ func (b *Builder) getInt64Value(inScope *scope, expr ast.Expr, errStr string) in
 
 // getInt64Literal returns an int64 *expression.Literal for the value given, or an unsupported error with the string
 // given if the expression doesn't represent an integer literal.
-func (b *Builder) getInt64Literal(inScope *scope, expr ast.Expr, errStr string) *expression.Literal {
+func (b *panicBuilder) getInt64Literal(inScope *scope, expr ast.Expr, errStr string) *expression.Literal {
 	e := b.buildScalar(inScope, expr)
 
 	switch e := e.(type) {

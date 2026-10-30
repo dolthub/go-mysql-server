@@ -148,7 +148,7 @@ func convertPrivilegeLevel(privLevel ast.PrivilegeLevel) plan.PrivilegeLevel {
 	}
 }
 
-func (b *Builder) buildAuthenticatedUser(user ast.AccountWithAuth) plan.AuthenticatedUser {
+func (b *panicBuilder) buildAuthenticatedUser(user ast.AccountWithAuth) plan.AuthenticatedUser {
 	authUser := plan.AuthenticatedUser{
 		UserName: convertAccountName(user.AccountName)[0],
 	}
@@ -179,7 +179,7 @@ func (b *Builder) buildAuthenticatedUser(user ast.AccountWithAuth) plan.Authenti
 	return authUser
 }
 
-func (b *Builder) buildCreateUser(inScope *scope, n *ast.CreateUser) (outScope *scope) {
+func (b *panicBuilder) buildCreateUser(inScope *scope, n *ast.CreateUser) (outScope *scope) {
 	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, n.Auth); err != nil && b.authEnabled {
 		b.handleErr(err)
 	}
@@ -310,7 +310,7 @@ func (b *Builder) buildCreateUser(inScope *scope, n *ast.CreateUser) (outScope *
 	return outScope
 }
 
-func (b *Builder) buildRenameUser(inScope *scope, n *ast.RenameUser) (outScope *scope) {
+func (b *panicBuilder) buildRenameUser(inScope *scope, n *ast.RenameUser) (outScope *scope) {
 	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, n.Auth); err != nil && b.authEnabled {
 		b.handleErr(err)
 	}
@@ -325,7 +325,7 @@ func (b *Builder) buildRenameUser(inScope *scope, n *ast.RenameUser) (outScope *
 	return outScope
 }
 
-func (b *Builder) buildGrantPrivilege(inScope *scope, n *ast.GrantPrivilege) (outScope *scope) {
+func (b *panicBuilder) buildGrantPrivilege(inScope *scope, n *ast.GrantPrivilege) (outScope *scope) {
 	outScope = inScope.push()
 	var gau *plan.GrantUserAssumption
 	if n.As != nil {
@@ -371,7 +371,7 @@ func (b *Builder) buildGrantPrivilege(inScope *scope, n *ast.GrantPrivilege) (ou
 	return outScope
 }
 
-func (b *Builder) buildShowGrants(inScope *scope, n *ast.ShowGrants) (outScope *scope) {
+func (b *panicBuilder) buildShowGrants(inScope *scope, n *ast.ShowGrants) (outScope *scope) {
 	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, n.Auth); err != nil && b.authEnabled {
 		b.handleErr(err)
 	}
@@ -399,7 +399,7 @@ func (b *Builder) buildShowGrants(inScope *scope, n *ast.ShowGrants) (outScope *
 	return
 }
 
-func (b *Builder) buildFlush(inScope *scope, f *ast.Flush) (outScope *scope) {
+func (b *panicBuilder) buildFlush(inScope *scope, f *ast.Flush) (outScope *scope) {
 	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, f.Auth); err != nil && b.authEnabled {
 		b.handleErr(err)
 	}
@@ -436,7 +436,7 @@ func (b *Builder) buildFlush(inScope *scope, f *ast.Flush) (outScope *scope) {
 	return outScope
 }
 
-func (b *Builder) buildCreateRole(inScope *scope, n *ast.CreateRole) (outScope *scope) {
+func (b *panicBuilder) buildCreateRole(inScope *scope, n *ast.CreateRole) (outScope *scope) {
 	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, n.Auth); err != nil && b.authEnabled {
 		b.handleErr(err)
 	}
@@ -449,7 +449,7 @@ func (b *Builder) buildCreateRole(inScope *scope, n *ast.CreateRole) (outScope *
 	return
 }
 
-func (b *Builder) buildDropRole(inScope *scope, n *ast.DropRole) (outScope *scope) {
+func (b *panicBuilder) buildDropRole(inScope *scope, n *ast.DropRole) (outScope *scope) {
 	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, n.Auth); err != nil && b.authEnabled {
 		b.handleErr(err)
 	}
@@ -462,7 +462,7 @@ func (b *Builder) buildDropRole(inScope *scope, n *ast.DropRole) (outScope *scop
 	return
 }
 
-func (b *Builder) buildDropUser(inScope *scope, n *ast.DropUser) (outScope *scope) {
+func (b *panicBuilder) buildDropUser(inScope *scope, n *ast.DropUser) (outScope *scope) {
 	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, n.Auth); err != nil && b.authEnabled {
 		b.handleErr(err)
 	}
@@ -475,7 +475,7 @@ func (b *Builder) buildDropUser(inScope *scope, n *ast.DropUser) (outScope *scop
 	return
 }
 
-func (b *Builder) buildGrantRole(inScope *scope, n *ast.GrantRole) (outScope *scope) {
+func (b *panicBuilder) buildGrantRole(inScope *scope, n *ast.GrantRole) (outScope *scope) {
 	outScope = inScope.push()
 	outScope.node = &plan.GrantRole{
 		Roles:           convertAccountName(n.Roles...),
@@ -490,7 +490,7 @@ func (b *Builder) buildGrantRole(inScope *scope, n *ast.GrantRole) (outScope *sc
 	return
 }
 
-func (b *Builder) buildGrantProxy(inScope *scope, n *ast.GrantProxy) (outScope *scope) {
+func (b *panicBuilder) buildGrantProxy(inScope *scope, n *ast.GrantProxy) (outScope *scope) {
 	outScope = inScope.push()
 
 	outScope.node = plan.NewGrantProxy(
@@ -505,7 +505,7 @@ func (b *Builder) buildGrantProxy(inScope *scope, n *ast.GrantProxy) (outScope *
 	return
 }
 
-func (b *Builder) buildRevokePrivilege(inScope *scope, n *ast.RevokePrivilege) (outScope *scope) {
+func (b *panicBuilder) buildRevokePrivilege(inScope *scope, n *ast.RevokePrivilege) (outScope *scope) {
 	privs := convertPrivilege(n.Privileges...)
 	objType := convertObjectType(n.ObjectType)
 	level := convertPrivilegeLevel(n.PrivilegeLevel)
@@ -530,7 +530,7 @@ func (b *Builder) buildRevokePrivilege(inScope *scope, n *ast.RevokePrivilege) (
 	return
 }
 
-func (b *Builder) buildRevokeRole(inScope *scope, n *ast.RevokeRole) (outScope *scope) {
+func (b *panicBuilder) buildRevokeRole(inScope *scope, n *ast.RevokeRole) (outScope *scope) {
 	outScope = inScope.push()
 	outScope.node = &plan.RevokeRole{
 		Roles:             convertAccountName(n.Roles...),
@@ -546,7 +546,7 @@ func (b *Builder) buildRevokeRole(inScope *scope, n *ast.RevokeRole) (outScope *
 	return
 }
 
-func (b *Builder) buildRevokeProxy(inScope *scope, n *ast.RevokeProxy) (outScope *scope) {
+func (b *panicBuilder) buildRevokeProxy(inScope *scope, n *ast.RevokeProxy) (outScope *scope) {
 	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, n.Auth); err != nil && b.authEnabled {
 		b.handleErr(err)
 	}
@@ -555,7 +555,7 @@ func (b *Builder) buildRevokeProxy(inScope *scope, n *ast.RevokeProxy) (outScope
 	return
 }
 
-func (b *Builder) buildShowPrivileges(inScope *scope, n *ast.ShowPrivileges) (outScope *scope) {
+func (b *panicBuilder) buildShowPrivileges(inScope *scope, n *ast.ShowPrivileges) (outScope *scope) {
 	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, n.Auth); err != nil && b.authEnabled {
 		b.handleErr(err)
 	}

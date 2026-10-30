@@ -22,7 +22,7 @@ import (
 // mockDefiner temporarily impersonates the definer during binding. It clones the current authorization state
 // (when available), adds the requested global privileges (e.g. CREATE VIEW), and updates both the session privilege
 // cache and the cached AuthorizationQueryState. Callers must defer the returned restore function.
-func (b *Builder) mockDefiner(privileges ...sql.PrivilegeType) func() {
+func (b *panicBuilder) mockDefiner(privileges ...sql.PrivilegeType) func() {
 	if b == nil || b.ctx == nil || b.ctx.Session == nil {
 		return func() {}
 	}

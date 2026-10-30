@@ -19,7 +19,7 @@ import (
   ast "github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
-func (b *Builder) NewFrame(inScope *scope, f *ast.Frame) sql.WindowFrame {
+func (b *panicBuilder) NewFrame(inScope *scope, f *ast.Frame) sql.WindowFrame {
   if f == nil {
     return nil
   }
