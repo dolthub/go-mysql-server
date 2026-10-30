@@ -167,7 +167,7 @@ func (b *BitOp) convertLeftRight(ctx *sql.Context, lVal, rVal any) (any, any, er
 	switch {
 	case types.IsSigned(lTyp) && types.IsSigned(rTyp):
 		typ = types.Int64
-	case types.IsUnsigned(lTyp) && types.IsUnsigned(rTyp):
+	case types.IsInteger(lTyp) && types.IsInteger(rTyp):
 		typ = types.Uint64
 	default:
 		typ = types.Float64

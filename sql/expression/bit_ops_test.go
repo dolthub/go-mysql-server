@@ -15,6 +15,7 @@
 package expression
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -22,6 +23,55 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
+
+// TestBitNot checks numeric conversion, NULLs, and nonmutating binary evaluation.
+func TestBitNot(t *testing.T) {
+	tests := []struct {
+		name     string
+		value    any
+		typ      sql.Type
+		expected any
+	}{
+		{"signed", int64(64), types.Int64, uint64(18446744073709551551)},
+		{"negative", int64(-64), types.Int64, uint64(63)},
+		{"maximum unsigned", uint64(18446744073709551615), types.Uint64, uint64(0)},
+		{"NULL", nil, types.Null, nil},
+		{"double truncates", 1.6, types.Float64, uint64(18446744073709551614)},
+		{"negative double truncates", -1.6, types.Float64, uint64(0)},
+		{"text truncates", "1.6", types.LongText, uint64(18446744073709551614)},
+		{"binary", []byte{0, 64, 255}, types.LongBlob, []byte{255, 191, 0}},
+		{"empty binary", []byte{}, types.LongBlob, []byte{}},
+		{"binary character set", "A", types.CreateLongText(sql.Collation_binary), []byte{190}},
+	}
+	ctx := sql.NewEmptyContext()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			row := sql.Row{tt.value}
+			var original []byte
+			if value, ok := tt.value.([]byte); ok {
+				original = bytes.Clone(value)
+			}
+			expr := NewBitNot(NewGetField(0, tt.typ, "value", tt.value == nil))
+			actual, err := expr.Eval(ctx, row)
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, actual)
+			require.Equal(t, tt.value == nil, expr.IsNullable(ctx))
+			if bytes, ok := actual.([]byte); ok {
+				require.Equal(t, types.LongBlob, expr.Type(ctx))
+				if len(bytes) > 0 {
+					bytes[0] = 42
+					if _, ok := tt.value.([]byte); ok {
+						require.Equal(t, original, row[0])
+					} else {
+						require.Equal(t, tt.value, row[0])
+					}
+				}
+			} else {
+				require.Equal(t, types.Uint64, expr.Type(ctx))
+			}
+		})
+	}
+}
 
 func TestBitAnd(t *testing.T) {
 	var testCases = []struct {
@@ -36,6 +86,9 @@ func TestBitAnd(t *testing.T) {
 		{"1024 & 0", 1024, 0, types.Uint64, types.Uint64, 0},
 		{"0 & 1024", 0, 1024, types.Uint64, types.Uint64, 0},
 		{"-1 & -12", -1, -12, types.Int64, types.Int64, 18446744073709551604},
+		{"signed & unsigned mask", int64(127), uint64(18446744073709551551), types.Int64, types.Uint64, 63},
+		{"negative & unsigned mask", int64(-1), uint64(18446744073709551551), types.Int64, types.Uint64, 18446744073709551551},
+		{"unsigned mask & signed", uint64(18446744073709551551), int64(9223372036854775807), types.Uint64, types.Int64, 9223372036854775743},
 		{"0.6 & 10.24", 0.6, 10.24, types.Float64, types.Float64, 0},
 		{"0.6 & -10.24", 0.6, -10.24, types.Float64, types.Float64, 0},
 		{"-0.6 & -10.24", -0.6, -10.24, types.Float64, types.Float64, 18446744073709551606},
