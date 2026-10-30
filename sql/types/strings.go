@@ -393,6 +393,9 @@ func ConvertToString(ctx context.Context, v interface{}, t sql.StringType, dest 
 	return string(ret), err
 }
 
+// ConvertToBytes converts |v| to a byte slice using the limits of |t|,
+// writing into |dest| to avoid allocating where possible. It returns an
+// error when the value exceeds the type's character or byte length.
 func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest []byte) ([]byte, error) {
 	var val []byte
 	start := len(dest)
@@ -484,21 +487,8 @@ func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest [
 		if int64(len(val)) > t.MaxByteLength() {
 			return nil, ErrLengthBeyondLimit.New(val, t.String())
 		}
-	} else {
-		if t.CharacterSet().MaxLength() == 1 {
-			// if the character set only has a max size of 1, we can just count the bytes
-			if int64(len(val)) > t.MaxCharacterLength() {
-				return nil, ErrLengthBeyondLimit.New(val, t.String())
-			}
-		} else {
-			// TODO(#3846): this should count the string's length properly according to the character set
-			// convert 'val' string to rune to count the character length, not byte length
-			if int64(len(val)) > t.MaxCharacterLength() {
-				if int64(len([]rune(string(val)))) > t.MaxCharacterLength() {
-					return nil, ErrLengthBeyondLimit.New(val, t.String())
-				}
-			}
-		}
+	} else if int64(len(val)) > t.MaxByteLength() || int64(utf8.RuneCount(val)) > t.MaxCharacterLength() {
+		return nil, ErrLengthBeyondLimit.New(val, t.String())
 	}
 
 	if t.Type() == sqltypes.Binary {
