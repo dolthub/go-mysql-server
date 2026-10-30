@@ -255,8 +255,18 @@ func writeMarshalledValue(writer io.Writer, val interface{}) error {
 		writer.Write([]byte{'"'})
 		return nil
 
-	case float64, float32:
-		encoded, err := (jsonFloat{val}).MarshalJSON()
+	case float64:
+		var buffer [32]byte
+		encoded, err := appendJSONFloat(buffer[:0], val, 64)
+		if err != nil {
+			return err
+		}
+		_, err = writer.Write(encoded)
+		return err
+
+	case float32:
+		var buffer [32]byte
+		encoded, err := appendJSONFloat(buffer[:0], float64(val), 32)
 		if err != nil {
 			return err
 		}

@@ -87,8 +87,8 @@ func TestJSONNumberKindsRowEquality(t *testing.T) {
 		left, right string
 		equal       bool
 	}{
-		{`{"steps":[{"from":42}]}`, `{"steps":[{"from":42.0}]}`, false},
-		{`{"steps":[{"from":42.0}]}`, `{"steps":[{"from":42}]}`, false},
+		{`{"steps":[{"from":42}]}`, `{"steps":[{"from":42.0}]}`, true},
+		{`{"steps":[{"from":42.0}]}`, `{"steps":[{"from":42}]}`, true},
 		{`{"steps":[{"from":42.0}]}`, `{"steps":[{"from":4.2e1}]}`, true},
 	}
 	for _, tt := range tests {

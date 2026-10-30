@@ -15,10 +15,8 @@
 package types
 
 import (
-	"bytes"
 	"context"
 	"database/sql/driver"
-	"encoding/json"
 	"fmt"
 	"io"
 	"maps"
@@ -59,64 +57,9 @@ type JSONBytes interface {
 	GetBytes(ctx context.Context) ([]byte, error)
 }
 
+// MarshallJsonValue encodes JSON for storage while preserving integer and double kinds.
 func MarshallJsonValue(value interface{}) ([]byte, error) {
-	buffer := &bytes.Buffer{}
-	encoder := json.NewEncoder(buffer)
-	// Prevents special characters like <, >, or & from being escaped.
-	encoder.SetEscapeHTML(false)
-	err := encoder.Encode(jsonMarshalValue(value))
-	if err != nil {
-		return nil, err
-	}
-	// json.Encoder appends a newline character so we trim it.
-	// SELECT cast('6\n' as JSON) returns only 6 in MySQL.
-	out := bytes.TrimRight(buffer.Bytes(), "\n")
-	return out, err
-}
-
-// jsonMarshalValue preserves the numeric kind of doubles when encoding JSON for storage.
-// encoding/json otherwise writes integral doubles without a decimal point, so reading
-// the stored document back would turn them into integers.
-func jsonMarshalValue(value interface{}) interface{} {
-	switch v := value.(type) {
-	case float64, float32:
-		return jsonFloat{v}
-	case []interface{}:
-		if v == nil {
-			return v
-		}
-		out := make([]interface{}, len(v))
-		for i, element := range v {
-			out[i] = jsonMarshalValue(element)
-		}
-		return out
-	case map[string]interface{}:
-		if v == nil {
-			return v
-		}
-		out := make(map[string]interface{}, len(v))
-		for key, element := range v {
-			out[key] = jsonMarshalValue(element)
-		}
-		return out
-	default:
-		return value
-	}
-}
-
-type jsonFloat struct {
-	value interface{}
-}
-
-func (f jsonFloat) MarshalJSON() ([]byte, error) {
-	encoded, err := json.Marshal(f.value)
-	if err != nil {
-		return nil, err
-	}
-	if !bytes.ContainsAny(encoded, ".eE") {
-		encoded = append(encoded, '.', '0')
-	}
-	return encoded, nil
+	return marshalJSONForStorage(value)
 }
 
 // JSONBytes returns or generates a byte array for the JSON representation of the underlying sql.JSONWrapper

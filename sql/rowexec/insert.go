@@ -15,6 +15,7 @@
 package rowexec
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -433,15 +434,18 @@ func (h *directDuplicateKeyHandler) update(ctx *sql.Context, oldRow, newRow sql.
 		}
 	}
 
-	// TODO: we don't need to evaluate checks and perform the update if the oldRow and evalRow are the same. But doing
-	//  the sameness check with oldRow.Equals can be expensive too and we don't want to be doing it unnecessarily
 	// Should revaluate the check conditions.
 	err = i.evaluateChecks(ctx, evalRow)
 	if err != nil {
 		return nil, i.ignoreOrClose(ctx, newRow, err)
 	}
-	err = i.updater.Update(ctx, oldRow, evalRow)
+	unchanged, err := isJSONOnlyNoopUpdate(ctx, oldRow, evalRow, i.schema)
 	if err != nil {
+		return nil, i.ignoreOrClose(ctx, newRow, err)
+	}
+	if unchanged {
+		evalRow = oldRow
+	} else if err = i.updater.Update(ctx, oldRow, evalRow); err != nil {
 		return nil, i.ignoreOrClose(ctx, newRow, err)
 	}
 	if len(i.returnExprs) > 0 && !i.hasAfterTrigger {
@@ -795,4 +799,41 @@ func (i *duplicateKeyUpdateIter) Next(ctx *sql.Context) (sql.Row, error) {
 func (i *duplicateKeyUpdateIter) Close(ctx *sql.Context) error {
 	i.row = nil
 	return nil
+}
+
+// isJSONOnlyNoopUpdate recognizes equal JSON assignments when every other stored value is unchanged.
+// Other columns use their type's encoding to retain differences hidden by SQL comparison.
+func isJSONOnlyNoopUpdate(ctx *sql.Context, oldRow, newRow sql.Row, schema sql.Schema) (bool, error) {
+	hasJSON := false
+	for i, col := range schema {
+		if !types.IsJSON(col.Type) {
+			continue
+		}
+		hasJSON = true
+		cmp, err := col.Type.Compare(ctx, oldRow[i], newRow[i])
+		if err != nil || cmp != 0 {
+			return false, err
+		}
+	}
+	if !hasJSON {
+		return false, nil
+	}
+	var oldBuffer, newBuffer [64]byte
+	for i, col := range schema {
+		if types.IsJSON(col.Type) {
+			continue
+		}
+		oldValue, err := col.Type.SQL(ctx, oldBuffer[:0], oldRow[i])
+		if err != nil {
+			return false, err
+		}
+		newValue, err := col.Type.SQL(ctx, newBuffer[:0], newRow[i])
+		if err != nil {
+			return false, err
+		}
+		if oldValue.Type() != newValue.Type() || !bytes.Equal(oldValue.Raw(), newValue.Raw()) {
+			return false, nil
+		}
+	}
+	return true, nil
 }
