@@ -344,6 +344,9 @@ func (t datetimeType) Convert(ctx context.Context, v any) (any, sql.ConvertInRan
 // - |whole| an int64 representing the date (and time) portion
 // - |nsec| an int64 representing the nanoseconds
 func (t datetimeType) getNumericParts(val time.Time) (int64, int64, error) {
+	if val.Equal(ZeroTime) {
+		return 0, 0, nil
+	}
 	var nsec int64
 	year, month, day := val.Date()
 	hour, mins, sec := val.Clock()

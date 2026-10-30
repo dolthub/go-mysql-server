@@ -631,6 +631,9 @@ func DecimalTruncate(val *apd.Decimal, scale int32) *apd.Decimal {
 }
 
 func DateToNumber(t time.Time) (res int) {
+	if t.Equal(ZeroTime) {
+		return 0
+	}
 	y, m, d := t.Date()
 	res += y * 100 * 100
 	res += int(m) * 100
