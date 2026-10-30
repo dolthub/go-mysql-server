@@ -162,15 +162,6 @@ func (b *Builder) buildShowTable(inScope *scope, s *ast.Show) (outScope *scope) 
 
 	if rt != nil {
 		checks := b.loadChecksFromTable(outScope, rt.Table)
-		// To match MySQL output format, transform the column names and wrap with backticks
-		for i, check := range checks {
-			checks[i].Expr, _, _ = transform.Expr(b.ctx, check.Expr, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-				if t, ok := e.(*expression.GetField); ok {
-					return expression.NewUnresolvedColumn(fmt.Sprintf("`%s`", t.Name())), transform.NewTree, nil
-				}
-				return e, transform.SameTree, nil
-			})
-		}
 		showCreate = showCreate.WithChecks(checks).(*plan.ShowCreateTable)
 
 		showCreate.Indexes = b.getInfoSchemaIndexes(rt)

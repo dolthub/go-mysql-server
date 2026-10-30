@@ -1261,6 +1261,23 @@ var GeneratedColumnTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "virtual column with check constraint",
+		SetUpScript: []string{
+			"create table t1 (a int primary key, b int, c int generated always as (b + 1) virtual, check (b > 0))",
+			"insert into t1 (a, b) values (1, 1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "insert into t1 (a, b) values (2, -1)",
+				ExpectedErr: sql.ErrCheckConstraintViolated,
+			},
+			{
+				Query:       "update t1 set b = -1",
+				ExpectedErr: sql.ErrCheckConstraintViolated,
+			},
+		},
+	},
+	{
 		Name: "virtual column selects",
 		SetUpScript: []string{
 			"create table t1 (a int primary key, b int generated always as (a + 1) virtual)",
