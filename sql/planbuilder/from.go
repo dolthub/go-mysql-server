@@ -813,7 +813,7 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 	}
 
 	// TODO: this is maybe too broad for this method, we don't need this for some statements
-	if tab.Schema(b.ctx).HasVirtualColumns() {
+	if !b.skipVirtualColumnScans && tab.Schema(b.ctx).HasVirtualColumns() {
 		tab = b.buildVirtualTableScan(db, tab)
 	}
 
@@ -843,7 +843,9 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 	outScope.node = rt
 
 	if dt, _ := rt.Table.(sql.DynamicColumnsTable); dt != nil {
-		// the columns table has to resolve all columns in every table
+		// the columns table has to resolve all columns in every table. It only displays their default and generated
+		// expressions, so the tables those expressions reference don't need their virtual columns resolved.
+		defer b.disableVirtualColumnScans()()
 		sch, err := dt.AllColumns(b.ctx)
 		if err != nil {
 			b.handleErr(err)

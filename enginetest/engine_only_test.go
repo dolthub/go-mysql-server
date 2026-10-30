@@ -1235,3 +1235,9 @@ func TestClearAutocommitTransactionOnError(t *testing.T) {
 		require.NotNil(t, ctx.GetTransaction())
 	})
 }
+
+func TestInvalidGeneratedExpressions(t *testing.T) {
+	for _, script := range queries.InvalidGeneratedExpressionScripts {
+		enginetest.TestScript(t, enginetest.NewDefaultMemoryHarness(), script)
+	}
+}

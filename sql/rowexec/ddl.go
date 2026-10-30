@@ -1312,7 +1312,10 @@ func (b *BaseBuilder) buildCreateTableForeignKeys(ctx *sql.Context, n *plan.Crea
 		return err
 	}
 
-	storedGeneratedColumnRefs := b.storedGeneratedColumnReferences(ctx, fkTbl)
+	storedGeneratedColumnRefs, err := b.storedGeneratedColumnReferences(ctx, fkTbl)
+	if err != nil {
+		return err
+	}
 	parentForeignKeyTables := n.ParentForeignKeyTables()
 	for i, fkDef := range n.ForeignKeys() {
 		err = validateForeignKeyStoredGeneratedColumnRefs(fkDef, storedGeneratedColumnRefs)
@@ -1358,7 +1361,7 @@ func validateForeignKeyStoredGeneratedColumnRefs(fkDef *sql.ForeignKeyConstraint
 
 // storedGeneratedColumnReferences resolves any stored generated columns, inspects them for references to other columns,
 // and returns a set of base columns referenced by any stored generated columns
-func (b *BaseBuilder) storedGeneratedColumnReferences(ctx *sql.Context, table sql.ForeignKeyTable) map[string]bool {
+func (b *BaseBuilder) storedGeneratedColumnReferences(ctx *sql.Context, table sql.ForeignKeyTable) (map[string]bool, error) {
 	hasStoredGeneratedColumn := false
 	schema := table.Schema(ctx)
 	for _, col := range schema {
@@ -1368,8 +1371,12 @@ func (b *BaseBuilder) storedGeneratedColumnReferences(ctx *sql.Context, table sq
 				// TODO: calling ResolveSchemaDefaults here is doing too much since we only need the stored generated
 				//  columns to be resolved. We are currently not able to do so because planbuilder.scope and
 				//  planbuilder.resolveColumnDefaultExpression are both unexported.
-				schema = planbuilder.NewBuilderForColumnDefaultResolution(ctx, b.EngineOverrides).
+				var err error
+				schema, err = planbuilder.NewBuilderForColumnDefaultResolution(ctx, b.EngineOverrides).
 					ResolveSchemaDefaults(ctx.GetCurrentDatabase(), table.Name(), schema)
+				if err != nil {
+					return nil, err
+				}
 				break
 			}
 		}
@@ -1389,9 +1396,9 @@ func (b *BaseBuilder) storedGeneratedColumnReferences(ctx *sql.Context, table sq
 				})
 			}
 		}
-		return refs
+		return refs, nil
 	}
-	return nil
+	return nil, nil
 }
 
 func createIndexesForCreateTable(ctx *sql.Context, db sql.Database, tableNode sql.Table, idxes sql.IndexDefs) (err error) {
@@ -1598,7 +1605,11 @@ func (b *BaseBuilder) buildCreateForeignKey(ctx *sql.Context, n *plan.CreateFore
 		return nil, sql.ErrNoForeignKeySupport.New(n.FkDef.ParentTable)
 	}
 
-	err = validateForeignKeyStoredGeneratedColumnRefs(n.FkDef, b.storedGeneratedColumnReferences(ctx, fkTbl))
+	storedGeneratedColumnRefs, err := b.storedGeneratedColumnReferences(ctx, fkTbl)
+	if err != nil {
+		return nil, err
+	}
+	err = validateForeignKeyStoredGeneratedColumnRefs(n.FkDef, storedGeneratedColumnRefs)
 	if err != nil {
 		return nil, err
 	}

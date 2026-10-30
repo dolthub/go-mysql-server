@@ -138,6 +138,7 @@ func (b *Builder) showTargetInfo(inScope *scope, s *ast.Show) (db, tableName str
 }
 
 func (b *Builder) buildShowTable(inScope *scope, s *ast.Show) (outScope *scope) {
+	defer b.disableVirtualColumnScans()()
 	outScope = inScope.push()
 	_, tableName, asOf, asOfExpr := b.showTargetInfo(inScope, s)
 
@@ -524,6 +525,7 @@ func (b *Builder) buildShowTableStatus(inScope *scope, s *ast.Show) (outScope *s
 }
 
 func (b *Builder) buildShowIndex(inScope *scope, s *ast.Show) (outScope *scope) {
+	defer b.disableVirtualColumnScans()()
 	outScope = inScope.push()
 
 	db := b.ctx.GetCurrentDatabase()
@@ -815,6 +817,10 @@ func (b *Builder) buildShowAllColumns(inScope *scope, s *ast.Show) (outScope *sc
 		schemaName = s.ShowTablesOpt.SchemaName
 	}
 
+	// The filter below may read tables, so only the target table and its column definitions skip virtual column scans.
+	restoreVirtualColumnScans := b.disableVirtualColumnScans()
+	defer restoreVirtualColumnScans()
+
 	tableScope, ok := b.buildResolvedTable(inScope, dbName, schemaName, s.Table.Name.String(), asOf)
 	if !ok {
 		err := sql.ErrTableNotFound.New(s.Table.Name.String())
@@ -846,6 +852,7 @@ func (b *Builder) buildShowAllColumns(inScope *scope, s *ast.Show) (outScope *sc
 		node = b.modifySchemaTarget(tableScope, show, t.Schema(b.ctx))
 	default:
 	}
+	restoreVirtualColumnScans()
 
 	if s.ShowTablesOpt != nil && s.ShowTablesOpt.Filter != nil {
 		if s.ShowTablesOpt.Filter.Like != "" {

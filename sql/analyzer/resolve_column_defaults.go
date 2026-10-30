@@ -15,6 +15,8 @@
 package analyzer
 
 import (
+	"strings"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
@@ -92,6 +94,12 @@ func validateColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *plan.S
 				col, err := lookupColumnForTargetSchema(ctx, node, i)
 				if err != nil {
 					return nil, transform.SameTree, err
+				}
+
+				// A dropped column's default and generated expressions are going away, so don't reject the drop
+				// because they are invalid. Dropping the column is how a table with such an expression is repaired.
+				if dc, ok := node.(*plan.DropColumn); ok && strings.EqualFold(dc.Column, col.Name) {
+					return e, transform.SameTree, nil
 				}
 
 				err = validateColumnDefault(ctx, col, colDefault)
