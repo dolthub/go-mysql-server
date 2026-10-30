@@ -45,15 +45,21 @@ type Builder struct {
 	bindCtx    *BindvarContext
 	ctx        *sql.Context
 
+	// aggregateArgumentRoot points to the source scope where the current
+	// aggregate's arguments are being bound. Its query block and enclosing
+	// query blocks identify the source scopes where column lookup skips
+	// projection and HAVING aliases. It is nil outside argument binding.
+	aggregateArgumentRoot *scope
+
+	// virtualTables tracks the tables whose generated columns are currently being resolved by buildVirtualTableScan,
+	// so that a generated column expression that references its own table errors instead of recursing forever.
+	virtualTables map[string]struct{}
+
 	// windowClause tracks whether we are currently building an expression
 	// inside a window clause (e.g. "window order by") or empty otherwise.
 	windowClause string
 
 	nesting int
-
-	// virtualTables tracks the tables whose generated columns are currently being resolved by buildVirtualTableScan,
-	// so that a generated column expression that references its own table errors instead of recursing forever.
-	virtualTables map[string]struct{}
 
 	tabId      sql.TableId
 	colId      columnId
@@ -68,12 +74,6 @@ type Builder struct {
 
 	// inWindow tracks whether we are inside window function arguments.
 	inWindow bool
-
-	// aggregateArgumentRoot points to the source scope where the current
-	// aggregate's arguments are being bound. Its query block and enclosing
-	// query blocks identify the source scopes where column lookup skips
-	// projection and HAVING aliases. It is nil outside argument binding.
-	aggregateArgumentRoot *scope
 
 	authEnabled  bool
 	multiDDL     bool
