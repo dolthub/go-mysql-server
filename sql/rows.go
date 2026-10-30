@@ -60,66 +60,9 @@ func (r Row) Equals(ctx *Context, row Row, schema Schema) (bool, error) {
 		if cmp != 0 {
 			return false, nil
 		}
-		// JSON numeric equality ignores the distinction between integers and doubles.
-		// Row equality is also used to skip unchanged writes, which must preserve it.
-		leftJSON, leftOK := colLeft.(JSONWrapper)
-		rightJSON, rightOK := colRight.(JSONWrapper)
-		if leftOK && rightOK {
-			leftValue, err := leftJSON.ToInterface(ctx)
-			if err != nil {
-				return false, err
-			}
-			rightValue, err := rightJSON.ToInterface(ctx)
-			if err != nil {
-				return false, err
-			}
-			if !sameJSONNumberKinds(leftValue, rightValue) {
-				return false, nil
-			}
-		}
 	}
 
 	return true, nil
-}
-
-// sameJSONNumberKinds compares numeric kinds in JSON values already known to be equal.
-// Different Go integer widths represent the same JSON kind, as do float32 and float64.
-func sameJSONNumberKinds(left, right interface{}) bool {
-	switch left := left.(type) {
-	case map[string]interface{}:
-		right, ok := right.(map[string]interface{})
-		if !ok {
-			return false
-		}
-		for key, value := range left {
-			if !sameJSONNumberKinds(value, right[key]) {
-				return false
-			}
-		}
-	case []interface{}:
-		right, ok := right.([]interface{})
-		if !ok || len(left) != len(right) {
-			return false
-		}
-		for i, value := range left {
-			if !sameJSONNumberKinds(value, right[i]) {
-				return false
-			}
-		}
-	case float32, float64:
-		switch right.(type) {
-		case float32, float64:
-			return true
-		default:
-			return false
-		}
-	default:
-		switch right.(type) {
-		case float32, float64:
-			return false
-		}
-	}
-	return true
 }
 
 // EvalProjections evaluates each non-nil expression in projections against row in index order and
