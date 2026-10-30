@@ -1585,6 +1585,7 @@ func makeIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, tab plan.Table
 			break
 		}
 		if !matchedFilter {
+			// Reached by extended types when a literal of another type gives this column no range
 			return nil, false, nil
 		}
 	}
