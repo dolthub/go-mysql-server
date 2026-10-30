@@ -27,6 +27,8 @@ type Encoder interface {
 	// intended for decoding whole strings (that are represented as byte slices), to decode individual codepoints use
 	// DecodeRune. Do note that the string parameter is NOT modified in any way. Refer to IsReturnSafe to check if the
 	// returned byte slice must be copied before modifications may be made.
+	// If decoding fails, it returns the characters decoded before the first
+	// invalid one, and false.
 	Decode(str []byte) ([]byte, bool)
 	// Encode converts from Go's string encoding (utf8mb4-equivalent) to the encoding represented by this Encoder. This is
 	// intended for encoding whole strings (that are represented as byte slices), to encode individual codepoints use
@@ -62,6 +64,9 @@ type Encoder interface {
 	// utf8.DecodeRuneInString internally, therefore it is recommended that all performance-critical code handles binary
 	// strings separately, and uses utf8.DecodeRuneInString without having to go through this interface.
 	NextRune(str string) (rune, int)
+	// RuneLength returns the number of bytes required to encode the rune. It
+	// returns -1 if the rune cannot be encoded.
+	RuneLength(r rune) int
 	// IsReturnSafe returns whether it is safe to modify the byte slices returned by Decode, Encode, DecodeRune, and
 	// EncodeRune.
 	IsReturnSafe() bool

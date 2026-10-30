@@ -107,14 +107,10 @@ func (mysqlUpdateExpressionApplier) ApplyRowUpdate(ctx *sql.Context, updateExprs
 		val, err := updateExpr.Eval(ctx, row)
 		if err != nil {
 			var wtce sql.WrappedTypeConversionError
-			isTypeConversionError := errors.As(err, &wtce)
-			if !isTypeConversionError || !ignore {
+			if !ignore || !errors.As(err, &wtce) {
 				return nil, err
 			}
-
-			cpy := row.Copy()
-			cpy[wtce.OffendingIdx] = wtce.OffendingVal // Needed for strings
-			val = convertDataAndWarn(ctx, tableSchema, cpy, wtce.OffendingIdx, wtce.Err)
+			val = convertDataAndWarn(ctx, tableSchema, row.Copy(), wtce.OffendingIdx, wtce.OffendingVal, wtce.Err)
 		}
 		var ok bool
 		row, ok = val.(sql.Row)
