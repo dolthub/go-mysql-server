@@ -119,15 +119,6 @@ func (m *MemoryHarness) EngineVariables() *sql.EngineVariables {
 	return m.variables
 }
 
-// ResetEngineVariables implements the EngineVariablesHarness interface.
-//
-// The [sql.Session] is zeroed to force NewContext to rebuild a session with the
-// new reset engine variables when called.
-func (m *MemoryHarness) ResetEngineVariables() {
-	m.variables = variables.NewEngineVariables()
-	m.session = nil
-}
-
 func (m *MemoryHarness) SessionBuilder() server.SessionBuilder {
 	// Callers may build one session builder and reuse it across the engines
 	// (and providers) the harness creates, so resolve the provider per session.
