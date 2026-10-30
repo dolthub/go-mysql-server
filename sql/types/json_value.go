@@ -15,10 +15,8 @@
 package types
 
 import (
-	"bytes"
 	"context"
 	"database/sql/driver"
-	"encoding/json"
 	"fmt"
 	"io"
 	"maps"
@@ -59,19 +57,9 @@ type JSONBytes interface {
 	GetBytes(ctx context.Context) ([]byte, error)
 }
 
+// MarshallJsonValue encodes JSON for storage while preserving integer and double kinds.
 func MarshallJsonValue(value interface{}) ([]byte, error) {
-	buffer := &bytes.Buffer{}
-	encoder := json.NewEncoder(buffer)
-	// Prevents special characters like <, >, or & from being escaped.
-	encoder.SetEscapeHTML(false)
-	err := encoder.Encode(value)
-	if err != nil {
-		return nil, err
-	}
-	// json.Encoder appends a newline character so we trim it.
-	// SELECT cast('6\n' as JSON) returns only 6 in MySQL.
-	out := bytes.TrimRight(buffer.Bytes(), "\n")
-	return out, err
+	return marshalJSONForStorage(value)
 }
 
 // JSONBytes returns or generates a byte array for the JSON representation of the underlying sql.JSONWrapper

@@ -24,6 +24,67 @@ import (
 
 var JsonScripts = []ScriptTest{
 	{
+		Name: "JSON number kinds survive storage and updates",
+		SetUpScript: []string{
+			"CREATE TABLE json_numbers (id INT PRIMARY KEY, doc JSON)",
+			`INSERT INTO json_numbers VALUES (1, '{"v":42}'), (2, '{"v":42.0}'), (3, '{"v":4.2e1}'), (4, '{"v":1.25}'), (5, '{"v":18446744073709551615}')`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT id, JSON_TYPE(doc->'$.v'), JSON_UNQUOTE(doc->'$.v') FROM json_numbers ORDER BY id",
+				Expected: []sql.Row{{1, "INTEGER", "42"}, {2, "DOUBLE", "42.0"}, {3, "DOUBLE", "42.0"}, {4, "DOUBLE", "1.25"}, {5, "UNSIGNED INTEGER", "18446744073709551615"}},
+			},
+			{
+				Query:    `UPDATE json_numbers SET doc = '{"v":42.0}' WHERE id = 1`,
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 0}}}},
+			},
+			{
+				Query:    "SELECT JSON_TYPE(doc->'$.v'), doc->'$.v' = CAST('42' AS JSON) FROM json_numbers WHERE id = 1",
+				Expected: []sql.Row{{"INTEGER", true}},
+			},
+			{
+				Query:    "UPDATE json_numbers SET doc = JSON_SET(doc, '$.v', CAST('42.0' AS JSON)) WHERE id = 1",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 0}}}},
+			},
+			{
+				Query:    "SELECT JSON_TYPE(doc->'$.v') FROM json_numbers WHERE id = 1",
+				Expected: []sql.Row{{"INTEGER"}},
+			},
+			{
+				Query:    "UPDATE json_numbers SET doc = JSON_SET(doc, '$.v', CAST('42' AS JSON)) WHERE id = 1",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 0}}}},
+			},
+			{
+				Query:    `INSERT INTO json_numbers VALUES (1, '{"v":42.0}') ON DUPLICATE KEY UPDATE doc = VALUES(doc)`,
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			{
+				Query:    "SELECT JSON_TYPE(doc->'$.v') FROM json_numbers WHERE id = 1",
+				Expected: []sql.Row{{"INTEGER"}},
+			},
+			{
+				Query:    `UPDATE json_numbers SET id = 9, doc = '{"v":42.0}' WHERE id = 1`,
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+			},
+			{
+				Query:    "SELECT JSON_TYPE(doc->'$.v') FROM json_numbers WHERE id = 9",
+				Expected: []sql.Row{{"DOUBLE"}},
+			},
+			{
+				Query:    `INSERT INTO json_numbers VALUES (6, JSON_OBJECT('v', 42e0)), (7, JSON_ARRAY(42, 42e0)), (8, JSON_MERGE_PRESERVE('[42]', '[42.0]'))`,
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 3}}},
+			},
+			{
+				Query:    "SELECT JSON_TYPE(doc->'$.v') FROM json_numbers WHERE id = 6",
+				Expected: []sql.Row{{"DOUBLE"}},
+			},
+			{
+				Query:    "SELECT JSON_TYPE(doc->'$[0]'), JSON_TYPE(doc->'$[1]') FROM json_numbers WHERE id IN (7, 8) ORDER BY id",
+				Expected: []sql.Row{{"INTEGER", "DOUBLE"}, {"INTEGER", "DOUBLE"}},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/10050
 		Name: "TextStorage converts to JSON when using dolt wrapper",
 		SetUpScript: []string{
@@ -1277,6 +1338,83 @@ var JsonScripts = []ScriptTest{
 			{
 				Query:    `select * from test where JSON_OBJECT("key", 2.0) > test.j;`,
 				Expected: []sql.Row{{types.MustJSON("{\"key\": 1.0}")}},
+			},
+		},
+	},
+	{
+		Name: "json numeric equality in hashing operators",
+		SetUpScript: []string{
+			"CREATE TABLE json_hash_values (pk INT PRIMARY KEY, j JSON)",
+			`INSERT INTO json_hash_values VALUES (1, '42'), (2, '42.0'), (3, '4.2e1'), (4, '-0.0'), (5, '0'), (6, '{"a":[42,{"b":-0.0}]}'), (7, '{"a":[42.0,{"b":0}]}'), (8, '9007199254740992'), (9, '9007199254740992.0'), (10, '9007199254740993')`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT CAST(CAST('9223372036854775807' AS SIGNED) AS JSON) = CAST('9223372036854775808.0' AS JSON), CAST(CAST('9223372036854775807' AS SIGNED) AS JSON) < CAST('9223372036854775808.0' AS JSON), CAST('18446744073709551615' AS JSON) = CAST('18446744073709551616.0' AS JSON), CAST('18446744073709551615' AS JSON) < CAST('18446744073709551616.0' AS JSON)",
+				Expected: []sql.Row{{false, true, false, true}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM (SELECT DISTINCT j FROM json_hash_values) d",
+				Expected: []sql.Row{{5}},
+			},
+			{
+				Query:    "SELECT MIN(pk), COUNT(*) FROM json_hash_values GROUP BY j ORDER BY MIN(pk)",
+				Expected: []sql.Row{{1, 3}, {4, 2}, {6, 2}, {8, 2}, {10, 1}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM (SELECT CAST('42' AS JSON) j UNION SELECT CAST('42.0' AS JSON)) d",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM (SELECT DISTINCT j FROM json_hash_values ORDER BY j) d",
+				Expected: []sql.Row{{5}},
+			},
+			{
+				Query:    "SELECT pk FROM json_hash_values WHERE j IN (CAST('42.0' AS JSON), CAST('-0.0' AS JSON)) ORDER BY pk",
+				Expected: []sql.Row{{1}, {2}, {3}, {4}, {5}},
+			},
+			{
+				Query:    `SELECT pk FROM json_hash_values WHERE j IN (CAST('{"a":[42.0,{"b":0}]}' AS JSON), CAST('9007199254740992.0' AS JSON)) ORDER BY pk`,
+				Expected: []sql.Row{{6}, {7}, {8}, {9}},
+			},
+			{
+				Query:    "SELECT COUNT(*) FROM (SELECT CAST('18446744073709551615' AS JSON) j UNION SELECT CAST('18446744073709551615.0' AS JSON)) d",
+				Expected: []sql.Row{{2}},
+			},
+		},
+	},
+	{
+		Name: "JSON no-op upserts preserve other column representations",
+		SetUpScript: []string{
+			"CREATE TABLE case_only_upsert (id INT PRIMARY KEY, label VARCHAR(10) COLLATE utf8mb4_0900_ai_ci)",
+			"INSERT INTO case_only_upsert VALUES (1, 'a')",
+			"CREATE TABLE json_case_upsert (id INT PRIMARY KEY, label VARCHAR(10) COLLATE utf8mb4_0900_ai_ci, doc JSON)",
+			`INSERT INTO json_case_upsert VALUES (1, 'a', '{"v":42}')`,
+			"INSERT INTO case_only_upsert VALUES (1, 'A') ON DUPLICATE KEY UPDATE label = VALUES(label)",
+			`INSERT INTO json_case_upsert VALUES (1, 'A', '{"v":42.0}') ON DUPLICATE KEY UPDATE label = VALUES(label), doc = VALUES(doc)`,
+			"CREATE TABLE json_geometry_upsert (id INT PRIMARY KEY, doc JSON, point POINT)",
+			`INSERT INTO json_geometry_upsert VALUES (1, '42', ST_GeomFromWKB(UNHEX('010100000000000000000000800000000000000000')))`,
+			`INSERT INTO json_geometry_upsert VALUES (1, '42.0', ST_GeomFromWKB(UNHEX('010100000000000000000000000000000000000000'))) ON DUPLICATE KEY UPDATE doc = VALUES(doc), point = VALUES(point)`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT JSON_TYPE(doc), HEX(ST_AsWKB(point)) FROM json_geometry_upsert",
+				Expected: []sql.Row{{"DOUBLE", "010100000000000000000000000000000000000000"}},
+			},
+			{
+				Query:    "SELECT label FROM case_only_upsert",
+				Expected: []sql.Row{{"A"}},
+			},
+			{
+				Query:    "SELECT label, JSON_TYPE(doc->'$.v') FROM json_case_upsert",
+				Expected: []sql.Row{{"A", "DOUBLE"}},
+			},
+			{
+				Query:    `INSERT INTO json_case_upsert VALUES (1, 'A', '{"v":42}') ON DUPLICATE KEY UPDATE label = VALUES(label), doc = VALUES(doc)`,
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			{
+				Query:    "SELECT label, JSON_TYPE(doc->'$.v') FROM json_case_upsert",
+				Expected: []sql.Row{{"A", "DOUBLE"}},
 			},
 		},
 	},

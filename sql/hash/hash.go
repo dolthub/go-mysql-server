@@ -105,6 +105,8 @@ func HashOf(ctx *sql.Context, sch sql.Schema, row sql.Row) (uint64, error) {
 			}
 		}
 		switch v := v.(type) {
+		case sql.JSONWrapper:
+			err = writeJSONHash(ctx, hash, v)
 		case int:
 			_, err = hash.WriteString(strconv.FormatInt(int64(v), 10))
 		case int8:
@@ -157,6 +159,17 @@ func HashOf(ctx *sql.Context, sch sql.Schema, row sql.Row) (uint64, error) {
 func HashOfSimple(ctx *sql.Context, i any, t sql.Type) (uint64, sql.ConvertInRange, error) {
 	if i == nil {
 		return 0, sql.InRange, nil
+	}
+
+	if types.IsJSON(t) {
+		var err error
+		i, err = sql.UnwrapAny(ctx, i)
+		if err != nil {
+			return 0, sql.InRange, err
+		}
+		if i == nil {
+			return 0, sql.InRange, nil
+		}
 	}
 
 	var str string
@@ -219,6 +232,11 @@ func HashOfSimple(ctx *sql.Context, i any, t sql.Type) (uint64, sql.ConvertInRan
 
 	// TODO: use strconv.Append...() and a byte buffer
 	switch v := val.(type) {
+	case sql.JSONWrapper:
+		if err = writeJSONHash(ctx, hash, v); err != nil {
+			return 0, sql.InRange, err
+		}
+		return hash.Sum64(), inRange, nil
 	case int:
 		str = strconv.FormatInt(int64(v), 10)
 	case int8:
