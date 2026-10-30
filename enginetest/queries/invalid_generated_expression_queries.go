@@ -158,7 +158,7 @@ var InvalidGeneratedExpressionScripts = []ScriptTest{
 				},
 			},
 			{
-				// TODO: generation_expression should be "(select 1 from t sq)".
+				// TODO: generation_expression should be "(select 1 from t as sq)". See https://github.com/dolthub/go-mysql-server/issues/4091.
 				Query:    "SELECT column_name, generation_expression FROM information_schema.columns WHERE table_name = 't' ORDER BY ordinal_position;",
 				Expected: []sql.Row{{"pk", ""}, {"a", ""}, {"b", ""}},
 			},
