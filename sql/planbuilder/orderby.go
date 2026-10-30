@@ -115,6 +115,13 @@ func (b *Builder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy)
 							target = c
 						}
 					}
+				} else if ok && a.Unreferencable() {
+					// an alias that was not named in the query is not projected below the sort, so order by its
+					// expression, the same as ORDER BY <expression>
+					scalar = a.Child
+				} else if ok {
+					// take ref dependency on the projected expression, the same as ORDER BY <alias>
+					scalar = nil
 				}
 				outScope.addColumn(scopeColumn{
 					tableId:    target.tableId,

@@ -276,4 +276,59 @@ var OrderingScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/11504
+		Name: "ORDER BY ordinal of an unnamed expression with DISTINCT",
+		SetUpScript: []string{
+			"CREATE TABLE t (id INT PRIMARY KEY, a INT, e DOUBLE);",
+			"INSERT INTO t VALUES (1, 1, 0.5), (2, 2, -1.5), (3, 4, 2.25), (4, 3, -2), (5, 1, 3.5), (6, 7, 0), (7, 2, 1e10), (8, 0, -0.25);",
+			"CREATE TABLE w (id INT PRIMARY KEY, g INT NOT NULL, k INT NOT NULL);",
+			"INSERT INTO w VALUES (1, 0, 0), (2, 0, 1), (3, 0, 2);",
+			"CREATE TABLE n (id INT PRIMARY KEY, a INT, e DOUBLE);",
+			"INSERT INTO n VALUES (1, 1, 0.5), (2, 2, -1.5), (3, NULL, 2.25), (4, 3, NULL), (5, 1, 3.5), (6, 7, 0), (7, 2, 1e10), (8, 0, -0.25);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT DISTINCT CEIL(a) FROM t ORDER BY 1 LIMIT 3;",
+				Expected: []sql.Row{{0}, {1}, {2}},
+			},
+			{
+				Query:    "SELECT DISTINCT ABS(id), e FROM t ORDER BY 1, 2 LIMIT 4;",
+				Expected: []sql.Row{{1, 0.5}, {2, -1.5}, {3, 2.25}, {4, -2.0}},
+			},
+			{
+				Query:    "SELECT DISTINCT SIGN(e), a FROM t ORDER BY 1 DESC, 2 LIMIT 3;",
+				Expected: []sql.Row{{1, 1}, {1, 2}, {1, 4}},
+			},
+			{
+				Query:    "SELECT DISTINCT g, RANK() OVER (PARTITION BY g ORDER BY k ASC) FROM w ORDER BY g, 2;",
+				Expected: []sql.Row{{0, uint64(1)}, {0, uint64(2)}, {0, uint64(3)}},
+			},
+			{
+				Query:    "SELECT DISTINCT CEIL(a) AS x FROM t ORDER BY 1 LIMIT 3;",
+				Expected: []sql.Row{{0}, {1}, {2}},
+			},
+			{
+				// postgres sorts NULLs last
+				Dialect:  "mysql",
+				Query:    "SELECT DISTINCT CEIL(a) FROM n ORDER BY 1 LIMIT 3;",
+				Expected: []sql.Row{{nil}, {0}, {1}},
+			},
+			{
+				Dialect:  "mysql",
+				Query:    "SELECT DISTINCT ABS(id), e FROM n ORDER BY 1, 2 LIMIT 4;",
+				Expected: []sql.Row{{1, 0.5}, {2, -1.5}, {3, 2.25}, {4, nil}},
+			},
+			{
+				Dialect:  "mysql",
+				Query:    "SELECT DISTINCT SIGN(a), a FROM n ORDER BY 1 DESC, 2 LIMIT 3;",
+				Expected: []sql.Row{{1, 1}, {1, 2}, {1, 3}},
+			},
+			{
+				Dialect:  "mysql",
+				Query:    "SELECT DISTINCT CEIL(a) AS x FROM n ORDER BY 1 LIMIT 3;",
+				Expected: []sql.Row{{nil}, {0}, {1}},
+			},
+		},
+	},
 }
