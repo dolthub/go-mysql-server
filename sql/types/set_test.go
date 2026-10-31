@@ -247,6 +247,7 @@ func TestSetString(t *testing.T) {
 		{[]string{"one"}, sql.Collation_Default, "set('one')"},
 		{[]string{"مرحبا", "こんにちは"}, sql.Collation_Default, "set('مرحبا','こんにちは')"},
 		{[]string{" hi ", "  lo  "}, sql.Collation_Default, "set(' hi','  lo')"},
+		{[]string{`a\b`, "c"}, sql.Collation_Default, "set('a\\\\b','c')"},
 		{[]string{" hi ", "  lo  "}, sql.Collation_binary, "set(' hi ','  lo  ') CHARACTER SET binary COLLATE binary"},
 		{[]string{"a"}, sql.Collation_Default.CharacterSet().BinaryCollation(),
 			fmt.Sprintf("set('a') COLLATE %v", sql.Collation_Default.CharacterSet().BinaryCollation())},
