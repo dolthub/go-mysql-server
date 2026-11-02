@@ -551,7 +551,11 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 
 	if i.checks != nil {
 		for _, check := range i.checks {
-			colStmts = append(colStmts, i.formatter.GenerateCreateTableCheckConstraintClause(check.Name, check.Expr.String(), check.Enforced))
+			checkDef, err := plan.NewCheckDefinition(ctx, check, i.formatter)
+			if err != nil {
+				return "", err
+			}
+			colStmts = append(colStmts, i.formatter.GenerateCreateTableCheckConstraintClause(check.Name, checkDef.CheckExpression, check.Enforced))
 		}
 	}
 

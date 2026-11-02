@@ -2027,6 +2027,9 @@ func TestUserPrivileges(t *testing.T, harness ClientHarness) {
 	harness.Setup(setup.MydbData, setup.MytableData)
 	for _, script := range queries.UserPrivTests {
 		t.Run(script.Name, func(t *testing.T) {
+			if evh, ok := harness.(EngineVariablesHarness); ok {
+				evh.ResetEngineVariables()
+			}
 			engine := MustNewEngine(t, harness)
 			defer engine.Close()
 

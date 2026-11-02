@@ -10740,14 +10740,11 @@ WHERE
 			" │                   └─ Window\n" +
 			" │                       ├─ row_number() over ( order by noxn3.id ASC)\n" +
 			" │                       ├─ noxn3.id:34!null\n" +
-			" │                       └─ IndexedTableAccess(NOXN3)\n" +
-			" │                           ├─ index: [NOXN3.id]\n" +
-			" │                           ├─ keys: [mjr3d.QNI57:9]\n" +
+			" │                       └─ Table\n" +
+			" │                           ├─ name: NOXN3\n" +
+			" │                           ├─ columns: [id]\n" +
 			" │                           ├─ colSet: (1)\n" +
-			" │                           ├─ tableId: 1\n" +
-			" │                           └─ Table\n" +
-			" │                               ├─ name: NOXN3\n" +
-			" │                               └─ columns: [id]\n" +
+			" │                           └─ tableId: 1\n" +
 			" │   WHEN NOT\n" +
 			" │   └─ mjr3d.TDEIU:10 IS NULL\n" +
 			" │   THEN Subquery\n" +
@@ -10771,14 +10768,11 @@ WHERE
 			" │                   └─ Window\n" +
 			" │                       ├─ row_number() over ( order by noxn3.id ASC)\n" +
 			" │                       ├─ noxn3.id:34!null\n" +
-			" │                       └─ IndexedTableAccess(NOXN3)\n" +
-			" │                           ├─ index: [NOXN3.id]\n" +
-			" │                           ├─ keys: [mjr3d.TDEIU:10]\n" +
+			" │                       └─ Table\n" +
+			" │                           ├─ name: NOXN3\n" +
+			" │                           ├─ columns: [id]\n" +
 			" │                           ├─ colSet: (1)\n" +
-			" │                           ├─ tableId: 1\n" +
-			" │                           └─ Table\n" +
-			" │                               ├─ name: NOXN3\n" +
-			" │                               └─ columns: [id]\n" +
+			" │                           └─ tableId: 1\n" +
 			" │   END->M6T2N:0, mjr3d.GE5EL:4->GE5EL:0, mjr3d.F7A4Q:5->F7A4Q:0, mjr3d.CC4AX:7->CC4AX:0, mjr3d.SL76B:8!null->SL76B:0, aac.BTXC5:25->YEBDJ:0, mjr3d.PSMU6:2!null]\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [mjr3d.FJDP5:0!null, mjr3d.BJUF2:1!null, mjr3d.PSMU6:2!null, mjr3d.M22QN:3!null, mjr3d.GE5EL:4, mjr3d.F7A4Q:5, mjr3d.ESFVY:6!null, mjr3d.CC4AX:7, mjr3d.SL76B:8!null, mjr3d.QNI57:9, mjr3d.TDEIU:10, sn.id:11!null, sn.BRQP2:12!null, sn.FFTBJ:13!null, sn.A7XO2:14, sn.KBO7R:15!null, sn.ECDKM:16, sn.NUMK2:17!null, sn.LETOE:18!null, sn.YKSSU:19, sn.FHCYT:20, mf.FTQLQ:21!null, mf.LUEVY:22!null, mf.M22QN:23!null, aac.id:24!null, aac.BTXC5:25, aac.FHCYT:26, mf.FTQLQ:21!null->T4IBQ:0, CASE  WHEN NOT\n" +
@@ -10804,14 +10798,11 @@ WHERE
 			"     │                   └─ Window\n" +
 			"     │                       ├─ row_number() over ( order by noxn3.id ASC)\n" +
 			"     │                       ├─ noxn3.id:27!null\n" +
-			"     │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"     │                           ├─ index: [NOXN3.id]\n" +
-			"     │                           ├─ keys: [mjr3d.QNI57:9]\n" +
+			"     │                       └─ Table\n" +
+			"     │                           ├─ name: NOXN3\n" +
+			"     │                           ├─ columns: [id]\n" +
 			"     │                           ├─ colSet: (1)\n" +
-			"     │                           ├─ tableId: 1\n" +
-			"     │                           └─ Table\n" +
-			"     │                               ├─ name: NOXN3\n" +
-			"     │                               └─ columns: [id]\n" +
+			"     │                           └─ tableId: 1\n" +
 			"     │   WHEN NOT\n" +
 			"     │   └─ mjr3d.TDEIU:10 IS NULL\n" +
 			"     │   THEN Subquery\n" +
@@ -10835,14 +10826,11 @@ WHERE
 			"     │                   └─ Window\n" +
 			"     │                       ├─ row_number() over ( order by noxn3.id ASC)\n" +
 			"     │                       ├─ noxn3.id:27!null\n" +
-			"     │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"     │                           ├─ index: [NOXN3.id]\n" +
-			"     │                           ├─ keys: [mjr3d.TDEIU:10]\n" +
+			"     │                       └─ Table\n" +
+			"     │                           ├─ name: NOXN3\n" +
+			"     │                           ├─ columns: [id]\n" +
 			"     │                           ├─ colSet: (1)\n" +
-			"     │                           ├─ tableId: 1\n" +
-			"     │                           └─ Table\n" +
-			"     │                               ├─ name: NOXN3\n" +
-			"     │                               └─ columns: [id]\n" +
+			"     │                           └─ tableId: 1\n" +
 			"     │   END->M6T2N:0, mjr3d.GE5EL:4->GE5EL:0, mjr3d.F7A4Q:5->F7A4Q:0, mjr3d.CC4AX:7->CC4AX:0, mjr3d.SL76B:8!null->SL76B:0, aac.BTXC5:25->YEBDJ:0]\n" +
 			"     └─ HashJoin\n" +
 			"         ├─ AND\n" +
@@ -11394,10 +11382,9 @@ WHERE
 			" │               └─ Project\n" +
 			" │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
 			" │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			" │                       └─ IndexedTableAccess(NOXN3)\n" +
-			" │                           ├─ index: [NOXN3.id]\n" +
-			" │                           ├─ columns: [id]\n" +
-			" │                           └─ keys: mjr3d.QNI57\n" +
+			" │                       └─ Table\n" +
+			" │                           ├─ name: NOXN3\n" +
+			" │                           └─ columns: [id]\n" +
 			" │   WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery\n" +
 			" │   ├─ cacheable: false\n" +
 			" │   └─ Project\n" +
@@ -11414,10 +11401,9 @@ WHERE
 			" │               └─ Project\n" +
 			" │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
 			" │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			" │                       └─ IndexedTableAccess(NOXN3)\n" +
-			" │                           ├─ index: [NOXN3.id]\n" +
-			" │                           ├─ columns: [id]\n" +
-			" │                           └─ keys: mjr3d.TDEIU\n" +
+			" │                       └─ Table\n" +
+			" │                           ├─ name: NOXN3\n" +
+			" │                           └─ columns: [id]\n" +
 			" │   END as M6T2N, mjr3d.GE5EL as GE5EL, mjr3d.F7A4Q as F7A4Q, mjr3d.CC4AX as CC4AX, mjr3d.SL76B as SL76B, aac.BTXC5 as YEBDJ, mjr3d.PSMU6]\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [mjr3d.FJDP5, mjr3d.BJUF2, mjr3d.PSMU6, mjr3d.M22QN, mjr3d.GE5EL, mjr3d.F7A4Q, mjr3d.ESFVY, mjr3d.CC4AX, mjr3d.SL76B, mjr3d.QNI57, mjr3d.TDEIU, sn.id, sn.BRQP2, sn.FFTBJ, sn.A7XO2, sn.KBO7R, sn.ECDKM, sn.NUMK2, sn.LETOE, sn.YKSSU, sn.FHCYT, mf.FTQLQ, mf.LUEVY, mf.M22QN, aac.id, aac.BTXC5, aac.FHCYT, mf.FTQLQ as T4IBQ, CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery\n" +
@@ -11436,10 +11422,9 @@ WHERE
 			"     │               └─ Project\n" +
 			"     │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
 			"     │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"     │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"     │                           ├─ index: [NOXN3.id]\n" +
-			"     │                           ├─ columns: [id]\n" +
-			"     │                           └─ keys: mjr3d.QNI57\n" +
+			"     │                       └─ Table\n" +
+			"     │                           ├─ name: NOXN3\n" +
+			"     │                           └─ columns: [id]\n" +
 			"     │   WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery\n" +
 			"     │   ├─ cacheable: false\n" +
 			"     │   └─ Project\n" +
@@ -11456,10 +11441,9 @@ WHERE
 			"     │               └─ Project\n" +
 			"     │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
 			"     │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"     │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"     │                           ├─ index: [NOXN3.id]\n" +
-			"     │                           ├─ columns: [id]\n" +
-			"     │                           └─ keys: mjr3d.TDEIU\n" +
+			"     │                       └─ Table\n" +
+			"     │                           ├─ name: NOXN3\n" +
+			"     │                           └─ columns: [id]\n" +
 			"     │   END as M6T2N, mjr3d.GE5EL as GE5EL, mjr3d.F7A4Q as F7A4Q, mjr3d.CC4AX as CC4AX, mjr3d.SL76B as SL76B, aac.BTXC5 as YEBDJ]\n" +
 			"     └─ HashJoin (estimated cost=427.500 rows=125)\n" +
 			"         ├─ (((mf.LUEVY = sn.BRQP2) AND (mf.M22QN = mjr3d.M22QN)) AND (aac.id = mjr3d.M22QN))\n" +
@@ -11750,10 +11734,9 @@ WHERE
 			" │               └─ Project\n" +
 			" │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
 			" │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			" │                       └─ IndexedTableAccess(NOXN3)\n" +
-			" │                           ├─ index: [NOXN3.id]\n" +
-			" │                           ├─ columns: [id]\n" +
-			" │                           └─ keys: mjr3d.QNI57\n" +
+			" │                       └─ Table\n" +
+			" │                           ├─ name: NOXN3\n" +
+			" │                           └─ columns: [id]\n" +
 			" │   WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery\n" +
 			" │   ├─ cacheable: false\n" +
 			" │   └─ Project\n" +
@@ -11770,10 +11753,9 @@ WHERE
 			" │               └─ Project\n" +
 			" │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
 			" │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			" │                       └─ IndexedTableAccess(NOXN3)\n" +
-			" │                           ├─ index: [NOXN3.id]\n" +
-			" │                           ├─ columns: [id]\n" +
-			" │                           └─ keys: mjr3d.TDEIU\n" +
+			" │                       └─ Table\n" +
+			" │                           ├─ name: NOXN3\n" +
+			" │                           └─ columns: [id]\n" +
 			" │   END as M6T2N, mjr3d.GE5EL as GE5EL, mjr3d.F7A4Q as F7A4Q, mjr3d.CC4AX as CC4AX, mjr3d.SL76B as SL76B, aac.BTXC5 as YEBDJ, mjr3d.PSMU6]\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [mjr3d.FJDP5, mjr3d.BJUF2, mjr3d.PSMU6, mjr3d.M22QN, mjr3d.GE5EL, mjr3d.F7A4Q, mjr3d.ESFVY, mjr3d.CC4AX, mjr3d.SL76B, mjr3d.QNI57, mjr3d.TDEIU, sn.id, sn.BRQP2, sn.FFTBJ, sn.A7XO2, sn.KBO7R, sn.ECDKM, sn.NUMK2, sn.LETOE, sn.YKSSU, sn.FHCYT, mf.FTQLQ, mf.LUEVY, mf.M22QN, aac.id, aac.BTXC5, aac.FHCYT, mf.FTQLQ as T4IBQ, CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery\n" +
@@ -11792,10 +11774,9 @@ WHERE
 			"     │               └─ Project\n" +
 			"     │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
 			"     │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"     │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"     │                           ├─ index: [NOXN3.id]\n" +
-			"     │                           ├─ columns: [id]\n" +
-			"     │                           └─ keys: mjr3d.QNI57\n" +
+			"     │                       └─ Table\n" +
+			"     │                           ├─ name: NOXN3\n" +
+			"     │                           └─ columns: [id]\n" +
 			"     │   WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery\n" +
 			"     │   ├─ cacheable: false\n" +
 			"     │   └─ Project\n" +
@@ -11812,10 +11793,9 @@ WHERE
 			"     │               └─ Project\n" +
 			"     │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
 			"     │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"     │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"     │                           ├─ index: [NOXN3.id]\n" +
-			"     │                           ├─ columns: [id]\n" +
-			"     │                           └─ keys: mjr3d.TDEIU\n" +
+			"     │                       └─ Table\n" +
+			"     │                           ├─ name: NOXN3\n" +
+			"     │                           └─ columns: [id]\n" +
 			"     │   END as M6T2N, mjr3d.GE5EL as GE5EL, mjr3d.F7A4Q as F7A4Q, mjr3d.CC4AX as CC4AX, mjr3d.SL76B as SL76B, aac.BTXC5 as YEBDJ]\n" +
 			"     └─ HashJoin (estimated cost=427.500 rows=125) (actual rows=0 loops=1)\n" +
 			"         ├─ (((mf.LUEVY = sn.BRQP2) AND (mf.M22QN = mjr3d.M22QN)) AND (aac.id = mjr3d.M22QN))\n" +
@@ -12304,14 +12284,11 @@ WHERE
 			"             │           │                   │                   └─ Window\n" +
 			"             │           │                   │                       ├─ row_number() over ( order by noxn3.id ASC)\n" +
 			"             │           │                   │                       ├─ noxn3.id:25!null\n" +
-			"             │           │                   │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"             │           │                   │                           ├─ index: [NOXN3.id]\n" +
-			"             │           │                   │                           ├─ keys: [mjr3d.QNI57:5!null]\n" +
+			"             │           │                   │                       └─ Table\n" +
+			"             │           │                   │                           ├─ name: NOXN3\n" +
+			"             │           │                   │                           ├─ columns: [id]\n" +
 			"             │           │                   │                           ├─ colSet: (1)\n" +
-			"             │           │                   │                           ├─ tableId: 1\n" +
-			"             │           │                   │                           └─ Table\n" +
-			"             │           │                   │                               ├─ name: NOXN3\n" +
-			"             │           │                   │                               └─ columns: [id]\n" +
+			"             │           │                   │                           └─ tableId: 1\n" +
 			"             │           │                   │   WHEN NOT\n" +
 			"             │           │                   │   └─ mjr3d.TDEIU:6!null IS NULL\n" +
 			"             │           │                   │   THEN Subquery\n" +
@@ -12335,14 +12312,11 @@ WHERE
 			"             │           │                   │                   └─ Window\n" +
 			"             │           │                   │                       ├─ row_number() over ( order by noxn3.id ASC)\n" +
 			"             │           │                   │                       ├─ noxn3.id:25!null\n" +
-			"             │           │                   │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"             │           │                   │                           ├─ index: [NOXN3.id]\n" +
-			"             │           │                   │                           ├─ keys: [mjr3d.TDEIU:6!null]\n" +
+			"             │           │                   │                       └─ Table\n" +
+			"             │           │                   │                           ├─ name: NOXN3\n" +
+			"             │           │                   │                           ├─ columns: [id]\n" +
 			"             │           │                   │                           ├─ colSet: (1)\n" +
-			"             │           │                   │                           ├─ tableId: 1\n" +
-			"             │           │                   │                           └─ Table\n" +
-			"             │           │                   │                               ├─ name: NOXN3\n" +
-			"             │           │                   │                               └─ columns: [id]\n" +
+			"             │           │                   │                           └─ tableId: 1\n" +
 			"             │           │                   │   END->M6T2N:0, aac.BTXC5:8->BTXC5:0, aac.id:7!null->NTOFG:0, sn.id:10!null->LWQ6O:0, mjr3d.TUV25:3->TUV25:0]\n" +
 			"             │           │                   └─ Project\n" +
 			"             │           │                       ├─ columns: [mjr3d.FJDP5:0!null, mjr3d.BJUF2:1!null, mjr3d.M22QN:2!null, mjr3d.TUV25:3, mjr3d.ESFVY:4!null, mjr3d.QNI57:5!null, mjr3d.TDEIU:6!null, aac.id:7!null, aac.BTXC5:8, aac.FHCYT:9, sn.id:10!null, sn.BRQP2:11!null, sn.FFTBJ:12!null, sn.A7XO2:13, sn.KBO7R:14!null, sn.ECDKM:15, sn.NUMK2:16!null, sn.LETOE:17!null, sn.YKSSU:18, sn.FHCYT:19, CASE  WHEN NOT\n" +
@@ -12368,14 +12342,11 @@ WHERE
 			"             │           │                       │                   └─ Window\n" +
 			"             │           │                       │                       ├─ row_number() over ( order by noxn3.id ASC)\n" +
 			"             │           │                       │                       ├─ noxn3.id:20!null\n" +
-			"             │           │                       │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"             │           │                       │                           ├─ index: [NOXN3.id]\n" +
-			"             │           │                       │                           ├─ keys: [mjr3d.QNI57:5!null]\n" +
+			"             │           │                       │                       └─ Table\n" +
+			"             │           │                       │                           ├─ name: NOXN3\n" +
+			"             │           │                       │                           ├─ columns: [id]\n" +
 			"             │           │                       │                           ├─ colSet: (1)\n" +
-			"             │           │                       │                           ├─ tableId: 1\n" +
-			"             │           │                       │                           └─ Table\n" +
-			"             │           │                       │                               ├─ name: NOXN3\n" +
-			"             │           │                       │                               └─ columns: [id]\n" +
+			"             │           │                       │                           └─ tableId: 1\n" +
 			"             │           │                       │   WHEN NOT\n" +
 			"             │           │                       │   └─ mjr3d.TDEIU:6!null IS NULL\n" +
 			"             │           │                       │   THEN Subquery\n" +
@@ -12399,14 +12370,11 @@ WHERE
 			"             │           │                       │                   └─ Window\n" +
 			"             │           │                       │                       ├─ row_number() over ( order by noxn3.id ASC)\n" +
 			"             │           │                       │                       ├─ noxn3.id:20!null\n" +
-			"             │           │                       │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"             │           │                       │                           ├─ index: [NOXN3.id]\n" +
-			"             │           │                       │                           ├─ keys: [mjr3d.TDEIU:6!null]\n" +
+			"             │           │                       │                       └─ Table\n" +
+			"             │           │                       │                           ├─ name: NOXN3\n" +
+			"             │           │                       │                           ├─ columns: [id]\n" +
 			"             │           │                       │                           ├─ colSet: (1)\n" +
-			"             │           │                       │                           ├─ tableId: 1\n" +
-			"             │           │                       │                           └─ Table\n" +
-			"             │           │                       │                               ├─ name: NOXN3\n" +
-			"             │           │                       │                               └─ columns: [id]\n" +
+			"             │           │                       │                           └─ tableId: 1\n" +
 			"             │           │                       │   END->M6T2N:0, aac.BTXC5:8->BTXC5:0, aac.id:7!null->NTOFG:0, sn.id:10!null->LWQ6O:0, mjr3d.TUV25:3->TUV25:0]\n" +
 			"             │           │                       └─ LeftOuterJoin\n" +
 			"             │           │                           ├─ Or\n" +
@@ -12809,14 +12777,11 @@ WHERE
 			"                                                         │                   └─ Window\n" +
 			"                                                         │                       ├─ row_number() over ( order by noxn3.id ASC)\n" +
 			"                                                         │                       ├─ noxn3.id:25!null\n" +
-			"                                                         │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"                                                         │                           ├─ index: [NOXN3.id]\n" +
-			"                                                         │                           ├─ keys: [mjr3d.QNI57:5!null]\n" +
+			"                                                         │                       └─ Table\n" +
+			"                                                         │                           ├─ name: NOXN3\n" +
+			"                                                         │                           ├─ columns: [id]\n" +
 			"                                                         │                           ├─ colSet: (1)\n" +
-			"                                                         │                           ├─ tableId: 1\n" +
-			"                                                         │                           └─ Table\n" +
-			"                                                         │                               ├─ name: NOXN3\n" +
-			"                                                         │                               └─ columns: [id]\n" +
+			"                                                         │                           └─ tableId: 1\n" +
 			"                                                         │   WHEN NOT\n" +
 			"                                                         │   └─ mjr3d.TDEIU:6!null IS NULL\n" +
 			"                                                         │   THEN Subquery\n" +
@@ -12840,14 +12805,11 @@ WHERE
 			"                                                         │                   └─ Window\n" +
 			"                                                         │                       ├─ row_number() over ( order by noxn3.id ASC)\n" +
 			"                                                         │                       ├─ noxn3.id:25!null\n" +
-			"                                                         │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"                                                         │                           ├─ index: [NOXN3.id]\n" +
-			"                                                         │                           ├─ keys: [mjr3d.TDEIU:6!null]\n" +
+			"                                                         │                       └─ Table\n" +
+			"                                                         │                           ├─ name: NOXN3\n" +
+			"                                                         │                           ├─ columns: [id]\n" +
 			"                                                         │                           ├─ colSet: (1)\n" +
-			"                                                         │                           ├─ tableId: 1\n" +
-			"                                                         │                           └─ Table\n" +
-			"                                                         │                               ├─ name: NOXN3\n" +
-			"                                                         │                               └─ columns: [id]\n" +
+			"                                                         │                           └─ tableId: 1\n" +
 			"                                                         │   END->M6T2N:0, aac.BTXC5:8->BTXC5:0, aac.id:7!null->NTOFG:0, sn.id:10!null->LWQ6O:0, mjr3d.TUV25:3->TUV25:0]\n" +
 			"                                                         └─ Project\n" +
 			"                                                             ├─ columns: [mjr3d.FJDP5:0!null, mjr3d.BJUF2:1!null, mjr3d.M22QN:2!null, mjr3d.TUV25:3, mjr3d.ESFVY:4!null, mjr3d.QNI57:5!null, mjr3d.TDEIU:6!null, aac.id:7!null, aac.BTXC5:8, aac.FHCYT:9, sn.id:10!null, sn.BRQP2:11!null, sn.FFTBJ:12!null, sn.A7XO2:13, sn.KBO7R:14!null, sn.ECDKM:15, sn.NUMK2:16!null, sn.LETOE:17!null, sn.YKSSU:18, sn.FHCYT:19, CASE  WHEN NOT\n" +
@@ -12873,14 +12835,11 @@ WHERE
 			"                                                             │                   └─ Window\n" +
 			"                                                             │                       ├─ row_number() over ( order by noxn3.id ASC)\n" +
 			"                                                             │                       ├─ noxn3.id:20!null\n" +
-			"                                                             │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"                                                             │                           ├─ index: [NOXN3.id]\n" +
-			"                                                             │                           ├─ keys: [mjr3d.QNI57:5!null]\n" +
+			"                                                             │                       └─ Table\n" +
+			"                                                             │                           ├─ name: NOXN3\n" +
+			"                                                             │                           ├─ columns: [id]\n" +
 			"                                                             │                           ├─ colSet: (1)\n" +
-			"                                                             │                           ├─ tableId: 1\n" +
-			"                                                             │                           └─ Table\n" +
-			"                                                             │                               ├─ name: NOXN3\n" +
-			"                                                             │                               └─ columns: [id]\n" +
+			"                                                             │                           └─ tableId: 1\n" +
 			"                                                             │   WHEN NOT\n" +
 			"                                                             │   └─ mjr3d.TDEIU:6!null IS NULL\n" +
 			"                                                             │   THEN Subquery\n" +
@@ -12904,14 +12863,11 @@ WHERE
 			"                                                             │                   └─ Window\n" +
 			"                                                             │                       ├─ row_number() over ( order by noxn3.id ASC)\n" +
 			"                                                             │                       ├─ noxn3.id:20!null\n" +
-			"                                                             │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"                                                             │                           ├─ index: [NOXN3.id]\n" +
-			"                                                             │                           ├─ keys: [mjr3d.TDEIU:6!null]\n" +
+			"                                                             │                       └─ Table\n" +
+			"                                                             │                           ├─ name: NOXN3\n" +
+			"                                                             │                           ├─ columns: [id]\n" +
 			"                                                             │                           ├─ colSet: (1)\n" +
-			"                                                             │                           ├─ tableId: 1\n" +
-			"                                                             │                           └─ Table\n" +
-			"                                                             │                               ├─ name: NOXN3\n" +
-			"                                                             │                               └─ columns: [id]\n" +
+			"                                                             │                           └─ tableId: 1\n" +
 			"                                                             │   END->M6T2N:0, aac.BTXC5:8->BTXC5:0, aac.id:7!null->NTOFG:0, sn.id:10!null->LWQ6O:0, mjr3d.TUV25:3->TUV25:0]\n" +
 			"                                                             └─ LeftOuterJoin\n" +
 			"                                                                 ├─ Or\n" +
@@ -13165,10 +13121,9 @@ WHERE
 			"             │           │                   │               └─ Project\n" +
 			"             │           │                   │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
 			"             │           │                   │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"             │           │                   │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"             │           │                   │                           ├─ index: [NOXN3.id]\n" +
-			"             │           │                   │                           ├─ columns: [id]\n" +
-			"             │           │                   │                           └─ keys: mjr3d.QNI57\n" +
+			"             │           │                   │                       └─ Table\n" +
+			"             │           │                   │                           ├─ name: NOXN3\n" +
+			"             │           │                   │                           └─ columns: [id]\n" +
 			"             │           │                   │   WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery\n" +
 			"             │           │                   │   ├─ cacheable: false\n" +
 			"             │           │                   │   └─ Project\n" +
@@ -13185,10 +13140,9 @@ WHERE
 			"             │           │                   │               └─ Project\n" +
 			"             │           │                   │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
 			"             │           │                   │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"             │           │                   │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"             │           │                   │                           ├─ index: [NOXN3.id]\n" +
-			"             │           │                   │                           ├─ columns: [id]\n" +
-			"             │           │                   │                           └─ keys: mjr3d.TDEIU\n" +
+			"             │           │                   │                       └─ Table\n" +
+			"             │           │                   │                           ├─ name: NOXN3\n" +
+			"             │           │                   │                           └─ columns: [id]\n" +
 			"             │           │                   │   END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
 			"             │           │                   └─ Project\n" +
 			"             │           │                       ├─ columns: [mjr3d.FJDP5, mjr3d.BJUF2, mjr3d.M22QN, mjr3d.TUV25, mjr3d.ESFVY, mjr3d.QNI57, mjr3d.TDEIU, aac.id, aac.BTXC5, aac.FHCYT, sn.id, sn.BRQP2, sn.FFTBJ, sn.A7XO2, sn.KBO7R, sn.ECDKM, sn.NUMK2, sn.LETOE, sn.YKSSU, sn.FHCYT, CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery\n" +
@@ -13207,10 +13161,9 @@ WHERE
 			"             │           │                       │               └─ Project\n" +
 			"             │           │                       │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
 			"             │           │                       │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"             │           │                       │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"             │           │                       │                           ├─ index: [NOXN3.id]\n" +
-			"             │           │                       │                           ├─ columns: [id]\n" +
-			"             │           │                       │                           └─ keys: mjr3d.QNI57\n" +
+			"             │           │                       │                       └─ Table\n" +
+			"             │           │                       │                           ├─ name: NOXN3\n" +
+			"             │           │                       │                           └─ columns: [id]\n" +
 			"             │           │                       │   WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery\n" +
 			"             │           │                       │   ├─ cacheable: false\n" +
 			"             │           │                       │   └─ Project\n" +
@@ -13227,10 +13180,9 @@ WHERE
 			"             │           │                       │               └─ Project\n" +
 			"             │           │                       │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
 			"             │           │                       │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"             │           │                       │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"             │           │                       │                           ├─ index: [NOXN3.id]\n" +
-			"             │           │                       │                           ├─ columns: [id]\n" +
-			"             │           │                       │                           └─ keys: mjr3d.TDEIU\n" +
+			"             │           │                       │                       └─ Table\n" +
+			"             │           │                       │                           ├─ name: NOXN3\n" +
+			"             │           │                       │                           └─ columns: [id]\n" +
 			"             │           │                       │   END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
 			"             │           │                       └─ LeftOuterJoin (estimated cost=1193112.000 rows=125)\n" +
 			"             │           │                           ├─ ((((((NOT(mjr3d.QNI57 IS NULL)) AND (sn.id = mjr3d.QNI57)) AND mjr3d.BJUF2 IS NULL) OR (((NOT(mjr3d.QNI57 IS NULL)) AND InSubquery\n" +
@@ -13471,10 +13423,9 @@ WHERE
 			"                                                         │               └─ Project\n" +
 			"                                                         │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
 			"                                                         │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"                                                         │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"                                                         │                           ├─ index: [NOXN3.id]\n" +
-			"                                                         │                           ├─ columns: [id]\n" +
-			"                                                         │                           └─ keys: mjr3d.QNI57\n" +
+			"                                                         │                       └─ Table\n" +
+			"                                                         │                           ├─ name: NOXN3\n" +
+			"                                                         │                           └─ columns: [id]\n" +
 			"                                                         │   WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery\n" +
 			"                                                         │   ├─ cacheable: false\n" +
 			"                                                         │   └─ Project\n" +
@@ -13491,10 +13442,9 @@ WHERE
 			"                                                         │               └─ Project\n" +
 			"                                                         │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
 			"                                                         │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"                                                         │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"                                                         │                           ├─ index: [NOXN3.id]\n" +
-			"                                                         │                           ├─ columns: [id]\n" +
-			"                                                         │                           └─ keys: mjr3d.TDEIU\n" +
+			"                                                         │                       └─ Table\n" +
+			"                                                         │                           ├─ name: NOXN3\n" +
+			"                                                         │                           └─ columns: [id]\n" +
 			"                                                         │   END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
 			"                                                         └─ Project\n" +
 			"                                                             ├─ columns: [mjr3d.FJDP5, mjr3d.BJUF2, mjr3d.M22QN, mjr3d.TUV25, mjr3d.ESFVY, mjr3d.QNI57, mjr3d.TDEIU, aac.id, aac.BTXC5, aac.FHCYT, sn.id, sn.BRQP2, sn.FFTBJ, sn.A7XO2, sn.KBO7R, sn.ECDKM, sn.NUMK2, sn.LETOE, sn.YKSSU, sn.FHCYT, CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery\n" +
@@ -13513,10 +13463,9 @@ WHERE
 			"                                                             │               └─ Project\n" +
 			"                                                             │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
 			"                                                             │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"                                                             │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"                                                             │                           ├─ index: [NOXN3.id]\n" +
-			"                                                             │                           ├─ columns: [id]\n" +
-			"                                                             │                           └─ keys: mjr3d.QNI57\n" +
+			"                                                             │                       └─ Table\n" +
+			"                                                             │                           ├─ name: NOXN3\n" +
+			"                                                             │                           └─ columns: [id]\n" +
 			"                                                             │   WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery\n" +
 			"                                                             │   ├─ cacheable: false\n" +
 			"                                                             │   └─ Project\n" +
@@ -13533,10 +13482,9 @@ WHERE
 			"                                                             │               └─ Project\n" +
 			"                                                             │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
 			"                                                             │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"                                                             │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"                                                             │                           ├─ index: [NOXN3.id]\n" +
-			"                                                             │                           ├─ columns: [id]\n" +
-			"                                                             │                           └─ keys: mjr3d.TDEIU\n" +
+			"                                                             │                       └─ Table\n" +
+			"                                                             │                           ├─ name: NOXN3\n" +
+			"                                                             │                           └─ columns: [id]\n" +
 			"                                                             │   END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
 			"                                                             └─ LeftOuterJoin\n" +
 			"                                                                 ├─ ((((((NOT(mjr3d.QNI57 IS NULL)) AND (sn.id = mjr3d.QNI57)) AND mjr3d.BJUF2 IS NULL) OR (((NOT(mjr3d.QNI57 IS NULL)) AND InSubquery\n" +
@@ -13696,10 +13644,9 @@ WHERE
 			"             │           │                   │               └─ Project\n" +
 			"             │           │                   │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
 			"             │           │                   │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"             │           │                   │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"             │           │                   │                           ├─ index: [NOXN3.id]\n" +
-			"             │           │                   │                           ├─ columns: [id]\n" +
-			"             │           │                   │                           └─ keys: mjr3d.QNI57\n" +
+			"             │           │                   │                       └─ Table\n" +
+			"             │           │                   │                           ├─ name: NOXN3\n" +
+			"             │           │                   │                           └─ columns: [id]\n" +
 			"             │           │                   │   WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery\n" +
 			"             │           │                   │   ├─ cacheable: false\n" +
 			"             │           │                   │   └─ Project\n" +
@@ -13716,10 +13663,9 @@ WHERE
 			"             │           │                   │               └─ Project\n" +
 			"             │           │                   │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
 			"             │           │                   │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"             │           │                   │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"             │           │                   │                           ├─ index: [NOXN3.id]\n" +
-			"             │           │                   │                           ├─ columns: [id]\n" +
-			"             │           │                   │                           └─ keys: mjr3d.TDEIU\n" +
+			"             │           │                   │                       └─ Table\n" +
+			"             │           │                   │                           ├─ name: NOXN3\n" +
+			"             │           │                   │                           └─ columns: [id]\n" +
 			"             │           │                   │   END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
 			"             │           │                   └─ Project\n" +
 			"             │           │                       ├─ columns: [mjr3d.FJDP5, mjr3d.BJUF2, mjr3d.M22QN, mjr3d.TUV25, mjr3d.ESFVY, mjr3d.QNI57, mjr3d.TDEIU, aac.id, aac.BTXC5, aac.FHCYT, sn.id, sn.BRQP2, sn.FFTBJ, sn.A7XO2, sn.KBO7R, sn.ECDKM, sn.NUMK2, sn.LETOE, sn.YKSSU, sn.FHCYT, CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery\n" +
@@ -13738,10 +13684,9 @@ WHERE
 			"             │           │                       │               └─ Project\n" +
 			"             │           │                       │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
 			"             │           │                       │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"             │           │                       │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"             │           │                       │                           ├─ index: [NOXN3.id]\n" +
-			"             │           │                       │                           ├─ columns: [id]\n" +
-			"             │           │                       │                           └─ keys: mjr3d.QNI57\n" +
+			"             │           │                       │                       └─ Table\n" +
+			"             │           │                       │                           ├─ name: NOXN3\n" +
+			"             │           │                       │                           └─ columns: [id]\n" +
 			"             │           │                       │   WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery\n" +
 			"             │           │                       │   ├─ cacheable: false\n" +
 			"             │           │                       │   └─ Project\n" +
@@ -13758,10 +13703,9 @@ WHERE
 			"             │           │                       │               └─ Project\n" +
 			"             │           │                       │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
 			"             │           │                       │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"             │           │                       │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"             │           │                       │                           ├─ index: [NOXN3.id]\n" +
-			"             │           │                       │                           ├─ columns: [id]\n" +
-			"             │           │                       │                           └─ keys: mjr3d.TDEIU\n" +
+			"             │           │                       │                       └─ Table\n" +
+			"             │           │                       │                           ├─ name: NOXN3\n" +
+			"             │           │                       │                           └─ columns: [id]\n" +
 			"             │           │                       │   END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
 			"             │           │                       └─ LeftOuterJoin (estimated cost=1193112.000 rows=125) (actual rows=0 loops=1)\n" +
 			"             │           │                           ├─ ((((((NOT(mjr3d.QNI57 IS NULL)) AND (sn.id = mjr3d.QNI57)) AND mjr3d.BJUF2 IS NULL) OR (((NOT(mjr3d.QNI57 IS NULL)) AND InSubquery\n" +
@@ -14002,10 +13946,9 @@ WHERE
 			"                                                         │               └─ Project\n" +
 			"                                                         │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
 			"                                                         │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"                                                         │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"                                                         │                           ├─ index: [NOXN3.id]\n" +
-			"                                                         │                           ├─ columns: [id]\n" +
-			"                                                         │                           └─ keys: mjr3d.QNI57\n" +
+			"                                                         │                       └─ Table\n" +
+			"                                                         │                           ├─ name: NOXN3\n" +
+			"                                                         │                           └─ columns: [id]\n" +
 			"                                                         │   WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery\n" +
 			"                                                         │   ├─ cacheable: false\n" +
 			"                                                         │   └─ Project\n" +
@@ -14022,10 +13965,9 @@ WHERE
 			"                                                         │               └─ Project\n" +
 			"                                                         │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
 			"                                                         │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"                                                         │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"                                                         │                           ├─ index: [NOXN3.id]\n" +
-			"                                                         │                           ├─ columns: [id]\n" +
-			"                                                         │                           └─ keys: mjr3d.TDEIU\n" +
+			"                                                         │                       └─ Table\n" +
+			"                                                         │                           ├─ name: NOXN3\n" +
+			"                                                         │                           └─ columns: [id]\n" +
 			"                                                         │   END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
 			"                                                         └─ Project\n" +
 			"                                                             ├─ columns: [mjr3d.FJDP5, mjr3d.BJUF2, mjr3d.M22QN, mjr3d.TUV25, mjr3d.ESFVY, mjr3d.QNI57, mjr3d.TDEIU, aac.id, aac.BTXC5, aac.FHCYT, sn.id, sn.BRQP2, sn.FFTBJ, sn.A7XO2, sn.KBO7R, sn.ECDKM, sn.NUMK2, sn.LETOE, sn.YKSSU, sn.FHCYT, CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery\n" +
@@ -14044,10 +13986,9 @@ WHERE
 			"                                                             │               └─ Project\n" +
 			"                                                             │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
 			"                                                             │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"                                                             │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"                                                             │                           ├─ index: [NOXN3.id]\n" +
-			"                                                             │                           ├─ columns: [id]\n" +
-			"                                                             │                           └─ keys: mjr3d.QNI57\n" +
+			"                                                             │                       └─ Table\n" +
+			"                                                             │                           ├─ name: NOXN3\n" +
+			"                                                             │                           └─ columns: [id]\n" +
 			"                                                             │   WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery\n" +
 			"                                                             │   ├─ cacheable: false\n" +
 			"                                                             │   └─ Project\n" +
@@ -14064,10 +14005,9 @@ WHERE
 			"                                                             │               └─ Project\n" +
 			"                                                             │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
 			"                                                             │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"                                                             │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"                                                             │                           ├─ index: [NOXN3.id]\n" +
-			"                                                             │                           ├─ columns: [id]\n" +
-			"                                                             │                           └─ keys: mjr3d.TDEIU\n" +
+			"                                                             │                       └─ Table\n" +
+			"                                                             │                           ├─ name: NOXN3\n" +
+			"                                                             │                           └─ columns: [id]\n" +
 			"                                                             │   END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
 			"                                                             └─ LeftOuterJoin\n" +
 			"                                                                 ├─ ((((((NOT(mjr3d.QNI57 IS NULL)) AND (sn.id = mjr3d.QNI57)) AND mjr3d.BJUF2 IS NULL) OR (((NOT(mjr3d.QNI57 IS NULL)) AND InSubquery\n" +
@@ -14391,14 +14331,11 @@ WHERE
 			"             │           │                   │                   └─ Window\n" +
 			"             │           │                   │                       ├─ row_number() over ( order by noxn3.id ASC)\n" +
 			"             │           │                   │                       ├─ noxn3.id:25!null\n" +
-			"             │           │                   │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"             │           │                   │                           ├─ index: [NOXN3.id]\n" +
-			"             │           │                   │                           ├─ keys: [mjr3d.QNI57:5!null]\n" +
+			"             │           │                   │                       └─ Table\n" +
+			"             │           │                   │                           ├─ name: NOXN3\n" +
+			"             │           │                   │                           ├─ columns: [id]\n" +
 			"             │           │                   │                           ├─ colSet: (1)\n" +
-			"             │           │                   │                           ├─ tableId: 1\n" +
-			"             │           │                   │                           └─ Table\n" +
-			"             │           │                   │                               ├─ name: NOXN3\n" +
-			"             │           │                   │                               └─ columns: [id]\n" +
+			"             │           │                   │                           └─ tableId: 1\n" +
 			"             │           │                   │   WHEN NOT\n" +
 			"             │           │                   │   └─ mjr3d.TDEIU:6!null IS NULL\n" +
 			"             │           │                   │   THEN Subquery\n" +
@@ -14422,14 +14359,11 @@ WHERE
 			"             │           │                   │                   └─ Window\n" +
 			"             │           │                   │                       ├─ row_number() over ( order by noxn3.id ASC)\n" +
 			"             │           │                   │                       ├─ noxn3.id:25!null\n" +
-			"             │           │                   │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"             │           │                   │                           ├─ index: [NOXN3.id]\n" +
-			"             │           │                   │                           ├─ keys: [mjr3d.TDEIU:6!null]\n" +
+			"             │           │                   │                       └─ Table\n" +
+			"             │           │                   │                           ├─ name: NOXN3\n" +
+			"             │           │                   │                           ├─ columns: [id]\n" +
 			"             │           │                   │                           ├─ colSet: (1)\n" +
-			"             │           │                   │                           ├─ tableId: 1\n" +
-			"             │           │                   │                           └─ Table\n" +
-			"             │           │                   │                               ├─ name: NOXN3\n" +
-			"             │           │                   │                               └─ columns: [id]\n" +
+			"             │           │                   │                           └─ tableId: 1\n" +
 			"             │           │                   │   END->M6T2N:0, aac.BTXC5:8->BTXC5:0, aac.id:7!null->NTOFG:0, sn.id:10!null->LWQ6O:0, mjr3d.TUV25:3->TUV25:0]\n" +
 			"             │           │                   └─ Project\n" +
 			"             │           │                       ├─ columns: [mjr3d.FJDP5:0!null, mjr3d.BJUF2:1!null, mjr3d.M22QN:2!null, mjr3d.TUV25:3, mjr3d.ESFVY:4!null, mjr3d.QNI57:5!null, mjr3d.TDEIU:6!null, aac.id:7!null, aac.BTXC5:8, aac.FHCYT:9, sn.id:10!null, sn.BRQP2:11!null, sn.FFTBJ:12!null, sn.A7XO2:13, sn.KBO7R:14!null, sn.ECDKM:15, sn.NUMK2:16!null, sn.LETOE:17!null, sn.YKSSU:18, sn.FHCYT:19, CASE  WHEN NOT\n" +
@@ -14455,14 +14389,11 @@ WHERE
 			"             │           │                       │                   └─ Window\n" +
 			"             │           │                       │                       ├─ row_number() over ( order by noxn3.id ASC)\n" +
 			"             │           │                       │                       ├─ noxn3.id:20!null\n" +
-			"             │           │                       │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"             │           │                       │                           ├─ index: [NOXN3.id]\n" +
-			"             │           │                       │                           ├─ keys: [mjr3d.QNI57:5!null]\n" +
+			"             │           │                       │                       └─ Table\n" +
+			"             │           │                       │                           ├─ name: NOXN3\n" +
+			"             │           │                       │                           ├─ columns: [id]\n" +
 			"             │           │                       │                           ├─ colSet: (1)\n" +
-			"             │           │                       │                           ├─ tableId: 1\n" +
-			"             │           │                       │                           └─ Table\n" +
-			"             │           │                       │                               ├─ name: NOXN3\n" +
-			"             │           │                       │                               └─ columns: [id]\n" +
+			"             │           │                       │                           └─ tableId: 1\n" +
 			"             │           │                       │   WHEN NOT\n" +
 			"             │           │                       │   └─ mjr3d.TDEIU:6!null IS NULL\n" +
 			"             │           │                       │   THEN Subquery\n" +
@@ -14486,14 +14417,11 @@ WHERE
 			"             │           │                       │                   └─ Window\n" +
 			"             │           │                       │                       ├─ row_number() over ( order by noxn3.id ASC)\n" +
 			"             │           │                       │                       ├─ noxn3.id:20!null\n" +
-			"             │           │                       │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"             │           │                       │                           ├─ index: [NOXN3.id]\n" +
-			"             │           │                       │                           ├─ keys: [mjr3d.TDEIU:6!null]\n" +
+			"             │           │                       │                       └─ Table\n" +
+			"             │           │                       │                           ├─ name: NOXN3\n" +
+			"             │           │                       │                           ├─ columns: [id]\n" +
 			"             │           │                       │                           ├─ colSet: (1)\n" +
-			"             │           │                       │                           ├─ tableId: 1\n" +
-			"             │           │                       │                           └─ Table\n" +
-			"             │           │                       │                               ├─ name: NOXN3\n" +
-			"             │           │                       │                               └─ columns: [id]\n" +
+			"             │           │                       │                           └─ tableId: 1\n" +
 			"             │           │                       │   END->M6T2N:0, aac.BTXC5:8->BTXC5:0, aac.id:7!null->NTOFG:0, sn.id:10!null->LWQ6O:0, mjr3d.TUV25:3->TUV25:0]\n" +
 			"             │           │                       └─ LeftOuterJoin\n" +
 			"             │           │                           ├─ Or\n" +
@@ -14884,14 +14812,11 @@ WHERE
 			"                                                         │                   └─ Window\n" +
 			"                                                         │                       ├─ row_number() over ( order by noxn3.id ASC)\n" +
 			"                                                         │                       ├─ noxn3.id:25!null\n" +
-			"                                                         │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"                                                         │                           ├─ index: [NOXN3.id]\n" +
-			"                                                         │                           ├─ keys: [mjr3d.QNI57:5!null]\n" +
+			"                                                         │                       └─ Table\n" +
+			"                                                         │                           ├─ name: NOXN3\n" +
+			"                                                         │                           ├─ columns: [id]\n" +
 			"                                                         │                           ├─ colSet: (1)\n" +
-			"                                                         │                           ├─ tableId: 1\n" +
-			"                                                         │                           └─ Table\n" +
-			"                                                         │                               ├─ name: NOXN3\n" +
-			"                                                         │                               └─ columns: [id]\n" +
+			"                                                         │                           └─ tableId: 1\n" +
 			"                                                         │   WHEN NOT\n" +
 			"                                                         │   └─ mjr3d.TDEIU:6!null IS NULL\n" +
 			"                                                         │   THEN Subquery\n" +
@@ -14915,14 +14840,11 @@ WHERE
 			"                                                         │                   └─ Window\n" +
 			"                                                         │                       ├─ row_number() over ( order by noxn3.id ASC)\n" +
 			"                                                         │                       ├─ noxn3.id:25!null\n" +
-			"                                                         │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"                                                         │                           ├─ index: [NOXN3.id]\n" +
-			"                                                         │                           ├─ keys: [mjr3d.TDEIU:6!null]\n" +
+			"                                                         │                       └─ Table\n" +
+			"                                                         │                           ├─ name: NOXN3\n" +
+			"                                                         │                           ├─ columns: [id]\n" +
 			"                                                         │                           ├─ colSet: (1)\n" +
-			"                                                         │                           ├─ tableId: 1\n" +
-			"                                                         │                           └─ Table\n" +
-			"                                                         │                               ├─ name: NOXN3\n" +
-			"                                                         │                               └─ columns: [id]\n" +
+			"                                                         │                           └─ tableId: 1\n" +
 			"                                                         │   END->M6T2N:0, aac.BTXC5:8->BTXC5:0, aac.id:7!null->NTOFG:0, sn.id:10!null->LWQ6O:0, mjr3d.TUV25:3->TUV25:0]\n" +
 			"                                                         └─ Project\n" +
 			"                                                             ├─ columns: [mjr3d.FJDP5:0!null, mjr3d.BJUF2:1!null, mjr3d.M22QN:2!null, mjr3d.TUV25:3, mjr3d.ESFVY:4!null, mjr3d.QNI57:5!null, mjr3d.TDEIU:6!null, aac.id:7!null, aac.BTXC5:8, aac.FHCYT:9, sn.id:10!null, sn.BRQP2:11!null, sn.FFTBJ:12!null, sn.A7XO2:13, sn.KBO7R:14!null, sn.ECDKM:15, sn.NUMK2:16!null, sn.LETOE:17!null, sn.YKSSU:18, sn.FHCYT:19, CASE  WHEN NOT\n" +
@@ -14948,14 +14870,11 @@ WHERE
 			"                                                             │                   └─ Window\n" +
 			"                                                             │                       ├─ row_number() over ( order by noxn3.id ASC)\n" +
 			"                                                             │                       ├─ noxn3.id:20!null\n" +
-			"                                                             │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"                                                             │                           ├─ index: [NOXN3.id]\n" +
-			"                                                             │                           ├─ keys: [mjr3d.QNI57:5!null]\n" +
+			"                                                             │                       └─ Table\n" +
+			"                                                             │                           ├─ name: NOXN3\n" +
+			"                                                             │                           ├─ columns: [id]\n" +
 			"                                                             │                           ├─ colSet: (1)\n" +
-			"                                                             │                           ├─ tableId: 1\n" +
-			"                                                             │                           └─ Table\n" +
-			"                                                             │                               ├─ name: NOXN3\n" +
-			"                                                             │                               └─ columns: [id]\n" +
+			"                                                             │                           └─ tableId: 1\n" +
 			"                                                             │   WHEN NOT\n" +
 			"                                                             │   └─ mjr3d.TDEIU:6!null IS NULL\n" +
 			"                                                             │   THEN Subquery\n" +
@@ -14979,14 +14898,11 @@ WHERE
 			"                                                             │                   └─ Window\n" +
 			"                                                             │                       ├─ row_number() over ( order by noxn3.id ASC)\n" +
 			"                                                             │                       ├─ noxn3.id:20!null\n" +
-			"                                                             │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"                                                             │                           ├─ index: [NOXN3.id]\n" +
-			"                                                             │                           ├─ keys: [mjr3d.TDEIU:6!null]\n" +
+			"                                                             │                       └─ Table\n" +
+			"                                                             │                           ├─ name: NOXN3\n" +
+			"                                                             │                           ├─ columns: [id]\n" +
 			"                                                             │                           ├─ colSet: (1)\n" +
-			"                                                             │                           ├─ tableId: 1\n" +
-			"                                                             │                           └─ Table\n" +
-			"                                                             │                               ├─ name: NOXN3\n" +
-			"                                                             │                               └─ columns: [id]\n" +
+			"                                                             │                           └─ tableId: 1\n" +
 			"                                                             │   END->M6T2N:0, aac.BTXC5:8->BTXC5:0, aac.id:7!null->NTOFG:0, sn.id:10!null->LWQ6O:0, mjr3d.TUV25:3->TUV25:0]\n" +
 			"                                                             └─ LeftOuterJoin\n" +
 			"                                                                 ├─ Or\n" +
@@ -15240,10 +15156,9 @@ WHERE
 			"             │           │                   │               └─ Project\n" +
 			"             │           │                   │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
 			"             │           │                   │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"             │           │                   │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"             │           │                   │                           ├─ index: [NOXN3.id]\n" +
-			"             │           │                   │                           ├─ columns: [id]\n" +
-			"             │           │                   │                           └─ keys: mjr3d.QNI57\n" +
+			"             │           │                   │                       └─ Table\n" +
+			"             │           │                   │                           ├─ name: NOXN3\n" +
+			"             │           │                   │                           └─ columns: [id]\n" +
 			"             │           │                   │   WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery\n" +
 			"             │           │                   │   ├─ cacheable: false\n" +
 			"             │           │                   │   └─ Project\n" +
@@ -15260,10 +15175,9 @@ WHERE
 			"             │           │                   │               └─ Project\n" +
 			"             │           │                   │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
 			"             │           │                   │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"             │           │                   │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"             │           │                   │                           ├─ index: [NOXN3.id]\n" +
-			"             │           │                   │                           ├─ columns: [id]\n" +
-			"             │           │                   │                           └─ keys: mjr3d.TDEIU\n" +
+			"             │           │                   │                       └─ Table\n" +
+			"             │           │                   │                           ├─ name: NOXN3\n" +
+			"             │           │                   │                           └─ columns: [id]\n" +
 			"             │           │                   │   END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
 			"             │           │                   └─ Project\n" +
 			"             │           │                       ├─ columns: [mjr3d.FJDP5, mjr3d.BJUF2, mjr3d.M22QN, mjr3d.TUV25, mjr3d.ESFVY, mjr3d.QNI57, mjr3d.TDEIU, aac.id, aac.BTXC5, aac.FHCYT, sn.id, sn.BRQP2, sn.FFTBJ, sn.A7XO2, sn.KBO7R, sn.ECDKM, sn.NUMK2, sn.LETOE, sn.YKSSU, sn.FHCYT, CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery\n" +
@@ -15282,10 +15196,9 @@ WHERE
 			"             │           │                       │               └─ Project\n" +
 			"             │           │                       │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
 			"             │           │                       │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"             │           │                       │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"             │           │                       │                           ├─ index: [NOXN3.id]\n" +
-			"             │           │                       │                           ├─ columns: [id]\n" +
-			"             │           │                       │                           └─ keys: mjr3d.QNI57\n" +
+			"             │           │                       │                       └─ Table\n" +
+			"             │           │                       │                           ├─ name: NOXN3\n" +
+			"             │           │                       │                           └─ columns: [id]\n" +
 			"             │           │                       │   WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery\n" +
 			"             │           │                       │   ├─ cacheable: false\n" +
 			"             │           │                       │   └─ Project\n" +
@@ -15302,10 +15215,9 @@ WHERE
 			"             │           │                       │               └─ Project\n" +
 			"             │           │                       │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
 			"             │           │                       │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"             │           │                       │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"             │           │                       │                           ├─ index: [NOXN3.id]\n" +
-			"             │           │                       │                           ├─ columns: [id]\n" +
-			"             │           │                       │                           └─ keys: mjr3d.TDEIU\n" +
+			"             │           │                       │                       └─ Table\n" +
+			"             │           │                       │                           ├─ name: NOXN3\n" +
+			"             │           │                       │                           └─ columns: [id]\n" +
 			"             │           │                       │   END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
 			"             │           │                       └─ LeftOuterJoin (estimated cost=1193112.000 rows=125)\n" +
 			"             │           │                           ├─ ((((((NOT(mjr3d.QNI57 IS NULL)) AND (sn.id = mjr3d.QNI57)) AND mjr3d.BJUF2 IS NULL) OR (((NOT(mjr3d.QNI57 IS NULL)) AND InSubquery\n" +
@@ -15542,10 +15454,9 @@ WHERE
 			"                                                         │               └─ Project\n" +
 			"                                                         │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
 			"                                                         │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"                                                         │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"                                                         │                           ├─ index: [NOXN3.id]\n" +
-			"                                                         │                           ├─ columns: [id]\n" +
-			"                                                         │                           └─ keys: mjr3d.QNI57\n" +
+			"                                                         │                       └─ Table\n" +
+			"                                                         │                           ├─ name: NOXN3\n" +
+			"                                                         │                           └─ columns: [id]\n" +
 			"                                                         │   WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery\n" +
 			"                                                         │   ├─ cacheable: false\n" +
 			"                                                         │   └─ Project\n" +
@@ -15562,10 +15473,9 @@ WHERE
 			"                                                         │               └─ Project\n" +
 			"                                                         │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
 			"                                                         │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"                                                         │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"                                                         │                           ├─ index: [NOXN3.id]\n" +
-			"                                                         │                           ├─ columns: [id]\n" +
-			"                                                         │                           └─ keys: mjr3d.TDEIU\n" +
+			"                                                         │                       └─ Table\n" +
+			"                                                         │                           ├─ name: NOXN3\n" +
+			"                                                         │                           └─ columns: [id]\n" +
 			"                                                         │   END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
 			"                                                         └─ Project\n" +
 			"                                                             ├─ columns: [mjr3d.FJDP5, mjr3d.BJUF2, mjr3d.M22QN, mjr3d.TUV25, mjr3d.ESFVY, mjr3d.QNI57, mjr3d.TDEIU, aac.id, aac.BTXC5, aac.FHCYT, sn.id, sn.BRQP2, sn.FFTBJ, sn.A7XO2, sn.KBO7R, sn.ECDKM, sn.NUMK2, sn.LETOE, sn.YKSSU, sn.FHCYT, CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery\n" +
@@ -15584,10 +15494,9 @@ WHERE
 			"                                                             │               └─ Project\n" +
 			"                                                             │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
 			"                                                             │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"                                                             │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"                                                             │                           ├─ index: [NOXN3.id]\n" +
-			"                                                             │                           ├─ columns: [id]\n" +
-			"                                                             │                           └─ keys: mjr3d.QNI57\n" +
+			"                                                             │                       └─ Table\n" +
+			"                                                             │                           ├─ name: NOXN3\n" +
+			"                                                             │                           └─ columns: [id]\n" +
 			"                                                             │   WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery\n" +
 			"                                                             │   ├─ cacheable: false\n" +
 			"                                                             │   └─ Project\n" +
@@ -15604,10 +15513,9 @@ WHERE
 			"                                                             │               └─ Project\n" +
 			"                                                             │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
 			"                                                             │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"                                                             │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"                                                             │                           ├─ index: [NOXN3.id]\n" +
-			"                                                             │                           ├─ columns: [id]\n" +
-			"                                                             │                           └─ keys: mjr3d.TDEIU\n" +
+			"                                                             │                       └─ Table\n" +
+			"                                                             │                           ├─ name: NOXN3\n" +
+			"                                                             │                           └─ columns: [id]\n" +
 			"                                                             │   END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
 			"                                                             └─ LeftOuterJoin\n" +
 			"                                                                 ├─ ((((((NOT(mjr3d.QNI57 IS NULL)) AND (sn.id = mjr3d.QNI57)) AND mjr3d.BJUF2 IS NULL) OR (((NOT(mjr3d.QNI57 IS NULL)) AND InSubquery\n" +
@@ -15767,10 +15675,9 @@ WHERE
 			"             │           │                   │               └─ Project\n" +
 			"             │           │                   │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
 			"             │           │                   │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"             │           │                   │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"             │           │                   │                           ├─ index: [NOXN3.id]\n" +
-			"             │           │                   │                           ├─ columns: [id]\n" +
-			"             │           │                   │                           └─ keys: mjr3d.QNI57\n" +
+			"             │           │                   │                       └─ Table\n" +
+			"             │           │                   │                           ├─ name: NOXN3\n" +
+			"             │           │                   │                           └─ columns: [id]\n" +
 			"             │           │                   │   WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery\n" +
 			"             │           │                   │   ├─ cacheable: false\n" +
 			"             │           │                   │   └─ Project\n" +
@@ -15787,10 +15694,9 @@ WHERE
 			"             │           │                   │               └─ Project\n" +
 			"             │           │                   │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
 			"             │           │                   │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"             │           │                   │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"             │           │                   │                           ├─ index: [NOXN3.id]\n" +
-			"             │           │                   │                           ├─ columns: [id]\n" +
-			"             │           │                   │                           └─ keys: mjr3d.TDEIU\n" +
+			"             │           │                   │                       └─ Table\n" +
+			"             │           │                   │                           ├─ name: NOXN3\n" +
+			"             │           │                   │                           └─ columns: [id]\n" +
 			"             │           │                   │   END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
 			"             │           │                   └─ Project\n" +
 			"             │           │                       ├─ columns: [mjr3d.FJDP5, mjr3d.BJUF2, mjr3d.M22QN, mjr3d.TUV25, mjr3d.ESFVY, mjr3d.QNI57, mjr3d.TDEIU, aac.id, aac.BTXC5, aac.FHCYT, sn.id, sn.BRQP2, sn.FFTBJ, sn.A7XO2, sn.KBO7R, sn.ECDKM, sn.NUMK2, sn.LETOE, sn.YKSSU, sn.FHCYT, CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery\n" +
@@ -15809,10 +15715,9 @@ WHERE
 			"             │           │                       │               └─ Project\n" +
 			"             │           │                       │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
 			"             │           │                       │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"             │           │                       │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"             │           │                       │                           ├─ index: [NOXN3.id]\n" +
-			"             │           │                       │                           ├─ columns: [id]\n" +
-			"             │           │                       │                           └─ keys: mjr3d.QNI57\n" +
+			"             │           │                       │                       └─ Table\n" +
+			"             │           │                       │                           ├─ name: NOXN3\n" +
+			"             │           │                       │                           └─ columns: [id]\n" +
 			"             │           │                       │   WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery\n" +
 			"             │           │                       │   ├─ cacheable: false\n" +
 			"             │           │                       │   └─ Project\n" +
@@ -15829,10 +15734,9 @@ WHERE
 			"             │           │                       │               └─ Project\n" +
 			"             │           │                       │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
 			"             │           │                       │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"             │           │                       │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"             │           │                       │                           ├─ index: [NOXN3.id]\n" +
-			"             │           │                       │                           ├─ columns: [id]\n" +
-			"             │           │                       │                           └─ keys: mjr3d.TDEIU\n" +
+			"             │           │                       │                       └─ Table\n" +
+			"             │           │                       │                           ├─ name: NOXN3\n" +
+			"             │           │                       │                           └─ columns: [id]\n" +
 			"             │           │                       │   END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
 			"             │           │                       └─ LeftOuterJoin (estimated cost=1193112.000 rows=125) (actual rows=0 loops=1)\n" +
 			"             │           │                           ├─ ((((((NOT(mjr3d.QNI57 IS NULL)) AND (sn.id = mjr3d.QNI57)) AND mjr3d.BJUF2 IS NULL) OR (((NOT(mjr3d.QNI57 IS NULL)) AND InSubquery\n" +
@@ -16069,10 +15973,9 @@ WHERE
 			"                                                         │               └─ Project\n" +
 			"                                                         │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
 			"                                                         │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"                                                         │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"                                                         │                           ├─ index: [NOXN3.id]\n" +
-			"                                                         │                           ├─ columns: [id]\n" +
-			"                                                         │                           └─ keys: mjr3d.QNI57\n" +
+			"                                                         │                       └─ Table\n" +
+			"                                                         │                           ├─ name: NOXN3\n" +
+			"                                                         │                           └─ columns: [id]\n" +
 			"                                                         │   WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery\n" +
 			"                                                         │   ├─ cacheable: false\n" +
 			"                                                         │   └─ Project\n" +
@@ -16089,10 +15992,9 @@ WHERE
 			"                                                         │               └─ Project\n" +
 			"                                                         │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
 			"                                                         │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"                                                         │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"                                                         │                           ├─ index: [NOXN3.id]\n" +
-			"                                                         │                           ├─ columns: [id]\n" +
-			"                                                         │                           └─ keys: mjr3d.TDEIU\n" +
+			"                                                         │                       └─ Table\n" +
+			"                                                         │                           ├─ name: NOXN3\n" +
+			"                                                         │                           └─ columns: [id]\n" +
 			"                                                         │   END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
 			"                                                         └─ Project\n" +
 			"                                                             ├─ columns: [mjr3d.FJDP5, mjr3d.BJUF2, mjr3d.M22QN, mjr3d.TUV25, mjr3d.ESFVY, mjr3d.QNI57, mjr3d.TDEIU, aac.id, aac.BTXC5, aac.FHCYT, sn.id, sn.BRQP2, sn.FFTBJ, sn.A7XO2, sn.KBO7R, sn.ECDKM, sn.NUMK2, sn.LETOE, sn.YKSSU, sn.FHCYT, CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery\n" +
@@ -16111,10 +16013,9 @@ WHERE
 			"                                                             │               └─ Project\n" +
 			"                                                             │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
 			"                                                             │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"                                                             │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"                                                             │                           ├─ index: [NOXN3.id]\n" +
-			"                                                             │                           ├─ columns: [id]\n" +
-			"                                                             │                           └─ keys: mjr3d.QNI57\n" +
+			"                                                             │                       └─ Table\n" +
+			"                                                             │                           ├─ name: NOXN3\n" +
+			"                                                             │                           └─ columns: [id]\n" +
 			"                                                             │   WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery\n" +
 			"                                                             │   ├─ cacheable: false\n" +
 			"                                                             │   └─ Project\n" +
@@ -16131,10 +16032,9 @@ WHERE
 			"                                                             │               └─ Project\n" +
 			"                                                             │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
 			"                                                             │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"                                                             │                       └─ IndexedTableAccess(NOXN3)\n" +
-			"                                                             │                           ├─ index: [NOXN3.id]\n" +
-			"                                                             │                           ├─ columns: [id]\n" +
-			"                                                             │                           └─ keys: mjr3d.TDEIU\n" +
+			"                                                             │                       └─ Table\n" +
+			"                                                             │                           ├─ name: NOXN3\n" +
+			"                                                             │                           └─ columns: [id]\n" +
 			"                                                             │   END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
 			"                                                             └─ LeftOuterJoin\n" +
 			"                                                                 ├─ ((((((NOT(mjr3d.QNI57 IS NULL)) AND (sn.id = mjr3d.QNI57)) AND mjr3d.BJUF2 IS NULL) OR (((NOT(mjr3d.QNI57 IS NULL)) AND InSubquery\n" +

@@ -146,7 +146,7 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 				col = scopeColumn{col: e.Name(), scalar: e, typ: e.Type(b.ctx), nullable: e.IsNullable(b.ctx)}
 			} else if gf, ok := e.Child.(*expression.GetField); ok && gf.Table() == "" {
 				// potential alias only if table is empty
-				if _, ok := tempScope.exprs[gf.Name()]; ok {
+				if aliasId, ok := tempScope.exprs[gf.Name()]; ok && aliasId == columnId(gf.Id()) {
 					// can't ref alias within the same scope
 					err := sql.ErrMisusedAlias.New(e.Name())
 					b.handleErr(err)

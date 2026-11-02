@@ -66,6 +66,10 @@ var (
 	// ErrViewRecursion is returned when a view references itself, either directly or through other views.
 	ErrViewRecursion = newMySQLKind("`%s`.`%s` contains view recursion", 1462, mysql.SSUnknownSQLState)
 
+	// ErrGeneratedColumnRecursion is returned when resolving a table's generated column expressions requires resolving
+	// the same table's generated columns again, e.g. through a subquery stored in a functional index expression.
+	ErrGeneratedColumnRecursion = errors.NewKind("generated column expressions on table `%s`.`%s` reference the table recursively")
+
 	// ErrUnknownTable is returned when the non-table name is used for table actions.
 	ErrUnknownTable = errors.NewKind("Unknown table '%s'")
 
@@ -760,6 +764,10 @@ var (
 	// ErrPrivilegeCheckFailed is returned when a user does not have the correct privileges to perform an operation.
 	ErrPrivilegeCheckFailed = newMySQLKind("command denied to user %s", 1142, "42000")
 
+	// ErrSpecificAccessDenied is returned when a user lacks a privilege that a
+	// statement requires.
+	ErrSpecificAccessDenied = newMySQLKind("Access denied; you need (at least one of) the %s privilege(s) for this operation", mysql.ERSpecifiedAccessDenied, mysql.SSClientError)
+
 	// ErrGrantUserDoesNotExist is returned when a user does not exist when attempting to grant them privileges.
 	ErrGrantUserDoesNotExist = errors.NewKind("You are not allowed to create a user with GRANT")
 
@@ -836,6 +844,10 @@ var (
 	// ErrColumnFunctionalIndexDependency is returned when a column referenced in a functional index is dropped or renamed.
 	// This matches MySQL ERROR 3837 (HY000).
 	ErrColumnFunctionalIndexDependency = newMySQLKind("Column '%s' has a functional index dependency and cannot be dropped or renamed.", 3837, "HY000")
+
+	// ErrFunctionalIndexFunctionNotAllowed is returned when a functional index expression contains a subquery, a
+	// variable, or a non-deterministic function. This matches MySQL ERROR 3758 (HY000).
+	ErrFunctionalIndexFunctionNotAllowed = newMySQLKind("Expression of functional index '%s' contains a disallowed function.", 3758, "HY000")
 
 	// ErrInvalidIndexPrefix is returned when a prefix index is not valid for the column type,
 	// or the prefix length exceeds the column's character length.

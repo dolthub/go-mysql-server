@@ -167,12 +167,21 @@ func (f *FuncDepSet) LaxKey() (ColSet, bool) {
 	return f.keys[0].cols, true
 }
 
-func (f *FuncDepSet) All() ColSet {
-	return f.all
+// BestKey returns the current best Key found.
+// If no key has been found, return the trivial key containing all columns in the relation.
+func (f *FuncDepSet) BestKey() Key {
+	if len(f.keys) == 0 {
+		return Key{cols: f.all, allCols: f.all, strict: true}
+	}
+	return f.keys[0]
 }
 
 func (f *FuncDepSet) Empty() bool {
 	return f.all.Empty()
+}
+
+func (f *FuncDepSet) All() ColSet {
+	return f.all
 }
 
 func (f *FuncDepSet) NotNull() ColSet {
@@ -485,25 +494,12 @@ func NewCrossJoinFDs(left, right *FuncDepSet) *FuncDepSet {
 	ret.AddEquivSets(left)
 	ret.AddEquivSets(right)
 	// concatenate lead key, append others
-	var lKey, rKey Key
-	if len(left.keys) > 0 {
-		lKey = left.keys[0]
-	}
-	if len(right.keys) > 0 {
-		rKey = right.keys[0]
-	}
+	lKey := left.BestKey()
+	rKey := right.BestKey()
 	var jKey Key
-	if lKey.Empty() && rKey.Empty() {
-		return ret
-	} else if lKey.Empty() {
-		jKey = rKey
-	} else if rKey.Empty() {
-		jKey = lKey
-	} else {
-		jKey.cols = lKey.cols.Union(rKey.cols)
-		jKey.allCols = ret.all
-		jKey.strict = lKey.strict && rKey.strict
-	}
+	jKey.cols = lKey.cols.Union(rKey.cols)
+	jKey.allCols = ret.all
+	jKey.strict = lKey.strict && rKey.strict
 	ret.keys = append(ret.keys, jKey)
 	ret.keys = append(ret.keys, left.keys...)
 	ret.keys = append(ret.keys, right.keys...)

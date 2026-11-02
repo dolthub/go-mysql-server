@@ -748,6 +748,32 @@ AND id NOT IN (SELECT item_id FROM tags WHERE tag = 'x')`,
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/11548
+		Name: "correlated subquery over a derived table with a window or limit",
+		SetUpScript: []string{
+			"CREATE TABLE t (id INT PRIMARY KEY, k INT);",
+			"INSERT INTO t VALUES (1, 10), (2, 20);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT o.id FROM t AS o WHERE NOT EXISTS (SELECT 1 FROM (SELECT id, ROW_NUMBER() OVER (ORDER BY k, id) AS rn FROM t) AS w WHERE w.id = o.id AND w.rn <= 1) ORDER BY o.id;",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "SELECT o.id FROM t AS o WHERE EXISTS (SELECT 1 FROM (SELECT id, ROW_NUMBER() OVER (ORDER BY k, id) AS rn FROM t) AS w WHERE w.id = o.id AND w.rn <= 1) ORDER BY o.id;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT o.id FROM t AS o WHERE EXISTS (SELECT 1 FROM (SELECT id FROM t ORDER BY id LIMIT 1) AS w WHERE w.id = o.id) ORDER BY o.id;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT o.id FROM t AS o WHERE EXISTS (SELECT 1 FROM (SELECT id FROM t ORDER BY id LIMIT 1 OFFSET 1) AS w WHERE w.id = o.id) ORDER BY o.id;",
+				Expected: []sql.Row{{2}},
+			},
+		},
+	},
 }
 
 // SQLLogicSubqueryTests is a list of all the logic tests that are run against the sql engine.

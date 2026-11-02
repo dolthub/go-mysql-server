@@ -65,7 +65,10 @@ func buildIndexedExprToColumnNameMap(ctx *sql.Context, cat sql.Catalog, indexes 
 	// the catalog would return raw unresolved expressions from storage (e.g. in Dolt,
 	// hidden system column expressions would still be UnresolvedColumnDefault strings).
 	// resolveTableSchema handles lazy resolution of any remaining placeholders.
-	sch := resolveTableSchema(ctx, cat, rt)
+	sch, err := resolveTableSchema(ctx, cat, rt)
+	if err != nil {
+		return nil, err
+	}
 
 	for _, idx := range indexes {
 		for _, qualifiedColName := range idx.Expressions() {
@@ -95,7 +98,11 @@ func buildColumnIdToIndexedExprMap(ctx *sql.Context, cat sql.Catalog, tableNode 
 	}
 
 	result := make(map[sql.ColumnId]indexedExprEntry)
-	sch := resolveTableSchema(ctx, cat, tableNode)
+	sch, err := resolveTableSchema(ctx, cat, tableNode)
+	if err != nil {
+		// Indexed expressions only inform join planning, so plan without them.
+		return result
+	}
 
 	// If the table doesn't have any virtual columns, exit out early without iterating over indexes
 	if sch.HasVirtualColumns() == false {
@@ -220,7 +227,7 @@ func operatorOf(e sql.Expression) (string, bool) {
 // expressions are stored as UnresolvedColumnDefault placeholders. This function resolves them
 // lazily: it only invokes planbuilder.ResolveSchemaDefaults when at least one hidden column
 // still carries an unresolved placeholder.
-func resolveTableSchema(ctx *sql.Context, cat sql.Catalog, tableNode sql.TableNode) sql.Schema {
+func resolveTableSchema(ctx *sql.Context, cat sql.Catalog, tableNode sql.TableNode) (sql.Schema, error) {
 	sch := tableNode.Schema(ctx)
 	for _, col := range sch {
 		if col.HiddenSystem && col.Generated != nil {
@@ -236,5 +243,5 @@ func resolveTableSchema(ctx *sql.Context, cat sql.Catalog, tableNode sql.TableNo
 			}
 		}
 	}
-	return sch
+	return sch, nil
 }

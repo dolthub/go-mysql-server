@@ -191,7 +191,8 @@ func TestResolveGeneratedColumnsForIndexRewrite(t *testing.T) {
 		},
 	}
 
-	resolved := resolveGeneratedColumns(ctx, sql.EngineOverrides{}, "mydb", "fruits", schema)
+	resolved, err := resolveGeneratedColumns(ctx, sql.EngineOverrides{}, "mydb", "fruits", schema)
+	require.NoError(t, err)
 	require.False(t, schema[1].Generated.Resolved())
 	require.True(t, resolved[1].Generated.Resolved())
 
