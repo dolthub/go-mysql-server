@@ -209,7 +209,11 @@ func (m *MemoryHarness) Setup(setupData ...[]setup.SetupScript) {
 func (m *MemoryHarness) NewEngine(t *testing.T) (QueryEngine, error) {
 	if !m.retainSession {
 		m.session = nil
+		// A previous engine's server may still be building sessions for
+		// connections that are closing, and those read the provider.
+		m.mu.Lock()
 		m.provider = nil
+		m.mu.Unlock()
 	}
 	var engine *sqle.Engine
 	var err error
