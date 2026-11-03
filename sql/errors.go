@@ -1006,7 +1006,7 @@ var (
 	ErrVectorInvalidColumnType = errors.NewKind("a vector index colum must be a vector or JSON")
 
 	// ErrGeneratedColumnValue is returned when a value is provided for a generated column
-	ErrGeneratedColumnValue = errors.NewKind("The value specified for generated column %q in table %q is not allowed.")
+	ErrGeneratedColumnValue = newMySQLKind("The value specified for generated column %q in table %q is not allowed.", 3105, mysql.SSUnknownSQLState)
 
 	// ErrVirtualColumnPrimaryKey is returned when a virtual column is defined as a primary key
 	ErrVirtualColumnPrimaryKey = errors.NewKind("Defining a virtual generated column as primary key is not supported")
