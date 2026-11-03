@@ -19,6 +19,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/cockroachdb/apd/v3"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/sorters"
@@ -86,7 +88,10 @@ func (b *baseWindowFunction) DefaultFramer() sql.WindowFramer {
 type SumAgg struct {
 	baseWindowFunction
 	// use prefix sums to quickly calculate arbitrary frame sum within partition
-	prefixSum      []float64
+	prefixSum []float64
+	// decPrefixSum is used instead of prefixSum when the summed expression is a DECIMAL,
+	// so the result is exact like the non-window SUM.
+	decPrefixSum   []*apd.Decimal
 	nullCnt        []int
 	partitionStart int
 	partitionEnd   int
@@ -124,6 +129,12 @@ func (a *SumAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, b
 	a.partitionStart, a.partitionEnd = interval.Start, interval.End
 	a.Dispose(ctx)
 	var err error
+	if types.IsDecimal(a.expr.Type(ctx)) {
+		a.prefixSum = nil
+		a.decPrefixSum, a.nullCnt, err = decimalPrefixSum(ctx, interval, buf, a.expr)
+		return err
+	}
+	a.decPrefixSum = nil
 	a.prefixSum, a.nullCnt, err = floatPrefixSum(ctx, interval, buf, a.expr)
 	return err
 }
@@ -146,7 +157,58 @@ func (a *SumAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.
 	if nullCnt == interval.End-interval.Start {
 		return nil, nil
 	}
+	if a.decPrefixSum != nil {
+		return computeDecimalPrefixSum(interval, a.partitionStart, a.decPrefixSum), nil
+	}
 	return computePrefixSum(interval, a.partitionStart, a.prefixSum), nil
+}
+
+// decimalPrefixSum is floatPrefixSum for DECIMAL expressions: summing in float64 turns 109.34 into
+// 109.33999999999999, while the non-window SUM adds apd.Decimal values exactly.
+func decimalPrefixSum(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer, e sql.Expression) ([]*apd.Decimal, []int, error) {
+	intervalLen := interval.End - interval.Start
+	sums := make([]*apd.Decimal, intervalLen)
+	nulls := make([]int, intervalLen)
+	last := apd.New(0, 0)
+	var nullCnt int
+	for i := 0; i < intervalLen; i++ {
+		v, err := e.Eval(ctx, buf[interval.Start+i])
+		if err != nil {
+			sums[i] = last
+			nulls[i] = nullCnt
+			continue
+		}
+		if v == nil {
+			nullCnt += 1
+			sums[i] = last
+			nulls[i] = nullCnt
+			continue
+		}
+		// Decimal values can be evaluated as strings, so convert them like sumBuffer.PerformSum does.
+		val, _, err := types.InternalDecimalType.Convert(ctx, v)
+		if err == nil && val != nil {
+			cur := apd.New(0, 0)
+			_, _ = sql.DecimalCtx.Add(cur, last, val.(*apd.Decimal))
+			last = cur
+		}
+		sums[i] = last
+		nulls[i] = nullCnt
+	}
+	return sums, nulls, nil
+}
+
+func computeDecimalPrefixSum(interval sql.WindowInterval, partitionStart int, prefixSum []*apd.Decimal) *apd.Decimal {
+	startIdx := interval.Start - partitionStart - 1
+	endIdx := interval.End - partitionStart - 1
+
+	sum := apd.New(0, 0)
+	if endIdx >= 0 {
+		_, _ = sql.DecimalCtx.Add(sum, sum, prefixSum[endIdx])
+	}
+	if startIdx >= 0 {
+		_, _ = sql.DecimalCtx.Sub(sum, sum, prefixSum[startIdx])
+	}
+	return sum
 }
 
 func floatPrefixSum(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer, e sql.Expression) ([]float64, []int, error) {
