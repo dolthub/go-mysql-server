@@ -325,3 +325,18 @@ func toLiteralExpression(input interface{}) *expression.Literal {
 		panic("unsupported type")
 	}
 }
+
+func TestUnwrapBytes(t *testing.T) {
+	// https://github.com/dolthub/dolt/issues/12263
+	ctx := sql.NewEmptyContext()
+
+	t.Run("bytes", func(t *testing.T) {
+		got, err := unwrapBytes(ctx, []byte("abc"))
+		require.NoError(t, err)
+		require.Equal(t, []byte("abc"), got)
+	})
+	t.Run("unsupported type", func(t *testing.T) {
+		_, err := unwrapBytes(ctx, int64(1))
+		require.True(t, sql.ErrInvalidType.Is(err))
+	})
+}

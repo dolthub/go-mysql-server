@@ -71,7 +71,7 @@ func (f *MD5) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	valBytes, _, err := sql.Unwrap[[]byte](ctx, val)
+	valBytes, err := unwrapBytes(ctx, val)
 	if err != nil {
 		return nil, err
 	}
@@ -215,7 +215,7 @@ func (f *SHA2) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	valBytes, _, err := sql.Unwrap[[]byte](ctx, val)
+	valBytes, err := unwrapBytes(ctx, val)
 	if err != nil {
 		return nil, err
 	}
@@ -296,7 +296,7 @@ func (f *Compress) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	valBytes, _, err := sql.Unwrap[[]byte](ctx, val)
+	valBytes, err := unwrapBytes(ctx, val)
 	if err != nil {
 		return nil, err
 	}
@@ -384,7 +384,7 @@ func (f *Uncompress) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		ctx.Warn(1258, "%s", err.Error())
 		return nil, nil
 	}
-	valBytes, _, err := sql.Unwrap[[]byte](ctx, val)
+	valBytes, err := unwrapBytes(ctx, val)
 	if err != nil {
 		return nil, err
 	}
@@ -480,7 +480,7 @@ func (f *UncompressedLength) Eval(ctx *sql.Context, row sql.Row) (interface{}, e
 		ctx.Warn(1258, "%s", err.Error())
 		return nil, nil
 	}
-	valBytes, _, err := sql.Unwrap[[]byte](ctx, val)
+	valBytes, err := unwrapBytes(ctx, val)
 	if err != nil {
 		return nil, err
 	}

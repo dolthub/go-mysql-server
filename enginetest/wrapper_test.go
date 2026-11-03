@@ -325,7 +325,7 @@ func TestWrapperBlobFunctions(t *testing.T) {
 	}
 }
 
-// mustCompressBlob returns data in the layout that compress writes and
+// mustCompressBlob compresses |data| into the layout that compress writes and
 // uncompress and uncompressed_length read. The layout is a 4-byte
 // little-endian length followed by a zlib stream. It fails the test on error.
 func mustCompressBlob(t *testing.T, data []byte) []byte {

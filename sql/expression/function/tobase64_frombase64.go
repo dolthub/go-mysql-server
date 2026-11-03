@@ -81,7 +81,7 @@ func (t *ToBase64) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		if err != nil {
 			return nil, sql.ErrInvalidType.New(reflect.TypeOf(val))
 		}
-		strBytes, _, err = sql.Unwrap[[]byte](ctx, val)
+		strBytes, err = unwrapBytes(ctx, val)
 		if err != nil {
 			return nil, err
 		}

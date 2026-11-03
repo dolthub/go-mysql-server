@@ -631,7 +631,7 @@ func (q *Quote) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if val == nil {
 		return nil, nil
 	}
-	valBytes, _, err := sql.Unwrap[[]byte](ctx, val)
+	valBytes, err := unwrapBytes(ctx, val)
 	if err != nil {
 		return nil, err
 	}

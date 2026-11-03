@@ -65,7 +65,7 @@ func (ib *IsBinary) Eval(
 		return nil, err
 	}
 
-	valBytes, _, err := sql.Unwrap[[]byte](ctx, blob)
+	valBytes, err := unwrapBytes(ctx, blob)
 	if err != nil {
 		return nil, err
 	}
