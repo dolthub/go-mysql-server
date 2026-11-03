@@ -25,6 +25,8 @@ import (
 var JsonScripts = []ScriptTest{
 	{
 		Name: "JSON number kinds survive storage and updates",
+		// Asserts MySQL JSON number kinds and ON DUPLICATE KEY UPDATE semantics.
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE json_numbers (id INT PRIMARY KEY, doc JSON)",
 			`INSERT INTO json_numbers VALUES (1, '{"v":42}'), (2, '{"v":42.0}'), (3, '{"v":4.2e1}'), (4, '{"v":1.25}'), (5, '{"v":18446744073709551615}')`,
@@ -1343,6 +1345,8 @@ var JsonScripts = []ScriptTest{
 	},
 	{
 		Name: "json numeric equality in hashing operators",
+		// PostgreSQL JSON lacks equality; JSONB uses exact numerics at these double-precision boundaries.
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE json_hash_values (pk INT PRIMARY KEY, j JSON)",
 			`INSERT INTO json_hash_values VALUES (1, '42'), (2, '42.0'), (3, '4.2e1'), (4, '-0.0'), (5, '0'), (6, '{"a":[42,{"b":-0.0}]}'), (7, '{"a":[42.0,{"b":0}]}'), (8, '9007199254740992'), (9, '9007199254740992.0'), (10, '9007199254740993')`,
@@ -1351,6 +1355,10 @@ var JsonScripts = []ScriptTest{
 			{
 				Query:    "SELECT CAST(CAST('9223372036854775807' AS SIGNED) AS JSON) = CAST('9223372036854775808.0' AS JSON), CAST(CAST('9223372036854775807' AS SIGNED) AS JSON) < CAST('9223372036854775808.0' AS JSON), CAST('18446744073709551615' AS JSON) = CAST('18446744073709551616.0' AS JSON), CAST('18446744073709551615' AS JSON) < CAST('18446744073709551616.0' AS JSON)",
 				Expected: []sql.Row{{false, true, false, true}},
+			},
+			{
+				Query:    `SELECT JSON_OVERLAPS('1', '1.0'), JSON_OVERLAPS('[1]', '[1.0]'), JSON_OVERLAPS('{"a":[1]}', '{"a":[1.0]}'), JSON_OVERLAPS('9007199254740993', '9007199254740992.0')`,
+				Expected: []sql.Row{{true, true, true, false}},
 			},
 			{
 				Query:    "SELECT COUNT(*) FROM (SELECT DISTINCT j FROM json_hash_values) d",
@@ -1383,7 +1391,36 @@ var JsonScripts = []ScriptTest{
 		},
 	},
 	{
+		Name: "hashing constructed JSON dates and geometry",
+		// PostgreSQL JSON lacks DISTINCT/GROUP BY/UNION equality; spatial functions are not built in.
+		Dialect: "mysql",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    `SELECT COUNT(*) FROM (SELECT DISTINCT JSON_ARRAY(CAST('2024-01-01' AS DATE))) d`,
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    `SELECT COUNT(*) FROM (SELECT JSON_OBJECT('d', CAST('2024-01-01' AS DATE)) GROUP BY 1) d`,
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    `SELECT COUNT(*) FROM (SELECT JSON_ARRAY(CAST('2024-01-01' AS DATE)) AS j UNION SELECT JSON_ARRAY(CAST('2024-01-01' AS DATE))) d`,
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    `SELECT COUNT(*) FROM (SELECT DISTINCT ST_ASGEOJSON(ST_GEOMFROMTEXT('POINT(1 2)'))) d`,
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    `SELECT COUNT(*) FROM (SELECT ST_ASGEOJSON(ST_GEOMFROMTEXT('LINESTRING(1 2,3 4)')) AS j UNION SELECT CAST('{"type":"LineString","coordinates":[[1,2],[3,4]]}' AS JSON)) d`,
+				Expected: []sql.Row{{1}},
+			},
+		},
+	},
+	{
 		Name: "JSON no-op upserts preserve other column representations",
+		// Uses MySQL ON DUPLICATE KEY UPDATE and utf8mb4_0900_ai_ci collation.
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE case_only_upsert (id INT PRIMARY KEY, label VARCHAR(10) COLLATE utf8mb4_0900_ai_ci)",
 			"INSERT INTO case_only_upsert VALUES (1, 'a')",
@@ -1391,11 +1428,18 @@ var JsonScripts = []ScriptTest{
 			`INSERT INTO json_case_upsert VALUES (1, 'a', '{"v":42}')`,
 			"INSERT INTO case_only_upsert VALUES (1, 'A') ON DUPLICATE KEY UPDATE label = VALUES(label)",
 			`INSERT INTO json_case_upsert VALUES (1, 'A', '{"v":42.0}') ON DUPLICATE KEY UPDATE label = VALUES(label), doc = VALUES(doc)`,
+			"CREATE TABLE json_large_upsert (id INT PRIMARY KEY, doc JSON, payload LONGTEXT, counter INT)",
+			`INSERT INTO json_large_upsert VALUES (1, '{}', REPEAT('x', 1048576), 0)`,
+			`INSERT INTO json_large_upsert (id, doc) VALUES (1, '{}') ON DUPLICATE KEY UPDATE counter = counter + 1`,
 			"CREATE TABLE json_geometry_upsert (id INT PRIMARY KEY, doc JSON, point POINT)",
 			`INSERT INTO json_geometry_upsert VALUES (1, '42', ST_GeomFromWKB(UNHEX('010100000000000000000000800000000000000000')))`,
 			`INSERT INTO json_geometry_upsert VALUES (1, '42.0', ST_GeomFromWKB(UNHEX('010100000000000000000000000000000000000000'))) ON DUPLICATE KEY UPDATE doc = VALUES(doc), point = VALUES(point)`,
 		},
 		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT counter, LENGTH(payload), JSON_TYPE(doc) FROM json_large_upsert",
+				Expected: []sql.Row{{1, 1048576, "OBJECT"}},
+			},
 			{
 				Query:    "SELECT JSON_TYPE(doc), HEX(ST_AsWKB(point)) FROM json_geometry_upsert",
 				Expected: []sql.Row{{"DOUBLE", "010100000000000000000000000000000000000000"}},

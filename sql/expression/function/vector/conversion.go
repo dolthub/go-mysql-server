@@ -141,10 +141,14 @@ func (v *VectorToString) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 	if err != nil {
 		return nil, err
 	}
-	// Vector text has its own display format; whole components do not need a .0 suffix.
+	// Vector text uses exact integer spelling in the signed 32-bit range, including zero.
 	components := make([]string, len(vectorVal))
 	for i, value := range vectorVal {
-		components[i] = strconv.FormatFloat(float64(value), 'f', -1, 32)
+		if value >= -1<<31 && value < 1<<31 && value == float32(int32(value)) {
+			components[i] = strconv.FormatInt(int64(value), 10)
+		} else {
+			components[i] = strconv.FormatFloat(float64(value), 'f', -1, 32)
+		}
 	}
 	return "[" + strings.Join(components, ", ") + "]", nil
 }

@@ -823,6 +823,17 @@ func isJSONOnlyNoopUpdate(ctx *sql.Context, oldRow, newRow sql.Row, schema sql.S
 		if types.IsJSON(col.Type) {
 			continue
 		}
+		// Exact string and byte equality avoids copying unchanged large values into SQL buffers.
+		switch old := oldRow[i].(type) {
+		case string:
+			if next, ok := newRow[i].(string); ok && old == next {
+				continue
+			}
+		case []byte:
+			if next, ok := newRow[i].([]byte); ok && bytes.Equal(old, next) {
+				continue
+			}
+		}
 		oldValue, err := col.Type.SQL(ctx, oldBuffer[:0], oldRow[i])
 		if err != nil {
 			return false, err

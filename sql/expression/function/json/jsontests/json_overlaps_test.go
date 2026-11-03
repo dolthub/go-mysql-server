@@ -113,6 +113,16 @@ func TestJSONOverlaps(t *testing.T) {
 			exp: true,
 		},
 
+		// Numeric equality spans integer and double representations, including nested values.
+		{f: f2, row: sql.Row{`1`, `1.0`}, exp: true},
+		{f: f2, row: sql.Row{`1.0`, `1`}, exp: true},
+		{f: f2, row: sql.Row{`4294967296`, `4294967296.0`}, exp: true},
+		{f: f2, row: sql.Row{`[1]`, `[1.0]`}, exp: true},
+		{f: f2, row: sql.Row{`{"a":[1]}`, `{"a":[1.0]}`}, exp: true},
+		{f: f2, row: sql.Row{`9007199254740993`, `9007199254740992.0`}, exp: false},
+		{f: f2, row: sql.Row{`[1]`, `["1"]`}, exp: false},
+		{f: f2, row: sql.Row{`[1]`, `[true]`}, exp: false},
+
 		// scalar mismatch
 		{
 			f:   f2,

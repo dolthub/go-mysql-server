@@ -16,9 +16,11 @@ package hash
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"math"
 	"testing"
+	"time"
 
 	"github.com/cockroachdb/apd/v3"
 	"github.com/stretchr/testify/require"
@@ -109,6 +111,42 @@ func TestJSONHashWrappers(t *testing.T) {
 		_, err := HashOf(ctx, nil, sql.NewRow(value))
 		require.Error(t, err)
 		_, _, err = HashOfSimple(ctx, value, types.JSON)
+		require.Error(t, err)
+	}
+}
+
+// TestJSONHashConstructedValues checks representations emitted by JSON constructors against their JSON display.
+func TestJSONHashConstructedValues(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	date := time.Date(2024, time.January, 1, 12, 34, 56, 123456000, time.UTC)
+	for _, tt := range []struct {
+		name    string
+		value   any
+		encoded string
+	}{
+		{"datetime", date, `"2024-01-01 12:34:56.123456"`},
+		{"date array", []any{date}, `["2024-01-01 12:34:56.123456"]`},
+		{"date object", map[string]any{"date": date}, `{"date":"2024-01-01 12:34:56.123456"}`},
+		{"GeoJSON point", map[string]any{"coordinates": [2]float64{1, 2}, "type": "Point"}, `{"coordinates":[1,2],"type":"Point"}`},
+		{"typed coordinate slices", [][2]float64{{1, 2}, {3.25, 4}}, `[[1,2],[3.25,4]]`},
+		{"typed map", map[string][]float64{"v": {42, math.Copysign(0, -1)}}, `{"v":[42,0]}`},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			want, err := HashOf(ctx, nil, sql.NewRow(types.MustJSON(tt.encoded)))
+			require.NoError(t, err)
+			value := types.JSONDocument{Val: tt.value}
+			got, err := HashOf(ctx, nil, sql.NewRow(value))
+			require.NoError(t, err)
+			require.Equal(t, want, got)
+			got, _, err = HashOfSimple(ctx, value, types.JSON)
+			require.NoError(t, err)
+			require.Equal(t, want, got)
+		})
+	}
+	for _, value := range []any{struct{}{}, json.RawMessage(`{`), []float64{math.Inf(1)}} {
+		_, err := HashOf(ctx, nil, sql.NewRow(types.JSONDocument{Val: value}))
+		require.Error(t, err)
+		_, _, err = HashOfSimple(ctx, types.JSONDocument{Val: value}, types.JSON)
 		require.Error(t, err)
 	}
 }

@@ -139,6 +139,14 @@ var VectorFunctionQueries = []ScriptTest{
 				Query:    `select VECTOR_TO_STRING(0x0000803F);`,
 				Expected: []sql.Row{{"[1]"}},
 			},
+			{
+				Query:    `SELECT VECTOR_TO_STRING(0x00000080);`,
+				Expected: []sql.Row{{"[0]"}},
+			},
+			{
+				Query:    `SELECT VECTOR_TO_STRING(0x0000804E000000CF0000A03F);`,
+				Expected: []sql.Row{{"[1073741824, -2147483648, 1.25]"}},
+			},
 
 			{
 				Query:    `SELECT FROM_VECTOR(TO_VECTOR("[1.0, 2.0]"));`,

@@ -103,7 +103,16 @@ func writeJSONHash(ctx context.Context, digest *xxhash.Digest, value any) error 
 		number, _ := value.Float64()
 		writeJSONHashFloat(digest, number)
 	default:
-		return sql.ErrInvalidType.New(value)
+		// Constructors may retain dates or typed containers; normalize their existing JSON display.
+		encoded, err := types.JsonToMySqlBytes(ctx, types.JSONDocument{Val: value})
+		if err != nil {
+			return err
+		}
+		var decoded any
+		if err := types.JsonUnmarshal(encoded, &decoded); err != nil {
+			return err
+		}
+		return writeJSONHash(ctx, digest, decoded)
 	}
 	return nil
 }
