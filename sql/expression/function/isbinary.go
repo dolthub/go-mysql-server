@@ -65,7 +65,11 @@ func (ib *IsBinary) Eval(
 		return nil, err
 	}
 
-	return isBinary(blob.([]byte)), nil
+	valBytes, _, err := sql.Unwrap[[]byte](ctx, blob)
+	if err != nil {
+		return nil, err
+	}
+	return isBinary(valBytes), nil
 }
 
 // IsNullable implements sql.Expression

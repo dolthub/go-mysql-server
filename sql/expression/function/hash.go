@@ -71,9 +71,13 @@ func (f *MD5) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	valBytes, _, err := sql.Unwrap[[]byte](ctx, val)
+	if err != nil {
+		return nil, err
+	}
 
 	h := md5.New()
-	_, err = h.Write(val.([]byte))
+	_, err = h.Write(valBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -211,7 +215,11 @@ func (f *SHA2) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	_, err = h.Write(val.([]byte))
+	valBytes, _, err := sql.Unwrap[[]byte](ctx, val)
+	if err != nil {
+		return nil, err
+	}
+	_, err = h.Write(valBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -288,7 +296,10 @@ func (f *Compress) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	valBytes := val.([]byte)
+	valBytes, _, err := sql.Unwrap[[]byte](ctx, val)
+	if err != nil {
+		return nil, err
+	}
 	if len(valBytes) == 0 {
 		return []byte{}, nil
 	}
@@ -373,7 +384,10 @@ func (f *Uncompress) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		ctx.Warn(1258, "%s", err.Error())
 		return nil, nil
 	}
-	valBytes := val.([]byte)
+	valBytes, _, err := sql.Unwrap[[]byte](ctx, val)
+	if err != nil {
+		return nil, err
+	}
 	if len(valBytes) == 0 {
 		return []byte{}, nil
 	}
@@ -466,7 +480,10 @@ func (f *UncompressedLength) Eval(ctx *sql.Context, row sql.Row) (interface{}, e
 		ctx.Warn(1258, "%s", err.Error())
 		return nil, nil
 	}
-	valBytes := val.([]byte)
+	valBytes, _, err := sql.Unwrap[[]byte](ctx, val)
+	if err != nil {
+		return nil, err
+	}
 	if len(valBytes) == 0 {
 		return uint32(0), nil
 	}
