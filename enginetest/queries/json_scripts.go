@@ -16,6 +16,7 @@ package queries
 
 import (
 	"github.com/dolthub/vitess/go/vt/sqlparser"
+	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -23,6 +24,47 @@ import (
 )
 
 var JsonScripts = []ScriptTest{
+	{
+		Name: "JSON date conversion",
+		SetUpScript: []string{
+			"CREATE TABLE json_dates (id INT PRIMARY KEY, doc JSON)",
+			`INSERT INTO json_dates VALUES (1, '{"date":"2025-03-19 12:00:00.123456"}'), (2, '"2025-03-19 12:00:00.123456"')`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    `SELECT CAST(JSON_EXTRACT('{"date":"2025-03-19 12:00:00.123456"}', '$.date') AS DATETIME(6)), DAY(JSON_EXTRACT('{"date":"2025-03-19 12:00:00.123456"}', '$.date'))`,
+				Expected: []sql.Row{{time.Date(2025, 3, 19, 12, 0, 0, 123456000, time.UTC), int32(19)}},
+			},
+			{
+				Query:    `SELECT CAST(JSON_UNQUOTE(JSON_EXTRACT(doc, '$.date')) AS DATETIME(6)), DAY(JSON_UNQUOTE(JSON_EXTRACT(doc, '$.date'))) FROM json_dates WHERE id = 1`,
+				Expected: []sql.Row{{time.Date(2025, 3, 19, 12, 0, 0, 123456000, time.UTC), int32(19)}},
+			},
+			{
+				Query:    `SELECT CAST(JSON_EXTRACT(doc, '$.date') AS DATETIME(6)), DAY(JSON_EXTRACT(doc, '$.date')) FROM json_dates WHERE id = 1`,
+				Expected: []sql.Row{{time.Date(2025, 3, 19, 12, 0, 0, 123456000, time.UTC), int32(19)}},
+			},
+			{
+				Query:    `SELECT CAST(doc AS DATE), CAST(doc AS DATETIME(3)), DAY(doc) FROM json_dates WHERE id = 2`,
+				Expected: []sql.Row{{time.Date(2025, 3, 19, 0, 0, 0, 0, time.UTC), time.Date(2025, 3, 19, 12, 0, 0, 123000000, time.UTC), int32(19)}},
+			},
+			{
+				Query:    `SELECT CAST(NULL AS DATETIME), DAY(NULL), CAST(JSON_EXTRACT('{}', '$.date') AS DATETIME), DAY(JSON_EXTRACT('{}', '$.date'))`,
+				Expected: []sql.Row{{nil, nil, nil, nil}},
+			},
+			{
+				Query:    `SELECT CAST(CAST('null' AS JSON) AS DATETIME), DAY(CAST('null' AS JSON))`,
+				Expected: []sql.Row{{nil, nil}}, ExpectedWarning: 1292, ExpectedWarningsCount: 2,
+			},
+			{
+				Query:    `SELECT CAST(CAST('20250319' AS JSON) AS DATETIME), DAY(CAST('20250319' AS JSON))`,
+				Expected: []sql.Row{{nil, nil}}, ExpectedWarning: 1292, ExpectedWarningsCount: 2,
+			},
+			{
+				Query:    `SELECT CAST(CAST('"2025-03-19 12:00:00junk"' AS JSON) AS DATETIME), DAY(CAST('"2025-03-19 12:00:00junk"' AS JSON))`,
+				Expected: []sql.Row{{nil, nil}}, ExpectedWarning: 1292, ExpectedWarningsCount: 2,
+			},
+		},
+	},
 	{
 		// https://github.com/dolthub/dolt/issues/10050
 		Name: "TextStorage converts to JSON when using dolt wrapper",

@@ -246,6 +246,23 @@ func (t datetimeType) Convert(ctx context.Context, v any) (any, sql.ConvertInRan
 		return t.Convert(ctx, string(value))
 	case string:
 		res, err = t.parseDatetime(value)
+	case sql.JSONWrapper:
+		decoded, decodeErr := value.ToInterface(ctx)
+		if decodeErr != nil {
+			return nil, sql.InRange, decodeErr
+		}
+		// JSON dates must be strings; numeric, boolean, and null JSON values
+		// do not have the coercions available to ordinary SQL values.
+		str, ok := decoded.(string)
+		if !ok {
+			return nil, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), decoded)
+		}
+		res, err = t.parseDatetime(str)
+		// Unlike SQL strings, truncated JSON strings are invalid dates.
+		// Deprecated delimiters may still produce a valid date with a warning.
+		if err != nil && !sql.ErrDeprecatedDelimiter.Is(err) {
+			return nil, sql.InRange, err
+		}
 	case Timespan:
 		// when receiving TIME, MySQL fills in date with today
 		nowTimeStr := sql.Now().Format("2006-01-02")
