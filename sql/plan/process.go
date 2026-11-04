@@ -118,6 +118,7 @@ type ProcessTable struct {
 }
 
 var _ sql.CommentedTable = (*ProcessTable)(nil)
+var _ sql.ValueRowTable = (*ProcessTable)(nil)
 
 // NewProcessTable returns a new ProcessTable.
 func NewProcessTable(t sql.Table, onPartitionDone, onPartitionStart, OnRowNext NamedNotifyFunc) *ProcessTable {
@@ -140,6 +141,23 @@ func (t *ProcessTable) Comment() string {
 // PartitionRows implements the sql.Table interface.
 func (t *ProcessTable) PartitionRows(ctx *sql.Context, p sql.Partition) (sql.RowIter, error) {
 	iter, err := t.Table.PartitionRows(ctx, p)
+	if err != nil {
+		return nil, err
+	}
+
+	onDone, onNext := t.notifyFuncsForPartition(p)
+
+	return NewTrackedRowIter(nil, iter, onNext, onDone), nil
+}
+
+func (t *ProcessTable) PartitionValueRowWriter(ctx *sql.Context, p sql.Partition, columnIds sql.ColSet) (sql.ValueRowWriter, error) {
+	var iter sql.RowIter
+	var err error
+	if childValueRowTable, ok := t.Table.(sql.ValueRowTable); ok {
+		iter, err = childValueRowTable.PartitionValueRowWriter(ctx, p, columnIds)
+	} else {
+		iter, err = t.Table.PartitionRows(ctx, p)
+	}
 	if err != nil {
 		return nil, err
 	}
