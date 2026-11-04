@@ -15,6 +15,9 @@
 package types
 
 import (
+	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"reflect"
@@ -591,3 +594,46 @@ func TestMySQLPunct(t *testing.T) {
 		})
 	}
 }
+
+func TestDatetimeConvertJSON(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	for _, typ := range []sql.Type{Date, Datetime, Datetime3, DatetimeMaxPrecision, Timestamp} {
+		for _, input := range []string{"2025-03-19", "2025-03-19 12:00:00.123456", "2025-03-19 23:59:59.999999"} {
+			t.Run(fmt.Sprintf("%s/%s", typ, input), func(t *testing.T) {
+				expected, _, err := typ.Convert(ctx, input)
+				require.NoError(t, err)
+				encoded, err := json.Marshal(input)
+				require.NoError(t, err)
+				for _, doc := range []sql.JSONWrapper{JSONDocument{Val: input}, NewLazyJSONDocument(encoded)} {
+					actual, inRange, err := typ.Convert(ctx, doc)
+					require.NoError(t, err)
+					require.Equal(t, sql.InRange, inRange)
+					require.Equal(t, expected, actual)
+				}
+			})
+		}
+		for _, input := range []any{"not a date", "2025-02-30", "2025-03-19 12:00:00junk", nil, float64(20250319), float64(0), true, false, []any{"2025-03-19"}, map[string]any{"date": "2025-03-19"}} {
+			t.Run(fmt.Sprintf("%s/reject/%v", typ, input), func(t *testing.T) {
+				encoded, err := json.Marshal(input)
+				require.NoError(t, err)
+				for _, doc := range []sql.JSONWrapper{JSONDocument{Val: input}, NewLazyJSONDocument(encoded)} {
+					actual, _, err := typ.Convert(ctx, doc)
+					require.Error(t, err)
+					require.Nil(t, actual)
+				}
+			})
+		}
+	}
+	expectedErr := errors.New("cannot decode JSON")
+	actual, _, err := Datetime.Convert(ctx, datetimeErrorJSON{err: expectedErr})
+	require.ErrorIs(t, err, expectedErr)
+	require.Nil(t, actual)
+	actual, _, err = Datetime.Convert(ctx, nil)
+	require.NoError(t, err)
+	require.Nil(t, actual)
+}
+
+type datetimeErrorJSON struct{ err error }
+
+func (j datetimeErrorJSON) Clone(context.Context) sql.JSONWrapper    { return j }
+func (j datetimeErrorJSON) ToInterface(context.Context) (any, error) { return nil, j.err }
