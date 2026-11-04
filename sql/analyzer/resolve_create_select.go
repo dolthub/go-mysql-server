@@ -70,7 +70,9 @@ func resolveCreateSelect(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 		}
 	}
 
-	// Selected columns can carry unresolved defaults loaded from storage
+	// Selected columns can carry unresolved defaults loaded from storage.
+	// TODO: Ideally, this would happen in the planbuilder phase, so that we don't
+	//       have to construct a new planbuilder here.
 	builder := planbuilder.New(ctx, a.Catalog, nil)
 	newSch, err = builder.ResolveSchemaDefaults(ct.Database().Name(), ct.Name(), newSch)
 	if err != nil {
