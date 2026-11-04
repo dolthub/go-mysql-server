@@ -237,6 +237,44 @@ func TestRound(t *testing.T) {
 		},
 
 		{
+			name:  "float64 rounds half to even",
+			xExpr: expression.NewLiteral(2.5, types.Float64),
+			exp:   2.0,
+		},
+		{
+			name:  "float64 half rounds down to zero",
+			xExpr: expression.NewLiteral(0.5, types.Float64),
+			exp:   0.0,
+		},
+		{
+			name:  "float64 negative half to even with d",
+			xExpr: expression.NewLiteral(-0.25, types.Float64),
+			dExpr: expression.NewLiteral(1, types.Int32),
+			exp:   -0.2,
+		},
+		{
+			name:  "float64 half to even with negative d",
+			xExpr: expression.NewLiteral(25.0, types.Float64),
+			dExpr: expression.NewLiteral(-1, types.Int32),
+			exp:   20.0,
+		},
+		{
+			name:  "float64 with large negative d keeps power of ten exact",
+			xExpr: expression.NewLiteral(1e33, types.Float64),
+			dExpr: expression.NewLiteral(-33, types.Int32),
+			exp:   1e33,
+		},
+		{
+			name:  "float32 rounds half to even",
+			xExpr: expression.NewLiteral(float32(2.5), types.Float32),
+			exp:   2.0,
+		},
+		{
+			name:  "decimal rounds half away from zero",
+			xExpr: expression.NewLiteral(apd.New(25, -1), types.MustCreateDecimalType(10, 1)),
+			exp:   apd.New(3, 0),
+		},
+		{
 			name:  "float32 without d",
 			xExpr: expression.NewLiteral(5.8, types.Float32),
 			exp:   6.0,
