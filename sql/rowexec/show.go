@@ -452,8 +452,8 @@ func (b *BaseBuilder) buildShowColumns(ctx *sql.Context, n *plan.ShowColumns, ro
 
 		var row sql.Row
 		var collation interface{}
-		if types.IsTextOnly(col.Type) {
-			collation = sql.Collation_Default.String()
+		if typ, ok := col.Type.(sql.TypeWithCollation); ok && !types.IsBinaryType(col.Type) {
+			collation = typ.Collation().String()
 		}
 
 		var null = "NO"
