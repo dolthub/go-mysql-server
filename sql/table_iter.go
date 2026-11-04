@@ -63,7 +63,13 @@ func (i *TableRowIter) Next(ctx *Context) (Row, error) {
 	}
 
 	if i.rows == nil {
-		rows, err := i.table.PartitionRows(ctx, i.partition)
+		var rows RowIter
+		var err error
+		if valueRowTable, ok := i.table.(ValueRowTable); ok {
+			rows, err = valueRowTable.PartitionValueRowWriter(ctx, i.partition, i.colSet)
+		} else {
+			rows, err = i.table.PartitionRows(ctx, i.partition)
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -106,11 +112,17 @@ func (i *TableRowIter) WriteNextValueRow(ctx *Context, row ValueRow) error {
 	}
 
 	if i.valueRows == nil {
-		rows, err := i.table.PartitionRows(ctx, i.partition)
+		var rows RowIter
+		var err error
+		if valueRowTable, ok := i.table.(ValueRowTable); ok {
+			rows, err = valueRowTable.PartitionValueRowWriter(ctx, i.partition, i.colSet)
+		} else {
+			rows, err = i.table.PartitionRows(ctx, i.partition)
+		}
 		if err != nil {
 			return err
 		}
-		i.valueRows = NewValueRowWriter(i.colSet, rows.(ValueRowIter))
+		i.valueRows = rows.(ValueRowWriter)
 	}
 
 	err := i.valueRows.WriteNextValueRow(ctx, row)
@@ -140,7 +152,13 @@ func (i *TableRowIter) IsValueRowWriter(ctx *Context) bool {
 		i.partition = partition
 	}
 	if i.valueRows == nil {
-		rows, err := i.table.PartitionRows(ctx, i.partition)
+		var rows RowIter
+		var err error
+		if valueRowTable, ok := i.table.(ValueRowTable); ok {
+			rows, err = valueRowTable.PartitionValueRowWriter(ctx, i.partition, i.colSet)
+		} else {
+			rows, err = i.table.PartitionRows(ctx, i.partition)
+		}
 		if err != nil {
 			return false
 		}
@@ -149,7 +167,6 @@ func (i *TableRowIter) IsValueRowWriter(ctx *Context) bool {
 		if !ok || !valueRowWriter.IsValueRowWriter(ctx) {
 			return false
 		}
-		i.valueRows = valueRowWriter.WithColumns(i.colSet)
 	}
 	return true
 }
