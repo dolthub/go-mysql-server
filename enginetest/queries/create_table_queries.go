@@ -1424,6 +1424,58 @@ var BrokenCreateTableQueries = []WriteQueryTest{
 // CreateTableScripts contains self-contained table definitions script tests.
 var CreateTableScripts = []ScriptTest{
 	{
+		Name: "SHOW FULL COLUMNS reports column collations",
+		SetUpScript: []string{
+			`CREATE TABLE collation_repro (
+				id INT PRIMARY KEY,
+				value VARCHAR(100) COLLATE utf8mb4_unicode_ci,
+				c CHAR(10) COLLATE utf8mb4_general_ci,
+				t TEXT COLLATE utf8mb4_bin,
+				e ENUM('a','b') COLLATE utf8mb4_unicode_ci,
+				s SET('a','b') COLLATE utf8mb4_general_ci,
+				inherited VARCHAR(20),
+				b BINARY(10), vb VARBINARY(10), bl BLOB, d DATE, j JSON
+			) COLLATE utf8mb4_unicode_ci`,
+			`CREATE VIEW collation_view AS SELECT value FROM collation_repro`,
+			`CREATE TABLE default_collation (v VARCHAR(10))`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SHOW FULL COLUMNS FROM collation_repro",
+				Expected: []sql.Row{
+					{"id", "int", nil, "NO", "PRI", nil, "", "", ""},
+					{"value", "varchar(100) COLLATE utf8mb4_unicode_ci", "utf8mb4_unicode_ci", "YES", "", nil, "", "", ""},
+					{"c", "char(10) COLLATE utf8mb4_general_ci", "utf8mb4_general_ci", "YES", "", nil, "", "", ""},
+					{"t", "text COLLATE utf8mb4_bin", "utf8mb4_bin", "YES", "", nil, "", "", ""},
+					{"e", "enum('a','b') COLLATE utf8mb4_unicode_ci", "utf8mb4_unicode_ci", "YES", "", nil, "", "", ""},
+					{"s", "set('a','b') COLLATE utf8mb4_general_ci", "utf8mb4_general_ci", "YES", "", nil, "", "", ""},
+					{"inherited", "varchar(20) COLLATE utf8mb4_unicode_ci", "utf8mb4_unicode_ci", "YES", "", nil, "", "", ""},
+					{"b", "binary(10)", nil, "YES", "", nil, "", "", ""},
+					{"vb", "varbinary(10)", nil, "YES", "", nil, "", "", ""},
+					{"bl", "blob", nil, "YES", "", nil, "", "", ""},
+					{"d", "date", nil, "YES", "", nil, "", "", ""},
+					{"j", "json", nil, "YES", "", nil, "", "", ""},
+				},
+			},
+			{
+				Query:    "SHOW FULL COLUMNS FROM collation_repro LIKE 'value'",
+				Expected: []sql.Row{{"value", "varchar(100) COLLATE utf8mb4_unicode_ci", "utf8mb4_unicode_ci", "YES", "", nil, "", "", ""}},
+			},
+			{
+				Query:    "SHOW FULL COLUMNS FROM collation_view",
+				Expected: []sql.Row{{"value", "varchar(100) COLLATE utf8mb4_unicode_ci", "utf8mb4_unicode_ci", "YES", "", nil, "", "", ""}},
+			},
+			{
+				Query:    "SHOW FULL COLUMNS FROM default_collation",
+				Expected: []sql.Row{{"v", "varchar(10)", "utf8mb4_0900_bin", "YES", "", nil, "", "", ""}},
+			},
+			{
+				Query:    "SHOW COLUMNS FROM collation_repro LIKE 'value'",
+				Expected: []sql.Row{{"value", "varchar(100) COLLATE utf8mb4_unicode_ci", "YES", "", nil, ""}},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/9872
 		Name:        "TEXT(m) syntax support",
 		SetUpScript: []string{},
