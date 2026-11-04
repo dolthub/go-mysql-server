@@ -26,11 +26,16 @@ import (
 // See SetFullRangeValidation.
 var fullRangeValidation atomic.Bool
 
+// maxRangesValidatedByDefault is the largest number of ranges that RemoveOverlappingRanges checks for overlap when
+// full range validation is disabled. Checking this many string ranges takes under a millisecond.
+const maxRangesValidatedByDefault = 128
+
 // SetFullRangeValidation enables or disables checking every pair of ranges returned by RemoveOverlappingRanges for
 // overlap, returning an error if any are found. Overlapping ranges mean a bug in the range tree, and would make an
 // index lookup return the same row more than once. The check is quadratic in the number of ranges, and an IN list with
-// tens of thousands of elements on a multi-column index can spend minutes in it, so it is disabled by default. Test
-// harnesses, such as enginetest and the sqllogictest harnesses, should enable it.
+// tens of thousands of elements on a multi-column index can spend minutes in it, so by default it only runs when there
+// are at most maxRangesValidatedByDefault ranges. Test harnesses, such as enginetest and the sqllogictest harnesses,
+// should enable it.
 func SetFullRangeValidation(enabled bool) {
 	fullRangeValidation.Store(enabled)
 }
@@ -548,9 +553,10 @@ func SortRanges(ctx context.Context, ranges ...MySQLRange) ([]MySQLRange, error)
 	return sortedRanges, err
 }
 
-// maybeValidateRangeCollection validates |rangeColl| with validateRangeCollection if full range validation is enabled.
+// maybeValidateRangeCollection validates |rangeColl| with validateRangeCollection if full range validation is enabled,
+// or if it has at most maxRangesValidatedByDefault ranges.
 func maybeValidateRangeCollection(ctx context.Context, rangeColl MySQLRangeCollection) error {
-	if !fullRangeValidation.Load() {
+	if len(rangeColl) > maxRangesValidatedByDefault && !fullRangeValidation.Load() {
 		return nil
 	}
 	return validateRangeCollection(ctx, rangeColl)

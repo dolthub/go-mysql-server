@@ -45,8 +45,17 @@ func TestRangeValidation(t *testing.T) {
 	require.NoError(t, sql.MaybeValidateRangeCollection(ctx, disjoint))
 	require.ErrorContains(t, sql.MaybeValidateRangeCollection(ctx, overlapping), "overlapping ranges")
 
+	// Without full validation, small collections are still checked, and large ones are not.
 	sql.SetFullRangeValidation(false)
-	require.NoError(t, sql.MaybeValidateRangeCollection(ctx, overlapping))
+	require.ErrorContains(t, sql.MaybeValidateRangeCollection(ctx, overlapping), "overlapping ranges")
+	large := sql.MySQLRangeCollection{r(rgt(0))}
+	for len(large) <= sql.MaxRangesValidatedByDefault {
+		large = append(large, r(req(1)))
+	}
+	require.NoError(t, sql.MaybeValidateRangeCollection(ctx, large))
+
+	sql.SetFullRangeValidation(true)
+	require.ErrorContains(t, sql.MaybeValidateRangeCollection(ctx, large), "overlapping ranges")
 }
 
 func TestRangeOverlapTwoColumns(t *testing.T) {

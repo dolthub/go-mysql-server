@@ -17,6 +17,9 @@ package sql
 // MaybeValidateRangeCollection exposes maybeValidateRangeCollection to tests in package sql_test.
 var MaybeValidateRangeCollection = maybeValidateRangeCollection
 
+// MaxRangesValidatedByDefault exposes maxRangesValidatedByDefault to tests in package sql_test.
+const MaxRangesValidatedByDefault = maxRangesValidatedByDefault
+
 // FullRangeValidationEnabled reports whether full range validation is currently enabled.
 func FullRangeValidationEnabled() bool {
 	return fullRangeValidation.Load()
