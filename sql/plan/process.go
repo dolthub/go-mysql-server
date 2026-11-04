@@ -356,12 +356,6 @@ func (i *TrackedRowIter) Columns() sql.ColSet {
 	return i.iter.(sql.ValueRowWriter).Columns()
 }
 
-func (i *TrackedRowIter) WithColumns(cols sql.ColSet) sql.ValueRowWriter {
-	result := *i
-	result.iter = result.iter.(sql.ValueRowWriter).WithColumns(cols)
-	return &result
-}
-
 func (i *TrackedRowIter) Close(ctx *sql.Context) error {
 	err := i.iter.Close(ctx)
 

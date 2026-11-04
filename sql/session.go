@@ -838,12 +838,6 @@ func (i *spanIter) Columns() ColSet {
 	return i.iter.(ValueRowWriter).Columns()
 }
 
-func (i *spanIter) WithColumns(cols ColSet) ValueRowWriter {
-	result := *i
-	result.iter = result.iter.(ValueRowWriter).WithColumns(cols)
-	return &result
-}
-
 func (i *spanIter) NextValueRow(ctx *Context) (ValueRow, error) {
 	return i.iter.(ValueRowIter).NextValueRow(ctx)
 }

@@ -129,7 +129,6 @@ type ValueRowWriter interface {
 	IsValueRowWriter(ctx *Context) bool
 	// Columns is the set of ColumnIds represented by this
 	Columns() ColSet
-	WithColumns(ColSet) ValueRowWriter
 	Closer
 }
 

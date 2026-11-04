@@ -125,12 +125,6 @@ func (i *TransactionCommittingIter) Columns() sql.ColSet {
 	return i.childIter.(sql.ValueRowWriter).Columns()
 }
 
-func (i *TransactionCommittingIter) WithColumns(cols sql.ColSet) sql.ValueRowWriter {
-	result := *i
-	result.childIter = result.childIter.(sql.ValueRowWriter).WithColumns(cols)
-	return &result
-}
-
 func (t *TransactionCommittingIter) Close(ctx *sql.Context) error {
 	var err error
 	if t.childIter != nil {
