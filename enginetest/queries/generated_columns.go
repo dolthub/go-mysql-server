@@ -22,6 +22,37 @@ import (
 
 var GeneratedColumnTests = []ScriptTest{
 	{
+		// https://github.com/dolthub/dolt/issues/12340
+		Name: "timestampdiff generated columns",
+		SetUpScript: []string{
+			"create table timestampdiff_gen (id int primary key, start_at datetime(6), end_at datetime(6), elapsed bigint as (timestampdiff(MICROSECOND, start_at, end_at)) stored, elapsed_virtual bigint as (timestampdiff(MICROSECOND, start_at, end_at)) virtual)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table timestampdiff_gen",
+				Expected: []sql.Row{{"timestampdiff_gen", "CREATE TABLE `timestampdiff_gen` (\n" +
+					"  `id` int NOT NULL,\n" +
+					"  `start_at` datetime(6),\n" +
+					"  `end_at` datetime(6),\n" +
+					"  `elapsed` bigint GENERATED ALWAYS AS (TIMESTAMPDIFF(MICROSECOND, `start_at`, `end_at`)) STORED,\n" +
+					"  `elapsed_virtual` bigint GENERATED ALWAYS AS (TIMESTAMPDIFF(MICROSECOND, `start_at`, `end_at`)),\n" +
+					"  PRIMARY KEY (`id`)\n" +
+					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "select column_name, generation_expression from information_schema.columns where table_schema = 'mydb' and table_name = 'timestampdiff_gen' and column_name in ('elapsed', 'elapsed_virtual') order by ordinal_position",
+				Expected: []sql.Row{{"elapsed", "TIMESTAMPDIFF(MICROSECOND, `start_at`, `end_at`)"}, {"elapsed_virtual", "TIMESTAMPDIFF(MICROSECOND, `start_at`, `end_at`)"}},
+			},
+			{
+				Query:    "insert into timestampdiff_gen (id, start_at, end_at) values (1, '2026-01-01 00:00:00.000001', '2026-01-01 00:00:00.000003'), (2, null, '2026-01-01'), (3, '2026-01-01', null)",
+				Expected: []sql.Row{{types.NewOkResult(3)}},
+			},
+			{Query: "select id, elapsed, elapsed_virtual from timestampdiff_gen order by id", Expected: []sql.Row{{1, 2, 2}, {2, nil, nil}, {3, nil, nil}}},
+			{Query: "update timestampdiff_gen set end_at = '2026-01-01 00:00:00.000006' where id = 1", Expected: []sql.Row{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}}},
+			{Query: "select elapsed, elapsed_virtual from timestampdiff_gen where id = 1", Expected: []sql.Row{{5, 5}}},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/11388
 		Name:    "empty insert with default and generated columns",
 		Dialect: "mysql",
