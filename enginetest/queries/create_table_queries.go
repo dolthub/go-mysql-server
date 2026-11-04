@@ -1334,6 +1334,8 @@ var CreateTableScriptTests = []ScriptTest{
 	},
 	{
 		Name: "CREATE TABLE with index AS SELECT preserves defaults",
+		// PostgreSQL does not support inline INDEX declarations in CREATE TABLE AS SELECT.
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE source_entries (id VARCHAR(512) DEFAULT NULL, label VARCHAR(20) DEFAULT 'abc')",
 			"INSERT INTO source_entries VALUES ('row', 'value')",
