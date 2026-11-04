@@ -1067,6 +1067,9 @@ var (
 	// ErrTooBigPrecision is returned when a type receives a precision that is too large.
 	ErrTooBigPrecision = newMySQLKind("Too big precision %v specified. Maximum is %v.", 1426, mysql.SSClientError)
 
+	// ErrLengthBeyondLimit is returned when a string exceeds its column length.
+	ErrLengthBeyondLimit = newMySQLKind("string '%v' is too large for column '%v'", mysql.ERDataTooLong, mysql.SSDataTooLong)
+
 	// ErrDeprecatedDelimiter is returned when a type receives a precision that is too large.
 	// TODO: this error should include position and row number
 	ErrDeprecatedDelimiter = newMySQLKind("Delimiter '%c' in %s value '%s' is superfluous and deprecated. Prefer the standard '-'.", 4095, mysql.SSClientError)

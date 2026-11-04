@@ -602,6 +602,11 @@ func convertDataAndWarn(ctx *sql.Context, tableSchema sql.Schema, row sql.Row, c
 	if types.ErrLengthBeyondLimit.Is(err) {
 		maxLength := tableSchema[columnIdx].Type.(sql.StringType).MaxCharacterLength()
 		row[columnIdx] = row[columnIdx].(string)[:maxLength] // truncate string
+		// IGNORE downgrades a length error to a data-truncation warning.
+		if ctx != nil && ctx.Session != nil {
+			ctx.Warn(mysql.ERWarnDataTruncated, "%s", err.Error())
+		}
+		return row
 	} else if types.ErrBadCharsetString.Is(err) {
 		switch v := row[columnIdx].(type) {
 		case string:
