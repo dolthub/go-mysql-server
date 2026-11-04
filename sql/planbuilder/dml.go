@@ -397,7 +397,15 @@ func reorderSchema(names []string, schema sql.Schema) sql.Schema {
 	return newSch
 }
 
-func (b *Builder) assignmentExprsToUpdateExprs(inScope, destScope *scope, tableSch sql.Schema, e ast.AssignmentExprs) *plan.UpdateExprs {
+// assignmentExprsToUpdateExprs returns the update expressions for the
+// assignments in |e|, bound to the columns of |tableSch|. Each explicit
+// assignment becomes an [expression.SetField] that pairs its target column with
+// its value, so every name and value in the result is resolved.
+//
+// Columns that must change but are not named, such as generated and ON
+// UPDATE columns, are appended after the explicit assignments. The returned
+// value records how many explicit assignments it holds.
+func (b *Builder) assignmentExprsToUpdateExprs(inScope, destScope *scope, tableSch sql.Schema, e ast.AssignmentExprs) *sql.UpdateExprs {
 	// Make sure the assignment expressions don't reference hidden system columns
 	for _, expr := range e {
 		if sql.IsHiddenSystemColumn(expr.Name.Name.String()) {
@@ -415,12 +423,12 @@ func (b *Builder) assignmentExprsToUpdateExprs(inScope, destScope *scope, tableS
 		startWinCnt = len(inScope.windowFuncs)
 	}
 
-	for i, updateExpr := range e {
-		colName := b.buildScalar(destScope, updateExpr.Name)
+	for i, assignment := range e {
+		colName := b.buildScalar(destScope, assignment.Name)
 
 		var innerExpr sql.Expression
 		if gf, ok := colName.(*expression.GetField); ok {
-			colIdx := tableSch.IndexOfColName(gf.Name())
+			colIdx := tableSch.IndexOf(gf.Name(), gf.Table())
 			// TODO: during trigger parsing the table in the node is unresolved, so we need this additional bounds check
 			//  This means that trigger execution will be able to update generated columns
 
@@ -429,7 +437,7 @@ func (b *Builder) assignmentExprsToUpdateExprs(inScope, destScope *scope, tableS
 			// without knowing which column it's being assigned to, so it's resolved below instead
 			// of being passed through buildScalar. DEFAULT(other_col) is a normal, self-contained
 			// expression and is built normally.
-			astDefault, isDefaultExpr := updateExpr.Expr.(*ast.Default)
+			astDefault, isDefaultExpr := assignment.Expr.(*ast.Default)
 			isDefaultExpr = isDefaultExpr && astDefault.ColName == ""
 
 			if isDefaultExpr {
@@ -447,17 +455,23 @@ func (b *Builder) assignmentExprsToUpdateExprs(inScope, destScope *scope, tableS
 				}
 			} else {
 				if colIdx >= 0 && tableSch[colIdx].Generated != nil {
-					b.handleErr(sql.ErrGeneratedColumnValue.New(tableSch[colIdx].Name, inScope.node.(sql.NameableNode).Name()))
+					tableName := tableSch[colIdx].Source
+					// Source in an aliased target is the alias, so map to its
+					// base table, keeping Source when no qualifier is found.
+					if rt, ok := getResolvedTablesByName(b.ctx, destScope.node)[strings.ToLower(gf.Table())]; ok {
+						tableName = rt.Name()
+					}
+					b.handleErr(sql.ErrGeneratedColumnValue.New(tableSch[colIdx].Name, tableName))
 				}
-				innerExpr = b.buildScalar(inScope, updateExpr.Expr)
+				innerExpr = b.buildScalar(inScope, assignment.Expr)
 			}
 		} else {
-			b.handleErr(sql.ErrColumnNotFound.New(updateExpr.Name.Name.String()))
+			b.handleErr(sql.ErrColumnNotFound.New(assignment.Name.Name.String()))
 		}
 
 		// In the case of an unknown bindvar, give it a target type of the column it's targeting.
 		// We only do this for simple bindvars in tuples, not expressions that contain bindvars.
-		if innerSqlVal, ok := updateExpr.Expr.(*ast.SQLVal); ok && b.shouldAssignBindvarType(innerSqlVal) {
+		if innerSqlVal, ok := assignment.Expr.(*ast.SQLVal); ok && b.shouldAssignBindvarType(innerSqlVal) {
 			if typ, ok := hasColumnType(b.ctx, colName); ok {
 				rightBindVar := innerExpr.(*expression.BindVar)
 				rightBindVar.Typ = typ
@@ -480,7 +494,7 @@ func (b *Builder) assignmentExprsToUpdateExprs(inScope, destScope *scope, tableS
 		}
 	}
 
-	return plan.NewUpdateExprs(b.addDependentUpdateExprs(destScope, tableSch, updateExprs), len(e))
+	return sql.NewUpdateExprs(b.addDependentUpdateExprs(destScope, tableSch, updateExprs), len(e))
 }
 
 // addDependentUpdateExprs adds update expressions for any generated columns and ON UPDATE expressions since their
@@ -814,7 +828,7 @@ func (b *Builder) buildInto(inScope *scope, into *ast.Into) {
 
 func (b *Builder) loadChecksFromTable(inScope *scope, table sql.Table) []*sql.CheckConstraint {
 	var loadedChecks []*sql.CheckConstraint
-	if checkTable, ok := table.(sql.CheckTable); ok {
+	if checkTable, ok := sql.GetUnderlyingTable(table).(sql.CheckTable); ok {
 		checks, err := checkTable.GetChecks(b.ctx)
 		if err != nil {
 			b.handleErr(err)

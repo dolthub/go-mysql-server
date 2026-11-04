@@ -617,6 +617,7 @@ func NewQuote(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &Quote{UnaryFunc: NewUnaryFunc(arg, "QUOTE", types.Text)}
 }
 
+// Eval implements [sql.Expression].
 func (q *Quote) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	arg, err := q.EvalChild(ctx, row)
 	if err != nil {
@@ -630,7 +631,10 @@ func (q *Quote) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if val == nil {
 		return nil, nil
 	}
-	valBytes := val.([]byte)
+	valBytes, err := unwrapBytes(ctx, val)
+	if err != nil {
+		return nil, err
+	}
 
 	ret := new(bytes.Buffer)
 	ret.WriteByte('\'')

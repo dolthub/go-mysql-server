@@ -1471,8 +1471,17 @@ func sortedIndexScansForTableCol(ctx *sql.Context, statsProv sql.StatsProvider, 
 	return ret, nil
 }
 
-func filterExprToMySQLRangeExpr(filter sql.Expression, colId sql.ColumnId, colTyp sql.Type) (res sql.MySQLRangeColumnExpr, ok bool) {
+// filterExprToMySQLRangeExpr returns the range that |filter| places on the column |colId|. Range bounds are compared as
+// values of |colTyp|, so a literal must already be of that type when |colTyp| is an ExtendedType.
+func filterExprToMySQLRangeExpr(ctx *sql.Context, filter sql.Expression, colId sql.ColumnId, colTyp sql.Type) (res sql.MySQLRangeColumnExpr, ok bool) {
 	// TODO: Could use RangeTree from gms/sql/range_tree.go?
+	if _, isExtended := colTyp.(sql.ExtendedType); isExtended {
+		for _, child := range filter.Children() {
+			if lit, isLit := child.(*expression.Literal); isLit && !colTyp.Equals(lit.Type(ctx)) {
+				return
+			}
+		}
+	}
 	switch f := filter.(type) {
 	case expression.Equality:
 		if !f.RepresentsEquality() {
@@ -1562,18 +1571,22 @@ func makeIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, tab plan.Table
 	// Create MySQL Range prefix for this index
 	// In the event that the index contained pruned columns, then len(idxCols) <  len(idxColExprTypes)
 	for i = 0; i < len(idxCols); {
-		// TODO: It seems like it's possible for no filter to be found for a column before |matchedIdx|, but it is
-		//  ignored. Appears to be impossible to reproduce due to functional dependency logic beforehand.
 		found := matchedIdx == idxCols[i]
+		matchedFilter := false
 		for _, filter := range filters {
-			if r, ok := filterExprToMySQLRangeExpr(filter, idxCols[i], idxColExprTypes[i].Type); ok {
+			if r, ok := filterExprToMySQLRangeExpr(ctx, filter, idxCols[i], idxColExprTypes[i].Type); ok {
 				rang[i] = r
 				i++
+				matchedFilter = true
 				break
 			}
 		}
 		if found {
 			break
+		}
+		if !matchedFilter {
+			// Reached by extended types when a literal of another type gives this column no range
+			return nil, false, nil
 		}
 	}
 

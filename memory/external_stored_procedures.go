@@ -128,8 +128,44 @@ var (
 			ReadOnly:  false,
 			AdminOnly: true,
 		},
+		{
+			Name:     "memory_set_generated_expression",
+			Schema:   nil,
+			Function: set_generated_expression,
+		},
 	}
 )
+
+// set_generated_expression overwrites the stored generated expression of |column| in |table| of the current database
+// without validating it, simulating a schema written before DDL validation rejected such expressions, or one that
+// arrived some other way (e.g. a merge in an integrator).
+func set_generated_expression(ctx *sql.Context, table, column, expr string) (sql.RowIter, error) {
+	db, err := SessionFromContext(ctx).dbProvider.Database(ctx, ctx.GetCurrentDatabase())
+	if err != nil {
+		return nil, err
+	}
+	tbl, ok, err := db.GetTableInsensitive(ctx, table)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, sql.ErrTableNotFound.New(table)
+	}
+	sch := tbl.Schema(ctx)
+	idx := sch.IndexOfColName(column)
+	if idx < 0 {
+		return nil, sql.ErrTableColumnNotFound.New(table, column)
+	}
+	if sch[idx].Generated == nil {
+		return nil, fmt.Errorf("column %s of table %s is not a generated column", column, table)
+	}
+	newCol := sch[idx].Copy()
+	newCol.Generated = sql.NewUnresolvedColumnDefaultValue(expr)
+	if err = tbl.(sql.AlterableTable).ModifyColumn(ctx, sch[idx].Name, newCol, nil); err != nil {
+		return nil, err
+	}
+	return sql.RowsToRowIter(), nil
+}
 
 func inout_add(_ *sql.Context, a *int64, b int64) (sql.RowIter, error) {
 	*a = *a + b

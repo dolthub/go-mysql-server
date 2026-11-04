@@ -1261,6 +1261,23 @@ var GeneratedColumnTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "virtual column with check constraint",
+		SetUpScript: []string{
+			"create table t1 (a int primary key, b int, c int generated always as (b + 1) virtual, check (b > 0))",
+			"insert into t1 (a, b) values (1, 1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "insert into t1 (a, b) values (2, -1)",
+				ExpectedErr: sql.ErrCheckConstraintViolated,
+			},
+			{
+				Query:       "update t1 set b = -1",
+				ExpectedErr: sql.ErrCheckConstraintViolated,
+			},
+		},
+	},
+	{
 		Name: "virtual column selects",
 		SetUpScript: []string{
 			"create table t1 (a int primary key, b int generated always as (a + 1) virtual)",
@@ -2266,6 +2283,150 @@ var GeneratedColumnTests = []ScriptTest{
 					{"d", nil, "STORED GENERATED", "0"},
 					{"e", "(`a` + 1)", "DEFAULT_GENERATED", ""},
 				},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12238
+		Name: "multi-table update and insert assigning generated columns",
+		SetUpScript: []string{
+			"create table t0 (a int, g int as (a + 1) stored)",
+			"create table t1 (x int)",
+			"create table t2 (a int, g int as (a + 1) virtual)",
+			"create table t3 (id int primary key, a int, g int as (a + 1) stored)",
+			"insert into t0 (a) values (1)",
+			"insert into t1 values (1)",
+			"insert into t2 (a) values (1)",
+			"insert into t3 (id, a) values (1, 1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "update t0 set g = 0",
+				ExpectedErr: sql.ErrGeneratedColumnValue,
+			},
+			{
+				Query:       "update t0, t1 set t0.g = 0",
+				ExpectedErr: sql.ErrGeneratedColumnValue,
+			},
+			{
+				Query:          "update t0, t1 set t0.g = 0",
+				ExpectedErrStr: `The value specified for generated column "g" in table "t0" is not allowed.`,
+			},
+			{
+				Query:    "select a, g from t0",
+				Expected: []sql.Row{{1, 2}},
+			},
+			{
+				Query:       "update t2, t1 set t2.g = 0",
+				ExpectedErr: sql.ErrGeneratedColumnValue,
+			},
+			{
+				Query:          "update t2, t1 set t2.g = 0",
+				ExpectedErrStr: `The value specified for generated column "g" in table "t2" is not allowed.`,
+			},
+			{
+				Query:       "update t0, (select 1 as one) d set t0.g = 0",
+				ExpectedErr: sql.ErrGeneratedColumnValue,
+			},
+			{
+				Query:          "update t0, (select 1 as one) d set t0.g = 0",
+				ExpectedErrStr: `The value specified for generated column "g" in table "t0" is not allowed.`,
+			},
+			{
+				Query:       "insert into t3 (id, a) values (1, 2) on duplicate key update g = 0",
+				ExpectedErr: sql.ErrGeneratedColumnValue,
+			},
+			{
+				Query:          "insert into t3 (id, a) values (1, 2) on duplicate key update g = 0",
+				ExpectedErrStr: `The value specified for generated column "g" in table "t3" is not allowed.`,
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12238
+		Name: "generated column error names the base table for an alias",
+		SetUpScript: []string{
+			"create table t0 (a int, g int as (a + 1) stored)",
+			"create table t1 (x int)",
+			"insert into t0 (a) values (1)",
+			"insert into t1 values (1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "update t0 as x set x.g = 0",
+				ExpectedErrStr: `The value specified for generated column "g" in table "t0" is not allowed.`,
+			},
+			{
+				Query:       "update t0 as x, t1 set x.g = 0",
+				ExpectedErr: sql.ErrGeneratedColumnValue,
+			},
+			{
+				Query:          "update t0 as x, t1 set x.g = 0",
+				ExpectedErrStr: `The value specified for generated column "g" in table "t0" is not allowed.`,
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12238
+		Name: "update assigning a column that shares a generated column's name in another table",
+		SetUpScript: []string{
+			"create table t1 (x int primary key, g int as (x + 1) stored)",
+			"create table t2 (b int primary key, g int)",
+			"insert into t1 (x) values (1)",
+			"insert into t2 values (1, 5)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "update t1, t2 set t2.g = 9",
+				Expected: []sql.Row{{NewUpdateResult(2, 1)}},
+			},
+			{
+				Query:    "select b, g from t2",
+				Expected: []sql.Row{{1, 9}},
+			},
+			{
+				Query:       "update t2, t1 set t1.g = 0",
+				ExpectedErr: sql.ErrGeneratedColumnValue,
+			},
+			{
+				Query:          "update t2, t1 set t1.g = 0",
+				ExpectedErrStr: `The value specified for generated column "g" in table "t1" is not allowed.`,
+			},
+			{
+				Query:    "select x, g from t1",
+				Expected: []sql.Row{{1, 2}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12238
+		Name: "same-named generated column through aliases",
+		SetUpScript: []string{
+			"create table t1 (x int primary key, g int as (x + 1) stored)",
+			"create table t2 (b int primary key, g int)",
+			"insert into t1 (x) values (1)",
+			"insert into t2 values (1, 5)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "update t1 as q, t2 as p set p.g = 9",
+				Expected: []sql.Row{{NewUpdateResult(2, 1)}},
+			},
+			{
+				Query:    "select b, g from t2",
+				Expected: []sql.Row{{1, 9}},
+			},
+			{
+				Query:       "update t2 as p, t1 as q set q.g = 0",
+				ExpectedErr: sql.ErrGeneratedColumnValue,
+			},
+			{
+				Query:          "update t2 as p, t1 as q set q.g = 0",
+				ExpectedErrStr: `The value specified for generated column "g" in table "t1" is not allowed.`,
+			},
+			{
+				Query:    "select x, g from t1",
+				Expected: []sql.Row{{1, 2}},
 			},
 		},
 	},

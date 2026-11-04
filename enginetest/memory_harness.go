@@ -29,6 +29,7 @@ import (
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 const testNumPartitions = 5
@@ -112,6 +113,15 @@ func (m *MemoryHarness) WithEngineVariables(vars *sql.EngineVariables) *MemoryHa
 // EngineVariables returns the bundle this harness gives its engines and sessions.
 func (m *MemoryHarness) EngineVariables() *sql.EngineVariables {
 	return m.variables
+}
+
+// ResetEngineVariables implements the EngineVariablesHarness interface.
+//
+// The [sql.Session] is zeroed to force NewContext to rebuild a session with the
+// new reset engine variables when called.
+func (m *MemoryHarness) ResetEngineVariables() {
+	m.variables = variables.NewEngineVariables()
+	m.session = nil
 }
 
 func (m *MemoryHarness) SessionBuilder() server.SessionBuilder {

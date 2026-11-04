@@ -51,11 +51,44 @@ func (b *Builder) buildSet(inScope *scope, n *ast.Set) (outScope *scope) {
 		}
 	}
 
+	for _, setExpr := range setVarExprs {
+		if !b.authEnabled {
+			break
+		}
+		err := checkSetScopePrivilege(b.ctx, b.cat.AuthorizationHandler(), b.authQueryState, setExpr.Scope)
+		if err != nil {
+			b.handleErr(err)
+		}
+	}
+
 	exprs := b.setExprsToExpressions(inScope, setVarExprs)
 
 	outScope = inScope.push()
 	outScope.node = plan.NewSet(exprs)
 	return outScope
+}
+
+// checkSetScopePrivilege verifies a session has [sql.PrivilegeType_Super] if
+// |scope| modifies server-wide state, returning an error if authorization
+// fails.
+//
+// TODO(#4071): Accept SYSTEM_VARIABLES_ADMIN once supported.
+func checkSetScopePrivilege(ctx *sql.Context, handler sql.AuthorizationHandler, state sql.AuthorizationQueryState, scope ast.SetScope) error {
+	switch scope {
+	// Require whitelist to prevent permission creep for any future scope.
+	case ast.SetScope_None, ast.SetScope_Session, ast.SetScope_User, SetScope_TransactionLocal:
+		return nil
+	}
+	auth := ast.AuthInformation{
+		AuthType:   ast.AuthType_SUPER,
+		TargetType: ast.AuthTargetType_Global,
+	}
+	err := handler.HandleAuth(ctx, state, auth)
+	if err != nil && sql.ErrPrivilegeCheckFailed.Is(err) {
+		// TODO(#4071): Add SYSTEM_VARIABLES_ADMIN to error message.
+		return sql.ErrSpecificAccessDenied.New(sql.PrivilegeType_Super.String())
+	}
+	return err
 }
 
 func getSetVarExprsFromSetNamesExpr(expr *ast.SetVarExpr) []*ast.SetVarExpr {

@@ -506,7 +506,10 @@ func getForeignKeyHandlerFromUpdateTarget(ctx *sql.Context, catalog *Catalog, up
 func resolveSchemaColumnExpressions(ctx *sql.Context, catalog *Catalog, table sql.Table) (sql.Schema, error) {
 	// Resolve the default and generated column expressions in tblSch
 	builder := planbuilder.New(ctx, catalog, nil)
-	childTblSch := builder.ResolveSchemaDefaults(ctx.GetCurrentDatabase(), table.Name(), table.Schema(ctx))
+	childTblSch, err := builder.ResolveSchemaDefaults(ctx.GetCurrentDatabase(), table.Name(), table.Schema(ctx))
+	if err != nil {
+		return nil, err
+	}
 
 	// Field Indexes are off by one initially and don't fixed by assignExecIndexes because it doesn't traverse through
 	// the ForeignKeyEditors and referential actions, so we correct them here. This is safe because we know these fields

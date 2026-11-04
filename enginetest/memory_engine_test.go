@@ -585,11 +585,27 @@ func TestInsertIgnoreInto(t *testing.T) {
 }
 
 func TestInsertDuplicateKeyKeyless(t *testing.T) {
-	enginetest.TestInsertDuplicateKeyKeyless(t, enginetest.NewDefaultMemoryHarness())
+	h := enginetest.NewDefaultMemoryHarness()
+	// Memory keyless tables do not enforce virtual unique keys: https://github.com/dolthub/go-mysql-server/issues/2643.
+	h.QueriesToSkip("replace and ignore reuse virtual unique keys")
+	enginetest.TestInsertDuplicateKeyKeyless(t, h)
+}
+
+// TestInsertDuplicateKeyKeylessPrepared exercises keyless duplicate handling with prepared statements.
+func TestInsertDuplicateKeyKeylessPrepared(t *testing.T) {
+	h := enginetest.NewDefaultMemoryHarness()
+	// Memory keyless tables do not enforce virtual unique keys: https://github.com/dolthub/go-mysql-server/issues/2643.
+	h.QueriesToSkip("replace and ignore reuse virtual unique keys")
+	enginetest.TestInsertDuplicateKeyKeylessPrepared(t, h)
 }
 
 func TestIgnoreIntoWithDuplicateUniqueKeyKeyless(t *testing.T) {
 	enginetest.TestIgnoreIntoWithDuplicateUniqueKeyKeyless(t, enginetest.NewDefaultMemoryHarness())
+}
+
+// TestIgnoreIntoWithDuplicateUniqueKeyKeylessPrepared exercises ignored unique conflicts with prepared statements.
+func TestIgnoreIntoWithDuplicateUniqueKeyKeylessPrepared(t *testing.T) {
+	enginetest.TestIgnoreIntoWithDuplicateUniqueKeyKeylessPrepared(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestInsertIntoErrors(t *testing.T) {

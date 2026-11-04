@@ -17,6 +17,8 @@ package queries
 import (
 	"math"
 
+	"github.com/dolthub/vitess/go/mysql"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -497,6 +499,100 @@ var NumericScriptTests = []ScriptTest{
 					{uint64(0), uint64(6), uint64(6)},
 					{uint64(0), uint64(6), uint64(6)},
 				},
+			},
+		},
+	},
+	{
+		Name:    "unary bitwise complement",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE test (id INT PRIMARY KEY, value BIGINT)",
+			"INSERT INTO test VALUES (1, 127), (2, 64), (3, NULL), (4, -1)",
+			"CREATE TABLE unsigned_values (id INT PRIMARY KEY, value BIGINT UNSIGNED)",
+			"INSERT INTO unsigned_values VALUES (1, 18446744073709551615), (2, 9223372036854775873)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT ~0, ~64, ~-1, ~~64, ~18446744073709551615, ~NULL",
+				Expected: []sql.Row{{uint64(18446744073709551615), uint64(18446744073709551551), uint64(0), uint64(64), uint64(0), nil}},
+			},
+			{
+				Query:    "UPDATE test SET value = (value & ~64) WHERE id = 1;",
+				Expected: []sql.Row{{NewUpdateResult(1, 1)}},
+			},
+			{
+				Query:    "SELECT id, value FROM test ORDER BY id",
+				Expected: []sql.Row{{1, 63}, {2, 64}, {3, nil}, {4, -1}},
+			},
+			{
+				Query:    "SELECT id, value & ~64 FROM test ORDER BY id",
+				Expected: []sql.Row{{1, uint64(63)}, {2, uint64(0)}, {3, nil}, {4, uint64(18446744073709551551)}},
+			},
+			{
+				Query:    "UPDATE unsigned_values SET value = value & ~64",
+				Expected: []sql.Row{{NewUpdateResult(2, 2)}},
+			},
+			{
+				Query:    "SELECT id, value FROM unsigned_values ORDER BY id",
+				Expected: []sql.Row{{1, uint64(18446744073709551551)}, {2, uint64(9223372036854775809)}},
+			},
+			{
+				Query:    "SELECT ~1.6, ~-1.6, ~CAST(1.6 AS DOUBLE), ~CAST(-1.6 AS DOUBLE), ~'1.6'",
+				Expected: []sql.Row{{uint64(18446744073709551613), uint64(1), uint64(18446744073709551614), uint64(0), uint64(18446744073709551614)}},
+			},
+			{
+				Query:    "SELECT HEX(~_binary'A'), HEX(~CAST(X'0040' AS BINARY(2))), HEX(~BINARY ''), HEX(~~CAST(X'0040' AS BINARY(2)))",
+				Expected: []sql.Row{{"BE", "FFBF", "", "0040"}},
+			},
+			{
+				Query:    "SELECT ~CAST('12:34:56.9' AS TIME(1)), ~CAST('12:34:59.9' AS TIME(1)), ~CAST('-12:34:56.9' AS TIME(1)), ~CAST('00:00:59.9' AS TIME(1))",
+				Expected: []sql.Row{{uint64(18446744073709428158), uint64(18446744073709428115), uint64(123456), uint64(18446744073709551515)}},
+			},
+			{
+				Query:    "SELECT ~CAST('2026-10-30 12:34:59.9' AS DATETIME(1)), ~CAST('2026-10-30 23:59:59.9' AS DATETIME(1))",
+				Expected: []sql.Row{{uint64(18446723812679428115), uint64(18446723812678551615)}},
+			},
+			{
+				Query:    "SELECT ~X'', ~X'000000000000000000'",
+				Expected: []sql.Row{{uint64(18446744073709551615), uint64(18446744073709551615)}},
+			},
+			{
+				Query:       "SELECT ~CAST(-9223372036854775808 AS DOUBLE)",
+				ExpectedErr: sql.ErrIntegerOutOfRange,
+			},
+			{
+				Query:       "SELECT ~CAST(9223372036854775808 AS DOUBLE)",
+				ExpectedErr: sql.ErrIntegerOutOfRange,
+			},
+			{
+				Query:       "SELECT ~CAST(1e20 AS DOUBLE)",
+				ExpectedErr: sql.ErrIntegerOutOfRange,
+			},
+			{
+				Query:       "SELECT ~CAST(-1e20 AS DOUBLE)",
+				ExpectedErr: sql.ErrIntegerOutOfRange,
+			},
+			{
+				Query:                 "SELECT ~'-18446744073709551616'",
+				Expected:              []sql.Row{{uint64(9223372036854775807)}},
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
+			},
+			{
+				Query:                 "SELECT ~'18446744073709551616'",
+				Expected:              []sql.Row{{uint64(0)}},
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
+			},
+			{
+				Query:                 "SELECT ~X'010000000000000000'",
+				Expected:              []sql.Row{{uint64(18446744073709551615)}},
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
+			},
+			{
+				Query:    "SELECT ~0x40, ~X'40', ~B'1000000'",
+				Expected: []sql.Row{{uint64(18446744073709551551), uint64(18446744073709551551), uint64(18446744073709551551)}},
 			},
 		},
 	},
