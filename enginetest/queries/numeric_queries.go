@@ -433,6 +433,34 @@ var NumericScriptTests = []ScriptTest{
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/12311
+		Name: "integer division rejects negative BIGINT UNSIGNED results",
+		// MySQL-only: PostgreSQL does not support unsigned integer types.
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE div_bounds (id INT PRIMARY KEY, d DECIMAL(10,2), u INT UNSIGNED, b BIGINT UNSIGNED)",
+			"INSERT INTO div_bounds VALUES (1, -5.50, 2, 18446744073709551615)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "SELECT -1 DIV CAST(1 AS UNSIGNED)",
+				ExpectedErr: sql.ErrIntegerOutOfRange,
+			},
+			{
+				Query:       "SELECT -5 DIV CAST(2 AS UNSIGNED)",
+				ExpectedErr: sql.ErrIntegerOutOfRange,
+			},
+			{
+				Query:       "SELECT d DIV u FROM div_bounds",
+				ExpectedErr: sql.ErrIntegerOutOfRange,
+			},
+			{
+				Query:    "SELECT -1 DIV CAST(2 AS UNSIGNED), b DIV 1 FROM div_bounds",
+				Expected: []sql.Row{{uint64(0), uint64(math.MaxUint64)}},
+			},
+		},
+	},
+	{
 		Name: "NO_UNSIGNED_SUBTRACTION returns signed BIGINT arithmetic results",
 		// MySQL-only: NO_UNSIGNED_SUBTRACTION is a MySQL SQL mode.
 		Dialect: "mysql",
