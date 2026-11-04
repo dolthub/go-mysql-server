@@ -1339,11 +1339,9 @@ var CreateTableScriptTests = []ScriptTest{
 		SetUpScript: []string{
 			"CREATE TABLE source_entries (id VARCHAR(512) DEFAULT NULL, label VARCHAR(20) DEFAULT 'abc')",
 			"INSERT INTO source_entries VALUES ('row', 'value')",
+			"CREATE TABLE mat_entries (INDEX mat_entries_id (id(255))) AS SELECT * FROM source_entries",
 		},
 		Assertions: []ScriptTestAssertion{
-			{
-				Query: "CREATE TABLE mat_entries (INDEX mat_entries_id (id(255))) AS SELECT * FROM source_entries",
-			},
 			{
 				Query:    "SELECT * FROM mat_entries",
 				Expected: []sql.Row{{"row", "value"}},
