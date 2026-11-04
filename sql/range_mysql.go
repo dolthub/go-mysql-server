@@ -494,6 +494,10 @@ func RemoveOverlappingRanges(ctx context.Context, ranges ...MySQLRange) (MySQLRa
 		return nil, err
 	}
 	for i := 1; i < len(ranges); i++ {
+		// This loop can run for a long time on large inputs, without doing any I/O that would notice a canceled query.
+		if err = ctx.Err(); err != nil {
+			return nil, err
+		}
 		rang := ranges[i]
 		connectingRanges, err := rangeTree.FindConnections(ctx, rang, 0)
 		if err != nil {
@@ -566,6 +570,9 @@ func maybeValidateRangeCollection(ctx context.Context, rangeColl MySQLRangeColle
 // ranges.
 func validateRangeCollection(ctx context.Context, rangeColl MySQLRangeCollection) error {
 	for i := 0; i < len(rangeColl)-1; i++ {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		for j := i + 1; j < len(rangeColl); j++ {
 			if ok, err := rangeColl[i].Overlaps(ctx, rangeColl[j]); err != nil {
 				return err

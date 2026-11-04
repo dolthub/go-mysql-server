@@ -58,6 +58,17 @@ func TestRangeValidation(t *testing.T) {
 	require.ErrorContains(t, sql.MaybeValidateRangeCollection(ctx, large), "overlapping ranges")
 }
 
+func TestRemoveOverlappingRangesCanceled(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err := sql.RemoveOverlappingRanges(ctx, r(req(1)), r(req(2)), r(req(3)))
+	require.ErrorIs(t, err, context.Canceled)
+
+	sqlCtx := sql.NewEmptyContext()
+	_, err = sql.RemoveOverlappingRanges(sqlCtx, r(req(1)), r(req(2)), r(req(3)))
+	require.NoError(t, err)
+}
+
 func TestRangeOverlapTwoColumns(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 	x, y, _, values2, _, _ := setup()
