@@ -375,6 +375,68 @@ var CharsetCollationEngineTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "SHOW FULL COLUMNS reports column collations",
+		// PostgreSQL does not support SHOW FULL COLUMNS/FIELDS or MySQL character set declarations.
+		Dialect: "mysql",
+		SetUpScript: []string{
+			`CREATE TABLE collation_metadata (
+				id INT PRIMARY KEY,
+				c CHAR(10) COLLATE utf8mb4_unicode_ci,
+				v VARCHAR(10) COLLATE utf8mb4_unicode_ci,
+				tt TINYTEXT COLLATE utf8mb4_unicode_ci,
+				t TEXT COLLATE utf8mb4_unicode_ci,
+				mt MEDIUMTEXT COLLATE utf8mb4_unicode_ci,
+				lt LONGTEXT COLLATE utf8mb4_unicode_ci,
+				e ENUM('a','b') COLLATE utf8mb4_unicode_ci,
+				s SET('a','b') COLLATE utf8mb4_unicode_ci,
+				eb ENUM('a','b') CHARACTER SET binary,
+				sb SET('a','b') CHARACTER SET binary,
+				inherited VARCHAR(10),
+				latin VARCHAR(10) CHARACTER SET latin1 COLLATE latin1_swedish_ci,
+				bin VARCHAR(10) COLLATE utf8mb4_bin,
+				fixed BINARY(10), bytes VARBINARY(10),
+				tb TINYBLOB, b BLOB, mb MEDIUMBLOB, lb LONGBLOB, j JSON
+			) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci`,
+			"CREATE VIEW collation_view AS SELECT e FROM collation_metadata",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SHOW FULL COLUMNS FROM collation_metadata",
+				Expected: []sql.Row{
+					{"id", "int", nil, "NO", "PRI", nil, "", "", ""},
+					{"c", "char(10) COLLATE utf8mb4_unicode_ci", "utf8mb4_unicode_ci", "YES", "", nil, "", "", ""},
+					{"v", "varchar(10) COLLATE utf8mb4_unicode_ci", "utf8mb4_unicode_ci", "YES", "", nil, "", "", ""},
+					{"tt", "tinytext COLLATE utf8mb4_unicode_ci", "utf8mb4_unicode_ci", "YES", "", nil, "", "", ""},
+					{"t", "text COLLATE utf8mb4_unicode_ci", "utf8mb4_unicode_ci", "YES", "", nil, "", "", ""},
+					{"mt", "mediumtext COLLATE utf8mb4_unicode_ci", "utf8mb4_unicode_ci", "YES", "", nil, "", "", ""},
+					{"lt", "longtext COLLATE utf8mb4_unicode_ci", "utf8mb4_unicode_ci", "YES", "", nil, "", "", ""},
+					{"e", "enum('a','b') COLLATE utf8mb4_unicode_ci", "utf8mb4_unicode_ci", "YES", "", nil, "", "", ""},
+					{"s", "set('a','b') COLLATE utf8mb4_unicode_ci", "utf8mb4_unicode_ci", "YES", "", nil, "", "", ""},
+					{"eb", "enum('a','b') CHARACTER SET binary COLLATE binary", nil, "YES", "", nil, "", "", ""},
+					{"sb", "set('a','b') CHARACTER SET binary COLLATE binary", nil, "YES", "", nil, "", "", ""},
+					{"inherited", "varchar(10) COLLATE utf8mb4_general_ci", "utf8mb4_general_ci", "YES", "", nil, "", "", ""},
+					{"latin", "varchar(10) CHARACTER SET latin1 COLLATE latin1_swedish_ci", "latin1_swedish_ci", "YES", "", nil, "", "", ""},
+					{"bin", "varchar(10) COLLATE utf8mb4_bin", "utf8mb4_bin", "YES", "", nil, "", "", ""},
+					{"fixed", "binary(10)", nil, "YES", "", nil, "", "", ""},
+					{"bytes", "varbinary(10)", nil, "YES", "", nil, "", "", ""},
+					{"tb", "tinyblob", nil, "YES", "", nil, "", "", ""},
+					{"b", "blob", nil, "YES", "", nil, "", "", ""},
+					{"mb", "mediumblob", nil, "YES", "", nil, "", "", ""},
+					{"lb", "longblob", nil, "YES", "", nil, "", "", ""},
+					{"j", "json", nil, "YES", "", nil, "", "", ""},
+				},
+			},
+			{
+				Query:    "SHOW FULL FIELDS FROM collation_view LIKE 'e'",
+				Expected: []sql.Row{{"e", "enum('a','b') COLLATE utf8mb4_unicode_ci", "utf8mb4_unicode_ci", "YES", "", nil, "", "", ""}},
+			},
+			{
+				Query:    "SHOW FULL COLUMNS FROM collation_metadata WHERE Collation = 'latin1_swedish_ci'",
+				Expected: []sql.Row{{"latin", "varchar(10) CHARACTER SET latin1 COLLATE latin1_swedish_ci", "latin1_swedish_ci", "YES", "", nil, "", "", ""}},
+			},
+		},
+	},
+	{
 		Name: "SET NAMES does not interfere with column charset",
 		SetUpScript: []string{
 			"SET NAMES utf8mb3;",
