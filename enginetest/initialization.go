@@ -29,6 +29,13 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
 )
 
+func init() {
+	// Catch range tree bugs that would produce overlapping index ranges. This is too expensive to do by default
+	// outside of tests. Every test that imports this package, including integrators' engine tests and the
+	// sqllogictest harness, gets it.
+	sql.SetFullRangeValidation(true)
+}
+
 func NewContext(harness Harness) *sql.Context {
 	return newContextSetup(harness.NewContext())
 }

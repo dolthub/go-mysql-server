@@ -30,6 +30,25 @@ import (
 
 var rangeType = types.Uint8
 
+func init() {
+	sql.SetFullRangeValidation(true)
+}
+
+func TestRangeValidation(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	defer sql.SetFullRangeValidation(sql.FullRangeValidationEnabled())
+
+	disjoint := sql.MySQLRangeCollection{r(req(1)), r(req(2)), r(req(3))}
+	overlapping := sql.MySQLRangeCollection{r(req(1)), r(rgt(0)), r(req(3))}
+
+	sql.SetFullRangeValidation(true)
+	require.NoError(t, sql.MaybeValidateRangeCollection(ctx, disjoint))
+	require.ErrorContains(t, sql.MaybeValidateRangeCollection(ctx, overlapping), "overlapping ranges")
+
+	sql.SetFullRangeValidation(false)
+	require.NoError(t, sql.MaybeValidateRangeCollection(ctx, overlapping))
+}
+
 func TestRangeOverlapTwoColumns(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 	x, y, _, values2, _, _ := setup()
