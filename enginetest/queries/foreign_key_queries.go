@@ -2420,6 +2420,53 @@ var ForeignKeyTests = []ScriptTest{
 			},
 		},
 	},
+	// The editors that foreign keys take must be closed even when the statement doesn't run them. An integrator may
+	// fail the next transaction, or the next statement, if they aren't.
+	{
+		Name: "foreign key editors are closed when their statement doesn't run them",
+		SetUpScript: []string{
+			"CREATE TABLE ec_parent (id INT PRIMARY KEY);",
+			"CREATE TABLE ec_child (id INT PRIMARY KEY, pid INT, FOREIGN KEY (pid) REFERENCES ec_parent (id));",
+			"CREATE TABLE ec_t (id INT PRIMARY KEY);",
+			"CREATE TABLE ec_u (id INT PRIMARY KEY);",
+			"INSERT INTO ec_parent VALUES (1);",
+			"CREATE TRIGGER ec_trig AFTER INSERT ON ec_t FOR EACH ROW INSERT INTO ec_child VALUES (new.id, 1);",
+			"CREATE TRIGGER ec_trig_if AFTER INSERT ON ec_u FOR EACH ROW BEGIN IF new.id > 100 THEN INSERT INTO ec_child VALUES (new.id, 1); END IF; END;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO ec_child VALUES (1, 1);",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:            "EXPLAIN PLAN INSERT INTO ec_child VALUES (2, 1);",
+				SkipResultsCheck: true,
+			},
+			{
+				// The trigger never fires.
+				Query:    "INSERT INTO ec_t SELECT id FROM ec_parent WHERE id > 100;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				// The trigger fires, but the branch with the insert isn't taken.
+				Query:    "INSERT INTO ec_u VALUES (1);",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "SELECT * FROM ec_child;",
+				Expected: []sql.Row{{1, 1}},
+			},
+			{
+				// Foreign keys are applied before this fails analysis.
+				Query:       "INSERT INTO ec_child SELECT id, (SELECT 1, 2) FROM ec_parent;",
+				ExpectedErr: sql.ErrInvalidOperandColumns,
+			},
+			{
+				Query:    "SELECT * FROM ec_child;",
+				Expected: []sql.Row{{1, 1}},
+			},
+		},
+	},
 }
 
 var CreateForeignKeyTests = []ScriptTest{

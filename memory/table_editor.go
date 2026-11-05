@@ -37,6 +37,8 @@ type tableEditor struct {
 	prefixLengths  [][]uint16
 	uniqueIdxNames []string
 	discardChanges bool
+	// sess is the session that handed out this editor, if it tracks whether its editors are open.
+	sess *Session
 }
 
 var _ sql.Table = (*tableEditor)(nil)
@@ -85,6 +87,9 @@ func (t *tableEditor) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
 }
 
 func (t *tableEditor) Close(ctx *sql.Context) error {
+	if t.sess != nil {
+		delete(t.sess.openEditors, t)
+	}
 	var sess *Session
 	if !t.editedTable.IgnoreSessionData() {
 		sess = SessionFromContext(ctx)
