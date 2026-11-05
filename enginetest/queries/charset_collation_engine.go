@@ -375,6 +375,7 @@ var CharsetCollationEngineTests = []ScriptTest{
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/12344
 		Name: "SHOW FULL COLUMNS reports column collations",
 		// PostgreSQL does not support SHOW FULL COLUMNS/FIELDS or MySQL character set declarations.
 		Dialect: "mysql",
