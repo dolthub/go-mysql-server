@@ -15,10 +15,8 @@
 package enginetest
 
 import (
-	"context"
 	"testing"
 
-	"github.com/dolthub/vitess/go/mysql"
 	"github.com/stretchr/testify/require"
 
 	sqle "github.com/dolthub/go-mysql-server"
@@ -27,17 +25,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/variables"
 )
-
-func TestMemoryHarnessOwnsVariables(t *testing.T) {
-	vars := variables.NewEngineVariables()
-	h := NewDefaultMemoryHarness().WithEngineVariables(vars)
-	require.Same(t, vars, NewContext(h).EngineVariables())
-	require.Same(t, vars, NewContextWithClient(h, sql.Client{User: "test"}).EngineVariables())
-	require.Same(t, vars, NewSession(h).Session.(sql.EngineVariablesProvider).EngineVariables())
-	sess, err := h.SessionBuilder()(context.Background(), &mysql.Conn{ConnectionID: 42}, "localhost")
-	require.NoError(t, err)
-	require.Same(t, vars, sess.(sql.EngineVariablesProvider).EngineVariables())
-}
 
 func TestMemoryHarnessIsolatedSetup(t *testing.T) {
 	vars := variables.NewEngineVariables()

@@ -72,6 +72,18 @@ func TestEngineVariableOwnership(t *testing.T) {
 	}
 }
 
+// TestDefaultEngineVariablesAreIndependent checks that engines built without explicit EngineVariables do not share
+// global variable state.
+func TestDefaultEngineVariablesAreIndependent(t *testing.T) {
+	a := New(analyzer.NewDefault(memory.NewDBProvider()), nil)
+	b := NewDefault(memory.NewDBProvider())
+	aCtx, bCtx := a.NewContext(context.Background()), b.NewContext(context.Background())
+	queryEngineVariables(t, a, aCtx, "SET GLOBAL max_connections = 71")
+	require.Equal(t, int64(71), queryEngineVariables(t, a, aCtx, "SELECT @@global.max_connections")[0][0])
+	require.NotEqual(t, int64(71), queryEngineVariables(t, b, bCtx, "SELECT @@global.max_connections")[0][0])
+	require.NotEqual(t, queryEngineVariables(t, a, aCtx, "SELECT @@server_uuid"), queryEngineVariables(t, b, bCtx, "SELECT @@server_uuid"))
+}
+
 func TestEventSchedulerRejectsForeignContextGetter(t *testing.T) {
 	aVars, bVars := variables.NewEngineVariables(), variables.NewEngineVariables()
 	e := New(analyzer.NewDefault(memory.NewDBProvider()), &Config{EngineVariables: aVars})

@@ -84,6 +84,7 @@ func NewMemoryHarness(name string, numTablePartitions int, driverInitializer Ind
 		externalProcedureRegistry: externalProcedureRegistry,
 		mu:                        &sync.Mutex{},
 		server:                    useServer,
+		variables:                 variables.NewEngineVariables(),
 	}
 }
 
@@ -103,8 +104,11 @@ func (m MemoryHarness) RetainSessionAfterSetup() *MemoryHarness {
 }
 
 // WithEngineVariables makes the engines, sessions and contexts this harness
-// creates own |vars|. A nil bundle uses the process-wide registries.
+// creates own |vars|.
 func (m *MemoryHarness) WithEngineVariables(vars *sql.EngineVariables) *MemoryHarness {
+	if vars == nil {
+		panic("MemoryHarness requires engine variables")
+	}
 	m.variables = vars
 	m.session = nil
 	return m
@@ -113,15 +117,6 @@ func (m *MemoryHarness) WithEngineVariables(vars *sql.EngineVariables) *MemoryHa
 // EngineVariables returns the bundle this harness gives its engines and sessions.
 func (m *MemoryHarness) EngineVariables() *sql.EngineVariables {
 	return m.variables
-}
-
-// ResetEngineVariables implements the EngineVariablesHarness interface.
-//
-// The [sql.Session] is zeroed to force NewContext to rebuild a session with the
-// new reset engine variables when called.
-func (m *MemoryHarness) ResetEngineVariables() {
-	m.variables = variables.NewEngineVariables()
-	m.session = nil
 }
 
 func (m *MemoryHarness) SessionBuilder() server.SessionBuilder {
@@ -208,15 +203,13 @@ func (m *MemoryHarness) Setup(setupData ...[]setup.SetupScript) {
 func (m *MemoryHarness) NewEngine(t *testing.T) (QueryEngine, error) {
 	if !m.retainSession {
 		m.session = nil
+		// A previous engine's server may still be building sessions for
+		// connections that are closing, and those read the provider.
+		m.mu.Lock()
 		m.provider = nil
+		m.mu.Unlock()
 	}
-	var engine *sqle.Engine
-	var err error
-	if m.variables != nil {
-		engine, err = NewEngineWithVariables(t, m, m.getProvider(), m.setupData, memory.NewStatsProv(), m.variables)
-	} else {
-		engine, err = NewEngine(t, m, m.getProvider(), m.setupData, memory.NewStatsProv())
-	}
+	engine, err := NewEngineWithVariables(t, m, m.getProvider(), m.setupData, memory.NewStatsProv(), m.variables)
 	if err != nil {
 		return nil, err
 	}
@@ -372,10 +365,7 @@ func (m *MemoryHarness) NewReadOnlyEngine(provider sql.DatabaseProvider) (QueryE
 	readOnlyProvider := memory.NewDBProviderWithOpts(memory.WithDbsOption(dbs))
 	m.provider = readOnlyProvider.(*memory.DbProvider)
 
-	if m.variables != nil {
-		return NewEngineWithProviderAndVariables(nil, m, readOnlyProvider, m.variables), nil
-	}
-	return NewEngineWithProvider(nil, m, readOnlyProvider), nil
+	return NewEngineWithProviderAndVariables(nil, m, readOnlyProvider, m.variables), nil
 }
 
 func (m *MemoryHarness) ValidateEngine(ctx *sql.Context, e *sqle.Engine) error {

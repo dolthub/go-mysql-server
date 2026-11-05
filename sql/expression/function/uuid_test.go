@@ -305,7 +305,7 @@ func TestUUIDShortProperties(t *testing.T) {
 }
 
 func TestUUIDShortServerIdIntegration(t *testing.T) {
-	ctx := sql.NewEmptyContext()
+	ctx := sql.NewContextWithVariables(t.Context(), variables.NewEngineVariables())
 	uuidShortE := NewUUIDShortFunc(ctx)
 
 	result1, err := uuidShortE.Eval(ctx, sql.Row{nil})
@@ -315,7 +315,7 @@ func TestUUIDShortServerIdIntegration(t *testing.T) {
 	serverIDFromResult := (result1.(uint64) & 0xFF00000000000000) >> 56
 	require.Equal(t, uint64(1), serverIDFromResult)
 
-	err = sql.SystemVariables.SetGlobal(ctx, "server_id", uint32(123))
+	err = ctx.SystemVariables().SetGlobal(ctx, "server_id", uint32(123))
 	require.NoError(t, err)
 
 	result2, err := uuidShortE.Eval(ctx, sql.Row{nil})
@@ -325,7 +325,7 @@ func TestUUIDShortServerIdIntegration(t *testing.T) {
 	serverIDFromResult2 := (result2.(uint64) & 0xFF00000000000000) >> 56
 	require.Equal(t, uint64(123), serverIDFromResult2)
 
-	err = sql.SystemVariables.SetGlobal(ctx, "server_id", uint32(255))
+	err = ctx.SystemVariables().SetGlobal(ctx, "server_id", uint32(255))
 	require.NoError(t, err)
 
 	result3, err := uuidShortE.Eval(ctx, sql.Row{nil})
@@ -335,7 +335,7 @@ func TestUUIDShortServerIdIntegration(t *testing.T) {
 	serverIDFromResult3 := (result3.(uint64) & 0xFF00000000000000) >> 56
 	require.Equal(t, uint64(255), serverIDFromResult3)
 
-	err = sql.SystemVariables.SetGlobal(ctx, "server_id", uint32(256))
+	err = ctx.SystemVariables().SetGlobal(ctx, "server_id", uint32(256))
 	require.NoError(t, err)
 
 	result4, err := uuidShortE.Eval(ctx, sql.Row{nil})
@@ -345,7 +345,7 @@ func TestUUIDShortServerIdIntegration(t *testing.T) {
 	serverIDFromResult4 := (result4.(uint64) & 0xFF00000000000000) >> 56
 	require.Equal(t, uint64(0), serverIDFromResult4)
 
-	err = sql.SystemVariables.SetGlobal(ctx, "server_id", uint32(243))
+	err = ctx.SystemVariables().SetGlobal(ctx, "server_id", uint32(243))
 	require.NoError(t, err)
 
 	result5, err := uuidShortE.Eval(ctx, sql.Row{nil})
@@ -354,4 +354,15 @@ func TestUUIDShortServerIdIntegration(t *testing.T) {
 
 	serverIDFromResult5 := (result5.(uint64) & 0xFF00000000000000) >> 56
 	require.Equal(t, uint64(243), serverIDFromResult5)
+}
+
+func TestUUIDShortAcrossEngines(t *testing.T) {
+	a := sql.NewContextWithVariables(t.Context(), variables.NewEngineVariables())
+	b := sql.NewContextWithVariables(t.Context(), variables.NewEngineVariables())
+	fn := NewUUIDShortFunc(a)
+	first, err := fn.Eval(a, nil)
+	require.NoError(t, err)
+	second, err := fn.Eval(b, nil)
+	require.NoError(t, err)
+	require.NotEqual(t, first, second)
 }
