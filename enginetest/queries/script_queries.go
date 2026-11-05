@@ -10446,9 +10446,9 @@ where
 		SetUpScript: []string{
 			`CREATE TABLE instr_text (
 				id INT PRIMARY KEY,
-				hay LONGTEXT COLLATE utf8mb4_0900_ai_ci,
-				needle LONGTEXT COLLATE utf8mb4_bin,
-				cs_hay LONGTEXT COLLATE utf8mb4_0900_as_cs)`,
+				str LONGTEXT COLLATE utf8mb4_0900_ai_ci,
+				sub_str LONGTEXT COLLATE utf8mb4_bin,
+				cs_str LONGTEXT COLLATE utf8mb4_0900_as_cs)`,
 			`INSERT INTO instr_text VALUES
 				(1, 'foobar', 'BAR', 'foobar'),
 				(2, 'foobar', 'xyz', 'foobar'),
@@ -10457,7 +10457,7 @@ where
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: `SELECT id, INSTR(hay, needle), INSTR(cs_hay, needle)
+				Query: `SELECT id, INSTR(str, sub_str), INSTR(cs_str, sub_str)
 					FROM instr_text ORDER BY id`,
 				Expected: []sql.Row{{1, 4, 0}, {2, 0, 0}, {3, 2, 2}, {4, 0, 0}},
 			},

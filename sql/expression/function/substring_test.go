@@ -159,7 +159,7 @@ func TestInstr(t *testing.T) {
 	}
 }
 
-// TestCollatedInstr checks that unwrapping the needle preserves the haystack.
+// TestCollatedInstr checks that INSTR compares wrapped string values using the collation of the searched string.
 func TestCollatedInstr(t *testing.T) {
 	textType := types.MustCreateString(sqltypes.Text, 100, sql.Collation_utf8mb4_0900_ai_ci)
 	f := NewInstr(

@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -631,8 +632,9 @@ func (i Instr) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	// MySQL uses the haystack's collation, even when the needle has an
-	// explicit COLLATE clause. Binary haystacks return byte positions.
+	// MySQL compares using the collation of the string being searched (the first argument), even when the substring
+	// has an explicit COLLATE clause. When the searched string is binary, the result is a byte position rather than a
+	// character position.
 	collation, _ := sql.GetCoercibility(ctx, i.str)
 	if collation == sql.Collation_binary {
 		return int64(strings.Index(text, subtext) + 1), nil
@@ -641,6 +643,8 @@ func (i Instr) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return instrCollated(text, subtext, collation)
 }
 
+// instrCollated returns the 1-based character position of the first occurrence of |subtext| in |text|, comparing
+// characters with |collation|, or 0 if |subtext| does not occur. An empty |subtext| matches at position 1.
 func instrCollated(text, subtext string, collation sql.CollationID) (int64, error) {
 	if len(subtext) == 0 {
 		return 1, nil
@@ -651,26 +655,30 @@ func instrCollated(text, subtext string, collation sql.CollationID) (int64, erro
 		return 0, sql.ErrCollationNotYetImplementedTemp.New(collation.Name())
 	}
 
-	// MySQL compares windows with the same encoded byte length as the
-	// needle, starting only at character boundaries. This matters when
-	// a collation equates characters with different encoded lengths.
+	// MySQL only considers matches that start on a character boundary and span the same number of bytes, in the
+	// collation's character set, as |subtext|. This matters when a collation treats characters with different encoded
+	// lengths as equal.
 	encoder := collation.CharacterSet().Encoder()
-	encodedNeedle, ok := encoder.Encode([]byte(subtext))
+	encodedSubtext, ok := encoder.Encode([]byte(subtext))
 	if !ok {
 		return 0, sql.ErrCollationMalformedString.New("converting INSTR substring")
 	}
 
-	// Like other collation comparisons, these per-rune weights do not yet
-	// support UCA expansions (for example, sharp s matching two s characters).
-	needle := []rune(subtext)
+	// Characters are compared one at a time by their collation weights, so a single character never matches a
+	// sequence of several characters. Some collations treat such pairs as equal: in utf8mb4_0900_ai_ci, 'ß' equals
+	// 'ss' and 'æ' equals 'ae'. MySQL returns 5 for INSTR('straße', 'ss') in that collation, but this returns 0.
+	subtextRunes := []rune(subtext)
 	textRunes := []rune(text)
-	if len(needle) > len(textRunes) {
+	if len(subtextRunes) > len(textRunes) {
 		return 0, nil
 	}
 
+	// byteOffsets[j] is the encoded byte offset of textRunes[j] in the collation's character set
 	byteOffsets := make([]int, len(textRunes)+1)
+	var runeBytes []byte
 	for j, r := range textRunes {
-		encoded, ok := encoder.Encode([]byte(string(r)))
+		runeBytes = utf8.AppendRune(runeBytes[:0], r)
+		encoded, ok := encoder.Encode(runeBytes)
 		if !ok {
 			return 0, sql.ErrCollationMalformedString.New("converting INSTR string")
 		}
@@ -678,13 +686,13 @@ func instrCollated(text, subtext string, collation sql.CollationID) (int64, erro
 		byteOffsets[j+1] = byteOffsets[j] + len(encoded)
 	}
 
-	for start := 0; start+len(needle) <= len(textRunes); start++ {
-		if byteOffsets[start+len(needle)]-byteOffsets[start] != len(encodedNeedle) {
+	for start := 0; start+len(subtextRunes) <= len(textRunes); start++ {
+		if byteOffsets[start+len(subtextRunes)]-byteOffsets[start] != len(encodedSubtext) {
 			continue
 		}
 
 		matched := true
-		for j, r := range needle {
+		for j, r := range subtextRunes {
 			if sorter(textRunes[start+j]) != sorter(r) {
 				matched = false
 				break
