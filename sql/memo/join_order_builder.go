@@ -572,7 +572,7 @@ func (j *joinOrderBuilder) buildJoinLeaf(ctx *sql.Context, n plan.TableIdNode) *
 	case *plan.RecursiveCte:
 		rel = &RecursiveCte{sourceBase: b, Table: n}
 	case *plan.IndexedTableAccess:
-		rel = &TableScan{sourceBase: b, Table: n.TableNode.(plan.TableIdNode)}
+		rel = &TableScan{sourceBase: b, Table: n}
 	case *plan.ValueDerivedTable:
 		rel = &Values{sourceBase: b, Table: n}
 	case *plan.JSONTable:
