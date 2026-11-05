@@ -433,14 +433,17 @@ func (b *BaseBuilder) buildUpdateJoin(ctx *sql.Context, n *plan.UpdateJoin, row 
 		return nil, err
 	}
 
-	updaters, err := n.GetUpdaters(ctx)
-	if err != nil {
-		return nil, err
+	// The parent Update node's updater does the writes, so only the target names are needed here.
+	for _, target := range n.UpdateTargets {
+		if _, err = plan.GetUpdatable(target); err != nil {
+			_ = ji.Close(ctx)
+			return nil, err
+		}
 	}
 	return &updateJoinIter{
 		updateSourceIter: ji,
 		joinSchema:       n.Child.(*plan.UpdateSource).Child.Schema(ctx),
-		updaters:         updaters,
+		updateTargets:    n.UpdateTargets,
 		caches:           make(map[string]sql.KeyValueCache),
 		disposals:        make(map[string]sql.DisposeFunc),
 		joinNode:         n.Child.(*plan.UpdateSource).Child,
