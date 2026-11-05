@@ -5760,9 +5760,7 @@ func TestBlobs(t *testing.T, h Harness) {
 
 	// By default, strict_mysql_compatibility is disabled, but these tests require it to be enabled.
 	for _, tt := range queries.BlobErrors {
-		runQueryErrorTest(t, h, tt, func(ctx *sql.Context) error {
-			return ctx.SystemVariables().SetGlobal(ctx, "strict_mysql_compatibility", int8(1))
-		})
+		runQueryErrorTest(t, h, tt, "SET GLOBAL strict_mysql_compatibility = 1")
 	}
 
 	e := MustNewEngine(t, h)

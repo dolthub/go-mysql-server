@@ -336,7 +336,7 @@ func WithEngineVariables(vars *EngineVariables) ContextOption {
 	return func(ctx *Context) { ctx.engineVariables = vars }
 }
 
-// EngineVariables returns the context's explicit owner, or its session's owner.
+// EngineVariables returns the context's engine variables, falling back to its session's.
 func (c *Context) EngineVariables() *EngineVariables {
 	if c == nil {
 		return nil
@@ -344,26 +344,20 @@ func (c *Context) EngineVariables() *EngineVariables {
 	if c.engineVariables != nil {
 		return c.engineVariables
 	}
-	if owner, ok := c.Session.(EngineVariablesProvider); ok {
-		return owner.EngineVariables()
+	if provider, ok := c.Session.(EngineVariablesProvider); ok {
+		return provider.EngineVariables()
 	}
 	return nil
 }
 
-// SystemVariables returns the active system registry, if the context has an owner.
+// SystemVariables returns the active system registry.
 func (c *Context) SystemVariables() SystemVariableRegistry {
-	if vars := c.EngineVariables(); vars != nil {
-		return vars.System
-	}
-	panic("system variables require an engine variable owner")
+	return c.EngineVariables().System
 }
 
 // StatusVariables returns the active status registry.
 func (c *Context) StatusVariables() StatusVariableRegistry {
-	if vars := c.EngineVariables(); vars != nil {
-		return vars.Status
-	}
-	panic("status variables require an engine variable owner")
+	return c.EngineVariables().Status
 }
 
 // NewContextWithVariables requires a complete bundle and, unless a session is
@@ -620,7 +614,7 @@ func (c *Context) ApplyOpts(opts ...ContextOption) {
 }
 
 // NewEmptyContext returns an unbound context. When an existing context is
-// available, prefer ctx.NewContext to retain its owner and other overrides.
+// available, prefer ctx.NewContext to retain its engine variables and other overrides.
 func NewEmptyContext() *Context {
 	return NewContext(context.TODO())
 }

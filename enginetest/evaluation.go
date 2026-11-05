@@ -1373,7 +1373,7 @@ func runGenericErrorTest(t *testing.T, h Harness, tt queries.GenericErrorQueryTe
 	})
 }
 
-func runQueryErrorTest(t *testing.T, h Harness, tt queries.QueryErrorTest, setup ...func(*sql.Context) error) {
+func runQueryErrorTest(t *testing.T, h Harness, tt queries.QueryErrorTest, setup ...string) {
 	t.Run(tt.Query, func(t *testing.T) {
 		if sh, ok := h.(SkippingHarness); ok {
 			if sh.SkipQueryTest(tt.Query) {
@@ -1382,8 +1382,8 @@ func runQueryErrorTest(t *testing.T, h Harness, tt queries.QueryErrorTest, setup
 		}
 		e := MustNewEngine(t, h)
 		defer e.Close()
-		if len(setup) != 0 {
-			require.NoError(t, setup[0](NewContext(h)))
+		for _, q := range setup {
+			RunQueryWithContext(t, e, h, nil, q)
 		}
 		tfp, ok := e.EngineAnalyzer().Catalog.DbProvider.(sql.TableFunctionProvider)
 		if !ok {

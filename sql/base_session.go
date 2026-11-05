@@ -90,18 +90,13 @@ var _ Session = (*BaseSession)(nil)
 // Unbound sessions return nil.
 func (s *BaseSession) EngineVariables() *EngineVariables { return s.engineVariables }
 
-func (s *BaseSession) systemRegistry() SystemVariableRegistry {
-	if s.engineVariables != nil {
-		return s.engineVariables.System
-	}
-	panic("session system variables require an engine variable owner")
-}
-
-func (s *BaseSession) requireVariableOwner() error {
+// lookupSystemVariable returns the definition and global value of a system
+// variable. Unbound sessions have no system variables.
+func (s *BaseSession) lookupSystemVariable(name string) (SystemVariable, interface{}, bool) {
 	if s.engineVariables == nil {
-		return fmt.Errorf("session variables require an engine variable owner")
+		return nil, nil, false
 	}
-	return nil
+	return s.engineVariables.System.GetGlobal(name)
 }
 
 func (s *BaseSession) SetTransactionDatabase(dbName string) {
@@ -142,7 +137,7 @@ func (s *BaseSession) GetAllSessionVariables() map[string]interface{} {
 		addVar(k, v)
 	}
 	if s.engineVariables != nil {
-		registry := s.systemRegistry()
+		registry := s.engineVariables.System
 		for name := range registry.GetAllGlobalVariables() {
 			if _, snapshotted := s.systemVars[name]; snapshotted {
 				continue
@@ -162,9 +157,6 @@ func (s *BaseSession) GetAllSessionVariables() map[string]interface{} {
 
 // SetSessionVariable implements the Session interface.
 func (s *BaseSession) SetSessionVariable(ctx *Context, sysVarName string, value interface{}) error {
-	if err := s.requireVariableOwner(); err != nil {
-		return err
-	}
 	sysVarName = strings.ToLower(sysVarName)
 	sysVar, ok := s.systemVars[sysVarName]
 
@@ -173,7 +165,7 @@ func (s *BaseSession) SetSessionVariable(ctx *Context, sysVarName string, value 
 	// TODO: fix this with proper session lifecycle management
 	sv := sysVar.Var
 	if !ok {
-		sv, _, ok = s.systemRegistry().GetGlobal(sysVarName)
+		sv, _, ok = s.lookupSystemVariable(sysVarName)
 		if !ok {
 			return ErrUnknownSystemVariable.New(sysVarName)
 		}
@@ -189,10 +181,7 @@ func (s *BaseSession) SetSessionVariable(ctx *Context, sysVarName string, value 
 
 // InitSessionVariable implements the Session interface and is used to initialize variables (Including read-only variables)
 func (s *BaseSession) InitSessionVariable(ctx *Context, sysVarName string, value interface{}) error {
-	if err := s.requireVariableOwner(); err != nil {
-		return err
-	}
-	sysVar, _, ok := s.systemRegistry().GetGlobal(sysVarName)
+	sysVar, _, ok := s.lookupSystemVariable(sysVarName)
 	if !ok {
 		return ErrUnknownSystemVariable.New(sysVarName)
 	}
@@ -215,10 +204,7 @@ func (s *BaseSession) InitSessionVariable(ctx *Context, sysVarName string, value
 
 // InitSessionVariableDefault implements the Session interface and is used to initialize variables (Including read-only variables)
 func (s *BaseSession) InitSessionVariableDefault(ctx *Context, sysVarName string, value interface{}) error {
-	if err := s.requireVariableOwner(); err != nil {
-		return err
-	}
-	sysVar, _, ok := s.systemRegistry().GetGlobal(sysVarName)
+	sysVar, _, ok := s.lookupSystemVariable(sysVarName)
 	if !ok {
 		return ErrUnknownSystemVariable.New(sysVarName)
 	}
@@ -272,9 +258,6 @@ func (s *BaseSession) SetUserVariable(ctx *Context, varName string, value interf
 
 // GetSessionVariable implements the Session interface
 func (s *BaseSession) GetSessionVariable(ctx *Context, sysVarName string) (interface{}, error) {
-	if err := s.requireVariableOwner(); err != nil {
-		return nil, err
-	}
 	sysVarName = strings.ToLower(sysVarName)
 	// If the variable has been set with transaction-local scope, the transaction-local value is returned.
 	sysVar, ok := s.localSysVars[sysVarName]
@@ -282,7 +265,7 @@ func (s *BaseSession) GetSessionVariable(ctx *Context, sysVarName string) (inter
 		sysVar, ok = s.systemVars[sysVarName]
 	}
 	if !ok {
-		definition, value, exists := s.systemRegistry().GetGlobal(sysVarName)
+		definition, value, exists := s.lookupSystemVariable(sysVarName)
 		if exists && definition != nil && definition.IsGlobalOnly() {
 			return value, nil
 		}
@@ -299,9 +282,6 @@ func (s *BaseSession) GetSessionVariable(ctx *Context, sysVarName string) (inter
 
 // SetTransactionLocalVariable implements the Session interface.
 func (s *BaseSession) SetTransactionLocalVariable(ctx *Context, sysVarName string, value interface{}) error {
-	if err := s.requireVariableOwner(); err != nil {
-		return err
-	}
 	sysVarName = strings.ToLower(sysVarName)
 	sysVar, ok := s.systemVars[sysVarName]
 	var sv SystemVariable
@@ -309,7 +289,7 @@ func (s *BaseSession) SetTransactionLocalVariable(ctx *Context, sysVarName strin
 		sv = sysVar.Var
 	} else {
 		// See the comment in SetSessionVariable: variables added after session start must be looked up dynamically
-		sv, _, ok = s.systemRegistry().GetGlobal(sysVarName)
+		sv, _, ok = s.lookupSystemVariable(sysVarName)
 		if !ok {
 			return ErrUnknownSystemVariable.New(sysVarName)
 		}
@@ -339,13 +319,10 @@ func (s *BaseSession) ClearTransactionLocalVariables(ctx *Context) error {
 
 // GetSessionVariableDefault implements the Session interface.
 func (s *BaseSession) GetSessionVariableDefault(ctx *Context, sysVarName string) (interface{}, error) {
-	if err := s.requireVariableOwner(); err != nil {
-		return nil, err
-	}
 	sysVarName = strings.ToLower(sysVarName)
 	sysVar, ok := s.systemVars[sysVarName]
 	if !ok {
-		definition, _, exists := s.systemRegistry().GetGlobal(sysVarName)
+		definition, _, exists := s.lookupSystemVariable(sysVarName)
 		if exists && definition != nil && definition.IsGlobalOnly() {
 			return nil, ErrSystemVariableGlobalOnly.New(sysVarName)
 		}
@@ -371,9 +348,6 @@ func (s *BaseSession) GetUserVariable(ctx *Context, varName string) (Type, inter
 
 // GetStatusVariable implements the Session interface.
 func (s *BaseSession) GetStatusVariable(_ *Context, statVarName string) (interface{}, error) {
-	if err := s.requireVariableOwner(); err != nil {
-		return nil, err
-	}
 	statVar, ok := s.statusVars[statVarName]
 	if !ok {
 		return nil, ErrUnknownSystemVariable.New(statVarName)
@@ -383,9 +357,6 @@ func (s *BaseSession) GetStatusVariable(_ *Context, statVarName string) (interfa
 
 // SetStatusVariable implements the Session interface.
 func (s *BaseSession) SetStatusVariable(_ *Context, statVarName string, val interface{}) error {
-	if err := s.requireVariableOwner(); err != nil {
-		return err
-	}
 	statVar, ok := s.statusVars[statVarName]
 	if !ok {
 		return ErrUnknownSystemVariable.New(statVarName)
@@ -406,9 +377,6 @@ func (s *BaseSession) GetAllStatusVariables(_ *Context) map[string]StatusVarValu
 
 // IncrementStatusVariable implements the Session interface.
 func (s *BaseSession) IncrementStatusVariable(ctx *Context, statVarName string, val int) {
-	if err := s.requireVariableOwner(); err != nil {
-		panic(err)
-	}
 	if _, ok := s.statusVars[statVarName]; !ok {
 		return
 	}
@@ -685,7 +653,7 @@ func (s *BaseSession) GetCachedQuery(query string) (sqlparser.Statement, bool) {
 	return stmt, ok
 }
 
-// BaseSessionFromConnection returns an unbound base session for a connection.
+// BaseSessionFromConnection is a SessionBuilder that returns a base session for the given connection and remote address
 func BaseSessionFromConnection(ctx context.Context, c *mysql.Conn, addr string) (*BaseSession, error) {
 	host := ""
 	user := ""
@@ -714,7 +682,7 @@ func BaseSessionFromConnectionWithVariables(ctx context.Context, c *mysql.Conn, 
 	return NewBaseSessionWithClientServerWithVariables(addr, client, c.ConnectionID, vars), nil
 }
 
-// NewBaseSessionWithClientServer creates an unbound session with client data.
+// NewBaseSessionWithClientServer creates a new session with data.
 func NewBaseSessionWithClientServer(server string, client Client, id uint32) *BaseSession {
 	return newBaseSession(server, client, id, nil)
 }
