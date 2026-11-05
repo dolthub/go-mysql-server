@@ -1520,6 +1520,21 @@ var TransactionTests = []TransactionTest{
 		},
 	},
 	{
+		Name: "CALL preserves a transaction started inside the procedure",
+		SetUpScript: []string{
+			"CREATE TABLE t (id INT PRIMARY KEY)",
+			"CREATE PROCEDURE p() BEGIN START TRANSACTION; INSERT INTO t VALUES (1); SAVEPOINT s; INSERT INTO t VALUES (2); END",
+		},
+		Assertions: []ScriptTestAssertion{
+			{Query: "/* client a */ CALL p()", SkipResultsCheck: true},
+			{Query: "/* client b */ SELECT * FROM t", Expected: []sql.Row{}},
+			{Query: "/* client a */ ROLLBACK TO SAVEPOINT s", Expected: []sql.Row{}},
+			{Query: "/* client a */ SELECT * FROM t", Expected: []sql.Row{{1}}},
+			{Query: "/* client a */ COMMIT", Expected: []sql.Row{}},
+			{Query: "/* client b */ SELECT * FROM t", Expected: []sql.Row{{1}}},
+		},
+	},
+	{
 		Name: "CALL preserves autocommit behavior",
 		SetUpScript: []string{
 			"CREATE TABLE t (id INT PRIMARY KEY)",
