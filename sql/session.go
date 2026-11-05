@@ -63,7 +63,8 @@ type Client struct {
 
 // Session holds the session data.
 type Session interface {
-	// EngineVariablesProvider returns the bundle of the engine that owns this session, or nil for an unbound session.
+	// EngineVariablesProvider returns the bundle of the engine that owns this session, or nil for a session
+	// that is not attached to an engine, such as one created by NewBaseSession.
 	EngineVariablesProvider
 	// Address of the server.
 	Address() string
@@ -566,9 +567,9 @@ func Now() time.Time {
 
 type ContextFactory func(context.Context, ...ContextOption) *Context
 
-// NewContext creates a new query context. Without a bound session or variable
-// bundle, it creates an unbound base session. The default tracer is a noop and
-// the memory manager uses the process reporter.
+// NewContext creates a new query context. Without a session or variable bundle
+// option, it uses a NewBaseSession, which has no engine variables. The default
+// tracer is a noop and the memory manager uses the process reporter.
 func NewContext(
 	ctx context.Context,
 	opts ...ContextOption,
@@ -615,8 +616,9 @@ func (c *Context) ApplyOpts(opts ...ContextOption) {
 	}
 }
 
-// NewEmptyContext returns an unbound context for evaluating expressions
-// without an engine. It has no engine variables, so SystemVariables() panics.
+// NewEmptyContext returns a context that is not attached to an engine, for
+// evaluating expressions. Its session comes from NewBaseSession, so it has no
+// engine variables and SystemVariables() and StatusVariables() panic.
 // When an existing context is available, prefer ctx.NewContext to retain its
 // engine variables and other overrides.
 func NewEmptyContext() *Context {

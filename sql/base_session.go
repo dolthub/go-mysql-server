@@ -86,12 +86,12 @@ func (s *BaseSession) GetIgnoreAutoCommit() bool {
 
 var _ Session = (*BaseSession)(nil)
 
-// EngineVariables returns the bundle used when this session was constructed.
-// Unbound sessions return nil.
+// EngineVariables returns the bundle used when this session was constructed,
+// or nil for a session created without one, such as by NewBaseSession.
 func (s *BaseSession) EngineVariables() *EngineVariables { return s.engineVariables }
 
 // lookupSystemVariable returns the definition and global value of a system
-// variable. Unbound sessions have no system variables.
+// variable. A session without engine variables has no system variables.
 func (s *BaseSession) lookupSystemVariable(name string) (SystemVariable, interface{}, bool) {
 	if s.engineVariables == nil {
 		return nil, nil, false
@@ -670,8 +670,10 @@ func BaseSessionFromConnectionWithVariables(ctx context.Context, c *mysql.Conn, 
 	return NewBaseSessionWithClientServerWithVariables(addr, client, c.ConnectionID, vars), nil
 }
 
-// NewBaseSessionWithClientServer creates an unbound session with client data.
-// Like NewBaseSession, it has no engine variables.
+// NewBaseSessionWithClientServer creates a session with the given client data
+// that, like NewBaseSession, is not attached to an engine and has no system or
+// status variables. Use NewBaseSessionWithClientServerWithVariables for a
+// session that runs queries.
 func NewBaseSessionWithClientServer(server string, client Client, id uint32) *BaseSession {
 	return newBaseSession(server, client, id, nil)
 }
@@ -725,10 +727,13 @@ func newBaseSession(server string, client Client, id uint32, vars *EngineVariabl
 	}
 }
 
-// NewBaseSession creates an unbound session with empty system and status maps,
-// for evaluating expressions without an engine. It has no engine variables, so
-// SystemVariables() panics on a context that uses it. Use
-// NewBaseSessionWithVariables for a session that runs queries.
+// NewBaseSession creates a session that is not attached to an engine. Its
+// EngineVariables() is nil, so it has no system or status variables: getting
+// or setting one returns ErrUnknownSystemVariable, and Context.SystemVariables()
+// and Context.StatusVariables() panic on a context that uses this session and
+// has no WithEngineVariables override. It is meant for evaluating expressions
+// and for tests that never touch variables. Sessions that run queries must be
+// created with NewBaseSessionWithVariables.
 func NewBaseSession() *BaseSession {
 	return NewBaseSessionWithClientServer("", Client{}, atomic.AddUint32(&autoSessionIDs, 1))
 }
