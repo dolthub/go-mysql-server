@@ -27,7 +27,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row sql.Row) (_ sql.RowIter, err error) {
 	insertable, err := plan.GetInsertable(ii.Destination)
 	if err != nil {
 		return nil, err
@@ -37,6 +37,19 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 
 	var replacer sql.RowReplacer
 	var updater sql.RowUpdater
+	var rowIter sql.RowIter
+	// Until the insert iterator owns them, the editors and row source must be closed here on error.
+	iterOwnsEditors := false
+	defer func() {
+		if err == nil || iterOwnsEditors {
+			return
+		}
+		for _, c := range []sql.Closer{rowIter, inserter, replacer, updater} {
+			if c != nil {
+				_ = c.Close(ctx)
+			}
+		}
+	}()
 	// These type casts have already been asserted in the analyzer
 	if ii.IsReplace {
 		replacer = insertable.(sql.ReplaceableTable).Replacer(ctx)
@@ -47,7 +60,7 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 		}
 	}
 
-	rowIter, err := b.buildNodeExec(ctx, ii.Source, row)
+	rowIter, err = b.buildNodeExec(ctx, ii.Source, row)
 	if err != nil {
 		return nil, err
 	}
@@ -67,13 +80,18 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 				return nil, errors.New("auto increment expression on non-AutoIncrement table. This should not be possible")
 			}
 
-			unlocker, err = autoIncrementable.AutoIncrementSetter(ctx).AcquireAutoIncrementLock(ctx)
+			setter := autoIncrementable.AutoIncrementSetter(ctx)
+			unlocker, err = setter.AcquireAutoIncrementLock(ctx)
+			// The setter is only needed to take the lock, which outlives it.
+			_ = setter.Close(ctx)
 			if err != nil {
 				return nil, err
 			}
 		}
 	}
 
+	// newInsertIter closes everything it's given if it fails.
+	iterOwnsEditors = true
 	insertIter, err := b.newInsertIter(ctx, ii, rowIter, inserter, replacer, updater, unlocker)
 	if err != nil {
 		return nil, err
@@ -100,22 +118,33 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 	}
 }
 
-func (b *BaseBuilder) buildDeleteFrom(ctx *sql.Context, n *plan.DeleteFrom, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildDeleteFrom(ctx *sql.Context, n *plan.DeleteFrom, row sql.Row) (_ sql.RowIter, err error) {
 	iter, err := b.buildNodeExec(ctx, n.Child, row)
 	if err != nil {
 		return nil, err
 	}
 
 	targets := n.GetDeleteTargets()
-	schemaPositionDeleters := make([]schemaPositionDeleter, len(targets))
+	schemaPositionDeleters := make([]schemaPositionDeleter, 0, len(targets))
 	schema := n.Child.Schema(ctx)
+	// Until the delete iterator owns them, the deleters and source must be closed here on error.
+	defer func() {
+		if err != nil {
+			_ = iter.Close(ctx)
+			for _, d := range schemaPositionDeleters {
+				_ = d.deleter.Close(ctx)
+			}
+		}
+	}()
 
-	for i, target := range targets {
+	for _, target := range targets {
 		deletable, err := plan.GetDeletable(target)
 		if err != nil {
 			return nil, err
 		}
 		deleter := deletable.Deleter(ctx)
+		schemaPositionDeleters = append(schemaPositionDeleters, schemaPositionDeleter{deleter: deleter})
+		spd := &schemaPositionDeleters[len(schemaPositionDeleters)-1]
 
 		// By default the sourceName in the schema is the table name, but if there is a
 		// table alias applied, then use that instead.
@@ -132,7 +161,7 @@ func (b *BaseBuilder) buildDeleteFrom(ctx *sql.Context, n *plan.DeleteFrom, row 
 		if err != nil {
 			return nil, err
 		}
-		schemaPositionDeleters[i] = schemaPositionDeleter{deleter, int(start), int(end)}
+		spd.schemaStart, spd.schemaEnd = int(start), int(end)
 	}
 	return newDeleteIter(iter, schema, schemaPositionDeleters, n.Returning, n.Schema(ctx)), nil
 }
@@ -150,6 +179,7 @@ func (b *BaseBuilder) buildUpdate(ctx *sql.Context, n *plan.Update, row sql.Row)
 
 	iter, err := b.buildNodeExec(ctx, n.Child, row)
 	if err != nil {
+		_ = updater.Close(ctx)
 		return nil, err
 	}
 
@@ -384,6 +414,7 @@ func (b *BaseBuilder) buildTruncate(ctx *sql.Context, n *plan.Truncate, row sql.
 				setter := aiTable.AutoIncrementSetter(ctx)
 				err = setter.SetAutoIncrementValue(ctx, uint64(1))
 				if err != nil {
+					_ = setter.Close(ctx)
 					return nil, err
 				}
 				err = setter.Close(ctx)
