@@ -194,6 +194,24 @@ var JsonScripts = []ScriptTest{
 					{"DOUBLE"},
 				},
 			},
+			{
+				Query: `select JSON_TYPE("null")`,
+				Expected: []sql.Row{
+					{"NULL"},
+				},
+			},
+			{
+				Query: `select JSON_TYPE(CAST("null" AS JSON))`,
+				Expected: []sql.Row{
+					{"NULL"},
+				},
+			},
+			{
+				Query: `select JSON_TYPE(NULL)`,
+				Expected: []sql.Row{
+					{nil},
+				},
+			},
 		},
 	},
 	{
