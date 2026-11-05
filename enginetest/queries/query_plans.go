@@ -637,58 +637,57 @@ From xy;`,
 			" └─ GroupBy\n" +
 			"     ├─ select: COUNT(1 (bigint))\n" +
 			"     ├─ group: \n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [xy.x:1!null, xy.y:2]\n" +
-			"         └─ LookupJoin\n" +
-			"             ├─ Distinct\n" +
-			"             │   └─ Project\n" +
-			"             │       ├─ columns: [uv.v:1]\n" +
-			"             │       └─ ProcessTable\n" +
-			"             │           └─ Table\n" +
-			"             │               ├─ name: uv\n" +
-			"             │               └─ columns: [u v]\n" +
-			"             └─ IndexedTableAccess(xy)\n" +
-			"                 ├─ index: [xy.y]\n" +
-			"                 ├─ keys: [uv.v:0]\n" +
-			"                 ├─ colSet: (1,2)\n" +
-			"                 ├─ tableId: 1\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: xy\n" +
-			"                     └─ columns: [x y]\n" +
+			"     └─ LookupJoin\n" +
+			"         ├─ Eq\n" +
+			"         │   ├─ xy.y:2\n" +
+			"         │   └─ uv.v:0\n" +
+			"         ├─ Distinct\n" +
+			"         │   └─ Project\n" +
+			"         │       ├─ columns: [uv.v:1]\n" +
+			"         │       └─ ProcessTable\n" +
+			"         │           └─ Table\n" +
+			"         │               ├─ name: uv\n" +
+			"         │               └─ columns: [u v]\n" +
+			"         └─ IndexedTableAccess(xy)\n" +
+			"             ├─ index: [xy.y]\n" +
+			"             ├─ keys: [uv.v:0]\n" +
+			"             ├─ colSet: (1,2)\n" +
+			"             ├─ tableId: 1\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: xy\n" +
+			"                 └─ columns: [x y]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [count(1) as `count(*)`]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: COUNT(1)\n" +
 			"     ├─ group: \n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [xy.x, xy.y]\n" +
-			"         └─ LookupJoin (estimated cost=13.338 rows=4)\n" +
-			"             ├─ Distinct\n" +
-			"             │   └─ Project\n" +
-			"             │       ├─ columns: [uv.v]\n" +
-			"             │       └─ Table\n" +
-			"             │           └─ name: uv\n" +
-			"             └─ IndexedTableAccess(xy)\n" +
-			"                 ├─ index: [xy.y]\n" +
-			"                 └─ keys: uv.v\n" +
+			"     └─ LookupJoin (estimated cost=13.338 rows=4)\n" +
+			"         ├─ (xy.y = uv.v)\n" +
+			"         ├─ Distinct\n" +
+			"         │   └─ Project\n" +
+			"         │       ├─ columns: [uv.v]\n" +
+			"         │       └─ Table\n" +
+			"         │           └─ name: uv\n" +
+			"         └─ IndexedTableAccess(xy)\n" +
+			"             ├─ index: [xy.y]\n" +
+			"             └─ keys: uv.v\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [count(1) as `count(*)`]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: COUNT(1)\n" +
 			"     ├─ group: \n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [xy.x, xy.y]\n" +
-			"         └─ LookupJoin (estimated cost=13.338 rows=4) (actual rows=2 loops=1)\n" +
-			"             ├─ Distinct\n" +
-			"             │   └─ Project\n" +
-			"             │       ├─ columns: [uv.v]\n" +
-			"             │       └─ Table\n" +
-			"             │           └─ name: uv\n" +
-			"             └─ IndexedTableAccess(xy)\n" +
-			"                 ├─ index: [xy.y]\n" +
-			"                 └─ keys: uv.v\n" +
+			"     └─ LookupJoin (estimated cost=13.338 rows=4) (actual rows=2 loops=1)\n" +
+			"         ├─ (xy.y = uv.v)\n" +
+			"         ├─ Distinct\n" +
+			"         │   └─ Project\n" +
+			"         │       ├─ columns: [uv.v]\n" +
+			"         │       └─ Table\n" +
+			"         │           └─ name: uv\n" +
+			"         └─ IndexedTableAccess(xy)\n" +
+			"             ├─ index: [xy.y]\n" +
+			"             └─ keys: uv.v\n" +
 			"",
 	},
 	{
