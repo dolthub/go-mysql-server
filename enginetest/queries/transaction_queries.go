@@ -1404,6 +1404,37 @@ var TransactionTests = []TransactionTest{
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/12356
+		Name: "trigger CALL keeps statement rollback and restores autocommit",
+		SetUpScript: []string{
+			"CREATE TABLE t (id INT PRIMARY KEY)",
+			"CREATE TABLE audit (id INT PRIMARY KEY)",
+			"CREATE PROCEDURE record_row(i INT) BEGIN INSERT INTO audit VALUES (i); IF i = 2 THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='blocked'; END IF; END",
+			"CREATE TRIGGER bi BEFORE INSERT ON t FOR EACH ROW CALL record_row(NEW.id)",
+			"CREATE TABLE pwork (id INT PRIMARY KEY)",
+			"CREATE PROCEDURE partial_work() BEGIN INSERT INTO pwork VALUES (9); SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='later error'; END",
+		},
+		Assertions: []ScriptTestAssertion{
+			{Query: "/* client a */ INSERT INTO t VALUES (1)", Expected: []sql.Row{{types.NewOkResult(1)}}},
+			{Query: "/* client b */ SELECT * FROM t", Expected: []sql.Row{{1}}},
+			{Query: "/* client a */ START TRANSACTION", Expected: []sql.Row{}},
+			{Query: "/* client a */ INSERT INTO t VALUES (3)", Expected: []sql.Row{{types.NewOkResult(1)}}},
+			{Query: "/* client b */ SELECT * FROM t", Expected: []sql.Row{{1}}},
+			{Query: "/* client a */ INSERT INTO t VALUES (4), (2)", ExpectedErrStr: "blocked (errno 1644) (sqlstate 45000)"},
+			{Query: "/* client a */ SELECT * FROM t ORDER BY id", Expected: []sql.Row{{1}, {3}}},
+			{Query: "/* client a */ SELECT * FROM audit ORDER BY id", Expected: []sql.Row{{1}, {3}}},
+			{Query: "/* client a */ ROLLBACK", Expected: []sql.Row{}},
+			{Query: "/* client b */ SELECT * FROM t", Expected: []sql.Row{{1}}},
+			{Query: "/* client a */ INSERT INTO t VALUES (5), (2)", ExpectedErrStr: "blocked (errno 1644) (sqlstate 45000)"},
+			{Query: "/* client b */ SELECT * FROM t", Expected: []sql.Row{{1}}},
+			{Query: "/* client a */ INSERT INTO t VALUES (6)", Expected: []sql.Row{{types.NewOkResult(1)}}},
+			{Query: "/* client b */ SELECT * FROM t ORDER BY id", Expected: []sql.Row{{1}, {6}}},
+			{Query: "/* client b */ SELECT * FROM audit ORDER BY id", Expected: []sql.Row{{1}, {6}}},
+			{Query: "/* client a */ CALL partial_work()", ExpectedErrStr: "later error (errno 1644) (sqlstate 45000)"},
+			{Query: "/* client b */ SELECT * FROM pwork", Expected: []sql.Row{{9}}},
+		},
+	},
+	{
 		// Regression for https://github.com/dolthub/dolt/issues/12356
 		Name: "CALL preserves caller transaction changes and savepoints",
 		SetUpScript: []string{

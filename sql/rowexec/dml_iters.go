@@ -267,6 +267,11 @@ func (t *triggerIter) Next(ctx *sql.Context) (row sql.Row, returnErr error) {
 	ctx, cancelFunc := ctx.NewSubContext()
 	defer cancelFunc()
 
+	// Trigger body statements commit with the enclosing statement.
+	ignoreAutoCommit := ctx.GetIgnoreAutoCommit()
+	ctx.SetIgnoreAutoCommit(true)
+	defer ctx.SetIgnoreAutoCommit(ignoreAutoCommit)
+
 	logicIter, err := t.b.buildNodeExec(ctx, logic, childRow)
 	if err != nil {
 		return nil, err
