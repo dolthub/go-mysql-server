@@ -25,27 +25,30 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-func TestBatchStopsWhenCanceled(t *testing.T) {
-	ctx, cancel := sql.NewEmptyContext().NewSubContext()
-	defer cancel()
+func TestBatchEval(t *testing.T) {
+	// https://github.com/dolthub/dolt/issues/12315
+	t.Run("stops before the next rule when canceled", func(t *testing.T) {
+		ctx, cancel := sql.NewEmptyContext().NewSubContext()
+		defer cancel()
 
-	var ran []RuleId
-	rule := func(id RuleId, f func()) Rule {
-		return Rule{Id: id, Apply: func(*sql.Context, *Analyzer, sql.Node, *plan.Scope, RuleSelector, *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
-			ran = append(ran, id)
-			f()
-			return plan.NewShowStatus(false), transform.NewTree, nil
-		}}
-	}
-	b := &Batch{
-		Iterations: 1,
-		Rules: []Rule{
-			rule(validateResolvedId, cancel),
-			rule(validateOrderById, func() {}),
-		},
-	}
+		var ran []RuleId
+		rule := func(id RuleId, f func()) Rule {
+			return Rule{Id: id, Apply: func(*sql.Context, *Analyzer, sql.Node, *plan.Scope, RuleSelector, *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
+				ran = append(ran, id)
+				f()
+				return plan.NewShowStatus(false), transform.NewTree, nil
+			}}
+		}
+		b := &Batch{
+			Iterations: 1,
+			Rules: []Rule{
+				rule(validateResolvedId, cancel),
+				rule(validateOrderById, func() {}),
+			},
+		}
 
-	_, _, err := b.Eval(ctx, NewDefault(nil), plan.NewShowStatus(true), nil, func(RuleId) bool { return true }, nil)
-	require.ErrorIs(t, err, context.Canceled)
-	require.Equal(t, []RuleId{validateResolvedId}, ran)
+		_, _, err := b.Eval(ctx, NewDefault(nil), plan.NewShowStatus(true), nil, func(RuleId) bool { return true }, nil)
+		require.ErrorIs(t, err, context.Canceled)
+		require.Equal(t, []RuleId{validateResolvedId}, ran)
+	})
 }

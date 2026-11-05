@@ -35,38 +35,51 @@ func init() {
 }
 
 func TestRangeValidation(t *testing.T) {
+	// https://github.com/dolthub/dolt/issues/12315
 	ctx := sql.NewEmptyContext()
 	defer sql.SetFullRangeValidation(sql.FullRangeValidationEnabled())
 
 	disjoint := sql.MySQLRangeCollection{r(req(1)), r(req(2)), r(req(3))}
 	overlapping := sql.MySQLRangeCollection{r(req(1)), r(rgt(0)), r(req(3))}
-
-	sql.SetFullRangeValidation(true)
-	require.NoError(t, sql.MaybeValidateRangeCollection(ctx, disjoint))
-	require.ErrorContains(t, sql.MaybeValidateRangeCollection(ctx, overlapping), "overlapping ranges")
-
-	// Without full validation, small collections are still checked, and large ones are not.
-	sql.SetFullRangeValidation(false)
-	require.ErrorContains(t, sql.MaybeValidateRangeCollection(ctx, overlapping), "overlapping ranges")
 	large := sql.MySQLRangeCollection{r(rgt(0))}
 	for len(large) <= sql.MaxRangesValidatedByDefault {
 		large = append(large, r(req(1)))
 	}
-	require.NoError(t, sql.MaybeValidateRangeCollection(ctx, large))
 
-	sql.SetFullRangeValidation(true)
-	require.ErrorContains(t, sql.MaybeValidateRangeCollection(ctx, large), "overlapping ranges")
+	t.Run("full validation accepts disjoint ranges", func(t *testing.T) {
+		sql.SetFullRangeValidation(true)
+		require.NoError(t, sql.MaybeValidateRangeCollection(ctx, disjoint))
+	})
+	t.Run("full validation rejects overlapping ranges", func(t *testing.T) {
+		sql.SetFullRangeValidation(true)
+		require.ErrorContains(t, sql.MaybeValidateRangeCollection(ctx, overlapping), "overlapping ranges")
+	})
+	t.Run("full validation checks large collections", func(t *testing.T) {
+		sql.SetFullRangeValidation(true)
+		require.ErrorContains(t, sql.MaybeValidateRangeCollection(ctx, large), "overlapping ranges")
+	})
+	t.Run("default validation checks small collections", func(t *testing.T) {
+		sql.SetFullRangeValidation(false)
+		require.ErrorContains(t, sql.MaybeValidateRangeCollection(ctx, overlapping), "overlapping ranges")
+	})
+	t.Run("default validation skips large collections", func(t *testing.T) {
+		sql.SetFullRangeValidation(false)
+		require.NoError(t, sql.MaybeValidateRangeCollection(ctx, large))
+	})
 }
 
-func TestRemoveOverlappingRangesCanceled(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-	_, err := sql.RemoveOverlappingRanges(ctx, r(req(1)), r(req(2)), r(req(3)))
-	require.ErrorIs(t, err, context.Canceled)
-
-	sqlCtx := sql.NewEmptyContext()
-	_, err = sql.RemoveOverlappingRanges(sqlCtx, r(req(1)), r(req(2)), r(req(3)))
-	require.NoError(t, err)
+func TestRemoveOverlappingRanges(t *testing.T) {
+	// https://github.com/dolthub/dolt/issues/12315
+	t.Run("returns an error when the context is canceled", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		_, err := sql.RemoveOverlappingRanges(ctx, r(req(1)), r(req(2)), r(req(3)))
+		require.ErrorIs(t, err, context.Canceled)
+	})
+	t.Run("succeeds when the context is live", func(t *testing.T) {
+		_, err := sql.RemoveOverlappingRanges(sql.NewEmptyContext(), r(req(1)), r(req(2)), r(req(3)))
+		require.NoError(t, err)
+	})
 }
 
 func TestRangeOverlapTwoColumns(t *testing.T) {
