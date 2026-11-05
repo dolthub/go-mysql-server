@@ -913,17 +913,41 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 	return counter, nil, nil, nil, nil
 }
 
+// inMultiStatementTransaction returns whether the session's transaction spans statements, i.e. it was opened with
+// START TRANSACTION or @@autocommit is off. Statements inside such a transaction don't commit when they finish.
+func inMultiStatementTransaction(ctx *sql.Context) (bool, error) {
+	if ctx.GetIgnoreAutoCommit() {
+		return true, nil
+	}
+	autocommit, err := ctx.GetSessionVariable(ctx, sql.AutoCommitSessionVar)
+	if err != nil {
+		return false, err
+	}
+	on, err := sql.ConvertToBool(ctx, autocommit)
+	if err != nil {
+		return false, err
+	}
+	return !on, nil
+}
+
 // Call runs the contained operations on the given runner.
 func Call(ctx *sql.Context, iNode InterpreterNode) (sql.RowIter, *InterpreterStack, error) {
-	// Preserve existing transaction before initial Call, but nested calls reuse Transactions
+	// Under autocommit each statement in the procedure commits its own transaction, so a top-level call sets the
+	// caller's transaction aside while it runs; a trigger's statement keeps its transaction across a CALL in its body.
+	// In a transaction that spans statements, the procedure runs in that transaction, as in MySQL. Nested calls
+	// always run in the current transaction.
 	if !ctx.Session.IsInCall() {
 		ctx.Session.SetInCall(true)
-		oldTx := ctx.GetTransaction()
-		ctx.SetTransaction(nil)
-		defer func() {
-			ctx.Session.SetInCall(false)
-			ctx.SetTransaction(oldTx)
-		}()
+		defer ctx.Session.SetInCall(false)
+		multiStatementTx, err := inMultiStatementTransaction(ctx)
+		if err != nil {
+			return nil, nil, err
+		}
+		if !multiStatementTx {
+			oldTx := ctx.GetTransaction()
+			ctx.SetTransaction(nil)
+			defer ctx.SetTransaction(oldTx)
+		}
 	}
 
 	// Set up the initial state of the function

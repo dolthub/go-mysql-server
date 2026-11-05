@@ -2877,6 +2877,101 @@ END`,
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/12356
+		Name: "CALL in a transaction that spans statements runs in that transaction",
+		SetUpScript: []string{
+			"create table t (id int primary key);",
+			"insert into t values (1), (2);",
+			"create table t2 (id int primary key);",
+			"create procedure p() select 1;",
+			"create procedure p_ins(v int) insert into t values (v);",
+			"create procedure p_t2(v int) insert into t2 values (v);",
+			"create trigger trg after insert on t for each row call p_t2(new.id);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "start transaction;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "delete from t where id = 1;",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "call p();",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "select id from t order by id;",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:                         "call p_ins(3);",
+				SkipResultCheckOnServerEngine: true,
+				Expected:                      []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "insert into t values (4);",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "commit;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select (select group_concat(id order by id) from t), (select group_concat(id order by id) from t2);",
+				Expected: []sql.Row{{"2,3,4", "3,4"}},
+			},
+			{
+				// The procedure's writes are part of the caller's transaction, so a rollback undoes them.
+				Query:    "start transaction;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:                         "call p_ins(5);",
+				SkipResultCheckOnServerEngine: true,
+				Expected:                      []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "rollback;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select (select group_concat(id order by id) from t), (select group_concat(id order by id) from t2);",
+				Expected: []sql.Row{{"2,3,4", "3,4"}},
+			},
+			{
+				Query:    "set @@autocommit = 0;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "delete from t where id = 2;",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "call p();",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:                         "call p_ins(6);",
+				SkipResultCheckOnServerEngine: true,
+				Expected:                      []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "commit;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "set @@autocommit = 1;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "select (select group_concat(id order by id) from t), (select group_concat(id order by id) from t2);",
+				Expected: []sql.Row{{"3,4,6", "3,4,6"}},
+			},
+		},
+	},
 }
 
 var NoDbProcedureTests = []ScriptTestAssertion{

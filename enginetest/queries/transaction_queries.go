@@ -1478,4 +1478,203 @@ var TransactionTests = []TransactionTest{
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/12356
+		Name: "CALL in an explicit transaction runs in that transaction",
+		SetUpScript: []string{
+			"create table t (id int primary key);",
+			"insert into t values (1), (2);",
+			"create procedure p() select 1;",
+			"create procedure p_ins(v int) insert into t values (v);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "/* client a */ start transaction;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client a */ delete from t where id = 1;",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:            "/* client a */ call p();",
+				SkipResultsCheck: true,
+			},
+			{
+				Query:    "/* client a */ select id from t order by id;",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:            "/* client a */ call p_ins(3);",
+				SkipResultsCheck: true,
+			},
+			{
+				Query:    "/* client b */ select id from t order by id;",
+				Expected: []sql.Row{{1}, {2}},
+			},
+			{
+				Query:    "/* client a */ insert into t values (4);",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "/* client a */ commit;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client b */ select id from t order by id;",
+				Expected: []sql.Row{{2}, {3}, {4}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/12356
+		Name: "CALL with autocommit off runs in the open transaction",
+		SetUpScript: []string{
+			"create table t (id int primary key);",
+			"insert into t values (1), (2);",
+			"create procedure p() select 1;",
+			"create procedure p_ins(v int) insert into t values (v);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "/* client a */ set @@autocommit = 0;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "/* client a */ delete from t where id = 1;",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:            "/* client a */ call p();",
+				SkipResultsCheck: true,
+			},
+			{
+				Query:            "/* client a */ call p_ins(3);",
+				SkipResultsCheck: true,
+			},
+			{
+				Query:    "/* client a */ select id from t order by id;",
+				Expected: []sql.Row{{2}, {3}},
+			},
+			{
+				Query:    "/* client b */ select id from t order by id;",
+				Expected: []sql.Row{{1}, {2}},
+			},
+			{
+				Query:    "/* client a */ commit;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client b */ select id from t order by id;",
+				Expected: []sql.Row{{2}, {3}},
+			},
+		},
+	},
+	{
+		Name: "COMMIT and ROLLBACK in a procedure end the caller's transaction",
+		SetUpScript: []string{
+			"create table t (id int primary key);",
+			"create procedure p_commit(v int) begin insert into t values (v); commit; end;",
+			"create procedure p_rollback(v int) begin insert into t values (v); rollback; end;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "/* client a */ start transaction;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client a */ insert into t values (10);",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:            "/* client a */ call p_commit(11);",
+				SkipResultsCheck: true,
+			},
+			{
+				Query:    "/* client b */ select id from t order by id;",
+				Expected: []sql.Row{{10}, {11}},
+			},
+			{
+				// The transaction ended in the procedure, so this autocommits and the rollback has nothing to undo.
+				Query:    "/* client a */ insert into t values (12);",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "/* client a */ rollback;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client b */ select id from t order by id;",
+				Expected: []sql.Row{{10}, {11}, {12}},
+			},
+			{
+				Query:    "/* client a */ start transaction;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client a */ insert into t values (20);",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:            "/* client a */ call p_rollback(21);",
+				SkipResultsCheck: true,
+			},
+			{
+				Query:    "/* client a */ select id from t order by id;",
+				Expected: []sql.Row{{10}, {11}, {12}},
+			},
+		},
+	},
+	{
+		Name: "CALL from a trigger in an explicit transaction runs in that transaction",
+		SetUpScript: []string{
+			"create table t (id int primary key);",
+			"create table t2 (id int primary key);",
+			"create procedure p_t2(v int) insert into t2 values (v);",
+			"create trigger trg after insert on t for each row call p_t2(new.id);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "/* client a */ start transaction;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client a */ insert into t values (1), (2);",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "/* client a */ select id from t2 order by id;",
+				Expected: []sql.Row{{1}, {2}},
+			},
+			{
+				Query:    "/* client b */ select id from t2 order by id;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client a */ commit;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client b */ select (select count(*) from t), (select count(*) from t2);",
+				Expected: []sql.Row{{2, 2}},
+			},
+		},
+	},
+	{
+		Name: "CALL under autocommit commits each statement in the procedure",
+		SetUpScript: []string{
+			"create table t (id int primary key);",
+			"create procedure p_ins_rollback(v int) begin insert into t values (v); rollback; end;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:            "/* client a */ call p_ins_rollback(1);",
+				SkipResultsCheck: true,
+			},
+			{
+				Query:    "/* client b */ select id from t;",
+				Expected: []sql.Row{{1}},
+			},
+		},
+	},
 }
