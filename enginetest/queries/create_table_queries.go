@@ -1333,6 +1333,33 @@ var CreateTableScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "CREATE TABLE with index AS SELECT preserves defaults",
+		// PostgreSQL does not support inline INDEX declarations in CREATE TABLE AS SELECT.
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE source_entries (id VARCHAR(512) DEFAULT NULL, label VARCHAR(20) DEFAULT 'abc')",
+			"INSERT INTO source_entries VALUES ('row', 'value')",
+			"CREATE TABLE mat_entries (INDEX mat_entries_id (id(255))) AS SELECT * FROM source_entries",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * FROM mat_entries",
+				Expected: []sql.Row{{"row", "value"}},
+			},
+			{
+				Query: "INSERT INTO mat_entries VALUES (DEFAULT, DEFAULT)",
+			},
+			{
+				Query:    "SELECT * FROM mat_entries ORDER BY id",
+				Expected: []sql.Row{{nil, "abc"}, {"row", "value"}},
+			},
+			{
+				Query:    "SELECT * FROM source_entries",
+				Expected: []sql.Row{{"row", "value"}},
+			},
+		},
+	},
+	{
 		Name: "create table columns from aggregate functions",
 		SetUpScript: []string{
 			"create table t1 (i int)",
