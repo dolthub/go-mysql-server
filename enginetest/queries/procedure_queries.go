@@ -2589,19 +2589,60 @@ END`,
 			"CREATE PROCEDURE p() SELECT 1",
 		},
 		Assertions: []ScriptTestAssertion{
-			{Query: "START TRANSACTION", Expected: []sql.Row{}},
-			{Query: "DELETE FROM t WHERE id = 1", Expected: []sql.Row{{types.NewOkResult(1)}}},
-			{Query: "CALL p()", Expected: []sql.Row{{1}}},
-			{Query: "INSERT INTO t VALUES (3)", Expected: []sql.Row{{types.NewOkResult(1)}}},
-			{Query: "COMMIT", Expected: []sql.Row{}, SkipResultCheckOnServerEngine: true},
-			{Query: "SELECT * FROM t ORDER BY id", Expected: []sql.Row{{2}, {3}}},
-			{Query: "SET autocommit = 0", Expected: []sql.Row{{types.NewOkResult(0)}}},
-			{Query: "DELETE FROM t WHERE id = 2", Expected: []sql.Row{{types.NewOkResult(1)}}},
-			{Query: "CALL p()", Expected: []sql.Row{{1}}},
-			{Query: "INSERT INTO t VALUES (4)", Expected: []sql.Row{{types.NewOkResult(1)}}},
-			{Query: "COMMIT", Expected: []sql.Row{}, SkipResultCheckOnServerEngine: true},
-			{Query: "SET autocommit = 1", Expected: []sql.Row{{types.NewOkResult(0)}}},
-			{Query: "SELECT * FROM t ORDER BY id", Expected: []sql.Row{{3}, {4}}},
+			{
+				Query:    "START TRANSACTION",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "DELETE FROM t WHERE id = 1",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "CALL p()",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "INSERT INTO t VALUES (3)",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:                         "COMMIT",
+				Expected:                      []sql.Row{},
+				SkipResultCheckOnServerEngine: true,
+			},
+			{
+				Query:    "SELECT * FROM t ORDER BY id",
+				Expected: []sql.Row{{2}, {3}},
+			},
+			{
+				Query:    "SET autocommit = 0",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "DELETE FROM t WHERE id = 2",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "CALL p()",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "INSERT INTO t VALUES (4)",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:                         "COMMIT",
+				Expected:                      []sql.Row{},
+				SkipResultCheckOnServerEngine: true,
+			},
+			{
+				Query:    "SET autocommit = 1",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "SELECT * FROM t ORDER BY id",
+				Expected: []sql.Row{{3}, {4}},
+			},
 		},
 	},
 	{
