@@ -24,6 +24,53 @@ import (
 
 var JsonScripts = []ScriptTest{
 	{
+		Name: "json_type distinguishes SQL NULL from JSON null",
+		SetUpScript: []string{
+			"CREATE TABLE json_nulls (id INT PRIMARY KEY, doc JSON)",
+			`INSERT INTO json_nulls VALUES (1, NULL), (2, 'null'), (3, '{}'), (4, '{"x":null}'), (5, '{"x":1}')`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT JSON_TYPE(NULL) IS NULL, JSON_TYPE(NULL) = 'NULL'",
+				Expected: []sql.Row{{true, nil}},
+			},
+			{
+				Query:    `SELECT JSON_EXTRACT('{}', '$.missing') IS NULL, JSON_TYPE(JSON_EXTRACT('{}', '$.missing')) IS NULL, JSON_TYPE(JSON_EXTRACT('{}', '$.missing')) = 'NULL'`,
+				Expected: []sql.Row{{true, true, nil}},
+			},
+			{
+				Query:    `SELECT JSON_TYPE(JSON_EXTRACT('{"x":null}', '$.x')) IS NULL, JSON_TYPE(JSON_EXTRACT('{"x":null}', '$.x')) = 'NULL'`,
+				Expected: []sql.Row{{false, true}},
+			},
+			{
+				Query: "SELECT id, JSON_TYPE(doc), JSON_TYPE(JSON_EXTRACT(doc, '$.x')) FROM json_nulls ORDER BY id",
+				Expected: []sql.Row{
+					{1, nil, nil},
+					{2, "NULL", nil},
+					{3, "OBJECT", nil},
+					{4, "OBJECT", "NULL"},
+					{5, "OBJECT", "INTEGER"},
+				},
+			},
+			{
+				Query:    "SELECT id FROM json_nulls WHERE JSON_TYPE(doc) IS NULL ORDER BY id",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT id FROM json_nulls WHERE JSON_TYPE(doc) = 'NULL' ORDER BY id",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "SELECT id FROM json_nulls WHERE JSON_TYPE(JSON_EXTRACT(doc, '$.x')) IS NULL ORDER BY id",
+				Expected: []sql.Row{{1}, {2}, {3}},
+			},
+			{
+				Query:    "SELECT id FROM json_nulls WHERE JSON_TYPE(JSON_EXTRACT(doc, '$.x')) = 'NULL' ORDER BY id",
+				Expected: []sql.Row{{4}},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/10050
 		Name: "TextStorage converts to JSON when using dolt wrapper",
 		SetUpScript: []string{
