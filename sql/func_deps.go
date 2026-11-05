@@ -527,39 +527,25 @@ func NewInnerJoinFDs(left, right *FuncDepSet, filters [][2]ColumnId) *FuncDepSet
 	for _, f := range filters {
 		ret.AddEquiv(f[0], f[1])
 	}
-	leftKeys := left.CopyKeys()
-	rightKeys := right.CopyKeys()
 	// concatenate lead key, append others
-	var lKey, rKey Key
-	if len(leftKeys) > 0 {
-		lKey = leftKeys[0]
-	}
-	if len(rightKeys) > 0 {
-		rKey = rightKeys[0]
-	}
+	lKey := left.BestKey()
+	rKey := right.BestKey()
 	var jKey Key
+	jKey.cols = lKey.cols.Union(rKey.cols)
+	jKey.allCols = ret.all
+	jKey.strict = lKey.strict && rKey.strict
+	// fast-path: if both key is empty (all columns are determined), then no additional work needs to be done.
 	if lKey.Empty() && rKey.Empty() {
-		ret.AddKey(lKey)
+		ret.AddKey(jKey)
 		return ret
-	} else if lKey.Empty() {
-		jKey = rKey
-	} else if rKey.Empty() {
-		jKey = lKey
-	} else {
-		var subKeys []Key
-		subKeys = append(subKeys, leftKeys...)
-		subKeys = append(subKeys, rightKeys...)
-		jKey.cols = ret.simplifyCols(lKey.cols.Union(rKey.cols), subKeys)
-		jKey.allCols = ret.all
-		jKey.strict = lKey.strict && rKey.strict
 	}
+	var subKeys []Key
+	subKeys = append(subKeys, left.keys...)
+	subKeys = append(subKeys, right.keys...)
+	jKey.cols = ret.simplifyCols(jKey.cols, subKeys)
+
 	ret.AddKey(jKey)
-	for _, k := range leftKeys {
-		ret.keys = append(ret.keys, k)
-	}
-	for _, k := range rightKeys {
-		ret.keys = append(ret.keys, k)
-	}
+	ret.keys = append(ret.keys, subKeys...)
 
 	return ret
 }
