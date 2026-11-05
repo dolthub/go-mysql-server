@@ -827,9 +827,6 @@ WHERE
 			"         │   ├─ tizhk.id:1!null\n" +
 			"         │   └─ hddvb.ETPQV:11\n" +
 			"         ├─ LookupJoin\n" +
-			"         │   ├─ Eq\n" +
-			"         │   │   ├─ tizhk.id:1!null\n" +
-			"         │   │   └─ tizhk_1.id:0!null\n" +
 			"         │   ├─ Distinct\n" +
 			"         │   │   └─ Project\n" +
 			"         │   │       ├─ columns: [tizhk_1.id:17!null]\n" +
@@ -910,7 +907,6 @@ WHERE
 			"     └─ LeftOuterHashJoinExcludingNulls (estimated cost=8539.020 rows=5101)\n" +
 			"         ├─ (tizhk.id = hddvb.ETPQV)\n" +
 			"         ├─ LookupJoin (estimated cost=17102.981 rows=5101)\n" +
-			"         │   ├─ (tizhk.id = tizhk_1.id)\n" +
 			"         │   ├─ Distinct\n" +
 			"         │   │   └─ Project\n" +
 			"         │   │       ├─ columns: [tizhk_1.id]\n" +
@@ -960,7 +956,6 @@ WHERE
 			"     └─ LeftOuterHashJoinExcludingNulls (estimated cost=8539.020 rows=5101) (actual rows=0 loops=1)\n" +
 			"         ├─ (tizhk.id = hddvb.ETPQV)\n" +
 			"         ├─ LookupJoin (estimated cost=17102.981 rows=5101) (actual rows=0 loops=1)\n" +
-			"         │   ├─ (tizhk.id = tizhk_1.id)\n" +
 			"         │   ├─ Distinct\n" +
 			"         │   │   └─ Project\n" +
 			"         │   │       ├─ columns: [tizhk_1.id]\n" +
@@ -1043,9 +1038,6 @@ WHERE
 			"         │   ├─ tizhk.id:1!null\n" +
 			"         │   └─ hddvb.ETPQV:11\n" +
 			"         ├─ LookupJoin\n" +
-			"         │   ├─ Eq\n" +
-			"         │   │   ├─ tizhk.id:1!null\n" +
-			"         │   │   └─ tizhk_1.id:0!null\n" +
 			"         │   ├─ Distinct\n" +
 			"         │   │   └─ Project\n" +
 			"         │   │       ├─ columns: [tizhk_1.id:17!null]\n" +
@@ -1126,7 +1118,6 @@ WHERE
 			"     └─ LeftOuterHashJoinExcludingNulls (estimated cost=8539.020 rows=5101)\n" +
 			"         ├─ (tizhk.id = hddvb.ETPQV)\n" +
 			"         ├─ LookupJoin (estimated cost=17102.981 rows=5101)\n" +
-			"         │   ├─ (tizhk.id = tizhk_1.id)\n" +
 			"         │   ├─ Distinct\n" +
 			"         │   │   └─ Project\n" +
 			"         │   │       ├─ columns: [tizhk_1.id]\n" +
@@ -1176,7 +1167,6 @@ WHERE
 			"     └─ LeftOuterHashJoinExcludingNulls (estimated cost=8539.020 rows=5101) (actual rows=0 loops=1)\n" +
 			"         ├─ (tizhk.id = hddvb.ETPQV)\n" +
 			"         ├─ LookupJoin (estimated cost=17102.981 rows=5101) (actual rows=0 loops=1)\n" +
-			"         │   ├─ (tizhk.id = tizhk_1.id)\n" +
 			"         │   ├─ Distinct\n" +
 			"         │   │   └─ Project\n" +
 			"         │   │       ├─ columns: [tizhk_1.id]\n" +

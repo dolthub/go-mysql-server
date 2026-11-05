@@ -308,9 +308,6 @@ offset 1;`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [xy.x:1!null]\n" +
 			" └─ LookupJoin\n" +
-			"     ├─ Eq\n" +
-			"     │   ├─ xy.y:2\n" +
-			"     │   └─ xy_1.x:0!null\n" +
 			"     ├─ Distinct\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [xy_1.x:0!null]\n" +
@@ -343,7 +340,6 @@ offset 1;`,
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [xy.x]\n" +
 			" └─ LookupJoin (estimated cost=3334.539 rows=1000)\n" +
-			"     ├─ (xy.y = xy_1.x)\n" +
 			"     ├─ Distinct\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [xy_1.x]\n" +
@@ -364,7 +360,6 @@ offset 1;`,
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [xy.x]\n" +
 			" └─ LookupJoin (estimated cost=3334.539 rows=1000) (actual rows=4 loops=1)\n" +
-			"     ├─ (xy.y = xy_1.x)\n" +
 			"     ├─ Distinct\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [xy_1.x]\n" +
@@ -699,9 +694,6 @@ From xy;`,
 			"     ├─ select: COUNT(1 (bigint))\n" +
 			"     ├─ group: \n" +
 			"     └─ LookupJoin\n" +
-			"         ├─ Eq\n" +
-			"         │   ├─ xy.y:2\n" +
-			"         │   └─ uv.u:0!null\n" +
 			"         ├─ OrderedDistinct\n" +
 			"         │   └─ Project\n" +
 			"         │       ├─ columns: [uv.u:0!null]\n" +
@@ -724,7 +716,6 @@ From xy;`,
 			"     ├─ select: COUNT(1)\n" +
 			"     ├─ group: \n" +
 			"     └─ LookupJoin (estimated cost=13.338 rows=4)\n" +
-			"         ├─ (xy.y = uv.u)\n" +
 			"         ├─ OrderedDistinct\n" +
 			"         │   └─ Project\n" +
 			"         │       ├─ columns: [uv.u]\n" +
@@ -740,7 +731,6 @@ From xy;`,
 			"     ├─ select: COUNT(1)\n" +
 			"     ├─ group: \n" +
 			"     └─ LookupJoin (estimated cost=13.338 rows=4) (actual rows=4 loops=1)\n" +
-			"         ├─ (xy.y = uv.u)\n" +
 			"         ├─ OrderedDistinct\n" +
 			"         │   └─ Project\n" +
 			"         │       ├─ columns: [uv.u]\n" +
@@ -2035,9 +2025,6 @@ Select * from (
 			"         └─ Project\n" +
 			"             ├─ columns: [xy.x:1!null]\n" +
 			"             └─ LookupJoin\n" +
-			"                 ├─ Eq\n" +
-			"                 │   ├─ xy.x:1!null\n" +
-			"                 │   └─ cte.s:0!null\n" +
 			"                 ├─ Distinct\n" +
 			"                 │   └─ SubqueryAlias\n" +
 			"                 │       ├─ name: cte\n" +
@@ -2112,7 +2099,6 @@ Select * from (
 			"         └─ Project\n" +
 			"             ├─ columns: [xy.x]\n" +
 			"             └─ LookupJoin\n" +
-			"                 ├─ (xy.x = cte.s)\n" +
 			"                 ├─ Distinct\n" +
 			"                 │   └─ SubqueryAlias\n" +
 			"                 │       ├─ name: cte\n" +
@@ -2175,7 +2161,6 @@ Select * from (
 			"         └─ Project\n" +
 			"             ├─ columns: [xy.x]\n" +
 			"             └─ LookupJoin\n" +
-			"                 ├─ (xy.x = cte.s)\n" +
 			"                 ├─ Distinct\n" +
 			"                 │   └─ SubqueryAlias\n" +
 			"                 │       ├─ name: cte\n" +
@@ -2245,9 +2230,6 @@ Select * from (
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [xy.x:1!null, xy.y:2]\n" +
 			" └─ LookupJoin\n" +
-			"     ├─ Eq\n" +
-			"     │   ├─ xy.x:1!null\n" +
-			"     │   └─ ab.a:0!null\n" +
 			"     ├─ OrderedDistinct\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [ab.a:0!null]\n" +
@@ -2283,7 +2265,6 @@ Select * from (
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [xy.x, xy.y]\n" +
 			" └─ LookupJoin (estimated cost=13.338 rows=4)\n" +
-			"     ├─ (xy.x = ab.a)\n" +
 			"     ├─ OrderedDistinct\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [ab.a]\n" +
@@ -2304,7 +2285,6 @@ Select * from (
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [xy.x, xy.y]\n" +
 			" └─ LookupJoin (estimated cost=13.338 rows=4) (actual rows=4 loops=1)\n" +
-			"     ├─ (xy.x = ab.a)\n" +
 			"     ├─ OrderedDistinct\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [ab.a]\n" +
@@ -2458,9 +2438,6 @@ Select * from (
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [mytable.s:2!null]\n" +
 			" └─ LookupJoin\n" +
-			"     ├─ Eq\n" +
-			"     │   ├─ mytable.i:1!null\n" +
-			"     │   └─ othertable.i2:0!null\n" +
 			"     ├─ Distinct\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [othertable.i2:1!null]\n" +
@@ -2484,7 +2461,6 @@ Select * from (
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [mytable.s]\n" +
 			" └─ LookupJoin (estimated cost=3.305 rows=1)\n" +
-			"     ├─ (mytable.i = othertable.i2)\n" +
 			"     ├─ Distinct\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [othertable.i2]\n" +
@@ -2498,7 +2474,6 @@ Select * from (
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [mytable.s]\n" +
 			" └─ LookupJoin (estimated cost=3.305 rows=1) (actual rows=1 loops=1)\n" +
-			"     ├─ (mytable.i = othertable.i2)\n" +
 			"     ├─ Distinct\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [othertable.i2]\n" +
@@ -4448,9 +4423,6 @@ Select * from (
 			" │       └─ Project\n" +
 			" │           ├─ columns: [ab.a:4!null]\n" +
 			" │           └─ LookupJoin\n" +
-			" │               ├─ Eq\n" +
-			" │               │   ├─ ab.a:4!null\n" +
-			" │               │   └─ uv.u:3!null\n" +
 			" │               ├─ OrderedDistinct\n" +
 			" │               │   └─ Project\n" +
 			" │               │       ├─ columns: [uv.u:3!null]\n" +
@@ -4477,9 +4449,6 @@ Select * from (
 			"     │       └─ Project\n" +
 			"     │           ├─ columns: [ab.a:3!null]\n" +
 			"     │           └─ LookupJoin\n" +
-			"     │               ├─ Eq\n" +
-			"     │               │   ├─ ab.a:3!null\n" +
-			"     │               │   └─ uv.u:2!null\n" +
 			"     │               ├─ OrderedDistinct\n" +
 			"     │               │   └─ Project\n" +
 			"     │               │       ├─ columns: [uv.u:2!null]\n" +
@@ -4510,7 +4479,6 @@ Select * from (
 			" │       └─ Project\n" +
 			" │           ├─ columns: [ab.a]\n" +
 			" │           └─ LookupJoin (estimated cost=13.338 rows=4)\n" +
-			" │               ├─ (ab.a = uv.u)\n" +
 			" │               ├─ OrderedDistinct\n" +
 			" │               │   └─ Project\n" +
 			" │               │       ├─ columns: [uv.u]\n" +
@@ -4529,7 +4497,6 @@ Select * from (
 			"     │       └─ Project\n" +
 			"     │           ├─ columns: [ab.a]\n" +
 			"     │           └─ LookupJoin (estimated cost=13.338 rows=4)\n" +
-			"     │               ├─ (ab.a = uv.u)\n" +
 			"     │               ├─ OrderedDistinct\n" +
 			"     │               │   └─ Project\n" +
 			"     │               │       ├─ columns: [uv.u]\n" +
@@ -4551,7 +4518,6 @@ Select * from (
 			" │       └─ Project\n" +
 			" │           ├─ columns: [ab.a]\n" +
 			" │           └─ LookupJoin (estimated cost=13.338 rows=4)\n" +
-			" │               ├─ (ab.a = uv.u)\n" +
 			" │               ├─ OrderedDistinct\n" +
 			" │               │   └─ Project\n" +
 			" │               │       ├─ columns: [uv.u]\n" +
@@ -4570,7 +4536,6 @@ Select * from (
 			"     │       └─ Project\n" +
 			"     │           ├─ columns: [ab.a]\n" +
 			"     │           └─ LookupJoin (estimated cost=13.338 rows=4)\n" +
-			"     │               ├─ (ab.a = uv.u)\n" +
 			"     │               ├─ OrderedDistinct\n" +
 			"     │               │   └─ Project\n" +
 			"     │               │       ├─ columns: [uv.u]\n" +
@@ -5565,9 +5530,6 @@ where exists
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [ab.a:1!null, ab.b:2]\n" +
 			" └─ LookupJoin\n" +
-			"     ├─ Eq\n" +
-			"     │   ├─ ab.a:1!null\n" +
-			"     │   └─ uv.u:0!null\n" +
 			"     ├─ OrderedDistinct\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [uv.u:0!null]\n" +
@@ -5603,7 +5565,6 @@ where exists
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [ab.a, ab.b]\n" +
 			" └─ LookupJoin (estimated cost=13.338 rows=4)\n" +
-			"     ├─ (ab.a = uv.u)\n" +
 			"     ├─ OrderedDistinct\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [uv.u]\n" +
@@ -5624,7 +5585,6 @@ where exists
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [ab.a, ab.b]\n" +
 			" └─ LookupJoin (estimated cost=13.338 rows=4) (actual rows=4 loops=1)\n" +
-			"     ├─ (ab.a = uv.u)\n" +
 			"     ├─ OrderedDistinct\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [uv.u]\n" +
